@@ -1167,6 +1167,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Transfer.pas"/>,
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Transfer.Tests.pas"/>,
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Marks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Tree.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.TestSupport.pas"/>

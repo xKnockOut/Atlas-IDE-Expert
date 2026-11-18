@@ -1034,6 +1034,7 @@ uses
   Atlas.UI.Settings.Transfer in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Transfer.pas',
   Atlas.UI.Settings.Transfer.Tests in 'IDE.Expert\Atlas.UI.Settings.Transfer.Tests.pas',
   Atlas.UI.Settings.SnippetsPage in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas',
+  Atlas.UI.Settings.Marks.Tests in 'IDE.Expert\Atlas.UI.Settings.Marks.Tests.pas',
   Atlas.UI.Settings.Page.Tests in 'IDE.Expert\Atlas.UI.Settings.Page.Tests.pas',
   Atlas.UI.Settings.Page.Tree.Tests in 'IDE.Expert\Atlas.UI.Settings.Page.Tree.Tests.pas',
   Atlas.UI.Settings.Page.TestSupport in 'IDE.Expert\Atlas.UI.Settings.Page.TestSupport.pas',

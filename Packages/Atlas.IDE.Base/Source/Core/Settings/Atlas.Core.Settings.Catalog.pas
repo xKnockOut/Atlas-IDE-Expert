@@ -20,6 +20,8 @@
 // Export, Import und Zurücksetzen (Voraussetzung für #767).
 // Beschreibung, Synonyme (x-keywords) und Schnellschalter trägt der Katalog für die Suche über die Einstellungen
 // (#1884, Atlas.Core.Settings.Search).
+// IndexOfKey und IndexOfName schlagen in einem Verzeichnis nach (#2372): Die Optionsseite fragt sie für jedes
+// Element und jeden Hauptschalter darüber; linear durch knapp 1000 Einträge kostete das je Knoten spürbar Zeit.
 
 interface
 
@@ -105,10 +107,16 @@ type
   TAtlasSettingsCatalog = class
   private
     FEntries: TList<TAtlasCatalogEntry>;
+    /// <summary>Erster Eintrag je Schlüssel (klein geschrieben).</summary>
+    FByKey: TDictionary<string, Integer>;
+    /// <summary>Erster Plugin-Eintrag je Registry-Name (klein geschrieben).</summary>
+    FByName: TDictionary<string, Integer>;
     FAreas: TArray<TAtlasCatalogArea>;
     FNodes: TArray<TAtlasCatalogArea>;
     FProjectPaths: TArray<string>;
     FVersion: Integer;
+    /// <summary>Eintrag anhängen und in FByKey und FByName aufnehmen.</summary>
+    procedure AddEntry(const AEntry: TAtlasCatalogEntry);
     procedure ReadPlugin(const AText: string);
     procedure ReadServer(const AText: string);
     procedure AddServerEntry(const AKey: string; ASchema, AParent: TJSONObject);
@@ -449,12 +457,16 @@ constructor TAtlasSettingsCatalog.Create(const APluginSchema, AServerSchema: str
 begin
   inherited Create;
   FEntries := TList<TAtlasCatalogEntry>.Create;
+  FByKey := TDictionary<string, Integer>.Create;
+  FByName := TDictionary<string, Integer>.Create;
   ReadPlugin(APluginSchema);
   ReadServer(AServerSchema);
 end;
 
 destructor TAtlasSettingsCatalog.Destroy;
 begin
+  FByName.Free;
+  FByKey.Free;
   FEntries.Free;
   inherited;
 end;
@@ -467,6 +479,25 @@ end;
 function TAtlasSettingsCatalog.GetEntry(AIndex: Integer): TAtlasCatalogEntry;
 begin
   Result := FEntries[AIndex];
+end;
+
+procedure TAtlasSettingsCatalog.AddEntry(const AEntry: TAtlasCatalogEntry);
+var
+  mIndex: Integer;
+  mKey: string;
+begin
+  mIndex := FEntries.Add(AEntry);
+  // Wie die frühere Suche von vorn: Der erste Eintrag gewinnt.
+  mKey := LowerCase(AEntry.Key);
+  if not FByKey.ContainsKey(mKey) then
+  begin
+    FByKey.Add(mKey, mIndex);
+  end;
+  mKey := LowerCase(AEntry.Name);
+  if (AEntry.Source = asPlugin) and not FByName.ContainsKey(mKey) then
+  begin
+    FByName.Add(mKey, mIndex);
+  end;
 end;
 
 procedure TAtlasSettingsCatalog.ReadPlugin(const AText: string);
@@ -494,7 +525,7 @@ begin
     begin
       if mPair.JsonValue is TJSONObject then
       begin
-        FEntries.Add(PluginEntry(mPair.JsonString.Value, TJSONObject(mPair.JsonValue)));
+        AddEntry(PluginEntry(mPair.JsonString.Value, TJSONObject(mPair.JsonValue)));
       end;
     end;
   finally
@@ -559,7 +590,7 @@ begin
   end;
   if mPlugin < 0 then
   begin
-    FEntries.Add(ServerEntry(AKey, ASchema, AParent));
+    AddEntry(ServerEntry(AKey, ASchema, AParent));
   end
   else if TJsonRead.Flag(ASchema, 'x-experimental') then
   begin
@@ -645,30 +676,18 @@ begin
 end;
 
 function TAtlasSettingsCatalog.IndexOfKey(const AKey: string): Integer;
-var
-  mIndex: Integer;
 begin
-  Result := -1;
-  for mIndex := 0 to FEntries.Count - 1 do
+  if not FByKey.TryGetValue(LowerCase(AKey), Result) then
   begin
-    if SameText(FEntries[mIndex].Key, AKey) then
-    begin
-      Exit(mIndex);
-    end;
+    Result := -1;
   end;
 end;
 
 function TAtlasSettingsCatalog.IndexOfName(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  Result := -1;
-  for mIndex := 0 to FEntries.Count - 1 do
+  if not FByName.TryGetValue(LowerCase(AName), Result) then
   begin
-    if (FEntries[mIndex].Source = asPlugin) and SameText(FEntries[mIndex].Name, AName) then
-    begin
-      Exit(mIndex);
-    end;
+    Result := -1;
   end;
 end;
 
