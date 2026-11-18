@@ -62,7 +62,7 @@ type
     /// <summary>Bindung der Zeile ANode; Everywhere bei Kindern und Unbekanntem.</summary>
     function ScopeOf(ANode: TAtlasEvalNode): TAtlasWatchScope;
     /// <summary>debug.variablesWindow.scopedWatches an?</summary>
-    function Enabled: Boolean;
+    class function Enabled: Boolean; static;
     /// <summary>So viele Ausdrücke sind beim aktuellen Halt ausgeblendet.</summary>
     property Hidden: Integer read FHidden;
     property ShowHidden: Boolean read FShowHidden;
@@ -96,7 +96,7 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeVariablesWatches.Enabled: Boolean;
+class function TAtlasIdeVariablesWatches.Enabled: Boolean;
 var
   mSettings: TAtlasPluginSettings;
 begin
