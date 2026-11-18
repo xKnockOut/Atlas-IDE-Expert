@@ -106,6 +106,7 @@ Atlas.Common.Editing.InterfaceStubs.Tests
 Atlas.Common.Editing.InvertBoolean.Tests
 Atlas.Common.Editing.MemberOrder.Tests
 Atlas.Common.Editing.MemberTransfer.Tests
+Atlas.Common.Editing.MethodMatching.Tests
 Atlas.Common.Editing.MethodOrder.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Analysis.Tests

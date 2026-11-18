@@ -119,6 +119,7 @@ uses
   Atlas.Common.Lsp.Reassigned.Tests in 'Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas',
   Atlas.Common.Lsp.Commands.Tests in 'Common\Lsp\Atlas.Common.Lsp.Commands.Tests.pas',
   Atlas.Common.Lsp.ExpressionType.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas',
+  Atlas.Common.Editing.MethodMatching.Tests in 'Common\Editing\Atlas.Common.Editing.MethodMatching.Tests.pas',
   Atlas.Common.Editing.MethodOrder.Tests in 'Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas',
   Atlas.Common.Editing.TypeComments.Tests in 'Common\Editing\Atlas.Common.Editing.TypeComments.Tests.pas',
   Atlas.Common.Editing.ClassBodies.Tests in 'Common\Editing\Atlas.Common.Editing.ClassBodies.Tests.pas',

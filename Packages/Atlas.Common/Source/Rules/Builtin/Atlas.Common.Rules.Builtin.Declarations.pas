@@ -54,8 +54,10 @@
 //                              eine Überladung, die mit dem Vorgabewert
 //                              weiterreicht
 //
-// Den Abgleich (auch über Überladungen) liefert TClassCompletion.Unmatched aus
-// #42; Paare mit abweichendem Kopf ordnet TClassCompletion.Pairs zu. Sie meldet
+// Den Abgleich (auch über Überladungen) liefert TClassCompletionScan.Unmatched aus
+// #42; Paare mit abweichendem Kopf ordnet TClassCompletionScan.Pairs zu. Die
+// drei Regeln teilen sich eine Zuordnung je Datei über den Ableitungscache,
+// statt sie je Regel und je Methode neu zu bilden (#1477). signature-mismatch meldet
 // nur signature-mismatch, die beiden anderen Regeln finden fehlende Namen. Abstrakte, externe und forward-Methoden,
 // Interfaces und generische
 // Typen erzeugen keinen Treffer. Methoden innerhalb von {$IF…}-Blöcken werden
@@ -165,6 +167,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
+  Atlas.Common.Editing.ClassBodies,
+  Atlas.Common.Editing.MethodMatching,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
@@ -320,22 +324,6 @@ function Alternative(const AFix: TRuleFix; AIsAlternative: Boolean): TRuleFix;
 begin
   Result := AFix;
   Result.Alternative := AIsAlternative;
-end;
-
-/// <summary>Gehört AMethod zu einem Paar mit abweichendem Kopf? Das meldet signature-mismatch.</summary>
-function InPair(const APairs: TArray<TSignaturePair>; const AMethod: TUnmatchedMethod): Boolean;
-var
-  mPair: TSignaturePair;
-begin
-  for mPair in APairs do
-  begin
-    if (mPair.Declaration.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) or
-      (mPair.Body.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function Confidence(const AContext: TRuleContext): TRuleConfidence;
@@ -495,6 +483,25 @@ begin
   end;
 end;
 
+/// <summary>Klassenvervollständigung der Datei aus dem Ableitungscache: Die drei Regeln declared-not-implemented,
+/// implemented-not-declared und signature-mismatch ordnen Deklarationen und Rümpfe nur einmal je Lauf zu (#1477).
+/// ACache in einer lokalen Variablen halten, solange das Ergebnis benutzt wird.</summary>
+function CompletionScan(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TClassCompletionScan;
+var
+  mTree: TSyntaxTree;
+  mText: string;
+  mUnit: TUnitIndex;
+begin
+  mTree := AContext.Tree;
+  mText := AContext.Text;
+  mUnit := TRuleDerived.UnitIndex(ACache, AContext);
+  Result := TRuleDerived.Get<TClassCompletionScan>(ACache, 'rules.classCompletion',
+    function: TClassCompletionScan
+    begin
+      Result := TClassCompletionScan.Create(mTree, mText, mUnit);
+    end);
+end;
+
 { TDeclaredNotImplementedRule }
 
 function TDeclaredNotImplementedRule.Descriptor: TRuleDescriptor;
@@ -506,7 +513,9 @@ end;
 procedure TDeclaredNotImplementedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mLines: TArray<Boolean>;
-  mPairs: TArray<TSignaturePair>;
+  mCache: IRuleDerivedCache;
+  mScan: TClassCompletionScan;
+  mOptions: TClassBodyOptions;
   mMethod: TUnmatchedMethod;
   mAction: TCodeAction;
   mFixes: TArray<TRuleFix>;
@@ -519,19 +528,20 @@ begin
   end;
   mLines := ConditionalLines(AContext);
   mLevel := Confidence(AContext);
-  mPairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
+  mCache := TRuleDerived.Open(AContext);
+  mScan := CompletionScan(mCache, AContext);
+  mOptions := TClassBodyOptions.FromSettings(AContext.ClassCompletion, AContext.Formatting);
   mIncluded := IncludedBodies(AContext);
   try
-    for mMethod in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
+    for mMethod in mScan.Unmatched do
     begin
-      if not mMethod.Declared or IsConditional(mLines, mMethod) or InPair(mPairs, mMethod) or
+      if not mMethod.Declared or IsConditional(mLines, mMethod) or mScan.InPair(mMethod) or
         (mIncluded.IndexOf(BodyKey(mMethod.TypeName, mMethod.Symbol.Name)) >= 0) then
       begin
         Continue;
       end;
       mFixes := nil;
-      if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, mMethod.Symbol.SelectionRange.StartPos,
-        AContext.ClassCompletion, AContext.Formatting, mAction) then
+      if mScan.MissingBodies(mMethod.Symbol.SelectionRange.StartPos, mOptions, mAction) then
       begin
         mFixes := [TRuleFix.Create(mAction.Title, mAction.Edits)];
       end;
@@ -554,7 +564,8 @@ end;
 procedure TImplementedNotDeclaredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mLines: TArray<Boolean>;
-  mPairs: TArray<TSignaturePair>;
+  mCache: IRuleDerivedCache;
+  mScan: TClassCompletionScan;
   mMethod: TUnmatchedMethod;
   mEdit: TRuleEdit;
   mFixes: TArray<TRuleFix>;
@@ -566,15 +577,16 @@ begin
   end;
   mLines := ConditionalLines(AContext);
   mLevel := Confidence(AContext);
-  mPairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
-  for mMethod in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
+  mCache := TRuleDerived.Open(AContext);
+  mScan := CompletionScan(mCache, AContext);
+  for mMethod in mScan.Unmatched do
   begin
-    if mMethod.Declared or IsConditional(mLines, mMethod) or InPair(mPairs, mMethod) then
+    if mMethod.Declared or IsConditional(mLines, mMethod) or mScan.InPair(mMethod) then
     begin
       Continue;
     end;
     mFixes := nil;
-    if TClassCompletion.AddDeclaration(AContext.Tree, AContext.Text, mMethod, mEdit) then
+    if mScan.AddDeclaration(mMethod, mEdit) then
     begin
       mFixes := [TRuleFix.Create(cTexts[TDeclarationsText.AddDeclaration].Fmt([mMethod.Symbol.Name,
         mMethod.TypeName]), [mEdit])];
@@ -985,15 +997,15 @@ end;
 
 function TSignatureTypes.OffsetOf(const APosition: TTextPosition): Integer;
 var
-  mToken: TPascalToken;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   Result := -1;
-  for mToken in FContext.Tree.Tokens do
+  mTokens := FContext.Tree.Tokens;
+  mIndex := TMethodText.TokenStartingAt(mTokens, APosition);
+  if mIndex >= 0 then
   begin
-    if mToken.StartPos = APosition then
-    begin
-      Exit(mToken.Offset);
-    end;
+    Result := mTokens[mIndex].Offset;
   end;
 end;
 
@@ -1032,6 +1044,183 @@ end;
 
 { TSignatureMismatchRule }
 
+type
+  /// <summary>Routinen im interface-Teil mit ihrem Rumpf (#1380): dcc meldet E2037, wenn der Rumpf anders aussieht
+  /// und die Deklaration kein overload hat (Cm.E2037). Nur eindeutige Namen; Rümpfe in der Kurzform ohne Parameter
+  /// und Ergebnis übernehmen den Kopf. Routinen je Name und ihre Symbole stehen in Tabellen, damit Units mit
+  /// Tausenden Routinen nicht quadratisch werden (#1477).</summary>
+  TRoutinePairs = class
+  private
+    FScan: TClassCompletionScan;
+    /// <summary>Name (klein) → Routinen auf oberster Ebene des interface- bzw. implementation-Teils.</summary>
+    FInterface: TObjectDictionary<string, TList<TSyntaxNode>>;
+    FImplementation: TObjectDictionary<string, TList<TSyntaxNode>>;
+    /// <summary>Name (klein) und Zeile → erstes Symbol einer Routine ohne Container.</summary>
+    FSymbols: TDictionary<string, TIndexSymbol>;
+    procedure AddRoutines(ASection: TSyntaxNode; ATable: TObjectDictionary<string, TList<TSyntaxNode>>);
+    procedure AddSymbols(const AUnit: TUnitIndex);
+    function SymbolOf(ARoutine: TSyntaxNode; out ASymbol: TIndexSymbol): Boolean;
+    function IsPairCandidate(ADecl: TSyntaxNode): Boolean;
+    function PairOf(ADecl, ABody: TSyntaxNode; out APair: TSignaturePair): Boolean;
+  public
+    constructor Create(AScan: TClassCompletionScan);
+    destructor Destroy; override;
+    /// <summary>Paare der Datei aus AContext; leer ohne beide Teile oder mit Include-Dateien (dort kann ein weiterer
+    /// Rumpf stehen).</summary>
+    class function Collect(const AContext: TRuleContext; AScan: TClassCompletionScan;
+      const AUnit: TUnitIndex): TArray<TSignaturePair>; static;
+  end;
+
+{ TRoutinePairs }
+
+constructor TRoutinePairs.Create(AScan: TClassCompletionScan);
+begin
+  inherited Create;
+  FScan := AScan;
+  FInterface := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
+  FImplementation := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
+  FSymbols := TDictionary<string, TIndexSymbol>.Create;
+end;
+
+destructor TRoutinePairs.Destroy;
+begin
+  FSymbols.Free;
+  FImplementation.Free;
+  FInterface.Free;
+  inherited Destroy;
+end;
+
+procedure TRoutinePairs.AddRoutines(ASection: TSyntaxNode; ATable: TObjectDictionary<string, TList<TSyntaxNode>>);
+var
+  mIndex: Integer;
+  mKey: string;
+  mList: TList<TSyntaxNode>;
+begin
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection[mIndex].Kind <> TSyntaxKind.RoutineDecl then
+    begin
+      Continue;
+    end;
+    mKey := LowerCase(ASection[mIndex].Name);
+    if not ATable.TryGetValue(mKey, mList) then
+    begin
+      mList := TList<TSyntaxNode>.Create;
+      ATable.Add(mKey, mList);
+    end;
+    mList.Add(ASection[mIndex]);
+  end;
+end;
+
+procedure TRoutinePairs.AddSymbols(const AUnit: TUnitIndex);
+var
+  mSymbol: TIndexSymbol;
+  mKey: string;
+begin
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '') then
+    begin
+      mKey := LowerCase(mSymbol.Name) + ':' + IntToStr(mSymbol.Range.StartPos.Line);
+      if not FSymbols.ContainsKey(mKey) then
+      begin
+        FSymbols.Add(mKey, mSymbol);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Symbol der Routine ARoutine im Index der Datei.</summary>
+function TRoutinePairs.SymbolOf(ARoutine: TSyntaxNode; out ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := FSymbols.TryGetValue(LowerCase(ARoutine.Name) + ':' + IntToStr(ARoutine.StartPos.Line), ASymbol);
+end;
+
+function HasRoutineDirective(ARoutine: TSyntaxNode; const ADirective: string): Boolean;
+var
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader <> nil then
+  begin
+    for mIndex := 0 to mHeader.ChildCount - 1 do
+    begin
+      if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(mHeader[mIndex].Name, ADirective) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Kommt die Routine ADecl des interface-Teils für ein Paar in Frage: eindeutiger Name ohne Punkt, ohne
+/// overload, external und forward?</summary>
+function TRoutinePairs.IsPairCandidate(ADecl: TSyntaxNode): Boolean;
+var
+  mList: TList<TSyntaxNode>;
+begin
+  Result := (ADecl.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', ADecl.Name) = 0) and
+    FInterface.TryGetValue(LowerCase(ADecl.Name), mList) and (mList.Count = 1);
+  Result := Result and not HasRoutineDirective(ADecl, 'overload') and not HasRoutineDirective(ADecl, 'external') and
+    not HasRoutineDirective(ADecl, 'forward');
+end;
+
+/// <summary>Paar aus Deklaration ADecl und Rumpf ABody mit Symbolen und Köpfen; False, wenn eines fehlt oder der
+/// Rumpf die Kurzform ohne Parameter und Ergebnis hat.</summary>
+function TRoutinePairs.PairOf(ADecl, ABody: TSyntaxNode; out APair: TSignaturePair): Boolean;
+begin
+  APair := Default(TSignaturePair);
+  Result := SymbolOf(ADecl, APair.Declaration.Symbol) and SymbolOf(ABody, APair.Body.Symbol);
+  Result := Result and FScan.Shape(APair.Declaration.Symbol, APair.DeclarationShape) and
+    FScan.Shape(APair.Body.Symbol, APair.BodyShape);
+  Result := Result and ((APair.BodyShape.Parameters <> nil) or (APair.BodyShape.ResultType <> ''));
+  APair.Declaration.Declared := True;
+end;
+
+class function TRoutinePairs.Collect(const AContext: TRuleContext; AScan: TClassCompletionScan;
+  const AUnit: TUnitIndex): TArray<TSignaturePair>;
+var
+  mInterface, mImplementation, mDecl: TSyntaxNode;
+  mBodies: TList<TSyntaxNode>;
+  mIndex, mCount: Integer;
+  mSelf: TRoutinePairs;
+begin
+  Result := nil;
+  if (AContext.Tree.Root = nil) or HasIncludes(AContext) then
+  begin
+    Exit;
+  end;
+  mInterface := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  mImplementation := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if (mInterface = nil) or (mImplementation = nil) then
+  begin
+    Exit;
+  end;
+  mSelf := TRoutinePairs.Create(AScan);
+  try
+    mSelf.AddRoutines(mInterface, mSelf.FInterface);
+    mSelf.AddRoutines(mImplementation, mSelf.FImplementation);
+    mSelf.AddSymbols(AUnit);
+    SetLength(Result, mInterface.ChildCount);
+    mCount := 0;
+    for mIndex := 0 to mInterface.ChildCount - 1 do
+    begin
+      mDecl := mInterface[mIndex];
+      if mSelf.IsPairCandidate(mDecl) and mSelf.FImplementation.TryGetValue(LowerCase(mDecl.Name), mBodies) and
+        (mBodies.Count = 1) and (mBodies[0].FindChild(TSyntaxKind.Block) <> nil) and
+        mSelf.PairOf(mDecl, mBodies[0], Result[mCount]) then
+      begin
+        Inc(mCount);
+      end;
+    end;
+    SetLength(Result, mCount);
+  finally
+    mSelf.Free;
+  end;
+end;
+
 function TSignatureMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('signature-mismatch', TRuleSeverity.Error,
@@ -1049,124 +1238,7 @@ var
   mLevel: TRuleConfidence;
   mTypes: TSignatureTypes;
   mCache: IRuleDerivedCache;
-
-  /// <summary>Routinen auf oberster Ebene von ASection namens AName.</summary>
-  function Routines(ASection: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
-  var
-    mIndex: Integer;
-  begin
-    Result := nil;
-    if ASection <> nil then
-    begin
-      for mIndex := 0 to ASection.ChildCount - 1 do
-      begin
-        if (ASection[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(ASection[mIndex].Name, AName) then
-        begin
-          Result := Result + [ASection[mIndex]];
-        end;
-      end;
-    end;
-  end;
-
-  function HasDirective(ARoutine: TSyntaxNode; const ADirective: string): Boolean;
-  var
-    mHeader: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    Result := False;
-    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if mHeader <> nil then
-    begin
-      for mIndex := 0 to mHeader.ChildCount - 1 do
-      begin
-        if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(mHeader[mIndex].Name, ADirective) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-  end;
-
-  /// <summary>Symbol der Routine ARoutine im Index der Datei.</summary>
-  function SymbolOf(const AUnit: TUnitIndex; ARoutine: TSyntaxNode; out ASymbol: TIndexSymbol): Boolean;
-  var
-    mSymbol: TIndexSymbol;
-  begin
-    for mSymbol in AUnit.Symbols do
-    begin
-      if (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '') and
-        SameText(mSymbol.Name, ARoutine.Name) and (mSymbol.Range.StartPos.Line = ARoutine.StartPos.Line) then
-      begin
-        ASymbol := mSymbol;
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  /// <summary>Kommt die Routine ADecl des interface-Teils AInterface für ein Paar in Frage: eindeutiger Name
-  /// ohne Punkt, ohne overload, external und forward?</summary>
-  function IsPairCandidate(AInterface, ADecl: TSyntaxNode): Boolean;
-  begin
-    Result := (ADecl.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', ADecl.Name) = 0) and
-      (Length(Routines(AInterface, ADecl.Name)) = 1);
-    Result := Result and not HasDirective(ADecl, 'overload') and not HasDirective(ADecl, 'external') and
-      not HasDirective(ADecl, 'forward');
-  end;
-
-  /// <summary>Paar aus Deklaration ADecl und Rumpf ABody mit Symbolen und Köpfen; False, wenn eines fehlt oder
-  /// der Rumpf die Kurzform ohne Parameter und Ergebnis hat.</summary>
-  function PairOf(const AUnit: TUnitIndex; ADecl, ABody: TSyntaxNode; out APair: TSignaturePair): Boolean;
-  begin
-    APair := Default(TSignaturePair);
-    Result := SymbolOf(AUnit, ADecl, APair.Declaration.Symbol) and SymbolOf(AUnit, ABody, APair.Body.Symbol);
-    Result := Result and TClassCompletion.Shape(AContext.Tree, AContext.Text, APair.Declaration.Symbol,
-      APair.DeclarationShape) and TClassCompletion.Shape(AContext.Tree, AContext.Text, APair.Body.Symbol,
-      APair.BodyShape);
-    Result := Result and ((APair.BodyShape.Parameters <> nil) or (APair.BodyShape.ResultType <> ''));
-    APair.Declaration.Declared := True;
-  end;
-
-  /// <summary>Routine im interface-Teil mit ihrem Rumpf (#1380): dcc meldet E2037, wenn der Rumpf anders
-  /// aussieht und die Deklaration kein overload hat (Cm.E2037). Nur eindeutige Namen; Rümpfe in der Kurzform
-  /// ohne Parameter und Ergebnis übernehmen den Kopf. Mit Include-Dateien kann dort ein weiterer Rumpf stehen.
-  /// </summary>
-  function RoutinePairs: TArray<TSignaturePair>;
-  var
-    mInterface, mImplementation, mDecl: TSyntaxNode;
-    mBodies: TArray<TSyntaxNode>;
-    mIndex: Integer;
-    mUnit: TUnitIndex;
-    mPair: TSignaturePair;
-  begin
-    Result := nil;
-    if (AContext.Tree.Root = nil) or HasIncludes(AContext) then
-    begin
-      Exit;
-    end;
-    mInterface := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-    mImplementation := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-    if (mInterface = nil) or (mImplementation = nil) then
-    begin
-      Exit;
-    end;
-    mUnit := TRuleDerived.UnitIndex(mCache, AContext);
-    for mIndex := 0 to mInterface.ChildCount - 1 do
-    begin
-      mDecl := mInterface[mIndex];
-      if not IsPairCandidate(mInterface, mDecl) then
-      begin
-        Continue;
-      end;
-      mBodies := Routines(mImplementation, mDecl.Name);
-      if (Length(mBodies) = 1) and (mBodies[0].FindChild(TSyntaxKind.Block) <> nil) and
-        PairOf(mUnit, mDecl, mBodies[0], mPair) then
-      begin
-        Result := Result + [mPair];
-      end;
-    end;
-  end;
-
+  mScan: TClassCompletionScan;
 begin
   if AContext.Tree = nil then
   begin
@@ -1175,9 +1247,10 @@ begin
   mLines := ConditionalLines(AContext);
   mLevel := Confidence(AContext);
   mCache := TRuleDerived.Open(AContext);
+  mScan := CompletionScan(mCache, AContext);
   mTypes := TSignatureTypes.Create(AContext);
   try
-    for mPair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) + RoutinePairs do
+    for mPair in mScan.Pairs + TRoutinePairs.Collect(AContext, mScan, TRuleDerived.UnitIndex(mCache, AContext)) do
     begin
       // Bedingte Übersetzung im Kopf ({$IFDEF} in der Parameterliste): Welche Parameter gelten, ist offen (#1324).
       if IsConditional(mLines, mPair.Declaration) or IsConditional(mLines, mPair.Body) or
