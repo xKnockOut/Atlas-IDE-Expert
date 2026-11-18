@@ -968,6 +968,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.BreakpointSets` | `Core/Debug/Atlas.Core.Debug.BreakpointSets.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointSetFlow` | `Core/Debug/Atlas.Core.Debug.BreakpointSetFlow.pas` | Haltepunkt-Sätze: Satz zum Namen, Branch, andere Sätze, Stellen fürs Haltepunktfenster, #1967 |
 | `Atlas.Core.Debug.RunTo` | `Core/Debug/Atlas.Core.Debug.RunTo.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.AssistantControl` | `Core/Debug/Atlas.Core.Debug.AssistantControl.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.RunToColumnFlow` | `Core/Debug/Atlas.Core.Debug.RunToColumnFlow.pas` | Entscheidungen der Spalte Bis hier ausführen ohne IDE (Spalte, Lesen, Maus, Tooltip, Pfeil), #1967 |
 | `Atlas.Core.Debug.EventBreak` | `Core/Debug/Atlas.Core.Debug.EventBreak.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EventBreakWatch` | `Core/Debug/Atlas.Core.Debug.EventBreakWatch.pas` | Beim nächsten Ereignis anhalten: Art des Setzens, Pause, neuer Halt, Zahl der Stellen, #1967 |
@@ -1089,6 +1090,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.OwnCode` | `IDE/Debug/Atlas.IDE.Debug.OwnCode.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Report` | `IDE/Debug/Atlas.IDE.Debug.Report.pas` | Bericht über die Debug-Sitzung (IAtlasDebugReportSource), #1455 |
 | `Atlas.IDE.Debug.StopSource` | `IDE/Debug/Atlas.IDE.Debug.StopSource.pas` | Halt der Sitzung für „Test daraus anlegen …“ (IAtlasDebugStopSource), #1873 |
+| `Atlas.IDE.Debug.AssistantControl` | `IDE/Debug/Atlas.IDE.Debug.AssistantControl.pas` | Steuerung des Debuggers für KI-Assistenten (IAtlasDebugControl), #1874 |
 | `Atlas.IDE.Debug.Session` | `IDE/Debug/Atlas.IDE.Debug.Session.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.StopView` | `IDE/Debug/Atlas.IDE.Debug.StopView.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Sources` | `IDE/Debug/Atlas.IDE.Debug.Sources.pas` | Ordner `IDE/Debug` |

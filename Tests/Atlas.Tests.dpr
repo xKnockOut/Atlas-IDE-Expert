@@ -2785,6 +2785,8 @@ uses
   Atlas.Core.Debug.RunToColumnFlow in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.RunToColumnFlow.pas',
   Atlas.Core.Debug.RunToColumnFlow.Tests in 'IDE.Expert\Atlas.Core.Debug.RunToColumnFlow.Tests.pas',
   Atlas.Core.Debug.RunTo.Tests in 'IDE.Expert\Atlas.Core.Debug.RunTo.Tests.pas',
+  Atlas.Core.Debug.AssistantControl in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.AssistantControl.pas',
+  Atlas.Core.Debug.AssistantControl.Tests in 'IDE.Expert\Atlas.Core.Debug.AssistantControl.Tests.pas',
   Atlas.Core.Debug.BreakpointAnchors in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointAnchors.pas',
   Atlas.Core.Debug.BreakpointAnchorFlow in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointAnchorFlow.pas',
   Atlas.Core.Debug.BreakpointAnchorFlow.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakpointAnchorFlow.Tests.pas',

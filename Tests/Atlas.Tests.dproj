@@ -2734,6 +2734,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.RunToColumnFlow.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.RunToColumnFlow.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.RunTo.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.AssistantControl.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.AssistantControl.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointAnchors.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointAnchorFlow.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointAnchorFlow.Tests.pas"/>

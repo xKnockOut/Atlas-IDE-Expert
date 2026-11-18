@@ -249,6 +249,8 @@ contains
   Atlas.IDE.Debug.BreakpointRules in 'Source\IDE\Debug\Atlas.IDE.Debug.BreakpointRules.pas',
   Atlas.IDE.Debug.Report in 'Source\IDE\Debug\Atlas.IDE.Debug.Report.pas',
   Atlas.IDE.Debug.StopSource in 'Source\IDE\Debug\Atlas.IDE.Debug.StopSource.pas',
+  Atlas.Core.Debug.AssistantControl in 'Source\Core\Debug\Atlas.Core.Debug.AssistantControl.pas',
+  Atlas.IDE.Debug.AssistantControl in 'Source\IDE\Debug\Atlas.IDE.Debug.AssistantControl.pas',
   Atlas.IDE.Debug.Composition.Values in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Values.pas',
   Atlas.IDE.Debug.Composition.Contracts in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Contracts.pas',
   Atlas.IDE.Debug.Composition.Breakpoints in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Breakpoints.pas',

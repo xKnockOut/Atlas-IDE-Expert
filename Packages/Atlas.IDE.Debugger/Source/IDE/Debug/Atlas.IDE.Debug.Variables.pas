@@ -118,6 +118,9 @@ type
     /// <summary>Nach „Wert ändern“ (#868): alle Zeilen im selben Halt neu auswerten; der geänderte Wert ist
     /// danach markiert.</summary>
     class procedure Reevaluate; static;
+    /// <summary>Namen der lokalen Variablen am aktuellen Halt (für KI-Assistenten, #1874); leer, solange das
+    /// Fenster sie für diesen Halt nicht kennt oder es aus ist.</summary>
+    class function Locals: TArray<string>; static;
   end;
 
 implementation
@@ -781,6 +784,24 @@ begin
   FInstance.FLists.BeginStop;
   mSearch := FInstance.FLists.Search;
   FInstance.Search(mSearch.Text, mSearch.Mode, mSearch.Deep);
+end;
+
+class function TAtlasIdeDebugVariables.Locals: TArray<string>;
+var
+  mList: TAtlasEvalList;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not StillStopped then
+  begin
+    Exit;
+  end;
+  mList := FInstance.FLists[TAtlasVariablesTab.Locals];
+  SetLength(Result, mList.Count);
+  for mIndex := 0 to mList.Count - 1 do
+  begin
+    Result[mIndex] := mList.Roots[mIndex].Expression;
+  end;
 end;
 
 end.
