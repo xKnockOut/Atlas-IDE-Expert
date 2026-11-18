@@ -355,7 +355,7 @@ begin
     Exit;
   end;
   mFlags := [TFlagOption.Create('globalSettings', ASettings.McpGlobalSettings),
-    TFlagOption.Create('prompts', ASettings.McpPrompts)];
+    TFlagOption.Create('prompts', ASettings.McpPrompts), TFlagOption.Create('statistics', ASettings.McpStatistics)];
   for mIndex := 0 to ANode.Count - 1 do
   begin
     // Unbekanntes ist hier ein Fehler am Wert, nicht eine Warnung am Schlüssel.
@@ -381,6 +381,10 @@ begin
   else if AMember = 'prompts' then
   begin
     ATarget.McpPrompts := ASource.McpPrompts;
+  end
+  else if AMember = 'statistics' then
+  begin
+    ATarget.McpStatistics := ASource.McpStatistics;
   end
   else if AMember = 'promptLanguage' then
   begin

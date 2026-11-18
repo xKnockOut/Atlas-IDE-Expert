@@ -64,6 +64,7 @@ Einrichtung: [Editors/ClaudeCode](../../../Editors/ClaudeCode/README.md), Werkze
 ## Neue Werkzeuge entwickeln
 
 - `pwsh Tools/Start-McpInspector.ps1` öffnet den [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) gegen den Server (Browser, Terminal oder Kommandozeile) und zeigt jedes Werkzeug, sein Schema und die rohen JSON-RPC-Nachrichten.
+- `delphi://stats` zeigt je Werkzeug, wie oft der KI-Assistent es aufruft, wie oft es scheitert (mit dem letzten fehlgeschlagenen Aufruf), wie langsam und groß seine Antworten sind und welche Werkzeuge in den letzten 30 Tagen nie vorkamen (#2611).
 - `pwsh Tools/Test-McpTools.ps1` ruft jedes Werkzeug einmal mit Beispielargumenten gegen das Referenzprojekt auf und schreibt den rohen Mitschnitt.
 
 Siehe [docs/MCP.md](../../../docs/MCP.md#werkzeuge-entwickeln-und-prüfen).

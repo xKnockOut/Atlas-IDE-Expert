@@ -34,6 +34,8 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Mcp.StatusTools,
+  Atlas.Common.Mcp.StatisticsHistory,
+  Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Diagnostics.ShutdownLeaks,
@@ -47,7 +49,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TMcpProjectText = (StatusTool, StatusFormat, QueryCodeTool, QueryCodeQuery, QueryCodeFormat, QueryCodeLimit,
+  TMcpProjectText = (StatusTool, StatusFormat, StatsName, StatsDescription, QueryCodeTool, QueryCodeQuery, QueryCodeFormat, QueryCodeLimit,
     FindUnusedCodeTool, FindUnusedCodeFile, FindUnusedCodeFormat, GetUnitDependenciesTool, GetUnitDependenciesUnit,
     GetUnitDependenciesDirection, GetUnitDependenciesTransitive, GetUnitDependenciesFormat, NoSavedQuery, QueriesOff);
 {$SCOPEDENUMS OFF}
@@ -63,6 +65,13 @@ const
     'requests. If no IDE server runs for the project folder, the status of this MCP process. Read-only; ' +
     'helpful when Atlas or the IDE is slow or uses a lot of memory.'),
     (De: 'markdown (Vorgabe) oder json'; En: 'markdown (default) or json'),
+    (De: 'Aufrufstatistik'; En: 'Call statistics'),
+    (De: 'Aufrufe der Atlas-Werkzeuge in dieser Sitzung (#2611): je Werkzeug, Ressource und Prompt Aufrufe, ' +
+    'Fehler, Dauer und Antwortgröße, auffällige Fehlerquoten mit dem letzten fehlgeschlagenen Aufruf, dazu der ' +
+    'Verlauf der letzten 30 Tage (nie aufgerufene Werkzeuge). Abschaltbar mit mcp.statistics.';
+    En: 'Calls of the Atlas tools in this session (#2611): per tool, resource and prompt calls, errors, ' +
+    'duration and response size, conspicuous error rates with the last failed call, plus the history of the ' +
+    'last 30 days (tools never called). Can be switched off with mcp.statistics.'),
     (De: 'Code-Abfragen über den Index (#1351) in einer kleinen Sprache: <Menge> where <Bedingung> [order by ' +
     '<Feld> [asc|desc]] [limit n]. Mengen: units, classes, records, interfaces, methods, routines, fields, ' +
     'properties, forms. Felder z. B. name, unit, visibility, methods, lines, complexity, cognitive, params, ' +
@@ -156,6 +165,22 @@ begin
     function: TServerStatus
     begin
       Result := OwnStatus(AContext.Index, AContext.Started);
+    end, AContext.Server.Statistics);
+end;
+
+/// <summary>delphi://stats (#2611): Sitzung und Verlauf; die Statistik wird erst beim Lesen geholt, weil der Server
+/// sie nach dem Registrieren bekommt.</summary>
+procedure AddStatisticsResource(const AContext: TMcpToolContext);
+var
+  mServer: TMcpServer;
+begin
+  mServer := AContext.Server;
+  mServer.AddResource(TMcpStatusTools.cStatisticsUri, cTexts[TMcpProjectText.StatsName].Text,
+    cTexts[TMcpProjectText.StatsDescription].Text, 'text/markdown',
+    function: string
+    begin
+      Result := TMcpStatusTools.StatisticsText(mServer.Statistics, TMcpStatisticsHistory.FileIn(
+        TServerStatusFile.FolderOf(TIndexCacheDirectory.DefaultRoot)), Now);
     end);
 end;
 
@@ -174,6 +199,7 @@ end;
 procedure RegisterStatusTools(const AContext: TMcpToolContext);
 begin
   AddGetServerStatus(AContext);
+  AddStatisticsResource(AContext);
 end;
 /// <summary>Text der Abfrage; "@name" wird zur gespeicherten Abfrage aus atlas.json (queries).</summary>
 function QueryTextOf(const ASettings: TServerSettings; const AText: string): string;

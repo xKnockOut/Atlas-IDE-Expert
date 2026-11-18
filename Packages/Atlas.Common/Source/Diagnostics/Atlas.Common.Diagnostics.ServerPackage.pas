@@ -17,6 +17,9 @@
 //   von "jsonrpc" und "method" bleiben, jeder andere Text wird <wert>. Zeilen,
 //   die kein JSON tragen, entfallen (gezählt). So bleibt sichtbar, welche
 //   Anfrage wann wie lange lief, ohne Quelltext und Bezeichner.
+// - Aufrufstatistik der MCP-Prozesse am selben Ordner (#2611, Abschnitt mcp ihrer Statusdateien): Argumente
+//   fehlgeschlagener Aufrufe sind gekennzeichnet (Atlas.Text.LogMarks) und werden wie im Protokoll ersetzt,
+//   Pfade wie im Status.
 // Zugangsdaten nie, auch nicht ohne Anonymisierung: Werte unter Schlüsseln
 // wie token, password, secret, apiKey, credential werden immer <geheim>.
 
@@ -24,7 +27,8 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Common.Lsp.StatusFile;
 
 type
   TServerPackageFile = record
@@ -44,6 +48,8 @@ type
     Workspaces: TArray<string>;
     Identity: TArray<string>;
     Anonymize: Boolean;
+    /// <summary>Abschnitte mcp der MCP-Prozesse an den Arbeitsbereichen als JSON-Text (McpSections).</summary>
+    McpStatistics: TArray<string>;
   end;
 
   TServerPackage = class
@@ -53,6 +59,8 @@ type
     cStatusName = 'server/status.json';
     cLogName = 'server/protokoll.txt';
     cTraceName = 'server/trace.txt';
+    /// <summary>Aufrufstatistik eines MCP-Prozesses; %d zählt ab 1.</summary>
+    cMcpName = 'server/mcp-%d.json';
     cSecretLabel = '<geheim>';
     cDefaultTraceMinutes = 5;
   public
@@ -69,6 +77,12 @@ type
     class procedure Scrub(AValue: TJSONValue; AAll: Boolean); static;
     /// <summary>Ist AKey ein Schlüssel für Zugangsdaten (token, password, secret, apiKey, credential …)?</summary>
     class function IsSecretKey(const AKey: string): Boolean; static;
+    /// <summary>Abschnitte mcp der MCP-Prozesse in AEntries, deren Ordner zu einem von AWorkspaces gehört.</summary>
+    class function McpSections(const AEntries: TArray<TServerStatusEntry>; const AWorkspaces: TArray<string>):
+      TArray<string>; static;
+    /// <summary>Wie McpSections über die Statusdateien in AStatusRoot.</summary>
+    class function McpSectionsIn(const AStatusRoot: string; const AWorkspaces: TArray<string>; ANow: TDateTime):
+      TArray<string>; static;
   end;
 
 implementation
@@ -376,13 +390,103 @@ begin
   Result.Content := AContent;
 end;
 
+/// <summary>Ein Text der Aufrufstatistik: mit AAnonymize gekennzeichnete Werte, Pfade und Benutzernamen ersetzt,
+/// sonst die Werte im Klartext.</summary>
+function McpValue(const AText: string; const AInput: TServerPackageInput): string;
+begin
+  if AInput.Anonymize then
+  begin
+    Exit(TTextAnonymizer.AnonymizePaths(AText, AInput.Workspaces, AInput.Identity));
+  end;
+  Result := TLogMarks.Plain(AText);
+end;
+
+/// <summary>Ersetzt jeden Text in AValue (Objekte, auch verschachtelt) durch McpValue. Vor dem Formatieren, damit
+/// die Kennzeichen nicht als \u-Folgen im JSON-Text stehen.</summary>
+procedure MapMcpTexts(AValue: TJSONValue; const AInput: TServerPackageInput);
+var
+  mPair: TJSONPair;
+  mItem: TJSONValue;
+begin
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      MapMcpTexts(mItem, AInput);
+    end;
+    Exit;
+  end;
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  for mPair in TJSONObject(AValue) do
+  begin
+    if IsText(mPair.JsonValue) then
+    begin
+      ReplaceValue(mPair, McpValue(mPair.JsonValue.Value, AInput));
+    end
+    else
+    begin
+      MapMcpTexts(mPair.JsonValue, AInput);
+    end;
+  end;
+end;
+
+/// <summary>Aufrufstatistik eines MCP-Prozesses ohne Zugangsdaten, Texte nach McpValue.</summary>
+function McpText(const AInput: TServerPackageInput; const AJson: string): string;
+var
+  mValue: TJSONValue;
+begin
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  if mValue = nil then
+  begin
+    Exit('{}');
+  end;
+  try
+    TServerPackage.Scrub(mValue, False);
+    MapMcpTexts(mValue, AInput);
+    Result := mValue.Format(2);
+  finally
+    mValue.Free;
+  end;
+end;
+
 class function TServerPackage.Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>;
+var
+  mIndex: Integer;
 begin
   Result := [PackageFile(cStatusName, StatusText(AInput)), PackageFile(cLogName, LogText(AInput))];
   if AInput.Tracing then
   begin
     Result := Result + [PackageFile(cTraceName, TraceText(AInput))];
   end;
+  for mIndex := 0 to High(AInput.McpStatistics) do
+  begin
+    Result := Result + [PackageFile(Format(cMcpName, [mIndex + 1]), McpText(AInput, AInput.McpStatistics[mIndex]))];
+  end;
+end;
+
+class function TServerPackage.McpSections(const AEntries: TArray<TServerStatusEntry>;
+  const AWorkspaces: TArray<string>): TArray<string>;
+var
+  mEntry: TServerStatusEntry;
+begin
+  Result := nil;
+  for mEntry in AEntries do
+  begin
+    if (mEntry.KindOrLsp = TServerStatusEntry.cKindMcp) and (mEntry.Mcp <> '') and
+      TServerStatusFile.Matches(AWorkspaces, mEntry.Target) then
+    begin
+      Result := Result + [mEntry.Mcp];
+    end;
+  end;
+end;
+
+class function TServerPackage.McpSectionsIn(const AStatusRoot: string; const AWorkspaces: TArray<string>;
+  ANow: TDateTime): TArray<string>;
+begin
+  Result := McpSections(TServerStatusFile.List(AStatusRoot, ANow, nil), AWorkspaces);
 end;
 
 class function TServerPackage.IsSecretKey(const AKey: string): Boolean;

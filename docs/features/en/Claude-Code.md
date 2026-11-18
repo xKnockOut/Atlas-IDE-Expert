@@ -80,6 +80,7 @@ Setup: [Editors/ClaudeCode](../../../Editors/ClaudeCode/README.md), tools: [docs
 ## Developing new tools
 
 - `pwsh Tools/Start-McpInspector.ps1` opens the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) against the server (browser, terminal or command line) and shows every tool, its schema and the raw JSON-RPC messages
+- `delphi://stats` shows per tool how often the AI assistant calls it, how often it fails (with the last failed call), how slow and how large its answers are, and which tools never came up in the last 30 days (#2611)
 - `pwsh Tools/Test-McpTools.ps1` calls every tool once with sample arguments against the reference project and writes the raw transcript
 
 See [docs/MCP.md](../../../docs/MCP.md#werkzeuge-entwickeln-und-prüfen).

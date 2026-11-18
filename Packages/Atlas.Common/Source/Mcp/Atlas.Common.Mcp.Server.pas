@@ -27,6 +27,9 @@
 // und Parametern an OnAudit; die Werkzeuge melden geänderte Dateien selbst
 // über Audit.
 //
+// Aufrufstatistik (#2611): Mit Statistics zählt der Server jeden Aufruf von tools/call, resources/read und
+// prompts/get mit Erfolg bzw. Fehler (isError oder Ausnahme), Dauer und Größe der Antwort.
+//
 // Werkzeuge liefern Text. Fachliche Fehler (Symbol nicht gefunden, fehlender
 // Parameter) melden sie mit EMcpToolError; sie gehen als isError=true an das
 // Modell, damit es die Anfrage korrigieren kann.
@@ -37,7 +40,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.JsonRpc.Dispatcher;
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Mcp.Statistics;
 
 type
   /// <summary>Fachlicher Fehler eines Werkzeugs; wird zu isError=true.</summary>
@@ -152,6 +156,7 @@ type
     FCatalog: TMcpServerCatalog;
     FEvents: TMcpServerEvents;
     FRestricted: Boolean;
+    FStatistics: TMcpStatistics;
     /// <summary>Text des Werkzeugs; True bei isError (abgeschaltet, eingeschränkt, EMcpToolError).</summary>
     function Execute(const ATool: TMcpTool; const AArguments: TJSONObject; out AText: string): Boolean;
   public
@@ -216,12 +221,17 @@ type
     /// <summary>mcp.prompts, bei jedem Aufruf neu gelesen; ohne Ereignis an.</summary>
     property OnPromptsEnabled: TFunc<Boolean> read FEvents.OnPromptsEnabled write FEvents.OnPromptsEnabled;
     property OnClientInfo: TProc<string> read FEvents.OnClientInfo write FEvents.OnClientInfo;
+    /// <summary>Aufrufstatistik (#2611); nil = nicht zählen. Gehört dem Aufrufer und muss den Server überleben.
+    /// Vor dem ersten AddTool setzen: AddTool macht jedes Werkzeug bekannt (Zeilen ohne Aufruf).</summary>
+    property Statistics: TMcpStatistics read FStatistics write FStatistics;
   end;
 
 implementation
 
 uses
+  System.Classes,
   Atlas.Text.Uris,
+  Atlas.Text.McpStatistics,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts,
@@ -389,6 +399,10 @@ begin
   mTool.Handler := AHandler;
   mTool.Kind := AKind;
   FCatalog.Tools.Add(mTool);
+  if FStatistics <> nil then
+  begin
+    FStatistics.Know(TMcpCallKind.Tool, AName);
+  end;
 end;
 
 function NewResource(const AUri, AName, ADescription, AMimeType: string; const AHandler: TFunc<string>;
@@ -850,6 +864,115 @@ begin
   Result.AddPair('resourceTemplates', mItems);
 end;
 
+/// <summary>arguments aus den Parametern eines Aufrufs; nil ohne.</summary>
+function ArgumentsOf(const AParams: TJSONValue): TJSONValue;
+begin
+  Result := nil;
+  if AParams is TJSONObject then
+  begin
+    Result := TJSONObject(AParams).GetValue('arguments');
+  end;
+end;
+
+/// <summary>Text des ersten Inhalts einer Antwort von tools/call (die Meldung bei isError); '' ohne.</summary>
+function FirstContentText(AResult: TJSONObject): string;
+var
+  mContent: TJSONArray;
+begin
+  Result := '';
+  mContent := TJsonRead.Items(AResult, 'content');
+  if (mContent <> nil) and (mContent.Count > 0) and (mContent.Items[0] is TJSONObject) then
+  begin
+    Result := TJsonRead.Text(TJSONObject(mContent.Items[0]), 'text');
+  end;
+end;
+
+type
+  /// <summary>Bearbeitet eine Anfrage, deren Aufruf die Statistik zählt.</summary>
+  TMcpCountedCall = reference to function(const AParams: TJSONValue): TJSONObject;
+
+/// <summary>Ruft ACall mit AParams auf und zählt den Aufruf AName der Art AKind in AStatistics (ohne Statistik
+/// oder mit leerem Namen nur der Aufruf).</summary>
+function Counted(AStatistics: TMcpStatistics; AKind: TMcpCallKind; const AName: string;
+  const AParams: TJSONValue; const ACall: TMcpCountedCall): TJSONObject;
+var
+  mCall: TMcpCall;
+  mStart: UInt64;
+begin
+  if (AStatistics = nil) or (AName = '') then
+  begin
+    Result := ACall(AParams);
+    Exit;
+  end;
+  mCall := Default(TMcpCall);
+  mCall.Kind := AKind;
+  mCall.Name := AName;
+  mCall.Arguments := ArgumentsOf(AParams);
+  mStart := TThread.GetTickCount64;
+  try
+    Result := ACall(AParams);
+  except
+    on E: Exception do
+    begin
+      mCall.Failed := True;
+      mCall.Message := E.Message;
+      mCall.ElapsedMs := TThread.GetTickCount64 - mStart;
+      AStatistics.Add(mCall, Now);
+      raise;
+    end;
+  end;
+  mCall.ElapsedMs := TThread.GetTickCount64 - mStart;
+  mCall.Bytes := TEncoding.UTF8.GetByteCount(Result.ToJSON([]));
+  mCall.Failed := TJsonRead.Flag(Result, 'isError');
+  if mCall.Failed then
+  begin
+    mCall.Message := FirstContentText(Result);
+  end;
+  AStatistics.Add(mCall, Now);
+end;
+
+/// <summary>Name für die Statistik: Werkzeug aus dem Katalog ('' bei unbekanntem), Ressource bzw. Vorlage,
+/// Prompt.</summary>
+function StatisticsName(const ACatalog: TMcpServerCatalog; AKind: TMcpCallKind; const AParams: TJSONValue): string;
+var
+  mTool: TMcpTool;
+  mTemplate: TMcpResourceTemplate;
+  mValue: string;
+begin
+  Result := '';
+  case AKind of
+    TMcpCallKind.Tool:
+      if (AParams is TJSONObject) and FindToolIn(ACatalog.Tools, TJsonRead.Text(TJSONObject(AParams), 'name'),
+        mTool) then
+      begin
+        Result := mTool.Name;
+      end;
+    TMcpCallKind.Resource:
+      begin
+        Result := ResourceUriOf(AParams);
+        // Vorlagen unter ihrem Muster zählen, nicht je Unit oder Datei.
+        if FindTemplate(ACatalog.Templates, Result, mTemplate, mValue) then
+        begin
+          Result := mTemplate.UriTemplate;
+        end;
+      end;
+    TMcpCallKind.Prompt:
+      Result := PromptNameOf(AParams);
+  end;
+end;
+
+/// <summary>Meldet AMethod an ADispatcher an; ACall bearbeitet die Anfrage, die Statistik von AServer zählt sie
+/// (zum Zeitpunkt des Aufrufs, Statistics kann nach Attach kommen).</summary>
+procedure RegisterCounted(ADispatcher: TJsonRpcDispatcher; const AMethod: string; AServer: TMcpServer;
+  AKind: TMcpCallKind; const ACall: TMcpCountedCall);
+begin
+  ADispatcher.RegisterRequest(AMethod,
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      Result := Counted(AServer.FStatistics, AKind, StatisticsName(AServer.FCatalog, AKind, AParams), AParams, ACall);
+    end);
+end;
+
 procedure TMcpServer.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterRequest(cInitializeMethod,
@@ -871,8 +994,8 @@ begin
     begin
       Result := ListTools;
     end);
-  ADispatcher.RegisterRequest(cCallToolMethod,
-    function(const AParams: TJSONValue): TJSONValue
+  RegisterCounted(ADispatcher, cCallToolMethod, Self, TMcpCallKind.Tool,
+    function(const AParams: TJSONValue): TJSONObject
     begin
       Result := CallTool(AParams);
     end);
@@ -881,8 +1004,8 @@ begin
     begin
       Result := ListResources;
     end);
-  ADispatcher.RegisterRequest(cReadResourceMethod,
-    function(const AParams: TJSONValue): TJSONValue
+  RegisterCounted(ADispatcher, cReadResourceMethod, Self, TMcpCallKind.Resource,
+    function(const AParams: TJSONValue): TJSONObject
     begin
       Result := ReadResource(AParams);
     end);
@@ -896,8 +1019,8 @@ begin
     begin
       Result := ListPrompts;
     end);
-  ADispatcher.RegisterRequest(cGetPromptMethod,
-    function(const AParams: TJSONValue): TJSONValue
+  RegisterCounted(ADispatcher, cGetPromptMethod, Self, TMcpCallKind.Prompt,
+    function(const AParams: TJSONValue): TJSONObject
     begin
       Result := GetPrompt(AParams);
     end);

@@ -167,6 +167,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
+- **Call statistics:** `delphi://stats` and `get_server_status` show which Atlas tools the AI assistant calls, how often they fail and how slow and large their answers are; a 30-day history names tools that never come up (`mcp.statistics`, stays local)
 
 ### Planned
 

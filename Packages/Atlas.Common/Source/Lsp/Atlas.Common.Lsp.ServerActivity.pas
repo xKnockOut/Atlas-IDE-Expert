@@ -19,11 +19,13 @@ uses
 
 type
   /// <summary>Ausführlicher Status des LSP-Servers: Wurzeln der Arbeitsbereiche, Status (gehört dem Aufrufer, nil
-  /// ohne) und Zustand (loading, ready, checking; '' = aus der Aktivität).</summary>
+  /// ohne) und Zustand (loading, ready, checking; '' = aus der Aktivität). Der MCP-Server meldet stattdessen seine
+  /// Aufrufstatistik als JSON-Text (Mcp, #2611; '' ohne).</summary>
   TServerDetails = record
     Roots: TArray<string>;
     Status: TJSONObject;
     State: string;
+    Mcp: string;
   end;
 
   TServerDetailsFunc = reference to function: TServerDetails;

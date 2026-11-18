@@ -78,6 +78,7 @@
         <DCCReference Include="Text\Atlas.Testing.Log.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.DUnitX.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestResults.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.McpStatistics.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Xml.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Coverage.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>
@@ -2308,6 +2309,9 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Profiler.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.StatusTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Statistics.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.StatisticsHistory.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.StatisticsText.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CheckTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>

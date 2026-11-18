@@ -3462,6 +3462,15 @@
           "x-control": "Kontrollkästchen",
           "x-issue": "#1357"
         },
+        "statistics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Aufrufe der Werkzeuge, Ressourcen und Prompts je Sitzung zählen (Aufrufe, Fehler, Dauer, Antwortgröße, letzter fehlgeschlagener Aufruf) und lokal ablegen: Statusdatei des MCP-Prozesses, Ressource delphi://stats, get_server_status, AtlasMonitor und Fenster „Atlas-Server“; beim Beenden eine Zeile je Werkzeug in %LOCALAPPDATA%\\Atlas\\Status\\mcp-stats.jsonl (30 Tage). Nichts geht ins Netz. false: nichts wird gezählt und nichts geschrieben.",
+          "x-description-en": "Count the calls of tools, resources and prompts per session (calls, errors, duration, response size, last failed call) and keep them locally: status file of the MCP process, resource delphi://stats, get_server_status, AtlasMonitor and window \"Atlas Server\"; on exit one line per tool in %LOCALAPPDATA%\\Atlas\\Status\\mcp-stats.jsonl (30 days). Nothing goes to the network. false: nothing is counted and nothing is written.",
+          "x-page": "MCP",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#2611"
+        },
         "promptLanguage": {
           "type": "string",
           "enum": [

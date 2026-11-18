@@ -716,6 +716,9 @@
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Sampling.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DeadCodeTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatusTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Statistics.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatisticsHistory.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatisticsText.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Prompts.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>

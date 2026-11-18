@@ -698,6 +698,8 @@ type
     McpGlobalSettings: Boolean;
     /// <summary>Prompts und Ressourcenvorlagen anbieten (mcp.prompts, #1357); Vorgabe True.</summary>
     McpPrompts: Boolean;
+    /// <summary>Werkzeugaufrufe je Sitzung zählen und lokal ablegen (mcp.statistics, #2611); Vorgabe True.</summary>
+    McpStatistics: Boolean;
     /// <summary>Sprache der Anleitungen in den Prompts (mcp.promptLanguage): de (Vorgabe) oder en.</summary>
     McpPromptLanguage: string;
     /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
@@ -1523,6 +1525,7 @@ begin
   ASettings.IndexProjectGroup := True;
   ASettings.McpGlobalSettings := True;
   ASettings.McpPrompts := True;
+  ASettings.McpStatistics := True;
   ASettings.McpPromptLanguage := 'de';
   ASettings.McpCustomPrompts := nil;
   ASettings.IndexSearchPaths := True;

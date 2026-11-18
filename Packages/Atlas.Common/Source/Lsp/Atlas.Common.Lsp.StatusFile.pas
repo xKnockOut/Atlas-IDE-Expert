@@ -4,7 +4,8 @@
 // Kommandozeilenlauf) schreibt alle paar Sekunden %LOCALAPPDATA%\Atlas\Status\server-<pid>.json
 // (TServerStatusHeartbeat): Art, Befehl und Ziel, Version, Start, Speicher, Zustand, laufende Anfragen mit Dauer,
 // Fortschritt, Zähler für Zeitüberschreitungen und Fehler, die Wurzeln der Arbeitsbereiche und beim LSP-Server den
-// ausführlichen Status des Fensters „Atlas-Server“. Daraus liest das MCP-Werkzeug get_server_status (Find: jüngster
+// ausführlichen Status des Fensters „Atlas-Server“, beim MCP-Server die Aufrufstatistik der Sitzung (Abschnitt mcp,
+// #2611). Daraus liest das MCP-Werkzeug get_server_status (Find: jüngster
 // LSP-Status für einen Ordner) und AtlasMonitor (List: alle Server). Beim Beenden löscht der Server seine Datei;
 // Dateien abgestürzter Prozesse räumen Schreiber und Leser weg. Die Datei bleibt lokal; Pfade stehen nur darin,
 // weil der Status selbst sie enthält.
@@ -59,6 +60,8 @@ type
     ProfiledProcess: Cardinal;
     /// <summary>Ausführlicher Status als JSON-Text (nur LSP-Server); '' ohne.</summary>
     Status: string;
+    /// <summary>Aufrufstatistik der MCP-Sitzung als JSON-Text (TMcpSessionStatistics, #2611); '' ohne.</summary>
+    Mcp: string;
     /// <summary>Gelesene Datei (nur beim Lesen gesetzt).</summary>
     FileName: string;
     /// <summary>Art mit Vorgabe lsp.</summary>
@@ -154,7 +157,7 @@ function TServerStatusEntry.ToJson(AStatus: TJSONObject): TJSONObject;
 var
   mRoots: TJSONArray;
   mRoot: string;
-  mRunning, mProgress: TJSONObject;
+  mRunning, mProgress, mMcp: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('pid', TJSONNumber.Create(Pid));
@@ -188,6 +191,11 @@ begin
   if AStatus <> nil then
   begin
     Result.AddPair('status', TJSONObject(AStatus.Clone));
+  end;
+  mMcp := TJsonRead.ParseObject(Mcp);
+  if mMcp <> nil then
+  begin
+    Result.AddPair('mcp', mMcp);
   end;
 end;
 
@@ -241,6 +249,10 @@ begin
   if AObject.GetValue('status') is TJSONObject then
   begin
     AEntry.Status := AObject.GetValue('status').ToJSON([]);
+  end;
+  if AObject.GetValue('mcp') is TJSONObject then
+  begin
+    AEntry.Mcp := AObject.GetValue('mcp').ToJSON([]);
   end;
 end;
 

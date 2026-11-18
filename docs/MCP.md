@@ -57,6 +57,7 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 |---|---|
 | `delphi://conventions` | Projektkonventionen als Markdown (#272): Regelprofil, Formatstil, Benennungsregeln und jede aktive Prüfregel mit Schweregrad und Kurztext aus dem Regelkatalog. Vor dem Schreiben lesen, danach mit `check_code` prüfen |
 | `delphi://build/last` | Ergebnis und Compilermeldungen des letzten Builds in der IDE wie `get_last_build` (#1357, mit `mcp.prompts`) |
+| `delphi://stats` | Aufrufstatistik dieser Sitzung (#2611): je Werkzeug, Ressource und Prompt Aufrufe, Fehler, Dauer (Median, längste) und Antwortgröße (Median, größte), auffällige Fehlerquoten mit dem letzten fehlgeschlagenen Aufruf und der Verlauf der letzten 30 Tage (nie aufgerufene, häufig fehlgeschlagene Werkzeuge). Siehe [Aufrufstatistik](#aufrufstatistik-2611) |
 
 Ressourcen mit Vorlage (#1357, `resources/templates/list`) hängt man in Claude Code mit `@` an eine Frage, z. B. `@delphi:delphi://unit/UI.Auftrag`. Der Wert in `{…}` darf %-kodiert sein (`Source%2FA.pas`). Units und Pfade gelten wie Pfadparameter (#99): außerhalb des Arbeitsordners und seiner Such- und Bibliothekspfade ergibt das Lesen einen Fehler mit Begründung. Der Inhalt ist Markdown, höchstens 64 KB; darüber gekürzt mit Hinweis auf das Werkzeug für alles.
 
@@ -153,6 +154,28 @@ Prompts gegenüber den Befehlen des Claude-Code-Plugins (`/atlas:bauen`): Die Pl
 | `fix_findings` | `rules` (Regelkennungen oder `all`), `file` (optional, sonst alle Projektdateien), `minConfidence` (`high`, `medium`; optional, nie unter `fix.minConfidence`), `dryRun` (Vorgabe `true`) | Schreibend (#1352): wendet alle sicheren Korrekturen der Regeln an, wie `AtlasServer --check --fix`. Nur Befunde ab der Konfidenz, deren Korrektur eindeutig und als sicher markiert ist (Katalogfeld `safeFix`); überlappende Korrekturen von hinten nach vorn in bis zu 3 Durchgängen, Dateien mit neuen Syntaxfehlern bleiben unverändert. Liefert Zusammenfassung (Korrekturen je Regel, Übersprungenes) und den Diff; schreibt wie `apply_code_action` (offene Dateien über das Plugin, ein Rückgängig-Schritt je Datei; ungespeichert geänderte Dateien bleiben unberührt und werden genannt) |
 | `format_code` | `file`, `text` (optional), `startLine`/`endLine` (optional, ab 1), `dryRun` (Vorgabe `true`) | Schreibend (#1358): formatiert die Unit nach den Formatregeln des Projekts (`format.*` in `atlas.json`, `.editorconfig`) wie *Dokument formatieren* in der IDE, ganz oder nur `startLine`..`endLine` (ohne `endLine` eine Zeile). Mit `text` (geplanter Inhalt der ganzen Unit, wie bei `check_code`) liefert es die Abweichungen und den formatierten Text und schreibt nie; sonst zeigt es die Abweichungen (Zeile und Art) und den Diff, mit `dryRun: false` schreibt es wie `apply_code_action` (in der IDE offene Dateien über das Plugin als ein Rückgängig-Schritt, #397). Dateien mit Syntaxfehlern formatiert es nicht (Werkzeugfehler mit Zeile); `// atlas-format: off` … `on` bleibt unverändert. Die Zeilenenden der Datei bleiben; `format.endOfLine` setzt `AtlasServer --check <Datei> --format-write` um |
 | `extract_method` | `file`, `startLine`, `endLine` (Vorgabe `startLine`), `name` (Vorgabe `ExtractedMethod`), `replaceDuplicates` (Vorgabe `refactoring.extractMethodDuplicates`), `dryRun` (Vorgabe `true`) | Schreibend (#2054): *Methode extrahieren* für die ganzen Anweisungen der Zeilen; Parameter nach Datenfluss. Mit `replaceDuplicates` ersetzt derselbe Aufruf auch textgleiche Stellen der Unit, an denen dieselbe Methode entstünde (gleiche Klasse, gleiche Bedeutung der Namen, gleiche Parameterliste); der Bericht nennt sie. Sind es keine vollständigen Anweisungen oder geht das Extrahieren nicht (Exit, `with`, Result …), meldet es den Grund als Werkzeugfehler. Schreibt wie `apply_code_action` |
+
+## Aufrufstatistik (#2611)
+
+Ob ein KI-Assistent die Atlas-Werkzeuge nutzt und wie gut sie ihm helfen, zählt der MCP-Server je Sitzung mit (`mcp.statistics`, Vorgabe an). Gezählt wird jeder Aufruf von `tools/call`, `resources/read` und `prompts/get`:
+
+- Aufrufe und Fehler: `isError` (fachlicher Fehler, abgeschaltetes Werkzeug) und Ausnahmen (unbekannte Ressource, fehlendes Argument eines Prompts).
+- Dauer und Antwortgröße (Bytes der JSON-Antwort), jeweils Median über die letzten 1000 Aufrufe und Höchstwert.
+- Der letzte fehlgeschlagene Aufruf je Name mit seinen Argumenten (je Argument höchstens 500 Zeichen), damit man ihn im MCP Inspector nachstellen kann. Pfade und Text sind wie im Protokoll gekennzeichnet; das anonyme Diagnosepaket ersetzt sie.
+- Ressourcenvorlagen zählen unter ihrem Muster (`delphi://unit/{name}`), nicht je Unit. Angebotene Werkzeuge stehen auch ohne Aufruf in der Liste.
+- Auffällig ist eine Fehlerquote über 20 % bei mindestens 5 Aufrufen.
+
+Wo die Zahlen stehen:
+
+| Ort | Inhalt |
+|---|---|
+| `delphi://stats` | Tabellen der Sitzung, auffällige Werkzeuge, Verlauf |
+| `get_server_status` | Abschnitt der Sitzung (Markdown) bzw. Schlüssel `mcp` (JSON) |
+| `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` | Abschnitt `mcp` der Statusdatei des MCP-Prozesses, alle 5 s neu (für AtlasMonitor und das Fenster „Atlas-Server“) |
+| `%LOCALAPPDATA%\Atlas\Status\mcp-stats.jsonl` | Verlauf: beim Beenden eine Zeile je Werkzeug (auch ohne Aufruf) und je aufgerufener Ressource bzw. aufgerufenem Prompt mit Zeitpunkt, Client, Projektordner und Zahlen, ohne Argumente; Zeilen älter als 30 Tage fallen beim nächsten Anhängen weg |
+| Diagnosepaket des Servers | `server/mcp-<n>.json` je MCP-Prozess am selben Ordner; anonym ohne Pfade, Namen und Argumente |
+
+Nichts davon geht ins Netz. Was der Assistent außerhalb von Atlas tut (eigene Dateisuche), sieht der Server nicht. Mit `"mcp": {"statistics": false}` in `atlas.json` wird nichts gezählt und nichts geschrieben; die Einstellung gilt ab dem nächsten Start des MCP-Prozesses.
 
 ## Werkzeuge entwickeln und prüfen
 
