@@ -998,14 +998,77 @@ begin
     (Trim(AText.Lines[mNeighbour]) = '');
 end;
 
+type
+  /// <summary>Grenzen der Rümpfe im neuen Text für TBodySpacing (#1839).</summary>
+  TBodyEdges = record
+    Starts, Ends: TArray<Boolean>;
+    /// <summary>Zeilen von ALines, die in einem Rumpf liegen.</summary>
+    Inside: TArray<Boolean>;
+    procedure Mark(const ALines: TArray<string>; const AText: TOrderText; const ABlocks: TBlocks);
+    /// <summary>Erweitert AFirst bis ALast auf ganze Rümpfe: Der geänderte Bereich endet oft mitten in einem
+    /// (gleiche Zeilen am Ende).</summary>
+    procedure Widen(const AText: TOrderText; var AFirst, ALast: Integer);
+  end;
+
+{ TBodyEdges }
+
+procedure TBodyEdges.Mark(const ALines: TArray<string>; const AText: TOrderText; const ABlocks: TBlocks);
+var
+  mIsFirst, mIsLast: TArray<Boolean>;
+  mBlock: TBlock;
+  mIndex, mOrigin: Integer;
+begin
+  SetLength(mIsFirst, Length(ALines));
+  SetLength(mIsLast, Length(ALines));
+  SetLength(Inside, Length(ALines));
+  for mBlock in ABlocks do
+  begin
+    mIsFirst[mBlock.First] := True;
+    mIsLast[mBlock.Last] := True;
+    for mIndex := mBlock.First to mBlock.Last do
+    begin
+      Inside[mIndex] := True;
+    end;
+  end;
+  SetLength(Starts, Length(AText.Lines));
+  SetLength(Ends, Length(AText.Lines));
+  for mIndex := 0 to High(AText.Lines) do
+  begin
+    mOrigin := AText.Origins[mIndex];
+    if mOrigin >= 0 then
+    begin
+      Starts[mIndex] := mIsFirst[mOrigin];
+      Ends[mIndex] := mIsLast[mOrigin];
+    end
+    else if Trim(AText.Lines[mIndex]) <> '' then
+    begin
+      Starts[mIndex] := InsertedEdge(AText, mIndex, -1);
+      Ends[mIndex] := InsertedEdge(AText, mIndex, 1);
+    end;
+  end;
+end;
+
+procedure TBodyEdges.Widen(const AText: TOrderText; var AFirst, ALast: Integer);
+begin
+  while (AFirst > 0) and (AFirst <= High(AText.Lines)) and not Starts[AFirst] and (AText.Origins[AFirst] >= 0) and
+    Inside[AText.Origins[AFirst]] do
+  begin
+    Dec(AFirst);
+  end;
+  while (ALast >= 0) and (ALast < High(AText.Lines)) and not Ends[ALast] and (AText.Origins[ALast] >= 0) and
+    Inside[AText.Origins[ALast]] do
+  begin
+    Inc(ALast);
+  end;
+end;
+
 /// <summary>AText mit angeglichenen Leerzeilen (#1839) an den Grenzen der Rümpfe ABlocks und der eingefügten
 /// Kommentare, soweit sie den gegenüber ALines geänderten Bereich berühren.</summary>
 function SpacedText(const ALines: TArray<string>; const AText: TOrderText; const ABlocks: TBlocks): TOrderText;
 var
-  mIsFirst, mIsLast, mInside, mStarts, mEnds: TArray<Boolean>;
+  mEdges: TBodyEdges;
   mSources: TArray<Integer>;
   mSpaced: TArray<string>;
-  mBlock: TBlock;
   mFirst, mLast, mIndex, mOrigin: Integer;
 begin
   Result := AText;
@@ -1013,46 +1076,10 @@ begin
   begin
     Exit;
   end;
-  SetLength(mIsFirst, Length(ALines));
-  SetLength(mIsLast, Length(ALines));
-  SetLength(mInside, Length(ALines));
-  for mBlock in ABlocks do
-  begin
-    mIsFirst[mBlock.First] := True;
-    mIsLast[mBlock.Last] := True;
-    for mIndex := mBlock.First to mBlock.Last do
-    begin
-      mInside[mIndex] := True;
-    end;
-  end;
-  SetLength(mStarts, Length(AText.Lines));
-  SetLength(mEnds, Length(AText.Lines));
-  for mIndex := 0 to High(AText.Lines) do
-  begin
-    mOrigin := AText.Origins[mIndex];
-    if mOrigin >= 0 then
-    begin
-      mStarts[mIndex] := mIsFirst[mOrigin];
-      mEnds[mIndex] := mIsLast[mOrigin];
-    end
-    else if Trim(AText.Lines[mIndex]) <> '' then
-    begin
-      mStarts[mIndex] := InsertedEdge(AText, mIndex, -1);
-      mEnds[mIndex] := InsertedEdge(AText, mIndex, 1);
-    end;
-  end;
-  // Der geänderte Bereich endet oft mitten in einem Rumpf (gleiche Zeilen am Ende): auf ganze Rümpfe erweitern.
-  while (mFirst > 0) and (mFirst <= High(AText.Lines)) and not mStarts[mFirst] and
-    (AText.Origins[mFirst] >= 0) and mInside[AText.Origins[mFirst]] do
-  begin
-    Dec(mFirst);
-  end;
-  while (mLast >= 0) and (mLast < High(AText.Lines)) and not mEnds[mLast] and (AText.Origins[mLast] >= 0) and
-    mInside[AText.Origins[mLast]] do
-  begin
-    Inc(mLast);
-  end;
-  mSpaced := TBodySpacing.Spaced(AText.Lines, mStarts, mEnds, mFirst, mLast, mSources);
+  mEdges := Default(TBodyEdges);
+  mEdges.Mark(ALines, AText, ABlocks);
+  mEdges.Widen(AText, mFirst, mLast);
+  mSpaced := TBodySpacing.Spaced(AText.Lines, mEdges.Starts, mEdges.Ends, mFirst, mLast, mSources);
   Result := Default(TOrderText);
   for mIndex := 0 to High(mSpaced) do
   begin

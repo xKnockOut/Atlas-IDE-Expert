@@ -80,6 +80,8 @@ type
     procedure Run;
   end;
 
+{ TSpacer }
+
 procedure TSpacer.Add(const ALine: string; ASource: Integer);
 begin
   Result := Result + [ALine];
