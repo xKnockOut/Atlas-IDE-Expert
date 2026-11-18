@@ -115,6 +115,7 @@ procedure RegisterUnresolvedRules(ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
@@ -392,11 +393,6 @@ function TUsesUnitNotFoundRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('uses-unit-not-found', TRuleSeverity.Error,
     cTexts[TUnresolvedText.UsesTitle].Text);
-end;
-
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
 end;
 
 /// <summary>Text eines String-Literals ohne Hochkommas ('' → ').</summary>
