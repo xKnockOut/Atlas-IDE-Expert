@@ -255,13 +255,12 @@ uses
   System.Math,
   System.Types,
   Vcl.Dialogs,
-  Vcl.Themes,
   Atlas.Core.Architecture.MapState,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Architecture.Texts,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -1563,7 +1562,7 @@ begin
   end;
   mBox := FFrame.FParts.Assignment;
   mPpi := FFrame.CurrentPPI;
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(FFrame).GetSystemColor(clWindow))));
+  mColors := TAtlasUiTheme.WindowColors(FFrame);
   mBox.Canvas.Font.Assign(FFrame.Font);
   mSize := TAtlasArchitectureAssignment.Measure(mBox.Canvas, FFrame.FState.Model, mSelected, mPpi);
   TAtlasArchitectureAssignment.Draw(mBox.Canvas, Rect(0, 0, Min(mSize.cx, mBox.Width), mSize.cy),

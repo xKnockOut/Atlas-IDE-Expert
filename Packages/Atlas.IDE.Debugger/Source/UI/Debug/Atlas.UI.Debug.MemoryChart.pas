@@ -83,9 +83,9 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Vcl.Themes,
   Atlas.Core.Style.Color,
-  Atlas.UI.Debug.Memory.Strings;
+  Atlas.UI.Debug.Memory.Strings,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Teilstriche der Wertachse.</summary>
@@ -148,7 +148,7 @@ var
   mPlot: TRect;
   mSize: TSize;
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  mColors := TAtlasUiTheme.WindowColors(Self);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(mColors.Surface);
   Canvas.FillRect(ClientRect);

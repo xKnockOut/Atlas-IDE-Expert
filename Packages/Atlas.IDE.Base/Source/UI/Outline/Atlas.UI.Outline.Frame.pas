@@ -170,13 +170,13 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Outline.Strings,
   Atlas.UI.Foundation.ListBox,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -207,10 +207,11 @@ begin
 end;
 
 /// <summary>Farben aus dem Stil von AControl: Die IDE themt je Formular; der globale Stil liefert im dunklen
-/// Thema Weiß (Gliederung hell im dunklen Thema).</summary>
+/// Thema Weiß (Gliederung hell im dunklen Thema). Fläche und Schrift wie die Fenster der IDE, nicht die
+/// feste Atlas-Palette (sonst dunkler als der Objektinspektor).</summary>
 function StyleColors(AControl: TControl): TAtlasColors;
 begin
-  Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(AControl).GetSystemColor(clWindow))));
+  Result := TAtlasUiTheme.WindowColors(AControl);
 end;
 
 { TAtlasOutlineFrame }

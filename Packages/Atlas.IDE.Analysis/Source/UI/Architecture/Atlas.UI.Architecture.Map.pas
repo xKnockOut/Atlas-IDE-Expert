@@ -87,10 +87,10 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Architecture.Assignment;
+  Atlas.UI.Architecture.Assignment,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Ab dieser Vergrößerung stehen alle Namen da (darunter überdecken sie sich).</summary>
@@ -486,7 +486,7 @@ begin
   mPaint.Canvas := Canvas;
   mPaint.State := FState;
   mPaint.View := FView;
-  mPaint.Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  mPaint.Colors := TAtlasUiTheme.WindowColors(Self);
   mPaint.Thick := ScaleValue(2);
   mPaint.Thicker := ScaleValue(3);
   mPaint.Pathing := FState.Path.Shown;
