@@ -12,9 +12,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeDiscoverFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure AgeTextsFollowKind;
     [Test]
@@ -87,10 +84,6 @@ begin
 end;
 { TAtlasWelcomeDiscoverFrameTests }
 
-procedure TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse;
-begin
-  CardShowsTipAndButtons;
-end;
 procedure TAtlasWelcomeDiscoverFrameTests.AgeTextsFollowKind;
 var
   mSaved: TAtlasLanguage;
