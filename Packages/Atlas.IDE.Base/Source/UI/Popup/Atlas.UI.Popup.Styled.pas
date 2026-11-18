@@ -21,6 +21,11 @@ uses
 type
   /// <summary>Wohin gezeichnet wird: Leinwand, Farben und Eckradius der Akzentfläche.</summary>
   TAtlasStyledTarget = record
+  public const
+    /// <summary>Üblicher Eckradius der Akzentfläche in logischen Bildpunkten (Signatur, Hover, Detailpanel).
+    /// </summary>
+    cRadius = 3;
+  public
     Canvas: TCanvas;
     Colors: TAtlasColors;
     Radius: Integer;
@@ -128,6 +133,11 @@ end;
 { TAtlasStyledText }
 
 function TAtlasStyledText.Pieces(AFrom, ATill: Integer): TArray<TPiece>;
+const
+  /// <summary>Schnitte unabhängig von den gedämpften Bereichen: Anfang, Ende und die zwei aktiven Grenzen.</summary>
+  cFixedCuts = 4;
+  /// <summary>Zuwachs des Ergebnisses über das Doppelte hinaus, damit auch kleine Listen selten wachsen.</summary>
+  cGrowth = 8;
 var
   mToken: TAtlasToken;
   mCuts: TArray<Integer>;
@@ -137,7 +147,7 @@ begin
   mCount := 0;
   // Höchstens Anfang, Ende, zwei aktive Grenzen und zwei je gedämpftem Bereich.
   mCuts := nil;
-  SetLength(mCuts, 4 + 2 * Length(MutedRanges));
+  SetLength(mCuts, cFixedCuts + 2 * Length(MutedRanges));
   for mToken in Tokens do
   begin
     if Min(ATill, mToken.Stop) <= Max(AFrom, mToken.Start) then
@@ -154,7 +164,7 @@ begin
       end;
       if mCount = Length(Result) then
       begin
-        SetLength(Result, 2 * mCount + 8);
+        SetLength(Result, 2 * mCount + cGrowth);
       end;
       Result[mCount] := PieceOf(mCuts[mIndex], mCuts[mIndex + 1], mToken.Kind);
       Inc(mCount);

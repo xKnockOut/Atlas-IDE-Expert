@@ -17,7 +17,7 @@
 // Prüfung einer Datei danach (problems.ideErrors) und stellt sie neben die
 // Atlas-Befunde. Die Werte kommen roh wie von der IDE, umgerechnet wird in Base
 // (Atlas.Core.Problems.IdeErrors). Ohne Modul gibt es keine Fehler der IDE.
-// Nur Interfaces und Typen, kein Code. Liegt in Base (Source/Contracts, #1456, Entscheidung 04.11.2026).
+// Nur Interfaces und Typen, kein Code. Liegt in Base (Source/Contracts, #1456).
 
 interface
 

@@ -2,7 +2,7 @@
 
 // Zeitprofil eines Prüflaufs (#1356): je Unit die Dauer ihrer Prüfung und je
 // Regel die Summe ihrer Laufzeit mit Zahl der Aufrufe. Gemessen wird nichts
-// zusätzlich: Die Regel-Engine misst jede Regel ohnehin (früher nur für
+// zusätzlich: Die Regel-Engine misst jede Regel ohnehin (auch für
 // slowRule im Diagnoselog) und meldet die Dauer hier, die Projektprüfung bzw.
 // --check misst die Dauer je Unit.
 //

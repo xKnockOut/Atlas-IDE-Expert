@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Lsp.Completion.InheritedCalls;
 
 // Vollständige inherited-Aufrufe (#482) nach "inherited " vor den Namen der Vorfahrmethoden. Die Teile ohne
-// Namensauflösung stehen in Atlas.Common.Lsp.CompletionInherited. Aus Atlas.Common.Lsp.Completion
-// herausgelöst.
+// Namensauflösung stehen in Atlas.Common.Lsp.CompletionInherited. Teil der Vervollständigung
+// (Atlas.Common.Lsp.Completion).
 
 interface
 

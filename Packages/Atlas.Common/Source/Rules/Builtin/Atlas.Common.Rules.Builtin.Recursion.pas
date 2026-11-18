@@ -3,8 +3,8 @@
 // Property-Falle (#623, #910):
 //   setter-recursion   Setter schreibt bzw. Getter liest die eigene Property
 //                      (Name := Value in SetName) und ruft sich damit endlos
-//                      selbst auf. Fehler mit hoher Konfidenz; bis #910 hieß
-//                      die Regel recursive-property-accessor (TRuleIdAliases).
+//                      selbst auf. Fehler mit hoher Konfidenz; der alte Name
+//                      recursive-property-accessor gilt als Alias (TRuleIdAliases, #910).
 //                      Niedrige Konfidenz, wenn der Setter den Wert begrenzt
 //                      (Zuweisung in einem Zweig, dessen Bedingung einen
 //                      Parameter prüft, nicht des Parameters selbst): Dann
@@ -245,7 +245,7 @@ begin
 end;
 
 /// <summary>Begrenzt der Setter den Wert, bevor er die Property erneut schreibt ("if A &lt; 0 then V := 0 else
-/// FV := A")? Dann endet die Rekursion meist nach einem Schritt (FP-Prüfung 28.10.2026): Die Zuweisung steht in
+/// FV := A")? Dann endet die Rekursion meist nach einem Schritt: Die Zuweisung steht in
 /// einem Zweig, dessen Bedingung einen Parameter prüft, und weist nicht den Parameter selbst zu.</summary>
 function IsClampedWrite(const AContext: TRuleContext; const ATrap: TAccessorTrap): Boolean;
 var

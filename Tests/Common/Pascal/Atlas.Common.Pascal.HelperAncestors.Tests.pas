@@ -3,8 +3,7 @@
 // Tests für Helfer mit Vorfahr (#848): class helper (TBaseHelper) for TFoo
 // wird als Helfer gelesen, steht mit Vorfahr und Ziel im Index, und die
 // Namensauflösung findet die Mitglieder des Vorfahr-Helfers über TFoo. Die
-// Quelle von CaseFour ist der nachgestellte Fall 04 aus
-// planung/parser-luecken-faelle.
+// Quelle von CaseFour stellt den Fall aus dem Issue nach.
 
 interface
 

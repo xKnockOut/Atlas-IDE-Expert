@@ -206,7 +206,7 @@ type
     /// und Compilermeldungen. Threadsicher; der Aufrufer übernimmt das Objekt.</summary>
     function Compute(const ADocument: ITextDocument): TJSONObject; overload;
     /// <summary>Wie Compute; fragt ACancelled vor jeder Prüfregel und bricht dann mit
-    /// ERuleCheckCancelled ab (Diagnoselog 15.10.2026).</summary>
+    /// ERuleCheckCancelled ab.</summary>
     function Compute(const ADocument: ITextDocument; const ACancelled: TRuleCancelled): TJSONObject; overload;
     /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
     procedure Refresh;
