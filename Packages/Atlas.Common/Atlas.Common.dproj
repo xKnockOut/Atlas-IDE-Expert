@@ -604,6 +604,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartIndent.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.LearnedSuggestions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SuggestionContext.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>

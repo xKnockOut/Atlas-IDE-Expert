@@ -36,6 +36,10 @@
       "caption": "Debug",
       "captionEn": "Debug"
     },
+    "assistants": {
+      "caption": "KI-Assistenten",
+      "captionEn": "AI assistants"
+    },
     "snippets": {
       "caption": "Vorlagen/Snippets",
       "captionEn": "Templates/snippets"
@@ -1388,6 +1392,99 @@
       "x-caption": "Schreiben in offene Dateien",
       "x-captionEn": "Writing to open files",
       "x-issue": "#1888"
+    },
+    "AssistantsInlineSuggestions": {
+      "type": "boolean",
+      "default": false,
+      "description": "Schattentext-Vorschläge über einen KI-Anbieter: Passt kein gelernter Vorschlag und ist die Tipp-Pause (suggestions.delayMs) erreicht, fragt Atlas im Hintergrund den eingestellten Anbieter. Gesendet werden nur die Zeilen um die Schreibmarke (assistants.contextLines) und Köpfe der Klasse aus dem Index. Jeder Vorschlag läuft vor dem Zeigen durch Parser und Namensprüfung. Ohne Netz, ohne Schlüssel oder bei Fehlern bleibt es still. Aus = kein Netzverkehr.",
+      "x-key": "assistants.inlineSuggestions",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Schattentext-Vorschläge über den KI-Anbieter",
+      "x-captionEn": "Ghost text suggestions from the AI provider",
+      "x-issue": "#1922",
+      "x-keywords": [
+        "KI",
+        "AI",
+        "LLM",
+        "Schattentext",
+        "ghost text"
+      ]
+    },
+    "AssistantsProvider": {
+      "type": "string",
+      "enum": [
+        "none",
+        "anthropic"
+      ],
+      "default": "none",
+      "description": "KI-Anbieter für Schattentext-Vorschläge: none = keiner (keine Anfragen), anthropic = Anthropic-API (HTTPS). Der Schlüssel steht nur im Anmeldespeicher von Windows, nie in den Einstellungen.",
+      "x-key": "assistants.provider",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "KI-Anbieter",
+      "x-captionEn": "AI provider",
+      "x-issue": "#1922"
+    },
+    "AssistantsModel": {
+      "type": "string",
+      "default": "claude-haiku-5-5",
+      "description": "Modell des KI-Anbieters für Schattentext; Vorgabe ist ein kleines, schnelles Modell. Ein größeres Modell liefert bessere Vorschläge, antwortet aber langsamer und kostet mehr.",
+      "x-key": "assistants.model",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Modell",
+      "x-captionEn": "Model",
+      "x-issue": "#1922"
+    },
+    "AssistantsContextLines": {
+      "type": "integer",
+      "default": 40,
+      "minimum": 10,
+      "maximum": 200,
+      "description": "Zeilen um die Schreibmarke, die an den KI-Anbieter gehen (10 bis 200); mehr Zeilen geben dem Modell mehr Zusammenhang und kosten mehr.",
+      "x-key": "assistants.contextLines",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Zeilen um die Schreibmarke",
+      "x-captionEn": "Lines around the cursor",
+      "x-issue": "#1922"
+    },
+    "AssistantsExclude": {
+      "type": "string",
+      "default": "",
+      "description": "Dateien und Ordner, aus denen nichts an den KI-Anbieter geht: Muster mit * und ?, durch Semikolon getrennt, z. B. „*\\Geheim\\*;*Lizenz*.pas“. Verglichen wird der volle Pfad ohne Groß-/Kleinschreibung.",
+      "x-key": "assistants.exclude",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Nicht senden aus (Muster)",
+      "x-captionEn": "Never send from (patterns)",
+      "x-issue": "#1922"
+    },
+    "AssistantsDailyLimit": {
+      "type": "integer",
+      "default": 300,
+      "minimum": 1,
+      "maximum": 100000,
+      "description": "Höchstzahl der Anfragen an den KI-Anbieter je Tag; ist sie erreicht, fragt Atlas bis zum nächsten Tag nicht mehr. Gezählt wird je Benutzer auf diesem Rechner.",
+      "x-key": "assistants.dailyLimit",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Anfragen je Tag höchstens",
+      "x-captionEn": "Requests per day at most",
+      "x-issue": "#1922"
     },
     "McpBuild": {
       "type": "boolean",

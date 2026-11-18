@@ -729,6 +729,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Indent.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartIndent.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.LearnedSuggestions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SuggestionContext.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Layout.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatCheck.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
@@ -765,6 +766,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Parts.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.StoreValues.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Plugin.Store.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Plugin.Assistants.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Teardown.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ExitWatch.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ThreadList.Tests.pas"/>
@@ -887,6 +889,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.Store.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.Bookmarks.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.Assistants.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.Build.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.CodeActions.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.Completion.pas"/>
@@ -1210,6 +1213,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Contract.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\CiBuild\Atlas.Core.CiBuild.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Ci\Atlas.Core.Ci.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Credentials\Atlas.Core.Credentials.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Ci\Atlas.Core.Ci.Adapters.Credentials.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Ci.Adapters.Credentials.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Ci\Atlas.Core.Ci.Internals.Addresses.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Ci\Atlas.Core.Ci.Providers.Jenkins.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Ci.Providers.Jenkins.Tests.pas"/>
@@ -1618,6 +1624,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.InboxPace.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Anthropic.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.AiProviders.Anthropic.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Catalog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.AiGhost.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.AiGhost.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas"/>

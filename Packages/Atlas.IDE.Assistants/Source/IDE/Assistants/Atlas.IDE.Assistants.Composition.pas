@@ -10,7 +10,11 @@
 //   normalen Start und solange compiler.mcpBuild an ist.
 // - Teil „AssistantEdits“: Eingang für Änderungen an offenen Dateien (#397),
 //   solange assistants.edit an ist.
-// - den Abschnitt mit dem Modulschalter im Optionsdialog.
+// - Teil „AiGhostText“: Schattentext vom KI-Anbieter (#1922), solange
+//   assistants.inlineSuggestions an ist; HTTP und Anmeldespeicher von Windows
+//   entstehen nur hier.
+// - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
+//   Schlüssel der KI-Anbieter.
 // Die Liste der offenen und ungespeicherten Dateien (DirtyExport) bleibt in
 // Base: Sie schützt Dateien auch dann vor dem Überschreiben, wenn das Modul
 // fehlt. Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt
@@ -45,6 +49,11 @@ implementation
 
 uses
   Atlas.Core.Assistants.BuildInbox,
+  Atlas.Core.AiProviders.Contract,
+  Atlas.Core.AiProviders.Adapters.Http,
+  Atlas.Core.Credentials.Contract,
+  Atlas.Core.Credentials.Adapters.Windows,
+  Atlas.Core.Lsp.Session,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
@@ -56,12 +65,14 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
+  Atlas.IDE.Assistants.AiGhost,
   Atlas.UI.Assistants.SettingsSection;
 
 var
   GScope: IAtlasModuleScope;
   GBuildInbox: TAtlasIdeBuildInbox;
   GEditInbox: TAtlasIdeEditInbox;
+  GAiGhost: TAtlasIdeAiGhost;
 
 { Dienste von Base und anderer Module }
 
@@ -83,6 +94,49 @@ begin
       Exit;
     end;
   end;
+end;
+
+/// <summary>Schlüssel des KI-Anbieters AProviderId aus dem Anmeldespeicher; '' ohne Eintrag. Auch im
+/// Hintergrund-Thread.</summary>
+function ReadAiKey(const AProviderId: string): string;
+var
+  mStore: IAtlasCredentialStore;
+  mUser: string;
+begin
+  mStore := TAtlasWindowsCredentials.Create;
+  if not mStore.Read(TAtlasAiKeys.Target(AProviderId), mUser, Result) then
+  begin
+    Result := '';
+  end;
+end;
+
+function HasAiKey(AProviderId: string): Boolean;
+begin
+  Result := ReadAiKey(AProviderId) <> '';
+end;
+
+function StoreAiKey(AProviderId, AKey: string): Boolean;
+var
+  mStore: IAtlasCredentialStore;
+begin
+  mStore := TAtlasWindowsCredentials.Create;
+  Result := mStore.Write(TAtlasAiKeys.Target(AProviderId), cAiKeyUser, AKey, cAiKeyComment);
+end;
+
+procedure DeleteAiKey(AProviderId: string);
+var
+  mStore: IAtlasCredentialStore;
+begin
+  mStore := TAtlasWindowsCredentials.Create;
+  mStore.Delete(TAtlasAiKeys.Target(AProviderId));
+end;
+
+function KeyHooks: TAtlasAssistantsKeyHooks;
+begin
+  Result := Default(TAtlasAssistantsKeyHooks);
+  Result.Has := HasAiKey;
+  Result.Store := StoreAiKey;
+  Result.Delete := DeleteAiKey;
 end;
 
 { Teile der Feature-Tabelle }
@@ -125,6 +179,30 @@ begin
   Result := GEditInbox <> nil;
 end;
 
+procedure StartAiGhost;
+begin
+  GAiGhost := TAtlasIdeAiGhost.Create(
+    function: TLspSession
+    begin
+      Result := TAtlasIdeHost.RunningSession;
+    end, TAtlasAiHttpClient.Create, ReadAiKey,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+end;
+
+procedure StopAiGhost;
+begin
+  // Bricht die laufende Anfrage ab und meldet den Anbieter bei Base ab (Regel 3).
+  FreeAndNil(GAiGhost);
+end;
+
+function AiGhostStarted: Boolean;
+begin
+  Result := GAiGhost <> nil;
+end;
+
 { TAtlasAssistantsModule }
 
 class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
@@ -141,7 +219,13 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsEdit;
-      end, EditsStarted, StartEdits, StopEdits)];
+      end, EditsStarted, StartEdits, StopEdits),
+    // Schattentext vom KI-Anbieter (#1922): nur im normalen Start und solange assistants.inlineSuggestions an ist.
+    TAtlasFeaturePart.When('AiGhostText',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsInlineSuggestions;
+      end, AiGhostStarted, StartAiGhost, StopAiGhost)];
 end;
 
 function TAtlasAssistantsModule.Info: TAtlasModuleInfo;
@@ -185,13 +269,18 @@ begin
     GScope.Provide(IAtlasFeaturePart, mPart);
   end;
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
+  TAtlasAssistantsSettingsSection.KeyHooks := KeyHooks;
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
   Result := True;
 end;
 
 class procedure TAtlasAssistantsModule.UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance,
+    procedure
+    begin
+      TAtlasAssistantsSettingsSection.KeyHooks := Default(TAtlasAssistantsKeyHooks);
+    end);
 end;
 
 initialization

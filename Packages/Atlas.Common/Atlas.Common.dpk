@@ -569,6 +569,7 @@ contains
   Atlas.Common.Editing.Formatter.Indent in 'Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas',
   Atlas.Common.Editing.SmartIndent in 'Source\Editing\Atlas.Common.Editing.SmartIndent.pas',
   Atlas.Common.Editing.LearnedSuggestions in 'Source\Editing\Atlas.Common.Editing.LearnedSuggestions.pas',
+  Atlas.Common.Editing.SuggestionContext in 'Source\Editing\Atlas.Common.Editing.SuggestionContext.pas',
   Atlas.Common.Editing.Formatter.Layout in 'Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas',
   Atlas.Common.Editing.Formatter in 'Source\Editing\Atlas.Common.Editing.Formatter.pas',
   Atlas.Common.Editing.FormatCheck in 'Source\Editing\Atlas.Common.Editing.FormatCheck.pas',

@@ -36,6 +36,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Plugin.Store,
+  Atlas.Core.Settings.Plugin.Assistants,
   Atlas.Core.Settings.Plugin.Bookmarks,
   Atlas.Core.Settings.Plugin.Build,
   Atlas.Core.Settings.Plugin.CodeActions,
@@ -189,7 +190,7 @@ begin
 end;
 
 /// <summary>Schreibt die Vorgaben der Bereichs-Records Navigationstasten, Prüfregeln, Snippets, Versionsverwaltung,
-/// Willkommensseite über AWriter.</summary>
+/// Willkommensseite, KI-Anbieter über AWriter.</summary>
 procedure WriteRemainingAreas(const AWriter: TAtlasSettingsExchange);
 var
   mNavigationKeys: TAtlasPluginNavigationKeysSettings;
@@ -198,6 +199,7 @@ var
   mVcs: TAtlasPluginVcsSettings;
   mWelcome: TAtlasPluginWelcomeSettings;
   mWelcomeTiles: TAtlasPluginWelcomeTilesSettings;
+  mAssistants: TAtlasPluginAssistantsSettings;
 begin
   mNavigationKeys := TAtlasPluginNavigationKeysSettings.Defaults;
   mNavigationKeys.Exchange(AWriter);
@@ -211,6 +213,8 @@ begin
   mWelcome.Exchange(AWriter);
   mWelcomeTiles := TAtlasPluginWelcomeTilesSettings.Defaults;
   mWelcomeTiles.Exchange(AWriter);
+  mAssistants := TAtlasPluginAssistantsSettings.Defaults;
+  mAssistants.Exchange(AWriter);
 end;
 
 /// <summary>Schreibt die Vorgaben jedes Bereichs-Records einzeln nach AStore.</summary>

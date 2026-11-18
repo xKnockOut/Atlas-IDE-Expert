@@ -17,6 +17,10 @@
 //   Wort, Esc verwirft (der Anbieter zählt es). Ist alles geschrieben, steht
 //   die Schreibmarke im Rumpf. Jede andere Änderung und jeder Wechsel der
 //   Ansicht verwirft den Vorschlag.
+// - Meldet sich ein Anbieter ab (Modul entladen, #1922), verfällt sein
+//   Vorschlag, und eine laufende Anfrage wird abgewartet. Die Arbeit der
+//   Anbieter löst der Hintergrund-Thread selbst; danach kennt Base die Anbieter
+//   der Anfrage nur noch als Zeiger und fragt die Liste, ob es sie noch gibt.
 // Nur im Hauptthread.
 
 interface
@@ -323,35 +327,54 @@ class procedure TAtlasIdeGhostSuggestions.Start(const AAsked: TAsked; const AWor
 var
   mAsked: TAsked;
   mWorks: TArray<TAtlasGhostWork>;
-  mProviders: TArray<IAtlasGhostProvider>;
-  mFound: IAtlasGhostProvider;
+  mKeys: TArray<Pointer>;
+  mFound: Integer;
+  mIndex: Integer;
   mProposal: TAtlasGhostProposal;
 begin
   // Kopien: Anonyme Methoden fangen keine const-Parameter ein.
   mAsked := AAsked;
   mWorks := AWorks;
-  mProviders := AProviders;
-  mFound := nil;
+  // Nur Zeiger: Ein Verweis hielte den Anbieter eines entladenen Moduls bis zum Abschluss fest.
+  SetLength(mKeys, Length(AProviders));
+  for mIndex := 0 to High(AProviders) do
+  begin
+    mKeys[mIndex] := Pointer(AProviders[mIndex]);
+  end;
+  mFound := -1;
   mProposal := Default(TAtlasGhostProposal);
   FRequest.Start(
     procedure
     var
-      mIndex: Integer;
+      mWork: Integer;
     begin
-      for mIndex := 0 to High(mWorks) do
-      begin
-        if mWorks[mIndex](mProposal) then
+      try
+        for mWork := 0 to High(mWorks) do
         begin
-          mFound := mProviders[mIndex];
-          Exit;
+          if mWorks[mWork](mProposal) then
+          begin
+            mFound := mWork;
+            Exit;
+          end;
         end;
+      finally
+        // Die Arbeit gehört dem Anbieter: hier lösen, nicht erst mit dem Abschluss im Hauptthread
+        // (ProviderRemoving wartet nur auf diesen Thread).
+        mWorks := nil;
       end;
     end,
     procedure(AOk: Boolean; const AError: string)
+    var
+      mProvider: IAtlasGhostProvider;
     begin
-      if AOk and (mFound <> nil) then
+      if not AOk or (mFound < 0) then
       begin
-        Answered(mAsked, mFound, mProposal);
+        Exit;
+      end;
+      mProvider := TAtlasGhostProviders.Find(mKeys[mFound]);
+      if mProvider <> nil then
+      begin
+        Answered(mAsked, mProvider, mProposal);
       end;
     end);
 end;
@@ -524,6 +547,21 @@ begin
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
+/// <summary>AProvider meldet sich ab: sein Vorschlag weg, eine laufende Anfrage abwarten.</summary>
+procedure ProviderRemoving(const AProvider: IAtlasGhostProvider);
+begin
+  if TAtlasIdeGhostSuggestions.FProvider = AProvider then
+  begin
+    TAtlasIdeGhostSuggestions.Dismiss;
+  end;
+  if (TAtlasIdeGhostSuggestions.FRequest <> nil) and TAtlasIdeGhostSuggestions.FRequest.Busy then
+  begin
+    // Der Destruktor wartet den Thread ab und verwirft den Abschluss; danach eine neue Anfrage.
+    FreeAndNil(TAtlasIdeGhostSuggestions.FRequest);
+    TAtlasIdeGhostSuggestions.FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.LearnedSuggestions);
+  end;
+end;
+
 class procedure TAtlasIdeGhostSuggestions.Install(const ABusy: TFunc<Boolean>; const AStatus: TAtlasGhostStatus);
 begin
   FBusy := ABusy;
@@ -552,6 +590,11 @@ begin
   begin
     FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.LearnedSuggestions);
   end;
+  TAtlasGhostProviders.Watch(
+    procedure(const AProvider: IAtlasGhostProvider)
+    begin
+      ProviderRemoving(AProvider);
+    end);
   TAtlasEnterWatch.Add(cHandlerName,
     function: Boolean
     begin
@@ -566,6 +609,7 @@ end;
 class procedure TAtlasIdeGhostSuggestions.Uninstall;
 begin
   TAtlasEnterWatch.Remove(cHandlerName);
+  TAtlasGhostProviders.Watch(nil);
   Dismiss;
   if FKeys <> nil then
   begin

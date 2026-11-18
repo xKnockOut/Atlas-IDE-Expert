@@ -60,6 +60,8 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Ci.Adapters.Credentials,
+  Atlas.Core.Credentials.Contract,
+  Atlas.Core.Credentials.Adapters.Windows,
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Tracker.Contract,
@@ -114,9 +116,12 @@ end;
 
 /// <summary>Anmeldespeicher von Windows und HTTP-Transporte für beide Zugänge.</summary>
 function AccessParts: TAtlasAccessParts;
+var
+  mStore: IAtlasCredentialStore;
 begin
   Result := Default(TAtlasAccessParts);
-  Result.Credentials := TAtlasCiCredentialStore.Create;
+  mStore := TAtlasWindowsCredentials.Create;
+  Result.Credentials := TAtlasCiCredentialStore.Create(mStore);
   Result.Transports := TAtlasCiHttpTransports.Create;
   Result.Notice := AccessNotice;
 end;

@@ -128,6 +128,7 @@ Atlas.Common.Editing.SmartPaste.Tests
 Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
 Atlas.Common.Editing.StringLiterals.Tests
+Atlas.Common.Editing.SuggestionContext.Tests
 Atlas.Common.Editing.SuggestConst.Tests
 Atlas.Common.Editing.TestCommands.Tests
 Atlas.Common.Editing.TestDrafts.Tests
@@ -404,6 +405,8 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.AiProviders.Anthropic.Tests
+Atlas.Core.Assistants.AiGhost.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
@@ -417,6 +420,7 @@ Atlas.Core.Status.FieldPlan.Tests
 Atlas.Core.EditorToolbar.Plan.Tests
 Atlas.Core.Editor.PeekPlan.Tests
 Atlas.Core.Settings.NodeScope.Tests
+Atlas.Core.Settings.Plugin.Assistants.Tests
 Atlas.Core.Problems.Findings.Tests
 Atlas.Core.Projects.PathCheck.Tests
 Atlas.Core.Projects.VcsSettings.Tests
@@ -554,6 +558,7 @@ Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.Internals.GitHubProjects.Tests
 Atlas.Core.Tracker.Internals.GitHubLinkedBranches.Tests
 Atlas.Core.Tracker.LinkedStart.Tests
+Atlas.Core.Ci.Adapters.Credentials.Tests
 Atlas.Core.Tracker.Internals.FormYaml.Tests
 Atlas.Core.Tracker.IssueForms.Tests
 Atlas.Core.Tracker.NewIssueGitHub.Tests
