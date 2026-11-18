@@ -13,6 +13,8 @@
 // nennt die Antwort im Feld atlasUnchanged, damit der Editor sie zum Prüfen zeigt.
 // Beim Umbenennen eines Typs wandert der Typkommentar über seinen Rümpfen
 // ({ TKunde }, // TKunde, {$REGION 'TKunde'}) mit (#1838).
+// Ein Parameter wird in beiden Köpfen seiner Routine und im Rumpf umbenannt,
+// von jedem Kopf und jeder Verwendung aus (#2425).
 
 interface
 
@@ -140,6 +142,7 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
@@ -724,6 +727,7 @@ class function TLspRename.Check(AResolver: TNameResolver; const AIndex: ISymbolI
 var
   mIndex: Integer;
   mTargets: TArray<TDefinitionTarget>;
+  mHeaders: TParameterHeaders;
 begin
   Result := Default(TRenameCheck);
   mIndex := IdentifierAt(ATree.Tokens, APosition);
@@ -737,6 +741,13 @@ begin
   if StartsStr('&', Result.Name) then
   begin
     Result.Name := Copy(Result.Name, 2, MaxInt);
+  end;
+  // Parameter (#2425): auch aus dem Kopf ohne Rumpf, den die Namensauflösung nicht kennt; ohne Rumpf (abstract)
+  // ist der Kopf selbst die Deklaration.
+  if TParameterHeaders.Find(AResolver, AIndex, ATree, AFileName, APosition, mHeaders) then
+  begin
+    Result.DeclarationFile := AFileName;
+    Exit;
   end;
   mTargets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
   if Length(mTargets) > 0 then
