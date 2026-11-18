@@ -139,13 +139,12 @@ begin
   Result := TEncoding.UTF8.GetString(mBytes, mStart, Length(mBytes) - mStart);
 end;
 
-function CurrentIssueOf(const ARoot: string; const AArguments: TJSONObject; ANow: TDateTime): string;
+/// <summary>Argumente section und format; EMcpToolError bei anderem Text.</summary>
+procedure ParseArguments(const AArguments: TJSONObject; out ASection: TAtlasCurrentIssueSection; out AJson: Boolean);
 var
-  mSection: TAtlasCurrentIssueSection;
-  mFormat, mGitDir, mText: string;
-  mIssue: TAtlasCurrentIssue;
+  mFormat: string;
 begin
-  if not TMcpCurrentIssueText.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), mSection) then
+  if not TMcpCurrentIssueText.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), ASection) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('section', ['summary', 'checklist', 'body', 'comments', 'all']));
   end;
@@ -154,6 +153,17 @@ begin
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json']));
   end;
+  AJson := SameText(mFormat, 'json');
+end;
+
+function CurrentIssueOf(const ARoot: string; const AArguments: TJSONObject; ANow: TDateTime): string;
+var
+  mSection: TAtlasCurrentIssueSection;
+  mJson: Boolean;
+  mGitDir, mText: string;
+  mIssue: TAtlasCurrentIssue;
+begin
+  ParseArguments(AArguments, mSection, mJson);
   mGitDir := GitDirAbove(ARoot);
   if mGitDir = '' then
   begin
@@ -168,7 +178,7 @@ begin
   begin
     raise EMcpToolError.Create(cTexts[TMcpIssueText.Unreadable].Fmt([TAtlasCurrentIssue.cFileName]));
   end;
-  if SameText(mFormat, 'json') then
+  if mJson then
   begin
     Result := TMcpCurrentIssueText.Json(mIssue, mSection);
   end

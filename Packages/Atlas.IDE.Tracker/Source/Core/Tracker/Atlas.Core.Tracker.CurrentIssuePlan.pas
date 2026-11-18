@@ -123,34 +123,31 @@ begin
   end;
 end;
 
-/// <summary>Zeile und Symbol hinter dem Dateinamen (APos dahinter): ":12[:5] [Symbol]" oder ", Wort 12".
-/// </summary>
-procedure ReadTail(const ALine: string; APos: Integer; var ARef: TAtlasCurrentIssueCodeRef);
+/// <summary>Steht an APos ein Doppelpunkt mit Ziffer dahinter?</summary>
+function ColonNumberAt(const ALine: string; APos: Integer): Boolean;
+begin
+  Result := (APos < Length(ALine)) and (ALine[APos] = ':') and IsDigit(ALine[APos + 1]);
+end;
+
+/// <summary>":12[:5] [Symbol]" ab APos (auf dem Doppelpunkt).</summary>
+procedure ReadColonTail(const ALine: string; APos: Integer; var ARef: TAtlasCurrentIssueCodeRef);
+begin
+  Inc(APos);
+  ARef.Line := NumberAt(ALine, APos);
+  if ColonNumberAt(ALine, APos) then
+  begin
+    Inc(APos);
+    NumberAt(ALine, APos);
+  end;
+  SkipBlanks(ALine, APos);
+  ARef.Symbol := SymbolAt(ALine, APos);
+end;
+
+/// <summary>Fundstelle von „Issue anlegen …“ ab APos (auf dem Komma): ", Zeile 12".</summary>
+procedure ReadWordTail(const ALine: string; APos: Integer; var ARef: TAtlasCurrentIssueCodeRef);
 var
   mWord: Integer;
 begin
-  if (APos <= Length(ALine)) and (ALine[APos] = '`') then
-  begin
-    Inc(APos);
-  end;
-  if (APos < Length(ALine)) and (ALine[APos] = ':') and IsDigit(ALine[APos + 1]) then
-  begin
-    Inc(APos);
-    ARef.Line := NumberAt(ALine, APos);
-    if (APos < Length(ALine)) and (ALine[APos] = ':') and IsDigit(ALine[APos + 1]) then
-    begin
-      Inc(APos);
-      NumberAt(ALine, APos);
-    end;
-    SkipBlanks(ALine, APos);
-    ARef.Symbol := SymbolAt(ALine, APos);
-    Exit;
-  end;
-  // Fundstelle von „Issue anlegen …“: "`Unit1.pas`, Zeile 12".
-  if Copy(ALine, APos, 2) <> ', ' then
-  begin
-    Exit;
-  end;
   mWord := APos + 2;
   while (mWord <= Length(ALine)) and TTextChars.IsAsciiIdentChar(ALine[mWord]) and not IsDigit(ALine[mWord]) do
   begin
@@ -160,6 +157,24 @@ begin
   begin
     Inc(mWord);
     ARef.Line := NumberAt(ALine, mWord);
+  end;
+end;
+
+/// <summary>Zeile und Symbol hinter dem Dateinamen (APos dahinter): ":12[:5] [Symbol]" oder ", Wort 12".
+/// </summary>
+procedure ReadTail(const ALine: string; APos: Integer; var ARef: TAtlasCurrentIssueCodeRef);
+begin
+  if (APos <= Length(ALine)) and (ALine[APos] = '`') then
+  begin
+    Inc(APos);
+  end;
+  if ColonNumberAt(ALine, APos) then
+  begin
+    ReadColonTail(ALine, APos, ARef);
+  end
+  else if Copy(ALine, APos, 2) = ', ' then
+  begin
+    ReadWordTail(ALine, APos, ARef);
   end;
 end;
 

@@ -40,7 +40,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CurrentIssue,
   Atlas.Core.Tracker.CurrentIssuePlan,
   Atlas.Core.Tracker.Files,
