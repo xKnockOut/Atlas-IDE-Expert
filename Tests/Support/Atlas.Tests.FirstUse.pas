@@ -24,6 +24,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Winapi.Messages,
   System.SysUtils,
   System.Types,
   System.Classes,
@@ -508,6 +509,38 @@ begin
   TApplicationEvents.Create(nil).Free;
 end;
 
+type
+  /// <summary>Formular, das sich gleich nach dem Zeigen über WM_CLOSE selbst schließt: ShowModal kehrt damit über die
+  /// modale Schleife zurück, ohne dass jemand klickt.</summary>
+  TFirstModalForm = class(TForm)
+  protected
+    procedure DoShow; override;
+  end;
+
+procedure TFirstModalForm.DoShow;
+begin
+  inherited DoShow;
+  PostMessage(Handle, WM_CLOSE, 0, 0);
+end;
+
+/// <summary>Erstes modales Fenster des Prozesses (TCustomForm.ShowModal): Screen merkt sich dabei die Fenster, deren
+/// Fokus es zurückgibt (SaveFocusedList); die Liste entsteht beim ersten ShowModal und bleibt (56 Byte, z. B. im
+/// Export-Dialog der Diagnose), frei mit Screen in der Finalisierung der VCL.</summary>
+procedure DiagnosticsWarmUpFirstModal;
+var
+  mForm: TFirstModalForm;
+begin
+  mForm := TFirstModalForm.CreateNew(nil);
+  try
+    mForm.BorderStyle := bsNone;
+    mForm.Position := poDesigned;
+    mForm.SetBounds(-10000, -10000, 1, 1);
+    mForm.ShowModal;
+  finally
+    mForm.Free;
+  end;
+end;
+
 /// <summary>Liste aller Leinwände der VCL (Vcl.Graphics, TCanvas.Create trägt jede ein, TCanvas.Destroy trägt sie
 /// aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig lebender Leinwände und bleibt bis zur Finalisierung
 /// von Vcl.Graphics. Jedes TCustomControl hat eine; eine Einstellungsseite mit allen Bereichen kommt auf mehrere
@@ -701,6 +734,7 @@ begin
   WarmUpRtlSingletons;
   ShellWarmUpPlatformId;
   WelcomeWarmUpApplicationEvents;
+  DiagnosticsWarmUpFirstModal;
 end;
 
 end.
