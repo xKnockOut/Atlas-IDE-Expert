@@ -115,7 +115,7 @@ end;
 procedure TAtlasSettingsStartupPart.AddSafeSection;
 begin
   // Abgesicherter Start nach einem Absturz (#722).
-  AddTitle(TAtlasTextId.SettingsSafeTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsSafeTitle);
   BindCheck('SafeAskAfterCrash', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeAsk)));
   BindCheck('SafeAutoAfterRepeatedCrash', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeAuto)));
   FSafeKey := TAtlasChoiceBox.Create(FPage);
@@ -135,7 +135,7 @@ end;
 procedure TAtlasSettingsStartupPart.AddUndoSection;
 begin
   // Atlas-Änderungen über mehrere Dateien zurücknehmen (#721).
-  AddTitle(TAtlasTextId.SettingsUndoTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsUndoTitle);
   BindCheck('UndoMultiFile', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoEnabled)));
   BindText('UndoMultiFileDepth', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoDepth)));
   BindCheck('UndoMultiFilePersist', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoPersist)));
@@ -153,7 +153,7 @@ end;
 procedure TAtlasSettingsStartupPart.AddQuickOpenSection;
 begin
   // Datei und Symbol schnell öffnen (#503); die Units-Suche baut ihr Modul als Abschnitt in diesen Reiter (#1455).
-  AddTitle(TAtlasTextId.QuickOpenTitle);
+  FPage.AddTitleText(TAtlasStrings.Text(TAtlasTextId.QuickOpenTitle));
   BindCheck('QuickOpen', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpen)));
   BindCheck('QuickOpenLibrary', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenLibrary)));
   BindKey('QuickOpenKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenKey)));
@@ -164,7 +164,7 @@ var
   mPanel: TWinControl;
 begin
   // Version und Update-Prüfung (#495).
-  AddTitle(TAtlasTextId.SettingsUpdatesTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsUpdatesTitle);
   mPanel := AddPanel(cHeadingHeight);
   FVersion := TLabel.Create(FPage);
   FVersion.Parent := mPanel;
@@ -190,7 +190,7 @@ end;
 procedure TAtlasSettingsStartupPart.AddBugReportSection;
 begin
   // Fehlerbericht (#108).
-  AddTitle(TAtlasTextId.SettingsBugReportTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsBugReportTitle);
   BindCheck('BugReportAnonymize',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBugReportAnonymize)));
   // Protokoll des Plugins mit Klarnamen (#1478, diagnostics.log.names); Vorgabe anonym.
@@ -203,15 +203,15 @@ end;
 procedure TAtlasSettingsStartupPart.Build;
 begin
   // Abgesicherter Start, Updates und Fehlerbericht (#722, #495, #108).
-  AddSheet(TAtlasTextId.SettingsTabStartup);
+  AddSheet(TAtlasSettingsTextId.SettingsTabStartup);
   AddSafeSection;
   AddUpdatesSection;
   AddBugReportSection;
 
-  AddSheet(TAtlasTextId.SettingsTabUndo);
+  AddSheet(TAtlasSettingsTextId.SettingsTabUndo);
   AddUndoSection;
 
-  AddSheet(TAtlasTextId.SettingsTabUnitSearch);
+  AddSheet(TAtlasSettingsTextId.SettingsTabUnitSearch);
   AddQuickOpenSection;
 end;
 

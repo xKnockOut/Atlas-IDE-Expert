@@ -48,7 +48,6 @@ uses
   Vcl.StdCtrls,
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Foundation.Scaling;
 
@@ -188,7 +187,7 @@ var
   mTitle: TLabel;
 begin
   // Eigene Paarfarben und deren Reihenfolge je Thema.
-  AddSheet(TAtlasTextId.SettingsTabColors);
+  AddSheet(TAtlasSettingsTextId.SettingsTabColors);
   AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsLight), FLightSwatches);
   AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsDark), FDarkSwatches);
   AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorLight), FNestedLight);

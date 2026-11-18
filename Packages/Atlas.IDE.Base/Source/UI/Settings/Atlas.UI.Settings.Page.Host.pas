@@ -17,6 +17,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Catalog,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Marks,
@@ -58,12 +59,12 @@ type
   TAtlasSettingsPagePart = class
   protected
     FPage: TAtlasSettingsPageHost;
-    procedure AddSheet(AId: TAtlasTextId);
+    procedure AddSheet(AId: TAtlasSettingsTextId);
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TWinControl;
     function AddNumber(const ACaption: string): TEdit;
     function AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
-    procedure AddTitle(AId: TAtlasTextId);
+    procedure AddTitle(AId: TAtlasSettingsTextId);
     function AddKey(const ACaption: string): TEdit;
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
     function AddTextLine(const ACaption: string): TEdit;
@@ -274,7 +275,7 @@ begin
   FPage := APage;
 end;
 
-procedure TAtlasSettingsPagePart.AddSheet(AId: TAtlasTextId);
+procedure TAtlasSettingsPagePart.AddSheet(AId: TAtlasSettingsTextId);
 begin
   FPage.AddSheet(AId);
 end;
@@ -299,7 +300,7 @@ begin
   Result := FPage.AddChoice(ACaption, AItems);
 end;
 
-procedure TAtlasSettingsPagePart.AddTitle(AId: TAtlasTextId);
+procedure TAtlasSettingsPagePart.AddTitle(AId: TAtlasSettingsTextId);
 begin
   FPage.AddTitle(AId);
 end;
