@@ -215,9 +215,8 @@ class procedure TAtlasIdeLineMove.Run(AKind: TAtlasLineMoveKind);
 var
   mView: IOTAEditView;
   mState: TMoveState;
-  mBefore, mInsert: string;
+  mBefore: string;
   mNewLines: TArray<string>;
-  mStart, mOldLength: Integer;
   mMove: TAtlasLineMove;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
@@ -241,10 +240,7 @@ begin
     FFileName := '';
     Exit;
   end;
-  if TAtlasLineMover.Difference(mBefore, string.Join(mState.LineBreak, mNewLines), mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mBefore, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mView.Buffer, mBefore, string.Join(mState.LineBreak, mNewLines));
   PlaceCursor(mView, mMove, mNewLines, mState);
   mView.MoveViewToCursor;
   mView.Paint;

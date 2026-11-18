@@ -18,7 +18,8 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Text.DUnitX,
-  Atlas.Text.TestResults;
+  Atlas.Text.TestResults,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Ist das Ergebnis des Tests AMethod (der Fixture einer Marke) veraltet?</summary>
@@ -30,7 +31,7 @@ type
   TAtlasTestUnitFile = reference to function(const AUnitName: string): string;
   /// <summary>Zeilen einer Datei (ohne Zeilenende); False, wenn sie nicht lesbar ist (auch
   /// TAtlasTestRun.Failures).</summary>
-  TAtlasTestReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+  TAtlasTestReadLines = TTextReadLines;
 
   /// <summary>Datei und Prüfsumme einer verwendeten Unit beim Lauf.</summary>
   TAtlasUnitStamp = record

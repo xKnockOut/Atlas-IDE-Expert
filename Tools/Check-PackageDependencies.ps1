@@ -558,6 +558,35 @@ $PluginLock = @(
             'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.SplitTopLevel' = 'die eine Fassung'
         }
     }
+    [pscustomobject]@{
+        Name    = 'MessageLine'
+        Folder  = 'Packages'
+        Home    = 'TAtlasIdeHost.Message/Messages() in Atlas.IDE.Foundation.Host'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'ActiveProject(?:File)?'
+        Folder  = 'Packages'
+        Home    = 'GetActiveProject (ToolsAPI) bzw. TAtlasIdeFiles.ActiveProjectFile in Atlas.IDE.Foundation.Files'
+        Allowed = @{
+            'Atlas.IDE.Foundation.Files:TAtlasIdeFiles.ActiveProjectFile'             = 'die eine Fassung'
+            'Atlas.IDE.Foundation.StartOptions:TAtlasIdeStartOptions.ActiveProject'   = 'nur .dproj (Startoptionen)'
+            'Atlas.IDE.Debug.MethodBreakpoints:TAtlasIdeMethodBreakpoints.ActiveProject' = 'Projekt der Projektgruppe zur aktiven Datei'
+            'Atlas.Common.Lsp.IdeProject:TLspIdeProject.ActiveProject'                = 'Server: gemeldetes Projekt der IDE, kein ToolsAPI'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'ReadLines(?:Of)?'
+        Folder  = 'Packages'
+        Home    = 'TAtlasIdeFiles.ReadLines/LineReader() in Atlas.IDE.Foundation.Files'
+        Allowed = @{
+            'Atlas.IDE.Foundation.Files:TAtlasIdeFiles.ReadLines'       = 'die eine Fassung'
+            'Atlas.IDE.Welcome.QuickActions:ReadLines'                  = 'nur von der Platte (Projektdateien, nie ein offener Puffer)'
+            'Atlas.Common.Lsp.SignatureHelp:THelpRun.ReadLines'         = 'Server: Zeilen der Hilfeanfrage, keine Datei'
+            'Atlas.Common.Lsp.SignatureHelp:ReadLines'                  = 'Deklaration von THelpRun.ReadLines'
+            'Atlas.Common.Mcp.Prompts:ReadLines'                        = 'Server: liest über den Leser des MCP-Kontexts'
+        }
+    }
 )
 
 # An- und Abmelden der Module nur über TAtlasModuleHost: Aufrufe, die nur diese Units enthalten dürfen.
@@ -1345,6 +1374,32 @@ foreach ($lock in $PluginLock) {
         if (-not $found.ContainsKey($key)) {
             $violations += "Tools/Check-PackageDependencies.ps1: `$PluginLock ($($lock.Name)) nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
         }
+    }
+}
+
+# Kopien-Sperre für Schreiben in den Editorpuffer (#1973): Einen Rückgängig-Schritt mit Byte-Versatz,
+# Löschen und Einfügen legt nur TAtlasEditorSnapshots.WriteEdits/ReplaceText/WriteDifference an
+# (Atlas.IDE.Foundation.EditorSnapshot). Erlaubte Units mit Grund. Die Liste soll nur schrumpfen.
+$WriterHome = 'Atlas.IDE.Foundation.EditorSnapshot'
+$AllowedWriterLocal = @{
+    'Atlas.IDE.Completion.EditorCommit' = 'Änderungen der Vervollständigung kommen schon als Byte-Versatz'
+}
+$writerFound = @{}
+foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -File -Include '*.pas') {
+    $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+    if ($ownUnit -eq $WriterHome) { continue }
+    $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+    foreach ($match in [regex]::Matches($text, '(?i)\.\s*CreateUndoableWriter\b')) {
+        $writerFound[$ownUnit] = $true
+        if ($AllowedWriterLocal.ContainsKey($ownUnit)) { continue }
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        $line = ($text.Substring(0, $match.Index) -split "`n").Count
+        $violations += "${relative}:${line}: CreateUndoableWriter – in den Editorpuffer schreibt TAtlasEditorSnapshots.WriteEdits/ReplaceText/WriteDifference in $WriterHome (Kopien-Sperre, #1973); dort verwenden oder in `$AllowedWriterLocal begründen"
+    }
+}
+foreach ($key in $AllowedWriterLocal.Keys) {
+    if (-not $writerFound.ContainsKey($key)) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedWriterLocal nennt $key, dort gibt es keinen Schreiber mehr; Zeile streichen"
     }
 }
 

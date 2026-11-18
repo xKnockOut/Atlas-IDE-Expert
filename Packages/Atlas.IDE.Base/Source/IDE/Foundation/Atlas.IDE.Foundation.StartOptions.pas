@@ -140,14 +140,8 @@ begin
 end;
 
 class function TAtlasIdeStartOptions.ActiveProject: IOTAProject;
-var
-  mServices: IOTAModuleServices;
 begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Result := mServices.GetActiveProject;
-  end;
+  Result := GetActiveProject;
   if (Result <> nil) and not SameText(ExtractFileExt(Result.FileName), '.dproj') then
   begin
     Result := nil;

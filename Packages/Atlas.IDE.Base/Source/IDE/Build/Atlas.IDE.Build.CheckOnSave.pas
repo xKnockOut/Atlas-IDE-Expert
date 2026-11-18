@@ -63,7 +63,6 @@ type
     FKey: Word;
     procedure Tick(Sender: TObject);
     procedure Run(const AProject: string; AManual: Boolean);
-    class function ActiveProject: IOTAProject; static;
     class function Debugging: Boolean; static;
   public
     /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort angemeldet.</summary>
@@ -317,17 +316,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeCheckOnSave.ActiveProject: IOTAProject;
-var
-  mServices: IOTAModuleServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Result := mServices.GetActiveProject;
-  end;
-end;
-
 class function TAtlasIdeCheckOnSave.Debugging: Boolean;
 var
   mDebugger: IOTADebuggerServices;
@@ -375,7 +363,7 @@ begin
     begin
       Exit;
     end;
-    mProject := ActiveProject;
+    mProject := GetActiveProject;
     if mProject = nil then
     begin
       Exit;
@@ -399,7 +387,7 @@ procedure TAtlasIdeCheckOnSave.CheckNow;
 var
   mProject: IOTAProject;
 begin
-  mProject := ActiveProject;
+  mProject := GetActiveProject;
   if (mProject <> nil) and not FChecking and not FCore.BuildRunning and not Debugging then
   begin
     Run(mProject.FileName, True);

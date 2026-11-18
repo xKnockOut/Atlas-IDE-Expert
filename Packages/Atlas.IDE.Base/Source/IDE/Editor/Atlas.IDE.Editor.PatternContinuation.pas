@@ -276,9 +276,8 @@ end;
 function WriteLine(const ABuffer: IOTAEditBuffer; const AText: string; ALine: Integer; const ANewLine: string):
   Boolean;
 var
-  mLineBreak, mInsert: string;
+  mLineBreak: string;
   mLines: TArray<string>;
-  mStart, mOldLength: Integer;
 begin
   mLineBreak := #10;
   if Pos(#13#10, AText) > 0 then
@@ -292,10 +291,7 @@ begin
     Exit;
   end;
   mLines[ALine] := ANewLine;
-  if TAtlasLineMover.Difference(AText, string.Join(mLineBreak, mLines), mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(ABuffer, AText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(ABuffer, AText, string.Join(mLineBreak, mLines));
 end;
 
 class function TAtlasIdePatternContinuation.Run(const AView: IOTAEditView): Boolean;

@@ -25,11 +25,12 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Projects.Contract,
-  Atlas.Text.TestResults;
+  Atlas.Text.TestResults,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Liest eine Quelldatei zeilenweise; False, wenn sie fehlt.</summary>
-  TMcpReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+  TMcpReadLines = TTextReadLines;
 
   /// <summary>Was ausgeführt wird.</summary>
   TMcpTestTarget = record

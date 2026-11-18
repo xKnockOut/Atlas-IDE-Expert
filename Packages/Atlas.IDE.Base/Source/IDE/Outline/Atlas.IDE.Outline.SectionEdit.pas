@@ -75,11 +75,10 @@ procedure Run(const AFileName: string; const ANodes: TAtlasOutlineNodes; const A
 var
   mView: IOTAEditView;
   mBuffer: IOTAEditBuffer;
-  mText, mLineBreak, mInsert: string;
+  mText, mLineBreak: string;
   mLines, mNewLines: TArray<string>;
   mPlace: TAtlasVisibilityPlace;
   mEdit: TAtlasSectionEdit;
-  mStart, mOldLength: Integer;
   mCursor: TOTAEditPos;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
@@ -103,10 +102,7 @@ begin
     Exit;
   end;
   mNewLines := mEdit.Applied(mLines);
-  if TAtlasLineMover.Difference(mText, string.Join(mLineBreak, mNewLines), mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mBuffer, mText, string.Join(mLineBreak, mNewLines));
   mCursor.Line := mEdit.CaretLine + 1;
   mCursor.Col := TLspSession.IndexToColumn(mNewLines[mEdit.CaretLine], mEdit.CaretCharacter,
     TAtlasEditorBuffer.TabWidth(mBuffer));

@@ -418,9 +418,8 @@ class procedure TAtlasIdeGhostSuggestions.WriteAtCursor(const AText: string);
 var
   mView: IOTAEditView;
   mBuffer: IOTAEditBuffer;
-  mWriter: IOTAEditWriter;
   mText, mLineText: string;
-  mLine, mCharacter, mTabWidth: Integer;
+  mLine, mCharacter, mTabWidth, mStart: Integer;
   mLines: TArray<string>;
   mTarget: TOTAEditPos;
 begin
@@ -432,12 +431,9 @@ begin
   mLineText := TAtlasEditorBuffer.LineText(mView, FLine);
   mCharacter := TLspSession.ColumnToIndex(mLineText, FColumn, mTabWidth);
   FOwnWrite := True;
-  mWriter := mBuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TAtlasEditorBuffer.ByteOffset(mText, mLine, mCharacter - FReplace));
-  mWriter.DeleteTo(TAtlasEditorBuffer.ByteOffset(mText, mLine, mCharacter));
-  mWriter.Insert(PAnsiChar(UTF8Encode(AText)));
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(mBuffer.FileName);
+  mStart := TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter - FReplace);
+  TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart, TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter) - mStart,
+    AText);
   // Schreibmarke ans Ende des Geschriebenen.
   mLines := AText.Split([#13#10, #10]);
   mCharacter := mCharacter - FReplace;

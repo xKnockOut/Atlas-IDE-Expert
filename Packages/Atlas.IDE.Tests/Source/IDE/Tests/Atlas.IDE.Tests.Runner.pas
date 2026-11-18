@@ -209,12 +209,6 @@ const
   /// <summary>Höchstens so viele Namen in der Zeile der Lecks am Programmende (#1774).</summary>
   cShutdownLeakNames = 5;
 
-/// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
-function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-begin
-  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
-
 function ProjectByFile(const AFileName: string): IOTAProject;
 begin
   Result := TAtlasIdeTestProjects.ProjectByFile(AFileName);
@@ -827,7 +821,7 @@ end;
 function LeakWarnings(const ACases: TArray<TTestCaseResult>;
   const AUnitFile: TAtlasTestUnitFile): TArray<TPair<string, TAtlasProblem>>;
 begin
-  Result := TAtlasTestRun.LeakProblems(TAtlasTestRun.Locate(TAtlasTestLeaks.Leaked(ACases), AUnitFile, ReadLines),
+  Result := TAtlasTestRun.LeakProblems(TAtlasTestRun.Locate(TAtlasTestLeaks.Leaked(ACases), AUnitFile, TAtlasIdeFiles.LineReader()),
     TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLeakProblem));
 end;
 
@@ -880,10 +874,10 @@ begin
   // Probleme aus allen Ergebnissen dieser Sitzung: Ein Lauf einzelner Tests lässt die übrigen Fehlschläge stehen.
   mAll := ARun;
   mAll.Cases := FCases;
-  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines, mAtAssert);
+  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), TAtlasIdeFiles.LineReader(), mAtAssert);
   if Assigned(FHooks.OnProblems) then
   begin
-    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines,
+    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), TAtlasIdeFiles.LineReader(),
       mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline) +
       LeakWarnings(mAll.Cases, UnitFileFunc(ATarget.Project)));
@@ -908,7 +902,7 @@ begin
     // Die langsamsten Tests des Laufs für die Karte Testergebnisse (#1772).
     FHooks.OnFinished(ATarget.Project, TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
       TAtlasTestRun.Locate(TTestResults.Slowest(ARun.Cases, TAtlasProjectTests.cMaxSlowest),
-      UnitFileFunc(ATarget.Project), ReadLines), TTimeZone.Local.ToUniversalTime(Now)));
+      UnitFileFunc(ATarget.Project), TAtlasIdeFiles.LineReader()), TTimeZone.Local.ToUniversalTime(Now)));
   end;
   FOutput.EndQuiet(True, ARun);
   FOutput.Ended(ATarget.Project, TAtlasTestFinish.Report, ARun);

@@ -44,7 +44,7 @@ uses
   Atlas.Core.Projects.VersionControl;
 
 type
-  TAtlasIdeVcsMessage = reference to procedure(const AText: string);
+  TAtlasIdeVcsMessage = TProc<string>;
   /// <summary>Umsetzung für AFolder; ATimeoutMs = 0: Vorgabe-Zeitlimit.</summary>
   TAtlasIdeVcsOpen = reference to function(const AFolder: string; AProvider: TAtlasVcsProvider;
     const ARunner: IAtlasVcsRunner; ATimeoutMs: Cardinal): IAtlasVersionControl;

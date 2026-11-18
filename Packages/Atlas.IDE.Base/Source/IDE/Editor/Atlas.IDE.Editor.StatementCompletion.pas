@@ -219,9 +219,9 @@ end;
 class procedure TAtlasIdeStatementCompletion.RunWith(ATryKind: TAtlasTryKind);
 var
   mView: IOTAEditView;
-  mText, mLineBreak, mFinal, mInsert: string;
+  mText, mLineBreak, mFinal: string;
   mEdit: TAtlasStatementEdit;
-  mCursorLine, mCursorCharacter, mStart, mOldLength: Integer;
+  mCursorLine, mCursorCharacter: Integer;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
   if not Enabled or (mView = nil) or (mView.Buffer = nil) or mView.Buffer.IsReadOnly then
@@ -244,10 +244,7 @@ begin
   mFinal := Followed(mView.Buffer.FileName, string.Join(mLineBreak,
     TAtlasStatementCompleter.Apply(mText.Split([#13#10, #10]), mEdit)), mLineBreak, mEdit, mCursorLine,
     mCursorCharacter);
-  if TAtlasLineMover.Difference(mText, mFinal, mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mView.Buffer, mText, mFinal);
   PlaceCursor(mView, mFinal.Split([#13#10, #10]), mCursorLine, mCursorCharacter,
     TAtlasEditorBuffer.TabWidth(mView.Buffer));
 end;

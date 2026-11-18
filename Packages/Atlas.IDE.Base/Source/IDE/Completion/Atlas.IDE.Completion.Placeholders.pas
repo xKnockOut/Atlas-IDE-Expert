@@ -114,7 +114,9 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Completion.Strings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.Core.Editor.EditSurface,
+  Atlas.IDE.Foundation.EditorSnapshot;
 
 { TAtlasEditorPlaceholders.TEvents }
 
@@ -253,12 +255,24 @@ begin
   Stop;
 end;
 
+/// <summary>AEdits (Anfang und Ende als Zeichenversatz) als Ersetzungen für den Puffer.</summary>
+function TextEdits(const AEdits: TAtlasPlaceholderEdits): TAtlasTextEdits;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AEdits));
+  for mIndex := 0 to High(AEdits) do
+  begin
+    Result[mIndex] := TAtlasTextEdit.Create(AEdits[mIndex].Start, AEdits[mIndex].Stop - AEdits[mIndex].Start,
+      AEdits[mIndex].Text);
+  end;
+end;
+
 procedure TAtlasEditorPlaceholders.ApplyMirrors;
 var
   mEdits: TAtlasPlaceholderEdits;
-  mEdit: TAtlasPlaceholderEdit;
   mText: string;
-  mWriter: IOTAEditWriter;
   mCursor, mShift: Integer;
 begin
   FMirrorQueued := False;
@@ -281,15 +295,8 @@ begin
   mShift := TAtlasPlaceholderPlan.CursorShift(mEdits, mCursor);
   FApplying := True;
   try
-    // Ein Schreiber schreibt nur vorwärts; die Änderungen sind aufsteigend.
-    mWriter := FView.Buffer.CreateUndoableWriter;
-    for mEdit in mEdits do
-    begin
-      mWriter.CopyTo(TAtlasTextOffsets.BytesBefore(mText, mEdit.Start));
-      mWriter.DeleteTo(TAtlasTextOffsets.BytesBefore(mText, mEdit.Stop));
-      mWriter.Insert(PAnsiChar(UTF8Encode(mEdit.Text)));
-    end;
-    mWriter := nil;
+    // Die Änderungen sind aufsteigend: ein Rückgängig-Schritt.
+    TAtlasEditorSnapshots.WriteEdits(FView.Buffer, mText, TextEdits(mEdits));
   finally
     FApplying := False;
   end;
@@ -407,7 +414,6 @@ procedure TAtlasEditorPlaceholders.CollapseUndo;
 var
   mFinal: string;
   mReplacement: TAtlasPlaceholderReplacement;
-  mWriter: IOTAEditWriter;
 begin
   if (FSession = nil) or (FView = nil) or (FView.Buffer = nil) or (FBefore = '') then
   begin
@@ -426,12 +432,9 @@ begin
     end;
     // Gemeinsamer Anfang und gemeinsames Ende; dazwischen ersetzt ein Schreiber.
     mReplacement := TAtlasPlaceholderPlan.Replacement(FBefore, mFinal);
-    mWriter := FView.Buffer.CreateUndoableWriter;
-    mWriter.CopyTo(TAtlasTextOffsets.BytesBefore(FBefore, mReplacement.Prefix));
-    mWriter.DeleteTo(TAtlasTextOffsets.BytesBefore(FBefore, Length(FBefore) - mReplacement.Suffix));
-    mWriter.Insert(PAnsiChar(UTF8Encode(Copy(mFinal, mReplacement.Prefix + 1,
-      Length(mFinal) - mReplacement.Prefix - mReplacement.Suffix))));
-    mWriter := nil;
+    TAtlasEditorSnapshots.ReplaceText(FView.Buffer, FBefore, mReplacement.Prefix,
+      Length(FBefore) - mReplacement.Suffix - mReplacement.Prefix,
+      Copy(mFinal, mReplacement.Prefix + 1, Length(mFinal) - mReplacement.Prefix - mReplacement.Suffix));
   finally
     FApplying := False;
   end;

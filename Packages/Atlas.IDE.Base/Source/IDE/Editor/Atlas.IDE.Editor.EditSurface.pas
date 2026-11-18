@@ -198,25 +198,8 @@ begin
 end;
 
 procedure TAtlasIdeEditSurface.Write(const ABase: string; const AEdits: TAtlasTextEdits);
-var
-  mWriter: IOTAEditWriter;
-  mEdit: TAtlasTextEdit;
-  mUtf8: UTF8String;
 begin
-  // Ein Schreiber: ein Rückgängig-Schritt; der Text zwischen den Ersetzungen bleibt unberührt.
-  mWriter := FView.Buffer.CreateUndoableWriter;
-  for mEdit in AEdits do
-  begin
-    mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(ABase, 1, mEdit.Start)));
-    mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(ABase, 1, mEdit.Start + mEdit.Count)));
-    if mEdit.Insert <> '' then
-    begin
-      mUtf8 := UTF8Encode(mEdit.Insert);
-      mWriter.Insert(PAnsiChar(mUtf8));
-    end;
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(FView.Buffer.FileName);
+  TAtlasEditorSnapshots.WriteEdits(FView.Buffer, ABase, AEdits);
 end;
 
 function TAtlasIdeEditSurface.Undo: Boolean;

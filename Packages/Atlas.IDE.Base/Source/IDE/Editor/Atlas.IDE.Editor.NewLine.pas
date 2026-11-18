@@ -73,9 +73,9 @@ class procedure TAtlasIdeNewLine.Run(ADirection: TAtlasNewLineDirection);
 var
   mView: IOTAEditView;
   mBuffer: IOTAEditBuffer;
-  mText, mNewText, mLineBreak, mInsert: string;
+  mText, mNewText, mLineBreak: string;
   mLines: TArray<string>;
-  mTabWidth, mStart, mOldLength: Integer;
+  mTabWidth: Integer;
   mDone: TAtlasNewLineResult;
 begin
   if not Enabled then
@@ -103,10 +103,7 @@ begin
   mDone := TAtlasNewLine.Insert(mLines, mView.CursorPos.Line - 1, ADirection,
     Options(TAtlasEditorBuffer.BlockIndent(mBuffer)));
   mNewText := string.Join(mLineBreak, mDone.Lines);
-  if TAtlasLineMover.Difference(mText, mNewText, mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mBuffer, mText, mNewText);
   mView.CursorPos := EditPos(mDone.Lines, mDone.Cursor, mTabWidth);
   mView.MoveViewToCursor;
   mView.Paint;

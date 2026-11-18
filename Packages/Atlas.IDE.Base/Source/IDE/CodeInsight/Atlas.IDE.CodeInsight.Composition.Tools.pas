@@ -85,7 +85,8 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.CodeInsight.Composition.Adapters,
   Atlas.IDE.CodeInsight.Composition.Session,
-  Atlas.IDE.CodeInsight.Composition.Status;
+  Atlas.IDE.CodeInsight.Composition.Status,
+  Atlas.IDE.Foundation.Host;
 
 const
   /// <summary>Zeitlimit eines Serverbefehls aus dem Menü ohne Antwortverarbeitung.</summary>
@@ -372,7 +373,7 @@ end;
 procedure StartUpdates;
 begin
   UpdatesInstance := TAtlasIdeUpdates.Create(nil);
-  UpdatesInstance.Start(TAtlasUpdates.StateFile, UpdateSource, MessageLines(), GuardLogs());
+  UpdatesInstance.Start(TAtlasUpdates.StateFile, UpdateSource, TAtlasIdeHost.Messages(), GuardLogs());
   // Zeile „Version“ im Statusfeld und in der Zustandskachel (#754).
   UpdatesInstance.ShowStatus(TAtlasStatusRegistry.Default);
 end;

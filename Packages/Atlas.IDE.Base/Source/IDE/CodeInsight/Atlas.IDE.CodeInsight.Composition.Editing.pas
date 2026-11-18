@@ -38,7 +38,8 @@ uses
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.CodeInsight.Composition.Session,
-  Atlas.IDE.CodeInsight.Composition.Status;
+  Atlas.IDE.CodeInsight.Composition.Status,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Vervollständigung oder Platzhalter des Managers offen?</summary>
 function CompletionBusy: Boolean;
@@ -112,7 +113,7 @@ begin
   TAtlasIdePatternContinuation.Install(RunningSession, CompletionVisible);
   // Gelernte Vorschläge (#1890): nach dem Muster, nur wenn es nichts vorschlägt; nie neben Vervollständigung,
   // Platzhaltern, mehreren Einfügemarken und dem Mitziehen von Bezeichnern.
-  TAtlasIdeLearnedSuggestions.Install(RunningSession, MessageLines());
+  TAtlasIdeLearnedSuggestions.Install(RunningSession, TAtlasIdeHost.Messages());
   TAtlasIdeGhostSuggestions.Install(TypingBusy, GhostStatus);
 end;
 
@@ -123,13 +124,13 @@ begin
   TAtlasIdeLinkedEditing.Install(LinkedEditingBusy, RunningSession, LinkedEditingStatus);
   TAtlasIdeWrapSelection.Install(TypingBusy);
   // Einfügen mit uses-Ergänzung (#515, experimentell): Ergebnis nur in der Meldungsansicht.
-  TAtlasIdeSmartPaste.Install(TypingBusy, RunningSession, MessageLines());
+  TAtlasIdeSmartPaste.Install(TypingBusy, RunningSession, TAtlasIdeHost.Messages());
   // Umschließung entfernen (#657): Liste und Vorschau; Ergebnis in der Meldungsansicht.
-  TAtlasIdeUnwrap.Install(RunningSession, MessageLines());
+  TAtlasIdeUnwrap.Install(RunningSession, TAtlasIdeHost.Messages());
   // Typ des markierten Ausdrucks (#689): Tooltip und Hervorhebung; Fehler in der Meldungsansicht.
-  TAtlasIdeExpressionType.Install(RunningSession, MessageLines());
+  TAtlasIdeExpressionType.Install(RunningSession, TAtlasIdeHost.Messages());
   // Methodenrümpfe in Deklarationsreihenfolge (#660): neue Rümpfe an ihre Stelle, Befehl mit Vorschau.
-  TAtlasIdeMethodPlacement.Install(RunningSession, MessageLines(), UnopenedPolicy);
+  TAtlasIdeMethodPlacement.Install(RunningSession, TAtlasIdeHost.Messages(), UnopenedPolicy);
   // Regionen beim Öffnen auf- oder zuklappen (#1814).
   TAtlasIdeRegionFolds.Install;
 end;

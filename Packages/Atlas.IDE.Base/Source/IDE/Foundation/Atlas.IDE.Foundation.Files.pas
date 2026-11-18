@@ -8,7 +8,8 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Files.TextFile,
+  Atlas.Text.Lines;
 
 type
   TAtlasIdeFiles = class
@@ -27,6 +28,8 @@ type
     /// <summary>Zeilen von AFileName: aus dem Editorpuffer, wenn die Datei offen ist, sonst von der Platte;
     /// False, wenn sie fehlt oder nicht lesbar ist.</summary>
     class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
+    /// <summary>ReadLines als Methodenreferenz für Module und Kernlogik (mit () aufrufen).</summary>
+    class function LineReader: TTextReadLines; static;
     /// <summary>Text von AFileName: offener Puffer (auch ungespeichert), sonst die Datei; False, wenn sie sich nicht
     /// lesen lässt (ASource dann leer).</summary>
     class function SourceText(const AFileName: string; out ASource: string): Boolean; static;
@@ -52,8 +55,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Files.EncodingDefault,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.Text.Lines;
+  Atlas.IDE.Foundation.EditorBuffer;
 
 { TAtlasIdeFiles }
 
@@ -138,15 +140,10 @@ end;
 
 class function TAtlasIdeFiles.ActiveProjectFile: string;
 var
-  mServices: IOTAModuleServices;
   mProject: IOTAProject;
 begin
   Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mProject := mServices.GetActiveProject;
+  mProject := GetActiveProject;
   if mProject <> nil then
   begin
     Result := mProject.FileName;
@@ -163,6 +160,15 @@ begin
   begin
     ALines := TTextLines.SplitLines(mText);
   end;
+end;
+
+class function TAtlasIdeFiles.LineReader: TTextReadLines;
+begin
+  Result :=
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      Result := ReadLines(AFileName, ALines);
+    end;
 end;
 
 class function TAtlasIdeFiles.SourceText(const AFileName: string; out ASource: string): Boolean;

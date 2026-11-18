@@ -100,11 +100,6 @@ begin
   Result := TAtlasIdeHost.RunningSession;
 end;
 
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 { Sichtbarkeit und Bedingungen }
 
 function NotMinimal(ALevel: TAtlasSafeLevel): Boolean;
@@ -193,7 +188,7 @@ end;
 
 procedure ToggleDebugJustMyCode;
 begin
-  TAtlasIdeDebugOwnCode.ToggleSetting(MessageLine);
+  TAtlasIdeDebugOwnCode.ToggleSetting(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Scope des Moduls für Befehle mit Antwort des Servers; nil vor dem Anmelden.</summary>
@@ -264,7 +259,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start.
   InstallBreakCommands;
   // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet das Teil DebugStepFilter.
@@ -272,7 +267,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   GCommandsInstalled := True;
 end;
 

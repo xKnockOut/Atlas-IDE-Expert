@@ -42,7 +42,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Palette,
   Atlas.IDE.CodeInsight.Composition.Navigation,
   Atlas.IDE.CodeInsight.Composition.Editing,
-  Atlas.IDE.CodeInsight.Composition.Tools;
+  Atlas.IDE.CodeInsight.Composition.Tools,
+  Atlas.IDE.Foundation.Host;
 
 var
   // Ergebnisfenster (#400) und Editorbefehle (#399) angemeldet.
@@ -89,7 +90,7 @@ begin
   mHooks.FindingsOf := FindingsOf;
   mHooks.CanGoBack := CanGoBack;
   mHooks.CanGoForward := CanGoForward;
-  mHooks.Message := MessageLines();
+  mHooks.Message := TAtlasIdeHost.Messages();
   TAtlasIdeEditorToolbar.Install(mHooks);
 end;
 
@@ -134,7 +135,7 @@ begin
     end;
   mHooks.WantMetrics :=
     WantStatusMetrics;
-  mHooks.Message := MessageLines();
+  mHooks.Message := TAtlasIdeHost.Messages();
   mHooks.Recheck := Recheck;
   TAtlasIdeStatusBar.Install(mHooks);
   RequestStatusRefresh;

@@ -65,7 +65,8 @@ uses
   Atlas.IDE.Editor.Reassigned,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Problems.Service,
-  Atlas.IDE.CodeInsight.Composition.Session;
+  Atlas.IDE.CodeInsight.Composition.Session,
+  Atlas.IDE.Foundation.Host;
 
 var
   Pairs: TAtlasEditorPairs;
@@ -177,7 +178,7 @@ begin
       // Im Hintergrund (#874).
       RunServerCommand(ACommand, AArgumentsJson, 10000, ADone);
     end;
-  mHooks.Message := MessageLines();
+  mHooks.Message := TAtlasIdeHost.Messages();
   mHooks.Indexing := ServerIndexing;
   mHooks.CreateIssue := CreateIssue;
   mHooks.CanCreateIssue := CanCreateIssue;

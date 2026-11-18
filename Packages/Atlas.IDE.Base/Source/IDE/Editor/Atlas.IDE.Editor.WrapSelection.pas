@@ -132,18 +132,14 @@ end;
 procedure WriteWrapped(const AView: IOTAEditView; const AText: string; const AWrapped: TAtlasWrapResult;
   AColumn: Boolean; ATabWidth: Integer);
 var
-  mLineBreak, mInsert: string;
-  mStart, mOldLength: Integer;
+  mLineBreak: string;
 begin
   mLineBreak := #10;
   if Pos(#13#10, AText) > 0 then
   begin
     mLineBreak := #13#10;
   end;
-  if TAtlasLineMover.Difference(AText, string.Join(mLineBreak, AWrapped.Lines), mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(AView.Buffer, AText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(AView.Buffer, AText, string.Join(mLineBreak, AWrapped.Lines));
   if AColumn then
   begin
     AView.Block.Style := btColumn;

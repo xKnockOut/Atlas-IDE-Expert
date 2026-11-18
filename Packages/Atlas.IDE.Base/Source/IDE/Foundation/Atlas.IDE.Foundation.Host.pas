@@ -119,12 +119,17 @@ type
     class function ActiveSession: TLspSession; static;
     /// <summary>Zeile in der Meldungsansicht der IDE, Gruppe „Atlas“.</summary>
     class procedure Message(const AText: string); static;
+    /// <summary>Message als Methodenreferenz für die Start-Routinen der Features und Module (mit () aufrufen).
+    /// </summary>
+    class function Messages: TProc<string>; static;
     /// <summary>Fläche, über der ein Popup oder eine Palette erscheint: aktives Formular, sonst Hauptfenster,
     /// sonst Arbeitsfläche.</summary>
     class function PopupArea: TRect; static;
     /// <summary>Warnung wie die der Sicherung: Meldungsansicht und Bericht; vor Install nur die
     /// Meldungsansicht.</summary>
     class procedure Warning(const AText: string); static;
+    /// <summary>Warning als Methodenreferenz (mit () aufrufen).</summary>
+    class function Warnings: TProc<string>; static;
     /// <summary>Zeile im Diagnoselog des Servers; ohne Server nichts.</summary>
     class procedure Log(const AText: string); static;
     /// <summary>Zeile im Bericht des Managers (Diagnose); vor Install nichts.</summary>
@@ -241,6 +246,24 @@ begin
     mGroup := mMessages.AddMessageGroup('Atlas');
   end;
   mMessages.AddTitleMessage(AText, mGroup);
+end;
+
+class function TAtlasIdeHost.Messages: TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      Message(AText);
+    end;
+end;
+
+class function TAtlasIdeHost.Warnings: TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      Warning(AText);
+    end;
 end;
 
 class function TAtlasIdeHost.PopupArea: TRect;

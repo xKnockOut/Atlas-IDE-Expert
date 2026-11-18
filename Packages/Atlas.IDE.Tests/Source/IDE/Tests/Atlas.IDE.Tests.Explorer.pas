@@ -182,12 +182,6 @@ begin
     end);
 end;
 
-/// <summary>Text von AFileName: Puffer der IDE, sonst Platte.</summary>
-function ReadLinesOf(const AFileName: string; out ALines: TArray<string>): Boolean;
-begin
-  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
-
 type
   /// <summary>Gewählte Knoten als Serie (#1782); False ohne Auswahl.</summary>
   TAtlasTestSeriesChoice = reference to function(AShuffle: Boolean; out AFileName: string;
@@ -253,7 +247,7 @@ begin
   FQueries := AQueries;
   FNext := ANext;
   FResults := TDictionary<string, TProjectRun>.Create;
-  FScans := TAtlasTestUnitScans.Create(ReadLinesOf, nil);
+  FScans := TAtlasTestUnitScans.Create(TAtlasIdeFiles.LineReader(), nil);
   FLogs := TAtlasIdeTestLogs.Create;
   FTicker := TAtlasIdeTestExplorerTicker.Create(FTests, Reload, ShowBusy);
   // Testlisten (#2167): Stand für Palette, Taste und Reiter; ohne gezeigtes Fenster liest es neu, das Fenster

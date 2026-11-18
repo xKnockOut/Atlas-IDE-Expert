@@ -59,23 +59,12 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Build.LastMessages,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.IDE.Foundation.Files;
 
 const
   /// <summary>Höchstens so viele Pfade in Rückfrage und Meldung; der Rest als „… und n weitere“.</summary>
   cOrphanLines = 15;
-
-function ActiveProjectFile: string;
-var
-  mProject: IOTAProject;
-begin
-  Result := '';
-  mProject := GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
-end;
 
 /// <summary>Einträge ohne Datei als Zeilen „Pfad (n Treffer)“, höchstens OrphanLines.</summary>
 function OrphanText(const AOrphans: TArray<TAtlasBaselineOrphan>): TArray<string>;
@@ -252,7 +241,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ActiveProjectFile;
+  mFileName := TAtlasIdeFiles.ActiveProjectFile;
   if mFileName = '' then
   begin
     TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateNoProject));
@@ -323,7 +312,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ActiveProjectFile;
+  mFileName := TAtlasIdeFiles.ActiveProjectFile;
   if mFileName = '' then
   begin
     TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.CompilerBaselineNoProject));
