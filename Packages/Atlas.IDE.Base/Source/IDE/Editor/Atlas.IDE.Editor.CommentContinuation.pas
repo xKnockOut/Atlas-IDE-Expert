@@ -33,7 +33,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,

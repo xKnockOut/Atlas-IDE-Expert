@@ -122,11 +122,9 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.SmartIndent,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.IDE.Editor.SmartIndent;
 
 { TAtlasIdeSmartPaste }
 
@@ -492,20 +490,20 @@ end;
 procedure WriteIndents(const ABuffer: IOTAEditBuffer; AStartLine: Integer; const AEdits: TArray<TAtlasIndentEdit>);
 var
   mText: string;
-  mEdits: TAtlasTextEdits;
-  mIndex, mStart: Integer;
+  mRanges: TArray<TLspTextRange>;
+  mIndex: Integer;
 begin
   mText := TAtlasEditorBuffer.Text(ABuffer);
-  mEdits := nil;
-  SetLength(mEdits, Length(AEdits));
+  mRanges := nil;
+  SetLength(mRanges, Length(AEdits));
   for mIndex := 0 to High(AEdits) do
   begin
-    mStart := TAtlasEditorBuffer.CharOffset(mText, AStartLine + AEdits[mIndex].Line, 0);
-    mEdits[mIndex] := TAtlasTextEdit.Create(mStart,
-      TAtlasEditorBuffer.CharOffset(mText, AStartLine + AEdits[mIndex].Line, AEdits[mIndex].Remove) - mStart,
-      AEdits[mIndex].Indent);
+    mRanges[mIndex].StartOffset := TAtlasEditorBuffer.CharOffset(mText, AStartLine + AEdits[mIndex].Line, 0);
+    mRanges[mIndex].EndOffset := TAtlasEditorBuffer.CharOffset(mText, AStartLine + AEdits[mIndex].Line,
+      AEdits[mIndex].Remove);
+    mRanges[mIndex].NewText := AEdits[mIndex].Indent;
   end;
-  TAtlasEditorSnapshots.WriteEdits(ABuffer, mText, mEdits);
+  TAtlasIdeWorkspaceEdit.WriteBuffer(ABuffer, mText, mRanges);
 end;
 
 /// <summary>Cursor in Zeile ALine (ab 0) an Zeichen ACharacter (höchstens ans Zeilenende).</summary>

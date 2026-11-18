@@ -821,8 +821,8 @@ end;
 function LeakWarnings(const ACases: TArray<TTestCaseResult>;
   const AUnitFile: TAtlasTestUnitFile): TArray<TPair<string, TAtlasProblem>>;
 begin
-  Result := TAtlasTestRun.LeakProblems(TAtlasTestRun.Locate(TAtlasTestLeaks.Leaked(ACases), AUnitFile, TAtlasIdeFiles.LineReader()),
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLeakProblem));
+  Result := TAtlasTestRun.LeakProblems(TAtlasTestRun.Locate(TAtlasTestLeaks.Leaked(ACases), AUnitFile,
+    TAtlasIdeFiles.LineReader()), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLeakProblem));
 end;
 
 /// <summary>Zeile mit Anzahl und Bytes der bestandenen Tests mit Leck in ACases; nichts ohne (#1774).</summary>
@@ -877,8 +877,8 @@ begin
   mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), TAtlasIdeFiles.LineReader(), mAtAssert);
   if Assigned(FHooks.OnProblems) then
   begin
-    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), TAtlasIdeFiles.LineReader(),
-      mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project),
+      TAtlasIdeFiles.LineReader(), mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline) +
       LeakWarnings(mAll.Cases, UnitFileFunc(ATarget.Project)));
   end;

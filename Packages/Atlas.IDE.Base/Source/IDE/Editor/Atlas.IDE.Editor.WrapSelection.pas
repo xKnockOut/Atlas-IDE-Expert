@@ -58,7 +58,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.Core.Editor.WrapSelection,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,

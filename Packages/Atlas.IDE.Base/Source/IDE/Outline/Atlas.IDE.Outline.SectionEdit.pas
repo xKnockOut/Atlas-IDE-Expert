@@ -42,7 +42,6 @@ uses
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.Core.Outline.VisibilitySections,
   Atlas.Core.Outline.SectionEdit,
   Atlas.IDE.Foundation.Settings,

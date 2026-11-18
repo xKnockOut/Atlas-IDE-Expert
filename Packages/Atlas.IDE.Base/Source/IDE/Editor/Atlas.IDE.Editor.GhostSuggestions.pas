@@ -432,8 +432,8 @@ begin
   mCharacter := TLspSession.ColumnToIndex(mLineText, FColumn, mTabWidth);
   FOwnWrite := True;
   mStart := TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter - FReplace);
-  TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart, TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter) - mStart,
-    AText);
+  TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart,
+    TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter) - mStart, AText);
   // Schreibmarke ans Ende des Geschriebenen.
   mLines := AText.Split([#13#10, #10]);
   mCharacter := mCharacter - FReplace;

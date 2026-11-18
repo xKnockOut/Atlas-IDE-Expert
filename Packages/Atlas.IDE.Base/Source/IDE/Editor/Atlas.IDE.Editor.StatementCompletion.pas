@@ -52,7 +52,6 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Editor.LineMove,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.Settings,

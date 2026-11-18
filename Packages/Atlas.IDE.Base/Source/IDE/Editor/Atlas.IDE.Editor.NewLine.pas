@@ -34,7 +34,6 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,

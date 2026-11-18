@@ -91,7 +91,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.LineMove,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,

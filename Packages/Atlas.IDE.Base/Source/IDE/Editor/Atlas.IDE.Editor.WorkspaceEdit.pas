@@ -58,10 +58,11 @@ type
   end;
 
   TAtlasIdeWorkspaceEdit = class
-  private
+  public
+    /// <summary>Schreibt ARanges (Zeichenbereiche in AText, aufsteigend, ohne Überlappung) als einen
+    /// Rückgängig-Schritt in ABuffer mit Text AText.</summary>
     class procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string;
       const ARanges: TArray<TLspTextRange>); static;
-  public
     /// <summary>Aktueller Text: offener Puffer, offenes Formular (Stand des Designers), sonst die Datei auf der
     /// Platte; '' wenn sie fehlt (#400).</summary>
     class function CurrentText(const AFileName: string): string; static;

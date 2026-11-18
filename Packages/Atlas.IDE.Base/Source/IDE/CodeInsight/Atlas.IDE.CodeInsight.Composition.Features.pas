@@ -349,8 +349,8 @@ begin
   begin
     mParts := ': ' + mParts;
   end;
-  TAtlasIdeHost.Message(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow, [ALoadMs, ALimit, StartTimes.Total,
-    mParts]));
+  TAtlasIdeHost.Message(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow,
+    [ALoadMs, ALimit, StartTimes.Total, mParts]));
 end;
 
 procedure ReportStartup(ALoadMs: Int64);

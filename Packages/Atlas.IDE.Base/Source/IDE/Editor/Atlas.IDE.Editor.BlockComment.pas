@@ -41,7 +41,6 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Editor.LineMove,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
