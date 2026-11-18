@@ -19,8 +19,8 @@
 // Schnellkorrektur an (OnFix), Strg+C kopiert die Auswahl. Kontextmenü:
 // Gehe zu, Schnellkorrektur, „Alle sicheren Treffer von <Regel> korrigieren …“
 // (#1352, OnFixAll; nur mit CanFixAll, fix.bulk), „Für diese Zeile
-// unterdrücken“, „Regel einstellen…“, „Regel abschalten“, „Regel erklären“, Kopieren, Spalten,
-// Sortierung zurücksetzen. Neue Einträge werden kurz hervorgehoben.
+// unterdrücken“, „Regel einstellen…“, „Regel abschalten“, „Regel erklären“, Kopieren, „Als Auftrag für
+// KI-Assistenten kopieren“ (#2570, OnCopyPrompt, auch mehrere), Spalten, Sortierung zurücksetzen. Neue Einträge werden kurz hervorgehoben.
 // Den Inhalt (SetFindings) und die Statuszeile setzt die IDE-Schicht; Auswahl,
 // Aufklappzustand und Bildlauf bleiben dabei erhalten (TAtlasFindingsView).
 // Offene Units zuerst (#1108): Umschaltknopf „Offene zuerst“ (Nadel) neben
@@ -74,6 +74,7 @@ type
     FExplainItem: TMenuItem;
     FIssueItem: TMenuItem;
     FCopyItem: TMenuItem;
+    FPromptItem: TMenuItem;
     FResetSortItem: TMenuItem;
     function SelectedRows: TArray<Integer>;
     function Current(out AFinding: TAtlasFinding): Boolean;
@@ -91,6 +92,7 @@ type
     procedure ExplainClick(Sender: TObject);
     procedure IssueClick(Sender: TObject);
     procedure CopyClick(Sender: TObject);
+    procedure PromptClick(Sender: TObject);
     procedure ResetSortClick(Sender: TObject);
     /// <summary>Kontextmenü der Liste anlegen.</summary>
     procedure BuildMenu;
@@ -986,6 +988,9 @@ begin
     FIssueItem.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCreateIssue);
   end;
   FCopyItem.Enabled := Length(SelectedRows) > 0;
+  // Auftrag für KI-Assistenten (#2570): einer oder mehrere markierte Befunde, Text vom Server.
+  FPromptItem.Visible := Assigned(FOnCopyPrompt);
+  FPromptItem.Enabled := mCount > 0;
   FResetSortItem.Enabled := FView.SortCustom;
 end;
 
@@ -1040,6 +1045,17 @@ begin
   CopySelection;
 end;
 
+procedure TAtlasProblemsFrameMenu.PromptClick(Sender: TObject);
+var
+  mFindings: TArray<TAtlasFinding>;
+begin
+  mFindings := SelectedFindings;
+  if Assigned(FOnCopyPrompt) and (Length(mFindings) > 0) then
+  begin
+    FOnCopyPrompt(mFindings);
+  end;
+end;
+
 procedure TAtlasProblemsFrameMenu.ResetSortClick(Sender: TObject);
 begin
   FView.ResetSort;
@@ -1067,6 +1083,9 @@ begin
   FMenu.Items.Add(NewLine);
   FCopyItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCopy), CopyClick);
   FCopyItem.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
+  FPromptItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCopyPrompt),
+    PromptClick);
+  FPromptItem.Visible := False;
   FColumnsItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuColumns), nil);
   FResetSortItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuResetSort),
     ResetSortClick);

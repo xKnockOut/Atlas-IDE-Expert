@@ -25,7 +25,7 @@ The server offers Claude Code 33 MCP tools:
 ### Check, build, test
 
 - check planned code with `check_code` before writing it
-- explain findings
+- explain findings (`explain_finding`): the same task as "Copy as task for an AI assistant" in the "Atlas Findings" window, with a ±8 line excerpt and a closing line telling the assistant how to verify (`check_code`, for safe fixes `fix_findings`)
 - report findings to Claude Code hooks (`hook_check`)
 - build through the IDE (`build_project`, `get_last_build`)
 - run DUnitX tests

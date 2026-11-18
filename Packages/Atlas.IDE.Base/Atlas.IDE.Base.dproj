@@ -800,6 +800,7 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.IdeErrors.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Caret.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Explanation.pas"/>
+        <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Prompt.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.MessageView.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.LastMessages.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Messages.pas"/>

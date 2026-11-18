@@ -21,7 +21,9 @@
 // „Für diese Zeile unterdrücken“ und „Regel abschalten“ liefert das Modul
 // Prüfregeln (TAtlasRuleActions, #1755); ohne Modul fehlen die Einträge. „Alle sicheren Treffer
 // von <Regel> korrigieren …“ (#1352) bietet das Modul Prüfregeln über
-// IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag.
+// IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag. „Als Auftrag für KI-Assistenten
+// kopieren“ (#2570) schickt die markierten Befunde an atlas.server.findingsPrompt (Hook Command) und legt den
+// Text des Servers in die Zwischenablage.
 // Markierung folgt dem Cursor (problems.window.followCursor); F8/Umschalt+F8
 // gehen bei sichtbarem Fenster durch dessen gefilterte Liste (StepWindow).
 // Offene Units zuerst (#1108): Der Takt gibt dem Frame die Datei des oberen
@@ -114,10 +116,12 @@ implementation
 uses
   Atlas.Core.Problems.FindingsCache,
   Atlas.Core.Problems.Refresh,
+  Atlas.Core.Problems.Prompt,
   System.Classes,
   System.Math,
   System.Generics.Collections,
   Vcl.ExtCtrls,
+  Vcl.Clipbrd,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Problems.Store,
@@ -677,7 +681,35 @@ begin
     end;
 end;
 
-/// <summary>Regel erklären; Issue anlegen.</summary>
+/// <summary>„Als Auftrag für KI-Assistenten kopieren“ (#2570): Den Text erzeugt der Server (Katalog, Editorpuffer),
+/// das Plugin legt ihn in die Zwischenablage und meldet das in der Meldungsansicht.</summary>
+procedure CopyPrompt(const AFindings: TArray<TAtlasFinding>);
+var
+  mCount: Integer;
+begin
+  if (State = nil) or not Assigned(State.Hooks.Command) then
+  begin
+    Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
+    Exit;
+  end;
+  mCount := Length(AFindings);
+  State.Hooks.Command(TAtlasFindingsPrompt.cCommand, TAtlasFindingsPrompt.Arguments(AFindings),
+    procedure(AAnswer: TJSONValue)
+    var
+      mText: string;
+    begin
+      mText := TAtlasFindingsPrompt.TextOf(AAnswer);
+      if mText = '' then
+      begin
+        Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
+        Exit;
+      end;
+      Clipboard.AsText := mText;
+      Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsPromptCopied, [mCount]));
+    end);
+end;
+
+/// <summary>Regel erklären; Issue anlegen; Auftrag für KI-Assistenten kopieren.</summary>
 procedure WireRules(AFrame: TAtlasProblemsFrame);
 begin
   AFrame.OnExplain :=
@@ -696,6 +728,15 @@ begin
       begin
         State.Hooks.CreateIssue(AFindings);
       end;
+    end;
+  AFrame.OnCopyPrompt :=
+    procedure(const AFindings: TArray<TAtlasFinding>)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Problems,
+        procedure
+        begin
+          CopyPrompt(AFindings);
+        end);
     end;
   AFrame.CanCreateIssue :=
     function: Boolean

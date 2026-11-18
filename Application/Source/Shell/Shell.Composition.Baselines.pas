@@ -1,6 +1,7 @@
 ﻿unit Shell.Composition.Baselines;
 
-// Internals-Rolle Shell: Baselines des Servers (#97, #530) und die Sammelkorrektur (#1352). Die Komposition reicht
+// Internals-Rolle Shell: Baselines des Servers (#97, #530), die Sammelkorrektur (#1352) und der Auftrag für
+// KI-Assistenten aus markierten Befunden (#2570, prüft wie die Baseline). Die Komposition reicht
 // Metrikquelle, Prüfkontext, Defines und Include-Suche als Dienste herein; Dateien liest und schreibt die Unit
 // selbst. Die Befehle dazu schreiben nur Zahlen ins Log, keine Pfade.
 
@@ -13,6 +14,7 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
+  Atlas.Common.Lsp.FindingsPrompt,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Pascal.Preprocessor;
@@ -35,12 +37,13 @@ type
     Logger: ILogger;
   end;
 
-  /// <summary>Baseline der Befunde, Baseline der Compilermeldungen und Sammelkorrektur.</summary>
+  /// <summary>Baseline der Befunde, Baseline der Compilermeldungen, Sammelkorrektur und Auftrag aus Befunden.</summary>
   TShellBaselines = class
   private
     FServices: TShellBaselineServices;
     FBaseline: TLspBaseline;
     FBulkFix: TLspBulkFix;
+    FFindingsPrompt: TLspFindingsPrompt;
     FCompilerBaseline: TLspCompilerBaseline;
     function MetricsSource(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
@@ -54,7 +57,8 @@ type
   public
     constructor Create(const AServices: TShellBaselineServices);
     destructor Destroy; override;
-    /// <summary>Baseline aktualisieren, Sammelkorrektur und Compilermeldungen in die Baseline.</summary>
+    /// <summary>Baseline aktualisieren, Sammelkorrektur, Compilermeldungen in die Baseline und Auftrag aus Befunden.
+    /// </summary>
     procedure RegisterCommands(ACommands: TLspCommands);
     /// <summary>Compilermeldungen einordnen (Schnellbefehl im Editor).</summary>
     procedure RegisterClassifyCommand(ACommands: TLspCommands);
@@ -159,6 +163,8 @@ begin
   // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSource, ReadText, BaselineFiles);
   FCompilerBaseline.OnWritten := Written;
+  // Auftrag für KI-Assistenten (#2570): Befunde wie die Baseline-Prüfung, Text wie im Editor.
+  FFindingsPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText);
 end;
 
 destructor TShellBaselines.Destroy;
@@ -166,6 +172,7 @@ begin
   FreeAndNil(FCompilerBaseline);
   FreeAndNil(FBaseline);
   FreeAndNil(FBulkFix);
+  FreeAndNil(FFindingsPrompt);
   inherited Destroy;
 end;
 
@@ -306,6 +313,7 @@ begin
   ACommands.Register(TLspBaseline.cCommand, RunBaseline);
   ACommands.Register(TLspBulkFix.cCommand, RunBulkFix);
   ACommands.Register(TLspCompilerBaseline.cAddCommand, RunCompilerBaselineAdd);
+  ACommands.Register(TLspFindingsPrompt.cCommand, FFindingsPrompt.Execute);
 end;
 
 procedure TShellBaselines.RegisterClassifyCommand(ACommands: TLspCommands);

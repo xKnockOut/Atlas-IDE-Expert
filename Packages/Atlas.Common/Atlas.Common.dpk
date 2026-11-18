@@ -314,6 +314,7 @@ contains
   Atlas.Common.Lsp.InterfaceMethods in 'Source\Lsp\Atlas.Common.Lsp.InterfaceMethods.pas',
   Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
   Atlas.Common.Lsp.BulkFix in 'Source\Lsp\Atlas.Common.Lsp.BulkFix.pas',
+  Atlas.Common.Lsp.FindingsPrompt in 'Source\Lsp\Atlas.Common.Lsp.FindingsPrompt.pas',
   Atlas.Common.Lsp.CompilerBaseline in 'Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas',
   Atlas.Common.Lsp.DisableWarning in 'Source\Lsp\Atlas.Common.Lsp.DisableWarning.pas',
   Atlas.Common.Lsp.CompilerFixes in 'Source\Lsp\Atlas.Common.Lsp.CompilerFixes.pas',

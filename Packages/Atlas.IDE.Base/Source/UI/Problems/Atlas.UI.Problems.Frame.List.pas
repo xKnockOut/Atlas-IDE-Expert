@@ -45,6 +45,7 @@ type
     FOnExplain: TAtlasFindingEvent;
     FOnCreateIssue: TAtlasFindingsEvent;
     FCanCreateIssue: TFunc<Boolean>;
+    FOnCopyPrompt: TAtlasFindingsEvent;
     FOnScope: TAtlasFindingScopeEvent;
     FOnLayout: TProc;
   public
@@ -65,6 +66,9 @@ type
     property OnCreateIssue: TAtlasFindingsEvent read FOnCreateIssue write FOnCreateIssue;
     /// <summary>Eintrag sichtbar (issues.create); nil = unsichtbar.</summary>
     property CanCreateIssue: TFunc<Boolean> read FCanCreateIssue write FCanCreateIssue;
+    /// <summary>„Als Auftrag für KI-Assistenten kopieren“ (#2570) mit den markierten Befunden; nil = kein Eintrag.
+    /// </summary>
+    property OnCopyPrompt: TAtlasFindingsEvent read FOnCopyPrompt write FOnCopyPrompt;
     /// <summary>Bereich gewechselt: Die IDE-Schicht liefert die Dateien des Bereichs neu.</summary>
     property OnScope: TAtlasFindingScopeEvent read FOnScope write FOnScope;
     /// <summary>Bereich, Gruppierung, Spalten oder „Offene zuerst“ geändert: zum Speichern.</summary>
