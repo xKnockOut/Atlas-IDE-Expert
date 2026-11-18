@@ -88,23 +88,7 @@ end;
 /// <summary>Fehler nach Status und Art der Fehlerantwort.</summary>
 function ErrorOf(AStatus: Integer; const AKind: string): TAtlasAiError;
 begin
-  case AStatus of
-    cAiHttpUnauthorized, cAiHttpForbidden:
-      Result := TAtlasAiError.Unauthorized;
-    cAiHttpNotFound:
-      Result := TAtlasAiError.ModelMissing;
-    cAiHttpTooManyRequests, cAiHttpOverloaded:
-      Result := TAtlasAiError.RateLimited;
-  else
-    if AStatus >= cAiHttpServerError then
-    begin
-      Result := TAtlasAiError.ServerError;
-    end
-    else
-    begin
-      Result := TAtlasAiError.BadAnswer;
-    end;
-  end;
+  Result := TAtlasAiAnswer.ErrorOfStatus(AStatus);
   if SameText(AKind, 'authentication_error') or SameText(AKind, 'permission_error') then
   begin
     Result := TAtlasAiError.Unauthorized;

@@ -917,6 +917,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.AiProviders.Contract` | `Core/AiProviders/Atlas.Core.AiProviders.Contract.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.Anthropic` | `Core/AiProviders/Atlas.Core.AiProviders.Anthropic.pas` | Ordner `Core/AiProviders` |
+| `Atlas.Core.AiProviders.OpenAiCompatible` | `Core/AiProviders/Atlas.Core.AiProviders.OpenAiCompatible.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.Adapters.Http` | `Core/AiProviders/Atlas.Core.AiProviders.Adapters.Http.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.Catalog` | `Core/AiProviders/Atlas.Core.AiProviders.Catalog.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.Assistants.AiGhost` | `Core/Assistants/Atlas.Core.Assistants.AiGhost.pas` | Ordner `Core/Assistants` |
@@ -924,6 +925,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.DebugInbox` | `Core/Assistants/Atlas.Core.Assistants.DebugInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.DebugGate` | `Core/Assistants/Atlas.Core.Assistants.DebugGate.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.Banner` | `IDE/Assistants/Atlas.IDE.Assistants.Banner.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.AiProbe` | `IDE/Assistants/Atlas.IDE.Assistants.AiProbe.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.DebugInbox` | `IDE/Assistants/Atlas.IDE.Assistants.DebugInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.DebugBar` | `IDE/Assistants/Atlas.IDE.Assistants.DebugBar.pas` | Ordner `IDE/Assistants` |

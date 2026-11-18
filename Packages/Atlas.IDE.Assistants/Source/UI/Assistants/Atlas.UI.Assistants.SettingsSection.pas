@@ -8,6 +8,9 @@
 // KI-Schattentext (#1922): Schalter, Anbieter, Modell, Zeilen, Ausnahmen, Tagesgrenze und der Schlüssel des
 // gewählten Anbieters. Der Schlüssel wird nie angezeigt; hinterlegen und entfernen gehen über KeyHooks, die die
 // Komposition setzt (Anmeldespeicher von Windows).
+// OpenAI-kompatibler Anbieter (#2056): Adresse, Modell mit „Modelle abrufen“ (Auswahl aus /models), Zeitlimit und
+// „Verbindung testen“ für jeden Anbieter. Beides läuft über die Haken im Hintergrund und nimmt die Werte, wie sie
+// gerade auf der Seite stehen; eine Antwort nach dem Schließen der Seite verfällt.
 
 interface
 
@@ -16,12 +19,30 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.StdCtrls,
+  Vcl.Menus,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.ChoiceBox;
 
 type
   /// <summary>Verdeckte Abfrage: Titel, Beschriftung, Schlüssel; False bei Abbruch.</summary>
   TAtlasKeyAsk = reference to function(const ATitle, ALabel: string; var AKey: string): Boolean;
+
+  /// <summary>Werte der Seite für eine Probe oder die Modellliste, auch ungespeichert.</summary>
+  TAtlasAssistantsProbeInput = record
+    ProviderId: string;
+    Model: string;
+    Url: string;
+    TimeoutMs: Integer;
+  end;
+
+  /// <summary>Ergebnis im Hauptthread: Text für die Zeile unter den Knöpfen.</summary>
+  TAtlasAssistantsProbeDone = reference to procedure(const AText: string);
+  /// <summary>Ergebnis im Hauptthread: Modelle (nil bei Fehler) und Text.</summary>
+  TAtlasAssistantsModelsDone = reference to procedure(const AModels: TArray<string>; const AText: string);
+  TAtlasAssistantsProbe = reference to procedure(const AInput: TAtlasAssistantsProbeInput;
+    const ADone: TAtlasAssistantsProbeDone);
+  TAtlasAssistantsModels = reference to procedure(const AInput: TAtlasAssistantsProbeInput;
+    const ADone: TAtlasAssistantsModelsDone);
 
   /// <summary>Schlüssel je Anbieter (Wert von assistants.provider); nicht gesetzte Haken sperren die Knöpfe.
   /// </summary>
@@ -32,6 +53,17 @@ type
     Delete: TProc<string>;
     /// <summary>Abfrage des Schlüssels; nil = InputQuery mit verdecktem Feld.</summary>
     Ask: TAtlasKeyAsk;
+    /// <summary>„Verbindung testen“ (#2056); im Hintergrund, ADone im Hauptthread.</summary>
+    Probe: TAtlasAssistantsProbe;
+    /// <summary>„Modelle abrufen“ (#2056); im Hintergrund, ADone im Hauptthread.</summary>
+    Models: TAtlasAssistantsModels;
+  end;
+
+  /// <summary>Verbindung einer Antwort aus dem Hintergrund zum Abschnitt; nil nach Close.</summary>
+  IAtlasAssistantsSectionLink = interface
+    ['{4F2B8D61-9C3E-4A75-B0D2-7E1F6A3C9B54}']
+    function Section: TObject;
+    procedure Cut;
   end;
 
   TAtlasAssistantsSettingsSection = class(TAtlasSettingsSection)
@@ -47,7 +79,24 @@ type
     FKeyState: TLabel;
     FKeyStore: TButton;
     FKeyDelete: TButton;
+    FModel: TEdit;
+    FOpenAiUrl: TEdit;
+    FOpenAiModel: TEdit;
+    FOpenAiTimeout: TEdit;
+    FModelsButton: TButton;
+    FModelsMenu: TPopupMenu;
+    FProbeButton: TButton;
+    FProbeState: TLabel;
+    FLink: IAtlasAssistantsSectionLink;
     function ProviderId: string;
+    function ProbeInput: TAtlasAssistantsProbeInput;
+    procedure AddOpenAiRows;
+    procedure AddProbeRow;
+    procedure ProbeClick(Sender: TObject);
+    procedure ModelsClick(Sender: TObject);
+    procedure ModelPicked(Sender: TObject);
+    procedure ShowModels(const AModels: TArray<string>; const AText: string);
+    procedure ShowProbe(const AText: string);
     procedure AddKeyRows;
     procedure ShowKeyState;
     procedure KeyStoreClick(Sender: TObject);
@@ -71,6 +120,7 @@ type
 implementation
 
 uses
+  System.Types,
   Vcl.Dialogs,
   Atlas.Core.Settings.Plugin.Assistants,
   Atlas.UI.Assistants.Strings;
@@ -89,6 +139,34 @@ const
   // Ein Steuerzeichen am Anfang der Beschriftung lässt InputQuery das Feld verdecken.
   cHidden = #31;
 
+type
+  TSectionLink = class(TInterfacedObject, IAtlasAssistantsSectionLink)
+  private
+    FSection: TObject;
+  public
+    constructor Create(ASection: TObject);
+    function Section: TObject;
+    procedure Cut;
+  end;
+
+{ TSectionLink }
+
+constructor TSectionLink.Create(ASection: TObject);
+begin
+  inherited Create;
+  FSection := ASection;
+end;
+
+function TSectionLink.Section: TObject;
+begin
+  Result := FSection;
+end;
+
+procedure TSectionLink.Cut;
+begin
+  FSection := nil;
+end;
+
 /// <summary>Text des Moduls.</summary>
 function T(AId: TAtlasAssistantsTextId): string;
 begin
@@ -106,6 +184,7 @@ end;
 procedure TAtlasAssistantsSettingsSection.BuildRows;
 begin
   FControls := TComponent.Create(nil);
+  FLink := TSectionLink.Create(Self);
   ModuleSwitch('assistants.enabled');
   // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
   Switch('assistants.edit', T(TAtlasAssistantsTextId.SettingsEdit));
@@ -127,10 +206,13 @@ begin
   Switch('assistants.inlineSuggestions', T(TAtlasAssistantsTextId.SettingsInline));
   Host.AddHint(T(TAtlasAssistantsTextId.SettingsPrivacy), cPrivacyHeight);
   FProvider := Choice('assistants.provider', T(TAtlasAssistantsTextId.SettingsProvider),
-    TArray<string>.Create(T(TAtlasAssistantsTextId.ProviderNone), T(TAtlasAssistantsTextId.ProviderAnthropic)),
-    TArray<string>.Create(cAssistantsProviderNames[0], cAssistantsProviderNames[1]));
+    TArray<string>.Create(T(TAtlasAssistantsTextId.ProviderNone), T(TAtlasAssistantsTextId.ProviderAnthropic),
+    T(TAtlasAssistantsTextId.ProviderOpenAi)),
+    TArray<string>.Create(cAssistantsProviderNames[0], cAssistantsProviderNames[1], cAssistantsProviderNames[2]));
   AddKeyRows;
-  Line('assistants.model', T(TAtlasAssistantsTextId.SettingsModel));
+  FModel := Line('assistants.model', T(TAtlasAssistantsTextId.SettingsModel));
+  AddOpenAiRows;
+  AddProbeRow;
   Number('assistants.contextLines', T(TAtlasAssistantsTextId.SettingsContextLines));
   Line('assistants.exclude', T(TAtlasAssistantsTextId.SettingsExclude));
   Number('assistants.dailyLimit', T(TAtlasAssistantsTextId.SettingsDailyLimit));
@@ -166,6 +248,164 @@ begin
   PlaceScaled(FKeyDelete, cButtonGap, 1, cButtonWidth, cButtonHeight);
   FKeyDelete.OnClick := KeyDeleteClick;
   ShowKeyState;
+end;
+
+procedure TAtlasAssistantsSettingsSection.AddOpenAiRows;
+var
+  mRow: TWinControl;
+begin
+  FOpenAiUrl := Line('assistants.openaiCompatible.url', T(TAtlasAssistantsTextId.SettingsOpenAiUrl));
+  FOpenAiModel := Line('assistants.openaiCompatible.model', T(TAtlasAssistantsTextId.SettingsOpenAiModel));
+  mRow := Host.AddRow(cRowHeight, nil);
+  Host.Attach(mRow, FOpenAiModel);
+  FModelsButton := TButton.Create(FControls);
+  FModelsButton.Parent := mRow;
+  FModelsButton.Caption := T(TAtlasAssistantsTextId.ModelsButton);
+  PlaceScaled(FModelsButton, 0, 1, cButtonWidth, cButtonHeight);
+  FModelsButton.OnClick := ModelsClick;
+  FModelsButton.Enabled := Assigned(FKeyHooks.Models);
+  FModelsMenu := TPopupMenu.Create(FControls);
+  FOpenAiTimeout := Number('assistants.openaiCompatible.timeoutMs', T(TAtlasAssistantsTextId.SettingsOpenAiTimeout));
+end;
+
+procedure TAtlasAssistantsSettingsSection.AddProbeRow;
+var
+  mRow: TWinControl;
+begin
+  mRow := Host.AddRow(cRowHeight, nil);
+  Host.Attach(mRow, FProvider);
+  FProbeButton := TButton.Create(FControls);
+  FProbeButton.Parent := mRow;
+  FProbeButton.Caption := T(TAtlasAssistantsTextId.ProbeButton);
+  PlaceScaled(FProbeButton, 0, 1, cButtonWidth, cButtonHeight);
+  FProbeButton.OnClick := ProbeClick;
+  FProbeButton.Enabled := Assigned(FKeyHooks.Probe);
+  FProbeState := TLabel.Create(FControls);
+  FProbeState.Parent := mRow;
+  PlaceScaled(FProbeState, cButtonGap, cStateTop, cStateWidth, cStateHeight);
+  FProbeState.ShowAccelChar := False;
+end;
+
+function TAtlasAssistantsSettingsSection.ProbeInput: TAtlasAssistantsProbeInput;
+begin
+  Result := Default(TAtlasAssistantsProbeInput);
+  Result.ProviderId := ProviderId;
+  if FModel <> nil then
+  begin
+    Result.Model := Trim(FModel.Text);
+  end;
+  if Result.ProviderId = cAssistantsProviderNames[2] then
+  begin
+    Result.Model := Trim(FOpenAiModel.Text);
+    Result.Url := Trim(FOpenAiUrl.Text);
+    Result.TimeoutMs := StrToIntDef(Trim(FOpenAiTimeout.Text), cDefaultAssistantsOpenAiTimeoutMs);
+  end
+  else if Result.ProviderId = cAssistantsProviderNames[1] then
+  begin
+    Result.TimeoutMs := cMaxAssistantsOpenAiTimeoutMs;
+  end;
+end;
+
+/// <summary>Antwort an den Abschnitt hinter ALink, solange er offen ist.</summary>
+function ProbeDoneFor(const ALink: IAtlasAssistantsSectionLink): TAtlasAssistantsProbeDone;
+begin
+  Result :=
+    procedure(const AText: string)
+    begin
+      if ALink.Section <> nil then
+      begin
+        TAtlasAssistantsSettingsSection(ALink.Section).ShowProbe(AText);
+      end;
+    end;
+end;
+
+function ModelsDoneFor(const ALink: IAtlasAssistantsSectionLink): TAtlasAssistantsModelsDone;
+begin
+  Result :=
+    procedure(const AModels: TArray<string>; const AText: string)
+    begin
+      if ALink.Section <> nil then
+      begin
+        TAtlasAssistantsSettingsSection(ALink.Section).ShowModels(AModels, AText);
+      end;
+    end;
+end;
+
+procedure TAtlasAssistantsSettingsSection.ProbeClick(Sender: TObject);
+begin
+  if ProviderId = cAssistantsProviderNames[0] then
+  begin
+    ShowProbe(T(TAtlasAssistantsTextId.KeyNoProvider));
+    Exit;
+  end;
+  ShowProbe(T(TAtlasAssistantsTextId.ProbeRunning));
+  FProbeButton.Enabled := False;
+  FKeyHooks.Probe(ProbeInput, ProbeDoneFor(FLink));
+end;
+
+procedure TAtlasAssistantsSettingsSection.ShowProbe(const AText: string);
+begin
+  if FProbeState = nil then
+  begin
+    Exit;
+  end;
+  FProbeState.Caption := AText;
+  FProbeButton.Enabled := Assigned(FKeyHooks.Probe);
+end;
+
+procedure TAtlasAssistantsSettingsSection.ModelsClick(Sender: TObject);
+var
+  mInput: TAtlasAssistantsProbeInput;
+begin
+  mInput := ProbeInput;
+  mInput.ProviderId := cAssistantsProviderNames[2];
+  mInput.Url := Trim(FOpenAiUrl.Text);
+  mInput.TimeoutMs := StrToIntDef(Trim(FOpenAiTimeout.Text), cDefaultAssistantsOpenAiTimeoutMs);
+  ShowProbe(T(TAtlasAssistantsTextId.ModelsRunning));
+  FModelsButton.Enabled := False;
+  FKeyHooks.Models(mInput, ModelsDoneFor(FLink));
+end;
+
+procedure TAtlasAssistantsSettingsSection.ShowModels(const AModels: TArray<string>; const AText: string);
+var
+  mModel: string;
+  mItem: TMenuItem;
+  mPoint: TPoint;
+begin
+  if FModelsButton = nil then
+  begin
+    Exit;
+  end;
+  FModelsButton.Enabled := Assigned(FKeyHooks.Models);
+  ShowProbe(AText);
+  if Length(AModels) = 0 then
+  begin
+    Exit;
+  end;
+  FModelsMenu.Items.Clear;
+  for mModel in AModels do
+  begin
+    mItem := TMenuItem.Create(FModelsMenu);
+    mItem.Caption := mModel;
+    mItem.Hint := mModel;
+    mItem.AutoHotkeys := maManual;
+    mItem.OnClick := ModelPicked;
+    FModelsMenu.Items.Add(mItem);
+  end;
+  if FModelsButton.HandleAllocated and FModelsButton.Showing then
+  begin
+    mPoint := FModelsButton.ClientToScreen(TPoint.Create(0, FModelsButton.Height));
+    FModelsMenu.Popup(mPoint.X, mPoint.Y);
+  end;
+end;
+
+procedure TAtlasAssistantsSettingsSection.ModelPicked(Sender: TObject);
+begin
+  if (FOpenAiModel <> nil) and (Sender is TMenuItem) then
+  begin
+    FOpenAiModel.Text := TMenuItem(Sender).Hint;
+    Host.Changed;
+  end;
 end;
 
 function TAtlasAssistantsSettingsSection.ProviderId: string;
@@ -273,10 +513,24 @@ end;
 procedure TAtlasAssistantsSettingsSection.Close;
 begin
   // Rückwärts zum Aufbau: erst die eigenen Elemente, dann die Zeilen der Seite.
+  // Antworten aus dem Hintergrund erreichen den Abschnitt danach nicht mehr.
+  if FLink <> nil then
+  begin
+    FLink.Cut;
+    FLink := nil;
+  end;
   FKeyState := nil;
   FKeyStore := nil;
   FKeyDelete := nil;
   FProvider := nil;
+  FModel := nil;
+  FOpenAiUrl := nil;
+  FOpenAiModel := nil;
+  FOpenAiTimeout := nil;
+  FModelsButton := nil;
+  FModelsMenu := nil;
+  FProbeButton := nil;
+  FProbeState := nil;
   FreeAndNil(FControls);
   inherited Close;
 end;

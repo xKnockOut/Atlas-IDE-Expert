@@ -31,7 +31,12 @@ type
     GhostStatus, GhostHint, GhostNoKey, GhostLimit,
     GhostFailed, AiErrorNoKey, AiErrorUnreachable, AiErrorTimeout,
     AiErrorUnauthorized, AiErrorModelMissing, AiErrorRateLimited, AiErrorServerError,
-    AiErrorBadAnswer, AiErrorCancelled, AiErrorRefused);
+    AiErrorBadAnswer, AiErrorCancelled, AiErrorRefused,
+    // OpenAI-kompatibler Anbieter und Verbindungstest (#2056)
+    ProviderOpenAi, SettingsOpenAiUrl, SettingsOpenAiModel, SettingsOpenAiTimeout,
+    ModelsButton, ModelsRunning, ModelsFound, ModelsFailed,
+    ProbeButton, ProbeRunning, ProbeOk, ProbeSlow,
+    ProbeFailed);
 
   TAtlasAssistantsStrings = class
   public
@@ -139,7 +144,20 @@ const
      'Fehler beim Anbieter',
      'Antwort nicht lesbar',
      'abgebrochen',
-     'Anbieter hat die Antwort verweigert'),
+     'Anbieter hat die Antwort verweigert',
+     'OpenAI-kompatibel (lokal oder eigener Server)',
+     'Adresse des OpenAI-kompatiblen Servers (bis /v1)',
+     'Modell beim OpenAI-kompatiblen Server',
+     'Zeitlimit je Anfrage in ms (OpenAI-kompatibel)',
+     'Modelle abrufen',
+     'Modelle werden abgerufen …',
+     '%d Modelle gefunden; eins auswählen',
+     'Keine Modellliste (%s); Namen von Hand eintragen',
+     'Verbindung testen',
+     'Verbindung wird getestet …',
+     'Antwort in %s s, Modell %s',
+     'Antwort in %s s, Modell %s; langsamer als die Tipppause (%d ms)',
+     'Keine Antwort: %s'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -230,7 +248,20 @@ const
      'error at the provider',
      'answer not readable',
      'cancelled',
-     'provider refused to answer'));
+     'provider refused to answer',
+     'OpenAI-compatible (local or own server)',
+     'Address of the OpenAI-compatible server (up to /v1)',
+     'Model at the OpenAI-compatible server',
+     'Time limit per request in ms (OpenAI-compatible)',
+     'Fetch models',
+     'Fetching models …',
+     '%d models found; pick one',
+     'No model list (%s); enter the name by hand',
+     'Test connection',
+     'Testing connection …',
+     'Answer in %s s, model %s',
+     'Answer in %s s, model %s; slower than the typing pause (%d ms)',
+     'No answer: %s'));
 
 { TAtlasAssistantsStrings }
 
