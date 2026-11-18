@@ -376,7 +376,7 @@ begin
 end;
 
 /// <summary>Teil ab APos: 'Text' (mit '' für ein Hochkomma) oder #Zahl; False bei anderem.</summary>
-function StringPart(const AValue: string; var APos: Integer; var AText: string): Boolean;
+function StringPart(const AValue: string; var APos: Integer; AText: TStringBuilder): Boolean;
 var
   mStart, mCode: Integer;
 begin
@@ -390,14 +390,14 @@ begin
       begin
         if (APos < Length(AValue)) and (AValue[APos + 1] = '''') then
         begin
-          AText := AText + '''';
+          AText.Append('''');
           Inc(APos, 2);
           Continue;
         end;
         Inc(APos);
         Exit;
       end;
-      AText := AText + AValue[APos];
+      AText.Append(AValue[APos]);
       Inc(APos);
     end;
     Exit(False);
@@ -415,29 +415,36 @@ begin
   Result := TryStrToInt(Copy(AValue, mStart, APos - mStart), mCode) and (mCode >= 0) and (mCode <= $FFFF);
   if Result then
   begin
-    AText := AText + Char(mCode);
+    AText.Append(Char(mCode));
   end;
 end;
 
 class function TAtlasFormModel.StringValue(const AValue: string; out AText: string): Boolean;
 var
   mPos: Integer;
+  mText: TStringBuilder;
 begin
   AText := '';
   mPos := 1;
   Result := False;
-  while mPos <= Length(AValue) do
-  begin
-    if CharInSet(AValue[mPos], [' ', '+']) then
+  mText := TStringBuilder.Create;
+  try
+    while mPos <= Length(AValue) do
     begin
-      Inc(mPos);
-      Continue;
+      if CharInSet(AValue[mPos], [' ', '+']) then
+      begin
+        Inc(mPos);
+        Continue;
+      end;
+      if not StringPart(AValue, mPos, mText) then
+      begin
+        Exit(False);
+      end;
+      Result := True;
     end;
-    if not StringPart(AValue, mPos, AText) then
-    begin
-      Exit(False);
-    end;
-    Result := True;
+    AText := mText.ToString;
+  finally
+    mText.Free;
   end;
 end;
 

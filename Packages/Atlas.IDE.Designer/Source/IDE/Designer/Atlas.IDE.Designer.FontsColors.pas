@@ -160,15 +160,6 @@ begin
   end;
 end;
 
-function Find(ARoot: TComponent; const AName: string): TComponent;
-begin
-  Result := ARoot;
-  if not SameText(ARoot.Name, AName) then
-  begin
-    Result := ARoot.FindComponent(AName);
-  end;
-end;
-
 function PixelsPerInchOf(ARoot: TComponent): Integer;
 begin
   Result := cDefaultPixelsPerInch;
@@ -246,7 +237,7 @@ var
   mComponent: TComponent;
   mFont: TFont;
 begin
-  mComponent := Find(ARoot, AChange.Component);
+  mComponent := TAtlasDesignerAccess.ComponentNamed(ARoot, AChange.Component);
   mFont := FontOfComponent(mComponent);
   if mFont = nil then
   begin
@@ -267,7 +258,7 @@ procedure ApplyColor(ARoot: TComponent; const AChange: TAtlasColorChange);
 var
   mComponent: TComponent;
 begin
-  mComponent := Find(ARoot, AChange.Component);
+  mComponent := TAtlasDesignerAccess.ComponentNamed(ARoot, AChange.Component);
   if (mComponent = nil) or not HasColor(mComponent) then
   begin
     Exit;
@@ -519,12 +510,8 @@ begin
 end;
 
 function TAtlasIdeFontsColors.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
 begin
-  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FUndoFile);
+  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.IsCurrentForm(FUndoFile);
 end;
 
 procedure TAtlasIdeFontsColors.Undo;
@@ -541,7 +528,7 @@ begin
   // Erst die eigenen Werte, dann die Parent-Schalter: so erben Kinder den wiederhergestellten Parent.
   for mState in FUndo do
   begin
-    mComponent := Find(mRoot, mState.Component);
+    mComponent := TAtlasDesignerAccess.ComponentNamed(mRoot, mState.Component);
     mFont := FontOfComponent(mComponent);
     if mFont <> nil then
     begin
@@ -557,7 +544,7 @@ begin
   end;
   for mState in FUndo do
   begin
-    mComponent := Find(mRoot, mState.Component);
+    mComponent := TAtlasDesignerAccess.ComponentNamed(mRoot, mState.Component);
     if FontOfComponent(mComponent) <> nil then
     begin
       SetFlag(mComponent, 'ParentFont', mState.ParentFont);

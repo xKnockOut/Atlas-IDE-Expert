@@ -21,7 +21,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Designer.Dialog;
 
 type
   TAtlasNameRow = record
@@ -37,7 +38,7 @@ type
   TAtlasNameDialogResult = (Cancel, Apply, Undo);
 {$SCOPEDENUMS OFF}
 
-  TAtlasNameDialog = class(TAtlasDialog)
+  TAtlasNameDialog = class(TAtlasDesignerDialog)
   private
     FRows: TArray<TAtlasNameRow>;
     FList: TListView;
@@ -46,7 +47,6 @@ type
     procedure AddBottom(ACanUndo: Boolean);
     procedure AddEditBar;
     procedure AddList;
-    function AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult; AAlign: TAlign): TButton;
     procedure Fill;
     procedure ShowRow(AIndex: Integer);
     procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -177,17 +177,6 @@ begin
   FList.Columns[cSourceColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColSource);
   FList.Columns[cProposalColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColProposal);
   FList.Columns[cNoteColumn].Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.NameColNote);
-end;
-
-function TAtlasNameDialog.AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult;
-  AAlign: TAlign): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.ModalResult := AResult;
-  Result.Align := AAlign;
-  Result.AlignWithMargins := True;
 end;
 
 procedure TAtlasNameDialog.Fill;

@@ -108,7 +108,8 @@ uses
   Atlas.IDE.Designer.DuplicateRow,
   Atlas.IDE.Designer.Surface,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.Names;
 
 const
   cBuiltIn: array[0..5] of string = ('TPanel', 'TGroupBox', 'TFlowPanel', 'TGridPanel', 'TScrollBox', 'TPageControl');
@@ -376,7 +377,7 @@ begin
     mSorted := nil;
     for mControl in OwnedControls(AControls[0].Parent, ARoot) do
     begin
-      if TAtlasWrapOrder.Contains(NamesOf(AControls), mControl.Name) then
+      if TAtlasDesignerNames.Contains(NamesOf(AControls), mControl.Name) then
       begin
         mSorted := mSorted + [mControl];
       end;

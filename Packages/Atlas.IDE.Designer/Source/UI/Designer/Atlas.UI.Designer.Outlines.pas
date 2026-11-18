@@ -17,7 +17,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Designer.Overlay;
 
 type
   TAtlasOutline = record
@@ -28,17 +29,10 @@ type
     class function Create(const ABounds: TRect; const AName: string; ABad: Boolean): TAtlasOutline; static;
   end;
 
-  TAtlasDesignerOutlines = class(TForm) // window-ok: Überlagerung, kein Dialog
-  private const
-    cKeyColor = TColor($00FF00FF);
+  TAtlasDesignerOutlines = class(TAtlasDesignerOverlay)
   private
-    FColors: TAtlasColors;
     FOutlines: TArray<TAtlasOutline>;
-    FOwnerWindow: HWND;
-    function S(AValue: Integer): Integer;
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
@@ -46,7 +40,6 @@ type
     /// <summary>Umrisse über AScreen (Bildschirm) zeigen, ohne den Fokus zu nehmen.</summary>
     procedure ShowOutlines(const AScreen: TRect; const AOutlines: TArray<TAtlasOutline>);
     procedure HideOutlines;
-    procedure ApplyColors(const AColors: TAtlasColors);
     property Outlines: TArray<TAtlasOutline> read FOutlines;
   end;
 
@@ -66,27 +59,8 @@ end;
 constructor TAtlasDesignerOutlines.CreateOutlines(AOwner: TComponent; AOwnerWindow: HWND;
   const AColors: TAtlasColors);
 begin
-  FOwnerWindow := AOwnerWindow;
-  inherited CreateNew(AOwner);
-  FColors := AColors;
-  BorderStyle := bsNone;
-  Color := cKeyColor;
-  TransparentColor := True;
-  TransparentColorValue := cKeyColor;
-  DoubleBuffered := True;
-  Font.Name := 'Segoe UI';
-  Font.Size := 8;
-end;
-
-procedure TAtlasDesignerOutlines.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.Style := WS_POPUP;
-  Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW or WS_EX_TRANSPARENT;
-  if FOwnerWindow <> 0 then
-  begin
-    Params.WndParent := FOwnerWindow;
-  end;
+  inherited CreateOverlayWindow(AOwner, AOwnerWindow, AColors,
+    [TAtlasOverlayOption.Popup, TAtlasOverlayOption.KeyColor, TAtlasOverlayOption.ClickThrough]);
 end;
 
 procedure TAtlasDesignerOutlines.Paint;
@@ -99,12 +73,12 @@ begin
   Canvas.Font := Font;
   for mOutline in FOutlines do
   begin
-    Canvas.Pen.Color := TColor(FColors.Accent);
-    Canvas.Font.Color := TColor(FColors.Accent);
+    Canvas.Pen.Color := TColor(Colors.Accent);
+    Canvas.Font.Color := TColor(Colors.Accent);
     if mOutline.Bad then
     begin
-      Canvas.Pen.Color := TColor(FColors.Error);
-      Canvas.Font.Color := TColor(FColors.Error);
+      Canvas.Pen.Color := TColor(Colors.Error);
+      Canvas.Font.Color := TColor(Colors.Error);
     end;
     Canvas.Pen.Style := psDot;
     Canvas.Brush.Style := bsClear;
@@ -113,16 +87,6 @@ begin
   end;
   Canvas.Pen.Style := psSolid;
   Canvas.Brush.Style := bsSolid;
-end;
-
-function TAtlasDesignerOutlines.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-procedure TAtlasDesignerOutlines.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  Message.Result := MA_NOACTIVATE;
 end;
 
 procedure TAtlasDesignerOutlines.ShowOutlines(const AScreen: TRect; const AOutlines: TArray<TAtlasOutline>);
@@ -145,12 +109,6 @@ begin
   begin
     ShowWindow(Handle, SW_HIDE);
   end;
-end;
-
-procedure TAtlasDesignerOutlines.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 end.

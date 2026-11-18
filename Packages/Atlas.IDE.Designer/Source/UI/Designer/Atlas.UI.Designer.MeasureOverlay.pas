@@ -17,7 +17,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Designer.Overlay;
 
 type
   TAtlasMeasureMark = record
@@ -34,19 +35,12 @@ type
     function SameAs(const AOther: TAtlasMeasureMark): Boolean;
   end;
 
-  TAtlasMeasureOverlay = class(TForm) // window-ok: Überlagerung, kein Dialog
-  private const
-    cKeyColor = TColor($00FF00FF);
+  TAtlasMeasureOverlay = class(TAtlasDesignerOverlay)
   private
-    FColors: TAtlasColors;
     FMarks: TArray<TAtlasMeasureMark>;
-    FOwnerWindow: HWND;
-    function S(AValue: Integer): Integer;
     procedure DrawLine(const AMark: TAtlasMeasureMark);
     procedure DrawBadge(const AAt: TPoint; const ACaption: string; AColor: TColor);
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
@@ -55,7 +49,6 @@ type
     /// Stelle zeichnen nicht neu.</summary>
     procedure ShowMarks(const AScreen: TRect; const AMarks: TArray<TAtlasMeasureMark>);
     procedure HideMarks;
-    procedure ApplyColors(const AColors: TAtlasColors);
     function Shown: Boolean;
     property Marks: TArray<TAtlasMeasureMark> read FMarks;
   end;
@@ -102,27 +95,8 @@ end;
 
 constructor TAtlasMeasureOverlay.CreateOverlay(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
 begin
-  FOwnerWindow := AOwnerWindow;
-  inherited CreateNew(AOwner);
-  FColors := AColors;
-  BorderStyle := bsNone;
-  Color := cKeyColor;
-  TransparentColor := True;
-  TransparentColorValue := cKeyColor;
-  DoubleBuffered := True;
-  Font.Name := 'Segoe UI';
-  Font.Size := 8;
-end;
-
-procedure TAtlasMeasureOverlay.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.Style := WS_POPUP;
-  Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW or WS_EX_TRANSPARENT;
-  if FOwnerWindow <> 0 then
-  begin
-    Params.WndParent := FOwnerWindow;
-  end;
+  inherited CreateOverlayWindow(AOwner, AOwnerWindow, AColors,
+    [TAtlasOverlayOption.Popup, TAtlasOverlayOption.KeyColor, TAtlasOverlayOption.ClickThrough]);
 end;
 
 procedure TAtlasMeasureOverlay.Paint;
@@ -141,20 +115,15 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
-function TAtlasMeasureOverlay.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
 procedure TAtlasMeasureOverlay.DrawLine(const AMark: TAtlasMeasureMark);
 var
   mColor: TColor;
   mTick: Integer;
 begin
-  mColor := TColor(FColors.Error);
+  mColor := TColor(Colors.Error);
   if AMark.Accent then
   begin
-    mColor := TColor(FColors.Accent);
+    mColor := TColor(Colors.Accent);
   end;
   if AMark.FromPoint <> AMark.ToPoint then
   begin
@@ -204,11 +173,6 @@ begin
   Canvas.TextOut(mBox.Left + S(3), mBox.Top + S(1), ACaption);
 end;
 
-procedure TAtlasMeasureOverlay.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  Message.Result := MA_NOACTIVATE;
-end;
-
 procedure TAtlasMeasureOverlay.ShowMarks(const AScreen: TRect; const AMarks: TArray<TAtlasMeasureMark>);
 begin
   if AScreen.IsEmpty or (Length(AMarks) = 0) then
@@ -234,12 +198,6 @@ begin
   begin
     ShowWindow(Handle, SW_HIDE);
   end;
-end;
-
-procedure TAtlasMeasureOverlay.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 function TAtlasMeasureOverlay.Shown: Boolean;

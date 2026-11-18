@@ -76,15 +76,6 @@ begin
   end;
 end;
 
-function ComponentOf(ARoot: TComponent; const AName: string): TComponent;
-begin
-  Result := ARoot;
-  if not SameText(ARoot.Name, AName) then
-  begin
-    Result := ARoot.FindComponent(AName);
-  end;
-end;
-
 { TAtlasIdeFormTexts }
 
 constructor TAtlasIdeFormTexts.Create(const AOnMessage: TProc<string>);
@@ -130,7 +121,7 @@ begin
         Result := mEntries;
         Exit;
       end;
-      mComponent := ComponentOf(mRoot, mEntries[AIndex].Component);
+      mComponent := TAtlasDesignerAccess.ComponentNamed(mRoot, mEntries[AIndex].Component);
       mChange.Component := mEntries[AIndex].Component;
       mChange.Path := mEntries[AIndex].Path;
       if (mComponent <> nil) and TAtlasFormTextProps.Read(mComponent, mChange.Path, mChange.OldText) and
@@ -146,12 +137,8 @@ begin
 end;
 
 function TAtlasIdeFormTexts.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
 begin
-  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FUndoFile);
+  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.IsCurrentForm(FUndoFile);
 end;
 
 procedure TAtlasIdeFormTexts.Undo;
@@ -166,7 +153,7 @@ begin
   end;
   mChange := FUndo[High(FUndo)];
   SetLength(FUndo, Length(FUndo) - 1);
-  mComponent := ComponentOf(mRoot, mChange.Component);
+  mComponent := TAtlasDesignerAccess.ComponentNamed(mRoot, mChange.Component);
   if (mComponent <> nil) and TAtlasFormTextProps.Write(mComponent, mChange.Path, mChange.OldText) then
   begin
     if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then

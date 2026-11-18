@@ -18,27 +18,21 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Designer.Overlay;
 
 type
-  TAtlasDesignerFlash = class(TForm) // window-ok: Überlagerung, kein Dialog
+  TAtlasDesignerFlash = class(TAtlasDesignerOverlay)
   private const
-    cKeyColor = TColor($00FF00FF);
     cDuration = 600;
   private
-    FColors: TAtlasColors;
-    FOwnerWindow: HWND;
     FTimer: TTimer;
-    function S(AValue: Integer): Integer;
     procedure TimerTick(Sender: TObject);
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
     constructor CreateFlash(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
-    procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Rahmen um AScreen (Bildschirm) zeigen, ohne den Fokus zu nehmen.</summary>
     procedure FlashAt(const AScreen: TRect);
   end;
@@ -49,29 +43,12 @@ implementation
 
 constructor TAtlasDesignerFlash.CreateFlash(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
 begin
-  FOwnerWindow := AOwnerWindow;
-  inherited CreateNew(AOwner);
-  FColors := AColors;
-  BorderStyle := bsNone;
-  Color := cKeyColor;
-  TransparentColor := True;
-  TransparentColorValue := cKeyColor;
-  DoubleBuffered := True;
+  inherited CreateOverlayWindow(AOwner, AOwnerWindow, AColors,
+    [TAtlasOverlayOption.Popup, TAtlasOverlayOption.KeyColor, TAtlasOverlayOption.ClickThrough]);
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.Interval := cDuration;
   FTimer.OnTimer := TimerTick;
-end;
-
-procedure TAtlasDesignerFlash.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.Style := WS_POPUP;
-  Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW or WS_EX_TRANSPARENT;
-  if FOwnerWindow <> 0 then
-  begin
-    Params.WndParent := FOwnerWindow;
-  end;
 end;
 
 procedure TAtlasDesignerFlash.Paint;
@@ -82,17 +59,12 @@ begin
   Canvas.Brush.Color := cKeyColor;
   Canvas.FillRect(ClientRect);
   mWidth := S(2);
-  Canvas.Pen.Color := TColor(FColors.Accent);
+  Canvas.Pen.Color := TColor(Colors.Accent);
   Canvas.Pen.Width := mWidth;
   Canvas.Brush.Style := bsClear;
   Canvas.Rectangle(mWidth div 2, mWidth div 2, ClientWidth - mWidth div 2 + 1, ClientHeight - mWidth div 2 + 1);
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Width := 1;
-end;
-
-function TAtlasDesignerFlash.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
 end;
 
 procedure TAtlasDesignerFlash.TimerTick(Sender: TObject);
@@ -102,17 +74,6 @@ begin
   begin
     ShowWindow(Handle, SW_HIDE);
   end;
-end;
-
-procedure TAtlasDesignerFlash.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  Message.Result := MA_NOACTIVATE;
-end;
-
-procedure TAtlasDesignerFlash.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 procedure TAtlasDesignerFlash.FlashAt(const AScreen: TRect);

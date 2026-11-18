@@ -56,7 +56,6 @@ type
 
   TAtlasIdePropertyPainter = class(TAtlasIdeDesignerTool)
   private
-    FKeys: TAtlasPaintKeys;
     FSourceFile: string;
     FSourceName: string;
     FSourceProperties: TArray<TAtlasPaintProperty>;
@@ -69,7 +68,6 @@ type
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
-    destructor Destroy; override;
     procedure UpdateKeys(AWanted: Boolean);
     procedure Execute(ACommand: TAtlasPaintCommand);
     /// <summary>Gibt es aufgenommene Eigenschaften für das aktive Formular?</summary>
@@ -342,20 +340,13 @@ end;
 { TAtlasIdePropertyPainter }
 
 constructor TAtlasIdePropertyPainter.Create(const AOnMessage: TProc<string>);
+var
+  mKeys: TAtlasPaintKeys;
 begin
   inherited Create(AOnMessage);
-  FKeys := TAtlasPaintKeys.Create(cKeyPriority);
-  FKeys.FOwner := Self;
-end;
-
-destructor TAtlasIdePropertyPainter.Destroy;
-begin
-  if FKeys <> nil then
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-    FKeys.Free;
-  end;
-  inherited Destroy;
+  mKeys := TAtlasPaintKeys.Create(cKeyPriority);
+  mKeys.FOwner := Self;
+  OwnKeys(mKeys);
 end;
 
 procedure TAtlasIdePropertyPainter.PickUp;
@@ -453,14 +444,7 @@ end;
 
 procedure TAtlasIdePropertyPainter.UpdateKeys(AWanted: Boolean);
 begin
-  if AWanted and TAtlasIdeSettings.Current.DesignerPropertyPainter then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
+  HookKeys(AWanted and TAtlasIdeSettings.Current.DesignerPropertyPainter);
 end;
 
 procedure TAtlasIdePropertyPainter.Execute(ACommand: TAtlasPaintCommand);

@@ -96,7 +96,8 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.KeptForm,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.Names;
 
 const
   cKeyPriority = 50;
@@ -121,17 +122,6 @@ end;
 function FormKey(const AFormFile: string): string;
 begin
   Result := TAtlasSelectionSets.FormKey(AFormFile, Shared);
-end;
-
-function Names(const AComponents: TArray<TComponent>): TArray<string>;
-var
-  mComponent: TComponent;
-begin
-  Result := nil;
-  for mComponent in AComponents do
-  begin
-    Result := Result + [mComponent.Name];
-  end;
 end;
 
 /// <summary>Umschalt beim Klick fügt hinzu, Strg entfernt; sonst AAction.</summary>
@@ -477,7 +467,7 @@ begin
     Exit;
   end;
   mSets := Store(mEditor.FileName);
-  mName := TAtlasSelectionSets.SuggestName(Names(mSelected));
+  mName := TAtlasSelectionSets.SuggestName(TAtlasDesignerNames.NamesOf(mSelected));
   if mName = '' then
   begin
     mName := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSetsDefaultName,
@@ -493,7 +483,7 @@ begin
     Say(TAtlasDesignerKept.LostText);
     Exit;
   end;
-  mIndex := mSets.Add(FormKey(mEditor.FileName), mName, Names(mSelected));
+  mIndex := mSets.Add(FormKey(mEditor.FileName), mName, TAtlasDesignerNames.NamesOf(mSelected));
   Watch(mRoot, mEditor.FileName);
   Save(mEditor.FileName);
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSetsSaved, [Trim(mName), ShortcutText(mIndex)]));
@@ -594,7 +584,7 @@ begin
     Exit;
   end;
   mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
-  Maintain(mSets, FormKey(mEditor.FileName), AIndex, AAction, Names(mSelected));
+  Maintain(mSets, FormKey(mEditor.FileName), AIndex, AAction, TAtlasDesignerNames.NamesOf(mSelected));
   // Umbenennen fragt über einen Dialog; danach kann das Formular neu geladen sein: dann nicht mehr hineinsehen.
   if mKept.Holds then
   begin

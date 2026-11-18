@@ -939,8 +939,8 @@ begin
   end
   else
   begin
-    mText := Format('%d, %d · %d × %d', [AItem.Bounds.Left, AItem.Bounds.Top, AItem.Bounds.Width,
-      AItem.Bounds.Height]);
+    mText := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSearchBounds, [AItem.Bounds.Left,
+      AItem.Bounds.Top, AItem.Bounds.Width, AItem.Bounds.Height]);
   end;
   if AItem.ParentName <> '' then
   begin

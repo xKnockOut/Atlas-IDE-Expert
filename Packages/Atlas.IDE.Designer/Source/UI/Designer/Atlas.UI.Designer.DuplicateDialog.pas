@@ -22,7 +22,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Designer.DuplicateRow,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.UI.Designer.Dialog;
 
 type
   TAtlasDuplicateOptions = record
@@ -35,7 +35,7 @@ type
     Push: Boolean;
   end;
 
-  TAtlasDuplicateDialog = class(TAtlasDialog)
+  TAtlasDuplicateDialog = class(TAtlasDesignerDialog)
   public const
     cDialogWidth = 480;
     cMaxCount = 99;
@@ -53,10 +53,8 @@ type
     FCancel: TButton;
     FLoading: Boolean;
     FOnChange: TProc<TAtlasDuplicateOptions>;
-    function AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
     function AddEdit(AParent: TWinControl; AWidth: Integer; ANumbers: Boolean): TEdit;
     function AddCheck(AParent: TWinControl; const ACaption: string): TCheckBox;
-    function AddFlowRow: TFlowPanel;
     procedure AddButtons;
     procedure Changed(Sender: TObject);
     procedure Load(const AOptions: TAtlasDuplicateOptions);
@@ -90,7 +88,6 @@ uses
   Atlas.UI.Foundation.Theme;
 
 const
-  cGap = 10;
   cNumberWidth = 48;
 
 { TAtlasDuplicateDialog }
@@ -109,12 +106,12 @@ begin
   FDirection.Style := csDropDownList;
   FDirection.Width := ScaleValue(110);
   FDirection.AlignWithMargins := True;
-  FDirection.Margins.SetBounds(0, 0, cGap * 2, 0);
+  FDirection.Margins.SetBounds(0, 0, Gap * 2, 0);
   FDirection.Items.Add(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateDown));
   FDirection.Items.Add(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateRight));
   AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateGap));
   FGap := AddEdit(mRow, cNumberWidth, True);
-  FGap.Margins.Right := cGap * 2;
+  FGap.Margins.Right := Gap * 2;
   AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCount));
   FCount := AddEdit(mRow, cNumberWidth, True);
 
@@ -143,15 +140,6 @@ begin
   ActiveControl := FList;
 end;
 
-function TAtlasDuplicateDialog.AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
-begin
-  Result := TLabel.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, ScaleValue(3), cGap div 2, 0);
-end;
-
 function TAtlasDuplicateDialog.AddEdit(AParent: TWinControl; AWidth: Integer; ANumbers: Boolean): TEdit;
 begin
   Result := TEdit.Create(Self);
@@ -170,21 +158,8 @@ begin
   Result.Caption := ACaption;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap * 2, 0);
+  Result.Margins.SetBounds(0, 0, Gap * 2, 0);
   Result.OnClick := Changed;
-end;
-
-function TAtlasDuplicateDialog.AddFlowRow: TFlowPanel;
-begin
-  Result := TFlowPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AutoSize := True;
-  Result.BevelOuter := bvNone;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  // Hinter alle bisherigen Zeilen (alTop ordnet nach Top).
-  Result.Top := ScaleValue(2000) + ComponentCount;
 end;
 
 procedure TAtlasDuplicateDialog.AddButtons;
@@ -198,19 +173,19 @@ var
     Result.Caption := ACaption;
     Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
     Result.AlignWithMargins := True;
-    Result.Margins.SetBounds(0, 0, cGap, 0);
+    Result.Margins.SetBounds(0, 0, Gap, 0);
   end;
 
 begin
   mButtons := AddFlowRow;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   FOk := AddButton(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateOk));
   FOk.Default := True;
   FOk.ModalResult := mrOk;
   FCancel := AddButton(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel));
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
+  ClientHeight := mButtons.Top + mButtons.Height + Gap;
 end;
 
 procedure TAtlasDuplicateDialog.Changed(Sender: TObject);

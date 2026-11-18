@@ -460,7 +460,8 @@ begin
     mBase := Prefix(AInputs[mIndex].ClassChain, AOptions.Prefixes) + mWord;
     Result[mIndex].NewName := mBase;
     mNumber := 1;
-    while TAtlasDesignerNames.Contains(mTaken, Result[mIndex].NewName) and not SameText(Result[mIndex].NewName, AInputs[mIndex].Name) do
+    while TAtlasDesignerNames.Contains(mTaken, Result[mIndex].NewName) and
+      not SameText(Result[mIndex].NewName, AInputs[mIndex].Name) do
     begin
       Inc(mNumber);
       Result[mIndex].NewName := mBase + IntToStr(mNumber);

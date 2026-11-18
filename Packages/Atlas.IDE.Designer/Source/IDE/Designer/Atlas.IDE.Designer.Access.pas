@@ -34,6 +34,15 @@ type
     class function Focused: Boolean; static;
     /// <summary>Formular im Designer des aktiven Editorfensters.</summary>
     class function Current(out AEditor: IOTAFormEditor; out ARoot: TComponent): Boolean; static;
+    /// <summary>Zeigt der Designer des aktiven Editorfensters das Formular der Datei AFileName? Für „Rückgängig“ der
+    /// Werkzeuge, das nur im selben Formular gilt.</summary>
+    class function IsCurrentForm(const AFileName: string): Boolean; static;
+    /// <summary>ARoot selbst, wenn es AName heißt, sonst seine Komponente AName; nil ohne sie.</summary>
+    class function ComponentNamed(ARoot: TComponent; const AName: string): TComponent; static;
+    /// <summary>Name der Komponente in der Eigenschaft FocusControl (Label); '' ohne sie.</summary>
+    class function FocusControlName(AControl: TControl): string; static;
+    /// <summary>PixelsPerInch des Formulars ARoot; ohne Formular bzw. ohne Wert 96.</summary>
+    class function PpiOf(ARoot: TComponent): Integer; static;
     /// <summary>Ausgewählte Komponenten des Formulars ARoot ohne das Formular selbst.</summary>
     class function Selection(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TComponent>; static;
     /// <summary>Steuerelemente aus ASelected mit demselben Elternelement wie das erste; Komponenten ohne
@@ -71,8 +80,15 @@ uses
   System.SysUtils,
   System.TypInfo,
   System.Variants,
+  Vcl.Forms,
   Atlas.Core.Forms.Text,
   Atlas.IDE.Foundation.DesignerView;
+
+const
+  /// <summary>Eigenschaft eines Labels mit dem zugehörigen Eingabefeld.</summary>
+  cFocusControl = 'FocusControl';
+  /// <summary>Auflösung, in der ein Formular ohne PixelsPerInch entworfen ist.</summary>
+  cDefaultPpi = 96;
 
 { TAtlasDesignerAccess }
 
@@ -183,6 +199,47 @@ begin
   AEditor := TAtlasIdeDesignerView.CurrentFormEditor;
   ARoot := TAtlasIdeDesignerView.RootOf(AEditor);
   Result := (AEditor <> nil) and (ARoot <> nil);
+end;
+
+class function TAtlasDesignerAccess.IsCurrentForm(const AFileName: string): Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := Current(mEditor, mRoot) and SameText(mEditor.FileName, AFileName);
+end;
+
+class function TAtlasDesignerAccess.ComponentNamed(ARoot: TComponent; const AName: string): TComponent;
+begin
+  Result := ARoot;
+  if not SameText(ARoot.Name, AName) then
+  begin
+    Result := ARoot.FindComponent(AName);
+  end;
+end;
+
+class function TAtlasDesignerAccess.FocusControlName(AControl: TControl): string;
+var
+  mField: TObject;
+begin
+  Result := '';
+  if IsPublishedProp(AControl, cFocusControl) and (PropType(AControl, cFocusControl) = tkClass) then
+  begin
+    mField := GetObjectProp(AControl, cFocusControl);
+    if mField is TComponent then
+    begin
+      Result := TComponent(mField).Name;
+    end;
+  end;
+end;
+
+class function TAtlasDesignerAccess.PpiOf(ARoot: TComponent): Integer;
+begin
+  Result := cDefaultPpi;
+  if (ARoot is TCustomForm) and (TCustomForm(ARoot).PixelsPerInch > 0) then
+  begin
+    Result := TCustomForm(ARoot).PixelsPerInch;
+  end;
 end;
 
 class function TAtlasDesignerAccess.Selection(const AEditor: IOTAFormEditor;

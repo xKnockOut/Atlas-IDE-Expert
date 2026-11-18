@@ -450,8 +450,7 @@ end;
 /// getrennt.</summary>
 function WordsOf(const AName: string): TArray<string>;
 var
-  mIndex: Integer;
-  mWord: string;
+  mIndex, mStart: Integer;
   mChar: Char;
 begin
   Result := nil;
@@ -465,24 +464,25 @@ begin
   begin
     mIndex := 1;
   end;
-  mWord := '';
+  // Ein Wort ist ein zusammenhängender Lauf ohne _ und Ziffern; ein Großbuchstabe beginnt ein neues.
+  mStart := 0;
   while mIndex <= Length(AName) do
   begin
     mChar := AName[mIndex];
-    if CharInSet(mChar, ['A'..'Z', '_', '0'..'9']) and (mWord <> '') then
+    if CharInSet(mChar, ['A'..'Z', '_', '0'..'9']) and (mStart > 0) then
     begin
-      Result := Result + [mWord];
-      mWord := '';
+      Result := Result + [Copy(AName, mStart, mIndex - mStart)];
+      mStart := 0;
     end;
-    if not CharInSet(mChar, ['_', '0'..'9']) then
+    if (mStart = 0) and not CharInSet(mChar, ['_', '0'..'9']) then
     begin
-      mWord := mWord + mChar;
+      mStart := mIndex;
     end;
     Inc(mIndex);
   end;
-  if mWord <> '' then
+  if mStart > 0 then
   begin
-    Result := Result + [mWord];
+    Result := Result + [Copy(AName, mStart, MaxInt)];
   end;
 end;
 

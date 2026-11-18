@@ -50,7 +50,6 @@ type
 
   TAtlasIdeDesignerLayers = class(TAtlasIdeDesignerTool)
   private
-    FKeys: TAtlasDesignerLayerKeys;
     /// <summary>Stand vor dem letzten Schritt: Datei, Parent (leer = Formular) und Namen von unten nach oben.
     /// </summary>
     FUndoFile: string;
@@ -61,7 +60,6 @@ type
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
-    destructor Destroy; override;
     procedure UpdateKeys(AWanted: Boolean);
     procedure Execute(ACommand: TAtlasLayersCommand);
     function CanUndo: Boolean;
@@ -189,20 +187,13 @@ end;
 { TAtlasIdeDesignerLayers }
 
 constructor TAtlasIdeDesignerLayers.Create(const AOnMessage: TProc<string>);
+var
+  mKeys: TAtlasDesignerLayerKeys;
 begin
   inherited Create(AOnMessage);
-  FKeys := TAtlasDesignerLayerKeys.Create(cKeyPriority);
-  FKeys.FOwner := Self;
-end;
-
-destructor TAtlasIdeDesignerLayers.Destroy;
-begin
-  if FKeys <> nil then
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-    FKeys.Free;
-  end;
-  inherited Destroy;
+  mKeys := TAtlasDesignerLayerKeys.Create(cKeyPriority);
+  mKeys.FOwner := Self;
+  OwnKeys(mKeys);
 end;
 
 procedure TAtlasIdeDesignerLayers.Restore;
@@ -245,14 +236,7 @@ var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := TAtlasIdeSettings.Current;
-  if AWanted and mSettings.DesignerZOrder and mSettings.DesignerZOrderShortcuts then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
+  HookKeys(AWanted and mSettings.DesignerZOrder and mSettings.DesignerZOrderShortcuts);
 end;
 
 function NewOrder(const AItems: TArray<TAtlasLayerItem>; AIndex: Integer;

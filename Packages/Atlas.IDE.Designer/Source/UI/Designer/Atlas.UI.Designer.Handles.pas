@@ -25,7 +25,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Designer.Overlay;
 
 type
 {$SCOPEDENUMS ON}
@@ -53,16 +54,12 @@ type
     class function Create(const ABounds: TRect; AKind: TAtlasHandleFrameKind): TAtlasHandleFrame; static;
   end;
 
-  TAtlasDesignerHandles = class(TForm) // window-ok: Überlagerung, kein Dialog
-  private const
-    cKeyColor = TColor($00FF00FF);
+  TAtlasDesignerHandles = class(TAtlasDesignerOverlay)
   private
-    FColors: TAtlasColors;
     FHandles: TArray<TAtlasHandle>;
     FFrames: TArray<TAtlasHandleFrame>;
     FLabel: string;
     FLabelAt: TPoint;
-    FOwnerWindow: HWND;
     FShown: Boolean;
     FDragIndex: Integer;
     FDragStart: TPoint;
@@ -75,10 +72,8 @@ type
     procedure PaintFrames;
     procedure PaintHandle(const AHandle: TAtlasHandle);
     procedure PaintLabel;
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
     procedure WMCaptureChanged(var Message: TMessage); message WM_CAPTURECHANGED;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
@@ -86,8 +81,6 @@ type
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
     constructor CreateHandles(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
-    function S(AValue: Integer): Integer;
-    procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Inhalt setzen und neu zeichnen.</summary>
     procedure SetContent(const AHandles: TArray<TAtlasHandle>; const AFrames: TArray<TAtlasHandleFrame>;
       const ALabel: string; const ALabelAt: TPoint);
@@ -137,29 +130,10 @@ end;
 
 constructor TAtlasDesignerHandles.CreateHandles(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
 begin
-  FOwnerWindow := AOwnerWindow;
-  inherited CreateNew(AOwner);
-  FColors := AColors;
+  inherited CreateOverlayWindow(AOwner, AOwnerWindow, AColors,
+    [TAtlasOverlayOption.Popup, TAtlasOverlayOption.KeyColor]);
   FDragIndex := -1;
-  BorderStyle := bsNone;
-  Color := cKeyColor;
-  TransparentColor := True;
-  TransparentColorValue := cKeyColor;
-  DoubleBuffered := True;
-  Font.Name := 'Segoe UI';
-  Font.Size := 8;
   Font.Style := [fsBold];
-end;
-
-procedure TAtlasDesignerHandles.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.Style := WS_POPUP;
-  Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW;
-  if FOwnerWindow <> 0 then
-  begin
-    Params.WndParent := FOwnerWindow;
-  end;
 end;
 
 procedure TAtlasDesignerHandles.Paint;
@@ -282,13 +256,13 @@ begin
   begin
     if mFrame.Kind = TAtlasHandleFrameKind.Bad then
     begin
-      Canvas.Pen.Color := TColor(FColors.Error);
+      Canvas.Pen.Color := TColor(Colors.Error);
       Canvas.Pen.Style := psSolid;
       Canvas.Pen.Width := S(2);
     end
     else
     begin
-      Canvas.Pen.Color := TColor(FColors.Accent);
+      Canvas.Pen.Color := TColor(Colors.Accent);
       Canvas.Pen.Style := psDash;
       Canvas.Pen.Width := 1;
     end;
@@ -304,15 +278,15 @@ var
   mBack: TColor;
   mRect: TRect;
 begin
-  mBack := TColor(FColors.Accent);
+  mBack := TColor(Colors.Accent);
   if AHandle.Muted then
   begin
-    mBack := TColor(FColors.Muted);
+    mBack := TColor(Colors.Muted);
   end;
   mRect := AHandle.Bounds;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := mBack;
-  Canvas.Pen.Color := TColor(FColors.Surface);
+  Canvas.Pen.Color := TColor(Colors.Surface);
   if AHandle.Kind = TAtlasHandleKind.Square then
   begin
     Canvas.Rectangle(mRect);
@@ -320,7 +294,7 @@ begin
   end;
   Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRect.Height, mRect.Height);
   Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := TColor(FColors.Surface);
+  Canvas.Font.Color := TColor(Colors.Surface);
   DrawText(Canvas.Handle, PChar(AHandle.Text), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
 end;
@@ -345,19 +319,13 @@ begin
   begin
     mRect.Offset(0, ClientHeight - mRect.Bottom);
   end;
-  Canvas.Brush.Color := TColor(FColors.Surface);
-  Canvas.Pen.Color := TColor(FColors.Accent);
+  Canvas.Brush.Color := TColor(Colors.Surface);
+  Canvas.Pen.Color := TColor(Colors.Accent);
   Canvas.Rectangle(mRect);
   Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := TColor(FColors.Text);
+  Canvas.Font.Color := TColor(Colors.Text);
   DrawText(Canvas.Handle, PChar(FLabel), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasDesignerHandles.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  // Griff gedrückt: Fokus bleibt im Designer.
-  Message.Result := MA_NOACTIVATE;
 end;
 
 procedure TAtlasDesignerHandles.WMCaptureChanged(var Message: TMessage);
@@ -372,17 +340,6 @@ begin
       FOnUp([]);
     end;
   end;
-end;
-
-function TAtlasDesignerHandles.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-procedure TAtlasDesignerHandles.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 procedure TAtlasDesignerHandles.SetContent(const AHandles: TArray<TAtlasHandle>;

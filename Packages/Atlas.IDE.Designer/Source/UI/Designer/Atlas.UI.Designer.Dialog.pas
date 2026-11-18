@@ -10,9 +10,11 @@ interface
 
 uses
   System.Classes,
+  System.UITypes,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ExtCtrls,
+  Vcl.StdCtrls,
   Atlas.UI.Foundation.Dialog;
 
 type
@@ -26,7 +28,9 @@ type
     /// <summary>Neue Zeile unter allen bisherigen (alTop, Höhe nach Inhalt).</summary>
     function AddFlowRow: TFlowPanel;
     /// <summary>Beschriftung ACaption in AParent, auf Höhe des Texts eines Eingabefelds daneben.</summary>
-    procedure AddFlowLabel(AParent: TWinControl; const ACaption: string);
+    function AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
+    /// <summary>Knopf ACaption in AParent mit Ergebnis AResult, ausgerichtet nach AAlign mit Rand.</summary>
+    function AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult; AAlign: TAlign): TButton;
   public
     /// <summary>Leeren Dialog mit Titel ACaption, Innenbreite AWidth96 (logische Pixel) und Rahmen ABorder
     /// anlegen.</summary>
@@ -35,9 +39,6 @@ type
   end;
 
 implementation
-
-uses
-  Vcl.StdCtrls;
 
 const
   /// <summary>Abstand der Beschriftung nach oben, damit sie auf der Textzeile eines Eingabefelds steht.</summary>
@@ -77,15 +78,24 @@ begin
   Result.Parent := Self;
 end;
 
-procedure TAtlasDesignerDialog.AddFlowLabel(AParent: TWinControl; const ACaption: string);
-var
-  mLabel: TLabel;
+function TAtlasDesignerDialog.AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
 begin
-  mLabel := TLabel.Create(Self);
-  mLabel.Parent := AParent;
-  mLabel.Caption := ACaption;
-  mLabel.AlignWithMargins := True;
-  mLabel.Margins.SetBounds(0, ScaleValue(cLabelTop), Gap div 2, 0);
+  Result := TLabel.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(0, ScaleValue(cLabelTop), Gap div 2, 0);
+end;
+
+function TAtlasDesignerDialog.AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult;
+  AAlign: TAlign): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.ModalResult := AResult;
+  Result.Align := AAlign;
+  Result.AlignWithMargins := True;
 end;
 
 end.

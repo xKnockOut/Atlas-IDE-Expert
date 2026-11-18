@@ -24,7 +24,6 @@ type
     FSnapshot: TAtlasDesignerSnapshot;
     FTabNames: TArray<string>;
     FTabOrders: TArray<Integer>;
-    procedure HideOutlines;
     procedure SetTabOrders(ARoot: TComponent; const AControls: TArray<TControl>; const AOrder: TArray<Integer>);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
@@ -61,21 +60,6 @@ begin
   Result := (AControl is TCustomLabel) or (AControl is TCustomStaticText);
 end;
 
-function PartnerName(AControl: TControl): string;
-var
-  mField: TObject;
-begin
-  Result := '';
-  if IsPublishedProp(AControl, 'FocusControl') and (PropType(AControl, 'FocusControl') = tkClass) then
-  begin
-    mField := GetObjectProp(AControl, 'FocusControl');
-    if mField is TComponent then
-    begin
-      Result := TComponent(mField).Name;
-    end;
-  end;
-end;
-
 function ItemsOf(const AControls: TArray<TControl>; ACanvas: TCanvas): TArray<TAtlasGridItem>;
 var
   mControl: TControl;
@@ -90,7 +74,7 @@ begin
       mBaseline := mBaseline - mControl.Top;
     end;
     Result := Result + [TAtlasGridItem.Create(mControl.Name, mControl.BoundsRect, IsLabel(mControl),
-      PartnerName(mControl), mBaseline)];
+      TAtlasDesignerAccess.FocusControlName(mControl), mBaseline)];
   end;
 end;
 
@@ -140,14 +124,6 @@ destructor TAtlasIdeFormGrid.Destroy;
 begin
   FSnapshot.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeFormGrid.HideOutlines;
-begin
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
 end;
 
 procedure TAtlasIdeFormGrid.SetTabOrders(ARoot: TComponent; const AControls: TArray<TControl>;

@@ -36,7 +36,6 @@ type
     FMoved: TArray<string>;
     FMovedFrom: TArray<TRect>;
     procedure ShowOutlines(AParent: TWinControl; const AOutlines: TArray<TAtlasOutline>);
-    procedure HideOutlines;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -66,7 +65,8 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Surface,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.Names;
 
 type
   /// <summary>Eine Kopie: Originale und ihre Kopien in gleicher Reihenfolge (samt Kindern).</summary>
@@ -431,17 +431,6 @@ begin
   end;
 end;
 
-function NamesOf(const AComponents: TArray<TComponent>): TArray<string>;
-var
-  mComponent: TComponent;
-begin
-  Result := nil;
-  for mComponent in AComponents do
-  begin
-    Result := Result + [mComponent.Name];
-  end;
-end;
-
 /// <summary>Alle Kopien (samt Kindern) für „Duplizieren rückgängig“ in ACreated merken; Ergebnis: ihre Namen.
 /// </summary>
 function KeepCopies(ACreated: TAtlasDesignerCreated; const AGroups: TArray<TCopyGroup>): TArray<string>;
@@ -457,7 +446,7 @@ begin
     begin
       ACreated.Add(mCopy);
     end;
-    Result := Result + NamesOf(mGroup.Copies);
+    Result := Result + TAtlasDesignerNames.NamesOf(mGroup.Copies);
   end;
 end;
 
@@ -515,14 +504,6 @@ begin
   end;
   mArea.Offset(AParent.ClientOrigin);
   Outlines.ShowOutlines(mArea, mShifted);
-end;
-
-procedure TAtlasIdeDuplicateRow.HideOutlines;
-begin
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
 end;
 
 function TAtlasIdeDuplicateRow.CanUndo: Boolean;

@@ -111,15 +111,6 @@ begin
   Dec(Result.Bottom, AParent.Padding.Bottom);
 end;
 
-function PpiOf(ARoot: TComponent): Integer;
-begin
-  Result := cDefaultPpi;
-  if (ARoot is TCustomForm) and (TCustomForm(ARoot).PixelsPerInch > 0) then
-  begin
-    Result := TCustomForm(ARoot).PixelsPerInch;
-  end;
-end;
-
 /// <summary>Hat ein anderer Knopf des Formulars schon Default (ACancel = False) bzw. Cancel?</summary>
 function OtherHas(ARoot: TComponent; AButton: TButton; ACancel: Boolean): string;
 var
@@ -224,19 +215,17 @@ function RolesOf(const AButtons: TArray<TButton>; const ATerms: string; out ATex
 var
   mButton: TButton;
   mRole: TAtlasButtonRole;
+  mParts: TArray<string>;
 begin
   Result := nil;
-  AText := '';
+  mParts := nil;
   for mButton in AButtons do
   begin
     mRole := TAtlasButtonBar.RoleOf(mButton.Name, mButton.Caption, Ord(mButton.ModalResult), ATerms);
     Result := Result + [mRole];
-    if AText <> '' then
-    begin
-      AText := AText + ', ';
-    end;
-    AText := AText + mButton.Name + ': ' + TAtlasButtonBar.RoleName(mRole);
+    mParts := mParts + [mButton.Name + ': ' + TAtlasButtonBar.RoleName(mRole)];
   end;
+  AText := string.Join(', ', mParts);
 end;
 
 /// <summary>Lage, Anchors und TabOrder in der Reihenfolge AOrder.</summary>
@@ -257,7 +246,7 @@ begin
     mHeights := mHeights + [mButton.Height];
     mControls := mControls + [TControl(mButton)];
   end;
-  mPpi := PpiOf(ARoot);
+  mPpi := TAtlasDesignerAccess.PpiOf(ARoot);
   mPosition := TAtlasButtonBar.PositionOf(ASettings.DesignerButtonBarPosition);
   mRects := TAtlasButtonBar.Layout(Length(AButtons), TSize.Create(TAtlasIdeFitText.CommonWidth(mControls, ARoot),
     TAtlasButtonBar.CommonHeight(mHeights)), mPosition, InnerRect(AButtons[0].Parent),

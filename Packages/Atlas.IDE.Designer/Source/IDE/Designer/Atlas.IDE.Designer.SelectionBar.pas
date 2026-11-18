@@ -282,10 +282,7 @@ end;
 procedure TAtlasIdeSelectionBar.ApplyTheme;
 begin
   inherited ApplyTheme;
-  if FWindow <> nil then
-  begin
-    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  ThemeWindow(FWindow);
 end;
 
 procedure TAtlasIdeSelectionBar.EnsureWindow;
@@ -318,7 +315,7 @@ function TAtlasIdeSelectionBar.FindControls: Boolean;
 var
   mEditor: IOTAFormEditor;
   mComponent: TComponent;
-  mNames, mBounds: string;
+  mNames, mBounds: TArray<string>;
 begin
   FSelection.Controls := nil;
   FSelection.Root := nil;
@@ -327,20 +324,20 @@ begin
     FSelection.Tracking.Clear;
     Exit(False);
   end;
-  mNames := mEditor.FileName;
-  mBounds := '';
+  mNames := TArray<string>.Create(mEditor.FileName);
+  mBounds := nil;
   for mComponent in TAtlasDesignerAccess.Selection(mEditor, FSelection.Root) do
   begin
     if mComponent is TControl then
     begin
       FSelection.Controls := FSelection.Controls + [TControl(mComponent)];
-      mNames := mNames + '|' + mComponent.Name;
-      mBounds := mBounds + Format('|%d,%d,%d,%d', [TControl(mComponent).Left, TControl(mComponent).Top,
-        TControl(mComponent).Width, TControl(mComponent).Height]);
+      mNames := mNames + [mComponent.Name];
+      mBounds := mBounds + [Format('%d,%d,%d,%d', [TControl(mComponent).Left, TControl(mComponent).Top,
+        TControl(mComponent).Width, TControl(mComponent).Height])];
     end;
   end;
   Result := Length(FSelection.Controls) >= 2;
-  FSelection.Tracking.Update(mNames, mBounds, GetTickCount64);
+  FSelection.Tracking.Update(string.Join('|', mNames), string.Join('|', mBounds), GetTickCount64);
 end;
 
 function TAtlasIdeSelectionBar.Wanted: Boolean;

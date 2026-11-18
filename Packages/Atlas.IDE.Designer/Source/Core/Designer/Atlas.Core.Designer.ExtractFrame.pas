@@ -618,7 +618,8 @@ begin
       begin
         mLine := mShifted;
       end;
-      mLines := mLines + [Reindented(mLine, cFrameIndent + TAtlasDesignerNames.IndentOf(mLine) - ADfm.Nodes[mRoot].Indent)];
+      mLines := mLines + [Reindented(mLine,
+        cFrameIndent + TAtlasDesignerNames.IndentOf(mLine) - ADfm.Nodes[mRoot].Indent)];
     end;
   end;
   mLines := mLines + ['end', ''];
@@ -880,7 +881,8 @@ begin
   Result := nil;
   for mNode := 1 to High(ADfm.Nodes) do
   begin
-    if not TAtlasDesignerNames.Contains(AMoved, ADfm.Nodes[mNode].Name) and not ADfm.IsInside(mNode, ASplit.Removed[0]) then
+    if not TAtlasDesignerNames.Contains(AMoved, ADfm.Nodes[mNode].Name) and
+      not ADfm.IsInside(mNode, ASplit.Removed[0]) then
     begin
       Result := Result + [ADfm.Nodes[mNode].Name];
     end;

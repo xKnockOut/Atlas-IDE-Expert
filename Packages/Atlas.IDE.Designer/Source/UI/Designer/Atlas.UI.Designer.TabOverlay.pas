@@ -29,7 +29,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Designer.Overlay;
 
 type
 {$SCOPEDENUMS ON}
@@ -61,37 +62,29 @@ type
     class function Create(const ABounds: TRect; AGroup: Integer): TAtlasTabFrame; static;
   end;
 
-  TAtlasTabOrderOverlay = class(TForm) // window-ok: Überlagerung, kein Dialog
-  private const
-    cKeyColor = TColor($00FF00FF);
+  TAtlasTabOrderOverlay = class(TAtlasDesignerOverlay)
   private
-    FColors: TAtlasColors;
     FBadges: TArray<TAtlasTabBadge>;
     FFrames: TArray<TAtlasTabFrame>;
     FClickable: Boolean;
-    FOwnerWindow: HWND;
     FShown: Boolean;
     /// <summary>Zuletzt gesetzter Fensterbereich (Kopie zum Vergleich); 0 = ganzes Fenster.</summary>
     FRegion: HRGN;
     FHintWindow: THintWindow;
     FHintIndex: Integer;
     FOnBadgeClick: TProc<string>;
-    function S(AValue: Integer): Integer;
     procedure ApplyExStyle;
     procedure PaintFrames;
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
   protected
     function GroupColor(AGroup: Integer): TColor;
     /// <summary>Füllung der Marke: Zustand vor Farbgruppe vor Akzent.</summary>
     function BadgeColor(const ABadge: TAtlasTabBadge): TColor;
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
     constructor CreateOverlay(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
     destructor Destroy; override;
-    procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Marken setzen; gleiche zeichnen nicht neu.</summary>
     procedure SetBadges(const ABadges: TArray<TAtlasTabBadge>);
     /// <summary>Rahmen der Container setzen; gleiche zeichnen nicht neu.</summary>
@@ -155,16 +148,8 @@ end;
 constructor TAtlasTabOrderOverlay.CreateOverlay(AOwner: TComponent; AOwnerWindow: HWND;
   const AColors: TAtlasColors);
 begin
-  FOwnerWindow := AOwnerWindow;
-  inherited CreateNew(AOwner);
-  FColors := AColors;
-  BorderStyle := bsNone;
-  Color := cKeyColor;
-  TransparentColor := True;
-  TransparentColorValue := cKeyColor;
-  DoubleBuffered := True;
-  Font.Name := 'Segoe UI';
-  Font.Size := 8;
+  inherited CreateOverlayWindow(AOwner, AOwnerWindow, AColors,
+    [TAtlasOverlayOption.Popup, TAtlasOverlayOption.KeyColor]);
   Font.Style := [fsBold];
   FHintIndex := -1;
 end;
@@ -177,17 +162,6 @@ begin
   end;
   FHintWindow.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasTabOrderOverlay.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.Style := WS_POPUP;
-  Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW;
-  if FOwnerWindow <> 0 then
-  begin
-    Params.WndParent := FOwnerWindow;
-  end;
 end;
 
 procedure TAtlasTabOrderOverlay.Paint;
@@ -210,7 +184,7 @@ begin
     Canvas.Pen.Color := mBack;
     Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRect.Height, mRect.Height);
     Canvas.Brush.Style := bsClear;
-    Canvas.Font.Color := TColor(FColors.Surface);
+    Canvas.Font.Color := TColor(Colors.Surface);
     mText := FBadges[mIndex].Text;
     DrawText(Canvas.Handle, PChar(mText), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   end;
@@ -231,11 +205,6 @@ begin
   begin
     FOnBadgeClick(FBadges[mIndex].Name);
   end;
-end;
-
-function TAtlasTabOrderOverlay.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
 end;
 
 procedure TAtlasTabOrderOverlay.ApplyExStyle;
@@ -278,26 +247,20 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
-procedure TAtlasTabOrderOverlay.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  // Klick auf eine Marke: Fokus bleibt im Designer.
-  Message.Result := MA_NOACTIVATE;
-end;
-
 function TAtlasTabOrderOverlay.GroupColor(AGroup: Integer): TColor;
 begin
-  Result := TColor(FColors.Placeholders[AGroup mod GroupCount]);
+  Result := TColor(Colors.Placeholders[AGroup mod GroupCount]);
 end;
 
 function TAtlasTabOrderOverlay.BadgeColor(const ABadge: TAtlasTabBadge): TColor;
 begin
   case ABadge.Style of
     TAtlasTabBadgeStyle.Warn:
-      Result := TColor(FColors.Error);
+      Result := TColor(Colors.Error);
     TAtlasTabBadgeStyle.Muted:
-      Result := TColor(FColors.Muted);
+      Result := TColor(Colors.Muted);
     TAtlasTabBadgeStyle.Picked:
-      Result := TColor(FColors.Add);
+      Result := TColor(Colors.Add);
   else
     if ABadge.Group >= 0 then
     begin
@@ -305,15 +268,9 @@ begin
     end
     else
     begin
-      Result := TColor(FColors.Accent);
+      Result := TColor(Colors.Accent);
     end;
   end;
-end;
-
-procedure TAtlasTabOrderOverlay.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 procedure TAtlasTabOrderOverlay.SetBadges(const ABadges: TArray<TAtlasTabBadge>);

@@ -66,35 +66,8 @@ uses
   Atlas.Core.Designer.FormModel,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.Settings;
-
-function Contains(const AList: TArray<TComponent>; AComponent: TComponent): Boolean;
-var
-  mItem: TComponent;
-begin
-  for mItem in AList do
-  begin
-    if mItem = AComponent then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function HasText(const AList: TArray<string>; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.Names;
 
 /// <summary>Beschriftung im Menü: lange Werte (Hint, Text) gekürzt.</summary>
 function MenuText(const AText: string): string;
@@ -119,7 +92,7 @@ begin
   end;
   for mValue in AObject.Events do
   begin
-    if not HasText(AItem.Handlers, mValue.Value) then
+    if not TAtlasDesignerNames.Contains(AItem.Handlers, mValue.Value) then
     begin
       AItem.Handlers := AItem.Handlers + [mValue.Value];
     end;
@@ -309,7 +282,7 @@ begin
   for mName in ANames do
   begin
     mComponent := mRoot.FindComponent(mName);
-    if (mComponent <> nil) and not Contains(mWanted, mComponent) then
+    if (mComponent <> nil) and not TAtlasDesignerNames.ContainsComponent(mWanted, mComponent) then
     begin
       mWanted := mWanted + [mComponent];
     end;
@@ -388,7 +361,7 @@ begin
     begin
       mItem.ParentName := TAtlasDesignerAccess.ParentNameOf(TControl(mComponent), ARoot);
     end;
-    mItem.Selected := Contains(ASelected, mComponent);
+    mItem.Selected := TAtlasDesignerNames.ContainsComponent(ASelected, mComponent);
     mObject := TAtlasFormModel.IndexOf(mObjects, mComponent.Name);
     if mObject > 0 then
     begin

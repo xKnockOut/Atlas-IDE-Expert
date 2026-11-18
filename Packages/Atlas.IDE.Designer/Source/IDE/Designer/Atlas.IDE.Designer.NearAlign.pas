@@ -42,11 +42,12 @@ type
     FTimer: TTimer;
     procedure TimerTick(Sender: TObject);
     procedure ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
-    procedure HideOutlines;
     procedure DoShow;
     procedure DoFixAll;
     procedure DoMark(AAdd: Boolean);
   public
+    /// <summary>Stoppt auch den Takt der verzögerten Anzeige.</summary>
+    procedure HideOutlines; override;
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
@@ -268,25 +269,25 @@ var
   mGroup: TNearGroup;
   mIndex: Integer;
   mFinding: TAtlasNearFinding;
-  mText: string;
+  mParts: TArray<string>;
 begin
   Result := nil;
   for mGroup in AScan.Groups do
   begin
     for mIndex := 0 to High(mGroup.Controls) do
     begin
-      mText := '';
+      mParts := nil;
       for mFinding in mGroup.Findings do
       begin
         if mFinding.Item = mIndex then
         begin
-          mText := mText + ' ' + TAtlasNearAlign.EdgeName(mFinding.Edge) + ' ' + Signed(mFinding.Offset);
+          mParts := mParts + [TAtlasNearAlign.EdgeName(mFinding.Edge) + ' ' + Signed(mFinding.Offset)];
         end;
       end;
-      if mText <> '' then
+      if Length(mParts) > 0 then
       begin
         Result := Result + [TAtlasOutline.Create(TAtlasDesignerAccess.BoundsInRoot(mGroup.Controls[mIndex],
-          AScan.Root), mGroup.Controls[mIndex].Name + ':' + mText, True)];
+          AScan.Root), mGroup.Controls[mIndex].Name + ': ' + string.Join(' ', mParts), True)];
       end;
     end;
   end;
@@ -341,10 +342,7 @@ end;
 procedure TAtlasIdeNearAlign.HideOutlines;
 begin
   FTimer.Enabled := False;
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
+  inherited HideOutlines;
 end;
 
 procedure TAtlasIdeNearAlign.DoShow;

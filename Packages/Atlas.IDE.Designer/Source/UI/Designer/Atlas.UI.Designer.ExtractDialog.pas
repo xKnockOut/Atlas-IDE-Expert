@@ -21,7 +21,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Designer.Dialog;
 
 type
   TAtlasExtractInput = record
@@ -49,7 +50,7 @@ type
   TAtlasExtractDialogResult = (Cancel, Apply, Undo);
 {$SCOPEDENUMS OFF}
 
-  TAtlasExtractDialog = class(TAtlasDialog)
+  TAtlasExtractDialog = class(TAtlasDesignerDialog)
   private
     FInput: TAtlasExtractInput;
     FOnPreview: TFunc<TAtlasExtractInput, TAtlasExtractPreview>;
@@ -63,7 +64,6 @@ type
     FPages: TPageControl;
     FApply: TButton;
     FUpdating: Boolean;
-    function AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult; AAlign: TAlign): TButton;
     function AddEdit(AGrid: TGridPanel; const ACaption, AText: string): TEdit;
     function AddMemo(const ACaption, AText: string): TMemo;
     function AddCheck(AParent: TWinControl; const ACaption: string; AChecked: Boolean): TCheckBox;
@@ -131,17 +131,6 @@ begin
     FUpdating := False;
   end;
   Refresh;
-end;
-
-function TAtlasExtractDialog.AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult;
-  AAlign: TAlign): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.ModalResult := AResult;
-  Result.Align := AAlign;
-  Result.AlignWithMargins := True;
 end;
 
 function TAtlasExtractDialog.AddEdit(AGrid: TGridPanel; const ACaption, AText: string): TEdit;

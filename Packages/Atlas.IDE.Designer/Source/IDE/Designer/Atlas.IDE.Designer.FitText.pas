@@ -241,15 +241,6 @@ begin
   end;
 end;
 
-function PpiOf(ARoot: TComponent): Integer;
-begin
-  Result := cDefaultPpi;
-  if (ARoot is TCustomForm) and (TCustomForm(ARoot).PixelsPerInch > 0) then
-  begin
-    Result := TCustomForm(ARoot).PixelsPerInch;
-  end;
-end;
-
 /// <summary>Eingaben für TAtlasFitText; AFixed sammelt die Namen der Steuerelemente, deren Breite bleibt.</summary>
 function ItemsOf(const AControls: TArray<TControl>; APpi: Integer; out AFixed: TArray<string>): TArray<TAtlasFitItem>;
 var
@@ -277,7 +268,7 @@ var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := TAtlasIdeSettings.Current;
-  mPpi := PpiOf(ARoot);
+  mPpi := TAtlasDesignerAccess.PpiOf(ARoot);
   Result := TAtlasFitText.Width(ItemsOf(AControls, mPpi, mFixed), MulDiv(mSettings.DesignerFitToTextPadding, mPpi,
     cDefaultPpi), MulDiv(mSettings.DesignerFitToTextMinWidth, mPpi, cDefaultPpi));
 end;
@@ -304,7 +295,7 @@ begin
     AOnMessage(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFitNoText));
     Exit;
   end;
-  mItems := ItemsOf(mControls, PpiOf(mRoot), mFixed);
+  mItems := ItemsOf(mControls, TAtlasDesignerAccess.PpiOf(mRoot), mFixed);
   mWidth := CommonWidth(mControls, mRoot);
   mNew := TAtlasFitText.Apply(mItems, mWidth, mControls[0].Parent.ClientWidth);
   for mIndex := 0 to High(mControls) do

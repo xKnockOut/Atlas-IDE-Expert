@@ -319,7 +319,8 @@ begin
   begin
     Inc(Position);
     mNext := Trim(Lines[Position]);
-    mValue.Lines := mValue.Lines + [Copy(TrimRight(Lines[Position]), Min(mBase, TAtlasDesignerNames.IndentOf(Lines[Position])) + 1, MaxInt)];
+    mValue.Lines := mValue.Lines + [Copy(TrimRight(Lines[Position]),
+      Min(mBase, TAtlasDesignerNames.IndentOf(Lines[Position])) + 1, MaxInt)];
     if mValue.Value = '' then
     begin
       mValue.Value := mNext;

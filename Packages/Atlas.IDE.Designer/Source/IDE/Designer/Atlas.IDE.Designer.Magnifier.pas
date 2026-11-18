@@ -79,7 +79,7 @@ type
     function EdgeLines: TArray<TAtlasMagnifierLine>;
     procedure AddEdges(var ALines: TArray<TAtlasMagnifierLine>; AControl: TControl; ASelected: Boolean);
     procedure BuildMenu;
-    procedure AddMenuItem(const ACaption: string; ATag: Integer; AChecked: Boolean);
+    procedure AddEntry(const ACaption: string; ATag: Integer; AChecked: Boolean);
     procedure MenuPopup(Sender: TObject);
     procedure MenuClick(Sender: TObject);
     procedure CopyText(const AText: string);
@@ -137,9 +137,11 @@ const
 type
   /// <summary>Sammelt die Systemfarben (Bezeichner und Wert) für GetColorValues.</summary>
   TAtlasColorCollector = class
+  private
+    FColors: TArray<TAtlasNamedColor>;
   public
-    Colors: TArray<TAtlasNamedColor>;
     procedure Add(const AName: string);
+    property Colors: TArray<TAtlasNamedColor> read FColors;
   end;
 
 { TAtlasColorCollector }
@@ -154,7 +156,7 @@ begin
     Exit;
   end;
   mRgb := ColorToRGB(mColor);
-  Colors := Colors + [TAtlasNamedColor.Create(AName, TAtlasMagnifier.RgbOf(GetRValue(mRgb), GetGValue(mRgb),
+  FColors := FColors + [TAtlasNamedColor.Create(AName, TAtlasMagnifier.RgbOf(GetRValue(mRgb), GetGValue(mRgb),
     GetBValue(mRgb)))];
 end;
 
@@ -248,10 +250,7 @@ end;
 procedure TAtlasIdeMagnifier.ApplyTheme;
 begin
   inherited ApplyTheme;
-  if FWindow <> nil then
-  begin
-    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  ThemeWindow(FWindow);
 end;
 
 procedure TAtlasIdeMagnifier.EnsureWindow;
@@ -515,31 +514,24 @@ var
   mZoom: Integer;
 begin
   FMenu.Items.Clear;
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagShow), cMenuShow, Shown);
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagFreeze), cMenuFreeze, FState.Frozen);
+  AddEntry(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagShow), cMenuShow, Shown);
+  AddEntry(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagFreeze), cMenuFreeze, FState.Frozen);
   FMenu.Items.Add(NewLine);
   for mZoom in TAtlasMagnifier.Zooms do
   begin
-    AddMenuItem(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagZoom, [mZoom]), cMenuZoom + mZoom,
+    AddEntry(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagZoom, [mZoom]), cMenuZoom + mZoom,
       mZoom = FState.Zoom);
   end;
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagGrid), cMenuGrid, FState.Grid);
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagEdges), cMenuEdges, FState.Edges);
+  AddEntry(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagGrid), cMenuGrid, FState.Grid);
+  AddEntry(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagEdges), cMenuEdges, FState.Edges);
   FMenu.Items.Add(NewLine);
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagCopyColor), cMenuCopyColor, False);
-  AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagCopyPos), cMenuCopyPos, False);
+  AddEntry(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagCopyColor), cMenuCopyColor, False);
+  AddEntry(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagCopyPos), cMenuCopyPos, False);
 end;
 
-procedure TAtlasIdeMagnifier.AddMenuItem(const ACaption: string; ATag: Integer; AChecked: Boolean);
-var
-  mItem: TMenuItem;
+procedure TAtlasIdeMagnifier.AddEntry(const ACaption: string; ATag: Integer; AChecked: Boolean);
 begin
-  mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := ACaption;
-  mItem.Tag := ATag;
-  mItem.Checked := AChecked;
-  mItem.OnClick := MenuClick;
-  FMenu.Items.Add(mItem);
+  AddMenuItem(FMenu, ACaption, ATag, AChecked, MenuClick);
 end;
 
 procedure TAtlasIdeMagnifier.MenuPopup(Sender: TObject);

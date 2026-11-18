@@ -144,7 +144,8 @@ implementation
 uses
   System.Math,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Designer.ViewStrings;
+  Atlas.UI.Designer.ViewStrings,
+  Atlas.UI.Designer.Strings;
 
 const
   cMargin = 16;
@@ -512,8 +513,8 @@ var
   mFinding: TAtlasLayoutFinding;
 begin
   mNode := FData.Nodes[AIndex];
-  Result := Format('%s: %s · %d × %d', [mNode.Name, mNode.ClassName, FBounds[AIndex].Width,
-    FBounds[AIndex].Height]);
+  Result := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerPreviewDescribe, [mNode.Name, mNode.ClassName,
+    FBounds[AIndex].Width, FBounds[AIndex].Height]);
   if mNode.Align <> TAtlasLayoutAlign.None then
   begin
     Result := Result + ' · ' + cAlignNames[mNode.Align];

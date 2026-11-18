@@ -25,7 +25,8 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Designer.SelectionBar;
+  Atlas.Core.Designer.SelectionBar,
+  Atlas.UI.Designer.Overlay;
 
 type
   TAtlasBarButton = record
@@ -40,12 +41,10 @@ type
     class function Create(const AText: string; AState: TAtlasBarState; const AHint: string): TAtlasBarButton; static;
   end;
 
-  TAtlasSelectionBarWindow = class(TForm) // window-ok: Überlagerung, kein Dialog
+  TAtlasSelectionBarWindow = class(TAtlasDesignerOverlay)
   private
-    FColors: TAtlasColors;
     FButtons: TArray<TAtlasBarButton>;
     FRects: TArray<TRect>;
-    FOwnerWindow: HWND;
     FShown: Boolean;
     FHot: Integer;
     FPressed: Integer;
@@ -54,10 +53,8 @@ type
     procedure Layout;
     procedure PaintButton(AIndex: Integer);
     procedure SetHot(AIndex: Integer);
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
@@ -65,8 +62,6 @@ type
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
     constructor CreateBar(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
-    function S(AValue: Integer): Integer;
-    procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Knöpfe setzen; neu gezeichnet wird nur bei Änderungen.</summary>
     procedure SetButtons(const AButtons: TArray<TAtlasBarButton>);
     /// <summary>Größe der Leiste für die gesetzten Knöpfe.</summary>
@@ -109,27 +104,11 @@ end;
 
 constructor TAtlasSelectionBarWindow.CreateBar(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
 begin
-  FOwnerWindow := AOwnerWindow;
-  inherited CreateNew(AOwner);
-  FColors := AColors;
+  inherited CreateOverlayWindow(AOwner, AOwnerWindow, AColors, [TAtlasOverlayOption.Popup]);
   FHot := -1;
   FPressed := -1;
-  BorderStyle := bsNone;
-  DoubleBuffered := True;
   ShowHint := True;
-  Font.Name := 'Segoe UI';
   Font.Size := 9;
-end;
-
-procedure TAtlasSelectionBarWindow.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.Style := WS_POPUP;
-  Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW;
-  if FOwnerWindow <> 0 then
-  begin
-    Params.WndParent := FOwnerWindow;
-  end;
 end;
 
 procedure TAtlasSelectionBarWindow.Paint;
@@ -138,15 +117,15 @@ var
 begin
   Canvas.Font.Assign(Font);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TColor(FColors.Surface);
-  Canvas.Pen.Color := TColor(FColors.Accent);
+  Canvas.Brush.Color := TColor(Colors.Surface);
+  Canvas.Pen.Color := TColor(Colors.Accent);
   Canvas.Rectangle(ClientRect);
   for mIndex := 0 to High(FButtons) do
   begin
     if FButtons[mIndex].Separated and (mIndex > 0) then
     begin
       mX := FRects[mIndex].Left - S(cSeparatorWidth) div 2 - 1;
-      Canvas.Pen.Color := TColor(FColors.Line);
+      Canvas.Pen.Color := TColor(Colors.Line);
       Canvas.MoveTo(mX, FRects[mIndex].Top + S(3));
       Canvas.LineTo(mX, FRects[mIndex].Bottom - S(3));
     end;
@@ -236,26 +215,26 @@ begin
   mButton := FButtons[AIndex];
   mRect := FRects[AIndex];
   Canvas.Brush.Style := bsSolid;
-  Canvas.Pen.Color := TColor(FColors.Line);
-  Canvas.Brush.Color := TColor(FColors.Surface);
+  Canvas.Pen.Color := TColor(Colors.Line);
+  Canvas.Brush.Color := TColor(Colors.Surface);
   if mButton.State = TAtlasBarState.On then
   begin
-    Canvas.Brush.Color := TColor(FColors.Accent);
+    Canvas.Brush.Color := TColor(Colors.Accent);
   end
   else if mButton.State = TAtlasBarState.Mixed then
   begin
-    Canvas.Brush.Color := TColor(FColors.AccentSoft);
+    Canvas.Brush.Color := TColor(Colors.AccentSoft);
   end;
   if (AIndex = FHot) and (mButton.State <> TAtlasBarState.None) then
   begin
-    Canvas.Pen.Color := TColor(FColors.Accent);
+    Canvas.Pen.Color := TColor(Colors.Accent);
   end;
   Canvas.Rectangle(mRect);
   if mButton.State = TAtlasBarState.Mixed then
   begin
     // Halb gefüllt: untere Hälfte in der Akzentfarbe.
     mHalf := Rect(mRect.Left + 1, mRect.Top + mRect.Height div 2, mRect.Right - 1, mRect.Bottom - 1);
-    Canvas.Brush.Color := TColor(FColors.Accent);
+    Canvas.Brush.Color := TColor(Colors.Accent);
     Canvas.FillRect(mHalf);
   end;
   mText := mRect;
@@ -268,14 +247,14 @@ begin
   end;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := mButton.Style;
-  Canvas.Font.Color := TColor(FColors.Text);
+  Canvas.Font.Color := TColor(Colors.Text);
   if mButton.State = TAtlasBarState.On then
   begin
-    Canvas.Font.Color := TColor(FColors.Surface);
+    Canvas.Font.Color := TColor(Colors.Surface);
   end
   else if mButton.State = TAtlasBarState.None then
   begin
-    Canvas.Font.Color := TColor(FColors.Muted);
+    Canvas.Font.Color := TColor(Colors.Muted);
   end;
   DrawText(Canvas.Handle, PChar(mButton.Text), -1, mText, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
@@ -298,27 +277,10 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasSelectionBarWindow.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  // Knopf gedrückt: Fokus und Auswahl bleiben im Designer.
-  Message.Result := MA_NOACTIVATE;
-end;
-
 procedure TAtlasSelectionBarWindow.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
   SetHot(-1);
-end;
-
-function TAtlasSelectionBarWindow.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-procedure TAtlasSelectionBarWindow.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 procedure TAtlasSelectionBarWindow.SetButtons(const AButtons: TArray<TAtlasBarButton>);

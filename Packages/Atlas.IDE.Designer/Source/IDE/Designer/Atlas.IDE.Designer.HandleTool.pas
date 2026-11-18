@@ -115,10 +115,7 @@ end;
 procedure TAtlasIdeHandleTool.ApplyTheme;
 begin
   inherited ApplyTheme;
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  ThemeWindow(FOverlay);
 end;
 
 procedure TAtlasIdeHandleTool.MenuClick(Sender: TObject);
