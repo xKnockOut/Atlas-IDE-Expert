@@ -22,7 +22,11 @@
 // Befunde verfolgt die IDE (TAtlasIdeLineTracker, Kanal Befunde); gezeichnet
 // wird in Editorzeile X, was zur Quellzeile gehört, die jetzt dort steht. Eine
 // gelöschte Zeile trägt keine Marke mehr. Der nächste Stand des Speichers
-// (Tipp-Pause, Serverantwort) meldet die Zeilen neu an.
+// (Tipp-Pause, Serverantwort) meldet die Zeilen neu an, nicht beim Zeichnen:
+// Das Anmelden ändert die Zeilentabelle des Editors, und das Zeichnen kommt
+// auch mitten aus anderen Vorgängen (WM_PRINTCLIENT beim Hover). Der Zeichner
+// merkt sich die Datei und meldet über einen eigenen Zeitgeber danach an; bis
+// dahin gilt jede Zeile als sie selbst.
 
 interface
 
@@ -58,9 +62,14 @@ type
     FCursorKey: string;
     FCursorText: string;
     FTypedAt: UInt64;
+    // Zeilenverfolgung nach dem Zeichnen anmelden (#1818).
+    FFollowTimer: TTimer;
+    FFollowFile: string;
     /// <summary>Merkt Tastendrücke in der Cursorzeile; True, solange die Pause nicht um ist.</summary>
     function Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
     procedure TimerTick(Sender: TObject);
+    /// <summary>Zeilen der gemerkten Datei verfolgen, wenn sie im oberen Editor steht.</summary>
+    procedure FollowTick(Sender: TObject);
     procedure PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
       const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
     /// <summary>Text der Zeile aus dem Speicher, wenn er dem Editor entspricht und gezeichnet werden soll; ABusy
@@ -70,7 +79,8 @@ type
     /// <summary>Wellen, Punkte und Durchstreichungen der Probleme AProblems.</summary>
     procedure PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
       const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
-    /// <summary>Verfolgte Zeilen der Befunde im Puffer von AContext (#1818); nil ohne Verfolgung.</summary>
+    /// <summary>Verfolgte Zeilen der Befunde im Puffer von AContext (#1818); nil ohne Verfolgung oder solange
+    /// der Stand noch nicht angemeldet ist (dann merkt sie die Datei für FollowTick vor).</summary>
     function Tracked(const AContext: INTACodeEditorPaintContext): TAtlasTrackedLines;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -133,6 +143,10 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := TAtlasInlineDiagnostics.cPauseMs;
   FTimer.OnTimer := TimerTick;
+  FFollowTimer := TTimer.Create(nil);
+  FFollowTimer.Enabled := False;
+  FFollowTimer.Interval := 1;
+  FFollowTimer.OnTimer := FollowTick;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
@@ -151,6 +165,7 @@ begin
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   FreeAndNil(FTimer);
+  FreeAndNil(FFollowTimer);
   FreeAndNil(FFont);
   inherited Destroy;
 end;
@@ -185,6 +200,41 @@ procedure TAtlasProblemsPainter.TimerTick(Sender: TObject);
 begin
   FTimer.Enabled := False;
   Invalidate;
+end;
+
+procedure TAtlasProblemsPainter.FollowTick(Sender: TObject);
+var
+  mView: IOTAEditView;
+  mStore: TAtlasProblemStore;
+  mFileName: string;
+begin
+  FFollowTimer.Enabled := False;
+  mFileName := FFollowFile;
+  FFollowFile := '';
+  if TAtlasGuard.Disabled(TAtlasFeature.Problems) or (mFileName = '') then
+  begin
+    Exit;
+  end;
+  try
+    mView := TAtlasEditorBuffer.TopView;
+    if (mView = nil) or (mView.Buffer = nil) or not SameFileName(mView.Buffer.FileName, mFileName) then
+    begin
+      Exit;
+    end;
+    mStore := FStore;
+    TAtlasIdeLineTracker.Follow(mView, TAtlasLineTracking.cProblems, mStore.Stamp(mFileName),
+      function: TArray<Integer>
+      begin
+        Result := TAtlasProblemMarks.Lines(mStore.ForFile(mFileName));
+      end,
+      function: string
+      begin
+        Result := mStore.TextOf(mFileName);
+      end);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Problems, E);
+  end;
 end;
 
 function TAtlasProblemsPainter.LineToPaint(const AContext: INTACodeEditorPaintContext; ALine: Integer;
@@ -431,25 +481,21 @@ end;
 /// <summary>Zeilen, die die Befunde AProblems berühren (je Befund höchstens die ersten 64).</summary>
 function TAtlasProblemsPainter.Tracked(const AContext: INTACodeEditorPaintContext): TAtlasTrackedLines;
 var
-  mStore: TAtlasProblemStore;
   mFileName: string;
 begin
   Result := nil;
-  if not TAtlasIdeEditorSettings.TrackLinesOn or (AContext.EditView = nil) then
+  if not TAtlasIdeEditorSettings.TrackLinesOn then
   begin
     Exit;
   end;
-  mStore := FStore;
   mFileName := AContext.FileName;
-  Result := TAtlasIdeLineTracker.Follow(AContext.EditView, TAtlasLineTracking.cProblems, mStore.Stamp(mFileName),
-    function: TArray<Integer>
-    begin
-      Result := TAtlasProblemMarks.Lines(mStore.ForFile(mFileName));
-    end,
-    function: string
-    begin
-      Result := mStore.TextOf(mFileName);
-    end);
+  Result := TAtlasIdeLineTracker.Current(mFileName, TAtlasLineTracking.cProblems, FStore.Stamp(mFileName));
+  if (Result = nil) and not FFollowTimer.Enabled then
+  begin
+    // Anmelden ändert die Zeilentabelle des Editors: erst nach dem Zeichnen.
+    FFollowFile := mFileName;
+    FFollowTimer.Enabled := True;
+  end;
 end;
 
 class procedure TAtlasProblemsPainter.Invalidate;

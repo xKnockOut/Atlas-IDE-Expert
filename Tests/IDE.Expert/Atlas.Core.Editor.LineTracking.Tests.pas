@@ -35,6 +35,10 @@ type
     procedure EncodeDecodeRoundTrip;
     [Test]
     procedure ForeignDataIsIgnored;
+    /// <summary>Der IDE nur Zeilen geben, die der Puffer hat, jede einmal: Eine Zeile hinter dem Ende brachte
+    /// boreditu.dll beim Vergrößern der Tabelle zum Absturz.</summary>
+    [Test]
+    procedure TrackableOnlyLinesOfTheBuffer;
     [Test]
     procedure ChangedReachesFileAndChannel;
     [Test]
@@ -210,6 +214,21 @@ begin
   Assert.IsFalse(TAtlasLineTracking.Decode(42, mChannel, mLine), 'Kennung eines anderen Experten');
   Assert.IsFalse(TAtlasLineTracking.Decode(-1, mChannel, mLine));
   Assert.IsFalse(TAtlasLineTracking.Decode(NativeInt($50000000), mChannel, mLine), 'ohne Kanal');
+end;
+
+procedure TAtlasLineTrackingTests.TrackableOnlyLinesOfTheBuffer;
+var
+  mLines: TArray<Integer>;
+begin
+  // Befund bis zum Dateiende: endet in Zeile 10 eines Puffers mit 10 Zeilen (0..9).
+  mLines := TAtlasLineTracking.Trackable(TArray<Integer>.Create(8, 9, 10, 3, 3, -1, 9), 10);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual(3, mLines[0]);
+  Assert.AreEqual(8, mLines[1]);
+  Assert.AreEqual(9, mLines[2]);
+  Assert.AreEqual(0, Integer(Length(TAtlasLineTracking.Trackable(TArray<Integer>.Create(0, 1), 0))));
+  Assert.AreEqual(0, Integer(Length(TAtlasLineTracking.Trackable(nil, 5))));
+  mLines := nil;
 end;
 
 procedure TAtlasLineTrackingTests.ChangedReachesFileAndChannel;
