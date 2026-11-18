@@ -51,7 +51,7 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     throw 'GitHub-CLI gh nicht gefunden (https://cli.github.com, danach gh auth login)'
 }
 $Tag = "v$Version"
-$Assets = (Invoke-Gh release view $Tag -R $Repository --json assets | ConvertFrom-Json).assets | ForEach-Object name
+$Assets = (Invoke-Gh release view $Tag -R $Repository --json assets | ConvertFrom-Json).assets | ForEach-Object { $_.name }
 $SourceName = "atlas-ide-expert-source-$Version.zip"
 if ($SourceName -notin $Assets) {
     throw "Release $Tag hat keinen $SourceName; erst den Tag pushen und den Release-Workflow abwarten"
