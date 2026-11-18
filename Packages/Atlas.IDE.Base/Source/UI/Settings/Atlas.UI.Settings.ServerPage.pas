@@ -5,8 +5,8 @@
 //     ohne die Werte der übrigen Reiter) und die des aktiven Projekts (atlas.json)
 //     im Dialog bearbeiten; jede Einstellung hat genau einen Ort (#227).
 //   - „Index-Cache löschen“ (#184).
-// Baseline (#97) und Unterdrückungen je Regel (#147) stehen seit #1755 auf der
-// Seite Prüfregeln im Abschnitt des Moduls Prüfregeln.
+// Baseline (#97) und Unterdrückungen je Regel (#147) stehen auf der Seite
+// Prüfregeln im Abschnitt des Moduls Prüfregeln (#1755).
 // Reine VCL; die Seite kennt weder Server noch Dateien. Die IDE-Schicht liefert
 // Texte und führt die Aktionen aus (AtlasServer.exe als Prozess bzw. Dialog).
 

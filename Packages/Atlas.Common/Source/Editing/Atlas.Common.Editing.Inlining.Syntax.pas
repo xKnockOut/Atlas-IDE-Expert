@@ -43,7 +43,6 @@ type
     /// <summary>Hat der Ausdruck Seiteneffekte: Aufrufe außer reinen, inherited, Routinen ohne Klammern?</summary>
     class function HasSideEffects(ANode: TSyntaxNode; const ASource: TInlineSource;
       const ALookup: TInlineLookup): Boolean; static;
-    class function NextSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer; static;
     /// <summary>Anweisung samt ";" entfernen; steht sie allein auf ihren Zeilen, die ganzen Zeilen.</summary>
     class function RemoveStatement(const AText: string; ATree: TSyntaxTree; AStatement: TSyntaxNode): TTextEdit;
       static;
@@ -75,6 +74,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
@@ -350,16 +350,6 @@ begin
   Result := Assigned(ALookup) and CallsRoutineByName(ANode, ASource, ALookup);
 end;
 
-class function TInlineSyntax.NextSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 class function TInlineSyntax.RemoveStatement(const AText: string; ATree: TSyntaxTree;
   AStatement: TSyntaxNode): TTextEdit;
 var
@@ -371,7 +361,7 @@ var
 begin
   mTokens := ATree.Tokens;
   mEndOffset := AStatement.EndOffset;
-  mIndex := NextSignificant(mTokens, TRoutineBody.TokenAt(mTokens, AStatement.EndOffset));
+  mIndex := NextCode(mTokens, TRoutineBody.TokenAt(mTokens, AStatement.EndOffset));
   if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol(';') then
   begin
     mEndOffset := mTokens[mIndex].Offset + 1;
@@ -581,10 +571,10 @@ class function TInlineSyntax.RoutineKeyword(const ATokens: TArray<TPascalToken>;
 var
   mIndex: Integer;
 begin
-  mIndex := NextSignificant(ATokens, TRoutineBody.TokenAt(ATokens, ARoutine.StartOffset));
+  mIndex := NextCode(ATokens, TRoutineBody.TokenAt(ATokens, ARoutine.StartOffset));
   if (mIndex <= High(ATokens)) and ATokens[mIndex].IsKeyword('class') then
   begin
-    mIndex := NextSignificant(ATokens, mIndex + 1);
+    mIndex := NextCode(ATokens, mIndex + 1);
   end;
   Result := '';
   if mIndex <= High(ATokens) then

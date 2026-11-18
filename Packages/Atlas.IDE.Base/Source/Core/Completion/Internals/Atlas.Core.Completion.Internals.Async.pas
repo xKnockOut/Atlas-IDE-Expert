@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Completion.Internals.Async;
 
 // Basis für Datenquellen der Vervollständigung, die im Hintergrund arbeiten
-// (#408). Query ruft Prepare im aufrufenden Thread – seit #493 meist ein
+// (#408). Query ruft Prepare im aufrufenden Thread – meist ein
 // Arbeiter von TAtlasTimeLimit (Composite.QueryOne), nicht der Hauptthread –
 // und Fetch in einem eigenen Thread; dessen Ergebnis geht nur an die Senke,
 // wenn der Query noch aktuell ist. Mehrere Threads dürfen gleichzeitig laufen,

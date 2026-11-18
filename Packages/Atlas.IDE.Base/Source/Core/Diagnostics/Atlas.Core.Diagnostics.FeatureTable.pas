@@ -11,7 +11,7 @@
 //   - Module (#1454): Join ordnet Teile einem Modul zu (Debugger, Tests …).
 //     Ist das Modul laut ModuleOn aus, startet StartWanted seine Teile nicht,
 //     und StopOffModules stoppt rückwärts die laufenden (ohne Neustart).
-// Ein Fehler in Start geht an den Aufrufer (wie zuvor in RegisterFeatures).
+// Ein Fehler in Start geht an den Aufrufer.
 // Ein Fehler in Stop hält den Abbau nicht an (#886): Die übrigen Teile werden
 // trotzdem gestoppt, StopAll liefert die fehlgeschlagenen mit Ausnahmeklasse.
 

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Page.Tree;
 
-// Baum links auf der Optionsseite „Atlas“ (#890; vorher eine Liste): Bereiche und Unterpunkte, gewählte Seite und
+// Baum links auf der Optionsseite „Atlas“ (#890): Bereiche und Unterpunkte, gewählte Seite und
 // aufgeklappte Bereiche bis zum nächsten Öffnen. Dazu die Sperren durch Hauptschalter: Grund am Rahmen, Hinweis oben
 // auf der Seite, Spiegel in der Übersicht und graue Knoten.
 

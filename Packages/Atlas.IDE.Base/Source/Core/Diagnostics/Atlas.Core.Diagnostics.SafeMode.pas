@@ -697,7 +697,7 @@ const
 
 /// <summary>
 /// Ersetzt AFileName in einem Schritt: erst vollständig daneben schreiben, dann TFile.Replace
-/// (unter Windows ReplaceFile). Früher erst löschen, dann umbenennen: Ein Absturz dazwischen ließ keine Marke
+/// (unter Windows ReplaceFile). Nicht erst löschen, dann umbenennen: Ein Absturz dazwischen ließe keine Marke
 /// bzw. keinen Zustand zurück. Ohne TAtlasDataFile, weil das über TAtlasGuard protokolliert und Core.Diagnostics
 /// Core.Files nicht verwenden darf (Feature-Zyklus). EInOutError, wenn die Datei nicht ersetzt wurde; sie bleibt
 /// dann, wie sie war.
