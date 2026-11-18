@@ -6,6 +6,8 @@
 //     gelten für alle Projekte, Groß-/Kleinschreibung egal.
 //   - Orte („Nur an dieser Stelle ignorieren“ in der Exception-Leiste, #783):
 //     Klasse + Datei + Zeile je Projekt.
+//   - Regeln (TAtlasExceptionRule, #2549): Klasse mit Muster für die Meldung
+//     und Aktion; sie gehen Klassen und Orten vor.
 // Die Liste der IDE („Diese Exception-Klasse ignorieren“ in den
 // Debugger-Optionen) bleibt unberührt; Atlas setzt still fort, indem es den
 // Dialog der IDE mit „Fortsetzen“ schließt (Atlas.IDE.Debug.ExceptionDialog).
@@ -13,12 +15,15 @@
 // unbrauchbare Datei als .defekt daneben), Format 1:
 //   {"format": 1, "classes": ["EConvertError"],
 //    "locations": [{"project": "C:\\App\\App.dproj", "class": "EConvertError",
-//                   "file": "C:\\App\\Unit1.pas", "line": 42}]}
+//                   "file": "C:\\App\\Unit1.pas", "line": 42}],
+//    "rules": [ … siehe Atlas.Core.Debug.ExceptionRules … ]}
+// Dateien ohne "rules" bleiben lesbar und werden beim Speichern ergänzt.
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Debug.ExceptionRules;
 
 type
   TAtlasDebugIgnoredLocation = record
@@ -39,6 +44,7 @@ type
   public
     Classes: TArray<string>;
     Locations: TArray<TAtlasDebugIgnoredLocation>;
+    Rules: TAtlasExceptionRuleList;
     class function Empty: TAtlasDebugIgnoreList; static;
     function IgnoresClass(const AClass: string): Boolean;
     /// <summary>True, wenn die Klasse neu dazukam.</summary>
@@ -50,6 +56,12 @@ type
     function RemoveLocation(const AProject, AClass, AFileName: string; ALine: Integer): Boolean;
     /// <summary>Wird die Exception still fortgesetzt (Klasse oder Ort)?</summary>
     function Ignores(const AProject, AClass, AFileName: string; ALine: Integer): Boolean;
+    /// <summary>Regel eintragen (gleiche Bedingungen werden ersetzt); True bei einer Änderung.</summary>
+    function AddRule(const ARule: TAtlasExceptionRule): Boolean;
+    /// <summary>Regeln mit Meldung für AClass entfernen; Zahl der entfernten.</summary>
+    function RemoveMessageRules(const AClass: string): Integer;
+    /// <summary>Gibt es Regeln mit Meldung für AClass?</summary>
+    function HasMessageRules(const AClass: string): Boolean;
     /// <summary>Orte eines Projekts.</summary>
     function LocationsOf(const AProject: string): TArray<TAtlasDebugIgnoredLocation>;
     function ToJson: string;
@@ -96,6 +108,7 @@ class function TAtlasDebugIgnoreList.Empty: TAtlasDebugIgnoreList;
 begin
   Result.Classes := nil;
   Result.Locations := nil;
+  Result.Rules := nil;
 end;
 
 function TAtlasDebugIgnoreList.IgnoresClass(const AClass: string): Boolean;
@@ -180,6 +193,47 @@ begin
   Result := IgnoresClass(AClass) or IgnoresLocation(AProject, AClass, AFileName, ALine);
 end;
 
+function TAtlasDebugIgnoreList.AddRule(const ARule: TAtlasExceptionRule): Boolean;
+begin
+  Result := TAtlasExceptionRules.Put(Rules, ARule);
+end;
+
+function TAtlasDebugIgnoreList.RemoveMessageRules(const AClass: string): Integer;
+var
+  mRule: TAtlasExceptionRule;
+  mKept: TAtlasExceptionRuleList;
+begin
+  // Neues Array: Rules kann mit einer anderen Liste geteilt sein.
+  Result := 0;
+  mKept := nil;
+  for mRule in Rules do
+  begin
+    if mRule.HasMessage and SameText(mRule.ExceptionClass, AClass) then
+    begin
+      Inc(Result);
+    end
+    else
+    begin
+      mKept := mKept + [mRule];
+    end;
+  end;
+  Rules := mKept;
+end;
+
+function TAtlasDebugIgnoreList.HasMessageRules(const AClass: string): Boolean;
+var
+  mRule: TAtlasExceptionRule;
+begin
+  for mRule in Rules do
+  begin
+    if mRule.HasMessage and SameText(mRule.ExceptionClass, AClass) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 function TAtlasDebugIgnoreList.LocationsOf(const AProject: string): TArray<TAtlasDebugIgnoredLocation>;
 var
   mLocation: TAtlasDebugIgnoredLocation;
@@ -221,6 +275,7 @@ begin
       mList.AddElement(mItem);
     end;
     mRoot.AddPair('locations', mList);
+    mRoot.AddPair('rules', TAtlasExceptionRules.ToJson(Rules));
     Result := mRoot.Format(2);
   finally
     mRoot.Free;
@@ -267,6 +322,7 @@ begin
         end;
       end;
     end;
+    Result.Rules := TAtlasExceptionRules.Parse(TJSONObject(mRoot).GetValue('rules'));
   finally
     mRoot.Free;
   end;

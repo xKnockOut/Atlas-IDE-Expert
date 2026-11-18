@@ -123,6 +123,8 @@ begin
       Result := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvCopy);
     TAtlasDebugBarAction.CreateTest:
       Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerCreateTest);
+    TAtlasDebugBarAction.MessageRule:
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerMessageRule);
   else
     Result := '';
   end;

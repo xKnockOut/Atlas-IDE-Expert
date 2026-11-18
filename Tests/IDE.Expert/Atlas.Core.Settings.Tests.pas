@@ -262,6 +262,7 @@ begin
   Assert.IsTrue(ASettings.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsFalse(ASettings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
   Assert.IsTrue(ASettings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsTrue(ASettings.DebugExceptionMessageRules, 'debug.exceptionMessageRules (#2549)');
   Assert.IsTrue(ASettings.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsTrue(ASettings.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');
@@ -478,6 +479,7 @@ begin
   ASettings.DebugJustMyCode := False;
   ASettings.DebugExceptionBanner := True;
   ASettings.DebugExceptionBannerIgnoreAtLocation := False;
+  ASettings.DebugExceptionMessageRules := False;
   ASettings.DebugInlineValues := False;
   ASettings.DebugInlineValuesPerLine := 7;
   ASettings.DebugMemoryTimeline := False;
@@ -681,6 +683,7 @@ begin
   Assert.IsFalse(ALoaded.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsTrue(ALoaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
   Assert.IsFalse(ALoaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsFalse(ALoaded.DebugExceptionMessageRules, 'debug.exceptionMessageRules (#2549)');
   Assert.IsFalse(ALoaded.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsFalse(ALoaded.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');

@@ -21,7 +21,9 @@
 //     Editorfenster über Brotkrumen und Editorleiste.
 //   - Knöpfe: Anhalten (Leiste zu, Prozess bleibt stehen), Fortsetzen,
 //     Klasse ignorieren bzw. Nur an dieser Stelle ignorieren (merken, dann
-//     fortsetzen), Meldung kopieren. Solange die Leiste im aktiven Fenster
+//     fortsetzen), Meldung … (#2549: Regel nach Meldungstext im Dialog;
+//     setzt die neue Regel diese Exception fort, geht es weiter), Meldung
+//     kopieren. Solange die Leiste im aktiven Fenster
 //     steht, gehören F9 (Fortsetzen), F8 und Esc (Anhalten) ihr
 //     (TAtlasKeyHook); sonst berührt Atlas keine Taste.
 //   - Fortsetzen von anderer Stelle, neuer Halt, Ende der Sitzung schließen
@@ -149,6 +151,8 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.DebugStop,
+  Atlas.Core.Debug.ExceptionRules,
+  Atlas.UI.Debug.ExceptionMessageRule,
   Atlas.UI.Debug.Exceptions.Strings;
 
 /// <summary>Bietet ein Modul „Test daraus anlegen …“ an (#1873)?</summary>
@@ -158,6 +162,27 @@ var
 begin
   Result := TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, cAtlasTestFromDebugStopCommand, mCommand) and
     TAtlasModuleContributions.IsVisible(mCommand);
+end;
+
+/// <summary>Knopf „Meldung …“ (#2549): Einstellung an und eine Meldung da.</summary>
+function MessageRuleOffered(const AInfo: TAtlasDebugBannerInfo): Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugExceptionMessageRules and (Trim(AInfo.Message) <> '');
+end;
+
+/// <summary>Dialog für eine Regel nach Meldungstext; True, wenn die neue Regel diese Exception fortsetzt.</summary>
+function AskMessageRule(const AShown: TAtlasDebugException): Boolean;
+var
+  mRule: TAtlasExceptionRule;
+begin
+  Result := False;
+  if not TAtlasExceptionMessageRuleDialog.Execute(TAtlasMessageRuleInput.Create(AShown.ExceptionClass,
+    AShown.Message, TAtlasExceptionRules.OwnUnit(AShown.Frames), TAtlasMessageRuleMode.Ignore), mRule) then
+  begin
+    Exit;
+  end;
+  Result := TAtlasIdeDebugExceptions.AddRule(mRule) and mRule.Matches(TAtlasExceptionFacts.Create(
+    AShown.ExceptionClass, AShown.Message, TAtlasExceptionRules.OwnRoutine(AShown.Frames)));
 end;
 
 { TAtlasIdeDebugExceptionBar.TListener }
@@ -294,6 +319,7 @@ begin
     TAtlasIdeDebugSession.LaunchProject, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsThread),
     TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation);
   FShownInfo.CanCreateTest := CreateTestOffered;
+  FShownInfo.CanMessageRule := MessageRuleOffered(FShownInfo);
   // Zur gezeigten Zeile und markieren; öffnet die Unit im obersten Editorfenster.
   if FShownInfo.HasLocation then
   begin
@@ -386,6 +412,11 @@ begin
       end;
     TAtlasDebugBarAction.CreateTest:
       TAtlasIdeHost.ExecuteCommand(cAtlasTestFromDebugStopCommand);
+    TAtlasDebugBarAction.MessageRule:
+      if AskMessageRule(FShown) then
+      begin
+        ResumeProcess;
+      end;
     TAtlasDebugBarAction.None: ;
   end;
 end;
@@ -537,6 +568,7 @@ begin
       TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation, TAtlasIdeDebugSession.LaunchProject,
       FShownInfo.HasLocation);
     FShownInfo.CanCreateTest := CreateTestOffered;
+    FShownInfo.CanMessageRule := MessageRuleOffered(FShownInfo);
     FBar.SetInfo(FShownInfo);
   end;
   UpdateStatus;

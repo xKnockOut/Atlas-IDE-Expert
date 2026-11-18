@@ -22,7 +22,12 @@ type
     DebugBannerIgnoredLocationSaid, DebugBannerUnknownVersion, DebugBannerUnknownVersionSummary, DebugNoteTitle,
     DebugNoteProject, DebugNoteConfiguration, DebugNotePlatform, DebugNoteTime, DebugNoteThread, DebugNoteLocation,
     DebugNoteCallStack, DebugNoteLastException, DebugNoteCount, DebugNoteNoLocation, DebugNoteFileStem,
-    DebugBannerCreateTest);
+    DebugBannerCreateTest, DebugBannerMessageRule, DebugMessageRuleSaid, DebugMessageRulesRemovedSaid,
+    DebugMessageRuleTitleStopOnly, DebugMessageRuleTitleIgnore, DebugMessageRuleClass, DebugMessageRulePattern,
+    DebugMessageRuleRegex, DebugMessageRuleUnit, DebugMessageRuleAnyUnit, DebugMessageRuleModeStopOnly,
+    DebugMessageRuleModeIgnore, DebugMessageRuleCreate, DebugMessageRuleCancel, DebugMessageRuleInvalid,
+    DebugMessageRuleEmpty, DebugMessageRuleHint, DebugExceptionsStopOnlyMessage, DebugExceptionsIgnoreMessage,
+    DebugExceptionsRemoveMessageRules);
 
   TAtlasExceptionsStrings = class
   public
@@ -103,7 +108,28 @@ const
      '%d x an dieser Stelle',
      'Kein Halt mit Quelltext.',
      'debug-notiz',
-     'Test daraus anlegen …'),
+     'Test daraus anlegen …',
+     'Meldung …',
+     'Exception-Regel für %s gespeichert (Muster „%s“).',
+     'Regeln mit Meldung für %s entfernt.',
+     'Nur bei dieser Meldung anhalten',
+     'Meldungen wie diese ignorieren',
+     'Klasse:',
+     'Muster:',
+     'regulärer Ausdruck',
+     'Unit:',
+     'beliebig',
+     'Nur bei Meldungen wie dieser anhalten',
+     'Meldungen wie diese ignorieren',
+     'Anlegen',
+     'Abbrechen',
+     'Ungültiger regulärer Ausdruck: %s',
+     'Das Muster ist leer.',
+     '* steht für beliebigen Text; ohne regulären Ausdruck genügt es, wenn die Meldung das Muster enthält. ' +
+      'Groß- und Kleinschreibung zählt nicht.',
+     'Nur bei Meldungen wie dieser anhalten …',
+     'Meldungen wie diese ignorieren …',
+     'Regeln mit Meldung für %s entfernen'),
     ('Atlas: Exceptions',
      'Filter by class, message, location',
      'Go to location',
@@ -167,7 +193,28 @@ const
      '%d times at this location',
      'Not stopped in source code.',
      'debug-note',
-     'Create test …'));
+     'Create test …',
+     'Message …',
+     'Exception rule for %s saved (pattern “%s”).',
+     'Rules with a message for %s removed.',
+     'Stop only on this message',
+     'Ignore messages like this',
+     'Class:',
+     'Pattern:',
+     'regular expression',
+     'Unit:',
+     'any',
+     'Stop only on messages like this',
+     'Ignore messages like this',
+     'Create',
+     'Cancel',
+     'Invalid regular expression: %s',
+     'The pattern is empty.',
+     '* stands for any text; without a regular expression it is enough for the message to contain the pattern. ' +
+      'Case does not matter.',
+     'Stop only on messages like this …',
+     'Ignore messages like this …',
+     'Remove rules with a message for %s'));
 
 { TAtlasExceptionsStrings }
 

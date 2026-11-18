@@ -788,10 +788,28 @@ Einstellungen: `debug.justMyCode`, eigener Code = Projektordner und `debug.ownCo
   - Fortsetzen (F9)
   - Klasse ignorieren
   - Nur an dieser Stelle ignorieren (Klasse + Unit + Zeile je Projekt, beim nächsten Mal still fortgesetzt)
+  - Meldung … (Regel nach Meldungstext, siehe unten)
   - Meldung kopieren
 - In Delphi 12 und 13 schließt Atlas dafür den Dialog der IDE, sonst bleibt er und die Leiste kommt danach.
 
 Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
+
+#### Exceptions nach Meldungstext
+
+- Eine Klasse wie `EKonfigFehler` steht oft für ganz verschiedene Fehler; die Meldung unterscheidet sie.
+- „Meldung …“ in der Exception-Leiste und im Kontextmenü des Exception-Verlaufs öffnet einen kleinen Dialog:
+  - Art: „Nur bei Meldungen wie dieser anhalten“ (andere Meldungen dieser Klasse laufen weiter) oder „Meldungen wie diese ignorieren“
+  - Muster, vorbelegt aus der Meldung; Zahlen, Adressen und Texte in Hochkommas werden zu `*`: `Schlüssel unbekannt: * in Zeile *`
+  - ohne regulären Ausdruck genügt es, dass die Meldung das Muster enthält; `*` steht für beliebigen Text; Groß-/Kleinschreibung zählt nicht
+  - wahlweise regulärer Ausdruck (ein ungültiger wird gleich gemeldet)
+  - Unit: beliebig oder nur die Unit der ersten eigenen Zeile
+- Fortgesetzte Exceptions stehen grau im Verlauf.
+- Regeln gehen der Ignorier-Liste vor, also auch „anhalten trotz ignorierter Klasse“.
+- Ohne gelesene Meldung entscheidet keine Regel mit Meldung: Atlas hält dann lieber an.
+- „Regeln mit Meldung für X entfernen“ im Kontextmenü des Verlaufs nimmt sie wieder weg.
+- Die Regeln stehen mit der Ignorier-Liste in `debug-ignore.json` (Feld `rules`).
+
+Einstellungen: `debug.exceptionMessageRules` (Vorgabe an)
 
 #### Zugriffsverletzung erklärt
 

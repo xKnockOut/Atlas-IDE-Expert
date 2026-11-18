@@ -111,17 +111,25 @@ begin
     mLayout.Arrange(800, 0, FixedWidth());
     Assert.IsTrue(mLayout.ActionRect(TAtlasDebugBarAction.IgnoreLocation).IsEmpty);
     Assert.IsTrue(mLayout.ActionRect(TAtlasDebugBarAction.CreateTest).IsEmpty);
+    Assert.IsTrue(mLayout.ActionRect(TAtlasDebugBarAction.MessageRule).IsEmpty, 'Meldung … nur angeboten');
     Assert.IsFalse(mLayout.CanTrigger(TAtlasDebugBarAction.IgnoreLocation));
     Assert.IsFalse(mLayout.CanTrigger(TAtlasDebugBarAction.None));
     Assert.IsTrue(mLayout.CanTrigger(TAtlasDebugBarAction.Copy));
     mInfo := Default(TAtlasDebugBannerInfo);
     mInfo.CanIgnoreLocation := True;
     mInfo.CanCreateTest := True;
+    mInfo.CanMessageRule := True;
     mLayout.SetContent(mInfo, Default(TAtlasDebugBannerExplanation));
     mLayout.Arrange(800, 0, FixedWidth());
     Assert.IsFalse(mLayout.ActionRect(TAtlasDebugBarAction.IgnoreLocation).IsEmpty);
     Assert.AreEqual(mLayout.ActionRect(TAtlasDebugBarAction.CreateTest).Right, mLayout.LastButtonRight);
     Assert.IsTrue(mLayout.CanTrigger(TAtlasDebugBarAction.IgnoreLocation));
+    // Meldung … steht zwischen „Nur an dieser Stelle ignorieren“ und „Meldung kopieren“.
+    Assert.IsTrue(mLayout.ActionRect(TAtlasDebugBarAction.MessageRule).Left >
+      mLayout.ActionRect(TAtlasDebugBarAction.IgnoreLocation).Right);
+    Assert.IsTrue(mLayout.ActionRect(TAtlasDebugBarAction.MessageRule).Right <
+      mLayout.ActionRect(TAtlasDebugBarAction.Copy).Left);
+    Assert.IsTrue(mLayout.CanTrigger(TAtlasDebugBarAction.MessageRule));
   finally
     mLayout.Free;
   end;

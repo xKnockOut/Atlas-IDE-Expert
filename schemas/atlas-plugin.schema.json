@@ -2287,6 +2287,20 @@
       "x-captionEn": "Ignore only here",
       "x-issue": "#783"
     },
+    "DebugExceptionMessageRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exceptions nach Meldungstext anhalten oder fortsetzen: Regeln mit Muster für die Meldung, angelegt aus der Exception-Leiste oder dem Exception-Verlauf.",
+      "x-key": "debug.exceptionMessageRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exceptions nach Meldungstext anhalten oder fortsetzen",
+      "x-captionEn": "Stop or continue exceptions by message text",
+      "x-issue": "#2549"
+    },
     "DebugInlineValues": {
       "type": "boolean",
       "default": true,

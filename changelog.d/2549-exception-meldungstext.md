@@ -1,0 +1,2 @@
+### Neu
+- Exceptions nach Meldungstext: „Meldung …“ in der Exception-Leiste und im Kontextmenü des Exception-Verlaufs legt eine Regel an, die nur bei Meldungen wie dieser anhält oder Meldungen wie diese ignoriert (Muster mit `*` aus der Meldung vorgeschlagen, wahlweise regulärer Ausdruck, beliebige oder eigene Unit). Regeln gehen der Ignorier-Liste vor und stehen in `debug-ignore.json` (#2549, `debug.exceptionMessageRules`).

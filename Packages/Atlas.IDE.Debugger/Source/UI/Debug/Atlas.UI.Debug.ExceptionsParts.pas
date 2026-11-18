@@ -28,6 +28,9 @@ type
     FCopy: TProc<TAtlasDebugException>;
     FIgnoreClass: TProc<string, Boolean>;
     FClear: TProc;
+    FMessageRule: TProc<TAtlasDebugException, Boolean>;
+    FRemoveMessageRules: TProc<string>;
+    FMessageRulesOn: Boolean;
   public
     /// <summary>Zur Stelle springen; nur für Einträge mit Quelltext.</summary>
     property Open: TProc<TAtlasDebugException> read FOpen write FOpen;
@@ -36,6 +39,13 @@ type
     property IgnoreClass: TProc<string, Boolean> read FIgnoreClass write FIgnoreClass;
     /// <summary>Verlauf leeren.</summary>
     property Clear: TProc read FClear write FClear;
+    /// <summary>Regel nach Meldungstext (#2549) im Dialog anlegen; True = ignorieren, False = nur bei solchen
+    /// Meldungen anhalten. Nicht gesetzt: keine Menüeinträge.</summary>
+    property MessageRule: TProc<TAtlasDebugException, Boolean> read FMessageRule write FMessageRule;
+    /// <summary>Regeln mit Meldung für die Klasse entfernen.</summary>
+    property RemoveMessageRules: TProc<string> read FRemoveMessageRules write FRemoveMessageRules;
+    /// <summary>Menüeinträge der Regeln nach Meldungstext zeigen (debug.exceptionMessageRules).</summary>
+    property MessageRulesOn: Boolean read FMessageRulesOn write FMessageRulesOn;
   end;
 
   /// <summary>Auswahl der Klasse und Textfilter über der Liste.</summary>

@@ -840,10 +840,28 @@ Settings: `debug.justMyCode`
   - Continue (F9)
   - Ignore class
   - Ignore only here (class + unit + line per project, continued silently next time)
+  - Message … (rule by message text, see below)
   - Copy message
 - In Delphi 12 and 13 Atlas closes the IDE's dialog for it, otherwise the dialog stays and the bar follows.
 
 Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
+
+### Exceptions by message text
+
+- One class such as `EConfigError` often stands for very different errors; the message tells them apart.
+- "Message …" in the exception bar and in the context menu of the exception history opens a small dialog:
+  - kind: "Stop only on messages like this" (other messages of this class continue) or "Ignore messages like this"
+  - pattern, prefilled from the message; numbers, addresses and quoted texts become `*`: `Key unknown: * in line *`
+  - without a regular expression it is enough for the message to contain the pattern; `*` stands for any text; case does not matter
+  - optionally a regular expression (an invalid one is reported right away)
+  - unit: any, or only the unit of the first line of your own code
+- Continued exceptions show greyed out in the history.
+- Rules come before the ignore list, so they can also stop on an ignored class.
+- Without a message read, no rule with a message decides: Atlas rather stops.
+- "Remove rules with a message for X" in the history's context menu takes them away again.
+- The rules are stored with the ignore list in `debug-ignore.json` (field `rules`).
+
+Settings: `debug.exceptionMessageRules` (default on)
 
 ### Access violation explained
 

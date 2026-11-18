@@ -7,8 +7,9 @@
 //   2. Thread, „n Ebenen ausgeblendet“ und die erste eigene Zeile (Routine,
 //      Unit:Zeile; Klick springt hin, OnAction Open).
 //   3. Knöpfe Anhalten, Fortsetzen, Klasse ignorieren, Nur an dieser Stelle
-//      ignorieren (nur mit TAtlasDebugBannerInfo.CanIgnoreLocation), Meldung
-//      kopieren, Test daraus anlegen (#1873, nur mit CanCreateTest); rechts die
+//      ignorieren (nur mit TAtlasDebugBannerInfo.CanIgnoreLocation),
+//      Meldung … (#2549, nur mit CanMessageRule), Meldung kopieren, Test
+//      daraus anlegen (#1873, nur mit CanCreateTest); rechts die
 //      Tastenhinweise als Fußzeile.
 // Erklärung einer Zugriffsverletzung (#865, SetExplanation): zwischen Zeile 2
 // und den Knöpfen eine Zeile mit dem Ergebnis („Auftrag.Kunde ist nil“ und

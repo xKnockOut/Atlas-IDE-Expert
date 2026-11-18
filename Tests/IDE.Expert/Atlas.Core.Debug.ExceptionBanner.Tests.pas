@@ -22,6 +22,8 @@ type
     [Test]
     procedure AutoContinueByClassOrLocation;
     [Test]
+    procedure RuleGoesFirst;
+    [Test]
     procedure InfoCutsStackToFirstOwnLine;
     [Test]
     procedure InfoWithoutJustMyCodeShowsTopSource;
@@ -36,6 +38,7 @@ uses
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionDialog,
+  Atlas.Core.Debug.ExceptionRules,
   Atlas.Core.Debug.ExceptionBanner;
 
 function Frame(const AHeader, AFile: string; ALine: Integer; AOwn: Boolean): TAtlasDebugFrame;
@@ -102,6 +105,19 @@ begin
     Ord(TAtlasDebugBannerRules.AutoContinue(False, True, True)));
   Assert.AreEqual(Ord(TAtlasDebugAutoContinue.None), Ord(TAtlasDebugBannerRules.AutoContinue(False, True, False)),
     'Orte nur mit debug.exceptionBanner.ignoreAtLocation');
+end;
+
+procedure TAtlasDebugExceptionBannerTests.RuleGoesFirst;
+begin
+  // Regel nach Meldung (#2549): vermerken, still weiter oder anhalten, auch gegen die Ignorier-Liste.
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.ByRule), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.None, True, TAtlasExceptionAction.Log)));
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.Silent), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.None, True, TAtlasExceptionAction.Continue)));
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.None), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.ByClass, True, TAtlasExceptionAction.Stop)), 'Regel hält trotz Klasse auf der Liste');
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.ByLocation), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.ByLocation, False, TAtlasExceptionAction.Stop)), 'ohne passende Regel bleibt es');
 end;
 
 procedure TAtlasDebugExceptionBannerTests.InfoCutsStackToFirstOwnLine;

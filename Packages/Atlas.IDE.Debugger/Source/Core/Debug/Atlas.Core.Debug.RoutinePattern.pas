@@ -97,8 +97,9 @@ var
   mPattern, mText: string;
   mP, mT, mStar, mResume: Integer;
 begin
-  mPattern := LowerCase(APattern);
-  mText := LowerCase(AText);
+  // AnsiLowerCase: auch Umlaute in Meldungen (#2549).
+  mPattern := AnsiLowerCase(APattern);
+  mText := AnsiLowerCase(AText);
   mP := 1;
   mT := 1;
   // Letzter * im Muster und die Stelle im Text, ab der er gerade steht.
