@@ -1186,6 +1186,8 @@ uses
   Atlas.Core.Tracker.Preview.Tests in 'IDE.Expert\Atlas.Core.Tracker.Preview.Tests.pas',
   Atlas.Core.Tracker.IssueWork in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.IssueWork.pas',
   Atlas.Core.Tracker.IssueWork.Tests in 'IDE.Expert\Atlas.Core.Tracker.IssueWork.Tests.pas',
+  Atlas.Core.Tracker.AiSummary in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.AiSummary.pas',
+  Atlas.Core.Tracker.AiSummary.Tests in 'IDE.Expert\Atlas.Core.Tracker.AiSummary.Tests.pas',
   Atlas.Core.Tracker.CodeLinks in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CodeLinks.pas',
   Atlas.Core.Tracker.BlameLinks in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BlameLinks.pas',
   Atlas.Core.Tracker.CodeLinks.Tests in 'IDE.Expert\Atlas.Core.Tracker.CodeLinks.Tests.pas',

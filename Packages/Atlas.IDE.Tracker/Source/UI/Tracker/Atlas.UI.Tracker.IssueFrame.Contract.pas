@@ -20,6 +20,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
+  Atlas.Core.Tracker.AiSummary,
   Atlas.UI.Tracker.DocBox,
   Atlas.UI.Tracker.DevelopmentView,
   Atlas.UI.Tracker.IssueBoxes,
@@ -56,11 +57,23 @@ type
     /// <summary>Der Tracker kann Unteraufgaben anlegen und verknüpfen: Knöpfe über dem Baum.</summary>
     CanWriteLinks,
     /// <summary>issues.preview.development: Reiter „Entwicklung“ zeigen.</summary>
-    Development);
+    Development,
+    /// <summary>Zusammenfassen mit KI möglich (#2462: issues.aiSummary und ein eingerichteter KI-Anbieter):
+    /// Eintrag im Kontextmenü.</summary>
+    CanSummarize,
+    /// <summary>Knopf „Zusammenfassen“ in der Werkzeugleiste (genug Kommentare, issues.aiSummary.minComments).
+    /// </summary>
+    SummaryButton);
   /// <summary>Feste Knöpfe, Reiter und Aktionen (Tag = cAtlasIssueToolTag + Ord).</summary>
-  TAtlasIssueTool = (Back, Forward, Start, Finish, Review, Browse, CopyKey, Attach, Refresh, Fix, CommentSend, Pages);
+  TAtlasIssueTool = (Back, Forward, Start, Finish, Review, Browse, CopyKey, Attach, Refresh, Fix, CommentSend, Pages,
+    Summarize);
   /// <summary>Teile des Inhalts (Tag = cAtlasIssuePartTag + Ord).</summary>
-  TAtlasIssuePart = (Title, Older, AddTask, Image, Attachment, Link, LinkTree, CreateSubtask, AddLink);
+  TAtlasIssuePart = (Title, Older, AddTask, Image, Attachment, Link, LinkTree, CreateSubtask, AddLink,
+    /// <summary>Zusammenfassung (#2462): Unit öffnen (Hint = Pfad), neu zusammenfassen, als Kommentar übernehmen.
+    /// </summary>
+    SummaryUnit, SummaryAgain, SummaryComment);
+  /// <summary>Zustand der Zusammenfassung (#2462).</summary>
+  TAtlasIssueSummaryKind = (None, Running, Ready, Failed);
   {$SCOPEDENUMS OFF}
   TAtlasIssueFlags = set of TAtlasIssueFlag;
 
@@ -85,8 +98,11 @@ type
     Browse: TButton;
     CopyKey: TButton;
     Attach: TButton;
+    /// <summary>„Zusammenfassen“ (#2462) und sein Eintrag im Kontextmenü.</summary>
+    Summarize: TButton;
     Menu: TPopupMenu;
     AttachItem: TMenuItem;
+    SummarizeItem: TMenuItem;
     Refresh: TButton;
     CommentPanel: TPanel;
     CommentHint: TLabel;
@@ -141,6 +157,20 @@ type
     ProgressText: string;
   end;
 
+  /// <summary>Gezeigte Zusammenfassung (#2462) über der Beschreibung.</summary>
+  TAtlasIssueSummaryShown = record
+    Kind: TAtlasIssueSummaryKind;
+    /// <summary>Kennung des Issues, zu dem sie gehört; ein anderes Issue zeigt sie nicht.</summary>
+    Key: string;
+    Summary: TAtlasIssueSummary;
+    /// <summary>Units der Zusammenfassung, die es im Projekt gibt (Links in den Editor).</summary>
+    Units: TArray<TAtlasIssueSummaryUnit>;
+    /// <summary>Das Issue hat sich seit der Zusammenfassung geändert.</summary>
+    Stale: Boolean;
+    /// <summary>Running: Anbieter und Modell; Failed: der Grund.</summary>
+    Text: string;
+  end;
+
   /// <summary>Zustand des Frames zwischen den Aufrufen.</summary>
   TAtlasIssueFrameState = record
     Details: TAtlasTrackerDetails;
@@ -153,6 +183,8 @@ type
     Anchor: TDateTime;
     /// <summary>Zur Checkliste blättern, sobald sie zu sehen ist.</summary>
     RevealTasks: Boolean;
+    /// <summary>Zusammenfassung (#2462); Kind None ohne.</summary>
+    Summary: TAtlasIssueSummaryShown;
   end;
 
   /// <summary>Wünsche des Frames an die IDE-Schicht; nil = nichts.</summary>
@@ -192,6 +224,10 @@ type
     AddLink: TProc;
     /// <summary>Reiter „Entwicklung“ wurde gewählt: suchen, wenn noch nicht geschehen.</summary>
     DevelopmentShown: TProc;
+    /// <summary>„Zusammenfassen“ bzw. „Neu zusammenfassen“ (#2462); nach dem Klick gemeldet.</summary>
+    Summarize: TProc;
+    /// <summary>Unit aus der Zusammenfassung im Editor öffnen (Pfad).</summary>
+    OpenUnit: TProc<string>;
   end;
 
 implementation

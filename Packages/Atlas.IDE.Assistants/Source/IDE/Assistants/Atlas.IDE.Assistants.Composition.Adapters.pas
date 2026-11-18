@@ -7,6 +7,7 @@
 interface
 
 uses
+  Atlas.IDE.Contracts.AiText,
   Atlas.UI.Assistants.SettingsSection;
 
 /// <summary>Haken der Einstellungsseite für die Schlüssel der KI-Anbieter.</summary>
@@ -21,6 +22,11 @@ procedure StartAiGhost;
 procedure StopAiGhost;
 /// <summary>Teil „AiGhostText“ läuft.</summary>
 function AiGhostStarted: Boolean;
+/// <summary>Text vom KI-Anbieter für andere Module (#2462); ab der Anmeldung, die Komposition stellt ihn bereit.
+/// </summary>
+function StartAiText: IAtlasAiText;
+/// <summary>Bricht offene Anfragen ab, wartet die Threads ab und meldet den Fragenden Cancelled (Regel 3).</summary>
+procedure StopAiText;
 
 implementation
 
@@ -33,11 +39,15 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Assistants.AiGhost,
-  Atlas.IDE.Assistants.AiProbe;
+  Atlas.IDE.Assistants.AiProbe,
+  Atlas.IDE.Assistants.AiText;
 
 var
   GAiGhost: TAtlasIdeAiGhost;
   GAiProbe: TAtlasIdeAiProbe;
+  /// <summary>GAiTextRef hält den Dienst, GAiText stoppt ihn.</summary>
+  GAiText: TAtlasIdeAiText;
+  GAiTextRef: IAtlasAiText;
 
 /// <summary>Schlüssel des KI-Anbieters AProviderId aus dem Anmeldespeicher; '' ohne Eintrag. Auch im
 /// Hintergrund-Thread.</summary>
@@ -128,6 +138,29 @@ end;
 function AiGhostStarted: Boolean;
 begin
   Result := GAiGhost <> nil;
+end;
+
+/// <summary>Eigener Transport je Anfrage: Cancel trifft nur sie.</summary>
+function NewAiHttp: IAtlasAiHttp;
+begin
+  Result := TAtlasAiHttpClient.Create;
+end;
+
+function StartAiText: IAtlasAiText;
+begin
+  GAiText := TAtlasIdeAiText.Create(NewAiHttp, ReadAiKey, HasAiKey);
+  GAiTextRef := GAiText;
+  Result := GAiTextRef;
+end;
+
+procedure StopAiText;
+begin
+  if GAiText <> nil then
+  begin
+    GAiText.Stop;
+  end;
+  GAiText := nil;
+  GAiTextRef := nil;
 end;
 
 end.

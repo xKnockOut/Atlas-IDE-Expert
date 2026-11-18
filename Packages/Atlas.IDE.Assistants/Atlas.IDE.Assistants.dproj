@@ -125,6 +125,7 @@
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.AiGhost.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.AiProbe.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Adapters.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.AiText.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

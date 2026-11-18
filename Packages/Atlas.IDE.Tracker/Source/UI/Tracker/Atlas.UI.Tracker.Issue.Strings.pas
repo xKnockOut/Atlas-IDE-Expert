@@ -41,7 +41,12 @@ type
     IssuePreviewPrompt, IssuePreviewNoTracker, IssuePreviewInvalidKey, IssuePreviewErrorToken,
     IssuePreviewErrorNetwork, IssuePreviewErrorTimeout, IssuePreviewErrorInvalid, IssueChecklistProgress,
     IssueChecklistStatusLine, IssueChecklistStatusHint, IssuePreviewDescription, IssuePreviewAttach,
-    IssuePreviewAttachHint, IssuePreviewReview, IssuePreviewReviewHint, IssuePreviewAttachMenu);
+    IssuePreviewAttachHint, IssuePreviewReview, IssuePreviewReviewHint, IssuePreviewAttachMenu,
+    // Issue mit KI zusammenfassen (#2462)
+    IssueSummaryButton, IssueSummaryHint, IssueSummaryMenu, IssueSummaryTitle, IssueSummaryStatus,
+    IssueSummaryQuestions, IssueSummaryNoQuestions, IssueSummaryNextStep, IssueSummaryUnits, IssueSummaryRunning,
+    IssueSummaryStale, IssueSummaryAgain, IssueSummaryFailed, IssueSummaryUnreadable, IssueSummaryAsComment,
+    IssueSummaryFooter, IssueSummaryConsent);
 
   TAtlasIssueStrings = class
   public
@@ -207,7 +212,25 @@ const
      'Bildschirmfoto, Formular, Log oder Debug-Notiz an das aktuelle Issue anhängen',
      'Prüfen …',
      'Branch des Issues auschecken, bauen, die betroffenen Tests ausführen und verifizieren oder zurückgeben',
-     'An Issue anhängen …'),
+     'An Issue anhängen …',
+     'Zusammenfassen',
+     'Stand, offene Fragen und nächsten Schritt vom KI-Anbieter zusammenfassen lassen',
+     'Mit KI zusammenfassen',
+     'Zusammenfassung (KI)',
+     'Stand',
+     'Offene Fragen',
+     'Keine offenen Fragen.',
+     'Nächster Schritt',
+     'Betroffene Units',
+     'Wird zusammengefasst (%s) …',
+     'Veraltet: Das Issue hat sich seitdem geändert.',
+     'Neu zusammenfassen',
+     'Zusammenfassen fehlgeschlagen: %s',
+     'Die Antwort des KI-Anbieters ließ sich nicht lesen.',
+     'Als Kommentar übernehmen',
+     'Mit KI zusammengefasst',
+     'Titel, Beschreibung, Kommentare und verknüpfte Issues gehen an den KI-Anbieter (%s).%s' +
+       'Für diese Tracker-Verbindung fortfahren und nicht mehr fragen?'),
     ('No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
      'Forward (Alt+Right)',
@@ -356,7 +379,25 @@ const
      'Attach a screenshot, form, log or debug note to the current issue',
      'Review…',
      'Check out the issue''s branch, build, run the affected tests, then verify or hand back',
-     'Attach to issue …'));
+     'Attach to issue …',
+     'Summarize',
+     'Let the AI provider summarize state, open questions and next step',
+     'Summarize with AI',
+     'Summary (AI)',
+     'Status',
+     'Open questions',
+     'No open questions.',
+     'Next step',
+     'Affected units',
+     'Summarizing (%s) …',
+     'Out of date: the issue has changed since.',
+     'Summarize again',
+     'Summary failed: %s',
+     'The AI provider''s answer could not be read.',
+     'Use as comment',
+     'Summarized with AI',
+     'Title, description, comments and linked issues go to the AI provider (%s).%s' +
+       'Continue for this tracker connection and do not ask again?'));
 
 { TAtlasIssueStrings }
 

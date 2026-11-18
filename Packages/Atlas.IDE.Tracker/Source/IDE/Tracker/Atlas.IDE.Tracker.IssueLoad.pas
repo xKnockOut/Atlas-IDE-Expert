@@ -152,6 +152,8 @@ begin
     FHooks.CanReview(mContext.Current.Target, ADetails.Issue));
   AFrame.ShowDetails(ADetails, TAtlasIdeIssueContext.NowUtc, AStatus,
     not TAtlasIdeSettings.Current.IssuesPreviewComments);
+  // Zusammenfassen (#2462): Knopf nach Kommentaren, Karte aus dem Zwischenspeicher.
+  FParts.Summary.Shown(AFrame, ADetails);
 end;
 
 procedure TAtlasIdeIssueLoad.ApplyHookFlags(AFrame: TAtlasIssueFrame);

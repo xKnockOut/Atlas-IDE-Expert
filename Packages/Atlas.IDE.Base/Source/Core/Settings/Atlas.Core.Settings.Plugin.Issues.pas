@@ -56,6 +56,10 @@ const
   cMinIssuesNotifyMinutes = 2;
   cMaxIssuesNotifyMinutes = 1440;
   cDefaultIssuesNotifyMinutes = 10;
+  /// <summary>Grenzen und Vorgabe von issues.aiSummary.minComments (#2462).</summary>
+  cMinIssuesAiSummaryComments = 0;
+  cMaxIssuesAiSummaryComments = 1000;
+  cDefaultIssuesAiSummaryComments = 10;
   /// <summary>Grenzen und Vorgaben der Ablauf-Karte (#2125, issues.flowMap.days, issues.flowMap.stuckDays).
   /// </summary>
   cMinIssuesFlowMapDays = 7;
@@ -285,6 +289,12 @@ type
     /// <summary>Reiter „Entwicklung“ in der Vorschau (#1269, issues.preview.development): Branches, Commits, Pull
     /// Requests und geänderte Units zum Issue; aus = Reiter fehlt, kein Log wird abgefragt.</summary>
     IssuesPreviewDevelopment: Boolean;
+    /// <summary>„Zusammenfassen“ im Fenster „Atlas-Issue“ (#2462, issues.aiSummary) über den KI-Anbieter des
+    /// Moduls KI-Assistenten; aus = kein Knopf, nichts geht an den Anbieter.</summary>
+    IssuesAiSummary: Boolean;
+    /// <summary>Knopf „Zusammenfassen“ in der Werkzeugleiste ab so vielen Kommentaren (#2462,
+    /// issues.aiSummary.minComments); im Kontextmenü immer.</summary>
+    IssuesAiSummaryMinComments: Integer;
     /// <summary>Änderungen an meinen Issues melden (#1271, issues.notify): Atlas fragt jede Tracker-Verbindung alle
     /// IssuesNotifyIntervalMinutes und meldet neue Kommentare, Zuweisungen und Zustandswechsel in der
     /// Benachrichtigungszentrale; aus (Vorgabe) = keine Abfrage.</summary>
@@ -571,6 +581,8 @@ begin
   Result.IssuesCommentEditor := True;
   Result.IssuesCommentSnippets := cDefaultIssuesCommentSnippets;
   Result.IssuesPreviewDevelopment := True;
+  Result.IssuesAiSummary := True;
+  Result.IssuesAiSummaryMinComments := cDefaultIssuesAiSummaryComments;
   Result.IssuesNotify := False;
   Result.IssuesNotifyIntervalMinutes := cDefaultIssuesNotifyMinutes;
   Result.IssuesNotifyScope := cIssuesNotifyAssignedOrCreated;
@@ -598,6 +610,8 @@ begin
   end;
   IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, cMinIssuesNotifyMinutes,
     cMaxIssuesNotifyMinutes);
+  IssuesAiSummaryMinComments := EnsureRange(IssuesAiSummaryMinComments, cMinIssuesAiSummaryComments,
+    cMaxIssuesAiSummaryComments);
   IssuesNotifyScope := NormalizedIssuesNotifyScope(IssuesNotifyScope);
   IssuesSprintOnStart := NormalizedIssuesSprintOnStart(IssuesSprintOnStart);
   IssuesFlowMapDays := EnsureRange(IssuesFlowMapDays, cMinIssuesFlowMapDays, cMaxIssuesFlowMapDays);
@@ -638,6 +652,8 @@ begin
   AIo.Flag('IssuesCommentEditor', IssuesCommentEditor);
   AIo.Text('IssuesCommentSnippets', IssuesCommentSnippets);
   AIo.Flag('IssuesPreviewDevelopment', IssuesPreviewDevelopment);
+  AIo.Flag('IssuesAiSummary', IssuesAiSummary);
+  AIo.Number('IssuesAiSummaryMinComments', IssuesAiSummaryMinComments);
   AIo.Flag('IssuesNotify', IssuesNotify);
   AIo.Number('IssuesNotifyIntervalMinutes', IssuesNotifyIntervalMinutes);
   AIo.Text('IssuesNotifyScope', IssuesNotifyScope);
