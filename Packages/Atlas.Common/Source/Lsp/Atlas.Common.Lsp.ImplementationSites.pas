@@ -135,6 +135,7 @@ type
       const AVia: string);
     procedure AddProperty(const AUnit: TUnitIndex; const AProperty: TIndexSymbol; const ATypeName: string);
     function AddInherited(const AType: TIndexSymbol): Boolean;
+    function DelegatesInterface(const AProperty: TIndexSymbol): Boolean;
     function AddDelegated(const AUnit: TUnitIndex; const AType: TIndexSymbol): Boolean;
     procedure AddOwn;
     procedure AddVirtualIn(const ALocation: TSymbolLocation);
@@ -403,33 +404,40 @@ begin
   end;
 end;
 
+/// <summary>Nennt die Property AProperty mit "implements" das gesuchte Interface (oder einen Nachfahren)?
+/// </summary>
+function TSiteSearch.DelegatesInterface(const AProperty: TIndexSymbol): Boolean;
+var
+  mMatch: TMatch;
+  mInterface: string;
+begin
+  Result := False;
+  mMatch := TRegEx.Match(AProperty.Signature, '\bimplements\s+([^;]+)', [TRegExOption.roIgnoreCase]);
+  if mMatch.Success then
+  begin
+    for mInterface in mMatch.Groups[1].Value.Split([',']) do
+    begin
+      if Extends(Trim(mInterface)) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+end;
+
 /// <summary>Delegation über "property … implements IFoo" in AType.</summary>
 function TSiteSearch.AddDelegated(const AUnit: TUnitIndex; const AType: TIndexSymbol): Boolean;
 var
   mSymbol, mFieldType: TIndexSymbol;
-  mMatch: TMatch;
-  mInterface: string;
   mTypeUnit: TUnitIndex;
   mFound: TFoundMethod;
 begin
-  Result := False;
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind <> TIndexSymbolKind.Property_) or not SameText(mSymbol.Container, AType.QualifiedName) then
+    if (mSymbol.Kind = TIndexSymbolKind.Property_) and SameText(mSymbol.Container, AType.QualifiedName) and
+      DelegatesInterface(mSymbol) then
     begin
-      Continue;
-    end;
-    mMatch := TRegEx.Match(mSymbol.Signature, '\bimplements\s+([^;]+)', [TRegExOption.roIgnoreCase]);
-    if not mMatch.Success then
-    begin
-      Continue;
-    end;
-    for mInterface in mMatch.Groups[1].Value.Split([',']) do
-    begin
-      if not Extends(Trim(mInterface)) then
-      begin
-        Continue;
-      end;
+      // Feld vom Typ einer Klasse: deren Methode; vom Typ eines Interfaces: statisch unbekannt.
       if FindType(mSymbol.TypeName, mTypeUnit, mFieldType) and (mFieldType.Kind in cClassKinds) and
         FindMethod(mTypeUnit, mFieldType.QualifiedName, FName, mFound) then
       begin
@@ -442,6 +450,7 @@ begin
       Exit(True);
     end;
   end;
+  Result := False;
 end;
 
 procedure TSiteSearch.AddOwn;
