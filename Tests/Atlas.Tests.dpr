@@ -2106,6 +2106,8 @@ uses
   Atlas.UI.Assistants.Strings.Tests in 'IDE.Expert\Atlas.UI.Assistants.Strings.Tests.pas',
   Atlas.UI.Assistants.SettingsSection in '..\Packages\Atlas.IDE.Assistants\Source\UI\Assistants\Atlas.UI.Assistants.SettingsSection.pas',
   Atlas.UI.Assistants.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Assistants.SettingsSection.Tests.pas',
+  Atlas.UI.Assistants.DebugBar in '..\Packages\Atlas.IDE.Assistants\Source\UI\Assistants\Atlas.UI.Assistants.DebugBar.pas',
+  Atlas.UI.Assistants.DebugBar.Tests in 'IDE.Expert\Atlas.UI.Assistants.DebugBar.Tests.pas',
   Atlas.Core.BuildPipeline.ReleaseGuard in '..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas',
   Atlas.Core.BuildPipeline.ReleaseGuard.Tests in 'IDE.Expert\Atlas.Core.BuildPipeline.ReleaseGuard.Tests.pas',
   Atlas.Core.BuildPipeline.Plan in '..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Plan.pas',

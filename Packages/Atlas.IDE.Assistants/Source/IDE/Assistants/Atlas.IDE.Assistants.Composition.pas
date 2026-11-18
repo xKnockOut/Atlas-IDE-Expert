@@ -14,6 +14,7 @@
 //   wird über IAtlasDebugControl des Moduls Debugger, das der Eingang bei jedem
 //   Auftrag neu in der Registry sucht (Regel 2). Nur im normalen Start und
 //   solange debug.mcp an ist; Rechte aus debug.mcp.sideEffects, .modify, .attach.
+//   Dazu die Leiste „KI-Assistent debuggt“ im Editor (debug.mcp.banner).
 // - den Abschnitt mit dem Modulschalter im Optionsdialog.
 // Die Liste der offenen und ungespeicherten Dateien (DirtyExport) bleibt in
 // Base: Sie schützt Dateien auch dann vor dem Überschreiben, wenn das Modul
@@ -27,7 +28,7 @@ uses
   Atlas.Core.Modules.Contract;
 
 type
-  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule)
+  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasAppliesSettings, IAtlasFollowsTheme)
   public const
     cModuleId = 'atlas.assistants';
     cSwitch = 'assistants';
@@ -39,6 +40,8 @@ type
     procedure Start;
     procedure Stop;
     function IsActive: Boolean;
+    procedure ApplySettings;
+    procedure ThemeChanged;
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
@@ -58,6 +61,7 @@ uses
   Atlas.IDE.Contracts.DebugControl,
   Atlas.Core.Assistants.DebugGate,
   Atlas.IDE.Assistants.DebugInbox,
+  Atlas.IDE.Assistants.DebugBar,
   Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -70,6 +74,7 @@ var
   GBuildInbox: TAtlasIdeBuildInbox;
   GEditInbox: TAtlasIdeEditInbox;
   GDebugInbox: TAtlasIdeDebugInbox;
+  GDebugBar: TAtlasIdeAssistantDebugBar;
 
 { Dienste von Base und anderer Module }
 
@@ -155,13 +160,34 @@ begin
   Result := GEditInbox <> nil;
 end;
 
+procedure DebugChanged;
+begin
+  if GDebugBar <> nil then
+  begin
+    GDebugBar.Refresh;
+  end;
+end;
+
+function DebugInbox: TAtlasIdeDebugInbox;
+begin
+  Result := GDebugInbox;
+end;
+
+function DebugBanner: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugMcpBanner;
+end;
+
 procedure StartDebug;
 begin
-  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, nil, MessageLine);
+  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, DebugChanged, MessageLine);
+  GDebugBar := TAtlasIdeAssistantDebugBar.Create(DebugInbox, DebugBanner);
 end;
 
 procedure StopDebug;
 begin
+  // Zuerst die Leiste: Der Eingang meldet beim Abbau noch eine Änderung.
+  FreeAndNil(GDebugBar);
   FreeAndNil(GDebugInbox);
 end;
 
@@ -215,6 +241,20 @@ end;
 function TAtlasAssistantsModule.IsActive: Boolean;
 begin
   Result := FActive;
+end;
+
+procedure TAtlasAssistantsModule.ApplySettings;
+begin
+  // debug.mcp.banner gilt sofort.
+  DebugChanged;
+end;
+
+procedure TAtlasAssistantsModule.ThemeChanged;
+begin
+  if GDebugBar <> nil then
+  begin
+    GDebugBar.ApplyTheme;
+  end;
 end;
 
 class function TAtlasAssistantsModule.RegisterModule: Boolean;

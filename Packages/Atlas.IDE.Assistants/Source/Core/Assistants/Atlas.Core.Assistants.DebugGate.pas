@@ -74,6 +74,9 @@ type
     procedure SetPaused(AValue: Boolean);
     /// <summary>„Übernehmen“: Die Sitzung bleibt, der Assistent ist getrennt.</summary>
     procedure TakeOver;
+    /// <summary>Leiste im Editor zeigen? Mit ABanner (debug.mcp.banner), solange der Assistent eine Sitzung steuert
+    /// oder „Pause für KI“ gilt (sonst fände der Benutzer „Fortsetzen“ nicht).</summary>
+    function BarShown(ABanner: Boolean): Boolean;
     property Paused: Boolean read FPaused;
     /// <summary>Der Assistent steuert gerade ein von ihm gestartetes Programm.</summary>
     property Own: Boolean read FOwn;
@@ -244,6 +247,11 @@ begin
   FSession := '';
   FSteps := 0;
   FLastTool := '';
+end;
+
+function TAtlasDebugGate.BarShown(ABanner: Boolean): Boolean;
+begin
+  Result := ABanner and (FOwn or FPaused);
 end;
 
 end.

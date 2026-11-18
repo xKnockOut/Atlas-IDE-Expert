@@ -165,6 +165,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
+- **KI-Assistenten debuggen in der laufenden IDE:** `debug_start`, `debug_step`, `debug_state`, `debug_evaluate` u. a. starten ein Projekt oder einen einzelnen DUnitX-Test im Debugger, setzen Haltepunkte (Gruppe `Atlas-KI`, die eigenen bleiben unberührt), gehen Schritte und lesen Aufrufstapel, lokale Variablen und Werte; standardmäßig aus (`debug.mcp`), Aufrufe und Zuweisungen brauchen eine eigene Erlaubnis, eine Leiste im Editor zeigt, wer debuggt, mit „Pause für KI“ und „Übernehmen“
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

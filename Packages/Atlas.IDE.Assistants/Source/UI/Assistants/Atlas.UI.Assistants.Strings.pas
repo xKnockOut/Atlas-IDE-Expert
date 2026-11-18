@@ -15,7 +15,9 @@ type
     DebugUnknownCommand, DebugRefusedPaused, DebugRefusedUserSession, DebugRefusedRunning, DebugRefusedNoProgram,
     DebugRefusedNotStopped, DebugRefusedSideEffects, DebugRefusedModify, DebugNoDebugger, DebugSwitchedOff,
     DebugTakenOver, DebugNeedsSideEffects, DebugNoBreakpoint, DebugStarted,
-    SettingsDebugMcp, SettingsDebugSideEffects, SettingsDebugModify, SettingsDebugAttach, SettingsDebugBanner);
+    SettingsDebugMcp, SettingsDebugSideEffects, SettingsDebugModify, SettingsDebugAttach, SettingsDebugBanner,
+    DebugBarText, DebugBarPausedText, DebugBarClient, DebugBarPause, DebugBarResume, DebugBarTakeOver,
+    DebugBarPauseHint, DebugBarResumeHint, DebugBarTakeOverHint);
 
   TAtlasAssistantsStrings = class
   public
@@ -63,7 +65,16 @@ const
      'Ausdrücke mit Aufrufen (Getter, Funktionen) erlauben',
      'Werte ändern erlauben (Zuweisungen in debug_evaluate)',
      'Laufende Sitzung des Benutzers übernehmen',
-     'Leiste zeigen, solange ein KI-Assistent den Debugger steuert'),
+     'Leiste zeigen, solange ein KI-Assistent den Debugger steuert',
+     '%s debuggt · %d Aufträge · zuletzt %s',
+     'Pause für KI: Aufträge von KI-Assistenten werden abgelehnt.',
+     'Ein KI-Assistent',
+     'Pause für KI',
+     'Fortsetzen',
+     'Übernehmen',
+     'Aufträge von KI-Assistenten ablehnen, bis „Fortsetzen“ gedrückt wird',
+     'Aufträge von KI-Assistenten wieder annehmen',
+     'Sitzung selbst weiterführen; der KI-Assistent ist getrennt, seine Haltepunkte bleiben'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -95,7 +106,16 @@ const
      'Allow expressions with calls (getters, functions)',
      'Allow changing values (assignments in debug_evaluate)',
      'Take over the user''s running session',
-     'Show the bar while an AI assistant controls the debugger'));
+     'Show the bar while an AI assistant controls the debugger',
+     '%s is debugging · %d requests · last %s',
+     'Pause for AI: requests from AI assistants are refused.',
+     'An AI assistant',
+     'Pause for AI',
+     'Resume',
+     'Take over',
+     'Refuse requests from AI assistants until "Resume" is pressed',
+     'Accept requests from AI assistants again',
+     'Continue the session yourself; the AI assistant is disconnected, its breakpoints stay'));
 
 { TAtlasAssistantsStrings }
 

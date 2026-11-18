@@ -42,6 +42,10 @@ type
     procedure WaitEndsOnNewStopEndOrDeadline;
     [Test]
     procedure WaitForLaunchIgnoresDebuggerBeforeStart;
+    /// <summary>Akzeptanzkriterium: Leiste nur mit debug.mcp.banner, solange der Assistent steuert oder Pause gilt.
+    /// </summary>
+    [Test]
+    procedure BarShownWhileAssistantControlsOrPaused;
   end;
 
 implementation
@@ -177,6 +181,18 @@ begin
   Assert.AreEqual(Ord(TAtlasDebugRefusal.UserSession), Ord(FGate.Refusal(Request(TAtlasDebugCommand.Step),
     TAtlasDebugControlPhase.Stopped, NoRights)), 'Sitzung gehört jetzt dem Benutzer');
   Assert.AreEqual('none', FGate.StateName(TAtlasDebugControlPhase.None));
+end;
+
+procedure TAtlasDebugGateTests.BarShownWhileAssistantControlsOrPaused;
+begin
+  Assert.IsFalse(FGate.BarShown(True), 'ohne Sitzung');
+  FGate.Launched('S1');
+  Assert.IsTrue(FGate.BarShown(True));
+  Assert.IsFalse(FGate.BarShown(False), 'Leiste abgeschaltet');
+  FGate.TakeOver;
+  Assert.IsFalse(FGate.BarShown(True), 'übernommen');
+  FGate.SetPaused(True);
+  Assert.IsTrue(FGate.BarShown(True), 'Pause zeigt „Fortsetzen“');
 end;
 
 procedure TAtlasDebugGateTests.CountsStepsAndLastTool;
