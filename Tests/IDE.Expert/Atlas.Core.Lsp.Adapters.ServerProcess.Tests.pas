@@ -11,9 +11,6 @@ type
   [TestFixture]
   TLspServerProcessTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     // Startet den echten Server neben dem Testprogramm.
     [Test]
     procedure HoverAndDefinitionAgainstServer;
@@ -61,20 +58,6 @@ const
 
 { TLspServerProcessTests }
 
-procedure TLspServerProcessTests.WarmUpFirstUse;
-begin
-  StartFailureLeavesNoHandles;
-  // Erster echter Start (Pipes, Lese- und Schreib-Thread, Sitzung) ungemessen statt [IgnoreMemoryLeaks]
-  //. Ohne Server neben dem Testprogramm überspringen die Tests ohnehin.
-  if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
-    try
-      HoverAndDefinitionAgainstServer;
-    except
-      // Scheitert der Lauf, meldet das der Test selbst; das Aufwärmen hält die übrigen Tests nicht auf.
-      on Exception do
-        ;
-    end;
-end;
 procedure TLspServerProcessTests.HoverAndDefinitionAgainstServer;
 const
   cUnitText =
