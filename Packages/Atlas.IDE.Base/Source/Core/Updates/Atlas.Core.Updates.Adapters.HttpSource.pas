@@ -37,10 +37,27 @@ const
   // Die Versionsdatei ist ein paar Byte groß; mehr nimmt der Antwort-Stream nicht an.
   cMaxBytes = 64 * 1024;
   cMaxRedirects = 5;
+  cHttpOk = 200;
+  /// <summary>Statuscodes der Weiterleitungen: 301, 302, 303, 307, 308.</summary>
+  cRedirectCodes: array[0..4] of Integer = (301, 302, 303, 307, 308);
+  // Gründe fürs Protokoll (nie übersetzt).
+  cHttpsOnly = 'nur https';
+  cTooManyRedirects = 'zu viele Weiterleitungen';
+  cHttpStatus = 'HTTP %d';
+  cTooLarge = 'Antwort zu groß';
 
 function IsRedirect(AStatus: Integer): Boolean;
+var
+  mCode: Integer;
 begin
-  Result := (AStatus = 301) or (AStatus = 302) or (AStatus = 303) or (AStatus = 307) or (AStatus = 308);
+  for mCode in cRedirectCodes do
+  begin
+    if AStatus = mCode then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Holt AUrl in AContent; False, wenn das Abbruchsignal kommt oder ADeadline erreicht ist.</summary>
@@ -83,7 +100,7 @@ begin
   repeat
     if not mUrl.StartsWith('https://', True) then
     begin
-      AError := 'nur https';
+      AError := cHttpsOnly;
     end
     else if not AwaitGet(AClient, mUrl, AContent, mDeadline, AResponse) then
     begin
@@ -95,7 +112,7 @@ begin
       mUrl := AResponse.HeaderValue['Location'];
       if mRedirects > cMaxRedirects then
       begin
-        AError := 'zu viele Weiterleitungen';
+        AError := cTooManyRedirects;
       end;
     end;
   until (AError <> '') or not IsRedirect(AResponse.StatusCode);
@@ -128,9 +145,9 @@ begin
       begin
         Exit;
       end;
-      if mResponse.StatusCode <> 200 then
+      if mResponse.StatusCode <> cHttpOk then
       begin
-        AError := Format('HTTP %d', [mResponse.StatusCode]);
+        AError := Format(cHttpStatus, [mResponse.StatusCode]);
       end
       else
       begin
@@ -143,7 +160,7 @@ begin
         AError := E.ClassName;
         if mContent.Exceeded then
         begin
-          AError := 'Antwort zu groß';
+          AError := cTooLarge;
         end;
       end;
     end;
