@@ -14,6 +14,10 @@
 // - Die Umkehrung baut SourceAt erst bei Bedarf neu auf: Zeilen einfügen meldet
 //   jede verfolgte Zeile darunter einzeln, das Zeichnen fragt danach.
 // - TAtlasLineTracking verwaltet die Zuordnungen aller Dateien und Kanäle.
+//   Trackable wählt aus den Zeilen eines Kanals die aus, die der IDE übergeben
+//   werden dürfen: nur Zeilen, die der Puffer hat, jede einmal. Eine Zeile
+//   hinter dem Ende (ein Befund bis zum Dateiende endet eine Zeile danach)
+//   bringt den Editor beim Vergrößern seiner Tabelle zum Absturz.
 // Der Server bleibt die Quelle: Die Zuordnung überbrückt nur die Zeit, bis der
 // Kanal einen neuen Stand hat.
 // Alle Zeilen 0-basiert. Nur im Hauptthread verwenden.
@@ -81,6 +85,9 @@ type
     class function Encode(AChannel, ALine: Integer): NativeInt; static;
     /// <summary>Kanal und Quellzeile aus einer Kennung; False bei fremden Kennungen.</summary>
     class function Decode(AData: NativeInt; out AChannel, ALine: Integer): Boolean; static;
+    /// <summary>Zeilen aus ALines, die ein Puffer mit ALineCount Zeilen hat und eine Kennung tragen können;
+    /// aufsteigend, jede einmal.</summary>
+    class function Trackable(const ALines: TArray<Integer>; ALineCount: Integer): TArray<Integer>; static;
     /// <summary>Zuordnung der Datei im Kanal; nil ohne.</summary>
     function Find(const AFileName: string; AChannel: Integer): TAtlasTrackedLines;
     /// <summary>Zuordnung der Datei im Kanal, bei Bedarf neu (Stand 0, nichts verfolgt).</summary>
@@ -245,6 +252,32 @@ begin
   AChannel := Integer((AData shr cChannelShift) and cMaxChannel);
   ALine := Integer(AData and cMaxLine);
   Result := AChannel >= 1;
+end;
+
+class function TAtlasLineTracking.Trackable(const ALines: TArray<Integer>; ALineCount: Integer): TArray<Integer>;
+var
+  mSorted: TArray<Integer>;
+  mLine, mCount: Integer;
+begin
+  Result := nil;
+  mSorted := Copy(ALines);
+  TArray.Sort<Integer>(mSorted);
+  SetLength(Result, Length(mSorted));
+  mCount := 0;
+  for mLine in mSorted do
+  begin
+    if (mLine < 0) or (mLine >= ALineCount) or (mLine > cMaxLine) then
+    begin
+      Continue;
+    end;
+    if (mCount > 0) and (Result[mCount - 1] = mLine) then
+    begin
+      Continue;
+    end;
+    Result[mCount] := mLine;
+    Inc(mCount);
+  end;
+  SetLength(Result, mCount);
 end;
 
 function TAtlasLineTracking.Find(const AFileName: string; AChannel: Integer): TAtlasTrackedLines;

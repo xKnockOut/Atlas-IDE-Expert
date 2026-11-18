@@ -12,6 +12,12 @@
 //   Stands dem Puffer entspricht (sonst stünden die Zeilen falsch); bis dahin gilt
 //   jede Zeile als sie selbst, wie ohne Verfolgung.
 // - Zeilen anderer Kanäle und anderer Experten im selben Tracker bleiben unberührt.
+// - Angemeldet werden nur Zeilen, die der Puffer hat, jede einmal
+//   (TAtlasLineTracking.Trackable). Eine Zeile hinter dem Ende lässt die IDE
+//   beim Vergrößern ihrer Tabelle in boreditu.dll abstürzen.
+// - Follow verändert die Tabelle der IDE und darf deshalb nicht beim Zeichnen
+//   laufen (das Zeichnen kommt auch aus WM_PRINTCLIENT, etwa beim Hover).
+//   Der Zeichner fragt nur Current und meldet neu an, wenn er fertig ist.
 // - Schließt die IDE den Puffer, meldet der Tracker Destroyed: Eintrag und
 //   Zuordnung entfallen. Uninstall meldet alle Beobachter ab und entfernt die
 //   Zeilen von Atlas.
@@ -132,20 +138,25 @@ end;
 function EnsureBuffer(const ABuffer: IOTAEditBuffer; out AEntry: TBufferEntry): Boolean;
 var
   mKey: string;
+  mTracker: IOTAEditLineTracker;
 begin
   mKey := KeyOf(ABuffer.FileName);
-  if Buffers.TryGetValue(mKey, AEntry) then
+  mTracker := ABuffer.GetEditLineTracker;
+  if mTracker = nil then
+  begin
+    Exit(False);
+  end;
+  // Ein Eintrag mit anderem Tracker gehört zu einem früheren Puffer gleichen Namens, dessen Ende nicht gemeldet
+  // wurde: nicht mehr anfassen, nur ersetzen.
+  if Buffers.TryGetValue(mKey, AEntry) and (AEntry.Tracker = mTracker) then
   begin
     Exit(True);
   end;
   AEntry := Default(TBufferEntry);
-  AEntry.Tracker := ABuffer.GetEditLineTracker;
-  Result := AEntry.Tracker <> nil;
-  if Result then
-  begin
-    AEntry.NotifierIndex := AEntry.Tracker.AddNotifier(TLineNotifier.Create(ABuffer.FileName));
-    Buffers.Add(mKey, AEntry);
-  end;
+  AEntry.Tracker := mTracker;
+  AEntry.NotifierIndex := AEntry.Tracker.AddNotifier(TLineNotifier.Create(ABuffer.FileName));
+  Buffers.AddOrSetValue(mKey, AEntry);
+  Result := True;
 end;
 
 /// <summary>Zeilen des Kanals AChannel (bzw. aller Kanäle bei 0) aus dem Tracker entfernen.</summary>
@@ -191,7 +202,7 @@ begin
     Exit;
   end;
   DropLines(mEntry.Tracker, AChannel);
-  mLines := ALines();
+  mLines := TAtlasLineTracking.Trackable(ALines(), AView.Buffer.GetLinesInBuffer);
   for mLine in mLines do
   begin
     if TAtlasLineTracking.Encode(AChannel, mLine) <> 0 then
