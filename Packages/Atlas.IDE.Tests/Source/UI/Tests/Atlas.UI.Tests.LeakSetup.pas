@@ -158,6 +158,15 @@ var
   mAny: Boolean;
   mChoice: TAtlasLeakChoice;
 begin
+  // Jeder Knopf liegt in einer eigenen Zeile, also unter einem eigenen Parent: Die VCL schaltet beim Anhaken nur
+  // Geschwister mit demselben Parent aus. Die übrigen Knöpfe deshalb hier abwählen (Checked := False klickt nicht).
+  for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
+  begin
+    if (FChoices[mChoice] <> Sender) and (Sender is TRadioButton) and TRadioButton(Sender).Checked then
+    begin
+      FChoices[mChoice].Checked := False;
+    end;
+  end;
   mAny := False;
   for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
   begin
