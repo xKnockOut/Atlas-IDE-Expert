@@ -22,6 +22,9 @@
 //   Verknüpfung mit dem Ziel; Doppelklick OnOpen, Rechtsklick OnMenu (mit
 //   Bildschirmpunkt). Ziehen auf den Baum meldet OnDrop, wenn OnCanDrop
 //   zustimmt (Komponente aus der Palette).
+// - OnPainted: Der Baum wird gezeichnet, das Fenster ist also zu sehen (Reiter
+//   gewählt, Leiste aufgeklappt, vom Desktop wieder gezeigt). Daran wacht der
+//   ruhende Takt der IDE-Seite wieder auf.
 
 interface
 
@@ -41,6 +44,17 @@ uses
 
 type
   TAtlasStructureFrame = class(TFrame)
+  private type
+    /// <summary>Rückrufe an die IDE-Seite.</summary>
+    TEvents = record
+      OnSelect: TProc<string>;
+      OnOpen: TProc<string>;
+      OnMenu: TProc<string, TPoint>;
+      OnCanDrop: TFunc<Boolean>;
+      OnDrop: TProc;
+      OnChanged: TProc<string, Boolean>;
+      OnPainted: TProc;
+    end;
   private
     FByKind: TSpeedButton;
     FShowImages: TCheckBox;
@@ -50,15 +64,12 @@ type
     FNodes: TArray<TAtlasStructureNode>;
     FOpen: TDictionary<string, Boolean>;
     FUpdating: Boolean;
-    FOnSelect: TProc<string>;
-    FOnOpen: TProc<string>;
-    FOnMenu: TProc<string, TPoint>;
-    FOnCanDrop: TFunc<Boolean>;
-    FOnDrop: TProc;
-    FOnChanged: TProc<string, Boolean>;
+    FEvents: TEvents;
     function NodeOf(ATreeNode: TTreeNode): Integer;
     function NameOf(ATreeNode: TTreeNode): string;
     procedure SetImages(AImages: TCustomImageList);
+    /// <summary>Baum anlegen und seine Ereignisse verdrahten.</summary>
+    procedure CreateTree;
     procedure RestoreOpen;
     procedure Changed(Sender: TObject);
     procedure ExpandClick(Sender: TObject);
@@ -69,6 +80,7 @@ type
     procedure TreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure TreeCustomDraw(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
       var DefaultDraw: Boolean);
+    procedure TreePaint(Sender: TCustomTreeView; const ARect: TRect; var DefaultDraw: Boolean);
     procedure TreeDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
     procedure TreeDragDrop(Sender, Source: TObject; X, Y: Integer);
   protected
@@ -82,13 +94,15 @@ type
     /// <summary>Markiert die Komponente AName ohne OnSelect; '' hebt die Markierung auf.</summary>
     procedure MarkName(const AName: string);
     property Images: TCustomImageList read FImages write SetImages;
-    property OnSelect: TProc<string> read FOnSelect write FOnSelect;
-    property OnOpen: TProc<string> read FOnOpen write FOnOpen;
-    property OnMenu: TProc<string, TPoint> read FOnMenu write FOnMenu;
-    property OnCanDrop: TFunc<Boolean> read FOnCanDrop write FOnCanDrop;
-    property OnDrop: TProc read FOnDrop write FOnDrop;
+    property OnSelect: TProc<string> read FEvents.OnSelect write FEvents.OnSelect;
+    property OnOpen: TProc<string> read FEvents.OnOpen write FEvents.OnOpen;
+    property OnMenu: TProc<string, TPoint> read FEvents.OnMenu write FEvents.OnMenu;
+    property OnCanDrop: TFunc<Boolean> read FEvents.OnCanDrop write FEvents.OnCanDrop;
+    property OnDrop: TProc read FEvents.OnDrop write FEvents.OnDrop;
     /// <summary>Filter oder Gruppierung geändert (Filtertext, nach Art statt Klasse): neu füllen.</summary>
-    property OnChanged: TProc<string, Boolean> read FOnChanged write FOnChanged;
+    property OnChanged: TProc<string, Boolean> read FEvents.OnChanged write FEvents.OnChanged;
+    /// <summary>Der Baum wird gezeichnet, ist also zu sehen; bei jedem Zeichnen, auch ohne Änderung.</summary>
+    property OnPainted: TProc read FEvents.OnPainted write FEvents.OnPainted;
   end;
 
 implementation
@@ -257,23 +271,7 @@ begin
   FFilter.TextHint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StFilter);
   FFilter.OnChange := Changed;
   AddStatus(Self);
-  FTree := TTreeView.Create(Self);
-  FTree.Parent := Self;
-  FTree.Align := alClient;
-  FTree.ReadOnly := True;
-  FTree.HideSelection := False;
-  FTree.RowSelect := True;
-  FTree.DragMode := dmManual;
-  FTree.OnChange := TreeChange;
-  FTree.OnExpanded := TreeToggled;
-  FTree.OnCollapsed := TreeToggled;
-  FTree.OnDblClick := TreeDblClick;
-  // Kontextmenü über WM_CONTEXTMENU (auch Menütaste, Umschalt+F10) und als behandelt melden: Sonst läuft die
-  // Nachricht zum Andockfenster weiter, das zuerst sein eigenes Menü (Andockbar …) zeigt.
-  FTree.OnContextPopup := TreeContextPopup;
-  FTree.OnCustomDrawItem := TreeCustomDraw;
-  FTree.OnDragOver := TreeDragOver;
-  FTree.OnDragDrop := TreeDragDrop;
+  CreateTree;
 end;
 
 destructor TAtlasStructureFrame.Destroy;
@@ -297,6 +295,28 @@ begin
   begin
     FTree.Images := AImages;
   end;
+end;
+
+procedure TAtlasStructureFrame.CreateTree;
+begin
+  FTree := TTreeView.Create(Self);
+  FTree.Parent := Self;
+  FTree.Align := alClient;
+  FTree.ReadOnly := True;
+  FTree.HideSelection := False;
+  FTree.RowSelect := True;
+  FTree.DragMode := dmManual;
+  FTree.OnChange := TreeChange;
+  FTree.OnExpanded := TreeToggled;
+  FTree.OnCollapsed := TreeToggled;
+  FTree.OnDblClick := TreeDblClick;
+  // Kontextmenü über WM_CONTEXTMENU (auch Menütaste, Umschalt+F10) und als behandelt melden: Sonst läuft die
+  // Nachricht zum Andockfenster weiter, das zuerst sein eigenes Menü (Andockbar …) zeigt.
+  FTree.OnContextPopup := TreeContextPopup;
+  FTree.OnCustomDrawItem := TreeCustomDraw;
+  FTree.OnCustomDraw := TreePaint;
+  FTree.OnDragOver := TreeDragOver;
+  FTree.OnDragDrop := TreeDragDrop;
 end;
 
 procedure TAtlasStructureFrame.Notification(AComponent: TComponent; Operation: TOperation);
@@ -353,9 +373,9 @@ end;
 
 procedure TAtlasStructureFrame.Changed(Sender: TObject);
 begin
-  if Assigned(FOnChanged) then
+  if Assigned(FEvents.OnChanged) then
   begin
-    FOnChanged(FFilter.Text, FByKind.Down);
+    FEvents.OnChanged(FFilter.Text, FByKind.Down);
   end;
 end;
 
@@ -386,9 +406,9 @@ end;
 
 procedure TAtlasStructureFrame.TreeChange(Sender: TObject; Node: TTreeNode);
 begin
-  if not FUpdating and Assigned(FOnSelect) and (NameOf(Node) <> '') then
+  if not FUpdating and Assigned(FEvents.OnSelect) and (NameOf(Node) <> '') then
   begin
-    FOnSelect(NameOf(Node));
+    FEvents.OnSelect(NameOf(Node));
   end;
 end;
 
@@ -402,9 +422,9 @@ end;
 
 procedure TAtlasStructureFrame.TreeDblClick(Sender: TObject);
 begin
-  if Assigned(FOnOpen) and (NameOf(FTree.Selected) <> '') then
+  if Assigned(FEvents.OnOpen) and (NameOf(FTree.Selected) <> '') then
   begin
-    FOnOpen(NameOf(FTree.Selected));
+    FEvents.OnOpen(NameOf(FTree.Selected));
   end;
 end;
 
@@ -428,13 +448,13 @@ begin
     mNode := FTree.GetNodeAt(MousePos.X, MousePos.Y);
   end;
   // Auf leerer Fläche bleibt das Menü des Andockfensters (Andockbar, Vordergrund) erreichbar.
-  if (NameOf(mNode) = '') or not Assigned(FOnMenu) then
+  if (NameOf(mNode) = '') or not Assigned(FEvents.OnMenu) then
   begin
     Exit;
   end;
   Handled := True;
   FTree.Selected := mNode;
-  FOnMenu(NameOf(mNode), FTree.ClientToScreen(MousePos));
+  FEvents.OnMenu(NameOf(mNode), FTree.ClientToScreen(MousePos));
 end;
 
 procedure TAtlasStructureFrame.TreeCustomDraw(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
@@ -458,17 +478,26 @@ begin
   end;
 end;
 
+procedure TAtlasStructureFrame.TreePaint(Sender: TCustomTreeView; const ARect: TRect; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if Assigned(FEvents.OnPainted) then
+  begin
+    FEvents.OnPainted();
+  end;
+end;
+
 procedure TAtlasStructureFrame.TreeDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState;
   var Accept: Boolean);
 begin
-  Accept := (Source <> nil) and Assigned(FOnCanDrop) and FOnCanDrop;
+  Accept := (Source <> nil) and Assigned(FEvents.OnCanDrop) and FEvents.OnCanDrop;
 end;
 
 procedure TAtlasStructureFrame.TreeDragDrop(Sender, Source: TObject; X, Y: Integer);
 begin
-  if Assigned(FOnDrop) then
+  if Assigned(FEvents.OnDrop) then
   begin
-    FOnDrop();
+    FEvents.OnDrop();
   end;
 end;
 
