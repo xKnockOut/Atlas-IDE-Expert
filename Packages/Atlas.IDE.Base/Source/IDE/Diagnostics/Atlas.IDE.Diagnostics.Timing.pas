@@ -202,7 +202,7 @@ begin
   mVersion := TAtlasQueryTimings.Shared.Version;
   if AForce then
   begin
-    AFrame.SetColors(TAtlasIdeStyle.Colors);
+    AFrame.SetColors(TAtlasIdeStyle.WindowColors);
   end
   else if mVersion = FShownVersion then
   begin

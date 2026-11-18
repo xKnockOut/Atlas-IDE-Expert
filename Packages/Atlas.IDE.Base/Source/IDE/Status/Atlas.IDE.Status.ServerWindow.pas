@@ -126,7 +126,7 @@ end;
 procedure Theme(AFrame: TAtlasServerFrame);
 begin
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
-  AFrame.SetColors(TAtlasIdeStyle.Colors);
+  AFrame.SetColors(TAtlasIdeStyle.WindowColors);
 end;
 
 procedure ShowState;

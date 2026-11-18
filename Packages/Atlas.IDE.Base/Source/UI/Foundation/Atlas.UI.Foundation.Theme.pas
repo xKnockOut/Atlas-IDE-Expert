@@ -45,6 +45,11 @@ type
     class procedure Uninstall; static;
     /// <summary>Aktuelle Atlas-Farben passend zum IDE-Thema; ohne Install die hellen.</summary>
     class function Colors: TAtlasColors; static;
+    /// <summary>Farben einer Fensterfläche im Stil von AControl (in der IDE deren Thema): Fläche und Schrift
+    /// aus clWindow/clWindowText statt der festen Atlas-Palette, damit Listen und Zeichenflächen in
+    /// andockbaren Fenstern wie die Fenster der IDE (Objektinspektor) aussehen; Akzent und Signale aus der
+    /// Palette. AControl = nil: Stil der Anwendung.</summary>
+    class function WindowColors(AControl: TControl): TAtlasColors; static;
     /// <summary>Textfarbe einer Meldung auf der Fensterfläche: Fehler, Warnung und Ok aus der Palette (für Text
     /// gedacht, nicht die Signalpunkte); Hinweis und ohne Aussage = Textfarbe des Stils (clWindowText).</summary>
     class function TextColor(AKind: TAtlasSignalKind): TColor; static;
@@ -64,6 +69,10 @@ type
   end;
 
 implementation
+
+uses
+  Vcl.Themes,
+  Atlas.Core.Style.Color;
 
 { TAtlasUiTheme }
 
@@ -106,6 +115,15 @@ begin
     Exit(FColorSource());
   end;
   Result := TAtlasColors.Light;
+end;
+
+class function TAtlasUiTheme.WindowColors(AControl: TControl): TAtlasColors;
+var
+  mStyle: TCustomStyleServices;
+begin
+  mStyle := StyleServices(AControl);
+  Result := TAtlasColors.ForWindow(TAtlasColor(ColorToRGB(mStyle.GetSystemColor(clWindow))),
+    TAtlasColor(ColorToRGB(mStyle.GetSystemColor(clWindowText))));
 end;
 
 class function TAtlasUiTheme.TextColor(AKind: TAtlasSignalKind): TColor;
