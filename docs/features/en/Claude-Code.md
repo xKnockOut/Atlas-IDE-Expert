@@ -30,6 +30,7 @@ The server offers Claude Code 33 MCP tools:
 - build through the IDE (`build_project`, `get_last_build`)
 - run DUnitX tests
 - read the last test run of the IDE without running again (`get_last_tests`: red tests with file:line, expected/actual, log, newly red, flaky, leak, stale)
+- see where the developer currently is in the IDE (`get_ide_context`: file, cursor, method, selection, active project, last build, tabs)
 
 ### Change
 

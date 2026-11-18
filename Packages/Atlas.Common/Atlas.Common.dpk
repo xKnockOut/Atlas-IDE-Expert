@@ -683,6 +683,7 @@ contains
   Atlas.Common.Mcp.TestTools in 'Source\Mcp\Atlas.Common.Mcp.TestTools.pas',
   Atlas.Common.Mcp.ProfileTools in 'Source\Mcp\Atlas.Common.Mcp.ProfileTools.pas',
   Atlas.Common.Mcp.LastTests in 'Source\Mcp\Atlas.Common.Mcp.LastTests.pas',
+  Atlas.Common.Mcp.IdeContext in 'Source\Mcp\Atlas.Common.Mcp.IdeContext.pas',
   Atlas.Common.Mcp.ReportTools in 'Source\Mcp\Atlas.Common.Mcp.ReportTools.pas',
   Atlas.Common.Profiling.Contract in 'Source\Profiling\Atlas.Common.Profiling.Contract.pas',
   Atlas.Common.Profiling.Sampling in 'Source\Profiling\Atlas.Common.Profiling.Sampling.pas',
