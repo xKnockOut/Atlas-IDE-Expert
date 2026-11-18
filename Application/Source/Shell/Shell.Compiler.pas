@@ -6,8 +6,8 @@
 //   Starter bzw. Community Edition), und merkt sich das in
 //   %LOCALAPPDATA%\Atlas\compiler-editions.json (Atlas.Common.Compiler.Edition).
 // Ohne nutzbaren Kommandozeilen-Compiler baut eine laufende RAD Studio mit
-// Atlas (Werkzeug build_project); einen eigenen Weg über eine Bau-IDE gibt
-// es seit #1904 nicht mehr. Der Prozess kommt von außen, damit die Tests ohne
+// Atlas (Werkzeug build_project), keine eigene Bau-IDE (#1904).
+// Der Prozess kommt von außen, damit die Tests ohne
 // Windows laufen.
 
 interface

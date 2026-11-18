@@ -6,7 +6,8 @@
 // löschen; gespeichert wird beim Schließen mit OK.
 // „Tastenkonflikte“ (#494): Wer welche Taste belegt, fragt die Seite über
 // TAtlasIdeKeys.Owner ab; nach dem Speichern belegt die Komposition die Tasten
-// über Settings.OnChanged neu.
+// über Settings.OnChanged neu. Gespeichert wird nicht hier, sondern gesammelt
+// mit den übrigen Knoten des Dialogs (OnClosed, #2372).
 // „Server“ (#227): globale und Projekt-Einstellungen des Servers im Dialog,
 // Index-Cache über TAtlasIdeServerActions (Baseline und Unterdrückungen: Modul Prüfregeln, #1755).
 
@@ -16,11 +17,16 @@ uses
   System.SysUtils,
   Vcl.Forms,
   ToolsAPI,
+  Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.SnippetsPage,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.ServerPage;
 
 type
+  /// <summary>Ein Knoten des Optionsdialogs ist geschlossen (#2372): ABefore ist der Stand beim Öffnen, AAfter der
+  /// mit den Werten der Seite. Gespeichert wird danach einmal für alle Knoten.</summary>
+  TAtlasSettingsClosed = reference to procedure(AAccepted: Boolean; const ABefore, AAfter: TAtlasPluginSettings);
+
   /// <summary>Seite „Snippets“ (#51).</summary>
   TAtlasSnippetOptions = class(TInterfacedObject, INTAAddInOptions)
   private
@@ -45,7 +51,12 @@ type
   TAtlasKeysOptions = class(TInterfacedObject, INTAAddInOptions)
   private
     FPage: TAtlasKeysPage;
+    FOnClosed: TAtlasSettingsClosed;
+    /// <summary>Stand beim Anlegen der Seite.</summary>
+    FLoaded: TAtlasPluginSettings;
   public
+    /// <summary>AOnClosed bekommt beim Schließen beide Stände; nicht gesetzt: nichts wird gespeichert.</summary>
+    constructor Create(const AOnClosed: TAtlasSettingsClosed);
     function GetArea: string;
     function GetCaption: string;
     function GetFrameClass: TCustomFrameClass;
@@ -79,7 +90,6 @@ uses
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Completion.SnippetCatalog,
-  Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
@@ -185,6 +195,12 @@ end;
 
 { TAtlasKeysOptions }
 
+constructor TAtlasKeysOptions.Create(const AOnClosed: TAtlasSettingsClosed);
+begin
+  inherited Create;
+  FOnClosed := AOnClosed;
+end;
+
 function TAtlasKeysOptions.GetArea: string;
 begin
   Result := '';
@@ -205,7 +221,8 @@ procedure TAtlasKeysOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   try
     FPage := AFrame as TAtlasKeysPage;
-    FPage.LoadFrom(TAtlasIdeSettings.Stored);
+    FLoaded := TAtlasIdeSettings.Stored;
+    FPage.LoadFrom(FLoaded);
     FPage.OwnerOf :=
       function(AShortCut: Word): string
       begin
@@ -223,11 +240,11 @@ var
   mSettings: TAtlasPluginSettings;
 begin
   try
-    if Accepted and (FPage <> nil) then
+    if (FPage <> nil) and Assigned(FOnClosed) then
     begin
-      mSettings := TAtlasIdeSettings.Stored;
+      mSettings := FLoaded;
       FPage.SaveTo(mSettings);
-      TAtlasIdeSettings.Update(mSettings);
+      FOnClosed(Accepted, FLoaded, mSettings);
     end;
     FPage := nil;
   except

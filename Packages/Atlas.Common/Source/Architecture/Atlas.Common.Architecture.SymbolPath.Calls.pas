@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Architecture.SymbolPath.Calls;
 
-// Aufrufkanten der Pfadsuche zwischen Symbolen (#1117), ausgelagert aus
+// Aufrufkanten der Pfadsuche zwischen Symbolen (#1117), Teil von
 // Atlas.Common.Architecture.SymbolPath.
 //
 // - Vorwärts aus dem Rumpf einer Routine über TLspHierarchies.OutgoingCalls

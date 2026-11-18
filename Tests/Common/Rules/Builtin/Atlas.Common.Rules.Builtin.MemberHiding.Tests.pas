@@ -127,7 +127,7 @@ procedure TMemberHidingRulesTests.MethodHidesStaticMethod;
 var
   mFound: TArray<TRuleFinding>;
 begin
-  // Niedrige Konfidenz: dcc schweigt, und in der FP-Prüfung vom 28.10.2026 war das meist gewollt.
+  // Niedrige Konfidenz: dcc schweigt, und in Fremdcode ist das meist gewollt.
   mFound := Findings(Kunden('    procedure Speichern(const APfad: string);'#10,
     '    procedure Speichern(const APfad: string);'#10, ''), '{"minConfidence": "low"}', 'Kunden.pas');
   Assert.AreEqual(1, Integer(Length(mFound)));

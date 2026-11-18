@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Ownership.RawMemory;
 
-// Regel aus Atlas.Common.Rules.Builtin.Ownership ausgelagert (Länge der Unit):
+// Regel von Atlas.Common.Rules.Builtin.Ownership in eigener Unit (Länge der Unit):
 //   raw-memory-leak   lokaler Zeiger aus GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc oder StrNew, den
 //                     die Routine nie freigibt und der sie nicht verlässt (#1047): Jedes Vorkommen wird im
 //                     Syntaxbaum nach oben eingeordnet (Belegung, Freigabe, Zugriff, Weitergabe als Ergebnis,

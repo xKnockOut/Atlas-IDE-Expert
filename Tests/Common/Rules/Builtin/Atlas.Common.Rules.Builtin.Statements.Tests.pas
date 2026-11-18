@@ -820,7 +820,7 @@ const
 var
   mFindings: TArray<TRuleFinding>;
 begin
-  // FP-Prüfung 28.10.2026: Ein case über zwei von zehn Werten ist meist gewollt (niedrige Konfidenz).
+  // Ein case über zwei von zehn Werten ist meist gewollt (niedrige Konfidenz).
   mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, cTypes + '  case A of'#10'    f1: ;'#10 +
     '    f2: ;'#10'  end;'#10'end;'#10'end.', '{"minConfidence": "low"}', 'U.pas');
   Assert.AreEqual(1, Integer(Length(mFindings)));
