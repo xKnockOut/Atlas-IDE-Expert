@@ -99,6 +99,10 @@ uses
   Atlas.UI.Settings.Page.Host,
   Atlas.UI.Settings.Page.General;
 
+const
+  /// <summary>Breite der linken Spalte mit Suchfeld und Baum der Bereiche.</summary>
+  cNavigationWidth = 176;
+
 procedure AddUnique(var AList: TArray<string>; const AText: string);
 var
   mItem: string;
@@ -158,7 +162,7 @@ begin
   mPanel := TPanel.Create(Self);
   mPanel.Parent := Self;
   mPanel.Align := alLeft;
-  mPanel.Width := mPanel.ScaleValue(176);
+  mPanel.Width := mPanel.ScaleValue(cNavigationWidth);
   mPanel.BevelOuter := bvNone;
   mPanel.ParentBackground := True;
   FSearch := TAtlasSettingsSearchBox.Create(Self, mPanel, Catalog,

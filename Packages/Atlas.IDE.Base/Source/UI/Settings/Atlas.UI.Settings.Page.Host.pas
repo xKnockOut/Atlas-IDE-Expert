@@ -45,6 +45,8 @@ type
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
       AClick: TNotifyEvent): TButton;
+    function AddColumnButton(AParent: TWinControl; AColumn: Integer; const ACaption: string;
+      AClick: TNotifyEvent): TButton;
     function ListReady(AControl: TWinControl): Boolean;
     function BindCheck(const AName: string; AControl: TCheckBox): TCheckBox;
     function BindText(const AName: string; AControl: TEdit): TEdit;
@@ -203,6 +205,12 @@ function TAtlasSettingsPagePart.AddRowButton(AParent: TWinControl; ALeft, AWidth
   AClick: TNotifyEvent): TButton;
 begin
   Result := FPage.AddRowButton(AParent, ALeft, AWidth, AId, AClick);
+end;
+
+function TAtlasSettingsPagePart.AddColumnButton(AParent: TWinControl; AColumn: Integer; const ACaption: string;
+  AClick: TNotifyEvent): TButton;
+begin
+  Result := FPage.AddColumnButton(AParent, AColumn, ACaption, AClick);
 end;
 
 function TAtlasSettingsPagePart.ListReady(AControl: TWinControl): Boolean;

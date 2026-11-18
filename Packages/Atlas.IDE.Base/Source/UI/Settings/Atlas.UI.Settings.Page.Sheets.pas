@@ -20,6 +20,22 @@ const
   cFieldLeft = 280;
   /// <summary>Oberkante der Knöpfe in einer Zeile der Seite.</summary>
   cRowButtonTop = 3;
+  /// <summary>Höhe einer Zeile mit Beschriftung links und Eingabefeld rechts.</summary>
+  cFieldRowHeight = 26;
+  /// <summary>Oberkante der Beschriftung in einer Feldzeile: auf Höhe des Textes im Feld.</summary>
+  cFieldCaptionTop = 5;
+  /// <summary>Höhe einer Zeile mit Knöpfen.</summary>
+  cButtonRowHeight = 32;
+  /// <summary>Breite eines Knopfs in einer Knopfzeile und sein Abstand zum nächsten (Breite und Lücke).</summary>
+  cRowButtonWidth = 150;
+  cRowButtonStep = 160;
+  /// <summary>Breite einer Auswahlliste in einer Feldzeile.</summary>
+  cChoiceWidth = 180;
+  /// <summary>Höhe einer Kopfzeile über einem Feld oder einer Liste und Oberkante ihres Textes.</summary>
+  cHeadingHeight = 20;
+  cHeadingTop = 3;
+  /// <summary>Breite eines Textfelds unter einer Kopfzeile: die Seite ohne Rand; wächst mit (Anchors).</summary>
+  cTextLineWidth = 466;
 
 type
   /// <summary>Zeile der Optionsseite (Beschriftung und Eingabefeld): zeichnet nichts selbst, der
@@ -66,6 +82,11 @@ type
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
       AClick: TNotifyEvent): TButton;
+    /// <summary>Knopf der Breite cRowButtonWidth in der Spalte AColumn (ab 0) einer Knopfzeile.</summary>
+    function AddColumnButton(AParent: TWinControl; AColumn: Integer; const ACaption: string;
+      AClick: TNotifyEvent): TButton;
+    /// <summary>Zeile der Höhe cFieldRowHeight mit der Beschriftung ACaption links.</summary>
+    function AddCaptionRow(const ACaption: string): TWinControl;
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
     /// <summary>Reiter und ihr Inhalt in der Reihenfolge des Aufbaus.</summary>
@@ -80,6 +101,16 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.UI.Foundation.WrapLabel;
+
+const
+  /// <summary>Breiten der Eingabefelder je Art (logische Pixel).</summary>
+  cNumberWidth = 60;
+  cKeyWidth = 140;
+  /// <summary>Linke Kante des Feldes in einer Feldzeile mit kurzer Beschriftung (AddFieldRow).</summary>
+  cShortFieldLeft = 90;
+  /// <summary>Höhe einer Überschrift und Oberkante ihres Textes.</summary>
+  cTitleHeight = 22;
+  cTitleCaptionTop = 4;
 
 { TAtlasSettingsRow }
 
@@ -164,41 +195,35 @@ begin
   Inc(FNextTop, 100);
 end;
 
-function TAtlasSettingsPageSheets.AddNumber(const ACaption: string): TEdit;
+function TAtlasSettingsPageSheets.AddCaptionRow(const ACaption: string): TWinControl;
 var
-  mPanel: TWinControl;
   mCaption: TLabel;
 begin
-  mPanel := AddPanel(26);
+  Result := AddPanel(cFieldRowHeight);
   mCaption := TLabel.Create(Self);
-  mCaption.Parent := mPanel;
+  mCaption.Parent := Result;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
+  mCaption.Top := mCaption.ScaleValue(cFieldCaptionTop);
+end;
+
+function TAtlasSettingsPageSheets.AddNumber(const ACaption: string): TEdit;
+begin
   Result := TEdit.Create(Self);
-  Result.Parent := mPanel;
+  Result.Parent := AddCaptionRow(ACaption);
   Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := 1;
-  Result.Width := Result.ScaleValue(60);
+  Result.Width := Result.ScaleValue(cNumberWidth);
   Result.NumbersOnly := True;
 end;
 
 function TAtlasSettingsPageSheets.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
-var
-  mPanel: TWinControl;
-  mCaption: TLabel;
 begin
-  mPanel := AddPanel(26);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := mPanel;
-  mCaption.Caption := ACaption;
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
   Result := TAtlasChoiceBox.Create(Self);
-  Result.Parent := mPanel;
+  Result.Parent := AddCaptionRow(ACaption);
   Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := 1;
-  Result.Width := Result.ScaleValue(180);
+  Result.Width := Result.ScaleValue(cChoiceWidth);
   Result.SetChoices(AItems);
 end;
 
@@ -212,32 +237,23 @@ var
   mPanel: TWinControl;
   mCaption: TLabel;
 begin
-  mPanel := AddPanel(22);
+  mPanel := AddPanel(cTitleHeight);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Font.Style := [fsBold];
   mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(4);
+  mCaption.Top := mCaption.ScaleValue(cTitleCaptionTop);
 end;
 
 function TAtlasSettingsPageSheets.AddKey(const ACaption: string): TEdit;
-var
-  mPanel: TWinControl;
-  mCaption: TLabel;
 begin
-  mPanel := AddPanel(26);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := mPanel;
-  mCaption.Caption := StringReplace(ACaption, '…', '', []);
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
   // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
   Result := TEdit.Create(Self);
-  Result.Parent := mPanel;
+  Result.Parent := AddCaptionRow(StringReplace(ACaption, '…', '', []));
   Result.Left := Result.ScaleValue(cFieldLeft);
   Result.Top := 1;
-  Result.Width := Result.ScaleValue(140);
+  Result.Width := Result.ScaleValue(cKeyWidth);
 end;
 
 function TAtlasSettingsPageSheets.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
@@ -255,17 +271,10 @@ end;
 
 function TAtlasSettingsPageSheets.AddFieldRow(AId: TAtlasTextId; AControl: TWinControl;
   AWidth: Integer): TWinControl;
-var
-  mCaption: TLabel;
 begin
-  Result := AddPanel(26);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := Result;
-  mCaption.Caption := TAtlasStrings.Text(AId) + ':';
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
+  Result := AddCaptionRow(TAtlasStrings.Text(AId) + ':');
   AControl.Parent := Result;
-  AControl.Left := AControl.ScaleValue(90);
+  AControl.Left := AControl.ScaleValue(cShortFieldLeft);
   AControl.Top := 1;
   AControl.Width := AWidth;
 end;
@@ -282,24 +291,36 @@ begin
   Result.OnClick := AClick;
 end;
 
+function TAtlasSettingsPageSheets.AddColumnButton(AParent: TWinControl; AColumn: Integer; const ACaption: string;
+  AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.Left := Result.ScaleValue(AColumn * cRowButtonStep);
+  Result.Top := Result.ScaleValue(cRowButtonTop);
+  Result.Width := Result.ScaleValue(cRowButtonWidth);
+  Result.OnClick := AClick;
+end;
+
 function TAtlasSettingsPageSheets.AddTextLine(const ACaption: string): TEdit;
 var
   mPanel: TWinControl;
   mHeading: TLabel;
 begin
-  mPanel := AddPanel(20);
+  mPanel := AddPanel(cHeadingHeight);
   mHeading := TLabel.Create(Self);
   mHeading.Parent := mPanel;
   mHeading.Caption := ACaption;
   mHeading.Left := 0;
-  mHeading.Top := mHeading.ScaleValue(3);
+  mHeading.Top := mHeading.ScaleValue(cHeadingTop);
   // Eigene Zeile für das Feld: Adressen und Pfade brauchen die Breite.
-  mPanel := AddPanel(26);
+  mPanel := AddPanel(cFieldRowHeight);
   Result := TEdit.Create(Self);
   Result.Parent := mPanel;
   Result.Left := 0;
   Result.Top := 1;
-  Result.Width := Result.ScaleValue(466);
+  Result.Width := Result.ScaleValue(cTextLineWidth);
   Result.Anchors := [akLeft, akTop, akRight];
 end;
 
