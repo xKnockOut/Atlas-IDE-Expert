@@ -385,6 +385,11 @@ type
     property McpBuild: Boolean read FBuild.McpBuild write FBuild.McpBuild;
     property AssistantsEnabled: Boolean read FBuild.AssistantsEnabled write FBuild.AssistantsEnabled;
     property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
+    property DebugMcp: Boolean read FBuild.DebugMcp write FBuild.DebugMcp;
+    property DebugMcpSideEffects: Boolean read FBuild.DebugMcpSideEffects write FBuild.DebugMcpSideEffects;
+    property DebugMcpModify: Boolean read FBuild.DebugMcpModify write FBuild.DebugMcpModify;
+    property DebugMcpAttach: Boolean read FBuild.DebugMcpAttach write FBuild.DebugMcpAttach;
+    property DebugMcpBanner: Boolean read FBuild.DebugMcpBanner write FBuild.DebugMcpBanner;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
     property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram

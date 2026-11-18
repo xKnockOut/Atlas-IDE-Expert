@@ -640,6 +640,8 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Requests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas"/>
+        <DCCReference Include="Source\Core\DebugControl\Atlas.Core.DebugControl.Types.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Tests.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.GhostSuggestions.pas"/>

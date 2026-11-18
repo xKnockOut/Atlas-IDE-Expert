@@ -583,6 +583,8 @@ contains
   Atlas.IDE.Contracts.VersionControl in 'Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas',
   Atlas.Core.Build.Requests in 'Source\Core\Build\Atlas.Core.Build.Requests.pas',
   Atlas.IDE.Contracts.BuildRequests in 'Source\Contracts\Atlas.IDE.Contracts.BuildRequests.pas',
+  Atlas.Core.DebugControl.Types in 'Source\Core\DebugControl\Atlas.Core.DebugControl.Types.pas',
+  Atlas.IDE.Contracts.DebugControl in 'Source\Contracts\Atlas.IDE.Contracts.DebugControl.pas',
   Atlas.IDE.Contracts.Tests in 'Source\Contracts\Atlas.IDE.Contracts.Tests.pas',
   Atlas.IDE.Contracts.Rules in 'Source\Contracts\Atlas.IDE.Contracts.Rules.pas',
   Atlas.Core.Modules.Handshake in 'Source\Core\Modules\Atlas.Core.Modules.Handshake.pas',

@@ -10,6 +10,10 @@
 //   normalen Start und solange compiler.mcpBuild an ist.
 // - Teil „AssistantEdits“: Eingang für Änderungen an offenen Dateien (#397),
 //   solange assistants.edit an ist.
+// - Teil „AssistantDebug“: Eingang der MCP-Werkzeuge debug_* (#1874); ausgeführt
+//   wird über IAtlasDebugControl des Moduls Debugger, das der Eingang bei jedem
+//   Auftrag neu in der Registry sucht (Regel 2). Nur im normalen Start und
+//   solange debug.mcp an ist; Rechte aus debug.mcp.sideEffects, .modify, .attach.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog.
 // Die Liste der offenen und ungespeicherten Dateien (DirtyExport) bleibt in
 // Base: Sie schützt Dateien auch dann vor dem Überschreiben, wenn das Modul
@@ -51,6 +55,9 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Contracts.DebugControl,
+  Atlas.Core.Assistants.DebugGate,
+  Atlas.IDE.Assistants.DebugInbox,
   Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -62,6 +69,7 @@ var
   GScope: IAtlasModuleScope;
   GBuildInbox: TAtlasIdeBuildInbox;
   GEditInbox: TAtlasIdeEditInbox;
+  GDebugInbox: TAtlasIdeDebugInbox;
 
 { Dienste von Base und anderer Module }
 
@@ -83,6 +91,28 @@ begin
       Exit;
     end;
   end;
+end;
+
+/// <summary>Debugger des Moduls Debugger; nil, solange es fehlt oder nicht läuft.</summary>
+function DebugControl: IAtlasDebugControl;
+var
+  mItem: IInterface;
+begin
+  Result := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasDebugControl) do
+  begin
+    if Supports(mItem, IAtlasDebugControl, Result) then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Rechte des Assistenten aus den Einstellungen, bei jedem Auftrag neu gelesen.</summary>
+function DebugRights: TAtlasDebugRights;
+begin
+  Result := TAtlasDebugRights.Make(TAtlasIdeSettings.Current.DebugMcpSideEffects,
+    TAtlasIdeSettings.Current.DebugMcpModify, TAtlasIdeSettings.Current.DebugMcpAttach);
 end;
 
 { Teile der Feature-Tabelle }
@@ -125,6 +155,21 @@ begin
   Result := GEditInbox <> nil;
 end;
 
+procedure StartDebug;
+begin
+  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, nil, MessageLine);
+end;
+
+procedure StopDebug;
+begin
+  FreeAndNil(GDebugInbox);
+end;
+
+function DebugStarted: Boolean;
+begin
+  Result := GDebugInbox <> nil;
+end;
+
 { TAtlasAssistantsModule }
 
 class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
@@ -141,7 +186,13 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsEdit;
-      end, EditsStarted, StartEdits, StopEdits)];
+      end, EditsStarted, StartEdits, StopEdits),
+    // Debuggen durch KI-Assistenten (#1874): nur im normalen Start und solange debug.mcp an ist.
+    TAtlasFeaturePart.When('AssistantDebug',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugMcp;
+      end, DebugStarted, StartDebug, StopDebug)];
 end;
 
 function TAtlasAssistantsModule.Info: TAtlasModuleInfo;

@@ -406,6 +406,8 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Assistants.DebugInbox.Tests
+Atlas.Core.Assistants.DebugGate.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests

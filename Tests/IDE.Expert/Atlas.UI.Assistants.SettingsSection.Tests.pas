@@ -56,10 +56,19 @@ begin
     Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'McpBuild')),
       'alle Schalter auf der Seite des Moduls');
     Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsEdit')));
+    // Debuggen durch KI-Assistenten (#1874): Vorgabe aus, Leiste an, alles auf derselben Seite.
+    Assert.IsFalse(CheckOf(mPage, 'DebugMcp').Checked, 'Debuggen durch KI-Assistenten standardmäßig aus');
+    Assert.IsFalse(CheckOf(mPage, 'DebugMcpSideEffects').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DebugMcpModify').Checked);
+    Assert.IsFalse(CheckOf(mPage, 'DebugMcpAttach').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'DebugMcpBanner').Checked);
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'DebugMcp')));
+    CheckOf(mPage, 'DebugMcp').Checked := True;
     CheckOf(mPage, 'McpBuild').Checked := False;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.McpBuild, 'abschaltbar, Schlüssel unverändert');
+    Assert.IsTrue(mSaved.DebugMcp, 'einschaltbar');
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'McpBuild').Checked);
   finally
