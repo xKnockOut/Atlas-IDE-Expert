@@ -35,6 +35,13 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
 
 Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts.
 
+## KI-Assistenten in der IDE
+
+Das Modul KI-Assistenten (`assistants.enabled`) nimmt Aufträge von MCP-Clients in der laufenden IDE an: Builds über `build_project` und Änderungen an offenen Dateien, die als ein Rückgängig-Schritt im Editorpuffer landen.
+
+- **Anzeige „KI-Assistent aktiv“** (#1906, `assistants.banner`): Ein Feld im Atlas-Statusfeld zeigt, welches Projekt gerade für einen KI-Assistenten gebaut wird oder welche offene Datei er zuletzt geändert hat (eine Minute lang).
+- **Pause für KI:** Ein Klick auf das Feld oder der Befehl „Pause für KI-Assistenten“ in der Palette hält KI-Assistenten an. Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann mit Grund ab, der MCP-Server schreibt die Datei auch nicht selbst; ein laufender Build läuft zu Ende. Während der Pause bleibt das Feld stehen, ein zweiter Klick hebt sie auf.
+
 ## Prompts (#1357)
 
 **Prompts** sind fertige Arbeitsabläufe, die Claude Code als Schrägstrich-Befehle zeigt:

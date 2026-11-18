@@ -34,6 +34,8 @@ begin
   // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
   Switch('assistants.edit', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsEdit));
   Switch('compiler.mcpBuild', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsMcpBuild));
+  // Anzeige „KI-Assistent aktiv“ mit Pause (#1906).
+  Switch('assistants.banner', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsBanner));
 end;
 
 function TAtlasAssistantsSettingsSection.OwnerId: string;

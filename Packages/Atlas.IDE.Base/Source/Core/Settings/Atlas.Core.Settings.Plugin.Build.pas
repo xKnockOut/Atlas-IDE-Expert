@@ -77,6 +77,8 @@ type
     /// <summary>assistants.edit (#1888, #397): KI-Assistenten schreiben in offene Dateien über den Eingang des
     /// Plugins; aus = der MCP-Server bekommt „nicht angenommen“ und fasst offene Dateien nicht an.</summary>
     AssistantsEdit: Boolean;
+    /// <summary>assistants.banner (#1906): Feld „KI-Assistent aktiv“ im Statusfeld mit „Pause für KI“.</summary>
+    AssistantsBanner: Boolean;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
     /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
     /// blockieren). Aus = kein Bau beim Öffnen.</summary>
@@ -329,6 +331,7 @@ begin
   Result.McpBuild := True;
   Result.AssistantsEnabled := True;
   Result.AssistantsEdit := True;
+  Result.AssistantsBanner := True;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
   Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
@@ -409,6 +412,7 @@ begin
   AIo.Flag('McpBuild', McpBuild);
   AIo.Flag('AssistantsEnabled', AssistantsEnabled);
   AIo.Flag('AssistantsEdit', AssistantsEdit);
+  AIo.Flag('AssistantsBanner', AssistantsBanner);
   AIo.Flag('BuildOnOpen', BuildOnOpen);
   AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
   AIo.Text('BuildOnOpenScope', BuildOnOpenScope);

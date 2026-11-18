@@ -1389,6 +1389,19 @@
       "x-captionEn": "Writing to open files",
       "x-issue": "#1888"
     },
+    "AssistantsBanner": {
+      "type": "boolean",
+      "default": true,
+      "description": "Feld „KI-Assistent“ im Atlas-Statusfeld (#1906): zeigt, solange ein KI-Assistent (MCP-Client) über die IDE baut oder eine offene Datei geändert hat, wer gerade was tut. Ein Klick hält KI-Assistenten an („Pause für KI“): Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann mit Grund ab, ein laufender Build läuft zu Ende; ein zweiter Klick hebt die Pause auf. Aus = kein Feld und keine Pause.",
+      "x-key": "assistants.banner",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Anzeige „KI-Assistent aktiv“ mit Pause",
+      "x-captionEn": "“AI assistant active” display with pause",
+      "x-issue": "#1906"
+    },
     "McpBuild": {
       "type": "boolean",
       "default": true,

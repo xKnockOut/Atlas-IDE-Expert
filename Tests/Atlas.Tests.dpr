@@ -1485,6 +1485,8 @@ uses
   Atlas.Core.Assistants.InboxPace.Tests in 'IDE.Expert\Atlas.Core.Assistants.InboxPace.Tests.pas',
   Atlas.Core.Assistants.EditPlan in '..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas',
   Atlas.Core.Assistants.EditPlan.Tests in 'IDE.Expert\Atlas.Core.Assistants.EditPlan.Tests.pas',
+  Atlas.Core.Assistants.Activity in '..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Activity.pas',
+  Atlas.Core.Assistants.Activity.Tests in 'IDE.Expert\Atlas.Core.Assistants.Activity.Tests.pas',
   Atlas.Core.Status.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Contract.pas',
   Atlas.Core.Status.Registry in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas',
   Atlas.Core.Files.Format in '..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas',

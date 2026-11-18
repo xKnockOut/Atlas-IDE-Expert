@@ -17,6 +17,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
+  Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
   Atlas.IDE.Contracts.BuildRequests,
   Atlas.IDE.Assistants.FolderSignal;
@@ -32,13 +33,17 @@ type
     FPace: TAtlasInboxPace;
     FRequests: TFunc<IAtlasBuildRequests>;
     FOnMessage: TAtlasBuildInboxProc;
+    FActivity: TAtlasAssistantsActivity;
     procedure Tick(Sender: TObject);
+    procedure Refuse(const ARequest: TAtlasBuildRequest; const AReason: string);
     procedure Process(const ARequestFile: string);
     procedure Clean;
   public
-    /// <summary>ARequests liefert die Builds des Moduls Build-Pipeline (nil ohne Modul). AOnMessage: Zeile für die
-    /// Meldungsansicht.</summary>
-    constructor Create(const ARequests: TFunc<IAtlasBuildRequests>; const AOnMessage: TAtlasBuildInboxProc);
+    /// <summary>ARequests liefert die Builds des Moduls Build-Pipeline (nil ohne Modul). AActivity: Pause und
+    /// Anzeige „KI-Assistent aktiv“ (#1906), gehört der Composition und lebt länger als jeder Build-Rückruf.
+    /// AOnMessage: Zeile für die Meldungsansicht.</summary>
+    constructor Create(const ARequests: TFunc<IAtlasBuildRequests>; AActivity: TAtlasAssistantsActivity;
+      const AOnMessage: TAtlasBuildInboxProc);
     destructor Destroy; override;
     property Folder: string read FFolder;
   end;
@@ -63,10 +68,11 @@ var
 { TAtlasIdeBuildInbox }
 
 constructor TAtlasIdeBuildInbox.Create(const ARequests: TFunc<IAtlasBuildRequests>;
-  const AOnMessage: TAtlasBuildInboxProc);
+  AActivity: TAtlasAssistantsActivity; const AOnMessage: TAtlasBuildInboxProc);
 begin
   inherited Create;
   FRequests := ARequests;
+  FActivity := AActivity;
   FOnMessage := AOnMessage;
   FFolder := TAtlasBuildInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
@@ -194,14 +200,15 @@ begin
   end;
 end;
 
-/// <summary>Antwort nach dem Build in AFolder und Meldung über AOnMessage; hält nur Werte, nicht den Briefkasten.
-/// </summary>
-function BuildDone(const AFolder: string; const ARequest: TAtlasBuildRequest;
+/// <summary>Antwort nach dem Build in AFolder und Meldung über AOnMessage; hält nur Werte und die Anzeige der
+/// Composition (AActivity), nicht den Briefkasten.</summary>
+function BuildDone(const AFolder: string; const ARequest: TAtlasBuildRequest; AActivity: TAtlasAssistantsActivity;
   const AOnMessage: TAtlasBuildInboxProc): TAtlasBuildDoneProc;
 begin
   Result :=
     procedure(const AReport: TAtlasBuildReport; const AError: string)
     begin
+      AActivity.BuildEnded;
       try
         if AError <> '' then
         begin
@@ -221,6 +228,16 @@ begin
     end;
 end;
 
+procedure TAtlasIdeBuildInbox.Refuse(const ARequest: TAtlasBuildRequest; const AReason: string);
+begin
+  TAtlasFileInbox.Answer(FFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AReason));
+  if Assigned(FOnMessage) then
+  begin
+    FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildRefused,
+      [ExtractFileName(ARequest.Project), AReason]));
+  end;
+end;
+
 procedure TAtlasIdeBuildInbox.Process(const ARequestFile: string);
 var
   mRequest: TAtlasBuildRequest;
@@ -231,6 +248,12 @@ var
 begin
   if not TAtlasBuildInbox.Take(ARequestFile, InboxTexts, mRequest, mReason) then
   begin
+    Exit;
+  end;
+  // Pause für KI (#1906): ablehnen, bevor ein Projekt geöffnet wird.
+  if FActivity.Paused then
+  begin
+    Refuse(mRequest, TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused));
     Exit;
   end;
   mRequests := FRequests();
@@ -247,17 +270,15 @@ begin
   mReason := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.NoBuildPipeline);
   if mRequests <> nil then
   begin
-    mStarted := mRequests.Start(mRequest, TAtlasBuildInbox.cRequestedBy, BuildDone(mFolder, mRequest, mOnMessage),
-      mReason);
+    // Vor dem Start melden: Ein Build, der sofort scheitert, ruft BuildDone noch in Start.
+    FActivity.BuildStarted(mRequest.Project, '');
+    mStarted := mRequests.Start(mRequest, TAtlasBuildInbox.cRequestedBy,
+      BuildDone(mFolder, mRequest, FActivity, mOnMessage), mReason);
   end;
   if not mStarted then
   begin
-    TAtlasFileInbox.Answer(FFolder, mRequest.Id, TAtlasBuildInbox.RefusalText(mReason));
-    if Assigned(mOnMessage) then
-    begin
-      mOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildRefused,
-        [ExtractFileName(mRequest.Project), mReason]));
-    end;
+    FActivity.BuildEnded;
+    Refuse(mRequest, mReason);
   end;
 end;
 

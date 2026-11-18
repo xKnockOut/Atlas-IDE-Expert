@@ -17,6 +17,7 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   Atlas.Core.Files.Contract,
+  Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
   Atlas.IDE.Assistants.FolderSignal;
 
@@ -31,13 +32,15 @@ type
     FPace: TAtlasInboxPace;
     FOnMessage: TAtlasEditInboxProc;
     FFiles: IAtlasEditorFiles;
+    FActivity: TAtlasAssistantsActivity;
     procedure Tick(Sender: TObject);
     procedure Process(const ARequestFile: string);
     procedure Clean;
   public
-    /// <summary>AFiles: offene Dateien der IDE; AOnMessage: Zeile für die Meldungsansicht (geänderte
-    /// Datei).</summary>
-    constructor Create(const AFiles: IAtlasEditorFiles; const AOnMessage: TAtlasEditInboxProc);
+    /// <summary>AFiles: offene Dateien der IDE; AActivity: Pause und Anzeige „KI-Assistent aktiv“ (#1906), gehört
+    /// der Composition; AOnMessage: Zeile für die Meldungsansicht (geänderte Datei).</summary>
+    constructor Create(const AFiles: IAtlasEditorFiles; AActivity: TAtlasAssistantsActivity;
+      const AOnMessage: TAtlasEditInboxProc);
     destructor Destroy; override;
     property Folder: string read FFolder;
   end;
@@ -58,10 +61,12 @@ uses
 
 { TAtlasIdeEditInbox }
 
-constructor TAtlasIdeEditInbox.Create(const AFiles: IAtlasEditorFiles; const AOnMessage: TAtlasEditInboxProc);
+constructor TAtlasIdeEditInbox.Create(const AFiles: IAtlasEditorFiles; AActivity: TAtlasAssistantsActivity;
+  const AOnMessage: TAtlasEditInboxProc);
 begin
   inherited Create;
   FFiles := AFiles;
+  FActivity := AActivity;
   FOnMessage := AOnMessage;
   FFolder := TAtlasEditInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
@@ -133,10 +138,22 @@ begin
   begin
     Exit;
   end;
+  // Pause für KI (#1906): ablehnen, ohne dass der MCP-Server selbst schreibt.
+  if FActivity.Paused then
+  begin
+    TAtlasEditInbox.Answer(FFolder, mRequest, False, False,
+      TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused));
+    Exit;
+  end;
   mOutcome := TAtlasEditInboxPlan.Run(FFiles, mRequest.FileName, mRequest.Expected, mRequest.Text,
     ApplyInEditor);
   TAtlasEditInbox.Answer(FFolder, mRequest, mOutcome.Applied, mOutcome.ServerWrites, mOutcome.Reason);
-  if mOutcome.Applied and Assigned(FOnMessage) then
+  if not mOutcome.Applied then
+  begin
+    Exit;
+  end;
+  FActivity.EditApplied(mRequest.FileName, '', GetTickCount64);
+  if Assigned(FOnMessage) then
   begin
     FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.McpEditApplied,
       [ExtractFileName(mRequest.FileName)]));

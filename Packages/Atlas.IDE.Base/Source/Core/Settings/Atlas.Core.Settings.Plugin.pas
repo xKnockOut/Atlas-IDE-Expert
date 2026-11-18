@@ -385,6 +385,7 @@ type
     property McpBuild: Boolean read FBuild.McpBuild write FBuild.McpBuild;
     property AssistantsEnabled: Boolean read FBuild.AssistantsEnabled write FBuild.AssistantsEnabled;
     property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
+    property AssistantsBanner: Boolean read FBuild.AssistantsBanner write FBuild.AssistantsBanner;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
     property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram

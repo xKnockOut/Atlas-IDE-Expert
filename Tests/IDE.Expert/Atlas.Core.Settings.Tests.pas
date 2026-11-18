@@ -221,6 +221,7 @@ begin
   Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(ASettings.TeamFile, 'Projektdatei standardmäßig an (#486)');
   Assert.IsTrue(ASettings.McpBuild, 'Builds für Claude Code standardmäßig erlaubt (#261)');
+  Assert.IsTrue(ASettings.AssistantsBanner, 'Anzeige „KI-Assistent aktiv“ standardmäßig an (#1906)');
   Assert.IsTrue(ASettings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
   Assert.IsTrue(ASettings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(ASettings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
@@ -433,6 +434,7 @@ begin
   ASettings.MetricsReport := False;
   ASettings.TeamFile := False;
   ASettings.McpBuild := False;
+  ASettings.AssistantsBanner := False;
   ASettings.BaselineUpdate := False;
   ASettings.EditorKeysPriority := True;
   ASettings.SlashCommands := False;
@@ -635,6 +637,7 @@ begin
   Assert.IsFalse(ALoaded.MetricsReport);
   Assert.IsFalse(ALoaded.TeamFile);
   Assert.IsFalse(ALoaded.McpBuild);
+  Assert.IsFalse(ALoaded.AssistantsBanner);
   Assert.IsFalse(ALoaded.BaselineUpdate);
   Assert.IsTrue(ALoaded.EditorKeysPriority);
   Assert.IsFalse(ALoaded.SlashCommands);

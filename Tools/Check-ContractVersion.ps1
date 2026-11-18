@@ -45,7 +45,9 @@ function Get-VersionAt([string] $Ref) {
     return Get-ContractVersion $Text $Ref
 }
 
-$Tag = @(& git -C $Root tag --list 'v[0-9]*' --sort=-version:refname) | Select-Object -First 1
+# versionsort.suffix: Vorabversionen (v2.2.0-rc.2) vor dem Release (v2.2.0) einordnen; ohne die Einstellung sortiert
+# Git sie dahinter, und nach dem Release galt weiter der Stand des letzten Vorab-Tags.
+$Tag = @(& git -C $Root -c versionsort.suffix=- tag --list 'v[0-9]*' --sort=-version:refname) | Select-Object -First 1
 if (-not $Tag) {
     Write-Host 'FEHLER: kein Release-Tag v* gefunden; git fetch --tags ausführen (in der CI: fetch-depth 0)'
     exit 1
