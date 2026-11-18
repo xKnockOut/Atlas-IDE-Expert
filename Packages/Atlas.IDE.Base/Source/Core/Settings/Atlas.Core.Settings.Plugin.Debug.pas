@@ -7,12 +7,14 @@
 interface
 
 uses
+  Atlas.Core.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
   /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
+  cDefaultInlineValuesPerLine = 5;
   /// <summary>Abstand der Messungen des Speicherverlaufs (#858) in Millisekunden.</summary>
   cMinMemoryTimelineIntervalMs = 250;
   cMaxMemoryTimelineIntervalMs = 10000;
@@ -58,7 +60,7 @@ const
   cMaxAsyncOriginPerSite = 1000;
   cDefaultAsyncOriginPerSite = 20;
   /// <summary>Vorgabe von debug.reattach.key (#2171): Umschalt+Alt+P.</summary>
-  cDefaultReattachKey = $A050;
+  cDefaultReattachKey = cKeyShift + cKeyAlt + Ord('P');
   /// <summary>Vorgabe und Grenzen von debug.reattach.waitIntervalMs (#2171).</summary>
   cDefaultReattachWaitMs = 100;
   cMinReattachWaitMs = 20;
@@ -414,7 +416,7 @@ begin
   Result.DebugStepFilters := True;
   Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.cDefaultKinds);
   Result.DebugStepFilterPatterns := '';
-  Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
+  Result.DebugStepIntoTargetKey := cKeyCtrl + cKeyAlt + cKeyF7; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
   Result.DebugCheckBreakpoints := True;
@@ -449,7 +451,7 @@ begin
   Result.DebugExceptionBanner := False;
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugInlineValues := True;
-  Result.DebugInlineValuesPerLine := 5;
+  Result.DebugInlineValuesPerLine := cDefaultInlineValuesPerLine;
   Result.SetStopAndLaunchDefaults;
 end;
 

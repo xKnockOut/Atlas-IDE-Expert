@@ -120,9 +120,38 @@ implementation
 uses
   System.SysUtils;
 
+type
+  /// <summary>Farben der Paare bzw. Platzhalter als "#RRGGBB".</summary>
+  TPairHex = array[Low(TAtlasPairColors)..High(TAtlasPairColors)] of string;
+  TPlaceholderHex = array[Low(TAtlasPlaceholderColors)..High(TAtlasPlaceholderColors)] of string;
+
+const
+  /// <summary>Auswahl: Anteil des Akzents über der Fläche im hellen und im dunklen Schema. Dunkel 15 % statt 18 %
+  /// wie im Entwurf: sonst hat der Akzent darauf weniger als 4,5 : 1.</summary>
+  cLightSelection = 0.12;
+  cDarkSelection = 0.15;
+  /// <summary>Auswahl in Leisten im Rahmen der IDE: Anteil des Akzents über der Fläche, hell und dunkel.</summary>
+  cLightChromeSelection = 0.15;
+  cDarkChromeSelection = 0.25;
+  cLightPairs: TPairHex = ('#0071E3', '#EE0000', '#007C8A', '#C000E0', '#008700');
+  cDarkPairs: TPairHex = ('#3C94FF', '#F67676', '#00A4A4', '#E250FF', '#24AA24');
+  cLightPlaceholders: TPlaceholderHex = ('#0071E3', '#D86A00', '#008700', '#C000E0', '#007C8A', '#A08000');
+  cDarkPlaceholders: TPlaceholderHex = ('#3C94FF', '#FF9A3D', '#24AA24', '#E250FF', '#00A4A4', '#D6B020');
+
 function Hex(const AHex: string): TAtlasColor;
 begin
   Result := TAtlasColorMath.FromHex(AHex);
+end;
+
+/// <summary>Farben aus "#RRGGBB" der Reihe nach in AColors (gleich lang).</summary>
+procedure HexColors(const AHex: array of string; var AColors: array of TAtlasColor);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AHex) do
+  begin
+    AColors[mIndex] := Hex(AHex[mIndex]);
+  end;
 end;
 
 function Badge(const ABackground, AText: string): TAtlasBadgeColors;
@@ -156,23 +185,8 @@ begin
 end;
 
 class function TAtlasColors.ParseColor(const AText: string; out AColor: TAtlasColor): Boolean;
-var
-  mText: string;
 begin
-  Result := False;
-  AColor := 0;
-  mText := Trim(AText);
-  if (Length(mText) <> 7) or (mText[1] <> '#') then
-  begin
-    Exit;
-  end;
-  try
-    AColor := Hex(mText);
-  except
-    on EConvertError do
-      Exit;
-  end;
-  Result := True;
+  Result := TAtlasColorMath.TryFromHex(Trim(AText), AColor);
 end;
 
 class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;
@@ -186,14 +200,12 @@ begin
   begin
     Exit;
   end;
-  try
-    for mIndex := 0 to High(mParts) do
+  for mIndex := 0 to High(mParts) do
+  begin
+    if not TAtlasColorMath.TryFromHex(Trim(mParts[mIndex]), APairs[mIndex]) then
     begin
-      APairs[mIndex] := Hex(Trim(mParts[mIndex]));
-    end;
-  except
-    on EConvertError do
       Exit;
+    end;
   end;
   Result := True;
 end;
@@ -224,7 +236,7 @@ begin
   Result.Line := Hex('#DCE2EA');
   Result.Accent := Hex('#0D5EAF');
   Result.AccentSoft := Hex('#E3EEF9');
-  Result.Selection := TAtlasColorMath.Mix(Result.Accent, Result.Surface, 0.12);
+  Result.Selection := TAtlasColorMath.Mix(Result.Accent, Result.Surface, cLightSelection);
   Result.Keyword := Hex('#0D5EAF');
   Result.StringLiteral := Hex('#8A4A0B');
   Result.Comment := Hex('#6A7384');
@@ -250,20 +262,11 @@ begin
   // verschieden (ΔE2000 ≥ 30), untereinander ≥ 30, gegen Weiß ≥ 4,5 : 1. Tiefe 0 nicht blau, weil
   // die IDE Schlüsselwörter im hellen Schema dunkelblau zeichnet; kein Rot neben der Fehlerfarbe.
   // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
-  Result.Pairs[0] := Hex('#0071E3');
-  Result.Pairs[1] := Hex('#EE0000');
-  Result.Pairs[2] := Hex('#007C8A');
-  Result.Pairs[3] := Hex('#C000E0');
-  Result.Pairs[4] := Hex('#008700');
+  HexColors(cLightPairs, Result.Pairs);
   // Lokale Routinen (#1788): Bernstein, keiner der Paarfarben ähnlich, gegen Weiß über 4,5 : 1.
   Result.NestedRoutine := Hex('#A85A00');
   // Sechs deutlich verschiedene Töne für die Platzhalter (#451); Rot fehlt, es bleibt den Fehlern.
-  Result.Placeholders[0] := Hex('#0071E3');
-  Result.Placeholders[1] := Hex('#D86A00');
-  Result.Placeholders[2] := Hex('#008700');
-  Result.Placeholders[3] := Hex('#C000E0');
-  Result.Placeholders[4] := Hex('#007C8A');
-  Result.Placeholders[5] := Hex('#A08000');
+  HexColors(cLightPlaceholders, Result.Placeholders);
   Result.Signals := TAtlasSignals.Light;
 end;
 
@@ -278,8 +281,7 @@ begin
   Result.Line := Hex('#2B313B');
   Result.Accent := Hex('#5B9BE6');
   Result.AccentSoft := Hex('#1B2D45');
-  // 15 % statt 18 % wie im Entwurf: sonst hat der Akzent darauf weniger als 4,5 : 1.
-  Result.Selection := TAtlasColorMath.Mix(Result.Accent, Result.Surface, 0.15);
+  Result.Selection := TAtlasColorMath.Mix(Result.Accent, Result.Surface, cDarkSelection);
   Result.Keyword := Hex('#7FB0EE');
   Result.StringLiteral := Hex('#E3B27A');
   Result.Comment := Hex('#8A93A3');
@@ -304,18 +306,9 @@ begin
   // #653: Die bisherigen Pastelltöne lagen zu nah am hellen Text (Kontrast unter 1,8 : 1 und
   // ΔE2000 unter 30); dieselben Farbtöne wie hell, gesättigt und mittelhell.
   // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
-  Result.Pairs[0] := Hex('#3C94FF');
-  Result.Pairs[1] := Hex('#F67676');
-  Result.Pairs[2] := Hex('#00A4A4');
-  Result.Pairs[3] := Hex('#E250FF');
-  Result.Pairs[4] := Hex('#24AA24');
+  HexColors(cDarkPairs, Result.Pairs);
   Result.NestedRoutine := Hex('#E8A33D');
-  Result.Placeholders[0] := Hex('#3C94FF');
-  Result.Placeholders[1] := Hex('#FF9A3D');
-  Result.Placeholders[2] := Hex('#24AA24');
-  Result.Placeholders[3] := Hex('#E250FF');
-  Result.Placeholders[4] := Hex('#00A4A4');
-  Result.Placeholders[5] := Hex('#D6B020');
+  HexColors(cDarkPlaceholders, Result.Placeholders);
   Result.Signals := TAtlasSignals.Dark;
 end;
 
@@ -341,11 +334,11 @@ begin
   Result.Line := TAtlasColorMath.Mix(AText, AFace, cAtlasMixChromeLine);
   if Result.IsDark then
   begin
-    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.25);
+    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, cDarkChromeSelection);
   end
   else
   begin
-    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.15);
+    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, cLightChromeSelection);
   end;
 end;
 

@@ -7,6 +7,7 @@
 interface
 
 uses
+  Atlas.Core.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -14,6 +15,9 @@ const
   cMaxCheckDelay = 10000;
   cMinCheckMax = 200;
   cMaxCheckMax = 20000;
+  /// <summary>Vorgaben für die Prüfung beim Speichern: Wartezeit und Zeitgrenze in ms.</summary>
+  cDefaultCheckDelay = 2000;
+  cDefaultCheckMax = 1500;
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
@@ -50,7 +54,7 @@ const
   cMaxTestsBoundaryMax = 200;
   cDefaultTestsBoundaryMax = 20;
   /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
-  cDefaultTestsListsRunKey = $C052;
+  cDefaultTestsListsRunKey = cKeyCtrl + cKeyAlt + Ord('R');
   /// <summary>Grenzen und Vorgabe für tests.log.maxLines (#2168).</summary>
   cMinTestsLogMaxLines = 100;
   cMaxTestsLogMaxLines = 100000;
@@ -324,8 +328,8 @@ begin
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
   Result.CompileOnSave := False;
-  Result.CheckOnSaveDelayMs := 2000;
-  Result.CheckOnSaveMaxMs := 1500;
+  Result.CheckOnSaveDelayMs := cDefaultCheckDelay;
+  Result.CheckOnSaveMaxMs := cDefaultCheckMax;
   Result.McpBuild := True;
   Result.AssistantsEnabled := True;
   Result.AssistantsEdit := True;
