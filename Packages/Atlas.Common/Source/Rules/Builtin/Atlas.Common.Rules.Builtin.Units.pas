@@ -152,6 +152,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines,
@@ -207,11 +208,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
-end;
-
 function RangeOf(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): TTextRange;
 begin
   Result := TTextRange.Create(ATokens[AFirst].StartPos, ATokens[ALast].EndPos);
@@ -257,16 +253,6 @@ begin
 end;
 
 { TModuleHeader }
-
-/// <summary>Index des ersten Code-Tokens ab AFrom; hinter dem letzten Token, wenn keins folgt.</summary>
-function NextCode(const ATokens: TArray<TPascalToken>; AFrom: Integer): Integer;
-begin
-  Result := AFrom;
-  while (Result <= High(ATokens)) and not IsCode(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
 
 /// <summary>Art der Datei nach ihrem ersten Wort.</summary>
 function ModuleKindOf(const AToken: TPascalToken): TModuleKind;

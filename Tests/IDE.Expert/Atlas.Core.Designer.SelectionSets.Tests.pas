@@ -258,18 +258,18 @@ begin
     mResult := TAtlasSetMenu.Combined(TArray<TComponent>.Create(mA, mB), TArray<TComponent>.Create(mB, mC),
       TAtlasSetAction.Restore);
     Assert.AreEqual(2, Integer(Length(mResult)));
-    Assert.IsTrue(mResult[0] = mB);
-    Assert.IsTrue(mResult[1] = mC);
+    Assert.AreSame(mB, mResult[0]);
+    Assert.AreSame(mC, mResult[1]);
     mResult := TAtlasSetMenu.Combined(TArray<TComponent>.Create(mA, mB), TArray<TComponent>.Create(mB, mC),
       TAtlasSetAction.Add);
     Assert.AreEqual(3, Integer(Length(mResult)));
-    Assert.IsTrue(mResult[0] = mA);
-    Assert.IsTrue(mResult[1] = mB);
-    Assert.IsTrue(mResult[2] = mC);
+    Assert.AreSame(mA, mResult[0]);
+    Assert.AreSame(mB, mResult[1]);
+    Assert.AreSame(mC, mResult[2]);
     mResult := TAtlasSetMenu.Combined(TArray<TComponent>.Create(mA, mB), TArray<TComponent>.Create(mB, mC),
       TAtlasSetAction.Remove);
     Assert.AreEqual(1, Integer(Length(mResult)));
-    Assert.IsTrue(mResult[0] = mA);
+    Assert.AreSame(mA, mResult[0]);
     mResult := nil;
   finally
     mOwner.Free;

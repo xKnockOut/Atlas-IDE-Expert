@@ -291,7 +291,7 @@ begin
     Site.NameIndex := mIndex;
     Site.Name := Tokens[mIndex].Text;
     Site.NameRange := TTextRange.Create(Tokens[mIndex].StartPos, Tokens[mIndex].EndPos);
-    Site.OpenIndex := TRoutineBody.NextToken(Tokens, mIndex);
+    Site.OpenIndex := NextCodeAfter(Tokens, mIndex);
     Result := (Site.OpenIndex <= High(Tokens)) and Tokens[Site.OpenIndex].IsSymbol('(');
   end;
 end;
@@ -331,11 +331,11 @@ var
 begin
   Site.Arguments := nil;
   mDepth := 0;
-  mScan := TRoutineBody.NextToken(Tokens, Site.OpenIndex);
+  mScan := NextCodeAfter(Tokens, Site.OpenIndex);
   mStart := mScan;
   while (mScan <= High(Tokens) + 1) and not ArgumentStep(mScan, AOpenLineOnly, mDepth, mStart) do
   begin
-    mScan := TRoutineBody.NextToken(Tokens, mScan);
+    mScan := NextCodeAfter(Tokens, mScan);
   end;
   Result := Site.CloseIndex >= 0;
 end;
@@ -364,7 +364,7 @@ begin
       Site.CloseIndex := AScan;
     end;
     Result := not Tokens[AScan].IsSymbol(',');
-    AStart := TRoutineBody.NextToken(Tokens, AScan);
+    AStart := NextCodeAfter(Tokens, AScan);
   end;
 end;
 
@@ -389,7 +389,7 @@ begin
   mAfter := Length(Tokens);
   if Site.CloseIndex >= 0 then
   begin
-    mAfter := TRoutineBody.NextToken(Tokens, Site.CloseIndex);
+    mAfter := NextCodeAfter(Tokens, Site.CloseIndex);
   end;
   mEndsHere := (Site.CloseIndex < 0) or (mAfter > High(Tokens)) or EndsStatement(Tokens[mAfter]);
   Site.Context := TCallContext.Expression;
@@ -497,7 +497,7 @@ begin
   // Vorzeichen gehört zur Zahl.
   if (mFirst < AArgument.Last) and (ATokens[mFirst].IsSymbol('-') or ATokens[mFirst].IsSymbol('+')) then
   begin
-    mFirst := TRoutineBody.NextToken(ATokens, mFirst);
+    mFirst := NextCodeAfter(ATokens, mFirst);
   end;
   if mFirst <> AArgument.Last then
   begin
@@ -657,7 +657,7 @@ begin
   mFirst := AArgument.First;
   if ATokens[mFirst].IsSymbol('@') then
   begin
-    mFirst := TRoutineBody.NextToken(ATokens, mFirst);
+    mFirst := NextCodeAfter(ATokens, mFirst);
   end;
   if mFirst > AArgument.Last then
   begin

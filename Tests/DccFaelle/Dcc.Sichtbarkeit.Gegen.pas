@@ -25,7 +25,7 @@ end;
 
 function KonkretZweiter(AKnoten: TKnoten<Integer>): TKnoten<Integer>;
 begin
-  Result := AKnoten.FNaechster; // SG3 (vorher IM3): protected-Feld einer generischen Klasse, aus nicht generischem Code
+  Result := AKnoten.FNaechster; // SG3: protected-Feld einer generischen Klasse, aus nicht generischem Code
 end;
 
 end.

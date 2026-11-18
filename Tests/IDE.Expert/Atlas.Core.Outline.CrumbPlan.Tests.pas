@@ -80,20 +80,21 @@ var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := OffSettings;
-  Assert.IsTrue(TAtlasCrumbPlan.Parts(mSettings) = []);
+  Assert.AreEqual<TAtlasCrumbParts>([], TAtlasCrumbPlan.Parts(mSettings));
   mSettings.BreadcrumbsVisibility := True;
   mSettings.BreadcrumbsRegions := True;
   mSettings.BreadcrumbsOverloads := True;
-  Assert.IsTrue(TAtlasCrumbPlan.Parts(mSettings) = [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.Regions,
-    TAtlasCrumbPart.Overloads]);
+  Assert.AreEqual<TAtlasCrumbParts>([TAtlasCrumbPart.Visibility, TAtlasCrumbPart.Regions,
+    TAtlasCrumbPart.Overloads], TAtlasCrumbPlan.Parts(mSettings));
   mSettings := OffSettings;
   mSettings.BreadcrumbsMemberBlocks := True;
   mSettings.BreadcrumbsVisibilityMark := True;
   mSettings.BreadcrumbsDeclarationBlocks := True;
   mSettings.BreadcrumbsConditionals := True;
   mSettings.BreadcrumbsStatements := True;
-  Assert.IsTrue(TAtlasCrumbPlan.Parts(mSettings) = [TAtlasCrumbPart.MemberBlocks, TAtlasCrumbPart.VisibilityMark,
-    TAtlasCrumbPart.DeclarationBlocks, TAtlasCrumbPart.Conditionals, TAtlasCrumbPart.Statements]);
+  Assert.AreEqual<TAtlasCrumbParts>([TAtlasCrumbPart.MemberBlocks, TAtlasCrumbPart.VisibilityMark,
+    TAtlasCrumbPart.DeclarationBlocks, TAtlasCrumbPart.Conditionals, TAtlasCrumbPart.Statements],
+    TAtlasCrumbPlan.Parts(mSettings));
 end;
 
 procedure TAtlasCrumbPlanTests.KeySameIgnoresCase;
