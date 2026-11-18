@@ -184,7 +184,7 @@ end;
 
 procedure TMcpToolsTests.EachGroupRegistersItsTools;
 begin
-  Assert.AreEqual(10, Integer(Length(NamesOf(RegisterNavigationTools))));
+  Assert.AreEqual(11, Integer(Length(NamesOf(RegisterNavigationTools))));
   Assert.IsTrue(Pos(' qualified_name ', Joined(NamesOf(RegisterNavigationTools))) > 0);
   Assert.AreEqual(' get_last_build build_project run_tests get_profile get_mutants suggest_test_cases ',
     Joined(NamesOf(RegisterBuildTestTools)));
@@ -211,7 +211,7 @@ var
   mIndex, mOther: Integer;
 begin
   mNames := NamesOf(RegisterContextTools);
-  Assert.AreEqual(38, Integer(Length(mNames)));
+  Assert.AreEqual(39, Integer(Length(mNames)));
   for mIndex := 0 to High(mNames) do
   begin
     for mOther := mIndex + 1 to High(mNames) do
