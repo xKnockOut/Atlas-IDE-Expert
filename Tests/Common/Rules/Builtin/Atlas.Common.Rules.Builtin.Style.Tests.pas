@@ -526,7 +526,7 @@ begin
     '  Tage = 30;'#10'var'#10'  A: array[0..9] of Byte;'#10'begin'#10'  if X > Grenze then'#10'    X := 0;'#10 +
     '  S := ''42'' + #13#10;'#10'  X := X * 2 + 1 - 100;'#10'  var B: array[0..4] of Byte;'#10'end;'#10'end.',
     cMagicOn))));
-  // Zahlen, die für sich sprechen: DPI-Basis, Bitmasken, Zeiteinheiten, Punktlisten (Marcos Lauf 06.11.2026).
+  // Zahlen, die für sich sprechen: DPI-Basis, Bitmasken, Zeiteinheiten, Punktlisten.
   // Gemeldet bleiben 72 in MulDiv, WaitFor(1000) und Pixelwerte außerhalb einer Punktliste (SetBounds: 4 Zahlen).
   Assert.AreEqual(6, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, 'unit U;'#10'interface'#10 +
     'implementation'#10'procedure P;'#10'begin'#10'  X := MulDiv(X, PPI, 96);'#10'  K := EnsureRange(K, 0, $FFFF);'#10 +

@@ -231,8 +231,8 @@ var
   mIndex: Integer;
   mItems: TCompletionItems;
 begin
-  // Rückmeldung 15.10.2026: Bei einem Vorfahren mit mehr als MaxItems kurzen Mitgliedern fielen eigene
-  // Methoden mit längerem Namen beim Kürzen heraus.
+  // Bei einem Vorfahren mit mehr als MaxItems kurzen Mitgliedern dürfen eigene Methoden mit längerem Namen
+  // beim Kürzen nicht herausfallen.
   mSource := 'unit Gross;'#10'interface'#10'type'#10'  TGross = class'#10'  public'#10;
   for mIndex := 0 to TLspCompletion.cMaxItems + 199 do
   begin

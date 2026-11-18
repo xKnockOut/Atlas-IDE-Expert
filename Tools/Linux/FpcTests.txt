@@ -667,3 +667,4 @@ Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Tests
 Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
+Atlas.Core.Editor.SnapshotPolicy.Tests

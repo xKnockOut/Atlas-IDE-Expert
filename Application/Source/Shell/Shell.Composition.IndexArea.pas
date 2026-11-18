@@ -273,7 +273,7 @@ begin
     FServices.IndexFinished();
   end;
   // Nach der Projektstufe kennt der Index alles, was das Projekt über uses erreicht. Das Ende des Aufbaus
-  // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn (Diagnose-Log 29.10.2026).
+  // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn.
   mDiagnostics := FServices.Diagnostics();
   // Absicherung: Beim Beenden sind die Diagnosen vor dem Index fort.
   if (mDiagnostics <> nil) and mDiagnostics.IndexRecheck.Recheck(AProjectStage) then

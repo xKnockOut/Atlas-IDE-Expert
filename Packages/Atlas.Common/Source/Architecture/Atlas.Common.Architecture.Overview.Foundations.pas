@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Architecture.Overview.Foundations;
 
-// Fundamente der Architekturübersicht (#1365), ausgelagert aus
+// Fundamente der Architekturübersicht (#1365), Teil von
 // Atlas.Common.Architecture.Overview.
 //
 // - Kandidaten sind Units mit Rolle Fundament, die verwendet werden. Ihre
