@@ -423,7 +423,7 @@ begin
 end;
 
 /// <summary>Steht ANode nur bei nicht leerem ABase: im then-Zweig von "if S &lt;&gt; '' then" bzw. hinter
-/// "if S = '' then Exit;" (FP-Prüfung 28.10.2026, F12: SetLength(Result, Len); if Len &gt; 0 then … @Result[1]).
+/// "if S = '' then Exit;" (häufig in Fremdcode: SetLength(Result, Len); if Len &gt; 0 then … @Result[1]).
 /// </summary>
 function TFirstCharAddressScan.GuardedNonEmpty(ANode, ABase: TSyntaxNode): Boolean;
 var

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Performance.ManagedParams;
 
-// Regel aus Atlas.Common.Rules.Builtin.Performance ausgelagert (Länge der Unit); angemeldet wird sie dort.
+// Regel von Atlas.Common.Rules.Builtin.Performance in eigener Unit (Länge der Unit); angemeldet wird sie dort.
 // Standardmäßig aus (#975):
 //   managed-param-without-const  String-, Interface-, Array- bzw. Record-Parameter (ab
 //                             minRecordSize Byte) ohne const, den die Routine sicher nicht

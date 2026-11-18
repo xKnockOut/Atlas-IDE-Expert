@@ -2,7 +2,8 @@
 
 // Gehe zu Implementierung (textDocument/implementation):
 //   - bei virtuellen, abstrakten und Interface-Methoden alle Rümpfe in den Nachfahren
-//     (bei Klassenmethoden mit Rumpf auch den eigenen),
+//     (bei Klassenmethoden mit Rumpf auch den eigenen), samt Methodenzuordnungen und
+//     Delegation über implements (TImplementationSites, #2635),
 //   - bei Klassen und Interfaces alle Nachfahren bzw. implementierenden Klassen,
 //   - auf "inherited" den Rumpf der aufgerufenen Methode im Vorfahren
 //     (bei "inherited;" ohne Namen die gleichnamige Methode).
@@ -70,6 +71,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Lsp.ImplementationSites,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -88,7 +90,6 @@ const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
   cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType];
-  cMaxDepth = 32;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -143,49 +144,6 @@ begin
     end;
   end;
   Result := mCount >= 2;
-end;
-
-/// <summary>Alle Nachfahren von ATypeName, auch über mehrere Stufen; Kreise werden erkannt.</summary>
-function AllDescendants(const AIndex: ISymbolIndex; const ATypeName: string): TArray<TSymbolLocation>;
-var
-  mPending: TQueue<TPair<string, Integer>>;
-  mSeen: TDictionary<string, Boolean>;
-  mCurrent: TPair<string, Integer>;
-  mLocation: TSymbolLocation;
-  mKey: string;
-begin
-  Result := nil;
-  mPending := TQueue<TPair<string, Integer>>.Create;
-  mSeen := TDictionary<string, Boolean>.Create;
-  try
-    mPending.Enqueue(TPair<string, Integer>.Create(ATypeName, 0));
-    while mPending.Count > 0 do
-    begin
-      mCurrent := mPending.Dequeue;
-      if mCurrent.Value >= cMaxDepth then
-      begin
-        Continue;
-      end;
-      for mLocation in AIndex.Descendants(mCurrent.Key) do
-      begin
-        if not (mLocation.Symbol.Kind in cTypeKinds) then
-        begin
-          Continue;
-        end;
-        mKey := UpperCase(mLocation.FileName + '|' + mLocation.Symbol.QualifiedName);
-        if mSeen.ContainsKey(mKey) then
-        begin
-          Continue;
-        end;
-        mSeen.Add(mKey, True);
-        Result := Result + [mLocation];
-        mPending.Enqueue(TPair<string, Integer>.Create(mLocation.Symbol.QualifiedName, mCurrent.Value + 1));
-      end;
-    end;
-  finally
-    mSeen.Free;
-    mPending.Free;
-  end;
 end;
 
 function TokenIndexAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
@@ -345,7 +303,7 @@ end;
 class function TLspImplementations.AllDescendantsOf(const AIndex: ISymbolIndex;
   const ATypeName: string): TArray<TSymbolLocation>;
 begin
-  Result := AllDescendants(AIndex, ATypeName);
+  Result := TImplementationSites.AllDescendants(AIndex, ATypeName);
 end;
 
 class function TLspImplementations.IsInterfaceType(const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
@@ -400,59 +358,33 @@ begin
   end;
 end;
 
-/// <summary>Erste Deklaration der Routine AName in AContainer.</summary>
-function FindDeclaration(const AUnit: TUnitIndex; const AContainer, AName: string; out ASymbol: TIndexSymbol): Boolean;
-var
-  mSymbol: TIndexSymbol;
-begin
-  for mSymbol in AUnit.Symbols do
-  begin
-    if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, AContainer) and
-      SameText(mSymbol.Name, AName) then
-    begin
-      ASymbol := mSymbol;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-/// <summary>Rumpf der Routine AName im Nachfahren ATypeName, sonst ihre Deklaration (z. B. abstrakt wiederholt).
+/// <summary>Units für TImplementationSites: die Datei AFileName aus dem Editor (ATree), die übrigen aus dem Index.
+/// In eigener Routine, weil TImplementationSites.Find überladen ist (Delphi nimmt dort keine anonyme Methode).
 /// </summary>
-procedure AddDescendantTarget(AList: TList<TDefinitionTarget>; const AUnit: TUnitIndex;
-  const ATypeName, AName: string);
-var
-  mSymbol: TIndexSymbol;
+function EditorUnits(const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string):
+  TImplementationUnitFunc;
 begin
-  if FindBody(AUnit, ATypeName, AName, mSymbol) or FindDeclaration(AUnit, ATypeName, AName, mSymbol) then
-  begin
-    AList.Add(Target(AUnit.FileName, mSymbol.Range, mSymbol.SelectionRange));
-  end;
+  Result :=
+    function(const AUnitFile: string; out AUnit: TUnitIndex): Boolean
+    begin
+      Result := OwnerUnitOf(AIndex, ATree, AFileName, AUnitFile, AUnit);
+    end;
 end;
 
-/// <summary>Ziele der Methode AResolved: ihr eigener Rumpf und die Überschreibungen in den Nachfahren.</summary>
+/// <summary>Ziele der Methode AResolved: ihr eigener Rumpf und die Umsetzungen in den Nachfahren
+/// (TImplementationSites); die eigene Deklaration ohne Rumpf (abstrakt) ist kein Ziel.</summary>
 procedure AddMethodTargets(AList: TList<TDefinitionTarget>; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const AResolved: TResolvedSymbol);
 var
-  mBody: TIndexSymbol;
-  mOwnerUnit, mDescendantUnit: TUnitIndex;
-  mLocation: TSymbolLocation;
+  mSite: TImplementationSite;
 begin
-  // Eigener Rumpf (fehlt bei abstrakten und Interface-Methoden).
-  if OwnerUnitOf(AIndex, ATree, AFileName, AResolved.FileName, mOwnerUnit) and
-    FindBody(mOwnerUnit, AResolved.Container, AResolved.Name, mBody) then
+  for mSite in TImplementationSites.Find(AIndex, EditorUnits(AIndex, ATree, AFileName), AResolved.Container,
+    AResolved.Name, AResolved.FileName, TLspImplementations.IsInterfaceType(AIndex, AResolved.Container)) do
   begin
-    AList.Add(Target(mOwnerUnit.FileName, mBody.Range, mBody.SelectionRange));
-  end;
-  for mLocation in AllDescendants(AIndex, AResolved.Container) do
-  begin
-    if AList.Count >= TLspImplementations.cMaxTargets then
+    if (mSite.Kind = TImplementationKind.Own) or mSite.HasBody or not SameText(mSite.TypeName, AResolved.Container)
+    then
     begin
-      Break;
-    end;
-    if OwnerUnitOf(AIndex, ATree, AFileName, mLocation.FileName, mDescendantUnit) then
-    begin
-      AddDescendantTarget(AList, mDescendantUnit, mLocation.Symbol.QualifiedName, AResolved.Name);
+      AList.Add(Target(mSite.FileName, mSite.Range, mSite.SelectionRange));
     end;
   end;
 end;
@@ -465,7 +397,7 @@ var
 begin
   if AResolved.SymbolKind in cTypeKinds then
   begin
-    for mLocation in AllDescendants(AIndex, AResolved.QualifiedName) do
+    for mLocation in TImplementationSites.AllDescendants(AIndex, AResolved.QualifiedName) do
     begin
       AList.Add(Target(mLocation.FileName, mLocation.Symbol.Range, mLocation.Symbol.SelectionRange));
     end;
@@ -514,46 +446,10 @@ end;
 
 class function TLspImplementations.ImplementationCount(const AIndex: ISymbolIndex; const AContainer, AName: string;
   AInterface: Boolean): Integer;
-var
-  mLocation: TSymbolLocation;
-  mOwner: TUnitIndex;
-  mSymbol: TIndexSymbol;
 begin
-  Result := 0;
-  if AIndex = nil then
-  begin
-    Exit;
-  end;
-  // Eine virtuelle Methode ist selbst ein mögliches Ziel; ein Interface hat keinen Rumpf.
-  if not AInterface then
-  begin
-    Result := 1;
-  end;
-  for mLocation in AllDescendants(AIndex, AContainer) do
-  begin
-    if not (mLocation.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) then
-    begin
-      Continue;
-    end;
-    if AInterface then
-    begin
-      Inc(Result);
-      Continue;
-    end;
-    if not AIndex.FindFile(mLocation.FileName, mOwner) then
-    begin
-      Continue;
-    end;
-    for mSymbol in mOwner.Symbols do
-    begin
-      if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, mLocation.Symbol.QualifiedName) and
-        SameText(mSymbol.Name, AName) then
-      begin
-        Inc(Result);
-        Break;
-      end;
-    end;
-  end;
+  // Dieselben Stellen wie Gehe zu Implementierung und find_implementations (#2635); eine abstrakte virtuelle
+  // Methode zählt selbst mit.
+  Result := Length(TImplementationSites.Find(AIndex, nil, AContainer, AName, AInterface));
 end;
 
 initialization

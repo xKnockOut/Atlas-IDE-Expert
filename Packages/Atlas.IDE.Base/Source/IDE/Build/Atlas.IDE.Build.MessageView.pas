@@ -3,7 +3,7 @@
 // Compilermeldungen aus dem Meldungsfenster der IDE lesen (#528). Die Open
 // Tools API kann Meldungen nur hinzufügen, nicht lesen.
 //
-// Gewählter Weg (Spike in RAD Studio 13, 10.10.2026): Der Reiter „Build“ ist
+// Weg (in RAD Studio 13 erprobt): Der Reiter „Build“ ist
 // ein selbst gezeichneter Virtual Tree (TMessageViewForm › MessageTreeView0,
 // Klasse TBetterHintWindowVirtualDrawTree) ohne Text-Eigenschaft. Über RTTI
 // sind GetFirst/GetNext/GetNodeData erreichbar; hinter den Knotendaten liegen

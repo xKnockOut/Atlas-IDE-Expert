@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Commands.KeysNavigation;
 
-// Tasten der Editorbefehle für Navigation und Fenster, ausgelagert aus
+// Tasten der Editorbefehle für Navigation und Fenster, Teil von
 // TAtlasIdeEditorKeys.Rebind (Atlas.IDE.Commands.Bindings, Beschreibung dort):
 // Schnell öffnen (#503), Navigationsverlauf (#504), Definition und Referenzen
 // einblenden (#505), Erzeugen-Menü (#719), Benachrichtigungen (#601), Sprung zum

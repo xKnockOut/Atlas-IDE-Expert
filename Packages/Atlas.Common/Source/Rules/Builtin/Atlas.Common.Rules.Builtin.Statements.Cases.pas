@@ -111,8 +111,8 @@ begin
 end;
 
 /// <summary>Konfidenz nach Abdeckung: Fehlen höchstens zwei Werte oder höchstens die Hälfte, ist wohl ein neuer
-/// Wert vergessen (hoch); behandelt die Anweisung nur wenige Werte, ist das meist gewollt (niedrig, FP-Prüfung
-/// 28.10.2026: rund 80 % solcher Treffer waren Absicht).</summary>
+/// Wert vergessen (hoch); behandelt die Anweisung nur wenige Werte, ist das meist gewollt (niedrig; in Fremdcode
+/// sind die meisten solcher Treffer Absicht).</summary>
 function MissingConfidence(AMissing, ATotal: Integer): TRuleConfidence;
 begin
   if (AMissing <= 2) or (2 * AMissing <= ATotal) then

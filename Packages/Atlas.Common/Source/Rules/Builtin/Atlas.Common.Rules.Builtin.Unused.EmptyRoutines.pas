@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Unused.EmptyRoutines;
 
-// empty-routine (#977), aus Atlas.Common.Rules.Builtin.Unused herausgelöst; angemeldet wird die Regel weiter
+// empty-routine (#977), Teil von Atlas.Common.Rules.Builtin.Unused; angemeldet wird die Regel
 // über RegisterUnusedRules. Beschreibung der Regel siehe dort.
 
 interface

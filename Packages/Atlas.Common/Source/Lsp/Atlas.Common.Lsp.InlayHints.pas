@@ -228,15 +228,6 @@ begin
   Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
 end;
 
-function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
@@ -372,13 +363,13 @@ var
   mDot, mName: Integer;
 begin
   Result := AFirst;
-  mDot := NextToken(ATokens, Result);
-  mName := NextToken(ATokens, mDot);
+  mDot := NextCodeAfter(ATokens, Result);
+  mName := NextCodeAfter(ATokens, mDot);
   while (mName <= ALimit) and ATokens[mDot].IsSymbol('.') and (ATokens[mName].Kind = TPascalTokenKind.Identifier) do
   begin
     Result := mName;
-    mDot := NextToken(ATokens, Result);
-    mName := NextToken(ATokens, mDot);
+    mDot := NextCodeAfter(ATokens, Result);
+    mName := NextCodeAfter(ATokens, mDot);
   end;
 end;
 
@@ -404,7 +395,7 @@ var
 begin
   Result := nil;
   mDepth := 0;
-  mScan := NextToken(ATokens, AOpen);
+  mScan := NextCodeAfter(ATokens, AOpen);
   if (mScan <= High(ATokens)) and not ATokens[mScan].IsSymbol(')') then
   begin
     Result := [mScan];
@@ -421,9 +412,9 @@ begin
     end
     else if (mDepth = 0) and ATokens[mScan].IsSymbol(',') then
     begin
-      Result := Result + [NextToken(ATokens, mScan)];
+      Result := Result + [NextCodeAfter(ATokens, mScan)];
     end;
-    mScan := NextToken(ATokens, mScan);
+    mScan := NextCodeAfter(ATokens, mScan);
   end;
 end;
 
@@ -506,7 +497,7 @@ begin
   Result := -1;
   if ATokens[AIndex].Kind = TPascalTokenKind.Identifier then
   begin
-    Result := NextToken(ATokens, AIndex);
+    Result := NextCodeAfter(ATokens, AIndex);
   end;
   if (Result < 0) or (Result > High(ATokens)) or not ATokens[Result].IsSymbol('(') or
     not InRange(ARange, ATokens[Result].EndPos) then
@@ -675,11 +666,11 @@ begin
   begin
     Result := ATokens[mIndex].Kind = TPascalTokenKind.Identifier;
     ANames := ANames + [CleanName(ATokens[mIndex].Text)];
-    mIndex := NextToken(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
     if Result and (mIndex <= ALast) then
     begin
       Result := ATokens[mIndex].IsSymbol('.');
-      mIndex := NextToken(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
     end;
   end;
 end;
@@ -766,23 +757,23 @@ begin
   mTokens := ASource.Tree.Tokens;
   mIndex := FirstTokenAt(mTokens, ANode.StartOffset);
   if (mIndex + 3 > High(mTokens)) or not mTokens[mIndex].IsKeyword('for') or
-    not mTokens[NextToken(mTokens, mIndex)].IsKeyword('var') then
+    not mTokens[NextCodeAfter(mTokens, mIndex)].IsKeyword('var') then
   begin
     Exit(False);
   end;
-  mNameToken := NextToken(mTokens, NextToken(mTokens, mIndex));
-  mFirst := NextToken(mTokens, mNameToken);
-  if (mFirst > High(mTokens)) or not mTokens[mFirst].IsKeyword('in') or (NextToken(mTokens, mFirst) > High(mTokens))
+  mNameToken := NextCodeAfter(mTokens, NextCodeAfter(mTokens, mIndex));
+  mFirst := NextCodeAfter(mTokens, mNameToken);
+  if (mFirst > High(mTokens)) or not mTokens[mFirst].IsKeyword('in') or (NextCodeAfter(mTokens, mFirst) > High(mTokens))
   then
   begin
     Exit(False);
   end;
-  mFirst := NextToken(mTokens, mFirst);
+  mFirst := NextCodeAfter(mTokens, mFirst);
   mLast := mFirst;
-  while (NextToken(mTokens, mLast) <= High(mTokens)) and not mTokens[NextToken(mTokens, mLast)].IsKeyword('do') and
-    (mTokens[NextToken(mTokens, mLast)].Offset < ANode.EndOffset) do
+  while (NextCodeAfter(mTokens, mLast) <= High(mTokens)) and not mTokens[NextCodeAfter(mTokens, mLast)].IsKeyword('do') and
+    (mTokens[NextCodeAfter(mTokens, mLast)].Offset < ANode.EndOffset) do
   begin
-    mLast := NextToken(mTokens, mLast);
+    mLast := NextCodeAfter(mTokens, mLast);
   end;
   SetFoundName(AFound, mTokens[mNameToken]);
   AFound.ForIn := True;
@@ -890,12 +881,12 @@ var
   mDepth: Integer;
 begin
   Result := AIndex;
-  if (Result >= ALast) or not ATokens[NextToken(ATokens, Result)].IsSymbol('(') then
+  if (Result >= ALast) or not ATokens[NextCodeAfter(ATokens, Result)].IsSymbol('(') then
   begin
     Exit;
   end;
   mDepth := 0;
-  Result := NextToken(ATokens, Result);
+  Result := NextCodeAfter(ATokens, Result);
   while Result <= ALast do
   begin
     if ATokens[Result].IsSymbol('(') then
@@ -910,7 +901,7 @@ begin
     begin
       Exit;
     end;
-    Result := NextToken(ATokens, Result);
+    Result := NextCodeAfter(ATokens, Result);
   end;
 end;
 
@@ -977,16 +968,16 @@ begin
   begin
     Exit(False);
   end;
-  mFirst := NextToken(mTokens, mAssign);
+  mFirst := NextCodeAfter(mTokens, mAssign);
   if mFirst > High(mTokens) then
   begin
     Exit(False);
   end;
   mLast := mFirst;
-  while (NextToken(mTokens, mLast) <= High(mTokens)) and (mTokens[NextToken(mTokens, mLast)].Offset < ANode.EndOffset)
-    and not mTokens[NextToken(mTokens, mLast)].IsSymbol(';') do
+  while (NextCodeAfter(mTokens, mLast) <= High(mTokens)) and (mTokens[NextCodeAfter(mTokens, mLast)].Offset < ANode.EndOffset)
+    and not mTokens[NextCodeAfter(mTokens, mLast)].IsSymbol(';') do
   begin
-    mLast := NextToken(mTokens, mLast);
+    mLast := NextCodeAfter(mTokens, mLast);
   end;
   SetFoundName(AFound, mTokens[mNameToken]);
   if mFirst = mLast then
@@ -1261,7 +1252,7 @@ begin
   end;
   mText := EndLabel(ATokens, ANode, mEndToken);
   AHint.Position := ATokens[mEndToken].EndPos;
-  mNext := NextToken(ATokens, mEndToken);
+  mNext := NextCodeAfter(ATokens, mEndToken);
   if (mNext <= High(ATokens)) and (ATokens[mNext].IsSymbol(';') or ATokens[mNext].IsSymbol('.')) and
     (ATokens[mNext].StartPos.Line = ATokens[mEndToken].EndPos.Line) then
   begin

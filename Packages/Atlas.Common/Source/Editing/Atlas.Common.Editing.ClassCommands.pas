@@ -55,6 +55,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.InterfaceStubs,
@@ -1020,30 +1021,6 @@ begin
   end;
 end;
 
-/// <summary>Schließende Klammer zur öffnenden an AOpen; -1 ohne.</summary>
-function ClosingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer;
-var
-  mDepth, mIndex: Integer;
-begin
-  mDepth := 0;
-  for mIndex := AOpen to High(ATokens) do
-  begin
-    if ATokens[mIndex].IsSymbol('(') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[mIndex].IsSymbol(')') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-  end;
-  Result := -1;
-end;
-
 /// <summary>Änderung am Kopf der Klasse: ", AName" vor die schließende Klammer der Vorfahrenliste, ohne Liste
 /// "(TInterfacedObject, AName)" hinter "class".</summary>
 function HeaderEdit(ASource: TCommandSource; const AClass: TIndexSymbol; const AName: string;
@@ -1068,7 +1045,7 @@ begin
   end;
   if (mIndex < High(mTokens)) and mTokens[mIndex + 1].IsSymbol('(') then
   begin
-    mClose := ClosingParen(mTokens, mIndex + 1);
+    mClose := MatchingParen(mTokens, mIndex + 1);
     Result := mClose >= 0;
     if Result then
     begin

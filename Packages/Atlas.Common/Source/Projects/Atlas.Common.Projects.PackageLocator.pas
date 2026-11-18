@@ -173,7 +173,8 @@ begin
   Result :=
     function(const AFileName: string; out AData: TBytes): Boolean
     begin
-      // Übersetzte Packages geteilt über alle Locatoren (Speicher, Rückmeldung 01.11.2026).
+      // Übersetzte Packages geteilt über alle Locatoren: Jeder Arbeitsbereich hat einen eigenen,
+      // dieselbe .dcp liegt nur einmal im Speicher.
       if SameText(ExtractFileExt(AFileName), '.dcp') then
       begin
         Exit(TPackageCompiledFiles.Read(AFileName, AData));

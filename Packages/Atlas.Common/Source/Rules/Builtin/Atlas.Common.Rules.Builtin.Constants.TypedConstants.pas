@@ -28,6 +28,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -70,30 +71,6 @@ begin
     cTexts[TConstantsTypedConstantsText.Title].Text);
 end;
 
-/// <summary>Position der schließenden Klammer zur öffnenden an AOpen; 0, wenn keine passt.</summary>
-function ClosingParen(const AText: string; AOpen: Integer): Integer;
-var
-  mDepth, mIndex: Integer;
-begin
-  Result := 0;
-  mDepth := 0;
-  for mIndex := AOpen to Length(AText) do
-  begin
-    if AText[mIndex] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if AText[mIndex] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Je Name der Parametergruppe AGroup ("var A, B: Integer"): ist es ein var- oder out-Parameter?
 /// </summary>
 function GroupFlags(const AGroup: string): TArray<Boolean>;
@@ -128,7 +105,7 @@ begin
   mClose := 0;
   if mOpen > 0 then
   begin
-    mClose := ClosingParen(ASignature, mOpen);
+    mClose := MatchingParen(ASignature, mOpen);
   end;
   if mClose = 0 then
   begin
@@ -761,7 +738,7 @@ begin
       TRuleSeverity.Error, mFixes);
     Exit;
   end;
-  // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3, dcc-Lauf vom 29.10.2026, #1328).
+  // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3 in Tests/DccFaelle, #1328).
   if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.On_) then
   begin
     Exit;
