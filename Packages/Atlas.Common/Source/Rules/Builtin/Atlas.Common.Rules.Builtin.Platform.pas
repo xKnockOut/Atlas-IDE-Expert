@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Platform;
 
-// Regeln für Annahmen über die Laufzeitumgebung (#909, Runde 67):
+// Regeln für Annahmen über die Laufzeitumgebung (#909):
 //   ui-call-in-console-or-service  ShowMessage, MessageDlg, InputBox usw. in einem Konsolenprogramm, einem
 //                                  Windows-Dienst oder einer DLL ohne Formulare (#1060)
 //   load-without-encoding          TStrings.LoadFromFile/SaveToFile und TFile.ReadAllText ohne Kodierung:

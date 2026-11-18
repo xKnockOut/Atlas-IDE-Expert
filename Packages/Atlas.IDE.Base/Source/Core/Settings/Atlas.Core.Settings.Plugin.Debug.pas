@@ -293,6 +293,10 @@ type
     DebugWhyHere: Boolean;
     /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
     DebugWhyHereDepth: Integer;
+    /// <summary>Laufzeit zwischen Haltepunkten (#579, debug.showElapsed): Beim Halt steht am Ende der Zeile des
+    /// Ausführungspunkts gedimmt die Zeit seit dem letzten Halt („+124 ms“, ohne angehaltene Zeit); Klick zeigt die
+    /// letzten 20 Messungen. Aus = nichts gezeichnet.</summary>
+    DebugShowElapsed: Boolean;
     /// <summary>Fenster „Variablen“ (#853, debug.variablesWindow): andockbares Fenster mit den Reitern Autos
     /// (Ausdrücke der aktuellen und der vorigen Anweisung, ohne Aufrufe), Lokal und Überwachung, Suche nach Name
     /// oder Wert. Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
@@ -567,6 +571,7 @@ procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
 begin
   DebugWhyHere := True;
   DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugShowElapsed := True;
   DebugVariablesWindow := True;
   DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
@@ -609,6 +614,7 @@ procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSetti
 begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
+  AIo.Flag('DebugShowElapsed', DebugShowElapsed);
   AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
   AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);

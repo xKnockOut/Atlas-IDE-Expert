@@ -24,8 +24,8 @@ type
     /// <summary>Units suchen, Vorschau und uses ergänzen sind angemeldet.</summary>
     [Test]
     procedure RegistersAllCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>Die Liste der Units fragt die Arbeitsbereiche unter deren Sperre ab und antwortet mit JSON.</summary>

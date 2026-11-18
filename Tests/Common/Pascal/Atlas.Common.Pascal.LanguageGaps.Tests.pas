@@ -1,9 +1,8 @@
 ﻿unit Atlas.Common.Pascal.LanguageGaps.Tests;
 
 // Tests für kleinere Sprachlücken in Parser, Index und Namensauflösung (#849).
-// Je Punkt des Issues ein Test; die Quellen stammen aus den nachgestellten
-// Fällen in planung/parser-luecken-faelle (05, 07, 08, 09, 12) bzw. sind
-// Fixtures zu den Korpusfunden (Punkte 10 bis 15). Dazu die Sprungmarke @@End
+// Je Punkt des Issues ein Test; die Quellen stellen die Fälle aus dem
+// Issue nach bzw. sind Fixtures zu Funden in Fremdcode (Punkte 10 bis 15). Dazu die Sprungmarke @@End
 // im asm-Block (#861), Steuerzeichen wie ^C und die Ersatzklammern (. .) (#862).
 
 interface
@@ -21,25 +20,25 @@ type
     /// <summary>Punkt 1: Die Prüfung meldet den unqualifizierten Wert und nennt TState.Error.</summary>
     [Test]
     procedure UnresolvedScopedValueSuggestsPrefix;
-    /// <summary>Punkt 2 (Fall 05): Kommas nach ":" gehören zu den Einschränkungen.</summary>
+    /// <summary>Punkt 2: Kommas nach ":" gehören zu den Einschränkungen.</summary>
     [Test]
     procedure GenericConstraintsKeepParameters;
-    /// <summary>Punkt 3 (Fall 09): Mitglieder aus {$I members.inc} gehören zur Klasse.</summary>
+    /// <summary>Punkt 3: Mitglieder aus {$I members.inc} gehören zur Klasse.</summary>
     [Test]
     procedure IncludeInClassBodyAddsMembers;
-    /// <summary>Punkt 4 (Fall 07): benannte Argumente der OLE-Automation.</summary>
+    /// <summary>Punkt 4: benannte Argumente der OLE-Automation.</summary>
     [Test]
     procedure NamedArgumentsParse;
-    /// <summary>Punkt 5 (Fall 12): Feld namens Operator.</summary>
+    /// <summary>Punkt 5: Feld namens Operator.</summary>
     [Test]
     procedure OperatorFieldIsField;
-    /// <summary>Punkt 6 (Fall 08): Attribut nach const-Abschnitt gehört zur Methode.</summary>
+    /// <summary>Punkt 6: Attribut nach const-Abschnitt gehört zur Methode.</summary>
     [Test]
     procedure AttributeAfterConstSectionEndsSection;
     /// <summary>Punkt 7: NameOf ist ein Intrinsic.</summary>
     [Test]
     procedure NameOfIsIntrinsic;
-    /// <summary>Punkt 9 (Fall 08): Methodenzuordnung ist kein Mitglied, Gehe zu auf MyBar trifft die Methode.
+    /// <summary>Punkt 9: Methodenzuordnung ist kein Mitglied, Gehe zu auf MyBar trifft die Methode.
     /// </summary>
     [Test]
     procedure MethodResolutionIsNoMember;

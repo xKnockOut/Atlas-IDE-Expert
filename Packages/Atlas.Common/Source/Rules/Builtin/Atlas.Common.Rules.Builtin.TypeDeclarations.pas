@@ -763,8 +763,8 @@ begin
 end;
 
 // Geerbte Accessoren (property X read GetX mit GetX aus dem Vorfahr-Interface) übersetzt dcc, generisch wie
-// nicht generisch (DUnitX IList<T>; ID1, ID2, ID3; dcc-Lauf vom 29.10.2026, #1328): Die frühere Prüfung auf
-// E2370 ist entfallen.
+// nicht generisch (DUnitX IList<T>; ID1, ID2, ID3, #1328): Deshalb gibt es keine Prüfung auf
+// E2370.
 procedure TInterfaceDeclarationInvalidScan.CheckInheritedMembers(AType: TSyntaxNode; const AName: string);
 var
   mOwn, mAncestor, mMember: TResolvedSymbol;

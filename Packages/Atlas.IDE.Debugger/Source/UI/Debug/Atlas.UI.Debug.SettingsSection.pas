@@ -341,6 +341,8 @@ begin
   // „Warum bin ich hier?“ (#1878).
   Switch('debug.whyHere', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHere));
   Number('debug.whyHere.depth', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHereDepth));
+  // Laufzeit zwischen Haltepunkten (#579).
+  Switch('debug.showElapsed', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugShowElapsed));
   BuildStopValues;
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLog));
