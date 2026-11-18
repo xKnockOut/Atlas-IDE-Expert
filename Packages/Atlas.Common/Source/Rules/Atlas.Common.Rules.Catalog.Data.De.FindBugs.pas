@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeFindBugs: array[0..611] of string = (
+  cCatalogLinesDeFindBugs: array[0..616] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
@@ -50,6 +50,13 @@ const
     ' StringReplace(X, ''\\'', ''/'', ...) bzw. X.Replace(''\\'', ''/'') oder eine lokale Variable, deren letzte Zuweisung in der Routine so etwas ist. Die Routinen trennen nur an PathDelim und DriveDelim, unter W' +
     'indows ''\\'', unter Linux ''/'': Unter Windows bleibt der Pfad ungeteilt. PathDelim als Ersatz, ''\\'' und andere Variablen bleiben still. Schnellkorrektur für StringReplace(..., ''/'', ...): durch PathDelim' +
     ' ersetzen."',
+    '    },',
+    '{',
+    '      "id": "line-break-split-replace",',
+    '      "name": "#13 und #10 getrennt ersetzt",',
+    '      "description": "Eine Routine ersetzt #13 und #10 in zwei getrennten Aufrufen (StringReplace, ReplaceStr, ReplaceText, .Replace), ohne vorher #13#10 bzw. sLineBreak zu ersetzen. Aus einem Windows' +
+    '-Zeilenende #13#10 werden so zwei Zeichen, etwa zwei Leerzeichen statt einem. Unter Linux, wo sLineBreak #10 ist, merken Tests das nicht. Die Aufrufe zählen in der Reihenfolge, in der sie laufen (in e' +
+    'iner Kette zuerst die inneren). Still, wenn der erste Aufruf #13 entfernt oder zu #10 macht bzw. der zweite #13 entfernt: Dann bleibt genau ein Zeichen."',
     '    },',
     '{',
     '      "id": "hash-overflow-checked",',

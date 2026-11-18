@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerNames: array[0..775] of string = (
+  cCatalogLinesEnCompilerNames: array[0..824] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Deprecated or bound symbol",',
@@ -863,6 +863,27 @@ const
     '      "safeFix": false',
     '    },',
     '{',
+    '      "id": "method-reference-called",',
+    '      "name": "Method reference is called instead of passed",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A variable, parameter or field whose type is a method reference (TProc, TFunc<…>, TPredicate<T> or an own reference to type) is the only argument of Exit(…) in a function that re' +
+    'turns a method reference, or an element of an array literal next to + (FHandlers + [AHandler]) whose other operand is an array of method references. Delphi calls the reference there instead of taking ' +
+    'it as a value (E2035 or E2010); Free Pascal takes the value. The type is read from the declaration in the file (parameter, local variable, field of the own class); an own type counts if the file or th' +
+    'e symbol index declares it as reference to. Exit(AFunc) in a function with another result type calls on purpose and stays silent. Quick fix for Exit (safe): Result := ARef; Exit;. For the array litera' +
+    'l: grow the array with SetLength and assign the element.",',
+    '      "bad": "function Wahl(const ALookup: TLookup): TLookup;\nbegin\n  Exit(ALookup);\nend;\n…\n  FHandlers := FHandlers + [AHandler];",',
+    '      "good": "function Wahl(const ALookup: TLookup): TLookup;\nbegin\n  Result := ALookup;\n  Exit;\nend;\n…\n  SetLength(FHandlers, Length(FHandlers) + 1);\n  FHandlers[High(FHandlers)] := AHandler;' +
+    '",',
+    '      "compilerCodes": [',
+    '        "E2035",',
+    '        "E2010"',
+    '      ],',
+    '      "level": "B",',
+    '      "safeFix": true',
+    '    },',
+    '{',
     '      "id": "interface-uses-missing",',
     '      "name": "Unit only in the uses of the implementation section",',
     '      "category": "bug",',
@@ -911,6 +932,46 @@ const
     '      "good": "uses\n  Winapi.Windows, System.SysUtils;\n…\n  mStart := GetTickCount64;",',
     '      "compilerCodes": [',
     '        "E2003"',
+    '      ],',
+    '      "level": "B",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "class-constant-unqualified",',
+    '      "name": "Constant of another class without class name",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "An identifier without class name is a constant of another class or record of the same unit (cHeadCacheMs of TWorkingCopies used in a method of TWorkingHeads), or, in the declarat' +
+    'ion of a class, a constant of an ancestor (cRows = 2 * cGap). Delphi does not see either there (E2003); Free Pascal resolves the name and compiles the unit. In method bodies inherited constants are vi' +
+    'sible, nested types see the constants of their enclosing types. Silent if a local name, a member of the own class including ancestors and enclosing types, or a name at unit level has the same name, if' +
+    ' several classes declare the constant, and inside with. If the class chain leaves the file, the rule stays silent when the symbol index knows the name in another unit. Quick fix (safe): put the class ' +
+    'name in front.",',
+    '      "bad": "type\n  TWorkingCopies = class\n  public const\n    cHeadCacheMs = 500;\n  end;\n…\nfunction TWorkingHeads.Fresh: Boolean;\nbegin\n  Result := FAge < cHeadCacheMs;\nend;",',
+    '      "good": "function TWorkingHeads.Fresh: Boolean;\nbegin\n  Result := FAge < TWorkingCopies.cHeadCacheMs;\nend;",',
+    '      "compilerCodes": [',
+    '        "E2003"',
+    '      ],',
+    '      "level": "B",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "member-hides-unit-symbol",',
+    '      "name": "Member hides a name of the unit",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "A method uses a name without unit name that the unit declares as routine, constant or variable, while the class inherits a member of the same name from an ancestor (Scaled of TCu' +
+    'stomForm, AddLabel of a base dialog, Padding of TControl). Inside methods Delphi resolves the name to the member, not to the unit symbol, and reports E2066, E2010, E2015 or E2034 depending on the use;' +
+    ' Free Pascal may pick the unit symbol and compile. A member the class declares itself is intended and stays silent, as do local names, qualified names and code inside with. Ancestors outside the file ' +
+    'come from the symbol index; without an index the rule stays silent for them. Quick fix (not safe, the member may be meant): put the unit name in front, or rename the routine.",',
+    '      "bad": "function Scaled(AValue: Integer): Integer;\n…\nfunction TFenster.Breite: Integer;\nbegin\n  Result := Scaled(4); // TCustomForm.Scaled\nend;",',
+    '      "good": "function TFenster.Breite: Integer;\nbegin\n  Result := U.Scaled(4);\nend;",',
+    '      "compilerCodes": [',
+    '        "E2066",',
+    '        "E2010",',
+    '        "E2015",',
+    '        "E2034"',
     '      ],',
     '      "level": "B",',
     '      "safeFix": false',

@@ -8,11 +8,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 88 |
+| [Fehler finden](#gruppe-find-bugs) | 89 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 96 |
+| [Compiler vorab](#gruppe-compiler) | 101 |
 | [Robustheit und Muster](#gruppe-robustness) | 15 |
 | [Migration](#gruppe-migration) | 6 |
 | [Performance](#gruppe-performance) | 6 |
@@ -35,6 +35,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`trygetvalue-out-default`](#trygetvalue-out-default) | TryGetValue überschreibt die Vorbelegung | Bug | Warnung |
 | [`record-array-shared`](#record-array-shared) | Kopierter Record teilt sein Array | Bug | Warnung |
 | [`extractfile-forward-slash`](#extractfile-forward-slash) | Dateiname mit / zerlegt | Bug | Warnung |
+| [`line-break-split-replace`](#line-break-split-replace) | #13 und #10 getrennt ersetzt | Bug | Warnung |
 | [`hash-overflow-checked`](#hash-overflow-checked) | Gewollter Überlauf mit Überlaufprüfung | Bug | Warnung |
 | [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
 | [`duplicate-assignment`](#duplicate-assignment) | Feld oder Property wird zweimal gesetzt | Bug | Warnung |
@@ -251,11 +252,16 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`generic-inference-failed`](#generic-inference-failed) | Typargumente lassen sich nicht ableiten | Bug | Fehler |
 | [`dunitx-areequal-length`](#dunitx-areequal-length) | Assert.AreEqual mit Ganzzahl und NativeInt | Bug | Fehler |
 | [`exit-array-literal`](#exit-array-literal) | Exit mit Array-Literal | Bug | Fehler |
+| [`method-reference-called`](#method-reference-called) | Methodenreferenz wird aufgerufen statt übergeben | Bug | Fehler |
 | [`caption-string-helper`](#caption-string-helper) | String-Helfer auf TCaption | Bug | Fehler |
 | [`uses-order-hides-type`](#uses-order-hides-type) | Unit verdeckt einen Typ | Bug | Fehler |
 | [`interface-uses-missing`](#interface-uses-missing) | Unit nur im uses des implementation-Teils | Bug | Fehler |
 | [`winapi-declaration-missing`](#winapi-declaration-missing) | Fehlt in Delphis Winapi.Windows | Bug | Fehler |
 | [`winapi-uses-missing`](#winapi-uses-missing) | Winapi.Windows fehlt in uses | Bug | Fehler |
+| [`class-constant-unqualified`](#class-constant-unqualified) | Konstante einer anderen Klasse ohne Klassennamen | Bug | Fehler |
+| [`enum-hides-keyword`](#enum-hides-keyword) | Aufzählungswert verdeckt eine Standardprozedur | Bug | Warnung |
+| [`inline-reference-type`](#inline-reference-type) | reference to ohne benannten Typ | Bug | Fehler |
+| [`member-hides-unit-symbol`](#member-hides-unit-symbol) | Mitglied verdeckt einen Namen der Unit | Bug | Warnung |
 | [`stream-write-nativeint`](#stream-write-nativeint) | Write ohne NativeInt-Überladung | Bug | Warnung |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
@@ -1149,6 +1155,28 @@ Richtig:
 
 ```pascal
 Name := ExtractFileName(StringReplace(Pfad, '/', PathDelim, [rfReplaceAll]));
+```
+
+<a id="line-break-split-replace"></a>
+### line-break-split-replace
+
+**#13 und #10 getrennt ersetzt** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Routine ersetzt #13 und #10 in zwei getrennten Aufrufen (StringReplace, ReplaceStr, ReplaceText, .Replace), ohne vorher #13#10 bzw. sLineBreak zu ersetzen. Aus einem Windows-Zeilenende #13#10 werden so zwei Zeichen, etwa zwei Leerzeichen statt einem. Unter Linux, wo sLineBreak #10 ist, merken Tests das nicht. Die Aufrufe zählen in der Reihenfolge, in der sie laufen (in einer Kette zuerst die inneren). Still, wenn der erste Aufruf #13 entfernt oder zu #10 macht bzw. der zweite #13 entfernt: Dann bleibt genau ein Zeichen.
+
+Mit Treffer:
+
+```pascal
+Result := StringReplace(AText, #13, ' ', [rfReplaceAll]);
+Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
+```
+
+Richtig:
+
+```pascal
+Result := StringReplace(AText, #13#10, ' ', [rfReplaceAll]);
+Result := StringReplace(Result, #13, ' ', [rfReplaceAll]);
+Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
 ```
 
 <a id="hash-overflow-checked"></a>
@@ -9348,6 +9376,43 @@ begin
 end;
 ```
 
+<a id="method-reference-called"></a>
+### method-reference-called
+
+**Methodenreferenz wird aufgerufen statt übergeben** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Variable, ein Parameter oder ein Feld vom Typ einer Methodenreferenz (TProc, TFunc<…>, TPredicate<T> oder ein eigener reference to-Typ) steht als einziges Argument in Exit(…) einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. Delphi ruft die Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigenen Klasse); ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to deklariert. Exit(AFunc) in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweisen.
+
+Entspricht der Compilermeldung `E2035`, `E2010`.
+
+Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix method-reference-called`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+function Wahl(const ALookup: TLookup): TLookup;
+begin
+  Exit(ALookup);
+end;
+…
+  FHandlers := FHandlers + [AHandler];
+```
+
+Richtig:
+
+```pascal
+function Wahl(const ALookup: TLookup): TLookup;
+begin
+  Result := ALookup;
+  Exit;
+end;
+…
+  SetLength(FHandlers, Length(FHandlers) + 1);
+  FHandlers[High(FHandlers)] := AHandler;
+```
+
 <a id="caption-string-helper"></a>
 ### caption-string-helper
 
@@ -9501,6 +9566,131 @@ uses
   Winapi.Windows, System.SysUtils;
 …
   mStart := GetTickCount64;
+```
+
+<a id="class-constant-unqualified"></a>
+### class-constant-unqualified
+
+**Konstante einer anderen Klasse ohne Klassennamen** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Bezeichner ohne Klassennamen ist eine Konstante einer anderen Klasse bzw. eines anderen Records derselben Unit (cHeadCacheMs aus TWorkingCopies in einer Methode von TWorkingHeads) oder in der Deklaration einer Klasse eine Konstante eines Vorfahren (cRows = 2 * cGap). Delphi sieht beide dort nicht (E2003); Free Pascal löst den Namen auf und übersetzt die Unit. In Methodenrümpfen sind geerbte Konstanten sichtbar, verschachtelte Typen sehen die Konstanten der umgebenden Typen. Still, wenn ein lokaler Name, ein Mitglied der eigenen Klasse samt Vorfahren und umgebenden Typen oder ein Name der Unit-Ebene so heißt, wenn mehrere Klassen die Konstante deklarieren, und innerhalb von with. Verlässt die Klassenkette die Datei, schweigt die Regel, wenn der Symbolindex den Namen in einer anderen Unit kennt. Korrektur (sicher): Klassennamen davor setzen.
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix class-constant-unqualified`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+type
+  TWorkingCopies = class
+  public const
+    cHeadCacheMs = 500;
+  end;
+…
+function TWorkingHeads.Fresh: Boolean;
+begin
+  Result := FAge < cHeadCacheMs;
+end;
+```
+
+Richtig:
+
+```pascal
+function TWorkingHeads.Fresh: Boolean;
+begin
+  Result := FAge < TWorkingCopies.cHeadCacheMs;
+end;
+```
+
+<a id="enum-hides-keyword"></a>
+### enum-hides-keyword
+
+**Aufzählungswert verdeckt eine Standardprozedur** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Aufzählung ohne {$SCOPEDENUMS ON} hat einen Wert Continue, Break, Exit oder Halt. Der Wert verdeckt die gleichnamige Standardprozedur in jeder Unit, die den Typ sieht: Continue; wird dort zur Ausdrucksanweisung (E2014), und in einer Unit ohne solche Anweisung schnappt die Falle erst später zu. Ob {$SCOPEDENUMS} gilt, entscheidet die letzte Direktive vor dem Typ. Keine Korrektur: {$SCOPEDENUMS ON} ändert jede Verwendung der Werte, Umbenennen den Typ.
+
+Entspricht der Compilermeldung `E2014`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+type
+  TReopenedAction = (Continue, Dismiss, Reason);
+```
+
+Richtig:
+
+```pascal
+{$SCOPEDENUMS ON}
+type
+  TReopenedAction = (Continue, Dismiss, Reason);
+{$SCOPEDENUMS OFF}
+```
+
+<a id="inline-reference-type"></a>
+### inline-reference-type
+
+**reference to ohne benannten Typ** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Feld oder eine Variable hat direkt den Typ reference to procedure … bzw. reference to function …. Delphi nimmt Methodenreferenztypen nur in einer Typdeklaration an und meldet E2003 für 'reference' mit vielen Folgefehlern; Free Pascal übersetzt die Deklaration. Keine Korrektur: benannten Typ deklarieren und verwenden.
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+type
+  TReopened = record
+    Peek: reference to function(const A: string): Boolean;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TPeek = reference to function(const A: string): Boolean;
+  TReopened = record
+    Peek: TPeek;
+  end;
+```
+
+<a id="member-hides-unit-symbol"></a>
+### member-hides-unit-symbol
+
+**Mitglied verdeckt einen Namen der Unit** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Methode verwendet ohne Unit-Namen einen Namen, den die Unit als Routine, Konstante oder Variable deklariert, während die Klasse ein gleichnamiges Mitglied von einem Vorfahren erbt (Scaled aus TCustomForm, AddLabel eines Basisdialogs, Padding aus TControl). In Methoden löst Delphi den Namen zum Mitglied auf, nicht zum Namen der Unit, und meldet je nach Gebrauch E2066, E2010, E2015 oder E2034; Free Pascal nimmt unter Umständen den Namen der Unit und übersetzt. Ein Mitglied, das die Klasse selbst deklariert, ist gewollt und bleibt still, ebenso lokale Namen, qualifizierte Namen und Code in with. Vorfahren außerhalb der Datei kommen aus dem Symbolindex; ohne Index bleibt die Regel für sie still. Korrektur (nicht sicher, vielleicht ist das Mitglied gemeint): Unit-Namen davor setzen oder die Routine umbenennen.
+
+Entspricht der Compilermeldung `E2066`, `E2010`, `E2015`, `E2034`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+function Scaled(AValue: Integer): Integer;
+…
+function TFenster.Breite: Integer;
+begin
+  Result := Scaled(4); // TCustomForm.Scaled
+end;
+```
+
+Richtig:
+
+```pascal
+function TFenster.Breite: Integer;
+begin
+  Result := U.Scaled(4);
+end;
 ```
 
 <a id="stream-write-nativeint"></a>

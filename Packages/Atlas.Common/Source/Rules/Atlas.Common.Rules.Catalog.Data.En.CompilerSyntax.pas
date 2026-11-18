@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerSyntax: array[0..696] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..726] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',
@@ -715,6 +715,39 @@ const
     '      ],',
     '      "level": "A",',
     '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "enum-hides-keyword",',
+    '      "name": "Enumeration value hides a standard procedure",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "An enumeration declared without {$SCOPEDENUMS ON} has a value Continue, Break, Exit or Halt. The value hides the standard procedure of the same name in every unit that sees the t' +
+    'ype: Continue; becomes an expression statement there (E2014), and in a unit without such a statement the trap only fires later. The state of {$SCOPEDENUMS} is taken from the last directive before the ' +
+    'type. No quick fix: {$SCOPEDENUMS ON} changes every use of the values, renaming changes the type.",',
+    '      "bad": "type\n  TReopenedAction = (Continue, Dismiss, Reason);",',
+    '      "good": "{$SCOPEDENUMS ON}\ntype\n  TReopenedAction = (Continue, Dismiss, Reason);\n{$SCOPEDENUMS OFF}",',
+    '      "compilerCodes": [',
+    '        "E2014"',
+    '      ],',
+    '      "level": "A",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "inline-reference-type",',
+    '      "name": "reference to without a named type",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A field or variable has the type reference to procedure … or reference to function … directly. Delphi only accepts method reference types in a type declaration and reports E2003 ' +
+    'for ''reference'' followed by many follow-up errors; Free Pascal compiles the declaration. No quick fix: declare a named type and use it.",',
+    '      "bad": "type\n  TReopened = record\n    Peek: reference to function(const A: string): Boolean;\n  end;",',
+    '      "good": "type\n  TPeek = reference to function(const A: string): Boolean;\n  TReopened = record\n    Peek: TPeek;\n  end;",',
+    '      "compilerCodes": [',
+    '        "E2003"',
+    '      ],',
+    '      "level": "A",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "stream-write-nativeint",',
