@@ -139,7 +139,7 @@ begin
   begin
     FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)', [mRemoved, ASettings.IndexCacheMaxMb]));
     // Auch ins Diagnose-Log: Ohne --log stand es nirgends, und gelöschte Caches anderer Projektgruppen sahen
-    // aus wie ein Cache, der nicht greift (29.10.2026).
+    // aus wie ein Cache, der nicht greift.
     FEvents.IndexEvent(Format('index project#%d cacheCleanup removed %d limit %d MB', [FSetup.Priority, mRemoved,
       ASettings.IndexCacheMaxMb]));
   end;

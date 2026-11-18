@@ -134,7 +134,6 @@ implementation
 uses
   Atlas.Core.Style.Color,
   System.Math,
-  Atlas.UI.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
@@ -143,64 +142,64 @@ uses
 type
   TCommandCaption = record
     Name: string;
-    Id: TAtlasTextId;
+    Id: TAtlasGenerateTextId;
   end;
 
 const
   // Eigene Beschriftungen der Schnellbefehle; die Kurzbeschreibungen des Servers gibt es nur auf Deutsch.
   cCommandCaptions: array[0..51] of TCommandCaption = (
-    (Name: 'ctor'; Id: TAtlasTextId.GenerateCmdCtor),
-    (Name: 'dtor'; Id: TAtlasTextId.GenerateCmdDtor),
-    (Name: 'prop'; Id: TAtlasTextId.GenerateCmdProp),
-    (Name: 'override'; Id: TAtlasTextId.GenerateCmdOverride),
-    (Name: 'implement'; Id: TAtlasTextId.GenerateCmdImplement),
-    (Name: 'equals'; Id: TAtlasTextId.GenerateCmdEquals),
-    (Name: 'impl'; Id: TAtlasTextId.GenerateCmdImpl),
-    (Name: 'field'; Id: TAtlasTextId.GenerateCmdField),
-    (Name: 'encapsulate'; Id: TAtlasTextId.GenerateCmdEncapsulate),
-    (Name: 'clone'; Id: TAtlasTextId.GenerateCmdClone),
-    (Name: 'assign'; Id: TAtlasTextId.GenerateCmdAssign),
-    (Name: 'json'; Id: TAtlasTextId.GenerateCmdJson),
-    (Name: 'msg'; Id: TAtlasTextId.GenerateCmdMsg),
-    (Name: 'notify'; Id: TAtlasTextId.GenerateCmdNotify),
-    (Name: 'changed'; Id: TAtlasTextId.GenerateCmdChanged),
-    (Name: 'loaded'; Id: TAtlasTextId.GenerateCmdLoaded),
-    (Name: 'notification'; Id: TAtlasTextId.GenerateCmdNotification),
-    (Name: 'singleton'; Id: TAtlasTextId.GenerateCmdSingleton),
-    (Name: 'list'; Id: TAtlasTextId.GenerateCmdList),
-    (Name: 'dict'; Id: TAtlasTextId.GenerateCmdDict),
-    (Name: 'dict!'; Id: TAtlasTextId.GenerateCmdDictBang),
-    (Name: 'operator'; Id: TAtlasTextId.GenerateCmdOperator),
-    (Name: 'guid'; Id: TAtlasTextId.GenerateCmdGuid),
-    (Name: 'var'; Id: TAtlasTextId.GenerateCmdVar),
-    (Name: 'const'; Id: TAtlasTextId.GenerateCmdConst),
-    (Name: 'const!'; Id: TAtlasTextId.GenerateCmdConstBang),
-    (Name: 'guard'; Id: TAtlasTextId.GenerateCmdGuard),
-    (Name: 'raise'; Id: TAtlasTextId.GenerateCmdRaise),
-    (Name: 'log'; Id: TAtlasTextId.GenerateCmdLog),
-    (Name: 'sql'; Id: TAtlasTextId.GenerateCmdSql),
-    (Name: 'params'; Id: TAtlasTextId.GenerateCmdParams),
-    (Name: 'record'; Id: TAtlasTextId.GenerateCmdRecord),
-    (Name: 'enum'; Id: TAtlasTextId.GenerateCmdEnum),
-    (Name: 'enum!'; Id: TAtlasTextId.GenerateCmdEnumBang),
-    (Name: 'helper'; Id: TAtlasTextId.GenerateCmdHelper),
-    (Name: 'exception'; Id: TAtlasTextId.GenerateCmdException),
-    (Name: 'thread'; Id: TAtlasTextId.GenerateCmdThread),
-    (Name: 'external'; Id: TAtlasTextId.GenerateCmdExternal),
-    (Name: 'exports'; Id: TAtlasTextId.GenerateCmdExports),
-    (Name: 'todo'; Id: TAtlasTextId.GenerateCmdTodo),
-    (Name: 'try'; Id: TAtlasTextId.GenerateCmdTry),
-    (Name: 'except'; Id: TAtlasTextId.GenerateCmdExcept),
-    (Name: 'lock'; Id: TAtlasTextId.GenerateCmdLock),
-    (Name: 'sync'; Id: TAtlasTextId.GenerateCmdSync),
-    (Name: 'sync!'; Id: TAtlasTextId.GenerateCmdSyncBang),
-    (Name: 'ifdef'; Id: TAtlasTextId.GenerateCmdIfdef),
-    (Name: 'region'; Id: TAtlasTextId.GenerateCmdRegion),
-    (Name: 'measure'; Id: TAtlasTextId.GenerateCmdMeasure),
-    (Name: 'task'; Id: TAtlasTextId.GenerateCmdTask),
-    (Name: 'future'; Id: TAtlasTextId.GenerateCmdFuture),
-    (Name: 'loop'; Id: TAtlasTextId.GenerateCmdLoop),
-    (Name: 'transaction'; Id: TAtlasTextId.GenerateCmdTransaction));
+    (Name: 'ctor'; Id: TAtlasGenerateTextId.GenerateCmdCtor),
+    (Name: 'dtor'; Id: TAtlasGenerateTextId.GenerateCmdDtor),
+    (Name: 'prop'; Id: TAtlasGenerateTextId.GenerateCmdProp),
+    (Name: 'override'; Id: TAtlasGenerateTextId.GenerateCmdOverride),
+    (Name: 'implement'; Id: TAtlasGenerateTextId.GenerateCmdImplement),
+    (Name: 'equals'; Id: TAtlasGenerateTextId.GenerateCmdEquals),
+    (Name: 'impl'; Id: TAtlasGenerateTextId.GenerateCmdImpl),
+    (Name: 'field'; Id: TAtlasGenerateTextId.GenerateCmdField),
+    (Name: 'encapsulate'; Id: TAtlasGenerateTextId.GenerateCmdEncapsulate),
+    (Name: 'clone'; Id: TAtlasGenerateTextId.GenerateCmdClone),
+    (Name: 'assign'; Id: TAtlasGenerateTextId.GenerateCmdAssign),
+    (Name: 'json'; Id: TAtlasGenerateTextId.GenerateCmdJson),
+    (Name: 'msg'; Id: TAtlasGenerateTextId.GenerateCmdMsg),
+    (Name: 'notify'; Id: TAtlasGenerateTextId.GenerateCmdNotify),
+    (Name: 'changed'; Id: TAtlasGenerateTextId.GenerateCmdChanged),
+    (Name: 'loaded'; Id: TAtlasGenerateTextId.GenerateCmdLoaded),
+    (Name: 'notification'; Id: TAtlasGenerateTextId.GenerateCmdNotification),
+    (Name: 'singleton'; Id: TAtlasGenerateTextId.GenerateCmdSingleton),
+    (Name: 'list'; Id: TAtlasGenerateTextId.GenerateCmdList),
+    (Name: 'dict'; Id: TAtlasGenerateTextId.GenerateCmdDict),
+    (Name: 'dict!'; Id: TAtlasGenerateTextId.GenerateCmdDictBang),
+    (Name: 'operator'; Id: TAtlasGenerateTextId.GenerateCmdOperator),
+    (Name: 'guid'; Id: TAtlasGenerateTextId.GenerateCmdGuid),
+    (Name: 'var'; Id: TAtlasGenerateTextId.GenerateCmdVar),
+    (Name: 'const'; Id: TAtlasGenerateTextId.GenerateCmdConst),
+    (Name: 'const!'; Id: TAtlasGenerateTextId.GenerateCmdConstBang),
+    (Name: 'guard'; Id: TAtlasGenerateTextId.GenerateCmdGuard),
+    (Name: 'raise'; Id: TAtlasGenerateTextId.GenerateCmdRaise),
+    (Name: 'log'; Id: TAtlasGenerateTextId.GenerateCmdLog),
+    (Name: 'sql'; Id: TAtlasGenerateTextId.GenerateCmdSql),
+    (Name: 'params'; Id: TAtlasGenerateTextId.GenerateCmdParams),
+    (Name: 'record'; Id: TAtlasGenerateTextId.GenerateCmdRecord),
+    (Name: 'enum'; Id: TAtlasGenerateTextId.GenerateCmdEnum),
+    (Name: 'enum!'; Id: TAtlasGenerateTextId.GenerateCmdEnumBang),
+    (Name: 'helper'; Id: TAtlasGenerateTextId.GenerateCmdHelper),
+    (Name: 'exception'; Id: TAtlasGenerateTextId.GenerateCmdException),
+    (Name: 'thread'; Id: TAtlasGenerateTextId.GenerateCmdThread),
+    (Name: 'external'; Id: TAtlasGenerateTextId.GenerateCmdExternal),
+    (Name: 'exports'; Id: TAtlasGenerateTextId.GenerateCmdExports),
+    (Name: 'todo'; Id: TAtlasGenerateTextId.GenerateCmdTodo),
+    (Name: 'try'; Id: TAtlasGenerateTextId.GenerateCmdTry),
+    (Name: 'except'; Id: TAtlasGenerateTextId.GenerateCmdExcept),
+    (Name: 'lock'; Id: TAtlasGenerateTextId.GenerateCmdLock),
+    (Name: 'sync'; Id: TAtlasGenerateTextId.GenerateCmdSync),
+    (Name: 'sync!'; Id: TAtlasGenerateTextId.GenerateCmdSyncBang),
+    (Name: 'ifdef'; Id: TAtlasGenerateTextId.GenerateCmdIfdef),
+    (Name: 'region'; Id: TAtlasGenerateTextId.GenerateCmdRegion),
+    (Name: 'measure'; Id: TAtlasGenerateTextId.GenerateCmdMeasure),
+    (Name: 'task'; Id: TAtlasGenerateTextId.GenerateCmdTask),
+    (Name: 'future'; Id: TAtlasGenerateTextId.GenerateCmdFuture),
+    (Name: 'loop'; Id: TAtlasGenerateTextId.GenerateCmdLoop),
+    (Name: 'transaction'; Id: TAtlasGenerateTextId.GenerateCmdTransaction));
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -232,7 +231,7 @@ begin
   begin
     if SameText(mItem.Name, AEntry.Name) then
     begin
-      Exit(TAtlasStrings.Text(mItem.Id));
+      Exit(TAtlasGenerateStrings.Text(mItem.Id));
     end;
   end;
   if Result = '' then
