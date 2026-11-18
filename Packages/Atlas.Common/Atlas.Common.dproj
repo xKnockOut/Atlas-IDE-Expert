@@ -178,6 +178,8 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.SuppressionStats.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.MessageCatalog.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CompilerPitfalls.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CompilerPitfallFixes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Architecture.pas"/>
@@ -703,6 +705,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeIndex.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CompilerMessageTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditTools.pas"/>

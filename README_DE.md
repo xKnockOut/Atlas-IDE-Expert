@@ -165,6 +165,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
+- **Compilermeldungen erklären:** `explain_compiler_message` nennt zu Meldungen wie E2010 die Ursache an der Stelle, die bekannte Delphi-Falle dahinter (z. B. zwei gleiche Methodenreferenztypen unter Delphi 12, `TMonitor` aus `Vcl.Forms`, `Exit([...])`), die Atlas-Regel, die sie schon beim Tippen meldet, und eine sichere Korrektur als Diff; `build_project` und `get_last_build` verweisen darauf
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

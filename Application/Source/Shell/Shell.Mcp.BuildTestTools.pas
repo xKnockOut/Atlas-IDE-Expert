@@ -2,15 +2,16 @@
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge für Builds in der IDE und DUnitX-Testläufe
 // (get_last_build, build_project, run_tests), das Profil aus „Mit Profil ausführen“ (get_profile, #2057) und die
-// Mutanten einer Unit (get_mutants, #1460) und Grenzfälle einer Routine als Testfälle (suggest_test_cases, #2173).
+// Mutanten einer Unit (get_mutants, #1460), Grenzfälle einer Routine als Testfälle (suggest_test_cases, #2173) und
+// die Erklärung von Compilermeldungen an ihrer Stelle (explain_compiler_message, #2621).
 
 interface
 
 uses
   Shell.Mcp.Context;
 
-/// <summary>Meldet get_last_build, build_project, run_tests, get_profile, get_mutants und suggest_test_cases an.
-/// </summary>
+/// <summary>Meldet get_last_build, build_project, run_tests, get_profile, get_mutants, suggest_test_cases und
+/// explain_compiler_message an.</summary>
 procedure RegisterBuildTestTools(const AContext: TMcpToolContext);
 
 implementation
@@ -44,6 +45,10 @@ uses
   Atlas.Common.Mutation.Report,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.BoundaryCases,
+  Atlas.Common.Mcp.CompilerMessageTools,
+  Atlas.Common.Mcp.IndexTools,
+  Atlas.Common.Mcp.Paths,
+  Atlas.Common.Configuration.Contract,
   Shell.Platform,
   Shell.Texts,
   Shell.Mcp.Ide,
@@ -58,7 +63,9 @@ type
     GetProfileFormat, GetProfileOwnCode,
     GetMutantsTool, GetMutantsFile, GetMutantsRoutine, GetMutantsOperators, GetMutantsFirstLine,
     GetMutantsLastLine, GetMutantsFormat, UnknownOperators, SourceUnreadable,
-    SuggestTool, SuggestFile, SuggestRoutine, SuggestLine, SuggestMax, SuggestFormat, SuggestNoRoutine);
+    SuggestTool, SuggestFile, SuggestRoutine, SuggestLine, SuggestMax, SuggestFormat, SuggestNoRoutine,
+    ExplainTool, ExplainCode, ExplainMessage, ExplainFile, ExplainLine, ExplainColumn, ExplainMessages,
+    ExplainDelphiVersion, ExplainFormat);
 {$SCOPEDENUMS OFF}
 
 const
@@ -172,7 +179,30 @@ const
     (De: 'Höchstens so viele Fälle; Vorgabe 20, 1 bis 200'; En: 'At most this many cases; default 20, 1 to 200'),
     (De: 'markdown (Vorgabe) oder json'; En: 'markdown (default) or json'),
     (De: 'Keine Routine mit Rumpf in %s (routine oder line angeben)';
-    En: 'No routine with a body in %s (give routine or line)'));
+    En: 'No routine with a body in %s (give routine or line)'),
+    (De: 'Erklärt Compilermeldungen an ihrer Stelle (#2621): je Meldung die allgemeine Erklärung (Name, Ursache, ' +
+    'Beispiel), die passende bekannte Delphi-Falle mit dem Merkmal im Code (z. B. zwei gleich gebaute ' +
+    'Methodenreferenztypen unter Delphi 12, TMonitor aus Vcl.Forms, Exit([...]), Units, die Free Pascal nicht ' +
+    'verlangt), die Atlas-Regel, die das schon beim Tippen meldet, und eine Korrektur: als Diff, wenn sie sicher ' +
+    'ist, sonst als Text. Mehrere Meldungen auf einmal über messages (z. B. aus build_project oder ' +
+    'get_last_build); Folgefehler sind markiert. Ohne file und line nur die allgemeine Erklärung. Lesend.';
+    En: 'Explains compiler messages at their place (#2621): for each message the general explanation (name, ' +
+    'cause, example), the matching known Delphi pitfall with its mark in the code (e.g. two method reference ' +
+    'types of the same shape under Delphi 12, TMonitor from Vcl.Forms, Exit([...]), units Free Pascal does not ' +
+    'require), the Atlas rule that reports it while typing, and a fix: as a diff when it is safe, otherwise as ' +
+    'text. Several messages at once via messages (e.g. from build_project or get_last_build); follow-up errors ' +
+    'are marked. Without file and line only the general explanation. Read-only.'),
+    (De: 'Meldungsnummer, z. B. E2010; leer = aus message'; En: 'Message number, e.g. E2010; empty = from message'),
+    (De: 'Meldungstext, deutsch oder englisch'; En: 'Message text, German or English'),
+    (De: 'Datei der Meldung (relativ zum Projekt oder absolut)';
+    En: 'File of the message (relative to the project or absolute)'),
+    (De: 'Zeile der Meldung (ab 1)'; En: 'Line of the message (from 1)'),
+    (De: 'Spalte der Meldung (ab 1), optional'; En: 'Column of the message (from 1), optional'),
+    (De: 'Mehrere Meldungen statt der Einzelfelder, je mit code, message, file, line, column';
+    En: 'Several messages instead of the single fields, each with code, message, file, line, column'),
+    (De: 'Delphi-Version für die DocWiki-Links, z. B. 12 oder 37.0; leer = delphiVersion aus atlas.json';
+    En: 'Delphi version for the DocWiki links, e.g. 12 or 37.0; empty = delphiVersion from atlas.json'),
+    (De: 'text (Vorgabe) oder json'; En: 'text (default) or json'));
 
 function ReadSourceLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 var
@@ -652,6 +682,66 @@ begin
     ContextTool(AContext, ToolSuggestTestCases));
 end;
 
+/// <summary>Liest Dateien unter ARoot (relativ oder absolut); False für Dateien außerhalb, z. B. Meldungen zur RTL.
+/// </summary>
+function WorkspaceReader(const ARoot: string): TMcpReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      mPath: string;
+    begin
+      AText := '';
+      mPath := AFileName;
+      if not TPath.IsPathRooted(mPath) then
+      begin
+        mPath := TPath.Combine(ARoot, mPath);
+      end;
+      Result := TMcpPathGuard.Contains(ARoot, mPath) and ReadSourceText(TPath.GetFullPath(mPath), AText);
+    end;
+end;
+
+function ToolExplainCompilerMessage(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mRequest: TMcpExplainRequest;
+begin
+  mRequest := Default(TMcpExplainRequest);
+  mRequest.Messages := TMcpCompilerMessageTools.MessagesOf(AArguments);
+  mRequest.DelphiVersion := BdsVersionOf(TMcpArgs.OptionalString(AArguments, 'delphiVersion'));
+  if mRequest.DelphiVersion = '' then
+  begin
+    mRequest.DelphiVersion := AContext.Group.Main.Configuration.Settings.DelphiVersion;
+  end;
+  mRequest.Json := SameText(TMcpArgs.OptionalString(AArguments, 'format'), 'json');
+  mRequest.ReadText := WorkspaceReader(AContext.Root);
+  Result := TMcpCompilerMessageTools.Explain(mRequest);
+end;
+
+procedure AddExplainCompilerMessage(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('explain_compiler_message', cTexts[TMcpBuildTestText.ExplainTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"code":{"type":"string","description":%s},' +
+      '"message":{"type":"string","description":%s},' +
+      '"file":{"type":"string","description":%s},' +
+      '"line":{"type":"integer","minimum":1,"description":%s},' +
+      '"column":{"type":"integer","minimum":1,"description":%s},' +
+      '"messages":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},' +
+      '"message":{"type":"string"},"file":{"type":"string"},"line":{"type":"integer"},' +
+      '"column":{"type":"integer"}}},"description":%s},' +
+      '"delphiVersion":{"type":"string","description":%s},' +
+      '"format":{"type":"string","enum":["text","json"],"description":%s}}}',
+      [cTexts[TMcpBuildTestText.ExplainCode].Text,
+      cTexts[TMcpBuildTestText.ExplainMessage].Text,
+      cTexts[TMcpBuildTestText.ExplainFile].Text,
+      cTexts[TMcpBuildTestText.ExplainLine].Text,
+      cTexts[TMcpBuildTestText.ExplainColumn].Text,
+      cTexts[TMcpBuildTestText.ExplainMessages].Text,
+      cTexts[TMcpBuildTestText.ExplainDelphiVersion].Text,
+      cTexts[TMcpBuildTestText.ExplainFormat].Text]),
+    ContextTool(AContext, ToolExplainCompilerMessage));
+end;
+
 procedure RegisterBuildTestTools(const AContext: TMcpToolContext);
 begin
   AddGetLastBuild(AContext);
@@ -660,6 +750,7 @@ begin
   AddGetProfile(AContext);
   AddGetMutants(AContext);
   AddSuggestTestCases(AContext);
+  AddExplainCompilerMessage(AContext);
 end;
 
 initialization
