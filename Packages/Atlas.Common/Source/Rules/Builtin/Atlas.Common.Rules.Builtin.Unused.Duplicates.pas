@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Unused.Duplicates;
 
-// duplicate-assignment (#1051), aus Atlas.Common.Rules.Builtin.Unused herausgelöst; angemeldet wird die Regel
-// weiter über RegisterUnusedRules. Beschreibung der Regel siehe dort.
+// duplicate-assignment (#1051), Teil von Atlas.Common.Rules.Builtin.Unused; angemeldet wird die Regel
+// über RegisterUnusedRules. Beschreibung der Regel siehe dort.
 
 interface
 

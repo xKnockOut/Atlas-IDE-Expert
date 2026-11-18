@@ -23,6 +23,9 @@ type
     cPadding = 9;
     /// <summary>Abstand zwischen Beschriftung und Wert.</summary>
     cGap = 16;
+  private const
+    /// <summary>Abstand zwischen Kopfzeile und erster Zeile in logischen Pixeln.</summary>
+    cTitleGap = 4;
   private
     FCard: TAtlasCrumbCard;
     FCaptions: TArray<string>;
@@ -78,7 +81,7 @@ begin
   mArea := Rect(Scale(cPadding), mTop, ClientWidth - Scale(cPadding), mTop + mLine);
   Canvas.Font.Color := ToColor(Colors.Text);
   DrawText(Canvas.Handle, PChar(FCard.Title), -1, mArea, DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Inc(mTop, mLine + Scale(4));
+  Inc(mTop, mLine + Scale(cTitleGap));
   mValueLeft := Scale(cPadding) + FCaptionWidth + Scale(cGap);
   for mIndex := 0 to High(FCaptions) do
   begin
@@ -174,8 +177,8 @@ begin
   end;
   mWidth := Min(Max(mWidth, Canvas.TextWidth(ACard.Title)), Scale(cMaxWidth));
   Result.cx := mWidth + 2 * Scale(cPadding);
-  // Kopfzeile, Abstand 4, je Zeile eine Höhe, Padding unten.
-  Result.cy := Scale(cPadding) + LineHeight + Scale(4) + Length(FCaptions) * LineHeight + Scale(cPadding);
+  // Kopfzeile, Abstand cTitleGap, je Zeile eine Höhe, Padding unten.
+  Result.cy := Scale(cPadding) + LineHeight + Scale(cTitleGap) + Length(FCaptions) * LineHeight + Scale(cPadding);
 end;
 
 class function TAtlasCrumbCardTip.RowCaption(const ARow: TAtlasCardRow): string;

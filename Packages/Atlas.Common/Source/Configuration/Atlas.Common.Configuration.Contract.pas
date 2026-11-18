@@ -1548,7 +1548,7 @@ begin
   ASettings.IndexCacheMaxAgeDays := 14;
   // Ein Bibliotheks-Cache allein hat rund 85 MB (RTL, VCL, FMX je Plattform), ein Projekt 1-10 MB. Mit 256 MB
   // passten keine zwei Projektgruppen hinein: Jedes Öffnen der einen löschte die Caches der anderen, die dann
-  // komplett neu eingelesen wurde (XML-Inspector und Atlas im Wechsel, 29.10.2026).
+  // komplett neu eingelesen wurde (zwei Projektgruppen im Wechsel).
   ASettings.IndexCacheMaxMb := 1024;
 end;
 

@@ -19,8 +19,7 @@
 //                              #1380), auf ein Mitglied, das kein Feld ist
 //                              (E2461), oder auf ein fehlendes Feld (E2562).
 //                              Delphi 13 meldet falsche Signaturen und das Feld
-//                              hinter einer Array-Property als E2008 (dcc-Lauf
-//                              vom 29.10.2026, #1369).
+//                              hinter einer Array-Property als E2008 (#1369).
 //   default-property-invalid   default falsch (#1073): an einer Property ohne
 //                              Index (E2132), zweite default-Property mit
 //                              denselben Indextypen oder mit einem anderen
