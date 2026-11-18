@@ -30,15 +30,14 @@
 //   Timing ist eine abstrakte Klasse, damit diese Unit den Rekorder
 //   (Atlas.Core.Diagnostics.PluginTimings) nicht kennen muss.
 // - RunIde: Arbeit der IDE innerhalb eines Atlas-Aufrufs (Projekt öffnen).
-//   Ihre Zeit zählt wie ein modaler Dialog nicht als Zeit von Atlas; vorher
-//   stand das Projektladen als 13,9 s der Willkommensseite da (#1987).
+//   Ihre Zeit zählt wie ein modaler Dialog nicht als Zeit von Atlas; sonst
+//   stünde das Projektladen als Zeit der Willkommensseite da (#1987).
 //   Exceptions laufen unverändert zum äußeren Run.
 // - Laufende Funktion für den Einfrier-Wächter (#1988): Run legt das Feature
 //   im Hauptthread auf einen kleinen Stapel fester Größe (ohne Sperre und
 //   ohne Speicher), RunIde einen Eintrag „IDE“. CurrentFeatureName liest ihn
-//   aus dem Wächter-Thread; vorher nannte ein Hänger nur Aktionen mit
-//   TAtlasActivity.Scope, und die meisten Einstiegspunkte (Zeichnen, Timer,
-//   Notifier) liefen als „ohne Atlas“.
+//   aus dem Wächter-Thread; so nennt ein Hänger auch Einstiegspunkte ohne
+//   TAtlasActivity.Scope (Zeichnen, Timer, Notifier) statt „ohne Atlas“.
 // - Disable schaltet ein Feature wie die Sicherung ab, auf Wunsch aus dem
 //   Diagnose-Fenster; wieder an wie nach der Sicherung (Menü Atlas).
 // - TAtlasRotatingLog: Protokoll unter %LOCALAPPDATA%\Atlas\Logs, höchstens
@@ -395,7 +394,7 @@ begin
     FRotateError := '';
   except
     // Rotieren gescheitert (z. B. eine ältere Datei ist woanders gesperrt): trotzdem anhängen, die Datei wird
-    // dann größer. Früher ging dabei auch die Zeile verloren, bei jedem Versuch wieder.
+    // dann größer, aber die Zeile geht nicht verloren.
     on E: Exception do
     begin
       if E.Message <> FRotateError then

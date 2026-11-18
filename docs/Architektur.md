@@ -186,7 +186,7 @@ Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für
 
 Unit-Köpfe und Kommentare beschreiben den heutigen Entwurf und seinen Grund, nicht seine Geschichte. Ein Grund lässt sich fast immer ohne „früher“ sagen: „sonst …“, „damit …“, „statt …“. Wann und warum etwas umgebaut wurde, steht im Issue und in der Git-Historie; die Issue-Nummer im Kommentar genügt als Verweis. Umzüge zwischen Units oder Packages („seit #… im Modul“, „bis #… in …“) gehören nicht in den Kommentar.
 
-Verweise zeigen nur auf Quellen, die im Repository liegen oder öffentlich sind (Issues, Dateien, Dokumentation). Steht eine Entscheidung woanders, gehört ihr Grund in einem Halbsatz an die Stelle.
+Verweise zeigen nur auf Quellen, die im Repository liegen oder öffentlich sind (Issues, Dateien, Dokumentation). Steht eine Entscheidung woanders, gehört ihr Grund in einem Halbsatz an die Stelle. Das gilt auch für Mockups, Entwurfsrunden und Varianten aus Gesprächen und für datierte Quellen wie „Diagnoselog vom …“ oder „Rückmeldung vom …“: An ihre Stelle tritt die Messung oder der Grund selbst („gemessen 3 GB bei acht Projekten“, „sonst …“).
 
 ## Tests
 

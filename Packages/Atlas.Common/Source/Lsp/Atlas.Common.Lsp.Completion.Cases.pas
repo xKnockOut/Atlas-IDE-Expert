@@ -2,8 +2,8 @@
 
 // Die Fälle von textDocument/completion in fester Reihenfolge: ohne Syntaxbaum
 // (Schnellbefehle, Direktiven, Feldnamen in Strings, Wertdarstellungen) und mit Baum und Resolver (Angebote
-// oben in der Liste, exklusive Listen, die allgemeine Liste, Code-Vorlagen, Deklarieren). Aus
-// Atlas.Common.Lsp.Completion herausgelöst.
+// oben in der Liste, exklusive Listen, die allgemeine Liste, Code-Vorlagen, Deklarieren). Teil der
+// Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

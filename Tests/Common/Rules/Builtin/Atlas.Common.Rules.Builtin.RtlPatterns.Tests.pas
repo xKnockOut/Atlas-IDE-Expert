@@ -188,7 +188,7 @@ var
   mTree: TSyntaxTree;
   mFindings: TArray<TRuleFinding>;
 begin
-  // FP-Prüfung 28.10.2026 (F08): "Top := Top" ruft den Setter auf und ist gewollt; nur Left schreibt ein Feld.
+  // "Top := Top" ruft den Setter auf und ist gewollt; nur Left schreibt ein Feld.
   mIndex := TSymbolIndex.Create;
   mTree := TPascalParser.Parse(cSource);
   try

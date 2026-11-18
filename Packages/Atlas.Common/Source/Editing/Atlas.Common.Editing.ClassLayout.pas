@@ -298,8 +298,6 @@ type
     function DocStart(ALine: Integer): Integer;
     function TokenRange(AFirstOffset, ALastOffset: Integer; out AFirst, ALast: Integer): Boolean;
     function AfterClass(AOffset: Integer): Boolean;
-    function SkipTrivia(AIndex, ALast: Integer): Integer;
-    function ClosingParen(AOpen, ALast: Integer): Integer;
     function FirstAttribute: TSyntaxNode;
     function IsInInterface: Boolean;
     procedure ReadAncestors;
@@ -534,42 +532,6 @@ begin
   Result := (mIndex >= 0) and FTokens[mIndex].IsKeyword('class');
 end;
 
-/// <summary>Erstes Token ab AIndex, das kein Kommentar und keine Direktive ist; ALast + 1 ohne.</summary>
-function TClassLayoutReader.SkipTrivia(AIndex, ALast: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= ALast) and IsTrivia(FTokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-/// <summary>Offset der Klammer, die die Klammer am Token AOpen schließt; -1 ohne bis ALast.</summary>
-function TClassLayoutReader.ClosingParen(AOpen, ALast: Integer): Integer;
-var
-  mIndex, mDepth: Integer;
-begin
-  Result := -1;
-  mDepth := 0;
-  mIndex := AOpen;
-  while (mIndex <= ALast) and (Result < 0) do
-  begin
-    if FTokens[mIndex].IsSymbol('(') then
-    begin
-      Inc(mDepth);
-    end
-    else if FTokens[mIndex].IsSymbol(')') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Result := FTokens[mIndex].Offset;
-      end;
-    end;
-    Inc(mIndex);
-  end;
-end;
-
 /// <summary>Erstes der Attribute, die als Geschwister direkt vor der Deklaration stehen; nil ohne.</summary>
 function TClassLayoutReader.FirstAttribute: TSyntaxNode;
 var
@@ -630,7 +592,7 @@ end;
 /// <summary>Klammern der Vorfahrenliste und Stelle hinter class [abstract|sealed].</summary>
 procedure TClassLayoutReader.ReadHeritage;
 var
-  mFirst, mLast, mIndex: Integer;
+  mFirst, mLast, mIndex, mClose: Integer;
   mClass: TSyntaxNode;
 begin
   mClass := FLayout.ClassNode;
@@ -641,17 +603,21 @@ begin
   begin
     Exit;
   end;
-  mIndex := SkipTrivia(mFirst + 1, mLast);
+  mIndex := NextCode(FTokens, mFirst + 1, mLast + 1);
   if (mIndex <= mLast) and (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
     MatchText(FTokens[mIndex].Text, ['abstract', 'sealed']) then
   begin
     FLayout.HeritageInsert := FTokens[mIndex].Offset + Length(FTokens[mIndex].Text);
-    mIndex := SkipTrivia(mIndex + 1, mLast);
+    mIndex := NextCode(FTokens, mIndex + 1, mLast + 1);
   end;
   if (mIndex <= mLast) and FTokens[mIndex].IsSymbol('(') then
   begin
     FLayout.HeritageOpen := FTokens[mIndex].Offset;
-    FLayout.HeritageClose := ClosingParen(mIndex, mLast);
+    mClose := MatchingParen(FTokens, mIndex, mLast + 1);
+    if mClose >= 0 then
+    begin
+      FLayout.HeritageClose := FTokens[mClose].Offset;
+    end;
   end;
 end;
 

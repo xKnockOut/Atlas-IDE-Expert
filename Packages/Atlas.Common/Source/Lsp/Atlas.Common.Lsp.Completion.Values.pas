@@ -2,7 +2,7 @@
 
 // Werte und Deklarationen in der Vervollständigung: Aufzählungen und Mengen (#448), fehlende case-Zweige
 // (#449, #50), Muster fortsetzen (#671), unbekannte Namen deklarieren (#471) und „Alle Felder zuweisen“
-// (#491). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// (#491). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

@@ -31,10 +31,10 @@
 //   auf den ersten und übernimmt sein Ergebnis; sonst parsten beim Start
 //   mehrere Anfrage-Threads und der Aufbau dieselben RTL-/VCL-Units doppelt.
 //   Verschiedene Units laufen parallel (#617).
-// - ReleaseCache gibt die Cache-Einträge nach dem Aufbau frei (Rückmeldung
-//   15.10.2026): Jeder Eintrag hält die ganze gelesene Cache-Datei; mit sechs
-//   Projekten lagen so Projekt- und Bibliotheks-Cache sechsmal im Speicher,
-//   obwohl der Index sie längst übernommen hatte.
+// - ReleaseCache gibt die Cache-Einträge nach dem Aufbau frei
+//   (Speicher): Jeder Eintrag hält die ganze gelesene Cache-Datei; mit sechs
+//   Projekten lägen so Projekt- und Bibliotheks-Cache sechsmal im Speicher,
+//   obwohl der Index sie längst übernommen hat.
 
 interface
 
@@ -47,9 +47,9 @@ uses
   Atlas.Common.Index.Cache;
 
 type
-  /// <summary>Warum der Builder eine Unit neu einlas statt aus dem Cache (Diagnoselog, Rückmeldung
-  /// 22.10.2026: bei jedem Start rund 2300 Units neu): kein Eintrag, Datei geändert, Include-Datei geändert,
-  /// Verwendungen fehlen, kompakter Eintrag nicht verwendbar, Block beschädigt.</summary>
+  /// <summary>Warum der Builder eine Unit neu einlas statt aus dem Cache, für das Diagnoselog
+  /// (sonst ist nicht zu sehen, warum ein Start Tausende Units neu liest): kein Eintrag, Datei geändert,
+  /// Include-Datei geändert, Verwendungen fehlen, kompakter Eintrag nicht verwendbar, Block beschädigt.</summary>
   TIndexCacheMiss = (NoEntry, Changed, Includes, Usages, Compact, Damaged);
 
   TIndexBuildResult = record
@@ -539,7 +539,7 @@ begin
   end;
   // Kompakten Einträgen fehlen die Symbole aus dem implementation-Teil. Für Bibliotheken reicht
   // das, solange ein Budget gilt: der Index würde sie ohnehin wieder kompakt halten. Sonst liefen
-  // bei knappem Budget alle Bibliotheken bei jedem Start durch den Parser (Diagnoselog 15.10.2026).
+  // bei knappem Budget alle Bibliotheken bei jedem Start durch den Parser.
   if AEntry.Header.Compact then
   begin
     Result := ALibrary and (FIndex.Budget > 0);
@@ -583,9 +583,9 @@ function TIndexBuilder.AlreadyIndexed(const AFileName: string; AStamp: Int64; AL
 var
   mExisting: TUnitIndex;
 begin
-  // Ohne diese Prüfung übernahm jedes Projekt einer Gruppe die gemeinsamen Units erneut (aus dem Cache oder
+  // Ohne diese Prüfung übernähme jedes Projekt einer Gruppe die gemeinsamen Units erneut (aus dem Cache oder
   // geparst) und ersetzte die des vorigen; die Namenslisten des Index behielten die ersetzten Einträge, bis es
-  // mehr tote als lebende gab (Speicher, Rückmeldung 01.11.2026). Bedingungen wie bei CacheFits.
+  // mehr tote als lebende gäbe. Bedingungen wie bei CacheFits.
   Result := FIndex.FindFile(AFileName, mExisting) and (mExisting.Stamp = AStamp) and
     (mExisting.DefinesKey <> '') and (mExisting.DefinesKey = FDefines.KeyOf(AFileName)) and
     (mExisting.Library_ = ALibrary) and IncludesUnchanged(FFileSystem, mExisting) and

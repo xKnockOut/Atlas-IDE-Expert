@@ -108,7 +108,7 @@ begin
     StopRuleChecksNotice);
   // Hinweis „kein Kommandozeilen-Compiler“ (#1822): einmal überhaupt, auch abgesichert (liest nur Dateien).
   Features.Add('EditionNotice', TAtlasSafeLevel.Safe, EditionNoticeStarted, StartEditionNotice, StopEditionNotice);
-  // Module unter „Known Packages“ (Meldung vom 05.11.2026): auch abgesichert, liest nur die Registry; meldet
+  // Module unter „Known Packages“: auch abgesichert, liest nur die Registry; meldet
   // fehlende Module und protokolliert Änderungen der Liste.
   Features.Add('KnownPackages', TAtlasSafeLevel.Safe, KnownPackagesStarted, StartKnownPackages, StopKnownPackages);
 end;

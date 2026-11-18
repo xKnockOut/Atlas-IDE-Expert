@@ -443,7 +443,7 @@ var
   mArea, mScreen: TRect;
 begin
   // Der Testlauf hat kein Hauptfenster: Dann begrenzt der Hauptmonitor die Dialoge.
-  Assert.IsTrue(Application.MainForm = nil, 'Testlauf ohne Hauptfenster');
+  Assert.IsNull(Application.MainForm, 'Testlauf ohne Hauptfenster');
   mArea := TAtlasDialog.MainFormWorkArea;
   mScreen := Screen.WorkAreaRect;
   Assert.AreEqual(mScreen.Left, mArea.Left);

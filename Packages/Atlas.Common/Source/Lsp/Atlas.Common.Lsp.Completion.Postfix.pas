@@ -2,7 +2,7 @@
 
 // Postfix-Vorlagen (#188): Hinter "Ausdruck." kommen nach den Mitgliedern Kürzel wie for, tryf, ifa und fmt,
 // die den Ausdruck ersetzen (textEdit ab Ausdrucksbeginn, filterText "Ausdruck.Kürzel"), sofern der Typ bekannt
-// ist und passt. Aus Atlas.Common.Lsp.Completion herausgelöst.
+// ist und passt. Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
