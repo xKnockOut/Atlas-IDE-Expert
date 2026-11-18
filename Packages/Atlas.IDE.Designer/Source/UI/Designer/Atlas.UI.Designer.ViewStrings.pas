@@ -40,7 +40,8 @@ type
     EmColFinding, EmGroupComponent, EmGroupEvent, EmGroupHandler, EmAllEvents, EmOnlyFindings, EmShow, EmRename,
     EmRemove, EmEmpty, EmUnassigned, EmMissing, EmNoBody, EmRenameTitle, EmRenamePrompt, EmRenameFailed, EmRemoved,
     EmRemoveFailed, EmAction, SettingsEventMap, SettingsDesktopLayout, SettingsDesktopName, SettingsDesktopReturn,
-    SettingsDesktopPrevious, SettingsDesktopDefault, SettingsDesktopSkipDebug, DesktopMissing, DesktopSaveCommand);
+    SettingsDesktopPrevious, SettingsDesktopDefault, SettingsDesktopSkipDebug, DesktopMissing, DesktopSaveCommand,
+    SettingsRememberButtons);
 
 {$SCOPEDENUMS OFF}
 
@@ -238,7 +239,8 @@ const
      'Standard-Layout der IDE laden',
      'Während des Debuggens nicht umschalten',
      'Desktop-Layout „%s“ für den Designer gibt es nicht. Mit „Aktuelles Layout als Designer-Layout speichern …“ im Atlas-Menü anlegen oder unter Atlas › Optionen › Editor einen anderen Namen eintragen.',
-     'Aktuelles Layout als Designer-Layout speichern …'),
+     'Aktuelles Layout als Designer-Layout speichern …',
+     'Zustand der Umschaltknöpfe (Datenbindung, Tab-Reihenfolge, Abstände, Griffe, Schnellleiste) über Neustarts merken'),
     ('Measure distances: guide lines while dragging, with Alt to the component under the mouse',
      'as above',
      'as below',
@@ -415,7 +417,8 @@ const
      'load the IDE default layout',
      'Do not switch while debugging',
      'There is no desktop layout “%s” for the designer. Create it with “Save current layout as designer layout …” in the Atlas menu or enter another name under Atlas › Options › Editor.',
-     'Save current layout as designer layout …'));
+     'Save current layout as designer layout …',
+     'Remember the state of the toggle buttons (data binding, tab order, distances, handles, quick bar) across restarts'));
 
 { TAtlasDesignerViewStrings }
 

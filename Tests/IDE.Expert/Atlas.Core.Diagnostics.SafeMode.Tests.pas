@@ -43,6 +43,8 @@ type
     [Test]
     procedure SettingsHistoryRestores;
     [Test]
+    procedure SettingsHistoryIgnoresStates;
+    [Test]
     procedure LogLinesOfCrashedSession;
     [Test]
     procedure MarkerFilesFindCrashedSessions;
@@ -58,10 +60,12 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
+  Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode;
@@ -352,6 +356,39 @@ begin
   Assert.AreEqual('DebugHoverValues', mKeys[6]);
   Assert.AreEqual(0, Integer(Length(TAtlasSafeMode.Suggest(mToggles, nil, TAtlasSessionMarker.Create(1, '', 0)))));
   Assert.IsTrue(Length(TAtlasSafeMode.Details(mMarker)) >= 5);
+end;
+
+procedure TAtlasSafeModeTests.SettingsHistoryIgnoresStates;
+var
+  mCatalog: TAtlasSettingsCatalog;
+  mHistory: TAtlasSettingsHistory;
+  mState, mBoth: TAtlasPluginSettings;
+  mKeys: TArray<string>;
+begin
+  mHistory := TAtlasSettingsHistory.Create;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  try
+    mHistory.Ignored := TAtlasSettingsHistory.StateNames(mCatalog);
+    Assert.IsTrue(MatchText('DesignerBarButtons', mHistory.Ignored), 'Zustand der Designer-Knöpfe');
+    Assert.IsFalse(MatchText('DesignerRememberButtons', mHistory.Ignored), 'echte Einstellung');
+    // Nur ein Zustand geändert (Klick auf einen Knopf): kein neuer Stand.
+    mState := TAtlasPluginSettings.Defaults;
+    mState.DesignerBarButtons := 'dataBindings=1';
+    mHistory.Push(TAtlasPluginSettings.Defaults, mState, EncodeDateTime(2026, 11, 18, 8, 0, 0, 0), 5);
+    Assert.AreEqual(0, Integer(mHistory.Count));
+    // Mit echter Änderung: Stand gemerkt, der Zustand steht nicht unter den geänderten Namen.
+    mBoth := mState;
+    mBoth.PairColors := not mBoth.PairColors;
+    mBoth.DesignerBarButtons := 'dataBindings=0';
+    mHistory.Push(mState, mBoth, EncodeDateTime(2026, 11, 18, 9, 0, 0, 0), 5);
+    Assert.AreEqual(1, Integer(mHistory.Count));
+    mKeys := mHistory.LastChangedKeys(mBoth);
+    Assert.AreEqual(1, Integer(Length(mKeys)));
+    Assert.AreEqual('PairColors', mKeys[0]);
+  finally
+    mCatalog.Free;
+    mHistory.Free;
+  end;
 end;
 
 procedure TAtlasSafeModeTests.SettingsHistoryRestores;

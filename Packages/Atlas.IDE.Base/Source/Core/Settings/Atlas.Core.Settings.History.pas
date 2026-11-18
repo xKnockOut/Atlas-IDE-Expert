@@ -9,6 +9,9 @@
 // legt die Liste als JSON unter %APPDATA%\Atlas ab.
 // TAtlasMemorySettingsStore hält Einstellungen im Arbeitsspeicher, mit den
 // Namen, die TAtlasPluginSettings.Save schreibt.
+// Zustände (x-state, z. B. gemerkte Knöpfe und Breiten, #2546) zählen nicht
+// als Änderung (Ignored): Ein Klick soll keinen echten Stand verdrängen und
+// nicht als zuletzt geänderte Einstellung erscheinen.
 
 interface
 
@@ -16,7 +19,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Catalog;
 
 type
   /// <summary>Einstellungen im Arbeitsspeicher; Namen ohne Groß-/Kleinschreibung wie in der Registry.</summary>
@@ -69,7 +73,10 @@ type
     cMaxKeep = 50;
   private
     FSnapshots: TList<TAtlasSettingsSnapshot>;
+    FIgnored: TArray<string>;
     function GetCount: Integer;
+    /// <summary>Differences ohne die Namen in Ignored.</summary>
+    function Changes(const ALeft, ARight: TAtlasPluginSettings): TArray<string>;
     function GetSnapshot(AIndex: Integer): TAtlasSettingsSnapshot;
   public
     constructor Create;
@@ -91,13 +98,17 @@ type
     property Snapshots[AIndex: Integer]: TAtlasSettingsSnapshot read GetSnapshot; default;
     /// <summary>Unterschiedliche Namen zwischen zwei Ständen.</summary>
     class function Differences(const ALeft, ARight: TAtlasPluginSettings): TArray<string>; static;
+    /// <summary>Namen der Zustände (x-state) des Plugins in ACatalog, für Ignored.</summary>
+    class function StateNames(ACatalog: TAtlasSettingsCatalog): TArray<string>; static;
+    /// <summary>Namen, die für Push, ChangedKeys und LastChangedKeys nicht als Änderung zählen.</summary>
+    property Ignored: TArray<string> read FIgnored write FIgnored;
   end;
 
 implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.Settings.Catalog,
+  System.StrUtils,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.QueryMigration,
   Atlas.Text.Timestamps;
@@ -279,7 +290,7 @@ procedure TAtlasSettingsHistory.Push(const ABefore, AAfter: TAtlasPluginSettings
 var
   mSnapshot: TAtlasSettingsSnapshot;
 begin
-  if Length(Differences(ABefore, AAfter)) = 0 then
+  if Length(Changes(ABefore, AAfter)) = 0 then
   begin
     Exit;
   end;
@@ -302,7 +313,35 @@ end;
 
 function TAtlasSettingsHistory.ChangedKeys(AIndex: Integer; const ACurrent: TAtlasPluginSettings): TArray<string>;
 begin
-  Result := Differences(FSnapshots[AIndex].Settings, ACurrent);
+  Result := Changes(FSnapshots[AIndex].Settings, ACurrent);
+end;
+
+function TAtlasSettingsHistory.Changes(const ALeft, ARight: TAtlasPluginSettings): TArray<string>;
+var
+  mName: string;
+begin
+  Result := nil;
+  for mName in Differences(ALeft, ARight) do
+  begin
+    if not MatchText(mName, FIgnored) then
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+end;
+
+class function TAtlasSettingsHistory.StateNames(ACatalog: TAtlasSettingsCatalog): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ACatalog.Count - 1 do
+  begin
+    if ACatalog[mIndex].State and (ACatalog[mIndex].Source = asPlugin) then
+    begin
+      Result := Result + [ACatalog[mIndex].Name];
+    end;
+  end;
 end;
 
 function TAtlasSettingsHistory.LastChangedKeys(const ACurrent: TAtlasPluginSettings): TArray<string>;

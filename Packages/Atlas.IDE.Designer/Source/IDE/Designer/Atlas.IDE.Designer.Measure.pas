@@ -13,7 +13,8 @@
 //   Maus, ohne etwas zu verändern.
 // - Werte in Pixeln der DFM: Lagen werden mit PixelsPerInch des Formulars zu
 //   seiner aktuellen DPI (CurrentPPI) zurückgerechnet (TAtlasDesignScale).
-// - Der Knopf schaltet die Anzeige für die Sitzung aus und wieder an.
+// - Der Knopf schaltet die Anzeige aus und wieder an; der Zustand gilt über
+//   Neustarts hinweg (TAtlasIdeDesignerButtonStates, #2546).
 // Zeichnen: TAtlasMeasureOverlay. Nur im Hauptthread.
 
 interface
@@ -76,6 +77,7 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.Model,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
@@ -262,7 +264,7 @@ end;
 constructor TAtlasIdeDesignerMeasure.Create;
 begin
   inherited Create;
-  FActive := True;
+  FActive := TAtlasIdeDesignerButtonStates.Pressed(cId, True);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
@@ -434,6 +436,7 @@ end;
 procedure TAtlasIdeDesignerMeasure.Toggle;
 begin
   FActive := not FActive;
+  TAtlasIdeDesignerButtonStates.Remember(cId, FActive);
   FDragging := False;
   Hide;
 end;

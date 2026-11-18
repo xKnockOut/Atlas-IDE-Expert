@@ -162,7 +162,7 @@ end;
 
 constructor TAtlasIdeGapHandles.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create(AOnMessage);
+  inherited Create(cId, AOnMessage);
   FKeys := TAtlasGapKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
 end;
