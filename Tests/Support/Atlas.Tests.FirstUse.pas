@@ -615,6 +615,18 @@ begin
   end;
 end;
 
+/// <summary>Musterbitmaps der VCL (Vcl.Graphics, TPatternManager): Ein eingerasteter TSpeedButton (Down, etwa
+/// „Nach Klasse“ im Fenster „Atlas-Struktur“) füllt seine Fläche mit dem Muster aus clBtnFace und clBtnHighlight.
+/// AllocPatternBitmap legt es je Farbpaar einmal an, mit Bild beim ersten Handle (328 Byte), und gibt es erst in der
+/// Finalisierung von Vcl.Graphics frei.</summary>
+procedure WarmUpVclPatternBitmap;
+begin
+  if AllocPatternBitmap(clBtnFace, clBtnHighlight).Handle = 0 then
+  begin
+    raise EInvalidOperation.Create('Musterbitmap');
+  end;
+end;
+
 /// <summary>Zwischenspeicher der Gerätekontexte von Steuerelementen (Vcl.Controls, TControlCanvas.CreateHandle):
 /// Seine Liste fasst höchstens vier Leinwände, ihre Kapazität entsteht beim ersten Textmessen auf einem
 /// Steuerelement mit Fenster (48 Byte) und bleibt bis zur Finalisierung von Vcl.Controls. Fünf Formulare messen
@@ -749,6 +761,7 @@ begin
   WarmUpVcsTools;
   WarmUpVclCanvasList;
   WarmUpVclBitmapCanvases;
+  WarmUpVclPatternBitmap;
   WarmUpVclControlCanvas;
   WarmUpVclDpiChange;
   WarmUpRegistryProvisions;
