@@ -2262,6 +2262,8 @@ uses
   Atlas.UI.Designer.TabOverlay.Tests in 'IDE.Expert\Atlas.UI.Designer.TabOverlay.Tests.pas',
   Atlas.Common.Mcp.BuildTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas',
   Atlas.Common.Mcp.CompilerMessageTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.CompilerMessageTools.Tests.pas',
+  Atlas.Common.Mcp.DocsIndex.Tests in 'Common\Mcp\Atlas.Common.Mcp.DocsIndex.Tests.pas',
+  Atlas.Common.Mcp.DocsTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.DocsTools.Tests.pas',
   Atlas.Common.Mcp.Paths.Tests in 'Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas',
   Shell.Workspace in '..\Application\Source\Shell\Shell.Workspace.pas',
   Shell.Workspace.Listings in '..\Application\Source\Shell\Shell.Workspace.Listings.pas',

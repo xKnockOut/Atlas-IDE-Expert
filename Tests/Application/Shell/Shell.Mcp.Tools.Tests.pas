@@ -187,7 +187,8 @@ begin
   Assert.AreEqual(' debug_start debug_stop set_breakpoint remove_breakpoint debug_continue debug_step debug_state ' +
     'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
   Assert.AreEqual(' get_ide_context ', Joined(NamesOf(RegisterIdeContextTools)));
-  Assert.AreEqual(7, Integer(Length(NamesOf(RegisterCheckTools))));
+    Assert.AreEqual(8, Integer(Length(NamesOf(RegisterCheckTools))));
+  Assert.IsTrue(Pos(' search_atlas_docs ', Joined(NamesOf(RegisterCheckTools))) > 0);
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));
   Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code extract_method ',
     Joined(NamesOf(RegisterEditingTools)));
@@ -210,7 +211,7 @@ var
   mIndex, mOther: Integer;
 begin
   mNames := NamesOf(RegisterContextTools);
-  Assert.AreEqual(49, Integer(Length(mNames)));
+  Assert.AreEqual(50, Integer(Length(mNames)));
   for mIndex := 0 to High(mNames) do
   begin
     for mOther := mIndex + 1 to High(mNames) do

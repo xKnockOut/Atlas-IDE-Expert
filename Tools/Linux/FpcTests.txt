@@ -237,6 +237,8 @@ Atlas.Common.Mcp.BuildTools.Tests
 Atlas.Common.Mcp.CompilerMessageTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
+Atlas.Common.Mcp.DocsIndex.Tests
+Atlas.Common.Mcp.DocsTools.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
 Atlas.Common.Mcp.EditFindings.Tests

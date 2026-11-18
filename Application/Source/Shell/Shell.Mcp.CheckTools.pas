@@ -1,7 +1,8 @@
 ﻿unit Shell.Mcp.CheckTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge der Prüfregeln, Metriken und TODOs
-// (get_diagnostics, hook_check, get_metrics, get_todos, check_code, get_dfm_info, explain_finding).
+// (get_diagnostics, hook_check, get_metrics, get_todos, check_code, get_dfm_info, explain_finding,
+// search_atlas_docs).
 
 interface
 
@@ -24,6 +25,7 @@ uses
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.CheckTools,
   Atlas.Common.Mcp.ProtectedFiles,
+  Atlas.Common.Mcp.DocsTools,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Rules.Contract,
@@ -33,6 +35,7 @@ uses
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
+  Shell.Bootstrap,
   Shell.Texts;
 
 type
@@ -41,7 +44,8 @@ type
     HookCheckMode, GetMetricsTool, GetMetricsFile, GetMetricsFormat, GetTodosTool, GetTodosFile, GetTodosUnit,
     GetTodosCategory, GetTodosOwner, GetTodosKeyword, GetTodosIncludeDone, GetTodosFormat, CheckCodeTool, CheckCodeFile,
     CheckCodeText, CheckCodeStartLine, CheckCodeEndLine, GetDfmInfoTool, GetDfmInfoFile, ExplainFindingTool,
-    ExplainFindingFile, ExplainFindingLine, ExplainFindingRule, IndexLoading, FormNotFound, Unreadable, NoFinding);
+    ExplainFindingFile, ExplainFindingLine, ExplainFindingRule, IndexLoading, FormNotFound, Unreadable, NoFinding,
+    SearchDocsTool, SearchDocsQuery, SearchDocsKind, SearchDocsLanguage, SearchDocsLimit, SearchDocsFormat);
 {$SCOPEDENUMS OFF}
 
 const
@@ -115,7 +119,19 @@ const
     En: 'Note: %s; findings that need the symbol index may still be missing.'),
     (De: 'Formulardatei "%s" nicht gefunden'; En: 'Form file "%s" not found'),
     (De: '%s ist nicht lesbar'; En: '%s is not readable'),
-    (De: 'Kein Befund in Zeile %d von %s.'; En: 'No finding in line %d of %s.'));
+    (De: 'Kein Befund in Zeile %d von %s.'; En: 'No finding in line %d of %s.'),
+    (De: 'Durchsucht die Doku von Atlas: Prüfregeln (mit Schweregrad im Projekt), Einstellungen (mit aktuellem Wert ' +
+      'und Herkunft), Fenster, Abschnitte der Funktionsseiten und Tastenkürzel. Eine genaue Kennung ' +
+      '(method-order, editor.breadcrumbs) liefert den ganzen Abschnitt. Auch ohne Repository.';
+     En: 'Searches the Atlas documentation: check rules (with severity in the project), settings (with current ' +
+      'value and origin), windows, sections of the feature pages and shortcuts. An exact id (method-order, ' +
+      'editor.breadcrumbs) returns the whole section. Works without the repository.'),
+    (De: 'Frage oder Stichwort, auch eine Kennung'; En: 'Question or keyword, also an id'),
+    (De: 'rule, setting, window, feature, command oder all (Vorgabe)';
+     En: 'rule, setting, window, feature, command or all (default)'),
+    (De: 'de (Vorgabe) oder en'; En: 'de (default) or en'),
+    (De: 'Höchstzahl der Treffer, 1 bis 20 (Vorgabe 5)'; En: 'Maximum number of hits, 1 to 20 (default 5)'),
+    (De: 'text (Vorgabe) oder json'; En: 'text (default) or json'));
 
 function ToolGetDiagnostics(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
@@ -427,6 +443,47 @@ begin
     ContextTool(AContext, ToolExplainFinding));
 end;
 
+/// <summary>Inhalt von AFileName; '' ohne Datei oder unlesbar.</summary>
+function SettingsText(const AFileName: string): string;
+begin
+  if (AFileName = '') or not FileExists(AFileName) or not ReadSourceText(AFileName, Result) then
+  begin
+    Result := '';
+  end;
+end;
+
+function ToolSearchAtlasDocs(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mRequest: TMcpDocsRequest;
+begin
+  mRequest := TMcpDocsTools.RequestOf(AArguments);
+  mRequest.Settings := AContext.Group.Main.Configuration.Settings;
+  mRequest.ProjectText := SettingsText(AContext.Group.Main.Configuration.Files.Read);
+  if mRequest.Settings.McpGlobalSettings then
+  begin
+    mRequest.GlobalText := SettingsText(TShellBootstrap.GlobalSettingsFile);
+  end;
+  Result := TMcpDocsTools.Search(mRequest);
+end;
+
+procedure AddSearchAtlasDocs(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('search_atlas_docs', cTexts[TMcpCheckText.SearchDocsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"query":{"type":"string","description":%s},' +
+      '"kind":{"type":"string","enum":["all","rule","setting","window","feature","command"],"description":%s},' +
+      '"language":{"type":"string","enum":["de","en"],"description":%s},' +
+      '"limit":{"type":"integer","minimum":1,"maximum":20,"description":%s},' +
+      '"format":{"type":"string","enum":["text","json"],"description":%s}},' +
+      '"required":["query"]}',
+      [cTexts[TMcpCheckText.SearchDocsQuery].Text,
+      cTexts[TMcpCheckText.SearchDocsKind].Text,
+      cTexts[TMcpCheckText.SearchDocsLanguage].Text,
+      cTexts[TMcpCheckText.SearchDocsLimit].Text,
+      cTexts[TMcpCheckText.SearchDocsFormat].Text]),
+    ContextTool(AContext, ToolSearchAtlasDocs));
+end;
+
 procedure RegisterCheckTools(const AContext: TMcpToolContext);
 begin
   AddGetDiagnostics(AContext);
@@ -436,6 +493,7 @@ begin
   AddCheckCode(AContext);
   AddGetDfmInfo(AContext);
   AddExplainFinding(AContext);
+  AddSearchAtlasDocs(AContext);
 end;
 
 initialization

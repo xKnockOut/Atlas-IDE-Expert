@@ -172,6 +172,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
 - **Wo du in der IDE bist:** `get_ide_context` nennt KI-Assistenten die offene Datei mit Cursor und Methode, die Auswahl, das aktive Projekt mit Konfiguration und Plattform, den letzten Build und die Reiter; „diese Methode“ muss niemand mehr kopieren (`assistants.context`)
 - **Mehrere Abfragen auf einmal:** `batch` führt bis zu 10 lesende MCP-Werkzeuge in einem Aufruf aus, auf einem gemeinsamen Indexstand mit einem einzigen Dateiabgleich; ein Fehler betrifft nur seinen Abschnitt
+- **Doku von Atlas durchsuchen:** `search_atlas_docs` beantwortet Fragen wie „Wie schalte ich die Brotkrumen ab?“ oder „Was macht `method-order`?“ aus dem eingebetteten Regelkatalog, den Einstellungen, Fenstern und Tastenkürzeln, mit dem wirksamen Schweregrad einer Regel und dem aktuellen Wert einer Einstellung im Projekt, auch ohne Repository
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 - **Befunde nach der Änderung:** Die schreibenden MCP-Werkzeuge hängen die neuen und behobenen Befunde der geänderten Dateien an ihre Antwort (`delphi://edits/last` für die letzte Änderung)
