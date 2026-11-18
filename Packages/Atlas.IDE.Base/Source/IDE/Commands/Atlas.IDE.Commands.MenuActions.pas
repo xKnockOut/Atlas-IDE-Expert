@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Commands.MenuActions;
 
-// Was die Einträge des Hauptmenüs „Atlas“ ausführen, ausgelagert aus
+// Was die Einträge des Hauptmenüs „Atlas“ ausführen, Teil von
 // Atlas.IDE.Commands.MainMenu: Ergebnisfenster (#400), Editorbefehle (#399),
 // Abschnittssprünge der Editorleiste (#1101), Atlas-Änderungen (#721) und
 // „Prozesse am Projekt…“ (#62). Der Tag des Menüeintrags wählt den Befehl; jeder

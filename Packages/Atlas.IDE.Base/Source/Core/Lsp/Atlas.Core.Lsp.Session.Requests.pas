@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Session.Requests;
 
-// Anfragen der LSP-Sitzung (aus Atlas.Core.Lsp.Session ausgelagert): Hover, Referenzen, Definitionen,
+// Anfragen der LSP-Sitzung (Teil von Atlas.Core.Lsp.Session): Hover, Referenzen, Definitionen,
 // Implementierungen, Symbole, Code-Aktionen und Befehle, Formatieren, Auswahlbereiche, Vervollständigung,
 // Parameterhilfe und Umbenennen. Der Aufrufer gleicht die Puffer vorher ab (Sync).
 
