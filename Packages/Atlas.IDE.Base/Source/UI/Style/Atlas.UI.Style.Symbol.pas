@@ -76,6 +76,11 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color;
 
+const
+  /// <summary>Bildpunkte als 32 Bit BGRA mit vormultipliziertem Alpha.</summary>
+  cBitsPerPixel = 32;
+  cBytesPerPixel = cBitsPerPixel div 8;
+
 var
   Cache: TObjectDictionary<string, TWICImage>;
 
@@ -174,11 +179,12 @@ begin
     // Negativ: Zeilen von oben nach unten wie bei WIC.
     mInfo.bmiHeader.biHeight := -mHeight;
     mInfo.bmiHeader.biPlanes := 1;
-    mInfo.bmiHeader.biBitCount := 32;
+    mInfo.bmiHeader.biBitCount := cBitsPerPixel;
     mInfo.bmiHeader.biCompression := BI_RGB;
     mBits := nil;
     Result := CreateDIBSection(0, mInfo, DIB_RGB_COLORS, mBits, 0, 0);
-    if (Result <> 0) and Failed(mConverter.CopyPixels(nil, mWidth * 4, mWidth * mHeight * 4, PByte(mBits))) then
+    if (Result <> 0) and Failed(mConverter.CopyPixels(nil, mWidth * cBytesPerPixel, mWidth * mHeight * cBytesPerPixel,
+      PByte(mBits))) then
     begin
       DeleteObject(Result);
       Result := 0;

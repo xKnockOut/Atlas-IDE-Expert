@@ -273,9 +273,23 @@ implementation
 
 uses
   Atlas.Core.Signature.Contract,
+  System.StrUtils,
   System.SysUtils;
 
 const
+  /// <summary>Bis zu so viele Namen stehen ausgeschrieben in einem Hinweis, darüber nur die ersten und die Anzahl.
+  /// </summary>
+  cMaxNamesListed = 3;
+  /// <summary>Arten von Literalen, wie der Server sie nennt, und ihre Beschriftung.</summary>
+  cLiteralKinds: array[0..4] of string = ('string', 'char', 'integer', 'float', 'boolean');
+  cLiteralKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.FormatLiteralString,
+    TAtlasTextId.FormatLiteralChar, TAtlasTextId.FormatLiteralInteger, TAtlasTextId.FormatLiteralFloat,
+    TAtlasTextId.FormatLiteralBoolean);
+  /// <summary>Arten von Typen, die der Server für ein Typargument ausblendet, und ihre Beschriftung.</summary>
+  cTypeArgKinds: array[0..4] of string = ('classes', 'records', 'interfaces', 'enums', 'basic');
+  cTypeArgKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.TypeArgKindClasses,
+    TAtlasTextId.TypeArgKindRecords, TAtlasTextId.TypeArgKindInterfaces, TAtlasTextId.TypeArgKindEnums,
+    TAtlasTextId.TypeArgKindBasic);
   cTexts: array[TAtlasLanguage, TAtlasTextId] of string = (
     ( 'optional, Standard %s',
      'Keine Überladung mit %d Parametern.', '… %d weitere', 'Alle', 'Methoden', 'Eigenschaften', 'Ereignisse',
@@ -1252,31 +1266,15 @@ begin
 end;
 
 function LiteralKind(const AKind: string): string;
+var
+  mIndex: Integer;
 begin
-  if AKind = 'string' then
+  mIndex := IndexStr(AKind, cLiteralKinds);
+  if mIndex < 0 then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralString);
-  end
-  else if AKind = 'char' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralChar);
-  end
-  else if AKind = 'integer' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralInteger);
-  end
-  else if AKind = 'float' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralFloat);
-  end
-  else if AKind = 'boolean' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralBoolean);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther);
+    Exit(TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther));
   end;
+  Result := TAtlasStrings.Text(cLiteralKindTexts[mIndex]);
 end;
 
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
@@ -1318,29 +1316,15 @@ class function TAtlasStrings.TypeArgHidden(const AKinds: string): string;
 var
   mKind: string;
   mNames: TArray<string>;
+  mIndex: Integer;
 begin
   mNames := nil;
   for mKind in AKinds.Split([',']) do
   begin
-    if mKind = 'classes' then
+    mIndex := IndexStr(mKind, cTypeArgKinds);
+    if mIndex >= 0 then
     begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindClasses)];
-    end
-    else if mKind = 'records' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindRecords)];
-    end
-    else if mKind = 'interfaces' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindInterfaces)];
-    end
-    else if mKind = 'enums' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindEnums)];
-    end
-    else if mKind = 'basic' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindBasic)];
+      mNames := mNames + [Text(cTypeArgKindTexts[mIndex])];
     end;
   end;
   if Length(mNames) = 0 then
@@ -1355,7 +1339,7 @@ begin
   case Length(AUnits) of
     0: Result := '';
     1: Result := Fmt(TAtlasTextId.UsesHiddenOne, [AUnits[0]]);
-    2, 3: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
+    2..cMaxNamesListed: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
   else
     Result := Fmt(TAtlasTextId.UsesHiddenMore, [string.Join(', ', Copy(AUnits, 0, 2)), Length(AUnits) - 2]);
   end;
@@ -1414,9 +1398,9 @@ begin
   case Length(AMethods) of
     0: Result := '';
     1: Result := Fmt(TAtlasTextId.InheritedAbstractOne, [AMethods[0]]);
-    2, 3: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
+    2..cMaxNamesListed: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
   else
-    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, 3)) + ', …']);
+    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, cMaxNamesListed)) + ', …']);
   end;
 end;
 

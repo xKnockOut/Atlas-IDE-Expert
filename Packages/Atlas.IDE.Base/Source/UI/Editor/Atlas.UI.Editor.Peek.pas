@@ -84,6 +84,16 @@ uses
 const
   cPad = 8;
   cListMax = 300;
+  /// <summary>Die Liste nimmt höchstens diesen Teil der Breite.</summary>
+  cListShare = 3;
+  /// <summary>Maße bei 96 dpi: Innenrand des Kopfs, Innenrand und Versatz eines Eintrags, Rundung markierter
+  /// Stellen, kleinste Höhe und Abstand des Daumens vom Rand.</summary>
+  cHeaderPad = 5;
+  cEntryPad = 8;
+  cEntryTop = 4;
+  cMarkRadius = 3;
+  cMinThumb = 12;
+  cThumbOffset = 4;
 
 { TAtlasPeekWindow }
 
@@ -152,7 +162,7 @@ end;
 function TAtlasPeekWindow.HeaderHeight: Integer;
 begin
   Canvas.Font.Assign(UIFont);
-  Result := Canvas.TextHeight('Wg') + Scale(2 * 5);
+  Result := Canvas.TextHeight('Wg') + Scale(2 * cHeaderPad);
 end;
 
 function TAtlasPeekWindow.ListWidth: Integer;
@@ -160,14 +170,14 @@ begin
   Result := 0;
   if (FView <> nil) and (FView.Count > 1) then
   begin
-    Result := Min(Scale(cListMax), ClientWidth div 3);
+    Result := Min(Scale(cListMax), ClientWidth div cListShare);
   end;
 end;
 
 function TAtlasPeekWindow.EntryHeight: Integer;
 begin
   Canvas.Font.Assign(UIFont);
-  Result := 2 * Canvas.TextHeight('Wg') + Scale(8);
+  Result := 2 * Canvas.TextHeight('Wg') + Scale(cEntryPad);
 end;
 
 function TAtlasPeekWindow.CodeRect: TRect;
@@ -286,7 +296,7 @@ begin
     mPlace := Format('%s:%d', [ExtractFileName(mEntry.Target.Place.FileName), mEntry.Target.Place.Line + 1]);
     Canvas.Font.Color := ToColor(Colors.Text);
     Canvas.Font.Style := [fsBold];
-    mLine.Top := mLine.Top + Scale(4);
+    mLine.Top := mLine.Top + Scale(cEntryTop);
     mLine.Bottom := mLine.Top + mHalf;
     DrawText(Canvas.Handle, PChar(mPlace), Length(mPlace), mLine,
       DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -389,7 +399,8 @@ begin
   mX := ARect.Left + AGutter;
   Canvas.Font.Assign(Font);
   Canvas.Font.Color := ToColor(Colors.Text);
-  mStyled.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), Point(0, Length(mStyled.Text)), mX, ARect, False);
+  mStyled.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(cMarkRadius)), Point(0, Length(mStyled.Text)), mX, ARect,
+    False);
 end;
 
 procedure TAtlasPeekWindow.PaintThumb(const AArea: TRect; ARowCount: Integer);
@@ -400,11 +411,11 @@ begin
   begin
     Exit;
   end;
-  mThumb := Max(Scale(12), AArea.Height * FView.PageRows div ARowCount);
+  mThumb := Max(Scale(cMinThumb), AArea.Height * FView.PageRows div ARowCount);
   mThumbTop := AArea.Top + (AArea.Height - mThumb) * FView.Top div Max(1, FView.MaxTop);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, cAtlasMixThumb));
-  Canvas.FillRect(Rect(AArea.Right - Scale(4), mThumbTop, AArea.Right - Scale(1), mThumbTop + mThumb));
+  Canvas.FillRect(Rect(AArea.Right - Scale(cThumbOffset), mThumbTop, AArea.Right - Scale(1), mThumbTop + mThumb));
 end;
 
 procedure TAtlasPeekWindow.ShowView(AView: TAtlasPeekView; const ABounds: TRect);

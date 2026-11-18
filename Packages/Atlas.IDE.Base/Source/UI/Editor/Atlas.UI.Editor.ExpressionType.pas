@@ -219,13 +219,32 @@ begin
   end;
 end;
 
+/// <summary>Text für den Bildschirmleser: alle Zeilen außer Hinweisen, je mit Punkt.</summary>
+function SpokenText(const ARows: TArray<TAtlasExpressionTypeRow>): string;
+var
+  mRow: TAtlasExpressionTypeRow;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    for mRow in ARows do
+    begin
+      if mRow.Kind <> TAtlasExpressionTypeRowKind.Hint then
+      begin
+        mBuilder.Append(mRow.Text).Append('. ');
+      end;
+    end;
+    Result := Trim(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+  end;
+end;
+
 procedure TAtlasExpressionTypeTip.ShowFor(const ARows: TArray<TAtlasExpressionTypeRow>; const APoint: TPoint);
 var
   mSize: TSize;
   mArea: TRect;
   mLeft, mTop: Integer;
-  mRow: TAtlasExpressionTypeRow;
-  mSpoken: string;
 begin
   FRows := ARows;
   HandleNeeded;
@@ -241,15 +260,7 @@ begin
   ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
     Max(mTop, mArea.Top) + mSize.cy));
   Invalidate;
-  mSpoken := '';
-  for mRow in FRows do
-  begin
-    if mRow.Kind <> TAtlasExpressionTypeRowKind.Hint then
-    begin
-      mSpoken := mSpoken + mRow.Text + '. ';
-    end;
-  end;
-  Announce(Trim(mSpoken));
+  Announce(SpokenText(FRows));
 end;
 
 procedure TAtlasExpressionTypeTip.Dismiss;

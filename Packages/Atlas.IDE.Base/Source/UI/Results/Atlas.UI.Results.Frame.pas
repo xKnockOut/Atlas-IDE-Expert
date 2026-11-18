@@ -92,6 +92,10 @@ uses
 
 {$R *.dfm}
 
+const
+  /// <summary>Höhe der Titelzeile bei 96 dpi.</summary>
+  cHeaderHeight = 22;
+
 { TAtlasResultsFrame }
 
 constructor TAtlasResultsFrame.Create(AOwner: TComponent);
@@ -150,7 +154,7 @@ begin
   Result.Align := alTop;
   Result.BevelOuter := bvNone;
   Result.ParentBackground := True;
-  Result.Height := Result.ScaleValue(22);
+  Result.Height := Result.ScaleValue(cHeaderHeight);
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Result;
   FSymbol.LogicalSize := TAtlasSymbol.cMenuSize;

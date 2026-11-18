@@ -58,6 +58,7 @@ uses
 const
   cGap = 8;
   cConsentWidth = 420;
+  cButtonPadding = 24;
 
 { TAtlasUpdateConsent }
 
@@ -109,7 +110,7 @@ begin
   Result.Caption := ACaption;
   Result.OnClick := AClick;
   Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;

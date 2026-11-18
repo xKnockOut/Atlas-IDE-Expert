@@ -97,6 +97,8 @@ uses
 const
   /// <summary>Mindesthöhe des Schiebers bei 96 DPI.</summary>
   cBaseMinSlider = 6;
+  /// <summary>Bildschirmauflösung, auf die sich alle Maße beziehen.</summary>
+  cDefaultPpi = 96;
 
 /// <summary>Feste Breite nach den Optionen bei der aktuellen DPI.</summary>
 procedure ApplyWidth(AView: TAtlasMinimapView);
@@ -382,7 +384,7 @@ end;
 
 class function TAtlasMinimapView.ViewWidth(const AOptions: TAtlasMinimapOptions; APPI: Integer): Integer;
 begin
-  Result := MulDiv(TAtlasMinimap.ClampWidth(AOptions.Width), Max(APPI, 96), 96);
+  Result := MulDiv(TAtlasMinimap.ClampWidth(AOptions.Width), Max(APPI, cDefaultPpi), cDefaultPpi);
 end;
 
 end.

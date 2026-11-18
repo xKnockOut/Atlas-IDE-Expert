@@ -42,9 +42,34 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.SysUtils,
   Atlas.UI.Strings,
   Atlas.UI.Results.Strings;
+
+const
+  /// <summary>Gründe des Servers für einen erschlossenen Treffer und ihre Beschriftung.</summary>
+  cReasons: array[0..5] of string = ('interface', 'virtual', 'ambiguous', 'unresolved', 'inactiveBranch', 'text');
+  cReasonTexts: array[0..5] of TAtlasResultsTextId = (TAtlasResultsTextId.ReferenceReasonInterface,
+    TAtlasResultsTextId.ReferenceReasonVirtual, TAtlasResultsTextId.ReferenceReasonAmbiguous,
+    TAtlasResultsTextId.ReferenceReasonUnresolved, TAtlasResultsTextId.ReferenceReasonInactiveBranch,
+    TAtlasResultsTextId.ReferenceReasonText);
+  /// <summary>Kanten der Auswirkungsanalyse, wie der Server sie nennt, und ihre Beschriftung.</summary>
+  cEdges: array[0..4] of string = ('reference', 'override', 'baseMethod', 'interfaceMethod', 'implementation');
+  cEdgeTexts: array[0..4] of TAtlasResultsTextId = (TAtlasResultsTextId.ImpactEdgeReference,
+    TAtlasResultsTextId.ImpactEdgeOverride, TAtlasResultsTextId.ImpactEdgeBase,
+    TAtlasResultsTextId.ImpactEdgeInterface, TAtlasResultsTextId.ImpactEdgeImplementation);
+  /// <summary>Marke einer Stelle in einem Test; in beiden Sprachen gleich.</summary>
+  cTestMark = '  · Test';
+  /// <summary>Unsichere Zugriffe im Datenfluss: Gründe mit eigener Beschriftung und Routinen, die beim Namen
+  /// genannt werden.</summary>
+  cUnsafeReasons: array[0..1] of string = ('pointer', 'address');
+  cUnsafeTexts: array[0..1] of TAtlasResultsTextId = (TAtlasResultsTextId.DataFlowUnsafePointer,
+    TAtlasResultsTextId.DataFlowUnsafeAddress);
+  cUnsafeRoutines: array[0..1] of string = ('move', 'fillchar');
+  cUnsafeRoutineNames: array[0..1] of string = ('Move', 'FillChar');
+  /// <summary>Stelle im Datenfluss: Datei, Zeile, Text der Zeile.</summary>
+  cPlaceFormat = '%s:%d: %s';
 
 { TAtlasResultsTexts }
 
@@ -62,41 +87,21 @@ begin
 end;
 
 class function TAtlasResultsTexts.ReasonText(const AConfidence: TAtlasConfidence): string;
+var
+  mIndex: Integer;
 begin
   Result := '';
   if not AConfidence.Inferred then
   begin
     Exit;
   end;
-  if AConfidence.Reason = 'interface' then
-  begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonInterface);
-  end
-  else if AConfidence.Reason = 'virtual' then
-  begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonVirtual);
-  end
-  else if AConfidence.Reason = 'ambiguous' then
-  begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonAmbiguous);
-  end
-  else if AConfidence.Reason = 'unresolved' then
-  begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonUnresolved);
-  end
-  else if AConfidence.Reason = 'inactiveBranch' then
-  begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonInactiveBranch);
-  end
-  else if AConfidence.Reason = 'text' then
-  begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.ReferenceReasonText);
-  end
-  else
+  mIndex := IndexStr(AConfidence.Reason, cReasons);
+  if mIndex < 0 then
   begin
     // Gründe neuerer Server: wie geliefert.
-    Result := AConfidence.Reason;
+    Exit(AConfidence.Reason);
   end;
+  Result := TAtlasResultsStrings.Text(cReasonTexts[mIndex]);
 end;
 
 class function TAtlasResultsTexts.HierarchyText(const AItem: TAtlasHierarchyItem): string;
@@ -118,7 +123,7 @@ end;
 
 class function TAtlasResultsTexts.ImpactPlaceText(const APlace: TAtlasImpactPlace): string;
 var
-  mEdge: string;
+  mEdge: Integer;
 begin
   if APlace.Terminal then
   begin
@@ -129,30 +134,10 @@ begin
   begin
     Result := HierarchyText(APlace.Item);
   end;
-  mEdge := '';
-  if APlace.Edge = 'reference' then
+  mEdge := IndexStr(APlace.Edge, cEdges);
+  if mEdge >= 0 then
   begin
-    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeReference);
-  end
-  else if APlace.Edge = 'override' then
-  begin
-    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeOverride);
-  end
-  else if APlace.Edge = 'baseMethod' then
-  begin
-    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeBase);
-  end
-  else if APlace.Edge = 'interfaceMethod' then
-  begin
-    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeInterface);
-  end
-  else if APlace.Edge = 'implementation' then
-  begin
-    mEdge := TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactEdgeImplementation);
-  end;
-  if mEdge <> '' then
-  begin
-    Result := Result + '  · ' + mEdge;
+    Result := Result + '  · ' + TAtlasResultsStrings.Text(cEdgeTexts[mEdge]);
   end;
   if APlace.UseCount > 1 then
   begin
@@ -160,7 +145,7 @@ begin
   end;
   if APlace.Test <> '' then
   begin
-    Result := Result + '  · Test';
+    Result := Result + cTestMark;
   end;
 end;
 
@@ -217,27 +202,20 @@ begin
 end;
 
 function UnsafeText(const AReason: string): string;
+var
+  mIndex: Integer;
 begin
-  if AReason = 'pointer' then
+  mIndex := IndexStr(AReason, cUnsafeReasons);
+  if mIndex >= 0 then
   begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowUnsafePointer);
-  end
-  else if AReason = 'address' then
-  begin
-    Result := TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowUnsafeAddress);
-  end
-  else if AReason = 'move' then
-  begin
-    Result := 'Move';
-  end
-  else if AReason = 'fillchar' then
-  begin
-    Result := 'FillChar';
-  end
-  else
-  begin
-    Result := AReason;
+    Exit(TAtlasResultsStrings.Text(cUnsafeTexts[mIndex]));
   end;
+  mIndex := IndexStr(AReason, cUnsafeRoutines);
+  if mIndex >= 0 then
+  begin
+    Exit(cUnsafeRoutineNames[mIndex]);
+  end;
+  Result := AReason;
 end;
 
 class function TAtlasResultsTexts.FlowNodeText(const ANode: TAtlasDataFlowNode): string;
@@ -283,7 +261,7 @@ end;
 
 class function TAtlasResultsTexts.FlowPlaceText(const APlace: TAtlasDataFlowPlace): string;
 begin
-  Result := Format('%s:%d: %s', [ExtractFileName(APlace.FileName), APlace.Line + 1, APlace.LineText]);
+  Result := Format(cPlaceFormat, [ExtractFileName(APlace.FileName), APlace.Line + 1, APlace.LineText]);
 end;
 
 class function TAtlasResultsTexts.FlowSourceText(const AChild: TAtlasDataFlowChild;

@@ -92,6 +92,25 @@ const
   cGap = 8;
   cDialogWidth = 640;
   cDialogHeight = 520;
+  /// <summary>Zeile mit Beschriftung: Höhe, Beschriftung (Versatz, Breite, Höhe), Eingabe (Beginn, Höhe).</summary>
+  cRowHeight = 28;
+  cLabelTop = 3;
+  cLabelWidth = 190;
+  cLineHeight = 20;
+  cFieldLeft = 200;
+  cFieldHeight = 23;
+  /// <summary>Bereiche: Knopfleiste unten, Optionen (erste Zeile, Zeilenabstand, Einzug), Felder, Knöpfe rechts.
+  /// </summary>
+  cBottomHeight = 44;
+  cOptionsHeight = 72;
+  cOptionTop = 4;
+  cOptionStep = 22;
+  cOptionIndent = 16;
+  cFieldsHeight = 118;
+  cFieldsTop = 4;
+  cSideWidth = 120;
+  cButtonHeight = 28;
+  cButtonGap = 4;
 
 /// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite (schon skaliert).
 /// </summary>
@@ -131,7 +150,7 @@ begin
   Result.OnClick := AClick;
   Result.Width := ADialog.ScaleValue(100);
   Result.Top := ADialog.ScaleValue(cGap);
-  Result.Height := ADialog.ScaleValue(28);
+  Result.Height := ADialog.ScaleValue(cButtonHeight);
   Result.Anchors := [akTop, akRight];
 end;
 
@@ -145,14 +164,14 @@ begin
   mCaption := TLabel.Create(ADialog);
   mCaption.Parent := AParent;
   mCaption.Caption := ACaption;
-  mCaption.SetBounds(ADialog.ScaleValue(cGap), ATop + ADialog.ScaleValue(3), ADialog.ScaleValue(190),
-    ADialog.ScaleValue(20));
+  mCaption.SetBounds(ADialog.ScaleValue(cGap), ATop + ADialog.ScaleValue(cLabelTop), ADialog.ScaleValue(cLabelWidth),
+    ADialog.ScaleValue(cLineHeight));
   mCaption.FocusControl := AControl;
   AControl.Parent := AParent;
-  AControl.SetBounds(ADialog.ScaleValue(200), ATop, ADialog.ScaleValue(cDialogWidth - 200 - cGap),
-    ADialog.ScaleValue(23));
+  AControl.SetBounds(ADialog.ScaleValue(cFieldLeft), ATop, ADialog.ScaleValue(cDialogWidth - cFieldLeft - cGap),
+    ADialog.ScaleValue(cFieldHeight));
   AControl.Anchors := [akLeft, akTop, akRight];
-  Result := ATop + ADialog.ScaleValue(28);
+  Result := ATop + ADialog.ScaleValue(cRowHeight);
 end;
 
 /// <summary>Spalte ACaption mit der Breite AWidth (schon skaliert).</summary>
@@ -236,7 +255,7 @@ procedure TAtlasChangeSignatureDialog.CreateBottom;
 var
   mBottom: TPanel;
 begin
-  mBottom := AddPanel(Self, alBottom, ScaleValue(44));
+  mBottom := AddPanel(Self, alBottom, ScaleValue(cBottomHeight));
   FCancel := AddButton(Self, mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigCancel), nil);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
@@ -258,20 +277,23 @@ procedure TAtlasChangeSignatureDialog.CreateOptions;
 var
   mOptions: TPanel;
 begin
-  mOptions := AddPanel(Self, alBottom, ScaleValue(72));
+  mOptions := AddPanel(Self, alBottom, ScaleValue(cOptionsHeight));
   FOverload := TRadioButton.Create(Self);
   FOverload.Parent := mOptions;
-  FOverload.SetBounds(ScaleValue(cGap), ScaleValue(4), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
+  FOverload.SetBounds(ScaleValue(cGap), ScaleValue(cOptionTop), ScaleValue(cDialogWidth - 2 * cGap),
+    ScaleValue(cLineHeight));
   FOverload.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigModeOverload);
   FOverload.OnClick := ModeClick;
   FCallers := TRadioButton.Create(Self);
   FCallers.Parent := mOptions;
-  FCallers.SetBounds(ScaleValue(cGap), ScaleValue(26), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
+  FCallers.SetBounds(ScaleValue(cGap), ScaleValue(cOptionTop + cOptionStep), ScaleValue(cDialogWidth - 2 * cGap),
+    ScaleValue(cLineHeight));
   FCallers.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigModeCallers);
   FCallers.OnClick := ModeClick;
   FVirtual := TCheckBox.Create(Self);
   FVirtual.Parent := mOptions;
-  FVirtual.SetBounds(ScaleValue(cGap + 16), ScaleValue(48), ScaleValue(cDialogWidth - 2 * cGap - 16), ScaleValue(20));
+  FVirtual.SetBounds(ScaleValue(cGap + cOptionIndent), ScaleValue(cOptionTop + 2 * cOptionStep),
+    ScaleValue(cDialogWidth - 2 * cGap - cOptionIndent), ScaleValue(cLineHeight));
   FVirtual.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigVirtual);
   FVirtual.Checked := FModel.VirtualOverload;
   FVirtual.OnClick := ModeClick;
@@ -289,12 +311,12 @@ var
   mFields: TPanel;
   mTop: Integer;
 begin
-  mFields := AddPanel(Self, alBottom, ScaleValue(118));
+  mFields := AddPanel(Self, alBottom, ScaleValue(cFieldsHeight));
   FName := TEdit.Create(Self);
   FType := TEdit.Create(Self);
   FModifier := TComboBox.Create(Self);
   FValue := TEdit.Create(Self);
-  mTop := ScaleValue(4);
+  mTop := ScaleValue(cFieldsTop);
   mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldName), mTop, FName);
   mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldType), mTop, FType);
   mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldModifier), mTop, FModifier);
@@ -311,15 +333,15 @@ var
   mRight: TPanel;
   mIndex: Integer;
 begin
-  mRight := AddPanel(Self, alRight, ScaleValue(120));
+  mRight := AddPanel(Self, alRight, ScaleValue(cSideWidth));
   FAdd := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigAdd), AddClick);
   FRemove := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigRemove), RemoveClick);
   FUp := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigUp), UpClick);
   FDown := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigDown), DownClick);
   FAdd.Top := ScaleValue(cGap);
-  FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(4);
+  FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(cButtonGap);
   FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(cGap * 2);
-  FDown.Top := FUp.Top + FUp.Height + ScaleValue(4);
+  FDown.Top := FUp.Top + FUp.Height + ScaleValue(cButtonGap);
   for mIndex := 0 to mRight.ControlCount - 1 do
   begin
     mRight.Controls[mIndex].Left := ScaleValue(cGap);

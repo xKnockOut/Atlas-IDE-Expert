@@ -52,6 +52,8 @@ const
   cWidth = 420;
   cListHeight = 220;
   cButtonWidth = 110;
+  cTextHeight = 48;
+  cButtonHeight = 25;
 
 { TAtlasUpdateSelectionDialog }
 
@@ -63,7 +65,7 @@ begin
   Caption := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSelectionTitle, [AVersion]);
   FText := TAtlasWrapLabel.Create(Self);
   FText.Parent := Self;
-  FText.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cWidth - 2 * cGap), ScaleValue(48));
+  FText.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cWidth - 2 * cGap), ScaleValue(cTextHeight));
   FText.Caption := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesSelectionText);
   FList := TCheckListBox.Create(Self);
   FList.Parent := Self;
@@ -76,7 +78,7 @@ begin
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   FCancel.SetBounds(ClientWidth - ScaleValue(cGap + cButtonWidth), FList.Top + FList.Height + ScaleValue(cGap),
-    ScaleValue(cButtonWidth), ScaleValue(25));
+    ScaleValue(cButtonWidth), ScaleValue(cButtonHeight));
   FApply := TButton.Create(Self);
   FApply.Parent := Self;
   FApply.Caption := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesSelectionApply);

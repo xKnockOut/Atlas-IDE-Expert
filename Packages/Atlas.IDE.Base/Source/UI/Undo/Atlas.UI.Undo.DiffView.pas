@@ -38,6 +38,10 @@ uses
 
 const
   cViewWidth = 760;
+  cViewHeight = 480;
+  /// <summary>Leiste mit dem Knopf unten: Höhe und Rand.</summary>
+  cBottomHeight = 40;
+  cGap = 8;
 
 { TAtlasUndoDiffView }
 
@@ -49,13 +53,13 @@ begin
   inherited CreateDialog(AOwner, ATitle, cViewWidth);
   BorderIcons := [biSystemMenu, biMaximize];
   Position := poScreenCenter;
-  ClientHeight := ScaleValue(480);
+  ClientHeight := ScaleValue(cViewHeight);
   KeyPreview := True;
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
   mBottom.BevelOuter := bvNone;
-  mBottom.Height := ScaleValue(40);
+  mBottom.Height := ScaleValue(cBottomHeight);
   FClose := TButton.Create(Self);
   FClose.Parent := mBottom;
   FClose.Caption := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoClose);
@@ -63,8 +67,8 @@ begin
   FClose.Cancel := True;
   FClose.Default := True;
   FClose.Anchors := [akTop, akRight];
-  FClose.Top := ScaleValue(8);
-  FClose.Left := mBottom.Width - FClose.Width - ScaleValue(8);
+  FClose.Top := ScaleValue(cGap);
+  FClose.Left := mBottom.Width - FClose.Width - ScaleValue(cGap);
   FLines := TMemo.Create(Self);
   FLines.Parent := Self;
   FLines.Align := alClient;

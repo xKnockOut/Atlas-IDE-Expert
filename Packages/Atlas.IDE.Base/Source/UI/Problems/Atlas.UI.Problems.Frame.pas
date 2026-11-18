@@ -192,6 +192,20 @@ const
   /// <summary>Hervorhebung neuer Einträge.</summary>
   cNewMs = 1500;
   cIconSize = 16;
+  /// <summary>Leiste bei 96 dpi: Abstand nach der Bereichsliste und zwischen Steuerelementen, Höhe der Knöpfe,
+  /// Breiten der Umschalter je Art, der Klapplisten Kategorie und Gruppierung, des Knopfs „Offene zuerst“ und des
+  /// Textfilters, Abstand oben des Textfilters.</summary>
+  cScopeGap = 6;
+  cControlGap = 4;
+  cButtonHeight = 22;
+  cKindWidth = 78;
+  cCategoryWidth = 130;
+  cGroupingWidth = 120;
+  cOpenFirstWidth = 110;
+  cFilterWidth = 200;
+  cFilterTop = 3;
+  /// <summary>Grün der Live-Anzeige, wenn die Prüfung beim Tippen läuft.</summary>
+  cLiveColor = $0050A030;
 
 { TAtlasProblemsFrame }
 
@@ -280,15 +294,15 @@ begin
   FScopeBox := TAtlasProblemsScopeBox.Create(Self, FScope, TArray<string>.Create(
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)));
-  mLeft := FScope.Left + FScope.Width + MulDiv(6, CurrentPPI, 96);
+  mLeft := FScope.Left + FScope.Width + MulDiv(cScopeGap, CurrentPPI, 96);
   for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
   begin
     mButton := TSpeedButton.Create(Self);
     mButton.Parent := FBar;
     mButton.AlignWithMargins := True;
     mButton.Top := MulDiv(2, CurrentPPI, 96);
-    mButton.Height := MulDiv(22, CurrentPPI, 96);
-    mButton.Width := MulDiv(78, CurrentPPI, 96);
+    mButton.Height := MulDiv(cButtonHeight, CurrentPPI, 96);
+    mButton.Width := MulDiv(cKindWidth, CurrentPPI, 96);
     mButton.Left := mLeft;
     mButton.Flat := True;
     // Je Umschalter eine eigene Gruppe: unabhängig an und aus.
@@ -303,14 +317,14 @@ begin
     CategoryText(TAtlasFindingCategory.Bug), CategoryText(TAtlasFindingCategory.Vulnerability),
     CategoryText(TAtlasFindingCategory.CodeSmell), CategoryText(TAtlasFindingCategory.SecurityHotspot),
     CategoryText(TAtlasFindingCategory.Compiler), CategoryText(TAtlasFindingCategory.Other)];
-  FCategory := AddCombo(130);
-  FCategory.Left := mLeft + MulDiv(4, CurrentPPI, 96);
+  FCategory := AddCombo(cCategoryWidth);
+  FCategory.Left := mLeft + MulDiv(cControlGap, CurrentPPI, 96);
   FCategory.OnChange := ControlsChanged;
   FGroupingTexts := [TAtlasStrings.Text(TAtlasTextId.ProblemsGroupNone),
     TAtlasStrings.Text(TAtlasTextId.ProblemsGroupFile), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupRule),
     TAtlasStrings.Text(TAtlasTextId.ProblemsGroupCategory)];
-  FGrouping := AddCombo(120);
-  FGrouping.Left := FCategory.Left + FCategory.Width + MulDiv(4, CurrentPPI, 96);
+  FGrouping := AddCombo(cGroupingWidth);
+  FGrouping.Left := FCategory.Left + FCategory.Width + MulDiv(cControlGap, CurrentPPI, 96);
   FGrouping.OnChange := GroupingChange;
 end;
 
@@ -321,9 +335,9 @@ begin
   FOpenFirst.Parent := FBar;
   FOpenFirst.AlignWithMargins := True;
   FOpenFirst.Top := MulDiv(2, CurrentPPI, 96);
-  FOpenFirst.Height := MulDiv(22, CurrentPPI, 96);
-  FOpenFirst.Width := MulDiv(110, CurrentPPI, 96);
-  FOpenFirst.Left := FGrouping.Left + FGrouping.Width + MulDiv(4, CurrentPPI, 96);
+  FOpenFirst.Height := MulDiv(cButtonHeight, CurrentPPI, 96);
+  FOpenFirst.Width := MulDiv(cOpenFirstWidth, CurrentPPI, 96);
+  FOpenFirst.Left := FGrouping.Left + FGrouping.Width + MulDiv(cControlGap, CurrentPPI, 96);
   FOpenFirst.Flat := True;
   FOpenFirst.GroupIndex := Ord(High(TAtlasFindingKind)) + 2;
   FOpenFirst.AllowAllUp := True;
@@ -334,9 +348,9 @@ begin
   FFilter := TEdit.Create(Self);
   FFilter.Parent := FBar;
   FFilter.AlignWithMargins := True;
-  FFilter.Top := MulDiv(3, CurrentPPI, 96);
-  FFilter.Left := FOpenFirst.Left + FOpenFirst.Width + MulDiv(4, CurrentPPI, 96);
-  FFilter.Width := MulDiv(200, CurrentPPI, 96);
+  FFilter.Top := MulDiv(cFilterTop, CurrentPPI, 96);
+  FFilter.Left := FOpenFirst.Left + FOpenFirst.Width + MulDiv(cControlGap, CurrentPPI, 96);
+  FFilter.Width := MulDiv(cFilterWidth, CurrentPPI, 96);
   FFilter.TextHint := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsFilterHint);
   FFilter.OnChange := ControlsChanged;
   FFilter.OnKeyDown := FilterKeyDown;
@@ -850,7 +864,7 @@ begin
   end;
   if AMode = TAtlasProblemsUpdate.Live then
   begin
-    FLive.Font.Color := $0050A030;
+    FLive.Font.Color := cLiveColor;
   end
   else
   begin

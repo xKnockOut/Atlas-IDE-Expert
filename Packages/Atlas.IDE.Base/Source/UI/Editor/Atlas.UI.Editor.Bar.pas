@@ -107,6 +107,11 @@ uses
   System.Math,
   Vcl.Forms;
 
+const
+  /// <summary>Bildschirmauflösung, auf die sich alle Maße beziehen, und Höhe einer Leiste dort.</summary>
+  cDefaultPpi = 96;
+  cBaseHeight = 22;
+
 { TAtlasEditorBar }
 
 constructor TAtlasEditorBar.Create(AOwner: TComponent);
@@ -122,7 +127,7 @@ begin
   FFixedHeight := True;
   FDockOrder := -1;
   // Bei 96 DPI anlegen; das Elternteil skaliert beim Einhängen auf seine DPI (ChangeScale).
-  FixHeight(96);
+  FixHeight(cDefaultPpi);
 end;
 
 procedure TAtlasEditorBar.SetFixedHeight(AValue: Boolean);
@@ -270,12 +275,12 @@ end;
 
 class function TAtlasEditorBar.BaseHeight: Integer;
 begin
-  Result := 22;
+  Result := cBaseHeight;
 end;
 
 function TAtlasEditorBar.Scale(AValue: Integer): Integer;
 begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
+  Result := MulDiv(AValue, Max(CurrentPPI, cDefaultPpi), cDefaultPpi);
 end;
 
 function TAtlasEditorBar.PartAt(AX, AY: Integer): Integer;
@@ -348,7 +353,7 @@ end;
 
 class function TAtlasEditorBar.BarHeight(APPI: Integer): Integer;
 begin
-  Result := MulDiv(BaseHeight, Max(APPI, 96), 96);
+  Result := MulDiv(BaseHeight, Max(APPI, cDefaultPpi), cDefaultPpi);
 end;
 
 end.
