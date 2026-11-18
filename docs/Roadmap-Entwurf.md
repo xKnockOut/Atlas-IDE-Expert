@@ -1,53 +1,40 @@
 # Roadmap
 
-Stand 07.11.2026, Aufteilung festgelegt. Grundlage sind die 494 offenen Issues; etwa 178 davon sind umgesetzt
-und warten nur auf den Delphi-Build und den Handtest. Übersicht mit allen Issues je Version: `planung/roadmap-2026-11-07/`
-im Projektordner. Atlas bleibt beim RAD-Studio-Plugin, andere Editoren sind nicht geplant.
+Stand 18.11.2026. Je Version ein Meilenstein auf GitHub; die Zuordnung der Issues steht dort. Patch-Versionen
+(2.x.y) enthalten nur Fehlerbehebungen. Ungeplante Ideen tragen das Label `backlog`, Vorschläge ohne Issue stehen in
+#1274. Atlas bleibt beim RAD-Studio-Plugin, andere Editoren sind nicht geplant.
 
-## 2.0.0: Umbau abschließen
+## 2.3.0: Fundament und KI-Assistent
 
-Keine neuen Funktionen mehr.
+- Fehler, offene Review-Befunde und Prüfregeln (#1345, #1126, #1112, #1895, #1896, #1477, #2425 und weitere).
+- KI-Assistenten debuggen in der laufenden IDE (#1874 zuerst), MCP-Werkzeuge und Kontext für Assistenten
+  (#2049 bis #2051, #2376, #2409, #2603, #2621, #2635, #2638, #2641 und weitere).
+- Rest des Debugger-Epics #614 und neue Haltepunkt-Arten (#2548 bis #2550, #2552).
 
-- `main-merging` mit Delphi bauen (0/0/0, Tests grün) und nach `main` bringen; Handtests.
-- Vor dem Release, weil sie Namen, Einstellungen oder Module ändern: #1883 (KI-neutrale Benennung), #1891 (Modul
-  Versionsverwaltung), #1888 (Modul KI-Assistenten).
-- Fehler: #1477, #1480, #1751; Serverlast über PR #1847.
-- Nach Build und Handtest schließen: #1454, #1455, #1456, #1755, #1756, #1458, #1440, #1442.
+## 2.4.0: Team
 
-## 2.0.1: Optionen je Package
+- Tracker und YouTrack (#2434 bis #2457, #2461, #2643 bis #2646).
+- Versionsverwaltung: Merge-Konflikte (#1892), Vergleich nach Klassen (#2055), Prüfung vor dem Commit (#2585) und
+  weitere.
+- CI: #1431 bis #1435, #107, #1902, „Nur neuer Code“ (#2374).
 
-- Optionen je Package mit Übersicht und Suche, Einstellungen beim Eigentümer (#1903).
-- Versionsverwaltung und KI-Assistenten ganz in ihren Modulen (#1905, #1906 erster Teil).
+## 2.5.0: Tests und Build
 
-## 2.1.0: Editor, Navigation und Formular-Designer
+- Tests: Zeitgrenzen, Mutationslauf, Zweigabdeckung, eigenschaftsbasierte Tests (#2397 bis #2408, #2617 bis #2629).
+- Build, Build-Pipeline und Release-Wächter (#2297 bis #2303, #2618, #2624, #2631, #2634 bis #2642, #2659, #2661).
+- Befunde im Alltag: Baseline-Ansicht, Fehlalarm melden, Vorschau vor dem Einschalten (#2569 bis #2614).
 
-- Lernende Schattentext-Vorschläge aus dem eigenen Code (#1890).
-- Brotkrumen: #1759, #1760, #1763 bis #1769, #1784 bis #1787; Hover mit Parametern und Unit-Inhalt (#1919, #1921).
-- Bedienung und IDE-Einbindung: #1884 (Einstellungen durchsuchen), #1889 (Maustasten Zurück/Vor), #1886 (F1-Hilfe),
-  #1817, #1818, #1819, #1821, #1822.
-- Formular-Designer: die ganze Reihe #511, #524, #539, #603, #605 bis #612, #726 bis #750, dazu Rückgängig (#1887,
-  experimentell).
-- Dazugekommen: Issue-Tracker mit Projektwahl, Arbeitskopien und YouTrack-Ablauf (#1926 bis #1929, #2052, #2122 bis
-  #2128), AtlasMonitor (#1900, #1901), Methode extrahieren mit gleichen Stellen (#2054), gemeinsame Dialogbasis
-  (#2061 bis #2065), neue Prüfregeln.
-- Nicht begonnen und nach 2.2 verschoben: #2079 (Designer-Layout), #2107 bis #2109 (Vervollständigung), #2134 bis
-  #2138 (GitHub im Tracker).
+## 2.6.0: Editor, Navigation, Suche, Refactoring
 
-## 2.2.0: Debuggen, Testen und Lecks
+- Editor und Navigation (#2558 bis #2564, #2654 bis #2656), Gliederung, Hover und Vervollständigung.
+- Suche (#2284 bis #2294, #2607, #2610, #2613).
+- Refactoring und XMLDoc (#2151 bis #2154, #2424, #2426 bis #2430).
 
-- Debuggen: #1878, #1820 und aus Epic #614 #577, #583, #584, #843, #851, #853, #863, #864, #869, #872, #895.
-- Testen: #1873 (Test aus dem Debug-Halt), #1776, #1771, #1770, #1778, Prüfregeln #1780, #1781, #1882, #1879.
-- Lecks: #1774, #1875, #1876, #1877, #1880.
-- Zweite Welle: #1772, #1773, #1775, #1777, #1779, #1782, #1783, #1881, #1226, #275, #1460, #154, #305.
-- Dazugekommen: Profiler (#2057), Testlisten, Protokoll je Test, Grenzfälle als Testfälle (#2167, #2168, #2173),
-  Bedingungen vorausschauen und erneut anhängen (#2169, #2171), Leck- und Absturzberichte (#74), aus 2.1 verschoben
-  #2079, #2107 bis #2109 und #2134 bis #2138 (GitHub im Tracker).
+## 2.7.0: Designer, Architektur, Bedienung und Hilfe
 
-## 2.3: KI-Debugger, Team, Versionsverwaltung, CI
-
-- KI-Assistenten debuggen in der laufenden IDE (#1874, braucht #1888).
-- Versionsverwaltung: Merge-Konflikte (#1892, braucht #1891), #898, #513.
-- CI: #1431 bis #1435, #107.
+- Formular-Designer und Objektinspektor (#2410 bis #2415, #2554 bis #2568, #2575, #2660).
+- Architektur und Analyse: Abhängigkeitsmatrix, Modulverträge, Package-Zuschnitt (#2567, #2572, #2599 bis #2601).
+- Einstellungen, Befehlspalette und Hilfe (#2590 bis #2597, #2647 bis #2650, #2657).
 
 ## 3.0: Plattform
 
@@ -57,12 +44,8 @@ Größere Schritte, die Schnittstellen ändern dürfen: Atlas-SDK (#1459), Kompo
 AtlasServer unter Linux als unterstützte Plattform (#2070): Release-Datei für Linux x86_64 (#2071), DUnitX-Tests
 unter FPC/Linux in der CI (#2072), Doku zu Installation und Grenzen (#2073). Das IDE-Plugin bleibt Windows-only.
 
-## Laufend
+## Erschienen
 
-- Prüfregeln in jeder Version: #1345, #1126, #1112, #1136, #624, #1839, #1840, #145.
-- Alles Übrige bleibt ohne Milestone und wird bei jeder Release-Planung neu gesichtet, dazu die Sammlung #1274.
-
-## Aufräumen
-
-- Alte Milestones v1.1.1, v1.2.0 und v1.2.1 schließen; ihre umgesetzten Issues kommen nach v2.0.0 zum Handtest.
-- Label `handtest-offen` für umgesetzte Issues, die nur noch auf Build und Handtest warten.
+- 2.0.0: Umbau auf Base und Module. 2.0.1: Optionen je Package.
+- 2.1.0: Editor, Navigation und Formular-Designer.
+- 2.2.0: Debuggen, Testen und Lecks (Release in Vorbereitung).

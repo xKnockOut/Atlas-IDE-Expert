@@ -165,9 +165,12 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 Als Issues angelegt, Reihenfolge in [docs/Roadmap-Entwurf.md](docs/Roadmap-Entwurf.md):
 
-- 2.3: KI-Assistenten im Debugger, Team, Versionsverwaltung und CI
+- 2.3: Fundament (Fehler, Review-Befunde, Prüfregeln) und KI-Assistenten im Debugger
+- 2.4: Team: Issue-Tracker, Versionsverwaltung, CI
+- 2.5: Tests und Build
+- 2.6: Editor, Navigation, Suche, Refactoring
+- 2.7: Formular-Designer, Architektur, Einstellungen und Hilfe
 - 3.0: Plattform, darunter AtlasServer unter Linux
-- laufend: weitere Prüfregeln (Unter-Issues von #1086)
 
 ## Installation
 
