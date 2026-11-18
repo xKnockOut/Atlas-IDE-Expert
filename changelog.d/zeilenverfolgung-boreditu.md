@@ -1,2 +1,0 @@
-### Behoben
-- Probleme: Beim Überfahren von Bezeichnern mit der Maus konnte die IDE in `boreditu.dll` eine Zugriffsverletzung melden, und Atlas schaltete die Problem-Anzeige nach drei Fehlern ab. Die Zeilenverfolgung der Befunde (`editor.trackLines`) meldete Zeilen hinter dem Dateiende beim Editor an, und das mitten im Zeichnen der Zeile. Atlas übergibt jetzt nur Zeilen, die der Puffer hat, jede einmal, und meldet sie erst nach dem Zeichnen an. Ein beim Schließen nicht abgemeldeter Puffer gleichen Namens wird nicht mehr angefasst.

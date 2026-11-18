@@ -427,9 +427,10 @@ var
 begin
   // Ein Thread des Tests gibt Speicher frei, während der Test schon endet: Der
   // Monitor wartet die Freigabe ab, statt ein Leck zu melden. Der Thread entsteht wie in einem echten Test
-  // innerhalb der Messung: Der Monitor wartet, bis die Zahl der Threads wieder auf dem Stand von PreTest ist.
-  // Entstünde er vorher, zählte er schon zum Anfangsstand, und unter Last endete das Warten nach wenigen ruhigen
-  // Messungen, bevor der Thread überhaupt lief. Er gibt sich selbst frei (FreeOnTerminate), also auch sein
+  // innerhalb der Messung: Der Monitor wartet, bis kein seit PreTest begonnener Thread mehr läuft (Zählhaken in
+  // BeginThread/EndThread). Entstünde er vorher, gehörte er nicht zum Test, und das Warten endete nach wenigen
+  // ruhigen Messungen, bevor der Thread überhaupt lief. Das passiert auch ohne Last: Der neue Thread läuft oft
+  // erst Dutzende Millisekunden nach Start an. Er gibt sich selbst frei (FreeOnTerminate), also auch sein
   // Objekt und seine Startdaten.
   mMonitor := TLeakMonitor.Create;
   mMonitor.PreTest;

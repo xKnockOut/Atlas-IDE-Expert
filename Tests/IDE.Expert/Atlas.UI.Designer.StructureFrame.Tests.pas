@@ -30,9 +30,9 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   Vcl.Controls,
   Vcl.Forms,
+  Vcl.Graphics,
   Atlas.UI.Designer.StructureFrame;
 
 { TAtlasStructureFrameTests }
@@ -78,6 +78,7 @@ var
   mHost: TForm;
   mFrame: TAtlasStructureFrame;
   mCount: Integer;
+  mBitmap: TBitmap;
 begin
   mCount := 0;
   mHost := TForm.CreateNew(nil);
@@ -94,9 +95,14 @@ begin
     mHost.HandleNeeded;
     Application.ProcessMessages;
     Assert.AreEqual(0, mCount, 'versteckt: nichts gezeichnet');
-    mHost.Show;
-    RedrawWindow(mFrame.Handle, nil, 0, RDW_INVALIDATE or RDW_UPDATENOW or RDW_ALLCHILDREN);
-    Application.ProcessMessages;
+    // Zeichnen ohne Bildschirm: Der Testlauf startet versteckt, ein gezeigtes Formular bekäme dort kein WM_PAINT.
+    mBitmap := TBitmap.Create;
+    try
+      mBitmap.SetSize(mHost.ClientWidth, mHost.ClientHeight);
+      mFrame.PaintTo(mBitmap.Canvas, 0, 0);
+    finally
+      mBitmap.Free;
+    end;
     Assert.IsTrue(mCount > 0, 'Baum gezeichnet, also zu sehen');
     mFrame.OnPainted := nil;
   finally

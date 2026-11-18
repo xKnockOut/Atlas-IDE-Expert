@@ -1,2 +1,0 @@
-### Behoben
-- „Leckprüfung einrichten …“ (#1880) öffnete keinen Dialog: Beim Setzen der Vorauswahl löste der Konstruktor schon den Klick der Variante aus, bevor „Bericht als Datei“ und „Einrichten …“ angelegt waren; die Zugriffsverletzung landete nur im Atlas-Protokoll. Die Variante hört jetzt erst nach der Vorauswahl auf Klicks. Fehler im Ablauf und alle Meldungen des Befehls stehen jetzt sichtbar in der Meldungsansicht, die sich dafür öffnet.

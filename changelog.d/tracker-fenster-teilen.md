@@ -1,2 +1,0 @@
-### Geändert
-- Fenster „Atlas-Issue“, „Atlas-Board“ und die Dienste von „Meine Issues“ intern nach Aufgaben geteilt, ohne geänderte Bedienung: Laden des Issues und seine Teile (Checklisten, Verknüpfungen, Medien, Kommentare, Entwicklung) liegen getrennt von der Vorschau, das Board lädt und verschiebt über eigene Klassen, und Nachführen, Zeiterfassung, Statusfeld und „Prüfen“ hängen an einer eigenen Klasse für das aktuelle Issue.

@@ -25,10 +25,16 @@
 // - Nachwarten: Bleibt nach Test oder TearDown ein Rest, wartet der Monitor
 //   kurz, bis Threads des Tests ihre letzten Freigaben erledigt haben (z. B.
 //   der Lese-Thread einer JSON-RPC-Verbindung nach ReaderDone oder ein
-//   Task nach dem Signal).
-// - Lücke nach dem Setup: Die RTL belegt die Startdaten eines Threads (BeginThread, 24 Byte unter Win64) im
-//   Aufrufer, frei gibt sie der neue Thread beim Anlaufen. Fällt das zwischen PostSetUp und PreTest, zählt
-//   PreTest die Freigabe zum Setup; Belegungen in der Lücke gehören DUnitX und zählen nicht.
+//   Task nach dem Signal). Ruhig ist es erst, wenn kein seit Beginn der Messung
+//   gestarteter Thread mehr läuft. Das zählen Haken der RTL (SystemThreadFuncProc in
+//   BeginThread, SystemThreadEndProc in EndThread), nicht die Threads des Prozesses:
+//   Ein frisch gestarteter Thread fehlte in der Liste des Betriebssystems (Toolhelp)
+//   teils noch Dutzende Millisekunden, die Anzahl lag dann nicht über dem Anfang, und
+//   das Warten endete, bevor er seine Freigaben erledigt hatte.
+// - Lücke nach dem Setup: Die RTL belegt die Startdaten eines Threads (BeginThread, mit dem Zählhaken zwei
+//   Blöcke zu 24 Byte unter Win64) im Aufrufer, frei gibt sie der neue Thread beim Anlaufen. Fällt das zwischen
+//   PostSetUp und PreTest, zählt PreTest die Freigabe zum Setup; Belegungen in der Lücke gehören DUnitX und
+//   zählen nicht.
 // - Ein negativer Saldo (andere Threads geben älteren Speicher frei) ist nie
 //   ein Leck des Tests und wird als 0 gemeldet.
 // - Anonymes Protokoll (#1478): Das gemeinsame atlas.log (TAtlasGuard.RotatingLog) nummeriert jeden neuen Namen,
@@ -66,6 +72,8 @@ type
     FStarted: Boolean;
     FThreadsAtStart: Integer;
     FThreadsAtEnd: Integer;
+    /// <summary>Nummer des ersten Threads, den die RTL nach dem Start der Messung beginnt (StartedThreads).</summary>
+    FFirstThread: Int64;
     FWaitedMs: UInt64;
     /// <summary>Stapelbericht, festgehalten am Ende des Tests (ATLAS_LEAK_TRACE=1). DUnitX fragt GetReport erst
     /// später ab, wenn die Aufzeichnung schon dem nächsten Test gehört.</summary>
@@ -93,6 +101,15 @@ function AllocatedBytes: Int64;
 
 /// <summary>Anzahl der Threads dieses Prozesses (Toolhelp; belegt keinen Delphi-Speicher).</summary>
 function ProcessThreadCount: Integer;
+
+/// <summary>Zählhaken für BeginThread und EndThread setzen (einmal, vor dem ersten Thread der Tests).</summary>
+procedure InstallThreadCounting;
+
+/// <summary>Anzahl der Threads, die BeginThread seit InstallThreadCounting begonnen hat.</summary>
+function StartedThreads: Int64;
+
+/// <summary>True, solange ein Thread mit Nummer ab AFirst (siehe StartedThreads) noch läuft.</summary>
+function ThreadsRunningSince(AFirst: Int64): Boolean;
 
 /// <summary>Löst Einmal-Belegungen der RTL aus, die sonst in fremden Tests auffallen.</summary>
 procedure PrewarmRuntime;
@@ -131,9 +148,127 @@ const
   /// aus RTL, VCL und DUnitX zählt er nur.</summary>
   cTraceGroups = 20;
 
+  /// <summary>So viele Threads hält die Tabelle laufender Threads; liegen mehr Starts seit Beginn der Messung
+  /// zurück, gilt noch einer als laufend (dann endet das Warten mit der Zeitgrenze).</summary>
+  cThreadSlots = 4096;
+
 var
   /// <summary>Belegungen je Test mit Stapel aufzeichnen (ATLAS_LEAK_TRACE=1, TAllocationTrace).</summary>
   TraceLeaks: Boolean;
+  /// <summary>Nummer des zuletzt über BeginThread begonnenen Threads.</summary>
+  ThreadsBegun: Int64;
+  /// <summary>1, solange der Thread mit dieser Nummer (modulo cThreadSlots) läuft. Feste Tabelle: Die Haken
+  /// belegen dafür nichts.</summary>
+  ThreadRunning: array[0..cThreadSlots - 1] of Integer;
+
+threadvar
+  /// <summary>Nummer des eigenen Threads; 0 bei Threads, die vor den Haken begannen.</summary>
+  ThreadNumber: Int64;
+
+type
+  /// <summary>Startdaten, wie ThreadWrapper (System) sie liest: Funktion und Parameter; ThreadWrapper gibt den
+  /// Block vor dem Aufruf frei.</summary>
+  PRtlThreadStart = ^TRtlThreadStart;
+  TRtlThreadStart = record
+    Func: TThreadFunc;
+    Parameter: Pointer;
+  end;
+
+  /// <summary>Eigentliche Funktion und Parameter samt Nummer; gibt CountedThreadFunc beim Anlaufen frei.</summary>
+  PCountedStart = ^TCountedStart;
+  TCountedStart = record
+    Func: TThreadFunc;
+    Parameter: Pointer;
+    Number: Int64;
+  end;
+
+procedure MarkThreadEnded;
+var
+  mNumber: Int64;
+begin
+  mNumber := ThreadNumber;
+  if mNumber > 0 then
+  begin
+    ThreadNumber := 0;
+    AtomicExchange(ThreadRunning[Integer(mNumber mod cThreadSlots)], 0);
+  end;
+end;
+
+function CountedThreadFunc(AParameter: Pointer): Integer;
+var
+  mStart: TCountedStart;
+begin
+  mStart := PCountedStart(AParameter)^;
+  Dispose(PCountedStart(AParameter));
+  ThreadNumber := mStart.Number;
+  try
+    Result := mStart.Func(mStart.Parameter);
+  finally
+    // Ohne EndThread (Funktion kehrt zurück, z. B. roher BeginThread): hier als beendet zählen.
+    MarkThreadEnded;
+  end;
+end;
+
+function CountingThreadFuncProc(AThreadFunc: TThreadFunc; AParameter: Pointer): Pointer;
+var
+  mInner: PCountedStart;
+  mOuter: PRtlThreadStart;
+begin
+  // Im startenden Thread, noch vor CreateThread: Der neue Thread läuft ab hier, nicht erst, wenn er anläuft.
+  New(mInner);
+  mInner.Func := AThreadFunc;
+  mInner.Parameter := AParameter;
+  mInner.Number := AtomicIncrement(ThreadsBegun);
+  AtomicExchange(ThreadRunning[Integer(mInner.Number mod cThreadSlots)], 1);
+  New(mOuter);
+  mOuter.Func := CountedThreadFunc;
+  mOuter.Parameter := mInner;
+  Result := mOuter;
+end;
+
+procedure CountingThreadEndProc(AExitCode: Integer);
+begin
+  // TThread.ThreadProc ruft EndThread erst nach dem Freigeben des Objekts (FreeOnTerminate).
+  MarkThreadEnded;
+end;
+
+procedure InstallThreadCounting;
+begin
+  // Nur ohne fremde Haken (C++Builder setzt eigene); ohne Haken bleibt ThreadsRunningSince immer False.
+  if Assigned(SystemThreadFuncProc) or Assigned(SystemThreadEndProc) then
+  begin
+    Exit;
+  end;
+  SystemThreadFuncProc := CountingThreadFuncProc;
+  SystemThreadEndProc := CountingThreadEndProc;
+end;
+
+function StartedThreads: Int64;
+begin
+  Result := AtomicCmpExchange(ThreadsBegun, 0, 0);
+end;
+
+function ThreadsRunningSince(AFirst: Int64): Boolean;
+var
+  mLast: Int64;
+  mNumber: Int64;
+begin
+  mLast := StartedThreads;
+  if mLast - AFirst >= cThreadSlots then
+  begin
+    Exit(True);
+  end;
+  mNumber := AFirst;
+  while mNumber <= mLast do
+  begin
+    if ThreadRunning[Integer(mNumber mod cThreadSlots)] <> 0 then
+    begin
+      Exit(True);
+    end;
+    Inc(mNumber);
+  end;
+  Result := False;
+end;
 
 function AllocatedBytes: Int64;
 var
@@ -293,6 +428,7 @@ begin
   // Sleep(2) beim Warten auf andere Threads schliefe sonst eine ganze Zeitscheibe (rund 16 ms)
   // und verdreifachte die Laufzeit der Tests.
   timeBeginPeriod(1);
+  InstallThreadCounting;
   PrewarmRuntime;
   TFirstUse.WarmUp;
   TraceLeaks := TAllocationTrace.Requested;
@@ -320,6 +456,7 @@ begin
   TAtlasLocale.Use(TTextLanguage.German);
   FThreadsAtStart := ProcessThreadCount;
   FThreadsAtEnd := FThreadsAtStart;
+  FFirstThread := StartedThreads + 1;
   // Vor der Messung freigeben: Der Bericht des vorigen Tests gehört nicht zu diesem.
   FTraceReport := '';
   if TraceLeaks then
@@ -379,8 +516,8 @@ begin
       mStable := 0;
       mLast := AAllocated;
     end;
-    // Ruhig und keine zusätzlichen Threads mehr: weiteres Warten bringt nichts.
-    if (mStable >= cStableSamples) and (ProcessThreadCount <= FThreadsAtStart) then
+    // Ruhig und kein Thread des Tests läuft mehr: weiteres Warten bringt nichts.
+    if (mStable >= cStableSamples) and not ThreadsRunningSince(FFirstThread) then
     begin
       Break;
     end;

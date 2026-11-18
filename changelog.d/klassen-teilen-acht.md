@@ -1,2 +1,0 @@
-### Geändert
-- Acht große Klassen des Plugins nach Aufgaben geteilt (Leisten im Editorfenster, LSP-Client, Benachrichtigungen, Brotkrumen, Projektaufgaben, Architekturkarte, Dialog „Weg zwischen Symbolen“, Suchleiste). Die LSP-Rahmung und die Beobachterliste der Benachrichtigungen liegen jetzt im Kern mit eigenen Tests; das Statusfeld nutzt dieselbe Beobachterliste statt einer Kopie. Die Vorschlagsliste im Dialog „Weg zwischen Symbolen“ löst beim Freigeben ihre Ereignisse von den Feldern.
