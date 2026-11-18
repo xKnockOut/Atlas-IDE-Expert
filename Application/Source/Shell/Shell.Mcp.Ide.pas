@@ -1,11 +1,13 @@
 ﻿unit Shell.Mcp.Ide;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Verbindung zur laufenden IDE über die Dateien des Plugins:
-// ungespeicherte Dateien (editor-dirty-<pid>.json), Schreiben am Editor vorbei, Builds über das Plugin.
+// ungespeicherte Dateien (editor-dirty-<pid>.json), Schreiben am Editor vorbei, Builds und Debuggen über das Plugin.
 
 interface
 
 uses
+  System.JSON,
+  Atlas.Common.Mcp.IdeDebug,
   Atlas.Common.Lsp.IdeBuild;
 
 /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
@@ -20,6 +22,11 @@ procedure WriteSourceText(const AFileName, AText: string);
 /// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
 /// den Auftrag nicht annimmt.</summary>
 function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string): TIdeBuild;
+/// <summary>Debug-Werkzeug ATool (#1874) in der laufenden IDE: debug_start wählt die IDE wie build_project nach
+/// AProject, die übrigen Werkzeuge gehen an die IDE des letzten debug_start (sonst an die mit dem aktiven Projekt
+/// unter ARoot). Liefert das Ergebnis des Plugins als JSON-Text; EMcpToolError mit dem Grund.</summary>
+function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
+  const AResolve: TMcpIdeDebugResolve): string;
 
 implementation
 
@@ -28,11 +35,11 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  System.JSON,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.IdeEdits,
+  Atlas.Common.Mcp.IdeInbox,
   Atlas.Common.Mcp.IdeBuilds,
   Shell.Platform,
   Atlas.Common.Localization.Texts,
@@ -52,6 +59,10 @@ const
   /// <summary>Sicherheitsnetz beim Warten auf die Antwort des Plugins: Das Plugin legt sie per Umbenennen an, das
   /// Ordnersignal weckt sofort; ohne Signal (verpasst, Netzlaufwerk) wird spätestens so oft nachgesehen.</summary>
   cAnswerSafetyMs = 500;
+
+var
+  /// <summary>IDE des letzten erfolgreichen debug_start; dorthin gehen die übrigen Debug-Werkzeuge (#1874).</summary>
+  GDebugPid: Cardinal;
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
 /// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (N3).</summary>
@@ -198,6 +209,27 @@ begin
   TFileEncoding.SaveToFile(AFileName, AText, mFileFormat);
 end;
 
+/// <summary>Projekt aus dem Argument project: ein relativer Pfad gilt relativ zum Arbeitsordner, Namen bleiben.
+/// </summary>
+function WantedProject(const ARoot, AProject: string): string;
+begin
+  Result := AProject;
+  if (Result <> '') and ((Pos('\', Result) > 0) or (Pos('/', Result) > 0)) and not TPath.IsPathRooted(Result) then
+  begin
+    Result := TPath.GetFullPath(TPath.Combine(ARoot, Result));
+  end;
+end;
+
+/// <summary>Uhr in Millisekunden für das Warten auf das Plugin.</summary>
+function TickClock: TFunc<Int64>;
+begin
+  Result :=
+    function: Int64
+    begin
+      Result := TThread.GetTickCount64;
+    end;
+end;
+
 /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
 /// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
 /// den Auftrag nicht annimmt.</summary>
@@ -219,28 +251,81 @@ begin
   end;
   mRequest.Configuration := AConfiguration;
   mRequest.Platform := APlatform;
-  // Relativer Pfad: relativ zum Arbeitsordner.
-  mWanted := AProject;
-  if (mWanted <> '') and ((Pos('\', mWanted) > 0) or (Pos('/', mWanted) > 0)) and not TPath.IsPathRooted(mWanted) then
-  begin
-    mWanted := TPath.GetFullPath(TPath.Combine(ARoot, mWanted));
-  end;
+  mWanted := WantedProject(ARoot, AProject);
   if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, mWanted, mPid, mRequest.Project, mReason) then
   begin
     raise EMcpToolError.Create(mReason);
   end;
   mInbox := TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
   if TMcpIdeBuilds.Send(mInbox, mRequest, TShellPlatform.FolderWait(mInbox, TMcpIdeBuilds.cPollMs, cAnswerSafetyMs),
-    function: Int64
-    begin
-      Result := TThread.GetTickCount64;
-    end, mBuildText, mReason) <> TMcpIdeBuildOutcome.Done then
+    TickClock(), mBuildText, mReason) <> TMcpIdeBuildOutcome.Done then
   begin
     raise EMcpToolError.Create(mReason);
   end;
   if not TMcpBuildTools.FromFileText(mBuildText, Result) then
   begin
     raise EMcpToolError.Create(cTexts[TMcpIdeText.ResultUnreadable].Text);
+  end;
+end;
+
+/// <summary>IDE für ein Debug-Werkzeug: für debug_start nach AProject (AProjectFile = gewähltes Projekt), sonst die
+/// des letzten debug_start, solange sie läuft, ersatzweise die mit dem aktiven Projekt unter ARoot.</summary>
+function DebugIde(const ARoot, ATool, AProject: string; out AProjectFile: string): Cardinal;
+var
+  mEntries: TArray<TMcpIdeEntry>;
+  mEntry: TMcpIdeEntry;
+  mReason: string;
+begin
+  mEntries := RunningIdes;
+  AProjectFile := '';
+  if Length(mEntries) = 0 then
+  begin
+    raise EMcpToolError.Create(TMcpIdeDebug.NoIdeReason);
+  end;
+  if ATool <> TMcpIdeDebug.cStart then
+  begin
+    for mEntry in mEntries do
+    begin
+      if (GDebugPid <> 0) and (mEntry.Pid = GDebugPid) then
+      begin
+        Exit(GDebugPid);
+      end;
+    end;
+  end;
+  if not TMcpIdeBuilds.Pick(mEntries, ARoot, WantedProject(ARoot, AProject), Result, AProjectFile, mReason) then
+  begin
+    raise EMcpToolError.Create(mReason);
+  end;
+end;
+
+function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
+  const AResolve: TMcpIdeDebugResolve): string;
+var
+  mPid: Cardinal;
+  mProjectFile, mRequest, mReason, mInbox: string;
+begin
+  // Erst die Argumente prüfen: Fehler darin meldet das Werkzeug auch ohne laufende IDE.
+  if not TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, AClient, ''), AArguments, AResolve, mRequest,
+    mReason) then
+  begin
+    raise EMcpToolError.Create(mReason);
+  end;
+  mPid := DebugIde(ARoot, ATool, AProject, mProjectFile);
+  if not TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, AClient, mProjectFile), AArguments, AResolve,
+    mRequest, mReason) then
+  begin
+    raise EMcpToolError.Create(mReason);
+  end;
+  mInbox := TMcpIdeDebug.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
+  if TMcpIdeDebug.Send(mInbox, mRequest, TMcpIdeWaiting.Make(TShellPlatform.FolderWait(mInbox, TMcpIdeDebug.cPollMs,
+    cAnswerSafetyMs), TickClock(), TMcpIdeDebug.cTakeMs, TMcpIdeDebug.AnswerMs(AArguments)), Result,
+    mReason) <> TMcpIdeDebugOutcome.Done then
+  begin
+    raise EMcpToolError.Create(mReason);
+  end;
+  if ATool = TMcpIdeDebug.cStart then
+  begin
+    GDebugPid := mPid;
   end;
 end;
 
