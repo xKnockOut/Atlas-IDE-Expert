@@ -1,0 +1,2 @@
+### Neu
+- Vom Debugger geöffnete Dateien schließen: Units, die der Debugger an einem Halt geöffnet hat (F7 in `System.pas` …), schließt Atlas nach der Sitzung auf Nachfrage („Schließen“, „Offen lassen“, „Immer automatisch“) oder selbst mit „Wieder öffnen“. Vor der Sitzung offene, geänderte und festgehaltene Dateien sowie Dateien mit Haltepunkt oder Lesezeichen bleiben offen. Auf Wunsch teilen sich solche Dateien einen Vorschau-Reiter. Befehl „Vom Debugger geöffnete Datei offen halten“ (#842, `debug.closeOpenedFiles`, `debug.previewTab`).

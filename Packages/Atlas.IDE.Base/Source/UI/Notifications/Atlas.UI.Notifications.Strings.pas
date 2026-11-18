@@ -17,7 +17,7 @@ type
     NotificationsCheckErrors, NotificationsCheckClean, NotificationsGoToError, NotificationsSourceBuildServer,
     NotificationsSourceOpenBuild, NotificationsSourceHidden, NotificationsBuildRejected,
     NotificationsBuildRejectedCodes, NotificationsGoToMessage, NotificationsBuildBaselined,
-    NotificationsSourceIssues, NotificationsSourceRuleChecks);
+    NotificationsSourceIssues, NotificationsSourceRuleChecks, NotificationsSourceDebugFiles);
 
   TAtlasNotificationsStrings = class
   public
@@ -62,7 +62,8 @@ const
      'Zur Meldung',
      '(%d in der Basislinie)',
      'Issues',
-     'Prüfregeln aus'),
+     'Prüfregeln aus',
+     'Vom Debugger geöffnete Dateien'),
     ('%d unread',
      'No notifications',
      'Mark all read',
@@ -91,7 +92,8 @@ const
      'Go to message',
      '(%d in the baseline)',
      'Issues',
-     'Rule checks off'));
+     'Rule checks off',
+     'Files opened by the debugger'));
 
 { TAtlasNotificationsStrings }
 

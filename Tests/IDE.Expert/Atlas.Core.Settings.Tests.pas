@@ -271,6 +271,8 @@ begin
   Assert.IsFalse(ASettings.DebugMemoryTimelineObjectCount, 'debug.memoryTimeline.objectCount (#858)');
   Assert.IsTrue(ASettings.DebugNote, 'debug.note (#582)');
   Assert.IsTrue(ASettings.DebugNoteSaveFile, 'debug.note.saveFile (#582)');
+  Assert.AreEqual('ask', ASettings.DebugCloseOpenedFiles, 'debug.closeOpenedFiles (#842)');
+  Assert.IsFalse(ASettings.DebugPreviewTab, 'debug.previewTab (#842)');
   Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
@@ -489,6 +491,8 @@ begin
   ASettings.DebugMemoryTimelineObjectCount := True;
   ASettings.DebugNote := False;
   ASettings.DebugNoteSaveFile := False;
+  ASettings.DebugCloseOpenedFiles := 'AUTO';
+  ASettings.DebugPreviewTab := True;
   ASettings.DebugWhyHere := False;
   ASettings.DebugWhyHereDepth := 6;
   ASettings.DebugVariablesWindow := False;
@@ -694,6 +698,8 @@ begin
   Assert.IsTrue(ALoaded.DebugMemoryTimelineObjectCount, 'debug.memoryTimeline.objectCount (#858)');
   Assert.IsFalse(ALoaded.DebugNote, 'debug.note (#582)');
   Assert.IsFalse(ALoaded.DebugNoteSaveFile, 'debug.note.saveFile (#582)');
+  Assert.AreEqual('auto', ALoaded.DebugCloseOpenedFiles, 'debug.closeOpenedFiles (#842)');
+  Assert.IsTrue(ALoaded.DebugPreviewTab, 'debug.previewTab (#842)');
   Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');

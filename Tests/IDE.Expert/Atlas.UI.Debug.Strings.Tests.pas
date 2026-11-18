@@ -37,6 +37,7 @@ uses
   Atlas.UI.Debug.Logpoints.Strings,
   Atlas.UI.Debug.MethodBreakpoints.Strings,
   Atlas.UI.Debug.Note.Strings,
+  Atlas.UI.Debug.OpenedFiles.Strings,
   Atlas.UI.Debug.RuntimeReport.Strings,
   Atlas.UI.Debug.Session.Strings,
   Atlas.UI.Debug.Settings.Strings,
@@ -152,14 +153,19 @@ begin
     end);
 end;
 
-/// <summary>Texttabellen rund um die Sitzung: Debug-Notiz.</summary>
+/// <summary>Texttabellen rund um die Sitzung: Debug-Notiz, vom Debugger geöffnete Dateien.</summary>
 function SessionTables: TArray<TAtlasTextTable>;
 begin
-  SetLength(Result, 1);
+  SetLength(Result, 2);
   Result[0] := TextTable('Note', Ord(High(TAtlasNoteTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasNoteStrings.Text(TAtlasNoteTextId(AIndex));
+    end);
+  Result[1] := TextTable('OpenedFiles', Ord(High(TAtlasOpenedFilesTextId)) + 1,
+    function(AIndex: Integer): string
+    begin
+      Result := TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId(AIndex));
     end);
 end;
 

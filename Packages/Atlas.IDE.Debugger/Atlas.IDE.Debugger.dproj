@@ -135,6 +135,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValuesFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.OpenedFiles.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepFilterEdit.pas"/>
@@ -211,6 +212,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.OwnCode.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Report.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Note.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.OpenedFiles.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.NoteValues.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopSource.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Session.pas"/>
@@ -329,6 +331,7 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EventBreak.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Logpoints.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Note.Strings.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.OpenedFiles.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Exceptions.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.AccessViolation.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Threads.Strings.pas"/>

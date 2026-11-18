@@ -216,41 +216,40 @@ type
 
 { TAtlasNotificationTexts }
 
+type
+  /// <summary>Quelle mit eigenem Text in TAtlasNotificationsStrings.</summary>
+  TSourceText = record
+    Source: string;
+    Id: TAtlasNotificationsTextId;
+  end;
+
+const
+  cSourceTexts: array[0..10] of TSourceText = (
+    (Source: TAtlasNotificationSources.cBuild; Id: TAtlasNotificationsTextId.NotificationsSourceBuild),
+    (Source: TAtlasNotificationSources.cCheck; Id: TAtlasNotificationsTextId.NotificationsSourceCheck),
+    (Source: TAtlasNotificationSources.cReload; Id: TAtlasNotificationsTextId.NotificationsSourceReload),
+    (Source: TAtlasNotificationSources.cServer; Id: TAtlasNotificationsTextId.NotificationsSourceServer),
+    (Source: TAtlasNotificationSources.cShortcutTips; Id: TAtlasNotificationsTextId.NotificationsSourceShortcutTips),
+    (Source: TAtlasNotificationSources.cBuildServer; Id: TAtlasNotificationsTextId.NotificationsSourceBuildServer),
+    (Source: TAtlasNotificationSources.cOpenBuild; Id: TAtlasNotificationsTextId.NotificationsSourceOpenBuild),
+    (Source: TAtlasNotificationSources.cHidden; Id: TAtlasNotificationsTextId.NotificationsSourceHidden),
+    (Source: TAtlasNotificationSources.cIssues; Id: TAtlasNotificationsTextId.NotificationsSourceIssues),
+    (Source: TAtlasNotificationSources.cRuleChecks; Id: TAtlasNotificationsTextId.NotificationsSourceRuleChecks),
+    (Source: TAtlasNotificationSources.cDebugFiles; Id: TAtlasNotificationsTextId.NotificationsSourceDebugFiles));
+
 class function TAtlasNotificationTexts.SourceCaption(const ASource: string): string;
+var
+  mText: TSourceText;
 begin
-  if SameText(ASource, TAtlasNotificationSources.cBuild) then
+  for mText in cSourceTexts do
   begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceBuild);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cCheck) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceCheck);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cReload) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceReload);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cServer) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceServer);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cShortcutTips) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceShortcutTips);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cBuildServer) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceBuildServer);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cOpenBuild) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceOpenBuild);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cHidden) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceHidden);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cUnitRename) then
+    if SameText(ASource, mText.Source) then
+    begin
+      Exit(TAtlasNotificationsStrings.Text(mText.Id));
+    end;
+  end;
+  // Quellen, deren Titel schon in den allgemeinen Texten steht.
+  if SameText(ASource, TAtlasNotificationSources.cUnitRename) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle);
   end
@@ -261,14 +260,6 @@ begin
   else if SameText(ASource, TAtlasNotificationSources.cNewIssue) then
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cIssues) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceIssues);
-  end
-  else if SameText(ASource, TAtlasNotificationSources.cRuleChecks) then
-  begin
-    Result := TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsSourceRuleChecks);
   end
   else
   begin

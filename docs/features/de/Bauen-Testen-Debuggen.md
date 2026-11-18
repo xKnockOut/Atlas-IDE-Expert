@@ -732,6 +732,18 @@ Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
 Einstellungen: `debug.note`, `debug.note.saveFile`
 
+### Vom Debugger geöffnete Dateien schließen (#842)
+
+- Atlas merkt sich, welche Dateien der Debugger während einer Sitzung geöffnet hat: die Stelle eines Halts (F7 in `System.pas`, `Vcl.Controls.pas` …), nicht aber Dateien, die man im Halt selbst öffnet
+- Nach der Sitzung (`debug.closeOpenedFiles`):
+  - `ask` (Vorgabe): Hinweis „N Dateien hat der Debugger geöffnet“ mit „Schließen“, „Offen lassen“ und „Immer automatisch“
+  - `auto`: Atlas schließt sie und meldet „N vom Debugger geöffnete Dateien geschlossen“ mit „Wieder öffnen“
+  - `off`: nichts geschieht
+- Offen bleiben Dateien, die vor der Sitzung offen waren, geänderte Dateien, Dateien mit Haltepunkt oder Lesezeichen und solche, die „Vom Debugger geöffnete Datei offen halten“ (Atlas-Menü, Befehlspalette) festhält
+- Vorschau-Reiter (`debug.previewTab`): Hält der Debugger in einer weiteren solchen Datei, schließt Atlas die vorige, wenn sie unberührt ist; die Statuszeile nennt den Vorschau-Reiter (kursive Reitertitel sieht die IDE nicht vor)
+
+Einstellungen: `debug.closeOpenedFiles`, `debug.previewTab`
+
 ### Leck- und Absturzberichte (#74)
 
 - Bericht kopieren, dann Atlas > „Absturz- oder Leckbericht einfügen …“ (auch in der Befehlspalette): Atlas liest FastMM-Logs (FullDebugMode), die Meldung von `ReportMemoryLeaksOnShutdown`, Berichte von madExcept, EurekaLog 6/7 und JclDebug und die Meldung einer Exception allein („Zugriffsverletzung bei Adresse … in Modul …“)

@@ -6,7 +6,8 @@
 // (#869), „Neu starten“ (#872, Strg+Umschalt+F2), „Erneut anhängen“ (#2171,
 // Menü Start, Taste debug.reattach.key), Leck- und Absturzberichte aus der
 // Zwischenablage (#74), die Startverbünde (#867, F9 und Strg+F2 mit
-// aktivem Verbund), „Debug-Zustand festhalten“ (#582) und den Profiler (#2057, aus
+// aktivem Verbund), „Debug-Zustand festhalten“ (#582), das Schließen vom
+// Debugger geöffneter Dateien (#842) und den Profiler (#2057, aus
 // Atlas.IDE.Debug.Composition.Profiler). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
@@ -53,6 +54,8 @@ uses
   Atlas.IDE.Debug.LaunchGroups,
   Atlas.IDE.Debug.Note,
   Atlas.UI.Debug.Note.Strings,
+  Atlas.IDE.Debug.OpenedFiles,
+  Atlas.UI.Debug.OpenedFiles.Strings,
   Atlas.IDE.Debug.Composition.Profiler,
   Atlas.UI.Debug.Commands.Strings;
 
@@ -65,6 +68,7 @@ const
   cLaunchRunCommand = 'Atlas.LaunchGroupRun';
   cLaunchStopCommand = 'Atlas.LaunchGroupStop';
   cNoteCommand = 'Atlas.DebugNote';
+  cKeepOpenedFileCommand = 'Atlas.DebugKeepOpenedFile';
 
 { Dienste von Base }
 
@@ -195,6 +199,23 @@ begin
     end;
 end;
 
+/// <summary>Vom Debugger geöffnete Dateien (#842): an, solange debug.closeOpenedFiles nicht off oder
+/// debug.previewTab an ist.</summary>
+function OpenedFilesVisible: Boolean;
+begin
+  Result := (TAtlasOpenedFiles.ModeOf(TAtlasIdeSettings.Current.DebugCloseOpenedFiles) <> TAtlasCloseOpenedFiles.Off)
+    or TAtlasIdeSettings.Current.DebugPreviewTab;
+end;
+
+procedure StartOpenedFiles;
+begin
+  TAtlasIdeOpenedFiles.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end);
+end;
+
 procedure StartLogpoints;
 begin
   TAtlasIdeLogpoints.Start(
@@ -298,7 +319,17 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeDebugNote.Started;
-      end, NoteStarter(AScope), TAtlasIdeDebugNote.Release)];
+      end, NoteStarter(AScope), TAtlasIdeDebugNote.Release),
+    // Vom Debugger geöffnete Dateien schließen (#842): IDE-Notifier und Zuhörer der Sitzung.
+    TAtlasFeaturePart.When('DebugOpenedFiles',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and OpenedFilesVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeOpenedFiles.Started;
+      end, StartOpenedFiles, TAtlasIdeOpenedFiles.Release)];
   // Profiler (#2057): nur mit debug.profiler.
   Result := Result + ProfilerParts(AScope);
 end;
@@ -356,7 +387,9 @@ begin
     RunCommand(cLaunchStopCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandStop),
       TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible),
     RunCommand(cNoteCommand, TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteCommand), TAtlasIdeDebugNote.Execute,
-      NoteVisible)];
+      NoteVisible),
+    RunCommand(cKeepOpenedFileCommand, TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.PinCommand),
+      TAtlasIdeOpenedFiles.PinCurrent, OpenedFilesVisible)];
   // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
   Result := Result + ProfilerCommands;
 end;
@@ -481,6 +514,7 @@ begin
   TAtlasIdeDebugNoSource.ThemeChanged;
   TAtlasIdeDebugRestart.ThemeChanged;
   TAtlasIdeLaunchGroups.ThemeChanged;
+  TAtlasIdeOpenedFiles.ThemeChanged;
   ProfilerThemeChanged;
 end;
 

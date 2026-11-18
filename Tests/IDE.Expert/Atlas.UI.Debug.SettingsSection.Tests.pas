@@ -127,6 +127,8 @@ begin
   Assert.IsFalse(CheckOf(APage, 'DebugMemoryTimelineObjectCount').Checked, 'objectCount (#858)');
   Assert.IsTrue(CheckOf(APage, 'DebugNote').Checked, 'debug.note (#582)');
   Assert.IsTrue(CheckOf(APage, 'DebugNoteSaveFile').Checked, 'debug.note.saveFile (#582)');
+  Assert.AreEqual(1, ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice, 'debug.closeOpenedFiles (#842)');
+  Assert.IsFalse(CheckOf(APage, 'DebugPreviewTab').Checked, 'debug.previewTab (#842)');
 end;
 
 /// <summary>Alle Schalter des Abschnitts umstellen.</summary>
@@ -163,6 +165,8 @@ begin
   CheckOf(APage, 'DebugMemoryTimelineObjectCount').Checked := True;
   CheckOf(APage, 'DebugNote').Checked := False;
   CheckOf(APage, 'DebugNoteSaveFile').Checked := False;
+  ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice := 2;
+  CheckOf(APage, 'DebugPreviewTab').Checked := True;
   ASection.OwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
 end;
 
@@ -201,6 +205,8 @@ begin
   Assert.IsTrue(ASaved.DebugMemoryTimelineObjectCount);
   Assert.IsFalse(ASaved.DebugNote);
   Assert.IsFalse(ASaved.DebugNoteSaveFile);
+  Assert.AreEqual('auto', ASaved.DebugCloseOpenedFiles);
+  Assert.IsTrue(ASaved.DebugPreviewTab);
   Assert.AreEqual('C:\Komponenten', ASaved.DebugOwnCodeFolders, 'bereinigt (#578)');
 end;
 
