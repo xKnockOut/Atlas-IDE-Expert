@@ -12,6 +12,8 @@
 //   dieselbe Zeile OnShow (Komponente im Designer); Kontextmenü: Im Designer
 //   zeigen, Handler umbenennen, Leeren Handler entfernen.
 // - Filter, Ereignis, „Nur Befunde“ und Gruppe melden OnOptions.
+// - OnPainted: Die Liste wird gezeichnet, das Fenster ist also zu sehen;
+//   daran wacht der ruhende Takt der IDE-Seite wieder auf.
 
 interface
 
@@ -62,6 +64,7 @@ type
     FOnRename: TProc<TAtlasEventRow>;
     FOnRemove: TProc<TAtlasEventRow>;
     FOnOptions: TProc;
+    FOnPainted: TProc;
     function AddCombo(const AItems: array of string): TComboBox;
     function AddMenuItem(const ACaption: string; const AOnClick: TNotifyEvent): TMenuItem;
     function SelectedRow(out ARow: TAtlasEventRow): Boolean;
@@ -74,6 +77,7 @@ type
     procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
+    procedure ListPaint(Sender: TCustomListView; const ARect: TRect; var DefaultDraw: Boolean);
   protected
     procedure CreateWnd; override;
     procedure FillEvents(const AEvents: TArray<string>);
@@ -94,6 +98,8 @@ type
     property OnRename: TProc<TAtlasEventRow> read FOnRename write FOnRename;
     property OnRemove: TProc<TAtlasEventRow> read FOnRemove write FOnRemove;
     property OnOptions: TProc read FOnOptions write FOnOptions;
+    /// <summary>Die Liste wird gezeichnet, ist also zu sehen; bei jedem Zeichnen, auch ohne Änderung.</summary>
+    property OnPainted: TProc read FOnPainted write FOnPainted;
   end;
 
 implementation
@@ -197,6 +203,7 @@ begin
   FParts.List.Columns[cLinesColumn].Alignment := taRightJustify;
   FParts.List.OnDblClick := ListDblClick;
   FParts.List.OnCustomDrawItem := ListCustomDrawItem;
+  FParts.List.OnCustomDraw := ListPaint;
   FParts.List.OnSelectItem := ListSelectItem;
 end;
 
@@ -418,6 +425,15 @@ begin
     begin
       Sender.Canvas.Font.Color := FErrorColor;
     end;
+  end;
+end;
+
+procedure TAtlasEventFrame.ListPaint(Sender: TCustomListView; const ARect: TRect; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if Assigned(FOnPainted) then
+  begin
+    FOnPainted();
   end;
 end;
 
