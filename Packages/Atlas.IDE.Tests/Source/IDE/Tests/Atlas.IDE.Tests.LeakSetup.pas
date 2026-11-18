@@ -62,6 +62,15 @@ end;
 procedure Report(AId: TAtlasTestsTextId; const AArgs: array of const);
 begin
   TAtlasIdeHost.Message(TAtlasTestsStrings.Fmt(AId, AArgs));
+  // Der Befehl hat keinen eigenen Rückkanal: ohne geöffnete Meldungsansicht sah man weder Ergebnis noch Grund.
+  TAtlasIdeHost.ShowMessages;
+end;
+
+/// <summary>Fehler einer Antwort sichtbar melden und weiterreichen: Die Sicherung im Hauptthread schreibt ihn nur
+/// ins Protokoll, der Befehl tat dann scheinbar nichts.</summary>
+procedure ReportFailure(AE: Exception);
+begin
+  Report(TAtlasTestsTextId.LeakSetupFailed, [AE.ClassName + ': ' + AE.Message]);
 end;
 
 { Symbole }
@@ -199,12 +208,20 @@ begin
     var
       mPlan: TAtlasLeakSetupPlan;
     begin
-      if not TAtlasLeakSetupPlan.FromJson(AAnswer, mPlan) then
-      begin
-        Report(TAtlasTestsTextId.LeakSetupNoServer, []);
-        Exit;
+      try
+        if not TAtlasLeakSetupPlan.FromJson(AAnswer, mPlan) then
+        begin
+          Report(TAtlasTestsTextId.LeakSetupNoServer, []);
+          Exit;
+        end;
+        ApplyPlan(AInfo, mPlan);
+      except
+        on E: Exception do
+        begin
+          ReportFailure(E);
+          raise;
+        end;
       end;
-      ApplyPlan(AInfo, mPlan);
     end;
 end;
 
@@ -231,14 +248,22 @@ begin
       mChoice: TAtlasLeakChoice;
       mFileReport: Boolean;
     begin
-      if not TAtlasLeakSetupInfo.FromJson(AAnswer, mInfo) then
-      begin
-        Report(TAtlasTestsTextId.LeakSetupNoServer, []);
-        Exit;
-      end;
-      if TAtlasLeakSetupDialog.Execute(mInfo, mChoice, mFileReport) then
-      begin
-        RequestPlan(AScope, mInfo, mChoice, mFileReport);
+      try
+        if not TAtlasLeakSetupInfo.FromJson(AAnswer, mInfo) then
+        begin
+          Report(TAtlasTestsTextId.LeakSetupNoServer, []);
+          Exit;
+        end;
+        if TAtlasLeakSetupDialog.Execute(mInfo, mChoice, mFileReport) then
+        begin
+          RequestPlan(AScope, mInfo, mChoice, mFileReport);
+        end;
+      except
+        on E: Exception do
+        begin
+          ReportFailure(E);
+          raise;
+        end;
       end;
     end;
 end;
