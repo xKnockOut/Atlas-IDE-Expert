@@ -490,7 +490,7 @@ end;
 procedure TAtlasStructureFrame.TreeDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState;
   var Accept: Boolean);
 begin
-  Accept := (Source <> nil) and Assigned(FEvents.OnCanDrop) and FEvents.OnCanDrop;
+  Accept := (Source <> nil) and Assigned(FEvents.OnCanDrop) and FEvents.OnCanDrop();
 end;
 
 procedure TAtlasStructureFrame.TreeDragDrop(Sender, Source: TObject; X, Y: Integer);
