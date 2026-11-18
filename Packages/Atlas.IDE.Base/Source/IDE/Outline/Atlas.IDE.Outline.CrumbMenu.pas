@@ -70,14 +70,14 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Outline.CrumbMenu,
-  Atlas.UI.Strings,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.UI.Outline.Strings;
 
 const
-  cTexts: array[TAtlasCrumbAction] of TAtlasTextId = (TAtlasTextId.CrumbCopyName, TAtlasTextId.CrumbCopyWithUnit,
-    TAtlasTextId.CrumbCopySignature, TAtlasTextId.CrumbCopyPath, TAtlasTextId.CrumbShowComponent,
-    TAtlasTextId.CrumbFindReferences, TAtlasTextId.CrumbRename, TAtlasTextId.CrumbCopyUnitName,
-    TAtlasTextId.CrumbCopyFilePath);
+  cTexts: array[TAtlasCrumbAction] of TAtlasOutlineTextId = (TAtlasOutlineTextId.CrumbCopyName,
+    TAtlasOutlineTextId.CrumbCopyWithUnit, TAtlasOutlineTextId.CrumbCopySignature, TAtlasOutlineTextId.CrumbCopyPath,
+    TAtlasOutlineTextId.CrumbShowComponent, TAtlasOutlineTextId.CrumbFindReferences, TAtlasOutlineTextId.CrumbRename,
+    TAtlasOutlineTextId.CrumbCopyUnitName, TAtlasOutlineTextId.CrumbCopyFilePath);
   /// <summary>Reihenfolge im Menü; vor FindReferences und vor CopyUnitName steht ein Trennstrich.</summary>
   cOrder: array[0..8] of TAtlasCrumbAction = (TAtlasCrumbAction.CopyName, TAtlasCrumbAction.CopyWithUnit,
     TAtlasCrumbAction.CopySignature, TAtlasCrumbAction.CopyPath, TAtlasCrumbAction.ShowComponent,
@@ -303,7 +303,7 @@ begin
       FMenu.Items.Add(NewLine);
     end;
     mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasStrings.Text(cTexts[mAction]);
+    mItem.Caption := TAtlasOutlineStrings.Text(cTexts[mAction]);
     mItem.Tag := Ord(mAction);
     mItem.OnClick := Clicked;
     FMenu.Items.Add(mItem);
