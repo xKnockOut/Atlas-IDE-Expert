@@ -173,7 +173,6 @@ type
     FLines: TArray<string>;
     FLineBreak: string;
     FTypes: TManagedTypes;
-    function IsCode(AIndex: Integer): Boolean;
     function NodeText(ANode: TSyntaxNode): string;
     function TypeNode(ANode: TSyntaxNode): TSyntaxNode;
     function UnconstrainedParam(ANode: TSyntaxNode; const AName: string; out AAlone: Boolean): Integer;
@@ -192,11 +191,6 @@ constructor TVariantRecordManagedFieldScan.Create(const AContext: TRuleContext; 
 begin
   FContext := AContext;
   FReport := AReport;
-end;
-
-function TVariantRecordManagedFieldScan.IsCode(AIndex: Integer): Boolean;
-begin
-  Result := not (FTokens[AIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
 end;
 
 function TVariantRecordManagedFieldScan.NodeText(ANode: TSyntaxNode): string;
@@ -273,7 +267,7 @@ begin
   begin
     // Letztes Feld: ab dem ; des vorigen.
     mRemove := mFirst - 1;
-    while (mRemove > 0) and not IsCode(mRemove) do
+    while (mRemove > 0) and IsTrivia(FTokens[mRemove]) do
     begin
       Dec(mRemove);
     end;

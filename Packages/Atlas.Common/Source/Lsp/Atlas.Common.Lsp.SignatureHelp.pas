@@ -149,6 +149,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
@@ -565,30 +566,6 @@ begin
   if Result then
   begin
     Delete(AText, mKeyword + 1, mDot - mKeyword);
-  end;
-end;
-
-/// <summary>Position der Klammer, die die Klammer an AOpen schließt; 0 ohne.</summary>
-function ClosingParen(const AText: string; AOpen: Integer): Integer;
-var
-  mIndex, mDepth: Integer;
-begin
-  Result := 0;
-  mDepth := 0;
-  for mIndex := AOpen to Length(AText) do
-  begin
-    if AText[mIndex] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if AText[mIndex] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
   end;
 end;
 
@@ -1373,7 +1350,7 @@ begin
   begin
     Exit;
   end;
-  mClose := ClosingParen(mText, mOpen);
+  mClose := MatchingParen(mText, mOpen);
   if mClose > 0 then
   begin
     Result.Parameters := ParameterGroups(mText, mOpen, mClose);
