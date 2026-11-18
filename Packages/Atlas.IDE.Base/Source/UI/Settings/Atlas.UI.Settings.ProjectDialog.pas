@@ -231,6 +231,25 @@ const
 const
   cGap = 8;
   cControlWidth = 320;
+  // Zeilen der Seite (logische Pixel): Name, Hinweise, Bedienelement mit Zustand und Zurücksetzen.
+  cIndent = 2 * cGap;
+  cNameWidth = 400;
+  cLabelHeight = 16;
+  cHeaderHeight = 20;
+  cNoteGap = 4;
+  cControlHeight = 24;
+  cJsonRoom = 300;
+  cBrowseWidth = 30;
+  cBrowseRoom = 34;
+  cStateWidth = 150;
+  cStateDrop = 4;
+  cResetWidth = 140;
+  // Rand rechts der Hinweise: Bildlaufleiste und Abstand.
+  cRightRoom = 5 * cGap;
+  // Knöpfe der Fußleiste.
+  cFootButtonTop = 8;
+  cFootButtonHeight = 28;
+  cOpenButtonWidth = 150;
   cRulesPath = 'rules';
   /// <summary>Data der Gruppenknoten ab hier; darunter der Index der Seite.</summary>
   cGroupBase = 10000;
@@ -278,7 +297,7 @@ function NewButton(AParent: TWinControl; const ACaption: string; ALeft, AWidth: 
 begin
   Result := TButton.Create(AParent.Owner);
   Result.Parent := AParent;
-  Result.SetBounds(ALeft, 8, AWidth, 28);
+  Result.SetBounds(ALeft, Result.ScaleValue(cFootButtonTop), AWidth, Result.ScaleValue(cFootButtonHeight));
   Result.Caption := ACaption;
 end;
 
@@ -374,16 +393,17 @@ begin
   mFileLabel.Left := mFileLabel.ScaleValue(170);
   mFileLabel.Top := mFileLabel.ScaleValue(14);
   mFileLabel.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsFile, [AFileName]);
-  mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), cGap, 150);
+  mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), ScaleValue(cGap), ScaleValue(cOpenButtonWidth));
   mButton.OnClick := OpenClick;
   mButton := NewButton(mBottom, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsOk),
-    mBottom.Width - 2 * (cDialogButtonWidth + cGap),
-    cDialogButtonWidth);
+    mBottom.Width - 2 * ScaleValue(cDialogButtonWidth + cGap),
+    ScaleValue(cDialogButtonWidth));
   mButton.Anchors := [akTop, akRight];
   mButton.Default := True;
   mButton.OnClick := OkClick;
-  mButton := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel), mBottom.Width - (90 + cGap),
-    90);
+  mButton := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel),
+    mBottom.Width - ScaleValue(cDialogButtonWidth + cGap),
+    ScaleValue(cDialogButtonWidth));
   mButton.Anchors := [akTop, akRight];
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
@@ -617,6 +637,8 @@ type
     Top: Integer;
     Width_: Integer;
     Control: TControl;
+    /// <summary>AValue (logische Pixel) in Gerätepixeln der Seite; Top und Width_ sind Gerätepixel.</summary>
+    function Px(AValue: Integer): Integer;
     procedure Header;
     procedure Note(const AText: string; AGray: Boolean);
     procedure Notes;
@@ -636,13 +658,18 @@ type
 
 { TSettingsFieldRow }
 
+function TSettingsFieldRow.Px(AValue: Integer): Integer;
+begin
+  Result := Box.ScaleValue(AValue);
+end;
+
 procedure TSettingsFieldRow.Header;
 var
   mName: TLabel;
 begin
   mName := TLabel.Create(Box);
   mName.Parent := Box;
-  mName.SetBounds(cGap * 2, Top, 400, 16);
+  mName.SetBounds(Px(cIndent), Top, Px(cNameWidth), Px(cLabelHeight));
   mName.Font.Style := [fsBold];
   mName.Caption := Field.Path;
   if Field.Experimental then
@@ -650,7 +677,7 @@ begin
     mName.Caption := mName.Caption + '  [' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalTag) +
       ']';
   end;
-  Inc(Top, 20);
+  Inc(Top, Px(cHeaderHeight));
 end;
 
 procedure TSettingsFieldRow.Note(const AText: string; AGray: Boolean);
@@ -662,7 +689,7 @@ begin
   begin
     mNote.Font.Color := clGrayText;
   end;
-  Inc(Top, mNote.Height + 4);
+  Inc(Top, mNote.Height + Px(cNoteGap));
 end;
 
 procedure TSettingsFieldRow.Notes;
@@ -696,7 +723,7 @@ begin
   mMemo.Text := Dialog.FRaw[Index];
   mMemo.OnChange := Dialog.JsonChange;
   Control := mMemo;
-  Width_ := Max(cControlWidth, Box.ClientWidth - cGap * 5 - 300);
+  Width_ := Max(Px(cControlWidth), Box.ClientWidth - Px(cRightRoom + cJsonRoom));
 end;
 
 function TSettingsFieldRow.NewCheck: TControl;
@@ -767,10 +794,10 @@ var
   mBrowse: TButton;
 begin
   Dialog.FFileEdits[Index] := AEdit;
-  Width_ := cControlWidth - 34;
+  Width_ := Px(cControlWidth - cBrowseRoom);
   mBrowse := TButton.Create(Box);
   mBrowse.Parent := Box;
-  mBrowse.SetBounds(cGap * 2 + cControlWidth - 30, Top, 30, 24);
+  mBrowse.SetBounds(Px(cIndent + cControlWidth - cBrowseWidth), Top, Px(cBrowseWidth), Px(cControlHeight));
   mBrowse.Caption := '…';
   mBrowse.Tag := Index;
   mBrowse.OnClick := Dialog.BrowseClick;
@@ -856,19 +883,20 @@ begin
   if Control <> nil then
   begin
     Control.Tag := Index;
-    Control.SetBounds(cGap * 2, Top, Width_, Control.Height);
-    mState.SetBounds(cGap * 2 + Width_ + cGap, Top + 4, 150, 16);
+    Control.SetBounds(Px(cIndent), Top, Width_, Control.Height);
+    mState.SetBounds(Px(cIndent) + Width_ + Px(cGap), Top + Px(cStateDrop), Px(cStateWidth), Px(cLabelHeight));
   end
   else
   begin
-    mState.SetBounds(cGap * 2, Top, 150, 16);
+    mState.SetBounds(Px(cIndent), Top, Px(cStateWidth), Px(cLabelHeight));
   end;
   mState.Font.Color := clGrayText;
   Dialog.FStates[Index] := mState;
   // Eine Ebene je Datei: Ohne den Schlüssel gilt immer der Standard.
   mReset := TButton.Create(Box);
   mReset.Parent := Box;
-  mReset.SetBounds(mState.Left + 150 + cGap, mState.Top - 4, 140, 24);
+  mReset.SetBounds(mState.Left + Px(cStateWidth + cGap), mState.Top - Px(cStateDrop), Px(cResetWidth),
+    Px(cControlHeight));
   mReset.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsResetDefault);
   mReset.Tag := Index;
   mReset.OnClick := Dialog.ResetClick;
@@ -883,7 +911,7 @@ begin
   Index := AIndex;
   Field := ADialog.FModel.Fields[AIndex];
   Top := ATop;
-  Width_ := cControlWidth;
+  Width_ := Px(cControlWidth);
   Control := nil;
   Header;
   Notes;
@@ -901,10 +929,10 @@ begin
     ValueControl;
   end;
   StateAndReset;
-  Result := Top + 24 + cGap * 2;
+  Result := Top + Px(cControlHeight + cIndent);
   if Control <> nil then
   begin
-    Result := Top + Control.Height + cGap * 2;
+    Result := Top + Control.Height + Px(cIndent);
   end;
 end;
 
@@ -947,7 +975,7 @@ begin
   ClearBox;
   FCurrentPage := APage;
   FCurrentGroup := -1;
-  mTop := cGap;
+  mTop := FBox.ScaleValue(cGap);
   for mIndex := 0 to FModel.Count - 1 do
   begin
     if SameText(FModel.Fields[mIndex].Page, FPages[APage]) then
@@ -1222,7 +1250,8 @@ begin
   Result := TAtlasWrapLabel.Create(FBox);
   Result.Parent := FBox;
   Result.AutoSize := True;
-  Result.SetBounds(cGap * 2, ATop, FBox.ClientWidth - cGap * 5, 16);
+  Result.SetBounds(FBox.ScaleValue(cIndent), ATop, FBox.ClientWidth - FBox.ScaleValue(cRightRoom),
+    FBox.ScaleValue(cLabelHeight));
   Result.Caption := AText;
 end;
 

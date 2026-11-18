@@ -675,6 +675,8 @@ uses
   Atlas.UI.Foundation.Dialog.Tests in 'IDE.Expert\Atlas.UI.Foundation.Dialog.Tests.pas',
   Atlas.UI.Foundation.ListView in '..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas',
   Atlas.UI.Foundation.ListView.Tests in 'IDE.Expert\Atlas.UI.Foundation.ListView.Tests.pas',
+  Atlas.UI.Foundation.Scaling in '..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.Scaling.pas',
+  Atlas.UI.Foundation.Scaling.Tests in 'IDE.Expert\Atlas.UI.Foundation.Scaling.Tests.pas',
   Atlas.UI.Foundation.ListBox in '..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.ListBox.pas',
   Atlas.UI.Foundation.ListBox.Tests in 'IDE.Expert\Atlas.UI.Foundation.ListBox.Tests.pas',
   Atlas.UI.Foundation.WrapLabel in '..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.WrapLabel.pas',

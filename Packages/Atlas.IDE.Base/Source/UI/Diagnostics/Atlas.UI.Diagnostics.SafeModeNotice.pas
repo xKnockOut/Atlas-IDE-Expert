@@ -117,10 +117,13 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 24;
   cNoticeWidth = 460;
   cDetailsHeight = 220;
   // Vorläufige Höhe der Knopfreihe, bevor der unterste Knopf sie festlegt.
@@ -150,14 +153,14 @@ begin
   FParts.Text.Parent := Self;
   FParts.Text.Align := alTop;
   FParts.Text.AlignWithMargins := True;
-  FParts.Text.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Text, cGap, cGap, cGap, 0);
   FParts.Text.Caption := AText;
 
   FParts.Suggestion := TAtlasWrapLabel.Create(Self);
   FParts.Suggestion.Parent := Self;
   FParts.Suggestion.Align := alTop;
   FParts.Suggestion.AlignWithMargins := True;
-  FParts.Suggestion.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Suggestion, cGap, cGap, cGap, 0);
   FParts.Suggestion.Caption := ASuggestion;
   FParts.Suggestion.Visible := ASuggestion <> '';
   FParts.Suggestion.Top := FParts.Text.Top + FParts.Text.Height + 1;
@@ -173,7 +176,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FParts.Suggestion.Top + FParts.Suggestion.Height + 1;
   FParts.Buttons := mButtons;
   if FKind = TAtlasSafeNoticeKind.Ask then
@@ -214,7 +217,7 @@ begin
   FParts.Details.Parent := mPanel;
   FParts.Details.Align := alClient;
   FParts.Details.AlignWithMargins := True;
-  FParts.Details.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Details, cGap, 0, cGap, 0);
   FParts.Details.ReadOnly := True;
   FParts.Details.ScrollBars := ssBoth;
   FParts.Details.WordWrap := False;
@@ -232,25 +235,19 @@ begin
   FParts.ExportButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), ExportClick);
   FParts.ExportButton.Align := alBottom;
   FParts.ExportButton.AlignWithMargins := True;
-  FParts.ExportButton.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(FParts.ExportButton, cGap);
   FParts.BugButton := AddButton(mPanel, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeBugReport), BugClick);
   FParts.BugButton.Align := alBottom;
   FParts.BugButton.AlignWithMargins := True;
-  FParts.BugButton.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.BugButton, cGap, 0, cGap, 0);
   FParts.BugButton.Visible := False;
 end;
 
 function TAtlasSafeModeNotice.AddButton(AParent: TWinControl; const ACaption: string;
   AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
+  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
   Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 procedure TAtlasSafeModeNotice.Run(const AProc: TProc);

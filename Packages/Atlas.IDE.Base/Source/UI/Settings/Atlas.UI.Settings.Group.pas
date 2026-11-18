@@ -23,6 +23,9 @@ type
   public const
     /// <summary>Einrückung der Unteroptionen in Pixeln (bei 96 dpi).</summary>
     cIndent = 20;
+    /// <summary>Innenabstand der Gruppe: seitlich und unten, oben (Pixel bei 96 dpi).</summary>
+    cPadding = 6;
+    cPaddingTop = 4;
   private
     FMaster: TControl;
     FMasterName: string;
@@ -54,7 +57,8 @@ implementation
 
 uses
   Vcl.Themes,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 { TAtlasSettingsGroup }
 
@@ -64,7 +68,7 @@ begin
   ControlStyle := ControlStyle + [csAcceptsControls, csParentBackground] - [csOpaque];
   ParentBackground := True;
   ParentColor := True;
-  Padding.SetBounds(6, 4, 6, 6);
+  TAtlasControlScaling.SetPadding(Self, cPadding, cPaddingTop, cPadding, cPadding);
   AlignWithMargins := True;
   Height := ScaleValue(40);
   FNextTop := 100;

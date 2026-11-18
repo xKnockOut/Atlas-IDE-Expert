@@ -74,7 +74,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Designer.InlineCaption;
+  Atlas.Core.Designer.InlineCaption,
+  Atlas.UI.Foundation.Scaling;
 
 { TAtlasCaptionEditor }
 
@@ -86,7 +87,7 @@ begin
   // Das Feld zeichnet Windows, nicht das Fenster: ohne Puffer wie ein gewöhnliches Eingabefeld.
   DoubleBuffered := False;
   StyleElements := [];
-  Padding.SetBounds(cBorder, cBorder, cBorder, cBorder);
+  TAtlasControlScaling.SetPadding(Self, cBorder, cBorder, cBorder, cBorder);
   FMemo := TMemo.Create(Self);
   FMemo.Parent := Self;
   FMemo.Align := alClient;
@@ -234,8 +235,9 @@ begin
       Inc(mLines);
     end;
     ClientWidth := TAtlasInlineCaption.EditorWidth(FMinWidth, mWidest, MulDiv(cPadding, CurrentPPI, 96) +
-      2 * cBorder);
-    ClientHeight := Max(FMinHeight, Max(1, mLines) * mBitmap.Canvas.TextHeight('Ag') + 2 * cBorder + ScaleValue(2));
+      ScaleValue(2 * cBorder));
+    ClientHeight := Max(FMinHeight, Max(1, mLines) * mBitmap.Canvas.TextHeight('Ag') +
+      ScaleValue(2 * cBorder + 2));
   finally
     mBitmap.Free;
   end;
@@ -261,6 +263,8 @@ end;
 
 procedure TAtlasCaptionEditor.Open(const AScreen: TRect; AFont: TFont; AAlignment: TAlignment; const AText: string;
   AMultiLine: Boolean; const AOnDone: TAtlasCaptionDone);
+var
+  mBorder: Integer;
 begin
   FOnDone := AOnDone;
   FDone := False;
@@ -274,9 +278,11 @@ begin
   FMemo.OnChange := nil;
   FMemo.Text := AText;
   FMemo.OnChange := MemoChange;
-  FMinWidth := AScreen.Width + 2 * cBorder;
-  FMinHeight := AScreen.Height + 2 * cBorder;
-  SetBounds(AScreen.Left - cBorder, AScreen.Top - cBorder, FMinWidth, FMinHeight);
+  // Der Rand (Padding) ist skaliert; das Feld liegt um ihn versetzt über dem Steuerelement.
+  mBorder := ScaleValue(cBorder);
+  FMinWidth := AScreen.Width + 2 * mBorder;
+  FMinHeight := AScreen.Height + 2 * mBorder;
+  SetBounds(AScreen.Left - mBorder, AScreen.Top - mBorder, FMinWidth, FMinHeight);
   Grow;
   Show;
   FMemo.SetFocus;

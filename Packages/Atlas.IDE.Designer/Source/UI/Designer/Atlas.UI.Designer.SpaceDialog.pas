@@ -56,7 +56,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Designer.Strings;
+  Atlas.UI.Designer.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 10;
@@ -85,7 +86,7 @@ begin
   mGroup.Align := alTop;
   mGroup.BevelOuter := bvNone;
   mGroup.AlignWithMargins := True;
-  mGroup.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(mGroup, cGap, cGap, cGap, 0);
   mGroup.Height := ScaleValue(cRadioHeight * 2);
   FRows := AddRadio(mGroup, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceRows), 0);
   FColumns := AddRadio(mGroup, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceColumns),
@@ -116,15 +117,7 @@ end;
 
 function TAtlasSpaceDialog.AddRow: TFlowPanel;
 begin
-  Result := TFlowPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AutoSize := True;
-  Result.BevelOuter := bvNone;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  // Hinter alle bisherigen Zeilen (alTop ordnet nach Top).
-  Result.Top := ScaleValue(2000) + ComponentCount;
+  Result := NewFlowRow(cGap);
 end;
 
 function TAtlasSpaceDialog.AddRadio(AParent: TWinControl; const ACaption: string; ATop: Integer): TRadioButton;
@@ -141,14 +134,14 @@ var
   mButton: TButton;
 begin
   mButtons := AddRow;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceOk);
   mButton.Default := True;
   mButton.ModalResult := mrOk;
   mButton.AlignWithMargins := True;
-  mButton.Margins.SetBounds(0, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(mButton, 0, 0, cGap, 0);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel);

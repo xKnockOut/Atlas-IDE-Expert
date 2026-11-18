@@ -91,7 +91,8 @@ implementation
 uses
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.NewIssue.Strings;
+  Atlas.UI.Tracker.NewIssue.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 10;
@@ -127,7 +128,7 @@ begin
   FIntro.Top := NextTop;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
-  FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FIntro, cGap, cGap, cGap, 0);
   FIntro.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestIntro);
 
   FList := TListView.Create(Self);
@@ -136,7 +137,7 @@ begin
   FList.Height := ScaleValue(cListHeight);
   FList.Align := alTop;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, cGap, 0);
   FList.ViewStyle := vsReport;
   FList.Checkboxes := True;
   FList.ReadOnly := True;
@@ -150,7 +151,7 @@ begin
   FNote.Top := NextTop;
   FNote.Align := alTop;
   FNote.AlignWithMargins := True;
-  FNote.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FNote, cGap, cGap div 2, cGap, 0);
   FNote.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestSearching);
 
   AddButtons;

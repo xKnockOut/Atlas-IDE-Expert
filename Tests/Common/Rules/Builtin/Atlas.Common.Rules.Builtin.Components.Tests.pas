@@ -58,6 +58,8 @@ type
     procedure FixedBoundsReportWithFix;
     [Test]
     procedure FixedBoundsSilentCases;
+    [Test]
+    procedure FixedBoundsSetBoundsAndEdges;
     /// <summary>Alle sechs Regeln in einem Lauf teilen das Komponentenmodell.</summary>
     [Test]
     procedure AllComponentRulesShareModelInOneRun;
@@ -532,6 +534,35 @@ begin
     '  mEdit.Top := AddRow(30);'));
   // Ohne VCL keine Steuerelemente.
   TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('System.Types', '  mEdit.Width := 240;'));
+end;
+
+procedure TComponentRulesTests.FixedBoundsSetBoundsAndEdges;
+var
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // SetBounds wie vier Zuweisungen: ein Befund je Aufruf, skaliert über das Steuerelement (bei Margins über das
+  // davor, ohne Objekt über Self); Breite aus einer Lage bleibt bis auf den festen Anteil.
+  mSource := BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.SetBounds(8, 0, Width - 16, 23);'#10'  mEdit.Margins.SetBounds(4, 2, 4, 0);'#10 +
+    '  Margins.Bottom := 6;');
+  mFindings := TRuleAssert.Findings(TControlFixedBoundsRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.SetBounds(mEdit.ScaleValue(8), 0, Width - mEdit.ScaleValue(16), mEdit.ScaleValue(23));'#10 +
+    '  mEdit.Margins.SetBounds(4, 2, 4, 0);'#10'  Margins.Bottom := 6;'), ApplyFix(mSource, mFindings[0].Fixes[0]));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.SetBounds(8, 0, Width - 16, 23);'#10 +
+    '  mEdit.Margins.SetBounds(mEdit.ScaleValue(4), mEdit.ScaleValue(2), mEdit.ScaleValue(4), 0);'#10 +
+    '  Margins.Bottom := 6;'), ApplyFix(mSource, mFindings[1].Fixes[0]));
+  Assert.AreEqual(BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.SetBounds(8, 0, Width - 16, 23);'#10'  mEdit.Margins.SetBounds(4, 2, 4, 0);'#10 +
+    '  Margins.Bottom := ScaleValue(6);'), ApplyFix(mSource, mFindings[2].Fixes[0]));
+  // Skalierte Werte, 0 und 1, Right und Bottom außerhalb von Margins und Padding, SetBounds mit anderer Zahl von
+  // Argumenten.
+  TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('Vcl.Forms, Vcl.StdCtrls',
+    '  mEdit.SetBounds(ScaleValue(8), 0, 1, ScaleValue(23));'#10'  mEdit.Margins.SetBounds(0, 1, 0, 1);'#10 +
+    '  FArea.Right := 40;'#10'  FArea.Bottom := 40;'#10'  FBounds.SetBounds(40);'));
 end;
 
 procedure TComponentRulesTests.AllComponentRulesShareModelInOneRun;

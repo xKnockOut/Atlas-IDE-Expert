@@ -53,10 +53,13 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 24;
   cConsentWidth = 420;
 
 { TAtlasUpdateConsent }
@@ -81,7 +84,7 @@ begin
   FText.Parent := Self;
   FText.Align := alTop;
   FText.AlignWithMargins := True;
-  FText.Margins.SetBounds(2 * cGap + FSymbol.Width, cGap, cGap, 0);
+  FText.Margins.SetBounds(2 * cGap + FSymbol.Width, FText.ScaleValue(cGap), FText.ScaleValue(cGap), 0);
   FText.Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText);
 
   mButtons := TFlowPanel.Create(Self);
@@ -90,7 +93,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FText.Top + FText.Height + 1;
   FYes := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), YesClick);
   FNo := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
@@ -104,14 +107,8 @@ end;
 function TAtlasUpdateConsent.AddButton(AParent: TWinControl; const ACaption: string;
   AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
+  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
   Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 procedure TAtlasUpdateConsent.Run(const AProc: TProc);

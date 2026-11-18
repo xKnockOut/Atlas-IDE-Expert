@@ -163,7 +163,8 @@ uses
   Winapi.Windows,
   System.Math,
   Atlas.UI.Status.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   // Breiten der Spalten Regel, ms und Aufrufe; Breite der Knöpfe der Leiste.
@@ -542,7 +543,7 @@ begin
   // Fließende Leiste: bei schmalem Fenster brechen Knöpfe und Hinweis in weitere Zeilen um.
   AutoWrap := True;
   AutoSize := True;
-  Padding.SetBounds(2, 2, 2, 2);
+  TAtlasControlScaling.SetPadding(Self, 2, 2, 2, 2);
   FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), cRefreshWidth);
   FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), cRebuildWidth);
   FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), cPackageWidth);

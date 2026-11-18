@@ -49,7 +49,8 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 { TAtlasSettingsColorsPart }
 
@@ -80,6 +81,11 @@ begin
 end;
 
 procedure TAtlasSettingsColorsPart.AddSwatches(const ACaption: string; var ASwatches: array of TShape);
+const
+  // Farbfelder nebeneinander (logische Pixel): Abstand von Feld zu Feld, Größe.
+  cSwatchStep = 34;
+  cSwatchWidth = 28;
+  cSwatchHeight = 22;
 var
   mPanel: TWinControl;
   mCaption: TLabel;
@@ -95,7 +101,7 @@ begin
   begin
     ASwatches[mIndex] := TShape.Create(FPage);
     ASwatches[mIndex].Parent := mPanel;
-    ASwatches[mIndex].SetBounds(cFieldLeft + mIndex * 34, 1, 28, 22);
+    TAtlasControlScaling.Place(ASwatches[mIndex], cFieldLeft + mIndex * cSwatchStep, 1, cSwatchWidth, cSwatchHeight);
     ASwatches[mIndex].Pen.Color := clGray;
     ASwatches[mIndex].Cursor := crHandPoint;
     ASwatches[mIndex].Hint := IntToStr(mIndex + 1);

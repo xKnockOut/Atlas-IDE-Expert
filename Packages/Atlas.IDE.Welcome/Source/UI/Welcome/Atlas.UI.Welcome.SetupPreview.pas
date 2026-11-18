@@ -46,10 +46,13 @@ implementation
 
 uses
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 32;
 
 { TAtlasSetupPreviewDialog }
 
@@ -65,7 +68,7 @@ begin
   FIntro.Parent := Self;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
-  FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FIntro, cGap, cGap, cGap, 0);
   FIntro.ShowAccelChar := False;
   FIntro.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewIntro, [AConfigName, AProjectName,
     ATemplate]);
@@ -74,7 +77,7 @@ begin
   FContent.Parent := Self;
   FContent.Align := alTop;
   FContent.AlignWithMargins := True;
-  FContent.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FContent, cGap, cGap, cGap, 0);
   FContent.Top := FIntro.Top + FIntro.Height + 1;
   FContent.Height := ScaleValue(cContentHeight);
   FContent.ReadOnly := True;
@@ -89,7 +92,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FContent.Top + FContent.Height + 1;
   FCreate := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCreate));
   FCreate.ModalResult := mrOk;
@@ -103,13 +106,7 @@ end;
 
 function TAtlasSetupPreviewDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
 end;
 
 class function TAtlasSetupPreviewDialog.Confirm(const AConfigName, AProjectName, ATemplate, AText: string;

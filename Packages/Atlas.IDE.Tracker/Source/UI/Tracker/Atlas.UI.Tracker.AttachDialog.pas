@@ -121,7 +121,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Attach.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   // Maße bei 96 dpi.
@@ -200,11 +201,11 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.SetBounds(cGap, ATop + cLabelTop, cIssueLabelWidth, cLabelHeight);
+  TAtlasControlScaling.Place(mLabel, cGap, ATop + cLabelTop, cIssueLabelWidth, cLabelHeight);
   mLabel.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachIssue);
   FParts.Issue := TComboBox.Create(Self);
   FParts.Issue.Parent := Self;
-  FParts.Issue.SetBounds(cGap + cIssueLeft, ATop, cDialogWidth - 2 * cGap - cIssueLeft, cEditHeight);
+  TAtlasControlScaling.Place(FParts.Issue, cGap + cIssueLeft, ATop, cDialogWidth - 2 * cGap - cIssueLeft, cEditHeight);
   FParts.Issue.Anchors := [akLeft, akTop, akRight];
   FParts.Issue.Style := csDropDown;
   FParts.Issue.OnChange := TextChanged;
@@ -213,7 +214,7 @@ begin
   FParts.Hint := TAtlasWrapLabel.Create(Self);
   FParts.Hint.Parent := Self;
   FParts.Hint.AutoSize := False;
-  FParts.Hint.SetBounds(cGap, ATop, cDialogWidth - 2 * cGap, cHintHeight);
+  TAtlasControlScaling.Place(FParts.Hint, cGap, ATop, cDialogWidth - 2 * cGap, cHintHeight);
   FParts.Hint.Anchors := [akLeft, akTop, akRight];
   if FInput.CanUpload then
   begin
@@ -230,13 +231,13 @@ procedure TAtlasAttachDialog.AddCommentRows(var ATop: Integer);
 begin
   FParts.Comment := TCheckBox.Create(Self);
   FParts.Comment.Parent := Self;
-  FParts.Comment.SetBounds(cGap, ATop, cDialogWidth - 2 * cGap, cCheckHeight);
+  TAtlasControlScaling.Place(FParts.Comment, cGap, ATop, cDialogWidth - 2 * cGap, cCheckHeight);
   FParts.Comment.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachComment);
   FParts.Comment.OnClick := Changed;
   Inc(ATop, cCheckRow);
   FParts.CommentMemo := TMemo.Create(Self);
   FParts.CommentMemo.Parent := Self;
-  FParts.CommentMemo.SetBounds(cGap, ATop, cDialogWidth - 2 * cGap, cMemoHeight);
+  TAtlasControlScaling.Place(FParts.CommentMemo, cGap, ATop, cDialogWidth - 2 * cGap, cMemoHeight);
   FParts.CommentMemo.Anchors := [akLeft, akTop, akRight];
   FParts.CommentMemo.ScrollBars := ssVertical;
   // Tippen schreibt keine Dateien neu, nur „Senden“ wird geprüft.
@@ -251,12 +252,12 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.SetBounds(cGap, ATop, cDialogWidth - 2 * cGap, cLabelHeight);
+  TAtlasControlScaling.Place(mLabel, cGap, ATop, cDialogWidth - 2 * cGap, cLabelHeight);
   mLabel.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachFiles);
   Inc(ATop, cListLabelRow);
   FParts.List := TListView.Create(Self);
   FParts.List.Parent := Self;
-  FParts.List.SetBounds(cGap, ATop, cDialogWidth - 2 * cGap, cListHeight);
+  TAtlasControlScaling.Place(FParts.List, cGap, ATop, cDialogWidth - 2 * cGap, cListHeight);
   FParts.List.Anchors := [akLeft, akTop, akRight];
   FParts.List.ViewStyle := vsReport;
   FParts.List.ReadOnly := True;
@@ -281,18 +282,18 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.BevelOuter := bvNone;
-  mBottom.SetBounds(0, ATop, cDialogWidth, cBottomHeight);
+  TAtlasControlScaling.Place(mBottom, 0, ATop, cDialogWidth, cBottomHeight);
   mBottom.Anchors := [akLeft, akTop, akRight];
   FParts.Send := TButton.Create(Self);
   FParts.Send.Parent := mBottom;
-  FParts.Send.SetBounds(cDialogWidth - 2 * (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
+  TAtlasControlScaling.Place(FParts.Send, cDialogWidth - 2 * (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
   FParts.Send.Anchors := [akTop, akRight];
   FParts.Send.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachSend);
   FParts.Send.Default := True;
   FParts.Send.ModalResult := mrOk;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(cDialogWidth - (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
+  TAtlasControlScaling.Place(mButton, cDialogWidth - (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
@@ -309,7 +310,7 @@ begin
   AddCommentRows(mTop);
   AddFileList(mTop);
   AddButtons(mTop);
-  ClientHeight := mTop + ScaleValue(cBottomHeight);
+  ClientHeight := ScaleValue(mTop + cBottomHeight);
   // Größer ziehen: Felder werden breiter, die Dateiliste nimmt die Höhe auf.
   AllowResize(FParts.List);
   FBuilt := True;

@@ -128,6 +128,12 @@ type
     function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     /// <summary>Knopfleiste unter dem bisher Untersten.</summary>
     function AddButtonRow: TAtlasButtonRow;
+    /// <summary>Fließzeile (passt ihre Höhe an) hinter allen bisherigen alTop-Zeilen; Rand AGap96 seitlich, die
+    /// Hälfte oben (logische Pixel).</summary>
+    function NewFlowRow(AGap96: Integer): TFlowPanel;
+    /// <summary>Knopf ACaption in AParent, so breit wie sein Text plus APadding96; Rand rechts AGap96, unten die
+    /// Hälfte (logische Pixel).</summary>
+    function NewTextButton(AParent: TWinControl; const ACaption: string; APadding96, AGap96: Integer): TButton;
     /// <summary>Hinweiszeile mit Höhe AHeight96 (logische Pixel) unter dem bisher Untersten; anfangs leer.</summary>
     function AddNote(AHeight96: Integer): TAtlasNoteLabel;
     /// <summary>Innenhöhe bis unter das unterste Element plus Rand.</summary>
@@ -381,6 +387,32 @@ begin
   Result.Caption := '';
   Result.Align := alTop;
   Result.Parent := Self;
+end;
+
+function TAtlasDialog.NewFlowRow(AGap96: Integer): TFlowPanel;
+const
+  // Vorläufige Lage hinter allen bisherigen Zeilen (alTop ordnet nach Top).
+  cBelowAll = 2000;
+begin
+  Result := TFlowPanel.Create(Self);
+  Result.Parent := Self;
+  Result.Align := alTop;
+  Result.AutoSize := True;
+  Result.BevelOuter := bvNone;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(ScaleValue(AGap96), ScaleValue(AGap96 div 2), ScaleValue(AGap96), 0);
+  Result.Top := ScaleValue(cBelowAll) + ComponentCount;
+end;
+
+function TAtlasDialog.NewTextButton(AParent: TWinControl; const ACaption: string; APadding96,
+  AGap96: Integer): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.Width := TextWidth(Font, ACaption) + ScaleValue(APadding96);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(0, 0, ScaleValue(AGap96), ScaleValue(AGap96 div 2));
 end;
 
 function TAtlasDialog.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;

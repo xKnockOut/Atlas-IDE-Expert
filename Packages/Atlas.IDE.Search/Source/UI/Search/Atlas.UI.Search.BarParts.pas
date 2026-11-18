@@ -442,7 +442,7 @@ begin
   AControl.Left := ARow.Tag;
   AControl.Align := alLeft;
   AControl.AlignWithMargins := True;
-  AControl.Margins.SetBounds(cGap, cMarginY, 0, cMarginY);
+  AControl.Margins.SetBounds(FScale(cGap), FScale(cMarginY), 0, FScale(cMarginY));
   if AWidth > 0 then
   begin
     AControl.Width := FScale(AWidth);
@@ -522,7 +522,7 @@ begin
   FParts.CloseButton.Parent := FParts.SearchRow;
   FParts.CloseButton.Align := alRight;
   FParts.CloseButton.AlignWithMargins := True;
-  FParts.CloseButton.Margins.SetBounds(cGap, cMarginY, cGap, cMarginY);
+  FParts.CloseButton.Margins.SetBounds(FScale(cGap), FScale(cMarginY), FScale(cGap), FScale(cMarginY));
   FParts.CloseButton.Width := FScale(cButtonWidth);
   FParts.CloseButton.Caption := '×';
   FParts.CloseButton.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCloseHint);
@@ -534,7 +534,7 @@ begin
   mLabel := AddLabel(FParts.SearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchTextLabel));
   FParts.TextFrame := AddPanel(FParts.SearchRow, cTextBoxWidth + 2);
   FParts.TextFrame.Padding.SetBounds(1, 1, 1, 1);
-  FParts.TextFrame.Margins.SetBounds(cGap, 2, 0, 2);
+  FParts.TextFrame.Margins.SetBounds(FScale(cGap), FScale(2), 0, FScale(2));
   FParts.TextEdit := AddCombo(FParts.TextFrame, csDropDown);
   FParts.TextEdit.Align := alClient;
   FParts.TextEdit.OnChange := FHandlers.OnChanged;
@@ -599,7 +599,7 @@ begin
   FParts.InfoLine.Parent := FParts.InfoRow;
   FParts.InfoLine.Align := alClient;
   FParts.InfoLine.AlignWithMargins := True;
-  FParts.InfoLine.Margins.SetBounds(cGap + FScale(cToggleWidth), 2, cGap, 2);
+  FParts.InfoLine.Margins.SetBounds(FScale(cGap + cToggleWidth), FScale(2), FScale(cGap), FScale(2));
 end;
 
 class procedure TAtlasSearchBarBuilder.Build(ABar: TWinControl; AParts: TAtlasSearchBarParts;

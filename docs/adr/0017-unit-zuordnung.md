@@ -802,6 +802,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Foundation.Theme` | `UI/Foundation/Atlas.UI.Foundation.Theme.pas` | Themendienst der Atlas-Fenster (#2061) |
 | `Atlas.UI.Foundation.Dialog` | `UI/Foundation/Atlas.UI.Foundation.Dialog.pas` | Basis der im Code gebauten Dialoge, Knopfleiste, Hinweiszeile (#2062) |
 | `Atlas.UI.Foundation.ListView` | `UI/Foundation/Atlas.UI.Foundation.ListView.pas` | Liste mit Spaltenbreiten in logischen Pixeln (#2063) |
+| `Atlas.UI.Foundation.Scaling` | `UI/Foundation/Atlas.UI.Foundation.Scaling.pas` | Ränder, Innenabstände und Lage in logischen Pixeln (#2675) |
 | `Atlas.UI.Foundation.ListBox` | `UI/Foundation/Atlas.UI.Foundation.ListBox.pas` | TListBox, die beim Löschen nur die Fläche ohne Zeilen füllt (kein Flackern unter dem IDE-Thema) |
 | `Atlas.UI.Foundation.WrapLabel` | `UI/Foundation/Atlas.UI.Foundation.WrapLabel.pas` | Umbrechende Beschriftung, Höhe folgt der Breite |
 | `Atlas.UI.Foundation.EditorFont` | `UI/Foundation/Atlas.UI.Foundation.EditorFont.pas` | Fassung der Editorschrift mit fester Auszeichnung für Texte im Editor (Befunde, Werte, Änderungsmarken) |

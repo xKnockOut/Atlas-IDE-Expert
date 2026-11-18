@@ -65,7 +65,8 @@ implementation
 
 uses
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   // Knöpfe Neu, Kopieren, Löschen (links, Breite) und Lage der Felder Präfix, Name, Beschreibung.
@@ -77,17 +78,34 @@ const
   cPrefixTop = 4;
   cNameTop = 32;
   cDescriptionTop = 60;
+  cButtonTop = 4;
+  cButtonHeight = 25;
+  // Feldzeile: Beschriftung links, Eingabefeld ab cFieldLeft bis zum rechten Rand.
+  cCaptionLeft = 4;
+  cCaptionDrop = 4;
+  cCaptionWidth = 90;
+  cCaptionHeight = 15;
+  cFieldLeft = 100;
+  cFieldRightRoom = 104;
+  cFieldHeight = 23;
+  // Textfeld des Inhalts unter seiner Beschriftung.
+  cBodyCaptionTop = 92;
+  cBodyCaptionWidth = 300;
+  cBodyTop = 110;
+  cBodyRightRoom = 8;
+  cBodyHeight = 200;
 
 {$R *.dfm}
 
 { TAtlasSnippetsPage }
 
-/// <summary>Knopf ACaption in der Leiste APanel an der Stelle ALeft mit der Breite AWidth.</summary>
+/// <summary>Knopf ACaption in der Leiste APanel an der Stelle ALeft mit der Breite AWidth (logische Pixel).
+/// </summary>
 function NewButton(APanel: TPanel; const ACaption: string; ALeft, AWidth: Integer; AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(APanel.Owner);
   Result.Parent := APanel;
-  Result.SetBounds(ALeft, 4, AWidth, 25);
+  TAtlasControlScaling.Place(Result, ALeft, cButtonTop, AWidth, cButtonHeight);
   Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
@@ -118,11 +136,13 @@ var
 begin
   mCaption := TLabel.Create(Self);
   mCaption.Parent := AParent;
-  mCaption.SetBounds(4, ATop + 4, 90, 15);
+  TAtlasControlScaling.Place(mCaption, cCaptionLeft, ATop + cCaptionDrop, cCaptionWidth, cCaptionHeight);
   mCaption.Caption := ACaption;
   Result := TEdit.Create(Self);
   Result.Parent := AParent;
-  Result.SetBounds(100, ATop, AParent.Width - 104, 23);
+  Result.SetBounds(Result.ScaleValue(cFieldLeft), Result.ScaleValue(ATop),
+    AParent.Width - Result.ScaleValue(cFieldRightRoom),
+    Result.ScaleValue(cFieldHeight));
   Result.Anchors := [akLeft, akTop, akRight];
   Result.OnChange := FieldChange;
 end;
@@ -183,11 +203,13 @@ begin
     cDescriptionTop);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := mEditor;
-  mCaption.SetBounds(4, 92, 300, 15);
+  TAtlasControlScaling.Place(mCaption, cCaptionLeft, cBodyCaptionTop, cBodyCaptionWidth, cCaptionHeight);
   mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsBody);
   FBody := TMemo.Create(Self);
   FBody.Parent := mEditor;
-  FBody.SetBounds(4, 110, mEditor.Width - 8, 200);
+  FBody.SetBounds(FBody.ScaleValue(cCaptionLeft), FBody.ScaleValue(cBodyTop),
+    mEditor.Width - FBody.ScaleValue(cBodyRightRoom),
+    FBody.ScaleValue(cBodyHeight));
   FBody.Anchors := [akLeft, akTop, akRight, akBottom];
   FBody.ScrollBars := ssBoth;
   FBody.WordWrap := False;

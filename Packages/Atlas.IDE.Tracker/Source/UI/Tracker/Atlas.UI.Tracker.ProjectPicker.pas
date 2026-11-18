@@ -59,7 +59,8 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Tracker.MyIssues.Strings;
+  Atlas.UI.Tracker.MyIssues.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cMenuLine = '-';
@@ -79,7 +80,7 @@ begin
   FLabel.Parent := ABar;
   FLabel.Align := alLeft;
   FLabel.AlignWithMargins := True;
-  FLabel.Margins.SetBounds(cMargin, cMargin, cMargin, 0);
+  TAtlasControlScaling.SetMargins(FLabel, cMargin, cMargin, cMargin, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
   FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectHint);

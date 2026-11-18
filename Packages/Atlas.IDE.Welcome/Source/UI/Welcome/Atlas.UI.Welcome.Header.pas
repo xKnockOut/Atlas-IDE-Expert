@@ -43,6 +43,10 @@ type
     cSearchWidth = 320;
     /// <summary>Höhe der Suchzeile unter dem Gruß, wenn das Feld daneben keinen Platz hat.</summary>
     cSearchRowHeight = 36;
+    /// <summary>Ränder des Suchfelds rechts im Kopf: links, oben und unten, rechts.</summary>
+    cSearchMarginLeft = 8;
+    cSearchMarginY = 19;
+    cSearchMarginRight = 12;
   private
     FSymbol: TAtlasSymbolImage;
     FGreeting: TLabel;
@@ -92,7 +96,8 @@ uses
   Atlas.Core.Welcome.Greeting,
   System.Math,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 { TAtlasWelcomeHeaderFrame }
 
@@ -120,7 +125,8 @@ begin
   FSearchHost.Parent := Self;
   FSearchHost.Align := alRight;
   FSearchHost.AlignWithMargins := True;
-  FSearchHost.Margins.SetBounds(8, 19, 12, 19);
+  TAtlasControlScaling.SetMargins(FSearchHost, cSearchMarginLeft, cSearchMarginY, cSearchMarginRight,
+    cSearchMarginY);
   FSearchHost.Width := 0;
   FSearchHost.BevelOuter := bvNone;
   FSearchHost.ParentBackground := True;
@@ -172,7 +178,8 @@ begin
     else
     begin
       FSearchHost.Align := alRight;
-      FSearchHost.Margins.SetBounds(8, 19, 12, 19);
+      TAtlasControlScaling.SetMargins(FSearchHost, cSearchMarginLeft, cSearchMarginY, cSearchMarginRight,
+        cSearchMarginY);
       FSearchHost.Width := ScaleValue(cSearchWidth);
       Height := ScaleValue(cHeaderHeight);
     end;

@@ -288,6 +288,8 @@ const
   cTagHide = 1;
   cTagSettings = 2;
   cTagCustomize = 3;
+  // Dicke der Einfügemarke beim Verschieben eines Bereichs (logische Pixel).
+  cInsertLineHeight = 3;
 
 /// <summary>AValue logische Pixel in der Auflösung von AControl.</summary>
 function Scaled(AControl: TControl; AValue: Integer): Integer;
@@ -1402,7 +1404,8 @@ begin
     TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.cGap,
     TAtlasWelcomeBoardFrame.cMinColumnWidth), mColumn,
     mBefore);
-  FInsertLine.SetBounds(mLine.Left, mLine.Top - 1 - FBoard.FScroll.VertScrollBar.Position, mLine.Width, 3);
+  FInsertLine.SetBounds(mLine.Left, mLine.Top - 1 - FBoard.FScroll.VertScrollBar.Position, mLine.Width,
+    FInsertLine.ScaleValue(cInsertLineHeight));
   FInsertLine.Color := StyleServices(FBoard).GetSystemColor(clHighlight);
   FInsertLine.Visible := True;
   FInsertLine.BringToFront;

@@ -334,7 +334,8 @@ uses
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
@@ -407,7 +408,7 @@ begin
   Result.Caption := ACaption;
   FitButton(ADialog, Result);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, cGap div 2);
 end;
 
 /// <summary>Fehler rot in der Hinweiszeile ANote.</summary>
@@ -1028,7 +1029,7 @@ begin
   FParts.Editor.Parent := Self;
   FParts.Editor.Align := alTop;
   FParts.Editor.AlignWithMargins := True;
-  FParts.Editor.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Editor, cGap, cGap div 2, cGap, 0);
   FParts.Editor.Top := mRow.Top + mRow.Height + 1;
   FParts.Editor.Height := ScaleValue(cCommentHeight + cEditorBarHeight);
   FParts.Editor.Events := TAtlasCommentEditorEvents.Create(SendClick, EditorCancel);
@@ -1073,7 +1074,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := ATop;
   FParts.AddField := NewButton(Self, mButtons, '');
   FParts.AddField.Visible := False;

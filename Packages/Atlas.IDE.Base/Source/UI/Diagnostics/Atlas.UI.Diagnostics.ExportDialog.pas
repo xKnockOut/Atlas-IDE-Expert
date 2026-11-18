@@ -68,7 +68,8 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
@@ -131,10 +132,10 @@ begin
   mHint.Parent := Self;
   mHint.Align := alTop;
   mHint.AlignWithMargins := True;
-  mHint.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mHint, cGap);
   // Breite vor dem Text: Sonst misst die Beschriftung mit ihrer Standardbreite, bricht nach jedem Wort um und
   // bleibt so hoch, dass die Vorschau kaum Platz hat.
-  mHint.Width := Width - 2 * cGap;
+  mHint.Width := Width - 2 * ScaleValue(cGap);
   mHint.Caption := ATexts.Hint;
   FHint := mHint;
   OnResize := FitHint;
@@ -146,14 +147,16 @@ begin
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - 2 * (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
+  mButton.SetBounds(mBottom.Width - 2 * mButton.ScaleValue(cButtonWidth + cGap), mButton.ScaleValue(cGap),
+    mButton.ScaleValue(cButtonWidth), mButton.ScaleValue(cButtonHeight));
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportSave);
   mButton.Default := True;
   mButton.OnClick := SaveClick;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
+  mButton.SetBounds(mBottom.Width - mButton.ScaleValue(cButtonWidth + cGap), mButton.ScaleValue(cGap),
+    mButton.ScaleValue(cButtonWidth), mButton.ScaleValue(cButtonHeight));
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
@@ -163,7 +166,7 @@ begin
   mMemo.Parent := Self;
   mMemo.Align := alClient;
   mMemo.AlignWithMargins := True;
-  mMemo.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(mMemo, cGap, 0, cGap, 0);
   mMemo.ReadOnly := True;
   mMemo.ScrollBars := ssBoth;
   mMemo.WordWrap := False;

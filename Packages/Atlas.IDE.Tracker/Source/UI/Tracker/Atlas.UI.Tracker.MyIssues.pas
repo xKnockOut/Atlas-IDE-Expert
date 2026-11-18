@@ -322,7 +322,8 @@ uses
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.MyIssues.Strings;
+  Atlas.UI.Tracker.MyIssues.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cMenuLine = '-';
@@ -1117,7 +1118,7 @@ begin
   FLabel.Parent := FBar;
   FLabel.Align := alRight;
   FLabel.AlignWithMargins := True;
-  FLabel.Margins.SetBounds(cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
+  TAtlasControlScaling.SetMargins(FLabel, cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
   FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryHint);

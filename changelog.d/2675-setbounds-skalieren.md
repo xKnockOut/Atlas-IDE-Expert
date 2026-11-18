@@ -1,0 +1,2 @@
+### Behoben
+- Hohe DPI: Ränder, Innenabstände und Lage, die über SetBounds gesetzt werden, skalieren jetzt in allen Atlas-Fenstern (Verzweigungs- und Prozessdialog, Projekteinstellungen, Regeln, Diagnosebericht, Export, Abgesicherter Modus, Updates, Tracker-Dialoge, Bildmarkierung, Arbeitskopien, Willkommensseite, Designer, Suche). Bei 150 %, 200 % und auf Monitoren mit anderer DPI stimmen Abstände, Feldbreiten und Knopfgrößen; die Prüfregel control-fixed-bounds meldet feste Werte in SetBounds sowie an Margins.Right/Bottom und Padding.Right/Bottom (#2675).

@@ -116,7 +116,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.ListView;
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Foundation.Scaling;
 
 const
   // Breiten der Dialoge Export, Import und Profil.
@@ -134,6 +135,7 @@ const
 
 const
   cGap = 8;
+  cSmallGap = 4;
 
 function NewButton(AOwner: TForm; AParent: TWinControl; const ACaption: string): TButton;
 begin
@@ -143,7 +145,7 @@ begin
   AOwner.Canvas.Font := AOwner.Font;
   Result.Width := AOwner.Canvas.TextWidth(ACaption) + AOwner.ScaleValue(32);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, cGap div 2);
 end;
 
 function NewButtons(AOwner: TForm): TFlowPanel;
@@ -154,7 +156,7 @@ begin
   Result.AutoSize := True;
   Result.BevelOuter := bvNone;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(Result, cGap);
 end;
 
 function HasArea(const AAreas: TArray<string>; const AArea: string): Boolean;
@@ -183,7 +185,7 @@ begin
   Result.Parent := AOwner;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(Result, cGap, cGap, cGap, 0);
   Result.Top := ATop;
   Result.Caption := ACaption;
 end;
@@ -205,7 +207,7 @@ begin
   Result.Parent := AOwner;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(Result, cGap, cGap, cGap, 0);
   Result.Top := ATop;
   Result.Height := AOwner.ScaleValue(64);
   Result.Caption := ACaption;
@@ -237,7 +239,7 @@ begin
   mPanel.AutoSize := True;
   mPanel.BevelOuter := bvNone;
   mPanel.AlignWithMargins := True;
-  mPanel.Margins.SetBounds(cGap, 4, cGap, 0);
+  TAtlasControlScaling.SetMargins(mPanel, cGap, cSmallGap, cGap, 0);
   mPanel.Top := mPanel.ScaleValue(2000);
   for mArea in ACatalog.Areas do
   begin
@@ -385,7 +387,7 @@ begin
   FCount := TLabel.Create(Self);
   FCount.Parent := mButtons;
   FCount.AlignWithMargins := True;
-  FCount.Margins.SetBounds(cGap, 4, 0, 0);
+  TAtlasControlScaling.SetMargins(FCount, cGap, cSmallGap, 0, 0);
   FInfo := NewInfoLabel(Self, ImportInfo(APreview));
   FInfo.Visible := FInfo.Caption <> '';
   FMode := NewChoice(Self, '', cModeTop, [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportMerge),
@@ -397,7 +399,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, cGap, 0);
   FList.ViewStyle := vsReport;
   FList.Checkboxes := True;
   FList.ReadOnly := True;
@@ -655,7 +657,7 @@ begin
   FDescription.Parent := Self;
   FDescription.Align := alBottom;
   FDescription.AlignWithMargins := True;
-  FDescription.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDescription, cGap, cGap, cGap, 0);
   FDescription.ShowAccelChar := False;
   FDescription.AutoSize := False;
   FDescription.Height := ScaleValue(48);
@@ -663,7 +665,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, cGap, 0);
   FList.OnClick := ListClick;
   FList.OnDblClick := ListDblClick;
   ClientHeight := ScaleValue(240);

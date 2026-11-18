@@ -69,10 +69,17 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Graphics,
-  Atlas.Core.Rules.Table;
+  Atlas.Core.Rules.Table,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
+  // Titel einer Regelgruppe und Regel-Editor darunter (logische Pixel).
+  cTitleWidth = 400;
+  cTitleHeight = 16;
+  cTitleRow = 24;
+  cEditorHeight = 400;
+  cRightRoom = 5 * cGap;
 
 { TAtlasRulesSettingsDialog }
 
@@ -122,10 +129,10 @@ begin
   FCurrentGroup := AGroup;
   mTitle := TLabel.Create(FBox);
   mTitle.Parent := FBox;
-  mTitle.SetBounds(cGap * 2, cGap, 400, 16);
+  TAtlasControlScaling.Place(mTitle, cGap * 2, cGap, cTitleWidth, cTitleHeight);
   mTitle.Font.Style := [fsBold];
   mTitle.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
-  AddRuleTable(cGap + 24, FGroups[AGroup]);
+  AddRuleTable(FBox.ScaleValue(cGap + cTitleRow), FGroups[AGroup]);
 end;
 
 procedure TAtlasRulesSettingsDialog.ClearBox;
@@ -154,7 +161,8 @@ begin
   // ihrem Hauptschalter.
   FRuleEditor := TAtlasRulesEditor.Create(FBox);
   FRuleEditor.Parent := FBox;
-  FRuleEditor.SetBounds(cGap * 2, ATop, FBox.ClientWidth - cGap * 5, 400);
+  FRuleEditor.SetBounds(FBox.ScaleValue(cGap * 2), ATop, FBox.ClientWidth - FBox.ScaleValue(cRightRoom),
+    FBox.ScaleValue(cEditorHeight));
   FRuleEditor.Anchors := [akLeft, akTop, akRight];
   FRuleEditor.FixedGroup := AGroup;
   FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
@@ -162,7 +170,7 @@ begin
   FRuleEditor.HandleNeeded;
   FRuleHeight := FRuleEditor.Height;
   FRuleEditor.OnResize := RuleEditorResize;
-  Result := ATop + FRuleHeight + cGap;
+  Result := ATop + FRuleHeight + FBox.ScaleValue(cGap);
 end;
 
 function TAtlasRulesSettingsDialog.SelectRule(const AId: string): Boolean;
