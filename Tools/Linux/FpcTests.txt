@@ -179,6 +179,7 @@ Atlas.Core.Debug.MethodBreakpoints.Tests
 Atlas.Core.Debug.RunTo.Tests
 Atlas.Core.Debug.BreakpointAnchors.Tests
 Atlas.Core.Debug.BreakpointRules.Tests
+Atlas.Core.Debug.RoutinePattern.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests

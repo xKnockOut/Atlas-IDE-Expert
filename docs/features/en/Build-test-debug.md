@@ -790,14 +790,15 @@ Runs on its own; commands in the Atlas menu and the command palette. After `git 
 
 Settings: `debug.breakpointAnchors`
 
-### Breakpoint rules: dependent, hits, thread
+### Breakpoint rules: dependent, hits, thread, caller
 
 Editor context menu (Atlas › Debug › “Breakpoint rules …”, also in the margin), Atlas menu, command palette; on the line of a breakpoint. A breakpoint in a busy routine otherwise stops a hundred times before you get to the place that matters.
 
 - “Active only after”: the breakpoint is off at the start of every debug session and is switched on as soon as the chosen other breakpoint has stopped. “until the session ends” keeps it on, “only once” switches it off again after its stop until the triggering one stops again. After the session it is on again.
 - “Stop”: on every hit, exactly on hit n, from hit n on or on every n-th hit; counted per session.
 - “Thread”: all, name contains (from `TThread.NameThreadForDebugging`), one thread ID or the main thread only. A stop in another thread does not count as a hit.
-- The IDE condition, hit condition and thread filter apply together. For hits and threads the debugger stops briefly, Atlas counts and continues right away; in hot loops this costs time.
+- “Only if on the stack”: the breakpoint stops only when a given routine is on the call stack, for example `TKundenImport.LeseZeile`. Allowed are `Unit.Class.Method`, `Class.Method`, a whole unit or class and `*` as wildcard (`Kunden.*`, `*.LeseZeile`); case does not matter. “direct caller only” checks only the frame directly below the breakpoint. While the program is stopped, the list suggests the routines of the current stack. Stops without a matching caller do not count as hits, so “exactly on hit 2” means the second call from that routine. If the stack cannot be read, Atlas rather stops. Frames without debug information sometimes have no name, and inline routines or optimised code do not show up as a frame of their own. Breakpoints with a caller carry a hook (↳) in the Atlas column of the gutter; its hint names the caller.
+- The IDE condition, hit condition, thread filter and caller apply together. For hits, threads and callers the debugger stops briefly, Atlas checks and continues right away; in hot loops this costs time. After 1000 skipped stops in a session a line in the messages says so.
 - If the triggering breakpoint is missing at start, the dependent one stays on as usual and a line in the messages says so.
 - Rules are stored in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` and move along when “Breakpoints move with the code” moves a breakpoint.
 
