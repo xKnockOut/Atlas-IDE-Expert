@@ -99,6 +99,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.DesktopSwitch.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.ButtonStates.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.IconAlpha.pas"/>
@@ -183,6 +184,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.OpenWatch.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.NonVisualAction.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.DesktopLayout.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.ButtonStates.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Surface.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>

@@ -607,10 +607,19 @@ begin
 end;
 
 class function TAtlasIdeSettings.History: TAtlasSettingsHistory;
+var
+  mCatalog: TAtlasSettingsCatalog;
 begin
   if GState.History = nil then
   begin
     GState.History := TAtlasSettingsHistory.Create;
+    // Zustände (x-state) wie gemerkte Knöpfe und Breiten verdrängen keine echten Stände (#2546).
+    mCatalog := TAtlasSettingsCatalog.CreateDefault;
+    try
+      GState.History.Ignored := TAtlasSettingsHistory.StateNames(mCatalog);
+    finally
+      mCatalog.Free;
+    end;
     // Fehlt, unbrauchbar (dann als .defekt beiseitegelegt) oder gesperrt: ohne gemerkte Stände weiter.
     GState.HistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, 'Einstellungsverlauf',
       function(const AText: string): Boolean

@@ -3,7 +3,8 @@
 // Gemeinsamer Teil der Werkzeuge mit Griffen über dem Designer (#734
 // Abstandsgriffe, #737 gemeinsame Größengriffe) in der IDE:
 // - Ein- und Ausschalten über das Symbol des Knopfs (Active), Menü am Pfeil
-//   mit „… zeigen“, den Befehlen des Werkzeugs und „… rückgängig“.
+//   mit „… zeigen“, den Befehlen des Werkzeugs und „… rückgängig“. Der
+//   Zustand gilt über Neustarts hinweg (TAtlasIdeDesignerButtonStates, #2546).
 // - Griff-Fenster TAtlasDesignerHandles; Maus und Doppelklick gehen an die
 //   abgeleitete Klasse (Down, Drag, Up, DoubleClick), jeweils unter dem
 //   Wächter der Designer-Leiste.
@@ -30,6 +31,8 @@ type
   TAtlasIdeHandleTool = class(TAtlasIdeDesignerTool)
   private
     FActive: Boolean;
+    /// <summary>Kennung des Knopfs, unter der sein Zustand gemerkt wird.</summary>
+    FButtonId: string;
     FMenu: TPopupMenu;
     FOverlay: TAtlasDesignerHandles;
     FUndo: TAtlasDesignerSnapshot;
@@ -63,8 +66,8 @@ type
     property Overlay: TAtlasDesignerHandles read FOverlay;
     property Changed: Boolean read FChanged write FChanged;
   public
-    /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
-    constructor Create(const AOnMessage: TProc<string>);
+    /// <summary>AButtonId: Kennung des Knopfs; AOnMessage: Zeile in der Meldungsansicht.</summary>
+    constructor Create(const AButtonId: string; const AOnMessage: TProc<string>);
     destructor Destroy; override;
     /// <summary>Klick auf das Symbol: Griffe ein- oder ausblenden.</summary>
     procedure Toggle;
@@ -85,15 +88,17 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.EditorStyle;
 
 { TAtlasIdeHandleTool }
 
-constructor TAtlasIdeHandleTool.Create(const AOnMessage: TProc<string>);
+constructor TAtlasIdeHandleTool.Create(const AButtonId: string; const AOnMessage: TProc<string>);
 begin
   inherited Create(AOnMessage);
-  FActive := True;
+  FButtonId := AButtonId;
+  FActive := TAtlasIdeDesignerButtonStates.Pressed(FButtonId, True);
   FMenu := TPopupMenu.Create(nil);
   FUndo := TAtlasDesignerSnapshot.Create;
 end;
@@ -279,6 +284,7 @@ end;
 procedure TAtlasIdeHandleTool.Toggle;
 begin
   FActive := not FActive;
+  TAtlasIdeDesignerButtonStates.Remember(FButtonId, FActive);
   if FActive then
   begin
     Tick;

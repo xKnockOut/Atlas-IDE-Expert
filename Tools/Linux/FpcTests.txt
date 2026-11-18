@@ -465,6 +465,7 @@ Atlas.Core.Designer.FormUnit.Tests
 Atlas.Core.Designer.Undo.Tests
 Atlas.Core.Designer.UndoFlow.Tests
 Atlas.Core.Designer.DesktopSwitch.Tests
+Atlas.Core.Designer.ButtonStates.Tests
 Atlas.Core.Designer.SelectionBar.Tests
 Atlas.Core.Designer.Components.Tests
 Atlas.Core.Designer.Wrap.Tests

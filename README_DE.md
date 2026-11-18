@@ -102,7 +102,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Schnellkorrekturen** für viele Regeln (Alt+Enter) und **Atlas-Änderungen rückgängig** über Dateien hinweg
 
 ### [Formulare](docs/features/de/Formulare.md)
-- **Designer-Ansichten** mit eigenen Knöpfen in der Designer-Leiste: Abstände messen beim Ziehen und mit Alt, Formulargröße ausprobieren, Skalierung und lange Texte prüfen, sprechende Namen vorschlagen, Fenster „Atlas-Struktur“ mit Verknüpfungen der Komponenten, Datenbindung der Auswahl als Brotkrumenleiste unter dem Designer, Auswahl in einen Frame auslagern, Ereignis-Karte, Rückgängig mit Strg+Z und Schrittliste (experimentell); eigenes Desktop-Layout beim Wechsel in den Designer
+- **Designer-Ansichten** mit eigenen Knöpfen in der Designer-Leiste: Abstände messen beim Ziehen und mit Alt, Formulargröße ausprobieren, Skalierung und lange Texte prüfen, sprechende Namen vorschlagen, Fenster „Atlas-Struktur“ mit Verknüpfungen der Komponenten, Datenbindung der Auswahl als Brotkrumenleiste unter dem Designer, Auswahl in einen Frame auslagern, Ereignis-Karte, Rückgängig mit Strg+Z und Schrittliste (experimentell); eigenes Desktop-Layout beim Wechsel in den Designer; Umschaltknöpfe behalten ihren Zustand über IDE-Neustarts
 - **Ungespeicherter Stand des Designers** zählt für Referenzen, Umbenennen und Prüfungen
 - **Tab-Reihenfolge** in der Designer-Leiste: Marken mit Rücksprüngen, Lücken und Doppelten, verschachtelte Container in Farben, per Klick neu vergeben, nach Lesereihenfolge sortieren
 - **Prüfungen zwischen Formular und Code** und Property-Regeln für Formulardateien
@@ -172,9 +172,12 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 
 Als Issues angelegt, Reihenfolge in [docs/Roadmap-Entwurf.md](docs/Roadmap-Entwurf.md):
 
-- 2.3: KI-Assistenten im Debugger, Team, Versionsverwaltung und CI
+- 2.3: Fundament (Fehler, Review-Befunde, Prüfregeln) und KI-Assistenten im Debugger
+- 2.4: Team: Issue-Tracker, Versionsverwaltung, CI
+- 2.5: Tests und Build
+- 2.6: Editor, Navigation, Suche, Refactoring
+- 2.7: Formular-Designer, Architektur, Einstellungen und Hilfe
 - 3.0: Plattform, darunter AtlasServer unter Linux
-- laufend: weitere Prüfregeln (Unter-Issues von #1086)
 
 ## Installation
 

@@ -75,7 +75,7 @@ constructor TAtlasIdeDesignerTools.Create(const AOnMessage: TProc<string>; APain
 begin
   inherited Create;
   FGaps := TAtlasIdeGapHandles.Create(AOnMessage);
-  FResize := TAtlasIdeMultiResize.Create(AOnMessage);
+  FResize := TAtlasIdeMultiResize.Create(TAtlasIdeMultiResize.cId, AOnMessage);
   FBar := TAtlasIdeSelectionBar.Create(AOnMessage, APainter);
   FMagnifier := TAtlasIdeMagnifier.Create(AOnMessage);
   FUndo := TAtlasIdeDesignerUndo.Create(AOnMessage);

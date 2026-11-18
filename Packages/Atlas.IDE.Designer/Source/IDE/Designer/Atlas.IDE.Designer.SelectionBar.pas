@@ -133,6 +133,7 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.FitText,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
@@ -261,7 +262,7 @@ constructor TAtlasIdeSelectionBar.Create(const AOnMessage: TProc<string>; APaint
 begin
   inherited Create(AOnMessage);
   FPainter := APainter;
-  FActive := True;
+  FActive := TAtlasIdeDesignerButtonStates.Pressed(cId, True);
   FMenus.Menu := TPopupMenu.Create(nil);
   FMenus.ColorMenu := TPopupMenu.Create(nil);
   FKeys := TAtlasSelectionBarKeys.Create(cKeyPriority);
@@ -834,6 +835,7 @@ end;
 procedure TAtlasIdeSelectionBar.Toggle;
 begin
   FActive := not FActive;
+  TAtlasIdeDesignerButtonStates.Remember(cId, FActive);
   if FActive then
   begin
     Tick;

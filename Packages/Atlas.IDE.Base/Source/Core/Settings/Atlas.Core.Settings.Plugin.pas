@@ -885,6 +885,9 @@ type
     property DesignerExtractFrame: Boolean read FEditorView.DesignerExtractFrame
       write FEditorView.DesignerExtractFrame;
     property DesignerEventMap: Boolean read FEditorView.DesignerEventMap write FEditorView.DesignerEventMap;
+    property DesignerRememberButtons: Boolean read FEditorView.DesignerRememberButtons
+      write FEditorView.DesignerRememberButtons;
+    property DesignerBarButtons: string read FEditorView.DesignerBarButtons write FEditorView.DesignerBarButtons;
     property DesignerLayout: Boolean read FEditorView.DesignerLayout write FEditorView.DesignerLayout;
     property DesignerLayoutName: string read FEditorView.DesignerLayoutName write FEditorView.DesignerLayoutName;
     property DesignerLayoutReturnTo: string read FEditorView.DesignerLayoutReturnTo

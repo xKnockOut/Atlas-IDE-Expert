@@ -118,6 +118,7 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
 
@@ -368,6 +369,7 @@ end;
 constructor TAtlasIdeDesignerTabOrder.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create(AOnMessage);
+  FShown := TAtlasIdeDesignerButtonStates.Pressed(cId, False);
   FMenu := TPopupMenu.Create(nil);
   FClicks := TAtlasTabClicks.Create;
   FAutoShown := TStringList.Create;
@@ -573,6 +575,7 @@ begin
     Exit;
   end;
   FShown := not FShown;
+  TAtlasIdeDesignerButtonStates.Remember(cId, FShown);
   Update;
 end;
 
