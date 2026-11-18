@@ -711,6 +711,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ProfileTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.LastTests.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ReportTools.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Contract.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Sampling.pas"/>

@@ -79,6 +79,7 @@ begin
   Key('tests.lists.runKey', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsListsRunKey));
   Switch('tests.log', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLog));
   Number('tests.log.maxLines', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLogMaxLines));
+  Switch('tests.lastRun', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLastRun));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
   Switch('tests.boundaryCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryCases));
   Number('tests.boundaryCases.maxCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryMax));

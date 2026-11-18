@@ -35,6 +35,8 @@ type
     procedure KeepsOrderAndText;
     [Test]
     procedure TakesDynamicArray;
+    [Test]
+    procedure AddTextLeavesOutEmptyValue;
   end;
 
   [TestFixture]
@@ -186,6 +188,20 @@ begin
     Assert.AreEqual('y', mArray.Items[1].Value);
   finally
     mArray.Free;
+  end;
+end;
+
+procedure TJsonBuildTests.AddTextLeavesOutEmptyValue;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    TJsonBuild.AddText(mObject, 'a', 'Wert');
+    TJsonBuild.AddText(mObject, 'b', '');
+    Assert.AreEqual('{"a":"Wert"}', mObject.ToJSON([]));
+  finally
+    mObject.Free;
   end;
 end;
 

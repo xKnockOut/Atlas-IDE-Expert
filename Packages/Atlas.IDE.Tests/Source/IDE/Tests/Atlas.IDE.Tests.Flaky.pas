@@ -63,6 +63,9 @@ type
     procedure Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
     /// <summary>Wackelnde Tests von AUnit (Text ALines); leer mit tests.flaky aus.</summary>
     function FlakyIn(const AUnit: TDUnitXUnit; const ALines: TArray<string>): TArray<TAtlasFlakyTest>;
+    /// <summary>Wackelt ACase im Testprojekt AProject nach dem gerade gemerkten Lauf? Dann rote und alle Läufe mit
+    /// dem Rumpf von jetzt (für den letzten Testlauf, #2409). False mit tests.flaky aus.</summary>
+    function CountOf(const AProject: string; const ACase: TTestCaseResult; out AFailed, ARuns: Integer): Boolean;
     /// <summary>Abfragen für Testlinse und Fenster: veraltete Tests über AStaleKeys, wackelnde über FlakyIn.
     /// </summary>
     function QueriesWith(const AStaleKeys: TAtlasTestStaleKeys): TAtlasTestStateQueries;
@@ -254,6 +257,32 @@ begin
         Result := Result + [mFlaky];
       end;
     end;
+  end;
+end;
+
+function TAtlasIdeFlakyTests.CountOf(const AProject: string; const ACase: TTestCaseResult; out AFailed,
+  ARuns: Integer): Boolean;
+var
+  mHistory: TAtlasTestHistory;
+  mKey: string;
+  mMarks: TArray<TAtlasTestRunMark>;
+  mFlaky: TAtlasFlakyTest;
+begin
+  AFailed := 0;
+  ARuns := 0;
+  if not TAtlasIdeSettings.Current.TestsFlaky or (AProject = '') then
+  begin
+    Exit(False);
+  end;
+  mHistory := HistoryOf(AProject);
+  mKey := TAtlasTestStamps.KeyOf(ACase.UnitName, ACase.Fixture, ACase.Method);
+  mMarks := mHistory.MarksOf(mKey);
+  // Der letzte gemerkte Lauf ist der gerade gemeldete: Es zählt sein Rumpf.
+  Result := (Length(mMarks) > 0) and mHistory.IsFlaky(mKey, mMarks[High(mMarks)].Body, mFlaky);
+  if Result then
+  begin
+    AFailed := mFlaky.Failed;
+    ARuns := mFlaky.Runs;
   end;
 end;
 

@@ -54,19 +54,6 @@ begin
   Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
 end;
 
-/// <summary>Datei einer Unit im Testprojekt AProjectFile.</summary>
-function UnitFileFunc(const AProjectFile: string): TAtlasTestUnitFile;
-var
-  mProjectFile: string;
-begin
-  mProjectFile := AProjectFile;
-  Result :=
-    function(const AUnitName: string): string
-    begin
-      Result := TAtlasIdeTests.UnitFileOf(mProjectFile, AUnitName);
-    end;
-end;
-
 { TAtlasIdeStaleTests }
 
 constructor TAtlasIdeStaleTests.Create(ATests: TAtlasIdeTests);
@@ -111,7 +98,7 @@ begin
     mUnits := nil;
     if TAtlasIdeSettings.Current.TestsStaleUnits then
     begin
-      mUnits := TAtlasTestStamps.UnitStamps(mLines, UnitFileFunc(ATarget.Project), ReadLines);
+      mUnits := TAtlasTestStamps.UnitStamps(mLines, TAtlasIdeTests.UnitFiles(ATarget.Project), ReadLines);
     end;
     FStamps.Remember(ATarget.Project, mFileName, TDUnitXSource.Scan(mLines), mLines, ARun.Cases, mUnits);
   end;

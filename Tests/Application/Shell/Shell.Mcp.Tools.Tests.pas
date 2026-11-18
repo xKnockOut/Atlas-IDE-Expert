@@ -179,7 +179,7 @@ procedure TMcpToolsTests.EachGroupRegistersItsTools;
 begin
   Assert.AreEqual(10, Integer(Length(NamesOf(RegisterNavigationTools))));
   Assert.IsTrue(Pos(' qualified_name ', Joined(NamesOf(RegisterNavigationTools))) > 0);
-  Assert.AreEqual(' get_last_build build_project run_tests get_profile get_mutants suggest_test_cases ',
+  Assert.AreEqual(' get_last_build get_last_tests build_project run_tests get_profile get_mutants suggest_test_cases ',
     Joined(NamesOf(RegisterBuildTestTools)));
   Assert.AreEqual(7, Integer(Length(NamesOf(RegisterCheckTools))));
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));

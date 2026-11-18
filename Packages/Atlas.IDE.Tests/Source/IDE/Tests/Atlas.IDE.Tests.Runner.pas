@@ -169,6 +169,8 @@ type
     procedure ReportRun(const ATarget: TAtlasTestTarget; const AXml: string);
     /// <summary>Datei der Unit AUnitName im Testprojekt AProjectFile; '' ohne.</summary>
     class function UnitFileOf(const AProjectFile, AUnitName: string): string; static;
+    /// <summary>UnitFileOf für das Testprojekt AProjectFile als Rückruf (TAtlasTestRun.Failures, Stempel).</summary>
+    class function UnitFiles(const AProjectFile: string): TAtlasTestUnitFile; static;
     /// <summary>Zeile in der Meldungsansicht (Gruppe Atlas).</summary>
     procedure Say(const AText: string);
     /// <summary>Ein Test läuft im Debugger (#585): sperrt weitere Läufe, die Code Lens zeigt „Tests laufen …“.
@@ -614,6 +616,18 @@ begin
   Finish(ATarget, TAtlasVcsOutcome.Ok, 0, mExe);
 end;
 
+class function TAtlasIdeTests.UnitFiles(const AProjectFile: string): TAtlasTestUnitFile;
+var
+  mProjectFile: string;
+begin
+  mProjectFile := AProjectFile;
+  Result :=
+    function(const AUnitName: string): string
+    begin
+      Result := UnitFileOf(mProjectFile, AUnitName);
+    end;
+end;
+
 class function TAtlasIdeTests.UnitFileOf(const AProjectFile, AUnitName: string): string;
 var
   mProject: IOTAProject;
@@ -805,19 +819,6 @@ begin
   FThread.Start;
 end;
 
-/// <summary>Datei einer Unit im Testprojekt AProjectFile, als Rückruf für TAtlasTestRun.Failures.</summary>
-function UnitFileFunc(const AProjectFile: string): TAtlasTestUnitFile;
-var
-  mProjectFile: string;
-begin
-  mProjectFile := AProjectFile;
-  Result :=
-    function(const AUnitName: string): string
-    begin
-      Result := TAtlasIdeTests.UnitFileOf(mProjectFile, AUnitName);
-    end;
-end;
-
 procedure TAtlasIdeTests.Say(const AText: string);
 begin
   FOutput.Say(AText);
@@ -880,13 +881,13 @@ begin
   // Probleme aus allen Ergebnissen dieser Sitzung: Ein Lauf einzelner Tests lässt die übrigen Fehlschläge stehen.
   mAll := ARun;
   mAll.Cases := FCases;
-  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines, mAtAssert);
+  mFailures := TAtlasTestRun.Failures(ARun, UnitFiles(ATarget.Project), ReadLines, mAtAssert);
   if Assigned(FHooks.OnProblems) then
   begin
-    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines,
+    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFiles(ATarget.Project), ReadLines,
       mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline) +
-      LeakWarnings(mAll.Cases, UnitFileFunc(ATarget.Project)));
+      LeakWarnings(mAll.Cases, UnitFiles(ATarget.Project)));
   end;
   FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
     0).FailedTests);
@@ -908,7 +909,7 @@ begin
     // Die langsamsten Tests des Laufs für die Karte Testergebnisse (#1772).
     FHooks.OnFinished(ATarget.Project, TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
       TAtlasTestRun.Locate(TTestResults.Slowest(ARun.Cases, TAtlasProjectTests.cMaxSlowest),
-      UnitFileFunc(ATarget.Project), ReadLines), TTimeZone.Local.ToUniversalTime(Now)));
+      UnitFiles(ATarget.Project), ReadLines), TTimeZone.Local.ToUniversalTime(Now)));
   end;
   FOutput.EndQuiet(True, ARun);
   FOutput.Ended(ATarget.Project, TAtlasTestFinish.Report, ARun);
