@@ -187,8 +187,8 @@ end;
 
 class procedure TAtlasIdeResults.RunDataFlow(AFromFilter: Boolean);
 const
-  cTitles: array[TAtlasDataFlowDirection] of TAtlasTextId = (TAtlasTextId.ResultsDataFlowSources,
-    TAtlasTextId.ResultsDataFlowTargets);
+  cTitles: array[TAtlasDataFlowDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsDataFlowSources,
+    TAtlasResultsTextId.ResultsDataFlowTargets);
 var
   mCurrent: TLspSession;
   mFound: TAtlasDataFlowResult;
@@ -223,7 +223,7 @@ begin
   begin
     mFound.Symbol.Name := FFlowName;
   end;
-  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(cTitles[FFlowRequest.Direction],
+  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasResultsStrings.Fmt(cTitles[FFlowRequest.Direction],
     [mFound.Symbol.Name, Length(mFound.Nodes)]), FFlowRequest.Direction, mFound,
     TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
 end;
@@ -437,8 +437,8 @@ end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
 const
-  cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
-    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
+  cTitles: array[TAtlasHierarchyDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsIncoming,
+    TAtlasResultsTextId.ResultsOutgoing, TAtlasResultsTextId.ResultsSupertypes, TAtlasResultsTextId.ResultsSubtypes);
 var
   mFileName, mName: string;
   mLine, mCharacter: Integer;
@@ -467,8 +467,8 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots,
-    AAsDiagram);
+  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasResultsStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection,
+    mRoots, AAsDiagram);
 end;
 
 class procedure TAtlasIdeResults.ShowCallDiagram;

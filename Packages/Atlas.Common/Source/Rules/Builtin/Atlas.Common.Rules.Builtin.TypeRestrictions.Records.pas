@@ -222,7 +222,7 @@ begin
   mAfter := mIndex;
   while (mAfter >= 0) and (mAfter < Length(ATokens)) and not ATokens[mAfter].IsSymbol(';') do
   begin
-    mAfter := TRoutineBody.NextToken(ATokens, mAfter);
+    mAfter := NextCodeAfter(ATokens, mAfter);
   end;
   if (mAfter < 0) or (mAfter >= Length(ATokens)) then
   begin
