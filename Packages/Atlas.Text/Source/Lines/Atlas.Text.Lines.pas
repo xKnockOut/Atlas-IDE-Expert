@@ -65,6 +65,12 @@ type
       out AMixed: Boolean): TTextLineBreak; overload; static;
     /// <summary>Zeilen ohne Umbruch (CRLF, LF, CR); immer Anzahl Umbrüche + 1 Einträge.</summary>
     class function SplitLines(const AText: string): TArray<string>; overload; static;
+    /// <summary>AText an jedem #10 geteilt, ein #13 am Zeilenende entfernt; ein einzelnes #13 trennt nicht (Puffer
+    /// des Editors, Zeilennummern wie dort).</summary>
+    class function SplitAtLineFeed(const AText: string): TArray<string>; static;
+    /// <summary>ALines mit AOldCount Zeilen ab AStart (ab 0) durch ANew ersetzt.</summary>
+    class function ReplaceRange(const ALines: TArray<string>; AStart, AOldCount: Integer;
+      const ANew: TArray<string>): TArray<string>; static;
     /// <summary>Wie oben, dazu ALineBreak = LineBreakOf(AText).</summary>
     class function SplitLines(const AText: string; out ALineBreak: string): TArray<string>; overload; static;
     /// <summary>Zeilen samt Umbruch; die letzte ohne, wenn AText nicht mit einem endet; leerer Text →
@@ -389,6 +395,38 @@ begin
     mIndex := NextBreak(AText, mStart);
   end;
   Result[mCount] := Copy(AText, mStart, MaxInt);
+end;
+
+class function TTextLines.SplitAtLineFeed(const AText: string): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := AText.Split([#10]);
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex] := StripTrailingCr(Result[mIndex]);
+  end;
+end;
+
+class function TTextLines.ReplaceRange(const ALines: TArray<string>; AStart, AOldCount: Integer;
+  const ANew: TArray<string>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(ALines) - AOldCount + Length(ANew));
+  for mIndex := 0 to AStart - 1 do
+  begin
+    Result[mIndex] := ALines[mIndex];
+  end;
+  for mIndex := 0 to High(ANew) do
+  begin
+    Result[AStart + mIndex] := ANew[mIndex];
+  end;
+  for mIndex := AStart + AOldCount to High(ALines) do
+  begin
+    Result[mIndex - AOldCount + Length(ANew)] := ALines[mIndex];
+  end;
 end;
 
 class function TTextLines.SplitLines(const AText: string; out ALineBreak: string): TArray<string>;

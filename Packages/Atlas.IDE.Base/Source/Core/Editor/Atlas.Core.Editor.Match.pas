@@ -65,7 +65,9 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Editor.MethodToggle;
+  Atlas.Core.Editor.MethodToggle,
+  System.StrUtils,
+  Atlas.Text.Chars;
 
 type
 {$SCOPEDENUMS ON}
@@ -385,29 +387,18 @@ begin
   Result := mSearch.Run(AText, ALine, ACharacter, AMatch);
 end;
 
-function IsOneOf(const AText: string; const AList: array of string): Boolean;
-var
-  mItem: string;
-begin
-  Result := False;
-  for mItem in AList do
-  begin
-    Result := Result or (AText = mItem);
-  end;
-end;
-
 function RoleOfDirective(const AName: string): TRole;
 begin
   Result := TRole.Other;
-  if IsOneOf(AName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
+  if MatchStr(AName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
   begin
     Result := TRole.Opener;
   end
-  else if IsOneOf(AName, ['ELSE', 'ELSEIF']) then
+  else if MatchStr(AName, ['ELSE', 'ELSEIF']) then
   begin
     Result := TRole.Middle;
   end
-  else if IsOneOf(AName, ['ENDIF', 'IFEND']) then
+  else if MatchStr(AName, ['ENDIF', 'IFEND']) then
   begin
     Result := TRole.Closer;
   end;
@@ -417,11 +408,7 @@ end;
 
 function TDirectiveScanner.CharAt(AIndex: Integer): Char;
 begin
-  Result := #0;
-  if (AIndex >= 1) and (AIndex <= Length(FText)) then
-  begin
-    Result := FText[AIndex];
-  end;
+  Result := TTextChars.CharAt(FText, AIndex);
 end;
 
 procedure TDirectiveScanner.NewLine;

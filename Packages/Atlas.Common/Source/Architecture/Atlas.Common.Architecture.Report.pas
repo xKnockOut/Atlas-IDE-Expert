@@ -281,18 +281,6 @@ begin
   Result := FormatFloat('0.###', AValue, TFormatSettings.Invariant);
 end;
 
-function JsonBool(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
 function JsonInts(const AValues: TArray<Integer>): string;
 var
   mIndex: Integer;
@@ -736,7 +724,7 @@ begin
     .Append(',"generation":').Append(IntToStr(AOverview.Generation))
     .Append(',"durationMs":').Append(IntToStr(AOverview.DurationMs))
     .Append(',"scope":').Append(TJsonText.Quote(AOverview.Scope))
-    .Append(',"includeLibrary":').Append(JsonBool(AOverview.IncludeLibrary))
+    .Append(',"includeLibrary":').Append(TJsonText.Bool(AOverview.IncludeLibrary))
     .Append(',"grouping":{"resolution":').Append(JsonNumber(AOverview.Grouping.Clamped.Resolution))
     .Append(',"maxShare":').Append(JsonNumber(AOverview.Grouping.Clamped.MaxShare))
     .Append(',"minCohesion":').Append(JsonNumber(AOverview.Grouping.Clamped.MinCohesion))
@@ -788,7 +776,7 @@ begin
       .Append(',"total":').Append(mItem.Total)
       .Append(',"uses":').Append(mItem.Uses_)
       .Append(',"role":').Append(TJsonText.Quote(RoleName(mItem.Role)))
-      .Append(',"library":').Append(JsonBool(mItem.Library_));
+      .Append(',"library":').Append(TJsonText.Bool(mItem.Library_));
     if mIndex < Length(ALayout.Units) then
     begin
       ABuilder.Append(',"x":').Append(JsonNumber(ALayout.Units[mIndex].X))
@@ -839,7 +827,7 @@ begin
     .Append(',"inner":').Append(ASubsystem.InnerEdges)
     .Append(',"outer":').Append(ASubsystem.OuterEdges)
     .Append(',"cohesion":').Append(JsonNumber(ASubsystem.Cohesion))
-    .Append(',"isolated":').Append(JsonBool(ASubsystem.Isolated))
+    .Append(',"isolated":').Append(TJsonText.Bool(ASubsystem.Isolated))
     .Append(',"color":').Append(ASubsystem.ColorSlot)
     .Append(',"shade":').Append(ASubsystem.Shade);
   if ASubsystem.Foundation then
@@ -909,7 +897,7 @@ begin
   begin
     mCycle := AOverview.Cycles[mIndex];
     AppendComma(ABuilder, mIndex);
-    ABuilder.Append(cLineBreak).Append('{"interfaceOnly":').Append(JsonBool(mCycle.InterfaceOnly))
+    ABuilder.Append(cLineBreak).Append('{"interfaceOnly":').Append(TJsonText.Bool(mCycle.InterfaceOnly))
       .Append(',"units":').Append(JsonInts(mCycle.Units))
       .Append(',"component":').Append(JsonInts(mCycle.Component))
       .Append(',"edges":[');

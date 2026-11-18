@@ -132,7 +132,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.StickyPaint,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.Core.Editor.GuideStroke;
 
 const
   cTickMs = 100;
@@ -501,7 +502,7 @@ begin
     begin
       QueueInvalidate;
     end;
-    mRow := TAtlasStickyPlan.ScreenRow(Rect.Top, mHeight);
+    mRow := TAtlasGuideStroke.RowIndex(Rect.Top, mHeight);
     if mRow >= Length(FRows) then
     begin
       // Nicht übermalte Zeile: deren Hintergrund ist der des Editors.

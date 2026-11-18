@@ -58,7 +58,8 @@ type
 implementation
 
 uses
-  System.Character;
+  System.Character,
+  System.StrUtils;
 
 type
   TExprTokenKind = (etIdent, etNumber, etSymbol, etEnd);
@@ -95,17 +96,6 @@ type
 const
   /// <summary>Wert für Unbekanntes: gilt als wahr bzw. als erfüllter Vergleich.</summary>
   cUnknownValue = 1.0;
-
-function IsOneOf(const AText: string; const AList: array of string): Boolean;
-var
-  mItem: string;
-begin
-  Result := False;
-  for mItem in AList do
-  begin
-    Result := Result or (AText = mItem);
-  end;
-end;
 
 /// <summary>Zwei Zeichen lange Vergleiche: "&lt;=", "&gt;=", "&lt;&gt;".</summary>
 function IsTwoCharSymbol(const AText: string; AStart: Integer): Boolean;
@@ -150,7 +140,7 @@ end;
 
 function IsCompareOperator(const AToken: TExprToken): Boolean;
 begin
-  Result := (AToken.Kind = etSymbol) and IsOneOf(AToken.Text, ['=', '<>', '<', '>', '<=', '>=']);
+  Result := (AToken.Kind = etSymbol) and MatchStr(AToken.Text, ['=', '<>', '<', '>', '<=', '>=']);
 end;
 
 /// <summary>Name und Argument einer Direktive: "IFDEF FPC" → IFDEF, FPC.</summary>
@@ -509,7 +499,7 @@ var
 begin
   SplitDirective(ADirective, mName, mArgument);
   Result := True;
-  if IsOneOf(mName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
+  if MatchStr(mName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
   begin
     OpenBranch(mName, mArgument);
   end
@@ -521,7 +511,7 @@ begin
   begin
     LastBranch;
   end
-  else if IsOneOf(mName, ['ENDIF', 'IFEND']) then
+  else if MatchStr(mName, ['ENDIF', 'IFEND']) then
   begin
     CloseBranch;
   end

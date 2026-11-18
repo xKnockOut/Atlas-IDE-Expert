@@ -13,6 +13,7 @@ interface
 
 uses
   System.SysUtils,
+  System.JSON,
   Atlas.Text.Lines;
 
 type
@@ -33,6 +34,9 @@ type
     function Same(const AOther: TLspRange): Boolean;
     /// <summary>AOther liegt ganz in diesem Bereich (gleiche Grenzen eingeschlossen).</summary>
     function Contains(const AOther: TLspRange): Boolean;
+    /// <summary>Bereich aus einem LSP-Objekt {start: {line, character}, end: {…}}; False, wenn ein Teil fehlt.
+    /// </summary>
+    class function TryRead(AValue: TJSONValue; out ARange: TLspRange): Boolean; static;
   end;
 
   TLspTextChange = record
@@ -101,6 +105,25 @@ function TLspRange.Contains(const AOther: TLspRange): Boolean;
 begin
   Result := (TLspTextPosition.Compare(StartPos, AOther.StartPos) <= 0) and
     (TLspTextPosition.Compare(AOther.EndPos, EndPos) <= 0);
+end;
+
+function ReadPosition(AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
+var
+  mLine, mCharacter: Integer;
+begin
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', mLine) and
+    TJSONObject(AValue).TryGetValue<Integer>('character', mCharacter);
+  if Result then
+  begin
+    APosition := TLspTextPosition.Create(mLine, mCharacter);
+  end;
+end;
+
+class function TLspRange.TryRead(AValue: TJSONValue; out ARange: TLspRange): Boolean;
+begin
+  ARange := Default(TLspRange);
+  Result := (AValue is TJSONObject) and ReadPosition(TJSONObject(AValue).GetValue('start'), ARange.StartPos) and
+    ReadPosition(TJSONObject(AValue).GetValue('end'), ARange.EndPos);
 end;
 
 function IsHighSurrogate(AChar: Char): Boolean;

@@ -289,18 +289,6 @@ begin
   Result := (AValue is TJSONBool) and TJSONBool(AValue).AsBoolean;
 end;
 
-function BoolJson(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
 function Contains(const AList: TArray<string>; const AValue: string): Boolean;
 var
   mItem: string;
@@ -593,7 +581,7 @@ var
 begin
   case AEntry.Kind of
     akBoolean:
-      Result := BoolJson(AStore.ReadInteger(AEntry.Name, 0) <> 0);
+      Result := TJsonText.Bool(AStore.ReadInteger(AEntry.Name, 0) <> 0);
     akInteger:
       Result := IntToStr(AStore.ReadInteger(AEntry.Name, 0));
     akJson:
@@ -1292,7 +1280,7 @@ begin
   Result := True;
   if (AEntry.Kind = akBoolean) and (AValue is TJSONNumber) then
   begin
-    AJson := BoolJson(TJSONNumber(AValue).AsInt <> 0);
+    AJson := TJsonText.Bool(TJSONNumber(AValue).AsInt <> 0);
   end
   // hints.xmlDocFull (#654) war ein Wahrheitswert (in alten Dateien 0/1); hints.xmlDocExpand (#770) ist
   // eine Auswahl.

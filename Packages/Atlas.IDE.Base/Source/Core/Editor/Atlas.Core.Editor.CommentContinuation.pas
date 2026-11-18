@@ -59,6 +59,10 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Lines,
+  Atlas.Text.Chars;
+
 type
   {$SCOPEDENUMS ON}
   TLexState = (Code, Brace, ParenStar);
@@ -71,41 +75,6 @@ type
     OpenCharacter: Integer;
   end;
 
-function LinesOf(const AText: string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := AText.Split([#10]);
-  for mIndex := 0 to High(Result) do
-  begin
-    if Result[mIndex].EndsWith(#13) then
-    begin
-      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
-    end;
-  end;
-end;
-
-function LeadingSpace(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(ALine, 1, mIndex - 1);
-end;
-
-function CharAt(const AText: string; AIndex: Integer): Char;
-begin
-  Result := #0;
-  if (AIndex >= 1) and (AIndex <= Length(AText)) then
-  begin
-    Result := AText[AIndex];
-  end;
-end;
-
 procedure OpenComment(var AState: TLineState; AKind: TLexState; ALine, ACharacter: Integer);
 begin
   AState.State := AKind;
@@ -113,39 +82,16 @@ begin
   AState.OpenCharacter := ACharacter;
 end;
 
-/// <summary>String ab dem Hochkomma an AIndex bis hinter das schließende ('' ist ein Hochkomma im String).
-/// </summary>
-function SkipString(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= Length(AText)) and (AText[Result] <> '''') do
-  begin
-    Inc(Result);
-  end;
-  Inc(Result);
-end;
-
-/// <summary>Direktive ab AIndex bis hinter "}"; Direktiven enden in derselben Zeile und zählen wie Code.</summary>
-function SkipDirective(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and (AText[Result] <> '}') do
-  begin
-    Inc(Result);
-  end;
-  Inc(Result);
-end;
-
 /// <summary>Ein Schritt im Code ab AIndex; Ergebnis: nächste Stelle.</summary>
 function StepCode(const AText: string; AIndex, ALine: Integer; var AState: TLineState): Integer;
 var
   mNext: Char;
 begin
-  mNext := CharAt(AText, AIndex + 1);
+  mNext := TTextChars.CharAt(AText, AIndex + 1);
   Result := AIndex + 1;
   if AText[AIndex] = '''' then
   begin
-    Result := SkipString(AText, AIndex);
+    Result := TTextChars.PastNext(AText, AIndex + 1, '''');
   end
   else if (AText[AIndex] = '/') and (mNext = '/') then
   begin
@@ -153,7 +99,7 @@ begin
   end
   else if (AText[AIndex] = '{') and (mNext = '$') then
   begin
-    Result := SkipDirective(AText, AIndex);
+    Result := TTextChars.PastNext(AText, AIndex, '}');
   end
   else if AText[AIndex] = '{' then
   begin
@@ -174,7 +120,8 @@ begin
   begin
     AState.State := TLexState.Code;
   end
-  else if (AState.State = TLexState.ParenStar) and (AText[AIndex] = '*') and (CharAt(AText, AIndex + 1) = ')') then
+  else if (AState.State = TLexState.ParenStar) and (AText[AIndex] = '*') and
+    (TTextChars.CharAt(AText, AIndex + 1) = ')') then
   begin
     AState.State := TLexState.Code;
     Result := AIndex + 2;
@@ -211,9 +158,12 @@ end;
 /// <summary>"1." bzw. "1)" an AIndex mit Leerzeichen oder am Ende; höchstens drei Ziffern davor (keine Jahreszahl
 /// wie "2026. ").</summary>
 function IsNumberMarker(const AContent: string; AIndex: Integer): Boolean;
+const
+  cMaxDigits = 3;
 begin
-  Result := (AIndex > 1) and (AIndex <= 4) and CharInSet(CharAt(AContent, AIndex), ['.', ')']) and
-    CharInSet(CharAt(AContent, AIndex + 1), [' ', #0]);
+  Result := (AIndex > 1) and (AIndex <= cMaxDigits + 1) and
+    CharInSet(TTextChars.CharAt(AContent, AIndex), ['.', ')']) and
+    CharInSet(TTextChars.CharAt(AContent, AIndex + 1), [' ', #0]);
 end;
 
 /// <summary>Neue Zeile ALine wird ANewLine, der Cursor steht an ACursor.</summary>
@@ -253,14 +203,14 @@ function ContinueLineComment(const APrevious: string; ALine: Integer; const ARes
 var
   mIndent, mBody, mMarker, mAfter, mSpace, mContent, mBullet, mNext, mPrefix: string;
 begin
-  mIndent := LeadingSpace(APrevious);
+  mIndent := TTextLines.IndentOf(APrevious);
   mBody := TrimLeft(APrevious);
   mMarker := CommentMarker(mBody);
   Result := (mMarker = '///') or AOptions.LineComments;
   if Result then
   begin
     mAfter := Copy(mBody, Length(mMarker) + 1, MaxInt);
-    mSpace := LeadingSpace(mAfter);
+    mSpace := TTextLines.IndentOf(mAfter);
     mContent := Copy(mAfter, Length(mSpace) + 1, MaxInt);
     mNext := '';
     if Trim(mContent) = '' then
@@ -323,7 +273,7 @@ begin
   end
   else
   begin
-    Result := Copy(APrevious, 1, AState.OpenCharacter + mOpenerLength) + LeadingSpace(mAfter);
+    Result := Copy(APrevious, 1, AState.OpenCharacter + mOpenerLength) + TTextLines.IndentOf(mAfter);
     Result := ABase + StringOfChar(' ', Length(Result) - Length(ABase));
   end;
 end;
@@ -340,7 +290,7 @@ begin
   if Result then
   begin
     mPrevious := ALines[ALine - 1];
-    mBase := LeadingSpace(ALines[mState.OpenLine]);
+    mBase := TTextLines.IndentOf(ALines[mState.OpenLine]);
     mPrefix := '';
     if AOptions.BlockPrefix <> '' then
     begin
@@ -352,7 +302,7 @@ begin
     end
     else if Trim(mPrevious) <> '' then
     begin
-      mPrefix := LeadingSpace(mPrevious);
+      mPrefix := TTextLines.IndentOf(mPrevious);
     end
     else
     begin
@@ -385,7 +335,7 @@ var
 begin
   AEdit := Default(TAtlasCommentEdit);
   Result := False;
-  mLines := LinesOf(AText);
+  mLines := TTextLines.SplitAtLineFeed(AText);
   if (ALine >= 1) and (ALine <= High(mLines)) and (Trim(Copy(mLines[ALine], 1, ACharacter)) = '') then
   begin
     mRest := TrimLeft(mLines[ALine]);
@@ -411,7 +361,7 @@ begin
   if (Length(AContent) >= 1) and CharInSet(AContent[1], ['-', '*']) and
     ((Length(AContent) = 1) or (AContent[2] = ' ')) then
   begin
-    AMarker := Copy(AContent, 1, 1) + Copy(LeadingSpace(Copy(AContent, 2, MaxInt)), 1, MaxInt);
+    AMarker := Copy(AContent, 1, 1) + Copy(TTextLines.IndentOf(Copy(AContent, 2, MaxInt)), 1, MaxInt);
     ANext := AContent[1] + ' ';
     if Length(AMarker) > 1 then
     begin
@@ -429,7 +379,7 @@ begin
     Exit;
   end;
   mNumber := StrToInt(Copy(AContent, 1, mIndex - 1));
-  AMarker := Copy(AContent, 1, mIndex) + LeadingSpace(Copy(AContent, mIndex + 1, MaxInt));
+  AMarker := Copy(AContent, 1, mIndex) + TTextLines.IndentOf(Copy(AContent, mIndex + 1, MaxInt));
   ANext := IntToStr(mNumber + 1) + AContent[mIndex] + Copy(AMarker, mIndex + 1, MaxInt);
   if Length(ANext) = Length(IntToStr(mNumber + 1)) + 1 then
   begin

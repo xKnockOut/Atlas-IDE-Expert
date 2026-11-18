@@ -91,7 +91,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Chars;
 
 const
   cBitsPerHexDigit = 4;
@@ -170,20 +171,6 @@ end;
 function IsHexDigit(AChar: Char): Boolean;
 begin
   Result := CharInSet(AChar, ['0'..'9', 'A'..'F', 'a'..'f']);
-end;
-
-function IsDigits(const AText: string): Boolean;
-var
-  mChar: Char;
-begin
-  Result := AText <> '';
-  for mChar in AText do
-  begin
-    if not CharInSet(mChar, ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
 end;
 
 /// <summary>Wörter einer Zeile, durch Leerzeichen und Tabulatoren getrennt.</summary>
@@ -431,7 +418,7 @@ begin
   // Wörter 3 .. High-1: [Unit] [Zeile] [+Versatz]
   for mIndex := cMadMinWords to High(AWords) - 1 do
   begin
-    if IsDigits(AWords[mIndex]) then
+    if TTextChars.IsDigits(AWords[mIndex]) then
     begin
       AFrame.Line := StrToInt(AWords[mIndex]);
     end

@@ -83,7 +83,9 @@ implementation
 
 uses
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Editor.MethodToggle;
+  Atlas.Core.Editor.MethodToggle,
+  Atlas.Text.Chars,
+  Atlas.Text.Lines;
 
 type
   TSpan = record
@@ -114,20 +116,6 @@ type
     function Run(const AText: string; const ASelection: TAtlasLineSelection; AKind: TAtlasLineMoveKind;
       AIndent: Integer; out AMove: TAtlasLineMove): Boolean;
   end;
-
-function LinesOf(const AText: string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := AText.Split([#10]);
-  for mIndex := 0 to High(Result) do
-  begin
-    if Result[mIndex].EndsWith(#13) then
-    begin
-      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
-    end;
-  end;
-end;
 
 /// <summary>Blöcke über mehrere Zeilen, die in ALine beginnen, weniger die, die dort enden.</summary>
 function NetDepth(const ABlocks: TArray<TAtlasPairBlock>; ALine: Integer): Integer;
@@ -178,15 +166,6 @@ begin
   end;
 end;
 
-function CharAt(const AText: string; AIndex: Integer): Char;
-begin
-  Result := #0;
-  if (AIndex >= 1) and (AIndex <= Length(AText)) then
-  begin
-    Result := AText[AIndex];
-  end;
-end;
-
 /// <summary>Zeilenkommentar ab AIndex: Stelle des Zeilenumbruchs bzw. hinter dem Text.</summary>
 function LineCommentEnd(const AText: string; AIndex: Integer): Integer;
 begin
@@ -228,7 +207,7 @@ var
   mChar, mNext: Char;
 begin
   mChar := AText[AIndex];
-  mNext := CharAt(AText, AIndex + 1);
+  mNext := TTextChars.CharAt(AText, AIndex + 1);
   AOk := True;
   if CharInSet(mChar, [' ', #9, #10, #13]) then
   begin
@@ -242,7 +221,7 @@ begin
   begin
     Result := BraceCommentEnd(AText, AIndex, AOk);
   end
-  else if (mChar = '(') and (mNext = '*') and (CharAt(AText, AIndex + 2) <> '$') then
+  else if (mChar = '(') and (mNext = '*') and (TTextChars.CharAt(AText, AIndex + 2) <> '$') then
   begin
     Result := ParenCommentEnd(AText, AIndex, AOk);
   end
@@ -456,7 +435,7 @@ var
 begin
   FMove := Default(TAtlasLineMove);
   FText := AText;
-  FLines := LinesOf(AText);
+  FLines := TTextLines.SplitAtLineFeed(AText);
   FSelection := ASelection;
   FKind := AKind;
   FIndent := AIndent;

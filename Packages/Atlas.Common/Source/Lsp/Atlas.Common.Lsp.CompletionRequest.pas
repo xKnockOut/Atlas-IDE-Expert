@@ -353,7 +353,8 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Lines;
 
 { TCompletionRequest }
 
@@ -477,17 +478,8 @@ begin
 end;
 
 function TextLines(const AText: string): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  Result := AText.Split([#10]);
-  for mIndex := 0 to High(Result) do
-  begin
-    if Result[mIndex].EndsWith(#13) then
-    begin
-      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
-    end;
-  end;
+  Result := TTextLines.SplitAtLineFeed(AText);
 end;
 
 function CachedLines(ACache: TDictionary<string, TArray<string>>; const AFileName, AOwnFile, AText: string;

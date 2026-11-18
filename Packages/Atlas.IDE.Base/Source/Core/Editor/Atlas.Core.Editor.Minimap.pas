@@ -425,29 +425,6 @@ begin
   end;
 end;
 
-/// <summary>Marken der Art AKind, aufsteigend nach Zeile (stabil).</summary>
-function MarksOfKind(const AMarks: TAtlasOverviewMarks; AKind: TAtlasOverviewMarkKind): TArray<Integer>;
-var
-  mIndex, mPosition, mMoved: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to High(AMarks) do
-  begin
-    if AMarks[mIndex].Kind = AKind then
-    begin
-      Result := Result + [mIndex];
-      mPosition := High(Result);
-      while (mPosition > 0) and (AMarks[Result[mPosition - 1]].Line > AMarks[mIndex].Line) do
-      begin
-        mMoved := Result[mPosition - 1];
-        Result[mPosition - 1] := Result[mPosition];
-        Result[mPosition] := mMoved;
-        Dec(mPosition);
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Pixelbereich der Marke, mindestens AMinHeight hoch und in der Karte.</summary>
 function MarkSpan(const AMark: TAtlasOverviewMark; const AMap: TAtlasMinimapMap; AMinHeight: Integer):
   TAtlasMinimapSpan;
@@ -473,7 +450,7 @@ var
   mBar: TAtlasOverviewBar;
 begin
   mLast := -1;
-  for mIndex in MarksOfKind(AMarks, AKind) do
+  for mIndex in TAtlasOverviewMark.IndexesOfKind(AMarks, AKind) do
   begin
     mSpan := MarkSpan(AMarks[mIndex], AMap, AMinHeight);
     if (mLast >= 0) and (mSpan.Top <= ABars[mLast].Bottom) then

@@ -63,28 +63,6 @@ begin
   Result := (AIndex < Length(AText)) and (AText[AIndex + 1] = ANext);
 end;
 
-/// <summary>Position hinter dem schließenden Anführungszeichen des Strings an AIndex.</summary>
-function AfterQuote(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= Length(AText)) and (AText[Result] <> '''') do
-  begin
-    Inc(Result);
-  end;
-  Inc(Result);
-end;
-
-/// <summary>Position hinter „}“ des Kommentars an AIndex; Length + 2, wenn er offen bleibt.</summary>
-function AfterBrace(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and (AText[Result] <> '}') do
-  begin
-    Inc(Result);
-  end;
-  Inc(Result);
-end;
-
 /// <summary>Position hinter „*)“ des Kommentars „(*“ an AIndex; über Length + 1, wenn er offen bleibt.</summary>
 function AfterParenStar(const AText: string; AIndex: Integer): Integer;
 begin
@@ -130,12 +108,12 @@ begin
   Result := TAtlasTokenKind.Comment;
   if AText[AIndex] = '''' then
   begin
-    AIndex := AfterQuote(AText, AIndex);
+    AIndex := TTextChars.PastNext(AText, AIndex + 1, '''');
     Result := TAtlasTokenKind.StringLiteral;
   end
   else if AText[AIndex] = '{' then
   begin
-    AIndex := AfterBrace(AText, AIndex);
+    AIndex := TTextChars.PastNext(AText, AIndex, '}');
   end
   else if (AText[AIndex] = '(') and IsPairAt(AText, AIndex, '*') then
   begin
@@ -254,12 +232,12 @@ begin
   mClose := AIndex + 1;
   case AText[AIndex] of
     '''':
-      mClose := AfterQuote(AText, AIndex);
+      mClose := TTextChars.PastNext(AText, AIndex + 1, '''');
     '/':
       Result := not IsPairAt(AText, AIndex, '/');
     '{':
       begin
-        mClose := AfterBrace(AText, AIndex);
+        mClose := TTextChars.PastNext(AText, AIndex, '}');
         AOpen := TOpenComment.Brace;
       end;
     '(':

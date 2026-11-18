@@ -57,20 +57,6 @@ const
   cLinePrefix = 'line ';
   cAssertPrefix = 'assert.';
 
-function IsDigits(const AText: string): Boolean;
-var
-  mChar: Char;
-begin
-  Result := AText <> '';
-  for mChar in AText do
-  begin
-    if not CharInSet(mChar, ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 /// <summary>Ziffern ab APos (1-basiert) als Zahl; 0 ohne Ziffern.</summary>
 function NumberAt(const AText: string; APos: Integer): Integer;
 var
@@ -148,7 +134,7 @@ begin
   begin
     mRest := Trim(Copy(AEntry, AUnitAt + AUnitLength, MaxInt));
     mParts := mRest.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-    if (Length(mParts) > 0) and IsDigits(mParts[0]) then
+    if (Length(mParts) > 0) and TTextChars.IsDigits(mParts[0]) then
     begin
       Result := StrToIntDef(mParts[0], 0);
     end;

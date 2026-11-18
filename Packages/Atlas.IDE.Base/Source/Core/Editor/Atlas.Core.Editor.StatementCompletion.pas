@@ -81,7 +81,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Text.Lines;
 
 type
   {$SCOPEDENUMS ON}
@@ -169,32 +170,6 @@ const
   cRoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
   cBodyStartWords: array[0..5] of string = ('begin', 'var', 'const', 'type', 'label', 'asm');
 
-function LinesOf(const AText: string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := AText.Split([#10]);
-  for mIndex := 0 to High(Result) do
-  begin
-    if Result[mIndex].EndsWith(#13) then
-    begin
-      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
-    end;
-  end;
-end;
-
-function LeadingSpace(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(ALine, 1, mIndex - 1);
-end;
-
 function InList(const AWord: string; const AList: array of string): Boolean;
 var
   mItem: string;
@@ -233,15 +208,6 @@ begin
   end;
 end;
 
-function CharAt(const AText: string; AIndex: Integer): Char;
-begin
-  Result := #0;
-  if (AIndex >= 1) and (AIndex <= Length(AText)) then
-  begin
-    Result := AText[AIndex];
-  end;
-end;
-
 /// <summary>Ein Zeichen Code ab AIndex: String überspringen, Zeilenkommentar, Beginn eines Blockkommentars.
 /// Ergebnis: Stelle des zuletzt gelesenen Zeichens.</summary>
 function CodeStep(const AText: string; AIndex: Integer; var ABrace, AParenStar: Boolean): Integer;
@@ -255,7 +221,7 @@ begin
       Inc(Result);
     end;
   end
-  else if (AText[AIndex] = '/') and (CharAt(AText, AIndex + 1) = '/') then
+  else if (AText[AIndex] = '/') and (TTextChars.CharAt(AText, AIndex + 1) = '/') then
   begin
     Result := Length(AText);
   end
@@ -263,7 +229,7 @@ begin
   begin
     ABrace := True;
   end
-  else if (AText[AIndex] = '(') and (CharAt(AText, AIndex + 1) = '*') then
+  else if (AText[AIndex] = '(') and (TTextChars.CharAt(AText, AIndex + 1) = '*') then
   begin
     AParenStar := True;
     Inc(Result);
@@ -284,7 +250,7 @@ begin
     end
     else if AParenStar then
     begin
-      if (AText[mIndex] = '*') and (CharAt(AText, mIndex + 1) = ')') then
+      if (AText[mIndex] = '*') and (TTextChars.CharAt(AText, mIndex + 1) = ')') then
       begin
         AParenStar := False;
         Inc(mIndex);
@@ -341,7 +307,7 @@ var
   mClose: Integer;
 begin
   Result := True;
-  if (FBody[FIndex] <> '(') or (CharAt(FBody, FIndex + 1) <> '*') then
+  if (FBody[FIndex] <> '(') or (TTextChars.CharAt(FBody, FIndex + 1) <> '*') then
   begin
     FStack := FStack + FBody[FIndex];
     Exit;
@@ -379,7 +345,8 @@ var
 begin
   mClose := Pos('}', FBody, FIndex + 1);
   // Direktiven zählen wie Code; ein Kommentar mitten in der Zeile wird übersprungen.
-  Result := (CharAt(FBody, FIndex + 1) = '$') or ((mClose > 0) and (Trim(Copy(FBody, mClose + 1, MaxInt)) <> ''));
+  Result := (TTextChars.CharAt(FBody, FIndex + 1) = '$') or
+    ((mClose > 0) and (Trim(Copy(FBody, mClose + 1, MaxInt)) <> ''));
   if not Result then
   begin
     FCommentAt := FIndex;
@@ -404,7 +371,7 @@ begin
     Inc(FIndex);
   end;
   // "&begin" ist ein Bezeichner, kein Schlüsselwort.
-  if CharAt(FBody, mStart - 1) <> '&' then
+  if TTextChars.CharAt(FBody, mStart - 1) <> '&' then
   begin
     FScan.Words := FScan.Words + [LowerCase(Copy(FBody, mStart, FIndex - mStart + 1))];
     FScan.Starts := FScan.Starts + [mStart];
@@ -434,7 +401,7 @@ begin
       end;
     '/':
       begin
-        Result := CharAt(FBody, FIndex + 1) <> '/';
+        Result := TTextChars.CharAt(FBody, FIndex + 1) <> '/';
         if not Result then
         begin
           FCommentAt := FIndex;
@@ -446,7 +413,7 @@ begin
       end;
     ':':
       begin
-        FScan.HasAssign := FScan.HasAssign or (CharAt(FBody, FIndex + 1) = '=');
+        FScan.HasAssign := FScan.HasAssign or (TTextChars.CharAt(FBody, FIndex + 1) = '=');
       end;
     'A'..'Z', 'a'..'z', '_':
       begin
@@ -546,7 +513,7 @@ var
 begin
   Result := ALine;
   mNext := NextCode(ALines, Result);
-  while (mNext >= 0) and (Length(LeadingSpace(ALines[mNext])) > AIndent) do
+  while (mNext >= 0) and (Length(TTextLines.IndentOf(ALines[mNext])) > AIndent) do
   begin
     Result := mNext;
     mNext := NextCode(ALines, Result);
@@ -592,7 +559,7 @@ var
   mText: string;
 begin
   Result := False;
-  mIndent := Length(LeadingSpace(ALines[ALine]));
+  mIndent := Length(TTextLines.IndentOf(ALines[ALine]));
   for mLine := ALine - 1 downto 0 do
   begin
     mText := LowerCase(Trim(ScanLine(Trim(ALines[mLine])).Code));
@@ -600,7 +567,7 @@ begin
     begin
       Exit;
     end;
-    if (mText = '') or (Length(LeadingSpace(ALines[mLine])) >= mIndent) then
+    if (mText = '') or (Length(TTextLines.IndentOf(ALines[mLine])) >= mIndent) then
     begin
       Continue;
     end;
@@ -752,7 +719,7 @@ end;
 /// <summary>Endet ACode auf einen Operator, eine öffnende Klammer oder ein Komma?</summary>
 function EndsWithOperator(const ACode: string): Boolean;
 begin
-  Result := ACode.EndsWith(':=') or CharInSet(CharAt(ACode, Length(ACode)),
+  Result := ACode.EndsWith(':=') or CharInSet(TTextChars.CharAt(ACode, Length(ACode)),
     ['+', '-', '*', '/', '<', '>', ',', '(', '[']);
 end;
 
@@ -862,7 +829,7 @@ end;
 
 function TStatementJob.AfterStarts(const AWords: array of string): Boolean;
 begin
-  Result := (FAfter >= 0) and (Length(LeadingSpace(FLines[FAfter])) = Length(FIndent)) and
+  Result := (FAfter >= 0) and (Length(TTextLines.IndentOf(FLines[FAfter])) = Length(FIndent)) and
     StartsAnyWord(FLines[FAfter], AWords);
 end;
 
@@ -871,7 +838,7 @@ begin
   Result := (FLine >= 0) and (FLine <= High(FLines)) and not StartsInComment(FLines, FLine);
   if Result then
   begin
-    FIndent := LeadingSpace(FLines[FLine]);
+    FIndent := TTextLines.IndentOf(FLines[FLine]);
     FScan := ScanLine(Copy(FLines[FLine], Length(FIndent) + 1, MaxInt));
     FStep := StepText(FIndent, FOptions.IndentWidth);
     Result := FScan.Code <> '';
@@ -888,7 +855,7 @@ begin
   end;
   if FScan.Closers <> '' then
   begin
-    if CharInSet(CharAt(FScan.Code, Length(FScan.Code)), ['(', '[', ',']) then
+    if CharInSet(TTextChars.CharAt(FScan.Code, Length(FScan.Code)), ['(', '[', ',']) then
     begin
       // Nach dem Komma geht es mit einem Leerzeichen weiter.
       if FScan.Code.EndsWith(',') and not FScan.OpenString then
@@ -938,7 +905,7 @@ begin
     if (FCursor < 0) and EndsWithOperator(FScan.Code) then
     begin
       // Hinter einem Operator geht es mit einem Leerzeichen weiter.
-      if not CharInSet(CharAt(FScan.Code, Length(FScan.Code)), ['(', '[']) then
+      if not CharInSet(TTextChars.CharAt(FScan.Code, Length(FScan.Code)), ['(', '[']) then
       begin
         FCode := FCode + ' ';
       end;
@@ -1173,7 +1140,7 @@ function TStatementJob.Run(const AText: string; ALine: Integer; const AOptions: 
 var
   mHeaderCursor: Boolean;
 begin
-  FLines := LinesOf(AText);
+  FLines := TTextLines.SplitAtLineFeed(AText);
   FLine := ALine;
   FOptions := AOptions;
   FEdit := AEdit;
@@ -1241,37 +1208,23 @@ var
   mIndent, mLast, mAfter: Integer;
 begin
   Result := False;
-  mLines := LinesOf(AText);
+  mLines := TTextLines.SplitAtLineFeed(AText);
   if (ALine < 0) or (ALine > High(mLines)) or StartsInComment(mLines, ALine) or
     not SameText(ScanLine(Trim(mLines[ALine])).Code, 'try') then
   begin
     Exit;
   end;
-  mIndent := Length(LeadingSpace(mLines[ALine]));
+  mIndent := Length(TTextLines.IndentOf(mLines[ALine]));
   mLast := BodyEnd(mLines, ALine, mIndent);
   mAfter := NextCode(mLines, mLast);
-  Result := (mAfter < 0) or (Length(LeadingSpace(mLines[mAfter])) <> mIndent) or
+  Result := (mAfter < 0) or (Length(TTextLines.IndentOf(mLines[mAfter])) <> mIndent) or
     not StartsAnyWord(mLines[mAfter], ['finally', 'except', 'end']);
 end;
 
 class function TAtlasStatementCompleter.Apply(const ALines: TArray<string>;
   const AEdit: TAtlasStatementEdit): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  SetLength(Result, Length(ALines) - AEdit.OldCount + Length(AEdit.Lines));
-  for mIndex := 0 to AEdit.StartLine - 1 do
-  begin
-    Result[mIndex] := ALines[mIndex];
-  end;
-  for mIndex := 0 to High(AEdit.Lines) do
-  begin
-    Result[AEdit.StartLine + mIndex] := AEdit.Lines[mIndex];
-  end;
-  for mIndex := AEdit.StartLine + AEdit.OldCount to High(ALines) do
-  begin
-    Result[mIndex - AEdit.OldCount + Length(AEdit.Lines)] := ALines[mIndex];
-  end;
+  Result := TTextLines.ReplaceRange(ALines, AEdit.StartLine, AEdit.OldCount, AEdit.Lines);
 end;
 
 class function TAtlasStatementCompleter.AfterCaseBranches(var ALines: TArray<string>;

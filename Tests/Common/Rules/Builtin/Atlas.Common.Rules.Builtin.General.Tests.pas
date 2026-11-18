@@ -57,6 +57,8 @@ type
     procedure GuidSyntaxSilentCases;
     [Test]
     procedure GuidSyntaxOffAndExclude;
+    [Test]
+    procedure HardcodedStringJsonContinuationSilent;
   end;
 
 implementation
@@ -440,6 +442,21 @@ begin
     '{"rules": {"guid-syntax-invalid": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, mSource,
     '{"rules": {"guid-syntax-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+procedure TGeneralRulesTests.HardcodedStringJsonContinuationSilent;
+const
+  cConfig = '{ "minConfidence": "low", "rules": { "hardcoded-string": "hint" } }';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // JSON, das über mehrere Literale gebaut wird: Fortsetzungen nach Komma oder Klammer sind Markup.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  B.Append('', "fromSource": '');'#10'  S := ''{"a": '' + X + ''}, "b": '' + Y;'), cConfig))));
+  // Text nach einem Komma bleibt Text.
+  mFindings := TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  S := Name + '', bitte warten'';'), cConfig);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
 end;
 
 initialization

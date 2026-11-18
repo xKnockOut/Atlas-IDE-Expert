@@ -119,7 +119,8 @@ uses
   Atlas.Core.Editor.SourceFiles,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lines;
 
 const
   cOpeners: array[0..15] of string = ('begin', 'try', 'finally', 'except', 'repeat', 'then', 'do', 'else', 'of',
@@ -139,15 +140,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-function LeadLength(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and ((ALine[Result + 1] = ' ') or (ALine[Result + 1] = #9)) do
-  begin
-    Inc(Result);
-  end;
 end;
 
 function IsBlank(const ALine: string): Boolean;
@@ -249,7 +241,7 @@ var
   mSmallest, mClosing: Integer;
 begin
   Result := TAtlasSmartPaste.IndentWidth(APasted[AFirst], ATabWidth);
-  if (AFirst = 0) and (LeadLength(APasted[0]) = 0) then
+  if (AFirst = 0) and (TTextLines.IndentLength(APasted[0]) = 0) then
   begin
     ScanWidths(APasted, ATabWidth, mSmallest, mClosing);
     if mClosing >= 0 then
@@ -275,9 +267,9 @@ end;
 function FirstLineEdit(const APrefix, ALine: string; ATarget: Integer; out AEdit: TAtlasIndentEdit): Boolean;
 begin
   AEdit.Line := 0;
-  AEdit.Remove := Length(APrefix) + LeadLength(ALine);
+  AEdit.Remove := Length(APrefix) + TTextLines.IndentLength(ALine);
   AEdit.Indent := StringOfChar(' ', ATarget);
-  Result := AEdit.Indent <> APrefix + Copy(ALine, 1, LeadLength(ALine));
+  Result := AEdit.Indent <> APrefix + Copy(ALine, 1, TTextLines.IndentLength(ALine));
 end;
 
 /// <summary>Weitere Zeile AIndex: Einrückung um ADelta verschoben (nicht unter 0). False ohne Änderung.</summary>
@@ -292,7 +284,7 @@ begin
     mWidth := 0;
   end;
   AEdit.Line := AIndex;
-  AEdit.Remove := LeadLength(ALine);
+  AEdit.Remove := TTextLines.IndentLength(ALine);
   AEdit.Indent := StringOfChar(' ', mWidth);
   Result := AEdit.Indent <> Copy(ALine, 1, AEdit.Remove);
 end;
@@ -388,7 +380,7 @@ begin
   begin
     ATabWidth := 1;
   end;
-  for mIndex := 1 to LeadLength(ALine) do
+  for mIndex := 1 to TTextLines.IndentLength(ALine) do
   begin
     if ALine[mIndex] = #9 then
     begin

@@ -137,7 +137,8 @@ uses
   System.StrUtils,
   Atlas.Text.Chars,
   Atlas.Text.Entities,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -261,15 +262,6 @@ begin
   end;
 end;
 
-function LeadingSpaces(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and ((ALine[Result + 1] = ' ') or (ALine[Result + 1] = #9)) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Gemeinsame Einrückung der nicht leeren Zeilen AFirst bis ALast; steht Code direkt hinter
 /// &lt;code&gt;, zählt die erste Zeile nicht mit.</summary>
 function CommonIndent(const ALines: TArray<string>; AFirst, ALast: Integer): Integer;
@@ -281,7 +273,7 @@ begin
   begin
     if (Trim(ALines[mIndex]) <> '') and not ((mIndex = 0) and (ALast > AFirst)) then
     begin
-      Result := Min(Result, LeadingSpaces(ALines[mIndex]));
+      Result := Min(Result, TTextLines.IndentLength(ALines[mIndex]));
     end;
   end;
   if Result = MaxInt then
@@ -321,7 +313,8 @@ begin
     end
     else
     begin
-      Result := Result + TrimRight(Copy(mLines[mIndex], Min(mIndent, LeadingSpaces(mLines[mIndex])) + 1, MaxInt));
+      Result := Result +
+        TrimRight(Copy(mLines[mIndex], Min(mIndent, TTextLines.IndentLength(mLines[mIndex])) + 1, MaxInt));
     end;
   end;
 end;

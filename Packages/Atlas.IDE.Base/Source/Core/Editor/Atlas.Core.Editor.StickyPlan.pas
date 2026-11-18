@@ -63,8 +63,6 @@ type
     class function HasColumn(const AColumns: TArray<Integer>; AColumn: Integer): Boolean; static;
     /// <summary>Kopfzeile unter dem Mauspunkt AX, AY im Kopf AGrid; False außerhalb des Kopfs.</summary>
     class function RowAt(const AGrid: TAtlasStickyGrid; AX, AY: Integer; out ARow: Integer): Boolean; static;
-    /// <summary>Bildschirmzeile (0-basiert) eines Zeilenrechtecks ab ATop mit Höhe AHeight (Mitte der Zeile).</summary>
-    class function ScreenRow(ATop, AHeight: Integer): Integer; static;
     /// <summary>True, wenn der Editor beim Bildlauf nur einen Teil gemalt hat und alte Köpfe verschoben stehen:
     /// zuletzt ab APaintedTop gezeichnet (-1 = noch nie), jetzt ab ATop.</summary>
     class function Scrolled(APaintedTop, ATop, APaintedRows, ARowCount: Integer): Boolean; static;
@@ -229,15 +227,6 @@ begin
   begin
     ARow := AY div AGrid.RowHeight;
     Result := (ARow < AGrid.PaintedRows) and (ARow < AGrid.RowCount);
-  end;
-end;
-
-class function TAtlasStickyPlan.ScreenRow(ATop, AHeight: Integer): Integer;
-begin
-  Result := -1;
-  if AHeight > 0 then
-  begin
-    Result := (ATop + AHeight div 2) div AHeight;
   end;
 end;
 

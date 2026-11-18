@@ -24,6 +24,8 @@ type
     procedure QuotedTextParsesBack;
     [Test]
     procedure ListsQuotedItems;
+    [Test]
+    procedure BoolIsJsonLiteral;
   end;
 
   [TestFixture]
@@ -90,6 +92,8 @@ type
     procedure StringsOfNoArrayAreEmpty;
     [Test]
     procedure TrimmedStringsDropEmpty;
+    [Test]
+    procedure ParseArrayOnlyForArrays;
   end;
 
 implementation
@@ -409,6 +413,28 @@ procedure TJsonTextTests.ListsQuotedItems;
 begin
   Assert.AreEqual('[]', TJsonText.List([]));
   Assert.AreEqual('["a", "b\"c"]', TJsonText.List(['a', 'b"c']));
+end;
+
+procedure TJsonTextTests.BoolIsJsonLiteral;
+begin
+  Assert.AreEqual('true', TJsonText.Bool(True));
+  Assert.AreEqual('false', TJsonText.Bool(False));
+end;
+
+procedure TJsonReadTests.ParseArrayOnlyForArrays;
+var
+  mArray: TJSONArray;
+begin
+  mArray := TJsonRead.ParseArray('[1, "a"]');
+  try
+    Assert.IsNotNull(mArray);
+    Assert.AreEqual(2, mArray.Count);
+  finally
+    mArray.Free;
+  end;
+  Assert.IsNull(TJsonRead.ParseArray('{"a": 1}'));
+  Assert.IsNull(TJsonRead.ParseArray('[1,'));
+  Assert.IsNull(TJsonRead.ParseArray(''));
 end;
 
 initialization

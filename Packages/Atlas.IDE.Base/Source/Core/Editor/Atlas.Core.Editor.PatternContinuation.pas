@@ -60,7 +60,8 @@ type
 implementation
 
 uses
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Text.Lines;
 
 type
   {$SCOPEDENUMS ON}
@@ -88,18 +89,6 @@ type
     Enums: TAtlasEnumLookup;
     Exists: TAtlasNameExists;
   end;
-
-function LeadingSpace(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(ALine, 1, mIndex - 1);
-end;
 
 function IsOperand(const AToken: TToken): Boolean;
 begin
@@ -699,7 +688,7 @@ end;
 
 function IsPatternLine(const ALine, AIndent: string): Boolean;
 begin
-  Result := (LeadingSpace(ALine) = AIndent) and (Trim(ALine) <> '');
+  Result := (TTextLines.IndentOf(ALine) = AIndent) and (Trim(ALine) <> '');
 end;
 
 /// <summary>Längster Lauf gleicher Form wie ATemplate direkt über ALine, neueste Zeile zuletzt.</summary>
@@ -756,7 +745,7 @@ begin
   begin
     Exit;
   end;
-  mIndent := LeadingSpace(ALines[ALine - 1]);
+  mIndent := TTextLines.IndentOf(ALines[ALine - 1]);
   mTemplate := Tokenize(Copy(ALines[ALine - 1], Length(mIndent) + 1, MaxInt));
   if Length(mTemplate) = 0 then
   begin

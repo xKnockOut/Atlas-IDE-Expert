@@ -97,7 +97,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  System.StrUtils,
+  Atlas.Text.Lines;
 
 const
   // Ohne "of": in "array of", "set of" begänne sonst eine Anweisung.
@@ -135,26 +137,6 @@ end;
 function IsWord(const AToken: TAtlasCodeToken; const AWord: string): Boolean;
 begin
   Result := AToken.IsWord and (AToken.Text = AWord);
-end;
-
-function LeadingSpace(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and CharInSet(ALine[Result + 1], [' ', #9]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function IsOneOf(const AText: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  Result := False;
-  for mWord in AWords do
-  begin
-    Result := Result or (mWord = AText);
-  end;
 end;
 
 { Lexer }
@@ -594,7 +576,7 @@ end;
 function TStatementScan.LevelStep(const AToken: TAtlasCodeToken): TStatementStep;
 begin
   Result := TStatementStep.Include;
-  if AToken.IsWord and IsOneOf(AToken.Text, ['begin', 'case', 'try', 'asm', 'record', 'repeat']) then
+  if AToken.IsWord and MatchStr(AToken.Text, ['begin', 'case', 'try', 'asm', 'record', 'repeat']) then
   begin
     Inc(Blocks);
   end
@@ -618,11 +600,11 @@ end;
 function TStatementScan.Step(const AToken: TAtlasCodeToken): TStatementStep;
 begin
   Result := TStatementStep.Include;
-  if IsOneOf(AToken.Text, ['(', '[']) then
+  if MatchStr(AToken.Text, ['(', '[']) then
   begin
     Inc(Depth);
   end
-  else if IsOneOf(AToken.Text, [')', ']']) then
+  else if MatchStr(AToken.Text, [')', ']']) then
   begin
     Depth := Max(Depth - 1, 0);
   end
@@ -667,11 +649,11 @@ begin
   while Result > 0 do
   begin
     mToken := AList[Result - 1];
-    if IsOneOf(mToken.Text, [')', ']']) then
+    if MatchStr(mToken.Text, [')', ']']) then
     begin
       Inc(mDepth);
     end
-    else if IsOneOf(mToken.Text, ['(', '[']) and (mDepth > 0) then
+    else if MatchStr(mToken.Text, ['(', '[']) and (mDepth > 0) then
     begin
       Dec(mDepth);
     end
@@ -846,7 +828,7 @@ begin
     begin
       Continue;
     end;
-    mIndent := LeadingSpace(mLines[mLine]);
+    mIndent := TTextLines.IndentLength(mLines[mLine]);
     Insert('// ', mLines[mLine], mIndent + 1);
     Result.SelectionStart := AfterInsert(Result.SelectionStart, mLine, mIndent, 3, True);
     Result.SelectionEnd := AfterInsert(Result.SelectionEnd, mLine, mIndent, 3, True);
@@ -907,7 +889,7 @@ procedure WrapOwnLines(var AResult: TAtlasBlockCommentResult; AFirst, ALast: Int
 var
   mIndent: string;
 begin
-  mIndent := Copy(AResult.Lines[AFirst], 1, LeadingSpace(AResult.Lines[AFirst]));
+  mIndent := Copy(AResult.Lines[AFirst], 1, TTextLines.IndentLength(AResult.Lines[AFirst]));
   Insert(mIndent + ACloser, AResult.Lines, ALast + 1);
   Insert(mIndent + AOpener, AResult.Lines, AFirst);
   if (AResult.SelectionEnd.Line = ALast + 1) and (AResult.SelectionEnd.Character = 0) then
@@ -979,7 +961,7 @@ begin
     not TAtlasBlockComment.StatementRange(ALines, ACursor, AFrom, ATill) then
   begin
     mLine := ALines[ACursor.Line];
-    AFrom := Pos2(ACursor.Line, LeadingSpace(mLine));
+    AFrom := Pos2(ACursor.Line, TTextLines.IndentLength(mLine));
     ATill := Pos2(ACursor.Line, Length(TrimRight(mLine)));
   end;
   Result := TrimRange(ALines, AFrom, ATill);

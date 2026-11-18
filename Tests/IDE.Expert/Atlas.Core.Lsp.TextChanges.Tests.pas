@@ -23,6 +23,8 @@ type
     /// <summary>Positionen und Offsets passen für CRLF, LF und CR zueinander.</summary>
     [Test]
     procedure PositionAndOffsetAgree;
+    [Test]
+    procedure RangeTryReadNeedsBothEnds;
   end;
 
 implementation
@@ -30,7 +32,8 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
-  Atlas.Core.Lsp.TextChanges;
+  Atlas.Core.Lsp.TextChanges,
+  System.JSON;
 
 { TLspTextChangesTests }
 
@@ -130,6 +133,28 @@ begin
   end;
   Assert.AreEqual(3, TLspTextChanges.OffsetOf(cText, TLspTextPosition.Create(1, 0)));
   Assert.AreEqual(7, TLspTextChanges.OffsetOf(cText, TLspTextPosition.Create(2, 9)), 'geklemmt auf das Zeilenende');
+end;
+
+procedure TLspTextChangesTests.RangeTryReadNeedsBothEnds;
+var
+  mValue: TJSONValue;
+  mRange: TLspRange;
+begin
+  mValue := TJSONObject.ParseJSONValue(
+    '{"start": {"line": 1, "character": 2}, "end": {"line": 3, "character": 4}}');
+  try
+    Assert.IsTrue(TLspRange.TryRead(mValue, mRange));
+    Assert.IsTrue(mRange.Same(TLspRange.Create(1, 2, 3, 4)));
+  finally
+    mValue.Free;
+  end;
+  mValue := TJSONObject.ParseJSONValue('{"start": {"line": 1, "character": 2}}');
+  try
+    Assert.IsFalse(TLspRange.TryRead(mValue, mRange));
+  finally
+    mValue.Free;
+  end;
+  Assert.IsFalse(TLspRange.TryRead(nil, mRange));
 end;
 
 initialization

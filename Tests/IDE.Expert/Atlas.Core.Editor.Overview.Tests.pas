@@ -31,6 +31,8 @@ type
     procedure ProblemsBySeverityWithoutUsesAndInactive;
     [Test]
     procedure ChangesWithTextOfTheirKind;
+    [Test]
+    procedure IndexesOfKindByLine;
   end;
 
 implementation
@@ -219,6 +221,26 @@ begin
   Assert.AreEqual(1, mMark.Count);
   mChange.Kind := TAtlasLineChangeKind.Added;
   Assert.AreEqual('neu', TAtlasOverview.ChangeMark(mChange, 30, 'neu', 'anders', 'weg').Text);
+end;
+
+procedure TAtlasOverviewTests.IndexesOfKindByLine;
+var
+  mMarks: TAtlasOverviewMarks;
+  mIndexes: TArray<Integer>;
+begin
+  mMarks := TAtlasOverviewMarks.Create(
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 9, 1),
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, 1, 1),
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 3, 1),
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 3, 2));
+  mIndexes := TAtlasOverviewMark.IndexesOfKind(mMarks, TAtlasOverviewMarkKind.Error);
+  Assert.AreEqual(3, Integer(Length(mIndexes)));
+  Assert.AreEqual(2, mIndexes[0]);
+  Assert.AreEqual(3, mIndexes[1]);
+  Assert.AreEqual(0, mIndexes[2]);
+  Assert.AreEqual(0, Integer(Length(TAtlasOverviewMark.IndexesOfKind(mMarks, TAtlasOverviewMarkKind.Cursor))));
+  mMarks := nil;
+  mIndexes := nil;
 end;
 
 initialization

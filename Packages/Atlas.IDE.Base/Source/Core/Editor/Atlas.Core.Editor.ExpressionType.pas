@@ -147,25 +147,6 @@ uses
   Atlas.Core.Editor.SourceFiles,
   Atlas.Text.Json;
 
-function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
-var
-  mLine, mCharacter: Integer;
-begin
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', mLine) and
-    TJSONObject(AValue).TryGetValue<Integer>('character', mCharacter);
-  if Result then
-  begin
-    APosition := TLspTextPosition.Create(mLine, mCharacter);
-  end;
-end;
-
-function ReadRange(const AValue: TJSONValue; out ARange: TLspRange): Boolean;
-begin
-  ARange := Default(TLspRange);
-  Result := (AValue is TJSONObject) and ReadPosition(TJSONObject(AValue).GetValue('start'), ARange.StartPos) and
-    ReadPosition(TJSONObject(AValue).GetValue('end'), ARange.EndPos);
-end;
-
 function PositionJson(const APosition: TLspTextPosition): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -387,7 +368,7 @@ begin
   if Result then
   begin
     mAnswer := TJSONObject(AAnswer);
-    ReadRange(mAnswer.GetValue('range'), AInfo.Range);
+    TLspRange.TryRead(mAnswer.GetValue('range'), AInfo.Range);
     AInfo.Expression := TJsonRead.Text(mAnswer, 'expression');
     AInfo.TypeName := TJsonRead.Text(mAnswer, 'type');
     AInfo.BaseName := TJsonRead.Text(mAnswer, 'base');

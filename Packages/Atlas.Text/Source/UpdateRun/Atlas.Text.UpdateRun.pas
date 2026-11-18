@@ -273,25 +273,14 @@ begin
   end;
 end;
 
-function BoolJson(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
 { TUpdateStage }
 
 function CandidateJson(const ACandidate: TUpdateCandidate): string;
 begin
-  Result := '{"name": ' + TJsonText.Quote(ACandidate.Name) + ', "installed": ' + BoolJson(ACandidate.Installed) +
-    ', "new": ' + BoolJson(ACandidate.IsNew) + ', "declined": ' + BoolJson(ACandidate.Declined) +
-    ', "required": ' + BoolJson(ACandidate.Required) + ', "selected": ' + BoolJson(ACandidate.Selected) + '}';
+  Result := '{"name": ' + TJsonText.Quote(ACandidate.Name) +
+    ', "installed": ' + TJsonText.Bool(ACandidate.Installed) + ', "new": ' + TJsonText.Bool(ACandidate.IsNew) +
+    ', "declined": ' + TJsonText.Bool(ACandidate.Declined) + ', "required": ' + TJsonText.Bool(ACandidate.Required) +
+    ', "selected": ' + TJsonText.Bool(ACandidate.Selected) + '}';
 end;
 
 { TUpdateStage }
@@ -309,8 +298,8 @@ begin
     mBuilder.Append(', "previous": ').Append(TJsonText.Quote(Previous));
     mBuilder.Append(', "error": ').Append(TJsonText.Quote(Error));
     mBuilder.Append(', "detail": ').Append(TJsonText.Quote(Detail));
-    mBuilder.Append(', "fromSource": ').Append(BoolJson(FromSource));
-    mBuilder.Append(', "askSelection": ').Append(BoolJson(AskSelection));
+    mBuilder.Append(', "fromSource": ').Append(TJsonText.Bool(FromSource));
+    mBuilder.Append(', "askSelection": ').Append(TJsonText.Bool(AskSelection));
     mBuilder.Append(', "updater": ').Append(TJsonText.Quote(Updater));
     mBuilder.Append(', "candidates": [');
     for mIndex := 0 to High(Candidates) do
