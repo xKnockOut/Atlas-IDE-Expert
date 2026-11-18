@@ -122,7 +122,8 @@ end;
 procedure ReadClassCompletion(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin
   AReader.ReadObject(ANode, 'classCompletion', [TFlagOption.Create('bodyStubs', ASettings.ClassCompletion.BodyStubs),
-    TFlagOption.Create('lifecycleFirst', ASettings.ClassCompletion.LifecycleFirst)],
+    TFlagOption.Create('lifecycleFirst', ASettings.ClassCompletion.LifecycleFirst),
+    TFlagOption.Create('blankLines', ASettings.ClassCompletion.BlankLines)],
     [TChoiceOption.Create('typeComment', ['brace', 'line', 'summary', 'region', 'off'],
     ASettings.ClassCompletion.TypeComment)], [], ASettings);
 end;

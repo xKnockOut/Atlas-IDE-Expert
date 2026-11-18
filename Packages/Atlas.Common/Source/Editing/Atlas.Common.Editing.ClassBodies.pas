@@ -29,11 +29,13 @@ type
     TypeComment: TTypeCommentStyle;
     BodyStubs: Boolean;
     LifecycleFirst: Boolean;
+    /// <summary>Leerzeilen an den Rändern neuer Rümpfe angleichen (#1839).</summary>
+    BlankLines: Boolean;
     /// <summary>Breite der Trennlinie (K2); 0 = Vorgabe.</summary>
     LineLength: Integer;
     /// <summary>Eine Ebene Einrückung im Rumpf.</summary>
     Indent: string;
-    /// <summary>brace, vorbefüllt, Lebenszyklus zuerst, zwei Leerzeichen.</summary>
+    /// <summary>brace, vorbefüllt, Lebenszyklus zuerst, Leerzeilen angleichen, zwei Leerzeichen.</summary>
     class function Default: TClassBodyOptions; static;
     class function FromSettings(const ASettings: TClassCompletionSettings;
       const AStyle: TFormatStyle): TClassBodyOptions; static;
@@ -167,6 +169,7 @@ begin
   Result.TypeComment := TTypeCommentStyle.Brace;
   Result.BodyStubs := True;
   Result.LifecycleFirst := True;
+  Result.BlankLines := True;
   Result.LineLength := 0;
   Result.Indent := '  ';
 end;
@@ -185,6 +188,7 @@ begin
   Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
   Result.BodyStubs := mSettings.BodyStubs;
   Result.LifecycleFirst := mSettings.LifecycleFirst;
+  Result.BlankLines := mSettings.BlankLines;
   Result.LineLength := AStyle.MaxLineLength;
   Result.Indent := TRoutineBody.IndentUnit(AStyle);
 end;
@@ -200,6 +204,7 @@ begin
     mSettings.TypeComment := AHost.Setting(AUri, TSlashSettings.cTypeComment);
     mSettings.BodyStubs := not SameText(AHost.Setting(AUri, TSlashSettings.cBodyStubs), 'false');
     mSettings.LifecycleFirst := not SameText(AHost.Setting(AUri, TSlashSettings.cLifecycleFirst), 'false');
+    mSettings.BlankLines := not SameText(AHost.Setting(AUri, TSlashSettings.cBlankLines), 'false');
   end;
   Result := FromSettings(mSettings, AStyle);
 end;

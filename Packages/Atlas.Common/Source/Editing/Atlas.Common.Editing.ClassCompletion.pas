@@ -29,7 +29,8 @@
 // Neue Rümpfe (#1834) kommen in der Reihenfolge Lebenszyklus, Zugriffsmethoden,
 // überschriebene, übrige (TClassBodies.RankOf), vorbefüllt (O1) und beim
 // ersten Rumpf eines Typs mit dem Kommentar über dem Abschnitt (K1–K4);
-// Einstellungen über TClassBodyOptions.
+// Einstellungen über TClassBodyOptions. Mit BlankLines (#1839) steht an den
+// Rändern der neuen Rümpfe genau eine Leerzeile (TBodySpacing).
 
 interface
 
@@ -155,6 +156,7 @@ uses
   Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Text.Lines,
   Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Editing.BodySpacing,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -1765,15 +1767,22 @@ begin
   begin
     AEdit := TTextEdit.Create(TTextRange.Create(mLastLine, Length(mLines[mLastLine]), mLastLine,
       Length(mLines[mLastLine])), mLB + mLB + ABody);
-    Exit(True);
-  end;
-  mInsertLine := ImplementationEndLine(ATree);
-  Result := mInsertLine >= 0;
-  if Result then
+    Result := True;
+  end
+  else
   begin
-    AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
-      WithTypeComment(mLines, ImplementationLine(ATree), TTypeShape.Read(mUnit, mLines, ATypeName), ABody, mLB,
-      AOptions) + mLB + mLB);
+    mInsertLine := ImplementationEndLine(ATree);
+    Result := mInsertLine >= 0;
+    if Result then
+    begin
+      AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
+        WithTypeComment(mLines, ImplementationLine(ATree), TTypeShape.Read(mUnit, mLines, ATypeName), ABody, mLB,
+        AOptions) + mLB + mLB);
+    end;
+  end;
+  if Result and AOptions.BlankLines then
+  begin
+    AEdit := TBodySpacing.SpacedInsert(AText, AEdit);
   end;
 end;
 
@@ -1833,6 +1842,10 @@ begin
   Result := (mBodies <> '') and BodiesEdit(ATree, mLines, mPlan.LastLine, mBodies, mLB, mEdit);
   if Result then
   begin
+    if AOptions.BlankLines then
+    begin
+      mEdit := TBodySpacing.SpacedInsert(AText, mEdit);
+    end;
     AAction.Edits := [mEdit];
     AAction.Title := BodiesTitle(mPlan);
     AAction.Kind := cRewriteKind;

@@ -39,6 +39,9 @@
 // nicht fest. PlaceNew legt für einen Typ, dessen Rümpfe alle neu sind, den
 // Kommentar in der eingestellten Form an bzw. bringt den der IDE in diese.
 //
+// Mit BlankLines (#1839) steht an den Grenzen der verschobenen Rümpfe und
+// eingesetzten Kommentare genau eine Leerzeile (TBodySpacing).
+//
 // Review (Regel method-order, #1840) prüft je Typ, ob seine verschiebbaren
 // Rümpfe untereinander in der Ordnung stehen und ob über ihnen ein
 // Typkommentar steht, und liefert die Änderungen, die nur diesen Typ ordnen
@@ -85,7 +88,9 @@ type
     TypeComment: TTypeCommentStyle;
     /// <summary>Breite der Trennlinie; 0 = Vorgabe.</summary>
     LineLength: Integer;
-    /// <summary>Nur APlacement, ohne Vorziehen und ohne neuen Kommentar.</summary>
+    /// <summary>Leerzeilen an den Grenzen verschobener Rümpfe angleichen (#1839).</summary>
+    BlankLines: Boolean;
+    /// <summary>Nur APlacement, ohne Vorziehen, ohne neuen Kommentar und ohne Angleichen der Leerzeilen.</summary>
     class function Create(APlacement: TMethodPlacement): TMethodOrderOptions; static;
   end;
 
@@ -146,7 +151,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.ClassCompletion;
+  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Editing.BodySpacing;
 
 type
   TBlock = record
@@ -981,44 +987,93 @@ begin
 end;
 
 
-/// <summary>Eine Änderung vom alten zum neuen Zeilenstand über den Bereich, in dem sie sich unterscheiden.
-/// </summary>
-function LinesEdit(const AOld, ANew: TArray<string>; const ALineBreak: string; out AEdit: TTextEdit): Boolean;
+/// <summary>Zeilen von AText, die nicht aus ALines stammen, aber Inhalt haben: Beginnt bzw. endet hier ein
+/// eingefügter Abschnitt (Typkommentar, {$ENDREGION})?</summary>
+function InsertedEdge(const AText: TOrderText; AIndex, AStep: Integer): Boolean;
 var
-  mPrefix, mSuffix, mIndex: Integer;
-  mText: string;
+  mNeighbour: Integer;
 begin
-  AEdit := Default(TTextEdit);
-  mPrefix := 0;
-  while (mPrefix < Length(AOld)) and (mPrefix < Length(ANew)) and (AOld[mPrefix] = ANew[mPrefix]) do
+  mNeighbour := AIndex + AStep;
+  Result := (mNeighbour < 0) or (mNeighbour > High(AText.Lines)) or (AText.Origins[mNeighbour] >= 0) or
+    (Trim(AText.Lines[mNeighbour]) = '');
+end;
+
+/// <summary>AText mit angeglichenen Leerzeilen (#1839) an den Grenzen der Rümpfe ABlocks und der eingefügten
+/// Kommentare, soweit sie den gegenüber ALines geänderten Bereich berühren.</summary>
+function SpacedText(const ALines: TArray<string>; const AText: TOrderText; const ABlocks: TBlocks): TOrderText;
+var
+  mIsFirst, mIsLast, mInside, mStarts, mEnds: TArray<Boolean>;
+  mSources: TArray<Integer>;
+  mSpaced: TArray<string>;
+  mBlock: TBlock;
+  mFirst, mLast, mIndex, mOrigin: Integer;
+begin
+  Result := AText;
+  if not TBodySpacing.ChangedRange(ALines, AText.Lines, mFirst, mLast) then
   begin
-    Inc(mPrefix);
+    Exit;
   end;
-  if (mPrefix = Length(AOld)) and (mPrefix = Length(ANew)) then
+  SetLength(mIsFirst, Length(ALines));
+  SetLength(mIsLast, Length(ALines));
+  SetLength(mInside, Length(ALines));
+  for mBlock in ABlocks do
   begin
-    Exit(False);
-  end;
-  mSuffix := 0;
-  while (mSuffix < Length(AOld) - mPrefix) and (mSuffix < Length(ANew) - mPrefix) and
-    (AOld[High(AOld) - mSuffix] = ANew[High(ANew) - mSuffix]) do
-  begin
-    Inc(mSuffix);
-  end;
-  if mSuffix > 0 then
-  begin
-    mText := '';
-    for mIndex := mPrefix to High(ANew) - mSuffix do
+    mIsFirst[mBlock.First] := True;
+    mIsLast[mBlock.Last] := True;
+    for mIndex := mBlock.First to mBlock.Last do
     begin
-      mText := mText + ANew[mIndex] + ALineBreak;
+      mInside[mIndex] := True;
     end;
-    AEdit := TTextEdit.Create(TTextRange.Create(mPrefix, 0, Length(AOld) - mSuffix, 0), mText);
-  end
-  else
-  begin
-    AEdit := TTextEdit.Create(TTextRange.Create(0, 0, High(AOld), Length(AOld[High(AOld)])),
-      TTextLines.JoinLines(ANew, ALineBreak));
   end;
-  Result := True;
+  SetLength(mStarts, Length(AText.Lines));
+  SetLength(mEnds, Length(AText.Lines));
+  for mIndex := 0 to High(AText.Lines) do
+  begin
+    mOrigin := AText.Origins[mIndex];
+    if mOrigin >= 0 then
+    begin
+      mStarts[mIndex] := mIsFirst[mOrigin];
+      mEnds[mIndex] := mIsLast[mOrigin];
+    end
+    else if Trim(AText.Lines[mIndex]) <> '' then
+    begin
+      mStarts[mIndex] := InsertedEdge(AText, mIndex, -1);
+      mEnds[mIndex] := InsertedEdge(AText, mIndex, 1);
+    end;
+  end;
+  // Der geänderte Bereich endet oft mitten in einem Rumpf (gleiche Zeilen am Ende): auf ganze Rümpfe erweitern.
+  while (mFirst > 0) and (mFirst <= High(AText.Lines)) and not mStarts[mFirst] and
+    (AText.Origins[mFirst] >= 0) and mInside[AText.Origins[mFirst]] do
+  begin
+    Dec(mFirst);
+  end;
+  while (mLast >= 0) and (mLast < High(AText.Lines)) and not mEnds[mLast] and (AText.Origins[mLast] >= 0) and
+    mInside[AText.Origins[mLast]] do
+  begin
+    Inc(mLast);
+  end;
+  mSpaced := TBodySpacing.Spaced(AText.Lines, mStarts, mEnds, mFirst, mLast, mSources);
+  Result := Default(TOrderText);
+  for mIndex := 0 to High(mSpaced) do
+  begin
+    mOrigin := -1;
+    if mSources[mIndex] >= 0 then
+    begin
+      mOrigin := AText.Origins[mSources[mIndex]];
+    end;
+    Result.Add(mSpaced[mIndex], mOrigin);
+  end;
+end;
+
+/// <summary>AText, bei AOptions.BlankLines mit angeglichenen Leerzeilen (SpacedText).</summary>
+function FinalText(const ALines: TArray<string>; const AText: TOrderText; const ABlocks: TBlocks;
+  const AOptions: TMethodOrderOptions): TOrderText;
+begin
+  Result := AText;
+  if AOptions.BlankLines then
+  begin
+    Result := SpacedText(ALines, AText, ABlocks);
+  end;
 end;
 
 function MoveOf(const ABlock: TBlock; ADelta, ANewLine: Integer): TMethodMove;
@@ -1042,6 +1097,7 @@ begin
   Result.LifecycleFirst := False;
   Result.TypeComment := TTypeCommentStyle.Off;
   Result.LineLength := 0;
+  Result.BlankLines := False;
 end;
 
 { TMethodOrder }
@@ -1178,8 +1234,8 @@ begin
   mSlots := MovableOf(ABlocks);
   mTarget := Placeable(mSlots, Sorted(mSlots, AOptions));
   // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
-  mText := Rearranged(ALines, ABlocks, mSlots, mTarget, AHeaders);
-  if LinesEdit(ALines, mText.Lines, ALineBreak, mEdit) then
+  mText := FinalText(ALines, Rearranged(ALines, ABlocks, mSlots, mTarget, AHeaders), ABlocks, AOptions);
+  if TBodySpacing.LinesEdit(ALines, mText.Lines, ALineBreak, mEdit) then
   begin
     Result.Edits := [mEdit];
     Result.Moves := ArrangeMoves(ABlocks, mSlots, mTarget, mText);
@@ -1827,8 +1883,8 @@ begin
   end;
   mPlacement.Anchor;
   mPlacement.KeepGroupsInPlace;
-  mText := mPlacement.NewText(mHeaders, mBlocks);
-  if LinesEdit(mPlacement.Lines, mText.Lines, TTextLines.LineBreakOf(AText), mEdit) then
+  mText := FinalText(mPlacement.Lines, mPlacement.NewText(mHeaders, mBlocks), mBlocks, AOptions);
+  if TBodySpacing.LinesEdit(mPlacement.Lines, mText.Lines, TTextLines.LineBreakOf(AText), mEdit) then
   begin
     Result.Edits := [mEdit];
     Result.Moves := mPlacement.Moves(mText.Lines);

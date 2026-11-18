@@ -611,12 +611,14 @@ begin
   Assert.AreEqual('brace', mSettings.ClassCompletion.TypeComment, '{ TFoo } wie die IDE (#1835)');
   Assert.IsTrue(mSettings.ClassCompletion.LifecycleFirst, '#1836');
   Assert.IsTrue(mSettings.ClassCompletion.BodyStubs, '#1837');
-  mSettings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false}}',
-    mIssues);
+  Assert.IsTrue(mSettings.ClassCompletion.BlankLines, '#1839');
+  mSettings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false, ' +
+    '"blankLines": false}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.AreEqual('region', mSettings.ClassCompletion.TypeComment);
   Assert.IsFalse(mSettings.ClassCompletion.LifecycleFirst);
   Assert.IsFalse(mSettings.ClassCompletion.BodyStubs);
+  Assert.IsFalse(mSettings.ClassCompletion.BlankLines);
   mSettings := Parse('{"classCompletion": {"typeComment": "kasten"}}', mIssues);
   Assert.AreEqual('brace', mSettings.ClassCompletion.TypeComment, 'Unbekanntes bleibt bei der Vorgabe');
   Assert.AreEqual(1, Integer(Length(mIssues)));
