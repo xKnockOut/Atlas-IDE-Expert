@@ -93,6 +93,11 @@ type
     class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
       const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>; overload; static;
+    /// <summary>Ziel der Suche an APosition wie TLspDefinition.Targets zur Deklaration. Ein Parameter zielt auf
+    /// seinen Namen im Kopf mit Rumpf, den die Namensauflösung kennt, auch vom Kopf ohne Rumpf aus; hat seine
+    /// Routine keinen Rumpf (abstract), auf seinen Namen im Kopf (#2425). Leer, wenn nichts auflöst.</summary>
+    class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
     /// <summary>Inaktive Bereiche von AText unter den Symbolen, mit denen der Editor die Datei liest; leer ohne
     /// references.inferred.</summary>
     class function InactiveFor(const AFileName, AText: string;
@@ -567,6 +572,29 @@ begin
   finally
     AResolver.UnpinTree;
     mRun.Free;
+  end;
+end;
+
+class function TLspReferences.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>;
+var
+  mHeaders: TParameterHeaders;
+  mTarget: TDefinitionTarget;
+begin
+  if not TParameterHeaders.Find(AResolver, AIndex, ATree, AFileName, APosition, mHeaders) then
+  begin
+    Result := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  end
+  else if mHeaders.HasBody then
+  begin
+    Result := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, mHeaders.Body.StartPos, True);
+  end
+  else
+  begin
+    mTarget.FileName := AFileName;
+    mTarget.Range := mHeaders.Declarations[0];
+    mTarget.SelectionRange := mHeaders.Declarations[0];
+    Result := [mTarget];
   end;
 end;
 

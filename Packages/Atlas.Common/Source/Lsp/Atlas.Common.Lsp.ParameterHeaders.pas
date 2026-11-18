@@ -54,27 +54,6 @@ type
     Token: Integer;
   end;
 
-/// <summary>Tiefster Knoten unter ARoot, dessen Bereich AOffset enthält.</summary>
-function DeepestAt(ARoot: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-var
-  mIndex: Integer;
-  mDeeper: Boolean;
-begin
-  Result := ARoot;
-  repeat
-    mDeeper := False;
-    for mIndex := 0 to Result.ChildCount - 1 do
-    begin
-      if (Result[mIndex].StartOffset <= AOffset) and (AOffset < Result[mIndex].EndOffset) then
-      begin
-        Result := Result[mIndex];
-        mDeeper := True;
-        Break;
-      end;
-    end;
-  until not mDeeper;
-end;
-
 /// <summary>Token der Namen des Parameterknotens AParameter (A, B: Integer), ohne Attribute und Modifizierer.
 /// </summary>
 function NameTokens(ATree: TSyntaxTree; AParameter: TSyntaxNode): TArray<Integer>;
@@ -145,7 +124,7 @@ var
   mIndex: Integer;
 begin
   AFound := Default(THeaderParameter);
-  mNode := DeepestAt(ATree.Root, ATree.Tokens[ATokenIndex].Offset);
+  mNode := ATree.InnermostAt(ATree.Tokens[ATokenIndex].Offset);
   while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.Parameter) do
   begin
     mNode := mNode.Parent;
@@ -254,7 +233,7 @@ begin
   begin
     Exit(False);
   end;
-  mNode := DeepestAt(ATree.Root, ATree.Tokens[mOther].Offset);
+  mNode := ATree.InnermostAt(ATree.Tokens[mOther].Offset);
   while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineHeader) do
   begin
     mNode := mNode.Parent;
@@ -291,31 +270,41 @@ begin
   end;
 end;
 
+/// <summary>Hat der Kopf der Routine ARoutine einen Parameter namens AName?</summary>
+function HasParameterNamed(ATree: TSyntaxTree; ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mHeader: TSyntaxNode;
+  mToken: Integer;
+begin
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
+  begin
+    Exit(False);
+  end;
+  for mToken in HeaderNames(ATree, mHeader) do
+  begin
+    if SameText(TPascalLexer.PlainName(ATree.Tokens[mToken].Text), AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 /// <summary>Hat eine Routine um den Bezeichner ATokenIndex einen Parameter mit seinem Namen? Ohne einen solchen
 /// spart Find die Namensauflösung (Code Lens fragt für jede Methode).</summary>
 function MayBeParameter(ATree: TSyntaxTree; ATokenIndex: Integer): Boolean;
 var
-  mNode, mHeader: TSyntaxNode;
+  mNode: TSyntaxNode;
   mName: string;
-  mToken: Integer;
 begin
   mName := TPascalLexer.PlainName(ATree.Tokens[ATokenIndex].Text);
-  mNode := DeepestAt(ATree.Root, ATree.Tokens[ATokenIndex].Offset);
+  mNode := ATree.InnermostAt(ATree.Tokens[ATokenIndex].Offset);
   while mNode <> nil do
   begin
-    if mNode.Kind = TSyntaxKind.RoutineDecl then
+    if (mNode.Kind = TSyntaxKind.RoutineDecl) and HasParameterNamed(ATree, mNode, mName) then
     begin
-      mHeader := mNode.FindChild(TSyntaxKind.RoutineHeader);
-      if mHeader <> nil then
-      begin
-        for mToken in HeaderNames(ATree, mHeader) do
-        begin
-          if SameText(TPascalLexer.PlainName(ATree.Tokens[mToken].Text), mName) then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
+      Exit(True);
     end;
     mNode := mNode.Parent;
   end;

@@ -142,7 +142,6 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.ReferenceConfidence,
-  Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
@@ -727,7 +726,6 @@ class function TLspRename.Check(AResolver: TNameResolver; const AIndex: ISymbolI
 var
   mIndex: Integer;
   mTargets: TArray<TDefinitionTarget>;
-  mHeaders: TParameterHeaders;
 begin
   Result := Default(TRenameCheck);
   mIndex := IdentifierAt(ATree.Tokens, APosition);
@@ -742,14 +740,8 @@ begin
   begin
     Result.Name := Copy(Result.Name, 2, MaxInt);
   end;
-  // Parameter (#2425): auch aus dem Kopf ohne Rumpf, den die Namensauflösung nicht kennt; ohne Rumpf (abstract)
-  // ist der Kopf selbst die Deklaration.
-  if TParameterHeaders.Find(AResolver, AIndex, ATree, AFileName, APosition, mHeaders) then
-  begin
-    Result.DeclarationFile := AFileName;
-    Exit;
-  end;
-  mTargets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  // Wie die Referenzsuche: Parameter auch aus dem Kopf ohne Rumpf (#2425).
+  mTargets := TLspReferences.Targets(AResolver, AIndex, ATree, AFileName, APosition);
   if Length(mTargets) > 0 then
   begin
     Result.DeclarationFile := mTargets[0].FileName;

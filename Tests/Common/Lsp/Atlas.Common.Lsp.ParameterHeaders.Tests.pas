@@ -32,6 +32,9 @@ type
     procedure FindsCounterpartHeader;
     [Test]
     procedure ReferencesIncludeBothHeaders;
+    /// <summary>WParam: WPARAM wird AWParam: WPARAM (#1896): Der gleichnamige Typ ist keine Stelle.</summary>
+    [Test]
+    procedure KeepsSameNamedType;
   end;
 
 implementation
@@ -365,6 +368,65 @@ begin
     mTree.Free;
     mResolver.Free;
   end;
+end;
+
+const
+  cHakenFile = 'C:\P\Haken.pas';
+
+  cUnitHaken =
+    'unit Haken;'#10 +                                     // 0
+    'interface'#10 +                                       // 1
+    'type'#10 +                                            // 2
+    '  WPARAM = NativeUInt;'#10 +                          // 3
+    '  THaken = class'#10 +                                // 4
+    '    function Proc(WParam: WPARAM): WPARAM;'#10 +      // 5
+    '  end;'#10 +                                          // 6
+    'implementation'#10 +                                  // 7
+    'function THaken.Proc(WParam: WPARAM): WPARAM;'#10 +   // 8
+    'var'#10 +                                             // 9
+    '  mWert: Integer;'#10 +                               // 10
+    'begin'#10 +                                           // 11
+    '  mWert := WParam;'#10 +                              // 12
+    '  Result := WParam;'#10 +                             // 13
+    'end;'#10 +                                            // 14
+    'end.';
+
+function ReadHaken(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := SameText(AFileName, cHakenFile);
+  if Result then
+  begin
+    AText := cUnitHaken;
+  end;
+end;
+
+procedure TLspParameterHeadersTests.KeepsSameNamedType;
+var
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mEdits: TArray<TRenameEdit>;
+  mPositions: TArray<TTextPosition>;
+  mPosition: TTextPosition;
+begin
+  // Vom Rumpfkopf, vom Deklarationskopf und von einer Verwendung aus.
+  mPositions := [TTextPosition.Create(8, 21), TTextPosition.Create(5, 18), TTextPosition.Create(13, 12)];
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaken, cHakenFile, nil));
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TSyntaxTreeCache.Parse(cUnitHaken);
+  try
+    for mPosition in mPositions do
+    begin
+      mEdits := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cHakenFile, mPosition, True,
+        [cHakenFile], ReadHaken), TRenameRequest.Create('AWParam', True, TReferenceSettings.Default, nil));
+      Assert.AreEqual('5:18 8:21 12:11 13:12', EditsText(mEdits, 'AWParam'), SpotText(mPosition));
+    end;
+  finally
+    mTree.Free;
+    mResolver.Free;
+  end;
+  mPositions := nil;
 end;
 
 initialization
