@@ -3,7 +3,8 @@
 // Themendienst der Atlas-Fenster (#2061): ohne Install helle Farben und kein
 // Anwenden, mit Install Farben und Anwenden über die Haken der IDE-Schicht,
 // Abonnenten bei jedem Wechsel bis zum Abmelden, Fehler ins Protokoll,
-// Textfarben der Meldungen aus der Palette, Dialogschrift.
+// Textfarben der Meldungen aus der Palette, Dialogschrift, Fensterfarben aus
+// dem Stil des Steuerelements (nicht der festen Palette).
 
 interface
 
@@ -30,6 +31,8 @@ type
     procedure TextColorsComeFromPalette;
     [Test]
     procedure DialogFontIsSegoeNine;
+    [Test]
+    procedure WindowColorsComeFromStyleOfControl;
   end;
 
 implementation
@@ -40,6 +43,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
+  Vcl.Themes,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
@@ -181,6 +185,29 @@ begin
     TAtlasUiTheme.AssignDialogFont(nil);
   finally
     mFont.Free;
+  end;
+end;
+
+procedure TAtlasUiThemeTests.WindowColorsComeFromStyleOfControl;
+var
+  mForm: TForm;
+  mColors: TAtlasColors;
+begin
+  // Auch mit installierter Atlas-Quelle: Fläche und Schrift aus dem Stil, nicht aus der Palette.
+  TAtlasUiTheme.Install(
+    function: TAtlasColors
+    begin
+      Result := TAtlasColors.Dark;
+    end, nil, nil);
+  mForm := TForm.CreateNew(nil);
+  try
+    mColors := TAtlasUiTheme.WindowColors(mForm);
+    Assert.AreEqual(Integer(ColorToRGB(StyleServices(mForm).GetSystemColor(clWindow))), Integer(mColors.Surface));
+    Assert.AreEqual(Integer(ColorToRGB(StyleServices(mForm).GetSystemColor(clWindowText))), Integer(mColors.Text));
+    mColors := TAtlasUiTheme.WindowColors(nil);
+    Assert.AreEqual(Integer(ColorToRGB(StyleServices.GetSystemColor(clWindow))), Integer(mColors.Surface), 'ohne');
+  finally
+    mForm.Free;
   end;
 end;
 

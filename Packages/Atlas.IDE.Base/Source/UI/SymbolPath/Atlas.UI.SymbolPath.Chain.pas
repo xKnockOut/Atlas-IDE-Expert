@@ -85,10 +85,10 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.UI.Strings,
-  Atlas.UI.SymbolPath.Strings;
+  Atlas.UI.SymbolPath.Strings,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Logische Bildpunkte bei 96 dpi.</summary>
@@ -166,7 +166,7 @@ var
   mMain, mDetail: string;
   mRow: TAtlasSymbolPathRow;
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  mColors := TAtlasUiTheme.WindowColors(Self);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(mColors.Surface);
   Canvas.FillRect(ClientRect);

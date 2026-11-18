@@ -103,10 +103,10 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Results.Strings;
+  Atlas.UI.Results.Strings,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Bildpunkte, ab denen ein Mausdruck als Ziehen gilt.</summary>
@@ -157,8 +157,7 @@ class function TCallPainter.Create(AView: TAtlasCallDiagramView): TCallPainter;
 begin
   Result.View := AView;
   Result.Canvas := AView.Canvas;
-  Result.Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(AView).GetSystemColor(
-    clWindow))));
+  Result.Colors := TAtlasUiTheme.WindowColors(AView);
   Result.Scale := AView.FView.Scale;
   Result.Pad := Max(AView.ScaleValue(2), Px(8 * Result.Scale));
 end;

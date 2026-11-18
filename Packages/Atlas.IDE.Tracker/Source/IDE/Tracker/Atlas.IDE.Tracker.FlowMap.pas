@@ -218,7 +218,7 @@ end;
 
 procedure TAtlasIdeFlowMap.Wire(AFrame: TAtlasFlowFrame);
 begin
-  AFrame.ApplyColors(TAtlasIdeStyle.Colors);
+  AFrame.ApplyColors(TAtlasIdeStyle.WindowColorsIf(TAtlasIdeSettings.Current.IssuesIdeColors));
   AFrame.Events := FlowEvents(Self, Self);
 end;
 
