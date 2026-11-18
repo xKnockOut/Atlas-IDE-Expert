@@ -731,8 +731,8 @@ var
   mLow, mHigh, mMiddle: Integer;
 begin
   // Die Token folgen ohne Überlappung aufeinander, ihre Enden steigen also mit: Vor dem ersten Token, das nicht vor
-  // APosition endet, berührt keines APosition. Früher lief die Suche ab Dateianfang und kopierte jedes Token, und
-  // Regeln, die für jedes Element großer Konstanten-Arrays fragen, wurden quadratisch (#1323).
+  // APosition endet, berührt keines APosition. Eine Suche ab Dateianfang, die jedes Token kopiert, machte
+  // Regeln, die für jedes Element großer Konstanten-Arrays fragen, quadratisch (#1323).
   mLow := 0;
   mHigh := Length(FTokens);
   while mLow < mHigh do

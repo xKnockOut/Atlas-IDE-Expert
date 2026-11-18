@@ -232,7 +232,7 @@ end;
 procedure IgnoreIdeCommand(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  // compiler.ideCommand gibt es seit #1904 nicht mehr; ein alter Eintrag wird ohne Meldung übergangen.
+  // compiler.ideCommand ist entfallen (#1904); ein solcher Eintrag in älteren Dateien wird ohne Meldung übergangen.
 end;
 
 const

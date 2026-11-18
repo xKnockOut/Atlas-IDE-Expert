@@ -291,7 +291,7 @@ begin
     Assert.AreEqual(0, Pos(',' + mItem.Name + ',', mNames), 'doppelt: ' + mItem.Name);
     mNames := mNames + ',' + mItem.Name + ',';
   end;
-  Assert.AreEqual('ctor', TSlashMenu.Catalog[0].Name, 'Konstruktor zuerst wie im Mockup');
+  Assert.AreEqual('ctor', TSlashMenu.Catalog[0].Name, 'Konstruktor zuerst');
 end;
 
 procedure TSlashMenuTests.CatalogOrderInClass;

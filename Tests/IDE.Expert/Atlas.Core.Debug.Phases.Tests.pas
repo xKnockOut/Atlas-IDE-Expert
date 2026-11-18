@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Debug.Phases.Tests;
 
 // Tests für die Phasen einer Debug-Sitzung (#517 und folgende): Prozess startet, hält, läuft weiter, endet,
-// Thread wechselt; verzögert gemeldeter Halt, eigene Auswertungen, Filter, Zuhörer. Der Debugger der IDE ist
+// Thread wechselt; verzögert gemeldeter Halt, eigene Auswertungen, Filter, Zuhörer, Laufzeit vor einem Halt (#579). Der Debugger der IDE ist
 // durch TAtlasDebugTargetFake ersetzt.
 
 interface
@@ -21,6 +21,9 @@ type
     FPhases: TAtlasDebugPhases;
     FLog: TAtlasDebugListenerLog;
     FLogRef: IAtlasDebugListener;
+    /// <summary>Stand der gefälschten Uhr in Mikrosekunden.</summary>
+    FNow: Int64;
+    procedure UseClock;
   public
     [Setup]
     procedure Setup;
@@ -62,6 +65,14 @@ type
     procedure ResetForgetsListeners;
     [Test]
     procedure NewSessionRestartsStopCount;
+    [Test]
+    procedure RunTimeCountsOnlyRunning;
+    [Test]
+    procedure FilteredStopKeepsCounting;
+    [Test]
+    procedure InternalRunsDoNotCount;
+    [Test]
+    procedure RunTimeWithoutClockIsZero;
   end;
 
 implementation
@@ -131,6 +142,7 @@ end;
 procedure TAtlasDebugPhasesTests.TearDown;
 begin
   FTarget.Connect(nil);
+  FPhases.Clock := nil;
   FreeAndNil(FPhases);
   FLogRef := nil;
   FLog := nil;
@@ -378,6 +390,94 @@ begin
   Assert.AreEqual(0, FPhases.StopCount);
   Assert.IsFalse(FPhases.Stopped);
   Assert.AreEqual('Started,Stopped:Paused,Ended,Started', FLog.Text);
+end;
+
+procedure TAtlasDebugPhasesTests.UseClock;
+begin
+  FNow := 1000;
+  FPhases.Clock :=
+    function: Int64
+    begin
+      Result := FNow;
+    end;
+end;
+
+procedure TAtlasDebugPhasesTests.RunTimeCountsOnlyRunning;
+begin
+  UseClock;
+  FTarget.Launch;
+  FNow := FNow + 200000;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  // Zeit bis zum Tick zählt nicht mehr: Der Prozess steht schon.
+  FNow := FNow + 15000;
+  FTarget.Tick;
+  Assert.AreEqual<Int64>(200000, FPhases.RunTimeBeforeStop);
+  // Angehalten verbrachte Zeit zählt nicht.
+  FNow := FNow + 5000000;
+  FTarget.Proceed;
+  FNow := FNow + 1500;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FTarget.Tick;
+  Assert.AreEqual<Int64>(1500, FPhases.RunTimeBeforeStop);
+end;
+
+procedure TAtlasDebugPhasesTests.FilteredStopKeepsCounting;
+var
+  mTarget: TAtlasDebugTargetFake;
+  mHandle: Boolean;
+begin
+  UseClock;
+  mTarget := FTarget;
+  mHandle := True;
+  FPhases.SetStopFilter(
+    function(AStop: TAtlasDebugStop): Boolean
+    begin
+      Result := mHandle;
+      if Result then
+      begin
+        mTarget.Proceed;
+      end;
+    end);
+  FTarget.Launch;
+  FNow := FNow + 300;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  // Der Filter setzt erst nach einer Weile fort; diese Zeit zählt nicht.
+  FNow := FNow + 900;
+  FTarget.Tick;
+  FNow := FNow + 400;
+  mHandle := False;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FTarget.Tick;
+  Assert.AreEqual<Int64>(700, FPhases.RunTimeBeforeStop);
+  FPhases.SetStopFilter(nil);
+end;
+
+procedure TAtlasDebugPhasesTests.InternalRunsDoNotCount;
+begin
+  UseClock;
+  FTarget.Launch;
+  FNow := FNow + 100;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FTarget.Tick;
+  // Eine Auswertung lässt den Prozess kurz laufen.
+  FPhases.BeginInternal;
+  FTarget.Proceed;
+  FNow := FNow + 70000;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FPhases.EndInternal;
+  FTarget.Proceed;
+  FNow := FNow + 250;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FTarget.Tick;
+  Assert.AreEqual<Int64>(250, FPhases.RunTimeBeforeStop);
+end;
+
+procedure TAtlasDebugPhasesTests.RunTimeWithoutClockIsZero;
+begin
+  FTarget.Launch;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FTarget.Tick;
+  Assert.AreEqual<Int64>(0, FPhases.RunTimeBeforeStop);
 end;
 
 end.
