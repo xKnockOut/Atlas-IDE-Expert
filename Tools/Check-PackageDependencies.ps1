@@ -1156,6 +1156,8 @@ foreach ($key in $TokenAllowedLocal.Keys) {
 # Kopien-Sperre für JSON-Lesehelfer nach Form (#1969): kurze Funktion (Objekt, Name) mit einfachem Ergebnis, die
 # den Wert selbst holt.
 $jsonFormFound = @{}
+# Units, die es im geprüften Baum gibt (der Selbsttest prüft eine Kopie ohne Tests/).
+$jsonFormUnits = @{}
 $jsonFormPattern = '(?ims)^(?:class\s+)?function\s+((?:\w+\.)?\w+)\s*\(\s*(?:const\s+)?(\w+)\s*:\s*' +
     'TJSON(?:Object|Value)\s*;\s*(?:const\s+)?(\w+)\s*:\s*string\s*\)\s*:\s*' +
     '(string|Integer|Int64|Cardinal|Boolean|Double|Extended|TDateTime|TJSONObject|TJSONArray|TJSONValue|' +
@@ -1167,12 +1169,13 @@ foreach ($folder in @('Packages', 'Application', 'Tests')) {
     foreach ($file in Get-ChildItem -Path $folderPath -Recurse -File -Include '*.pas') {
         $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
         if ($relative.StartsWith('Packages/Atlas.Text/Source/Json/')) { continue }
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $jsonFormUnits[$ownUnit] = $true
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
         if ($text -notmatch '(?i)\bTJSON(?:Object|Value)\b') { continue }
         $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
         if (-not $implementation.Success) { continue }
         $body = $text.Substring($implementation.Index)
-        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
         foreach ($routine in [regex]::Matches($body, $jsonFormPattern)) {
             $inner = $routine.Groups[5].Value
             if (($inner -split "`n").Count -gt $jsonFormMaxLines) { continue }
@@ -1190,7 +1193,7 @@ foreach ($folder in @('Packages', 'Application', 'Tests')) {
     }
 }
 foreach ($key in $AllowedJsonFormLocal.Keys) {
-    if (-not $jsonFormFound.ContainsKey($key)) {
+    if ($jsonFormUnits.ContainsKey($key.Split(':')[0]) -and -not $jsonFormFound.ContainsKey($key)) {
         $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedJsonFormLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
     }
 }
