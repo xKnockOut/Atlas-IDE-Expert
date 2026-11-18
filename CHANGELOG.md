@@ -6,7 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
-## [2.2.0-rc.3] - 2026-11-18
+## [2.2.0] - 2026-11-18
+
+Erste stabile Fassung von 2.2: Debuggen, Testen und Lecks. Hier steht, was seit 2.2.0-rc.2 dazukam; alles davor steht in den Abschnitten 2.2.0-rc.2 und 2.2.0-rc.1.
 
 ### Neu
 - uses-Einträge im interface, die nur die implementation braucht, erscheinen im Editor in Hinweisfarbe (#2465, `editor.highlightMovableUses`, Vorgabe an); ungenutzte bleiben grau abgeblendet. Folgt der Regel `uses-only-in-implementation` und lässt sich je Datei ausblenden.
