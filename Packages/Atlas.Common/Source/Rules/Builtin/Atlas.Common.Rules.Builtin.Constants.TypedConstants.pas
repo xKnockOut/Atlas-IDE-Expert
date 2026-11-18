@@ -761,7 +761,7 @@ begin
       TRuleSeverity.Error, mFixes);
     Exit;
   end;
-  // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3, dcc-Lauf vom 29.10.2026, #1328).
+  // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3 in Tests/DccFaelle, #1328).
   if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.On_) then
   begin
     Exit;

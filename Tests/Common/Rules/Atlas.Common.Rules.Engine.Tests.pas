@@ -64,7 +64,7 @@ type
     procedure SortsByPosition;
     [Test]
     procedure RuleAssertPositiveAndNegative;
-    /// <summary>Abbruch wirkt vor der nächsten Regel (Diagnoselog 15.10.2026).</summary>
+    /// <summary>Abbruch wirkt vor der nächsten Regel.</summary>
     [Test]
     procedure CancelledStopsBeforeNextRule;
     [Test]

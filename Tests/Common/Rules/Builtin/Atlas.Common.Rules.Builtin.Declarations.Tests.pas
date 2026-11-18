@@ -22,7 +22,7 @@
 // Typ, Record mit variantem Teil, Unit), uses mit checkUses, stille Fälle und
 // Optionen.
 // Sonderformen der Deklaration (#1325): die Minimalfälle F02, F03, F06, F07,
-// F13 und F18 der FP-Prüfung sowie asm- und external-Rümpfe, override und ein
+// F13 und F18 aus #1325 sowie asm- und external-Rümpfe, override und ein
 // gleichnamiger generischer Typ neben dem nicht generischen sind still; echte Überladungen ohne overload und fehlende
 // Rümpfe werden weiter
 // gemeldet.
