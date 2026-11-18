@@ -1,0 +1,2 @@
+### Neu
+- Exception-Regeln nach Klasse und Ort: Regeln aus Klasse, Methode oder Unit als Muster, wahlweise Meldung und Aktion (anhalten, nur protokollieren, weiterlaufen); „Nur an dieser Stelle ignorieren“ legt eine Regel für die erste eigene Methode an. Fenster „Exception-Regeln“ mit Treffern der Sitzung, Reihenfolge und Ein/Aus; Regeln des Projekts in `.atlas` unter `exceptionRules` gelten nach den persönlichen (#838, `debug.exceptionRules`).

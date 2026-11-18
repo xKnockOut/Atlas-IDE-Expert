@@ -371,7 +371,8 @@ end;
 
 procedure TAtlasDebugSettingsSection.BuildExceptions;
 begin
-  // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Meldungstext (#2549).
+  // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Meldungstext (#2549), Regeln nach Ort
+  // (#838).
   Switch('debug.exceptionHistory',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionHistory));
   Switch('debug.justMyCode', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugJustMyCode));
@@ -383,6 +384,8 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
   Switch('debug.exceptionMessageRules',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionMessageRules));
+  Switch('debug.exceptionRules',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionRules));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;

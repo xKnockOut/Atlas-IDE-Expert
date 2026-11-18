@@ -13,7 +13,8 @@
 // True/False), „Nur bei Meldungen wie dieser anhalten …“ und „Meldungen wie
 // diese ignorieren …“ (#2549, MessageRule, nur mit Meldung), „Regeln mit
 // Meldung für X entfernen“ (RemoveMessageRules, nur wenn es welche gibt),
-// „Meldung kopieren“, „Verlauf leeren“ (OnClear). Die
+// „Exception-Regeln …“ (#838, ShowRules), „Meldung kopieren“, „Verlauf
+// leeren“ (OnClear). Die
 // IDE-Schicht hält den Verlauf und ruft nach jeder Änderung SetHistory.
 // Unten der Aufrufstapel des gewählten Eintrags (#578, Stack,
 // TAtlasDebugExceptionStack). Filterleiste und Meldungen an die IDE-Schicht
@@ -50,6 +51,7 @@ type
       FStopOnlyItem: TMenuItem;
       FIgnoreMessageItem: TMenuItem;
       FRemoveRulesItem: TMenuItem;
+      FRulesItem: TMenuItem;
       FCopyItem: TMenuItem;
       FClearItem: TMenuItem;
       function AddItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
@@ -60,6 +62,7 @@ type
       procedure StopOnlyClick(Sender: TObject);
       procedure IgnoreMessageClick(Sender: TObject);
       procedure RemoveRulesClick(Sender: TObject);
+      procedure RulesClick(Sender: TObject);
       procedure MessageRule(AIgnore: Boolean);
       procedure CopyClick(Sender: TObject);
       procedure ClearClick(Sender: TObject);
@@ -171,6 +174,7 @@ begin
   FIgnoreMessageItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsIgnoreMessage),
     IgnoreMessageClick);
   FRemoveRulesItem := AddItem('', RemoveRulesClick);
+  FRulesItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsRules), RulesClick);
   FCopyItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsCopy), CopyClick);
   FClearItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsClear), ClearClick);
 end;
@@ -197,6 +201,7 @@ begin
   FStopOnlyItem.Visible := mHas and FFrame.FHooks.MessageRulesOn and (Trim(mEntry.Message) <> '') and
     Assigned(FFrame.FHooks.MessageRule);
   FIgnoreMessageItem.Visible := FStopOnlyItem.Visible;
+  FRulesItem.Visible := Assigned(FFrame.FHooks.ShowRules);
   FRemoveRulesItem.Visible := mHas and FFrame.FHooks.MessageRulesOn and Assigned(FFrame.FHooks.RemoveMessageRules) and
     FFrame.FIgnore.HasMessageRules(mEntry.ExceptionClass);
   FCopyItem.Enabled := mHas;
@@ -269,6 +274,14 @@ begin
   if FFrame.TrySelected(mEntry) and Assigned(FFrame.FHooks.RemoveMessageRules) then
   begin
     FFrame.FHooks.RemoveMessageRules(mEntry.ExceptionClass);
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.TListMenu.RulesClick(Sender: TObject);
+begin
+  if Assigned(FFrame.FHooks.ShowRules) then
+  begin
+    FFrame.FHooks.ShowRules();
   end;
 end;
 

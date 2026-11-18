@@ -151,8 +151,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.DebugStop,
-  Atlas.Core.Debug.ExceptionRules,
-  Atlas.UI.Debug.ExceptionMessageRule,
+  Atlas.IDE.Debug.ExceptionRules,
   Atlas.UI.Debug.Exceptions.Strings;
 
 /// <summary>Bietet ein Modul „Test daraus anlegen …“ an (#1873)?</summary>
@@ -168,21 +167,6 @@ end;
 function MessageRuleOffered(const AInfo: TAtlasDebugBannerInfo): Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugExceptionMessageRules and (Trim(AInfo.Message) <> '');
-end;
-
-/// <summary>Dialog für eine Regel nach Meldungstext; True, wenn die neue Regel diese Exception fortsetzt.</summary>
-function AskMessageRule(const AShown: TAtlasDebugException): Boolean;
-var
-  mRule: TAtlasExceptionRule;
-begin
-  Result := False;
-  if not TAtlasExceptionMessageRuleDialog.Execute(TAtlasMessageRuleInput.Create(AShown.ExceptionClass,
-    AShown.Message, TAtlasExceptionRules.OwnUnit(AShown.Frames), TAtlasMessageRuleMode.Ignore), mRule) then
-  begin
-    Exit;
-  end;
-  Result := TAtlasIdeDebugExceptions.AddRule(mRule) and mRule.Matches(TAtlasExceptionFacts.Create(
-    AShown.ExceptionClass, AShown.Message, TAtlasExceptionRules.OwnRoutine(AShown.Frames)));
 end;
 
 { TAtlasIdeDebugExceptionBar.TListener }
@@ -394,8 +378,12 @@ begin
       end;
     TAtlasDebugBarAction.IgnoreLocation:
       begin
-        TAtlasIdeDebugExceptions.IgnoreLocation(TAtlasIdeDebugSession.LaunchProject, FShownInfo.ExceptionClass,
-          FShownInfo.FileName, FShownInfo.Line);
+        // Mit debug.exceptionRules als Regel für die erste eigene Methode (#838), sonst Datei und Zeile.
+        if not TAtlasIdeExceptionRules.IgnoreHere(FShownInfo.ExceptionClass, FShown.Frames) then
+        begin
+          TAtlasIdeDebugExceptions.IgnoreLocation(TAtlasIdeDebugSession.LaunchProject, FShownInfo.ExceptionClass,
+            FShownInfo.FileName, FShownInfo.Line);
+        end;
         ResumeProcess;
       end;
     TAtlasDebugBarAction.Copy:
@@ -413,7 +401,7 @@ begin
     TAtlasDebugBarAction.CreateTest:
       TAtlasIdeHost.ExecuteCommand(cAtlasTestFromDebugStopCommand);
     TAtlasDebugBarAction.MessageRule:
-      if AskMessageRule(FShown) then
+      if TAtlasIdeExceptionRules.AskMessageRule(FShown, True) then
       begin
         ResumeProcess;
       end;

@@ -32,6 +32,8 @@
 //                  "anchor": "TKunde.Speichern"}],
 //      "launchGroups": [{"name": "Server + Client", "items": [          #867
 //        {"project": "Server\\Server.dproj", "wait": "port", "value": 8080}]}],
+//      "exceptionRules": [{"class": "EConvertError",                    #838
+//        "location": "Bericht.Druck.*", "action": "continue"}],
 //      "debugDisplayRules": {                                            #854
 //        "FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})",
 //        "TKunde": {"template": "{Name}, {Ort}", "children": ["Name", "Ort"]}}}
@@ -190,6 +192,9 @@ type
     /// <summary>Startverbünde (#867) als JSON-Text des Arrays "launchGroups"; das Modul Debugger liest ihn.
     /// '' = keine (oder mit Zugangsdaten verworfen).</summary>
     LaunchGroups: string;
+    /// <summary>Exception-Regeln des Projekts (#838) als JSON-Text des Arrays "exceptionRules"; das Modul
+    /// Debugger liest ihn. '' = keine.</summary>
+    ExceptionRules: string;
     Issues: TArray<TAtlasTeamIssue>;
     /// <summary>Es gibt eine Projektdatei (gültig oder nicht).</summary>
     function Exists: Boolean;
@@ -208,6 +213,7 @@ type
     cFileName = '.atlas';
     cDisplayRulesKey = 'debugDisplayRules';
     cLaunchGroupsKey = 'launchGroups';
+    cExceptionRulesKey = 'exceptionRules';
     cCurrentVersion = 1;
   public
     /// <summary>Projektdatei zum Ordner einer .dproj ohne Projektgruppe (siehe Kopf); '' ohne.</summary>
@@ -482,7 +488,8 @@ type
     procedure ReadVcs(AValue: TJSONValue);
     procedure ReadHidden(AValue: TJSONValue);
     procedure ReadDisplayRules(AValue: TJSONValue);
-    procedure ReadLaunchGroups(AValue: TJSONValue);
+    /// <summary>Array, das ein Modul selbst prüft, als JSON-Text; '' bei falschem Typ oder Zugangsdaten.</summary>
+    function ArrayText(AValue: TJSONValue; const AKey: string): string;
     procedure ReadVersion(AValue: TJSONValue);
   public
     constructor Create(const AFileName, ARoot: string);
@@ -1019,7 +1026,11 @@ begin
   end
   else if AKey = TAtlasTeamFile.cLaunchGroupsKey then
   begin
-    ReadLaunchGroups(AValue);
+    FTeam.LaunchGroups := ArrayText(AValue, AKey);
+  end
+  else if AKey = TAtlasTeamFile.cExceptionRulesKey then
+  begin
+    FTeam.ExceptionRules := ArrayText(AValue, AKey);
   end
   else
   begin
@@ -1356,21 +1367,23 @@ begin
   end;
 end;
 
-procedure TTeamReader.ReadLaunchGroups(AValue: TJSONValue);
+function TTeamReader.ArrayText(AValue: TJSONValue; const AKey: string): string;
 var
   mIssues: Integer;
 begin
+  Result := '';
   if not (AValue is TJSONArray) then
   begin
-    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.cLaunchGroupsKey);
+    Report(TAtlasTeamIssueKind.WrongType, AKey);
     Exit;
   end;
-  // Inhalt prüft das Modul Debugger; hier nur: keine Zugangsdaten (dann gilt der ganze Wert nicht).
+  // Inhalt prüft das Modul (Startverbünde, Exception-Regeln); hier nur: keine Zugangsdaten (dann gilt der ganze
+  // Wert nicht).
   mIssues := Length(FTeam.Issues);
-  ScanCredentials(AValue, TAtlasTeamFile.cLaunchGroupsKey);
+  ScanCredentials(AValue, AKey);
   if Length(FTeam.Issues) = mIssues then
   begin
-    FTeam.LaunchGroups := AValue.ToJSON([]);
+    Result := AValue.ToJSON([]);
   end;
 end;
 
@@ -1835,6 +1848,10 @@ begin
   if ATeam.LaunchGroups <> '' then
   begin
     AddValue(Result, cLaunchGroupsKey, ATeam.LaunchGroups);
+  end;
+  if ATeam.ExceptionRules <> '' then
+  begin
+    AddValue(Result, cExceptionRulesKey, ATeam.ExceptionRules);
   end;
 end;
 

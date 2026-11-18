@@ -261,6 +261,8 @@ type
     DebugExceptionBannerIgnoreAtLocation: Boolean;
     /// <summary>Exception-Regeln mit Muster für die Meldung anwenden (#2549, debug.exceptionMessageRules).</summary>
     DebugExceptionMessageRules: Boolean;
+    /// <summary>Exception-Regeln nach Klasse und Ort anwenden (#838, debug.exceptionRules).</summary>
+    DebugExceptionRules: Boolean;
     /// <summary>Werte im Editor beim Debuggen (#508, debug.inlineValues): Steht der Prozess, zeigt Atlas am Ende der
     /// Zeilen der Routine mit dem Ausführungspunkt gedimmt die Werte der lokalen Variablen, Parameter und Felder von
     /// Self (Count = 3, Name = 'Meier'); seit dem letzten Halt geänderte Werte hervorgehoben. Aus = keine Anfrage,
@@ -453,6 +455,7 @@ begin
   Result.DebugExceptionBanner := False;
   Result.DebugExceptionBannerIgnoreAtLocation := True;
   Result.DebugExceptionMessageRules := True;
+  Result.DebugExceptionRules := True;
   Result.SetStopAndLaunchDefaults;
 end;
 
@@ -555,6 +558,7 @@ begin
   AIo.Flag('DebugExceptionBanner', DebugExceptionBanner);
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
   AIo.Flag('DebugExceptionMessageRules', DebugExceptionMessageRules);
+  AIo.Flag('DebugExceptionRules', DebugExceptionRules);
   ExchangeStopAndLaunch(AIo);
 end;
 

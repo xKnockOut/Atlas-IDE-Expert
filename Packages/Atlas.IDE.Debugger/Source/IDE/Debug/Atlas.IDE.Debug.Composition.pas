@@ -334,6 +334,10 @@ begin
     Command('Atlas.DebugExceptions', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugExceptionsCommand),
       TAtlasIdeDebugExceptions.ShowWindow,
       DebugExceptionsVisible),
+    // Exception-Regeln nach Klasse, Ort und Meldung (#838, #2549).
+    Command('Atlas.DebugExceptionRules',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugExceptionRulesCommand),
+      ShowDebugExceptionRules, DebugExceptionRulesVisible),
     // Nur eigener Code (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
     Command('Atlas.DebugJustMyCode', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugJustMyCodeCommand),
       ToggleDebugJustMyCode, nil),

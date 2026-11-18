@@ -125,6 +125,10 @@ type
     class procedure WireFrame(AFrame: TAtlasDebugExceptionsFrame); static;
     class procedure RefreshWindow; static;
     class procedure SetIgnored(const AClass: string; AIgnore: Boolean); static;
+    /// <summary>Persönliche Exception-Regeln (#2549, #838) aus debug-ignore.json.</summary>
+    class function Rules: TAtlasExceptionRuleList; static;
+    /// <summary>Persönliche Regeln ersetzen, speichern und ASaid melden ('' = still).</summary>
+    class procedure SetRules(const ARules: TAtlasExceptionRuleList; const ASaid: string); static;
   public
     /// <summary>AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Start(const AMessage: TProc<string>); static;
@@ -154,10 +158,6 @@ type
     /// <summary>Gemerkte Orte wirken (debug.exceptionBanner und debug.exceptionBanner.ignoreAtLocation).
     /// </summary>
     class function LocationsActive: Boolean; static;
-    /// <summary>Exception-Regel speichern (#2549); False, wenn sie schon so galt oder unbrauchbar ist.</summary>
-    class function AddRule(const ARule: TAtlasExceptionRule): Boolean; static;
-    /// <summary>Regeln mit Meldung für AClass entfernen (#2549).</summary>
-    class procedure RemoveMessageRules(const AClass: string); static;
   end;
 
 implementation
@@ -171,7 +171,7 @@ uses
   Atlas.IDE.Debug.ExceptionsWindow,
   Atlas.IDE.Debug.Sources,
   Atlas.Core.Debug.ExceptionBanner,
-  Atlas.UI.Debug.ExceptionMessageRule,
+  Atlas.IDE.Debug.ExceptionRules,
   Atlas.UI.Debug.Exceptions.Strings;
 
 function Folder: string;
@@ -230,6 +230,7 @@ begin
     Exit;
   end;
   FHistory.StartSession;
+  TAtlasIdeExceptionRules.SessionStarted;
   FDialog.NewSession;
   FStatusLogged := False;
   FCapture.State.Reset;
@@ -410,19 +411,17 @@ end;
 /// <summary>Regeln und Ignorier-Liste anwenden: still fortsetzen oder halten.</summary>
 function AutoOf(const AIgnore: TAtlasDebugIgnoreList; const AStop: TAtlasDebugExceptionStop): TAtlasDebugAutoContinue;
 var
-  mRule: Integer;
+  mAction: TAtlasExceptionAction;
 begin
   // Klasse bzw. Ort auf der Ignorier-Liste: Dialog mit „Fortsetzen“ schließen und nur zählen.
   Result := TAtlasDebugBannerRules.AutoContinue(AIgnore.IgnoresClass(AStop.Exception.ExceptionClass),
     AIgnore.IgnoresLocation(TAtlasIdeDebugSession.LaunchProject, AStop.Exception.ExceptionClass,
     AStop.Exception.FileName, AStop.Exception.Line), TAtlasIdeDebugExceptions.LocationsActive);
-  // Regeln gehen vor; ihr Ort ist der erste eigene Rahmen.
-  mRule := TAtlasExceptionRules.FirstMatch(AIgnore.Rules, TAtlasExceptionFacts.Create(
-    AStop.Exception.ExceptionClass, AStop.Exception.Message, TAtlasExceptionRules.OwnRoutine(AStop.Frames)),
-    TAtlasIdeSettings.Current.DebugExceptionMessageRules);
-  if mRule >= 0 then
+  // Regeln gehen vor (persönliche, dann die des Projekts); ihr Ort ist der erste eigene Rahmen.
+  if TAtlasIdeExceptionRules.Decide(AIgnore.Rules, TAtlasExceptionFacts.Create(AStop.Exception.ExceptionClass,
+    AStop.Exception.Message, TAtlasExceptionRules.OwnRoutine(AStop.Frames)), mAction) then
   begin
-    Result := TAtlasDebugBannerRules.WithRule(Result, True, AIgnore.Rules[mRule].Action);
+    Result := TAtlasDebugBannerRules.WithRule(Result, True, mAction);
   end;
 end;
 
@@ -474,22 +473,41 @@ begin
     end);
 end;
 
-/// <summary>Regel nach Meldungstext (#2549) für einen Eintrag des Verlaufs im Dialog anlegen.</summary>
-procedure AskMessageRule(const AException: TAtlasDebugException; AIgnore: Boolean);
-var
-  mMode: TAtlasMessageRuleMode;
-  mRule: TAtlasExceptionRule;
+/// <summary>Ablage der persönlichen Regeln für TAtlasIdeExceptionRules (#838).</summary>
+function RuleStore: TAtlasExceptionRuleStore;
 begin
-  mMode := TAtlasMessageRuleMode.StopOnly;
-  if AIgnore then
-  begin
-    mMode := TAtlasMessageRuleMode.Ignore;
-  end;
-  if TAtlasExceptionMessageRuleDialog.Execute(TAtlasMessageRuleInput.Create(AException.ExceptionClass,
-    AException.Message, TAtlasExceptionRules.OwnUnit(AException.Frames), mMode), mRule) then
-  begin
-    TAtlasIdeDebugExceptions.AddRule(mRule);
-  end;
+  Result.Read :=
+    function: TAtlasExceptionRuleList
+    begin
+      Result := TAtlasIdeDebugExceptions.Rules;
+    end;
+  Result.Save :=
+    procedure(const ARules: TAtlasExceptionRuleList; const ASaid: string)
+    begin
+      TAtlasIdeDebugExceptions.SetRules(ARules, ASaid);
+    end;
+end;
+
+/// <summary>Regeln nach Meldungstext (#2549) und Fenster „Exception-Regeln“ (#838) im Kontextmenü des Verlaufs.
+/// </summary>
+procedure WireRuleHooks(AFrame: TAtlasDebugExceptionsFrame);
+begin
+  AFrame.Hooks.MessageRule :=
+    procedure(AException: TAtlasDebugException; AIgnore: Boolean)
+    begin
+      TAtlasIdeExceptionRules.AskMessageRule(AException, AIgnore);
+    end;
+  AFrame.Hooks.RemoveMessageRules :=
+    procedure(AClass: string)
+    begin
+      TAtlasIdeExceptionRules.RemoveMessageRules(AClass);
+    end;
+  AFrame.Hooks.ShowRules :=
+    procedure
+    begin
+      TAtlasIdeExceptionRules.ShowWindow;
+    end;
+  AFrame.Hooks.MessageRulesOn := TAtlasIdeSettings.Current.DebugExceptionMessageRules;
 end;
 
 class procedure TAtlasIdeDebugExceptions.WireFrame(AFrame: TAtlasDebugExceptionsFrame);
@@ -529,16 +547,6 @@ begin
     begin
       SetIgnored(AClass, AIgnore);
     end;
-  AFrame.Hooks.MessageRule :=
-    procedure(AException: TAtlasDebugException; AIgnore: Boolean)
-    begin
-      AskMessageRule(AException, AIgnore);
-    end;
-  AFrame.Hooks.RemoveMessageRules :=
-    procedure(AClass: string)
-    begin
-      RemoveMessageRules(AClass);
-    end;
   AFrame.Hooks.Clear :=
     procedure
     begin
@@ -548,8 +556,8 @@ begin
       end;
       RefreshWindow;
     end;
+  WireRuleHooks(AFrame);
   AFrame.Stack.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;
-  AFrame.Hooks.MessageRulesOn := TAtlasIdeSettings.Current.DebugExceptionMessageRules;
   AFrame.SetHistory(FHistory, FIgnore);
 end;
 
@@ -606,6 +614,7 @@ begin
     FHistory := TAtlasDebugExceptionHistory.Create;
   end;
   FIgnore := TAtlasDebugIgnoreList.Load(Folder);
+  TAtlasIdeExceptionRules.Bind(RuleStore);
   if FDialog = nil then
   begin
     FDialog := TAtlasIdeExceptionDialog.Create;
@@ -643,6 +652,7 @@ begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
   FListener := nil;
+  TAtlasIdeExceptionRules.Bind(Default(TAtlasExceptionRuleStore));
   FHandlers.Items := nil;
   FCapture.State.Reset;
   TAtlasIdeDebugExceptionsWindow.Release;
@@ -779,37 +789,21 @@ begin
   end;
 end;
 
-class function TAtlasIdeDebugExceptions.AddRule(const ARule: TAtlasExceptionRule): Boolean;
-var
-  mList: TAtlasDebugIgnoreList;
+class function TAtlasIdeDebugExceptions.Rules: TAtlasExceptionRuleList;
 begin
-  mList := FIgnore;
-  Result := mList.AddRule(ARule);
-  if not Result then
-  begin
-    Exit;
-  end;
-  SaveIgnoreList(mList);
-  if Assigned(FMessage) then
-  begin
-    FMessage(TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugMessageRuleSaid,
-      [ARule.ExceptionClass, ARule.Message]));
-  end;
+  Result := FIgnore.Rules;
 end;
 
-class procedure TAtlasIdeDebugExceptions.RemoveMessageRules(const AClass: string);
+class procedure TAtlasIdeDebugExceptions.SetRules(const ARules: TAtlasExceptionRuleList; const ASaid: string);
 var
   mList: TAtlasDebugIgnoreList;
 begin
   mList := FIgnore;
-  if mList.RemoveMessageRules(AClass) = 0 then
-  begin
-    Exit;
-  end;
+  mList.Rules := ARules;
   SaveIgnoreList(mList);
-  if Assigned(FMessage) then
+  if (ASaid <> '') and Assigned(FMessage) then
   begin
-    FMessage(TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugMessageRulesRemovedSaid, [AClass]));
+    FMessage(ASaid);
   end;
 end;
 

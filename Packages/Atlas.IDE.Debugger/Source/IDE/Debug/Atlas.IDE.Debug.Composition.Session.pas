@@ -9,7 +9,8 @@
 //     Atlas.IDE.Debug.Composition.CallStack.
 //   - DebugLeakParts: Leckbericht am Ende der Debug-Sitzung und Fenster „Atlas-Lecks“ (#1875); Serverantworten
 //     über den Scope des Moduls.
-// Dazu die Befehle beider, die Atlas.IDE.Debug.Composition in seine Befehle aufnimmt, und das Thema des Fensters.
+// Dazu die Befehle beider, die Atlas.IDE.Debug.Composition in seine Befehle aufnimmt, das Fenster „Exception-Regeln“
+// (#838) und das Thema des Fensters.
 // Atlas.IDE.Debug.Composition stellt die Teile über den Scope des Moduls bereit.
 
 interface
@@ -19,6 +20,10 @@ uses
 
 /// <summary>Exception-Verlauf, nur eigener Code und Exception-Leiste.</summary>
 function DebugExceptionParts: TArray<IAtlasFeaturePart>;
+/// <summary>Befehl Atlas.DebugExceptionRules: Fenster „Exception-Regeln“ (#838).</summary>
+procedure ShowDebugExceptionRules;
+/// <summary>Befehl „Exception-Regeln“ zeigen? (mit dem Verlauf und einer der beiden Regelarten)</summary>
+function DebugExceptionRulesVisible: Boolean;
 /// <summary>Teile für die Threads eines angehaltenen Programms; Serverantworten des Aufrufstapels über
 /// AScope.</summary>
 function DebugThreadParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
@@ -56,6 +61,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Exceptions,
+  Atlas.IDE.Debug.ExceptionRules,
   Atlas.IDE.Debug.OwnCode,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.IDE.Debug.Deadlocks,
@@ -175,6 +181,17 @@ end;
 function DebugThreadsFrozenVisible: Boolean;
 begin
   Result := DebugThreadsInSourceVisible and TAtlasIdeDebugThreadsInSource.AnyFrozen;
+end;
+
+procedure ShowDebugExceptionRules;
+begin
+  TAtlasIdeExceptionRules.ShowWindow;
+end;
+
+function DebugExceptionRulesVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugExceptionHistory and (TAtlasIdeSettings.Current.DebugExceptionRules or
+    TAtlasIdeSettings.Current.DebugExceptionMessageRules);
 end;
 
 /// <summary>Befehl, dessen Ausführung über TAtlasFeature.Debugger gesichert ist.</summary>

@@ -2740,6 +2740,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionMessageRule.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionMessageRule.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionRuleEdit.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionRuleEdit.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionRuleList.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionRuleList.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointRules.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.BreakpointRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>

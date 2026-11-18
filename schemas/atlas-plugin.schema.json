@@ -2301,6 +2301,20 @@
       "x-captionEn": "Stop or continue exceptions by message text",
       "x-issue": "#2549"
     },
+    "DebugExceptionRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exception-Regeln nach Klasse und Ort: anhalten, nur im Exception-Verlauf vermerken oder still weiterlaufen, je nach der ersten eigenen Methode im Aufrufstapel. Persönliche Regeln (Fenster „Exception-Regeln“) gelten vor denen der Projektdatei .atlas (exceptionRules). „Nur an dieser Stelle ignorieren“ legt eine Regel für die Methode an. Aus = nur die Ignorier-Liste und die Optionen der IDE.",
+      "x-key": "debug.exceptionRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exception-Regeln nach Klasse und Ort",
+      "x-captionEn": "Exception rules by class and place",
+      "x-issue": "#838"
+    },
     "DebugInlineValues": {
       "type": "boolean",
       "default": true,

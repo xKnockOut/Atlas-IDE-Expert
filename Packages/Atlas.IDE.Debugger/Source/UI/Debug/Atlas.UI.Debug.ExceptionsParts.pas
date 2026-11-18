@@ -31,6 +31,7 @@ type
     FMessageRule: TProc<TAtlasDebugException, Boolean>;
     FRemoveMessageRules: TProc<string>;
     FMessageRulesOn: Boolean;
+    FShowRules: TProc;
   public
     /// <summary>Zur Stelle springen; nur für Einträge mit Quelltext.</summary>
     property Open: TProc<TAtlasDebugException> read FOpen write FOpen;
@@ -46,6 +47,8 @@ type
     property RemoveMessageRules: TProc<string> read FRemoveMessageRules write FRemoveMessageRules;
     /// <summary>Menüeinträge der Regeln nach Meldungstext zeigen (debug.exceptionMessageRules).</summary>
     property MessageRulesOn: Boolean read FMessageRulesOn write FMessageRulesOn;
+    /// <summary>Fenster „Exception-Regeln“ (#838); nicht gesetzt: kein Menüeintrag.</summary>
+    property ShowRules: TProc read FShowRules write FShowRules;
   end;
 
   /// <summary>Auswahl der Klasse und Textfilter über der Liste.</summary>

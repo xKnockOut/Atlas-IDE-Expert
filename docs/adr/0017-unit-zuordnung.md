@@ -1061,6 +1061,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.LeaksWindow` | `IDE/Debug/Atlas.IDE.Debug.LeaksWindow.pas` | Andockbares Fenster „Atlas-Lecks“, #1875 |
 | `Atlas.IDE.Debug.Leaks` | `IDE/Debug/Atlas.IDE.Debug.Leaks.pas` | Leckbericht am Ende einer Debug-Sitzung einsammeln, Kandidaten vom Server, Sprung, #1875 |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ExceptionRules` | `IDE/Debug/Atlas.IDE.Debug.ExceptionRules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionDialog` | `IDE/Debug/Atlas.IDE.Debug.ExceptionDialog.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Exceptions` | `IDE/Debug/Atlas.IDE.Debug.Exceptions.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionsWindow` | `IDE/Debug/Atlas.IDE.Debug.ExceptionsWindow.pas` | Ordner `IDE/Debug` |
@@ -1112,6 +1113,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.BreakpointAnchors` | `UI/Debug/Atlas.UI.Debug.BreakpointAnchors.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointRules` | `UI/Debug/Atlas.UI.Debug.BreakpointRules.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionMessageRule` | `UI/Debug/Atlas.UI.Debug.ExceptionMessageRule.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionRuleEdit` | `UI/Debug/Atlas.UI.Debug.ExceptionRuleEdit.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionRuleList` | `UI/Debug/Atlas.UI.Debug.ExceptionRuleList.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointSets` | `UI/Debug/Atlas.UI.Debug.BreakpointSets.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ThreadMarks` | `UI/Debug/Atlas.UI.Debug.ThreadMarks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.AsyncOrigin` | `UI/Debug/Atlas.UI.Debug.AsyncOrigin.pas` | Ordner `UI/Debug` |

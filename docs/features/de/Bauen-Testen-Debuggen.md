@@ -811,6 +811,29 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 
 Einstellungen: `debug.exceptionMessageRules` (Vorgabe an)
 
+#### Exception-Regeln nach Klasse und Ort
+
+- Eine Regel nennt die Klasse, wahlweise den Ort (Methode oder Unit als Muster, z. B. `Bericht.Druck.*` oder `TKunde.*`), wahlweise ein Muster für die Meldung und die Aktion:
+  - Anhalten
+  - Nur protokollieren (grau im Verlauf)
+  - Weiterlaufen (nicht im Verlauf)
+- Der Ort ist die erste eigene Methode im Aufrufstapel; `*` steht für beliebigen Text, Groß-/Kleinschreibung zählt nicht.
+- „Nur an dieser Stelle ignorieren“ in der Exception-Leiste legt dafür eine Regel für die erste eigene Methode an (ohne eigene Methode wie bisher Klasse + Unit + Zeile).
+- Fenster „Exception-Regeln“ (Kontextmenü des Exception-Verlaufs oder Befehlspalette, `Atlas.DebugExceptionRules`):
+  - je Zeile: an/aus, Klasse, Ort, Meldung, Aktion, Herkunft und Treffer der laufenden Debug-Sitzung
+  - Neu, Bearbeiten, Ein/Aus, Löschen, Nach oben/unten; die erste passende Regel gewinnt
+  - persönliche Regeln stehen vor denen des Projekts und lassen sich hier ändern; die des Projekts nur in der Projektdatei („.atlas öffnen“)
+- Persönliche Regeln stehen in `debug-ignore.json` (Feld `rules`), die des Projekts in `.atlas` unter `exceptionRules` und werden eingecheckt:
+
+```json
+"exceptionRules": [{"class": "EConvertError", "location": "Bericht.Druck.*", "action": "continue"}]
+```
+
+  Felder: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`.
+- Die Klasse muss genau passen; Nachfahren zählen nicht mit.
+
+Einstellungen: `debug.exceptionRules` (Vorgabe an); Regeln mit Meldung zusätzlich `debug.exceptionMessageRules`
+
 #### Zugriffsverletzung erklärt
 
 - Hält der Debugger wegen einer Zugriffsverletzung in eigenem Code, zerlegt Atlas die Anweisungen der Zeile in Zugriffsketten (`Auftrag.Kunde.Adresse.Ort`, `Liste[I].Name`, `Self.FDaten^`) und wertet sie von links aus.

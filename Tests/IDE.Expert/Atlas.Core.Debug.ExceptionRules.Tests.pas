@@ -43,6 +43,14 @@ type
     procedure ParseDropsBrokenRules;
     [Test]
     procedure OwnFrameGivesRoutineAndUnit;
+    [Test]
+    procedure PlaceRulesOnlyWhenWanted;
+    [Test]
+    procedure PersonalBeforeProject;
+    [Test]
+    procedure MoveChangesOrder;
+    [Test]
+    procedure HitsPerRule;
   end;
 
 implementation
@@ -56,6 +64,7 @@ uses
 const
   cClass = 'EKonfigFehler';
   cUnknownKey = 'Schlüssel unbekannt: ''Farbe'' in Zeile 12';
+  cAll = [TAtlasExceptionRuleKind.Message, TAtlasExceptionRuleKind.Place];
 
 function Facts(const AMessage: string): TAtlasExceptionFacts;
 begin
@@ -142,12 +151,12 @@ begin
     Rule('Schlüssel', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Stop),
     Rule('unbekannt', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Log),
     Rule('', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Continue));
-  Assert.AreEqual(0, TAtlasExceptionRules.FirstMatch(mRules, Facts(cUnknownKey), True));
+  Assert.AreEqual(0, TAtlasExceptionRules.FirstMatch(mRules, Facts(cUnknownKey), cAll));
   mRules[0].Enabled := False;
-  Assert.AreEqual(1, TAtlasExceptionRules.FirstMatch(mRules, Facts(cUnknownKey), True), 'ausgeschaltete zählt nicht');
-  Assert.AreEqual(2, TAtlasExceptionRules.FirstMatch(mRules, Facts('Datei fehlt'), True));
-  Assert.AreEqual(-1, TAtlasExceptionRules.FirstMatch(mRules, TAtlasExceptionFacts.Create('EAndere', 'x', ''), True));
-  Assert.AreEqual(-1, TAtlasExceptionRules.FirstMatch(nil, Facts(cUnknownKey), True), 'ohne Regeln');
+  Assert.AreEqual(1, TAtlasExceptionRules.FirstMatch(mRules, Facts(cUnknownKey), cAll), 'ausgeschaltete zählt nicht');
+  Assert.AreEqual(2, TAtlasExceptionRules.FirstMatch(mRules, Facts('Datei fehlt'), cAll));
+  Assert.AreEqual(-1, TAtlasExceptionRules.FirstMatch(mRules, TAtlasExceptionFacts.Create('EAndere', 'x', ''), cAll));
+  Assert.AreEqual(-1, TAtlasExceptionRules.FirstMatch(nil, Facts(cUnknownKey), cAll), 'ohne Regeln');
 end;
 
 procedure TAtlasExceptionRulesTests.MessageRulesOffWhenSwitchedOff;
@@ -157,7 +166,7 @@ begin
   mRules := TAtlasExceptionRuleList.Create(
     Rule('Schlüssel', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Log),
     Rule('', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Stop));
-  Assert.AreEqual(1, TAtlasExceptionRules.FirstMatch(mRules, Facts(cUnknownKey), False));
+  Assert.AreEqual(1, TAtlasExceptionRules.FirstMatch(mRules, Facts(cUnknownKey), [TAtlasExceptionRuleKind.Place]));
 end;
 
 procedure TAtlasExceptionRulesTests.LocationNarrowsRule;
@@ -264,6 +273,73 @@ begin
   Assert.AreEqual('', TAtlasExceptionRules.OwnUnit(nil));
   Assert.AreEqual('Kunden.Import', TAtlasExceptionRules.UnitOfFile('Src/Kunden.Import.pas'));
   Assert.AreEqual('', TAtlasExceptionRules.UnitOfFile(''));
+end;
+
+procedure TAtlasExceptionRulesTests.PlaceRulesOnlyWhenWanted;
+var
+  mRules: TAtlasExceptionRuleList;
+  mPlace: TAtlasExceptionRule;
+begin
+  // EConvertError in Bericht.Druck weiterlaufen lassen, in Kunde.Import halten.
+  mPlace := TAtlasExceptionRule.Create('EConvertError', '', TAtlasMessageMatch.Matches,
+    TAtlasExceptionAction.Continue);
+  mPlace.Location := 'Bericht.Druck.*';
+  mRules := TAtlasExceptionRuleList.Create(mPlace);
+  Assert.AreEqual(Ord(TAtlasExceptionRuleKind.Place), Ord(mPlace.Kind));
+  Assert.IsTrue(TAtlasExceptionRules.Kinds(True, True) = cAll);
+  Assert.IsTrue(TAtlasExceptionRules.Kinds(False, False) = []);
+  Assert.AreEqual(0, TAtlasExceptionRules.FirstMatch(mRules, TAtlasExceptionFacts.Create('EConvertError', 'x',
+    'Bericht.Druck.TDruck.Zeile'), cAll));
+  Assert.AreEqual(-1, TAtlasExceptionRules.FirstMatch(mRules, TAtlasExceptionFacts.Create('EConvertError', 'x',
+    'Kunde.Import.TImport.Lies'), cAll));
+  Assert.AreEqual(-1, TAtlasExceptionRules.FirstMatch(mRules, TAtlasExceptionFacts.Create('EConvertError', 'x',
+    'Bericht.Druck.TDruck.Zeile'), [TAtlasExceptionRuleKind.Message]), 'debug.exceptionRules aus');
+end;
+
+procedure TAtlasExceptionRulesTests.PersonalBeforeProject;
+var
+  mAll: TAtlasExceptionRuleList;
+begin
+  mAll := TAtlasExceptionRules.Combined(
+    TAtlasExceptionRuleList.Create(Rule('', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Stop)),
+    TAtlasExceptionRuleList.Create(Rule('', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Continue)));
+  Assert.AreEqual(2, Integer(Length(mAll)));
+  Assert.AreEqual(Ord(TAtlasExceptionRuleOrigin.Personal), Ord(mAll[0].Origin));
+  Assert.AreEqual(Ord(TAtlasExceptionRuleOrigin.Project), Ord(mAll[1].Origin));
+  Assert.AreEqual(0, TAtlasExceptionRules.FirstMatch(mAll, Facts('x'), cAll), 'persönliche Regel zuerst');
+  Assert.AreNotEqual(mAll[0].Key, mAll[1].Key, 'Herkunft gehört zum Schlüssel');
+end;
+
+procedure TAtlasExceptionRulesTests.MoveChangesOrder;
+var
+  mRules, mOld: TAtlasExceptionRuleList;
+begin
+  mRules := TAtlasExceptionRuleList.Create(Rule('a', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Log),
+    Rule('b', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Log),
+    Rule('c', TAtlasMessageMatch.Matches, TAtlasExceptionAction.Log));
+  mOld := mRules;
+  Assert.IsTrue(TAtlasExceptionRules.MoveRule(mRules, 2, -2));
+  Assert.AreEqual('c', mRules[0].Message);
+  Assert.AreEqual('a', mRules[1].Message);
+  Assert.AreEqual('a', mOld[0].Message, 'geteiltes Array unverändert');
+  Assert.IsFalse(TAtlasExceptionRules.MoveRule(mRules, 0, -1), 'über den Anfang');
+  Assert.IsFalse(TAtlasExceptionRules.MoveRule(mRules, 2, 1), 'über das Ende');
+  Assert.IsFalse(TAtlasExceptionRules.MoveRule(mRules, 1, 0));
+end;
+
+procedure TAtlasExceptionRulesTests.HitsPerRule;
+var
+  mHits: TAtlasExceptionRuleHits;
+begin
+  mHits := Default(TAtlasExceptionRuleHits);
+  mHits.Add('a');
+  mHits.Add('b');
+  mHits.Add('a');
+  Assert.AreEqual(2, mHits.CountOf('a'));
+  Assert.AreEqual(1, mHits.CountOf('b'));
+  Assert.AreEqual(0, mHits.CountOf('c'));
+  mHits.Clear;
+  Assert.AreEqual(0, mHits.CountOf('a'));
 end;
 
 initialization

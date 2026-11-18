@@ -29,7 +29,14 @@ type
   {$SCOPEDENUMS ON}
   TAtlasExceptionAction = (Stop, Log, Continue);
   TAtlasMessageMatch = (Matches, NotMatches);
+  /// <summary>Regel mit Muster für die Meldung (#2549, debug.exceptionMessageRules) bzw. nur nach Klasse und Ort
+  /// (#838, debug.exceptionRules).</summary>
+  TAtlasExceptionRuleKind = (Message, Place);
+  /// <summary>Persönlich (debug-ignore.json) oder aus der Projektdatei .atlas (für alle im Team).</summary>
+  TAtlasExceptionRuleOrigin = (Personal, Project);
   {$SCOPEDENUMS OFF}
+
+  TAtlasExceptionRuleKinds = set of TAtlasExceptionRuleKind;
 
   /// <summary>Was beim Halt über die Exception bekannt ist.</summary>
   TAtlasExceptionFacts = record
@@ -50,14 +57,28 @@ type
     Location: string;
     Action: TAtlasExceptionAction;
     Enabled: Boolean;
+    /// <summary>Nicht in der Datei; setzt Combined.</summary>
+    Origin: TAtlasExceptionRuleOrigin;
     class function Create(const AClass, AMessage: string; AMatch: TAtlasMessageMatch;
       AAction: TAtlasExceptionAction): TAtlasExceptionRule; static;
     function HasMessage: Boolean;
     function SameCriteria(const AOther: TAtlasExceptionRule): Boolean;
     function Matches(const AFacts: TAtlasExceptionFacts): Boolean;
+    function Kind: TAtlasExceptionRuleKind;
+    /// <summary>Schlüssel für die Treffer der Sitzung: Herkunft und Bedingungen.</summary>
+    function Key: string;
   end;
 
   TAtlasExceptionRuleList = TArray<TAtlasExceptionRule>;
+
+  /// <summary>Treffer je Regel in der laufenden Sitzung (Schlüssel aus TAtlasExceptionRule.Key).</summary>
+  TAtlasExceptionRuleHits = record
+    Keys: TArray<string>;
+    Counts: TArray<Integer>;
+    procedure Add(const AKey: string);
+    function CountOf(const AKey: string): Integer;
+    procedure Clear;
+  end;
 
   TAtlasExceptionRules = class
   public
@@ -68,10 +89,15 @@ type
     class function ValidPattern(const APattern: string; ARegex: Boolean; out AError: string): Boolean; static;
     /// <summary>Vorschlag aus einer Meldung: Zahlen, Adressen und Texte in Hochkommas werden zu *.</summary>
     class function SuggestPattern(const AMessage: string): string; static;
-    /// <summary>Index der ersten eingeschalteten Regel, die passt; -1 ohne. AWithMessages False: Regeln mit
-    /// Meldung zählen nicht (debug.exceptionMessageRules aus).</summary>
+    /// <summary>Index der ersten eingeschalteten Regel einer der Arten AKinds, die passt; -1 ohne.</summary>
     class function FirstMatch(const ARules: TAtlasExceptionRuleList; const AFacts: TAtlasExceptionFacts;
-      AWithMessages: Boolean): Integer; static;
+      AKinds: TAtlasExceptionRuleKinds): Integer; static;
+    /// <summary>Arten nach den Schaltern debug.exceptionMessageRules und debug.exceptionRules.</summary>
+    class function Kinds(AMessages, APlaces: Boolean): TAtlasExceptionRuleKinds; static;
+    /// <summary>Persönliche Regeln vor denen des Projekts, mit gesetzter Herkunft.</summary>
+    class function Combined(const APersonal, AProject: TAtlasExceptionRuleList): TAtlasExceptionRuleList; static;
+    /// <summary>Regel AIndex um ADelta Plätze verschieben (Reihenfolge = Vorrang); False außerhalb.</summary>
+    class function MoveRule(var ARules: TAtlasExceptionRuleList; AIndex, ADelta: Integer): Boolean; static;
     /// <summary>Regel hinzufügen; eine mit gleichen Bedingungen wird ersetzt. True bei einer Änderung.</summary>
     class function Put(var ARules: TAtlasExceptionRuleList; const ARule: TAtlasExceptionRule): Boolean; static;
     class function ToJson(const ARules: TAtlasExceptionRuleList): TJSONArray; static;
@@ -147,6 +173,59 @@ begin
     Result := (AFacts.Message <> '') and (TAtlasExceptionRules.MessageMatches(Message, Regex, AFacts.Message) =
       (MessageMatch = TAtlasMessageMatch.Matches));
   end;
+end;
+
+function TAtlasExceptionRule.Kind: TAtlasExceptionRuleKind;
+begin
+  Result := TAtlasExceptionRuleKind.Place;
+  if HasMessage then
+  begin
+    Result := TAtlasExceptionRuleKind.Message;
+  end;
+end;
+
+function TAtlasExceptionRule.Key: string;
+begin
+  Result := Format('%d|%s|%s|%d|%d|%s', [Ord(Origin), LowerCase(ExceptionClass), Message, Ord(Regex),
+    Ord(MessageMatch), LowerCase(Location)]);
+end;
+
+{ TAtlasExceptionRuleHits }
+
+procedure TAtlasExceptionRuleHits.Add(const AKey: string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Keys) do
+  begin
+    if Keys[mIndex] = AKey then
+    begin
+      Inc(Counts[mIndex]);
+      Exit;
+    end;
+  end;
+  Keys := Keys + [AKey];
+  Counts := Counts + [1];
+end;
+
+function TAtlasExceptionRuleHits.CountOf(const AKey: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Keys) do
+  begin
+    if Keys[mIndex] = AKey then
+    begin
+      Exit(Counts[mIndex]);
+    end;
+  end;
+  Result := 0;
+end;
+
+procedure TAtlasExceptionRuleHits.Clear;
+begin
+  Keys := nil;
+  Counts := nil;
 end;
 
 { TAtlasExceptionRules }
@@ -245,18 +324,68 @@ begin
 end;
 
 class function TAtlasExceptionRules.FirstMatch(const ARules: TAtlasExceptionRuleList;
-  const AFacts: TAtlasExceptionFacts; AWithMessages: Boolean): Integer;
+  const AFacts: TAtlasExceptionFacts; AKinds: TAtlasExceptionRuleKinds): Integer;
 var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(ARules) do
   begin
-    if (AWithMessages or not ARules[mIndex].HasMessage) and ARules[mIndex].Matches(AFacts) then
+    if (ARules[mIndex].Kind in AKinds) and ARules[mIndex].Matches(AFacts) then
     begin
       Exit(mIndex);
     end;
   end;
   Result := -1;
+end;
+
+class function TAtlasExceptionRules.Kinds(AMessages, APlaces: Boolean): TAtlasExceptionRuleKinds;
+begin
+  Result := [];
+  if AMessages then
+  begin
+    Include(Result, TAtlasExceptionRuleKind.Message);
+  end;
+  if APlaces then
+  begin
+    Include(Result, TAtlasExceptionRuleKind.Place);
+  end;
+end;
+
+class function TAtlasExceptionRules.Combined(const APersonal, AProject: TAtlasExceptionRuleList):
+  TAtlasExceptionRuleList;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(APersonal) + Length(AProject));
+  for mIndex := 0 to High(APersonal) do
+  begin
+    Result[mIndex] := APersonal[mIndex];
+    Result[mIndex].Origin := TAtlasExceptionRuleOrigin.Personal;
+  end;
+  for mIndex := 0 to High(AProject) do
+  begin
+    Result[Length(APersonal) + mIndex] := AProject[mIndex];
+    Result[Length(APersonal) + mIndex].Origin := TAtlasExceptionRuleOrigin.Project;
+  end;
+end;
+
+class function TAtlasExceptionRules.MoveRule(var ARules: TAtlasExceptionRuleList; AIndex, ADelta: Integer): Boolean;
+var
+  mTarget: Integer;
+  mRule: TAtlasExceptionRule;
+begin
+  mTarget := AIndex + ADelta;
+  Result := (ADelta <> 0) and (AIndex >= 0) and (AIndex <= High(ARules)) and (mTarget >= 0) and
+    (mTarget <= High(ARules));
+  if not Result then
+  begin
+    Exit;
+  end;
+  ARules := Copy(ARules);
+  mRule := ARules[AIndex];
+  Delete(ARules, AIndex, 1);
+  Insert(mRule, ARules, mTarget);
 end;
 
 class function TAtlasExceptionRules.Put(var ARules: TAtlasExceptionRuleList; const ARule: TAtlasExceptionRule): Boolean;
