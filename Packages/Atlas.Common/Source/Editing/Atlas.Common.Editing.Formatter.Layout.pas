@@ -47,6 +47,7 @@ uses
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 type
@@ -123,11 +124,6 @@ type
 const
   cWrapOperators: array[0..11] of string = ('+', '-', '*', '/', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr',
     '<>');
-
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
-end;
 
 /// <summary>Tokens je Zeile (Zeile des Anfangs).</summary>
 function TokensByLine(const ATokens: TArray<TPascalToken>; ACount: Integer): TArray<TArray<Integer>>;

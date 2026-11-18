@@ -742,6 +742,16 @@ Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
 
+## Debug: debug note (#582)
+
+- “Capture debug state” in the Atlas menu and in the command palette, only while the debugger is paused
+- The Markdown note holds time, project, location with source line, call stack, local variables, the project's watches, the exception and the last lines of the event log
+- Values are cut to one line and 200 characters; values that are still missing or cannot be read say so; after 5 seconds the note is finished without the missing values
+- Passwords and keys in the event log and variables with such names appear masked
+- The note goes to the clipboard and, with `debug.note.saveFile`, into a file under `debug-notes` (German IDE: `debug-notizen`) next to the project
+
+Settings: `debug.note`, `debug.note.saveFile`
+
 ## Debug: leak and crash reports (#74)
 
 - Copy a report, then Atlas > “Paste crash or leak report …” (also in the command palette): Atlas reads FastMM logs (FullDebugMode), the `ReportMemoryLeaksOnShutdown` message, reports from madExcept, EurekaLog 6/7 and JclDebug, and an exception message on its own (“Access violation at address … in module …”)

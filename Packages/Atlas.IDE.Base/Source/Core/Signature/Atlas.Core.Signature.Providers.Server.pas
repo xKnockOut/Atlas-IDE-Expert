@@ -9,9 +9,9 @@
 //.
 // Abgleich ohne Zeitlimit-Arbeiter: Sync legt die Nachricht nur in die
 // Schreibwarteschlange (TLspServerProcess schreibt in einem eigenen Thread)
-// und wartet nie auf den Server. Früher lief Sync mit 200 ms Zeitlimit, und
-// drei Überschreitungen auf einem beschäftigten Rechner schalteten den
-// Parameter-Hint ab, obwohl nichts kaputt war. Dauert der Abgleich trotzdem
+// und wartet nie auf den Server. Mit einem Zeitlimit (etwa 200 ms) schalteten
+// drei Überschreitungen auf einem beschäftigten Rechner den Parameter-Hint ab,
+// obwohl nichts kaputt ist. Dauert der Abgleich trotzdem
 // länger als TAtlasTimeLimit.LimitMs, steht das als „langsam“ im Protokoll.
 // Absturzsicherheit (#493): Fehler zählt die Sicherung der Quelle
 // ProviderTitle, die nach 3 Fehlern in 5 Minuten nur den Parameter-Hint
