@@ -46,6 +46,8 @@ type
     FLimitsFor: TFunc<TMcpBatchLimits>;
     function RunPart(const ACall: TJSONValue): TMcpBatchPart;
     function Limits: TMcpBatchLimits;
+    class function StopReason(const ALimits: TMcpBatchLimits; AElapsedMs: Int64): string; static;
+    class function SkippedPart(const ACall: TJSONValue; const AReason: string): TMcpBatchPart; static;
   public
     constructor Create(AServer: TMcpServer);
     /// <summary>Führt die Aufrufe in ACalls aus (Liste aus {tool, args}); EMcpToolError bei leerer oder zu langer
@@ -167,12 +169,40 @@ begin
   try
     Result.Ok := FServer.InvokeTool(Result.Tool, mArguments, Result.Text);
   except
+    on EAbort do
+      raise;
+    // lsp-ignore: catch-all-without-raise -- der Fehler steht als Antwort in seinem Abschnitt
     on E: Exception do
     begin
       Result.Ok := False;
       Result.Text := E.Message;
     end;
   end;
+end;
+
+/// <summary>Grund, den Rest nicht mehr auszuführen: Abbruch des Clients oder Zeitlimit; '' = weiter.</summary>
+class function TMcpBatchTool.StopReason(const ALimits: TMcpBatchLimits; AElapsedMs: Int64): string;
+begin
+  Result := '';
+  if Assigned(ALimits.Cancelled) and ALimits.Cancelled() then
+  begin
+    Result := cTexts[TBatchText.Cancelled].Text;
+  end
+  else if (ALimits.TimeoutMs > 0) and (AElapsedMs >= ALimits.TimeoutMs) then
+  begin
+    Result := cTexts[TBatchText.TimeLimit].Fmt([ALimits.TimeoutMs]);
+  end;
+end;
+
+class function TMcpBatchTool.SkippedPart(const ACall: TJSONValue; const AReason: string): TMcpBatchPart;
+begin
+  Result := Default(TMcpBatchPart);
+  if (ACall is TJSONObject) and (TJSONObject(ACall).GetValue('tool') <> nil) then
+  begin
+    Result.Tool := TJSONObject(ACall).GetValue('tool').Value;
+  end;
+  Result.Skipped := True;
+  Result.Text := AReason;
 end;
 
 function TMcpBatchTool.Run(const ACalls: TJSONArray; out AElapsedMs: Int64): TArray<TMcpBatchPart>;
@@ -196,26 +226,18 @@ begin
   mStop := '';
   for mIndex := 0 to ACalls.Count - 1 do
   begin
-    if (mStop = '') and Assigned(mLimits.Cancelled) and mLimits.Cancelled() then
+    if mStop = '' then
     begin
-      mStop := cTexts[TBatchText.Cancelled].Text;
-    end;
-    if (mStop = '') and (mLimits.TimeoutMs > 0) and (mWatch.ElapsedMilliseconds >= mLimits.TimeoutMs) then
-    begin
-      mStop := cTexts[TBatchText.TimeLimit].Fmt([mLimits.TimeoutMs]);
+      mStop := StopReason(mLimits, mWatch.ElapsedMilliseconds);
     end;
     if mStop <> '' then
     begin
-      Result[mIndex] := Default(TMcpBatchPart);
-      if (ACalls.Items[mIndex] is TJSONObject) and (TJSONObject(ACalls.Items[mIndex]).GetValue('tool') <> nil) then
-      begin
-        Result[mIndex].Tool := TJSONObject(ACalls.Items[mIndex]).GetValue('tool').Value;
-      end;
-      Result[mIndex].Skipped := True;
-      Result[mIndex].Text := mStop;
-      Continue;
+      Result[mIndex] := SkippedPart(ACalls.Items[mIndex], mStop);
+    end
+    else
+    begin
+      Result[mIndex] := RunPart(ACalls.Items[mIndex]);
     end;
-    Result[mIndex] := RunPart(ACalls.Items[mIndex]);
   end;
   AElapsedMs := mWatch.ElapsedMilliseconds;
   Shorten(Result, cMaxTotal);
@@ -273,8 +295,8 @@ var
 begin
   mLines := TStringList.Create;
   try
-    mLines.Add(cTexts[TBatchText.Header].Fmt([FormatDateTime(cIndexTimeFormat, AIndexTime), Length(AParts),
-      AElapsedMs]));
+    mLines.Add(cTexts[TBatchText.Header].Fmt([FormatDateTime(cIndexTimeFormat, AIndexTime,
+      TFormatSettings.Invariant), Length(AParts), AElapsedMs]));
     for mIndex := 0 to High(AParts) do
     begin
       mPart := AParts[mIndex];
@@ -305,7 +327,7 @@ begin
   mRoot := TJSONObject.Create;
   try
     mRoot.AddPair('format', 'json');
-    mRoot.AddPair('indexTime', FormatDateTime(cIndexTimeFormat, AIndexTime));
+    mRoot.AddPair('indexTime', FormatDateTime(cIndexTimeFormat, AIndexTime, TFormatSettings.Invariant));
     mRoot.AddPair('elapsedMs', TJSONNumber.Create(AElapsedMs));
     mCalls := TJSONArray.Create;
     mRoot.AddPair('calls', mCalls);
