@@ -757,9 +757,9 @@ var
   mChecksumAt, mTextCount: Integer;
   mCapacity: Int64;
 begin
-  // Speicher (Rückmeldung 22.10.2026, 3 GB bei acht Projekten): Früher wuchs der Rumpf in einem eigenen
-  // Puffer bis auf das Doppelte, wurde hinter die Tabelle kopiert und am Ende noch einmal kopiert; das
-  // kostete kurzzeitig das Vier- bis Fünffache der Datei. Jetzt zählt ein erster Lauf nur die Bytes und
+  // Speicher (gemessen 3 GB bei acht Projekten): Wächst der Rumpf in einem eigenen
+  // Puffer bis auf das Doppelte, wird hinter die Tabelle kopiert und am Ende noch einmal kopiert, kostet
+  // das kurzzeitig das Vier- bis Fünffache der Datei. Deshalb zählt ein erster Lauf nur die Bytes und
   // füllt die Tabelle, der zweite schreibt in einen Puffer genau passender Größe, der ohne Kopie das
   // Ergebnis wird.
   mTable := TStringTable.Create;

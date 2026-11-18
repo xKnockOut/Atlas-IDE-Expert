@@ -2,7 +2,7 @@
 
 // Vervollständigung aus der Formulardatei: Komponenten des Formulars (#455), "Sender." in Ereignisbehandlern
 // (#480) und Feld- bzw. Parameternamen in FieldByName und Verwandten (#461). Dazu der Zugriff auf die
-// Formulare mit und ohne Zwischenspeicher. Aus Atlas.Common.Lsp.Completion herausgelöst.
+// Formulare mit und ohne Zwischenspeicher. Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

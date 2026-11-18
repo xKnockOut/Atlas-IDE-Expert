@@ -40,7 +40,7 @@ var
 begin
   FillChar(mWerte, SizeOf(mWerte), 0);
   Sortiere(Slice(mWerte, 2)); // IV3: Slice eines statischen Arrays
-  Fuelle(Slice(mWerte, 2)); // IV4 (vorher VG1): Slice an einen out-Parameter
+  Fuelle(Slice(mWerte, 2)); // IV4: Slice an einen out-Parameter
 end;
 
 end.

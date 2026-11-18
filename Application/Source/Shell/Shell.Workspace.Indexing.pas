@@ -123,8 +123,8 @@ const
   /// <summary>So lange wartet ein lesender Prozess höchstens auf den Cache des schreibenden (#62).</summary>
   cCacheWaitMs = 120000;
 
-/// <summary>Neu eingelesene Units nach Grund und belegter Speicher, fürs Diagnoselog (Rückmeldung
-/// 22.10.2026).</summary>
+/// <summary>Neu eingelesene Units nach Grund und belegter Speicher, fürs Diagnoselog.
+/// </summary>
 function MissText(const AResult: TIndexBuildResult): string;
 begin
   Result := Format(' new %d changed %d includes %d usages %d compact %d damaged %d mem %d MB',
@@ -270,7 +270,7 @@ end;
 
 procedure TShellWorkspaceIndexing.CacheWritten(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64);
 begin
-  // Wie oft und wie groß geschrieben wird (Rückmeldung 22.10.2026); ohne Pfad. Das Zeilenformat ist festgelegt
+  // Wie oft und wie groß geschrieben wird; ohne Pfad. Das Zeilenformat ist festgelegt
   // (#1478, docs/Diagnose.md): Einheiten außer „MB“ am Ende klein, damit ^\S+ index project#\d+ \w+ [\d a-z]+ mem \d+
   // MB$
   // jede Speicherzeile trifft.
@@ -283,7 +283,7 @@ procedure TShellWorkspaceIndexing.CacheRejected(const AFileName, AReason: string
 begin
   // Still neu aufbauen (#492): nur ins Log, keine Meldung an den Benutzer. Ohne Pfad: Das Log bleibt
   // anonym (der Cache liegt im Benutzerprofil). Welcher Cache und warum, steht auch im Diagnose-Log: Ohne
-  // Grund war nicht zu sehen, warum ein Rechner bei jedem Start alles neu aufbaut (29.10.2026). Die Gründe
+  // Grund ist nicht zu sehen, warum ein Rechner bei jedem Start alles neu aufbaut. Die Gründe
   // von TIndexCache.ReadEntries enthalten keinen Pfad.
   FParts.Logger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
   IndexEvent(Format('index project#%d cache rejected %s reason %s', [FParts.Setup.Priority,
@@ -295,7 +295,8 @@ procedure TShellWorkspaceIndexing.CacheNotWritten(const AFileName, AReason: stri
 var
   mKind: string;
 begin
-  // Früher still. Der nächste Aufbau liest die fehlenden Units neu; ohne Pfad ins Log.
+  // Nicht still, sonst bleibt unklar, warum Units fehlen. Der nächste Aufbau liest die fehlenden Units neu;
+  // ohne Pfad ins Log.
   mKind := CacheKindOf(AFileName, 'Projekt', 'Bibliothek', 'Suchpfade');
   FParts.Logger.Warning(Format('Index-Cache (%s) nicht geschrieben: %s', [mKind, AReason]));
   IndexEvent('index cache not written ' + mKind);
