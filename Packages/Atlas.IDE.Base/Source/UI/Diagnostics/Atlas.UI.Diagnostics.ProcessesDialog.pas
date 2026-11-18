@@ -140,11 +140,11 @@ begin
 end;
 
 /// <summary>Zeile „Name  Wert“ ab ATop; liefert die Beschriftung des Werts.</summary>
-function NewRow(AOwner: TComponent; AParent: TWinControl; ACaption: TAtlasTextId; ATop: Integer): TLabel;
+function NewRow(AOwner: TComponent; AParent: TWinControl; ACaption: TAtlasDiagnosticsTextId; ATop: Integer): TLabel;
 var
   mName: TLabel;
 begin
-  mName := NewLabel(AOwner, AParent, TAtlasStrings.Text(ACaption));
+  mName := NewLabel(AOwner, AParent, TAtlasDiagnosticsStrings.Text(ACaption));
   mName.SetBounds(TAtlasProcessesDialog.cGap, ATop + 2, TAtlasProcessesDialog.cLabelWidth, 18);
   mName.Font.Color := clGrayText;
   Result := NewLabel(AOwner, AParent, '');
@@ -183,12 +183,12 @@ begin
   Result.RowSelect := True;
 end;
 
-procedure AddColumn(AList: TListView; ACaption: TAtlasTextId; AWidth: Integer);
+procedure AddColumn(AList: TListView; ACaption: TAtlasDiagnosticsTextId; AWidth: Integer);
 var
   mColumn: TListColumn;
 begin
   mColumn := AList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(ACaption);
+  mColumn.Caption := TAtlasDiagnosticsStrings.Text(ACaption);
   mColumn.Width := AWidth;
 end;
 
@@ -272,12 +272,12 @@ begin
   // Cache, Sperre, Stand.
   mInfo := NewPanel(Self, alTop, 3 * 22 + cGap);
   mInfo.Top := mHead.Top + mHead.Height;
-  FParts.CacheValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesCache, 0);
-  FParts.LockValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesLock, 22);
+  FParts.CacheValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesCache, 0);
+  FParts.LockValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesLock, 22);
   FParts.WriterTag := NewLabel(Self, mInfo, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesWrites));
   FParts.WriterTag.Font.Style := [fsBold];
   FParts.WriterTag.Visible := False;
-  FParts.StateValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesState, 44);
+  FParts.StateValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesState, 44);
 end;
 
 procedure TAtlasProcessesDialog.CreateFoot;
@@ -330,9 +330,9 @@ begin
   FParts.DirtyNote.Align := alBottom;
   FParts.Dirty := NewList(Self, mBox);
   FParts.Dirty.Margins.SetBounds(cGap, 2, cGap, 2);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyFile, 260);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyIde, 180);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyMcp, 180);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyFile, 260);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyIde, 180);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyMcp, 180);
 end;
 
 procedure TAtlasProcessesDialog.CreateList;
@@ -350,9 +350,9 @@ begin
 
   FParts.List := NewList(Self, Self);
   FParts.List.Margins.SetBounds(cGap, 0, cGap, 0);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnKind, 60);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnClient, 380);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnState, 160);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnKind, 60);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnClient, 380);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnState, 160);
 end;
 
 procedure TAtlasProcessesDialog.ChoiceChange(Sender: TObject);

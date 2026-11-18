@@ -26,8 +26,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.UI.Strings,
-  Atlas.UI.Diagnostics.Grid;
+  Atlas.UI.Diagnostics.Grid,
+  Atlas.UI.Diagnostics.Strings;
 
 type
 {$SCOPEDENUMS ON}
@@ -87,7 +87,7 @@ type
     FArranging: Boolean;
     /// <summary>Breite der Knöpfe nebeneinander; in der zweiten Zeile ist FButtons so breit wie die Leiste.</summary>
     FButtonsWidth: Integer;
-    function NewButton(AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
+    function NewButton(AId: TAtlasDiagnosticsTextId; AClick: TNotifyEvent): TButton;
     function NewLabel: TLabel;
     function RowHeight: Integer;
     function InfoWidth: Integer;
@@ -152,7 +152,6 @@ implementation
 
 uses
   Atlas.Core.Style.Color,
-  Atlas.UI.Diagnostics.Strings,
   Winapi.Windows,
   Atlas.Core.Diagnostics.PluginReport;
 
@@ -328,9 +327,9 @@ begin
   FButtons.ParentBackground := True;
   FButtons.Align := alRight;
   // alRight von rechts nach links: Kopieren, Zurücksetzen, Anhalten.
-  FCopy := NewButton(TAtlasTextId.DiagnosticCopy, CopyClick);
-  FReset := NewButton(TAtlasTextId.DiagReset, ResetClick);
-  FPause := NewButton(TAtlasTextId.DiagPause, PauseClick);
+  FCopy := NewButton(TAtlasDiagnosticsTextId.DiagnosticCopy, CopyClick);
+  FReset := NewButton(TAtlasDiagnosticsTextId.DiagReset, ResetClick);
+  FPause := NewButton(TAtlasDiagnosticsTextId.DiagPause, PauseClick);
   // alLeft in Reihenfolge der Left-Werte: Belegung, Verlauf, Schwelle, Hinweis.
   FBusy := NewLabel;
   FSpark := TAtlasBusySpark.Create(Self);
@@ -361,14 +360,14 @@ begin
   Arrange;
 end;
 
-function TAtlasDiagnosticBar.NewButton(AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
+function TAtlasDiagnosticBar.NewButton(AId: TAtlasDiagnosticsTextId; AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(Self);
   Result.Parent := FButtons;
   Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Width := MulDiv(110, CurrentPPI, 96);
-  Result.Caption := TAtlasStrings.Text(AId);
+  Result.Caption := TAtlasDiagnosticsStrings.Text(AId);
   Result.OnClick := AClick;
 end;
 
@@ -467,7 +466,7 @@ begin
   FBusy.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagBusy, [Length(ASnapshot.Busy),
     TAtlasPluginRows.Percent(ASnapshot.BusyPercent)]);
   FThreshold.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagThreshold, [ASnapshot.ThresholdMs]);
-  FPause.Caption := TAtlasStrings.Text(TAtlasTextId.DiagPause);
+  FPause.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagPause);
   if FPaused then
   begin
     FPause.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagResume);

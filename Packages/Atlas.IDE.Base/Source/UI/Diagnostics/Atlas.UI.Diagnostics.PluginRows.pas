@@ -40,16 +40,17 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings;
 
 const
   cNoValue = '–';
   /// <summary>Spalten des Reiters „Server“: Anfrage, Anzahl, Mittel, Maximum, wartend, Hauptthread Ø,
   /// Zeitüberschreitung, abgebrochen, gescheitert.</summary>
-  cRequestColumnIds: array[0..8] of TAtlasTextId = (TAtlasTextId.DiagColRequest, TAtlasTextId.DiagColCount,
-    TAtlasTextId.DiagColMean, TAtlasTextId.DiagColMax, TAtlasTextId.DiagColWaitedCount, TAtlasTextId.DiagColWaited,
-    TAtlasTextId.DiagColTimedOut, TAtlasTextId.DiagColCancelled, TAtlasTextId.DiagColFailed);
+  cRequestColumnIds: array[0..8] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColRequest,
+    TAtlasDiagnosticsTextId.DiagColCount, TAtlasDiagnosticsTextId.DiagColMean, TAtlasDiagnosticsTextId.DiagColMax,
+    TAtlasDiagnosticsTextId.DiagColWaitedCount, TAtlasDiagnosticsTextId.DiagColWaited,
+    TAtlasDiagnosticsTextId.DiagColTimedOut, TAtlasDiagnosticsTextId.DiagColCancelled,
+    TAtlasDiagnosticsTextId.DiagColFailed);
   /// <summary>Breiten dazu (vor dem Skalieren); 0: Rest der Breite.</summary>
   cRequestColumnWidths: array[0..8] of Integer = (0, 64, 72, 72, 110, 130, 120, 90, 60);
   cWaitedMeanColumn = 5;
@@ -78,9 +79,9 @@ begin
   end;
 end;
 
-function Column(AId: TAtlasTextId; AWidth: Integer; ARight: Boolean): TAtlasGridColumn;
+function Column(AId: TAtlasDiagnosticsTextId; AWidth: Integer; ARight: Boolean): TAtlasGridColumn;
 begin
-  Result := TAtlasGridColumn.Make(TAtlasStrings.Text(AId), AWidth, ARight);
+  Result := TAtlasGridColumn.Make(TAtlasDiagnosticsStrings.Text(AId), AWidth, ARight);
 end;
 
 function TextOrDash(const AText: string): string;
@@ -122,17 +123,17 @@ end;
 
 class function TAtlasPluginGridRows.FeatureColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasTextId.DiagColFeature, 0, False),
-    Column(TAtlasTextId.DiagColCalls, 64, True), Column(TAtlasTextId.DiagColTotal, 80, True),
-    Column(TAtlasTextId.DiagColMean, 72, True), Column(TAtlasTextId.DiagColMax, 72, True),
-    Column(TAtlasTextId.DiagColSlow, 80, True), Column(TAtlasTextId.DiagColShare, 96, True));
+  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColFeature, 0, False),
+    Column(TAtlasDiagnosticsTextId.DiagColCalls, 64, True), Column(TAtlasDiagnosticsTextId.DiagColTotal, 80, True),
+    Column(TAtlasDiagnosticsTextId.DiagColMean, 72, True), Column(TAtlasDiagnosticsTextId.DiagColMax, 72, True),
+    Column(TAtlasDiagnosticsTextId.DiagColSlow, 80, True), Column(TAtlasDiagnosticsTextId.DiagColShare, 96, True));
 end;
 
 class function TAtlasPluginGridRows.SlowColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasTextId.DiagColFeature, 0, False),
-    Column(TAtlasTextId.DiagColTime, 96, False), Column(TAtlasTextId.DiagColAction, 200, False),
-    Column(TAtlasTextId.DiagColDuration, 80, True));
+  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColFeature, 0, False),
+    Column(TAtlasDiagnosticsTextId.DiagColTime, 96, False), Column(TAtlasDiagnosticsTextId.DiagColAction, 200, False),
+    Column(TAtlasDiagnosticsTextId.DiagColDuration, 80, True));
 end;
 
 class function TAtlasPluginGridRows.RequestColumns: TArray<TAtlasGridColumn>;
@@ -149,16 +150,16 @@ end;
 
 class function TAtlasPluginGridRows.SourceColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasTextId.DiagColSource, 0, False),
-    Column(TAtlasTextId.DiagColCalls, 64, True), Column(TAtlasTextId.DiagColMean, 72, True),
-    Column(TAtlasTextId.DiagColMax, 72, True), Column(TAtlasTextId.DiagColTooSlow, 90, True));
+  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColSource, 0, False),
+    Column(TAtlasDiagnosticsTextId.DiagColCalls, 64, True), Column(TAtlasDiagnosticsTextId.DiagColMean, 72, True),
+    Column(TAtlasDiagnosticsTextId.DiagColMax, 72, True), Column(TAtlasDiagnosticsTextId.DiagColTooSlow, 90, True));
 end;
 
 class function TAtlasPluginGridRows.HangColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasTextId.DiagColAction, 0, False),
-    Column(TAtlasTextId.DiagColTime, 96, False), Column(TAtlasTextId.DiagColDuration, 80, True),
-    Column(TAtlasTextId.DiagColWithAtlas, 110, True));
+  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColAction, 0, False),
+    Column(TAtlasDiagnosticsTextId.DiagColTime, 96, False), Column(TAtlasDiagnosticsTextId.DiagColDuration, 80, True),
+    Column(TAtlasDiagnosticsTextId.DiagColWithAtlas, 110, True));
 end;
 
 class function TAtlasPluginGridRows.Features(const ARows: TArray<TAtlasFeatureRow>;

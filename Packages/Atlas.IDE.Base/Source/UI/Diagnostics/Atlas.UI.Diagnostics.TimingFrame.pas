@@ -75,7 +75,6 @@ implementation
 uses
   Atlas.Core.Style.Color,
   Winapi.Windows,
-  Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings;
 
 const
@@ -139,7 +138,7 @@ begin
   FCopy.AlignWithMargins := True;
   FCopy.Width := FCopy.ScaleValue(130);
   FCopy.Height := FCopy.ScaleValue(cButtonHeight);
-  FCopy.Caption := TAtlasStrings.Text(TAtlasTextId.DiagnosticCopy);
+  FCopy.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopy);
   FCopy.OnClick := CopyClick;
   FNote := TLabel.Create(Self);
   FNote.Parent := FBottom;

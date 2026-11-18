@@ -29,7 +29,6 @@ uses
   Vcl.Forms,
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.Timing,
-  Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.TimingFrame;
 
@@ -62,7 +61,7 @@ begin
     Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery), mFrame.Title.Caption);
     Assert.AreEqual(5, Integer(Length(mFrame.Rows)), 'Schritte ohne Quellen');
     Assert.IsFalse(mFrame.FileNames.Checked, 'Dateinamen nur auf Wunsch');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopy), mFrame.CopyButton.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopy), mFrame.CopyButton.Caption);
   finally
     mFrame.Free;
   end;
