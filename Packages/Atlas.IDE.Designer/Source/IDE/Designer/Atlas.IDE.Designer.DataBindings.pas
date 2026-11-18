@@ -72,6 +72,7 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Foundation.DesignerView,
   Atlas.IDE.Foundation.EditorStyle;
 
@@ -207,6 +208,9 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cTick;
   FTimer.OnTimer := Tick;
+  // Gemerkter Zustand (#2546): Der Takt legt die Leiste an, sobald ein Designer gezeigt wird.
+  FShown := TAtlasIdeDesignerButtonStates.Pressed(cId, False);
+  FTimer.Enabled := FShown;
 end;
 
 destructor TAtlasIdeDataBindings.Destroy;
@@ -387,6 +391,7 @@ end;
 
 procedure TAtlasIdeDataBindings.Toggle;
 begin
+  TAtlasIdeDesignerButtonStates.Remember(cId, not FShown);
   if FShown then
   begin
     Hide;

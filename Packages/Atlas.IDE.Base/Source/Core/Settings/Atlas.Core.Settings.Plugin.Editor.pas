@@ -655,6 +655,11 @@ type
     DesignerExtractFrame: Boolean;
     /// <summary>Knopf „Ereignis-Karte“ (#612, designer.eventMap).</summary>
     DesignerEventMap: Boolean;
+    /// <summary>Zustand der Umschaltknöpfe der Designer-Leiste merken (#2546, designer.rememberButtons).</summary>
+    DesignerRememberButtons: Boolean;
+    /// <summary>Gemerkter Zustand der Umschaltknöpfe, „dataBindings=1, measure=0“ (#2546, designer.barButtons,
+    /// Zustand).</summary>
+    DesignerBarButtons: string;
     /// <summary>Im Formular-Designer eigenes Desktop-Layout laden (#2079, designer.layout).</summary>
     DesignerLayout: Boolean;
     /// <summary>Name des Layouts für den Designer, wie im Desktop-Auswahlfeld der IDE (#2079,
@@ -1473,6 +1478,8 @@ begin
   AIo.Flag('DesignerDataBindings', DesignerDataBindings);
   AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
   AIo.Flag('DesignerEventMap', DesignerEventMap);
+  AIo.Flag('DesignerRememberButtons', DesignerRememberButtons);
+  AIo.Text('DesignerBarButtons', DesignerBarButtons);
   AIo.Flag('DesignerLayout', DesignerLayout);
   AIo.Text('DesignerLayoutName', DesignerLayoutName);
   AIo.Text('DesignerLayoutReturnTo', DesignerLayoutReturnTo);
@@ -1780,6 +1787,8 @@ begin
   DesignerDataBindings := False;
   DesignerExtractFrame := True;
   DesignerEventMap := True;
+  DesignerRememberButtons := True;
+  DesignerBarButtons := '';
   DesignerLayout := False;
   DesignerLayoutName := '';
   DesignerLayoutReturnTo := cDesignerLayoutPrevious;

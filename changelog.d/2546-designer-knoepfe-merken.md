@@ -1,0 +1,2 @@
+### Behoben
+- Designer-Leiste: Die Umschaltknöpfe Datenbindung, Tab-Reihenfolge, Abstände messen, Abstandsgriffe, gemeinsame Größengriffe und Schnellleiste setzten sich bei jedem IDE-Start und beim Aus- und Einschalten der Leiste auf ihre Vorgabe zurück. Ihr Zustand wird jetzt gemerkt (#2546, `designer.rememberButtons`, Vorgabe an). Gemerkte Zustände wie Knöpfe und Breiten verdrängen keine Stände mehr aus dem Einstellungsverlauf des abgesicherten Starts.
