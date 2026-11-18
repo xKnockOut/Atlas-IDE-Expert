@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns;
 
 type
@@ -36,7 +35,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Welcome.QuickActions;
 
 function LowerKey(const AProject: string): string;
 begin

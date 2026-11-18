@@ -187,16 +187,20 @@ end;
 function TAtlasTaskFlowTests.NotesOf(AKind: TAtlasTaskFlowNoteKind): TArray<TAtlasTaskFlowNote>;
 var
   mNote: TAtlasTaskFlowNote;
+  mCount: Integer;
 begin
   Result := nil;
+  SetLength(Result, FNotes.Count);
+  mCount := 0;
   for mNote in FNotes do
   begin
     if mNote.Kind = AKind then
     begin
-      SetLength(Result, Length(Result) + 1);
-      Result[High(Result)] := mNote;
+      Result[mCount] := mNote;
+      Inc(mCount);
     end;
   end;
+  SetLength(Result, mCount);
 end;
 
 procedure TAtlasTaskFlowTests.SingleRunLaunchesAndEnds;
