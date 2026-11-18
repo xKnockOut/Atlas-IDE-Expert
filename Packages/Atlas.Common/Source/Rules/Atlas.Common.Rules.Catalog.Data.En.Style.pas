@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnStyle: array[0..1151] of string = (
+  cCatalogLinesEnStyle: array[0..1159] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Unused local variable",',
@@ -105,6 +105,14 @@ const
     'JSON from { or \"key\":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.",',
     '      "bad": "ShowMessage(''File not found'');",',
     '      "good": "resourcestring\n  SFileNotFound = ''File not found'';\n...\nShowMessage(SFileNotFound);",',
+    '      "options": [',
+    '        {',
+    '          "name": "ignoreCalls",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Further routines whose text arguments nobody translates, for example an own Pick(English, ''en'', ''de''). Logging, check, comparison and registry calls always count."',
+    '        }',
+    '      ],',
     '      "safeFix": false,',
     '      "profiles": [',
     '        "strict"',

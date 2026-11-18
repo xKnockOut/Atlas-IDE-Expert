@@ -20,7 +20,9 @@
     mitgelieferten Profile ohne Kategorie-Profile ("standard", "strict"), in
     denen die Regel läuft; "strict" muss dabei sein. Ohne "standard" ist die
     Regel experimentell, Regeln.md sagt das.
-    Regeln.md listet die Regeln nach Gruppen und je Regel ihre Optionen.
+    Regeln.md listet die Regeln nach Gruppen und je Regel ihre Optionen. Jede Option
+    steht mit passendem Typ in schemas/atlas.schema.json, ihre Vorgabe besteht das
+    Schema, und jede Regeloption des Schemas gehört zu einer Katalogregel.
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn die erzeugten Dateien
     veraltet sind oder eine Prüfung fehlschlägt.
@@ -143,7 +145,11 @@ foreach ($Rule in $Base.rules) {
 # Abgleich mit dem Quelltext
 $CatalogIds = @($Base.rules | ForEach-Object { $_.id })
 $Implemented = New-Object System.Collections.Generic.HashSet[string]
-foreach ($File in Get-ChildItem $SourceDir -Recurse -Filter '*.pas') {
+# Regeln gibt es auch außerhalb von Atlas.Common (Plugin-Packages, Server), z. B. duplicate-routine-body.
+$ImplementationDirs = @(Get-ChildItem (Join-Path $Root 'Packages') -Directory |
+    ForEach-Object { Join-Path $_.FullName 'Source' } | Where-Object { Test-Path $_ }) +
+    @(Join-Path $Root 'Application/Source' | Where-Object { Test-Path $_ })
+foreach ($File in Get-ChildItem $ImplementationDirs -Recurse -Filter '*.pas') {
     $Text = Read-Text $File.FullName
     foreach ($Match in [regex]::Matches($Text, "TRuleDescriptor\.Create\(\s*'([^']+)'")) {
         [void]$Implemented.Add($Match.Groups[1].Value)
@@ -158,6 +164,89 @@ foreach ($Id in $Implemented) {
 foreach ($Id in $CatalogIds) {
     if (-not $Implemented.Contains($Id)) { $Problems.Add("Regel '$Id' steht im Katalog, ist aber nicht implementiert") }
 }
+
+# Abgleich mit dem Schema (#145): Jede Option einer Regel steht in schemas/atlas.schema.json unter
+# rules.<id> mit passendem Typ, ihre Vorgabe besteht das Schema, und die Beschreibung nennt die Regel
+# (oder ein Muster wie metric-*). Umgekehrt gehört jede Option des Schemas außer severity und exclude
+# zu mindestens einer Regel des Katalogs. So zeigen Editoren dieselben Optionen, die Regeln.md nennt.
+$SchemaPath = Join-Path $Root 'schemas/atlas.schema.json'
+$Schema = Read-Text $SchemaPath | ConvertFrom-Json -AsHashtable
+$SchemaOptions = $Schema['properties']['rules']['additionalProperties']['oneOf'] |
+    Where-Object { $_['type'] -eq 'object' } | ForEach-Object { $_['properties'] } | Select-Object -First 1
+$GenericOptions = @('severity', 'exclude')
+$UsedOptions = New-Object System.Collections.Generic.HashSet[string]
+
+function Get-ItemTypes($Property) {
+    if (-not $Property.ContainsKey('items')) { return @() }
+    $Items = $Property['items']
+    if ($Items.ContainsKey('anyOf')) { return @($Items['anyOf'] | ForEach-Object { $_['type'] }) }
+    @($Items['type'])
+}
+
+function Test-OptionType([string] $Kind, $Property) {
+    $Type = @($Property['type'])
+    $ItemTypes = Get-ItemTypes $Property
+    switch ($Kind) {
+        'integer' { return $Type -contains 'integer' }
+        'boolean' { return $Type -contains 'boolean' }
+        'string' { return $Type -contains 'string' }
+        'string-list' { return ($Type -contains 'array') -and ($ItemTypes -contains 'string') }
+        'number-list' { return ($Type -contains 'array') -and (($ItemTypes -contains 'number') -or ($ItemTypes -contains 'integer')) }
+        'object-list' { return ($Type -contains 'array') -and ($ItemTypes -contains 'object') }
+        default { return $true }
+    }
+}
+
+function Test-RuleNamed([string] $Text, [string] $Id) {
+    if ($Text -match "(?<![\w-])$([regex]::Escape($Id))(?![\w-])") { return $true }
+    foreach ($Match in [regex]::Matches($Text, '(?<![\w-])([a-z][a-z0-9-]*-)\*')) {
+        if ($Id.StartsWith($Match.Groups[1].Value)) { return $true }
+    }
+    $false
+}
+
+foreach ($Rule in $Base.rules) {
+    if (-not ($Rule.PSObject.Properties.Name -contains 'options')) { continue }
+    foreach ($Option in @($Rule.options)) {
+        $Name = [string]$Option.name
+        [void]$UsedOptions.Add($Name)
+        if (-not $SchemaOptions.ContainsKey($Name)) {
+            $Problems.Add("Regel '$($Rule.id)': Option '$Name' fehlt in schemas/atlas.schema.json (rules.<id>)")
+            continue
+        }
+        $Property = $SchemaOptions[$Name]
+        if (-not (Test-OptionType ([string]$Option.type) $Property)) {
+            $Problems.Add("Regel '$($Rule.id)': Option '$Name' ist im Katalog '$($Option.type)', im Schema nicht")
+        }
+        if ($GenericOptions -notcontains $Name) {
+            foreach ($Key in 'description', 'x-description-en') {
+                if (-not $Property.ContainsKey($Key) -or -not (Test-RuleNamed ([string]$Property[$Key]) ([string]$Rule.id))) {
+                    $Problems.Add("Schema-Option '$Name': '$Key' nennt die Regel '$($Rule.id)' nicht")
+                }
+            }
+        }
+        if ($Option.PSObject.Properties.Name -contains 'default') {
+            $Wrapper = @{ '$schema' = 'http://json-schema.org/draft-07/schema#'; type = 'object'; properties = @{ v = $Property } }
+            $Value = @{ v = $Option.default } | ConvertTo-Json -Depth 20 -Compress
+            if (-not (Test-Json -Json $Value -Schema ($Wrapper | ConvertTo-Json -Depth 50 -Compress) -ErrorAction SilentlyContinue)) {
+                $Problems.Add("Regel '$($Rule.id)': Vorgabe der Option '$Name' besteht das Schema nicht")
+            }
+            # Teilen sich Regeln eine Option mit verschiedenen Vorgaben, nennt das Schema keine; sonst dieselbe.
+            $Sharing = @($Base.rules | Where-Object { ($_.PSObject.Properties.Name -contains 'options') -and
+                    @($_.options | Where-Object { $_.name -eq $Name }).Count -gt 0 })
+            if ($Property.ContainsKey('default') -and $Sharing.Count -eq 1 -and
+                (($Property['default'] | ConvertTo-Json -Depth 20 -Compress) -ne ($Option.default | ConvertTo-Json -Depth 20 -Compress))) {
+                $Problems.Add("Regel '$($Rule.id)': Vorgabe der Option '$Name' weicht im Schema vom Katalog ab")
+            }
+        }
+    }
+}
+foreach ($Name in $SchemaOptions.Keys) {
+    if (($GenericOptions -notcontains $Name) -and -not $UsedOptions.Contains($Name)) {
+        $Problems.Add("Schema-Option '$Name' gehört zu keiner Regel des Katalogs; im Katalog unter options eintragen")
+    }
+}
+
 foreach ($Language in $Overlays.Keys) {
     $Overlay = $Overlays[$Language] | ConvertFrom-Json
     foreach ($Id in $CatalogIds) {

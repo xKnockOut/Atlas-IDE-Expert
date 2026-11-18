@@ -1010,6 +1010,14 @@
       "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Silent for texts nobody translates: arguments of logging and check calls (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), comparison and registry calls (StartsText, Pos, ReadString …), masks of FormatDateTime and FormatFloat, markup (HTML from <, JSON from { or \"key\":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.",
       "bad": "ShowMessage('File not found');",
       "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);",
+      "options": [
+        {
+          "name": "ignoreCalls",
+          "type": "string-list",
+          "default": [],
+          "description": "Further routines whose text arguments nobody translates, for example an own Pick(English, 'en', 'de'). Logging, check, comparison and registry calls always count."
+        }
+      ],
       "safeFix": false,
       "profiles": [
         "strict"
