@@ -25,6 +25,8 @@
 // ein Rückgängig-Schritt, #397); mit Text statt Datei liefert es nur den
 // formatierten Text. Dateien mit Syntaxfehlern formatiert es nicht. Die
 // Zeilenenden der Datei bleiben dabei; format.endOfLine setzt --format-write um.
+// Geschützte Dateien (assistants.protected, #2608): Trifft eine Änderung eine davon, schreibt der Aufruf nichts und
+// nennt Grund und richtigen Weg; die Vorschau nennt sie schon.
 
 interface
 
@@ -57,6 +59,9 @@ type
   /// <summary>Im Editor ungespeichert geänderte Dateien (IDE-Plugin); leer ohne Editor.</summary>
   TMcpDirtyFiles = reference to function: TArray<string>;
   TMcpAudit = reference to procedure(const AText: string);
+  /// <summary>Geschützte unter AFileNames mit Grund und richtigem Weg (#2608, TMcpProtectedFiles.Report); '' ohne.
+  /// ADryRun: Abschnitt der Vorschau, sonst die Ablehnung.</summary>
+  TMcpProtectedReport = reference to function(const AFileNames: TArray<string>; ADryRun: Boolean): string;
 
   TMcpEditTools = class
   private
@@ -71,6 +76,8 @@ type
     FCheckSource: TCheckSourceFunc;
     FCheckProject: TCheckProjectFunc;
     FSettingsFor: TReferenceSettingsProvider;
+    FProtectedReport: TMcpProtectedReport;
+    function CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
     procedure ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
       out AOldTexts, ANewTexts: TArray<string>);
     procedure EnsureWritable(const ANames, AOldTexts: TArray<string>);
@@ -119,6 +126,8 @@ type
     property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
+    /// <summary>Geschützte Dateien (#2608); nil = keine.</summary>
+    property ProtectedReport: TMcpProtectedReport read FProtectedReport write FProtectedReport;
   end;
 
 implementation
@@ -217,6 +226,20 @@ begin
   FWriteText := AWriteText;
   FProjectFiles := AProjectFiles;
   FEnsureUnit := AEnsureUnit;
+end;
+
+function TMcpEditTools.CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
+begin
+  Result := '';
+  if Assigned(FProtectedReport) then
+  begin
+    Result := FProtectedReport(ANames, ADryRun);
+  end;
+  // Ohne dryRun ist die Ablehnung der Fehler des Aufrufs: nichts wird geschrieben, auch keine andere Datei.
+  if not ADryRun and (Result <> '') then
+  begin
+    raise EMcpToolError.Create(Result);
+  end;
 end;
 
 procedure TMcpEditTools.ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
@@ -578,12 +601,14 @@ var
   mGroups: TArray<TArray<TMcpFileEdit>>;
   mIndex: Integer;
   mReport: TStringBuilder;
+  mProtected: string;
 begin
   if Length(AEdits) = 0 then
   begin
     raise EMcpToolError.Create(cTexts[TEditToolsText.NoChanges].Text);
   end;
   mGroups := GroupByFile(AEdits, mNames);
+  mProtected := CheckProtected(mNames, ADryRun);
   ReadAll(mNames, mGroups, mOldTexts, mNewTexts);
   mReport := TStringBuilder.Create;
   try
@@ -591,6 +616,10 @@ begin
     begin
       mReport.AppendFormat(cTexts[TEditToolsText.PreviewDryRunChangesInFiles].Text, [Length(AEdits),
         Length(mNames)]).AppendLine;
+      if mProtected <> '' then
+      begin
+        mReport.AppendLine(mProtected);
+      end;
     end
     else
     begin
@@ -693,6 +722,21 @@ begin
   end;
 end;
 
+/// <summary>Dateien, die fix_findings ändert.</summary>
+function ChangedFiles(const AResults: TArray<TBulkFixFile>): TArray<string>;
+var
+  mResult: TBulkFixFile;
+begin
+  Result := nil;
+  for mResult in AResults do
+  begin
+    if mResult.Changed then
+    begin
+      Result := Result + [mResult.FileName];
+    end;
+  end;
+end;
+
 function TMcpEditTools.FixFindings(const AScope: TMcpRuleScope; const AFiles, AFixRules: TArray<string>;
   const AMinConfidence: string; ADryRun: Boolean): string;
 var
@@ -700,6 +744,7 @@ var
   mError: string;
   mUntouched: TArray<string>;
   mResults: TArray<TBulkFixFile>;
+  mProtected: string;
 begin
   if AFixRules = nil then
   begin
@@ -711,11 +756,16 @@ begin
   end;
   mResults := RunFixes(AScope, AFiles, TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries),
     TBulkFix.RulesFor(AScope.Rules, AFixRules), ADryRun, mUntouched);
+  mProtected := CheckProtected(ChangedFiles(mResults), ADryRun);
   if not ADryRun then
   begin
     WriteFixes(AFixRules, mResults);
   end;
   Result := FixReport(AScope.Root, mResults, mUntouched, ADryRun);
+  if mProtected <> '' then
+  begin
+    Result := Result + sLineBreak + sLineBreak + mProtected;
+  end;
 end;
 
 /// <summary>Ergebnis von format_code ohne Syntaxfehler: Zahl und erste Abweichungen; '' ohne Abweichung.</summary>

@@ -167,6 +167,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
+- **Protected files:** `assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md`), with reason and the right way; the writing MCP tools refuse such changes without writing anything, the hook refuses or reports them
 
 ### Planned
 

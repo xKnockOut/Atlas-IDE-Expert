@@ -63,6 +63,7 @@ All settings with page and control in the settings plugin (#227). Details on val
 | Check rules | `fix`: `minConfidence` | – | atlas.json (Atlas › Project settings) | no | Choice | #1352 |
 | Project | `exclude` | – | atlas.json (Atlas › Project settings) | no | List with Add/Remove | #24 |
 | MCP | `mcp`: `disabledTools`, `globalSettings`, `prompts`, `promptLanguage`, `customPrompts` | – | settings.json (Tools › Options › Atlas); `globalSettings`, `customPrompts` in atlas.json | no | List with Add/Remove; globalSettings, prompts: checkbox; promptLanguage: choice; customPrompts: JSON | #99, #1357 |
+| MCP | `assistants`: `protected` | – | atlas.json (Atlas › Project settings) | no | JSON in atlas.json (Liste aus path, reason, use) | #2608 |
 | Formatting | `format`: `indentSize`, `useTabs`, `keywordCase`, `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine`, `reindent`, `beginPlacement`, `elsePlacement`, `maxLineLength`, `alignAssignments`, `alignDeclarations`, `alignComments` | – | atlas.json (Atlas › Project settings) | no | Number field, checkbox, choice | #43 |
 | Project | `tasks` | – | settings.json (Tools › Options › Atlas) and atlas.json (Atlas › Project settings) | no | JSON in atlas.json or settings.json (list of tasks) | #900 |
 | Issue tracker | `issues`: `connections`, `projects`, `queries` | – | settings.json (Tools › Options › Atlas) | no | Tables Connections, Projects and Queries | #1260, #1261, #1262 |

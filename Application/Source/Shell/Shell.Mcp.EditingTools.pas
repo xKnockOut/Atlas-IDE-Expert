@@ -23,9 +23,13 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Mcp.ExtractTools,
+  Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Mcp.Paths,
+  Atlas.Common.Mcp.ProtectedFiles,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
-  Shell.Texts;
+  Shell.Texts,
+  Shell.WorkspaceGroup;
 
 type
 {$SCOPEDENUMS ON}
@@ -340,8 +344,36 @@ begin
     ContextTool(AContext, ToolExtractMethod), TMcpToolKind.Write);
 end;
 
+/// <summary>Geschützte Dateien (#2608) für die schreibenden Werkzeuge, bei jedem Aufruf aus den aktuellen
+/// Einstellungen; eigene Routine, damit die anonyme Methode nur AGroup und AGuard einfängt. Ohne Gruppe (Tests) nichts
+/// geschützt.</summary>
+function ProtectedReportOf(AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard): TMcpProtectedReport;
+begin
+  Result :=
+    function(const AFileNames: TArray<string>; ADryRun: Boolean): string
+    var
+      mProtection: TMcpProtectedFiles;
+    begin
+      Result := '';
+      if (AGroup = nil) or (AGuard = nil) then
+      begin
+        Exit;
+      end;
+      mProtection := TMcpProtectedFiles.Create(AGuard.Root, AGroup.Main.Configuration.Settings.AssistantProtected);
+      try
+        Result := mProtection.Report(AFileNames, ADryRun);
+      finally
+        mProtection.Free;
+      end;
+    end;
+end;
+
 procedure RegisterEditingTools(const AContext: TMcpToolContext);
 begin
+  if AContext.Edit <> nil then
+  begin
+    AContext.Edit.ProtectedReport := ProtectedReportOf(AContext.Group, AContext.Guard);
+  end;
   AddRenameSymbol(AContext);
   AddApplyCodeAction(AContext);
   AddFixFindings(AContext);

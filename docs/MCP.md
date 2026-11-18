@@ -50,12 +50,29 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
   selbst; das Neuladen der IDE holt die Datei dann nach.
 - Jeder schreibende Aufruf steht mit Werkzeug, Parametern und geänderten Dateien im Log
   (`--log`).
+- Geschützte Dateien (#2608): `assistants.protected` in `atlas.json` listet Dateien, die KI-Assistenten nicht
+  ändern dürfen, je Eintrag mit Muster (`path`, wie `architecture.exclude`: `*`, `**`, `?`, `/` oder `\`, ohne
+  Groß-/Kleinschreibung, relativ zum Ordner von `atlas.json`), Grund (`reason`) und richtigem Weg (`use`):
+  ```json
+  "assistants": { "protected": [
+    { "path": "CHANGELOG.md", "reason": "Wird beim Release aus Fragmenten erzeugt",
+      "use": "Fragment changelog.d/<Issue>-<Stichwort>.md anlegen" },
+    { "path": "**/*SchemaData.pas", "reason": "Erzeugt von Tools/Update-ConfigDoc.ps1" }
+  ]}
+  ```
+  Trifft eine Änderung von `apply_code_action`, `fix_findings`, `format_code`, `extract_method` oder
+  `rename_symbol` eine geschützte Datei, schreibt der Aufruf nichts, auch keine andere Datei, und nennt alle
+  betroffenen geschützten Dateien mit Grund und Weg; `dryRun: true` nennt sie schon in der Vorschau.
+  `hook_check` meldet die Bearbeitung einer geschützten Datei mit den eigenen Werkzeugen des Assistenten als
+  Fehler (`"decision":"block"`) und lehnt sie mit `mode: "pre"` als PreToolUse-Hook vorher ab
+  (`"permissionDecision":"deny"`); das Plugin `atlas` hat beide Einträge. `delphi://conventions` listet die
+  Dateien. Änderungen, die ein Assistent ohne Atlas und ohne Hooks macht, erreicht der Schutz nicht.
 
 ## Ressourcen
 
 | URI | Inhalt |
 |---|---|
-| `delphi://conventions` | Projektkonventionen als Markdown (#272): Regelprofil, Formatstil, Benennungsregeln und jede aktive Prüfregel mit Schweregrad und Kurztext aus dem Regelkatalog. Vor dem Schreiben lesen, danach mit `check_code` prüfen |
+| `delphi://conventions` | Projektkonventionen als Markdown (#272): Regelprofil, Formatstil, Benennungsregeln und jede aktive Prüfregel mit Schweregrad und Kurztext aus dem Regelkatalog, dazu die geschützten Dateien aus `assistants.protected` (#2608). Vor dem Schreiben lesen, danach mit `check_code` prüfen |
 | `delphi://build/last` | Ergebnis und Compilermeldungen des letzten Builds in der IDE wie `get_last_build` (#1357, mit `mcp.prompts`) |
 
 Ressourcen mit Vorlage (#1357, `resources/templates/list`) hängt man in Claude Code mit `@` an eine Frage, z. B. `@delphi:delphi://unit/UI.Auftrag`. Der Wert in `{…}` darf %-kodiert sein (`Source%2FA.pas`). Units und Pfade gelten wie Pfadparameter (#99): außerhalb des Arbeitsordners und seiner Such- und Bibliothekspfade ergibt das Lesen einen Fehler mit Begründung. Der Inhalt ist Markdown, höchstens 64 KB; darüber gekürzt mit Hinweis auf das Werkzeug für alles.
@@ -126,7 +143,7 @@ Prompts gegenüber den Befehlen des Claude-Code-Plugins (`/atlas:bauen`): Die Pl
 | `get_affected_tests` | `base` (Git-Ref bzw. SVN-Revision; leer = `main` bzw. `BASE`), `includeUncommitted` (Vorgabe `true`), `depth` (1–5), `format` (`text`, `json` oder `dunitx`; alle optional) | Startet einen Prozess (git bzw. svn, #1353): betroffene Tests einer Änderung. Aus dem Unterschied zur Basis (wie `--changed`, nach `vcs.provider`) die geänderten Routinen, Typen und Konstanten; Änderungen im interface zählen für das Symbol, außerhalb von Routinen (uses, initialization) für die ganze Unit, `.dfm`/`.fmx` für die Formularklasse, `.inc` für die einbindenden Units; Leerzeilen und Kommentare zählen nicht. Ihre Auswirkungen verfolgt es wie `get_impact` bis zur Tiefe (Vorgabe `tests.affectedDepth`, 3) und nennt die DUnitX-Tests als `Unit.Fixture.Methode` mit Grund (geänderte Stelle → Weg, erschlossene Schritte gekennzeichnet); sind mehr als 80 % einer Fixture betroffen, die ganze Fixture. `json`: `run` passt direkt in `run_tests.tests`, `all: true` mit `reason`, wenn alle Tests nötig sind (Testprogramm geändert, Analyse unvollständig). `dunitx`: nur das Argument `--run:…` für die Test-EXE. Fehlt mit `tests.affected = false` |
 | `qualified_name` | `file`, `line`, `column`, `withParameters` (optional) | Voll qualifizierter Name des Symbols an der Stelle, z. B. `Vcl.Controls.TControl.Paint`; mit `withParameters` bei Routinen samt Parametertypen |
 | `get_diagnostics` | `file` (optional) | Syntaxfehler und Regelbefunde einer Datei oder aller Projektdateien |
-| `hook_check` | `file`, `severity` (`error`, `warning`, `information`, `hint`; Vorgabe `warning`) | Für Hooks von Claude Code: Befunde ab `severity` einer gerade bearbeiteten Datei als Ausgabe eines PostToolUse-Hooks (`{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"…"}}`), damit Claude sie gleich nach Edit/Write sieht. Leer (kein Hinweis) bei Dateien ohne Endung `.pas`, `.dpr`, `.dpk`, `.inc`, außerhalb des Arbeitsbereichs oder ohne Befunde. Das Plugin `atlas` ruft es über `hooks/hooks.json` auf; abschalten mit `"mcp": {"disabledTools": ["hook_check"]}` |
+| `hook_check` | `file`, `severity` (`error`, `warning`, `information`, `hint`; Vorgabe `warning`), `mode` (`post`, Vorgabe, oder `pre`) | Für Hooks von Claude Code: Befunde ab `severity` einer gerade bearbeiteten Datei als Ausgabe eines PostToolUse-Hooks (`{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"…"}}`), damit Claude sie gleich nach Edit/Write sieht. Leer (kein Hinweis) bei Dateien ohne Endung `.pas`, `.dpr`, `.dpk`, `.inc`, außerhalb des Arbeitsbereichs oder ohne Befunde. Geschützte Dateien (`assistants.protected`, #2608, jede Endung) meldet es als Fehler (`"decision":"block"`); mit `mode: "pre"` (PreToolUse) lehnt es ihre Bearbeitung ab und prüft sonst nichts. Das Plugin `atlas` ruft es über `hooks/hooks.json` auf; abschalten mit `"mcp": {"disabledTools": ["hook_check"]}` |
 | `get_metrics` | `file` (optional), `format` (`markdown` oder `json`) | Code-Metriken je Methode (#66): Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl; Bericht mit den Methoden über einem Grenzwert aus `atlas.json` (Regeln `metric-*`, Option `max`) oder die Metrikdaten als JSON |
 | `get_todos` | `file`, `unit`, `category`, `owner`, `keyword`, `includeDone` (alle optional), `format` (`markdown` oder `json`) | TODO-Übersicht (#68) aller Dateien, die das Projektmodell dem Projekt zuordnet: `// TODO`, `// FIXME` und das Format der IDE-To-Do-Liste `{ TODO 1 -oPerson -cKategorie : Text }` mit Priorität, Person und Kategorie, gefiltert nach Unit, Kategorie, Person oder Marke; erledigte Einträge (`{ DONE … }`) nur mit `includeDone`. Weitere Marken über die Option `keywords` der Regel `todo-comment`. Markdown mit Zählung nach Kategorie und Person und je Unit einer Tabelle, oder JSON (`format` 1, Zeilen ab 1) |
 | `get_rationale` | `unit` oder `name` | Begründungen (#1123) einer Unit (Kommentare im interface vor dem ersten Typ und alle Symbole mit Fundstelle) oder eines Symbols (über der Deklaration und im Rumpf der Implementierung), je Eintrag Marke, Zeile ab 1 und Text. Marken aus `hints.rationaleMarkers` (Vorgabe `NOTE`, `WHY`, `HACK`, `IMPORTANT`, `RATIONALE`); Marken der TODO-Übersicht erscheinen nie. Gilt auch bei `hints.rationale` aus; abschaltbar über `mcp.disabledTools` |

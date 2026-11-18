@@ -2296,6 +2296,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ProtectedFiles.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ExtractTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas"/>

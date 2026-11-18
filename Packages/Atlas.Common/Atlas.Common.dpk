@@ -671,6 +671,7 @@ contains
   Atlas.Common.Mcp.Paths in 'Source\Mcp\Atlas.Common.Mcp.Paths.pas',
   Atlas.Common.Mcp.Freshness in 'Source\Mcp\Atlas.Common.Mcp.Freshness.pas',
   Atlas.Common.Mcp.EditTools in 'Source\Mcp\Atlas.Common.Mcp.EditTools.pas',
+  Atlas.Common.Mcp.ProtectedFiles in 'Source\Mcp\Atlas.Common.Mcp.ProtectedFiles.pas',
   Atlas.Common.Mcp.ExtractTools in 'Source\Mcp\Atlas.Common.Mcp.ExtractTools.pas',
   Atlas.Common.Mcp.IdeEdits in 'Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas',
   Atlas.Common.Mcp.IdeBuilds in 'Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas',

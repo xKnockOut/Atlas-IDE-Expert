@@ -2280,6 +2280,7 @@ uses
   Shell.Bootstrap in '..\Application\Source\Shell\Shell.Bootstrap.pas',
   Atlas.Common.Mcp.Freshness.Tests in 'Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas',
   Atlas.Common.Mcp.EditTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas',
+  Atlas.Common.Mcp.ProtectedFiles.Tests in 'Common\Mcp\Atlas.Common.Mcp.ProtectedFiles.Tests.pas',
   Atlas.Common.Mcp.ExtractTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.ExtractTools.Tests.pas',
   Atlas.Common.Mcp.IdeEdits.Tests in 'Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas',
   Atlas.Common.Mcp.IdeBuilds.Tests in 'Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas',
