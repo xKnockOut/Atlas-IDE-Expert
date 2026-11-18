@@ -7,7 +7,7 @@
 
 interface
 
-function TypKonstanteNutzen: Integer; inline; // TG4 (vorher TR3): typisierte Konstante aus dem implementation-Teil
+function TypKonstanteNutzen: Integer; inline; // TG4: typisierte Konstante aus dem implementation-Teil
 
 implementation
 

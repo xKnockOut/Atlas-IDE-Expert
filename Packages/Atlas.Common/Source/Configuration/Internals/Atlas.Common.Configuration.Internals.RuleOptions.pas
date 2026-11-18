@@ -113,19 +113,20 @@ const
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  cBooleanRuleOptions: array[0..25] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  cBooleanRuleOptions: array[0..27] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
-    'checkReturns', 'checkFree', 'allowFirstElement', 'implementation', 'managedFields');
+    'checkReturns', 'checkFree', 'allowFirstElement', 'implementation', 'managedFields', 'frameworkMembers',
+    'ignoreStrictPrivate');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  cStringListRuleOptions: array[0..37] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  cStringListRuleOptions: array[0..42] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
     'formatMethods', 'unitKinds', 'keep', 'pureFunctions', 'factories',
-    'registrationCalls');
+    'registrationCalls', 'prefixes', 'hostRoles', 'deferredApis', 'patterns', 'ignoreCalls');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   cDeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>
@@ -134,8 +135,8 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   cNumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  cStringRuleOptions: array[0..10] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
-    'defaultEncoding', 'scope', 'local', 'field', 'parameter', 'constant');
+  cStringRuleOptions: array[0..11] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
+    'defaultEncoding', 'scope', 'local', 'field', 'parameter', 'constant', 'placement');
   /// <summary>Kodierungen der Korrektur von load-without-encoding (#1061).</summary>
   cLoadEncodings: array[0..6] of string = ('UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
     'Default');
@@ -152,10 +153,11 @@ type
 const
   /// <summary>max: Grenzwert der Metrik-Regeln (#66); minLines: commented-out-code (#942); min: string-if-chain
   /// (#1066) und prefer-case (#646); minRecordSize: managed-param-without-const (#975); maxSleepMs:
-  /// blocking-call-in-main-thread (#959); maxLiteralLength: pos-arguments-swapped (#1045).</summary>
-  cLimitOptions: array[0..5] of TLimitOption = ((Key: 'max'; Min: 1), (Key: 'minLines'; Min: 1),
+  /// blocking-call-in-main-thread (#959); maxLiteralLength: pos-arguments-swapped (#1045); ansiCodePage:
+  /// string-conversion (0 schaltet die Prüfung ab).</summary>
+  cLimitOptions: array[0..6] of TLimitOption = ((Key: 'max'; Min: 1), (Key: 'minLines'; Min: 1),
     (Key: 'min'; Min: 2), (Key: 'minRecordSize'; Min: 1), (Key: 'maxSleepMs'; Min: 0),
-    (Key: 'maxLiteralLength'; Min: 1));
+    (Key: 'maxLiteralLength'; Min: 1), (Key: 'ansiCodePage'; Min: 0));
 
 /// <summary>Array aus Objekten, die alle Texte AKeys haben: "open" und "close" (pair-without-finally, #930),
 /// "start", "commit" und "rollback" (transaction-without-rollback, #965).</summary>

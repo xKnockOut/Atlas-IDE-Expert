@@ -395,7 +395,7 @@ begin
     mPosition.AddElement(mSpot);
     mPosition.Add(-1);
     try
-      // Nach /override, wie im Mockup.
+      // Direkt nach /override.
       mAnswer := FMenu.ExecuteMenu(mPosition);
       try
         mNames_ := Names(mAnswer);

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Architecture.Overview.Naming;
 
-// Namen der Teilsysteme der Architekturübersicht (#1118, #1364), ausgelagert
-// aus Atlas.Common.Architecture.Overview.
+// Namen der Teilsysteme der Architekturübersicht (#1118, #1364), Teil von
+// Atlas.Common.Architecture.Overview.
 //
 // - Ein Teilsystem heißt nach dem Namensraum-Abschnitt, der seine Units am
 //   besten von den übrigen unterscheidet: Häufigkeit in der Gruppe mal

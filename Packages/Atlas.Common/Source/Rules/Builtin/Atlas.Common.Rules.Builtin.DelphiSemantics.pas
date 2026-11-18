@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.DelphiSemantics;
 
-// Stellen, an denen Delphi zur Laufzeit anders arbeitet als Free Pascal (#2309, B6). Beide übersetzen den Code, die
+// Stellen, an denen Delphi zur Laufzeit anders arbeitet als Free Pascal (#2309). Beide übersetzen den Code, die
 // Tests unter FPC sind grün, erst unter Delphi stimmt das Ergebnis nicht:
 //   managed-result-read-before-set  Result vom Typ dynamisches Array oder String wird gelesen, bevor die Funktion
 //                                   es setzt. Delphi übergibt Result als Variable des Aufrufers (A := F(...)):
