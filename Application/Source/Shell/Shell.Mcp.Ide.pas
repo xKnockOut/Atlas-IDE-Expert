@@ -65,7 +65,7 @@ var
   GDebugPid: Cardinal;
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
-/// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (N3).</summary>
+/// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann.</summary>
 function ReadPluginFile(const AFileName: string): string;
 var
   mFileFormat: TFileFormat;

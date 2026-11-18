@@ -230,7 +230,7 @@ const
   cEverywhere = [TSlashPlace.Routine, TSlashPlace.ClassBody, TSlashPlace.RecordBody, TSlashPlace.InterfaceBody,
     TSlashPlace.UnitInterface, TSlashPlace.UnitImplementation, TSlashPlace.ProgramFile];
 
-/// <summary>Erzeugen in der Klasse (Mockup AC7).</summary>
+/// <summary>Erzeugen in der Klasse.</summary>
 function ClassEntries: TArray<TSlashMenuEntry>;
 begin
   Result := [
@@ -240,7 +240,7 @@ begin
     ChoiceEntry('override', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
     MultiEntry('equals', [TSlashPlace.ClassBody, TSlashPlace.RecordBody], TSlashGroup.Generate,
       TSlashArgument.Optional, ', '),
-    // impl erst nach equals: Reihenfolge wie im Entwurf (AC7); der Server setzt „implement“ hinter override.
+    // impl erst nach equals: Reihenfolge wie im Menü; der Server setzt „implement“ hinter override.
     Entry('impl', cInClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('field', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
     ChoiceEntry('encapsulate', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
@@ -322,7 +322,7 @@ end;
 
 class function TSlashMenu.Catalog: TArray<TSlashMenuEntry>;
 begin
-  // Reihenfolge wie im Menü: zuerst die Klasse (Mockup AC7), dann Records, Routinen und die Unit-Ebene.
+  // Reihenfolge wie im Menü: zuerst die Klasse, dann Records, Routinen und die Unit-Ebene.
   Result := ClassEntries + RoutineEntries + UnitEntries + SurroundEntries;
 end;
 
