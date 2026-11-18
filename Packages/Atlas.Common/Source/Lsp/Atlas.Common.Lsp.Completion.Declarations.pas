@@ -2,7 +2,7 @@
 
 // Vervollständigung in Deklarationen: Zugriffe in "property … read/write" (#31) samt Feld und
 // Zugriffsmethoden anlegen (#467), überschreibbare Methoden (#443), fehlende Interface-Methoden (#466) und
-// String-Literal als resourcestring auslagern (#473). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// String-Literal als resourcestring auslagern (#473). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

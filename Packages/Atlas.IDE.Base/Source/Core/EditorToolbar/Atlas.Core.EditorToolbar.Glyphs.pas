@@ -2,7 +2,7 @@
 
 // Atlas-Editorleiste (#1101), Symbole als Vektorgrafik ohne VCL und OTA: Jedes
 // Symbol besteht aus Linienzügen und gefüllten Flächen in einem Feld von
-// 16 × 16 Einheiten (wie die Mockups, viewBox 0 0 16 16). Die Oberfläche
+// 16 × 16 Einheiten (wie viewBox 0 0 16 16 in SVG). Die Oberfläche
 // skaliert sie auf die DPI des Editors und zeichnet sie geglättet in Schrift-
 // bzw. Akzentfarbe des IDE-Themas; Bögen und Kreise sind hier schon in kurze
 // Strecken zerlegt. Letter hat keine Form (die Oberfläche zeichnet den ersten
@@ -104,7 +104,7 @@ begin
   Result := Circle(ACX, ACY, AR, False);
 end;
 
-/// <summary>Umriss eines Auges wie im Mockup (Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
+/// <summary>Umriss eines Auges (SVG-Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
 /// 8Z"): vier kubische Bögen, je acht Strecken.</summary>
 function EyeOutline: TAtlasGlyphShape;
 const
@@ -321,7 +321,7 @@ begin
   end;
 end;
 
-/// <summary>Formen der Symbole für Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16
+/// <summary>Formen der Symbole für Designer-Leiste (#1442): Strichsymbole (viewBox 0 0 16
 /// 16); nil für andere.</summary>
 function DesignerShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
 begin

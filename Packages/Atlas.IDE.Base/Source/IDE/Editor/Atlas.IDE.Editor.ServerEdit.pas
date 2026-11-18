@@ -4,9 +4,8 @@
 // holen (Umwandlungen, Verschieben, Extrahieren, Zugriffsmethoden …): offene
 // Puffer schicken, Server-Befehl ausführen und {"edit", "warnings", …} lesen,
 // Vorschau wie beim Umbenennen, nach Bestätigung übernehmen (je Datei ein
-// Rückgängig-Schritt) und das Ergebnis melden. Früher stand jeder Schritt in
-// jeder Aktion von Hand; die Aktionen behalten nur ihre Texte und die Werte,
-// die nur sie lesen.
+// Rückgängig-Schritt) und das Ergebnis melden, einmal für alle Aktionen; die Aktionen
+// behalten nur ihre Texte und die Werte, die nur sie lesen.
 // Nur im Hauptthread.
 
 interface

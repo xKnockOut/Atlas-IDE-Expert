@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Diagnostics.KnownPackages;
 
-// Module unter „Known Packages“ der IDE (Meldung vom 05.11.2026: zwischen 05:34
-// und 06:31 stand dort nur noch Base, die 11 Module fehlten; Ursache offen):
+// Module unter „Known Packages“ der IDE (es kam vor, dass dort über Nacht nur
+// noch Base stand und alle Module fehlten; Ursache offen):
 // - Start: Die Liste der IDE (HKCU\<GetBaseRegistryKey>\Known Packages, die
 //   64-Bit-IDE „… x64“) wird mit den Modul-BPLs im Ordner von Base verglichen
 //   (TAtlasKnownPackages.Check). Das Ergebnis steht im Protokoll, dazu die Zahl

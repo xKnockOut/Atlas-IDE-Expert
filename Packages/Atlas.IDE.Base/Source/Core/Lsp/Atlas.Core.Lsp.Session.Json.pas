@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Session.Json;
 
-// Typen und JSON der LSP-Sitzung ohne Zustand (aus Atlas.Core.Lsp.Session ausgelagert): Parameter für initialize,
+// Typen und JSON der LSP-Sitzung ohne Zustand (Teil von Atlas.Core.Lsp.Session): Parameter für initialize,
 // Lesen der Antworten (Orte, Symbole, Auswirkungen, betroffene Tests, Code-Aktionen, Diagnosen, Hover).
 // TLspSessionJson ist Vorfahr von TLspSession; die Typen stehen dort auch als Aliase.
 
