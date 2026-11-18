@@ -1,0 +1,2 @@
+### Behoben
+- Tools › Optionen › Atlas: Nach OK speicherte und meldete jeder angesehene Knoten (Base, jedes Modul, Tastenkonflikte) die Einstellungen einzeln. Jede Meldung belegt Tasten neu, gleicht die Module und die Startseite ab; mit vielen Knoten stand die IDE danach lange oder reagierte nicht mehr, und der Einstellungsverlauf bekam je Knoten einen Stand. Jetzt wird nach dem Schließen des Dialogs einmal gespeichert und gemeldet, ohne Änderung gar nicht (#2372).

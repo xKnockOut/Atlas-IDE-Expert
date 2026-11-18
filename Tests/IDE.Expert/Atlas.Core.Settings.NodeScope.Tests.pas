@@ -1,6 +1,7 @@
 ﻿unit Atlas.Core.Settings.NodeScope.Tests;
 
-// Optionen je Package (#1903): Besitzer eines Elements und Zusammenführen der Änderungen mehrerer Knoten.
+// Optionen je Package (#1903): Besitzer eines Elements und Zusammenführen der Änderungen mehrerer Knoten;
+// Speichern einmal für alle Knoten eines Dialogs (#2372).
 
 interface
 
@@ -27,12 +28,21 @@ type
     procedure MergeKeepsChangesOfOtherNode;
     [Test]
     procedure MergeWritesNothingWithoutChange;
+    [Test]
+    procedure BatchWithoutChangeStaysEmpty;
+    [Test]
+    procedure BatchCollectsChangesOfAllNodes;
+    [Test]
+    procedure BatchKeepsEmptiedText;
+    [Test]
+    procedure BatchClearForgetsChanges;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.History,
@@ -182,6 +192,74 @@ begin
   mTarget.WriteInteger('A', 7);
   Assert.AreEqual(0, Integer(Length(TAtlasSettingsMerge.Changes(mBefore, mAfter, mTarget))));
   Assert.AreEqual(7, mTarget.ReadInteger('A', 0));
+end;
+
+procedure TAtlasSettingsNodeScopeTests.BatchWithoutChangeStaysEmpty;
+var
+  mBatch: TAtlasSettingsBatch;
+  mBase, mResult: TAtlasPluginSettings;
+begin
+  // Nur angesehene Knoten speichern nichts und melden nichts (#2372).
+  mBatch := Default(TAtlasSettingsBatch);
+  Assert.AreEqual(0, Integer(Length(mBatch.Add(TAtlasPluginSettings.Defaults, TAtlasPluginSettings.Defaults))));
+  Assert.IsFalse(mBatch.HasChanges);
+  mBase := TAtlasPluginSettings.Defaults;
+  mBase.VisibleRows := 12;
+  mResult := mBatch.ApplyTo(mBase);
+  Assert.AreEqual(12, mResult.VisibleRows);
+end;
+
+procedure TAtlasSettingsNodeScopeTests.BatchCollectsChangesOfAllNodes;
+var
+  mBatch: TAtlasSettingsBatch;
+  mLoaded, mFirst, mSecond, mStored, mResult: TAtlasPluginSettings;
+begin
+  mBatch := Default(TAtlasSettingsBatch);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mFirst := mLoaded;
+  mFirst.VisibleRows := 14;
+  mSecond := mLoaded;
+  mSecond.CompletionListMode := 'all';
+  Assert.AreEqual(1, Integer(Length(mBatch.Add(mLoaded, mFirst))));
+  Assert.AreEqual(1, Integer(Length(mBatch.Add(mLoaded, mSecond))));
+  Assert.IsTrue(mBatch.HasChanges);
+  // Seit dem Öffnen anderswo gespeichert (gezogene Breite): bleibt erhalten.
+  mStored := TAtlasPluginSettings.Defaults;
+  mStored.PanelWidth := 400;
+  mResult := mBatch.ApplyTo(mStored);
+  Assert.AreEqual(14, mResult.VisibleRows);
+  Assert.AreEqual('all', mResult.CompletionListMode);
+  Assert.AreEqual(400, mResult.PanelWidth);
+end;
+
+procedure TAtlasSettingsNodeScopeTests.BatchKeepsEmptiedText;
+var
+  mBatch: TAtlasSettingsBatch;
+  mLoaded, mAfter, mStored: TAtlasPluginSettings;
+begin
+  mBatch := Default(TAtlasSettingsBatch);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.ContinueCommentsBlockPrefix := '* ';
+  mAfter := mLoaded;
+  mAfter.ContinueCommentsBlockPrefix := '';
+  mBatch.Add(mLoaded, mAfter);
+  mStored := mLoaded;
+  Assert.AreEqual('', mBatch.ApplyTo(mStored).ContinueCommentsBlockPrefix);
+end;
+
+procedure TAtlasSettingsNodeScopeTests.BatchClearForgetsChanges;
+var
+  mBatch: TAtlasSettingsBatch;
+  mLoaded, mAfter: TAtlasPluginSettings;
+begin
+  mBatch := Default(TAtlasSettingsBatch);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mAfter := mLoaded;
+  mAfter.VisibleRows := 14;
+  mBatch.Add(mLoaded, mAfter);
+  mBatch.Clear;
+  Assert.IsFalse(mBatch.HasChanges);
+  Assert.AreEqual(mLoaded.VisibleRows, mBatch.ApplyTo(mLoaded).VisibleRows);
 end;
 
 initialization

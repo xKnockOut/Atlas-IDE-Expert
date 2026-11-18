@@ -9,12 +9,16 @@
 // - TAtlasSettingsMerge: Jeder Knoten hat seinen eigenen Stand. Beim Speichern
 //   gehen nur die Werte, die der Knoten geändert hat, in den gespeicherten Stand;
 //   so überschreibt ein zweiter Knoten die Änderungen des ersten nicht.
+// - TAtlasSettingsBatch: Die Änderungen aller Knoten eines Dialogs zusammen
+//   (#2372). Nach OK wird einmal gespeichert und einmal gemeldet, nicht je
+//   Knoten; ohne Änderung gar nicht.
 // Die Suche über die Einstellungen steht in Atlas.Core.Settings.Search (#1884).
 // Ohne VCL und ohne Registry.
 
 interface
 
 uses
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups;
@@ -54,6 +58,23 @@ type
     class function Changes(const ABefore, AAfter, ATarget: IAtlasMemorySettingsStore): TArray<string>; static;
   end;
 
+  /// <summary>Änderungen aller Knoten eines Optionsdialogs (#2372): Jeder Knoten trägt beim Schließen ein, was er
+  /// geändert hat; gespeichert und gemeldet wird danach einmal. Ein Knoten ohne Änderung trägt nichts ein.</summary>
+  TAtlasSettingsBatch = record
+  private
+    /// <summary>Nur die geänderten Werte; nil, solange keiner eingetragen ist.</summary>
+    FChanges: IAtlasMemorySettingsStore;
+  public
+    /// <summary>Trägt jeden Wert ein, der in AAfter anders ist als in ABefore (Stand beim Öffnen des Knotens);
+    /// liefert die Namen. Ein späterer Knoten überschreibt denselben Wert eines früheren.</summary>
+    function Add(const ABefore, AAfter: TAtlasPluginSettings): TArray<string>;
+    function HasChanges: Boolean;
+    /// <summary>ASettings mit allen eingetragenen Änderungen, normalisiert; die übrigen Werte bleiben, wie sie in
+    /// ASettings stehen (auch, was seit dem Öffnen anderswo gespeichert wurde).</summary>
+    function ApplyTo(const ASettings: TAtlasPluginSettings): TAtlasPluginSettings;
+    procedure Clear;
+  end;
+
 implementation
 
 uses
@@ -71,6 +92,61 @@ begin
     end;
   end;
   Result := False;
+end;
+
+{ TAtlasSettingsBatch }
+
+function TAtlasSettingsBatch.Add(const ABefore, AAfter: TAtlasPluginSettings): TArray<string>;
+var
+  mChanges: IAtlasMemorySettingsStore;
+begin
+  mChanges := FChanges;
+  if mChanges = nil then
+  begin
+    mChanges := TAtlasMemorySettingsStore.Create;
+  end;
+  Result := TAtlasSettingsMerge.Changes(TAtlasMemorySettingsStore.FromSettings(ABefore),
+    TAtlasMemorySettingsStore.FromSettings(AAfter), mChanges);
+  if Length(Result) > 0 then
+  begin
+    FChanges := mChanges;
+  end;
+end;
+
+function TAtlasSettingsBatch.HasChanges: Boolean;
+begin
+  Result := (FChanges <> nil) and (Length(FChanges.Names) > 0);
+end;
+
+function TAtlasSettingsBatch.ApplyTo(const ASettings: TAtlasPluginSettings): TAtlasPluginSettings;
+var
+  mTarget: IAtlasMemorySettingsStore;
+  mName: string;
+begin
+  Result := ASettings;
+  if not HasChanges then
+  begin
+    Exit;
+  end;
+  mTarget := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  for mName in FChanges.Names do
+  begin
+    if FChanges.HasInteger(mName) then
+    begin
+      mTarget.WriteInteger(mName, FChanges.ReadInteger(mName, 0));
+    end
+    else
+    begin
+      mTarget.WriteString(mName, FChanges.ReadString(mName, ''));
+    end;
+  end;
+  Result.Load(mTarget);
+  Result.Normalize;
+end;
+
+procedure TAtlasSettingsBatch.Clear;
+begin
+  FChanges := nil;
 end;
 
 { TAtlasSettingsNodeScope }
