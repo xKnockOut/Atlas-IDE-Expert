@@ -22,8 +22,8 @@
 // Prüfregeln (TAtlasRuleActions, #1755); ohne Modul fehlen die Einträge. „Alle sicheren Treffer
 // von <Regel> korrigieren …“ (#1352) bietet das Modul Prüfregeln über
 // IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag. „Als Auftrag für KI-Assistenten
-// kopieren“ (#2570) schickt die markierten Befunde an atlas.server.findingsPrompt (Hook Command) und legt den
-// Text des Servers in die Zwischenablage.
+// kopieren“ (#2570) schickt die Argumente des Fensters (markierte Befunde) an atlas.server.findingsPrompt (Hook
+// Command); den Text legt das Fenster in die Zwischenablage, gemeldet wird in der Meldungsansicht.
 // Markierung folgt dem Cursor (problems.window.followCursor); F8/Umschalt+F8
 // gehen bei sichtbarem Fenster durch dessen gefilterte Liste (StepWindow).
 // Offene Units zuerst (#1108): Der Takt gibt dem Frame die Datei des oberen
@@ -116,12 +116,10 @@ implementation
 uses
   Atlas.Core.Problems.FindingsCache,
   Atlas.Core.Problems.Refresh,
-  Atlas.Core.Problems.Prompt,
   System.Classes,
   System.Math,
   System.Generics.Collections,
   Vcl.ExtCtrls,
-  Vcl.Clipbrd,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Problems.Store,
@@ -683,29 +681,22 @@ end;
 
 /// <summary>„Als Auftrag für KI-Assistenten kopieren“ (#2570): Den Text erzeugt der Server (Katalog, Editorpuffer),
 /// das Plugin legt ihn in die Zwischenablage und meldet das in der Meldungsansicht.</summary>
-procedure CopyPrompt(const AFindings: TArray<TAtlasFinding>);
-var
-  mCount: Integer;
+procedure CopyPrompt(const ACommand, AArgumentsJson: string; ACount: Integer; const ACopy: TFunc<TJSONValue, Boolean>);
 begin
   if (State = nil) or not Assigned(State.Hooks.Command) then
   begin
     Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
     Exit;
   end;
-  mCount := Length(AFindings);
-  State.Hooks.Command(TAtlasFindingsPrompt.cCommand, TAtlasFindingsPrompt.Arguments(AFindings),
+  State.Hooks.Command(ACommand, AArgumentsJson,
     procedure(AAnswer: TJSONValue)
-    var
-      mText: string;
     begin
-      mText := TAtlasFindingsPrompt.TextOf(AAnswer);
-      if mText = '' then
+      if not ACopy(AAnswer) then
       begin
         Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
         Exit;
       end;
-      Clipboard.AsText := mText;
-      Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsPromptCopied, [mCount]));
+      Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsPromptCopied, [ACount]));
     end);
 end;
 
@@ -730,12 +721,12 @@ begin
       end;
     end;
   AFrame.OnCopyPrompt :=
-    procedure(const AFindings: TArray<TAtlasFinding>)
+    procedure(const ACommand, AArgumentsJson: string; ACount: Integer; const ACopy: TFunc<TJSONValue, Boolean>)
     begin
       TAtlasGuard.Run(TAtlasFeature.Problems,
         procedure
         begin
-          CopyPrompt(AFindings);
+          CopyPrompt(ACommand, AArgumentsJson, ACount, ACopy);
         end);
     end;
   AFrame.CanCreateIssue :=

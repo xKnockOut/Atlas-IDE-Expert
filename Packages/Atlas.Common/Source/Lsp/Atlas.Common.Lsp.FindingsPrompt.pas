@@ -18,7 +18,6 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.Baseline;
 
 type
@@ -40,6 +39,7 @@ implementation
 
 uses
   System.Generics.Collections,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,

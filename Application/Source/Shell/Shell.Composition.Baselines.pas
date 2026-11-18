@@ -51,6 +51,7 @@ type
     function BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
     procedure Written(AFileName: string);
     function RunBaseline(const AArguments: TJSONArray): TJSONValue;
+    function RunFindingsPrompt(const AArguments: TJSONArray): TJSONValue;
     function RunBulkFix(const AArguments: TJSONArray): TJSONValue;
     function RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
     function RunCompilerBaselineClassify(const AArguments: TJSONArray): TJSONValue;
@@ -289,6 +290,20 @@ begin
   FServices.Logger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [mSummary, mWatch.ElapsedMilliseconds]));
 end;
 
+function TShellBaselines.RunFindingsPrompt(const AArguments: TJSONArray): TJSONValue;
+var
+  mWatch: TStopwatch;
+begin
+  // Nur die Zahl ins Log; Pfade und Meldungen bleiben in der Antwort.
+  mWatch := TStopwatch.StartNew;
+  Result := FFindingsPrompt.Execute(AArguments);
+  if Result is TJSONObject then
+  begin
+    FServices.Logger.Info(Format('Auftrag aus %d Befunden erzeugt, %d ms',
+      [TJSONObject(Result).GetValue<Integer>('count', -1), mWatch.ElapsedMilliseconds]));
+  end;
+end;
+
 function TShellBaselines.RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
 var
   mAnswer: TJSONObject;
@@ -313,7 +328,7 @@ begin
   ACommands.Register(TLspBaseline.cCommand, RunBaseline);
   ACommands.Register(TLspBulkFix.cCommand, RunBulkFix);
   ACommands.Register(TLspCompilerBaseline.cAddCommand, RunCompilerBaselineAdd);
-  ACommands.Register(TLspFindingsPrompt.cCommand, FFindingsPrompt.Execute);
+  ACommands.Register(TLspFindingsPrompt.cCommand, RunFindingsPrompt);
 end;
 
 procedure TShellBaselines.RegisterClassifyCommand(ACommands: TLspCommands);

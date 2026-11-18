@@ -245,12 +245,15 @@ end;
 function BlocksOf(const AMarked: TArray<Integer>; ALineCount, AContext: Integer): TArray<TPromptBlock>;
 var
   mLines: TArray<Integer>;
-  mLine: Integer;
+  mLine, mCount: Integer;
   mBlock: TPromptBlock;
 begin
   Result := nil;
   mLines := Copy(AMarked);
   TArray.Sort<Integer>(mLines);
+  // Höchstens ein Ausschnitt je Fundzeile; am Ende auf die belegten gekürzt.
+  SetLength(Result, Length(mLines));
+  mCount := 0;
   for mLine in mLines do
   begin
     mBlock.First := Max(0, mLine - AContext);
@@ -259,16 +262,17 @@ begin
     begin
       Continue;
     end;
-    if (Length(Result) > 0) and (mBlock.First <= Result[High(Result)].Last + 1) then
+    if (mCount > 0) and (mBlock.First <= Result[mCount - 1].Last + 1) then
     begin
-      Result[High(Result)].Last := Max(Result[High(Result)].Last, mBlock.Last);
+      Result[mCount - 1].Last := Max(Result[mCount - 1].Last, mBlock.Last);
     end
     else
     begin
-      SetLength(Result, Length(Result) + 1);
-      Result[High(Result)] := mBlock;
+      Result[mCount] := mBlock;
+      Inc(mCount);
     end;
   end;
+  SetLength(Result, mCount);
 end;
 
 function IsMarked(const AMarked: TArray<Integer>; ALine: Integer): Boolean;
@@ -364,13 +368,16 @@ end;
 function GroupByFile(const AItems: TArray<TFindingPromptItem>): TArray<TPromptFile>;
 var
   mItem: TFindingPromptItem;
-  mIndex, mFound: Integer;
+  mIndex, mFound, mCount: Integer;
 begin
   Result := nil;
+  // Höchstens eine Datei je Befund; am Ende auf die belegten gekürzt.
+  SetLength(Result, Length(AItems));
+  mCount := 0;
   for mItem in AItems do
   begin
     mFound := -1;
-    for mIndex := 0 to High(Result) do
+    for mIndex := 0 to mCount - 1 do
     begin
       if SameFileName(Result[mIndex].FileName, mItem.FileName) then
       begin
@@ -380,13 +387,14 @@ begin
     end;
     if mFound < 0 then
     begin
-      SetLength(Result, Length(Result) + 1);
-      mFound := High(Result);
+      mFound := mCount;
+      Inc(mCount);
       Result[mFound].FileName := mItem.FileName;
       Result[mFound].Text := mItem.Text;
     end;
     Result[mFound].Items := Result[mFound].Items + [mItem];
   end;
+  SetLength(Result, mCount);
 end;
 
 /// <summary>Befunde einer Datei nach Zeile und Spalte; bei Gleichstand nach Regel, damit die Reihenfolge feststeht.

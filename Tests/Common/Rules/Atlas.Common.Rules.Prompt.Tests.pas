@@ -123,7 +123,7 @@ begin
   mCatalog := TFindingPrompt.GermanCatalog;
   try
     mEntry := SafeRule(mCatalog);
-    Assert.IsTrue(mEntry.Id <> '', 'Katalog hat Regeln mit safeFix');
+    Assert.AreNotEqual('', mEntry.Id, 'Katalog hat Regeln mit safeFix');
     mText := TFindingPrompt.Markdown(Finding(mEntry.Id, 3), 'Src/U.pas', Numbered(10), mCatalog);
   finally
     mCatalog.Free;

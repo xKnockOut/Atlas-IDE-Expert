@@ -20,7 +20,8 @@
 // Gehe zu, Schnellkorrektur, „Alle sicheren Treffer von <Regel> korrigieren …“
 // (#1352, OnFixAll; nur mit CanFixAll, fix.bulk), „Für diese Zeile
 // unterdrücken“, „Regel einstellen…“, „Regel abschalten“, „Regel erklären“, Kopieren, „Als Auftrag für
-// KI-Assistenten kopieren“ (#2570, OnCopyPrompt, auch mehrere), Spalten, Sortierung zurücksetzen. Neue Einträge werden kurz hervorgehoben.
+// KI-Assistenten kopieren“ (#2570, OnCopyPrompt, auch mehrere; Text vom Server in die Zwischenablage), Spalten,
+// Sortierung zurücksetzen. Neue Einträge werden kurz hervorgehoben.
 // Den Inhalt (SetFindings) und die Statuszeile setzt die IDE-Schicht; Auswahl,
 // Aufklappzustand und Bildlauf bleiben dabei erhalten (TAtlasFindingsView).
 // Offene Units zuerst (#1108): Umschaltknopf „Offene zuerst“ (Nadel) neben
@@ -174,9 +175,11 @@ uses
   Atlas.Core.Problems.FindingsView,
   System.Math,
   Winapi.CommCtrl,
+  System.JSON,
   Vcl.Clipbrd,
   Vcl.Themes,
   Atlas.Core.Problems.Explanation,
+  Atlas.Core.Problems.Prompt,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Strings;
 
@@ -194,6 +197,19 @@ const
   /// <summary>Hervorhebung neuer Einträge.</summary>
   cNewMs = 1500;
   cIconSize = 16;
+
+/// <summary>Text der Antwort auf atlas.server.findingsPrompt in die Zwischenablage (#2570).</summary>
+function CopyPromptAnswer(AAnswer: TJSONValue): Boolean;
+var
+  mText: string;
+begin
+  mText := TAtlasFindingsPrompt.TextOf(AAnswer);
+  Result := mText <> '';
+  if Result then
+  begin
+    Clipboard.AsText := mText;
+  end;
+end;
 
 { TAtlasProblemsFrame }
 
@@ -1052,7 +1068,8 @@ begin
   mFindings := SelectedFindings;
   if Assigned(FOnCopyPrompt) and (Length(mFindings) > 0) then
   begin
-    FOnCopyPrompt(mFindings);
+    FOnCopyPrompt(TAtlasFindingsPrompt.cCommand, TAtlasFindingsPrompt.Arguments(mFindings), Length(mFindings),
+      CopyPromptAnswer);
   end;
 end;
 
