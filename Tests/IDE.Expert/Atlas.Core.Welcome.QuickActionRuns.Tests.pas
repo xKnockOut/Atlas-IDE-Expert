@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns;
 
 type
@@ -36,7 +35,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Welcome.QuickActions;
 
 function LowerKey(const AProject: string): string;
 begin
@@ -73,7 +73,7 @@ begin
   Assert.IsFalse(mState.Running);
   Assert.AreEqual(Ord(TAtlasQuickActionPhase.Refused), Ord(mState.Phase));
   Assert.AreEqual('Grund', mState.Detail);
-  Assert.IsTrue(mState.StartedMs = 100);
+  Assert.AreEqual<UInt64>(100, mState.StartedMs);
 end;
 
 procedure TAtlasQuickActionRunsTests.TestsFinishedUpdatesRow;

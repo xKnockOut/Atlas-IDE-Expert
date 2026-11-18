@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.VersionControl.BranchNames;
 
-// Branch-Namen ohne VCL, Open Tools API und Netz (#1455, vorher in
-// Atlas.Core.Tracker.Naming): Gültigkeit nach git check-ref-format und die
+// Branch-Namen ohne VCL, Open Tools API und Netz (#1455):
+// Gültigkeit nach git check-ref-format und die
 // Basen eines neuen Branchs. Liegt in Base, weil „Branch anlegen“ (#1288,
 // Versionsverwaltung) beides braucht, auch ohne das Modul Tracker; „Beginnen“
 // (#765) im Tracker nutzt dieselben Regeln.

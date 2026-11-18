@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Forms;
 
-// Regeln zum Lebenslauf von Formularen (Runde 67):
+// Regeln zum Lebenslauf von Formularen:
 //   form-resource-missing   Neben der Unit liegt eine .dfm/.fmx, deren Wurzelklasse die Unit deklariert, aber
 //                           kein {$R …} bindet eine Formulardatei ein: Create löst EResNotFound aus (#1054).
 //                           Umgekehrt ein {$R *.dfm} bzw. {$R Name.dfm}, dessen Datei fehlt (wie F1026).

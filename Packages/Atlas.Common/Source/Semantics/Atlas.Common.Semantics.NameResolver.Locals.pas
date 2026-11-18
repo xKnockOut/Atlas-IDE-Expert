@@ -442,7 +442,7 @@ begin
   Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
   Result.SelectionRange := Result.Range;
   // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
-  // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
+  // kostete je lokalem Namen einen Lauf über alle Tokens davor (spürbar in großen Units).
   for mIndex := mTree.FirstTokenFrom(ANode.StartOffset) to High(mTree.Tokens) do
   begin
     if mTree.Tokens[mIndex].Offset >= ANode.EndOffset then

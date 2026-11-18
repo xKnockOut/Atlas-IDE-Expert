@@ -43,7 +43,7 @@ type
     cCachePattern = '*.atlasidx';
     cIndexFolder = 'Index';
     cLibraryFolder = 'Bibliothek';
-    /// <summary>Gemeinsame Caches der Suchpfad-Units (Speicher, Rückmeldung 01.11.2026).</summary>
+    /// <summary>Gemeinsame Caches der Suchpfad-Units (Speicher bei Projektgruppen).</summary>
     cSearchFolder = 'Suchpfade';
     /// <summary>Ordnername ohne bekannte Delphi-Version.</summary>
     cNoVersion = 'ohne-Delphi';

@@ -48,8 +48,6 @@ type
     class function UniqueName(const ATokens: TArray<TPascalToken>; const ABase: string): string; static;
     /// <summary>Index des ersten Tokens ab AOffset; Length(ATokens) dahinter.</summary>
     class function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer; static;
-    /// <summary>Nächstes bzw. vorheriges Token ohne Kommentare und Direktiven; -1 bzw. Length ohne.</summary>
-    class function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer; static;
     /// <summary>Text vor die Anweisung AStatement setzen: ALine, Umbruch und die Einrückung der Anweisung.</summary>
     class function InsertBefore(const AText: string; AStatement: TSyntaxNode; const ALine: string): TTextEdit;
       static;
@@ -297,15 +295,6 @@ end;
 class function TRoutineBody.TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 begin
   Result := TSyntaxTree.FirstTokenOf(ATokens, AOffset);
-end;
-
-class function TRoutineBody.NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
 end;
 
 class function TRoutineBody.InsertBefore(const AText: string; AStatement: TSyntaxNode;

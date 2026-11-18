@@ -183,7 +183,7 @@ const
     [TArchitectureRole.Contract, TArchitectureRole.Providers, TArchitectureRole.Adapters,
      TArchitectureRole.Root, TArchitectureRole.Composition, TArchitectureRole.Hosting],
     []);
-  // Fremdes Feature. Host (8.1, Annahme bis zur Bestätigung des Konzepts): alles außer Internals.
+  // Fremdes Feature. Host: alles außer Internals, weil er die Features zusammensetzt; Internals bleiben im Feature.
   cForeignAllowed: array[TArchitectureRole] of TArchitectureRoles = (
     [],
     [TArchitectureRole.Contract],
@@ -530,8 +530,8 @@ begin
   begin
     Exit;
   end;
-  // Test-Units tragen den Namen der getesteten Unit (X.Contract.Tests), gehören aber zu keiner Rolle (Konzept:
-  // Tests werden nicht geprüft).
+  // Test-Units tragen den Namen der getesteten Unit (X.Contract.Tests), gehören aber zu keiner Rolle
+  // (docs/Architektur.md: Tests werden nicht geprüft).
   if TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
   begin
     Exit;

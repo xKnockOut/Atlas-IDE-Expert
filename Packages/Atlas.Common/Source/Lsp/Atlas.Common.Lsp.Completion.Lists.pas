@@ -3,7 +3,7 @@
 // Die Vorschlagsliste an einer Stelle (#31, #180, #616): Units in uses, Mitglieder nach "A.", Vorfahrmethoden
 // nach "inherited ", sonst eigener Gültigkeitsbereich, Units aus uses und Importe; dazu Typargumente (#450),
 // Attribute (#465), Exception-Klassen (#483), Postfix-Vorlagen (#188) und kontextabhängige Code-Vorlagen (#51).
-// Aus Atlas.Common.Lsp.Completion herausgelöst.
+// Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
