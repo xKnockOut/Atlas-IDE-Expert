@@ -250,8 +250,8 @@ type
     /// <summary>Exception-Leiste beim Debuggen (#783, debug.exceptionBanner): Hält der Debugger wegen einer
     /// Exception, zeigt Atlas oben im Editor eine Leiste mit Klasse, Meldung, Thread, Anzahl an dieser Stelle und
     /// der ersten eigenen Zeile; in Delphi 12 und 13 schließt Atlas den Dialog der IDE dafür über „Anhalten“, sonst
-    /// bleibt er und die Leiste kommt danach. Baut auf debug.exceptionHistory auf. Vorgabe aus bis zur
-    /// Studie.</summary>
+    /// bleibt er und die Leiste kommt danach. Baut auf debug.exceptionHistory auf. Vorgabe aus, bis die
+    /// Studie zu #783 positiv ist.</summary>
     DebugExceptionBanner: Boolean;
     /// <summary>Knopf „Nur an dieser Stelle ignorieren“ der Exception-Leiste (#783,
     /// debug.exceptionBanner.ignoreAtLocation): merkt Klasse, Datei und Zeile je Projekt; trifft dieselbe
@@ -286,6 +286,10 @@ type
     DebugWhyHere: Boolean;
     /// <summary>So viele umgebende Blöcke (#1878, debug.whyHere.depth, 1 bis 10).</summary>
     DebugWhyHereDepth: Integer;
+    /// <summary>Laufzeit zwischen Haltepunkten (#579, debug.showElapsed): Beim Halt steht am Ende der Zeile des
+    /// Ausführungspunkts gedimmt die Zeit seit dem letzten Halt („+124 ms“, ohne angehaltene Zeit); Klick zeigt die
+    /// letzten 20 Messungen. Aus = nichts gezeichnet.</summary>
+    DebugShowElapsed: Boolean;
     /// <summary>Fenster „Variablen“ (#853, debug.variablesWindow): andockbares Fenster mit den Reitern Autos
     /// (Ausdrücke der aktuellen und der vorigen Anweisung, ohne Aufrufe), Lokal und Überwachung, Suche nach Name
     /// oder Wert. Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
@@ -560,6 +564,7 @@ procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
 begin
   DebugWhyHere := True;
   DebugWhyHereDepth := cDefaultWhyHereDepth;
+  DebugShowElapsed := True;
   DebugVariablesWindow := True;
   DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
@@ -600,6 +605,7 @@ procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSetti
 begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
+  AIo.Flag('DebugShowElapsed', DebugShowElapsed);
   AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
   AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);

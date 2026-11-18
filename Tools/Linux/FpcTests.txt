@@ -227,6 +227,8 @@ Atlas.Common.Mcp.BuildTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
+Atlas.Common.Lsp.ImplementationSites.Tests
+Atlas.Common.Mcp.ImplementationTools.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
@@ -640,6 +642,7 @@ Atlas.Core.Debug.EventBreakWatch.Tests
 Atlas.Core.Debug.StopProgress.Tests
 Atlas.Core.Debug.Phases.Tests
 Atlas.Core.Debug.WhyHereFlow.Tests
+Atlas.Core.Debug.Elapsed.Tests
 Atlas.Core.Debug.BreakpointSetFlow.Tests
 Atlas.Core.Debug.StepIntoJump.Tests
 Atlas.Core.Debug.UnavailableNote.Tests

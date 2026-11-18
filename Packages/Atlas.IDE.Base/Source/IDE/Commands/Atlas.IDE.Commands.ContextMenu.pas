@@ -4,8 +4,8 @@
 // Menü bei jedem Öffnen aus registrierten Aktionslisten neu auf
 // (INTAEditorLocalMenu); Atlas registriert dort eine TActionList mit einer
 // Aktion „Atlas“ und den Einträgen als Untermenü (Kategorie „Atlas.Eintrag“).
-// Früher hängte Atlas eigene TMenuItem direkt in „EditorLocalMenu“ ein; beim
-// Neuaufbau meldete die IDE dann „Komponente … existiert bereits“.
+// Keine eigenen TMenuItem direkt in „EditorLocalMenu“: Beim Neuaufbau meldete
+// die IDE dann „Komponente … existiert bereits“.
 // Untermenüs darin (BeginGroup/EndGroup): Die Gruppe ist eine Aktion der
 // Kategorie „Atlas.Eintrag“. Die IDE baut nur diese eine Ebene; eine tiefere
 // Kategorie hing sie flach an, die Gruppennamen standen dann als Zeilen

@@ -270,6 +270,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Report.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CoveredBy.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ImplementationSites.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MessageHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeLens.pas"/>
@@ -707,6 +708,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ExtractTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ImplementationTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeInbox.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>

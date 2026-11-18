@@ -494,7 +494,8 @@ begin
     mMonitor := TLeakMonitor.Create;
     mMonitor.PreTest;
     mMonitor.PostTest;
-    Assert.IsTrue(TAtlasLocale.Language = TTextLanguage.German, 'PreTest ohne PreSetup setzt die Sprache nicht');
+    Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TAtlasLocale.Language,
+      'PreTest ohne PreSetup setzt die Sprache nicht');
   finally
     TAtlasLocale.Use(TTextLanguage.German);
   end;

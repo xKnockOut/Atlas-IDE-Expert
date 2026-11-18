@@ -140,6 +140,11 @@ const
   cDWMWA_BORDER_COLOR = 34;
   cDWMWCP_ROUNDSMALL = 3;
   cCornerRadius = 6;
+  /// <summary>UI-Schrift zu Editorschrift wie im Entwurf: 12 zu 13 px.</summary>
+  cUIFontPixels = 12;
+  cEditorFontPixels = 13;
+  /// <summary>Kleinste Dichte (dpi) bei starkem Herauszoomen; darunter wären Ränder und Schrift unlesbar.</summary>
+  cMinPPI = 48;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -298,10 +303,10 @@ begin
   begin
     Exit;
   end;
-  // UI-Schrift der IDE, etwas kleiner als die Editorschrift (Entwurf: 12 zu 13 px).
+  // UI-Schrift der IDE, etwas kleiner als die Editorschrift (Entwurf: cUIFontPixels zu cEditorFontPixels).
   FUIFont.Name := Screen.MessageFont.Name;
   FUIFont.PixelsPerInch := Font.PixelsPerInch;
-  FUIFont.Height := MulDiv(Font.Height, 12, 13);
+  FUIFont.Height := MulDiv(Font.Height, cUIFontPixels, cEditorFontPixels);
   FUIFont.Charset := Font.Charset;
 end;
 
@@ -442,7 +447,7 @@ end;
 procedure TAtlasPopupWindow.SetScaling(AMonitorPPI: Integer; AZoom: Double; const AFontName: string;
   AFontSize: Integer);
 begin
-  FPPI := Max(48, Round(AMonitorPPI * AZoom));
+  FPPI := Max(cMinPPI, Round(AMonitorPPI * AZoom));
   if AFontName <> '' then
   begin
     Font.Name := AFontName;

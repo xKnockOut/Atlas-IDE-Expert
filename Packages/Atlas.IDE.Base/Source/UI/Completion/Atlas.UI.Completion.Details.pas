@@ -105,6 +105,23 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Completion.Strings;
 
+const
+  /// <summary>Logische Bildpunkte bei 96 dpi. Panel: Einzug links und rechts, oben, Rand unten.</summary>
+  cSideInset = 13;
+  cTopInset = 11;
+  cBottomPad = 5;
+  /// <summary>Abstand nach einem Textblock bzw. nach einem Abschnitt (Trennlinie, Überladungen, Tags).</summary>
+  cBlockGap = 6;
+  cSectionGap = 8;
+  /// <summary>Überladungen: Rand um die Pfeile, Abstand zwischen Pfeilen und Zähler.</summary>
+  cArrowPad = 4;
+  cCounterGap = 8;
+  /// <summary>Abstand zwischen Tags.</summary>
+  cTagGap = 6;
+  /// <summary>Deklaration: Einzug der Folgezeilen, Abstand danach.</summary>
+  cWrapIndent = 16;
+  cDeclarationGap = 3;
+
 { TAtlasDetailView }
 
 constructor TAtlasDetailView.Create;
@@ -274,7 +291,7 @@ begin
   begin
     DrawText(Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
-  Y := mArea.Bottom + Scale(6);
+  Y := mArea.Bottom + Scale(cBlockGap);
   Canvas.Font.Style := [];
 end;
 
@@ -292,7 +309,7 @@ begin
   begin
     DrawText(Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX);
   end;
-  Y := mArea.Bottom + Scale(6);
+  Y := mArea.Bottom + Scale(cBlockGap);
 end;
 
 procedure TDetailRender.Separator;
@@ -301,7 +318,7 @@ begin
   begin
     TAtlasDraw.Separator(Canvas, Left, Right, Y + Scale(2), Colors.Line);
   end;
-  Inc(Y, Scale(8));
+  Inc(Y, Scale(cSectionGap));
 end;
 
 procedure TDetailRender.Overloads;
@@ -313,12 +330,12 @@ begin
   Canvas.Font := UIFont;
   mLineHeight := Canvas.TextHeight('Wg');
   mText := Format('%d / %d', [View.FOverloadIndex + 1, View.FOverloadCount]);
-  mX := Right - Canvas.TextWidth('›') - Scale(4);
-  View.FNextRect := Rect(mX - Scale(4), Y - Scale(2), Right, Y + mLineHeight + Scale(2));
-  Dec(mX, Canvas.TextWidth(mText) + Scale(8));
+  mX := Right - Canvas.TextWidth('›') - Scale(cArrowPad);
+  View.FNextRect := Rect(mX - Scale(cArrowPad), Y - Scale(2), Right, Y + mLineHeight + Scale(2));
+  Dec(mX, Canvas.TextWidth(mText) + Scale(cCounterGap));
   mCount := Rect(mX, Y, mX + Canvas.TextWidth(mText), Y + mLineHeight);
-  Dec(mX, Canvas.TextWidth('‹') + Scale(8));
-  View.FPreviousRect := Rect(mX - Scale(4), Y - Scale(2), mX + Canvas.TextWidth('‹') + Scale(4),
+  Dec(mX, Canvas.TextWidth('‹') + Scale(cCounterGap));
+  View.FPreviousRect := Rect(mX - Scale(cArrowPad), Y - Scale(2), mX + Canvas.TextWidth('‹') + Scale(cArrowPad),
     Y + mLineHeight + Scale(2));
   if Draw then
   begin
@@ -329,11 +346,11 @@ begin
     DrawText(Canvas.Handle, PChar(mText), -1, mCount, DT_SINGLELINE or DT_NOPREFIX);
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := ToColor(Colors.Accent);
-    Canvas.TextOut(View.FPreviousRect.Left + Scale(4), Y, '‹');
-    Canvas.TextOut(View.FNextRect.Left + Scale(4), Y, '›');
+    Canvas.TextOut(View.FPreviousRect.Left + Scale(cArrowPad), Y, '‹');
+    Canvas.TextOut(View.FNextRect.Left + Scale(cArrowPad), Y, '›');
     Canvas.Font.Style := [];
   end;
-  Inc(Y, mLineHeight + Scale(8));
+  Inc(Y, mLineHeight + Scale(cSectionGap));
 end;
 
 procedure TDetailRender.Tags;
@@ -361,9 +378,9 @@ begin
     begin
       Tag(mTag, mBox);
     end;
-    mTagX := mBox.Right + Scale(6);
+    mTagX := mBox.Right + Scale(cTagGap);
   end;
-  Inc(Y, mTagHeight + Scale(8));
+  Inc(Y, mTagHeight + Scale(cSectionGap));
 end;
 
 procedure TDetailRender.Tag(const ATag: string; const ABox: TRect);
@@ -399,20 +416,20 @@ begin
   mKey := IntToStr(Right - Left) + '|' + IntToStr(PPI) + '|' + Font.Name + '|' + IntToStr(Font.Height);
   if mKey <> View.FDeclKey then
   begin
-    View.FDeclLines := View.FDecl.WrapAtSpaces(Canvas, Right - Left, Scale(16));
+    View.FDeclLines := View.FDecl.WrapAtSpaces(Canvas, Right - Left, Scale(cWrapIndent));
     View.FDeclKey := mKey;
   end;
   for mLine := 0 to High(View.FDeclLines) do
   begin
-    mX := Left + IfThen(mLine > 0, Scale(16));
+    mX := Left + IfThen(mLine > 0, Scale(cWrapIndent));
     if Draw then
     begin
-      View.FDecl.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), View.FDeclLines[mLine], mX,
-        Rect(mX, Y, Right, Y + mLineHeight), False);
+      View.FDecl.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(TAtlasStyledTarget.cRadius)),
+        View.FDeclLines[mLine], mX, Rect(mX, Y, Right, Y + mLineHeight), False);
     end;
     Inc(Y, mLineHeight);
   end;
-  Inc(Y, Scale(3));
+  Inc(Y, Scale(cDeclarationGap));
 end;
 
 procedure TDetailRender.Origin;
@@ -518,29 +535,38 @@ begin
 end;
 
 procedure TDetailRender.SameNameInsert;
+type
+  /// <summary>Was Enter tut (Kennung vom Server), der Text dazu und ob er warnt (uses wird geändert).</summary>
+  TInsertMode = record
+    Mode: string;
+    Text: TAtlasCompletionTextId;
+    Warns: Boolean;
+  end;
+const
+  cModes: array[0..3] of TInsertMode = (
+    (Mode: 'prefix'; Text: TAtlasCompletionTextId.SameNameInsertPrefix; Warns: False),
+    (Mode: 'prefixAdd'; Text: TAtlasCompletionTextId.SameNameInsertPrefixAdd; Warns: True),
+    (Mode: 'move'; Text: TAtlasCompletionTextId.SameNameInsertMove; Warns: True),
+    (Mode: 'add'; Text: TAtlasCompletionTextId.SameNameInsertAdd; Warns: True));
 var
-  mLead: string;
+  mMode: TInsertMode;
+  mColor: TAtlasColor;
 begin
-  mLead := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameNotActive) + ' · ';
-  if View.FDetails.SameNameInsert = 'prefix' then
+  for mMode in cModes do
   begin
-    Block(mLead + TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameInsertPrefix), Colors.Muted, []);
-  end
-  else if View.FDetails.SameNameInsert = 'prefixAdd' then
-  begin
-    Block(mLead + TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SameNameInsertPrefixAdd,
-      [View.FDetails.SameNameThis]), Colors.Warn,
-      []);
-  end
-  else if View.FDetails.SameNameInsert = 'move' then
-  begin
-    Block(mLead + TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SameNameInsertMove, [View.FDetails.SameNameThis]),
-      Colors.Warn, []);
-  end
-  else if View.FDetails.SameNameInsert = 'add' then
-  begin
-    Block(mLead + TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.SameNameInsertAdd, [View.FDetails.SameNameThis]),
-      Colors.Warn, []);
+    if mMode.Mode <> View.FDetails.SameNameInsert then
+    begin
+      Continue;
+    end;
+    mColor := Colors.Muted;
+    if mMode.Warns then
+    begin
+      mColor := Colors.Warn;
+    end;
+    // Der Text zu 'prefix' hat keinen Platzhalter; Format übergeht das überzählige Argument.
+    Block(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameNotActive) + ' · ' +
+      TAtlasCompletionStrings.Fmt(mMode.Text, [View.FDetails.SameNameThis]), mColor, []);
+    Exit;
   end;
 end;
 
@@ -599,7 +625,7 @@ begin
     BuildDoc;
   end;
   // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.
-  mFixed := Y - ATop + Scale(5);
+  mFixed := Y - ATop + Scale(cBottomPad);
   if View.FMaxHeight > 0 then
   begin
     View.FDoc.FitHeight(View.FDetails.Display.MaxLines, View.FMaxHeight - mFixed);
@@ -660,9 +686,9 @@ begin
   mRender.UIFont := ASurface.UIFont;
   mRender.PPI := ASurface.PPI;
   mRender.Draw := ADraw;
-  mRender.Left := ABounds.Left + mRender.Scale(13);
-  mRender.Right := ABounds.Right - mRender.Scale(13);
-  mRender.Y := ABounds.Top + mRender.Scale(11);
+  mRender.Left := ABounds.Left + mRender.Scale(cSideInset);
+  mRender.Right := ABounds.Right - mRender.Scale(cSideInset);
+  mRender.Y := ABounds.Top + mRender.Scale(cTopInset);
   FPreviousRect := TRect.Empty;
   FNextRect := TRect.Empty;
   if FOverloadCount > 1 then
@@ -684,7 +710,7 @@ begin
     mRender.Doc(ABounds.Top);
     ASurface.Canvas.Brush.Style := bsSolid;
   end;
-  Result := mRender.Y - ABounds.Top + mRender.Scale(5);
+  Result := mRender.Y - ABounds.Top + mRender.Scale(cBottomPad);
 end;
 
 end.
