@@ -165,9 +165,12 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 Tracked as issues, order in [docs/Roadmap-Entwurf.md](docs/Roadmap-Entwurf.md) (German):
 
-- 2.3: AI assistants in the debugger, team, version control and CI
+- 2.3: foundation (bugs, review findings, check rules) and AI assistants in the debugger
+- 2.4: team: issue tracker, version control, CI
+- 2.5: tests and build
+- 2.6: editor, navigation, search, refactoring
+- 2.7: form designer, architecture, settings and help
 - 3.0: platform, including AtlasServer on Linux
-- ongoing: further check rules (sub-issues of #1086)
 
 ## Installation
 
