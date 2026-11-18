@@ -2232,6 +2232,10 @@ In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourc
 
 Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignoreCalls` | string-list | `[]` | Weitere Routinen, deren Text-Argumente niemand übersetzt, z. B. eine eigene Pick(Englisch, 'en', 'de'). Protokoll-, Prüf-, Vergleichs- und Registry-Aufrufe gelten immer. |
+
 Mit Treffer:
 
 ```pascal
