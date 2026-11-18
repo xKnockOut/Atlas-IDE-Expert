@@ -35,6 +35,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -1286,7 +1287,7 @@ begin
     end
     else if Locals[mIndex].Kind = TLocalKind.Constant then
     begin
-      ReplaceToken(TInlineSyntax.NextSignificant(CalleeTokens, TRoutineBody.TokenAt(CalleeTokens,
+      ReplaceToken(NextCode(CalleeTokens, TRoutineBody.TokenAt(CalleeTokens,
         Locals[mIndex].Decl.StartOffset)), NewNames[mIndex]);
     end;
   end;

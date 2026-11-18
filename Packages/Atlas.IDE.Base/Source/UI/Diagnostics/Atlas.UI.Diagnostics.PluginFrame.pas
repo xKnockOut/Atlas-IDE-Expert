@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Diagnostics.PluginFrame;
 
-// Inhalt des Fensters „Atlas-Diagnose“ (Variante A), reine VCL: oben die
+// Inhalt des Fensters „Atlas-Diagnose“, reine VCL: oben die
 // Reiter Hauptthread, Server, Hintergrund, Hänger und Vervollständigung,
 // darunter für die vier Reiter des Plugins die Leiste mit Belegung, Schwelle
 // und Knöpfen (TAtlasDiagnosticBar) und unten die Fußzeile „Messung seit …“.

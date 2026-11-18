@@ -2,7 +2,7 @@
 
 // Gemeinsamer Vorfahr der gezeichneten Editorleisten (#1248): Editorleiste,
 // Statusleiste, Brotkrumen. Was jede von ihnen gleich braucht, steht hier
-// einmal; früher hatte jede ihre Kopie, und Fehler wurden je Kopie behoben.
+// einmal, damit ein Fehler nicht je Kopie behoben werden muss.
 // - Höhe nur nach DPI (BaseHeight bei 96 DPI), nie nach dem Inhalt;
 //   FixedHeight := False gibt die Höhe frei (Editorleiste in der
 //   Brotkrumenzeile).

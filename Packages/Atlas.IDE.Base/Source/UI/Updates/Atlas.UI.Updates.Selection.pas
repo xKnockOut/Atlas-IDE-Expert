@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Updates.Selection;
 
-// Auswahl der Module eines Updates (#1519, Mockup 6): eine Liste mit
+// Auswahl der Module eines Updates (#1519): eine Liste mit
 // Häkchen. Kern und Verträge sind gewählt und nicht abwählbar, neue Module
 // tragen „(neu)“. Vorgewählt ist der Vorschlag von AtlasUpdate.exe
 // (bisherige Module ja, neue nach updates.newModules).

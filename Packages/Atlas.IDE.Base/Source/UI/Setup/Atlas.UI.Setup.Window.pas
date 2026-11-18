@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Setup.Window;
 
-// Fenster „Atlas-Einrichtung“ (#625, Mockup Runde 25 Z2), reine VCL: oben
+// Fenster „Atlas-Einrichtung“ (#625), reine VCL: oben
 // Titel und „5 von 6 erledigt“, darunter je Prüfung ein farbiger Punkt
 // (grün, gelb, rot), der Text, gedämpft die Einzelheit (z. B. „AtlasServer
 // 0.1.0“) und rechts der Knopf, der das Problem behebt oder erklärt. Unter

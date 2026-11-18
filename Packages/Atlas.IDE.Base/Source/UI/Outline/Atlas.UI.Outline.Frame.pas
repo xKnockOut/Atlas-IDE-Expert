@@ -253,7 +253,7 @@ end;
 procedure TAtlasOutlineFrame.BuildBar;
 begin
   // Suchfeld oben über die ganze Breite, darunter die Knöpfe in einer fließenden Leiste (brechen bei schmalem
-  // Fenster um). Vorher stand das Suchfeld mit fester Breite in der Leiste und der Sortierknopf war abgeschnitten.
+  // Fenster um). Mit fester Breite in der Leiste schnitte das Suchfeld den Sortierknopf ab.
   FSearch := TEdit.Create(Self);
   FSearch.Top := 0;
   FSearch.Align := alTop;
@@ -780,7 +780,7 @@ begin
 end;
 
 /// <summary>Marken hinter dem Namen: „nicht implementiert“ und mit AShowConditions der aktive Zweig der bedingten
-/// Kompilierung (#845), wie die Marke im Mockup.</summary>
+/// Kompilierung (#845).</summary>
 procedure PutMarks(ACanvas: TCanvas; var AX: Integer; const ARect: TRect; const ANode: TAtlasOutlineNode;
   AShowConditions: Boolean; const AColors: TAtlasColors);
 begin
