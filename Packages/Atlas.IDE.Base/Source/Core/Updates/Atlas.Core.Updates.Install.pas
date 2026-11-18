@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Updates.Install;
 
-// Update installieren (#1519, Variante A „beim Beenden installieren“), ohne
+// Update installieren (#1519, „beim Beenden installieren“), ohne
 // IDE und ohne Prozesse:
 // - updates.install: ask bietet ein gefundenes Update an, auto bereitet es
 //   ohne Frage vor (nicht bei einer neuen Hauptversion), off meldet es nur
@@ -76,7 +76,7 @@ type
       const AStage: TUpdateStage; AWaitPid: Cardinal): TUpdateArguments; static;
     /// <summary>Stand eines laufenden oder fertigen „prepare“: fertig, wenn bereit oder gescheitert.</summary>
     class function IsFinished(const AStage: TUpdateStage): Boolean; static;
-    /// <summary>Gewählte Packages nach der Auswahl (Mockup 6) übernehmen; Pflicht-Packages bleiben gewählt,
+    /// <summary>Gewählte Packages nach der Auswahl der Module übernehmen; Pflicht-Packages bleiben gewählt,
     /// unbekannte Namen fallen weg. Danach fragt das Plugin nicht mehr.</summary>
     class function Choose(const AStage: TUpdateStage; const AChosen: TArray<string>): TUpdateStage; static;
   end;
