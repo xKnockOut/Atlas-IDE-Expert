@@ -1570,6 +1570,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.SelectionBar` | `Core/Designer/Atlas.Core.Designer.SelectionBar.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Magnifier` | `Core/Designer/Atlas.Core.Designer.Magnifier.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Neighbours` | `Core/Designer/Atlas.Core.Designer.Neighbours.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Names` | `Core/Designer/Atlas.Core.Designer.Names.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormStore` | `Core/Designer/Atlas.Core.Designer.FormStore.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.GridSnap` | `Core/Designer/Atlas.Core.Designer.GridSnap.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionSets` | `Core/Designer/Atlas.Core.Designer.SelectionSets.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Similar` | `Core/Designer/Atlas.Core.Designer.Similar.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Measure` | `Core/Designer/Atlas.Core.Designer.Measure.pas` | Ordner `Core/Designer` |

@@ -113,7 +113,8 @@ uses
   System.StrUtils,
   System.Character,
   Atlas.Text.Chars,
-  Atlas.Core.Designer.FitText;
+  Atlas.Core.Designer.FitText,
+  Atlas.Core.Designer.Names;
 
 type
   TPrefixEntry = record
@@ -428,20 +429,6 @@ begin
   end;
 end;
 
-function IsTaken(const ATaken: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ATaken do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasNameSuggest.Propose(const AInputs: TArray<TAtlasNameInput>; const AOptions: TAtlasNameOptions;
   const ATaken: TArray<string>): TArray<TAtlasNameProposal>;
 var
@@ -473,7 +460,7 @@ begin
     mBase := Prefix(AInputs[mIndex].ClassChain, AOptions.Prefixes) + mWord;
     Result[mIndex].NewName := mBase;
     mNumber := 1;
-    while IsTaken(mTaken, Result[mIndex].NewName) and not SameText(Result[mIndex].NewName, AInputs[mIndex].Name) do
+    while TAtlasDesignerNames.Contains(mTaken, Result[mIndex].NewName) and not SameText(Result[mIndex].NewName, AInputs[mIndex].Name) do
     begin
       Inc(mNumber);
       Result[mIndex].NewName := mBase + IntToStr(mNumber);

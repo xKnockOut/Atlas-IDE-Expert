@@ -53,7 +53,8 @@ uses
   Atlas.UI.Designer.SpaceDialog,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.KeptForm,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.GridSnap;
 
 const
   cDefaultGrid = 8;
@@ -114,15 +115,6 @@ begin
   end;
 end;
 
-function HiOf(const ARect: TRect; AAxis: TAtlasSpaceAxis): Integer;
-begin
-  Result := ARect.Bottom;
-  if AAxis = TAtlasSpaceAxis.Columns then
-  begin
-    Result := ARect.Right;
-  end;
-end;
-
 /// <summary>Kinder von AParent, die zum Formular gehören, ohne AExclude.</summary>
 function ChildrenOf(AParent: TWinControl; ARoot: TComponent; AExclude: TControl): TArray<TControl>;
 var
@@ -176,7 +168,7 @@ begin
     GrowContainer(ARun, AContainer.Parent, AGrow);
     Exit;
   end;
-  mOldHi := HiOf(AContainer.BoundsRect, ARun.Axis);
+  mOldHi := TAtlasInsertSpace.EndOf(AContainer.BoundsRect, ARun.Axis);
   if ARun.Axis = TAtlasSpaceAxis.Rows then
   begin
     AContainer.Height := AContainer.Height + AGrow;
@@ -289,7 +281,7 @@ begin
   mAmount := mOptions.Amount;
   if mOptions.Snap then
   begin
-    mAmount := Max(TAtlasInsertSpace.Snap(mAmount,
+    mAmount := Max(TAtlasGridSnap.Snap(mAmount,
       TAtlasDesignerAccess.GridSize(mOptions.Axis = TAtlasSpaceAxis.Rows)), 1);
   end;
   if ARemove then

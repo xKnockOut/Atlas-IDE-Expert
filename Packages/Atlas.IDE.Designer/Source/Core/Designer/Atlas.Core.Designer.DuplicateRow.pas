@@ -114,7 +114,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.Math;
+  System.Math,
+  Atlas.Core.Designer.Names;
 
 const
   cDefaultPpi = 96;
@@ -448,27 +449,13 @@ begin
   Result := mStem + IntToStr(mNumber + AIndex + 1);
 end;
 
-function Taken(const AName: string; const ATaken: TArray<string>): Boolean;
-var
-  mName: string;
-begin
-  for mName in ATaken do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasDuplicateRow.UniqueName(const AName: string; const ATaken: TArray<string>): string;
 var
   mStem: string;
   mNumber: Integer;
 begin
   Result := AName;
-  if not Taken(Result, ATaken) then
+  if not TAtlasDesignerNames.Contains(ATaken, Result) then
   begin
     Exit;
   end;
@@ -480,7 +467,7 @@ begin
   repeat
     Inc(mNumber);
     Result := mStem + IntToStr(mNumber);
-  until not Taken(Result, ATaken);
+  until not TAtlasDesignerNames.Contains(ATaken, Result);
 end;
 
 class function TAtlasDuplicateRow.Names(const ANames, AEntries: TArray<string>; ACount: Integer;

@@ -63,7 +63,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Designer.Names;
 
 { TAtlasAnchorItem }
 
@@ -224,17 +225,12 @@ begin
 end;
 
 function IndexOfName(const AItems: TArray<TAtlasAnchorItem>; const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(AItems) do
-  begin
-    if SameText(AItems[mIndex].Name, AName) then
+  Result := TAtlasDesignerNames.IndexOfName<TAtlasAnchorItem>(AItems, AName,
+    function(AItem: TAtlasAnchorItem): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AItem.Name;
+    end);
 end;
 
 /// <summary>Labels mit FocusControl: senkrecht wie das Feld, waagerecht links.</summary>

@@ -60,7 +60,6 @@ type
   TAtlasWrapOrder = class
   public
     /// <summary>Kommt AName (ohne Groß-/Kleinschreibung) in ANames vor?</summary>
-    class function Contains(const ANames: TArray<string>; const AName: string): Boolean; static;
     /// <summary>AName, sonst AName2, AName3, … bis AExists den Namen nicht kennt.</summary>
     class function UniqueName(const AName: string; const AExists: TFunc<string, Boolean>): string; static;
     /// <summary>Vorschlag für die Seite eines neuen PageControls: Präfix der Seite und, was im Namen des
@@ -90,7 +89,8 @@ implementation
 
 uses
   System.Math,
-  System.Character;
+  System.Character,
+  Atlas.Core.Designer.Names;
 
 { TAtlasContainerWrap }
 
@@ -354,20 +354,6 @@ end;
 
 { TAtlasWrapOrder }
 
-class function TAtlasWrapOrder.Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasWrapOrder.UniqueName(const AName: string; const AExists: TFunc<string, Boolean>): string;
 var
   mNumber: Integer;
@@ -398,7 +384,7 @@ begin
   end;
   for mName in AExtra.Split([',', ';']) do
   begin
-    if (Trim(mName) <> '') and not Contains(Result, Trim(mName)) then
+    if (Trim(mName) <> '') and not TAtlasDesignerNames.Contains(Result, Trim(mName)) then
     begin
       Result := Result + [Trim(mName)];
     end;
@@ -413,7 +399,7 @@ begin
   mTop := -1;
   for mIndex := 0 to High(AStack) do
   begin
-    if Contains(AChildren, AStack[mIndex]) then
+    if TAtlasDesignerNames.Contains(AChildren, AStack[mIndex]) then
     begin
       mTop := mIndex;
     end;
@@ -425,7 +411,7 @@ begin
     begin
       Result := Result + [AContainer];
     end
-    else if not Contains(AChildren, AStack[mIndex]) then
+    else if not TAtlasDesignerNames.Contains(AChildren, AStack[mIndex]) then
     begin
       Result := Result + [AStack[mIndex]];
     end;

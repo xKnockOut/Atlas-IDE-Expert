@@ -81,7 +81,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Core.Designer.NameSuggest,
-  Atlas.Core.Designer.FormUnit;
+  Atlas.Core.Designer.FormUnit,
+  Atlas.Core.Designer.Names;
 
 type
   TNode = record
@@ -162,7 +163,7 @@ begin
   mNode := Default(TNode);
   mNode.Name := AName;
   mNode.ClassName := AClassName;
-  mNode.Indent := TAtlasFormUnit.SpacesOf(ADfm.Lines[ALine]);
+  mNode.Indent := TAtlasDesignerNames.IndentOf(ADfm.Lines[ALine]);
   mNode.First := ALine;
   mNode.Last := -1;
   mNode.PropsLast := -1;
@@ -185,7 +186,7 @@ begin
     Exit;
   end;
   mTop := AStack[High(AStack)];
-  if TAtlasFormUnit.SpacesOf(ADfm.Lines[ALine]) <> ADfm.Nodes[mTop].Indent then
+  if TAtlasDesignerNames.IndentOf(ADfm.Lines[ALine]) <> ADfm.Nodes[mTop].Indent then
   begin
     Exit;
   end;
@@ -253,7 +254,7 @@ begin
   for mIndex := Nodes[ANode].First + 1 to Nodes[ANode].PropsLast do
   begin
     mLine := Lines[mIndex];
-    if (TAtlasFormUnit.SpacesOf(mLine) = Nodes[ANode].Indent + cFrameIndent) and
+    if (TAtlasDesignerNames.IndentOf(mLine) = Nodes[ANode].Indent + cFrameIndent) and
       StartsText(AProp + cAssign, mLine.Trim) then
     begin
       AValue := Copy(mLine.Trim, Length(AProp + cAssign) + 1, MaxInt);
@@ -273,20 +274,6 @@ begin
   begin
     Result := StrToIntDef(mValue, 0);
   end;
-end;
-
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 /// <summary>Ereignis-Zeile „OnChange = edtPlzChange“: Handler; sonst ''.</summary>
@@ -590,7 +577,7 @@ begin
   Result := StartsText(AProp + ' = ', mText);
   if Result then
   begin
-    AResult := Format(cPropLine, [StringOfChar(' ', TAtlasFormUnit.SpacesOf(ALine)), AProp,
+    AResult := Format(cPropLine, [StringOfChar(' ', TAtlasDesignerNames.IndentOf(ALine)), AProp,
       IntToStr(StrToIntDef(Copy(mText, Length(AProp + cAssign) + 1, MaxInt), 0) - ADelta)]);
   end;
 end;
@@ -620,18 +607,18 @@ begin
     begin
       mLine := ADfm.Lines[mIndex];
       // Handler, die im Formular bleiben, verbindet der inherited-Block im Formular.
-      if Contains(AKept, EventHandler(mLine)) then
+      if TAtlasDesignerNames.Contains(AKept, EventHandler(mLine)) then
       begin
         Continue;
       end;
       mOwnProps := (mIndex <= ADfm.Nodes[mRoot].PropsLast) and
-        (TAtlasFormUnit.SpacesOf(mLine) = ADfm.Nodes[mRoot].Indent + cFrameIndent);
+        (TAtlasDesignerNames.IndentOf(mLine) = ADfm.Nodes[mRoot].Indent + cFrameIndent);
       if mOwnProps and (ShiftedLine(mLine, 'Left', mDx, mShifted) or ShiftedLine(mLine, 'Top', mDy, mShifted) or
         ShiftedLine(mLine, 'ExplicitLeft', mDx, mShifted) or ShiftedLine(mLine, 'ExplicitTop', mDy, mShifted)) then
       begin
         mLine := mShifted;
       end;
-      mLines := mLines + [Reindented(mLine, cFrameIndent + TAtlasFormUnit.SpacesOf(mLine) - ADfm.Nodes[mRoot].Indent)];
+      mLines := mLines + [Reindented(mLine, cFrameIndent + TAtlasDesignerNames.IndentOf(mLine) - ADfm.Nodes[mRoot].Indent)];
     end;
   end;
   mLines := mLines + ['end', ''];
@@ -649,8 +636,8 @@ begin
   mOwn := nil;
   for mIndex := ADfm.Nodes[ANode].First + 1 to ADfm.Nodes[ANode].PropsLast do
   begin
-    if (TAtlasFormUnit.SpacesOf(ADfm.Lines[mIndex]) = ADfm.Nodes[ANode].Indent + cFrameIndent) and
-      Contains(AKept, EventHandler(ADfm.Lines[mIndex])) then
+    if (TAtlasDesignerNames.IndentOf(ADfm.Lines[mIndex]) = ADfm.Nodes[ANode].Indent + cFrameIndent) and
+      TAtlasDesignerNames.Contains(AKept, EventHandler(ADfm.Lines[mIndex])) then
     begin
       mOwn := mOwn + [StringOfChar(' ', AIndent + cFrameIndent) + ADfm.Lines[mIndex].Trim];
     end;
@@ -739,12 +726,12 @@ begin
     end;
     if InRoots(ADfm, ASplit, mIndex) then
     begin
-      if not Contains(AInside, mHandler) then
+      if not TAtlasDesignerNames.Contains(AInside, mHandler) then
       begin
         AInside := AInside + [mHandler];
       end;
     end
-    else if not Contains(AOutside, mHandler) then
+    else if not TAtlasDesignerNames.Contains(AOutside, mHandler) then
     begin
       AOutside := AOutside + [mHandler];
     end;
@@ -763,7 +750,7 @@ begin
   for mHandler in mInside do
   begin
     // Aufrufe im Code: der Kopf „procedure TForm.X(“ selbst zählt einmal.
-    if AMoveHandlers and not Contains(mOutside, mHandler) and
+    if AMoveHandlers and not TAtlasDesignerNames.Contains(mOutside, mHandler) and
       (Length(TAtlasNameSuggest.Places(mCode, mHandler)) <= 1) then
     begin
       Result.Moved := Result.Moved + [mHandler];
@@ -870,13 +857,13 @@ begin
   for mIndex := mLast - 1 downto mFirst + 1 do
   begin
     mName := TAtlasFormUnit.MemberName(Result.FormUnit.Lines[mIndex], mIsMethod);
-    if (mName <> '') and not mIsMethod and Contains(AMoved, mName) then
+    if (mName <> '') and not mIsMethod and TAtlasDesignerNames.Contains(AMoved, mName) then
     begin
       Result.Fields := [Result.FormUnit.Lines[mIndex]] + Result.Fields;
       Delete(Result.FormUnit.Lines, mIndex, 1);
       mInsert := mIndex;
     end
-    else if (mName <> '') and mIsMethod and Contains(AHandlers, mName) then
+    else if (mName <> '') and mIsMethod and TAtlasDesignerNames.Contains(AHandlers, mName) then
     begin
       Result.Decls := [Result.FormUnit.Lines[mIndex]] + Result.Decls;
       Delete(Result.FormUnit.Lines, mIndex, 1);
@@ -893,7 +880,7 @@ begin
   Result := nil;
   for mNode := 1 to High(ADfm.Nodes) do
   begin
-    if not Contains(AMoved, ADfm.Nodes[mNode].Name) and not ADfm.IsInside(mNode, ASplit.Removed[0]) then
+    if not TAtlasDesignerNames.Contains(AMoved, ADfm.Nodes[mNode].Name) and not ADfm.IsInside(mNode, ASplit.Removed[0]) then
     begin
       Result := Result + [ADfm.Nodes[mNode].Name];
     end;
@@ -922,7 +909,7 @@ begin
   Result := nil;
   for mField in AFields do
   begin
-    if not Contains(ANames, TAtlasFormUnit.MemberName(mField, mIsMethod)) then
+    if not TAtlasDesignerNames.Contains(ANames, TAtlasFormUnit.MemberName(mField, mIsMethod)) then
     begin
       Result := Result + [mField];
     end;

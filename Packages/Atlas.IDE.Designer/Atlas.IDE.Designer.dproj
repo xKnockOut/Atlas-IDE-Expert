@@ -132,6 +132,9 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.InsertSpace.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Neighbours.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Names.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormStore.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.GridSnap.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Similar.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Measure.pas"/>

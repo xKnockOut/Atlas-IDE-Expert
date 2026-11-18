@@ -168,7 +168,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Math,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Designer.Names;
 
 const
   cIndent = '  ';
@@ -176,26 +177,11 @@ const
   cEventPrefix = 'On';
   cSeparator = ' = ';
 
-function IsIdentifier(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not (CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_']) or
-      ((mIndex > 1) and CharInSet(AText[mIndex], ['0'..'9']))) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function IsEvent(const APath, AValue: string): Boolean;
 begin
   Result := (Length(APath) > Length(cEventPrefix)) and APath.StartsWith(cEventPrefix) and
     CharInSet(APath[Length(cEventPrefix) + 1], ['A'..'Z']) and
-    IsIdentifier(APath) and IsIdentifier(AValue);
+    TAtlasDesignerNames.IsIdentifier(APath) and TAtlasDesignerNames.IsIdentifier(AValue);
 end;
 
 /// <summary>Änderung der Klammertiefe durch ALine: ( &lt; { öffnen, ) &gt; } schließen, nicht in Strings.</summary>
@@ -220,15 +206,6 @@ begin
     begin
       Dec(Result);
     end;
-  end;
-end;
-
-function Indent(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and (ALine[Result + 1] = ' ') do
-  begin
-    Inc(Result);
   end;
 end;
 
@@ -262,7 +239,7 @@ begin
   begin
     ATypeName := Trim(mRest);
   end;
-  Result := IsIdentifier(ATypeName) and ((AName = '') or IsIdentifier(AName));
+  Result := TAtlasDesignerNames.IsIdentifier(ATypeName) and ((AName = '') or TAtlasDesignerNames.IsIdentifier(AName));
 end;
 
 type
@@ -330,7 +307,7 @@ begin
   begin
     Exit;
   end;
-  mBase := Indent(ALine);
+  mBase := TAtlasDesignerNames.IndentOf(ALine);
   mValue := Default(TAtlasUndoValue);
   mValue.Path := Trim(Copy(mTrimmed, 1, mSeparator - 1));
   mValue.Value := Trim(Copy(mTrimmed, mSeparator + Length(cSeparator), MaxInt));
@@ -342,7 +319,7 @@ begin
   begin
     Inc(Position);
     mNext := Trim(Lines[Position]);
-    mValue.Lines := mValue.Lines + [Copy(TrimRight(Lines[Position]), Min(mBase, Indent(Lines[Position])) + 1, MaxInt)];
+    mValue.Lines := mValue.Lines + [Copy(TrimRight(Lines[Position]), Min(mBase, TAtlasDesignerNames.IndentOf(Lines[Position])) + 1, MaxInt)];
     if mValue.Value = '' then
     begin
       mValue.Value := mNext;

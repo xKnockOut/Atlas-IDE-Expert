@@ -25,15 +25,14 @@ type
     class function MemberName(const ALine: string; out AIsMethod: Boolean): string; static;
     /// <summary>Beginnt hier etwas Neues auf oberster Ebene (Methode, Abschnitt, „{ TKlasse }“)?</summary>
     class function IsMethodHeader(const ALine: string): Boolean; static;
-    /// <summary>Anzahl führender Leerzeichen.</summary>
-    class function SpacesOf(const ALine: string): Integer; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Core.Designer.Names;
 
 const
   cCrLf = #13#10;
@@ -145,19 +144,10 @@ var
   mText: string;
 begin
   mText := ALine.TrimLeft;
-  Result := (SpacesOf(ALine) = 0) and (StartsText('procedure ', mText) or StartsText('function ', mText) or
+  Result := (TAtlasDesignerNames.IndentOf(ALine) = 0) and (StartsText('procedure ', mText) or StartsText('function ', mText) or
     StartsText('constructor ', mText) or StartsText('destructor ', mText) or StartsText('class ', mText) or
     SameText(mText.Trim, 'initialization') or SameText(mText.Trim, 'finalization') or SameText(mText.Trim, 'end.') or
     StartsText('{ T', mText));
-end;
-
-class function TAtlasFormUnit.SpacesOf(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and (ALine[Result + 1] = ' ') do
-  begin
-    Inc(Result);
-  end;
 end;
 
 end.

@@ -98,7 +98,9 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  System.Math;
+  System.Math,
+  Atlas.Core.Designer.Names,
+  Atlas.Core.Designer.FormStore;
 
 { TAtlasGroupShape }
 
@@ -109,20 +111,6 @@ begin
   Result.Bounds := ABounds;
 end;
 
-function Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function Distinct(const ANames: TArray<string>): TArray<string>;
 var
   mName: string;
@@ -130,7 +118,7 @@ begin
   Result := nil;
   for mName in ANames do
   begin
-    if (Trim(mName) <> '') and not Contains(Result, mName) then
+    if (Trim(mName) <> '') and not TAtlasDesignerNames.Contains(Result, mName) then
     begin
       Result := Result + [mName];
     end;
@@ -248,7 +236,7 @@ begin
     mRest := nil;
     for mMember in mGroups[mIndex].Members do
     begin
-      if not Contains(mMembers, mMember) then
+      if not TAtlasDesignerNames.Contains(mMembers, mMember) then
       begin
         mRest := mRest + [mMember];
       end;
@@ -282,7 +270,7 @@ begin
   mGroups := GroupsOf(AForm);
   for mIndex := 0 to High(mGroups) do
   begin
-    if Contains(mGroups[mIndex].Members, AMember) then
+    if TAtlasDesignerNames.Contains(mGroups[mIndex].Members, AMember) then
     begin
       Exit(mIndex);
     end;
@@ -307,7 +295,7 @@ begin
     end;
     for mMember in mGroups[mIndex].Members do
     begin
-      if not Contains(Result, mMember) then
+      if not TAtlasDesignerNames.Contains(Result, mMember) then
       begin
         Result := Result + [mMember];
       end;
@@ -428,28 +416,13 @@ end;
 
 class function TAtlasGroupRules.FormKey(const AFormFile: string; AShared: Boolean): string;
 begin
-  Result := AFormFile;
-  if AShared then
-  begin
-    Result := ExtractFileName(AFormFile);
-  end;
+  Result := TAtlasDesignerFormStore.FormKey(AFormFile, AShared);
 end;
 
 class function TAtlasGroupRules.StorePath(const AFormFile: string; AShared: Boolean;
   const ALocalData, ATemp: string): string;
-var
-  mLocal: string;
 begin
-  if AShared then
-  begin
-    Exit(TPath.Combine(ExtractFilePath(AFormFile), cSharedFile));
-  end;
-  mLocal := ALocalData;
-  if mLocal = '' then
-  begin
-    mLocal := ATemp;
-  end;
-  Result := TPath.Combine(TPath.Combine(mLocal, 'Atlas'), cLocalFile);
+  Result := TAtlasDesignerFormStore.StorePath(AFormFile, AShared, ALocalData, ATemp, cSharedFile, cLocalFile);
 end;
 
 class function TAtlasGroupRules.Touches(const AMembers, ASelected: TArray<string>): Boolean;

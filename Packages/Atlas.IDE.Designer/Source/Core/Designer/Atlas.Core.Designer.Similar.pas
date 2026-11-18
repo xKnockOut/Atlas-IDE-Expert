@@ -70,7 +70,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Designer.Names;
 
 { TAtlasSimilarItem }
 
@@ -93,20 +94,6 @@ begin
   Result.Reference := AReference;
   Result.Scope := AScope;
   Result.Argument := AArgument;
-end;
-
-function Contains(const AList: TArray<string>; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function ClassOf(const AItem: TAtlasSimilarItem): string;
@@ -151,7 +138,7 @@ begin
     mCommon := True;
     for mItem in AItems do
     begin
-      if mItem.Selected and not Contains(mItem.Classes, mBase) then
+      if mItem.Selected and not TAtlasDesignerNames.Contains(mItem.Classes, mBase) then
       begin
         mCommon := False;
         Break;
@@ -213,7 +200,7 @@ begin
     TAtlasSimilarKind.SameClass:
       Result := SameText(ClassOf(mItem), ClassOf(mReference));
     TAtlasSimilarKind.ClassAndDescendants:
-      Result := (ABase <> '') and Contains(mItem.Classes, ABase);
+      Result := (ABase <> '') and TAtlasDesignerNames.Contains(mItem.Classes, ABase);
     TAtlasSimilarKind.SameParent:
       Result := mItem.Visual and SameText(mItem.ParentName, mReference.ParentName);
     TAtlasSimilarKind.Children:
@@ -221,9 +208,9 @@ begin
     TAtlasSimilarKind.AllChildren:
       Result := mItem.Visual and HasAncestor(AItems, AIndex, mReference.Name);
     TAtlasSimilarKind.SameValue:
-      Result := Contains(mItem.Values, AQuery.Argument);
+      Result := TAtlasDesignerNames.Contains(mItem.Values, AQuery.Argument);
     TAtlasSimilarKind.SameHandler:
-      Result := Contains(mItem.Handlers, AQuery.Argument);
+      Result := TAtlasDesignerNames.Contains(mItem.Handlers, AQuery.Argument);
     TAtlasSimilarKind.Invert:
       Result := not mItem.Selected;
   else

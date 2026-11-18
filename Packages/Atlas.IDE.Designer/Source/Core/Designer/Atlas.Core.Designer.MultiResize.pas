@@ -83,7 +83,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.Math;
+  System.Math,
+  Atlas.Core.Designer.GridSnap;
 
 { TAtlasResizeItem }
 
@@ -103,15 +104,6 @@ class function TAtlasResizeNeighbour.Create(const ABounds: TRect; AGroup: Intege
 begin
   Result.Bounds := ABounds;
   Result.Group := AGroup;
-end;
-
-function SnapTo(AValue, AGrid: Integer): Integer;
-begin
-  Result := AValue;
-  if AGrid > 1 then
-  begin
-    Result := Round(AValue / AGrid) * AGrid;
-  end;
 end;
 
 function MinOf(AValue: Integer): Integer;
@@ -160,12 +152,12 @@ begin
   begin
     if AEdge = TAtlasResizeEdge.Left then
     begin
-      ATarget.X := SnapTo(ARect.Left + ADelta.X, AGrid);
+      ATarget.X := TAtlasGridSnap.Snap(ARect.Left + ADelta.X, AGrid);
       AMove.X := ATarget.X - ARect.Left;
     end
     else
     begin
-      ATarget.X := SnapTo(ARect.Right + ADelta.X, AGrid);
+      ATarget.X := TAtlasGridSnap.Snap(ARect.Right + ADelta.X, AGrid);
       AMove.X := ATarget.X - ARect.Right;
     end;
   end;
@@ -173,12 +165,12 @@ begin
   begin
     if AEdge = TAtlasResizeEdge.Top then
     begin
-      ATarget.Y := SnapTo(ARect.Top + ADelta.Y, AGrid);
+      ATarget.Y := TAtlasGridSnap.Snap(ARect.Top + ADelta.Y, AGrid);
       AMove.Y := ATarget.Y - ARect.Top;
     end
     else
     begin
-      ATarget.Y := SnapTo(ARect.Bottom + ADelta.Y, AGrid);
+      ATarget.Y := TAtlasGridSnap.Snap(ARect.Bottom + ADelta.Y, AGrid);
       AMove.Y := ATarget.Y - ARect.Bottom;
     end;
   end;

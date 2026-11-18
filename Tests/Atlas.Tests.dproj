@@ -2801,6 +2801,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Similar.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Neighbours.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Neighbours.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Names.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Names.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.FormStore.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.FormStore.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.GridSnap.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.GridSnap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.SelectionSets.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Similar.Tests.pas"/>

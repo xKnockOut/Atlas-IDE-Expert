@@ -50,7 +50,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Designer.Names;
 
 { TAtlasFormValue }
 
@@ -83,21 +84,6 @@ begin
   Result := False;
 end;
 
-function IsIdentifier(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not (CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_']) or
-      ((mIndex > 1) and CharInSet(AText[mIndex], ['0'..'9']))) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function IsPath(const AText: string): Boolean;
 var
   mPart: string;
@@ -105,7 +91,7 @@ begin
   Result := AText <> '';
   for mPart in AText.Split(['.']) do
   begin
-    if not IsIdentifier(mPart) then
+    if not TAtlasDesignerNames.IsIdentifier(mPart) then
     begin
       Exit(False);
     end;
@@ -115,7 +101,7 @@ end;
 function IsEvent(const APath, AValue: string): Boolean;
 begin
   Result := (Length(APath) > 2) and APath.StartsWith('On') and CharInSet(APath[3], ['A'..'Z']) and
-    IsIdentifier(APath) and IsIdentifier(AValue);
+    TAtlasDesignerNames.IsIdentifier(APath) and TAtlasDesignerNames.IsIdentifier(AValue);
 end;
 
 /// <summary>„object Name: TTyp“ (auch inherited, inline, mit [n] dahinter); False sonst.</summary>
@@ -157,7 +143,7 @@ begin
   begin
     ATypeName := Trim(mRest);
   end;
-  Result := IsIdentifier(ATypeName) and ((AName = '') or IsIdentifier(AName));
+  Result := TAtlasDesignerNames.IsIdentifier(ATypeName) and ((AName = '') or TAtlasDesignerNames.IsIdentifier(AName));
 end;
 
 type
