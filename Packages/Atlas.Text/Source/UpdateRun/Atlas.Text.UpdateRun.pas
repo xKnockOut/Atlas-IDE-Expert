@@ -24,7 +24,7 @@ type
   TUpdateNewModules = (Ask, Install, Skip);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Ein Package der neuen Version in der Auswahl (Mockup 6).</summary>
+  /// <summary>Ein Package der neuen Version in der Auswahl der Module.</summary>
   TUpdateCandidate = record
     /// <summary>Name ohne Versionsendung, z. B. „Atlas.IDE.Debugger“.</summary>
     Name: string;
@@ -32,7 +32,7 @@ type
     Installed: Boolean;
     /// <summary>Gab es in der installierten Version nicht.</summary>
     IsNew: Boolean;
-    /// <summary>Früher als neues Modul abgelehnt; wird nicht erneut vorgeschlagen.</summary>
+    /// <summary>Bei einem früheren Update als neues Modul abgelehnt; wird nicht erneut vorgeschlagen.</summary>
     Declined: Boolean;
     Required: Boolean;
     /// <summary>Vorschlag: installiert bzw. nach updates.newModules.</summary>

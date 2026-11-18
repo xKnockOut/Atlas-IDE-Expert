@@ -78,8 +78,8 @@ begin
   mSettings.StickyScrollTry := True;
   mSettings.StickyScrollCase := False;
   mSettings.StickyScrollWith := True;
-  Assert.IsTrue(TAtlasStickyPlan.Kinds(mSettings) = [TAtlasStickyKind.Types, TAtlasStickyKind.Branches,
-    TAtlasStickyKind.TryBlocks, TAtlasStickyKind.WithBlocks]);
+  Assert.AreEqual<TAtlasStickyKinds>([TAtlasStickyKind.Types, TAtlasStickyKind.Branches,
+    TAtlasStickyKind.TryBlocks, TAtlasStickyKind.WithBlocks], TAtlasStickyPlan.Kinds(mSettings));
 end;
 
 procedure TAtlasStickyPlanTests.KindsEmptyWhenAllOff;
@@ -94,7 +94,7 @@ begin
   mSettings.StickyScrollTry := False;
   mSettings.StickyScrollCase := False;
   mSettings.StickyScrollWith := False;
-  Assert.IsTrue(TAtlasStickyPlan.Kinds(mSettings) = []);
+  Assert.AreEqual<TAtlasStickyKinds>([], TAtlasStickyPlan.Kinds(mSettings));
 end;
 
 procedure TAtlasStickyPlanTests.WordAtStopsAtNonLetter;

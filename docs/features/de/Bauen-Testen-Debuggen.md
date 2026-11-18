@@ -564,6 +564,15 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 
+#### Laufzeit zwischen Haltepunkten
+
+- Beim Halt steht am Ende der Zeile des Ausführungspunkts gedimmt, wie lange das Programm seit dem letzten Halt lief: `+124 ms`, ab 10 s `+12 s`.
+- Gezählt wird nur, solange das Programm läuft: Zeit im angehaltenen Zustand, Halte, die Atlas selbst gleich fortsetzt, und Auswertungen zählen nicht.
+- An einem Haltepunkt immer, bei Einzelschritten und Pausen erst ab 1 ms.
+- Ein Klick auf die Zeit zeigt die letzten 20 Messungen mit Start- und Zielzeile. Die Zeit enthält den Aufwand des Debuggers (Debug-Build, Ereignisse) und ist nur ein Richtwert.
+
+Einstellung: `debug.showElapsed`
+
 #### Bedingungen vorausschauen
 
 - Beim Halt stehen an den kommenden `if`, `while` und `case` derselben Routine (bis `debug.predictConditions.lines` Zeilen voraus, Vorgabe 20) die vorhergesagten Ergebnisse, als Vorhersage gekennzeichnet: `⟨= False · FOnline⟩` (der entscheidende Teil), bei `case` `⟨→ smManual⟩`.

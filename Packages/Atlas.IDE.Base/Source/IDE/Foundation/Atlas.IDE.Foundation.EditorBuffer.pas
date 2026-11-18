@@ -123,7 +123,7 @@ begin
   mCharPos.CharIndex := 0;
   mPosition := AView.CharPosToPos(mCharPos);
   // Unter dem Dateiende liefert der Editor eine Position in der letzten Zeile; deren Text gehört
-  // nicht zu ALine (Diagnoselog 15.10.2026: Hover auf Zeile 1800 bei 1793 Zeilen).
+  // nicht zu ALine (etwa Hover auf Zeile 1800 bei 1793 Zeilen).
   if AView.PosToCharPos(mPosition).Line <> ALine then
   begin
     Exit('');

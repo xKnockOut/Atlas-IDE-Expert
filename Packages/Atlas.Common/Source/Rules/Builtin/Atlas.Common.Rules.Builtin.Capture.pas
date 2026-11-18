@@ -70,6 +70,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.RoutineBody,
@@ -1105,7 +1106,7 @@ begin
   begin
     Exit;
   end;
-  mIndex := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
+  mIndex := NextCodeAfter(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
   Result := (mIndex >= 0) and (mIndex < Length(ATokens)) and ATokens[mIndex].IsSymbol(':');
 end;
 

@@ -1,0 +1,2 @@
+### Geändert
+- Prüfregeln, Editierbefehle und LSP-Funktionen suchen das nächste Code-Token, passende Klammern und Code statt Kommentar nur noch über `Atlas.Common.Pascal.TokenCursor` (neu: `NextCodeAfter`, `FollowingCode`, `IsCode`, `NextCode` mit Grenze). Rund 25 Kopien unter anderen Namen (`NextToken`, `NextSignificant`, `NextSolid`, `SkipTrivia`, `IsCode`, `ClosingParen`) entfallen; die Kopien-Sperre kennt diese Namen (#1979).
