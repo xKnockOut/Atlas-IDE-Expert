@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SettingsQueries;
 
-// Tabelle Abfragen der Seite Issue-Tracker (#1262, Mockup IT3): benannte
+// Tabelle Abfragen der Seite Issue-Tracker (#1262): benannte
 // Abfragen mit Verbindung und Tracker-Projekt, „Bearbeiten …“ öffnet den
 // Dialog mit Vorlagen und „Testen“ (#1263, Atlas.UI.Tracker.QueryDialog).
 // Darunter die Schalter der Klappliste und von „Issue anlegen …“ (#1268).

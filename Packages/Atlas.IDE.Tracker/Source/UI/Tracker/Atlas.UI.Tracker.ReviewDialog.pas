@@ -33,7 +33,7 @@ uses
 
 type
   /// <summary>AChange im Hintergrund schreiben und ADone im Hauptthread aufrufen (genau einmal). Eigener Typ:
-  /// Der frühere gemeinsame TAtlasTrackerSendEvent gilt seit #2123 nur noch als Plan des Beenden-Dialogs.</summary>
+  /// TAtlasTrackerSendEvent gilt nur für den Plan des Beenden-Dialogs (#2123).</summary>
   TAtlasReviewSendEvent = reference to procedure(const AChange: TAtlasTrackerWrite;
     const ADone: TAtlasTrackerSendDone);
 
