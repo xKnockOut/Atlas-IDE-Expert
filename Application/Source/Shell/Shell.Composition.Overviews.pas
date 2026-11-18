@@ -173,7 +173,7 @@ end;
 
 procedure TShellOverviews.RegisterReportCommands(ACommands: TLspCommands);
 begin
-  // Lesende Befehle laufen nebenläufig wie die gleichnamigen Anfragen (Diagnose 06.11.2026: Stau hinter langen
+  // Lesende Befehle laufen nebenläufig wie die gleichnamigen Anfragen (sonst Stau hinter langen
   // Befehlen); Berichte speichern und uses ändern bleiben in der Reihenfolge der Nachrichten.
   ACommands.RegisterConcurrent(TLspArchitecture.cCommand,
     function(const AArguments: TJSONArray): TJSONValue

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.DelphiSemantics.Tests;
 
-// Tests der Regeln aus #2309 (B6), Stellen, an denen Delphi zur Laufzeit anders arbeitet als FPC: Result als Variable
+// Tests der Regeln aus #2309, Stellen, an denen Delphi zur Laufzeit anders arbeitet als FPC: Result als Variable
 // des Aufrufers, TryGetValue setzt den out-Wert immer, Records teilen dynamische Arrays, ExtractFileName trennt unter
 // Windows nur an '\', gewollter Hash-Überlauf außerhalb von {$Q-}. Die Fälle stammen aus dem Delphi-Bau von
 // main-merging (TestExplorer.Visible, ProfileTools, StatusBar, LeakSetup, CrashSkip.Checksum).
