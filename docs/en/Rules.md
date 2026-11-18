@@ -2232,6 +2232,10 @@ A string literal with words for people stands in a statement. Move it to a resou
 
 Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
 
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `ignoreCalls` | string-list | `[]` | Further routines whose text arguments nobody translates, for example an own Pick(English, 'en', 'de'). Logging, check, comparison and registry calls always count. |
+
 Flagged:
 
 ```pascal
