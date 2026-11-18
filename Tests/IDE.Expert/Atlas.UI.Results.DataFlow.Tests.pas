@@ -31,7 +31,6 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Results.DataFlow,
-  Atlas.UI.Strings,
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts,
   Atlas.UI.Results.Frame;
@@ -110,7 +109,7 @@ begin
   mNode.Unsafe := True;
   mNode.UnsafeReason := 'pointer';
   mText := TAtlasResultsTexts.FlowNodeText(mNode);
-  Assert.StartsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowAssignment) + ': A + B', mText);
+  Assert.StartsWith(TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowAssignment) + ': A + B', mText);
   Assert.Contains(mText, TAtlasResultsStrings.Fmt(TAtlasResultsTextId.DataFlowVia, ['Summe']));
   Assert.Contains(mText, TAtlasResultsStrings.Fmt(TAtlasResultsTextId.DataFlowUnsafe,
     [TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowUnsafePointer)]));
@@ -119,7 +118,7 @@ begin
   mNode := Assignment('0', [Place(3, 'X := 0;'), Place(8, 'X := 0;'), Place(9, 'X := 0;')], nil);
   mNode.Literal := True;
   mText := TAtlasResultsTexts.FlowNodeText(mNode);
-  Assert.StartsWith('3 ' + TAtlasStrings.Text(TAtlasTextId.DataFlowAssignments), mText);
+  Assert.StartsWith('3 ' + TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowAssignments), mText);
   Assert.Contains(mText, TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOriginLiteral));
   Assert.IsFalse(mText.Contains('Haupt.pas'), 'ohne Fundort');
   Assert.AreEqual('Haupt.pas:4: X := 0;', TAtlasResultsTexts.FlowPlaceText(mNode.Places[0]));
