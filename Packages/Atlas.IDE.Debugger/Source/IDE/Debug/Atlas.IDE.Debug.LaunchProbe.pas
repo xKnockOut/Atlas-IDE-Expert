@@ -5,8 +5,8 @@
 //   localhost:Port Verbindungen annimmt bzw. ob der Prozess ein sichtbares
 //   Hauptfenster hat (EnumWindows nach Prozess-ID). Die Ergebnisse liest der
 //   Hauptthread aus PortOpen und WindowFound (nur gesetzt, nie zurück).
-// - TAtlasIdeLaunchProcesses: Programm ohne Debugger starten (CreateProcess
-//   mit Arbeitsordner und Umgebung) und Prozesse beenden.
+// - TAtlasIdeLaunchProcesses: Programm ohne Debugger starten (über
+//   TAtlasProcessLauncher mit Arbeitsordner und Umgebung) und Prozesse beenden.
 // Free wartet auf das Ende des Threads; der Besitzer gibt ihn frei, bevor das
 // Modul geht.
 
@@ -62,7 +62,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.Winsock2;
+  Winapi.Winsock2,
+  Atlas.WinBase.Process;
 
 const
   cProcessTerminate = $0001;
@@ -135,33 +136,24 @@ end;
 class function TAtlasIdeLaunchProcesses.Start(const AExe, AArgs, AWorkingDir: string;
   const AVariables: TArray<TAtlasTeamVariable>): Cardinal;
 var
-  mStartup: TStartupInfo;
+  mLaunch: TAtlasProcessLaunch;
   mInfo: TProcessInformation;
-  mCommand, mDir, mEnvironment: string;
-  mBlock: Pointer;
 begin
   Result := 0;
-  mStartup := Default(TStartupInfo);
-  mStartup.cb := SizeOf(mStartup);
-  mCommand := '"' + AExe + '"';
+  // Ohne Standard-Handles erbt das Programm nichts (auch keine Pipes anderer Atlas-Threads).
+  mLaunch := Default(TAtlasProcessLaunch);
+  mLaunch.CommandLine := '"' + AExe + '"';
   if AArgs <> '' then
   begin
-    mCommand := mCommand + ' ' + AArgs;
+    mLaunch.CommandLine := mLaunch.CommandLine + ' ' + AArgs;
   end;
-  UniqueString(mCommand);
-  mDir := AWorkingDir;
-  if mDir = '' then
+  mLaunch.WorkingDir := AWorkingDir;
+  if mLaunch.WorkingDir = '' then
   begin
-    mDir := ExtractFileDir(AExe);
+    mLaunch.WorkingDir := ExtractFileDir(AExe);
   end;
-  mEnvironment := EnvironmentBlock(AVariables);
-  mBlock := nil;
-  if mEnvironment <> '' then
-  begin
-    mBlock := PChar(mEnvironment);
-  end;
-  if not CreateProcess(nil, PChar(mCommand), nil, nil, False, CREATE_UNICODE_ENVIRONMENT, mBlock, PChar(mDir),
-    mStartup, mInfo) then
+  mLaunch.Environment := EnvironmentBlock(AVariables);
+  if not TAtlasProcessLauncher.Launch(mLaunch, mInfo) then
   begin
     Exit;
   end;

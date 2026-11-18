@@ -76,10 +76,10 @@ const
     '      "description": "Eine Liste unter \"symbols\" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen' +
     ' wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürz' +
     'en (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexi' +
-    'ert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacem' +
-    'ent, severity, units (Muster der Unit-Namen, \"!\" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput)' +
-    '; beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Er' +
-    'satz ersetzen.",',
+    'ert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Ebenso gilt ein einfacher, nicht auflösbarer Name als Unit.Name einer eingebundenen, aber nicht indexierten Unit (CreateProcess b' +
+    'ei uses Winapi.Windows ohne RTL-Quelltext). Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muste' +
+    'r der Unit-Namen, \"!\" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Tex' +
+    't des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.",',
     '      "options": [',
     '        {',
     '          "name": "symbols",',
