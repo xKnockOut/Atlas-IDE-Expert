@@ -114,6 +114,11 @@ type
     /// <summary>#1358: ungültige Kombinationen ergeben 3.</summary>
     [Test]
     procedure FormatOptionsConflict;
+    /// <summary>#1112: Ein zweiter Lauf liest den Index des Projekts aus dem Cache und ist schneller als der erste,
+    /// der die Units zerlegt; geprüft wird nur eine Unit, damit die Zeit des Index zählt.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure WarmIndexCacheIsFaster;
   end;
 
 implementation
@@ -121,6 +126,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Core.VersionControl.Contract,
   Shell.Platform,
@@ -711,6 +717,54 @@ begin
   Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format-check', '--metrics']));
   Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format', 'diff']));
   Assert.AreEqual(3, Run(['--check', Path('Src/Fehlt.pas'), '--format-check']));
+end;
+
+/// <summary>Unit AName mit einer Klasse aus AMethods Methoden samt Rümpfen.</summary>
+function BenchmarkUnit(const AName: string; AMethods: Integer): string;
+var
+  mMethod: Integer;
+  mDeclarations, mBodies: string;
+begin
+  mDeclarations := '';
+  mBodies := '';
+  for mMethod := 1 to AMethods do
+  begin
+    mDeclarations := mDeclarations + Format('    function M%d(AWert: Integer): Integer;'#13#10, [mMethod]);
+    mBodies := mBodies + Format('function T%s.M%d(AWert: Integer): Integer;'#13#10'begin'#13#10 +
+      '  Result := AWert + %d;'#13#10'end;'#13#10#13#10, [AName, mMethod, mMethod]);
+  end;
+  Result := Format('unit %s;'#13#10#13#10'interface'#13#10#13#10'type'#13#10'  T%s = class'#13#10'  public'#13#10 +
+    '%s  end;'#13#10#13#10'implementation'#13#10#13#10'%send.'#13#10, [AName, AName, mDeclarations, mBodies]);
+end;
+
+procedure TShellLinterTests.WarmIndexCacheIsFaster;
+const
+  cUnits = 300;
+  cMethods = 40;
+var
+  mReferences: string;
+  mUnit: Integer;
+  mWatch: TStopwatch;
+  mCold, mWarm: Int64;
+begin
+  ForceDirectories(Path('Bench'));
+  mReferences := '';
+  for mUnit := 1 to cUnits do
+  begin
+    TFile.WriteAllText(Path(Format('Bench/U%d.pas', [mUnit])), BenchmarkUnit(Format('U%d', [mUnit]), cMethods));
+    mReferences := mReferences + Format('    <DCCReference Include="U%d.pas"/>'#13#10, [mUnit]);
+  end;
+  TFile.WriteAllText(Path('Bench/Bench.dproj'), '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">' +
+    #13#10'  <PropertyGroup><Config Condition="''$(Config)''==''''">Debug</Config>' +
+    '<Platform Condition="''$(Platform)''==''''">Win32</Platform></PropertyGroup>'#13#10'  <ItemGroup>'#13#10 +
+    mReferences + '  </ItemGroup>'#13#10'</Project>'#13#10);
+  mWatch := TStopwatch.StartNew;
+  Assert.AreEqual(0, Run(['--check', Path('Bench/Bench.dproj'), '--units', 'U1', '--fail-on', 'never']));
+  mCold := mWatch.ElapsedMilliseconds;
+  mWatch := TStopwatch.StartNew;
+  Assert.AreEqual(0, Run(['--check', Path('Bench/Bench.dproj'), '--units', 'U1', '--fail-on', 'never']));
+  mWarm := mWatch.ElapsedMilliseconds;
+  Assert.IsTrue(mWarm < mCold, Format('Mit warmem Cache %d ms, ohne %d ms', [mWarm, mCold]));
 end;
 
 initialization

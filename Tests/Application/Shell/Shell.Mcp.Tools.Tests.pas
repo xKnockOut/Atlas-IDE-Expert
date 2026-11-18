@@ -2,7 +2,8 @@
 
 // Aufteilung des MCP-Modus (Shell.Mcp.*): Jede Werkzeuggruppe meldet ihre Werkzeuge an, zusammen ohne doppelte
 // Namen; ContextTool reicht den Kontext durch; Dienste und Änderungen lassen sich ohne Laden anlegen; der
-// Projektordner ist absolut; WriteSourceText behält die Zeilenenden der Datei.
+// Projektordner ist absolut; WriteSourceText behält die Zeilenenden der Datei; get_diagnostics prüft mit dem
+// Symbolindex des Projekts (#1112).
 
 interface
 
@@ -36,6 +37,11 @@ type
     /// <summary>SchemaWith setzt die Beschreibungen als JSON-Texte ein, auch mit Anführungszeichen.</summary>
     [Test]
     procedure SchemaWithQuotesDescriptions;
+    /// <summary>#1112: get_diagnostics gibt den Prüfregeln den geladenen Index mit. Ein case über eine Aufzählung
+    /// aus einer anderen Unit ist nur mit Index als unvollständig erkennbar; vor dem Laden steht ein Hinweis davor.
+    /// </summary>
+    [Test]
+    procedure GetDiagnosticsUsesIndex;
   end;
 
 implementation
@@ -64,7 +70,8 @@ uses
   Shell.Mcp.EditingTools,
   Shell.Mcp.ProjectTools,
   Shell.Mcp.ChangeTools,
-  Shell.Mcp.Changes;
+  Shell.Mcp.Changes,
+  Shell.Workspace.Listings;
 
 type
   TRegisterProc = procedure(const AContext: TMcpToolContext);
@@ -357,6 +364,89 @@ procedure TMcpToolsTests.SchemaWithQuotesDescriptions;
 begin
   Assert.AreEqual('{"a":"x \"y\"","b":"z"}', SchemaWith('{"a":%s,"b":%s}', ['x "y"', 'z']));
   Assert.AreEqual('{"a":%s}', SchemaWith('{"a":%s}', []));
+end;
+
+/// <summary>Text der Antwort von get_diagnostics für AFile.</summary>
+function DiagnosticsText(AServer: TMcpServer; const AFile: string): string;
+var
+  mParams, mArguments: TJSONObject;
+  mCalled: TJSONObject;
+begin
+  mParams := TJSONObject.Create;
+  try
+    mArguments := TJSONObject.Create;
+    mArguments.AddPair('file', AFile);
+    mParams.AddPair('name', 'get_diagnostics');
+    mParams.AddPair('arguments', mArguments);
+    mCalled := AServer.CallTool(mParams);
+    try
+      Result := mCalled.ToJSON;
+    finally
+      mCalled.Free;
+    end;
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TMcpToolsTests.GetDiagnosticsUsesIndex;
+const
+  cDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
+    '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+    '  <PropertyGroup>'#13#10'    <MainSource>Lauf.dpr</MainSource>'#13#10 +
+    '    <Config Condition="''$(Config)''==''''">Debug</Config>'#13#10 +
+    '    <Platform Condition="''$(Platform)''==''''">Win32</Platform>'#13#10'  </PropertyGroup>'#13#10 +
+    '  <ItemGroup>'#13#10 +
+    '    <DelphiCompile Include="$(MainSource)"><MainSource>MainSource</MainSource></DelphiCompile>'#13#10 +
+    '    <DCCReference Include="Farben.pas"/>'#13#10'    <DCCReference Include="Wahl.pas"/>'#13#10 +
+    '  </ItemGroup>'#13#10'</Project>'#13#10;
+  cProgramm = 'program Lauf;'#13#10'uses'#13#10'  Farben in ''Farben.pas'','#13#10'  Wahl in ''Wahl.pas'';'#13#10 +
+    'begin'#13#10'end.'#13#10;
+  cFarben = 'unit Farben;'#13#10'interface'#13#10'type'#13#10'  TFarbe = (fbRot, fbGruen);'#13#10 +
+    'implementation'#13#10'end.'#13#10;
+  cWahl = 'unit Wahl;'#13#10'interface'#13#10'uses'#13#10'  Farben;'#13#10 +
+    'function Name(AFarbe: TFarbe): string;'#13#10'implementation'#13#10 +
+    'function Name(AFarbe: TFarbe): string;'#13#10'begin'#13#10'  Result := '''';'#13#10 +
+    '  case AFarbe of'#13#10'    fbRot:'#13#10'      Result := ''rot'';'#13#10'  end;'#13#10'end;'#13#10'end.'#13#10;
+  cConfig = '{"rules": {"case-missing-enum-value": "warning"}}';
+var
+  mFolder, mText: string;
+  mServices: TMcpServices;
+  mServer: TMcpServer;
+  mLogger: ILogger;
+begin
+  mLogger := TLogger.Create;
+  mFolder := NewFolder;
+  mServer := TMcpServer.Create('Atlas', '0');
+  try
+    TFile.WriteAllText(TPath.Combine(mFolder, 'Lauf.dproj'), cDproj);
+    TFile.WriteAllText(TPath.Combine(mFolder, 'Lauf.dpr'), cProgramm);
+    TFile.WriteAllText(TPath.Combine(mFolder, 'Farben.pas'), cFarben);
+    TFile.WriteAllText(TPath.Combine(mFolder, 'Wahl.pas'), cWahl);
+    TFile.WriteAllText(TPath.Combine(mFolder, 'atlas.json'), cConfig);
+    mServices := TMcpServices.Create(mFolder, mLogger);
+    try
+      mServices.Group.CacheRoot := TPath.Combine(mFolder, 'Cache');
+      RegisterContextTools(mServices.ToolContext(mServer));
+      mText := DiagnosticsText(mServer, 'Wahl.pas');
+      Assert.DoesNotContain(mText, 'case-missing-enum-value', 'ohne Index unbekannt: ' + mText);
+      Assert.Contains(mText, 'Symbolindex', 'Hinweis, solange der Index fehlt');
+      mServices.Group.Load('');
+      Assert.IsTrue(mServices.Group.WaitForIndex(60000), 'Index fertig');
+      mText := DiagnosticsText(mServer, 'Wahl.pas');
+      Assert.Contains(mText, 'case-missing-enum-value', mText);
+      Assert.Contains(mText, 'fbGruen', mText);
+      Assert.DoesNotContain(mText, 'Symbolindex', 'Index fertig: kein Hinweis');
+      mServices.Group.Stop;
+    finally
+      mServices.Free;
+    end;
+  finally
+    mServer.Free;
+    // Die Ordnerlisten teilen alle Arbeitsbereiche des Prozesses; je Testordner bliebe sonst ein Eintrag stehen.
+    TSharedUnitListings.Clear;
+    TDirectory.Delete(mFolder, True);
+  end;
 end;
 
 initialization

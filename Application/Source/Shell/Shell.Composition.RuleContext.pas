@@ -72,7 +72,6 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
   Shell.Workspace.RuleProjects;

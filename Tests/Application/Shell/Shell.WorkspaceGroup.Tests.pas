@@ -25,6 +25,10 @@ type
     /// <summary>Ohne Projektdatei gibt es nichts zu warten; RuleProject hat dann keine Anwendungsart.</summary>
     [Test]
     procedure WithoutProjectHasNoApplication;
+    /// <summary>Liegt die Projektgruppe über dem Ordner des Projekts (--check App/App.dproj), stehen die Units
+    /// der übrigen Projekte der Gruppe wie in der IDE im Index (#1895).</summary>
+    [Test]
+    procedure LoadIndexesEnclosingGroup;
   end;
 
 implementation
@@ -57,6 +61,24 @@ const
   cProgramm = 'program Lauf;'#13#10'uses'#13#10'  Kunde in ''Kunde.pas'';'#13#10 +
     'begin'#13#10'end.'#13#10;
   cKundeUnit = 'unit Kunde;'#13#10'interface'#13#10'type'#13#10'  TKunde = class'#13#10'  end;'#13#10 +
+    'implementation'#13#10'end.'#13#10;
+
+  cGruppe = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
+    '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10'  <ItemGroup>'#13#10 +
+    '    <Projects Include="Bib\Bib.dproj"><Dependencies/></Projects>'#13#10 +
+    '    <Projects Include="App\Lauf.dproj"><Dependencies/></Projects>'#13#10 +
+    '  </ItemGroup>'#13#10'</Project>'#13#10;
+  cBibDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
+    '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+    '  <PropertyGroup>'#13#10'    <MainSource>Bib.dpk</MainSource>'#13#10 +
+    '    <Config Condition="''$(Config)''==''''">Debug</Config>'#13#10 +
+    '    <Platform Condition="''$(Platform)''==''''">Win32</Platform>'#13#10'  </PropertyGroup>'#13#10 +
+    '  <ItemGroup>'#13#10 +
+    '    <DelphiCompile Include="$(MainSource)"><MainSource>MainSource</MainSource></DelphiCompile>'#13#10 +
+    '    <DCCReference Include="Teil.pas"/>'#13#10 +
+    '  </ItemGroup>'#13#10'</Project>'#13#10;
+  cBibPackage = 'package Bib;'#13#10'contains'#13#10'  Teil in ''Teil.pas'';'#13#10'end.'#13#10;
+  cTeilUnit = 'unit Teil;'#13#10'interface'#13#10'type'#13#10'  TTeil = record'#13#10'  end;'#13#10 +
     'implementation'#13#10'end.'#13#10;
 
 function NewGroup(const ARoot: string): TShellWorkspaceGroup;
@@ -135,6 +157,36 @@ begin
     mProject := mGroup.RuleProject(Path('Kunde.pas'));
     Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown, mProject.Application);
     Assert.AreEqual('', mProject.Name);
+    mGroup.Stop;
+  finally
+    mGroup.Free;
+  end;
+end;
+
+procedure TShellWorkspaceGroupTests.LoadIndexesEnclosingGroup;
+var
+  mGroup: TShellWorkspaceGroup;
+  mFound: TUnitIndex;
+begin
+  ForceDirectories(Path('App'));
+  ForceDirectories(Path('Bib'));
+  TFile.WriteAllText(Path('Gruppe.groupproj'), cGruppe);
+  TFile.WriteAllText(Path('App/Lauf.dproj'), cDproj);
+  TFile.WriteAllText(Path('App/Lauf.dpr'), cProgramm);
+  TFile.WriteAllText(Path('App/Kunde.pas'), cKundeUnit);
+  TFile.WriteAllText(Path('Bib/Bib.dproj'), cBibDproj);
+  TFile.WriteAllText(Path('Bib/Bib.dpk'), cBibPackage);
+  TFile.WriteAllText(Path('Bib/Teil.pas'), cTeilUnit);
+  // Wie --check App/Lauf.dproj: Wurzel ist der Ordner des Projekts, die Gruppe liegt darüber.
+  mGroup := NewGroup(Path('App'));
+  try
+    mGroup.Main.Setup.ProjectFile := Path('App/Lauf.dproj');
+    mGroup.CacheRoot := Path('Cache');
+    mGroup.Load('');
+    Assert.IsTrue(mGroup.WaitForIndex(60000), 'Index fertig');
+    Assert.IsTrue(mGroup.Index.FindUnit('Kunde', mFound), 'Unit des Projekts im Index');
+    Assert.IsTrue(mGroup.Index.FindUnit('Teil', mFound), 'Unit des anderen Projekts der Gruppe im Index');
+    Assert.AreEqual(Path('Bib/Teil.pas'), mFound.FileName);
     mGroup.Stop;
   finally
     mGroup.Free;
