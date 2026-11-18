@@ -184,6 +184,13 @@ const
   cIndentPx = 14;
   cExpanderPx = 14;
   cRowPx = 20;
+  /// <summary>Einzug der ersten Ebene bei 96 dpi.</summary>
+  cRowIndentPx = 4;
+  /// <summary>Schlüsselwörter hinter dem Namen; Delphi-Syntax, daher nicht übersetzt.</summary>
+  cMarkClass = ' · class';
+  cMarkOverride = ' · override';
+  cMarkVirtual = ' · virtual';
+  cMarkAbstract = ' · abstract';
   /// <summary>Feste Breite des Suchfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
   cButtonWidth = 92;
   cSortButtonWidth = 150;
@@ -425,7 +432,7 @@ end;
 function TAtlasOutlineFrameRows.ExpanderRect(AIndex: Integer; const ARect: TRect): TRect;
 begin
   Result := ARect;
-  Result.Left := ARect.Left + Scale(4) + FRows[AIndex].Depth * Scale(cIndentPx);
+  Result.Left := ARect.Left + Scale(cRowIndentPx) + FRows[AIndex].Depth * Scale(cIndentPx);
   Result.Right := Result.Left + Scale(cExpanderPx);
 end;
 
@@ -861,19 +868,19 @@ begin
   end;
   if mNode.ClassMember then
   begin
-    Result := Result + ' · class';
+    Result := Result + cMarkClass;
   end;
   if mNode.IsOverride then
   begin
-    Result := Result + ' · override';
+    Result := Result + cMarkOverride;
   end;
   if mNode.IsVirtual and not mNode.IsOverride then
   begin
-    Result := Result + ' · virtual';
+    Result := Result + cMarkVirtual;
   end;
   if mNode.IsAbstract then
   begin
-    Result := Result + ' · abstract';
+    Result := Result + cMarkAbstract;
   end;
   if mNode.Unimplemented then
   begin

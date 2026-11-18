@@ -253,6 +253,34 @@ uses
 const
   cSeparator = '›';
   cEllipsis = '…';
+  /// <summary>Maße in Pixeln bei 96 dpi: Rand der Leiste, Innenrand und Rundung eines Glieds, Abstände von Marke,
+  /// „…“ und leerem Text, Höhe der hervorgehobenen Teilfläche.</summary>
+  cEdge = 4;
+  cCrumbPadding = 8;
+  cCrumbInset = 4;
+  cCornerRadius = 4;
+  cHotInset = 3;
+  cEllipsisPadding = 6;
+  cEmptyTextLeft = 8;
+  /// <summary>Marke vor dem Namen: Breite, Höhe, Abstand zum Namen, Schrifthöhe als Teil der Höhe.</summary>
+  cBadgeWidth = 22;
+  cBadgeHeight = 15;
+  cBadgeGap = 4;
+  cBadgeFontShare = 0.62;
+  /// <summary>Gründe, warum die Leiste die Maus nicht bekommt; nur für das Protokoll, daher nicht übersetzt.
+  /// </summary>
+  cProblemNoWindow = 'Leiste hat kein Fenster';
+  cProblemForeignThread = 'Fenster gehört einem anderen Thread';
+  cProblemForeignParent = 'Fenster hängt an einem anderen Elternfenster';
+  cProblemDisabled = 'Fenster ist gesperrt (Enabled %s)';
+  cProblemHidden = 'Fenster ist ausgeblendet';
+  cProblemOutsideWindow = 'Punkt (%d, %d) liegt außerhalb des Fensters (%d, %d, %d, %d)';
+  cProblemInParentFrame = 'Punkt liegt im Rahmen des Elternfensters, nicht in seiner Client-Fläche';
+  cProblemOutsideRegion = 'Punkt liegt außerhalb der Fensterregion (SetWindowRgn)';
+  cProblemTransparent = 'Fenster hat WS_EX_TRANSPARENT';
+  cProblemLayered = 'Fenster ist geschichtet (WS_EX_LAYERED)';
+  cProblemHitTransparent = 'WM_NCHITTEST liefert HTTRANSPARENT';
+  cProblemCovered = 'Geschwisterfenster liegt darüber (%s)';
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -399,7 +427,7 @@ end;
 
 function TAtlasBreadcrumbLayout.BadgeWidth: Integer;
 begin
-  Result := Scale(22);
+  Result := Scale(cBadgeWidth);
 end;
 
 function TAtlasBreadcrumbLayout.CrumbWidth(AIndex: Integer): Integer;
@@ -409,10 +437,10 @@ begin
   begin
     Canvas.Font.Style := [fsBold];
   end;
-  Result := Canvas.TextWidth(CrumbCaption(FCrumbs[AIndex])) + Scale(8);
+  Result := Canvas.TextWidth(CrumbCaption(FCrumbs[AIndex])) + Scale(cCrumbPadding);
   if FCrumbs[AIndex].Badge.Code <> '' then
   begin
-    Inc(Result, BadgeWidth + Scale(4));
+    Inc(Result, BadgeWidth + Scale(cBadgeGap));
   end;
   Canvas.Font := Font;
 end;
@@ -426,7 +454,7 @@ end;
 function TAtlasBreadcrumbLayout.EllipsisWidth: Integer;
 begin
   Canvas.Font := Font;
-  Result := Canvas.TextWidth(cEllipsis) + Scale(6);
+  Result := Canvas.TextWidth(cEllipsis) + Scale(cEllipsisPadding);
 end;
 
 procedure TAtlasBreadcrumbLayout.Layout;
@@ -450,7 +478,7 @@ begin
   end;
   mTotal := TotalWidth(mWidths);
   mRight_ := ContentRight;
-  mAvailable := mRight_ - 2 * Scale(4);
+  mAvailable := mRight_ - 2 * Scale(cEdge);
   mTotal := DropByRank(mWidths, mTotal, mAvailable);
   // Vorn Glieder weglassen, bis der Rest samt „…“ passt; das letzte bleibt.
   while (mTotal > mAvailable) and (FFirstShown < High(FCrumbs)) do
@@ -494,7 +522,7 @@ procedure TAtlasBreadcrumbLayout.PlaceCrumbs(const AWidths: TArray<Integer>; ARi
 var
   mIndex, mLeft_: Integer;
 begin
-  mLeft_ := Scale(4);
+  mLeft_ := Scale(cEdge);
   if FFirstShown > 0 then
   begin
     Inc(mLeft_, EllipsisWidth + SeparatorWidth);
@@ -644,23 +672,23 @@ begin
   Result := '';
   if not HandleAllocated then
   begin
-    Result := 'Leiste hat kein Fenster';
+    Result := cProblemNoWindow;
   end
   else if GetWindowThreadProcessId(Handle, nil) <> MainThreadID then
   begin
-    Result := 'Fenster gehört einem anderen Thread';
+    Result := cProblemForeignThread;
   end
   else if (Parent = nil) or not Parent.HandleAllocated or (GetParent(Handle) <> Parent.Handle) then
   begin
-    Result := 'Fenster hängt an einem anderen Elternfenster';
+    Result := cProblemForeignParent;
   end
   else if not IsWindowEnabled(Handle) then
   begin
-    Result := Format('Fenster ist gesperrt (Enabled %s)', [BoolToStr(Enabled, True)]);
+    Result := Format(cProblemDisabled, [BoolToStr(Enabled, True)]);
   end
   else if GetWindowLongPtr(Handle, GWL_STYLE) and WS_VISIBLE = 0 then
   begin
-    Result := 'Fenster ist ausgeblendet';
+    Result := cProblemHidden;
   end;
 end;
 
@@ -789,7 +817,7 @@ begin
     Canvas.Font := Font;
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
-    mPart := Rect(Scale(8), 0, ContentRight - Scale(4), ClientHeight);
+    mPart := Rect(Scale(cEmptyTextLeft), 0, ContentRight - Scale(cEdge), ClientHeight);
     DrawText(Canvas.Handle, PChar(FEmptyText), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
       DT_END_ELLIPSIS);
     Exit;
@@ -797,7 +825,7 @@ begin
   if FFirstShown > 0 then
   begin
     DrawSeparator(Scale(2), cEllipsis);
-    DrawSeparator(Scale(4) + EllipsisWidth, cSeparator);
+    DrawSeparator(Scale(cEdge) + EllipsisWidth, cSeparator);
   end;
   for mIndex := FFirstShown to High(FCrumbs) do
   begin
@@ -870,10 +898,10 @@ begin
     begin
       Canvas.Pen.Color := ToColor(Colors.Accent);
     end;
-    mRadius := Scale(4);
+    mRadius := Scale(cCornerRadius);
     Canvas.RoundRect(mArea.Left, mArea.Top + Scale(2), mArea.Right, mArea.Bottom - Scale(2), mRadius, mRadius);
   end;
-  mLeft_ := DrawBadge(mCrumb, mArea.Left + Scale(4));
+  mLeft_ := DrawBadge(mCrumb, mArea.Left + Scale(cCrumbInset));
   Canvas.Font := Font;
   Canvas.Brush.Style := bsClear;
   if AIndex = High(FCrumbs) then
@@ -990,12 +1018,12 @@ begin
     Canvas.Font.Style := [fsBold];
   end;
   // Rechts im Glied, vor AAfter (Breite ohne das führende Leerzeichen, dazu Rand).
-  mEnd := mArea.Right - Scale(4);
+  mEnd := mArea.Right - Scale(cCrumbInset);
   if AAfter <> '' then
   begin
     mEnd := mEnd - Canvas.TextWidth(AAfter);
   end;
-  Result := Rect(mEnd - Canvas.TextWidth(Trim(ATail)) - Scale(4), mArea.Top, mEnd + Scale(2), mArea.Bottom);
+  Result := Rect(mEnd - Canvas.TextWidth(Trim(ATail)) - Scale(cCrumbInset), mArea.Top, mEnd + Scale(2), mArea.Bottom);
   Canvas.Font := Font;
 end;
 
@@ -1047,7 +1075,8 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Selection);
   Canvas.Pen.Color := ToColor(Colors.Accent);
-  Canvas.RoundRect(ARect.Left, ARect.Top + Scale(3), ARect.Right, ARect.Bottom - Scale(3), Scale(4), Scale(4));
+  Canvas.RoundRect(ARect.Left, ARect.Top + Scale(cHotInset), ARect.Right, ARect.Bottom - Scale(cHotInset),
+    Scale(cCornerRadius), Scale(cCornerRadius));
   Canvas.Brush.Style := bsClear;
 end;
 
@@ -1077,22 +1106,22 @@ begin
   begin
     Exit;
   end;
-  mBoxHeight := Scale(15);
+  mBoxHeight := Scale(cBadgeHeight);
   mBox := Rect(ALeft, (ClientHeight - mBoxHeight) div 2, ALeft + BadgeWidth, (ClientHeight - mBoxHeight) div 2 +
     mBoxHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Badges[ACrumb.Badge.Kind].Background);
   Canvas.Pen.Color := Canvas.Brush.Color;
-  mRadius := Scale(4);
+  mRadius := Scale(cCornerRadius);
   Canvas.RoundRect(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mRadius, mRadius);
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Height := -Round(mBox.Height * 0.62);
+  Canvas.Font.Height := -Round(mBox.Height * cBadgeFontShare);
   Canvas.Font.Color := ToColor(Colors.Badges[ACrumb.Badge.Kind].Text);
   Canvas.Brush.Style := bsClear;
   DrawText(Canvas.Handle, PChar(ACrumb.Badge.Code), -1, mBox, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX);
-  Result := mBox.Right + Scale(4);
+  Result := mBox.Right + Scale(cBadgeGap);
 end;
 
 procedure TAtlasBreadcrumbBar.DrawSeparator(ALeft: Integer; const AText: string);
@@ -1117,7 +1146,7 @@ begin
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := ToColor(Colors.Selection);
     Canvas.Pen.Color := ToColor(Colors.Selection);
-    mRadius := Scale(4);
+    mRadius := Scale(cCornerRadius);
     Canvas.RoundRect(mArea.Left + Scale(1), mArea.Top + Scale(2), mArea.Right - Scale(1), mArea.Bottom - Scale(2),
       mRadius,
       mRadius);
@@ -1255,13 +1284,13 @@ begin
   GetWindowRect(AControl.Handle, mBounds);
   if not PtInRect(mBounds, AScreenPoint) then
   begin
-    Exit(Format('Punkt (%d, %d) liegt außerhalb des Fensters (%d, %d, %d, %d)', [AScreenPoint.X,
+    Exit(Format(cProblemOutsideWindow, [AScreenPoint.X,
       AScreenPoint.Y, mBounds.Left, mBounds.Top, mBounds.Right, mBounds.Bottom]));
   end;
   // Kinder trifft Windows nur in der Client-Fläche des Elternfensters; im Rahmen bekommt es das Elternfenster.
   if not PtInRect(AControl.Parent.ClientRect, AControl.Parent.ScreenToClient(AScreenPoint)) then
   begin
-    Exit('Punkt liegt im Rahmen des Elternfensters, nicht in seiner Client-Fläche');
+    Exit(cProblemInParentFrame);
   end;
   mRegion := CreateRectRgn(0, 0, 0, 0);
   try
@@ -1269,7 +1298,7 @@ begin
     if (GetWindowRgn(AControl.Handle, mRegion) <> ERROR) and
       not PtInRegion(mRegion, AScreenPoint.X - mBounds.Left, AScreenPoint.Y - mBounds.Top) then
     begin
-      Result := 'Punkt liegt außerhalb der Fensterregion (SetWindowRgn)';
+      Result := cProblemOutsideRegion;
     end;
   finally
     DeleteObject(mRegion);
@@ -1286,17 +1315,17 @@ begin
   mExStyle := GetWindowLongPtr(AControl.Handle, GWL_EXSTYLE);
   if mExStyle and WS_EX_TRANSPARENT <> 0 then
   begin
-    Exit('Fenster hat WS_EX_TRANSPARENT');
+    Exit(cProblemTransparent);
   end;
   if mExStyle and WS_EX_LAYERED <> 0 then
   begin
-    Exit('Fenster ist geschichtet (WS_EX_LAYERED)');
+    Exit(cProblemLayered);
   end;
   // Über die ganze Fensterprozedur, also auch über Unterklassen und Stil-Hooks der IDE.
   mHitTest := SendMessage(AControl.Handle, WM_NCHITTEST, 0, MakeLParam(Word(AScreenPoint.X), Word(AScreenPoint.Y)));
   if Integer(mHitTest) = HTTRANSPARENT then
   begin
-    Result := 'WM_NCHITTEST liefert HTTRANSPARENT';
+    Result := cProblemHitTransparent;
   end;
 end;
 
@@ -1310,7 +1339,7 @@ begin
     CWP_SKIPINVISIBLE);
   if (mTopmost <> 0) and (mTopmost <> AControl.Handle) and (mTopmost <> AControl.Parent.Handle) then
   begin
-    Result := Format('Geschwisterfenster liegt darüber (%s)', [WindowLabel(mTopmost)]);
+    Result := Format(cProblemCovered, [WindowLabel(mTopmost)]);
   end;
 end;
 

@@ -177,6 +177,32 @@ const
   /// <summary>Höhe des Fußes mit den Knöpfen und größte Höhe der Liste, logische Pixel.</summary>
   cButtonsHeight = 40;
   cMaxListHeight = 420;
+  /// <summary>Weitere Maße in logischen Pixeln.</summary>
+  cWidth = 440;
+  cHeaderPad = 12;
+  cHeaderLeft = 12;
+  cHeaderGap = 8;
+  cFilterWidth = 170;
+  cControlGap = 8;
+  cButtonLeft = 10;
+  cButtonGap = 10;
+  cButtonHeight = 25;
+  cButtonPad = 24;
+  cEntrySpacing = 12;
+  cEntryPad = 6;
+  cTextColumn = 34;
+  cUnreadBar = 3;
+  cFrameInset = 4;
+  cSeverityCenter = 18;
+  cSeverityRadius = 8;
+  cChipSpace = 8;
+  cChipHeightPad = 6;
+  cChipGap = 6;
+  cMinThumb = 16;
+  cThumbOffset = 5;
+  /// <summary>Zeilen je Schritt des Mausrads und Höhe der leeren Liste in Zeilen.</summary>
+  cWheelLines = 3;
+  cEmptyLines = 3;
 
 type
   /// <summary>Maße des Fensters: Zeilenhöhe, Kopf, Bereich der Liste, Einträge und ihre Aktionen.</summary>
@@ -381,7 +407,7 @@ begin
   Result.Window := AWindow;
   AWindow.Canvas.Font := AWindow.Font;
   Result.Line := AWindow.Canvas.TextHeight('Wg');
-  Result.Header := Max(Result.Line, AWindow.FParts.FilterBox.Height) + AWindow.ScaleValue(12);
+  Result.Header := Max(Result.Line, AWindow.FParts.FilterBox.Height) + AWindow.ScaleValue(cHeaderPad);
   Result.List := Rect(1, Result.Header, AWindow.ClientWidth - 1,
     AWindow.ClientHeight - AWindow.ScaleValue(cButtonsHeight));
 end;
@@ -417,16 +443,16 @@ begin
   end;
   Window.Canvas.Font := Window.Font;
   mEntry := EntryRect(ARow);
-  mLeft := mEntry.Left + Window.ScaleValue(34);
-  mTop := mEntry.Top + Window.ScaleValue(6) + 2 * Line + Window.ScaleValue(6);
+  mLeft := mEntry.Left + Window.ScaleValue(cTextColumn);
+  mTop := mEntry.Top + Window.ScaleValue(cEntryPad) + 2 * Line + Window.ScaleValue(cEntryPad);
   for mIndex := 0 to AChip do
   begin
-    mWidth := Window.Canvas.TextWidth(mActions[mIndex].Caption) + Window.ScaleValue(TAtlasDraw.cChipPad + 8);
+    mWidth := Window.Canvas.TextWidth(mActions[mIndex].Caption) + Window.ScaleValue(TAtlasDraw.cChipPad + cChipSpace);
     if mIndex = AChip then
     begin
-      Exit(Rect(mLeft, mTop, mLeft + mWidth, mTop + Line + Window.ScaleValue(6)));
+      Exit(Rect(mLeft, mTop, mLeft + mWidth, mTop + Line + Window.ScaleValue(cChipHeightPad)));
     end;
-    Inc(mLeft, mWidth + Window.ScaleValue(6));
+    Inc(mLeft, mWidth + Window.ScaleValue(cChipGap));
   end;
 end;
 
@@ -479,7 +505,7 @@ var
   mPart: TRect;
   mSignal: TAtlasSignal;
 begin
-  mRadius := Scale(8);
+  mRadius := Scale(cSeverityRadius);
   mSignal := TAtlasNotificationTexts.SeveritySignal(Colors, ASeverity);
   Canvas.Pen.Color := ToColor(mSignal.Ring);
   Canvas.Brush.Color := ToColor(mSignal.Fill);
@@ -513,15 +539,16 @@ begin
     Canvas.Brush.Color := ToColor(Colors.Selection);
     Canvas.FillRect(AEntry);
     Canvas.Brush.Color := ToColor(TAtlasNotificationTexts.SeveritySignal(Colors, mItem.Severity).Solid);
-    Canvas.FillRect(Rect(AEntry.Left, AEntry.Top, AEntry.Left + Scale(3), AEntry.Bottom));
+    Canvas.FillRect(Rect(AEntry.Left, AEntry.Top, AEntry.Left + Scale(cUnreadBar), AEntry.Bottom));
   end;
   if (AIndex = Window.FRows.Selected) or ((AIndex = Window.FRows.HotRow) and (Window.FRows.HotChip < 0)) then
   begin
     Canvas.Brush.Style := bsClear;
     Canvas.Pen.Color := ToColor(Colors.Line);
-    Canvas.Rectangle(AEntry.Left + Scale(4), AEntry.Top + 1, AEntry.Right - 1, AEntry.Bottom - 1);
+    Canvas.Rectangle(AEntry.Left + Scale(cFrameInset), AEntry.Top + 1, AEntry.Right - 1, AEntry.Bottom - 1);
   end;
-  DrawSeverity(Point(AEntry.Left + Scale(18), AEntry.Top + Scale(6) + Geometry.Line div 2), mItem.Severity);
+  DrawSeverity(Point(AEntry.Left + Scale(cSeverityCenter), AEntry.Top + Scale(cEntryPad) + Geometry.Line div 2),
+    mItem.Severity);
 end;
 
 procedure TNotificationsPainter.DrawEntryTexts(const AItem: IAtlasNotification; const AEntry: TRect);
@@ -534,8 +561,8 @@ begin
   mRight := TAtlasNotificationTexts.SourceCaption(AItem.Source) + ' · ' +
     TAtlasNotificationTexts.TimeText(AItem.Time, Now);
   Canvas.Font.Color := ToColor(Colors.Muted);
-  mPart := Rect(AEntry.Left + Scale(34), AEntry.Top + Scale(6), AEntry.Right - Scale(10),
-    AEntry.Top + Scale(6) + Geometry.Line);
+  mPart := Rect(AEntry.Left + Scale(cTextColumn), AEntry.Top + Scale(cEntryPad), AEntry.Right - Scale(10),
+    AEntry.Top + Scale(cEntryPad) + Geometry.Line);
   DrawText(Canvas.Handle, PChar(mRight), -1, mPart, DT_SINGLELINE or DT_RIGHT or DT_NOPREFIX);
   mPart.Right := mPart.Right - Canvas.TextWidth(mRight) - Scale(10);
   // Titel mit Zähler; ungelesen fett.
@@ -548,7 +575,7 @@ begin
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
   Canvas.Font.Style := [];
   // Text in der zweiten Zeile.
-  mPart := Rect(AEntry.Left + Scale(34), mPart.Bottom, AEntry.Right - Scale(10), mPart.Bottom + Geometry.Line);
+  mPart := Rect(AEntry.Left + Scale(cTextColumn), mPart.Bottom, AEntry.Right - Scale(10), mPart.Bottom + Geometry.Line);
   Canvas.Font.Color := ToColor(Colors.Muted);
   mText := AItem.Text;
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -604,10 +631,10 @@ begin
   begin
     Exit;
   end;
-  mThumbHeight := Max(Scale(16), MulDiv(mVisible, mVisible, Window.FRows.ContentHeight));
+  mThumbHeight := Max(Scale(cMinThumb), MulDiv(mVisible, mVisible, Window.FRows.ContentHeight));
   mThumbTop := mList.Top + MulDiv(Window.FRows.Scroll, mVisible - mThumbHeight,
     Max(1, Window.FRows.ContentHeight - mVisible));
-  TAtlasDraw.Thumb(Canvas, Rect(mList.Right - Scale(5), mThumbTop, mList.Right - Scale(1),
+  TAtlasDraw.Thumb(Canvas, Rect(mList.Right - Scale(cThumbOffset), mThumbTop, mList.Right - Scale(1),
     mThumbTop + mThumbHeight), Colors, Scale(2));
 end;
 
@@ -652,10 +679,10 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Text);
-  mPart := Rect(Scale(12), 0, Window.FParts.FilterBox.Left - Scale(8), Geometry.Header);
+  mPart := Rect(Scale(cHeaderLeft), 0, Window.FParts.FilterBox.Left - Scale(cHeaderGap), Geometry.Header);
   mText := TAtlasStrings.Text(TAtlasTextId.NotificationsCommand);
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-  mPart.Left := mPart.Left + Canvas.TextWidth(mText) + Scale(8);
+  mPart.Left := mPart.Left + Canvas.TextWidth(mText) + Scale(cHeaderGap);
   Canvas.Font.Style := [];
   mUnread := 0;
   if Window.FCenter <> nil then
@@ -813,7 +840,7 @@ var
   mGeometry: TNotificationsGeometry;
 begin
   mGeometry := TNotificationsGeometry.Create(Self);
-  FRows.ScrollTo(FRows.Scroll - (WheelDelta div WHEEL_DELTA) * 3 * mGeometry.Line, mGeometry.VisibleHeight);
+  FRows.ScrollTo(FRows.Scroll - (WheelDelta div WHEEL_DELTA) * cWheelLines * mGeometry.Line, mGeometry.VisibleHeight);
   Invalidate;
   Result := True;
 end;
@@ -824,11 +851,11 @@ var
   mListHeight: Integer;
 begin
   mGeometry := TNotificationsGeometry.Create(Self);
-  ClientWidth := ScaleValue(440);
-  FRows.Measure(mGeometry.Line, ScaleValue(12));
+  ClientWidth := ScaleValue(cWidth);
+  FRows.Measure(mGeometry.Line, ScaleValue(cEntrySpacing));
   if Length(FRows.Items) = 0 then
   begin
-    mListHeight := 3 * mGeometry.Line;
+    mListHeight := cEmptyLines * mGeometry.Line;
   end
   else
   begin
@@ -843,17 +870,18 @@ procedure TAtlasNotificationsWindow.PlaceControls;
 var
   mGap, mButtonWidth, mTop, mHeader: Integer;
 begin
-  mGap := ScaleValue(8);
+  mGap := ScaleValue(cControlGap);
   mHeader := TNotificationsGeometry.Create(Self).Header;
-  FParts.FilterBox.Width := ScaleValue(170);
+  FParts.FilterBox.Width := ScaleValue(cFilterWidth);
   FParts.FilterBox.Left := ClientWidth - FParts.FilterBox.Width - mGap;
   FParts.FilterBox.Top := (mHeader - FParts.FilterBox.Height) div 2;
   Canvas.Font := Font;
   mButtonWidth := Max(Canvas.TextWidth(FParts.AllReadButton.Caption),
-    Canvas.TextWidth(FParts.ClearButton.Caption)) + ScaleValue(24);
+    Canvas.TextWidth(FParts.ClearButton.Caption)) + ScaleValue(cButtonPad);
   mTop := ClientHeight - ScaleValue(cButtonsHeight) + mGap;
-  FParts.AllReadButton.SetBounds(ScaleValue(10), mTop, mButtonWidth, ScaleValue(25));
-  FParts.ClearButton.SetBounds(ScaleValue(20) + mButtonWidth, mTop, mButtonWidth, ScaleValue(25));
+  FParts.AllReadButton.SetBounds(ScaleValue(cButtonLeft), mTop, mButtonWidth, ScaleValue(cButtonHeight));
+  FParts.ClearButton.SetBounds(ScaleValue(cButtonLeft + cButtonGap) + mButtonWidth, mTop, mButtonWidth,
+    ScaleValue(cButtonHeight));
   FParts.AllReadButton.Enabled := (FCenter <> nil) and (FCenter.UnreadCount > 0);
   FParts.ClearButton.Enabled := (FCenter <> nil) and (Length(FCenter.Items()) > 0);
 end;

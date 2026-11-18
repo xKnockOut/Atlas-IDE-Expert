@@ -183,6 +183,24 @@ uses
   System.Math,
   Atlas.Core.Completion.Presentation;
 
+const
+  /// <summary>Maße in Pixeln bei 96 dpi.</summary>
+  cWidth = 640;
+  cScreenMargin = 40;
+  cTopOffset = 60;
+  cBottomMargin = 8;
+  cEdge = 6;
+  cInputBottom = 4;
+  cTextIndent = 8;
+  cCaptionPadding = 4;
+  cShortCutGap = 16;
+  cBadgePadding = 12;
+  cBadgeInset = 4;
+  cBadgeRadius = 8;
+  /// <summary>Zeilen je Schritt des Mausrads; Wartezeit nach dem Tippen, bevor die Suche läuft.</summary>
+  cWheelRows = 3;
+  cQueryDelayMs = 150;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
@@ -203,7 +221,7 @@ begin
   FPrompt := '>';
   FQueryTimer := TTimer.Create(Self);
   FQueryTimer.Enabled := False;
-  FQueryTimer.Interval := 150;
+  FQueryTimer.Interval := cQueryDelayMs;
   FQueryTimer.OnTimer := QueryTick;
   FGroup := TAtlasPaletteGroup.None;
   Refilter;
@@ -311,7 +329,7 @@ end;
 
 function TAtlasPaletteDrawing.RowRect(ARow: Integer): TRect;
 begin
-  Result := Rect(ScaleValue(6), InputHeight + ARow * RowHeight, ClientWidth - ScaleValue(6),
+  Result := Rect(ScaleValue(cEdge), InputHeight + ARow * RowHeight, ClientWidth - ScaleValue(cEdge),
     InputHeight + (ARow + 1) * RowHeight);
 end;
 
@@ -321,11 +339,12 @@ var
   mText: string;
 begin
   // Eingabefeld mit Akzentrahmen.
-  mInput := Rect(ScaleValue(6), ScaleValue(6), ClientWidth - ScaleValue(6), InputHeight - ScaleValue(4));
+  mInput := Rect(ScaleValue(cEdge), ScaleValue(cEdge), ClientWidth - ScaleValue(cEdge),
+    InputHeight - ScaleValue(cInputBottom));
   Canvas.Pen.Color := ToColor(Colors.Accent);
   Canvas.Brush.Color := ToColor(Colors.Gutter);
   Canvas.Rectangle(mInput);
-  InflateRect(mInput, -ScaleValue(8), 0);
+  InflateRect(mInput, -ScaleValue(cTextIndent), 0);
   Canvas.Brush.Style := bsClear;
   if APattern = '' then
   begin
@@ -423,7 +442,7 @@ end;
 
 function TAtlasPaletteWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
+  FTop := EnsureRange(FTop - Sign(WheelDelta) * cWheelRows, 0, Max(0, RowCount - cVisibleRows));
   Invalidate;
   Result := True;
 end;
@@ -708,7 +727,7 @@ begin
     Canvas.FillRect(mRow);
   end;
   Canvas.Brush.Style := bsClear;
-  InflateRect(mRow, -ScaleValue(8), 0);
+  InflateRect(mRow, -ScaleValue(cTextIndent), 0);
   mShortCutWidth := 0;
   if ACommand.ShortCut <> '' then
   begin
@@ -716,19 +735,21 @@ begin
     mShortCutWidth := Canvas.TextWidth(ACommand.ShortCut);
     mPart := Rect(mRow.Right - mShortCutWidth, mRow.Top, mRow.Right, mRow.Bottom);
     DrawText(Canvas.Handle, PChar(ACommand.ShortCut), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-    Inc(mShortCutWidth, ScaleValue(16));
+    Inc(mShortCutWidth, ScaleValue(cShortCutGap));
   end;
   // Abzeichen (Zustand eines Issues, #1270) rechts, vor dem Tastenkürzel.
   if ACommand.Badge <> '' then
   begin
     Canvas.Font.Size := Font.Size - 1;
-    mBadgeWidth := Canvas.TextWidth(ACommand.Badge) + ScaleValue(12);
-    mPart := Rect(mRow.Right - mShortCutWidth - mBadgeWidth, mRow.Top + ScaleValue(4), mRow.Right - mShortCutWidth,
-      mRow.Bottom - ScaleValue(4));
+    mBadgeWidth := Canvas.TextWidth(ACommand.Badge) + ScaleValue(cBadgePadding);
+    mPart := Rect(mRow.Right - mShortCutWidth - mBadgeWidth, mRow.Top + ScaleValue(cBadgeInset),
+      mRow.Right - mShortCutWidth,
+      mRow.Bottom - ScaleValue(cBadgeInset));
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := ToColor(Colors.Gutter);
     Canvas.Pen.Color := ToColor(Colors.Muted);
-    Canvas.RoundRect(mPart.Left, mPart.Top, mPart.Right, mPart.Bottom, ScaleValue(8), ScaleValue(8));
+    Canvas.RoundRect(mPart.Left, mPart.Top, mPart.Right, mPart.Bottom, ScaleValue(cBadgeRadius),
+      ScaleValue(cBadgeRadius));
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Color := ToColor(Colors.Text);
     DrawText(Canvas.Handle, PChar(ACommand.Badge), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_CENTER or
@@ -736,7 +757,7 @@ begin
     Canvas.Font.Size := Font.Size;
     Inc(mShortCutWidth, mBadgeWidth + ScaleValue(10));
   end;
-  mCaptionWidth := Min(Canvas.TextWidth(ACommand.Caption) + ScaleValue(4), mRow.Width - mShortCutWidth);
+  mCaptionWidth := Min(Canvas.TextWidth(ACommand.Caption) + ScaleValue(cCaptionPadding), mRow.Width - mShortCutWidth);
   DrawHighlighted(ACommand.Caption, AHighlight, Rect(mRow.Left, mRow.Top, mRow.Left + mCaptionWidth, mRow.Bottom));
   if ACommand.Path <> '' then
   begin
@@ -797,7 +818,7 @@ var
   mHeight_, mLeft_, mTop_: Integer;
 begin
   mArea := Screen.MonitorFromPoint(APoint).WorkareaRect;
-  mHeight_ := InputHeight + cVisibleRows * RowHeight + ScaleValue(8);
+  mHeight_ := InputHeight + cVisibleRows * RowHeight + ScaleValue(cBottomMargin);
   mLeft_ := Max(mArea.Left, Min(APoint.X, mArea.Right - AWidth));
   mTop_ := APoint.Y;
   if mTop_ + mHeight_ > mArea.Bottom then
@@ -819,7 +840,7 @@ begin
   Canvas.Pen.Color := ToColor(Colors.Gutter);
   Canvas.MoveTo(mRow.Left, mRow.Top);
   Canvas.LineTo(mRow.Right, mRow.Top);
-  InflateRect(mRow, -ScaleValue(8), 0);
+  InflateRect(mRow, -ScaleValue(cTextIndent), 0);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Muted);
@@ -833,7 +854,7 @@ var
   mRow: TRect;
 begin
   mRow := ARow;
-  InflateRect(mRow, -ScaleValue(8), 0);
+  InflateRect(mRow, -ScaleValue(cTextIndent), 0);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsItalic];
   Canvas.Font.Color := ToColor(Colors.Muted);
@@ -846,9 +867,9 @@ procedure TAtlasPaletteDrawing.ShowOver(const AArea: TRect);
 var
   mWidth_: Integer;
 begin
-  mWidth_ := Min(ScaleValue(640), AArea.Width - ScaleValue(40));
-  SetBounds(AArea.Left + (AArea.Width - mWidth_) div 2, AArea.Top + ScaleValue(60), mWidth_,
-    InputHeight + cVisibleRows * RowHeight + ScaleValue(8));
+  mWidth_ := Min(ScaleValue(cWidth), AArea.Width - ScaleValue(cScreenMargin));
+  SetBounds(AArea.Left + (AArea.Width - mWidth_) div 2, AArea.Top + ScaleValue(cTopOffset), mWidth_,
+    InputHeight + cVisibleRows * RowHeight + ScaleValue(cBottomMargin));
   Show;
   SetFocus;
 end;
