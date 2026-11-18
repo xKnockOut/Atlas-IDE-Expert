@@ -14,6 +14,32 @@ uses
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout.Contract;
 
+const
+  // Maße des Satzes bei 96 dpi, gemeinsam für alle Abschnitte.
+  /// <summary>Rand links und rechts; dort sitzt auch der Farbbalken eines Abschnitts.</summary>
+  cHoverMargin = 11;
+  /// <summary>Rand oben.</summary>
+  cHoverTop = 8;
+  /// <summary>Einzug des Texts neben dem Farbbalken.</summary>
+  cHoverIndent = 20;
+  /// <summary>Abstand umbrochener Zeilen im Fließtext.</summary>
+  cHoverWrapGap = 4;
+  /// <summary>Abstand der Zeilen von Tabellen und Werten.</summary>
+  cHoverRowGap = 3;
+  /// <summary>Abstand unter einer Kopf- oder Abschnittszeile.</summary>
+  cHoverHeadGap = 5;
+  /// <summary>Abstand unter einem Textblock, einer Zeile kleiner Links und über bzw. unter der Aktionsleiste.
+  /// </summary>
+  cHoverParagraphGap = 6;
+  /// <summary>Abstand unter einer Trennlinie.</summary>
+  cHoverLineGap = 7;
+  /// <summary>Abstand zwischen großen Abschnitten und um Randflächen.</summary>
+  cHoverSectionGap = 8;
+  /// <summary>Abstand zwischen Links, Spalten und Angaben einer Zeile.</summary>
+  cHoverItemGap = 12;
+  /// <summary>Abstand zwischen den Aktionen der Aktionsleiste.</summary>
+  cHoverActionGap = 14;
+
 type
   /// <summary>Klickfläche und Hervorhebung eines Stücks Fließtext: Index >= 0 legt eine Klickfläche an,
   /// HotIndex >= 0 färbt das Stück unter der Maus in HotColor und unterstreicht es.</summary>
@@ -81,8 +107,17 @@ implementation
 
 uses
   Atlas.Core.Hover.View,
+  Atlas.Core.Style.Scaling,
   System.SysUtils,
   System.Math;
+
+const
+  /// <summary>Farbbalken eines Abschnitts: Breite und Abstand seines Endes vom nächsten Abschnitt.</summary>
+  cBarWidth = 3;
+  cBarBottom = 7;
+  /// <summary>Mindestzuwachs der Listen von Bausteinen und Klickflächen.</summary>
+  cItemsGrowth = 16;
+  cHitsGrowth = 8;
 
 { TAtlasHoverPainter }
 
@@ -100,7 +135,7 @@ end;
 function TAtlasHoverPainter.Scale(AValue: Integer): Integer;
 begin
   // Wie MulDiv(AValue, PPI, 96): auf ganze Pixel gerundet.
-  Result := (AValue * FInput.PPI + 48) div 96;
+  Result := TAtlasScaling.ToDevice(AValue, FInput.PPI);
 end;
 
 function TAtlasHoverPainter.Height(const AFace: TAtlasHoverFace): Integer;
@@ -131,7 +166,7 @@ procedure TAtlasHoverPainter.Add(const AItem: TAtlasHoverItem);
 begin
   if FItemCount = Length(FItems) then
   begin
-    SetLength(FItems, 2 * FItemCount + 16);
+    SetLength(FItems, 2 * FItemCount + cItemsGrowth);
   end;
   FItems[FItemCount] := AItem;
   Inc(FItemCount);
@@ -153,7 +188,7 @@ procedure TAtlasHoverPainter.AddHit(AKind: TAtlasHoverHitKind; AIndex: Integer; 
 begin
   if FHitCount = Length(FHits) then
   begin
-    SetLength(FHits, 2 * FHitCount + 8);
+    SetLength(FHits, 2 * FHitCount + cHitsGrowth);
   end;
   FHits[FHitCount].Kind := AKind;
   FHits[FHitCount].Index := AIndex;
@@ -199,9 +234,9 @@ procedure TAtlasHoverPainter.SideBar(ATop: Integer; AColor: TAtlasColor);
 var
   mBar: TAtlasHoverItem;
 begin
-  FLeft := Scale(11);
-  mBar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, ATop + Scale(1), FLeft + Scale(3), FY - Scale(7)),
-    AColor);
+  FLeft := Scale(cHoverMargin);
+  mBar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, ATop + Scale(1), FLeft + Scale(cBarWidth),
+    FY - Scale(cBarBottom)), AColor);
   mBar.Radius := 1;
   Add(mBar);
 end;
@@ -223,7 +258,7 @@ begin
   mItem := NewItem(TAtlasHoverItemKind.Block, Rect(FLeft, FY, FRight, mBottom), AColor);
   mItem.Text := AText;
   Add(mItem);
-  FY := mBottom + Scale(6);
+  FY := mBottom + Scale(cHoverParagraphGap);
 end;
 
 procedure TAtlasHoverPainter.Flow(const AText: string; AColor: TAtlasColor; ABold: Boolean;
@@ -241,7 +276,7 @@ begin
   if not FNoWrap and (FX + mTextWidth > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
-    Inc(FY, FRowHeight + Scale(4));
+    Inc(FY, FRowHeight + Scale(cHoverWrapGap));
     FRowHeight := 0;
   end;
   mCell := Rect(FX, FY, FX + mTextWidth, FY + mTextHeight);
@@ -295,7 +330,7 @@ end;
 procedure TAtlasHoverPainter.EndLinkRow(AOldFont: TAtlasHoverFont);
 begin
   EndFlow;
-  Inc(FY, Scale(6));
+  Inc(FY, Scale(cHoverParagraphGap));
   FFlowFont := AOldFont;
 end;
 

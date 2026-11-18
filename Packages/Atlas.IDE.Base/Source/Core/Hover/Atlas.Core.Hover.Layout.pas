@@ -111,6 +111,37 @@ const
   cExamplePadding = 4;
   cExampleIndent = 8;
   cExampleGap = 6;
+  /// <summary>Höchstzahl der Zeilen einer Meldung, eines Werts im Debugger und der Ursache von „kein Zugriff“.
+  /// </summary>
+  cMessageLines = 3;
+  cValueLines = 6;
+  cReasonLines = 6;
+  /// <summary>Herkunft und Regel rücken so weit an die Meldung heran (Teil des Absatzabstands).</summary>
+  cDetailsPull = 4;
+  /// <summary>Schweregrad-Pille (#909) bei 96 dpi: Mindesthöhe, Eckenradius, Abstand zur Meldung und Anteil der
+  /// Farbe über der Fläche.</summary>
+  cPillMinHeight = 15;
+  cPillRadius = 7;
+  cPillGap = 6;
+  cPillMix = 0.16;
+  /// <summary>Badge der Kopfzeile und Zurück-Knopf der Pfadzeile: Größe, Abstand und Eckenradius.</summary>
+  cBadgeWidth = 24;
+  cBadgeHeight = 17;
+  cBadgeGap = 7;
+  cBoxRadius = 4;
+  /// <summary>Pfadzeile: Höhe; Zurück-Knopf mit Abstand links, Breite und Höhe; Abstand zum Pfad.</summary>
+  cNavHeight = 30;
+  cBackLeft = 8;
+  cBackWidth = 22;
+  cBackHeight = 20;
+  cNavGap = 6;
+  /// <summary>Einzug der Folgezeilen einer umbrochenen Deklaration.</summary>
+  cDeclarationIndent = 16;
+  /// <summary>Kürzel aus TAtlasHoverData.Badge und ihre Badge-Art; andere sind Schlüsselwörter.</summary>
+  cBadgeCodes: array[0..6] of string = ('ty', 'fn', 'pp', 'fd', 'va', 'co', 'un');
+  cBadgeKinds: array[0..6] of TAtlasBadgeKind = (TAtlasBadgeKind.Type_, TAtlasBadgeKind.Function_,
+    TAtlasBadgeKind.Property_, TAtlasBadgeKind.Field, TAtlasBadgeKind.Variable, TAtlasBadgeKind.Constant,
+    TAtlasBadgeKind.Unit_);
 
 type
   /// <summary>Abschnitte des Tooltips der Reihe nach.</summary>
@@ -172,18 +203,15 @@ type
   end;
 
 function HoverBadgeKind(const ACode: string): TAtlasBadgeKind;
+var
+  mIndex: Integer;
 begin
-  case IndexStr(ACode, ['ty', 'fn', 'pp', 'fd', 'va', 'co', 'un']) of
-    0: Result := TAtlasBadgeKind.Type_;
-    1: Result := TAtlasBadgeKind.Function_;
-    2: Result := TAtlasBadgeKind.Property_;
-    3: Result := TAtlasBadgeKind.Field;
-    4: Result := TAtlasBadgeKind.Variable;
-    5: Result := TAtlasBadgeKind.Constant;
-    6: Result := TAtlasBadgeKind.Unit_;
-  else
-    Result := TAtlasBadgeKind.Keyword;
+  mIndex := IndexStr(ACode, cBadgeCodes);
+  if mIndex < 0 then
+  begin
+    Exit(TAtlasBadgeKind.Keyword);
   end;
+  Result := cBadgeKinds[mIndex];
 end;
 
 { TBuilder }
@@ -211,7 +239,7 @@ begin
   if (FX + mTextWidth + Scale(cAtlasChipPad) > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
-    Inc(FY, FRowHeight + Scale(4));
+    Inc(FY, FRowHeight + Scale(cHoverWrapGap));
     FRowHeight := 0;
   end;
   mCell := Rect(FX, FY, FX + mTextWidth + Scale(cAtlasChipPad), FY + mTextHeight);
@@ -248,14 +276,14 @@ begin
   // Taste in Akzentfarbe, Beschriftung gedämpft; bleibt in einer Zeile.
   if FX > FLeft then
   begin
-    Inc(FX, Scale(14));
+    Inc(FX, Scale(cHoverActionGap));
   end;
   mTotal := Width(TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, True, False), AKey + ' ') +
     Width(TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False), ACaption);
   if (FX + mTotal > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
-    Inc(FY, FRowHeight + Scale(3));
+    Inc(FY, FRowHeight + Scale(cHoverRowGap));
     FRowHeight := 0;
   end;
   mKeyColor := FColors.Muted;
@@ -278,7 +306,7 @@ procedure TBuilder.ProblemLink(const ACaption: string; AProblem: Integer; AActio
 begin
   if FX > FLeft then
   begin
-    Inc(FX, Scale(12));
+    Inc(FX, Scale(cHoverItemGap));
   end;
   FlowLink(ACaption, FColors.Accent, TAtlasHoverHitKind.ProblemAction,
     TAtlasHoverProblemActionCode.Encode(AProblem, AAction));
@@ -354,16 +382,16 @@ begin
   // Kästchen hier nach der gemessenen Schrift; gemessen wurde sie ohne Kästchen (Windows-Standardschrift), das
   // Kästchen geriet zu groß und der Text darin kleiner.
   mPillFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, True, False);
-  mBox := Rect(FLeft, FY + Scale(1), FLeft + Width(mPillFace, mCaption) + Scale(12), FY + Scale(1) +
-    Max(Height(mPillFace) + Scale(2), Scale(15)));
-  mItem := NewItem(TAtlasHoverItemKind.RoundFill, mBox, TAtlasColorMath.Mix(mColor, FColors.Surface, 0.16));
-  mItem.Radius := 7;
+  mBox := Rect(FLeft, FY + Scale(1), FLeft + Width(mPillFace, mCaption) + Scale(cAtlasChipPad), FY + Scale(1) +
+    Max(Height(mPillFace) + Scale(2), Scale(cPillMinHeight)));
+  mItem := NewItem(TAtlasHoverItemKind.RoundFill, mBox, TAtlasColorMath.Mix(mColor, FColors.Surface, cPillMix));
+  mItem.Radius := cPillRadius;
   Add(mItem);
   mItem := NewItem(TAtlasHoverItemKind.CenterText, mBox, mColor);
   mItem.Text := mCaption;
   mItem.Face := mPillFace;
   Add(mItem);
-  FLeft := mBox.Right + Scale(6);
+  FLeft := mBox.Right + Scale(cPillGap);
 end;
 
 procedure TBuilder.RuleActions(const AProblem: TAtlasProblem; AIndex: Integer);
@@ -582,7 +610,7 @@ begin
   end;
   // Zusatz der Regel, z. B. der durchsuchte Bereich projektweiter Regeln (#1102).
   AddSmallLine(AProblem.Details);
-  Inc(FY, Height(mSmallFace) + Scale(6));
+  Inc(FY, Height(mSmallFace) + Scale(cHoverParagraphGap));
 end;
 
 procedure TBuilder.Problem(AIndex: Integer);
@@ -593,25 +621,25 @@ var
 begin
   mProblem := FInput.View.Problems[AIndex];
   mStart := FY;
-  FLeft := Scale(20);
+  FLeft := Scale(cHoverIndent);
   // uses-Hinweise (#621) und inaktive Zweige (#615) sind keine Befunde: ohne Pille, Meldung mit Code.
   mIsRule := not mProblem.IsUses and not mProblem.Unnecessary;
   if not mIsRule then
   begin
-    Block(mProblem.Caption, FColors.Text, 3);
+    Block(mProblem.Caption, FColors.Text, cMessageLines);
   end
   else if FInput.HideCompilerCode then
   begin
     SeverityPill(mProblem);
-    Block(TAtlasProblem.WithoutCompilerCode(mProblem.Message), FColors.Text, 3);
+    Block(TAtlasProblem.WithoutCompilerCode(mProblem.Message), FColors.Text, cMessageLines);
   end
   else
   begin
     SeverityPill(mProblem);
-    Block(mProblem.Message, FColors.Text, 3);
+    Block(mProblem.Message, FColors.Text, cMessageLines);
   end;
-  FLeft := Scale(20);
-  Dec(FY, Scale(4));
+  FLeft := Scale(cHoverIndent);
+  Dec(FY, Scale(cDetailsPull));
   ProblemDetails(mProblem, AIndex);
   // Weitere Stellen (#896), z. B. die Units eines Zyklus mit Sprung an ihren uses-Eintrag.
   RelatedLinks(mProblem, AIndex);
@@ -642,7 +670,7 @@ var
   mCaption: string;
   mCaptionFace: TAtlasHoverFace;
 begin
-  Inc(FY, Scale(8));
+  Inc(FY, Scale(cHoverSectionGap));
   if FData.Kind = TAtlasHoverData.cKindClassRef then
   begin
     mCaption := Format(FInput.Texts.TargetType, [FData.ChainOf]);
@@ -653,7 +681,7 @@ begin
   end;
   mCaptionFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, True, False);
   AddText(FLeft, FY, AnsiUpperCase(mCaption), mCaptionFace, FColors.Muted);
-  Inc(FY, Height(mCaptionFace) + Scale(6));
+  Inc(FY, Height(mCaptionFace) + Scale(cHoverParagraphGap));
   FFlowFont := TAtlasHoverFont.Mono;
   mChain := FData.VisibleChain;
   for mItem := 0 to High(mChain) do
@@ -673,14 +701,14 @@ begin
     end;
   end;
   EndFlow;
-  Inc(FY, Scale(8));
+  Inc(FY, Scale(cHoverSectionGap));
 end;
 
 procedure TBuilder.ActionsBand;
 var
   mCaption: string;
 begin
-  Inc(FY, Scale(6));
+  Inc(FY, Scale(cHoverParagraphGap));
   FFlowFont := TAtlasHoverFont.SmallUi;
   ActionItem('F12', Format(FInput.Texts.Navigate, [FData.Title]), TAtlasHoverAction.Navigate, True);
   mCaption := FInput.Texts.Usages;
@@ -708,11 +736,11 @@ begin
   // Geerbte VCL-Mitglieder kennt der Server nur mit den VCL-Quellen im Index (#110).
   if (Length(FData.Members) > 0) and (FInput.Texts.PublishedVclNote <> '') then
   begin
-    Inc(FX, Scale(14));
+    Inc(FX, Scale(cHoverActionGap));
     Flow(FInput.Texts.PublishedVclNote, FColors.Muted, False);
   end;
   EndFlow;
-  Inc(FY, Scale(6));
+  Inc(FY, Scale(cHoverParagraphGap));
 end;
 
 procedure TBuilder.BandContent(AKind: Integer);
@@ -765,10 +793,13 @@ function TBuilder.BackButton(ANavHeight: Integer): TRect;
 var
   mItem: TAtlasHoverItem;
 begin
-  Result := Rect(Scale(8), (ANavHeight - Scale(20)) div 2, Scale(30), (ANavHeight - Scale(20)) div 2 + Scale(20));
+  Result.Left := Scale(cBackLeft);
+  Result.Top := (ANavHeight - Scale(cBackHeight)) div 2;
+  Result.Right := Result.Left + Scale(cBackWidth);
+  Result.Bottom := Result.Top + Scale(cBackHeight);
   mItem := NewItem(TAtlasHoverItemKind.Frame, Result, FColors.Line);
   mItem.Back := FColors.Surface;
-  mItem.Radius := 4;
+  mItem.Radius := cBoxRadius;
   if FInput.View.CanGoBack then
   begin
     MakeHot(mItem, TAtlasHoverHitKind.Back, 0, FColors.Accent);
@@ -824,26 +855,26 @@ var
   mSmallFace: TAtlasHoverFace;
 begin
   // Pfadzeile (nur angeheftet) auf Randfläche: Zurück-Knopf, besuchte Typen, rechts „angeheftet“.
-  mNavHeight := Scale(30);
+  mNavHeight := Scale(cNavHeight);
   Add(NewItem(TAtlasHoverItemKind.Fill, Rect(0, 0, FInput.Width, mNavHeight), FColors.Gutter));
   HorizontalLine(mNavHeight - 1);
   mBox := BackButton(mNavHeight);
   FFlowFont := TAtlasHoverFont.Mono;
   FNoWrap := True;
   FY := (mNavHeight - Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False))) div 2;
-  FX := mBox.Right + Scale(6);
+  FX := mBox.Right + Scale(cNavGap);
   PathItems;
   mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   mCaption := FInput.Texts.Pinned;
   mCaptionWidth := Width(mSmallFace, mCaption);
-  if FX + mCaptionWidth + Scale(12) < FRight then
+  if FX + mCaptionWidth + Scale(cHoverItemGap) < FRight then
   begin
     AddText(FRight - mCaptionWidth, (mNavHeight - Height(mSmallFace)) div 2, mCaption, mSmallFace, FColors.Muted);
   end;
   FNoWrap := False;
   FFlowFont := TAtlasHoverFont.Ui;
   FRowHeight := 0;
-  FY := mNavHeight + Scale(8);
+  FY := mNavHeight + Scale(cHoverSectionGap);
   FX := FLeft;
 end;
 
@@ -857,7 +888,7 @@ begin
   // (höchstens sechs Zeilen) bzw. „wird ausgewertet …“.
   mValue := FInput.View.DebugValue;
   mStart := FY;
-  FLeft := Scale(20);
+  FLeft := Scale(cHoverIndent);
   mMonoFace := TAtlasHoverFace.Create(TAtlasHoverFont.Mono, True, False);
   AddText(FLeft, FY, ToggleGlyph(mValue.Expandable, mValue.Expanded) + mValue.Expression, mMonoFace, FColors.Accent);
   if mValue.Expandable then
@@ -865,7 +896,7 @@ begin
     // Klick auf den Ausdruck klappt auf bzw. zu (#895).
     AddHit(TAtlasHoverHitKind.DebugRow, -1, Rect(FLeft, FY, FRight, FY + Height(mMonoFace)));
   end;
-  Inc(FY, Height(mMonoFace) + Scale(3));
+  Inc(FY, Height(mMonoFace) + Scale(cHoverRowGap));
   if mValue.State = TAtlasDebugValueState.Pending then
   begin
     Block(FInput.Texts.DebugPending, FColors.Muted, 1);
@@ -878,7 +909,7 @@ begin
   begin
     mValueTop := FY;
     mValueItem := FItemCount;
-    Block(mValue.Text, FColors.Text, 6);
+    Block(mValue.Text, FColors.Text, cValueLines);
     if mValue.OldText <> '' then
     begin
       // Seit dem vorigen Halt geändert (#895): hinterlegt, alter Wert gedimmt darunter.
@@ -903,7 +934,7 @@ begin
     Block(FInput.Texts.DebugExplaining, FColors.Muted, 1);
     Exit;
   end;
-  Block(ANote.Reason, FColors.Text, 6);
+  Block(ANote.Reason, FColors.Text, cReasonLines);
   Block(ANote.Origin, FColors.Muted, 2);
   if Length(ANote.Checked) > 0 then
   begin
@@ -917,8 +948,6 @@ begin
 end;
 
 procedure TBuilder.LinkRow(const ALinks: TArray<TAtlasDebugValueFix>; AKind: TAtlasHoverHitKind);
-const
-  cLinkGap = 12;
 var
   mIndex: Integer;
   mOldFont: TAtlasHoverFont;
@@ -932,7 +961,7 @@ begin
   begin
     if FX > FLeft then
     begin
-      Inc(FX, Scale(cLinkGap));
+      Inc(FX, Scale(cHoverItemGap));
     end;
     FlowLink(ALinks[mIndex].Caption, FColors.Accent, AKind, mIndex);
   end;
@@ -971,30 +1000,30 @@ begin
   begin
     Exit;
   end;
-  FLineHeight := Max(Height(TAtlasHoverFace.Create(TAtlasHoverFont.Ui, False, False)), Scale(17));
+  FLineHeight := Max(Height(TAtlasHoverFace.Create(TAtlasHoverFont.Ui, False, False)), Scale(cBadgeHeight));
   FX := FLeft;
   if FData.Kind <> '' then
   begin
     mBadge := HoverBadgeKind(FData.Badge);
-    mBox := Rect(FLeft, FY, FLeft + Scale(24), FY + Scale(17));
+    mBox := Rect(FLeft, FY, FLeft + Scale(cBadgeWidth), FY + Scale(cBadgeHeight));
     mItem := NewItem(TAtlasHoverItemKind.RoundFill, mBox, FColors.Badges[mBadge].Background);
-    mItem.Radius := 4;
+    mItem.Radius := cBoxRadius;
     Add(mItem);
     mItem := NewItem(TAtlasHoverItemKind.CenterText, mBox, FColors.Badges[mBadge].Text);
     mItem.Text := FData.Badge;
     mItem.Face := TAtlasHoverFace.Create(TAtlasHoverFont.Badge, True, False);
     Add(mItem);
-    FX := mBox.Right + Scale(7);
+    FX := mBox.Right + Scale(cBadgeGap);
   end;
   mSmallFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallUi, False, False);
   AddText(FX, FY + (FLineHeight - Height(mSmallFace)) div 2, mCaption, mSmallFace, FColors.Muted);
   if mLocation <> '' then
   begin
     mLocationFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, False, False);
-    AddText(Max(FX + Width(mSmallFace, mCaption) + Scale(12), FRight - Width(mLocationFace, mLocation)),
+    AddText(Max(FX + Width(mSmallFace, mCaption) + Scale(cHoverItemGap), FRight - Width(mLocationFace, mLocation)),
       FY + (FLineHeight - Height(mLocationFace)) div 2, mLocation, mLocationFace, FColors.Muted);
   end;
-  Inc(FY, FLineHeight + Scale(5));
+  Inc(FY, FLineHeight + Scale(cHoverHeadGap));
   FX := FLeft;
 end;
 
@@ -1050,13 +1079,13 @@ var
 begin
   // Deklaration eingefärbt, an Leerzeichen umbrochen; Typnamen als Verweise in Akzentfarbe, unterstrichen.
   FLineHeight := Height(TAtlasHoverFace.Create(TAtlasHoverFont.Mono, False, False)) + Scale(2);
-  mLines := FMeasure.DeclarationLines(FRight - FLeft, Scale(16));
+  mLines := FMeasure.DeclarationLines(FRight - FLeft, Scale(cDeclarationIndent));
   for mLine := 0 to High(mLines) do
   begin
     FX := FLeft;
     if mLine > 0 then
     begin
-      FX := FLeft + Scale(16);
+      FX := FLeft + Scale(cDeclarationIndent);
     end;
     mPos := mLines[mLine].X;
     while mPos < mLines[mLine].Y do
@@ -1074,7 +1103,7 @@ begin
     end;
     Inc(FY, FLineHeight);
   end;
-  Inc(FY, Scale(6));
+  Inc(FY, Scale(cHoverParagraphGap));
   FX := FLeft;
 end;
 
@@ -1098,7 +1127,7 @@ begin
     Exit;
   end;
   HorizontalLine(FY);
-  Inc(FY, Scale(7));
+  Inc(FY, Scale(cHoverLineGap));
   if FData.LocationText = '' then
   begin
     Block(FData.UnitName, FColors.Muted, 0);
@@ -1114,7 +1143,7 @@ begin
   if FInput.HasDoc then
   begin
     Add(NewItem(TAtlasHoverItemKind.Doc, Rect(FLeft, FY, FLeft, FY), FColors.Text));
-    Inc(FY, FInput.DocHeight + Scale(6));
+    Inc(FY, FInput.DocHeight + Scale(cHoverParagraphGap));
   end;
   Inc(FY, Scale(1));
 end;
@@ -1124,9 +1153,9 @@ begin
   FFlowFont := TAtlasHoverFont.Ui;
   FNoWrap := False;
   FRowHeight := 0;
-  FLeft := Scale(11);
-  FRight := FInput.Width - Scale(11);
-  FY := Scale(8);
+  FLeft := Scale(cHoverMargin);
+  FRight := FInput.Width - Scale(cHoverMargin);
+  FY := Scale(cHoverTop);
   FX := FLeft;
   if FInput.View.Pinned then
   begin
@@ -1142,7 +1171,7 @@ begin
       Exit;
     end;
     HorizontalLine(FY);
-    Inc(FY, Scale(8));
+    Inc(FY, Scale(cHoverSectionGap));
   end;
   if Length(FInput.View.Problems) > 0 then
   begin
@@ -1154,7 +1183,7 @@ begin
       Exit;
     end;
     HorizontalLine(FY);
-    Inc(FY, Scale(8));
+    Inc(FY, Scale(cHoverSectionGap));
   end;
   Header;
   Declaration;

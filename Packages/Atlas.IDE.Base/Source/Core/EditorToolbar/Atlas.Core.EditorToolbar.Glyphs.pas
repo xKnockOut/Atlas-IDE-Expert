@@ -91,8 +91,12 @@ begin
 end;
 
 function Circle(ACX, ACY, AR: Single; AFilled: Boolean): TAtlasGlyphShape;
+const
+  cFullTurn = 360;
+  /// <summary>Strecken je Kreis; bei 16 Einheiten Kantenlänge glatt genug.</summary>
+  cSteps = 24;
 begin
-  Result.Points := ArcPoints(ACX, ACY, AR, 0, 360, 24);
+  Result.Points := ArcPoints(ACX, ACY, AR, 0, cFullTurn, cSteps);
   Result.Closed := True;
   Result.Filled := AFilled;
 end;
@@ -102,6 +106,40 @@ end;
 function Ring(ACX, ACY, AR: Single): TAtlasGlyphShape;
 begin
   Result := Circle(ACX, ACY, AR, False);
+end;
+
+/// <summary>Gefüllter Kreis; nur Zahlen als Argumente wie Ring.</summary>
+function Disc(ACX, ACY, AR: Single): TAtlasGlyphShape;
+begin
+  Result := Circle(ACX, ACY, AR, True);
+end;
+
+/// <summary>Punkt auf der Strecke von AFrom nach ATo beim Anteil AT (0 = AFrom, 1 = ATo).</summary>
+function Lerp(const AFrom, ATo: TAtlasGlyphPoint; AT: Single): TAtlasGlyphPoint;
+begin
+  Result := P(AFrom.X + (ATo.X - AFrom.X) * AT, AFrom.Y + (ATo.Y - AFrom.Y) * AT);
+end;
+
+/// <summary>Punkt einer Bézierkurve mit Start, Stützpunkten und Ende AControl beim Anteil AT (de Casteljau: so
+/// lange zwischen benachbarten Punkten teilen, bis einer übrig ist).</summary>
+function Bezier(const AControl: array of TAtlasGlyphPoint; AT: Single): TAtlasGlyphPoint;
+var
+  mPoints: TArray<TAtlasGlyphPoint>;
+  mLevel, mIndex: Integer;
+begin
+  SetLength(mPoints, Length(AControl));
+  for mIndex := 0 to High(AControl) do
+  begin
+    mPoints[mIndex] := AControl[mIndex];
+  end;
+  for mLevel := High(mPoints) downto 1 do
+  begin
+    for mIndex := 0 to mLevel - 1 do
+    begin
+      mPoints[mIndex] := Lerp(mPoints[mIndex], mPoints[mIndex + 1], AT);
+    end;
+  end;
+  Result := mPoints[0];
 end;
 
 /// <summary>Umriss eines Auges wie im Mockup (Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
@@ -118,19 +156,18 @@ const
 var
   mPoints: TArray<TAtlasGlyphPoint>;
   mArc, mStep: Integer;
-  T, U: Single;
+  mControl: array[0..3] of TAtlasGlyphPoint;
 begin
   mPoints := nil;
   for mArc := 0 to High(cArcs) do
   begin
+    for mStep := 0 to High(mControl) do
+    begin
+      mControl[mStep] := P(cArcs[mArc, mStep, 0], cArcs[mArc, mStep, 1]);
+    end;
     for mStep := 0 to cSteps - 1 do
     begin
-      T := mStep / cSteps;
-      U := 1 - T;
-      mPoints := mPoints + [P(U * U * U * cArcs[mArc, 0, 0] + 3 * U * U * T * cArcs[mArc, 1, 0] + 3 * U * T * T *
-        cArcs[mArc, 2, 0] +
-        T * T * T * cArcs[mArc, 3, 0], U * U * U * cArcs[mArc, 0, 1] + 3 * U * U * T * cArcs[mArc, 1, 1] +
-        3 * U * T * T * cArcs[mArc, 2, 1] + T * T * T * cArcs[mArc, 3, 1])];
+      mPoints := mPoints + [Bezier(mControl, mStep / cSteps)];
     end;
   end;
   Result.Points := mPoints;
@@ -141,6 +178,13 @@ end;
 /// <summary>Umriss eines Zahnrads um CX/CY mit ATeeth Zähnen: Kopf auf AOuter, Fuß auf AInner, Zahn und Lücke etwa
 /// gleich breit. Je Zahn vier Punkte (Fuß, Flanke hinauf, Kopf, Flanke hinab).</summary>
 function GearOutline(ACX, ACY, AOuter, AInner: Single; ATeeth: Integer): TAtlasGlyphShape;
+const
+  // Lage der vier Punkte je Zahn als Anteil eines Zahnschritts (Zahn und Lücke): Der Schritt beginnt ein Viertel
+  // vor der Zahnmitte am Fuß, die Flanke steigt bis cFlankUp, fällt ab cFlankDown, ab cGapStart folgt die Lücke.
+  cToothStart = 0.25;
+  cFlankUp = 0.12;
+  cFlankDown = 0.38;
+  cGapStart = 0.5;
 var
   mPoints: TArray<TAtlasGlyphPoint>;
   mTooth: Integer;
@@ -156,31 +200,38 @@ begin
   mStep := 2 * Pi / ATeeth;
   for mTooth := 0 to ATeeth - 1 do
   begin
-    mStart := mTooth * mStep - mStep / 4;
+    mStart := (mTooth - cToothStart) * mStep;
     Add(mStart, AInner);
-    Add(mStart + mStep * 0.12, AOuter);
-    Add(mStart + mStep * 0.38, AOuter);
-    Add(mStart + mStep * 0.5, AInner);
+    Add(mStart + mStep * cFlankUp, AOuter);
+    Add(mStart + mStep * cFlankDown, AOuter);
+    Add(mStart + mStep * cGapStart, AInner);
   end;
   Result.Points := mPoints;
   Result.Closed := True;
   Result.Filled := False;
 end;
 
-function Join(const A: array of TAtlasGlyphPoint; const B: TArray<TAtlasGlyphPoint>;
-  const C: array of TAtlasGlyphPoint): TArray<TAtlasGlyphPoint>;
+/// <summary>Punkte als dynamisches Array, um Strecken und Bögen mit Join zu verbinden.</summary>
+function Points(const APoints: array of TAtlasGlyphPoint): TArray<TAtlasGlyphPoint>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(APoints));
+  for mIndex := 0 to High(APoints) do
+  begin
+    Result[mIndex] := APoints[mIndex];
+  end;
+end;
+
+/// <summary>Teilstücke (Points, ArcPoints) der Reihe nach zu einem Linienzug.</summary>
+function Join(const AParts: array of TArray<TAtlasGlyphPoint>): TArray<TAtlasGlyphPoint>;
 var
   mIndex: Integer;
 begin
   Result := nil;
-  for mIndex := 0 to High(A) do
+  for mIndex := 0 to High(AParts) do
   begin
-    Result := Result + [A[mIndex]];
-  end;
-  Result := Result + B;
-  for mIndex := 0 to High(C) do
-  begin
-    Result := Result + [C[mIndex]];
+    Result := Result + AParts[mIndex];
   end;
 end;
 
@@ -211,12 +262,12 @@ begin
         Stroke([P(5.5, 4), P(9, 4)]), Stroke([P(5.5, 6), P(10.5, 6)])];
     TAtlasToolbarIcon.UsesClause:
       Result := [Sheet, Stroke([P(5.5, 5.5), P(10.5, 5.5)]), Stroke([P(5.5, 8), P(10.5, 8)]),
-        Stroke([P(5.5, 10.5), P(8.5, 10.5)]), Circle(12.5, 12.5, 2.2, True)];
+        Stroke([P(5.5, 10.5), P(8.5, 10.5)]), Disc(12.5, 12.5, 2.2)];
     TAtlasToolbarIcon.Initialization_:
       Result := [Sheet, Fill([P(6.5, 8.5), P(9.5, 10.5), P(6.5, 12.5)])];
     TAtlasToolbarIcon.Return:
-      Result := [Shape(Join([P(13, 3.5), P(13, 7.5)], ArcPoints(10.5, 7.5, 2.5, 0, 90, 6), [P(3.5, 10)]), False,
-        False), Stroke([P(6.5, 7), P(3.5, 10), P(6.5, 13)])];
+      Result := [Shape(Join([Points([P(13, 3.5), P(13, 7.5)]), ArcPoints(10.5, 7.5, 2.5, 0, 90, 6),
+        Points([P(3.5, 10)])]), False, False), Stroke([P(6.5, 7), P(3.5, 10), P(6.5, 13)])];
     TAtlasToolbarIcon.Back:
       Result := [Stroke([P(10, 3.5), P(5.5, 8), P(10, 12.5)])];
     TAtlasToolbarIcon.Forward:
@@ -238,18 +289,18 @@ begin
       Result := [Stroke([P(6, 1.5), P(6, 6), P(2.5, 13), P(2.6, 14), P(3.4, 14.5), P(12.6, 14.5), P(13.4, 14),
         P(13.5, 13), P(10, 6), P(10, 1.5)]), Stroke([P(5, 1.5), P(11, 1.5)]), Stroke([P(4.4, 10.5), P(11.6, 10.5)])];
     TAtlasToolbarIcon.UnitSearch:
-      Result := [Circle(7, 7, 4.5, False), Stroke([P(10.4, 10.4), P(14, 14)]), Stroke([P(5.5, 5.5), P(8.5, 5.5)]),
+      Result := [Ring(7, 7, 4.5), Stroke([P(10.4, 10.4), P(14, 14)]), Stroke([P(5.5, 5.5), P(8.5, 5.5)]),
         Stroke([P(5.5, 7.5), P(8.5, 7.5)])];
     TAtlasToolbarIcon.FindMethod:
       Result := [Stroke([P(2.5, 4), P(8.5, 4)]), Stroke([P(2.5, 7), P(6.5, 7)]), Stroke([P(2.5, 10), P(7.5, 10)]),
-        Circle(11.5, 9.5, 2.5, False), Stroke([P(13.3, 11.3), P(15, 13)])];
+        Ring(11.5, 9.5, 2.5), Stroke([P(13.3, 11.3), P(15, 13)])];
     TAtlasToolbarIcon.QuickOpen:
       Result := [Stroke([P(1.5, 4.5), P(1.5, 12.5), P(12.5, 12.5), P(14.5, 6.5), P(3.5, 6.5), P(1.5, 12.5)]),
         Stroke([P(1.5, 4.5), P(1.5, 3.5), P(5.5, 3.5), P(6.5, 4.5), P(11.5, 4.5), P(11.5, 6.5)])];
     TAtlasToolbarIcon.CodeActions:
       // Glühbirne: Bogen über dem Sockel.
-      Result := [Shape(Join([P(5.5, 10.5)], ArcPoints(8, 6.758, 4.5, 123.75, 416.25, 20), [P(10.5, 12), P(5.5, 12)]),
-        True, False), Stroke([P(6, 14), P(10, 14)])];
+      Result := [Shape(Join([Points([P(5.5, 10.5)]), ArcPoints(8, 6.758, 4.5, 123.75, 416.25, 20),
+        Points([P(10.5, 12), P(5.5, 12)])]), True, False), Stroke([P(6, 14), P(10, 14)])];
     TAtlasToolbarIcon.Format:
       Result := [Stroke([P(2, 3.5), P(14, 3.5)]), Stroke([P(5, 6.5), P(14, 6.5)]), Stroke([P(5, 9.5), P(14, 9.5)]),
         Stroke([P(2, 12.5), P(14, 12.5)])];
@@ -267,7 +318,7 @@ begin
       Result := [Stroke([P(4, 4.5), P(7.5, 8), P(4, 11.5)]), Stroke([P(8.5, 4.5), P(12, 8), P(8.5, 11.5)])];
     TAtlasToolbarIcon.Gear:
       // Zahnkranz mit Loch; früher Kreis mit acht Strahlen, das sah aus wie eine Sonne.
-      Result := [GearOutline(8, 8, 6.8, 5, 8), Circle(8, 8, 2.2, False)];
+      Result := [GearOutline(8, 8, 6.8, 5, 8), Ring(8, 8, 2.2)];
   else
     Result := nil;
   end;
@@ -328,13 +379,13 @@ begin
   case AIcon of
     TAtlasToolbarIcon.ComponentSearch:
       // Lupe.
-      Result := [Circle(7, 7, 4.5, False), Stroke([P(10.5, 10.5), P(14, 14)])];
+      Result := [Ring(7, 7, 4.5), Stroke([P(10.5, 10.5), P(14, 14)])];
     TAtlasToolbarIcon.NonVisual:
       // Auge.
-      Result := [EyeOutline, Circle(8, 8, 2, False)];
+      Result := [EyeOutline, Ring(8, 8, 2)];
     TAtlasToolbarIcon.NonVisualHidden:
       // Durchgestrichenes Auge: Die IDE blendet die nichtvisuellen Komponenten aus.
-      Result := [EyeOutline, Circle(8, 8, 2, False), Stroke([P(2.5, 13.5), P(13.5, 2.5)])];
+      Result := [EyeOutline, Ring(8, 8, 2), Stroke([P(2.5, 13.5), P(13.5, 2.5)])];
     TAtlasToolbarIcon.SelectParent:
       // Pfeil nach oben.
       Result := [Stroke([P(8, 13), P(8, 4)]), Stroke([P(4.5, 7.5), P(8, 4), P(11.5, 7.5)])];

@@ -114,8 +114,44 @@ uses
   Atlas.UI.EditorToolbar.Glyphs;
 
 const
+  // Maße bei 96 dpi.
   cGap = 8;
   cDialogWidth = 640;
+  cDialogHeight = 440;
+  cDialogMinWidth = 480;
+  cDialogMinHeight = 320;
+  /// <summary>Knöpfe: Mindestbreite und Höhe; Rand neben dem Text wie in TAtlasButtonRow.</summary>
+  cButtonMinWidth = 90;
+  cButtonHeight = 28;
+  /// <summary>Höhe der unteren Knopfleiste und der Zeile mit den Optionen.</summary>
+  cBottomHeight = 44;
+  cOptionsHeight = 36;
+  /// <summary>Zeile mit den Optionen: Höhe von Schalter und Beschriftung, Lage und Breite der Elemente; die
+  /// Beschriftung sitzt cComboShift tiefer, die Auswahl cComboShift höher als der Schalter.</summary>
+  cOptionHeight = 20;
+  cLabelsWidth = 220;
+  cPositionLeft = 250;
+  cPositionWidth = 70;
+  cComboLeft = 330;
+  cComboWidth = 240;
+  cComboHeight = 24;
+  cComboShift = 2;
+  /// <summary>Listen: Abstand zur Überschrift, Breite der rechten Liste, Zeilenhöhe.</summary>
+  cListTop = 4;
+  cCurrentWidth = 260;
+  cItemHeight = 24;
+  /// <summary>Spalten mit den Pfeilknöpfen (→ ← in der Mitte, ↑ ↓ rechts): Breite, Breite der Knöpfe und Lage des
+  /// oberen Knopfs.</summary>
+  cMiddleWidth = 56;
+  cSideWidth = 48;
+  cArrowWidth = 32;
+  cArrowTop = 80;
+  /// <summary>Zeile der rechten Liste: Symbol (Kantenlänge, Abstand links) und Beschriftung (Abstand zum Symbol,
+  /// Rand rechts).</summary>
+  cIconSize = 16;
+  cIconLeft = 4;
+  cTextGap = 6;
+  cTextRight = 2;
 
 type
 {$SCOPEDENUMS ON}
@@ -130,6 +166,9 @@ type
     function NewButton(AParent: TWinControl; const ACaption, AHint: string;
       AAction: TAtlasToolbarCustomizeAction): TButton;
     function NewList(AParent: TWinControl): TListBox;
+    /// <summary>Pfeilknopf mittig in einer Spalte der Breite AColumnWidth, an Stelle ARow (0 oben) untereinander.
+    /// </summary>
+    procedure ArrowBounds(AButton: TButton; AColumnWidth, ARow: Integer);
     procedure BuildBottom;
     procedure BuildOptions;
     procedure BuildLists;
@@ -167,9 +206,10 @@ begin
     Result.OnClick := Dialog.ActionClick;
   end;
   Dialog.Canvas.Font := Dialog.Font;
-  Result.Width := Max(Dialog.ScaleValue(90), Dialog.Canvas.TextWidth(ACaption) + Dialog.ScaleValue(32));
+  Result.Width := Max(Dialog.ScaleValue(cButtonMinWidth), Dialog.Canvas.TextWidth(ACaption) +
+    Dialog.ScaleValue(TAtlasButtonRow.cButtonPadding));
   Result.Top := Dialog.ScaleValue(cGap);
-  Result.Height := Dialog.ScaleValue(28);
+  Result.Height := Dialog.ScaleValue(cButtonHeight);
 end;
 
 function TAtlasToolbarCustomizeBuilder.NewList(AParent: TWinControl): TListBox;
@@ -177,9 +217,16 @@ begin
   Result := TListBox.Create(Dialog);
   Result.Parent := AParent;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(4), 0, Dialog.ScaleValue(cGap));
+  Result.Margins.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(cListTop), 0, Dialog.ScaleValue(cGap));
   Result.OnClick := Dialog.ListClick;
   Result.OnDblClick := Dialog.ListDblClick;
+end;
+
+procedure TAtlasToolbarCustomizeBuilder.ArrowBounds(AButton: TButton; AColumnWidth, ARow: Integer);
+begin
+  AButton.SetBounds(Dialog.ScaleValue((AColumnWidth - cArrowWidth) div 2),
+    Dialog.ScaleValue(cArrowTop + ARow * (cButtonHeight + cGap)), Dialog.ScaleValue(cArrowWidth),
+    Dialog.ScaleValue(cButtonHeight));
 end;
 
 procedure TAtlasToolbarCustomizeBuilder.BuildBottom;
@@ -187,7 +234,7 @@ var
   mBottom: TPanel;
   mDefault: TButton;
 begin
-  mBottom := NewPanel(Dialog, alBottom, Dialog.ScaleValue(44));
+  mBottom := NewPanel(Dialog, alBottom, Dialog.ScaleValue(cBottomHeight));
   Dialog.FCancel := NewButton(mBottom, TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCancel),
     '',
     TAtlasToolbarCustomizeAction.None);
@@ -211,23 +258,24 @@ var
   mOptions: TPanel;
   mCaption: TLabel;
 begin
-  mOptions := NewPanel(Dialog, alBottom, Dialog.ScaleValue(36));
+  mOptions := NewPanel(Dialog, alBottom, Dialog.ScaleValue(cOptionsHeight));
   Dialog.FLabelsCheck := TCheckBox.Create(Dialog);
   Dialog.FLabelsCheck.Parent := mOptions;
   Dialog.FLabelsCheck.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels);
-  Dialog.FLabelsCheck.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(cGap), Dialog.ScaleValue(220),
-    Dialog.ScaleValue(20));
+  Dialog.FLabelsCheck.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(cGap), Dialog.ScaleValue(cLabelsWidth),
+    Dialog.ScaleValue(cOptionHeight));
   Dialog.FLabelsCheck.Checked := Dialog.FConfig.Labels;
   Dialog.FLabelsCheck.OnClick := Dialog.LabelsClick;
   mCaption := TLabel.Create(Dialog);
   mCaption.Parent := mOptions;
   mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition);
-  mCaption.SetBounds(Dialog.ScaleValue(250), Dialog.ScaleValue(cGap + 2), Dialog.ScaleValue(70), Dialog.ScaleValue(20));
+  mCaption.SetBounds(Dialog.ScaleValue(cPositionLeft), Dialog.ScaleValue(cGap + cComboShift),
+    Dialog.ScaleValue(cPositionWidth), Dialog.ScaleValue(cOptionHeight));
   Dialog.FPositionCombo := TComboBox.Create(Dialog);
   Dialog.FPositionCombo.Parent := mOptions;
   Dialog.FPositionCombo.Style := csDropDownList;
-  Dialog.FPositionCombo.SetBounds(Dialog.ScaleValue(330), Dialog.ScaleValue(cGap - 2), Dialog.ScaleValue(240),
-    Dialog.ScaleValue(24));
+  Dialog.FPositionCombo.SetBounds(Dialog.ScaleValue(cComboLeft), Dialog.ScaleValue(cGap - cComboShift),
+    Dialog.ScaleValue(cComboWidth), Dialog.ScaleValue(cComboHeight));
   Dialog.FPositionCombo.OnChange := Dialog.PositionChange;
   mCaption.FocusControl := Dialog.FPositionCombo;
 end;
@@ -238,34 +286,30 @@ var
 begin
   mLists := NewPanel(Dialog, alClient, 0);
   // Links verfügbar, Mitte → ←, rechts die Leiste, ganz rechts ↑ ↓.
-  mSide := NewPanel(mLists, alRight, Dialog.ScaleValue(48));
+  mSide := NewPanel(mLists, alRight, Dialog.ScaleValue(cSideWidth));
   Dialog.FUpButton := NewButton(mSide, '↑',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarUpHint),
     TAtlasToolbarCustomizeAction.Up);
-  Dialog.FUpButton.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(80), Dialog.ScaleValue(32),
-    Dialog.ScaleValue(28));
+  ArrowBounds(Dialog.FUpButton, cSideWidth, 0);
   Dialog.FDownButton := NewButton(mSide, '↓',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarDownHint),
     TAtlasToolbarCustomizeAction.Down);
-  Dialog.FDownButton.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(116), Dialog.ScaleValue(32),
-    Dialog.ScaleValue(28));
+  ArrowBounds(Dialog.FDownButton, cSideWidth, 1);
   Dialog.FCurrentList := NewList(mLists);
   Dialog.FCurrentList.Align := alRight;
-  Dialog.FCurrentList.Width := Dialog.ScaleValue(260);
+  Dialog.FCurrentList.Width := Dialog.ScaleValue(cCurrentWidth);
   Dialog.FCurrentList.Style := lbOwnerDrawFixed;
-  Dialog.FCurrentList.ItemHeight := Dialog.ScaleValue(24);
+  Dialog.FCurrentList.ItemHeight := Dialog.ScaleValue(cItemHeight);
   Dialog.FCurrentList.OnDrawItem := Dialog.CurrentDrawItem;
-  mMiddle := NewPanel(mLists, alRight, Dialog.ScaleValue(56));
+  mMiddle := NewPanel(mLists, alRight, Dialog.ScaleValue(cMiddleWidth));
   Dialog.FAddButton := NewButton(mMiddle, '→',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarAddHint),
     TAtlasToolbarCustomizeAction.Add);
-  Dialog.FAddButton.SetBounds(Dialog.ScaleValue(12), Dialog.ScaleValue(80), Dialog.ScaleValue(32),
-    Dialog.ScaleValue(28));
+  ArrowBounds(Dialog.FAddButton, cMiddleWidth, 0);
   Dialog.FRemoveButton := NewButton(mMiddle, '←',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarRemoveHint),
     TAtlasToolbarCustomizeAction.Remove);
-  Dialog.FRemoveButton.SetBounds(Dialog.ScaleValue(12), Dialog.ScaleValue(116), Dialog.ScaleValue(32),
-    Dialog.ScaleValue(28));
+  ArrowBounds(Dialog.FRemoveButton, cMiddleWidth, 1);
   Dialog.FAvailableList := NewList(mLists);
   Dialog.FAvailableList.Align := alClient;
 end;
@@ -308,9 +352,9 @@ begin
   Caption := TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCustomizeTitle);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  ClientHeight := ScaleValue(440);
-  Constraints.MinWidth := ScaleValue(480);
-  Constraints.MinHeight := ScaleValue(320);
+  ClientHeight := ScaleValue(cDialogHeight);
+  Constraints.MinWidth := ScaleValue(cDialogMinWidth);
+  Constraints.MinHeight := ScaleValue(cDialogMinHeight);
   mBuilder.Dialog := Self;
   mBuilder.BuildBottom;
   mBuilder.BuildOptions;
@@ -519,9 +563,9 @@ begin
   end;
   mId := FConfig.Items[Index];
   mCaption_ := CaptionOf(mId);
-  mSize := ScaleValue(16);
-  mIcon := System.Types.Rect(Rect.Left + ScaleValue(4), Rect.Top + (Rect.Height - mSize) div 2,
-    Rect.Left + ScaleValue(4) + mSize, Rect.Top + (Rect.Height - mSize) div 2 + mSize);
+  mSize := ScaleValue(cIconSize);
+  mIcon := System.Types.Rect(Rect.Left + ScaleValue(cIconLeft), Rect.Top + (Rect.Height - mSize) div 2,
+    Rect.Left + ScaleValue(cIconLeft) + mSize, Rect.Top + (Rect.Height - mSize) div 2 + mSize);
   if TAtlasToolbarItems.IsSeparator(mId) then
   begin
     mMiddle := (Rect.Top + Rect.Bottom) div 2;
@@ -534,7 +578,8 @@ begin
     TAtlasGlyphPainter.Draw(mList.Canvas, TAtlasToolbarIcons.IconOf(mId), mIcon, mList.Canvas.Font.Color,
       mList.Canvas.Brush.Color, mCaption_);
   end;
-  mText := System.Types.Rect(mIcon.Right + ScaleValue(6), Rect.Top, Rect.Right - ScaleValue(2), Rect.Bottom);
+  mText := System.Types.Rect(mIcon.Right + ScaleValue(cTextGap), Rect.Top, Rect.Right - ScaleValue(cTextRight),
+    Rect.Bottom);
   mList.Canvas.Brush.Style := bsClear;
   DrawText(mList.Canvas.Handle, PChar(mCaption_), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);

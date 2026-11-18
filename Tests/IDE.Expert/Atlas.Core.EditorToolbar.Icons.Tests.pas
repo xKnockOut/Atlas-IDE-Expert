@@ -19,6 +19,10 @@ type
     /// </summary>
     [Test]
     procedure GearHasTeethNotRays;
+    /// <summary>Das Auge folgt dem Pfad des Mockups: Je Bogen acht Strecken, die Bögen beginnen links, oben, rechts
+    /// und unten.</summary>
+    [Test]
+    procedure EyeFollowsTheMockup;
   end;
 
 implementation
@@ -113,6 +117,30 @@ begin
   end;
   Assert.AreEqual(16, mOuter, 'acht Zähne mit je zwei Kopfpunkten');
   Assert.AreEqual(16, mInner, 'acht Lücken mit je zwei Fußpunkten');
+end;
+
+procedure TAtlasToolbarIconsTests.EyeFollowsTheMockup;
+const
+  cDelta = 0.001;
+var
+  mEye: TAtlasGlyphShape;
+
+  procedure AssertPoint(AIndex: Integer; AX, AY: Double);
+  begin
+    Assert.AreEqual(AX, Double(mEye.Points[AIndex].X), cDelta, Format('X von Punkt %d', [AIndex]));
+    Assert.AreEqual(AY, Double(mEye.Points[AIndex].Y), cDelta, Format('Y von Punkt %d', [AIndex]));
+  end;
+
+begin
+  mEye := TAtlasGlyphs.Shapes(TAtlasToolbarIcon.NonVisual)[0];
+  Assert.IsTrue(mEye.Closed and not mEye.Filled, 'Umriss');
+  Assert.AreEqual(32, Integer(Length(mEye.Points)), 'vier Bögen mit je acht Strecken');
+  AssertPoint(0, 1.5, 8);
+  AssertPoint(8, 8, 3.5);
+  AssertPoint(16, 14.5, 8);
+  AssertPoint(24, 8, 12.5);
+  // Mitte des oberen linken Bogens: (1.5 + 3 * 1.5 + 3 * 3.9 + 8) / 8 und (8 + 3 * 8 + 3 * 3.5 + 3.5) / 8.
+  AssertPoint(4, 3.2125, 5.75);
 end;
 
 initialization

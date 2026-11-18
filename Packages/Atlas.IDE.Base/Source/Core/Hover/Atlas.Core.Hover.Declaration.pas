@@ -22,7 +22,12 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Chars;
+
+const
+  /// <summary>Anfang eines Typs, der mit „of“ als Ganzes zählt.</summary>
+  cArrayOf = 'array of ';
 
 /// <summary>Erster Doppelpunkt außerhalb von Klammern (Parameter) und spitzen Klammern (Typargumente); 0 ohne.
 /// </summary>
@@ -80,7 +85,8 @@ begin
     ',', ' ':
       Result := ADepth = 0;
   else
-    Result := (ADepth = 0) and (Ord(AChar) < 128);
+    // Buchstaben ab #128 gehören zum Namen (Unicode-Bezeichner).
+    Result := (ADepth = 0) and not TTextChars.IsIdentStart(AChar);
   end;
 end;
 
@@ -99,9 +105,9 @@ begin
   mStart := SkipSpaces(ADeclaration, mIndex + 1);
   mIndex := mStart;
   // Name mit Units und Typargumenten; „array of Byte“ und „set of …“ als Ganzes.
-  if StartsText('array of ', Copy(ADeclaration, mStart, MaxInt)) then
+  if StartsText(cArrayOf, Copy(ADeclaration, mStart, MaxInt)) then
   begin
-    mIndex := SkipSpaces(ADeclaration, mStart + Length('array of '));
+    mIndex := SkipSpaces(ADeclaration, mStart + Length(cArrayOf));
   end;
   mDepth := 0;
   while (mIndex <= Length(ADeclaration)) and not EndsType(ADeclaration[mIndex], mDepth) do
