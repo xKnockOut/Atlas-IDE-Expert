@@ -150,7 +150,6 @@ uses
   Atlas.Core.Style.Color,
   System.Math,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Strings,
   Atlas.UI.Setup.Strings;
 
 const
@@ -168,16 +167,17 @@ const
   cCheckMinWidth = 80;
   cCheckGap = 24;
   /// <summary>Hauptzeile je Befund; Varianten (Einheiten, gewonnene Tasten) wählt ResultTextId.</summary>
-  cResultTexts: array[TAtlasSetupFinding] of TAtlasTextId = (TAtlasTextId.SetupServerReady,
-    TAtlasTextId.SetupServerMissing, TAtlasTextId.SetupServerNotStarted, TAtlasTextId.SetupServerStarting,
-    TAtlasTextId.SetupServerStopped, TAtlasTextId.SetupServerFailed, TAtlasTextId.SetupServerVersionUnknown,
-    TAtlasTextId.SetupServerVersionMismatch, TAtlasTextId.SetupDelphiReady, TAtlasTextId.SetupDelphiNoProject,
-    TAtlasTextId.SetupDelphiUnknown, TAtlasTextId.SetupIndexReady, TAtlasTextId.SetupIndexBuilding,
-    TAtlasTextId.SetupIndexIncomplete, TAtlasTextId.SetupIndexNoServer, TAtlasTextId.SetupIndexNoProjects,
-    TAtlasTextId.SetupLibraryReady, TAtlasTextId.SetupLibraryMissing, TAtlasTextId.SetupLibraryPending,
-    TAtlasTextId.SetupLibraryUnknown, TAtlasTextId.SetupErrorInsightAtlas, TAtlasTextId.SetupErrorInsightIde,
-    TAtlasTextId.SetupErrorInsightDuplicate, TAtlasTextId.SetupErrorInsightNone,
-    TAtlasTextId.SetupErrorInsightRestart, TAtlasTextId.SetupKeysReady, TAtlasTextId.SetupKeysConflict);
+  cResultTexts: array[TAtlasSetupFinding] of TAtlasSetupTextId = (TAtlasSetupTextId.SetupServerReady,
+    TAtlasSetupTextId.SetupServerMissing, TAtlasSetupTextId.SetupServerNotStarted,
+    TAtlasSetupTextId.SetupServerStarting, TAtlasSetupTextId.SetupServerStopped, TAtlasSetupTextId.SetupServerFailed,
+    TAtlasSetupTextId.SetupServerVersionUnknown, TAtlasSetupTextId.SetupServerVersionMismatch,
+    TAtlasSetupTextId.SetupDelphiReady, TAtlasSetupTextId.SetupDelphiNoProject, TAtlasSetupTextId.SetupDelphiUnknown,
+    TAtlasSetupTextId.SetupIndexReady, TAtlasSetupTextId.SetupIndexBuilding, TAtlasSetupTextId.SetupIndexIncomplete,
+    TAtlasSetupTextId.SetupIndexNoServer, TAtlasSetupTextId.SetupIndexNoProjects, TAtlasSetupTextId.SetupLibraryReady,
+    TAtlasSetupTextId.SetupLibraryMissing, TAtlasSetupTextId.SetupLibraryPending, TAtlasSetupTextId.SetupLibraryUnknown,
+    TAtlasSetupTextId.SetupErrorInsightAtlas, TAtlasSetupTextId.SetupErrorInsightIde,
+    TAtlasSetupTextId.SetupErrorInsightDuplicate, TAtlasSetupTextId.SetupErrorInsightNone,
+    TAtlasSetupTextId.SetupErrorInsightRestart, TAtlasSetupTextId.SetupKeysReady, TAtlasSetupTextId.SetupKeysConflict);
   /// <summary>Befunde, deren Hauptzeile Werte der Prüfung einsetzt.</summary>
   cFormattedResults = [TAtlasSetupFinding.ServerVersionMismatch, TAtlasSetupFinding.DelphiReady,
     TAtlasSetupFinding.DelphiNoProject, TAtlasSetupFinding.IndexReady, TAtlasSetupFinding.IndexBuilding,
@@ -198,17 +198,17 @@ begin
 end;
 
 /// <summary>Text der Hauptzeile; AFormatted, wenn er Werte der Prüfung einsetzt.</summary>
-function ResultTextId(const AResult: TAtlasSetupResult; out AFormatted: Boolean): TAtlasTextId;
+function ResultTextId(const AResult: TAtlasSetupResult; out AFormatted: Boolean): TAtlasSetupTextId;
 begin
   Result := cResultTexts[AResult.Finding];
   AFormatted := AResult.Finding in cFormattedResults;
   if (AResult.Finding = TAtlasSetupFinding.IndexReady) and (Arg(AResult, 1) <> '') then
   begin
-    Result := TAtlasTextId.SetupIndexReadyUnits;
+    Result := TAtlasSetupTextId.SetupIndexReadyUnits;
   end
   else if (AResult.Finding = TAtlasSetupFinding.KeysReady) and (StrToIntDef(Arg(AResult, 0), 0) > 0) then
   begin
-    Result := TAtlasTextId.SetupKeysReadyWins;
+    Result := TAtlasSetupTextId.SetupKeysReadyWins;
     AFormatted := True;
   end;
 end;
@@ -217,17 +217,17 @@ end;
 
 class function TAtlasSetupTexts.ResultText(const AResult: TAtlasSetupResult): string;
 var
-  mId: TAtlasTextId;
+  mId: TAtlasSetupTextId;
   mFormatted: Boolean;
 begin
   mId := ResultTextId(AResult, mFormatted);
   if mFormatted then
   begin
-    Result := TAtlasStrings.Fmt(mId, [Arg(AResult, 0), Arg(AResult, 1), Arg(AResult, 2)]);
+    Result := TAtlasSetupStrings.Fmt(mId, [Arg(AResult, 0), Arg(AResult, 1), Arg(AResult, 2)]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(mId);
+    Result := TAtlasSetupStrings.Text(mId);
   end;
 end;
 
