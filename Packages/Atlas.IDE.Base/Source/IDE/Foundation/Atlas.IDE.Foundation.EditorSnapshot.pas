@@ -5,7 +5,8 @@
 // den ganzen Text. Jetzt liest Get nur, wenn ein Ereignis (EditorViewModified,
 // Wechsel des Editors, eigene Schreibvorgänge, Neuladen) den Stand als veraltet
 // markiert hat, Zeilenzahl oder Änderungsstatus abweichen oder das
-// Sicherheitsnetz (TAtlasSnapshotPolicy.cSafetyMs) abgelaufen ist. Version
+// Sicherheitsnetz abgelaufen ist (je Puffer 2 bis 32 s, siehe
+// TAtlasSnapshotPolicy). Version
 // steigt nur, wenn der neu gelesene Text abweicht; Verbraucher vergleichen
 // die Version statt des Textes.
 
@@ -150,7 +151,7 @@ var
   mKey, mText: string;
   mEntry: TEntry;
   mLines: Integer;
-  mModified: Boolean;
+  mModified, mChanged: Boolean;
   mStamp: UInt64;
 begin
   mBuffer := AView.Buffer;
@@ -166,17 +167,14 @@ begin
   if TAtlasSnapshotPolicy.MustRead(mEntry.State, mLines, mModified, mStamp) then
   begin
     mText := TAtlasEditorBuffer.Text(mBuffer);
-    if not mEntry.State.Known or (mText <> mEntry.Text) then
+    mChanged := not mEntry.State.Known or (mText <> mEntry.Text);
+    if mChanged then
     begin
       mEntry.Text := mText;
       Inc(NextVersion);
       mEntry.Version := NextVersion;
     end;
-    mEntry.State.Known := True;
-    mEntry.State.Dirty := False;
-    mEntry.State.Lines := mLines;
-    mEntry.State.Modified := mModified;
-    mEntry.State.ReadAt := mStamp;
+    TAtlasSnapshotPolicy.Read(mEntry.State, mLines, mModified, mStamp, mChanged);
     Entries.AddOrSetValue(mKey, mEntry);
   end;
   Result.Text := mEntry.Text;
