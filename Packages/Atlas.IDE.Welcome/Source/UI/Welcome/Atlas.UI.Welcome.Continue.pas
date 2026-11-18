@@ -124,9 +124,8 @@ type
     procedure RefillSaved;
   public
     constructor Create(AOwner: TComponent); override;
-    /// <summary>Spalten Art, Text, Ort und Projekt mit den Breiten AWidths (logische Pixel, 96 dpi);
-    /// skaliert über die Liste.</summary>
-    procedure AddColumns(const AWidths: array of Integer);
+    /// <summary>Spalten Art, Text, Ort und Projekt; Breiten skaliert über die Liste.</summary>
+    procedure AddColumns;
     /// <summary>Einträge neu von der Quelle lesen und die Liste füllen.</summary>
     procedure LoadSaved;
     /// <summary>Gewählten Eintrag öffnen (Doppelklick, Enter).</summary>
@@ -863,8 +862,10 @@ begin
   FList.Visible := not FSavedEmpty.Visible;
 end;
 
-procedure TAtlasContinueSavedPage.AddColumns(const AWidths: array of Integer);
+procedure TAtlasContinueSavedPage.AddColumns;
 const
+  // Breiten in logischen Pixeln (96 dpi).
+  cWidths: array[0..3] of Integer = (80, 220, 140, 120);
   cCaptions: array[0..3] of TAtlasWelcomeTextId = (TAtlasWelcomeTextId.WelcomeSavedColKind,
     TAtlasWelcomeTextId.WelcomeSavedColText, TAtlasWelcomeTextId.WelcomeSavedColPlace,
     TAtlasWelcomeTextId.WelcomeSavedColProject);
@@ -876,10 +877,7 @@ begin
   begin
     mColumn := FList.Columns.Add;
     mColumn.Caption := TAtlasWelcomeStrings.Text(cCaptions[mIndex]);
-    if mIndex <= High(AWidths) then
-    begin
-      mColumn.Width := FList.ScaleValue(AWidths[mIndex]);
-    end;
+    mColumn.Width := FList.ScaleValue(cWidths[mIndex]);
   end;
 end;
 
@@ -1316,7 +1314,7 @@ begin
   FSavedPage.Parent := Body;
   FSavedPage.Align := alClient;
   FSavedPage.Visible := False;
-  FSavedPage.AddColumns([80, 220, 140, 120]);
+  FSavedPage.AddColumns;
 end;
 
 procedure TAtlasWelcomeContinueFrame.SetSource(const AValue: IAtlasContinueSource);

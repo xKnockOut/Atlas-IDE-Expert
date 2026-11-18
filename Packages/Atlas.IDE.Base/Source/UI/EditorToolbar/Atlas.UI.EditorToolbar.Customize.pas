@@ -116,6 +116,11 @@ uses
 const
   cGap = 8;
   cDialogWidth = 640;
+  // Höhen der Leisten unten (Knöpfe, Optionen) und Breiten der Knopfspalten neben den Listen.
+  cButtonBarHeight = 44;
+  cOptionsHeight = 36;
+  cSideWidth = 48;
+  cMiddleWidth = 56;
 
 type
 {$SCOPEDENUMS ON}
@@ -188,7 +193,7 @@ var
   mBottom: TPanel;
   mDefault: TButton;
 begin
-  mBottom := NewPanel(Dialog, alBottom, 44);
+  mBottom := NewPanel(Dialog, alBottom, cButtonBarHeight);
   Dialog.FCancel := NewButton(mBottom, TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCancel),
     '',
     TAtlasToolbarCustomizeAction.None);
@@ -212,7 +217,7 @@ var
   mOptions: TPanel;
   mCaption: TLabel;
 begin
-  mOptions := NewPanel(Dialog, alBottom, 36);
+  mOptions := NewPanel(Dialog, alBottom, cOptionsHeight);
   Dialog.FLabelsCheck := TCheckBox.Create(Dialog);
   Dialog.FLabelsCheck.Parent := mOptions;
   Dialog.FLabelsCheck.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels);
@@ -239,7 +244,7 @@ var
 begin
   mLists := NewPanel(Dialog, alClient, 0);
   // Links verfügbar, Mitte → ←, rechts die Leiste, ganz rechts ↑ ↓.
-  mSide := NewPanel(mLists, alRight, 48);
+  mSide := NewPanel(mLists, alRight, cSideWidth);
   Dialog.FUpButton := NewButton(mSide, '↑',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarUpHint),
     TAtlasToolbarCustomizeAction.Up);
@@ -256,7 +261,7 @@ begin
   Dialog.FCurrentList.Style := lbOwnerDrawFixed;
   Dialog.FCurrentList.ItemHeight := Dialog.ScaleValue(24);
   Dialog.FCurrentList.OnDrawItem := Dialog.CurrentDrawItem;
-  mMiddle := NewPanel(mLists, alRight, 56);
+  mMiddle := NewPanel(mLists, alRight, cMiddleWidth);
   Dialog.FAddButton := NewButton(mMiddle, '→',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarAddHint),
     TAtlasToolbarCustomizeAction.Add);

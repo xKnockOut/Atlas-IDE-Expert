@@ -92,6 +92,11 @@ const
   cGap = 8;
   cDialogWidth = 640;
   cDialogHeight = 520;
+  // Höhen der Leisten unten (Knöpfe, Optionen, Felder) und Breite der Knopfspalte rechts.
+  cButtonBarHeight = 44;
+  cOptionsHeight = 72;
+  cFieldsHeight = 118;
+  cSideWidth = 120;
 
 /// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite in logischen Pixeln
 /// (96 dpi), skaliert über das Panel.</summary>
@@ -236,7 +241,7 @@ procedure TAtlasChangeSignatureDialog.CreateBottom;
 var
   mBottom: TPanel;
 begin
-  mBottom := AddPanel(Self, alBottom, 44);
+  mBottom := AddPanel(Self, alBottom, cButtonBarHeight);
   FCancel := AddButton(Self, mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigCancel), nil);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
@@ -258,7 +263,7 @@ procedure TAtlasChangeSignatureDialog.CreateOptions;
 var
   mOptions: TPanel;
 begin
-  mOptions := AddPanel(Self, alBottom, 72);
+  mOptions := AddPanel(Self, alBottom, cOptionsHeight);
   FOverload := TRadioButton.Create(Self);
   FOverload.Parent := mOptions;
   FOverload.SetBounds(ScaleValue(cGap), ScaleValue(4), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
@@ -289,7 +294,7 @@ var
   mFields: TPanel;
   mTop: Integer;
 begin
-  mFields := AddPanel(Self, alBottom, 118);
+  mFields := AddPanel(Self, alBottom, cFieldsHeight);
   FName := TEdit.Create(Self);
   FType := TEdit.Create(Self);
   FModifier := TComboBox.Create(Self);
@@ -311,7 +316,7 @@ var
   mRight: TPanel;
   mIndex: Integer;
 begin
-  mRight := AddPanel(Self, alRight, 120);
+  mRight := AddPanel(Self, alRight, cSideWidth);
   FAdd := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigAdd), AddClick);
   FRemove := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigRemove), RemoveClick);
   FUp := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigUp), UpClick);

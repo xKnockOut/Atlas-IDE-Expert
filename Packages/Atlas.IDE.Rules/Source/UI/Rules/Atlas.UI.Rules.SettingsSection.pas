@@ -101,6 +101,7 @@ uses
 
 const
   cButtonWidth = 210;
+  cButtonHeight = 25;
   cButtonGap = 216;
   cRowHeight = 28;
 
@@ -164,7 +165,7 @@ begin
   Result.Parent := ARow;
   Result.Caption := ACaption;
   Result.SetBounds(Result.ScaleValue(ALeft), Result.ScaleValue(1), Result.ScaleValue(cButtonWidth),
-    Result.ScaleValue(25));
+    Result.ScaleValue(cButtonHeight));
   Result.OnClick := AClick;
 end;
 
