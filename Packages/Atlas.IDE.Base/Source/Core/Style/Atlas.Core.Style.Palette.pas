@@ -114,6 +114,9 @@ const
   /// <summary>Chips und Tags: Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
   cAtlasChipPad = 12;
   cAtlasChipRadius = 4;
+  /// <summary>Kürzel in Badges (Vervollständigung, Hover, Brotkrumen): Schrifthöhe als Anteil der Badgehöhe.
+  /// </summary>
+  cAtlasBadgeFontShare = 0.62;
 
 implementation
 

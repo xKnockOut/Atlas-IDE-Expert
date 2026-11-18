@@ -575,7 +575,7 @@ var
   mReport: TJSONValue;
   mEmpty: Integer;
 begin
-  // Früher scheiterte an einer kaputten Unit jede Anfrage, bis der Server starb (#1094).
+  // Eine kaputte Unit darf nicht jede Anfrage scheitern lassen, bis der Server stirbt (#1094).
   mFixture := TFixture.Create;
   try
     mFixture.Behavior.Add(cFileA, 'fail');

@@ -125,6 +125,23 @@ type
     cCheckWidth = 19;
     /// <summary>Sternspalte der Favoriten (#458): Rand 4, Stern 12; das Badge rückt um so viel nach rechts.</summary>
     cStarWidth = 14;
+    /// <summary>Logische Bildpunkte bei 96 dpi: Rand der Liste, Platz rechts für die Scrollleiste, Zeilenhöhe
+    /// über der Schrift und mindestens, Chipleiste über der UI-Schrift.</summary>
+    cPad = 4;
+    cScrollReserve = 8;
+    cRowLeading = 9;
+    cMinRowHeight = 24;
+    cChipsLeading = 12;
+    /// <summary>Zeile, logische Bildpunkte: Rand links vor Badge bzw. Kästchen und rechts nach dem Detail,
+    /// Badge, Abstand Badge zu Name, Abstand zwischen Name, Tags und Detail, Mindestabstand Name zu Detail und
+    /// kleinste noch gezeigte Breite des Details.</summary>
+    cRowInset = 7;
+    cBadgeWidth = 24;
+    cBadgeHeight = 17;
+    cNameGap = 9;
+    cTailGap = 6;
+    cDetailGap = 12;
+    cMinDetailWidth = 40;
   protected
     FItems: TAtlasCompletionItems;
     FOrder: TArray<Integer>;
@@ -237,8 +254,8 @@ begin
   Canvas.Font := UIFont;
   mUIHeight := Canvas.TextHeight('Wg');
   Canvas.Font := Font;
-  FMetrics.RowHeight := Max(Canvas.TextHeight('Wg') + Scale(9), Scale(24));
-  FMetrics.ChipsHeight := mUIHeight + Scale(12);
+  FMetrics.RowHeight := Max(Canvas.TextHeight('Wg') + Scale(cRowLeading), Scale(cMinRowHeight));
+  FMetrics.ChipsHeight := mUIHeight + Scale(cChipsLeading);
   FMetrics.FooterHeight := mUIHeight + Scale(10);
   FMetrics.PPI := PPI;
   FMetrics.Valid := True;
@@ -246,7 +263,7 @@ end;
 
 function TAtlasCompletionPopupState.Pad: Integer;
 begin
-  Result := Scale(4);
+  Result := Scale(cPad);
 end;
 
 function TAtlasCompletionPopupState.RowHeight: Integer;
@@ -263,7 +280,7 @@ end;
 
 function TAtlasCompletionPopupState.ScrollReserve: Integer;
 begin
-  Result := Scale(8);
+  Result := Scale(cScrollReserve);
 end;
 
 function TAtlasCompletionPopupState.RowCount: Integer;

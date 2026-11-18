@@ -164,7 +164,7 @@ var
   mFrame: TFrame;
   mTop: Integer;
 begin
-  // Früher rekursiv je Kind; lange Ausdrucksketten sprengten so den Stapel. Der Rahmenstapel geht
+  // Eigener Rahmenstapel statt Rekursion je Kind, weil lange Ausdrucksketten sonst den Stapel sprengen. Er geht
   // die Kinder in derselben Reihenfolge durch wie die Rekursion: Routinen stehen in FRoutines in
   // Quelltextreihenfolge, wie RoutineAt es braucht.
   mFrames := TList<TFrame>.Create;

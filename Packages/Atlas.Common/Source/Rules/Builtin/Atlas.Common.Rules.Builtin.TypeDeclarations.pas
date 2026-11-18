@@ -757,14 +757,14 @@ begin
   Result := mIndex < mStop;
   if Result then
   begin
-    mIndex := FScan.NextCode(mIndex + 1, mStop);
+    mIndex := NextCode(FScan.Tokens, mIndex + 1, mStop);
     Result := (mIndex >= mStop) or not MatchText(FScan.Tokens[mIndex].Text, [':', '[']);
   end;
 end;
 
 // Geerbte Accessoren (property X read GetX mit GetX aus dem Vorfahr-Interface) übersetzt dcc, generisch wie
-// nicht generisch (DUnitX IList<T>; ID1, ID2, ID3; dcc-Lauf vom 29.10.2026, #1328): Die frühere Prüfung auf
-// E2370 ist entfallen.
+// nicht generisch (DUnitX IList<T>; ID1, ID2, ID3, #1328): Deshalb gibt es keine Prüfung auf
+// E2370.
 procedure TInterfaceDeclarationInvalidScan.CheckInheritedMembers(AType: TSyntaxNode; const AName: string);
 var
   mOwn, mAncestor, mMember: TResolvedSymbol;
@@ -1117,7 +1117,7 @@ var
   mFirst, mDepth, mPosition, mStop: Integer;
 begin
   mStop := FScan.ClauseEnd(AProperty);
-  mFirst := FScan.NextCode(AImplements + 1, mStop);
+  mFirst := NextCode(FScan.Tokens, AImplements + 1, mStop);
   mDepth := 0;
   for mPosition := mFirst to mStop do
   begin
@@ -1129,7 +1129,7 @@ begin
     begin
       AddInterface(mFirst, mPosition, AProperty.Name, AKeys, AOwners);
     end;
-    mFirst := FScan.NextCode(mPosition + 1, mStop);
+    mFirst := NextCode(FScan.Tokens, mPosition + 1, mStop);
   end;
 end;
 
@@ -1173,7 +1173,7 @@ begin
   begin
     if AKeys[mClause] = mPrefix then
     begin
-      FReport.Add(FScan.TokenRange(FScan.NextCode(FScan.FirstToken(AHeader) + 1, FScan.StopToken(AHeader))),
+      FReport.Add(FScan.TokenRange(NextCode(FScan.Tokens, FScan.FirstToken(AHeader) + 1, FScan.StopToken(AHeader))),
         cTexts[TTypeDeclarationsText.MethodResolution].Fmt([Copy(AHeader.Name, 1, LastDelimiter('.',
           AHeader.Name) - 1), AOwners[mClause]]),
         TRuleConfidence.High);
@@ -1333,7 +1333,7 @@ function TCallingConventionRequiredScan.Keyword(AHeader: TSyntaxNode): string;
 var
   mIndex: Integer;
 begin
-  mIndex := FScan.NextCode(FScan.FirstToken(AHeader), Length(FScan.Tokens));
+  mIndex := NextCode(FScan.Tokens, FScan.FirstToken(AHeader));
   Result := '';
   if mIndex < Length(FScan.Tokens) then
   begin
@@ -1571,31 +1571,6 @@ procedure TDispinterfaceInvalidRule.Check(const AContext: TRuleContext; const AR
 var
   mScan: TDeclarationScan;
 
-  /// <summary>Schließende Klammer zur öffnenden an AOpen (Klammerebene 0); Length(Tokens) ohne.</summary>
-  function ClosingParen(AOpen: Integer): Integer;
-  var
-    mDepth: Integer;
-  begin
-    mDepth := 0;
-    Result := AOpen;
-    while Result < Length(mScan.Tokens) do
-    begin
-      if mScan.Tokens[Result].IsSymbol('(') then
-      begin
-        Inc(mDepth);
-      end
-      else if mScan.Tokens[Result].IsSymbol(')') then
-      begin
-        Dec(mDepth);
-        if mDepth = 0 then
-        begin
-          Exit;
-        end;
-      end;
-      Inc(Result);
-    end;
-  end;
-
   /// <summary>Vorfahr in Klammern (E2228) und fehlende GUID (E2229). AKeyword ist das Token dispinterface.</summary>
   procedure CheckHeader(ADeclaration: TSyntaxNode; AKeyword: Integer);
   var
@@ -1603,11 +1578,11 @@ var
     mIndent: string;
   begin
     mHeaderEnd := AKeyword;
-    mNext := mScan.NextCode(AKeyword + 1, Length(mScan.Tokens));
+    mNext := NextCode(mScan.Tokens, AKeyword + 1);
     if (mNext < Length(mScan.Tokens)) and mScan.Tokens[mNext].IsSymbol('(') then
     begin
-      mClose := ClosingParen(mNext);
-      if mClose >= Length(mScan.Tokens) then
+      mClose := MatchingParen(mScan.Tokens, mNext);
+      if mClose < 0 then
       begin
         Exit;
       end;
@@ -1617,7 +1592,7 @@ var
           [TTextEdit.Create(TTextRange.Create(mScan.Tokens[AKeyword].EndPos,
           mScan.Tokens[mClose].EndPos), '')])]);
       mHeaderEnd := mClose;
-      mNext := mScan.NextCode(mClose + 1, Length(mScan.Tokens));
+      mNext := NextCode(mScan.Tokens, mClose + 1);
     end;
     // Kurzform "D = dispinterface(I);" hat keinen Rumpf; dazu ist nichts belegt.
     if (mNext >= Length(mScan.Tokens)) or mScan.Tokens[mNext].IsSymbol('[') or mScan.Tokens[mNext].IsSymbol(';') then
