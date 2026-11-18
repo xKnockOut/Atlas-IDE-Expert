@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Completion.Context;
 
 // Was an der Cursorstelle vervollständigt wird (#31, #188, #450, #465, #483) und welcher Typ dort erwartet
-// wird (#417, #468). Aus Atlas.Common.Lsp.Completion herausgelöst; die Fälle der Vervollständigung bauen
+// wird (#417, #468). Teil der Vervollständigung (Atlas.Common.Lsp.Completion); die Fälle der Vervollständigung bauen
 // darauf auf.
 
 interface

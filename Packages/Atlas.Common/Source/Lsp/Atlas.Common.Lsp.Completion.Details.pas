@@ -2,7 +2,7 @@
 
 // Details zu einer Deklaration für completionItem/resolve und das Detailpanel von Atlas (#405, #424, #654):
 // Deklaration, Unit, Container, Sichtbarkeit, Direktiven und XMLDoc. Dazu die Doku im Format, das der Client
-// wünscht (#31). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// wünscht (#31). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
