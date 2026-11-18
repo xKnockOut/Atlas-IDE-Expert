@@ -312,7 +312,8 @@ const
      En: 'Use one shared type instead of declaring a second identical one.'),
     (De: 'Parameter ohne const deklarieren oder eine anonyme Methode dazwischen setzen.';
      En: 'Declare the parameter without const or put an anonymous method in between.'),
-    (De: 'Die Funktion mit () aufrufen: mFilter := FilterOf();'; En: 'Call the function with (): mFilter := FilterOf();'),
+    (De: 'Die Funktion mit () aufrufen: mFilter := FilterOf();';
+     En: 'Call the function with (): mFilter := FilterOf();'),
     (De: 'Einen benannten Typ deklarieren (TMyFunc = reference to function …) und ihn verwenden.';
      En: 'Declare a named type (TMyFunc = reference to function …) and use it.'),
     (De: 'TMonitor mit dem Unit-Namen System qualifizieren.'; En: 'Qualify TMonitor with the unit name System.'),
@@ -376,13 +377,16 @@ end;
 function ContainsPattern(const ALine, APattern: string): Boolean;
 var
   mStart, mEnd: Integer;
+  mOpenStart, mOpenEnd: Boolean;
 begin
   mStart := Pos(UpperCase(APattern), UpperCase(ALine));
   while mStart > 0 do
   begin
     mEnd := mStart + Length(APattern);
-    if not (TTextChars.IsIdentChar(APattern[1]) and (mStart > 1) and TTextChars.IsIdentChar(ALine[mStart - 1])) and
-      not (TTextChars.IsIdentChar(APattern[Length(APattern)]) and (mEnd <= Length(ALine)) and TTextChars.IsIdentChar(ALine[mEnd])) then
+    mOpenStart := TTextChars.IsIdentChar(APattern[1]) and (mStart > 1) and TTextChars.IsIdentChar(ALine[mStart - 1]);
+    mOpenEnd := TTextChars.IsIdentChar(APattern[Length(APattern)]) and (mEnd <= Length(ALine)) and
+      TTextChars.IsIdentChar(ALine[mEnd]);
+    if not mOpenStart and not mOpenEnd then
     begin
       Exit(True);
     end;
@@ -452,7 +456,8 @@ var
   mRest: string;
 begin
   mRest := TrimLeft(ALine);
-  Result := StartsText(AName, mRest) and ((Length(mRest) = Length(AName)) or not TTextChars.IsIdentChar(mRest[Length(AName) + 1]));
+  Result := StartsText(AName, mRest) and
+    ((Length(mRest) = Length(AName)) or not TTextChars.IsIdentChar(mRest[Length(AName) + 1]));
   if Result then
   begin
     Result := StartsText(AFollower, TrimLeft(Copy(mRest, Length(AName) + 1, MaxInt)));

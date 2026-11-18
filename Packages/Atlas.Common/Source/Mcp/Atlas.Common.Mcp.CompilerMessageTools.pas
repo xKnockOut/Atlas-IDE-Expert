@@ -3,10 +3,11 @@
 // MCP-Werkzeug explain_compiler_message (#2621): erklärt Compilermeldungen an ihrer Stelle für KI-Assistenten.
 // Je Meldung die allgemeine Erklärung aus TCompilerMessageCatalog, die Fallen aus TCompilerPitfalls (zuerst die mit
 // Merkmal an der Stelle), die Atlas-Regeln, die die Meldung schon beim Tippen bringen (Falle und "compilerCodes" des
-// Regelkatalogs), und eine Korrektur: als vereinigter Diff, wenn sie sicher ist (TCompilerFixes, TCompilerPitfallFixes),
-// sonst als Text. Mehrere Meldungen in einem Aufruf (messages, z. B. die Ausgabe von build_project); Folgefehler
-// (E2250 nach E2003/E2010 in derselben Datei) sind markiert. Steht der Name aus der Meldung nicht mehr in ihrer
-// Zeile, weil die Datei seit dem Build geändert wurde, sucht das Werkzeug ihn in der Nähe und sagt das.
+// Regelkatalogs), und eine Korrektur: als vereinigter Diff, wenn sie sicher ist (TCompilerFixes,
+// TCompilerPitfallFixes), sonst als Text. Mehrere Meldungen in einem Aufruf (messages, z. B. die Ausgabe von
+// build_project); Folgefehler (E2250 nach E2003/E2010 in derselben Datei) sind markiert. Steht der Name aus der
+// Meldung nicht mehr in ihrer Zeile, weil die Datei seit dem Build geändert wurde, sucht das Werkzeug ihn in der Nähe
+// und sagt das.
 
 interface
 

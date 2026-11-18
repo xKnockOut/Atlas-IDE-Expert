@@ -141,6 +141,8 @@ begin
       Result := AddUses(AText, ATree, ALine, mInfo.UsesUnit, AEdits);
     TPitfallFix.ExitArrayLiteral:
       Result := SplitExit(AText, ALine, AEdits);
+    TPitfallFix.None:
+      Result := False;
   end;
 end;
 
