@@ -1221,6 +1221,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.CommentKeyPlan` | `Core/Tracker/Atlas.Core.Tracker.CommentKeyPlan.pas` | Ordner `Core/Tracker`, Tasten des Kommentarfelds |
 | `Atlas.Core.Tracker.CommentEditor` | `Core/Tracker/Atlas.Core.Tracker.CommentEditor.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.CurrentIssue` | `Core/Tracker/Atlas.Core.Tracker.CurrentIssue.pas` | Ordner `Core/Tracker`, begonnenes Issue für KI-Assistenten, #2051 |
+| `Atlas.Core.Tracker.CurrentIssuePlan` | `Core/Tracker/Atlas.Core.Tracker.CurrentIssuePlan.pas` | Ordner `Core/Tracker`, Aufbau und Ablage von atlas-current-issue.json, #2051 |
 | `Atlas.Core.Tracker.Connections` | `Core/Tracker/Atlas.Core.Tracker.Connections.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Contract` | `Core/Tracker/Atlas.Core.Tracker.Contract.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Contract.Files` | `Core/Tracker/Atlas.Core.Tracker.Contract.Files.pas` | Ordner `Core/Tracker`; Verträge für Platte und Shell des Trackers (Paket 2d) |
@@ -1327,6 +1329,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssuesTracking` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesTracking.pas` | Ordner `IDE/Tracker`, Arbeit am aktuellen Issue in „Meine Issues“ |
 | `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.CurrentIssue` | `IDE/Tracker/Atlas.IDE.Tracker.CurrentIssue.pas` | Ordner `IDE/Tracker`, begonnenes Issue für KI-Assistenten, #2051 |
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssueStart` | `IDE/Tracker/Atlas.IDE.Tracker.IssueStart.pas` | Ordner `IDE/Tracker`, „Beginnen“ und „Beenden“, #1455 |
 | `Atlas.IDE.Tracker.LinkedStart` | `IDE/Tracker/Atlas.IDE.Tracker.LinkedStart.pas` | Ordner `IDE/Tracker`, verknüpfter Branch beim „Beginnen“, #2138 |

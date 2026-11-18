@@ -25,6 +25,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - Befunde an Hooks von Claude Code melden (`hook_check`)
 - **Bauen und Testen:**
   - über die IDE bauen (`build_project`, `get_last_build`)
+  - das in der IDE begonnene Issue mit Checkliste und Codeverweisen lesen (`get_current_issue`)
   - DUnitX-Tests ausführen
 - **Ändern:**
   - schreibend umbenennen

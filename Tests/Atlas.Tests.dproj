@@ -1247,6 +1247,11 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackBoards.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssue.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CurrentIssue.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssuePlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CurrentIssuePlan.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Files.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Providers.Changes.Tests.pas"/>
@@ -2288,6 +2293,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.EditingTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ChangeTools.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.IssueTools.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.IssueText.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Changes.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Conventions.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Conventions.Tests.pas"/>
@@ -2312,6 +2319,8 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CheckTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tools.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.IssueTools.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.IssueText.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Tests.pas"/>

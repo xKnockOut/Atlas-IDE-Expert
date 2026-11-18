@@ -170,6 +170,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssue.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Contract.Files.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Files.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.pas"/>
@@ -187,6 +188,8 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.EditingTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.ChangeTools.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.IssueTools.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.IssueText.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Changes.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Conventions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>

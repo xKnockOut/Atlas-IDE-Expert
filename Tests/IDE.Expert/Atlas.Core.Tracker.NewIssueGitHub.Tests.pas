@@ -59,6 +59,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Contract.Files,
+  Atlas.Core.Tracker.Files.TestSupport,
   Atlas.Core.Tracker.IssueForms,
   Atlas.Core.Tracker.NewIssueGitHub;
 
@@ -127,138 +128,6 @@ begin
       Exit;
     end;
   end;
-end;
-
-type
-  /// <summary>Nur Lesen über System.IOUtils (die Umsetzung des Plugins braucht Windows); alles andere tut nichts.
-  /// </summary>
-  TReadOnlyFiles = class(TInterfacedObject, IAtlasTrackerFiles)
-  public
-    function FileExists(const AFileName: string): Boolean;
-    function FolderExists(const AFolder: string): Boolean;
-    function ReadText(const AFileName: string; out AText: string): Boolean;
-    function ReadHead(const AFileName: string; AMaxBytes: Integer; out AData: TBytes): Boolean;
-    function ReadTail(const AFileName: string; AMaxBytes: Integer; out AData: TBytes; out ACut: Boolean): Boolean;
-    function WriteText(const AFileName, AText: string): Boolean;
-    function ReplaceText(const AFileName, AText: string): Boolean;
-    function WriteBytes(const AFileName: string; const AData: TBytes): Boolean;
-    function DeleteFile(const AFileName: string): Boolean;
-    function DeleteFolder(const AFolder: string): Boolean;
-    function RemoveEmptyFolder(const AFolder: string): Boolean;
-    function ForceFolder(const AFolder: string): Boolean;
-    function Files(const AFolder, AMask: string): TArray<string>;
-    function Folders(const AFolder: string): TArray<string>;
-    function WriteTime(const APath: string): TDateTime;
-    function Lock(const AFileName: string; AWaitMs: Integer): IInterface;
-    function Environment(const AName: string): string;
-    function TempFolder: string;
-  end;
-
-{ TReadOnlyFiles }
-
-function TReadOnlyFiles.FileExists(const AFileName: string): Boolean;
-begin
-  Result := TFile.Exists(AFileName);
-end;
-
-function TReadOnlyFiles.FolderExists(const AFolder: string): Boolean;
-begin
-  Result := TDirectory.Exists(AFolder);
-end;
-
-function TReadOnlyFiles.ReadText(const AFileName: string; out AText: string): Boolean;
-begin
-  AText := '';
-  Result := TFile.Exists(AFileName);
-  if Result then
-  begin
-    AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
-  end;
-end;
-
-function TReadOnlyFiles.ReadHead(const AFileName: string; AMaxBytes: Integer; out AData: TBytes): Boolean;
-begin
-  AData := nil;
-  Result := False;
-end;
-
-function TReadOnlyFiles.ReadTail(const AFileName: string; AMaxBytes: Integer; out AData: TBytes;
-  out ACut: Boolean): Boolean;
-begin
-  AData := nil;
-  ACut := False;
-  Result := False;
-end;
-
-function TReadOnlyFiles.WriteText(const AFileName, AText: string): Boolean;
-begin
-  Result := False;
-end;
-
-function TReadOnlyFiles.ReplaceText(const AFileName, AText: string): Boolean;
-begin
-  Result := False;
-end;
-
-function TReadOnlyFiles.WriteBytes(const AFileName: string; const AData: TBytes): Boolean;
-begin
-  Result := False;
-end;
-
-function TReadOnlyFiles.DeleteFile(const AFileName: string): Boolean;
-begin
-  Result := False;
-end;
-
-function TReadOnlyFiles.DeleteFolder(const AFolder: string): Boolean;
-begin
-  Result := False;
-end;
-
-function TReadOnlyFiles.RemoveEmptyFolder(const AFolder: string): Boolean;
-begin
-  Result := False;
-end;
-
-function TReadOnlyFiles.ForceFolder(const AFolder: string): Boolean;
-begin
-  Result := False;
-end;
-
-function TReadOnlyFiles.Files(const AFolder, AMask: string): TArray<string>;
-var
-  mName: string;
-begin
-  Result := nil;
-  for mName in TDirectory.GetFiles(AFolder) do
-  begin
-    Result := Result + [mName];
-  end;
-end;
-
-function TReadOnlyFiles.Folders(const AFolder: string): TArray<string>;
-begin
-  Result := nil;
-end;
-
-function TReadOnlyFiles.WriteTime(const APath: string): TDateTime;
-begin
-  Result := 0;
-end;
-
-function TReadOnlyFiles.Lock(const AFileName: string; AWaitMs: Integer): IInterface;
-begin
-  Result := nil;
-end;
-
-function TReadOnlyFiles.Environment(const AName: string): string;
-begin
-  Result := '';
-end;
-
-function TReadOnlyFiles.TempFolder: string;
-begin
-  Result := '';
 end;
 
 function Target: TAtlasTrackerTarget;
@@ -496,7 +365,7 @@ var
   mFound: TArray<TAtlasIssueFormFile>;
   mTemplates, mProject: string;
 begin
-  mFiles := TReadOnlyFiles.Create;
+  mFiles := TAtlasTrackerTestFiles.Create;
   mTemplates := TPath.Combine(TPath.Combine(TPath.Combine(FDir, 'repo'), '.github'), 'ISSUE_TEMPLATE');
   mProject := TPath.Combine(TPath.Combine(TPath.Combine(FDir, 'repo'), 'src'), 'app');
   WriteFile(TPath.Combine(mTemplates, '1-fehler.yml'), 'name: Fehler');

@@ -32,6 +32,7 @@ type
     TimeRounding: TEdit;
     PreviewChecklists: TCheckBox;
     ChecklistStatus: TCheckBox;
+    ShareWithAssistants: TCheckBox;
     StatusState: TCheckBox;
     PreviewLinks: TCheckBox;
     WarnBlocked: TCheckBox;
@@ -135,6 +136,9 @@ begin
   FView.ChecklistStatus := Check('issues.checklistStatus', TAtlasOptionsTextId.SettingsIssuesChecklistStatus);
   // Zustand des aktuellen Issues im Statusfeld (#2124).
   FView.StatusState := Check('issues.statusState', TAtlasOptionsTextId.SettingsIssuesStatusState);
+  // Begonnenes Issue für KI-Assistenten (#2051).
+  FView.ShareWithAssistants := Check('issues.shareWithAssistants',
+    TAtlasOptionsTextId.SettingsIssuesShareWithAssistants);
   // Abhängigkeiten und Unteraufgaben (#1279): Baum in der Vorschau, Warnung beim Beginnen.
   FView.PreviewLinks := Check('issues.preview.links', TAtlasOptionsTextId.SettingsIssuesPreviewLinks);
   FView.WarnBlocked := Check('issues.warnBlocked', TAtlasOptionsTextId.SettingsIssuesWarnBlocked);

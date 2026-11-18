@@ -10113,6 +10113,16 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1273"
     },
+    "IssuesShareWithAssistants": {
+      "type": "boolean",
+      "default": true,
+      "description": "Begonnenes Issue für KI-Assistenten bereitstellen: Solange ein Issue aktuell ist, schreibt Atlas Kennung, Titel, Tracker, Zustand, Meilenstein, Branch, Beschreibung, Checkliste, Codeverweise und die letzten fünf Kommentare nach <gitdir>/atlas-current-issue.json (neben atlas-commit-prefix, bei Worktrees in deren eigenen Ordner); das MCP-Werkzeug get_current_issue liest sie. Nie ein Token, keine Anhänge. Aus: keine Datei, eine vorhandene wird gelöscht.",
+      "x-key": "issues.shareWithAssistants",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2051"
+    },
     "IssuesStatusState": {
       "type": "boolean",
       "default": true,

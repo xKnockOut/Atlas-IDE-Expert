@@ -160,6 +160,10 @@
       "arguments": { "name": "TRefAnzeige" },
       "contains": "TRefAnzeige"
     },
+    "get_current_issue": {
+      "$comment": "Ohne festen Text: je nach Arbeitskopie kein Git, kein begonnenes Issue oder das Issue.",
+      "arguments": { "section": "summary" }
+    },
     "find_unused_code": {
       "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas", "format": "json" },
       "contains": "\"total\""

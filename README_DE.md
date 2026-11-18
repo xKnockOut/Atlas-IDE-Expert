@@ -165,6 +165,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
+- **Das begonnene Issue für KI-Assistenten:** Nach „Beginnen“ legt das Plugin das Issue samt Checkliste, Codeverweisen, Beschreibung und letzten Kommentaren neben das Commit-Präfix ins Git-Verzeichnis; `get_current_issue` liest es, ohne Tracker-Zugang und ohne Token. Hakt jemand im Tracker etwas ab, steht es nach der nächsten Auffrischung dort (`issues.shareWithAssistants`, Vorgabe an)
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

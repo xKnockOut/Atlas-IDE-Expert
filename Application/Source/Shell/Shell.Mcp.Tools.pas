@@ -20,7 +20,8 @@ uses
   Shell.Mcp.ArchitectureTools,
   Shell.Mcp.EditingTools,
   Shell.Mcp.ProjectTools,
-  Shell.Mcp.ChangeTools;
+  Shell.Mcp.ChangeTools,
+  Shell.Mcp.IssueTools;
 
 procedure RegisterContextTools(const AContext: TMcpToolContext);
 var
@@ -41,6 +42,7 @@ begin
   RegisterQueryTools(mContext);
   RegisterHotspotTools(mContext);
   RegisterStatusTools(mContext);
+  RegisterIssueTools(mContext);
 end;
 
 end.

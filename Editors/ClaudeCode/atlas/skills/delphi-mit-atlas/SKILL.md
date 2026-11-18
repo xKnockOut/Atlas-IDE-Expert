@@ -39,6 +39,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - `find_path` bei „Wie hängt X mit Y zusammen?“ oder „Warum zieht diese Unit jene herein?“: ein Aufruf liefert die kürzeste Kette mit Kantenart und Datei:Zeile je Schritt, statt sich über `find_references` und `get_call_hierarchy` zu hangeln. „Kein Weg“ ist verlässlich; `[erschlossen]` heißt: über eine von mehreren Umsetzungen.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
+- `get_current_issue` zu Beginn einer Aufgabe auf einem Issue-Branch: das in der IDE begonnene Tracker-Issue mit Checkliste, Codeverweisen und (mit `section` = `body` bzw. `comments`) Beschreibung und letzten Kommentaren. Die Checkliste dort ist der Auftrag; Codeverweise sind die ersten Stellen zum Lesen.
 - `build_project` baut das Projekt in der laufenden IDE (auch in der Starter Edition ohne
   Kommandozeilen-Compiler) und liefert die Compilermeldungen; das Projekt muss dort offen sein.
 - `run_tests` führt die DUnitX-Tests aus (vorhandene Test-EXE, mit `build: true` vorher in der IDE

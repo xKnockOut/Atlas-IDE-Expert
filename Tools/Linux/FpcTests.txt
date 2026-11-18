@@ -476,6 +476,8 @@ Atlas.Core.Designer.DuplicateRow.Tests
 Atlas.Core.Designer.Magnifier.Tests
 Atlas.Core.Designer.SelectionSets.Tests
 Atlas.Core.Tracker.IssueWork.Tests
+Atlas.Core.Tracker.CurrentIssue.Tests
+Atlas.Core.Tracker.CurrentIssuePlan.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Commands.QuickOpenTarget.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
@@ -664,3 +666,7 @@ Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Tests
 Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
+
+# Server (Shell)
+Shell.Mcp.IssueTools.Tests
+Shell.Mcp.IssueText.Tests

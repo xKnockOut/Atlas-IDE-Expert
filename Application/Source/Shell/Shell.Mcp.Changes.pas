@@ -30,6 +30,7 @@ uses
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.Tracker.CommitHook,
+  Shell.Mcp.IssueTools,
   Shell.VersionControlChanges,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Rules.Contract,
@@ -46,6 +47,8 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  /// <summary>Längster Commit-Präfix, den prepare_commit übernimmt.</summary>
+  cMaxPrefixBytes = 1024;
   cTexts: array[TMcpChangesText] of TAtlasText = (
     (De: 'Unit "%s" ist nicht im Index'; En: 'Unit "%s" is not in the index'));
 
@@ -160,7 +163,9 @@ begin
     end;
     if mVcs is TGitChanges then
     begin
-      Result.CommitPrefix := TAtlasCommitHook.ReadPrefix(TAtlasGitVersionControl.GitDir(mVcs.RepoRoot));
+      // Direkt gelesen: Der Dateizugriff des Tracker-Moduls (TAtlasTrackerFiles) ist im Server nicht angemeldet.
+      Result.CommitPrefix := ReadGitDirFile(TAtlasGitVersionControl.GitDir(mVcs.RepoRoot),
+        TAtlasCommitHook.cPrefixFile, cMaxPrefixBytes);
     end;
   finally
     mVcs.Free;

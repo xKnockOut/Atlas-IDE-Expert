@@ -28,6 +28,7 @@ The server offers Claude Code 33 MCP tools:
 - explain findings
 - report findings to Claude Code hooks (`hook_check`)
 - build through the IDE (`build_project`, `get_last_build`)
+- read the issue started in the IDE with checklist and code references (`get_current_issue`)
 - run DUnitX tests
 
 ### Change

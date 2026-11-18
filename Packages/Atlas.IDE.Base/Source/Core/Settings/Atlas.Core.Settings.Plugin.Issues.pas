@@ -231,6 +231,9 @@ type
     /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273, issues.checklistStatus); aus =
     /// keine Zeile.</summary>
     IssuesChecklistStatus: Boolean;
+    /// <summary>Begonnenes Issue für KI-Assistenten in &lt;gitdir&gt;/atlas-current-issue.json bereitstellen (#2051,
+    /// issues.shareWithAssistants); aus = keine Datei.</summary>
+    IssuesShareWithAssistants: Boolean;
     /// <summary>Zustand des aktuellen Issues im Statusfeld mit Menü der erlaubten Übergänge und Einträgen in der
     /// Befehlspalette (#2124, issues.statusState); aus = nur die Zeit.</summary>
     IssuesStatusState: Boolean;
@@ -558,6 +561,7 @@ begin
   Result.IssuesTimeRounding := cDefaultIssuesTimeRounding;
   Result.IssuesPreviewChecklists := True;
   Result.IssuesChecklistStatus := True;
+  Result.IssuesShareWithAssistants := True;
   Result.IssuesStatusState := True;
   Result.IssuesSprintOnStart := cIssuesSprintAsk;
   Result.IssuesPreviewLinks := True;
@@ -624,6 +628,7 @@ begin
   AIo.Number('IssuesTimeRounding', IssuesTimeRounding);
   AIo.Flag('IssuesPreviewChecklists', IssuesPreviewChecklists);
   AIo.Flag('IssuesChecklistStatus', IssuesChecklistStatus);
+  AIo.Flag('IssuesShareWithAssistants', IssuesShareWithAssistants);
   AIo.Flag('IssuesStatusState', IssuesStatusState);
   AIo.Text('IssuesSprintOnStart', IssuesSprintOnStart);
   AIo.Flag('IssuesPreviewLinks', IssuesPreviewLinks);

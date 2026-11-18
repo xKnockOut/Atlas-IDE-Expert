@@ -11,6 +11,8 @@
 //   Commit-Dialog der IDE (das Nachrichtenfeld wird einmal je Dialog vorne
 //   ergänzt) und über den Git-Hook prepare-commit-msg
 //   (Atlas.Core.Tracker.CommitHook).
+// - Begonnenes Issue für KI-Assistenten (#2051) in <gitdir>/atlas-current-issue.json
+//   (Atlas.IDE.Tracker.CurrentIssue).
 // - Titel der Kachel (TAtlasIdeIssuesTitle): „Meine Issues · Projekt“, mit
 //   Punkt bei neuen Änderungen (#1271).
 
@@ -25,7 +27,8 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,
-  Atlas.IDE.Tracker.IssueCommands;
+  Atlas.IDE.Tracker.IssueCommands,
+  Atlas.IDE.Tracker.CurrentIssue;
 
 type
   TAtlasIdeIssuesStatus = class
@@ -51,6 +54,7 @@ type
     FFilled: TList<THandle>;
     // Git-Ordner, in die diese Sitzung ein Präfix für den Hook geschrieben hat (Abschalten löscht es dort).
     FPrefixDirs: TList<string>;
+    FCurrentIssue: TAtlasIdeCurrentIssue;
     procedure Inactive;
     procedure EnsureLine;
     procedure UpdateChecklist(const AProject, AKey: string);
@@ -198,6 +202,7 @@ begin
   FCommands := ACommands;
   FFilled := TList<THandle>.Create;
   FPrefixDirs := TList<string>.Create;
+  FCurrentIssue := TAtlasIdeCurrentIssue.Create(AContext, AServices);
 end;
 
 destructor TAtlasIdeIssuesStatus.Destroy;
@@ -205,6 +210,7 @@ begin
   Stop;
   FFilled.Free;
   FPrefixDirs.Free;
+  FCurrentIssue.Free;
   inherited;
 end;
 
@@ -217,6 +223,7 @@ begin
   if FContext.Started then
   begin
     ClearPrefixes;
+    FCurrentIssue.Clear;
   end;
   if FWatch <> nil then
   begin
@@ -489,6 +496,7 @@ begin
   FPrefix := TAtlasMyIssues.CommitPrefix(mData.Active, FServices.Options.CommitPattern);
   try
     SyncPrefix(mProject);
+    FCurrentIssue.Sync(mProject, mData.Active);
   except
     on E: Exception do
     begin
