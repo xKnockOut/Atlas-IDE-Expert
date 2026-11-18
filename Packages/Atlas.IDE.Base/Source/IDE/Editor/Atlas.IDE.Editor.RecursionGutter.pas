@@ -6,7 +6,7 @@
 //   er atlas.server.recursion mit der Datei und der Tiefe
 //   (editor.recursionMarkers.depth), nur, wenn der Server ohnehin läuft, und
 //   merkt sich die Antwort je Datei, Textstand und Tiefe. Der Befehl läuft im
-//   Hintergrund (TAtlasLensPoll.AskAsync); vorher wartete der Hauptthread alle
+//   Hintergrund (TAtlasLensPoll.AskAsync); sonst wartete der Hauptthread alle
 //   250 ms bis zu 800 ms auf den Server.
 // - Symbol: ein Kreispfeil (↻) neben jeder Zeile mit einem Aufruf, der über
 //   höchstens „Tiefe“ Methoden derselben Unit zur aufrufenden zurückführt;

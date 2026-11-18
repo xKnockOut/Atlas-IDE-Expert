@@ -33,7 +33,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -73,29 +74,6 @@ const
     'experimental', 'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local', 'message',
     'near', 'overload', 'override', 'pascal', 'platform', 'register', 'reintroduce', 'safecall', 'static',
     'stdcall', 'unsafe', 'varargs', 'virtual', 'winapi');
-
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
-end;
-
-function NextCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and not IsCode(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function PrevCode(const ATokens: TTokens; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and not IsCode(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -323,7 +301,7 @@ begin
   begin
     Exit;
   end;
-  mNext := NextCode(ATokens, Result);
+  mNext := NextCodeAfter(ATokens, Result);
   mStop := Result;
   while (mStop <= High(ATokens)) and (mNext <= High(ATokens)) and MatchText(ATokens[mNext].Text, cDirectives) do
   begin
@@ -332,7 +310,7 @@ begin
     if mStop <= High(ATokens) then
     begin
       Result := mStop;
-      mNext := NextCode(ATokens, Result);
+      mNext := NextCodeAfter(ATokens, Result);
     end;
   end;
 end;
@@ -360,19 +338,19 @@ begin
   mIndex := AStart;
   while (mIndex <= High(ATokens)) and MatchText(ATokens[mIndex].Text, cRoutineKeywords) do
   begin
-    mIndex := NextCode(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
   Result := '';
   while mIndex <= High(ATokens) do
   begin
     Result := Result + ATokens[mIndex].Text;
-    mIndex := NextCode(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
     if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('.') then
     begin
       Break;
     end;
     Result := Result + '.';
-    mIndex := NextCode(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
 end;
 
@@ -442,7 +420,7 @@ begin
   end;
   while (Result <= High(ATokens)) and ATokens[Result].IsSymbol('[') do
   begin
-    Result := NextCode(ATokens, NextSymbol(ATokens, Result, ']'));
+    Result := NextCodeAfter(ATokens, NextSymbol(ATokens, Result, ']'));
   end;
   if Result > High(ATokens) then
   begin
@@ -472,10 +450,10 @@ function DeprecatedBefore(const ATokens: TTokens; AStop: Integer): Boolean;
 var
   mPrev: Integer;
 begin
-  mPrev := PrevCode(ATokens, AStop);
+  mPrev := PreviousCode(ATokens, AStop);
   if (mPrev >= 0) and (ATokens[mPrev].Kind = TPascalTokenKind.StringLiteral) then
   begin
-    mPrev := PrevCode(ATokens, mPrev);
+    mPrev := PreviousCode(ATokens, mPrev);
   end;
   Result := (mPrev >= 0) and SameText(ATokens[mPrev].Text, 'deprecated');
 end;

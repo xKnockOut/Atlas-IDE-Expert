@@ -184,6 +184,12 @@
       "arguments": { "from": "Ref.Formulare.Haupt", "to": "Ref.Daten.Suche" },
       "contains": "Ref.Daten.Suche"
     },
+    "find_implementations": {
+      "arguments": {
+        "name": "IFormatierer.Formatieren"
+      },
+      "contains": "TDezimalFormatierer.Formatieren"
+    },
     "get_impact": {
       "arguments": { "name": "TKundenSuche.Suchen", "depth": 2 },
       "contains": "TKundenSuche"

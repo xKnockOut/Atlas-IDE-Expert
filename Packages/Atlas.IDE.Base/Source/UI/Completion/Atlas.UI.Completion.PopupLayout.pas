@@ -94,6 +94,14 @@ const
   cWidestShown = 999;
   cWidestTotal = 9999;
   cFooterPadding = 18;
+  /// <summary>So viele Einträge misst die Breite höchstens; weitere ändern sie selten und kosten nur Zeit.</summary>
+  cMeasuredItems = 200;
+  /// <summary>Logische Bildpunkte: Abstand des Panels zum Rand des Arbeitsbereichs, Griffzone am rechten Rand,
+  /// Höhe des Griffs unten rechts und Spielraum rechts neben dem Stern.</summary>
+  cScreenMargin = 8;
+  cEdgeZone = 4;
+  cGripZone = 16;
+  cStarSlack = 3;
 
 { TAtlasCompletionPopupLayout }
 
@@ -211,7 +219,7 @@ var
   mArea: TRect;
 begin
   mArea := WorkAreaAt(FAnchor.TopLeft);
-  Result := Max(ListHeight, Max(mArea.Bottom - FAnchor.Bottom, FAnchor.Top - mArea.Top) - Scale(8));
+  Result := Max(ListHeight, Max(mArea.Bottom - FAnchor.Bottom, FAnchor.Top - mArea.Top) - Scale(cScreenMargin));
 end;
 
 function TAtlasCompletionPopupLayout.DocActive: Boolean;
@@ -325,10 +333,10 @@ var
   mBoundary, mZone: Integer;
 begin
   Result := TAtlasHitArea.None;
-  mZone := Scale(4);
+  mZone := Scale(cEdgeZone);
   if AX >= ClientWidth - mZone then
   begin
-    if AY >= ClientHeight - Scale(16) then
+    if AY >= ClientHeight - Scale(cGripZone) then
     begin
       Result := TAtlasHitArea.Grip;
     end
@@ -380,7 +388,7 @@ begin
     Exit(-1);
   end;
   mRow := RowRect(Result - FTop);
-  if (AX < mRow.Left) or (AX >= mRow.Left + Scale(cStarWidth + 3)) then
+  if (AX < mRow.Left) or (AX >= mRow.Left + Scale(cStarWidth + cStarSlack)) then
   begin
     Result := -1;
   end;
@@ -396,7 +404,7 @@ begin
   // Nur die ersten Einträge messen; eine gezogene Breite (#416) hat Vorrang (ListWidth).
   Canvas.Font := Font;
   mWidest := 0;
-  mCount := Min(Length(FOrder), 200);
+  mCount := Min(Length(FOrder), cMeasuredItems);
   for mPosition := 0 to mCount - 1 do
   begin
     if TAtlasRanking.IsHeader(FOrder[mPosition]) then
@@ -408,16 +416,16 @@ begin
     mDetail := TAtlasCompletionTexts.DetailText(mItem);
     if mDetail <> '' then
     begin
-      Inc(mWidth, Scale(12) + Canvas.TextWidth(mDetail));
+      Inc(mWidth, Scale(cDetailGap) + Canvas.TextWidth(mDetail));
     end;
     for mTag in ItemTags(mItem) do
     begin
-      Inc(mWidth, Scale(6) + TagWidth(mTag));
+      Inc(mWidth, Scale(cTailGap) + TagWidth(mTag));
     end;
     mWidest := Max(mWidest, mWidth);
   end;
-  // Badge (7 + 24 + 9), rechter Rand der Zeile (7), Ränder und Scrollleiste.
-  Inc(mWidest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
+  // Badge mit Rand und Abstand zum Namen, rechter Rand der Zeile, Ränder und Scrollleiste.
+  Inc(mWidest, Scale(cRowInset + cBadgeWidth + cNameGap + cRowInset) + 2 * Pad + ScrollReserve);
   if TAtlasCompletionSets.Active(FItems) then
   begin
     Inc(mWidest, Scale(cCheckWidth));
