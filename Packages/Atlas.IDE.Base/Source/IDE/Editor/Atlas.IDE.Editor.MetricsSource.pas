@@ -8,7 +8,7 @@
 //   er atlas.server.metrics für die Datei (nur, wenn der Server ohnehin läuft)
 //   und merkt sich die Antwort je Datei und Textstand. Ohne Änderung fragt er
 //   alle RefreshMs neu (geänderte Grenzwerte in atlas.json). Der Befehl läuft
-//   im Hintergrund (TAtlasLensPoll.AskAsync); vorher wartete der Hauptthread
+//   im Hintergrund (TAtlasLensPoll.AskAsync); sonst wartete der Hauptthread
 //   bis zu TimeoutMs, im Diagnose-Fenster einzeln bis 8,6 s.
 // - Bedarf: Jeder Leser meldet über Want, ob er die Werte liest (Read) oder
 //   im Editor zeigt (Paint). Ohne Bedarf, ohne metrics oder bei gesperrter

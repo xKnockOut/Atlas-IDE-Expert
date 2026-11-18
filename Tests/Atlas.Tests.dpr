@@ -893,6 +893,7 @@ uses
   Atlas.UI.Debug.MethodBreakpoints.Strings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MethodBreakpoints.Strings.pas',
   Atlas.UI.Debug.EventBreak.Strings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EventBreak.Strings.pas',
   Atlas.UI.Debug.Logpoints.Strings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Logpoints.Strings.pas',
+  Atlas.UI.Debug.Note.Strings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Note.Strings.pas',
   Atlas.UI.Debug.Exceptions.Strings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Exceptions.Strings.pas',
   Atlas.UI.Debug.AccessViolation.Strings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.AccessViolation.Strings.pas',
   Atlas.UI.Debug.Threads.Strings in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Threads.Strings.pas',

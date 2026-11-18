@@ -135,7 +135,6 @@ type
     FOwnUnit: TUnitIndex;
     function FirstToken(ANode: TSyntaxNode): Integer;
     function StopToken(ANode: TSyntaxNode): Integer;
-    function NextCode(AIndex, AStop: Integer): Integer;
     function Unconditional(ANode: TSyntaxNode): Boolean;
     function TokenRange(AIndex: Integer): TTextRange;
     function NodeText(ANode: TSyntaxNode): string;
@@ -238,15 +237,6 @@ end;
 function TAutomationCheck.StopToken(ANode: TSyntaxNode): Integer;
 begin
   Result := TokenFrom(FTokens, ANode.EndOffset);
-end;
-
-function TAutomationCheck.NextCode(AIndex, AStop: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result < AStop) and IsTrivia(FTokens[Result]) do
-  begin
-    Inc(Result);
-  end;
 end;
 
 function TAutomationCheck.Unconditional(ANode: TSyntaxNode): Boolean;
@@ -416,7 +406,7 @@ var
   mIndex: Integer;
   mDirective: TSyntaxNode;
 begin
-  mFirst := NextCode(FirstToken(AHeader), StopToken(AHeader));
+  mFirst := NextCode(FTokens, FirstToken(AHeader), StopToken(AHeader));
   mWord := LowerCase(FTokens[mFirst].Text);
   if (mWord = 'constructor') or (mWord = 'destructor') then
   begin
@@ -486,8 +476,8 @@ procedure TAutomationCheck.CheckAccessor(AClass: TSyntaxNode; AIndex, AStop: Int
 var
   mArgument, mNext: Integer;
 begin
-  mArgument := NextCode(AIndex + 1, AStop);
-  mNext := NextCode(mArgument + 1, AStop);
+  mArgument := NextCode(FTokens, AIndex + 1, AStop);
+  mNext := NextCode(FTokens, mArgument + 1, AStop);
   // read FPunkt.X ist ein Feldzugriff, aber nicht sicher dasselbe Feld.
   if (mArgument < AStop) and (FTokens[mArgument].Kind = TPascalTokenKind.Identifier) and
     ((mNext >= AStop) or not FTokens[mNext].IsSymbol('.')) and IsClassField(AClass, FTokens[mArgument].Text) then
