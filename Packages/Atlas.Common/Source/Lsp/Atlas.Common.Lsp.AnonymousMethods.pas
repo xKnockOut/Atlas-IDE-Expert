@@ -75,7 +75,8 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.PromoteVariable,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -146,7 +147,7 @@ begin
   Result := TProcTypeKind.Plain;
   while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    mNext := TRoutineBody.NextToken(ATokens, mIndex);
+    mNext := NextCodeAfter(ATokens, mIndex);
     if SameText(ATokens[mIndex].Text, 'of') and (mNext <= High(ATokens)) and SameText(ATokens[mNext].Text, 'object') then
     begin
       Exit(TProcTypeKind.MethodPointer);

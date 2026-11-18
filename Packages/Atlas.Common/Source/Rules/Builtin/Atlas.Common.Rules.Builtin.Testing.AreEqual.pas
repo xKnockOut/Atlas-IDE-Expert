@@ -273,7 +273,7 @@ var
   mNode: TSyntaxNode;
   mIndex: Integer;
 begin
-  // Iterativ (Bericht M1).
+  // Iterativ, damit tief verschachtelte Ausdrücke den Stapel nicht sprengen.
   mPending := TStack<TSyntaxNode>.Create;
   try
     mPending.Push(FContext.Tree.Root);

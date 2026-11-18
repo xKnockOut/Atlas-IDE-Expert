@@ -12,9 +12,9 @@
 // paar Sekunden erneut ins Zeitlimit. Neue Antworten zeichnen den oberen
 // Editor neu. Nur im Hauptthread.
 // Überschreibungen und Glühbirne fragt eine Anfrage im Hintergrund
-// (TAtlasBackgroundRequest), höchstens eine zugleich. Früher wartete der
-// Hauptthread bis zu 800 ms; bei beschäftigtem Server kam keine Antwort an
-// und die IDE hing bei jedem Zeilenwechsel (2.0-stable).
+// (TAtlasBackgroundRequest), höchstens eine zugleich. Wartete der
+// Hauptthread (etwa bis zu 800 ms), käme bei beschäftigtem Server keine Antwort
+// an, und die IDE hinge bei jedem Zeilenwechsel.
 
 interface
 

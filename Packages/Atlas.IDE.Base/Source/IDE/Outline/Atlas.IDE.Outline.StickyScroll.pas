@@ -34,8 +34,8 @@
 //   Zeitgeber und PaintLine fangen Bildläufe ohne Ereignis weiter ab.
 // - Klick (links, ohne Umschalttasten) auf eine Kopfzeile springt nach dem
 //   Loslassen der Maustaste zum Namen im Kopf und verwirft die Markierung, die
-//   der Editor ab der verdeckten Zeile begonnen hat (vorher markierte der
-//   Sprung bei noch gedrückter Taste den ganzen Bereich dazwischen).
+//   der Editor ab der verdeckten Zeile begonnen hat (ein Sprung bei noch
+//   gedrückter Taste markierte den ganzen Bereich dazwischen).
 // - Strg+Klick auf einen Bezeichner im Kopf springt über SetDefinitionJump zu
 //   dessen Definition; wo der Kopf keinen Quelltext zeigt, wie ein Klick zum
 //   Namen im Kopf. Gehe zu Definition der IDE, die der Klick ebenfalls
