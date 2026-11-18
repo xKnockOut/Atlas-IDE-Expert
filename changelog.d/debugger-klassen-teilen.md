@@ -1,2 +1,0 @@
-### Geändert
-- Debugger-Fenster intern nach Aufgaben geteilt, damit keine Klasse mehr als 40 Mitglieder hat: „Auswerten“, „Variablen“, „Exception-Verlauf“, „Schrittfilter“, die Exception-Leiste im Editor und das Ansichtsfenster der Visualisierer. Die Aufteilung der Exception-Leiste und die Prüfung neuer Schrittfilter-Muster liegen jetzt im Kern und sind ohne IDE getestet. Bedienung und Aussehen bleiben gleich.

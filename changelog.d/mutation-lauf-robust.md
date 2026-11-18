@@ -1,5 +1,0 @@
-### Behoben
-- Mutationslauf: Lehnt die IDE mitten im Lauf einen Build ab (Debugger gestartet, anderer Build läuft), fehlt die Test-EXE oder lässt sich die Kopie nicht schreiben, behält der Lauf wie nach „Abbrechen“ alles bis dahin Geprüfte: Grund, Überlebende, Quote, gemerkte Ergebnisse. Bisher waren sie verloren.
-- Mutationslauf: Eine Test-EXE, die sich nicht starten lässt (etwa weil der Virenscanner sie noch festhält), zählt ihren Mutanten nicht mehr als „erkannt“, sondern beendet den Lauf mit eigener Meldung. Bisher wurde die Quote dadurch besser, als die Tests sind.
-- Mutationslauf: Ein gescheitertes Schließen des Schattenprojekts meldet sich jetzt als solches, mit Name, Grund und dem Hinweis, dass das Projekt noch in der Projektgruppe steht, statt als „ließ sich nicht öffnen“.
-- Mutationslauf: Übersetzt der Build des Schattenprojekts eine `.rc` (`{$R 'X.res' 'X.rc'}`), entsteht die `.res` im Ordner des Schattenprojekts statt neben dem Original; `BRCC_IncludePath` wird absolut. Masken wie `{$R *.tlb}` zeigen auf die Datei des Originals statt ins Leere.
