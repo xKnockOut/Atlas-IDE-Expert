@@ -1,2 +1,0 @@
-### Behoben
-- Atlas-Struktur und Ereignis-Karte aktualisierten sich nicht mehr, nachdem das Fenster einmal verdeckt war (Reiter im Hintergrund, eingeklappte Leiste, Desktop-Wechsel etwa durch das eigene Designer-Layout): Der Takt hielt jedes nicht sichtbare Fenster für geschlossen und blieb stehen. Jetzt ruht er nur, solange das Fenster nicht zu sehen ist, und wacht auf, sobald Baum bzw. Liste wieder gezeichnet werden. Die Symbole nichtvisueller Komponenten auf der Formularfläche bleiben ausgeblendet, solange die Atlas-Struktur offen ist, auch als Reiter im Hintergrund.
