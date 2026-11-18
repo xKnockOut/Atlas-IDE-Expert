@@ -97,7 +97,7 @@ begin
   FSnap := TCheckBox.Create(Self);
   FSnap.Parent := mRow;
   FSnap.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceSnap);
-  FSnap.Width := Canvas.TextWidth(FSnap.Caption) + ScaleValue(24);
+  FSnap.Width := CheckWidth(FSnap.Caption);
   AddButtons;
 
   FRows.Checked := AOptions.Axis = TAtlasSpaceAxis.Rows;
@@ -112,7 +112,7 @@ begin
   Result := TRadioButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.SetBounds(0, ATop, Canvas.TextWidth(ACaption) + ScaleValue(24), ScaleValue(cRadioHeight - 2));
+  Result.SetBounds(0, ATop, CheckWidth(ACaption), ScaleValue(cRadioHeight - 2));
 end;
 
 procedure TAtlasSpaceDialog.AddButtons;

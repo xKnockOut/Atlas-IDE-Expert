@@ -146,6 +146,10 @@ const
   cMenuShow = 0;
   cMenuUndo = 1;
   cColorMore = -1;
+  /// <summary>Größe der Farbfelder im Farbmenü in Pixeln.</summary>
+  cSwatchSize = 14;
+  /// <summary>Schriftgröße der VCL, wenn das Formular keine nennt.</summary>
+  cDefaultFontSize = 8;
   cStandardColors: array[0..9] of TColor = (clWindowText, clBlack, clGrayText, clGray, clMaroon, clRed, clGreen,
     clNavy, clBlue, clHighlight);
   cHints: array[TAtlasBarItem] of TAtlasDesignerToolTextId = (TAtlasDesignerToolTextId.BarFontSmaller,
@@ -220,11 +224,11 @@ var
 begin
   mBitmap := TBitmap.Create;
   try
-    mBitmap.SetSize(14, 14);
+    mBitmap.SetSize(cSwatchSize, cSwatchSize);
     mBitmap.Canvas.Brush.Color := clGray;
-    mBitmap.Canvas.FillRect(Rect(0, 0, 14, 14));
+    mBitmap.Canvas.FillRect(Rect(0, 0, cSwatchSize, cSwatchSize));
     mBitmap.Canvas.Brush.Color := AColor;
-    mBitmap.Canvas.FillRect(Rect(1, 1, 13, 13));
+    mBitmap.Canvas.FillRect(Rect(1, 1, cSwatchSize - 1, cSwatchSize - 1));
     AItem.Bitmap := mBitmap;
   finally
     mBitmap.Free;
@@ -484,7 +488,7 @@ begin
   end;
   EnsureWindow;
   FWindow.SetButtons(mButtons);
-  FWindow.ShowAt(TAtlasSelectionBar.Place(mSelection, FWindow.BarSize, mArea, FWindow.S(cGap)));
+  FWindow.ShowAt(TAtlasSelectionBar.Place(mSelection, FWindow.BarSize, mArea, FWindow.ScalePx(cGap)));
 end;
 
 procedure TAtlasIdeSelectionBar.Refresh;
@@ -523,7 +527,7 @@ begin
         Change(TAtlasBarItems.PathOf(AItem), '',
           function(AOld: string): string
           begin
-            Result := IntToStr(TAtlasSelectionBar.NextFontSize(StrToIntDef(AOld, 8), mStep));
+            Result := IntToStr(TAtlasSelectionBar.NextFontSize(StrToIntDef(AOld, cDefaultFontSize), mStep));
           end, mLabel);
       end;
     TAtlasBarItem.FontSize:

@@ -169,20 +169,13 @@ uses
   System.StrUtils,
   System.Math,
   System.Generics.Collections,
-  Atlas.Core.Designer.Names;
+  Atlas.Core.Designer.Names,
+  Atlas.Text.Lines;
 
 const
   cIndent = '  ';
   cShownLength = 40;
-  cEventPrefix = 'On';
   cSeparator = ' = ';
-
-function IsEvent(const APath, AValue: string): Boolean;
-begin
-  Result := (Length(APath) > Length(cEventPrefix)) and APath.StartsWith(cEventPrefix) and
-    CharInSet(APath[Length(cEventPrefix) + 1], ['A'..'Z']) and
-    TAtlasDesignerNames.IsIdentifier(APath) and TAtlasDesignerNames.IsIdentifier(AValue);
-end;
 
 /// <summary>Änderung der Klammertiefe durch ALine: ( &lt; { öffnen, ) &gt; } schließen, nicht in Strings.</summary>
 function BracketDelta(const ALine: string): Integer;
@@ -307,7 +300,7 @@ begin
   begin
     Exit;
   end;
-  mBase := TAtlasDesignerNames.IndentOf(ALine);
+  mBase := Length(TTextLines.IndentOf(ALine));
   mValue := Default(TAtlasUndoValue);
   mValue.Path := Trim(Copy(mTrimmed, 1, mSeparator - 1));
   mValue.Value := Trim(Copy(mTrimmed, mSeparator + Length(cSeparator), MaxInt));
@@ -320,7 +313,7 @@ begin
     Inc(Position);
     mNext := Trim(Lines[Position]);
     mValue.Lines := mValue.Lines + [Copy(TrimRight(Lines[Position]),
-      Min(mBase, TAtlasDesignerNames.IndentOf(Lines[Position])) + 1, MaxInt)];
+      Min(mBase, Length(TTextLines.IndentOf(Lines[Position]))) + 1, MaxInt)];
     if mValue.Value = '' then
     begin
       mValue.Value := mNext;
@@ -332,7 +325,7 @@ begin
     mOpen := mOpen + BracketDelta(mNext);
     mMore := (mOpen > 0) or mNext.EndsWith('+');
   end;
-  mValue.IsEvent := (Length(mValue.Lines) = 1) and IsEvent(mValue.Path, mValue.Value);
+  mValue.IsEvent := (Length(mValue.Lines) = 1) and TAtlasDesignerNames.IsEventAssignment(mValue.Path, mValue.Value);
   Objects[Stack[High(Stack)]].Values := Objects[Stack[High(Stack)]].Values + [mValue];
 end;
 

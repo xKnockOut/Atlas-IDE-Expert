@@ -1658,6 +1658,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Flash` | `UI/Designer/Atlas.UI.Designer.Flash.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Handles` | `UI/Designer/Atlas.UI.Designer.Handles.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Overlay` | `UI/Designer/Atlas.UI.Designer.Overlay.pas` | Ordner `UI/Designer`; Basis der Fenster über dem Designer |
 | `Atlas.UI.Designer.Outlines` | `UI/Designer/Atlas.UI.Designer.Outlines.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |

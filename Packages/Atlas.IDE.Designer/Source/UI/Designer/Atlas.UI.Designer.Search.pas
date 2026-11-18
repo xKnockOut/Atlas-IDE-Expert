@@ -229,6 +229,69 @@ const
   /// <summary>Schriftgrößen der Liste und der Nebenzeilen in Punkt.</summary>
   cUIFontSize = 10;
   cSmallFontSize = 8;
+  /// <summary>Zahl der Gruppierungen im Umschalter (Hierarchie, Klasse, Flach).</summary>
+  cGroupingCount = Ord(High(TAtlasDesignerGrouping)) + 1;
+  /// <summary>Zeilen, um die ein Schritt des Mausrads die Liste schiebt.</summary>
+  cWheelRows = 3;
+  // Maße in logischen Pixeln (96 dpi), skaliert über S bzw. ScaleValue.
+  /// <summary>Höhen von Kopf, Gruppenzeile, Fußzeile, Filterleiste, Einträgen und Aktionsleiste.</summary>
+  cHeaderHeight = 44;
+  cGroupHeight = 24;
+  cFooterHeight = 24;
+  cChipsHeight = 32;
+  cEntryHeight = 40;
+  cCompactEntryHeight = 26;
+  cActionsHeight = 34;
+  /// <summary>Filterknöpfe: Höhe (auch Rundung), Innenabstand, Abstand untereinander.</summary>
+  cChipHeight = 22;
+  cChipPadding = 16;
+  cChipGap = 6;
+  /// <summary>Trennstrich zwischen den Filtergruppen: Abstand oben/unten und danach.</summary>
+  cDividerInset = 3;
+  cDividerGap = 12;
+  /// <summary>Segmente des Gruppierungs-Umschalters: Innenabstand und Abstand zum Kopfrand.</summary>
+  cSegmentPadding = 20;
+  cSegmentInset = 9;
+  /// <summary>Suchfeld im Kopf: Abstand zum Kopfrand und Rundung.</summary>
+  cInputInset = 7;
+  cInputRadius = 8;
+  /// <summary>Zeilen der Liste: Einzug links/rechts, Unterkante des Namens, Oberkante der Klasse, Abstände.</summary>
+  cRowInsetLeft = 4;
+  cRowInsetRight = 6;
+  cRowNameBottom = 22;
+  cRowTypeTop = 21;
+  cRowTextGap = 10;
+  cRowParentGap = 8;
+  /// <summary>Vorschau rechts: Breite, Ränder, Zeilenhöhen, Karte und Abstand zwischen Abschnitten.</summary>
+  cPreviewWidth = 320;
+  cPreviewPaddingX = 12;
+  cPreviewPaddingY = 8;
+  cPreviewTitleHeight = 22;
+  cPreviewHeadHeight = 20;
+  cPreviewLineHeight = 18;
+  cPreviewLineIndent = 4;
+  cPreviewMapHeight = 120;
+  cPreviewSectionGap = 6;
+  /// <summary>Aktionsknöpfe: Abstand zum Leistenrand, Innenabstand, Rundung, Abstand untereinander.</summary>
+  cButtonInset = 6;
+  cButtonPadding = 18;
+  cButtonRadius = 6;
+  cButtonGap = 6;
+  /// <summary>Abstand zwischen Tastenhinweis und Trefferzahl in der Fußzeile.</summary>
+  cFooterGap = 16;
+  /// <summary>Breite des Rands, an dem das Fenster die Größe ändert.</summary>
+  cResizeEdge = 6;
+  /// <summary>Kompaktes Fenster: Breite, Zugabe zur Höhe, Abstand von oben.</summary>
+  cCompactWidth = 560;
+  cCompactExtra = 4;
+  cCompactTop = 80;
+  /// <summary>Großes Fenster: Größe, Mindestabstand oben; es steht im oberen Drittel (cTopShare).</summary>
+  cDefaultWidth = 900;
+  cDefaultHeight = 580;
+  cDefaultTop = 20;
+  cTopShare = 3;
+  /// <summary>Mindestabstand des Fensters zum Rand des Bereichs.</summary>
+  cScreenMargin = 40;
 
 function C(AColor: TAtlasColor): TColor;
 begin
@@ -525,7 +588,7 @@ procedure TAtlasComponentSearchWindow.TPainter.DrawChip(var AX: Integer; AY: Int
 var
   mChip: TRect;
 begin
-  mChip := Rect(AX, AY, AX + Canvas.TextWidth(ACaption) + S(16), AY + S(22));
+  mChip := Rect(AX, AY, AX + Canvas.TextWidth(ACaption) + S(cChipPadding), AY + S(cChipHeight));
   if mChip.Right > FWindow.ClientWidth - S(10) then
   begin
     Exit;
@@ -542,12 +605,12 @@ begin
     Canvas.Pen.Color := C(FColors.Line);
     Canvas.Font.Color := C(FColors.Muted);
   end;
-  Canvas.RoundRect(mChip.Left, mChip.Top, mChip.Right, mChip.Bottom, S(22), S(22));
+  Canvas.RoundRect(mChip.Left, mChip.Top, mChip.Right, mChip.Bottom, S(cChipHeight), S(cChipHeight));
   Canvas.Brush.Style := bsClear;
   DrawText(Canvas.Handle, PChar(ACaption), -1, mChip, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
   AddArea(THit.Chip, mChip, AValue);
-  AX := mChip.Right + S(6);
+  AX := mChip.Right + S(cChipGap);
 end;
 
 /// <summary>Umschalter Hierarchie / Klasse / Flach rechts im Kopf; liefert die Breite eines Segments.</summary>
@@ -560,13 +623,13 @@ begin
   Result := 0;
   for mGrouping := Low(TAtlasDesignerGrouping) to High(TAtlasDesignerGrouping) do
   begin
-    Result := Max(Result, Canvas.TextWidth(GroupingCaption(mGrouping)) + S(20));
+    Result := Max(Result, Canvas.TextWidth(GroupingCaption(mGrouping)) + S(cSegmentPadding));
   end;
   mHeader := Metrics.Header;
-  mX := FWindow.ClientWidth - S(10) - 3 * Result;
+  mX := FWindow.ClientWidth - S(10) - cGroupingCount * Result;
   for mGrouping := Low(TAtlasDesignerGrouping) to High(TAtlasDesignerGrouping) do
   begin
-    mSegment := Rect(mX, S(9), mX + Result, mHeader - S(9));
+    mSegment := Rect(mX, S(cSegmentInset), mX + Result, mHeader - S(cSegmentInset));
     if mGrouping = FWindow.FState.Grouping then
     begin
       Canvas.Brush.Color := C(FColors.Selection);
@@ -598,12 +661,12 @@ begin
   mX := FWindow.ClientWidth - S(10);
   if not FWindow.FOptions.Compact then
   begin
-    mX := FWindow.ClientWidth - S(20) - 3 * DrawGroupings;
+    mX := FWindow.ClientWidth - S(cSegmentPadding) - cGroupingCount * DrawGroupings;
   end;
-  mInput := Rect(S(10), S(7), mX, Metrics.Header - S(7));
+  mInput := Rect(S(10), S(cInputInset), mX, Metrics.Header - S(cInputInset));
   Canvas.Pen.Color := C(FColors.Accent);
   Canvas.Brush.Color := C(FColors.Gutter);
-  Canvas.RoundRect(mInput.Left, mInput.Top, mInput.Right, mInput.Bottom, S(8), S(8));
+  Canvas.RoundRect(mInput.Left, mInput.Top, mInput.Right, mInput.Bottom, S(cInputRadius), S(cInputRadius));
   InflateRect(mInput, -S(10), 0);
   Canvas.Brush.Style := bsClear;
   if FWindow.FState.Pattern = '' then
@@ -640,22 +703,22 @@ begin
   mMetrics := Metrics;
   Canvas.Font.Assign(FSmallFont);
   mX := S(10);
-  mY := mMetrics.Header + (mMetrics.Chips - S(22)) div 2 - S(2);
+  mY := mMetrics.Header + (mMetrics.Chips - S(cChipHeight)) div 2 - S(2);
   for mKind := Low(TAtlasDesignerKind) to High(TAtlasDesignerKind) do
   begin
     DrawChip(mX, mY, KindCaption(mKind), mKind = FWindow.FState.Kind, cChipKinds + Ord(mKind));
   end;
   Canvas.Pen.Color := C(FColors.Line);
-  Canvas.MoveTo(mX + S(2), mY + S(3));
-  Canvas.LineTo(mX + S(2), mY + S(19));
-  Inc(mX, S(12));
+  Canvas.MoveTo(mX + S(2), mY + S(cDividerInset));
+  Canvas.LineTo(mX + S(2), mY + S(cChipHeight - cDividerInset));
+  Inc(mX, S(cDividerGap));
   mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchIn);
-  mRect := Rect(mX, mY, mX + Canvas.TextWidth(mText), mY + S(22));
+  mRect := Rect(mX, mY, mX + Canvas.TextWidth(mText), mY + S(cChipHeight));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := C(FColors.Muted);
   DrawText(Canvas.Handle, PChar(mText), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
-  mX := mRect.Right + S(6);
+  mX := mRect.Right + S(cChipGap);
   for mField := Low(TAtlasDesignerField) to High(TAtlasDesignerField) do
   begin
     DrawChip(mX, mY, FieldCaption(mField), mField in FWindow.FState.Fields, cChipFields + Ord(mField));
@@ -694,8 +757,8 @@ begin
       begin
         Break;
       end;
-      mRect := Rect(FListRect.Left + S(4), FListRect.Top + mTops[mRow] - mScroll, FListRect.Right - S(6),
-        FListRect.Top + mTops[mRow + 1] - mScroll);
+      mRect := Rect(FListRect.Left + S(cRowInsetLeft), FListRect.Top + mTops[mRow] - mScroll,
+        FListRect.Right - S(cRowInsetRight), FListRect.Top + mTops[mRow + 1] - mScroll);
       DrawRow(mRow, mRect);
       AddArea(THit.Row, mRect, mRow);
     end;
@@ -771,16 +834,16 @@ var
   mFields: TAtlasDesignerFields;
 begin
   mFields := FWindow.FState.Fields;
-  mEnd := DrawHighlighted(AItem.Name, Rect(APart.Left, ARect.Top + S(2), APart.Right, ARect.Top + S(22)),
+  mEnd := DrawHighlighted(AItem.Name, Rect(APart.Left, ARect.Top + S(2), APart.Right, ARect.Top + S(cRowNameBottom)),
     FColors.Text, TAtlasDesignerField.Name in mFields);
   if AItem.Caption <> '' then
   begin
-    DrawHighlighted('„' + AItem.Caption + '“', Rect(mEnd + S(10), ARect.Top + S(2), APart.Right, ARect.Top + S(22)),
-      FColors.Muted, TAtlasDesignerField.Caption in mFields);
+    DrawHighlighted('„' + AItem.Caption + '“', Rect(mEnd + S(cRowTextGap), ARect.Top + S(2), APart.Right,
+      ARect.Top + S(cRowNameBottom)), FColors.Muted, TAtlasDesignerField.Caption in mFields);
   end;
   Canvas.Font.Assign(FSmallFont);
-  mEnd := DrawHighlighted(AItem.TypeName, Rect(APart.Left, ARect.Top + S(21), APart.Right, ARect.Bottom - S(2)),
-    FColors.Muted, TAtlasDesignerField.ClassName in mFields);
+  mEnd := DrawHighlighted(AItem.TypeName, Rect(APart.Left, ARect.Top + S(cRowTypeTop), APart.Right,
+    ARect.Bottom - S(2)), FColors.Muted, TAtlasDesignerField.ClassName in mFields);
   if not AItem.Visual then
   begin
     mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchNonVisual);
@@ -795,8 +858,8 @@ begin
   end;
   if mText <> '' then
   begin
-    DrawHighlighted('· ' + mText, Rect(mEnd + S(8), ARect.Top + S(21), APart.Right, ARect.Bottom - S(2)),
-      FColors.Muted, False);
+    DrawHighlighted('· ' + mText, Rect(mEnd + S(cRowParentGap), ARect.Top + S(cRowTypeTop), APart.Right,
+      ARect.Bottom - S(2)), FColors.Muted, False);
   end;
 end;
 
@@ -870,21 +933,21 @@ begin
     Exit;
   end;
   mItem := FWindow.FItems[mIndex];
-  mArea := Rect(FPreviewRect.Left + S(12), FPreviewRect.Top + S(8), FPreviewRect.Right - S(12),
-    FPreviewRect.Bottom - S(8));
+  mArea := Rect(FPreviewRect.Left + S(cPreviewPaddingX), FPreviewRect.Top + S(cPreviewPaddingY),
+    FPreviewRect.Right - S(cPreviewPaddingX), FPreviewRect.Bottom - S(cPreviewPaddingY));
   mTop := mArea.Top;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(FUIFont);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := C(FColors.Text);
-  mLine := Rect(mArea.Left, mTop, mArea.Right, mTop + S(22));
+  mLine := Rect(mArea.Left, mTop, mArea.Right, mTop + S(cPreviewTitleHeight));
   DrawText(Canvas.Handle, PChar(mItem.Name), -1, mLine, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   Canvas.Font.Style := [];
-  Inc(mTop, S(22));
+  Inc(mTop, S(cPreviewTitleHeight));
   Canvas.Font.Assign(FSmallFont);
   PreviewLine(mItem.TypeName, FColors.Muted, mArea, mTop);
-  Inc(mTop, S(6));
+  Inc(mTop, S(cPreviewSectionGap));
   PreviewPlace(mItem, mArea, mTop);
   PreviewDetails(mItem, mArea, mTop);
   Canvas.Brush.Style := bsSolid;
@@ -898,10 +961,10 @@ begin
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := C(FColors.Muted);
-  mLine := Rect(AArea.Left, ATop, AArea.Right, ATop + S(20));
+  mLine := Rect(AArea.Left, ATop, AArea.Right, ATop + S(cPreviewHeadHeight));
   DrawText(Canvas.Handle, PChar(ACaption), -1, mLine, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
-  Inc(ATop, S(20));
+  Inc(ATop, S(cPreviewHeadHeight));
 end;
 
 procedure TAtlasComponentSearchWindow.TPainter.PreviewLine(const AText: string; AColor: TAtlasColor;
@@ -909,14 +972,14 @@ procedure TAtlasComponentSearchWindow.TPainter.PreviewLine(const AText: string; 
 var
   mLine: TRect;
 begin
-  if ATop + S(18) > AArea.Bottom then
+  if ATop + S(cPreviewLineHeight) > AArea.Bottom then
   begin
     Exit;
   end;
   Canvas.Font.Color := C(AColor);
-  mLine := Rect(AArea.Left + S(4), ATop, AArea.Right, ATop + S(18));
+  mLine := Rect(AArea.Left + S(cPreviewLineIndent), ATop, AArea.Right, ATop + S(cPreviewLineHeight));
   DrawText(Canvas.Handle, PChar(AText), -1, mLine, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Inc(ATop, S(18));
+  Inc(ATop, S(cPreviewLineHeight));
 end;
 
 /// <summary>Lage: Karte des Formulars, Position und Größe.</summary>
@@ -926,11 +989,11 @@ var
   mText: string;
 begin
   PreviewHead(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchPosition), AArea, ATop);
-  DrawMap(Rect(AArea.Left, ATop, AArea.Right, ATop + S(120)), AItem);
+  DrawMap(Rect(AArea.Left, ATop, AArea.Right, ATop + S(cPreviewMapHeight)), AItem);
   Canvas.Brush.Style := bsClear;
   if not FWindow.FOptions.FormBounds.IsEmpty then
   begin
-    Inc(ATop, S(126));
+    Inc(ATop, S(cPreviewMapHeight + cPreviewSectionGap));
   end;
   Canvas.Font.Assign(FSmallFont);
   if not AItem.Visual then
@@ -947,7 +1010,7 @@ begin
     mText := mText + ' · ' + AItem.ParentName;
   end;
   PreviewLine(mText, FColors.Text, AArea, ATop);
-  Inc(ATop, S(6));
+  Inc(ATop, S(cPreviewSectionGap));
 end;
 
 /// <summary>Gesetzte Eigenschaften und belegte Ereignisse.</summary>
@@ -964,7 +1027,7 @@ begin
     begin
       PreviewLine(mText, FColors.Text, AArea, ATop);
     end;
-    Inc(ATop, S(6));
+    Inc(ATop, S(cPreviewSectionGap));
   end;
   PreviewHead(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchEvents), AArea, ATop);
   Canvas.Font.Assign(FSmallFont);
@@ -1049,7 +1112,8 @@ begin
   for mAction := Low(TAtlasComponentSearchAction) to High(TAtlasComponentSearchAction) do
   begin
     mText := ActionCaption(mAction);
-    mButton := Rect(mX, mBar.Top + S(6), mX + Canvas.TextWidth(mText) + S(18), mBar.Bottom - S(6));
+    mButton := Rect(mX, mBar.Top + S(cButtonInset), mX + Canvas.TextWidth(mText) + S(cButtonPadding),
+      mBar.Bottom - S(cButtonInset));
     if mButton.Right > mBar.Right - S(10) then
     begin
       Break;
@@ -1068,12 +1132,12 @@ begin
     begin
       Canvas.Font.Color := C(FColors.Text);
     end;
-    Canvas.RoundRect(mButton.Left, mButton.Top, mButton.Right, mButton.Bottom, S(6), S(6));
+    Canvas.RoundRect(mButton.Left, mButton.Top, mButton.Right, mButton.Bottom, S(cButtonRadius), S(cButtonRadius));
     Canvas.Brush.Style := bsClear;
     DrawText(Canvas.Handle, PChar(mText), -1, mButton, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
     Canvas.Brush.Style := bsSolid;
     AddArea(THit.Action, mButton, Ord(mAction));
-    mX := mButton.Right + S(6);
+    mX := mButton.Right + S(cButtonGap);
   end;
 end;
 
@@ -1100,27 +1164,27 @@ begin
   begin
     mText := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchKeys);
   end;
-  mPart := Rect(mBar.Left + S(10), mBar.Top, mPart.Left - S(16), mBar.Bottom);
+  mPart := Rect(mBar.Left + S(10), mBar.Top, mPart.Left - S(cFooterGap), mBar.Bottom);
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
 end;
 
 function TAtlasComponentSearchWindow.TPainter.Metrics: TMetrics;
 begin
-  Result.Header := S(44);
-  Result.Group := S(24);
-  Result.Footer := S(24);
+  Result.Header := S(cHeaderHeight);
+  Result.Group := S(cGroupHeight);
+  Result.Footer := S(cFooterHeight);
   if FWindow.FOptions.Compact then
   begin
     Result.Chips := 0;
-    Result.Entry := S(26);
+    Result.Entry := S(cCompactEntryHeight);
     Result.Actions := 0;
   end
   else
   begin
-    Result.Chips := S(32);
-    Result.Entry := S(40);
-    Result.Actions := S(34);
+    Result.Chips := S(cChipsHeight);
+    Result.Entry := S(cEntryHeight);
+    Result.Actions := S(cActionsHeight);
   end;
 end;
 
@@ -1135,7 +1199,7 @@ begin
   FPreviewRect := TRect.Empty;
   if FWindow.FState.PreviewVisible then
   begin
-    FPreviewRect := Rect(mBody.Right - Min(S(320), mBody.Width div 2), mBody.Top, mBody.Right, mBody.Bottom);
+    FPreviewRect := Rect(mBody.Right - Min(S(cPreviewWidth), mBody.Width div 2), mBody.Top, mBody.Right, mBody.Bottom);
     mBody.Right := FPreviewRect.Left;
   end;
   FListRect := mBody;
@@ -1367,7 +1431,7 @@ end;
 
 function TAtlasComponentSearchWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FState.ScrollBy(-Sign(WheelDelta) * 3 * FPainter.Metrics.Entry, FPainter.ListRect.Height);
+  FState.ScrollBy(-Sign(WheelDelta) * cWheelRows * FPainter.Metrics.Entry, FPainter.ListRect.Height);
   Invalidate;
   Result := True;
 end;
@@ -1462,7 +1526,7 @@ begin
     Exit;
   end;
   mPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
-  Message.Result := EdgeHit(mPoint, ClientRect, ScaleValue(6));
+  Message.Result := EdgeHit(mPoint, ClientRect, ScaleValue(cResizeEdge));
   if Message.Result <> HTNOWHERE then
   begin
     Exit;
@@ -1470,7 +1534,7 @@ begin
   mHeader := FPainter.Metrics.Header;
   // Freie Stellen im Kopf verschieben das Fenster.
   if (mPoint.Y < mHeader) and not FPainter.HitAt(mPoint.X, mPoint.Y, mArea) and
-    ((mPoint.Y < ScaleValue(7)) or (mPoint.Y > mHeader - ScaleValue(7))) then
+    ((mPoint.Y < ScaleValue(cInputInset)) or (mPoint.Y > mHeader - ScaleValue(cInputInset))) then
   begin
     Message.Result := HTCAPTION;
   end
@@ -1496,9 +1560,9 @@ begin
   mMetrics := FPainter.Metrics;
   if FOptions.Compact then
   begin
-    mWidth := Min(ScaleValue(560), AArea.Width - ScaleValue(40));
-    mHeight := mMetrics.Header + cCompactRows * mMetrics.Entry + mMetrics.Footer + ScaleValue(4);
-    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + ScaleValue(80), mWidth, mHeight);
+    mWidth := Min(ScaleValue(cCompactWidth), AArea.Width - ScaleValue(cScreenMargin));
+    mHeight := mMetrics.Header + cCompactRows * mMetrics.Entry + mMetrics.Footer + ScaleValue(cCompactExtra);
+    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + ScaleValue(cCompactTop), mWidth, mHeight);
   end
   else if not FOptions.Bounds.IsEmpty and (Screen.MonitorFromRect(FOptions.Bounds, mdNull) <> nil) then
   begin
@@ -1506,10 +1570,10 @@ begin
   end
   else
   begin
-    mWidth := Min(ScaleValue(900), AArea.Width - ScaleValue(40));
-    mHeight := Min(ScaleValue(580), AArea.Height - ScaleValue(40));
+    mWidth := Min(ScaleValue(cDefaultWidth), AArea.Width - ScaleValue(cScreenMargin));
+    mHeight := Min(ScaleValue(cDefaultHeight), AArea.Height - ScaleValue(cScreenMargin));
     SetBounds(AArea.Left + (AArea.Width - mWidth) div 2,
-      AArea.Top + Max(ScaleValue(20), (AArea.Height - mHeight) div 3), mWidth, mHeight);
+      AArea.Top + Max(ScaleValue(cDefaultTop), (AArea.Height - mHeight) div cTopShare), mWidth, mHeight);
   end;
   Show;
   SetFocus;

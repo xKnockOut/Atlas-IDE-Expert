@@ -83,7 +83,7 @@ begin
     Canvas.Pen.Style := psDot;
     Canvas.Brush.Style := bsClear;
     Canvas.Rectangle(mOutline.Bounds);
-    Canvas.TextOut(mOutline.Bounds.Left + S(3), mOutline.Bounds.Top + S(1), mOutline.Name);
+    Canvas.TextOut(mOutline.Bounds.Left + ScalePx(cTextInset), mOutline.Bounds.Top + ScalePx(1), mOutline.Name);
   end;
   Canvas.Pen.Style := psSolid;
   Canvas.Brush.Style := bsSolid;

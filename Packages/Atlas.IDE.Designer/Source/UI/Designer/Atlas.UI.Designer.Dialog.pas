@@ -29,6 +29,8 @@ type
     function AddFlowRow: TFlowPanel;
     /// <summary>Beschriftung ACaption in AParent, auf Höhe des Texts eines Eingabefelds daneben.</summary>
     function AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
+    /// <summary>Breite eines Kontroll- oder Optionsfelds mit ACaption: Kästchen und Text.</summary>
+    function CheckWidth(const ACaption: string): Integer;
     /// <summary>Knopf ACaption in AParent mit Ergebnis AResult, ausgerichtet nach AAlign mit Rand.</summary>
     function AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult; AAlign: TAlign): TButton;
   public
@@ -43,6 +45,8 @@ implementation
 const
   /// <summary>Abstand der Beschriftung nach oben, damit sie auf der Textzeile eines Eingabefelds steht.</summary>
   cLabelTop = 3;
+  /// <summary>Kästchen eines Kontroll- oder Optionsfelds samt Abstand zum Text, logische Pixel.</summary>
+  cCheckBox = 24;
 
 { TAtlasDesignerDialog }
 
@@ -85,6 +89,11 @@ begin
   Result.Caption := ACaption;
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(0, ScaleValue(cLabelTop), Gap div 2, 0);
+end;
+
+function TAtlasDesignerDialog.CheckWidth(const ACaption: string): Integer;
+begin
+  Result := Canvas.TextWidth(ACaption) + ScaleValue(cCheckBox);
 end;
 
 function TAtlasDesignerDialog.AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult;

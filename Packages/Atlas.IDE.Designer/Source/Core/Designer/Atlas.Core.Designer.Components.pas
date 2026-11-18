@@ -514,12 +514,15 @@ begin
 end;
 
 class function TAtlasDesignerAlign.Applicable(AKind: TAtlasAlignKind; ACount: Integer): Boolean;
+const
+  /// <summary>Verteilen braucht zwei äußere Steuerelemente, die bleiben, und eins dazwischen.</summary>
+  cMinForSpacing = 3;
 begin
   case AKind of
     TAtlasAlignKind.CenterInParentH, TAtlasAlignKind.CenterInParentV:
       Result := ACount >= 1;
     TAtlasAlignKind.SpaceH, TAtlasAlignKind.SpaceV:
-      Result := ACount >= 3;
+      Result := ACount >= cMinForSpacing;
   else
     Result := ACount >= 2;
   end;

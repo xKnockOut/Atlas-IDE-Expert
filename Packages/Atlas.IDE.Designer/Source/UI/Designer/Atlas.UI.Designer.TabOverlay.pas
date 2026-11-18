@@ -116,6 +116,16 @@ implementation
 uses
   System.Math;
 
+const
+  // Logische Pixel.
+  /// <summary>Marke: Höhe (auch Mindestbreite), Innenabstand, Breite je Zeichen.</summary>
+  cBadgeHeight = 16;
+  cBadgePadding = 4;
+  cBadgeCharWidth = 6;
+  /// <summary>Hinweis zur Marke: größte Breite und Abstand unter dem Mauszeiger.</summary>
+  cHintWidth = 400;
+  cHintOffset = 20;
+
 { TAtlasTabBadge }
 
 class function TAtlasTabBadge.Create(const AName, AText: string; AStyle: TAtlasTabBadgeStyle;
@@ -239,7 +249,7 @@ begin
   begin
     // Etwas nach innen, damit verschachtelte Rahmen nicht auf einer Linie liegen.
     mRect := mFrame.Bounds;
-    mRect.Inflate(-S(2), -S(2));
+    mRect.Inflate(-ScalePx(2), -ScalePx(2));
     Canvas.Pen.Color := GroupColor(mFrame.Group);
     Canvas.Rectangle(mRect);
   end;
@@ -331,8 +341,10 @@ var
 begin
   mAnchor := FBadges[AIndex].Anchor;
   // Breite nach Zeichen statt Textmaß: braucht kein Fenster. Rund bis zwei Zeichen, länger als Pille.
-  mWidth := Max(S(16), S(4) + S(6) * Length(FBadges[AIndex].Text));
-  Result := Rect(mAnchor.X - S(2) - mWidth, mAnchor.Y + S(2), mAnchor.X - S(2), mAnchor.Y + S(18));
+  mWidth := Max(ScalePx(cBadgeHeight),
+    ScalePx(cBadgePadding) + ScalePx(cBadgeCharWidth) * Length(FBadges[AIndex].Text));
+  Result := Rect(mAnchor.X - ScalePx(2) - mWidth, mAnchor.Y + ScalePx(2), mAnchor.X - ScalePx(2),
+    mAnchor.Y + ScalePx(2 + cBadgeHeight));
 end;
 
 function TAtlasTabOrderOverlay.BadgeAt(AX, AY: Integer): Integer;
@@ -426,8 +438,8 @@ begin
   begin
     FHintWindow := THintWindow.Create(nil);
   end;
-  mRect := FHintWindow.CalcHintRect(S(400), FBadges[mIndex].Hint, nil);
-  mRect.Offset(ACursor.X, ACursor.Y + S(20));
+  mRect := FHintWindow.CalcHintRect(ScalePx(cHintWidth), FBadges[mIndex].Hint, nil);
+  mRect.Offset(ACursor.X, ACursor.Y + ScalePx(cHintOffset));
   FHintWindow.ActivateHint(mRect, FBadges[mIndex].Hint);
 end;
 

@@ -32,7 +32,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Core.Designer.Names;
+  Atlas.Text.Lines;
 
 const
   cCrLf = #13#10;
@@ -144,7 +144,7 @@ var
   mText: string;
 begin
   mText := ALine.TrimLeft;
-  Result := (TAtlasDesignerNames.IndentOf(ALine) = 0) and (StartsText('procedure ', mText) or StartsText('function ', mText) or
+  Result := (TTextLines.IndentOf(ALine) = '') and (StartsText('procedure ', mText) or StartsText('function ', mText) or
     StartsText('constructor ', mText) or StartsText('destructor ', mText) or StartsText('class ', mText) or
     SameText(mText.Trim, 'initialization') or SameText(mText.Trim, 'finalization') or SameText(mText.Trim, 'end.') or
     StartsText('{ T', mText));

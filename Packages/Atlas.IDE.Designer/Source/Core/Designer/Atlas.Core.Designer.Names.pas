@@ -3,8 +3,8 @@
 // Namen und Komponentenlisten der Designer-Werkzeuge, ohne VCL und Windows:
 // Suche in Namenslisten (ohne Groß-/Kleinschreibung, wie Delphi Bezeichner
 // vergleicht), Suche nach Namen in Listen beliebiger Einträge, Namen einer
-// Komponentenliste, Bezeichner prüfen und die Einrückung einer Zeile im
-// Formulartext. Die Werkzeuge brauchen das alle; jedes hatte seine eigene
+// Komponentenliste, Bezeichner und Ereignis-Zuweisungen im Formulartext
+// prüfen. Die Werkzeuge brauchen das alle; jedes hatte seine eigene
 // Kopie.
 
 interface
@@ -31,26 +31,25 @@ type
     /// <summary>Gültiger Delphi-Bezeichner aus ASCII-Buchstaben, Ziffern und _, nicht leer, ohne Ziffer
     /// vorn?</summary>
     class function IsIdentifier(const AText: string): Boolean; static;
-    /// <summary>Zahl der Leerzeichen am Anfang von ALine.</summary>
-    class function IndentOf(const ALine: string): Integer; static;
+    /// <summary>Weist die Zeile „APath = AValue“ des Formulartexts einem Ereignis einen Handler zu (OnClick =
+    /// btnOkClick)?</summary>
+    class function IsEventAssignment(const APath, AValue: string): Boolean; static;
   end;
 
 implementation
 
+uses
+  System.StrUtils;
+
+const
+  /// <summary>Beginn der Namen von Ereignis-Eigenschaften (OnClick).</summary>
+  cEventPrefix = 'On';
+
 { TAtlasDesignerNames }
 
 class function TAtlasDesignerNames.IndexOf(const ANames: TArray<string>; const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(ANames) do
-  begin
-    if SameText(ANames[mIndex], AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := IndexText(AName, ANames);
 end;
 
 class function TAtlasDesignerNames.Contains(const ANames: TArray<string>; const AName: string): Boolean;
@@ -115,13 +114,10 @@ begin
   end;
 end;
 
-class function TAtlasDesignerNames.IndentOf(const ALine: string): Integer;
+class function TAtlasDesignerNames.IsEventAssignment(const APath, AValue: string): Boolean;
 begin
-  Result := 0;
-  while (Result < Length(ALine)) and (ALine[Result + 1] = ' ') do
-  begin
-    Inc(Result);
-  end;
+  Result := (Length(APath) > Length(cEventPrefix)) and APath.StartsWith(cEventPrefix) and
+    CharInSet(APath[Length(cEventPrefix) + 1], ['A'..'Z']) and IsIdentifier(APath) and IsIdentifier(AValue);
 end;
 
 end.

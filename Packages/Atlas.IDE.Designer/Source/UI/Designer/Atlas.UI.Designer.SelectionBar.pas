@@ -86,6 +86,12 @@ const
   cTextPadding = 8;
   cSeparatorWidth = 9;
   cSwatchHeight = 3;
+  /// <summary>Farbstreifen eines Farbknopfs: Abstand zum Rand des Knopfs.</summary>
+  cSwatchInset = 4;
+  /// <summary>Trennstrich zwischen Knopfgruppen: Abstand oben und unten.</summary>
+  cSeparatorInset = 3;
+  /// <summary>Schriftgröße der Leiste in Punkt.</summary>
+  cFontSize = 9;
 
 { TAtlasBarButton }
 
@@ -108,7 +114,7 @@ begin
   FHot := -1;
   FPressed := -1;
   ShowHint := True;
-  Font.Size := 9;
+  Font.Size := cFontSize;
 end;
 
 procedure TAtlasSelectionBarWindow.Paint;
@@ -124,10 +130,10 @@ begin
   begin
     if FButtons[mIndex].Separated and (mIndex > 0) then
     begin
-      mX := FRects[mIndex].Left - S(cSeparatorWidth) div 2 - 1;
+      mX := FRects[mIndex].Left - ScalePx(cSeparatorWidth) div 2 - 1;
       Canvas.Pen.Color := TColor(Colors.Line);
-      Canvas.MoveTo(mX, FRects[mIndex].Top + S(3));
-      Canvas.LineTo(mX, FRects[mIndex].Bottom - S(3));
+      Canvas.MoveTo(mX, FRects[mIndex].Top + ScalePx(cSeparatorInset));
+      Canvas.LineTo(mX, FRects[mIndex].Bottom - ScalePx(cSeparatorInset));
     end;
     PaintButton(mIndex);
   end;
@@ -188,21 +194,21 @@ var
 begin
   Canvas.Font.Assign(Font);
   SetLength(FRects, Length(FButtons));
-  mX := S(cPadding);
+  mX := ScalePx(cPadding);
   for mIndex := 0 to High(FButtons) do
   begin
     if FButtons[mIndex].Separated and (mIndex > 0) then
     begin
-      Inc(mX, S(cSeparatorWidth));
+      Inc(mX, ScalePx(cSeparatorWidth));
     end;
     Canvas.Font.Style := FButtons[mIndex].Style;
-    mWidth := Canvas.TextWidth(FButtons[mIndex].Text) + S(cTextPadding);
-    if mWidth < S(cMinButtonWidth) then
+    mWidth := Canvas.TextWidth(FButtons[mIndex].Text) + ScalePx(cTextPadding);
+    if mWidth < ScalePx(cMinButtonWidth) then
     begin
-      mWidth := S(cMinButtonWidth);
+      mWidth := ScalePx(cMinButtonWidth);
     end;
-    FRects[mIndex] := Rect(mX, S(cPadding), mX + mWidth, S(cPadding) + S(cButtonHeight));
-    Inc(mX, mWidth + S(1));
+    FRects[mIndex] := Rect(mX, ScalePx(cPadding), mX + mWidth, ScalePx(cPadding) + ScalePx(cButtonHeight));
+    Inc(mX, mWidth + ScalePx(1));
   end;
   Canvas.Font.Style := [];
 end;
@@ -241,9 +247,10 @@ begin
   if mButton.Swatch <> clNone then
   begin
     Canvas.Brush.Color := mButton.Swatch;
-    Canvas.FillRect(Rect(mRect.Left + S(4), mRect.Bottom - S(cSwatchHeight) - S(2), mRect.Right - S(4),
-      mRect.Bottom - S(2)));
-    mText.Bottom := mText.Bottom - S(cSwatchHeight);
+    Canvas.FillRect(Rect(mRect.Left + ScalePx(cSwatchInset), mRect.Bottom - ScalePx(cSwatchHeight) - ScalePx(2),
+      mRect.Right - ScalePx(cSwatchInset),
+      mRect.Bottom - ScalePx(2)));
+    mText.Bottom := mText.Bottom - ScalePx(cSwatchHeight);
   end;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := mButton.Style;
@@ -300,12 +307,12 @@ end;
 
 function TAtlasSelectionBarWindow.BarSize: TSize;
 begin
-  Result.cx := S(cPadding) * 2;
+  Result.cx := ScalePx(cPadding) * 2;
   if Length(FRects) > 0 then
   begin
-    Result.cx := FRects[High(FRects)].Right + S(cPadding);
+    Result.cx := FRects[High(FRects)].Right + ScalePx(cPadding);
   end;
-  Result.cy := S(cButtonHeight) + S(cPadding) * 2;
+  Result.cy := ScalePx(cButtonHeight) + ScalePx(cPadding) * 2;
 end;
 
 function TAtlasSelectionBarWindow.ButtonAt(AX, AY: Integer): Integer;

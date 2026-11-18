@@ -59,7 +59,6 @@ type
   /// <summary>Namen, Reihenfolgen und Texte rund um Einpacken und Auflösen.</summary>
   TAtlasWrapOrder = class
   public
-    /// <summary>Kommt AName (ohne Groß-/Kleinschreibung) in ANames vor?</summary>
     /// <summary>AName, sonst AName2, AName3, … bis AExists den Namen nicht kennt.</summary>
     class function UniqueName(const AName: string; const AExists: TFunc<string, Boolean>): string; static;
     /// <summary>Vorschlag für die Seite eines neuen PageControls: Präfix der Seite und, was im Namen des

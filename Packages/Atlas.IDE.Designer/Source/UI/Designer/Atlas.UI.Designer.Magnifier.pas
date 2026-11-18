@@ -100,6 +100,9 @@ const
   cDefaultHeight = 180;
   cBarHeight = 18;
   cMargin = 24;
+  /// <summary>Kleinste Innenfläche des Fensters.</summary>
+  cMinWidth = 120;
+  cMinHeight = 100;
 
 { TAtlasMagnifierLine }
 
@@ -122,10 +125,10 @@ begin
   FZoom := TAtlasMagnifier.cDefaultZoom;
   BorderStyle := bsSizeToolWin;
   Position := poDesigned;
-  ClientWidth := S(cDefaultWidth);
-  ClientHeight := S(cDefaultHeight) + 2 * BarHeight;
-  Constraints.MinWidth := S(120);
-  Constraints.MinHeight := S(100);
+  ClientWidth := ScalePx(cDefaultWidth);
+  ClientHeight := ScalePx(cDefaultHeight) + 2 * BarHeight;
+  Constraints.MinWidth := ScalePx(cMinWidth);
+  Constraints.MinHeight := ScalePx(cMinHeight);
   OnClose := FormClose;
 end;
 
@@ -150,9 +153,9 @@ begin
   SelectClipRgn(Canvas.Handle, 0);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := TColor(Colors.Text);
-  mBar := Rect(S(4), 0, ClientWidth - S(4), BarHeight);
+  mBar := Rect(ScalePx(cTextInset), 0, ClientWidth - ScalePx(cTextInset), BarHeight);
   DrawText(Canvas.Handle, PChar(FHeader), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
-  mBar := Rect(S(4), ClientHeight - BarHeight, ClientWidth - S(4), ClientHeight);
+  mBar := Rect(ScalePx(cTextInset), ClientHeight - BarHeight, ClientWidth - ScalePx(cTextInset), ClientHeight);
   DrawText(Canvas.Handle, PChar(FFooter), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
 end;
@@ -168,7 +171,7 @@ end;
 
 function TAtlasMagnifierWindow.BarHeight: Integer;
 begin
-  Result := S(cBarHeight);
+  Result := ScalePx(cBarHeight);
 end;
 
 procedure TAtlasMagnifierWindow.PaintView(const AView: TRect);
@@ -314,7 +317,7 @@ begin
   if Result then
   begin
     mColor := FBitmap.Canvas.Pixels[APoint.X - FSource.Left, APoint.Y - FSource.Top];
-    ARgb := (Cardinal(GetRValue(mColor)) shl 16) or (Cardinal(GetGValue(mColor)) shl 8) or GetBValue(mColor);
+    ARgb := TAtlasMagnifier.RgbOf(GetRValue(mColor), GetGValue(mColor), GetBValue(mColor));
   end;
 end;
 
@@ -344,7 +347,7 @@ begin
   if not FPlaced and not AArea.IsEmpty then
   begin
     // Beim ersten Zeigen unten rechts über dem Designer; danach bleibt die Lage des Benutzers.
-    SetBounds(AArea.Right - Width - S(cMargin), AArea.Bottom - Height - S(cMargin), Width, Height);
+    SetBounds(AArea.Right - Width - ScalePx(cMargin), AArea.Bottom - Height - ScalePx(cMargin), Width, Height);
     FPlaced := True;
   end;
   SetWindowPos(Handle, HWND_TOP, Left, Top, Width, Height, SWP_NOACTIVATE or SWP_SHOWWINDOW);

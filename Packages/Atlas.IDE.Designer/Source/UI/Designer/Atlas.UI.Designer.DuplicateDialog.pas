@@ -85,10 +85,15 @@ uses
   Vcl.Graphics,
   Atlas.UI.Designer.Strings,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.Dialog;
 
 const
   cNumberWidth = 48;
+  /// <summary>Breite der Auswahl der Richtung, logische Pixel.</summary>
+  cDirectionWidth = 110;
+  /// <summary>Größter Abstand zwischen den Kopien in Pixeln.</summary>
+  cMaxGap = 1000;
 
 { TAtlasDuplicateDialog }
 
@@ -104,7 +109,7 @@ begin
   FDirection := TComboBox.Create(Self);
   FDirection.Parent := mRow;
   FDirection.Style := csDropDownList;
-  FDirection.Width := ScaleValue(110);
+  FDirection.Width := ScaleValue(cDirectionWidth);
   FDirection.AlignWithMargins := True;
   FDirection.Margins.SetBounds(0, 0, Gap * 2, 0);
   FDirection.Items.Add(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateDown));
@@ -156,7 +161,7 @@ begin
   Result := TCheckBox.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
+  Result.Width := CheckWidth(ACaption);
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(0, 0, Gap * 2, 0);
   Result.OnClick := Changed;
@@ -171,7 +176,7 @@ var
     Result := TButton.Create(Self);
     Result.Parent := mButtons;
     Result.Caption := ACaption;
-    Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
+    Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(TAtlasButtonRow.cButtonPadding);
     Result.AlignWithMargins := True;
     Result.Margins.SetBounds(0, 0, Gap, 0);
   end;
@@ -227,7 +232,7 @@ begin
   begin
     Result.Direction := TAtlasDuplicateDirection.Right;
   end;
-  Result.Gap := EnsureRange(StrToIntDef(FGap.Text, 0), 0, 1000);
+  Result.Gap := EnsureRange(StrToIntDef(FGap.Text, 0), 0, cMaxGap);
   Result.Count := EnsureRange(StrToIntDef(FCount.Text, 1), 1, cMaxCount);
   Result.List := Trim(FList.Text);
   Result.ShareEvents := FShare.Checked;

@@ -25,7 +25,7 @@ type
     [Test]
     procedure IdentifierRules;
     [Test]
-    procedure IndentCountsLeadingSpaces;
+    procedure EventAssignmentNeedsOnAndIdentifiers;
   end;
 
 implementation
@@ -118,12 +118,14 @@ begin
   Assert.IsFalse(TAtlasDesignerNames.IsIdentifier('Größe'), 'Umlaut');
 end;
 
-procedure TAtlasDesignerNamesTests.IndentCountsLeadingSpaces;
+procedure TAtlasDesignerNamesTests.EventAssignmentNeedsOnAndIdentifiers;
 begin
-  Assert.AreEqual(4, TAtlasDesignerNames.IndentOf('    edtName: TEdit;'));
-  Assert.AreEqual(0, TAtlasDesignerNames.IndentOf('object Form1: TForm1'));
-  Assert.AreEqual(0, TAtlasDesignerNames.IndentOf(''));
-  Assert.AreEqual(3, TAtlasDesignerNames.IndentOf('   '), 'nur Leerzeichen');
+  Assert.IsTrue(TAtlasDesignerNames.IsEventAssignment('OnClick', 'btnOkClick'));
+  Assert.IsFalse(TAtlasDesignerNames.IsEventAssignment('On', 'btnOkClick'), 'nur On');
+  Assert.IsFalse(TAtlasDesignerNames.IsEventAssignment('Online', 'True'), 'klein nach On');
+  Assert.IsFalse(TAtlasDesignerNames.IsEventAssignment('Caption', 'Ok'), 'keine Ereignis-Eigenschaft');
+  Assert.IsFalse(TAtlasDesignerNames.IsEventAssignment('OnClick', 'Frame1.Click'), 'Wert kein Bezeichner');
+  Assert.IsFalse(TAtlasDesignerNames.IsEventAssignment('OnClick.X', 'btnOkClick'), 'Pfad mit Punkt');
 end;
 
 initialization

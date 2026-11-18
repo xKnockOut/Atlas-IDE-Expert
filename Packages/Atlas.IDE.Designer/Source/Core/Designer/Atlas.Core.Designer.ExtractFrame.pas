@@ -82,7 +82,8 @@ uses
   System.StrUtils,
   Atlas.Core.Designer.NameSuggest,
   Atlas.Core.Designer.FormUnit,
-  Atlas.Core.Designer.Names;
+  Atlas.Core.Designer.Names,
+  Atlas.Text.Lines;
 
 type
   TNode = record
@@ -163,7 +164,7 @@ begin
   mNode := Default(TNode);
   mNode.Name := AName;
   mNode.ClassName := AClassName;
-  mNode.Indent := TAtlasDesignerNames.IndentOf(ADfm.Lines[ALine]);
+  mNode.Indent := Length(TTextLines.IndentOf(ADfm.Lines[ALine]));
   mNode.First := ALine;
   mNode.Last := -1;
   mNode.PropsLast := -1;
@@ -186,7 +187,7 @@ begin
     Exit;
   end;
   mTop := AStack[High(AStack)];
-  if TAtlasDesignerNames.IndentOf(ADfm.Lines[ALine]) <> ADfm.Nodes[mTop].Indent then
+  if Length(TTextLines.IndentOf(ADfm.Lines[ALine])) <> ADfm.Nodes[mTop].Indent then
   begin
     Exit;
   end;
@@ -254,7 +255,7 @@ begin
   for mIndex := Nodes[ANode].First + 1 to Nodes[ANode].PropsLast do
   begin
     mLine := Lines[mIndex];
-    if (TAtlasDesignerNames.IndentOf(mLine) = Nodes[ANode].Indent + cFrameIndent) and
+    if (Length(TTextLines.IndentOf(mLine)) = Nodes[ANode].Indent + cFrameIndent) and
       StartsText(AProp + cAssign, mLine.Trim) then
     begin
       AValue := Copy(mLine.Trim, Length(AProp + cAssign) + 1, MaxInt);
@@ -577,7 +578,7 @@ begin
   Result := StartsText(AProp + ' = ', mText);
   if Result then
   begin
-    AResult := Format(cPropLine, [StringOfChar(' ', TAtlasDesignerNames.IndentOf(ALine)), AProp,
+    AResult := Format(cPropLine, [StringOfChar(' ', Length(TTextLines.IndentOf(ALine))), AProp,
       IntToStr(StrToIntDef(Copy(mText, Length(AProp + cAssign) + 1, MaxInt), 0) - ADelta)]);
   end;
 end;
@@ -612,14 +613,14 @@ begin
         Continue;
       end;
       mOwnProps := (mIndex <= ADfm.Nodes[mRoot].PropsLast) and
-        (TAtlasDesignerNames.IndentOf(mLine) = ADfm.Nodes[mRoot].Indent + cFrameIndent);
+        (Length(TTextLines.IndentOf(mLine)) = ADfm.Nodes[mRoot].Indent + cFrameIndent);
       if mOwnProps and (ShiftedLine(mLine, 'Left', mDx, mShifted) or ShiftedLine(mLine, 'Top', mDy, mShifted) or
         ShiftedLine(mLine, 'ExplicitLeft', mDx, mShifted) or ShiftedLine(mLine, 'ExplicitTop', mDy, mShifted)) then
       begin
         mLine := mShifted;
       end;
       mLines := mLines + [Reindented(mLine,
-        cFrameIndent + TAtlasDesignerNames.IndentOf(mLine) - ADfm.Nodes[mRoot].Indent)];
+        cFrameIndent + Length(TTextLines.IndentOf(mLine)) - ADfm.Nodes[mRoot].Indent)];
     end;
   end;
   mLines := mLines + ['end', ''];
@@ -637,7 +638,7 @@ begin
   mOwn := nil;
   for mIndex := ADfm.Nodes[ANode].First + 1 to ADfm.Nodes[ANode].PropsLast do
   begin
-    if (TAtlasDesignerNames.IndentOf(ADfm.Lines[mIndex]) = ADfm.Nodes[ANode].Indent + cFrameIndent) and
+    if (Length(TTextLines.IndentOf(ADfm.Lines[mIndex])) = ADfm.Nodes[ANode].Indent + cFrameIndent) and
       TAtlasDesignerNames.Contains(AKept, EventHandler(ADfm.Lines[mIndex])) then
     begin
       mOwn := mOwn + [StringOfChar(' ', AIndent + cFrameIndent) + ADfm.Lines[mIndex].Trim];

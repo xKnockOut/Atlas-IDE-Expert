@@ -120,7 +120,7 @@ begin
   end
   else
   begin
-    Result := -Integer((-2 * mProduct + ADesignPpi) div (2 * ADesignPpi));
+    Result := -Integer((2 * -mProduct + ADesignPpi) div (2 * ADesignPpi));
   end;
 end;
 

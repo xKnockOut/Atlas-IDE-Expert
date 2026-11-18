@@ -100,6 +100,7 @@ contains
   Atlas.Core.Designer.UndoApply in 'Source\Core\Designer\Atlas.Core.Designer.UndoApply.pas',
   Atlas.Core.Designer.UndoFlow in 'Source\Core\Designer\Atlas.Core.Designer.UndoFlow.pas',
   Atlas.UI.Designer.Flash in 'Source\UI\Designer\Atlas.UI.Designer.Flash.pas',
+  Atlas.UI.Designer.Overlay in 'Source\UI\Designer\Atlas.UI.Designer.Overlay.pas',
   Atlas.UI.Designer.Outlines in 'Source\UI\Designer\Atlas.UI.Designer.Outlines.pas',
   Atlas.UI.Designer.DuplicateDialog in 'Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas',
   Atlas.UI.Designer.SpaceDialog in 'Source\UI\Designer\Atlas.UI.Designer.SpaceDialog.pas',

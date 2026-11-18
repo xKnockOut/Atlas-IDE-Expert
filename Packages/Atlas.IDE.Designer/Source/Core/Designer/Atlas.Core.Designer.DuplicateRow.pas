@@ -411,6 +411,9 @@ end;
 
 /// <summary>Name ohne Zahl am Ende und die Zahl (-1 = keine).</summary>
 function SplitNumber(const AName: string; out ANumber: Integer): string;
+const
+  /// <summary>Höchstens so viele Ziffern passen sicher in ein Integer.</summary>
+  cMaxDigits = 9;
 var
   mIndex: Integer;
 begin
@@ -420,7 +423,7 @@ begin
     Dec(mIndex);
   end;
   Result := Copy(AName, 1, mIndex);
-  ANumber := StrToIntDef(Copy(AName, mIndex + 1, 9), -1);
+  ANumber := StrToIntDef(Copy(AName, mIndex + 1, cMaxDigits), -1);
   if mIndex = Length(AName) then
   begin
     ANumber := -1;

@@ -105,6 +105,11 @@ type
 
 implementation
 
+const
+  /// <summary>Innenabstand der Beschriftung (Maß beim Ziehen) waagrecht und senkrecht, logische Pixel.</summary>
+  cLabelPaddingX = 5;
+  cLabelPaddingY = 2;
+
 { TAtlasHandle }
 
 class function TAtlasHandle.Create(const ABounds: TRect; AKind: TAtlasHandleKind; const AText: string;
@@ -258,7 +263,7 @@ begin
     begin
       Canvas.Pen.Color := TColor(Colors.Error);
       Canvas.Pen.Style := psSolid;
-      Canvas.Pen.Width := S(2);
+      Canvas.Pen.Width := ScalePx(2);
     end
     else
     begin
@@ -309,7 +314,8 @@ begin
     Exit;
   end;
   mSize := Canvas.TextExtent(FLabel);
-  mRect := Rect(FLabelAt.X, FLabelAt.Y, FLabelAt.X + mSize.cx + S(10), FLabelAt.Y + mSize.cy + S(4));
+  mRect := Rect(FLabelAt.X, FLabelAt.Y, FLabelAt.X + mSize.cx + ScalePx(2 * cLabelPaddingX),
+    FLabelAt.Y + mSize.cy + ScalePx(2 * cLabelPaddingY));
   // Im Fenster halten.
   if mRect.Right > ClientWidth then
   begin

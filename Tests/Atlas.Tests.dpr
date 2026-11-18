@@ -2242,6 +2242,8 @@ uses
   Atlas.UI.Designer.EventFrame.Tests in 'IDE.Expert\Atlas.UI.Designer.EventFrame.Tests.pas',
   Atlas.UI.Designer.Search in '..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Search.pas',
   Atlas.UI.Designer.Search.Tests in 'IDE.Expert\Atlas.UI.Designer.Search.Tests.pas',
+  Atlas.UI.Designer.Overlay in '..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Overlay.pas',
+  Atlas.UI.Designer.Overlay.Tests in 'IDE.Expert\Atlas.UI.Designer.Overlay.Tests.pas',
   Atlas.UI.Designer.TabOverlay in '..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas',
   Atlas.UI.Designer.TabOverlay.Tests in 'IDE.Expert\Atlas.UI.Designer.TabOverlay.Tests.pas',
   Atlas.Common.Mcp.BuildTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas',

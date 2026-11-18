@@ -55,6 +55,11 @@ type
 
 implementation
 
+const
+  /// <summary>Länge der Endstriche quer zur Linie und Rundung der Marke, logische Pixel.</summary>
+  cTickLength = 4;
+  cBadgeRadius = 4;
+
 { TAtlasMeasureMark }
 
 class function TAtlasMeasureMark.Line(const AFrom, ATo: TPoint; const ACaption: string;
@@ -127,7 +132,7 @@ begin
   end;
   if AMark.FromPoint <> AMark.ToPoint then
   begin
-    mTick := S(4);
+    mTick := ScalePx(cTickLength);
     Canvas.Pen.Color := mColor;
     Canvas.Pen.Width := 1;
     Canvas.MoveTo(AMark.FromPoint.X, AMark.FromPoint.Y);
@@ -162,15 +167,16 @@ var
   mBox: TRect;
 begin
   mSize := Canvas.TextExtent(ACaption);
-  mBox := Rect(AAt.X - mSize.cx div 2 - S(3), AAt.Y - mSize.cy div 2 - S(1), AAt.X + (mSize.cx + 1) div 2 + S(3),
-    AAt.Y + (mSize.cy + 1) div 2 + S(1));
+  mBox := Rect(AAt.X - mSize.cx div 2 - ScalePx(cTextInset), AAt.Y - mSize.cy div 2 - ScalePx(1),
+    AAt.X + (mSize.cx + 1) div 2 + ScalePx(cTextInset),
+    AAt.Y + (mSize.cy + 1) div 2 + ScalePx(1));
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := AColor;
   Canvas.Pen.Color := AColor;
-  Canvas.RoundRect(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, S(4), S(4));
+  Canvas.RoundRect(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, ScalePx(cBadgeRadius), ScalePx(cBadgeRadius));
   Canvas.Font.Color := clWhite;
   Canvas.Brush.Style := bsClear;
-  Canvas.TextOut(mBox.Left + S(3), mBox.Top + S(1), ACaption);
+  Canvas.TextOut(mBox.Left + ScalePx(cTextInset), mBox.Top + ScalePx(1), ACaption);
 end;
 
 procedure TAtlasMeasureOverlay.ShowMarks(const AScreen: TRect; const AMarks: TArray<TAtlasMeasureMark>);

@@ -39,6 +39,10 @@ type
 
 implementation
 
+const
+  /// <summary>Breite des Rahmens außen um das Steuerelement, logische Pixel.</summary>
+  cFrameWidth = 3;
+
 { TAtlasDesignerFlash }
 
 constructor TAtlasDesignerFlash.CreateFlash(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
@@ -58,7 +62,7 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := cKeyColor;
   Canvas.FillRect(ClientRect);
-  mWidth := S(2);
+  mWidth := ScalePx(2);
   Canvas.Pen.Color := TColor(Colors.Accent);
   Canvas.Pen.Width := mWidth;
   Canvas.Brush.Style := bsClear;
@@ -87,7 +91,7 @@ begin
   end;
   // Der Rahmen liegt außen um das Steuerelement, damit er nichts verdeckt.
   mRect := AScreen;
-  mRect.Inflate(S(3), S(3));
+  mRect.Inflate(ScalePx(cFrameWidth), ScalePx(cFrameWidth));
   HandleNeeded;
   SetWindowPos(Handle, HWND_TOP, mRect.Left, mRect.Top, mRect.Width, mRect.Height, SWP_NOACTIVATE or SWP_SHOWWINDOW);
   Invalidate;

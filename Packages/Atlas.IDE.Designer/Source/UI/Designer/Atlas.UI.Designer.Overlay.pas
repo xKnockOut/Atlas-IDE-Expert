@@ -34,6 +34,8 @@ type
   protected const
     /// <summary>Schlüsselfarbe der durchsichtigen Flächen (Option KeyColor).</summary>
     cKeyColor = TColor($00FF00FF);
+    /// <summary>Abstand einer Beschriftung zum Rand ihres Rahmens, logische Pixel.</summary>
+    cTextInset = 3;
   private
     FColors: TAtlasColors;
     FOwnerWindow: HWND;
@@ -48,7 +50,7 @@ type
     constructor CreateOverlayWindow(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors;
       AOptions: TAtlasOverlayOptions);
     /// <summary>AValue (logische Pixel) in Pixeln des Bildschirms.</summary>
-    function S(AValue: Integer): Integer;
+    function ScalePx(AValue: Integer): Integer;
     /// <summary>Neue Farben übernehmen und neu zeichnen.</summary>
     procedure ApplyColors(const AColors: TAtlasColors);
   end;
@@ -56,7 +58,7 @@ type
 implementation
 
 const
-  /// <summary>Logische Auflösung, auf die sich S bezieht.</summary>
+  /// <summary>Logische Auflösung, auf die sich ScalePx bezieht.</summary>
   cBasePpi = 96;
   /// <summary>Schrift der Beschriftungen in den Überlagerungen (Namen, Maße, Marken).</summary>
   cFontName = 'Segoe UI'; // window-ok: Überlagerung zeichnet selbst, keine Dialogschrift
@@ -111,7 +113,7 @@ begin
   Message.Result := MA_NOACTIVATE;
 end;
 
-function TAtlasDesignerOverlay.S(AValue: Integer): Integer;
+function TAtlasDesignerOverlay.ScalePx(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, Screen.PixelsPerInch, cBasePpi);
 end;

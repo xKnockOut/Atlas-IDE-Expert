@@ -58,6 +58,8 @@ uses
 
 const
   cDefaultGrid = 8;
+  /// <summary>Vorschlag im Dialog: so viele Rasterschritte Platz.</summary>
+  cDefaultSteps = 3;
 
 type
   /// <summary>Ein Lauf: Formular, Achse, Wachsen erlaubt und gesammelte Hinweise.</summary>
@@ -267,7 +269,7 @@ begin
   mKept := TAtlasDesignerKept.Take(mEditor, mRun.Root);
   mKept.Add(mControls);
   mOptions.Axis := TAtlasSpaceAxis.Rows;
-  mOptions.Amount := cDefaultGrid * 3;
+  mOptions.Amount := cDefaultGrid * cDefaultSteps;
   mOptions.Snap := True;
   if not TAtlasSpaceDialog.Execute(ARemove, mOptions) or (mOptions.Amount = 0) then
   begin

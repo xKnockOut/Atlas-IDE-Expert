@@ -98,11 +98,11 @@ begin
   end;
 end;
 
-function IsEvent(const APath, AValue: string): Boolean;
-begin
-  Result := (Length(APath) > 2) and APath.StartsWith('On') and CharInSet(APath[3], ['A'..'Z']) and
-    TAtlasDesignerNames.IsIdentifier(APath) and TAtlasDesignerNames.IsIdentifier(AValue);
-end;
+const
+  /// <summary>Anfänge der Zeilen, die ein Objekt im Formulartext öffnen.</summary>
+  cObject = 'object ';
+  cInherited = 'inherited ';
+  cInline = 'inline ';
 
 /// <summary>„object Name: TTyp“ (auch inherited, inline, mit [n] dahinter); False sonst.</summary>
 function ObjectLine(const ALine: string; out AName, ATypeName: string): Boolean;
@@ -112,17 +112,17 @@ var
 begin
   AName := '';
   ATypeName := '';
-  if ALine.StartsWith('object ') then
+  if ALine.StartsWith(cObject) then
   begin
-    mRest := Copy(ALine, 8, MaxInt);
+    mRest := Copy(ALine, Length(cObject) + 1, MaxInt);
   end
-  else if ALine.StartsWith('inherited ') then
+  else if ALine.StartsWith(cInherited) then
   begin
-    mRest := Copy(ALine, 11, MaxInt);
+    mRest := Copy(ALine, Length(cInherited) + 1, MaxInt);
   end
-  else if ALine.StartsWith('inline ') then
+  else if ALine.StartsWith(cInline) then
   begin
-    mRest := Copy(ALine, 8, MaxInt);
+    mRest := Copy(ALine, Length(cInline) + 1, MaxInt);
   end
   else
   begin
@@ -194,7 +194,7 @@ begin
     Exit;
   end;
   mTop := Stack[High(Stack)];
-  if IsEvent(APath, AValue) then
+  if TAtlasDesignerNames.IsEventAssignment(APath, AValue) then
   begin
     Objects[mTop].Events := Objects[mTop].Events + [TAtlasFormValue.Create(APath, AValue)];
   end
