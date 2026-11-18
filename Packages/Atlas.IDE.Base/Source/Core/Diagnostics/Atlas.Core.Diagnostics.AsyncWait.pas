@@ -1,13 +1,13 @@
 ﻿unit Atlas.Core.Diagnostics.AsyncWait;
 
 // Warten auf eine asynchrone Anfrage aus einem Hintergrund-Thread, gemeinsam
-// für die Versionsabfrage und die CI-Abfragen (vorher je eine Kopie). Das
+// für die Versionsabfrage und die CI-Abfragen. Das
 // Warten endet, sobald die Anfrage fertig ist, das Abbruchsignal des Plugins
 // kommt (TAtlasShutdown), der Aufrufer abbricht oder die Frist erreicht ist.
 // Ohne Erfolg bricht es die Anfrage ab. Await meldet dann, ob sie schon
 // beendet ist (Completed); solange nicht, benutzt der Task der RTL Client und
 // Streams noch, und der Aufrufer darf sie nicht freigeben
-// (früher wurde nach 500 ms freigegeben, ob die Anfrage beendet war oder nicht).
+// (eine feste Frist wie 500 ms gäbe sie frei, während die Anfrage noch läuft).
 // AwaitSettled wartet deshalb nach dem Abbruch ohne Frist auf das Ende. Bleibt
 // eine Anfrage hängen, wird der wartende Arbeiter-Thread überfällig und geht an
 // TAtlasOverdueThreads, die sein Package beim Abmelden festhalten. Damit das

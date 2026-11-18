@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Commands.ClientCommands;
 
-// Client-Befehle der Code-Aktionen (#399), aus TAtlasIdeEditorCommands.RunCommand
-// (Atlas.IDE.Commands.Editor, Beschreibung dort) ausgelagert: atlas.copyText,
+// Client-Befehle der Code-Aktionen (#399) für TAtlasIdeEditorCommands.RunCommand
+// (Atlas.IDE.Commands.Editor, Beschreibung dort): atlas.copyText,
 // atlas.openFile, atlas.goToPosition (#915), atlas.showSignatureHelp (#1007),
 // atlas.showUnitRelations (#896), die Befehle der fehlenden Unit (#550) und
 // der Projektwarnung (#531) sowie die Umbaudialoge (Signatur ändern #100,

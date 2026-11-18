@@ -1,10 +1,9 @@
 ﻿unit Atlas.UI.Popup.TitledTip;
 
 // Tooltip mit Titel und Text für Symbole in Rinne, Übersichtsleiste und
-// Atlas-Spalte (zuerst für persönliche Notizen, #545; bis #1455
-// Atlas.UI.Notes.Tip): oben gedämpft „Notiz vom 15.10.2026“, darunter der Text, auch
-// mehrzeilig, umbrochen auf höchstens MaxWidth logische Pixel. Ohne Fokus wie
-// alle Atlas-Fenster (TAtlasPopupWindow), Schrift der Oberfläche.
+// Atlas-Spalte (etwa für persönliche Notizen, #545): oben gedämpft
+// „Notiz vom 15.10.2026“, darunter der Text, auch mehrzeilig, umbrochen auf
+// höchstens MaxWidth logische Pixel. Ohne Fokus wie alle Atlas-Fenster (TAtlasPopupWindow), Schrift der Oberfläche.
 // Unter dem Text optional Links, je einer pro Zeile in der Akzentfarbe (etwa
 // die Methoden einer Rekursionskette, #623); ein Klick meldet ihre Nummer an
 // OnLink.
