@@ -5,7 +5,7 @@
 // set-<Kennung>.json mit Aktion, Zeit und je Datei Art, Projekt, Zustand und
 // den Inhalten vorher und nachher samt Kodierung. Geschrieben wird erst in
 // eine Nachbardatei, die dann die alte atomar ersetzt (TAtlasTextFile.Replace;
-// früher Löschen und Umbenennen). Ein unlesbarer Satz wird beim
+// kein Löschen und Umbenennen). Ein unlesbarer Satz wird beim
 // Laden übergangen und nicht als .defekt beiseitegelegt: Er ließe sich ohnehin
 // nicht anwenden, und Shrink räumt ihn mit den ältesten weg. Nach jedem
 // Sichern fallen die ältesten Sätze weg, bis alle zusammen höchstens

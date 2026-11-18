@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Updates.Offer;
 
-// Angebot eines Updates (#1519, Mockup 2): „Jetzt aktualisieren“ fragt, ob
+// Angebot eines Updates (#1519): „Jetzt aktualisieren“ fragt, ob
 // Atlas das Update im Hintergrund vorbereiten und beim Schließen der IDE
 // installieren soll. Bei einer neuen Hauptversion steht ein Hinweis auf die
 // Änderungen dabei. Ist das Update schon vorbereitet, bietet derselbe Weg

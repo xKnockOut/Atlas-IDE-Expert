@@ -2,8 +2,8 @@
 
 // Deklaration im Hover lesen (#835, #1455): Der Tooltip rechnet den Typ aus
 // der Deklaration selbst und gibt ihn den Modulen (Visualisierer des
-// Debuggers) als ersten Eintrag der Typkette. Lag bis #1455 im Debugger-Kern
-// (TAtlasVisualizers); Base darf das Debugger-Modul nicht kennen.
+// Debuggers) als ersten Eintrag der Typkette. Liegt in Base, weil Base das
+// Debugger-Modul nicht kennen darf.
 
 interface
 

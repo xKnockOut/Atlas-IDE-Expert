@@ -53,7 +53,7 @@
 //   dem Abruf von Base (dieselben wie Metrik-Linse und Statusleiste); die
 //   Leiste meldet dort nur Bedarf an und fragt nichts selbst.
 // - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
-//   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
+//   schalten die Leiste nicht still ab.
 //   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
 //   bleiben; nach „Abgeschaltete Funktionen einschalten“ läuft sie weiter.
 // - editor.breadcrumbsIdeColors: Fläche und Schrift wie die Werkzeugleisten
