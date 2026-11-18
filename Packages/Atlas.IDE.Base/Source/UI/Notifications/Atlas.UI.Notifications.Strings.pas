@@ -17,7 +17,10 @@ type
     NotificationsCheckErrors, NotificationsCheckClean, NotificationsGoToError, NotificationsSourceBuildServer,
     NotificationsSourceOpenBuild, NotificationsSourceHidden, NotificationsBuildRejected,
     NotificationsBuildRejectedCodes, NotificationsGoToMessage, NotificationsBuildBaselined,
-    NotificationsSourceIssues, NotificationsSourceRuleChecks, NotificationsSourceDebugFiles);
+    NotificationsSourceIssues, NotificationsSourceRuleChecks, NotificationsSourceDebugFiles,
+    ReloadDone, ReloadKeptModified, ReloadDeleted,
+    ReloadDiffTitle, NotificationsCompare, NotificationsReloaded, NotificationsReloadKept, NotificationsReloadKeptText,
+    NotificationsReloadDeleted);
 
   TAtlasNotificationsStrings = class
   public
@@ -63,7 +66,16 @@ const
      '(%d in der Basislinie)',
      'Issues',
      'Prüfregeln aus',
-     'Vom Debugger geöffnete Dateien'),
+     'Vom Debugger geöffnete Dateien',
+     'Atlas: %d Dateien neu geladen',
+     'Atlas: %s wurde außerhalb geändert und hat ungespeicherte Änderungen; die IDE fragt nach.',
+     'Atlas: %s existiert nicht mehr.',
+     'Atlas: Unterschied in %s (- Editor, + Platte):',
+     'Vergleichen',
+     'Dateien neu geladen: %d',
+     'Eigene Änderungen behalten: %s',
+     '%s wurde außerhalb geändert und hat ungespeicherte Änderungen; die IDE fragt nach.',
+     'Datei gelöscht: %s'),
     ('%d unread',
      'No notifications',
      'Mark all read',
@@ -93,7 +105,16 @@ const
      '(%d in the baseline)',
      'Issues',
      'Rule checks off',
-     'Files opened by the debugger'));
+     'Files opened by the debugger',
+     'Atlas: %d files reloaded',
+     'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
+     'Atlas: %s no longer exists.',
+     'Atlas: difference in %s (- editor, + disk):',
+     'Compare',
+     'Files reloaded: %d',
+     'Own changes kept: %s',
+     '%s was changed outside and has unsaved changes; the IDE asks.',
+     'File deleted: %s'));
 
 { TAtlasNotificationsStrings }
 
