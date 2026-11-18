@@ -48,7 +48,9 @@ type
     FOwnerOf: TAtlasKeyOwnerFunc;
     FNextTop: Integer;
     FUpdating: Boolean;
+    /// <summary>Zeile der Höhe AHeight in logischen Pixeln (96 dpi).</summary>
     function AddPanel(AHeight: Integer): TPanel;
+    /// <summary>Beschriftung in AParent an ALeft, ATop (logische Pixel, 96 dpi).</summary>
     function AddLabel(AParent: TWinControl; const ACaption: string; ALeft, ATop: Integer): TLabel;
     function AddCheck(const ACaption: string): TCheckBox;
     procedure AddRow(AIndex: Integer);
@@ -177,7 +179,7 @@ begin
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.BevelOuter := bvNone;
-  Result.Height := AHeight;
+  Result.Height := Result.ScaleValue(AHeight);
   // alTop stapelt nach Top: jedes neue Element unter das vorige.
   Result.Top := FNextTop;
   Inc(FNextTop, 100);
@@ -189,8 +191,8 @@ begin
   Result := TLabel.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
-  Result.Top := ATop;
+  Result.Left := Result.ScaleValue(ALeft);
+  Result.Top := Result.ScaleValue(ATop);
 end;
 
 function TAtlasKeysPage.AddCheck(const ACaption: string): TCheckBox;

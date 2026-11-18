@@ -51,6 +51,7 @@ type
     /// </summary>
     procedure ContinueSheet(AIndex: Integer);
     function AddCheck(const ACaption: string): TCheckBox;
+    /// <summary>Zeile der Höhe AHeight in logischen Pixeln (96 dpi); skaliert wird hier.</summary>
     function AddPanel(AHeight: Integer): TWinControl;
     function AddNumber(const ACaption: string): TEdit;
     function AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
@@ -62,8 +63,10 @@ type
     function AddKey(const ACaption: string): TEdit;
     /// <summary>Beschriftung über die ganze Breite mit Zeilenumbruch.</summary>
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
-    /// <summary>Zeile mit Beschriftung links und AControl rechts daneben (Verbindungen, Projekte).</summary>
+    /// <summary>Zeile mit Beschriftung links und AControl rechts daneben (Verbindungen, Projekte). AWidth in
+    /// logischen Pixeln (96 dpi).</summary>
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
+    /// <summary>Knopf in AParent; ALeft und AWidth in logischen Pixeln (96 dpi).</summary>
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
       AClick: TNotifyEvent): TButton;
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
@@ -159,7 +162,7 @@ begin
   Result.Parent := FContent;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Height := AHeight;
+  Result.Height := Result.ScaleValue(AHeight);
   Result.Top := FNextTop;
   Inc(FNextTop, 100);
 end;
@@ -267,7 +270,7 @@ begin
   AControl.Parent := Result;
   AControl.Left := AControl.ScaleValue(90);
   AControl.Top := 1;
-  AControl.Width := AWidth;
+  AControl.Width := AControl.ScaleValue(AWidth);
 end;
 
 function TAtlasSettingsPageSheets.AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
@@ -276,9 +279,9 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := TAtlasStrings.Text(AId);
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(cRowButtonTop);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.OnClick := AClick;
 end;
 

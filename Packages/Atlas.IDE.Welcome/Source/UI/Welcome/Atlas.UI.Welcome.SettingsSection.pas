@@ -160,6 +160,7 @@ type
     function Line(const AKey: string; AText: TAtlasWelcomeTextId): TEdit;
     function OwnCheck(const AKey, ACaption: string): TCheckBox;
     function KeyEdit(const AKey, ACaption: string): TEdit;
+    /// <summary>Knopf in AParent; ALeft und AWidth in logischen Pixeln (96 dpi).</summary>
     function AddButton(AParent: TWinControl; ALeft, AWidth: Integer; const ACaption: string;
       AClick: TNotifyEvent): TButton;
     procedure BuildStart;
@@ -380,9 +381,9 @@ begin
   Result := TButton.Create(FOwner);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(cButtonTop);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.OnClick := AClick;
 end;
 
@@ -524,9 +525,11 @@ begin
   FMore.HelpReportFolder.TextHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeHelpDesktop);
   FMore.HelpReportFolder.Width := FMore.HelpReportFolder.Width -
     FMore.HelpReportFolder.ScaleValue(cBrowseWidth + cBrowseGap);
-  FMore.HelpFolderBrowse := AddButton(FMore.HelpReportFolder.Parent,
-    FMore.HelpReportFolder.Left + FMore.HelpReportFolder.Width + cBrowseGap, cBrowseWidth, '…',
+  FMore.HelpFolderBrowse := AddButton(FMore.HelpReportFolder.Parent, 0, cBrowseWidth, '…',
     FHooks.HelpFolderBrowseClick);
+  // Neben dem Feld: dessen Lage ist schon in Gerätepixeln.
+  FMore.HelpFolderBrowse.Left := FMore.HelpReportFolder.Left + FMore.HelpReportFolder.Width +
+    FMore.HelpFolderBrowse.ScaleValue(cBrowseGap);
   FMore.HelpFolderBrowse.Top := 0;
   FMore.HelpFolderBrowse.Anchors := [akTop, akRight];
 end;

@@ -126,6 +126,7 @@ type
   /// <summary>Baut die Steuerelemente des Dialogs: untere Knopfleiste, Optionen und die Listen.</summary>
   TAtlasToolbarCustomizeBuilder = record
     Dialog: TAtlasToolbarCustomizeDialog;
+    /// <summary>Panel an AAlign; ASize ist Breite bzw. Höhe in logischen Pixeln (96 dpi).</summary>
     function NewPanel(AParent: TWinControl; AAlign: TAlign; ASize: Integer): TPanel;
     function NewButton(AParent: TWinControl; const ACaption, AHint: string;
       AAction: TAtlasToolbarCustomizeAction): TButton;
@@ -146,11 +147,11 @@ begin
   Result.BevelOuter := bvNone;
   if AAlign in [alLeft, alRight] then
   begin
-    Result.Width := ASize;
+    Result.Width := Result.ScaleValue(ASize);
   end
   else if AAlign in [alTop, alBottom] then
   begin
-    Result.Height := ASize;
+    Result.Height := Result.ScaleValue(ASize);
   end;
 end;
 
@@ -187,7 +188,7 @@ var
   mBottom: TPanel;
   mDefault: TButton;
 begin
-  mBottom := NewPanel(Dialog, alBottom, Dialog.ScaleValue(44));
+  mBottom := NewPanel(Dialog, alBottom, 44);
   Dialog.FCancel := NewButton(mBottom, TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarCancel),
     '',
     TAtlasToolbarCustomizeAction.None);
@@ -211,7 +212,7 @@ var
   mOptions: TPanel;
   mCaption: TLabel;
 begin
-  mOptions := NewPanel(Dialog, alBottom, Dialog.ScaleValue(36));
+  mOptions := NewPanel(Dialog, alBottom, 36);
   Dialog.FLabelsCheck := TCheckBox.Create(Dialog);
   Dialog.FLabelsCheck.Parent := mOptions;
   Dialog.FLabelsCheck.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels);
@@ -238,7 +239,7 @@ var
 begin
   mLists := NewPanel(Dialog, alClient, 0);
   // Links verfügbar, Mitte → ←, rechts die Leiste, ganz rechts ↑ ↓.
-  mSide := NewPanel(mLists, alRight, Dialog.ScaleValue(48));
+  mSide := NewPanel(mLists, alRight, 48);
   Dialog.FUpButton := NewButton(mSide, '↑',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarUpHint),
     TAtlasToolbarCustomizeAction.Up);
@@ -255,7 +256,7 @@ begin
   Dialog.FCurrentList.Style := lbOwnerDrawFixed;
   Dialog.FCurrentList.ItemHeight := Dialog.ScaleValue(24);
   Dialog.FCurrentList.OnDrawItem := Dialog.CurrentDrawItem;
-  mMiddle := NewPanel(mLists, alRight, Dialog.ScaleValue(56));
+  mMiddle := NewPanel(mLists, alRight, 56);
   Dialog.FAddButton := NewButton(mMiddle, '→',
     TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarAddHint),
     TAtlasToolbarCustomizeAction.Add);

@@ -50,7 +50,8 @@ type
     FSwitches: TArray<TAtlasWelcomeSwitch>;
     FOnAskName: TAtlasWelcomeAskName;
     FOnConfirm: TAtlasWelcomeConfirm;
-    function AddButton(AParent: TWinControl; AOwner: TComponent; ALeft: Integer; const ACaption: string;
+    /// <summary>Knopf in AParent rechts neben AAfter, mit dem Abstand cButtonGap (logische Pixel).</summary>
+    function AddButton(AParent: TWinControl; AOwner: TComponent; AAfter: TControl; const ACaption: string;
       AClick: TNotifyEvent): TButton;
     function SwitchOf(const AId: string): TCheckBox;
     function SectionShown(const AId: string; out AShown: Boolean): Boolean;
@@ -66,7 +67,7 @@ type
   public
     constructor Create;
     /// <summary>Zeile der Auswahl über AHost; AOwner besitzt Auswahl und Knöpfe, AColumns ist die gebundene Zahl.
-    /// </summary>
+    /// ALeft ist die Lage der Auswahl in Gerätepixeln (bündig mit einem vorhandenen Feld).</summary>
     procedure Build(const AHost: IAtlasSettingsSectionHost; AOwner: TComponent; AColumns: TCustomEdit;
       ALeft: Integer);
     /// <summary>Bereichsschalter, deren Häkchen zum aktiven Layout gehören; AWhatsNew die Auswahl „Neu in Atlas“.
@@ -113,13 +114,13 @@ begin
   FLayouts := TAtlasWelcomeLayouts.Defaults;
 end;
 
-function TAtlasWelcomeSettingsLayouts.AddButton(AParent: TWinControl; AOwner: TComponent; ALeft: Integer;
+function TAtlasWelcomeSettingsLayouts.AddButton(AParent: TWinControl; AOwner: TComponent; AAfter: TControl;
   const ACaption: string; AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(AOwner);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
+  Result.Left := AAfter.Left + AAfter.Width + Result.ScaleValue(cButtonGap);
   Result.Top := 0;
   Result.Width := Result.ScaleValue(cButtonWidth);
   Result.OnClick := AClick;
@@ -340,7 +341,6 @@ procedure TAtlasWelcomeSettingsLayouts.Build(const AHost: IAtlasSettingsSectionH
 var
   mRow: TWinControl;
   mCaption: TLabel;
-  mLeft: Integer;
 begin
   FHost := AHost;
   FColumns := AColumns;
@@ -357,12 +357,11 @@ begin
   FChoice.Top := 1;
   FChoice.Width := FChoice.ScaleValue(cChoiceWidth);
   FChoice.OnChange := ChoiceChange;
-  mLeft := ALeft + cChoiceWidth + cButtonGap;
-  FNew := AddButton(mRow, AOwner, mLeft, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutNew),
+  FNew := AddButton(mRow, AOwner, FChoice, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutNew),
     NewClick);
-  FRename := AddButton(mRow, AOwner, mLeft + cButtonWidth + cButtonGap,
+  FRename := AddButton(mRow, AOwner, FNew,
     TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutRename), RenameClick);
-  FDelete := AddButton(mRow, AOwner, mLeft + 2 * (cButtonWidth + cButtonGap),
+  FDelete := AddButton(mRow, AOwner, FRename,
     TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutDelete), DeleteClick);
 end;
 

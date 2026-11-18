@@ -288,14 +288,15 @@ begin
   end;
 end;
 
-/// <summary>Spalte ACaption mit der (schon skalierten) Breite AWidth an AList anhängen.</summary>
+/// <summary>Spalte ACaption mit der Breite AWidth (logische Pixel, 96 dpi) an AList anhängen; skaliert über AList.
+/// </summary>
 procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
 var
   mColumn: TListColumn;
 begin
   mColumn := AList.Columns.Add;
   mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
+  mColumn.Width := AList.ScaleValue(AWidth);
 end;
 
 { TAtlasExportDialog }
@@ -413,11 +414,11 @@ begin
   FList.RowSelect := True;
   FList.OnClick := ListChanged;
   FList.OnKeyUp := ListKeyUp;
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), ScaleValue(cKeyWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), ScaleValue(100));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), ScaleValue(cValueWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), ScaleValue(cValueWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), ScaleValue(cNoteWidth));
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), cKeyWidth);
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), 100);
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), cValueWidth);
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), cValueWidth);
+  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), cNoteWidth);
 
   ClientHeight := ScaleValue(520);
 end;

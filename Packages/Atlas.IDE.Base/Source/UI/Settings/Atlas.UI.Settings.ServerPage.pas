@@ -40,8 +40,10 @@ type
     FCacheInfo: TLabel;
     FCacheClear: TButton;
     FHooks: TAtlasServerPageHooks;
+    /// <summary>Zeile der Höhe AHeight in logischen Pixeln (96 dpi).</summary>
     function AddPanel(AHeight: Integer): TPanel;
     function AddTitle(const ACaption: string): TLabel;
+    /// <summary>Knopf in APanel an ALeft (logische Pixel, 96 dpi).</summary>
     function AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
     function Confirmed(const AQuestion: string): Boolean;
     procedure EditGlobalClick(Sender: TObject);
@@ -112,7 +114,7 @@ begin
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.BevelOuter := bvNone;
-  Result.Height := AHeight;
+  Result.Height := Result.ScaleValue(AHeight);
   // alTop stapelt nach Top: jedes neue Element unter das vorige.
   Result.Top := FNextTop;
   Inc(FNextTop, 100);
@@ -138,7 +140,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := APanel;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(3);
   Result.Width := Result.ScaleValue(220);
   Result.OnClick := AClick;

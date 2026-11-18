@@ -93,8 +93,8 @@ const
   cDialogWidth = 640;
   cDialogHeight = 520;
 
-/// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite (schon skaliert).
-/// </summary>
+/// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite in logischen Pixeln
+/// (96 dpi), skaliert über das Panel.</summary>
 function AddPanel(AParent: TWinControl; AAlign: TAlign; ASize: Integer): TPanel;
 begin
   Result := TPanel.Create(AParent);
@@ -102,11 +102,11 @@ begin
   Result.Align := AAlign;
   if AAlign in [alLeft, alRight] then
   begin
-    Result.Width := ASize;
+    Result.Width := Result.ScaleValue(ASize);
   end
   else
   begin
-    Result.Height := ASize;
+    Result.Height := Result.ScaleValue(ASize);
   end;
   Result.BevelOuter := bvNone;
 end;
@@ -155,14 +155,14 @@ begin
   Result := ATop + ADialog.ScaleValue(28);
 end;
 
-/// <summary>Spalte ACaption mit der Breite AWidth (schon skaliert).</summary>
+/// <summary>Spalte ACaption mit der Breite AWidth (logische Pixel, 96 dpi); skaliert über AList.</summary>
 procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
 var
   mColumn: TListColumn;
 begin
   mColumn := AList.Columns.Add;
   mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
+  mColumn.Width := AList.ScaleValue(AWidth);
 end;
 
 /// <summary>Hinweise zum Modell: festes Ereignis und Warnungen des Servers, je eine Zeile.</summary>
@@ -210,10 +210,10 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.OnSelectItem := ListSelect;
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), ScaleValue(cSigNameWidth));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), ScaleValue(cSigTypeWidth));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), ScaleValue(cSigModifierWidth));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), ScaleValue(cSigValueWidth));
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), cSigNameWidth);
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), cSigTypeWidth);
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), cSigModifierWidth);
+  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), cSigValueWidth);
   ActiveControl := FList;
 end;
 
@@ -236,7 +236,7 @@ procedure TAtlasChangeSignatureDialog.CreateBottom;
 var
   mBottom: TPanel;
 begin
-  mBottom := AddPanel(Self, alBottom, ScaleValue(44));
+  mBottom := AddPanel(Self, alBottom, 44);
   FCancel := AddButton(Self, mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigCancel), nil);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
@@ -258,7 +258,7 @@ procedure TAtlasChangeSignatureDialog.CreateOptions;
 var
   mOptions: TPanel;
 begin
-  mOptions := AddPanel(Self, alBottom, ScaleValue(72));
+  mOptions := AddPanel(Self, alBottom, 72);
   FOverload := TRadioButton.Create(Self);
   FOverload.Parent := mOptions;
   FOverload.SetBounds(ScaleValue(cGap), ScaleValue(4), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
@@ -289,7 +289,7 @@ var
   mFields: TPanel;
   mTop: Integer;
 begin
-  mFields := AddPanel(Self, alBottom, ScaleValue(118));
+  mFields := AddPanel(Self, alBottom, 118);
   FName := TEdit.Create(Self);
   FType := TEdit.Create(Self);
   FModifier := TComboBox.Create(Self);
@@ -311,7 +311,7 @@ var
   mRight: TPanel;
   mIndex: Integer;
 begin
-  mRight := AddPanel(Self, alRight, ScaleValue(120));
+  mRight := AddPanel(Self, alRight, 120);
   FAdd := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigAdd), AddClick);
   FRemove := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigRemove), RemoveClick);
   FUp := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigUp), UpClick);

@@ -94,7 +94,8 @@ type
     property OnSuggestPaths: TAtlasTrackerPathsSuggestEvent read FOnSuggestPaths write FOnSuggestPaths;
   end;
 
-  /// <summary>Zeilen des Abschnitts über den Host der Seite.</summary>
+  /// <summary>Zeilen des Abschnitts über den Host der Seite. Maße an den Bausteinen (Höhe, Breite, Lage) in
+  /// logischen Pixeln (96 dpi); skaliert wird in den Bausteinen.</summary>
   TAtlasTrackerSettingsRows = class
   public const
     cRowHeight = 26;
@@ -245,7 +246,7 @@ begin
   AControl.Parent := Result;
   AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
-  AControl.Width := AWidth;
+  AControl.Width := AControl.ScaleValue(AWidth);
   if AWidth >= cWideWidth then
   begin
     AControl.Anchors := [akLeft, akTop, akRight];
@@ -261,7 +262,7 @@ begin
   AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
   AControl.Width := AControl.ScaleValue(cWideWidth);
-  AControl.Height := AHeight - cControlTop - cControlTop;
+  AControl.Height := AControl.ScaleValue(AHeight - cControlTop - cControlTop);
   AControl.Anchors := [akLeft, akTop, akRight];
 end;
 
@@ -271,9 +272,9 @@ begin
   Result := TButton.Create(FOwner);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(cButtonTop);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.OnClick := AClick;
 end;
 
@@ -295,7 +296,7 @@ var
 begin
   mColumn := AList.Columns.Add;
   mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
+  mColumn.Width := AList.ScaleValue(AWidth);
 end;
 
 function TAtlasTrackerSettingsRows.AddNote(AAnchor: TControl): TLabel;
@@ -333,7 +334,7 @@ begin
   AddLabel(mPanel, ACaption);
   Result := TAtlasValueBox.Create(FOwner);
   Result.Parent := mPanel;
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := cControlTop;
   Result.Width := Result.ScaleValue(cFieldWidth);
 end;
