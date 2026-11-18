@@ -15,8 +15,8 @@
 //   OnCustomize. Ausgelöst wird beim Loslassen über dem Knopf; nur wer auf
 //   einem anderen Knopf gedrückt hat, bricht ab. Das Verlassen der Leiste
 //   zwischen Drücken und Loslassen bricht nicht ab: In der IDE kommt es bei
-//   jedem Klick (Mausfang, die IDE holt den Fokus in den Editor), früher lief
-//   dadurch jeder Klick ins Leere.
+//   jedem Klick (Mausfang, die IDE holt den Fokus in den Editor), sonst liefe
+//   jeder Klick ins Leere.
 // - Gesperrt wird die Leiste nur von außen: Etwas setzt Enabled bei
 //   Steuerelementen im Editor-Panel auf False (Protokoll der Brotkrumen:
 //   „Fenster ist gesperrt“), danach kommt kein Klick mehr an. OnDisabled

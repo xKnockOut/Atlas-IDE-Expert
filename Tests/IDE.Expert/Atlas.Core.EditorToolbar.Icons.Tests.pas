@@ -19,10 +19,10 @@ type
     /// </summary>
     [Test]
     procedure GearHasTeethNotRays;
-    /// <summary>Das Auge folgt dem Pfad des Mockups: Je Bogen acht Strecken, die Bögen beginnen links, oben, rechts
-    /// und unten.</summary>
+    /// <summary>Das Auge folgt seinem SVG-Pfad: Je Bogen acht Strecken, die Bögen beginnen links, oben, rechts und
+    /// unten.</summary>
     [Test]
-    procedure EyeFollowsTheMockup;
+    procedure EyeFollowsTheSvgPath;
   end;
 
 implementation
@@ -119,7 +119,7 @@ begin
   Assert.AreEqual(16, mInner, 'acht Lücken mit je zwei Fußpunkten');
 end;
 
-procedure TAtlasToolbarIconsTests.EyeFollowsTheMockup;
+procedure TAtlasToolbarIconsTests.EyeFollowsTheSvgPath;
 const
   cDelta = 0.001;
 var

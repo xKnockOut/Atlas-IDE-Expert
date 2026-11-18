@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Hover.Contract;
 
 // Inhalt des Hover-Tooltips (#442, #588) aus dem Objekt "atlas" der Hover-
-// Antwort: Deklaration, Unit, Doku (Klartext und seit #654 strukturiert samt
+// Antwort: Deklaration, Unit, Doku (Klartext und strukturiert samt
 // Anzeige-Einstellungen), Wert, Veraltung, dazu Art und Herkunft für
 // die Kopfzeile, Fundort, Typnamen in der Deklaration als Links und die
 // Vererbungskette. Ohne "atlas" (fremder Server, Direktiven, Schlüsselwörter)

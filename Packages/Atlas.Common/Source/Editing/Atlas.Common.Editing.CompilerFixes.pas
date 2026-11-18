@@ -79,6 +79,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
@@ -422,7 +423,7 @@ begin
   begin
     // Mit dem Semikolon dahinter; steht die Anweisung allein in ihrer Zeile, verschwindet die ganze Zeile.
     mIndex := TRoutineBody.TokenAt(ATokens, AStatement.EndOffset);
-    mLast := TRoutineBody.NextToken(ATokens, mIndex - 1);
+    mLast := NextCodeAfter(ATokens, mIndex - 1);
     if (mLast >= 0) and (mLast < Length(ATokens)) and ATokens[mLast].IsSymbol(';') then
     begin
       mEndPos := ATokens[mLast].EndPos;

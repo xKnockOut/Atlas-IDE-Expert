@@ -98,15 +98,6 @@ begin
     IsWord(AToken, 'destructor') or IsWord(AToken, 'operator');
 end;
 
-function NextSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>"TFoo = [packed] class|record|interface|dispinterface|object" ab ATokens[AIndex], nicht "class of"
 /// und keine Vorwärtsdeklaration "class;".</summary>
 function StartsTypeDecl(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
@@ -118,27 +109,27 @@ begin
   begin
     Exit;
   end;
-  mIndex := NextSignificant(ATokens, AIndex);
+  mIndex := NextCodeAfter(ATokens, AIndex);
   // Generische Parameter überspringen: TFoo<T> = class.
   if (mIndex <= High(ATokens)) and ATokens[mIndex].IsSymbol('<') then
   begin
     while (mIndex <= High(ATokens)) and not ATokens[mIndex].IsSymbol('>') do
     begin
-      mIndex := NextSignificant(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
     end;
   end;
   if (mIndex <= High(ATokens)) and ATokens[mIndex].IsSymbol('>') then
   begin
-    mIndex := NextSignificant(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
   if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('=') then
   begin
     Exit;
   end;
-  mIndex := NextSignificant(ATokens, mIndex);
+  mIndex := NextCodeAfter(ATokens, mIndex);
   if (mIndex <= High(ATokens)) and IsWord(ATokens[mIndex], 'packed') then
   begin
-    mIndex := NextSignificant(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
   if mIndex > High(ATokens) then
   begin
@@ -146,7 +137,7 @@ begin
   end;
   if IsWord(ATokens[mIndex], 'class') then
   begin
-    mIndex := NextSignificant(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
     Result := (mIndex > High(ATokens)) or not (IsWord(ATokens[mIndex], 'of') or ATokens[mIndex].IsSymbol(';'));
   end
   else
@@ -178,7 +169,7 @@ var
   mHasNext: Boolean;
 begin
   mToken := ATokens[AIndex];
-  mNext := NextSignificant(ATokens, AIndex);
+  mNext := NextCodeAfter(ATokens, AIndex);
   mHasNext := mNext <= High(ATokens);
   Result := True;
   if IsRoutineWord(mToken) or (IsWord(mToken, 'class') and mHasNext and IsRoutineWord(ATokens[mNext])) then

@@ -109,15 +109,6 @@ const
     (Routine: 'LoadFromFile'; ClassName: 'EFOpenError'; UnitName: 'System.Classes'),
     (Routine: 'SaveToFile'; ClassName: 'EFCreateError'; UnitName: 'System.Classes'));
 
-function NextSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
 begin
   Result := (AToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(AToken.Text, AWord);
@@ -166,21 +157,21 @@ var
   mIndex: Integer;
 begin
   Result := '';
-  mIndex := NextSignificant(ATokens, AOn);
+  mIndex := NextCodeAfter(ATokens, AOn);
   if (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-    (NextSignificant(ATokens, mIndex) <= High(ATokens)) and ATokens[NextSignificant(ATokens, mIndex)].IsSymbol(':') then
+    (NextCodeAfter(ATokens, mIndex) <= High(ATokens)) and ATokens[NextCodeAfter(ATokens, mIndex)].IsSymbol(':') then
   begin
-    mIndex := NextSignificant(ATokens, NextSignificant(ATokens, mIndex));
+    mIndex := NextCodeAfter(ATokens, NextCodeAfter(ATokens, mIndex));
   end;
   while (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
     Result := ATokens[mIndex].Text;
-    mIndex := NextSignificant(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
     if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('.') then
     begin
       Break;
     end;
-    mIndex := NextSignificant(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
   if (mIndex > High(ATokens)) or not ATokens[mIndex].IsKeyword('do') then
   begin
@@ -223,7 +214,7 @@ var
   mDepth, mIndex: Integer;
 begin
   mDepth := 0;
-  mIndex := NextSignificant(ATokens, AExcept);
+  mIndex := NextCodeAfter(ATokens, AExcept);
   while mIndex <= High(ATokens) do
   begin
     if ATokens[mIndex].IsKeyword('end') then
@@ -242,7 +233,7 @@ begin
     begin
       AddBranch(ATokens, mIndex, AOn, ASite);
     end;
-    mIndex := NextSignificant(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
 end;
 
@@ -422,7 +413,7 @@ function IsCallee(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean
 var
   mNext: Integer;
 begin
-  mNext := NextSignificant(ATokens, AIndex);
+  mNext := NextCodeAfter(ATokens, AIndex);
   Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
     not ((mNext <= High(ATokens)) and (ATokens[mNext].IsSymbol(':=') or ATokens[mNext].IsSymbol(':')));
 end;

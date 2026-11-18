@@ -2,9 +2,9 @@
 
 // Startanteile (zum Einfrier-Wächter #501), ohne Windows und Open
 // Tools API: Wie lange hat Atlas selbst den Start der IDE aufgehalten, und
-// womit? Ein langsamer Start ist kein Absturz; früher schaltete er beim
-// nächsten Start alle Funktionen ab (#722), ohne dass man erfuhr, woran es
-// lag. Jetzt misst Atlas seine Anteile und nennt sie, damit sich die Ursache
+// womit? Ein langsamer Start ist kein Absturz und schaltet beim
+// nächsten Start keine Funktionen ab (#722); damit man erfährt, woran es
+// liegt, misst Atlas seine Anteile und nennt sie, damit sich die Ursache
 // beheben lässt.
 // - Teile: jedes Feature beim Anmelden (TAtlasFeatureTable), die übrige
 //   Anmeldung und Atlas-Aktionen (TAtlasActivity) bis zur freien
