@@ -1,8 +1,8 @@
 ﻿unit Atlas.Core.Diagnostics.Teardown;
 
 // Abbau beim Entladen in Schritten (#886): Jeder Schritt läuft für sich; eine
-// Ausnahme bricht den Abbau nicht ab. Früher endete Unregister beim ersten
-// Fehler, etwa wenn die IDE Atlas mitten im Gruppen-Build entlud. Dann blieben
+// Ausnahme bricht den Abbau nicht ab. Endete Unregister beim ersten
+// Fehler, etwa wenn die IDE Atlas mitten im Gruppen-Build entlädt, blieben
 // Notifier, Fenster-Hooks und Ereignisse der alten Instanz angemeldet, und die
 // IDE stürzte beim Beenden in fremdem Speicher ab; „Atlas entladen“ fehlte im
 // Protokoll. Festgehalten werden nur Schritt und Ausnahmeklasse, nie der

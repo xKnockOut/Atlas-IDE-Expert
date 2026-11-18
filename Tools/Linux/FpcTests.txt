@@ -226,6 +226,8 @@ Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
 Atlas.Common.Mcp.CompilerMessageTools.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
+Atlas.Common.Lsp.ImplementationSites.Tests
+Atlas.Common.Mcp.ImplementationTools.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests

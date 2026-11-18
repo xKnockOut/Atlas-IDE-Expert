@@ -5,14 +5,14 @@
 // (<Basis>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal),
 // Delphi 12 und älter je Quelltextart des Editors
 // (<Basis>\Code Insight\Borland.EditOptions.Pascal, die IDString von
-// IOTAEditOptions). Atlas schrieb bis #1246 nur den Ort von Delphi 13, unter
-// Delphi 12 blieb Help Insight deshalb an, und die IDE zeigte ihren Hinweis
-// neben dem Atlas-Tooltip. Zusätzlich zum Ort der Version gilt jeder
+// IOTAEditOptions). Nur mit dem Ort von Delphi 13 bliebe Help Insight unter
+// Delphi 12 an, und die IDE zeigte ihren Hinweis neben dem Atlas-Tooltip
+// (#1246). Zusätzlich zum Ort der Version gilt jeder
 // Unterschlüssel, der den Wert schon trägt: So trifft der Schalter auch einen
 // Ort, den die IDE selbst geschrieben hat.
-// Die Merker (was Atlas abgeschaltet hat) gelten je Version und Ort; vorher
-// teilten sich Delphi 12 und 13 einen Merker, und die eine IDE drehte zurück,
-// was die andere abgeschaltet hatte.
+// Die Merker (was Atlas abgeschaltet hat) gelten je Version und Ort; mit einem
+// gemeinsamen Merker drehte die eine IDE zurück, was die andere abgeschaltet
+// hat.
 // Für den Manager „Atlas IDE Expert“ selbst hilft das unter Delphi 12 nicht:
 // Die IDE speichert dessen Schalter nirgends und beginnt jeden Start mit „an“.
 // Help Insight blendet dort Atlas.IDE.Hover.IdeHelpInsight aus.

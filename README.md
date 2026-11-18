@@ -166,6 +166,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **33 MCP tools** to read, check, build, test, rename and fix Delphi code
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
 - **Explain compiler messages:** `explain_compiler_message` gives the cause of messages like E2010 at their place, the known Delphi pitfall behind it (e.g. two identical method reference types under Delphi 12, `TMonitor` from `Vcl.Forms`, `Exit([...])`), the Atlas rule that catches it while typing and a safe fix as a diff; `build_project` and `get_last_build` point to it
+- **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
 
