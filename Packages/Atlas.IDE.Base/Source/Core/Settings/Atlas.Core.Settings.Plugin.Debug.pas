@@ -280,6 +280,13 @@ type
     /// <summary>Objekte je Klasse zählen und vergleichen (#858, debug.memoryTimeline.objectCount, experimentell):
     /// Bereich „Objekte zählen“ im Fenster „Atlas: Speicher“. Aus = kein Bereich, nichts wird gelesen.</summary>
     DebugMemoryTimelineObjectCount: Boolean;
+    /// <summary>„Debug-Zustand festhalten“ (#582, debug.note): Befehl, der im angehaltenen Programm Ort, Aufrufstapel,
+    /// lokale Variablen, überwachte Ausdrücke, letzte Exception und das Ende des Ereignisprotokolls als
+    /// Markdown-Notiz in die Zwischenablage legt. Aus = kein Befehl.</summary>
+    DebugNote: Boolean;
+    /// <summary>Notiz auch als Datei im Ordner „debug-notizen“ neben dem Projekt (#582, debug.note.saveFile).
+    /// </summary>
+    DebugNoteSaveFile: Boolean;
     /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
     /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
     /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
@@ -576,6 +583,8 @@ begin
   DebugProfiler := False;
   DebugProfilerIntervalMs := cDefaultProfilerIntervalMs;
   DebugMemoryTimelineObjectCount := False;
+  DebugNote := True;
+  DebugNoteSaveFile := True;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
@@ -616,6 +625,8 @@ begin
   AIo.Flag('DebugProfiler', DebugProfiler);
   AIo.Number('DebugProfilerIntervalMs', DebugProfilerIntervalMs);
   AIo.Flag('DebugMemoryTimelineObjectCount', DebugMemoryTimelineObjectCount);
+  AIo.Flag('DebugNote', DebugNote);
+  AIo.Flag('DebugNoteSaveFile', DebugNoteSaveFile);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);

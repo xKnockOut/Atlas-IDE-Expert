@@ -6,7 +6,7 @@
 // (#869), „Neu starten“ (#872, Strg+Umschalt+F2), „Erneut anhängen“ (#2171,
 // Menü Start, Taste debug.reattach.key), Leck- und Absturzberichte aus der
 // Zwischenablage (#74), die Startverbünde (#867, F9 und Strg+F2 mit
-// aktivem Verbund) und den Profiler (#2057, aus
+// aktivem Verbund), „Debug-Zustand festhalten“ (#582) und den Profiler (#2057, aus
 // Atlas.IDE.Debug.Composition.Profiler). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
@@ -51,6 +51,8 @@ uses
   Atlas.IDE.Debug.Reattach,
   Atlas.IDE.Debug.RuntimeReport,
   Atlas.IDE.Debug.LaunchGroups,
+  Atlas.IDE.Debug.Note,
+  Atlas.UI.Debug.Note.Strings,
   Atlas.IDE.Debug.Composition.Profiler,
   Atlas.UI.Debug.Commands.Strings;
 
@@ -62,6 +64,7 @@ const
   cLaunchGroupsCommand = 'Atlas.LaunchGroups';
   cLaunchRunCommand = 'Atlas.LaunchGroupRun';
   cLaunchStopCommand = 'Atlas.LaunchGroupStop';
+  cNoteCommand = 'Atlas.DebugNote';
 
 { Dienste von Base }
 
@@ -157,6 +160,41 @@ begin
     end, TAtlasStatusRegistry.Default);
 end;
 
+function NoteVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugNote;
+end;
+
+/// <summary>Debug-Zustand festhalten (#582): Werte über Serverbefehle im Hintergrund über Base und den Scope des
+/// Moduls; die Antwort kommt nur, solange das Modul angemeldet ist.</summary>
+function NoteStarter(const AScope: TFunc<IAtlasModuleScope>): TProc;
+begin
+  Result :=
+    procedure
+    var
+      mServices: TAtlasDebugNoteServices;
+    begin
+      mServices := Default(TAtlasDebugNoteServices);
+      mServices.Message :=
+        procedure(AText: string)
+        begin
+          TAtlasIdeHost.Message(AText);
+        end;
+      mServices.Session :=
+        function: TLspSession
+        begin
+          Result := TAtlasIdeHost.RunningSession;
+        end;
+      mServices.Run :=
+        function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+        begin
+          Result := TAtlasIdeHost.RunServerCommandAsync(AScope(), TAtlasFeature.Debugger, ACommand, AArgumentsJson,
+            ATimeoutMs, ADone);
+        end;
+      TAtlasIdeDebugNote.Start(mServices);
+    end;
+end;
+
 procedure StartLogpoints;
 begin
   TAtlasIdeLogpoints.Start(
@@ -243,7 +281,17 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeLaunchGroups.Started;
-      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release)];
+      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release),
+    // Debug-Zustand festhalten (#582): Befehl; die Werte des Halts sammelt er selbst.
+    TAtlasFeaturePart.When('DebugNote',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and NoteVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugNote.Started;
+      end, NoteStarter(AScope), TAtlasIdeDebugNote.Release)];
   // Profiler (#2057): nur mit debug.profiler.
   Result := Result + ProfilerParts(AScope);
 end;
@@ -299,7 +347,9 @@ begin
     RunCommand(cLaunchRunCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandRun),
       TAtlasIdeLaunchGroups.RunActive, LaunchGroupsVisible),
     RunCommand(cLaunchStopCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandStop),
-      TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible)];
+      TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible),
+    RunCommand(cNoteCommand, TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteCommand), TAtlasIdeDebugNote.Execute,
+      NoteVisible)];
   // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
   Result := Result + ProfilerCommands;
 end;
