@@ -19,7 +19,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.Note,
   Atlas.IDE.Debug.StopView,
   Atlas.IDE.Debug.Variables,
@@ -68,6 +67,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.StopProgress,
   Atlas.Core.Debug.Variables,
   Atlas.IDE.Foundation.Files,

@@ -219,6 +219,42 @@ begin
   Result.Visible := AVisible;
 end;
 
+/// <summary>Neu starten, erneut anhängen und Startverbünde.</summary>
+function LaunchParts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Neu starten (#872): Befehl und Taste; der Zuhörer merkt Haltepunkte und Ende der Sitzung.
+    TAtlasFeaturePart.When('DebugRestart',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and RestartVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugRestart.Started;
+      end, StartRestart, TAtlasIdeDebugRestart.Release),
+    // Erneut anhängen (#2171): Zuhörer merkt angehängte Programme, Einträge im Menü Start, Warten im Hintergrund.
+    TAtlasFeaturePart.When('DebugReattach',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and ReattachVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugReattach.Started;
+      end, StartReattach, TAtlasIdeDebugReattach.Release),
+    // Startverbünde (#867): mehrere Projekte nacheinander starten, Statusfeld und Leiste des Laufs.
+    TAtlasFeaturePart.When('DebugLaunchGroups',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and LaunchGroupsVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeLaunchGroups.Started;
+      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release)];
+end;
+
 function RunParts(const AScope: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
 begin
   Result := [
@@ -251,37 +287,8 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeDebugNoSource.Started;
-      end, StartNoSource, TAtlasIdeDebugNoSource.Release),
-    // Neu starten (#872): Befehl und Taste; der Zuhörer merkt Haltepunkte und Ende der Sitzung.
-    TAtlasFeaturePart.When('DebugRestart',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and RestartVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugRestart.Started;
-      end, StartRestart, TAtlasIdeDebugRestart.Release),
-    // Erneut anhängen (#2171): Zuhörer merkt angehängte Programme, Einträge im Menü Start, Warten im Hintergrund.
-    TAtlasFeaturePart.When('DebugReattach',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and ReattachVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugReattach.Started;
-      end, StartReattach, TAtlasIdeDebugReattach.Release),
-    // Startverbünde (#867): mehrere Projekte nacheinander starten, Statusfeld und Leiste des Laufs.
-    TAtlasFeaturePart.When('DebugLaunchGroups',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and LaunchGroupsVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeLaunchGroups.Started;
-      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release),
+      end, StartNoSource, TAtlasIdeDebugNoSource.Release)];
+  Result := Result + LaunchParts + [
     // Debug-Zustand festhalten (#582): Befehl; die Werte des Halts sammelt er selbst.
     TAtlasFeaturePart.When('DebugNote',
       function(ALevel: TAtlasSafeLevel): Boolean
