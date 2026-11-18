@@ -101,7 +101,14 @@ begin
     begin
       mLParam := LPARAM(mDC);
     end;
-    FResult := FList.Perform(WM_ERASEBKGND, WPARAM(mDC), mLParam);
+    // Count und ItemRect schicken der Liste Nachrichten; nach jeder gibt TWinControl.MainWndProc alle
+    // ungesperrten Bitmap-DCs frei (FreeMemoryContexts). Gesperrt bleibt mDC gültig.
+    mBitmap.Canvas.Lock;
+    try
+      FResult := FList.Perform(WM_ERASEBKGND, WPARAM(mDC), mLParam);
+    finally
+      mBitmap.Canvas.Unlock;
+    end;
     FRowPixel := ColorToRGB(mBitmap.Canvas.Pixels[4, cRowHeight div 2]);
     FFreePixel := ColorToRGB(mBitmap.Canvas.Pixels[4, mBitmap.Height - 2]);
   finally
