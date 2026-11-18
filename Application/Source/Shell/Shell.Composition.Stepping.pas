@@ -1,9 +1,9 @@
 ﻿unit Shell.Composition.Stepping;
 
-// Internals-Rolle Shell: Befehle für den Debugger des Plugins: gezielt hineinspringen (#836), Schrittfilter
-// (#850), „Warum bin ich hier?“ (#1878), Variablen beim Halt (#853), kommende Bedingungen (#2169), Haltepunkte,
-// die nicht greifen werden (#577), und die Parameter einer Routine für das Fenster „Aufrufstapel“ (#843). Sie
-// lesen nur; Code-Aktionen gibt es hier keine.
+// Internals-Rolle Shell: Befehle für den Debugger des Plugins: gezielt hineinspringen (#836), Schrittfilter (#850),
+// „Warum bin ich hier?“ (#1878), Variablen beim Halt samt Klasse und Unit (#853, #2550), kommende Bedingungen
+// (#2169), Haltepunkte, die nicht greifen werden (#577), und die Parameter einer Routine für das Fenster
+// „Aufrufstapel“ (#843). Sie lesen nur; Code-Aktionen gibt es hier keine.
 
 interface
 
@@ -54,6 +54,7 @@ uses
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.DebugVariables,
+  Atlas.Common.Lsp.DebugScope,
   Atlas.Common.Lsp.RoutineParameters,
   Atlas.Common.Lsp.UpcomingConditions,
   Atlas.Common.Lsp.BreakpointCheck,
@@ -338,6 +339,8 @@ begin
         end);
       try
         mAnswer := mVariables.Execute(mLine, mPrevious);
+        // Ort für überwachte Ausdrücke je Klasse oder Unit (#2550).
+        TLspDebugScope.At(mTree, mLine, Index).AddTo(mAnswer);
       finally
         mVariables.Free;
       end;

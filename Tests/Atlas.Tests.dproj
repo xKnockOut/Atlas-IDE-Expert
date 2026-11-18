@@ -691,6 +691,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StepTargets.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EnclosingConditions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugVariables.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugScope.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.RoutineParameters.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UpcomingConditions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas"/>
@@ -2610,6 +2611,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Variables.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.VariablesFlow.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.WatchScopes.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.WatchStore.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WatchStore.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WatchScopes.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.VariablesFlow.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Variables.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas"/>

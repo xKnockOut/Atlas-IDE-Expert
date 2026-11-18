@@ -295,6 +295,9 @@ type
     /// <summary>Höchstzahl der Auswertungen je Suche (#853, debug.variablesWindow.searchLimit, 10 bis 10000).
     /// </summary>
     DebugVariablesSearchLimit: Integer;
+    /// <summary>Überwachte Ausdrücke an Klasse oder Unit binden (#2550, debug.variablesWindow.scopedWatches): beim
+    /// Halt nur die Ausdrücke der Klasse bzw. Unit des Halts und die überall geltenden. Aus = alle überall.</summary>
+    DebugVariablesScopedWatches: Boolean;
     /// <summary>Bedingungen vorausschauen (#2169, debug.predictConditions): Beim Halt zeigt Atlas an den kommenden
     /// if, while und case derselben Routine das vorhergesagte Ergebnis („= False · FOnline“, „→ smManual“), wenn
     /// dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet. Aus = keine Anfrage.</summary>
@@ -563,6 +566,7 @@ begin
   DebugVariablesWindow := True;
   DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
+  DebugVariablesScopedWatches := True;
   DebugPredictConditions := True;
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
@@ -603,6 +607,7 @@ begin
   AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
   AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);
+  AIo.Flag('DebugVariablesScopedWatches', DebugVariablesScopedWatches);
   AIo.Flag('DebugPredictConditions', DebugPredictConditions);
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);

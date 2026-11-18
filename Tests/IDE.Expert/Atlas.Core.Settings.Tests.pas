@@ -274,6 +274,7 @@ begin
   Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
   Assert.AreEqual(3, ASettings.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
   Assert.AreEqual(500, ASettings.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
+  Assert.IsTrue(ASettings.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsTrue(ASettings.DebugPredictConditions, 'debug.predictConditions (#2169)');
   Assert.IsTrue(ASettings.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
   Assert.AreEqual(20, ASettings.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
@@ -490,6 +491,7 @@ begin
   ASettings.DebugVariablesWindow := False;
   ASettings.DebugVariablesSearchDepth := 5;
   ASettings.DebugVariablesSearchLimit := 250;
+  ASettings.DebugVariablesScopedWatches := False;
   ASettings.DebugPredictConditions := False;
   ASettings.DebugPredictDimSkipped := False;
   ASettings.DebugPredictLines := 40;
@@ -693,6 +695,7 @@ begin
   Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');
   Assert.AreEqual(5, ALoaded.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
   Assert.AreEqual(250, ALoaded.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
+  Assert.IsFalse(ALoaded.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsFalse(ALoaded.DebugPredictConditions, 'debug.predictConditions (#2169)');
   Assert.IsFalse(ALoaded.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
   Assert.AreEqual(40, ALoaded.DebugPredictLines, 'debug.predictConditions.lines (#2169)');

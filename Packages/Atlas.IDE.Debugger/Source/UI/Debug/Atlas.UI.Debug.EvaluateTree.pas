@@ -21,7 +21,8 @@
 //     ausgewertet wird, solange der alte aufklappbar war (kein Flackern des
 //     Zeichens bei jedem Schritt).
 //   - Visible blendet Knoten aus (Suche im Fenster „Variablen“, #853),
-//     Emphasis bestimmt, was fett steht (dort: Treffer). Zugeklappte Knoten
+//     Emphasis bestimmt, was fett steht (dort: Treffer), Suffix hängt Text
+//     an (dort: Bindung an Klasse oder Unit, #2550). Zugeklappte Knoten
 //     der Liste klappt Sync auch im Baum zu.
 
 interface
@@ -48,6 +49,9 @@ type
   /// <summary>Prüft einen Knoten der Liste.</summary>
   TAtlasEvalNodeTest = reference to function(ANode: TAtlasEvalNode): Boolean;
 
+  /// <summary>Text zu einem Knoten der Liste.</summary>
+  TAtlasEvalNodeText = reference to function(ANode: TAtlasEvalNode): string;
+
   TAtlasEvalTreeSync = class
   public const
     /// <summary>Höchstens so viele Zeichen eines Werts im Baum; der ganze steht unten.</summary>
@@ -60,6 +64,7 @@ type
     FRepaint: Boolean;
     FVisible: TAtlasEvalNodeTest;
     FEmphasis: TAtlasEvalNodeTest;
+    FSuffix: TAtlasEvalNodeText;
     function Filtered(const ANodes: TArray<TAtlasEvalNode>): TArray<TAtlasEvalNode>;
     function InfoIndex(AItem: TTreeNode): Integer;
     function NewInfo(const AKey: string): Pointer;
@@ -92,6 +97,8 @@ type
     property Visible: TAtlasEvalNodeTest read FVisible write FVisible;
     /// <summary>Steht der Knoten fett? nil: festgeheftete Zeilen.</summary>
     property Emphasis: TAtlasEvalNodeTest read FEmphasis write FEmphasis;
+    /// <summary>Text hinter „Name = Wert“ (Bindung im Fenster „Variablen“, #2550); nil: keiner.</summary>
+    property Suffix: TAtlasEvalNodeText read FSuffix write FSuffix;
   end;
 
 implementation
@@ -305,6 +312,10 @@ var
   mBold: Boolean;
 begin
   mText := NodeText(ANode);
+  if Assigned(FSuffix) then
+  begin
+    mText := mText + FSuffix(ANode);
+  end;
   if AItem.Text <> mText then
   begin
     AItem.Text := mText;

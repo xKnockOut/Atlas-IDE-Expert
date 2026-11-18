@@ -8,6 +8,9 @@
 // Warnfarbe, bei einer Suche nur Treffer, ihre Pfade und ihre Unterelemente,
 // Treffer fett. Kontextmenü und Tasten je Zeile: TAtlasVariablesRowActions;
 // Strg+F springt ins Suchfeld. Unten Anzahl bzw. Treffer und die Tastenhilfe.
+// Im Reiter Überwachung neben dem Eingabefeld „3 weitere ausgeblendet – zeigen“,
+// solange beim Halt gebundene Ausdrücke anderer Klassen fehlen (#2550); hinter
+// jeder gebundenen Zeile steht, wofür sie gilt.
 // Die DFM ist leer, weil TCustomFrame.Create für abgeleitete Frames eine
 // Ressource verlangt; aufgebaut wird im Code.
 
@@ -34,6 +37,10 @@ type
     FSearchBar: TAtlasVariablesSearchBar;
     FWatchBar: TPanel;
     FWatchEdit: TEdit;
+    FHiddenCheck: TCheckBox;
+    FHiddenCount: Integer;
+    /// <summary>SetHidden stellt den Haken: Das ist keine Eingabe.</summary>
+    FSettingHidden: Boolean;
     FView: TAtlasEvalTreeView;
     FRows: TAtlasVariablesRowActions;
     FStatus: TAtlasWrapLabel;
@@ -44,6 +51,8 @@ type
     procedure BuildTree;
     procedure TabClick(Sender: TObject);
     procedure WatchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure HiddenClick(Sender: TObject);
+    procedure UpdateHidden;
     procedure TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     function GetTree: TTreeView;
   protected
@@ -59,6 +68,9 @@ type
     /// <summary>Text unten (Anzahl, Treffer, Hinweis).</summary>
     procedure SetStatus(const AText: string);
     procedure SetTab(ATab: TAtlasVariablesTab);
+    /// <summary>Im Reiter Überwachung: ACount ausgeblendete Ausdrücke, AShown: sie stehen trotzdem da (#2550).
+    /// </summary>
+    procedure SetHidden(ACount: Integer; AShown: Boolean);
     procedure FocusSearch;
     /// <summary>Gewählter Knoten; nil ohne Auswahl.</summary>
     function Selected: TAtlasEvalNode;
@@ -69,6 +81,7 @@ type
     property Tree: TTreeView read GetTree;
     property WatchBar: TPanel read FWatchBar;
     property WatchEdit: TEdit read FWatchEdit;
+    property HiddenCheck: TCheckBox read FHiddenCheck;
     property Status: TAtlasWrapLabel read FStatus;
   end;
 
@@ -87,6 +100,7 @@ const
   cButtonHeight = 24;
   cBarHeight = 30;
   cTabWidth = 96;
+  cHiddenWidth = 300;
   /// <summary>Abstand der Lage vor dem Ausrichten: Sie bestimmt die Reihenfolge gleich ausgerichteter Teile.
   /// </summary>
   cOrderStep = 1000;
@@ -183,6 +197,13 @@ procedure TAtlasDebugVariablesFrame.BuildWatch;
 begin
   FWatchBar := AddBar(Self, 2);
   FWatchBar.Visible := False;
+  FHiddenCheck := TCheckBox.Create(Self);
+  FHiddenCheck.Parent := FWatchBar;
+  FHiddenCheck.Align := alRight;
+  FHiddenCheck.AlignWithMargins := True;
+  FHiddenCheck.Width := Px(Self, cHiddenWidth);
+  FHiddenCheck.Visible := False;
+  FHiddenCheck.OnClick := HiddenClick;
   FWatchEdit := TEdit.Create(Self);
   FWatchEdit.Parent := FWatchBar;
   FWatchEdit.Align := alClient;
@@ -224,6 +245,15 @@ begin
     function(ANode: TAtlasEvalNode): Boolean
     begin
       Result := (FSearch <> nil) and FSearch.IsHit(ANode);
+    end;
+  FView.Sync.Suffix :=
+    function(ANode: TAtlasEvalNode): string
+    begin
+      Result := '';
+      if (FTab = TAtlasVariablesTab.Watch) and Assigned(FHooks.ScopeText) then
+      begin
+        Result := FHooks.ScopeText(ANode);
+      end;
     end;
 end;
 
@@ -267,6 +297,41 @@ begin
     FWatchEdit.Text := '';
     FHooks.AddWatch(mText);
   end;
+end;
+
+procedure TAtlasDebugVariablesFrame.HiddenClick(Sender: TObject);
+begin
+  if not FSettingHidden and Assigned(FHooks.ShowHidden) then
+  begin
+    FHooks.ShowHidden(FHiddenCheck.Checked);
+  end;
+end;
+
+procedure TAtlasDebugVariablesFrame.SetHidden(ACount: Integer; AShown: Boolean);
+begin
+  FHiddenCount := ACount;
+  FSettingHidden := True;
+  try
+    if FHiddenCheck.Checked <> AShown then
+    begin
+      FHiddenCheck.Checked := AShown;
+    end;
+  finally
+    FSettingHidden := False;
+  end;
+  UpdateHidden;
+end;
+
+procedure TAtlasDebugVariablesFrame.UpdateHidden;
+var
+  mCaption: string;
+begin
+  mCaption := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesScopeHidden, [FHiddenCount]);
+  if FHiddenCheck.Caption <> mCaption then
+  begin
+    FHiddenCheck.Caption := mCaption;
+  end;
+  FHiddenCheck.Visible := FHiddenCount > 0;
 end;
 
 procedure TAtlasDebugVariablesFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

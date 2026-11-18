@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Debug.VariablesStrings;
 
-// Oberflächentexte des Fensters „Variablen“ (#853) auf Deutsch und Englisch.
+// Oberflächentexte des Fensters „Variablen“ (#853, Bindung an Klasse oder Unit #2550) auf Deutsch und Englisch.
 // Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
 
 interface
@@ -16,7 +16,9 @@ type
     VariablesSearchHint, VariablesSearchValues, VariablesSearchDeep, VariablesWatchHint, VariablesAddWatch,
     VariablesCopyValue, VariablesCopyExpression, VariablesRemoveWatch, VariablesNoServer, VariablesCount,
     VariablesHits, VariablesSearching, VariablesTruncated, VariablesKeys, VariablesWatchesKind,
-    SettingsDebugVariablesWindow, SettingsDebugVariablesSearchDepth, SettingsDebugVariablesSearchLimit);
+    SettingsDebugVariablesWindow, SettingsDebugVariablesSearchDepth, SettingsDebugVariablesSearchLimit,
+    VariablesScopeClass, VariablesScopeUnit, VariablesScopeEverywhere, VariablesScopeSuffix, VariablesScopeHidden,
+    SettingsDebugVariablesScopedWatches);
 
 {$SCOPEDENUMS OFF}
 
@@ -58,7 +60,13 @@ const
      'Überwachungsliste des Fensters „Variablen“',
      'Fenster „Variablen“ mit Autos und Suche',
      'Suchtiefe in Unterelementen (1 bis 10)',
-     'Höchstens so viele Auswertungen je Suche'),
+     'Höchstens so viele Auswertungen je Suche',
+     'Nur in dieser Klasse zeigen',
+     'Nur in dieser Unit zeigen',
+     'Überall zeigen',
+     '   · gilt für %s',
+     '%d weitere ausgeblendet (andere Klassen oder Units) – zeigen',
+     'Überwachte Ausdrücke an Klasse oder Unit binden'),
     ('Atlas: Variables',
      'Atlas: Variables',
      'Autos',
@@ -81,7 +89,13 @@ const
      'Watch list of the Variables window',
      'Variables window with Autos and search',
      'Search depth in children (1 to 10)',
-     'At most this many evaluations per search')
+     'At most this many evaluations per search',
+     'Show only in this class',
+     'Show only in this unit',
+     'Show everywhere',
+     '   · applies to %s',
+     '%d more hidden (other classes or units) – show',
+     'Bind watched expressions to a class or unit')
 );
 
 { TAtlasVariablesStrings }

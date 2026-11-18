@@ -182,6 +182,8 @@ contains
   Atlas.IDE.Debug.EvaluateStore in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateStore.pas',
   Atlas.Core.Debug.Variables in 'Source\Core\Debug\Atlas.Core.Debug.Variables.pas',
   Atlas.Core.Debug.VariablesFlow in 'Source\Core\Debug\Atlas.Core.Debug.VariablesFlow.pas',
+  Atlas.Core.Debug.WatchScopes in 'Source\Core\Debug\Atlas.Core.Debug.WatchScopes.pas',
+  Atlas.Core.Debug.WatchStore in 'Source\Core\Debug\Atlas.Core.Debug.WatchStore.pas',
   Atlas.IDE.Debug.FieldRequests in 'Source\IDE\Debug\Atlas.IDE.Debug.FieldRequests.pas',
   Atlas.UI.Debug.VariablesFrame in 'Source\UI\Debug\Atlas.UI.Debug.VariablesFrame.pas' {AtlasDebugVariablesFrame: TFrame},
   Atlas.UI.Debug.VariablesStrings in 'Source\UI\Debug\Atlas.UI.Debug.VariablesStrings.pas',

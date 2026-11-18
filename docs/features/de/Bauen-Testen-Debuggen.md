@@ -656,6 +656,7 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 - Ausgewertet wird ohne Nebenwirkungen; Werte klappen zu ihren Feldern auf wie im Fenster „Auswerten“, seit dem letzten Schritt geänderte Werte sind hervorgehoben.
 - Suche im gezeigten Reiter nach Name oder (mit „In Werten“) nach Wert. Mit „Unterelemente“ klappt Atlas Knoten bis `debug.variablesWindow.searchDepth` Ebenen selbst auf und hört nach `debug.variablesWindow.searchLimit` Auswertungen auf. Gezeigt werden Treffer (fett), ihr Pfad und ihre Unterelemente; unten steht die Zahl der Treffer. Ein Wert zählt nur bei einfachen Werten: Bei einer Suche nach „Berlin“ ist `Kunde.Adressen[1].Ort` der Treffer, nicht `Kunde`.
 - Autos und Lokal brauchen den Atlas-Server; die Überwachung geht ohne.
+- Überwachte Ausdrücke je Klasse oder Unit (#2550): Im Kontextmenü einer Zeile im Reiter Überwachung bindet „Nur in dieser Klasse zeigen“ bzw. „Nur in dieser Unit zeigen“ den Ausdruck an die Klasse bzw. Unit, in der das Programm gerade hält; „Überall zeigen“ hebt die Bindung auf. Beim nächsten Halt in der Klasse (auch in Nachfahren, soweit der Atlas-Index die Vererbung kennt) erscheint der Ausdruck von selbst, passende gebundene zuerst; anderswo wird er nicht ausgewertet und nicht gezeigt. Hinter der Zeile steht, wofür sie gilt („· gilt für TAuftragsLauf“), über der Liste „3 weitere ausgeblendet – zeigen“. Klasse, Unit und Vorfahren liefert der Atlas-Server; ohne ihn liest Atlas Klasse und Unit aus dem obersten Rahmen, ohne Vererbung. Gewertet wird immer im obersten Rahmen mit Quelltext, weil die ToolsAPI keinen anderen Rahmen wählt.
 
 | Bedienung | Wirkung |
 |---|---|
@@ -667,7 +668,7 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 | Entf (Reiter Überwachung) | Überwachung entfernen |
 | Enter im Eingabefeld des Reiters Überwachung | Ausdruck überwachen |
 
-Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
+Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
 
 ### Ereignisprotokoll
 

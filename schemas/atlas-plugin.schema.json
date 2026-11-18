@@ -2498,6 +2498,19 @@
       "x-parent": "debug.variablesWindow",
       "x-issue": "#853"
     },
+    "DebugVariablesScopedWatches": {
+      "description": "Überwachte Ausdrücke im Fenster „Variablen“ an eine Klasse oder Unit binden (Kontextmenü der Zeile): Beim Halt zeigt und wertet Atlas nur die Ausdrücke der Klasse (auch in Nachfahren, soweit der Index sie kennt) bzw. Unit, in der das Programm steht, und die überall geltenden; die übrigen sind ausgeblendet. Aus = alle Ausdrücke überall wie bisher.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.variablesWindow.scopedWatches",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.variablesWindow",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Überwachte Ausdrücke an Klasse oder Unit binden",
+      "x-captionEn": "Bind watched expressions to a class or unit",
+      "x-issue": "#2550"
+    },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
       "type": "boolean",
