@@ -69,6 +69,7 @@ type
     LeakChoiceUnavailable, LeakDownloadHint, LeakFileReportOption, LeakSetupButton, LeakCloseButton,
     LeakPreviewTitle, LeakPreviewHint, LeakPreviewApply, LeakEditAction, LeakNothingToDo, LeakDefinesDone,
     LeakDefinesFailed, LeakNoDebugConfig, LeakCopyDllAsk, LeakCopyDllDone, LeakCopyDllFailed, LeakDone,
+    LeakSetupFailed,
     SettingsLeakSetup,
     // Lecks je Test (#1774).
     TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks,
@@ -385,6 +386,7 @@ const
      'Leckprüfung: %s nach %s kopiert.',
      'Leckprüfung: %s nicht kopiert: %s',
      'Leckprüfung für %s eingerichtet.',
+     'Leckprüfung: Fehler beim Einrichten (%s). Details im Atlas-Protokoll.',
      'Befehl „Leckprüfung einrichten …“ (Projektverwaltung, Befehlspalette)',
      '%s · Leck: %d Bytes',
      'Test %s gibt Speicher nicht frei: %d Bytes (Leck)',
@@ -895,6 +897,7 @@ const
      'Leak check: %s copied to %s.',
      'Leak check: %s not copied: %s',
      'Leak check set up for %s.',
+     'Leak check: setup failed (%s). Details in the Atlas log.',
      'Command “Set up leak check…” (project manager, command palette)',
      '%s · leak: %d bytes',
      'Test %s does not free memory: %d bytes (leak)',

@@ -130,11 +130,16 @@ begin
     FChoices[mChoice].Align := alClient;
     FChoices[mChoice].Caption := mCaption;
     FChoices[mChoice].Enabled := AInfo.Available(mChoice);
-    FChoices[mChoice].OnClick := ChoiceClick;
   end;
+  // Vorauswahl vor OnClick: Checked := True löst Click aus, und ChoiceClick braucht FFileReport und FSetUp, die
+  // erst danach entstehen (Zugriffsverletzung im Konstruktor, der Dialog erschien nie).
   if AInfo.Available(AInfo.Preselect) then
   begin
     FChoices[AInfo.Preselect].Checked := True;
+  end;
+  for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
+  begin
+    FChoices[mChoice].OnClick := ChoiceClick;
   end;
   if (AInfo.Sources[TAtlasLeakChoice.FastMM4].FileName = '') or
     (AInfo.Sources[TAtlasLeakChoice.FastMM5].FileName = '') then
