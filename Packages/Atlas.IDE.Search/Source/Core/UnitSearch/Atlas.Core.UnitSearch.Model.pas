@@ -193,8 +193,7 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching,
-  Atlas.Text.Json,
-  Atlas.Text.Timestamps;
+  Atlas.Text.Json;
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');

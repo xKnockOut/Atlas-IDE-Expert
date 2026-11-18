@@ -768,7 +768,8 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AItem);
-  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TJsonRead.Text(mObject, 'id')), TJsonRead.IsoTime(mObject, 'since', True));
+  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TJsonRead.Text(mObject, 'id')),
+    TJsonRead.IsoTime(mObject, 'since', True));
   Result := (AConnection.Id <> '') and (AConnection.Since <> 0);
   if Result then
   begin
