@@ -67,7 +67,7 @@ if ($global:LASTEXITCODE -ne 0) {
 
 # Kern und jedes Modul-Package (#1456): Ordner Packages\Atlas.IDE.* mit gleichnamigem .dpk.
 $Packages = @(Get-ChildItem (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
-    Where-Object { Test-Path (Join-Path $_.FullName "$($_.Name).dpk") } | ForEach-Object Name | Sort-Object)
+    Where-Object { Test-Path (Join-Path $_.FullName "$($_.Name).dpk") } | ForEach-Object { $_.Name } | Sort-Object)
 if ($Packages.Count -eq 0) {
     throw 'Keine Plugin-Packages unter Packages\Atlas.IDE.* gefunden'
 }
@@ -118,7 +118,7 @@ if ($CommitTime) {
     $Stale = @($Built | Where-Object { $_.LastWriteTimeUtc -lt $CommitTime })
     if ($Stale.Count -gt 0) {
         throw ("Älter als der letzte Commit ($($CommitTime.ToString('u'))), also nicht aus diesem Stand gebaut: " +
-            (($Stale | ForEach-Object Name) -join ', '))
+            (($Stale | ForEach-Object { $_.Name }) -join ', '))
     }
 }
 
