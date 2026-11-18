@@ -57,7 +57,8 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Text.Timestamps;
+  Atlas.Text.Timestamps,
+  Atlas.Text.Json;
 
 { TIndexProcessInfo }
 
@@ -86,17 +87,6 @@ begin
   Result.AddPair('events', mItems);
 end;
 
-function ReadTime(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  if AObject.TryGetValue<string>(AName, mText) then
-  begin
-    Result := TTextTimestamp.IsoOrZero(mText, False);
-  end;
-end;
-
 /// <summary>Ereignisse mit Text aus "events".</summary>
 function ReadEvents(AItems: TJSONArray): TArray<TIndexProcessEvent>;
 var
@@ -110,7 +100,7 @@ begin
     begin
       Continue;
     end;
-    mEvent.Time := ReadTime(TJSONObject(mValue), 'time');
+    mEvent.Time := TJsonRead.IsoTime(TJSONObject(mValue), 'time', False);
     mEvent.Text := TJSONObject(mValue).GetValue<string>('text', '');
     if mEvent.Text <> '' then
     begin
@@ -147,7 +137,7 @@ begin
     AInfo.Workspace := mItem.GetValue<string>('workspace', '');
     AInfo.State := mItem.GetValue<string>('state', '');
     AInfo.Writer := (mItem.GetValue('writer') is TJSONBool) and TJSONBool(mItem.GetValue('writer')).AsBoolean;
-    AInfo.Started := ReadTime(mItem, 'started');
+    AInfo.Started := TJsonRead.IsoTime(mItem, 'started', False);
     if mItem.TryGetValue<TJSONArray>('events', mItems) then
     begin
       AInfo.Events := ReadEvents(mItems);
