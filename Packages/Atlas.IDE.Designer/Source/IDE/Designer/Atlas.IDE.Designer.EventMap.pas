@@ -7,6 +7,9 @@
 //   Unit (Puffer), gerechnet von TAtlasEventMap. Jede Sekunde neu gelesen;
 //   die Liste wird nur bei geändertem Text neu gefüllt, damit Auswahl und
 //   Bildlauf bleiben. Ohne aktiven Designer bleibt das letzte Formular stehen.
+//   Ist das Fenster nicht zu sehen (Reiter im Hintergrund, eingeklappte
+//   Leiste, Desktop-Wechsel, X), ruht der Takt; er wacht auf, sobald die
+//   Liste wieder gezeichnet wird (OnPainted).
 // - Doppelklick springt zum Handler (TAtlasIdeNavigation), ein zweiter wählt
 //   die Komponente im Designer aus.
 // - „Handler umbenennen“: IDesigner.RenameMethod (Deklaration, Rumpf und alle
@@ -36,15 +39,16 @@ type
   private
     FOnMessage: TProc<string>;
     FTimer: TTimer;
+    /// <summary>Fenster offen (Form sichtbar, auch als Reiter im Hintergrund).</summary>
     FShown: Boolean;
-    /// <summary>Vom Desktop angelegt und noch nicht zu sehen gewesen: Der Takt wartet, statt zu schließen.</summary>
-    FPending: Boolean;
     FFormFile: string;
     FFormClass: string;
     FRootName: string;
     FText: string;
     FRows: TArray<TAtlasEventRow>;
     procedure Tick(Sender: TObject);
+    /// <summary>Die Liste wird gezeichnet: ruhenden Takt wecken.</summary>
+    procedure Painted;
     /// <summary>Neuer Frame, auch vom Desktop beim Start angelegt: verdrahten und dem Formular folgen.</summary>
     procedure FrameArrived;
     procedure Reload(AForce: Boolean);
@@ -265,6 +269,11 @@ end;
 destructor TAtlasIdeEventMap.Destroy;
 begin
   OnHostFrame := nil;
+  // Nach dem Abmelden darf das Zeichnen der Liste nichts mehr wecken.
+  if HostFrame <> nil then
+  begin
+    HostFrame.OnPainted := nil;
+  end;
   if FTimer <> nil then
   begin
     FTimer.Enabled := False;
@@ -278,19 +287,19 @@ procedure TAtlasIdeEventMap.Tick(Sender: TObject);
 begin
   if (Host = nil) or not Host.Shown then
   begin
-    // Vom Desktop angelegt, aber noch verdeckt (etwa als Reiter im Hintergrund): warten.
-    if FPending and (HostFrame <> nil) then
-    begin
-      Exit;
-    end;
-    // Fenster mit dem X geschlossen.
-    FShown := False;
-    FPending := False;
+    // Nicht zu sehen: ruhen, bis die Liste wieder gezeichnet wird. Nur eine versteckte Form ist geschlossen (X,
+    // Desktop-Wechsel); ein Reiter im Hintergrund oder eine eingeklappte Leiste bleibt offen.
     FTimer.Enabled := False;
+    FShown := (Host <> nil) and (Host.Form <> nil) and Host.Form.Visible;
     Exit;
   end;
-  FPending := False;
+  FShown := True;
   Reload(False);
+end;
+
+procedure TAtlasIdeEventMap.Painted;
+begin
+  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeEventMap.FrameArrived;
@@ -302,8 +311,8 @@ begin
   Wire(HostFrame);
   ApplyTheme;
   FShown := True;
-  FPending := True;
   FText := '';
+  // Vom Desktop verdeckt angelegt (Reiter im Hintergrund): Der erste Takt legt sich schlafen, OnPainted weckt.
   FTimer.Enabled := True;
 end;
 
@@ -394,6 +403,11 @@ begin
     procedure
     begin
       FillList;
+    end;
+  AFrame.OnPainted :=
+    procedure
+    begin
+      Painted;
     end;
 end;
 
