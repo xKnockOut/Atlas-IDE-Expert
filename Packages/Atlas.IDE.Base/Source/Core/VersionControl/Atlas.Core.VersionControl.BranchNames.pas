@@ -35,6 +35,10 @@ type
 
 implementation
 
+const
+  /// <summary>Endung, die Git für Sperrdateien braucht; kein Teil eines Branchnamens darf so enden.</summary>
+  cLockSuffix = '.lock';
+
 { TAtlasVcsBranchNames }
 
 class function TAtlasVcsBranchNames.Valid(const AName: string): Boolean;
@@ -58,7 +62,7 @@ begin
     end;
   for mPart in AName.Split(['/']) do
   begin
-    if (mPart = '') or (mPart[1] = '.') or SameText(Copy(mPart, Length(mPart) - 4, 5), '.lock') then
+    if (mPart = '') or (mPart[1] = '.') or mPart.EndsWith(cLockSuffix, True) then
     begin
       Exit;
     end;

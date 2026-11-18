@@ -33,9 +33,28 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Encoding;
+
 const
   cScheme = 'file://';
   cHexDigits = '0123456789ABCDEF';
+  /// <summary>Länge einer Folge "%XX".</summary>
+  cPercentLength = 3;
+  /// <summary>Höchstens so viele UTF-8-Bytes ergibt ein UTF-16-Zeichen (Surrogate einzeln gezählt).</summary>
+  cMaxUtf8BytesPerChar = 3;
+  /// <summary>Bits und Maske einer Hexadezimalziffer.</summary>
+  cNibbleBits = 4;
+  cNibbleMask = $0F;
+  /// <summary>Doppelter Schrägstrich vor einem Rechnernamen (UNC).</summary>
+  cUncPrefix = '//';
+  /// <summary>Laufwerk am Anfang eines Pfads ("c:").</summary>
+  cDriveLength = 2;
+  /// <summary>Laufwerk in der URI-Form "/c:".</summary>
+  cUriDriveLength = 3;
+  // Präfixe langer Windows-Pfade.
+  cLongUncPrefix = '\\?\UNC\';
+  cLongPrefix = '\\?\';
 
 { TTextUris }
 
@@ -49,19 +68,19 @@ begin
     Exit(AValue);
   end;
   mBytes := nil;
-  SetLength(mBytes, Length(AValue) * 3);
+  SetLength(mBytes, Length(AValue) * cMaxUtf8BytesPerChar);
   mCount := 0;
   mIndex := 1;
   while mIndex <= Length(AValue) do
   begin
-    if (AValue[mIndex] = '%') and (mIndex + 2 <= Length(AValue)) then
+    if (AValue[mIndex] = '%') and (mIndex + cPercentLength - 1 <= Length(AValue)) then
     begin
-      mCode := StrToIntDef('$' + Copy(AValue, mIndex + 1, 2), -1);
+      mCode := StrToIntDef('$' + Copy(AValue, mIndex + 1, cPercentLength - 1), -1);
       if mCode >= 0 then
       begin
         mBytes[mCount] := mCode;
         Inc(mCount);
-        Inc(mIndex, 3);
+        Inc(mIndex, cPercentLength);
         Continue;
       end;
     end;
@@ -87,13 +106,15 @@ begin
   try
     for mValue in mBytes do
     begin
-      if (mValue < $80) and CharInSet(Char(mValue), ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/']) then
+      if (mValue < TTextEncodingProbe.cFirstNonAscii) and
+        CharInSet(Char(mValue), ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/']) then
       begin
         mBuilder.Append(Char(mValue));
       end
       else
       begin
-        mBuilder.Append('%').Append(cHexDigits[(mValue shr 4) + 1]).Append(cHexDigits[(mValue and 15) + 1]);
+        mBuilder.Append('%').Append(cHexDigits[(mValue shr cNibbleBits) + 1]).Append(
+          cHexDigits[(mValue and cNibbleMask) + 1]);
       end;
     end;
     Result := mBuilder.ToString;
@@ -107,13 +128,13 @@ var
   mPath: string;
 begin
   mPath := StringReplace(NormalizePath(APath), '\', '/', [rfReplaceAll]);
-  if Copy(mPath, 1, 2) = '//' then
+  if mPath.StartsWith(cUncPrefix) then
   begin
-    Exit(cScheme + PercentEncode(Copy(mPath, 3, MaxInt)));
+    Exit(cScheme + PercentEncode(Copy(mPath, Length(cUncPrefix) + 1, MaxInt)));
   end;
-  if (Length(mPath) >= 2) and (mPath[2] = ':') then
+  if (Length(mPath) >= cDriveLength) and (mPath[cDriveLength] = ':') then
   begin
-    mPath := '/' + LowerCase(mPath[1]) + ':' + Copy(mPath, 3, MaxInt);
+    mPath := '/' + LowerCase(mPath[1]) + ':' + Copy(mPath, cDriveLength + 1, MaxInt);
   end;
   Result := cScheme + PercentEncode(mPath);
 end;
@@ -140,7 +161,7 @@ begin
     Exit('\\' + PercentDecode(mHost) + StringReplace(Result, '/', '\', [rfReplaceAll]));
   end;
   // /c:/... → c:\...
-  if (Length(Result) >= 3) and (Result[1] = '/') and (Result[3] = ':') then
+  if (Length(Result) >= cUriDriveLength) and (Result[1] = '/') and (Result[cUriDriveLength] = ':') then
   begin
     Result := StringReplace(Copy(Result, 2, MaxInt), '/', '\', [rfReplaceAll]);
   end;
@@ -154,13 +175,13 @@ end;
 // Lange Pfade: \\?\C:\... und \\?\UNC\server\... in die kurze Form.
 function WithoutLongPrefix(const APath: string): string;
 begin
-  if SameText(Copy(APath, 1, 8), '\\?\UNC\') then
+  if APath.StartsWith(cLongUncPrefix, True) then
   begin
-    Result := '\\' + Copy(APath, 9, MaxInt);
+    Result := '\\' + Copy(APath, Length(cLongUncPrefix) + 1, MaxInt);
   end
-  else if Copy(APath, 1, 4) = '\\?\' then
+  else if APath.StartsWith(cLongPrefix) then
   begin
-    Result := Copy(APath, 5, MaxInt);
+    Result := Copy(APath, Length(cLongPrefix) + 1, MaxInt);
   end
   else
   begin

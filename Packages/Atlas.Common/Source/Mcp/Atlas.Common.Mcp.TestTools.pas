@@ -99,7 +99,7 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TTestToolsText = (PlatformIsNotActivatedIn, ProjectNotFound, NoDUnitXTestProjectFound, TheTestProgramWroteNo,
-    SeveralTestProjectsSpecifyProject);
+    NoReportRecognized, SeveralTestProjectsSpecifyProject);
 
 const
   cTexts: array[TTestToolsText] of TAtlasText = (
@@ -114,6 +114,7 @@ const
      En: 'The test program wrote no XML report (%s). It needs a DUnitX XML logger: ' +
       'runner.AddLogger(TDUnitXXMLNUnitFileLogger.Create(TDUnitX.Options.XMLOutputFile)) as in the RAD Studio ' +
       'template.'),
+    (De: 'kein Testbericht (NUnit oder JUnit) erkannt'; En: 'no test report (NUnit or JUnit) recognized'),
     (De: 'Mehrere Testprojekte (%s); "project" angeben.'; En: 'Several test projects (%s); specify "project".'));
 
 {$SCOPEDENUMS OFF}
@@ -348,6 +349,19 @@ begin
   Result.Output := AOutput;
 end;
 
+/// <summary>Warum der Lauf keinen gültigen Bericht hat, in der Sprache der Antwort.</summary>
+function ReasonOf(const ARun: TTestRunResult): string;
+begin
+  if ARun.NoReport or (ARun.Error = '') then
+  begin
+    Result := cTexts[TTestToolsText.NoReportRecognized].Text;
+  end
+  else
+  begin
+    Result := ARun.Error;
+  end;
+end;
+
 function StatusOf(const ARun: TTestRunResult): string;
 begin
   if not ARun.Valid then
@@ -435,7 +449,7 @@ begin
     AddHead(mRoot, ATarget, ATests, ARun, AProcess.ExitCode);
     if not ARun.Valid then
     begin
-      mRoot.AddPair('reason', cTexts[TTestToolsText.TheTestProgramWroteNo].Fmt([ARun.Error]));
+      mRoot.AddPair('reason', cTexts[TTestToolsText.TheTestProgramWroteNo].Fmt([ReasonOf(ARun)]));
       mRoot.AddPair('output', TJsonBuild.Strings(AProcess.Output));
       Exit(mRoot.Format(2));
     end;
