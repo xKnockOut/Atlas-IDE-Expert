@@ -16,9 +16,6 @@ type
   [TestFixture]
   TAtlasHideUiTests = class
   public
-    /// <summary>Erste Benutzung von Menü, Hinweisfenster und Einstellungsseite ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -93,23 +90,6 @@ begin
 end;
 
 { TAtlasHideUiTests }
-
-procedure TAtlasHideUiTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    try
-      MenuOfBlockEndLabelLikeMockup;
-      NoticeUndoRaisesEventAndHides;
-      PageRevealsEverySettingOfElementsAndWelcome;
-    except
-      on Exception do
-        ;
-    end;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasHideUiTests.Setup;
 begin

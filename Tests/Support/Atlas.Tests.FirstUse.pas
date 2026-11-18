@@ -25,11 +25,14 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
+  System.Types,
   System.Classes,
   System.IOUtils,
   System.DateUtils,
   System.JSON,
   System.Generics.Collections,
+  System.RegularExpressions,
+  System.RegularExpressionsCore,
   System.Messaging,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
@@ -46,12 +49,18 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,
+  Vcl.Graphics,
   Vcl.Forms,
+  Vcl.Clipbrd,
+  Vcl.AppEvnts,
+  Vcl.ComCtrls,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.Overview,
   Atlas.Common.Projects.PackageLocator,
-  Atlas.Windows.Diagnostics.StackTrace;
+  Atlas.Windows.Diagnostics.StackTrace,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Tools;
 
 /// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
 /// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
@@ -163,6 +172,39 @@ begin
     System.SysUtils.DeleteFile(mFileName);
     System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
     TAtlasDataFile.ForgetReports;
+  end;
+end;
+
+/// <summary>TFile.Replace mit fehlendem Ziel und fehlender Quelle: Die RTL lädt dabei den Ressourcentext von
+/// EFileNotFoundException und behält ihn bis Programmende. Im Index-Cache tritt das nur im Wettlauf zweier
+/// Schreiber auf (TDiskIndexFileSystem.WriteBytes, Test ConcurrentWritersLeaveReadableCache) und träfe dann
+/// zufällig den Test, in dem das Ziel gerade fehlt.</summary>
+procedure WarmUpIndexCacheReplace;
+var
+  mFolder: string;
+  mExisting: string;
+  mMissing: string;
+begin
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-erstgebrauch-ersetzen-' + IntToStr(GetCurrentProcessId));
+  TDirectory.CreateDirectory(mFolder);
+  try
+    mExisting := TPath.Combine(mFolder, 'vorhanden.json');
+    mMissing := TPath.Combine(mFolder, 'fehlt.json');
+    TFile.WriteAllText(mExisting, '{}');
+    try
+      TFile.Replace(mExisting, mMissing, mExisting + '.bak');
+    except
+      on EFileNotFoundException do
+        ;
+    end;
+    try
+      TFile.Replace(mMissing, mExisting, mExisting + '.bak');
+    except
+      on EFileNotFoundException do
+        ;
+    end;
+  finally
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
@@ -410,6 +452,44 @@ begin
   SetComponentFieldAddressCache(True, 0);
 end;
 
+/// <summary>Zwischenablage der VCL (Clipboard): Das Objekt entsteht beim ersten Zugriff und wird in der
+/// Finalisierung von Vcl.Clipbrd freigegeben; das träfe sonst den ersten Test, der etwas kopiert (z. B. „Name
+/// kopieren“ im Fenster „Komponenten suchen“).</summary>
+procedure WarmUpDesignerClipboard;
+begin
+  if Clipboard = nil then
+  begin
+    raise EInvalidOperation.Create('Zwischenablage');
+  end;
+end;
+
+/// <summary>Fehlerpfade der Regex-Engine (System.RegularExpressions) einmal durchlaufen: Ein ungültiger Ausdruck
+/// und ein unbekannter Gruppenname lösen ERegularExpressionError aus; die RTL lädt dabei die Ressourcentexte der
+/// Meldungen und behält sie bis zum Programmende. Das träfe sonst den ersten Test mit einem ungültigen Suchmuster
+/// (Suche/Ersetzen, eigene Muster der Projektaufgaben, Filter des Ereignisprotokolls) oder einem Ersatztext mit
+/// unbekannter Gruppe.</summary>
+procedure WarmUpRegexErrors;
+var
+  mFound: TMatch;
+begin
+  try
+    TRegEx.Create('(abc', [roIgnoreCase]).IsMatch('');
+  except
+    on ERegularExpressionError do
+      ;
+  end;
+  mFound := TRegEx.Create('(?<name>\w+)').Match('Wert');
+  try
+    if mFound.Groups['gibt_es_nicht'].Success then
+    begin
+      raise EInvalidOperation.Create('Unbekannte Gruppe passt');
+    end;
+  except
+    on ERegularExpressionError do
+      ;
+  end;
+end;
+
 /// <summary>Erstes Datenmodul des Prozesses (TDataModule, z. B. als Formular der Designer-Fälschung): Es meldet sich
 /// bei Screen an (Vcl.Forms, TScreen.FDataModules wächst auf 4 Einträge und schrumpft nicht, frei mit Screen in der
 /// Finalisierung der VCL); beim Freigeben nimmt es GlobalNameSpace zum Schreiben (Zähler je Thread, frei mit
@@ -433,7 +513,162 @@ begin
   end;
 end;
 
+/// <summary>Erstes Ereignisobjekt der Anwendung (TApplicationEvents, z. B. im Scroller der Willkommenstafel): Es meldet
+/// sich beim Verteiler der VCL an (Vcl.AppEvnts, MultiCaster); dessen Liste legt dabei Verwaltungsdaten und Kapazität an,
+/// die beim Abmelden bleiben (208 Byte), frei mit dem Verteiler in der Finalisierung der VCL.</summary>
+procedure WelcomeWarmUpApplicationEvents;
+begin
+  TApplicationEvents.Create(nil).Free;
+end;
+
+/// <summary>Liste aller Leinwände der VCL (Vcl.Graphics, TCanvas.Create trägt jede ein, TCanvas.Destroy trägt sie
+/// aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig lebender Leinwände und bleibt bis zur Finalisierung
+/// von Vcl.Graphics. Jedes TCustomControl hat eine; eine Einstellungsseite mit allen Bereichen kommt auf mehrere
+/// hundert (Block von 6.928 Byte für 864 Einträge). Viele Leinwände auf einmal anlegen und freigeben setzt den
+/// Höchststand weit über den jedes Tests.</summary>
+procedure WarmUpVclCanvasList;
+const
+  cCanvases = 4096;
+var
+  mCanvases: TArray<TCanvas>;
+  mIndex: Integer;
+begin
+  SetLength(mCanvases, cCanvases);
+  try
+    for mIndex := 0 to High(mCanvases) do
+    begin
+      mCanvases[mIndex] := TCanvas.Create;
+    end;
+  finally
+    for mIndex := 0 to High(mCanvases) do
+    begin
+      mCanvases[mIndex].Free;
+    end;
+  end;
+end;
+
+/// <summary>Liste der Bitmap-Leinwände mit Gerätekontext (Vcl.Graphics, TBitmapCanvas.CreateHandle trägt ein, das
+/// Freigeben des Kontexts trägt aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig offener Kontexte und
+/// bleibt bis zur Finalisierung von Vcl.Graphics. Eine Bildliste legt beim Initialisieren mehrere an (80 Byte).
+/// Viele Bitmaps mit Kontext auf einmal anlegen und freigeben setzt den Höchststand über den jedes Tests.</summary>
+procedure WarmUpVclBitmapCanvases;
+const
+  cBitmaps = 64;
+var
+  mBitmaps: TArray<TBitmap>;
+  mIndex: Integer;
+begin
+  SetLength(mBitmaps, cBitmaps);
+  try
+    for mIndex := 0 to High(mBitmaps) do
+    begin
+      mBitmaps[mIndex] := TBitmap.Create;
+      mBitmaps[mIndex].SetSize(1, 1);
+      mBitmaps[mIndex].Canvas.FillRect(TRect.Create(0, 0, 1, 1));
+    end;
+  finally
+    for mIndex := 0 to High(mBitmaps) do
+    begin
+      mBitmaps[mIndex].Free;
+    end;
+  end;
+end;
+
+/// <summary>Zwischenspeicher der Gerätekontexte von Steuerelementen (Vcl.Controls, TControlCanvas.CreateHandle):
+/// Seine Liste fasst höchstens vier Leinwände, ihre Kapazität entsteht beim ersten Textmessen auf einem
+/// Steuerelement mit Fenster (48 Byte) und bleibt bis zur Finalisierung von Vcl.Controls. Fünf Formulare messen
+/// gleichzeitig: Die Liste ist danach voll angelegt.</summary>
+procedure WarmUpVclControlCanvas;
+const
+  cForms = 5;
+var
+  mForms: TArray<TForm>;
+  mIndex: Integer;
+begin
+  SetLength(mForms, cForms);
+  try
+    for mIndex := 0 to High(mForms) do
+    begin
+      mForms[mIndex] := TForm.CreateNew(nil);
+      mForms[mIndex].HandleNeeded;
+      mForms[mIndex].Canvas.TextWidth('Atlas');
+    end;
+  finally
+    for mIndex := 0 to High(mForms) do
+    begin
+      mForms[mIndex].Free;
+    end;
+  end;
+end;
+
+/// <summary>Erster DPI-Wechsel eines Formulars mit Liste: Die VCL legt dabei für die neue Auflösung Daten an, die bis zu
+/// ihrer Finalisierung bleiben (72 Byte; der Leckbericht zeigt keinen Stapel). Den Nachrichtenverteiler dieses Wegs
+/// legt WarmUpRtlSingletons an. Einmal auf 150 % und zurück skalieren, wie es Tests der Listen tun.</summary>
+procedure WarmUpVclDpiChange;
+var
+  mForm: TForm;
+  mList: TListView;
+  mPPI: Integer;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mList := TListView.Create(mForm);
+    mList.ViewStyle := vsReport;
+    mList.Parent := mForm;
+    mList.Columns.Add.Width := mForm.ScaleValue(100);
+    mForm.HandleNeeded;
+    mPPI := mForm.CurrentPPI;
+    mForm.ScaleForPPI(mPPI * 3 div 2);
+    mForm.ScaleForPPI(mPPI);
+  finally
+    mForm.Free;
+  end;
+end;
+
+/// <summary>Liste der Beiträge in der Modul-Registry (TAtlasModuleRegistry, frei mit der Registry in der
+/// Finalisierung von Base): Ihre Kapazität wächst auf den Höchststand gleichzeitiger Beiträge. Tests, die mehrere
+/// Einstellungsbereiche auf einmal anmelden, heben ihn (400 Byte bei acht). Viele Beiträge auf einmal anmelden
+/// und zurückziehen setzt ihn über den jedes Tests.</summary>
+procedure WarmUpRegistryProvisions;
+const
+  cProvisions = 64;
+var
+  mRegistrations: TArray<IAtlasRegistration>;
+  mIndex: Integer;
+begin
+  SetLength(mRegistrations, cProvisions);
+  try
+    for mIndex := 0 to High(mRegistrations) do
+    begin
+      mRegistrations[mIndex] := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
+        TAtlasSettingsSectionFactory.Create(TAtlasSettingsSection) as IAtlasSettingsSectionProvider);
+    end;
+  finally
+    for mIndex := 0 to High(mRegistrations) do
+    begin
+      if mRegistrations[mIndex] <> nil then
+      begin
+        mRegistrations[mIndex].Revoke;
+      end;
+    end;
+    mRegistrations := nil;
+  end;
+end;
+
 { TFirstUse }
+
+/// <summary>Fundorte von git und svn (TAtlasVcsTools.Where): gemerkt bis Programmende in Klassenvariablen von
+/// Atlas.Core.VersionControl.Tools, freigegeben mit deren Finalisierung. Tests, die einen Fundort vorgeben, stellen
+/// den echten danach mit Remember wieder her, statt ihn zu vergessen.</summary>
+procedure WarmUpVcsTools;
+var
+  mKind: TAtlasVcsKind;
+begin
+  for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+  begin
+    TAtlasVcsTools.Where(mKind);
+  end;
+end;
 
 /// <summary>Windows-Version der RTL (System.SysUtils, Win32Platform und Win32CSDVersion): InitPlatformId legt beim
 /// ersten Zugriff den Text des Service Packs an, den SysUtils bis zur Finalisierung hält. Ausgelöst etwa von
@@ -457,6 +692,7 @@ begin
   WarmUpFileErrors;
   WarmUpOsErrorText;
   WarmUpDataFiles;
+  WarmUpIndexCacheReplace;
   WarmUpDefaultEncoding;
   WarmUpDuplicateCatalog;
   WarmUpThemeListeners;
@@ -467,9 +703,18 @@ begin
   WarmUpKeysPage;
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
+  WarmUpDesignerClipboard;
+  WarmUpRegexErrors;
+  WarmUpVcsTools;
+  WarmUpVclCanvasList;
+  WarmUpVclBitmapCanvases;
+  WarmUpVclControlCanvas;
+  WarmUpVclDpiChange;
+  WarmUpRegistryProvisions;
   WarmUpStackTraceMap;
   WarmUpRtlSingletons;
   ShellWarmUpPlatformId;
+  WelcomeWarmUpApplicationEvents;
 end;
 
 end.

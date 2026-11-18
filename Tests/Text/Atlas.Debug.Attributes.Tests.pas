@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasDebugAttributesTests = class
   public
-    /// <summary>RTTI-Pool und Attributinstanzen einmal vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure AttributesCarryTheirText;
   end;
@@ -22,10 +19,13 @@ type
 implementation
 
 uses
-  System.Rtti,
   Atlas.Debug.Attributes;
 
 type
+  // Übersetzt nur, wenn beide Attribute mit diesen Argumenten passen (sonst meldet der Compiler das Attribut als
+  // unbekannt oder die Argumente als falsch). Die Werte prüft der Test über eigene Instanzen: Atlas liest die
+  // Attribute aus dem Quelltext, zur Laufzeit tun sie nichts. Über TRttiContext gelesen, blieben Typ und
+  // Attribute im RTTI-Zwischenspeicher der RTL bis zum Programmende liegen.
   [AtlasDebugDisplay('{Name}, {Ort}')]
   [AtlasDebugChildren('Name, Ort')]
   TBeispiel = class
@@ -35,37 +35,23 @@ type
 
 { TAtlasDebugAttributesTests }
 
-procedure TAtlasDebugAttributesTests.WarmUpFirstUse;
-begin
-  AttributesCarryTheirText;
-end;
-
 procedure TAtlasDebugAttributesTests.AttributesCarryTheirText;
 var
-  mContext: TRttiContext;
-  mAttribute: TCustomAttribute;
-  mTemplate, mNames: string;
+  mDisplay: AtlasDebugDisplayAttribute;
+  mChildren: AtlasDebugChildrenAttribute;
 begin
-  mTemplate := '';
-  mNames := '';
-  mContext := TRttiContext.Create;
+  mDisplay := AtlasDebugDisplayAttribute.Create('{Name}, {Ort}');
   try
-    for mAttribute in mContext.GetType(TBeispiel).GetAttributes do
-    begin
-      if mAttribute is AtlasDebugDisplayAttribute then
-      begin
-        mTemplate := AtlasDebugDisplayAttribute(mAttribute).Template;
-      end
-      else if mAttribute is AtlasDebugChildrenAttribute then
-      begin
-        mNames := AtlasDebugChildrenAttribute(mAttribute).Names;
-      end;
-    end;
+    Assert.AreEqual('{Name}, {Ort}', mDisplay.Template);
   finally
-    mContext.Free;
+    mDisplay.Free;
   end;
-  Assert.AreEqual('{Name}, {Ort}', mTemplate);
-  Assert.AreEqual('Name, Ort', mNames);
+  mChildren := AtlasDebugChildrenAttribute.Create('Name, Ort');
+  try
+    Assert.AreEqual('Name, Ort', mChildren.Names);
+  finally
+    mChildren.Free;
+  end;
 end;
 
 initialization
