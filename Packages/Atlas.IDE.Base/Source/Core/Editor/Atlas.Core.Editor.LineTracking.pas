@@ -15,9 +15,18 @@
 //   jede verfolgte Zeile darunter einzeln, das Zeichnen fragt danach.
 // - TAtlasLineTracking verwaltet die Zuordnungen aller Dateien und Kanäle.
 //   Trackable wählt aus den Zeilen eines Kanals die aus, die der IDE übergeben
-//   werden dürfen: nur Zeilen, die der Puffer hat, jede einmal. Eine Zeile
-//   hinter dem Ende (ein Befund bis zum Dateiende endet eine Zeile danach)
-//   bringt den Editor beim Vergrößern seiner Tabelle zum Absturz.
+//   werden dürfen: nur Zeilen, die der Puffer hat, jede einmal (ein Befund bis
+//   zum Dateiende endet eine Zeile hinter der letzten). Das ist eine von drei
+//   Vorkehrungen gegen eine Zugriffsverletzung beim Vergrößern der Zeilentabelle
+//   des Editors (die anderen: nicht beim Zeichnen anmelden, veraltete Tracker
+//   nicht anfassen, siehe Atlas.IDE.Foundation.LineTracker). Welche davon die
+//   Ursache trifft, ist nicht eingegrenzt; jede gilt vorsorglich.
+//   Untracked setzt einen Stand ohne Verfolgung: jede Zeile ist sie selbst, und
+//   bis zum nächsten Stand meldet niemand neu an.
+// - TAtlasLineBuffers führt Buch über die Anmeldungen je Puffer: Tracker der IDE,
+//   Nummer des Beobachters und eine fortlaufende Seriennummer je Anmeldung. Ein
+//   Beobachter, der sein Ende meldet, löscht damit nur die eigene Anmeldung,
+//   nicht die eines späteren Puffers gleichen Namens.
 // Der Server bleibt die Quelle: Die Zuordnung überbrückt nur die Zeit, bis der
 // Kanal einen neuen Stand hat.
 // Alle Zeilen 0-basiert. Nur im Hauptthread verwenden.
@@ -92,12 +101,52 @@ type
     function Find(const AFileName: string; AChannel: Integer): TAtlasTrackedLines;
     /// <summary>Zuordnung der Datei im Kanal, bei Bedarf neu (Stand 0, nichts verfolgt).</summary>
     function Ensure(const AFileName: string; AChannel: Integer): TAtlasTrackedLines;
+    /// <summary>Zuordnung der Datei im Kanal, nur wenn sie zum Stand AStamp gehört; sonst nil (dann ist neu
+    /// anzumelden).</summary>
+    function Current(const AFileName: string; AChannel, AStamp: Integer): TAtlasTrackedLines;
+    /// <summary>Stand AStamp ohne Verfolgung: jede Zeile ist sie selbst, und Current liefert bis zum nächsten
+    /// Stand diese Zuordnung (niemand meldet neu an). Für Text, der nicht zum Puffer passt, und nach einem Fehler
+    /// beim Anmelden.</summary>
+    function Untracked(const AFileName: string; AChannel, AStamp: Integer): TAtlasTrackedLines;
     /// <summary>Meldung der IDE für AFileName mit der Kennung AData weiterreichen; fremde Kennungen bleiben
     /// unbeachtet. ANewLine 0-basiert, negativ = gelöscht.</summary>
     procedure Changed(const AFileName: string; AData: NativeInt; ANewLine: Integer);
     /// <summary>Alle Kanäle der Datei vergessen (Puffer geschlossen).</summary>
     procedure Remove(const AFileName: string);
     procedure Clear;
+  end;
+
+  /// <summary>Anmeldung eines Puffers bei der Zeilenverfolgung der IDE: Tracker (T), Nummer des Beobachters und
+  /// Seriennummer der Anmeldung.</summary>
+  TAtlasLineBuffer<T> = record
+    FileName: string;
+    Tracker: T;
+    NotifierIndex: Integer;
+    Serial: Integer;
+  end;
+
+  /// <summary>Anmeldungen je Datei (ohne Groß- und Kleinschreibung). Jede Anmeldung bekommt mit NextSerial eine
+  /// eigene Seriennummer; Forget löscht nur die Anmeldung mit dieser Nummer.</summary>
+  TAtlasLineBuffers<T> = class
+  private
+    FEntries: TDictionary<string, TAtlasLineBuffer<T>>;
+    FSerial: Integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Seriennummer für die nächste Anmeldung (fortlaufend ab 1).</summary>
+    function NextSerial: Integer;
+    /// <summary>Anmeldung der Datei; False ohne.</summary>
+    function TryGet(const AFileName: string; out AEntry: TAtlasLineBuffer<T>): Boolean;
+    /// <summary>Anmeldung AEntry für AEntry.FileName merken; eine frühere derselben Datei fällt weg.</summary>
+    procedure Put(const AEntry: TAtlasLineBuffer<T>);
+    /// <summary>Anmeldung der Datei löschen, nur wenn sie die Seriennummer ASerial trägt; True, wenn gelöscht.
+    /// </summary>
+    function Forget(const AFileName: string; ASerial: Integer): Boolean;
+    /// <summary>Alle Anmeldungen.</summary>
+    function Entries: TArray<TAtlasLineBuffer<T>>;
+    /// <summary>Anzahl der Anmeldungen.</summary>
+    function Count: Integer;
   end;
 
 implementation
@@ -300,6 +349,21 @@ begin
   end;
 end;
 
+function TAtlasLineTracking.Current(const AFileName: string; AChannel, AStamp: Integer): TAtlasTrackedLines;
+begin
+  Result := Find(AFileName, AChannel);
+  if (Result <> nil) and (Result.Stamp <> AStamp) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function TAtlasLineTracking.Untracked(const AFileName: string; AChannel, AStamp: Integer): TAtlasTrackedLines;
+begin
+  Result := Ensure(AFileName, AChannel);
+  Result.Reset(AStamp, nil);
+end;
+
 procedure TAtlasLineTracking.Changed(const AFileName: string; AData: NativeInt; ANewLine: Integer);
 var
   mChannel, mLine: Integer;
@@ -329,6 +393,65 @@ end;
 procedure TAtlasLineTracking.Clear;
 begin
   FLines.Clear;
+end;
+
+{ TAtlasLineBuffers<T> }
+
+constructor TAtlasLineBuffers<T>.Create;
+begin
+  inherited Create;
+  FEntries := TDictionary<string, TAtlasLineBuffer<T>>.Create;
+end;
+
+destructor TAtlasLineBuffers<T>.Destroy;
+begin
+  FEntries.Free;
+  inherited Destroy;
+end;
+
+function TAtlasLineBuffers<T>.NextSerial: Integer;
+begin
+  Inc(FSerial);
+  Result := FSerial;
+end;
+
+function TAtlasLineBuffers<T>.TryGet(const AFileName: string; out AEntry: TAtlasLineBuffer<T>): Boolean;
+var
+  mEntry: TAtlasLineBuffer<T>;
+begin
+  // Eigene Variable: Delphi setzt den out-Wert von TryGetValue auch ohne Schlüssel.
+  Result := FEntries.TryGetValue(AnsiUpperCase(AFileName), mEntry);
+  AEntry := Default(TAtlasLineBuffer<T>);
+  if Result then
+  begin
+    AEntry := mEntry;
+  end;
+end;
+
+procedure TAtlasLineBuffers<T>.Put(const AEntry: TAtlasLineBuffer<T>);
+begin
+  FEntries.AddOrSetValue(AnsiUpperCase(AEntry.FileName), AEntry);
+end;
+
+function TAtlasLineBuffers<T>.Forget(const AFileName: string; ASerial: Integer): Boolean;
+var
+  mEntry: TAtlasLineBuffer<T>;
+begin
+  Result := TryGet(AFileName, mEntry) and (mEntry.Serial = ASerial);
+  if Result then
+  begin
+    FEntries.Remove(AnsiUpperCase(AFileName));
+  end;
+end;
+
+function TAtlasLineBuffers<T>.Entries: TArray<TAtlasLineBuffer<T>>;
+begin
+  Result := FEntries.Values.ToArray;
+end;
+
+function TAtlasLineBuffers<T>.Count: Integer;
+begin
+  Result := FEntries.Count;
 end;
 
 end.
