@@ -62,7 +62,8 @@ begin
   mProperties := 0;
   mCalls := 0;
   if not TAtlasIdeServerEdit.Fetch(ASession,
-    TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson, cTimeoutMs, TAtlasTextId.PropertyAccessorsFailed),
+    TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson, cTimeoutMs,
+      TAtlasEditorTextId.PropertyAccessorsFailed),
     procedure(const AReply: TJSONObject)
     begin
       mProperties := TJsonRead.Int(AReply, 'properties');
@@ -78,7 +79,7 @@ begin
   end;
   mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.PropertyAccessorsPreviewHint, [mProperties, mCalls,
     mReply.Edit.EditCount,
-    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.PropertyAccessorsWarning);
+    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasEditorTextId.PropertyAccessorsWarning);
   if TAtlasIdeServerEdit.Confirm(TAtlasEditorStrings.Text(TAtlasEditorTextId.PropertyAccessorsTitle), mHint,
     TAtlasEditorStrings.Text(TAtlasEditorTextId.PropertyAccessorsApply), mReply.Edit) and
     TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasEditorStrings.Text(TAtlasEditorTextId.PropertyAccessorsTitle),
@@ -86,7 +87,7 @@ begin
   begin
     AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.PropertyAccessorsDone, [mProperties, mCalls, mOutcome.Edits,
       mOutcome.Files]));
-    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.PropertyAccessorsWarning, AMessage);
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasEditorTextId.PropertyAccessorsWarning, AMessage);
   end;
 end;
 

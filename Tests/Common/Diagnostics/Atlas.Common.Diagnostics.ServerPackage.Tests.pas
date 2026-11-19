@@ -15,6 +15,13 @@ type
   public
     [Test]
     procedure ContainsStatusAndLogWithoutTrace;
+    /// <summary>#2611: Aufrufstatistik der MCP-Prozesse am Ordner, anonym ohne Pfade und Argumente.</summary>
+    [Test]
+    procedure McpStatisticsWithoutPathsWhenAnonymous;
+    [Test]
+    procedure McpSectionsOnlyForWorkspaceFolders;
+    [Test]
+    procedure McpSectionsReadStatusFiles;
     [Test]
     procedure ContainsTraceWhenTracing;
     [Test]
@@ -33,8 +40,11 @@ implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   System.Generics.Collections,
   System.JSON,
+  Atlas.Text.LogMarks,
+  Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Diagnostics.ServerPackage;
 
 function Input: TServerPackageInput;
@@ -181,6 +191,82 @@ begin
     Assert.IsTrue((mFiles.Items[1] as TJSONObject).GetValue('content').Value.Contains('Server gestartet'));
   finally
     mJson.Free;
+  end;
+end;
+
+function McpSection: string;
+begin
+  Result := '{"client":"Assistent A","project":"C:\\Projekte\\Kunde","calls":[{"kind":"tool",' +
+    '"name":"check_code","calls":5,"errors":1,"lastFailed":{"at":"2026-11-18T12:00:00","arguments":' +
+    '"file=\"' + TLogMarks.Path('C:\\Projekte\\Kunde\\Haupt.pas') + '\" text=\"' +
+    TLogMarks.Text('Quelltext') + '\"","message":"' + TLogMarks.Text('Fehler in Haupt') + '"}}]}';
+end;
+
+procedure TServerPackageTests.McpStatisticsWithoutPathsWhenAnonymous;
+var
+  mInput: TServerPackageInput;
+  mText: string;
+begin
+  mInput := Input;
+  mInput.McpStatistics := [McpSection];
+  mInput.Anonymize := True;
+  mText := FileNamed(TServerPackage.Build(mInput), Format(TServerPackage.cMcpName, [1]));
+  Assert.IsTrue(mText.Contains('check_code'), mText);
+  Assert.IsFalse(mText.Contains('Projekte'), mText);
+  Assert.IsFalse(mText.Contains('Quelltext'), mText);
+  Assert.IsFalse(mText.Contains('Haupt'), mText);
+  Assert.IsFalse(TLogMarks.HasMarks(mText), mText);
+  mInput.Anonymize := False;
+  mText := FileNamed(TServerPackage.Build(mInput), Format(TServerPackage.cMcpName, [1]));
+  Assert.IsTrue(mText.Contains('Quelltext'), 'ohne Anonymisierung im Klartext');
+  Assert.IsFalse(TLogMarks.HasMarks(mText), mText);
+end;
+
+procedure TServerPackageTests.McpSectionsOnlyForWorkspaceFolders;
+var
+  mEntries: TArray<TServerStatusEntry>;
+  mSections: TArray<string>;
+begin
+  SetLength(mEntries, 3);
+  mEntries[0] := Default(TServerStatusEntry);
+  mEntries[0].Kind := TServerStatusEntry.cKindMcp;
+  mEntries[0].Target := 'C:\Projekte\Kunde';
+  mEntries[0].Mcp := '{"client":"A"}';
+  mEntries[1] := mEntries[0];
+  mEntries[1].Target := 'C:\Projekte\Anderes';
+  mEntries[1].Mcp := '{"client":"B"}';
+  mEntries[2] := Default(TServerStatusEntry);
+  mEntries[2].Kind := TServerStatusEntry.cKindLsp;
+  mEntries[2].Target := 'C:\Projekte\Kunde';
+  mSections := TServerPackage.McpSections(mEntries, ['C:\Projekte\Kunde']);
+  Assert.AreEqual(1, Integer(Length(mSections)));
+  Assert.AreEqual('{"client":"A"}', mSections[0]);
+end;
+
+procedure TServerPackageTests.McpSectionsReadStatusFiles;
+var
+  mRoot: string;
+  mEntry: TServerStatusEntry;
+  mSections: TArray<string>;
+begin
+  mRoot := TPath.Combine(TPath.GetTempPath, 'Atlas-McpSections-' + IntToStr(Random(MaxInt)));
+  try
+    mEntry := Default(TServerStatusEntry);
+    mEntry.Pid := 4711;
+    mEntry.Kind := TServerStatusEntry.cKindMcp;
+    mEntry.Target := 'C:\Projekte\Kunde';
+    mEntry.Started := Now;
+    mEntry.Mcp := '{"client":"A","calls":[]}';
+    TServerStatusFile.Write(mRoot, mEntry, nil, Now);
+    mSections := TServerPackage.McpSectionsIn(mRoot, ['C:\Projekte\Kunde'], Now);
+    Assert.AreEqual(1, Integer(Length(mSections)));
+    Assert.IsTrue(mSections[0].Contains('"client":"A"'), mSections[0]);
+    Assert.AreEqual(0, Integer(Length(TServerPackage.McpSectionsIn(mRoot, ['C:\Anderes'], Now))));
+  finally
+    if TDirectory.Exists(mRoot) then
+    begin
+      TDirectory.Delete(mRoot, True);
+    end;
   end;
 end;
 

@@ -37,8 +37,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.IDE.Editor.NamedRefactoring;
+  Atlas.IDE.Editor.NamedRefactoring,
+  Atlas.UI.Editor.Strings;
 
 const
   cApplyCommand = 'atlas.server.enumTable';
@@ -51,14 +51,14 @@ class procedure TAtlasIdeEnumTables.Execute(ASession: TLspSession; const AArgume
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.EnumTableTitle;
-  mTexts.Prompt := TAtlasTextId.EnumTablePrompt;
-  mTexts.Failed := TAtlasTextId.EnumTableFailed;
-  mTexts.Nothing := TAtlasTextId.EnumTableNothing;
-  mTexts.PreviewHint := TAtlasTextId.EnumTablesPreviewHint;
-  mTexts.Apply := TAtlasTextId.EnumTableApply;
-  mTexts.Done := TAtlasTextId.EnumTableDone;
-  mTexts.Warning := TAtlasTextId.EnumTablesWarning;
+  mTexts.Title := TAtlasEditorTextId.EnumTableTitle;
+  mTexts.Prompt := TAtlasEditorTextId.EnumTablePrompt;
+  mTexts.Failed := TAtlasEditorTextId.EnumTableFailed;
+  mTexts.Nothing := TAtlasEditorTextId.EnumTableNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.EnumTablesPreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.EnumTableApply;
+  mTexts.Done := TAtlasEditorTextId.EnumTableDone;
+  mTexts.Warning := TAtlasEditorTextId.EnumTablesWarning;
   TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
@@ -67,14 +67,14 @@ class procedure TAtlasIdeEnumTables.ExecuteSync(ASession: TLspSession; const AAr
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.EnumTablesSyncTitle;
-  mTexts.Prompt := TAtlasTextId.EnumTablesSyncTitle;
-  mTexts.Failed := TAtlasTextId.EnumTablesSyncFailed;
-  mTexts.Nothing := TAtlasTextId.EnumTablesSyncNothing;
-  mTexts.PreviewHint := TAtlasTextId.EnumTablesPreviewHint;
-  mTexts.Apply := TAtlasTextId.EnumTablesSyncApply;
-  mTexts.Done := TAtlasTextId.EnumTablesSyncDone;
-  mTexts.Warning := TAtlasTextId.EnumTablesWarning;
+  mTexts.Title := TAtlasEditorTextId.EnumTablesSyncTitle;
+  mTexts.Prompt := TAtlasEditorTextId.EnumTablesSyncTitle;
+  mTexts.Failed := TAtlasEditorTextId.EnumTablesSyncFailed;
+  mTexts.Nothing := TAtlasEditorTextId.EnumTablesSyncNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.EnumTablesPreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.EnumTablesSyncApply;
+  mTexts.Done := TAtlasEditorTextId.EnumTablesSyncDone;
+  mTexts.Warning := TAtlasEditorTextId.EnumTablesWarning;
   TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, cSyncApplyCommand, mTexts, APolicy,
     AMessage);
 end;

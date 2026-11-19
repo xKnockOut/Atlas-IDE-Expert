@@ -31,8 +31,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.IDE.Editor.NamedRefactoring;
+  Atlas.IDE.Editor.NamedRefactoring,
+  Atlas.UI.Editor.Strings;
 
 const
   cApplyCommand = 'atlas.server.methodKind';
@@ -44,14 +44,14 @@ class procedure TAtlasIdeMethodKind.Execute(ASession: TLspSession; const AArgume
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.MethodKindTitle;
-  mTexts.Prompt := TAtlasTextId.MethodKindTitle;
-  mTexts.Failed := TAtlasTextId.MethodKindFailed;
-  mTexts.Nothing := TAtlasTextId.MethodKindNothing;
-  mTexts.PreviewHint := TAtlasTextId.MethodKindPreviewHint;
-  mTexts.Apply := TAtlasTextId.MethodKindApply;
-  mTexts.Done := TAtlasTextId.MethodKindDone;
-  mTexts.Warning := TAtlasTextId.MethodKindWarning;
+  mTexts.Title := TAtlasEditorTextId.MethodKindTitle;
+  mTexts.Prompt := TAtlasEditorTextId.MethodKindTitle;
+  mTexts.Failed := TAtlasEditorTextId.MethodKindFailed;
+  mTexts.Nothing := TAtlasEditorTextId.MethodKindNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.MethodKindPreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.MethodKindApply;
+  mTexts.Done := TAtlasEditorTextId.MethodKindDone;
+  mTexts.Warning := TAtlasEditorTextId.MethodKindWarning;
   TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
