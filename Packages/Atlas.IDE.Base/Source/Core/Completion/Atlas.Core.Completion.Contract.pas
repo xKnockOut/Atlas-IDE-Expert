@@ -103,6 +103,17 @@ type
     Text: string;
   end;
 
+const
+  /// <summary>Werte von TAtlasCompletionItem.Scope (#488); 0 ohne Angabe.</summary>
+  cScopeLocal = 1;
+  cScopeParameter = 2;
+  cScopeSelfMember = 3;
+  cScopeOwnUnit = 4;
+  cScopeOtherUnit = 5;
+  cScopeWithMember = 6;
+
+type
+
   TAtlasCompletionItem = record
     Name: string;
     Kind: TAtlasItemKind;

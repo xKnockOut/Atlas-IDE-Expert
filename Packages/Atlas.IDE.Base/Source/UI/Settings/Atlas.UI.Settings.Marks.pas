@@ -16,6 +16,12 @@
 // Rahmen einer Funktion (#890, TAtlasSettingsGroup) zählen wie ein Reiter: Ihre
 // Zeilen werden einzeln gefiltert; angeheftete Elemente (Pin: Rahmen, Hauptschalter,
 // Grund der Sperre) bleiben immer sichtbar.
+// Abfragen nach Name und Element schlagen in Verzeichnissen nach (#2372). Fragen
+// über die Lage (NamesIn, NamesWithin, Zeile eines Elements) hängen an Parent, das
+// sich beim Aufbau noch ändert; zwischen BeginQueries und EndQueries gilt ein
+// einmal aufgebauter Stand. Sperren und Zuordnung zu den Knoten fragen das für
+// jedes Element; einzeln durch alle Bindungen dauerte das beim Öffnen jedes
+// Knotens und nach jeder Eingabe spürbar.
 
 interface
 
@@ -57,17 +63,37 @@ type
     cDot = '● ';
   private
     FBindings: TList<TAtlasSettingsBinding>;
+    /// <summary>Erste Bindung je Name (klein geschrieben).</summary>
+    FByName: TDictionary<string, Integer>;
+    /// <summary>Erste Bindung je Element bzw. Beschriftung.</summary>
+    FByControl: TDictionary<TObject, Integer>;
+    /// <summary>Tiefe von BeginQueries.</summary>
+    FQueries: Integer;
+    /// <summary>Stand der Lage während BeginQueries; nil, solange nicht gebraucht.</summary>
+    FWithin: TDictionary<TControl, TArray<string>>;
+    FInside: TDictionary<TControl, TArray<string>>;
+    FFirstChild: TDictionary<TControl, Integer>;
+    /// <summary>Namen jedes Elements samt allen Behältern darüber, einmal für den Stand.</summary>
+    procedure BuildPlaces;
+    procedure DropPlaces;
     function GetCount: Integer;
     function GetBinding(AIndex: Integer): TAtlasSettingsBinding;
     procedure Render(AIndex: Integer);
   protected
     /// <summary>Bindung zu AControl (Element, Beschriftung oder Zeile); -1 ohne.</summary>
     function IndexOfControl(AControl: TObject): Integer;
+    /// <summary>Bindung anhängen und in die Verzeichnisse aufnehmen.</summary>
+    procedure AddBinding(const ABinding: TAtlasSettingsBinding);
     procedure Apply(AIndex: Integer; AMarked: Boolean);
     property List: TList<TAtlasSettingsBinding> read FBindings;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    /// <summary>Viele Fragen nach der Lage am Stück (#2372): NamesIn, NamesWithin und NamesOf antworten bis
+    /// EndQueries aus einem einmal aufgebauten Stand. Dazwischen keine Elemente umhängen. Verschachtelbar.
+    /// </summary>
+    procedure BeginQueries;
+    procedure EndQueries;
     /// <summary>Punkte nach AModified (Registry-Namen) setzen; AEnabled False nimmt alle weg.</summary>
     procedure Show(const AModified: TArray<string>; AEnabled: Boolean);
     /// <summary>Namen aller Bindungen, deren Element in AParent liegt (Reiter der Seite).</summary>
@@ -219,12 +245,108 @@ constructor TAtlasSettingsBindingList.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FBindings := TList<TAtlasSettingsBinding>.Create;
+  FByName := TDictionary<string, Integer>.Create;
+  FByControl := TDictionary<TObject, Integer>.Create;
 end;
 
 destructor TAtlasSettingsBindingList.Destroy;
 begin
+  DropPlaces;
+  FByControl.Free;
+  FByName.Free;
   FBindings.Free;
   inherited;
+end;
+
+procedure TAtlasSettingsBindingList.AddBinding(const ABinding: TAtlasSettingsBinding);
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  mIndex := FBindings.Add(ABinding);
+  // Wie die frühere Suche von vorn: Die erste Bindung gewinnt.
+  for mName in ABinding.Names do
+  begin
+    if not FByName.ContainsKey(LowerCase(mName)) then
+    begin
+      FByName.Add(LowerCase(mName), mIndex);
+    end;
+  end;
+  if (ABinding.Control <> nil) and not FByControl.ContainsKey(ABinding.Control) then
+  begin
+    FByControl.Add(ABinding.Control, mIndex);
+  end;
+  if (ABinding.Caption <> nil) and not FByControl.ContainsKey(ABinding.Caption) then
+  begin
+    FByControl.Add(ABinding.Caption, mIndex);
+  end;
+  // Neue Bindung: Ein laufender Stand der Lage gilt nicht mehr.
+  DropPlaces;
+end;
+
+procedure TAtlasSettingsBindingList.BeginQueries;
+begin
+  Inc(FQueries);
+end;
+
+procedure TAtlasSettingsBindingList.EndQueries;
+begin
+  Dec(FQueries);
+  if FQueries <= 0 then
+  begin
+    FQueries := 0;
+    DropPlaces;
+  end;
+end;
+
+procedure TAtlasSettingsBindingList.DropPlaces;
+begin
+  FreeAndNil(FWithin);
+  FreeAndNil(FInside);
+  FreeAndNil(FFirstChild);
+end;
+
+/// <summary>Hängt ANames an den Eintrag zu AKey an.</summary>
+procedure AppendNames(AMap: TDictionary<TControl, TArray<string>>; AKey: TControl; const ANames: TArray<string>);
+var
+  mNames: TArray<string>;
+begin
+  if not AMap.TryGetValue(AKey, mNames) then
+  begin
+    mNames := nil;
+  end;
+  AMap.AddOrSetValue(AKey, mNames + ANames);
+end;
+
+procedure TAtlasSettingsBindingList.BuildPlaces;
+var
+  mIndex: Integer;
+  mBinding: TAtlasSettingsBinding;
+  mParent: TControl;
+begin
+  FWithin := TDictionary<TControl, TArray<string>>.Create;
+  FInside := TDictionary<TControl, TArray<string>>.Create;
+  FFirstChild := TDictionary<TControl, Integer>.Create;
+  for mIndex := 0 to FBindings.Count - 1 do
+  begin
+    mBinding := FBindings[mIndex];
+    if mBinding.Control = nil then
+    begin
+      Continue;
+    end;
+    AppendNames(FWithin, mBinding.Control, mBinding.Names);
+    mParent := mBinding.Control.Parent;
+    if (mParent <> nil) and not FFirstChild.ContainsKey(mParent) then
+    begin
+      FFirstChild.Add(mParent, mIndex);
+    end;
+    while mParent <> nil do
+    begin
+      AppendNames(FWithin, mParent, mBinding.Names);
+      AppendNames(FInside, mParent, mBinding.Names);
+      mParent := mParent.Parent;
+    end;
+  end;
 end;
 
 function TAtlasSettingsBindingList.GetCount: Integer;
@@ -271,22 +393,29 @@ end;
 function TAtlasSettingsBindingList.IndexOfControl(AControl: TObject): Integer;
 var
   mIndex: Integer;
-  mBinding: TAtlasSettingsBinding;
 begin
   Result := -1;
   if AControl = nil then
   begin
     Exit;
   end;
-  for mIndex := 0 to FBindings.Count - 1 do
+  if FByControl.TryGetValue(AControl, mIndex) then
   begin
-    mBinding := FBindings[mIndex];
-    if (mBinding.Control = AControl) or ((mBinding.Caption <> nil) and (mBinding.Caption = AControl)) then
-    begin
-      Exit(mIndex);
-    end;
+    Exit(mIndex);
   end;
   // Zeile: erste Bindung, deren Element darin liegt.
+  if FQueries > 0 then
+  begin
+    if FFirstChild = nil then
+    begin
+      BuildPlaces;
+    end;
+    if (AControl is TControl) and FFirstChild.TryGetValue(TControl(AControl), mIndex) then
+    begin
+      Result := mIndex;
+    end;
+    Exit;
+  end;
   for mIndex := 0 to FBindings.Count - 1 do
   begin
     if FBindings[mIndex].Control.Parent = AControl then
@@ -326,6 +455,18 @@ var
   mParent: TWinControl;
 begin
   Result := nil;
+  if FQueries > 0 then
+  begin
+    if FInside = nil then
+    begin
+      BuildPlaces;
+    end;
+    if (AParent = nil) or not FInside.TryGetValue(AParent, Result) then
+    begin
+      Result := nil;
+    end;
+    Exit;
+  end;
   for mBinding in FBindings do
   begin
     mParent := mBinding.Control.Parent;
@@ -345,6 +486,18 @@ var
   mBinding: TAtlasSettingsBinding;
 begin
   Result := nil;
+  if FQueries > 0 then
+  begin
+    if FWithin = nil then
+    begin
+      BuildPlaces;
+    end;
+    if (AControl = nil) or not FWithin.TryGetValue(AControl, Result) then
+    begin
+      Result := nil;
+    end;
+    Exit;
+  end;
   for mBinding in FBindings do
   begin
     if Inside(mBinding.Control, AControl) then
@@ -356,37 +509,23 @@ end;
 
 function TAtlasSettingsBindingList.ControlOfName(const AName: string): TControl;
 var
-  mBinding: TAtlasSettingsBinding;
-  mName: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  for mBinding in FBindings do
+  if FByName.TryGetValue(LowerCase(AName), mIndex) then
   begin
-    for mName in mBinding.Names do
-    begin
-      if SameText(mName, AName) then
-      begin
-        Exit(mBinding.Control);
-      end;
-    end;
+    Result := FBindings[mIndex].Control;
   end;
 end;
 
 function TAtlasSettingsBindingList.TextOfName(const AName: string): string;
 var
-  mBinding: TAtlasSettingsBinding;
-  mName: string;
+  mIndex: Integer;
 begin
   Result := '';
-  for mBinding in FBindings do
+  if FByName.TryGetValue(LowerCase(AName), mIndex) then
   begin
-    for mName in mBinding.Names do
-    begin
-      if SameText(mName, AName) then
-      begin
-        Exit(StringReplace(mBinding.Text, '&', '', [rfReplaceAll]));
-      end;
-    end;
+    Result := StringReplace(FBindings[mIndex].Text, '&', '', [rfReplaceAll]);
   end;
 end;
 
@@ -749,7 +888,7 @@ begin
       TControlAccess(AControl.Parent).PopupMenu := FMenu;
     end;
   end;
-  List.Add(mBinding);
+  AddBinding(mBinding);
 end;
 
 procedure TAtlasSettingsMarks.Bind(AControl: TControl; const ANames: array of string);

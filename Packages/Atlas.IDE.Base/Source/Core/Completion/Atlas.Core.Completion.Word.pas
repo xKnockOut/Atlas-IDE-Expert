@@ -31,7 +31,7 @@ uses
 
 class function TAtlasWord.IsIdentifierChar(AChar: Char): Boolean;
 begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
+  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (AChar > #127);
 end;
 
 class function TAtlasWord.StartBefore(const ALine: string; ACharacter: Integer): Integer;

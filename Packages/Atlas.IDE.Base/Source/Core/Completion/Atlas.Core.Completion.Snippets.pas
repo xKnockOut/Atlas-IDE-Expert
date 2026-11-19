@@ -249,18 +249,18 @@ begin
   Result := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #13, #10, [rfReplaceAll]);
 end;
 
-procedure FlushLiteral(var ASegments: TArray<TSegment>; var ALiteral: string);
+procedure FlushLiteral(var ASegments: TArray<TSegment>; ALiteral: TStringBuilder);
 var
   mSegment: TSegment;
 begin
-  if ALiteral = '' then
+  if ALiteral.Length = 0 then
   begin
     Exit;
   end;
   mSegment := Default(TSegment);
-  mSegment.Text := ALiteral;
+  mSegment.Text := ALiteral.ToString;
   ASegments := ASegments + [mSegment];
-  ALiteral := '';
+  ALiteral.Clear;
 end;
 
 /// <summary>${n} bzw. ${n:Vorgabe} ab dem "$" an AIndex; ANext: Index hinter "}".</summary>
@@ -312,38 +312,42 @@ end;
 function Segments(const ABody: string): TArray<TSegment>;
 var
   mIndex, mNext: Integer;
-  mLiteral: string;
+  mLiteral: TStringBuilder;
   mSegment: TSegment;
 begin
   Result := nil;
-  mLiteral := '';
-  mIndex := 1;
-  while mIndex <= Length(ABody) do
-  begin
-    if ABody[mIndex] <> '$' then
+  mLiteral := TStringBuilder.Create;
+  try
+    mIndex := 1;
+    while mIndex <= Length(ABody) do
     begin
-      mLiteral := mLiteral + ABody[mIndex];
-      Inc(mIndex);
-    end
-    // "$$" = "$"
-    else if (mIndex < Length(ABody)) and (ABody[mIndex + 1] = '$') then
-    begin
-      mLiteral := mLiteral + '$';
-      Inc(mIndex, 2);
-    end
-    else if TryBracedStop(ABody, mIndex, mSegment, mNext) or TryEndStop(ABody, mIndex, mSegment, mNext) then
-    begin
-      FlushLiteral(Result, mLiteral);
-      Result := Result + [mSegment];
-      mIndex := mNext;
-    end
-    else
-    begin
-      mLiteral := mLiteral + '$';
-      Inc(mIndex);
+      if ABody[mIndex] <> '$' then
+      begin
+        mLiteral.Append(ABody[mIndex]);
+        Inc(mIndex);
+      end
+      // "$$" = "$"
+      else if (mIndex < Length(ABody)) and (ABody[mIndex + 1] = '$') then
+      begin
+        mLiteral.Append('$');
+        Inc(mIndex, 2);
+      end
+      else if TryBracedStop(ABody, mIndex, mSegment, mNext) or TryEndStop(ABody, mIndex, mSegment, mNext) then
+      begin
+        FlushLiteral(Result, mLiteral);
+        Result := Result + [mSegment];
+        mIndex := mNext;
+      end
+      else
+      begin
+        mLiteral.Append('$');
+        Inc(mIndex);
+      end;
     end;
+    FlushLiteral(Result, mLiteral);
+  finally
+    mLiteral.Free;
   end;
-  FlushLiteral(Result, mLiteral);
 end;
 
 /// <summary>Wörter von "context:" prüfen (#719); False mit AError bei einem unbekannten.</summary>
@@ -396,47 +400,66 @@ begin
 end;
 
 /// <summary>Schlüssel AKey der Kopfzeile ALine übernehmen; False mit AError bei einem Fehler.</summary>
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Schlüssel im Kopf einer Snippet-Datei.</summary>
+  TSnippetKey = (Name, Prefix, Description, Postfix, TypeCondition, Context, FileKind);
+{$SCOPEDENUMS OFF}
+
+const
+  cSnippetKeys: array[TSnippetKey] of string = ('name', 'prefix', 'description', 'postfix', 'type', 'context', 'file');
+
+/// <summary>Schlüssel zu AKey; False, wenn es ihn nicht gibt.</summary>
+function SnippetKeyOf(const AKey: string; out AResult: TSnippetKey): Boolean;
+var
+  mKey: TSnippetKey;
+begin
+  Result := False;
+  AResult := TSnippetKey.Name;
+  for mKey := Low(TSnippetKey) to High(TSnippetKey) do
+  begin
+    if cSnippetKeys[mKey] = AKey then
+    begin
+      AResult := mKey;
+      Exit(True);
+    end;
+  end;
+end;
+
 function ApplyKey(var ASnippet: TAtlasSnippet; const AKey, AValue: string; ALine: Integer;
   out AError: string): Boolean;
+var
+  mKey: TSnippetKey;
 begin
   AError := '';
   Result := True;
-  if AKey = 'name' then
-  begin
-    ASnippet.Name := AValue;
-  end
-  else if AKey = 'prefix' then
-  begin
-    ASnippet.Prefix := AValue;
-  end
-  else if AKey = 'description' then
-  begin
-    ASnippet.Description := AValue;
-  end
-  else if AKey = 'postfix' then
-  begin
-    Result := ApplyPostfix(ASnippet, AValue, ALine, AError);
-  end
-  else if AKey = 'type' then
-  begin
-    ASnippet.TypeCondition := AValue;
-  end
-  else if AKey = 'context' then
-  begin
-    Result := CheckContext(AValue, ALine, AError);
-    if Result then
-    begin
-      ASnippet.Context := AValue;
-    end;
-  end
-  else if AKey = 'file' then
-  begin
-    Result := ApplyFileKind(ASnippet, AValue, ALine, AError);
-  end
-  else
+  if not SnippetKeyOf(AKey, mKey) then
   begin
     AError := Format(UiText(TSnippetsText.LineUnknownKeyAllowedName), [ALine, AKey]);
-    Result := False;
+    Exit(False);
+  end;
+  case mKey of
+    TSnippetKey.Name:
+      ASnippet.Name := AValue;
+    TSnippetKey.Prefix:
+      ASnippet.Prefix := AValue;
+    TSnippetKey.Description:
+      ASnippet.Description := AValue;
+    TSnippetKey.Postfix:
+      Result := ApplyPostfix(ASnippet, AValue, ALine, AError);
+    TSnippetKey.TypeCondition:
+      ASnippet.TypeCondition := AValue;
+    TSnippetKey.Context:
+      begin
+        Result := CheckContext(AValue, ALine, AError);
+        if Result then
+        begin
+          ASnippet.Context := AValue;
+        end;
+      end;
+    TSnippetKey.FileKind:
+      Result := ApplyFileKind(ASnippet, AValue, ALine, AError);
   end;
 end;
 
@@ -687,6 +710,26 @@ begin
   end;
 end;
 
+const
+  cPostfixTrue = 'postfix: true';
+  // Eingebaute Vorlagen.
+  cBodyTryFinally = '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;';
+  cBodyTryExcept = 'try'#10'  $0'#10'except'#10'  on E: ${1:Exception} do'#10'    ${2:raise};'#10'end;';
+  cBodyForIn = 'for var ${1:Item} in ${2:List} do'#10'begin'#10'  $0'#10'end;';
+  cBodyFor = 'for var ${1:I} := ${2:0} to ${3:List.Count - 1} do'#10'begin'#10'  $0'#10'end;';
+  cBodyWhile = 'while ${1:Condition} do'#10'begin'#10'  $0'#10'end;';
+  cBodyRepeat = 'repeat'#10'  $0'#10'until ${1:Condition};';
+  cBodyClass = '${1:TMyClass} = class(${2:TObject})'#10'private'#10'  $0'#10'public'#10'  constructor Create;'#10 +
+    '  destructor Destroy; override;'#10'end;';
+  cBodyRecord = '${1:TMyRecord} = record'#10'  ${2:Value}: ${3:Integer};$0'#10'end;';
+  cBodyProperty = 'property ${1:Value}: ${2:Integer} read F${1} write Set${1};$0';
+  cBodySetter = 'procedure ${1:TMyControl}.Set${2:Value}(const Value: ${3:Integer});'#10'begin'#10 +
+    '  if F${2} <> Value then'#10'  begin'#10'    F${2} := Value;'#10'    Invalidate;$0'#10'  end;'#10'end;';
+  cBodyComponent = '${1:TMyControl} = class(${2:TCustomControl})'#10'protected'#10'  procedure Paint; override;'#10 +
+    'public'#10'  constructor Create(AOwner: TComponent); override;'#10'published'#10'  $0'#10'end;';
+  cBodyRegister = 'procedure Register;'#10'begin'#10'  RegisterComponents(''${1:Atlas}'', [${2:TMyControl}]);$0'#10 +
+    'end;';
+
 class function TAtlasSnippets.ToFileText(const ASnippet: TAtlasSnippet): string;
 
   function OneLine(const AText: string): string;
@@ -699,7 +742,7 @@ begin
     'description: ' + OneLine(ASnippet.Description) + #10;
   if ASnippet.Postfix then
   begin
-    Result := Result + 'postfix: true' + #10;
+    Result := Result + cPostfixTrue + #10;
     if ASnippet.TypeCondition <> '' then
     begin
       Result := Result + 'type: ' + OneLine(ASnippet.TypeCondition) + #10;
@@ -746,37 +789,31 @@ class function TAtlasSnippets.BuiltIn: TAtlasSnippetList;
 begin
   Result := [
     Snippet('tryf', UiText(TSnippetsText.TryFinallyWithCreateFree), UiText(TSnippetsText.CreateAnObjectAndFree),
-      '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;', 'statement'),
+      cBodyTryFinally, 'statement'),
     Snippet('trye', 'try…except', UiText(TSnippetsText.HandleAnExceptionOfA),
-      'try'#10'  $0'#10'except'#10'  on E: ${1:Exception} do'#10'    ${2:raise};'#10'end;', 'statement'),
+      cBodyTryExcept, 'statement'),
     Snippet('forin', UiText(TSnippetsText.ForInLoop), UiText(TSnippetsText.IterateOverTheItemsOf),
-      'for var ${1:Item} in ${2:List} do'#10'begin'#10'  $0'#10'end;', 'statement'),
+      cBodyForIn, 'statement'),
     Snippet('fori', UiText(TSnippetsText.ForLoopWithCounter), UiText(TSnippetsText.CountFrom0ToCount),
-      'for var ${1:I} := ${2:0} to ${3:List.Count - 1} do'#10'begin'#10'  $0'#10'end;', 'statement'),
+      cBodyFor, 'statement'),
     Snippet('while', UiText(TSnippetsText.WhileLoop), UiText(TSnippetsText.AsLongAsTheCondition),
-      'while ${1:Condition} do'#10'begin'#10'  $0'#10'end;', 'statement'),
+      cBodyWhile, 'statement'),
     Snippet('repeat', UiText(TSnippetsText.RepeatUntilLoop), UiText(TSnippetsText.AtLeastOnceUntilThe),
-      'repeat'#10'  $0'#10'until ${1:Condition};', 'statement'),
+      cBodyRepeat, 'statement'),
     Snippet('class', UiText(TSnippetsText.ClassWithConstructorAndDestructor),
       UiText(TSnippetsText.ClassDeclarationInTheType),
-      '${1:TMyClass} = class(${2:TObject})'#10'private'#10'  $0'#10'public'#10'  constructor Create;'#10 +
-      '  destructor Destroy; override;'#10'end;', 'declaration'),
+      cBodyClass, 'declaration'),
     Snippet('record', 'Record', UiText(TSnippetsText.RecordDeclarationInTheType),
-      '${1:TMyRecord} = record'#10'  ${2:Value}: ${3:Integer};$0'#10'end;', 'declaration'),
+      cBodyRecord, 'declaration'),
     Snippet('prop', UiText(TSnippetsText.PropertyWithFieldAndSetter), UiText(TSnippetsText.DeclarationInTheClassPropset),
-      'property ${1:Value}: ${2:Integer} read F${1} write Set${1};$0', 'class'),
+      cBodyProperty, 'class'),
     // Gleiche Form wie /prop, /changed und die Vorlage „changed“ des Servers (TSetterGenerator).
     Snippet('propset', UiText(TSnippetsText.SetterWithChangeCheck), UiText(TSnippetsText.SetsTheFieldOnlyWhen),
-      'procedure ${1:TMyControl}.Set${2:Value}(const Value: ${3:Integer});'#10'begin'#10 +
-      '  if F${2} <> Value then'#10'  begin'#10'    F${2} := Value;'#10'    Invalidate;$0'#10'  end;'#10'end;',
-      'implementation'),
+      cBodySetter, 'implementation'),
     Snippet('comp', UiText(TSnippetsText.ComponentSkeleton), UiText(TSnippetsText.ComponentWithPublishedSectionReg),
-      '${1:TMyControl} = class(${2:TCustomControl})'#10'protected'#10'  procedure Paint; override;'#10 +
-      'public'#10'  constructor Create(AOwner: TComponent); override;'#10'published'#10'  $0'#10'end;',
-      'declaration'),
+      cBodyComponent, 'declaration'),
     Snippet('reg', UiText(TSnippetsText.RegisterProcedure), UiText(TSnippetsText.RegisterTheComponentInThe),
-      'procedure Register;'#10'begin'#10'  RegisterComponents(''${1:Atlas}'', [${2:TMyControl}]);$0'#10'end;',
-      'implementation')];
+      cBodyRegister, 'implementation')];
 end;
 
 class function TAtlasSnippets.Merge(const ABuiltIn, AUser: TAtlasSnippetList): TAtlasSnippetList;
@@ -807,7 +844,7 @@ var
   mDefaults: TArray<string>;
   mKnown: TArray<Boolean>;
   mIndex, mNumber, mHighest: Integer;
-  mText: string;
+  mText: TStringBuilder;
   mStop: TAtlasSnippetStop;
 
   function Indented(const AValue: string): string;
@@ -837,24 +874,28 @@ begin
       mKnown[mParts[mIndex].Number] := True;
     end;
   end;
-  mText := '';
-  for mIndex := 0 to High(mParts) do
-  begin
-    if mParts[mIndex].IsStop then
+  mText := TStringBuilder.Create;
+  try
+    for mIndex := 0 to High(mParts) do
     begin
-      mNumber := mParts[mIndex].Number;
-      mStop.Number := mNumber;
-      mStop.Start := Length(mText);
-      mText := mText + Indented(mDefaults[mNumber]);
-      mStop.Length := Length(mText) - mStop.Start;
-      Result.Stops := Result.Stops + [mStop];
-    end
-    else
-    begin
-      mText := mText + Indented(mParts[mIndex].Text);
+      if mParts[mIndex].IsStop then
+      begin
+        mNumber := mParts[mIndex].Number;
+        mStop.Number := mNumber;
+        mStop.Start := mText.Length;
+        mText.Append(Indented(mDefaults[mNumber]));
+        mStop.Length := mText.Length - mStop.Start;
+        Result.Stops := Result.Stops + [mStop];
+      end
+      else
+      begin
+        mText.Append(Indented(mParts[mIndex].Text));
+      end;
     end;
+    Result.Text := mText.ToString;
+  finally
+    mText.Free;
   end;
-  Result.Text := mText;
 end;
 
 class function TAtlasSnippets.PlainText(const ABody: string): string;
