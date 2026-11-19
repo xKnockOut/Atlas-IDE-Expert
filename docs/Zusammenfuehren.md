@@ -25,6 +25,14 @@ Erzeugte Dateien tragen in `.gitattributes` die Markierung `linguist-generated`;
 
    Wer Kopien zusammenlegt, schreibt die Baseline mit demselben Befehl neu und checkt sie mit ein; sonst scheitert der Schritt „Wortgleiche Rümpfe“ der CI an den toten Einträgen. Neue Kopien gehören nicht in die Baseline: `Tools/Check-Baselines.ps1` vergleicht sie je Gruppe mit `main-merging` und meldet jede neue Gruppe und jede Gruppe mit mehr Fassungen, auch wenn die Summe sinkt. Das Merge-Skript nennt solche Gruppen schon beim Neuschreiben. Gibt es einen Grund, eine Kopie zu behalten, steht er in der Beschreibung des Pull Requests in einer Zeile `Neue Kopien: <Grund>`; danach den Lauf der Prüfung neu starten, die Befunde werden dann zu Warnungen.
 
+   Dasselbe gilt für die Klassengröße (`metric-class-size`, Grenzwert 40). Muss eine Korrektur einer vollen Klasse ein Mitglied hinzufügen, etwa kurz vor einem Release, ist ein Umbau an Ort und Stelle der falsche Zeitpunkt. Dann darf der Pull Request die Klasse in die Baseline ihres Packages aufnehmen (`AtlasServer --check Packages/<Package>/<Package>.dproj --update-baseline`, im Diff nur diesen Eintrag behalten) und trägt je Klasse eine Zeile in der Beschreibung:
+
+   ```
+   Größere Klasse: TAtlasStructureFrame – Korrektur des Takts vor dem Release, Teilung im nächsten Meilenstein
+   ```
+
+   `Tools/Check-Baselines.ps1` lässt die Summe der Einträge zu `metric-class-size` dann je begründeter Klasse um einen steigen und nennt Name und Grund als Warnung; die Klasse muss in einer Datei mit einem solchen Eintrag deklariert sein, Zeilen ohne Grund und doppelte Namen zählen nicht. Die Ausnahme ist befristet: Für die Teilung gibt es ein Issue im nächsten Meilenstein, und sie entfernt den Eintrag wieder; die Baseline darf wie jede andere nur schrumpfen. Häufen sich solche Einträge bei einer Art von Klasse, ist der Grenzwert für diese Art falsch, nicht die Klasse. Einen Record nur zum Senken der Zahl einzuführen, ist kein Ausweg (`docs/Regeln.md`, `metric-class-size`).
+
    Was übrig bleibt, sind echte Konflikte (beide Seiten ändern dieselbe Zeile, Quelltext, JSON). Das Skript nennt sie und lässt den Merge offen; von Hand lösen, `git add`, `git commit --no-edit`.
 3. Prüfungen wie gewohnt (`pwsh Tools/Check-*.ps1`, FPC-Bau und -Tests), dann pushen.
 4. Pull Request nach `main-merging` öffnen und das automatische Zusammenführen einschalten (Merge-Methode „Merge commit“). GitHub führt ihn zusammen, sobald die Pflichtprüfung grün ist. Ein Pull Request muss dafür nicht auf dem neuesten Stand von `main-merging` sein; GitHub prüft in der CI ohnehin den Stand nach dem Merge.
