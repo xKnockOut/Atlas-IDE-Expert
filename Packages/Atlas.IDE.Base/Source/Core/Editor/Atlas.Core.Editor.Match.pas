@@ -67,7 +67,6 @@ uses
   Atlas.Text.Lines,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.MethodToggle,
-  System.StrUtils,
   Atlas.Text.Chars;
 
 type
