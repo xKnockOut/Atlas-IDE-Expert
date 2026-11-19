@@ -45,17 +45,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 /// <summary>Unit mit TZaehler (TInterfacedObject, IZaehler) und der Routine Lauf.</summary>
 function Source(const AVars, ABody: string): string;
 begin
@@ -75,7 +64,7 @@ begin
   mFound := TRuleAssert.Findings(TInterfaceObjectMixedRule.Create, Source('  Z: TZaehler;'#10'  I: IZaehler;'#10,
     '  Z := TZaehler.Create;'#10'  I := Z;'#10'  I.Plus;'#10'  Z.Free;'#10));
   Assert.AreEqual('25: Z (TZaehler mit Referenzzählung) wird als Interface weitergegeben und zusätzlich ' +
-    'freigegeben: Der letzte Interface-Verweis gibt das Objekt ein zweites Mal frei.|', Messages(mFound));
+    'freigegeben: Der letzte Interface-Verweis gibt das Objekt ein zweites Mal frei.|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cInterfaceObjectMixedRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   TRuleAssert.Reports(TInterfaceObjectMixedRule.Create, Source('  Z: TZaehler;'#10,
@@ -91,7 +80,7 @@ var
 begin
   mFound := TRuleAssert.Findings(TInterfaceObjectMixedRule.Create, Source('  Z: TZaehler;'#10,
     '  Z := TZaehler.Create;'#10'  Nimm(IZaehler(Z));'#10'  Z.Plus;'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(23, mFound[0].Range.StartPos.Line);
   Assert.Contains(mFound[0].Message, 'in Zeile 23 nur vorübergehend als Interface');
 end;
@@ -143,7 +132,7 @@ begin
   Assert.AreEqual('11: TBaum.FKnoten und TKnoten.FBaum halten sich über Interfaces gegenseitig fest; ohne [weak] ' +
     'auf einer Seite wird keines der Objekte freigegeben.|15: TKnoten.FBaum und TBaum.FKnoten halten sich über ' +
     'Interfaces gegenseitig fest; ohne [weak] auf einer Seite wird keines der Objekte freigegeben.|',
-    Messages(mFound));
+    TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('[weak] an FBaum setzen', mFound[1].Fixes[0].Title);
@@ -161,7 +150,7 @@ begin
     '  TKnoten = class(TInterfacedObject, IKnoten)'#10'  private'#10'    FEltern: IKnoten;'#10 +
     '    FKinder: TArray<IKnoten>;'#10'  end;'#10'implementation'#10'end.',
     '{"rules": {"interface-cycle-without-weak": "hint"}}');
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   // Nur einzelne Felder derselben Klasse (verkettete Liste) sind kein sicherer Kreis.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceCycleWithoutWeakRule.Create, cKnoten +
