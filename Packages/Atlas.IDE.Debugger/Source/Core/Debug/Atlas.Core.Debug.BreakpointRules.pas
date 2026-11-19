@@ -2,7 +2,7 @@
 
 // Abhängige Haltepunkte und Trefferbedingungen (#864), Kern ohne IDE.
 // Eine Regel hängt an einem Quelltext-Haltepunkt (Datei, Zeile ab 0) und hat
-// drei Teile, die alle zutreffen müssen (die Bedingung der IDE prüft die IDE
+// vier Teile, die alle zutreffen müssen (die Bedingung der IDE prüft die IDE
 // selbst, bevor sie hält):
 // - Thread-Filter: Name enthält ein Muster (ohne Groß-/Kleinschreibung),
 //   genau eine Thread-ID oder nur der Hauptthread. Ein Halt in einem anderen
@@ -12,11 +12,16 @@
 // - Abhängigkeit: Der Haltepunkt ist erst scharf, nachdem der auslösende
 //   (Datei, Zeile) gehalten hat; „bis zum Ende“ bleibt er scharf, „einmal“
 //   wird er nach seinem Halt wieder unscharf, bis der auslösende erneut hält.
+// - Aufrufer (#2548): Nur wenn eine Routine nach TAtlasRoutinePattern im
+//   Aufrufstapel steht; „nur direkter Aufrufer“ prüft nur den Rahmen direkt
+//   unter dem Haltepunkt. Ein Halt ohne passenden Aufrufer zählt nicht als
+//   Treffer, damit „beim 2. Treffer“ nur passende Aufrufe zählt.
 // Decide sagt bei einem Halt an der Zeile der Regel, ob Atlas anhält oder
 // weiterlaufen lässt, und führt Zählung und Scharfschaltung im Zustand nach.
 // JSON: {"format": 1, "rules": [{"file", "line" (ab 1), "hit", "hitCount",
 // "thread", "threadText", "threadId", "triggerFile", "triggerLine" (ab 1),
-// "depend"}]}; Namen der Aufzählungen klein wie unten.
+// "depend", "caller", "callerDirect"}]}; Namen der Aufzählungen klein wie
+// unten. Dateien ohne "caller" (vor #2548) bleiben lesbar.
 
 interface
 
@@ -44,9 +49,15 @@ type
     TriggerFile: string;
     /// <summary>Zeile des auslösenden Haltepunkts, ab 0.</summary>
     TriggerLine: Integer;
+    /// <summary>Muster des Aufrufers (TAtlasRoutinePattern); '' = jeder.</summary>
+    Caller: string;
+    /// <summary>Nur der Rahmen direkt unter dem Haltepunkt zählt.</summary>
+    CallerDirect: Boolean;
     /// <summary>Keine Regel gesetzt (alles Vorgabe)?</summary>
     function IsEmpty: Boolean;
     function HasTrigger: Boolean;
+    /// <summary>Hängt die Regel am Aufrufstapel (die IDE-Schicht muss ihn beim Halt lesen)?</summary>
+    function HasCaller: Boolean;
     /// <summary>Hängt diese Regel an AFileName/ALine als Auslöser?</summary>
     function TriggeredBy(const AFileName: string; ALine: Integer): Boolean;
   end;
@@ -66,6 +77,9 @@ type
     Name: string;
     Id: Cardinal;
     MainId: Cardinal;
+    /// <summary>Routinen des Aufrufstapels, die des Haltepunkts zuerst; nur gelesen, wenn die Regel einen
+    /// Aufrufer nennt.</summary>
+    Routines: TArray<string>;
     class function Create(const AName: string; AId, AMainId: Cardinal): TAtlasStopThread; static;
   end;
 
@@ -76,6 +90,10 @@ type
     /// <summary>Trifft die Bedingung beim Treffer Nummer AHit (ab 1) zu? Zahlen unter 1 gelten als 1.</summary>
     class function HitMatches(AMode: TAtlasHitMode; ACount, AHit: Integer): Boolean; static;
     class function ThreadMatches(const ARule: TAtlasBreakpointRule; const AThread: TAtlasStopThread): Boolean;
+      static;
+    /// <summary>Steht der Aufrufer der Regel in ARoutines (Index 0 = Routine des Haltepunkts selbst)? Ohne
+    /// Aufrufer immer.</summary>
+    class function CallerMatches(const ARule: TAtlasBreakpointRule; const ARoutines: TArray<string>): Boolean;
       static;
     /// <summary>Halt an der Zeile von ARule: anhalten oder weiterlaufen; zählt Treffer, macht „einmal“ wieder
     /// unscharf.</summary>
@@ -112,7 +130,8 @@ uses
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Debug.RoutinePattern;
 
 const
   cHitNames: array[TAtlasHitMode] of string = ('any', 'exactly', 'atLeast', 'everyNth');
@@ -123,7 +142,12 @@ const
 
 function TAtlasBreakpointRule.IsEmpty: Boolean;
 begin
-  Result := (Hit = TAtlasHitMode.Any) and (Thread = TAtlasThreadFilter.Any) and not HasTrigger;
+  Result := (Hit = TAtlasHitMode.Any) and (Thread = TAtlasThreadFilter.Any) and not HasTrigger and not HasCaller;
+end;
+
+function TAtlasBreakpointRule.HasCaller: Boolean;
+begin
+  Result := Trim(Caller) <> '';
 end;
 
 function TAtlasBreakpointRule.HasTrigger: Boolean;
@@ -151,6 +175,7 @@ begin
   Result.Name := AName;
   Result.Id := AId;
   Result.MainId := AMainId;
+  Result.Routines := nil;
 end;
 
 { TAtlasBreakpointRules }
@@ -187,12 +212,27 @@ begin
   end;
 end;
 
+class function TAtlasBreakpointRules.CallerMatches(const ARule: TAtlasBreakpointRule;
+  const ARoutines: TArray<string>): Boolean;
+begin
+  if not ARule.HasCaller then
+  begin
+    Exit(True);
+  end;
+  if ARule.CallerDirect then
+  begin
+    Exit((Length(ARoutines) > 1) and TAtlasRoutinePattern.Matches(ARule.Caller, ARoutines[1]));
+  end;
+  Result := TAtlasRoutinePattern.FirstMatch(ARule.Caller, ARoutines, 1) >= 0;
+end;
+
 class function TAtlasBreakpointRules.Decide(const ARule: TAtlasBreakpointRule; var AState: TAtlasRuleState;
   const AThread: TAtlasStopThread): TAtlasRuleDecision;
 begin
   Result := TAtlasRuleDecision.Continue;
-  // Unscharf (der Haltepunkt war trotzdem an, etwa vom Benutzer eingeschaltet) oder anderer Thread: kein Treffer.
-  if not AState.Armed or not ThreadMatches(ARule, AThread) then
+  // Unscharf (der Haltepunkt war trotzdem an, etwa vom Benutzer eingeschaltet), anderer Thread oder anderer
+  // Aufrufer: kein Treffer.
+  if not AState.Armed or not ThreadMatches(ARule, AThread) or not CallerMatches(ARule, AThread.Routines) then
   begin
     Exit;
   end;
@@ -293,6 +333,8 @@ begin
   Result.AddPair('depend', cDependNames[ARule.Depend]);
   Result.AddPair('triggerFile', ARule.TriggerFile);
   Result.AddPair('triggerLine', TJSONNumber.Create(ARule.TriggerLine + 1));
+  Result.AddPair('caller', ARule.Caller);
+  Result.AddPair('callerDirect', TJSONBool.Create(ARule.CallerDirect));
 end;
 
 class function TAtlasBreakpointRules.ToJson(const ARules: TAtlasBreakpointRuleList): string;
@@ -371,6 +413,8 @@ begin
   Result.Depend := DependOf(TJsonRead.Text(AObject, 'depend'));
   Result.TriggerFile := TJsonRead.Text(AObject, 'triggerFile');
   Result.TriggerLine := Max(0, TJsonRead.IntOr(AObject, 'triggerLine', 1) - 1);
+  Result.Caller := TJsonRead.TrimmedText(AObject, 'caller');
+  Result.CallerDirect := TJsonRead.Flag(AObject, 'callerDirect');
 end;
 
 class function TAtlasBreakpointRules.Parse(const AJson: string; out ARules: TAtlasBreakpointRuleList): Boolean;
