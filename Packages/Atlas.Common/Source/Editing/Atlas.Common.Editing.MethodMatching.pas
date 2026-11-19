@@ -238,28 +238,25 @@ begin
   Result := (ABody <> '') and (ABody <> mDeclaration);
 end;
 
-/// <summary>-1, 0 oder 1, je nachdem ob A vor, auf oder hinter B liegt.</summary>
-function ComparePositions(const A, B: TTextPosition): Integer;
+/// <summary>Lage als eine Zahl in Textreihenfolge (Zeile vor Spalte) für die binäre Suche.</summary>
+function PositionKey(const APosition: TTextPosition): Int64;
 begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
+  Result := Int64(APosition.Line) * (Int64(High(Integer)) + 1) + APosition.Character;
 end;
 
 class function TMethodText.TokenEndingAt(const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition): Integer;
 var
-  mLow, mHigh, mMiddle, mOrder: Integer;
+  mLow, mHigh, mMiddle: Integer;
+  mKey: Int64;
 begin
   mLow := 0;
   mHigh := High(ATokens);
+  mKey := PositionKey(APosition);
   while mLow <= mHigh do
   begin
     mMiddle := (mLow + mHigh) div 2;
-    mOrder := ComparePositions(ATokens[mMiddle].EndPos, APosition);
-    if mOrder < 0 then
+    if PositionKey(ATokens[mMiddle].EndPos) < mKey then
     begin
       mLow := mMiddle + 1;
     end
@@ -280,13 +277,15 @@ class function TMethodText.TokenStartingAt(const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition): Integer;
 var
   mLow, mHigh, mMiddle: Integer;
+  mKey: Int64;
 begin
   mLow := 0;
   mHigh := High(ATokens);
+  mKey := PositionKey(APosition);
   while mLow <= mHigh do
   begin
     mMiddle := (mLow + mHigh) div 2;
-    if ComparePositions(ATokens[mMiddle].StartPos, APosition) < 0 then
+    if PositionKey(ATokens[mMiddle].StartPos) < mKey then
     begin
       mLow := mMiddle + 1;
     end
