@@ -28,7 +28,6 @@ type
 implementation
 
 uses
-  System.SysUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -36,18 +35,6 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.CompilerTraps.MethodRefs,
   Atlas.Tests.RuleAssert;
-
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ':' + IntToStr(mFinding.Range.StartPos.Character) +
-      ' ' + mFinding.Message + '|';
-  end;
-end;
 
 { TCompilerTrapsMethodRefsTests }
 
@@ -72,7 +59,7 @@ var
 begin
   mFound := TRuleAssert.Findings(TMethodReferenceCalledRule.Create, cSource);
   Assert.AreEqual('9:9 Exit(ALookup): ALookup ist eine Methodenreferenz (TLookup); Delphi ruft sie hier auf, statt ' +
-    'sie zurückzugeben (wie E2035 bzw. E2010). Result := ALookup; Exit; schreiben.|', Messages(mFound));
+    'sie zurückzugeben (wie E2035 bzw. E2010). Result := ALookup; Exit; schreiben.|', TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.IsTrue(mFound[0].Fixes[0].Safe);
   // Ohne Block darum: begin … end.
@@ -112,7 +99,7 @@ begin
     'Delphi sie auf (wie E2035 bzw. E2010). Länge mit SetLength erhöhen und das Element zuweisen.|16:14 [AHoerer]: ' +
     'AHoerer ist eine Methodenreferenz (THoerer); im Array-Literal neben + ruft Delphi sie auf (wie E2035 bzw. ' +
     'E2010). Länge mit SetLength erhöhen und das Element zuweisen.|',
-    Messages(TRuleAssert.IndexFindings(TMethodReferenceCalledRule.Create, cSource, mIndex, '', 'U.pas')));
+    TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TMethodReferenceCalledRule.Create, cSource, mIndex, '', 'U.pas')));
 end;
 
 procedure TCompilerTrapsMethodRefsTests.SilentCases;

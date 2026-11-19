@@ -46,6 +46,8 @@ type
     procedure NormalizeLineBreaks;
     [Test]
     procedure CollapseSpace;
+    [Test]
+    procedure ShortLine;
   end;
 
   [TestFixture]
@@ -237,6 +239,14 @@ procedure TTextLinesTests.NormalizeLineBreaks;
 begin
   Assert.AreEqual('a'#13#10'b'#13#10'c'#13#10, TTextLines.NormalizeLineBreaks('a'#10'b'#13'c'#13#10, #13#10));
   Assert.AreEqual('a'#10'b', TTextLines.NormalizeLineBreaks('a'#13#10'b', #10));
+end;
+
+procedure TTextLinesTests.ShortLine;
+begin
+  // Windows-Zeilenende ergibt ein Leerzeichen, nicht zwei.
+  Assert.AreEqual('a b c', TTextLines.ShortLine(' a'#13#10'b'#10'c ', 10));
+  Assert.AreEqual('abc…', TTextLines.ShortLine('abcdef', 4));
+  Assert.AreEqual('abcd', TTextLines.ShortLine('abcd', 4));
 end;
 
 procedure TTextLinesTests.CollapseSpace;

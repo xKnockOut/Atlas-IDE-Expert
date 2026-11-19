@@ -87,6 +87,9 @@ type
     /// <summary>Leerraum (Leerzeichen, Tabulator, Zeilenumbrüche) zu je einem Leerzeichen, außen ohne; z. B. für
     /// Typen und Kopfzeilen, die über mehrere Zeilen gehen.</summary>
     class function CollapseSpace(const AText: string): string; static;
+    /// <summary>AText in einer Zeile (jeder Umbruch ein Leerzeichen), außen ohne Leerraum, höchstens AMax Zeichen;
+    /// gekürzt endet er auf "…".</summary>
+    class function ShortLine(const AText: string; AMax: Integer): string; static;
   end;
 
 implementation
@@ -524,6 +527,15 @@ begin
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+class function TTextLines.ShortLine(const AText: string; AMax: Integer): string;
+begin
+  Result := Trim(NormalizeLineBreaks(AText, ' '));
+  if Length(Result) > AMax then
+  begin
+    Result := Copy(Result, 1, AMax - 1) + '…';
   end;
 end;
 

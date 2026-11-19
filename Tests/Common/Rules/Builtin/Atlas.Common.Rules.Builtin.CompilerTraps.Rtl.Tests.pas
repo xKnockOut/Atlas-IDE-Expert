@@ -45,17 +45,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 /// <summary>Index mit Werk.Thread (deklariert OpenThread selbst) und FPCs Windows (deklariert es auch).</summary>
 function ThreadIndex: ISymbolIndex;
 begin
@@ -96,7 +85,7 @@ begin
     'E2003). Selbst deklarieren: function OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: ' +
     'DWORD): THandle; stdcall; external kernel32 name ''OpenThread'';|9: THREAD_SUSPEND_RESUME steht in Free ' +
     'Pascals Windows, in Delphis Winapi.Windows aber nicht (wie E2003). Selbst deklarieren: const ' +
-    'THREAD_SUSPEND_RESUME = $0002;|', Messages(mFound));
+    'THREAD_SUSPEND_RESUME = $0002;|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   // Mit Index: Die Deklaration aus FPCs Windows zählt nicht.
   mFound := TRuleAssert.IndexFindings(TWinapiDeclarationMissingRule.Create, 'unit U;'#10'interface'#10 +
@@ -123,7 +112,7 @@ begin
     '  // OpenThread'#10'  Werk.Thread.OpenThread(1, False, 2);'#10'  Writeln(''ERROR_NOT_FOUND'');'#10'end;'#10 +
     'end.');
   // Mit Index: eine Projekt-Unit deklariert OpenThread.
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TWinapiDeclarationMissingRule.Create, 'unit U;'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TWinapiDeclarationMissingRule.Create, 'unit U;'#10 +
     'interface'#10'implementation'#10'uses'#10'  Winapi.Windows, Werk.Thread;'#10'procedure Lauf;'#10'begin'#10 +
     '  OpenThread(1, False, 2);'#10'end;'#10'end.', ThreadIndex, '', 'U.pas')));
 end;
@@ -137,11 +126,11 @@ begin
     'var'#10'  T: UInt64;'#10'begin'#10'  T := GetTickCount64;'#10'  T := MulDiv(T, 96, 72);'#10'end;'#10'end.';
   mFound := TRuleAssert.Findings(TWinapiUsesMissingRule.Create, mSource);
   Assert.AreEqual('9: GetTickCount64 deklariert Delphi nur in Winapi.Windows, das hier nicht in uses steht; ' +
-    'Free Pascal findet es auch in SysUtils (wie E2003). Winapi.Windows einbinden.|', Messages(mFound));
+    'Free Pascal findet es auch in SysUtils (wie E2003). Winapi.Windows einbinden.|', TRuleAssert.LineMessages(mFound));
   Assert.IsFalse(mFound[0].Fixes[0].Safe);
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '  System.SysUtils,'#10'  Winapi.Windows;');
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TWinapiUsesMissingRule.Create, mFixed)));
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TWinapiUsesMissingRule.Create, mFixed)));
   // Mit Index: GetTickCount64 aus FPCs Windows bzw. SysUtils zählt nicht.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TWinapiUsesMissingRule.Create, 'unit U;'#10 +
     'interface'#10'implementation'#10'procedure Lauf;'#10'begin'#10'  if GetTickCount64 > 0 then'#10'    Exit;'#10 +
@@ -163,7 +152,7 @@ begin
   mContext.Text := cSource;
   mContext.InactiveRanges := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(cSource,
     TPascalPreprocessor.EditorOptions(['MSWINDOWS', 'WIN32'])));
-  Assert.AreEqual('', Messages(TRuleAssert.ContextFindings(TWinapiUsesMissingRule.Create, mContext, '')));
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.ContextFindings(TWinapiUsesMissingRule.Create, mContext, '')));
   // Im aktiven Zweig bleibt der Befund.
   mContext.Text := cSource.Replace('{$IFDEF FPC}', '{$IFNDEF FPC}');
   mContext.InactiveRanges := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(mContext.Text,
@@ -196,7 +185,7 @@ begin
   Assert.AreEqual('7: TGrenze überschreibt nur Write(...; Count: Longint). Ab Delphi 13 rufen WriteBuffer und ' +
     'CopyFrom unter Win64 Write(const Buffer; Count: NativeInt): NativeInt auf und gehen an dieser Fassung ' +
     'vorbei. Die NativeInt-Fassung ebenfalls überschreiben, in {$IF RTLVersion >= 37.0} und ' +
-    '{$IF SizeOf(Longint) <> SizeOf(NativeInt)}.|', Messages(mFound));
+    '{$IF SizeOf(Longint) <> SizeOf(NativeInt)}.|', TRuleAssert.LineMessages(mFound));
   // Delphi 13 eingestellt: ebenso.
   Assert.AreEqual(1, Integer(Length(StreamFindings('unit U;'#10 +
     'interface'#10'type'#10'  TZaehler = class(TStream)'#10'  public'#10 +
@@ -208,14 +197,14 @@ end;
 procedure TCompilerTrapsRtlTests.StreamWriteSilentCases;
 begin
   // Beide Fassungen, die zweite in {$IF}-Zweigen wie Atlas.Core.Diagnostics.BoundedStream.
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TStreamWriteNativeIntRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TStreamWriteNativeIntRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TGrenze = class(TBytesStream)'#10'  public'#10 +
     '    function Write(const ABuffer; ACount: Longint): Longint; overload; override;'#10 +
     '{$IF RTLVersion >= 37.0}'#10'  {$IF SizeOf(Longint) <> SizeOf(NativeInt)}'#10 +
     '    function Write(const ABuffer; ACount: NativeInt): NativeInt; overload; override;'#10'  {$IFEND}'#10 +
     '{$IFEND}'#10'  end;'#10'implementation'#10'end.')));
   // Ohne override, andere Signatur, Delphi 12 eingestellt.
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TStreamWriteNativeIntRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TStreamWriteNativeIntRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TSchreiber = class'#10'  public'#10'    function Write(const ABuffer; ACount: Longint): Longint;'#10 +
     '  end;'#10'  TText = class(TStream)'#10'  public'#10 +
     '    function Write(const ABuffer: TBytes; AOffset, ACount: Longint): Longint; override;'#10'  end;'#10 +

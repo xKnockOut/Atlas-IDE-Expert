@@ -74,6 +74,10 @@ type
       overload;
       static;
     class function SameAsSeparateRuns(const ARules: TArray<IRule>; const ASource: string): Integer; overload; static;
+    /// <summary>Treffer als "Zeile: Meldung|" je Treffer (Zeile ab 0).</summary>
+    class function LineMessages(const AFound: TArray<TRuleFinding>): string; static;
+    /// <summary>Treffer als "Zeile:Spalte Meldung|" je Treffer (beide ab 0).</summary>
+    class function PositionMessages(const AFound: TArray<TRuleFinding>): string; static;
   end;
 
   /// <summary>Testregel ohne Treffer: ruft beim Prüfen AOnCheck auf (zählen, warten, abbrechen).</summary>
@@ -460,6 +464,29 @@ end;
 class function TRuleAssert.SameAsSeparateRuns(const ARules: TArray<IRule>; const ASource: string): Integer;
 begin
   Result := SameAsSeparateRuns(ARules, ASource, '');
+end;
+
+class function TRuleAssert.LineMessages(const AFound: TArray<TRuleFinding>): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFound do
+  begin
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
+  end;
+end;
+
+class function TRuleAssert.PositionMessages(const AFound: TArray<TRuleFinding>): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFound do
+  begin
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ':' + IntToStr(mFinding.Range.StartPos.Character) +
+      ' ' + mFinding.Message + '|';
+  end;
 end;
 
 { TCallbackRule }

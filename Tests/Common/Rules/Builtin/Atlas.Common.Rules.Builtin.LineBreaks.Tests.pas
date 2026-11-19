@@ -26,7 +26,6 @@ type
 implementation
 
 uses
-  System.SysUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.LineBreaks,
@@ -39,24 +38,13 @@ begin
     'function Fall(const A: string): string;'#10'begin'#10 + AStatements + 'end;'#10'end.';
 end;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 { TLineBreakRulesTests }
 
 procedure TLineBreakRulesTests.SeparateReplaces;
 begin
   Assert.AreEqual('8: #13 und #10 werden einzeln ersetzt (Zeile 8 und hier): Aus einem Windows-Zeilenende #13#10 ' +
     'werden zwei Zeichen. Zuerst #13#10 (sLineBreak) ersetzen, dann die einzelnen.|',
-    Messages(TRuleAssert.Findings(TLineBreakSplitReplaceRule.Create, Source(
+    TRuleAssert.LineMessages(TRuleAssert.Findings(TLineBreakSplitReplaceRule.Create, Source(
     '  Result := StringReplace(A, #13, '' '', [rfReplaceAll]);'#10 +
     '  Result := StringReplace(Result, #10, '' '', [rfReplaceAll]);'#10))));
 end;

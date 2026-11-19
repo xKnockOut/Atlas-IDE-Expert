@@ -52,17 +52,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 /// <summary>Unit mit der Routine Lauf, deren Rumpf ABody ist; S und Pfad: string, Zahl: Integer.</summary>
 function Source(const ABody: string): string;
 begin
@@ -101,7 +90,7 @@ begin
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, mSource);
   Assert.AreEqual('9: Das Ergebnis von Trim wird verworfen: Die Funktion hat keine Seiteneffekte, der Aufruf ' +
     'bewirkt nichts.|10: Das Ergebnis von IncludeTrailingPathDelimiter wird verworfen: Die Funktion hat keine ' +
-    'Seiteneffekte, der Aufruf bewirkt nichts.|', Messages(mFound));
+    'Seiteneffekte, der Aufruf bewirkt nichts.|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cIgnoredResultRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   Assert.AreEqual('Ergebnis zuweisen: S := …', mFound[0].Fixes[0].Title);
@@ -119,7 +108,7 @@ var
 begin
   mSource := Source('  S.Replace(''a'', ''b'');'#10'  S.Trim;'#10'  S.ToUpper();'#10);
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, mSource);
-  Assert.AreEqual(3, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(3, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.Contains(mFound[0].Message, 'S.Replace');
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[2].Fixes[0].Edits);
   mFixed := TChangeSignature.ApplyEdits(mFixed, mFound[1].Fixes[0].Edits);
@@ -138,7 +127,7 @@ begin
   // Ohne Eintrag schweigt die Regel, mit Eintrag meldet sie ohne Zurückschreiben (Typ unbekannt).
   TRuleAssert.Silent(TIgnoredResultRule.Create, cOwn);
   Assert.AreEqual('9: Das Ergebnis von Bereinigt wird verworfen: Die Funktion hat keine Seiteneffekte, der ' +
-    'Aufruf bewirkt nichts.|', Messages(TRuleAssert.Findings(TIgnoredResultRule.Create, cOwn,
+    'Aufruf bewirkt nichts.|', TRuleAssert.LineMessages(TRuleAssert.Findings(TIgnoredResultRule.Create, cOwn,
     '{"rules": {"ignored-result": {"pureFunctions": ["bereinigt"]}}}')));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TIgnoredResultRule.Create, cOwn,
     '{"rules": {"ignored-result": {"pureFunctions": ["U.Bereinigt"]}}}'))));
@@ -150,7 +139,7 @@ var
 begin
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, Source('  System.SysUtils.Trim(S);'#10 +
     '  SysUtils.UpperCase(S);'#10'  TPath.Combine(Pfad, S);'#10'  string.Join('','', [S, Pfad]);'#10));
-  Assert.AreEqual(4, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(4, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.Contains(mFound[2].Message, 'TPath.Combine');
 end;
 
@@ -163,7 +152,7 @@ begin
   mSource := Source('  IntToStr(Zahl);'#10'  Format(''%d'', [Zahl]);'#10'  S := ''Ergebnis'';'#10);
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, StringReplace(mSource, 'S, Pfad: string;',
     'S, Pfad, Ergebnis: string;', []));
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('Ergebnis zuweisen: var Ergebnis2 := …', mFound[0].Fixes[0].Title);
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, mSource);
   Assert.AreEqual('Ergebnis zuweisen: var Ergebnis := …', mFound[0].Fixes[0].Title);
@@ -185,7 +174,7 @@ begin
   // Nach then ist keine Inline-Variable erlaubt; Zurückschreiben geht trotzdem.
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, Source('  if Zahl > 0 then'#10'    IntToStr(Zahl);'#10 +
     '  if Zahl > 1 then'#10'    Trim(S);'#10));
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual(1, Integer(Length(mFound[1].Fixes)));
   // Delphi 10.2 (BDS 19.0) kennt keine Inline-Variablen.
@@ -224,7 +213,7 @@ begin
   mSource := 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils, Werk.Text;'#10 +
     'procedure Lauf(S: string);'#10'begin'#10'  UpperCase(S);'#10'  Trim(S);'#10'end;'#10'end.';
   Assert.AreEqual('8: Das Ergebnis von Trim wird verworfen: Die Funktion hat keine Seiteneffekte, der Aufruf ' +
-    'bewirkt nichts.|', Messages(TRuleAssert.IndexFindings(TIgnoredResultRule.Create, mSource, mIndex, '',
+    'bewirkt nichts.|', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TIgnoredResultRule.Create, mSource, mIndex, '',
     'U.pas')));
 end;
 

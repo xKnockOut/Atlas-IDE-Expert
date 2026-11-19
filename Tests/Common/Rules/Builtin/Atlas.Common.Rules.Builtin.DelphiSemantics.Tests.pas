@@ -53,17 +53,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 function Lines(const ALines: array of string): string;
 var
   mLine: string;
@@ -112,7 +101,7 @@ begin
   mFound := TRuleAssert.Findings(TManagedResultReadRule.Create, mSource);
   Assert.AreEqual('7: SetLength(Result, ...) ohne vorheriges Result := nil: Delphi übergibt Result als Variable des ' +
     'Aufrufers, SetLength behält deren alte Werte, und Result[I] liest sie (FPC beginnt leer). Erst Result := ' +
-    'nil.|', Messages(mFound));
+    'nil.|', TRuleAssert.LineMessages(mFound));
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, '  SetLength(Result', '  Result := nil;'#10'  SetLength(Result', []), mFixed);
   TRuleAssert.Silent(TManagedResultReadRule.Create, mFixed);
@@ -130,10 +119,10 @@ begin
     'begin', '  Result := Result + [''a''];', 'end;', 'function Text: string;', 'begin', '  Result := Result + ''x'';',
     'end;', 'function Anzahl: TArray<Integer>;', 'begin', '  if Length(Result) = 0 then', '    Result := [1];',
     'end;']));
-  Assert.AreEqual(3, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(3, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('5: Result := Result + [''a''] liest Result, bevor die Funktion es setzt: Delphi übergibt Result ' +
     'als Variable des Aufrufers, der Wert stammt von dort (FPC beginnt leer). Erst Result := nil.|',
-    Messages(TArray<TRuleFinding>.Create(mFound[0])));
+    TRuleAssert.LineMessages(TArray<TRuleFinding>.Create(mFound[0])));
   Assert.AreEqual(9, mFound[1].Range.StartPos.Line);
   Assert.IsTrue(Pos('Erst Result := ''''.', mFound[1].Message) > 0, mFound[1].Message);
 end;
@@ -169,7 +158,7 @@ begin
     'var', '  W: Integer;', 'begin', '  W := 5;', '  D.TryGetValue(''k'', W);', '  Zeige(W);', 'end;']));
   Assert.AreEqual('7: Result.Top bekam in Zeile 7 den Wert 30, TryGetValue verwirft das Ergebnis: Delphi setzt ' +
     'das out-Argument auch ohne Schlüssel auf den Vorgabewert, die Vorbelegung geht verloren (FPC lässt sie ' +
-    'stehen). In eine eigene Variable lesen und nur bei True übernehmen.|', Messages(TArray<TRuleFinding>.Create(mFound[0])));
+    'stehen). In eine eigene Variable lesen und nur bei True übernehmen.|', TRuleAssert.LineMessages(TArray<TRuleFinding>.Create(mFound[0])));
   Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual(14, mFound[1].Range.StartPos.Line);
 end;
@@ -194,13 +183,13 @@ begin
     '  mKopie := AAnsicht;', '  mKopie.Extras[0].State := 1;', 'end;']);
   Assert.AreEqual('10: mKopie.Extras ist seit Zeile 10 (mKopie := AAnsicht) dasselbe Array wie in AAnsicht: ' +
     'Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write, das Schreiben ändert auch AAnsicht. Vorher ' +
-    'mKopie.Extras := Copy(mKopie.Extras).|', Messages(mFound));
+    'mKopie.Extras := Copy(mKopie.Extras).|', TRuleAssert.LineMessages(mFound));
   mSource := Lines(['unit U;', 'interface', 'uses', '  Werk.Ansicht;', 'implementation',
     'procedure Zeige(const AAnsicht: TAnsicht);', 'var', '  mKopie: TAnsicht;', 'begin', '  mKopie := AAnsicht;',
     '  mKopie.Extras[0].State := 1;', 'end;']) + 'end.';
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('  mKopie.Extras := Copy(mKopie.Extras);'#10'  mKopie.Extras[0].State := 1;', mFixed) > 0, mFixed);
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TRecordArraySharedRule.Create, mFixed, AnsichtIndex, '',
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TRecordArraySharedRule.Create, mFixed, AnsichtIndex, '',
     'U.pas')));
   // Auch das Original ändert die Kopie; ein Element direkt (ohne Feld dahinter).
   Assert.AreEqual(1, Integer(Length(SharedFindings(['procedure Merke(var A: TAnsicht; var B: TAnsicht);', 'begin',
@@ -211,13 +200,13 @@ procedure TDelphiSemanticsTests.RecordCopySilentCases;
 begin
   // Eigenes Array vor dem Schreiben (Copy, SetLength, neue Zuweisung), statisches Array, String-Feld, Klasse,
   // Record neu zugewiesen.
-  Assert.AreEqual('', Messages(SharedFindings(['procedure A(const X: TAnsicht; O: TKlasse; P: TKlasse);', 'var',
+  Assert.AreEqual('', TRuleAssert.LineMessages(SharedFindings(['procedure A(const X: TAnsicht; O: TKlasse; P: TKlasse);', 'var',
     '  B, C, D, E: TAnsicht;', 'begin', '  B := X;', '  B.Extras := Copy(B.Extras);', '  B.Extras[0].State := 1;',
     '  C := X;', '  SetLength(C.Extras, 2);', '  C.Extras[0].State := 1;', '  D := X;', '  D.Fest[0] := 1;',
     '  D.Name := ''n'';', '  O := P;', '  O.Extras[0].State := 1;', '  E := X;', '  E := Default(TAnsicht);',
     '  E.Extras[0].State := 1;', 'end;'])));
   // Funktion ohne Klammern liefert einen neuen Record.
-  Assert.AreEqual('', Messages(SharedFindings(['function Probe: TAnsicht;', 'begin', '  Result := Default(TAnsicht);',
+  Assert.AreEqual('', TRuleAssert.LineMessages(SharedFindings(['function Probe: TAnsicht;', 'begin', '  Result := Default(TAnsicht);',
     'end;', 'procedure B;', 'var', '  F: TAnsicht;', 'begin', '  F := Probe;', '  F.Extras[0].State := 1;', 'end;'])));
 end;
 
@@ -231,9 +220,9 @@ begin
     '  Result := ExtractFileName(StringReplace(A, ''\'', ''/'', [rfReplaceAll]));', '  P := A + ''/sub'';',
     '  Result := ExtractFilePath(P) + ExtractFileDir(''a/b.pas'');', 'end;']);
   mFound := TRuleAssert.Findings(TExtractFileSlashRule.Create, mSource);
-  Assert.AreEqual(3, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(3, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('7: ExtractFileName bekommt einen Pfad mit ''/'': Unter Windows trennt Delphi nur an ''\'' ' +
-    '(PathDelim), unter Linux an ''/''. Trenner vorher auf PathDelim angleichen.|', Messages(TArray<TRuleFinding>.Create(mFound[0])));
+    '(PathDelim), unter Linux an ''/''. Trenner vorher auf PathDelim angleichen.|', TRuleAssert.LineMessages(TArray<TRuleFinding>.Create(mFound[0])));
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('StringReplace(A, ''\'', PathDelim, [rfReplaceAll])', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(mFound[1].Fixes)));
@@ -259,7 +248,7 @@ begin
     '  C: Char;', 'begin', '  Result := UInt64($CBF29CE484222325);', '  for C in A do',
     '    Result := (Result xor Ord(C)) * UInt64($00000100000001B3);', 'end;', 'function Hash(H: Cardinal): Cardinal;',
     'const', '  cPrime = 16777619;', 'begin', '  Result := Cardinal((H xor 1) * cPrime);', 'end;']));
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(15, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(1, Pos('(Result xor Ord(C)) * UInt64($00000100000001B3) läuft gewollt über', mFound[0].Message),
     mFound[0].Message);
