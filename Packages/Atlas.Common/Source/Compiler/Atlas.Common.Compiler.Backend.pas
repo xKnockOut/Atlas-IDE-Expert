@@ -6,8 +6,8 @@
 //   dcc   nur der Kommandozeilen-Compiler; ohne ihn off.
 //   off   nie.
 // Ohne Kommandozeilen-Compiler baut eine laufende RAD Studio mit Atlas
-// (Werkzeug build_project); den Weg über eine eigene IDE gibt es seit #1904
-// nicht mehr. Grund, Ausweg und Statuszeile („Compiler: nicht verfügbar
+// (Werkzeug build_project), keine eigene Bau-IDE (#1904).
+// Grund, Ausweg und Statuszeile („Compiler: nicht verfügbar
 // (Starter Edition)“) kommen von hier, damit Meldung, Status (#28) und die
 // Antwort des Befehls dasselbe sagen.
 

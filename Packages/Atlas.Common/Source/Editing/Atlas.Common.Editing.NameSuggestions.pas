@@ -74,7 +74,6 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -168,7 +167,7 @@ begin
     end;
     Result := Result + mToken.Text;
     mGlued := OpensBracket(mToken) or mToken.IsSymbol('.');
-    mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
 end;
 
@@ -330,7 +329,7 @@ begin
     ASite.NameRange := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
     ASite.Typed := Copy(ATokens[mIndex].Text, 1, APosition.Character - ATokens[mIndex].StartPos.Character);
     ASite.Offset := ATokens[mIndex].Offset;
-    ANext := TRoutineBody.NextToken(ATokens, mIndex);
+    ANext := NextCodeAfter(ATokens, mIndex);
     APrev := PreviousCode(ATokens, mIndex);
     Exit;
   end;
@@ -354,12 +353,12 @@ begin
   Result := ANext;
   while (Result <= High(ATokens)) and ATokens[Result].IsSymbol(',') do
   begin
-    Result := TRoutineBody.NextToken(ATokens, Result);
+    Result := NextCodeAfter(ATokens, Result);
     if (Result > High(ATokens)) or (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
     begin
       Exit(-1);
     end;
-    Result := TRoutineBody.NextToken(ATokens, Result);
+    Result := NextCodeAfter(ATokens, Result);
   end;
   if (Result > High(ATokens)) or not ATokens[Result].IsSymbol(':') then
   begin
@@ -443,7 +442,7 @@ begin
   begin
     Exit;
   end;
-  ASite.TypeText := TypeTextFrom(mTokens, TRoutineBody.NextToken(mTokens, mColon));
+  ASite.TypeText := TypeTextFrom(mTokens, NextCodeAfter(mTokens, mColon));
   if (ASite.TypeText = '') or not PrecedesName(mTokens[mPrev]) then
   begin
     Exit;

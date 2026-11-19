@@ -7,18 +7,24 @@
 //   Projekt, Konfiguration, Plattform, Zeit, Thread
 //   ## Ort – Datei:Zeile, Routine, Codeausschnitt (±ContextLines) mit Marke
 //   ## Aufrufstapel – eigener Code (#578) fett
+//   ## Lokale Variablen, ## Überwachte Ausdrücke – Name = Wert, Teile
+//      strukturierter Werte eine Stufe tiefer (aus TAtlasEvalList)
 //   ## Letzte Exception (#517) – Klasse, Meldung, Ort, Anzahl
+//   ## Ereignisprotokoll (#580) – die letzten Zeilen
 // Werte, die wie Geheimnisse aussehen (Name enthält Password, Passwort, Pwd,
 // Secret, Token, ApiKey, Credential), erscheinen als ***: in den
-// Codezeilen und in der Meldung der Exception (Redact).
+// Codezeilen, bei Variablen (auch Teile unter einem solchen Namen), im
+// Ereignisprotokoll und in der Meldung der Exception (Redact).
 // Die Überschriften kommen in der Sprache der Oberfläche von außen
-// (TAtlasDebugNoteTexts), Core kennt Atlas.UI.Strings nicht.
+// (TAtlasDebugNoteTexts), Core kennt Atlas.UI.Strings nicht und hat keine
+// eigenen Texte.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.Exceptions;
 
 type
@@ -36,9 +42,28 @@ type
     Count: string;
     /// <summary>„Kein Halt mit Quelltext.“</summary>
     NoLocation: string;
-    /// <summary>Deutsche Vorgaben (Tests, Rückfall).</summary>
-    class function Default: TAtlasDebugNoteTexts; static;
+    Locals: string;
+    Watches: string;
+    Events: string;
+    /// <summary>Wert eines Ausdrucks, der sich nicht auswerten ließ.</summary>
+    Unavailable: string;
+    /// <summary>Wert, der bis zum Erstellen der Notiz nicht kam.</summary>
+    Pending: string;
   end;
+
+  /// <summary>Eine Zeile unter „Lokale Variablen“ bzw. „Überwachte Ausdrücke“.</summary>
+  TAtlasDebugNoteValue = record
+    Name: string;
+    Value: string;
+    /// <summary>0 = Variable bzw. Ausdruck, 1 = Teil eines strukturierten Werts.</summary>
+    Level: Integer;
+    /// <summary>Name einer Variablen bzw. des umgebenden Werts sieht nach einem Geheimnis aus.</summary>
+    Secret: Boolean;
+    class function Create(const AName, AValue: string; ALevel: Integer; ASecret: Boolean): TAtlasDebugNoteValue;
+      static;
+  end;
+
+  TAtlasDebugNoteValues = TArray<TAtlasDebugNoteValue>;
 
   TAtlasDebugNoteData = record
     Project: string;
@@ -59,6 +84,11 @@ type
     Frames: TAtlasDebugFrames;
     HasException: Boolean;
     Exception: TAtlasDebugException;
+    /// <summary>Lokale Variablen bzw. überwachte Ausdrücke des Halts; leer = Abschnitt fehlt.</summary>
+    Locals: TAtlasDebugNoteValues;
+    Watches: TAtlasDebugNoteValues;
+    /// <summary>Zeilen des Ereignisprotokolls, älteste zuerst; die Notiz nimmt die letzten cMaxEvents.</summary>
+    Events: TArray<string>;
     class function Empty: TAtlasDebugNoteData; static;
   end;
 
@@ -68,6 +98,12 @@ type
     cMaxFrames = 30;
     /// <summary>Längere Codezeilen bzw. Meldungen werden gekürzt.</summary>
     cMaxLineLength = 300;
+    /// <summary>Längere Werte von Variablen werden gekürzt.</summary>
+    cMaxValueLength = 200;
+    /// <summary>Höchstens so viele Variablen bzw. Ausdrücke je Abschnitt und Teile je Wert.</summary>
+    cMaxValues = 50;
+    cMaxParts = 20;
+    cMaxEvents = 20;
     cMask = '***';
   public
     /// <summary>Notiz als Markdown.</summary>
@@ -91,6 +127,11 @@ type
     /// <summary>Exception-Verlauf als Text zum Anhängen: höchstens AMax Einträge (in der Reihenfolge von
     /// AExceptions) wie „Kopieren“ im Fenster, durch Leerzeilen getrennt, Geheimnisse ausgeblendet.</summary>
     class function HistoryText(const AExceptions: TAtlasDebugExceptions; AMax: Integer): string; static;
+    /// <summary>Zeilen der Notiz aus den Wurzeln von AList (höchstens cMaxValues): Wert, Fehlertext bzw.
+    /// ATexts.Unavailable/Pending; Teile strukturierter Werte (TAtlasEvalText.Parts, höchstens cMaxParts) eine
+    /// Stufe tiefer.</summary>
+    class function ValuesOf(AList: TAtlasEvalList; const ATexts: TAtlasDebugNoteTexts): TAtlasDebugNoteValues;
+      static;
   end;
 
 implementation
@@ -104,21 +145,16 @@ const
   cSecretWords: array[0..7] of string = ('password', 'passwort', 'passwd', 'pwd', 'secret', 'token', 'apikey',
     'credential');
 
-{ TAtlasDebugNoteTexts }
 
-class function TAtlasDebugNoteTexts.Default: TAtlasDebugNoteTexts;
+{ TAtlasDebugNoteValue }
+
+class function TAtlasDebugNoteValue.Create(const AName, AValue: string; ALevel: Integer;
+  ASecret: Boolean): TAtlasDebugNoteValue;
 begin
-  Result.Title := 'Debug-Notiz';
-  Result.Project := 'Projekt';
-  Result.Configuration := 'Konfiguration';
-  Result.TargetPlatform := 'Plattform';
-  Result.Time := 'Zeit';
-  Result.Thread := 'Thread';
-  Result.Location := 'Ort';
-  Result.CallStack := 'Aufrufstapel';
-  Result.LastException := 'Letzte Exception';
-  Result.Count := '%d x an dieser Stelle';
-  Result.NoLocation := 'Kein Halt mit Quelltext.';
+  Result.Name := AName;
+  Result.Value := AValue;
+  Result.Level := ALevel;
+  Result.Secret := ASecret;
 end;
 
 { TAtlasDebugNoteData }
@@ -128,6 +164,9 @@ begin
   Result := Default(TAtlasDebugNoteData);
   Result.Source := nil;
   Result.Frames := nil;
+  Result.Locals := nil;
+  Result.Watches := nil;
+  Result.Events := nil;
 end;
 
 { TAtlasDebugNote }
@@ -316,6 +355,56 @@ begin
   end;
 end;
 
+/// <summary>Was die Notiz für einen Knoten zeigt: Wert, Fehlertext oder Hinweis.</summary>
+function NodeText(ANode: TAtlasEvalNode; const ATexts: TAtlasDebugNoteTexts): string;
+begin
+  case ANode.State of
+    TAtlasEvalState.Value, TAtlasEvalState.Error:
+      Result := ANode.Value;
+    TAtlasEvalState.Unavailable:
+      Result := ATexts.Unavailable;
+  else
+    Result := ATexts.Pending;
+  end;
+end;
+
+class function TAtlasDebugNote.ValuesOf(AList: TAtlasEvalList;
+  const ATexts: TAtlasDebugNoteTexts): TAtlasDebugNoteValues;
+var
+  mIndex, mPart: Integer;
+  mNode: TAtlasEvalNode;
+  mName: string;
+  mSecret: Boolean;
+  mParts: TAtlasEvalParts;
+begin
+  Result := nil;
+  if AList = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to Min(AList.Count, cMaxValues) - 1 do
+  begin
+    mNode := AList.Roots[mIndex];
+    mName := mNode.Name;
+    if mName = '' then
+    begin
+      mName := mNode.Expression;
+    end;
+    mSecret := IsSecretName(mName);
+    Result := Result + [TAtlasDebugNoteValue.Create(mName, NodeText(mNode, ATexts), 0, mSecret)];
+    if (mNode.State <> TAtlasEvalState.Value) or not TAtlasEvalText.IsStructured(mNode.Value) then
+    begin
+      Continue;
+    end;
+    mParts := TAtlasEvalText.Parts(mNode.Value);
+    for mPart := 0 to Min(Length(mParts), cMaxParts) - 1 do
+    begin
+      Result := Result + [TAtlasDebugNoteValue.Create(mParts[mPart].Name, mParts[mPart].Value, 1,
+        mSecret or IsSecretName(mParts[mPart].Name))];
+    end;
+  end;
+end;
+
 function Shortened(const AText: string): string;
 begin
   Result := AText;
@@ -456,6 +545,80 @@ begin
   end;
 end;
 
+/// <summary>AText als Code im Fließtext; enthält er selbst „`“, mit doppelten Backticks.</summary>
+function InlineCode(const AText: string): string;
+begin
+  if AText = '' then
+  begin
+    Result := '–';
+  end
+  else if Pos('`', AText) > 0 then
+  begin
+    Result := '`` ' + AText + ' ``';
+  end
+  else
+  begin
+    Result := '`' + AText + '`';
+  end;
+end;
+
+/// <summary>Zeilenumbrüche eines Werts als Leerzeichen: Eine Variable bleibt eine Zeile der Liste.</summary>
+function OneLine(const AText: string): string;
+begin
+  Result := StringReplace(AText, #13#10, ' ', [rfReplaceAll]);
+  Result := StringReplace(Result, #13, ' ', [rfReplaceAll]);
+  Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
+end;
+
+function ValueText(const AValue: TAtlasDebugNoteValue): string;
+begin
+  if AValue.Secret then
+  begin
+    Exit(TAtlasDebugNote.cMask);
+  end;
+  Result := TAtlasDebugNote.Redact(OneLine(AValue.Value));
+  if Length(Result) > TAtlasDebugNote.cMaxValueLength then
+  begin
+    Result := Copy(Result, 1, TAtlasDebugNote.cMaxValueLength - 1) + '…';
+  end;
+end;
+
+/// <summary>Abschnitt mit Variablen bzw. Ausdrücken; Teile eingerückt.</summary>
+procedure AppendValues(ALines: TStringBuilder; const ATitle: string; const AValues: TAtlasDebugNoteValues);
+var
+  mValue: TAtlasDebugNoteValue;
+begin
+  if Length(AValues) = 0 then
+  begin
+    Exit;
+  end;
+  ALines.Append(#13#10).Append('## ').Append(ATitle).Append(#13#10#13#10);
+  for mValue in AValues do
+  begin
+    ALines.Append(StringOfChar(' ', 2 * mValue.Level)).Append('- ').Append(InlineCode(mValue.Name));
+    ALines.Append(' = ').Append(InlineCode(ValueText(mValue))).Append(#13#10);
+  end;
+end;
+
+/// <summary>Die letzten cMaxEvents Zeilen des Ereignisprotokolls (#580) als Textblock.</summary>
+procedure AppendEvents(ALines: TStringBuilder; const AData: TAtlasDebugNoteData;
+  const ATexts: TAtlasDebugNoteTexts);
+var
+  mIndex: Integer;
+begin
+  if Length(AData.Events) = 0 then
+  begin
+    Exit;
+  end;
+  ALines.Append(#13#10).Append('## ').Append(ATexts.Events).Append(#13#10#13#10).Append('```text').Append(#13#10);
+  for mIndex := Max(0, Length(AData.Events) - TAtlasDebugNote.cMaxEvents) to High(AData.Events) do
+  begin
+    ALines.Append(TTextAnonymizer.FenceSafe(Shortened(TAtlasDebugNote.Redact(OneLine(AData.Events[mIndex])))));
+    ALines.Append(#13#10);
+  end;
+  ALines.Append('```').Append(#13#10);
+end;
+
 class function TAtlasDebugNote.Markdown(const AData: TAtlasDebugNoteData; const ATexts: TAtlasDebugNoteTexts): string;
 var
   mLines: TStringBuilder;
@@ -465,7 +628,10 @@ begin
     AppendHeader(mLines, AData, ATexts);
     AppendLocation(mLines, AData, ATexts);
     AppendFrames(mLines, AData, ATexts);
+    AppendValues(mLines, ATexts.Locals, AData.Locals);
+    AppendValues(mLines, ATexts.Watches, AData.Watches);
     AppendException(mLines, AData, ATexts);
+    AppendEvents(mLines, AData, ATexts);
     Result := TrimRight(mLines.ToString) + #13#10;
   finally
     mLines.Free;

@@ -43,7 +43,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
   Atlas.UI.Results.Strings;
 
 { TAtlasResultsTexts }
@@ -191,28 +190,30 @@ end;
 
 class function TAtlasResultsTexts.FlowKindText(AKind: TAtlasDataFlowKind; ACount: Integer): string;
 const
-  cSingular: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignment,
-    TAtlasTextId.DataFlowVarArgument, TAtlasTextId.DataFlowOutArgument, TAtlasTextId.DataFlowInput,
-    TAtlasTextId.DataFlowInitializer, TAtlasTextId.DataFlowLoop, TAtlasTextId.DataFlowCallerArgument,
-    TAtlasTextId.DataFlowReturn, TAtlasTextId.DataFlowPropertyWrite, TAtlasTextId.DataFlowPropertyRead,
-    TAtlasTextId.DataFlowModify, TAtlasTextId.DataFlowArgument, TAtlasTextId.DataFlowOutput, TAtlasTextId.DataFlowUse,
-    TAtlasTextId.DataFlowConstant, TAtlasTextId.DataFlowOutside, TAtlasTextId.DataFlowAddress,
-    TAtlasTextId.DataFlowPlace);
-  cPlural: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignments,
-    TAtlasTextId.DataFlowVarArguments, TAtlasTextId.DataFlowOutArguments, TAtlasTextId.DataFlowInputs,
-    TAtlasTextId.DataFlowInitializers, TAtlasTextId.DataFlowLoops, TAtlasTextId.DataFlowCallerArguments,
-    TAtlasTextId.DataFlowReturns, TAtlasTextId.DataFlowPropertyWrites, TAtlasTextId.DataFlowPropertyReads,
-    TAtlasTextId.DataFlowModifies, TAtlasTextId.DataFlowArguments, TAtlasTextId.DataFlowOutputs,
-    TAtlasTextId.DataFlowUses, TAtlasTextId.DataFlowConstants, TAtlasTextId.DataFlowOutsides,
-    TAtlasTextId.DataFlowAddresses, TAtlasTextId.DataFlowPlaces);
+  cSingular: array[TAtlasDataFlowKind] of TAtlasResultsTextId = (TAtlasResultsTextId.DataFlowAssignment,
+    TAtlasResultsTextId.DataFlowVarArgument, TAtlasResultsTextId.DataFlowOutArgument, TAtlasResultsTextId.DataFlowInput,
+    TAtlasResultsTextId.DataFlowInitializer, TAtlasResultsTextId.DataFlowLoop,
+    TAtlasResultsTextId.DataFlowCallerArgument, TAtlasResultsTextId.DataFlowReturn,
+    TAtlasResultsTextId.DataFlowPropertyWrite, TAtlasResultsTextId.DataFlowPropertyRead,
+    TAtlasResultsTextId.DataFlowModify, TAtlasResultsTextId.DataFlowArgument, TAtlasResultsTextId.DataFlowOutput,
+    TAtlasResultsTextId.DataFlowUse, TAtlasResultsTextId.DataFlowConstant, TAtlasResultsTextId.DataFlowOutside,
+    TAtlasResultsTextId.DataFlowAddress, TAtlasResultsTextId.DataFlowPlace);
+  cPlural: array[TAtlasDataFlowKind] of TAtlasResultsTextId = (TAtlasResultsTextId.DataFlowAssignments,
+    TAtlasResultsTextId.DataFlowVarArguments, TAtlasResultsTextId.DataFlowOutArguments,
+    TAtlasResultsTextId.DataFlowInputs, TAtlasResultsTextId.DataFlowInitializers, TAtlasResultsTextId.DataFlowLoops,
+    TAtlasResultsTextId.DataFlowCallerArguments, TAtlasResultsTextId.DataFlowReturns,
+    TAtlasResultsTextId.DataFlowPropertyWrites, TAtlasResultsTextId.DataFlowPropertyReads,
+    TAtlasResultsTextId.DataFlowModifies, TAtlasResultsTextId.DataFlowArguments, TAtlasResultsTextId.DataFlowOutputs,
+    TAtlasResultsTextId.DataFlowUses, TAtlasResultsTextId.DataFlowConstants, TAtlasResultsTextId.DataFlowOutsides,
+    TAtlasResultsTextId.DataFlowAddresses, TAtlasResultsTextId.DataFlowPlaces);
 begin
   if ACount > 1 then
   begin
-    Result := Format('%d %s', [ACount, TAtlasStrings.Text(cPlural[AKind])]);
+    Result := Format('%d %s', [ACount, TAtlasResultsStrings.Text(cPlural[AKind])]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(cSingular[AKind]);
+    Result := TAtlasResultsStrings.Text(cSingular[AKind]);
   end;
 end;
 

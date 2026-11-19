@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Diagnostics.PluginTimings;
 
-// Plugin-Zeiten des Diagnose-Fensters in der IDE (Variante A):
+// Plugin-Zeiten des Diagnose-Fensters in der IDE:
 // - Apply schaltet die Messung (TAtlasPluginTimings.Enabled) nach dem
 //   Diagnosemodus und der Einstellung diagnosticMode.pluginTimings (Vorgabe an)
 //   und übernimmt die Schwelle diagnosticMode.slowThresholdMs (Vorgabe 16 ms).

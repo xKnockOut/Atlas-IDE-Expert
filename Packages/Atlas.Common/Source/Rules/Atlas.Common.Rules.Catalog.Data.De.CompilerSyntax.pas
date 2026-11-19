@@ -170,9 +170,9 @@ const
     'renkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstrukt' +
     'oren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virt' +
     'uellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen oder typisi' +
-    'erten Konstanten des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte, Typen und Routinen übersetzt dcc, mORMot2, Clipper2, dcc-Lauf vom 29.10.2026), als lokale Routine mit Zugriff auf ' +
-    'Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstüt' +
-    'zten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.",',
+    'erten Konstanten des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte, Typen und Routinen übersetzt dcc, etwa in mORMot2 und Clipper2), als lokale Routine mit Zugriff auf Variablen der ' +
+    'umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Ve' +
+    'rsionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.",',
     '      "options": [',
     '        {',
     '          "name": "disabledChecks",',

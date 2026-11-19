@@ -14,7 +14,7 @@
 //   Wartende schlafen auf der Sperre (TMonitor.Wait); das Ende eines Laufs weckt
 //   sie sofort (PulseAll), den Abbruch prüfen sie im Takt WaitSliceMs.
 // - Await: nur abgelegte Treffer oder die eines laufenden Laufs am selben Text, nie ein eigener Lauf. Die
-//   Glühbirne fragt so (Diagnoselog 11.11.2026: ein eigener Lauf aller Regeln dauerte in einer Unit mit 27.000
+//   Glühbirne fragt so (ein eigener Lauf aller Regeln dauert in einer Unit mit 27.000
 //   Zeilen rund 9 s); den Lauf übernimmt die Diagnose, die bei jeder Änderung ohnehin prüft.
 // - Höchstens MaxEntries Dateien; der am längsten nicht benutzte Eintrag fällt heraus.
 // - Threadsicher; Treffer gehen als Kopie hinein und heraus.

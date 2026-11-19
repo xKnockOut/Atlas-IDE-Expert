@@ -394,9 +394,9 @@ const
     ' declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (E2360) or virtual, dy' +
     'namic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on constructors and dest' +
     'ructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a variable or typed constant of the implementation section (E2441; true const' +
-    'ants, enumeration values, types and routines compile, mORMot2, Clipper2, dcc run of 29.10.2026), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (' +
-    'E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes' +
-    ': remove the directive, add static.",',
+    'ants, enumeration values, types and routines compile, as in mORMot2 and Clipper2), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local,' +
+    ' absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the d' +
+    'irective, add static.",',
     '      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",',
     '      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",',
     '      "compilerCodes": [',
