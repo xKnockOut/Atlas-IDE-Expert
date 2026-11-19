@@ -45,6 +45,9 @@ type
     /// <summary>Zeitpunkt AValue (UTC) als ISO 8601 mit „Z“; '' für 0 und davor. Gegenstück zu
     /// TJsonRead.IsoTime.</summary>
     class function IsoTime(AValue: TDateTime): string; static;
+    /// <summary>AValue als JSON-Text (wie ToJSON) und danach freigeben; '' für nil. Für Werte, die nur für den
+    /// Text gebaut werden.</summary>
+    class function TextAndFree(AValue: TJSONValue): string; static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -223,6 +226,20 @@ begin
   if AValue > 0 then
   begin
     Result := DateToISO8601(AValue, True);
+  end;
+end;
+
+class function TJsonBuild.TextAndFree(AValue: TJSONValue): string;
+begin
+  Result := '';
+  if AValue = nil then
+  begin
+    Exit;
+  end;
+  try
+    Result := AValue.ToJSON;
+  finally
+    AValue.Free;
   end;
 end;
 

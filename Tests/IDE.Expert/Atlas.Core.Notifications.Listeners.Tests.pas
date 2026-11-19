@@ -1,6 +1,7 @@
 ﻿unit Atlas.Core.Notifications.Listeners.Tests;
 
-// Beobachter der Benachrichtigungszentrale (TAtlasNotificationListeners).
+// Beobachter der Benachrichtigungszentrale (TAtlasNotificationListeners) und Beobachter mit Wert
+// (TAtlasListeners<T>, Bereiche der Willkommensseite).
 
 interface
 
@@ -17,6 +18,9 @@ type
     procedure RemovedListenerIsNotCalled;
     [Test]
     procedure FailingListenerDoesNotStopOthers;
+    /// <summary>TAtlasListeners<T> gibt jedem Beobachter den gemeldeten Wert und zählt die Version.</summary>
+    [Test]
+    procedure ValueReachesEveryListener;
   end;
 
 implementation
@@ -106,6 +110,33 @@ begin
   finally
     mListeners.Free;
   end;
+end;
+
+procedure TAtlasNotificationListenersTests.ValueReachesEveryListener;
+var
+  mListeners: TAtlasListeners<string>;
+  mSeen: string;
+  mHandle: Integer;
+begin
+  mSeen := '';
+  mListeners := TAtlasListeners<string>.Create;
+  try
+    mHandle := mListeners.Add(
+      procedure(AValue: string)
+      begin
+        mSeen := mSeen + '[' + AValue + ']';
+      end);
+    mListeners.Changed('atlas.state');
+    mListeners.Changed('');
+    Assert.AreEqual('[atlas.state][]', mSeen);
+    Assert.AreEqual(2, mListeners.Version);
+    mListeners.Remove(mHandle);
+    mListeners.Changed('atlas.news');
+    Assert.AreEqual('[atlas.state][]', mSeen);
+  finally
+    mListeners.Free;
+  end;
+  mSeen := '';
 end;
 
 initialization

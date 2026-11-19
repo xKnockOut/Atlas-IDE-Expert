@@ -173,6 +173,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Outline.Strings,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Foundation.ListBox,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Theme;
@@ -933,11 +934,7 @@ end;
 
 procedure TAtlasOutlineFrame.SearchKeyPress(Sender: TObject; var Key: Char);
 begin
-  // Kein Signalton bei Enter und Esc.
-  if (Key = #13) or (Key = #27) then
-  begin
-    Key := #0;
-  end;
+  TAtlasControls.SuppressBeep(Key);
 end;
 
 procedure TAtlasOutlineFrame.VisibilityClick(Sender: TObject);

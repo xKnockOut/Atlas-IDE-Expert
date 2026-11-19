@@ -222,7 +222,6 @@ type
 implementation
 
 uses
-  System.Diagnostics,
   Atlas.Text.Chars,
   Atlas.Core.Versions.Project;
 
@@ -828,14 +827,7 @@ end;
 
 function TAtlasReleaseGuardParticipant.Now_: Int64;
 begin
-  if Assigned(FClock) then
-  begin
-    Result := FClock();
-  end
-  else
-  begin
-    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
-  end;
+  Result := TAtlasClocks.Millis(FClock);
 end;
 
 function TAtlasReleaseGuardParticipant.PendingIndex(const AFileName: string): Integer;

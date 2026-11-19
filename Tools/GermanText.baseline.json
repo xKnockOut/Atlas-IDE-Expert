@@ -173,8 +173,6 @@
   "Packages/Atlas.Linux/Source/Compiler/Atlas.Linux.Compiler.Adapters.ProcessRunner.pas": 1,
   "Packages/Atlas.Linux/Source/Console/Atlas.Linux.Console.StdStreams.pas": 2,
   "Packages/Atlas.Linux/Source/Projects/Atlas.Linux.Projects.DelphiInstallation.pas": 1,
-  "Packages/Atlas.Text/Source/DebugDisplay/Atlas.Text.DebugDisplay.pas": 2,
-  "Packages/Atlas.Text/Source/TestResults/Atlas.Text.TestResults.pas": 1,
   "Packages/Atlas.Windows/Source/Compiler/Atlas.Windows.Compiler.Adapters.ProcessRunner.pas": 1,
   "Packages/Atlas.Windows/Source/Console/Atlas.Windows.Console.StdStreams.pas": 1,
   "Packages/Atlas.Windows/Source/Projects/Atlas.Windows.Projects.DelphiInstallation.pas": 1,

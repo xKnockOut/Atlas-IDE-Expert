@@ -36,7 +36,8 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.DeclarationBlocks;
+  Atlas.Core.Outline.DeclarationBlocks,
+  Atlas.Core.Outline.CrumbMenu;
 
 const
   cCode =
@@ -98,24 +99,9 @@ begin
   end;
 end;
 
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
-  end;
-end;
-
 function Path(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts): string; overload;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Result := TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, AParts)));
 end;
 
@@ -198,7 +184,7 @@ var
 begin
   mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(15, 4, 'uKunden', True, [TAtlasCrumbPart.DeclarationBlocks]));
-  Assert.AreEqual('uKunden › interface › resourcestring › sKundeFehlt', Joined(mCrumbs));
+  Assert.AreEqual('uKunden › interface › resourcestring › sKundeFehlt', TAtlasCrumbMenu.PathOf(mCrumbs));
   // Teil: Sprungziele interface und implementation.
   Assert.AreEqual('kw', mCrumbs[1].Badge.Code);
   Assert.AreEqual(2, Integer(Length(mCrumbs[1].Places)));

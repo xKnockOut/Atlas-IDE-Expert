@@ -474,6 +474,8 @@ Atlas.Core.Assistants.DebugGate.Tests
 Atlas.Core.Assistants.Activity.Tests
 Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
+Atlas.Core.Notifications.Listeners.Tests
+Atlas.Core.Notifications.OrderedItems.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
@@ -527,6 +529,8 @@ Atlas.Core.Editor.MultiCursorKeys.Tests
 Atlas.Core.Editor.ExitPoints.Tests
 Atlas.Core.Editor.Unwrap.Tests
 Atlas.Core.Editor.SmartPaste.Tests
+Atlas.Core.Editor.LineItems.Tests
+Atlas.Core.Build.Events.Tests
 Atlas.Core.Editor.GutterColumn.Tests
 Atlas.Core.Editor.ExpressionType.Tests
 Atlas.Core.Editor.Overview.Tests
