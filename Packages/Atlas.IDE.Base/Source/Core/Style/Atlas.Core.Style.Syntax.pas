@@ -173,6 +173,9 @@ type
 { TTokenList }
 
 procedure TTokenList.Emit(AStart, AStop: Integer; AKind: TAtlasTokenKind);
+const
+  /// <summary>Plätze, um die die Liste mindestens wächst.</summary>
+  cMinGrowth = 4;
 begin
   if AStop <= AStart then
   begin
@@ -186,7 +189,7 @@ begin
   end;
   if Count = Length(Items) then
   begin
-    SetLength(Items, Count * 2 + 4);
+    SetLength(Items, Count * 2 + cMinGrowth);
   end;
   Items[Count].Start := AStart;
   Items[Count].Stop := AStop;
