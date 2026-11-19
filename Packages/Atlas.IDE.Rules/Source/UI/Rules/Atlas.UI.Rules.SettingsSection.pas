@@ -95,13 +95,18 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Vcl.Graphics,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cButtonWidth = 210;
   cButtonHeight = 25;
   cButtonGap = 216;
   cRowHeight = 28;
+  // Beschriftungen der Baseline-Zeilen (logische Pixel).
+  cInfoWidth = 400;
+  cInfoHeight = 16;
+  cInfoTop = 6;
 
 { TAtlasRulesChecksSection }
 
@@ -193,14 +198,14 @@ begin
   mRow := AddRow(20);
   mTitle := TLabel.Create(FControls);
   mTitle.Parent := mRow;
-  mTitle.SetBounds(0, 2, 400, 16);
+  TAtlasControlScaling.Place(mTitle, 0, 2, cInfoWidth, cInfoHeight);
   mTitle.ShowAccelChar := False;
   mTitle.Font.Style := [TFontStyle.fsBold];
   mTitle.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineTitle);
   mRow := AddRow(cRowHeight);
   FBaselineInfo := TLabel.Create(FControls);
   FBaselineInfo.Parent := mRow;
-  FBaselineInfo.SetBounds(0, 6, 400, 16);
+  TAtlasControlScaling.Place(FBaselineInfo, 0, cInfoTop, cInfoWidth, cInfoHeight);
   FBaselineInfo.ShowAccelChar := False;
   FBaselineInfo.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineNone);
   if Assigned(FHooks.BaselineInfo) then

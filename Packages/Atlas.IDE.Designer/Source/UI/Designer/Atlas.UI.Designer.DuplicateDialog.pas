@@ -87,7 +87,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Designer.Strings,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 10;
@@ -176,15 +177,7 @@ end;
 
 function TAtlasDuplicateDialog.AddFlowRow: TFlowPanel;
 begin
-  Result := TFlowPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AutoSize := True;
-  Result.BevelOuter := bvNone;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  // Hinter alle bisherigen Zeilen (alTop ordnet nach Top).
-  Result.Top := ScaleValue(2000) + ComponentCount;
+  Result := NewFlowRow(cGap);
 end;
 
 procedure TAtlasDuplicateDialog.AddButtons;
@@ -198,12 +191,12 @@ var
     Result.Caption := ACaption;
     Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
     Result.AlignWithMargins := True;
-    Result.Margins.SetBounds(0, 0, cGap, 0);
+    TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, 0);
   end;
 
 begin
   mButtons := AddFlowRow;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   FOk := AddButton(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateOk));
   FOk.Default := True;
   FOk.ModalResult := mrOk;
