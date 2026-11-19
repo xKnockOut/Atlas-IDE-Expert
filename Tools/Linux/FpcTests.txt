@@ -189,6 +189,7 @@ Atlas.Common.Lsp.DataAccessSites.Tests
 Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Core.Debug.MethodBreakpoints.Tests
 Atlas.Core.Debug.RunTo.Tests
+Atlas.Core.Debug.AssistantControl.Tests
 Atlas.Core.Debug.BreakpointAnchors.Tests
 Atlas.Core.Debug.BreakpointRules.Tests
 Atlas.Core.Debug.RoutinePattern.Tests
@@ -449,6 +450,8 @@ Atlas.Common.Updates.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.AiProviders.Anthropic.Tests
 Atlas.Core.Assistants.AiGhost.Tests
+Atlas.Core.Assistants.DebugInbox.Tests
+Atlas.Core.Assistants.DebugGate.Tests
 Atlas.Core.Assistants.Activity.Tests
 Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
