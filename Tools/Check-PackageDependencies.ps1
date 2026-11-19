@@ -57,7 +57,12 @@
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
     NumberOf, IntOf, FlagOf, ObjectOf, ArrayOf usw. mit einem TJSONObject und
     einem Namen als Parametern gibt es nur als TJsonRead in Atlas.Text.Json;
-    Ausnahmen mit eigenem Verhalten stehen in $AllowedJsonLocal.
+    Ausnahmen mit eigenem Verhalten stehen in $AllowedJsonLocal. Zusätzlich nach
+    Form, damit neue Namen derselben Kopie auffallen: Eine kurze Funktion mit
+    genau einem JSON-Objekt und einem Namen als Parametern und einfachem Ergebnis
+    (Text, Zahl, Wahrheitswert, Zeitpunkt, JSON-Wert), die den Wert selbst über
+    GetValue/Values/TryGetValue/FindValue holt, ist eine Kopie von TJsonRead
+    (Packages, Application, Tests); Ausnahmen mit Grund in $AllowedJsonFormLocal.
     JSON schreiben prüft die Form, nicht den Namen: Eine Routine mit einer
     Liste von Strings als einzigem Parameter und TJSONArray als Ergebnis gibt es
     nur als TJsonBuild.Strings, und kein Rumpf maskiert einen String über
@@ -385,6 +390,23 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Rules.Builtin.MethodDirectives:WithoutTypeParams'       = 'schneidet beim ersten < ab ("A<T>.B" ergibt "A")'
     'Atlas.Common.Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'
     'Atlas.Common.Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
+}
+
+# Kopien-Sperre für JSON-Lesehelfer nach Form (#1969): erlaubte eigene Fassungen ("Unit:Routine") mit Grund.
+# Die Liste soll nur schrumpfen.
+$AllowedJsonFormLocal = @{
+    'Atlas.Core.Query.Model:StringOf'                                    = 'jeder einfache Wert als Text, auch true/false und Zahlen'
+    'Atlas.Core.Editor.ClassExtraction:StringOf'                         = 'jeder Wert außer null als Text'
+    'Atlas.Common.Mcp.Server:TMcpArgs.OptionalString'                    = 'Argument eines MCP-Clients: jeder einfache Wert als Text, auch Wahrheitswerte'
+    'Shell.Composition.Refactorings.Services:TShellRefactoringPart.Number' = 'Antwort des eigenen Servers: fehlender Wert ist ein Fehler (Ausnahme), keine Vorgabe'
+    'Shell.Composition.Refactorings.Services:TShellRefactoringPart.Count'  = 'Antwort des eigenen Servers: fehlender Wert ist ein Fehler (Ausnahme), keine Vorgabe'
+    'Atlas.Common.Lsp.Baseline.Tests:NumberAt'                           = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
+    'Atlas.Common.Lsp.Baseline.Tests:TextAt'                             = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
+    'Atlas.Common.Lsp.BoundaryCases.Tests:Count'                         = 'Test: fehlendes Array soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SlashMenu.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SlashMenu.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SlashMenu.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SafeDelete.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
 }
 
 # Kopien-Sperre für JSON aus Text: nur TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json.
@@ -1134,6 +1156,51 @@ foreach ($key in $TokenAllowedLocal.Keys) {
     $routine = [regex]::Escape($key.Substring($unitName.Length + 1))
     if (-not $implementation.Success -or -not [regex]::IsMatch($text.Substring($implementation.Index), '(?im)^\s*(?:class\s+)?function\s+' + $routine + '\b')) {
         $violations += "Tools/Check-PackageDependencies.ps1: `$TokenAllowedLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
+    }
+}
+
+# Kopien-Sperre für JSON-Lesehelfer nach Form (#1969): kurze Funktion (Objekt, Name) mit einfachem Ergebnis, die
+# den Wert selbst holt.
+$jsonFormFound = @{}
+# Units, die es im geprüften Baum gibt (der Selbsttest prüft eine Kopie ohne Tests/).
+$jsonFormUnits = @{}
+$jsonFormPattern = '(?ims)^(?:class\s+)?function\s+((?:\w+\.)?\w+)\s*\(\s*(?:const\s+)?(\w+)\s*:\s*' +
+    'TJSON(?:Object|Value)\s*;\s*(?:const\s+)?(\w+)\s*:\s*string\s*\)\s*:\s*' +
+    '(string|Integer|Int64|Cardinal|Boolean|Double|Extended|TDateTime|TJSONObject|TJSONArray|TJSONValue|' +
+    'TArray\s*<\s*(?:Integer|string)\s*>)\s*;(.*?)^end\s*;'
+$jsonFormMaxLines = 18
+foreach ($folder in @('Packages', 'Application', 'Tests')) {
+    $folderPath = Join-Path $Root $folder
+    if (-not (Test-Path $folderPath)) { continue }
+    foreach ($file in Get-ChildItem -Path $folderPath -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        if ($relative.StartsWith('Packages/Atlas.Text/Source/Json/')) { continue }
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $jsonFormUnits[$ownUnit] = $true
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        if ($text -notmatch '(?i)\bTJSON(?:Object|Value)\b') { continue }
+        $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
+        if (-not $implementation.Success) { continue }
+        $body = $text.Substring($implementation.Index)
+        foreach ($routine in [regex]::Matches($body, $jsonFormPattern)) {
+            $inner = $routine.Groups[5].Value
+            if (($inner -split "`n").Count -gt $jsonFormMaxLines) { continue }
+            $object = [regex]::Escape($routine.Groups[2].Value)
+            $name = [regex]::Escape($routine.Groups[3].Value)
+            $reads = '(?i)\b' + $object + '\s*\.\s*(?:(?:GetValue|TryGetValue|FindValue)\s*(?:<[^>]+>)?\s*\(\s*' +
+                $name + '\b|Values\s*\[\s*' + $name + '\s*\])'
+            if (-not [regex]::IsMatch($inner, $reads)) { continue }
+            $key = "${ownUnit}:$($routine.Groups[1].Value)"
+            $jsonFormFound[$key] = $true
+            if ($AllowedJsonFormLocal.ContainsKey($key)) { continue }
+            $line = ($text.Substring(0, $implementation.Index + $routine.Index) -split "`n").Count
+            $violations += "${relative}:${line}: $($routine.Groups[1].Value) – liest einen JSON-Wert wie TJsonRead in Atlas.Text.Json (Kopien-Sperre nach Form, #1969); dort verwenden oder in `$AllowedJsonFormLocal begründen"
+        }
+    }
+}
+foreach ($key in $AllowedJsonFormLocal.Keys) {
+    if ($jsonFormUnits.ContainsKey($key.Split(':')[0]) -and -not $jsonFormFound.ContainsKey($key)) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedJsonFormLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
     }
 }
 
