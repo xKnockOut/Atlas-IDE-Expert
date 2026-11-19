@@ -94,6 +94,8 @@ Ressourcen mit Vorlage (#1357, `resources/templates/list`) hängt man in Claude 
 | `delphi://form/{file}` | Komponentenbaum eines Formulars (`get_dfm_info`); `file` ist die .dfm/.fmx oder die .pas dazu |
 | `delphi://findings/{file}` | Syntaxfehler und Befunde der Prüfregeln einer Datei (`get_diagnostics`) |
 
+Dieselben Regeln als Kurzfassung für die Anweisungsdatei, die ein KI-Assistent beim Start liest, schreibt `AtlasServer --write-instructions` (#2615, [Anweisungen für KI-Assistenten](features/de/Claude-Code.md#anweisungen-für-ki-assistenten-2615)).
+
 ## Prompts
 
 Prompts (#1357) sind fertige Arbeitsabläufe. Claude Code zeigt sie nach `/` als Befehle `/mcp__delphi__<name>` mit Beschreibung und Argumenten. `prompts/get` liefert eine Nachricht mit Anleitung und den Ergebnissen der nötigen Werkzeuge; Claude muss nicht erst einzeln nachfragen, und jeder Ablauf ist jedes Mal gleich gründlich. Die Werkzeuge laufen dabei mit denselben Regeln wie `tools/call`: Abgeschaltete (`mcp.disabledTools`) fehlen im Text mit Begründung, mit `--restricted` bieten die Anleitungen keine schreibenden Schritte an (keine Korrekturen, kein `run_tests`, kein Commit; Vorschläge als Diff).
