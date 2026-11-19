@@ -171,6 +171,7 @@ begin
   mSettings := FSettings.SettingsFor(AUri).ClassCompletion;
   Result := TMethodOrderOptions.Create(TMethodPlacement.Grouped);
   Result.LifecycleFirst := mSettings.LifecycleFirst;
+  Result.BlankLines := mSettings.BlankLines;
   Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
   Result.LineLength := FormatStyleFor(AUri).MaxLineLength;
 end;
