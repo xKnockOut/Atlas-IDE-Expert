@@ -97,6 +97,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.CoveredBy.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.LeakSetup.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Instructions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.LeakCandidates.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.RuntimeReport.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Core.pas"/>
@@ -146,6 +147,7 @@
         <DCCReference Include="Source\Shell\Shell.Linter.Mutation.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Formatting.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Duplicates.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Linter.Instructions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.AffectedTests.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Fix.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Check.pas"/>

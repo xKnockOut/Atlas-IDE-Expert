@@ -93,6 +93,8 @@ Resource templates (#1357, `resources/templates/list`) are attached to a questio
 | `delphi://form/{file}` | Component tree of a form (`get_dfm_info`); `file` is the .dfm/.fmx or the matching .pas |
 | `delphi://findings/{file}` | Syntax errors and check rule findings of a file (`get_diagnostics`) |
 
+The same rules as a short summary for the instruction file an AI assistant reads at start are written by `AtlasServer --write-instructions` (#2615, [Instructions for AI assistants](../features/en/Claude-Code.md#instructions-for-ai-assistants-2615)).
+
 ## Prompts
 
 Prompts (#1357) are ready-made workflows. Claude Code shows them after `/` as commands `/mcp__delphi__<name>` with description and arguments. `prompts/get` returns a message with instructions and the results of the required tools; Claude does not have to ask for each one first, and every workflow is equally thorough every time. The tools run with the same rules as `tools/call`: disabled ones (`mcp.disabledTools`) are missing from the text with a reason; with `--restricted` the instructions offer no writing steps (no fixes, no `run_tests`, no commit; suggestions as a diff).
