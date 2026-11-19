@@ -65,7 +65,6 @@ contains
   Atlas.Text.Csv in '..\Atlas.Text\Source\Csv\Atlas.Text.Csv.pas',
   Atlas.Text.IndexCache in '..\Atlas.Text\Source\IndexCache\Atlas.Text.IndexCache.pas',
   Atlas.Text.Names in '..\Atlas.Text\Source\Names\Atlas.Text.Names.pas',
-  Atlas.Text.Lists in '..\Atlas.Text\Source\Lists\Atlas.Text.Lists.pas',
   Atlas.Text.Json in '..\Atlas.Text\Source\Json\Atlas.Text.Json.pas',
   Atlas.Text.Jsonc in '..\Atlas.Text\Source\Jsonc\Atlas.Text.Jsonc.pas',
   Atlas.Text.Entities in '..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas',

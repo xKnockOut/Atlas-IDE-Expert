@@ -33,7 +33,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -249,7 +249,7 @@ begin
       end;
       if IsLocalVariable(mEntry) then
       begin
-        TTextLists.AddText(Result, mEntry.Node.Name);
+        TTextArrays.AddText(Result, mEntry.Node.Name);
       end;
       // Anonyme Methoden und lokale Routinen haben eigene Variablen.
       if (mEntry.Node = ARoutine) or
@@ -300,8 +300,8 @@ begin
   Result := nil;
   for mIndex := 0 to High(ATokens) do
   begin
-    TTextLists.AddText(Result, AssignedName(ATokens, mIndex));
-    TTextLists.AddText(Result, IncDecName(ATokens, mIndex));
+    TTextArrays.AddText(Result, AssignedName(ATokens, mIndex));
+    TTextArrays.AddText(Result, IncDecName(ATokens, mIndex));
   end;
 end;
 

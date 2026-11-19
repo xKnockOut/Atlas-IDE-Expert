@@ -33,7 +33,6 @@ uses
   Atlas.Text.Csv.Tests in 'Text\Atlas.Text.Csv.Tests.pas',
   Atlas.Text.IndexCache.Tests in 'Text\Atlas.Text.IndexCache.Tests.pas',
   Atlas.Text.Names.Tests in 'Text\Atlas.Text.Names.Tests.pas',
-  Atlas.Text.Lists.Tests in 'Text\Atlas.Text.Lists.Tests.pas',
   Atlas.Text.Json.Tests in 'Text\Atlas.Text.Json.Tests.pas',
   Atlas.Text.Jsonc.Tests in 'Text\Atlas.Text.Jsonc.Tests.pas',
   Atlas.Text.Entities.Tests in 'Text\Atlas.Text.Entities.Tests.pas',

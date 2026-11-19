@@ -87,7 +87,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -662,7 +662,7 @@ begin
   for mPosition := mFirst to mLast - 4 do
   begin
     // Verschachtelte Routinen liegen im Rumpf der äußeren: jede Stelle einmal.
-    if not IsCreateAssignment(mPosition) or TTextLists.ContainsInteger(FReported, mPosition) then
+    if not IsCreateAssignment(mPosition) or TTextArrays.ContainsInteger(FReported, mPosition) then
     begin
       Continue;
     end;

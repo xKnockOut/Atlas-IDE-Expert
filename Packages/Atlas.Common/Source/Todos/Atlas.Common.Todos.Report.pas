@@ -64,7 +64,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -103,17 +104,8 @@ end;
 { TTodoSummary }
 
 function TTodoSummary.CountOf(const AKeyword: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Keywords) do
-  begin
-    if SameText(Keywords[mIndex], AKeyword) then
-    begin
-      Exit(KeywordCounts[mIndex]);
-    end;
-  end;
-  Result := 0;
+  Result := TTextArrays.CountOfText(Keywords, KeywordCounts, AKeyword);
 end;
 
 /// <summary>Zählt AKey in ACounts um eins hoch.</summary>

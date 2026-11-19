@@ -195,7 +195,7 @@ uses
   Atlas.Core.Completion.Matching,
   Atlas.Text.Fuzzy,
   Atlas.Text.Json,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');
@@ -361,7 +361,7 @@ begin
   // Jede Regel des Matchers setzt eine Teilfolge voraus, und jede Teilfolge zählt (ScoreSubsequence):
   // Was das längere Wort trifft, traf auch das kürzere.
   Result := (Kinds = APrevious.Kinds) and (NotKinds = APrevious.NotKinds) and
-    TTextLists.SameTexts(Projects, APrevious.Projects) and TTextLists.SameTexts(NotProjects, APrevious.NotProjects) and
+    TTextArrays.SameTexts(Projects, APrevious.Projects) and TTextArrays.SameTexts(NotProjects, APrevious.NotProjects) and
     (Length(Words) >= Length(APrevious.Words));
   if Result then
   begin

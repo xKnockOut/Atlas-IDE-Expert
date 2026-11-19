@@ -109,7 +109,6 @@
         <DCCReference Include="..\Atlas.Text\Source\Csv\Atlas.Text.Csv.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\IndexCache\Atlas.Text.IndexCache.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Names\Atlas.Text.Names.pas"/>
-        <DCCReference Include="..\Atlas.Text\Source\Lists\Atlas.Text.Lists.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Json\Atlas.Text.Json.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Jsonc\Atlas.Text.Jsonc.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas"/>

@@ -61,7 +61,7 @@ uses
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 function NearOf(const ARect: TRect; AAxis: TAtlasGapAxis): Integer;
 begin
@@ -292,7 +292,7 @@ begin
   Result := nil;
   for mPart in AText.Split([',', ';', ' '], TStringSplitOptions.ExcludeEmpty) do
   begin
-    if TryStrToInt(mPart.Trim, mValue) and (mValue >= 0) and (mValue <= cMaxGap) and not TTextLists.ContainsInteger(Result, mValue) then
+    if TryStrToInt(mPart.Trim, mValue) and (mValue >= 0) and (mValue <= cMaxGap) and not TTextArrays.ContainsInteger(Result, mValue) then
     begin
       Result := Result + [mValue];
     end;

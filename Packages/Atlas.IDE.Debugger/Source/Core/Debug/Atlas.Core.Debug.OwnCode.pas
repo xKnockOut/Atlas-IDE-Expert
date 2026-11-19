@@ -78,7 +78,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.FolderList,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 function NormalFolder(const AFolder: string): string;
 begin
@@ -231,7 +231,7 @@ begin
     begin
       Inc(mStop);
     end;
-    if (mStop - mIndex >= cGroupFrom) and not TTextLists.ContainsInteger(AExpanded, mIndex) then
+    if (mStop - mIndex >= cGroupFrom) and not TTextArrays.ContainsInteger(AExpanded, mIndex) then
     begin
       Result := Result + [Row(TAtlasDebugStackRowKind.LibraryGroup, mIndex, mStop - mIndex, True)];
     end

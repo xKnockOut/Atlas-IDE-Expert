@@ -62,7 +62,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -449,7 +449,7 @@ begin
     if (mMember.Kind = TSyntaxKind.RoutineHeader) and SameText(mMember.Name, AName) then
     begin
       // Überladung: an den Parameternamen erkennen.
-      if TTextLists.SameTexts(HeaderParams(mMember), AParams) then
+      if TTextArrays.SameTexts(HeaderParams(mMember), AParams) then
       begin
         Exit(mMember);
       end;

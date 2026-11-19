@@ -159,7 +159,7 @@ implementation
 uses
   Atlas.Common.Semantics.ControlFlow.Statements,
   System.StrUtils,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 type
   /// <summary>Sprungziel, dessen Knoten erst später feststeht.</summary>
@@ -984,10 +984,10 @@ end;
 
 procedure TFlowAnalyzer.Touch(const AName: string; AMaybeRead: Boolean);
 begin
-  TTextLists.AddText(FNode.FTouches, AName);
+  TTextArrays.AddText(FNode.FTouches, AName);
   if AMaybeRead then
   begin
-    TTextLists.AddText(FNode.FMaybeReads, AName);
+    TTextArrays.AddText(FNode.FMaybeReads, AName);
   end;
 end;
 
@@ -1137,7 +1137,7 @@ procedure TFlowAnalyzer.AddNode(AExpression: TSyntaxNode);
 begin
   case AExpression.Kind of
     TSyntaxKind.Identifier:
-      TTextLists.AddText(FNode.FReads, AExpression.Name);
+      TTextArrays.AddText(FNode.FReads, AExpression.Name);
     TSyntaxKind.TypeReference, TSyntaxKind.GenericArgs, TSyntaxKind.Literal:
       ;
     TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:

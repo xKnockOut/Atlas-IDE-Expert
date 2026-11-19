@@ -142,7 +142,7 @@ uses
   System.RegularExpressions,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 const
   cVirtualDirectives: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'reintroduce', 'message');
@@ -810,7 +810,7 @@ var
 begin
   mIndexTypes := Copy(ASetter.ParameterTypes, 0, Length(ASetter.ParameterTypes) - 1);
   Result := SameText(AGetter.ResultType, ASetter.ParameterTypes[High(ASetter.ParameterTypes)]) and
-    TTextLists.SameTexts(AGetter.ParameterTypes, mIndexTypes);
+    TTextArrays.SameTexts(AGetter.ParameterTypes, mIndexTypes);
 end;
 
 function TClassReader.AddAccessor(AMap: TDictionary<string, TRoutineInfo>; const ARoutine: TRoutineInfo;

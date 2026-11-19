@@ -83,7 +83,7 @@ uses
   Atlas.Common.Todos.Contract,
   Atlas.Common.Rules.Builtin.Todos,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -163,7 +163,7 @@ begin
   end;
   for mOther in mCandidates do
   begin
-    if TTextLists.SameTexts(mOther.ParamTypes, ASymbol.ParamTypes) then
+    if TTextArrays.SameTexts(mOther.ParamTypes, ASymbol.ParamTypes) then
     begin
       Result := Result + [mOther];
       Exit;

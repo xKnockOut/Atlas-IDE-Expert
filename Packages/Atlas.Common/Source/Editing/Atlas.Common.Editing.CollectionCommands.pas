@@ -41,7 +41,7 @@ uses
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.TypeCommands,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -853,7 +853,7 @@ begin
       (mSymbol.TypeArgs <> '') and ((mSymbol.Container = '') or (mHasClass and
       SameText(mSymbol.Container, mClass.Name))) then
     begin
-      TTextLists.AddText(ANames, mSymbol.Name);
+      TTextArrays.AddText(ANames, mSymbol.Name);
     end;
   end;
 end;
@@ -889,7 +889,7 @@ begin
   begin
     if IsValidIdent(Trim(mName)) then
     begin
-      TTextLists.AddText(ANames, Trim(mName));
+      TTextArrays.AddText(ANames, Trim(mName));
     end;
   end;
 end;
@@ -929,7 +929,7 @@ begin
     if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
       SameText(mSymbol.Container, AElement) then
     begin
-      TTextLists.AddText(ANames, mSymbol.Name);
+      TTextArrays.AddText(ANames, mSymbol.Name);
     end;
   end;
 end;

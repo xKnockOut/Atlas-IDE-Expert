@@ -112,7 +112,7 @@ uses
   Atlas.Core.Debug.Visualizers.Format,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Text.Json,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 { TAtlasDisplayRule }
 
@@ -344,14 +344,14 @@ begin
   try
     for mRule in FRules do
     begin
-      TTextLists.AddUniqueText(Result, mSeen, mRule.TypeName);
-      TTextLists.AddUniqueText(Result, mSeen, ShortName(mRule.TypeName));
+      TTextArrays.AddUniqueText(Result, mSeen, mRule.TypeName);
+      TTextArrays.AddUniqueText(Result, mSeen, ShortName(mRule.TypeName));
     end;
     for mName in FInherits.Keys do
     begin
       if Lookup(FInherits[mName], mIndex) then
       begin
-        TTextLists.AddUniqueText(Result, mSeen, FInheritNames[mName]);
+        TTextArrays.AddUniqueText(Result, mSeen, FInheritNames[mName]);
       end;
     end;
   finally

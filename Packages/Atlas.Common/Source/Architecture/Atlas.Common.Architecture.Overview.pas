@@ -294,7 +294,7 @@ uses
   Atlas.Common.Architecture.Overview.Naming,
   Atlas.Common.Architecture.Overview.Splitting,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lists;
+  Atlas.Text.Arrays;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -498,17 +498,12 @@ begin
 end;
 
 function TArchitectureOverview.IndexOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Units) do
-  begin
-    if SameText(Units[mIndex].Name, AName) then
+  Result := TTextArrays.IndexOfText<TOverviewUnit>(Units, AName,
+    function(AUnit: TOverviewUnit): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AUnit.Name;
+    end);
 end;
 
 function TArchitectureOverview.Assignment(AUnit: Integer): TOverviewAssignment;
@@ -530,7 +525,7 @@ begin
   Result := nil;
   for mIndex := 0 to High(ACycles) do
   begin
-    if TTextLists.ContainsInteger(ACycles[mIndex].Component, AUnit) then
+    if TTextArrays.ContainsInteger(ACycles[mIndex].Component, AUnit) then
     begin
       Result := Result + [mIndex];
     end;
@@ -594,11 +589,11 @@ begin
   Result.Unit_ := AUnit;
   for mEdge in Edges do
   begin
-    if (mEdge.Source = AUnit) and not TTextLists.ContainsInteger(Result.DependsOn, mEdge.Target) then
+    if (mEdge.Source = AUnit) and not TTextArrays.ContainsInteger(Result.DependsOn, mEdge.Target) then
     begin
       Result.DependsOn := Result.DependsOn + [mEdge.Target];
     end;
-    if (mEdge.Target = AUnit) and not TTextLists.ContainsInteger(Result.UsedBy, mEdge.Source) then
+    if (mEdge.Target = AUnit) and not TTextArrays.ContainsInteger(Result.UsedBy, mEdge.Source) then
     begin
       Result.UsedBy := Result.UsedBy + [mEdge.Source];
     end;
