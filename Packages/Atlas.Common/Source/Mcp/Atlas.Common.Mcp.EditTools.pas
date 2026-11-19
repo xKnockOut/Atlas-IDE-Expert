@@ -89,6 +89,19 @@ type
   TMcpWriteText = reference to procedure(const AFileName, AText: string);
   /// <summary>Löscht AFileName; False mit dem Grund in AError, wenn es nicht geht.</summary>
   TMcpDeleteFile = reference to function(const AFileName: string; out AError: string): Boolean;
+
+  /// <summary>Neue Dateien anlegen und Dateien löschen (#2150); nicht gesetzt: neue bzw. zu löschende Dateien sind
+  /// ein Werkzeugfehler.</summary>
+  TMcpFileOperations = record
+    CreateFile: TMcpWriteText;
+    DeleteFile: TMcpDeleteFile;
+    /// <summary>Legt AFiles an; scheitert eine, werden die schon angelegten wieder gelöscht.</summary>
+    procedure CreateAll(const AFiles: TArray<TMcpNewFile>);
+    /// <summary>Löscht die ersten ACount von AFiles, soweit es geht (Aufräumen nach einem Fehler).</summary>
+    procedure RemoveCreated(const AFiles: TArray<TMcpNewFile>; ACount: Integer);
+    /// <summary>Löscht ANames; liefert die, die sich nicht löschen ließen, mit Grund.</summary>
+    function DeleteAll(const ANames: TArray<string>): TArray<string>;
+  end;
   /// <summary>Im Editor ungespeichert geänderte Dateien (IDE-Plugin); leer ohne Editor.</summary>
   TMcpDirtyFiles = reference to function: TArray<string>;
   TMcpAudit = reference to procedure(const AText: string);
@@ -98,8 +111,7 @@ type
     FIndex: ISymbolIndex;
     FReadText: TReferenceReadText;
     FWriteText: TMcpWriteText;
-    FCreateFile: TMcpWriteText;
-    FDeleteFile: TMcpDeleteFile;
+    FFiles: TMcpFileOperations;
     FProjectFiles: TFunc<TArray<string>>;
     FEnsureUnit: TEnsureUnitFunc;
     FDirtyFiles: TMcpDirtyFiles;
@@ -112,9 +124,6 @@ type
       out AOldTexts, ANewTexts: TArray<string>);
     procedure EnsureWritable(const ANames, AOldTexts: TArray<string>);
     procedure WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
-    procedure CreateAll(const AFiles: TArray<TMcpNewFile>);
-    procedure RemoveCreated(const AFiles: TArray<TMcpNewFile>; ACount: Integer);
-    function DeleteAll(const ANames: TArray<string>): TArray<string>;
     function NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
     procedure WritePlan(const ATool: string; var APlan: TMcpChangePlan);
     function RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
@@ -157,10 +166,8 @@ type
     /// <summary>Liest Dateien wie die Werkzeuge selbst (extract_method, #2054).</summary>
     property ReadText: TReferenceReadText read FReadText;
     property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
-    /// <summary>Legt eine neue Datei an (#2150); nicht gesetzt: neue Dateien sind ein Werkzeugfehler.</summary>
-    property CreateFile: TMcpWriteText read FCreateFile write FCreateFile;
-    /// <summary>Löscht eine Datei (#2150); nicht gesetzt: zu löschende Dateien sind ein Werkzeugfehler.</summary>
-    property DeleteFile: TMcpDeleteFile read FDeleteFile write FDeleteFile;
+    /// <summary>Neue Dateien anlegen und Dateien löschen (#2150).</summary>
+    property Files: TMcpFileOperations read FFiles write FFiles;
     property Audit: TMcpAudit read FAudit write FAudit;
     /// <summary>Symbole und Include-Dateien für die Regelprüfung (#860); nil = Vordefinitionen (Win32).</summary>
     property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
@@ -277,6 +284,69 @@ end;
 function TMcpFileChanges.Count: Integer;
 begin
   Result := Length(Edits) + Length(Created) + Length(Deleted);
+end;
+
+{ TMcpFileOperations }
+
+procedure TMcpFileOperations.CreateAll(const AFiles: TArray<TMcpNewFile>);
+var
+  mIndex: Integer;
+begin
+  if AFiles = nil then
+  begin
+    Exit;
+  end;
+  if not Assigned(CreateFile) then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoCreating].Text);
+  end;
+  for mIndex := 0 to High(AFiles) do
+  begin
+    try
+      CreateFile(AFiles[mIndex].FileName, AFiles[mIndex].Text);
+    except
+      RemoveCreated(AFiles, mIndex);
+      raise;
+    end;
+  end;
+end;
+
+procedure TMcpFileOperations.RemoveCreated(const AFiles: TArray<TMcpNewFile>; ACount: Integer);
+var
+  mIndex: Integer;
+  mError: string;
+begin
+  // Was sich nicht löschen lässt, bleibt; der ursprüngliche Fehler zählt.
+  if not Assigned(DeleteFile) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ACount - 1 do
+  begin
+    DeleteFile(AFiles[mIndex].FileName, mError);
+  end;
+end;
+
+function TMcpFileOperations.DeleteAll(const ANames: TArray<string>): TArray<string>;
+var
+  mName, mError: string;
+begin
+  Result := nil;
+  if ANames = nil then
+  begin
+    Exit;
+  end;
+  if not Assigned(DeleteFile) then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoDeleting].Text);
+  end;
+  for mName in ANames do
+  begin
+    if not DeleteFile(mName, mError) then
+    begin
+      Result := Result + [Format('%s (%s)', [mName, mError])];
+    end;
+  end;
 end;
 
 { TMcpEditTools }
@@ -407,6 +477,76 @@ begin
   end;
 end;
 
+function EditsOutside(const AEdits: TArray<TMcpFileEdit>; const AFiles: TArray<string>): TArray<TMcpFileEdit>;
+var
+  mEdit: TMcpFileEdit;
+begin
+  Result := nil;
+  for mEdit in AEdits do
+  begin
+    if not ContainsName(AFiles, mEdit.FileName) then
+    begin
+      Result := Result + [mEdit];
+    end;
+  end;
+end;
+
+/// <summary>Edits in der Datei AFileName.</summary>
+function EditsIn(const AEdits: TArray<TMcpFileEdit>; const AFileName: string): TArray<TMcpFileEdit>;
+var
+  mEdit: TMcpFileEdit;
+begin
+  Result := nil;
+  for mEdit in AEdits do
+  begin
+    if SameText(mEdit.FileName, AFileName) then
+    begin
+      Result := Result + [mEdit];
+    end;
+  end;
+end;
+
+function TMcpEditTools.NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
+var
+  mExisting: string;
+begin
+  if FReadText(AFile.FileName, mExisting) then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.AlreadyExists].Text, [AFile.FileName]);
+  end;
+  Result := ApplyToText(AFile.Text, EditsIn(AEdits, AFile.FileName));
+end;
+
+procedure TMcpEditTools.WritePlan(const ATool: string; var APlan: TMcpChangePlan);
+begin
+  if (APlan.Created <> nil) and not Assigned(FFiles.CreateFile) then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoCreating].Text);
+  end;
+  if (APlan.Deleted <> nil) and not Assigned(FFiles.DeleteFile) then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoDeleting].Text);
+  end;
+  EnsureWritable(APlan.Names + APlan.Deleted, APlan.OldTexts + APlan.DeletedTexts);
+  FFiles.CreateAll(APlan.Created);
+  try
+    if APlan.Names <> nil then
+    begin
+      WriteAll(ATool, APlan.Names, APlan.OldTexts, APlan.NewTexts);
+    end;
+  except
+    FFiles.RemoveCreated(APlan.Created, Length(APlan.Created));
+    raise;
+  end;
+  APlan.NotDeleted := FFiles.DeleteAll(APlan.Deleted);
+  if Assigned(FAudit) and ((APlan.Created <> nil) or (APlan.Deleted <> nil)) then
+  begin
+    FAudit(cTexts[TEditToolsText.CreatedAndDeleted].Fmt([ATool, Length(APlan.Created),
+      Length(APlan.Deleted) - Length(APlan.NotDeleted)]));
+  end;
+end;
+
+/// <summary>Bericht von ApplyChanges: Zahl der Änderungen und Diff je Datei.</summary>
 function TMcpEditTools.RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
   out AUnchanged: TArray<TReferenceLocation>): TArray<TMcpFileEdit>;
 var
@@ -656,129 +796,6 @@ begin
 end;
 
 /// <summary>Edits, die nicht in einer der Dateien AFiles liegen.</summary>
-function EditsOutside(const AEdits: TArray<TMcpFileEdit>; const AFiles: TArray<string>): TArray<TMcpFileEdit>;
-var
-  mEdit: TMcpFileEdit;
-begin
-  Result := nil;
-  for mEdit in AEdits do
-  begin
-    if not ContainsName(AFiles, mEdit.FileName) then
-    begin
-      Result := Result + [mEdit];
-    end;
-  end;
-end;
-
-/// <summary>Edits in der Datei AFileName.</summary>
-function EditsIn(const AEdits: TArray<TMcpFileEdit>; const AFileName: string): TArray<TMcpFileEdit>;
-var
-  mEdit: TMcpFileEdit;
-begin
-  Result := nil;
-  for mEdit in AEdits do
-  begin
-    if SameText(mEdit.FileName, AFileName) then
-    begin
-      Result := Result + [mEdit];
-    end;
-  end;
-end;
-
-function TMcpEditTools.NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
-var
-  mExisting: string;
-begin
-  if FReadText(AFile.FileName, mExisting) then
-  begin
-    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.AlreadyExists].Text, [AFile.FileName]);
-  end;
-  Result := ApplyToText(AFile.Text, EditsIn(AEdits, AFile.FileName));
-end;
-
-procedure TMcpEditTools.CreateAll(const AFiles: TArray<TMcpNewFile>);
-var
-  mIndex: Integer;
-begin
-  if not Assigned(FCreateFile) then
-  begin
-    raise EMcpToolError.Create(cTexts[TEditToolsText.NoCreating].Text);
-  end;
-  for mIndex := 0 to High(AFiles) do
-  begin
-    try
-      FCreateFile(AFiles[mIndex].FileName, AFiles[mIndex].Text);
-    except
-      RemoveCreated(AFiles, mIndex);
-      raise;
-    end;
-  end;
-end;
-
-procedure TMcpEditTools.RemoveCreated(const AFiles: TArray<TMcpNewFile>; ACount: Integer);
-var
-  mIndex: Integer;
-  mError: string;
-begin
-  // Aufräumen nach einem Fehler: Was sich nicht löschen lässt, bleibt; der ursprüngliche Fehler zählt.
-  if not Assigned(FDeleteFile) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to ACount - 1 do
-  begin
-    FDeleteFile(AFiles[mIndex].FileName, mError);
-  end;
-end;
-
-function TMcpEditTools.DeleteAll(const ANames: TArray<string>): TArray<string>;
-var
-  mName, mError: string;
-begin
-  Result := nil;
-  if not Assigned(FDeleteFile) then
-  begin
-    raise EMcpToolError.Create(cTexts[TEditToolsText.NoDeleting].Text);
-  end;
-  for mName in ANames do
-  begin
-    if not FDeleteFile(mName, mError) then
-    begin
-      Result := Result + [Format('%s (%s)', [mName, mError])];
-    end;
-  end;
-end;
-
-procedure TMcpEditTools.WritePlan(const ATool: string; var APlan: TMcpChangePlan);
-begin
-  if (APlan.Created <> nil) and not Assigned(FCreateFile) then
-  begin
-    raise EMcpToolError.Create(cTexts[TEditToolsText.NoCreating].Text);
-  end;
-  if (APlan.Deleted <> nil) and not Assigned(FDeleteFile) then
-  begin
-    raise EMcpToolError.Create(cTexts[TEditToolsText.NoDeleting].Text);
-  end;
-  EnsureWritable(APlan.Names + APlan.Deleted, APlan.OldTexts + APlan.DeletedTexts);
-  CreateAll(APlan.Created);
-  try
-    if APlan.Names <> nil then
-    begin
-      WriteAll(ATool, APlan.Names, APlan.OldTexts, APlan.NewTexts);
-    end;
-  except
-    RemoveCreated(APlan.Created, Length(APlan.Created));
-    raise;
-  end;
-  APlan.NotDeleted := DeleteAll(APlan.Deleted);
-  if Assigned(FAudit) and ((APlan.Created <> nil) or (APlan.Deleted <> nil)) then
-  begin
-    FAudit(cTexts[TEditToolsText.CreatedAndDeleted].Fmt([ATool, Length(APlan.Created),
-      Length(APlan.Deleted) - Length(APlan.NotDeleted)]));
-  end;
-end;
-
-/// <summary>Bericht von ApplyChanges: Zahl der Änderungen und Diff je Datei.</summary>
 function PlanReport(const APlan: TMcpChangePlan; ACount: Integer; ADryRun: Boolean): string;
 var
   mIndex: Integer;

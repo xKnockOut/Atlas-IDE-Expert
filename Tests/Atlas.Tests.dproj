@@ -2287,6 +2287,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ArchitectureTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.EditingTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.RefactorHost.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.RefactorSources.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ChangeTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Changes.pas"/>
@@ -2315,6 +2316,7 @@
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorHost.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.RefactorSources.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Tests.pas"/>

@@ -85,14 +85,14 @@ type
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
-    /// <summary>Alle Code-Aktionen an ARange im geöffneten Dokument AUri wie textDocument/codeAction ohne "only",
-    /// ohne Abbruch (MCP-Werkzeug refactor, #2150); leer, wenn das Dokument nicht geöffnet ist. Der Aufrufer übernimmt
-    /// das Array.</summary>
-    function ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
     /// <summary>Capability für initialize. Der Aufrufer übernimmt das Objekt.</summary>
     class function Capability: TJSONObject; static;
     /// <summary>Eine Aktion als LSP-CodeAction. Der Aufrufer übernimmt das Objekt.</summary>
     class function ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject; static;
+    /// <summary>Alle Code-Aktionen an ARange im geöffneten Dokument AUri wie textDocument/codeAction ohne "only",
+    /// ohne Abbruch (MCP-Werkzeug refactor, #2150); leer, wenn das Dokument nicht geöffnet ist. Der Aufrufer übernimmt
+    /// das Array.</summary>
+    function ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
     /// <summary>WorkspaceEdit {"changes": {AUri: [...]}} für Befehle, die Änderungen liefern (#668). Der Aufrufer
     /// übernimmt das Objekt.</summary>
     class function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject; static;

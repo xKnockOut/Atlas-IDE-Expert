@@ -55,29 +55,48 @@ uses
 
 const
   cUnitText = 'unit A;' + sLineBreak + 'interface' + sLineBreak + 'implementation' + sLineBreak + 'end.';
+  /// <summary>Fehlercode des Server-Ersatzes (Invalid params).</summary>
+  cInvalidParams = -32602;
+  /// <summary>Umbauten der Standardaktionen in der Liste (ohne Befehl nur des Plugins).</summary>
+  cListedOffers = 6;
+  /// <summary>Stelle von safeDelete in der Liste.</summary>
+  cBlockedOffer = 4;
+  /// <summary>Aufruf der zweiten Ausführung: Vorbereitung und Ausführung des ersten Laufs, dann Vorbereitung.</summary>
+  cSecondExecute = 3;
+  /// <summary>Umbauten mit Befehl, die refactor kennt.</summary>
+  cCommandKinds = 17;
 
 type
   /// <summary>Ersatz des Servers: feste Code-Aktionen, Antworten je Befehl, Mitschnitt der Aufrufe.</summary>
   TFakeRefactorServer = class
+  private
+    FActions: string;
+    FAnswers: TDictionary<string, string>;
+    FCalls: TList<string>;
+    FFailOn: string;
   public
-    Actions: string;
-    Answers: TDictionary<string, string>;
-    Calls: TList<string>;
-    FailOn: string;
     constructor Create;
     destructor Destroy; override;
     function Source: TMcpRefactorSource;
+    property Actions: string read FActions write FActions;
+    property Answers: TDictionary<string, string> read FAnswers;
+    property Calls: TList<string> read FCalls;
+    property FailOn: string read FFailOn write FFailOn;
   end;
 
   /// <summary>Dateien im Speicher; Created und Deleted zählen neue und gelöschte.</summary>
   TRefactorFiles = class
+  private
+    FFiles: TDictionary<string, string>;
+    FCreated: TList<string>;
+    FDeleted: TList<string>;
   public
-    Files: TDictionary<string, string>;
-    Created: TList<string>;
-    Deleted: TList<string>;
     constructor Create;
     destructor Destroy; override;
     function Tools: TMcpEditTools;
+    property Files: TDictionary<string, string> read FFiles;
+    property Created: TList<string> read FCreated;
+    property Deleted: TList<string> read FDeleted;
   end;
 
 { TFakeRefactorServer }
@@ -85,14 +104,14 @@ type
 constructor TFakeRefactorServer.Create;
 begin
   inherited Create;
-  Answers := TDictionary<string, string>.Create;
-  Calls := TList<string>.Create;
+  FAnswers := TDictionary<string, string>.Create;
+  FCalls := TList<string>.Create;
 end;
 
 destructor TFakeRefactorServer.Destroy;
 begin
-  Calls.Free;
-  Answers.Free;
+  FCalls.Free;
+  FAnswers.Free;
   inherited Destroy;
 end;
 
@@ -115,7 +134,7 @@ begin
       mServer.Calls.Add(ACommand + ' ' + AArguments.ToJSON([]));
       if ACommand = mServer.FailOn then
       begin
-        raise EJsonRpcError.Create(-32602, 'kaputt');
+        raise EJsonRpcError.Create(cInvalidParams, 'kaputt');
       end;
       if not mServer.Answers.TryGetValue(ACommand, mAnswer) then
       begin
@@ -130,22 +149,23 @@ end;
 constructor TRefactorFiles.Create;
 begin
   inherited Create;
-  Files := TDictionary<string, string>.Create;
-  Created := TList<string>.Create;
-  Deleted := TList<string>.Create;
+  FFiles := TDictionary<string, string>.Create;
+  FCreated := TList<string>.Create;
+  FDeleted := TList<string>.Create;
 end;
 
 destructor TRefactorFiles.Destroy;
 begin
-  Deleted.Free;
-  Created.Free;
-  Files.Free;
+  FDeleted.Free;
+  FCreated.Free;
+  FFiles.Free;
   inherited Destroy;
 end;
 
 function TRefactorFiles.Tools: TMcpEditTools;
 var
   mFiles: TRefactorFiles;
+  mOperations: TMcpFileOperations;
 begin
   mFiles := Self;
   Result := TMcpEditTools.Create(nil,
@@ -162,13 +182,14 @@ begin
       Result := nil;
     end,
     nil);
-  Result.CreateFile :=
+  mOperations := Default(TMcpFileOperations);
+  mOperations.CreateFile :=
     procedure(const AFileName, AText: string)
     begin
       mFiles.Files.Add(AFileName, AText);
       mFiles.Created.Add(AFileName);
     end;
-  Result.DeleteFile :=
+  mOperations.DeleteFile :=
     function(const AFileName: string; out AError: string): Boolean
     begin
       AError := '';
@@ -176,6 +197,7 @@ begin
       mFiles.Files.Remove(AFileName);
       mFiles.Deleted.Add(AFileName);
     end;
+  Result.Files := mOperations;
 end;
 
 { Hilfen }
@@ -228,7 +250,7 @@ begin
     '"end":{"line":1,"character":9}},"newText":"' + ANewText + '"}]}},"warnings":["Bitte prüfen"]}');
 end;
 
-function Request(const AKind, AArgs: string; ADryRun: Boolean = True): TMcpRefactorRequest;
+function Request(const AKind, AArgs: string; ADryRun: Boolean): TMcpRefactorRequest;
 begin
   Result := Default(TMcpRefactorRequest);
   Result.FileName := FileName('A.pas');
@@ -292,7 +314,7 @@ begin
   mServer := NewServer;
   mFiles := NewFiles;
   try
-    mText := RunRefactor(mServer, mFiles, Request('', ''));
+    mText := RunRefactor(mServer, mFiles, Request('', '', True));
     Assert.Contains(mText, '- createOverload – Überladung (Kopie) – args: kind: string = "copy"');
     Assert.Contains(mText, 'extractInterface – Interface herauslösen');
     Assert.Contains(mText, 'members: [id | name, …]');
@@ -318,14 +340,14 @@ begin
   mServer := NewServer;
   mFiles := NewFiles;
   try
-    mRequest := Request('', '');
+    mRequest := Request('', '', True);
     mRequest.Json := True;
     mJson := TJSONObject.ParseJSONValue(RunRefactor(mServer, mFiles, mRequest)) as TJSONObject;
     try
       mList := mJson.GetValue<TJSONArray>('refactorings');
-      Assert.AreEqual(6, Integer(mList.Count));
+      Assert.AreEqual(cListedOffers, Integer(mList.Count));
       Assert.AreEqual('createOverload', mList.Items[0].GetValue<string>('kind'));
-      Assert.AreEqual('Nicht hier', mList.Items[4].GetValue<string>('disabled'));
+      Assert.AreEqual('Nicht hier', mList.Items[cBlockedOffer].GetValue<string>('disabled'));
       Assert.AreEqual(2, Integer(mJson.GetValue<Integer>('line')), 'Zeile ab 1');
     finally
       mJson.Free;
@@ -346,7 +368,7 @@ begin
   mFiles := NewFiles;
   try
     mServer.Answers.Add('atlas.server.createOverload', EditAnswer('interface // Kopie'));
-    mText := RunRefactor(mServer, mFiles, Request('createOverload', '{"kind":"copy"}'));
+    mText := RunRefactor(mServer, mFiles, Request('createOverload', '{"kind":"copy"}', True));
     Assert.AreEqual(1, Integer(mServer.Calls.Count));
     Assert.StartsWith('atlas.server.createOverload [', mServer.Calls[0]);
     Assert.Contains(mServer.Calls[0], ',"copy"]');
@@ -354,7 +376,7 @@ begin
     Assert.Contains(mText, '+ interface // Kopie');
     Assert.Contains(mText, 'Bitte prüfen', 'Hinweise des Umbaus');
     Assert.AreEqual(cUnitText, mFiles.Files[FileName('A.pas')], 'Vorschau schreibt nichts');
-    mText := RefactorError(mServer, mFiles, Request('createOverload', ''));
+    mText := RefactorError(mServer, mFiles, Request('createOverload', '', True));
     Assert.Contains(mText, 'Überladung (weiterleitend)', 'ohne Wert: mehrdeutig, Titel zur Wahl');
   finally
     mFiles.Free;
@@ -392,12 +414,12 @@ begin
   mServer := NewServer;
   mFiles := NewFiles;
   try
-    mText := RefactorError(mServer, mFiles, Request('moveClass', '{"name":5}'));
+    mText := RefactorError(mServer, mFiles, Request('moveClass', '{"name":5}', True));
     Assert.Contains(mText, 'Argument "name" muss string sein');
     Assert.Contains(mText, 'Erwartet: name: string');
-    mText := RefactorError(mServer, mFiles, Request('moveClass', '{"ziel":"X"}'));
+    mText := RefactorError(mServer, mFiles, Request('moveClass', '{"ziel":"X"}', True));
     Assert.Contains(mText, 'Unbekanntes Argument "ziel"');
-    mText := RefactorError(mServer, mFiles, Request('extractInterface', '{"members":"Suchen"}'));
+    mText := RefactorError(mServer, mFiles, Request('extractInterface', '{"members":"Suchen"}', True));
     Assert.Contains(mText, 'members: [id | name, …]');
     Assert.AreEqual(0, Integer(mServer.Calls.Count), 'falsche Argumente führen nichts aus');
   finally
@@ -415,10 +437,10 @@ begin
   mServer := NewServer;
   mFiles := NewFiles;
   try
-    mText := RefactorError(mServer, mFiles, Request('inlineAccessor', ''));
+    mText := RefactorError(mServer, mFiles, Request('inlineAccessor', '', True));
     Assert.Contains(mText, 'Kein Umbau "inlineAccessor"');
     Assert.Contains(mText, 'extractInterface', 'die Liste der Stelle hilft weiter');
-    mText := RefactorError(mServer, mFiles, Request('safeDelete', ''));
+    mText := RefactorError(mServer, mFiles, Request('safeDelete', '', True));
     Assert.Contains(mText, 'gesperrt: Nicht hier');
     Assert.AreEqual(0, Integer(mServer.Calls.Count));
   finally
@@ -444,7 +466,7 @@ begin
       '"end":{"line":0,"character":0}},"newText":"unit N;"}]},' +
       '{"textDocument":{"uri":"$A","version":null},"edits":[{"range":{"start":{"line":1,"character":0},' +
       '"end":{"line":1,"character":9}},"newText":"interface uses N;"}]}]}}'));
-    mText := RunRefactor(mServer, mFiles, Request('extractInterface', '{"members":["Anmelden"]}'));
+    mText := RunRefactor(mServer, mFiles, Request('extractInterface', '{"members":["Anmelden"]}', True));
     Assert.AreEqual(2, Integer(mServer.Calls.Count), 'Vorbereitung und Ausführung');
     Assert.StartsWith('atlas.server.extractInterface.prepare [', mServer.Calls[0]);
     Assert.Contains(mServer.Calls[1], '{"name":"IKunde","unit":"Kunde.Intf","members":[2]}');
@@ -453,7 +475,7 @@ begin
     Assert.Contains(mText, '+ unit N;');
     Assert.AreEqual(0, Integer(mFiles.Created.Count), 'Vorschau legt nichts an');
     RunRefactor(mServer, mFiles, Request('extractInterface', '{"name":"IAnders","members":[1]}', False));
-    Assert.Contains(mServer.Calls[3], '{"name":"IAnders","unit":"Kunde.Intf","members":[1]}');
+    Assert.Contains(mServer.Calls[cSecondExecute], '{"name":"IAnders","unit":"Kunde.Intf","members":[1]}');
     Assert.AreEqual(1, Integer(mFiles.Created.Count));
     Assert.AreEqual('unit N;', mFiles.Files[FileName('N.pas')]);
     Assert.Contains(mFiles.Files[FileName('A.pas')], 'interface uses N;');
@@ -474,11 +496,11 @@ begin
   try
     mServer.Answers.Add('atlas.server.extractInterface.prepare', '{"name":"IKunde","candidates":[' +
       '{"id":1,"name":"Suchen","checked":false},{"id":2,"name":"Anmelden","enabled":false,"reason":"privat"}]}');
-    mText := RefactorError(mServer, mFiles, Request('extractInterface', ''));
+    mText := RefactorError(mServer, mFiles, Request('extractInterface', '', True));
     Assert.Contains(mText, 'Keine Mitglieder gewählt');
     Assert.Contains(mText, '- 1 Suchen');
     Assert.Contains(mText, '- 2 Anmelden – gesperrt: privat');
-    mText := RefactorError(mServer, mFiles, Request('extractInterface', '{"members":["Fehlt"]}'));
+    mText := RefactorError(mServer, mFiles, Request('extractInterface', '{"members":["Fehlt"]}', True));
     Assert.Contains(mText, 'Kein Mitglied "Fehlt"');
     Assert.AreEqual(2, Integer(mServer.Calls.Count), 'nur die Vorbereitungen');
   finally
@@ -500,7 +522,7 @@ begin
     mText := mFiles.Files[FileName('A.pas')];
     Assert.Contains(mText, '// Rumpf');
     Assert.DoesNotContain(mText, '// Kopf', 'Teil 1 abgewählt');
-    mText := RefactorError(mServer, mFiles, Request('docComment', '{"name":"x"}'));
+    mText := RefactorError(mServer, mFiles, Request('docComment', '{"name":"x"}', True));
     Assert.Contains(mText, 'Unbekanntes Argument "name"');
     Assert.AreEqual(0, Integer(mServer.Calls.Count), 'Aktion mit Edits braucht keinen Befehl');
   finally
@@ -519,12 +541,12 @@ begin
   mFiles := NewFiles;
   try
     mServer.FailOn := 'atlas.server.moveClass';
-    mText := RefactorError(mServer, mFiles, Request('moveClass', '{"name":"Ziel"}'));
+    mText := RefactorError(mServer, mFiles, Request('moveClass', '{"name":"Ziel"}', True));
     Assert.Contains(mText, 'Klasse verschieben geht nicht: kaputt');
     Assert.Contains(mText, 'args: name: string');
     Assert.Contains(mServer.Calls[0], ',"Ziel"]', 'name ersetzt die Stelle 2');
     mServer.FailOn := '';
-    mText := RefactorError(mServer, mFiles, Request('moveClass', ''));
+    mText := RefactorError(mServer, mFiles, Request('moveClass', '', True));
     Assert.Contains(mText, 'liefert keine Änderungen');
   finally
     mFiles.Free;
@@ -546,7 +568,7 @@ begin
       '{"textDocument":{"uri":"$A","version":null},"edits":[{"range":{"start":{"line":1,"character":0},' +
       '"end":{"line":1,"character":9}},"newText":"interface uses B;"}]},' +
       '{"kind":"delete","uri":"$B","options":{"ignoreIfNotExists":true}}]}}'));
-    mText := RunRefactor(mServer, mFiles, Request('moveClass', ''));
+    mText := RunRefactor(mServer, mFiles, Request('moveClass', '', True));
     Assert.Contains(mText, 'wird gelöscht');
     Assert.AreEqual(0, Integer(mFiles.Deleted.Count), 'Vorschau löscht nichts');
     RunRefactor(mServer, mFiles, Request('moveClass', '', False));
@@ -555,7 +577,7 @@ begin
     Assert.Contains(mFiles.Files[FileName('A.pas')], 'interface uses B;');
     mServer.Answers['atlas.server.moveClass'] := Filled('{"edit":{"documentChanges":[' +
       '{"kind":"rename","oldUri":"$A","newUri":"$B"}]}}');
-    mText := RefactorError(mServer, mFiles, Request('moveClass', ''));
+    mText := RefactorError(mServer, mFiles, Request('moveClass', '', True));
     Assert.Contains(mText, 'Umbenennen von Dateien');
   finally
     mFiles.Free;
@@ -568,7 +590,7 @@ var
   mKinds: TArray<string>;
 begin
   mKinds := TMcpRefactorTools.CommandKinds;
-  Assert.AreEqual(17, Integer(Length(mKinds)));
+  Assert.AreEqual(cCommandKinds, Integer(Length(mKinds)));
   Assert.AreEqual('promoteVariable', mKinds[0]);
   Assert.AreEqual('name: string, scope: string', TMcpRefactorTools.ExpectedArguments('typeAlias'));
   Assert.AreEqual('', TMcpRefactorTools.ExpectedArguments('inlineTypeAlias'));

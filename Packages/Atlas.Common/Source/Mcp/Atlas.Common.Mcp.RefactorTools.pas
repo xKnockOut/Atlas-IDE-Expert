@@ -218,22 +218,17 @@ end;
 /// <summary>Schreibweise eines Argumenttyps; Listen mit ihrem Aufbau.</summary>
 function TypeShape(const ATypeName: string): string;
 begin
-  Result := ATypeName;
-  if ATypeName = 'ids' then
-  begin
-    Result := '[id | name, …]';
-  end
-  else if ATypeName = 'names' then
-  begin
-    Result := '[name, …]';
-  end
-  else if ATypeName = 'numbers' then
-  begin
-    Result := '[number, …]';
-  end
-  else if ATypeName = 'parameters' then
-  begin
-    Result := '[{origin?, name, type, modifier?, value?}, …]';
+  case IndexStr(ATypeName, ['ids', 'names', 'numbers', 'parameters']) of
+    0:
+      Result := '[id | name, …]';
+    1:
+      Result := '[name, …]';
+    2:
+      Result := '[number, …]';
+    3:
+      Result := '[{origin?, name, type, modifier?, value?}, …]';
+  else
+    Result := ATypeName;
   end;
 end;
 
@@ -585,7 +580,7 @@ function Choose(const AOffers: TArray<TRefactorOffer>; const ARequest: TMcpRefac
 var
   mOffer: TRefactorOffer;
   mFound, mChoice: TArray<TRefactorOffer>;
-  mText: string;
+  mTitles: TArray<string>;
 begin
   mFound := nil;
   for mOffer in AOffers do
@@ -611,12 +606,13 @@ begin
   end;
   if Length(mFound) > 1 then
   begin
-    mText := cTexts[TRefactorToolsText.Ambiguous].Fmt([ARequest.Kind]);
+    mTitles := nil;
     for mOffer in mFound do
     begin
-      mText := mText + sLineBreak + '- ' + mOffer.Title;
+      mTitles := mTitles + ['- ' + mOffer.Title];
     end;
-    raise EMcpToolError.Create(mText);
+    raise EMcpToolError.Create(cTexts[TRefactorToolsText.Ambiguous].Fmt([ARequest.Kind]) + sLineBreak +
+      string.Join(sLineBreak, mTitles));
   end;
   Result := mFound[0];
   if Result.Disabled <> '' then

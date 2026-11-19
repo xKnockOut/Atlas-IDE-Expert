@@ -666,3 +666,4 @@ Atlas.Common.Rules.Builtin.Inheritance.Tests
 Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
 Shell.Mcp.RefactorHost.Tests
+Shell.Mcp.RefactorSources.Tests

@@ -189,7 +189,7 @@ type
     property Folder: string read FFolder;
   end;
 
-function KindCase(const AKind, ALineText, AWord: string; const AArgs: string = ''; const ATitle: string = ''): TKindCase;
+function KindCase(const AKind, ALineText, AWord, AArgs, ATitle: string): TKindCase;
 begin
   Result.Kind := AKind;
   Result.LineText := ALineText;
@@ -302,22 +302,22 @@ end;
 function Cases: TArray<TKindCase>;
 begin
   Result := [
-    KindCase('promoteVariable', 'FAlter: Integer', 'FAlter'),
-    KindCase('invertBoolean', 'mFertig: Boolean', 'mFertig'),
-    KindCase('anonymousMethod', 'procedure', 'procedure', '{"name":"Ausgeben"}'),
-    KindCase('methodKind', 'function Summe(A, B', 'function', '{"conversion":"classMethod"}'),
-    KindCase('inlineAccessor', 'TKunde = class', 'TKunde', '{"scope":"unit"}'),
-    KindCase('propertyFromAccessors', 'TLeser = class', 'TLeser', '{"calls":false}'),
-    KindCase('typeAlias', 'procedure Lesen(const AListe: TArray<string>);', 'TArray', '{"name":"TTexte"}'),
-    KindCase('inlineTypeAlias', 'TName = string', 'TName'),
+    KindCase('promoteVariable', 'FAlter: Integer', 'FAlter', '', ''),
+    KindCase('invertBoolean', 'mFertig: Boolean', 'mFertig', '', ''),
+    KindCase('anonymousMethod', 'procedure', 'procedure', '{"name":"Ausgeben"}', ''),
+    KindCase('methodKind', 'function Summe(A, B', 'function', '{"conversion":"classMethod"}', ''),
+    KindCase('inlineAccessor', 'TKunde = class', 'TKunde', '{"scope":"unit"}', ''),
+    KindCase('propertyFromAccessors', 'TLeser = class', 'TLeser', '{"calls":false}', ''),
+    KindCase('typeAlias', 'procedure Lesen(const AListe: TArray<string>);', 'TArray', '{"name":"TTexte"}', ''),
+    KindCase('inlineTypeAlias', 'TName = string', 'TName', '', ''),
     KindCase('enumTable', 'TFarbe = (', 'TFarbe', '', 'Namenstabelle anlegen (TFarbe)'),
-    KindCase('enumTablesSync', 'TFarbe = (', 'TFarbe'),
-    KindCase('createOverload', 'function GetName: string;', 'function', '{"kind":"copy"}'),
-    KindCase('changeSignature', 'function Summe(A, B', 'Summe', '{"parameters":[{"name":"B"},{"name":"A"}]}'),
-    KindCase('safeDelete', 'procedure Rabatt;', 'Rabatt'),
-    KindCase('extractInterface', 'TKunde = class', 'TKunde', '{"name":"IKunde","members":["Summe"]}'),
-    KindCase('extractSuperclass', 'TKunde = class', 'TKunde', '{"name":"TBasis","members":["Summe"]}'),
-    KindCase('moveMember', 'procedure Rabatt;', 'Rabatt')];
+    KindCase('enumTablesSync', 'TFarbe = (', 'TFarbe', '', ''),
+    KindCase('createOverload', 'function GetName: string;', 'function', '{"kind":"copy"}', ''),
+    KindCase('changeSignature', 'function Summe(A, B', 'Summe', '{"parameters":[{"name":"B"},{"name":"A"}]}', ''),
+    KindCase('safeDelete', 'procedure Rabatt;', 'Rabatt', '', ''),
+    KindCase('extractInterface', 'TKunde = class', 'TKunde', '{"name":"IKunde","members":["Summe"]}', ''),
+    KindCase('extractSuperclass', 'TKunde = class', 'TKunde', '{"name":"TBasis","members":["Summe"]}', ''),
+    KindCase('moveMember', 'procedure Rabatt;', 'Rabatt', '', '')];
 end;
 
 { TMcpRefactorHostTests }
