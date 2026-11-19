@@ -118,6 +118,10 @@
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
 
+.PARAMETER UpdateAdapterRoles
+    Schreibt die bekannten Altfälle der Rollen Adapters und Providers neu
+    (Tools/AdapterRoles.known.txt); nur zum Kürzen der Liste verwenden.
+
 .PARAMETER SelfTest
     Prüft nur die Rollenmatrix gegen Tests/Data/Architecture/role-imports.json.
 
@@ -130,7 +134,8 @@
 [CmdletBinding()]
 param(
     [string] $Root = '',
-    [switch] $SelfTest
+    [switch] $SelfTest,
+    [switch] $UpdateAdapterRoles
 )
 
 Set-StrictMode -Version Latest
@@ -1441,6 +1446,160 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -Fil
 if ($KnownReport.Count -gt 0) {
     Write-Host "Bekannte Verstöße gegen die Modulgrenzen ($($KnownReport.Count), offen laut $AssignmentFile):" -ForegroundColor Yellow
     $KnownReport | ForEach-Object { Write-Host "  $_" }
+}
+
+# Rollen Adapters und Providers (#1443): Wer ein Interface eines anderen Features implementiert, ist ein Adapter
+# und nimmt es aus dessen Contract; Providers implementieren den eigenen Contract. Verträge zwischen Modulen
+# (Atlas.IDE.Contracts.*) zählen als fremder Contract jedes Moduls. Composition, Hosting und Host-Units
+# (Shell, Foundation …) setzen zusammen und sind ausgenommen, Regel 4 (Interface im Contract) gilt auch für sie.
+# Bekannte Altfälle stehen in Tools/AdapterRoles.known.txt; neue sind Fehler, behobene müssen dort raus.
+$AdapterRolesFile = Join-Path $Root 'Tools/AdapterRoles.known.txt'
+
+function Get-FeatureName([string] $Name) {
+    # Ausgabeartefakt.Feature in der Schreibweise der Unit, z. B. "Atlas.IDE.Welcome".
+    $best = ''
+    foreach ($prefix in $RolePrefixes) {
+        if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) { $best = $prefix }
+    }
+    if ($best -eq '') { return $Name.Split('.')[0] }
+    return "$best." + $Name.Substring($best.Length + 1).Split('.')[0]
+}
+
+function Test-ContractUnit([string] $Name) {
+    $role = Get-UnitRole $Name $RolePrefixes $HostRoles
+    return ($null -ne $role -and $role.Role -eq 'Contract') -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
+}
+
+function Get-AdapterRoleFindings([string] $BaseDir) {
+    # Liefert je Verstoß Key (ohne Zeile, für die Altfallliste) und Text (mit Datei und Zeile).
+    $sources = @()
+    foreach ($dir in @('Packages', 'Application')) {
+        $path = Join-Path $BaseDir $dir
+        if (-not (Test-Path $path)) { continue }
+        foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
+            $name = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+            $role = Get-UnitRole $name $RolePrefixes $HostRoles
+            if ($null -eq $role) { continue }
+            $relative = $file.FullName.Substring((Resolve-Path $BaseDir).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+            $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+            $sources += [pscustomobject]@{ Name = $name; Relative = $relative; Text = $text; Role = $role }
+        }
+    }
+    $homes = @{}
+    foreach ($unit in $sources) {
+        foreach ($match in [regex]::Matches($unit.Text, '(?im)^\s*(I\w+)(?:\s*<[^>]*>)?\s*=\s*(?:disp)?interface\b(?!\s*;)')) {
+            $key = $match.Groups[1].Value.ToLowerInvariant()
+            if (-not $homes.ContainsKey($key)) { $homes[$key] = [Collections.Generic.List[string]]::new() }
+            $homes[$key].Add($unit.Name)
+        }
+    }
+    # Erster Durchgang: Klassen mit Vorfahr und den Interfaces aus anderen Units, die sie direkt implementieren.
+    $classes = @()
+    $byName = @{}
+    $pattern = '(?is)(?<![\w.])(T\w+)(?:\s*<[^>]*>)?\s*=\s*class\s*(?:abstract\s*|sealed\s*)?\(([^)]*)\)'
+    foreach ($unit in $sources) {
+        $used = @{}
+        foreach ($entry in Get-ClauseEntries $unit.Text 'uses') { $used[$entry.Name.ToLowerInvariant()] = $true }
+        foreach ($match in [regex]::Matches($unit.Text, $pattern)) {
+            $parts = @($match.Groups[2].Value -split ',' | ForEach-Object { ($_ -replace '<.*$', '').Trim() })
+            $implemented = @()
+            foreach ($interfaceName in $parts) {
+                $key = $interfaceName.ToLowerInvariant()
+                if (-not $homes.ContainsKey($key) -or $homes[$key].Contains($unit.Name)) { continue }
+                # Bei gleichnamigen Interfaces zählt die Unit, die die implementierende Unit verwendet; ein
+                # eindeutiger Name gilt auch, wenn er über einen Alias in einer anderen Unit ankommt.
+                $homeUnit = $homes[$key] | Where-Object { $used.ContainsKey($_.ToLowerInvariant()) } | Select-Object -First 1
+                if (-not $homeUnit -and $homes[$key].Count -eq 1) { $homeUnit = $homes[$key][0] }
+                if ($homeUnit) { $implemented += [pscustomobject]@{ Name = $interfaceName; Home = $homeUnit } }
+            }
+            $class = [pscustomobject]@{ Name = $match.Groups[1].Value; Unit = $unit; Ancestor = $parts[0]
+                Line = ($unit.Text.Substring(0, $match.Index) -split "`n").Count; Implemented = $implemented }
+            $classes += $class
+            $key = $class.Name.ToLowerInvariant()
+            if (-not $byName.ContainsKey($key)) { $byName[$key] = $class }
+        }
+    }
+    $findings = @()
+    $fitting = @{}
+    foreach ($class in $classes) {
+        $unit = $class.Unit
+        $own = $unit.Role
+        $ownFeature = Get-FeatureName $unit.Name
+        if (-not $fitting.ContainsKey($unit.Name)) { $fitting[$unit.Name] = 0 }
+        # Geerbte Interfaces zählen nur dafür, dass Adapters und Providers überhaupt etwas implementieren.
+        $chain = @($class.Implemented)
+        $ancestor = $class.Ancestor
+        for ($depth = 0; $depth -lt 10 -and $byName.ContainsKey($ancestor.ToLowerInvariant()); $depth++) {
+            $base = $byName[$ancestor.ToLowerInvariant()]
+            $chain += $base.Implemented
+            $ancestor = $base.Ancestor
+        }
+        foreach ($item in $chain) {
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles
+            $same = $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
+            if ((Test-ContractUnit $item.Home) -and (($own.Role -eq 'Adapters' -and -not $same) -or ($own.Role -eq 'Providers' -and $same))) {
+                $fitting[$unit.Name]++
+            }
+        }
+        foreach ($item in $class.Implemented) {
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles
+            $same = $own.Role -ne 'Host' -and $homeRole.Role -ne 'Host' -and
+                $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
+            $where = "$($unit.Relative):$($class.Line)"
+            $what = "$($class.Name) implementiert $($item.Name) aus $($item.Home)"
+            $suffix = "$($unit.Name) $($class.Name) $($item.Name)"
+            if (-not $same -and -not (Test-ContractUnit $item.Home)) {
+                $findings += [pscustomobject]@{ Key = "contract $suffix"
+                    Text = "${where}: $what – Interface eines Features, das andere implementieren, gehört in den Contract von $(Get-FeatureName $item.Home)" }
+            }
+            if ($own.Role -eq 'Adapters' -and $same) {
+                $findings += [pscustomobject]@{ Key = "adapters-own $suffix"
+                    Text = "${where}: $what – eigener Contract, das ist die Rolle Providers ($ownFeature.Providers.*)" }
+            }
+            elseif ($own.Role -eq 'Providers' -and -not $same) {
+                $findings += [pscustomobject]@{ Key = "providers-foreign $suffix"
+                    Text = "${where}: $what – fremdes Feature, das ist die Rolle Adapters ($ownFeature.Adapters.*)" }
+            }
+            elseif ($own.Role -in @('Root', 'Internals', 'Contract') -and -not $same) {
+                $findings += [pscustomobject]@{ Key = "adapter-name $suffix"
+                    Text = "${where}: $what – fremdes Feature, gehört in eine Unit $ownFeature.Adapters.*" }
+            }
+        }
+    }
+    foreach ($unit in $sources | Where-Object { $_.Role.Role -in @('Adapters', 'Providers') }) {
+        if ($fitting.ContainsKey($unit.Name) -and $fitting[$unit.Name] -gt 0) { continue }
+        $kind = 'einem fremden Contract'
+        if ($unit.Role.Role -eq 'Providers') { $kind = 'dem eigenen Contract' }
+        $findings += [pscustomobject]@{ Key = "empty $($unit.Name)"
+            Text = "$($unit.Relative): $($unit.Role.Role) ohne Interface aus $kind" }
+    }
+    return $findings
+}
+
+$AdapterFindings = @(Get-AdapterRoleFindings $Root)
+if ($UpdateAdapterRoles) {
+    $keys = @($AdapterFindings | ForEach-Object { $_.Key } | Sort-Object -Unique)
+    $header = "# Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von`n" +
+        "# pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.`n"
+    [IO.File]::WriteAllText($AdapterRolesFile, $header + (($keys | ForEach-Object { "$_`n" }) -join ''), [Text.UTF8Encoding]::new($false))
+    Write-Host "Altfälle Adapters/Providers geschrieben: $($keys.Count)." -ForegroundColor Green
+}
+$AdapterKnown = @{}
+if (Test-Path $AdapterRolesFile) {
+    foreach ($entry in [IO.File]::ReadAllLines($AdapterRolesFile)) {
+        if ($entry.Trim() -eq '' -or $entry.StartsWith('#')) { continue }
+        $AdapterKnown[$entry.Trim()] = $false
+    }
+}
+foreach ($finding in $AdapterFindings) {
+    if ($AdapterKnown.ContainsKey($finding.Key)) { $AdapterKnown[$finding.Key] = $true; continue }
+    $violations += $finding.Text
+}
+foreach ($entry in @($AdapterKnown.Keys | Where-Object { -not $AdapterKnown[$_] } | Sort-Object)) {
+    $violations += "Tools/AdapterRoles.known.txt: $entry kommt nicht mehr vor; Zeile streichen"
+}
+if ($AdapterKnown.Count -gt 0) {
+    Write-Host "Rollen Adapters/Providers: $($AdapterKnown.Count) bekannte Altfälle (Tools/AdapterRoles.known.txt)." -ForegroundColor Yellow
 }
 
 if ($violations.Count -gt 0) {
