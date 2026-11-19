@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Welcome.Setup;
 
 // Bereich „<Projekt> für Atlas einrichten“ der Willkommensseite (#759), ohne
-// Open Tools API. Nach dem Mockup (#ws7):
+// Open Tools API. Aufbau:
 //   ✓ Projekt gefunden, keine atlas.json
 //   ☐ atlas.json anlegen          [Bestehendes Projekt ▾] [Anlegen …]
 //   ☐ Baseline erzeugen (#97)     [Starten]

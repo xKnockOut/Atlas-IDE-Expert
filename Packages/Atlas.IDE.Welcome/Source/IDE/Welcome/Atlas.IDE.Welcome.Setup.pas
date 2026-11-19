@@ -95,8 +95,8 @@ type
     FShown: Boolean;
     FListener: Integer;
     FQueued: Boolean;
-    /// <summary>Meldet ein anderes aktives Projekt und geöffnete oder geschlossene Projekte (vorher wurde jede
-    /// Sekunde verglichen, mit Dateizugriffen im Hauptthread).</summary>
+    /// <summary>Meldet ein anderes aktives Projekt und geöffnete oder geschlossene Projekte, statt jede Sekunde
+    /// mit Dateizugriffen im Hauptthread zu vergleichen.</summary>
     FEvents: TAtlasIdeSetupProjectEvents;
     FWatched: string;
     FBaseline: TBaselineRun;
