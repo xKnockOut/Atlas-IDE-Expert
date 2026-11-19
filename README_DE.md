@@ -4,7 +4,7 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 354 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 360 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -84,7 +84,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
-- **354 Prüfregeln** schon beim Tippen: 235 Fehler, 108 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
+- **360 Prüfregeln** schon beim Tippen: 241 Fehler, 108 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
 - **Befunde als Auftrag für einen KI-Assistenten:** „Als Auftrag für KI-Assistenten kopieren“ im Fenster „Atlas-Prüfung“ (auch mehrere Befunde, je Datei gruppiert) und im Editor legt Regel, Meldung, Codeausschnitt, Erklärung und das MCP-Werkzeug zum Nachprüfen in die Zwischenablage
@@ -127,7 +127,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
 - **Leckprüfung einrichten …** im Kontextmenü eines Projekts: zeigt, was für die Lecksuche fehlt (FastMM4/FastMM5 gefunden, erste Unit im uses, Meldung beim Beenden, Symbole und DLL der Konfiguration Debug), und richtet die gewählte Variante mit Vorschau ein, nur im Debug-Build (`tests.leakSetup`)
 - **Test aus dem Debug-Halt:** „Test daraus anlegen …“ in der Exception-Leiste macht aus den Werten des Halts einen DUnitX-Test, der funktionieren oder die Exception werfen soll
-- **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, Fenster „Variablen“ (Autos, Lokal, Überwachung, Suche auch in Unterelementen), gezieltes Hineinspringen, Aufrufstapel mit benannten Parameterwerten, Suche und Vergleich mit dem letzten Halt; Laufzeit seit dem letzten Halt am Zeilenende
+- **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, Fenster „Variablen“ (Autos, Lokal, Überwachung auch je Klasse oder Unit, Suche auch in Unterelementen), gezieltes Hineinspringen, Aufrufstapel mit benannten Parameterwerten, Suche und Vergleich mit dem letzten Halt; Laufzeit seit dem letzten Halt am Zeilenende
 - **Haltepunkte:** eigenes Fenster „Haltepunkte“ mit Suche, Etiketten und Trefferzahlen; Haltepunkte auf Methoden nach Muster, nur für ein Objekt, **Anhalten, wenn sich ein Feld ändert**, Regeln (abhängig, Trefferbedingung, Thread, **nur bei Aufruf aus einer bestimmten Methode**), benannte Sätze, Prüfung vor dem Start; sie wandern mit dem Code, „bis hier ausführen“ per Klick in den Rand; Ausführungspfeil ziehen setzt die nächste Anweisung *(experimentell)*
 - **„Warum bin ich hier?“ und Bedingungen vorausschauen:** Beim Halt stehen an den umgebenden `if`, `while` und `case` die Werte ihrer Bedingungen, an den kommenden die vorhergesagten Ergebnisse; übersprungene Zweige sind blass
 - **Werte im Debug-Hover** aufklappen (geänderte Werte hinterlegt, alter Wert dahinter), direkt **ändern** (F2) und **anheften**

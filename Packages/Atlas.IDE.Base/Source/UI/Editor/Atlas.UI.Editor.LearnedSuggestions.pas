@@ -125,8 +125,6 @@ const
   cColumnMaxWidth = 320;
   /// <summary>Anfangs so viele Zeilen sichtbar, mehr nur mit Rollen.</summary>
   cInitialRows = 18;
-  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
-  cMaxScreenShare = 80;
   cColumnFollow = 1;
 
 type

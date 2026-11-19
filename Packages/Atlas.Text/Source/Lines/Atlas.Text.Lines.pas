@@ -18,6 +18,10 @@ type
   TTextLineBreak = (None, CRLF, LF, CR, Mixed);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Zeilen einer Datei ohne Zeilenende; False, wenn sie fehlt oder nicht lesbar ist. Ein gemeinsamer Typ
+  /// für Server, Plugin und Module (Delphi 12 hält gleich gebaute Methodenreferenztypen auseinander).</summary>
+  TTextReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+
   /// <summary>Zeile und Zeichen, 0-basiert, Zeichen in UTF-16-Einheiten (LSP).</summary>
   TTextPosition = record
     Line: Integer;
@@ -87,6 +91,9 @@ type
     /// <summary>Leerraum (Leerzeichen, Tabulator, Zeilenumbrüche) zu je einem Leerzeichen, außen ohne; z. B. für
     /// Typen und Kopfzeilen, die über mehrere Zeilen gehen.</summary>
     class function CollapseSpace(const AText: string): string; static;
+    /// <summary>AText in einer Zeile (jeder Umbruch ein Leerzeichen), außen ohne Leerraum, höchstens AMax Zeichen;
+    /// gekürzt endet er auf "…".</summary>
+    class function ShortLine(const AText: string; AMax: Integer): string; static;
   end;
 
 implementation
@@ -524,6 +531,15 @@ begin
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+class function TTextLines.ShortLine(const AText: string; AMax: Integer): string;
+begin
+  Result := Trim(NormalizeLineBreaks(AText, ' '));
+  if Length(Result) > AMax then
+  begin
+    Result := Copy(Result, 1, AMax - 1) + '…';
   end;
 end;
 

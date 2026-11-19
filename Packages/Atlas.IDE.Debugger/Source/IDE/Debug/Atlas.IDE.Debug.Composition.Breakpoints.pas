@@ -66,11 +66,6 @@ const
   /// <summary>Strg+F4: nur im angehaltenen Zustand, sonst schließt die IDE wie gewohnt die Datei.</summary>
   cRunToSkipKey = $4073;
 
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 function NotMinimal(ALevel: TAtlasSafeLevel): Boolean;
 begin
   Result := ALevel <> TAtlasSafeLevel.Minimal;
@@ -98,7 +93,7 @@ end;
 
 procedure StartBreakpointSets;
 begin
-  TAtlasIdeBreakpointSets.Start(MessageLine);
+  TAtlasIdeBreakpointSets.Start(TAtlasIdeHost.Messages());
 end;
 
 function RunToVisible: Boolean;
@@ -108,7 +103,7 @@ end;
 
 procedure StartRunTo;
 begin
-  TAtlasIdeRunTo.Start(MessageLine);
+  TAtlasIdeRunTo.Start(TAtlasIdeHost.Messages());
   TAtlasIdeRunToColumn.Install;
 end;
 
@@ -142,7 +137,7 @@ end;
 
 procedure StartBreakpointAnchors;
 begin
-  TAtlasIdeBreakpointAnchors.Start(MessageLine);
+  TAtlasIdeBreakpointAnchors.Start(TAtlasIdeHost.Messages());
 end;
 
 function BreakpointRulesVisible: Boolean;
@@ -152,7 +147,7 @@ end;
 
 procedure StartBreakpointRules;
 begin
-  TAtlasIdeBreakpointRules.Start(MessageLine);
+  TAtlasIdeBreakpointRules.Start(TAtlasIdeHost.Messages());
 end;
 
 procedure StartBreakpointCheck;
@@ -161,7 +156,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Haltepunkte, die nicht greifen werden (#577): Prüfung vor dem Start; aus = Start wie bisher.</summary>
@@ -189,7 +184,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Haltepunkte auf Methoden nach Muster (#855): Gruppen laden und beim Start mitwachsen; aus = keine
@@ -214,7 +209,7 @@ end;
 
 procedure StartInstanceBreakpoints;
 begin
-  TAtlasIdeInstanceBreakpoint.Start(MessageLine);
+  TAtlasIdeInstanceBreakpoint.Start(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Haltepunkt nur für ein Objekt (#857): Frage zu Adressbedingungen vor dem Start; aus = kein Zuhörer.
@@ -239,7 +234,7 @@ end;
 
 procedure StartDataBreakpoints;
 begin
-  TAtlasIdeDataBreakpoint.Start(MessageLine);
+  TAtlasIdeDataBreakpoint.Start(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Anhalten, wenn sich ein Feld ändert (#584): Datenhaltepunkte beobachten und am Ende der Sitzung
@@ -511,8 +506,8 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
-  TAtlasIdeDebugBreakpointList.Install(MessageLine);
+    end, TAtlasIdeHost.Messages());
+  TAtlasIdeDebugBreakpointList.Install(TAtlasIdeHost.Messages());
 end;
 
 procedure UninstallBreakCommands;

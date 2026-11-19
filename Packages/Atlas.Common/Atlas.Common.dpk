@@ -803,6 +803,9 @@ contains
   Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps.Rtl in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.pas',
+  Atlas.Common.Rules.Builtin.CompilerTraps.Scopes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Scopes.pas',
+  Atlas.Common.Rules.Builtin.CompilerTraps.MethodRefs in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.MethodRefs.pas',
+  Atlas.Common.Rules.Builtin.LineBreaks in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.LineBreaks.pas',
   Atlas.Common.Rules.Builtin.DelphiSemantics in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DelphiSemantics.pas',
   Atlas.Common.Rules.Builtin.IgnoredResult in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.pas',
   Atlas.Common.Rules.Builtin.Events in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas',
@@ -914,6 +917,7 @@ contains
   Atlas.Common.Monitor.Targets in 'Source\Monitor\Atlas.Common.Monitor.Targets.pas',
   Atlas.Common.Lsp.EnclosingConditions in 'Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas',
   Atlas.Common.Lsp.DebugVariables in 'Source\Lsp\Atlas.Common.Lsp.DebugVariables.pas',
+  Atlas.Common.Lsp.DebugScope in 'Source\Lsp\Atlas.Common.Lsp.DebugScope.pas',
   Atlas.Common.Lsp.RoutineParameters in 'Source\Lsp\Atlas.Common.Lsp.RoutineParameters.pas',
   Atlas.Common.Lsp.UpcomingConditions in 'Source\Lsp\Atlas.Common.Lsp.UpcomingConditions.pas';
 

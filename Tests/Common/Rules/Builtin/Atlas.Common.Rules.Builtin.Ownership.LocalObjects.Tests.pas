@@ -54,17 +54,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 /// <summary>Unit mit der Routine Lauf (Variablen AVars, Rumpf ABody) und einer eigenen Klasse TProtokoll.</summary>
 function Source(const AVars, ABody: string): string;
 begin
@@ -96,7 +85,7 @@ begin
     '  Ziel.Text := Liste.Text;'#10);
   mFound := TRuleAssert.Findings(TLocalObjectNotFreedRule.Create, mSource);
   Assert.AreEqual('12: Liste erhält ein neues TStringList, das die Routine weder freigibt noch weitergibt ' +
-    '(Speicherleck).|', Messages(mFound));
+    '(Speicherleck).|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cLocalObjectNotFreedRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
@@ -116,7 +105,7 @@ begin
   mSource := Source('  Zahl: Integer;'#10, '  var Liste := TList<Integer>.Create;'#10'  Liste.Add(1);'#10 +
     '  Zahl := Liste.Count;'#10);
   mFound := TRuleAssert.Findings(TLocalObjectNotFreedRule.Create, mSource);
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.Contains(mFound[0].Message, 'Liste erhält ein neues TList');
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Source('  Zahl: Integer;'#10, '  var Liste := TList<Integer>.Create;'#10'  try'#10 +
@@ -188,7 +177,7 @@ begin
   // Ohne Index unbekannt (TFremd könnte ein Record mit Create sein): still; RTL-Klasse und Klasse der Datei: hoch.
   mFound := TRuleAssert.Findings(TLocalObjectNotFreedRule.Create, Source('  P: TProtokoll;'#10'  F: TFremd;'#10 +
     '  L: TStringList;'#10, '  P := TProtokoll.Create;'#10'  F := TFremd.Create;'#10'  L := TStringList.Create;'#10));
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[1].Confidence));
   Assert.Contains(mFound[1].Message, 'TStringList');
@@ -232,7 +221,7 @@ begin
   mSource := FactorySource('  L: TStringList;'#10, '  L := NeueListe(''a'');'#10'  Ziel.Assign(L);'#10);
   mFound := TRuleAssert.Findings(TCreatedResultNotFreedRule.Create, mSource);
   Assert.AreEqual('35: L erhält von NeueListe ein neues Objekt, das die Routine weder freigibt noch weitergibt ' +
-    '(Speicherleck).|', Messages(mFound));
+    '(Speicherleck).|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cCreatedResultNotFreedRuleId, mFound[0].RuleId);
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(FactorySource('  L: TStringList;'#10, '  L := NeueListe(''a'');'#10'  try'#10 +
@@ -241,7 +230,7 @@ begin
   // Klassenmethode über den Typnamen, Inline-Variable.
   mFound := TRuleAssert.Findings(TCreatedResultNotFreedRule.Create, FactorySource('',
     '  var L := TBau.Neu;'#10'  Ziel.Assign(L);'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.Contains(mFound[0].Message, 'TBau.Neu');
   // Die andere Regel meldet nur Konstruktoren.
   TRuleAssert.Silent(TLocalObjectNotFreedRule.Create, FactorySource('  L: TStringList;'#10,

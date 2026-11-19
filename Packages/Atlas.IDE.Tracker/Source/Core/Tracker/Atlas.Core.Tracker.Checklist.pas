@@ -260,7 +260,7 @@ var
   mBox, mIndex, mNumber, mEnd: Integer;
 begin
   AResult := AText;
-  mText := Trim(StringReplace(StringReplace(AItemText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+  mText := Trim(TTextLines.NormalizeLineBreaks(AItemText, ' '));
   if Length(mText) > cMaxItemText then
   begin
     mText := Copy(mText, 1, cMaxItemText);
