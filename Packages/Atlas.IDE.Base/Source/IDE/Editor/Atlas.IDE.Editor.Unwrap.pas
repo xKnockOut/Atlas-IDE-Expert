@@ -465,6 +465,8 @@ end;
 /// <summary>Vorschau für die Teile ASpans der Zeile AText.</summary>
 procedure PaintSpans(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
   const ASpans: TArray<TAtlasUnwrapSpan>; ATabWidth: Integer);
+const
+  cPenDivisor = 14;
 var
   mSpan: TAtlasUnwrapSpan;
   mCode, mArea: TRect;
@@ -477,7 +479,8 @@ begin
   mDC := AContext.Canvas.Handle;
   mCode := AContext.LineState.CodeRect;
   mSaved := SaveDC(mDC);
-  mPen := CreatePen(PS_SOLID, Max(1, (ARect.Bottom - ARect.Top) div 14), COLORREF(ColorToRGB(TColor(mColors.Error))));
+  mPen := CreatePen(PS_SOLID, Max(1, (ARect.Bottom - ARect.Top) div cPenDivisor),
+    COLORREF(ColorToRGB(TColor(mColors.Error))));
   try
     if mCode.Right > mCode.Left then
     begin

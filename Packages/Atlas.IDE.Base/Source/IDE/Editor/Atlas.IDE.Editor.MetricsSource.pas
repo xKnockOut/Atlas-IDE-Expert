@@ -100,12 +100,14 @@ const
 
 constructor TAtlasEditorMetricsSource.Create(const ASession: TAtlasMetricsSourceSessionFunc;
   const ARun: TAtlasLensCommandProc);
+const
+  cTickMs = 250;
 begin
   inherited Create;
   FSession := ASession;
   FRun := ARun;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
   FCurrent := Self;

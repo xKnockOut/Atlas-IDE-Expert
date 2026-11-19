@@ -168,12 +168,14 @@ begin
 end;
 
 function TAtlasWatchdog.TWatchThread.AwaitPong(ASeq: Integer; ASentAt: Int64; out AHang: TAtlasHang): Boolean;
+const
+  cPollMs = 25;
 begin
   Result := False;
   AHang := Default(TAtlasHang);
   while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> ASeq) do
   begin
-    FOwner.FWake.WaitFor(25);
+    FOwner.FWake.WaitFor(cPollMs);
     if not Result and (NowMs - ASentAt >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
     begin
       Result := True;
@@ -188,16 +190,20 @@ end;
 { TAtlasWatchdog }
 
 constructor TAtlasWatchdog.Create(const AThreshold: TFunc<Integer>);
+const
+  cDefaultThresholdMs = 500;
+  // CONTEXT braucht unter Win64 16-Byte-Ausrichtung
+  cContextAlign = 16;
 begin
   inherited Create;
   FThresholdFunc := AThreshold;
-  FThresholdMs := 500;
+  FThresholdMs := cDefaultThresholdMs;
   if Assigned(FThresholdFunc) then
   begin
     FThresholdMs := FThresholdFunc();
   end;
   FWake := TEvent.Create(nil, False, False, '');
-  SetLength(FContextBuffer, SizeOf(TContext) + 16);
+  SetLength(FContextBuffer, SizeOf(TContext) + cContextAlign);
   FWindow := AllocateHWnd(WndProc);
   // Echter Handle des Hauptthreads (der Konstruktor läuft dort); GetCurrentThread ist nur ein Platzhalter.
   if not DuplicateHandle(GetCurrentProcess, GetCurrentThread, GetCurrentProcess, @FMainThread, 0, False,
@@ -259,12 +265,14 @@ begin
 end;
 
 procedure TAtlasWatchdog.Capture;
+const
+  cAlignMask = 15;
 var
   mContext: PContext;
   mStackPointer, mLimit: NativeUInt;
   mInfo: TMemoryBasicInformation;
 begin
-  mContext := PContext((NativeUInt(@FContextBuffer[0]) + 15) and not NativeUInt(15));
+  mContext := PContext((NativeUInt(@FContextBuffer[0]) + cAlignMask) and not NativeUInt(cAlignMask));
   FStackCount := 0;
   FIP := 0;
   if FMainThread = 0 then

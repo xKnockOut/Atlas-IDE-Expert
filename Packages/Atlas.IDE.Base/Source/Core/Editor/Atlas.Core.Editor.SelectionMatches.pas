@@ -84,11 +84,14 @@ uses
 { TAtlasSelectionMatchOptions }
 
 class function TAtlasSelectionMatchOptions.Defaults: TAtlasSelectionMatchOptions;
+const
+  cDefaultMinLength = 3;
+  cDefaultMaxMatches = 1000;
 begin
-  Result.MinLength := 3;
+  Result.MinLength := cDefaultMinLength;
   Result.CaseSensitive := False;
   Result.WholeWord := False;
-  Result.MaxMatches := 1000;
+  Result.MaxMatches := cDefaultMaxMatches;
 end;
 
 function TAtlasSelectionMatchOptions.Key: string;

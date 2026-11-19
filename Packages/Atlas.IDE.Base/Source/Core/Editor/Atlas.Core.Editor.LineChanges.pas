@@ -319,6 +319,10 @@ begin
 end;
 
 class function TAtlasLineChanges.Age(ANow, ADate: TDateTime): TAtlasAge;
+const
+  // Grobe Stufen wie in Versionsverwaltungen üblich.
+  cDaysPerMonth = 30;
+  cDaysPerYear = 365;
 var
   mMinutes: Int64;
 begin
@@ -332,7 +336,7 @@ begin
   begin
     Result.Unit_ := TAtlasAgeUnit.JustNow;
   end
-  else if mMinutes < 60 then
+  else if mMinutes < MinsPerHour then
   begin
     Result.Unit_ := TAtlasAgeUnit.Minutes;
     Result.Count := Integer(mMinutes);
@@ -346,20 +350,20 @@ begin
   begin
     Result.Unit_ := TAtlasAgeUnit.Yesterday;
   end
-  else if mMinutes < 30 * 24 * 60 then
+  else if mMinutes < cDaysPerMonth * MinsPerDay then
   begin
     Result.Unit_ := TAtlasAgeUnit.Days;
     Result.Count := Integer(mMinutes div (24 * 60));
   end
-  else if mMinutes < 365 * 24 * 60 then
+  else if mMinutes < cDaysPerYear * MinsPerDay then
   begin
     Result.Unit_ := TAtlasAgeUnit.Months;
-    Result.Count := Integer(mMinutes div (30 * 24 * 60));
+    Result.Count := Integer(mMinutes div (cDaysPerMonth * MinsPerDay));
   end
   else
   begin
     Result.Unit_ := TAtlasAgeUnit.Years;
-    Result.Count := Integer(mMinutes div (365 * 24 * 60));
+    Result.Count := Integer(mMinutes div (cDaysPerYear * MinsPerDay));
   end;
 end;
 
