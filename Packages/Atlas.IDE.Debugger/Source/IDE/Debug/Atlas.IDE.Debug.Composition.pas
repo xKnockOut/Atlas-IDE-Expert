@@ -642,6 +642,8 @@ begin
   ProvideDebugThreadLayers(GScope);
   // Logpunkte in der Rinne (#583).
   ProvideRun(GScope);
+  // Haltepunkte mit Aufrufer in der Rinne (#2548).
+  ProvideBreakpoints(GScope);
   ProvideSettingsSections;
   Result := True;
 end;
