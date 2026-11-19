@@ -44,10 +44,10 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
-  Atlas.UI.Welcome.Setup,
   Atlas.IDE.Welcome.Setup.Paths,
   Atlas.IDE.Welcome.Setup.ProjectEvents,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
@@ -158,7 +158,8 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.UI.Welcome.Setup;
 
 { Hilfen }
 

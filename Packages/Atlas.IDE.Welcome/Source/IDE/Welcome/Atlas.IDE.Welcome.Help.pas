@@ -22,7 +22,7 @@ uses
   System.SysUtils,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Diagnostics.Package,
-  Atlas.UI.Welcome.Help;
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeHelp = class(TInterfacedObject, IAtlasHelpSource)
@@ -80,7 +80,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.BugReport,
   Atlas.IDE.Diagnostics.Timing,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.UI.Welcome.Help;
 
 /// <summary>Datei oder Webadresse mit dem zuständigen Programm öffnen (Browser).</summary>
 procedure OpenTarget(const ATarget: string);

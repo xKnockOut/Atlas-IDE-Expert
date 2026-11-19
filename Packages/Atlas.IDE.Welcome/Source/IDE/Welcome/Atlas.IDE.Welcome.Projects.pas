@@ -27,10 +27,9 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Projects,
-  Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource, IAtlasProjectSummaryListener)
@@ -99,7 +98,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Welcome.Search;
+  Atlas.IDE.Welcome.Search,
+  Atlas.UI.Welcome.Projects;
 
 { TAtlasIdeProjects }
 

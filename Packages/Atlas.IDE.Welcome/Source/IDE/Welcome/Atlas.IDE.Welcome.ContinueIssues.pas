@@ -28,9 +28,9 @@ uses
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueIssues,
   Atlas.IDE.Contracts.IssueWork,
-  Atlas.UI.Welcome.ContinueIssues,
   Atlas.IDE.Welcome.Continue.Editor,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeContinueIssues = class(TInterfacedObject, IAtlasContinueIssuesSource)
@@ -96,7 +96,8 @@ uses
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Welcome.Neighbors,
-  Atlas.IDE.Welcome.Search;
+  Atlas.IDE.Welcome.Search,
+  Atlas.UI.Welcome.ContinueIssues;
 
 function NowUtc: TDateTime;
 begin

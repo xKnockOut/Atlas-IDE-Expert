@@ -55,11 +55,10 @@ uses
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueQueries,
   Atlas.Core.Welcome.Saved,
-  Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.Continue,
   Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.ContinueIssues,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Was die Komposition dem Bereich mitgibt.</summary>
@@ -186,7 +185,8 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Welcome.Continue.Saved,
-  Atlas.IDE.Welcome.Continue.Commit;
+  Atlas.IDE.Welcome.Continue.Commit,
+  Atlas.UI.Welcome.Continue;
 
 type
   /// <summary>Eine HEAD-Abfrage im Hintergrund: Ziel, normierter Schlüssel, Ordner der Zusammenfassungen,

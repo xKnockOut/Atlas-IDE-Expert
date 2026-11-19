@@ -19,7 +19,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Welcome.Backup;
+  Atlas.Core.Welcome.Contract;
 
 type
   TAtlasIdeWelcomeIdeLayout = class
@@ -62,7 +62,8 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Registry,
-  Atlas.IDE.Welcome.Page;
+  Atlas.IDE.Welcome.Page,
+  Atlas.Core.Welcome.Backup;
 
 function AtlasFolder: string;
 begin
@@ -108,7 +109,7 @@ var
   mKey: TAtlasRegKey;
   mLayout: TAtlasHostLayout;
 begin
-  mKey := FAccess.Read(WelcomeKey);
+  mKey := TAtlasRegistryKeys.Read(FAccess, WelcomeKey);
   try
     Result := (mKey <> nil) and TAtlasHostLayout.Read(mKey, mLayout) and
       mLayout.HasAtlasOnTop(BoardId, TAtlasWelcomeIds.cPluginPrefix);
@@ -122,7 +123,7 @@ var
   mKey: TAtlasRegKey;
   mLayout: TAtlasHostLayout;
 begin
-  mKey := FAccess.Read(WelcomeKey);
+  mKey := TAtlasRegistryKeys.Read(FAccess, WelcomeKey);
   try
     if mKey = nil then
     begin
@@ -137,7 +138,7 @@ begin
     if Result then
     begin
       mLayout.WithAtlasOnTop(BoardId, TAtlasWelcomeIds.cPluginPrefix).WriteTo(mKey);
-      FAccess.Replace(WelcomeKey, mKey);
+      TAtlasRegistryKeys.Replace(FAccess, WelcomeKey, mKey);
     end;
   finally
     mKey.Free;

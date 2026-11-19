@@ -42,7 +42,8 @@ uses
   Atlas.UI.Welcome.Board,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.TestSupport,
+  Atlas.UI.Welcome.Contract;
 
 
 type

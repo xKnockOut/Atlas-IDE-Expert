@@ -50,10 +50,10 @@ uses
   Atlas.IDE.Contracts.BuildTools,
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns,
-  Atlas.UI.Welcome.QuickActions,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.QuickActions.Keys,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Ende eines Builds: AError &lt;&gt; '' = nicht gebaut (Grund), sonst Erfolg.</summary>

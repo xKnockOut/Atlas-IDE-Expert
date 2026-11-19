@@ -50,7 +50,8 @@ uses
   Atlas.Core.Welcome.Scroll,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
-  Atlas.UI.Welcome.Arrange;
+  Atlas.UI.Welcome.Arrange,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Name abfragen (Neues Layout, Umbenennen); False = abgebrochen.</summary>

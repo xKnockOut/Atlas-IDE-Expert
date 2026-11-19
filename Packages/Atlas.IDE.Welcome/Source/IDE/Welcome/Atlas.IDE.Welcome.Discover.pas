@@ -33,8 +33,8 @@ uses
   Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Discover,
-  Atlas.UI.Welcome.Discover,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeDiscover = class(TInterfacedObject, IAtlasDiscoverSource)
@@ -121,7 +121,8 @@ uses
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.UI.Welcome.Discover;
 
 function English: Boolean;
 begin

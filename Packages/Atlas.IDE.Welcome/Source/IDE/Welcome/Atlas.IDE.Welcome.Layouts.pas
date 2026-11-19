@@ -23,7 +23,7 @@ uses
   System.Types,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Welcome.Layout,
-  Atlas.UI.Welcome.Arrange;
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeWelcomeLayouts = class(TInterfacedObject, IAtlasWelcomeArrangeSource)

@@ -44,46 +44,10 @@ uses
   Atlas.Core.Welcome.QuickActionRows,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasQuickActionsSource = interface
-    ['{C7F5C025-7259-4CF4-BB0A-6D6A1251CC59}']
-    /// <summary>welcomePage.quickActions; aus = keine Knöpfe, keine Tasten.</summary>
-    function Enabled: Boolean;
-    /// <summary>Knöpfe für AProject nach welcomePage.quickActions.items, Versionsverwaltung und laufenden
-    /// Aktionen.</summary>
-    function Buttons(const AProject: string): TAtlasQuickActionButtons;
-    /// <summary>Stand der letzten Schnellaktion von AProject in dieser Sitzung.</summary>
-    function State(const AProject: string): TAtlasQuickActionState;
-    /// <summary>Jetzt als Tick in ms (wie TAtlasQuickActionState.StartedMs).</summary>
-    function NowMs: UInt64;
-    /// <summary>Aktion mit den Vorgaben ausführen (Bauen: zuletzt benutzte Konfiguration und Plattform; Tests: das
-    /// eine Testprojekt; Start: aktives Startprofil).</summary>
-    procedure Execute(const AProject: string; AAction: TAtlasQuickAction);
-    /// <summary>Konfigurationen und Plattformen von AProject; AConfiguration/APlatform: Vorgabe ('' = wie in der
-    /// IDE).</summary>
-    function Targets(const AProject: string; out AConfiguration, APlatform: string): TAtlasProjectTargets;
-    procedure Build(const AProject, AConfiguration, APlatform: string);
-    /// <summary>Testprojekte zu AProject: eins = das zugeordnete, mehrere = Auswahl, keins = keins gefunden.</summary>
-    function TestProjects(const AProject: string): TArray<string>;
-    procedure RunTests(const AProject, ATestProject: string);
-    /// <summary>Namen der Startprofile von AProject; AActive: aktives ('' = keins).</summary>
-    function Profiles(const AProject: string; out AActive: string): TArray<string>;
-    /// <summary>Öffnen und mit AProfile starten ('' = ohne Startprofil).</summary>
-    procedure Run(const AProject, AProfile: string);
-    /// <summary>Namen der Projektaufgaben von AProject (#900) in der Reihenfolge der atlas.json.</summary>
-    function TaskNames(const AProject: string): TArray<string>;
-    /// <summary>Projektaufgabe AName von AProject im Hintergrund starten.</summary>
-    procedure RunTask(const AProject, AName: string);
-    /// <summary>Aktualisieren mit bzw. ohne Externals (#1292, Auswahl bei vcs.externals.update = ask).</summary>
-    procedure Pull(const AProject: string; AIgnoreExternals: Boolean);
-    /// <summary>Strg+B bzw. Strg+T als TShortCut; 0 = keine Taste.</summary>
-    function BuildKey: Integer;
-    function TestKey: Integer;
-    /// <summary>Programm für „Konsole“ (Tooltip).</summary>
-    function ConsoleProgram: string;
-  end;
 
   TAtlasQuickKeyEvent = function(AKey: Word; AShift: TShiftState): Boolean of object;
 

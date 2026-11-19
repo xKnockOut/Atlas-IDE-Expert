@@ -18,8 +18,7 @@ uses
   System.SysUtils,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Trends,
-  Atlas.UI.Welcome.Projects,
-  Atlas.UI.Welcome.Trends;
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeTrends = class(TInterfacedObject, IAtlasTrendsSource)
@@ -53,7 +52,8 @@ uses
   System.Classes,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Welcome.Trends;
 
 { TAtlasIdeTrends }
 

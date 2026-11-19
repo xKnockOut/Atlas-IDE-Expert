@@ -32,23 +32,10 @@ uses
   Vcl.Menus,
   Vcl.Graphics,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasUnsavedSource = interface
-    ['{8C2D4E61-3A7B-4F95-B1E8-6D0C9A2F5E73}']
-    /// <summary>Zeilen und Zustand des Bereichs.</summary>
-    function View: TAtlasUnsavedView;
-    /// <summary>„Ansehen“: Projekt öffnen und die betroffenen Dateien zeigen.</summary>
-    procedure Show(const ARow: TAtlasUnsavedRow);
-    /// <summary>„Push …“: Ziel und Commits zeigen, nur nach Bestätigung pushen.</summary>
-    procedure Push(const ARow: TAtlasUnsavedRow);
-    procedure OpenFolder(const ARow: TAtlasUnsavedRow);
-    /// <summary>„Ignorieren bis morgen“.</summary>
-    procedure Ignore(const ARow: TAtlasUnsavedRow);
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf im Hintergrund frisch abfragen.</summary>
-    procedure Shown;
-  end;
 
   TAtlasUnsavedHit = record
     /// <summary>Zeile; -1 = keine.</summary>

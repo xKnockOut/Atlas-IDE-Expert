@@ -24,21 +24,12 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.Usage,
-  Atlas.Core.Commands.Tips;
+  Atlas.Core.Commands.Tips,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Hinweis zur Nutzung: None = keiner (Zählung aus), Never = „Noch nie benutzt“, sonst „Zuletzt …“.
-  /// </summary>
-  TAtlasDiscoverAgeKind = (None, Never, Today, Yesterday, Days, Weeks, Months, Years);
-{$SCOPEDENUMS OFF}
-
-  TAtlasDiscoverAge = record
-    Kind: TAtlasDiscoverAgeKind;
-    /// <summary>Anzahl Tage, Wochen, Monate bzw. Jahre.</summary>
-    Count: Integer;
-    class function Create(AKind: TAtlasDiscoverAgeKind; ACount: Integer): TAtlasDiscoverAge; static;
-  end;
+  TAtlasDiscoverAgeKind = Atlas.Core.Welcome.Contract.TAtlasDiscoverAgeKind;
+  TAtlasDiscoverAge = Atlas.Core.Welcome.Contract.TAtlasDiscoverAge;
 
   /// <summary>Gesperrte Tipps und der zuletzt gezeigte.</summary>
   TAtlasDiscoverState = record
@@ -52,22 +43,7 @@ type
     class function Parse(const AJson: string): TAtlasDiscoverState; static;
   end;
 
-  /// <summary>Was die Karte zeigt.</summary>
-  TAtlasDiscoverCard = record
-    Id: string;
-    Title: string;
-    Text: string;
-    /// <summary>Tatsächliche Belegung des Befehls; '' ohne.</summary>
-    KeyText: string;
-    /// <summary>Vollständiger Pfad des Bilds; '' ohne (oder Datei fehlt).</summary>
-    ImageFile: string;
-    Age: TAtlasDiscoverAge;
-    /// <summary>„Ausprobieren“ möglich (Beispieldatei vorhanden oder Befehl vorhanden).</summary>
-    CanTry: Boolean;
-    /// <summary>Stelle (ab 1) und Zahl der Tipps, die gerade in Frage kommen.</summary>
-    Position: Integer;
-    Count: Integer;
-  end;
+  TAtlasDiscoverCard = Atlas.Core.Welcome.Contract.TAtlasDiscoverCard;
 
   TAtlasDiscover = class
   public const
@@ -136,14 +112,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Settings.History;
-
-{ TAtlasDiscoverAge }
-
-class function TAtlasDiscoverAge.Create(AKind: TAtlasDiscoverAgeKind; ACount: Integer): TAtlasDiscoverAge;
-begin
-  Result.Kind := AKind;
-  Result.Count := ACount;
-end;
 
 { TAtlasDiscoverState }
 

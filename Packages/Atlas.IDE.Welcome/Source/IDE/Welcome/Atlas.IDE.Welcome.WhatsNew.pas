@@ -23,7 +23,8 @@ uses
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeWhatsNew = class(TInterfacedObject, IAtlasWhatsNewSource)
