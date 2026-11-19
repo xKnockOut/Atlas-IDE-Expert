@@ -121,7 +121,8 @@ type
 implementation
 
 uses
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Names;
 
 function NodeOf(AObject: TJSONObject): TAtlasSymbolPathNode;
 begin
@@ -410,14 +411,7 @@ end;
 
 class function TAtlasSymbolPathCommands.QualifiedName(const AName, AContainer: string): string;
 begin
-  if AContainer = '' then
-  begin
-    Result := AName;
-  end
-  else
-  begin
-    Result := AContainer + '.' + AName;
-  end;
+  Result := TTextNames.Qualified(AContainer, AName);
 end;
 
 end.

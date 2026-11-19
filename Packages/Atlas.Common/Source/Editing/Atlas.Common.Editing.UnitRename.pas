@@ -35,7 +35,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 function CleanName(const AName: string): string;
 begin
@@ -122,11 +123,7 @@ end;
 
 class function TUnitRename.UnitNameOf(const AFileName: string): string;
 begin
-  Result := '';
-  if SameText(ExtractFileExt(AFileName), '.pas') then
-  begin
-    Result := ChangeFileExt(ExtractFileName(AFileName), '');
-  end;
+  Result := TTextNames.UnitNameOf(AFileName);
 end;
 
 /// <summary>Kopf "unit Alt;" der umbenannten Datei an ANewName anpassen, wenn die Datei schon so heißt.

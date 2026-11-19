@@ -354,7 +354,8 @@ uses
   System.Generics.Defaults,
   System.Generics.Collections,
   Atlas.Core.Settings.JsonText,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Arrays;
 
 const
   // Wie --c0 … --c9 der HTML-Karte (#RRGGBB), hell bzw. dunkel.
@@ -1206,17 +1207,12 @@ begin
 end;
 
 function TAtlasArchitectureModel.IndexOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Units) do
-  begin
-    if SameText(Units[mIndex].Name, AName) then
+  Result := TTextArrays.IndexOfText<TAtlasArchUnit>(Units, AName,
+    function(AUnit: TAtlasArchUnit): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AUnit.Name;
+    end);
 end;
 
 function TAtlasArchitectureModel.OutlierOf(AUnit: Integer): Integer;

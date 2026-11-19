@@ -165,20 +165,6 @@ begin
   Result := False;
 end;
 
-function ContainsText(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function StripT(const AName: string): string;
 begin
   Result := AName;
@@ -339,15 +325,15 @@ begin
   Result := False;
   for mName in ANames do
   begin
-    if ContainsText(ACheck.Locals, mName) then
+    if MatchText(mName, ACheck.Locals) then
     begin
       Exit(False);
     end;
-    if ContainsText(ACheck.Allowed, mName) then
+    if MatchText(mName, ACheck.Allowed) then
     begin
       Result := True;
     end
-    else if ContainsText(ACheck.Own, mName) then
+    else if MatchText(mName, ACheck.Own) then
     begin
       Exit(False);
     end;
@@ -548,7 +534,7 @@ begin
       begin
         if Split.Member = AUser then
         begin
-          Result := ContainsText(Split.Remaining, AName);
+          Result := MatchText(AName, Split.Remaining);
         end;
       end;
     end;

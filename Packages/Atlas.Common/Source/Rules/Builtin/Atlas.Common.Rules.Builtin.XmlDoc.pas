@@ -425,20 +425,6 @@ begin
   end;
 end;
 
-function Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function Overrides(AMember: TSyntaxNode): Boolean;
 var
   mIndex: Integer;
@@ -1170,7 +1156,7 @@ procedure TDocSignatureCheck.AddParam(const AElement: TDocElement; const AName: 
 begin
   FParams := FParams + [AElement];
   FParamNames := FParamNames + [AName];
-  if not Contains(FSignature.Params, AName) then
+  if not MatchText(AName, FSignature.Params) then
   begin
     FUnknown := FUnknown + [High(FParams)];
   end;
@@ -1214,7 +1200,7 @@ begin
   end;
   for mName in FSignature.Params do
   begin
-    if not Contains(FParamNames, mName) then
+    if not MatchText(mName, FParamNames) then
     begin
       FMissing := FMissing + [mName];
     end;

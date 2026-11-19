@@ -141,7 +141,8 @@ uses
   System.Generics.Collections,
   System.RegularExpressions,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Arrays;
 
 const
   cVirtualDirectives: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'reintroduce', 'message');
@@ -802,23 +803,6 @@ begin
     (IndexText(ARoutine.Name, FUsedAccessors) < 0);
 end;
 
-function SameTypes(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(A[mIndex], B[mIndex]) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Passen Getter und Setter zusammen (Typ und Indexparameter)?</summary>
 function AccessorsMatch(const AGetter, ASetter: TRoutineInfo): Boolean;
 var
@@ -826,7 +810,7 @@ var
 begin
   mIndexTypes := Copy(ASetter.ParameterTypes, 0, Length(ASetter.ParameterTypes) - 1);
   Result := SameText(AGetter.ResultType, ASetter.ParameterTypes[High(ASetter.ParameterTypes)]) and
-    SameTypes(AGetter.ParameterTypes, mIndexTypes);
+    TTextArrays.SameTexts(AGetter.ParameterTypes, mIndexTypes);
 end;
 
 function TClassReader.AddAccessor(AMap: TDictionary<string, TRoutineInfo>; const ARoutine: TRoutineInfo;

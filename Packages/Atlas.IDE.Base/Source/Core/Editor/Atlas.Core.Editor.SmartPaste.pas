@@ -128,20 +128,6 @@ const
   /// <summary>Wörter, mit denen eine Zeile auf der Ebene des öffnenden Worts steht.</summary>
   cClosers: array[0..4] of string = ('end', 'else', 'until', 'except', 'finally');
 
-function Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function IsBlank(const ALine: string): Boolean;
 begin
   Result := Trim(ALine) = '';
@@ -504,7 +490,7 @@ begin
   Result := nil;
   for mName in AAnalysis.Units do
   begin
-    if not Contains(Result, mName) then
+    if not MatchText(mName, Result) then
     begin
       Result := Result + [mName];
     end;
@@ -512,7 +498,7 @@ begin
   for mChoice in AAnalysis.Choices do
   begin
     if (mChoice.Chosen >= 0) and (mChoice.Chosen <= High(mChoice.Units)) and
-      not Contains(Result, mChoice.Units[mChoice.Chosen]) then
+      not MatchText(mChoice.Units[mChoice.Chosen], Result) then
     begin
       Result := Result + [mChoice.Units[mChoice.Chosen]];
     end;

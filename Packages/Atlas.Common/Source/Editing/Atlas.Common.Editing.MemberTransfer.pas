@@ -140,7 +140,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -191,17 +192,8 @@ end;
 { TMemberTransfer }
 
 class function TMemberTransfer.Has(const AList: TArray<Integer>; AValue: Integer): Boolean;
-var
-  mItem: Integer;
 begin
-  for mItem in AList do
-  begin
-    if mItem = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := TTextArrays.ContainsInteger(AList, AValue);
 end;
 
 class function TMemberTransfer.HasAll(const AItems, AList: TArray<Integer>): Boolean;

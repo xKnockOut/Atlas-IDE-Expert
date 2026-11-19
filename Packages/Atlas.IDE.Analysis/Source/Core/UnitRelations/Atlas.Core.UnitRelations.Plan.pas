@@ -62,16 +62,14 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Names;
 
 { TAtlasUnitRelationsPlan }
 
 class function TAtlasUnitRelationsPlan.IsPascalFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
+  Result := TTextNames.IsPascalFile(AFileName);
 end;
 
 class function TAtlasUnitRelationsPlan.HasInterfaceCost(const AFileName: string): Boolean;

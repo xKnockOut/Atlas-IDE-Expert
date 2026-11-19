@@ -199,7 +199,8 @@ uses
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Leaks,
   Atlas.Core.Tests.Log,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.Text.Files;
 
 const
   /// <summary>So viele letzte Zeilen der Ausgabe zeigt die Meldung „kein Bericht“.</summary>
@@ -627,20 +628,6 @@ begin
   end;
 end;
 
-/// <summary>Datei AFileName löschen, Fehler übergehen (Temp-Dateien des Laufs).</summary>
-procedure DeleteQuietly(const AFileName: string);
-begin
-  try
-    if FileExists(AFileName) then
-    begin
-      TFile.Delete(AFileName);
-    end;
-  except
-    on Exception do
-      ;
-  end;
-end;
-
 /// <summary>Leere Seitendatei des Protokolls je Test anlegen (#2168); '' wenn das nicht geht.</summary>
 function PrepareSideFile(const AResultFile: string): string;
 begin
@@ -713,10 +700,10 @@ begin
       AExe.Lines := [E.Message];
     end;
   end;
-  DeleteQuietly(mResultFile);
+  TTextFiles.DeleteQuietly(mResultFile);
   if mSideFile <> '' then
   begin
-    DeleteQuietly(mSideFile);
+    TTextFiles.DeleteQuietly(mSideFile);
   end;
 end;
 
