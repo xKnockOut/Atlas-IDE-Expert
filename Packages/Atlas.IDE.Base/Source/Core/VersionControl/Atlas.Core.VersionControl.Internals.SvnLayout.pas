@@ -65,6 +65,10 @@ implementation
 uses
   Atlas.Core.VersionControl.Internals.Text;
 
+const
+  /// <summary>Pfad relativ zur Wurzel des Repositorys.</summary>
+  cRepositoryPrefix = '^/';
+
 function StartsText(const APrefix, AText: string): Boolean;
 begin
   Result := SameText(Copy(AText, 1, Length(APrefix)), APrefix);
@@ -154,11 +158,11 @@ begin
     end;
   end;
   mText := Replaced(Replaced(mText, '{name}', AName), '{kennung}', mKey);
-  if Copy(mText, 1, 2) <> '^/' then
+  if not mText.StartsWith(cRepositoryPrefix) then
   begin
     Exit;
   end;
-  mText := Copy(mText, 3, MaxInt);
+  mText := Copy(mText, Length(cRepositoryPrefix) + 1, MaxInt);
   while (mText <> '') and (mText[Length(mText)] = '/') do
   begin
     Delete(mText, Length(mText), 1);
@@ -187,9 +191,9 @@ var
   mFirst, mRoot: string;
 begin
   Result := Trim(ACandidate);
-  if Copy(Result, 1, 2) = '^/' then
+  if Result.StartsWith(cRepositoryPrefix) then
   begin
-    Exit(Copy(Result, 3, MaxInt));
+    Exit(Copy(Result, Length(cRepositoryPrefix) + 1, MaxInt));
   end;
   mRoot := WithoutCaret(ARoot);
   if not ALayout or (mRoot = '') or StartsText(mRoot + '/', Result) then

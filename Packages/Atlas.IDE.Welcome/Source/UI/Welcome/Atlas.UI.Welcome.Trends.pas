@@ -718,7 +718,7 @@ begin
   end;
   mPoint := AView.Points[APoint];
   mTile := AView.Tiles[ATile];
-  // Wie im Mockup „Build i von N“ in den gezeigten Punkten; die laufende Nummer zählt alle Builds.
+  // „Build i von N“ in den gezeigten Punkten; die laufende Nummer zählt alle Builds.
   Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsBuild, [APoint + 1, Length(AView.Points)]);
   if ANumber and (mPoint.Build > 0) and (mPoint.Build <> APoint + 1) then
   begin
