@@ -4,7 +4,8 @@
 // Der eine Leser für Protokollzeilen, JSON-Dateien und Ausgaben von git/svn: Er prüft jede
 // Ziffer selbst und kann darum keinen negativen Teil an TryEncodeDate/TryEncodeTime
 // (Word-Parameter) weitergeben; mit Bereichsprüfung löste das sonst ERangeError aus statt False.
-// Dazu der eine Leser für ISO 8601 mit Zeitzone (RTL): Er wirft nie. IsoOrEmpty schreibt das Gegenstück. ISO8601ToDate wirft je nach Text und Compiler
+// Dazu der eine Leser für ISO 8601 mit Zeitzone (RTL): Er wirft nie. IsoOrEmpty schreibt das Gegenstück.
+// ISO8601ToDate wirft je nach Text und Compiler
 // verschiedene Klassen (Delphi EDateTimeException bei unlesbarem Text, EConvertError bei ungültigen Teilen; Free
 // Pascal EConvertError), ein Handler für nur eine davon greift nicht immer.
 
