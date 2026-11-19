@@ -80,7 +80,8 @@ uses
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.ListView;
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Foundation.Scaling;
 
 const
   // Breiten der Spalten Name, Typ, Modifizierer und Vorgabewert in der Parameterliste.
@@ -139,7 +140,7 @@ begin
   Result.Parent := AForm;
   Result.Align := alBottom;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, ATopMargin, cGap, cGap div 2);
+  Result.Margins.SetBounds(Result.ScaleValue(cGap), ATopMargin, Result.ScaleValue(cGap), Result.ScaleValue(cGap div 2));
   Result.ShowAccelChar := False;
 end;
 
@@ -215,7 +216,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, 0, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, 0, 0);
   FList.ViewStyle := vsReport;
   FList.ReadOnly := True;
   FList.RowSelect := True;
