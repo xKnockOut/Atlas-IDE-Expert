@@ -81,7 +81,8 @@ uses
   Atlas.IDE.Debug.RunTo,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Variables,
-  Atlas.UI.Debug.Session.Strings;
+  Atlas.UI.Debug.Session.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 const
   cRunModes: array[TAtlasDebugControlStep] of TOTARunMode = (ormStmtStepInto, ormStmtStepOver, ormRunUntilReturn,
@@ -426,7 +427,7 @@ var
 begin
   // Auch Haltepunkte der Gruppe aus einer früheren Sitzung (etwa vor dem Neuladen des Moduls).
   mList := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices <> nil then
   begin
     for mIndex := 0 to mServices.SourceBkptCount - 1 do

@@ -22,7 +22,6 @@ uses
 type
   TAtlasIdeBreakpoints = class
   public
-    class function Debugger: IOTADebuggerServices; static;
     /// <summary>Laufender oder angehaltener Prozess; nil ohne.</summary>
     class function CurrentProcess: IOTAProcess; static;
     /// <summary>Angehaltener Prozess (auch nach Fehler oder Exception); nil sonst.</summary>
@@ -51,22 +50,17 @@ type
 
 implementation
 
-{ TAtlasIdeBreakpoints }
+uses
+  Atlas.IDE.Foundation.Debugger;
 
-class function TAtlasIdeBreakpoints.Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-  begin
-    Result := nil;
-  end;
-end;
+{ TAtlasIdeBreakpoints }
 
 class function TAtlasIdeBreakpoints.CurrentProcess: IOTAProcess;
 var
   mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices <> nil) and (mServices.ProcessCount > 0) then
   begin
     Result := mServices.CurrentProcess;
@@ -108,7 +102,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   Result := False;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -128,7 +122,7 @@ var
   mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (AFileName = '') or (ALine < 0) or Exists(AFileName, ALine) then
   begin
     Exit;
@@ -165,7 +159,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -186,7 +180,7 @@ var
   mFileName: string;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (ABreakpoint = nil) or (ALine < 0) then
   begin
     Exit;
@@ -261,7 +255,7 @@ var
   mServices: IOTADebuggerServices;
   mBreakpoint: IOTABreakpoint;
 begin
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   try
     if mServices <> nil then
     begin

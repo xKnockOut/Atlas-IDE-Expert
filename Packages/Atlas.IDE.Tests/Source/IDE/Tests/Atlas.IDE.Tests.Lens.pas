@@ -192,7 +192,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Style.Palette,
@@ -205,7 +204,8 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.IDE.Foundation.EditorStyle;
 
 /// <summary>Oberen Editor neu zeichnen.</summary>
 procedure InvalidateEditor;
@@ -571,18 +571,8 @@ begin
 end;
 
 class function TAtlasIdeLensPill.BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
-var
-  mSample: COLORREF;
 begin
-  mSample := GetPixel(ACanvas.Handle, AX, AY);
-  if mSample = CLR_INVALID then
-  begin
-    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
-  end
-  else
-  begin
-    Result := TAtlasColor(mSample);
-  end;
+  Result := TAtlasIdeStyle.SampleBack(ACanvas, AX, AY);
 end;
 
 class function TAtlasIdeLensPill.LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer;

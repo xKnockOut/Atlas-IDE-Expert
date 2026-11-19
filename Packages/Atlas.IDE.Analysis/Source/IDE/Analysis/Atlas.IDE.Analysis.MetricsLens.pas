@@ -84,7 +84,8 @@ uses
   Atlas.IDE.Editor.MetricsSource,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.EditorStyle;
 
 { TAtlasAnalysisMetricsLens.TEvents }
 
@@ -185,7 +186,7 @@ var
 begin
   mCell := TAtlasLensPill.CellAfter(AContext, ALine);
   mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, mCell.Left, ARect.Top + 1);
   mTone := TAtlasColors.ForBackground(mBack).Muted;
   if AOver then
   begin

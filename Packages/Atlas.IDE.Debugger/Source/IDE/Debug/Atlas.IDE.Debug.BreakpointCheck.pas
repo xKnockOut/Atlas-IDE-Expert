@@ -77,7 +77,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Debug.Breakpoints;
+  Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeBreakpointCheck.TListener }
 
@@ -95,7 +96,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

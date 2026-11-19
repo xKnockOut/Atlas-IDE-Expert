@@ -123,7 +123,8 @@ uses
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.IDE.Foundation.Caret,
+  Atlas.IDE.Foundation.Debugger;
 
 /// <summary>Taste AKey in der offenen Liste ausführen; False, wenn die Liste sie nicht kennt.</summary>
 function ListKey(AWindow: TAtlasStepIntoWindow; AKey: Word): Boolean;
@@ -336,7 +337,7 @@ begin
     FTimer.Enabled := False;
     Exit;
   end;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (mServices.ProcessCount = 0) then
   begin
     // Programm beendet: nur aufräumen.

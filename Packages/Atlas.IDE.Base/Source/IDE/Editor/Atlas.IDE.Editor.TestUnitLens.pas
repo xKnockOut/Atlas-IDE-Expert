@@ -98,7 +98,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle;
 
 const
   cTestUnitCommand = 'atlas.server.testUnit';
@@ -299,7 +300,7 @@ begin
       Exit;
     end;
     mCell := TAtlasLensPill.CellAfter(Context, mLine);
-    mBack := TAtlasLensPill.BackAt(Context.Canvas, mCell.Left, Rect.Top + 1);
+    mBack := TAtlasIdeStyle.SampleBack(Context.Canvas, mCell.Left, Rect.Top + 1);
     FLensRect := TAtlasLensPill.Paint(Context.Canvas, Rect, mCell.Left, mText,
       TAtlasLensPillStyle.Create(TAtlasColors.ForBackground(mBack).Accent, mBack, cPillBorder, cPillFill,
       [fsUnderline]));

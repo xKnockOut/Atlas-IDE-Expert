@@ -77,7 +77,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Settings.Parts;
+  Atlas.Core.Settings.Parts,
+  Atlas.Core.Diagnostics.ModuleHost;
 
 type
   IProbeService = interface
@@ -777,21 +778,6 @@ begin
     end;
 end;
 
-/// <summary>Haken der Registry an TAtlasMainThread wie in der Komposition.</summary>
-procedure ConnectMainThread;
-begin
-  TAtlasModuleRegistry.OnModuleClosing :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.CloseModule(AHandle);
-    end;
-  TAtlasModuleRegistry.OnModuleOpened :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.OpenModule(AHandle);
-    end;
-end;
-
 procedure TModuleRegistryTests.UnregisterDropsQueuedEntriesOfModule;
 var
   mLog: TLog;
@@ -805,7 +791,7 @@ begin
   // Das Testprogramm spielt das Package des Moduls: Info.Handle = Modul des eingereihten Codes.
   mModule := TAtlasMainThread.ModuleOf(mProc);
   // Wie die Komposition in ihrer Initialisierung.
-  ConnectMainThread;
+  TAtlasModuleHost.ConnectMainThread;
   mLog := TLog.Create;
   try
     mRegistry := TAtlasModuleRegistry.Create;
