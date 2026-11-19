@@ -88,7 +88,6 @@ uses
   System.Math,
   Vcl.Controls,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
   Atlas.UI.Editor.LearnedSuggestions,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Completion.Ranking;
@@ -175,7 +174,7 @@ var
   mPanel: TWinControl;
 begin
   // Liste der Vervollständigung.
-  AddSheet(TAtlasTextId.SettingsTabCompletion);
+  AddSheet(TAtlasSettingsTextId.SettingsTabCompletion);
   mPanel := AddPanel(cFieldRowHeight);
   FRowsLabel := TLabel.Create(FPage);
   FRowsLabel.Parent := mPanel;
@@ -285,7 +284,7 @@ var
   mFavorites: TCheckBox;
 begin
   mFavorites := FPage.Part<TAtlasSettingsCompletionPart>.FavoritesCheck;
-  AddTitle(TAtlasTextId.SettingsFavoritesTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsFavoritesTitle);
   mPanel := AddPanel(cFavoritesListHeight);
   FFavoritesList := TListBox.Create(FPage);
   FFavoritesList.Parent := mPanel;

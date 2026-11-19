@@ -272,9 +272,11 @@ var
   mEnglish, mGerman: TRuleCatalog;
   mEntry, mTranslated: TRuleCatalogEntry;
 begin
-  mEnglish := TRuleCatalog.Create(RuleCatalogBaseJson);
-  mGerman := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+  mEnglish := nil;
+  mGerman := nil;
   try
+    mEnglish := TRuleCatalog.Create(RuleCatalogBaseJson);
+    mGerman := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
     for mEntry in mEnglish.Entries do
     begin
       Assert.IsTrue(mGerman.TryFind(mEntry.Id, mTranslated));

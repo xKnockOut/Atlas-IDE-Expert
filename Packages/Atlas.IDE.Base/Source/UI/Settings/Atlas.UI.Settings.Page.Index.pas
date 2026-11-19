@@ -61,7 +61,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Dialogs,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets;
 
@@ -81,7 +80,7 @@ var
   mPanel: TWinControl;
 begin
   // Symbolindex (#492): Verwendungen, Speichergrenze, Kennzahlen und Verwaltung.
-  AddTitle(TAtlasTextId.SettingsIndexTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsIndexTitle);
   BindCheck('IndexUsages', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexUsages)));
   BindText('MemoryBudgetMb', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMemoryBudget)));
   mPanel := AddPanel(cIndexInfoHeight);
@@ -156,7 +155,7 @@ end;
 procedure TAtlasSettingsIndexPart.Build;
 begin
   // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
-  AddSheet(TAtlasTextId.SettingsTabIndex);
+  AddSheet(TAtlasSettingsTextId.SettingsTabIndex);
   BindCheck('IndexProjectGroup', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexGroup)));
   BindCheck('IndexSearchPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexSearch)));
   BindCheck('IndexLibraryPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexLibrary)));

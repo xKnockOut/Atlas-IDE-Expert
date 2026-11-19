@@ -586,6 +586,19 @@ Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 
 Einstellung: `debug.showElapsed`
 
+#### Rückgabewerte *(experimentell)*
+
+Was hat die Funktion eben zurückgegeben, ohne vorher `Result` zu beobachten?
+
+- Nach „Gesamte Routine“ (F8) über eine Zeile, die eigene Funktionen aufruft, steht am Ende dieser Zeile gedimmt `→ BerechneNetto = 109,16`; ruft die Zeile mehrere Funktionen auf, stehen alle da, in der Reihenfolge ihrer Rückkehr.
+- Nach „Bis zur Rückkehr ausführen“ (Umschalt+F8) in einer eigenen Funktion steht ihr Ergebnis an der Aufrufzeile, an der das Programm danach hält.
+- Ein Klick auf den Text zeigt „Zuletzt zurückgegeben“: die letzten 20 Ergebnisse mit Funktion, Wert, `end`-Zeile und Uhrzeit.
+- Dafür setzt Atlas vor dem Schritt vorübergehende Haltepunkte auf die `end`-Zeilen der Funktionen, wertet dort `Result` aus und setzt den Schritt fort; die übrigen Anzeigen merken von diesen Halten nichts. Nach dem Schritt sind die Haltepunkte wieder weg. Ein eigener Haltepunkt in der Funktion hält wie gewohnt, rekursive Aufrufe halten nicht in tieferen Rahmen.
+- Nur eigener Code mit Quelltext und nur Funktionen (auch lokale und Operatoren); Prozeduren und Bibliothekscode bleiben außen vor. Mit Optimierung (`$O+`) ist `Result` an der `end`-Zeile oft nicht auswertbar, dann steht dort ‹kein Zugriff›.
+- Wirkt auf die Befehle der IDE (Taste, Menü und Symbolleiste), sobald Atlas die Aufrufe der Zeile kennt; wer sehr schnell nach dem Halt drückt, bekommt für diesen Schritt keine Werte.
+
+Einstellung: `debug.returnValues` (Vorgabe aus)
+
 #### Bedingungen vorausschauen
 
 - Beim Halt stehen an den kommenden `if`, `while` und `case` derselben Routine (bis `debug.predictConditions.lines` Zeilen voraus, Vorgabe 20) die vorhergesagten Ergebnisse, als Vorhersage gekennzeichnet: `⟨= False · FOnline⟩` (der entscheidende Teil), bei `case` `⟨→ smManual⟩`.

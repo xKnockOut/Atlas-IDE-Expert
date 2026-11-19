@@ -338,9 +338,11 @@ var
   mHeard: TList<string>;
   mHandle, mVersion: Integer;
 begin
-  mHeard := TList<string>.Create;
-  mSections := TAtlasWelcomeSections.Create;
+  mHeard := nil;
+  mSections := nil;
   try
+    mHeard := TList<string>.Create;
+    mSections := TAtlasWelcomeSections.Create;
     mHandle := mSections.AddListener(
       procedure(AId: string)
       begin

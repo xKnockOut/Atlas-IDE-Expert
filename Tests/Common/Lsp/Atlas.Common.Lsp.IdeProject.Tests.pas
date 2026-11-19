@@ -136,9 +136,11 @@ var
   mContext: TIdeProjectContext;
   mChanged: Integer;
 begin
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
@@ -196,9 +198,11 @@ begin
   Assert.IsFalse(mNaming.Known[TRuleNamingKind.Parameter]);
   Assert.AreNotEqual(Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"c"}}').NamingKey,
     Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"k"}}').NamingKey);
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mNamingChanged := 0;
     mStore.OnChanged :=
@@ -238,9 +242,11 @@ var
 begin
   Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasActive);
   Assert.IsTrue(Parse('{"project":"C:\\P\\A.dproj","active":true}').Active);
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
@@ -280,9 +286,11 @@ begin
   Assert.AreEqual(1, mContext.FormatFunctions[0].FormatIndex);
   Assert.AreEqual(-1, mContext.FormatFunctions[1].FormatIndex);
   Assert.IsTrue(mContext.FormatFunctions[1].IsMethod);
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)

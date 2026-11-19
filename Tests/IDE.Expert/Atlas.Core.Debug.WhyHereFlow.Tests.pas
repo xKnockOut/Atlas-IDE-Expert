@@ -49,9 +49,11 @@ var
   mRef: TAtlasWhyHereRef;
   mIsForecast: Boolean;
 begin
-  mWhy := TAtlasWhyHere.Create;
-  mForecast := TAtlasForecast.Create;
+  mWhy := nil;
+  mForecast := nil;
   try
+    mWhy := TAtlasWhyHere.Create;
+    mForecast := TAtlasForecast.Create;
     Assert.IsTrue(TAtlasWhyHere.ReadAnswerText(cWhy, mBlocks));
     mWhy.Start(cFile, mBlocks);
     Assert.IsTrue(TAtlasForecast.ReadAnswerText(cForecast, mBlocks, mBranches));
@@ -78,9 +80,11 @@ var
   mRef: TAtlasWhyHereRef;
   mIsForecast: Boolean;
 begin
-  mWhy := TAtlasWhyHere.Create;
-  mForecast := TAtlasForecast.Create;
+  mWhy := nil;
+  mForecast := nil;
   try
+    mWhy := TAtlasWhyHere.Create;
+    mForecast := TAtlasForecast.Create;
     Assert.IsFalse(TAtlasWhyHereFlow.NextOf(mWhy, mForecast, mRef, mIsForecast));
   finally
     mForecast.Free;

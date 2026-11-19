@@ -160,10 +160,17 @@ const
   cWakeMs = 1000;
 begin
   NameThreadForDebugging('Atlas.MainThread');
-  // Der Thread führt nichts aus; er besitzt nur die Einträge (RemoveQueuedEvents in Stop).
-  while not Terminated do
-  begin
-    FWake.WaitFor(cWakeMs);
+  try
+    // Der Thread führt nichts aus; er besitzt nur die Einträge (RemoveQueuedEvents in Stop).
+    while not Terminated do
+    begin
+      FWake.WaitFor(cWakeMs);
+    end;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('TAtlasMainThread: ' + TAtlasGuard.ErrorText(E));
+    end;
   end;
 end;
 

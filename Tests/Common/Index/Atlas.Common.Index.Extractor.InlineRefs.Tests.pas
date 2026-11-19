@@ -64,10 +64,13 @@ var
   mRefs: TIndexInlineRefs;
 begin
   mTree := TPascalParser.Parse(AText);
-  mReader := TIndexTokenReader.Create(mTree.Tokens);
-  mSymbols := TList<TIndexSymbol>.Create;
-  mRefs := TIndexInlineRefs.Create(mSymbols, mReader);
+  mReader := nil;
+  mSymbols := nil;
+  mRefs := nil;
   try
+    mReader := TIndexTokenReader.Create(mTree.Tokens);
+    mSymbols := TList<TIndexSymbol>.Create;
+    mRefs := TIndexInlineRefs.Create(mSymbols, mReader);
     FillSymbols(mSymbols, AText);
     Result := mRefs.RefsOf(mTree.Root.FindChild(TSyntaxKind.ImplementationSection).FindChild(
       TSyntaxKind.RoutineDecl), '', '');
@@ -87,10 +90,13 @@ var
   mRefs: TIndexInlineRefs;
 begin
   mTree := TPascalParser.Parse(AText);
-  mReader := TIndexTokenReader.Create(mTree.Tokens);
-  mSymbols := TList<TIndexSymbol>.Create;
-  mRefs := TIndexInlineRefs.Create(mSymbols, mReader);
+  mReader := nil;
+  mSymbols := nil;
+  mRefs := nil;
   try
+    mReader := TIndexTokenReader.Create(mTree.Tokens);
+    mSymbols := TList<TIndexSymbol>.Create;
+    mRefs := TIndexInlineRefs.Create(mSymbols, mReader);
     FillSymbols(mSymbols, AText);
     mRefs.Add(mTree.Root.FindChild(TSyntaxKind.ImplementationSection));
     Result := mSymbols.ToArray;

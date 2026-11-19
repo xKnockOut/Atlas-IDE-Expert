@@ -117,9 +117,11 @@ var
   mHook: TAtlasWndProcHook;
 begin
   mControl := TControl.Create(nil);
-  mBottom := TRecorder.Create;
-  mOwner := TRecorder.Create;
+  mBottom := nil;
+  mOwner := nil;
   try
+    mBottom := TRecorder.Create;
+    mOwner := TRecorder.Create;
     mBottom.Old := mControl.WindowProc;
     mControl.WindowProc := mBottom.Handle;
     mHook := TAtlasWndProcHook.Create(mControl, mOwner.Handle);
@@ -166,10 +168,12 @@ var
   mHook: TAtlasWndProcHook;
 begin
   mControl := TControl.Create(nil);
-  mOwner := TRecorder.Create;
-  mForeign := TRecorder.Create;
-  mHook := nil;
+  mOwner := nil;
+  mForeign := nil;
   try
+    mOwner := TRecorder.Create;
+    mForeign := TRecorder.Create;
+    mHook := nil;
     mHook := TAtlasWndProcHook.Create(mControl, mOwner.Handle);
     mOwner.Hook := mHook;
     mForeign.Old := mControl.WindowProc;
@@ -206,9 +210,11 @@ var
   mReasons: TArray<string>;
 begin
   mControl := TControl.Create(nil);
-  mOwner := TRecorder.Create;
-  mForeign := TRecorder.Create;
+  mOwner := nil;
+  mForeign := nil;
   try
+    mOwner := TRecorder.Create;
+    mForeign := TRecorder.Create;
     mHook := TAtlasWndProcHook.Create(mControl, mOwner.Handle);
     mOwner.Hook := mHook;
     mForeign.Old := mControl.WindowProc;
