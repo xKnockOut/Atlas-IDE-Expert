@@ -285,6 +285,8 @@ Atlas.Common.Rules.Builtin.Components.Tests
 Atlas.Common.Rules.Builtin.Components.Model.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests
+Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute.Tests
+Atlas.Common.Rules.Builtin.Concurrency.Polling.Tests
 Atlas.Common.Rules.Builtin.Conditions.Jumps.Tests
 Atlas.Common.Rules.Builtin.Constants.Tests
 Atlas.Common.Rules.Builtin.Constants.Types.Tests
@@ -320,6 +322,7 @@ Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests
 Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.Tests
 Atlas.Common.Rules.Builtin.Inheritance.MemberHides.Tests
 Atlas.Common.Rules.Builtin.Inheritance.OverrideCase.Tests
+Atlas.Common.Rules.Builtin.Inheritance.Constructors.Tests
 Atlas.Common.Rules.Builtin.Inheritance.OverrideTargets.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Shadowing.Tests
 Atlas.Common.Rules.Builtin.InvalidDeclarations.Tests
@@ -330,6 +333,7 @@ Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
 Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
+Atlas.Common.Rules.Builtin.Ownership.CreateOrder.Tests
 Atlas.Common.Rules.Builtin.Ownership.MethodReferences.Tests
 Atlas.Common.Rules.Builtin.Ownership.Interfaces.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests

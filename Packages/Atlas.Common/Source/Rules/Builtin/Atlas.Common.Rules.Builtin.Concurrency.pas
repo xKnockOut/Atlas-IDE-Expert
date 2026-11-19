@@ -106,6 +106,8 @@ uses
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Concurrency.Threads,
+  Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,
+  Atlas.Common.Rules.Builtin.Concurrency.Polling,
   Atlas.Common.Rules.Builtin.Concurrency.MainThread,
   Atlas.Common.Localization.Texts;
 
@@ -1251,6 +1253,8 @@ begin
   ARegistry.Register(TThreadLoopWithoutTerminatedRule.Create);
   ARegistry.Register(TAnonymousThreadNotStartedRule.Create);
   ARegistry.Register(TTaskExceptionUnobservedRule.Create);
+  ARegistry.Register(TThreadExecuteWithoutExceptRule.Create);
+  ARegistry.Register(TSleepPollingLoopRule.Create);
 end;
 
 initialization

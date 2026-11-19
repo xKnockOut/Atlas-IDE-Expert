@@ -1,0 +1,2 @@
+### Neu
+- Prüfregel `thread-execute-without-except` (#2632): meldet `TThread.Execute`, dessen Rumpf nicht ganz in einem `try … except` steht; eine Ausnahme beendet den Thread sonst still (nur `FatalException`). Still, wenn die Klasse `FatalException` auswertet (`DoTerminate`, `OnTerminate`, nach `WaitFor`) oder Execute nur eine geschützte Routine aufruft. Korrektur mit Meldung über ein `ILogger`-Feld der Klasse. `catch-all-without-raise` schweigt im äußeren Handler von Execute.

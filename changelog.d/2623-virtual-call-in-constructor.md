@@ -1,0 +1,2 @@
+### Neu
+- Prüfregel `virtual-call-in-constructor` (#2623): meldet Konstruktoren, die eine virtuelle Methode von Self aufrufen (auch über nicht virtuelle Hilfsmethoden und eingebettete Routinen), wenn ein Nachfahr sie so überschreibt, dass sie ein eigenes Feld liest, das sein Konstruktor erst nach `inherited` setzt. Nachfahren kommen aus der Unit und über den Index aus anderen Units; die Meldung nennt Nachfahr und Feld. Ohne Index nur ein Hinweis mit niedriger Konfidenz für Aufrufe vor `inherited`.

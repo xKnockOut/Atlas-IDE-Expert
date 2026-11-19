@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1261] of string = (
+  cCatalogLinesEnFindBugs: array[0..1283] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -1077,6 +1077,25 @@ const
     '      "safeFix": false',
     '    },',
     '{',
+    '      "id": "multiple-create-in-try",',
+    '      "name": "Several objects before or inside one shared try … finally",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "Two or more local variables (also inline variables) receive T.Create(…) of a class without owner (same detection as local-object-not-freed) and one shared try … finally frees the' +
+    'm (Free, Destroy, DisposeOf, FreeAndNil). Form 1: the assignments stand before the try. If a later Create (or another statement in between) raises, the earlier object already exists but the try has no' +
+    't been entered yet: it leaks. Reported at the second and every further Create, naming the object at risk (\"If TFileStream.Create fails, mList is not freed.\"). Silent when all further constructors ca' +
+    'nnot fail and nothing stands in between: collections also with arguments (TList<T>, TObjectList<T>, TStringList, TDictionary<K,V>, TObjectDictionary<K,V>, TStack<T>, TQueue<T>, THashSet<T>, TThreadLis' +
+    't<T> and their TObject variants) and, without arguments, TObject, TMemoryStream, TBytesStream, TStringBuilder, TJSONObject, TJSONArray, TInterfaceList and TBits. Form 2: the assignments stand inside t' +
+    'he try and at least one variable is not set to nil before the try; if a Create fails, the finally frees an unassigned variable. Reported at its first release. Silent for nested try … finally per objec' +
+    't, interface variables, records, components with owner, fields and a single object. Such a leak only appears when the constructor really fails, so tests and leak checks rarely see it. High confidence.' +
+    ' Quick fix (safe): set all involved variables to nil before the try and move the Create calls into the try block (inline variables become var X: T := nil); the order of the releases stays.",',
+    '      "bad": "mList := TStringList.Create;\nmStream := TFileStream.Create(AFile, fmOpenRead);\ntry\n  mList.LoadFromStream(mStream);\nfinally\n  mStream.Free;\n  mList.Free;\nend;",',
+    '      "good": "mList := nil;\nmStream := nil;\ntry\n  mList := TStringList.Create;\n  mStream := TFileStream.Create(AFile, fmOpenRead);\n  mList.LoadFromStream(mStream);\nfinally\n  mStream.Free;\n  m' +
+    'List.Free;\nend;",',
+    '      "safeFix": true',
+    '    },',
+    '{',
     '      "id": "anonymous-method-self-cycle",',
     '      "name": "Anonymous method keeps its own frame alive",',
     '      "category": "bug",',
@@ -1508,6 +1527,24 @@ const
     '          "description": "Further functions without side effects that are reported like the standard routines, as Name, Class.Name or Unit.Name."',
     '        }',
     '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "virtual-call-in-constructor",',
+    '      "name": "Virtual method in the constructor reads a field the descendant sets later",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A constructor calls a virtual or dynamic method of Self (unqualified or Self.M, also through non-virtual methods of its own class and nested routines, up to four levels), and a d' +
+    'escendant overrides that method so that the override reads a field the descendant declares and only sets in its constructor after inherited. The override then runs before the field is set. Descendants' +
+    ' come from the unit and, through the index, from other units of the project (their source is read on demand). The message names the descendant and the field: \"BuildControls is virtual; TAtlasRuleDial' +
+    'og.BuildControls reads FRules, which is only set after inherited Create.\" Silent for methods no descendant overrides, abstract methods without an override, overrides that check the field for nil (Ass' +
+    'igned(F), F <> nil), fields set before inherited, writes, FreeAndNil and Free. Without an index, and when no descendant in the unit gives a clear case, only a hint with low confidence for a call befor' +
+    'e inherited (shown from minConfidence low). Medium confidence; no fix (move the setup to a later point such as CreateWnd, Loaded or AfterConstruction). The code action jumps to the override when it is' +
+    ' in the same file.",',
+    '      "bad": "constructor TAtlasDialog.Create(AOwner: TComponent);\nbegin\n  inherited CreateNew(AOwner);\n  BuildControls;\nend;\n\nprocedure TAtlasRuleDialog.BuildControls;\nbegin\n  FRules.Add(''Reg' +
+    'el'');\nend;",',
+    '      "good": "procedure TAtlasDialog.AfterConstruction;\nbegin\n  inherited;\n  BuildControls;\nend;",',
     '      "safeFix": false',
     '    },',
     '{',

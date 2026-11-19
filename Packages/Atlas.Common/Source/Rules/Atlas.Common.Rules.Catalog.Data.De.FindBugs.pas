@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeFindBugs: array[0..611] of string = (
+  cCatalogLinesDeFindBugs: array[0..621] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
@@ -608,6 +608,19 @@ const
     '      ]',
     '    },',
     '{',
+    '      "id": "multiple-create-in-try",',
+    '      "name": "Mehrere Objekte vor bzw. in einem gemeinsamen try … finally",',
+    '      "description": "Zwei oder mehr lokale Variablen (auch Inline-Variablen) erhalten T.Create(…) einer Klasse ohne Owner (gleiche Erkennung wie local-object-not-freed), und ein gemeinsames try … fin' +
+    'ally gibt sie frei (Free, Destroy, DisposeOf, FreeAndNil). Form 1: Die Zuweisungen stehen vor dem try. Scheitert ein späteres Create (oder eine Anweisung dazwischen), ist das frühere Objekt schon da, ' +
+    'das try aber noch nicht betreten: Es leckt. Gemeldet am zweiten und jedem weiteren Create mit dem gefährdeten Objekt („Scheitert TFileStream.Create, wird mList nicht freigegeben.“). Still, wenn alle w' +
+    'eiteren Konstruktoren nicht scheitern können und nichts dazwischen steht: Sammlungen auch mit Argumenten (TList<T>, TObjectList<T>, TStringList, TDictionary<K,V>, TObjectDictionary<K,V>, TStack<T>, TQ' +
+    'ueue<T>, THashSet<T>, TThreadList<T> und ihre TObject-Fassungen) sowie ohne Argumente TObject, TMemoryStream, TBytesStream, TStringBuilder, TJSONObject, TJSONArray, TInterfaceList und TBits. Form 2: D' +
+    'ie Zuweisungen stehen im try, und mindestens eine Variable ist vor dem try nicht auf nil gesetzt; scheitert ein Create, gibt das finally eine nicht gesetzte Variable frei. Gemeldet an ihrer ersten Fre' +
+    'igabe. Still bei verschachtelten try … finally je Objekt, Interface-Variablen, Records, Komponenten mit Owner, Feldern und einem einzigen Objekt. Ein solches Leck zeigt sich nur, wenn der Konstruktor ' +
+    'wirklich scheitert, also selten in Tests und Leckprüfung. Konfidenz hoch. Korrektur (sicher): alle beteiligten Variablen vor dem try auf nil setzen und die Create in den try-Block verschieben (Inline-' +
+    'Variablen werden zu var X: T := nil); die Reihenfolge der Freigaben bleibt."',
+    '    },',
+    '{',
     '      "id": "anonymous-method-self-cycle",',
     '      "name": "Anonyme Methode hält ihren eigenen Rahmen fest",',
     '      "description": "Eine lokale Variable (auch Inline-Variable) erhält eine anonyme Methode der Routine, und eine anonyme Methode derselben Routine fängt diese Variable ein (auch die anonyme Methode' +
@@ -874,6 +887,17 @@ const
     '          "description": "Weitere Funktionen ohne Seiteneffekte, die wie die Standardroutinen gemeldet werden, als Name, Klasse.Name oder Unit.Name."',
     '        }',
     '      ]',
+    '    },',
+    '{',
+    '      "id": "virtual-call-in-constructor",',
+    '      "name": "Virtuelle Methode im Konstruktor liest ein Feld, das der Nachfahr später setzt",',
+    '      "description": "Ein Konstruktor ruft eine virtuelle oder dynamische Methode von Self auf (unqualifiziert oder Self.M, auch über nicht virtuelle Methoden der eigenen Klasse und eingebettete Routi' +
+    'nen, bis zu vier Stufen), und ein Nachfahr überschreibt sie so, dass die Überschreibung ein Feld liest, das der Nachfahr selbst deklariert und erst in seinem Konstruktor nach inherited setzt. Die Über' +
+    'schreibung läuft dann, bevor das Feld steht. Nachfahren kommen aus der Unit und über den Index aus anderen Units des Projekts (ihr Quelltext wird bei Bedarf gelesen). Die Meldung nennt Nachfahr und Fe' +
+    'ld: „BuildControls ist virtuell; TAtlasRuleDialog.BuildControls liest FRules, das erst nach inherited Create gesetzt wird.“ Still bei Methoden, die kein Nachfahr überschreibt, abstrakten Methoden ohne' +
+    ' Überschreibung, Überschreibungen, die das Feld auf nil prüfen (Assigned(F), F <> nil), Feldern, die vor inherited gesetzt werden, Zuweisungen, FreeAndNil und Free. Ohne Index und ohne eindeutigen Fal' +
+    'l in der Unit nur ein Hinweis mit niedriger Konfidenz, wenn der Aufruf vor inherited steht (sichtbar ab minConfidence low). Konfidenz mittel; keine Korrektur (den Aufbau an eine spätere Stelle verschi' +
+    'eben, etwa CreateWnd, Loaded oder AfterConstruction). Die Code-Aktion springt zur Überschreibung, wenn sie in derselben Datei steht."',
     '    },',
     '{',
     '      "id": "class-reference-nonvirtual-constructor",',

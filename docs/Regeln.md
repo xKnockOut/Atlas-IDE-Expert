@@ -8,9 +8,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 88 |
+| [Fehler finden](#gruppe-find-bugs) | 90 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 15 |
+| [Threads](#gruppe-threads) | 17 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 96 |
 | [Robustheit und Muster](#gruppe-robustness) | 15 |
@@ -93,6 +93,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`raw-memory-leak`](#raw-memory-leak) | GetMem oder New ohne Freigabe | Bug | Warnung |
 | [`local-object-not-freed`](#local-object-not-freed) | Lokales Objekt nie freigegeben | Bug | Warnung |
 | [`created-result-not-freed`](#created-result-not-freed) | Neues Objekt aus einer Funktion nie freigegeben | Bug | Warnung |
+| [`multiple-create-in-try`](#multiple-create-in-try) | Mehrere Objekte vor bzw. in einem gemeinsamen try … finally | Bug | Warnung |
 | [`anonymous-method-self-cycle`](#anonymous-method-self-cycle) | Anonyme Methode hält ihren eigenen Rahmen fest | Bug | Warnung |
 | [`event-handler-not-unhooked`](#event-handler-not-unhooked) | Ereignis eines fremden Objekts nicht zurückgesetzt | Bug | Hinweis |
 | [`interface-object-mixed`](#interface-object-mixed) | Objekt mit Referenzzählung als Objekt und als Interface benutzt | Bug | Warnung |
@@ -116,6 +117,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
 | [`ignored-result`](#ignored-result) | Ergebnis einer Funktion ohne Seiteneffekte verworfen | Bug | Warnung |
+| [`virtual-call-in-constructor`](#virtual-call-in-constructor) | Virtuelle Methode im Konstruktor liest ein Feld, das der Nachfahr später setzt | Bug | Warnung |
 | [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
@@ -150,6 +152,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
 | [`task-exception-unobserved`](#task-exception-unobserved) | Exception in TTask geht verloren | Code Smell | Hinweis |
+| [`thread-execute-without-except`](#thread-execute-without-except) | Ausnahme in TThread.Execute beendet den Thread still | Bug | Warnung |
+| [`sleep-polling-loop`](#sleep-polling-loop) | Warteschleife mit Sleep statt Warten auf ein Ereignis | Code Smell | Hinweis |
 | [`parallel-for-shared-write`](#parallel-for-shared-write) | Gemeinsame Variable in TParallel.For geschrieben | Bug | Warnung |
 | [`thread-unsafe-increment`](#thread-unsafe-increment) | Zähler im Thread ohne TInterlocked | Bug | Warnung |
 
@@ -5271,6 +5275,43 @@ Richtig:
   end;
 ```
 
+<a id="multiple-create-in-try"></a>
+### multiple-create-in-try
+
+**Mehrere Objekte vor bzw. in einem gemeinsamen try … finally** · Bug · Warnung · Gruppe Fehler finden
+
+Zwei oder mehr lokale Variablen (auch Inline-Variablen) erhalten T.Create(…) einer Klasse ohne Owner (gleiche Erkennung wie local-object-not-freed), und ein gemeinsames try … finally gibt sie frei (Free, Destroy, DisposeOf, FreeAndNil). Form 1: Die Zuweisungen stehen vor dem try. Scheitert ein späteres Create (oder eine Anweisung dazwischen), ist das frühere Objekt schon da, das try aber noch nicht betreten: Es leckt. Gemeldet am zweiten und jedem weiteren Create mit dem gefährdeten Objekt („Scheitert TFileStream.Create, wird mList nicht freigegeben.“). Still, wenn alle weiteren Konstruktoren nicht scheitern können und nichts dazwischen steht: Sammlungen auch mit Argumenten (TList<T>, TObjectList<T>, TStringList, TDictionary<K,V>, TObjectDictionary<K,V>, TStack<T>, TQueue<T>, THashSet<T>, TThreadList<T> und ihre TObject-Fassungen) sowie ohne Argumente TObject, TMemoryStream, TBytesStream, TStringBuilder, TJSONObject, TJSONArray, TInterfaceList und TBits. Form 2: Die Zuweisungen stehen im try, und mindestens eine Variable ist vor dem try nicht auf nil gesetzt; scheitert ein Create, gibt das finally eine nicht gesetzte Variable frei. Gemeldet an ihrer ersten Freigabe. Still bei verschachtelten try … finally je Objekt, Interface-Variablen, Records, Komponenten mit Owner, Feldern und einem einzigen Objekt. Ein solches Leck zeigt sich nur, wenn der Konstruktor wirklich scheitert, also selten in Tests und Leckprüfung. Konfidenz hoch. Korrektur (sicher): alle beteiligten Variablen vor dem try auf nil setzen und die Create in den try-Block verschieben (Inline-Variablen werden zu var X: T := nil); die Reihenfolge der Freigaben bleibt.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix multiple-create-in-try`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+mList := TStringList.Create;
+mStream := TFileStream.Create(AFile, fmOpenRead);
+try
+  mList.LoadFromStream(mStream);
+finally
+  mStream.Free;
+  mList.Free;
+end;
+```
+
+Richtig:
+
+```pascal
+mList := nil;
+mStream := nil;
+try
+  mList := TStringList.Create;
+  mStream := TFileStream.Create(AFile, fmOpenRead);
+  mList.LoadFromStream(mStream);
+finally
+  mStream.Free;
+  mList.Free;
+end;
+```
+
 <a id="anonymous-method-self-cycle"></a>
 ### anonymous-method-self-cycle
 
@@ -5800,6 +5841,64 @@ TTask.Run(
       end;
     end;
   end);
+```
+
+<a id="thread-execute-without-except"></a>
+### thread-execute-without-except
+
+**Ausnahme in TThread.Execute beendet den Thread still** · Bug · Warnung · Gruppe Threads
+
+Eine Überschreibung von Execute in einem Nachfahren von TThread (aus Unit und Index, auch über eigene Thread-Vorfahren), deren Rumpf nicht ganz in einem try … except steht, das jede Ausnahme fängt (except ohne on, on E: Exception, on TObject oder ein else-Teil). Eine Ausnahme, die Execute verlässt, beendet den Thread still: Delphi legt sie nur in FatalException ab, und gemeldet wird nichts, solange niemand die Eigenschaft liest. Um den Schutz erlaubt sind ein try … finally und ein vorangestelltes NameThreadForDebugging. Ein Rumpf, der nur eine Routine aufruft (auch mit Methodenreferenz als Argument, inherited, eine Methode der Klasse oder eine eingebettete Routine), gilt als geschützt, wenn diese Routine selbst geschützt ist; steht ihr Rumpf nicht in der Unit, hat der Befund Konfidenz niedrig und nennt die Routine. Still, wenn die Klasse FatalException auswertet: eine andere Methode der Klasse oder eines Vorfahren (DoTerminate) liest sie, eine Routine, die die Klasse nennt, liest sie (Code nach WaitFor, OnTerminate-Handler) oder weist einen solchen OnTerminate-Handler zu, oder eine andere Unit des Projekts nennt Klasse und FatalException (Index mit index.usages). Konfidenz hoch. Korrektur nur, wenn die Klasse ein Feld vom Typ ILogger hat: den Rumpf in try … except on E: Exception do einschließen und die Meldung mit Error protokollieren (ergänzt System.SysUtils, wenn es fehlt); ohne Protokoll keine Korrektur, damit kein leerer Handler entsteht. catch-all-without-raise bleibt für diesen äußeren Handler still.
+
+Mit Treffer:
+
+```pascal
+procedure TIndexWorker.Execute;
+begin
+  while not Terminated do
+    ProcessNext;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TIndexWorker.Execute;
+begin
+  try
+    while not Terminated do
+      ProcessNext;
+  except
+    on E: Exception do
+      FLogger.Error(ClassName + '.Execute: ' + E.Message);
+  end;
+end;
+```
+
+<a id="sleep-polling-loop"></a>
+### sleep-polling-loop
+
+**Warteschleife mit Sleep statt Warten auf ein Ereignis** · Code Smell · Hinweis · Gruppe Threads
+
+Eine while- oder repeat-Schleife, deren Rumpf nur mit Sleep oder SleepEx wartet (optional mit Zähler, Zeitmessung in lokalen Variablen oder einer Zeitprüfung, die mit Exit, Break oder raise abbricht), und deren Bedingung einen Zustand außerhalb der Routine liest: ein Feld, eine Eigenschaft, eine globale Variable oder eine Funktion (nicht nur lokale Variablen, Konstanten, Zeitfunktionen oder Terminated). Eine solche Schleife reagiert spät (bis zu einem Sleep-Intervall), kostet bei jedem Durchlauf Rechenzeit und hängt still, wenn sich der Zustand nie ändert. Die Meldung nennt den abgefragten Zustand und den Ersatz: TThread.WaitFor bei Finished, ITask.Wait bei Status, sonst TEvent.WaitFor bzw. TLightweightEvent.WaitFor mit Zeitgrenze. Still, wenn der Rumpf anderes tut, schon auf ein Ereignis wartet, bei Sleep(0) (Zeitscheibe abgeben im Spinlock), bei Bedingungen, die eine Aktion wiederholen (Aufruf mit Argumenten wie TryReplace(…)), für die Zeitgrenze selbst (Vergleich mit GetTickCount64 oder ElapsedMilliseconds), bei Schleifen in anonymen Methoden (für sich geprüft) und wo eine andere Regel die Schleife schon meldet: Methoden von Thread-Klassen ohne Terminated in der Schleife (thread-loop-without-terminated) und Methoden, die im Hauptthread laufen, etwa Formulare, Frames und Ereignis-Handler (blocking-call-in-main-thread). Konfidenz mittel; keine Korrektur, weil das Ereignis dort gesetzt werden muss, wo sich der Zustand ändert.
+
+Mit Treffer:
+
+```pascal
+procedure TAtlasBuildInbox.WaitForSignal;
+begin
+  while not FSignalled do
+    Sleep(25);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TAtlasBuildInbox.WaitForSignal;
+begin
+  FSignal.WaitFor(cTimeoutMs);
+end;
 ```
 
 <a id="dataset-loop-without-next"></a>
@@ -9206,6 +9305,38 @@ Richtig:
 procedure TImport.Vorbereiten;
 begin
   FZeilen.Clear;
+end;
+```
+
+<a id="virtual-call-in-constructor"></a>
+### virtual-call-in-constructor
+
+**Virtuelle Methode im Konstruktor liest ein Feld, das der Nachfahr später setzt** · Bug · Warnung · Gruppe Fehler finden
+
+Ein Konstruktor ruft eine virtuelle oder dynamische Methode von Self auf (unqualifiziert oder Self.M, auch über nicht virtuelle Methoden der eigenen Klasse und eingebettete Routinen, bis zu vier Stufen), und ein Nachfahr überschreibt sie so, dass die Überschreibung ein Feld liest, das der Nachfahr selbst deklariert und erst in seinem Konstruktor nach inherited setzt. Die Überschreibung läuft dann, bevor das Feld steht. Nachfahren kommen aus der Unit und über den Index aus anderen Units des Projekts (ihr Quelltext wird bei Bedarf gelesen). Die Meldung nennt Nachfahr und Feld: „BuildControls ist virtuell; TAtlasRuleDialog.BuildControls liest FRules, das erst nach inherited Create gesetzt wird.“ Still bei Methoden, die kein Nachfahr überschreibt, abstrakten Methoden ohne Überschreibung, Überschreibungen, die das Feld auf nil prüfen (Assigned(F), F <> nil), Feldern, die vor inherited gesetzt werden, Zuweisungen, FreeAndNil und Free. Ohne Index und ohne eindeutigen Fall in der Unit nur ein Hinweis mit niedriger Konfidenz, wenn der Aufruf vor inherited steht (sichtbar ab minConfidence low). Konfidenz mittel; keine Korrektur (den Aufbau an eine spätere Stelle verschieben, etwa CreateWnd, Loaded oder AfterConstruction). Die Code-Aktion springt zur Überschreibung, wenn sie in derselben Datei steht.
+
+Mit Treffer:
+
+```pascal
+constructor TAtlasDialog.Create(AOwner: TComponent);
+begin
+  inherited CreateNew(AOwner);
+  BuildControls;
+end;
+
+procedure TAtlasRuleDialog.BuildControls;
+begin
+  FRules.Add('Regel');
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TAtlasDialog.AfterConstruction;
+begin
+  inherited;
+  BuildControls;
 end;
 ```
 
