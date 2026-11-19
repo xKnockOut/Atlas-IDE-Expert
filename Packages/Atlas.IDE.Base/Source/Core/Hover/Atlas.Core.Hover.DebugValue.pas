@@ -108,7 +108,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Chars;
 
 const
   // Reservierte Wörter von Delphi; Direktiven (override, virtual …) wertet der Debugger ohnehin nicht aus.
@@ -119,11 +120,6 @@ const
     'or', 'packed', 'procedure', 'program', 'property', 'raise', 'record', 'repeat', 'resourcestring', 'set',
     'shl', 'shr', 'string', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until', 'uses', 'var',
     'while', 'with', 'xor', 'out', 'operator');
-
-function IsIdentifierChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
-end;
 
 { TAtlasDebugValue }
 
@@ -197,17 +193,17 @@ var
   mStart, mStop: Integer;
 begin
   Result := '';
-  if (AIndex < 0) or (AIndex >= Length(ALine)) or not IsIdentifierChar(ALine[AIndex + 1]) then
+  if (AIndex < 0) or (AIndex >= Length(ALine)) or not TTextChars.IsIdentChar(ALine[AIndex + 1]) then
   begin
     Exit;
   end;
   mStart := AIndex;
-  while (mStart > 0) and IsIdentifierChar(ALine[mStart]) do
+  while (mStart > 0) and TTextChars.IsIdentChar(ALine[mStart]) do
   begin
     Dec(mStart);
   end;
   mStop := AIndex + 1;
-  while (mStop < Length(ALine)) and IsIdentifierChar(ALine[mStop + 1]) do
+  while (mStop < Length(ALine)) and TTextChars.IsIdentChar(ALine[mStop + 1]) do
   begin
     Inc(mStop);
   end;
@@ -325,12 +321,12 @@ var
 begin
   AStart := 0;
   // Klammer vor dem Punkt: Aufruf oder Typumwandlung, nicht auswerten (auch nicht nur den Rest).
-  if (APos = 0) or not IsIdentifierChar(ALine[APos]) then
+  if (APos = 0) or not TTextChars.IsIdentChar(ALine[APos]) then
   begin
     Exit(False);
   end;
   mNameStart := APos;
-  while (mNameStart > 1) and IsIdentifierChar(ALine[mNameStart - 1]) do
+  while (mNameStart > 1) and TTextChars.IsIdentChar(ALine[mNameStart - 1]) do
   begin
     Dec(mNameStart);
   end;
