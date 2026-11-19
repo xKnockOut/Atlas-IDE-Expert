@@ -135,49 +135,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Editor.EditSurface,
-  Atlas.IDE.Editor.PaintedLine;
-
-function CurrentShift: TShiftState;
-begin
-  Result := [];
-  if GetKeyState(VK_SHIFT) < 0 then
-  begin
-    Include(Result, ssShift);
-  end;
-  if GetKeyState(VK_CONTROL) < 0 then
-  begin
-    Include(Result, ssCtrl);
-  end;
-  if GetKeyState(VK_MENU) < 0 then
-  begin
-    Include(Result, ssAlt);
-  end;
-end;
-
-procedure Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-/// <summary>Zeigt der aktuelle Modul ein Formular?</summary>
-function FormShown: Boolean;
-var
-  mModules: IOTAModuleServices;
-  mModule: IOTAModule;
-  mForm: IOTAFormEditor;
-begin
-  Result := False;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    mModule := mModules.CurrentModule;
-    Result := (mModule <> nil) and Supports(mModule.CurrentEditor, IOTAFormEditor, mForm);
-  end;
-end;
+  Atlas.IDE.Editor.PaintedLine,
+  Atlas.IDE.Foundation.KeyHook;
 
 /// <summary>Antwort an die laufende Instanz; nach dem Abbau verworfen.</summary>
 function DeliverToInstance: TAtlasLinkedDeliverProc;
@@ -409,7 +368,7 @@ begin
     Finish;
     Exit;
   end;
-  case TAtlasLinkedKeys.KeyStep(Word(AMsg.wParam), CurrentShift <> [], FSession.Active,
+  case TAtlasLinkedKeys.KeyStep(Word(AMsg.wParam), TAtlasKeyHook.CurrentShift <> [], FSession.Active,
     FSession.Problem <> TAtlasLinkedProblem.None) of
     TAtlasLinkedKeyStep.RestoreAndFinish:
       begin
@@ -517,7 +476,7 @@ end;
 function TAtlasIdeLinkedEditing.Lost(const AView: IOTAEditView): Boolean;
 begin
   Result := (AView = nil) or (AView.Buffer = nil) or not SameText(AView.Buffer.FileName, FSession.FileName) or
-    not Enabled or IsBusy or FormShown;
+    not Enabled or IsBusy or TAtlasEditorBuffer.FormEditorInFront;
 end;
 
 procedure TAtlasIdeLinkedEditing.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
@@ -623,7 +582,7 @@ begin
     end;
     FStatus(Caption, mHint);
   end;
-  Invalidate;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 procedure TAtlasIdeLinkedEditing.Finished;
@@ -632,7 +591,7 @@ begin
   begin
     FStatus('', '');
   end;
-  Invalidate;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 procedure TAtlasIdeLinkedEditing.Finish;

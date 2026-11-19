@@ -77,7 +77,8 @@ uses
   Atlas.WinBase.Process,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Updates.Strings,
-  Atlas.UI.Updates.Texts;
+  Atlas.UI.Updates.Texts,
+  Atlas.Core.Notifications.MessageSink;
 
 { TAtlasIdeUpdateInstaller }
 
@@ -177,10 +178,7 @@ end;
 
 procedure TAtlasIdeUpdateInstaller.Say(const AText: string);
 begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
+  TAtlasMessageSink.Create(FOnMessage).Say(AText);
 end;
 
 procedure TAtlasIdeUpdateInstaller.DeleteFolder(const ADir: string);
@@ -201,10 +199,7 @@ end;
 
 procedure TAtlasIdeUpdateInstaller.Log(const AText: string);
 begin
-  if Assigned(FOnLog) then
-  begin
-    FOnLog(AText);
-  end;
+  TAtlasMessageSink.Create(FOnLog).Say(AText);
 end;
 
 function TAtlasIdeUpdateInstaller.StateFile(const AVersion: string): string;
