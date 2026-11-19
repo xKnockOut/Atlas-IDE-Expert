@@ -30,6 +30,7 @@ The server offers Claude Code 33 MCP tools:
 - build through the IDE (`build_project`, `get_last_build`)
 - read the issue started in the IDE with checklist and code references (`get_current_issue`)
 - run DUnitX tests
+- read the last test run of the IDE without running again (`get_last_tests`: red tests with file:line, expected/actual, log, newly red, flaky, leak, stale)
 
 ### Change
 

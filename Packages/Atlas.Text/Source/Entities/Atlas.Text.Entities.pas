@@ -18,22 +18,31 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  Atlas.Text.Encoding;
+
+const
+  // Benannte Entities und ihre Zeichen, gleich geordnet.
+  cEntityNames: array[0..4] of string = ('lt', 'gt', 'amp', 'quot', 'apos');
+  cEntityChars: array[0..4] of string = ('<', '>', '&', '"', '''');
+  /// <summary>Vorsilbe einer hexadezimalen Zahlenangabe ("#x41").</summary>
+  cHexPrefix = '#x';
 
 { TTextEntities }
 
 class function TTextEntities.CodePointText(ACode: Integer): string;
 begin
-  if (ACode <= 0) or (ACode > $10FFFF) or ((ACode >= $D800) and (ACode <= $DFFF)) then
+  if (ACode <= 0) or (ACode > TTextEncodingProbe.cMaxCodePoint) or
+    ((ACode >= TTextEncodingProbe.cHighSurrogateFirst) and (ACode <= TTextEncodingProbe.cSurrogateLast)) then
   begin
     Exit('');
   end;
-  if ACode <= $FFFF then
+  if ACode < TTextEncodingProbe.cFirstSupplementary then
   begin
     Exit(Char(ACode));
   end;
-  Dec(ACode, $10000);
-  Result := Char($D800 + (ACode shr 10)) + Char($DC00 + (ACode and $3FF));
+  Dec(ACode, TTextEncodingProbe.cFirstSupplementary);
+  Result := Char(TTextEncodingProbe.cHighSurrogateFirst + (ACode shr TTextEncodingProbe.cSurrogateBits)) +
+    Char(TTextEncodingProbe.cLowSurrogateFirst + (ACode and TTextEncodingProbe.cSurrogateMask));
 end;
 
 // Zeichen zu einer Zahlenangabe ("#65", "#x41"); '' ohne gültige Zahl.
@@ -43,9 +52,9 @@ var
   mDigits: string;
 begin
   Result := '';
-  if (Length(AName) > 2) and ((AName[2] = 'x') or (AName[2] = 'X')) then
+  if (Length(AName) > Length(cHexPrefix)) and AName.StartsWith(cHexPrefix, True) then
   begin
-    mDigits := '$' + Copy(AName, 3, MaxInt);
+    mDigits := '$' + Copy(AName, Length(cHexPrefix) + 1, MaxInt);
   end
   else
   begin
@@ -59,25 +68,21 @@ end;
 
 // Text zur Entity AName (ohne & und ;); '' bei unbekannten Namen.
 function EntityText(const AName: string): string;
+var
+  mIndex: Integer;
 begin
   if (Length(AName) > 1) and (AName[1] = '#') then
   begin
     Exit(NumericEntity(AName));
   end;
-  case IndexStr(AName, ['lt', 'gt', 'amp', 'quot', 'apos']) of
-    0:
-      Result := '<';
-    1:
-      Result := '>';
-    2:
-      Result := '&';
-    3:
-      Result := '"';
-    4:
-      Result := '''';
-  else
-    Result := '';
+  for mIndex := Low(cEntityNames) to High(cEntityNames) do
+  begin
+    if cEntityNames[mIndex] = AName then
+    begin
+      Exit(cEntityChars[mIndex]);
+    end;
   end;
+  Result := '';
 end;
 
 // Ersetzung der Entity bei AIndex (AText[AIndex] = '&'); ANext ist dann die Stelle dahinter.

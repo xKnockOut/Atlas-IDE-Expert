@@ -38,7 +38,7 @@ type
     /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
     /// </summary>
     class function Strings(const AItems: array of string): TJSONArray; static;
-    /// <summary>Paar AName mit AValue an AObject anhängen, nur wenn AValue nicht leer ist.</summary>
+    /// <summary>AValue unter AName in AObject; ein leerer Wert bleibt weg.</summary>
     class procedure AddText(AObject: TJSONObject; const AName, AValue: string); static;
     /// <summary>Zeitpunkt AValue (UTC) als ISO 8601 mit „Z“; '' für 0 und davor. Gegenstück zu
     /// TJsonRead.IsoTime.</summary>
@@ -119,6 +119,10 @@ uses
   System.DateUtils,
   Atlas.Text.Timestamps;
 
+const
+  /// <summary>Hexadezimalstellen einer Folge \uXXXX.</summary>
+  cUnicodeEscapeDigits = 4;
+
 { TJsonText }
 
 class function TJsonText.Quote(const AText: string): string;
@@ -146,9 +150,9 @@ begin
         #13:
           mBuilder.Append('\r');
       else
-        if Ord(mChar) < 32 then
+        if mChar < ' ' then
         begin
-          mBuilder.Append('\u' + IntToHex(Ord(mChar), 4));
+          mBuilder.Append('\u' + IntToHex(Ord(mChar), cUnicodeEscapeDigits));
         end
         else
         begin

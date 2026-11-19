@@ -1,6 +1,6 @@
 ﻿unit Shell.Mcp.IssueText;
 
-// Ausgabe von get_current_issue (#2051) als Text wie im Mockup oder als JSON des
+// Ausgabe von get_current_issue (#2051) als lesbarer Text oder als JSON des
 // gewählten Abschnitts. Die Datei selbst (Atlas.Core.Tracker.CurrentIssue) liegt
 // im Tracker-Modul; die zweisprachigen Texte hier, weil das Modul ohne
 // Atlas.Common auskommen muss.
@@ -16,7 +16,7 @@ type
   public
     /// <summary>summary, checklist, body, comments, all; '' = summary. False bei anderem Text.</summary>
     class function ParseSection(const AText: string; out ASection: TAtlasCurrentIssueSection): Boolean; static;
-    /// <summary>Text wie im Mockup von #2051; ANow (UTC) für „vor 5 Min.“.</summary>
+    /// <summary>Lesbarer Text mit Kopf, Fortschritt und Abschnitt; ANow (UTC) für „vor 5 Min.“.</summary>
     class function Text(const AIssue: TAtlasCurrentIssue; ASection: TAtlasCurrentIssueSection;
       ANow: TDateTime): string; static;
     /// <summary>JSON mit den Feldern des Abschnitts, eingerückt.</summary>

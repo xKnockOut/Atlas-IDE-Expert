@@ -40,6 +40,9 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
 - `get_current_issue` zu Beginn einer Aufgabe auf einem Issue-Branch: das in der IDE begonnene Tracker-Issue mit Checkliste, Codeverweisen und (mit `section` = `body` bzw. `comments`) Beschreibung und letzten Kommentaren. Die Checkliste dort ist der Auftrag; Codeverweise sind die ersten Stellen zum Lesen.
+- `get_last_tests` bei „Warum ist der Test rot?“: der letzte Testlauf aus der IDE ohne neuen Lauf, je rotem Test
+  Meldung, Datei:Zeile, erwartet/erhalten, Protokollauszug und Marken (neu rot, wackelig, Leck, veraltet);
+  `only` wählt `failed`, `flaky`, `slow`, `leaks`, `stale` oder `all`. Erst hier lesen, dann gezielt `run_tests`.
 - `build_project` baut das Projekt in der laufenden IDE (auch in der Starter Edition ohne
   Kommandozeilen-Compiler) und liefert die Compilermeldungen; das Projekt muss dort offen sein.
 - `run_tests` führt die DUnitX-Tests aus (vorhandene Test-EXE, mit `build: true` vorher in der IDE

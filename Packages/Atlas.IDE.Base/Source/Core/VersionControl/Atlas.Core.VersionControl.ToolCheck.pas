@@ -88,6 +88,9 @@ end;
 
 /// <summary>Nur die ersten drei Zahlen ("2.47.1.windows.1" → "2.47.1"); '' ohne Ziffer am Anfang.</summary>
 function VersionNumber(const AText: string): string;
+const
+  /// <summary>Punkte bis hinter die dritte Zahl.</summary>
+  cMaxDots = 3;
 var
   mIndex, mDots: Integer;
 begin
@@ -98,7 +101,7 @@ begin
   end;
   mDots := 0;
   mIndex := 1;
-  while (mIndex <= Length(AText)) and (mDots < 3) and CharInSet(AText[mIndex], ['0'..'9', '.']) do
+  while (mIndex <= Length(AText)) and (mDots < cMaxDots) and CharInSet(AText[mIndex], ['0'..'9', '.']) do
   begin
     if AText[mIndex] = '.' then
     begin

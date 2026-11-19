@@ -100,9 +100,9 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.RegularExpressions,
+  Atlas.Text.Json,
   Atlas.Common.Lsp.Rationale,
-  Atlas.Common.Lsp.IdeUnits,
-  Atlas.Text.Json;
+  Atlas.Common.Lsp.IdeUnits;
 
 // Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
 // Überschriften), *Name*: am Absatzanfang (Parameter) und `Code`. Andere Zeichen aus

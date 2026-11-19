@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.MyIssues.Tests;
 
-// Bereich „Meine Issues“ der Willkommensseite (#765, Mockup #ws12): Titel,
+// Bereich „Meine Issues“ der Willkommensseite (#765): Titel,
 // Chip des Pull Requests mit CI-Ampel, Zeile zum Stand („Stand vom …“ ohne
 // Netz), Fußzeile vor und nach „Beginnen“, Kurztext „ATL-123 · 3 offen“;
 // Klicks auf Kennung, Pull Request und „Beginnen“ erreichen die Quelle über
@@ -121,7 +121,7 @@ begin
   Result.Title := ATitle;
 end;
 
-/// <summary>Zwei GitHub-Issues wie im Mockup, eines mit Pull Request; Git.</summary>
+/// <summary>Zwei GitHub-Issues, eines mit Pull Request; Git.</summary>
 function SampleView: TAtlasIssuesView;
 var
   mTarget: TAtlasTrackerTarget;
@@ -258,7 +258,7 @@ begin
     Assert.IsFalse(mView.IsUnseen(mView.Items[1].Key));
     Assert.IsFalse(mView.IsUnseen(''));
     mView.Unseen := nil;
-    // Mockup: Chip „PR #640 · CI grün“.
+    // Chip „PR #… · CI grün“.
     Assert.AreEqual('PR #760 · CI grün', TAtlasTrackerIssuesText.PullRequestText(mView.Items[0].PullRequest));
     mPull := mView.Items[0].PullRequest;
     mPull.Checks := TAtlasTrackerChecks.Failure;
@@ -274,7 +274,7 @@ begin
       mView.Items[0]));
     mView.Options.Start := TAtlasIssueStart.Remember;
     Assert.AreEqual('Merkt #753 als aktuelles Issue', TAtlasTrackerIssuesText.StartHint(mView, mView.Items[0]));
-    // Kurztext wie die Kachel im Mockup: „ATL-123 · 3 offen“.
+    // Kurztext wie die Kachel: „ATL-123 · 3 offen“.
     Assert.AreEqual('GitHub · 2 offen', TAtlasTrackerIssuesText.TileText(mView));
     mView.Active.Key := 'ATL-123';
     mView.Items := mView.Items + [Issue('ATL-124', 124, 'x')];
@@ -293,7 +293,7 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     mView := SampleView;
-    // Frischer Stand: keine Zeile über der Liste; Fußzeile wie im Mockup.
+    // Frischer Stand: keine Zeile über der Liste; Fußzeile mit Hinweis.
     Assert.AreEqual('', TAtlasTrackerIssuesText.StatusText(mView));
     Assert.AreEqual('„Beginnen“ legt den Branch an und öffnet das Projekt.',
       TAtlasTrackerIssuesText.FooterText(mView));

@@ -36,7 +36,7 @@ type
     [Test]
     procedure TakesDynamicArray;
     [Test]
-    procedure AddTextSkipsEmpty;
+    procedure AddTextLeavesOutEmptyValue;
     [Test]
     procedure IsoTimeRoundTrips;
   end;
@@ -201,15 +201,15 @@ begin
   end;
 end;
 
-procedure TJsonBuildTests.AddTextSkipsEmpty;
+procedure TJsonBuildTests.AddTextLeavesOutEmptyValue;
 var
   mObject: TJSONObject;
 begin
   mObject := TJSONObject.Create;
   try
-    TJsonBuild.AddText(mObject, 'leer', '');
-    TJsonBuild.AddText(mObject, 'name', 'Kasse');
-    Assert.AreEqual('{"name":"Kasse"}', mObject.ToJSON);
+    TJsonBuild.AddText(mObject, 'a', 'Wert');
+    TJsonBuild.AddText(mObject, 'b', '');
+    Assert.AreEqual('{"a":"Wert"}', mObject.ToJSON([]));
   finally
     mObject.Free;
   end;

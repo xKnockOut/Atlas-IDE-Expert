@@ -27,6 +27,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - über die IDE bauen (`build_project`, `get_last_build`)
   - das in der IDE begonnene Issue mit Checkliste und Codeverweisen lesen (`get_current_issue`)
   - DUnitX-Tests ausführen
+  - den letzten Testlauf der IDE lesen, ohne neu zu laufen (`get_last_tests`: rote Tests mit Datei:Zeile, erwartet/erhalten, Protokoll, neu rot, wackelig, Leck, veraltet)
 - **Ändern:**
   - schreibend umbenennen
   - Code-Aktionen anwenden

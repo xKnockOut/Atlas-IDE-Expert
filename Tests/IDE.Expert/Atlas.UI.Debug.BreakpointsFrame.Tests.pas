@@ -155,6 +155,10 @@ begin
   mRule.Thread := TAtlasThreadFilter.NameContains;
   mRule.ThreadText := 'Import';
   Assert.AreEqual('Thread „Import“', TAtlasBreakpointTexts.RuleText(mRule, ''));
+  mRule.Caller := 'TKundenImport.LeseZeile';
+  Assert.AreEqual('Thread „Import“ · Aufruf aus TKundenImport.LeseZeile', TAtlasBreakpointTexts.RuleText(mRule, ''));
+  mRule.CallerDirect := True;
+  Assert.AreEqual('Thread „Import“ · direkt aus TKundenImport.LeseZeile', TAtlasBreakpointTexts.RuleText(mRule, ''));
   mRow := TAtlasBreakpointRow.Create('C:\App\Kunde.pas', 42);
   mRow.Rules := 'Hauptthread';
   Assert.AreEqual('Hauptthread', TAtlasBreakpointTexts.Cell(mRow, TAtlasBreakpointColumn.Rules, True));
