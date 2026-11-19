@@ -76,25 +76,6 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Json;
 
-function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
-var
-  mLine, mCharacter: Integer;
-begin
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', mLine) and
-    TJSONObject(AValue).TryGetValue<Integer>('character', mCharacter);
-  if Result then
-  begin
-    APosition := TLspTextPosition.Create(mLine, mCharacter);
-  end;
-end;
-
-function ReadRange(const AValue: TJSONValue; out ARange: TLspRange): Boolean;
-begin
-  ARange := Default(TLspRange);
-  Result := (AValue is TJSONObject) and ReadPosition(TJSONObject(AValue).GetValue('start'), ARange.StartPos) and
-    ReadPosition(TJSONObject(AValue).GetValue('end'), ARange.EndPos);
-end;
-
 function ReadRanges(const AValue: TJSONValue): TArray<TLspRange>;
 var
   mItem: TJSONValue;
@@ -105,7 +86,7 @@ begin
   begin
     for mItem in TJSONArray(AValue) do
     begin
-      if ReadRange(mItem, mRange) then
+      if TLspRange.TryRead(mItem, mRange) then
       begin
         Result := Result + [mRange];
       end;
@@ -168,7 +149,7 @@ begin
   Result.Kind := TJsonRead.Text(ACandidate, 'kind');
   Result.Note := TJsonRead.Text(ACandidate, 'note');
   Result.NoteText := TJsonRead.Text(ACandidate, 'noteText');
-  if ReadRange(ACandidate.GetValue('range'), mRange) then
+  if TLspRange.TryRead(ACandidate.GetValue('range'), mRange) then
   begin
     Result.Line := mRange.StartPos.Line;
   end;

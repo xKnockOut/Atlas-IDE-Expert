@@ -73,7 +73,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Editor.BlockComment;
+  Atlas.Core.Editor.BlockComment,
+  Atlas.Text.Lines;
 
 const
   // Öffnen einen Block bzw. Abschnitt: Grenze der Anweisung (eingeschlossen) und unterhalb eine Ebene tiefer.
@@ -247,18 +248,6 @@ begin
   end;
 end;
 
-function LeadingWhitespace(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(ALine, 1, mIndex - 1);
-end;
-
 /// <summary>Steht unter den Tokens AFirst..ALast das Wort AWord?</summary>
 function HasWordIn(const ATokens: TCodeTokens; AFirst, ALast: Integer; const AWord: string): Boolean;
 var
@@ -338,7 +327,7 @@ var
   mIndex: Integer;
 begin
   APrefix := '';
-  mIndent := LeadingWhitespace(ALine);
+  mIndent := TTextLines.IndentOf(ALine);
   mRest := Copy(ALine, Length(mIndent) + 1, MaxInt);
   Result := mRest.StartsWith('///') or (ALineComments and mRest.StartsWith('//'));
   if not Result then
@@ -390,7 +379,7 @@ begin
   Result := '';
   if not (AOptions.ContinueComments and ContinuedComment(ALines, ARefLine + 1, AOptions, Result, ACharacter)) then
   begin
-    Result := LeadingWhitespace(ALines[ABaseLine]);
+    Result := TTextLines.IndentOf(ALines[ABaseLine]);
     if IndentsBelow(ATokens, ARefLine) then
     begin
       Result := Result + StringOfChar(' ', Max(0, AOptions.IndentWidth));
@@ -412,13 +401,13 @@ begin
     mDone := LineCommentPrefix(ALines[ARefLine], AOptions.Comments.LineComments, Result);
     if not mDone and InsideBlockComment(ALines, ARefLine) then
     begin
-      Result := LeadingWhitespace(ALines[ARefLine]);
+      Result := TTextLines.IndentOf(ALines[ARefLine]);
       mDone := True;
     end;
   end;
   if not mDone then
   begin
-    Result := LeadingWhitespace(ALines[ARefLine]);
+    Result := TTextLines.IndentOf(ALines[ARefLine]);
     if IndentsAbove(ATokens, ARefLine) then
     begin
       Result := Result + StringOfChar(' ', Max(0, AOptions.IndentWidth));

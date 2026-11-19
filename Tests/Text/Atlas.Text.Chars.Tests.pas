@@ -15,6 +15,12 @@ type
     procedure AsciiIdentCharRejectsUmlaut;
     [Test]
     procedure IdentStartRejectsDigit;
+    [Test]
+    procedure CharAtOutsideIsNull;
+    [Test]
+    procedure IsDigitsNeedsOneDigit;
+    [Test]
+    procedure PastNextBehindChar;
   end;
 
 implementation
@@ -51,6 +57,32 @@ begin
   Assert.IsFalse(TTextChars.IsIdentStart('1'));
   Assert.IsTrue(TTextChars.IsIdentStart('_'));
   Assert.IsTrue(TTextChars.IsIdentStart(#$00DC));
+end;
+
+procedure TTextCharsTests.CharAtOutsideIsNull;
+begin
+  Assert.AreEqual<Char>('b', TTextChars.CharAt('abc', 2));
+  Assert.AreEqual<Char>(#0, TTextChars.CharAt('abc', 0));
+  Assert.AreEqual<Char>(#0, TTextChars.CharAt('abc', 4));
+  Assert.AreEqual<Char>(#0, TTextChars.CharAt('', 1));
+end;
+
+procedure TTextCharsTests.IsDigitsNeedsOneDigit;
+begin
+  Assert.IsTrue(TTextChars.IsDigits('0123456789'));
+  Assert.IsFalse(TTextChars.IsDigits(''));
+  Assert.IsFalse(TTextChars.IsDigits('12a'));
+  Assert.IsFalse(TTextChars.IsDigits(' 1'));
+  Assert.IsFalse(TTextChars.IsDigits('-1'));
+end;
+
+procedure TTextCharsTests.PastNextBehindChar;
+begin
+  Assert.AreEqual(5, TTextChars.PastNext('{ab} c', 1, '}'));
+  Assert.AreEqual(5, TTextChars.PastNext('''ab'' c', 2, ''''));
+  Assert.AreEqual(2, TTextChars.PastNext('}', 1, '}'));
+  // Ohne Abschluss: Length + 2, wie hinter einem gedachten Zeichen hinter dem Text.
+  Assert.AreEqual(6, TTextChars.PastNext('{abc', 1, '}'));
 end;
 
 initialization

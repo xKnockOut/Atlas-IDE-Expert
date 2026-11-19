@@ -50,6 +50,10 @@ type
     class function Create(AKind: TAtlasOverviewMarkKind; ALine, ACount: Integer): TAtlasOverviewMark; overload; static;
     class function Create(AKind: TAtlasOverviewMarkKind; ALine, ACount: Integer;
       const AText: string): TAtlasOverviewMark; overload; static;
+    /// <summary>Indizes der Marken von AKind in AMarks, nach Zeile sortiert (bei gleicher Zeile in Eingabefolge).
+    /// </summary>
+    class function IndexesOfKind(const AMarks: TArray<TAtlasOverviewMark>;
+      AKind: TAtlasOverviewMarkKind): TArray<Integer>; static;
   end;
 
   TAtlasOverviewMarks = TArray<TAtlasOverviewMark>;
@@ -226,7 +230,8 @@ begin
 end;
 
 /// <summary>Marken der Art AKind nach Zeile (Einfügen; die Listen sind meist schon sortiert).</summary>
-function MarksOfKind(const AMarks: TAtlasOverviewMarks; AKind: TAtlasOverviewMarkKind): TArray<Integer>;
+class function TAtlasOverviewMark.IndexesOfKind(const AMarks: TArray<TAtlasOverviewMark>;
+  AKind: TAtlasOverviewMarkKind): TArray<Integer>;
 var
   mIndex, mPosition, mMoved: Integer;
 begin
@@ -302,7 +307,7 @@ begin
     // Je Art in Zeichenreihenfolge; innerhalb der Art aufsteigend, Überlappungen zusammengefasst.
     for mKind := Low(TAtlasOverviewMarkKind) to High(TAtlasOverviewMarkKind) do
     begin
-      AddKindBars(AMarks, MarksOfKind(AMarks, mKind), ALineCount, AHeight, AMinHeight, Result);
+      AddKindBars(AMarks, TAtlasOverviewMark.IndexesOfKind(AMarks, mKind), ALineCount, AHeight, AMinHeight, Result);
     end;
   end;
 end;
