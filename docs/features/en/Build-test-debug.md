@@ -548,6 +548,18 @@ Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
 Settings: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
 
+### Marked objects (#839)
+
+Following an object through the code no longer means comparing addresses. At a stop, “Mark object …” (editor context menu, Debug submenu) labels the object under the cursor; class and name are suggested (“Kunde Meier”). Wherever the same address shows up again, the label is next to it: in front of the value in the editor (“‹Kunde A› (FNr: 4; …)”), behind the value in the debug hover and in the Evaluate window. Each mark gets one of eight colors.
+
+- The “Marked objects” window (Atlas › Debug or View › Atlas › Debug) shows label, class, address, where the object was last seen (expression and file:line) and the state. Del removes, F2 renames the label, Space changes the color.
+- Atlas reads the address via `Pointer(expression)` without side effects and the class from the VMT in the program's memory; nothing is called in the program.
+- If another class sits at a marked address at a stop, the object counts as “probably freed”: the window shows it in gray and the label no longer appears anywhere.
+- Marks last for the running debug session; when the process ends, the list is empty.
+- Not covered: IDE windows (Watches, Local Variables), visualizer replacement texts and call stack parameters show no labels.
+
+Setting: `debug.objectMarks`
+
 ## Debug: stepping and breaking
 
 ### Smart step into

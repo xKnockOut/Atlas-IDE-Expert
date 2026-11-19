@@ -128,6 +128,7 @@ begin
   Assert.IsTrue(CheckOf(APage, 'DebugVariablesScopedWatches').Checked, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsTrue(CheckOf(APage, 'DebugNote').Checked, 'debug.note (#582)');
   Assert.IsTrue(CheckOf(APage, 'DebugNoteSaveFile').Checked, 'debug.note.saveFile (#582)');
+  Assert.IsTrue(CheckOf(APage, 'DebugObjectMarks').Checked, 'debug.objectMarks (#839)');
 end;
 
 /// <summary>Alle Schalter des Abschnitts umstellen.</summary>
@@ -165,6 +166,7 @@ begin
   CheckOf(APage, 'DebugVariablesScopedWatches').Checked := False;
   CheckOf(APage, 'DebugNote').Checked := False;
   CheckOf(APage, 'DebugNoteSaveFile').Checked := False;
+  CheckOf(APage, 'DebugObjectMarks').Checked := False;
   ASection.OwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
 end;
 
@@ -204,6 +206,7 @@ begin
   Assert.IsFalse(ASaved.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsFalse(ASaved.DebugNote);
   Assert.IsFalse(ASaved.DebugNoteSaveFile);
+  Assert.IsFalse(ASaved.DebugObjectMarks, 'debug.objectMarks (#839)');
   Assert.AreEqual('C:\Komponenten', ASaved.DebugOwnCodeFolders, 'bereinigt (#578)');
 end;
 
