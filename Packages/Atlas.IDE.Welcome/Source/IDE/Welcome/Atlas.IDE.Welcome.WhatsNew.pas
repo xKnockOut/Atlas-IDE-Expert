@@ -83,9 +83,9 @@ implementation
 uses
   Atlas.Core.Diagnostics.MainThread,
   System.Classes,
-  System.IOUtils,
   Vcl.Menus,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
@@ -95,22 +95,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Foundation.Host;
-
-/// <summary>Textdatei als UTF-8 ohne Byte-Order-Mark; '' bei Fehler.</summary>
-function ReadText(const AFileName: string): string;
-begin
-  Result := '';
-  try
-    Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
-  except
-    on Exception do
-      Exit('');
-  end;
-  if (Result <> '') and (Result[1] = #$FEFF) then
-  begin
-    Delete(Result, 1, 1);
-  end;
-end;
 
 { TAtlasIdeWhatsNew }
 
@@ -142,13 +126,13 @@ end;
 procedure TAtlasIdeWhatsNew.Start;
 var
   mStored: TAtlasPluginSettings;
-  mCurrent: string;
+  mCurrent, mJson: string;
 begin
   FFolder := FindFolder(TAtlasIdeHost.InstallFolder);
   FVersions := nil;
-  if FFolder <> '' then
+  if (FFolder <> '') and TAtlasDataFile.TryRead(FFolder + TAtlasWhatsNew.cFileName, mJson) then
   begin
-    FVersions := TAtlasWhatsNew.Parse(ReadText(FFolder + TAtlasWhatsNew.cFileName));
+    FVersions := TAtlasWhatsNew.Parse(mJson);
   end;
   mStored := TAtlasIdeSettings.Stored;
   FSeen := mStored.WhatsNewSeen;
