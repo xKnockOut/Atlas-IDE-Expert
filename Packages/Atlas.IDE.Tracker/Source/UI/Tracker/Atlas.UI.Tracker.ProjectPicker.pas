@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.ProjectPicker;
 
-// Klappliste „Tracker-Projekt“ in „Meine Issues“ (#1927, Mockup Runde 82 TP1),
+// Klappliste „Tracker-Projekt“ in „Meine Issues“ (#1927),
 // reine VCL: links in der Zeile über der Liste „Projekt: Automatisch ▾“.
 //   ● Automatisch – nach dem Delphi-Projekt (Kasse)
 //     YouTrack · KASSE

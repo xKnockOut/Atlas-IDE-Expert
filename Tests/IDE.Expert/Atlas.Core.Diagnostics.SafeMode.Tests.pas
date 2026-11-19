@@ -343,8 +343,8 @@ begin
   mMarker.AddFailure('Problems');
   mKeys := TAtlasSafeMode.Suggest(mToggles, ['VisibleRows', 'PairGuides'], mMarker);
   // Zuerst zuletzt geändert (nur Schnellschalter), dann Fehler: Probleme (2) vor Hover (1).
-  // Zum Feature Hover gehören zwei Schalter (DebugHoverValues seit #891), zu Problems vier
-  // (Marke „Wer gibt das frei?“ seit #1877, Fenster „Atlas-Prüfung“ seit #909, offene Units zuerst seit #1108);
+  // Zum Feature Hover gehören zwei Schalter (DebugHoverValues, #891), zu Problems vier
+  // (Marke „Wer gibt das frei?“ #1877, Fenster „Atlas-Prüfung“ #909, offene Units zuerst #1108);
   // bei Gleichstand in Katalogfolge.
   Assert.AreEqual(7, Integer(Length(mKeys)));
   Assert.AreEqual('PairGuides', mKeys[0]);
