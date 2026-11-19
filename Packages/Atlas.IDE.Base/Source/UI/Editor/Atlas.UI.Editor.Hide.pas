@@ -67,7 +67,7 @@ type
     property OnChoose: TProc<TAtlasHideChoice> read FOnChoose write FOnChoose;
   end;
 
-  TAtlasHideNoticeWindow = class(TAtlasPopupWindow)
+  TAtlasHideNoticeWindow = class(TAtlasLayoutPopupWindow)
   public const
     cVisibleMs = 6000;
     /// <summary>Abstand unter dem Element, logische Pixel.</summary>
@@ -81,12 +81,11 @@ type
     FTimer: TTimer;
     FOnUndo: TNotifyEvent;
     procedure TimerTick(Sender: TObject);
-    function Layout(ADraw: Boolean): TSize;
     /// <summary>„  ·  Rückgängig“ ab AX in der Zeile AY (nur mit FCanUndo); merkt FUndoRect.</summary>
     procedure LayoutUndo(ADraw: Boolean; var AX: Integer; AY, ATextHeight: Integer);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -316,27 +315,6 @@ begin
   FTimer.OnTimer := TimerTick;
 end;
 
-procedure TAtlasHideNoticeWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-/// <summary>Schreibt AText bei AX, AY in AColor (nur wenn ADraw) und rückt AX um seine Breite weiter.</summary>
-procedure PutText(ACanvas: TCanvas; ADraw: Boolean; var AX: Integer; AY: Integer; const AText: string;
-  AColor: TColor);
-begin
-  if ADraw then
-  begin
-    ACanvas.Font.Color := AColor;
-    ACanvas.TextOut(AX, AY, AText);
-  end;
-  Inc(AX, ACanvas.TextWidth(AText));
-end;
-
 procedure TAtlasHideNoticeWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
@@ -400,12 +378,12 @@ begin
   if FTitle <> '' then
   begin
     Canvas.Font.Style := [fsBold];
-    PutText(Canvas, ADraw, mX, mY, FTitle, ToColor(Colors.Text));
+    PutRun(ADraw, mX, mY, FTitle, Colors.Text);
     Canvas.Font.Style := [];
   end
   else
   begin
-    PutText(Canvas, ADraw, mX, mY, mDetail, ToColor(Colors.Text));
+    PutRun(ADraw, mX, mY, mDetail, Colors.Text);
     mDetail := '';
   end;
   LayoutUndo(ADraw, mX, mY, mTextHeight);
@@ -414,7 +392,7 @@ begin
   begin
     mY := mY + mTextHeight + Scale(cRowGap);
     mX := Scale(cPad);
-    PutText(Canvas, ADraw, mX, mY, mDetail, ToColor(Colors.Muted));
+    PutRun(ADraw, mX, mY, mDetail, Colors.Muted);
     mWidth := Max(mWidth, mX);
   end;
   if ADraw then
@@ -435,13 +413,13 @@ begin
     Exit;
   end;
   mUndo := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndo);
-  PutText(Canvas, ADraw, AX, AY, '  ·  ', ToColor(Colors.Muted));
+  PutRun(ADraw, AX, AY, '  ·  ', Colors.Muted);
   FUndoRect := Rect(AX, AY, AX + Canvas.TextWidth(mUndo), AY + ATextHeight);
   if ADraw and FUndoHot then
   begin
     Canvas.Font.Style := [fsUnderline];
   end;
-  PutText(Canvas, ADraw, AX, AY, mUndo, ToColor(Colors.Accent));
+  PutRun(ADraw, AX, AY, mUndo, Colors.Accent);
   Canvas.Font.Style := [];
 end;
 

@@ -25,7 +25,7 @@ uses
 type
   TAtlasNoSourceWayEvent = reference to procedure(AWay: TAtlasNoSourceWay);
 
-  TAtlasNoSourcePopup = class(TAtlasPopupWindow)
+  TAtlasNoSourcePopup = class(TAtlasLayoutPopupWindow)
   public const
     cGap = 4;
     cPad = 10;
@@ -41,10 +41,9 @@ type
     FHot: Integer;
     FOnWay: TAtlasNoSourceWayEvent;
     FOnIgnore: TProc;
-    function Layout(ADraw: Boolean): TSize;
     function LinkAt(const APoint: TPoint): Integer;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -81,15 +80,6 @@ begin
   GuardFeature := TAtlasFeature.Debugger;
   FHot := -1;
   SetAccessible(cUiaToolTipControlType, TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceTitle, ['']));
-end;
-
-procedure TAtlasNoSourcePopup.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasNoSourcePopup.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
