@@ -178,6 +178,7 @@ Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.FindingsPrompt.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
+Atlas.Common.Lsp.DataAccessSites.Tests
 Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Core.Debug.MethodBreakpoints.Tests
 Atlas.Core.Debug.RunTo.Tests
@@ -233,6 +234,7 @@ Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
 Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
+Atlas.Common.Mcp.CompilerMessageTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
@@ -394,6 +396,8 @@ Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Rules.MessageCatalog.Tests
+Atlas.Common.Rules.CompilerPitfalls.Tests
+Atlas.Common.Rules.CompilerPitfallFixes.Tests
 Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
 Atlas.Common.Rules.Prompt.Tests
@@ -412,6 +416,7 @@ Atlas.Common.Semantics.OrdinalConstants.Tests
 Atlas.Common.Semantics.Reassigned.Tests
 Atlas.Common.Semantics.RtlMethodReferences.Tests
 Atlas.Common.Semantics.StepCalls.Tests
+Atlas.Common.Semantics.DataAccessCalls.Tests
 Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
 Atlas.Common.Semantics.UnresolvedNames.Tests
