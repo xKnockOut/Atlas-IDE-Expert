@@ -12,7 +12,9 @@ type
   TAtlasSymbolPathTextId = (
     SymbolPathFound, SymbolPathFoundMany, SymbolPathMoreRoutes, SymbolPathCallsIncomplete, SymbolPathRouteHeader,
     SymbolPathNoPath, SymbolPathAborted, SymbolPathAmbiguous, SymbolPathNotFound, SymbolPathInferred,
-    SymbolPathLibrary);
+    SymbolPathLibrary, SymbolPathEdgeUses, SymbolPathEdgeUsesImpl, SymbolPathEdgeInherits, SymbolPathEdgeImplements,
+    SymbolPathEdgeImplementedBy, SymbolPathEdgeHasField, SymbolPathEdgeOfType, SymbolPathEdgeParameter,
+    SymbolPathEdgeResult, SymbolPathEdgeCalls, SymbolPathEdgeContains);
 
   TAtlasSymbolPathStrings = class
   public
@@ -39,7 +41,18 @@ const
      '„%s“ ist mehrdeutig; bitte qualifiziert angeben. Treffer (Doppelklick springt hin):',
      '„%s“ ist weder Symbol noch Unit im Index.',
      'erschlossen',
-     'Bibliothek'),
+     'Bibliothek',
+     'verwendet',
+     'verwendet (implementation)',
+     'erbt von',
+     'setzt um',
+     'umgesetzt von',
+     'hat Feld',
+     'vom Typ',
+     'Parameter vom Typ',
+     'Ergebnis vom Typ',
+     'ruft auf',
+     'enthält'),
     ('Shortest path: %d steps · %d nodes searched · %d ms',
      'Shortest path: %d steps, %d equally short paths · %d nodes searched · %d ms',
      ' · more equally short paths not shown',
@@ -50,7 +63,18 @@ const
      '“%s” is ambiguous; please qualify it. Matches (double-click jumps there):',
      '“%s” is neither a symbol nor a unit in the index.',
      'inferred',
-     'library'));
+     'library',
+     'uses',
+     'uses (implementation)',
+     'inherits from',
+     'implements',
+     'implemented by',
+     'has field',
+     'of type',
+     'parameter of type',
+     'result of type',
+     'calls',
+     'contains'));
 
 { TAtlasSymbolPathStrings }
 
