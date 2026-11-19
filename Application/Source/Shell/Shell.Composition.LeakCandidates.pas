@@ -26,7 +26,8 @@ uses
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Lsp.LeakCandidates;
+  Atlas.Common.Lsp.LeakCandidates,
+  Atlas.Common.Lsp.Contract;
 
 {$SCOPEDENUMS ON}
 

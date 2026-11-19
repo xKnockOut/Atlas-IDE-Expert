@@ -398,6 +398,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.Summary` | `Core/Projects/Atlas.Core.Projects.Summary.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary.Json` | `Core/Projects/Atlas.Core.Projects.Summary.Json.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary.Sections` | `Core/Projects/Atlas.Core.Projects.Summary.Sections.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.Contract.Summary` | `Core/Projects/Atlas.Core.Projects.Contract.Summary.pas` | Datentypen der Projekt-Zusammenfassung und der Einrichtung als Vertrag; Willkommensseite und Tracker tragen sie in ihren Schnittstellen, #1443 |
 | `Atlas.Core.Projects.Todos` | `Core/Projects/Atlas.Core.Projects.Todos.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Trends` | `Core/Projects/Atlas.Core.Projects.Trends.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.UnitRename` | `Core/Projects/Atlas.Core.Projects.UnitRename.pas` | Ordner `Core/Projects` |

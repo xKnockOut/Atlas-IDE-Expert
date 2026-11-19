@@ -59,7 +59,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.PackageReader,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Shell.Bootstrap,
   Shell.Workspace.Listings,
   Atlas.Text.LogMarks;

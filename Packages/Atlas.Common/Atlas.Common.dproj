@@ -92,6 +92,7 @@
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.WorkerPool.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.CustomCancellation.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Dispatcher.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Connection.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Contract.pas"/>
@@ -113,7 +114,7 @@
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojEditor.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitResolver.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitAliases.pas"/>
-        <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitLookup.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Adapters.UnitLookup.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.OutputParser.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.CommandLine.pas"/>
@@ -135,7 +136,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.RuntimeReport.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CrashReserve.pas"/>
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
-        <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>
+        <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.LogFolder.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Usages.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Files.pas"/>
@@ -634,6 +635,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestFromDebug.pas"/>
         <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas"/>
         <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Setup.pas"/>
+        <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Contract.pas"/>
         <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.CreateScan.pas"/>
         <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Candidates.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas"/>
@@ -721,10 +723,10 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IndexRefresh.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeTypes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.IdeTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.Source.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeIndex.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.IdeIndex.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CompilerMessageTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DocsIndexData.pas"/>
@@ -879,10 +881,10 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Instructions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>
-        <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.DiskFileSystem.pas"/>
-        <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.CacheDirectory.pas"/>
+        <DCCReference Include="Source\Index\Providers\Atlas.Common.Index.Providers.DiskFileSystem.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.CacheDirectory.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Processes.pas"/>
-        <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.Processes.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.ProcessFiles.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Processes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkDoneProgress.pas"/>
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Contract.pas"/>
@@ -922,11 +924,13 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusFile.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ServerActivity.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.ServerActivityObserver.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusHeartbeat.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompactJson.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TextDocumentSync.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Contract.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Cancellation.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Lexer.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxChecks.pas"/>

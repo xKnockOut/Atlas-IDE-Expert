@@ -120,7 +120,7 @@ uses
   System.Classes,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Index.Scheduler,
   Shell.Bootstrap,
   Shell.Workspace.Loader,

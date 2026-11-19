@@ -684,6 +684,7 @@ contains
   Atlas.Core.Projects.Summary in 'Source\Core\Projects\Atlas.Core.Projects.Summary.pas',
   Atlas.Core.Projects.Summary.Json in 'Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas',
   Atlas.Core.Projects.Summary.Sections in 'Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas',
+  Atlas.Core.Projects.Contract.Summary in 'Source\Core\Projects\Atlas.Core.Projects.Contract.Summary.pas',
   Atlas.Core.Projects.Matching in 'Source\Core\Projects\Atlas.Core.Projects.Matching.pas',
   Atlas.Core.Projects.VersionControl in 'Source\Core\Projects\Atlas.Core.Projects.VersionControl.pas',
   Atlas.Core.Projects.VcsSettings in 'Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas',

@@ -17,7 +17,7 @@ uses
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Postfix;
 
