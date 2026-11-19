@@ -89,11 +89,6 @@ var
 
 { Dienste von Base und anderer Module }
 
-procedure MessageLine(const AText: string);
-begin
-  TAtlasIdeHost.Warning(AText);
-end;
-
 /// <summary>Builds des Moduls Build-Pipeline; nil, solange es fehlt oder nicht läuft.</summary>
 function BuildRequests: IAtlasBuildRequests;
 var
@@ -135,7 +130,7 @@ end;
 
 procedure StartBuilds;
 begin
-  GBuildInbox := TAtlasIdeBuildInbox.Create(BuildRequests, MessageLine);
+  GBuildInbox := TAtlasIdeBuildInbox.Create(BuildRequests, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopBuilds;
@@ -158,7 +153,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, MessageLine);
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopEdits;
