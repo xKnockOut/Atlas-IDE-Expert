@@ -152,7 +152,7 @@ type
 const
   cTexts: array[TLspCodeActionsText] of TAtlasText = (
     (De: 'Felder "textDocument.uri" und "range" fehlen in '; En: 'Fields "textDocument.uri" and "range" missing in '),
-    (De: 'Befund %s als Prompt kopieren'; En: 'Copy finding %s as prompt'),
+    (De: 'Befund %s als Auftrag für KI-Assistenten kopieren'; En: 'Copy finding %s as task for an AI assistant'),
     (De: 'Klassenmitglieder ordnen'; En: 'Sort class members'));
 
 {$SCOPEDENUMS OFF}
@@ -735,7 +735,8 @@ begin
   begin
     AddFreeFieldActions(mRefactoring);
   end;
-  // Befund als Prompt kopieren (#158): den Text kopiert der Client (Befehl atlas.copyText).
+  // Befund als Auftrag für KI-Assistenten kopieren (#158, #2570): den Text kopiert der Client (Befehl
+  // atlas.copyText); derselbe Text wie im Fenster „Atlas-Prüfung“ und in explain_finding.
   AddPromptActions;
 end;
 
