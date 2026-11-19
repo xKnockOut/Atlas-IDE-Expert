@@ -587,6 +587,7 @@ type
       write FDebug.DebugVariablesSearchLimit;
     property DebugVariablesScopedWatches: Boolean read FDebug.DebugVariablesScopedWatches
       write FDebug.DebugVariablesScopedWatches;
+    property DebugObjectMarks: Boolean read FDebug.DebugObjectMarks write FDebug.DebugObjectMarks;
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;

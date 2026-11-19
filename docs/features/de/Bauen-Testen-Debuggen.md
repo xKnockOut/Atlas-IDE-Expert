@@ -692,6 +692,18 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
 Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
 
+### Markierte Objekte (#839)
+
+Wer einem Objekt durch den Code folgt, muss keine Adressen mehr vergleichen. Im Halt markiert „Objekt markieren …“ (Kontextmenü des Editors, Untermenü Debuggen) das Objekt unter der Schreibmarke mit einem Etikett; vorgeschlagen werden Klasse und Name („Kunde Meier“). Wo dieselbe Adresse wieder auftaucht, steht das Etikett daneben: vor dem Wert im Editor („‹Kunde A› (FNr: 4; …)“), hinter dem Wert im Debug-Hover und im Fenster „Auswerten“. Jede Markierung bekommt eine von acht Farben.
+
+- Das Fenster „Markierte Objekte“ (Atlas › Debuggen bzw. Ansicht › Atlas › Debuggen) zeigt Etikett, Klasse, Adresse, wo das Objekt zuletzt zu sehen war (Ausdruck und Datei:Zeile) und den Zustand. Entf entfernt, F2 ändert das Etikett, die Leertaste wechselt die Farbe.
+- Die Adresse liest Atlas über `Pointer(Ausdruck)` ohne Nebenwirkungen, die Klasse aus der VMT im Speicher des Programms; im Programm wird dafür nichts aufgerufen.
+- Steht an einer markierten Adresse beim Halt eine andere Klasse, gilt das Objekt als „vermutlich freigegeben“: Das Fenster zeigt es grau, das Etikett erscheint nirgends mehr.
+- Markierungen gelten für die laufende Debug-Sitzung; mit dem Ende des Prozesses ist die Liste leer.
+- Nicht abgedeckt: Fenster der IDE (Überwachte Ausdrücke, Lokale Variablen), Ersatztexte der Visualisierer und Parameter im Aufrufstapel zeigen keine Etiketten.
+
+Einstellung: `debug.objectMarks`
+
 ### Ereignisprotokoll
 
 <a id="window-atlasdebugeventlog"></a>
