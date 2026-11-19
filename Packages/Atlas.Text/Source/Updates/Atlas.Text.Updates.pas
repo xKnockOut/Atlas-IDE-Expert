@@ -94,7 +94,8 @@ uses
   System.Math,
   System.JSON,
   System.RegularExpressions,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Chars;
 
 const
   cIdentifier = '(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)';
@@ -143,20 +144,6 @@ end;
 
 { TUpdateVersions }
 
-function IsNumber(const AText: string): Boolean;
-var
-  mChar: Char;
-begin
-  Result := AText <> '';
-  for mChar in AText do
-  begin
-    if not CharInSet(mChar, ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function CompareNumbers(const A, B: string): Integer;
 begin
   // Ohne führende Nullen (SemVer): länger ist größer, sonst Zeichen für Zeichen.
@@ -169,15 +156,15 @@ end;
 
 function CompareIdentifier(const A, B: string): Integer;
 begin
-  if IsNumber(A) and IsNumber(B) then
+  if TTextChars.IsDigits(A) and TTextChars.IsDigits(B) then
   begin
     Result := CompareNumbers(A, B);
   end
-  else if IsNumber(A) then
+  else if TTextChars.IsDigits(A) then
   begin
     Result := -1;
   end
-  else if IsNumber(B) then
+  else if TTextChars.IsDigits(B) then
   begin
     Result := 1;
   end

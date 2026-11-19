@@ -543,18 +543,6 @@ begin
   Result := TMetricsReport.JsonString(AValue);
 end;
 
-function Bool(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
 function Number(AValue: Double): string;
 begin
   Result := FormatFloat('0.###', AValue, TFormatSettings.Invariant);
@@ -599,7 +587,7 @@ begin
     .Append('"kind": ').Append(Text(TArchitectureSnapshots.cKind)).Append(',').Append(cLineBreak)
     .Append('"title": ').Append(Text(ASnapshot.Title)).Append(',').Append(cLineBreak)
     .Append('"scope": ').Append(Text(ASnapshot.Scope)).Append(',').Append(cLineBreak)
-    .Append('"includeLibrary": ').Append(Bool(ASnapshot.IncludeLibrary)).Append(',').Append(cLineBreak)
+    .Append('"includeLibrary": ').Append(TJsonText.Bool(ASnapshot.IncludeLibrary)).Append(',').Append(cLineBreak)
     .Append('"excludes": ').Append(Names(ASnapshot.Excludes)).Append(',').Append(cLineBreak)
     .Append('"grouping": {"resolution": ').Append(Number(ASnapshot.Grouping.Clamped.Resolution)).Append('},')
     .Append(cLineBreak)
@@ -629,7 +617,7 @@ begin
       .Append(', "total": ').Append(mItem.Total)
       .Append(', "uses": ').Append(mItem.Uses_)
       .Append(', "role": ').Append(Text(mItem.Role))
-      .Append(', "library": ').Append(Bool(mItem.Library_)).Append('}');
+      .Append(', "library": ').Append(TJsonText.Bool(mItem.Library_)).Append('}');
   end;
   ABuilder.Append(cLineBreak).Append('],').Append(cLineBreak).Append('"edges": [');
   for mIndex := 0 to High(ASnapshot.Edges) do
@@ -649,7 +637,7 @@ begin
     .Append(', "inner": ').Append(ASubsystem.Inner)
     .Append(', "outer": ').Append(ASubsystem.Outer)
     .Append(', "cohesion": ').Append(Number(ASubsystem.Cohesion))
-    .Append(', "isolated": ').Append(Bool(ASubsystem.Isolated));
+    .Append(', "isolated": ').Append(TJsonText.Bool(ASubsystem.Isolated));
   // Nur bei nachgeteilten Teilsystemen: Stände ohne Nachteilung bleiben wie vor #1364.
   if ASubsystem.Foundation then
   begin
@@ -698,7 +686,7 @@ begin
   begin
     mCycle := ASnapshot.Cycles[mIndex];
     Separate(ABuilder, mIndex);
-    ABuilder.Append('{"interfaceOnly": ').Append(Bool(mCycle.InterfaceOnly))
+    ABuilder.Append('{"interfaceOnly": ').Append(TJsonText.Bool(mCycle.InterfaceOnly))
       .Append(', "units": ').Append(Names(mCycle.Units))
       .Append(', "edges": [');
     for mInner := 0 to High(mCycle.Edges) do
