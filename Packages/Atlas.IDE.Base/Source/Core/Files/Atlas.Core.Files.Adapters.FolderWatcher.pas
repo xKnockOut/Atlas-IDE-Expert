@@ -25,6 +25,7 @@ type
       FChanges: TAtlasWatchedChanges;
       FStopEvent: THandle;
       procedure Report(ABuffer: PByte);
+      procedure Watch(ADirectory: THandle);
     protected
       procedure Execute; override;
     public
@@ -83,13 +84,48 @@ begin
   CloseHandle(FStopEvent);
 end;
 
-procedure TAtlasFolderWatcher.TWatchThread.Execute;
+// Liest Änderungen des geöffneten Ordners, bis der Thread enden soll oder das Lesen scheitert.
+procedure TAtlasFolderWatcher.TWatchThread.Watch(ADirectory: THandle);
 var
-  mDirectory: THandle;
   mOverlapped: TOverlapped;
   mBuffer: TBytes;
   mHandles: array[0..1] of THandle;
   mBytes: DWORD;
+begin
+  SetLength(mBuffer, cBufferBytes);
+  FillChar(mOverlapped, SizeOf(mOverlapped), 0);
+  mOverlapped.hEvent := CreateEvent(nil, True, False, nil);
+  try
+    mHandles[0] := mOverlapped.hEvent;
+    mHandles[1] := FStopEvent;
+    while not Terminated do
+    begin
+      ResetEvent(mOverlapped.hEvent);
+      if not ReadDirectoryChangesW(ADirectory, @mBuffer[0], cBufferBytes, True, cNotifyFilter, nil,
+        @mOverlapped, nil) then
+      begin
+        Break;
+      end;
+      if WaitForMultipleObjects(2, @mHandles[0], False, INFINITE) <> WAIT_OBJECT_0 then
+      begin
+        // Stop: laufendes Lesen abbrechen und dessen Ende abwarten, bevor der Puffer frei wird.
+        CancelIo(ADirectory);
+        GetOverlappedResult(ADirectory, mOverlapped, mBytes, True);
+        Break;
+      end;
+      if GetOverlappedResult(ADirectory, mOverlapped, mBytes, False) and (mBytes > 0) then
+      begin
+        Report(@mBuffer[0]);
+      end;
+    end;
+  finally
+    CloseHandle(mOverlapped.hEvent);
+  end;
+end;
+
+procedure TAtlasFolderWatcher.TWatchThread.Execute;
+var
+  mDirectory: THandle;
 begin
   NameThreadForDebugging('Atlas.FolderWatcher');
   try
@@ -101,35 +137,7 @@ begin
       Exit;
     end;
     try
-      SetLength(mBuffer, cBufferBytes);
-      FillChar(mOverlapped, SizeOf(mOverlapped), 0);
-      mOverlapped.hEvent := CreateEvent(nil, True, False, nil);
-      try
-        mHandles[0] := mOverlapped.hEvent;
-        mHandles[1] := FStopEvent;
-        while not Terminated do
-        begin
-          ResetEvent(mOverlapped.hEvent);
-          if not ReadDirectoryChangesW(mDirectory, @mBuffer[0], cBufferBytes, True, cNotifyFilter, nil,
-            @mOverlapped, nil) then
-          begin
-            Break;
-          end;
-          if WaitForMultipleObjects(2, @mHandles[0], False, INFINITE) <> WAIT_OBJECT_0 then
-          begin
-            // Stop: laufendes Lesen abbrechen und dessen Ende abwarten, bevor der Puffer frei wird.
-            CancelIo(mDirectory);
-            GetOverlappedResult(mDirectory, mOverlapped, mBytes, True);
-            Break;
-          end;
-          if GetOverlappedResult(mDirectory, mOverlapped, mBytes, False) and (mBytes > 0) then
-          begin
-            Report(@mBuffer[0]);
-          end;
-        end;
-      finally
-        CloseHandle(mOverlapped.hEvent);
-      end;
+      Watch(mDirectory);
     finally
       CloseHandle(mDirectory);
     end;
