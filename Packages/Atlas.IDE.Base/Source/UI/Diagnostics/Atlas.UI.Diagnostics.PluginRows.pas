@@ -87,17 +87,6 @@ const
   cHangColumnRight: array[0..3] of Boolean = (False, False, True, True);
   cHangDurationColumn = 2;
 
-function Cells(const AValues: array of string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
-  end;
-end;
-
 function Plain(ACount: Integer): TArray<TAtlasGridMark>;
 var
   mIndex: Integer;
@@ -207,9 +196,9 @@ begin
   for mIndex := 0 to High(ARows) do
   begin
     mRow := ARows[mIndex];
-    Result[mIndex].Cells := Cells([mRow.Name, IntToStr(mRow.Stat.Calls), TAtlasPluginRows.Ms(mRow.Stat.TotalMs),
-      TAtlasPluginRows.Ms(mRow.Stat.MeanMs), TAtlasPluginRows.Ms(mRow.Stat.MaxMs), IntToStr(mRow.Stat.SlowCalls),
-      TAtlasPluginRows.Percent(mRow.Share * 100)]);
+    Result[mIndex].Cells := TArray<string>.Create(mRow.Name, IntToStr(mRow.Stat.Calls),
+      TAtlasPluginRows.Ms(mRow.Stat.TotalMs), TAtlasPluginRows.Ms(mRow.Stat.MeanMs),
+      TAtlasPluginRows.Ms(mRow.Stat.MaxMs), IntToStr(mRow.Stat.SlowCalls), TAtlasPluginRows.Percent(mRow.Share * 100));
     Result[mIndex].Marks := Plain(Length(cFeatureColumnIds));
     Result[mIndex].Marks[cFeatureMeanColumn] := Mark(mRow.Stat.MeanMs, AThresholdMs);
     Result[mIndex].Marks[cFeatureMaxColumn] := Mark(mRow.Stat.MaxMs, AThresholdMs);
@@ -226,9 +215,9 @@ begin
   SetLength(Result, Length(ACalls));
   for mIndex := 0 to High(ACalls) do
   begin
-    Result[mIndex].Cells := Cells([TAtlasGuard.FeatureName(ACalls[mIndex].Feature),
+    Result[mIndex].Cells := TArray<string>.Create(TAtlasGuard.FeatureName(ACalls[mIndex].Feature),
       TAtlasPluginRows.Clock(ACalls[mIndex].At), TextOrDash(ACalls[mIndex].Activity),
-      TAtlasPluginRows.Ms(ACalls[mIndex].Ms)]);
+      TAtlasPluginRows.Ms(ACalls[mIndex].Ms));
     Result[mIndex].Marks := Plain(Length(cSlowColumnIds));
     Result[mIndex].Marks[cSlowDurationColumn] := Mark(ACalls[mIndex].Ms, AThresholdMs);
     Result[mIndex].Bar := -1;
@@ -245,10 +234,10 @@ begin
   for mIndex := 0 to High(ARequests) do
   begin
     mRequest := ARequests[mIndex];
-    Result[mIndex].Cells := Cells([mRequest.Method, IntToStr(mRequest.Stat.Calls),
+    Result[mIndex].Cells := TArray<string>.Create(mRequest.Method, IntToStr(mRequest.Stat.Calls),
       TAtlasPluginRows.Ms(mRequest.Stat.MeanMs), TAtlasPluginRows.Ms(mRequest.Stat.MaxMs),
       IntToStr(mRequest.WaitedCalls), TAtlasPluginRows.Ms(mRequest.WaitedMeanMs), IntToStr(mRequest.TimedOut),
-      IntToStr(mRequest.Cancelled), IntToStr(mRequest.Failed)]);
+      IntToStr(mRequest.Cancelled), IntToStr(mRequest.Failed));
     Result[mIndex].Marks := Plain(Length(cRequestColumnIds));
     // Mittel je wartender Anfrage gegen die Schwelle; die Summe stand früher hier und war fast immer rot.
     Result[mIndex].Marks[cWaitedMeanColumn] := Mark(mRequest.WaitedMeanMs, AThresholdMs);
@@ -265,9 +254,9 @@ begin
   SetLength(Result, Length(ASources));
   for mIndex := 0 to High(ASources) do
   begin
-    Result[mIndex].Cells := Cells([ASources[mIndex].Name, IntToStr(ASources[mIndex].Stat.Calls),
+    Result[mIndex].Cells := TArray<string>.Create(ASources[mIndex].Name, IntToStr(ASources[mIndex].Stat.Calls),
       TAtlasPluginRows.Ms(ASources[mIndex].Stat.MeanMs), TAtlasPluginRows.Ms(ASources[mIndex].Stat.MaxMs),
-      IntToStr(ASources[mIndex].Slow)]);
+      IntToStr(ASources[mIndex].Slow));
     Result[mIndex].Marks := Plain(Length(cSourceColumnIds));
     Result[mIndex].Marks[cSourceTooSlowColumn] := WarnIf(ASources[mIndex].Slow > 0, TAtlasGridMark.Warn);
     Result[mIndex].Bar := -1;
@@ -287,8 +276,8 @@ begin
     begin
       mWithAtlas := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagYes);
     end;
-    Result[mIndex].Cells := Cells([TextOrDash(AHangs[mIndex].Activity), TAtlasPluginRows.Clock(AHangs[mIndex].At),
-      IntToStr(AHangs[mIndex].DurationMs), mWithAtlas]);
+    Result[mIndex].Cells := TArray<string>.Create(TextOrDash(AHangs[mIndex].Activity),
+      TAtlasPluginRows.Clock(AHangs[mIndex].At), IntToStr(AHangs[mIndex].DurationMs), mWithAtlas);
     Result[mIndex].Marks := Plain(Length(cHangColumnIds));
     Result[mIndex].Marks[cHangDurationColumn] := TAtlasGridMark.Bad;
     Result[mIndex].Bar := -1;

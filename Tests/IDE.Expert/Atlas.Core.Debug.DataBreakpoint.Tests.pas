@@ -51,17 +51,6 @@ uses
   System.SysUtils,
   Atlas.Core.Debug.DataBreakpoint;
 
-function Bytes(const AValues: array of Byte): TBytes;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
-  end;
-end;
-
 { TCoreDebugDataBreakpointTests }
 
 procedure TCoreDebugDataBreakpointTests.ExpressionAtCursor;
@@ -177,62 +166,62 @@ procedure TCoreDebugDataBreakpointTests.ReadsLittleEndianIntegers;
 var
   mValue: Int64;
 begin
-  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$2A, 0, 0, 0]), True, mValue));
+  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(TBytes.Create($2A, 0, 0, 0), True, mValue));
   Assert.AreEqual<Int64>(42, mValue);
-  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FF, $FF, $FF, $FF]), True, mValue));
+  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(TBytes.Create($FF, $FF, $FF, $FF), True, mValue));
   Assert.AreEqual<Int64>(-1, mValue, 'mit Vorzeichen');
-  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FF, $FF, $FF, $FF]), False, mValue));
+  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(TBytes.Create($FF, $FF, $FF, $FF), False, mValue));
   Assert.AreEqual<Int64>(4294967295, mValue, 'ohne Vorzeichen');
-  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FE, $FF]), True, mValue));
+  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(TBytes.Create($FE, $FF), True, mValue));
   Assert.AreEqual<Int64>(-2, mValue);
-  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(Bytes([$FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF]), True, mValue));
+  Assert.IsTrue(TAtlasDataBreakpoint.TryReadInteger(TBytes.Create($FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF), True, mValue));
   Assert.AreEqual<Int64>(-1, mValue, 'acht Byte');
   Assert.IsFalse(TAtlasDataBreakpoint.TryReadInteger(nil, True, mValue));
-  Assert.IsFalse(TAtlasDataBreakpoint.TryReadInteger(Bytes([1, 2, 3, 4, 5, 6, 7, 8, 9]), True, mValue));
+  Assert.IsFalse(TAtlasDataBreakpoint.TryReadInteger(TBytes.Create(1, 2, 3, 4, 5, 6, 7, 8, 9), True, mValue));
 end;
 
 procedure TCoreDebugDataBreakpointTests.KindFromDebuggerText;
 begin
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Signed,
-    TAtlasDataBreakpoint.KindOf('-5', Bytes([$FB, $FF, $FF, $FF]), False));
+    TAtlasDataBreakpoint.KindOf('-5', TBytes.Create($FB, $FF, $FF, $FF), False));
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Unsigned,
-    TAtlasDataBreakpoint.KindOf('4294967291', Bytes([$FB, $FF, $FF, $FF]), False));
+    TAtlasDataBreakpoint.KindOf('4294967291', TBytes.Create($FB, $FF, $FF, $FF), False));
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Signed,
-    TAtlasDataBreakpoint.KindOf('42', Bytes([$2A, 0, 0, 0]), False));
+    TAtlasDataBreakpoint.KindOf('42', TBytes.Create($2A, 0, 0, 0), False));
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Boolean,
-    TAtlasDataBreakpoint.KindOf('True', Bytes([1]), False));
+    TAtlasDataBreakpoint.KindOf('True', TBytes.Create(1), False));
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Text,
-    TAtlasDataBreakpoint.KindOf('''Meier''', Bytes([0, $10, 0, 0]), False));
+    TAtlasDataBreakpoint.KindOf('''Meier''', TBytes.Create(0, $10, 0, 0), False));
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Text,
-    TAtlasDataBreakpoint.KindOf('#13#10', Bytes([0, $10, 0, 0]), False));
+    TAtlasDataBreakpoint.KindOf('#13#10', TBytes.Create(0, $10, 0, 0), False));
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Raw,
-    TAtlasDataBreakpoint.KindOf('3.5', Bytes([0, 0, $60, $40]), False),
+    TAtlasDataBreakpoint.KindOf('3.5', TBytes.Create(0, 0, $60, $40), False),
     'Gleitkomma');
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Raw,
-    TAtlasDataBreakpoint.KindOf('42', Bytes([$2A, 0, 0, 0]), True),
+    TAtlasDataBreakpoint.KindOf('42', TBytes.Create($2A, 0, 0, 0), True),
     'nur der erste Teil');
   Assert.AreEqual<TAtlasDataValueKind>(TAtlasDataValueKind.Raw,
-    TAtlasDataBreakpoint.KindOf('7', Bytes([$2A, 0, 0, 0]), False),
+    TAtlasDataBreakpoint.KindOf('7', TBytes.Create($2A, 0, 0, 0), False),
     'Text passt nicht zu den Bytes');
 end;
 
 procedure TCoreDebugDataBreakpointTests.ValueTextByKind;
 begin
-  Assert.AreEqual('-5', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Signed, Bytes([$FB, $FF, $FF, $FF])));
+  Assert.AreEqual('-5', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Signed, TBytes.Create($FB, $FF, $FF, $FF)));
   Assert.AreEqual('4294967291',
-    TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Unsigned, Bytes([$FB, $FF, $FF, $FF])));
-  Assert.AreEqual('False', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Boolean, Bytes([0])));
-  Assert.AreEqual('True', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Boolean, Bytes([2])));
-  Assert.AreEqual('', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Text, Bytes([0, $10, 0, 0])));
-  Assert.AreEqual('$00 00 60 40', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Raw, Bytes([0, 0, $60, $40])));
+    TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Unsigned, TBytes.Create($FB, $FF, $FF, $FF)));
+  Assert.AreEqual('False', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Boolean, TBytes.Create(0)));
+  Assert.AreEqual('True', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Boolean, TBytes.Create(2)));
+  Assert.AreEqual('', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Text, TBytes.Create(0, $10, 0, 0)));
+  Assert.AreEqual('$00 00 60 40', TAtlasDataBreakpoint.ValueText(TAtlasDataValueKind.Raw, TBytes.Create(0, 0, $60, $40)));
   Assert.AreEqual('', TAtlasDataBreakpoint.HexText(nil));
 end;
 
 procedure TCoreDebugDataBreakpointTests.ChangedComparesBytes;
 begin
-  Assert.IsFalse(TAtlasDataBreakpoint.Changed(Bytes([1, 2]), Bytes([1, 2])));
-  Assert.IsTrue(TAtlasDataBreakpoint.Changed(Bytes([1, 2]), Bytes([1, 3])));
-  Assert.IsTrue(TAtlasDataBreakpoint.Changed(Bytes([1, 2]), Bytes([1])));
+  Assert.IsFalse(TAtlasDataBreakpoint.Changed(TBytes.Create(1, 2), TBytes.Create(1, 2)));
+  Assert.IsTrue(TAtlasDataBreakpoint.Changed(TBytes.Create(1, 2), TBytes.Create(1, 3)));
+  Assert.IsTrue(TAtlasDataBreakpoint.Changed(TBytes.Create(1, 2), TBytes.Create(1)));
   Assert.IsFalse(TAtlasDataBreakpoint.Changed(nil, nil));
 end;
 

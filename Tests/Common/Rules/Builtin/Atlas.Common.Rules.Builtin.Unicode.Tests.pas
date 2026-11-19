@@ -192,17 +192,6 @@ begin
   Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
-function Bytes(const AValues: array of Byte): TBytes;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
-  end;
-end;
-
 { TUnicodeRuleTests }
 
 procedure TUnicodeRuleTests.BidiControlInCommentReported;
@@ -456,10 +445,10 @@ var
   mFindings: TArray<TRuleFinding>;
 begin
   // BOM, "unit U;" CRLF "// a" $FF "b": Zeile 1, Spalte 4. Den Text liefert der Dekodierer (Delphi U+FFFD).
-  mData := Bytes([$EF, $BB, $BF, Ord('u'), Ord('n'), Ord('i'), Ord('t'), Ord(' '), Ord('U'), Ord(';'), 13, 10,
+  mData := TBytes.Create($EF, $BB, $BF, Ord('u'), Ord('n'), Ord('i'), Ord('t'), Ord(' '), Ord('U'), Ord(';'), 13, 10,
     Ord('/'), Ord('/'), Ord(' '), Ord('a'), $FF, Ord('b'), 13, 10, Ord('i'), Ord('m'), Ord('p'), Ord('l'), Ord('e'),
     Ord('m'), Ord('e'), Ord('n'), Ord('t'), Ord('a'), Ord('t'), Ord('i'), Ord('o'), Ord('n'), 13, 10, Ord('e'),
-    Ord('n'), Ord('d'), Ord('.')]);
+    Ord('n'), Ord('d'), Ord('.'));
   mSource := TFileEncoding.Decode(mData, mFormat);
   Assert.AreEqual(1, Integer(Length(TFileEncoding.InvalidUtf8(mData, mFormat))), 'Fehlstellen');
   mFindings := Run(TControlCharRule.Create, mSource, '', mData, nil, '');
@@ -484,8 +473,8 @@ var
 begin
   // Ohne BOM: gültiges "ä" und "ö" (C3 A4, C3 B6) und ein einzelnes $FF; Atlas liest die Datei als ANSI.
   // Die gültigen Folgen überwiegen: beschädigtes UTF-8 (#1327).
-  mData := Bytes([Ord('/'), Ord('/'), Ord(' '), $C3, $A4, $C3, $B6, Ord(' '), $FF, 13, 10, Ord('u'), Ord('n'),
-    Ord('i'), Ord('t'), Ord(' '), Ord('U'), Ord(';')]);
+  mData := TBytes.Create(Ord('/'), Ord('/'), Ord(' '), $C3, $A4, $C3, $B6, Ord(' '), $FF, 13, 10, Ord('u'), Ord('n'),
+    Ord('i'), Ord('t'), Ord(' '), Ord('U'), Ord(';'));
   mSource := TFileEncoding.Decode(mData, mFormat);
   mFindings := Run(TControlCharRule.Create, mSource, '', mData, nil, '');
   Assert.AreEqual(1, Integer(Length(mFindings)));
@@ -500,8 +489,8 @@ var
   mFormat: TFileFormat;
 begin
   // Echtes ANSI ("ä" als $E4) ist kein beschädigtes UTF-8.
-  mData := Bytes([Ord('/'), Ord('/'), Ord(' '), $E4, 13, 10, Ord('u'), Ord('n'), Ord('i'), Ord('t'), Ord(' '),
-    Ord('U'), Ord(';')]);
+  mData := TBytes.Create(Ord('/'), Ord('/'), Ord(' '), $E4, 13, 10, Ord('u'), Ord('n'), Ord('i'), Ord('t'), Ord(' '),
+    Ord('U'), Ord(';'));
   mSource := TFileEncoding.Decode(mData, mFormat);
   Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, mSource, '', mData, nil, ''))));
 end;
@@ -513,13 +502,13 @@ var
   mFormat: TFileFormat;
 begin
   // Zwei GBK-Zeichen $D2 $D1 und $BE $AD im Kommentar; das letzte Byte liest Windows-1252 als U+00AD.
-  mData := Bytes([Ord('/'), Ord('/'), Ord(' '), $D2, $D1, $BE, $AD, 13, 10, Ord('u'), Ord('n'), Ord('i'), Ord('t'),
-    Ord(' '), Ord('U'), Ord(';')]);
+  mData := TBytes.Create(Ord('/'), Ord('/'), Ord(' '), $D2, $D1, $BE, $AD, 13, 10, Ord('u'), Ord('n'), Ord('i'), Ord('t'),
+    Ord(' '), Ord('U'), Ord(';'));
   mSource := TFileEncoding.Decode(mData, mFormat);
   Assert.AreEqual(0, Integer(Length(Run(TInvisibleCharRule.Create, mSource, '', mData, nil, ''))));
   // Zwischen ASCII-Zeichen bleibt $AD auch in einer ANSI-Datei ein weiches Trennzeichen.
-  mData := Bytes([Ord('/'), Ord('/'), Ord(' '), Ord('a'), $AD, Ord('b'), 13, 10, Ord('u'), Ord('n'), Ord('i'),
-    Ord('t'), Ord(' '), Ord('U'), Ord(';')]);
+  mData := TBytes.Create(Ord('/'), Ord('/'), Ord(' '), Ord('a'), $AD, Ord('b'), 13, 10, Ord('u'), Ord('n'), Ord('i'),
+    Ord('t'), Ord(' '), Ord('U'), Ord(';'));
   mSource := TFileEncoding.Decode(mData, mFormat);
   Assert.AreEqual(1, Integer(Length(Run(TInvisibleCharRule.Create, mSource, '', mData, nil, ''))));
   // Ohne lesbare Datei (Puffer im Editor) gilt der Text wie bisher.
@@ -534,10 +523,10 @@ var
   mFormat: TFileFormat;
   mFindings: TArray<TRuleFinding>;
 begin
-  mData := Bytes([$EF, $BB, $BF, Ord('o'), Ord('b'), Ord('j'), Ord('e'), Ord('c'), Ord('t'), Ord(' '), Ord('F'),
+  mData := TBytes.Create($EF, $BB, $BF, Ord('o'), Ord('b'), Ord('j'), Ord('e'), Ord('c'), Ord('t'), Ord(' '), Ord('F'),
     Ord('o'), Ord('r'), Ord('m'), Ord('1'), Ord(':'), Ord(' '), Ord('T'), Ord('F'), Ord('o'), Ord('r'), Ord('m'),
     Ord('1'), 13, 10, Ord(' '), Ord(' '), Ord('C'), Ord('a'), Ord('p'), Ord('t'), Ord('i'), Ord('o'), Ord('n'),
-    Ord(' '), Ord('='), Ord(' '), Ord(''''), $E2, $82, Ord(''''), 13, 10, Ord('e'), Ord('n'), Ord('d')]);
+    Ord(' '), Ord('='), Ord(' '), Ord(''''), $E2, $82, Ord(''''), 13, 10, Ord('e'), Ord('n'), Ord('d'));
   mForm := TFileEncoding.Decode(mData, mFormat);
   mFindings := Run(TControlCharRule.Create, cFormUnit, mForm, nil, mData, '');
   Assert.AreEqual(1, Integer(Length(mFindings)), mForm);
@@ -547,9 +536,9 @@ end;
 /// <summary>Bytes von F15_AnsiDatei.pas: Windows-1252 mit "ü", "ß", "ö", "ä" und "°" als UTF-8 (C2 B0).</summary>
 function F15Bytes: TBytes;
 begin
-  Result := TEncoding.ASCII.GetBytes('unit F15_AnsiDatei;'#13#10'// Gr') + Bytes([$FC, $DF]) +
-    TEncoding.ASCII.GetBytes('e aus K') + Bytes([$F6]) + TEncoding.ASCII.GetBytes('ln, Zeichen ') +
-    Bytes([$C2, $B0]) + TEncoding.ASCII.GetBytes(' '#13#10'interface'#13#10'const S = ''') + Bytes([$E4, $F6, $FC]) +
+  Result := TEncoding.ASCII.GetBytes('unit F15_AnsiDatei;'#13#10'// Gr') + TBytes.Create($FC, $DF) +
+    TEncoding.ASCII.GetBytes('e aus K') + TBytes.Create($F6) + TEncoding.ASCII.GetBytes('ln, Zeichen ') +
+    TBytes.Create($C2, $B0) + TEncoding.ASCII.GetBytes(' '#13#10'interface'#13#10'const S = ''') + TBytes.Create($E4, $F6, $FC) +
     TEncoding.ASCII.GetBytes(''';'#13#10'implementation'#13#10'end.'#13#10);
 end;
 
@@ -573,7 +562,7 @@ var
 begin
   // F16_Ersatzzeichen.pas: zwei U+FFFD (EF BF BD) in einem Kommentar, sonst ASCII, ohne BOM.
   mData := TEncoding.ASCII.GetBytes('unit F16_Ersatzzeichen;'#13#10'// Kommentar mit ') +
-    Bytes([$EF, $BF, $BD, $EF, $BF, $BD]) +
+    TBytes.Create($EF, $BF, $BD, $EF, $BF, $BD) +
     TEncoding.ASCII.GetBytes(' im Text'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10);
   mSource := TFileEncoding.Decode(mData, mFormat);
   Assert.AreEqual<TFileEncodingKind>(TFileEncodingKind.Utf8, mFormat.Encoding, 'Kodierung');
@@ -714,7 +703,7 @@ var
   mFormat: TFileFormat;
   mFindings: TArray<TRuleFinding>;
 begin
-  mData := Bytes([$FF, $FE, 0, 0, Ord('u'), 0, 0, 0, Ord('n'), 0, 0, 0, Ord('i'), 0, 0, 0, Ord('t'), 0, 0, 0]);
+  mData := TBytes.Create($FF, $FE, 0, 0, Ord('u'), 0, 0, 0, Ord('n'), 0, 0, 0, Ord('i'), 0, 0, 0, Ord('t'), 0, 0, 0);
   mSource := TFileEncoding.Decode(mData, mFormat);
   mFindings := Run(TFileEncodingUnsupportedRule.Create, mSource, '', mData, nil, '');
   Assert.AreEqual(1, Integer(Length(mFindings)));

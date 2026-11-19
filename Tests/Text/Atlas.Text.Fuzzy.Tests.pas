@@ -32,6 +32,9 @@ type
     procedure BoundedSubsequenceRejectsScattered;
     [Test]
     procedure EmptyPatternMatches;
+    /// <summary>Teilfolge ohne Wortgrenzen und ohne Groß/Klein.</summary>
+    [Test]
+    procedure SubsequenceIgnoresWordStarts;
     [Test]
     procedure EditDistanceWithLimit;
     [Test]
@@ -72,6 +75,15 @@ begin
   Assert.IsFalse(TTextFuzzy.MatchesBoundedSubsequence('myLis', 'ERROR_TOO_MANY_LINKS'));
   Assert.IsFalse(TTextFuzzy.MatchesBoundedSubsequence('rg', 'TStringList'));
   Assert.IsFalse(TTextFuzzy.MatchesBoundedSubsequence('xyz', 'TStringList'));
+end;
+
+procedure TTextFuzzyTests.SubsequenceIgnoresWordStarts;
+begin
+  Assert.IsTrue(TTextFuzzy.IsSubsequence('cpl', 'Compile'));
+  Assert.IsTrue(TTextFuzzy.IsSubsequence('RG', 'TStringList'));
+  Assert.IsTrue(TTextFuzzy.IsSubsequence('', 'TStringList'));
+  Assert.IsFalse(TTextFuzzy.IsSubsequence('lc', 'Compile'));
+  Assert.IsFalse(TTextFuzzy.IsSubsequence('abc', 'ab'));
 end;
 
 procedure TTextFuzzyTests.EmptyPatternMatches;

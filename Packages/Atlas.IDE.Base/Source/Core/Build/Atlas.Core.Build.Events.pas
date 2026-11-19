@@ -64,6 +64,13 @@ type
   end;
 
   TAtlasClockFunc = reference to function: Int64;
+
+  /// <summary>Uhr der Compile-Teilnehmer: eine eingesetzte Uhr (Tests) oder die des Systems.</summary>
+  TAtlasClocks = record
+  public
+    /// <summary>Millisekunden von AClock; ohne AClock die monotone Uhr des Systems.</summary>
+    class function Millis(const AClock: TAtlasClockFunc): Int64; static;
+  end;
   TAtlasNotifyProc = reference to procedure(const AMethod: string; AParams: TJSONObject);
   TAtlasTextProc = reference to procedure(const AText: string);
 
@@ -212,6 +219,20 @@ procedure TAtlasCompileParticipant.ProjectFinished(const AProject: TAtlasCompile
 begin
 end;
 
+{ TAtlasClocks }
+
+class function TAtlasClocks.Millis(const AClock: TAtlasClockFunc): Int64;
+begin
+  if Assigned(AClock) then
+  begin
+    Result := AClock();
+  end
+  else
+  begin
+    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
+  end;
+end;
+
 { TAtlasCompileEvents }
 
 constructor TAtlasCompileEvents.Create(const AClock: TAtlasClockFunc);
@@ -238,14 +259,7 @@ end;
 
 function TAtlasCompileEvents.Now_: Int64;
 begin
-  if Assigned(FClock) then
-  begin
-    Result := FClock();
-  end
-  else
-  begin
-    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
-  end;
+  Result := TAtlasClocks.Millis(FClock);
 end;
 
 function TAtlasCompileEvents.RunningIndex(const AFileName: string): Integer;

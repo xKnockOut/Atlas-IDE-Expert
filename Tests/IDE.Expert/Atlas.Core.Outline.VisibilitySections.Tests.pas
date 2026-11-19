@@ -49,7 +49,8 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.VisibilitySections;
+  Atlas.Core.Outline.VisibilitySections,
+  Atlas.Core.Outline.CrumbMenu;
 
 const
   cCode =
@@ -160,21 +161,6 @@ begin
       Result := Result + ',';
     end;
     Result := Result + mSection.Keyword + '@' + IntToStr(mSection.Line);
-  end;
-end;
-
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
   end;
 end;
 
@@ -326,7 +312,7 @@ begin
   mList := Nodes;
   mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines,
     TAtlasCrumbRequest.Create(7, 6, '', False, [TAtlasCrumbPart.Visibility]));
-  Assert.AreEqual('TKunde › strict private › FName', Joined(mCrumbs));
+  Assert.AreEqual('TKunde › strict private › FName', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.AreEqual('kw', mCrumbs[1].Badge.Code);
   Assert.AreEqual(-1, mCrumbs[1].Node);
   Assert.IsFalse(mCrumbs[1].Implicit);
@@ -337,22 +323,22 @@ begin
   Assert.IsTrue(TAtlasBreadcrumbs.HasMenu(mCrumbs[1]));
   Assert.AreEqual('FName', NamesOf(mList, mCrumbs[1].Children));
   // Leerzeile: der Abschnitt ist das letzte Glied.
-  Assert.AreEqual('TKunde › strict private', Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+  Assert.AreEqual('TKunde › strict private', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(mList, Lines,
     TAtlasCrumbRequest.Create(9, 0, '', False, [TAtlasCrumbPart.Visibility]))));
   // Verschachtelt: Es zählt der innerste Typ.
   Assert.AreEqual('TKunde › TInnen › private › FWert',
-    Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+    TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(mList, Lines,
       TAtlasCrumbRequest.Create(16, 9, '', False, [TAtlasCrumbPart.Visibility]))));
   // Implizit: kursiv, ohne aktuellen Abschnitt.
   mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines,
     TAtlasCrumbRequest.Create(5, 6, '', False, [TAtlasCrumbPart.Visibility]));
-  Assert.AreEqual('TKunde › published › btnOk', Joined(mCrumbs));
+  Assert.AreEqual('TKunde › published › btnOk', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.IsTrue(mCrumbs[1].Implicit);
   Assert.AreEqual(-1, mCrumbs[1].Current);
   // Interface und Methodenrumpf: kein Abschnittsglied.
-  Assert.AreEqual('IDienst › Rufe', Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+  Assert.AreEqual('IDienst › Rufe', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(mList, Lines,
     TAtlasCrumbRequest.Create(30, 6, '', False, [TAtlasCrumbPart.Visibility]))));
-  Assert.AreEqual('TKunde › Speichere', Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+  Assert.AreEqual('TKunde › Speichere', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(mList, Lines,
     TAtlasCrumbRequest.Create(48, 0, '', False, [TAtlasCrumbPart.Visibility]))));
 end;
 
@@ -361,7 +347,7 @@ var
   mCrumbs: TAtlasCrumbs;
 begin
   mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines, TAtlasCrumbRequest.Create(7, 6, '', False, []));
-  Assert.AreEqual('TKunde › FName', Joined(mCrumbs));
+  Assert.AreEqual('TKunde › FName', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.IsFalse(TAtlasBreadcrumbs.HasMenu(Default(TAtlasCrumb)));
 end;
 
