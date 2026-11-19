@@ -181,7 +181,8 @@ procedure TMcpToolsTests.EachGroupRegistersItsTools;
 begin
   Assert.AreEqual(11, Integer(Length(NamesOf(RegisterNavigationTools))));
   Assert.IsTrue(Pos(' qualified_name ', Joined(NamesOf(RegisterNavigationTools))) > 0);
-  Assert.AreEqual(' get_last_build get_last_tests build_project run_tests get_profile get_mutants suggest_test_cases ',
+  Assert.AreEqual(' get_last_build get_last_tests build_project run_tests get_profile get_mutants ' +
+    'suggest_test_cases explain_compiler_message ',
     Joined(NamesOf(RegisterBuildTestTools)));
   Assert.AreEqual(' debug_start debug_stop set_breakpoint remove_breakpoint debug_continue debug_step debug_state ' +
     'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
