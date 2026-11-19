@@ -21,8 +21,6 @@ type
   public
     /// <summary>received-Dateien des Testprojekts AProject löschen ('' = aktives Projekt).</summary>
     class procedure Clean(ATests: TAtlasIdeTests; const AProject: string); static;
-    /// <summary>Aktives Projekt der IDE; '' ohne.</summary>
-    class function ActiveProject: string; static;
   end;
 
 implementation
@@ -34,7 +32,8 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.Tests.Approval,
-  Atlas.UI.Tests.Strings;
+  Atlas.UI.Tests.Strings,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeApprovalFiles }
 
@@ -71,7 +70,7 @@ begin
   mProject := AProject;
   if mProject = '' then
   begin
-    mProject := ActiveProject;
+    mProject := TAtlasIdeFiles.ActiveProjectFile;
   end;
   if mProject = '' then
   begin
@@ -101,23 +100,6 @@ begin
   end;
   ATests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsApprovalCleaned, [mDeleted, Length(mFiles)]));
   SuggestIgnore(ExtractFileDir(mProject));
-end;
-
-class function TAtlasIdeApprovalFiles.ActiveProject: string;
-var
-  mServices: IOTAModuleServices;
-  mProject: IOTAProject;
-begin
-  Result := '';
-  mProject := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    mProject := mServices.GetActiveProject;
-  end;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
 end;
 
 end.
