@@ -25,6 +25,10 @@
 // ein Rückgängig-Schritt, #397); mit Text statt Datei liefert es nur den
 // formatierten Text. Dateien mit Syntaxfehlern formatiert es nicht. Die
 // Zeilenenden der Datei bleiben dabei; format.endOfLine setzt --format-write um.
+// Geschützte Dateien (assistants.protected, #2608): Trifft eine Änderung eine davon, schreibt der Aufruf nichts und
+// nennt Grund und richtigen Weg; die Vorschau nennt sie schon.
+// Nach dem Schreiben hängt AfterWrite die neuen und behobenen Befunde der geänderten Dateien an (#2603,
+// TMcpEditEvaluation); dryRun und abgelehnte Änderungen bekommen den Abschnitt nicht.
 
 interface
 
@@ -57,6 +61,13 @@ type
   /// <summary>Im Editor ungespeichert geänderte Dateien (IDE-Plugin); leer ohne Editor.</summary>
   TMcpDirtyFiles = reference to function: TArray<string>;
   TMcpAudit = reference to procedure(const AText: string);
+  /// <summary>Geschützte unter AFileNames mit Grund und richtigem Weg (#2608, TMcpProtectedFiles.Report); '' ohne.
+  /// ADryRun: Abschnitt der Vorschau, sonst die Ablehnung.</summary>
+  TMcpProtectedReport = reference to function(const AFileNames: TArray<string>; ADryRun: Boolean): string;
+  /// <summary>Nach dem Schreiben von ANames (AOldTexts vorher, ANewTexts geplant) durch ATool: Abschnitt „Befunde
+  /// nach der Änderung“ (#2603, IMcpEditEvaluation.Run); '' ohne.</summary>
+  TMcpAfterWrite = reference to function(const ATool: string; const ANames, AOldTexts,
+    ANewTexts: TArray<string>): string;
 
   TMcpEditTools = class
   private
@@ -71,6 +82,10 @@ type
     FCheckSource: TCheckSourceFunc;
     FCheckProject: TCheckProjectFunc;
     FSettingsFor: TReferenceSettingsProvider;
+    FProtectedReport: TMcpProtectedReport;
+    FAfterWrite: TMcpAfterWrite;
+    function FindingsAfterWrite(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>): string;
+    function CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
     procedure ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
       out AOldTexts, ANewTexts: TArray<string>);
     procedure EnsureWritable(const ANames, AOldTexts: TArray<string>);
@@ -119,6 +134,10 @@ type
     property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
+    /// <summary>Geschützte Dateien (#2608); nil = keine.</summary>
+    property ProtectedReport: TMcpProtectedReport read FProtectedReport write FProtectedReport;
+    /// <summary>Befunde nach dem Schreiben (#2603); nil = kein Abschnitt.</summary>
+    property AfterWrite: TMcpAfterWrite read FAfterWrite write FAfterWrite;
   end;
 
 implementation
@@ -219,6 +238,34 @@ begin
   FWriteText := AWriteText;
   FProjectFiles := AProjectFiles;
   FEnsureUnit := AEnsureUnit;
+end;
+
+function TMcpEditTools.CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
+begin
+  Result := '';
+  if Assigned(FProtectedReport) then
+  begin
+    Result := FProtectedReport(ANames, ADryRun);
+  end;
+  // Ohne dryRun ist die Ablehnung der Fehler des Aufrufs: nichts wird geschrieben, auch keine andere Datei.
+  if not ADryRun and (Result <> '') then
+  begin
+    raise EMcpToolError.Create(Result);
+  end;
+end;
+
+function TMcpEditTools.FindingsAfterWrite(const ATool: string; const ANames, AOldTexts,
+  ANewTexts: TArray<string>): string;
+begin
+  Result := '';
+  if Assigned(FAfterWrite) then
+  begin
+    Result := FAfterWrite(ATool, ANames, AOldTexts, ANewTexts);
+  end;
+  if Result <> '' then
+  begin
+    Result := sLineBreak + sLineBreak + Result;
+  end;
 end;
 
 procedure TMcpEditTools.ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
@@ -583,12 +630,14 @@ var
   mGroups: TArray<TArray<TMcpFileEdit>>;
   mIndex: Integer;
   mReport: TStringBuilder;
+  mProtected: string;
 begin
   if Length(AEdits) = 0 then
   begin
     raise EMcpToolError.Create(cTexts[TEditToolsText.NoChanges].Text);
   end;
   mGroups := GroupByFile(AEdits, mNames);
+  mProtected := CheckProtected(mNames, ADryRun);
   ReadAll(mNames, mGroups, mOldTexts, mNewTexts);
   mReport := TStringBuilder.Create;
   try
@@ -596,6 +645,10 @@ begin
     begin
       mReport.AppendFormat(cTexts[TEditToolsText.PreviewDryRunChangesInFiles].Text, [Length(AEdits),
         Length(mNames)]).AppendLine;
+      if mProtected <> '' then
+      begin
+        mReport.AppendLine(mProtected);
+      end;
     end
     else
     begin
@@ -610,6 +663,10 @@ begin
       mReport.AppendLine(Diff(mNames[mIndex], mOldTexts[mIndex], mNewTexts[mIndex]));
     end;
     Result := TrimRight(mReport.ToString);
+    if not ADryRun then
+    begin
+      Result := Result + FindingsAfterWrite(ATool, mNames, mOldTexts, mNewTexts);
+    end;
   finally
     mReport.Free;
   end;
@@ -698,6 +755,25 @@ begin
   end;
 end;
 
+/// <summary>Namen sowie alte und neue Texte der Dateien, die fix_findings geändert hat.</summary>
+procedure ChangedTexts(const AResults: TArray<TBulkFixFile>; out ANames, AOldTexts, ANewTexts: TArray<string>);
+var
+  mResult: TBulkFixFile;
+begin
+  ANames := nil;
+  AOldTexts := nil;
+  ANewTexts := nil;
+  for mResult in AResults do
+  begin
+    if mResult.Changed then
+    begin
+      ANames := ANames + [mResult.FileName];
+      AOldTexts := AOldTexts + [mResult.OldText];
+      ANewTexts := ANewTexts + [mResult.NewText];
+    end;
+  end;
+end;
+
 function TMcpEditTools.FixFindings(const AScope: TMcpRuleScope; const AFiles, AFixRules: TArray<string>;
   const AMinConfidence: string; ADryRun: Boolean): string;
 var
@@ -705,6 +781,8 @@ var
   mError: string;
   mUntouched: TArray<string>;
   mResults: TArray<TBulkFixFile>;
+  mProtected: string;
+  mNames, mOldTexts, mNewTexts: TArray<string>;
 begin
   if AFixRules = nil then
   begin
@@ -716,11 +794,21 @@ begin
   end;
   mResults := RunFixes(AScope, AFiles, TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries),
     TBulkFix.RulesFor(AScope.Rules, AFixRules), ADryRun, mUntouched);
+  ChangedTexts(mResults, mNames, mOldTexts, mNewTexts);
+  mProtected := CheckProtected(mNames, ADryRun);
   if not ADryRun then
   begin
     WriteFixes(AFixRules, mResults);
   end;
   Result := FixReport(AScope.Root, mResults, mUntouched, ADryRun);
+  if not ADryRun and (mNames <> nil) then
+  begin
+    Result := Result + FindingsAfterWrite('fix_findings', mNames, mOldTexts, mNewTexts);
+  end;
+  if mProtected <> '' then
+  begin
+    Result := Result + sLineBreak + sLineBreak + mProtected;
+  end;
 end;
 
 /// <summary>Ergebnis von format_code ohne Syntaxfehler: Zahl und erste Abweichungen; '' ohne Abweichung.</summary>
