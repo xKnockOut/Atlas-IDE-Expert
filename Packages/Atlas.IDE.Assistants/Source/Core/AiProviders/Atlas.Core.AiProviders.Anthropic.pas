@@ -89,14 +89,14 @@ end;
 function ErrorOf(AStatus: Integer; const AKind: string): TAtlasAiError;
 begin
   case AStatus of
-    401, 403:
+    cAiHttpUnauthorized, cAiHttpForbidden:
       Result := TAtlasAiError.Unauthorized;
-    404:
+    cAiHttpNotFound:
       Result := TAtlasAiError.ModelMissing;
-    429, 529:
+    cAiHttpTooManyRequests, cAiHttpOverloaded:
       Result := TAtlasAiError.RateLimited;
   else
-    if AStatus >= 500 then
+    if AStatus >= cAiHttpServerError then
     begin
       Result := TAtlasAiError.ServerError;
     end
@@ -163,14 +163,14 @@ begin
     if not (mValue is TJSONObject) then
     begin
       Result.Error := ErrorOf(AStatus, '');
-      if (AStatus >= 200) and (AStatus < 300) then
+      if (AStatus >= cAiHttpOkFirst) and (AStatus <= cAiHttpOkLast) then
       begin
         Result.Error := TAtlasAiError.BadAnswer;
       end;
       Exit;
     end;
     mObject := TJSONObject(mValue);
-    if (AStatus < 200) or (AStatus >= 300) or SameText(mObject.GetValue<string>('type', ''), 'error') then
+    if (AStatus < cAiHttpOkFirst) or (AStatus > cAiHttpOkLast) or SameText(mObject.GetValue<string>('type', ''), 'error') then
     begin
       ReadError(mObject, Result);
       Exit;

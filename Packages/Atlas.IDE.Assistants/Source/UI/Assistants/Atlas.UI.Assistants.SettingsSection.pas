@@ -77,6 +77,13 @@ const
   cButtonWidth = 210;
   cButtonGap = 216;
   cRowHeight = 28;
+  cButtonHeight = 25;
+  /// <summary>Hinweis zum Datenschutz: Höhe für zwei Zeilen.</summary>
+  cPrivacyHeight = 34;
+  /// <summary>Zeile mit dem Zustand (Schlüssel, Probe).</summary>
+  cStateTop = 6;
+  cStateWidth = 420;
+  cStateHeight = 16;
   // Ein Steuerzeichen am Anfang der Beschriftung lässt InputQuery das Feld verdecken.
   cHidden = #31;
 
@@ -103,7 +110,7 @@ begin
   Switch('compiler.mcpBuild', T(TAtlasAssistantsTextId.SettingsMcpBuild));
   // KI-Schattentext (#1922).
   Switch('assistants.inlineSuggestions', T(TAtlasAssistantsTextId.SettingsInline));
-  Host.AddHint(T(TAtlasAssistantsTextId.SettingsPrivacy), 34);
+  Host.AddHint(T(TAtlasAssistantsTextId.SettingsPrivacy), cPrivacyHeight);
   FProvider := Choice('assistants.provider', T(TAtlasAssistantsTextId.SettingsProvider),
     TArray<string>.Create(T(TAtlasAssistantsTextId.ProviderNone), T(TAtlasAssistantsTextId.ProviderAnthropic)),
     TArray<string>.Create(cAssistantsProviderNames[0], cAssistantsProviderNames[1]));
@@ -122,19 +129,19 @@ begin
   Host.Attach(mRow, FProvider);
   FKeyState := TLabel.Create(FControls);
   FKeyState.Parent := mRow;
-  FKeyState.SetBounds(0, 6, 420, 16);
+  FKeyState.SetBounds(0, cStateTop, cStateWidth, cStateHeight);
   FKeyState.ShowAccelChar := False;
   mRow := Host.AddRow(cRowHeight, nil);
   Host.Attach(mRow, FProvider);
   FKeyStore := TButton.Create(FControls);
   FKeyStore.Parent := mRow;
   FKeyStore.Caption := T(TAtlasAssistantsTextId.KeyStore);
-  FKeyStore.SetBounds(0, 1, cButtonWidth, 25);
+  FKeyStore.SetBounds(0, 1, cButtonWidth, cButtonHeight);
   FKeyStore.OnClick := KeyStoreClick;
   FKeyDelete := TButton.Create(FControls);
   FKeyDelete.Parent := mRow;
   FKeyDelete.Caption := T(TAtlasAssistantsTextId.KeyDelete);
-  FKeyDelete.SetBounds(cButtonGap, 1, cButtonWidth, 25);
+  FKeyDelete.SetBounds(cButtonGap, 1, cButtonWidth, cButtonHeight);
   FKeyDelete.OnClick := KeyDeleteClick;
   ShowKeyState;
 end;

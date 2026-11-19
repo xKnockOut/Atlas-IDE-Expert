@@ -88,6 +88,7 @@ const
     '(at most 8 lines). Answer with code only: no explanation, no Markdown, no code fences, ' +
     'nothing from the surrounding code repeated. Use only identifiers that exist in the code or the ' +
     'declarations given. If nothing fits, answer with an empty message.';
+  cDeclarationsHead = 'Declarations of the class:';
 
 { TAtlasAiGhost }
 
@@ -110,7 +111,7 @@ begin
     mBuilder.Append('File: ').Append(ExtractFileName(ARequest.FileName.Replace('/', '\'))).Append(#10);
     if Length(ARequest.Declarations) > 0 then
     begin
-      mBuilder.Append('Declarations of the class:').Append(#10);
+      mBuilder.Append(cDeclarationsHead).Append(#10);
       for mDeclaration in ARequest.Declarations do
       begin
         mBuilder.Append(mDeclaration).Append(#10);

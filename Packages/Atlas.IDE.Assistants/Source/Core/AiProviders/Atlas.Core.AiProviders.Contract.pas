@@ -92,6 +92,16 @@ const
   cAiKeyComment = 'Atlas: KI-Anbieter';
   /// <summary>Höchstlänge von TAtlasAiAnswer.Detail.</summary>
   cMaxAiDetail = 300;
+  /// <summary>HTTP-Status der Antworten: Erfolg, Anmeldung, Modell, Drosselung, Serverfehler.</summary>
+  cAiHttpOkFirst = 200;
+  cAiHttpOkLast = 299;
+  cAiHttpUnauthorized = 401;
+  cAiHttpForbidden = 403;
+  cAiHttpNotFound = 404;
+  cAiHttpTooManyRequests = 429;
+  cAiHttpServerError = 500;
+  /// <summary>Anthropic: überlastet.</summary>
+  cAiHttpOverloaded = 529;
 
 implementation
 
