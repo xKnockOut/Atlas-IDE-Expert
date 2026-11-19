@@ -141,6 +141,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Review.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PreviewLoad.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.IssueWork.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.AiSummary.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>

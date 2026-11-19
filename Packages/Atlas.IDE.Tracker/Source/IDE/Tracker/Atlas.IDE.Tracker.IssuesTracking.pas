@@ -60,6 +60,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.TimePlan,
   Atlas.Core.Diagnostics.Guard;
 
 { TAtlasIdeIssuesTracking }
@@ -169,13 +170,12 @@ function TAtlasIdeIssuesTracking.TimeIssueOf(const AProject, AKey: string): TAtl
 var
   mTarget: TAtlasTrackerTarget;
 begin
-  Result := TAtlasTimeIssue.None;
-  if (AProject = '') or (AKey = '') then
+  mTarget := Default(TAtlasTrackerTarget);
+  if AProject <> '' then
   begin
-    Exit;
+    mTarget := FContext.TargetOf(AProject);
   end;
-  mTarget := FContext.TargetOf(AProject);
-  Result := TAtlasTimeIssue.Create(mTarget.Provider, mTarget.Url, mTarget.Project, AKey);
+  Result := TAtlasTimePlan.IssueOf(AProject <> '', mTarget, AKey);
 end;
 
 procedure TAtlasIdeIssuesTracking.SyncTime(const AProject, AKey, AState: string);

@@ -2,8 +2,9 @@
 
 // Tests der Zeilenverfolgung (#1818): Marken folgen eingefügten und gelöschten
 // Zeilen sofort, gelöschte Zeilen tragen keine Marke mehr, Kennungen der IDE
-// unterscheiden Atlas von Fremden, Reset beginnt neu; Zeitmessung für viele
-// Befunde.
+// unterscheiden Atlas von Fremden, Reset beginnt neu; ein Stand ohne
+// Verfolgung bleibt bis zum nächsten; Anmeldungen je Puffer löschen nur sich
+// selbst; Zeitmessung für viele Befunde.
 
 interface
 
@@ -43,6 +44,20 @@ type
     procedure ChangedReachesFileAndChannel;
     [Test]
     procedure RemoveForgetsAllChannels;
+    /// <summary>Current nur zum eigenen Stand: Ein neuer Stand verlangt neues Anmelden.</summary>
+    [Test]
+    procedure CurrentOnlyForItsStamp;
+    /// <summary>Nach einem Fehler beim Anmelden: Der Stand gilt ohne Verfolgung, jede Zeile ist sie selbst, und
+    /// Current liefert ihn, damit der Zeichner nicht bei jedem Zeichnen neu anmeldet.</summary>
+    [Test]
+    procedure UntrackedKeepsEveryLineUntilNextStamp;
+    /// <summary>Zwei Beobachter für denselben Dateinamen: Das Ende des alten löscht die Anmeldung des neuen nicht.
+    /// </summary>
+    [Test]
+    procedure ForgetOnlyOwnRegistration;
+    /// <summary>Eine neue Anmeldung derselben Datei ersetzt die alte und lässt ihren Tracker los.</summary>
+    [Test]
+    procedure PutReplacesAndReleasesEarlierTracker;
     /// <summary>Zehntausend Befunde, Zeile ganz oben eingefügt: jede Meldung und das Zeichnen bleiben schnell.
     /// </summary>
     [Test]
@@ -56,6 +71,39 @@ uses
   System.SysUtils,
   System.Diagnostics,
   Atlas.Core.Editor.LineTracking;
+
+type
+  /// <summary>Platzhalter für den Tracker der IDE; zählt, wie viele noch leben.</summary>
+  TFakeTracker = class(TInterfacedObject)
+  public
+    class var Alive: Integer;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  TFakeBuffers = TAtlasLineBuffers<IInterface>;
+  TFakeEntry = TAtlasLineBuffer<IInterface>;
+
+constructor TFakeTracker.Create;
+begin
+  inherited Create;
+  Inc(Alive);
+end;
+
+destructor TFakeTracker.Destroy;
+begin
+  Dec(Alive);
+  inherited Destroy;
+end;
+
+/// <summary>Anmeldung für AFileName mit eigenem Tracker und neuer Seriennummer.</summary>
+function Registration(ABuffers: TFakeBuffers; const AFileName: string): TFakeEntry;
+begin
+  Result := Default(TFakeEntry);
+  Result.FileName := AFileName;
+  Result.Tracker := TFakeTracker.Create;
+  Result.Serial := ABuffers.NextSerial;
+end;
 
 { TAtlasLineTrackingTests }
 
@@ -265,6 +313,105 @@ begin
   finally
     mTracking.Free;
   end;
+end;
+
+procedure TAtlasLineTrackingTests.CurrentOnlyForItsStamp;
+var
+  mTracking: TAtlasLineTracking;
+begin
+  mTracking := TAtlasLineTracking.Create;
+  try
+    Assert.IsNull(mTracking.Current('C:\P\A.pas', 1, 5), 'nichts angemeldet');
+    mTracking.Ensure('C:\P\A.pas', 1).Reset(5, [2]);
+    Assert.IsNotNull(mTracking.Current('C:\P\A.PAS', 1, 5));
+    Assert.IsNull(mTracking.Current('C:\P\A.pas', 1, 6), 'neuer Stand');
+    Assert.IsNull(mTracking.Current('C:\P\A.pas', 2, 5), 'anderer Kanal');
+  finally
+    mTracking.Free;
+  end;
+end;
+
+procedure TAtlasLineTrackingTests.UntrackedKeepsEveryLineUntilNextStamp;
+var
+  mTracking: TAtlasLineTracking;
+  mLines: TAtlasTrackedLines;
+  mLine, mSource: Integer;
+begin
+  mTracking := TAtlasLineTracking.Create;
+  try
+    mTracking.Ensure('C:\P\A.pas', 1).Reset(4, [3, 8]);
+    mTracking.Changed('C:\P\A.pas', TAtlasLineTracking.Encode(1, 3), 5);
+    mTracking.Untracked('C:\P\A.pas', 1, 5);
+    mLines := mTracking.Current('C:\P\A.pas', 1, 5);
+    Assert.IsNotNull(mLines, 'derselbe Stand gilt als angemeldet: kein neuer Versuch beim Zeichnen');
+    Assert.AreEqual(0, Integer(Length(mLines.Lines)), 'nichts verfolgt');
+    for mLine in TArray<Integer>.Create(0, 3, 5, 8, 100) do
+    begin
+      Assert.IsTrue(mLines.SourceAt(mLine, mSource));
+      Assert.AreEqual(mLine, mSource, 'jede Zeile ist sie selbst');
+    end;
+    // Eine späte Meldung der IDE zu einer früher angemeldeten Zeile verschiebt nichts.
+    mTracking.Changed('C:\P\A.pas', TAtlasLineTracking.Encode(1, 8), 2);
+    Assert.IsFalse(mLines.HasMoved);
+    Assert.IsNull(mTracking.Current('C:\P\A.pas', 1, 6), 'der nächste Stand meldet wieder an');
+  finally
+    mTracking.Free;
+  end;
+end;
+
+procedure TAtlasLineTrackingTests.ForgetOnlyOwnRegistration;
+var
+  mBuffers: TFakeBuffers;
+  mOld, mNew, mFound: TFakeEntry;
+begin
+  mBuffers := TFakeBuffers.Create;
+  try
+    mOld := Registration(mBuffers, 'C:\P\A.pas');
+    mBuffers.Put(mOld);
+    mNew := Registration(mBuffers, 'C:\P\a.PAS');
+    mBuffers.Put(mNew);
+    Assert.AreNotEqual(mOld.Serial, mNew.Serial);
+    // Der alte Beobachter meldet sein Ende erst, als der neue Puffer schon angemeldet ist.
+    Assert.IsFalse(mBuffers.Forget('C:\P\A.pas', mOld.Serial), 'fremde Anmeldung bleibt');
+    Assert.IsTrue(mBuffers.TryGet('C:\P\A.pas', mFound));
+    Assert.AreEqual(mNew.Serial, mFound.Serial);
+    Assert.AreSame(mNew.Tracker, mFound.Tracker);
+    Assert.IsTrue(mBuffers.Forget('C:\P\A.pas', mNew.Serial), 'eigene Anmeldung');
+    Assert.IsFalse(mBuffers.TryGet('C:\P\A.pas', mFound));
+    Assert.AreEqual(0, mBuffers.Count);
+  finally
+    mBuffers.Free;
+  end;
+  mOld := Default(TFakeEntry);
+  mNew := Default(TFakeEntry);
+  mFound := Default(TFakeEntry);
+  Assert.AreEqual(0, TFakeTracker.Alive);
+end;
+
+procedure TAtlasLineTrackingTests.PutReplacesAndReleasesEarlierTracker;
+var
+  mBuffers: TFakeBuffers;
+  mEntry: TFakeEntry;
+  mEntries: TArray<TFakeEntry>;
+begin
+  mBuffers := TFakeBuffers.Create;
+  try
+    mEntry := Registration(mBuffers, 'C:\P\A.pas');
+    mBuffers.Put(mEntry);
+    mBuffers.Put(Registration(mBuffers, 'C:\P\B.pas'));
+    mEntry := Registration(mBuffers, 'C:\P\A.pas');
+    mBuffers.Put(mEntry);
+    Assert.AreEqual(2, TFakeTracker.Alive, 'der Tracker der ersten Anmeldung ist losgelassen');
+    mEntries := mBuffers.Entries;
+    Assert.AreEqual(2, Integer(Length(mEntries)));
+    Assert.IsTrue(mBuffers.TryGet('C:\P\A.pas', mEntry));
+    Assert.AreEqual(3, mEntry.Serial);
+  finally
+    mBuffers.Free;
+  end;
+  mEntry := Default(TFakeEntry);
+  mEntries := nil;
+  Assert.AreEqual(0, TFakeTracker.Alive);
 end;
 
 procedure TAtlasLineTrackingTests.ManyLinesStayFast;
