@@ -72,7 +72,6 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Projects.Contract,
   Atlas.IDE.Tracker.Composition.Adapters;
 
 const

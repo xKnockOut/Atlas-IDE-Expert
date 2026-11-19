@@ -26,8 +26,7 @@ uses
   Atlas.IDE.Tracker.Reopened,
   Atlas.IDE.Tracker.IssuesTracking,
   Atlas.IDE.Tracker.IssuesContext,
-  Atlas.Core.Tracker.Contract.MyIssues,
-  Atlas.Core.Commands.Contract;
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   TAtlasIdeIssuesServices = class
