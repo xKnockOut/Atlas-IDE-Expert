@@ -62,17 +62,6 @@ begin
     ABody + 'end;'#10'end.';
 end;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 function Applied(const ASource: string; const AFix: TRuleFix): string;
 begin
   Result := TTextChanges.Apply(ASource, AFix.Edits);
@@ -100,7 +89,7 @@ var
 begin
   mSource := Routine('  S: string;'#10'  Puffer: array[0..255] of Byte;'#10, '  Move(S[1], Puffer, Length(S));'#10);
   mFound := TRuleAssert.Findings(TCharCountAsBytesRule.Create, mSource);
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cCharCountAsBytesRuleId, mFound[0].RuleId);
   Assert.AreEqual('Length(S) zählt Zeichen, Move erwartet Bytes; seit Delphi 2009 hat ein Char 2 Byte, es wird nur ' +
     'die Hälfte verarbeitet. Ist das Ziel ein AnsiChar-Puffer, braucht es eine Umwandlung statt der doppelten ' +
@@ -126,7 +115,7 @@ begin
     '  Strom.Read(S[1], (Length(S)));'#10'  FillChar(P^, StrLen(P), 0);'#10 +
     '  CopyMemory(Ziel, @S[1], 1 + Length(S));'#10);
   mFound := TRuleAssert.Findings(TCharCountAsBytesRule.Create, mSource);
-  Assert.AreEqual(5, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(5, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.IsTrue(Pos('  Move(Pointer(S)^, Ziel^, (Length(S) + 1) * SizeOf(Char));'#10,
     Applied(mSource, mFound[0].Fixes[0])) > 0);
   Assert.AreEqual('Length(W) zählt Zeichen, WriteBuffer erwartet Bytes; seit Delphi 2009 hat ein Char 2 Byte, es ' +
@@ -146,14 +135,14 @@ begin
     '  S: string;'#10'  P: PChar;'#10'  Q: Pointer;'#10'  A: PAnsiChar;'#10,
     '  GetMem(P, Length(S) + 1);'#10'  ReallocMem(P, Length(S));'#10'  GetMem(Q, Length(S));'#10 +
     '  GetMem(A, Length(S) + 1);'#10));
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('Length(S) zählt Zeichen, GetMem legt Bytes an; für P (PChar) ist der Speicher halb so groß wie ' +
     'nötig.', mFound[0].Message);
 end;
 
 procedure TCharCountAsBytesTests.OtherBuffersAndTypesAreSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TCharCountAsBytesRule.Create, Routine(
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TCharCountAsBytesRule.Create, Routine(
     '  S, T: string;'#10'  A: AnsiString;'#10'  Bytes: TBytes;'#10'  Puffer: array[0..9] of Byte;'#10,
     '  Move(A[1], Puffer, Length(A));'#10'  Move(Bytes[0], Puffer, Length(Bytes));'#10 +
     '  Move(T[1], Puffer, Length(S));'#10'  Move(S[1], Puffer, Length(S) * SizeOf(Char));'#10 +
@@ -208,7 +197,7 @@ begin
   mSource := Routine('  Text: string;'#10,
     '  MessageBoxA(0, PAnsiChar(AnsiString(Text)), PAnsiChar(AnsiString(Text)), MB_OK);'#10);
   mFound := TRuleAssert.Findings(TAnsiApiCallRule.Create, mSource);
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cAnsiApiCallRuleId, mFound[0].RuleId);
   Assert.AreEqual('MessageBoxA bekommt Text als AnsiString; Zeichen außerhalb der ANSI-Codepage gehen verloren. ' +
     'MessageBox nimmt den string unverändert.', mFound[0].Message);
@@ -227,13 +216,13 @@ var
 begin
   mFound := TRuleAssert.Findings(TAnsiApiCallRule.Create, Routine('  Text: string;'#10'  Titel: PAnsiChar;'#10,
     '  MessageBoxA(0, PAnsiChar(AnsiString(Text)), Titel, MB_OK);'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TAnsiApiCallTests.UnconvertedAndOtherNamesAreSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TAnsiApiCallRule.Create, Routine(
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TAnsiApiCallRule.Create, Routine(
     '  Text: string;'#10'  A: AnsiString;'#10'  Titel: PAnsiChar;'#10,
     '  MessageBoxA(0, Titel, Titel, MB_OK);'#10'  MessageBoxA(0, PAnsiChar(A), nil, MB_OK);'#10 +
     '  MessageBox(0, PChar(Text), nil, MB_OK);'#10'  LeseDATA(PAnsiChar(AnsiString(Text)));'#10 +

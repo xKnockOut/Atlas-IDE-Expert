@@ -65,7 +65,8 @@ uses
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Lines;
 
 {$SCOPEDENUMS ON}
 
@@ -210,7 +211,7 @@ var
   mIndex, mDepth: Integer;
   mText: string;
 begin
-  mText := StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  mText := TTextLines.NormalizeLineBreaks(ADeclaration, ' ');
   mDepth := 0;
   for mIndex := 1 to Length(mText) do
     case mText[mIndex] of

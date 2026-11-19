@@ -124,23 +124,13 @@ end;
 class procedure TAtlasIdeUndoTarget.WriteBuffer(const ABuffer: IOTAEditBuffer; const AOld, ANew: string);
 var
   mChange: TLspTextChange;
-  mWriter: IOTAEditWriter;
-  mStartOffset, mEndOffset: Integer;
+  mStartOffset: Integer;
 begin
-  // Nur der geänderte Bereich, ein Schreiber = ein Rückgängig-Schritt im Puffer.
+  // Nur der geänderte Bereich, ein Rückgängig-Schritt im Puffer.
   mChange := TLspTextChanges.Between(AOld, ANew);
   mStartOffset := TLspTextChanges.OffsetOf(AOld, mChange.StartPos);
-  mEndOffset := TLspTextChanges.OffsetOf(AOld, mChange.EndPos);
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, mStartOffset)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, mEndOffset)));
-  if mChange.Text <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(mChange.Text)));
-  end;
-  mWriter := nil;
-  // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen.
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+  TAtlasEditorSnapshots.ReplaceText(ABuffer, AOld, mStartOffset,
+    TLspTextChanges.OffsetOf(AOld, mChange.EndPos) - mStartOffset, mChange.Text);
 end;
 
 class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProject;
