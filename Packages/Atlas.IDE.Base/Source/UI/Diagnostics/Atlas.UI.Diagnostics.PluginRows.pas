@@ -42,7 +42,44 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Diagnostics.Strings;
 
+type
+  /// <summary>Spalte einer Tabelle: Überschrift, Breite vor dem Skalieren (0: Rest der Breite), rechtsbündig.</summary>
+  TColumnSpec = record
+    Id: TAtlasDiagnosticsTextId;
+    Width: Integer;
+    Right: Boolean;
+  end;
+
 const
+  /// <summary>Spalten des Reiters „Hauptthread“: Funktion, Aufrufe, Summe, Mittel, Maximum, langsam, Anteil.</summary>
+  cFeatureColumns: array[0..6] of TColumnSpec = (
+    (Id: TAtlasDiagnosticsTextId.DiagColFeature; Width: 0; Right: False),
+    (Id: TAtlasDiagnosticsTextId.DiagColCalls; Width: 64; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColTotal; Width: 80; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColMean; Width: 72; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColMax; Width: 72; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColSlow; Width: 80; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColShare; Width: 96; Right: True));
+  /// <summary>Spalten der langsamen Aufrufe: Funktion, Zeit, Aktion, Dauer.</summary>
+  cSlowColumns: array[0..3] of TColumnSpec = (
+    (Id: TAtlasDiagnosticsTextId.DiagColFeature; Width: 0; Right: False),
+    (Id: TAtlasDiagnosticsTextId.DiagColTime; Width: 96; Right: False),
+    (Id: TAtlasDiagnosticsTextId.DiagColAction; Width: 200; Right: False),
+    (Id: TAtlasDiagnosticsTextId.DiagColDuration; Width: 80; Right: True));
+  /// <summary>Spalten des Reiters „Hintergrund“: Quelle, Aufrufe, Mittel, Maximum, zu langsam.</summary>
+  cSourceColumns: array[0..4] of TColumnSpec = (
+    (Id: TAtlasDiagnosticsTextId.DiagColSource; Width: 0; Right: False),
+    (Id: TAtlasDiagnosticsTextId.DiagColCalls; Width: 64; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColMean; Width: 72; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColMax; Width: 72; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColTooSlow; Width: 90; Right: True));
+  /// <summary>Spalten des Reiters „Hänger“: Aktion, Zeit, Dauer, mit Atlas.</summary>
+  cHangColumns: array[0..3] of TColumnSpec = (
+    (Id: TAtlasDiagnosticsTextId.DiagColAction; Width: 0; Right: False),
+    (Id: TAtlasDiagnosticsTextId.DiagColTime; Width: 96; Right: False),
+    (Id: TAtlasDiagnosticsTextId.DiagColDuration; Width: 80; Right: True),
+    (Id: TAtlasDiagnosticsTextId.DiagColWithAtlas; Width: 110; Right: True));
+
   cNoValue = '–';
   /// <summary>Spalten des Reiters „Server“: Anfrage, Anzahl, Mittel, Maximum, wartend, Hauptthread Ø,
   /// Zeitüberschreitung, abgebrochen, gescheitert.</summary>
@@ -84,6 +121,17 @@ begin
   Result := TAtlasGridColumn.Make(TAtlasDiagnosticsStrings.Text(AId), AWidth, ARight);
 end;
 
+function Columns(const ASpecs: array of TColumnSpec): TArray<TAtlasGridColumn>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(ASpecs));
+  for mIndex := 0 to High(ASpecs) do
+  begin
+    Result[mIndex] := Column(ASpecs[mIndex].Id, ASpecs[mIndex].Width, ASpecs[mIndex].Right);
+  end;
+end;
+
 function TextOrDash(const AText: string): string;
 begin
   Result := AText;
@@ -123,17 +171,12 @@ end;
 
 class function TAtlasPluginGridRows.FeatureColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColFeature, 0, False),
-    Column(TAtlasDiagnosticsTextId.DiagColCalls, 64, True), Column(TAtlasDiagnosticsTextId.DiagColTotal, 80, True),
-    Column(TAtlasDiagnosticsTextId.DiagColMean, 72, True), Column(TAtlasDiagnosticsTextId.DiagColMax, 72, True),
-    Column(TAtlasDiagnosticsTextId.DiagColSlow, 80, True), Column(TAtlasDiagnosticsTextId.DiagColShare, 96, True));
+  Result := Columns(cFeatureColumns);
 end;
 
 class function TAtlasPluginGridRows.SlowColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColFeature, 0, False),
-    Column(TAtlasDiagnosticsTextId.DiagColTime, 96, False), Column(TAtlasDiagnosticsTextId.DiagColAction, 200, False),
-    Column(TAtlasDiagnosticsTextId.DiagColDuration, 80, True));
+  Result := Columns(cSlowColumns);
 end;
 
 class function TAtlasPluginGridRows.RequestColumns: TArray<TAtlasGridColumn>;
@@ -150,16 +193,12 @@ end;
 
 class function TAtlasPluginGridRows.SourceColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColSource, 0, False),
-    Column(TAtlasDiagnosticsTextId.DiagColCalls, 64, True), Column(TAtlasDiagnosticsTextId.DiagColMean, 72, True),
-    Column(TAtlasDiagnosticsTextId.DiagColMax, 72, True), Column(TAtlasDiagnosticsTextId.DiagColTooSlow, 90, True));
+  Result := Columns(cSourceColumns);
 end;
 
 class function TAtlasPluginGridRows.HangColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := TArray<TAtlasGridColumn>.Create(Column(TAtlasDiagnosticsTextId.DiagColAction, 0, False),
-    Column(TAtlasDiagnosticsTextId.DiagColTime, 96, False), Column(TAtlasDiagnosticsTextId.DiagColDuration, 80, True),
-    Column(TAtlasDiagnosticsTextId.DiagColWithAtlas, 110, True));
+  Result := Columns(cHangColumns);
 end;
 
 class function TAtlasPluginGridRows.Features(const ARows: TArray<TAtlasFeatureRow>;

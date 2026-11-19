@@ -129,6 +129,16 @@ uses
 const
   // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.
   cFootButtonWidth = 110;
+  // Anzahl und Höhe der Zeilen Cache, Sperre und Stand im Kopf.
+  cInfoRows = 3;
+  cInfoRowHeight = 22;
+  // Spaltenbreiten der Liste ungesicherter Dateien: Datei, je Prozess.
+  cDirtyFileWidth = 260;
+  cDirtyProcessWidth = 180;
+  // Spaltenbreiten der Prozessliste: Art, Client, Zustand.
+  cKindWidth = 60;
+  cClientWidth = 380;
+  cStateWidth = 160;
 
 function NewLabel(AOwner: TComponent; AParent: TWinControl; const ACaption: string): TLabel;
 begin
@@ -270,14 +280,14 @@ begin
   FParts.Choice.OnChange := ChoiceChange;
 
   // Cache, Sperre, Stand.
-  mInfo := NewPanel(Self, alTop, 3 * 22 + cGap);
+  mInfo := NewPanel(Self, alTop, cInfoRows * cInfoRowHeight + cGap);
   mInfo.Top := mHead.Top + mHead.Height;
   FParts.CacheValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesCache, 0);
-  FParts.LockValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesLock, 22);
+  FParts.LockValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesLock, cInfoRowHeight);
   FParts.WriterTag := NewLabel(Self, mInfo, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesWrites));
   FParts.WriterTag.Font.Style := [fsBold];
   FParts.WriterTag.Visible := False;
-  FParts.StateValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesState, 44);
+  FParts.StateValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesState, 2 * cInfoRowHeight);
 end;
 
 procedure TAtlasProcessesDialog.CreateFoot;
@@ -330,9 +340,9 @@ begin
   FParts.DirtyNote.Align := alBottom;
   FParts.Dirty := NewList(Self, mBox);
   FParts.Dirty.Margins.SetBounds(cGap, 2, cGap, 2);
-  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyFile, 260);
-  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyIde, 180);
-  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyMcp, 180);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyFile, cDirtyFileWidth);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyIde, cDirtyProcessWidth);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyMcp, cDirtyProcessWidth);
 end;
 
 procedure TAtlasProcessesDialog.CreateList;
@@ -350,9 +360,9 @@ begin
 
   FParts.List := NewList(Self, Self);
   FParts.List.Margins.SetBounds(cGap, 0, cGap, 0);
-  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnKind, 60);
-  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnClient, 380);
-  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnState, 160);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnKind, cKindWidth);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnClient, cClientWidth);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnState, cStateWidth);
 end;
 
 procedure TAtlasProcessesDialog.ChoiceChange(Sender: TObject);
