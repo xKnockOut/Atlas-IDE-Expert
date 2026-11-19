@@ -109,6 +109,7 @@ Atlas.Common.Editing.InterfaceStubs.Tests
 Atlas.Common.Editing.InvertBoolean.Tests
 Atlas.Common.Editing.MemberOrder.Tests
 Atlas.Common.Editing.MemberTransfer.Tests
+Atlas.Common.Editing.MethodMatching.Tests
 Atlas.Common.Editing.MethodOrder.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Analysis.Tests
@@ -324,6 +325,8 @@ Atlas.Common.Rules.Builtin.Credentials.Tests
 Atlas.Common.Rules.Builtin.DataBinding.Tests
 Atlas.Common.Rules.Builtin.Database.Statements.Tests
 Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests
+Atlas.Common.Rules.Builtin.Declarations.FieldOrder.Tests
+Atlas.Common.Rules.Builtin.Declarations.Includes.Tests
 Atlas.Common.Rules.Builtin.Declarations.Duplicates.Tests
 Atlas.Common.Rules.Builtin.Declarations.Overloads.Tests
 Atlas.Common.Rules.Builtin.Declarations.Shared.Tests
