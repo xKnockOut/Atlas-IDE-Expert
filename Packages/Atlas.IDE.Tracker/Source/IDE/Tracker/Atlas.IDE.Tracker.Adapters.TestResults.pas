@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.Adapters.TestResults;
 
 // Kachel „Testergebnisse“ (#763), Rolle Adapters: TAtlasTestResultsSourceAdapter
-// erfüllt IAtlasTestResultsSource aus Atlas.UI.Tracker.TestResults und
+// erfüllt IAtlasTestResultsSource aus Atlas.UI.Tracker.Contract.TestResults und
 // TAtlasTestsSummaryListener IAtlasProjectSummaryListener aus
 // Atlas.IDE.Projects.Summaries; beide reichen an TAtlasIdeTestResults
 // (Atlas.IDE.Tracker.TestResults) weiter und halten es, solange sie gehalten
@@ -10,10 +10,10 @@
 interface
 
 uses
-  Atlas.Core.Tracker.TestResults,
   Atlas.IDE.Projects.Summaries,
-  Atlas.UI.Tracker.TestResults,
-  Atlas.IDE.Tracker.TestResults;
+  Atlas.IDE.Tracker.TestResults,
+  Atlas.Core.Tracker.Contract.TestResults,
+  Atlas.UI.Tracker.Contract.TestResults;
 
 type
   /// <summary>Quelle der Kachel „Testergebnisse“ über ATests.</summary>

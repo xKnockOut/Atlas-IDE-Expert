@@ -1363,6 +1363,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Contract.Sprint` | `Core/Tracker/Atlas.Core.Tracker.Contract.Sprint.pas` | Ordner `Core/Tracker`; Vertrag der Sprint-Kachel (#1443) |
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.TestResults` | `Core/Tracker/Atlas.Core.Tracker.TestResults.pas` | Ordner `Core/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
+| `Atlas.Core.Tracker.Contract.TestResults` | `Core/Tracker/Atlas.Core.Tracker.Contract.TestResults.pas` | Ordner `Core/Tracker`; Vertrag der Kachel „Testergebnisse“ (#1443) |
 | `Atlas.Core.Tracker.TimeClock` | `Core/Tracker/Atlas.Core.Tracker.TimeClock.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.TimeStore` | `Core/Tracker/Atlas.Core.Tracker.TimeStore.pas` | Ordner `Core/Tracker`; Ablage der erfassten Zeit in time.json |
 | `Atlas.Core.Tracker.TimeLog` | `Core/Tracker/Atlas.Core.Tracker.TimeLog.pas` | Ordner `Core/Tracker` |
@@ -1456,6 +1457,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Adapters.Sprint` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Sprint.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasSprintSource` aus `Atlas.UI.Tracker.Contract.Sprint`, #1443 |
 | `Atlas.IDE.Tracker.TestActions` | `IDE/Tracker/Atlas.IDE.Tracker.TestActions.pas` | Aktionen der Kachel „Testergebnisse“ (Test öffnen, erneut ausführen, debuggen, Build im Browser), #1455 |
 | `Atlas.IDE.Tracker.TestResults` | `IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas` | Ordner `IDE/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.TestResultsData` | `IDE/Tracker/Atlas.IDE.Tracker.TestResultsData.pas` | Ordner `IDE/Tracker`, Daten der Kachel „Testergebnisse“ (#763, #1443) |
 | `Atlas.IDE.Tracker.Adapters.TestResults` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.TestResults.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasTestResultsSource` und `IAtlasProjectSummaryListener` aus `Atlas.UI.Tracker.TestResults` bzw. `Atlas.IDE.Projects.Summaries`, #1443 |
 | `Atlas.IDE.Tracker.Adapters.Tiles` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Tiles.pas` | Ordner `IDE/Tracker`, Rolle Adapters: Kacheln „Meine Issues“, „Sprint“ und „Testergebnisse“ (`IAtlasWelcomeTile`), #1455, #1443 |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
@@ -1522,6 +1524,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.Workflow.Strings` | `UI/Tracker/Atlas.UI.Tracker.Workflow.Strings.pas` | Texte des Features Workflow (Tracker) |
 | `Atlas.UI.Tracker.GitHubStrings` | `UI/Tracker/Atlas.UI.Tracker.GitHubStrings.pas` | Texte des GitHub-Anbieters im Tracker (Schließgrund #2135), Sprache von Base |
 | `Atlas.UI.Tracker.TestResults` | `UI/Tracker/Atlas.UI.Tracker.TestResults.pas` | Ordner `UI/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.Contract.TestResults` | `UI/Tracker/Atlas.UI.Tracker.Contract.TestResults.pas` | Ordner `UI/Tracker`; Vertrag der Kachel „Testergebnisse“ zwischen IDE und Oberfläche (#1443) |
 | `Atlas.UI.Tracker.TileView` | `UI/Tracker/Atlas.UI.Tracker.TileView.pas` | Grundlage der Kachel-Ansichten (`IAtlasWelcomeTileView`), #1455 |
 | `Atlas.UI.Tracker.TimeDialog` | `UI/Tracker/Atlas.UI.Tracker.TimeDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.TimeList` | `UI/Tracker/Atlas.UI.Tracker.TimeList.pas` | Ordner `UI/Tracker` |

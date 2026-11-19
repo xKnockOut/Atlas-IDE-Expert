@@ -17,9 +17,9 @@ uses
   Atlas.UI.Tracker.TileView,
   Atlas.UI.Tracker.Contract.MyIssues,
   Atlas.UI.Tracker.Contract.Sprint,
-  Atlas.UI.Tracker.TestResults,
   Atlas.IDE.Contracts.WelcomeTiles,
-  Atlas.IDE.Tracker.MyIssues;
+  Atlas.IDE.Tracker.MyIssues,
+  Atlas.UI.Tracker.Contract.TestResults;
 
 type
   /// <summary>Ansicht einer Kachel für die Seite; reicht an das Steuerelement weiter. Gibt die Seite das Steuerelement
@@ -77,7 +77,8 @@ uses
   Atlas.IDE.Tracker.SprintTile,
   Atlas.UI.Tracker.MyIssues,
   Atlas.UI.Tracker.SprintTile,
-  Atlas.IDE.Tracker.TestResults;
+  Atlas.IDE.Tracker.TestResults,
+  Atlas.UI.Tracker.TestResults;
 
 /// <summary>Höhe an die Seite melden; eigene Routine, damit die Methodenreferenz nur den Host hält.</summary>
 function HeightToHost(const AHost: IAtlasWelcomeTileHost): TProc;

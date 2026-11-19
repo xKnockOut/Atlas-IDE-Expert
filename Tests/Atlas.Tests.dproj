@@ -1778,6 +1778,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Trends.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.TestResults.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Contract.TestResults.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TestResults.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.MyIssues.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Contract.MyIssues.pas"/>
@@ -1866,6 +1867,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Search.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.QuickActions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.TestResults.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.Contract.TestResults.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.CiLogin.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.TestResults.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.pas"/>

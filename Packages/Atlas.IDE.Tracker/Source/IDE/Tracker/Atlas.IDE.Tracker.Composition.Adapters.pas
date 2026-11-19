@@ -45,7 +45,6 @@ uses
   Atlas.IDE.Projects.Summaries,
   Atlas.UI.Tracker.Contract.MyIssues,
   Atlas.UI.Tracker.Contract.Sprint,
-  Atlas.UI.Tracker.TestResults,
   Atlas.IDE.Tracker.Adapters.CommentAssist,
   Atlas.IDE.Tracker.Adapters.MyIssues,
   Atlas.IDE.Tracker.Adapters.NewIssue,
@@ -53,7 +52,8 @@ uses
   Atlas.IDE.Tracker.Adapters.Review,
   Atlas.IDE.Tracker.Adapters.Sprint,
   Atlas.IDE.Tracker.Adapters.TestResults,
-  Atlas.IDE.Tracker.Adapters.Tiles;
+  Atlas.IDE.Tracker.Adapters.Tiles,
+  Atlas.UI.Tracker.Contract.TestResults;
 
 /// <summary>Quelle der Sprint-Kachel, solange die Sprint-Steuerung von AIssues läuft; sonst nil. Eigene Routine:
 /// Die anonyme Methode hält nur AIssues.</summary>
