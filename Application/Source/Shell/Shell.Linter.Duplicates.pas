@@ -14,7 +14,6 @@
 interface
 
 uses
-  Atlas.Common.Metrics.DuplicateBodies,
   Atlas.Common.Metrics.DuplicateBaseline,
   Shell.CommandLine;
 
@@ -37,9 +36,9 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  Atlas.Common.Metrics.DuplicateBodies,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Output,

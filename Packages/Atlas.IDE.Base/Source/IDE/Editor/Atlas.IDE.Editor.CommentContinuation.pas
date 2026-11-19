@@ -33,7 +33,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -51,14 +50,8 @@ end;
 
 /// <summary>Schreibt nur den Unterschied von AText zu ANewText in den Puffer von AView.</summary>
 procedure WriteLines(const AView: IOTAEditView; const AText, ANewText: string);
-var
-  mStart, mOldLength: Integer;
-  mInsert: string;
 begin
-  if TAtlasLineMover.Difference(AText, ANewText, mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(AView.Buffer, AText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(AView.Buffer, AText, ANewText);
 end;
 
 { TAtlasIdeCommentContinuation }

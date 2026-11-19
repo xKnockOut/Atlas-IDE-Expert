@@ -57,20 +57,14 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Projects;
 
-/// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
-function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-begin
-  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
-
 /// <summary>Fundstellen der roten Tests in ARun.</summary>
 function PlacesOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult): TArray<TAtlasTestPlace>;
 var
   mFailure: TAtlasTestFailure;
 begin
   Result := nil;
-  for mFailure in TAtlasTestRun.Failures(ARun, TAtlasIdeTestProjects.UnitFiles(ATarget.Project), ReadLines,
-    TAtlasIdeSettings.Current.TestsFailureAtAssert) do
+  for mFailure in TAtlasTestRun.Failures(ARun, TAtlasIdeTestProjects.UnitFiles(ATarget.Project),
+    TAtlasIdeFiles.LineReader(), TAtlasIdeSettings.Current.TestsFailureAtAssert) do
   begin
     Result := Result + [TAtlasTestPlace.Make(mFailure.Test.FullName, mFailure.FileName, mFailure.Line)];
   end;

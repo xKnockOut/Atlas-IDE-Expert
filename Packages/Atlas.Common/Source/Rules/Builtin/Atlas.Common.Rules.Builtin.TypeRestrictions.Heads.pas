@@ -89,7 +89,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 function BareTypeName(const AName: string): string;
 var
@@ -402,7 +403,7 @@ begin
     Exit('');
   end;
   mText := TRoutineBody.TextOf(AText, ANode);
-  mText := StringReplace(StringReplace(mText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  mText := TTextLines.NormalizeLineBreaks(mText, ' ');
   while Pos('  ', mText) > 0 do
   begin
     mText := StringReplace(mText, '  ', ' ', [rfReplaceAll]);
