@@ -2,8 +2,9 @@
 
 // Abschnitt des Moduls KI-Assistenten im Optionsdialog (#1888, Muster #1456): eigene Seite „KI-Assistenten“
 // (#1906) mit dem Modulschalter assistants.enabled, Schreiben in offene Dateien (assistants.edit) und Builds für
-// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline) und
-// IDE-Zustand für get_ide_context (assistants.context, #2050).
+// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline),
+// IDE-Zustand für get_ide_context (assistants.context, #2050) und dem Hinweis auf veraltete Anweisungsdateien
+// (assistants.instructionsHint, #2615).
 
 interface
 
@@ -40,6 +41,9 @@ begin
   Switch('assistants.context.selection', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsContextSelection));
   Number('assistants.context.selectionMax',
     TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsContextSelectionMax));
+  // Hinweis auf veraltete Anweisungsdateien für KI-Assistenten (#2615).
+  Switch('assistants.instructionsHint', TAtlasAssistantsStrings.Text(
+    TAtlasAssistantsTextId.SettingsInstructionsHint));
 end;
 
 function TAtlasAssistantsSettingsSection.OwnerId: string;

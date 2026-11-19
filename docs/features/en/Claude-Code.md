@@ -72,6 +72,16 @@ Ready-made workflows that Claude Code shows as slash commands:
   - the last build
 - e.g. `@delphi:delphi://unit/UI.Order`
 
+## Instructions for AI assistants (#2615)
+
+AI assistants read an instruction file of the project when they start. Atlas writes the rules from `atlas.json` into it as a short summary, so the assistant knows them before it writes the first line:
+
+- Rule profile, thresholds of the active metric rules, naming (`naming-prefix`), forbidden symbols with their replacement, the rules set to error in `atlas.json`, the protected files from `assistants.protected` and the required checks from `assistants.instructions.checks`.
+- The section sits between `<!-- atlas:begin … -->` and `<!-- atlas:end -->`; only it is replaced, the rest of the file stays. If it is missing, Atlas appends it; if the file is missing, Atlas creates it.
+- Files: `assistants.instructions.file` (default `["AGENTS.md"]`), relative to the folder of `atlas.json`. Language follows `mcp.promptLanguage`.
+- Command line: `AtlasServer --check . --write-instructions` writes, `--check-instructions` only checks and exits with code 1 when a section is out of date (for CI and pre-commit hooks).
+- In the IDE: Atlas › “Update instructions for AI assistants” (also in the command palette) writes the files and shows in the message view which lines changed. After saving `atlas.json`, Atlas points out an out-of-date section; turn this off with `assistants.instructionsHint`.
+
 ## The `atlas` plugin
 
 - Checks every Pascal file Claude changes right away with the project's check rules (hook with `hook_check`, findings go straight back to Claude)

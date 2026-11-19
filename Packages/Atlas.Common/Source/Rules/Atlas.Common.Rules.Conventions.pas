@@ -20,6 +20,10 @@ type
     /// <summary>Konventionen als Markdown; ACatalog darf nil sein.</summary>
     class function Markdown(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ACatalog: TRuleCatalog): string; static;
+    /// <summary>Läuft die Regel nach ASettings? Experimentelle nur, wenn atlas.json sie einschaltet. ASeverity ist
+    /// der wirksame Schweregrad.</summary>
+    class function IsActive(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
+      out ASeverity: TRuleSeverity): Boolean; static;
     /// <summary>Gehört die Regel zu den Benennungsregeln (Kennung enthält „name“ bzw. „naming“)?</summary>
     class function IsNamingRule(const ARuleId: string): Boolean; static;
   end;
@@ -56,6 +60,15 @@ const
 
 { TRuleConventions }
 
+class function TRuleConventions.IsActive(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
+  out ASeverity: TRuleSeverity): Boolean;
+var
+  mEnabled: Boolean;
+begin
+  ASeverity := TRuleEngine.EffectiveSeverity(ARule, ASettings, '', mEnabled);
+  Result := (ASeverity <> TRuleSeverity.Off) and (mEnabled or not TRuleProfiles.IsExperimental(ARule.Id));
+end;
+
 class function TRuleConventions.IsNamingRule(const ARuleId: string): Boolean;
 begin
   Result := (Pos('name', LowerCase(ARuleId)) > 0) or (Pos('naming', LowerCase(ARuleId)) > 0);
@@ -76,15 +89,13 @@ function ActiveRules(const ARules: TArray<IRule>; const ASettings: TServerSettin
 var
   mRule: IRule;
   mSeverity: TRuleSeverity;
-  mEnabled: Boolean;
   mEntry: TRuleCatalogEntry;
   mItem: TConventionRule;
 begin
   Result := nil;
   for mRule in ARules do
   begin
-    mSeverity := TRuleEngine.EffectiveSeverity(mRule.Descriptor, ASettings, '', mEnabled);
-    if (mSeverity <> TRuleSeverity.Off) and (mEnabled or not TRuleProfiles.IsExperimental(mRule.Descriptor.Id)) then
+    if TRuleConventions.IsActive(mRule.Descriptor, ASettings, mSeverity) then
     begin
       mItem.Id := mRule.Descriptor.Id;
       mItem.Severity := TFindingsOutput.SeverityName(mSeverity);

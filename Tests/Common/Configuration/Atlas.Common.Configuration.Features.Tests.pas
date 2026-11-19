@@ -26,6 +26,10 @@ type
     /// <summary>#1357: Fehler in eigenen Prompts (Name, Text, include, Platzhalter) werden gemeldet.</summary>
     [Test]
     procedure ChecksMcpCustomPrompts;
+    /// <summary>#2615: assistants.instructions.file (Vorgabe AGENTS.md) und .checks; falsche Typen gemeldet.
+    /// </summary>
+    [Test]
+    procedure ReadsAssistantInstructions;
     /// <summary>#1357: atlas.json mit nur mcp.customPrompts lässt das globale mcp.prompts stehen.</summary>
     [Test]
     procedure LayersMcpMembersSeparately;
@@ -241,6 +245,29 @@ begin
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.IsFalse(mIssues[0].IsError, 'Platzhalter ohne Argument ist eine Warnung');
   Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
+end;
+procedure TConfigurationFeatureTests.ReadsAssistantInstructions;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mSettings.AssistantsInstructionFiles)));
+  Assert.AreEqual('AGENTS.md', mSettings.AssistantsInstructionFiles[0]);
+  Assert.AreEqual(0, Integer(Length(mSettings.AssistantsInstructionChecks)));
+  mSettings := Parse('{"assistants": {"instructions": {"file": ["AGENTS.md", "docs/Assistenten.md"], ' +
+    '"checks": ["pwsh Tools/Check-Delphi12.ps1"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(2, Integer(Length(mSettings.AssistantsInstructionFiles)));
+  Assert.AreEqual('docs/Assistenten.md', mSettings.AssistantsInstructionFiles[1]);
+  Assert.AreEqual(1, Integer(Length(mSettings.AssistantsInstructionChecks)));
+  Assert.AreEqual('pwsh Tools/Check-Delphi12.ps1', mSettings.AssistantsInstructionChecks[0]);
+  mSettings := Parse('{"assistants": {"instructions": {"file": "AGENTS.md", "checks": [1]}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)), 'keine Liste von Texten');
+  Assert.AreEqual('AGENTS.md', mSettings.AssistantsInstructionFiles[0], 'Vorgabe bleibt');
+  Parse('{"assistants": {"wetter": true}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekannter Schlüssel');
+  mSettings := Default(TServerSettings);
 end;
 procedure TConfigurationFeatureTests.LayersMcpMembersSeparately;
 var

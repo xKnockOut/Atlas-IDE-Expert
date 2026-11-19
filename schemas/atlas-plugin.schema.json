@@ -1430,6 +1430,19 @@
       "x-captionEn": "At most characters of the selection",
       "x-issue": "#2050"
     },
+    "AssistantsInstructionsHint": {
+      "type": "boolean",
+      "default": true,
+      "description": "Hinweis in der Meldungsansicht, wenn nach dem Speichern der atlas.json der Abschnitt in einer Anweisungsdatei für KI-Assistenten (assistants.instructions.file) fehlt oder veraltet ist (#2615). Aktualisieren über Atlas › Anweisungen für KI-Assistenten aktualisieren.",
+      "x-key": "assistants.instructionsHint",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Hinweis auf veraltete Anweisungen",
+      "x-captionEn": "Hint on outdated instructions",
+      "x-issue": "#2615"
+    },
     "McpBuild": {
       "type": "boolean",
       "default": true,

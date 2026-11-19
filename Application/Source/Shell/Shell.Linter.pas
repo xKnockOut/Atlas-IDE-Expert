@@ -109,6 +109,9 @@ type
     /// --output. Exit-Code 0; 2, wenn alle Tests nötig sind; 3 bei Fehlern oder mit tests.affected = false.
     /// </summary>
     class function AffectedTests(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--write-instructions bzw. --check-instructions (#2615): Anweisungsdateien für KI-Assistenten, siehe
+    /// Shell.Linter.Instructions.</summary>
+    class function Instructions(const AOptions: TCommandLineOptions): Integer; static;
   end;
 
 implementation
@@ -127,6 +130,7 @@ uses
   Shell.Linter.Formatting,
   Shell.Linter.Duplicates,
   Shell.Linter.AffectedTests,
+  Shell.Linter.Instructions,
   Atlas.Common.Localization.Texts;
 
 type
@@ -188,6 +192,11 @@ end;
 class function TLinterShell.Formatting(const AOptions: TCommandLineOptions): Integer;
 begin
   Result := TLinterFormatting.Run(AOptions);
+end;
+
+class function TLinterShell.Instructions(const AOptions: TCommandLineOptions): Integer;
+begin
+  Result := TLinterInstructions.Run(AOptions);
 end;
 
 class function TLinterShell.ClearCache: Integer;

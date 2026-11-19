@@ -88,6 +88,10 @@
 //                         (.html) oder Daten (.json) schreiben; Exit-Code 3 ohne
 //                         Versionsverwaltung oder mit hotspots.enabled = false
 //
+// Anweisungsdateien für KI-Assistenten (#2615), Ordner aus --check (Standard: aktueller Ordner):
+//   --write-instructions  Abschnitt aus atlas.json in jede Datei aus assistants.instructions.file schreiben
+//   --check-instructions  nur prüfen: Exit-Code 1, wenn ein Abschnitt fehlt oder veraltet ist
+//
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
 //   --root <Ordner>       Projektordner (Standard: aktuelles Verzeichnis)
@@ -205,6 +209,10 @@ type
     FormatWrite: Boolean;
     /// <summary>--check-duplicates: wortgleiche Rümpfe statt Regeln.</summary>
     CheckDuplicates: Boolean;
+    /// <summary>--write-instructions (#2615): Anweisungsdateien für KI-Assistenten schreiben.</summary>
+    WriteInstructions: Boolean;
+    /// <summary>--check-instructions (#2615): Anweisungsdateien prüfen.</summary>
+    CheckInstructions: Boolean;
     /// <summary>--format diff (#1358): vereinigter Diff; nur mit --format-check/--format-write.</summary>
     FormatDiff: Boolean;
     /// <summary>Index-Caches löschen und beenden (#184).</summary>
@@ -229,7 +237,8 @@ type
     class function FromProcess: TCommandLineOptions; static;
     class function TryParseLogLevel(const AText: string; out ALevel: TLogLevel): Boolean; static;
     /// <summary>Befehl eines Laufs ohne Editor für die Statusdatei (#1901): check, fix, format-check, format-write,
-    /// check-duplicates, metrics, todos, architecture, affected-tests, query, hotspots; '' für LSP- und
+    /// check-duplicates, metrics, todos, architecture, affected-tests, query, hotspots, write-instructions,
+    /// check-instructions; '' für LSP- und
     /// MCP-Server.</summary>
     function RunCommand: string;
     /// <summary>Alle Schalter, die Parse kennt; AtlasMonitor (#1900) prüft damit, dass er jeden anbietet oder
@@ -553,7 +562,9 @@ begin
     FlagOption('--todos', @AOptions.Todos), FlagOption('--no-index', @AOptions.NoIndex),
     FlagOption('--fix-dry-run', @AOptions.FixDryRun), FlagOption('--fail-on-match', @AOptions.FailOnMatch),
     FlagOption('--format-check', @AOptions.FormatCheck), FlagOption('--format-write', @AOptions.FormatWrite),
-    FlagOption('--check-duplicates', @AOptions.CheckDuplicates)];
+    FlagOption('--check-duplicates', @AOptions.CheckDuplicates),
+    FlagOption('--write-instructions', @AOptions.WriteInstructions),
+    FlagOption('--check-instructions', @AOptions.CheckInstructions)];
   Result.Values := [ValueOption('--log-level', ApplyLogLevel), ValueOption('--format', ApplyFormat),
     ValueOption('--rules', ApplyRules), ValueOption('--units', ApplyUnits), ValueOption('--fix', ApplyFix),
     ValueOption('--min-severity', ApplyMinSeverity), ValueOption('--fail-on', ApplyFailOn),
@@ -768,6 +779,14 @@ begin
   else if MutateFile <> '' then
   begin
     Result := 'mutate';
+  end
+  else if CheckInstructions then
+  begin
+    Result := 'check-instructions';
+  end
+  else if WriteInstructions then
+  begin
+    Result := 'write-instructions';
   end
   else if CheckTarget <> '' then
   begin

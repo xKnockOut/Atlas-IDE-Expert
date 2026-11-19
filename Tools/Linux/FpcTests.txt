@@ -176,6 +176,8 @@ Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
 Atlas.Common.Lsp.AffectedTests.Report.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
+Atlas.Common.Lsp.Instructions.Tests
+Atlas.Common.Rules.Instructions.Tests
 Atlas.Common.Lsp.FindingsPrompt.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
 Atlas.Common.Lsp.DataAccessSites.Tests
@@ -425,6 +427,7 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Assistants.Instructions.Tests
 Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Projects.Summary.Json.Tests

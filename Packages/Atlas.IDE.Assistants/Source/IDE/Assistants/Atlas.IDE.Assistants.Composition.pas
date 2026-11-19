@@ -14,6 +14,8 @@
 //   solange assistants.context an ist; den letzten Build bekommt er über
 //   IAtlasBuildVerdictListener.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog.
+// - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
+//   Atlas.IDE.Assistants.Instructions).
 // Die Liste der offenen und ungespeicherten Dateien (DirtyExport) bleibt in
 // Base: Sie schützt Dateien auch dann vor dem Überschreiben, wenn das Modul
 // fehlt. Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt
@@ -65,6 +67,7 @@ uses
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
   Atlas.IDE.Assistants.ContextExport,
+  Atlas.IDE.Assistants.Instructions,
   Atlas.UI.Assistants.SettingsSection;
 
 var
@@ -93,6 +96,11 @@ begin
       Exit;
     end;
   end;
+end;
+
+function ModuleScope: IAtlasModuleScope;
+begin
+  Result := GScope;
 end;
 
 { Teile der Feature-Tabelle }
@@ -212,6 +220,7 @@ var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasAssistantsModule;
   mPart: IAtlasFeaturePart;
+  mInstructions: IInterface;
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
@@ -229,6 +238,11 @@ begin
   end;
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
+  // Anweisungsdateien für KI-Assistenten (#2615): Befehl, Menüeintrag und Hinweis nach dem Speichern.
+  mInstructions := TAtlasIdeInstructions.Create(ModuleScope) as IAtlasCommandSource;
+  GScope.Provide(IAtlasCommandSource, mInstructions);
+  GScope.Provide(IAtlasMenuSource, mInstructions);
+  GScope.Provide(IAtlasFollowsSaves, mInstructions);
   Result := True;
 end;
 

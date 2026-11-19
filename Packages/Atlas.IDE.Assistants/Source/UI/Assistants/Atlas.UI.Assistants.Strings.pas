@@ -11,7 +11,9 @@ type
   TAtlasAssistantsTextId = (
     BuildStarted, BuildFinished, BuildRefused, RequestUnreadable, RequestNoProject, RequestUnknownMode,
     NoBuildPipeline, SettingsEdit, SettingsMcpBuild,
-    McpEditApplied, UndoActionMcp, SettingsContext, SettingsContextSelection, SettingsContextSelectionMax, ContextKind);
+    McpEditApplied, UndoActionMcp, SettingsContext, SettingsContextSelection, SettingsContextSelectionMax, ContextKind,
+    InstructionsCommand, InstructionsWritten, InstructionsCurrent, InstructionsFailed, InstructionsNoAnswer,
+    InstructionsNoFiles, InstructionsStale, SettingsInstructionsHint);
 
   TAtlasAssistantsStrings = class
   public
@@ -42,7 +44,16 @@ const
      'IDE-Zustand für KI-Assistenten bereitstellen (Datei, Cursor, Methode, Projekt, Build; get_ide_context)',
      'Markierten Text mitgeben',
      'Höchstens Zeichen der Auswahl',
-     'IDE-Zustand für KI-Assistenten'),
+     'IDE-Zustand für KI-Assistenten',
+     'Anweisungen für KI-Assistenten aktualisieren',
+     'Atlas: Anweisungen für KI-Assistenten in %s geschrieben:',
+     'Atlas: Anweisungen für KI-Assistenten in %s sind aktuell.',
+     'Atlas: Anweisungen für KI-Assistenten in %s nicht geschrieben (%s).',
+     'Atlas: Anweisungen für KI-Assistenten: Der Server hat nicht geantwortet.',
+     'Atlas: Keine Anweisungsdatei in assistants.instructions.file.',
+     'Atlas: Anweisungen für KI-Assistenten in %s veraltet; aktualisieren über Atlas › Anweisungen für ' +
+       'KI-Assistenten aktualisieren.',
+     'Hinweis, wenn die Anweisungen für KI-Assistenten nach einer Änderung an atlas.json veraltet sind'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -57,7 +68,16 @@ const
      'Provide the IDE state to AI assistants (file, cursor, method, project, build; get_ide_context)',
      'Include the selected text',
      'At most characters of the selection',
-     'IDE state for AI assistants'));
+     'IDE state for AI assistants',
+     'Update instructions for AI assistants',
+     'Atlas: instructions for AI assistants written to %s:',
+     'Atlas: instructions for AI assistants in %s are up to date.',
+     'Atlas: instructions for AI assistants in %s not written (%s).',
+     'Atlas: instructions for AI assistants: the server did not answer.',
+     'Atlas: no instruction file in assistants.instructions.file.',
+     'Atlas: instructions for AI assistants in %s are out of date; update with Atlas › Update instructions ' +
+       'for AI assistants.',
+     'Hint when the instructions for AI assistants are out of date after a change to atlas.json'));
 
 { TAtlasAssistantsStrings }
 

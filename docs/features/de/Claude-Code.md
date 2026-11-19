@@ -56,6 +56,16 @@ Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts.
 
 **Ressourcen mit Vorlage** hängen eine Unit (Gliederung und interface-Teil), ein Formular, die Befunde einer Datei oder den letzten Build mit `@` an, z. B. `@delphi:delphi://unit/UI.Auftrag`.
 
+## Anweisungen für KI-Assistenten (#2615)
+
+KI-Assistenten lesen beim Start eine Anweisungsdatei des Projekts. Atlas schreibt die Regeln aus `atlas.json` als Kurzfassung hinein, damit der Assistent sie kennt, bevor er die erste Zeile schreibt:
+
+- Regelprofil, Grenzwerte der aktiven Metrik-Regeln, Benennung (`naming-prefix`), verbotene Symbole mit Ersatz, die in `atlas.json` auf Fehler gestellten Regeln, die geschützten Dateien aus `assistants.protected` und die Pflichtprüfungen aus `assistants.instructions.checks`.
+- Der Abschnitt steht zwischen `<!-- atlas:begin … -->` und `<!-- atlas:end -->`; nur er wird ersetzt, der übrige Text der Datei bleibt. Fehlt er, hängt Atlas ihn an; fehlt die Datei, legt Atlas sie an.
+- Dateien: `assistants.instructions.file` (Vorgabe `["AGENTS.md"]`), relativ zum Ordner von `atlas.json`. Sprache wie `mcp.promptLanguage`.
+- Kommandozeile: `AtlasServer --check . --write-instructions` schreibt, `--check-instructions` prüft nur und endet mit Exit-Code 1, wenn ein Abschnitt veraltet ist (für CI und Pre-Commit-Hooks).
+- In der IDE: Atlas › „Anweisungen für KI-Assistenten aktualisieren“ (auch in der Befehlspalette) schreibt die Dateien und zeigt im Meldungsfenster, welche Zeilen sich geändert haben. Nach dem Speichern von `atlas.json` weist Atlas auf einen veralteten Abschnitt hin; abschaltbar mit `assistants.instructionsHint`.
+
 ## Plugin `atlas`
 
 - Das Plugin `atlas` prüft außerdem jede Pascal-Datei, die Claude ändert, sofort mit den Prüfregeln des Projekts (Hook mit `hook_check`, Befunde gehen direkt an Claude zurück).

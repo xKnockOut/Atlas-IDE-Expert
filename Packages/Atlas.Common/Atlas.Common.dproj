@@ -605,6 +605,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IndexTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CodeTools.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormFiles.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Instructions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartIndent.pas"/>
@@ -847,6 +848,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TokenScan.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Conventions.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Instructions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>
         <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.DiskFileSystem.pas"/>

@@ -3689,8 +3689,8 @@
     },
     "assistants": {
       "type": "object",
-      "description": "Regeln für KI-Assistenten, die über Atlas (MCP-Werkzeuge, Hook hook_check) Dateien ändern.",
-      "x-description-en": "Rules for AI assistants that change files through Atlas (MCP tools, hook hook_check).",
+      "description": "Regeln für KI-Assistenten: geschützte Dateien, die sie über Atlas (MCP-Werkzeuge, Hook hook_check) nicht ändern dürfen (#2608), und der Abschnitt mit den Regeln aus atlas.json in ihren Anweisungsdateien (#2615, AtlasServer --write-instructions, Befehl „Anweisungen für KI-Assistenten aktualisieren“).",
+      "x-description-en": "Rules for AI assistants: protected files they must not change through Atlas (MCP tools, hook hook_check) (#2608), and the section with the rules from atlas.json in their instruction files (#2615, AtlasServer --write-instructions, command \"Update instructions for AI assistants\").",
       "additionalProperties": false,
       "properties": {
         "protected": {
@@ -3726,6 +3726,42 @@
           "x-page": "MCP",
           "x-control": "JSON in atlas.json (Liste aus path, reason, use)",
           "x-issue": "#2608"
+        },
+        "instructions": {
+          "type": "object",
+          "description": "Anweisungsdateien und Pflichtprüfungen des Abschnitts.",
+          "x-description-en": "Instruction files and required checks of the section.",
+          "additionalProperties": false,
+          "properties": {
+            "file": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "default": [
+                "AGENTS.md"
+              ],
+              "description": "Anweisungsdateien für KI-Assistenten, relativ zum Ordner von atlas.json. Fehlt der Abschnitt in einer Datei, hängt Atlas ihn an; fehlt die Datei, legt Atlas sie an.",
+              "x-description-en": "Instruction files for AI assistants, relative to the folder of atlas.json. If a file lacks the section, Atlas appends it; if the file is missing, Atlas creates it."
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "default": [],
+              "examples": [
+                [
+                  "pwsh Tools/Check-Delphi12.ps1",
+                  "pwsh Tools/Check-TestCoverage.ps1"
+                ]
+              ],
+              "description": "Pflicht-Prüfbefehle, die der Abschnitt vor dem Abschluss nennt.",
+              "x-description-en": "Required check commands the section names before finishing."
+            }
+          }
         }
       },
       "examples": [
@@ -3745,8 +3781,8 @@
       ],
       "x-scope": "project",
       "x-page": "MCP",
-      "x-control": "JSON in atlas.json (Liste aus path, reason, use)",
-      "x-issue": "#2608"
+      "x-control": "protected: JSON in atlas.json (Liste aus path, reason, use); instructions.file, instructions.checks: Liste mit Hinzufügen/Entfernen",
+      "x-issue": "#2608, #2615"
     },
     "format": {
       "type": "object",

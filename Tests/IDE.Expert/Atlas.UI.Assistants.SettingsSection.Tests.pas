@@ -56,10 +56,15 @@ begin
     Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'McpBuild')),
       'alle Schalter auf der Seite des Moduls');
     Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsEdit')));
+    // #2615: Hinweis auf veraltete Anweisungsdateien, standardmäßig an, auf derselben Seite.
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsInstructionsHint').Checked);
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsInstructionsHint')));
+    CheckOf(mPage, 'AssistantsInstructionsHint').Checked := False;
     CheckOf(mPage, 'McpBuild').Checked := False;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.McpBuild, 'abschaltbar, Schlüssel unverändert');
+    Assert.IsFalse(mSaved.AssistantsInstructionsHint);
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'McpBuild').Checked);
     // IDE-Zustand für get_ide_context (#2050) auf derselben Seite, standardmäßig an.

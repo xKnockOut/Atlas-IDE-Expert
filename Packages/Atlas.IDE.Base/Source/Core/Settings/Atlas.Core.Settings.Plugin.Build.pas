@@ -93,6 +93,9 @@ type
     /// <summary>assistants.context.selectionMax (#2050): höchstens so viele Zeichen der Auswahl,
     /// cMinAssistantsContextSelectionMax bis cMaxAssistantsContextSelectionMax.</summary>
     AssistantsContextSelectionMax: Integer;
+    /// <summary>assistants.instructionsHint (#2615): Hinweis in der Meldungsansicht, wenn nach dem Speichern der
+    /// atlas.json der Abschnitt in einer Anweisungsdatei für KI-Assistenten veraltet ist.</summary>
+    AssistantsInstructionsHint: Boolean;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
     /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
     /// blockieren). Aus = kein Bau beim Öffnen.</summary>
@@ -351,6 +354,7 @@ begin
   Result.AssistantsContext := True;
   Result.AssistantsContextSelection := True;
   Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
+  Result.AssistantsInstructionsHint := True;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
   Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
@@ -436,6 +440,7 @@ begin
   AIo.Flag('AssistantsContext', AssistantsContext);
   AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
   AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);
+  AIo.Flag('AssistantsInstructionsHint', AssistantsInstructionsHint);
   AIo.Flag('BuildOnOpen', BuildOnOpen);
   AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
   AIo.Text('BuildOnOpenScope', BuildOnOpenScope);

@@ -103,7 +103,8 @@ uses
   Atlas.Common.Lsp.Ownership,
   Shell.Composition.DfmPropertyRules,
   Shell.Composition.LeakSetup,
-  Shell.Composition.LeakCandidates;
+  Shell.Composition.LeakCandidates,
+  Shell.Composition.Instructions;
 
 /// <summary>Ausführlicher Status von AReports als Funktion für die Aktivität des Servers.</summary>
 function DetailsOf(AReports: TShellStatusReports): TServerDetailsFunc;
@@ -134,6 +135,7 @@ begin
   FServerCommands.RegisterConvertCommand(FCommands);
   RegisterDfmPropertyRules;
   RegisterLeakSetup;
+  TShellInstructions.Attach(FCommands, FCore.Workspaces, FServices.Logger);
   RegisterOwnership;
   FCode.TestUnits.RegisterCaseCommands(FCommands);
   FCode.Refactorings.Register(FCommands);
