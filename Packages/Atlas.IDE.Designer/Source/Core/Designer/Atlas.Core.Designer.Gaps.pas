@@ -60,7 +60,8 @@ uses
   System.SysUtils,
   System.Math,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Lists;
 
 function NearOf(const ARect: TRect; AAxis: TAtlasGapAxis): Integer;
 begin
@@ -160,20 +161,6 @@ begin
     Result.Gaps[mIndex] := mGap;
   end;
   Result.Axis := AAxis;
-end;
-
-function Contains(const AValues: TArray<Integer>; AValue: Integer): Boolean;
-var
-  mValue: Integer;
-begin
-  for mValue in AValues do
-  begin
-    if mValue = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 { TAtlasGaps }
@@ -305,7 +292,7 @@ begin
   Result := nil;
   for mPart in AText.Split([',', ';', ' '], TStringSplitOptions.ExcludeEmpty) do
   begin
-    if TryStrToInt(mPart.Trim, mValue) and (mValue >= 0) and (mValue <= cMaxGap) and not Contains(Result, mValue) then
+    if TryStrToInt(mPart.Trim, mValue) and (mValue >= 0) and (mValue <= cMaxGap) and not TTextLists.ContainsInteger(Result, mValue) then
     begin
       Result := Result + [mValue];
     end;

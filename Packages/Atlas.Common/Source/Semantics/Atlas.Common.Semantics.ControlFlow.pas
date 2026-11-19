@@ -157,7 +157,9 @@ type
 implementation
 
 uses
-  Atlas.Common.Semantics.ControlFlow.Statements;
+  Atlas.Common.Semantics.ControlFlow.Statements,
+  System.StrUtils,
+  Atlas.Text.Lists;
 
 type
   /// <summary>Sprungziel, dessen Knoten erst später feststeht.</summary>
@@ -235,28 +237,6 @@ type
     destructor Destroy; override;
     procedure Run(ARoutine: TSyntaxNode);
   end;
-
-function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-procedure AddName(var ANames: TArray<string>; const AName: string);
-begin
-  if (AName <> '') and not ContainsName(ANames, AName) then
-  begin
-    ANames := ANames + [AName];
-  end;
-end;
 
 /// <summary>Bezeichner, an dem eine Kette wie X.Feld, X[I] oder X^ hängt; sonst ''.</summary>
 function RootName(ANode: TSyntaxNode): string;
@@ -338,17 +318,17 @@ end;
 
 function TFlowNode.ReadsName(const AName: string): Boolean;
 begin
-  Result := ContainsName(FReads, AName);
+  Result := MatchText(AName, FReads);
 end;
 
 function TFlowNode.MaybeReadsName(const AName: string): Boolean;
 begin
-  Result := ContainsName(FMaybeReads, AName);
+  Result := MatchText(AName, FMaybeReads);
 end;
 
 function TFlowNode.TouchesName(const AName: string): Boolean;
 begin
-  Result := ContainsName(FTouches, AName);
+  Result := MatchText(AName, FTouches);
 end;
 
 function TFlowNode.IsImplicitRaiseEdge(ANext: TFlowNode): Boolean;
@@ -1004,10 +984,10 @@ end;
 
 procedure TFlowAnalyzer.Touch(const AName: string; AMaybeRead: Boolean);
 begin
-  AddName(FNode.FTouches, AName);
+  TTextLists.AddText(FNode.FTouches, AName);
   if AMaybeRead then
   begin
-    AddName(FNode.FMaybeReads, AName);
+    TTextLists.AddText(FNode.FMaybeReads, AName);
   end;
 end;
 
@@ -1157,7 +1137,7 @@ procedure TFlowAnalyzer.AddNode(AExpression: TSyntaxNode);
 begin
   case AExpression.Kind of
     TSyntaxKind.Identifier:
-      AddName(FNode.FReads, AExpression.Name);
+      TTextLists.AddText(FNode.FReads, AExpression.Name);
     TSyntaxKind.TypeReference, TSyntaxKind.GenericArgs, TSyntaxKind.Literal:
       ;
     TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:

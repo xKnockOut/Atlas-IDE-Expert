@@ -73,7 +73,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -382,7 +383,6 @@ type
     FReport: IRuleReport;
     FScope: TTypedScope;
     FCheckFree: Boolean;
-    function LastName(const AName: string): string;
     function CastParts(ANode: TSyntaxNode; out ATypeNode, ASource: TSyntaxNode; out AIsAs: Boolean): Boolean;
     function TargetOf(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
     function SureSource(ASource: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
@@ -410,19 +410,6 @@ constructor TRedundantCastScan.Create(const AContext: TRuleContext; const ARepor
 begin
   FContext := AContext;
   FReport := AReport;
-end;
-
-/// <summary>Letzter Teil eines qualifizierten Namens ("System.Classes.TStringList" → "TStringList").</summary>
-function TRedundantCastScan.LastName(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := Trim(AName);
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
 end;
 
 /// <summary>Zieltyp der Umwandlung ANode: T(X) als Aufruf oder X as T; ATypeNode ist der Typname im Text,
@@ -568,7 +555,7 @@ function TRedundantCastScan.SameDeclared(const ASourceSymbol, ASourceType, ATarg
   ATypeNode: TSyntaxNode): Boolean;
 begin
   Result := SameType(ASourceType, ATargetType) and (ASourceSymbol.TypeName <> '') and
-    SameText(LastName(ASourceSymbol.TypeName), LastName(FScope.Text(ATypeNode)));
+    SameText(TTextNames.LastPart(Trim(ASourceSymbol.TypeName)), TTextNames.LastPart(Trim(FScope.Text(ATypeNode))));
 end;
 
 /// <summary>Gleichheit für Typen ohne Deklaration im Index (Integer, string): nur der Name.</summary>
@@ -576,7 +563,7 @@ function TRedundantCastScan.SameBuiltin(const ASourceSymbol, ASourceType, ATarge
   ATypeNode: TSyntaxNode): Boolean;
 begin
   Result := ASourceType.Builtin and ATargetType.Builtin and (ASourceSymbol.TypeName <> '') and
-    SameText(LastName(ASourceSymbol.TypeName), LastName(FScope.Text(ATypeNode))) and
+    SameText(TTextNames.LastPart(Trim(ASourceSymbol.TypeName)), TTextNames.LastPart(Trim(FScope.Text(ATypeNode)))) and
     SameText(ASourceType.Name, ATargetType.Name);
 end;
 

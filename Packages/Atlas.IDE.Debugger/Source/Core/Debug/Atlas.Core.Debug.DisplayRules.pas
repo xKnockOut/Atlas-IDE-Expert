@@ -111,7 +111,8 @@ implementation
 uses
   Atlas.Core.Debug.Visualizers.Format,
   Atlas.Core.Settings.VisualizerKinds,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lists;
 
 { TAtlasDisplayRule }
 
@@ -337,30 +338,20 @@ var
   mRule: TAtlasDisplayRule;
   mName: string;
   mIndex: Integer;
-
-  procedure AddName(const AName: string);
-  begin
-    if (AName <> '') and not mSeen.ContainsKey(LowerCase(AName)) then
-    begin
-      mSeen.Add(LowerCase(AName), True);
-      Result := Result + [AName];
-    end;
-  end;
-
 begin
   Result := nil;
   mSeen := TDictionary<string, Boolean>.Create;
   try
     for mRule in FRules do
     begin
-      AddName(mRule.TypeName);
-      AddName(ShortName(mRule.TypeName));
+      TTextLists.AddUniqueText(Result, mSeen, mRule.TypeName);
+      TTextLists.AddUniqueText(Result, mSeen, ShortName(mRule.TypeName));
     end;
     for mName in FInherits.Keys do
     begin
       if Lookup(FInherits[mName], mIndex) then
       begin
-        AddName(FInheritNames[mName]);
+        TTextLists.AddUniqueText(Result, mSeen, FInheritNames[mName]);
       end;
     end;
   finally

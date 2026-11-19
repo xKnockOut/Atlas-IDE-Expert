@@ -925,20 +925,6 @@ begin
   FInterfaceNames.Add(mKey, Result);
 end;
 
-function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 /// <summary>Nennt die Typ-Kette AChain den Vorfahren ATarget (Kurzname)? Der erste Eintrag ist der Typ selbst.
 /// </summary>
 function ChainNames(const AChain: TArray<TSymbolLocation>; const ATarget: string): Boolean;
@@ -976,7 +962,7 @@ begin
   end;
   for mAncestor in mType.Symbol.Ancestors do
   begin
-    if ContainsName(InterfaceClosure(mAncestor), mTarget) then
+    if MatchText(mTarget, InterfaceClosure(mAncestor)) then
     begin
       Exit(True);
     end;

@@ -147,7 +147,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Text.Lists;
 
 /// <summary>Ordner als Vergleichsschlüssel: "\" als Trenner, ohne Trenner am Ende, klein.</summary>
 function FolderKey(const AFolder: string): string;
@@ -723,16 +724,6 @@ var
   mFolders: TArray<string>;
   mFolder, mName: string;
   mProjectUnit: TProjectUnit;
-
-  procedure Add(const AName: string);
-  begin
-    if (AName <> '') and not mSeen.ContainsKey(LowerCase(AName)) then
-    begin
-      mSeen.Add(LowerCase(AName), True);
-      Result := Result + [AName];
-    end;
-  end;
-
 begin
   Result := nil;
   mSeen := TDictionary<string, Boolean>.Create;
@@ -742,7 +733,7 @@ begin
     begin
       for mProjectUnit in FSetup.Project.Units do
       begin
-        Add(mProjectUnit.Name);
+        TTextLists.AddUniqueText(Result, mSeen, mProjectUnit.Name);
       end;
       mFolders := FProjectFolders;
     end;
@@ -753,7 +744,7 @@ begin
       begin
         for mName in FSetup.IndexUnits() do
         begin
-          Add(mName);
+          TTextLists.AddUniqueText(Result, mSeen, mName);
         end;
       end;
     end;
@@ -761,7 +752,7 @@ begin
     begin
       for mName in Listing(mFolder).Values do
       begin
-        Add(mName);
+        TTextLists.AddUniqueText(Result, mSeen, mName);
       end;
     end;
   finally

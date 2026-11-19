@@ -104,7 +104,8 @@ implementation
 
 uses
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  System.StrUtils;
 
 function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
@@ -531,20 +532,6 @@ begin
   end;
 end;
 
-function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>True, wenn die Liste zwischen AFirst und ALast keine Direktive und keinen //-Kommentar enthält.</summary>
 function IsPlainList(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
 var
@@ -787,7 +774,7 @@ begin
   Result := nil;
   for mItem in AItems do
   begin
-    if not ContainsName(Options.Drop, mItem.Name) and not (Options.Dedupe and ContainsName(Seen, mItem.Name)) then
+    if not MatchText(mItem.Name, Options.Drop) and not (Options.Dedupe and MatchText(mItem.Name, Seen)) then
     begin
       Result := Result + [mItem];
       Seen := Seen + [mItem.Name];

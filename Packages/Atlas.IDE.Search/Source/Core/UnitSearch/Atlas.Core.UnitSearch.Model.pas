@@ -193,24 +193,11 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lists;
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');
-
-function Contains(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
 
 function ProjectMatches(const AEntry: TAtlasUnitEntry; const AFilter: string): Boolean;
 var
@@ -366,23 +353,6 @@ begin
   Result := Length(Words) > 0;
 end;
 
-function SameNames(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(A[mIndex], B[mIndex]) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 function TAtlasUnitQuery.Narrows(const APrevious: TAtlasUnitQuery): Boolean;
 var
   mIndex: Integer;
@@ -390,7 +360,7 @@ begin
   // Jede Regel des Matchers setzt eine Teilfolge voraus, und jede Teilfolge zählt (ScoreSubsequence):
   // Was das längere Wort trifft, traf auch das kürzere.
   Result := (Kinds = APrevious.Kinds) and (NotKinds = APrevious.NotKinds) and
-    SameNames(Projects, APrevious.Projects) and SameNames(NotProjects, APrevious.NotProjects) and
+    TTextLists.SameTexts(Projects, APrevious.Projects) and TTextLists.SameTexts(NotProjects, APrevious.NotProjects) and
     (Length(Words) >= Length(APrevious.Words));
   if Result then
   begin
@@ -616,7 +586,7 @@ begin
   begin
     Result := TAtlasUnitOrigin.SearchPath;
   end
-  else if (AActiveProject <> '') and Contains(AEntry.Projects, AActiveProject) then
+  else if (AActiveProject <> '') and MatchText(AActiveProject, AEntry.Projects) then
   begin
     Result := TAtlasUnitOrigin.Active;
   end
@@ -635,7 +605,7 @@ end;
 function ProjectOf(const AEntry: TAtlasUnitEntry; const AActiveProject: string): string;
 begin
   Result := '';
-  if (AActiveProject <> '') and Contains(AEntry.Projects, AActiveProject) then
+  if (AActiveProject <> '') and MatchText(AActiveProject, AEntry.Projects) then
   begin
     Result := AActiveProject;
   end
@@ -1260,7 +1230,7 @@ begin
   mRow.IsGroup := True;
   mRow.Group := AKey;
   mRow.Count := AMembers.Count;
-  mRow.Collapsed := Contains(ACollapsed, LowerCase(AKey));
+  mRow.Collapsed := MatchText(LowerCase(AKey), ACollapsed);
   mRow.Entry := -1;
   AList.Add(mRow);
   if mRow.Collapsed then

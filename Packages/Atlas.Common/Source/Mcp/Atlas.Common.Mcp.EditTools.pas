@@ -410,21 +410,6 @@ begin
   end;
 end;
 
-/// <summary>Steht AName (ohne Groß-/Kleinschreibung) in ANames?</summary>
-function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>AFileName relativ zu ARoot, wenn sie darunter liegt; sonst unverändert.</summary>
 function RelativeTo(const ARoot, AFileName: string): string;
 begin
@@ -442,7 +427,7 @@ begin
   Result := nil;
   for mEdit in AEdits do
   begin
-    if not ContainsName(AFiles, mEdit.FileName) then
+    if not MatchText(mEdit.FileName, AFiles) then
     begin
       Result := Result + [mEdit];
     end;
@@ -547,7 +532,7 @@ begin
   begin
     for mDirty in FDirtyFiles() do
     begin
-      if ContainsName(ANames, mDirty) then
+      if MatchText(mDirty, ANames) then
       begin
         raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasUnsavedChangesInThe].Text, [mDirty]);
       end;
@@ -780,7 +765,7 @@ begin
   AUntouched := nil;
   for mFileName in AFiles do
   begin
-    if ContainsName(mDirtyFiles, mFileName) then
+    if MatchText(mFileName, mDirtyFiles) then
     begin
       AUntouched := AUntouched + [mFileName];
     end

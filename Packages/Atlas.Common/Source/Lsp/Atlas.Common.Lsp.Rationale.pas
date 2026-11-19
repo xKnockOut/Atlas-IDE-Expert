@@ -82,7 +82,8 @@ uses
   Atlas.Common.Rationale.References,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Rules.Builtin.Todos,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Lists;
 
 {$SCOPEDENUMS ON}
 
@@ -118,23 +119,6 @@ begin
 end;
 
 { TLspRationale }
-
-function SameParamTypes(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(A[mIndex], B[mIndex]) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
 
 function IsRoutine(AKind: TIndexSymbolKind): Boolean;
 begin
@@ -179,7 +163,7 @@ begin
   end;
   for mOther in mCandidates do
   begin
-    if SameParamTypes(mOther.ParamTypes, ASymbol.ParamTypes) then
+    if TTextLists.SameTexts(mOther.ParamTypes, ASymbol.ParamTypes) then
     begin
       Result := Result + [mOther];
       Exit;
