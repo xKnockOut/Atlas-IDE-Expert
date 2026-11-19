@@ -117,42 +117,65 @@ type
   TMcpAfterWrite = reference to function(const ATool: string; const ANames, AOldTexts,
     ANewTexts: TArray<string>): string;
 
-  TMcpEditTools = class
+  /// <summary>Lesen und Schreiben der Quelltexte für TMcpEditTools: alles oder nichts, nicht gegen ungespeicherte
+  /// Änderungen im Editor, geschützte Dateien, neue und gelöschte Dateien, Protokoll und Befunde danach.</summary>
+  TMcpFileWriter = class
   private
-    FIndex: ISymbolIndex;
     FReadText: TReferenceReadText;
     FWriteText: TMcpWriteText;
     FFiles: TMcpFileOperations;
-    FProjectFiles: TFunc<TArray<string>>;
-    FEnsureUnit: TEnsureUnitFunc;
     FDirtyFiles: TMcpDirtyFiles;
     FAudit: TMcpAudit;
+    FProtectedReport: TMcpProtectedReport;
+    FAfterWrite: TMcpAfterWrite;
+  protected
+    function CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
+    function FindingsAfterWrite(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>): string;
+    procedure ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
+      out AOldTexts, ANewTexts: TArray<string>);
+    procedure WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
+    procedure EnsureWritable(const ANames, AOldTexts: TArray<string>);
+    function NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
+    procedure WritePlan(const ATool: string; var APlan: TMcpChangePlan);
+    procedure WriteFixes(const AFixRules: TArray<string>; const AResults: TArray<TBulkFixFile>);
+    /// <summary>Liest AFileName wie die Werkzeuge (offene Dateien aus dem Editor).</summary>
+    function TryRead(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Im Editor ungespeicherte Dateien; leer ohne Editor.</summary>
+    function UnsavedFiles: TArray<string>;
+  public
+    constructor Create(const AReadText: TReferenceReadText; const AWriteText: TMcpWriteText);
+    /// <summary>Wendet Edits einer Datei auf AText an (von hinten nach vorn).</summary>
+    class function ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string; static;
+    /// <summary>Liest Dateien wie die Werkzeuge selbst (extract_method, #2054).</summary>
+    property ReadText: TReferenceReadText read FReadText;
+    property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
+    /// <summary>Neue Dateien anlegen und Dateien löschen (#2150).</summary>
+    property Files: TMcpFileOperations read FFiles write FFiles;
+    property Audit: TMcpAudit read FAudit write FAudit;
+    /// <summary>Geschützte Dateien (#2608); nil = keine.</summary>
+    property ProtectedReport: TMcpProtectedReport read FProtectedReport write FProtectedReport;
+    /// <summary>Befunde nach dem Schreiben (#2603); nil = kein Abschnitt.</summary>
+    property AfterWrite: TMcpAfterWrite read FAfterWrite write FAfterWrite;
+  end;
+
+  TMcpEditTools = class(TMcpFileWriter)
+  private
+    FIndex: ISymbolIndex;
+    FProjectFiles: TFunc<TArray<string>>;
+    FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FCheckSource: TCheckSourceFunc;
     FCheckProject: TCheckProjectFunc;
     FSettingsFor: TReferenceSettingsProvider;
-    FProtectedReport: TMcpProtectedReport;
-    FAfterWrite: TMcpAfterWrite;
-    function FindingsAfterWrite(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>): string;
-    function CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
-    procedure ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
-      out AOldTexts, ANewTexts: TArray<string>);
-    procedure EnsureWritable(const ANames, AOldTexts: TArray<string>);
-    procedure WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
-    function NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
-    procedure WritePlan(const ATool: string; var APlan: TMcpChangePlan);
     function RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
       out AUnchanged: TArray<TReferenceLocation>): TArray<TMcpFileEdit>;
     function ActionsAt(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer): TArray<TCodeAction>;
     function RunFixes(const AScope: TMcpRuleScope; const AFiles: TArray<string>; const AOptions: TBulkFixOptions;
       const AFixRules: TArray<IRule>; ADryRun: Boolean; out AUntouched: TArray<string>): TArray<TBulkFixFile>;
-    procedure WriteFixes(const AFixRules: TArray<string>; const AResults: TArray<TBulkFixFile>);
   public
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
       const AEnsureUnit: TEnsureUnitFunc);
-    /// <summary>Wendet Edits einer Datei auf AText an (von hinten nach vorn).</summary>
-    class function ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string; static;
     /// <summary>Zeilen-Diff (- alt, + neu) mit Zeilennummern des alten Texts.</summary>
     class function Diff(const AFileName, AOld, ANew: string): string; static;
     /// <summary>Plant bzw. schreibt AEdits (siehe Unit-Kopf); liefert den Bericht.</summary>
@@ -178,22 +201,12 @@ type
     function FormatCode(const AStyle: TFormatStyle; const AFileName: string; const AScope: TFormatScope;
       ADryRun: Boolean): string; overload;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
-    /// <summary>Liest Dateien wie die Werkzeuge selbst (extract_method, #2054).</summary>
-    property ReadText: TReferenceReadText read FReadText;
-    property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
-    /// <summary>Neue Dateien anlegen und Dateien löschen (#2150).</summary>
-    property Files: TMcpFileOperations read FFiles write FFiles;
-    property Audit: TMcpAudit read FAudit write FAudit;
     /// <summary>Symbole und Include-Dateien für die Regelprüfung (#860); nil = Vordefinitionen (Win32).</summary>
     property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
     /// <summary>Projekt, Symbolindex und Projektdienste für die Regelprüfung (#1112); nil = ohne Index.</summary>
     property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
-    /// <summary>Geschützte Dateien (#2608); nil = keine.</summary>
-    property ProtectedReport: TMcpProtectedReport read FProtectedReport write FProtectedReport;
-    /// <summary>Befunde nach dem Schreiben (#2603); nil = kein Abschnitt.</summary>
-    property AfterWrite: TMcpAfterWrite read FAfterWrite write FAfterWrite;
   end;
 
 implementation
@@ -370,84 +383,6 @@ begin
   end;
 end;
 
-{ TMcpEditTools }
-
-constructor TMcpEditTools.Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-  const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
-  const AEnsureUnit: TEnsureUnitFunc);
-begin
-  inherited Create;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FWriteText := AWriteText;
-  FProjectFiles := AProjectFiles;
-  FEnsureUnit := AEnsureUnit;
-end;
-
-function TMcpEditTools.CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
-begin
-  Result := '';
-  if Assigned(FProtectedReport) then
-  begin
-    Result := FProtectedReport(ANames, ADryRun);
-  end;
-  // Ohne dryRun ist die Ablehnung der Fehler des Aufrufs: nichts wird geschrieben, auch keine andere Datei.
-  if not ADryRun and (Result <> '') then
-  begin
-    raise EMcpToolError.Create(Result);
-  end;
-end;
-
-function TMcpEditTools.FindingsAfterWrite(const ATool: string; const ANames, AOldTexts,
-  ANewTexts: TArray<string>): string;
-begin
-  Result := '';
-  if Assigned(FAfterWrite) then
-  begin
-    Result := FAfterWrite(ATool, ANames, AOldTexts, ANewTexts);
-  end;
-  if Result <> '' then
-  begin
-    Result := sLineBreak + sLineBreak + Result;
-  end;
-end;
-
-procedure TMcpEditTools.ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
-  out AOldTexts, ANewTexts: TArray<string>);
-var
-  mIndex: Integer;
-begin
-  SetLength(AOldTexts, Length(ANames));
-  SetLength(ANewTexts, Length(ANames));
-  for mIndex := 0 to High(ANames) do
-  begin
-    if not FReadText(ANames[mIndex], AOldTexts[mIndex]) then
-    begin
-      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadableNothingChanged].Text, [ANames[mIndex]]);
-    end;
-    ANewTexts[mIndex] := ApplyToText(AOldTexts[mIndex], AGroups[mIndex]);
-  end;
-end;
-
-procedure TMcpEditTools.WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
-begin
-  // Alles oder nichts: Scheitert eine Datei, setzt TBulkFix die schon geschriebenen zurück.
-  try
-    TBulkFix.WriteAll(ANames, AOldTexts, ANewTexts,
-      procedure(const AFileName, AText: string)
-      begin
-        FWriteText(AFileName, AText);
-      end);
-  except
-    on E: EBulkFixWrite do
-      raise EMcpToolError.Create(E.Message);
-  end;
-  if Assigned(FAudit) then
-  begin
-    FAudit(Format('MCP %s hat geschrieben: %s', [ATool, TLogMarks.Path(string.Join(', ', ANames))]));
-  end;
-end;
-
 /// <summary>Edits je Datei in der Reihenfolge des ersten Auftretens; ANames die Dateien dazu.</summary>
 function GroupByFile(const AEdits: TArray<TMcpFileEdit>; out ANames: TArray<string>): TArray<TArray<TMcpFileEdit>>;
 var
@@ -500,32 +435,6 @@ begin
   end;
 end;
 
-procedure TMcpEditTools.EnsureWritable(const ANames, AOldTexts: TArray<string>);
-var
-  mDirty, mCurrent: string;
-  mIndex: Integer;
-begin
-  // Keine Kollision mit ungespeicherten Änderungen im Editor.
-  if Assigned(FDirtyFiles) then
-  begin
-    for mDirty in FDirtyFiles() do
-    begin
-      if ContainsName(ANames, mDirty) then
-      begin
-        raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasUnsavedChangesInThe].Text, [mDirty]);
-      end;
-    end;
-  end;
-  // Seit dem Lesen geändert? Dann nichts schreiben.
-  for mIndex := 0 to High(ANames) do
-  begin
-    if not FReadText(ANames[mIndex], mCurrent) or (mCurrent <> AOldTexts[mIndex]) then
-    begin
-      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasBeenChangedInThe].Text, [ANames[mIndex]]);
-    end;
-  end;
-end;
-
 function EditsOutside(const AEdits: TArray<TMcpFileEdit>; const AFiles: TArray<string>): TArray<TMcpFileEdit>;
 var
   mEdit: TMcpFileEdit;
@@ -555,7 +464,106 @@ begin
   end;
 end;
 
-function TMcpEditTools.NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
+{ TMcpFileWriter }
+
+constructor TMcpFileWriter.Create(const AReadText: TReferenceReadText; const AWriteText: TMcpWriteText);
+begin
+  inherited Create;
+  FReadText := AReadText;
+  FWriteText := AWriteText;
+end;
+
+function TMcpFileWriter.CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
+begin
+  Result := '';
+  if Assigned(FProtectedReport) then
+  begin
+    Result := FProtectedReport(ANames, ADryRun);
+  end;
+  // Ohne dryRun ist die Ablehnung der Fehler des Aufrufs: nichts wird geschrieben, auch keine andere Datei.
+  if not ADryRun and (Result <> '') then
+  begin
+    raise EMcpToolError.Create(Result);
+  end;
+end;
+
+function TMcpFileWriter.FindingsAfterWrite(const ATool: string; const ANames, AOldTexts,
+  ANewTexts: TArray<string>): string;
+begin
+  Result := '';
+  if Assigned(FAfterWrite) then
+  begin
+    Result := FAfterWrite(ATool, ANames, AOldTexts, ANewTexts);
+  end;
+  if Result <> '' then
+  begin
+    Result := sLineBreak + sLineBreak + Result;
+  end;
+end;
+
+procedure TMcpFileWriter.ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
+  out AOldTexts, ANewTexts: TArray<string>);
+var
+  mIndex: Integer;
+begin
+  SetLength(AOldTexts, Length(ANames));
+  SetLength(ANewTexts, Length(ANames));
+  for mIndex := 0 to High(ANames) do
+  begin
+    if not FReadText(ANames[mIndex], AOldTexts[mIndex]) then
+    begin
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadableNothingChanged].Text, [ANames[mIndex]]);
+    end;
+    ANewTexts[mIndex] := ApplyToText(AOldTexts[mIndex], AGroups[mIndex]);
+  end;
+end;
+
+procedure TMcpFileWriter.WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
+begin
+  // Alles oder nichts: Scheitert eine Datei, setzt TBulkFix die schon geschriebenen zurück.
+  try
+    TBulkFix.WriteAll(ANames, AOldTexts, ANewTexts,
+      procedure(const AFileName, AText: string)
+      begin
+        FWriteText(AFileName, AText);
+      end);
+  except
+    on E: EBulkFixWrite do
+      raise EMcpToolError.Create(E.Message);
+  end;
+  if Assigned(FAudit) then
+  begin
+    FAudit(Format('MCP %s hat geschrieben: %s', [ATool, TLogMarks.Path(string.Join(', ', ANames))]));
+  end;
+end;
+
+procedure TMcpFileWriter.EnsureWritable(const ANames, AOldTexts: TArray<string>);
+var
+  mDirty, mCurrent: string;
+  mIndex: Integer;
+begin
+  // Keine Kollision mit ungespeicherten Änderungen im Editor.
+  if Assigned(FDirtyFiles) then
+  begin
+    for mDirty in FDirtyFiles() do
+    begin
+      if ContainsName(ANames, mDirty) then
+      begin
+        raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasUnsavedChangesInThe].Text, [mDirty]);
+      end;
+    end;
+  end;
+  // Seit dem Lesen geändert? Dann nichts schreiben.
+  for mIndex := 0 to High(ANames) do
+  begin
+    if not FReadText(ANames[mIndex], mCurrent) or (mCurrent <> AOldTexts[mIndex]) then
+    begin
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasBeenChangedInThe].Text, [ANames[mIndex]]);
+    end;
+  end;
+end;
+
+function TMcpFileWriter.NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
 var
   mExisting: string;
 begin
@@ -566,7 +574,7 @@ begin
   Result := ApplyToText(AFile.Text, EditsIn(AEdits, AFile.FileName));
 end;
 
-procedure TMcpEditTools.WritePlan(const ATool: string; var APlan: TMcpChangePlan);
+procedure TMcpFileWriter.WritePlan(const ATool: string; var APlan: TMcpChangePlan);
 begin
   if (APlan.Created <> nil) and not Assigned(FFiles.CreateFile) then
   begin
@@ -595,109 +603,7 @@ begin
   end;
 end;
 
-/// <summary>Bericht von ApplyChanges: Zahl der Änderungen und Diff je Datei.</summary>
-function TMcpEditTools.RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
-  out AUnchanged: TArray<TReferenceLocation>): TArray<TMcpFileEdit>;
-var
-  mText: string;
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mRenames: TArray<TRenameEdit>;
-  mRename: TRenameEdit;
-  mSettings: TReferenceSettings;
-begin
-  if not FReadText(AFileName, mText) then
-  begin
-    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
-  end;
-  mSettings := TReferenceSettings.Default;
-  if Assigned(FSettingsFor) then
-  begin
-    mSettings := FSettingsFor(TDocumentUris.FromPath(AFileName));
-  end;
-  mTree := TSyntaxTreeCache.Parse(mText);
-  try
-    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      mResolver.Namespaces := FNamespaces;
-      try
-        mRenames := TLspRename.Edits(mResolver, FIndex, mTree, TReferenceSearch.Create(AFileName,
-          TTextPosition.Create(ALine - 1, AColumn - 1), True, FProjectFiles(), FReadText),
-          TRenameRequest.Create(ANewName, True, mSettings, nil), AUnchanged);
-      except
-        on E: EJsonRpcError do
-          raise EMcpToolError.Create(E.Message);
-      end;
-    finally
-      mResolver.Free;
-    end;
-  finally
-    mTree.Free;
-  end;
-  Result := nil;
-  for mRename in mRenames do
-  begin
-    Result := Result + [TMcpFileEdit.Create(mRename.FileName, mRename.Range, mRename.NewText)];
-  end;
-end;
-
-function TMcpEditTools.ActionsAt(const AScope: TMcpRuleScope; const AFileName: string;
-  ALine: Integer): TArray<TCodeAction>;
-var
-  mText: string;
-  mAction: TCodeAction;
-  mScopes: TFindingScopes;
-begin
-  if not FReadText(AFileName, mText) then
-  begin
-    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
-  end;
-  Result := nil;
-  for mAction in TRuleCodeActions.ForRange(TFileChecker.CheckText(AScope.Rules, AScope.Settings,
-    RelativeTo(AScope.Root, AFileName), mText, TCheckOrigin.ForFile(FCheckProject, FCheckSource, AFileName),
-    mScopes), mText,
-    TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
-  begin
-    if (Length(mAction.Edits) > 0) and (mAction.Command = '') then
-    begin
-      Result := Result + [mAction];
-    end;
-  end;
-end;
-
-function TMcpEditTools.RunFixes(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-  const AOptions: TBulkFixOptions; const AFixRules: TArray<IRule>; ADryRun: Boolean;
-  out AUntouched: TArray<string>): TArray<TBulkFixFile>;
-var
-  mDirtyFiles: TArray<string>;
-  mFileName, mText: string;
-  mSource: TCheckSource;
-begin
-  // Ungespeicherte Dateien der IDE nicht anfassen; die übrigen laufen weiter.
-  mDirtyFiles := nil;
-  if not ADryRun and Assigned(FDirtyFiles) then
-  begin
-    mDirtyFiles := FDirtyFiles();
-  end;
-  Result := nil;
-  AUntouched := nil;
-  for mFileName in AFiles do
-  begin
-    if ContainsName(mDirtyFiles, mFileName) then
-    begin
-      AUntouched := AUntouched + [mFileName];
-    end
-    else if FReadText(mFileName, mText) then
-    begin
-      mSource := TFileChecker.SourceOf(FCheckSource, mFileName);
-      Result := Result + [TBulkFix.Run(mFileName, mText, AOptions, TBulkFix.CheckWith(AFixRules, AScope.Settings,
-        RelativeTo(AScope.Root, mFileName), TFileChecker.ProjectOf(FCheckProject, mFileName), mSource),
-        TBulkFix.SyntaxErrorsWith(mSource))];
-    end;
-  end;
-end;
-
-procedure TMcpEditTools.WriteFixes(const AFixRules: TArray<string>; const AResults: TArray<TBulkFixFile>);
+procedure TMcpFileWriter.WriteFixes(const AFixRules: TArray<string>; const AResults: TArray<TBulkFixFile>);
 var
   mResult: TBulkFixFile;
   mCurrent: string;
@@ -733,26 +639,21 @@ begin
   end;
 end;
 
-/// <summary>Erschlossene Stellen, die rename_symbol nicht geändert hat; '' ohne.</summary>
-function UnchangedReport(const AUnchanged: TArray<TReferenceLocation>): string;
-var
-  mLocation: TReferenceLocation;
+function TMcpFileWriter.TryRead(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := '';
-  if Length(AUnchanged) = 0 then
+  Result := FReadText(AFileName, AText);
+end;
+
+function TMcpFileWriter.UnsavedFiles: TArray<string>;
+begin
+  Result := nil;
+  if Assigned(FDirtyFiles) then
   begin
-    Exit;
-  end;
-  Result := sLineBreak + sLineBreak + cTexts[TEditToolsText.NotChangedPleaseCheckInferred].Fmt([Length(AUnchanged)]);
-  for mLocation in AUnchanged do
-  begin
-    Result := Result + sLineBreak + Format('%s:%d:%d – %s: %s', [mLocation.FileName,
-      mLocation.Range.StartPos.Line + 1, mLocation.Range.StartPos.Character + 1, mLocation.Confidence.ReasonName,
-      mLocation.Confidence.Detail]);
+    Result := FDirtyFiles();
   end;
 end;
 
-class function TMcpEditTools.ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string;
+class function TMcpFileWriter.ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string;
 var
   mSorted: TArray<TMcpFileEdit>;
   mEdit: TMcpFileEdit;
@@ -777,6 +678,138 @@ begin
     mStartOffset := mLines.OffsetAt(mEdit.Range.StartPos);
     mEndOffset := mLines.OffsetAt(mEdit.Range.EndPos);
     Result := Copy(Result, 1, mStartOffset) + mEdit.NewText + Copy(Result, mEndOffset + 1, MaxInt);
+  end;
+end;
+
+{ TMcpEditTools }
+
+constructor TMcpEditTools.Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+  const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
+  const AEnsureUnit: TEnsureUnitFunc);
+begin
+  inherited Create(AReadText, AWriteText);
+  FIndex := AIndex;
+  FProjectFiles := AProjectFiles;
+  FEnsureUnit := AEnsureUnit;
+end;
+
+function TMcpEditTools.RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
+  out AUnchanged: TArray<TReferenceLocation>): TArray<TMcpFileEdit>;
+var
+  mText: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mRenames: TArray<TRenameEdit>;
+  mRename: TRenameEdit;
+  mSettings: TReferenceSettings;
+begin
+  if not TryRead(AFileName, mText) then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
+  end;
+  mSettings := TReferenceSettings.Default;
+  if Assigned(FSettingsFor) then
+  begin
+    mSettings := FSettingsFor(TDocumentUris.FromPath(AFileName));
+  end;
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      mResolver.Namespaces := FNamespaces;
+      try
+        mRenames := TLspRename.Edits(mResolver, FIndex, mTree, TReferenceSearch.Create(AFileName,
+          TTextPosition.Create(ALine - 1, AColumn - 1), True, FProjectFiles(), ReadText),
+          TRenameRequest.Create(ANewName, True, mSettings, nil), AUnchanged);
+      except
+        on E: EJsonRpcError do
+          raise EMcpToolError.Create(E.Message);
+      end;
+    finally
+      mResolver.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+  Result := nil;
+  for mRename in mRenames do
+  begin
+    Result := Result + [TMcpFileEdit.Create(mRename.FileName, mRename.Range, mRename.NewText)];
+  end;
+end;
+
+function TMcpEditTools.ActionsAt(const AScope: TMcpRuleScope; const AFileName: string;
+  ALine: Integer): TArray<TCodeAction>;
+var
+  mText: string;
+  mAction: TCodeAction;
+  mScopes: TFindingScopes;
+begin
+  if not TryRead(AFileName, mText) then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
+  end;
+  Result := nil;
+  for mAction in TRuleCodeActions.ForRange(TFileChecker.CheckText(AScope.Rules, AScope.Settings,
+    RelativeTo(AScope.Root, AFileName), mText, TCheckOrigin.ForFile(FCheckProject, FCheckSource, AFileName),
+    mScopes), mText,
+    TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
+  begin
+    if (Length(mAction.Edits) > 0) and (mAction.Command = '') then
+    begin
+      Result := Result + [mAction];
+    end;
+  end;
+end;
+
+function TMcpEditTools.RunFixes(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
+  const AOptions: TBulkFixOptions; const AFixRules: TArray<IRule>; ADryRun: Boolean;
+  out AUntouched: TArray<string>): TArray<TBulkFixFile>;
+var
+  mDirtyFiles: TArray<string>;
+  mFileName, mText: string;
+  mSource: TCheckSource;
+begin
+  // Ungespeicherte Dateien der IDE nicht anfassen; die übrigen laufen weiter.
+  mDirtyFiles := nil;
+  if not ADryRun then
+  begin
+    mDirtyFiles := UnsavedFiles;
+  end;
+  Result := nil;
+  AUntouched := nil;
+  for mFileName in AFiles do
+  begin
+    if ContainsName(mDirtyFiles, mFileName) then
+    begin
+      AUntouched := AUntouched + [mFileName];
+    end
+    else if TryRead(mFileName, mText) then
+    begin
+      mSource := TFileChecker.SourceOf(FCheckSource, mFileName);
+      Result := Result + [TBulkFix.Run(mFileName, mText, AOptions, TBulkFix.CheckWith(AFixRules, AScope.Settings,
+        RelativeTo(AScope.Root, mFileName), TFileChecker.ProjectOf(FCheckProject, mFileName), mSource),
+        TBulkFix.SyntaxErrorsWith(mSource))];
+    end;
+  end;
+end;
+
+/// <summary>Erschlossene Stellen, die rename_symbol nicht geändert hat; '' ohne.</summary>
+function UnchangedReport(const AUnchanged: TArray<TReferenceLocation>): string;
+var
+  mLocation: TReferenceLocation;
+begin
+  Result := '';
+  if Length(AUnchanged) = 0 then
+  begin
+    Exit;
+  end;
+  Result := sLineBreak + sLineBreak + cTexts[TEditToolsText.NotChangedPleaseCheckInferred].Fmt([Length(AUnchanged)]);
+  for mLocation in AUnchanged do
+  begin
+    Result := Result + sLineBreak + Format('%s:%d:%d – %s: %s', [mLocation.FileName,
+      mLocation.Range.StartPos.Line + 1, mLocation.Range.StartPos.Character + 1, mLocation.Confidence.ReasonName,
+      mLocation.Confidence.Detail]);
   end;
 end;
 
@@ -1142,7 +1175,7 @@ var
   mEdit: TTextEdit;
   mEdits: TArray<TMcpFileEdit>;
 begin
-  if not FReadText(AFileName, mText) then
+  if not TryRead(AFileName, mText) then
   begin
     raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
