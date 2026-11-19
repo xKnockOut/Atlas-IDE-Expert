@@ -203,12 +203,13 @@ begin
   Result.OnClick := AClick;
 end;
 
+/// <summary>Panel ohne Rahmen; AHeight in logischen Pixeln (96 dpi), skaliert über das Panel.</summary>
 function NewPanel(AOwner: TWinControl; AAlign: TAlign; AHeight: Integer): TPanel;
 begin
   Result := TPanel.Create(AOwner);
   Result.Parent := AOwner;
   Result.Align := AAlign;
-  Result.Height := AHeight;
+  Result.Height := Result.ScaleValue(AHeight);
   Result.BevelOuter := bvNone;
 end;
 
@@ -224,13 +225,14 @@ begin
   Result.RowSelect := True;
 end;
 
+/// <summary>Spalte ACaption mit der Breite AWidth (logische Pixel, 96 dpi); skaliert über AList.</summary>
 procedure AddColumn(AList: TListView; ACaption: TAtlasTextId; AWidth: Integer);
 var
   mColumn: TListColumn;
 begin
   mColumn := AList.Columns.Add;
   mColumn.Caption := TAtlasStrings.Text(ACaption);
-  mColumn.Width := AWidth;
+  mColumn.Width := AList.ScaleValue(AWidth);
 end;
 
 /// <summary>Eine Zeile je Prozess: Art, Client (mit Marke für den eigenen), Zustand.</summary>
