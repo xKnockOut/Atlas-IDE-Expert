@@ -51,6 +51,8 @@ contains
   Atlas.Text.Uris in 'Source\Uris\Atlas.Text.Uris.pas',
   Atlas.Text.Diff in 'Source\Diff\Atlas.Text.Diff.pas',
   Atlas.Text.Fuzzy in 'Source\Fuzzy\Atlas.Text.Fuzzy.pas',
+  Atlas.Text.Files in 'Source\Files\Atlas.Text.Files.pas',
+  Atlas.Text.Csv in 'Source\Csv\Atlas.Text.Csv.pas',
   Atlas.Text.IndexCache in 'Source\IndexCache\Atlas.Text.IndexCache.pas',
   Atlas.Text.Names in 'Source\Names\Atlas.Text.Names.pas',
   Atlas.Text.Lists in 'Source\Lists\Atlas.Text.Lists.pas',
