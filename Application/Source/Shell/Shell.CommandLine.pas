@@ -35,7 +35,8 @@
 //   --fix <a,b|all>       Sammelkorrektur (#1352): sichere Korrekturen dieser Regeln anwenden (fix.minConfidence)
 //   --fix-dry-run         mit --fix nur den vereinigten Diff ausgeben (stdout bzw. --output), nichts schreiben
 //   --timings [<Datei>]   nach dem Lauf das Zeitprofil (#1356): langsamste Units und Regeln,
-//                         Indexzeit, Speicher; als Markdown, mit Endung .json als JSON; ohne
+//                         Indexzeit, Speicher (Heap bei bereitem Zielprojekt, wenn alle Projekte
+//                         fertig sind, Gipfel und am Ende, #1480); als Markdown, mit Endung .json als JSON; ohne
 //                         Datei auf stderr. Die Treffer bleiben unverändert auf stdout bzw. --output.
 //                         (Nicht --profile: Das wählt seit #146 das Regelprofil.) Unit-Namen anonym
 //                         (name#N, #1478); mit --log-names im Klartext.

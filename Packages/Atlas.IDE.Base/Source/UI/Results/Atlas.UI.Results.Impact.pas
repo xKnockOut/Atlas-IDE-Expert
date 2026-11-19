@@ -73,6 +73,9 @@ const
   /// <summary>Ab so vielen indirekten Stellen bleibt der Abschnitt zugeklappt.</summary>
   cExpandIndirect = 200;
   cMaxDepth = 5;
+  /// <summary>Breiten bei 96 dpi: Knopf für den Testlauf und Auswahl der Tiefe.</summary>
+  cRunTestsWidth = 170;
+  cDepthWidth = 44;
 
 { TAtlasResultsImpactPart }
 
@@ -81,7 +84,7 @@ begin
   inherited Create(AView);
   // Tiefe und Testlauf, rechts in der Titelzeile. Die Liste der Tiefen füllt Show: Ein Kombinationsfeld braucht
   // dafür ein Fenster.
-  FParts.RunTests := TAtlasResultsControls.Button(AView.Host, AView.Header, alRight, 170,
+  FParts.RunTests := TAtlasResultsControls.Button(AView.Host, AView.Header, alRight, cRunTestsWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.ImpactRunTests), RunTestsClick);
   FParts.RunTests.Visible := False;
   FParts.Depth := TComboBox.Create(AView.Host);
@@ -89,7 +92,7 @@ begin
   FParts.Depth.Align := alRight;
   FParts.Depth.AlignWithMargins := True;
   FParts.Depth.Style := csDropDownList;
-  FParts.Depth.Width := FParts.Depth.ScaleValue(44);
+  FParts.Depth.Width := FParts.Depth.ScaleValue(cDepthWidth);
   FParts.Depth.Visible := False;
   FParts.Depth.OnChange := DepthChange;
   FParts.DepthLabel := TLabel.Create(AView.Host);

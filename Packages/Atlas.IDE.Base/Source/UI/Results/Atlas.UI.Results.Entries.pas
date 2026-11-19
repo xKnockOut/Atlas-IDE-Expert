@@ -52,13 +52,17 @@ uses
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
+const
+  /// <summary>Breite des Häkchens „Nur sichere“ bei 96 dpi.</summary>
+  cOnlySureWidth = 110;
+
 { TAtlasResultsEntriesPart }
 
 constructor TAtlasResultsEntriesPart.Create(AView: TAtlasResultsView);
 begin
   inherited Create(AView);
   // Filter „Nur sichere“ (#1119), rechts in der Titelzeile.
-  FOnlySure := TAtlasResultsControls.Check(AView.Host, AView.Header, alRight, 110,
+  FOnlySure := TAtlasResultsControls.Check(AView.Host, AView.Header, alRight, cOnlySureWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.ResultsOnlySure), OnlySureClick);
   FOnlySure.Visible := False;
 end;
