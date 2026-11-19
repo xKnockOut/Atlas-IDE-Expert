@@ -30,8 +30,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.IDE.Editor.NamedRefactoring;
+  Atlas.IDE.Editor.NamedRefactoring,
+  Atlas.UI.Editor.Strings;
 
 const
   cApplyCommand = 'atlas.server.invertBoolean';
@@ -43,14 +43,14 @@ class procedure TAtlasIdeInvertBoolean.Execute(ASession: TLspSession; const AArg
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.InvertBooleanTitle;
-  mTexts.Prompt := TAtlasTextId.InvertBooleanPrompt;
-  mTexts.Failed := TAtlasTextId.InvertBooleanFailed;
-  mTexts.Nothing := TAtlasTextId.InvertBooleanNothing;
-  mTexts.PreviewHint := TAtlasTextId.InvertBooleanPreviewHint;
-  mTexts.Apply := TAtlasTextId.InvertBooleanApply;
-  mTexts.Done := TAtlasTextId.InvertBooleanDone;
-  mTexts.Warning := TAtlasTextId.InvertBooleanWarning;
+  mTexts.Title := TAtlasEditorTextId.InvertBooleanTitle;
+  mTexts.Prompt := TAtlasEditorTextId.InvertBooleanPrompt;
+  mTexts.Failed := TAtlasEditorTextId.InvertBooleanFailed;
+  mTexts.Nothing := TAtlasEditorTextId.InvertBooleanNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.InvertBooleanPreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.InvertBooleanApply;
+  mTexts.Done := TAtlasEditorTextId.InvertBooleanDone;
+  mTexts.Warning := TAtlasEditorTextId.InvertBooleanWarning;
   TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
