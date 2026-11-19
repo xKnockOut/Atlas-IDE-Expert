@@ -80,9 +80,13 @@ type
     procedure Execute; virtual; abstract;
     /// <summary>Lassen die Einstellungen den Befehl zu?</summary>
     function Allowed: Boolean; virtual; abstract;
+    /// <summary>Fenster des Befehls schließen.</summary>
+    procedure Close; virtual; abstract;
   public
     /// <summary>ACommand ausführen, wenn es ihn gibt (nil vor Install) und die Einstellungen ihn zulassen.</summary>
     class procedure RunCommand(ACommand: TAtlasIdeCaretCommand); static;
+    /// <summary>Fenster von ACommand schließen, wenn es ihn gibt (nil vor Install).</summary>
+    class procedure CloseCommand(ACommand: TAtlasIdeCaretCommand); static;
   end;
 
 implementation
@@ -118,6 +122,14 @@ begin
   if (ACommand <> nil) and ACommand.Allowed then
   begin
     ACommand.Execute;
+  end;
+end;
+
+class procedure TAtlasIdeCaretCommand.CloseCommand(ACommand: TAtlasIdeCaretCommand);
+begin
+  if ACommand <> nil then
+  begin
+    ACommand.Close;
   end;
 end;
 

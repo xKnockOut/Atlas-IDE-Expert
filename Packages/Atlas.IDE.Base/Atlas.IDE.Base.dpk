@@ -62,6 +62,7 @@ contains
   Atlas.Text.Diff in '..\Atlas.Text\Source\Diff\Atlas.Text.Diff.pas',
   Atlas.Text.Fuzzy in '..\Atlas.Text\Source\Fuzzy\Atlas.Text.Fuzzy.pas',
   Atlas.Text.Files in '..\Atlas.Text\Source\Files\Atlas.Text.Files.pas',
+  Atlas.Text.Locked in '..\Atlas.Text\Source\Locked\Atlas.Text.Locked.pas',
   Atlas.Text.Csv in '..\Atlas.Text\Source\Csv\Atlas.Text.Csv.pas',
   Atlas.Text.IndexCache in '..\Atlas.Text\Source\IndexCache\Atlas.Text.IndexCache.pas',
   Atlas.Text.Names in '..\Atlas.Text\Source\Names\Atlas.Text.Names.pas',
