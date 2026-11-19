@@ -260,22 +260,8 @@ begin
 end;
 
 procedure TAtlasIdeNotifications.Show;
-var
-  mAnchor: TPoint;
-  mArea: TRect;
 begin
-  mAnchor := Point(MaxInt, MaxInt);
-  if Assigned(FOnAnchor) then
-  begin
-    mAnchor := FOnAnchor();
-  end;
-  if mAnchor.X = MaxInt then
-  begin
-    // Ohne Statusfeld: unten links im aktiven Fenster.
-    mArea := TAtlasIdeHost.PopupArea;
-    mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
-  end;
-  Show(mAnchor);
+  Show(TAtlasIdeHost.PopupAnchor(FOnAnchor));
 end;
 
 procedure TAtlasIdeNotifications.BuildFinished(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -351,6 +337,9 @@ begin
 end;
 
 procedure TAtlasIdeNotifications.Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
+const
+  /// <summary>Stelle der ersten Meldung: Datei(Zeile): Text.</summary>
+  cTargetFormat = '%s(%d): %s';
 var
   mNotice: TAtlasBuildNotice;
   mProject, mTitle, mText, mAction: string;
@@ -375,7 +364,7 @@ begin
   if mNotice.HasTarget then
   begin
     mTarget := mNotice.Target;
-    mText := mText + ' · ' + Format('%s(%d): %s', [ExtractFileName(mTarget.FileName), mTarget.Line, mTarget.Text]);
+    mText := mText + ' · ' + Format(cTargetFormat, [ExtractFileName(mTarget.FileName), mTarget.Line, mTarget.Text]);
     mActions := [TAtlasNotificationCenter.Action(mAction,
       procedure
       begin
