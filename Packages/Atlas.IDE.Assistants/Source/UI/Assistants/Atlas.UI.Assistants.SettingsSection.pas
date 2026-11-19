@@ -127,6 +127,13 @@ begin
   Number('assistants.dailyLimit', T(TAtlasAssistantsTextId.SettingsDailyLimit));
 end;
 
+/// <summary>Lage in Pixeln bei 96 dpi, an die Auflösung des Steuerelements angepasst.</summary>
+procedure PlaceScaled(AControl: TControl; ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  AControl.SetBounds(AControl.ScaleValue(ALeft), AControl.ScaleValue(ATop), AControl.ScaleValue(AWidth),
+    AControl.ScaleValue(AHeight));
+end;
+
 procedure TAtlasAssistantsSettingsSection.AddKeyRows;
 var
   mRow: TWinControl;
@@ -135,19 +142,19 @@ begin
   Host.Attach(mRow, FProvider);
   FKeyState := TLabel.Create(FControls);
   FKeyState.Parent := mRow;
-  FKeyState.SetBounds(0, cStateTop, cStateWidth, cStateHeight);
+  PlaceScaled(FKeyState, 0, cStateTop, cStateWidth, cStateHeight);
   FKeyState.ShowAccelChar := False;
   mRow := Host.AddRow(cRowHeight, nil);
   Host.Attach(mRow, FProvider);
   FKeyStore := TButton.Create(FControls);
   FKeyStore.Parent := mRow;
   FKeyStore.Caption := T(TAtlasAssistantsTextId.KeyStore);
-  FKeyStore.SetBounds(0, 1, cButtonWidth, cButtonHeight);
+  PlaceScaled(FKeyStore, 0, 1, cButtonWidth, cButtonHeight);
   FKeyStore.OnClick := KeyStoreClick;
   FKeyDelete := TButton.Create(FControls);
   FKeyDelete.Parent := mRow;
   FKeyDelete.Caption := T(TAtlasAssistantsTextId.KeyDelete);
-  FKeyDelete.SetBounds(cButtonGap, 1, cButtonWidth, cButtonHeight);
+  PlaceScaled(FKeyDelete, cButtonGap, 1, cButtonWidth, cButtonHeight);
   FKeyDelete.OnClick := KeyDeleteClick;
   ShowKeyState;
 end;
