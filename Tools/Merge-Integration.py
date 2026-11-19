@@ -59,6 +59,7 @@ ABGELEITET = [
     ('Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.ProfileData.pas', 'config'),
     ('Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas',
      'config'),
+    ('Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.DocsIndexData.pas', 'config'),
     ('docs/Regeln.md', 'rules'),
     ('docs/en/Rules.md', 'rules'),
     ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data*.pas', 'rules'),
@@ -418,7 +419,7 @@ def einmergen(ref, name, kein_commit):
     def beide(*praefixe):
         return any(p.startswith(praefixe) for p in eigene) and any(p.startswith(praefixe) for p in fremde)
 
-    if beide('schemas/', 'Setup/Profile/'):
+    if beide('schemas/', 'Setup/Profile/', 'docs/features/'):
         neu_erzeugen.add('config')
     if beide('Packages/Atlas.Common/Katalog/'):
         neu_erzeugen.add('rules')

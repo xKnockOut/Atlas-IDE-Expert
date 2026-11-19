@@ -88,6 +88,9 @@ type
     class function FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc; static;
     /// <summary>Prober des Stichproben-Profilers (#2057); nil unter Linux, wo es keinen gibt.</summary>
     class function ProfileSampler: IAtlasProfileSampler; static;
+    /// <summary>Belegter Speicher in Byte für --timings (#1480): unter Windows der Heap (über alle Threads),
+    /// unter Linux der Prozess im RAM, weil der Heap von Free Pascal je Thread zählt.</summary>
+    class function MemoryInUseBytes: Int64; static;
   end;
 
 /// <summary>Systemfarbe AIndex (GetSysColor) für Farbangaben im Quelltext; unter Linux keine.</summary>
@@ -96,6 +99,7 @@ function PlatformSystemColor(AIndex: Integer; out AColor: TRgbColor): Boolean;
 implementation
 
 uses
+  Atlas.Common.Diagnostics.ShutdownLeaks,
 {$IFDEF MSWINDOWS}
   Winapi.Windows,
   Atlas.Windows.Documents.PathCanonicalizer,
@@ -273,6 +277,15 @@ begin
   Result := TAtlasWindowsProfileSampler.Create;
 {$ELSE}
   Result := nil;
+{$ENDIF}
+end;
+
+class function TShellPlatform.MemoryInUseBytes: Int64;
+begin
+{$IFDEF MSWINDOWS}
+  Result := TShutdownLeaks.AllocatedBytes;
+{$ELSE}
+  Result := TProcessInfo.ResidentBytes;
 {$ENDIF}
 end;
 

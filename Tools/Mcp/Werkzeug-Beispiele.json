@@ -76,6 +76,10 @@
       "arguments": { "code": "E2010", "message": "Incompatible types: 'Integer' and 'string'" },
       "contains": "E2010"
     },
+    "search_atlas_docs": {
+      "arguments": { "query": "method-order", "kind": "rule" },
+      "contains": "method-order"
+    },
     "explain_finding": {
       "arguments": {
         "file": "Source/Ref.Pruefung.Verstoesse.pas",
