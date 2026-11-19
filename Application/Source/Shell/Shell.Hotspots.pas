@@ -30,7 +30,7 @@ type
   public const
     /// <summary>Höchstens so viele Commits je Methode (git log -L --max-count, SVN durchsuchte Revisionen).</summary>
     cMaxLineRevisions = 200;
-  private
+  protected
     FKind: THotspotVcsKind;
     FRoot: string;
     FExecutable: string;
@@ -46,15 +46,17 @@ type
     function Run(const AArguments: TArray<string>; ATimeoutMs: Cardinal; out AText, AError: string;
       out AExitCode: Integer; out AErrorText: string): Boolean; overload;
     function SvnPrefix(out APrefix, AError: string): Boolean;
+  private
     function GitTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
     function SvnTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
   public
     constructor Create(AKind: THotspotVcsKind; const ARoot, AExecutable: string; const ARunner: IAtlasVcsRunner;
       const ALines: IAtlasVcsLineHistory; ATimeoutMs: Cardinal);
     /// <summary>Versionsverwaltung für AFolder nach vcs.* in ASettings; False mit AError ohne Arbeitskopie, bei
-    /// vcs.provider = off oder fehlendem Programm.</summary>
+    /// vcs.provider = off oder fehlendem Programm. Legt ein Objekt der Klasse an, an der Detect aufgerufen wird.
+    /// </summary>
     class function Detect(const AFolder: string; const ASettings: TServerSettings; out AVcs: IHotspotVcs;
-      out AError: string): Boolean; static;
+      out AError: string): Boolean;
     function Kind: THotspotVcsKind;
     function Root: string;
     function Head: string;
@@ -179,6 +181,12 @@ begin
   if Result then
   begin
     AText := TEncoding.UTF8.GetString(mResult.Output);
+    // git show bzw. svn cat einer Datei mit BOM: Das Zeichen gehört nicht zum Quelltext (der Lexer sähe sonst ein
+    // unbekanntes Zeichen vor "unit" und fände keine Routine).
+    if (AText <> '') and (AText[1] = #$FEFF) then
+    begin
+      Delete(AText, 1, 1);
+    end;
   end
   else if mResult.Outcome <> TAtlasVcsOutcome.Ok then
   begin
@@ -318,7 +326,7 @@ begin
   begin
     mLines := nil;
   end;
-  AVcs := TShellHotspotVcs.Create(mKind, mWorkingCopy.Root, mExecutable, mRunner, mLines, mTimeoutMs);
+  AVcs := Self.Create(mKind, mWorkingCopy.Root, mExecutable, mRunner, mLines, mTimeoutMs);
   Result := True;
 end;
 

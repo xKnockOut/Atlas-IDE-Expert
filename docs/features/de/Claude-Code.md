@@ -12,6 +12,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - die Architektur des Projekts überblicken (`get_architecture`, auch im Vergleich mit einem gespeicherten Stand)
   - den Index in einer kleinen Sprache abfragen (`query_code`)
   - Hotspots und Änderungskopplung aus dem Git- oder SVN-Verlauf finden (`get_hotspots`)
+  - Geschichte einer Methode über Umbenennen und Verschieben verfolgen, mit Issues (`get_symbol_history`)
   - den kürzesten Weg zwischen zwei Symbolen oder Units finden (`find_path`)
   - Deklarationen samt Begründungskommentaren (`get_rationale`) und Typ- und Aufrufhierarchien lesen
   - die Auswirkungen einer Änderung ermitteln (`get_impact`)
