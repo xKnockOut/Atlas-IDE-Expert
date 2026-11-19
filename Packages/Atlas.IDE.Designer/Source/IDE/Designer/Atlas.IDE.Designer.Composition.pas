@@ -59,6 +59,9 @@ type
 implementation
 
 uses
+  ToolsAPI,
+  DesignIntf,
+  Atlas.Core.Designer.Contract,
   Atlas.UI.Designer.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
@@ -74,7 +77,9 @@ uses
   Atlas.IDE.Designer.DesktopLayout,
   Atlas.IDE.Designer.Structure,
   Atlas.IDE.Designer.EventMap,
-  Atlas.IDE.Designer.Bar;
+  Atlas.IDE.Designer.Bar,
+  Atlas.IDE.Designer.Surface,
+  Atlas.IDE.Designer.Adapters.Surface;
 
 var
   GScope: IAtlasModuleScope;
@@ -369,6 +374,12 @@ begin
   TAtlasIdeDesignerBar.ThemeChanged;
 end;
 
+/// <summary>Surface des Formular-Designers für die Werkzeuge (TAtlasIdeDesignSurfaces).</summary>
+function NewSurface(const ADesigner: IDesigner; const AEditor: IOTAFormEditor): IAtlasDesignSurface;
+begin
+  Result := TAtlasIdeDesignSurface.Create(ADesigner, AEditor);
+end;
+
 class function TAtlasDesignerModule.RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
@@ -385,6 +396,7 @@ begin
   mModule := TAtlasDesignerModule.Create;
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
+  TAtlasIdeDesignSurfaces.Use(NewSurface);
   for mPart in Parts do
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);
@@ -402,6 +414,7 @@ class procedure TAtlasDesignerModule.UnregisterModule;
 begin
   TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
   TAtlasDesignerSettingsSection.LayoutNames := nil;
+  TAtlasIdeDesignSurfaces.Use(nil);
 end;
 
 initialization

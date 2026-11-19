@@ -856,6 +856,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.DebugTree.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.View.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Declaration.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Contract.DebugValue.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.IdeHelpInsight.pas"/>
@@ -872,6 +873,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepIntoJump.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StopProgress.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StopProgress.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Phases.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Phases.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
@@ -1550,6 +1552,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationResults.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationPlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationFlow.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
@@ -2319,6 +2322,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Search.Replace.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Search.History.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Search.Files.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Definitions.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Matchers.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Runs.pas"/>
@@ -2983,6 +2987,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Usages.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Undo.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Undo.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Surface.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.UndoApply.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.UndoFlow.pas"/>

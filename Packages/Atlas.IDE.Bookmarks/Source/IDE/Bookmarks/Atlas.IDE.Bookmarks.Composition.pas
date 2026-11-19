@@ -74,7 +74,7 @@ uses
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Bookmarks.QuickColumn,
   Atlas.IDE.Bookmarks.QuickChord,
-  Atlas.IDE.Bookmarks.SavedPlaces,
+  Atlas.IDE.Bookmarks.Adapters.SavedPlaces,
   Atlas.IDE.Bookmarks.Composition.Todos,
   Atlas.Core.SavedPlaces.Contract,
   Atlas.UI.Strings,

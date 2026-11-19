@@ -21,30 +21,10 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Matchers;
 
 type
-{$SCOPEDENUMS ON}
-  TAtlasTaskOutcome = (Finished, ProgramMissing, StartFailed, TimedOut, Cancelled);
-{$SCOPEDENUMS OFF}
-
-  TAtlasTaskLineProc = reference to procedure(const ALine: string);
-
-  /// <summary>Ergebnis des Prozesses einer Aufgabe (Atlas.Core.Tasks.Adapters.Process).</summary>
-  TAtlasTaskProcessResult = record
-    Outcome: TAtlasTaskOutcome;
-    ExitCode: Integer;
-    /// <summary>StartFailed: Grund oder fehlender Arbeitsordner; ProgramMissing: der Befehl.</summary>
-    Error: string;
-  end;
-
-  /// <summary>Führt die (mit Variablen eingesetzte) Aufgabe aus, nicht im Hauptthread. ACancelled wird im Takt
-  /// gefragt; ACodePage für Ausgaben, die kein UTF-8 sind (0 = OEM-Codepage); jede Zeile geht an AOnLine. Die
-  /// Kompositionswurzel reicht den Adapter (Atlas.Core.Tasks.Adapters.Process) hinein (Rollenmatrix).</summary>
-  TAtlasTaskProcessRun = reference to function(const ATask: TAtlasTaskDefinition; ACodePage: Integer;
-    const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult;
-
   TAtlasTaskLines = class
   private
     FPending: TBytes;

@@ -24,17 +24,11 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Tasks.Contract;
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasTaskGroup = (Check, Build, Test, Other);
-  /// <summary>tasks.beforeBuild bzw. beforeBuild einer Aufgabe.</summary>
-  TAtlasTaskBeforeBuild = (Off, Warn, Block);
-  /// <summary>Eingebaute Muster für Fundstellen; None = keine Auswertung, Custom = eigener regulärer Ausdruck.
-  /// </summary>
-  TAtlasTaskMatcherKind = (None, Dcc, Pwsh, MsBuild, Generic, Custom);
-  TAtlasTaskSeverity = (Error, Warning, Info);
   /// <summary>Grund, aus dem ein Eintrag ganz oder teilweise verworfen wurde (#1458: Text erst in der UI).</summary>
   TAtlasTaskIssueKind = (UnknownMatcher, SeverityMapValue, MatcherWithoutRegex, MatcherType, ArgsValue, ArgsType,
     KeyUnreadable, TimeoutValue, UnknownGroup, BeforeBuildValue, MissingName, MissingCommand, TasksType, TaskType,
@@ -53,47 +47,6 @@ type
   end;
 
   TAtlasTaskIssues = TArray<TAtlasTaskIssue>;
-
-  /// <summary>Muster einer Aufgabe; bei Custom mit regulärem Ausdruck und Zuordnung eigener Wörter.</summary>
-  TAtlasTaskMatcher = record
-    Kind: TAtlasTaskMatcherKind;
-    /// <summary>Custom: Ausdruck mit den benannten Gruppen file, line, column, severity, code, message.</summary>
-    Regex: string;
-    /// <summary>Custom: Wörter aus severityMap (klein) und ihre Schwere, gleich lang.</summary>
-    SeverityWords: TArray<string>;
-    SeverityValues: TArray<TAtlasTaskSeverity>;
-    /// <summary>Schwere ohne erkennbares Wort (severity, Vorgabe error).</summary>
-    DefaultSeverity: TAtlasTaskSeverity;
-    class function Create(AKind: TAtlasTaskMatcherKind): TAtlasTaskMatcher; static;
-  end;
-
-  TAtlasTaskDefinition = record
-    Name: string;
-    Command: string;
-    Args: TArray<string>;
-    /// <summary>Arbeitsordner; '' = Projektordner.</summary>
-    Cwd: string;
-    EnvNames: TArray<string>;
-    EnvValues: TArray<string>;
-    Group: TAtlasTaskGroup;
-    Matcher: TAtlasTaskMatcher;
-    /// <summary>Taste wie geschrieben und als TShortCut (0 = keine oder unlesbar).</summary>
-    KeyText: string;
-    Key: Word;
-    /// <summary>Sekunden bis zum Abbruch; 0 = ohne Zeitlimit.</summary>
-    TimeoutSec: Integer;
-    /// <summary>beforeBuild der Aufgabe; nur mit HasBeforeBuild.</summary>
-    HasBeforeBuild: Boolean;
-    BeforeBuild: TAtlasTaskBeforeBuild;
-    /// <summary>Aus der globalen Datei (%APPDATA%\Atlas\settings.json).</summary>
-    Global: Boolean;
-    /// <summary>Verhalten vor dem Build: eigenes beforeBuild, sonst AGlobal für Gruppe check, sonst Off.</summary>
-    function BeforeBuildFor(AGlobal: TAtlasTaskBeforeBuild): TAtlasTaskBeforeBuild;
-    /// <summary>Befehlszeile zum Anzeigen: Programm und Argumente mit Leerzeichen.</summary>
-    function CommandLine: string;
-  end;
-
-  TAtlasTaskDefinitions = TArray<TAtlasTaskDefinition>;
 
   /// <summary>Werte der Variablen ${…}.</summary>
   TAtlasTaskVariables = record
@@ -166,51 +119,6 @@ begin
   Result.Kind := AKind;
   Result.Where := AWhere;
   Result.Value := AValue;
-end;
-
-{ TAtlasTaskMatcher }
-
-class function TAtlasTaskMatcher.Create(AKind: TAtlasTaskMatcherKind): TAtlasTaskMatcher;
-begin
-  Result := Default(TAtlasTaskMatcher);
-  Result.Kind := AKind;
-  Result.DefaultSeverity := TAtlasTaskSeverity.Error;
-end;
-
-{ TAtlasTaskDefinition }
-
-function TAtlasTaskDefinition.BeforeBuildFor(AGlobal: TAtlasTaskBeforeBuild): TAtlasTaskBeforeBuild;
-begin
-  if HasBeforeBuild then
-  begin
-    Result := BeforeBuild;
-  end
-  else if Group = TAtlasTaskGroup.Check then
-  begin
-    Result := AGlobal;
-  end
-  else
-  begin
-    Result := TAtlasTaskBeforeBuild.Off;
-  end;
-end;
-
-function TAtlasTaskDefinition.CommandLine: string;
-var
-  mArg: string;
-begin
-  Result := Command;
-  for mArg in Args do
-  begin
-    if Pos(' ', mArg) > 0 then
-    begin
-      Result := Result + ' "' + mArg + '"';
-    end
-    else
-    begin
-      Result := Result + ' ' + mArg;
-    end;
-  end;
 end;
 
 { TAtlasTaskVariables }

@@ -12,6 +12,7 @@ uses
   System.SysUtils,
   DUnitX.TestFramework,
   Atlas.Core.Debug.Evaluate,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.EvalSlices,
   Atlas.Tests.DebugEvaluatorFake;
 
@@ -72,7 +73,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.EvaluateRows,
   Atlas.Core.Diagnostics.Deadline;
 

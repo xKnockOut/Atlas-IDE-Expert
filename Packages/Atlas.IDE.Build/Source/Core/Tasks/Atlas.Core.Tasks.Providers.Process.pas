@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Tasks.Adapters.Process;
+﻿unit Atlas.Core.Tasks.Providers.Process;
 
 // Prozess einer Projektaufgabe (#900), ohne VCL und Open Tools API:
 // - Programm über TAtlasTaskCommands.FindProgram; ohne Treffer endet der Lauf
@@ -16,20 +16,19 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Tasks.Definitions,
-  Atlas.Core.Tasks.Runs;
+  Atlas.Core.Tasks.Contract;
 
 type
-  /// <summary>Umsetzung von TAtlasTaskProcessRun (Atlas.Core.Tasks.Runs); die Kompositionswurzel reicht Run
-  /// hinein.</summary>
-  TAtlasTaskProcess = class
+  /// <summary>Prozess einer Aufgabe (IAtlasTaskProcess); erzeugt nur die Komposition, die Läufe bekommen ihn über
+  /// das Interface.</summary>
+  TAtlasTaskProcess = class(TInterfacedObject, IAtlasTaskProcess)
   public const
     cSliceMs = 10;
   public
     /// <summary>Führt die (mit Variablen eingesetzte) Aufgabe aus, nicht im Hauptthread. ACancelled wird im Takt
     /// gefragt; ACodePage für Ausgaben, die kein UTF-8 sind (0 = GetOEMCP).</summary>
-    class function Run(const ATask: TAtlasTaskDefinition; ACodePage: Integer; const ACancelled: TFunc<Boolean>;
-      const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult; static;
+    function Run(const ATask: TAtlasTaskDefinition; ACodePage: Integer; const ACancelled: TFunc<Boolean>;
+      const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult;
   end;
 
 implementation
@@ -39,6 +38,7 @@ uses
   System.Classes,
   Atlas.WinBase.Process,
   Atlas.Core.Tasks.Matchers,
+  Atlas.Core.Tasks.Runs,
   Atlas.Core.Tasks.Commands;
 
 type
@@ -354,7 +354,7 @@ end;
 
 { TAtlasTaskProcess }
 
-class function TAtlasTaskProcess.Run(const ATask: TAtlasTaskDefinition; ACodePage: Integer;
+function TAtlasTaskProcess.Run(const ATask: TAtlasTaskDefinition; ACodePage: Integer;
   const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult;
 var
   mLaunch: TLaunch;

@@ -37,6 +37,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.ObjectCount;
 
 const

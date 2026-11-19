@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Debug.StopSource;
+﻿unit Atlas.IDE.Debug.Adapters.StopSource;
 
 // Halt der Debug-Sitzung für andere Module (#1873): stellt
 // IAtlasDebugStopSource bereit. Das Modul Tests („Test daraus anlegen …“)

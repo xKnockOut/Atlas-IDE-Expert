@@ -10,6 +10,7 @@ interface
 uses
   System.Generics.Collections,
   DUnitX.TestFramework,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.RunFlow,
   Atlas.Tests.TaskLauncherFake;
 
@@ -61,7 +62,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Build.Events,
-  Atlas.Core.Tasks.Definitions,
   Atlas.Core.Tasks.Runs,
   Atlas.Core.Tasks.PreBuild;
 

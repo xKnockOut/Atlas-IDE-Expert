@@ -39,6 +39,7 @@ uses
   System.SysUtils,
   System.TypInfo,
   Atlas.Core.Settings.Plugin.Store,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Definitions;
 
 const

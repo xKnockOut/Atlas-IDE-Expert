@@ -22,7 +22,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.ObjectMarks,
   Atlas.IDE.Debug.StopView,
   Atlas.IDE.Debug.DockPanel,
@@ -95,6 +95,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.InstanceBreakpoint,
   Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Debug.Session,

@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Hover.DebugValue;
+  Atlas.Core.Hover.Contract.DebugValue;
 
 {$SCOPEDENUMS ON}
 

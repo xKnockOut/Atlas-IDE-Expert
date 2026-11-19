@@ -18,7 +18,7 @@ interface
 uses
   System.Classes,
   System.Generics.Collections,
-  Atlas.Core.Designer.Surface;
+  Atlas.Core.Designer.Contract;
 
 type
   TAtlasDesignerCreated = class(TComponent)
