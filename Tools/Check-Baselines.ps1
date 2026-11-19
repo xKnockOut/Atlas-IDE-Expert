@@ -11,7 +11,11 @@
     2. Die Zahl der Einträge je Regel, summiert über alle Packages, steigt gegenüber
        -BaseRef nicht. Neue Treffer gehören behoben, nicht in die Baseline. Summiert
        wird, damit eine Unit samt ihren Einträgen in ein anderes Package umziehen
-       kann. Nicht mitgezählt wird ein Package, dessen atlas.json sich gegenüber
+       kann. Einzige Ausnahme ist metric-class-size: Je Zeile „Größere Klasse: <Name> –
+       <Grund>“ im Pull Request (-LargerClasses) darf die Summe um einen Eintrag steigen;
+       der Lauf nennt Name und Grund als Warnung. Gedacht für eine Korrektur an einer
+       vollen Klasse, die nicht zugleich ein Umbau sein soll; geteilt wird danach, und die
+       Einträge dürfen wie jeder andere nur schrumpfen. Nicht mitgezählt wird ein Package, dessen atlas.json sich gegenüber
        -BaseRef geändert hat oder dort fehlt (anderes Profil, andere Regeln): Dann ist
        seine Baseline neu gemessen, und die Änderung steht im Diff.
     3. Die Baseline wortgleicher Rümpfe (atlas-duplicates.json im Wurzelordner) wächst
@@ -38,8 +42,12 @@
     Begründung für neue oder gewachsene Gruppen in atlas-duplicates.json (Text nach
     „Neue Kopien:“ im Pull Request). Leer: Diese Befunde sind Fehler.
 
+.PARAMETER LargerClasses
+    Zeilen „Größere Klasse: <Name> – <Grund>“ des Pull Requests, eine je Klasse (mit oder ohne
+    das Präfix). Zeilen ohne Namen oder Grund und doppelte Namen zählen nicht.
+
 .PARAMETER SelfTest
-    Prüft nur den Vergleich je Gruppe an festen Beispielen.
+    Prüft den Vergleich je Gruppe und die Ausnahme für größere Klassen an festen Beispielen.
 
 .EXAMPLE
     pwsh Tools/Check-Baselines.ps1 -BaseRef origin/main-merging
@@ -49,6 +57,7 @@ param(
     [string] $BaseRef = 'origin/main',
     [string] $Root = (Split-Path -Parent $PSScriptRoot),
     [string] $DuplicatesReason = '',
+    [string[]] $LargerClasses = @(),
     [switch] $SelfTest
 )
 
@@ -92,6 +101,75 @@ function Compare-DuplicateGroups($Base, $Now) {
     return , $mFindings
 }
 
+$cClassSizeRule = 'metric-class-size'
+
+# Gültige Zeilen „Größere Klasse: <Name> – <Grund>“ als Name -> Grund; je Name zählt eine Zeile.
+function Get-LargerClasses([string[]] $Lines) {
+    $mResult = [ordered]@{}
+    foreach ($mLine in @($Lines)) {
+        if ($null -eq $mLine) { continue }
+        $mText = $mLine.Trim() -replace '^Größere Klasse:\s*', ''
+        if ($mText -match '^([A-Za-z_][\w.]*)\s+[–-]\s+(\S.*)$' -and -not $mResult.Contains($Matches[1])) {
+            $mResult[$Matches[1]] = $Matches[2].Trim()
+        }
+    }
+    return $mResult
+}
+
+# Vergleicht die Summen je Regel; liefert Fehler und Warnungen. Für metric-class-size erlaubt jede
+# begründete Klasse einen Eintrag mehr.
+function Compare-RuleCounts($Before, $After, [string[]] $Larger) {
+    $mResult = [pscustomobject]@{ Problems = [System.Collections.Generic.List[string]]::new()
+        Warnings = [System.Collections.Generic.List[string]]::new() }
+    $mClasses = Get-LargerClasses $Larger
+    foreach ($mRule in ($After.Keys | Sort-Object)) {
+        $mBefore = [int]$Before[$mRule]
+        $mAfter = [int]$After[$mRule]
+        if ($mAfter -le $mBefore) { continue }
+        $mAllowed = 0
+        if ($mRule -eq $cClassSizeRule) { $mAllowed = $mClasses.Count }
+        if ($mAfter -gt $mBefore + $mAllowed) {
+            $mHint = 'neue Treffer beheben statt in die Baseline aufnehmen'
+            if ($mRule -eq $cClassSizeRule) {
+                $mHint = "Klasse teilen oder je Klasse im Pull Request mit 'Größere Klasse: <Name> – <Grund>' begründen " +
+                    "($($mClasses.Count) begründet)"
+            }
+            $mResult.Problems.Add("Regel $mRule wächst in den Baselines von $mBefore auf $mAfter; $mHint")
+        } else {
+            $mNamed = @($mClasses.Keys | ForEach-Object { "$_ – $($mClasses[$_])" }) -join '; '
+            $mResult.Warnings.Add("Regel $mRule wächst in den Baselines um $($mAfter - $mBefore), begründet: $mNamed")
+        }
+    }
+    return $mResult
+}
+
+function Invoke-ClassSizeSelfTest {
+    $mBefore = @{ 'metric-class-size' = 0; 'magic-number' = 3 }
+    $mOne = @{ 'metric-class-size' = 1; 'magic-number' = 3 }
+    $mTwo = @{ 'metric-class-size' = 2; 'magic-number' = 3 }
+    $mLine = 'Größere Klasse: TAtlasStructureFrame – Korrektur vor dem Release, Teilung folgt'
+    $mCases = @(
+        @{ Name = 'neuer Eintrag ohne Zeile'; After = $mOne; Lines = @(); Problems = 1; Warnings = 0 },
+        @{ Name = 'neuer Eintrag mit Zeile'; After = $mOne; Lines = @($mLine); Problems = 0; Warnings = 1 },
+        @{ Name = 'zwei neue Einträge, eine Zeile'; After = $mTwo; Lines = @($mLine); Problems = 1; Warnings = 0 },
+        @{ Name = 'zwei Zeilen für dieselbe Klasse'; After = $mTwo; Lines = @($mLine, $mLine); Problems = 1; Warnings = 0 },
+        @{ Name = 'Zeile ohne Grund'; After = $mOne; Lines = @('Größere Klasse: TAtlasStructureFrame'); Problems = 1; Warnings = 0 },
+        @{ Name = 'Zeile gilt nicht für andere Regeln'; After = @{ 'metric-class-size' = 0; 'magic-number' = 4 }
+            Lines = @($mLine); Problems = 1; Warnings = 0 },
+        @{ Name = 'unverändert mit Zeile'; After = $mBefore; Lines = @($mLine); Problems = 0; Warnings = 0 })
+    $mFailed = 0
+    foreach ($mCase in $mCases) {
+        $mFound = Compare-RuleCounts $mBefore $mCase.After $mCase.Lines
+        if ($mFound.Problems.Count -ne $mCase.Problems -or $mFound.Warnings.Count -ne $mCase.Warnings) {
+            Write-Host ("::error::Selbsttest '$($mCase.Name)': $($mFound.Problems.Count) Fehler und " +
+                "$($mFound.Warnings.Count) Warnungen statt $($mCase.Problems) und $($mCase.Warnings)")
+            $mFailed++
+        }
+    }
+    Write-Host "Selbsttest: $($mCases.Count) Fälle zu größeren Klassen geprüft."
+    return $mFailed
+}
+
 function Invoke-SelfTest {
     $mBase = [pscustomobject]@{ minLines = 6; groups = @(
             [pscustomobject]@{ hash = 'a1'; lines = 6; members = @('A.pas:TA.Show', 'B.pas:TB.Show') },
@@ -107,7 +185,7 @@ function Invoke-SelfTest {
             Groups = @([pscustomobject]@{ hash = 'a1'; lines = 6; members = @('A.pas:TA.Show', 'B.pas:TB.Show', 'F.pas:TF.Show') }); Expected = 1 },
         @{ Name = 'neue Gruppe, Summe sinkt'
             Groups = @([pscustomobject]@{ hash = 'd4'; lines = 9; members = @('G.pas:Neu', 'H.pas:Neu') }); Expected = 1 })
-    $mFailed = 0
+    $mFailed = Invoke-ClassSizeSelfTest
     foreach ($mCase in $mCases) {
         $mNow = [pscustomobject]@{ minLines = 6; groups = @($mCase.Groups) }
         $mFound = (Compare-DuplicateGroups $mBase $mNow).Count
@@ -146,6 +224,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $Problems = [System.Collections.Generic.List[string]]::new()
+# Dateien mit Einträgen zu metric-class-size: Eine begründete Klasse muss in einer davon deklariert sein.
+$ClassSizeFiles = [System.Collections.Generic.HashSet[string]]::new()
 $Before = @{}
 $After = @{}
 $Baselines = @(@(& git -C $Root ls-files -- 'Packages/*atlas-baseline.json' 'atlas-baseline.json') +
@@ -161,6 +241,7 @@ foreach ($mRelative in $Baselines) {
         $mDead = @{}
         foreach ($mEntry in @($mJson.findings)) {
             if (-not (Test-Path -LiteralPath (Join-Path $mFolder $mEntry.path))) { $mDead[$mEntry.path] = [int]$mDead[$mEntry.path] + 1 }
+            elseif ($mEntry.rule -eq $cClassSizeRule) { $ClassSizeFiles.Add((Join-Path $mFolder $mEntry.path)) | Out-Null }
         }
         foreach ($mPath in ($mDead.Keys | Sort-Object)) {
             $Problems.Add("${mRelative}: $($mDead[$mPath]) Einträge für fehlende Datei $mPath")
@@ -207,15 +288,23 @@ if ((Test-Path -LiteralPath $DuplicatesFile) -and $null -ne $DuplicatesBase) {
         }
     }
 }
-foreach ($mRule in ($After.Keys | Sort-Object)) {
-    if ($After[$mRule] -gt [int]$Before[$mRule]) {
-        $Problems.Add("Regel $mRule wächst in den Baselines von $([int]$Before[$mRule]) auf $($After[$mRule]); neue Treffer beheben statt in die Baseline aufnehmen")
+$Named = Get-LargerClasses $LargerClasses
+$Declared = @($Named.Keys | Where-Object {
+        $mPattern = '(?im)^\s*' + [regex]::Escape($_) + '\s*=\s*class\b'
+        @($ClassSizeFiles | Where-Object { [IO.File]::ReadAllText($_) -match $mPattern }).Count -gt 0
+    })
+if ([int]$After[$cClassSizeRule] -gt [int]$Before[$cClassSizeRule]) {
+    foreach ($mName in @($Named.Keys | Where-Object { $_ -notin $Declared })) {
+        $Problems.Add("Größere Klasse ${mName}: keine Datei mit einem Eintrag zu $cClassSizeRule deklariert sie")
     }
 }
+$RuleCounts = Compare-RuleCounts $Before $After @($Declared | ForEach-Object { "$_ – $($Named[$_])" })
+$RuleCounts.Warnings | ForEach-Object { Write-Host "::warning::$_" }
+$RuleCounts.Problems | ForEach-Object { $Problems.Add($_) }
 
 if ($Problems.Count -gt 0) {
     $Problems | ForEach-Object { Write-Host "::error::$_" }
     exit 1
 }
-Write-Host "$($Baselines.Count) Baselines geprüft: keine toten Einträge, keine Regel und keine Kopie wächst gegenüber $BaseRef."
+Write-Host "$($Baselines.Count) Baselines geprüft: keine toten Einträge, keine Regel und keine Kopie wächst unbegründet gegenüber $BaseRef."
 exit 0

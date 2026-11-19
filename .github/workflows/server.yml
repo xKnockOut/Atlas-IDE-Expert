@@ -16,13 +16,17 @@ name: Server und Tests
 # den übersprungenen Lauf für einen bestandenen hält. Die plattformunabhängigen
 # Tests laufen unabhängig davon unter FPC (linux-server.yml).
 #
+# Push auf main-merging löst den Lauf ebenfalls aus: Ein Übersetzungsfehler im
+# Integrationszweig fällt dann nach Minuten auf statt erst vor dem Release. Das
+# blockiert nichts; ohne Runner meldet der Lauf dort nur neutral.
+#
 # Neue Pushes auf denselben Branch brechen einen laufenden Build ab: Jeder Lauf
 # kann eine Bau-IDE starten, und bei vielen gestapelten Branches wartete die
 # Schlange sonst stundenlang.
 
 on:
   push:
-    branches: [main, 'release/**']
+    branches: [main, main-merging, 'release/**']
   pull_request:
 
 permissions:
