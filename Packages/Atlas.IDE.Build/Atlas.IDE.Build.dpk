@@ -45,12 +45,13 @@ requires
 
 contains
   Atlas.UI.Build.Strings in 'Source\UI\Build\Atlas.UI.Build.Strings.pas',
+  Atlas.Core.Tasks.Contract in 'Source\Core\Tasks\Atlas.Core.Tasks.Contract.pas',
   Atlas.Core.Tasks.Definitions in 'Source\Core\Tasks\Atlas.Core.Tasks.Definitions.pas',
   Atlas.Core.Tasks.Matchers in 'Source\Core\Tasks\Atlas.Core.Tasks.Matchers.pas',
   Atlas.Core.Tasks.Runs in 'Source\Core\Tasks\Atlas.Core.Tasks.Runs.pas',
   Atlas.Core.StartProfiles.Picker in 'Source\Core\StartProfiles\Atlas.Core.StartProfiles.Picker.pas',
   Atlas.Core.Tasks.Commands in 'Source\Core\Tasks\Atlas.Core.Tasks.Commands.pas',
-  Atlas.Core.Tasks.Adapters.Process in 'Source\Core\Tasks\Atlas.Core.Tasks.Adapters.Process.pas',
+  Atlas.Core.Tasks.Providers.Process in 'Source\Core\Tasks\Atlas.Core.Tasks.Providers.Process.pas',
   Atlas.Core.Tasks.Reports in 'Source\Core\Tasks\Atlas.Core.Tasks.Reports.pas',
   Atlas.Core.Tasks.PreBuild in 'Source\Core\Tasks\Atlas.Core.Tasks.PreBuild.pas',
   Atlas.Core.Tasks.RunFlow in 'Source\Core\Tasks\Atlas.Core.Tasks.RunFlow.pas',
@@ -61,6 +62,7 @@ contains
   Atlas.IDE.Tasks.Projects in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Projects.pas',
   Atlas.IDE.Tasks.Shortcuts in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Shortcuts.pas',
   Atlas.IDE.Tasks.Pickers in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Pickers.pas',
+  Atlas.IDE.BuildTools.Adapters.TaskLauncher in 'Source\IDE\BuildTools\Atlas.IDE.BuildTools.Adapters.TaskLauncher.pas',
   Atlas.IDE.Tasks.Launcher in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Launcher.pas',
   Atlas.IDE.Tasks.Runner in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Runner.pas',
   Atlas.Core.Build.OpenBuild in 'Source\Core\Build\Atlas.Core.Build.OpenBuild.pas',

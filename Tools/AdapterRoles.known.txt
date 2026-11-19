@@ -13,16 +13,7 @@ adapter-name Atlas.IDE.Assistants.AiText TAtlasIdeAiText IAtlasAiText
 adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasCommandSource
 adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasFollowsSaves
 adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasMenuSource
-adapter-name Atlas.IDE.Bookmarks.SavedPlaces TAtlasIdeSavedPlaces IAtlasSavedPlacesSource
 adapter-name Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-adapter-name Atlas.IDE.Debug.AssistantControl TAtlasIdeDebugAssistantControl IAtlasDebugControl
-adapter-name Atlas.IDE.Debug.KnownErrors TAtlasIdeDebugKnownErrorsView IAtlasKnownErrorsView
-adapter-name Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
-adapter-name Atlas.IDE.Debug.Report TAtlasIdeDebugReport IAtlasDebugReportSource
-adapter-name Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
-adapter-name Atlas.IDE.Debug.StopSource TAtlasIdeDebugStopSource IAtlasDebugStopSource
-adapter-name Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
-adapter-name Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
 adapter-name Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
 adapter-name Atlas.IDE.Editor.LearnedSuggestions TLearnedProvider IAtlasGhostProvider
 adapter-name Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
@@ -37,8 +28,6 @@ adapter-name Atlas.IDE.Rules.IdeErrors TAtlasIdeRulesIdeErrors IAtlasIdeErrors
 adapter-name Atlas.IDE.Rules.Settings TAtlasIdeRulesSettings IAtlasSettingsSectionProvider
 adapter-name Atlas.IDE.Settings.ModuleNodes TAtlasModuleNodeWatch IAtlasRegistryListener
 adapter-name Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
-adapter-name Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
-adapter-name Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 adapter-name Atlas.IDE.Tracker.Access TAtlasTrackerAccess IAtlasTrackerAccess
 adapter-name Atlas.IDE.Tracker.CommentAssist TAtlasIdeCommentAssist IAtlasCommentAssist
 adapter-name Atlas.IDE.Tracker.IssueWork TAtlasTrackerIssueWork IAtlasIssueWorkSource
@@ -120,10 +109,6 @@ contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBui
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasCompilerMessagesListener
 contract Atlas.IDE.CodeInsight.Composition.Build TNotificationsVerdictListener IAtlasBuildVerdictListener
 contract Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-contract Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
-contract Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
-contract Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
-contract Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
 contract Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
 contract Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
 contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
@@ -131,9 +116,7 @@ contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
 contract Atlas.IDE.Rules.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
 contract Atlas.IDE.Search.Composition TAtlasSearchModule IAtlasTakenActions
 contract Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
-contract Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
 contract Atlas.IDE.Tests.Composition TAtlasTestsModule IAtlasBuildVerdictListener
-contract Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 contract Atlas.IDE.Tracker.Access TAtlasTrackerAccess IAtlasTrackerAccess
 contract Atlas.IDE.Tracker.CommentAssist TAtlasIdeCommentAssist IAtlasCommentAssist
 contract Atlas.IDE.Tracker.Composition TAtlasTrackerModule IAtlasPaletteSourceProvider
@@ -178,7 +161,6 @@ empty Atlas.Core.Ci.Adapters.Http
 empty Atlas.Core.Credentials.Adapters.Windows
 empty Atlas.Core.Files.Adapters.FolderWatcher
 empty Atlas.Core.Lsp.Adapters.ServerProcess
-empty Atlas.Core.Tasks.Adapters.Process
 empty Atlas.Core.Tracker.Adapters.LocalFiles
 empty Atlas.Core.Tracker.Adapters.Shell
 empty Atlas.Core.Undo.Adapters.DiskTarget

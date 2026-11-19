@@ -61,7 +61,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Build.Events,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Runs,
   Atlas.Core.Tasks.PreBuild;
 

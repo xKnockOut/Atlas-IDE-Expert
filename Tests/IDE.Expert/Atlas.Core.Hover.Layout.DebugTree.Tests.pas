@@ -46,7 +46,7 @@ uses
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Hover.Layout.TestSupport;
 
 function Row(const AName, AText: string; ADepth: Integer): TAtlasDebugValueRow;

@@ -97,8 +97,9 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.OpenBuild.pas"/>
-        <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Adapters.Process.pas"/>
+        <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Providers.Process.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Commands.pas"/>
+        <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Contract.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Definitions.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Matchers.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.OutputGroup.pas"/>
@@ -117,6 +118,7 @@
         <DCCReference Include="Source\IDE\Tasks\Atlas.IDE.Tasks.Projects.pas"/>
         <DCCReference Include="Source\IDE\Tasks\Atlas.IDE.Tasks.Shortcuts.pas"/>
         <DCCReference Include="Source\IDE\Tasks\Atlas.IDE.Tasks.Pickers.pas"/>
+        <DCCReference Include="Source\IDE\BuildTools\Atlas.IDE.BuildTools.Adapters.TaskLauncher.pas"/>
         <DCCReference Include="Source\IDE\Tasks\Atlas.IDE.Tasks.Launcher.pas"/>
         <DCCReference Include="Source\IDE\Tasks\Atlas.IDE.Tasks.Runner.pas"/>
         <DCCReference Include="Source\UI\Build\Atlas.UI.Build.Strings.pas"/>

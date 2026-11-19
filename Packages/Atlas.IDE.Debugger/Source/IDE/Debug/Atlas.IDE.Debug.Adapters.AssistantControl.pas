@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Debug.AssistantControl;
+﻿unit Atlas.IDE.Debug.Adapters.AssistantControl;
 
 // Steuerung des Debuggers für KI-Assistenten (#1874): stellt IAtlasDebugControl bereit. Das Modul KI-Assistenten
 // nimmt die Aufträge der MCP-Werkzeuge an und fragt den Vertrag über die Registry; den Debugger kennt es nicht.

@@ -18,6 +18,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Definitions;
 
 type

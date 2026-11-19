@@ -7,7 +7,7 @@
 //   ohne Groß-/Kleinschreibung).
 // - BuildCommandLine nach den Regeln von CommandLineToArgvW
 //   (TTextCommandLine); .bat und .cmd laufen über cmd.exe /d /s /c.
-// Den Prozess selbst startet Atlas.Core.Tasks.Adapters.Process.
+// Den Prozess selbst startet Atlas.Core.Tasks.Providers.Process.
 
 interface
 

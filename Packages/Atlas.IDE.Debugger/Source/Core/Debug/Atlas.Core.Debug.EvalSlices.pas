@@ -2,9 +2,9 @@
 
 // Auswertung der Zeilen von „Auswerten“ (#784) und „Variablen“ (#853) in
 // Zeitscheiben, ohne Open Tools API. Den angehaltenen Thread vertritt der
-// schmale Vertrag IAtlasDebugEvaluator (Auswerten, Verwerfen, Ändern); in
-// der IDE steht IOTAThread dahinter (TAtlasIdeDebugThreadEvaluator), in den
-// Tests eine Fälschung.
+// schmale Vertrag IAtlasDebugEvaluator (Atlas.Core.Debug.Contract: Auswerten,
+// Verwerfen, Ändern); in der IDE steht IOTAThread dahinter
+// (Atlas.IDE.Debug.Adapters.ThreadEvaluator), in den Tests eine Fälschung.
 //   - Slice wertet die offenen Knoten der Listen der Reihe nach aus,
 //     höchstens SliceMs lang, Ausdrücke mit ",r" (Records mit Feldnamen).
 //   - Ein verzögerter Wert (LLDB) hält die Auswertung an: Waiting, bis er
@@ -19,30 +19,12 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.EvaluateRows;
 
 type
-  /// <summary>Verzögert kommender Wert einer Auswertung.</summary>
-  TAtlasDebugValueDone = reference to procedure(const AValue: TAtlasDebugValue);
-
-  /// <summary>Auswertung im angehaltenen Thread.</summary>
-  IAtlasDebugEvaluator = interface
-    ['{3A27E153-140A-4972-9BE0-FC10ACB9CE65}']
-    /// <summary>AExpression an AFileName, ALine (1-basiert) auswerten; ASideEffects erlaubt Aufrufe und Getter.
-    /// Ergebnis Value oder Failed; Pending: Der Wert kommt einmal über ADone, außer nach Cancel; None: kein
-    /// angehaltener Prozess.</summary>
-    function Evaluate(const AExpression, AFileName: string; ALine: Integer; ASideEffects: Boolean;
-      const ADone: TAtlasDebugValueDone): TAtlasDebugValue;
-    /// <summary>Laufende verzögerte Auswertung verwerfen; ihr Rückruf kommt nicht mehr.</summary>
-    procedure Cancel;
-    /// <summary>AExpression an AFileName, ALine (1-basiert) auf ANewValue setzen. AResult: neuer Wert bzw.
-    /// Fehlertext; leer, wenn der Debugger verzögert antwortet.</summary>
-    function Modify(const AExpression, AFileName: string; ALine: Integer; const ANewValue: string;
-      out AResult: string): Boolean;
-  end;
-
   {$SCOPEDENUMS ON}
   /// <summary>Ergebnis einer Zeitscheibe: alles ausgewertet, Zeit um, auf einen verzögerten Wert warten, kein
   /// angehaltener Prozess mehr.</summary>

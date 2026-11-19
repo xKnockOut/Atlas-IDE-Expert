@@ -50,7 +50,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.DataFlow,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hover.Editor,

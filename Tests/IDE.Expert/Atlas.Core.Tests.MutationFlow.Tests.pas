@@ -15,6 +15,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan,
+  Atlas.Core.Tests.Contract,
   Atlas.Core.Tests.MutationFlow,
   Atlas.Tests.MutationShadowFake;
 
