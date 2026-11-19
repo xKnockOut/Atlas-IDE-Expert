@@ -331,9 +331,11 @@ begin
   begin
     Exit;
   end;
-  mMigration := TMigrationScope.Create(AContext);
-  mScope := TTypedScope.Create(AContext);
+  mMigration := nil;
+  mScope := nil;
   try
+    mMigration := TMigrationScope.Create(AContext);
+    mScope := TTypedScope.Create(AContext);
     for mNode in CallsOf(AContext.Tree.Root) do
     begin
       CheckCall(mNode);
@@ -503,9 +505,11 @@ begin
   begin
     Exit;
   end;
-  mMigration := TMigrationScope.Create(AContext);
-  mScope := TTypedScope.Create(AContext);
+  mMigration := nil;
+  mScope := nil;
   try
+    mMigration := TMigrationScope.Create(AContext);
+    mScope := TTypedScope.Create(AContext);
     for mNode in CallsOf(AContext.Tree.Root) do
     begin
       CheckCall(mNode);

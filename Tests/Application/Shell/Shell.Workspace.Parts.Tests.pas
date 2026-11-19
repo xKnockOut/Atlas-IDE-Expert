@@ -132,9 +132,11 @@ var
   mContext: TIdeProjectContext;
   mSeen: string;
 begin
-  mSetup := TShellWorkspaceSetup.Create;
-  mEvents := TShellWorkspaceEvents.Create;
+  mSetup := nil;
+  mEvents := nil;
   try
+    mSetup := TShellWorkspaceSetup.Create;
+    mEvents := TShellWorkspaceEvents.Create;
     Assert.AreNotEqual('', mSetup.CacheRoot, 'Vorgabe-Ordner der Caches');
     Assert.AreEqual(0, Integer(Length(mSetup.PackageFolders)), 'Ohne Rückruf keine Ordner');
     Assert.IsFalse(mSetup.IdeContext('P.dproj', mContext), 'Ohne IDE-Projekte kein Kontext');
@@ -162,10 +164,12 @@ var
   mOptions: TDprojOptions;
   mError: string;
 begin
-  mSetup := TShellWorkspaceSetup.Create;
-  mLogger := TLogger.Create;
-  mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
+  mSetup := nil;
+  mBuild := nil;
   try
+    mSetup := TShellWorkspaceSetup.Create;
+    mLogger := TLogger.Create;
+    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
     Assert.IsFalse(mBuild.Chosen);
     Assert.IsFalse(mBuild.Select(ProjectWith(['Debug'], ['Win32']), 'Release', '', nil, False, mError));
     Assert.AreNotEqual('', mError, 'Grund für die unbekannte Konfiguration');
@@ -195,10 +199,12 @@ var
   mProject: TProjectInfo;
   mError: string;
 begin
-  mSetup := TShellWorkspaceSetup.Create;
-  mLogger := TLogger.Create;
-  mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
+  mSetup := nil;
+  mBuild := nil;
   try
+    mSetup := TShellWorkspaceSetup.Create;
+    mLogger := TLogger.Create;
+    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
     Assert.AreEqual('DEBUG;TRACE', string.Join(';', TShellBuildChoice.NormalizedDefines([' debug', 'TRACE', '',
       'Debug '])));
     mProject := ProjectWith(nil, nil);
@@ -223,9 +229,11 @@ var
   mProject: TProjectInfo;
   mDefines: TArray<string>;
 begin
-  mSetup := TShellWorkspaceSetup.Create;
-  mState := TShellProjectState.Create(mSetup);
+  mSetup := nil;
+  mState := nil;
   try
+    mSetup := TShellWorkspaceSetup.Create;
+    mState := TShellProjectState.Create(mSetup);
     Assert.IsFalse(mState.Project(mProject), 'Vor dem Laden kein Projekt');
     Assert.IsFalse(mState.Defines(mDefines));
     Assert.AreEqual(Int64(-1), mState.Stats.LastIndexMs, 'Noch kein Lauf');
@@ -274,10 +282,13 @@ begin
   Assert.IsFalse(TFile.Exists(mFiles.ProjectFile));
   Assert.IsFalse(TFile.Exists(mFiles.LibraryFile));
   Assert.IsFalse(TFile.Exists(mFiles.SearchFile));
-  mSetup := TShellWorkspaceSetup.Create;
-  mEvents := TShellWorkspaceEvents.Create;
-  mCache := TShellWorkspaceCache.Create('Test', mLogger, mSetup, mEvents);
+  mSetup := nil;
+  mEvents := nil;
+  mCache := nil;
   try
+    mSetup := TShellWorkspaceSetup.Create;
+    mEvents := TShellWorkspaceEvents.Create;
+    mCache := TShellWorkspaceCache.Create('Test', mLogger, mSetup, mEvents);
     Assert.IsFalse(mCache.Processes(mCacheFile, mProcesses), 'Ohne Cache keine Prozesse');
     Assert.IsFalse(mCache.Writes);
     mCache.SetFiles(mFiles);
@@ -368,11 +379,14 @@ var
   mSettings: TServerSettings;
 begin
   TFile.WriteAllText(TPath.Combine(FFolder, 'Einzig.dproj'), '<Project/>');
-  mSetup := TShellWorkspaceSetup.Create;
-  mLogger := TLogger.Create;
-  mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
-  mLoader := TShellProjectLoader.Create('Test', FFolder, mLogger, mSetup, mBuild);
+  mSetup := nil;
+  mBuild := nil;
+  mLoader := nil;
   try
+    mSetup := TShellWorkspaceSetup.Create;
+    mLogger := TLogger.Create;
+    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
+    mLoader := TShellProjectLoader.Create('Test', FFolder, mLogger, mSetup, mBuild);
     mSettings := Default(TServerSettings);
     Assert.AreEqual(TPath.Combine(FFolder, 'Einzig.dproj'), mLoader.FindProjectFile(mSettings));
     mSetup.ProjectFile := TPath.Combine(FFolder, 'Fehlt.dproj');

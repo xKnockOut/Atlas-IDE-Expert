@@ -490,9 +490,11 @@ begin
   mStore := TDocumentStore.Create;
   mStore.Open(mUri, 'delphi', 1, cUnitHaupt);
   mAsked := 0;
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Hooks.WithFor :=
       function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean
       begin
@@ -633,9 +635,11 @@ begin
   mStore := TDocumentStore.Create;
   mStore.Open(mUri, 'delphi', 1, mText);
   mEnabled := True;
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Hooks.CreateFor :=
       function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
       var

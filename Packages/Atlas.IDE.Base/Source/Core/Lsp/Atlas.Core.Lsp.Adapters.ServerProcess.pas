@@ -137,16 +137,22 @@ procedure TWriterThread.Execute;
 var
   mBytes: TBytes;
 begin
-  while not Terminated do
-  begin
-    FWake.WaitFor(INFINITE);
-    for mBytes in TakeQueue do
+  // Kein stilles Ende (#493): ein Fehler beim Schreiben wird protokolliert.
+  try
+    while not Terminated do
     begin
-      if not WriteAll(mBytes) then
+      FWake.WaitFor(INFINITE);
+      for mBytes in TakeQueue do
       begin
-        Exit;
+        if not WriteAll(mBytes) then
+        begin
+          Exit;
+        end;
       end;
     end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Server, E);
   end;
 end;
 
@@ -218,9 +224,9 @@ var
   mBuffer: TBytes;
   mRead: DWORD;
 begin
-  SetLength(mBuffer, 65536);
   try
     try
+      SetLength(mBuffer, 65536);
       while not Terminated do
       begin
         if not ReadFile(FHandle, mBuffer[0], Length(mBuffer), mRead, nil) or (mRead = 0) then

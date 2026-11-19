@@ -133,9 +133,11 @@ procedure TCompilerEditionTests.CacheRoundTripPerRootAndVersion;
 var
   mCache, mLoaded: TCompilerEditionCache;
 begin
-  mCache := TCompilerEditionCache.Create;
-  mLoaded := TCompilerEditionCache.Create;
+  mCache := nil;
+  mLoaded := nil;
   try
+    mCache := TCompilerEditionCache.Create;
+    mLoaded := TCompilerEditionCache.Create;
     mCache.Store(Entry('C:\Delphi\23.0', '23.0', '100-a', TCompilerEdition.NoCommandLine));
     mCache.Store(Entry('C:\Delphi\37.0', '37.0', '200-b', TCompilerEdition.CommandLine));
     // Gleiche Installation ersetzt den Eintrag.

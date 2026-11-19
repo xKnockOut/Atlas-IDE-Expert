@@ -48,10 +48,12 @@ var
   mSearch: TAtlasVariableSearch;
   mNode: TAtlasEvalNode;
 begin
-  mList := TAtlasEvalList.Create;
-  mSearch := TAtlasVariableSearch.Create;
-  mHost := TForm.CreateNew(nil);
+  mList := nil;
+  mSearch := nil;
   try
+    mList := TAtlasEvalList.Create;
+    mSearch := TAtlasVariableSearch.Create;
+    mHost := TForm.CreateNew(nil);
     mFrame := TAtlasDebugVariablesFrame.Create(mHost);
     mFrame.Parent := mHost;
     mFrame.HandleNeeded;

@@ -491,15 +491,17 @@ var
 
 begin
   mStore := TDocumentStore.Create;
-  mHints := TLspInlayHints.Create(mStore, FIndex, ReadFile,
-    function(const AUri: string): TInlayHintSettings
-    begin
-      Result := TInlayHintSettings.Default;
-      Result.ParameterNames := False;
-      Result.InferredTypes := False;
-    end);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mHints := nil;
+  mDispatcher := nil;
   try
+    mHints := TLspInlayHints.Create(mStore, FIndex, ReadFile,
+      function(const AUri: string): TInlayHintSettings
+      begin
+        Result := TInlayHintSettings.Default;
+        Result.ParameterNames := False;
+        Result.InferredTypes := False;
+      end);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mHints.Attach(mDispatcher);
     mUri := TDocumentUris.FromPath(cHauptFile);
     mStore.Open(mUri, 'delphi', 1, cUnitBloecke);

@@ -34,13 +34,13 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Crashes,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Adapters.ServerProcess,
-  Atlas.Core.Problems.Contract;
+  Atlas.Core.Problems.Contract,
+  Atlas.Tests.Wait;
 
 /// <summary>Zahl der offenen Handles des Prozesses (eigene Deklaration, unabhängig von der Delphi-Version).</summary>
 function ProcessHandleCount(AHProcess: THandle; var APdwHandleCount: DWORD): BOOL; stdcall;
@@ -233,21 +233,27 @@ begin
   Assert.IsTrue(Integer(mAfter) - Integer(mBefore) < 5, Format('Handles vorher %d, nachher %d', [mBefore, mAfter]));
 end;
 
+/// <summary>Ist die Verbindung zu AServer geschlossen? Eigene Routine, damit die anonyme Methode nur AServer
+/// einfängt.</summary>
+function ClientClosed(const AServer: IAtlasLspServer): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := AServer.Client.Closed;
+    end;
+end;
+
 procedure TLspServerProcessTests.EndReportsExitCodeAndStderr;
 var
   mServer: IAtlasLspServer;
-  mWatch: TStopwatch;
   mInfo: TLspCloseInfo;
   mText: string;
 begin
   // Ein „Server“, der eine Zeile auf stderr schreibt und mit Code 3 endet.
   mServer := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
-  mWatch := TStopwatch.StartNew;
-  while not mServer.Client.Closed and (mWatch.ElapsedMilliseconds < 10000) do
-  begin
-    Sleep(20);
-  end;
-  Assert.IsTrue(mServer.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
+  Assert.IsTrue(TTestWait.Reached(ClientClosed(mServer), 10000),
+    'Verbindung nach dem Ende des Prozesses geschlossen');
   mInfo := mServer.Client.CloseInfo;
   Assert.IsTrue(mInfo.ExitKnown, 'Exit-Code bekannt');
   Assert.AreEqual(Int64(3), Int64(mInfo.ExitCode));

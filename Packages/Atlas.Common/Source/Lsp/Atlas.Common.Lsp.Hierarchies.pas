@@ -861,9 +861,11 @@ var
   mLocation: TReferenceLocation;
 begin
   Result := nil;
-  mTrees := TTreeSet.Create(ASource.ReadText);
-  mCalls := TCallCollector.Create;
+  mTrees := nil;
+  mCalls := nil;
   try
+    mTrees := TTreeSet.Create(ASource.ReadText);
+    mCalls := TCallCollector.Create;
     if not mTrees.TryGet(AItem.FileName, mTree) then
     begin
       Exit;

@@ -279,9 +279,11 @@ begin
   begin
     Exit;
   end;
-  mMigration := TMigrationScope.Create(AContext);
-  mScope := TTypedScope.Create(AContext);
+  mMigration := nil;
+  mScope := nil;
   try
+    mMigration := TMigrationScope.Create(AContext);
+    mScope := TTypedScope.Create(AContext);
     for mNode in NodesOf(AContext.Tree.Root, TSyntaxKind.Call) do
     begin
       if not IsSingleCast(mNode) or not mMigration.Reportable(mNode.StartPos) then
@@ -476,9 +478,11 @@ begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
-  mMigration := TMigrationScope.Create(AContext);
-  mScope := TTypedScope.Create(AContext);
+  mMigration := nil;
+  mScope := nil;
   try
+    mMigration := TMigrationScope.Create(AContext);
+    mScope := TTypedScope.Create(AContext);
     for mNode in NodesOf(AContext.Tree.Root, TSyntaxKind.RoutineHeader) do
     begin
       CheckHeader(mNode);

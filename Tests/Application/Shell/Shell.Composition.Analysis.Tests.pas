@@ -43,9 +43,11 @@ var
   mCapability: TJSONObject;
   mText: string;
 begin
-  mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
-  mCommands := TLspCommands.Create;
+  mAnalysis := nil;
+  mCommands := nil;
   try
+    mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
+    mCommands := TLspCommands.Create;
     mAnalysis.RegisterReportCommands(mCommands);
     mCapability := mCommands.Capability;
     try
@@ -67,9 +69,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
-  mCommands := TLspCommands.Create;
+  mAnalysis := nil;
+  mCommands := nil;
   try
+    mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
+    mCommands := TLspCommands.Create;
     mAnalysis.RegisterReportCommands(mCommands);
     for mName in TArray<string>.Create(TLspMetrics.cCommand, TLspTodos.cCommand) do
     begin

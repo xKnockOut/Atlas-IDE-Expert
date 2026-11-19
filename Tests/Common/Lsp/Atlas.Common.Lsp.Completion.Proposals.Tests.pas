@@ -1157,10 +1157,12 @@ var
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cOverrideUnitBasis, cOverrideBasisFile, nil));
   FIndex.AddUnit(TIndexExtractor.ExtractText(cOverrideUnitMitte, cOverrideMitteFile, nil));
-  mReads := TDictionary<string, Integer>.Create;
-  mTree := TPascalParser.Parse(cOverrideText);
-  mResolver := TNameResolver.Create(FIndex);
+  mReads := nil;
+  mResolver := nil;
   try
+    mReads := TDictionary<string, Integer>.Create;
+    mTree := TPascalParser.Parse(cOverrideText);
+    mResolver := TNameResolver.Create(FIndex);
     Assert.IsTrue(OverrideAt(LookupOf(mResolver, nil, mTree, cOverrideText,
       function(const AFileName: string; out AText: string): Boolean
       var

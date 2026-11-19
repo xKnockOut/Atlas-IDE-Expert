@@ -331,6 +331,10 @@ begin
   Result.AddPair('path', mPath);
   Result.AddPair('samples', TJSONNumber.Create(FProfile.Samples));
   Result.AddPair('durationMs', TJSONNumber.Create(FProfile.DurationMs));
+  if mRun.Error <> '' then
+  begin
+    Result.AddPair('error', mRun.Error);
+  end;
   FProfile := Default(TAtlasProfile);
 end;
 

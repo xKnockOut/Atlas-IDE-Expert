@@ -617,9 +617,11 @@ begin
   mStore.Open(TDocumentUris.FromPath(mUnitFile), 'delphi', 1, mText);
   mReads := 0;
   mId := 0;
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Hooks.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin

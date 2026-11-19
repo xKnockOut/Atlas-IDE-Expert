@@ -30,6 +30,8 @@ uses
   System.Classes,
   System.IOUtils,
   System.SyncObjs,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
   Atlas.Windows.Documents.FileWatcher;
 
 { TFileWatcherTests }
@@ -49,6 +51,7 @@ end;
 procedure TFileWatcherTests.ReportsChangedAndCreatedFiles;
 var
   mWatcher: TFileWatcher;
+  mLogger: ILogger;
   mSignal: TEvent;
   mSeen: string;
   mLock: TObject;
@@ -60,6 +63,7 @@ begin
   mSignal := TEvent.Create(nil, False, False, '');
   mLock := TObject.Create;
   try
+    mLogger := TLogger.Create;
     mWatcher := TFileWatcher.Create(
       procedure(const AFiles: TArray<string>)
       var
@@ -75,7 +79,7 @@ begin
           TMonitor.Exit(mLock);
         end;
         mSignal.SetEvent;
-      end);
+      end, mLogger);
     try
       mWatcher.SetFiles([mConfig, mOther]);
       Sleep(200);

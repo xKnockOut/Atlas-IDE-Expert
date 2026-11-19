@@ -280,9 +280,11 @@ var
   mUsage, mRead: TAtlasLearnedUsage;
   mAccepted, mRejected: Integer;
 begin
-  mUsage := TAtlasLearnedUsage.Create;
-  mRead := TAtlasLearnedUsage.Create;
+  mUsage := nil;
+  mRead := nil;
   try
+    mUsage := TAtlasLearnedUsage.Create;
+    mRead := TAtlasLearnedUsage.Create;
     mUsage.SetGroup('C:\P\G.groupproj');
     mUsage.Accepted('a => b');
     mUsage.Rejected('c');

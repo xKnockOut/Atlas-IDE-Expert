@@ -208,9 +208,11 @@ var
   mStore, mLoaded: TAtlasMethodGroupStore;
   mGroup, mFound: TAtlasMethodGroup;
 begin
-  mStore := TAtlasMethodGroupStore.Create;
-  mLoaded := TAtlasMethodGroupStore.Create;
+  mStore := nil;
+  mLoaded := nil;
   try
+    mStore := TAtlasMethodGroupStore.Create;
+    mLoaded := TAtlasMethodGroupStore.Create;
     mGroup := Default(TAtlasMethodGroup);
     mGroup.Pattern := 'TKunde.Prüfe*';
     mGroup.Overrides := False;

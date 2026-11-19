@@ -159,9 +159,11 @@ var
   mItems: TJSONArray;
   mClock: TStopwatch;
 begin
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
+  mStarted := nil;
+  mGo := nil;
   try
+    mStarted := TEvent.Create(nil, True, False, '');
+    mGo := TEvent.Create(nil, True, False, '');
     mThread := ComputeInThread(FCache, mStarted, mGo);
     try
       Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
@@ -201,9 +203,11 @@ begin
   mCache := FCache;
   // Nicht TCancelledToken.Create direkt an den const-Interface-Parameter: Das Objekt würde nie freigegeben.
   mToken := TCancelledToken.Create;
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
+  mStarted := nil;
+  mGo := nil;
   try
+    mStarted := TEvent.Create(nil, True, False, '');
+    mGo := TEvent.Create(nil, True, False, '');
     mThread := ComputeInThread(FCache, mStarted, mGo);
     try
       Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));

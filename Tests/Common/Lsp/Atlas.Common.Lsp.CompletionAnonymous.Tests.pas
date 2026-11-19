@@ -440,9 +440,11 @@ begin
   mUri := TDocumentUris.FromPath(cHauptFile);
   mStore := TDocumentStore.Create;
   mStore.Open(mUri, 'delphi', 1, mText);
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Attach(mDispatcher);
     // Nach "(": nur das Gerüst.
     mAnswer := Ask('(');

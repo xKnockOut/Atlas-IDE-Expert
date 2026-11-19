@@ -87,9 +87,11 @@ var
   mText: string;
   mName: string;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mEditorCommands.RegisterMarkCommands(mCommands);
     mEditorCommands.RegisterTextCommands(mCommands);
     mCapability := mCommands.Capability;
@@ -118,9 +120,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mEditorCommands.RegisterMarkCommands(mCommands);
     mEditorCommands.RegisterTextCommands(mCommands);
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
@@ -148,10 +152,13 @@ var
   mArguments: TJSONArray;
   mResult: TJSONValue;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mEditorCommands.RegisterTextCommands(mCommands);
     mArguments.Add('file:///tmp/A.pas');
     // Ohne Position lehnt der Befehl ab, die Einstellungen der Datei hat er da schon geholt.
@@ -176,10 +183,13 @@ var
   mArguments: TJSONArray;
   mResult: TJSONValue;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mEditorCommands.RegisterTextCommands(mCommands);
     mArguments.Add('file:///tmp/A.pas');
     Assert.WillRaise(

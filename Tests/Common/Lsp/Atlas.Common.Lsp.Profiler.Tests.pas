@@ -114,9 +114,11 @@ var
   mRequest, mResponse: TJSONObject;
   mValue: TJSONValue;
 begin
-  mCommands := TLspCommands.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCommands := nil;
+  mDispatcher := nil;
   try
+    mCommands := TLspCommands.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     FProfiler.Register(mCommands);
     mCommands.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspCommands.cMethod +

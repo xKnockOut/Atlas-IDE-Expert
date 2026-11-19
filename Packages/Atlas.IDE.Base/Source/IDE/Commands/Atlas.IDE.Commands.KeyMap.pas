@@ -649,9 +649,11 @@ var
 begin
   mEntries := AtlasEntries;
   // Liste statt Anhängen ans Array: Die IDE hat weit über tausend Aktionen.
-  mItems := TList<TAtlasKeyItem>.Create;
-  mOrigins := TOrigins.Create;
+  mItems := nil;
+  mOrigins := nil;
   try
+    mItems := TList<TAtlasKeyItem>.Create;
+    mOrigins := TOrigins.Create;
     AddAtlasKeys(mItems, mEntries);
     AddActions(mItems, mOrigins, mEntries);
     AddKnownIdeKeys(mItems);

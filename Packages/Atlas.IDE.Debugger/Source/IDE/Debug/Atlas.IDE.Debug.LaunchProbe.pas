@@ -62,7 +62,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.Winsock2;
+  Winapi.Winsock2,
+  Atlas.Core.Diagnostics.Guard;
 
 const
   cProcessTerminate = $0001;
@@ -91,21 +92,27 @@ procedure TAtlasIdeLaunchProbe.Execute;
 var
   mPid: Cardinal;
 begin
-  while not Terminated do
-  begin
-    if (FPort > 0) and (FPortOpen = 0) and TAtlasIdeLaunchProcesses.PortAccepts(FPort, cConnectMs) then
+  // Ein Fehler der Probe wird protokolliert; die Probe meldet danach nichts mehr (Zeitüberschreitung des Starts).
+  try
+    while not Terminated do
     begin
-      TInterlocked.Exchange(FPortOpen, 1);
+      if (FPort > 0) and (FPortOpen = 0) and TAtlasIdeLaunchProcesses.PortAccepts(FPort, cConnectMs) then
+      begin
+        TInterlocked.Exchange(FPortOpen, 1);
+      end;
+      mPid := Cardinal(TInterlocked.CompareExchange(Integer(FPid), 0, 0));
+      if (mPid <> 0) and (FWindowFound = 0) and TAtlasIdeLaunchProcesses.HasMainWindow(mPid) then
+      begin
+        TInterlocked.Exchange(FWindowFound, 1);
+      end;
+      if FWake.WaitFor(cIntervalMs) = wrSignaled then
+      begin
+        Exit;
+      end;
     end;
-    mPid := Cardinal(TInterlocked.CompareExchange(Integer(FPid), 0, 0));
-    if (mPid <> 0) and (FWindowFound = 0) and TAtlasIdeLaunchProcesses.HasMainWindow(mPid) then
-    begin
-      TInterlocked.Exchange(FWindowFound, 1);
-    end;
-    if FWake.WaitFor(cIntervalMs) = wrSignaled then
-    begin
-      Exit;
-    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
   end;
 end;
 

@@ -68,14 +68,20 @@ procedure TAtlasIdeReattachWaiter.Execute;
 var
   mProcess: TAtlasReattachProcess;
 begin
-  while not Terminated do
-  begin
-    if TAtlasReattach.Arrival(FTarget, TAtlasIdeDebugProcesses.Named(FName, False), FKnown, mProcess) then
+  // Ein Fehler beim Abfragen der Prozesse wird protokolliert, statt das Warten still zu beenden.
+  try
+    while not Terminated do
     begin
-      Report(mProcess.Pid);
-      Exit;
+      if TAtlasReattach.Arrival(FTarget, TAtlasIdeDebugProcesses.Named(FName, False), FKnown, mProcess) then
+      begin
+        Report(mProcess.Pid);
+        Exit;
+      end;
+      FWake.WaitFor(FIntervalMs);
     end;
-    FWake.WaitFor(FIntervalMs);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
   end;
 end;
 

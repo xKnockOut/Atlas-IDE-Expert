@@ -99,9 +99,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mTestUnits := TShellTestUnits.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mTestUnits := nil;
+  mCommands := nil;
   try
+    mTestUnits := TShellTestUnits.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mTestUnits.RegisterCommand(mCommands);
     for mName in TArray<string>.Create(TLspTestUnits.cCommand) do
     begin
@@ -120,9 +122,11 @@ var
   mCapability: TJSONObject;
   mText: string;
 begin
-  mTestUnits := TShellTestUnits.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mTestUnits := nil;
+  mCommands := nil;
   try
+    mTestUnits := TShellTestUnits.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mTestUnits.RegisterCommand(mCommands);
     mCapability := mCommands.Capability;
     try

@@ -214,9 +214,11 @@ begin
   mStore := TDocumentStore.Create;
   mUri := TDocumentUris.FromPath(cFileName);
   mStore.Open(mUri, 'delphi', 1, cUnitText);
-  mValues := TLspInlineValues.Create(mStore, FIndex, nil);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mValues := nil;
+  mDispatcher := nil;
   try
+    mValues := TLspInlineValues.Create(mStore, FIndex, nil);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mValues.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspInlineValues.cMethod +
       '","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},' +

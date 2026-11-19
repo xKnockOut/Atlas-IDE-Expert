@@ -161,10 +161,13 @@ var
   mGate: TEvent;
   mProbe: TDoneProbe;
 begin
-  mProbe := TDoneProbe.Create;
-  mGate := TEvent.Create(nil, True, False, '');
-  mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
+  mProbe := nil;
+  mGate := nil;
+  mRequest := nil;
   try
+    mProbe := TDoneProbe.Create;
+    mGate := TEvent.Create(nil, True, False, '');
+    mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
     Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done()));
     Assert.IsFalse(mRequest.Start(Blocked(mGate), mProbe.Done()), 'zweite Anfrage solange die erste läuft');
     mGate.SetEvent;
@@ -207,9 +210,11 @@ var
   mRequest: TAtlasBackgroundRequest;
   mProbe: TDoneProbe;
 begin
-  mProbe := TDoneProbe.Create;
-  mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
+  mProbe := nil;
+  mRequest := nil;
   try
+    mProbe := TDoneProbe.Create;
+    mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
     mRequest.Start(Raising(ELspTimeoutError.Create('Zeitlimit')), mProbe.Done());
     Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
     Assert.IsFalse(mProbe.Ok);
@@ -226,9 +231,11 @@ var
   mRequest: TAtlasBackgroundRequest;
   mProbe: TDoneProbe;
 begin
-  mProbe := TDoneProbe.Create;
-  mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
+  mProbe := nil;
+  mRequest := nil;
   try
+    mProbe := TDoneProbe.Create;
+    mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
     mRequest.Start(Raising(EAbort.Create('Abbruch')), mProbe.Done());
     Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
     Assert.IsFalse(mProbe.Ok);

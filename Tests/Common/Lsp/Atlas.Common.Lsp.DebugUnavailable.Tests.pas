@@ -190,9 +190,11 @@ var
 begin
   mStore := TDocumentStore.Create;
   mStore.Open(TDocumentUris.FromPath(cFileName), 'delphi', 1, cUnitText);
-  mHandler := TLspDebugUnavailable.Create(mStore, nil, nil, Context);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mHandler := nil;
+  mDispatcher := nil;
   try
+    mHandler := TLspDebugUnavailable.Create(mStore, nil, nil, Context);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mHandler.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspDebugUnavailable.cMethod +
       '","params":{"textDocument":{"uri":"' + TDocumentUris.FromPath(cFileName).Replace('\', '\\') +

@@ -328,10 +328,12 @@ var
 begin
   AFailed := 0;
   mFolders := TAtlasIdeTypeCollector.SkippedFolders;
-  mWanted := TDictionary<string, Boolean>.Create;
-  mDetails := TList<TAtlasIdeTypeDetail>.Create;
-  mContext := TRttiContext.Create;
+  mWanted := nil;
+  mDetails := nil;
   try
+    mWanted := TDictionary<string, Boolean>.Create;
+    mDetails := TList<TAtlasIdeTypeDetail>.Create;
+    mContext := TRttiContext.Create;
     for mUnit in AUnits do
     begin
       mWanted.AddOrSetValue(UpperCase(mUnit), True);

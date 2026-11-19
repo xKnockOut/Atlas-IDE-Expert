@@ -134,9 +134,11 @@ var
   mCommands: TLspCommands;
 begin
   // Gibt AArguments in jedem Fall frei.
-  mServerCommands := TShellServerCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mServerCommands := nil;
+  mCommands := nil;
   try
+    mServerCommands := TShellServerCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mServerCommands.RegisterReadCommands(mCommands);
     mServerCommands.RegisterActionCommands(mCommands);
     Result := mCommands.Execute(ACommand, AArguments);
@@ -190,9 +192,11 @@ var
   mText: string;
   mName: string;
 begin
-  mServerCommands := TShellServerCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mServerCommands := nil;
+  mCommands := nil;
   try
+    mServerCommands := TShellServerCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mServerCommands.RegisterReadCommands(mCommands);
     mServerCommands.RegisterActionCommands(mCommands);
     mServerCommands.RegisterConvertCommand(mCommands);

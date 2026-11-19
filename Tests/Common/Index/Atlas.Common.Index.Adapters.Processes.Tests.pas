@@ -67,9 +67,11 @@ var
   mWriter, mReader: TIndexProcessEntry;
   mItems: TArray<TIndexProcessInfo>;
 begin
-  mWriter := TIndexProcessEntry.Create(FCacheFile, Info(4711, TIndexProcessInfo.cKindLsp));
-  mReader := TIndexProcessEntry.Create(FCacheFile, Info(4712, TIndexProcessInfo.cKindMcp));
+  mWriter := nil;
+  mReader := nil;
   try
+    mWriter := TIndexProcessEntry.Create(FCacheFile, Info(4711, TIndexProcessInfo.cKindLsp));
+    mReader := TIndexProcessEntry.Create(FCacheFile, Info(4712, TIndexProcessInfo.cKindMcp));
     mWriter.Update(TIndexProcessInfo.cStateBuilding, True, 'Cache-Sperre erhalten, Index wird aufgebaut');
     mReader.Update(TIndexProcessInfo.cStateReading, False, 'Sperre belegt, lade Cache nur lesend');
     mItems := TIndexProcesses.List(FCacheFile);

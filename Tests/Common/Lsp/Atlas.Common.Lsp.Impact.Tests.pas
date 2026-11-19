@@ -606,17 +606,19 @@ var
 begin
   mStore := TDocumentStore.Create;
   mStore.Open(TDocumentUris.FromPath(cWerkzeugFile), 'delphi', 1, cUnitWerkzeug);
-  mAnalysis := TImpactAnalysis.Create(mStore, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadFile(AFileName, AText);
-    end,
-    function: TArray<string>
-    begin
-      Result := ProjectFiles;
-    end);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mAnalysis := nil;
+  mDispatcher := nil;
   try
+    mAnalysis := TImpactAnalysis.Create(mStore, FIndex,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := ReadFile(AFileName, AText);
+      end,
+      function: TArray<string>
+      begin
+        Result := ProjectFiles;
+      end);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mAnalysis.Attach(mDispatcher);
     mPosition := PositionOf(cUnitWerkzeug, 'procedure Ziel;', 'Ziel');
     mMessage := TJSONObject.ParseJSONValue(Format('{"jsonrpc":"2.0","id":1,"method":"%s","params":{' +

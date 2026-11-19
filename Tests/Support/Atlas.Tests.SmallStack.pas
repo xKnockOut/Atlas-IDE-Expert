@@ -46,12 +46,15 @@ end;
 procedure TSmallStackThread.Execute;
 begin
   try
-    FWork();
-  except
-    on E: Exception do
-      FFailure := E.ClassName;
+    try
+      FWork();
+    except
+      on E: Exception do
+        FFailure := E.ClassName;
+    end;
+  finally
+    FWork := nil;
   end;
-  FWork := nil;
 end;
 
 { TSmallStack }

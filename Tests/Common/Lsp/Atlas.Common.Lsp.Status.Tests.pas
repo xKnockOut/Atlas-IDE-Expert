@@ -263,11 +263,15 @@ var
   end;
 
 begin
-  mCommands := TLspCommands.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mWork := TList<TProc>.Create;
-  mResponses := TObjectList<TJSONObject>.Create(True);
+  mCommands := nil;
+  mDispatcher := nil;
+  mWork := nil;
+  mResponses := nil;
   try
+    mCommands := TLspCommands.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mWork := TList<TProc>.Create;
+    mResponses := TObjectList<TJSONObject>.Create(True);
     RegisterWriteAndStatus(mCommands);
     Assert.IsFalse(mCommands.IsConcurrent(nil), 'ohne Parameter');
     mDispatcher.Scheduler :=

@@ -45,9 +45,11 @@ var
   mCapability: TJSONObject;
   mText: string;
 begin
-  mEditing := TShellEditing.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mEditing := nil;
+  mCommands := nil;
   try
+    mEditing := TShellEditing.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mEditing.RegisterCommands(mCommands);
     mCapability := mCommands.Capability;
     try

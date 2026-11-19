@@ -82,9 +82,11 @@ var
   mModel: TAtlasArchitectureModel;
   mMain, mCache: Integer;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);
@@ -126,9 +128,11 @@ var
   mModel: TAtlasArchitectureModel;
   mCache, mDb: Integer;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);
@@ -201,9 +205,11 @@ var
   mModel: TAtlasArchitectureModel;
   mMain, mCache, mOther: Integer;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);
@@ -241,9 +247,11 @@ var
   mModel: TAtlasArchitectureModel;
   mCycle: TAtlasArchEdge;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);

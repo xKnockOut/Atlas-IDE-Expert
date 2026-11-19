@@ -212,9 +212,11 @@ begin
   end;
   FShownWidth := AWidth;
   FShownHeight := AHeight;
-  mNative := TBitmap.Create;
-  mScaled := TBitmap.Create;
+  mNative := nil;
+  mScaled := nil;
   try
+    mNative := TBitmap.Create;
+    mScaled := TBitmap.Create;
     mNative.PixelFormat := pf24bit;
     mNative.SetSize(FOriginal.Width, FOriginal.Height);
     mNative.Canvas.Draw(0, 0, FOriginal.Graphic);

@@ -208,10 +208,13 @@ var
   mAnswer: TJSONValue;
   mText: string;
 begin
-  mReports := TShellStatusReports.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mReports := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mReports := TShellStatusReports.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mReports.RegisterCommands(mCommands);
     mAnswer := mCommands.Execute(TBugReport.cCommand, mArguments);
     try

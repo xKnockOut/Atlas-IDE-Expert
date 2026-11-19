@@ -86,10 +86,12 @@ var
   mSession: TLspSessionBase;
   mText: string;
 begin
-  mSeen := TStringList.Create;
-  mClient := AnsweringClient(mSeen, 'null');
-  mSession := TLspSessionBase.Create(mClient);
+  mSeen := nil;
+  mSession := nil;
   try
+    mSeen := TStringList.Create;
+    mClient := AnsweringClient(mSeen, 'null');
+    mSession := TLspSessionBase.Create(mClient);
     mSession.Sync('C:\P\A.pas', 'unit A;');
     mSession.Sync('C:\P\A.pas', 'unit A;');
     mSession.Sync('C:\P\A.pas', 'unit A2;');
@@ -115,11 +117,13 @@ var
   mSession: TLspSessionRequests;
   mLocations: TArray<TLspLocation>;
 begin
-  mSeen := TStringList.Create;
-  mClient := AnsweringClient(mSeen, '[{"uri":"file:///c:/p/kunde.pas","range":{"start":{"line":3,"character":4},' +
-    '"end":{"line":3,"character":9}}},{"uri":"","range":{"start":{"line":1,"character":0}}}]');
-  mSession := TLspSessionRequests.Create(mClient);
+  mSeen := nil;
+  mSession := nil;
   try
+    mSeen := TStringList.Create;
+    mClient := AnsweringClient(mSeen, '[{"uri":"file:///c:/p/kunde.pas","range":{"start":{"line":3,"character":4},' +
+      '"end":{"line":3,"character":9}}},{"uri":"","range":{"start":{"line":1,"character":0}}}]');
+    mSession := TLspSessionRequests.Create(mClient);
     mLocations := mSession.References('C:\P\A.pas', 2, 5);
     Assert.AreEqual(1, Integer(Length(mLocations)), 'ohne Datei fällt weg');
     Assert.AreEqual(3, mLocations[0].Line);

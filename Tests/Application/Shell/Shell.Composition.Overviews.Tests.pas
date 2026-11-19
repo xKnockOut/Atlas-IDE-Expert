@@ -81,9 +81,11 @@ var
   mText: string;
   mName: string;
 begin
-  mOverviews := TShellOverviews.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mOverviews := nil;
+  mCommands := nil;
   try
+    mOverviews := TShellOverviews.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mOverviews.RegisterReportCommands(mCommands);
     mOverviews.RegisterUnitCommands(mCommands);
     mCapability := mCommands.Capability;
@@ -111,9 +113,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mOverviews := TShellOverviews.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mOverviews := nil;
+  mCommands := nil;
   try
+    mOverviews := TShellOverviews.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mOverviews.RegisterReportCommands(mCommands);
     mOverviews.RegisterUnitCommands(mCommands);
     for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspQuery.cCommand, TLspHotspots.cCommand,
@@ -140,10 +144,13 @@ var
   mArguments: TJSONArray;
   mResult: TJSONValue;
 begin
-  mOverviews := TShellOverviews.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mOverviews := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mOverviews := TShellOverviews.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mOverviews.RegisterUnitCommands(mCommands);
     mArguments.Add('file:///tmp/u.pas');
     mResult := mCommands.Execute(TLspRecursion.cCommand, mArguments);

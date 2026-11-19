@@ -464,9 +464,11 @@ var
   mCount: Integer;
 begin
   mHost := NewHost;
-  mSearch := TAtlasSearchHistory.Create(20);
-  mReplace := TAtlasSearchHistory.Create(20);
+  mSearch := nil;
+  mReplace := nil;
   try
+    mSearch := TAtlasSearchHistory.Create(20);
+    mReplace := TAtlasSearchHistory.Create(20);
     mBar := NewBar(mHost);
     mBar.Features := TAtlasSearchBarFeatures.Create(True, False, False);
     mBar.SetHistories(mSearch, mReplace);

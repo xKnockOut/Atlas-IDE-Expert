@@ -134,11 +134,15 @@ var
   mSearch, mReplace, mSearchBack, mReplaceBack: TAtlasSearchHistory;
   mText: string;
 begin
-  mSearch := TAtlasSearchHistory.Create(20);
-  mReplace := TAtlasSearchHistory.Create(20);
-  mSearchBack := TAtlasSearchHistory.Create(20);
-  mReplaceBack := TAtlasSearchHistory.Create(2);
+  mSearch := nil;
+  mReplace := nil;
+  mSearchBack := nil;
+  mReplaceBack := nil;
   try
+    mSearch := TAtlasSearchHistory.Create(20);
+    mReplace := TAtlasSearchHistory.Create(20);
+    mSearchBack := TAtlasSearchHistory.Create(20);
+    mReplaceBack := TAtlasSearchHistory.Create(2);
     mSearch.Remember('IntToStr\((\w+)\)');
     mSearch.Remember('Größe "x"');
     mReplace.Remember('$1.ToString');
@@ -160,9 +164,11 @@ procedure TAtlasSearchHistoryTests.BrokenTextIsRejected;
 var
   mSearch, mReplace: TAtlasSearchHistory;
 begin
-  mSearch := TAtlasSearchHistory.Create(20);
-  mReplace := TAtlasSearchHistory.Create(20);
+  mSearch := nil;
+  mReplace := nil;
   try
+    mSearch := TAtlasSearchHistory.Create(20);
+    mReplace := TAtlasSearchHistory.Create(20);
     mSearch.Remember('a');
     Assert.IsFalse(TAtlasSearchHistories.FromText('[1, 2', mSearch, mReplace));
     Assert.AreEqual('', Joined(mSearch));

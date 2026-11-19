@@ -221,9 +221,11 @@ procedure TAtlasNearAlignTests.ExceptionsJson;
 var
   mExceptions, mLoaded: TAtlasNearExceptions;
 begin
-  mExceptions := TAtlasNearExceptions.Create;
-  mLoaded := TAtlasNearExceptions.Create;
+  mExceptions := nil;
+  mLoaded := nil;
   try
+    mExceptions := TAtlasNearExceptions.Create;
+    mLoaded := TAtlasNearExceptions.Create;
     mExceptions.Add('Form1.dfm', ['edtFax.left', 'edtFax.left', 'btnOk.top']);
     Assert.IsTrue(mExceptions.Changed);
     Assert.AreEqual(2, Integer(Length(mExceptions.Keys('FORM1.DFM'))));

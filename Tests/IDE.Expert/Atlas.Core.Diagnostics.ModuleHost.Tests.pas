@@ -292,10 +292,13 @@ var
 begin
   mPinned := nil;
   mScope := nil;
-  mLog := TLog.Create;
-  mRelease := TEvent.Create(nil, True, False, '');
-  mSlot := TAtlasWorkerSlot.Create(cInstance);
+  mLog := nil;
+  mRelease := nil;
+  mSlot := nil;
   try
+    mLog := TLog.Create;
+    mRelease := TEvent.Create(nil, True, False, '');
+    mSlot := TAtlasWorkerSlot.Create(cInstance);
     TAtlasUnloadSafety.ResetForTests(
       procedure(AModule: HMODULE)
       begin

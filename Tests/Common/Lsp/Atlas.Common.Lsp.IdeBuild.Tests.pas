@@ -79,9 +79,11 @@ var
   mDispatcher: TJsonRpcDispatcher;
   mReceived: Integer;
 begin
-  mBuild := TLspIdeBuild.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mBuild := nil;
+  mDispatcher := nil;
   try
+    mBuild := TLspIdeBuild.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mReceived := -1;
     mBuild.OnMessages :=
       procedure(const AMessages: TArray<TCompilerMessage>)
@@ -114,9 +116,11 @@ var
   mEvents: string;
 begin
   // Die Projektprüfung pausiert, solange die IDE kompiliert (#1247).
-  mBuild := TLspIdeBuild.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mBuild := nil;
+  mDispatcher := nil;
   try
+    mBuild := TLspIdeBuild.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mEvents := '';
     mBuild.OnCompiling :=
       procedure(ARunning: Boolean)

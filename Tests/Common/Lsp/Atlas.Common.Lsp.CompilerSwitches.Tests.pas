@@ -74,9 +74,11 @@ begin
   begin
     mStore.Open(TDocumentUris.FromPath(cFileName), 'delphi', 1, cUnitText);
   end;
-  mSwitches := TLspCompilerSwitches.Create(mStore, ProjectContext);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mSwitches := nil;
+  mDispatcher := nil;
   try
+    mSwitches := TLspCompilerSwitches.Create(mStore, ProjectContext);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mSwitches.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspCompilerSwitches.cMethod +
       '","params":' + AParams + '}') as TJSONObject;

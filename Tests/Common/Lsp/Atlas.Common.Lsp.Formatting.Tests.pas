@@ -184,9 +184,11 @@ begin
   mSlashAsked := False;
   mStore := TDocumentStore.Create;
   mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'/define TEST'#10'interface'#10'implementation'#10'end.');
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mFormatting := TLspFormatting.Create(mStore, nil, nil);
+  mDispatcher := nil;
+  mFormatting := nil;
   try
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mFormatting := TLspFormatting.Create(mStore, nil, nil);
     // Ohne Scheduler läuft die Anfrage in DispatchMessage; abgebrochen wird mitten im Handler.
     mFormatting.DelphiVersionFor :=
       function(const AUri: string): string
@@ -227,21 +229,23 @@ var
 begin
   mStore := TDocumentStore.Create;
   mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'end.');
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mFormatting := TLspFormatting.Create(mStore,
-    function(const AUri: string): TFormatStyle
-    var
-      Id: TJSONValue;
-    begin
-      Id := TJSONNumber.Create(1);
-      try
-        mDispatcher.PendingRequests.Cancel(Id);
-      finally
-        Id.Free;
-      end;
-      Result := TFormatStyle.Default;
-    end, nil);
+  mDispatcher := nil;
+  mFormatting := nil;
   try
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mFormatting := TLspFormatting.Create(mStore,
+      function(const AUri: string): TFormatStyle
+      var
+        Id: TJSONValue;
+      begin
+        Id := TJSONNumber.Create(1);
+        try
+          mDispatcher.PendingRequests.Cancel(Id);
+        finally
+          Id.Free;
+        end;
+        Result := TFormatStyle.Default;
+      end, nil);
     mFormatting.Attach(mDispatcher);
     Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(mDispatcher,
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/formatting","params":{"textDocument":{"uri":"' +
@@ -265,9 +269,11 @@ begin
   mStore := TDocumentStore.Create;
   mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10#10'  ///'#10 +
     'procedure Foo(A: Integer);'#10'implementation'#10'procedure Foo(A: Integer);'#10'begin'#10'end;'#10'end.');
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mFormatting := TLspFormatting.Create(mStore, nil, nil);
+  mDispatcher := nil;
+  mFormatting := nil;
   try
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mFormatting := TLspFormatting.Create(mStore, nil, nil);
     mEnabled := True;
     mFormatting.DocCommentsFor :=
       function(const AUri: string): Boolean
@@ -300,9 +306,11 @@ begin
   mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'procedure P;'#10 +
     'var'#10#9'Liste: TStringList;'#10'begin'#10#9'Liste := TStringList.Create;'#10#9'/try'#10#9#10 +
     #9'Liste.Sort;'#10'end;'#10'end.');
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mFormatting := TLspFormatting.Create(mStore, nil, nil);
+  mDispatcher := nil;
+  mFormatting := nil;
   try
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mFormatting := TLspFormatting.Create(mStore, nil, nil);
     mFormatting.Attach(mDispatcher);
     mMessage_ := TJSONObject.ParseJSONValue(cRequest) as TJSONObject;
     try

@@ -1091,9 +1091,11 @@ var
   mBlocking: TArray<string>;
   mWarning: string;
 begin
-  mPlan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
-  mChanges := TWorkspaceChanges.Create;
+  mPlan := nil;
+  mChanges := nil;
   try
+    mPlan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
+    mChanges := TWorkspaceChanges.Create;
     mPlan.Analyze(APosition);
     mBlocking := BlockingOf(mPlan, AContext.Choices.Overrides);
     if (mBlocking <> nil) and not AContext.Choices.Force then

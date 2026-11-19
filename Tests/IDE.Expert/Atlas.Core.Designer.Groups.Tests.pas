@@ -146,9 +146,11 @@ procedure TAtlasDesignerGroupsTests.JsonRoundTrip;
 var
   mGroups, mLoaded: TAtlasDesignerGroups;
 begin
-  mGroups := TAtlasDesignerGroups.Create;
-  mLoaded := TAtlasDesignerGroups.Create;
+  mGroups := nil;
+  mLoaded := nil;
   try
+    mGroups := TAtlasDesignerGroups.Create;
+    mLoaded := TAtlasDesignerGroups.Create;
     mGroups.Add(cForm, 'Zeile', ['lblA', 'edtA']);
     Assert.IsTrue(mGroups.Changed);
     Assert.IsTrue(mLoaded.LoadJson(mGroups.ToJson));

@@ -197,23 +197,26 @@ begin
   mStore.Open(mUri, 'delphi', 3, cMarkerUnit);
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cMarkerUnit, mFileName, nil));
-  mHover := TLspHover.Create(mStore, mIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := SameText(AFileName, mFileName);
-      AText := cMarkerUnit;
-    end,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := False;
-    end);
-  mCompletion := TLspCompletion.Create(mStore, mIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := False;
-    end);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mHover := nil;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mHover := TLspHover.Create(mStore, mIndex,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := SameText(AFileName, mFileName);
+        AText := cMarkerUnit;
+      end,
+      function(const AUnitName: string): Boolean
+      begin
+        Result := False;
+      end);
+    mCompletion := TLspCompletion.Create(mStore, mIndex,
+      function(const AUnitName: string): Boolean
+      begin
+        Result := False;
+      end);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mHover.Attach(mDispatcher);
     mCompletion.Attach(mDispatcher);
     mDiagnostics := TShellDiagnostics.Create(FLogFolder, 'test', mStore, mIndex);

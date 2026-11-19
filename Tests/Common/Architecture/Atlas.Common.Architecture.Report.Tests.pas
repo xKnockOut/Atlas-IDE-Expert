@@ -91,20 +91,23 @@ begin
   mUnits := mUnits + [UsesUnit('App.Ui.Theme', nil, nil), UsesUnit('App.Ui.Grid', ['App.Ui.Theme'], nil),
     UsesUnit('App.Ui.Form', ['App.Ui.Theme', 'App.Ui.Grid'], nil),
     UsesUnit('App.Ui.Main', ['App.Ui.Form', 'App.Ui.Grid'], ['App.Data.Model'])];
-  mFiles := TDictionary<string, string>.Create;
-  mFiles.Add(mUnits[11].FileName, 'unit App.Ui.Main;'#10'interface'#10'uses App.Ui.Form, App.Ui.Grid;'#10 +
-    'implementation'#10'uses'#10'  App.Data.Model;'#10'end.');
-  mGraph := TUsesGraph.Create(mUnits, TUsesGraphOptions.Default);
-  mLocator := TUsesLocator.Create(
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := mFiles.TryGetValue(AFileName, AText);
-    end,
-    function(const AFileName: string): TArray<string>
-    begin
-      Result := nil;
-    end);
+  mFiles := nil;
+  mGraph := nil;
+  mLocator := nil;
   try
+    mFiles := TDictionary<string, string>.Create;
+    mFiles.Add(mUnits[11].FileName, 'unit App.Ui.Main;'#10'interface'#10'uses App.Ui.Form, App.Ui.Grid;'#10 +
+      'implementation'#10'uses'#10'  App.Data.Model;'#10'end.');
+    mGraph := TUsesGraph.Create(mUnits, TUsesGraphOptions.Default);
+    mLocator := TUsesLocator.Create(
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := mFiles.TryGetValue(AFileName, AText);
+      end,
+      function(const AFileName: string): TArray<string>
+      begin
+        Result := nil;
+      end);
     Result := TArchitectureAnalyzer.Analyze(mGraph, mLocator, 5);
   finally
     mLocator.Free;

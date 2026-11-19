@@ -203,9 +203,11 @@ var
   mKeys: TStringList;
   mKey: string;
 begin
-  mKeys := TStringList.Create;
-  mRegistry := TRegistry.Create(KEY_READ);
+  mKeys := nil;
+  mRegistry := nil;
   try
+    mKeys := TStringList.Create;
+    mRegistry := TRegistry.Create(KEY_READ);
     mRegistry.RootKey := ARoot;
     if not mRegistry.OpenKeyReadOnly('Software\Embarcadero\BDS') then
     begin

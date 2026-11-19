@@ -325,9 +325,11 @@ var
   mEvents: TList<TIndexProgressKind>;
   mBuildResult: TIndexBuildResult;
 begin
-  mEvents := TList<TIndexProgressKind>.Create;
-  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mEvents := nil;
+  mBuilder := nil;
   try
+    mEvents := TList<TIndexProgressKind>.Create;
+    mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
     mBuildResult := mBuilder.Build(['C:\P\A.pas', 'C:\Lib\C.pas'],
       procedure(AKind: TIndexProgressKind; const AMessage: string; APercent: Integer)
       begin
@@ -647,10 +649,13 @@ var
   mWatch: TStopwatch;
 begin
   // #617: Eine Anfrage, die gerade eine Unit sucht und parst, hält die anderen nicht auf.
-  mEntered := TEvent.Create(nil, True, False, '');
-  mRelease := TEvent.Create(nil, True, False, '');
-  mService := TIndexService.Create(FIndex, FFileSystem);
+  mEntered := nil;
+  mRelease := nil;
+  mService := nil;
   try
+    mEntered := TEvent.Create(nil, True, False, '');
+    mRelease := TEvent.Create(nil, True, False, '');
+    mService := TIndexService.Create(FIndex, FFileSystem);
     mRequest := Default(TIndexRequest);
     mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
     mRequest.ResolveUnit :=
@@ -912,24 +917,26 @@ begin
   // Ein anderer schreibt gerade und gibt die Sperre nach kurzer Zeit frei. Die Sperre gehört allein dem Thread:
   // Delphi hält das Interface-Ergebnis von TryLockWrite sonst in einem Zwischenwert bis zum Ende der Methode.
   mFiles := FFileSystem;
-  mLocked := TEvent.Create;
-  mReleaser := TThread.CreateAnonymousThread(
-    procedure
-    var
-      Held: IInterface;
-    begin
-      Held := mFiles.TryLockWrite(cLibraryCache);
-      mLocked.SetEvent;
-      TThread.Sleep(300);
-      Held := nil;
-    end);
-  mReleaser.FreeOnTerminate := False;
-  mReleaser.Start;
-  Assert.AreEqual<TWaitResult>(wrSignaled, mLocked.WaitFor(5000), 'Sperre genommen');
-  Assert.IsNull(FFileSystem.TryLockWrite(cLibraryCache), 'nur ein Schreiber');
-  mNotWritten := '';
-  mService := TIndexService.Create(FIndex, FFileSystem);
+  mLocked := nil;
+  mService := nil;
   try
+    mLocked := TEvent.Create;
+    mReleaser := TThread.CreateAnonymousThread(
+      procedure
+      var
+        Held: IInterface;
+      begin
+        Held := mFiles.TryLockWrite(cLibraryCache);
+        mLocked.SetEvent;
+        TThread.Sleep(300);
+        Held := nil;
+      end);
+    mReleaser.FreeOnTerminate := False;
+    mReleaser.Start;
+    Assert.AreEqual<TWaitResult>(wrSignaled, mLocked.WaitFor(5000), 'Sperre genommen');
+    Assert.IsNull(FFileSystem.TryLockWrite(cLibraryCache), 'nur ein Schreiber');
+    mNotWritten := '';
+    mService := TIndexService.Create(FIndex, FFileSystem);
     mService.OnCacheNotWritten :=
       procedure(const AFileName, AReason: string)
       begin
@@ -1019,9 +1026,11 @@ begin
           TInterlocked.Increment(mLibraryWrites);
         end;
       end;
-    mFirst := TIndexService.Create(FIndex, FFileSystem);
-    mSecond := TIndexService.Create(FIndex, FFileSystem);
+    mFirst := nil;
+    mSecond := nil;
     try
+      mFirst := TIndexService.Create(FIndex, FFileSystem);
+      mSecond := TIndexService.Create(FIndex, FFileSystem);
       mFirst.OnCacheWritten := mCounted;
       mSecond.OnCacheWritten := mCounted;
       StartTwoProjects(mFirst, mSecond, Resolve);
@@ -1509,11 +1518,15 @@ var
   mSeen: TList<string>;
   mSteps: string;
 begin
-  mEntered := TEvent.Create(nil, True, False, '');
-  mRelease := TEvent.Create(nil, True, False, '');
-  mOrder := TThreadList<string>.Create;
-  mService := TIndexService.Create(FIndex, FFileSystem);
+  mEntered := nil;
+  mRelease := nil;
+  mOrder := nil;
+  mService := nil;
   try
+    mEntered := TEvent.Create(nil, True, False, '');
+    mRelease := TEvent.Create(nil, True, False, '');
+    mOrder := TThreadList<string>.Create;
+    mService := TIndexService.Create(FIndex, FFileSystem);
     mFirst := Default(TIndexRequest);
     mFirst.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
     mFirst.ResolveUnit := Resolve;

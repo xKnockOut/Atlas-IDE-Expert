@@ -85,6 +85,7 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Tests.RuleAssert,
+  Atlas.Tests.Wait,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.Dispatcher,
@@ -482,13 +483,23 @@ begin
   end;
 end;
 
+/// <summary>Hat APull mindestens einmal gerechnet? Eigene Routine, damit die anonyme Methode nur APull einfängt.
+/// </summary>
+function HasComputed(APull: TLspPullDiagnostics): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := APull.Computed > 0;
+    end;
+end;
+
 procedure TLspPullDiagnosticsTests.SlowOpenDocumentAnswersBeforeTimeout;
 var
   mFixture: TFixture;
   mRules: TRuleContextProvider;
   mGo: TEvent;
   mCode: Integer;
-  mClock: TStopwatch;
   mReport: TJSONObject;
   mUri: string;
 begin
@@ -522,11 +533,7 @@ begin
       Assert.AreEqual(0, mFixture.Pull.Computed);
       // Die Prüfung rechnet weiter und legt ab.
       mGo.SetEvent;
-      mClock := TStopwatch.StartNew;
-      while (mFixture.Pull.Computed = 0) and (mClock.ElapsedMilliseconds < 10000) do
-      begin
-        Sleep(10);
-      end;
+      Assert.IsTrue(TTestWait.Reached(HasComputed(mFixture.Pull), 10000));
       Assert.AreEqual(1, mFixture.Pull.Computed);
       mReport := mFixture.Pull.DocumentReport(mUri, '', Token);
       try
@@ -801,10 +808,12 @@ begin
   mStore := TDocumentStore.Create;
   mProviders := Default(TSyntaxDiagnosticsProviders);
   mProviders.Rules := FailingRules();
-  mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
-  mLogged := TStringList.Create;
-  mPull := nil;
+  mDiagnostics := nil;
+  mLogged := nil;
   try
+    mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
+    mLogged := TStringList.Create;
+    mPull := nil;
     mDiagnostics.PullMode := True;
     // Die kaputte Datei steht vorn: früher scheiterte daran jede Anfrage, bis der Server starb.
     mPull := CreateFailingFirstPull(mStore, mDiagnostics, mLogged);

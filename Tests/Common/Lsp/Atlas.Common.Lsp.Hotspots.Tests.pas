@@ -365,10 +365,12 @@ var
   mAnswer: TJSONValue;
   mTarget, mText: string;
 begin
-  mFixture := TFixture.Create;
-  mTarget := TPath.Combine(TPath.GetTempPath, 'AtlasHotspots-' + TGUID.NewGuid.ToString.Substring(1, 8) + '.md');
-  mArguments := TJSONArray.Create;
+  mFixture := nil;
+  mArguments := nil;
   try
+    mFixture := TFixture.Create;
+    mTarget := TPath.Combine(TPath.GetTempPath, 'AtlasHotspots-' + TGUID.NewGuid.ToString.Substring(1, 8) + '.md');
+    mArguments := TJSONArray.Create;
     mArguments.Add('file:///C:/Projekt/Projekt.dproj');
     mArguments.Add(mTarget);
     mArguments.AddElement(TJSONObject.ParseJSONValue('{"level":"unit"}'));
