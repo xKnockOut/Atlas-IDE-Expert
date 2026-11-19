@@ -114,7 +114,8 @@ uses
   System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.Lsp.StepTargets,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lines;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
 var
@@ -173,8 +174,8 @@ begin
   begin
     mLength := 40;
   end;
-  mWords := LowerCase(Copy(AText, mStart, mLength)).Replace(#13, ' ').Replace(#10, ' ').Replace(#9, ' ').Split([' '],
-    TStringSplitOptions.ExcludeEmpty);
+  mWords := TTextLines.NormalizeLineBreaks(LowerCase(Copy(AText, mStart, mLength)), ' ').Replace(#9, ' ').Split(
+    [' '], TStringSplitOptions.ExcludeEmpty);
   if Length(mWords) = 0 then
   begin
     Exit;
