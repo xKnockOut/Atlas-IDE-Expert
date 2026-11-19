@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Assistants.AiGhost;
+﻿unit Atlas.IDE.Assistants.Adapters.AiGhost;
 
 // KI-Schattentext (#1922): Anbieter für die Schattentext-Vorschläge von Base
 // (Atlas.IDE.Contracts.GhostSuggestions). Base fragt ihn nach den gelernten
@@ -60,8 +60,6 @@ type
     destructor Destroy; override;
     function Enabled: Boolean;
     function Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
-    /// <summary>Text zum Fehler AError.</summary>
-    class function ErrorText(AError: TAtlasAiError): string; static;
     class function CountFile: string; static;
   end;
 
@@ -78,6 +76,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.AiProviders.Catalog,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Assistants.AiErrors,
   Atlas.UI.Assistants.Strings;
 
 const
@@ -320,34 +319,6 @@ begin
   AtomicExchange(FLastError, Ord(AError));
 end;
 
-class function TAtlasIdeAiGhost.ErrorText(AError: TAtlasAiError): string;
-begin
-  case AError of
-    TAtlasAiError.NoKey:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorNoKey);
-    TAtlasAiError.Unreachable:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorUnreachable);
-    TAtlasAiError.Timeout:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorTimeout);
-    TAtlasAiError.Unauthorized:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorUnauthorized);
-    TAtlasAiError.ModelMissing:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorModelMissing);
-    TAtlasAiError.RateLimited:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorRateLimited);
-    TAtlasAiError.ServerError:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorServerError);
-    TAtlasAiError.BadAnswer:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorBadAnswer);
-    TAtlasAiError.Cancelled:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorCancelled);
-    TAtlasAiError.Refused:
-      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorRefused);
-  else
-    Result := '';
-  end;
-end;
-
 procedure TAtlasIdeAiGhost.ReportLastError;
 var
   mError: TAtlasAiError;
@@ -360,7 +331,7 @@ begin
     Exit;
   end;
   Include(FReported, mError);
-  FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostFailed, [ErrorText(mError)]));
+  FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostFailed, [TAtlasAiErrorTexts.Text(mError)]));
 end;
 
 function TAtlasIdeAiGhost.Enabled: Boolean;

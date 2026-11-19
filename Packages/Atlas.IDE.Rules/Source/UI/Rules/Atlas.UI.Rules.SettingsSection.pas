@@ -5,7 +5,7 @@
 // - „Prüfregeln“: Modulschalter, Sammelkorrektur im Kontextmenü des Fensters (#1352), der Weg zu den Regeln (sie
 //   stehen in den Dialogen der Einstellungsdateien, Projekt und global), Profile, Stand der Baseline mit „neu
 //   erzeugen“ und „löschen“ und die Unterdrückungen je Regel (#909, #97, #147, #1755). Was dafür Dateien oder
-//   den Server braucht, kommt über Hooks (Atlas.IDE.Rules.Settings).
+//   den Server braucht, kommt über Hooks (Atlas.IDE.Rules.Adapters.Settings).
 // - „Editor“: Basislinie aktualisieren, DFM-Eigenschaftsregeln anwenden und die Marke „Wer gibt das frei?“
 //   (#1877) samt „nur Problemfälle“.
 

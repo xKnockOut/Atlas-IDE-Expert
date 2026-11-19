@@ -1231,6 +1231,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.SettingsBranches.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.Editor.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\IDE\Rules\Atlas.IDE.Rules.Adapters.SettingsDialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>,
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Group.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Transfer.pas"/>,
