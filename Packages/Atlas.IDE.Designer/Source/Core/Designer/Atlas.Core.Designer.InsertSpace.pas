@@ -58,8 +58,8 @@ type
     /// <summary>Platz AAmount (negativ: entfernen) an der Linie ALine einfügen.</summary>
     class function Apply(const AItems: TArray<TAtlasSpaceItem>; AAxis: TAtlasSpaceAxis; ALine, AAmount: Integer;
       const AClient: TRect; AGrowParent: Boolean): TAtlasSpaceResult; static;
-    /// <summary>AValue auf ein Vielfaches von AGrid gerundet (AGrid &lt;= 1: unverändert).</summary>
-    class function Snap(AValue, AGrid: Integer): Integer; static;
+    /// <summary>Hintere Kante von ARect entlang der Achse: unten bei Zeilen, rechts bei Spalten.</summary>
+    class function EndOf(const ARect: TRect; AAxis: TAtlasSpaceAxis): Integer; static;
   end;
 
 implementation
@@ -85,15 +85,6 @@ begin
   if AAxis = TAtlasSpaceAxis.Columns then
   begin
     Result := ARect.Left;
-  end;
-end;
-
-function Hi(const ARect: TRect; AAxis: TAtlasSpaceAxis): Integer;
-begin
-  Result := ARect.Bottom;
-  if AAxis = TAtlasSpaceAxis.Columns then
-  begin
-    Result := ARect.Right;
   end;
 end;
 
@@ -130,7 +121,7 @@ function Limit(const AItems: TArray<TAtlasSpaceItem>; AAxis: TAtlasSpaceAxis; co
 var
   mItem: TAtlasSpaceItem;
 begin
-  Result := Hi(AClient, AAxis);
+  Result := TAtlasInsertSpace.EndOf(AClient, AAxis);
   for mItem in AItems do
   begin
     if mItem.Align = TAtlasSpaceAlign.Far then
@@ -150,7 +141,7 @@ begin
   begin
     if AItems[mIndex].Align = TAtlasSpaceAlign.None then
     begin
-      Result := Max(Result, Hi(ABounds[mIndex], AAxis));
+      Result := Max(Result, TAtlasInsertSpace.EndOf(ABounds[mIndex], AAxis));
     end;
   end;
 end;
@@ -171,9 +162,9 @@ begin
   mFree := ALine - Lo(AClient, AAxis);
   for mItem in AItems do
   begin
-    if (mItem.Align = TAtlasSpaceAlign.None) and (Hi(mItem.Bounds, AAxis) <= ALine) then
+    if (mItem.Align = TAtlasSpaceAlign.None) and (TAtlasInsertSpace.EndOf(mItem.Bounds, AAxis) <= ALine) then
     begin
-      mFree := Min(mFree, ALine - Hi(mItem.Bounds, AAxis));
+      mFree := Min(mFree, ALine - TAtlasInsertSpace.EndOf(mItem.Bounds, AAxis));
     end;
   end;
   Result := Max(AAmount, -Max(mFree, 0));
@@ -230,7 +221,7 @@ begin
     begin
       Result.Bounds[mIndex] := Shifted(mItem.Bounds, AAxis, Result.Amount);
     end
-    else if Hi(mItem.Bounds, AAxis) <= ALine then
+    else if TAtlasInsertSpace.EndOf(mItem.Bounds, AAxis) <= ALine then
     begin
       Continue;
     end
@@ -250,12 +241,12 @@ begin
   end;
 end;
 
-class function TAtlasInsertSpace.Snap(AValue, AGrid: Integer): Integer;
+class function TAtlasInsertSpace.EndOf(const ARect: TRect; AAxis: TAtlasSpaceAxis): Integer;
 begin
-  Result := AValue;
-  if AGrid > 1 then
+  Result := ARect.Bottom;
+  if AAxis = TAtlasSpaceAxis.Columns then
   begin
-    Result := Round(AValue / AGrid) * AGrid;
+    Result := ARect.Right;
   end;
 end;
 

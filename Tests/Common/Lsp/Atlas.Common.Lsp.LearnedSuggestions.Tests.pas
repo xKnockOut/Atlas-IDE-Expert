@@ -2,7 +2,9 @@
 
 // Tests für atlas.server.suggestNext und atlas.server.learnedPatterns (#1890):
 // Antwort mit Zeilen, Schreibmarke und Belegen, Schwellen aus den Argumenten,
-// null ohne Muster, Ablehnung ohne Zeile und die Liste der Muster.
+// null ohne Muster, Ablehnung ohne Zeile und die Liste der Muster; für
+// Vorschläge eines KI-Anbieters (#1922) atlas.server.checkSuggestion und
+// atlas.server.suggestionContext.
 
 interface
 
@@ -18,6 +20,8 @@ type
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
     function Run(const AArguments: string): string;
+    function Check(const ALines: string): string;
+    function Context(const AArguments: string): string;
   public
     [Setup]
     procedure Setup;
@@ -37,6 +41,20 @@ type
     procedure ListsPatterns;
     [Test]
     procedure ReadOptionsClampsThresholds;
+    [Test]
+    procedure CheckAcceptsKnownNames;
+    [Test]
+    procedure CheckRejectsUnknownName;
+    [Test]
+    procedure CheckRejectsNewSyntaxError;
+    [Test]
+    procedure CheckRejectsMissingLines;
+    [Test]
+    procedure CheckIsInvalidWithoutDocument;
+    [Test]
+    procedure ContextListsMembersOfTheClass;
+    [Test]
+    procedure ContextIsEmptyOutsideMethods;
   end;
 
 implementation
@@ -53,6 +71,31 @@ uses
 
 const
   cUri = 'file:///C:/P/Haupt.pas';
+  cMethodUri = 'file:///C:/P/Ablauf.pas';
+  cMethod =
+    'unit Ablauf;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure TKunde.Speichern;'#10 +
+    'begin'#10 +
+    #10 +
+    'end;'#10 +
+    'end.';
+  cCustomer =
+    'unit Kunden;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TKunde = class'#10 +
+    '  private'#10 +
+    '    FName: string;'#10 +
+    '  public'#10 +
+    '    procedure Speichern;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TKunde.Speichern;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
   cMain =
     'unit Haupt;'#10 +
     'interface'#10 +
@@ -107,6 +150,42 @@ begin
   end;
 end;
 
+function TLspLearnedSuggestionsTests.Check(const ALines: string): string;
+var
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
+begin
+  mArguments := TJSONObject.ParseJSONValue('["' + cUri + '", 6, ' + ALines + ']') as TJSONArray;
+  try
+    mAnswer := TLspLearnedSuggestions.ExecuteCheck(FStore, FIndex, mArguments);
+    try
+      Result := mAnswer.ToJSON;
+    finally
+      mAnswer.Free;
+    end;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+function TLspLearnedSuggestionsTests.Context(const AArguments: string): string;
+var
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
+begin
+  mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
+  try
+    mAnswer := TLspLearnedSuggestions.ExecuteContext(FStore, FIndex, mArguments);
+    try
+      Result := mAnswer.ToJSON;
+    finally
+      mAnswer.Free;
+    end;
+  finally
+    mArguments.Free;
+  end;
+end;
+
 procedure TLspLearnedSuggestionsTests.Setup;
 var
   mIndex: Integer;
@@ -114,12 +193,14 @@ var
 begin
   FStore := TDocumentStore.Create;
   FStore.Open(cUri, 'delphi', 1, cMain);
+  FStore.Open(cMethodUri, 'delphi', 1, cMethod);
   FIndex := TSymbolIndex.Create;
   for mIndex := 1 to 6 do
   begin
     FIndex.AddUnit(TIndexExtractor.ExtractText(Learned('U' + IntToStr(mIndex)), 'C:\P\U' + IntToStr(mIndex) + '.pas',
       nil, nil, False, True));
   end;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cCustomer, 'C:\P\Kunden.pas', nil, nil, False, True));
   mLibrary := TIndexExtractor.ExtractText(cFree, 'C:\RTL\System.pas', nil);
   mLibrary.Library_ := True;
   FIndex.AddUnit(mLibrary);
@@ -211,6 +292,65 @@ begin
   Assert.AreEqual(100, mOptions.MinShare);
   Assert.AreEqual(1, Integer(Length(mOptions.AdjustIds)));
   Assert.AreEqual(5, mOptions.AdjustOf('A'));
+end;
+
+procedure TLspLearnedSuggestionsTests.CheckAcceptsKnownNames;
+begin
+  // Liste steht in der Datei, Free im Index.
+  Assert.AreEqual('{"valid":true}', Check('["  Liste.Free;"]'));
+end;
+
+procedure TLspLearnedSuggestionsTests.CheckRejectsUnknownName;
+begin
+  Assert.AreEqual('{"valid":false}', Check('["  Zauberwort.Free;"]'));
+end;
+
+procedure TLspLearnedSuggestionsTests.CheckRejectsNewSyntaxError;
+begin
+  Assert.AreEqual('{"valid":false}', Check('["  Liste.Free(;"]'));
+end;
+
+procedure TLspLearnedSuggestionsTests.CheckRejectsMissingLines;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      Check('{}');
+    end, EArgumentException);
+end;
+
+procedure TLspLearnedSuggestionsTests.CheckIsInvalidWithoutDocument;
+var
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
+begin
+  mArguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas", 1, ["  X;"]]') as TJSONArray;
+  try
+    mAnswer := TLspLearnedSuggestions.ExecuteCheck(FStore, FIndex, mArguments);
+    try
+      Assert.AreEqual('{"valid":false}', mAnswer.ToJSON);
+    finally
+      mAnswer.Free;
+    end;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+procedure TLspLearnedSuggestionsTests.ContextListsMembersOfTheClass;
+var
+  mText: string;
+begin
+  mText := Context('["' + cMethodUri + '", 5]');
+  Assert.IsTrue(Pos('TKunde = class', mText) > 0, mText);
+  Assert.IsTrue(Pos('FName: string', mText) > 0, mText);
+  Assert.IsTrue(Pos('procedure Speichern', mText) > 0, mText);
+end;
+
+procedure TLspLearnedSuggestionsTests.ContextIsEmptyOutsideMethods;
+begin
+  Assert.AreEqual('{"declarations":[]}', Context('["' + cMethodUri + '", 1]'));
+  Assert.AreEqual('{"declarations":[]}', Context('["' + cUri + '", 6]'), 'Routine ohne Klasse');
 end;
 
 initialization

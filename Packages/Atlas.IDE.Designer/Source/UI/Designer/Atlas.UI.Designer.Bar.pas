@@ -90,6 +90,23 @@ implementation
 uses
   Atlas.UI.EditorToolbar.Glyphs;
 
+const
+  // Maße in logischen Pixeln (96 dpi), skaliert über Scale.
+  /// <summary>Höhe der Leiste.</summary>
+  cBaseHeight = 24;
+  /// <summary>Größe der Symbole und ihr Abstand zum Rand des Knopfs.</summary>
+  cIconSize = 16;
+  cIconInset = 4;
+  /// <summary>Abstand vor einer neuen Knopfgruppe; der Trennstrich steht cSeparatorOffset vor dem Knopf und
+  /// hält oben und unten cSeparatorInset Abstand.</summary>
+  cGroupGap = 9;
+  cSeparatorOffset = 5;
+  cSeparatorInset = 5;
+  /// <summary>Rundung gedrückter und überfahrener Knöpfe.</summary>
+  cCornerRadius = 4;
+  /// <summary>Halbe Breite des Menü-Dreiecks.</summary>
+  cArrowHalf = 3;
+
 { TAtlasDesignerButton }
 
 class function TAtlasDesignerButton.Create(const AId: string; AIcon: TAtlasToolbarIcon;
@@ -112,7 +129,7 @@ end;
 
 class function TAtlasDesignerBar.BaseHeight: Integer;
 begin
-  Result := 24;
+  Result := cBaseHeight;
 end;
 
 function TAtlasDesignerBar.PartAt(X, Y: Integer): Integer;
@@ -188,10 +205,10 @@ begin
   begin
     if FButtons[mIndex].GapBefore then
     begin
-      mX := FRects[mIndex].Left - Scale(5);
+      mX := FRects[mIndex].Left - Scale(cSeparatorOffset);
       Canvas.Pen.Color := TColor(Colors.Line);
-      Canvas.MoveTo(mX, Scale(5));
-      Canvas.LineTo(mX, ClientHeight - Scale(5));
+      Canvas.MoveTo(mX, Scale(cSeparatorInset));
+      Canvas.LineTo(mX, ClientHeight - Scale(cSeparatorInset));
     end;
     DrawButton(mIndex);
   end;
@@ -226,14 +243,14 @@ begin
   end;
   mSize := mSize - Scale(2);
   mArrow := Scale(10);
-  mX := Scale(4);
+  mX := Scale(cIconInset);
   for mIndex := 0 to High(FButtons) do
   begin
     if FButtons[mIndex].GapBefore then
     begin
-      Inc(mX, Scale(9));
+      Inc(mX, Scale(cGroupGap));
     end;
-    FRects[mIndex] := Rect(mX, Scale(1), mX + IconSize + Scale(8), Scale(1) + mSize);
+    FRects[mIndex] := Rect(mX, Scale(1), mX + IconSize + 2 * Scale(cIconInset), Scale(1) + mSize);
     mX := FRects[mIndex].Right;
     if FButtons[mIndex].Menu then
     begin
@@ -250,7 +267,7 @@ end;
 
 function TAtlasDesignerBar.IconSize: Integer;
 begin
-  Result := Scale(16);
+  Result := Scale(cIconSize);
 end;
 
 function TAtlasDesignerBar.ButtonOf(APart: Integer): Integer;
@@ -279,7 +296,7 @@ begin
   mHot := (Hot = 2 * AIndex) or (Hot = 2 * AIndex + 1);
   mBack := TColor(Colors.Gutter);
   mFore := TColor(Colors.Text);
-  mRadius := Scale(4);
+  mRadius := Scale(cCornerRadius);
   Canvas.Brush.Style := bsSolid;
   if mButton.Pressed then
   begin
@@ -303,14 +320,14 @@ begin
     mFore := TColor(Colors.Muted);
   end;
   mIcon := FRects[AIndex];
-  mIcon := Rect(mIcon.Left + Scale(4), mIcon.Top + (mIcon.Height - IconSize) div 2, mIcon.Left + Scale(4) + IconSize,
-    mIcon.Top + (mIcon.Height - IconSize) div 2 + IconSize);
+  mIcon := Rect(mIcon.Left + Scale(cIconInset), mIcon.Top + (mIcon.Height - IconSize) div 2,
+    mIcon.Left + Scale(cIconInset) + IconSize, mIcon.Top + (mIcon.Height - IconSize) div 2 + IconSize);
   TAtlasGlyphPainter.Draw(Canvas, mButton.Icon, mIcon, mFore, mBack, mButton.Id);
   if mButton.Menu then
   begin
     // Kleines Dreieck nach unten.
     mMid := (FArrows[AIndex].Left + FArrows[AIndex].Right) div 2;
-    mHalf := Scale(3);
+    mHalf := Scale(cArrowHalf);
     Canvas.Brush.Color := mFore;
     Canvas.Pen.Color := mFore;
     Canvas.Polygon([Point(mMid - mHalf, FArrows[AIndex].CenterPoint.Y - Scale(1)),

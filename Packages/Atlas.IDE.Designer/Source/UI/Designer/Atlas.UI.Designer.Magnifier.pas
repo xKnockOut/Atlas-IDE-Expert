@@ -23,7 +23,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Designer.Overlay;
 
 type
   /// <summary>Kante in der Ansicht: senkrecht bei X = Position, sonst waagerecht bei Y.</summary>
@@ -42,10 +43,8 @@ type
     OnClosed: TProc;
   end;
 
-  TAtlasMagnifierWindow = class(TForm) // window-ok: Überlagerung, kein Dialog
+  TAtlasMagnifierWindow = class(TAtlasDesignerOverlay)
   private
-    FColors: TAtlasColors;
-    FOwnerWindow: HWND;
     FBitmap: TBitmap;
     FSource: TRect;
     FZoom: Integer;
@@ -60,19 +59,15 @@ type
     procedure PaintView(const AView: TRect);
     procedure PaintCross(const AView: TRect);
     procedure PaintLines(const AView: TRect);
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
     procedure WMMouseWheel(var Message: TWMMouseWheel); message WM_MOUSEWHEEL;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
     constructor CreateMagnifier(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
     destructor Destroy; override;
-    function S(AValue: Integer): Integer;
-    procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Größe der Ansicht ohne Kopf- und Fußzeile.</summary>
     function ViewSize: TSize;
     /// <summary>Bildschirmausschnitt ASource holen (Stufe AZoom, Raster AGrid).</summary>
@@ -105,6 +100,9 @@ const
   cDefaultHeight = 180;
   cBarHeight = 18;
   cMargin = 24;
+  /// <summary>Kleinste Innenfläche des Fensters.</summary>
+  cMinWidth = 120;
+  cMinHeight = 100;
 
 { TAtlasMagnifierLine }
 
@@ -121,21 +119,16 @@ end;
 constructor TAtlasMagnifierWindow.CreateMagnifier(AOwner: TComponent; AOwnerWindow: HWND;
   const AColors: TAtlasColors);
 begin
-  FOwnerWindow := AOwnerWindow;
-  inherited CreateNew(AOwner);
-  FColors := AColors;
+  inherited CreateOverlayWindow(AOwner, AOwnerWindow, AColors, []);
   FBitmap := TBitmap.Create;
   FBitmap.PixelFormat := pf24bit;
   FZoom := TAtlasMagnifier.cDefaultZoom;
   BorderStyle := bsSizeToolWin;
   Position := poDesigned;
-  DoubleBuffered := True;
-  Font.Name := 'Segoe UI';
-  Font.Size := 8;
-  ClientWidth := S(cDefaultWidth);
-  ClientHeight := S(cDefaultHeight) + 2 * BarHeight;
-  Constraints.MinWidth := S(120);
-  Constraints.MinHeight := S(100);
+  ClientWidth := ScalePx(cDefaultWidth);
+  ClientHeight := ScalePx(cDefaultHeight) + 2 * BarHeight;
+  Constraints.MinWidth := ScalePx(cMinWidth);
+  Constraints.MinHeight := ScalePx(cMinHeight);
   OnClose := FormClose;
 end;
 
@@ -145,23 +138,13 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasMagnifierWindow.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.ExStyle := Params.ExStyle or WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW;
-  if FOwnerWindow <> 0 then
-  begin
-    Params.WndParent := FOwnerWindow;
-  end;
-end;
-
 procedure TAtlasMagnifierWindow.Paint;
 var
   mView, mBar: TRect;
 begin
   Canvas.Font.Assign(Font);
   mView := Rect(0, BarHeight, ClientWidth, ClientHeight - BarHeight);
-  Canvas.Brush.Color := TColor(FColors.Surface);
+  Canvas.Brush.Color := TColor(Colors.Surface);
   Canvas.FillRect(ClientRect);
   IntersectClipRect(Canvas.Handle, mView.Left, mView.Top, mView.Right, mView.Bottom);
   PaintView(mView);
@@ -169,10 +152,10 @@ begin
   PaintCross(mView);
   SelectClipRgn(Canvas.Handle, 0);
   Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := TColor(FColors.Text);
-  mBar := Rect(S(4), 0, ClientWidth - S(4), BarHeight);
+  Canvas.Font.Color := TColor(Colors.Text);
+  mBar := Rect(ScalePx(cTextInset), 0, ClientWidth - ScalePx(cTextInset), BarHeight);
   DrawText(Canvas.Handle, PChar(FHeader), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
-  mBar := Rect(S(4), ClientHeight - BarHeight, ClientWidth - S(4), ClientHeight);
+  mBar := Rect(ScalePx(cTextInset), ClientHeight - BarHeight, ClientWidth - ScalePx(cTextInset), ClientHeight);
   DrawText(Canvas.Handle, PChar(FFooter), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
 end;
@@ -188,7 +171,7 @@ end;
 
 function TAtlasMagnifierWindow.BarHeight: Integer;
 begin
-  Result := S(cBarHeight);
+  Result := ScalePx(cBarHeight);
 end;
 
 procedure TAtlasMagnifierWindow.PaintView(const AView: TRect);
@@ -207,7 +190,7 @@ begin
   begin
     Exit;
   end;
-  Canvas.Pen.Color := TColor(FColors.Line);
+  Canvas.Pen.Color := TColor(Colors.Line);
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Width := 1;
   for mIndex := 1 to FBitmap.Width - 1 do
@@ -233,7 +216,7 @@ begin
   mX := AView.Left + (FBitmap.Width div 2) * FZoom;
   mY := AView.Top + (FBitmap.Height div 2) * FZoom;
   mCell := Rect(mX - 1, mY - 1, mX + FZoom + 1, mY + FZoom + 1);
-  Canvas.Pen.Color := TColor(FColors.Error);
+  Canvas.Pen.Color := TColor(Colors.Error);
   Canvas.Pen.Width := 1;
   Canvas.Brush.Style := bsClear;
   Canvas.Rectangle(mCell);
@@ -258,11 +241,11 @@ begin
   begin
     if mLine.Selected then
     begin
-      Canvas.Pen.Color := TColor(FColors.Accent);
+      Canvas.Pen.Color := TColor(Colors.Accent);
     end
     else
     begin
-      Canvas.Pen.Color := TColor(FColors.Warn);
+      Canvas.Pen.Color := TColor(Colors.Warn);
     end;
     if mLine.Vertical then
     begin
@@ -275,12 +258,6 @@ begin
       Canvas.LineTo(AView.Right, AView.Top + mLine.Position);
     end;
   end;
-end;
-
-procedure TAtlasMagnifierWindow.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  // Klick in die Lupe: Fokus und Auswahl bleiben im Designer.
-  Message.Result := MA_NOACTIVATE;
 end;
 
 procedure TAtlasMagnifierWindow.WMMouseWheel(var Message: TWMMouseWheel);
@@ -301,17 +278,6 @@ begin
   begin
     FEvents.OnClosed();
   end;
-end;
-
-function TAtlasMagnifierWindow.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-procedure TAtlasMagnifierWindow.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 function TAtlasMagnifierWindow.ViewSize: TSize;
@@ -351,7 +317,7 @@ begin
   if Result then
   begin
     mColor := FBitmap.Canvas.Pixels[APoint.X - FSource.Left, APoint.Y - FSource.Top];
-    ARgb := (Cardinal(GetRValue(mColor)) shl 16) or (Cardinal(GetGValue(mColor)) shl 8) or GetBValue(mColor);
+    ARgb := TAtlasMagnifier.RgbOf(GetRValue(mColor), GetGValue(mColor), GetBValue(mColor));
   end;
 end;
 
@@ -381,7 +347,7 @@ begin
   if not FPlaced and not AArea.IsEmpty then
   begin
     // Beim ersten Zeigen unten rechts über dem Designer; danach bleibt die Lage des Benutzers.
-    SetBounds(AArea.Right - Width - S(cMargin), AArea.Bottom - Height - S(cMargin), Width, Height);
+    SetBounds(AArea.Right - Width - ScalePx(cMargin), AArea.Bottom - Height - ScalePx(cMargin), Width, Height);
     FPlaced := True;
   end;
   SetWindowPos(Handle, HWND_TOP, Left, Top, Width, Height, SWP_NOACTIVATE or SWP_SHOWWINDOW);
