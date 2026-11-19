@@ -43,6 +43,10 @@ type
 
 implementation
 
+const
+  /// <summary>So lange wartet der Destruktor auf laufende Aufträge (ms).</summary>
+  cStopTimeoutMs = 1000;
+
 { TAtlasVcsWorker }
 
 constructor TAtlasVcsWorker.Create;
@@ -54,7 +58,7 @@ end;
 
 destructor TAtlasVcsWorker.Destroy;
 begin
-  Stop(1000);
+  Stop(cStopTimeoutMs);
   FThreads.Free;
   FLock.Free;
   inherited;

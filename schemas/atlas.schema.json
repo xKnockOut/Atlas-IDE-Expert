@@ -3082,13 +3082,21 @@
           "description": "Neue Rümpfe vorbefüllen: override mit inherited (Funktionen mit Result := inherited …), Destruktor mit inherited am Ende, Getter Result := FName und Setter FName := AValue, wenn ein Feld FName gleichen Typs existiert. false = leere Rümpfe.",
           "x-description-en": "Prefill new bodies: override with inherited (functions with Result := inherited …), destructor with inherited at the end, getter Result := FName and setter FName := AValue when a field FName of the same type exists. false = empty bodies.",
           "x-issue": "#1837"
+        },
+        "blankLines": {
+          "type": "boolean",
+          "default": true,
+          "description": "Leerzeilen zwischen Rümpfen angleichen: Wenn Atlas Rümpfe anlegt oder ordnet, steht im betroffenen Bereich genau eine Leerzeile zwischen zwei Rümpfen, vor und nach dem Klassenkommentar und vor initialization, finalization bzw. end.; mehrere Leerzeilen werden zu einer. Neben einer Direktive (etwa {$REGION}) kommt keine dazu. Zeilen mit Inhalt und der Rest der Unit bleiben unberührt. false = Leerzeilen wie bisher.",
+          "x-description-en": "Normalize blank lines between bodies: when Atlas creates or orders bodies, the affected area gets exactly one blank line between two bodies, before and after the class comment and before initialization, finalization or end.; several blank lines become one. None is added next to a directive (such as {$REGION}). Lines with content and the rest of the unit stay untouched. false = blank lines as before.",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#1839"
         }
       },
       "x-scope": "global",
       "x-area": "codeActions",
       "x-page": "Eingabehilfen",
       "x-control": "Auswahl, Kontrollkästchen",
-      "x-issue": "#1834, #1835, #1836, #1837"
+      "x-issue": "#1834, #1835, #1836, #1837, #1839"
     },
     "references": {
       "type": "object",

@@ -61,6 +61,7 @@ contains
   Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
   Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Text.McpStatistics in 'Source\McpStatistics\Atlas.Text.McpStatistics.pas',
+  Atlas.Text.TestRunFile in 'Source\TestResults\Atlas.Text.TestRunFile.pas',
   Atlas.Text.Xml in 'Source\Xml\Atlas.Text.Xml.pas',
   Atlas.Text.Coverage in 'Source\Coverage\Atlas.Text.Coverage.pas',
   Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas',
