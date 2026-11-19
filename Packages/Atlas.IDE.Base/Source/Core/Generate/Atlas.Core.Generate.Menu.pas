@@ -490,6 +490,9 @@ begin
 end;
 
 procedure TRowBuilder.AddGroup(AGroup: TAtlasGenerateGroup; const AMembers: TArray<Integer>);
+const
+  // Ziffern 1–9 wählen eine Zeile direkt.
+  cLastDigit = 9;
 var
   mMember: Integer;
   mRow: TAtlasGenerateRow;
@@ -508,7 +511,7 @@ begin
     mRow := Default(TAtlasGenerateRow);
     mRow.Group := AGroup;
     mRow.Entry := mMember;
-    if Digit <= 9 then
+    if Digit <= cLastDigit then
     begin
       mRow.Digit := Digit;
       Inc(Digit);
