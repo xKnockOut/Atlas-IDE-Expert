@@ -839,11 +839,7 @@ end;
 
 function TAtlasCommentDrafts.SaveToFile(const AFileName: string): Boolean;
 begin
-  Result := not SameFileName(AFileName, FKept);
-  if Result then
-  begin
-    TAtlasDataFile.Write(AFileName, ToJson);
-  end;
+  Result := TAtlasDataFile.WriteUnlessKept(AFileName, FKept, ToJson);
 end;
 
 class function TAtlasCommentDrafts.TrackerKey(const ATarget: TAtlasTrackerTarget): string;

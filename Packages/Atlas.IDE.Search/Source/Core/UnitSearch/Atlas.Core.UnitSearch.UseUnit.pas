@@ -103,16 +103,8 @@ const
 { TAtlasUseUnit }
 
 class function TAtlasUseUnit.Arguments(const AUri: string): string;
-var
-  mItems: TJSONArray;
 begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
-  end;
+  Result := TJsonText.List([AUri]);
 end;
 
 /// <summary>Zyklen aus "cycles"; nur Einträge mit Name und Pfad.</summary>

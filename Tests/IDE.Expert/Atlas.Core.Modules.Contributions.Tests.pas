@@ -35,6 +35,9 @@ type
     procedure MenuEntriesWithoutCommand;
     [Test]
     procedure SaveListenersGetTheFile;
+
+    [Test]
+    procedure NewCommandSetsFields;
   end;
 
 implementation
@@ -424,6 +427,27 @@ begin
       Inc(Runs);
     end;
   Result := [mEntry];
+end;
+
+procedure TModuleContributionsTests.NewCommandSetsFields;
+var
+  mRan: Boolean;
+  mCommand: TAtlasModuleCommand;
+begin
+  mRan := False;
+  mCommand := TAtlasModuleContributions.NewCommand('Atlas.X', 'Befehl X',
+    procedure
+    begin
+      mRan := True;
+    end, nil);
+  Assert.AreEqual('Atlas.X', mCommand.Id);
+  Assert.AreEqual('Befehl X', mCommand.Caption);
+  Assert.AreEqual('', mCommand.Description);
+  Assert.IsTrue(TAtlasModuleContributions.IsVisible(mCommand), 'ohne Visible sichtbar');
+  Assert.IsFalse(Assigned(mCommand.Key));
+  mCommand.Run();
+  Assert.IsTrue(mRan);
+  mCommand := Default(TAtlasModuleCommand);
 end;
 
 procedure TModuleContributionsTests.StoppedModuleContributesNothing;

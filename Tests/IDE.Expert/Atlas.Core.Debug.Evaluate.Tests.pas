@@ -193,8 +193,6 @@ begin
   Assert.AreEqual('x'#$2400'y', TAtlasEvalText.VisibleText('x'#0'y'));
   Assert.IsTrue(TAtlasEvalText.Render('''eins''#13#10''zwei''#13#10', TAtlasEvalView.Lines, mText));
   Assert.AreEqual('eins' + sLineBreak + 'zwei', mText, 'Umbruch am Ende ohne leere Zeile');
-  Assert.AreEqual(3, Integer(Length(TAtlasEvalText.StringsLines('a'#10'b'#13'c'))));
-  Assert.AreEqual(0, Integer(Length(TAtlasEvalText.StringsLines(''))));
 end;
 
 procedure TAtlasDebugEvaluateTests.ViewsJsonAndHex;

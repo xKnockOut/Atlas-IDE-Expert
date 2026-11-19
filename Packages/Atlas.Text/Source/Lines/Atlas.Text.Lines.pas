@@ -72,6 +72,9 @@ type
     /// <summary>AText an jedem #10 geteilt, ein #13 am Zeilenende entfernt; ein einzelnes #13 trennt nicht (Puffer
     /// des Editors, Zeilennummern wie dort).</summary>
     class function SplitAtLineFeed(const AText: string): TArray<string>; static;
+    /// <summary>Zeilen, wie TStrings.Text sie aus AText macht: Ein Umbruch am Ende ergibt keine leere letzte Zeile,
+    /// leerer Text keine Zeile.</summary>
+    class function SplitLikeStrings(const AText: string): TArray<string>; static;
     /// <summary>ALines mit AOldCount Zeilen ab AStart (ab 0) durch ANew ersetzt.</summary>
     class function ReplaceRange(const ALines: TArray<string>; AStart, AOldCount: Integer;
       const ANew: TArray<string>): TArray<string>; static;
@@ -402,6 +405,15 @@ begin
     mIndex := NextBreak(AText, mStart);
   end;
   Result[mCount] := Copy(AText, mStart, MaxInt);
+end;
+
+class function TTextLines.SplitLikeStrings(const AText: string): TArray<string>;
+begin
+  Result := SplitLines(AText);
+  if (Length(Result) > 0) and (Result[High(Result)] = '') then
+  begin
+    SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 class function TTextLines.SplitAtLineFeed(const AText: string): TArray<string>;

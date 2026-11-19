@@ -25,7 +25,8 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Actions;
+  System.Actions,
+  Atlas.IDE.Foundation.ActionHook;
 
 type
   {$SCOPEDENUMS ON}
@@ -47,18 +48,13 @@ type
     cTraceKinds: TAtlasTraceKinds = [TAtlasTraceKind.TraceInto, TAtlasTraceKind.TraceToSource];
   private type
     /// <summary>Hängt an einer Aktion: meldet den Schritt, dann die Aktion wie bisher.</summary>
-    THook = class(TComponent)
+    THook = class(TAtlasIdeActionHook)
     private
       FKind: TAtlasTraceKind;
-      FAction: TContainedAction;
-      FOriginal: TNotifyEvent;
-      FBypass: Boolean;
-      procedure Execute(Sender: TObject);
     protected
-      procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+      procedure Intercept; override;
     public
       constructor Create(AKind: TAtlasTraceKind; AAction: TContainedAction); reintroduce;
-      destructor Destroy; override;
     end;
     THandler = record
       Name: string;
@@ -101,58 +97,15 @@ uses
 
 constructor TAtlasIdeDebugTrace.THook.Create(AKind: TAtlasTraceKind; AAction: TContainedAction);
 begin
-  inherited Create(nil);
   FKind := AKind;
-  FAction := AAction;
-  FOriginal := AAction.OnExecute;
-  FAction.OnExecute := Execute;
-  FAction.FreeNotification(Self);
+  inherited Create(AAction);
 end;
 
-destructor TAtlasIdeDebugTrace.THook.Destroy;
+procedure TAtlasIdeDebugTrace.THook.Intercept;
 begin
-  if FAction <> nil then
-  begin
-    FAction.RemoveFreeNotification(Self);
-    FAction.OnExecute := FOriginal;
-  end;
-  inherited Destroy;
-end;
-
-procedure TAtlasIdeDebugTrace.THook.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FAction) then
-  begin
-    FAction := nil;
-  end;
-end;
-
-procedure TAtlasIdeDebugTrace.THook.Execute(Sender: TObject);
-begin
-  if FBypass or (FAction = nil) then
-  begin
-    Exit;
-  end;
   // Melden darf den Schritt nie verhindern; jeder Empfänger läuft unter der Sicherung.
   TAtlasIdeDebugTrace.Notify(FKind, TAtlasTraceOrigin.User);
-  if Assigned(FOriginal) then
-  begin
-    FOriginal(Sender);
-    Exit;
-  end;
-  // Ohne eigenes OnExecute erledigt die IDE die Aktion über ihre Liste: kurz abhängen und ausführen.
-  FBypass := True;
-  FAction.OnExecute := nil;
-  try
-    FAction.Execute;
-  finally
-    if FAction <> nil then
-    begin
-      FAction.OnExecute := Execute;
-    end;
-    FBypass := False;
-  end;
+  RunOriginal;
 end;
 
 { TAtlasIdeDebugTrace }

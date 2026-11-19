@@ -93,7 +93,8 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.Core.Foundation.Calls;
 
 /// <summary>Liste der Notizen für das Ergebnisfenster mit Bearbeiten und Löschen.</summary>
 function ListOf(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
@@ -119,10 +120,7 @@ end;
 
 class procedure TAtlasIdeNotes.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeNotes.NowUtc: TDateTime;
@@ -236,13 +234,8 @@ begin
 end;
 
 class procedure TAtlasIdeNotes.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 class procedure TAtlasIdeNotes.Start(const AMessage: TProc<string>);

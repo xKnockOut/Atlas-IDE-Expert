@@ -26,6 +26,9 @@ type
     /// <summary>Erster aktiver Beitrag unter AIID als Interface AIID in AItem (eine Interface-Variable dieses
     /// Typs); False und nil ohne.</summary>
     class function First(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID; out AItem): Boolean; static;
+    /// <summary>Befehl mit Kennung, Beschriftung, Aktion und Sichtbarkeit; übrige Felder leer.</summary>
+    class function NewCommand(const AId, ACaption: string; const ARun: TProc;
+      const AVisible: TFunc<Boolean>): TAtlasModuleCommand; static;
     /// <summary>Alle Befehle in Reihenfolge der Bereitstellung; ohne Registry leer.</summary>
     class function Commands(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleCommand>; static;
     /// <summary>Befehl AId; False, wenn ihn kein Modul anbietet.</summary>
@@ -76,6 +79,16 @@ begin
       Result := Result + [mItem.Instance];
     end;
   end;
+end;
+
+class function TAtlasModuleContributions.NewCommand(const AId, ACaption: string; const ARun: TProc;
+  const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
+begin
+  Result := Default(TAtlasModuleCommand);
+  Result.Id := AId;
+  Result.Caption := ACaption;
+  Result.Run := ARun;
+  Result.Visible := AVisible;
 end;
 
 class function TAtlasModuleContributions.Commands(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleCommand>;

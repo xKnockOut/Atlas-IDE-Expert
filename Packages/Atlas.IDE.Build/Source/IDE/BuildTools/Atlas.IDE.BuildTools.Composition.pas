@@ -186,18 +186,8 @@ end;
 
 /// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
 function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
-var
-  mItem: IInterface;
 begin
-  AJobs := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
-  begin
-    if Supports(mItem, IAtlasBuildJobs, AJobs) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasBuildJobs, AJobs);
 end;
 
 /// <summary>Neubau nach bestandener Prüfung über die Builds auf Auftrag (#261) der Build-Pipeline.</summary>
@@ -410,15 +400,6 @@ end;
 
 { Befehle }
 
-function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(AFeature, AProc);
-    end;
-end;
-
 function Command(const AId: string; ACaption: TAtlasBuildTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
@@ -552,7 +533,7 @@ begin
   Result := [
     // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
     Command('Atlas.CompilerSwitches', TAtlasBuildTextId.CompilerSwitchesCommand,
-      Guarded(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible),
     // Projektaufgaben (#900): sichtbar, solange tasks.enabled an ist und der Läufer läuft.
     Command('Atlas.RunTask', TAtlasBuildTextId.TasksRunCommand, TasksCommand(ChooseTask), TasksVisible),
     Command('Atlas.RunChecks', TAtlasBuildTextId.TasksRunChecksCommand, TasksCommand(RunChecks), TasksVisible),
@@ -563,7 +544,7 @@ begin
       TasksVisible),
     // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
     Command('Atlas.StartProfile', TAtlasBuildTextId.StartProfilesCommand,
-      Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible)];
+      TAtlasGuard.Wrap(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible)];
 end;
 
 function TAtlasBuildModule.MenuEntries: TArray<TAtlasMenuEntry>;

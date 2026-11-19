@@ -96,6 +96,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Session.Strings,
+  Atlas.Core.Foundation.Calls,
   Atlas.IDE.Foundation.Debugger;
 
 const
@@ -134,10 +135,7 @@ end;
 
 class procedure TAtlasIdeDebugRestart.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class procedure TAtlasIdeDebugRestart.Tick;

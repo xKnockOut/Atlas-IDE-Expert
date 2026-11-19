@@ -134,6 +134,7 @@ uses
   Atlas.IDE.Debug.Processes,
   Atlas.UI.Debug.LaunchGroupsDialog,
   Atlas.UI.Debug.Session.Strings,
+  Atlas.Core.Foundation.Calls,
   Atlas.IDE.Foundation.Debugger;
 
 const
@@ -319,10 +320,7 @@ end;
 
 class procedure TAtlasIdeLaunchGroups.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeLaunchGroups.BuildChanged(const AGroup: TAtlasLaunchGroup): Boolean;

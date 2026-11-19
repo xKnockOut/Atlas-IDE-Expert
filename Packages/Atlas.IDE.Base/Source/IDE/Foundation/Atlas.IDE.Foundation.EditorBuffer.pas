@@ -30,6 +30,9 @@ type
     /// <summary>Editoransicht der aktuellen Datei, auch wenn der Fokus gerade in Palette, Menü oder einem
     /// angedockten Fenster liegt; nil ohne offene Quelltextdatei.</summary>
     class function ActiveView: IOTAEditView; static;
+    /// <summary>Name der Unit in ActiveView (Dateiname ohne Endung); '' ohne Ansicht oder für andere Dateien als
+    /// .pas.</summary>
+    class function ActiveUnitName: string; static;
     /// <summary>Steht die Schreibmarke von ActiveView in AFileName auf Zeile ALine und Spalte AColumn (1-basiert, wie
     /// CursorPos)?</summary>
     class function CursorAt(const AFileName: string; ALine, AColumn: Integer): Boolean; static;
@@ -190,6 +193,18 @@ end;
 class function TAtlasEditorBuffer.CharOffset(const AText: string; ALine, ACharacter: Integer): Integer;
 begin
   Result := TAtlasTextOffsets.CharOffset(AText, ALine, ACharacter);
+end;
+
+class function TAtlasEditorBuffer.ActiveUnitName: string;
+var
+  mView: IOTAEditView;
+begin
+  Result := '';
+  mView := ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
+  begin
+    Result := ChangeFileExt(ExtractFileName(mView.Buffer.FileName), '');
+  end;
 end;
 
 class function TAtlasEditorBuffer.ActiveView: IOTAEditView;

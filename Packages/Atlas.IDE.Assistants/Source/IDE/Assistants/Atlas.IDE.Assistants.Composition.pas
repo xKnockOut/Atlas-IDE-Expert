@@ -118,17 +118,8 @@ var
 
 /// <summary>Builds des Moduls Build-Pipeline; nil, solange es fehlt oder nicht läuft.</summary>
 function BuildRequests: IAtlasBuildRequests;
-var
-  mItem: IInterface;
 begin
-  Result := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildRequests) do
-  begin
-    if Supports(mItem, IAtlasBuildRequests, Result) then
-    begin
-      Exit;
-    end;
-  end;
+  TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasBuildRequests, Result);
 end;
 
 function ModuleScope: IAtlasModuleScope;

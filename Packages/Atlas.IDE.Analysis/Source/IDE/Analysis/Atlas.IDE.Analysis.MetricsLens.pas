@@ -107,16 +107,6 @@ begin
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 { TAtlasAnalysisMetricsLens }
 
 constructor TAtlasAnalysisMetricsLens.Create;
@@ -150,7 +140,7 @@ begin
   FEventsRef := nil;
   if FWanted then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -317,7 +307,7 @@ begin
   begin
     TAtlasEditorMetricsSource.Want(cClient, TAtlasMetricsDemand.None);
   end;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

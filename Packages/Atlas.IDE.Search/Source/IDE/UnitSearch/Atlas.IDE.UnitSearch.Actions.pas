@@ -83,7 +83,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Editor.WorkspaceEdit;
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.Core.Foundation.Calls;
 
 const
   cUnitsCommand = 'atlas.server.units';
@@ -212,10 +213,7 @@ end;
 
 class procedure TAtlasIdeUnitSearchActions.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeUnitSearchActions.RunNamedAction(const AName: string): Boolean;

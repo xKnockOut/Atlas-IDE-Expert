@@ -264,6 +264,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Files.Adapters.FolderWatcher` | `Core/Files/Atlas.Core.Files.Adapters.FolderWatcher.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Contract` | `Core/Files/Atlas.Core.Files.Contract.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.DataFile` | `Core/Files/Atlas.Core.Files.DataFile.pas` | Ordner `Core/Files` |
+| `Atlas.Core.Foundation.Calls` | `Core/Foundation/Atlas.Core.Foundation.Calls.pas` | Gesetzte oder leere Rückrufe für Base und Module aufrufen |
 | `Atlas.Core.Files.ProcessLeftovers` | `Core/Files/Atlas.Core.Files.ProcessLeftovers.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.EncodingDefault` | `Core/Files/Atlas.Core.Files.EncodingDefault.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Entries` | `Core/Files/Atlas.Core.Files.Entries.pas` | Ordner `Core/Files` |
@@ -669,6 +670,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Files.DirtyExport` | `IDE/Files/Atlas.IDE.Files.DirtyExport.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Files.Reloader` | `IDE/Files/Atlas.IDE.Files.Reloader.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Forms.Designer` | `IDE/Forms/Atlas.IDE.Forms.Designer.pas` | Ordner `IDE/Forms` |
+| `Atlas.IDE.Foundation.ActionHook` | `IDE/Foundation/Atlas.IDE.Foundation.ActionHook.pas` | Haken an Aktionen der IDE für Base und Module |
 | `Atlas.IDE.Foundation.Caret` | `IDE/Foundation/Atlas.IDE.Foundation.Caret.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.CodeView` | `IDE/Foundation/Atlas.IDE.Foundation.CodeView.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.DesignerView` | `IDE/Foundation/Atlas.IDE.Foundation.DesignerView.pas` | Ordner `IDE/Foundation` |
@@ -822,6 +824,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Foundation.ListView` | `UI/Foundation/Atlas.UI.Foundation.ListView.pas` | Liste mit Spaltenbreiten in logischen Pixeln (#2063) |
 | `Atlas.UI.Foundation.Scaling` | `UI/Foundation/Atlas.UI.Foundation.Scaling.pas` | Ränder, Innenabstände und Lage in logischen Pixeln (#2675) |
 | `Atlas.UI.Foundation.ListBox` | `UI/Foundation/Atlas.UI.Foundation.ListBox.pas` | TListBox, die beim Löschen nur die Fläche ohne Zeilen füllt (kein Flackern unter dem IDE-Thema) |
+| `Atlas.UI.Foundation.FillFrame` | `UI/Foundation/Atlas.UI.Foundation.FillFrame.pas` | Frame, das Listen und Bäume erst mit Fenster füllt, für Base und Module |
+| `Atlas.UI.Foundation.Menus` | `UI/Foundation/Atlas.UI.Foundation.Menus.pas` | Menüeinträge der Atlas-Fenster für Base und Module |
 | `Atlas.UI.Foundation.WrapLabel` | `UI/Foundation/Atlas.UI.Foundation.WrapLabel.pas` | Umbrechende Beschriftung, Höhe folgt der Breite |
 | `Atlas.UI.Foundation.Controls` | `UI/Foundation/Atlas.UI.Foundation.Controls.pas` | Bausteine selbst gebauter Steuerelemente: Fenster oder nachholen, Hervorhebung löschen, Enter/Esc ohne Signalton, Inhaltshöhe |
 | `Atlas.UI.Foundation.EditorFont` | `UI/Foundation/Atlas.UI.Foundation.EditorFont.pas` | Fassung der Editorschrift mit fester Auszeichnung für Texte im Editor (Befunde, Werte, Änderungsmarken) |
