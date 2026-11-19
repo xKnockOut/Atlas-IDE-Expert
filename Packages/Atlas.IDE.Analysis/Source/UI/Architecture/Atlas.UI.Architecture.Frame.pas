@@ -260,7 +260,8 @@ uses
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.Scaling;
 
 {$R *.dfm}
 
@@ -452,7 +453,7 @@ var
 begin
   mEvents := AFrame.FState.Events;
   AFrame.FParts.Top := NewFlowBar(AFrame, AFrame);
-  AFrame.FParts.Top.Padding.SetBounds(2, 2, 2, 2);
+  TAtlasControlScaling.SetPadding(AFrame.FParts.Top, 2, 2, 2, 2);
   AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh, 110,
     mEvents.RefreshClick);
   AFrame.FParts.Save := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Refresh,
@@ -529,7 +530,7 @@ begin
   AFrame.FParts.AssignmentSplit.Visible := False;
   AFrame.FParts.Assignment := TPaintBox.Create(AFrame);
   AFrame.FParts.Assignment.Parent := AFrame.FParts.AssignmentBox;
-  AFrame.FParts.Assignment.SetBounds(0, 0, 10, 10);
+  TAtlasControlScaling.Place(AFrame.FParts.Assignment, 0, 0, 10, 10);
   AFrame.FParts.Assignment.OnPaint := AFrame.FState.Events.AssignmentPaint;
 end;
 

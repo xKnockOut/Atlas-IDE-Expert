@@ -169,7 +169,8 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Dialogs,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 {$R *.dfm}
 
@@ -541,7 +542,7 @@ begin
   mTop.ShowCaption := False;
   mTop.AutoWrap := True;
   mTop.AutoSize := True;
-  mTop.Padding.SetBounds(2, 2, 2, 2);
+  TAtlasControlScaling.SetPadding(mTop, 2, 2, 2, 2);
   AFrame.FParts.Top := mTop;
   AFrame.FParts.Refresh := TButton.Create(AFrame);
   AFrame.FParts.Refresh.Parent := mTop;
