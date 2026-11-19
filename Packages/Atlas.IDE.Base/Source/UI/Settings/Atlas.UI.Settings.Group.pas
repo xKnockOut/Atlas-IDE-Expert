@@ -56,6 +56,18 @@ uses
   Vcl.Themes,
   Atlas.UI.Foundation.WrapLabel;
 
+const
+  /// <summary>Innenabstand des Rahmens links, oben, rechts und unten.</summary>
+  cPaddingSide = 6;
+  cPaddingTop = 4;
+  /// <summary>Höhe vor dem ersten AdjustHeight (Kopf allein).</summary>
+  cInitialHeight = 40;
+  /// <summary>Grund der Sperre: Einrückung zusätzlich zu cIndent (unter dem Text des Kopfs) und Oberkante.</summary>
+  cReasonIndent = 3;
+  cReasonTop = 2;
+  /// <summary>Radius der abgerundeten Ecken.</summary>
+  cCornerRadius = 6;
+
 { TAtlasSettingsGroup }
 
 constructor TAtlasSettingsGroup.Create(AOwner: TComponent);
@@ -64,16 +76,16 @@ begin
   ControlStyle := ControlStyle + [csAcceptsControls, csParentBackground] - [csOpaque];
   ParentBackground := True;
   ParentColor := True;
-  Padding.SetBounds(6, 4, 6, 6);
+  Padding.SetBounds(cPaddingSide, cPaddingTop, cPaddingSide, cPaddingSide);
   AlignWithMargins := True;
-  Height := ScaleValue(40);
+  Height := ScaleValue(cInitialHeight);
   FNextTop := 100;
   FReason := TAtlasWrapLabel.Create(Self);
   FReason.Parent := Self;
   FReason.Align := alTop;
   FReason.AlignWithMargins := True;
-  FReason.Margins.Left := FReason.ScaleValue(3) + FReason.ScaleValue(cIndent);
-  FReason.Top := FReason.ScaleValue(2);
+  FReason.Margins.Left := FReason.ScaleValue(cReasonIndent) + FReason.ScaleValue(cIndent);
+  FReason.Top := FReason.ScaleValue(cReasonTop);
   FReason.ShowAccelChar := False;
   FReason.Font.Style := [fsItalic];
   FReason.Visible := False;
@@ -85,7 +97,7 @@ var
 begin
   Canvas.Brush.Style := bsClear;
   Canvas.Pen.Color := StyleServices.GetSystemColor(clBtnShadow);
-  mRadius := 6 * CurrentPPI div 96;
+  mRadius := ScaleValue(cCornerRadius);
   Canvas.RoundRect(0, 0, Width, Height, mRadius, mRadius);
 end;
 

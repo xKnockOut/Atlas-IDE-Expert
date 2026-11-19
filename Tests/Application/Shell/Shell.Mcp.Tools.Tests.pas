@@ -99,6 +99,11 @@ begin
   end;
 end;
 
+const
+  cNavigationTools = 11;
+  cCheckTools = 7;
+  cContextTools = 50;
+
 /// <summary>Deutsche Spuren in einem englischen Text: Umlaute oder häufige deutsche Wörter.</summary>
 function LooksGerman(const AText: string): Boolean;
 const
@@ -179,16 +184,17 @@ end;
 
 procedure TMcpToolsTests.EachGroupRegistersItsTools;
 begin
-  Assert.AreEqual(11, Integer(Length(NamesOf(RegisterNavigationTools))));
+  Assert.AreEqual(cNavigationTools, Integer(Length(NamesOf(RegisterNavigationTools))));
   Assert.IsTrue(Pos(' qualified_name ', Joined(NamesOf(RegisterNavigationTools))) > 0);
-  Assert.AreEqual(' get_last_build get_last_tests build_project run_tests get_profile get_mutants suggest_test_cases ',
+  Assert.AreEqual(' get_last_build get_last_tests build_project run_tests get_profile get_mutants ' +
+    'suggest_test_cases explain_compiler_message ',
     Joined(NamesOf(RegisterBuildTestTools)));
   Assert.AreEqual(' debug_start debug_stop set_breakpoint remove_breakpoint debug_continue debug_step debug_state ' +
     'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
   Assert.AreEqual(' get_ide_context ', Joined(NamesOf(RegisterIdeContextTools)));
-  Assert.AreEqual(7, Integer(Length(NamesOf(RegisterCheckTools))));
+  Assert.AreEqual(cCheckTools, Integer(Length(NamesOf(RegisterCheckTools))));
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));
-  Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code extract_method ',
+  Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code extract_method refactor ',
     Joined(NamesOf(RegisterEditingTools)));
   Assert.AreEqual(' query_code ', Joined(NamesOf(RegisterQueryTools)));
   Assert.AreEqual(' find_unused_code get_unit_dependencies ', Joined(NamesOf(RegisterDeadCodeTools)));
@@ -209,7 +215,7 @@ var
   mIndex, mOther: Integer;
 begin
   mNames := NamesOf(RegisterContextTools);
-  Assert.AreEqual(49, Integer(Length(mNames)));
+  Assert.AreEqual(cContextTools, Integer(Length(mNames)));
   for mIndex := 0 to High(mNames) do
   begin
     for mOther := mIndex + 1 to High(mNames) do

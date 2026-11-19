@@ -73,6 +73,19 @@ uses
 const
   // Linker Rand des Knopfs für die Projekteinstellungen.
   cEditProjectLeft = 230;
+  /// <summary>Anfangsgröße der Seite (logische Pixel); die IDE passt sie an ihren Bereich an.</summary>
+  cPageWidth = 480;
+  cPageHeight = 520;
+  /// <summary>Zeile mit Knöpfen: Höhe, Oberkante und Breite der Knöpfe.</summary>
+  cButtonRowHeight = 32;
+  cButtonTop = 3;
+  cButtonWidth = 220;
+  /// <summary>Überschrift: Höhe und Oberkante des Textes.</summary>
+  cTitleHeight = 22;
+  cTitleTop = 4;
+  /// <summary>Graue Zeile zum Cache: Höhe und Oberkante des Textes.</summary>
+  cInfoHeight = 20;
+  cInfoTop = 2;
 
 {$R *.dfm}
 
@@ -84,11 +97,11 @@ var
 begin
   inherited Create(AOwner);
   Name := 'AtlasServerPage';
-  Width := ScaleValue(480);
-  Height := ScaleValue(520);
+  Width := ScaleValue(cPageWidth);
+  Height := ScaleValue(cPageHeight);
   FNextTop := 100;
   AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalTitle));
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   FEditGlobal := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalEdit), 0,
     EditGlobalClick);
   FEditProject := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageProjectEdit),
@@ -96,14 +109,14 @@ begin
     EditProjectClick);
 
   AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheTitle));
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   FCacheClear := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheClear), 0,
     CacheClearClick);
-  mPanel := AddPanel(20);
+  mPanel := AddPanel(cInfoHeight);
   FCacheInfo := TLabel.Create(Self);
   FCacheInfo.Parent := mPanel;
   FCacheInfo.Left := 0;
-  FCacheInfo.Top := FCacheInfo.ScaleValue(2);
+  FCacheInfo.Top := FCacheInfo.ScaleValue(cInfoTop);
   FCacheInfo.Font.Color := clGrayText;
   Reload;
 end;
@@ -117,13 +130,13 @@ function TAtlasServerPage.AddTitle(const ACaption: string): TLabel;
 var
   mPanel: TPanel;
 begin
-  mPanel := AddPanel(22);
+  mPanel := AddPanel(cTitleHeight);
   Result := TLabel.Create(Self);
   Result.Parent := mPanel;
   Result.Caption := ACaption;
   Result.Font.Style := [fsBold];
   Result.Left := 0;
-  Result.Top := Result.ScaleValue(4);
+  Result.Top := Result.ScaleValue(cTitleTop);
 end;
 
 function TAtlasServerPage.AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer;
@@ -132,9 +145,10 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := APanel;
   Result.Caption := ACaption;
+  // ALeft in logischen Pixeln wie die Breite.
   Result.Left := Result.ScaleValue(ALeft);
-  Result.Top := Result.ScaleValue(3);
-  Result.Width := Result.ScaleValue(220);
+  Result.Top := Result.ScaleValue(cButtonTop);
+  Result.Width := Result.ScaleValue(cButtonWidth);
   Result.OnClick := AClick;
 end;
 

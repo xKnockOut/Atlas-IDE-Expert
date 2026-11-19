@@ -93,6 +93,18 @@ uses
 const
   cKeyLeft = 150;
   cChoiceLeft = 290;
+  /// <summary>Anfangsgröße der Seite (logische Pixel); die IDE passt sie an ihren Bereich an.</summary>
+  cPageSize = 480;
+  /// <summary>Kopfzeile der Tabelle: Höhe und Oberkante der Spaltentitel.</summary>
+  cHeaderHeight = 20;
+  cHeaderTop = 2;
+  /// <summary>Zeile je Funktion: Höhe für zwei Zeilen (Feld und Status darunter), Oberkante der Beschriftung, der
+  /// Statuszeile und Breiten der Felder.</summary>
+  cRowHeight = 46;
+  cRowCaptionTop = 5;
+  cRowStatusTop = 27;
+  cKeyWidth = 130;
+  cChoiceWidth = 180;
 
 { TAtlasKeysPage }
 
@@ -104,8 +116,8 @@ var
 begin
   inherited Create(AOwner);
   Name := 'AtlasKeysPage';
-  Width := ScaleValue(480);
-  Height := ScaleValue(480);
+  Width := ScaleValue(cPageSize);
+  Height := ScaleValue(cPageSize);
   FNextTop := 0;
   mTitle := TLabel.Create(Self);
   mTitle.Parent := Self;
@@ -122,11 +134,13 @@ begin
   FIntro.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysIntro);
   FIntro.Top := FNextTop;
   Inc(FNextTop, 100);
-  mPanel := AddPanel(20);
-  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderFunction), 0, 2).Font.Style := [fsBold];
-  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderKey), cKeyLeft, 2).Font.Style := [fsBold];
+  mPanel := AddPanel(cHeaderHeight);
+  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderFunction), 0,
+    cHeaderTop).Font.Style := [fsBold];
+  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderKey), cKeyLeft,
+    cHeaderTop).Font.Style := [fsBold];
   AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderChoice), cChoiceLeft,
-    2).Font.Style := [fsBold];
+    cHeaderTop).Font.Style := [fsBold];
   FEntries := TAtlasKeyEntry.FromSettings(TAtlasPluginSettings.Defaults);
   SetLength(FRows, Length(FEntries));
   for mIndex := 0 to High(FEntries) do
@@ -203,13 +217,13 @@ procedure TAtlasKeysPage.AddRow(AIndex: Integer);
 var
   mPanel: TPanel;
 begin
-  mPanel := AddPanel(46);
-  AddLabel(mPanel, FunctionCaption(FEntries[AIndex].Func), 0, 5);
+  mPanel := AddPanel(cRowHeight);
+  AddLabel(mPanel, FunctionCaption(FEntries[AIndex].Func), 0, cRowCaptionTop);
   FRows[AIndex].Key := TEdit.Create(Self);
   FRows[AIndex].Key.Parent := mPanel;
   FRows[AIndex].Key.Left := FRows[AIndex].Key.ScaleValue(cKeyLeft);
   FRows[AIndex].Key.Top := 1;
-  FRows[AIndex].Key.Width := FRows[AIndex].Key.ScaleValue(130);
+  FRows[AIndex].Key.Width := FRows[AIndex].Key.ScaleValue(cKeyWidth);
   FRows[AIndex].Key.Tag := AIndex;
   // Leer bei Vervollständigung und Parameter-Hint: die Taste der IDE.
   if FEntries[AIndex].IdeKey <> 0 then
@@ -221,7 +235,7 @@ begin
   FRows[AIndex].Choice.Parent := mPanel;
   FRows[AIndex].Choice.Left := FRows[AIndex].Choice.ScaleValue(cChoiceLeft);
   FRows[AIndex].Choice.Top := 1;
-  FRows[AIndex].Choice.Width := FRows[AIndex].Choice.ScaleValue(180);
+  FRows[AIndex].Choice.Width := FRows[AIndex].Choice.ScaleValue(cChoiceWidth);
   FRows[AIndex].Choice.Anchors := [akLeft, akTop, akRight];
   FRows[AIndex].Choice.Tag := AIndex;
   // Reihenfolge wie TAtlasKeyChoice.
@@ -229,7 +243,7 @@ begin
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceOther),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceNewKey)]);
   FRows[AIndex].Choice.OnChange := ChoiceChange;
-  FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, 27);
+  FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, cRowStatusTop);
   FRows[AIndex].Status.Font.Color := clGrayText;
 end;
 
