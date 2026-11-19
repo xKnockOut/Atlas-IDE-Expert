@@ -1,23 +1,27 @@
 ﻿unit Atlas.IDE.Debug.VariablesStore;
 
 // Überwachungsliste des Fensters „Variablen“ (#853): cLimit Ausdrücke je
-// Projekt in %LOCALAPPDATA%\Atlas\debug-variables-watches.json, gelesen beim
-// ersten Zugriff. Ist die Datei gesperrt, beginnt Atlas leer und überschreibt
-// sie nicht. Projekt wie im Fenster „Auswerten“: beim Debuggen das
-// gestartete, sonst das aktive. Nur im Hauptthread verwenden.
+// Projekt samt Bindung an Klasse oder Unit (#2550, TAtlasWatchStore) in
+// %LOCALAPPDATA%\Atlas\debug-variables-watches.json, gelesen beim ersten
+// Zugriff. Ist die Datei gesperrt, beginnt Atlas leer und überschreibt sie
+// nicht. Projekt wie im Fenster „Auswerten“: beim Debuggen das gestartete,
+// sonst das aktive. Nur im Hauptthread verwenden.
 
 interface
 
 uses
-  Atlas.Core.Debug.DialogCompletion;
+  Atlas.Core.Debug.WatchScopes,
+  Atlas.Core.Debug.WatchStore;
 
 type
   TAtlasIdeVariablesStore = class
   public const
-    cLimit = 100;
+    /// <summary>Gebundene Ausdrücke sammeln sich je Klasse an: doppelt so viele wie ohne Bindung (#2550).
+    /// </summary>
+    cLimit = 200;
     cFileName = 'debug-variables-watches.json';
   private
-    FWatches: TAtlasExpressionHistory;
+    FWatches: TAtlasWatchStore;
     FLoaded: Boolean;
     FWritable: Boolean;
     FProject: string;
@@ -29,9 +33,12 @@ type
     /// <summary>Ist das aktuelle Projekt ein anderes als beim letzten Aufruf? AProject: das aktuelle.</summary>
     function SwitchProject(out AProject: string): Boolean;
     /// <summary>Überwachte Ausdrücke von AProject in der Reihenfolge, in der sie dazukamen.</summary>
-    function Items(const AProject: string): TArray<string>;
+    function Items(const AProject: string): TAtlasScopedWatches;
+    /// <summary>Neuer Ausdruck, gilt überall.</summary>
     procedure Add(const AExpression: string);
     procedure Remove(const AExpression: string);
+    /// <summary>Bindung eines Ausdrucks ändern (#2550).</summary>
+    procedure SetScope(const AExpression: string; const AScope: TAtlasWatchScope);
   end;
 
 implementation
@@ -52,7 +59,7 @@ end;
 constructor TAtlasIdeVariablesStore.Create;
 begin
   inherited Create;
-  FWatches := TAtlasExpressionHistory.Create(cLimit);
+  FWatches := TAtlasWatchStore.Create(cLimit);
 end;
 
 destructor TAtlasIdeVariablesStore.Destroy;
@@ -69,12 +76,19 @@ begin
     Exit;
   end;
   FLoaded := True;
-  FWritable := TAtlasIdeEvaluateStore.LoadFile(FWatches, cFileName, What);
+  FWritable := TAtlasIdeEvaluateStore.LoadText(cFileName, What,
+    function(const AText: string): Boolean
+    begin
+      Result := FWatches.LoadFromText(AText);
+    end);
 end;
 
 procedure TAtlasIdeVariablesStore.Save;
 begin
-  TAtlasIdeEvaluateStore.SaveFile(FWatches, cFileName, What, FWritable);
+  if FWritable then
+  begin
+    TAtlasIdeEvaluateStore.SaveText(cFileName, What, FWatches.ToText, FWritable);
+  end;
 end;
 
 function TAtlasIdeVariablesStore.SwitchProject(out AProject: string): Boolean;
@@ -85,25 +99,16 @@ begin
   FProject := AProject;
 end;
 
-function TAtlasIdeVariablesStore.Items(const AProject: string): TArray<string>;
-var
-  mNewest: TArray<string>;
-  mIndex: Integer;
+function TAtlasIdeVariablesStore.Items(const AProject: string): TAtlasScopedWatches;
 begin
   Load;
-  // Die Liste führt den jüngsten zuerst; das Fenster zeigt sie in der Reihenfolge des Hinzufügens.
-  mNewest := FWatches.Items(AProject);
-  SetLength(Result, Length(mNewest));
-  for mIndex := 0 to High(mNewest) do
-  begin
-    Result[High(mNewest) - mIndex] := mNewest[mIndex];
-  end;
+  Result := FWatches.Items(AProject);
 end;
 
 procedure TAtlasIdeVariablesStore.Add(const AExpression: string);
 begin
   Load;
-  if FWatches.Add(TAtlasIdeEvaluateStore.CurrentProject, AExpression) then
+  if FWatches.Add(TAtlasIdeEvaluateStore.CurrentProject, AExpression, TAtlasWatchScope.Everywhere) then
   begin
     Save;
   end;
@@ -113,6 +118,15 @@ procedure TAtlasIdeVariablesStore.Remove(const AExpression: string);
 begin
   Load;
   if FWatches.Remove(TAtlasIdeEvaluateStore.CurrentProject, AExpression) then
+  begin
+    Save;
+  end;
+end;
+
+procedure TAtlasIdeVariablesStore.SetScope(const AExpression: string; const AScope: TAtlasWatchScope);
+begin
+  Load;
+  if FWatches.SetScope(TAtlasIdeEvaluateStore.CurrentProject, AExpression, AScope) then
   begin
     Save;
   end;
