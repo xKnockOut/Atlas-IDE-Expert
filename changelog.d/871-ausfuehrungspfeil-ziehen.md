@@ -1,0 +1,5 @@
+### Neu
+- Ausführungspfeil ziehen (#871, `debug.dragNextStatement`, experimentell, Vorgabe aus): Im angehaltenen Zustand steht in einer schmalen Spalte im Rand ein Pfeil an der Zeile des Ausführungspunkts. Zieht man ihn auf eine andere ausführbare Zeile derselben Routine, setzt Atlas die nächste Anweisung dorthin, ohne etwas auszuführen; ein Tooltip nennt die Zeilen, die erneut laufen bzw. übersprungen werden. Gesperrt sind Zeilen außerhalb der Routine, ohne Code, im Kopf einer `for`-Schleife mit Zähler und in einem anderen Teil eines `try`-Blocks oder einer anonymen Methode. Dazu „Nächste Anweisung hier“ im Kontextmenü des Editors und in der Befehlspalette. Atlas setzt nur den Befehlszähler (Win32 und Win64); beim ersten Mal fragt ein Hinweis nach. Neue Units `Atlas.Core.Debug.NextStatement`, `Atlas.IDE.Debug.NextStatement`, `Atlas.IDE.Debug.NextStatementColumn`.
+
+### Behoben
+- „Bis hier ausführen“ (#851) erkannte in Routinen mit einem varianten Record im `var`-Abschnitt (`record case … of … end`) keine ausführbaren Zeilen mehr: Der variante Teil zählte als eigener Block.
