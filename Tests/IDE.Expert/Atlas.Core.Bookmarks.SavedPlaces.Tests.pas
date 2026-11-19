@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Bookmarks.SavedPlaces.Tests;
 
-// Tests der gemerkten Stellen für andere Module ohne VCL (#1456, vorher Teil
-// des Reiters „Gemerkt“, #755): Notizen (#545) mit Titel, verwaist und den
+// Tests der gemerkten Stellen für andere Module ohne VCL (#1456, Reiter
+// „Gemerkt“, #755): Notizen (#545) mit Titel, verwaist und den
 // Zeilen als Detail, Lesezeichen (#622) mit Methode; zwei Projekte im selben
 // Ordner liefern dasselbe Lesezeichen einmal.
 

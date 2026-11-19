@@ -85,8 +85,8 @@ type
     FOnMessage: TProc<string>;
     FSwitch: TAtlasDesktopSwitch;
     FTimer: TTimer;
-    /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt (vorher alle 100 ms, auch ohne
-    /// Projekt).</summary>
+    /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt, sonst liefe er alle
+    /// 100 ms, auch ohne Projekt.</summary>
     FOpen: TAtlasDesignerOpenWatch;
     FNotifier: TProjectNotifier;
     FNotifierIndex: Integer;
