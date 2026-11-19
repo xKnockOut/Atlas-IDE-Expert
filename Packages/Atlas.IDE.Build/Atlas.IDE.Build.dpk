@@ -49,6 +49,7 @@ contains
   Atlas.Core.Tasks.Definitions in 'Source\Core\Tasks\Atlas.Core.Tasks.Definitions.pas',
   Atlas.Core.Tasks.Matchers in 'Source\Core\Tasks\Atlas.Core.Tasks.Matchers.pas',
   Atlas.Core.Tasks.Runs in 'Source\Core\Tasks\Atlas.Core.Tasks.Runs.pas',
+  Atlas.Core.StartProfiles.Flow in 'Source\Core\StartProfiles\Atlas.Core.StartProfiles.Flow.pas',
   Atlas.Core.StartProfiles.Picker in 'Source\Core\StartProfiles\Atlas.Core.StartProfiles.Picker.pas',
   Atlas.Core.Tasks.Commands in 'Source\Core\Tasks\Atlas.Core.Tasks.Commands.pas',
   Atlas.Core.Tasks.Providers.Process in 'Source\Core\Tasks\Atlas.Core.Tasks.Providers.Process.pas',

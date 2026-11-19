@@ -23,6 +23,8 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.Restart,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.StepsBar;
 
@@ -34,7 +36,7 @@ type
     cStartMs = 60000;
     cDoneMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugEnded; override;
@@ -44,7 +46,7 @@ type
       procedure Tick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FBar: TAtlasStepsBar;

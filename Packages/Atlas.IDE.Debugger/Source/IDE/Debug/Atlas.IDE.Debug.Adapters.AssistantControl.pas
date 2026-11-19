@@ -18,6 +18,8 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.DebugControl.Types,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Contracts.DebugControl;
@@ -26,7 +28,7 @@ type
   TAtlasIdeDebugAssistantControl = class(TInterfacedObject, IAtlasDebugControl)
   private type
     /// <summary>Stellt am Ende der Sitzung vorübergehende Startparameter zurück.</summary>
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugEnded; override;
     end;
@@ -39,7 +41,7 @@ type
     class procedure EndTemporary; static;
   private
     FHandler: Integer;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FBreakpoints: TDictionary<Integer, IOTABreakpoint>;
     FNextId: Integer;
     /// <summary>Halt vor dem letzten Schritt; -1 ohne Schritt.</summary>

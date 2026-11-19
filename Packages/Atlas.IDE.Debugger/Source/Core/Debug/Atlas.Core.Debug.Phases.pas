@@ -29,21 +29,13 @@ uses
   Atlas.Core.Debug.Contract;
 
 type
-  {$SCOPEDENUMS ON}
-  /// <summary>Grund eines Halts.</summary>
-  TAtlasDebugStop = (Paused, Exception, Fault);
-  {$SCOPEDENUMS OFF}
-
-  IAtlasDebugListener = interface
-    ['{6E4F2A8C-1B7D-4C55-9E2A-3F0B8D61C7A4}']
-    /// <summary>Erster Prozess der Sitzung angelegt.</summary>
-    procedure DebugStarted;
-    /// <summary>Prozess angehalten; AStop nennt den Grund.</summary>
-    procedure DebugStopped(AStop: TAtlasDebugStop);
-    /// <summary>Prozess läuft nach einem Halt weiter.</summary>
-    procedure DebugResumed;
-    /// <summary>Letzter Prozess abgebaut.</summary>
-    procedure DebugEnded;
+  /// <summary>Zuhörer mit leeren Methoden zum Überschreiben.</summary>
+  TAtlasDebugListener = class(TInterfacedObject, IAtlasDebugListener)
+  public
+    procedure DebugStarted; virtual;
+    procedure DebugStopped(AStop: TAtlasDebugStop); virtual;
+    procedure DebugResumed; virtual;
+    procedure DebugEnded; virtual;
   end;
 
   /// <summary>Prüft einen Halt vor den Zuhörern; True = erledigt (etwa fortgesetzt), die Zuhörer erfahren nichts.
@@ -143,6 +135,24 @@ type
   end;
 
 implementation
+
+{ TAtlasDebugListener }
+
+procedure TAtlasDebugListener.DebugStarted;
+begin
+end;
+
+procedure TAtlasDebugListener.DebugStopped(AStop: TAtlasDebugStop);
+begin
+end;
+
+procedure TAtlasDebugListener.DebugResumed;
+begin
+end;
+
+procedure TAtlasDebugListener.DebugEnded;
+begin
+end;
 
 { TAtlasDebugPhases }
 
