@@ -44,7 +44,6 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,
@@ -75,11 +74,11 @@ begin
     begin
       Inc(mNo);
     end;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), mConsent.Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText), mConsent.TextLabel.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentTitle), mConsent.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentText), mConsent.TextLabel.Caption);
   Assert.Contains(mConsent.TextLabel.Caption, 'IDE-Version');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), mConsent.YesButton.Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), mConsent.NoButton.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentYes), mConsent.YesButton.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentNo), mConsent.NoButton.Caption);
   // Nur die erste Antwort zählt; ausgeführt nach dem Schließen (das Fenster gibt sich selbst frei).
   mConsent.YesButton.Click;
   mConsent.NoButton.Click;

@@ -11,7 +11,7 @@ uses
   Atlas.Core.Settings.Plugin.Store;
 
 const
-  /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
+  /// <summary>Grenzen und Vorgabe für debug.inlineValuesPerLine (#508).</summary>
   cMinInlineValuesPerLine = 1;
   cMaxInlineValuesPerLine = 20;
   cDefaultInlineValuesPerLine = 5;
@@ -277,6 +277,10 @@ type
     /// Kombination erneut ein, setzt Atlas still fort und zählt nur im Verlauf. Aus = kein Knopf, gemerkte Orte
     /// wirken nicht.</summary>
     DebugExceptionBannerIgnoreAtLocation: Boolean;
+    /// <summary>Exception-Regeln mit Muster für die Meldung anwenden (#2549, debug.exceptionMessageRules).</summary>
+    DebugExceptionMessageRules: Boolean;
+    /// <summary>Exception-Regeln nach Klasse und Ort anwenden (#838, debug.exceptionRules).</summary>
+    DebugExceptionRules: Boolean;
     /// <summary>Werte im Editor beim Debuggen (#508, debug.inlineValues): Steht der Prozess, zeigt Atlas am Ende der
     /// Zeilen der Routine mit dem Ausführungspunkt gedimmt die Werte der lokalen Variablen, Parameter und Felder von
     /// Self (Count = 3, Name = 'Meier'); seit dem letzten Halt geänderte Werte hervorgehoben. Aus = keine Anfrage,
@@ -418,9 +422,10 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
-    /// <summary>Vorgaben ab debug.whyHere (Halt, Protokoll, Neustart, Anhängen, Start); Teil von Defaults.</summary>
+    /// <summary>Vorgaben ab debug.inlineValues (Werte, Halt, Protokoll, Neustart, Anhängen, Start); Teil von
+    /// Defaults.</summary>
     procedure SetStopAndLaunchDefaults;
-    /// <summary>Werte ab debug.whyHere über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
+    /// <summary>Werte ab debug.inlineValues über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
     procedure ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben der Haltepunkte (Ereignis, Datenzugriff, Prüfung, Methoden, Fenster …); Teil von
     /// Defaults.</summary>
@@ -488,8 +493,8 @@ begin
   Result.DebugJustMyCode := True;
   Result.DebugExceptionBanner := False;
   Result.DebugExceptionBannerIgnoreAtLocation := True;
-  Result.DebugInlineValues := True;
-  Result.DebugInlineValuesPerLine := cDefaultInlineValuesPerLine;
+  Result.DebugExceptionMessageRules := True;
+  Result.DebugExceptionRules := True;
   Result.SetStopAndLaunchDefaults;
 end;
 
@@ -583,8 +588,8 @@ begin
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
   AIo.Flag('DebugExceptionBanner', DebugExceptionBanner);
   AIo.Flag('DebugExceptionBannerIgnoreAtLocation', DebugExceptionBannerIgnoreAtLocation);
-  AIo.Flag('DebugInlineValues', DebugInlineValues);
-  AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  AIo.Flag('DebugExceptionMessageRules', DebugExceptionMessageRules);
+  AIo.Flag('DebugExceptionRules', DebugExceptionRules);
   ExchangeStopAndLaunch(AIo);
 end;
 
@@ -626,6 +631,8 @@ end;
 
 procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
 begin
+  DebugInlineValues := True;
+  DebugInlineValuesPerLine := cDefaultInlineValuesPerLine;
   DebugWhyHere := True;
   DebugWhyHereDepth := cDefaultWhyHereDepth;
   DebugShowElapsed := True;
@@ -673,6 +680,8 @@ end;
 
 procedure TAtlasPluginDebugSettings.ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
 begin
+  AIo.Flag('DebugInlineValues', DebugInlineValues);
+  AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
   AIo.Flag('DebugShowElapsed', DebugShowElapsed);

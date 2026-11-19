@@ -989,6 +989,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.BreakpointAnchorFlow` | `Core/Debug/Atlas.Core.Debug.BreakpointAnchorFlow.pas` | Entscheidungen der mitwandernden Haltepunkte ohne IDE (geänderte Datei, Fall je Zeile, Ergebnis, Speichern), #1967 |
 | `Atlas.Core.Debug.BreakpointRules` | `Core/Debug/Atlas.Core.Debug.BreakpointRules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.RoutinePattern` | `Core/Debug/Atlas.Core.Debug.RoutinePattern.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.ExceptionRules` | `Core/Debug/Atlas.Core.Debug.ExceptionRules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointSets` | `Core/Debug/Atlas.Core.Debug.BreakpointSets.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointSetFlow` | `Core/Debug/Atlas.Core.Debug.BreakpointSetFlow.pas` | Haltepunkt-Sätze: Satz zum Namen, Branch, andere Sätze, Stellen fürs Haltepunktfenster, #1967 |
 | `Atlas.Core.Debug.RunTo` | `Core/Debug/Atlas.Core.Debug.RunTo.pas` | Ordner `Core/Debug` |
@@ -1100,6 +1101,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.ObjectMarks` | `IDE/Debug/Atlas.IDE.Debug.ObjectMarks.pas` | Objekte beim Debuggen markieren: Befehl, Etiketten an Werten, Abgleich beim Halt, Fenster „Markierte Objekte“, #839 |
 | `Atlas.IDE.Debug.Leaks` | `IDE/Debug/Atlas.IDE.Debug.Leaks.pas` | Leckbericht am Ende einer Debug-Sitzung einsammeln, Kandidaten vom Server, Sprung, #1875 |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ExceptionRules` | `IDE/Debug/Atlas.IDE.Debug.ExceptionRules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionDialog` | `IDE/Debug/Atlas.IDE.Debug.ExceptionDialog.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Exceptions` | `IDE/Debug/Atlas.IDE.Debug.Exceptions.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionsWindow` | `IDE/Debug/Atlas.IDE.Debug.ExceptionsWindow.pas` | Ordner `IDE/Debug` |
@@ -1159,6 +1161,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.ObjectMarks.Strings` | `UI/Debug/Atlas.UI.Debug.ObjectMarks.Strings.pas` | Oberflächentexte für markierte Objekte, Sprache von Base, #839 |
 | `Atlas.UI.Debug.BreakpointAnchors` | `UI/Debug/Atlas.UI.Debug.BreakpointAnchors.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointRules` | `UI/Debug/Atlas.UI.Debug.BreakpointRules.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionMessageRule` | `UI/Debug/Atlas.UI.Debug.ExceptionMessageRule.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionRuleEdit` | `UI/Debug/Atlas.UI.Debug.ExceptionRuleEdit.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionRuleList` | `UI/Debug/Atlas.UI.Debug.ExceptionRuleList.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointSets` | `UI/Debug/Atlas.UI.Debug.BreakpointSets.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ThreadMarks` | `UI/Debug/Atlas.UI.Debug.ThreadMarks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.AsyncOrigin` | `UI/Debug/Atlas.UI.Debug.AsyncOrigin.pas` | Ordner `UI/Debug` |
