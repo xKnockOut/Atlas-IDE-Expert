@@ -32,25 +32,11 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.Session,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Editor.CommentContinuation;
-
-function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
-var
-  mLineText: string;
-begin
-  mLineText := '';
-  if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
-  begin
-    mLineText := ALines[APosition.Line];
-  end;
-  Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
-end;
+  Atlas.IDE.Editor.CommentContinuation,
+  Atlas.IDE.Foundation.Navigation;
 
 { TAtlasIdeNewLine }
 
@@ -103,7 +89,7 @@ begin
     Options(TAtlasEditorBuffer.BlockIndent(mBuffer)));
   mNewText := string.Join(mLineBreak, mDone.Lines);
   TAtlasEditorSnapshots.WriteDifference(mBuffer, mText, mNewText);
-  mView.CursorPos := EditPos(mDone.Lines, mDone.Cursor, mTabWidth);
+  mView.CursorPos := TAtlasIdeNavigation.EditPosOf(mDone.Lines, mDone.Cursor, mTabWidth);
   mView.MoveViewToCursor;
   mView.Paint;
 end;

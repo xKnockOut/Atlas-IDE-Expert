@@ -173,7 +173,7 @@ begin
   Result := -1;
   if not TAtlasEventBreakWatch.NeedsSender(ALocation) then
   begin
-    Result := ALocation.Handlers[0];
+    Result := ALocation.Items[0];
   end
   else if TAtlasIdeEventBreak.Evaluate('Sender.Name', mSender) then
   begin

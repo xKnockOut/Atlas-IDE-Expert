@@ -114,7 +114,8 @@ implementation
 uses
   System.Math,
   Atlas.Core.Files.TextDiff,
-  Atlas.Core.Undo.LinePatch;
+  Atlas.Core.Undo.LinePatch,
+  Atlas.Core.Notifications.MessageSink;
 
 { TAtlasUndoOptions }
 
@@ -189,10 +190,7 @@ end;
 
 procedure TAtlasUndoJournal.Log(const AText: string);
 begin
-  if Assigned(FOnLog) then
-  begin
-    FOnLog(AText);
-  end;
+  TAtlasMessageSink.Create(FOnLog).Say(AText);
 end;
 
 procedure TAtlasUndoJournal.Changed;

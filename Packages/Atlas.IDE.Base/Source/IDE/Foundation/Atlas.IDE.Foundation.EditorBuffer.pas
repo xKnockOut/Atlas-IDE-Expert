@@ -37,6 +37,9 @@ type
     class function TopSourceView: IOTAEditView; static;
     /// <summary>Ist AWnd das Editorfenster der IDE (TEditControl)?</summary>
     class function IsEditorWindow(AWnd: HWND): Boolean; static;
+    /// <summary>Zeigt das aktuelle Modul gerade seinen Formular-Editor statt des Codes? Dann gehören Tasten dem
+    /// Designer.</summary>
+    class function FormEditorInFront: Boolean; static;
   end;
 
 implementation
@@ -221,6 +224,20 @@ var
 begin
   mControl := FindControl(AWnd);
   Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
+end;
+
+class function TAtlasEditorBuffer.FormEditorInFront: Boolean;
+var
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mForm: IOTAFormEditor;
+begin
+  Result := False;
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    mModule := mModules.CurrentModule;
+    Result := (mModule <> nil) and Supports(mModule.CurrentEditor, IOTAFormEditor, mForm);
+  end;
 end;
 
 end.

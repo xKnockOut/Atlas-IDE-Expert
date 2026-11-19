@@ -33,6 +33,8 @@ type
     class procedure RepaintTop; static;
     /// <summary>InvalidateTopEditorLogicalLine, aber nur bei offenem Editorfenster.</summary>
     class procedure InvalidateTopLine(const AServices: INTACodeEditorServices; ALogicalLine: Integer); static;
+    /// <summary>InvalidateTop über die Editordienste der IDE; still, wenn es sie nicht gibt.</summary>
+    class procedure InvalidateCurrent; static;
   end;
 
 implementation
@@ -101,6 +103,16 @@ begin
   if (AServices <> nil) and EditorOpen then
   begin
     AServices.InvalidateTopEditorLogicalLine(ALogicalLine);
+  end;
+end;
+
+class procedure TAtlasIdeEditorRefresh.InvalidateCurrent;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    InvalidateTop(mServices);
   end;
 end;
 

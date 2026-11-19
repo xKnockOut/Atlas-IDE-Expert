@@ -26,7 +26,7 @@ uses
   Atlas.UI.Popup.Window;
 
 type
-  TAtlasExpressionTypeTip = class(TAtlasPopupWindow)
+  TAtlasExpressionTypeTip = class(TAtlasLayoutPopupWindow)
   public const
     /// <summary>Abstand unter der Schreibmarke, logische Pixel.</summary>
     cGap = 4;
@@ -34,11 +34,10 @@ type
     FRows: TArray<TAtlasExpressionTypeRow>;
     FRowRects: TArray<TRect>;
     FOnNavigate: TProc;
-    function Layout(ADraw: Boolean): TSize;
     function LinkIndex: Integer;
     procedure ApplyFont(AKind: TAtlasExpressionTypeRowKind);
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -78,15 +77,6 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.ExpressionType;
   SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
-end;
-
-procedure TAtlasExpressionTypeTip.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasExpressionTypeTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

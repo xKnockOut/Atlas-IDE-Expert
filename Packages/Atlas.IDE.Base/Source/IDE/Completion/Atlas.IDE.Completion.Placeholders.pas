@@ -72,8 +72,6 @@ type
     FBefore: string;
     procedure CollapseUndo;
     procedure SelectCurrent;
-    /// <summary>Rahmen und Fußzeile neu zeichnen lassen.</summary>
-    procedure Invalidate;
     procedure MoveTo(AOffset: Integer);
     procedure Finish(AToEnd: Boolean);
     procedure ApplyMirrors;
@@ -215,16 +213,6 @@ begin
     FView.Block.EndBlock;
     FView.MoveViewToCursor;
     FView.Paint;
-  end;
-end;
-
-procedure TAtlasEditorPlaceholders.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -371,7 +359,7 @@ begin
   end;
   if Active then
   begin
-    Invalidate;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
@@ -482,7 +470,7 @@ begin
   // Rahmen und Fußzeile verschwinden.
   if mWasActive then
   begin
-    Invalidate;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
