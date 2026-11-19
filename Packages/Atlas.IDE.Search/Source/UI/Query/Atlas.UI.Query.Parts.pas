@@ -160,11 +160,15 @@ uses
   System.Types,
   System.Math,
   Vcl.Forms,
-  Atlas.UI.Search.Strings;
+  Atlas.UI.Search.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   /// <summary>So viele Zeilen hat die Vorschlagsliste höchstens sichtbar.</summary>
   cSuggestRows = 8;
+  // Vorschlagsliste: höchste Breite und Rand unter der letzten Zeile (logische Pixel).
+  cSuggestWidth = 320;
+  cSuggestPad = 4;
   /// <summary>So viele Symbolnamen kommen höchstens in die Liste.</summary>
   cMaxSymbols = 30;
   /// <summary>Symbolsuche erst ab so vielen getippten Zeichen.</summary>
@@ -187,7 +191,7 @@ begin
   // Fließende Leiste: bei schmalem Fenster brechen die Knöpfe in weitere Zeilen um.
   AutoWrap := True;
   AutoSize := True;
-  Padding.SetBounds(2, 2, 2, 0);
+  TAtlasControlScaling.SetPadding(Self, 2, 2, 2, 0);
 
   FSaved := TComboBox.Create(Self);
   FSaved.Parent := Self;
@@ -266,7 +270,7 @@ begin
   BevelOuter := bvNone;
   ShowCaption := False;
   AutoSize := True;
-  Padding.SetBounds(2, 0, 2, 2);
+  TAtlasControlScaling.SetPadding(Self, 2, 0, 2, 2);
 
   FEdit := TEdit.Create(Self);
   FEdit.Parent := Self;
@@ -350,8 +354,8 @@ var
 begin
   mPoint := FSuggest.Parent.ScreenToClient(FEdit.ClientToScreen(Point(0, FEdit.Height)));
   mRows := Min(cSuggestRows, Max(1, FSuggest.Items.Count));
-  FSuggest.SetBounds(mPoint.X, mPoint.Y, Min(FEdit.Width, MulDiv(320, CurrentPPI, 96)),
-    mRows * FSuggest.ItemHeight + 4);
+  FSuggest.SetBounds(mPoint.X, mPoint.Y, Min(FEdit.Width, ScaleValue(cSuggestWidth)),
+    mRows * FSuggest.ItemHeight + ScaleValue(cSuggestPad));
 end;
 
 procedure TAtlasQueryInput.MoveSuggestion(ADelta: Integer);
