@@ -129,10 +129,13 @@ uses
   Atlas.UI.Tracker.Time.Strings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 32;
   cFieldLeft = 120;
 
 { TAtlasTimeRequest }
@@ -178,13 +181,7 @@ end;
 
 function TAtlasTrackerTimeDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
 end;
 
 procedure TAtlasTrackerTimeDialog.AddDuration(AMinutes: Integer);
@@ -240,7 +237,7 @@ begin
   FParts.Text.Parent := Self;
   FParts.Text.Align := alTop;
   FParts.Text.AlignWithMargins := True;
-  FParts.Text.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Text, cGap, cGap div 2, cGap, 0);
   FParts.Text.Top := mRow.Top + mRow.Height + 1;
   FParts.Text.Height := ScaleValue(cTextHeight);
   FParts.Text.ScrollBars := ssVertical;
@@ -269,7 +266,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := ATop;
   FParts.Book := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookBook));
   FParts.Book.OnClick := BookClick;

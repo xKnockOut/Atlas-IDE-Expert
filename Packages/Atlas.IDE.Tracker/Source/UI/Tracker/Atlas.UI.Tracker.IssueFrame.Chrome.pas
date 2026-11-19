@@ -96,7 +96,8 @@ uses
   Vcl.Menus,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.CommentEditor,
-  Atlas.UI.Tracker.DevelopmentView;
+  Atlas.UI.Tracker.DevelopmentView,
+  Atlas.UI.Foundation.Scaling;
 
 const
   /// <summary>Maße bei 96 dpi: Knöpfe der Werkzeugleiste, Leiste, Pfeilknöpfe, Mindestbreite und Breite je Zeichen
@@ -304,7 +305,7 @@ begin
   FParts.Scroll.BorderStyle := bsNone;
   FParts.Scroll.VertScrollBar.Tracking := True;
   FParts.Scroll.HorzScrollBar.Visible := False;
-  FParts.Scroll.Padding.SetBounds(cScrollPadSide, cScrollPadTop, cScrollPadSide, cScrollPadSide);
+  TAtlasControlScaling.SetPadding(FParts.Scroll, cScrollPadSide, cScrollPadTop, cScrollPadSide, cScrollPadSide);
   FParts.Scroll.OnMouseWheel := ScrollWheel;
   FParts.Empty := TAtlasWrapLabel.Create(FFrame);
   FParts.Empty.Parent := FParts.Scroll;
