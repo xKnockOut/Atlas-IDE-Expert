@@ -12,7 +12,7 @@
 //   solange assistants.edit an ist.
 // - Teil „AiGhostText“: Schattentext vom KI-Anbieter (#1922), solange
 //   assistants.inlineSuggestions an ist; HTTP und Anmeldespeicher von Windows
-//   entstehen nur hier.
+//   entstehen nur in Atlas.IDE.Assistants.Composition.Adapters.
 // - Teil „AssistantDebug“: Eingang der MCP-Werkzeuge debug_* (#1874); ausgeführt
 //   wird über IAtlasDebugControl des Moduls Debugger, das der Eingang bei jedem
 //   Auftrag neu in der Registry sucht (Regel 2). Nur im normalen Start und
@@ -75,11 +75,6 @@ implementation
 uses
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.BuildInbox,
-  Atlas.Core.AiProviders.Contract,
-  Atlas.Core.AiProviders.Adapters.Http,
-  Atlas.Core.Credentials.Contract,
-  Atlas.Core.Credentials.Adapters.Windows,
-  Atlas.Core.Lsp.Session,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
@@ -95,7 +90,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
-  Atlas.IDE.Assistants.AiGhost,
+  Atlas.IDE.Assistants.Composition.Adapters,
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
@@ -109,7 +104,6 @@ var
   GActivity: TAtlasAssistantsActivity;
   GBuildInbox: TAtlasIdeBuildInbox;
   GEditInbox: TAtlasIdeEditInbox;
-  GAiGhost: TAtlasIdeAiGhost;
   GDebugInbox: TAtlasIdeDebugInbox;
   GDebugBar: TAtlasIdeAssistantDebugBar;
   GBanner: TAtlasIdeAssistantsBanner;
@@ -130,49 +124,6 @@ begin
       Exit;
     end;
   end;
-end;
-
-/// <summary>Schlüssel des KI-Anbieters AProviderId aus dem Anmeldespeicher; '' ohne Eintrag. Auch im
-/// Hintergrund-Thread.</summary>
-function ReadAiKey(const AProviderId: string): string;
-var
-  mStore: IAtlasCredentialStore;
-  mUser: string;
-begin
-  mStore := TAtlasWindowsCredentials.Create;
-  if not mStore.Read(TAtlasAiKeys.Target(AProviderId), mUser, Result) then
-  begin
-    Result := '';
-  end;
-end;
-
-function HasAiKey(AProviderId: string): Boolean;
-begin
-  Result := ReadAiKey(AProviderId) <> '';
-end;
-
-function StoreAiKey(AProviderId, AKey: string): Boolean;
-var
-  mStore: IAtlasCredentialStore;
-begin
-  mStore := TAtlasWindowsCredentials.Create;
-  Result := mStore.Write(TAtlasAiKeys.Target(AProviderId), cAiKeyUser, AKey, cAiKeyComment);
-end;
-
-procedure DeleteAiKey(AProviderId: string);
-var
-  mStore: IAtlasCredentialStore;
-begin
-  mStore := TAtlasWindowsCredentials.Create;
-  mStore.Delete(TAtlasAiKeys.Target(AProviderId));
-end;
-
-function KeyHooks: TAtlasAssistantsKeyHooks;
-begin
-  Result := Default(TAtlasAssistantsKeyHooks);
-  Result.Has := HasAiKey;
-  Result.Store := StoreAiKey;
-  Result.Delete := DeleteAiKey;
 end;
 
 /// <summary>Debugger des Moduls Debugger; nil, solange es fehlt oder nicht läuft.</summary>
@@ -239,30 +190,6 @@ begin
   Result := GEditInbox <> nil;
 end;
 
-procedure StartAiGhost;
-begin
-  GAiGhost := TAtlasIdeAiGhost.Create(
-    function: TLspSession
-    begin
-      Result := TAtlasIdeHost.RunningSession;
-    end, TAtlasAiHttpClient.Create, ReadAiKey,
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
-end;
-
-procedure StopAiGhost;
-begin
-  // Bricht die laufende Anfrage ab und meldet den Anbieter bei Base ab (Regel 3).
-  FreeAndNil(GAiGhost);
-end;
-
-function AiGhostStarted: Boolean;
-begin
-  Result := GAiGhost <> nil;
-end;
-
 procedure DebugChanged;
 begin
   if GDebugBar <> nil then
@@ -283,7 +210,11 @@ end;
 
 procedure StartDebug;
 begin
-  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, DebugChanged, MessageLine);
+  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, DebugChanged,
+    procedure(const AMessage: string)
+    begin
+      TAtlasIdeHost.Warning(AMessage);
+    end);
   GDebugBar := TAtlasIdeAssistantDebugBar.Create(DebugInbox, DebugBanner);
   // Die Pause für KI-Assistenten (#1906) gilt auch für Debug-Aufträge.
   if GActivity.Paused then
@@ -492,7 +423,7 @@ begin
   end;
   GScope.Provide(IAtlasCommandSource, mRef);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
-  TAtlasAssistantsSettingsSection.KeyHooks := KeyHooks;
+  TAtlasAssistantsSettingsSection.KeyHooks := AiKeyHooks;
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
   Result := True;
 end;

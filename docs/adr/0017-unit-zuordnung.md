@@ -929,6 +929,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Assistants.DebugBar` | `IDE/Assistants/Atlas.IDE.Assistants.DebugBar.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.ContextExport` | `IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Composition.Adapters` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.Adapters.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
 | `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |

@@ -120,6 +120,7 @@
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Banner.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.FolderSignal.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.AiGhost.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Adapters.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
