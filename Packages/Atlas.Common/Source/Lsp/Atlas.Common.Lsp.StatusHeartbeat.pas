@@ -97,6 +97,7 @@ begin
   mDetails := FActivity.Details;
   try
     mEntry.Roots := mDetails.Roots;
+    mEntry.Mcp := mDetails.Mcp;
     // Laufende Anfragen zählen als Arbeit, auch wenn der Status des Servers „bereit“ sagt.
     if (mDetails.State <> '') and (mEntry.State = TServerStatusEntry.cStateReady) then
     begin
