@@ -125,6 +125,7 @@ type
     /// <summary>Liegt der Editor unter der Maus (kein anderes Fenster davor)?</summary>
     function MouseOverEditor: Boolean;
   public
+    /// <summary>ALog: Protokoll, nie nil.</summary>
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
       const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
     destructor Destroy; override;
@@ -276,10 +277,7 @@ end;
 
 procedure TAtlasEditorHoverContent.Log(const AMessage: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
+  FLog(AMessage);
 end;
 
 function TAtlasEditorHoverContent.Handles(const AFileName: string): Boolean;

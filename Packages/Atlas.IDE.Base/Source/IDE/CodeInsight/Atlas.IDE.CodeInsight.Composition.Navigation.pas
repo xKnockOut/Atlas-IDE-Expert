@@ -186,16 +186,6 @@ begin
   RunModuleCommand(cUnitDependenciesCommandId);
 end;
 
-/// <summary>Schnellkorrektur „Signaturhilfe öffnen“ (#1007): nach dem Sprung der Parameter-Hint wie mit der Taste.
-/// </summary>
-procedure SignatureHelp;
-begin
-  if Manager <> nil then
-  begin
-    Manager.OpenSignature;
-  end;
-end;
-
 /// <summary>///-Gerüst (#88): Tab springt durch die Beschreibungen, wie bei Code-Vorlagen.</summary>
 procedure Placeholders(const AView: IOTAEditView; const ABefore: string; AOffset: Integer;
   const AExpansion: TAtlasSnippetExpansion);
@@ -212,7 +202,7 @@ begin
   TAtlasIdeEditorCommands.OnProblemsOf := ProblemsOf;
   // „Graph zeigen“ als Code-Aktion an einem Unit-Zyklus (#896, atlas.showUnitRelations).
   TAtlasIdeEditorCommands.OnUnitRelations := UnitRelations;
-  TAtlasIdeEditorCommands.OnSignatureHelp := SignatureHelp;
+  TAtlasIdeEditorCommands.OnSignatureHelp := OpenSignature;
   TAtlasIdeEditorCommands.OnPlaceholders := Placeholders;
 end;
 

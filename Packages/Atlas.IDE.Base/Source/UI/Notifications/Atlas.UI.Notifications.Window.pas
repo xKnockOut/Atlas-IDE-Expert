@@ -98,7 +98,6 @@ type
       /// <summary>Eintrag des Kontextmenüs; -1 ohne.</summary>
       MenuRow: Integer;
       MenuOpen: Boolean;
-      Closing: Boolean;
       /// <summary>Linke untere Ecke beim Zeigen (Bildschirm).</summary>
       Anchor: TPoint;
     end;
@@ -136,8 +135,6 @@ type
     procedure Reload;
     /// <summary>Zeigt das Fenster mit der linken unteren Ecke an AAnchor (Bildschirm, Oberkante des Felds).</summary>
     procedure ShowAbove(const AAnchor: TPoint);
-    /// <summary>Schließt ohne Aktion; das Fenster gibt sich danach selbst frei.</summary>
-    procedure Dismiss;
     /// <summary>Wie ein Klick auf den Eintrag ARow (gelesen).</summary>
     procedure ClickRow(ARow: Integer);
     /// <summary>Wie ein Klick auf Aktion AAction des Eintrags ARow: schließen, danach ausführen.</summary>
@@ -1036,7 +1033,7 @@ end;
 
 procedure TAtlasNotificationsWindow.CloseAndRun(const AProc: TProc);
 begin
-  if FState.Closing then
+  if Closing then
   begin
     Exit;
   end;
@@ -1100,17 +1097,6 @@ begin
   // Die Liste hat die Tastatur (Pfeile, Eingabe); Tab führt zu Filter und Knöpfen.
   ActiveControl := nil;
   SetFocus;
-end;
-
-procedure TAtlasNotificationsWindow.Dismiss;
-begin
-  if FState.Closing then
-  begin
-    Exit;
-  end;
-  FState.Closing := True;
-  Close;
-  Release;
 end;
 
 procedure TAtlasNotificationsWindow.ClickRow(ARow: Integer);

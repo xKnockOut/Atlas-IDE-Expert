@@ -274,11 +274,7 @@ end;
 
 class function TAtlasIdeSettingsTransfer.Catalog: TAtlasSettingsCatalog;
 begin
-  if FCatalog = nil then
-  begin
-    FCatalog := TAtlasSettingsCatalog.CreateDefault;
-  end;
-  Result := FCatalog;
+  Result := TAtlasSettingsCatalog.Lazy(FCatalog);
 end;
 
 class function TAtlasIdeSettingsTransfer.Macros: TAtlasSettingsEnvironment;

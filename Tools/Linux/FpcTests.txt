@@ -6,6 +6,7 @@
 # Atlas.Text
 Atlas.Text.Anonymize.Tests
 Atlas.Text.Chars.Tests
+Atlas.Text.Arrays.Tests
 Atlas.Text.Timestamps.Tests
 Atlas.Text.Checkin.Tests
 Atlas.Text.CommandLine.Tests
@@ -549,6 +550,7 @@ Atlas.Core.Designer.SelectionSets.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Tracker.CurrentIssue.Tests
 Atlas.Core.Tracker.CurrentIssuePlan.Tests
+Atlas.Core.Tracker.AiSummary.Tests
 Atlas.Core.Tracker.KnownErrors.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Commands.QuickOpenTarget.Tests
@@ -682,6 +684,7 @@ Atlas.Core.Tests.ListText.Tests
 Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
 Atlas.Core.InlayHints.Store.Tests
+Atlas.Core.Files.Entries.Tests
 Atlas.Core.Editor.InlayPlan.Tests
 Atlas.Core.Editor.PlaceholderPlan.Tests
 Atlas.Core.Lsp.TextOffsets.Tests

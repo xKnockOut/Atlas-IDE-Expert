@@ -79,7 +79,8 @@ type
 implementation
 
 uses
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Lsp.IdeTypes;
 
 { TAtlasIdeParam }
 
@@ -184,23 +185,6 @@ begin
   end;
 end;
 
-/// <summary>Liste "types" der Unit AUnit, bei Bedarf als neuer Eintrag in AOrder angelegt.</summary>
-function UnitTypes(AUnits: TDictionary<string, TJSONArray>; AOrder: TJSONArray; const AUnit: string): TJSONArray;
-var
-  mEntry: TJSONObject;
-begin
-  if AUnits.TryGetValue(UpperCase(AUnit), Result) then
-  begin
-    Exit;
-  end;
-  Result := TJSONArray.Create;
-  mEntry := TJSONObject.Create;
-  mEntry.AddPair('unit', AUnit);
-  mEntry.AddPair('types', Result);
-  AOrder.AddElement(mEntry);
-  AUnits.Add(UpperCase(AUnit), Result);
-end;
-
 class function TAtlasIdeMembers.ToJson(const ADetails: TArray<TAtlasIdeTypeDetail>): TJSONObject;
 var
   mOrder: TJSONArray;
@@ -216,7 +200,7 @@ begin
     begin
       if (mDetail.Name <> '') and (mDetail.UnitName <> '') then
       begin
-        UnitTypes(mUnits, mOrder, mDetail.UnitName).AddElement(DetailJson(mDetail));
+        TAtlasIdeTypes.UnitTypes(mUnits, mOrder, mDetail.UnitName).AddElement(DetailJson(mDetail));
       end;
     end;
   finally

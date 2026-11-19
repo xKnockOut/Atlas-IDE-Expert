@@ -170,6 +170,7 @@ type
     cMaxIssuesTimeRounding = Atlas.Core.Settings.Plugin.Issues.cMaxIssuesTimeRounding;
     cMinIssuesNotifyMinutes = Atlas.Core.Settings.Plugin.Issues.cMinIssuesNotifyMinutes;
     cDefaultIssuesNotifyMinutes = Atlas.Core.Settings.Plugin.Issues.cDefaultIssuesNotifyMinutes;
+    cDefaultIssuesAiSummaryComments = Atlas.Core.Settings.Plugin.Issues.cDefaultIssuesAiSummaryComments;
     cIssuesNotifyAssigned = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyAssigned;
     cIssuesNotifyAssignedOrCreated = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyAssignedOrCreated;
     cIssuesNotifyWatched = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyWatched;
@@ -1452,6 +1453,9 @@ type
     property IssuesCommentSnippets: string read FIssueWork.IssuesCommentSnippets write FIssueWork.IssuesCommentSnippets;
     property IssuesPreviewDevelopment: Boolean read FIssueWork.IssuesPreviewDevelopment
       write FIssueWork.IssuesPreviewDevelopment;
+    property IssuesAiSummary: Boolean read FIssueWork.IssuesAiSummary write FIssueWork.IssuesAiSummary;
+    property IssuesAiSummaryMinComments: Integer read FIssueWork.IssuesAiSummaryMinComments
+      write FIssueWork.IssuesAiSummaryMinComments;
     property IssuesNotify: Boolean read FIssueWork.IssuesNotify write FIssueWork.IssuesNotify;
     property IssuesNotifyIntervalMinutes: Integer read FIssueWork.IssuesNotifyIntervalMinutes
       write FIssueWork.IssuesNotifyIntervalMinutes;
