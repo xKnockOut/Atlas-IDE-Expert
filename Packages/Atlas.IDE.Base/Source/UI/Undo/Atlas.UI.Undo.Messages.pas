@@ -34,35 +34,34 @@ implementation
 uses
   System.DateUtils,
   Atlas.Core.Undo.Journal,
-  Atlas.UI.Strings,
   Atlas.UI.Undo.Strings;
 
 /// <summary>Kopfzeile des Berichts für ein abgebrochenes oder ausgeführtes Zurücknehmen bzw. Wiederherstellen
 /// mit ACount Problemen.</summary>
 function OutcomeLine(const AReport: TAtlasUndoReport; ACount: Integer): string;
 const
-  cAborted: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoAborted, TAtlasTextId.RedoAborted);
-  cDone: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoDone, TAtlasTextId.RedoDone);
-  cPartial: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoPartial, TAtlasTextId.RedoPartial);
+  cAborted: array[Boolean] of TAtlasUndoTextId = (TAtlasUndoTextId.UndoAborted, TAtlasUndoTextId.RedoAborted);
+  cDone: array[Boolean] of TAtlasUndoTextId = (TAtlasUndoTextId.UndoDone, TAtlasUndoTextId.RedoDone);
+  cPartial: array[Boolean] of TAtlasUndoTextId = (TAtlasUndoTextId.UndoPartial, TAtlasUndoTextId.RedoPartial);
 begin
   if AReport.Aborted then
   begin
-    Result := TAtlasStrings.Fmt(cAborted[AReport.Redo], [AReport.Action, ACount]);
+    Result := TAtlasUndoStrings.Fmt(cAborted[AReport.Redo], [AReport.Action, ACount]);
   end
   else if ACount = 0 then
   begin
-    Result := TAtlasStrings.Fmt(cDone[AReport.Redo], [AReport.Action, Length(AReport.Done)]);
+    Result := TAtlasUndoStrings.Fmt(cDone[AReport.Redo], [AReport.Action, Length(AReport.Done)]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(cPartial[AReport.Redo], [AReport.Action, Length(AReport.Done), ACount]);
+    Result := TAtlasUndoStrings.Fmt(cPartial[AReport.Redo], [AReport.Action, Length(AReport.Done), ACount]);
   end;
 end;
 
 /// <summary>Erste Zeile des Berichts: abgeschaltet, nichts gefunden oder das Ergebnis.</summary>
 function HeadLine(const AReport: TAtlasUndoReport; ACount: Integer): string;
 const
-  cNothing: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoNothing, TAtlasTextId.RedoNothing);
+  cNothing: array[Boolean] of TAtlasUndoTextId = (TAtlasUndoTextId.UndoNothing, TAtlasUndoTextId.RedoNothing);
 begin
   if AReport.Disabled then
   begin
@@ -70,7 +69,7 @@ begin
   end
   else if AReport.NotFound then
   begin
-    Result := TAtlasStrings.Text(cNothing[AReport.Redo]);
+    Result := TAtlasUndoStrings.Text(cNothing[AReport.Redo]);
   end
   else
   begin
