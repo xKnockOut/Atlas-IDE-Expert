@@ -68,6 +68,7 @@ Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Editing.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
+Atlas.Common.Editing.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Editing.ClassLayout.Tests
 Atlas.Common.Editing.CodeActions.Tests
