@@ -1691,6 +1691,8 @@ uses
   Atlas.Core.Welcome.QuickActionRuns.Tests in 'IDE.Expert\Atlas.Core.Welcome.QuickActionRuns.Tests.pas',
   Atlas.Core.Welcome.ContinueQueries in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.ContinueQueries.pas',
   Atlas.Core.Welcome.ContinueQueries.Tests in 'IDE.Expert\Atlas.Core.Welcome.ContinueQueries.Tests.pas',
+  Atlas.Core.Welcome.ContinueWork in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.ContinueWork.pas',
+  Atlas.Core.Welcome.ContinueWork.Tests in 'IDE.Expert\Atlas.Core.Welcome.ContinueWork.Tests.pas',
   Atlas.Core.Welcome.QuickActionRows in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActionRows.pas',
   Atlas.Core.Welcome.QuickActionRows.Tests in 'IDE.Expert\Atlas.Core.Welcome.QuickActionRows.Tests.pas',
   Atlas.Core.Welcome.Saved in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas',

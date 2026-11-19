@@ -1554,6 +1554,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.QuickActionRuns` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRuns.pas` | Ordner `Core/Welcome`; Stand der Schnellaktionen je Projekt |
 | `Atlas.Core.Welcome.QuickActionRows` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRows.pas` | Ordner `Core/Welcome`; Zeilen und Auswahl der Knopfleiste mit Schnellaktionen |
 | `Atlas.Core.Welcome.ContinueQueries` | `Core/Welcome/Atlas.Core.Welcome.ContinueQueries.pas` | Ordner `Core/Welcome`; Stand der HEAD- und Commit-Abfragen von „Weiterarbeiten“ |
+| `Atlas.Core.Welcome.ContinueWork` | `Core/Welcome/Atlas.Core.Welcome.ContinueWork.pas` | Ablauf von „Weiterarbeiten“ ohne IDE, #1443 |
 | `Atlas.Core.Welcome.Saved` | `Core/Welcome/Atlas.Core.Welcome.Saved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Scroll` | `Core/Welcome/Atlas.Core.Welcome.Scroll.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Search` | `Core/Welcome/Atlas.Core.Welcome.Search.pas` | Ordner `Core/Welcome` |
@@ -1572,6 +1573,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Welcome.ProjectWatch` | `IDE/Welcome/Atlas.IDE.Welcome.ProjectWatch.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Composition` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.pas` | Anmeldung des Moduls `atlas.welcome` (Teil Welcome, Befehle, Menüeinträge), #1455 |
 | `Atlas.IDE.Welcome.Adapters.Continue` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Continue.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.ContinueHost` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.ContinueHost.pas` | IDE für den Ablauf von „Weiterarbeiten“ (IAtlasContinueHost), #1443 |
 | `Atlas.IDE.Welcome.Continue.Editor` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Editor.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.ContinueIssueLink` | `IDE/Welcome/Atlas.IDE.Welcome.ContinueIssueLink.pas` | Sicht von „Weiterarbeiten“ auf den Reiter „Issues“, #1443 |
 | `Atlas.IDE.Welcome.Continue.Saved` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Saved.pas` | Ordner `IDE/Welcome` |

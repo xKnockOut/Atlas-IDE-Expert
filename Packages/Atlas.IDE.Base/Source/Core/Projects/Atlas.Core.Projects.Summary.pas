@@ -886,21 +886,8 @@ end;
 { TAtlasProjectSummaries }
 
 class function TAtlasProjectSummaries.NormalizedPath(const AProject: string): string;
-var
-  mIndex: Integer;
 begin
-  Result := Trim(AProject);
-  for mIndex := 1 to Length(Result) do
-  begin
-    if Result[mIndex] = '/' then
-    begin
-      Result[mIndex] := '\';
-    end
-    else if CharInSet(Result[mIndex], ['a'..'z']) then
-    begin
-      Result[mIndex] := UpCase(Result[mIndex]);
-    end;
-  end;
+  Result := SummaryNormalizedPath(AProject);
 end;
 
 // FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher (#972).

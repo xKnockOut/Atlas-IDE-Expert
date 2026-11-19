@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueQueries;
 
 type
@@ -36,6 +35,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Welcome.Continue;
 
 function Found(const AProject: string): TAtlasContinueIncoming;
 begin
