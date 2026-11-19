@@ -106,15 +106,16 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.VersionControl.Composition,
-  Atlas.IDE.VersionControl.Commands,
+  Atlas.IDE.VersionControl.Adapters.Commands,
   Atlas.IDE.VersionControl.LineChanges,
+  Atlas.IDE.VersionControl.Adapters.LineChanges,
   Atlas.IDE.Contracts.LineChanges,
   Atlas.Core.VersionControl.Providers.ProcessRunner,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.VersionControl.Service,
   Atlas.IDE.VersionControl.Branching,
   Atlas.IDE.VersionControl.WorkingCopies,
-  Atlas.IDE.VersionControl.Settings,
+  Atlas.IDE.VersionControl.Adapters.Settings,
   Atlas.UI.Settings.Contract;
 
 const

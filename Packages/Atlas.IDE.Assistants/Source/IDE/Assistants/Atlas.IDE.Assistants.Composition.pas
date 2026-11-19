@@ -28,7 +28,7 @@
 //   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
 //   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
-//   Atlas.IDE.Assistants.Instructions).
+//   Atlas.IDE.Assistants.Adapters.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
 // (TAtlasAssistantsActivity), gehört dem Modul und lebt von der Anmeldung bis
 // nach dem Abmelden: Die Pause bleibt so über das Neustarten einzelner Teile
@@ -99,7 +99,7 @@ uses
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
-  Atlas.IDE.Assistants.Instructions,
+  Atlas.IDE.Assistants.Adapters.Instructions,
   Atlas.UI.Assistants.SettingsSection;
 
 const

@@ -44,7 +44,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Assistants.AiGhost,
+  Atlas.IDE.Assistants.AiErrors,
   Atlas.UI.Assistants.Strings;
 
 { TAtlasIdeAiProbe }
@@ -89,7 +89,7 @@ end;
 /// <summary>Fehlertext mit der Meldung des Anbieters, wenn er eine hat.</summary>
 function FailureText(const AAnswer: TAtlasAiAnswer): string;
 begin
-  Result := TAtlasIdeAiGhost.ErrorText(AAnswer.Error);
+  Result := TAtlasAiErrorTexts.Text(AAnswer.Error);
   if AAnswer.Detail <> '' then
   begin
     Result := Result + ' (' + AAnswer.Detail + ')';
@@ -187,7 +187,7 @@ begin
   if not Supports(ProviderOf(AInput), IAtlasAiModels, mModels) then
   begin
     ADone(nil, TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.ModelsFailed,
-      [TAtlasIdeAiGhost.ErrorText(TAtlasAiError.BadAnswer)]));
+      [TAtlasAiErrorTexts.Text(TAtlasAiError.BadAnswer)]));
     Exit;
   end;
   mThread := ModelsThread(mModels, ADone);

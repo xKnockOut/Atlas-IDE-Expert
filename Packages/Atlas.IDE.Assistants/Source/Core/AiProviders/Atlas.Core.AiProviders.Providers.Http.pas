@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.AiProviders.Adapters.Http;
+﻿unit Atlas.Core.AiProviders.Providers.Http;
 
 // HTTPS für die KI-Anbieter (#1922) über THTTPClient, aus einem
 // Hintergrund-Thread. Wie die Abfragen des Build-Servers: asynchron, beendet

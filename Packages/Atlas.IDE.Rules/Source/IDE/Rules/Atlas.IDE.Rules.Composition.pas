@@ -4,7 +4,7 @@
 // Prüfregeln in der IDE einbindet: Baseline des Projekts aktualisieren (#97)
 // und Compilermeldungen in die Baseline (#530) (Atlas.IDE.Rules.Baseline),
 // Eigenschaftsregeln anwenden (#309, Atlas.IDE.Editor.DfmPropertyRules) und
-// die Sammelkorrektur in „Atlas-Prüfung“ (#1352, Atlas.IDE.Rules.BulkFix).
+// die Sammelkorrektur in „Atlas-Prüfung“ (#1352, Atlas.IDE.Rules.Adapters.BulkFix).
 // Sie meldet in ihrer Initialisierung das Modul „atlas.rules“
 // (Modulschalter ruleChecks, #1454) bei der Registry von Base an und stellt
 // über dessen Scope bereit:
@@ -19,7 +19,7 @@
 // - das Aktualisieren der Baseline (IAtlasBaselineSource) für die
 //   Einrichtung der Willkommensseite (#759),
 // - die Fehler der IDE aus Error Insight (IAtlasIdeErrors, #1819,
-//   Atlas.IDE.Rules.IdeErrors) für das Fenster „Atlas-Prüfung“,
+//   Atlas.IDE.Rules.Adapters.IdeErrors) für das Fenster „Atlas-Prüfung“,
 // - den Assistenten „Eigene Prüfregel“ in Datei › Neu › Weitere (#1821):
 //   neue Schicht in forbidden-uses der Projektdatei
 //   (Atlas.Core.Rules.CustomLayer), danach der Regel-Editor bei der Regel,
@@ -81,12 +81,12 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.IDE.Rules.Baseline,
-  Atlas.IDE.Rules.BulkFix,
-  Atlas.IDE.Rules.FindingActions,
-  Atlas.IDE.Rules.IdeErrors,
+  Atlas.IDE.Rules.Adapters.BulkFix,
+  Atlas.IDE.Rules.Adapters.FindingActions,
+  Atlas.IDE.Rules.Adapters.IdeErrors,
   Atlas.IDE.Rules.OwnershipHints,
-  Atlas.IDE.Rules.Settings,
-  Atlas.UI.Rules.SettingsDialog,
+  Atlas.IDE.Rules.Adapters.Settings,
+  Atlas.IDE.Rules.Adapters.SettingsDialog,
   Atlas.UI.Rules.SettingsSection,
   Atlas.UI.Strings,
   Atlas.UI.Rules.Strings,

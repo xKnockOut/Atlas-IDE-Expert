@@ -117,11 +117,12 @@
         <DCCReference Include="Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsProjects.pas"/>
         <DCCReference Include="Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsBranch.pas"/>
         <DCCReference Include="Source\UI\VersionControl\Atlas.UI.VersionControl.SettingsSection.pas"/>
-        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Settings.pas"/>
+        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.Settings.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChangesData.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChangesPaint.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChanges.pas"/>
-        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Commands.pas"/>
+        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.LineChanges.pas"/>
+        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.Commands.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

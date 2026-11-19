@@ -41,7 +41,8 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.UI.Rules.Editor,
   Atlas.UI.Rules.SettingsDialog,
-  Atlas.UI.Settings.Contract;
+  Atlas.UI.Settings.Contract,
+  Atlas.IDE.Rules.Adapters.SettingsDialog;
 
 { TAtlasRulesSettingsDialogTests }
 

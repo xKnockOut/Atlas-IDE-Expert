@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Rules.Settings;
+﻿unit Atlas.IDE.Rules.Adapters.Settings;
 
 // Abschnitt „Prüfregeln“ im Optionsdialog, IDE-Teil des Moduls Prüfregeln
 // (#1755; vorher Atlas.IDE.Settings.PageOptions und Atlas.IDE.Settings.SubPages
