@@ -5,7 +5,7 @@
 
 interface
 
-/// <summary>Einträge des Suchindex als JSON-Array (Einstellungen, Tastenkürzel, Abschnitte der Funktionsseiten).</summary>
+/// <summary>Suchindex als JSON-Array (Einstellungen, Tastenkürzel, Abschnitte der Funktionsseiten).</summary>
 function AtlasDocsIndexJson: string;
 
 implementation
