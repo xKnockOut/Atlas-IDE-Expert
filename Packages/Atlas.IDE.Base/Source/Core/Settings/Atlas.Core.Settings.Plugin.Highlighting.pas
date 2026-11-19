@@ -19,6 +19,11 @@ const
   cMaxPairGuideWidth = 3;
   cMinPairGuideOpacity = 10;
   cMaxPairGuideOpacity = 100;
+  /// <summary>Vorgaben: Deckkraft der Blocklinien in Prozent, Mindestlänge und Höchstzahl der Treffer der
+  /// Auswahl.</summary>
+  cDefaultPairGuideOpacity = 75;
+  cDefaultSelectionMatchLength = 3;
+  cDefaultSelectionMatches = 1000;
 
 type
   /// <summary>Plugin-Einstellungen: Hervorhebungen im Editor und Farben.</summary>
@@ -129,7 +134,7 @@ begin
   Result.PairGuides := True;
   Result.PairOwners := True;
   Result.PairGuideWidth := 1;
-  Result.PairGuideOpacity := 75;
+  Result.PairGuideOpacity := cDefaultPairGuideOpacity;
   Result.PairColorsLight := '';
   Result.PairColorsDark := '';
   Result.NestedRoutines := 'deeper';
@@ -137,11 +142,11 @@ begin
   Result.NestedRoutineColorLight := '';
   Result.NestedRoutineColorDark := '';
   Result.SelectionMatches := True;
-  Result.SelectionMatchesMinLength := 3;
+  Result.SelectionMatchesMinLength := cDefaultSelectionMatchLength;
   Result.SelectionMatchesCaseSensitive := False;
   Result.SelectionMatchesWholeWord := False;
   Result.SelectionMatchesNavigateF3 := True;
-  Result.SelectionMatchesMaxMatches := 1000;
+  Result.SelectionMatchesMaxMatches := cDefaultSelectionMatches;
   Result.ExitPoints := True;
   Result.ExitPointsExceptions := True;
   Result.ExitPointsLoops := True;
