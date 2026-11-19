@@ -345,22 +345,26 @@ end;
 
 /// <summary>Unpaariges Zeichen in ABack: blassroter Grund mit roter Unterkante, unabhängig von Paarfarben.</summary>
 procedure MarkUnpaired(ADC: HDC; const ABack: TRect; AError, ABackground: TAtlasColor);
+const
+  cErrorTone = 0.25;
+  cPenDivisor = 8;
+  cUnderlineDivisor = 16;
 var
   mBrush: HBRUSH;
   mPen, mOld: HGDIOBJ;
   mY: Integer;
 begin
   // Fehlerfarbe zu 25 % über dem Editorhintergrund: deutlich, aber die Klammer bleibt lesbar.
-  mBrush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(AError, ABackground, 0.25))));
+  mBrush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(AError, ABackground, cErrorTone))));
   try
     Winapi.Windows.FillRect(ADC, ABack, mBrush);
   finally
     DeleteObject(mBrush);
   end;
-  mPen := CreatePen(PS_SOLID, Max(1, ABack.Height div 8), ColorToRGB(TColor(AError)));
+  mPen := CreatePen(PS_SOLID, Max(1, ABack.Height div cPenDivisor), ColorToRGB(TColor(AError)));
   mOld := SelectObject(ADC, mPen);
   try
-    mY := ABack.Bottom - Max(1, ABack.Height div 16) - 1;
+    mY := ABack.Bottom - Max(1, ABack.Height div cUnderlineDivisor) - 1;
     MoveToEx(ADC, ABack.Left, mY, nil);
     LineTo(ADC, ABack.Right, mY);
   finally
@@ -406,6 +410,8 @@ end;
 /// <summary>Blocklinie als Strich, mit Haken an Öffner (oben) und Schließer (unten).</summary>
 procedure PaintStroke(ADC: HDC; const AStroke: TGuideStroke; const AGuide: TAtlasEditorPairs.TLineGuide;
   ATick: Integer);
+const
+  cBottomInset = 3;
 var
   mTop, mBottom: Integer;
   mPen, mOld: HGDIOBJ;
@@ -418,7 +424,7 @@ begin
   end;
   if AGuide.Last then
   begin
-    mBottom := AStroke.Rect.Bottom - 3;
+    mBottom := AStroke.Rect.Bottom - cBottomInset;
   end;
   mPen := GuidePen(AStroke);
   mOld := SelectObject(ADC, mPen);
@@ -465,6 +471,8 @@ end;
 
 /// <summary>Eine Blocklinie in der Zeile von APaint; liefert, wie sie endet.</summary>
 function PaintGuide(const APaint: TGuidePaint; const AGuide: TAtlasEditorPairs.TLineGuide): TAtlasGuideEnd;
+const
+  cMinStroke = 3;
 var
   mCell: TRect;
   mStroke: TGuideStroke;
@@ -494,7 +502,7 @@ begin
         PaintTaper(APaint.DC, mStroke, True);
       end;
     TAtlasGuideEnd.Line:
-      PaintStroke(APaint.DC, mStroke, AGuide, Max(3, mCell.Width div 2));
+      PaintStroke(APaint.DC, mStroke, AGuide, Max(cMinStroke, mCell.Width div 2));
     TAtlasGuideEnd.Skip:
       begin
         // Rest unter der letzten Zeile: keine Linie.
@@ -1001,13 +1009,15 @@ begin
 end;
 
 function TAtlasEditorPairs.DimRun(var ARun: TPairRun; const ASpans: TArray<TAtlasColumnSpan>): Boolean;
+const
+  cDimTone = 0.45;
 var
   mDim: TColor;
   mIndex: Integer;
 begin
   Result := TAtlasColumnSpan.Covers(ASpans, ARun.Column, Length(ARun.Text));
   mDim := TColor(TAtlasColorMath.Mix(TAtlasColor(ColorToRGB(ARun.Context.Canvas.Font.Color)),
-    TAtlasColor(ColorToRGB(ARun.Context.Canvas.Brush.Color)), 0.45));
+    TAtlasColor(ColorToRGB(ARun.Context.Canvas.Brush.Color)), cDimTone));
   if Result then
   begin
     ARun.Fill(mDim);

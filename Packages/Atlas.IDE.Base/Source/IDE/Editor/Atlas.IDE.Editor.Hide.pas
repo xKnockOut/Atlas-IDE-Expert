@@ -64,8 +64,9 @@ type
     procedure Notice(const ATitle, ADetail: string; ACanUndo: Boolean);
     function Run(const AChoice: TAtlasHideChoice; out AStep: TStep; out ADetail: string): Boolean;
     function RunText(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
-    function RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
-    function RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
+    class function RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
+      static;
+    class function RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean; static;
     function UndoStep(const AStep: TStep): Boolean;
     class function RefusalText(ARefusal: TAtlasHideRefusal): string; static;
     class function SettingCaption(const AKey: string): string; static;
@@ -297,7 +298,7 @@ begin
   end;
 end;
 
-function TAtlasIdeHide.RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
+class function TAtlasIdeHide.RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
 var
   mFileName: string;
 begin
@@ -316,7 +317,7 @@ begin
     [TAtlasHideMenu.ElementName(APlan.Target.Element, False), APlan.Place.FileName]);
 end;
 
-function TAtlasIdeHide.RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
+class function TAtlasIdeHide.RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
 var
   mStored: TAtlasPluginSettings;
   mSession: TAtlasToggleSession;

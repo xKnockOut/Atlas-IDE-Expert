@@ -96,6 +96,8 @@ type
     DebugMcpAttach: Boolean;
     /// <summary>debug.mcp.banner: Leiste, solange ein KI-Assistent den Debugger steuert.</summary>
     DebugMcpBanner: Boolean;
+    /// <summary>assistants.banner (#1906): Feld „KI-Assistent aktiv“ im Statusfeld mit „Pause für KI“.</summary>
+    AssistantsBanner: Boolean;
     /// <summary>assistants.context (#2050): Das Modul KI-Assistenten legt den Zustand der IDE (Datei, Cursor,
     /// Methode, Auswahl, Projekt, letzter Build, Reiter) für get_ide_context ab; aus = keine Datei.</summary>
     AssistantsContext: Boolean;
@@ -364,6 +366,7 @@ begin
   Result.DebugMcpModify := False;
   Result.DebugMcpAttach := False;
   Result.DebugMcpBanner := True;
+  Result.AssistantsBanner := True;
   Result.AssistantsContext := True;
   Result.AssistantsContextSelection := True;
   Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
@@ -454,6 +457,7 @@ begin
   AIo.Flag('DebugMcpModify', DebugMcpModify);
   AIo.Flag('DebugMcpAttach', DebugMcpAttach);
   AIo.Flag('DebugMcpBanner', DebugMcpBanner);
+  AIo.Flag('AssistantsBanner', AssistantsBanner);
   AIo.Flag('AssistantsContext', AssistantsContext);
   AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
   AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);

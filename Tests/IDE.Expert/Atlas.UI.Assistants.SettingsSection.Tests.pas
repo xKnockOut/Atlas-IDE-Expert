@@ -64,6 +64,9 @@ begin
     Assert.IsTrue(CheckOf(mPage, 'DebugMcpBanner').Checked);
     Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'DebugMcp')));
     CheckOf(mPage, 'DebugMcp').Checked := True;
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsBanner')),
+      'Anzeige mit Pause auf der Seite des Moduls (#1906)');
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsBanner').Checked, 'Anzeige standardmäßig an');
     CheckOf(mPage, 'McpBuild').Checked := False;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);

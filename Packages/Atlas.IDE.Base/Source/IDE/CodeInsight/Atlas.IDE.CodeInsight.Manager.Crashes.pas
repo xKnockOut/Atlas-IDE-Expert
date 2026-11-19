@@ -256,6 +256,8 @@ begin
 end;
 
 function TAtlasCodeInsightCrashes.RetryAction(const AUri: string): TProc;
+const
+  cRetryTimeoutMs = 5000;
 var
   mManager: TAtlasCodeInsightCrashes;
   mUri: string;
@@ -274,7 +276,7 @@ begin
       end;
       mArguments := TAtlasCrashCases.RetryArguments(mUri);
       try
-        mManager.RunServerCommandAsync(TAtlasCrashCases.cRetryCommand, mArguments.ToJSON, 5000, nil);
+        mManager.RunServerCommandAsync(TAtlasCrashCases.cRetryCommand, mArguments.ToJSON, cRetryTimeoutMs, nil);
       finally
         mArguments.Free;
       end;

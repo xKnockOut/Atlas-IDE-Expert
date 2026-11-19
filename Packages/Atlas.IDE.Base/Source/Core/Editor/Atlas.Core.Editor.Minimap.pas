@@ -100,7 +100,7 @@ type
       ARowHeight, AHeight: Integer): TAtlasMinimapMap; static;
     /// <summary>Gestaucht wird nicht mehr: Passt der Inhalt nicht, scrollt die Minimap mit (wie VS Code). Immer False;
     /// bleibt für die Stellen, die bei gestauchten Zeilen anders zeichneten.</summary>
-    function Compressed: Boolean;
+    class function Compressed: Boolean; static;
     /// <summary>Höhe des ganzen Inhalts in Pixeln (alle Zeilen in voller Höhe).</summary>
     function TotalHeight: Int64;
     /// <summary>Offset aus der Lage im Editor: oben der Anfang, unten das Ende, dazwischen anteilig. True, wenn
@@ -552,7 +552,7 @@ begin
   Result.Offset := 0;
 end;
 
-function TAtlasMinimapMap.Compressed: Boolean;
+class function TAtlasMinimapMap.Compressed: Boolean;
 begin
   Result := False;
 end;
@@ -1083,6 +1083,9 @@ begin
 end;
 
 class function TAtlasMinimap.GlyphHeight(AChar: Char; ARowHeight: Integer): Integer;
+const
+  // Kleinbuchstaben: zwei Drittel der Zeile, gerundet.
+  cThirds = 3;
 begin
   if ARowHeight <= 0 then
   begin
@@ -1098,7 +1101,7 @@ begin
   end;
   if CharInSet(AChar, ['a'..'z']) or TTextChars.IsIdentStart(AChar) then
   begin
-    Exit(Max(1, (ARowHeight * 2 + 2) div 3));
+    Exit(Max(1, (ARowHeight * 2 + 2) div cThirds));
   end;
   Result := 1;
 end;

@@ -42,6 +42,8 @@ begin
   Switch('debug.mcp.modify', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugModify));
   Switch('debug.mcp.attach', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugAttach));
   Switch('debug.mcp.banner', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugBanner));
+  // Anzeige „KI-Assistent aktiv“ mit Pause (#1906).
+  Switch('assistants.banner', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsBanner));
   // IDE-Zustand (#2050): wo der Entwickler gerade ist, samt Auswahl bis zur Grenze.
   Switch('assistants.context', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsContext));
   Switch('assistants.context.selection', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsContextSelection));

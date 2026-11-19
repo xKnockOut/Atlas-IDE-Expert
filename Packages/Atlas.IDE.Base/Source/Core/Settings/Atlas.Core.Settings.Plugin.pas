@@ -392,6 +392,7 @@ type
     property DebugMcpModify: Boolean read FBuild.DebugMcpModify write FBuild.DebugMcpModify;
     property DebugMcpAttach: Boolean read FBuild.DebugMcpAttach write FBuild.DebugMcpAttach;
     property DebugMcpBanner: Boolean read FBuild.DebugMcpBanner write FBuild.DebugMcpBanner;
+    property AssistantsBanner: Boolean read FBuild.AssistantsBanner write FBuild.AssistantsBanner;
     property AssistantsContext: Boolean read FBuild.AssistantsContext write FBuild.AssistantsContext;
     property AssistantsContextSelection: Boolean read FBuild.AssistantsContextSelection
       write FBuild.AssistantsContextSelection;

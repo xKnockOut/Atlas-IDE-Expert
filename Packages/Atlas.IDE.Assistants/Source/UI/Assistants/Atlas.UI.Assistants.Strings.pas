@@ -18,6 +18,10 @@ type
     SettingsDebugMcp, SettingsDebugSideEffects, SettingsDebugModify, SettingsDebugAttach, SettingsDebugBanner,
     DebugBarText, DebugBarPausedText, DebugBarClient, DebugBarPause, DebugBarResume, DebugBarTakeOver,
     DebugBarPauseHint, DebugBarResumeHint, DebugBarTakeOverHint,
+    // Anzeige „KI-Assistent aktiv“ mit Pause (#1906).
+    SettingsBanner, BannerBuilding, BannerEdited, BannerPaused, BannerHintActive, BannerHintPaused,
+    PauseOn, PauseOff, RefusedPaused, PauseCommandOn, PauseCommandOff, PauseCommandHint,
+    // IDE-Zustand für KI-Assistenten (#2050).
     SettingsContext, SettingsContextSelection, SettingsContextSelectionMax, ContextKind);
 
   TAtlasAssistantsStrings = class
@@ -76,6 +80,21 @@ const
      'Aufträge von KI-Assistenten ablehnen, bis „Fortsetzen“ gedrückt wird',
      'Aufträge von KI-Assistenten wieder annehmen',
      'Sitzung selbst weiterführen; der KI-Assistent ist getrennt, seine Haltepunkte bleiben',
+     'Anzeige „KI-Assistent aktiv“ im Statusfeld mit Pause für KI-Assistenten',
+     'KI-Assistent aktiv%s · baut %s',
+     'KI-Assistent aktiv%s · %s geändert',
+     'KI-Assistenten pausiert',
+     'Klick: Pause für KI-Assistenten. Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann ab; ' +
+       'ein laufender Build läuft zu Ende.',
+     'Klick: Pause aufheben. KI-Assistenten dürfen wieder über die IDE bauen und offene Dateien ändern.',
+     'Atlas: Pause für KI-Assistenten. Neue Aufträge lehnt die IDE ab, bis die Pause aufgehoben ist.',
+     'Atlas: Pause für KI-Assistenten aufgehoben.',
+     'Pause für KI: Der Benutzer hat KI-Assistenten in der IDE angehalten. Nicht erneut senden, sondern warten ' +
+       'oder nachfragen.',
+     'Pause für KI-Assistenten',
+     'Pause für KI-Assistenten aufheben',
+     'Hält KI-Assistenten (MCP-Clients) an: Neue Builds und Änderungen an offenen Dateien lehnt die IDE mit Grund ' +
+       'ab, bis die Pause aufgehoben ist.',
      'IDE-Zustand für KI-Assistenten bereitstellen (Datei, Cursor, Methode, Projekt, Build; get_ide_context)',
      'Markierten Text mitgeben',
      'Höchstens Zeichen der Auswahl',
@@ -121,6 +140,20 @@ const
      'Refuse requests from AI assistants until "Resume" is pressed',
      'Accept requests from AI assistants again',
      'Continue the session yourself; the AI assistant is disconnected, its breakpoints stay',
+     '“AI assistant active” display in the status field with pause for AI assistants',
+     'AI assistant active%s · building %s',
+     'AI assistant active%s · changed %s',
+     'AI assistants paused',
+     'Click: pause AI assistants. The IDE then refuses new builds and changes to open files; a running build ' +
+       'finishes.',
+     'Click: end the pause. AI assistants may build through the IDE and change open files again.',
+     'Atlas: AI assistants paused. The IDE refuses new requests until the pause ends.',
+     'Atlas: pause for AI assistants ended.',
+     'Paused for AI: the user has paused AI assistants in the IDE. Do not send again; wait or ask.',
+     'Pause AI assistants',
+     'End pause for AI assistants',
+     'Pauses AI assistants (MCP clients): the IDE refuses new builds and changes to open files with a reason ' +
+       'until the pause ends.',
      'Provide the IDE state to AI assistants (file, cursor, method, project, build; get_ide_context)',
      'Include the selected text',
      'At most characters of the selection',
