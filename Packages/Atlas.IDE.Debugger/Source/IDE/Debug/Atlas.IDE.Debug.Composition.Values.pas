@@ -361,7 +361,7 @@ end;
 /// <summary>Objekte markieren (#839): Etiketten im Hover über den Haken des Baums.</summary>
 procedure StartDebugObjectMarks;
 begin
-  TAtlasIdeDebugObjectMarks.Start(MessageLine);
+  TAtlasIdeDebugObjectMarks.Start(TAtlasIdeHost.Messages());
   HookHoverTree;
   TAtlasIdeDebugInlineValues.OnMarked :=
     function(const AName, AText, AFileName: string; ALine: Integer): string
