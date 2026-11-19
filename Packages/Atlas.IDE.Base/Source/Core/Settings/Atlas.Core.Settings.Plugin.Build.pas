@@ -85,6 +85,17 @@ type
     /// <summary>assistants.edit (#1888, #397): KI-Assistenten schreiben in offene Dateien über den Eingang des
     /// Plugins; aus = der MCP-Server bekommt „nicht angenommen“ und fasst offene Dateien nicht an.</summary>
     AssistantsEdit: Boolean;
+    /// <summary>debug.mcp (#1874): KI-Assistenten debuggen über die MCP-Werkzeuge debug_* in dieser IDE; aus = der
+    /// Eingang läuft nicht, die Werkzeuge melden „nicht angenommen“.</summary>
+    DebugMcp: Boolean;
+    /// <summary>debug.mcp.sideEffects: debug_evaluate darf Aufrufe auswerten.</summary>
+    DebugMcpSideEffects: Boolean;
+    /// <summary>debug.mcp.modify: debug_evaluate darf Werte ändern (Zuweisungen).</summary>
+    DebugMcpModify: Boolean;
+    /// <summary>debug.mcp.attach: eine Sitzung übernehmen, die der Benutzer gestartet hat.</summary>
+    DebugMcpAttach: Boolean;
+    /// <summary>debug.mcp.banner: Leiste, solange ein KI-Assistent den Debugger steuert.</summary>
+    DebugMcpBanner: Boolean;
     /// <summary>assistants.banner (#1906): Feld „KI-Assistent aktiv“ im Statusfeld mit „Pause für KI“.</summary>
     AssistantsBanner: Boolean;
     /// <summary>assistants.context (#2050): Das Modul KI-Assistenten legt den Zustand der IDE (Datei, Cursor,
@@ -350,6 +361,11 @@ begin
   Result.McpBuild := True;
   Result.AssistantsEnabled := True;
   Result.AssistantsEdit := True;
+  Result.DebugMcp := False;
+  Result.DebugMcpSideEffects := False;
+  Result.DebugMcpModify := False;
+  Result.DebugMcpAttach := False;
+  Result.DebugMcpBanner := True;
   Result.AssistantsBanner := True;
   Result.AssistantsContext := True;
   Result.AssistantsContextSelection := True;
@@ -436,6 +452,11 @@ begin
   AIo.Flag('McpBuild', McpBuild);
   AIo.Flag('AssistantsEnabled', AssistantsEnabled);
   AIo.Flag('AssistantsEdit', AssistantsEdit);
+  AIo.Flag('DebugMcp', DebugMcp);
+  AIo.Flag('DebugMcpSideEffects', DebugMcpSideEffects);
+  AIo.Flag('DebugMcpModify', DebugMcpModify);
+  AIo.Flag('DebugMcpAttach', DebugMcpAttach);
+  AIo.Flag('DebugMcpBanner', DebugMcpBanner);
   AIo.Flag('AssistantsBanner', AssistantsBanner);
   AIo.Flag('AssistantsContext', AssistantsContext);
   AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
