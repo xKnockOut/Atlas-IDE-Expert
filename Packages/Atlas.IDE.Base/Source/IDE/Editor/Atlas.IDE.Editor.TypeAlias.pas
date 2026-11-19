@@ -36,8 +36,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.IDE.Editor.NamedRefactoring;
+  Atlas.IDE.Editor.NamedRefactoring,
+  Atlas.UI.Editor.Strings;
 
 const
   cApplyCommand = 'atlas.server.typeAlias';
@@ -50,14 +50,14 @@ class procedure TAtlasIdeTypeAlias.Execute(ASession: TLspSession; const AArgumen
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.TypeAliasTitle;
-  mTexts.Prompt := TAtlasTextId.TypeAliasPrompt;
-  mTexts.Failed := TAtlasTextId.TypeAliasFailed;
-  mTexts.Nothing := TAtlasTextId.TypeAliasNothing;
-  mTexts.PreviewHint := TAtlasTextId.TypeAliasPreviewHint;
-  mTexts.Apply := TAtlasTextId.TypeAliasApply;
-  mTexts.Done := TAtlasTextId.TypeAliasDone;
-  mTexts.Warning := TAtlasTextId.TypeAliasWarning;
+  mTexts.Title := TAtlasEditorTextId.TypeAliasTitle;
+  mTexts.Prompt := TAtlasEditorTextId.TypeAliasPrompt;
+  mTexts.Failed := TAtlasEditorTextId.TypeAliasFailed;
+  mTexts.Nothing := TAtlasEditorTextId.TypeAliasNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.TypeAliasPreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.TypeAliasApply;
+  mTexts.Done := TAtlasEditorTextId.TypeAliasDone;
+  mTexts.Warning := TAtlasEditorTextId.TypeAliasWarning;
   TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
@@ -66,14 +66,14 @@ class procedure TAtlasIdeTypeAlias.ExecuteInline(ASession: TLspSession; const AA
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.InlineTypeAliasTitle;
-  mTexts.Prompt := TAtlasTextId.InlineTypeAliasTitle;
-  mTexts.Failed := TAtlasTextId.InlineTypeAliasFailed;
-  mTexts.Nothing := TAtlasTextId.InlineTypeAliasNothing;
-  mTexts.PreviewHint := TAtlasTextId.TypeAliasPreviewHint;
-  mTexts.Apply := TAtlasTextId.InlineTypeAliasApply;
-  mTexts.Done := TAtlasTextId.InlineTypeAliasDone;
-  mTexts.Warning := TAtlasTextId.TypeAliasWarning;
+  mTexts.Title := TAtlasEditorTextId.InlineTypeAliasTitle;
+  mTexts.Prompt := TAtlasEditorTextId.InlineTypeAliasTitle;
+  mTexts.Failed := TAtlasEditorTextId.InlineTypeAliasFailed;
+  mTexts.Nothing := TAtlasEditorTextId.InlineTypeAliasNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.TypeAliasPreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.InlineTypeAliasApply;
+  mTexts.Done := TAtlasEditorTextId.InlineTypeAliasDone;
+  mTexts.Warning := TAtlasEditorTextId.TypeAliasWarning;
   TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession, AArgumentsJson, cInlineApplyCommand, mTexts, APolicy,
     AMessage);
 end;
