@@ -1,6 +1,20 @@
 {
-  "description": "Atlas prüft jede von Claude bearbeitete Pascal-Datei mit den Prüfregeln des Projekts (MCP-Werkzeug hook_check) und gibt Warnungen und Fehler sofort an Claude zurück. Andere Dateien filtert hook_check selbst heraus. Abschalten: \"mcp\": {\"disabledTools\": [\"hook_check\"]} in atlas.json.",
+  "description": "Atlas prüft jede von Claude bearbeitete Pascal-Datei mit den Prüfregeln des Projekts (MCP-Werkzeug hook_check) und gibt Warnungen und Fehler sofort an Claude zurück. Andere Dateien filtert hook_check selbst heraus. Vor dem Schreiben lehnt hook_check (mode pre) Änderungen an geschützten Dateien ab (assistants.protected in atlas.json). Abschalten: \"mcp\": {\"disabledTools\": [\"hook_check\"]} in atlas.json.",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "mcp_tool",
+            "server": "plugin:atlas:delphi",
+            "tool": "hook_check",
+            "input": { "file": "${tool_input.file_path}", "mode": "pre" },
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",

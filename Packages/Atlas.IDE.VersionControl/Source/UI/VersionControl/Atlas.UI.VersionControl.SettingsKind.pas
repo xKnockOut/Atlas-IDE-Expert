@@ -27,6 +27,7 @@ type
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
     FVcsLinkIssues: TButton;
+    /// <summary>Verweisknopf an ALeft (logische Pixel, 96 dpi).</summary>
     function AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasVcsTextId): TButton;
     procedure VcsLinkClick(Sender: TObject);
   public
@@ -87,7 +88,7 @@ begin
   Result := TButton.Create(FPage);
   Result.Parent := AParent;
   Result.Caption := TAtlasVcsStrings.Text(ACaption);
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(3);
   Result.Width := Result.ScaleValue(150);
   Result.OnClick := VcsLinkClick;

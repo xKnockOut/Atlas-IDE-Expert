@@ -53,6 +53,7 @@ type
     FSaveRule: TButton;
     FCopyCsv: TButton;
     FHelpButton: TButton;
+    /// <summary>Knopf der Leiste; AWidth in logischen Pixeln (96 dpi).</summary>
     function NewButton(const ACaption: string; AWidth: Integer): TButton;
   public
     constructor Create(AParent: TWinControl); reintroduce;
@@ -210,7 +211,7 @@ begin
   Result.Parent := Self;
   Result.AlignWithMargins := True;
   Result.Caption := ACaption;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
 end;
 
 function SavedCaption(const ASaved: TAtlasSavedQuery): string;
