@@ -15,6 +15,8 @@ type
     cMaxZoom = 4.0;
     /// <summary>Bis zu dieser Abweichung nach oben gilt der Zoom als 100 % (Zeilenabstand).</summary>
     cTolerance = 0.25;
+    /// <summary>Bis zu dieser Abweichung nach unten gilt der Zoom als 100 % (Rundung der Schrifthöhen).</summary>
+    cToleranceBelow = 0.1;
     /// <summary>Bezugsdichte der logischen Pixel.</summary>
     cBasePPI = 96;
   public
@@ -41,7 +43,7 @@ begin
   end;
   Result := ACaretHeight / ATextHeight;
   // Der Caret ist bei 100 % etwas höher als der Text (Zeilenabstand), nie kleiner.
-  if (Result >= 1 - 0.1) and (Result <= 1 + cTolerance) then
+  if (Result >= 1 - cToleranceBelow) and (Result <= 1 + cTolerance) then
   begin
     Exit(1);
   end;

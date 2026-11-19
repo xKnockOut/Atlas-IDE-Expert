@@ -60,6 +60,8 @@ type
     FIssues: TArray<string>;
     procedure Read(ACatalog: TAtlasSettingsCatalog);
     procedure ResolveParent(AIndex: Integer; const AEntry: TAtlasCatalogEntry);
+    /// <summary>Schlüssel der Kette ASeen und zuletzt wieder AIndex, mit Pfeilen verbunden.</summary>
+    function CyclePath(ASeen: TList<Integer>; AIndex: Integer): string;
     procedure CutCycles;
     procedure ResolveNodes;
     function PrefixParent(AIndex: Integer): Integer;
@@ -104,7 +106,35 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.Experimental;
+  Atlas.Core.Settings.Experimental,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TGroupsText = (UnknownParent, ParentNotBoolean, ParentCycle, UnknownNode);
+
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TGroupsText] of string = (
+    (
+     '%s: unbekannter Hauptschalter x-parent "%s"',
+     '%s: Hauptschalter x-parent "%s" ist nicht boolesch',
+     'Zyklus über x-parent: %s',
+     '%s: unbekannter Unterpunkt x-node "%s"'),
+    (
+     '%s: unknown main switch x-parent "%s"',
+     '%s: main switch x-parent "%s" is not boolean',
+     'Cycle via x-parent: %s',
+     '%s: unknown sub-node x-node "%s"'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TGroupsText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasSettingsLock }
 
@@ -197,22 +227,35 @@ begin
   end;
   if not FByKey.TryGetValue(LowerCase(AEntry.Parent), mParent) then
   begin
-    AddIssue(Format('%s: unbekannter Hauptschalter x-parent "%s"', [AEntry.Key, AEntry.Parent]));
+    AddIssue(Format(UiText(TGroupsText.UnknownParent), [AEntry.Key, AEntry.Parent]));
     Exit;
   end;
   if not FBoolean[mParent] then
   begin
-    AddIssue(Format('%s: Hauptschalter x-parent "%s" ist nicht boolesch', [AEntry.Key, AEntry.Parent]));
+    AddIssue(Format(UiText(TGroupsText.ParentNotBoolean), [AEntry.Key, AEntry.Parent]));
     Exit;
   end;
   FParents[AIndex] := mParent;
+end;
+
+function TAtlasSettingsGroups.CyclePath(ASeen: TList<Integer>; AIndex: Integer): string;
+var
+  mKeys: TArray<string>;
+  mIndex: Integer;
+begin
+  SetLength(mKeys, ASeen.Count + 1);
+  for mIndex := 0 to ASeen.Count - 1 do
+  begin
+    mKeys[mIndex] := FKeys[ASeen[mIndex]];
+  end;
+  mKeys[ASeen.Count] := FKeys[AIndex];
+  Result := string.Join(' → ', mKeys);
 end;
 
 procedure TAtlasSettingsGroups.CutCycles;
 var
   mIndex, mCurrent: Integer;
   mSeen: TList<Integer>;
-  mPath: string;
 begin
   // Jede Kette nach oben endet; sonst wird die Kante der Einstellung gekappt, bei der der Kreis auffällt.
   mSeen := TList<Integer>.Create;
@@ -231,12 +274,7 @@ begin
       begin
         Continue;
       end;
-      mPath := '';
-      for mCurrent in mSeen do
-      begin
-        mPath := mPath + FKeys[mCurrent] + ' → ';
-      end;
-      AddIssue(Format('Zyklus über x-parent: %s%s', [mPath, FKeys[mIndex]]));
+      AddIssue(Format(UiText(TGroupsText.ParentCycle), [CyclePath(mSeen, mIndex)]));
       FParents[mIndex] := -1;
     end;
   finally
@@ -254,7 +292,7 @@ begin
   begin
     if FOwnNode[mIndex] and (mOwn[mIndex] <> '') and not HasNode(mOwn[mIndex]) then
     begin
-      AddIssue(Format('%s: unbekannter Unterpunkt x-node "%s"', [FKeys[mIndex], mOwn[mIndex]]));
+      AddIssue(Format(UiText(TGroupsText.UnknownNode), [FKeys[mIndex], mOwn[mIndex]]));
     end;
     FNodes[mIndex] := '';
     mCurrent := mIndex;
@@ -494,5 +532,9 @@ begin
     Result := FKeys[mIndex];
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.Groups', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.

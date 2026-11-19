@@ -1144,15 +1144,20 @@ $ProfileLines = @('unit Atlas.Core.Settings.ProfileData;', '',
     'function AtlasProfileJson(const AFileName: string): string;', '',
     'implementation', '', 'uses', '  System.SysUtils;', '', 'const')
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
+    $ProfileLines += "  cProfileFile$Index = '$($Profiles[$Index].Name)';"
     $ProfileLines += Pascal-Lines "cProfile$Index" ([IO.File]::ReadAllText($Profiles[$Index].FullName, $Utf8))
 }
 $ProfileLines += @('', 'function Joined(const ALines: array of string): string;', 'var', '  mLine: string;', 'begin', "  Result := '';",
     '  for mLine in ALines do', '  begin', '    Result := Result + mLine + #10;', '  end;', 'end;', '',
-    'function AtlasProfileFiles: TArray<string>;', 'begin', "  SetLength(Result, $($Profiles.Count));")
-for ($Index = 0; $Index -lt $Profiles.Count; $Index++) { $ProfileLines += "  Result[$Index] := '$($Profiles[$Index].Name)';" }
+    'function AtlasProfileFiles: TArray<string>;', 'begin', '  Result := TArray<string>.Create(')
+for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
+    $Separator = ','
+    if ($Index -eq $Profiles.Count - 1) { $Separator = ');' }
+    $ProfileLines += "    cProfileFile$Index$Separator"
+}
 $ProfileLines += @('end;', '', 'function AtlasProfileJson(const AFileName: string): string;', 'begin', "  Result := '';")
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
-    $ProfileLines += "  if SameText(AFileName, '$($Profiles[$Index].Name)') then"
+    $ProfileLines += "  if SameText(AFileName, cProfileFile$Index) then"
     $ProfileLines += '  begin'
     $ProfileLines += "    Result := Joined(cProfile$Index);"
     $ProfileLines += '  end;'
