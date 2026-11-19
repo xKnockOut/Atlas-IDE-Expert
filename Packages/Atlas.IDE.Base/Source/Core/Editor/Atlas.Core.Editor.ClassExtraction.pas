@@ -179,24 +179,6 @@ begin
   end;
 end;
 
-function IdsOf(AObject: TJSONObject; const AKey: string): TArray<Integer>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AKey);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if mItem is TJSONNumber then
-      begin
-        Result := Result + [TJSONNumber(mItem).AsInt];
-      end;
-    end;
-  end;
-end;
-
 { TAtlasClassExtractionModel }
 
 /// <summary>Option aus prepare ({kind, value}); nil, wenn keine angeboten wird.</summary>
@@ -273,7 +255,7 @@ begin
   Result.Reason := StringOf(AEntry, 'reason');
   Result.CanAbstract := TJsonRead.FlagOr(AEntry, 'canAbstract', False) and Result.Enabled;
   Result.Abstract := TJsonRead.FlagOr(AEntry, 'abstract', False) and Result.CanAbstract;
-  Result.Needs := IdsOf(AEntry, 'needs');
+  Result.Needs := TJsonRead.Ints(AEntry, 'needs');
 end;
 
 function ReadMembers(APrepared: TJSONObject): TArray<TAtlasExtractionMember>;

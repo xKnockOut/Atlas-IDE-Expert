@@ -902,6 +902,8 @@ begin
   end;
 end;
 class function TAtlasSetupChecklist.Report(const AInput: TAtlasSetupReportInput): string;
+const
+  cIdePrefix = ', IDE ';
 var
   mBuilder: TStringBuilder;
   mLine: TAtlasSetupReportLine;
@@ -913,7 +915,7 @@ begin
     mVersions := 'Atlas ' + AInput.AtlasVersion;
     if AInput.IdeVersion <> '' then
     begin
-      mVersions := mVersions + ', IDE ' + AInput.IdeVersion;
+      mVersions := mVersions + cIdePrefix + AInput.IdeVersion;
     end;
     if AInput.Platform <> '' then
     begin
@@ -955,13 +957,19 @@ end;
 function TAtlasSetupController.Refresh: TArray<TAtlasSetupResult>;
 var
   mItem: TAtlasSetupResult;
+  mKeys: TStringBuilder;
   mKey: string;
 begin
   FResults := TAtlasSetupChecklist.Evaluate(FEnvironment.Snapshot);
-  mKey := '';
-  for mItem in FResults do
-  begin
-    mKey := mKey + mItem.Key + #10;
+  mKeys := TStringBuilder.Create;
+  try
+    for mItem in FResults do
+    begin
+      mKeys.Append(mItem.Key).Append(#10);
+    end;
+    mKey := mKeys.ToString;
+  finally
+    mKeys.Free;
   end;
   if mKey <> FKey then
   begin

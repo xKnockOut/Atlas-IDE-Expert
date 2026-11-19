@@ -36,7 +36,8 @@ uses
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Lsp.Ownership;
+  Atlas.Common.Lsp.Ownership,
+  Atlas.Text.Json;
 
 const
   cNl = #10;
@@ -94,15 +95,8 @@ begin
 end;
 
 function Text(ASite: TJSONValue; const AName: string): string;
-var
-  mValue: TJSONValue;
 begin
-  Result := '';
-  mValue := TJSONObject(ASite).GetValue(AName);
-  if mValue <> nil then
-  begin
-    Result := mValue.Value;
-  end;
+  Result := TJsonRead.Text(TJsonRead.AsObject(ASite), AName);
 end;
 
 { TLspOwnershipTests }
