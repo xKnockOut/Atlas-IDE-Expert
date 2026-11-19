@@ -48,6 +48,7 @@ uses
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Lsp.DebugDisplay,
   Atlas.Common.Lsp.EventHandlers,
+  Atlas.Common.Lsp.DataAccessSites,
   Atlas.Common.Lsp.Recursion;
 
 const
@@ -97,7 +98,8 @@ begin
     for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspArchitecture.cSaveCommand, TLspQuery.cCommand,
       TLspHotspots.cCommand, TLspHotspots.cSaveCommand, TLspUnitRelations.cCommand, TLspUnitRelations.cMoveCommand,
       TLspUnitRelations.cRemoveCommand, TLspUnitRelations.cCostCommand, TLspUnitRelations.cUseUnitCommand,
-      TLspSymbolPath.cCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand, TLspRecursion.cCommand) do
+      TLspSymbolPath.cCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand, TLspDataAccessSites.cCommand,
+      TLspRecursion.cCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -127,7 +129,8 @@ begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
     for mName in TArray<string>.Create(TLspArchitecture.cSaveCommand, TLspUnitRelations.cMoveCommand,
-      TLspUnitRelations.cRemoveCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand) do
+      TLspUnitRelations.cRemoveCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand,
+      TLspDataAccessSites.cCommand) do
     begin
       Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
     end;

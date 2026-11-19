@@ -7,7 +7,7 @@
 //     der die Pipe offen hält
 //   - Zeitlimit: danach wird der Prozess beendet (Outcome TimedOut)
 //   - Abbruch: endet der aufrufende Thread (TThread.Terminate, z. B.
-//     TAtlasVcsWorker.Stop) oder meldet ACancelled True (Entladen der IDE), wird
+//     TAtlasBackgroundJobs.Stop) oder meldet ACancelled True (Entladen der IDE), wird
 //     der Prozess sofort beendet (Outcome Cancelled)
 //   - im Hauptthread abgelehnt (Outcome MainThread), außer der Aufrufer erlaubt
 //     es ausdrücklich (Server auf der Kommandozeile, Tests)
@@ -58,6 +58,10 @@ uses
 const
   cSliceMs = 10;
   cMaxErrorBytes = 4096;
+  /// <summary>Anfangsgröße eines Puffers für die Ausgabe einer Pipe.</summary>
+  cMinBufferBytes = 4096;
+  /// <summary>So lange darf ein abgebrochener Prozess nach TerminateProcess noch brauchen (ms).</summary>
+  cTerminateWaitMs = 1000;
 
 type
   TPipeBuffer = record
@@ -80,9 +84,9 @@ begin
   mCapacity := Length(Data);
   if Count + ACount > mCapacity then
   begin
-    if mCapacity < 4096 then
+    if mCapacity < cMinBufferBytes then
     begin
-      mCapacity := 4096;
+      mCapacity := cMinBufferBytes;
     end;
     while mCapacity < Count + ACount do
     begin
@@ -353,7 +357,7 @@ begin
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     TerminateProcess(FProcess.hProcess, 1);
-    WaitForSingleObject(FProcess.hProcess, 1000);
+    WaitForSingleObject(FProcess.hProcess, cTerminateWaitMs);
   end;
   // Rest nach dem Ende; ein Enkelprozess mit offener Pipe hält hier nicht auf.
   DrainAll;

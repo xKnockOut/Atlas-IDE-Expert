@@ -23,6 +23,7 @@ Der Server prüft jede Unit beim Tippen.
 | Alt+Enter | korrigiert |
 | Kontextmenü | Unterdrücken, Einstellen, Abschalten und Erklären der Regel |
 | Kontextmenü „Alle sicheren Treffer von … korrigieren …“ | Sammelkorrektur mit Vorschau je Datei, abwählbar, ein Rückgängig-Schritt je Datei |
+| Kontextmenü „Als Auftrag für KI-Assistenten kopieren“ | legt einen oder mehrere markierte Befunde als Markdown-Auftrag in die Zwischenablage (siehe unten) |
 
 - „Offene zuerst“:
   - Die Unit im Editor steht angepinnt oben, darunter die übrigen geöffneten Units.
@@ -30,6 +31,14 @@ Der Server prüft jede Unit beim Tippen.
   - Auf Wunsch auch die aktive Unit ohne Befunde („Keine Befunde“).
 
 Einstellungen: `fix.bulk`
+
+### Befunde als Auftrag für einen KI-Assistenten (#2570)
+
+- „Als Auftrag für KI-Assistenten kopieren“ im Kontextmenü des Fensters „Atlas-Prüfung“ und die Glühbirne „Befund … als Auftrag für KI-Assistenten kopieren“ im Editor liefern denselben Text wie das MCP-Werkzeug `explain_finding`.
+- Je Befund: Regel mit Name, Datei, Zeile, Meldung, Schweregrad und Konfidenz, weitere Stellen (z. B. die Kanten eines Unit-Zyklus), Codeausschnitt ±8 Zeilen aus dem Editorpuffer mit markierter Zeile, Regelerklärung mit Vorher/Nachher.
+- Am Ende sagt der Auftrag, womit der Assistent sein Ergebnis prüft: `check_code` mit der Datei, bei Regeln mit sicherer Korrektur auch `fix_findings`.
+- Mehrere Befunde: „n Befunde in m Dateien beheben“, je Datei gruppiert, überlappende Ausschnitte nur einmal, jede Regel einmal erklärt; höchstens 20 Befunde, für den Rest ein Hinweis auf `check_code`.
+- Compilermeldungen bekommen Code, Meldung, Ausschnitt und den Hinweis auf `check_code`.
 
 ### Wann die Prüfung läuft
 

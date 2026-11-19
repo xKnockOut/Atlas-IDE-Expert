@@ -72,6 +72,16 @@ uses
 
 const
   cGap = 8;
+  // Dialoggröße bei 96 dpi.
+  cDialogWidth = 900;
+  cDialogHeight = 600;
+  // Fußleiste mit „Speichern“ und „Abbrechen“.
+  cBarHeight = 44;
+  cButtonWidth = 100;
+  cButtonHeight = 28;
+  // Schrift der Vorschau.
+  cPreviewFontName = 'Consolas';
+  cPreviewFontSize = 9;
 
 { TAtlasExportDialogTexts }
 
@@ -114,8 +124,8 @@ begin
   FDefaultExt := ATexts.DefaultExt;
   Caption := ATexts.Title;
   BorderStyle := bsSizeable;
-  Width := ScaleValue(900);
-  Height := ScaleValue(600);
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
 
   mHint := TAtlasWrapLabel.Create(Self);
   mHint.Parent := Self;
@@ -132,18 +142,18 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.Height := mBottom.ScaleValue(cBarHeight);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - 2 * (100 + cGap), 8, 100, 28);
+  mButton.SetBounds(mBottom.Width - 2 * (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportSave);
   mButton.Default := True;
   mButton.OnClick := SaveClick;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - (100 + cGap), 8, 100, 28);
+  mButton.SetBounds(mBottom.Width - (cButtonWidth + cGap), cGap, cButtonWidth, cButtonHeight);
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
@@ -157,8 +167,8 @@ begin
   mMemo.ReadOnly := True;
   mMemo.ScrollBars := ssBoth;
   mMemo.WordWrap := False;
-  mMemo.Font.Name := 'Consolas';
-  mMemo.Font.Size := 9;
+  mMemo.Font.Name := cPreviewFontName;
+  mMemo.Font.Size := cPreviewFontSize;
   mMemo.Lines.Text := ATexts.Preview;
 end;
 

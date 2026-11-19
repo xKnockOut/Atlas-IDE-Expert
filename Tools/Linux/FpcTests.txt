@@ -25,6 +25,8 @@ Atlas.Text.LeakReport.Tests
 Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests
 Atlas.Text.TestResults.Tests
+Atlas.Text.TestRunFile.Tests
+Atlas.Text.IdeContext.Tests
 Atlas.Text.Xml.Tests
 Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
@@ -68,6 +70,7 @@ Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Editing.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
+Atlas.Common.Editing.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Editing.ClassLayout.Tests
 Atlas.Common.Editing.CodeActions.Tests
@@ -173,12 +176,15 @@ Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
 Atlas.Common.Lsp.AffectedTests.Report.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
+Atlas.Common.Lsp.FindingsPrompt.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
+Atlas.Common.Lsp.DataAccessSites.Tests
 Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Core.Debug.MethodBreakpoints.Tests
 Atlas.Core.Debug.RunTo.Tests
 Atlas.Core.Debug.BreakpointAnchors.Tests
 Atlas.Core.Debug.BreakpointRules.Tests
+Atlas.Core.Debug.RoutinePattern.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
@@ -231,12 +237,17 @@ Atlas.Common.Mcp.BuildTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
+Atlas.Common.Mcp.ProtectedFiles.Tests
+Atlas.Common.Mcp.EditFindings.Tests
 Atlas.Common.Lsp.ImplementationSites.Tests
 Atlas.Common.Mcp.ImplementationTools.Tests
+Atlas.Common.Mcp.BatchTool.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
+Atlas.Common.Mcp.LastTests.Tests
+Atlas.Common.Mcp.IdeContext.Tests
 Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
@@ -390,6 +401,7 @@ Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Rules.MessageCatalog.Tests
 Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
+Atlas.Common.Rules.Prompt.Tests
 Atlas.Common.Rules.Profiles.Tests
 Atlas.Common.Rules.Scopes.Tests
 Atlas.Common.Rules.SuppressionStats.Tests
@@ -405,6 +417,7 @@ Atlas.Common.Semantics.OrdinalConstants.Tests
 Atlas.Common.Semantics.Reassigned.Tests
 Atlas.Common.Semantics.RtlMethodReferences.Tests
 Atlas.Common.Semantics.StepCalls.Tests
+Atlas.Common.Semantics.DataAccessCalls.Tests
 Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
 Atlas.Common.Semantics.UnresolvedNames.Tests
@@ -416,6 +429,7 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
@@ -433,6 +447,7 @@ Atlas.Core.Problems.Findings.Tests
 Atlas.Core.Projects.PathCheck.Tests
 Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
+Atlas.Core.Problems.Prompt.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Hover.Plan.Tests
 Atlas.Core.Hover.IdeHelpInsight.Tests
@@ -454,6 +469,7 @@ Atlas.Core.Editor.ExitPointAsk.Tests
 Atlas.Core.Editor.SourceFiles.Tests
 Atlas.Core.Editor.GutterPanel.Tests
 Atlas.Core.Editor.CaretSteps.Tests
+Atlas.Core.Editor.TabOrder.Tests
 Atlas.Core.Editor.LinkedKeys.Tests
 Atlas.Core.Editor.LinkedSession.Tests
 Atlas.Core.Editor.MultiCursorSession.Tests
@@ -515,6 +531,7 @@ Atlas.Core.Debug.Restart.Tests
 Atlas.Core.Debug.Reattach.Tests
 Atlas.Core.Debug.LaunchGroups.Tests
 Atlas.Core.Settings.BuildDebug.Tests
+Atlas.Core.Settings.KeyCodes.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
 Atlas.UI.Analysis.Strings.Tests
@@ -606,6 +623,7 @@ Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.Series.Tests
 Atlas.Core.Tests.UnitScans.Tests
 Atlas.Core.Tests.Flaky.Tests
+Atlas.Core.Tests.LastRun.Tests
 Atlas.Core.Tests.StatusField.Tests
 Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests

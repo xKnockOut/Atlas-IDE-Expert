@@ -22,6 +22,19 @@ type
   TTextEncodingProbe = class
   public const
     cUtf8CodePage = 65001;
+    /// <summary>Größter Unicode-Codepunkt.</summary>
+    cMaxCodePoint = $10FFFF;
+    /// <summary>Erster Codepunkt außerhalb der Basisebene (braucht in UTF-16 ein Surrogatpaar).</summary>
+    cFirstSupplementary = $10000;
+    /// <summary>Bereich der UTF-16-Surrogate: hohe ab $D800, niedrige ab $DC00 bis $DFFF.</summary>
+    cHighSurrogateFirst = $D800;
+    cLowSurrogateFirst = $DC00;
+    cSurrogateLast = $DFFF;
+    /// <summary>Bits je Surrogathälfte und die Maske dazu.</summary>
+    cSurrogateBits = 10;
+    cSurrogateMask = $3FF;
+    /// <summary>Erstes Byte bzw. Zeichen außerhalb von 7-Bit-ASCII.</summary>
+    cFirstNonAscii = $80;
   public
     /// <summary>BOM am Anfang von ABytes; UTF-8 vor UTF-16.</summary>
     class function BomOf(const ABytes: TBytes): TTextBom; static;
@@ -51,6 +64,45 @@ type
 implementation
 
 const
+  cUtf8Bom: array[0..2] of Byte = ($EF, $BB, $BF);
+  cUtf16LEBom: array[0..1] of Byte = ($FF, $FE);
+  cUtf16BEBom: array[0..1] of Byte = ($FE, $FF);
+  cUtf8BomLength = Length(cUtf8Bom);
+  cUtf16BomLength = Length(cUtf16LEBom);
+  /// <summary>Binäres Formular mit Ressourcenkopf.</summary>
+  cResourceFormPrefix: array[0..2] of Byte = ($FF, $0A, $00);
+
+  // Leitbytes von UTF-8-Mehrbytefolgen (ohne überlange $C0/$C1 und ohne Werte über U+10FFFF) und die
+  // Nutzbits des Leitbytes.
+  cLead2First = $C2;
+  cLead2Last = $DF;
+  cLead2Bits = $1F;
+  cLead3First = $E0;
+  cLead3Last = $EF;
+  cLead3Bits = $0F;
+  cLead4First = $F0;
+  cLead4Last = $F4;
+  cLead4Bits = $07;
+  /// <summary>Zahl der Folgebytes hinter einem Leitbyte einer Vierbytefolge.</summary>
+  cLead4Followers = 3;
+  /// <summary>Folgebyte: obere zwei Bits 10, sechs Nutzbits.</summary>
+  cContinuationMask = $C0;
+  cContinuationTag = $80;
+  cContinuationBits = 6;
+  cContinuationPayload = $3F;
+  /// <summary>Kleinster Wert, der drei Bytes braucht.</summary>
+  cMinThreeByteValue = $800;
+
+  // Windows-1252: $80..$9F sind eigene Zeichen, ab $A0 gleich Latin-1.
+  cCp1252SpecialFirst = $80;
+  cCp1252SpecialLast = $9F;
+  cLatin1First = $A0;
+  cLatin1Last = $FF;
+
+  // Vorsilben einer Codepage-Angabe ("windows-1250", "cp1250").
+  cWindowsPrefix = 'windows-';
+  cCpPrefix = 'cp';
+
   /// <summary>Codepages mit einem Byte je Zeichen, die als Vorgabe erlaubt sind.</summary>
   cSingleByteCodePages: array[0..33] of Integer = (437, 737, 775, 850, 852, 855, 857, 858, 860, 861, 862, 863, 864,
     865, 866, 869, 874, 1250, 1251, 1252, 1253, 1254, 1255, 1256, 1257, 1258, 20866, 21866, 28591, 28592, 28595,
@@ -67,15 +119,15 @@ const
 
 class function TTextEncodingProbe.BomOf(const ABytes: TBytes): TTextBom;
 begin
-  if HasPrefix(ABytes, [$EF, $BB, $BF]) then
+  if HasPrefix(ABytes, cUtf8Bom) then
   begin
     Result := TTextBom.Utf8;
   end
-  else if HasPrefix(ABytes, [$FF, $FE]) then
+  else if HasPrefix(ABytes, cUtf16LEBom) then
   begin
     Result := TTextBom.Utf16LE;
   end
-  else if HasPrefix(ABytes, [$FE, $FF]) then
+  else if HasPrefix(ABytes, cUtf16BEBom) then
   begin
     Result := TTextBom.Utf16BE;
   end
@@ -89,9 +141,9 @@ class function TTextEncodingProbe.BomLength(ABom: TTextBom): Integer;
 begin
   case ABom of
     TTextBom.Utf8:
-      Result := 3;
+      Result := cUtf8BomLength;
     TTextBom.Utf16LE, TTextBom.Utf16BE:
-      Result := 2;
+      Result := cUtf16BomLength;
   else
     Result := 0;
   end;
@@ -109,20 +161,20 @@ function Utf8Lead(ALead: Byte; out ACount: Integer; out ACodePoint: Cardinal): B
 begin
   Result := True;
   case ALead of
-    $C2..$DF:
+    cLead2First..cLead2Last:
       begin
         ACount := 1;
-        ACodePoint := ALead and $1F;
+        ACodePoint := ALead and cLead2Bits;
       end;
-    $E0..$EF:
+    cLead3First..cLead3Last:
       begin
         ACount := 2;
-        ACodePoint := ALead and $0F;
+        ACodePoint := ALead and cLead3Bits;
       end;
-    $F0..$F4:
+    cLead4First..cLead4Last:
       begin
-        ACount := 3;
-        ACodePoint := ALead and $07;
+        ACount := cLead4Followers;
+        ACodePoint := ALead and cLead4Bits;
       end;
   else
     ACount := 0;
@@ -134,14 +186,16 @@ end;
 // Überlange Form: Der Wert hätte in weniger Bytes gepasst.
 function IsOverlong(ACount: Integer; ACodePoint: Cardinal): Boolean;
 begin
-  Result := ((ACount = 2) and (ACodePoint < $800)) or ((ACount = 3) and (ACodePoint < $10000));
+  Result := ((ACount = 2) and (ACodePoint < cMinThreeByteValue)) or
+    ((ACount = cLead4Followers) and (ACodePoint < TTextEncodingProbe.cFirstSupplementary));
 end;
 
 // Surrogate und Werte über U+10FFFF sind kein gültiges UTF-8.
 function IsAllowedCodePoint(ACount: Integer; ACodePoint: Cardinal): Boolean;
 begin
-  Result := not IsOverlong(ACount, ACodePoint) and (ACodePoint <= $10FFFF) and
-    not ((ACodePoint >= $D800) and (ACodePoint <= $DFFF));
+  Result := not IsOverlong(ACount, ACodePoint) and (ACodePoint <= TTextEncodingProbe.cMaxCodePoint) and
+    not ((ACodePoint >= TTextEncodingProbe.cHighSurrogateFirst) and
+    (ACodePoint <= TTextEncodingProbe.cSurrogateLast));
 end;
 
 // Gültige Mehrbytefolge ab AIndex? ACount ist die Zahl der Folgebytes.
@@ -156,11 +210,11 @@ begin
   end;
   for mNext := AIndex + 1 to AIndex + ACount do
   begin
-    if (ABytes[mNext] and $C0) <> $80 then
+    if (ABytes[mNext] and cContinuationMask) <> cContinuationTag then
     begin
       Exit(False);
     end;
-    mCodePoint := (mCodePoint shl 6) or (ABytes[mNext] and $3F);
+    mCodePoint := (mCodePoint shl cContinuationBits) or (ABytes[mNext] and cContinuationPayload);
   end;
   Result := IsAllowedCodePoint(ACount, mCodePoint);
 end;
@@ -174,7 +228,7 @@ begin
   mIndex := AStart;
   while mIndex < Length(ABytes) do
   begin
-    if ABytes[mIndex] < $80 then
+    if ABytes[mIndex] < cFirstNonAscii then
     begin
       Inc(mIndex);
       Continue;
@@ -195,7 +249,7 @@ var
 begin
   for mValue in ABytes do
   begin
-    if mValue >= $80 then
+    if mValue >= cFirstNonAscii then
     begin
       Exit(False);
     end;
@@ -223,7 +277,7 @@ end;
 
 class function TTextEncodingProbe.IsBinaryForm(const ABytes: TBytes): Boolean;
 begin
-  Result := HasPrefix(ABytes, [Ord('T'), Ord('P'), Ord('F'), Ord('0')]) or HasPrefix(ABytes, [$FF, $0A, $00]);
+  Result := HasPrefix(ABytes, [Ord('T'), Ord('P'), Ord('F'), Ord('0')]) or HasPrefix(ABytes, cResourceFormPrefix);
 end;
 
 class function TTextEncodingProbe.ParseCodePage(const AText: string; out ACodePage: Integer): Boolean;
@@ -238,13 +292,13 @@ begin
     ACodePage := cUtf8CodePage;
     Exit(True);
   end;
-  if Copy(mText, 1, 8) = 'windows-' then
+  if mText.StartsWith(cWindowsPrefix) then
   begin
-    Delete(mText, 1, 8);
+    Delete(mText, 1, Length(cWindowsPrefix));
   end
-  else if Copy(mText, 1, 2) = 'cp' then
+  else if mText.StartsWith(cCpPrefix) then
   begin
-    Delete(mText, 1, 2);
+    Delete(mText, 1, Length(cCpPrefix));
   end;
   if not TryStrToInt(mText, ACodePage) then
   begin
@@ -289,7 +343,7 @@ begin
   for mIndex := AStart to High(ABytes) do
   begin
     mValue := ABytes[mIndex];
-    if (mValue >= $80) and (mValue <= $9F) then
+    if (mValue >= cCp1252SpecialFirst) and (mValue <= cCp1252SpecialLast) then
     begin
       Result[mIndex - AStart + 1] := Char(cCp1252High[mValue]);
     end
@@ -312,7 +366,7 @@ begin
   begin
     mCode := Ord(AText[mIndex]);
     mValue := Ord('?');
-    if (mCode < $80) or ((mCode >= $A0) and (mCode <= $FF)) then
+    if (mCode < cFirstNonAscii) or ((mCode >= cLatin1First) and (mCode <= cLatin1Last)) then
     begin
       mValue := mCode;
     end

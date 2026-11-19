@@ -117,7 +117,53 @@ function AtlasSettingsParts: IAtlasSettingsParts;
 implementation
 
 uses
-  Atlas.Text.LogMarks;
+  System.StrUtils,
+  Atlas.Text.LogMarks,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TPartsText = (InvalidKey, DuplicateKey, KeyTaken, RenameTargetUnknown, RenameSourceTaken, NoPart, NoOwner,
+    NoStore, NotRegistered, WrongKind, ModuleRegistered, NoListener);
+
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TPartsText] of string = (
+    (
+     'Ungültiger Schlüssel „%s“ in %s',
+     'Schlüssel %s doppelt in %s',
+     'Schlüssel %s gehört schon %s',
+     'Umbenennung nach %s: kein Schlüssel von %s',
+     'Umbenennung von „%s“ in %s: Schlüssel ist angemeldet oder ungültig',
+     'Kein Einstellungsteil angegeben',
+     'Einstellungsteil ohne Besitzer',
+     'Keine Ablage angegeben',
+     'Einstellung %s ist nicht angemeldet',
+     'Einstellung %s ist kein %s, sondern %s',
+     'Modul %s ist angemeldet; seine Werte bleiben',
+     'Kein Hörer angegeben'),
+    (
+     'Invalid key "%s" in %s',
+     'Key %s declared twice in %s',
+     'Key %s already belongs to %s',
+     'Rename to %s: not a key of %s',
+     'Rename of "%s" in %s: key is registered or invalid',
+     'No settings part given',
+     'Settings part without owner',
+     'No store given',
+     'Setting %s is not registered',
+     'Setting %s is not %s but %s',
+     'Module %s is registered; its values stay',
+     'No listener given'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TPartsText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 type
   TAtlasPartRegistration = class(TAtlasRegistration)
@@ -169,11 +215,11 @@ end;
 function TryParseBoolean(const AText: string; out AValue: Boolean): Boolean;
 begin
   Result := True;
-  if (AText = '1') or SameText(AText, 'true') then
+  if MatchText(AText, ['1', 'true']) then
   begin
     AValue := True;
   end
-  else if (AText = '0') or SameText(AText, 'false') then
+  else if MatchText(AText, ['0', 'false']) then
   begin
     AValue := False;
   end
@@ -218,15 +264,15 @@ begin
   begin
     if (Trim(mKey.Key) = '') or IsAdministrative(mKey.Key) then
     begin
-      raise EAtlasSettingsParts.CreateFmt('Ungültiger Schlüssel „%s“ in %s', [mKey.Key, AOwnerId]);
+      raise EAtlasSettingsParts.CreateFmt(UiText(TPartsText.InvalidKey), [mKey.Key, AOwnerId]);
     end;
     if AOwnKeys.Contains(mKey.Key) then
     begin
-      raise EAtlasSettingsParts.CreateFmt('Schlüssel %s doppelt in %s', [mKey.Key, AOwnerId]);
+      raise EAtlasSettingsParts.CreateFmt(UiText(TPartsText.DuplicateKey), [mKey.Key, AOwnerId]);
     end;
     if AKnown.TryGetValue(mKey.Key, mKnown) then
     begin
-      raise EAtlasSettingsParts.CreateFmt('Schlüssel %s gehört schon %s', [mKey.Key, mKnown.OwnerId]);
+      raise EAtlasSettingsParts.CreateFmt(UiText(TPartsText.KeyTaken), [mKey.Key, mKnown.OwnerId]);
     end;
     AOwnKeys.Add(mKey.Key);
   end;
@@ -243,12 +289,12 @@ begin
   begin
     if not AOwnKeys.Contains(mRename.NewKey) then
     begin
-      raise EAtlasSettingsParts.CreateFmt('Umbenennung nach %s: kein Schlüssel von %s', [mRename.NewKey, AOwnerId]);
+      raise EAtlasSettingsParts.CreateFmt(UiText(TPartsText.RenameTargetUnknown), [mRename.NewKey, AOwnerId]);
     end;
     if (Trim(mRename.OldKey) = '') or IsAdministrative(mRename.OldKey) or AOwnKeys.Contains(mRename.OldKey) or
       AKnown.ContainsKey(mRename.OldKey) then
     begin
-      raise EAtlasSettingsParts.CreateFmt('Umbenennung von „%s“ in %s: Schlüssel ist angemeldet oder ungültig',
+      raise EAtlasSettingsParts.CreateFmt(UiText(TPartsText.RenameSourceTaken),
         [mRename.OldKey, AOwnerId]);
     end;
   end;
@@ -259,7 +305,7 @@ function PartEntryOf(const APart: IAtlasSettingsPart): TAtlasSettingsParts.TPart
 begin
   if APart = nil then
   begin
-    raise EAtlasSettingsParts.Create('Kein Einstellungsteil angegeben');
+    raise EAtlasSettingsParts.Create(UiText(TPartsText.NoPart));
   end;
   Result := Default(TAtlasSettingsParts.TPartEntry);
   Result.Part := APart;
@@ -268,7 +314,7 @@ begin
   Result.Renames := APart.Renames;
   if Result.OwnerId = '' then
   begin
-    raise EAtlasSettingsParts.Create('Einstellungsteil ohne Besitzer');
+    raise EAtlasSettingsParts.Create(UiText(TPartsText.NoOwner));
   end;
 end;
 { TAtlasMemorySettingsStorage }
@@ -396,7 +442,7 @@ begin
   inherited Create;
   if AStorage = nil then
   begin
-    raise EAtlasSettingsParts.Create('Keine Ablage angegeben');
+    raise EAtlasSettingsParts.Create(UiText(TPartsText.NoStore));
   end;
   FLock := TCriticalSection.Create;
   FStorage := AStorage;
@@ -430,11 +476,11 @@ function TAtlasSettingsParts.KeyOf(const AKey: string; AKind: TAtlasSettingsValu
 begin
   if not FKeys.TryGetValue(AKey, Result) then
   begin
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist nicht angemeldet', [AKey]);
+    raise EAtlasSettingsKey.CreateFmt(UiText(TPartsText.NotRegistered), [AKey]);
   end;
   if Result.Key.Kind <> AKind then
   begin
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist kein %s, sondern %s',
+    raise EAtlasSettingsKey.CreateFmt(UiText(TPartsText.WrongKind),
       [AKey, cKindNames[AKind], cKindNames[Result.Key.Kind]]);
   end;
 end;
@@ -721,7 +767,7 @@ var
 begin
   if AStorage = nil then
   begin
-    raise EAtlasSettingsParts.Create('Keine Ablage angegeben');
+    raise EAtlasSettingsParts.Create(UiText(TPartsText.NoStore));
   end;
   FLock.Acquire;
   try
@@ -763,7 +809,7 @@ begin
     begin
       if SameText(mEntry.OwnerId, AOwnerId) then
       begin
-        raise EAtlasSettingsParts.CreateFmt('Modul %s ist angemeldet; seine Werte bleiben', [AOwnerId]);
+        raise EAtlasSettingsParts.CreateFmt(UiText(TPartsText.ModuleRegistered), [AOwnerId]);
       end;
     end;
     mName := OwnerKeysName(AOwnerId);
@@ -789,7 +835,7 @@ var
 begin
   if AListener = nil then
   begin
-    raise EAtlasSettingsParts.Create('Kein Hörer angegeben');
+    raise EAtlasSettingsParts.Create(UiText(TPartsText.NoListener));
   end;
   mItem := TAtlasSettingsListenerRegistration.Create(Self);
   mEntry.Listener := AListener;
@@ -909,7 +955,7 @@ begin
   try
     if not FKeys.TryGetValue(AKey, mEntry) then
     begin
-      raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist nicht angemeldet', [AKey]);
+      raise EAtlasSettingsKey.CreateFmt(UiText(TPartsText.NotRegistered), [AKey]);
     end;
     mRemoved := FStorage.Contains(AKey);
     if mRemoved then
@@ -945,6 +991,7 @@ begin
 end;
 
 initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.Parts', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
   AtlasSettingsParts;
 
 finalization

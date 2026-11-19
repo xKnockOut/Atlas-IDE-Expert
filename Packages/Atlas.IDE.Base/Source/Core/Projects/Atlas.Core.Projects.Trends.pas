@@ -63,13 +63,16 @@ uses
 
 /// <summary>Build des Benutzers: Warnungen plus Hinweise, Dauer.</summary>
 procedure MeasureBuild(const ASummary: TAtlasProjectSummary; AAtUtc: TDateTime; var APoint: TAtlasTrendPoint);
+const
+  // Dauer in Zehntelsekunden, gerundet.
+  cMsPerTenth = 100;
 begin
   if ASummary.Build.Known and TAtlasProjectTrendLog.SameStamp(ASummary.Build.At, AAtUtc) then
   begin
     APoint.SetValue(TAtlasTrendSeries.Warnings, (ASummary.Build.Warnings + ASummary.Build.Hints) * 10);
     if ASummary.Build.DurationMs > 0 then
     begin
-      APoint.SetValue(TAtlasTrendSeries.Duration, (ASummary.Build.DurationMs + 50) div 100);
+      APoint.SetValue(TAtlasTrendSeries.Duration, (ASummary.Build.DurationMs + cMsPerTenth div 2) div cMsPerTenth);
     end;
   end;
 end;

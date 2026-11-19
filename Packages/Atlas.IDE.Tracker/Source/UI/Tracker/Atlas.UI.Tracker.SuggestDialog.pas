@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SuggestDialog;
 
-// Dialog „Arbeitskopien vorschlagen“ (#1929, Mockup Runde 82 TP4), reine VCL:
+// Dialog „Arbeitskopien vorschlagen“ (#1929), reine VCL:
 //   Arbeitskopien vorschlagen – YouTrack · KASSE
 //   Gefunden in … Häkchen setzen, dann „Übernehmen“.
 //   [x] D:\SVN\Kasse\trunk          svn  Arbeitskopie von Kasse.groupproj

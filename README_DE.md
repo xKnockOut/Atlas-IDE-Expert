@@ -63,7 +63,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Vorlagen:** Code-, Postfix- und klassenbezogene Vorlagen, eigene Snippets, Schrägstrich-Befehle wie `/uses` und `/extract`
 - **Generieren-Menü** (Alt+Einfg) und Bearbeitungshilfen: umschließen, Zeilen verschieben, Kommentare umschalten, var-Blöcke aufräumen
 - **Formatierer** (Strg+Umschalt+Alt+L), auch ohne IDE
-- **Klassenvervollständigung:** `{ TKunde }` über den Rümpfen (oder Trennlinie, Doku-Satz, Region), Konstruktor und Destruktor zuerst, dann Get/Set-Paare; neue Rümpfe mit `inherited` und `Result := FName` vorbefüllt
+- **Klassenvervollständigung:** `{ TKunde }` über den Rümpfen (oder Trennlinie, Doku-Satz, Region), Konstruktor und Destruktor zuerst, dann Get/Set-Paare; neue Rümpfe mit `inherited` und `Result := FName` vorbefüllt; genau eine Leerzeile zwischen angelegten oder geordneten Rümpfen (`classCompletion.blankLines`)
 - **Einrückung beim Tippen:** Nach Enter steht die Schreibmarke an der richtigen Stelle der Blockstruktur, `end`, `until`, `finally` und `else` rücken auf ihr Gegenstück, ein String wird beim Umbruch mit `' +` getrennt
 - **Gelernte Vorschläge:** Nach `X := TFoo.Create;` oder `L.BeginUpdate;` und Enter schlägt Atlas als grauen Schattentext vor, was im eigenen Projekt meist folgt (`try … finally X.Free; end;`), ohne KI und ohne Netz; Tab übernimmt, Esc verwirft, Hausregeln des Teams in `atlas.json`
 
@@ -87,6 +87,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **358 Prüfregeln** schon beim Tippen: 238 Fehler, 109 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
+- **Befunde als Auftrag für einen KI-Assistenten:** „Als Auftrag für KI-Assistenten kopieren“ im Fenster „Atlas-Prüfung“ (auch mehrere Befunde, je Datei gruppiert) und im Editor legt Regel, Meldung, Codeausschnitt, Erklärung und das MCP-Werkzeug zum Nachprüfen in die Zwischenablage
 - **Compilermeldungen erklärt:** Der Hover zeigt unter einer Meldung von dcc oder der IDE wie E2003 oder W1035 die typische Ursache, dazu die Links „Erklären“ (Dialog mit falschem und richtigem Beispiel) und „DocWiki“; rund 40 Meldungen auf Deutsch und Englisch, auch ohne dcc (`hover.explainMessages`)
 - **Threads, Lecks und Konstruktoren:** Regeln finden Ausnahmen, die einen Thread still beenden, weil `TThread.Execute` sie nicht fängt (`thread-execute-without-except`), und Objekte, die lecken, wenn das zweite von mehreren `Create` vor einem gemeinsamen `try … finally` scheitert (`multiple-create-in-try`, mit sicherer Korrektur), und Warteschleifen, die ein Feld mit `Sleep` abfragen, statt auf ein Ereignis zu warten (`sleep-polling-loop`), und Konstruktoren, die eine virtuelle Methode aufrufen, deren Überschreibung im Nachfahren ein Feld liest, das erst nach `inherited` gesetzt wird (`virtual-call-in-constructor`, Nachfahren über den Index auch aus anderen Units)
 - **Profile, Konfidenz, Baseline und Unterdrückungen** für gewachsene Projekte
@@ -128,7 +129,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Leckprüfung einrichten …** im Kontextmenü eines Projekts: zeigt, was für die Lecksuche fehlt (FastMM4/FastMM5 gefunden, erste Unit im uses, Meldung beim Beenden, Symbole und DLL der Konfiguration Debug), und richtet die gewählte Variante mit Vorschau ein, nur im Debug-Build (`tests.leakSetup`)
 - **Test aus dem Debug-Halt:** „Test daraus anlegen …“ in der Exception-Leiste macht aus den Werten des Halts einen DUnitX-Test, der funktionieren oder die Exception werfen soll
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, Fenster „Variablen“ (Autos, Lokal, Überwachung, Suche auch in Unterelementen), gezieltes Hineinspringen, Aufrufstapel mit benannten Parameterwerten, Suche und Vergleich mit dem letzten Halt; Laufzeit seit dem letzten Halt am Zeilenende
-- **Haltepunkte:** eigenes Fenster „Haltepunkte“ mit Suche, Etiketten und Trefferzahlen; Haltepunkte auf Methoden nach Muster, nur für ein Objekt, **Anhalten, wenn sich ein Feld ändert**, Regeln (abhängig, Trefferbedingung, Thread), benannte Sätze, Prüfung vor dem Start; sie wandern mit dem Code, „bis hier ausführen“ per Klick in den Rand
+- **Haltepunkte:** eigenes Fenster „Haltepunkte“ mit Suche, Etiketten und Trefferzahlen; Haltepunkte auf Methoden nach Muster, nur für ein Objekt, **Anhalten, wenn sich ein Feld ändert**, Regeln (abhängig, Trefferbedingung, Thread, **nur bei Aufruf aus einer bestimmten Methode**), benannte Sätze, Prüfung vor dem Start; sie wandern mit dem Code, „bis hier ausführen“ per Klick in den Rand
 - **„Warum bin ich hier?“ und Bedingungen vorausschauen:** Beim Halt stehen an den umgebenden `if`, `while` und `case` die Werte ihrer Bedingungen, an den kommenden die vorhergesagten Ergebnisse; übersprungene Zweige sind blass
 - **Werte im Debug-Hover** aufklappen (geänderte Werte hinterlegt, alter Wert dahinter), direkt **ändern** (F2) und **anheften**
 - **Neu starten** mit Strg+Umschalt+F2 (beenden, bei Änderungen bauen, starten, zurück an die Stelle), **erneut an einen Prozess anhängen** (Umschalt+Alt+P) und **mehrere Programme gemeinsam debuggen** (Startverbünde `launchGroups` in `.atlas`)
@@ -167,9 +168,14 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
+- **Letzter Testlauf ohne neuen Lauf:** `get_last_tests` liefert, was die IDE beim letzten Testlauf gesehen hat: rote Tests mit Datei:Zeile, erwartet und erhalten, Protokollauszug und Marken neu rot, wieder grün, wackelig, Leck und veraltet (`tests.lastRun`)
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
+- **Wo du in der IDE bist:** `get_ide_context` nennt KI-Assistenten die offene Datei mit Cursor und Methode, die Auswahl, das aktive Projekt mit Konfiguration und Plattform, den letzten Build und die Reiter; „diese Methode“ muss niemand mehr kopieren (`assistants.context`)
+- **Mehrere Abfragen auf einmal:** `batch` führt bis zu 10 lesende MCP-Werkzeuge in einem Aufruf aus, auf einem gemeinsamen Indexstand mit einem einzigen Dateiabgleich; ein Fehler betrifft nur seinen Abschnitt
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
+- **Befunde nach der Änderung:** Die schreibenden MCP-Werkzeuge hängen die neuen und behobenen Befunde der geänderten Dateien an ihre Antwort (`delphi://edits/last` für die letzte Änderung)
+- **Geschützte Dateien:** `assistants.protected` in `atlas.json` nennt Dateien, die KI-Assistenten nicht ändern dürfen (erzeugte Units, `CHANGELOG.md`), mit Grund und richtigem Weg; die schreibenden MCP-Werkzeuge lehnen solche Änderungen ab, ohne etwas zu schreiben, der Hook lehnt sie ab oder meldet sie
 
 ### Geplant
 

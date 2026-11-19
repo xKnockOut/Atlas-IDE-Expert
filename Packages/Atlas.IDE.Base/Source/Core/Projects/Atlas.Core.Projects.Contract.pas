@@ -141,20 +141,24 @@ begin
 end;
 
 function TAtlasProjectContext.Describe: string;
+const
+  // Protokollzeile (nie übersetzt).
+  cNoOptions = 'keine Optionen';
+  cLine = '%s %s/%s (%s, BDS %s): Defines %s; %d Suchpfade, %d Namespaces, %d Bibliothekspfade';
+  cActive = ', aktiv';
 var
   mOrigin: string;
 begin
   mOrigin := Source;
   if mOrigin = '' then
   begin
-    mOrigin := 'keine Optionen';
+    mOrigin := cNoOptions;
   end;
-  Result := Format('%s %s/%s (%s, BDS %s): Defines %s; %d Suchpfade, %d Namespaces, %d Bibliothekspfade',
-    [ExtractFileName(Project), Configuration, Platform, mOrigin, BdsVersion, string.Join(';', Defines),
-    Length(SearchPaths), Length(Namespaces), Length(LibraryPaths)]);
+  Result := Format(cLine, [ExtractFileName(Project), Configuration, Platform, mOrigin, BdsVersion,
+    string.Join(';', Defines), Length(SearchPaths), Length(Namespaces), Length(LibraryPaths)]);
   if Active then
   begin
-    Result := Result + ', aktiv';
+    Result := Result + cActive;
   end;
 end;
 
