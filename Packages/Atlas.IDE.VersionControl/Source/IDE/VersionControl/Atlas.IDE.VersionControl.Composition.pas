@@ -127,11 +127,6 @@ var
 
 { Dienste von Base }
 
-procedure MessageLine(const AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 /// <summary>Befehl ohne Argumente an den laufenden Server; die Antwort braucht niemand.</summary>
 function ServerCommand(ACommand: string): Boolean;
 begin
@@ -174,15 +169,11 @@ end;
 procedure StartVcs;
 begin
   // Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile (#571).
-  TAtlasIdeVcsCore.Start(MessageLine, Backend);
+  TAtlasIdeVcsCore.Start(TAtlasIdeHost.Messages(), Backend);
   TAtlasIdeBranching.ServerCommand := ServerCommand;
   TAtlasIdeVcs.Bind(TAtlasVcsServiceAdapter.Create, TAtlasVcsDialogsAdapter.Create);
   // Änderungsmarken und Zeilenhistorie (#507, #1905): mit den Haken, die der Tracker schon abgelegt hat.
-  TAtlasIdeLineChanges.Install(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
+  TAtlasIdeLineChanges.Install(TAtlasIdeHost.Messages());
   TAtlasIdeLineChanges.SetBlameHooks(TAtlasLineChangeMarks.BlameHooks);
   TAtlasLineChangeMarks.Bind(TAtlasLineChangesAdapter.Create);
   GStarted := True;

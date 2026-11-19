@@ -87,11 +87,6 @@ begin
   Result := TAtlasIdeHost.RunningSession;
 end;
 
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 procedure LogLine(AText: string);
 begin
   TAtlasIdeHost.Log(AText);
@@ -122,7 +117,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   TAtlasEditorHover.OnExplain :=
     function(const AValue: TAtlasDebugValue; const ADone: TAtlasDebugValueEvent): TAtlasDebugValue
     begin
@@ -179,7 +174,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   TAtlasIdeDebugAccessViolation.SetWhereAssigned(ShowWhereAssigned);
   TAtlasIdeDebugAccessViolation.SetEvaluate(EvaluateExpression);
 end;
@@ -187,7 +182,7 @@ end;
 /// <summary>Speicherverlauf (#858): misst ohne Server.</summary>
 procedure StartDebugMemoryTimeline;
 begin
-  TAtlasIdeDebugMemoryTimeline.Start(MessageLine);
+  TAtlasIdeDebugMemoryTimeline.Start(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Start von „Warum bin ich hier?“ mit Serverbefehlen im Hintergrund über Base und den Scope AScope; die
@@ -261,7 +256,7 @@ end;
 /// <summary>Angeheftete Werte (#526): „Anheften“ im Debug-Hover.</summary>
 procedure StartDebugPins;
 begin
-  TAtlasIdeDebugPins.Start(MessageLine);
+  TAtlasIdeDebugPins.Start(TAtlasIdeHost.Messages());
   HookHoverActions;
 end;
 
@@ -292,7 +287,7 @@ begin
         begin
           Result := TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger, ACommand, AArgumentsJson,
             ATimeoutMs, ADone);
-        end, MessageLine, ValuesChanged);
+        end, TAtlasIdeHost.Messages(), ValuesChanged);
       HookHoverActions;
     end;
 end;
