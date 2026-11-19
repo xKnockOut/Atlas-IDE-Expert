@@ -39,6 +39,8 @@ type
     procedure TakesDynamicArray;
     [Test]
     procedure AddTextLeavesOutEmptyValue;
+    [Test]
+    procedure IsoTimeRoundTrips;
   end;
 
   [TestFixture]
@@ -212,6 +214,23 @@ begin
     TJsonBuild.AddText(mObject, 'a', 'Wert');
     TJsonBuild.AddText(mObject, 'b', '');
     Assert.AreEqual('{"a":"Wert"}', mObject.ToJSON([]));
+  finally
+    mObject.Free;
+  end;
+end;
+
+procedure TJsonBuildTests.IsoTimeRoundTrips;
+var
+  mObject: TJSONObject;
+  mStamp: TDateTime;
+begin
+  Assert.AreEqual('', TJsonBuild.IsoTime(0), 'ohne Zeitpunkt leer');
+  mStamp := EncodeDate(2026, 11, 19) + EncodeTime(8, 30, 15, 0);
+  Assert.AreEqual('2026-11-19T08:30:15.000Z', TJsonBuild.IsoTime(mStamp));
+  mObject := TJSONObject.Create;
+  try
+    mObject.AddPair('at', TJsonBuild.IsoTime(mStamp));
+    Assert.AreEqual(Double(mStamp), Double(TJsonRead.IsoTime(mObject, 'at', True)), 1 / (24 * 3600));
   finally
     mObject.Free;
   end;
