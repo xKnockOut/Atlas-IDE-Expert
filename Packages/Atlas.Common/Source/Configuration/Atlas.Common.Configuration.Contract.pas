@@ -718,6 +718,11 @@ type
     McpPromptLanguage: string;
     /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
     McpCustomPrompts: TArray<TMcpCustomPrompt>;
+    /// <summary>Anweisungsdateien für KI-Assistenten relativ zu atlas.json (assistants.instructions.file, #2615);
+    /// Vorgabe AGENTS.md.</summary>
+    AssistantsInstructionFiles: TArray<string>;
+    /// <summary>Pflicht-Prüfbefehle im Abschnitt der Anweisungen (assistants.instructions.checks, #2615).</summary>
+    AssistantsInstructionChecks: TArray<string>;
     /// <summary>Dateien, die KI-Assistenten nicht ändern dürfen (assistants.protected, #2608).</summary>
     AssistantProtected: TArray<TProtectedPath>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
@@ -1545,6 +1550,8 @@ begin
   ASettings.McpReportFindingsAfterEdit := True;
   ASettings.McpPromptLanguage := 'de';
   ASettings.McpCustomPrompts := nil;
+  ASettings.AssistantsInstructionFiles := TArray<string>.Create('AGENTS.md');
+  ASettings.AssistantsInstructionChecks := nil;
   ASettings.AssistantProtected := nil;
   ASettings.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
