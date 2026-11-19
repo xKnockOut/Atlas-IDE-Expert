@@ -187,13 +187,8 @@ begin
 end;
 
 class procedure TAtlasIdeFormatMarks.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 procedure TAtlasIdeFormatMarks.Show(const AFileName, AText: string; ATabWidth: Integer;

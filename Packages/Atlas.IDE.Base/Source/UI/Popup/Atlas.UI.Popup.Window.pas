@@ -122,6 +122,19 @@ type
     property Font;
   end;
 
+  /// <summary>Popup, das seinen Inhalt in Layout misst und zeichnet: Paint füllt die Fläche in Colors.Surface,
+  /// zeichnet Layout und den Rahmen.</summary>
+  TAtlasLayoutPopupWindow = class(TAtlasPopupWindow)
+  protected
+    /// <summary>Inhalt messen (ADraw = False) oder zeichnen; Ergebnis: benötigte Größe.</summary>
+    function Layout(ADraw: Boolean): TSize; virtual; abstract;
+    procedure Paint; override;
+    /// <summary>AText ab AX, AY in AColor, nur wenn ADraw (sonst wird nur gemessen).</summary>
+    procedure PutText(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
+    /// <summary>Wie PutText; AX rückt danach um die Breite von AText weiter (Text in Folge).</summary>
+    procedure PutRun(ADraw: Boolean; var AX: Integer; AY: Integer; const AText: string; AColor: TAtlasColor);
+  end;
+
 /// <summary>TAtlasColor als TColor.</summary>
 function ToColor(AColor: TAtlasColor): TColor;
 
@@ -471,6 +484,33 @@ begin
   begin
     Result := Screen.PixelsPerInch;
   end;
+end;
+
+{ TAtlasLayoutPopupWindow }
+
+procedure TAtlasLayoutPopupWindow.Paint;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
+end;
+
+procedure TAtlasLayoutPopupWindow.PutText(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
+begin
+  if ADraw then
+  begin
+    Canvas.Font.Color := ToColor(AColor);
+    Canvas.TextOut(AX, AY, AText);
+  end;
+end;
+
+procedure TAtlasLayoutPopupWindow.PutRun(ADraw: Boolean; var AX: Integer; AY: Integer; const AText: string;
+  AColor: TAtlasColor);
+begin
+  PutText(ADraw, AX, AY, AText, AColor);
+  Inc(AX, Canvas.TextWidth(AText));
 end;
 
 end.

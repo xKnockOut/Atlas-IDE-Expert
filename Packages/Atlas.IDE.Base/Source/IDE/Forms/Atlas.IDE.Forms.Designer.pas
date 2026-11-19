@@ -112,7 +112,8 @@ uses
   Atlas.Core.Forms.Text,
   Atlas.Core.Forms.PropertyValues,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.IDE.Foundation.DesignerView;
 
 {$SCOPEDENUMS ON}
 
@@ -188,17 +189,6 @@ begin
   end;
 end;
 
-function RootOf(const AEditor: IOTAFormEditor): TComponent;
-var
-  mComponent: INTAComponent;
-begin
-  Result := nil;
-  if (AEditor <> nil) and Supports(AEditor.GetRootComponent, INTAComponent, mComponent) then
-  begin
-    Result := mComponent.GetComponent;
-  end;
-end;
-
 function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
 var
   mNative: INTAFormEditor;
@@ -216,7 +206,7 @@ var
   mDesigner: IDesigner;
 begin
   Result := '';
-  mRoot := RootOf(AEditor);
+  mRoot := TAtlasIdeDesignerView.RootOf(AEditor);
   mDesigner := DesignerOf(AEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
@@ -471,7 +461,7 @@ begin
   FDirtyRoots.Clear;
   for mEditor in FormEditors do
   begin
-    mRoot := RootOf(mEditor);
+    mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
     if mRoot <> nil then
     begin
       SyncEditor(ASession, mEditor, mRoot);
@@ -490,7 +480,7 @@ begin
   end;
   for mEditor in FormEditors do
   begin
-    mRoot := RootOf(mEditor);
+    mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
     if (mRoot <> nil) and FDirtyRoots.Contains(mRoot) then
     begin
       SyncEditor(ASession, mEditor, mRoot);
@@ -555,7 +545,7 @@ end;
 
 class function TAtlasIdeForms.IsOpen(const AFileName: string): Boolean;
 begin
-  Result := RootOf(EditorOf(AFileName)) <> nil;
+  Result := TAtlasIdeDesignerView.RootOf(EditorOf(AFileName)) <> nil;
 end;
 
 class function TAtlasIdeForms.Check(const AFileName: string; const AEdits: TArray<TLspTextEdit>;
@@ -596,7 +586,7 @@ var
   mIndex: Integer;
 begin
   mEditor := EditorOf(AFileName);
-  mRoot := RootOf(mEditor);
+  mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
   mDesigner := DesignerOf(mEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin

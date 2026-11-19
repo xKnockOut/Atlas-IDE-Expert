@@ -33,7 +33,7 @@ uses
   Atlas.Core.Notifications.MessageSink;
 
 type
-  TAtlasMethodPlacementSessionFunc = reference to function: TLspSession;
+  TAtlasMethodPlacementSessionFunc = TFunc<TLspSession>;
 
   TAtlasIdeMethodPlacement = class
   private const
@@ -254,11 +254,7 @@ end;
 
 function TAtlasIdeMethodPlacement.CurrentSession: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSession) then
-  begin
-    Result := FSession();
-  end;
+  Result := TLspSession.From(FSession);
 end;
 
 class function TAtlasIdeMethodPlacement.Mode: string;

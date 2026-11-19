@@ -275,16 +275,6 @@ type
     procedure ThemeChanged;
   end;
 
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 { TEvents }
 
 function TEvents.AllowedEvents: TCodeEditorEvents;
@@ -359,7 +349,7 @@ begin
   StickyShown := False;
   if mShown then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
   inherited Destroy;
 end;
@@ -441,7 +431,7 @@ begin
         Clear;
         if mShown then
         begin
-          InvalidateEditor;
+          TAtlasIdeEditorRefresh.InvalidateCurrent;
         end;
       end;
     TAtlasStickyRefresh.Reload:
@@ -453,11 +443,11 @@ begin
         AnalyzePairs(mSnapshot.Text);
         ReadSyntax;
         FRowsTop := -1;
-        InvalidateEditor;
+        TAtlasIdeEditorRefresh.InvalidateCurrent;
       end;
     TAtlasStickyRefresh.Repaint:
       // Bildlauf ohne Malen der oberen Zeilen (z. B. per Rollrad): ganz neu zeichnen.
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.InvalidateCurrent;
   else
     // Keep: warten bzw. nichts geändert.
   end;
@@ -475,7 +465,7 @@ begin
     procedure
     begin
       InvalidatePending := False;
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.InvalidateCurrent;
     end);
 end;
 
@@ -846,7 +836,7 @@ begin
     end
     else
     begin
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.InvalidateCurrent;
     end;
   except
     on E: Exception do
@@ -956,7 +946,7 @@ begin
   end;
   if mWas or FOn then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
@@ -970,7 +960,7 @@ begin
   FSchemeBackKnown := False;
   if FOn then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 

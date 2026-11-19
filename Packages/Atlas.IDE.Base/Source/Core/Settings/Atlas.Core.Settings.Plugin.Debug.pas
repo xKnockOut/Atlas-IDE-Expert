@@ -140,6 +140,13 @@ type
     /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
     /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
     DebugBreakOnNextEventExcluded: string;
+    /// <summary>Anhalten bei Datenzugriff (#870, debug.dataBreaks): Befehl im Menü Start und in der Befehlspalette,
+    /// der vorübergehende Haltepunkte auf eigene SQL- und HTTP-Aufrufe setzt und nur bei passendem Text anhält;
+    /// aus = kein Befehl, kein Menüeintrag.</summary>
+    DebugDataBreaks: Boolean;
+    /// <summary>Beobachtete Klassen (debug.dataBreaks.classes, kommagetrennt, unbekannte mit =sql bzw. =http).
+    /// </summary>
+    DebugDataBreaksClasses: string;
     /// <summary>Haltepunkte, die nicht greifen werden (#577, debug.checkBreakpoints): Vor dem Start einer
     /// Debug-Sitzung meldet Atlas Haltepunkte auf Zeilen ohne Code, in inaktiven Zweigen, unter {$D-} und in Units
     /// anderer Projekte der Gruppe, mit Verschieben auf die nächste Codezeile; dazu der Befehl „Haltepunkte prüfen“.
@@ -420,14 +427,17 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
-    /// <summary>Werte der Haltepunkte (Prüfen bis Regeln, mit „Bis hier“ und nächster Anweisung) über AIo; Teil
-    /// von Exchange.</summary>
-    procedure ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben ab debug.inlineValues (Werte, Halt, Protokoll, Neustart, Anhängen, Start); Teil von
     /// Defaults.</summary>
     procedure SetStopAndLaunchDefaults;
     /// <summary>Werte ab debug.inlineValues über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
     procedure ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben der Haltepunkte (Ereignis, Datenzugriff, Prüfung, Methoden, Fenster …); Teil von
+    /// Defaults.</summary>
+    procedure SetBreakpointDefaults;
+    /// <summary>Werte der Haltepunkte (Ereignis, Datenzugriff, Prüfen bis Regeln, mit „Bis hier“ und nächster
+    /// Anweisung) über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
+    procedure ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -436,6 +446,7 @@ uses
   System.Math,
   System.SysUtils,
   Atlas.Core.Settings.EventBreakNames,
+  Atlas.Core.Settings.DataBreakClasses,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Text.StepFilter;
 
@@ -464,17 +475,7 @@ begin
   Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.cDefaultKinds);
   Result.DebugStepFilterPatterns := '';
   Result.DebugStepIntoTargetKey := cKeyCtrl + cKeyAlt + cKeyF7; // Strg+Alt+F7
-  Result.DebugBreakOnNextEvent := True;
-  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
-  Result.DebugCheckBreakpoints := True;
-  Result.DebugMethodBreakpoints := True;
-  Result.DebugInstanceBreakpoints := True;
-  Result.DebugDataBreakpoints := True;
-  Result.DebugBreakpointSetPerBranch := True;
-  Result.DebugRunToClick := True;
-  Result.DebugBreakpointsWindow := True;
-  Result.DebugBreakpointAnchors := True;
-  Result.DebugBreakpointRules := True;
+  Result.SetBreakpointDefaults;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
@@ -532,6 +533,7 @@ begin
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
   DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
   DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.NormalizeExcluded(DebugBreakOnNextEventExcluded);
+  DebugDataBreaksClasses := TAtlasDataBreakSettings.NormalizeClasses(DebugDataBreaksClasses);
   DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(DebugVisualizerNameFields);
   DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerSettings.cMinMaxLength,
     TAtlasVisualizerSettings.cMaxMaxLength);
@@ -568,8 +570,6 @@ begin
   AIo.Text('DebugStepFilterKinds', DebugStepFilterKinds);
   AIo.Text('DebugStepFilterPatterns', DebugStepFilterPatterns);
   AIo.Number('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
-  AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
-  AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
   ExchangeBreakpoints(AIo);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
@@ -598,8 +598,29 @@ begin
   ExchangeStopAndLaunch(AIo);
 end;
 
+procedure TAtlasPluginDebugSettings.SetBreakpointDefaults;
+begin
+  DebugBreakOnNextEvent := True;
+  DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
+  DebugDataBreaks := True;
+  DebugDataBreaksClasses := TAtlasDataBreakSettings.cDefaultClasses;
+  DebugCheckBreakpoints := True;
+  DebugMethodBreakpoints := True;
+  DebugInstanceBreakpoints := True;
+  DebugDataBreakpoints := True;
+  DebugBreakpointSetPerBranch := True;
+  DebugRunToClick := True;
+  DebugBreakpointsWindow := True;
+  DebugBreakpointAnchors := True;
+  DebugBreakpointRules := True;
+end;
+
 procedure TAtlasPluginDebugSettings.ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
 begin
+  AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
+  AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
+  AIo.Flag('DebugDataBreaks', DebugDataBreaks);
+  AIo.Text('DebugDataBreaksClasses', DebugDataBreaksClasses);
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
   AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);

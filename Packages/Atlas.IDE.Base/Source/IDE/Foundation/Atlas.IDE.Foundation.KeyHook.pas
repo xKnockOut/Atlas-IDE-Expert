@@ -39,6 +39,8 @@ type
     class procedure Remove(AClient: TAtlasKeyClient); static;
     class function Contains(AClient: TAtlasKeyClient): Boolean; static;
     class function Installed: Boolean; static;
+    /// <summary>Gedrückte Umschalt-, Strg- und Alt-Taste (ohne Maustasten).</summary>
+    class function CurrentShift: TShiftState; static;
   end;
 
 implementation
@@ -60,7 +62,7 @@ begin
   FPriority := APriority;
 end;
 
-function CurrentShift: TShiftState;
+class function TAtlasKeyHook.CurrentShift: TShiftState;
 begin
   Result := [];
   if GetKeyState(VK_SHIFT) < 0 then
@@ -126,7 +128,7 @@ var
   mShift: TShiftState;
 begin
   try
-    mShift := CurrentShift;
+    mShift := TAtlasKeyHook.CurrentShift;
     if (ACode = HC_ACTION) and ClientFor(Word(AWParam), mShift, mClient) then
     begin
       // Gedrückt (auch Wiederholung): ausführen; losgelassen nur schlucken.
