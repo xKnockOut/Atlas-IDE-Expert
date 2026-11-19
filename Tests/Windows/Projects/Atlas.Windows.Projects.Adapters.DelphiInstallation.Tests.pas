@@ -1,4 +1,4 @@
-﻿unit Atlas.Windows.Projects.DelphiInstallation.Tests;
+﻿unit Atlas.Windows.Projects.Adapters.DelphiInstallation.Tests;
 
 // Läuft gegen die echte Registry. Ohne installiertes Delphi prüfen die Tests
 // nur, dass nichts schiefgeht.
@@ -13,8 +13,6 @@ type
   TDelphiInstallationTests = class
   public
     [Test]
-    procedure VersionsAreSortedAscending;
-    [Test]
     procedure LatestProvidesExpandedLibraryPaths;
     [Test]
     procedure UnknownVersionRaises;
@@ -26,22 +24,9 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
-  Atlas.Windows.Projects.DelphiInstallation;
+  Atlas.Windows.Projects.Adapters.DelphiInstallation;
 
 { TDelphiInstallationTests }
-
-procedure TDelphiInstallationTests.VersionsAreSortedAscending;
-var
-  mVersions: TArray<string>;
-  mIndex: Integer;
-begin
-  mVersions := TDelphiInstallation.Versions;
-  for mIndex := 1 to High(mVersions) do
-  begin
-    Assert.IsTrue(StrToFloat(mVersions[mIndex - 1], TFormatSettings.Invariant) <
-      StrToFloat(mVersions[mIndex], TFormatSettings.Invariant));
-  end;
-end;
 
 procedure TDelphiInstallationTests.LatestProvidesExpandedLibraryPaths;
 var

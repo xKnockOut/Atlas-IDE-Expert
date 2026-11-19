@@ -209,6 +209,7 @@ uses
   System.StrUtils,
   System.Diagnostics,
   System.Generics.Collections,
+  Atlas.Common.JsonRpc.CustomCancellation,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Documents.Uris,
@@ -249,18 +250,6 @@ type
   /// <summary>Zeitlimit der Analyse; zu Ende gelaufen bricht die nächste Prüfung mit EImpactTimeLimit ab.</summary>
   EImpactTimeLimit = class(Exception);
 
-  TImpactDeadline = class(TInterfacedObject, IJsonRpcCancellationToken)
-  private
-    FInner: IJsonRpcCancellationToken;
-    FClock: TStopwatch;
-    FLimitMs: Int64;
-  public
-    constructor Create(const AInner: IJsonRpcCancellationToken; ALimitMs: Integer);
-    function Expired: Boolean;
-    function IsCancellationRequested: Boolean;
-    procedure ThrowIfCancellationRequested;
-  end;
-
   /// <summary>Gelesene Dateien einer oder mehrerer Analysen (AnalyzeEach, #1353).</summary>
   TImpactFiles = class
   public
@@ -288,7 +277,6 @@ type
     FSources: TImpactSources;
     FOptions: TImpactOptions;
     FToken: IJsonRpcCancellationToken;
-    FDeadline: TImpactDeadline;
     FPlaces: TList<TImpactPlace>;
     FTests: TList<TImpactTest>;
     /// <summary>Deklarationsschlüssel → Index in FPlaces; -1 = das Symbol.</summary>
@@ -388,36 +376,22 @@ const
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType];
   cMethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
 
-{ TImpactDeadline }
-
-constructor TImpactDeadline.Create(const AInner: IJsonRpcCancellationToken; ALimitMs: Integer);
+/// <summary>Grund für das Token der Analyse: das Zeitlimit (0 = keins).</summary>
+function ImpactTimeLimit(ALimitMs: Integer): TJsonRpcCancelReason;
+var
+  mClock: TStopwatch;
 begin
-  inherited Create;
-  FInner := AInner;
-  FLimitMs := ALimitMs;
-  FClock := TStopwatch.StartNew;
-end;
-
-function TImpactDeadline.Expired: Boolean;
-begin
-  Result := (FLimitMs > 0) and (FClock.ElapsedMilliseconds >= FLimitMs);
-end;
-
-function TImpactDeadline.IsCancellationRequested: Boolean;
-begin
-  Result := Expired or ((FInner <> nil) and FInner.IsCancellationRequested);
-end;
-
-procedure TImpactDeadline.ThrowIfCancellationRequested;
-begin
-  if FInner <> nil then
-  begin
-    FInner.ThrowIfCancellationRequested;
-  end;
-  if Expired then
-  begin
-    raise EImpactTimeLimit.Create(cTexts[TImpactText.TimeLimitOfTheImpact].Text);
-  end;
+  mClock := TStopwatch.StartNew;
+  Result :=
+    function(out AClass: ExceptClass): string
+    begin
+      AClass := EImpactTimeLimit;
+      Result := '';
+      if (ALimitMs > 0) and (mClock.ElapsedMilliseconds >= ALimitMs) then
+      begin
+        Result := cTexts[TImpactText.TimeLimitOfTheImpact].Text;
+      end;
+    end;
 end;
 
 { TImpactTestScope }
@@ -530,8 +504,7 @@ begin
   begin
     FMaxPlaces := TImpactAnalysis.cMaxPlaces;
   end;
-  FDeadline := TImpactDeadline.Create(ACancellation, AOptions.TimeoutMs);
-  FToken := FDeadline;
+  FToken := TJsonRpcCancellations.WithReason(ACancellation, ImpactTimeLimit(AOptions.TimeoutMs));
   FPlaces := TList<TImpactPlace>.Create;
   FTests := TList<TImpactTest>.Create;
   FKeys := TDictionary<string, Integer>.Create;

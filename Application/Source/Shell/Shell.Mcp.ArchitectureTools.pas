@@ -32,7 +32,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Report,

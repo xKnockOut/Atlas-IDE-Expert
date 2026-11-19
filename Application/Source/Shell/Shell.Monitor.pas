@@ -22,7 +22,7 @@ uses
   Vcl.Forms,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Monitor.Settings,
-  Atlas.Windows.Monitor.Adapters.System,
+  Atlas.Windows.Monitor.System,
   Shell.Bootstrap,
   Shell.Monitor.MainForm;
 

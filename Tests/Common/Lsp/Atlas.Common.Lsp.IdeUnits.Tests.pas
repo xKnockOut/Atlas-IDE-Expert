@@ -51,7 +51,7 @@ uses
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.IdeUnits.Source,
   Atlas.Common.Lsp.IdeUnits,
-  Atlas.Common.Lsp.IdeIndex,
+  Atlas.Common.Lsp.Adapters.IdeIndex,
   Atlas.Common.Index.NameIndex,
   Atlas.Common.Diagnostics.ShutdownLeaks;
 

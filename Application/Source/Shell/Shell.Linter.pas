@@ -119,7 +119,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Rules.Output,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Shell.Linter.Output,
   Shell.Linter.Check,
   Shell.Linter.Fix,
