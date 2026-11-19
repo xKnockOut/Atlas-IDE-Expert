@@ -55,6 +55,10 @@ const
   cMinTestsLogMaxLines = 100;
   cMaxTestsLogMaxLines = 100000;
   cDefaultTestsLogMaxLines = 2000;
+  /// <summary>Grenzen und Vorgabe für assistants.context.selectionMax (#2050), in Zeichen.</summary>
+  cMinAssistantsContextSelectionMax = 0;
+  cMaxAssistantsContextSelectionMax = 50000;
+  cDefaultAssistantsContextSelectionMax = 4000;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -77,6 +81,14 @@ type
     /// <summary>assistants.edit (#1888, #397): KI-Assistenten schreiben in offene Dateien über den Eingang des
     /// Plugins; aus = der MCP-Server bekommt „nicht angenommen“ und fasst offene Dateien nicht an.</summary>
     AssistantsEdit: Boolean;
+    /// <summary>assistants.context (#2050): Das Modul KI-Assistenten legt den Zustand der IDE (Datei, Cursor,
+    /// Methode, Auswahl, Projekt, letzter Build, Reiter) für get_ide_context ab; aus = keine Datei.</summary>
+    AssistantsContext: Boolean;
+    /// <summary>assistants.context.selection (#2050): markierten Text mitgeben; aus = nur der Bereich.</summary>
+    AssistantsContextSelection: Boolean;
+    /// <summary>assistants.context.selectionMax (#2050): höchstens so viele Zeichen der Auswahl,
+    /// cMinAssistantsContextSelectionMax bis cMaxAssistantsContextSelectionMax.</summary>
+    AssistantsContextSelectionMax: Integer;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
     /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
     /// blockieren). Aus = kein Bau beim Öffnen.</summary>
@@ -332,6 +344,9 @@ begin
   Result.McpBuild := True;
   Result.AssistantsEnabled := True;
   Result.AssistantsEdit := True;
+  Result.AssistantsContext := True;
+  Result.AssistantsContextSelection := True;
+  Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
   Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
@@ -401,6 +416,8 @@ begin
   TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
+  AssistantsContextSelectionMax := EnsureRange(AssistantsContextSelectionMax, cMinAssistantsContextSelectionMax,
+    cMaxAssistantsContextSelectionMax);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -412,6 +429,9 @@ begin
   AIo.Flag('McpBuild', McpBuild);
   AIo.Flag('AssistantsEnabled', AssistantsEnabled);
   AIo.Flag('AssistantsEdit', AssistantsEdit);
+  AIo.Flag('AssistantsContext', AssistantsContext);
+  AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
+  AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);
   AIo.Flag('BuildOnOpen', BuildOnOpen);
   AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
   AIo.Text('BuildOnOpenScope', BuildOnOpenScope);
