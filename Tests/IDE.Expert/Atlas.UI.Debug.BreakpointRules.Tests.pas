@@ -69,7 +69,10 @@ begin
   mRule.TriggerLine := 19;
   mRule.Hit := TAtlasHitMode.EveryNth;
   mRule.HitCount := 5;
-  mDialog := TAtlasBreakpointRuleDialog.CreateDialog(nil, mRule, Triggers);
+  mRule.Caller := 'TKundenImport.LeseZeile';
+  mRule.CallerDirect := True;
+  mDialog := TAtlasBreakpointRuleDialog.CreateDialog(nil, mRule, Triggers,
+    TArray<string>.Create('Kunden.TKunde.Lies', 'Kunden.TKunde.Lies', ''));
   try
     Assert.AreEqual('Haltepunkt-Regeln: Kunden.pas:42', mDialog.Caption);
     mDialog.HandleNeeded;
@@ -80,6 +83,10 @@ begin
     Assert.AreEqual(Ord(TAtlasHitMode.EveryNth), mDialog.HitBox.ItemIndex);
     Assert.AreEqual('5', mDialog.HitCountEdit.Text);
     Assert.IsFalse(mDialog.ThreadTextEdit.Enabled);
+    Assert.AreEqual(1, mDialog.CallerBox.Items.Count, 'Vorschläge ohne Doppelte und Leere');
+    Assert.AreEqual('TKundenImport.LeseZeile', mDialog.CallerBox.Text);
+    Assert.IsTrue(mDialog.CallerDirectBox.Checked);
+    Assert.IsTrue(mDialog.CallerDirectBox.Enabled);
   finally
     mDialog.Free;
   end;
@@ -90,7 +97,7 @@ var
   mDialog: TAtlasBreakpointRuleDialog;
   mChosen: TAtlasBreakpointRule;
 begin
-  mDialog := TAtlasBreakpointRuleDialog.CreateDialog(nil, Rule, Triggers);
+  mDialog := TAtlasBreakpointRuleDialog.CreateDialog(nil, Rule, Triggers, nil);
   try
     mDialog.HandleNeeded;
     mDialog.Fill;
@@ -100,6 +107,10 @@ begin
     mDialog.HitCountEdit.Text := '3';
     mDialog.ThreadBox.ItemIndex := Ord(TAtlasThreadFilter.NameContains);
     mDialog.ThreadTextEdit.Text := ' Import ';
+    Assert.IsFalse(mDialog.CallerDirectBox.Enabled, 'Ohne Aufrufer nichts anzukreuzen');
+    mDialog.CallerDirectBox.Checked := True;
+    Assert.IsFalse(mDialog.ChosenRule.CallerDirect, 'Ohne Aufrufer kein direkter Aufrufer');
+    mDialog.CallerBox.Text := ' Kunden.* ';
     mChosen := mDialog.ChosenRule;
     Assert.AreEqual('C:\Src\Haupt.pas', mChosen.TriggerFile);
     Assert.AreEqual(9, mChosen.TriggerLine);
@@ -108,6 +119,8 @@ begin
     Assert.AreEqual(3, mChosen.HitCount);
     Assert.AreEqual('Import', mChosen.ThreadText);
     Assert.AreEqual(41, mChosen.Line);
+    Assert.AreEqual('Kunden.*', mChosen.Caller);
+    Assert.IsTrue(mChosen.CallerDirect);
   finally
     mDialog.Free;
   end;
