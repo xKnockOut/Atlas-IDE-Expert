@@ -130,7 +130,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   // Vorläufige Lage der Überschriften; die Ausrichtung ordnet sie danach in dieser Reihenfolge an.
@@ -200,8 +201,7 @@ begin
     mButton.Width := mButton.ScaleValue(cCloseButtonWidth);
     mButton.Align := alRight;
     mButton.AlignWithMargins := True;
-    mButton.Margins.SetBounds(TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap,
-      TAtlasReportDialog.cGap);
+    TAtlasControlScaling.SetMarginsAll(mButton, TAtlasReportDialog.cGap);
     mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportClose);
     mButton.Cancel := True;
     mButton.Default := True;
@@ -229,7 +229,7 @@ begin
   Result.Parent := AParent;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap,
+  TAtlasControlScaling.SetMargins(Result, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap,
     cRowBottomGap);
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
@@ -253,7 +253,7 @@ function NewButton(AOwner: TComponent; AParent: TWinControl; const ACaption: str
 begin
   Result := TButton.Create(AOwner);
   Result.Parent := AParent;
-  Result.SetBounds(0, TAtlasReportDialog.cGap, AWidth, cButtonHeight);
+  TAtlasControlScaling.Place(Result, 0, TAtlasReportDialog.cGap, AWidth, cButtonHeight);
   Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
@@ -298,7 +298,7 @@ begin
   FParts.Description.Parent := Self;
   FParts.Description.Align := alTop;
   FParts.Description.AlignWithMargins := True;
-  FParts.Description.Margins.SetBounds(cGap, 0, cGap, cGap);
+  TAtlasControlScaling.SetMargins(FParts.Description, cGap, 0, cGap, cGap);
   FParts.Description.Height := FParts.Description.ScaleValue(cDescriptionHeight);
   FParts.Description.ScrollBars := ssVertical;
   FParts.Description.Top := FParts.Description.ScaleValue(cDescriptionTop);
@@ -316,7 +316,7 @@ begin
     mCheck.Parent := Self;
     mCheck.Align := alTop;
     mCheck.AlignWithMargins := True;
-    mCheck.Margins.SetBounds(cGap * 2, 0, cGap, cRowBottomGap);
+    TAtlasControlScaling.SetMargins(mCheck, cGap * 2, 0, cGap, cRowBottomGap);
     mCheck.Top := mCheck.ScaleValue(cChecksTop) + Ord(mPart);
     // Vor OnClick setzen: Ein Wechsel von Checked löst OnClick aus, die Vorschau gibt es noch nicht.
     // Optional (#479): die letzten Diagnosedaten sind nicht vorausgewählt.
@@ -387,7 +387,7 @@ begin
   mList.Parent := Self;
   mList.Align := alClient;
   mList.AlignWithMargins := True;
-  mList.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(mList, cGap, 0, cGap, 0);
   mList.ViewStyle := vsReport;
   mList.ReadOnly := True;
   mList.RowSelect := True;
@@ -412,17 +412,25 @@ end;
 
 procedure TAtlasReportDialog.FootResize(Sender: TObject);
 var
-  mRight: Integer;
+  mRight, mGap, mButtonHeight, mLabelHeight: Integer;
 begin
-  mRight := (Sender as TPanel).ClientWidth - cGap;
-  FParts.ViewButton.SetBounds(mRight - cViewButtonWidth, cSummaryButtonTop, cViewButtonWidth, cButtonHeight);
-  FParts.Summary.SetBounds(cGap, cSummaryLabelTop, Max(0, FParts.ViewButton.Left - 2 * cGap), cFootLabelHeight);
-  FParts.FolderButton.SetBounds(mRight - cFolderButtonWidth, cFolderButtonTop, cFolderButtonWidth, cButtonHeight);
-  FParts.FolderLabel.SetBounds(cGap, cFolderLabelTop, Max(0, FParts.FolderButton.Left - 2 * cGap), cFootLabelHeight);
-  FParts.Status.SetBounds(cGap, cStatusTop, Max(0, mRight - cGap), cFootLabelHeight);
-  FParts.ZipButton.SetBounds(cGap, cButtonRowTop, cZipButtonWidth, cButtonHeight);
-  FParts.IssueButton.SetBounds(2 * cGap + cZipButtonWidth, cButtonRowTop, cIssueButtonWidth, cButtonHeight);
-  FParts.CloseButton.SetBounds(mRight - cCloseButtonWidth, cButtonRowTop, cCloseButtonWidth, cButtonHeight);
+  mGap := ScaleValue(cGap);
+  mButtonHeight := ScaleValue(cButtonHeight);
+  mLabelHeight := ScaleValue(cFootLabelHeight);
+  mRight := (Sender as TPanel).ClientWidth - mGap;
+  FParts.ViewButton.SetBounds(mRight - ScaleValue(cViewButtonWidth), ScaleValue(cSummaryButtonTop),
+    ScaleValue(cViewButtonWidth), mButtonHeight);
+  FParts.Summary.SetBounds(mGap, ScaleValue(cSummaryLabelTop), Max(0, FParts.ViewButton.Left - 2 * mGap), mLabelHeight);
+  FParts.FolderButton.SetBounds(mRight - ScaleValue(cFolderButtonWidth), ScaleValue(cFolderButtonTop),
+    ScaleValue(cFolderButtonWidth), mButtonHeight);
+  FParts.FolderLabel.SetBounds(mGap, ScaleValue(cFolderLabelTop), Max(0, FParts.FolderButton.Left - 2 * mGap),
+    mLabelHeight);
+  FParts.Status.SetBounds(mGap, ScaleValue(cStatusTop), Max(0, mRight - mGap), mLabelHeight);
+  TAtlasControlScaling.Place(FParts.ZipButton, cGap, cButtonRowTop, cZipButtonWidth, cButtonHeight);
+  TAtlasControlScaling.Place(FParts.IssueButton, 2 * cGap + cZipButtonWidth, cButtonRowTop, cIssueButtonWidth,
+    cButtonHeight);
+  FParts.CloseButton.SetBounds(mRight - ScaleValue(cCloseButtonWidth), ScaleValue(cButtonRowTop),
+    ScaleValue(cCloseButtonWidth), mButtonHeight);
 end;
 
 procedure TAtlasReportDialog.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);

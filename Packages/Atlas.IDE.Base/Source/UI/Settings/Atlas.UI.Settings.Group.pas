@@ -54,7 +54,8 @@ implementation
 
 uses
   Vcl.Themes,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   /// <summary>Innenabstand des Rahmens links, oben, rechts und unten.</summary>
@@ -76,7 +77,7 @@ begin
   ControlStyle := ControlStyle + [csAcceptsControls, csParentBackground] - [csOpaque];
   ParentBackground := True;
   ParentColor := True;
-  Padding.SetBounds(cPaddingSide, cPaddingTop, cPaddingSide, cPaddingSide);
+  TAtlasControlScaling.SetPadding(Self, cPaddingSide, cPaddingTop, cPaddingSide, cPaddingSide);
   AlignWithMargins := True;
   Height := ScaleValue(cInitialHeight);
   FNextTop := 100;
