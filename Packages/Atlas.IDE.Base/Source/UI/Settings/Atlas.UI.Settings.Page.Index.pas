@@ -62,7 +62,12 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Settings.Page.Sheets;
+
+const
+  /// <summary>Höhe der Kennzahlen des Index (vier Zeilen Text).</summary>
+  cIndexInfoHeight = 66;
 
 { TAtlasSettingsIndexPart }
 
@@ -79,34 +84,19 @@ begin
   AddTitle(TAtlasTextId.SettingsIndexTitle);
   BindCheck('IndexUsages', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexUsages)));
   BindText('MemoryBudgetMb', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMemoryBudget)));
-  mPanel := AddPanel(66);
+  mPanel := AddPanel(cIndexInfoHeight);
   FIndexInfo := TLabel.Create(FPage);
   FIndexInfo.Parent := mPanel;
   FIndexInfo.Left := 0;
   FIndexInfo.Top := FIndexInfo.ScaleValue(2);
   FIndexInfo.Font.Color := clGrayText;
-  mPanel := AddPanel(32);
-  FIndexRefresh := TButton.Create(FPage);
-  FIndexRefresh.Parent := mPanel;
-  FIndexRefresh.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRefresh);
-  FIndexRefresh.Left := 0;
-  FIndexRefresh.Top := FIndexRefresh.ScaleValue(3);
-  FIndexRefresh.Width := FIndexRefresh.ScaleValue(150);
-  FIndexRefresh.OnClick := IndexRefreshClick;
-  FIndexRebuild := TButton.Create(FPage);
-  FIndexRebuild.Parent := mPanel;
-  FIndexRebuild.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRebuild);
-  FIndexRebuild.Left := FIndexRebuild.ScaleValue(160);
-  FIndexRebuild.Top := FIndexRebuild.ScaleValue(3);
-  FIndexRebuild.Width := FIndexRebuild.ScaleValue(150);
-  FIndexRebuild.OnClick := IndexRebuildClick;
-  FIndexClear := TButton.Create(FPage);
-  FIndexClear.Parent := mPanel;
-  FIndexClear.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexClear);
-  FIndexClear.Left := FIndexClear.ScaleValue(320);
-  FIndexClear.Top := FIndexClear.ScaleValue(3);
-  FIndexClear.Width := FIndexClear.ScaleValue(150);
-  FIndexClear.OnClick := IndexClearClick;
+  mPanel := AddPanel(cButtonRowHeight);
+  FIndexRefresh := AddColumnButton(mPanel, 0, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRefresh),
+    IndexRefreshClick);
+  FIndexRebuild := AddColumnButton(mPanel, 1, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRebuild),
+    IndexRebuildClick);
+  FIndexClear := AddColumnButton(mPanel, 2, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexClear),
+    IndexClearClick);
   // Ohne Server (Ereignisse nicht gesetzt) sind die Befehle aus.
   RefreshIndex;
 end;
