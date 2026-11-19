@@ -108,11 +108,10 @@ procedure TAtlasSettingsCommandsPart.BuildContextMenu;
 const
   // Eine Zeile Text über den Häkchen der Untermenüs.
   cGroupsLabelHeight = 20;
-  cTexts: array[TAtlasContextMenuGroup] of TAtlasSettingsTextId = (
-    TAtlasSettingsTextId.SettingsContextGroupNavigation, TAtlasSettingsTextId.SettingsContextGroupEdit,
-    TAtlasSettingsTextId.SettingsContextGroupAnalysis, TAtlasSettingsTextId.SettingsContextGroupFindings,
-    TAtlasSettingsTextId.SettingsContextGroupDebug, TAtlasSettingsTextId.SettingsContextGroupTests,
-    TAtlasSettingsTextId.SettingsContextGroupNotes);
+  cTexts: array[TAtlasContextMenuGroup] of TAtlasSettingsTextId = (TAtlasSettingsTextId.SettingsContextGroupNavigation,
+    TAtlasSettingsTextId.SettingsContextGroupEdit, TAtlasSettingsTextId.SettingsContextGroupAnalysis,
+    TAtlasSettingsTextId.SettingsContextGroupFindings, TAtlasSettingsTextId.SettingsContextGroupDebug,
+    TAtlasSettingsTextId.SettingsContextGroupTests, TAtlasSettingsTextId.SettingsContextGroupNotes);
 var
   mGroup: TAtlasContextMenuGroup;
 begin
@@ -134,7 +133,7 @@ end;
 procedure TAtlasSettingsCommandsPart.Build;
 begin
   // Editorbefehle (#399): ein Vorrang für alle.
-  AddSheet(TAtlasTextId.SettingsTabCommands);
+  AddSheet(TAtlasSettingsTextId.SettingsTabCommands);
   BindKey('ActionsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorActions)));
   BindKey('ExpandKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorExpand)));
   BindKey('ShrinkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink)));
