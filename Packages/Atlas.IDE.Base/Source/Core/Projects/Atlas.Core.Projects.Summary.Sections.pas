@@ -53,8 +53,7 @@ uses
   System.Math,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary.Json,
-  Atlas.Text.Json,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Text.Json;
 
 const
   cSetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
