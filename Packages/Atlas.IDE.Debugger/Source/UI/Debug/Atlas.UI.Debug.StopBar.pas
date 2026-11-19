@@ -41,6 +41,8 @@ type
     /// (Bildschirm).</summary>
     procedure ShowLinks(const AHeading, ADetail: string; const ALinks: TArray<string>; const APoint: TPoint);
     procedure Dismiss;
+    /// <summary>ABar zu, wenn es sie gibt und sie offen ist.</summary>
+    class procedure Hide(ABar: TAtlasStopBar); static;
     /// <summary>Wie ein Klick auf den Verweis AIndex: Leiste zu, dann OnLink.</summary>
     procedure Choose(AIndex: Integer);
     function LinkRect(AIndex: Integer): TRect;
@@ -110,11 +112,11 @@ var
   mIndex: Integer;
 begin
   inherited;
-  if Button <> mbLeft then
+  mIndex := -1;
+  if Button = mbLeft then
   begin
-    Exit;
+    mIndex := LinkAt(TPoint.Create(X, Y));
   end;
-  mIndex := LinkAt(TPoint.Create(X, Y));
   if mIndex >= 0 then
   begin
     Choose(mIndex);
@@ -127,13 +129,10 @@ var
 begin
   inherited;
   mHot := LinkAt(TPoint.Create(X, Y));
+  Cursor := crDefault;
   if mHot >= 0 then
   begin
     Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
   end;
   if mHot <> FHot then
   begin
@@ -226,6 +225,14 @@ end;
 procedure TAtlasStopBar.Dismiss;
 begin
   HidePopup;
+end;
+
+class procedure TAtlasStopBar.Hide(ABar: TAtlasStopBar);
+begin
+  if (ABar <> nil) and ABar.IsShown then
+  begin
+    ABar.Dismiss;
+  end;
 end;
 
 procedure TAtlasStopBar.Choose(AIndex: Integer);

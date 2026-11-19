@@ -18,6 +18,8 @@ type
     /// <summary>Neuer Eintrag AName mit ACaption hinten im Menü Start; nil ohne Menü. Der Aufrufer gibt ihn frei.
     /// </summary>
     class function AddItem(const AName, ACaption: string; const AOnClick: TNotifyEvent): TMenuItem; static;
+    /// <summary>AItem (nil: nichts) zeigen bzw. verbergen.</summary>
+    class procedure ShowItem(AItem: TMenuItem; AVisible: Boolean); static;
   end;
 
 implementation
@@ -65,6 +67,14 @@ begin
   Result.Caption := ACaption;
   Result.OnClick := AOnClick;
   mParent.Add(Result);
+end;
+
+class procedure TAtlasIdeRunMenu.ShowItem(AItem: TMenuItem; AVisible: Boolean);
+begin
+  if Assigned(AItem) then
+  begin
+    AItem.Visible := AVisible;
+  end;
 end;
 
 end.

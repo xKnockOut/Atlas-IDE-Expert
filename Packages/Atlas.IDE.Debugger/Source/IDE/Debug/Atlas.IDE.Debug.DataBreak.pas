@@ -109,6 +109,7 @@ uses
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.DataBreak.Strings,
   Atlas.UI.Popup.Window,
+  Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Files,
@@ -153,20 +154,12 @@ end;
 
 procedure TAtlasIdeDataBreak.MenuClick(Sender: TObject);
 begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      Run;
-    end);
+  TAtlasGuard.Run(TAtlasFeature.Debugger, Run);
 end;
 
 procedure TAtlasIdeDataBreak.Tick(Sender: TObject);
 begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      Step;
-    end);
+  TAtlasGuard.Run(TAtlasFeature.Debugger, Step);
 end;
 
 procedure TAtlasIdeDataBreak.Execute;
@@ -472,18 +465,12 @@ end;
 
 procedure TAtlasIdeDataBreak.HideBar;
 begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Dismiss;
-  end;
+  TAtlasStopBar.Hide(FBar);
 end;
 
 procedure TAtlasIdeDataBreak.UpdateMenu;
 begin
-  if FMenuItem <> nil then
-  begin
-    FMenuItem.Visible := Enabled;
-  end;
+  TAtlasIdeRunMenu.ShowItem(FMenuItem, Enabled);
 end;
 
 class function TAtlasIdeDataBreak.Evaluate(const AExpression: string; out AValue: string): Boolean;

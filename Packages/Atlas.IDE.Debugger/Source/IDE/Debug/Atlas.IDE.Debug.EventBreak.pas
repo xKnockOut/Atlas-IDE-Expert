@@ -123,6 +123,7 @@ uses
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.EventBreak.Strings,
   Atlas.UI.Popup.Window,
+  Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Debug.Evaluator,
@@ -598,10 +599,7 @@ end;
 
 procedure TAtlasIdeEventBreak.HideBar;
 begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Dismiss;
-  end;
+  TAtlasStopBar.Hide(FBar);
 end;
 
 procedure TAtlasIdeEventBreak.InstallMenu;
@@ -613,10 +611,7 @@ end;
 
 procedure TAtlasIdeEventBreak.UpdateMenu;
 begin
-  if FMenuItem <> nil then
-  begin
-    FMenuItem.Visible := Enabled;
-  end;
+  TAtlasIdeRunMenu.ShowItem(FMenuItem, Enabled);
 end;
 
 class function TAtlasIdeEventBreak.Evaluate(const AExpression: string; out AValue: string): Boolean;
