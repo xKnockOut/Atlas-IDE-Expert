@@ -24,6 +24,8 @@ type
     procedure QuotedTextParsesBack;
     [Test]
     procedure ListsQuotedItems;
+    [Test]
+    procedure BoolIsJsonLiteral;
   end;
 
   [TestFixture]
@@ -37,6 +39,8 @@ type
     procedure TakesDynamicArray;
     [Test]
     procedure AddTextLeavesOutEmptyValue;
+    [Test]
+    procedure IsoTimeRoundTrips;
   end;
 
   [TestFixture]
@@ -92,6 +96,8 @@ type
     procedure StringsOfNoArrayAreEmpty;
     [Test]
     procedure TrimmedStringsDropEmpty;
+    [Test]
+    procedure ParseArrayOnlyForArrays;
     [Test]
     procedure JsonGivesValueText;
     [Test]
@@ -208,6 +214,23 @@ begin
     TJsonBuild.AddText(mObject, 'a', 'Wert');
     TJsonBuild.AddText(mObject, 'b', '');
     Assert.AreEqual('{"a":"Wert"}', mObject.ToJSON([]));
+  finally
+    mObject.Free;
+  end;
+end;
+
+procedure TJsonBuildTests.IsoTimeRoundTrips;
+var
+  mObject: TJSONObject;
+  mStamp: TDateTime;
+begin
+  Assert.AreEqual('', TJsonBuild.IsoTime(0), 'ohne Zeitpunkt leer');
+  mStamp := EncodeDate(2026, 11, 19) + EncodeTime(8, 30, 15, 0);
+  Assert.AreEqual('2026-11-19T08:30:15.000Z', TJsonBuild.IsoTime(mStamp));
+  mObject := TJSONObject.Create;
+  try
+    mObject.AddPair('at', TJsonBuild.IsoTime(mStamp));
+    Assert.AreEqual(Double(mStamp), Double(TJsonRead.IsoTime(mObject, 'at', True)), 1 / (24 * 3600));
   finally
     mObject.Free;
   end;
@@ -474,6 +497,28 @@ procedure TJsonTextTests.ListsQuotedItems;
 begin
   Assert.AreEqual('[]', TJsonText.List([]));
   Assert.AreEqual('["a", "b\"c"]', TJsonText.List(['a', 'b"c']));
+end;
+
+procedure TJsonTextTests.BoolIsJsonLiteral;
+begin
+  Assert.AreEqual('true', TJsonText.Bool(True));
+  Assert.AreEqual('false', TJsonText.Bool(False));
+end;
+
+procedure TJsonReadTests.ParseArrayOnlyForArrays;
+var
+  mArray: TJSONArray;
+begin
+  mArray := TJsonRead.ParseArray('[1, "a"]');
+  try
+    Assert.IsNotNull(mArray);
+    Assert.AreEqual(2, mArray.Count);
+  finally
+    mArray.Free;
+  end;
+  Assert.IsNull(TJsonRead.ParseArray('{"a": 1}'));
+  Assert.IsNull(TJsonRead.ParseArray('[1,'));
+  Assert.IsNull(TJsonRead.ParseArray(''));
 end;
 
 initialization
