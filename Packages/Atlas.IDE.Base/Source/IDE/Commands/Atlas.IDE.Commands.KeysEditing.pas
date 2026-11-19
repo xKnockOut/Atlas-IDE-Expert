@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Commands.KeysEditing;
 
-// Tasten der Editorbefehle zum Bearbeiten und Springen im Quelltext, ausgelagert
-// aus TAtlasIdeEditorKeys.Rebind (Atlas.IDE.Commands.Bindings, Beschreibung dort):
+// Tasten der Editorbefehle zum Bearbeiten und Springen im Quelltext, Teil
+// von TAtlasIdeEditorKeys.Rebind (Atlas.IDE.Commands.Bindings, Beschreibung dort):
 // Code-Aktionen, Auswahl, Implementierung, Typdefinition, Deklaration ⇄
 // Implementierung (#775), Ausblenden (#628), Befunde (#509, #909, #1744), Testunit
 // (#189), Abschnittssprünge (#1101), Formatieren (#43), Blockkommentar (#703),

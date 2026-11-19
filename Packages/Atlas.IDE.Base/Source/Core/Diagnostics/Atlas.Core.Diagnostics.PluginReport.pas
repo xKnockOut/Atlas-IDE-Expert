@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.PluginReport;
 
-// Zeilen und Bericht der Plugin-Zeiten (Diagnose-Fenster, Variante A), ohne
+// Zeilen und Bericht der Plugin-Zeiten (Diagnose-Fenster), ohne
 // VCL: ordnet den Stand von TAtlasPluginTimings für die Reiter „Hauptthread“,
 // „Server“, „Hintergrund“ und „Hänger“ und baut den Abschnitt für „Bericht
 // kopieren“ und die letzten Diagnosedaten. Der Bericht enthält nur Namen von
