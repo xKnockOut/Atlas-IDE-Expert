@@ -173,7 +173,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Development.Strings,
-  Atlas.UI.Tracker.GitHubStrings;
+  Atlas.UI.Tracker.GitHubStrings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   /// <summary>Abstand der Oberkanten beim Stapeln: alTop ordnet nach Top, die Lücke lässt Platz für jede Höhe.
@@ -432,7 +433,7 @@ begin
   BorderStyle := bsNone;
   VertScrollBar.Tracking := True;
   HorzScrollBar.Visible := False;
-  Padding.SetBounds(cPadding, cPaddingTop, cPadding, cPadding);
+  TAtlasControlScaling.SetPadding(Self, cPadding, cPaddingTop, cPadding, cPadding);
   OnMouseWheel := ScrollWheel;
 end;
 
