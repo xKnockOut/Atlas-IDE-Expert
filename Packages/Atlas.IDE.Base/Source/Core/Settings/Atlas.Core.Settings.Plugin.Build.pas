@@ -85,6 +85,8 @@ type
     /// <summary>assistants.edit (#1888, #397): KI-Assistenten schreiben in offene Dateien über den Eingang des
     /// Plugins; aus = der MCP-Server bekommt „nicht angenommen“ und fasst offene Dateien nicht an.</summary>
     AssistantsEdit: Boolean;
+    /// <summary>assistants.banner (#1906): Feld „KI-Assistent aktiv“ im Statusfeld mit „Pause für KI“.</summary>
+    AssistantsBanner: Boolean;
     /// <summary>assistants.context (#2050): Das Modul KI-Assistenten legt den Zustand der IDE (Datei, Cursor,
     /// Methode, Auswahl, Projekt, letzter Build, Reiter) für get_ide_context ab; aus = keine Datei.</summary>
     AssistantsContext: Boolean;
@@ -348,6 +350,7 @@ begin
   Result.McpBuild := True;
   Result.AssistantsEnabled := True;
   Result.AssistantsEdit := True;
+  Result.AssistantsBanner := True;
   Result.AssistantsContext := True;
   Result.AssistantsContextSelection := True;
   Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
@@ -433,6 +436,7 @@ begin
   AIo.Flag('McpBuild', McpBuild);
   AIo.Flag('AssistantsEnabled', AssistantsEnabled);
   AIo.Flag('AssistantsEdit', AssistantsEdit);
+  AIo.Flag('AssistantsBanner', AssistantsBanner);
   AIo.Flag('AssistantsContext', AssistantsContext);
   AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
   AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);

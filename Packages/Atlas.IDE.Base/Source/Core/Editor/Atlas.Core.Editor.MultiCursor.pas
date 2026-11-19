@@ -143,6 +143,8 @@ type
 { TLineIndex }
 
 class function TLineIndex.Build(const AText: string): TLineIndex;
+const
+  cGrowth = 16;
 var
   mStarts, mLengths: TArray<Integer>;
   mIndex, mStart, mCount, mLen: Integer;
@@ -151,8 +153,8 @@ var
   begin
     if mCount = Length(mStarts) then
     begin
-      SetLength(mStarts, mCount * 2 + 16);
-      SetLength(mLengths, mCount * 2 + 16);
+      SetLength(mStarts, mCount * 2 + cGrowth);
+      SetLength(mLengths, mCount * 2 + cGrowth);
     end;
     mStarts[mCount] := AStart;
     mLengths[mCount] := ALength;

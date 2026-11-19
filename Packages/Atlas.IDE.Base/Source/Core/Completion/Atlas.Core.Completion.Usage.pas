@@ -209,6 +209,11 @@ begin
 end;
 
 function TAtlasUsage.Boost(const AItem: TAtlasCompletionItem): Integer;
+const
+  // Je Verwendung, gedeckelt; zuletzt gewählt gibt einen festen Zuschlag.
+  cPerUse = 15;
+  cMaxUseBoost = 60;
+  cRecentBoost = 30;
 var
   mEntry: TEntry;
 begin
@@ -217,10 +222,10 @@ begin
   begin
     Exit;
   end;
-  Result := Min(60, mEntry.Count * 15);
+  Result := Min(cMaxUseBoost, mEntry.Count * cPerUse);
   if Mark(AItem) = TAtlasUsageMark.Recent then
   begin
-    Inc(Result, 30);
+    Inc(Result, cRecentBoost);
   end;
 end;
 
@@ -254,10 +259,12 @@ begin
 end;
 
 function TAtlasUsage.LoadFromFile(const AFileName: string): TAtlasDataLoad;
+const
+  cKind = 'Lernende Gewichtung';
 begin
   Clear;
   FKept := '';
-  Result := TAtlasDataFile.Load(AFileName, 'Lernende Gewichtung',
+  Result := TAtlasDataFile.Load(AFileName, cKind,
     function(const AText: string): Boolean
     begin
       Result := Parse(AText);

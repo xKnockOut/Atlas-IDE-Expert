@@ -284,6 +284,8 @@ end;
 
 constructor TAtlasEditorSignature.Create(const ASource: IAtlasSignatureSource; const ACompletionOpen: TAtlasBoolFunc;
   const ALog: TAtlasLogFunc);
+const
+  cTickMs = 50;
 var
   mEditor: IOTAEditorServices;
   mNotifier: INTAEditServicesNotifier;
@@ -308,7 +310,7 @@ begin
   FKeys := TSignatureKeys.Create(Self);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := 50;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) then
   begin

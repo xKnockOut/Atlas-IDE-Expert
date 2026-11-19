@@ -277,6 +277,12 @@ begin
     end;
 end;
 
+const
+  // Registrierungsschlüssel der IDE unterhalb des Schlüssels der Version.
+  cKnownPackages = 'Known Packages';
+  cDisabledPackages = 'Disabled Packages';
+  cWin64Suffix = ' x64';
+
 class procedure TAtlasIdeKnownPackages.Restore(const AKey: string; const AMissing: TArray<string>);
 var
   mNames, mError: string;
@@ -286,7 +292,7 @@ begin
   try
     if not WriteMissing(AKey, AMissing) then
     begin
-      mError := 'Known Packages';
+      mError := cKnownPackages;
     end;
   except
     on mFailure: Exception do
@@ -384,18 +390,18 @@ end;
 class function TAtlasIdeKnownPackages.KnownKey(const ARegistryKey: string): string;
 begin
 {$IFDEF WIN64}
-  Result := ARegistryKey + '\Known Packages x64';
+  Result := ARegistryKey + '\' + cKnownPackages + cWin64Suffix;
 {$ELSE}
-  Result := ARegistryKey + '\Known Packages';
+  Result := ARegistryKey + '\' + cKnownPackages;
 {$ENDIF}
 end;
 
 class function TAtlasIdeKnownPackages.DisabledKey(const ARegistryKey: string): string;
 begin
 {$IFDEF WIN64}
-  Result := ARegistryKey + '\Disabled Packages x64';
+  Result := ARegistryKey + '\' + cDisabledPackages + cWin64Suffix;
 {$ELSE}
-  Result := ARegistryKey + '\Disabled Packages';
+  Result := ARegistryKey + '\' + cDisabledPackages;
 {$ENDIF}
 end;
 
