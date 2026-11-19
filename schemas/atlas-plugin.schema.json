@@ -2517,6 +2517,34 @@
       "x-captionEn": "Ignore only here",
       "x-issue": "#783"
     },
+    "DebugExceptionMessageRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exceptions nach Meldungstext anhalten oder fortsetzen: Regeln mit Muster für die Meldung, angelegt aus der Exception-Leiste oder dem Exception-Verlauf.",
+      "x-key": "debug.exceptionMessageRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exceptions nach Meldungstext anhalten oder fortsetzen",
+      "x-captionEn": "Stop or continue exceptions by message text",
+      "x-issue": "#2549"
+    },
+    "DebugExceptionRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exception-Regeln nach Klasse und Ort: anhalten, nur im Exception-Verlauf vermerken oder still weiterlaufen, je nach der ersten eigenen Methode im Aufrufstapel. Persönliche Regeln (Fenster „Exception-Regeln“) gelten vor denen der Projektdatei .atlas (exceptionRules). „Nur an dieser Stelle ignorieren“ legt eine Regel für die Methode an. Aus = nur die Ignorier-Liste und die Optionen der IDE.",
+      "x-key": "debug.exceptionRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exception-Regeln nach Klasse und Ort",
+      "x-captionEn": "Exception rules by class and place",
+      "x-issue": "#838"
+    },
     "DebugInlineValues": {
       "type": "boolean",
       "default": true,
@@ -10474,6 +10502,16 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1273"
+    },
+    "IssuesShareWithAssistants": {
+      "type": "boolean",
+      "default": true,
+      "description": "Begonnenes Issue für KI-Assistenten bereitstellen: Solange ein Issue aktuell ist, schreibt Atlas Kennung, Titel, Tracker, Zustand, Meilenstein, Branch, Beschreibung, Checkliste, Codeverweise und die letzten fünf Kommentare nach <gitdir>/atlas-current-issue.json (neben atlas-commit-prefix, bei Worktrees in deren eigenen Ordner); das MCP-Werkzeug get_current_issue liest sie. Nie ein Token, keine Anhänge. Aus: keine Datei, eine vorhandene wird gelöscht.",
+      "x-key": "issues.shareWithAssistants",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2051"
     },
     "IssuesStatusState": {
       "type": "boolean",

@@ -132,7 +132,6 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  System.DateUtils,
   Atlas.Core.Tracker.IssueWork,
   Atlas.Text.Json;
 
@@ -451,21 +450,12 @@ begin
   AReopen.Comment := TAtlasTrackerReopened.Shortened(AComment.Text);
 end;
 
-function IsoOf(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
-end;
-
 function EndedJson(const AEntry: TAtlasTrackerEnded): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('key', AEntry.Key);
   TJsonBuild.AddText(Result, 'branch', AEntry.Branch);
-  TJsonBuild.AddText(Result, 'at', IsoOf(AEntry.At));
+  TJsonBuild.AddText(Result, 'at', TJsonBuild.IsoTime(AEntry.At));
   TJsonBuild.AddText(Result, 'state', AEntry.State);
   if AEntry.Done then
   begin
@@ -480,11 +470,11 @@ begin
   TJsonBuild.AddText(Result, 'title', AReopen.Title);
   TJsonBuild.AddText(Result, 'state', AReopen.State);
   TJsonBuild.AddText(Result, 'previous', AReopen.Previous);
-  TJsonBuild.AddText(Result, 'at', IsoOf(AReopen.At));
-  TJsonBuild.AddText(Result, 'endedAt', IsoOf(AReopen.EndedAt));
+  TJsonBuild.AddText(Result, 'at', TJsonBuild.IsoTime(AReopen.At));
+  TJsonBuild.AddText(Result, 'endedAt', TJsonBuild.IsoTime(AReopen.EndedAt));
   TJsonBuild.AddText(Result, 'branch', AReopen.Branch);
   TJsonBuild.AddText(Result, 'commentBy', AReopen.CommentBy);
-  TJsonBuild.AddText(Result, 'commentAt', IsoOf(AReopen.CommentAt));
+  TJsonBuild.AddText(Result, 'commentAt', TJsonBuild.IsoTime(AReopen.CommentAt));
   TJsonBuild.AddText(Result, 'comment', AReopen.Comment);
 end;
 

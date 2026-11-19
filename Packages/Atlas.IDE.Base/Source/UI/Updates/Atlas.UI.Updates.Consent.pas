@@ -52,9 +52,9 @@ uses
   Atlas.Core.Style.Symbol,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Updates.Strings;
 
 const
   cGap = 8;
@@ -68,7 +68,7 @@ constructor TAtlasUpdateConsent.CreateConsent(AOwner: TComponent);
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateDialog(AOwner, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), cConsentWidth);
+  inherited CreateDialog(AOwner, TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentTitle), cConsentWidth);
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poDesigned;
@@ -85,7 +85,7 @@ begin
   FText.Align := alTop;
   FText.AlignWithMargins := True;
   FText.Margins.SetBounds(2 * cGap + FSymbol.Width, FText.ScaleValue(cGap), FText.ScaleValue(cGap), 0);
-  FText.Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText);
+  FText.Caption := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentText);
 
   mButtons := TFlowPanel.Create(Self);
   mButtons.Parent := Self;
@@ -95,8 +95,8 @@ begin
   mButtons.AlignWithMargins := True;
   TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FText.Top + FText.Height + 1;
-  FYes := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), YesClick);
-  FNo := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
+  FYes := AddButton(mButtons, TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentYes), YesClick);
+  FNo := AddButton(mButtons, TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentNo), NoClick);
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
   if ClientHeight < FSymbol.Top + FSymbol.Height + cGap then
   begin

@@ -1286,6 +1286,11 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackBoards.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssue.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CurrentIssue.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssuePlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CurrentIssuePlan.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Files.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Providers.Changes.Tests.pas"/>
@@ -2355,6 +2360,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.RefactorSources.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ChangeTools.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.IssueTools.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.IssueText.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.HistoryTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Changes.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Conventions.pas"/>
@@ -2389,6 +2396,8 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CheckTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tools.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.IssueTools.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.IssueText.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.HistoryTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorSources.Tests.pas"/>
@@ -2837,6 +2846,14 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.RoutinePattern.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.RoutinePattern.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionRules.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionRules.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionMessageRule.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionMessageRule.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionRuleEdit.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionRuleEdit.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionRuleList.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.ExceptionRuleList.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointRules.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.BreakpointRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>
