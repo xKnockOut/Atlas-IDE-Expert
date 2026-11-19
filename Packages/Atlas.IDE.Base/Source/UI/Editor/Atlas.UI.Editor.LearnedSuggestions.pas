@@ -23,7 +23,9 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Localization.Language,
-  Atlas.Core.Editor.LearnedSuggestions;
+  Atlas.Core.Editor.LearnedSuggestions,
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Foundation.ListView;
 
 type
 {$SCOPEDENUMS ON}
@@ -56,6 +58,37 @@ type
     GoTo_: TProc<Integer>;
   end;
 
+  /// <summary>Fenster der Liste mit seinen Ereignissen; Execute zeigt es modal.</summary>
+  TAtlasLearnedListWindow = class(TAtlasDialog)
+  private
+    FItems: TArray<TAtlasLearnedListItem>;
+    FEvents: TAtlasLearnedListEvents;
+    FIntro: TLabel;
+    FButtons: TPanel;
+    FList: TAtlasListView;
+    FForget: TButton;
+    FGoTo: TButton;
+    /// <summary>Beim Füllen keine Rückrufe für die Kästchen.</summary>
+    FFilling: Boolean;
+    procedure Fill(AItem: TListItem; const ARow: TAtlasLearnedListItem);
+    procedure Build;
+    procedure BuildIntro;
+    procedure BuildButtons;
+    procedure BuildList;
+    procedure FillList;
+    procedure FitToContent;
+    function AddButton(const ACaption: string; AAlign: TAlign): TButton;
+    procedure ItemChecked(Sender: TObject; Item: TListItem);
+    procedure ItemSelected(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure ForgetClick(Sender: TObject);
+    procedure GoToClick(Sender: TObject);
+    procedure UpdateButtons;
+  public
+    /// <summary>Liste mit den Zeilen AItems (kopiert) und den Rückrufen AEvents bauen und füllen.</summary>
+    constructor CreateList(AOwner: TComponent; const AItems: TArray<TAtlasLearnedListItem>;
+      const AEvents: TAtlasLearnedListEvents);
+  end;
+
   TAtlasLearnedList = class
   public
     /// <summary>Modal; kehrt mit „Schließen“ oder Esc zurück.</summary>
@@ -71,8 +104,6 @@ uses
   System.Types,
   System.Math,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.WrapLabel;
 
 const
@@ -127,37 +158,18 @@ const
   cInitialRows = 18;
   cColumnFollow = 1;
 
-type
-  /// <summary>Fenster der Liste mit seinen Ereignissen.</summary>
-  TListWindow = class(TAtlasDialog)
-  private
-    FItems: TArray<TAtlasLearnedListItem>;
-    FEvents: TAtlasLearnedListEvents;
-    FIntro: TLabel;
-    FButtons: TPanel;
-    FList: TAtlasListView;
-    FForget: TButton;
-    FGoTo: TButton;
-    /// <summary>Beim Füllen keine Rückrufe für die Kästchen.</summary>
-    FFilling: Boolean;
-    procedure Fill(AItem: TListItem; const ARow: TAtlasLearnedListItem);
-    procedure Build;
-    procedure BuildIntro;
-    procedure BuildButtons;
-    procedure BuildList;
-    procedure FillList;
-    procedure FitToContent;
-    function AddButton(const ACaption: string; AAlign: TAlign): TButton;
-    procedure ItemChecked(Sender: TObject; Item: TListItem);
-    procedure ItemSelected(Sender: TObject; Item: TListItem; Selected: Boolean);
-    procedure ForgetClick(Sender: TObject);
-    procedure GoToClick(Sender: TObject);
-    procedure UpdateButtons;
-  end;
+{ TAtlasLearnedListWindow }
 
-{ TListWindow }
+constructor TAtlasLearnedListWindow.CreateList(AOwner: TComponent; const AItems: TArray<TAtlasLearnedListItem>;
+  const AEvents: TAtlasLearnedListEvents);
+begin
+  inherited CreateDialog(AOwner, T(TAtlasLearnedText.Title), cWindowWidth);
+  FItems := Copy(AItems);
+  FEvents := AEvents;
+  Build;
+end;
 
-procedure TListWindow.Fill(AItem: TListItem; const ARow: TAtlasLearnedListItem);
+procedure TAtlasLearnedListWindow.Fill(AItem: TListItem; const ARow: TAtlasLearnedListItem);
 var
   mOrigin: string;
 begin
@@ -176,7 +188,7 @@ begin
   AItem.Checked := ARow.On_;
 end;
 
-procedure TListWindow.Build;
+procedure TAtlasLearnedListWindow.Build;
 begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
@@ -197,7 +209,7 @@ begin
   UpdateButtons;
 end;
 
-procedure TListWindow.BuildIntro;
+procedure TAtlasLearnedListWindow.BuildIntro;
 begin
   // Umbrechende Beschriftung: Ein TLabel behielte die Höhe, die es bei seiner Anfangsbreite (65 Pixel) hatte.
   FIntro := TAtlasWrapLabel.Create(Self);
@@ -213,7 +225,7 @@ begin
   FIntro.Parent := Self;
 end;
 
-procedure TListWindow.BuildButtons;
+procedure TAtlasLearnedListWindow.BuildButtons;
 var
   mClose: TButton;
 begin
@@ -236,7 +248,7 @@ begin
   mClose.Default := True;
 end;
 
-procedure TListWindow.BuildList;
+procedure TAtlasLearnedListWindow.BuildList;
 begin
   FList := TAtlasListView.Create(Self);
   FList.AlignWithMargins := True;
@@ -257,7 +269,7 @@ begin
   FList.AddColumn(T(TAtlasLearnedText.ColumnUsed), 0);
 end;
 
-procedure TListWindow.FillList;
+procedure TAtlasLearnedListWindow.FillList;
 var
   mIndex: Integer;
   mItem: TListItem;
@@ -279,7 +291,7 @@ begin
   end;
 end;
 
-procedure TListWindow.FitToContent;
+procedure TAtlasLearnedListWindow.FitToContent;
 var
   mArea, mRow: TRect;
   mWidth, mIndex, mRows, mRowHeight, mHeight: Integer;
@@ -315,7 +327,7 @@ begin
   Constraints.MinHeight := Height - ClientHeight + ScaleValue(cMinHeight);
 end;
 
-function TListWindow.AddButton(const ACaption: string; AAlign: TAlign): TButton;
+function TAtlasLearnedListWindow.AddButton(const ACaption: string; AAlign: TAlign): TButton;
 var
   mBitmap: TBitmap;
 begin
@@ -338,7 +350,7 @@ begin
   Result.Parent := FButtons;
 end;
 
-procedure TListWindow.ItemChecked(Sender: TObject; Item: TListItem);
+procedure TAtlasLearnedListWindow.ItemChecked(Sender: TObject; Item: TListItem);
 var
   mIndex: Integer;
 begin
@@ -354,12 +366,12 @@ begin
   end;
 end;
 
-procedure TListWindow.ItemSelected(Sender: TObject; Item: TListItem; Selected: Boolean);
+procedure TAtlasLearnedListWindow.ItemSelected(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   UpdateButtons;
 end;
 
-procedure TListWindow.ForgetClick(Sender: TObject);
+procedure TAtlasLearnedListWindow.ForgetClick(Sender: TObject);
 var
   mIndex: Integer;
 begin
@@ -377,7 +389,7 @@ begin
   end;
 end;
 
-procedure TListWindow.GoToClick(Sender: TObject);
+procedure TAtlasLearnedListWindow.GoToClick(Sender: TObject);
 begin
   if (FList.Selected <> nil) and Assigned(FEvents.GoTo_) and
     (Length(FItems[NativeInt(FList.Selected.Data)].Pattern.Evidence) > 0) then
@@ -386,7 +398,7 @@ begin
   end;
 end;
 
-procedure TListWindow.UpdateButtons;
+procedure TAtlasLearnedListWindow.UpdateButtons;
 var
   mSelected: Boolean;
 begin
@@ -400,13 +412,10 @@ end;
 class procedure TAtlasLearnedList.Execute(const AItems: TArray<TAtlasLearnedListItem>;
   const AEvents: TAtlasLearnedListEvents);
 var
-  mWindow: TListWindow;
+  mWindow: TAtlasLearnedListWindow;
 begin
-  mWindow := TListWindow.CreateDialog(nil, T(TAtlasLearnedText.Title), cWindowWidth);
+  mWindow := TAtlasLearnedListWindow.CreateList(nil, AItems, AEvents);
   try
-    mWindow.FItems := Copy(AItems);
-    mWindow.FEvents := AEvents;
-    mWindow.Build;
     mWindow.ShowModal;
   finally
     mWindow.Free;
