@@ -1758,8 +1758,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Contract.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Scroll.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Layouts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.IndexFiles.pas"/>
@@ -1835,6 +1837,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Search.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Header.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Arrange.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Board.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
@@ -1852,6 +1855,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.Texts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.SettingsLayouts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.SettingsSection.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Setup.Tests.pas"/>
@@ -1881,8 +1885,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SprintTile.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.SprintTile.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.IDE.Welcome.Tiles.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Tiles.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.IDE.Welcome.Adapters.Tiles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Status\Atlas.UI.Status.Window.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Commands.Palette.Tests.pas"/>

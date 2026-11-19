@@ -26,53 +26,11 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.Core.Welcome.Layout,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  /// <summary>Ein Atlas-Bereich für „Bereich hinzufügen“ und die Leiste „Ausgeblendet“.</summary>
-  TAtlasWelcomeCatalogEntry = record
-    Id: string;
-    Title: string;
-    /// <summary>Kurze Beschreibung für „Bereich hinzufügen“.</summary>
-    Description: string;
-    /// <summary>Einstellung des Bereichs an?</summary>
-    Shown: Boolean;
-    class function Create(const AId, ATitle, ADescription: string; AShown: Boolean): TAtlasWelcomeCatalogEntry;
-      static;
-  end;
-
-  IAtlasWelcomeArrangeSource = interface
-    ['{3F7B2C91-6A4E-4D08-B5C1-9E2A7D4F6B13}']
-    /// <summary>welcomePage.customLayout: Bearbeitungsmodus, Stift und Layout-Umschalter.</summary>
-    function CanCustomize: Boolean;
-    /// <summary>Bearbeitungsmodus an (gilt für Willkommensseite und „Atlas-Start“ zugleich)?</summary>
-    function Editing: Boolean;
-    procedure SetEditing(AOn: Boolean);
-    function LayoutNames: TArray<string>;
-    function ActiveLayout: string;
-    /// <summary>Alle angemeldeten Atlas-Bereiche in der Reihenfolge des Atlas-Layouts.</summary>
-    function Catalog: TArray<TAtlasWelcomeCatalogEntry>;
-    /// <summary>Plätze, Breiten oder Spalten des aktiven Layouts geändert.</summary>
-    procedure Arrange(const ALayout: TAtlasWelcomeLayout);
-    /// <summary>Ausgeblendeten Bereich einschalten und in Spalte AColumn vor ABefore ('' = ans Ende) setzen.
-    /// </summary>
-    procedure ShowSection(const AId: string; AColumn: Integer; const ABefore: string);
-    /// <summary>Auge: Einstellung des Bereichs aus.</summary>
-    procedure HideSection(const AId: string);
-    /// <summary>Rechtsklick „Ausblenden“ wie am Element (#628): mit „Rückgängig“ an APoint (Bildschirm).
-    /// </summary>
-    procedure HideSectionAt(const AId: string; const APoint: TPoint);
-    /// <summary>Optionsseite mit der Einstellung des Bereichs.</summary>
-    procedure ShowSectionSettings(const AId: string);
-    procedure SwitchLayout(const AName: string);
-    /// <summary>Kopie des aktiven Layouts unter AName; False bei leerem oder vergebenem Namen.</summary>
-    function AddLayout(const AName: string): Boolean;
-    function RenameLayout(const AName: string): Boolean;
-    /// <summary>Aktives Layout löschen; False beim letzten.</summary>
-    function DeleteLayout: Boolean;
-    /// <summary>„Zurücksetzen“: Atlas-Layout (#753) für das aktive Layout.</summary>
-    procedure ResetLayout;
-  end;
+  TAtlasWelcomeCatalogEntry = Atlas.UI.Welcome.Contract.TAtlasWelcomeCatalogEntry;
 
 {$SCOPEDENUMS ON}
   /// <summary>Teile der gezeichneten Leisten.</summary>
@@ -218,17 +176,6 @@ uses
 function StyleColor(AControl: TControl; AColor: TColor): TColor;
 begin
   Result := StyleServices(AControl).GetSystemColor(AColor);
-end;
-
-{ TAtlasWelcomeCatalogEntry }
-
-class function TAtlasWelcomeCatalogEntry.Create(const AId, ATitle, ADescription: string;
-  AShown: Boolean): TAtlasWelcomeCatalogEntry;
-begin
-  Result.Id := AId;
-  Result.Title := ATitle;
-  Result.Description := ADescription;
-  Result.Shown := AShown;
 end;
 
 { TAtlasArrangePart }

@@ -21,7 +21,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Welcome.Backup;
+  Atlas.Core.Welcome.Backup,
+  Atlas.Core.Welcome.Contract;
 
 type
   TAtlasHostItem = record
@@ -488,7 +489,7 @@ begin
     Result := TAtlasRetireResult.Restored;
     Exit;
   end;
-  mKey := AAccess.Read(AWelcomePath);
+  mKey := TAtlasRegistryKeys.Read(AAccess, AWelcomePath);
   try
     if (mKey = nil) or not TAtlasHostLayout.Read(mKey, mLayout) or not mLayout.ContainsAtlas(APrefix) then
     begin
@@ -496,7 +497,7 @@ begin
     end;
     mCleaned := mLayout.WithoutAtlas(APrefix);
     mCleaned.WriteTo(mKey);
-    AAccess.Replace(AWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(AAccess, AWelcomePath, mKey);
   finally
     mKey.Free;
   end;

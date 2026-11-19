@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Projects;
+﻿unit Atlas.IDE.Welcome.Adapters.Projects;
 
 // Bereich „Projekte“ in der IDE (#592): Quelle des Bereichs
 // (IAtlasProjectsSource) und Anmeldung als Bereich atlas.projects der
@@ -27,10 +27,9 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Projects,
-  Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
   Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract,
   Atlas.IDE.Projects.Contract;
 
 type
@@ -100,7 +99,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Welcome.Search;
+  Atlas.IDE.Welcome.Search,
+  Atlas.UI.Welcome.Projects;
 
 { TAtlasIdeProjects }
 

@@ -30,18 +30,10 @@ uses
   Vcl.Graphics,
   Atlas.Core.Status.Contract,
   Atlas.Core.Welcome.State,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasStateSource = interface
-    ['{5B8E1D37-2C4A-4F69-9E03-7A6D2B1C8F54}']
-    /// <summary>Die fünf Zeilen aus dem Atlas-Statusfeld (#591).</summary>
-    function Rows: TAtlasStateRows;
-    /// <summary>Aktion der Statusfeld-Zeile AId ausführen.</summary>
-    procedure RunRow(const AId: string);
-    /// <summary>Knopf unter den Zeilen.</summary>
-    procedure Run(AButton: TAtlasStateButton);
-  end;
 
   TAtlasWelcomeStateFrame = class(TAtlasWelcomeSectionFrame)
   public const

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Tiles;
+﻿unit Atlas.IDE.Welcome.Adapters.Tiles;
 
 // Kacheln anderer Module auf der Willkommensseite (#1455, Modulregel 2,
 // 3 und 4; Vertrag Atlas.IDE.Contracts.WelcomeTiles): TAtlasIdeWelcomeTiles

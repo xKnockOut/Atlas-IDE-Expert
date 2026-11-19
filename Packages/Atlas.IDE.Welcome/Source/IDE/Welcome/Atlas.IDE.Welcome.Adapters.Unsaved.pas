@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Unsaved;
+﻿unit Atlas.IDE.Welcome.Adapters.Unsaved;
 
 // Bereich „Nicht gesichert“ in der IDE (#762): Quelle des Bereichs
 // (IAtlasUnsavedSource), Anmeldung als Bereich atlas.unsaved der
@@ -32,8 +32,8 @@ uses
   ToolsAPI,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Welcome.Unsaved,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeUnsaved = class(TInterfacedObject, IAtlasUnsavedSource)
@@ -123,7 +123,8 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Projects.Summaries;
+  Atlas.IDE.Projects.Summaries,
+  Atlas.UI.Welcome.Unsaved;
 
 { TAtlasIdeUnsaved.TIdeNotifier }
 
