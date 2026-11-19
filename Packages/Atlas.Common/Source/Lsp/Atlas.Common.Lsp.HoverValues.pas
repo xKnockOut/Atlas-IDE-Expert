@@ -40,7 +40,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Chars;
 
 {$SCOPEDENUMS ON}
 
@@ -540,23 +541,13 @@ begin
   end;
 end;
 
-/// <summary>Erste Stelle ab AIndex, die kein Leerzeichen ist.</summary>
-function SkipSpaces(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and (AText[Result] = ' ') do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>"**Veraltet**: Grund" für deprecated 'Grund'; AIndex steht hinter dem Wort.</summary>
 function DeprecatedText(const ADeclaration: string; AIndex: Integer): string;
 var
   mStart, mClose: Integer;
 begin
   Result := cTexts[THoverValuesText.Deprecated].Text;
-  mStart := SkipSpaces(ADeclaration, AIndex);
+  mStart := TTextChars.RunEnd(ADeclaration, AIndex, [' ']);
   if (mStart > Length(ADeclaration)) or (ADeclaration[mStart] <> '''') then
   begin
     Exit;
@@ -611,7 +602,7 @@ begin
       Inc(mIndex);
     end;
     // Direktiven stehen vor ";", einem String oder am Ende; Namen wie "Platform: string" nicht.
-    mClose := SkipSpaces(ADeclaration, mIndex);
+    mClose := TTextChars.RunEnd(ADeclaration, mIndex, [' ']);
     if (mClose > Length(ADeclaration)) or CharInSet(ADeclaration[mClose], [';', '''']) then
     begin
       Result := DirectiveHint(ADeclaration, LowerCase(Copy(ADeclaration, mStart, mIndex - mStart)), mIndex);

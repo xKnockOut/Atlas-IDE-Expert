@@ -659,20 +659,11 @@ begin
   end;
 end;
 
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 /// <summary>AEdit beginnt dort, wo AOther endet, und ist keine bloße Einfügung.</summary>
 function StartsAtEndOf(const AEdit, AOther: TTextEdit): Boolean;
 begin
-  Result := (Compare(AEdit.Range.StartPos, AOther.Range.EndPos) = 0) and
-    (Compare(AEdit.Range.StartPos, AEdit.Range.EndPos) <> 0);
+  Result := (TTextPosition.Compare(AEdit.Range.StartPos, AOther.Range.EndPos) = 0) and
+    (TTextPosition.Compare(AEdit.Range.StartPos, AEdit.Range.EndPos) <> 0);
 end;
 
 /// <summary>Überschneidet sich AEdit mit einer Änderung aus AEdits? Zwei Einfügungen an verschiedenen Stellen
@@ -683,8 +674,8 @@ var
 begin
   for mOther in AEdits do
   begin
-    if (Compare(AEdit.Range.StartPos, mOther.Range.EndPos) <= 0) and
-      (Compare(mOther.Range.StartPos, AEdit.Range.EndPos) <= 0) and not StartsAtEndOf(AEdit, mOther) and
+    if (TTextPosition.Compare(AEdit.Range.StartPos, mOther.Range.EndPos) <= 0) and
+      (TTextPosition.Compare(mOther.Range.StartPos, AEdit.Range.EndPos) <= 0) and not StartsAtEndOf(AEdit, mOther) and
       not StartsAtEndOf(mOther, AEdit) then
     begin
       Exit(True);

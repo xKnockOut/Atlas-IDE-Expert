@@ -1320,16 +1320,6 @@ begin
   end;
 end;
 
-/// <summary>Ende des Bezeichners, der in AText bei AIndex beginnt (erstes Zeichen dahinter).</summary>
-function IdentEnd(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and TTextChars.IsIdentChar(AText[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Trägt alle Bezeichner in AText ab AIndex in AWords ein.</summary>
 procedure AddWords(AWords: TDictionary<string, Boolean>; const AText: string; AIndex: Integer);
 var
@@ -1340,7 +1330,7 @@ begin
   begin
     if TTextChars.IsIdentStart(AText[mIndex]) then
     begin
-      mEnd := IdentEnd(AText, mIndex);
+      mEnd := TTextChars.IdentEnd(AText, mIndex);
       AWords.AddOrSetValue(Copy(AText, mIndex, mEnd - mIndex), True);
       mIndex := mEnd;
     end
@@ -1365,7 +1355,7 @@ begin
     begin
       Continue;
     end;
-    mIndex := IdentEnd(mText, 1);
+    mIndex := TTextChars.IdentEnd(mText, 1);
     if MatchStr(Copy(mText, 1, mIndex - 1), ['IFDEF', 'IFNDEF', 'IF', 'ELSEIF']) then
     begin
       AddWords(Result, mText, mIndex);

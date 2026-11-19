@@ -29,6 +29,8 @@ type
     constructor Create(ALine, ACharacter: Integer);
     class operator Equal(const A, B: TTextPosition): Boolean;
     class operator NotEqual(const A, B: TTextPosition): Boolean;
+    /// <summary>Negativ, 0 oder positiv wie CompareText: zuerst die Zeile, dann das Zeichen.</summary>
+    class function Compare(const A, B: TTextPosition): Integer; static;
   end;
 
   /// <summary>Zeilenanfänge eines Texts; PositionAt sucht binär, OffsetAt in O(1).</summary>
@@ -123,6 +125,15 @@ end;
 class operator TTextPosition.NotEqual(const A, B: TTextPosition): Boolean;
 begin
   Result := not (A = B);
+end;
+
+class function TTextPosition.Compare(const A, B: TTextPosition): Integer;
+begin
+  Result := A.Line - B.Line;
+  if Result = 0 then
+  begin
+    Result := A.Character - B.Character;
+  end;
 end;
 
 /// <summary>Länge des Umbruchs, der bei AIndex (1-basiert) beginnt: 2 für CRLF, 1 für LF oder CR, sonst 0.</summary>

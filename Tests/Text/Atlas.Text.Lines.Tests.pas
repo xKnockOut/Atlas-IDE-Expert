@@ -54,6 +54,8 @@ type
     procedure ReplaceRangeReplacesAndKeepsRest;
     [Test]
     procedure ShortLine;
+    [Test]
+    procedure PositionCompareLineFirst;
   end;
 
   [TestFixture]
@@ -390,6 +392,13 @@ begin
   mLines := TTextLines.ReplaceRange(TArray<string>.Create('a', 'b'), 0, 1, nil);
   Assert.AreEqual('b', string.Join('|', mLines));
   mLines := nil;
+end;
+
+procedure TTextLinesTests.PositionCompareLineFirst;
+begin
+  Assert.IsTrue(TTextPosition.Compare(TTextPosition.Create(1, 9), TTextPosition.Create(2, 0)) < 0);
+  Assert.IsTrue(TTextPosition.Compare(TTextPosition.Create(2, 3), TTextPosition.Create(2, 1)) > 0);
+  Assert.AreEqual(0, TTextPosition.Compare(TTextPosition.Create(4, 5), TTextPosition.Create(4, 5)));
 end;
 
 initialization

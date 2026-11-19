@@ -7,6 +7,9 @@
 
 interface
 
+uses
+  System.SysUtils;
+
 type
   TTextChars = class
   public
@@ -22,6 +25,13 @@ type
     class function IsDigits(const AText: string): Boolean; static;
     /// <summary>Position (ab 1) hinter dem ersten AChar ab AFrom; Length(AText) + 2, wenn keins folgt.</summary>
     class function PastNext(const AText: string; AFrom: Integer; AChar: Char): Integer; static;
+    /// <summary>Position (ab 1) hinter der Folge von Zeichen aus AChars ab AIndex; AIndex, wenn dort keins
+    /// steht.</summary>
+    class function RunEnd(const AText: string; AIndex: Integer; const AChars: TSysCharSet): Integer; static;
+    /// <summary>Position (ab 1) hinter den Bezeichnerzeichen (IsIdentChar) ab AIndex.</summary>
+    class function IdentEnd(const AText: string; AIndex: Integer): Integer; static;
+    /// <summary>Position (ab 1) hinter den ASCII-Bezeichnerzeichen (IsAsciiIdentChar) ab AIndex.</summary>
+    class function AsciiIdentEnd(const AText: string; AIndex: Integer): Integer; static;
   end;
 
 implementation
@@ -79,6 +89,33 @@ begin
     Inc(Result);
   end;
   Inc(Result);
+end;
+
+class function TTextChars.RunEnd(const AText: string; AIndex: Integer; const AChars: TSysCharSet): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and CharInSet(AText[Result], AChars) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+class function TTextChars.IdentEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and IsIdentChar(AText[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+class function TTextChars.AsciiIdentEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and IsAsciiIdentChar(AText[Result]) do
+  begin
+    Inc(Result);
+  end;
 end;
 
 end.

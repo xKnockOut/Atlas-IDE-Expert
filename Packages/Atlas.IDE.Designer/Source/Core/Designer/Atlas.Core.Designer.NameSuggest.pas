@@ -577,15 +577,6 @@ begin
     ((mEnd > Length(AText)) or not TTextChars.IsAsciiIdentChar(AText[mEnd]));
 end;
 
-/// <summary>Bezeichner ab AIndex überspringen.</summary>
-procedure SkipWord(const AText: string; var AIndex: Integer);
-begin
-  while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
-  begin
-    Inc(AIndex);
-  end;
-end;
-
 class function TAtlasNameSuggest.Places(const AText, AName: string): TArray<TAtlasNamePlace>;
 var
   mIndex, mLine, mLineStart: Integer;
@@ -618,7 +609,7 @@ begin
     end
     else
     begin
-      SkipWord(AText, mIndex);
+      mIndex := TTextChars.AsciiIdentEnd(AText, mIndex);
     end;
   end;
 end;

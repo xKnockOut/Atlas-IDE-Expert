@@ -90,7 +90,8 @@ uses
   System.StrUtils,
   System.Character,
   Atlas.Common.Editing.StringLiterals,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 const
   /// <summary>Wörter ohne eigene Bedeutung; sie zählen nur, wenn sonst keins bleibt.</summary>
@@ -104,15 +105,6 @@ begin
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
   begin
     Inc(Result);
-  end;
-end;
-
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
   end;
 end;
 
@@ -459,8 +451,8 @@ begin
       Continue;
     end;
     // Echt innerhalb: hinter dem öffnenden und vor dem schließenden Hochkomma.
-    mInside := (ComparePositions(ATokens[mIndex].StartPos, APosition) < 0) and
-      ((ComparePositions(APosition, ATokens[mIndex].EndPos) < 0) or not ATokens[mIndex].Terminated);
+    mInside := (TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) < 0) and
+      ((TTextPosition.Compare(APosition, ATokens[mIndex].EndPos) < 0) or not ATokens[mIndex].Terminated);
     if not mInside then
     begin
       Continue;

@@ -390,11 +390,7 @@ end;
 
 class function TAtlasTextFile.LoadLines(const AFileName: string): TArray<string>;
 begin
-  Result := TTextLines.SplitLines(LoadText(AFileName));
-  if (Length(Result) > 0) and (Result[High(Result)] = '') then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
+  Result := TTextLines.SplitLikeStrings(LoadText(AFileName));
 end;
 
 class procedure TAtlasTextFile.Save(const AFileName: string; const AContent: TAtlasTextFileContent);
