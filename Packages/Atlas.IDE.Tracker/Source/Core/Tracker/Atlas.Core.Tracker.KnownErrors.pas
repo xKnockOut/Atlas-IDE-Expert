@@ -113,6 +113,10 @@ const
   cMinWordLength = 4;
   cMaxWords = 4;
   cQuote = '"';
+  /// <summary>Vorsilbe einer Adresse in C-Schreibweise.</summary>
+  cHexPrefix = '0x';
+  /// <summary>Ab so vielen Hex-Ziffern (mit mindestens einer Ziffer) gilt ein Wort als Adresse.</summary>
+  cMinAddressDigits = 4;
 
 function IsLetter(AChar: Char): Boolean;
 begin
@@ -187,16 +191,16 @@ begin
     Exit;
   end;
   mHex := AWord;
-  if StartsText('0x', mHex) then
+  if StartsText(cHexPrefix, mHex) then
   begin
-    mHex := Copy(mHex, 3, MaxInt);
+    mHex := Copy(mHex, Length(cHexPrefix) + 1, MaxInt);
   end
   else if mHex[1] = '$' then
   begin
     mHex := Copy(mHex, 2, MaxInt);
   end;
   mHex := mHex.TrimRight(['.', ',', ';', ':', ')']);
-  Result := (Length(mHex) >= 4) and IsHexWithDigit(mHex);
+  Result := (Length(mHex) >= cMinAddressDigits) and IsHexWithDigit(mHex);
 end;
 
 function WithoutDigits(const AText: string): string;
@@ -242,7 +246,7 @@ var
   mWords: TArray<string>;
   mIndex: Integer;
 begin
-  mWords := WithoutQuoted(AText).Replace(#13, ' ').Replace(#10, ' ').Replace(#9, ' ').Split([' ']);
+  mWords := WithoutQuoted(AText).Replace(#13#10, ' ').Replace(#13, ' ').Replace(#10, ' ').Replace(#9, ' ').Split([' ']);
   for mIndex := 0 to High(mWords) do
   begin
     if IsNoise(mWords[mIndex]) then
@@ -304,20 +308,20 @@ end;
 
 function TAtlasKnownErrorSignature.Words: TArray<string>;
 var
-  mWord, mCurrent: string;
-  mChar: Char;
+  mText, mWord: string;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  mCurrent := '';
-  for mChar in Message + ' ' do
+  mText := Message + ' ';
+  mStart := 1;
+  for mIndex := 1 to Length(mText) do
   begin
-    if IsLetter(mChar) then
+    if IsLetter(mText[mIndex]) then
     begin
-      mCurrent := mCurrent + mChar;
       Continue;
     end;
-    mWord := mCurrent;
-    mCurrent := '';
+    mWord := Copy(mText, mStart, mIndex - mStart);
+    mStart := mIndex + 1;
     if (Length(mWord) >= cMinWordLength) and (Length(Result) < cMaxWords) and
       not MatchText(mWord, Result) then
     begin
