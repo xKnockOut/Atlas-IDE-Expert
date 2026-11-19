@@ -214,14 +214,6 @@ type
     View: IOTAEditView;
   end;
 
-function Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 function SampleBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
 var
   mSample: COLORREF;
@@ -632,7 +624,7 @@ begin
   begin
     Exit;
   end;
-  mEditors := Services;
+  mEditors := TAtlasIdeGutterColumns.Services;
   if mEditors = nil then
   begin
     if not FLog.NoServices then
@@ -662,20 +654,12 @@ begin
 end;
 
 procedure TAtlasIdeQuickColumn.DropColumn;
-var
-  mEditors: INTACodeEditorServices280;
 begin
   if FSlot.Column < 0 then
   begin
     Exit;
   end;
-  mEditors := Services;
-  if mEditors <> nil then
-  begin
-    mEditors.RemoveGutterColumn(FSlot.Column);
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-  FSlot.Column := -1;
+  TAtlasIdeGutterColumns.Remove(FSlot.Column);
   FArea.Rows.Clear;
   if FLog.Painted then
   begin
