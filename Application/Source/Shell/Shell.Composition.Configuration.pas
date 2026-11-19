@@ -151,7 +151,7 @@ begin
     FGlobalSettingsFile := TShellBootstrap.GlobalSettingsFile;
   end;
   LoadGlobalSettings;
-  FFileWatcher := TFileWatcher.Create(FServices.FilesChanged);
+  FFileWatcher := TFileWatcher.Create(FServices.FilesChanged, FServices.Logger);
 end;
 
 procedure TShellConfiguration.StopWatching;

@@ -235,15 +235,17 @@ var
   mInput: TAtlasQuickOpenSources;
 begin
   mCalls := 0;
-  mGate := TEvent.Create(nil, True, False, '');
-  mList := TAtlasQuickOpenList.Create(
-    function(const AFolder: string; ARecursive: Boolean): TArray<string>
-    begin
-      TInterlocked.Increment(mCalls);
-      mGate.WaitFor(5000);
-      Result := [AFolder + '\A.pas'];
-    end);
+  mGate := nil;
+  mList := nil;
   try
+    mGate := TEvent.Create(nil, True, False, '');
+    mList := TAtlasQuickOpenList.Create(
+      function(const AFolder: string; ARecursive: Boolean): TArray<string>
+      begin
+        TInterlocked.Increment(mCalls);
+        mGate.WaitFor(5000);
+        Result := [AFolder + '\A.pas'];
+      end);
     mInput := Default(TAtlasQuickOpenSources);
     mInput.Folders := ['C:\Eins'];
     mList.Refresh(mInput);

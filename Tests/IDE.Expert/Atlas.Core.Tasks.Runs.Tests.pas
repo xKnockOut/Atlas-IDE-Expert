@@ -222,9 +222,11 @@ var
   mValue: TAtlasTaskRun;
   mLast: TAtlasTaskLastRun;
 begin
-  mHistory := TAtlasTaskHistory.Create;
-  mLoaded := TAtlasTaskHistory.Create;
+  mHistory := nil;
+  mLoaded := nil;
   try
+    mHistory := TAtlasTaskHistory.Create;
+    mLoaded := TAtlasTaskHistory.Create;
     mValue := Run('Delphi-12-Prüfung', 1, 2, 1);
     mValue.Outcome := TAtlasTaskOutcome.TimedOut;
     mValue.DurationMs := 1234;

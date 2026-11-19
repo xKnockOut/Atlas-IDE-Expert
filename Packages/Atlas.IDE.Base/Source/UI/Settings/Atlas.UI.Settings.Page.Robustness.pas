@@ -111,7 +111,7 @@ procedure TAtlasSettingsRobustnessPart.AddFuseSection;
 var
   mPanel: TWinControl;
 begin
-  AddTitle(TAtlasTextId.SettingsFuseTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsFuseTitle);
   mPanel := AddPanel(cFuseListHeight);
   FFuseList := TListBox.Create(FPage);
   FFuseList.Parent := mPanel;
@@ -128,7 +128,7 @@ procedure TAtlasSettingsRobustnessPart.Build;
 var
   mPanel: TWinControl;
 begin
-  AddSheet(TAtlasTextId.SettingsTabRobustness);
+  AddSheet(TAtlasSettingsTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
   BindText('HangThresholdMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangThreshold)));
   BindCheck('HangHint', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangHint)));

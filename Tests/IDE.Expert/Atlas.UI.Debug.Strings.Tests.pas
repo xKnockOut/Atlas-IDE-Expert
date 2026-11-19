@@ -30,6 +30,7 @@ uses
   Atlas.UI.Debug.DataBreakpoints.Strings,
   Atlas.UI.Debug.Elapsed.Strings,
   Atlas.UI.Debug.NextStatement.Strings,
+  Atlas.UI.Debug.ReturnValues.Strings,
   Atlas.UI.Debug.Evaluate.Strings,
   Atlas.UI.Debug.EventBreak.Strings,
   Atlas.UI.Debug.EventLog.Strings,
@@ -173,7 +174,7 @@ end;
 /// <summary>Texttabellen der Anzeigen im Editor rund um den Ausführungspunkt.</summary>
 function EditorTables: TArray<TAtlasTextTable>;
 begin
-  SetLength(Result, 2);
+  SetLength(Result, 3);
   Result[0] := TextTable('Elapsed', Ord(High(TAtlasElapsedTextId)) + 1,
     function(AIndex: Integer): string
     begin
@@ -183,6 +184,11 @@ begin
     function(AIndex: Integer): string
     begin
       Result := TAtlasNextStatementStrings.Text(TAtlasNextStatementTextId(AIndex));
+    end);
+  Result[2] := TextTable('ReturnValues', Ord(High(TAtlasReturnValuesTextId)) + 1,
+    function(AIndex: Integer): string
+    begin
+      Result := TAtlasReturnValuesStrings.Text(TAtlasReturnValuesTextId(AIndex));
     end);
 end;
 

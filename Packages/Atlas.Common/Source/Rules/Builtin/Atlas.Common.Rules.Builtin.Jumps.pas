@@ -711,10 +711,13 @@ var
   mGotos: TList<TSyntaxNode>;
   mNode: TSyntaxNode;
 begin
-  mDeclared := TDictionary<string, Integer>.Create;
-  mSets := TLabelSets.Create([doOwnsValues]);
-  mGotos := TList<TSyntaxNode>.Create;
+  mDeclared := nil;
+  mGotos := nil;
+  mSets := nil;
   try
+    mDeclared := TDictionary<string, Integer>.Create;
+    mSets := TLabelSets.Create([doOwnsValues]);
+    mGotos := TList<TSyntaxNode>.Create;
     CollectDeclared(AScope, mDeclared);
     // Marken im asm-Block sieht der Baum nicht.
     if not Collect(ABody, mSets, mGotos) then

@@ -159,19 +159,23 @@ begin
   mTransport := TJsonRpcLineTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
   mServices := TMcpServices.Create(RootOf(AOptions), mLogger);
   mGlobalSettings := GlobalSettingsOf(mServices.Root, mLogger);
-  mServer := TMcpServer.Create(TProductVersion.cName, TProductVersion.cVersion);
+  mServer := nil;
+  mDispatcher := nil;
+  mConnection := nil;
+  mCrashCases := nil;
   mPrompts := nil;
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
-  mRecent := TJsonRpcRecentMessages.Create;
-  mDispatcher.Recent := mRecent;
-  mCrashCases := NewCrashCases(mLogger, mRecent, mServices.Root);
-  mDispatcher.OnRequestFailed := RequestFailedOf(mCrashCases, mServices.Workspace);
-  // Statusdatei (#1901): Ordner des Servers, laufende Werkzeuge, server.statusFile aus den Einstellungen.
-  TServerActivity.Shared.Describe(TServerStatusEntry.cKindMcp, '', mServices.Root);
-  TServerActivity.Shared.Enabled := mServices.Workspace.Configuration.Settings.ServerStatusFile;
-  mDispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
   try
+    mServer := TMcpServer.Create(TProductVersion.cName, TProductVersion.cVersion);
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
+    mRecent := TJsonRpcRecentMessages.Create;
+    mDispatcher.Recent := mRecent;
+    mCrashCases := NewCrashCases(mLogger, mRecent, mServices.Root);
+    mDispatcher.OnRequestFailed := RequestFailedOf(mCrashCases, mServices.Workspace);
+    // Statusdatei (#1901): Ordner des Servers, laufende Werkzeuge, server.statusFile aus den Einstellungen.
+    TServerActivity.Shared.Describe(TServerStatusEntry.cKindMcp, '', mServices.Root);
+    TServerActivity.Shared.Enabled := mServices.Workspace.Configuration.Settings.ServerStatusFile;
+    mDispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
     mServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([mServices.Root]);
     ConfigureServer(mServer, mServices, AOptions.Restricted, mLogger);
     mServer.OnClientInfo := ClientInfoOf(mServices.Group, mCrashCases);

@@ -1124,6 +1124,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Elapsed` | `IDE/Debug/Atlas.IDE.Debug.Elapsed.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.NextStatement` | `IDE/Debug/Atlas.IDE.Debug.NextStatement.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.NextStatementColumn` | `IDE/Debug/Atlas.IDE.Debug.NextStatementColumn.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.LineNote` | `IDE/Debug/Atlas.IDE.Debug.LineNote.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ReturnValues` | `IDE/Debug/Atlas.IDE.Debug.ReturnValues.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.StopColumn` | `IDE/Debug/Atlas.IDE.Debug.StopColumn.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Forecast` | `IDE/Debug/Atlas.IDE.Debug.Forecast.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.EditValue` | `IDE/Debug/Atlas.IDE.Debug.EditValue.pas` | Ordner `IDE/Debug` |
@@ -1216,6 +1218,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.Stepping.Strings` | `UI/Debug/Atlas.UI.Debug.Stepping.Strings.pas` | Texte des Debuggers: Schrittbetrieb, Schrittfilter, ohne Quelltext, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Elapsed.Strings` | `UI/Debug/Atlas.UI.Debug.Elapsed.Strings.pas` | Texte des Debuggers: Laufzeit zwischen Haltepunkten, Sprache von Base, #579 |
 | `Atlas.UI.Debug.NextStatement.Strings` | `UI/Debug/Atlas.UI.Debug.NextStatement.Strings.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ReturnValues.Strings` | `UI/Debug/Atlas.UI.Debug.ReturnValues.Strings.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventLog.Strings` | `UI/Debug/Atlas.UI.Debug.EventLog.Strings.pas` | Texte des Debuggers: Ereignisprotokoll, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Session.Strings` | `UI/Debug/Atlas.UI.Debug.Session.Strings.pas` | Texte des Debuggers: Neustart, erneut anhängen, Startgruppen, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.RuntimeReport.Strings` | `UI/Debug/Atlas.UI.Debug.RuntimeReport.Strings.pas` | Texte des Debuggers: Leck- und Absturzberichte, Sprache von Base, #1455 |
@@ -1259,6 +1262,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.ProcessChoice` | `UI/Debug/Atlas.UI.Debug.ProcessChoice.pas` | Ordner `UI/Debug` |
 | `Atlas.IDE.Debug.Reattach` | `IDE/Debug/Atlas.IDE.Debug.Reattach.pas` | Erneut an Prozess anhängen, auf Start warten, #2171 |
 | `Atlas.Core.Debug.RuntimeReport` | `Core/Debug/Atlas.Core.Debug.RuntimeReport.pas` | Argumente und Antwort von atlas.server.runtimeReport ohne IDE, #74 |
+| `Atlas.Core.Debug.ReturnValues` | `Core/Debug/Atlas.Core.Debug.ReturnValues.pas` | Rückgabewerte ohne IDE: end-Zeilen und betroffene Funktionen einer Zeile, Anzeige, Verlauf, #844 |
+| `Atlas.Core.Debug.ReturnFlow` | `Core/Debug/Atlas.Core.Debug.ReturnFlow.pas` | Ablauf beim Abholen der Rückgabewerte ohne IDE (Auswerten, Rückkehr, Fortsetzen), #844 |
 | `Atlas.IDE.Debug.RuntimeReport` | `IDE/Debug/Atlas.IDE.Debug.RuntimeReport.pas` | Leck- oder Absturzbericht einfügen, Stapel in der Meldungsansicht, #74 |
 | `Atlas.Core.Debug.LaunchGroups` | `Core/Debug/Atlas.Core.Debug.LaunchGroups.pas` | Startverbünde lesen und schreiben, Ablauf eines Laufs ohne IDE, #867 |
 | `Atlas.Core.Debug.LaunchProcesses` | `Core/Debug/Atlas.Core.Debug.LaunchProcesses.pas` | Gestartete Programme eines Startverbunds: Zustand, Statusfeld, nächster Prozess, Prüfer, #1967 |

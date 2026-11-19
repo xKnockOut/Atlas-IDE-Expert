@@ -85,9 +85,11 @@ var
   mText: string;
   mName: string;
 begin
-  mSearch := TShellUnitSearch.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mSearch := nil;
+  mCommands := nil;
   try
+    mSearch := TShellUnitSearch.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mSearch.RegisterCommands(mCommands);
     mCapability := mCommands.Capability;
     try
@@ -112,9 +114,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mSearch := TShellUnitSearch.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mSearch := nil;
+  mCommands := nil;
   try
+    mSearch := TShellUnitSearch.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mSearch.RegisterCommands(mCommands);
     for mName in TArray<string>.Create(TUnitSearch.cUnitsCommand, TUnitSearch.cPreviewCommand) do
     begin
@@ -138,10 +142,13 @@ var
   mAnswer: TJSONValue;
 begin
   FVisits := 0;
-  mSearch := TShellUnitSearch.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mSearch := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mSearch := TShellUnitSearch.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mSearch.RegisterCommands(mCommands);
     mAnswer := mCommands.Execute(TUnitSearch.cUnitsCommand, mArguments);
     try

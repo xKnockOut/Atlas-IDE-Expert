@@ -137,9 +137,11 @@ var
   mReported: Integer;
 begin
   mReported := -1;
-  mTypes := TLspIdeTypes.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mTypes := nil;
+  mDispatcher := nil;
   try
+    mTypes := TLspIdeTypes.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mTypes.OnChanged :=
       procedure(ACount: Integer)
       begin

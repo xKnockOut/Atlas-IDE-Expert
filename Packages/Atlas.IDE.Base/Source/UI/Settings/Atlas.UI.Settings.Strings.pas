@@ -152,7 +152,11 @@ type
     // Beispiel falsch/richtig im Befund-Hover (#145).
     SettingsHoverRuleExamples,
     // Teststand in der Statusleiste (#1777).
-    SettingsEditorStatusBarTests);
+    SettingsEditorStatusBarTests, SettingsFuseTitle, SettingsIndexTitle, SettingsSafeTitle, SettingsUndoTitle,
+    SettingsUpdatesTitle, SettingsBugReportTitle, SettingsTabGeneral, SettingsTabCompletion, SettingsTabEditor,
+    SettingsTabIndex, SettingsTabCompiler, SettingsTabRobustness, SettingsTabColors, SettingsTabInsert,
+    SettingsTabCommands, SettingsTabStartup, SettingsTabUndo, SettingsTabUnitSearch, SettingsFavoritesTitle,
+    SettingsTabTeamFile, SettingsTransferTitle, SettingsTabRules);
 
   TAtlasSettingsStrings = class
   public
@@ -715,7 +719,29 @@ const
      'Atlas-Fenster unter Ansicht › Atlas öffnen (Prüfung, Gliederung, Debuggen, Designer …)',
      'Compilermeldungen im Hover erklären: typische Ursache, Links „Erklären“ und „DocWiki“',
      'Link „Beispiel zeigen“ unter Befunden im Hover (Beschreibung und Beispiel aus dem Regelkatalog)',
-     'Teststand in der Statusleiste („Tests 41/42“ mit Ampel für das Testprojekt der aktuellen Datei)'),
+     'Teststand in der Statusleiste („Tests 41/42“ mit Ampel für das Testprojekt der aktuellen Datei)',
+     'Nach wiederholten Fehlern abgeschaltet:',
+     'Symbolindex',
+     'Abgesicherter Start',
+     'Atlas-Änderungen über mehrere Dateien',
+     'Updates',
+     'Fehlerbericht',
+     'Allgemein',
+     'Vervollständigung',
+     'Editor',
+     'Index',
+     'Compiler',
+     'Robustheit',
+     'Farben',
+     'Einfügen',
+     'Befehle',
+     'Start und Updates',
+     'Rückgängig',
+     'Units suchen',
+     'Angeheftete Favoriten (höchstens 5 je Typ)',
+     'Projektdatei',
+     'Einstellungen übertragen',
+     'Prüfregeln'),
     ('Completion, parameter hint and tooltip by Atlas',
      'Code Insight by Atlas (off: built-in Code Insight of the IDE)',
      'Visible rows of the list:',
@@ -1261,7 +1287,29 @@ const
      'Open Atlas windows from View › Atlas (Findings, Outline, Debug, Designer …)',
      'Explain compiler messages in the hover: typical cause, links "Explain" and "DocWiki"',
      'Link "Show example" below findings in the hover (description and example from the rule catalog)',
-     'Test status in the status bar ("Tests 41/42" with a traffic light for the test project of the current file)'));
+     'Test status in the status bar ("Tests 41/42" with a traffic light for the test project of the current file)',
+     'Turned off after repeated errors:',
+     'Symbol index',
+     'Safe mode',
+     'Atlas changes across files',
+     'Updates',
+     'Bug report',
+     'General',
+     'Completion',
+     'Editor',
+     'Index',
+     'Compiler',
+     'Robustness',
+     'Colours',
+     'Insertion',
+     'Commands',
+     'Startup and updates',
+     'Undo',
+     'Search units',
+     'Pinned favorites (at most 5 per type)',
+     'Project file',
+     'Transfer settings',
+     'Code checks'));
 
 { TAtlasSettingsStrings }
 

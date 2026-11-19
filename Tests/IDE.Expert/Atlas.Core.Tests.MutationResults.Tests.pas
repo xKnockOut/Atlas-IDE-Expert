@@ -148,9 +148,11 @@ var
   mResult: TAtlasMutationRoutineResult;
   mOutcome: TAtlasMutationOutcome;
 begin
-  mResults := TAtlasMutationResults.Create;
-  mLoaded := TAtlasMutationResults.Create;
+  mResults := nil;
+  mLoaded := nil;
   try
+    mResults := TAtlasMutationResults.Create;
+    mLoaded := TAtlasMutationResults.Create;
     mOutcome := Outcome(1, TAtlasMutationStatus.Killed);
     mOutcome.By := 'PreiseTests.TPreiseTests.Grenze';
     mOutcome.Description := '>= durch >';

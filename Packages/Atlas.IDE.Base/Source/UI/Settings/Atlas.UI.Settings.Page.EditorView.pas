@@ -249,7 +249,7 @@ end;
 
 procedure TAtlasSettingsEditorViewPart.Build;
 begin
-  AddSheet(TAtlasTextId.SettingsTabEditor);
+  AddSheet(TAtlasSettingsTextId.SettingsTabEditor);
   BindCheck('HoverTooltip', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHover)));
   // Aktionszeile unter Befunden im Hover (#909).
   BindCheck('HoverProblemActions',

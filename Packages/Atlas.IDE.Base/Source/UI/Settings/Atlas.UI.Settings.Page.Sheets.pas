@@ -14,6 +14,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.UI.Strings,
+  Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.ChoiceBox;
 
 const
@@ -62,7 +63,7 @@ type
     /// Bäumen leben im Fenster; auf noch nicht gezeigten Reitern fehlt es sonst).</summary>
     function ListReady(AControl: TWinControl): Boolean;
     /// <summary>Neuer Reiter; die folgenden Add… setzen ihre Elemente darauf.</summary>
-    procedure AddSheet(AId: TAtlasTextId);
+    procedure AddSheet(AId: TAtlasSettingsTextId);
     procedure AddSheetCaption(const ACaption: string);
     /// <summary>Weitere Elemente auf den vorhandenen Reiter AIndex, unter die vorhandenen (Abschnitte der Module).
     /// </summary>
@@ -73,7 +74,7 @@ type
     function AddNumber(const ACaption: string): TEdit;
     function AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
     /// <summary>Fett gesetzte Überschrift eines Abschnitts.</summary>
-    procedure AddTitle(AId: TAtlasTextId);
+    procedure AddTitle(AId: TAtlasSettingsTextId);
     procedure AddTitleText(const ACaption: string);
     /// <summary>Kürzel ohne eigenen Vorrang; der gilt für die Gruppe (#399). Palette und Prüfung stehen auf der
     /// Seite „Tastenkonflikte“ (#494).</summary>
@@ -144,9 +145,9 @@ begin
   Result := AControl.HandleAllocated;
 end;
 
-procedure TAtlasSettingsPageSheets.AddSheet(AId: TAtlasTextId);
+procedure TAtlasSettingsPageSheets.AddSheet(AId: TAtlasSettingsTextId);
 begin
-  AddSheetCaption(TAtlasStrings.Text(AId));
+  AddSheetCaption(TAtlasSettingsStrings.Text(AId));
 end;
 
 procedure TAtlasSettingsPageSheets.AddSheetCaption(const ACaption: string);
@@ -238,9 +239,9 @@ begin
   Result.SetChoices(AItems);
 end;
 
-procedure TAtlasSettingsPageSheets.AddTitle(AId: TAtlasTextId);
+procedure TAtlasSettingsPageSheets.AddTitle(AId: TAtlasSettingsTextId);
 begin
-  AddTitleText(TAtlasStrings.Text(AId));
+  AddTitleText(TAtlasSettingsStrings.Text(AId));
 end;
 
 procedure TAtlasSettingsPageSheets.AddTitleText(const ACaption: string);

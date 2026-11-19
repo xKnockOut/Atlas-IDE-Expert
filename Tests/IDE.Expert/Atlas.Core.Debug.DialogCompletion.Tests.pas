@@ -157,9 +157,11 @@ var
   mHistory, mLoaded: TAtlasExpressionHistory;
   mItems: TArray<string>;
 begin
-  mHistory := TAtlasExpressionHistory.Create;
-  mLoaded := TAtlasExpressionHistory.Create;
+  mHistory := nil;
+  mLoaded := nil;
   try
+    mHistory := TAtlasExpressionHistory.Create;
+    mLoaded := TAtlasExpressionHistory.Create;
     mHistory.Add('A.dproj', 'Kunde.Name');
     mHistory.Add('A.dproj', 'Summe');
     mHistory.Add('', 'Self');

@@ -14,6 +14,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  Atlas.Common.Logging.Contract,
   Atlas.Common.Documents.ChangeTracker;
 
 type
@@ -30,7 +31,8 @@ type
     FReconfigure: THandle;
     FThread: TThread;
   public
-    constructor Create(const AOnChanged: TFileWatcherChanged);
+    /// <summary>ALogger erhält Fehler des Beobachter-Threads, der danach endet.</summary>
+    constructor Create(const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
     destructor Destroy; override;
     /// <summary>Beobachtet genau AFiles; threadsicher.</summary>
     procedure SetFiles(const AFiles: TArray<string>);
@@ -52,6 +54,7 @@ type
     FStop: THandle;
     FReconfigure: THandle;
     FOnChanged: TFileWatcherChanged;
+    FLogger: ILogger;
     /// <summary>[0] Stop, [1] neue Dateiliste, dahinter je Ordner eine Änderungsmeldung.</summary>
     function OpenHandles: TArray<THandle>;
     procedure CloseHandles(const AHandles: TArray<THandle>);
@@ -65,12 +68,12 @@ type
     procedure Execute; override;
   public
     constructor Create(ATracker: TFileChangeTracker; AStop, AReconfigure: THandle;
-      const AOnChanged: TFileWatcherChanged);
+      const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
   end;
 
 { TFileWatcher }
 
-constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
+constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
 begin
   inherited Create;
   FTracker := TFileChangeTracker.Create(
@@ -80,7 +83,7 @@ begin
     end);
   FStop := CreateEvent(nil, True, False, nil);
   FReconfigure := CreateEvent(nil, False, False, nil);
-  FThread := TWatchThread.Create(FTracker, FStop, FReconfigure, AOnChanged);
+  FThread := TWatchThread.Create(FTracker, FStop, FReconfigure, AOnChanged, ALogger);
   FThread.Start;
 end;
 
@@ -93,7 +96,7 @@ end;
 { TWatchThread }
 
 constructor TWatchThread.Create(ATracker: TFileChangeTracker; AStop, AReconfigure: THandle;
-  const AOnChanged: TFileWatcherChanged);
+  const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
 begin
   inherited Create(True);
   FreeOnTerminate := False;
@@ -101,6 +104,7 @@ begin
   FStop := AStop;
   FReconfigure := AReconfigure;
   FOnChanged := AOnChanged;
+  FLogger := ALogger;
 end;
 
 procedure TWatchThread.Execute;
@@ -108,14 +112,20 @@ var
   mHandles: TArray<THandle>;
   mGoOn: Boolean;
 begin
-  repeat
-    mHandles := OpenHandles;
-    try
-      mGoOn := Watch(mHandles);
-    finally
-      CloseHandles(mHandles);
-    end;
-  until Terminated or not mGoOn;
+  // Ohne Beobachter liest der Server geänderte Einstellungen nicht mehr neu: Fehler melden statt still enden.
+  try
+    repeat
+      mHandles := OpenHandles;
+      try
+        mGoOn := Watch(mHandles);
+      finally
+        CloseHandles(mHandles);
+      end;
+    until Terminated or not mGoOn;
+  except
+    on E: Exception do
+      FLogger.Error(ClassName + '.Execute: ' + E.Message);
+  end;
 end;
 
 function TWatchThread.OpenHandles: TArray<THandle>;
