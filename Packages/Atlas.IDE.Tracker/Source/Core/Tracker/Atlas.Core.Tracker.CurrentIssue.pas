@@ -116,18 +116,6 @@ begin
   end;
 end;
 
-function DateOf(const AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  mText := AObject.GetValue<string>(AName, '');
-  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
 procedure AddText(AObject: TJSONObject; const AName, AValue: string);
 begin
   if AValue <> '' then
@@ -262,7 +250,7 @@ begin
     if mValue is TJSONObject then
     begin
       mComment.Author := TJSONObject(mValue).GetValue<string>('author', '');
-      mComment.Created := DateOf(TJSONObject(mValue), 'createdAt');
+      mComment.Created := TJsonRead.IsoTime(TJSONObject(mValue), 'createdAt', True);
       mComment.Text := TJSONObject(mValue).GetValue<string>('text', '');
       Result := Result + [mComment];
     end;
@@ -279,8 +267,8 @@ begin
   AIssue.Milestone := AObject.GetValue<string>('milestone', '');
   AIssue.Page := AObject.GetValue<string>('page', '');
   AIssue.Branch := AObject.GetValue<string>('branch', '');
-  AIssue.Started := DateOf(AObject, 'startedAt');
-  AIssue.Fetched := DateOf(AObject, 'fetchedAt');
+  AIssue.Started := TJsonRead.IsoTime(AObject, 'startedAt', True);
+  AIssue.Fetched := TJsonRead.IsoTime(AObject, 'fetchedAt', True);
 end;
 
 { TAtlasCurrentIssue }
