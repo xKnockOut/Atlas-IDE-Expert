@@ -115,7 +115,8 @@ uses
   Vcl.Menus,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.ListView;
 
 const
   // Breiten der Dialoge Export, Import und Profil.
@@ -302,16 +303,6 @@ begin
   end;
 end;
 
-/// <summary>Spalte ACaption mit der (schon skalierten) Breite AWidth an AList anhängen.</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
-end;
-
 { TAtlasExportDialog }
 
 constructor TAtlasExportDialog.CreateDialog(AOwner: TComponent; ACatalog: TAtlasSettingsCatalog;
@@ -427,11 +418,12 @@ begin
   FList.RowSelect := True;
   FList.OnClick := ListChanged;
   FList.OnKeyUp := ListKeyUp;
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), ScaleValue(cKeyWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), ScaleValue(100));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), ScaleValue(cValueWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), ScaleValue(cValueWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), ScaleValue(cNoteWidth));
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), cKeyWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), 100);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent),
+    cValueWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), cValueWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), cNoteWidth);
 
   ClientHeight := ScaleValue(cImportHeight);
 end;
