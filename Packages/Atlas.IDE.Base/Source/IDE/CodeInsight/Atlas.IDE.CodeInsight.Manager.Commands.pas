@@ -309,6 +309,8 @@ begin
 end;
 
 function TAtlasCodeInsightCommands.QueryStatusAsync(const ADone: TProc<string>): Boolean;
+const
+  cStatusTimeoutMs = 5000;
 var
   mSession: TLspSession;
   mIdle: TEvent;
@@ -329,7 +331,7 @@ begin
     begin
       try
         try
-          mJson := TakeJson(mSession.ExecuteCommand(TAtlasStatusLines.cStatusCommand, 5000));
+          mJson := TakeJson(mSession.ExecuteCommand(TAtlasStatusLines.cStatusCommand, cStatusTimeoutMs));
           if Assigned(ADone) then
           begin
             ADone(mJson);

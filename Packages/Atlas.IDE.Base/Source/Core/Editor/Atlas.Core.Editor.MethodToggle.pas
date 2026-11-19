@@ -205,6 +205,12 @@ type
     function Run(const AText: string; const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
   end;
 
+const
+  cTokenGrowth = 64;
+  cPlaceGrowth = 16;
+  cTripleQuoteLength = 3;
+  cParenDirective = '(*$';
+
 { TLexer }
 
 procedure TLexer.AddToken(const AText: string; AKind: TTokenKind; ALine, ACharacter: Integer; AEscaped: Boolean);
@@ -225,7 +231,7 @@ begin
   mToken.AfterDot := (FCount > 0) and (FTokens[FCount - 1].Kind = tkSymbol) and (FTokens[FCount - 1].Text = '.');
   if FCount = Length(FTokens) then
   begin
-    SetLength(FTokens, 2 * FCount + 64);
+    SetLength(FTokens, 2 * FCount + cTokenGrowth);
   end;
   FTokens[FCount] := mToken;
   Inc(FCount);
@@ -323,7 +329,7 @@ begin
     end;
     if CharAt(mStart + 2) = '$' then
     begin
-      FConditionals.Handle(Copy(FText, mStart + 3, FI - mStart - 3));
+      FConditionals.Handle(Copy(FText, mStart + Length(cParenDirective), FI - mStart - Length(cParenDirective)));
     end;
     Inc(FI, 2);
   end
@@ -336,12 +342,12 @@ end;
 procedure TLexer.SkipMultilineString;
 begin
   // Mehrzeiliger String (Delphi 12): bis zur nächsten Zeile mit '''.
-  Inc(FI, 3);
+  Inc(FI, cTripleQuoteLength);
   while (FI <= FLen) and not AtTripleQuote(FI) do
   begin
     SkipChar;
   end;
-  Inc(FI, 3);
+  Inc(FI, cTripleQuoteLength);
   while CharAt(FI) = '''' do
   begin
     Inc(FI);
@@ -380,7 +386,7 @@ begin
   mStartLine := FLine;
   mStartChar := FI - FLineStart;
   mStart := FI;
-  if AtTripleQuote(FI) and RestOfLineBlank(FI + 3) then
+  if AtTripleQuote(FI) and RestOfLineBlank(FI + cTripleQuoteLength) then
   begin
     SkipMultilineString;
   end
@@ -551,21 +557,28 @@ procedure TSignatureReader.Flush;
 var
   mIndex: Integer;
   mType: string;
+  mTypes: TArray<string>;
 begin
+  if FNames <= 0 then
+  begin
+    Exit;
+  end;
   mType := '';
   if FTyped then
   begin
     mType := FTypeText;
   end;
-  for mIndex := 1 to FNames do
+  SetLength(mTypes, FNames);
+  for mIndex := 0 to FNames - 1 do
   begin
-    if Text <> '' then
-    begin
-      Text := Text + ',';
-    end;
-    Text := Text + mType;
-    Inc(Count);
+    mTypes[mIndex] := mType;
   end;
+  if Text <> '' then
+  begin
+    Text := Text + ',';
+  end;
+  Text := Text + string.Join(',', mTypes);
+  Inc(Count, FNames);
 end;
 
 procedure TSignatureReader.EndGroup;
@@ -1376,7 +1389,7 @@ begin
   mPlace.IsBody := AIsBody;
   if FPlaceCount = Length(FPlaces) then
   begin
-    SetLength(FPlaces, 2 * FPlaceCount + 16);
+    SetLength(FPlaces, 2 * FPlaceCount + cPlaceGrowth);
   end;
   FPlaces[FPlaceCount] := mPlace;
   Inc(FPlaceCount);

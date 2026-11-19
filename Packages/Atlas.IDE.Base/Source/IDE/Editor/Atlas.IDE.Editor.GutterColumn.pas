@@ -163,13 +163,17 @@ type
 { TSymbolBox }
 
 constructor TSymbolBox.Create(const ARect: TRect);
+const
+  cMinSize = 6;
+  cInset = 4;
+  cPenDivisor = 7;
 begin
-  Size := Max(6, Min(ARect.Width, ARect.Height) - 4);
+  Size := Max(cMinSize, Min(ARect.Width, ARect.Height) - cInset);
   Left := ARect.Left + (ARect.Width - Size) div 2;
   Top := ARect.Top + (ARect.Height - Size) div 2;
   Mid := Top + Size div 2;
   Center := Left + Size div 2;
-  Pen := Max(1, Size div 7);
+  Pen := Max(1, Size div cPenDivisor);
 end;
 
 function TSymbolBox.Bottom: Integer;
@@ -179,10 +183,12 @@ end;
 
 /// <summary>↑ (AUp) bzw. ↓: Schaft und gefüllte Spitze.</summary>
 procedure PaintArrow(ACanvas: TCanvas; const ABox: TSymbolBox; AUp: Boolean);
+const
+  cThirds = 3;
 var
   mHead: Integer;
 begin
-  mHead := Max(2, ABox.Size div 3);
+  mHead := Max(2, ABox.Size div cThirds);
   ACanvas.Pen.Width := 1;
   if AUp then
   begin
@@ -203,6 +209,8 @@ begin
 end;
 
 procedure PaintSymbol(ACanvas: TCanvas; const ARect: TRect; ASymbol: TAtlasGutterSymbol; ABack: TAtlasColor);
+const
+  cQuarters = 4;
 var
   mBox: TSymbolBox;
   mColor: TColor;
@@ -218,7 +226,7 @@ begin
   begin
     ACanvas.Pen.Width := 1;
   end;
-  mQuarter := mBox.Size div 4;
+  mQuarter := mBox.Size div cQuarters;
   case ASymbol of
     TAtlasGutterSymbol.Error:
       begin
@@ -703,6 +711,8 @@ begin
 end;
 
 procedure TAtlasIdeGutterColumn.ShowPanel(const ARow: TRow; AFetchFixes: Boolean);
+const
+  cTipGap = 4;
 var
   mPanel: TPanel;
   mShown: Boolean;
@@ -730,7 +740,8 @@ begin
   FHovering := True;
   FHover := ARow;
   TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-  FTip.ShowNote(mPanel.Title, mPanel.Text, mPanel.Captions, Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
+  FTip.ShowNote(mPanel.Title, mPanel.Text, mPanel.Captions,
+    Point(FHoverScreen.Right + cTipGap, FHoverScreen.Bottom + 2));
 end;
 
 function TAtlasIdeGutterColumn.ProblemPanel(const ARow: TRow; AFetchFixes: Boolean; var APanel: TPanel): Boolean;
