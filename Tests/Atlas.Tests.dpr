@@ -517,6 +517,7 @@ uses
   Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas',
   Atlas.Tests.AllocationTrace in 'Support\Atlas.Tests.AllocationTrace.pas',
   Atlas.Tests.FirstUse in 'Support\Atlas.Tests.FirstUse.pas',
+  Atlas.Tests.FirstUse.Vcl in 'Support\Atlas.Tests.FirstUse.Vcl.pas',
   Atlas.Tests.LeakMonitor in 'Support\Atlas.Tests.LeakMonitor.pas',
   Atlas.Tests.LeakMonitor.Tests in 'Support\Atlas.Tests.LeakMonitor.Tests.pas',
   Atlas.Tests.RuleAssert in 'Support\Atlas.Tests.RuleAssert.pas',

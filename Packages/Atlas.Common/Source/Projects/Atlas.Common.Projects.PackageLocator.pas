@@ -82,6 +82,7 @@ implementation
 
 uses
   System.IOUtils,
+  Atlas.Text.Locked,
   Atlas.Common.Documents.FileEncoding;
 
 { TPackageCompiledFiles }
@@ -146,7 +147,7 @@ begin
   TMonitor.Enter(FLock);
   try
     // Über die Paare statt über Values: Values legt beim ersten Aufruf eine Sammlung an, die das Wörterbuch bis
-    // zu seiner Freigabe behält (24 Byte, gezählt als Leck des ersten Statusabrufs).
+    // zu seiner Freigabe behält.
     for mPair in FFiles do
     begin
       Inc(Result, Length(mPair.Value.Data));
@@ -462,11 +463,7 @@ begin
 end;
 
 initialization
-  TPackageCompiledFiles.FLock := TObject.Create;
-  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
-  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
-  TMonitor.Enter(TPackageCompiledFiles.FLock);
-  TMonitor.Exit(TPackageCompiledFiles.FLock);
+  TPackageCompiledFiles.FLock := TAtlasSharedLock.New;
   TPackageCompiledFiles.FFiles := TDictionary<string, TPackageCompiledFiles.TEntry>.Create;
 
 finalization

@@ -213,6 +213,7 @@ Verweise zeigen nur auf Quellen, die im Repository liegen oder öffentlich sind 
 - Korpustest: parst RTL und VCL aus `$(BDS)\source` oder dem Ordner in `ATLAS_CORPUS`; ohne beides wird er übersprungen.
 - Leistungsmessung mit festen Zielwerten (Syntaxfehler < 200 ms, Gliederung und Faltbereiche < 100 ms).
 - Der Parser begrenzt die Verschachtelung auf 256 Ebenen und gibt Bäume iterativ frei, damit kaputter Code keinen Stapelüberlauf auslöst.
+- Leckmessung je Test: Produktivcode wird nicht für die Messung geformt. Gemeinsame Sperren, die bis zum Programmende leben, entstehen über `TAtlasSharedLock.New` (`Atlas.Text.Locked`, Monitor-Datensatz gleich beim Anlegen); langlebige Tabellen bekommen beim Anlegen eine Anfangsgröße für den üblichen Betrieb, statt bei null Einträgen geleert zu werden. Einmal-Belegungen, die nur die Messung stören (Singletons der RTL, gemeinsame Kataloge), stehen benannt in `Tests/Support/Atlas.Tests.FirstUse.pas`; `Tools/Check-TestWarmUps.ps1` lehnt `[SetupFixture]`-Aufwärmer und von Hand vorgewärmte Sperren (`TMonitor.Enter` direkt gefolgt von `TMonitor.Exit`) ab.
 
 ## DI-Strategie
 

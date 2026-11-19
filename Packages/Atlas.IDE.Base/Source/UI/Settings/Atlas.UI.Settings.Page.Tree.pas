@@ -37,7 +37,8 @@ type
     function ModuleOfName(const AName: string): string;
     function InScope(AControl: TControl): Boolean;
     procedure ScopeOverviews;
-    // Gewählte Seite und aufgeklappte Bereiche bis zum nächsten Öffnen (ohne verwaltete Typen: Leckmonitor).
+    // Gewählte Seite und aufgeklappte Bereiche bis zum nächsten Öffnen; ohne verwaltete Typen, damit sie keinen
+    // Speicher bis zum Entladen halten.
     class var FLastPage: Integer;
     class var FExpandedAreas: set of Byte;
     class var FStateKnown: Boolean;

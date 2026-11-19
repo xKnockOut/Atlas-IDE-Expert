@@ -214,7 +214,7 @@ begin
       Exit(nil);
     end;
     // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
-    // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
+    // Ohne GetValue<Boolean>: das lässt über TValue Speicher bis zum Entladen liegen.
     AState.Incomplete := (mResponse is TJSONObject) and (TJSONObject(mResponse).GetValue('isIncomplete') is TJSONBool) and
       TJSONBool(TJSONObject(mResponse).GetValue('isIncomplete')).AsBoolean;
     AState.Syntax := SyntaxNoticeOf(mResponse);

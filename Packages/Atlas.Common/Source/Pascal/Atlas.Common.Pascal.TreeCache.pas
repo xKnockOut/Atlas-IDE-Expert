@@ -170,8 +170,8 @@ type
   end;
 
 var
-  // TCriticalSection statt TMonitor: TMonitor legt Sperrdaten erst beim ersten Zugriff
-  // bzw. Konflikt an und behält sie; der Leck-Monitor meldete das im ersten Test.
+  // TCriticalSection statt TMonitor: Parses aus vielen Threads treffen hier oft gleichzeitig ein, und TMonitor legt
+  // beim ersten Konflikt Warteobjekte an, die bis zur Freigabe der Sperre bleiben.
   RunLock: TCriticalSection;
   // Laufender gemeinsamer Parse je URI und Schlüssel; hält die Läufe über ihre Schnittstelle am Leben.
   Running: TDictionary<string, IPascalCancellation>;
@@ -569,8 +569,8 @@ end;
 
 initialization
   RunLock := TCriticalSection.Create;
-  // Gleich mit Platz anlegen: Wächst das Wörterbuch erst beim ersten Parse, bleibt der
-  // vergrößerte Speicher bis Programmende liegen und gilt im Test als Leck.
+  // Anfangsgröße für die gleichzeitig laufenden Parses (einer je Datei und Schlüssel): So wächst die Tabelle im
+  // Betrieb nicht, und ein Parse belegt nur seinen Eintrag.
   Running := TDictionary<string, IPascalCancellation>.Create(64);
 
 finalization

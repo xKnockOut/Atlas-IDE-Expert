@@ -543,6 +543,7 @@
         <DCCReference Include="Application\Shell\Shell.CommandLine.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.AllocationTrace.pas"/>
         <DCCReference Include="Support\Atlas.Tests.FirstUse.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.FirstUse.Vcl.pas"/>
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.pas"/>
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RuleAssert.pas"/>
