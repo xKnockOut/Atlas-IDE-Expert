@@ -6,8 +6,8 @@
 // Methoden“ (#855), Haltepunkt-Sätze (#586), „Bis hier ausführen“ (#851), das
 // Haltepunktfenster (#863), „Haltepunkt nur für ein Objekt“ (#857), Haltepunkte,
 // die mit dem Code wandern (#841), Haltepunkt-Regeln (#864), „Anhalten, wenn
-// sich ein Feld ändert“ (#584) und „Nächste Anweisung hier“ samt gezogenem
-// Ausführungspfeil (#871).
+// sich ein Feld ändert“ (#584), die Marke für Haltepunkte mit Aufrufer in der
+// Rinne (#2548) und „Nächste Anweisung hier“ samt gezogenem Ausführungspfeil (#871).
 // Atlas.IDE.Debug.Composition hängt die Befehle unter die Sicherung des
 // Debuggers, ruft Install/Uninstall mit seinen übrigen Befehlen und stellt
 // alles über den Scope des Moduls bereit.
@@ -32,6 +32,8 @@ procedure UninstallBreakCommands;
 procedure ApplyBreakSettings;
 /// <summary>IDE-Thema gewechselt: Fenster der Haltepunkte nachziehen.</summary>
 procedure BreakpointsThemeChanged;
+/// <summary>Schicht der Rinne: Haltepunkte mit Aufrufer (#2548).</summary>
+procedure ProvideBreakpoints(const AScope: IAtlasModuleScope);
 
 implementation
 
@@ -52,6 +54,8 @@ uses
   Atlas.IDE.Debug.InstanceBreakpoint,
   Atlas.IDE.Debug.BreakpointAnchors,
   Atlas.IDE.Debug.BreakpointRules,
+  Atlas.IDE.Debug.BreakpointRulesGutter,
+  Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.DataBreakpoint,
   Atlas.IDE.Debug.NextStatement,
   Atlas.IDE.Debug.NextStatementColumn,
@@ -526,6 +530,11 @@ end;
 procedure BreakpointsThemeChanged;
 begin
   TAtlasIdeDebugBreakpointList.ThemeChanged;
+end;
+
+procedure ProvideBreakpoints(const AScope: IAtlasModuleScope);
+begin
+  AScope.Provide(IAtlasGutterLayer, TAtlasIdeBreakpointRulesGutter.Create as IAtlasGutterLayer);
 end;
 
 end.
