@@ -380,29 +380,18 @@ begin
 end;
 
 class function TAtlasResults.SymbolBadge(AKind: Integer): string;
+const
+  // Kürzel je SymbolKind nach LSP 3.17: File, Module, Namespace, Package, Class, Method, Property, Field,
+  // Constructor, Enum, Interface, Function, Variable, Constant, String, Number, Boolean, Array, Object, Key, Null,
+  // EnumMember, Struct, Event, Operator, TypeParameter.
+  cBadges: array[1..26] of string = ('un', 'un', 'un', 'un', 'ty', 'fn', 'pr', 'fd', 'fn', 'ty', 'ty', 'fn', 'va',
+    'co', 'kw', 'kw', 'kw', 'kw', 'kw', 'kw', 'kw', 'co', 'ty', 'ev', 'kw', 'ty');
+  cOther = 'kw';
 begin
-  // SymbolKind nach LSP 3.17.
-  case AKind of
-    1, 2, 3, 4:
-      Result := 'un';
-    5, 10, 11, 23:
-      Result := 'ty';
-    6, 9, 12:
-      Result := 'fn';
-    7:
-      Result := 'pr';
-    8:
-      Result := 'fd';
-    13:
-      Result := 'va';
-    14, 22:
-      Result := 'co';
-    24:
-      Result := 'ev';
-    26:
-      Result := 'ty';
-  else
-    Result := 'kw';
+  Result := cOther;
+  if (AKind >= Low(cBadges)) and (AKind <= High(cBadges)) then
+  begin
+    Result := cBadges[AKind];
   end;
 end;
 

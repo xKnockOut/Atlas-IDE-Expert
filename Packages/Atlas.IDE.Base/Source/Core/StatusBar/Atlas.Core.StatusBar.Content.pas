@@ -229,17 +229,17 @@ begin
   begin
     ASeconds := 0;
   end;
-  if ASeconds < 60 then
+  if ASeconds < SecsPerMin then
   begin
     Result := Format(ATexts.Seconds, [ASeconds]);
   end
-  else if ASeconds < 3600 then
+  else if ASeconds < SecsPerHour then
   begin
-    Result := Format(ATexts.Minutes, [ASeconds div 60]);
+    Result := Format(ATexts.Minutes, [ASeconds div SecsPerMin]);
   end
   else
   begin
-    Result := Format(ATexts.Hours, [ASeconds div 3600]);
+    Result := Format(ATexts.Hours, [ASeconds div SecsPerHour]);
   end;
 end;
 
