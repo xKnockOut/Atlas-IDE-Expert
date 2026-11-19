@@ -8,8 +8,8 @@
 //   der Ereignis-Handler liefert der Designer (IDesigner.GetMethodName).
 // - Änderungen im Designer (Komponente eingefügt, gelöscht, umbenannt,
 //   Ereignis zugewiesen) meldet IDesignNotification; 500 ms danach geht der
-//   neue Text an den Server, nur für die geänderten Formulare (vorher wurde
-//   jedes offene Formular neu in Text gewandelt, im Diagnose-Fenster bis
+//   neue Text an den Server, nur für die geänderten Formulare (jedes offene
+//   Formular neu in Text zu wandeln, kostete im Diagnose-Fenster bis
 //   266 ms je Änderung). Ein geschlossenes Formular meldet Atlas mit
 //   didClose ab, danach gilt wieder die Datei. Nach einem Serverneustart
 //   gehen alle Formulare neu an den Server.

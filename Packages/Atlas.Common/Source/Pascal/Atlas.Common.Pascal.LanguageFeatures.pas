@@ -68,7 +68,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -251,21 +252,6 @@ begin
     end);
 end;
 
-/// <summary>Nächstes Token nach AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-  if Result > High(ATokens) then
-  begin
-    Result := -1;
-  end;
-end;
-
 /// <summary>Meldet AFeature für die Tokens AFirst bis ALast, wenn AVersion es noch nicht kennt.</summary>
 procedure ReportIfMissing(AList: TList<TLanguageFeatureFinding>; const ATokens: TArray<TPascalToken>;
   AFeature: TLanguageFeature; AFirst, ALast: Integer; const AVersion: string);
@@ -312,7 +298,7 @@ procedure CheckOperators(const ATokens: TArray<TPascalToken>; AIndex: Integer; A
 var
   mNext: Integer;
 begin
-  mNext := NextCode(ATokens, AIndex);
+  mNext := FollowingCode(ATokens, AIndex);
   if mNext < 0 then
   begin
     Exit;

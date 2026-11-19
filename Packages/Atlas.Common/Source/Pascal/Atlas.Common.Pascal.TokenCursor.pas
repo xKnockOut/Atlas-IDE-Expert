@@ -45,6 +45,11 @@ type
     /// <summary>Erstes Code-Token ab AIndex (AIndex eingeschlossen), Kommentare und Direktiven übersprungen;
     /// Count ohne.</summary>
     function NextCode(AIndex: Integer): Integer;
+    /// <summary>Erstes Code-Token hinter AIndex (AIndex ausgeschlossen); Count ohne.</summary>
+    function NextCodeAfter(AIndex: Integer): Integer;
+    /// <summary>Gegenstück zu PreviousCode: erstes Code-Token hinter AIndex (AIndex ausgeschlossen); -1 ohne.
+    /// </summary>
+    function FollowingCode(AIndex: Integer): Integer;
     /// <summary>Letztes Code-Token vor AIndex (AIndex ausgeschlossen); -1 ohne.</summary>
     function PreviousCode(AIndex: Integer): Integer;
     /// <summary>Index der schließenden runden oder eckigen Klammer zur öffnenden an AOpenIndex; -1 ohne
@@ -54,6 +59,8 @@ type
 
 /// <summary>Kommentar oder Compileranweisung?</summary>
 function IsTrivia(const AToken: TPascalToken): Boolean;
+/// <summary>Weder Kommentar noch Compileranweisung (not IsTrivia)?</summary>
+function IsCode(const AToken: TPascalToken): Boolean;
 /// <summary>Ist AToken eines der Schlüsselwörter AWords (ohne Groß-/Kleinschreibung)?</summary>
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
 /// <summary>Index des ersten Tokens, das bei AOffset oder dahinter beginnt (binäre Suche, die Token sind nach
@@ -63,7 +70,15 @@ function TokenFrom(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integ
 function TokenExactly(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 /// <summary>Erstes Code-Token ab AIndex (AIndex eingeschlossen, negativ zählt wie 0, über Length(ATokens) wie
 /// Length(ATokens)); Length(ATokens) ohne.</summary>
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer; overload;
+/// <summary>Wie oben, gesucht wird nur vor AStop (Index ausgeschlossen, höchstens Length(ATokens)); ohne
+/// Treffer AStop. Liegt AIndex schon bei oder hinter AStop, bleibt es AIndex.</summary>
+function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer; AStop: Integer): Integer; overload;
+/// <summary>Erstes Code-Token hinter AIndex (AIndex ausgeschlossen); Length(ATokens) ohne.</summary>
+function NextCodeAfter(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+/// <summary>Gegenstück zu PreviousCode: erstes Code-Token hinter AIndex (AIndex ausgeschlossen); -1 ohne.
+/// </summary>
+function FollowingCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Letztes Code-Token vor AIndex (AIndex ausgeschlossen, über Length(ATokens) zählt wie
 /// Length(ATokens)); -1 ohne.</summary>
 function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -106,6 +121,11 @@ uses
 function IsTrivia(const AToken: TPascalToken): Boolean;
 begin
   Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
+end;
+
+function IsCode(const AToken: TPascalToken): Boolean;
+begin
+  Result := not IsTrivia(AToken);
 end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
@@ -169,6 +189,41 @@ begin
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
   begin
     Inc(Result);
+  end;
+end;
+
+function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer; AStop: Integer): Integer;
+begin
+  if AStop > Length(ATokens) then
+  begin
+    AStop := Length(ATokens);
+  end;
+  Result := AIndex;
+  if Result < 0 then
+  begin
+    Result := 0;
+  end;
+  while (Result < AStop) and IsTrivia(ATokens[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+function NextCodeAfter(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  if AIndex >= Length(ATokens) then
+  begin
+    Exit(Length(ATokens));
+  end;
+  Result := NextCode(ATokens, AIndex + 1);
+end;
+
+function FollowingCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := NextCodeAfter(ATokens, AIndex);
+  if Result > High(ATokens) then
+  begin
+    Result := -1;
   end;
 end;
 
@@ -438,6 +493,16 @@ end;
 function TTokenCursor.NextCode(AIndex: Integer): Integer;
 begin
   Result := Atlas.Common.Pascal.TokenCursor.NextCode(FTokens, AIndex);
+end;
+
+function TTokenCursor.NextCodeAfter(AIndex: Integer): Integer;
+begin
+  Result := Atlas.Common.Pascal.TokenCursor.NextCodeAfter(FTokens, AIndex);
+end;
+
+function TTokenCursor.FollowingCode(AIndex: Integer): Integer;
+begin
+  Result := Atlas.Common.Pascal.TokenCursor.FollowingCode(FTokens, AIndex);
 end;
 
 function TTokenCursor.PreviousCode(AIndex: Integer): Integer;
