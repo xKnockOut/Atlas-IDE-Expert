@@ -39,7 +39,8 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Text.McpStatistics,
-  Atlas.Common.Mcp.StatisticsHistory;
+  Atlas.Common.Mcp.StatisticsHistory,
+  Atlas.Tests.TempFolder;
 
 const
   cNow: TDateTime = 46324.5;
@@ -78,11 +79,7 @@ end;
 
 procedure TMcpStatisticsHistoryTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TMcpStatisticsHistoryTests.LinesForToolsAndCalledResources;
