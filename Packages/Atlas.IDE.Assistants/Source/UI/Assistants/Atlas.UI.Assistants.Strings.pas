@@ -36,7 +36,10 @@ type
     ProviderOpenAi, SettingsOpenAiUrl, SettingsOpenAiModel, SettingsOpenAiTimeout,
     ModelsButton, ModelsRunning, ModelsFound, ModelsFailed,
     ProbeButton, ProbeRunning, ProbeOk, ProbeSlow,
-    ProbeFailed);
+    ProbeFailed,
+    // Anweisungsdateien für KI-Assistenten (#2615).
+    InstructionsCommand, InstructionsWritten, InstructionsCurrent, InstructionsFailed, InstructionsNoAnswer,
+    InstructionsNoFiles, InstructionsStale, SettingsInstructionsHint);
 
   TAtlasAssistantsStrings = class
   public
@@ -157,7 +160,16 @@ const
      'Verbindung wird getestet …',
      'Antwort in %s s, Modell %s',
      'Antwort in %s s, Modell %s; langsamer als die Tipppause (%d ms)',
-     'Keine Antwort: %s'),
+     'Keine Antwort: %s',
+     'Anweisungen für KI-Assistenten aktualisieren',
+     'Atlas: Anweisungen für KI-Assistenten in %s geschrieben:',
+     'Atlas: Anweisungen für KI-Assistenten in %s sind aktuell.',
+     'Atlas: Anweisungen für KI-Assistenten in %s nicht geschrieben (%s).',
+     'Atlas: Anweisungen für KI-Assistenten: Der Server hat nicht geantwortet.',
+     'Atlas: Keine Anweisungsdatei in assistants.instructions.file.',
+     'Atlas: Anweisungen für KI-Assistenten in %s veraltet; aktualisieren über Atlas › Anweisungen für ' +
+       'KI-Assistenten aktualisieren.',
+     'Hinweis, wenn die Anweisungen für KI-Assistenten nach einer Änderung an atlas.json veraltet sind'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -261,7 +273,16 @@ const
      'Testing connection …',
      'Answer in %s s, model %s',
      'Answer in %s s, model %s; slower than the typing pause (%d ms)',
-     'No answer: %s'));
+     'No answer: %s',
+     'Update instructions for AI assistants',
+     'Atlas: instructions for AI assistants written to %s:',
+     'Atlas: instructions for AI assistants in %s are up to date.',
+     'Atlas: instructions for AI assistants in %s not written (%s).',
+     'Atlas: instructions for AI assistants: the server did not answer.',
+     'Atlas: no instruction file in assistants.instructions.file.',
+     'Atlas: instructions for AI assistants in %s are out of date; update with Atlas › Update instructions ' +
+       'for AI assistants.',
+     'Hint when the instructions for AI assistants are out of date after a change to atlas.json'));
 
 { TAtlasAssistantsStrings }
 

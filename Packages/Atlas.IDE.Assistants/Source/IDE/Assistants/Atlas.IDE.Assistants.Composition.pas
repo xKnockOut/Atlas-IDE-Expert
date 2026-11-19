@@ -27,6 +27,8 @@
 // - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
 //   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
 //   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
+// - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
+//   Atlas.IDE.Assistants.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
 // (TAtlasAssistantsActivity), gehört dem Modul und lebt von der Anmeldung bis
 // nach dem Abmelden: Die Pause bleibt so über das Neustarten einzelner Teile
@@ -95,6 +97,7 @@ uses
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
+  Atlas.IDE.Assistants.Instructions,
   Atlas.UI.Assistants.SettingsSection;
 
 const
@@ -125,6 +128,11 @@ begin
       Exit;
     end;
   end;
+end;
+
+function ModuleScope: IAtlasModuleScope;
+begin
+  Result := GScope;
 end;
 
 /// <summary>Debugger des Moduls Debugger; nil, solange es fehlt oder nicht läuft.</summary>
@@ -405,6 +413,7 @@ var
   mModule: TAtlasAssistantsModule;
   mPart: IAtlasFeaturePart;
   mRef: IInterface;
+  mInstructions: IInterface;
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
@@ -427,6 +436,11 @@ begin
   StartAiProbe;
   TAtlasAssistantsSettingsSection.KeyHooks := AiKeyHooks;
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
+  // Anweisungsdateien für KI-Assistenten (#2615): Befehl, Menüeintrag und Hinweis nach dem Speichern.
+  mInstructions := TAtlasIdeInstructions.Create(ModuleScope) as IAtlasCommandSource;
+  GScope.Provide(IAtlasCommandSource, mInstructions);
+  GScope.Provide(IAtlasMenuSource, mInstructions);
+  GScope.Provide(IAtlasFollowsSaves, mInstructions);
   Result := True;
 end;
 

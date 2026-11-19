@@ -69,7 +69,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `fix` | project (atlas.json) | object | – |  | Bulk fix (--fix, MCP fix_findings, "Fix all safe hits …" in the window "Atlas Check"): only applies safe fixes of rules with safeFix in the catalog. |
 | `exclude` | project (atlas.json) | array<string> | – | e.g. `["ThirdParty/**","Generated/*.pas"]` | Folders and files that are not checked (glob patterns relative to this folder: *, **, ?). |
 | `mcp` | mixed, see below | object | – | e.g. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}`, `{"prompts":true,"promptLanguage":"en"}` | MCP mode (--mcp) for AI assistants. |
-| `assistants` | project (atlas.json) | object | – | e.g. `{"protected":[{"path":"CHANGELOG.md","reason":"Wird beim Release aus Fragmenten erzeugt","use":"Fragment changelog.d/<Issue>-<Stichwort>.md anlegen"},{"path":"**/*SchemaData.pas","reason":"Erzeugt von Tools/Update-ConfigDoc.ps1"}]}` | Rules for AI assistants that change files through Atlas (MCP tools, hook hook_check). |
+| `assistants` | project (atlas.json) | object | – | e.g. `{"protected":[{"path":"CHANGELOG.md","reason":"Wird beim Release aus Fragmenten erzeugt","use":"Fragment changelog.d/<Issue>-<Stichwort>.md anlegen"},{"path":"**/*SchemaData.pas","reason":"Erzeugt von Tools/Update-ConfigDoc.ps1"}]}` | Rules for AI assistants: protected files they must not change through Atlas (MCP tools, hook hook_check) (#2608), and the section with the rules from atlas.json in their instruction files (#2615, AtlasServer --write-instructions, command "Update instructions for AI assistants"). |
 | `format` | project (atlas.json) | object | – |  | Formatting (format document and selection). Values set here take precedence over .editorconfig. |
 | `tasks` | global and project | array<object> | – |  | Project tasks (#900): commands of the project that the plugin starts via command palette, menu Atlas › Build, key, status field or quick action; the output goes to the tab "Atlas Tasks", detected locations as findings in the problem list and editor. Project before global for the same name. Variables in command, args, cwd and env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}. |
 | `issues` | global (settings.json) | object | – |  | Issue tracker in the plugin (Tools › Options › Atlas › Issue tracker, area "My issues"). Personal, therefore only in settings.json; the section tracker of the project file .atlas applies alongside for the team. |
@@ -443,6 +443,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
 | `assistants.protected` | project (atlas.json) | array<object> | `` |  | Files AI assistants must not change, with a reason. The writing MCP tools (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) refuse a change to them and write nothing; hook_check reports an edit with the assistant's own tools as an error and refuses it as a hook before writing (mode "pre"); delphi://conventions lists the files. Changes made without Atlas are not covered. |
+| `assistants.instructions` | project (atlas.json) | object | – |  | Instruction files and required checks of the section. |
 
 ## format
 
