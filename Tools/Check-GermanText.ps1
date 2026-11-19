@@ -18,7 +18,8 @@
     - Zeilen mit dem Kommentar "// german-ok" (Text, der deutsch bleiben muss,
       etwa Schlüsselwörter der deutschen YouTrack-Oberfläche),
     - die erzeugten Units
-      (*SchemaData.pas, *ProfileData.pas, *Catalog.Data.pas und ihre Teile *Catalog.Data.*.pas).
+      (*SchemaData.pas, *ProfileData.pas, *DocsIndexData.pas, *Catalog.Data.pas und ihre Teile
+      *Catalog.Data.*.pas).
 
     Den Altbestand hält Tools/GermanText.baseline.json je Datei fest. Eine Datei darf
     nicht mehr Funde haben als dort eingetragen; neue Dateien haben 0. Sinkt die Zahl,
@@ -56,7 +57,7 @@ $ErrorActionPreference = 'Stop'
 
 if ($BaselinePath -eq '') { $BaselinePath = Join-Path $Root 'Tools/GermanText.baseline.json' }
 $SourceDirs = @('Packages', 'Application')
-$SkipNames = '^(.*SchemaData\.pas|.*ProfileData\.pas|.*Catalog\.Data(\.[\w.]+)?\.pas)$'
+$SkipNames = '^(.*SchemaData\.pas|.*ProfileData\.pas|.*DocsIndexData\.pas|.*Catalog\.Data(\.[\w.]+)?\.pas)$'
 $GermanWords = '(?i)(?<![\w%])(und|nicht|oder|der|die|das|dem|den|des|ist|sind|mit|für|kein|keine|keinen|wird|werden|wurde|nach|beim|vom|zum|zur|eine|einen|einer|bitte|Datei|Fehler|Einstellung|gefunden|fehlt|ungültig|unbekannt)(?![\w])'
 $Umlaut = '[äöüÄÖÜß]'
 $TableStart = '(?i)\bof\s+TAtlasText\s*=\s*\('

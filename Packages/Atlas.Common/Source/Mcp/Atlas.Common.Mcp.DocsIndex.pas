@@ -78,6 +78,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Text.Chars,
   Atlas.Text.Fuzzy,
   Atlas.Text.Json;
 
@@ -119,9 +120,9 @@ begin
   Result := string.Join(' ', TJsonRead.Strings(AItem, 'keywords'));
 end;
 
-function IsWordChar(AChar: Char): Boolean;
+function IsQueryChar(AChar: Char): Boolean;
 begin
-  Result := CharInSet(AChar, ['a'..'z', '0'..'9', '.', '-', '_']) or (Ord(AChar) > 127);
+  Result := TTextChars.IsIdentChar(AChar) or CharInSet(AChar, ['.', '-']) or (Ord(AChar) > 127);
 end;
 
 { TDocsIndex }
@@ -345,8 +346,9 @@ end;
 
 class function TDocsIndex.Fold(const AText: string): string;
 begin
-  Result := LowerCase(AText).Replace('Ä', 'ae').Replace('Ö', 'oe').Replace('Ü', 'ue').Replace('ä', 'ae')
-    .Replace('ö', 'oe').Replace('ü', 'ue').Replace('ß', 'ss');
+  // Ä Ö Ü ä ö ü ß als Zeichencodes: LowerCase faltet nur ASCII.
+  Result := LowerCase(AText).Replace(#$C4, 'ae').Replace(#$D6, 'oe').Replace(#$DC, 'ue').Replace(#$E4, 'ae')
+    .Replace(#$F6, 'oe').Replace(#$FC, 'ue').Replace(#$DF, 'ss');
 end;
 
 class function TDocsIndex.Words(const AQuery: string): TArray<string>;
@@ -359,7 +361,7 @@ begin
   mStart := 1;
   for mIndex := 1 to Length(mText) do
   begin
-    if not IsWordChar(mText[mIndex]) then
+    if not IsQueryChar(mText[mIndex]) then
     begin
       mWord := Copy(mText, mStart, mIndex - mStart).Trim(['.', '-', '_']);
       if (Length(mWord) >= 2) and (IndexStr(mWord, cStopWords) < 0) and (IndexStr(mWord, Result) < 0) then

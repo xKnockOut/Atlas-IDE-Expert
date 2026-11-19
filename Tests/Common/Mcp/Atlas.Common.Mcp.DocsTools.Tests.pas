@@ -97,13 +97,13 @@ var
 begin
   mRequest := RequestFor('{"query":" Brotkrumen ","kind":"setting","language":"en","limit":50,"format":"json"}');
   Assert.AreEqual('Brotkrumen', mRequest.Query);
-  Assert.IsTrue(mRequest.Kind = TDocsKind.Setting);
-  Assert.IsTrue(mRequest.Language = TTextLanguage.English);
+  Assert.AreEqual('setting', TDocsIndex.KindName(mRequest.Kind));
+  Assert.AreEqual('en', TAtlasLocale.Code(mRequest.Language));
   Assert.AreEqual(TMcpDocsTools.cMaxLimit, mRequest.Limit);
   Assert.IsTrue(mRequest.Json);
   mRequest := RequestFor('{"query":"x"}');
-  Assert.IsTrue(mRequest.Kind = TDocsKind.All);
-  Assert.IsTrue(mRequest.Language = TTextLanguage.German);
+  Assert.AreEqual('all', TDocsIndex.KindName(mRequest.Kind));
+  Assert.AreEqual('de', TAtlasLocale.Code(mRequest.Language));
   Assert.AreEqual(TMcpDocsTools.cDefaultLimit, mRequest.Limit);
   Assert.IsFalse(mRequest.Json);
 end;

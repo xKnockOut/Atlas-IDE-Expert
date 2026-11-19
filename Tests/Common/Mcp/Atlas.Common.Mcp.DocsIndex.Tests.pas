@@ -33,6 +33,8 @@ type
     procedure SimilarIdsForTypos;
     [Test]
     procedure LimitCutsHits;
+    [Test]
+    procedure EmbeddedIndexHasAllKinds;
   end;
 
 implementation
@@ -40,7 +42,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Mcp.DocsIndex;
+  Atlas.Common.Mcp.DocsIndex,
+  Atlas.Common.Mcp.DocsIndexData;
 
 const
   cIndex = '[' +
@@ -193,6 +196,32 @@ begin
   mIndex := TDocsIndex.Create(cIndex, TTextLanguage.German, nil, nil);
   try
     Assert.AreEqual(2, Integer(Length(mIndex.Search('Brotkrumen', TDocsKind.All, 2))));
+  finally
+    mIndex.Free;
+  end;
+end;
+
+procedure TDocsIndexTests.EmbeddedIndexHasAllKinds;
+var
+  mIndex: TDocsIndex;
+  mEntry: TDocsEntry;
+  mKinds: set of TDocsKind;
+begin
+  // Eingebetteter Index aus Update-ConfigDoc.ps1: Einstellungen beider Schemata, Tastenkürzel, Fenster und
+  // Abschnitte der Funktionsseiten; ohne Regelkatalog keine Regeln.
+  mIndex := TDocsIndex.Create(AtlasDocsIndexJson, TTextLanguage.English, nil, nil);
+  try
+    mKinds := [];
+    for mEntry in mIndex.Entries do
+    begin
+      Include(mKinds, mEntry.Kind);
+    end;
+    Assert.IsTrue(TDocsKind.Setting in mKinds);
+    Assert.IsTrue(TDocsKind.Window in mKinds);
+    Assert.IsTrue(TDocsKind.Feature in mKinds);
+    Assert.IsTrue(TDocsKind.Command in mKinds);
+    Assert.IsFalse(TDocsKind.Rule in mKinds);
+    Assert.AreEqual('setting:editor.breadcrumbs', Ids(mIndex.Search('editor.breadcrumbs', TDocsKind.Setting, 1)));
   finally
     mIndex.Free;
   end;
