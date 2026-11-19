@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Welcome.QuickActions;
 
-// Schnellaktionen je Projekt auf der Willkommensseite (#764, Mockup #ws10),
+// Schnellaktionen je Projekt auf der Willkommensseite (#764),
 // Teil ohne VCL und Open Tools API:
 // - Knöpfe in fester Reihenfolge „Öffnen und bauen“, „Tests“, „Startprofil ▾“,
 //   „Pull“, „Ordner“, „Konsole“, „Aufgaben ▾“; welche erscheinen, legt

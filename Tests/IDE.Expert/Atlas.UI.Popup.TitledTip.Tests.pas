@@ -16,8 +16,8 @@ type
     /// <summary>#623: Links unter dem Text machen den Tooltip höher; ohne Zeichnen gibt es kein Klickziel.</summary>
     [Test]
     procedure LinksAddLines;
-    /// <summary>#1281: Der Bereich des Textes ist beim Zeichnen so hoch wie gemessen (vorher zwei Pixel zu
-    /// wenig, die letzte Zeile wurde unten abgeschnitten).</summary>
+    /// <summary>#1281: Der Bereich des Textes ist beim Zeichnen so hoch wie gemessen (sonst fehlen
+    /// zwei Pixel und die letzte Zeile wird unten abgeschnitten).</summary>
     [Test]
     procedure BodyAreaHoldsMeasuredText;
   end;

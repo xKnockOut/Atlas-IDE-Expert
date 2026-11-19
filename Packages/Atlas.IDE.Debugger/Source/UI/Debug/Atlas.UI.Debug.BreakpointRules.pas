@@ -5,10 +5,14 @@
 //   Erst aktiv nach:  [(sofort aktiv)              ▾] [bis zum Ende ▾]
 //   Anhalten:         [bei jedem Treffer           ▾] [  5]
 //   Thread:           [alle Threads                ▾] [Import     ]
+//   Nur im Stapel:    [TKundenImport.LeseZeile     ▾]
+//                     [ ] nur direkter Aufrufer
 //   Trefferbedingung und Thread-Filter halten kurz an und setzen fort …
 //                         [Übernehmen] [Regeln entfernen] [Abbrechen]
 // Die Auswahlfelder füllt erst Fill (brauchen ein Fenster). Zeilen zeigt der
-// Dialog ab 1.
+// Dialog ab 1. Das Feld für den Aufrufer (#2548) nimmt ein Muster nach
+// TAtlasRoutinePattern; die Liste schlägt die Routinen des aktuellen
+// Aufrufstapels vor, wenn das Programm angehalten ist.
 
 interface
 
@@ -42,10 +46,15 @@ type
     FHitCount: TEdit;
     FThread: TComboBox;
     FThreadText: TEdit;
+    FCallers: TArray<string>;
+    FCaller: TComboBox;
+    FCallerDirect: TCheckBox;
     FFilled: Boolean;
     function AddCombo(ARow: TPanel; ALeft96, AWidth96: Integer): TComboBox;
     function AddEdit(ARow: TPanel; ALeft96: Integer): TEdit;
     procedure CreateRows;
+    procedure CreateCallerRows;
+    procedure FillCallers;
     procedure CreateButtons;
     procedure FillTriggers;
     procedure FillChoices;
@@ -56,8 +65,9 @@ type
   protected
     procedure DoShow; override;
   public
+    /// <summary>ACallers: Vorschläge für den Aufrufer (Routinen des aktuellen Stapels), auch leer.</summary>
     constructor CreateDialog(AOwner: TComponent; const ARule: TAtlasBreakpointRule;
-      const ATriggers: TAtlasRuleTriggers);
+      const ATriggers: TAtlasRuleTriggers; const ACallers: TArray<string>);
     /// <summary>Auswahlfelder füllen; braucht ein Fenster (DoShow, Tests nach HandleNeeded). Einmal.</summary>
     procedure Fill;
     /// <summary>Regel aus den Feldern (Datei und Zeile wie übergeben).</summary>
@@ -65,13 +75,15 @@ type
     class function TriggerText(const ATrigger: TAtlasRuleTrigger): string; static;
     /// <summary>Zeigt den Dialog modal; False bei Abbrechen. „Regeln entfernen“ liefert eine leere Regel.</summary>
     class function Execute(const ARule: TAtlasBreakpointRule; const ATriggers: TAtlasRuleTriggers;
-      out AChosen: TAtlasBreakpointRule): Boolean; static;
+      const ACallers: TArray<string>; out AChosen: TAtlasBreakpointRule): Boolean; static;
     property TriggerBox: TComboBox read FTrigger;
     property DependBox: TComboBox read FDepend;
     property HitBox: TComboBox read FHit;
     property HitCountEdit: TEdit read FHitCount;
     property ThreadBox: TComboBox read FThread;
     property ThreadTextEdit: TEdit read FThreadText;
+    property CallerBox: TComboBox read FCaller;
+    property CallerDirectBox: TCheckBox read FCallerDirect;
   end;
 
 implementation
@@ -101,12 +113,13 @@ end;
 { TAtlasBreakpointRuleDialog }
 
 constructor TAtlasBreakpointRuleDialog.CreateDialog(AOwner: TComponent; const ARule: TAtlasBreakpointRule;
-  const ATriggers: TAtlasRuleTriggers);
+  const ATriggers: TAtlasRuleTriggers; const ACallers: TArray<string>);
 begin
   inherited CreateDialog(AOwner, TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesTitle,
     [TriggerText(TAtlasRuleTrigger.Create(ARule.FileName, ARule.Line))]), cDialogWidth);
   FRule := ARule;
   FTriggers := ATriggers;
+  FCallers := ACallers;
   CreateRows;
   CreateButtons;
   FitHeight;
@@ -155,6 +168,7 @@ begin
   AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesThread)).ShowAccelChar := False;
   FThread := AddCombo(mRow, cFieldLeft, cMainWidth);
   FThreadText := AddEdit(mRow, cFieldLeft + cMainWidth + cGap);
+  CreateCallerRows;
   mRow := AddRow(cHintHeight);
   mHint := AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesHint));
   mHint.ShowAccelChar := False;
@@ -162,6 +176,24 @@ begin
   mHint.AutoSize := False;
   mHint.Align := alClient;
   mHint.WordWrap := True; // window-ok: feste Größe (AutoSize aus, alClient)
+end;
+
+procedure TAtlasBreakpointRuleDialog.CreateCallerRows;
+var
+  mRow: TPanel;
+begin
+  mRow := AddRow(cRowHeight);
+  AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesCaller)).ShowAccelChar := False;
+  FCaller := AddCombo(mRow, cFieldLeft, cMainWidth + cGap + cSideWidth);
+  // Freie Eingabe eines Musters; die Liste macht nur Vorschläge.
+  FCaller.Style := csDropDown;
+  FCaller.TextHint := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesCallerHint);
+  mRow := AddRow(cRowHeight);
+  FCallerDirect := TCheckBox.Create(Self);
+  FCallerDirect.Left := ScaleValue(cFieldLeft);
+  FCallerDirect.Width := ScaleValue(cMainWidth);
+  FCallerDirect.Caption := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesCallerDirect);
+  FCallerDirect.Parent := mRow;
 end;
 
 procedure TAtlasBreakpointRuleDialog.CreateButtons;
@@ -231,6 +263,26 @@ begin
       Ord(FRule.Thread));
 end;
 
+procedure TAtlasBreakpointRuleDialog.FillCallers;
+var
+  mCaller: string;
+begin
+  FCaller.Items.BeginUpdate;
+  try
+    for mCaller in FCallers do
+    begin
+      if (mCaller <> '') and (FCaller.Items.IndexOf(mCaller) < 0) then
+      begin
+        FCaller.Items.Add(mCaller);
+      end;
+    end;
+  finally
+    FCaller.Items.EndUpdate;
+  end;
+  FCaller.Text := FRule.Caller;
+  FCallerDirect.Checked := FRule.CallerDirect;
+end;
+
 procedure TAtlasBreakpointRuleDialog.ChoiceChange(Sender: TObject);
 begin
   UpdateFields;
@@ -242,6 +294,7 @@ begin
   FHitCount.Enabled := FHit.ItemIndex > Ord(TAtlasHitMode.Any);
   FThreadText.Enabled := FThread.ItemIndex in [Ord(TAtlasThreadFilter.NameContains),
     Ord(TAtlasThreadFilter.ThreadId)];
+  FCallerDirect.Enabled := Trim(FCaller.Text) <> '';
 end;
 
 procedure TAtlasBreakpointRuleDialog.OkClick(Sender: TObject);
@@ -263,6 +316,7 @@ begin
   FFilled := True;
   FillTriggers;
   FillChoices;
+  FillCallers;
   FHitCount.Text := IntToStr(Max(1, FRule.HitCount));
   if FRule.Thread = TAtlasThreadFilter.ThreadId then
   begin
@@ -293,6 +347,8 @@ begin
   begin
     Result.ThreadId := Cardinal(Max(0, StrToIntDef(Trim(FThreadText.Text), 0)));
   end;
+  Result.Caller := Trim(FCaller.Text);
+  Result.CallerDirect := (Result.Caller <> '') and FCallerDirect.Checked;
   mTrigger := FTrigger.ItemIndex - 1;
   Result.Depend := TAtlasDependMode.None;
   Result.TriggerFile := '';
@@ -315,13 +371,13 @@ begin
 end;
 
 class function TAtlasBreakpointRuleDialog.Execute(const ARule: TAtlasBreakpointRule;
-  const ATriggers: TAtlasRuleTriggers; out AChosen: TAtlasBreakpointRule): Boolean;
+  const ATriggers: TAtlasRuleTriggers; const ACallers: TArray<string>; out AChosen: TAtlasBreakpointRule): Boolean;
 var
   mDialog: TAtlasBreakpointRuleDialog;
   mResult: Integer;
 begin
   AChosen := ARule;
-  mDialog := TAtlasBreakpointRuleDialog.CreateDialog(nil, ARule, ATriggers);
+  mDialog := TAtlasBreakpointRuleDialog.CreateDialog(nil, ARule, ATriggers, ACallers);
   try
     mResult := mDialog.ShowModal;
     Result := mResult in [mrOk, cModeRetry];

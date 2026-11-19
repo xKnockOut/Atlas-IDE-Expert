@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.BuildPipeline.SettingsSection;
 
-// Abschnitte des Moduls Build-Pipeline im Optionsdialog (#1456; vorher im Teil „Compiler“
-// und in Atlas.UI.Settings.Page.Release von Base).
+// Abschnitte des Moduls Build-Pipeline im Optionsdialog (#1456) auf der Seite
+// „Compiler“ und im Reiter „Release-Build“.
 // - „Compiler“: Modulschalter, Build für KI-Assistenten (MCP) (#261), Schranke für Hinweise und Warnungen (#530) und
 //   Prüfung vor dem Compile (#529). Warnungen als Fehler bindet die Seite; der Abschnitt bringt sie beim Speichern
 //   in die einheitliche Form. Die Grenzen des Zeitlimits setzt TAtlasPluginSettings.Normalize.
@@ -76,7 +76,7 @@ var
   mGates: TArray<string>;
 begin
   ModuleSwitch('buildPipeline.enabled');
-  // Builds für KI-Assistenten (compiler.mcpBuild) stehen seit #1906 auf der Seite des Moduls KI-Assistenten.
+  // Builds für KI-Assistenten (compiler.mcpBuild) stehen auf der Seite des Moduls KI-Assistenten.
   Switch('build.zeroHints', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildZeroHints));
   // Schranke für Hinweise und Warnungen (#530).
   Switch('build.summary', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildSummary));

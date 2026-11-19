@@ -63,7 +63,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`
 - **Generate menu** (Alt+Ins) and editing helpers: surround, move lines, toggle comments, tidy `var` blocks
 - **Formatter** (Ctrl+Shift+Alt+L), also without the IDE
-- **Class completion:** `{ TCustomer }` above the bodies (or a separator line, doc sentence, region), constructors and destructor first, then get/set pairs; new bodies prefilled with `inherited` and `Result := FName`
+- **Class completion:** `{ TCustomer }` above the bodies (or a separator line, doc sentence, region), constructors and destructor first, then get/set pairs; new bodies prefilled with `inherited` and `Result := FName`; exactly one blank line between created or ordered bodies (`classCompletion.blankLines`)
 - **Indentation while typing:** after Enter the caret lands where the block structure puts it, `end`, `until`, `finally` and `else` move to their counterpart, and a string is split with `' +` when you break the line
 - **Learned suggestions:** after `X := TFoo.Create;` or `L.BeginUpdate;` and Enter Atlas suggests as grey ghost text what usually follows in your own project (`try … finally X.Free; end;`), without AI and without network; Tab accepts, Esc discards, team house rules in `atlas.json`
 
@@ -127,7 +127,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Set up leak check …** in the project context menu: shows what leak hunting still needs (FastMM4/FastMM5 found, first unit in uses, report on shutdown, defines and DLL of the Debug configuration) and sets up the chosen variant with a preview, for the Debug build only (`tests.leakSetup`)
 - **Test from a debug stop:** "Create test …" in the exception bar turns the values of the stop into a DUnitX test that works or expects the exception
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, variables window (autos, locals, watch, search also in children), smart step into, call stack window with named parameter values, search and comparison with the last stop; run time since the last stop at the end of the line
-- **Breakpoints:** own "Breakpoints" window with search, tags and hit counts; breakpoints on methods by pattern, only for one object, **break when a field changes**, rules (dependent, hit condition, thread), named sets, check before starting; they move with the code, “run to here” by clicking the gutter
+- **Breakpoints:** own "Breakpoints" window with search, tags and hit counts; breakpoints on methods by pattern, only for one object, **break when a field changes**, rules (dependent, hit condition, thread, **only when called from a given method**), named sets, check before starting; they move with the code, “run to here” by clicking the gutter
 - **“Why am I here?” and predicting conditions:** at a stop, the surrounding `if`, `while` and `case` show the values of their conditions, the upcoming ones the predicted results; skipped branches are dimmed
 - **Values in the debug hover:** expand them (changed values highlighted, old value behind), **change** them directly (F2) and **pin** them
 - **Restart** with Ctrl+Shift+F2 (stop, build if changed, start, back to the same place), **reattach to a process** (Shift+Alt+P) and **debug several programs together** (launch groups `launchGroups` in `.atlas`)
@@ -166,9 +166,13 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **33 MCP tools** to read, check, build, test, rename and fix Delphi code
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
+- **Last test run without a new run:** `get_last_tests` returns what the IDE saw in the last test run: red tests with file:line, expected and actual, log excerpt and the marks newly red, green again, flaky, leak and stale (`tests.lastRun`)
 - **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
+- **Several queries at once:** `batch` runs up to 10 read-only MCP tools in one call, on one shared index state with a single file comparison; an error affects only its section
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
+- **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)
+- **Protected files:** `assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md`), with reason and the right way; the writing MCP tools refuse such changes without writing anything, the hook refuses or reports them
 
 ### Planned
 

@@ -46,20 +46,8 @@ uses
   ToolsAPI,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Settings;
-
-/// <summary>Datei einer Unit im Testprojekt AProjectFile.</summary>
-function UnitFileFunc(const AProjectFile: string): TAtlasTestUnitFile;
-var
-  mProjectFile: string;
-begin
-  mProjectFile := AProjectFile;
-  Result :=
-    function(const AUnitName: string): string
-    begin
-      Result := TAtlasIdeTests.UnitFileOf(mProjectFile, AUnitName);
-    end;
-end;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Tests.Projects;
 
 { TAtlasIdeStaleTests }
 
@@ -96,7 +84,7 @@ begin
     if (mItem.UnitName <> '') and (IndexText(mItem.UnitName, mDone) < 0) then
     begin
       mDone := mDone + [mItem.UnitName];
-      mFileName := TAtlasIdeTests.UnitFileOf(ATarget.Project, mItem.UnitName);
+      mFileName := TAtlasIdeTestProjects.UnitFileOf(ATarget.Project, mItem.UnitName);
     end;
     if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
@@ -105,7 +93,8 @@ begin
     mUnits := nil;
     if TAtlasIdeSettings.Current.TestsStaleUnits then
     begin
-      mUnits := TAtlasTestStamps.UnitStamps(mLines, UnitFileFunc(ATarget.Project), TAtlasIdeFiles.LineReader());
+      mUnits := TAtlasTestStamps.UnitStamps(mLines, TAtlasIdeTestProjects.UnitFiles(ATarget.Project),
+        TAtlasIdeFiles.LineReader());
     end;
     FStamps.Remember(ATarget.Project, mFileName, TDUnitXSource.Scan(mLines), mLines, ARun.Cases, mUnits);
   end;
