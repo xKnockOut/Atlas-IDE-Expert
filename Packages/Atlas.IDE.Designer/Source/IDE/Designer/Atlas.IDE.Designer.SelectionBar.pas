@@ -146,6 +146,10 @@ const
   cMenuShow = 0;
   cMenuUndo = 1;
   cColorMore = -1;
+  /// <summary>Größe der Farbfelder im Farbmenü in Pixeln.</summary>
+  cSwatchSize = 14;
+  /// <summary>Schriftgröße der VCL, wenn das Formular keine nennt.</summary>
+  cDefaultFontSize = 8;
   cStandardColors: array[0..9] of TColor = (clWindowText, clBlack, clGrayText, clGray, clMaroon, clRed, clGreen,
     clNavy, clBlue, clHighlight);
   cHints: array[TAtlasBarItem] of TAtlasDesignerToolTextId = (TAtlasDesignerToolTextId.BarFontSmaller,
@@ -220,11 +224,11 @@ var
 begin
   mBitmap := TBitmap.Create;
   try
-    mBitmap.SetSize(14, 14);
+    mBitmap.SetSize(cSwatchSize, cSwatchSize);
     mBitmap.Canvas.Brush.Color := clGray;
-    mBitmap.Canvas.FillRect(Rect(0, 0, 14, 14));
+    mBitmap.Canvas.FillRect(Rect(0, 0, cSwatchSize, cSwatchSize));
     mBitmap.Canvas.Brush.Color := AColor;
-    mBitmap.Canvas.FillRect(Rect(1, 1, 13, 13));
+    mBitmap.Canvas.FillRect(Rect(1, 1, cSwatchSize - 1, cSwatchSize - 1));
     AItem.Bitmap := mBitmap;
   finally
     mBitmap.Free;
@@ -282,10 +286,7 @@ end;
 procedure TAtlasIdeSelectionBar.ApplyTheme;
 begin
   inherited ApplyTheme;
-  if FWindow <> nil then
-  begin
-    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  ThemeWindow(FWindow);
 end;
 
 procedure TAtlasIdeSelectionBar.EnsureWindow;
@@ -318,7 +319,7 @@ function TAtlasIdeSelectionBar.FindControls: Boolean;
 var
   mEditor: IOTAFormEditor;
   mComponent: TComponent;
-  mNames, mBounds: string;
+  mNames, mBounds: TArray<string>;
 begin
   FSelection.Controls := nil;
   FSelection.Root := nil;
@@ -327,20 +328,20 @@ begin
     FSelection.Tracking.Clear;
     Exit(False);
   end;
-  mNames := mEditor.FileName;
-  mBounds := '';
+  mNames := TArray<string>.Create(mEditor.FileName);
+  mBounds := nil;
   for mComponent in TAtlasDesignerAccess.Selection(mEditor, FSelection.Root) do
   begin
     if mComponent is TControl then
     begin
       FSelection.Controls := FSelection.Controls + [TControl(mComponent)];
-      mNames := mNames + '|' + mComponent.Name;
-      mBounds := mBounds + Format('|%d,%d,%d,%d', [TControl(mComponent).Left, TControl(mComponent).Top,
-        TControl(mComponent).Width, TControl(mComponent).Height]);
+      mNames := mNames + [mComponent.Name];
+      mBounds := mBounds + [Format('%d,%d,%d,%d', [TControl(mComponent).Left, TControl(mComponent).Top,
+        TControl(mComponent).Width, TControl(mComponent).Height])];
     end;
   end;
   Result := Length(FSelection.Controls) >= 2;
-  FSelection.Tracking.Update(mNames, mBounds, GetTickCount64);
+  FSelection.Tracking.Update(string.Join('|', mNames), string.Join('|', mBounds), GetTickCount64);
 end;
 
 function TAtlasIdeSelectionBar.Wanted: Boolean;
@@ -487,7 +488,7 @@ begin
   end;
   EnsureWindow;
   FWindow.SetButtons(mButtons);
-  FWindow.ShowAt(TAtlasSelectionBar.Place(mSelection, FWindow.BarSize, mArea, FWindow.S(cGap)));
+  FWindow.ShowAt(TAtlasSelectionBar.Place(mSelection, FWindow.BarSize, mArea, FWindow.ScalePx(cGap)));
 end;
 
 procedure TAtlasIdeSelectionBar.Refresh;
@@ -526,7 +527,7 @@ begin
         Change(TAtlasBarItems.PathOf(AItem), '',
           function(AOld: string): string
           begin
-            Result := IntToStr(TAtlasSelectionBar.NextFontSize(StrToIntDef(AOld, 8), mStep));
+            Result := IntToStr(TAtlasSelectionBar.NextFontSize(StrToIntDef(AOld, cDefaultFontSize), mStep));
           end, mLabel);
       end;
     TAtlasBarItem.FontSize:

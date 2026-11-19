@@ -62,7 +62,6 @@ type
     /// <summary>Größe, die eine Klasse im Konstruktor setzt.</summary>
     FClassSizes: TDictionary<TClass, TSize>;
     procedure TimerTick(Sender: TObject);
-    procedure HideOutlines;
     procedure Inserted(AItem: TPersistent);
     procedure ApplyInserted(ARoot: TComponent; const AName: string);
     function ClassSize(AControl: TControl): TSize;
@@ -70,6 +69,8 @@ type
     procedure DoLearn;
     procedure DoShow;
   public
+    /// <summary>Stoppt auch den Takt der verzögerten Anzeige.</summary>
+    procedure HideOutlines; override;
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
@@ -276,10 +277,7 @@ end;
 procedure TAtlasIdeDefaultSizes.HideOutlines;
 begin
   FTimer.Enabled := False;
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
+  inherited HideOutlines;
 end;
 
 procedure TAtlasIdeDefaultSizes.Inserted(AItem: TPersistent);
