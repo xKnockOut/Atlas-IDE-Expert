@@ -84,6 +84,16 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
+const
+  /// <summary>Rand links und rechts sowie Oberkante der ersten Zeile.</summary>
+  cMargin = 12;
+  /// <summary>Höhen der Zeilen: Titel, Verweis auf die Packages, Beschriftung der Suche, Suchfeld, Treffer.</summary>
+  cTitleHeight = 24;
+  cPackagesHeight = 30;
+  cSearchCaptionHeight = 20;
+  cSearchHeight = 30;
+  cHitHeight = 20;
+
 { TAtlasSettingsOverview }
 
 constructor TAtlasSettingsOverview.Create(AOwner: TComponent);
@@ -94,32 +104,32 @@ begin
   inherited Create(AOwner);
   FCatalog := TAtlasSettingsCatalog.CreateDefault;
   FGroups := TAtlasSettingsGroups.Create(FCatalog);
-  mTop := 12;
+  mTop := cMargin;
   mLabel := TLabel.Create(Self);
   mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTitle);
   mLabel.Font.Style := [fsBold];
-  AddRow(mTop, mLabel, 24);
+  AddRow(mTop, mLabel, cTitleHeight);
   FPackages := TLabel.Create(Self);
   FPackages.ShowAccelChar := False;
   MakeLink(FPackages);
   FPackages.OnClick := PackagesClick;
-  AddRow(mTop, FPackages, 30);
+  AddRow(mTop, FPackages, cPackagesHeight);
   FSearchCaption := TLabel.Create(Self);
   FSearchCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasSearch);
-  AddRow(mTop, FSearchCaption, 20);
+  AddRow(mTop, FSearchCaption, cSearchCaptionHeight);
   FSearch := TEdit.Create(Self);
   FSearch.TextHint := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSearchPrompt);
   FSearch.OnChange := SearchChange;
   FSearch.OnKeyDown := SearchKeyDown;
-  AddRow(mTop, FSearch, 30);
+  AddRow(mTop, FSearch, cSearchHeight);
   FHits := TPanel.Create(Self);
   FHits.BevelOuter := bvNone;
   FHits.ParentBackground := True;
   FHits.Parent := Self;
-  FHits.Left := FHits.ScaleValue(12);
+  FHits.Left := FHits.ScaleValue(cMargin);
   FHits.Top := mTop;
-  FHits.Width := Width - FHits.ScaleValue(24);
-  FHits.Height := cMaxHits * 20;
+  FHits.Width := Width - FHits.ScaleValue(2 * cMargin);
+  FHits.Height := cMaxHits * cHitHeight;
   FHits.Anchors := [akLeft, akTop, akRight];
 end;
 
@@ -182,9 +192,9 @@ end;
 procedure TAtlasSettingsOverview.AddRow(var ATop: Integer; AControl: TControl; AHeight: Integer);
 begin
   AControl.Parent := Self;
-  AControl.Left := AControl.ScaleValue(12);
+  AControl.Left := AControl.ScaleValue(cMargin);
   AControl.Top := ATop;
-  AControl.Width := Width - AControl.ScaleValue(24);
+  AControl.Width := Width - AControl.ScaleValue(2 * cMargin);
   AControl.Anchors := [akLeft, akTop, akRight];
   Inc(ATop, AHeight);
 end;
@@ -223,7 +233,7 @@ begin
     mLabel.OnClick := HitClick;
     FHitNames := FHitNames + [mHit.Name];
     FHitModules := FHitModules + [mHit.Module];
-    Inc(mTop, 20);
+    Inc(mTop, cHitHeight);
   end;
   if (Length(mHits) = 0) and (Trim(FSearch.Text) <> '') then
   begin
