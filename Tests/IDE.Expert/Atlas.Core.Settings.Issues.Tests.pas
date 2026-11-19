@@ -326,6 +326,22 @@ begin
   VcsExternalsBranchOptions(mRegistry, mStore, mRouted);
   VcsExternalsShowOptions(mRegistry, mStore, mRouted);
 end;
+/// <summary>Meine Issues (#765): Vorgaben für Meldungen, Anhängen und die Namen des Beginnens.</summary>
+procedure AssertIssuesNotifyDefaults(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ASettings.IssuesNotify, 'Meldungen (#1271) aus');
+  Assert.AreEqual(10, ASettings.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assignedOrCreated', ASettings.IssuesNotifyScope);
+  Assert.IsTrue(ASettings.IssuesAttach, 'Anhängen (#1276) an');
+  Assert.AreEqual('', ASettings.IssuesAttachLogFiles);
+  Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
+  Assert.IsTrue(ASettings.IssuesAttachRaiseProgram, 'Programm nach vorn holen an');
+  // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
+  Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartBranch, TAtlasMyIssues.StartName(TAtlasIssueStart.Branch));
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartRemember,
+    TAtlasMyIssues.StartName(TAtlasIssueStart.Remember));
+end;
 /// <summary>Meine Issues (#765): Vorgaben.</summary>
 procedure AssertIssuesDefaults(const ASettings: TAtlasPluginSettings);
 begin
@@ -374,18 +390,19 @@ begin
   Assert.IsTrue(ASettings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
   Assert.IsTrue(ASettings.IssuesPaletteSearch, 'Palettensuche (#1270) an');
   Assert.IsTrue(ASettings.IssuesPreviewDevelopment, 'Reiter „Entwicklung“ (#1269)');
-  Assert.IsFalse(ASettings.IssuesNotify, 'Meldungen (#1271) aus');
-  Assert.AreEqual(10, ASettings.IssuesNotifyIntervalMinutes);
-  Assert.AreEqual('assignedOrCreated', ASettings.IssuesNotifyScope);
-  Assert.IsTrue(ASettings.IssuesAttach, 'Anhängen (#1276) an');
-  Assert.AreEqual('', ASettings.IssuesAttachLogFiles);
-  Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
-  Assert.IsTrue(ASettings.IssuesAttachRaiseProgram, 'Programm nach vorn holen an');
-  // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
-  Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
-  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartBranch, TAtlasMyIssues.StartName(TAtlasIssueStart.Branch));
-  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartRemember,
-    TAtlasMyIssues.StartName(TAtlasIssueStart.Remember));
+  Assert.IsTrue(ASettings.IssuesAiSummary, 'Zusammenfassen (#2462) an');
+  Assert.AreEqual(10, ASettings.IssuesAiSummaryMinComments, 'Knopf ab 10 Kommentaren');
+  AssertIssuesNotifyDefaults(ASettings);
+end;
+/// <summary>Issue zusammenfassen (#2462): Knopf ab 0–1000 Kommentaren.</summary>
+procedure NormalizeIssuesAiSummary(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.IssuesAiSummaryMinComments := -3;
+  ASettings.Normalize;
+  Assert.AreEqual(0, ASettings.IssuesAiSummaryMinComments, '0 = immer');
+  ASettings.IssuesAiSummaryMinComments := 5000;
+  ASettings.Normalize;
+  Assert.AreEqual(1000, ASettings.IssuesAiSummaryMinComments, 'höchstens 1000');
 end;
 /// <summary>Meine Issues (#765, #1271): Normalisieren.</summary>
 procedure NormalizeIssuesOptions(var ASettings: TAtlasPluginSettings);
@@ -496,6 +513,8 @@ begin
   ASettings.IssuesSprintCompare := False;
   ASettings.IssuesPaletteSearch := False;
   ASettings.IssuesPreviewDevelopment := False;
+  ASettings.IssuesAiSummary := False;
+  ASettings.IssuesAiSummaryMinComments := 3;
   ASettings.IssuesNotify := True;
   ASettings.IssuesNotifyIntervalMinutes := 5;
   ASettings.IssuesNotifyScope := 'assigned';
@@ -551,6 +570,8 @@ begin
   Assert.IsFalse(ALoaded.IssuesSprintBurndown);
   Assert.IsFalse(ALoaded.IssuesSprintCompare);
   Assert.IsFalse(ALoaded.IssuesPreviewDevelopment);
+  Assert.IsFalse(ALoaded.IssuesAiSummary);
+  Assert.AreEqual(3, ALoaded.IssuesAiSummaryMinComments);
   Assert.IsTrue(ALoaded.IssuesNotify);
   Assert.AreEqual(5, ALoaded.IssuesNotifyIntervalMinutes);
   Assert.AreEqual('assigned', ALoaded.IssuesNotifyScope);
@@ -617,6 +638,7 @@ begin
   mSettings := TAtlasPluginSettings.Defaults;
   AssertIssuesDefaults(mSettings);
   NormalizeIssuesOptions(mSettings);
+  NormalizeIssuesAiSummary(mSettings);
   SetIssuesOptions(mSettings);
   mStore := TMemoryStore.Create;
   mSettings.Save(mStore);

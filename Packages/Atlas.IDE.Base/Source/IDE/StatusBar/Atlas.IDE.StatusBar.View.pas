@@ -309,7 +309,7 @@ begin
       TAtlasStatusBarTextId.StatusBarStatusServer);
   end;
   AView.StatusState := AField.State;
-  // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
+  // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld steht nicht in der Statuszeile, die Leiste zeigt sie.
   AView.BadgeShown := AField.Badge.Shown;
   AView.BadgeCount := AField.Badge.Count;
   AView.BadgeState := AField.Badge.State;

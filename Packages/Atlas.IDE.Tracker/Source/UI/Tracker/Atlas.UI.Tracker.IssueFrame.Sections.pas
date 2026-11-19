@@ -2,6 +2,7 @@
 
 // Abschnitte des gezeigten Issues im Fenster „Atlas-Issue“ (#1264), abgelegt über TAtlasIssueLayout:
 //   Kopf als Karte: Kennung (mit Fortschritt der Checkliste, #1273), Titel, Abzeichen;
+//   Zusammenfassung mit KI als Karte (#2462): Stand, offene Fragen, nächster Schritt, Units als Links;
 //   Beschreibung als Markdown (Bilder als Vorschau, Kästchen der Checkliste anklickbar, „Punkt hinzufügen …“);
 //   Kommentare als Karten, ältere eingeklappt, der Anker einer Meldung (#1271) hervorgehoben;
 //   Anhänge als Liste; Verknüpfungen als Liste oder als Baum mit Knöpfen zum Anlegen und Verknüpfen (#1279).
@@ -41,6 +42,9 @@ type
     procedure AddMarkdown(const AText: string; ATasks: TAtlasMarkdownTasks);
     procedure AddBadges;
     procedure AddHeader(const AProgress: TAtlasChecklistProgress);
+    /// <summary>Karte der Zusammenfassung (#2462), wenn sie zum gezeigten Issue gehört.</summary>
+    procedure AddSummary;
+    procedure AddSummaryText(const AShown: TAtlasIssueSummaryShown);
     procedure AddDescription(const AProgress: TAtlasChecklistProgress);
     procedure AddOlder(ACollapsed: Integer);
     procedure AddCommentHead(const AComment: TAtlasTrackerComment; AIndex, AAnchor: Integer);
@@ -92,6 +96,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Preview,
+  Atlas.Core.Tracker.AiSummary,
   Atlas.UI.Tracker.IssueBoxes,
   Atlas.UI.Tracker.Issue.Strings;
 
@@ -332,6 +337,88 @@ begin
   FContent.TitleLabel.Font.Height := MulDiv(FLayout.Box.Font.Height, cTitleScale, cTitleScaleBase);
   AddBadges;
   FLayout.EndCard;
+end;
+
+procedure TAtlasIssueSections.AddSummary;
+var
+  mShown: TAtlasIssueSummaryShown;
+begin
+  mShown := FState.Summary;
+  if (mShown.Kind = TAtlasIssueSummaryKind.None) or not SameText(mShown.Key, FState.Details.Key) then
+  begin
+    Exit;
+  end;
+  FLayout.BeginCard(cCardFill);
+  FLayout.AddText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryTitle), True);
+  case mShown.Kind of
+    TAtlasIssueSummaryKind.Running:
+      FLayout.AddMuted(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSummaryRunning, [mShown.Text]), False);
+    TAtlasIssueSummaryKind.Failed:
+      begin
+        FLayout.AddMuted(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSummaryFailed, [mShown.Text]), False);
+        FLayout.AddLinkText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryAgain), TAtlasIssuePart.SummaryAgain);
+      end;
+    TAtlasIssueSummaryKind.Ready:
+      AddSummaryText(mShown);
+    TAtlasIssueSummaryKind.None:
+      begin
+        // Oben schon ausgeschlossen.
+      end;
+  end;
+  FLayout.EndCard;
+end;
+
+/// <summary>Stand, offene Fragen, nächster Schritt und Units; veraltet mit Hinweis, „Als Kommentar übernehmen“
+/// nur mit Schreibrecht.</summary>
+procedure TAtlasIssueSections.AddSummaryText(const AShown: TAtlasIssueSummaryShown);
+var
+  mQuestion: TAtlasIssueSummaryQuestion;
+  mUnit: TAtlasIssueSummaryUnit;
+  mLink: TLabel;
+  mLine: string;
+begin
+  if AShown.Stale then
+  begin
+    FLayout.AddMuted(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryStale), True);
+    FLayout.AddLinkText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryAgain), TAtlasIssuePart.SummaryAgain);
+  end;
+  FLayout.AddText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryStatus), True);
+  FLayout.AddText(AShown.Summary.Status, False);
+  FLayout.AddText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryQuestions), True);
+  if Length(AShown.Summary.Questions) = 0 then
+  begin
+    FLayout.AddMuted(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryNoQuestions), False);
+  end;
+  for mQuestion in AShown.Summary.Questions do
+  begin
+    mLine := '• ' + mQuestion.Question;
+    if mQuestion.Who <> '' then
+    begin
+      mLine := mLine + ' (' + mQuestion.Who + ')';
+    end;
+    FLayout.AddText(mLine, False);
+  end;
+  if AShown.Summary.NextStep <> '' then
+  begin
+    FLayout.AddText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryNextStep), True);
+    FLayout.AddText(AShown.Summary.NextStep, False);
+  end;
+  if Length(AShown.Units) > 0 then
+  begin
+    FLayout.AddText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryUnits), True);
+  end;
+  for mUnit in AShown.Units do
+  begin
+    // Der Pfad steht im Hint: Klick öffnet ihn im Editor.
+    mLink := FLayout.AddLinkText(mUnit.Name, TAtlasIssuePart.SummaryUnit);
+    mLink.Hint := mUnit.Path;
+    mLink.ShowHint := True;
+  end;
+  if TAtlasIssueFlag.CanWrite in FFlags then
+  begin
+    FLayout.AddLinkText(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryAsComment),
+      TAtlasIssuePart.SummaryComment);
+  end;
 end;
 
 /// <summary>Beschreibung; mit issues.preview.checklists aus die Aufgabenlisten als Text wie geschrieben.</summary>
@@ -616,6 +703,7 @@ begin
     mProgress := TAtlasTrackerChecklist.Progress(FState.Details.Description);
   end;
   AddHeader(mProgress);
+  AddSummary;
   AddDescription(mProgress);
   AddComments;
   AddAttachments;

@@ -552,6 +552,7 @@ Atlas.Core.Designer.SelectionSets.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Tracker.CurrentIssue.Tests
 Atlas.Core.Tracker.CurrentIssuePlan.Tests
+Atlas.Core.Tracker.AiSummary.Tests
 Atlas.Core.Tracker.KnownErrors.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Commands.QuickOpenTarget.Tests
