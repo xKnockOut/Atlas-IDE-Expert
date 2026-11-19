@@ -79,12 +79,15 @@ var
 begin
   mTemplate := TDebugDisplayTemplate.Parse('{Name');
   Assert.IsFalse(mTemplate.Valid);
+  Assert.AreEqual(Ord(TDebugDisplayError.MissingClose), Ord(mTemplate.Error));
   Assert.AreEqual(0, mTemplate.ErrorOffset);
   mTemplate := TDebugDisplayTemplate.Parse('a {} b');
   Assert.IsFalse(mTemplate.Valid);
+  Assert.AreEqual(Ord(TDebugDisplayError.EmptyPlaceholder), Ord(mTemplate.Error));
   Assert.AreEqual(2, mTemplate.ErrorOffset);
   mTemplate := TDebugDisplayTemplate.Parse('a } b');
   Assert.IsFalse(mTemplate.Valid);
+  Assert.AreEqual(Ord(TDebugDisplayError.StrayClose), Ord(mTemplate.Error));
   Assert.IsTrue(TDebugDisplayTemplate.Parse('nur Text').Valid);
 end;
 
