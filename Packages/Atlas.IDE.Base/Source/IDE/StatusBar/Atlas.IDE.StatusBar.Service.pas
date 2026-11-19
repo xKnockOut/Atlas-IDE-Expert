@@ -16,14 +16,14 @@
 //   atlas.server.metrics (Hook Metrics; die Leiste meldet über WantMetrics,
 //   dass sie Metriken braucht). Die oberste Leiste bekommt alles, die anderen
 //   nur den Status.
-// - Zeigt die Leiste das Element status, ist das Atlas-Feld der Statuszeile
-//   0 breit (TAtlasStatusField.Relocated); Klick und Rechtsklick öffnen dort
+// - Zeigt die Leiste das Element status, hat die Statuszeile kein Atlas-Feld
+//   (TAtlasStatusField.Relocated); Klick und Rechtsklick öffnen dort
 //   wie bisher Statusfenster und Schnellschalter, nur über der Leiste.
 //   Doppelklick auf den Status öffnet das Fenster „Atlas-Server“ (#1356,
 //   nur mit server.statusWindow).
 // - Mit eingeschalteten Benachrichtigungen steht immer eine Plakette mit der
 //   Zahl der ungelesenen (auch 0) hinter dem Status (#1234, aus dem
-//   Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
+//   Atlas-Feld, das dann nicht in der Statuszeile steht); Klick öffnet die Liste.
 //   Dahinter stehen die Zusatzfelder des Atlas-Felds (z. B. „interface-Änderung“
 //   der Unit-Beziehungen); ein Klick ruft dort ihren Klick, in der Statuszeile
 //   stehen sie dann nicht. Rechtsklick auf ein Zusatzfeld mit eigenem

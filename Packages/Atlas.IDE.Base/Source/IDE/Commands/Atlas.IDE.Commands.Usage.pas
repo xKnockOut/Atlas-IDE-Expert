@@ -78,23 +78,8 @@ implementation
 uses
   System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   Atlas.IDE.Foundation.Settings;
-
-/// <summary>Textdatei als UTF-8; ohne Byte-Order-Mark; '' bei Fehler.</summary>
-function ReadText(const AFileName: string): string;
-begin
-  Result := '';
-  try
-    Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
-  except
-    on Exception do
-      Exit('');
-  end;
-  if (Result <> '') and (Result[1] = #$FEFF) then
-  begin
-    Delete(Result, 1, 1);
-  end;
-end;
 
 function LocalAppData: string;
 begin
@@ -156,13 +141,15 @@ begin
 end;
 
 procedure TAtlasIdeCommandUsage.LoadTips;
+var
+  mJson: string;
 begin
   FTipsLoaded := True;
   FTips := nil;
   FFolder := FindFolder(ExtractFilePath(GetModuleName(HInstance)));
-  if FFolder <> '' then
+  if (FFolder <> '') and TAtlasDataFile.TryRead(FFolder + TAtlasTipCatalog.cFileName, mJson) then
   begin
-    FTips := TAtlasTipCatalog.Parse(ReadText(FFolder + TAtlasTipCatalog.cFileName));
+    FTips := TAtlasTipCatalog.Parse(mJson);
   end;
   // Anonym: nur die Zahl.
   TAtlasGuard.Log(Format('Tipps (#757): %d aus tips.json', [Length(FTips)]));

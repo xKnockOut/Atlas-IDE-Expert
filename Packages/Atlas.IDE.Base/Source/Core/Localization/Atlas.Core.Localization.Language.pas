@@ -42,6 +42,9 @@ type
     /// <summary>Kennung der aktuellen Sprache für den Server (#1458): "de" oder "en" (initialize.locale,
     /// --locale).</summary>
     class function Code: string; static;
+    /// <summary>Text aus einer Datei mit beiden Sprachen (tips.json, whatsnew.json): mit AEnglish AEnglishText,
+    /// wenn es ihn gibt, sonst AGermanText.</summary>
+    class function Pick(const AGermanText, AEnglishText: string; AEnglish: Boolean): string; static;
   end;
 
   /// <summary>Woher die Sprache der IDE stammt (#446, Protokollzeile beim Laden).</summary>
@@ -110,6 +113,15 @@ begin
   else
   begin
     Result := 'de';
+  end;
+end;
+
+class function TAtlasTextLanguage.Pick(const AGermanText, AEnglishText: string; AEnglish: Boolean): string;
+begin
+  Result := AGermanText;
+  if AEnglish and (AEnglishText <> '') then
+  begin
+    Result := AEnglishText;
   end;
 end;
 

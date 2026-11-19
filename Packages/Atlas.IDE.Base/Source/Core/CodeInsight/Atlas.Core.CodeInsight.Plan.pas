@@ -74,6 +74,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Editor.SourceFiles;
+
 { TAtlasCodeInsightPlan }
 
 class function TAtlasCodeInsightPlan.AllowsKey(AKey: Char): Boolean;
@@ -91,11 +94,8 @@ begin
 end;
 
 class function TAtlasCodeInsightPlan.HandlesExtension(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
+  Result := TAtlasSourceFiles.IsPascal(AFileName);
 end;
 
 class function TAtlasCodeInsightPlan.Ensure(const AState: TAtlasSessionState): TAtlasSessionEnsure;

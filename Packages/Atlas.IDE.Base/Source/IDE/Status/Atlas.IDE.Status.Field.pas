@@ -35,12 +35,12 @@
 //   OnClick mit der linken Oberkante des Panels. Zustand (Punkt) und
 //   Rechtsklick (#1777) zeigt nur die Atlas-Statusleiste; in der Statuszeile
 //   stehen sie als Text. Sie erscheinen auch bei
-//   ausgeschaltetem Atlas-Feld (StatusField); das Atlas-Panel ist dann 0 breit.
+//   ausgeschaltetem Atlas-Feld (StatusField); ein Atlas-Panel gibt es dann nicht.
 // - Plakette der Benachrichtigungszentrale (#601, SetBadge): rechts im
 //   Atlas-Feld die Zahl der ungelesenen Einträge in der Farbe des schwersten;
 //   ein Linksklick darauf ruft ihr OnClick (Liste) statt des Statusfensters.
 //   Der Tooltip des Felds nennt die Zahl. Nur mit eingeschaltetem Atlas-Feld.
-//   Ist das Feld in die Atlas-Statusleiste umgezogen (Relocated, 0 breit),
+//   Ist das Feld in die Atlas-Statusleiste umgezogen (Relocated, ohne Panel),
 //   zeigt die Leiste die Plakette (Badge, ClickBadge, #1234),
 //   bei eingeschalteten Benachrichtigungen immer, auch mit 0.
 // - Die Panels gehören der Leiste, und die IDE löscht sie unter Umständen
@@ -48,11 +48,15 @@
 //   Deshalb sind sie vom eigenen Typ TFieldPanel und melden ihre Freigabe dem
 //   Haken; der vergisst sie, und das nächste Refresh legt sie neu an.
 // - Atlas-Statusleiste (#1155): Zeigt sie das Element status (Relocated),
-//   ist das Atlas-Panel 0 breit; die Leiste liest Text, State und Tooltip und
+//   gibt es in der Statuszeile kein Atlas-Panel; die Leiste liest Text, State und Tooltip und
 //   öffnet über OpenWindowAt bzw. ContextAt dasselbe Statusfenster bzw. die
 //   Schnellschalter. Anchor fragt dann OnRelocatedAnchor (Element der Leiste).
 //   Die Zusatzfelder ziehen mit um: In der Statuszeile stehen sie dann nicht,
-//   die Leiste liest sie über ExtraItems und klickt über ClickExtra.
+//   die Leiste liest sie über ExtraItems und klickt über ClickExtra. Ohne
+//   Atlas-Panel und ohne Zusatzfelder in der Statuszeile hängt das Feld die
+//   Leisten ganz aus (TAtlasStatusFieldPlan.Hooked). Ein ausgeblendetes
+//   Atlas-Panel wird entfernt, nicht 0 breit gelassen: Das letzte Panel einer
+//   TStatusBar reicht bis zum rechten Rand, gleich welche Breite es hat.
 
 interface
 
@@ -216,7 +220,7 @@ type
     /// <summary>Linke Oberkante des Felds im obersten Editorfenster (Bildschirm); False ohne Feld. Umgezogen:
     /// OnRelocatedAnchor.</summary>
     function Anchor(out APoint: TPoint): Boolean;
-    /// <summary>Zeigt die Atlas-Statusleiste das Element status (#1155)? Dann ist das Panel 0 breit.</summary>
+    /// <summary>Zeigt die Atlas-Statusleiste das Element status (#1155)? Dann gibt es kein Panel.</summary>
     class function Relocated: Boolean; static;
     /// <summary>Statusfenster über APoint (Bildschirm, linke Oberkante des Felds) öffnen; ein zweiter Aufruf
     /// schließt es.</summary>
@@ -236,7 +240,7 @@ type
     /// Atlas-Statusleiste zählt Shown), Farbe nach State, Hint im Tooltip; Linksklick auf die Plakette ruft
     /// OnClick mit der linken Oberkante des Felds. Nur im Hauptthread.</summary>
     procedure SetBadge(const ABadge: TAtlasStatusBadge);
-    /// <summary>Plakette für die Atlas-Statusleiste (#1234): Bei Relocated ist das Feld 0 breit, die Leiste zeigt
+    /// <summary>Plakette für die Atlas-Statusleiste (#1234): Bei Relocated gibt es kein Panel, die Leiste zeigt
     /// sie dann selbst (Shown, Count, State, Hint).</summary>
     property Badge: TAtlasStatusBadge read FBadge;
     /// <summary>Wie ein Klick auf die Plakette, Liste mit der linken Oberkante an APoint (#1234).</summary>
@@ -489,7 +493,8 @@ begin
   mHook.OldMouseMove := ABar.OnMouseMove;
   mHook.OldHint := ABar.Hint;
   mHook.OldShowHint := ABar.ShowHint;
-  mHook.Panel := mHook.NewPanel(psOwnerDraw);
+  // Das Atlas-Panel legt Layout an, nur wenn das Feld in der Statuszeile steht.
+  mHook.Panel := nil;
   ABar.OnDrawPanel := mHook.DrawPanel;
   ABar.OnMouseUp := mHook.BarMouseUp;
   ABar.OnMouseMove := mHook.BarMouseMove;
@@ -810,30 +815,37 @@ procedure TAtlasStatusField.THook.Layout(AShown: Boolean);
 const
   cShownPad = 30;
 var
-  mWidth: Integer;
+  mFirst: TFieldPanel;
 begin
-  // Von der IDE gelöscht (PanelGone): neu anlegen.
-  if Panel = nil then
-  begin
-    Panel := NewPanel(psOwnerDraw);
-  end;
+  // Feld aus oder in die Atlas-Statusleiste umgezogen: Panel entfernen statt 0 breit lassen. Das letzte Panel
+  // einer TStatusBar reicht bis zum rechten Rand, gleich welche Breite es hat; ein 0 breites Atlas-Panel am Ende
+  // zeichnete das Feld sonst trotzdem (nur ohne Klick).
   Bar.Canvas.Font := Bar.Font;
-  mWidth := 0;
-  if AShown then
+  if not AShown then
   begin
-    mWidth := Bar.Canvas.TextWidth(Field.FShown.Text) + MulDiv(cShownPad, Bar.CurrentPPI, 96) +
-      SymbolWidth(Bar.CurrentPPI) + BadgeWidth(Bar, Field.FBadge.Count);
-  end;
-  // Text nur zum Erkennen und für Screenreader; gezeichnet wird in DrawPanel.
-  if mWidth > 0 then
-  begin
-    Panel.Text := Field.FShown.Text;
+    DropPanel(Panel);
+    Panel := nil;
   end
   else
   begin
-    Panel.Text := '';
+    // Neu, nach dem Ausblenden oder von der IDE gelöscht (PanelGone): anlegen, vor den Zusatzfeldern.
+    if Panel = nil then
+    begin
+      Panel := NewPanel(psOwnerDraw);
+      for mFirst in Extras do
+      begin
+        if mFirst <> nil then
+        begin
+          Panel.Index := mFirst.Index;
+          Break;
+        end;
+      end;
+    end;
+    // Text nur zum Erkennen und für Screenreader; gezeichnet wird in DrawPanel.
+    Panel.Text := Field.FShown.Text;
+    Panel.Width := Bar.Canvas.TextWidth(Field.FShown.Text) + MulDiv(cShownPad, Bar.CurrentPPI, 96) +
+      SymbolWidth(Bar.CurrentPPI) + BadgeWidth(Bar, Field.FBadge.Count);
   end;
-  Panel.Width := mWidth;
   SyncExtras;
   // Zusatzfeld verschwunden oder Feld aus: Tooltip des Panels unter der Maus neu bestimmen.
   if Zone >= 0 then
@@ -1199,8 +1211,9 @@ begin
     FWindow.SetItems(FShown.Items);
   end;
   mShown := PanelShown;
-  // Ohne Atlas-Feld bleiben die Leisten nur für Zusatzfelder eingehängt (#575).
-  if not mShown and (Length(FExtras) = 0) then
+  // Ohne Atlas-Feld bleiben die Leisten nur für Zusatzfelder in der Statuszeile eingehängt (#575); ziehen sie mit
+  // in die Atlas-Statusleiste um, braucht die Statuszeile nichts von Atlas.
+  if not TAtlasStatusFieldPlan.Hooked(mShown, TAtlasStatusFieldPlan.ExtraPanels(Length(FExtras), Relocated)) then
   begin
     UnhookAll(Self);
     Exit;

@@ -97,6 +97,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.Math,
+  Atlas.Core.Localization.Language,
   Atlas.Text.Json;
 
 { TAtlasTip }
@@ -121,20 +122,12 @@ end;
 
 function TAtlasTip.TitleIn(AEnglish: Boolean): string;
 begin
-  Result := Title;
-  if AEnglish and (TitleEn <> '') then
-  begin
-    Result := TitleEn;
-  end;
+  Result := TAtlasTextLanguage.Pick(Title, TitleEn, AEnglish);
 end;
 
 function TAtlasTip.TextIn(AEnglish: Boolean): string;
 begin
-  Result := Text;
-  if AEnglish and (TextEn <> '') then
-  begin
-    Result := TextEn;
-  end;
+  Result := TAtlasTextLanguage.Pick(Text, TextEn, AEnglish);
 end;
 
 { JSON-Helfer }

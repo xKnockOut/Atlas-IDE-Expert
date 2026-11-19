@@ -212,6 +212,7 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Welcome.Strings;
 
 function StyleColor(AControl: TControl; AColor: TColor): TColor;
@@ -441,11 +442,7 @@ end;
 procedure TAtlasArrangeStrip.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if FHot >= 0 then
-  begin
-    FHot := -1;
-    Invalidate;
-  end;
+  TAtlasControls.ClearHot(Self, FHot);
 end;
 
 procedure TAtlasArrangeStrip.SetParts(const AParts: TArray<TAtlasArrangePart>);

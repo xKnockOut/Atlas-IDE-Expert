@@ -18,6 +18,8 @@ type
     [Test]
     procedure ExtraPanelsMoveWithRelocation;
     [Test]
+    procedure UnhookedWhenEverythingMoved;
+    [Test]
     procedure ClickOnBadgeWindowOrExtra;
     [Test]
     procedure TogglesFollowGestureSetting;
@@ -65,6 +67,15 @@ procedure TAtlasStatusFieldPlanTests.ExtraPanelsMoveWithRelocation;
 begin
   Assert.AreEqual(2, TAtlasStatusFieldPlan.ExtraPanels(2, False));
   Assert.AreEqual(0, TAtlasStatusFieldPlan.ExtraPanels(2, True));
+end;
+
+procedure TAtlasStatusFieldPlanTests.UnhookedWhenEverythingMoved;
+begin
+  // Umgezogen mit Zusatzfeldern (z. B. KI-Assistent): Die Statuszeile braucht nichts von Atlas.
+  Assert.IsFalse(TAtlasStatusFieldPlan.Hooked(False, TAtlasStatusFieldPlan.ExtraPanels(3, True)));
+  Assert.IsTrue(TAtlasStatusFieldPlan.Hooked(False, TAtlasStatusFieldPlan.ExtraPanels(3, False)), 'Feld aus');
+  Assert.IsTrue(TAtlasStatusFieldPlan.Hooked(True, 0));
+  Assert.IsFalse(TAtlasStatusFieldPlan.Hooked(False, 0));
 end;
 
 procedure TAtlasStatusFieldPlanTests.ClickOnBadgeWindowOrExtra;
