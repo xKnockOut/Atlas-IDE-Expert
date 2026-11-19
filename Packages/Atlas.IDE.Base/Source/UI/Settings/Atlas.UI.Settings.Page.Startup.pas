@@ -62,6 +62,8 @@ const
   cUpdatesInstallModes: array[0..2] of string = ('ask', 'auto', 'off');
   cUpdatesChannels: array[0..1] of string = ('stable', 'prerelease');
   cUpdatesNewModulesModes: array[0..2] of string = ('ask', 'install', 'skip');
+  /// <summary>Breite der Auswahl der Taste für den abgesicherten Start (kurze Namen).</summary>
+  cSafeKeyWidth = 120;
 
 { TAtlasSettingsStartupPart }
 
@@ -111,25 +113,17 @@ begin
 end;
 
 procedure TAtlasSettingsStartupPart.AddSafeSection;
-var
-  mPanel: TWinControl;
-  mCaption: TLabel;
 begin
   // Abgesicherter Start nach einem Absturz (#722).
   AddTitle(TAtlasTextId.SettingsSafeTitle);
   BindCheck('SafeAskAfterCrash', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeAsk)));
   BindCheck('SafeAutoAfterRepeatedCrash', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeAuto)));
-  mPanel := AddPanel(26);
-  mCaption := TLabel.Create(FPage);
-  mCaption.Parent := mPanel;
-  mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKey);
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
   FSafeKey := TAtlasChoiceBox.Create(FPage);
-  FSafeKey.Parent := mPanel;
-  FSafeKey.Left := cFieldLeft;
+  FSafeKey.Parent := FPage.AddCaptionRow(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKey));
+  // Skaliert wie die Felder der übrigen Zeilen (AddChoice).
+  FSafeKey.Left := FSafeKey.ScaleValue(cFieldLeft);
   FSafeKey.Top := 1;
-  FSafeKey.Width := FSafeKey.ScaleValue(120);
+  FSafeKey.Width := FSafeKey.ScaleValue(cSafeKeyWidth);
   // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
   FSafeKey.SetChoices([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyShift),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyCtrl),
@@ -171,7 +165,7 @@ var
 begin
   // Version und Update-Prüfung (#495).
   AddTitle(TAtlasTextId.SettingsUpdatesTitle);
-  mPanel := AddPanel(20);
+  mPanel := AddPanel(cHeadingHeight);
   FVersion := TLabel.Create(FPage);
   FVersion.Parent := mPanel;
   FVersion.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,

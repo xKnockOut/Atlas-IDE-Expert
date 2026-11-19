@@ -199,6 +199,7 @@ Atlas.Common.Lsp.DisableWarning.Tests
 Atlas.Common.Lsp.DocWiki.Tests
 Atlas.Common.Lsp.EnclosingConditions.Tests
 Atlas.Common.Lsp.DebugVariables.Tests
+Atlas.Common.Lsp.DebugScope.Tests
 Atlas.Common.Lsp.UpcomingConditions.Tests
 Atlas.Common.Lsp.ValueEdit.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
@@ -234,9 +235,11 @@ Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
 Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
+Atlas.Common.Mcp.CompilerMessageTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
+Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
 Atlas.Common.Mcp.EditFindings.Tests
 Atlas.Common.Lsp.ImplementationSites.Tests
@@ -395,6 +398,8 @@ Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Rules.MessageCatalog.Tests
+Atlas.Common.Rules.CompilerPitfalls.Tests
+Atlas.Common.Rules.CompilerPitfallFixes.Tests
 Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
 Atlas.Common.Rules.Prompt.Tests
@@ -652,6 +657,8 @@ Atlas.Core.VersionControl.LineChangesPlan.Tests
 Atlas.Core.VersionControl.Plan.Tests
 Atlas.Core.UnitRelations.Plan.Tests
 Atlas.Core.Debug.VariablesFlow.Tests
+Atlas.Core.Debug.WatchScopes.Tests
+Atlas.Core.Debug.WatchStore.Tests
 Atlas.Core.Debug.LaunchProcesses.Tests
 Atlas.Core.Debug.StepFilterEdit.Tests
 Atlas.Core.Debug.AccessViolation.Stop.Tests
@@ -697,4 +704,6 @@ Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Tests
 Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
+Shell.Mcp.RefactorHost.Tests
+Shell.Mcp.RefactorSources.Tests
 Atlas.Core.Editor.SnapshotPolicy.Tests

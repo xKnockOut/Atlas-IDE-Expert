@@ -40,7 +40,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Projects.Summary,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Pull;
+  Atlas.Core.VersionControl.Pull,
+  Atlas.Text.Lines;
 
 type
 {$SCOPEDENUMS ON}
@@ -108,7 +109,7 @@ type
 
   TAtlasQuickFileExists = reference to function(const AFileName: string): Boolean;
   /// <summary>Zeilen einer Datei ohne Zeilenende; False, wenn sie nicht lesbar ist.</summary>
-  TAtlasQuickReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+  TAtlasQuickReadLines = TTextReadLines;
 
   TAtlasWelcomeQuickActions = class
   public const
