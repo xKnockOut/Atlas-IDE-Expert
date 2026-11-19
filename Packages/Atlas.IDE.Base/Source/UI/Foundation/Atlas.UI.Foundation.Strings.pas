@@ -14,7 +14,8 @@ type
     TeamFileCreated, TeamFileCreateFailed, TeamFileIssueSyntax, TeamFileIssueSyntaxAt, TeamFileIssueVersion,
     TeamFileIssueUnknownKey, TeamFileIssueWrongType, TeamFileIssueInvalidValue, TeamFileIssueCredential,
     TeamFileIssueAbsolutePath, TeamFileIssueOutsidePath, StartProfilesTemporaryRestored, ResultsSureGroup,
-    ResultsInferredGroup);
+    ResultsInferredGroup, PairGuidesIdeOff, PairGuidesIdeOn, HelpInsightIdeOff, HelpInsightIdeOn, TooltipWatchesIdeOff,
+    TooltipWatchesIdeOn);
 
   TAtlasFoundationStrings = class
   public
@@ -52,7 +53,17 @@ const
      '.atlas: "%s" führt aus dem Projekt heraus und wird ignoriert.',
      'Atlas: Vorübergehende Startparameter von %s zurückgestellt.',
      'Sicher (%d)',
-     'Erschlossen (%d) · vor dem Umbenennen prüfen'),
+     'Erschlossen (%d) · vor dem Umbenennen prüfen',
+     'Atlas zeichnet die Blocklinien selbst und hat die Strukturhervorhebung der IDE abgeschaltet; ' +
+       'wirkt nach dem nächsten Start von Delphi.',
+     'Atlas hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem ' +
+       'nächsten Start von Delphi.',
+     'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas zeigt Werte beim Debuggen im eigenen Tooltip und hat die Ausdrucksauswertung im Kurzhinweis der IDE ' +
+       'abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas hat die Ausdrucksauswertung im Kurzhinweis der IDE wieder eingeschaltet; wirkt nach dem nächsten ' +
+       'Start von Delphi.'),
     ('Atlas: %0:s is already assigned (%1:s); Atlas leaves the key and does not use it for %2:s. ' +
        'Decide under Tools > Options > Third Party > Atlas > Key conflicts.',
      'Atlas: %s brings its own code completion. Running both interferes; ' +
@@ -74,7 +85,17 @@ const
      '.atlas: "%s" leads outside the project and is ignored.',
      'Atlas: Temporary run parameters of %s restored.',
      'Sure (%d)',
-     'Inferred (%d) · check before renaming'));
+     'Inferred (%d) · check before renaming',
+     'Atlas draws the block lines itself and switched off the IDE''s structural highlighting; takes ' +
+       'effect after the next start of Delphi.',
+     'Atlas switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.',
+     'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after ' +
+       'the next start of Delphi.',
+     'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.',
+     'Atlas shows values while debugging in its own tooltip and switched off the IDE''s tooltip expression ' +
+       'evaluation; takes effect after the next start of Delphi.',
+     'Atlas switched the IDE''s tooltip expression evaluation back on; takes effect after the next start of ' +
+       'Delphi.'));
 
 { TAtlasFoundationStrings }
 

@@ -120,6 +120,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Processes,
   Atlas.IDE.Debug.UnavailableFixes,
+  Atlas.IDE.Debug.RunMenu,
   Atlas.UI.Debug.ProcessChoice,
   Atlas.UI.Debug.Session.Strings,
   Atlas.UI.Debug.Settings.Strings;
@@ -133,25 +134,6 @@ function HistoryFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     TAtlasIdeDebugReattach.cFileName);
-end;
-
-function RunMenu: TMenuItem;
-var
-  mServices: INTAServices;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.MainMenu = nil) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.MainMenu.Items.Count - 1 do
-  begin
-    if SameText(mServices.MainMenu.Items[mIndex].Name, 'RunMenu') then
-    begin
-      Exit(mServices.MainMenu.Items[mIndex]);
-    end;
-  end;
 end;
 
 { TAtlasIdeDebugReattach.TListener }
@@ -382,7 +364,7 @@ class procedure TAtlasIdeDebugReattach.InstallMenu;
 var
   mParent: TMenuItem;
 begin
-  mParent := RunMenu;
+  mParent := TAtlasIdeRunMenu.Find;
   if (mParent = nil) or (FMenuReattach <> nil) then
   begin
     Exit;
