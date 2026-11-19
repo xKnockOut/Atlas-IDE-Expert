@@ -27,6 +27,10 @@ type
     [Test]
     procedure ParseDropsBrokenEntries;
     [Test]
+    procedure RulesWithMessage;
+    [Test]
+    procedure RulesJsonOldAndNew;
+    [Test]
     procedure LoadAndSave;
   end;
 
@@ -35,6 +39,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  Atlas.Core.Debug.ExceptionRules,
   Atlas.Core.Debug.IgnoreList;
 
 const
@@ -107,6 +112,44 @@ begin
   Assert.AreEqual(cKunde, mLoaded.Locations[0].FileName);
   Assert.AreEqual(42, mLoaded.Locations[0].Line);
   Assert.IsTrue(Pos('"format": 1', mList.ToJson) > 0);
+end;
+
+procedure TAtlasDebugIgnoreListTests.RulesWithMessage;
+var
+  mList, mShared: TAtlasDebugIgnoreList;
+begin
+  mList := TAtlasDebugIgnoreList.Empty;
+  Assert.IsFalse(mList.HasMessageRules('EKonfig'));
+  Assert.IsTrue(mList.AddRule(TAtlasExceptionRule.Create('EKonfig', 'unbekannt', TAtlasMessageMatch.Matches,
+    TAtlasExceptionAction.Log)));
+  Assert.IsTrue(mList.AddRule(TAtlasExceptionRule.Create('EKonfig', '', TAtlasMessageMatch.Matches,
+    TAtlasExceptionAction.Stop)));
+  Assert.IsTrue(mList.HasMessageRules('ekonfig'), 'ohne Groß/klein');
+  mShared := mList;
+  Assert.AreEqual(1, mList.RemoveMessageRules('EKONFIG'));
+  Assert.IsFalse(mList.HasMessageRules('EKonfig'));
+  Assert.AreEqual(1, Integer(Length(mList.Rules)), 'Regel ohne Meldung bleibt');
+  Assert.AreEqual(2, Integer(Length(mShared.Rules)), 'geteilte Liste unverändert');
+  Assert.AreEqual(0, mList.RemoveMessageRules('EKonfig'));
+end;
+
+procedure TAtlasDebugIgnoreListTests.RulesJsonOldAndNew;
+var
+  mList, mLoaded: TAtlasDebugIgnoreList;
+  mValid: Boolean;
+begin
+  mLoaded := TAtlasDebugIgnoreList.Parse('{"format": 1, "classes": ["EAbort"]}', mValid);
+  Assert.IsTrue(mValid, 'Datei ohne Regeln');
+  Assert.AreEqual(0, Integer(Length(mLoaded.Rules)));
+  mList := TAtlasDebugIgnoreList.Empty;
+  mList.AddRule(TAtlasExceptionRule.Create('EKonfig', 'unbekannt: *', TAtlasMessageMatch.NotMatches,
+    TAtlasExceptionAction.Log));
+  mLoaded := TAtlasDebugIgnoreList.Parse(mList.ToJson, mValid);
+  Assert.IsTrue(mValid);
+  Assert.AreEqual(1, Integer(Length(mLoaded.Rules)));
+  Assert.IsTrue(mLoaded.Rules[0].SameCriteria(mList.Rules[0]));
+  mLoaded := TAtlasDebugIgnoreList.Empty;
+  Assert.AreEqual(0, Integer(Length(mLoaded.Rules)), 'Empty ohne Regeln');
 end;
 
 procedure TAtlasDebugIgnoreListTests.ParseDropsBrokenEntries;

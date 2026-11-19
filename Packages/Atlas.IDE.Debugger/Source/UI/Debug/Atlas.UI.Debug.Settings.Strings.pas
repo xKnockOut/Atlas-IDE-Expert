@@ -32,7 +32,8 @@ type
     SettingsDebugEventLogColors, SettingsDebugLogpoints, SettingsDebugLogpointPrefix, SettingsDebugNoSourcePage,
     SettingsDebugNoSourceIgnored, SettingsDebugRestart, SettingsDebugRestartReenable, SettingsDebugReattach,
     SettingsDebugReattachKey, SettingsDebugReattachWait, SettingsDebugLaunchGroups, SettingsDebugPinnedValues,
-    SettingsDebugHoverExpand, SettingsDebugHoverChanges, SettingsDebugHoverMaxChildren);
+    SettingsDebugHoverExpand, SettingsDebugHoverChanges, SettingsDebugHoverMaxChildren,
+    SettingsDebugExceptionMessageRules, SettingsDebugExceptionRules);
 
   TAtlasDebugSettingsStrings = class
   public
@@ -120,7 +121,9 @@ const
      'Werte aus dem Hover anheften',
      'Werte im Debug-Hover aufklappbar',
      'Seit dem letzten Halt geänderte Werte markieren',
-     'Höchstzahl Kinder je Ebene'),
+     'Höchstzahl Kinder je Ebene',
+     'Exceptions nach Meldungstext anhalten oder fortsetzen',
+     'Exception-Regeln nach Klasse und Ort'),
     ('Break when a field changes (editor context menu)',
      'Breakpoints on methods by pattern',
      'Breakpoint only for one object or field value (editor context menu)',
@@ -192,7 +195,9 @@ const
      'Pin values from the hover',
      'Expandable values in the debug hover',
      'Mark values changed since the last stop',
-     'Maximum children per level'));
+     'Maximum children per level',
+     'Stop or continue exceptions by message text',
+     'Exception rules by class and place'));
 
 { TAtlasDebugSettingsStrings }
 

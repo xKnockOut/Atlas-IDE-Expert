@@ -857,10 +857,52 @@ Einstellungen: `debug.justMyCode`, eigener Code = Projektordner und `debug.ownCo
   - Fortsetzen (F9)
   - Klasse ignorieren
   - Nur an dieser Stelle ignorieren (Klasse + Unit + Zeile je Projekt, beim nächsten Mal still fortgesetzt)
+  - Meldung … (Regel nach Meldungstext, siehe unten)
   - Meldung kopieren
 - In Delphi 12 und 13 schließt Atlas dafür den Dialog der IDE, sonst bleibt er und die Leiste kommt danach.
 
 Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
+
+#### Exceptions nach Meldungstext
+
+- Eine Klasse wie `EKonfigFehler` steht oft für ganz verschiedene Fehler; die Meldung unterscheidet sie.
+- „Meldung …“ in der Exception-Leiste und im Kontextmenü des Exception-Verlaufs öffnet einen kleinen Dialog:
+  - Art: „Nur bei Meldungen wie dieser anhalten“ (andere Meldungen dieser Klasse laufen weiter) oder „Meldungen wie diese ignorieren“
+  - Muster, vorbelegt aus der Meldung; Zahlen, Adressen und Texte in Hochkommas werden zu `*`: `Schlüssel unbekannt: * in Zeile *`
+  - ohne regulären Ausdruck genügt es, dass die Meldung das Muster enthält; `*` steht für beliebigen Text; Groß-/Kleinschreibung zählt nicht
+  - wahlweise regulärer Ausdruck (ein ungültiger wird gleich gemeldet)
+  - Unit: beliebig oder nur die Unit der ersten eigenen Zeile
+- Fortgesetzte Exceptions stehen grau im Verlauf.
+- Regeln gehen der Ignorier-Liste vor, also auch „anhalten trotz ignorierter Klasse“.
+- Ohne gelesene Meldung entscheidet keine Regel mit Meldung: Atlas hält dann lieber an.
+- „Regeln mit Meldung für X entfernen“ im Kontextmenü des Verlaufs nimmt sie wieder weg.
+- Die Regeln stehen mit der Ignorier-Liste in `debug-ignore.json` (Feld `rules`).
+
+Einstellungen: `debug.exceptionMessageRules` (Vorgabe an)
+
+#### Exception-Regeln nach Klasse und Ort
+
+- Eine Regel nennt die Klasse (wahlweise mit Nachfahren), wahlweise den Ort (Methode oder Unit als Muster, z. B. `Bericht.Druck.*` oder `TKunde.*`), wahlweise ein Muster für die Meldung und die Aktion:
+  - Anhalten
+  - Nur protokollieren (grau im Verlauf)
+  - Weiterlaufen (nicht im Verlauf)
+- Der Ort ist die erste eigene Methode im Aufrufstapel; `*` steht für beliebigen Text, Groß-/Kleinschreibung zählt nicht.
+- „Nur an dieser Stelle ignorieren“ in der Exception-Leiste legt dafür eine Regel für die erste eigene Methode an (ohne eigene Methode wie bisher Klasse + Unit + Zeile).
+- Fenster „Exception-Regeln“ (Kontextmenü des Exception-Verlaufs oder Befehlspalette, `Atlas.DebugExceptionRules`):
+  - je Zeile: an/aus, Klasse, Ort, Meldung, Aktion, Herkunft und Treffer der laufenden Debug-Sitzung
+  - Neu, Bearbeiten, Ein/Aus, Löschen, Nach oben/unten oder Ziehen mit der Maus; die erste passende Regel gewinnt
+  - persönliche Regeln stehen vor denen des Projekts; beide lassen sich hier ändern, Sortieren geht innerhalb der eigenen Gruppe
+  - im Dialog „Exception-Regel“ wählt „Gilt für“ zwischen „nur für mich“ und „alle im Projekt (.atlas)“; „Übernehmen“ schreibt geänderte Projektregeln in `.atlas` (Kommentare und übrige Einträge bleiben, eine Regel je Zeile), „Projektdatei öffnen“ zeigt die Datei
+- Persönliche Regeln stehen in `debug-ignore.json` (Feld `rules`), die des Projekts in `.atlas` unter `exceptionRules` und werden eingecheckt:
+
+```json
+"exceptionRules": [{"class": "EConvertError", "location": "Bericht.Druck.*", "action": "continue"}]
+```
+
+  Felder: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`, `descendants`.
+- Mit „mit Nachfahren“ passt die Regel auch zu abgeleiteten Klassen (`EDatabaseError` fängt `EFDDBEngineException`). Die Vorfahren fragt Atlas beim Halt einmal je Klasse und Sitzung über die Typhierarchie des Servers ab; ist die Klasse dort unbekannt, zählt nur der genaue Name.
+
+Einstellungen: `debug.exceptionRules` (Vorgabe an); Regeln mit Meldung zusätzlich `debug.exceptionMessageRules`
 
 #### Zugriffsverletzung erklärt
 
