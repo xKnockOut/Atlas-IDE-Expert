@@ -10,7 +10,7 @@
 // als „(global: …)“. Geändert wird je Regel nur ihr Wert in der Datei. Die
 // Prüfregeln stehen nur hier (Projekt und „Weitere globale Einstellungen“),
 // nicht in Tools › Optionen. Den Dialog öffnet Base über
-// IAtlasSettingsDialogProvider (TAtlasRulesDialogProvider).
+// IAtlasSettingsDialogProvider (Atlas.IDE.Rules.Adapters.SettingsDialog).
 
 interface
 
@@ -53,12 +53,6 @@ type
     property RuleList: TListView read GetRuleList;
     /// <summary>Regel-Editor auf der gezeigten Seite; nil ohne "rules".</summary>
     property RuleEditor: TAtlasRulesEditor read FRuleEditor;
-  end;
-
-  /// <summary>Anbieter der Dialogklasse für Base (IAtlasSettingsDialogProvider).</summary>
-  TAtlasRulesDialogProvider = class(TInterfacedObject, IAtlasSettingsDialogProvider)
-  public
-    function DialogClass: TAtlasProjectSettingsDialogClass;
   end;
 
 implementation
@@ -285,13 +279,6 @@ begin
   begin
     ApplyRules(TAtlasRuleTable.WithSeverity(FRulesJson, AId, ASeverity));
   end;
-end;
-
-{ TAtlasRulesDialogProvider }
-
-function TAtlasRulesDialogProvider.DialogClass: TAtlasProjectSettingsDialogClass;
-begin
-  Result := TAtlasRulesSettingsDialog;
 end;
 
 end.

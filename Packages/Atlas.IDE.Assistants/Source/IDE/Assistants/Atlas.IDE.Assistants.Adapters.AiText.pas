@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Assistants.AiText;
+﻿unit Atlas.IDE.Assistants.Adapters.AiText;
 
 // Text vom eingestellten KI-Anbieter für andere Module (#2462, Vertrag
 // Atlas.IDE.Contracts.AiText): Anbieter, Modell und Schlüssel wie beim
@@ -66,7 +66,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.AiProviders.OpenAiCompatible,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Assistants.AiGhost,
+  Atlas.IDE.Assistants.AiErrors,
   Atlas.UI.Assistants.Strings;
 
 const
@@ -178,7 +178,7 @@ begin
   begin
     Exit(ResultWith(TAtlasAiTextStatus.Cancelled, ''));
   end;
-  Result := ResultWith(TAtlasAiTextStatus.Failed, TAtlasIdeAiGhost.ErrorText(AAnswer.Error));
+  Result := ResultWith(TAtlasAiTextStatus.Failed, TAtlasAiErrorTexts.Text(AAnswer.Error));
   if AAnswer.Detail <> '' then
   begin
     Result.Error := Result.Error + ' (' + AAnswer.Detail + ')';

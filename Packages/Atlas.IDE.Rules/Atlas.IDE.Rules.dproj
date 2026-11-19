@@ -98,7 +98,7 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Baseline.pas"/>
-        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.BulkFix.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Adapters.BulkFix.pas"/>
         <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Composition.pas"/>
         <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.BulkFix.pas"/>
         <DCCReference Include="Source\UI\Rules\Atlas.UI.Rules.Strings.pas"/>
@@ -109,11 +109,12 @@
         <DCCReference Include="Source\Core\Rules\Atlas.Core.Rules.CustomLayer.pas"/>
         <DCCReference Include="Source\UI\Rules\Atlas.UI.Rules.Editor.pas"/>
         <DCCReference Include="Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas"/>
-        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.FindingActions.pas"/>
-        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.IdeErrors.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Adapters.SettingsDialog.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Adapters.FindingActions.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Adapters.IdeErrors.pas"/>
         <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.OwnershipHints.pas"/>
         <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Maintenance.pas"/>
-        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Settings.pas"/>
+        <DCCReference Include="Source\IDE\Rules\Atlas.IDE.Rules.Adapters.Settings.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
