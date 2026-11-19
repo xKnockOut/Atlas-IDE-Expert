@@ -42,7 +42,8 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Chars;
 
 type
   TFrame = record
@@ -52,11 +53,6 @@ type
     Commas: Integer;
     Name: string;
   end;
-
-function IsIdentifierChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
-end;
 
 /// <summary>Steht vor AIndex (1-basiert, Position der Klammer) ein Bezeichner, ")" oder "]"?</summary>
 function FollowsCallee(const AText: string; AFrom, AIndex: Integer): Boolean;
@@ -80,12 +76,12 @@ begin
   begin
     Exit(True);
   end;
-  if not IsIdentifierChar(AText[mIndex]) then
+  if not TTextChars.IsIdentChar(AText[mIndex]) then
   begin
     Exit(False);
   end;
   mStop := mIndex;
-  while (mIndex >= AFrom) and IsIdentifierChar(AText[mIndex]) do
+  while (mIndex >= AFrom) and TTextChars.IsIdentChar(AText[mIndex]) do
   begin
     Dec(mIndex);
   end;
@@ -103,7 +99,7 @@ begin
     Dec(mIndex);
   end;
   mStop := mIndex;
-  while (mIndex >= AFrom) and IsIdentifierChar(AText[mIndex]) do
+  while (mIndex >= AFrom) and TTextChars.IsIdentChar(AText[mIndex]) do
   begin
     Dec(mIndex);
   end;

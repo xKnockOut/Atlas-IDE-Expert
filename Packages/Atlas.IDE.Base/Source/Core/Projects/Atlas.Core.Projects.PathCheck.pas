@@ -207,6 +207,8 @@ uses
   Atlas.Text.Defines;
 
 const
+  /// <summary>Länge eines Laufwerksstamms („C:\“): Sein Schrägstrich bleibt stehen.</summary>
+  cDriveRootLength = 3;
   // IMPLICITBUILDING setzt die IDE beim impliziten Bauen eines Packages (steht in jeder .dpk-Vorlage);
   // TESTINSIGHT und CI fragt die Projektvorlage von DUnitX ab, gesetzt werden sie vom jeweiligen Werkzeug.
   cForeignSymbols: array[0..15] of string = ('FPC', 'CLR', 'KYLIX', 'LCL', 'DOTNET', 'UNIX', 'DARWIN', 'WINDOWS',
@@ -291,7 +293,7 @@ end;
 function WithoutSlash(const AFolder: string): string;
 begin
   Result := Trim(AFolder);
-  while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  while (Length(Result) > cDriveRootLength) and CharInSet(Result[Length(Result)], ['\', '/']) do
   begin
     Delete(Result, Length(Result), 1);
   end;
@@ -483,7 +485,7 @@ begin
     mOpen := Pos('$(', mText, mOpen);
   end;
   Result := Combine(ABaseDir, mText);
-  if Result.EndsWith('\') and (Length(Result) > 3) then
+  if Result.EndsWith('\') and (Length(Result) > cDriveRootLength) then
   begin
     Delete(Result, Length(Result), 1);
   end;
@@ -704,6 +706,11 @@ begin
 end;
 
 class function TAtlasPathCheck.Suggest(const AName: string; const AKnown: TArray<string>): string;
+const
+  // Kurze Namen (X, C) gleichen fast allem; erst ab so vielen Zeichen. Vorschlag nur bei weniger
+  // Abweichungen als cMaxDistance.
+  cMinLength = 4;
+  cMaxDistance = 3;
 
   function Distance(const A, B: string): Integer;
   var
@@ -734,12 +741,11 @@ var
   mBest, mValue: Integer;
 begin
   Result := '';
-  // Kurze Namen (X, C) gleichen fast allem; erst ab vier Zeichen.
-  if Length(Trim(AName)) < 4 then
+  if Length(Trim(AName)) < cMinLength then
   begin
     Exit;
   end;
-  mBest := 3;
+  mBest := cMaxDistance;
   for mKnown in AKnown do
   begin
     if (mKnown <> '') and not SameText(mKnown, AName) and (Abs(Length(mKnown) - Length(AName)) <= 2) then
