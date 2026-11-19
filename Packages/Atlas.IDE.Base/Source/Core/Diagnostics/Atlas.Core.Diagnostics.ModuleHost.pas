@@ -19,6 +19,8 @@
 //    des Moduls, wartet TAtlasOverdueThreads.SettleBeforeUnload kurz und hält
 //    das Package sonst im Speicher. Das wirkt nur hier, vor FreeLibrary; der
 //    Rückruf beim Entladen käme zu spät.
+// ConnectMainThread hängt die Registry an TAtlasMainThread: Einträge eines
+// abgemeldeten Moduls laufen nicht mehr (Regel 3).
 // Base kennt dabei keine Modulnamen (Regel 9): Kennung, Name und Handle gibt
 // das Modul. Das Handle ist das HInstance des Moduls, nie das von Base
 // (Regel 8); deshalb übergibt das Modul es.
@@ -54,12 +56,17 @@ type
     /// <summary>Wie Unregister mit ARegistry (nil: Base ist abgebaut) und ALog für die Fehler des Abbaus.</summary>
     class procedure UnregisterFrom(const ARegistry: IAtlasModuleRegistry; var AScope: IAtlasModuleScope;
       const AId: string; AInstance: HMODULE; const ARelease: TProc; const ALog: TProc<string>); static;
+    /// <summary>Einträge in den Hauptthread verfallen mit ihrem Modul: Die Registry meldet Ab- und Anmelden mit
+    /// dem Handle des Packages an TAtlasMainThread (CloseModule, OpenModule). Base ruft das schon in der
+    /// Initialisierung: Module können sich anmelden, bevor die IDE Register von Base ruft (Regel 1).</summary>
+    class procedure ConnectMainThread; static;
   end;
 
 implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Registry;
 
@@ -159,6 +166,20 @@ begin
   begin
     TAtlasOverdueThreads.SettleBeforeUnload(AInstance);
   end;
+end;
+
+class procedure TAtlasModuleHost.ConnectMainThread;
+begin
+  TAtlasModuleRegistry.OnModuleClosing :=
+    procedure(AHandle: NativeUInt)
+    begin
+      TAtlasMainThread.CloseModule(AHandle);
+    end;
+  TAtlasModuleRegistry.OnModuleOpened :=
+    procedure(AHandle: NativeUInt)
+    begin
+      TAtlasMainThread.OpenModule(AHandle);
+    end;
 end;
 
 end.

@@ -497,17 +497,8 @@ begin
 end;
 
 function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-var
-  mFeature: TAtlasFeature;
-  mProc: TProc;
 begin
-  mFeature := AFeature;
-  mProc := AProc;
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(mFeature, mProc);
-    end;
+  Result := TAtlasGuard.Wrap(AFeature, AProc);
 end;
 
 procedure AddCommand(APalette: TAtlasIdePalette; const AId: string; ATextId: TAtlasTextId; const AProc: TProc);

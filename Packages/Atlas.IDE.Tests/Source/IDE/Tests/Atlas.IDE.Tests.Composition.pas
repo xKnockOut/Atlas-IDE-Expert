@@ -375,15 +375,6 @@ end;
 
 { Befehle }
 
-function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(AFeature, AProc);
-    end;
-end;
-
 function Command(const AId: string; ACaption: TAtlasTestsTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
@@ -611,7 +602,7 @@ begin
   Result := [
     // Betroffene Tests (#1353): sichtbar mit tests.affected und tests.run.
     Command('Atlas.RunAffectedTests', TAtlasTestsTextId.TestsAffectedCommand,
-      Guarded(TAtlasFeature.Build, TAtlasIdeAffectedTests.Run), AffectedTestsVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, TAtlasIdeAffectedTests.Run), AffectedTestsVisible),
     // Fenster „Atlas-Tests“ (#1776): sichtbar mit tests.window.
     Described(Command('Atlas.TestExplorer', TAtlasTestsTextId.ExplorerCommand, ShowExplorer, ExplorerVisible),
       TAtlasTestsTextId.ExplorerHint),
@@ -634,7 +625,7 @@ begin
       BoundaryCasesVisible),
     // Vergleichsdateien (#1881): sichtbar mit tests.approvalFiles.
     Command('Atlas.CleanApprovalFiles', TAtlasTestsTextId.TestsApprovalCleanCommand,
-      Guarded(TAtlasFeature.Build, CleanApprovalFiles), ApprovalFilesVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, CleanApprovalFiles), ApprovalFilesVisible),
     // Ungetestete Methoden des Projekts (#1783): sichtbar mit TestRun.
     Described(Command('Atlas.ListUntestedMethods', TAtlasTestsTextId.UntestedProjectCommand, ListUntested,
       TestsVisible), TAtlasTestsTextId.UntestedProjectHint),
@@ -649,31 +640,31 @@ begin
     Command('Atlas.CancelTestSeries', TAtlasTestsTextId.SeriesCancelCommand, CancelSeries, CancelSeriesVisible),
     // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
     Command('Atlas.ProjectRunUnitTests', TAtlasTestsTextId.TestsProjectRunUnit,
-      Guarded(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, RunProjectUnitTests), ProjectUnitTestsVisible),
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
-      Guarded(TAtlasFeature.Generate, NewTestUnitFor), nil),
+      TAtlasGuard.Wrap(TAtlasFeature.Generate, NewTestUnitFor), nil),
       TAtlasTestsTextId.TestsGalleryTestUnitHint),
     // Test aus dem Debug-Halt (#1873): sichtbar mit tests.fromDebugStop und einem Modul, das den Halt liefert.
     Command(TestFromDebugCommand, TAtlasTestsTextId.TestsFromDebugCommand,
-      Guarded(TAtlasFeature.Generate, TestFromDebugStop), TestFromDebugVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Generate, TestFromDebugStop), TestFromDebugVisible),
     // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
     Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
-      Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint),
     // Testabdeckung (#275): sichtbar mit tests.coverage; ausblenden nur mit geladenem Bericht.
     Command('Atlas.LoadTestCoverage', TAtlasTestsTextId.CoverageLoadCommand,
-      Guarded(TAtlasFeature.Build, LoadCoverage), CoverageVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, LoadCoverage), CoverageVisible),
     Command('Atlas.ClearTestCoverage', TAtlasTestsTextId.CoverageClearCommand,
-      Guarded(TAtlasFeature.Build, ClearCoverage), CoverageClearVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, ClearCoverage), CoverageClearVisible),
     // Mutationslauf (#1460): sichtbar mit tests.mutation und tests.run; abbrechen nur, solange er läuft.
     Command('Atlas.MutateMethod', TAtlasTestsTextId.MutationMethodCommand,
-      Guarded(TAtlasFeature.Build, MutateMethod), MutationIdle),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, MutateMethod), MutationIdle),
     Command('Atlas.MutateUnit', TAtlasTestsTextId.MutationUnitCommand,
-      Guarded(TAtlasFeature.Build, MutateUnit), MutationIdle),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, MutateUnit), MutationIdle),
     Command('Atlas.MutateChanged', TAtlasTestsTextId.MutationChangedCommand,
-      Guarded(TAtlasFeature.Build, MutateChanged), MutationIdle),
+      TAtlasGuard.Wrap(TAtlasFeature.Build, MutateChanged), MutationIdle),
     Command('Atlas.CancelMutation', TAtlasTestsTextId.MutationCancelCommand,
-      Guarded(TAtlasFeature.Build, CancelMutation), MutationRunning)];
+      TAtlasGuard.Wrap(TAtlasFeature.Build, CancelMutation), MutationRunning)];
   // Testlisten (#2167): je Liste ein Befehl, mit tests.lists.
   Result := Result + ListCommands;
 end;

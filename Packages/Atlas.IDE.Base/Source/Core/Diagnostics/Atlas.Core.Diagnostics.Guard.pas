@@ -237,6 +237,9 @@ type
     class destructor Destroy;
     /// <summary>Führt AProc geschützt aus; False bei Fehler oder abgeschaltetem Feature.</summary>
     class function Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean; static;
+    /// <summary>AProc als Prozedur, die über Run geschützt läuft (für Befehle, Menüeinträge und Ereignisse).
+    /// </summary>
+    class function Wrap(AFeature: TAtlasFeature; const AProc: TProc): TProc; static;
     /// <summary>AProc ist Arbeit der IDE (etwa IOTAActionServices.OpenProject): Ihre Zeit zählt im
     /// Diagnosemodus nicht als Zeit von Atlas. Fängt keine Exception; dafür sorgt das äußere Run.</summary>
     class procedure RunIde(const AProc: TProc); static;
@@ -1138,6 +1141,15 @@ begin
       Result := False;
     end;
   end;
+end;
+
+class function TAtlasGuard.Wrap(AFeature: TAtlasFeature; const AProc: TProc): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      Run(AFeature, AProc);
+    end;
 end;
 
 class function TAtlasGuard.Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean;

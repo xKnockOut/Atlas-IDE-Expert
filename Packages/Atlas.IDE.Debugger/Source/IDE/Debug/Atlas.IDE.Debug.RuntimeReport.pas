@@ -51,11 +51,7 @@ end;
 
 function Group(const AMessages: IOTAMessageServices): IOTAMessageGroup;
 begin
-  Result := AMessages.GetGroup(cMessageGroup);
-  if Result = nil then
-  begin
-    Result := AMessages.AddMessageGroup(cMessageGroup);
-  end;
+  Result := TAtlasIdeHost.MessageGroup(AMessages, cMessageGroup);
 end;
 
 { Ausgabe }

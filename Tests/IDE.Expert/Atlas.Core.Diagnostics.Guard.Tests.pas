@@ -19,6 +19,9 @@ type
     procedure TearDown;
     [Test]
     procedure RunSwallowsExceptions;
+    /// <summary>Wrap gibt eine Prozedur zurück, die erst beim Aufruf über Run läuft.</summary>
+    [Test]
+    procedure WrapRunsGuardedOnCall;
     [Test]
     procedure FuseTripsAfterThreeFailuresWithinFiveMinutes;
     [Test]
@@ -147,6 +150,26 @@ begin
     end));
   Assert.IsTrue(mRan);
   Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8), 'EInvalidOpException: kaputt');
+end;
+
+procedure TAtlasGuardTests.WrapRunsGuardedOnCall;
+var
+  mCount: Integer;
+  mWrapped: TProc;
+begin
+  mCount := 0;
+  mWrapped := TAtlasGuard.Wrap(TAtlasFeature.Hover,
+    procedure
+    begin
+      Inc(mCount);
+      raise EInvalidOpException.Create('im Befehl');
+    end);
+  Assert.AreEqual(0, mCount, 'erst beim Aufruf');
+  mWrapped();
+  Assert.AreEqual(1, mCount);
+  Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8),
+    'EInvalidOpException: im Befehl');
+  mWrapped := nil;
 end;
 
 procedure TAtlasGuardTests.FuseTripsAfterThreeFailuresWithinFiveMinutes;

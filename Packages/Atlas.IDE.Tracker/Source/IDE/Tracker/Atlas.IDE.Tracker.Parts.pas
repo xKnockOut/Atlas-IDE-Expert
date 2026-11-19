@@ -51,7 +51,6 @@ implementation
 uses
   System.Types,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
@@ -73,7 +72,8 @@ uses
   Atlas.IDE.Tracker.Tiles,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Commands.Strings;
+  Atlas.UI.Tracker.Commands.Strings,
+  Atlas.Core.Modules.Contributions;
 
 const
   // Zusatzfeld der Zeiterfassung im Statusfeld (#1267).
@@ -106,41 +106,6 @@ var
   GTests: TAtlasIdeTestResults;
   GTestsRef: IInterface;
   GTestsRegistrations: TArray<IAtlasRegistration>;
-
-{ Dienste aus der Registry }
-
-/// <summary>Erstes unter AIID bereitgestelltes Objekt; nil ohne.</summary>
-function Provided(const AIID: TGUID): IInterface;
-var
-  mItems: TArray<IInterface>;
-begin
-  Result := nil;
-  if AtlasModuleRegistry = nil then
-  begin
-    Exit;
-  end;
-  mItems := AtlasModuleRegistry.FindAll(AIID);
-  if Length(mItems) > 0 then
-  begin
-    Result := mItems[0];
-  end;
-end;
-
-function WelcomeProjects: IAtlasWelcomeProjects;
-begin
-  if not Supports(Provided(IAtlasWelcomeProjects), IAtlasWelcomeProjects, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
-function WelcomeBoard: IAtlasWelcomeBoard;
-begin
-  if not Supports(Provided(IAtlasWelcomeBoard), IAtlasWelcomeBoard, Result) then
-  begin
-    Result := nil;
-  end;
-end;
 
 { „Meine Issues“ }
 
@@ -296,13 +261,6 @@ begin
   TAtlasOptionsRegistration.ShowSetting(cSettingQueries);
 end;
 
-function WelcomeLookup: TAtlasTrackerWelcomeLookup;
-begin
-  Result := Default(TAtlasTrackerWelcomeLookup);
-  Result.Projects := WelcomeProjects;
-  Result.Board := WelcomeBoard;
-end;
-
 function CreateIssues: TAtlasIdeIssues;
 var
   mHooks: TAtlasIdeIssuesHooks;
@@ -321,7 +279,7 @@ end;
 
 procedure StartMyIssues;
 begin
-  GWelcome := TAtlasTrackerWelcomeLink.Create(WelcomeLookup);
+  GWelcome := TAtlasTrackerWelcomeLink.Create(TAtlasTrackerWelcomeLink.RegistryLookup);
   GIssues := CreateIssues;
   GIssuesRef := GIssues as IInterface;
   GIssues.Start;
@@ -388,7 +346,7 @@ end;
 // „Testergebnisse“ (#763): Kachel und Zuhörer der Zusammenfassungen; abgefragt wird erst beim Anzeigen.
 procedure StartTestResults;
 begin
-  GTestsWelcome := TAtlasTrackerWelcomeLink.Create(WelcomeLookup);
+  GTestsWelcome := TAtlasTrackerWelcomeLink.Create(TAtlasTrackerWelcomeLink.RegistryLookup);
   GTests := TAtlasIdeTestResults.Create(GTestsWelcome, GCiAccess, NewIssueMessage);
   GTestsRef := GTests;
   GTests.Start;
@@ -466,11 +424,7 @@ end;
 function Command(const AId, ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := ACaption;
-  Result.Run := ARun;
-  Result.Visible := AVisible;
+  Result := TAtlasModuleContributions.NewCommand(AId, ACaption, ARun, AVisible);
 end;
 
 procedure EnterCredentials;

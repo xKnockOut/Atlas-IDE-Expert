@@ -104,7 +104,8 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.UI.Debug.DataBreakpoints.Strings;
+  Atlas.UI.Debug.DataBreakpoints.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeDataBreakpoint.TListener }
 
@@ -211,7 +212,7 @@ var
   mBreakpoint: IOTAAddressBreakpoint;
 begin
   Result := 0;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -270,7 +271,7 @@ var
   mAddress: TOTAAddress;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

@@ -77,7 +77,6 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Commands,
   Atlas.Core.Settings.Plugin,
@@ -85,7 +84,8 @@ uses
   Atlas.UI.Architecture.Frame,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Architecture.Window;
+  Atlas.IDE.Architecture.Window,
+  Atlas.IDE.Foundation.Files;
 
 const
   /// <summary>Große Projektgruppen brauchen beim ersten Mal einige Sekunden (Index, Fundstellen).</summary>
@@ -121,7 +121,6 @@ type
     /// <summary>Antwort auf die Anfrage ARequest im Hauptthread zeigen.</summary>
     procedure ShowAnswer(ARequest: Integer; AParsed, AEnabled: Boolean; const AModel: TAtlasArchitectureModel);
     function AnswerHandler(ARequest: Integer): TProc<string>;
-    function ProjectUri(out AUri: string): Boolean;
     procedure ChangeScope(const AScope: string);
     procedure ChangeLibrary(AValue: Boolean);
     procedure ChangeResolution(AValue: Double);
@@ -363,19 +362,6 @@ begin
     end;
 end;
 
-function TArchitectureState.ProjectUri(out AUri: string): Boolean;
-var
-  mProject: IOTAProject;
-begin
-  AUri := '';
-  mProject := GetActiveProject;
-  Result := (mProject <> nil) and (mProject.FileName <> '');
-  if Result then
-  begin
-    AUri := TLspSession.PathToUri(mProject.FileName);
-  end;
-end;
-
 procedure TArchitectureState.ChangeScope(const AScope: string);
 var
   mNext: TAtlasPluginSettings;
@@ -461,7 +447,7 @@ begin
   begin
     Exit;
   end;
-  if not ProjectUri(mUri) then
+  if not TAtlasIdeFiles.ActiveProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), False);
     Exit;
@@ -501,7 +487,7 @@ begin
   begin
     Exit;
   end;
-  if not ProjectUri(mUri) then
+  if not TAtlasIdeFiles.ActiveProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), True);
     Exit;

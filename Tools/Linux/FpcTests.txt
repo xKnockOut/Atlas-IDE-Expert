@@ -21,6 +21,7 @@ Atlas.Text.Csv.Tests
 Atlas.Text.Files.Tests
 Atlas.Text.IndexCache.Tests
 Atlas.Text.Names.Tests
+Atlas.Text.Numbers.Tests
 Atlas.Text.Json.Tests
 Atlas.Text.Jsonc.Tests
 Atlas.Text.LogMarks.Tests
@@ -464,6 +465,8 @@ Atlas.Common.Updates.Prepare.Tests
 Atlas.Common.Updates.Tests
 
 # Plugin-Kern
+Atlas.Core.Foundation.Calls.Tests
+Atlas.Core.Modules.Contributions.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Assistants.Instructions.Tests
 Atlas.Core.AiProviders.Anthropic.Tests

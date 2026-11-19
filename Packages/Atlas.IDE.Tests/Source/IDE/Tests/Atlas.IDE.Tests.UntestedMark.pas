@@ -76,7 +76,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Tests.Lens;
+  Atlas.IDE.Tests.Lens,
+  Atlas.IDE.Foundation.EditorStyle;
 
 const
   cCreateTag = -1;
@@ -115,7 +116,7 @@ var
   mTested, mTotal: Integer;
 begin
   mCanvas := AContext.Canvas;
-  mBack := TAtlasIdeLensPill.BackgroundAt(mCanvas, ALeft, ARow.Top + 1);
+  mBack := TAtlasIdeStyle.SampleBack(mCanvas, ALeft, ARow.Top + 1);
   mColors := TAtlasColors.ForBackground(mBack);
   mTested := FUnit.Tested;
   mTotal := Length(FUnit.Methods);

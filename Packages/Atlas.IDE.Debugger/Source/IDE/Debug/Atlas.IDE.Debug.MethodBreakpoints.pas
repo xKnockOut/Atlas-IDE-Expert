@@ -96,7 +96,8 @@ uses
   Atlas.Core.Debug.MethodGroupFlow,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Debug.Breakpoints;
+  Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeMethodBreakpoints.TListener }
 
@@ -259,7 +260,7 @@ var
   mName: string;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

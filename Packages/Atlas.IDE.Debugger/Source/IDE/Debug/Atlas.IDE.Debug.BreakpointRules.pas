@@ -101,7 +101,8 @@ uses
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.UI.Debug.BreakpointRules,
-  Atlas.UI.Debug.Breakpoints.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeBreakpointRules.TListener }
 
@@ -383,7 +384,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

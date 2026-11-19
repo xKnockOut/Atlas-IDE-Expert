@@ -32,7 +32,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Tests.Explorer,
   Atlas.UI.Tests.ExplorerDetails,
-  Atlas.UI.Tests.ListBar;
+  Atlas.UI.Tests.ListBar,
+  Atlas.UI.Foundation.FillFrame;
 
 type
   /// <summary>Ereignisse des Fensters; nil = keins.</summary>
@@ -98,7 +99,7 @@ type
     property StatusLabel: TLabel read FStatus;
   end;
 
-  TAtlasTestsExplorerFrame = class(TFrame)
+  TAtlasTestsExplorerFrame = class(TAtlasFillFrame)
   private
     FBar: TAtlasTestsExplorerBar;
     FListBar: TAtlasTestsListBar;
@@ -107,10 +108,8 @@ type
     FFooter: TLabel;
     FImages: TImageList;
     FRows: TArray<TAtlasTestRow>;
-    FFilled: Boolean;
     FHandlers: TAtlasTestsExplorerHandlers;
     procedure BuildImages;
-    procedure Fill;
     /// <summary>Baumknoten zu FRows anlegen; Index je Zeile in AItems, der früher fokussierte Knoten in
     /// AFocusItem.</summary>
     procedure AddItems(AFocused: Integer; out AItems: TArray<TTreeNode>; out AFocusItem: TTreeNode);
@@ -120,7 +119,7 @@ type
     procedure TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TreeChange(Sender: TObject; Node: TTreeNode);
   protected
-    procedure CreateWnd; override;
+    procedure FillControls; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Ereignisse setzen; Default(TAtlasTestsExplorerHandlers) löst alle.</summary>
@@ -152,7 +151,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Tests.Strings;
+  Atlas.UI.Tests.Strings,
+  Atlas.Core.Foundation.Calls;
 
 {$R *.dfm}
 
@@ -180,14 +180,6 @@ const
   cStateColors: array[TAtlasTestNodeState] of TColor = ($00909090, $004BA02E, $00493AD7, $0009ABDB, $00909090);
   /// <summary>Hintergrund der Punktbilder, wird durchsichtig.</summary>
   cMaskColor = clFuchsia;
-
-procedure Fire(const AProc: TProc);
-begin
-  if Assigned(AProc) then
-  begin
-    AProc();
-  end;
-end;
 
 { TAtlasTestsExplorerBar }
 
@@ -337,25 +329,25 @@ procedure TAtlasTestsExplorerBar.ButtonClick(Sender: TObject);
 begin
   if Sender = FRunAll then
   begin
-    Fire(FHandlers.OnRunAll);
+    TAtlasCalls.Call(FHandlers.OnRunAll);
   end
   else if Sender = FRunSelected then
   begin
-    Fire(FHandlers.OnRunSelected);
+    TAtlasCalls.Call(FHandlers.OnRunSelected);
   end
   else if Sender = FDebugSelected then
   begin
-    Fire(FHandlers.OnDebugSelected);
+    TAtlasCalls.Call(FHandlers.OnDebugSelected);
   end
   else if Sender = FRefresh then
   begin
-    Fire(FHandlers.OnRefresh);
+    TAtlasCalls.Call(FHandlers.OnRefresh);
   end;
 end;
 
 procedure TAtlasTestsExplorerBar.FilterChange(Sender: TObject);
 begin
-  Fire(FHandlers.OnFilter);
+  TAtlasCalls.Call(FHandlers.OnFilter);
 end;
 
 procedure TAtlasTestsExplorerBar.ProjectChange(Sender: TObject);
@@ -436,7 +428,7 @@ begin
       FFilterChecks[mFilter].OnClick := FilterChange;
     end;
   end;
-  Fire(FHandlers.OnFilter);
+  TAtlasCalls.Call(FHandlers.OnFilter);
 end;
 
 function TAtlasTestsExplorerBar.SearchText: string;
@@ -476,15 +468,6 @@ begin
   FListBar := TAtlasTestsListBar.Create(Self, FTree);
 end;
 
-procedure TAtlasTestsExplorerFrame.CreateWnd;
-begin
-  inherited CreateWnd;
-  if not FFilled then
-  begin
-    Fill;
-  end;
-end;
-
 procedure TAtlasTestsExplorerFrame.BuildImages;
 var
   mState: TAtlasTestNodeState;
@@ -518,14 +501,13 @@ begin
   end;
 end;
 
-procedure TAtlasTestsExplorerFrame.Fill;
+procedure TAtlasTestsExplorerFrame.FillControls;
 var
   mItems: TArray<TTreeNode>;
   mWasSelected: TArray<Integer>;
   mFocused: Integer;
   mFocusItem: TTreeNode;
 begin
-  FFilled := True;
   FBar.FillProjects;
   FListBar.FillTabs;
   FTree.HandleNeeded;
@@ -619,12 +601,12 @@ begin
   else if (Key = Ord('R')) and (Shift = [ssCtrl]) then
   begin
     Key := 0;
-    Fire(FHandlers.OnRunSelected);
+    TAtlasCalls.Call(FHandlers.OnRunSelected);
   end
   else if (Key = Ord('D')) and (Shift = [ssCtrl]) then
   begin
     Key := 0;
-    Fire(FHandlers.OnDebugSelected);
+    TAtlasCalls.Call(FHandlers.OnDebugSelected);
   end;
 end;
 
@@ -652,11 +634,7 @@ procedure TAtlasTestsExplorerFrame.SetRows(const ARows: TArray<TAtlasTestRow>; c
 begin
   FRows := ARows;
   FBar.SetStatus(AStatus);
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
+  Refill;
 end;
 
 procedure TAtlasTestsExplorerFrame.SetStatus(const AStatus: string);

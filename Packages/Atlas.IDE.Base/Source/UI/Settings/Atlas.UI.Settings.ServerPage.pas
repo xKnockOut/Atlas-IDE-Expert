@@ -20,8 +20,7 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Vcl.Forms,
-  Vcl.Dialogs;
+  Vcl.Forms;
 
 type
   /// <summary>Was die IDE-Schicht für die Seite liefert; nicht gesetzte Haken lassen ihren Knopf aus.</summary>
@@ -45,7 +44,6 @@ type
     function AddTitle(const ACaption: string): TLabel;
     /// <summary>Knopf in APanel an ALeft (logische Pixel, 96 dpi).</summary>
     function AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
-    function Confirmed(const AQuestion: string): Boolean;
     procedure EditGlobalClick(Sender: TObject);
     procedure EditProjectClick(Sender: TObject);
     procedure CacheClearClick(Sender: TObject);
@@ -67,6 +65,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets;
 
@@ -152,18 +151,6 @@ begin
   Result.OnClick := AClick;
 end;
 
-function TAtlasServerPage.Confirmed(const AQuestion: string): Boolean;
-begin
-  if Assigned(FHooks.Confirm) then
-  begin
-    Result := FHooks.Confirm(AQuestion);
-  end
-  else
-  begin
-    Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
-  end;
-end;
-
 procedure TAtlasServerPage.EditGlobalClick(Sender: TObject);
 begin
   if Assigned(FHooks.EditGlobal) then
@@ -182,8 +169,8 @@ end;
 
 procedure TAtlasServerPage.CacheClearClick(Sender: TObject);
 begin
-  if Assigned(FHooks.ClearCache) and Confirmed(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheConfirm))
-    then
+  if Assigned(FHooks.ClearCache) and
+    TAtlasDialog.Confirmed(FHooks.Confirm, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheConfirm)) then
   begin
     FCacheInfo.Caption := FHooks.ClearCache();
   end;

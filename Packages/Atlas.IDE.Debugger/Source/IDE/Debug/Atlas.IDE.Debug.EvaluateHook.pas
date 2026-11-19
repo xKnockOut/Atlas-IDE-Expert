@@ -16,20 +16,17 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Actions;
+  System.Actions,
+  Atlas.IDE.Foundation.ActionHook;
 
 type
-  /// <summary>Hängt an der IDE-Aktion „Auswerten/Ändern“ (wie TTraceHook in Atlas.IDE.Debug.OwnCode).</summary>
-  TAtlasIdeEvaluateHook = class(TComponent)
+  /// <summary>Hängt an der IDE-Aktion „Auswerten/Ändern“.</summary>
+  TAtlasIdeEvaluateHook = class(TAtlasIdeActionHook)
   private
-    FAction: TContainedAction;
-    FOriginal: TNotifyEvent;
-    FBypass: Boolean;
     FIntercepts: TFunc<Boolean>;
     FShow: TProc;
-    procedure Execute(Sender: TObject);
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure Intercept; override;
   public
     constructor Create(AAction: TContainedAction; const AIntercepts: TFunc<Boolean>; const AShow: TProc);
       reintroduce;
@@ -38,8 +35,6 @@ type
     class function Install(const AIntercepts: TFunc<Boolean>; const AShow: TProc): TAtlasIdeEvaluateHook; static;
     /// <summary>Die Aktion „Auswerten/Ändern“ der IDE; nil ohne.</summary>
     class function FindEvaluateAction: TContainedAction; static;
-    /// <summary>Die Aktion der IDE wie ohne Atlas ausführen.</summary>
-    procedure RunOriginal;
     /// <summary>Dialog der IDE über AHook, ohne Haken (nil) über die Aktion direkt.</summary>
     class procedure OpenIdeDialog(AHook: TAtlasIdeEvaluateHook); static;
   end;
@@ -101,42 +96,20 @@ end;
 constructor TAtlasIdeEvaluateHook.Create(AAction: TContainedAction; const AIntercepts: TFunc<Boolean>;
   const AShow: TProc);
 begin
-  inherited Create(nil);
   FIntercepts := AIntercepts;
   FShow := AShow;
-  FAction := AAction;
-  FOriginal := AAction.OnExecute;
-  FAction.OnExecute := Execute;
-  FAction.FreeNotification(Self);
+  inherited Create(AAction);
 end;
 
 destructor TAtlasIdeEvaluateHook.Destroy;
 begin
-  if FAction <> nil then
-  begin
-    FAction.RemoveFreeNotification(Self);
-    FAction.OnExecute := FOriginal;
-  end;
   FIntercepts := nil;
   FShow := nil;
   inherited Destroy;
 end;
 
-procedure TAtlasIdeEvaluateHook.Notification(AComponent: TComponent; Operation: TOperation);
+procedure TAtlasIdeEvaluateHook.Intercept;
 begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FAction) then
-  begin
-    FAction := nil;
-  end;
-end;
-
-procedure TAtlasIdeEvaluateHook.Execute(Sender: TObject);
-begin
-  if FBypass or (FAction = nil) then
-  begin
-    Exit;
-  end;
   if Assigned(FIntercepts) and FIntercepts() and (GetKeyState(VK_SHIFT) >= 0) then
   begin
     TAtlasGuard.Run(TAtlasFeature.Debugger, FShow);
@@ -182,31 +155,6 @@ begin
   if Result = nil then
   begin
     Result := FirstAction(mServices, WithCtrlF7());
-  end;
-end;
-
-procedure TAtlasIdeEvaluateHook.RunOriginal;
-begin
-  if FAction = nil then
-  begin
-    Exit;
-  end;
-  if Assigned(FOriginal) then
-  begin
-    FOriginal(FAction);
-    Exit;
-  end;
-  // Ohne eigenes OnExecute erledigt die IDE die Aktion über ihre Liste: kurz abhängen und ausführen.
-  FBypass := True;
-  FAction.OnExecute := nil;
-  try
-    FAction.Execute;
-  finally
-    if FAction <> nil then
-    begin
-      FAction.OnExecute := Execute;
-    end;
-    FBypass := False;
   end;
 end;
 

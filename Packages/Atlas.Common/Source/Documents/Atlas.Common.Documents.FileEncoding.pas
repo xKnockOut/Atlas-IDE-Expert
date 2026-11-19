@@ -923,7 +923,7 @@ end;
 
 class function TFileEncoding.LoadLines(const AFileName: string): TArray<string>;
 begin
-  Result := TTextLines.SplitFileLines(LoadText(AFileName));
+  Result := TTextLines.SplitLikeStrings(LoadText(AFileName));
 end;
 
 class procedure TFileEncoding.SaveToFile(const AFileName, AText: string; const AFormat: TFileFormat);

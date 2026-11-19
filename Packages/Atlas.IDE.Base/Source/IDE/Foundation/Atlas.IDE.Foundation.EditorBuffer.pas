@@ -30,6 +30,9 @@ type
     /// <summary>Editoransicht der aktuellen Datei, auch wenn der Fokus gerade in Palette, Menü oder einem
     /// angedockten Fenster liegt; nil ohne offene Quelltextdatei.</summary>
     class function ActiveView: IOTAEditView; static;
+    /// <summary>Name der Unit in ActiveView (Dateiname ohne Endung); '' ohne Ansicht oder für andere Dateien als
+    /// .pas.</summary>
+    class function ActiveUnitName: string; static;
     /// <summary>Steht die Schreibmarke von ActiveView in AFileName auf Zeile ALine und Spalte AColumn (1-basiert, wie
     /// CursorPos)?</summary>
     class function CursorAt(const AFileName: string; ALine, AColumn: Integer): Boolean; static;
@@ -38,6 +41,8 @@ type
     class function TopView: IOTAEditView; static;
     /// <summary>Wie TopView, aber nil, wenn die Ansicht keinen Puffer hat.</summary>
     class function TopSourceView: IOTAEditView; static;
+    /// <summary>Datei des obersten Editorpuffers (IOTAEditorServices.TopBuffer); '' ohne.</summary>
+    class function TopFileName: string; static;
     /// <summary>Ist AWnd das Editorfenster der IDE (TEditControl)?</summary>
     class function IsEditorWindow(AWnd: HWND): Boolean; static;
     /// <summary>Zeigt das aktuelle Modul gerade seinen Formular-Editor statt des Codes? Dann gehören Tasten dem
@@ -190,6 +195,18 @@ begin
   Result := TAtlasTextOffsets.CharOffset(AText, ALine, ACharacter);
 end;
 
+class function TAtlasEditorBuffer.ActiveUnitName: string;
+var
+  mView: IOTAEditView;
+begin
+  Result := '';
+  mView := ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
+  begin
+    Result := ChangeFileExt(ExtractFileName(mView.Buffer.FileName), '');
+  end;
+end;
+
 class function TAtlasEditorBuffer.ActiveView: IOTAEditView;
 begin
   // Zuerst das aktuelle Modul: TopView ist leer, solange der Fokus nicht im Editor liegt
@@ -218,6 +235,17 @@ begin
   if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
     Result := mEditors.TopView;
+  end;
+end;
+
+class function TAtlasEditorBuffer.TopFileName: string;
+var
+  mEditors: IOTAEditorServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.TopBuffer <> nil) then
+  begin
+    Result := mEditors.TopBuffer.FileName;
   end;
 end;
 

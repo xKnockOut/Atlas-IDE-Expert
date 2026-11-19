@@ -141,18 +141,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorRefresh;
-
-/// <summary>Den Editor vorn neu zeichnen.</summary>
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.UI.Foundation.Menus;
 
 function CanStart(const AHooks: TAtlasCodeLinksHooks): Boolean;
 begin
@@ -239,7 +229,7 @@ begin
   FHooks := Default(TAtlasCodeLinksHooks);
   if mPainted then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -315,7 +305,7 @@ begin
     if FState.FileName <> '' then
     begin
       Clear;
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.RepaintTop;
     end;
     Exit;
   end;
@@ -344,7 +334,7 @@ begin
   FState.TabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
   FMatches.Clear;
   FHits.Clear;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 function TAtlasIdeCodeLinks.MatchesOf(ALine: Integer): TArray<TAtlasIssueKeyMatch>;
@@ -614,27 +604,18 @@ begin
   end;
 end;
 
-function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AClick;
-  AMenu.Items.Add(Result);
-end;
-
 procedure TAtlasIdeCodeLinks.ShowMenu(const AHit: TAtlasCodeLinkHit; const APoint: TPoint);
 begin
   FMenu.Items.Clear;
   FMenuHit := AHit;
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow), TAtlasCodeLinkPlan.cMenuShow,
+  TAtlasMenus.Add(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow), TAtlasCodeLinkPlan.cMenuShow,
     MenuClick).Default := True;
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse), TAtlasCodeLinkPlan.cMenuBrowse,
+  TAtlasMenus.Add(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse), TAtlasCodeLinkPlan.cMenuBrowse,
     MenuClick);
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey), TAtlasCodeLinkPlan.cMenuCopy,
+  TAtlasMenus.Add(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey), TAtlasCodeLinkPlan.cMenuCopy,
     MenuClick);
-  AddMenuItem(FMenu, '-', 0, nil);
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewStart), TAtlasCodeLinkPlan.cMenuStart,
+  TAtlasMenus.Add(FMenu, '-', 0, nil);
+  TAtlasMenus.Add(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewStart), TAtlasCodeLinkPlan.cMenuStart,
     MenuClick).Enabled := CanStart(FHooks);
   FMenu.Popup(APoint.X, APoint.Y);
 end;

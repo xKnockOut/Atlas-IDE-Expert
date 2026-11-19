@@ -113,7 +113,8 @@ uses
   Atlas.Core.Forms.PropertyValues,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Localization.Language,
-  Atlas.IDE.Foundation.DesignerView;
+  Atlas.IDE.Foundation.DesignerView,
+  Atlas.Core.Foundation.Calls;
 
 {$SCOPEDENUMS ON}
 
@@ -189,16 +190,6 @@ begin
   end;
 end;
 
-function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
-var
-  mNative: INTAFormEditor;
-begin
-  Result := nil;
-  if Supports(AEditor, INTAFormEditor, mNative) then
-  begin
-    Result := mNative.FormDesigner;
-  end;
-end;
 
 function TextOf(const AEditor: IOTAFormEditor): string;
 var
@@ -207,7 +198,7 @@ var
 begin
   Result := '';
   mRoot := TAtlasIdeDesignerView.RootOf(AEditor);
-  mDesigner := DesignerOf(AEditor);
+  mDesigner := TAtlasIdeDesignerView.DesignerOf(AEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit;
@@ -510,10 +501,7 @@ end;
 
 procedure TAtlasIdeForms.Log(const AText: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
+  TAtlasCalls.Send(FLog, AText);
 end;
 
 class procedure TAtlasIdeForms.SyncNow(ASession: TLspSession);
@@ -587,7 +575,7 @@ var
 begin
   mEditor := EditorOf(AFileName);
   mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
-  mDesigner := DesignerOf(mEditor);
+  mDesigner := TAtlasIdeDesignerView.DesignerOf(mEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit(UiText(TDesignerText.FormIsNoLongerOpen));
