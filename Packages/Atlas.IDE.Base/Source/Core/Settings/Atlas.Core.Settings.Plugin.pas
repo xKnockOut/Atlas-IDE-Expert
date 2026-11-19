@@ -568,6 +568,9 @@ type
     property DebugExceptionBanner: Boolean read FDebug.DebugExceptionBanner write FDebug.DebugExceptionBanner;
     property DebugExceptionBannerIgnoreAtLocation: Boolean read FDebug.DebugExceptionBannerIgnoreAtLocation
       write FDebug.DebugExceptionBannerIgnoreAtLocation;
+    property DebugExceptionMessageRules: Boolean read FDebug.DebugExceptionMessageRules
+      write FDebug.DebugExceptionMessageRules;
+    property DebugExceptionRules: Boolean read FDebug.DebugExceptionRules write FDebug.DebugExceptionRules;
     property DebugInlineValues: Boolean read FDebug.DebugInlineValues write FDebug.DebugInlineValues;
     property DebugInlineValuesPerLine: Integer read FDebug.DebugInlineValuesPerLine
       write FDebug.DebugInlineValuesPerLine;

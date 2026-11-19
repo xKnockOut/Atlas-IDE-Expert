@@ -43,7 +43,6 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Undo.Contract,
-  Atlas.UI.Strings,
   Atlas.UI.Undo.Strings,
   Atlas.UI.Undo.Messages,
   Atlas.UI.Undo.DiffView,
@@ -90,10 +89,10 @@ begin
   mReport.Done := ['C:\P\A.pas', 'C:\P\B.pas'];
   mLines := TAtlasUndoMessages.Report(mReport);
   Assert.AreEqual(1, Integer(Length(mLines)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoDone, [mReport.Action, 2]), mLines[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoDone, [mReport.Action, 2]), mLines[0]);
   mReport.Redo := True;
   mLines := TAtlasUndoMessages.Report(mReport);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoDone, [mReport.Action, 2]), mLines[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.RedoDone, [mReport.Action, 2]), mLines[0]);
 end;
 
 procedure TAtlasUndoMessagesTests.ReportsPartialWithOneLinePerFile;
@@ -110,14 +109,14 @@ begin
   mReport.Errors := [Problem('C:\P\E.pas', TAtlasUndoProblemKind.Failed, 'schreibgeschützt')];
   mLines := TAtlasUndoMessages.Report(mReport);
   Assert.AreEqual(5, Integer(Length(mLines)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoPartial, ['Code-Aktion', 1, 4]), mLines[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoPartial, ['Code-Aktion', 1, 4]), mLines[0]);
   Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictChanged, ['C:\P\B.pas']), mLines[1]);
   Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictExists, ['C:\P\C.pas']), mLines[2]);
   Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictMissing, ['C:\P\D.pas']), mLines[3]);
   Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoFailed, ['C:\P\E.pas', 'schreibgeschützt']), mLines[4]);
   mReport.Redo := True;
   mLines := TAtlasUndoMessages.Report(mReport);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoPartial, ['Code-Aktion', 1, 4]), mLines[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.RedoPartial, ['Code-Aktion', 1, 4]), mLines[0]);
 end;
 
 procedure TAtlasUndoMessagesTests.ReportsAbortedDisabledAndNothing;
@@ -131,9 +130,9 @@ begin
   mReport.Conflicts := [Problem('C:\P\B.pas', TAtlasUndoProblemKind.ChangedSince, '')];
   mLines := TAtlasUndoMessages.Report(mReport);
   Assert.AreEqual(2, Integer(Length(mLines)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoAborted, ['Umbenennen', 1]), mLines[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoAborted, ['Umbenennen', 1]), mLines[0]);
   mReport.Redo := True;
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoAborted, ['Umbenennen', 1]),
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.RedoAborted, ['Umbenennen', 1]),
     TAtlasUndoMessages.Report(mReport)[0]);
 
   mReport := Default(TAtlasUndoReport);
@@ -144,9 +143,9 @@ begin
 
   mReport := Default(TAtlasUndoReport);
   mReport.NotFound := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UndoNothing), TAtlasUndoMessages.Report(mReport)[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoNothing), TAtlasUndoMessages.Report(mReport)[0]);
   mReport.Redo := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.RedoNothing), TAtlasUndoMessages.Report(mReport)[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Text(TAtlasUndoTextId.RedoNothing), TAtlasUndoMessages.Report(mReport)[0]);
 end;
 
 procedure TAtlasUndoMessagesTests.CaptionsShowActionCountTimeAndState;
