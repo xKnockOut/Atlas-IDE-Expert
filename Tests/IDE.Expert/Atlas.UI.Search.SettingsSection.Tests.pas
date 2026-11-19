@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Search.SettingsSection.Tests;
 
 // Abschnitte des Moduls Suche (#1456): Units suchen (#786), Suchleiste (#878, #893) und Code-Abfragen (#1351);
-// Laden und Speichern über die Seite (vorher in den Tests der Seite von Base).
+// Laden und Speichern über die Seite.
 
 interface
 

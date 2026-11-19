@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Rules.SettingsDialog.Tests;
 
-// Dialog der Einstellungsdateien mit Regel-Editor (#909, #1296), seit #1755 im Modul Prüfregeln: Regeltabelle
+// Dialog der Einstellungsdateien mit Regel-Editor (#909, #1296) im Modul Prüfregeln (#1755): Regeltabelle
 // ändert nur ihre Regel, ein Knoten je Gruppe mit Hauptschalter, „Regel einstellen…“ springt zur Regel, Felder
 // unter dem Editor rücken mit. Ohne Modul: Atlas.UI.Settings.Page.Dialog.Tests.
 

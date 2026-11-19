@@ -1847,6 +1847,19 @@
       "x-captionEn": "At most lines per test",
       "x-issue": "#2168"
     },
+    "TestsLastRun": {
+      "description": "Nach jedem Testlauf (auch Teilläufe, Serien und Läufe beim Speichern) legt Atlas das Ergebnis je Testprojekt unter %LOCALAPPDATA%\\Atlas\\last-tests ab: Zahlen, rote Tests mit Meldung, Datei und Zeile, erwartet und erhalten, Protokollauszug, Leck, wackelig und neu rot bzw. wieder grün gegenüber dem Lauf davor. KI-Assistenten lesen es über das MCP-Werkzeug get_last_tests, ohne die Tests erneut auszuführen. Aus = keine Ablage; das Werkzeug zeigt dann den zuletzt abgelegten Lauf.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.lastRun",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Letzten Testlauf für KI-Assistenten ablegen",
+      "x-captionEn": "Store the last test run for AI assistants",
+      "x-issue": "#2409"
+    },
     "TestsCaseTable": {
       "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
       "type": "boolean",
