@@ -109,6 +109,11 @@ const
   cTextFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS;
   cFirstMinWidth = 160;
   cFixedMinWidth = 40;
+  // Bei 96 dpi: Zeilenhöhe, Innenabstand der Zellen, Abstand des Anteilsbalkens oben und unten, volle Balkenlänge.
+  cRowHeight = 20;
+  cCellPadding = 4;
+  cBarInset = 6;
+  cBarLength = 40;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -278,8 +283,8 @@ begin
     if (mColumn = High(FColumns)) and (ARow.Bar >= 0) then
     begin
       // Balken links in der Zelle, Zahl rechts daneben.
-      mBar := Rect(mCell.Left + Scale(4), ATop + Scale(6), mCell.Left + Scale(4) + Round(Min(1, ARow.Bar) *
-        Scale(40)), ATop + RowHeight - Scale(6));
+      mBar := Rect(mCell.Left + Scale(cCellPadding), ATop + Scale(cBarInset), mCell.Left + Scale(cCellPadding) +
+        Round(Min(1, ARow.Bar) * Scale(cBarLength)), ATop + RowHeight - Scale(cBarInset));
       ACanvas.Brush.Style := bsSolid;
       ACanvas.Brush.Color := ToColor(FColors.Accent);
       ACanvas.FillRect(mBar);
@@ -311,7 +316,7 @@ begin
   end;
   ACanvas.Brush.Style := bsClear;
   mRect := ARect;
-  InflateRect(mRect, -Scale(4), 0);
+  InflateRect(mRect, -Scale(cCellPadding), 0);
   mFlags := cTextFlags or DT_LEFT;
   if ARight then
   begin
@@ -360,7 +365,7 @@ end;
 
 function TAtlasDiagnosticGrid.RowHeight: Integer;
 begin
-  Result := Scale(20);
+  Result := Scale(cRowHeight);
 end;
 
 function TAtlasDiagnosticGrid.RowAt(AY: Integer): Integer;
