@@ -111,6 +111,7 @@ implementation
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.StrUtils,
+  Atlas.Text.Json,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.EventHandlers;
@@ -340,24 +341,6 @@ begin
   Result := TJSONObject.ParseJSONValue(ToJson(mSites, mUnresolved));
 end;
 
-function StringsOf(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AValue) do
-  begin
-    if (mItem is TJSONString) and (mItem.Value <> '') then
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 class function TLspDataAccessSites.ParseClasses(AValue: TJSONValue): TArray<TDataAccessClass>;
 var
   mItem: TJSONValue;
@@ -375,9 +358,9 @@ begin
       Continue;
     end;
     mClass := Default(TDataAccessClass);
-    mClass.Name := TJSONObject(mItem).GetValue<string>('name', '');
-    mClass.Kind := TJSONObject(mItem).GetValue<string>('kind', '');
-    mClass.Methods := StringsOf(TJSONObject(mItem).GetValue('methods'));
+    mClass.Name := TJsonRead.TrimmedText(TJSONObject(mItem), 'name');
+    mClass.Kind := TJsonRead.TrimmedText(TJSONObject(mItem), 'kind');
+    mClass.Methods := TJsonRead.TrimmedStrings(TJsonRead.Value(TJSONObject(mItem), 'methods'));
     if (mClass.Name <> '') and (Length(mClass.Methods) > 0) then
     begin
       Result := Result + [mClass];
