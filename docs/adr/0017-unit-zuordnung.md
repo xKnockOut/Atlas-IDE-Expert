@@ -101,6 +101,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Target` | `Core/Build/Atlas.Core.Build.Target.pas` | Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615) |
 | `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Bewertung als Typen und `IAtlasBuildVerdictListener`; Benachrichtigungszentrale (Base) und Module lesen sie, #1455 |
 | `Atlas.Core.CiBuild.Contract` | `Core/CiBuild/Atlas.Core.CiBuild.Contract.pas` | CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455 |
+| `Atlas.Core.Credentials.Contract` | `Core/Credentials/Atlas.Core.Credentials.Contract.pas` | Anmeldespeicher für Schlüssel und Token als Schnittstelle; Module Tracker und KI-Assistenten, #1922 |
+| `Atlas.Core.Credentials.Adapters.Windows` | `Core/Credentials/Atlas.Core.Credentials.Adapters.Windows.pas` | Anmeldespeicher von Windows, einmal für alle Module (Build-Server, Issue-Tracker, KI-Anbieter), #1922 |
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyScan` | `Core/Commands/Atlas.Core.Commands.KeyScan.pas` | Ordner `Core/Commands` |
@@ -423,6 +425,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.Plugin` | `Core/Settings/Atlas.Core.Settings.Plugin.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Store` | `Core/Settings/Atlas.Core.Settings.Plugin.Store.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Bookmarks` | `Core/Settings/Atlas.Core.Settings.Plugin.Bookmarks.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Assistants` | `Core/Settings/Atlas.Core.Settings.Plugin.Assistants.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Build` | `Core/Settings/Atlas.Core.Settings.Plugin.Build.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.CodeActions` | `Core/Settings/Atlas.Core.Settings.Plugin.CodeActions.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Completion` | `Core/Settings/Atlas.Core.Settings.Plugin.Completion.pas` | Ordner `Core/Settings` |
@@ -912,6 +915,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.InboxPace` | `Core/Assistants/Atlas.Core.Assistants.InboxPace.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.ContextState` | `Core/Assistants/Atlas.Core.Assistants.ContextState.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.AiProviders.Contract` | `Core/AiProviders/Atlas.Core.AiProviders.Contract.pas` | Ordner `Core/AiProviders` |
+| `Atlas.Core.AiProviders.Anthropic` | `Core/AiProviders/Atlas.Core.AiProviders.Anthropic.pas` | Ordner `Core/AiProviders` |
+| `Atlas.Core.AiProviders.Adapters.Http` | `Core/AiProviders/Atlas.Core.AiProviders.Adapters.Http.pas` | Ordner `Core/AiProviders` |
+| `Atlas.Core.AiProviders.Catalog` | `Core/AiProviders/Atlas.Core.AiProviders.Catalog.pas` | Ordner `Core/AiProviders` |
+| `Atlas.Core.Assistants.AiGhost` | `Core/Assistants/Atlas.Core.Assistants.AiGhost.pas` | Ordner `Core/Assistants` |
+| `Atlas.IDE.Assistants.AiGhost` | `IDE/Assistants/Atlas.IDE.Assistants.AiGhost.pas` | Ordner `IDE/Assistants` |
 | `Atlas.Core.Assistants.DebugInbox` | `Core/Assistants/Atlas.Core.Assistants.DebugInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.DebugGate` | `Core/Assistants/Atlas.Core.Assistants.DebugGate.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.Banner` | `IDE/Assistants/Atlas.IDE.Assistants.Banner.pas` | Ordner `IDE/Assistants` |
@@ -920,6 +929,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Assistants.DebugBar` | `IDE/Assistants/Atlas.IDE.Assistants.DebugBar.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.ContextExport` | `IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Composition.Adapters` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.Adapters.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
 | `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |
@@ -1612,6 +1622,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.SelectionBar` | `Core/Designer/Atlas.Core.Designer.SelectionBar.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Magnifier` | `Core/Designer/Atlas.Core.Designer.Magnifier.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Neighbours` | `Core/Designer/Atlas.Core.Designer.Neighbours.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Names` | `Core/Designer/Atlas.Core.Designer.Names.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormStore` | `Core/Designer/Atlas.Core.Designer.FormStore.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.GridSnap` | `Core/Designer/Atlas.Core.Designer.GridSnap.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionSets` | `Core/Designer/Atlas.Core.Designer.SelectionSets.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Similar` | `Core/Designer/Atlas.Core.Designer.Similar.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Measure` | `Core/Designer/Atlas.Core.Designer.Measure.pas` | Ordner `Core/Designer` |
@@ -1697,6 +1710,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Flash` | `UI/Designer/Atlas.UI.Designer.Flash.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Handles` | `UI/Designer/Atlas.UI.Designer.Handles.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Overlay` | `UI/Designer/Atlas.UI.Designer.Overlay.pas` | Ordner `UI/Designer`; Basis der Fenster über dem Designer |
 | `Atlas.UI.Designer.Outlines` | `UI/Designer/Atlas.UI.Designer.Outlines.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |

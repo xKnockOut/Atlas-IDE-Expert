@@ -311,8 +311,8 @@ begin
       Continue;
     end;
     Apply(mTargets[mIndex], ChildrenOf(mTargets[mIndex].Content, mRoot), mResults[mIndex]);
-    mDone := mDone + [Format('%s %d x %d', [mContainers[mIndex].Name, mResults[mIndex].Outer.cx,
-      mResults[mIndex].Outer.cy])];
+    mDone := mDone + [TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerFitContainerSize,
+      [mContainers[mIndex].Name, mResults[mIndex].Outer.cx, mResults[mIndex].Outer.cy])];
   end;
   TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   if Length(mDone) > 0 then

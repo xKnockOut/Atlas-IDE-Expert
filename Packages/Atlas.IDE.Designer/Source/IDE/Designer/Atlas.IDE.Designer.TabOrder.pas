@@ -392,10 +392,7 @@ end;
 procedure TAtlasIdeDesignerTabOrder.ApplyTheme;
 begin
   inherited ApplyTheme;
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  ThemeWindow(FOverlay);
 end;
 
 function TAtlasIdeDesignerTabOrder.PathsWanted: Boolean;
@@ -754,12 +751,8 @@ begin
 end;
 
 function TAtlasIdeDesignerTabOrder.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
 begin
-  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FUndoFile);
+  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.IsCurrentForm(FUndoFile);
 end;
 
 procedure TAtlasIdeDesignerTabOrder.Undo;
