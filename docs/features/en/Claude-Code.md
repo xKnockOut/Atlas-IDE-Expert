@@ -13,6 +13,7 @@ The server offers Claude Code 33 MCP tools:
 - survey the project's architecture (`get_architecture`, also compared with a saved state)
 - query the index in a small language (`query_code`)
 - find hotspots and change coupling from Git or SVN history (`get_hotspots`)
+- follow the history of a method across renames and moves, with issues (`get_symbol_history`)
 - find the shortest path between two symbols or units (`find_path`)
 - read declarations with their rationale comments (`get_rationale`) and type and call hierarchies
 - the impact of a change (`get_impact`)
