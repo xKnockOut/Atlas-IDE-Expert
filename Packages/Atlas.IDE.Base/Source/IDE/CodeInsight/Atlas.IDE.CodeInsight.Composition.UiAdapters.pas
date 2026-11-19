@@ -13,9 +13,6 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.Core.Completion.Controller,
-  Atlas.Core.Signature.Controller,
-  Atlas.Core.Hover.Layout.Input,
   Atlas.UI.Popup.Styled,
   Atlas.UI.Completion.Popup,
   Atlas.UI.Completion.Adapters.PopupView,

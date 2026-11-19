@@ -10,8 +10,6 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.Layout.Input,
   Atlas.UI.Popup.Styled,
   Atlas.Core.Hover.Contract;
 

@@ -8,7 +8,6 @@ interface
 
 uses
   Atlas.Core.Signature.Contract,
-  Atlas.Core.Signature.Controller,
   Atlas.UI.Signature.Hint;
 
 type

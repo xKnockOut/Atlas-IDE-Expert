@@ -53,7 +53,6 @@ uses
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
-  Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Hover.View,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
@@ -263,7 +262,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Hover.Strings,
   Atlas.UI.Popup.Draw,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.UI.Popup.Accessibility,
+  Atlas.Core.Hover.Layout.Input;
 
 const
   /// <summary>Programmierfehler: Die Komposition hat TAtlasHoverMeasures.Factory nicht gesetzt.</summary>

@@ -22,7 +22,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Watch,
   Atlas.Core.Diagnostics.FeatureTable;
 
 type
@@ -83,7 +82,8 @@ type
 implementation
 
 uses
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Core.Modules.Watch;
 
 { TAtlasModuleHosting }
 

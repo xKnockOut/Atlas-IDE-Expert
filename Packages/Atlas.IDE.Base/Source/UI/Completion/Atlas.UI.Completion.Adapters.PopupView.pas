@@ -10,9 +10,7 @@ interface
 uses
   System.Types,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
-  Atlas.UI.Popup.Accessibility,
   Atlas.UI.Completion.Popup,
   Atlas.UI.Popup.Contract;
 
