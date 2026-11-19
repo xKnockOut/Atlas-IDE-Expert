@@ -129,6 +129,9 @@ type
     /// <summary>Beschriftung von AEntry in der gewünschten Sprache mit Rückfall auf die andere, die
     /// Beschreibung (erster Satz) und den Schlüssel.</summary>
     class function CaptionOf(const AEntry: TAtlasCatalogEntry; AEnglish: Boolean): string; static;
+    /// <summary>Anzeigename des Moduls mit Schalter ASwitch (Module eines Treffers): ANameOf (darf nil sein),
+    /// sonst der Schalter; ohne Schalter „Base“.</summary>
+    class function ModuleCaption(const ASwitch: string; const ANameOf: TFunc<string, string>): string; static;
   end;
 
 implementation
@@ -637,6 +640,25 @@ begin
     mParts := mParts + [Format(UiText(TSearchText.Project), [AHit.ProjectPath])];
   end;
   Result := string.Join(UiText(TSearchText.Separator), mParts);
+end;
+
+class function TAtlasSettingsSearch.ModuleCaption(const ASwitch: string; const ANameOf: TFunc<string, string>):
+  string;
+begin
+  if ASwitch = '' then
+  begin
+    Result := 'Base';
+    Exit;
+  end;
+  Result := '';
+  if Assigned(ANameOf) then
+  begin
+    Result := ANameOf(ASwitch);
+  end;
+  if Result = '' then
+  begin
+    Result := ASwitch;
+  end;
 end;
 
 class function TAtlasSettingsSearch.CaptionOf(const AEntry: TAtlasCatalogEntry; AEnglish: Boolean): string;

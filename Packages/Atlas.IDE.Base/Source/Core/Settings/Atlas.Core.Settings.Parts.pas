@@ -64,23 +64,21 @@ type
       OwnerId: string;
     end;
 
-    TListenerEntry = record
-      Listener: IAtlasSettingsListener;
-      Item: TAtlasRegistration;
-      Ref: IAtlasRegistration;
-    end;
+
   private
     FLock: TCriticalSection;
     FStorage: IAtlasSettingsStorage;
     FParts: TList<TPartEntry>;
     FKeys: TDictionary<string, TKeyEntry>;
-    FListeners: TList<TListenerEntry>;
+    FListeners: TAtlasListenerList<IAtlasSettingsListener>;
     function KeyOf(const AKey: string; AKind: TAtlasSettingsValueKind): TKeyEntry;
     function TextOf(const AEntry: TKeyEntry): string;
     procedure WriteValue(const AEntry: TKeyEntry; const AText: string);
     function ApplyRenames(const AEntry: TPartEntry): TArray<TAtlasSettingsChange>;
     procedure RecordOwnerKeys(const AEntry: TPartEntry);
     procedure Notify(const AChanges: TArray<TAtlasSettingsChange>);
+    /// <summary>AChange an alle Hörer; Ergebnis: ihre Fehler.</summary>
+    function NotifyChange(const AChange: TAtlasSettingsChange): TArray<string>;
     procedure RemovePart(AItem: TAtlasRegistration);
     procedure RemoveListener(AItem: TAtlasRegistration);
     class function ChangeOf(AKind: TAtlasSettingsChangeKind; const AOwnerId, AKey,
@@ -448,23 +446,19 @@ begin
   FStorage := AStorage;
   FParts := TList<TPartEntry>.Create;
   FKeys := TDictionary<string, TKeyEntry>.Create;
-  FListeners := TList<TListenerEntry>.Create;
+  FListeners := TAtlasListenerList<IAtlasSettingsListener>.Create;
 end;
 
 destructor TAtlasSettingsParts.Destroy;
 var
   mPart: TPartEntry;
-  mListener: TListenerEntry;
 begin
   // Noch gehaltene Anmeldungen verweisen auf dieses Objekt: abtrennen, damit ein späteres Revoke ins Leere geht.
   for mPart in FParts do
   begin
     mPart.Item.Detach;
   end;
-  for mListener in FListeners do
-  begin
-    mListener.Item.Detach;
-  end;
+  // Trennt auch die Anmeldungen der Hörer ab.
   FListeners.Free;
   FKeys.Free;
   FParts.Free;
@@ -572,37 +566,13 @@ end;
 
 procedure TAtlasSettingsParts.Notify(const AChanges: TArray<TAtlasSettingsChange>);
 var
-  mListeners: TArray<TListenerEntry>;
-  mListener: TListenerEntry;
   mChange: TAtlasSettingsChange;
   mFailures: TArray<string>;
 begin
-  if Length(AChanges) = 0 then
-  begin
-    Exit;
-  end;
-  FLock.Acquire;
-  try
-    mListeners := FListeners.ToArray;
-  finally
-    FLock.Release;
-  end;
   mFailures := nil;
   for mChange in AChanges do
   begin
-    for mListener in mListeners do
-    begin
-      if mListener.Item.IsRevoked then
-      begin
-        Continue;
-      end;
-      try
-        mListener.Listener.SettingsChanged(mChange);
-      except
-        on mError: Exception do
-          mFailures := mFailures + [mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
-      end;
-    end;
+    mFailures := mFailures + NotifyChange(mChange);
   end;
   // Alle Hörer haben die Änderung erfahren; erst dann den Fehler melden.
   if Length(mFailures) > 0 then
@@ -645,24 +615,29 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsParts.RemoveListener(AItem: TAtlasRegistration);
+function TAtlasSettingsParts.NotifyChange(const AChange: TAtlasSettingsChange): TArray<string>;
 var
-  mIndex: Integer;
+  mChange: TAtlasSettingsChange;
+  mFailures: TArray<string>;
 begin
-  // Wer Revoke ruft, hält selbst eine Referenz: AItem lebt über das Löschen hinaus.
-  FLock.Acquire;
-  try
-    for mIndex := 0 to FListeners.Count - 1 do
+  mChange := AChange;
+  mFailures := nil;
+  FListeners.Visit(
+    procedure(AListener: IAtlasSettingsListener; AOwnerId: string)
     begin
-      if FListeners[mIndex].Item = AItem then
-      begin
-        FListeners.Delete(mIndex);
-        Break;
+      try
+        AListener.SettingsChanged(mChange);
+      except
+        on mError: Exception do
+          mFailures := mFailures + [mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
-    end;
-  finally
-    FLock.Release;
-  end;
+    end);
+  Result := mFailures;
+end;
+
+procedure TAtlasSettingsParts.RemoveListener(AItem: TAtlasRegistration);
+begin
+  FListeners.Remove(AItem);
 end;
 
 class function TAtlasSettingsParts.ChangeOf(AKind: TAtlasSettingsChangeKind; const AOwnerId, AKey,
@@ -829,25 +804,12 @@ begin
 end;
 
 function TAtlasSettingsParts.Subscribe(const AListener: IAtlasSettingsListener): IAtlasRegistration;
-var
-  mEntry: TListenerEntry;
-  mItem: TAtlasSettingsListenerRegistration;
 begin
   if AListener = nil then
   begin
     raise EAtlasSettingsParts.Create(UiText(TPartsText.NoListener));
   end;
-  mItem := TAtlasSettingsListenerRegistration.Create(Self);
-  mEntry.Listener := AListener;
-  mEntry.Item := mItem;
-  mEntry.Ref := mItem;
-  FLock.Acquire;
-  try
-    FListeners.Add(mEntry);
-  finally
-    FLock.Release;
-  end;
-  Result := mEntry.Ref;
+  Result := FListeners.Add(AListener, '', TAtlasSettingsListenerRegistration.Create(Self));
 end;
 
 function TAtlasSettingsParts.Contains(const AKey: string): Boolean;

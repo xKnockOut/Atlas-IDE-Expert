@@ -132,6 +132,9 @@ type
     destructor Destroy; override;
     /// <summary>Katalog aus den eingebauten Schemata (AtlasPluginSchemaJson, AtlasSchemaJson).</summary>
     class function CreateDefault: TAtlasSettingsCatalog; static;
+    /// <summary>ACatalog, beim ersten Aufruf mit CreateDefault angelegt; freigeben bleibt beim Besitzer von ACatalog.
+    /// </summary>
+    class function Lazy(var ACatalog: TAtlasSettingsCatalog): TAtlasSettingsCatalog; static;
     /// <summary>Eintrag mit Schlüssel AKey (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     function IndexOfKey(const AKey: string): Integer;
     /// <summary>Plugin-Eintrag mit Registry-Name AName; -1 ohne.</summary>
@@ -663,6 +666,15 @@ end;
 class function TAtlasSettingsCatalog.CreateDefault: TAtlasSettingsCatalog;
 begin
   Result := TAtlasSettingsCatalog.Create(AtlasPluginSchemaJson, AtlasSchemaJson);
+end;
+
+class function TAtlasSettingsCatalog.Lazy(var ACatalog: TAtlasSettingsCatalog): TAtlasSettingsCatalog;
+begin
+  if ACatalog = nil then
+  begin
+    ACatalog := CreateDefault;
+  end;
+  Result := ACatalog;
 end;
 
 function IndexOfLowerKey(AMap: TDictionary<string, Integer>; const AText: string): Integer;

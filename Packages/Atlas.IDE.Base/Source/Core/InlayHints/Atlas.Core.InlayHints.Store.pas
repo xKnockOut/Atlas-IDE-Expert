@@ -30,7 +30,8 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Files.Entries;
 
 type
   TAtlasInlayHint = record
@@ -86,12 +87,11 @@ type
       procedure Sort;
     end;
   private
-    FEntries: TObjectDictionary<string, TEntry>;
+    FEntries: TAtlasFileEntries<TEntry>;
     function Find(const AFileName: string): TEntry;
   public
     constructor Create;
     destructor Destroy; override;
-    class function Key(const AFileName: string): string; static;
     /// <summary>Zeilen wie der Server sie zählt: CR, LF und CRLF trennen.</summary>
     class function SplitLines(const AText: string): TArray<string>; static;
     /// <summary>Beginnt an ACharacter (nach Leerraum) ein Literal: Zahl, String, Zeichen, True, False, nil?</summary>
@@ -155,7 +155,7 @@ uses
 constructor TAtlasInlayHintStore.Create;
 begin
   inherited Create;
-  FEntries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
+  FEntries := TAtlasFileEntries<TEntry>.Create([doOwnsValues]);
 end;
 
 destructor TAtlasInlayHintStore.Destroy;
@@ -166,15 +166,7 @@ end;
 
 function TAtlasInlayHintStore.Find(const AFileName: string): TEntry;
 begin
-  if not FEntries.TryGetValue(Key(AFileName), Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
-class function TAtlasInlayHintStore.Key(const AFileName: string): string;
-begin
-  Result := AnsiLowerCase(AFileName);
+  Result := FEntries.Find(AFileName);
 end;
 
 /// <summary>Steht ab AIndex (1-basiert) True, False oder nil?</summary>
@@ -501,7 +493,7 @@ begin
   if mEntry = nil then
   begin
     mEntry := TEntry.Create;
-    FEntries.Add(Key(AFileName), mEntry);
+    FEntries.Put(AFileName, mEntry);
   end;
   mEntry.FText := AText;
   mEntry.FLines := SplitLines(AText);

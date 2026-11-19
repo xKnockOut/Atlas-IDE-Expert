@@ -137,14 +137,6 @@ begin
   end;
 end;
 
-procedure OpenSignature;
-begin
-  if Manager <> nil then
-  begin
-    Manager.OpenSignature;
-  end;
-end;
-
 procedure StartCompletionKey;
 begin
   CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', UiText(TKeysText.AtlasCompletion),

@@ -33,7 +33,7 @@ uses
 type
   TAtlasUnwrapSessionFunc = reference to function: TLspSession;
 
-  TAtlasIdeUnwrap = class
+  TAtlasIdeUnwrap = class(TAtlasIdeCaretCommand)
   private const
     /// <summary>„with auflösen“ fragt die Namensauflösung: etwas länger als eine einfache Anfrage.</summary>
     cTimeoutMs = 10000;
@@ -57,7 +57,6 @@ type
     FPreview: Integer;
     procedure KeyDown(AKey: Word; var AHandled: Boolean);
     function ListKey(AKey: Word): Boolean;
-    procedure Execute;
     function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
     function Ask(ASession: TLspSession; const AView: IOTAEditView; out AEntries: TArray<TAtlasUnwrapEntry>): Boolean;
     procedure CreateWindow;
@@ -66,6 +65,9 @@ type
     procedure Close;
     procedure PaintLine(const ARect: TRect; const AStage: TPaintLineStage; ABeforeEvent: Boolean;
       const AContext: INTACodeEditorPaintContext);
+  protected
+    procedure Execute; override;
+    function Allowed: Boolean; override;
   public
     constructor Create(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
     destructor Destroy; override;
@@ -398,12 +400,14 @@ begin
   Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
 end;
 
+function TAtlasIdeUnwrap.Allowed: Boolean;
+begin
+  Result := Enabled;
+end;
+
 class procedure TAtlasIdeUnwrap.Run;
 begin
-  if (FInstance <> nil) and Enabled then
-  begin
-    FInstance.Execute;
-  end;
+  RunCommand(FInstance);
 end;
 
 class procedure TAtlasIdeUnwrap.Dismiss;

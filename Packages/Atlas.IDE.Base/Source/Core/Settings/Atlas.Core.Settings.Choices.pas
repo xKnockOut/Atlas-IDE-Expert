@@ -57,6 +57,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Settings.JsonText,
+  Atlas.Text.Arrays,
   Atlas.Text.Json;
 
 type
@@ -104,24 +105,6 @@ begin
   begin
     Result := Copy(AText, mStart, mStop - mStart);
   end;
-end;
-
-procedure AddUnique(var AList: TArray<string>; const AValue: string);
-var
-  mItem: string;
-begin
-  if AValue = '' then
-  begin
-    Exit;
-  end;
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit;
-    end;
-  end;
-  AList := AList + [AValue];
 end;
 
 { TAtlasSettingChoice }
@@ -172,7 +155,7 @@ begin
   mVersions := nil;
   for mVersion in AInstalled do
   begin
-    AddUnique(mVersions, Trim(mVersion));
+    TTextArrays.AddText(mVersions, Trim(mVersion));
   end;
   mList := TList<string>.Create(TComparer<string>.Construct(
     function(const A, B: string): Integer
@@ -227,7 +210,7 @@ begin
     mName := AttributeAfter(ADprojText, 'Include', mPosition);
     if not SameText(mName, 'Base') then
     begin
-      AddUnique(Result, mName);
+      TTextArrays.AddText(Result, mName);
     end;
     mPosition := Pos('<BuildConfiguration ', ADprojText, mPosition + 1);
   end;
@@ -252,7 +235,7 @@ begin
     end;
     if SameText(mValue, 'True') then
     begin
-      AddUnique(Result, mName);
+      TTextArrays.AddText(Result, mName);
     end;
     mPosition := Pos('<Platform value=', ADprojText, mPosition + 1);
   end;
@@ -267,7 +250,7 @@ begin
   Result := nil;
   for mName in cAtlasBuiltInProfiles do
   begin
-    AddUnique(Result, mName);
+    TTextArrays.AddText(Result, mName);
   end;
   if AProfilesJson = '' then
   begin
@@ -279,7 +262,7 @@ begin
     begin
       for mPair in TJSONObject(mValue) do
       begin
-        AddUnique(Result, mPair.JsonString.Value);
+        TTextArrays.AddText(Result, mPair.JsonString.Value);
       end;
     end;
   finally

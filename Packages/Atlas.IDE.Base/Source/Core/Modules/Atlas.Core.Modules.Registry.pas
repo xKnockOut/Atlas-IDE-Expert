@@ -63,17 +63,12 @@ type
       Ref: IAtlasRegistration;
     end;
 
-    TListenerEntry = record
-      Listener: IAtlasRegistryListener;
-      OwnerId: string;
-      Item: TAtlasRegistration;
-      Ref: IAtlasRegistration;
-    end;
+
   private
     FLock: TCriticalSection;
     FModules: TList<TModuleEntry>;
     FProvisions: TList<TProvision>;
-    FListeners: TList<TListenerEntry>;
+    FListeners: TAtlasListenerList<IAtlasRegistryListener>;
     FKnown: TList<TAtlasModuleInfo>;
     FStorage: IAtlasSettingsStorage;
     FShutDown: Boolean;
@@ -442,7 +437,7 @@ begin
   FLock := TCriticalSection.Create;
   FModules := TList<TModuleEntry>.Create;
   FProvisions := TList<TProvision>.Create;
-  FListeners := TList<TListenerEntry>.Create;
+  FListeners := TAtlasListenerList<IAtlasRegistryListener>.Create;
   FKnown := TList<TAtlasModuleInfo>.Create;
 end;
 
@@ -450,7 +445,6 @@ destructor TAtlasModuleRegistry.Destroy;
 var
   mModule: TModuleEntry;
   mProvision: TProvision;
-  mListener: TListenerEntry;
 begin
   // Was noch angemeldet ist, verweist auf diese Registry: abtrennen, damit ein späteres Revoke ins Leere geht.
   for mModule in FModules do
@@ -461,12 +455,9 @@ begin
   begin
     mProvision.Item.Detach;
   end;
-  for mListener in FListeners do
-  begin
-    mListener.Item.Detach;
-  end;
-  FKnown.Free;
+  // Trennt auch die Anmeldungen der Hörer ab.
   FListeners.Free;
+  FKnown.Free;
   FProvisions.Free;
   FModules.Free;
   FLock.Free;
@@ -531,34 +522,24 @@ end;
 function TAtlasModuleRegistry.Notify(AKind: TAtlasRegistryChangeKind; const AModuleId: string;
   const AIID: TGUID): TArray<string>;
 var
-  mListeners: TArray<TListenerEntry>;
-  mListener: TListenerEntry;
   mChange: TAtlasRegistryChange;
+  mFailures: TArray<string>;
 begin
-  Result := nil;
-  FLock.Acquire;
-  try
-    mListeners := FListeners.ToArray;
-  finally
-    FLock.Release;
-  end;
   mChange.Kind := AKind;
   mChange.ModuleId := AModuleId;
   mChange.IID := AIID;
-  for mListener in mListeners do
-  begin
-    // Ein früherer Hörer kann diesen gelöst haben (Regel 3).
-    if mListener.Item.IsRevoked then
+  mFailures := nil;
+  FListeners.Visit(
+    procedure(AListener: IAtlasRegistryListener; AOwnerId: string)
     begin
-      Continue;
-    end;
-    try
-      mListener.Listener.RegistryChanged(mChange);
-    except
-      on mError: Exception do
-        Result := Result + [FailureOf(cListenerOf + mListener.OwnerId, mError)];
-    end;
-  end;
+      try
+        AListener.RegistryChanged(mChange);
+      except
+        on mError: Exception do
+          mFailures := mFailures + [FailureOf(cListenerOf + AOwnerId, mError)];
+      end;
+    end);
+  Result := mFailures;
 end;
 
 function TAtlasModuleRegistry.NotifyModule(AKind: TAtlasRegistryChangeKind; const AModuleId: string): TArray<string>;
@@ -594,26 +575,12 @@ end;
 
 function TAtlasModuleRegistry.AddListener(const AOwnerId: string;
   const AListener: IAtlasRegistryListener): IAtlasRegistration;
-var
-  mEntry: TListenerEntry;
-  mItem: TAtlasListenerRegistration;
 begin
   if AListener = nil then
   begin
     raise EAtlasModuleRegistry.Create(cNoListener);
   end;
-  mItem := TAtlasListenerRegistration.Create(Self);
-  mEntry.Listener := AListener;
-  mEntry.OwnerId := AOwnerId;
-  mEntry.Item := mItem;
-  mEntry.Ref := mItem;
-  FLock.Acquire;
-  try
-    FListeners.Add(mEntry);
-  finally
-    FLock.Release;
-  end;
-  Result := mEntry.Ref;
+  Result := FListeners.Add(AListener, AOwnerId, TAtlasListenerRegistration.Create(Self));
 end;
 
 procedure TAtlasModuleRegistry.RemoveProvision(AItem: TAtlasRegistration);
@@ -645,23 +612,8 @@ begin
 end;
 
 procedure TAtlasModuleRegistry.RemoveListener(AItem: TAtlasRegistration);
-var
-  mIndex: Integer;
 begin
-  // Wer Revoke ruft, hält selbst eine Referenz: AItem lebt über das Löschen hinaus.
-  FLock.Acquire;
-  try
-    for mIndex := 0 to FListeners.Count - 1 do
-    begin
-      if FListeners[mIndex].Item = AItem then
-      begin
-        FListeners.Delete(mIndex);
-        Break;
-      end;
-    end;
-  finally
-    FLock.Release;
-  end;
+  FListeners.Remove(AItem);
 end;
 
 class procedure TAtlasModuleRegistry.RaiseFailures(const AFailures: TArray<string>);

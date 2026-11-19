@@ -187,16 +187,6 @@ begin
   Result := TAtlasModuleNodes.NameOfSwitch(ASwitch);
 end;
 
-/// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
-function HookText(const AHook: TFunc<string>): string;
-begin
-  Result := '';
-  if Assigned(AHook) then
-  begin
-    Result := AHook();
-  end;
-end;
-
 /// <summary>Eingetragene Änderungen einmal speichern; danach meldet TAtlasIdeSettings sie einmal (#2372).</summary>
 procedure CommitBatch;
 var

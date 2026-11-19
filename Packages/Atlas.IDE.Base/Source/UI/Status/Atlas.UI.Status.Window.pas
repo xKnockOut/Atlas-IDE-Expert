@@ -33,7 +33,6 @@ type
   private
     FItems: TArray<IAtlasStatusItem>;
     FHot: Integer;
-    FClosing: Boolean;
     FLogButton: TButton;
     FRestartButton: TButton;
     FOnOpenLog: TProc;
@@ -63,8 +62,6 @@ type
     procedure SetItems(const AItems: TArray<IAtlasStatusItem>);
     /// <summary>Zeigt das Fenster mit der linken unteren Ecke an AAnchor (Bildschirm, Oberkante des Felds).</summary>
     procedure ShowAbove(const AAnchor: TPoint);
-    /// <summary>Schließt ohne Aktion; das Fenster gibt sich danach selbst frei.</summary>
-    procedure Dismiss;
     property Items: TArray<IAtlasStatusItem> read FItems;
     /// <summary>Zum Testen: die Knöpfe.</summary>
     property LogButton: TButton read FLogButton;
@@ -343,7 +340,7 @@ end;
 
 procedure TAtlasStatusWindow.CloseAndRun(const AProc: TProc);
 begin
-  if FClosing then
+  if Closing then
   begin
     Exit;
   end;
@@ -397,17 +394,6 @@ begin
   SetBounds(mLeft_, mTop_, Width, Height);
   Show;
   SetFocus;
-end;
-
-procedure TAtlasStatusWindow.Dismiss;
-begin
-  if FClosing then
-  begin
-    Exit;
-  end;
-  FClosing := True;
-  Close;
-  Release;
 end;
 
 end.

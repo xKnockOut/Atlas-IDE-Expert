@@ -97,6 +97,7 @@
         <DCCReference Include="..\Atlas.Text\Source\Product\Atlas.Text.Product.Version.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Lines\Atlas.Text.Lines.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Chars\Atlas.Text.Chars.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Arrays\Atlas.Text.Arrays.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Timestamps\Atlas.Text.Timestamps.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Encoding\Atlas.Text.Encoding.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\LogMarks\Atlas.Text.LogMarks.pas"/>
@@ -736,6 +737,7 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.ProcessLeftovers.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.DataFile.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Entries.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas"/>

@@ -6,7 +6,9 @@
 // das nach dem Entladen (die IDE entlädt Atlas mitten im Gruppen-Build), las
 // rtl370.bpl aus nicht mehr geladenem bzw. neu geladenem Speicher. Hier
 // gestartete Threads geben sich nicht selbst frei: Start räumt beendete auf,
-// StopAll wartet beim Abbau auf alle und gibt sie frei.
+// StopAll wartet beim Abbau auf alle und gibt sie frei. Enter/Leave klammern
+// eine Prüfung mit dem Start, damit ein StopAll aus einem anderen Thread
+// keinen danach gestarteten Thread übersieht.
 // Gewartet wird auf Finished wie in TAtlasShutdown.WaitForThreads: Danach
 // läuft im Thread nur noch Code der RTL (Ende des Threads).
 
@@ -23,14 +25,17 @@ type
   private
     FLock: TCriticalSection;
     FThreads: TList<TThread>;
-    /// <summary>Beendete Threads aus der Liste nehmen und freigeben.</summary>
-    procedure Prune;
   public
     constructor Create;
     /// <summary>Wartet wie StopAll höchstens TAtlasShutdown.cStopMs.</summary>
     destructor Destroy; override;
     /// <summary>AProc in einem neuen Thread ausführen; der Thread bleibt bis zu seinem Ende in der Liste.</summary>
     function Start(const AProc: TProc): TThread;
+    /// <summary>Beendete Threads aus der Liste nehmen und freigeben.</summary>
+    procedure Prune;
+    /// <summary>Sperre der Liste (wiedereintrittsfähig); Start und StopAll warten auf sie.</summary>
+    procedure Enter;
+    procedure Leave;
     /// <summary>Threads, die noch laufen (beendete zählen bis zum nächsten Start bzw. StopAll mit).</summary>
     function Count: Integer;
     /// <summary>Bis zu AMs auf alle warten und sie freigeben; True, wenn alle beendet waren. Wer dann noch
@@ -103,6 +108,16 @@ begin
     FLock.Leave;
   end;
   Result.Start;
+end;
+
+procedure TAtlasThreadList.Enter;
+begin
+  FLock.Enter;
+end;
+
+procedure TAtlasThreadList.Leave;
+begin
+  FLock.Leave;
 end;
 
 function TAtlasThreadList.Count: Integer;
