@@ -24,7 +24,9 @@ type
     // Fehler der IDE (#1819): Spalte und Filter „Quelle“.
     ProblemsColumnSource, ProblemsOriginAll, ProblemsOriginAtlas, ProblemsOriginIde,
     // Compilermeldungen erklären (#54).
-    ProblemsMenuExplainMessage, ProblemsExplainMessageTitle, ProblemsExplainCause, ProblemsExplainDocWiki);
+    ProblemsMenuExplainMessage, ProblemsExplainMessageTitle, ProblemsExplainCause, ProblemsExplainDocWiki,
+    // Auftrag für KI-Assistenten (#2570).
+    ProblemsMenuCopyPrompt, ProblemsPromptCopied, ProblemsPromptFailed);
 
   TAtlasProblemsStrings = class
   public
@@ -104,7 +106,10 @@ const
      'Meldung erklären',
      'Meldung %s',
      'Typische Ursache',
-     'Im DocWiki öffnen'),
+     'Im DocWiki öffnen',
+     'Als Auftrag für KI-Assistenten kopieren',
+     'Auftrag mit %d Befunden in die Zwischenablage kopiert',
+     'Auftrag für KI-Assistenten: Der Server hat keinen Text geliefert.'),
     ('Atlas problems',
      '… %d more problems',
      'Error',
@@ -168,7 +173,10 @@ const
      'Explain message',
      'Message %s',
      'Typical cause',
-     'Open in DocWiki'));
+     'Open in DocWiki',
+     'Copy as task for an AI assistant',
+     'Task with %d findings copied to the clipboard',
+     'Task for an AI assistant: the server returned no text.'));
 
 { TAtlasProblemsStrings }
 

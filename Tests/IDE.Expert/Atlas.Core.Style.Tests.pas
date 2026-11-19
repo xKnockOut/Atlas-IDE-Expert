@@ -17,9 +17,13 @@ type
     [Test]
     procedure RejectsInvalidHex;
     [Test]
+    procedure TryFromHexWithoutException;
+    [Test]
     procedure MixesLikeTranslucentLayer;
     [Test]
     procedure ContrastOfBlackAndWhiteIs21;
+    [Test]
+    procedure HslRoundTripInEverySector;
     [Test]
     procedure HslRoundTripAndLighten;
     [Test]
@@ -205,6 +209,18 @@ begin
     end, EConvertError);
 end;
 
+procedure TAtlasColorTests.TryFromHexWithoutException;
+var
+  mColor: TAtlasColor;
+begin
+  Assert.IsTrue(TAtlasColorMath.TryFromHex('#0D5EAF', mColor));
+  Assert.AreEqual('#0D5EAF', TAtlasColorMath.ToHex(mColor));
+  Assert.IsFalse(TAtlasColorMath.TryFromHex('', mColor), 'leer');
+  Assert.IsFalse(TAtlasColorMath.TryFromHex('0D5EAF', mColor), 'ohne #');
+  Assert.IsFalse(TAtlasColorMath.TryFromHex('#0D5EAG', mColor), 'keine Hexziffer');
+  Assert.AreEqual(0, Integer(mColor), 'ungültig ergibt 0');
+end;
+
 procedure TAtlasColorTests.MixesLikeTranslucentLayer;
 var
   mMixed: TAtlasColor;
@@ -225,6 +241,17 @@ begin
   // Bekannter Wert: #767676 auf Weiß ist knapp 4,5 : 1.
   Assert.AreEqual(4.54, TAtlasColorMath.Contrast(TAtlasColorMath.FromHex('#767676'),
     TAtlasColorMath.FromHex('#FFFFFF')), 0.01);
+end;
+
+procedure TAtlasColorTests.HslRoundTripInEverySector;
+var
+  mHex: string;
+begin
+  // Je ein Farbton in jedem Sechstel des Farbkreises: Rot→Gelb, Gelb→Grün, …, Magenta→Rot.
+  for mHex in ['#FF8000', '#80FF00', '#00FF80', '#0080FF', '#8000FF', '#FF0080'] do
+  begin
+    Assert.AreEqual(mHex, TAtlasColorMath.ToHex(TAtlasHSL.FromColor(TAtlasColorMath.FromHex(mHex)).ToColor), mHex);
+  end;
 end;
 
 procedure TAtlasColorTests.HslRoundTripAndLighten;

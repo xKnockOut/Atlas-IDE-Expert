@@ -30,11 +30,20 @@ Marks move along while typing.
 - Context menu:
   - suppress, configure, disable and explain the rule
   - "Fix all safe findings of …": bulk fix with a preview per file, deselectable, one undo step per file (`fix.bulk`)
+  - "Copy as task for an AI assistant": one or more selected findings as a Markdown task in the clipboard (see below)
 - "Open first":
   - the unit in the editor is pinned on top
   - the other open units follow
   - units that are not open come last, dimmed (or shown normally or hidden)
   - optionally the active unit also shows without findings ("No findings")
+
+### Findings as a task for an AI assistant (#2570)
+
+- "Copy as task for an AI assistant" in the context menu of the "Atlas Findings" window and the light bulb "Copy finding … as task for an AI assistant" in the editor produce the same text as the MCP tool `explain_finding`.
+- Per finding: rule with name, file, line, message, severity and confidence, further locations (e.g. the edges of a unit cycle), a code excerpt of ±8 lines from the editor buffer with the line marked, the rule explanation with before/after.
+- The task ends with how the assistant checks its result: `check_code` with the file, for rules with a safe fix also `fix_findings`.
+- Several findings: "Fix n findings in m files", grouped per file, overlapping excerpts only once, each rule explained once; at most 20 findings, for the rest a hint to use `check_code`.
+- Compiler messages get code, message, excerpt and the hint to `check_code`.
 
 ### When the check runs
 

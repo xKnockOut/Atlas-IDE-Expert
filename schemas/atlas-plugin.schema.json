@@ -1389,6 +1389,47 @@
       "x-captionEn": "Writing to open files",
       "x-issue": "#1888"
     },
+    "AssistantsContext": {
+      "type": "boolean",
+      "default": true,
+      "description": "Das Modul KI-Assistenten legt den Zustand der IDE für das MCP-Werkzeug get_ide_context ab (#2050): offene Datei mit Cursor und Methode, Auswahl, aktives Projekt mit Konfiguration und Plattform, letzter Build, Reiter. Geschrieben nur nach einem Wechsel von Reiter, Methode, Auswahl, Projekt oder Build, nicht beim Tippen; beim Beenden gelöscht. Aus = keine Datei, das Werkzeug nennt den Grund.",
+      "x-key": "assistants.context",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "IDE-Zustand für KI-Assistenten bereitstellen",
+      "x-captionEn": "Provide the IDE state to AI assistants",
+      "x-issue": "#2050"
+    },
+    "AssistantsContextSelection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Den markierten Text an KI-Assistenten mitgeben (#2050). Aus = nur der Zeilenbereich der Auswahl.",
+      "x-key": "assistants.context.selection",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.context",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Markierten Text mitgeben",
+      "x-captionEn": "Include the selected text",
+      "x-issue": "#2050"
+    },
+    "AssistantsContextSelectionMax": {
+      "description": "Höchstens so viele Zeichen der Auswahl gehen an KI-Assistenten (0 bis 50000); längere Auswahlen werden gekürzt und als gekürzt markiert.",
+      "type": "integer",
+      "default": 4000,
+      "minimum": 0,
+      "maximum": 50000,
+      "x-key": "assistants.context.selectionMax",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.context.selection",
+      "x-control": "Zahl",
+      "x-caption": "Höchstens Zeichen der Auswahl",
+      "x-captionEn": "At most characters of the selection",
+      "x-issue": "#2050"
+    },
     "McpBuild": {
       "type": "boolean",
       "default": true,

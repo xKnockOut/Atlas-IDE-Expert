@@ -11,7 +11,7 @@ type
   TAtlasAssistantsTextId = (
     BuildStarted, BuildFinished, BuildRefused, RequestUnreadable, RequestNoProject, RequestUnknownMode,
     NoBuildPipeline, SettingsEdit, SettingsMcpBuild,
-    McpEditApplied, UndoActionMcp);
+    McpEditApplied, UndoActionMcp, SettingsContext, SettingsContextSelection, SettingsContextSelectionMax, ContextKind);
 
   TAtlasAssistantsStrings = class
   public
@@ -38,7 +38,11 @@ const
      'KI-Assistenten dürfen in offene Dateien schreiben (über den Editorpuffer)',
      'Builds für KI-Assistenten (MCP) über diese IDE erlauben (build_project)',
      'Atlas: MCP-Änderung in %s übernommen (Strg+Z macht sie rückgängig).',
-     'Änderung über MCP'),
+     'Änderung über MCP',
+     'IDE-Zustand für KI-Assistenten bereitstellen (Datei, Cursor, Methode, Projekt, Build; get_ide_context)',
+     'Markierten Text mitgeben',
+     'Höchstens Zeichen der Auswahl',
+     'IDE-Zustand für KI-Assistenten'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -49,7 +53,11 @@ const
      'AI assistants may write to open files (through the editor buffer)',
      'Allow builds for AI assistants (MCP) in this IDE (build_project)',
      'Atlas: MCP change applied to %s (Ctrl+Z undoes it).',
-     'Change through MCP'));
+     'Change through MCP',
+     'Provide the IDE state to AI assistants (file, cursor, method, project, build; get_ide_context)',
+     'Include the selected text',
+     'At most characters of the selection',
+     'IDE state for AI assistants'));
 
 { TAtlasAssistantsStrings }
 

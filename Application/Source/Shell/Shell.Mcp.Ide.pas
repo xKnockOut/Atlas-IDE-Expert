@@ -1,18 +1,25 @@
 ﻿unit Shell.Mcp.Ide;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Verbindung zur laufenden IDE über die Dateien des Plugins:
-// ungespeicherte Dateien (editor-dirty-<pid>.json), Schreiben am Editor vorbei, Builds und Debuggen über das Plugin.
+// ungespeicherte Dateien (editor-dirty-<pid>.json), Schreiben am Editor vorbei, Builds und Debuggen über das Plugin,
+// Zustand der IDE (ide-context-<pid>.json, #2050).
 
 interface
 
 uses
   System.JSON,
   Atlas.Common.Mcp.IdeDebug,
+  Atlas.Text.IdeContext,
   Atlas.Common.Lsp.IdeBuild;
 
 /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
 /// IDE.</summary>
 function EditorDirtyFiles: TArray<string>;
+/// <summary>Prozesse der laufenden IDEs mit Atlas-Plugin (editor-dirty-&lt;pid&gt;.json).</summary>
+function RunningIdePids: TArray<Cardinal>;
+/// <summary>Zustand je laufender IDE, deren Modul KI-Assistenten ihn bereitstellt (ide-context-&lt;pid&gt;.json,
+/// #2050); unlesbare Dateien und Dateien beendeter Prozesse fallen weg.</summary>
+function IdeContexts: TArray<TIdeContext>;
 /// <summary>
 /// Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121). Ist die Datei in einer IDE
 /// mit Atlas-Plugin offen, ändert das Plugin den Puffer und speichert (#397); sonst die Platte.
@@ -139,6 +146,44 @@ begin
     if TMcpIdeBuilds.ParseEntry(mText, mEntry) and TProcessInstances.Running(mEntry.Pid) then
     begin
       Result := Result + [mEntry];
+    end;
+  end;
+end;
+
+function RunningIdePids: TArray<Cardinal>;
+var
+  mEntry: TMcpIdeEntry;
+begin
+  Result := nil;
+  for mEntry in RunningIdes do
+  begin
+    Result := Result + [mEntry.Pid];
+  end;
+end;
+
+function IdeContexts: TArray<TIdeContext>;
+var
+  mFolder, mFileName, mText: string;
+  mContext: TIdeContext;
+begin
+  Result := nil;
+  mFolder := TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas');
+  if not TDirectory.Exists(mFolder) then
+  begin
+    Exit;
+  end;
+  for mFileName in TDirectory.GetFiles(mFolder, TIdeContexts.cPrefix + '*' + TIdeContexts.cSuffix) do
+  begin
+    try
+      mText := ReadPluginFile(mFileName);
+    except
+      // Gerade ersetzt oder gelöscht: zählt wie nicht vorhanden.
+      on Exception do
+        Continue;
+    end;
+    if TIdeContexts.Parse(mText, mContext) and TProcessInstances.Running(mContext.Pid) then
+    begin
+      Result := Result + [mContext];
     end;
   end;
 end;

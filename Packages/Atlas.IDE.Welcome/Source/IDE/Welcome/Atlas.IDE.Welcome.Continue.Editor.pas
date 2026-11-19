@@ -42,12 +42,11 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  System.TypInfo,
-  Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorTabs,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Projects.Summaries;
 
@@ -65,63 +64,6 @@ var
 begin
   mExtension := LowerCase(ExtractFileExt(AFileName));
   Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
-end;
-
-/// <summary>Beschriftungen eines Reiter-Steuerelements (veröffentlichte Eigenschaft „Tabs“ als TStrings).</summary>
-function TabsOf(AComponent: TComponent): TArray<string>;
-var
-  mValue: TObject;
-begin
-  Result := nil;
-  if (AComponent = nil) or not IsPublishedProp(AComponent, 'Tabs') or
-    (PropType(AComponent, 'Tabs') <> tkClass) then
-  begin
-    Exit;
-  end;
-  mValue := GetObjectProp(AComponent, 'Tabs');
-  if mValue is TStrings then
-  begin
-    Result := TStrings(mValue).ToStringArray;
-  end;
-end;
-
-/// <summary>Formular des obersten Editorfensters; nil ohne.</summary>
-function EditForm: TCustomForm;
-var
-  mServices: INTAEditorServices;
-  mWindow: INTAEditWindow;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, INTAEditorServices, mServices) then
-  begin
-    mWindow := mServices.TopEditWindow;
-    if mWindow <> nil then
-    begin
-      Result := mWindow.Form;
-    end;
-  end;
-end;
-
-function TabCaptions: TArray<string>;
-var
-  mForm: TCustomForm;
-  mIndex: Integer;
-begin
-  // Das Editorfenster der IDE führt seine Reiter in einem Steuerelement „TabControl“ (TTabSet-Abkömmling); ohne
-  // es gilt die Reihenfolge der Puffer.
-  Result := nil;
-  mForm := EditForm;
-  if mForm = nil then
-  begin
-    Exit;
-  end;
-  Result := TabsOf(mForm.FindComponent('TabControl'));
-  mIndex := 0;
-  while (Length(Result) = 0) and (mIndex < mForm.ComponentCount) do
-  begin
-    Result := TabsOf(mForm.Components[mIndex]);
-    Inc(mIndex);
-  end;
 end;
 
 /// <summary>Reiter des Editors AEditor in AOpen aufnehmen (nur Quelltext mit Ansicht, jede Datei einmal).</summary>
@@ -184,7 +126,7 @@ var
   mTab: TAtlasWorkTab;
 begin
   Result := nil;
-  for mName in TAtlasWelcomeContinue.OrderByTabs(AOpen.Files, TabCaptions) do
+  for mName in TAtlasEditorTabs.Ordered(AOpen.Files) do
   begin
     for mTab in AOpen.Tabs do
     begin

@@ -46,6 +46,9 @@ type
     /// <summary>#2409: tests.lastRun mit Vorgabe an.</summary>
     [Test]
     procedure TestsLastRunRoundTrip;
+    /// <summary>#2050: assistants.context, .selection und .selectionMax mit Vorgaben und Grenzen.</summary>
+    [Test]
+    procedure AssistantsContextRoundTrip;
     /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
     [Test]
     procedure HoverSignatureParamsRoundTrip;
@@ -1276,6 +1279,27 @@ begin
   mLoaded := Default(TAtlasPluginSettings);
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.TestsLastRun);
+end;
+
+procedure TAtlasPluginSettingsTests.AssistantsContextRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.AssistantsContext);
+  Assert.IsTrue(mSettings.AssistantsContextSelection);
+  Assert.AreEqual(4000, mSettings.AssistantsContextSelectionMax);
+  mStore := TMemoryStore.Create;
+  mSettings.AssistantsContext := False;
+  mSettings.AssistantsContextSelection := False;
+  mSettings.AssistantsContextSelectionMax := 999999;
+  mSettings.Save(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.AssistantsContext);
+  Assert.IsFalse(mLoaded.AssistantsContextSelection);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxAssistantsContextSelectionMax, mLoaded.AssistantsContextSelectionMax);
 end;
 
 procedure TAtlasPluginSettingsTests.HoverSignatureParamsRoundTrip;

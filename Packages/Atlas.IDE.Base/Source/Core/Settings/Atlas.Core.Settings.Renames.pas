@@ -49,7 +49,33 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TRenameText = (Moved, Superseded, WrongKind);
+
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TRenameText] of string = (
+    (
+     'Einstellung %s heißt jetzt %s; Wert übernommen',
+     'Warnung: Einstellung %s stand zusätzlich unter dem früheren Namen %s; es gilt der neue Wert, der alte wurde entfernt',
+     'Warnung: Einstellung %s (früher %s) hatte einen Wert der falschen Art; er wurde entfernt'),
+    (
+     'Setting %s is now called %s; value taken over',
+     'Warning: setting %s was also stored under the former name %s; the new value applies, the old one was removed',
+     'Warning: setting %s (formerly %s) had a value of the wrong kind; it was removed'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TRenameText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 // Wert unter AName in der Art von AKind lesen; False, wenn dort ein Wert anderer Art steht. Zwei Lesungen mit
 // verschiedener Vorgabe unterscheiden „Wert gleich Vorgabe“ von „Wert nicht lesbar“.
@@ -76,13 +102,11 @@ function TAtlasSettingsRename.LogLine: string;
 begin
   case Outcome of
     srMoved:
-      Result := Format('Einstellung %s heißt jetzt %s; Wert übernommen', [OldKey, NewKey]);
+      Result := Format(UiText(TRenameText.Moved), [OldKey, NewKey]);
     srSuperseded:
-      Result := Format('Warnung: Einstellung %s stand zusätzlich unter dem früheren Namen %s; ' +
-        'es gilt der neue Wert, der alte wurde entfernt', [NewKey, OldKey]);
+      Result := Format(UiText(TRenameText.Superseded), [NewKey, OldKey]);
   else
-    Result := Format('Warnung: Einstellung %s (früher %s) hatte einen Wert der falschen Art; er wurde entfernt',
-      [NewKey, OldKey]);
+    Result := Format(UiText(TRenameText.WrongKind), [NewKey, OldKey]);
   end;
 end;
 
@@ -162,5 +186,9 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.Renames', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.

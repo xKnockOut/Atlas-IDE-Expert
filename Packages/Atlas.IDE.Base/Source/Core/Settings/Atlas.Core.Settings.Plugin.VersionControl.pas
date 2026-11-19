@@ -96,6 +96,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.SysUtils;
 
 { TAtlasPluginVcsSettings }
@@ -143,8 +144,7 @@ begin
   end;
   // Ort beginnt mit {projektwurzel} oder ^/ (#1290); sonst die Vorgabe.
   VcsBranchSvnLocation := Trim(VcsBranchSvnLocation);
-  if not (SameText(Copy(VcsBranchSvnLocation, 1, 15), '{projektwurzel}') or
-    (Copy(VcsBranchSvnLocation, 1, 2) = '^/')) then
+  if not (StartsText('{projektwurzel}', VcsBranchSvnLocation) or StartsStr('^/', VcsBranchSvnLocation)) then
   begin
     VcsBranchSvnLocation := cDefaultVcsBranchSvnLocation;
   end;
