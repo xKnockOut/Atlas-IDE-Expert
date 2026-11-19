@@ -123,6 +123,8 @@ const
   cGap = 8;
   cNoticeWidth = 460;
   cDetailsHeight = 220;
+  // Vorläufige Höhe der Knopfreihe, bevor der unterste Knopf sie festlegt.
+  cButtonsInitialHeight = 200;
 
 { TAtlasSafeModeNotice }
 
@@ -339,7 +341,7 @@ begin
   // Knopfreihe: AutoSize des TFlowPanel rechnet umgebrochene Reihen nicht zuverlässig mit;
   // die Höhe ergibt sich aus dem untersten sichtbaren Knopf.
   FParts.Buttons.AutoSize := False;
-  FParts.Buttons.Height := ScaleValue(200);
+  FParts.Buttons.Height := ScaleValue(cButtonsInitialHeight);
   FParts.Buttons.Realign;
   mBottom := 0;
   for mIndex := 0 to FParts.Buttons.ControlCount - 1 do
