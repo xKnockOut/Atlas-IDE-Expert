@@ -94,9 +94,9 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.UnavailableFixes,
-  Atlas.UI.Debug.Session.Strings;
+  Atlas.UI.Debug.Session.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 const
   /// <summary>Zeichen hinter fertigen bzw. gescheiterten Schritten.</summary>
@@ -316,7 +316,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -339,7 +339,7 @@ var
   mKey: string;
 begin
   Result := 0;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (Length(FReenable) = 0) then
   begin
     Exit;

@@ -38,7 +38,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.IDE.Foundation.EditorBarHost;
 
 type
   TAtlasIdeDesignerBar = class
@@ -48,7 +49,7 @@ type
       Message: TProc<string>;
     end;
   private class var
-    FState: TObject;
+    FState: TAtlasEditorBarState;
     FHooks: THooks;
   public
     class procedure Install(const AHooks: THooks); static;
@@ -90,7 +91,6 @@ uses
   Atlas.IDE.Designer.SearchItems,
   Atlas.IDE.Designer.ShowComponent,
   Atlas.IDE.Designer.TabOrder,
-  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Foundation.Settings;
@@ -111,7 +111,7 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
-  TDesignerBarState = class
+  TDesignerBarState = class(TAtlasEditorBarState)
   private
     FTimer: TTimer;
     /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt.</summary>
@@ -146,8 +146,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Reset;
-    procedure ApplyTheme;
+    procedure Reset; override;
+    procedure ApplyTheme; override;
     procedure OpenSearch;
     /// <summary>Fenster AId öffnen oder nach vorn holen, danach die Knöpfe (gedrückt) nachziehen.</summary>
     function Present(const AId: string): Boolean;
@@ -902,10 +902,7 @@ end;
 
 class procedure TAtlasIdeDesignerBar.ApplySettings;
 begin
-  if FState <> nil then
-  begin
-    State.Reset;
-  end;
+  TAtlasEditorBarState.ResetOf(FState);
 end;
 
 class function TAtlasIdeDesignerBar.Running: Boolean;
@@ -920,10 +917,7 @@ end;
 
 class procedure TAtlasIdeDesignerBar.ThemeChanged;
 begin
-  if FState <> nil then
-  begin
-    State.ApplyTheme;
-  end;
+  TAtlasEditorBarState.ThemeOf(FState);
 end;
 
 end.

@@ -93,14 +93,8 @@ const
 { TAtlasDesignerAccess }
 
 class function TAtlasDesignerAccess.DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
-var
-  mNative: INTAFormEditor;
 begin
-  Result := nil;
-  if Supports(AEditor, INTAFormEditor, mNative) then
-  begin
-    Result := mNative.FormDesigner;
-  end;
+  Result := TAtlasIdeDesignerView.DesignerOf(AEditor);
 end;
 
 class function TAtlasDesignerAccess.FormEditorOf(const AFileName: string): IOTAFormEditor;

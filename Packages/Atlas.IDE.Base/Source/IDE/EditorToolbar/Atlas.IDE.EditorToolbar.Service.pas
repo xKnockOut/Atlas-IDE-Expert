@@ -41,7 +41,8 @@ uses
   System.SysUtils,
   Atlas.Core.Commands.Palette,
   Atlas.Core.EditorToolbar.Sections,
-  Atlas.UI.EditorToolbar.Customize;
+  Atlas.UI.EditorToolbar.Customize,
+  Atlas.IDE.Foundation.EditorBarHost;
 
 type
   TAtlasIdeEditorToolbar = class
@@ -64,7 +65,7 @@ type
       Message: TProc<string>;
     end;
   private class var
-    FState: TObject;
+    FState: TAtlasEditorBarState;
     FHooks: THooks;
     class procedure Say(const AText: string); static;
   public
@@ -108,7 +109,6 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.EditorToolbar.Bar,
-  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
@@ -123,7 +123,7 @@ const
   cSlowTicks = TAtlasToolbarPlan.cSlowTicks;
 
 type
-  TToolbarState = class
+  TToolbarState = class(TAtlasEditorBarState)
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
@@ -164,8 +164,8 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>Nach geänderten Einstellungen: Leisten neu anlegen (Position, Belegung), Befehle neu lesen.</summary>
-    procedure Reset;
-    procedure ApplyTheme;
+    procedure Reset; override;
+    procedure ApplyTheme; override;
     /// <summary>Abschnitte der Datei aus dem aktuellen Editortext.</summary>
     function SectionsOf(const AView: IOTAEditView; out AFileName: string): TAtlasUnitSections;
     property Points: TAtlasReturnPoints read FPoints;
@@ -780,18 +780,12 @@ end;
 
 class procedure TAtlasIdeEditorToolbar.ApplySettings;
 begin
-  if FState <> nil then
-  begin
-    State.Reset;
-  end;
+  TAtlasEditorBarState.ResetOf(FState);
 end;
 
 class procedure TAtlasIdeEditorToolbar.ThemeChanged;
 begin
-  if FState <> nil then
-  begin
-    State.ApplyTheme;
-  end;
+  TAtlasEditorBarState.ThemeOf(FState);
 end;
 
 class function TAtlasIdeEditorToolbar.Enabled: Boolean;

@@ -72,28 +72,14 @@ begin
   end;
 end;
 
-/// <summary>Vergleich des ersten laufenden Moduls (#1779); False ohne. Jedes Mal neu gefragt (Regel 3).</summary>
-function FindTestValues(out AValues: IAtlasTestValues): Boolean;
-var
-  mItem: IInterface;
-begin
-  AValues := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestValues) do
-  begin
-    if Supports(mItem, IAtlasTestValues, AValues) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>„Vergleichen“ unter AProblem (#1779): fehlgeschlagener Test im oberen Editor mit Werten.</summary>
 function HoverComparable(const AProblem: TAtlasProblem): Boolean;
 var
   mValues: IAtlasTestValues;
 begin
-  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and FindTestValues(mValues) and
+  // Vergleich des ersten laufenden Moduls (#1779); jedes Mal neu gefragt (Regel 3).
+  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and
+    TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasTestValues, mValues) and
     mValues.HasValuesAt(AProblem.StartLine);
 end;
 
@@ -101,7 +87,7 @@ procedure CompareTestValues(const AProblem: TAtlasProblem);
 var
   mValues: IAtlasTestValues;
 begin
-  if FindTestValues(mValues) then
+  if TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasTestValues, mValues) then
   begin
     mValues.CompareAt(AProblem.StartLine);
   end;

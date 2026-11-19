@@ -104,7 +104,8 @@ uses
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.BreakpointRules,
   Atlas.UI.Debug.BreakpointAnchors,
-  Atlas.UI.Debug.Breakpoints.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 /// <summary>Quelltext-Haltepunkte der IDE je Datei (Schlüssel: Dateiname wie in der IDE), Zeilen ab 0.</summary>
 function BreakpointsByFile: TDictionary<string, TArray<Integer>>;
@@ -115,7 +116,7 @@ var
   mLines: TArray<Integer>;
 begin
   Result := TDictionary<string, TArray<Integer>>.Create;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

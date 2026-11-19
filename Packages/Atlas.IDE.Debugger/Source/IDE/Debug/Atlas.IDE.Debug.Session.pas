@@ -183,15 +183,8 @@ uses
   System.Math,
   System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Projects.Context;
-
-function Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-  begin
-    Result := nil;
-  end;
-end;
+  Atlas.IDE.Projects.Context,
+  Atlas.IDE.Foundation.Debugger;
 
 function IsStoppedState(AState: TOTAProcessState): Boolean;
 begin
@@ -270,7 +263,7 @@ var
   mServices: IOTADebuggerServices;
 begin
   Result := 0;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices <> nil then
   begin
     Result := mServices.ProcessCount;
@@ -463,7 +456,7 @@ begin
   begin
     Exit;
   end;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -480,7 +473,7 @@ var
 begin
   if FNotifierIndex > 0 then
   begin
-    mServices := Debugger;
+    mServices := TAtlasIdeDebugger.Services;
     if mServices <> nil then
     begin
       mServices.RemoveNotifier(FNotifierIndex - 1);
@@ -546,7 +539,7 @@ var
   mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices <> nil then
   begin
     Result := mServices.CurrentProcess;

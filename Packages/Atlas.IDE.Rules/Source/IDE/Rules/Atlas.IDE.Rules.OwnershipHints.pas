@@ -128,7 +128,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle;
 
 const
   cTimeoutMs = 20000;
@@ -369,7 +370,7 @@ var
 begin
   mCell := TAtlasLensPill.CellAfter(AContext, ALine);
   mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, mCell.Left, ARect.Top + 1);
   mColors := TAtlasColors.ForBackground(mBack);
   case TAtlasOwnershipMarks.LineTone(AMarks) of
     TAtlasOwnershipTone.Safe:

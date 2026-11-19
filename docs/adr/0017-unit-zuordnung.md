@@ -686,6 +686,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.EditorStyle` | `IDE/Foundation/Atlas.IDE.Foundation.EditorStyle.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Elements` | `IDE/Foundation/Atlas.IDE.Foundation.Elements.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Files` | `IDE/Foundation/Atlas.IDE.Foundation.Files.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.Debugger` | `IDE/Foundation/Atlas.IDE.Foundation.Debugger.pas` | Ordner `IDE/Foundation`; Debugger-Dienst der IDE für Base und Module |
 | `Atlas.IDE.Foundation.GutterColumns` | `IDE/Foundation/Atlas.IDE.Foundation.GutterColumns.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.GutterMarks` | `IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.OpenWatch` | `IDE/Foundation/Atlas.IDE.Foundation.OpenWatch.pas` | Ordner `IDE/Foundation` |

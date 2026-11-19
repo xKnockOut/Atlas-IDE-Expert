@@ -173,6 +173,7 @@ contains
   Atlas.IDE.Foundation.EditorRefresh in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas',
   Atlas.IDE.Foundation.Caret in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Caret.pas',
   Atlas.IDE.Foundation.Files in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas',
+  Atlas.IDE.Foundation.Debugger in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Debugger.pas',
   Atlas.IDE.Foundation.EditorFiles in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas',
   Atlas.IDE.Foundation.ActiveEditor in 'Source\IDE\Foundation\Atlas.IDE.Foundation.ActiveEditor.pas',
   Atlas.IDE.Foundation.Navigation in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas',

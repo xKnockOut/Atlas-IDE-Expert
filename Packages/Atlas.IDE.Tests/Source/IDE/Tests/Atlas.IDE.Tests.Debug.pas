@@ -74,9 +74,7 @@ type
     procedure RemoveBreakpoint;
     procedure RestoreActiveProject;
     function Say(const AText: string): Boolean;
-    class function Debugger: IOTADebuggerServices; static;
     class function Debugging: Boolean; static;
-    class function ProjectOf(const AFileName: string): IOTAProject; static;
     /// <summary>Datei und Test am Cursor der oberen Editoransicht; False mit Meldung.</summary>
     function AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection): Boolean;
   public
@@ -120,7 +118,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Tests.Projects;
+  Atlas.IDE.Tests.Projects,
+  Atlas.IDE.Foundation.Debugger;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -173,7 +172,7 @@ begin
     var
       mServices: IOTADebuggerServices;
     begin
-      mServices := Debugger;
+      mServices := TAtlasIdeDebugger.Services;
       case FPhase of
         TPhase.Starting:
           TickStarting(mServices);
@@ -406,7 +405,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   FBreakpoint := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (FUnitFile = '') or (FSelection.BreakLine < 0) then
   begin
     Exit;
@@ -441,7 +440,7 @@ begin
   begin
     Exit;
   end;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   try
     if mServices <> nil then
     begin
@@ -461,7 +460,7 @@ begin
   begin
     Exit;
   end;
-  mPrevious := ProjectOf(FPreviousProject);
+  mPrevious := TAtlasIdeStartOptions.FindProject(FPreviousProject);
   if (mPrevious <> nil) and Supports(BorlandIDEServices, IOTAModuleServices, mServices) and
     (mServices.MainProjectGroup <> nil) and (mServices.MainProjectGroup.ActiveProject <> mPrevious) then
   begin
@@ -475,31 +474,12 @@ begin
   Result := False;
 end;
 
-class function TAtlasIdeTestDebugger.Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 class function TAtlasIdeTestDebugger.Debugging: Boolean;
 var
   mServices: IOTADebuggerServices;
 begin
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   Result := (mServices <> nil) and (mServices.ProcessCount > 0);
-end;
-
-class function TAtlasIdeTestDebugger.ProjectOf(const AFileName: string): IOTAProject;
-var
-  mServices: IOTAModuleServices;
-begin
-  Result := nil;
-  if (AFileName <> '') and Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Supports(mServices.FindModule(AFileName), IOTAProject, Result);
-  end;
 end;
 
 function TAtlasIdeTestDebugger.AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection): Boolean;
@@ -626,7 +606,7 @@ begin
     AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugOff);
     Exit;
   end;
-  mProject := ProjectOf(AProject);
+  mProject := TAtlasIdeStartOptions.FindProject(AProject);
   if mProject = nil then
   begin
     AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AProject)]);

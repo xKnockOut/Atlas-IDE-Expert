@@ -97,8 +97,6 @@ type
       const AFileName: string): Boolean; static;
     /// <summary>Zelle drei Zeichen hinter dem Ende von ALine (Text der Zeile in AContext).</summary>
     class function CellAfter(const AContext: INTACodeEditorPaintContext; const ALine: string): TRect; static;
-    /// <summary>Farbe unter AX, AY; ohne die Pinselfarbe.</summary>
-    class function BackAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor; static;
     /// <summary>Zeichnet AText als Marke ab AX in der Zeile ARect; Ergebnis: Rechteck der Marke.</summary>
     class function Paint(ACanvas: TCanvas; const ARect: TRect; AX: Integer; const AText: string;
       const AStyle: TAtlasLensPillStyle): TRect; static;
@@ -279,21 +277,6 @@ begin
   mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine,
     TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) + 1;
   Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapChars, AContext.EditorLineNum);
-end;
-
-class function TAtlasLensPill.BackAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
-var
-  mSample: COLORREF;
-begin
-  mSample := GetPixel(ACanvas.Handle, AX, AY);
-  if mSample = CLR_INVALID then
-  begin
-    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
-  end
-  else
-  begin
-    Result := TAtlasColor(mSample);
-  end;
 end;
 
 class function TAtlasLensPill.Paint(ACanvas: TCanvas; const ARect: TRect; AX: Integer; const AText: string;
