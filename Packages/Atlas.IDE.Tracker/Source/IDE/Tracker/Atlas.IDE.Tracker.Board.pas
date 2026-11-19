@@ -33,7 +33,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.BoardFrame,
   Atlas.Core.Notifications.MessageSink,
   Atlas.IDE.Tracker.BoardLoad,
@@ -47,7 +47,7 @@ type
     FHooks: TAtlasBoardHooks;
     FMessage: TAtlasMessageSink;
     FStarted: Boolean;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FLoad: TAtlasIdeBoardLoad;
     FLoadRef: IInterface;
     FMove: TAtlasIdeBoardMove;
@@ -104,7 +104,7 @@ begin
   FHooks := AHooks;
   FMessage := TAtlasMessageSink.Create(FHooks.Message);
   // Ein Worker für Laden und Verschieben: Stop wartet auf beide.
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
   FLoad := TAtlasIdeBoardLoad.Create(AHooks, ACacheFolder, FWorker);
   FLoadRef := FLoad;
   FMove := TAtlasIdeBoardMove.Create(FLoad, AHooks, FWorker);

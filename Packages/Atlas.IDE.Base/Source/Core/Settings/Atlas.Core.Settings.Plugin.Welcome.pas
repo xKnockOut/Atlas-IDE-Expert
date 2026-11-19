@@ -13,6 +13,7 @@ const
   /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.cMinMax/cMaxMax.</summary>
   cMinWelcomeProjects = 1;
   cMaxWelcomeProjects = 30;
+  cDefaultWelcomeProjects = 8;
   /// <summary>Spalten der Willkommensseite (#767, welcomePage.columns).</summary>
   cMinWelcomeColumns = 1;
   cMaxWelcomeColumns = 3;
@@ -21,9 +22,13 @@ const
   /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.cMaxHours.</summary>
   cMinUnsavedHours = 0;
   cMaxUnsavedHours = 8760;
+  /// <summary>Vorgaben: ab so vielen Stunden ungespeichert warnen bzw. dringend warnen.</summary>
+  cDefaultUnsavedWarnHours = 24;
+  cDefaultUnsavedAlertHours = 72;
   /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.cMinCount/cMaxCount.</summary>
   cMinContinueCount = 1;
   cMaxContinueCount = 20;
+  cDefaultContinueCount = 5;
   /// <summary>Grenzen für welcomePage.continue.issues.count (#2052); wie TAtlasWelcomeContinueIssues.cMinCount/
   /// cMaxCount.</summary>
   cMinContinueIssuesCount = 1;
@@ -31,10 +36,12 @@ const
   /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.cMinPoints/MaxPoints.</summary>
   cMinTrendPoints = 2;
   cMaxTrendPoints = 100;
+  cDefaultTrendPoints = 30;
   /// <summary>Grenzen für welcomePage.tests.maxFailures und welcomePage.tests.ci.intervalMinutes (#763); wie
   /// TAtlasTestResults (Test prüft Gleichheit).</summary>
   cMinTestFailures = 1;
   cMaxTestFailures = 50;
+  cDefaultTestFailures = 5;
   cMinCiIntervalMinutes = 1;
   cMaxCiIntervalMinutes = 1440;
   /// <summary>Vorgabe für welcomePage.tests.ci.provider (#763).</summary>
@@ -323,18 +330,21 @@ end;
 
 /// <summary>http:// oder https:// mit etwas danach, ohne Leer- und Steuerzeichen (#766).</summary>
 function IsWebAddress(const AValue: string): Boolean;
+const
+  cHttps = 'https://';
+  cHttp = 'http://';
 var
   mIndex: Integer;
 begin
-  Result := (StartsText('https://', AValue) and (Length(AValue) > 8)) or
-    (StartsText('http://', AValue) and (Length(AValue) > 7));
+  Result := (StartsText(cHttps, AValue) and (Length(AValue) > Length(cHttps))) or
+    (StartsText(cHttp, AValue) and (Length(AValue) > Length(cHttp)));
   if not Result then
   begin
     Exit;
   end;
   for mIndex := 1 to Length(AValue) do
   begin
-    if Ord(AValue[mIndex]) <= 32 then
+    if AValue[mIndex] <= ' ' then
     begin
       Exit(False);
     end;
@@ -418,12 +428,12 @@ begin
   Result.WelcomePageSearch := True;
   Result.WelcomePageSearchSymbols := True;
   Result.WelcomePageProjectStatus := True;
-  Result.WelcomePageMaxProjects := 8;
+  Result.WelcomePageMaxProjects := cDefaultWelcomeProjects;
   Result.WelcomePageRefreshVcs := True;
   Result.WelcomePageUnsaved := True;
   Result.WelcomePageUnsavedMinAgeHours := 0;
-  Result.WelcomePageUnsavedWarnHours := 24;
-  Result.WelcomePageUnsavedAlertHours := 72;
+  Result.WelcomePageUnsavedWarnHours := cDefaultUnsavedWarnHours;
+  Result.WelcomePageUnsavedAlertHours := cDefaultUnsavedAlertHours;
   Result.WelcomePageUnsavedHideWhenClean := False;
   Result.WelcomePageStatusTile := True;
   Result.WelcomePageStatusTileOnlyProblems := False;
@@ -434,12 +444,12 @@ begin
   Result.WelcomePageProjectSetup := True;
   Result.WelcomePageNewFromTemplate := True;
   Result.WelcomePageContinue := True;
-  Result.WelcomePageContinueCount := 5;
+  Result.WelcomePageContinueCount := cDefaultContinueCount;
   Result.WelcomePageTrends := True;
-  Result.WelcomePageTrendsPoints := 30;
+  Result.WelcomePageTrendsPoints := cDefaultTrendPoints;
   Result.WelcomePageTrendsSeries := cDefaultTrendSeries;
   Result.WelcomePageTests := True;
-  Result.WelcomePageTestsMaxFailures := 5;
+  Result.WelcomePageTestsMaxFailures := cDefaultTestFailures;
   Result.WelcomePageTestsCi := False;
   Result.WelcomePageTestsCiProvider := cDefaultCiProvider;
   Result.WelcomePageTestsCiIntervalMinutes := 10;
