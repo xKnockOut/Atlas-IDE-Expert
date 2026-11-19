@@ -32,7 +32,6 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,

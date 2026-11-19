@@ -66,7 +66,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
