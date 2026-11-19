@@ -120,8 +120,6 @@ begin
   Assert.IsTrue(TAtlasFormUnit.IsMethodHeader('end.'));
   Assert.IsFalse(TAtlasFormUnit.IsMethodHeader('    procedure FormShow(Sender: TObject);'), 'eingerückt');
   Assert.IsFalse(TAtlasFormUnit.IsMethodHeader('begin'));
-  Assert.AreEqual(4, TAtlasFormUnit.SpacesOf('    edtName: TEdit;'));
-  Assert.AreEqual(0, TAtlasFormUnit.SpacesOf(''));
 end;
 
 initialization

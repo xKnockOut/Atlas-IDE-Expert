@@ -10,6 +10,9 @@
 //   normalen Start und solange compiler.mcpBuild an ist.
 // - Teil „AssistantEdits“: Eingang für Änderungen an offenen Dateien (#397),
 //   solange assistants.edit an ist.
+// - Teil „AiGhostText“: Schattentext vom KI-Anbieter (#1922), solange
+//   assistants.inlineSuggestions an ist; HTTP und Anmeldespeicher von Windows
+//   entstehen nur in Atlas.IDE.Assistants.Composition.Adapters.
 // - Teil „AssistantDebug“: Eingang der MCP-Werkzeuge debug_* (#1874); ausgeführt
 //   wird über IAtlasDebugControl des Moduls Debugger, das der Eingang bei jedem
 //   Auftrag neu in der Registry sucht (Regel 2). Nur im normalen Start und
@@ -21,7 +24,8 @@
 // - Teil „AssistantContext“: Zustand der IDE für get_ide_context (#2050),
 //   solange assistants.context an ist; den letzten Build bekommt er über
 //   IAtlasBuildVerdictListener.
-// - den Abschnitt mit dem Modulschalter im Optionsdialog.
+// - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
+//   Schlüssel der KI-Anbieter.
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
 //   Atlas.IDE.Assistants.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
@@ -88,6 +92,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
+  Atlas.IDE.Assistants.Composition.Adapters,
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
@@ -213,7 +218,11 @@ end;
 
 procedure StartDebug;
 begin
-  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, DebugChanged, MessageLine);
+  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, DebugChanged,
+    procedure(const AMessage: string)
+    begin
+      TAtlasIdeHost.Warning(AMessage);
+    end);
   GDebugBar := TAtlasIdeAssistantDebugBar.Create(DebugInbox, DebugBanner);
   // Die Pause für KI-Assistenten (#1906) gilt auch für Debug-Aufträge.
   if GActivity.Paused then
@@ -315,6 +324,12 @@ begin
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsEdit;
       end, EditsStarted, StartEdits, StopEdits),
+    // Schattentext vom KI-Anbieter (#1922): nur im normalen Start und solange assistants.inlineSuggestions an ist.
+    TAtlasFeaturePart.When('AiGhostText',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsInlineSuggestions;
+      end, AiGhostStarted, StartAiGhost, StopAiGhost),
     // Debuggen durch KI-Assistenten (#1874): nur im normalen Start und solange debug.mcp an ist.
     TAtlasFeaturePart.When('AssistantDebug',
       function(ALevel: TAtlasSafeLevel): Boolean
@@ -417,6 +432,7 @@ begin
   end;
   GScope.Provide(IAtlasCommandSource, mRef);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
+  TAtlasAssistantsSettingsSection.KeyHooks := AiKeyHooks;
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
   // Anweisungsdateien für KI-Assistenten (#2615): Befehl, Menüeintrag und Hinweis nach dem Speichern.
   mInstructions := TAtlasIdeInstructions.Create(ModuleScope) as IAtlasCommandSource;
@@ -428,7 +444,11 @@ end;
 
 class procedure TAtlasAssistantsModule.UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance,
+    procedure
+    begin
+      TAtlasAssistantsSettingsSection.KeyHooks := Default(TAtlasAssistantsKeyHooks);
+    end);
   // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten die Aktivität bis dahin.
   FreeAndNil(GActivity);
 end;
