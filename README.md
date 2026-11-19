@@ -164,6 +164,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **33 MCP tools** to read, check, build, test, rename and fix Delphi code
+- **Refactorings over MCP:** `refactor` lists the refactorings of the context menu at a position with their arguments and runs them with arguments instead of questions (change signature, extract interface or superclass, safe delete, move member, type alias …), with a preview of all files and as one undo step in the IDE
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away

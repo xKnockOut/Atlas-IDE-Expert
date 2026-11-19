@@ -38,6 +38,7 @@ Each with preview:
 - apply code actions
 - format (`format_code`)
 - extract method, optionally with equal places (`extract_method`)
+- refactorings of the context menu with arguments instead of questions (`refactor`)
 - fix all safe findings of rules at once (`fix_findings`)
 
 ### Resource

@@ -80,9 +80,15 @@ type
     FDefinesFor: TDefinesProvider;
     function FormFileActions(const AUri, AText: string; const ARange: TTextRange): TJSONArray;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function Collect(const AUri: string; const ARange: TTextRange; const AOnly: TArray<string>;
+      const ACancellation: IJsonRpcCancellationToken): TJSONArray;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
+    /// <summary>Alle Code-Aktionen an ARange im geöffneten Dokument AUri wie textDocument/codeAction ohne "only",
+    /// ohne Abbruch (MCP-Werkzeug refactor, #2150); leer, wenn das Dokument nicht geöffnet ist. Der Aufrufer übernimmt
+    /// das Array.</summary>
+    function ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
     /// <summary>Capability für initialize. Der Aufrufer übernimmt das Objekt.</summary>
     class function Capability: TJSONObject; static;
     /// <summary>Eine Aktion als LSP-CodeAction. Der Aufrufer übernimmt das Objekt.</summary>
@@ -804,10 +810,6 @@ function TLspCodeActions.HandleCodeAction(const AParams: TJSONValue;
 var
   mUri: string;
   mRangeValue: TJSONValue;
-  mRange: TTextRange;
-  mDocument: ITextDocument;
-  mShared: ISharedSyntaxTree;
-  mBuilder: TCodeActionBuilder;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue)) then
@@ -815,22 +817,40 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspCodeActionsText.FieldsTextDocumentUriAndRange].Text + cMethod);
   end;
-  if not FStore.TryGet(mUri, mDocument) then
+  Result := Collect(mUri, TLspPositions.ReadRange(mRangeValue), OnlyKinds(TJSONObject(AParams)), ACancellation);
+end;
+
+function TLspCodeActions.Collect(const AUri: string; const ARange: TTextRange; const AOnly: TArray<string>;
+  const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+var
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mBuilder: TCodeActionBuilder;
+begin
+  if not FStore.TryGet(AUri, mDocument) then
   begin
     Exit(TJSONArray.Create);
   end;
-  mRange := TLspPositions.ReadRange(mRangeValue);
-  if TDfmParser.IsFormFile(TDocumentUris.ToPath(mUri)) then
+  if TDfmParser.IsFormFile(TDocumentUris.ToPath(AUri)) then
   begin
-    Exit(FormFileActions(mUri, mDocument.Text, mRange));
+    Exit(FormFileActions(AUri, mDocument.Text, ARange));
   end;
   mShared := TSyntaxTreeCache.Get(mDocument);
-  mBuilder := TCodeActionBuilder.Create(Self, mUri, mRange, mDocument.Text, mShared.Tree);
+  mBuilder := TCodeActionBuilder.Create(Self, AUri, ARange, mDocument.Text, mShared.Tree);
   try
-    Result := mBuilder.Build(OnlyKinds(TJSONObject(AParams)), ACancellation);
+    Result := mBuilder.Build(AOnly, ACancellation);
   finally
     mBuilder.Free;
   end;
+end;
+
+function TLspCodeActions.ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
+var
+  mNever: IJsonRpcCancellationToken;
+begin
+  // Ohne Anfrage gibt es kein Abbruchsignal; der Builder prüft trotzdem eins.
+  mNever := TJsonRpcCancellation.Create;
+  Result := Collect(AUri, ARange, nil, mNever);
 end;
 
 class function TLspCodeActions.WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;

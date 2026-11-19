@@ -104,6 +104,17 @@
       },
       "contains": "Vorschau"
     },
+    "refactor": {
+      "arguments": {
+        "file": "Source/Ref.Daten.Suche.pas",
+        "line": "{{zeile:class function Suchen}}",
+        "column": "{{spalte:Suchen}}",
+        "kind": "createOverload",
+        "args": { "kind": "copy" },
+        "dryRun": true
+      },
+      "contains": "overload;"
+    },
     "get_last_build": {
       "arguments": {}
     },

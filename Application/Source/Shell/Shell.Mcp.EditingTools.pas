@@ -1,14 +1,15 @@
 ﻿unit Shell.Mcp.EditingTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), schreibende Werkzeuge (rename_symbol, apply_code_action,
-// fix_findings, format_code, extract_method); mit dryRun nur der Diff.
+// fix_findings, format_code, extract_method, refactor); mit dryRun nur der Diff.
 
 interface
 
 uses
   Shell.Mcp.Context;
 
-/// <summary>Meldet rename_symbol, apply_code_action, fix_findings, format_code und extract_method an.</summary>
+/// <summary>Meldet rename_symbol, apply_code_action, fix_findings, format_code, extract_method und refactor an.
+/// </summary>
 procedure RegisterEditingTools(const AContext: TMcpToolContext);
 
 implementation
@@ -21,8 +22,9 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Editing.FormatCheck,
-  Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Mcp.ExtractTools,
+  Atlas.Common.Mcp.RefactorTools,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Shell.Texts;
@@ -34,7 +36,9 @@ type
     ApplyCodeActionDryRun, FixFindingsTool, FixFindingsRules, FixFindingsFile, FixFindingsMinConfidence,
     FixFindingsDryRun, FormatCodeTool, FormatCodeFile, FormatCodeText, FormatCodeStartLine, FormatCodeEndLine,
     FormatCodeDryRun, LineRange, ExtractMethodTool, ExtractMethodFile, ExtractMethodStartLine, ExtractMethodEndLine,
-    ExtractMethodName, ExtractMethodDuplicates, ExtractMethodDryRun);
+    ExtractMethodName, ExtractMethodDuplicates, ExtractMethodDryRun, RefactorTool, RefactorFile, RefactorLine,
+    RefactorColumn, RefactorEndLine, RefactorEndColumn, RefactorKind, RefactorTitle, RefactorArgs, RefactorDryRun,
+    RefactorFormat, RefactorPosition, RefactorNoHost);
 {$SCOPEDENUMS OFF}
 
 const
@@ -112,7 +116,39 @@ const
     (De: 'Letzte Zeile der Anweisungen; Vorgabe startLine'; En: 'Last line of the statements; default startLine'),
     (De: 'Name der neuen Methode; Vorgabe ExtractedMethod'; En: 'Name of the new method; default ExtractedMethod'),
     (De: 'Auch gleiche Stellen der Unit ersetzen'; En: 'Also replace equal places of the unit'),
-    (De: 'Nur Vorschau, nichts schreiben'; En: 'Preview only, write nothing'));
+    (De: 'Nur Vorschau, nichts schreiben'; En: 'Preview only, write nothing'),
+    (De: 'Umbauten einer Stelle (#2150): Ohne kind listet es alle Umbauten an file:line:column wie das ' +
+    'Kontextmenü im Editor (Schlüssel, Titel, Argumente mit Vorgabe, gesperrte mit Grund). Mit kind (Schlüssel ' +
+    'aus der Liste, z. B. changeSignature, moveClass, safeDelete, methodKind, oder der Titel) führt es den Umbau ' +
+    'aus; was die IDE per Dialog erfragt (Name, Ziel-Unit, Mitglieder, Signatur), kommt aus args. dryRun ' +
+    '(Vorgabe true) zeigt nur den Diff aller Dateien; dryRun=false schreibt wie apply_code_action (offene ' +
+    'Dateien als ein Rückgängig-Schritt in der IDE, neue Units werden angelegt, gelöschte entfernt). Hinweise des ' +
+    'Umbaus (nicht geänderte Stellen) stehen unter dem Diff.';
+    En: 'Refactorings at a position (#2150): without kind it lists all refactorings at file:line:column like the ' +
+    'context menu in the editor (key, title, arguments with default, blocked ones with reason). With kind (key ' +
+    'from the list, e.g. changeSignature, moveClass, safeDelete, methodKind, or the title) it runs the ' +
+    'refactoring; what the IDE asks in a dialog (name, target unit, members, signature) comes from args. dryRun ' +
+    '(default true) only shows the diff of all files; dryRun=false writes like apply_code_action (open files as ' +
+    'one undo step in the IDE, new units are created, deleted ones removed). Notes of the refactoring (places ' +
+    'not changed) follow the diff.'),
+    (De: 'Pfad der Unit (relativ zum Projekt oder absolut)';
+    En: 'Path of the unit (relative to the project or absolute)'),
+    (De: 'Zeile (ab 1)'; En: 'Line (from 1)'),
+    (De: 'Spalte (ab 1); nötig, weil in einer Zeile mehrere Symbole stehen können';
+    En: 'Column (from 1); needed because a line can contain several symbols'),
+    (De: 'Ende der Auswahl, Zeile; Vorgabe line'; En: 'End of the selection, line; default line'),
+    (De: 'Ende der Auswahl, Spalte; Vorgabe column'; En: 'End of the selection, column; default column'),
+    (De: 'Schlüssel oder Titel des Umbaus; leer = Umbauten auflisten';
+    En: 'Key or title of the refactoring; empty = list the refactorings'),
+    (De: 'Titel, wenn mehrere Umbauten denselben Schlüssel haben';
+    En: 'Title when several refactorings have the same key'),
+    (De: 'Argumente des Umbaus, wie die Liste sie nennt (z. B. {"name": "TNeu"})';
+    En: 'Arguments of the refactoring as the list names them (e.g. {"name": "TNew"})'),
+    (De: 'Nur Vorschau, nichts schreiben'; En: 'Preview only, write nothing'),
+    (De: 'markdown oder json'; En: 'markdown or json'),
+    (De: '"line" und "column" ab 1, das Ende nicht davor';
+    En: '"line" and "column" from 1, the end not before them'),
+    (De: 'refactor ist in diesem Lauf nicht verfügbar.'; En: 'refactor is not available in this run.'));
 
 function ToolRenameSymbol(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
@@ -235,12 +271,7 @@ end;
 /// <summary>Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben.</summary>
 function StyleFor(const AContext: TMcpToolContext; const AFileName: string): TFormatStyle;
 begin
-  Result := TLspFormatting.Resolve(nil, AFileName,
-    AContext.Group.WorkspaceOf(AFileName).Configuration.Settings.Formatting,
-    function(const AConfigFile: string; out AConfigText: string): Boolean
-    begin
-      Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
-    end);
+  Result := FormatStyleOf(AContext.Group, AFileName);
 end;
 
 function ToolFormatCode(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
@@ -340,6 +371,81 @@ begin
     ContextTool(AContext, ToolExtractMethod), TMcpToolKind.Write);
 end;
 
+/// <summary>Stelle bzw. Auswahl aus line/column und endLine/endColumn (ab 1), als Bereich ab 0.</summary>
+function RangeOf(const AArguments: TJSONObject): TTextRange;
+var
+  mLine, mColumn, mEndLine, mEndColumn: Integer;
+begin
+  if not AArguments.TryGetValue<Integer>('line', mLine) or not AArguments.TryGetValue<Integer>('column', mColumn) then
+  begin
+    raise EMcpToolError.Create(TShellTexts.Missing(['line', 'column']));
+  end;
+  if not AArguments.TryGetValue<Integer>('endLine', mEndLine) then
+  begin
+    mEndLine := mLine;
+  end;
+  if not AArguments.TryGetValue<Integer>('endColumn', mEndColumn) then
+  begin
+    mEndColumn := mColumn;
+  end;
+  if (mLine < 1) or (mColumn < 1) or (mEndLine < mLine) or ((mEndLine = mLine) and (mEndColumn < mColumn)) then
+  begin
+    raise EMcpToolError.Create(cTexts[TMcpEditingText.RefactorPosition].Text);
+  end;
+  Result := TTextRange.Create(mLine - 1, mColumn - 1, mEndLine - 1, mEndColumn - 1);
+end;
+
+function ToolRefactor(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mRequest: TMcpRefactorRequest;
+begin
+  if AContext.Refactor = nil then
+  begin
+    raise EMcpToolError.Create(cTexts[TMcpEditingText.RefactorNoHost].Text);
+  end;
+  mRequest := Default(TMcpRefactorRequest);
+  mRequest.FileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
+  mRequest.Range := RangeOf(AArguments);
+  mRequest.Kind := TMcpArgs.OptionalString(AArguments, 'kind');
+  mRequest.Title := TMcpArgs.OptionalString(AArguments, 'title');
+  if AArguments.GetValue('args') is TJSONObject then
+  begin
+    mRequest.Args := TJSONObject(AArguments.GetValue('args'));
+  end;
+  mRequest.DryRun := DryRunOf(AArguments);
+  mRequest.Json := SameText(TMcpArgs.OptionalString(AArguments, 'format'), 'json');
+  AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
+  Result := AContext.Refactor.Run(AContext.Edit, mRequest);
+end;
+
+procedure AddRefactor(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('refactor', cTexts[TMcpEditingText.RefactorTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"file":{"type":"string","description":%s},' +
+      '"line":{"type":"integer","minimum":1,"description":%s},' +
+      '"column":{"type":"integer","minimum":1,"description":%s},' +
+      '"endLine":{"type":"integer","minimum":1,"description":%s},' +
+      '"endColumn":{"type":"integer","minimum":1,"description":%s},' +
+      '"kind":{"type":"string","description":%s},' +
+      '"title":{"type":"string","description":%s},' +
+      '"args":{"type":"object","description":%s},' +
+      '"dryRun":{"type":"boolean","default":true,"description":%s},' +
+      '"format":{"type":"string","enum":["markdown","json"],"default":"markdown","description":%s}},' +
+      '"required":["file","line","column"]}',
+      [cTexts[TMcpEditingText.RefactorFile].Text,
+      cTexts[TMcpEditingText.RefactorLine].Text,
+      cTexts[TMcpEditingText.RefactorColumn].Text,
+      cTexts[TMcpEditingText.RefactorEndLine].Text,
+      cTexts[TMcpEditingText.RefactorEndColumn].Text,
+      cTexts[TMcpEditingText.RefactorKind].Text,
+      cTexts[TMcpEditingText.RefactorTitle].Text,
+      cTexts[TMcpEditingText.RefactorArgs].Text,
+      cTexts[TMcpEditingText.RefactorDryRun].Text,
+      cTexts[TMcpEditingText.RefactorFormat].Text]),
+    ContextTool(AContext, ToolRefactor), TMcpToolKind.Write);
+end;
+
 procedure RegisterEditingTools(const AContext: TMcpToolContext);
 begin
   AddRenameSymbol(AContext);
@@ -347,6 +453,7 @@ begin
   AddFixFindings(AContext);
   AddFormatCode(AContext);
   AddExtractMethod(AContext);
+  AddRefactor(AContext);
 end;
 
 initialization

@@ -2,8 +2,8 @@
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), die Dienste hinter den Werkzeugen: Symbolindex der Projektgruppe,
 // Index-, Code- und Bearbeitungswerkzeuge, Pfadregeln (#99), Architektur (#1118), Hotspots (#1354) und der
-// Uses-Graph für find_path (#1117). Jeder Baustein in eigener Routine, damit die anonymen Methoden nur ihre
-// Parameter einfangen.
+// Uses-Graph für find_path (#1117) und die Quelle von refactor (#2150). Jeder Baustein in eigener Routine, damit die
+// anonymen Methoden nur ihre Parameter einfangen.
 
 interface
 
@@ -23,7 +23,8 @@ uses
   Atlas.Common.Hotspots.Service,
   Shell.Workspace,
   Shell.WorkspaceGroup,
-  Shell.Mcp.Context;
+  Shell.Mcp.Context,
+  Shell.Mcp.RefactorHost;
 
 type
   /// <summary>Alle Dienste eines MCP-Laufs; Free gibt sie in umgekehrter Reihenfolge frei.</summary>
@@ -42,6 +43,8 @@ type
     Hotspots: THotspotService;
     PathGraphs: TUsesGraphService;
     PathLocator: TUsesLocator;
+    /// <summary>Code-Aktionen und Refactorings des Servers für refactor (#2150).</summary>
+    Refactor: TMcpRefactorHost;
     /// <summary>Legt Index, Gruppe und Dienste für den Ordner ARoot an; noch ohne Laden.</summary>
     class function Create(const ARoot: string; const ALogger: ILogger): TMcpServices; static;
     procedure Free;
@@ -66,7 +69,14 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Metrics.Collector,
   Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Builtin,
   Shell.Platform,
+  Shell.Composition.Refactorings.Services,
   Shell.Mcp.Ide,
   Shell.Mcp.ArchitectureTools;
 
@@ -285,16 +295,143 @@ begin
     end;
 end;
 
+/// <summary>Neue Datei aus refactor (#2150): UTF-8 mit BOM und CRLF wie neue Units der IDE, Ordner wird angelegt.
+/// </summary>
+procedure CreateSourceFile(const AFileName, AText: string);
+begin
+  if (ExtractFileDir(AFileName) <> '') and not ForceDirectories(ExtractFileDir(AFileName)) then
+  begin
+    raise EMcpToolError.CreateFmt('%s: %s', [ExtractFileDir(AFileName), SysErrorMessage(GetLastOSError)]);
+  end;
+  TFileEncoding.SaveToFile(AFileName, AText, TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF));
+end;
+
+/// <summary>Gelöschte Datei aus refactor (#2150), z. B. beim sicheren Löschen einer Unit.</summary>
+procedure DeleteSourceFile(const AFileName: string);
+begin
+  if not System.SysUtils.DeleteFile(AFileName) then
+  begin
+    raise EMcpToolError.CreateFmt('%s: %s', [AFileName, SysErrorMessage(GetLastOSError)]);
+  end;
+end;
+
 function NewEditTools(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; ACode: TMcpCodeTools;
   const ALogger: ILogger): TMcpEditTools;
 begin
   Result := TMcpEditTools.Create(AIndex, ReadSourceText, WriteSourceText, AllFilesOf(AGroup),
     EnsureReferenceOf(AGroup));
   Result.DirtyFiles := EditorDirtyFiles;
+  Result.CreateFile := CreateSourceFile;
+  Result.DeleteFile := DeleteSourceFile;
   Result.CheckSource := ACode.CheckSource;
   Result.CheckProject := ACode.CheckProject;
   Result.SettingsFor := ACode.SettingsFor;
   Result.Audit := AuditOf(ALogger);
+end;
+
+/// <summary>Präfixe neuer Namen wie im Server (TShellFileOptions.NewNamesFor): die der Namensregel des Projekts.
+/// </summary>
+function NewNamesOf(AGroup: TShellWorkspaceGroup): TShellNewNamesFunc;
+begin
+  Result :=
+    function(const AUri: string): TPascalNamePrefixes
+    var
+      mWorkspace: TShellWorkspace;
+      mContext: TRuleContext;
+      mFileName: string;
+    begin
+      mFileName := TDocumentUris.ToPath(AUri);
+      mWorkspace := AGroup.WorkspaceOf(mFileName);
+      mContext := Default(TRuleContext);
+      mContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(
+        mWorkspace.Configuration.ConfigRoot), mFileName);
+      mContext.Naming := mWorkspace.RuleServices.Naming;
+      mContext.UnitName := ChangeFileExt(ExtractFileName(mFileName), '');
+      Result := TRuleEngine.NewNames(BuiltinRules, mWorkspace.Configuration.Settings, mContext);
+    end;
+end;
+
+/// <summary>Delphi-Version der Datei: aus dem Projekt, sonst delphiVersion in atlas.json.</summary>
+function DelphiVersionOf(AGroup: TShellWorkspaceGroup): TShellUriTextFunc;
+begin
+  Result :=
+    function(const AUri: string): string
+    var
+      mWorkspace: TShellWorkspace;
+    begin
+      mWorkspace := AGroup.WorkspaceOf(TDocumentUris.ToPath(AUri));
+      Result := mWorkspace.State.DelphiVersion;
+      if Result = '' then
+      begin
+        Result := mWorkspace.Configuration.Settings.DelphiVersion;
+      end;
+    end;
+end;
+
+function RefactorSettingsOf(AGroup: TShellWorkspaceGroup): TMcpRefactorSettingsFunc;
+begin
+  Result :=
+    function(const AFileName: string): TServerSettings
+    begin
+      Result := AGroup.WorkspaceOf(AFileName).Configuration.Settings;
+    end;
+end;
+
+function RefactorProjectOf(AGroup: TShellWorkspaceGroup): TShellProjectFunc;
+begin
+  Result :=
+    function(const AFileName: string; out AProject: TProjectInfo): Boolean
+    begin
+      Result := AGroup.WorkspaceOf(AFileName).State.Project(AProject);
+    end;
+end;
+
+function RefactorNamespacesOf(AGroup: TShellWorkspaceGroup): TShellNamesFunc;
+begin
+  Result :=
+    function: TArray<string>
+    begin
+      Result := AGroup.Main.State.Namespaces;
+    end;
+end;
+
+function RefactorFilesOf(const AFiles: TFunc<TArray<string>>): TShellNamesFunc;
+begin
+  Result :=
+    function: TArray<string>
+    begin
+      Result := AFiles();
+    end;
+end;
+
+function RefactorStyleOf(AGroup: TShellWorkspaceGroup): TShellFormatStyleFunc;
+begin
+  Result :=
+    function(const AUri: string): TFormatStyle
+    begin
+      Result := FormatStyleOf(AGroup, TDocumentUris.ToPath(AUri));
+    end;
+end;
+
+/// <summary>Quelle von refactor (#2150): Code-Aktionen und Refactorings des Servers über der Gruppe.</summary>
+function NewRefactorHost(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup;
+  const ALogger: ILogger): TMcpRefactorHost;
+var
+  mServices: TMcpRefactorHostServices;
+begin
+  mServices := Default(TMcpRefactorHostServices);
+  mServices.Logger := ALogger;
+  mServices.Index := AIndex;
+  mServices.EnsureUnit := EnsureReferenceOf(AGroup);
+  mServices.Namespaces := RefactorNamespacesOf(AGroup);
+  mServices.ProjectFiles := RefactorFilesOf(AllFilesOf(AGroup));
+  mServices.ReadText := ReadSourceText;
+  mServices.SettingsFor := RefactorSettingsOf(AGroup);
+  mServices.FormatStyleFor := RefactorStyleOf(AGroup);
+  mServices.DelphiVersionFor := DelphiVersionOf(AGroup);
+  mServices.NewNamesFor := NewNamesOf(AGroup);
+  mServices.ProjectFor := RefactorProjectOf(AGroup);
+  Result := TMcpRefactorHost.Create(mServices);
 end;
 
 function HotspotReaderOf: TMetricsReadText;
@@ -338,10 +475,12 @@ begin
   mPathOptions.IncludeLibrary := True;
   Result.PathGraphs := TUsesGraphService.Create(Result.Index, mPathOptions);
   Result.PathLocator := TUsesLocator.Create(UsesReaderOf(), DefinesOf(Result.Group));
+  Result.Refactor := NewRefactorHost(Result.Index, Result.Group, ALogger);
 end;
 
 procedure TMcpServices.Free;
 begin
+  Refactor.Free;
   Guard.Free;
   Edit.Free;
   Code.Free;
@@ -373,6 +512,7 @@ begin
   Result.Root := Root;
   Result.Guard := Guard;
   Result.Edit := Edit;
+  Result.Refactor := Refactor;
   Result.Architecture := ArchitectureOf(Group.Main, Architecture, AllFiles(), Root);
   Result.FindPath := FindPathOf(Index, PathGraphs, PathLocator, Group.Main, EnsureUnitOf(Group), Root);
   Result.Index := Index;
