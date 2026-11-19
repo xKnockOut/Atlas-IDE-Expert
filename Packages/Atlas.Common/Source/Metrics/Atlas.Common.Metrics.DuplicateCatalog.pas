@@ -66,7 +66,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.Diagnostics;
+  System.Diagnostics,
+  Atlas.Text.Locked;
 
 type
   TDuplicateBodyIndex = class(TInterfacedObject, IDuplicateBodyIndex)
@@ -130,7 +131,7 @@ end;
 constructor TDuplicateBodyCatalog.Create;
 begin
   inherited Create;
-  FLock := TObject.Create;
+  FLock := TAtlasSharedLock.New;
   FFiles := TDictionary<string, TEntry>.Create;
 end;
 

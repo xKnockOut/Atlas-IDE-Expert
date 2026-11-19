@@ -94,6 +94,7 @@ uses
   System.Diagnostics,
   System.Generics.Defaults,
   Atlas.Text.Lines,
+  Atlas.Text.Locked,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Collector,
@@ -221,11 +222,8 @@ end;
 constructor TSymbolHistoryService.Create;
 begin
   inherited Create;
-  FLock := TObject.Create;
+  FLock := TAtlasSharedLock.New;
   FCache := TDictionary<string, TSymbolHistoryResult>.Create;
-  // Monitor-Datensatz gleich anlegen, nicht beim ersten Aufruf (Leckmonitor der Tests).
-  System.TMonitor.Enter(FLock);
-  System.TMonitor.Exit(FLock);
 end;
 
 destructor TSymbolHistoryService.Destroy;
