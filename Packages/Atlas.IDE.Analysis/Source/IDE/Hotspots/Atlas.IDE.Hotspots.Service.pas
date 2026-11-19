@@ -59,14 +59,14 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Hotspots.Model,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Hotspots.Frame,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Hotspots.Window;
+  Atlas.IDE.Hotspots.Window,
+  Atlas.IDE.Foundation.Files;
 
 const
   /// <summary>Die Antwort kommt sofort (der Server rechnet im Hintergrund); länger nur bei einem Server, der
@@ -106,7 +106,6 @@ type
     function AnswerHandler(ARequest: Integer): TProc<string>;
     /// <summary>Antwort auf die Anfrage ARequest im Hauptthread zeigen.</summary>
     procedure ShowAnswer(ARequest: Integer; const AAnswer: THotspotsAnswer);
-    function ProjectUri(out AUri: string): Boolean;
     procedure Impact(const AFileName: string; ALine: Integer; const AMethod: string);
   public
     constructor Create(const ARun: TAtlasHotspotsRun);
@@ -240,7 +239,7 @@ begin
   begin
     Exit;
   end;
-  if not ProjectUri(mUri) then
+  if not TAtlasIdeFiles.ActiveProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), False);
     Exit;
@@ -315,19 +314,6 @@ begin
   end;
 end;
 
-function THotspotsState.ProjectUri(out AUri: string): Boolean;
-var
-  mProject: IOTAProject;
-begin
-  AUri := '';
-  mProject := GetActiveProject;
-  Result := (mProject <> nil) and (mProject.FileName <> '');
-  if Result then
-  begin
-    AUri := TLspSession.PathToUri(mProject.FileName);
-  end;
-end;
-
 procedure THotspotsState.Impact(const AFileName: string; ALine: Integer; const AMethod: string);
 var
   mEditors: IOTAEditorServices;
@@ -390,7 +376,7 @@ begin
   begin
     Exit;
   end;
-  if not ProjectUri(mUri) then
+  if not TAtlasIdeFiles.ActiveProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), True);
     Exit;

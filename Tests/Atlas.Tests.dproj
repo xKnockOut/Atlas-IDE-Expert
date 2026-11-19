@@ -64,6 +64,7 @@
         <DCCReference Include="Text\Atlas.Text.Uris.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Diff.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Fuzzy.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Numbers.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Json.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Jsonc.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Entities.Tests.pas"/>
@@ -906,6 +907,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.Theme.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.Dialog.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.FillFrame.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.Menus.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.ListView.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.Scaling.pas"/>
@@ -1263,6 +1266,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.ProcessLeftovers.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.ProcessLeftovers.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.DataFile.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Foundation\Atlas.Core.Foundation.Calls.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Foundation.Calls.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Text.Agreement.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>

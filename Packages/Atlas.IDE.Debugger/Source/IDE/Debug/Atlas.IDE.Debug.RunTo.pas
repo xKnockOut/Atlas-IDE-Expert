@@ -88,7 +88,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.UI.Debug.Stepping.Strings;
+  Atlas.UI.Debug.Stepping.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeRunTo.TListener }
 
@@ -182,7 +183,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

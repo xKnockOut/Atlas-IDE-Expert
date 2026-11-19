@@ -86,7 +86,9 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.UI.Debug.Logpoints.Strings;
+  Atlas.UI.Debug.Logpoints.Strings,
+  Atlas.Core.Foundation.Calls,
+  Atlas.IDE.Foundation.Debugger;
 
 /// <summary>Ort für Meldung und Titel: "Unit1.pas:12".</summary>
 function PlaceOf(const AFileName: string; ALine: Integer): string;
@@ -160,7 +162,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -227,7 +229,7 @@ var
   mServices: IOTADebuggerServices;
 begin
   FInputs.Remove(KeyOf(AFileName, ALine));
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices <> nil) and (ABreakpoint <> nil) then
   begin
     mServices.RemoveBreakpoint(ABreakpoint);
@@ -241,7 +243,7 @@ var
   mBreakpoint: IOTABreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -258,10 +260,7 @@ end;
 
 class procedure TAtlasIdeLogpoints.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class procedure TAtlasIdeLogpoints.Changed;
@@ -382,7 +381,7 @@ var
   mBreakpoint: IOTABreakpoint;
   mServices: IOTADebuggerServices;
 begin
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   mBreakpoints := Own;
   if mServices <> nil then
   begin

@@ -84,7 +84,8 @@ uses
   Atlas.IDE.Editor.MetricsSource,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.EditorStyle;
 
 { TAtlasAnalysisMetricsLens.TEvents }
 
@@ -104,16 +105,6 @@ function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.Enabled and ASettings.Metrics and ASettings.CodeLensMetrics and
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
-end;
-
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
 end;
 
 { TAtlasAnalysisMetricsLens }
@@ -149,7 +140,7 @@ begin
   FEventsRef := nil;
   if FWanted then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -185,7 +176,7 @@ var
 begin
   mCell := TAtlasLensPill.CellAfter(AContext, ALine);
   mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, mCell.Left, ARect.Top + 1);
   mTone := TAtlasColors.ForBackground(mBack).Muted;
   if AOver then
   begin
@@ -316,7 +307,7 @@ begin
   begin
     TAtlasEditorMetricsSource.Want(cClient, TAtlasMetricsDemand.None);
   end;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

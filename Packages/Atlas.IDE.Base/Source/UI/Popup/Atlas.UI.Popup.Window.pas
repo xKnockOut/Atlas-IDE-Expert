@@ -135,6 +135,23 @@ type
     procedure PutRun(ADraw: Boolean; var AX: Integer; AY: Integer; const AText: string; AColor: TAtlasColor);
   end;
 
+  /// <summary>Auswahl über dem Editor (Entpacken, Einfügen, Hineinspringen): Dismiss blendet aus, Cancel blendet
+  /// aus und meldet OnCancel; RowRect liefert die beim Anordnen gemerkte Fläche einer Zeile.</summary>
+  TAtlasPickPopupWindow = class(TAtlasLayoutPopupWindow)
+  private
+    FOnCancel: TProc;
+  protected
+    /// <summary>Flächen der Zeilen, beim Anordnen gefüllt; leer ohne Zeilenliste.</summary>
+    FRowRects: TArray<TRect>;
+  public
+    procedure Dismiss;
+    /// <summary>Ausblenden und OnCancel melden.</summary>
+    procedure Cancel;
+    /// <summary>Fläche der Zeile AIndex; leer, wenn es sie nicht gibt.</summary>
+    function RowRect(AIndex: Integer): TRect;
+    property OnCancel: TProc read FOnCancel write FOnCancel;
+  end;
+
 /// <summary>TAtlasColor als TColor.</summary>
 function ToColor(AColor: TAtlasColor): TColor;
 
@@ -511,6 +528,31 @@ procedure TAtlasLayoutPopupWindow.PutRun(ADraw: Boolean; var AX: Integer; AY: In
 begin
   PutText(ADraw, AX, AY, AText, AColor);
   Inc(AX, Canvas.TextWidth(AText));
+end;
+
+{ TAtlasPickPopupWindow }
+
+procedure TAtlasPickPopupWindow.Dismiss;
+begin
+  HidePopup;
+end;
+
+procedure TAtlasPickPopupWindow.Cancel;
+begin
+  Dismiss;
+  if Assigned(FOnCancel) then
+  begin
+    FOnCancel();
+  end;
+end;
+
+function TAtlasPickPopupWindow.RowRect(AIndex: Integer): TRect;
+begin
+  Result := TRect.Empty;
+  if (AIndex >= 0) and (AIndex <= High(FRowRects)) then
+  begin
+    Result := FRowRects[AIndex];
+  end;
 end;
 
 end.

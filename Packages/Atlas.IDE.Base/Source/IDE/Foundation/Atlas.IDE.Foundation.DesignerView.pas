@@ -30,7 +30,8 @@ interface
 uses
   System.Classes,
   Vcl.Controls,
-  ToolsAPI;
+  ToolsAPI,
+  DesignIntf;
 
 type
   TAtlasIdeDesignerView = class
@@ -45,6 +46,8 @@ type
     class function CurrentFormEditor: IOTAFormEditor; static;
     /// <summary>Wurzelkomponente des Formular-Editors (Formular, Frame, Datenmodul); nil ohne.</summary>
     class function RootOf(const AEditor: IOTAFormEditor): TComponent; static;
+    /// <summary>Designer des Formular-Editors (INTAFormEditor.FormDesigner); nil ohne.</summary>
+    class function DesignerOf(const AEditor: IOTAFormEditor): IDesigner; static;
     /// <summary>Zeigt das Editorfenster mit dem Eltern-Steuerelement AEditorParent gerade den Designer?</summary>
     class function Shown(AEditorParent: TWinControl): Boolean; static;
     /// <summary>Zeigt das Editorfenster mit dem Editor-Steuerelement AEditor (TAtlasIdeEditorWindows.EditorIn) gerade
@@ -188,6 +191,17 @@ begin
   if RootOf(Result) is TWinControl then
   begin
     Result := nil;
+  end;
+end;
+
+class function TAtlasIdeDesignerView.DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
+var
+  mNative: INTAFormEditor;
+begin
+  Result := nil;
+  if Supports(AEditor, INTAFormEditor, mNative) then
+  begin
+    Result := mNative.FormDesigner;
   end;
 end;
 

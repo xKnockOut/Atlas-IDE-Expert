@@ -61,7 +61,8 @@ uses
   Atlas.UI.Debug.BreakpointRules,
   Atlas.IDE.Debug.BreakpointsWindow,
   Atlas.UI.Debug.BreakpointsFrame,
-  Atlas.UI.Debug.Breakpoints.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 const
   cRefreshMs = 150;
@@ -227,7 +228,7 @@ var
 begin
   Result := nil;
   mProblems := TAtlasIdeBreakpointCheck.LastProblems;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -304,7 +305,7 @@ var
   mDeleted: TArray<TDeleted>;
   mEntry: TDeleted;
 begin
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

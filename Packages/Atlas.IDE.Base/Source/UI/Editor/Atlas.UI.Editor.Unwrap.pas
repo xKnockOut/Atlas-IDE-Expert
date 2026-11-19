@@ -30,7 +30,7 @@ uses
 type
   TAtlasUnwrapIndexEvent = reference to procedure(AIndex: Integer);
 
-  TAtlasUnwrapWindow = class(TAtlasLayoutPopupWindow)
+  TAtlasUnwrapWindow = class(TAtlasPickPopupWindow)
   public const
     /// <summary>Abstand unter der Schreibmarke, logische Pixel.</summary>
     cGap = 4;
@@ -38,12 +38,10 @@ type
     FEntries: TArray<TAtlasUnwrapEntry>;
     FRow: Integer;
     FCompact: Boolean;
-    FRowRects: TArray<TRect>;
     FAcceptRect: TRect;
     FCancelRect: TRect;
     FOnSelect: TAtlasUnwrapIndexEvent;
     FOnAccept: TAtlasUnwrapIndexEvent;
-    FOnCancel: TProc;
     procedure LayoutRow(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
     procedure LayoutEntry(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
     procedure LayoutFooter(ADraw: Boolean; AY, ATextHeight: Integer; var AWidth: Integer);
@@ -60,17 +58,13 @@ type
     class function EntryNote(const AEntry: TAtlasUnwrapEntry): string; static;
     /// <summary>Zeigt AEntries unter APoint (Bildschirm) und wählt den ersten übernehmbaren Eintrag.</summary>
     procedure ShowFor(const AEntries: TArray<TAtlasUnwrapEntry>; const APoint: TPoint);
-    procedure Dismiss;
     /// <summary>Nächster bzw. voriger übernehmbarer Eintrag; False ohne solche.</summary>
     function MoveRow(ADelta: Integer): Boolean;
     /// <summary>Eintrag AIndex wählen und melden; nicht übernehmbare bleiben ohne Wirkung.</summary>
     procedure Select(AIndex: Integer);
-    /// <summary>Fläche von Eintrag AIndex; leer in der Kurzform oder ohne den Eintrag.</summary>
-    function RowRect(AIndex: Integer): TRect;
     function AcceptRect: TRect;
     /// <summary>Gewählten Eintrag übernehmen (OnAccept); ohne Wahl nichts.</summary>
     procedure Accept;
-    procedure Cancel;
     property Entries: TArray<TAtlasUnwrapEntry> read FEntries;
     property Row: Integer read FRow;
     /// <summary>Nur ein Eintrag: ohne Liste.</summary>
@@ -78,7 +72,6 @@ type
     property Caption: string read Title;
     property OnSelect: TAtlasUnwrapIndexEvent read FOnSelect write FOnSelect;
     property OnAccept: TAtlasUnwrapIndexEvent read FOnAccept write FOnAccept;
-    property OnCancel: TProc read FOnCancel write FOnCancel;
   end;
 
 implementation
@@ -446,11 +439,6 @@ begin
   end;
 end;
 
-procedure TAtlasUnwrapWindow.Dismiss;
-begin
-  HidePopup;
-end;
-
 function TAtlasUnwrapWindow.MoveRow(ADelta: Integer): Boolean;
 var
   mNext: Integer;
@@ -478,15 +466,6 @@ begin
   end;
 end;
 
-function TAtlasUnwrapWindow.RowRect(AIndex: Integer): TRect;
-begin
-  Result := TRect.Empty;
-  if (AIndex >= 0) and (AIndex <= High(FRowRects)) then
-  begin
-    Result := FRowRects[AIndex];
-  end;
-end;
-
 function TAtlasUnwrapWindow.AcceptRect: TRect;
 begin
   Result := FAcceptRect;
@@ -505,15 +484,6 @@ begin
   if Assigned(FOnAccept) then
   begin
     FOnAccept(mChosen);
-  end;
-end;
-
-procedure TAtlasUnwrapWindow.Cancel;
-begin
-  Dismiss;
-  if Assigned(FOnCancel) then
-  begin
-    FOnCancel();
   end;
 end;
 

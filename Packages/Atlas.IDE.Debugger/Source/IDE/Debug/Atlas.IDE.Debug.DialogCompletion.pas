@@ -158,7 +158,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
-  Atlas.Core.Debug.DialogInput;
+  Atlas.Core.Debug.DialogInput,
+  Atlas.Core.Foundation.Calls;
 
 type
   // FocusControl ist in TCustomLabel geschützt.
@@ -884,10 +885,7 @@ end;
 
 procedure TAtlasIdeDebugDialogCompletion.Say(const AText: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
+  TAtlasCalls.Send(FLog, AText);
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.LogDialog(AForm: TCustomForm);

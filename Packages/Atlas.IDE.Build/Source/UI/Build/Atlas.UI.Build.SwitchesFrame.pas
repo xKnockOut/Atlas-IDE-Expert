@@ -119,7 +119,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Build.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Menus;
 
 {$R *.dfm}
 
@@ -128,14 +129,6 @@ begin
   Result := AList.Columns.Add;
   Result.Caption := ACaption;
   Result.Width := MulDiv(AWidth, APPI, 96);
-end;
-
-function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  AMenu.Items.Add(Result);
 end;
 
 function ListColor(AList: TListView; AColor: TColor): TColor;
@@ -171,11 +164,11 @@ begin
 
   FParts.Menu := TPopupMenu.Create(Self);
   FParts.Menu.OnPopup := MenuPopup;
-  FParts.JumpItem := AddMenuItem(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesGoTo),
+  FParts.JumpItem := TAtlasMenus.Add(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesGoTo),
     JumpClick);
-  FParts.OptionsItem := AddMenuItem(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOptions),
+  FParts.OptionsItem := TAtlasMenus.Add(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOptions),
     OptionsClick);
-  FParts.CopyItem := AddMenuItem(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesCopy),
+  FParts.CopyItem := TAtlasMenus.Add(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesCopy),
     CopyClick);
 
   FParts.List := TListView.Create(Self);

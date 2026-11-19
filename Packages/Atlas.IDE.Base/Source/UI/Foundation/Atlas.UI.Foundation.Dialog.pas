@@ -121,6 +121,9 @@ type
     /// <summary>Größte Anfangsgröße eines Dialogs: cMaxScreenShare Prozent der Arbeitsfläche aus MainFormWorkArea,
     /// Gerätepixel.</summary>
     class function MaxInitialSize: TSize; static;
+    /// <summary>Ja/Nein-Frage AQuestion über AHook (Tests, Einbettung), ohne ihn als Meldung; True bei Ja.
+    /// </summary>
+    class function Confirmed(const AHook: TFunc<string, Boolean>; const AQuestion: string): Boolean; static;
     /// <summary>Leeren Dialog mit Titel ACaption und Innenbreite AWidth96 (logische Pixel) anlegen. Mit 0 setzt
     /// der Dialog die Breite selbst; das Fenster entsteht dann noch nicht im Konstruktor.</summary>
     constructor CreateDialog(AOwner: TComponent; const ACaption: string; AWidth96: Integer);
@@ -232,6 +235,8 @@ uses
   Winapi.Windows,
   Winapi.Dwmapi,
   System.Math,
+  System.UITypes,
+  Vcl.Dialogs,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Foundation.Theme;
@@ -376,6 +381,18 @@ var
 begin
   mArea := MainFormWorkArea;
   Result := TSize.Create(mArea.Width * cMaxScreenShare div 100, mArea.Height * cMaxScreenShare div 100);
+end;
+
+class function TAtlasDialog.Confirmed(const AHook: TFunc<string, Boolean>; const AQuestion: string): Boolean;
+begin
+  if Assigned(AHook) then
+  begin
+    Result := AHook(AQuestion);
+  end
+  else
+  begin
+    Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+  end;
 end;
 
 procedure TAtlasDialog.VisibleChanging;

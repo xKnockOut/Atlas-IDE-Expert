@@ -60,7 +60,8 @@ implementation
 
 uses
   Vcl.Dialogs,
-  Atlas.UI.Tests.Strings;
+  Atlas.UI.Tests.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cLineCaption = '-';
@@ -68,14 +69,6 @@ const
 function Answer(const AFunc: TFunc<Boolean>): Boolean;
 begin
   Result := Assigned(AFunc) and AFunc();
-end;
-
-procedure Fire(const AProc: TProc);
-begin
-  if Assigned(AProc) then
-  begin
-    AProc();
-  end;
 end;
 
 { TAtlasTestsSeriesMenu }
@@ -92,19 +85,19 @@ procedure TAtlasTestsSeriesMenu.ItemClick(Sender: TObject);
 begin
   if Sender = FRepeat then
   begin
-    Fire(FHandlers.OnRepeat);
+    TAtlasCalls.Call(FHandlers.OnRepeat);
   end
   else if Sender = FShuffle then
   begin
-    Fire(FHandlers.OnShuffle);
+    TAtlasCalls.Call(FHandlers.OnShuffle);
   end
   else if Sender = FAgain then
   begin
-    Fire(FHandlers.OnShuffleAgain);
+    TAtlasCalls.Call(FHandlers.OnShuffleAgain);
   end
   else if Sender = FCancel then
   begin
-    Fire(FHandlers.OnCancel);
+    TAtlasCalls.Call(FHandlers.OnCancel);
   end;
 end;
 

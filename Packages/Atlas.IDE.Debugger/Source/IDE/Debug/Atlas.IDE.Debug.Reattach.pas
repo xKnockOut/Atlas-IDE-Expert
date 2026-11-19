@@ -123,7 +123,8 @@ uses
   Atlas.IDE.Debug.RunMenu,
   Atlas.UI.Debug.ProcessChoice,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.UI.Debug.Settings.Strings;
+  Atlas.UI.Debug.Settings.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cHistoryWhat = 'debug reattach';
@@ -206,10 +207,7 @@ end;
 
 class procedure TAtlasIdeDebugReattach.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeDebugReattach.History: TAtlasExpressionHistory;

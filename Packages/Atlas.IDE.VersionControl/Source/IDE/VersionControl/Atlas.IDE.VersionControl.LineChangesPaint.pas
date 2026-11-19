@@ -158,13 +158,8 @@ begin
 end;
 
 class procedure TAtlasLineChangesPaint.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 class procedure TAtlasLineChangesPaint.GoToLine(const AFileName: string; ALine, ALineCount: Integer);

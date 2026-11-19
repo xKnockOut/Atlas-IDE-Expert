@@ -413,10 +413,7 @@ end;
 
 class procedure TAtlasIdeExpressionType.EditorModified;
 begin
-  if FInstance <> nil then
-  begin
-    FInstance.Close;
-  end;
+  Dismiss;
 end;
 
 /// <summary>Hinterlegt ASpan in der Zeile AText von AContext.</summary>

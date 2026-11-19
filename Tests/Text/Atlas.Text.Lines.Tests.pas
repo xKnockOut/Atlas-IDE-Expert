@@ -13,6 +13,8 @@ type
     [Test]
     procedure LineBreakOfPrefersCrlf;
     [Test]
+    procedure SplitLikeStringsDropsTrailingEmpty;
+    [Test]
     procedure KindOfMixed;
     [Test]
     procedure DominantOfPrefersGivenOnTie;
@@ -53,8 +55,6 @@ type
     [Test]
     procedure ShortLine;
     [Test]
-    procedure SplitFileLinesDropsFinalBreak;
-    [Test]
     procedure PositionCompareLineFirst;
   end;
 
@@ -84,6 +84,19 @@ uses
   Atlas.Tests.RecordText;
 
 { TTextLinesTests }
+
+procedure TTextLinesTests.SplitLikeStringsDropsTrailingEmpty;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextLines.SplitLikeStrings('eins'#13#10'zwei'#13#10);
+  Assert.AreEqual(2, Integer(Length(mLines)), 'Umbruch am Ende ohne leere Zeile');
+  Assert.AreEqual('zwei', mLines[1]);
+  Assert.AreEqual(3, Integer(Length(TTextLines.SplitLikeStrings('a'#10'b'#13'c'))));
+  Assert.AreEqual(2, Integer(Length(TTextLines.SplitLikeStrings('a'#10#10))), 'nur der letzte Umbruch zählt nicht');
+  Assert.AreEqual(0, Integer(Length(TTextLines.SplitLikeStrings(''))));
+  mLines := nil;
+end;
 
 procedure TTextLinesTests.LineBreakOfPrefersCrlf;
 begin
@@ -379,16 +392,6 @@ begin
   mLines := TTextLines.ReplaceRange(TArray<string>.Create('a', 'b'), 0, 1, nil);
   Assert.AreEqual('b', string.Join('|', mLines));
   mLines := nil;
-end;
-
-procedure TTextLinesTests.SplitFileLinesDropsFinalBreak;
-begin
-  Assert.AreEqual(2, Integer(Length(TTextLines.SplitFileLines('a'#13#10'b'#13#10))));
-  Assert.AreEqual('b', TTextLines.SplitFileLines('a'#10'b'#10)[1]);
-  Assert.AreEqual(2, Integer(Length(TTextLines.SplitFileLines('a'#13#10'b'))));
-  // Nur der letzte Umbruch fällt weg, eine leere Zeile davor bleibt.
-  Assert.AreEqual(2, Integer(Length(TTextLines.SplitFileLines('a'#10#10))));
-  Assert.AreEqual(0, Integer(Length(TTextLines.SplitFileLines(''))));
 end;
 
 procedure TTextLinesTests.PositionCompareLineFirst;
