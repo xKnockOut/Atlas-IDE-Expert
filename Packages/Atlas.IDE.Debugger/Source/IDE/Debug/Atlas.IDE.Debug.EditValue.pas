@@ -30,7 +30,9 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.InlineValuePainter,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeDebugEditValue = class
@@ -41,7 +43,7 @@ type
     cUndoAction = TAtlasEditValueFlow.cUndoAction;
     cRequestTimeoutMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugResumed; override;
       procedure DebugEnded; override;
@@ -59,7 +61,7 @@ type
     FRun: TAtlasHostCommandRunner;
     FMessage: TAtlasMessageSink;
     FChanged: TProc;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;

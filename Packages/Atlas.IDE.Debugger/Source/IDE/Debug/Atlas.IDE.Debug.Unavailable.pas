@@ -40,6 +40,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Unavailable,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Hover.DebugValue;
 
@@ -51,7 +53,7 @@ type
   public const
     cRequestTimeoutMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugEnded; override;
     end;
@@ -62,7 +64,7 @@ type
   private
     FSession: TAtlasUnavailableSessionFunc;
     FMessage: TProc<string>;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     // Letzte Erklärung: die Korrekturen brauchen ihre Tatsachen (Einfügungen, Schalter).

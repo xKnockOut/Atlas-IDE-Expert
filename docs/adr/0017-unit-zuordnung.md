@@ -1296,6 +1296,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.LaunchProbe` | `IDE/Debug/Atlas.IDE.Debug.LaunchProbe.pas` | Port und Hauptfenster prüfen, Programme ohne Debugger starten und beenden (Windows), #867 |
 | `Atlas.UI.Debug.LaunchGroupsDialog` | `UI/Debug/Atlas.UI.Debug.LaunchGroupsDialog.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EditValueDialog` | `UI/Debug/Atlas.UI.Debug.EditValueDialog.pas` | Ordner `UI/Debug` |
+| `Atlas.IDE.Debug.LaunchActive` | `IDE/Debug/Atlas.IDE.Debug.LaunchActive.pas` | Aktiver Startverbund je Projektgruppe (persönliche Datei) |
 | `Atlas.IDE.Debug.LaunchGroups` | `IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas` | Mehrere Programme gemeinsam debuggen, #867 |
 
 ## Atlas.IDE.Tracker
@@ -1994,6 +1995,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tasks.Reports` | `Core/Tasks/Atlas.Core.Tasks.Reports.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Runs` | `Core/Tasks/Atlas.Core.Tasks.Runs.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.RunFlow` | `Core/Tasks/Atlas.Core.Tasks.RunFlow.pas` | Ordner `Core/Tasks`; Ablauf der Läufe und Reihen hinter `IAtlasTaskLauncher` |
+| `Atlas.Core.StartProfiles.Flow` | `Core/StartProfiles/Atlas.Core.StartProfiles.Flow.pas` | Ablauf der Startprofile ohne IDE (setzen, zurücksetzen, speichern, Statusfeld), #575 |
 | `Atlas.Core.StartProfiles.Picker` | `Core/StartProfiles/Atlas.Core.StartProfiles.Picker.pas` | Ordner `Core/StartProfiles` |
 | `Atlas.IDE.Build.CompilerSwitches` | `IDE/Build/Atlas.IDE.Build.CompilerSwitches.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.BuildTools.Composition` | `IDE/BuildTools/Atlas.IDE.BuildTools.Composition.pas` | Anmeldung des Moduls `atlas.build`, #1455 |

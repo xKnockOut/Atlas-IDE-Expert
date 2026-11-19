@@ -29,7 +29,9 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.DataBreakpoint,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeDataBreakpoint = class
@@ -47,7 +49,7 @@ type
       Bytes: TBytes;
     end;
 
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugResumed; override;
@@ -55,7 +57,7 @@ type
     end;
   private class var
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FWatches: TList<TWatch>;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
     /// <summary>Ausdruck unter der Schreibmarke des obersten Editors; '' ohne.</summary>
