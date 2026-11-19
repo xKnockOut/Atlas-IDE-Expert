@@ -57,6 +57,10 @@ interface
 uses
   System.SysUtils;
 
+const
+  /// <summary>Stellen einer kurzen Git-Kennung (wie git log --oneline).</summary>
+  cAtlasVcsShortHashLength = 7;
+
 type
 {$SCOPEDENUMS ON}
   /// <summary>Art der Arbeitskopie.</summary>
@@ -905,7 +909,7 @@ begin
   end
   else
   begin
-    Result := Copy(Revision, 1, 7);
+    Result := Copy(Revision, 1, cAtlasVcsShortHashLength);
   end;
 end;
 
@@ -927,14 +931,14 @@ end;
 
 function TAtlasVcsCommit.ShortHash: string;
 begin
-  Result := Copy(Hash, 1, 7);
+  Result := Copy(Hash, 1, cAtlasVcsShortHashLength);
 end;
 
 { TAtlasVcsIncomingCommit }
 
 function TAtlasVcsIncomingCommit.ShortHash: string;
 begin
-  Result := Copy(Hash, 1, 7);
+  Result := Copy(Hash, 1, cAtlasVcsShortHashLength);
 end;
 
 { TAtlasVcsLogEntry }
@@ -951,7 +955,7 @@ begin
   end
   else
   begin
-    Result := Copy(Revision, 1, 7);
+    Result := Copy(Revision, 1, cAtlasVcsShortHashLength);
   end;
 end;
 
@@ -1004,10 +1008,13 @@ begin
 end;
 
 class function TAtlasVcsSvnBranchOptions.Legacy: TAtlasVcsSvnBranchOptions;
+const
+  /// <summary>Commit-Nachricht vor #1290; steht so in bestehenden Repositorys.</summary>
+  cLegacyBranchMessage = 'Branch {name}';
 begin
   Result := Default;
   Result.Location := '^/branches/{name}';
-  Result.Message := 'Branch {name}';
+  Result.Message := cLegacyBranchMessage;
   Result.ExternalsOnBranch := TAtlasVcsExternalAction.Keep;
   Result.ExternalsSuggest := TAtlasVcsExternalSuggest.Never;
 end;

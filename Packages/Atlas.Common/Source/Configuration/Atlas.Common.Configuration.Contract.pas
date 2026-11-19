@@ -121,6 +121,8 @@ type
     /// <summary>Konstruktoren und Destruktoren beim Ordnen zuerst, auch bei declaration und alphabetical
     /// (#1836).</summary>
     LifecycleFirst: Boolean;
+    /// <summary>Leerzeilen um angelegte und geordnete Rümpfe angleichen (#1839).</summary>
+    BlankLines: Boolean;
     class function Default: TClassCompletionSettings; static;
   end;
 
@@ -1212,6 +1214,7 @@ begin
   Result.TypeComment := 'brace';
   Result.BodyStubs := True;
   Result.LifecycleFirst := True;
+  Result.BlankLines := True;
 end;
 
 { TStringLiteralSettings }

@@ -272,6 +272,23 @@ begin
   end;
 end;
 
+function CallerPart(const ARule: TAtlasBreakpointRule): string;
+begin
+  Result := '';
+  if not ARule.HasCaller then
+  begin
+    Exit;
+  end;
+  if ARule.CallerDirect then
+  begin
+    Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleCallerDirect, [ARule.Caller]);
+  end
+  else
+  begin
+    Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleCaller, [ARule.Caller]);
+  end;
+end;
+
 class function TAtlasBreakpointTexts.ColumnCaption(AColumn: TAtlasBreakpointColumn): string;
 begin
   Result := TAtlasBreakpointsStrings.Text(cColumnTexts[AColumn]);
@@ -283,7 +300,8 @@ var
   mPart: string;
 begin
   mParts := nil;
-  for mPart in TArray<string>.Create(HitPart(ARule), ThreadPart(ARule), DependPart(ARule, ATriggerText)) do
+  for mPart in TArray<string>.Create(HitPart(ARule), ThreadPart(ARule), CallerPart(ARule),
+    DependPart(ARule, ATriggerText)) do
   begin
     if mPart <> '' then
     begin

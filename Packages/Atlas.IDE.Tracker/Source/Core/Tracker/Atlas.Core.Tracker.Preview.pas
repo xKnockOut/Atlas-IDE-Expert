@@ -17,7 +17,7 @@
 //   einen Rechner aus dem Issue-Text). Anderes bleibt ein Link.
 // - Fehler: Art und Befehl zum Beheben (Token hinterlegen, Einstellungen,
 //   Im Browser öffnen, erneut versuchen); ohne Transport: nicht eingetragen
-//   bzw. ohne Token (#1967, vorher in der IDE).
+//   bzw. ohne Token (#1967, ohne IDE testbar).
 // - Laden (#1967): ein späterer Wunsch gilt vor dem Ergebnis, ein veraltetes
 //   Ergebnis wird nicht gezeigt. Verknüpftes Issue in der Vorschau, sonst seine
 //   Seite, sonst die Seite aus der eingetragenen Adresse.
