@@ -8,7 +8,8 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  System.JSON;
+  System.JSON,
+  Atlas.Common.Diagnostics.Contract;
 
 type
   /// <summary>Zusätzliche Fehlercodes des Language Server Protocol.</summary>
@@ -88,6 +89,33 @@ type
 
   /// <summary>Liefert die Capabilities für die Antwort auf initialize; der Aufrufer übernimmt das Objekt.</summary>
   TLspCapabilitiesFactory = reference to function: TJSONObject;
+
+  /// <summary>Ein Typ, den die IDE kennt, mit seiner Unit.</summary>
+  TIdeTypeEntry = record
+    Name: string;
+    UnitName: string;
+    /// <summary>Direkter Vorfahr einer Klasse mit Unit (Vcl.Controls.TCustomControl); '' ohne Angabe.</summary>
+    Parent: string;
+  end;
+
+  /// <summary>Projekt und Dateien für die Suche; die Shell liest geöffnete Dokumente vor der Platte.</summary>
+  ILeakCandidateFiles = interface
+    ['{4C1E7B52-8D3A-4F6E-9B21-6A0D5E3C7F14}']
+    /// <summary>Hauptquelltext und Quelldateien des Projekts hinter AUri; False mit AReason ohne Projekt.</summary>
+    function ProjectOf(const AUri: string; out AMainSource: string; out AFiles: TArray<string>;
+      out AReason: string): Boolean;
+    function ReadText(const AFileName: string; out AText: string): Boolean;
+  end;
+
+  /// <summary>Dateien zum Bericht; die Komposition kennt Projekt und Arbeitsbereich.</summary>
+  IRuntimeReportFiles = interface
+    ['{8B2F6C41-3E7D-4A95-B1C8-5D0E9F27A6C3}']
+    /// <summary>EXE des Projekts hinter AUri (ihre Map gilt, wenn der Aufruf weder Map noch EXE nennt); '' ohne
+    /// Projekt oder Ausgabeordner.</summary>
+    function ExecutableOf(const AUri: string): string;
+    /// <summary>Datei im Projekt hinter AUri zu Unit bzw. Dateiname; '' außerhalb.</summary>
+    function UnitFileOf(const AUri: string): TReportUnitFileFunc;
+  end;
 
 implementation
 

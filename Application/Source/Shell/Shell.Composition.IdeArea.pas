@@ -77,7 +77,7 @@ uses
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.IdeProject,

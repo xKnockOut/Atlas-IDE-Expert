@@ -108,8 +108,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.CacheHousekeeping,
-  Atlas.Common.Index.Adapters.CacheDirectory,
-  Atlas.Common.Index.Adapters.DiskFileSystem;
+  Atlas.Common.Index.CacheDirectory,
+  Atlas.Common.Index.Providers.DiskFileSystem;
 
 function Info(const AName: string; ASize: Int64; AAgeDays: Integer; ALocked: Boolean): TCacheFileInfo; overload;
 begin

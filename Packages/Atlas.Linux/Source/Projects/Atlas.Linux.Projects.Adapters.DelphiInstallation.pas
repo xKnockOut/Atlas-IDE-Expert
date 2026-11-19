@@ -1,7 +1,7 @@
-﻿unit Atlas.Linux.Projects.DelphiInstallation;
+﻿unit Atlas.Linux.Projects.Adapters.DelphiInstallation;
 
 // Platform-Feature "Projects" für Linux (#1109): Gegenstück zu
-// Atlas.Windows.Projects.DelphiInstallation. Unter Linux gibt es kein RAD
+// Atlas.Windows.Projects.Adapters.DelphiInstallation. Unter Linux gibt es kein RAD
 // Studio und keine Registry; Versions ist leer, Latest nil, und Create meldet
 // wie unter Windows für eine fehlende Version EProjectError. Der Server
 // indiziert dann nur das Projekt selbst (ohne RTL und VCL der Installation).

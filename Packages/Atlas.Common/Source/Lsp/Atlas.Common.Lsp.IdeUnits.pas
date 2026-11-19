@@ -8,7 +8,7 @@
 // - TIdeUnits erzeugt daraus je Unit einen Pascal-Text unter dem Pfad "atlas-ide:<Unit>.pas", liest ihn wie
 //   jede Unit ein und hält ihn in einem eigenen Index.
 // Den gemeinsamen Index berührt das nicht: Prüfregeln, Referenzen und Umbenennen sehen die Ersatz-Units nie.
-// Hover, Vervollständigung und Parameterhilfe bekommen sie über TIdeIndex (Atlas.Common.Lsp.IdeIndex).
+// Hover, Vervollständigung und Parameterhilfe bekommen sie über TIdeIndex (Atlas.Common.Lsp.Adapters.IdeIndex).
 
 interface
 

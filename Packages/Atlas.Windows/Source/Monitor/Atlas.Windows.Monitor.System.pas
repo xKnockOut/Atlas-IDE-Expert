@@ -1,6 +1,6 @@
-﻿unit Atlas.Windows.Monitor.Adapters.System;
+﻿unit Atlas.Windows.Monitor.System;
 
-// Platform-Feature "Monitor" (#1901), Adapter: was AtlasMonitor vom System braucht. Läuft ein Prozess noch, ist er
+// Platform-Feature "Monitor" (#1901): was AtlasMonitor vom System braucht. Läuft ein Prozess noch, ist er
 // ein AtlasServer (nur solche beendet der Monitor, eine wiederverwendete Prozessnummer bleibt unberührt), Prozess
 // beenden, Sprache der Oberfläche von Windows, Autostart über HKCU\...\Run und Ordner bzw. Datei mit dem
 // zugeordneten Programm öffnen, ein Programm mit Befehlszeile starten (Editor für einen Befund, #1900).

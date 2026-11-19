@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.ServerActivity;
 
 // Was der Server gerade tut, für seine Statusdatei (#1901): Art, Befehl und Ziel des Prozesses, laufende Anfragen
-// mit Dauer (über TServerActivityObserver am Verteiler), Fortschritt eines Kommandozeilenlaufs, Zähler für
+// mit Dauer (über TServerActivityObserver am Verteiler, Atlas.Common.Lsp.Adapters.ServerActivityObserver), Fortschritt eines Kommandozeilenlaufs, Zähler für
 // Zeitüberschreitungen und Fehler, der Prozess, den der Profiler gerade misst. Der LSP-Server meldet zusätzlich eine
 // Funktion für seinen ausführlichen Status (SetDetails). Ein Prozess hat genau eine Aktivität (Shared);
 // TServerStatusHeartbeat liest sie alle paar Sekunden.
@@ -14,7 +14,6 @@ uses
   System.JSON,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.StatusFile;
 
 type
@@ -87,19 +86,6 @@ type
     property Enabled: Boolean read GetEnabled write SetEnabled;
     /// <summary>Die Aktivität dieses Prozesses.</summary>
     class function Shared: TServerActivity; static;
-  end;
-
-  /// <summary>Beobachter am Verteiler: meldet Beginn und Ende jeder Anfrage an die Aktivität und reicht beides an
-  /// ANext weiter (nil = keiner).</summary>
-  TServerActivityObserver = class(TInterfacedObject, IJsonRpcRequestObserver)
-  private
-    FActivity: TServerActivity;
-    FNext: IJsonRpcRequestObserver;
-  public
-    constructor Create(AActivity: TServerActivity; const ANext: IJsonRpcRequestObserver);
-    procedure Started(const AMethod: string);
-    procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
-      AQueueMs, AElapsedMs: Int64);
   end;
 
 implementation
@@ -336,34 +322,6 @@ end;
 class function TServerActivity.Shared: TServerActivity;
 begin
   Result := GShared;
-end;
-
-{ TServerActivityObserver }
-
-constructor TServerActivityObserver.Create(AActivity: TServerActivity; const ANext: IJsonRpcRequestObserver);
-begin
-  inherited Create;
-  FActivity := AActivity;
-  FNext := ANext;
-end;
-
-procedure TServerActivityObserver.Started(const AMethod: string);
-begin
-  FActivity.RequestStarted(AMethod, TThread.GetTickCount64);
-  if FNext <> nil then
-  begin
-    FNext.Started(AMethod);
-  end;
-end;
-
-procedure TServerActivityObserver.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
-  const AError: Exception; AQueueMs, AElapsedMs: Int64);
-begin
-  FActivity.RequestFinished(AError <> nil);
-  if FNext <> nil then
-  begin
-    FNext.Finished(AMethod, AParams, AResult, AError, AQueueMs, AElapsedMs);
-  end;
 end;
 
 initialization

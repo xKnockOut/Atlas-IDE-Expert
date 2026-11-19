@@ -31,7 +31,7 @@ uses
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.DeadCodeTools,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Mcp.StatusTools,
   Atlas.Common.Mcp.StatisticsHistory,

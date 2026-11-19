@@ -130,7 +130,7 @@ uses
   System.Diagnostics,
   System.JSON,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Query.Service,
