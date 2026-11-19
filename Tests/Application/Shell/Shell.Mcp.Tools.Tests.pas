@@ -58,6 +58,7 @@ uses
   Shell.Mcp.Tools,
   Shell.Mcp.NavigationTools,
   Shell.Mcp.BuildTestTools,
+  Shell.Mcp.DebugTools,
   Shell.Mcp.ReportTools,
   Shell.Mcp.CheckTools,
   Shell.Mcp.ArchitectureTools,
@@ -181,6 +182,8 @@ begin
   Assert.IsTrue(Pos(' qualified_name ', Joined(NamesOf(RegisterNavigationTools))) > 0);
   Assert.AreEqual(' get_last_build build_project run_tests get_profile get_mutants suggest_test_cases ',
     Joined(NamesOf(RegisterBuildTestTools)));
+  Assert.AreEqual(' debug_start debug_stop set_breakpoint remove_breakpoint debug_continue debug_step debug_state ' +
+    'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
   Assert.AreEqual(7, Integer(Length(NamesOf(RegisterCheckTools))));
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));
   Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code extract_method ',
@@ -204,7 +207,7 @@ var
   mIndex, mOther: Integer;
 begin
   mNames := NamesOf(RegisterContextTools);
-  Assert.AreEqual(39, Integer(Length(mNames)));
+  Assert.AreEqual(47, Integer(Length(mNames)));
   for mIndex := 0 to High(mNames) do
   begin
     for mOther := mIndex + 1 to High(mNames) do

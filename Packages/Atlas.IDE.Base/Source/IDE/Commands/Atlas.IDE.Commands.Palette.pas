@@ -457,7 +457,7 @@ begin
   except
     // Der Befehl läuft trotzdem; der Grund steht einmal im Protokoll.
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Verlauf der Befehlspalette', E);
+      TAtlasDataFile.ReportNotWritten(TAtlasCommandHistory.cDefaultKind, E);
   end;
   // Vor dem Ausführen: Die Aktion der IDE zählt dann nicht noch einmal über OnActionExecute.
   TAtlasIdeShortcutTips.Invoked(ACommand.Id);
