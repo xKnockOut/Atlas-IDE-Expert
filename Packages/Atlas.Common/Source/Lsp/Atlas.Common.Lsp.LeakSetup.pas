@@ -24,7 +24,8 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Leaks.Setup;
+  Atlas.Common.Leaks.Setup,
+  Atlas.Common.Leaks.Contract;
 
 type
   /// <summary>Eingabe für das Projekt hinter AUri; False, wenn es kein geladenes Projekt dazu gibt (AReason).

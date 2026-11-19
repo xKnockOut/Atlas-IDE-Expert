@@ -23,18 +23,10 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Text.LeakReport,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Leaks.Candidates;
 
 type
-  /// <summary>Projekt und Dateien für die Suche; die Shell liest geöffnete Dokumente vor der Platte.</summary>
-  ILeakCandidateFiles = interface
-    ['{4C1E7B52-8D3A-4F6E-9B21-6A0D5E3C7F14}']
-    /// <summary>Hauptquelltext und Quelldateien des Projekts hinter AUri; False mit AReason ohne Projekt.</summary>
-    function ProjectOf(const AUri: string; out AMainSource: string; out AFiles: TArray<string>;
-      out AReason: string): Boolean;
-    function ReadText(const AFileName: string; out AText: string): Boolean;
-  end;
-
   TLspLeakCandidates = class
   public const
     cCommand = 'atlas.server.leakCandidates';

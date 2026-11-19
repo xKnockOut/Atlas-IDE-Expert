@@ -10,6 +10,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Logging.Contract,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Connection,
   Atlas.Common.Documents.Contract,
@@ -82,6 +83,7 @@ implementation
 
 uses
   Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Common.Lsp.Adapters.ServerActivityObserver,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Product.Version,
   Atlas.Text.LogMarks;

@@ -174,7 +174,7 @@ implementation
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Lsp.Contract,
   System.Math,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,

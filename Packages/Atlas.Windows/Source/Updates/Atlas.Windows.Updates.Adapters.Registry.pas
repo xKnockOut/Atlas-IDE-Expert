@@ -2,7 +2,7 @@
 
 // Platform-Feature "Updates" (#1519), Adapter: IUpdateRegistry über
 // TRegistry. Schreiben nur unter HKEY_CURRENT_USER; den Installationsordner
-// einer Delphi-Version liest TDelphiInstallation (HKLM in beiden Ansichten).
+// einer Delphi-Version liest TDelphiRegistry (HKLM in beiden Ansichten).
 // Werte kommen in der Reihenfolge der Registry.
 
 interface
@@ -27,7 +27,7 @@ uses
   Winapi.Windows,
   System.Classes,
   System.Win.Registry,
-  Atlas.Windows.Projects.DelphiInstallation;
+  Atlas.Windows.Projects.DelphiRegistry;
 
 function OpenUser(AWrite: Boolean; const AKey: string): TRegistry;
 var
@@ -144,7 +144,7 @@ end;
 
 function TUpdateWindowsRegistry.RootDir(const ABdsVersion: string): string;
 begin
-  Result := TDelphiInstallation.RootDirOf(ABdsVersion);
+  Result := TDelphiRegistry.RootDirOf(ABdsVersion);
 end;
 
 end.

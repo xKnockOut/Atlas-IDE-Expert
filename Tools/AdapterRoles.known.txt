@@ -1,18 +1,6 @@
 # Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von
 # pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.
-adapter-name Atlas.Common.Lsp.IdeIndex TIdeIndex ISymbolIndex
-adapter-name Atlas.Common.Lsp.IdeTypes TIdeTypeCatalog IRuleIdeTypes
-adapter-name Atlas.Common.Lsp.Impact TImpactDeadline IJsonRpcCancellationToken
-adapter-name Atlas.Common.Lsp.Internals.Cancellation TRequestCancellation IPascalCancellation
-adapter-name Atlas.Common.Lsp.ServerActivity TServerActivityObserver IJsonRpcRequestObserver
-adapter-name Atlas.Common.Lsp.WorkspaceCheck TCheckToken IJsonRpcCancellationToken
-adapter-name Atlas.Common.Projects.UnitLookup TUnitLookup IRuleUnitLookup
 adapter-name Atlas.Core.Diagnostics.ModuleHosting TListener IAtlasRegistryListener
-adapter-name Atlas.IDE.Assistants.AiGhost TAiGhostProvider IAtlasGhostProvider
-adapter-name Atlas.IDE.Assistants.AiText TAtlasIdeAiText IAtlasAiText
-adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasCommandSource
-adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasFollowsSaves
-adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasMenuSource
 adapter-name Atlas.IDE.Bookmarks.SavedPlaces TAtlasIdeSavedPlaces IAtlasSavedPlacesSource
 adapter-name Atlas.IDE.Debug.AssistantControl TAtlasIdeDebugAssistantControl IAtlasDebugControl
 adapter-name Atlas.IDE.Debug.KnownErrors TAtlasIdeDebugKnownErrorsView IAtlasKnownErrorsView
@@ -22,10 +10,6 @@ adapter-name Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
 adapter-name Atlas.IDE.Debug.StopSource TAtlasIdeDebugStopSource IAtlasDebugStopSource
 adapter-name Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
 adapter-name Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
-adapter-name Atlas.IDE.Rules.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
-adapter-name Atlas.IDE.Rules.FindingActions TAtlasIdeRuleActions IAtlasRuleActions
-adapter-name Atlas.IDE.Rules.IdeErrors TAtlasIdeRulesIdeErrors IAtlasIdeErrors
-adapter-name Atlas.IDE.Rules.Settings TAtlasIdeRulesSettings IAtlasSettingsSectionProvider
 adapter-name Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
 adapter-name Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 adapter-name Atlas.IDE.Tracker.Access TAtlasTrackerAccess IAtlasTrackerAccess
@@ -44,9 +28,6 @@ adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerIssuesTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerSprintTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerTestsTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerTileViewLink IAtlasWelcomeTileView
-adapter-name Atlas.IDE.VersionControl.Commands TAtlasVcsCommands IAtlasCommandSource
-adapter-name Atlas.IDE.VersionControl.LineChanges TAtlasLineChangesAdapter IAtlasLineChanges
-adapter-name Atlas.IDE.VersionControl.Settings TAtlasIdeVcsSettings IAtlasSettingsSectionProvider
 adapter-name Atlas.IDE.Welcome.Continue TAtlasIdeContinue IAtlasContinueSource
 adapter-name Atlas.IDE.Welcome.ContinueIssues TAtlasIdeContinueIssues IAtlasContinueIssuesSource
 adapter-name Atlas.IDE.Welcome.Discover TAtlasIdeDiscover IAtlasDiscoverSource
@@ -69,14 +50,9 @@ adapter-name Atlas.IDE.Welcome.Tiles TProjects IAtlasWelcomeProjects
 adapter-name Atlas.IDE.Welcome.Trends TAtlasIdeTrends IAtlasTrendsSource
 adapter-name Atlas.IDE.Welcome.Unsaved TAtlasIdeUnsaved IAtlasUnsavedSource
 adapter-name Atlas.IDE.Welcome.WhatsNew TAtlasIdeWhatsNew IAtlasWhatsNewSource
-adapter-name Atlas.UI.Rules.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 adapter-name Atlas.UI.Tracker.SettingsBranches TAtlasTrackerBranchProvider IAtlasSettingsSectionProvider
 adapter-name Atlas.UI.Tracker.SettingsSection TAtlasTrackerSettingsSection IAtlasSettingsSection
 adapter-name Atlas.UI.Welcome.SettingsSection TAtlasWelcomeSettingsSection IAtlasSettingsSection
-adapter-name Atlas.Windows.Projects.DelphiInstallation TDelphiInstallation ILibraryPathProvider
-adapters-own Atlas.Common.Diagnostics.Adapters.LogFolder TDiagnosticLogFolder IDiagnosticWriter
-adapters-own Atlas.Common.Index.Adapters.DiskFileSystem TDiskIndexFileSystem IIndexFileSystem
-adapters-own Atlas.Core.AiProviders.Adapters.Http TAtlasAiHttpClient IAtlasAiHttp
 adapters-own Atlas.Core.Ci.Adapters.Credentials TAtlasCiCredentialStore IAtlasCiCredentialStore
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiCancel
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiConditional
@@ -94,7 +70,6 @@ adapters-own Atlas.Core.Undo.Adapters.DiskTarget TAtlasUndoDiskTarget IAtlasUndo
 adapters-own Atlas.Core.Undo.Adapters.FileStore TAtlasUndoFileStore IAtlasUndoStore
 adapters-own Atlas.Core.Updates.Adapters.HttpSource TAtlasHttpVersionSource IAtlasVersionSource
 adapters-own Atlas.Core.VersionControl.Adapters.ProcessRunner TAtlasVcsProcessRunner IAtlasVcsRunner
-contract Atlas.Common.Lsp.ServerActivity TServerActivityObserver IJsonRpcRequestObserver
 contract Atlas.IDE.Assistants.Composition TAtlasAssistantsModule IAtlasBuildVerdictListener
 contract Atlas.IDE.Bookmarks.Composition TAtlasBookmarksModule IAtlasOverviewBookmarks
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBuildEvaluator
@@ -109,7 +84,8 @@ contract Atlas.IDE.Editor.Adapters.EditEnvironment TAtlasIdeEditEnvironment IAtl
 contract Atlas.IDE.Editor.Adapters.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
 contract Atlas.IDE.Foundation.Adapters.RegistryStore TAtlasRegistrySettingsStore IAtlasSettingsNames
 contract Atlas.IDE.Foundation.Adapters.RegistryStore TAtlasRegistrySettingsStore IAtlasSettingsStore
-contract Atlas.IDE.Rules.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
+contract Atlas.IDE.Rules.Adapters.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
+contract Atlas.IDE.Rules.Adapters.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 contract Atlas.IDE.Search.Composition TAtlasSearchModule IAtlasTakenActions
 contract Atlas.IDE.Setup.Adapters.Environment TAtlasIdeSetupEnvironment IAtlasSetupEnvironment
 contract Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
@@ -143,17 +119,7 @@ contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlas
 contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionSyntaxView
 contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionView
 contract Atlas.UI.Hover.Adapters.TipMeasure TAtlasHoverTipMeasure IAtlasHoverMeasure
-contract Atlas.UI.Rules.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 contract Atlas.UI.Signature.Adapters.HintView TAtlasSignatureHintView IAtlasSignatureView
-contract Shell.Composition.LeakCandidates TShellLeakCandidateFiles ILeakCandidateFiles
-contract Shell.Composition.LeakSetup TShellLeakSetupFiles ILeakSetupFiles
-contract Shell.Composition.RuntimeReport TShellRuntimeReportFiles IRuntimeReportFiles
-contract Shell.Diagnostics TShellDiagnostics IJsonRpcRequestObserver
-empty Atlas.Common.Diagnostics.Adapters.LogFolder
-empty Atlas.Common.Index.Adapters.CacheDirectory
-empty Atlas.Common.Index.Adapters.DiskFileSystem
-empty Atlas.Common.Index.Adapters.Processes
-empty Atlas.Core.AiProviders.Adapters.Http
 empty Atlas.Core.Ci.Adapters.Credentials
 empty Atlas.Core.Ci.Adapters.Http
 empty Atlas.Core.Credentials.Adapters.Windows
@@ -170,9 +136,9 @@ empty Atlas.IDE.Commands.Adapters.PaletteRegistry
 empty Atlas.IDE.Editor.Adapters.EditEnvironment
 empty Atlas.IDE.Editor.Adapters.EditSurface
 empty Atlas.IDE.Foundation.Adapters.RegistryStore
+empty Atlas.IDE.Rules.Adapters.BulkFix
+empty Atlas.IDE.Rules.Adapters.SettingsDialog
 empty Atlas.IDE.Setup.Adapters.Environment
 empty Atlas.UI.Completion.Adapters.PopupView
 empty Atlas.UI.Hover.Adapters.TipMeasure
 empty Atlas.UI.Signature.Adapters.HintView
-empty Atlas.Windows.Monitor.Adapters.Process
-empty Atlas.Windows.Monitor.Adapters.System
