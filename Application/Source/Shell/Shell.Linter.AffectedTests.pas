@@ -203,7 +203,7 @@ begin
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
   // Zeiten nur für --timings beim Prüfen; hier unbenutzt.
   mTimings := Default(TCheckTimings);
-  mGroup := TLinterIndex.Load(AOptions, ATarget.ConfigRoot, mTimings);
+  mGroup := TLinterIndex.Load(AOptions, ATarget.ConfigRoot, mTimings, nil);
   try
     mFound := Analyze(AOptions, ATarget, mSettings, mGroup);
     Result := Finish(AOptions, mFound, AFormat);

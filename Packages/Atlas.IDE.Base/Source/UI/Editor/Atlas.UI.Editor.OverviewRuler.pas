@@ -88,6 +88,16 @@ const
   /// <summary>Mindesthöhe einer Marke und Spiel beim Klick bei 96 DPI.</summary>
   cBaseMinHeight = 3;
   cBaseTolerance = 3;
+  /// <summary>Bildschirmauflösung, auf die sich alle Maße beziehen.</summary>
+  cDefaultPpi = 96;
+  /// <summary>Mindesthöhe des sichtbaren Bereichs und Mindestbreite einer Spur bei 96 DPI; Zahl der Spuren.
+  /// </summary>
+  cMinVisibleHeight = 4;
+  cMinInner = 3;
+  cLanes = 3;
+  /// <summary>Anteil der Rinnenfarbe am Hintergrund und der Textfarbe am sichtbaren Bereich.</summary>
+  cGutterShare = 0.5;
+  cVisibleShare = 0.1;
 
 { TAtlasOverviewRuler }
 
@@ -101,7 +111,7 @@ begin
   FHoverLine := -1;
   FHoverMark := -1;
   FLastVisible := -1;
-  Width := RulerWidth(96);
+  Width := RulerWidth(cDefaultPpi);
   Constraints.MinWidth := Width;
   Constraints.MaxWidth := Width;
 end;
@@ -114,7 +124,7 @@ var
 begin
   Layout;
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Gutter, FColors.Surface, 0.5));
+  Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Gutter, FColors.Surface, cGutterShare));
   Canvas.FillRect(ClientRect);
   if FLineCount <= 0 then
   begin
@@ -124,11 +134,11 @@ begin
   if FLastVisible >= FFirstVisible then
   begin
     mTop := TAtlasOverview.PixelOf(FFirstVisible, FLineCount, ClientHeight);
-    mBottom := Max(mTop + Scale(4), TAtlasOverview.PixelOf(FLastVisible + 1, FLineCount, ClientHeight));
-    Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Text, FColors.Surface, 0.1));
+    mBottom := Max(mTop + Scale(cMinVisibleHeight), TAtlasOverview.PixelOf(FLastVisible + 1, FLineCount, ClientHeight));
+    Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Text, FColors.Surface, cVisibleShare));
     Canvas.FillRect(TRect.Create(0, mTop, ClientWidth, Min(mBottom, ClientHeight)));
   end;
-  mInner := Max(Scale(3), (ClientWidth - Scale(2)) div 3);
+  mInner := Max(Scale(cMinInner), (ClientWidth - Scale(2)) div cLanes);
   for mBar in FBars do
   begin
     mLane := Scale(1);
@@ -226,7 +236,7 @@ end;
 
 function TAtlasOverviewRuler.Scale(AValue: Integer): Integer;
 begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
+  Result := MulDiv(AValue, Max(CurrentPPI, cDefaultPpi), cDefaultPpi);
 end;
 
 procedure TAtlasOverviewRuler.Layout;
@@ -329,7 +339,7 @@ end;
 
 class function TAtlasOverviewRuler.RulerWidth(APPI: Integer): Integer;
 begin
-  Result := MulDiv(cBaseWidth, Max(APPI, 96), 96);
+  Result := MulDiv(cBaseWidth, Max(APPI, cDefaultPpi), cDefaultPpi);
 end;
 
 end.

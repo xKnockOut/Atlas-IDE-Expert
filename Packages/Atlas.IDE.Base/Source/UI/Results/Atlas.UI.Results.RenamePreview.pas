@@ -38,6 +38,15 @@ uses
   Atlas.UI.Results.Frame,
   Atlas.UI.Results.Strings;
 
+const
+  /// <summary>Maße bei 96 dpi: Dialog, Leiste der Knöpfe (Höhe, Abstand oben, Abstand zwischen den Knöpfen).
+  /// </summary>
+  cDialogWidth = 720;
+  cDialogHeight = 480;
+  cButtonsHeight = 44;
+  cButtonTop = 9;
+  cButtonGap = 8;
+
 /// <summary>Knöpfe unten rechts: „Abbrechen“ und AApply; liefert den Knopf, der übernimmt.</summary>
 function AddButtons(ADialog: TForm; const AApply: string): TButton;
 var
@@ -47,7 +56,7 @@ begin
   mButtons := TPanel.Create(ADialog);
   mButtons.Parent := ADialog;
   mButtons.Align := alBottom;
-  mButtons.Height := ADialog.ScaleValue(44);
+  mButtons.Height := ADialog.ScaleValue(cButtonsHeight);
   mButtons.BevelOuter := bvNone;
   mCancel := TButton.Create(ADialog);
   mCancel.Parent := mButtons;
@@ -55,7 +64,7 @@ begin
   mCancel.ModalResult := mrCancel;
   mCancel.Cancel := True;
   mCancel.Width := ADialog.ScaleValue(100);
-  mCancel.Top := ADialog.ScaleValue(9);
+  mCancel.Top := ADialog.ScaleValue(cButtonTop);
   mCancel.Left := mButtons.ClientWidth - mCancel.Width - ADialog.ScaleValue(10);
   mCancel.Anchors := [akTop, akRight];
   Result := TButton.Create(ADialog);
@@ -65,7 +74,7 @@ begin
   Result.Default := True;
   Result.Width := mCancel.Width;
   Result.Top := mCancel.Top;
-  Result.Left := mCancel.Left - Result.Width - ADialog.ScaleValue(8);
+  Result.Left := mCancel.Left - Result.Width - ADialog.ScaleValue(cButtonGap);
   Result.Anchors := [akTop, akRight];
 end;
 
@@ -112,8 +121,8 @@ begin
     mDialog.BorderStyle := bsSizeable;
     mDialog.BorderIcons := [biSystemMenu];
     mDialog.Position := poMainFormCenter;
-    mDialog.Width := mDialog.ScaleValue(720);
-    mDialog.Height := mDialog.ScaleValue(480);
+    mDialog.Width := mDialog.ScaleValue(cDialogWidth);
+    mDialog.Height := mDialog.ScaleValue(cDialogHeight);
     mApply := AddButtons(mDialog, AApply);
     mResults := TAtlasResultsFrame.Create(mDialog);
     mResults.Parent := mDialog;

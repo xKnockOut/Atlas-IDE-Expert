@@ -112,6 +112,7 @@ uses
 const
   cGap = 8;
   cDialogWidth = 560;
+  cDialogHeight = 420;
   cDialogMinWidth = 360;
   cDialogMinHeight = 220;
   cButtonBarHeight = 44;
@@ -193,7 +194,7 @@ begin
   BorderStyle := bsSizeToolWin;
   BorderIcons := [biSystemMenu];
   KeyPreview := True;
-  ClientHeight := ScaleValue(420);
+  ClientHeight := ScaleValue(cDialogHeight);
   AddButtonBar;
 
   FContent := TScrollBox.Create(Self);
