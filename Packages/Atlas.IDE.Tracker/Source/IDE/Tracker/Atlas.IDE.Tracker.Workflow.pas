@@ -43,7 +43,7 @@
 // Nur mit issues.syncState und einem Anbieter, der IAtlasTrackerWriter
 // umsetzt (Enabled); sonst bleibt „Beenden“ die Rückfrage von „Meine Issues“.
 // Einstellungen je Verbindung (issues.connections) vor den globalen. Netz im
-// Hintergrund über TAtlasVcsWorker (Stop beim Entladen), je Schreiben
+// Hintergrund über TAtlasBackgroundJobs (Stop beim Entladen), je Schreiben
 // höchstens TAtlasTrackerWorkflow.cWriteTimeoutMs; nichts wird wiederholt.
 // Protokoll anonym: Anbieter, Art und Ergebnis, nie Adresse, Kennung,
 // Kommentar oder Token.
@@ -58,7 +58,7 @@ uses
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.SyncPlan,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
   Atlas.Core.Notifications.MessageSink;
 
@@ -109,7 +109,7 @@ type
     /// <summary>Zeitlimit je Aufruf der Versionsverwaltung für {commits}.</summary>
     cVcsTimeoutMs = 10000;
   private
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FTransport: TAtlasIdeTrackerTransport;
     FMessage: TAtlasMessageSink;
     FTimeText: TAtlasIdeTrackerTimeText;
@@ -292,7 +292,7 @@ begin
   inherited Create;
   FTransport := ATransport;
   FMessage := TAtlasMessageSink.Create(AReport);
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
 end;
 
 destructor TAtlasIdeTrackerSync.Destroy;

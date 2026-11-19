@@ -39,6 +39,8 @@ type
     class function Rgb(ARed, AGreen, ABlue: Byte): TAtlasColor; static;
     /// <summary>Aus "#RRGGBB"; EConvertError bei ungültiger Angabe.</summary>
     class function FromHex(const AHex: string): TAtlasColor; static;
+    /// <summary>Aus "#RRGGBB"; False (AColor 0) bei ungültiger Angabe, ohne Ausnahme.</summary>
+    class function TryFromHex(const AHex: string; out AColor: TAtlasColor): Boolean; static;
     class function ToHex(AColor: TAtlasColor): string; static;
     class function Red(AColor: TAtlasColor): Byte; static;
     class function Green(AColor: TAtlasColor): Byte; static;
@@ -64,7 +66,138 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TColorText = (InvalidColor);
+
+  /// <summary>Anteil eines Farbkanals in einem Sechstel des Farbkreises: volle Chroma, Zwischenwert oder nichts.
+  /// </summary>
+  THueShare = (Chroma, Between, Nothing);
+
+const
+  cTexts: array[TAtlasLanguage, TColorText] of string = (
+    ('Ungültige Farbe "%s"'),
+    ('Invalid color "%s"'));
+
+  /// <summary>Größter Wert eines Farbkanals.</summary>
+  cChannelMax = 255;
+  /// <summary>Lage von Grün und Blau in $00BBGGRR (Bits); in "#RRGGBB" liegen Rot und Grün an denselben Stellen.
+  /// </summary>
+  cSecondByteShift = 8;
+  cThirdByteShift = 16;
+  /// <summary>"#RRGGBB": Zeichen insgesamt und Hexziffern.</summary>
+  cHexColorLength = 7;
+  cHexColorDigits = 6;
+  /// <summary>Vollkreis und Halbkreis in Grad.</summary>
+  cFullCircle = 360;
+  cHalfCircle = 180;
+  /// <summary>Sechstel des Farbkreises in HSL, je 60 Grad.</summary>
+  cHueSectors = 6;
+  cHueSectorDegrees = cFullCircle div cHueSectors;
+  /// <summary>Beginn der Sektoren mit Grün bzw. Blau als stärkstem Kanal (in Sechsteln).</summary>
+  cGreenSectorStart = 2;
+  cBlueSectorStart = 4;
+  /// <summary>Anteile von Rot, Grün und Blau je Sektor (Rot→Gelb, Gelb→Grün, …, Magenta→Rot).</summary>
+  cSectorShares: array[0..cHueSectors - 1, 0..2] of THueShare = (
+    (THueShare.Chroma, THueShare.Between, THueShare.Nothing),
+    (THueShare.Between, THueShare.Chroma, THueShare.Nothing),
+    (THueShare.Nothing, THueShare.Chroma, THueShare.Between),
+    (THueShare.Nothing, THueShare.Between, THueShare.Chroma),
+    (THueShare.Between, THueShare.Nothing, THueShare.Chroma),
+    (THueShare.Chroma, THueShare.Nothing, THueShare.Between));
+
+  /// <summary>Übertragungsfunktion von sRGB (IEC 61966-2-1): Knick, Steigung des linearen Teils, Versatz und
+  /// Exponent.</summary>
+  cSrgbKnee = 0.04045;
+  cSrgbSlope = 12.92;
+  cSrgbOffset = 0.055;
+  cSrgbGamma = 2.4;
+  /// <summary>Anteile von Rot, Grün und Blau an der Leuchtdichte (Rec. 709, auch Y in XYZ).</summary>
+  cLumaRed = 0.2126;
+  cLumaGreen = 0.7152;
+  cLumaBlue = 0.0722;
+  /// <summary>Streulicht im Kontrastverhältnis nach WCAG.</summary>
+  cContrastFlare = 0.05;
+  /// <summary>Leuchtdichte, bei der Schwarz und Weiß gleich gut kontrastieren.</summary>
+  cDarkLuminance = 0.18;
+
+  /// <summary>sRGB nach XYZ (D65): Zeilen für X und Z; Y ist die Leuchtdichte.</summary>
+  cXyzXRed = 0.4124;
+  cXyzXGreen = 0.3576;
+  cXyzXBlue = 0.1805;
+  cXyzZRed = 0.0193;
+  cXyzZGreen = 0.1192;
+  cXyzZBlue = 0.9505;
+  /// <summary>Weißpunkt D65 (X und Z, Y = 1).</summary>
+  cWhiteX = 0.95047;
+  cWhiteZ = 1.08883;
+  /// <summary>CIELAB: Grenze und Steigung des linearen Teils (CIE-Standard 216/24389 und 24389/27), Versatz und
+  /// Maßstab von L*, Maßstäbe von a* und b*, Kubikwurzel.</summary>
+  cLabEpsilon = 216 / 24389;
+  cLabKappa = 24389 / 27;
+  cLabOffset = 16;
+  cLabScale = 116;
+  cLabScaleA = 500;
+  cLabScaleB = 200;
+  cCubeRoot = 1 / 3;
+
+  /// <summary>CIEDE2000: Exponent und 25^7 im Ausgleich der Chroma, halber Ausgleich.</summary>
+  cDe2000Power = 7;
+  cPow25 = 6103515625.0;
+  cDe2000HalfG = 0.5;
+  /// <summary>CIEDE2000: Gewichte und Winkel des Terms T (Grad).</summary>
+  cTWeight1 = 0.17;
+  cTAngle1 = 30;
+  cTWeight2 = 0.24;
+  cTWeight3 = 0.32;
+  cTFactor3 = 3;
+  cTAngle3 = 6;
+  cTWeight4 = 0.20;
+  cTFactor4 = 4;
+  cTAngle4 = 63;
+  /// <summary>CIEDE2000: Drehterm, größter Winkel, Mitte und Breite in Grad.</summary>
+  cRotationMax = 30;
+  cRotationCenter = 275;
+  cRotationWidth = 25;
+  /// <summary>CIEDE2000: Gewichte S_L (mit Mitte 50 und Versatz 20), S_C und S_H.</summary>
+  cSlWeight = 0.015;
+  cSlCenter = 50;
+  cSlOffset = 20;
+  cScWeight = 0.045;
+  cShWeight = 0.015;
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TColorText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
+
+/// <summary>Farbkanal 0..255 linear (ohne die Gammakurve von sRGB), 0..1.</summary>
+function LinearChannel(AValue: Byte): Double;
+var
+  mValue: Double;
+begin
+  mValue := AValue / cChannelMax;
+  if mValue <= cSrgbKnee then
+  begin
+    Result := mValue / cSrgbSlope;
+  end
+  else
+  begin
+    Result := Power((mValue + cSrgbOffset) / (1 + cSrgbOffset), cSrgbGamma);
+  end;
+end;
+
+/// <summary>Leuchtdichte aus linearen Kanälen.</summary>
+function LinearLuminance(ARed, AGreen, ABlue: Double): Double;
+begin
+  Result := cLumaRed * ARed + cLumaGreen * AGreen + cLumaBlue * ABlue;
+end;
 
 { TAtlasHSL }
 
@@ -72,9 +205,9 @@ class function TAtlasHSL.FromColor(AColor: TAtlasColor): TAtlasHSL;
 var
   R, G, B, mMaxValue, mMinValue, mDelta: Double;
 begin
-  R := TAtlasColorMath.Red(AColor) / 255;
-  G := TAtlasColorMath.Green(AColor) / 255;
-  B := TAtlasColorMath.Blue(AColor) / 255;
+  R := TAtlasColorMath.Red(AColor) / cChannelMax;
+  G := TAtlasColorMath.Green(AColor) / cChannelMax;
+  B := TAtlasColorMath.Blue(AColor) / cChannelMax;
   mMaxValue := Max(R, Max(G, B));
   mMinValue := Min(R, Min(G, B));
   mDelta := mMaxValue - mMinValue;
@@ -88,62 +221,81 @@ begin
   Result.S := mDelta / (1 - Abs(2 * Result.L - 1));
   if mMaxValue = R then
   begin
-    Result.H := 60 * FMod((G - B) / mDelta, 6);
+    Result.H := cHueSectorDegrees * FMod((G - B) / mDelta, cHueSectors);
   end
   else if mMaxValue = G then
   begin
-    Result.H := 60 * ((B - R) / mDelta + 2);
+    Result.H := cHueSectorDegrees * ((B - R) / mDelta + cGreenSectorStart);
   end
   else
   begin
-    Result.H := 60 * ((R - G) / mDelta + 4);
+    Result.H := cHueSectorDegrees * ((R - G) / mDelta + cBlueSectorStart);
   end;
   if Result.H < 0 then
   begin
-    Result.H := Result.H + 360;
+    Result.H := Result.H + cFullCircle;
   end;
 end;
 
 function TAtlasHSL.ToColor: TAtlasColor;
 var
-  C, X, M, R, G, B, mHue: Double;
+  C, X, M, mHue: Double;
+  mSector: Integer;
+
+  function Channel(AIndex: Integer): Byte;
+  var
+    mShare: Double;
+  begin
+    case cSectorShares[mSector, AIndex] of
+      THueShare.Chroma:
+        mShare := C;
+      THueShare.Between:
+        mShare := X;
+    else
+      mShare := 0;
+    end;
+    Result := Round((mShare + M) * cChannelMax);
+  end;
+
 begin
   C := (1 - Abs(2 * EnsureRange(L, 0, 1) - 1)) * EnsureRange(S, 0, 1);
-  mHue := FMod(H, 360);
+  mHue := FMod(H, cFullCircle);
   if mHue < 0 then
   begin
-    mHue := mHue + 360;
+    mHue := mHue + cFullCircle;
   end;
-  X := C * (1 - Abs(FMod(mHue / 60, 2) - 1));
+  X := C * (1 - Abs(FMod(mHue / cHueSectorDegrees, 2) - 1));
   M := EnsureRange(L, 0, 1) - C / 2;
-  case Trunc(mHue / 60) of
-    0: begin R := C; G := X; B := 0; end;
-    1: begin R := X; G := C; B := 0; end;
-    2: begin R := 0; G := C; B := X; end;
-    3: begin R := 0; G := X; B := C; end;
-    4: begin R := X; G := 0; B := C; end;
-  else
-    R := C; G := 0; B := X;
-  end;
-  Result := TAtlasColorMath.Rgb(Round((R + M) * 255), Round((G + M) * 255), Round((B + M) * 255));
+  mSector := EnsureRange(Trunc(mHue / cHueSectorDegrees), 0, cHueSectors - 1);
+  Result := TAtlasColorMath.Rgb(Channel(0), Channel(1), Channel(2));
 end;
 
 { TAtlasColorMath }
 
 class function TAtlasColorMath.Rgb(ARed, AGreen, ABlue: Byte): TAtlasColor;
 begin
-  Result := TAtlasColor(ARed or (AGreen shl 8) or (ABlue shl 16));
+  Result := TAtlasColor(ARed or (AGreen shl cSecondByteShift) or (ABlue shl cThirdByteShift));
 end;
 
 class function TAtlasColorMath.FromHex(const AHex: string): TAtlasColor;
+begin
+  if not TryFromHex(AHex, Result) then
+  begin
+    raise EConvertError.CreateFmt(UiText(TColorText.InvalidColor), [AHex]);
+  end;
+end;
+
+class function TAtlasColorMath.TryFromHex(const AHex: string; out AColor: TAtlasColor): Boolean;
 var
   mValue: Integer;
 begin
-  if (Length(AHex) <> 7) or (AHex[1] <> '#') or not TryStrToInt('$' + Copy(AHex, 2, 6), mValue) then
+  AColor := 0;
+  Result := (Length(AHex) = cHexColorLength) and (AHex[1] = '#') and
+    TryStrToInt('$' + Copy(AHex, 2, cHexColorDigits), mValue);
+  if Result then
   begin
-    raise EConvertError.CreateFmt('Ungültige Farbe "%s"', [AHex]);
+    AColor := Rgb((mValue shr cThirdByteShift) and $FF, (mValue shr cSecondByteShift) and $FF, mValue and $FF);
   end;
-  Result := Rgb((mValue shr 16) and $FF, (mValue shr 8) and $FF, mValue and $FF);
 end;
 
 class function TAtlasColorMath.ToHex(AColor: TAtlasColor): string;
@@ -158,12 +310,12 @@ end;
 
 class function TAtlasColorMath.Green(AColor: TAtlasColor): Byte;
 begin
-  Result := (AColor shr 8) and $FF;
+  Result := (AColor shr cSecondByteShift) and $FF;
 end;
 
 class function TAtlasColorMath.Blue(AColor: TAtlasColor): Byte;
 begin
-  Result := (AColor shr 16) and $FF;
+  Result := (AColor shr cThirdByteShift) and $FF;
 end;
 
 class function TAtlasColorMath.Mix(AFront, ABack: TAtlasColor; AAlpha: Double): TAtlasColor;
@@ -194,24 +346,8 @@ begin
 end;
 
 class function TAtlasColorMath.Luminance(AColor: TAtlasColor): Double;
-
-  function Linear(AValue: Byte): Double;
-  var
-    mValue: Double;
-  begin
-    mValue := AValue / 255;
-    if mValue <= 0.04045 then
-    begin
-      Result := mValue / 12.92;
-    end
-    else
-    begin
-      Result := Power((mValue + 0.055) / 1.055, 2.4);
-    end;
-  end;
-
 begin
-  Result := 0.2126 * Linear(Red(AColor)) + 0.7152 * Linear(Green(AColor)) + 0.0722 * Linear(Blue(AColor));
+  Result := LinearLuminance(LinearChannel(Red(AColor)), LinearChannel(Green(AColor)), LinearChannel(Blue(AColor)));
 end;
 
 class function TAtlasColorMath.Contrast(A, B: TAtlasColor): Double;
@@ -220,7 +356,7 @@ var
 begin
   mLumA := Luminance(A);
   mLumB := Luminance(B);
-  Result := (Max(mLumA, mLumB) + 0.05) / (Min(mLumA, mLumB) + 0.05);
+  Result := (Max(mLumA, mLumB) + cContrastFlare) / (Min(mLumA, mLumB) + cContrastFlare);
 end;
 
 { TAtlasLab }
@@ -234,13 +370,8 @@ end;
 
 class function TAtlasColorMath.IsDark(AColor: TAtlasColor): Boolean;
 begin
-  // 0,18 ist die Leuchtdichte, bei der Schwarz und Weiß gleich gut kontrastieren.
-  Result := Luminance(AColor) < 0.18;
+  Result := Luminance(AColor) < cDarkLuminance;
 end;
-
-const
-  /// <summary>25^7 für CIEDE2000.</summary>
-  cPow25 = 6103515625.0;
 
 type
   /// <summary>Chroma C' und Farbton h' (Grad) einer Farbe in CIEDE2000.</summary>
@@ -265,9 +396,15 @@ begin
     Result := RadToDeg(ArcTan2(AB, AA));
     if Result < 0 then
     begin
-      Result := Result + 360;
+      Result := Result + cFullCircle;
     end;
   end;
+end;
+
+/// <summary>Ausgleich der Chroma in CIEDE2000: sqrt(C^7 / (C^7 + 25^7)).</summary>
+function ChromaBalance(AChroma: Double): Double;
+begin
+  Result := Sqrt(Power(AChroma, cDe2000Power) / (Power(AChroma, cDe2000Power) + cPow25));
 end;
 
 /// <summary>C' und h' von AColor; der Faktor G hängt von beiden Farben (AFirst, ASecond) ab.</summary>
@@ -276,7 +413,7 @@ var
   mCMean, mG, mA: Double;
 begin
   mCMean := (Sqrt(Sqr(AFirst.A) + Sqr(AFirst.B)) + Sqrt(Sqr(ASecond.A) + Sqr(ASecond.B))) / 2;
-  mG := 0.5 * (1 - Sqrt(Power(mCMean, 7) / (Power(mCMean, 7) + cPow25)));
+  mG := cDe2000HalfG * (1 - ChromaBalance(mCMean));
   mA := (1 + mG) * AColor.A;
   Result.C := Sqrt(Sqr(mA) + Sqr(AColor.B));
   Result.H := HueAngle(AColor.B, mA);
@@ -288,13 +425,13 @@ begin
   if AFirst.C * ASecond.C <> 0 then
   begin
     Result := ASecond.H - AFirst.H;
-    if Result > 180 then
+    if Result > cHalfCircle then
     begin
-      Result := Result - 360;
+      Result := Result - cFullCircle;
     end
-    else if Result < -180 then
+    else if Result < -cHalfCircle then
     begin
-      Result := Result + 360;
+      Result := Result + cFullCircle;
     end;
   end;
 end;
@@ -305,72 +442,58 @@ begin
   begin
     Result := AFirst.H + ASecond.H;
   end
-  else if Abs(AFirst.H - ASecond.H) <= 180 then
+  else if Abs(AFirst.H - ASecond.H) <= cHalfCircle then
   begin
     Result := (AFirst.H + ASecond.H) / 2;
   end
-  else if AFirst.H + ASecond.H < 360 then
+  else if AFirst.H + ASecond.H < cFullCircle then
   begin
-    Result := (AFirst.H + ASecond.H + 360) / 2;
+    Result := (AFirst.H + ASecond.H + cFullCircle) / 2;
   end
   else
   begin
-    Result := (AFirst.H + ASecond.H - 360) / 2;
+    Result := (AFirst.H + ASecond.H - cFullCircle) / 2;
   end;
 end;
 
 function DeltaWeights(ALMean, ACpMean, AHpMean: Double): TDeltaWeights;
 var
-  mT, mDTheta, mRc: Double;
+  mT, mDTheta: Double;
 begin
-  mT := 1 - 0.17 * Cos(DegToRad(AHpMean - 30)) + 0.24 * Cos(DegToRad(2 * AHpMean)) +
-    0.32 * Cos(DegToRad(3 * AHpMean + 6)) - 0.20 * Cos(DegToRad(4 * AHpMean - 63));
-  mDTheta := 30 * Exp(-Sqr((AHpMean - 275) / 25));
-  mRc := 2 * Sqrt(Power(ACpMean, 7) / (Power(ACpMean, 7) + cPow25));
-  Result.Sl := 1 + 0.015 * Sqr(ALMean - 50) / Sqrt(20 + Sqr(ALMean - 50));
-  Result.Sc := 1 + 0.045 * ACpMean;
-  Result.Sh := 1 + 0.015 * ACpMean * mT;
-  Result.Rt := -Sin(DegToRad(2 * mDTheta)) * mRc;
+  mT := 1 - cTWeight1 * Cos(DegToRad(AHpMean - cTAngle1)) + cTWeight2 * Cos(DegToRad(2 * AHpMean)) +
+    cTWeight3 * Cos(DegToRad(cTFactor3 * AHpMean + cTAngle3)) -
+    cTWeight4 * Cos(DegToRad(cTFactor4 * AHpMean - cTAngle4));
+  mDTheta := cRotationMax * Exp(-Sqr((AHpMean - cRotationCenter) / cRotationWidth));
+  Result.Sl := 1 + cSlWeight * Sqr(ALMean - cSlCenter) / Sqrt(cSlOffset + Sqr(ALMean - cSlCenter));
+  Result.Sc := 1 + cScWeight * ACpMean;
+  Result.Sh := 1 + cShWeight * ACpMean * mT;
+  Result.Rt := -Sin(DegToRad(2 * mDTheta)) * 2 * ChromaBalance(ACpMean);
 end;
-class function TAtlasColorMath.ToLab(AColor: TAtlasColor): TAtlasLab;
 
-  function Linear(AValue: Byte): Double;
-  var
-    mValue: Double;
-  begin
-    mValue := AValue / 255;
-    if mValue <= 0.04045 then
-    begin
-      Result := mValue / 12.92;
-    end
-    else
-    begin
-      Result := Power((mValue + 0.055) / 1.055, 2.4);
-    end;
-  end;
+class function TAtlasColorMath.ToLab(AColor: TAtlasColor): TAtlasLab;
 
   function F(AValue: Double): Double;
   begin
-    if AValue > 216 / 24389 then
+    if AValue > cLabEpsilon then
     begin
-      Result := Power(AValue, 1 / 3);
+      Result := Power(AValue, cCubeRoot);
     end
     else
     begin
-      Result := (24389 / 27 * AValue + 16) / 116;
+      Result := (cLabKappa * AValue + cLabOffset) / cLabScale;
     end;
   end;
 
 var
   R, G, B, X, Y, Z: Double;
 begin
-  R := Linear(Red(AColor));
-  G := Linear(Green(AColor));
-  B := Linear(Blue(AColor));
-  X := F((0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047);
-  Y := F(0.2126 * R + 0.7152 * G + 0.0722 * B);
-  Z := F((0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883);
-  Result := TAtlasLab.Create(116 * Y - 16, 500 * (X - Y), 200 * (Y - Z));
+  R := LinearChannel(Red(AColor));
+  G := LinearChannel(Green(AColor));
+  B := LinearChannel(Blue(AColor));
+  X := F((cXyzXRed * R + cXyzXGreen * G + cXyzXBlue * B) / cWhiteX);
+  Y := F(LinearLuminance(R, G, B));
+  Z := F((cXyzZRed * R + cXyzZGreen * G + cXyzZBlue * B) / cWhiteZ);
+  Result := TAtlasLab.Create(cLabScale * Y - cLabOffset, cLabScaleA * (X - Y), cLabScaleB * (Y - Z));
 end;
 
 class function TAtlasColorMath.DeltaE2000(const A, B: TAtlasLab): Double;
@@ -392,5 +515,8 @@ class function TAtlasColorMath.DeltaE2000(A, B: TAtlasColor): Double;
 begin
   Result := DeltaE2000(ToLab(A), ToLab(B));
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Style.Color', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
