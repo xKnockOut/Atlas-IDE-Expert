@@ -260,24 +260,8 @@ begin
 end;
 
 procedure TAtlasIdeNotifications.Show;
-const
-  cAnchorInset = 40;
-var
-  mAnchor: TPoint;
-  mArea: TRect;
 begin
-  mAnchor := Point(MaxInt, MaxInt);
-  if Assigned(FOnAnchor) then
-  begin
-    mAnchor := FOnAnchor();
-  end;
-  if mAnchor.X = MaxInt then
-  begin
-    // Ohne Statusfeld: unten links im aktiven Fenster.
-    mArea := TAtlasIdeHost.PopupArea;
-    mAnchor := Point(mArea.Left + cAnchorInset, mArea.Bottom - cAnchorInset);
-  end;
-  Show(mAnchor);
+  Show(TAtlasIdeHost.PopupAnchor(FOnAnchor));
 end;
 
 procedure TAtlasIdeNotifications.BuildFinished(const AMessages: TArray<TAtlasCompilerMessage>;

@@ -339,24 +339,8 @@ begin
 end;
 
 procedure TAtlasIdeQuickToggles.Show;
-const
-  cAnchorInset = 40;
-var
-  mAnchor: TPoint;
-  mArea: TRect;
 begin
-  mAnchor := Point(MaxInt, MaxInt);
-  if Assigned(FOnAnchor) then
-  begin
-    mAnchor := FOnAnchor();
-  end;
-  if mAnchor.X = MaxInt then
-  begin
-    // Ohne Statusfeld: unten links im aktiven Fenster.
-    mArea := TAtlasIdeHost.PopupArea;
-    mAnchor := Point(mArea.Left + cAnchorInset, mArea.Bottom - cAnchorInset);
-  end;
-  Show(mAnchor);
+  Show(TAtlasIdeHost.PopupAnchor(FOnAnchor));
 end;
 
 /// <summary>Befehl für einen Schalter; eigene Funktion, damit jeder Befehl seinen Schlüssel festhält.</summary>

@@ -122,6 +122,9 @@ type
     /// <summary>Fläche, über der ein Popup oder eine Palette erscheint: aktives Formular, sonst Hauptfenster,
     /// sonst Arbeitsfläche.</summary>
     class function PopupArea: TRect; static;
+    /// <summary>Anker (Bildschirm) für ein Popup über dem Statusfeld: AOnAnchor, solange es eins gibt (X nicht
+    /// MaxInt); sonst unten links im aktiven Fenster (PopupArea).</summary>
+    class function PopupAnchor(const AOnAnchor: TFunc<TPoint>): TPoint; static;
     /// <summary>Warnung wie die der Sicherung: Meldungsansicht und Bericht; vor Install nur die
     /// Meldungsansicht.</summary>
     class procedure Warning(const AText: string); static;
@@ -256,6 +259,24 @@ begin
   else
   begin
     Result := Screen.WorkAreaRect;
+  end;
+end;
+
+class function TAtlasIdeHost.PopupAnchor(const AOnAnchor: TFunc<TPoint>): TPoint;
+const
+  cAnchorInset = 40;
+var
+  mArea: TRect;
+begin
+  Result := Point(MaxInt, MaxInt);
+  if Assigned(AOnAnchor) then
+  begin
+    Result := AOnAnchor();
+  end;
+  if Result.X = MaxInt then
+  begin
+    mArea := PopupArea;
+    Result := Point(mArea.Left + cAnchorInset, mArea.Bottom - cAnchorInset);
   end;
 end;
 
