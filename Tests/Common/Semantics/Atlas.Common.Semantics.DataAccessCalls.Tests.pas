@@ -97,8 +97,8 @@ begin
   Assert.AreEqual(2, Integer(Length(FCalls[2].Arguments)));
   Assert.AreEqual(1, Integer(Length(FCalls[3].Arguments)));
   Assert.AreEqual('TfrmKunde.Speichern', FCalls[0].Routine);
-  Assert.IsTrue(FCalls[0].Receiver.Kind = TSyntaxKind.Identifier);
-  Assert.IsTrue(FCalls[1].Receiver.Kind = TSyntaxKind.MemberAccess);
+  Assert.AreEqual(Ord(TSyntaxKind.Identifier), Ord(FCalls[0].Receiver.Kind));
+  Assert.AreEqual(Ord(TSyntaxKind.MemberAccess), Ord(FCalls[1].Receiver.Kind));
 end;
 
 procedure TSemanticsDataAccessCallsTests.BreakLineIsStatementStart;
