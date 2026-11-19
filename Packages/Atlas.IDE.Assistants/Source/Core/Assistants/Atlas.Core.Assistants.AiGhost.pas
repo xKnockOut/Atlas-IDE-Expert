@@ -312,7 +312,7 @@ var
 begin
   mPath := AFileName.Replace('/', '\');
   mName := ExtractFileName(mPath);
-  for mMask in APatterns.Replace(#13, ';').Replace(#10, ';').Split([';']) do
+  for mMask in APatterns.Replace(#13#10, ';').Replace(#13, ';').Replace(#10, ';').Split([';']) do
   begin
     if (Trim(mMask) <> '') and (Matches(mName, Trim(mMask)) or
       Matches(mPath, Trim(mMask).Replace('/', '\'))) then
