@@ -87,6 +87,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **354 Prüfregeln** schon beim Tippen: 235 Fehler, 108 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
+- **Befunde als Auftrag für einen KI-Assistenten:** „Als Auftrag für KI-Assistenten kopieren“ im Fenster „Atlas-Prüfung“ (auch mehrere Befunde, je Datei gruppiert) und im Editor legt Regel, Meldung, Codeausschnitt, Erklärung und das MCP-Werkzeug zum Nachprüfen in die Zwischenablage
 - **Compilermeldungen erklärt:** Der Hover zeigt unter einer Meldung von dcc oder der IDE wie E2003 oder W1035 die typische Ursache, dazu die Links „Erklären“ (Dialog mit falschem und richtigem Beispiel) und „DocWiki“; rund 40 Meldungen auf Deutsch und Englisch, auch ohne dcc (`hover.explainMessages`)
 - **Profile, Konfidenz, Baseline und Unterdrückungen** für gewachsene Projekte
 - **Experimentelle Stilregeln mit wenig Fehlalarmen:** `hardcoded-string` übergeht Protokoll-, Prüf- und Vergleichsaufrufe, Datumsmasken und Markup; `magic-number` übergeht die DPI-Basis 96, volle Bitmasken, Zeiteinheiten und Punktlisten; `naming-prefix` lässt Ereignis-Handlern, die der Code zuweist, ihre Parameternamen; `public-field` übergeht Hilfsklassen unter `private type`
@@ -169,8 +170,12 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Das begonnene Issue für KI-Assistenten:** Nach „Beginnen“ legt das Plugin das Issue samt Checkliste, Codeverweisen, Beschreibung und letzten Kommentaren neben das Commit-Präfix ins Git-Verzeichnis; `get_current_issue` liest es, ohne Tracker-Zugang und ohne Token. Hakt jemand im Tracker etwas ab, steht es nach der nächsten Auffrischung dort (`issues.shareWithAssistants`, Vorgabe an)
 - **Letzter Testlauf ohne neuen Lauf:** `get_last_tests` liefert, was die IDE beim letzten Testlauf gesehen hat: rote Tests mit Datei:Zeile, erwartet und erhalten, Protokollauszug und Marken neu rot, wieder grün, wackelig, Leck und veraltet (`tests.lastRun`)
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
+- **Wo du in der IDE bist:** `get_ide_context` nennt KI-Assistenten die offene Datei mit Cursor und Methode, die Auswahl, das aktive Projekt mit Konfiguration und Plattform, den letzten Build und die Reiter; „diese Methode“ muss niemand mehr kopieren (`assistants.context`)
+- **Mehrere Abfragen auf einmal:** `batch` führt bis zu 10 lesende MCP-Werkzeuge in einem Aufruf aus, auf einem gemeinsamen Indexstand mit einem einzigen Dateiabgleich; ein Fehler betrifft nur seinen Abschnitt
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
+- **Befunde nach der Änderung:** Die schreibenden MCP-Werkzeuge hängen die neuen und behobenen Befunde der geänderten Dateien an ihre Antwort (`delphi://edits/last` für die letzte Änderung)
+- **Geschützte Dateien:** `assistants.protected` in `atlas.json` nennt Dateien, die KI-Assistenten nicht ändern dürfen (erzeugte Units, `CHANGELOG.md`), mit Grund und richtigem Weg; die schreibenden MCP-Werkzeuge lehnen solche Änderungen ab, ohne etwas zu schreiben, der Hook lehnt sie ab oder meldet sie
 
 ### Geplant
 

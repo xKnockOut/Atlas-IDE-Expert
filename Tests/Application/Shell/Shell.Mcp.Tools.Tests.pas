@@ -59,6 +59,7 @@ uses
   Shell.Mcp.NavigationTools,
   Shell.Mcp.BuildTestTools,
   Shell.Mcp.DebugTools,
+  Shell.Mcp.IdeContextTools,
   Shell.Mcp.ReportTools,
   Shell.Mcp.CheckTools,
   Shell.Mcp.ArchitectureTools,
@@ -184,6 +185,7 @@ begin
     Joined(NamesOf(RegisterBuildTestTools)));
   Assert.AreEqual(' debug_start debug_stop set_breakpoint remove_breakpoint debug_continue debug_step debug_state ' +
     'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
+  Assert.AreEqual(' get_ide_context ', Joined(NamesOf(RegisterIdeContextTools)));
   Assert.AreEqual(7, Integer(Length(NamesOf(RegisterCheckTools))));
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));
   Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code extract_method ',

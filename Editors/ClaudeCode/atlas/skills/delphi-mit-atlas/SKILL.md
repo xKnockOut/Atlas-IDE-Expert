@@ -43,6 +43,9 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - `get_last_tests` bei „Warum ist der Test rot?“: der letzte Testlauf aus der IDE ohne neuen Lauf, je rotem Test
   Meldung, Datei:Zeile, erwartet/erhalten, Protokollauszug und Marken (neu rot, wackelig, Leck, veraltet);
   `only` wählt `failed`, `flaky`, `slow`, `leaks`, `stale` oder `all`. Erst hier lesen, dann gezielt `run_tests`.
+- `get_ide_context` bei „diese Methode“, „die Auswahl“, „hier“: offene Datei mit Cursor und Methode, markierter
+  Text, aktives Projekt mit Konfiguration und Plattform, letzter Build, Reiter. Danach mit den übrigen Werkzeugen
+  lesen und prüfen.
 - `build_project` baut das Projekt in der laufenden IDE (auch in der Starter Edition ohne
   Kommandozeilen-Compiler) und liefert die Compilermeldungen; das Projekt muss dort offen sein.
 - `run_tests` führt die DUnitX-Tests aus (vorhandene Test-EXE, mit `build: true` vorher in der IDE

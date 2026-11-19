@@ -40,6 +40,8 @@ type
     property Host: IAtlasSettingsSectionHost read FHost;
   end;
 
+  /// <summary>Teil der Seite Versionsverwaltung. Maße an den Bausteinen (Höhe, Breite, Lage) in logischen Pixeln
+  /// (96 dpi); skaliert wird in den Bausteinen.</summary>
   TAtlasVcsSettingsPart = class
   protected
     /// <summary>Besitzer der eigenen Steuerelemente; nil vor Build und nach Close.</summary>
@@ -83,7 +85,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.UI.Foundation.ListView;
 
 const
   cRowButtonTop = 3;
@@ -172,7 +175,7 @@ begin
   AControl.Parent := Result;
   AControl.Left := AControl.ScaleValue(90);
   AControl.Top := 1;
-  AControl.Width := AWidth;
+  AControl.Width := AControl.ScaleValue(AWidth);
 end;
 
 function TAtlasVcsSettingsPart.AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasVcsTextId;
@@ -193,9 +196,9 @@ begin
   Result := TButton.Create(FPage);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(cRowButtonTop);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.OnClick := AClick;
 end;
 
@@ -211,12 +214,8 @@ end;
 
 class procedure TAtlasVcsSettingsPart.AddListColumnCaption(AList: TListView; const ACaption: string;
   AWidth: Integer);
-var
-  mColumn: TListColumn;
 begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
+  TAtlasListView.AddColumnTo(AList, ACaption, AWidth);
 end;
 
 function TAtlasVcsSettingsPart.AddChoice(const AKey: string; ACaption: TAtlasVcsTextId;
