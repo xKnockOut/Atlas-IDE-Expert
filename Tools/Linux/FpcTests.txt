@@ -238,6 +238,7 @@ Atlas.Common.Mcp.CompilerMessageTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
+Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
 Atlas.Common.Mcp.EditFindings.Tests
 Atlas.Common.Lsp.ImplementationSites.Tests
@@ -695,4 +696,6 @@ Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Tests
 Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
+Shell.Mcp.RefactorHost.Tests
+Shell.Mcp.RefactorSources.Tests
 Atlas.Core.Editor.SnapshotPolicy.Tests
