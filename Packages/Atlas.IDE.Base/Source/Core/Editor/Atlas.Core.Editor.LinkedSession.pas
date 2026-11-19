@@ -27,7 +27,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Editor.LinkedEditing,
-  Atlas.Core.Editor.EditSurface,
   Atlas.Core.Editor.Contract;
 
 type
@@ -121,7 +120,8 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Core.Editor.EditSurface;
 
 { TAtlasLinkedState }
 

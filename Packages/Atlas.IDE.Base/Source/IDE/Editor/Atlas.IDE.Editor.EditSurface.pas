@@ -10,7 +10,6 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Editor.EditSurface,
   Atlas.Core.Editor.Contract;
 
 type

@@ -1,6 +1,5 @@
 # Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von
 # pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.
-adapter-name Atlas.Core.Diagnostics.ModuleHosting TListener IAtlasRegistryListener
 adapter-name Atlas.IDE.Bookmarks.SavedPlaces TAtlasIdeSavedPlaces IAtlasSavedPlacesSource
 adapter-name Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
 adapter-name Atlas.IDE.Debug.AssistantControl TAtlasIdeDebugAssistantControl IAtlasDebugControl
@@ -80,52 +79,25 @@ adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiPost
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiSend
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiTransport
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransports IAtlasCiTransports
-adapters-own Atlas.Core.Credentials.Adapters.Windows TAtlasWindowsCredentials IAtlasCredentialStore
-adapters-own Atlas.Core.Files.Adapters.FolderWatcher TAtlasFolderWatcher IAtlasFolderWatcher
-adapters-own Atlas.Core.Lsp.Adapters.ServerProcess TLspServerProcess IAtlasLspServer
 adapters-own Atlas.Core.Tracker.Adapters.LocalFiles TAtlasTrackerLocalFiles IAtlasTrackerFiles
 adapters-own Atlas.Core.Tracker.Adapters.Shell TAtlasTrackerShellExecute IAtlasTrackerShell
-adapters-own Atlas.Core.Undo.Adapters.DiskTarget TAtlasUndoDiskTarget IAtlasUndoTarget
-adapters-own Atlas.Core.Undo.Adapters.FileStore TAtlasUndoFileStore IAtlasUndoStore
-adapters-own Atlas.Core.Updates.Adapters.HttpSource TAtlasHttpVersionSource IAtlasVersionSource
-adapters-own Atlas.Core.VersionControl.Adapters.ProcessRunner TAtlasVcsProcessRunner IAtlasVcsRunner
-contract Atlas.IDE.Assistants.Composition TAtlasAssistantsModule IAtlasBuildVerdictListener
-contract Atlas.IDE.Bookmarks.Composition TAtlasBookmarksModule IAtlasOverviewBookmarks
-contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBuildEvaluator
-contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasCompilerMessagesListener
-contract Atlas.IDE.CodeInsight.Composition.Build TNotificationsVerdictListener IAtlasBuildVerdictListener
-contract Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
 contract Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
 contract Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
 contract Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
 contract Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
-contract Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
-contract Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
-contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
-contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
-contract Atlas.IDE.Rules.Adapters.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
-contract Atlas.IDE.Rules.Adapters.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
-contract Atlas.IDE.Search.Composition TAtlasSearchModule IAtlasTakenActions
-contract Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
 contract Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
-contract Atlas.IDE.Tests.Composition TAtlasTestsModule IAtlasBuildVerdictListener
 contract Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 contract Atlas.IDE.Tracker.Access TAtlasTrackerAccess IAtlasTrackerAccess
 contract Atlas.IDE.Tracker.CommentAssist TAtlasIdeCommentAssist IAtlasCommentAssist
-contract Atlas.IDE.Tracker.Composition TAtlasTrackerModule IAtlasPaletteSourceProvider
 contract Atlas.IDE.Tracker.MyIssues TAtlasIdeIssues IAtlasIssuesSource
-contract Atlas.IDE.Tracker.PaletteSearch TAtlasIdeIssueSearch IAtlasPaletteSource
 contract Atlas.IDE.Tracker.SprintTile TAtlasIdeSprint IAtlasSprintSource
-contract Atlas.IDE.Tracker.TestResults TAtlasIdeTestResults IAtlasProjectSummaryListener
 contract Atlas.IDE.Tracker.TestResults TAtlasIdeTestResults IAtlasTestResultsSource
 contract Atlas.IDE.Welcome.Continue TAtlasIdeContinue IAtlasContinueSource
 contract Atlas.IDE.Welcome.ContinueIssues TAtlasIdeContinueIssues IAtlasContinueIssuesSource
 contract Atlas.IDE.Welcome.Discover TAtlasIdeDiscover IAtlasDiscoverSource
 contract Atlas.IDE.Welcome.Help TAtlasIdeHelp IAtlasHelpSource
 contract Atlas.IDE.Welcome.Layouts TAtlasIdeWelcomeLayouts IAtlasWelcomeArrangeSource
-contract Atlas.IDE.Welcome.Listener TAtlasWelcomeListener IAtlasCommandUsageListener
 contract Atlas.IDE.Welcome.Projects TAtlasIdeProjects IAtlasProjectsSource
-contract Atlas.IDE.Welcome.Projects TAtlasIdeProjects IAtlasProjectSummaryListener
 contract Atlas.IDE.Welcome.QuickActions TAtlasIdeQuickActions IAtlasQuickActionsSource
 contract Atlas.IDE.Welcome.Registry TAtlasIdeRegistryAccess IAtlasRegistryAccess
 contract Atlas.IDE.Welcome.Setup TAtlasIdeSetup IAtlasSetupSource
@@ -133,23 +105,8 @@ contract Atlas.IDE.Welcome.State TAtlasIdeWelcomeState IAtlasStateSource
 contract Atlas.IDE.Welcome.Trends TAtlasIdeTrends IAtlasTrendsSource
 contract Atlas.IDE.Welcome.Unsaved TAtlasIdeUnsaved IAtlasUnsavedSource
 contract Atlas.IDE.Welcome.WhatsNew TAtlasIdeWhatsNew IAtlasWhatsNewSource
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasAccessibleItems
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionHiddenView
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxView
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
-contract Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
-contract Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
 empty Atlas.Core.Ci.Adapters.Credentials
 empty Atlas.Core.Ci.Adapters.Http
-empty Atlas.Core.Credentials.Adapters.Windows
-empty Atlas.Core.Files.Adapters.FolderWatcher
-empty Atlas.Core.Lsp.Adapters.ServerProcess
 empty Atlas.Core.Tasks.Adapters.Process
 empty Atlas.Core.Tracker.Adapters.LocalFiles
 empty Atlas.Core.Tracker.Adapters.Shell
-empty Atlas.Core.Undo.Adapters.DiskTarget
-empty Atlas.Core.Undo.Adapters.FileStore
-empty Atlas.Core.Updates.Adapters.HttpSource
-empty Atlas.Core.VersionControl.Adapters.ProcessRunner
-empty Atlas.IDE.Rules.Adapters.BulkFix
-empty Atlas.IDE.Rules.Adapters.SettingsDialog

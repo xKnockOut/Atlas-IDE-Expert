@@ -25,7 +25,6 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Build.Messages,
   Atlas.Core.Build.Contract;
 
 type

@@ -13,7 +13,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups,

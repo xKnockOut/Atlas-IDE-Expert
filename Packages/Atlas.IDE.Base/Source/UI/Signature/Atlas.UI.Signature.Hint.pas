@@ -35,7 +35,6 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Signature.Contract,
-  Atlas.Core.Signature.Controller,
   Atlas.Core.Signature.Format,
   Atlas.Core.Style.Color,
   Atlas.UI.Popup.Window,
@@ -118,7 +117,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.UI.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.UI.Popup.Accessibility,
+  Atlas.Core.Signature.Controller;
 
 const
   cTextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;

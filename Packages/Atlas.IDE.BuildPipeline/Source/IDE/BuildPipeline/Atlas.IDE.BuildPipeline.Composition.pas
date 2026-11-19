@@ -26,8 +26,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
   Atlas.Core.Build.Requests,
   Atlas.IDE.Contracts.BuildPipeline,
   Atlas.IDE.Contracts.BuildRequests,
@@ -90,7 +88,8 @@ uses
   Atlas.IDE.BuildPipeline.Summary,
   Atlas.UI.Strings,
   Atlas.UI.BuildPipeline.Strings,
-  Atlas.Core.Build.Pipeline;
+  Atlas.Core.Build.Pipeline,
+  Atlas.Core.Build.Events;
 
 var
   GScope: IAtlasModuleScope;

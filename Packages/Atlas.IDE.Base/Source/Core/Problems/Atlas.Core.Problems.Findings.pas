@@ -35,8 +35,8 @@
 // - Fehler der IDE (#1819, problems.ideErrors): Die Befunde kommen aus
 //   WithIde des Speichers, abgeglichen mit Error Insight. Spalte „Quelle“
 //   (Atlas, Atlas + IDE, IDE) und Filter Origin (alle, nur Atlas, nur IDE).
-// - IAtlasBulkFixer: Vertrag der Sammelkorrektur (#1352) für das Modul
-//   Prüfregeln (#1455).
+// - IAtlasBulkFixer (Atlas.Core.Problems.Contract): Vertrag der Sammelkorrektur
+//   (#1352) für das Modul Prüfregeln (#1455).
 
 interface
 

@@ -43,8 +43,7 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
-  Atlas.Core.Commands.Contract;
+  System.Generics.Collections;
 
 type
 
