@@ -3,6 +3,7 @@
 // Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456; vorher
 // Atlas.UI.Settings.Page.Debug in Base): Modulschalter, Werte im Hover, Visualisierer (#835), eigene
 // Wertdarstellungen (#854), gezielt hineinspringen (#836), Schrittfilter (#850), nächstes Ereignis (#856),
+// Datenzugriff (#870),
 // Erklärungen (#840, #865), Auswerten (#784), Exceptions (#517, #783), eigener Code (#578) und Werte im
 // Editor (#508). Felder, die mehrere Werte in einer Einstellung sammeln (Arten), liest und schreibt der
 // Abschnitt selbst; Listen in Textfeldern bindet die Seite und der Abschnitt bringt sie beim Speichern in die
@@ -28,6 +29,7 @@ type
     FStepFilterKinds: array[TStepFilterKind] of TCheckBox;
     FStepFilterPatterns: TEdit;
     FBreakOnNextEventExcluded: TEdit;
+    FDataBreaksClasses: TEdit;
     FOwnCodeFolders: TEdit;
     procedure BuildVisualizers;
     procedure BuildStepping;
@@ -49,6 +51,7 @@ type
     property VisualizerNameFieldsEdit: TEdit read FVisualizerNameFields;
     property StepFilterPatternsEdit: TEdit read FStepFilterPatterns;
     property BreakOnNextEventExcludedEdit: TEdit read FBreakOnNextEventExcluded;
+    property DataBreaksClassesEdit: TEdit read FDataBreaksClasses;
     property OwnCodeFoldersEdit: TEdit read FOwnCodeFolders;
   end;
 
@@ -56,6 +59,7 @@ implementation
 
 uses
   Atlas.Core.Settings.EventBreakNames,
+  Atlas.Core.Settings.DataBreakClasses,
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
@@ -74,6 +78,7 @@ const
   cStepFilterKindsKey = 'debug.stepFilters.kinds';
   cStepFilterPatternsKey = 'debug.stepFilters.patterns';
   cBreakExcludedKey = 'debug.breakOnNextEvent.excluded';
+  cDataBreaksClassesKey = 'debug.dataBreaks.classes';
   cOwnCodeFoldersKey = 'debug.ownCodeFolders';
   cEventLogColorsKey = 'debug.eventLogColors';
 
@@ -159,6 +164,8 @@ begin
     TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
   AValues.WriteString(cBreakExcludedKey,
     TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
+  AValues.WriteString(cDataBreaksClassesKey,
+    TAtlasDataBreakSettings.NormalizeClasses(AValues.ReadString(cDataBreaksClassesKey)));
   AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));
   AValues.WriteString(cEventLogColorsKey, TAtlasEventColors.Normalize(AValues.ReadString(cEventLogColorsKey)));
 end;
@@ -180,6 +187,7 @@ begin
   FVisualizerNameFields := nil;
   FStepFilterPatterns := nil;
   FBreakOnNextEventExcluded := nil;
+  FDataBreaksClasses := nil;
   FOwnCodeFolders := nil;
   inherited Close;
 end;
@@ -250,6 +258,10 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakOnNextEvent));
   FBreakOnNextEventExcluded := Line(cBreakExcludedKey,
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakOnNextEventExcluded));
+  // Anhalten bei Datenzugriff (#870): Schalter und beobachtete Klassen.
+  Switch('debug.dataBreaks', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDataBreaks));
+  FDataBreaksClasses := Line(cDataBreaksClassesKey,
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDataBreaksClasses));
   // Haltepunkte, die nicht greifen werden (#577).
   Switch('debug.checkBreakpoints',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugCheckBreakpoints));

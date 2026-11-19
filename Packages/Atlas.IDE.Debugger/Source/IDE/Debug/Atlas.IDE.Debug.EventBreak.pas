@@ -127,6 +127,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Debug.RunMenu,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Caret;
@@ -134,25 +135,6 @@ uses
 const
   cMenuItemName = 'AtlasBreakOnNextEventItem';
   cBreakpointGroup = 'Atlas.Ereignis';
-
-function RunMenu: TMenuItem;
-var
-  mServices: INTAServices;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.MainMenu = nil) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.MainMenu.Items.Count - 1 do
-  begin
-    if SameText(mServices.MainMenu.Items[mIndex].Name, 'RunMenu') then
-    begin
-      Exit(mServices.MainMenu.Items[mIndex]);
-    end;
-  end;
-end;
 
 /// <summary>Laufender Prozess; ohne ihn eine Meldung an AReport.</summary>
 function CurrentProcess(out AProcess: IOTAProcess; const AReport: TAtlasMessageSink): Boolean;
@@ -623,19 +605,9 @@ begin
 end;
 
 procedure TAtlasIdeEventBreak.InstallMenu;
-var
-  mParent: TMenuItem;
 begin
-  mParent := RunMenu;
-  if mParent = nil then
-  begin
-    Exit;
-  end;
-  FMenuItem := TMenuItem.Create(nil);
-  FMenuItem.Name := cMenuItemName;
-  FMenuItem.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EventBreakCommand);
-  FMenuItem.OnClick := MenuClick;
-  mParent.Add(FMenuItem);
+  FMenuItem := TAtlasIdeRunMenu.AddItem(cMenuItemName,
+    TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EventBreakCommand), MenuClick);
   UpdateMenu;
 end;
 

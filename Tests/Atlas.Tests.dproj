@@ -844,6 +844,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreakPatterns.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataBreak.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataBreakPatterns.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreakWatch.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataBreakWatch.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InstanceBreakpoint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas"/>
@@ -1034,6 +1036,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.DataBreakpoints.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MethodBreakpoints.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EventBreak.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.DataBreak.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Logpoints.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Note.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Exceptions.Strings.pas"/>
@@ -1802,6 +1805,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EventBreak.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.StepInto.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EventBreak.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StopBar.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.DataBreak.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.DataBreak.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.ExpressionType.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.ExpressionType.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>

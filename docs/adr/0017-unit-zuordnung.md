@@ -970,6 +970,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.EventBreakWatch` | `Core/Debug/Atlas.Core.Debug.EventBreakWatch.pas` | Beim nächsten Ereignis anhalten: Art des Setzens, Pause, neuer Halt, Zahl der Stellen, #1967 |
 | `Atlas.Core.Debug.DataBreak` | `Core/Debug/Atlas.Core.Debug.DataBreak.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DataBreakPatterns` | `Core/Debug/Atlas.Core.Debug.DataBreakPatterns.pas` | Anhalten bei Datenzugriff: Musterabgleich SQL/HTTP, Zeichenketten des Debuggers, #870 |
+| `Atlas.Core.Debug.DataBreakWatch` | `Core/Debug/Atlas.Core.Debug.DataBreakWatch.pas` | Anhalten bei Datenzugriff: neuer Halt, Auswertung und Entscheidung an einer Haltestelle, #870 |
 | `Atlas.Core.Debug.MethodBreakpoints` | `Core/Debug/Atlas.Core.Debug.MethodBreakpoints.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.MethodGroupFlow` | `Core/Debug/Atlas.Core.Debug.MethodGroupFlow.pas` | Entscheidungen der Methodenhaltepunkte ohne IDE (Startgruppe, gesehene Treffer, Umschalten, Meldung), #1967 |
 | `Atlas.Core.Debug.InstanceBreakpoint` | `Core/Debug/Atlas.Core.Debug.InstanceBreakpoint.pas` | Ordner `Core/Debug` |
@@ -1050,6 +1051,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.EvaluateWindow` | `IDE/Debug/Atlas.IDE.Debug.EvaluateWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Evaluator` | `IDE/Debug/Atlas.IDE.Debug.Evaluator.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.EventBreak` | `IDE/Debug/Atlas.IDE.Debug.EventBreak.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.DataBreak` | `IDE/Debug/Atlas.IDE.Debug.DataBreak.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.RunMenu` | `IDE/Debug/Atlas.IDE.Debug.RunMenu.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Modules` | `IDE/Debug/Atlas.IDE.Debug.Modules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Deadlocks` | `IDE/Debug/Atlas.IDE.Debug.Deadlocks.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Threads` | `IDE/Debug/Atlas.IDE.Debug.Threads.pas` | Ordner `IDE/Debug` |
@@ -1126,6 +1129,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.EvaluateTreeView` | `UI/Debug/Atlas.UI.Debug.EvaluateTreeView.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.VariablesParts` | `UI/Debug/Atlas.UI.Debug.VariablesParts.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventBreak` | `UI/Debug/Atlas.UI.Debug.EventBreak.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.DataBreak` | `UI/Debug/Atlas.UI.Debug.DataBreak.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.StopBar` | `UI/Debug/Atlas.UI.Debug.StopBar.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionBar` | `UI/Debug/Atlas.UI.Debug.ExceptionBar.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionBarPainter` | `UI/Debug/Atlas.UI.Debug.ExceptionBarPainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
@@ -1153,6 +1158,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.DataBreakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.DataBreakpoints.Strings.pas` | Texte des Debuggers: Datenhaltepunkte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.MethodBreakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.MethodBreakpoints.Strings.pas` | Texte des Debuggers: Methodenhaltepunkte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.EventBreak.Strings` | `UI/Debug/Atlas.UI.Debug.EventBreak.Strings.pas` | Texte des Debuggers: beim nächsten Ereignis anhalten, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.DataBreak.Strings` | `UI/Debug/Atlas.UI.Debug.DataBreak.Strings.pas` | Texte des Debuggers: Anhalten bei Datenzugriff, Sprache von Base, #870 |
 | `Atlas.UI.Debug.Logpoints.Strings` | `UI/Debug/Atlas.UI.Debug.Logpoints.Strings.pas` | Texte des Debuggers: Logpunkte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Note.Strings` | `UI/Debug/Atlas.UI.Debug.Note.Strings.pas` | Texte des Debuggers: Debug-Notiz, Sprache von Base, #582 |
 | `Atlas.UI.Debug.Exceptions.Strings` | `UI/Debug/Atlas.UI.Debug.Exceptions.Strings.pas` | Texte des Debuggers: Exceptions, Exception-Leiste, Debug-Notiz, Sprache von Base, #1455 |

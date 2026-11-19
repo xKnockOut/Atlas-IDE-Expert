@@ -4,17 +4,15 @@
 // - TAtlasEventBreakDialog: Wahl der Ereignisarten, häufige Ereignisse und
 //   Formulare (alle, die gerade sichtbaren, eines), darunter die Zahl der
 //   Handler und Haltestellen zur aktuellen Wahl.
-// - TAtlasEventBreakBar: Leiste nach dem Halt im Atlas-Stil (#410, #411)
+// - TAtlasEventBreakBar: Leiste nach dem Halt (TAtlasStopBar)
 //     Angehalten: btnSpeichern.OnClick → TfrmKunde.btnSpeichernClick
 //     Weiter beobachten   Schließen
-//   ohne Fokus; die Knöpfe sind Klickflächen.
 // Der Dialog erbt von TAtlasDialog (IDE-Thema, Dialogschrift, Knopfleiste);
 // Zeilen in logischen Pixeln, Breiten nach dem Text.
 
 interface
 
 uses
-  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -25,7 +23,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Debug.EventBreak,
   Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Popup.Window;
+  Atlas.UI.Debug.StopBar;
 
 type
   /// <summary>Text unter der Wahl („12 Handler an 9 Stellen“) zur aktuellen Wahl.</summary>
@@ -73,26 +71,19 @@ type
     property OkButton: TButton read FOk;
   end;
 
-  TAtlasEventBreakBar = class(TAtlasPopupWindow)
-  public const
-    cGap = 4;
+  TAtlasEventBreakBar = class(TAtlasStopBar)
+  private const
+    cContinue = 0;
+    cClose = 1;
   private
     FText: string;
-    FContinueRect: TRect;
-    FCloseRect: TRect;
-    FHot: Integer;
     FOnContinue: TProc;
     FOnClose: TProc;
-    function Layout(ADraw: Boolean): TSize;
-  protected
-    procedure Paint; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure LinkClicked(AIndex: Integer);
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeigt „Angehalten: ACaption“ unter APoint (Bildschirm).</summary>
     procedure ShowFor(const ACaption: string; const APoint: TPoint);
-    procedure Dismiss;
     /// <summary>Wie ein Klick auf „Weiter beobachten“ bzw. „Schließen“.</summary>
     procedure KeepWatching;
     procedure CloseBar;
@@ -106,8 +97,6 @@ type
 implementation
 
 uses
-  System.Math,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Style.Signal,
   Atlas.UI.Debug.EventBreak.Strings,
   Atlas.UI.Popup.Accessibility;
@@ -115,8 +104,6 @@ uses
 const
   cDialogGap = 8;
   cDialogWidth = 440;
-  cPad = 10;
-  cButtonGap = 18;
   /// <summary>Höhe einer Zeile mit Kästchen oder Knopf, der Zeile mit Auswahlfeld und der Zahl darunter, logische
   /// Pixel.</summary>
   cLineHeight = 22;
@@ -386,179 +373,52 @@ end;
 constructor TAtlasEventBreakBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  GuardFeature := TAtlasFeature.Debugger;
-  FHot := -1;
   SetAccessible(cUiaToolTipControlType, TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakTitle));
-end;
-
-procedure TAtlasEventBreakBar.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasEventBreakBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mPoint: TPoint;
-begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  mPoint := TPoint.Create(X, Y);
-  if PtInRect(FContinueRect, mPoint) then
-  begin
-    KeepWatching;
-  end
-  else if PtInRect(FCloseRect, mPoint) then
-  begin
-    CloseBar;
-  end;
-end;
-
-procedure TAtlasEventBreakBar.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mPoint: TPoint;
-  mHot: Integer;
-begin
-  inherited;
-  mPoint := TPoint.Create(X, Y);
-  mHot := -1;
-  if PtInRect(FContinueRect, mPoint) then
-  begin
-    mHot := 0;
-  end
-  else if PtInRect(FCloseRect, mPoint) then
-  begin
-    mHot := 1;
-  end;
-  if mHot >= 0 then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  if mHot <> FHot then
-  begin
-    FHot := mHot;
-    Invalidate;
-  end;
-end;
-
-function TAtlasEventBreakBar.Layout(ADraw: Boolean): TSize;
-var
-  X, Y, mTextHeight, mWidth: Integer;
-  mText: string;
-
-  procedure Link(const ACaption: string; AIndex: Integer; var ARect: TRect);
-  begin
-    ARect := Rect(X, Y, X + Canvas.TextWidth(ACaption), Y + mTextHeight);
-    if ADraw then
+  OnLink :=
+    procedure(AIndex: Integer)
     begin
-      Canvas.Font.Color := ToColor(Colors.Accent);
-      if FHot = AIndex then
-      begin
-        Canvas.Font.Style := [fsUnderline];
-      end
-      else
-      begin
-        Canvas.Font.Style := [];
-      end;
-      Canvas.TextOut(X, Y, ACaption);
-      Canvas.Font.Style := [];
+      LinkClicked(AIndex);
     end;
-    X := ARect.Right + Scale(cButtonGap);
-  end;
-
-begin
-  Canvas.Font := UIFont;
-  mTextHeight := Canvas.TextHeight('Wg');
-  if ADraw then
-  begin
-    Canvas.Brush.Style := bsClear;
-  end;
-  X := Scale(cPad);
-  Y := Scale(cPad);
-  mText := TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakStopped, [FText]);
-  Canvas.Font.Style := [fsBold];
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, mText);
-  end;
-  mWidth := X + Canvas.TextWidth(mText);
-  Canvas.Font.Style := [];
-  Y := Y + mTextHeight + Scale(cGap) * 2;
-  Link(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakContinue), 0, FContinueRect);
-  Link(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakClose), 1, FCloseRect);
-  mWidth := Max(mWidth, FCloseRect.Right);
-  if ADraw then
-  begin
-    Canvas.Brush.Style := bsSolid;
-  end;
-  Result.cx := mWidth + Scale(cPad);
-  Result.cy := Y + mTextHeight + Scale(cPad);
 end;
 
-procedure TAtlasEventBreakBar.ShowFor(const ACaption: string; const APoint: TPoint);
-var
-  mSize: TSize;
-  mArea: TRect;
-  mLeft, mTop: Integer;
+procedure TAtlasEventBreakBar.LinkClicked(AIndex: Integer);
 begin
-  FText := ACaption;
-  FHot := -1;
-  HandleNeeded;
-  mSize := Layout(False);
-  mArea := WorkAreaAt(APoint);
-  mLeft := Max(mArea.Left, Min(APoint.X, mArea.Right - mSize.cx));
-  mTop := APoint.Y + Scale(cGap);
-  if mTop + mSize.cy > mArea.Bottom then
-  begin
-    mTop := APoint.Y - Scale(cGap) - mSize.cy;
-  end;
-  mTop := Max(mTop, mArea.Top);
-  ShowAt(Rect(mLeft, mTop, mLeft + mSize.cx, mTop + mSize.cy));
-  Announce(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakStopped, [FText]));
-end;
-
-procedure TAtlasEventBreakBar.Dismiss;
-begin
-  HidePopup;
-end;
-
-procedure TAtlasEventBreakBar.KeepWatching;
-begin
-  Dismiss;
-  if Assigned(FOnContinue) then
+  if (AIndex = cContinue) and Assigned(FOnContinue) then
   begin
     FOnContinue();
-  end;
-end;
-
-procedure TAtlasEventBreakBar.CloseBar;
-begin
-  Dismiss;
-  if Assigned(FOnClose) then
+  end
+  else if (AIndex = cClose) and Assigned(FOnClose) then
   begin
     FOnClose();
   end;
 end;
 
+procedure TAtlasEventBreakBar.ShowFor(const ACaption: string; const APoint: TPoint);
+begin
+  FText := ACaption;
+  ShowLinks(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakStopped, [ACaption]), '',
+    TArray<string>.Create(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakContinue),
+    TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakClose)), APoint);
+end;
+
+procedure TAtlasEventBreakBar.KeepWatching;
+begin
+  Choose(cContinue);
+end;
+
+procedure TAtlasEventBreakBar.CloseBar;
+begin
+  Choose(cClose);
+end;
+
 function TAtlasEventBreakBar.ContinueRect: TRect;
 begin
-  Result := FContinueRect;
+  Result := LinkRect(cContinue);
 end;
 
 function TAtlasEventBreakBar.CloseRect: TRect;
 begin
-  Result := FCloseRect;
+  Result := LinkRect(cClose);
 end;
 
 end.

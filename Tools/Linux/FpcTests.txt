@@ -650,6 +650,7 @@ Atlas.Core.Debug.BreakLocations.Tests
 Atlas.Core.Debug.EventBreakWatch.Tests
 Atlas.Core.Debug.DataBreak.Tests
 Atlas.Core.Debug.DataBreakPatterns.Tests
+Atlas.Core.Debug.DataBreakWatch.Tests
 Atlas.Core.Settings.DataBreakClasses.Tests
 Atlas.Core.Debug.StopProgress.Tests
 Atlas.Core.Debug.Phases.Tests

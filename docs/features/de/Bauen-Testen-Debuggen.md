@@ -367,6 +367,18 @@ Aufruf: Menü Start und Befehlspalette. „Welcher Code läuft, wenn ich hier kl
 
 Einstellungen: `debug.breakOnNextEvent`
 
+#### Anhalten bei Datenzugriff
+
+Aufruf: Menü Start und Befehlspalette, vor dem Start oder während des Laufs. „Wo schreibt das Programm in die Tabelle Kunden?“
+
+- Atlas sucht im Projekt die Aufrufe von `Open`, `ExecSQL`, `Execute` (FireDAC, dbExpress, ADO, Zeos) und `Get`, `Post`, `Put`, `Delete` (`THTTPClient`, `TNetHTTPClient`, `TIdHTTP`, `TRESTRequest.Execute`), auch auf Nachfahren, und setzt dort vorübergehende Haltepunkte (Gruppe `Atlas.Datenzugriff`).
+- Im Dialog: SQL und/oder HTTP, je ein Muster mit `*` (`*FROM Kunden WHERE*`, `POST */api/auftrag*`, leer = jeder Zugriff), Groß-/Kleinschreibung, anhalten oder nur protokollieren.
+- Beim Halt wertet Atlas SQL-Text und Parameter bzw. Methode und URL aus; passt das Muster nicht, läuft das Programm still weiter.
+- Die Leiste zeigt Stelle und Text: „Weiter beobachten“, „Nur protokollieren“ (Zeilen `[SQL] Kunde.pas:43 · …` in den Meldungen), „Beenden“ (Haltepunkte entfernen).
+- Eigene Klassen in `debug.dataBreaks.classes` mit `=sql` oder `=http` (`TMeineAbfrage=sql`).
+
+Einstellungen: `debug.dataBreaks`, `debug.dataBreaks.classes`
+
 <a id="window-atlasstepfilter"></a>
 #### Schrittfilter
 

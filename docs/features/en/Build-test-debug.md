@@ -575,6 +575,18 @@ Run menu and command palette. "Which code runs when I click here?"
 
 Settings: `debug.breakOnNextEvent`
 
+### Break on data access
+
+Run menu and command palette, before starting or while running. "Where does the program write to the Customers table?"
+
+- Atlas finds the calls of `Open`, `ExecSQL`, `Execute` (FireDAC, dbExpress, ADO, Zeos) and `Get`, `Post`, `Put`, `Delete` (`THTTPClient`, `TNetHTTPClient`, `TIdHTTP`, `TRESTRequest.Execute`) in the project, also on descendants, and sets temporary breakpoints there (group `Atlas.Datenzugriff`).
+- In the dialog: SQL and/or HTTP, one pattern each with `*` (`*FROM Customers WHERE*`, `POST */api/order*`, empty = any access), ignore case, stop or only log.
+- On a stop Atlas evaluates the SQL text and parameters or method and URL; if the pattern does not match, the program keeps running silently.
+- The bar shows place and text: "Keep watching", "Only log" (lines `[SQL] Customer.pas:43 · …` in the messages), "Stop watching" (removes the breakpoints).
+- Own classes in `debug.dataBreaks.classes` with `=sql` or `=http` (`TMyQuery=sql`).
+
+Settings: `debug.dataBreaks`, `debug.dataBreaks.classes`
+
 <a id="window-atlasstepfilter"></a>
 ### Step filters
 
