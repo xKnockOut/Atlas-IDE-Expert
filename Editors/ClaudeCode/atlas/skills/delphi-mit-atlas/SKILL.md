@@ -42,6 +42,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
   `docs/` zu durchsuchen: eine Kennung wie `method-order` liefert den ganzen Abschnitt samt Schweregrad im Projekt,
   eine Frage („Brotkrumen abschalten“) die passenden Einstellungen mit aktuellem Wert.
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
+- `get_current_issue` zu Beginn einer Aufgabe auf einem Issue-Branch: das in der IDE begonnene Tracker-Issue mit Checkliste, Codeverweisen und (mit `section` = `body` bzw. `comments`) Beschreibung und letzten Kommentaren. Die Checkliste dort ist der Auftrag; Codeverweise sind die ersten Stellen zum Lesen.
 - `explain_compiler_message` bei Compilermeldungen, bevor du rätst und neu baust: Ursache an der Stelle, bekannte
   Delphi-Falle (Delphi 12 gegen 13, Methodenreferenzen, Units, die FPC nicht verlangt) und eine sichere Korrektur als
   Diff; die Meldungen aus `get_last_build`/`build_project` direkt als `messages` übergeben.
