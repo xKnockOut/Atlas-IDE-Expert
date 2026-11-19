@@ -83,7 +83,8 @@ type
     /// <summary>Fenster zeigen, bei Bedarf (neu) anlegen, ein neues mit Atlas-Symbol; ACreated: neu angelegt.
     /// False ohne Frame.</summary>
     function Show(out ACreated: Boolean): Boolean;
-    /// <summary>Wie Show, ohne zu fragen, ob neu angelegt.</summary>
+    /// <summary>Wie Show, ohne zu fragen, ob neu angelegt: Lebt die Form noch (X versteckt nur), wird sie samt
+    /// Gastgebern gezeigt; sonst neu angelegt.</summary>
     procedure Present;
     /// <summary>Lebende Form oder nil.</summary>
     function Form: TCustomForm;

@@ -350,7 +350,6 @@ end;
 
 class function TAtlasIdeResultsWindow.Frame: TAtlasResultsFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;
