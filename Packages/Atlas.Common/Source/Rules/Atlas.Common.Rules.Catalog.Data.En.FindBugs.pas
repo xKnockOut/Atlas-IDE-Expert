@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1261] of string = (
+  cCatalogLinesEnFindBugs: array[0..1272] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -85,6 +85,19 @@ const
     'd ''/'' on Linux, so the path stays in one piece on Windows. PathDelim as the replacement, ''\\'' and other variables stay silent. Quick fix for StringReplace(..., ''/'', ...): replace with PathDelim.",',
     '      "bad": "Name := ExtractFileName(StringReplace(Pfad, ''\\'', ''/'', [rfReplaceAll]));",',
     '      "good": "Name := ExtractFileName(StringReplace(Pfad, ''/'', PathDelim, [rfReplaceAll]));",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "line-break-split-replace",',
+    '      "name": "#13 and #10 replaced separately",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A routine replaces #13 and #10 in two separate calls (StringReplace, ReplaceStr, ReplaceText, .Replace) without replacing #13#10 or sLineBreak first. A Windows line break #13#10 ' +
+    'then turns into two characters, for example two spaces instead of one. Under Linux, where sLineBreak is #10, tests do not notice. The calls count in the order they run (inner calls of a chain first). ' +
+    'Silent if the first call removes #13 or turns it into #10, or if the second removes #13: then exactly one character remains.",',
+    '      "bad": "Result := StringReplace(AText, #13, '' '', [rfReplaceAll]);\nResult := StringReplace(Result, #10, '' '', [rfReplaceAll]);",',
+    '      "good": "Result := StringReplace(AText, #13#10, '' '', [rfReplaceAll]);\nResult := StringReplace(Result, #13, '' '', [rfReplaceAll]);\nResult := StringReplace(Result, #10, '' '', [rfReplaceAll]);",',
     '      "safeFix": false',
     '    },',
     '{',
