@@ -563,13 +563,15 @@ end;
 
 /// <summary>Zeile ab 1 aus AName als Zeile ab 0; -1 ohne Angabe.</summary>
 function LineOf(const AArguments: TJSONObject; const AName: string): Integer;
-var
-  mLine: Integer;
 begin
-  Result := -1;
-  if (AArguments <> nil) and AArguments.TryGetValue<Integer>(AName, mLine) and (mLine > 0) then
+  Result := TJsonRead.Int(AArguments, AName);
+  if Result > 0 then
   begin
-    Result := mLine - 1;
+    Dec(Result);
+  end
+  else
+  begin
+    Result := -1;
   end;
 end;
 

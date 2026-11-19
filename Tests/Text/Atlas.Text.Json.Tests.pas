@@ -92,6 +92,14 @@ type
     procedure StringsOfNoArrayAreEmpty;
     [Test]
     procedure TrimmedStringsDropEmpty;
+    [Test]
+    procedure JsonGivesValueText;
+    [Test]
+    procedure IntsSkipOtherValues;
+    [Test]
+    procedure ReadsIsoTime;
+    [Test]
+    procedure IsoTimeIsZeroForOtherValues;
   end;
 
 implementation
@@ -212,7 +220,9 @@ begin
   FObject := TJSONObject.ParseJSONValue('{"text":"  Hallo  ","number":42,"float":12.0,"exp":1e3,' +
     '"numberText":"17","big":5000000000,"real":2.5,"yes":true,"no":false,"none":null,' +
     '"object":{"a":1},"array":[1,2],"bad":"zwölf",' +
-    '"names":[" a ","",1,"b",true,null,{"c":"d"},["e"],"  "]}') as TJSONObject;
+    '"names":[" a ","",1,"b",true,null,{"c":"d"},["e"],"  "],' +
+    '"stamp":"2026-11-17T10:57:54.250Z","noStamp":"gestern",' +
+    '"ints":[1,"2",3.0,true,5000000000,-4,null]}') as TJSONObject;
 end;
 
 procedure TJsonReadTests.TearDown;
@@ -419,6 +429,45 @@ procedure TJsonReadTests.TrimmedStringsDropEmpty;
 begin
   Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(FObject, 'names')));
   Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(TJsonRead.Value(FObject, 'names'))));
+end;
+
+procedure TJsonReadTests.JsonGivesValueText;
+begin
+  Assert.AreEqual('{"a":1}', TJsonRead.Json(FObject, 'object'));
+  Assert.AreEqual('null', TJsonRead.Json(FObject, 'none'));
+  Assert.AreEqual('42', TJsonRead.Json(FObject, 'number'));
+  Assert.AreEqual('', TJsonRead.Json(FObject, 'fehlt'));
+  Assert.AreEqual('', TJsonRead.Json(nil, 'object'));
+end;
+
+procedure TJsonReadTests.IntsSkipOtherValues;
+var
+  mInts: TArray<Integer>;
+begin
+  mInts := TJsonRead.Ints(FObject, 'ints');
+  Assert.AreEqual(Integer(3), Integer(Length(mInts)));
+  Assert.AreEqual(1, mInts[0]);
+  Assert.AreEqual(3, mInts[1]);
+  Assert.AreEqual(-4, mInts[2]);
+  Assert.AreEqual(Integer(1), Integer(Length(TJsonRead.Ints(FObject, 'names'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Ints(nil, 'ints'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Ints(FObject, 'number'))));
+  mInts := nil;
+end;
+
+procedure TJsonReadTests.ReadsIsoTime;
+begin
+  Assert.AreEqual(Double(EncodeDate(2026, 11, 17) + EncodeTime(10, 57, 54, 250)),
+    Double(TJsonRead.IsoTime(FObject, 'stamp', True)), Double(1 / MSecsPerDay));
+end;
+
+procedure TJsonReadTests.IsoTimeIsZeroForOtherValues;
+begin
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(nil, 'stamp', True)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'fehlt', True)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'noStamp', True)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'number', False)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'none', False)));
 end;
 
 procedure TJsonTextTests.ListsQuotedItems;

@@ -142,7 +142,7 @@ end;
 function PercentOf(AObject: TJSONObject; const AName: string): Integer;
 begin
   Result := -1;
-  if (AObject <> nil) and (AObject.GetValue(AName) is TJSONNumber) then
+  if TJsonRead.Value(AObject, AName) is TJSONNumber then
   begin
     Result := EnsureRange(Integer(TJsonRead.Int64Or(AObject, AName, -1)), 0, 100);
   end;

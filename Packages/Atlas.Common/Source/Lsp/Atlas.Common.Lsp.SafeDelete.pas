@@ -239,21 +239,15 @@ end;
 { TSafeDeleteChoices }
 
 class function TSafeDeleteChoices.FromJson(AValue: TJSONValue): TSafeDeleteChoices;
-
-  function Flag(AObject: TJSONObject; const AName: string): Boolean;
-  begin
-    Result := (AObject.GetValue(AName) is TJSONBool) and TJSONBool(AObject.GetValue(AName)).AsBoolean;
-  end;
-
 begin
   Result := Default(TSafeDeleteChoices);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Result.Overrides := Flag(TJSONObject(AValue), 'overrides');
-  Result.Cascade := Flag(TJSONObject(AValue), 'cascade');
-  Result.Force := Flag(TJSONObject(AValue), 'force');
+  Result.Overrides := TJsonRead.Flag(TJSONObject(AValue), 'overrides');
+  Result.Cascade := TJsonRead.Flag(TJSONObject(AValue), 'cascade');
+  Result.Force := TJsonRead.Flag(TJSONObject(AValue), 'force');
 end;
 
 { TSafeDeletePlan }
