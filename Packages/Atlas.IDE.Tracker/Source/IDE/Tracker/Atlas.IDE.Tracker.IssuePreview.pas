@@ -19,7 +19,8 @@
 //   TAtlasIdeIssueLookups (Lookups, #1265), Checklisten und Statusfeld
 //   TAtlasIdeIssueChecklists (Checklists, #1273), Verknüpfungen
 //   TAtlasIdeIssueLinkWrites (LinkWrites, #1279), Bilder und Anhänge
-//   TAtlasIdeIssueMedia, Kommentarfeld TAtlasIdeIssueComments (#1266, #1278).
+//   TAtlasIdeIssueMedia, Kommentarfeld TAtlasIdeIssueComments (#1266, #1278), Zusammenfassen mit KI
+//   TAtlasIdeIssueSummary (#2462).
 // - Zuletzt geöffnet (#1270): jedes gezeigte Issue kommt in
 //   TAtlasRecentIssues (<Zwischenspeicher>\recent.json); die Befehlspalette
 //   zeigt sie bei leerem "#".
@@ -537,6 +538,7 @@ begin
   AddReviewEvent(mKeep, mEvents);
   AddOpenEvents(mKeep, mEvents);
   AddWriteEvents(mKeep, mEvents);
+  FParts.Summary.AddEvents(mKeep, mEvents);
   AFrame.Events := mEvents;
   FParts.Development.Wire(AFrame);
   FLoad.ApplyHookFlags(AFrame);
@@ -626,6 +628,8 @@ begin
   // Rückrufe des Editors nicht mehr aufrufen.
   FParts.Lookups.Clear;
   FParts.Comments.Stop;
+  // Eine laufende Zusammenfassung kommt danach nicht mehr an (Regel 3).
+  FParts.Summary.Stop;
   TAtlasIdeIssueWindow.Release;
   FLoad.Stop;
   FHooks := Default(TAtlasIssuePreviewHooks);
