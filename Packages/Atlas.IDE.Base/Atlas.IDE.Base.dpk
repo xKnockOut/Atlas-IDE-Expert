@@ -718,6 +718,7 @@ contains
   Atlas.IDE.Problems.IdeErrors in 'Source\IDE\Problems\Atlas.IDE.Problems.IdeErrors.pas',
   Atlas.IDE.Problems.Caret in 'Source\IDE\Problems\Atlas.IDE.Problems.Caret.pas',
   Atlas.Core.Problems.Explanation in 'Source\Core\Problems\Atlas.Core.Problems.Explanation.pas',
+  Atlas.Core.Problems.Prompt in 'Source\Core\Problems\Atlas.Core.Problems.Prompt.pas',
   Atlas.IDE.Build.MessageView in 'Source\IDE\Build\Atlas.IDE.Build.MessageView.pas',
   Atlas.IDE.Build.LastMessages in 'Source\IDE\Build\Atlas.IDE.Build.LastMessages.pas',
   Atlas.Core.Build.Messages in 'Source\Core\Build\Atlas.Core.Build.Messages.pas',
