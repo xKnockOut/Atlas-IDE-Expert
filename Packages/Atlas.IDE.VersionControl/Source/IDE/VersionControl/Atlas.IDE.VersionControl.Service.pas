@@ -136,7 +136,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Plan,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   System.Generics.Collections,
   Winapi.Windows,
   Vcl.ExtCtrls,
@@ -158,7 +158,7 @@ type
   end;
 
 var
-  Worker: TAtlasVcsWorker;
+  Worker: TAtlasBackgroundJobs;
   Runner: IAtlasVcsRunner;
   Backend: TAtlasIdeVcsBackend;
   Message_: TAtlasIdeVcsMessage;
@@ -504,7 +504,7 @@ begin
   end;
   if Worker = nil then
   begin
-    Worker := TAtlasVcsWorker.Create;
+    Worker := TAtlasBackgroundJobs.Create(HInstance);
   end;
   Backend.SetToolMissing(ToolMissing);
 end;
