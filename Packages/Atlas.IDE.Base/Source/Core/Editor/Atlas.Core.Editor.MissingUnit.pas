@@ -52,23 +52,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.JSON;
-
-function ArgumentsOf(const AJson: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
+  System.JSON,
+  Atlas.Text.Json;
 
 { TAtlasSearchPathRequest }
 
@@ -78,7 +63,7 @@ var
   mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasSearchPathRequest);
-  mArguments := ArgumentsOf(AArgumentsJson);
+  mArguments := TJsonRead.ParseArray(AArgumentsJson);
   try
     Result := (mArguments <> nil) and (mArguments.Count >= 2);
     if not Result then
@@ -109,7 +94,7 @@ var
   mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasAddUnitRequest);
-  mArguments := ArgumentsOf(AArgumentsJson);
+  mArguments := TJsonRead.ParseArray(AArgumentsJson);
   try
     Result := (mArguments <> nil) and (mArguments.Count >= 2);
     if not Result then
@@ -131,7 +116,7 @@ var
   mArguments: TJSONArray;
 begin
   AText := '';
-  mArguments := ArgumentsOf(AArgumentsJson);
+  mArguments := TJsonRead.ParseArray(AArgumentsJson);
   try
     if (mArguments <> nil) and (mArguments.Count > 0) then
     begin

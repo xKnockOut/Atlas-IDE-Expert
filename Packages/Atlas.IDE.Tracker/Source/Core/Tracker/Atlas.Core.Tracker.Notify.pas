@@ -196,7 +196,6 @@ implementation
 
 uses
   System.Classes,
-  System.DateUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   System.JSON,
@@ -684,15 +683,6 @@ begin
   end;
 end;
 
-function IsoOf(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
-end;
-
 class function TAtlasTrackerNotify.ToJson(const AFile: TAtlasTrackerNotifyFile): string;
 var
   mRoot, mObject, mEntry: TJSONObject;
@@ -711,7 +701,7 @@ begin
       mObject := TJSONObject.Create;
       mList.AddElement(mObject);
       mObject.AddPair('id', mConnection.Id);
-      mObject.AddPair('since', IsoOf(mConnection.Since));
+      mObject.AddPair('since', TJsonBuild.IsoTime(mConnection.Since));
       mObject.AddPair('me', mConnection.Me);
       mObject.AddPair('lastModified', mConnection.LastModified);
       mUnseen := TJSONArray.Create;
@@ -722,7 +712,7 @@ begin
         mUnseen.AddElement(mEntry);
         mEntry.AddPair('key', mItem.Key);
         mEntry.AddPair('project', mItem.Project);
-        mEntry.AddPair('anchor', IsoOf(mItem.Anchor));
+        mEntry.AddPair('anchor', TJsonBuild.IsoTime(mItem.Anchor));
       end;
     end;
     Result := mRoot.ToJSON;
