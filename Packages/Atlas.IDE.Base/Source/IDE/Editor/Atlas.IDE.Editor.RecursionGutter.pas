@@ -97,12 +97,14 @@ uses
 
 constructor TAtlasIdeRecursionGutter.Create(const ASession: TAtlasRecursionSessionFunc;
   const ARun: TAtlasLensCommandProc);
+const
+  cTickMs = 250;
 begin
   inherited Create;
   FSession := ASession;
   FRun := ARun;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -163,6 +165,10 @@ end;
 
 procedure TAtlasIdeRecursionGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
   ABack: TAtlasColor);
+const
+  cArrowTone = 0.9;
+  cPenDivisor = 8;
+  cThirds = 3;
 var
   mSize, mLeft, mTop, mHead: Integer;
   mBox: TRect;
@@ -173,18 +179,18 @@ begin
   mTop := AIcon.Top + (AIcon.Height - mSize) div 2;
   mBox := TRect.Create(mLeft + 1, mTop + 1, mLeft + mSize - 1, mTop + mSize - 1);
   ACanvas.Brush.Style := bsClear;
-  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.9));
-  ACanvas.Pen.Width := Max(1, mSize div 8);
+  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, cArrowTone));
+  ACanvas.Pen.Width := Max(1, mSize div cPenDivisor);
   // Arc läuft gegen den Uhrzeigersinn vom Start- zum Endpunkt: von oben rechts über links bis oben.
-  ACanvas.Arc(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mBox.Right, mBox.Top + mBox.Height div 3,
+  ACanvas.Arc(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mBox.Right, mBox.Top + mBox.Height div cThirds,
     mBox.Left + mBox.Width div 2, mBox.Top);
-  mHead := Max(2, mSize div 3);
+  mHead := Max(2, mSize div cThirds);
   ACanvas.Pen.Width := 1;
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := ACanvas.Pen.Color;
-  ACanvas.Polygon([Point(mBox.Right, mBox.Top + mBox.Height div 3 + 1),
-    Point(mBox.Right - mHead, mBox.Top + mBox.Height div 3 - mHead div 2),
-    Point(mBox.Right + 1, mBox.Top + mBox.Height div 3 - mHead)]);
+  ACanvas.Polygon([Point(mBox.Right, mBox.Top + mBox.Height div cThirds + 1),
+    Point(mBox.Right - mHead, mBox.Top + mBox.Height div cThirds - mHead div 2),
+    Point(mBox.Right + 1, mBox.Top + mBox.Height div cThirds - mHead)]);
 end;
 
 function TAtlasIdeRecursionGutter.TipText(const AFileName: string; ALine: Integer;

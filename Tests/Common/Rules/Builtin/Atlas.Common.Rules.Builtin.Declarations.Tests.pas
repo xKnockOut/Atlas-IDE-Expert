@@ -112,6 +112,15 @@ type
     procedure InterfaceResolutionForUnlistedInterface;
     [Test]
     procedure InterfaceOffAndExclude;
+    /// <summary>declared-not-implemented, implemented-not-declared und signature-mismatch teilen sich die Zuordnung
+    /// je Datei (#1477): Ein gemeinsamer Lauf liefert dieselben Treffer und Korrekturen wie je ein Lauf.</summary>
+    [Test]
+    procedure SharedMatchingSameAsSeparateRuns;
+    /// <summary>#1477: 5 000 Methoden in 50 Klassen und 1 000 Routinen mit fehlenden, überzähligen und
+    /// abweichenden Rümpfen bleiben je Regel unter einer Schranke; vorher wuchs die Zeit quadratisch.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure LargeUnitStaysFast;
   end;
 
   /// <summary>Regeln zu Feldreihenfolge, Überladungen, Sonderformen und doppelten Deklarationen.</summary>
@@ -215,6 +224,8 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  System.Diagnostics,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
@@ -226,6 +237,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert,
+  Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Profiles;
 
 function ClassUnit(const AMembers, AImplementation: string; const AHead: string): string; overload;
@@ -927,6 +939,125 @@ function Kunde(const AMembers: string): string;
 begin
   Result := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10 + AMembers + '  end;'#10 +
     'implementation'#10'end.';
+end;
+
+procedure TDeclarationRulesTests.SharedMatchingSameAsSeparateRuns;
+var
+  mSource: string;
+begin
+  mSource := 'unit U;'#10'interface'#10'type'#10 +
+    '  TFoo = class'#10 +
+    '    procedure Fehlt(A: Integer);'#10 +
+    '    procedure Lauf(A: Integer); overload;'#10 +
+    '    procedure Lauf(const A: string); overload;'#10 +
+    '    function Wert(A: Integer): Integer;'#10 +
+    '  end;'#10 +
+    'function Liefere: Integer;'#10 +
+    'implementation'#10 +
+    'procedure TFoo.Lauf(A: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TFoo.Lauf(var A: string);'#10'begin'#10'end;'#10 +
+    'function TFoo.Wert(B: Integer): Integer;'#10'begin'#10'  Result := B;'#10'end;'#10 +
+    'procedure TFoo.Extra;'#10'begin'#10'end;'#10 +
+    'function Liefere: string;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
+    'end.';
+  // Fehlt (fehlender Rumpf), Extra (ohne Deklaration), Lauf und Wert (abweichender Kopf), Liefere (#1380).
+  Assert.AreEqual(5, TRuleAssert.SameAsSeparateRuns([TDeclaredNotImplementedRule.Create as IRule,
+    TImplementedNotDeclaredRule.Create as IRule, TSignatureMismatchRule.Create as IRule], mSource));
+end;
+
+/// <summary>Unit mit AClasses Klassen zu je AMethods Methoden: je Klasse fehlen 10 Rümpfe, 10 Rümpfe haben keine
+/// Deklaration, 10 weichen ab (var statt const); dazu ARoutines Routinen im interface-Teil, jede zehnte mit
+/// abweichendem Rumpf.</summary>
+function LargeUnit(AClasses, AMethods, ARoutines: Integer): string;
+var
+  mText: TStringBuilder;
+  mClass, mMethod: Integer;
+begin
+  mText := TStringBuilder.Create;
+  try
+    mText.Append('unit Gross;'#10'interface'#10'type'#10);
+    for mClass := 0 to AClasses - 1 do
+    begin
+      mText.Append('  TKlasse').Append(mClass).Append(' = class'#10'  public'#10);
+      for mMethod := 0 to AMethods - 1 do
+      begin
+        mText.Append('    procedure Methode').Append(mMethod).Append('(const AWert: Integer);'#10);
+      end;
+      mText.Append('  end;'#10);
+    end;
+    for mMethod := 0 to ARoutines - 1 do
+    begin
+      mText.Append('procedure Routine').Append(mMethod).Append('(const AWert: Integer);'#10);
+    end;
+    mText.Append('implementation'#10);
+    for mClass := 0 to AClasses - 1 do
+    begin
+      for mMethod := 10 to AMethods + 9 do
+      begin
+        mText.Append('procedure TKlasse').Append(mClass).Append('.Methode').Append(mMethod);
+        if mMethod < 20 then
+        begin
+          mText.Append('(var AWert: Integer);'#10'begin'#10'end;'#10);
+        end
+        else
+        begin
+          mText.Append('(const AWert: Integer);'#10'begin'#10'end;'#10);
+        end;
+      end;
+    end;
+    for mMethod := 0 to ARoutines - 1 do
+    begin
+      mText.Append('procedure Routine').Append(mMethod);
+      if mMethod mod 10 = 0 then
+      begin
+        mText.Append('(var AWert: Integer);'#10'begin'#10'end;'#10);
+      end
+      else
+      begin
+        mText.Append('(const AWert: Integer);'#10'begin'#10'end;'#10);
+      end;
+    end;
+    mText.Append('end.');
+    Result := mText.ToString;
+  finally
+    mText.Free;
+  end;
+end;
+
+procedure TDeclarationRulesTests.LargeUnitStaysFast;
+const
+  // Schranke je Regel; vorher brauchte declared-not-implemented für 250 fehlende Rümpfe in 2 500 Methoden 12 s.
+  cMaxMs = 3000;
+var
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mRules: TArray<IRule>;
+  mCounts: TArray<Integer>;
+  mIndex: Integer;
+  mWatch: TStopwatch;
+begin
+  mContext := Default(TRuleContext);
+  mContext.Text := LargeUnit(50, 100, 1000);
+  mRules := [TDeclaredNotImplementedRule.Create as IRule, TImplementedNotDeclaredRule.Create as IRule,
+    TSignatureMismatchRule.Create as IRule];
+  mCounts := [500, 500, 600];
+  mTree := TPascalParser.Parse(mContext.Text);
+  try
+    mContext.Tree := mTree;
+    for mIndex := 0 to High(mRules) do
+    begin
+      mWatch := TStopwatch.StartNew;
+      Assert.AreEqual(mCounts[mIndex], Integer(Length(TRuleEngine.Run([mRules[mIndex]], TServerSettings.Default,
+        mContext))), mRules[mIndex].Descriptor.Id);
+      Assert.IsTrue(mWatch.ElapsedMilliseconds < cMaxMs, Format('%s: %d ms', [mRules[mIndex].Descriptor.Id,
+        mWatch.ElapsedMilliseconds]));
+    end;
+  finally
+    mTree.Free;
+  end;
+  mContext := Default(TRuleContext);
+  mRules := nil;
+  mCounts := nil;
 end;
 
 { TDeclarationOrderRulesTests }

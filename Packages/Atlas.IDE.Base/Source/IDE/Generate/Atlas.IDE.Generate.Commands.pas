@@ -94,6 +94,8 @@ uses
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).
   cCommandTimeoutMs = 30000;
+  /// <summary>Art der Datei im Protokoll (Lesen und Schreiben).</summary>
+  cRecentKind = 'Verlauf des Erzeugen-Menüs';
 
 function LineAt(const ALines: TArray<string>; AIndex: Integer): string;
 begin
@@ -132,7 +134,7 @@ begin
   FRecentLoaded := True;
   // Eine Kennung je Zeile, jeder Text ist lesbar. Gesperrt: leer beginnen und die Datei nicht überschreiben;
   // TAtlasDataFile protokolliert das ohne Pfad.
-  FRecentKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(RecentFile, 'Verlauf des Erzeugen-Menüs',
+  FRecentKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(RecentFile, cRecentKind,
     function(const AText: string): Boolean
     begin
       FRecent.LoadFromText(AText);
@@ -160,7 +162,7 @@ begin
     TAtlasDataFile.Write(RecentFile, FRecent.ToText);
   except
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Verlauf des Erzeugen-Menüs', E);
+      TAtlasDataFile.ReportNotWritten(cRecentKind, E);
   end;
 end;
 

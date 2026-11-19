@@ -126,6 +126,8 @@ end;
 { TAtlasTestUnits }
 
 class function TAtlasTestUnits.UnitLine(const ALines: TArray<string>): Integer;
+const
+  cUnitHead = 'unit ';
 var
   mIndex: Integer;
   mLine: string;
@@ -142,7 +144,7 @@ begin
     begin
       // Erstes echtes Wort ist nicht "unit": Programm, Package oder anderes.
       mDone := True;
-      if SameText(Copy(mLine, 1, 5), 'unit ') or SameText(mLine, 'unit') then
+      if SameText(Copy(mLine, 1, Length(cUnitHead)), cUnitHead) or SameText(mLine, Trim(cUnitHead)) then
       begin
         Result := mIndex;
       end;

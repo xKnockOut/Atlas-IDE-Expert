@@ -40,45 +40,49 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings;
 
 const
   cNoValue = '–';
   /// <summary>Spalten des Reiters „Server“: Anfrage, Anzahl, Mittel, Maximum, wartend, Hauptthread Ø,
   /// Zeitüberschreitung, abgebrochen, gescheitert.</summary>
-  cRequestColumnIds: array[0..8] of TAtlasTextId = (TAtlasTextId.DiagColRequest, TAtlasTextId.DiagColCount,
-    TAtlasTextId.DiagColMean, TAtlasTextId.DiagColMax, TAtlasTextId.DiagColWaitedCount, TAtlasTextId.DiagColWaited,
-    TAtlasTextId.DiagColTimedOut, TAtlasTextId.DiagColCancelled, TAtlasTextId.DiagColFailed);
+  cRequestColumnIds: array[0..8] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColRequest,
+    TAtlasDiagnosticsTextId.DiagColCount, TAtlasDiagnosticsTextId.DiagColMean, TAtlasDiagnosticsTextId.DiagColMax,
+    TAtlasDiagnosticsTextId.DiagColWaitedCount, TAtlasDiagnosticsTextId.DiagColWaited,
+    TAtlasDiagnosticsTextId.DiagColTimedOut, TAtlasDiagnosticsTextId.DiagColCancelled,
+    TAtlasDiagnosticsTextId.DiagColFailed);
   /// <summary>Breiten dazu (vor dem Skalieren); 0: Rest der Breite.</summary>
   cRequestColumnWidths: array[0..8] of Integer = (0, 64, 72, 72, 110, 130, 120, 90, 60);
   cWaitedMeanColumn = 5;
   cTimedOutColumn = 6;
   cFailedColumn = 8;
   /// <summary>Reiter „Funktionen“: Funktion, Aufrufe, Summe, Mittel, Maximum, langsam, Anteil.</summary>
-  cFeatureColumnIds: array[0..6] of TAtlasTextId = (TAtlasTextId.DiagColFeature, TAtlasTextId.DiagColCalls,
-    TAtlasTextId.DiagColTotal, TAtlasTextId.DiagColMean, TAtlasTextId.DiagColMax, TAtlasTextId.DiagColSlow,
-    TAtlasTextId.DiagColShare);
+  cFeatureColumnIds: array[0..6] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColFeature,
+    TAtlasDiagnosticsTextId.DiagColCalls, TAtlasDiagnosticsTextId.DiagColTotal, TAtlasDiagnosticsTextId.DiagColMean,
+    TAtlasDiagnosticsTextId.DiagColMax, TAtlasDiagnosticsTextId.DiagColSlow, TAtlasDiagnosticsTextId.DiagColShare);
   cFeatureColumnWidths: array[0..6] of Integer = (0, 64, 80, 72, 72, 80, 96);
   cFeatureColumnRight: array[0..6] of Boolean = (False, True, True, True, True, True, True);
   cFeatureMeanColumn = 3;
   cFeatureMaxColumn = 4;
   cFeatureSlowColumn = 5;
   /// <summary>Langsame Aufrufe: Funktion, Zeit, Aktion, Dauer.</summary>
-  cSlowColumnIds: array[0..3] of TAtlasTextId = (TAtlasTextId.DiagColFeature, TAtlasTextId.DiagColTime,
-    TAtlasTextId.DiagColAction, TAtlasTextId.DiagColDuration);
+  cSlowColumnIds: array[0..3] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColFeature,
+    TAtlasDiagnosticsTextId.DiagColTime, TAtlasDiagnosticsTextId.DiagColAction,
+    TAtlasDiagnosticsTextId.DiagColDuration);
   cSlowColumnWidths: array[0..3] of Integer = (0, 96, 200, 80);
   cSlowColumnRight: array[0..3] of Boolean = (False, False, False, True);
   cSlowDurationColumn = 3;
   /// <summary>Quellen: Quelle, Aufrufe, Mittel, Maximum, zu langsam.</summary>
-  cSourceColumnIds: array[0..4] of TAtlasTextId = (TAtlasTextId.DiagColSource, TAtlasTextId.DiagColCalls,
-    TAtlasTextId.DiagColMean, TAtlasTextId.DiagColMax, TAtlasTextId.DiagColTooSlow);
+  cSourceColumnIds: array[0..4] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColSource,
+    TAtlasDiagnosticsTextId.DiagColCalls, TAtlasDiagnosticsTextId.DiagColMean, TAtlasDiagnosticsTextId.DiagColMax,
+    TAtlasDiagnosticsTextId.DiagColTooSlow);
   cSourceColumnWidths: array[0..4] of Integer = (0, 64, 72, 72, 90);
   cSourceColumnRight: array[0..4] of Boolean = (False, True, True, True, True);
   cSourceTooSlowColumn = 4;
   /// <summary>Hänger: Aktion, Zeit, Dauer, mit Atlas.</summary>
-  cHangColumnIds: array[0..3] of TAtlasTextId = (TAtlasTextId.DiagColAction, TAtlasTextId.DiagColTime,
-    TAtlasTextId.DiagColDuration, TAtlasTextId.DiagColWithAtlas);
+  cHangColumnIds: array[0..3] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColAction,
+    TAtlasDiagnosticsTextId.DiagColTime, TAtlasDiagnosticsTextId.DiagColDuration,
+    TAtlasDiagnosticsTextId.DiagColWithAtlas);
   cHangColumnWidths: array[0..3] of Integer = (0, 96, 80, 110);
   cHangColumnRight: array[0..3] of Boolean = (False, False, True, True);
   cHangDurationColumn = 2;
@@ -105,13 +109,13 @@ begin
   end;
 end;
 
-function Column(AId: TAtlasTextId; AWidth: Integer; ARight: Boolean): TAtlasGridColumn;
+function Column(AId: TAtlasDiagnosticsTextId; AWidth: Integer; ARight: Boolean): TAtlasGridColumn;
 begin
-  Result := TAtlasGridColumn.Make(TAtlasStrings.Text(AId), AWidth, ARight);
+  Result := TAtlasGridColumn.Make(TAtlasDiagnosticsStrings.Text(AId), AWidth, ARight);
 end;
 
 /// <summary>Spalten aus gleich langen Listen von Überschrift, Breite und Ausrichtung.</summary>
-function Columns(const AIds: array of TAtlasTextId; const AWidths: array of Integer;
+function Columns(const AIds: array of TAtlasDiagnosticsTextId; const AWidths: array of Integer;
   const ARight: array of Boolean): TArray<TAtlasGridColumn>;
 var
   mIndex: Integer;
