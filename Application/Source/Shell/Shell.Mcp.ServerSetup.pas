@@ -32,6 +32,7 @@ uses
   Atlas.Common.Localization.Texts,
   Shell.Workspace,
   Shell.Mcp.Context,
+  Shell.Mcp.RefactorSources,
   Shell.Mcp.Tools,
   Shell.Mcp.Changes,
   Shell.Mcp.Conventions;
@@ -127,8 +128,12 @@ end;
 
 procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
   const ALogger: ILogger);
+var
+  mContext: TMcpToolContext;
 begin
-  RegisterContextTools(AServices.ToolContext(AServer));
+  mContext := AServices.ToolContext(AServer);
+  TMcpRefactorSources.Attach(mContext, ALogger);
+  RegisterContextTools(mContext);
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);

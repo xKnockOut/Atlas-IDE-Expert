@@ -38,6 +38,7 @@ procedure TMcpRefactorSourcesTests.CreatesUnitWithBomCrLfAndFolder;
 var
   mFolder, mFile, mError: string;
   mBytes: TBytes;
+  mBom: TBytes;
   mOperations: TMcpFileOperations;
 begin
   mFolder := NewFolder;
@@ -46,7 +47,8 @@ begin
     mOperations := TMcpRefactorSources.FileOperations;
     mOperations.CreateFile(mFile, 'unit Probe.Neu;'#10#10'end.'#10);
     mBytes := TFile.ReadAllBytes(mFile);
-    Assert.IsTrue((Length(mBytes) > 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF), 'BOM');
+    mBom := TEncoding.UTF8.GetPreamble;
+    Assert.IsTrue((Length(mBytes) > Length(mBom)) and CompareMem(@mBytes[0], @mBom[0], Length(mBom)), 'BOM');
     Assert.Contains(TFile.ReadAllText(mFile, TEncoding.UTF8), 'unit Probe.Neu;'#13#10#13#10'end.');
     Assert.IsTrue(mOperations.DeleteFile(mFile, mError), mError);
     Assert.IsFalse(TFile.Exists(mFile));

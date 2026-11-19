@@ -33,7 +33,9 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Mcp.Server,
+  Shell.Mcp.Context,
   Shell.Mcp.Services,
+  Shell.Mcp.RefactorSources,
   Shell.Mcp.EditingTools;
 
 const
@@ -206,6 +208,8 @@ end;
 { TRefactorFixture }
 
 constructor TRefactorFixture.Create;
+var
+  mContext: TMcpToolContext;
 begin
   inherited Create;
   FSaved := TAtlasLocale.Language;
@@ -217,7 +221,9 @@ begin
   FLogger := TLogger.Create;
   FServices := TMcpServices.Create(FFolder, FLogger);
   FServer := TMcpServer.Create('Atlas', '0');
-  RegisterEditingTools(FServices.ToolContext(FServer));
+  mContext := FServices.ToolContext(FServer);
+  TMcpRefactorSources.Attach(mContext, FLogger);
+  RegisterEditingTools(mContext);
 end;
 
 destructor TRefactorFixture.Destroy;

@@ -217,18 +217,20 @@ end;
 
 /// <summary>Schreibweise eines Argumenttyps; Listen mit ihrem Aufbau.</summary>
 function TypeShape(const ATypeName: string): string;
+const
+  cTypeNames: array[0..3] of string = ('ids', 'names', 'numbers', 'parameters');
+  cShapes: array[0..3] of string = ('[id | name, …]', '[name, …]', '[number, …]',
+    '[{origin?, name, type, modifier?, value?}, …]');
+var
+  mIndex: Integer;
 begin
-  case IndexStr(ATypeName, ['ids', 'names', 'numbers', 'parameters']) of
-    0:
-      Result := '[id | name, …]';
-    1:
-      Result := '[name, …]';
-    2:
-      Result := '[number, …]';
-    3:
-      Result := '[{origin?, name, type, modifier?, value?}, …]';
-  else
-    Result := ATypeName;
+  Result := ATypeName;
+  for mIndex := Low(cTypeNames) to High(cTypeNames) do
+  begin
+    if cTypeNames[mIndex] = ATypeName then
+    begin
+      Result := cShapes[mIndex];
+    end;
   end;
 end;
 

@@ -43,8 +43,9 @@ type
     Root: string;
     Guard: TMcpPathGuard;
     Edit: TMcpEditTools;
-    /// <summary>Quelle von refactor (#2150); nil, wenn nur die Namen der Werkzeuge gebraucht werden.</summary>
-    Refactor: TMcpRefactorHost;
+    /// <summary>Quelle von refactor (#2150, TMcpRefactorSources.Attach); nil, wenn nur die Namen der Werkzeuge
+    /// gebraucht werden.</summary>
+    Refactor: IMcpRefactorHost;
     Architecture: TMcpArchitectureFunc;
     FindPath: TMcpFindPathFunc;
     CheckSource: TCheckSourceFunc;

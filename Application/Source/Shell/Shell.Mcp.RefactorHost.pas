@@ -41,7 +41,15 @@ type
     ProjectFor: TShellProjectFunc;
   end;
 
-  TMcpRefactorHost = class
+  /// <summary>refactor über den Code-Aktionen des Servers; lebt so lange wie die Werkzeuge, die es halten.</summary>
+  IMcpRefactorHost = interface
+    ['{2BD0AEF6-9A39-4A3E-8966-B708304A4EA2}']
+    /// <summary>refactor für ARequest; ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest die Datei
+    /// über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist.</summary>
+    function Run(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
+  end;
+
+  TMcpRefactorHost = class(TInterfacedObject, IMcpRefactorHost)
   private
     FServices: TMcpRefactorHostServices;
     FDocuments: IDocumentStore;
@@ -57,8 +65,6 @@ type
   public
     constructor Create(const AServices: TMcpRefactorHostServices);
     destructor Destroy; override;
-    /// <summary>refactor für ARequest; ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest die Datei
-    /// über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist.</summary>
     function Run(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
   end;
 

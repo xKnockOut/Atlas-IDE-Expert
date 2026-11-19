@@ -2,8 +2,8 @@
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), die Dienste hinter den Werkzeugen: Symbolindex der Projektgruppe,
 // Index-, Code- und Bearbeitungswerkzeuge, Pfadregeln (#99), Architektur (#1118), Hotspots (#1354) und der
-// Uses-Graph für find_path (#1117) und die Quelle von refactor (#2150). Jeder Baustein in eigener Routine, damit die
-// anonymen Methoden nur ihre Parameter einfangen.
+// Uses-Graph für find_path (#1117). Jeder Baustein in eigener Routine, damit die anonymen Methoden nur ihre
+// Parameter einfangen.
 
 interface
 
@@ -23,8 +23,7 @@ uses
   Atlas.Common.Hotspots.Service,
   Shell.Workspace,
   Shell.WorkspaceGroup,
-  Shell.Mcp.Context,
-  Shell.Mcp.RefactorHost;
+  Shell.Mcp.Context;
 
 type
   /// <summary>Alle Dienste eines MCP-Laufs; Free gibt sie in umgekehrter Reihenfolge frei.</summary>
@@ -43,8 +42,6 @@ type
     Hotspots: THotspotService;
     PathGraphs: TUsesGraphService;
     PathLocator: TUsesLocator;
-    /// <summary>Code-Aktionen und Refactorings des Servers für refactor (#2150).</summary>
-    Refactor: TMcpRefactorHost;
     /// <summary>Legt Index, Gruppe und Dienste für den Ordner ARoot an; noch ohne Laden.</summary>
     class function Create(const ARoot: string; const ALogger: ILogger): TMcpServices; static;
     procedure Free;
@@ -70,7 +67,6 @@ uses
   Atlas.Common.Metrics.Collector,
   Atlas.Common.Architecture.UsesGraph,
   Shell.Platform,
-  Shell.Mcp.RefactorSources,
   Shell.Mcp.Ide,
   Shell.Mcp.ArchitectureTools;
 
@@ -295,7 +291,6 @@ begin
   Result := TMcpEditTools.Create(AIndex, ReadSourceText, WriteSourceText, AllFilesOf(AGroup),
     EnsureReferenceOf(AGroup));
   Result.DirtyFiles := EditorDirtyFiles;
-  Result.Files := TMcpRefactorSources.FileOperations;
   Result.CheckSource := ACode.CheckSource;
   Result.CheckProject := ACode.CheckProject;
   Result.SettingsFor := ACode.SettingsFor;
@@ -343,13 +338,10 @@ begin
   mPathOptions.IncludeLibrary := True;
   Result.PathGraphs := TUsesGraphService.Create(Result.Index, mPathOptions);
   Result.PathLocator := TUsesLocator.Create(UsesReaderOf(), DefinesOf(Result.Group));
-  Result.Refactor := TMcpRefactorSources.NewHost(Result.Index, Result.Group, EnsureReferenceOf(Result.Group),
-    AllFilesOf(Result.Group), ALogger);
 end;
 
 procedure TMcpServices.Free;
 begin
-  Refactor.Free;
   Guard.Free;
   Edit.Free;
   Code.Free;
@@ -381,7 +373,6 @@ begin
   Result.Root := Root;
   Result.Guard := Guard;
   Result.Edit := Edit;
-  Result.Refactor := Refactor;
   Result.Architecture := ArchitectureOf(Group.Main, Architecture, AllFiles(), Root);
   Result.FindPath := FindPathOf(Index, PathGraphs, PathLocator, Group.Main, EnsureUnitOf(Group), Root);
   Result.Index := Index;

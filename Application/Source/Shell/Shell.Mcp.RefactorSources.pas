@@ -7,20 +7,16 @@
 interface
 
 uses
-  System.SysUtils,
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Mcp.EditTools,
-  Shell.WorkspaceGroup,
-  Shell.Mcp.RefactorHost;
+  Shell.Mcp.Context;
 
 type
   TMcpRefactorSources = class
   public
-    /// <summary>Quelle von refactor: Code-Aktionen und Refactorings des Servers über AGroup.</summary>
-    class function NewHost(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup;
-      const AEnsureUnit: TEnsureUnitFunc; const AFiles: TFunc<TArray<string>>;
-      const ALogger: ILogger): TMcpRefactorHost; static;
+    /// <summary>Gibt AContext die Quelle von refactor (Code-Aktionen und Refactorings des Servers über Index und
+    /// Gruppe des Kontexts) und den Bearbeitungswerkzeugen das Anlegen und Löschen von Dateien.</summary>
+    class procedure Attach(var AContext: TMcpToolContext; const ALogger: ILogger); static;
     /// <summary>Neue Dateien als UTF-8 mit BOM und CRLF anlegen, Dateien von der Platte löschen.</summary>
     class function FileOperations: TMcpFileOperations; static;
   end;
@@ -28,6 +24,8 @@ type
 implementation
 
 uses
+  System.SysUtils,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Documents.FileEncoding,
@@ -38,8 +36,9 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
   Shell.Workspace,
+  Shell.WorkspaceGroup,
   Shell.Composition.Refactorings.Services,
-  Shell.Mcp.Context;
+  Shell.Mcp.RefactorHost;
 
 /// <summary>Neue Datei aus refactor (#2150): UTF-8 mit BOM und CRLF wie neue Units der IDE, Ordner wird angelegt.
 /// </summary>
@@ -120,21 +119,23 @@ begin
     end;
 end;
 
-function RefactorNamespacesOf(AGroup: TShellWorkspaceGroup): TShellNamesFunc;
+/// <summary>Namensräume, Units und Dateien der Gruppe.</summary>
+procedure AddGroupAccess(var AServices: TMcpRefactorHostServices; AGroup: TShellWorkspaceGroup);
 begin
-  Result :=
+  AServices.EnsureUnit :=
+    function(const AUnitName: string): Boolean
+    begin
+      Result := AGroup.EnsureUnit(AUnitName);
+    end;
+  AServices.Namespaces :=
     function: TArray<string>
     begin
       Result := AGroup.Main.State.Namespaces;
     end;
-end;
-
-function RefactorFilesOf(const AFiles: TFunc<TArray<string>>): TShellNamesFunc;
-begin
-  Result :=
+  AServices.ProjectFiles :=
     function: TArray<string>
     begin
-      Result := AFiles();
+      Result := AGroup.AllFiles;
     end;
 end;
 
@@ -147,19 +148,14 @@ begin
     end;
 end;
 
-{ TMcpRefactorSources }
-
-class function TMcpRefactorSources.NewHost(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup;
-  const AEnsureUnit: TEnsureUnitFunc; const AFiles: TFunc<TArray<string>>; const ALogger: ILogger): TMcpRefactorHost;
+function NewHost(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; const ALogger: ILogger): IMcpRefactorHost;
 var
   mServices: TMcpRefactorHostServices;
 begin
   mServices := Default(TMcpRefactorHostServices);
   mServices.Logger := ALogger;
   mServices.Index := AIndex;
-  mServices.EnsureUnit := AEnsureUnit;
-  mServices.Namespaces := RefactorNamespacesOf(AGroup);
-  mServices.ProjectFiles := RefactorFilesOf(AFiles);
+  AddGroupAccess(mServices, AGroup);
   mServices.ReadText := ReadSourceText;
   mServices.SettingsFor := RefactorSettingsOf(AGroup);
   mServices.FormatStyleFor := RefactorStyleOf(AGroup);
@@ -167,6 +163,14 @@ begin
   mServices.NewNamesFor := NewNamesOf(AGroup);
   mServices.ProjectFor := RefactorProjectOf(AGroup);
   Result := TMcpRefactorHost.Create(mServices);
+end;
+
+{ TMcpRefactorSources }
+
+class procedure TMcpRefactorSources.Attach(var AContext: TMcpToolContext; const ALogger: ILogger);
+begin
+  AContext.Refactor := NewHost(AContext.Index, AContext.Group, ALogger);
+  AContext.Edit.Files := FileOperations;
 end;
 
 class function TMcpRefactorSources.FileOperations: TMcpFileOperations;
