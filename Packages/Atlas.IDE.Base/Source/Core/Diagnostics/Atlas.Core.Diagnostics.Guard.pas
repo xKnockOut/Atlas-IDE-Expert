@@ -1364,6 +1364,9 @@ begin
 end;
 
 class function TAtlasCommandScope.CleanName(const ACaption: string): string;
+const
+  cDots = '...';
+  cEllipsis = '…';
 var
   mIndex: Integer;
 begin
@@ -1385,13 +1388,13 @@ begin
     Inc(mIndex);
   end;
   Result := Trim(Result);
-  if Result.EndsWith('...') then
+  if Result.EndsWith(cDots) then
   begin
-    Result := TrimRight(Copy(Result, 1, Length(Result) - 3));
+    Result := TrimRight(Copy(Result, 1, Length(Result) - Length(cDots)));
   end
-  else if Result.EndsWith('…') then
+  else if Result.EndsWith(cEllipsis) then
   begin
-    Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
+    Result := TrimRight(Copy(Result, 1, Length(Result) - Length(cEllipsis)));
   end;
 end;
 
