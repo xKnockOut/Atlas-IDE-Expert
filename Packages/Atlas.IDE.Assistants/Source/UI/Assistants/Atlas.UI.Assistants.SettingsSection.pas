@@ -2,8 +2,9 @@
 
 // Abschnitt des Moduls KI-Assistenten im Optionsdialog (#1888, Muster #1456): eigene Seite „KI-Assistenten“
 // (#1906) mit dem Modulschalter assistants.enabled, Schreiben in offene Dateien (assistants.edit), Builds für
-// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline) und Debuggen
-// durch KI-Assistenten (debug.mcp mit Rechten und Leiste, #1874; ausgeführt im Modul Debugger).
+// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline), Debuggen
+// durch KI-Assistenten (debug.mcp mit Rechten und Leiste, #1874; ausgeführt im Modul Debugger) und IDE-Zustand für
+// get_ide_context (assistants.context, #2050).
 
 interface
 
@@ -41,6 +42,11 @@ begin
   Switch('debug.mcp.modify', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugModify));
   Switch('debug.mcp.attach', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugAttach));
   Switch('debug.mcp.banner', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugBanner));
+  // IDE-Zustand (#2050): wo der Entwickler gerade ist, samt Auswahl bis zur Grenze.
+  Switch('assistants.context', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsContext));
+  Switch('assistants.context.selection', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsContextSelection));
+  Number('assistants.context.selectionMax',
+    TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsContextSelectionMax));
 end;
 
 function TAtlasAssistantsSettingsSection.OwnerId: string;

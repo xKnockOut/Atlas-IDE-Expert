@@ -71,6 +71,12 @@ begin
     Assert.IsTrue(mSaved.DebugMcp, 'einschaltbar');
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'McpBuild').Checked);
+    // IDE-Zustand für get_ide_context (#2050) auf derselben Seite, standardmäßig an.
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsContext')));
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsContextSelection').Checked);
+    CheckOf(mPage, 'AssistantsContext').Checked := False;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.AssistantsContext);
   finally
     mPage.Free;
   end;

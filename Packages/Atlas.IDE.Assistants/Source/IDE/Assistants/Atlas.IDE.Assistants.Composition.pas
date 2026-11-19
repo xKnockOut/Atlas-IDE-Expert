@@ -15,6 +15,9 @@
 //   Auftrag neu in der Registry sucht (Regel 2). Nur im normalen Start und
 //   solange debug.mcp an ist; Rechte aus debug.mcp.sideEffects, .modify, .attach.
 //   Dazu die Leiste „KI-Assistent debuggt“ im Editor (debug.mcp.banner).
+// - Teil „AssistantContext“: Zustand der IDE für get_ide_context (#2050),
+//   solange assistants.context an ist; den letzten Build bekommt er über
+//   IAtlasBuildVerdictListener.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog.
 // Die Liste der offenen und ungespeicherten Dateien (DirtyExport) bleibt in
 // Base: Sie schützt Dateien auch dann vor dem Überschreiben, wenn das Modul
@@ -25,10 +28,14 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Build.Events,
+  Atlas.Core.Build.Messages,
+  Atlas.Core.Build.Verdict;
 
 type
-  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasAppliesSettings, IAtlasFollowsTheme)
+  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasAppliesSettings, IAtlasFollowsTheme,
+    IAtlasBuildVerdictListener)
   public const
     cModuleId = 'atlas.assistants';
     cSwitch = 'assistants';
@@ -42,6 +49,8 @@ type
     function IsActive: Boolean;
     procedure ApplySettings;
     procedure ThemeChanged;
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
@@ -67,6 +76,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
+  Atlas.IDE.Assistants.ContextExport,
   Atlas.UI.Assistants.SettingsSection;
 
 var
@@ -75,6 +85,7 @@ var
   GEditInbox: TAtlasIdeEditInbox;
   GDebugInbox: TAtlasIdeDebugInbox;
   GDebugBar: TAtlasIdeAssistantDebugBar;
+  GContext: TAtlasIdeContextExport;
 
 { Dienste von Base und anderer Module }
 
@@ -196,6 +207,21 @@ begin
   Result := GDebugInbox <> nil;
 end;
 
+procedure StartContext;
+begin
+  GContext := TAtlasIdeContextExport.Create;
+end;
+
+procedure StopContext;
+begin
+  FreeAndNil(GContext);
+end;
+
+function ContextStarted: Boolean;
+begin
+  Result := GContext <> nil;
+end;
+
 { TAtlasAssistantsModule }
 
 class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
@@ -218,7 +244,13 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugMcp;
-      end, DebugStarted, StartDebug, StopDebug)];
+      end, DebugStarted, StartDebug, StopDebug),
+    // Zustand der IDE für get_ide_context (#2050): solange assistants.context an ist.
+    TAtlasFeaturePart.When('AssistantContext',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsContext;
+      end, ContextStarted, StartContext, StopContext)];
 end;
 
 function TAtlasAssistantsModule.Info: TAtlasModuleInfo;
@@ -257,6 +289,16 @@ begin
   end;
 end;
 
+procedure TAtlasAssistantsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+begin
+  // Letzter Build für den IDE-Zustand (#2050); ohne laufenden Teil nichts.
+  if GContext <> nil then
+  begin
+    GContext.BuildRemembered(AMessages, AProject, AVerdict);
+  end;
+end;
+
 class function TAtlasAssistantsModule.RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
@@ -271,6 +313,8 @@ begin
   end;
   mModule := TAtlasAssistantsModule.Create;
   GScope := mRegistry.RegisterModule(mModule);
+  // Letzter Build für den IDE-Zustand (#2050).
+  GScope.Provide(IAtlasBuildVerdictListener, mModule as IAtlasBuildVerdictListener);
   for mPart in Parts do
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);

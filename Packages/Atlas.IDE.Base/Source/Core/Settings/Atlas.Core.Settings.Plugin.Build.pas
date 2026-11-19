@@ -7,6 +7,7 @@
 interface
 
 uses
+  Atlas.Core.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -14,6 +15,9 @@ const
   cMaxCheckDelay = 10000;
   cMinCheckMax = 200;
   cMaxCheckMax = 20000;
+  /// <summary>Vorgaben für die Prüfung beim Speichern: Wartezeit und Zeitgrenze in ms.</summary>
+  cDefaultCheckDelay = 2000;
+  cDefaultCheckMax = 1500;
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
@@ -50,11 +54,15 @@ const
   cMaxTestsBoundaryMax = 200;
   cDefaultTestsBoundaryMax = 20;
   /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
-  cDefaultTestsListsRunKey = $C052;
+  cDefaultTestsListsRunKey = cKeyCtrl + cKeyAlt + Ord('R');
   /// <summary>Grenzen und Vorgabe für tests.log.maxLines (#2168).</summary>
   cMinTestsLogMaxLines = 100;
   cMaxTestsLogMaxLines = 100000;
   cDefaultTestsLogMaxLines = 2000;
+  /// <summary>Grenzen und Vorgabe für assistants.context.selectionMax (#2050), in Zeichen.</summary>
+  cMinAssistantsContextSelectionMax = 0;
+  cMaxAssistantsContextSelectionMax = 50000;
+  cDefaultAssistantsContextSelectionMax = 4000;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -88,6 +96,14 @@ type
     DebugMcpAttach: Boolean;
     /// <summary>debug.mcp.banner: Leiste, solange ein KI-Assistent den Debugger steuert.</summary>
     DebugMcpBanner: Boolean;
+    /// <summary>assistants.context (#2050): Das Modul KI-Assistenten legt den Zustand der IDE (Datei, Cursor,
+    /// Methode, Auswahl, Projekt, letzter Build, Reiter) für get_ide_context ab; aus = keine Datei.</summary>
+    AssistantsContext: Boolean;
+    /// <summary>assistants.context.selection (#2050): markierten Text mitgeben; aus = nur der Bereich.</summary>
+    AssistantsContextSelection: Boolean;
+    /// <summary>assistants.context.selectionMax (#2050): höchstens so viele Zeichen der Auswahl,
+    /// cMinAssistantsContextSelectionMax bis cMaxAssistantsContextSelectionMax.</summary>
+    AssistantsContextSelectionMax: Integer;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
     /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
     /// blockieren). Aus = kein Bau beim Öffnen.</summary>
@@ -338,8 +354,8 @@ begin
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
   Result.CompileOnSave := False;
-  Result.CheckOnSaveDelayMs := 2000;
-  Result.CheckOnSaveMaxMs := 1500;
+  Result.CheckOnSaveDelayMs := cDefaultCheckDelay;
+  Result.CheckOnSaveMaxMs := cDefaultCheckMax;
   Result.McpBuild := True;
   Result.AssistantsEnabled := True;
   Result.AssistantsEdit := True;
@@ -348,6 +364,9 @@ begin
   Result.DebugMcpModify := False;
   Result.DebugMcpAttach := False;
   Result.DebugMcpBanner := True;
+  Result.AssistantsContext := True;
+  Result.AssistantsContextSelection := True;
+  Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
   Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
@@ -417,6 +436,8 @@ begin
   TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
+  AssistantsContextSelectionMax := EnsureRange(AssistantsContextSelectionMax, cMinAssistantsContextSelectionMax,
+    cMaxAssistantsContextSelectionMax);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -433,6 +454,9 @@ begin
   AIo.Flag('DebugMcpModify', DebugMcpModify);
   AIo.Flag('DebugMcpAttach', DebugMcpAttach);
   AIo.Flag('DebugMcpBanner', DebugMcpBanner);
+  AIo.Flag('AssistantsContext', AssistantsContext);
+  AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
+  AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);
   AIo.Flag('BuildOnOpen', BuildOnOpen);
   AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
   AIo.Text('BuildOnOpenScope', BuildOnOpenScope);

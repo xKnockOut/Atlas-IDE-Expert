@@ -17,7 +17,8 @@ type
     DebugTakenOver, DebugNeedsSideEffects, DebugNoBreakpoint, DebugStarted,
     SettingsDebugMcp, SettingsDebugSideEffects, SettingsDebugModify, SettingsDebugAttach, SettingsDebugBanner,
     DebugBarText, DebugBarPausedText, DebugBarClient, DebugBarPause, DebugBarResume, DebugBarTakeOver,
-    DebugBarPauseHint, DebugBarResumeHint, DebugBarTakeOverHint);
+    DebugBarPauseHint, DebugBarResumeHint, DebugBarTakeOverHint,
+    SettingsContext, SettingsContextSelection, SettingsContextSelectionMax, ContextKind);
 
   TAtlasAssistantsStrings = class
   public
@@ -74,7 +75,11 @@ const
      'Übernehmen',
      'Aufträge von KI-Assistenten ablehnen, bis „Fortsetzen“ gedrückt wird',
      'Aufträge von KI-Assistenten wieder annehmen',
-     'Sitzung selbst weiterführen; der KI-Assistent ist getrennt, seine Haltepunkte bleiben'),
+     'Sitzung selbst weiterführen; der KI-Assistent ist getrennt, seine Haltepunkte bleiben',
+     'IDE-Zustand für KI-Assistenten bereitstellen (Datei, Cursor, Methode, Projekt, Build; get_ide_context)',
+     'Markierten Text mitgeben',
+     'Höchstens Zeichen der Auswahl',
+     'IDE-Zustand für KI-Assistenten'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -115,7 +120,11 @@ const
      'Take over',
      'Refuse requests from AI assistants until "Resume" is pressed',
      'Accept requests from AI assistants again',
-     'Continue the session yourself; the AI assistant is disconnected, its breakpoints stay'));
+     'Continue the session yourself; the AI assistant is disconnected, its breakpoints stay',
+     'Provide the IDE state to AI assistants (file, cursor, method, project, build; get_ide_context)',
+     'Include the selected text',
+     'At most characters of the selection',
+     'IDE state for AI assistants'));
 
 { TAtlasAssistantsStrings }
 
