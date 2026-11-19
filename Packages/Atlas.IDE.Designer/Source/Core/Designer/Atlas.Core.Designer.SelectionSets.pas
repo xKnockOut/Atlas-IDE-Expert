@@ -110,7 +110,9 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Designer.Names,
+  Atlas.Core.Designer.FormStore;
 
 const
   cLocalFile = 'designer-selection-sets.json';
@@ -448,8 +450,7 @@ end;
 /// getrennt.</summary>
 function WordsOf(const AName: string): TArray<string>;
 var
-  mIndex: Integer;
-  mWord: string;
+  mIndex, mStart: Integer;
   mChar: Char;
 begin
   Result := nil;
@@ -463,24 +464,25 @@ begin
   begin
     mIndex := 1;
   end;
-  mWord := '';
+  // Ein Wort ist ein zusammenhängender Lauf ohne _ und Ziffern; ein Großbuchstabe beginnt ein neues.
+  mStart := 0;
   while mIndex <= Length(AName) do
   begin
     mChar := AName[mIndex];
-    if CharInSet(mChar, ['A'..'Z', '_', '0'..'9']) and (mWord <> '') then
+    if CharInSet(mChar, ['A'..'Z', '_', '0'..'9']) and (mStart > 0) then
     begin
-      Result := Result + [mWord];
-      mWord := '';
+      Result := Result + [Copy(AName, mStart, mIndex - mStart)];
+      mStart := 0;
     end;
-    if not CharInSet(mChar, ['_', '0'..'9']) then
+    if (mStart = 0) and not CharInSet(mChar, ['_', '0'..'9']) then
     begin
-      mWord := mWord + mChar;
+      mStart := mIndex;
     end;
     Inc(mIndex);
   end;
-  if mWord <> '' then
+  if mStart > 0 then
   begin
-    Result := Result + [mWord];
+    Result := Result + [Copy(AName, mStart, MaxInt)];
   end;
 end;
 
@@ -529,28 +531,13 @@ end;
 
 class function TAtlasSelectionSets.StorePath(const AFormFile: string; AShared: Boolean;
   const ALocalData, ATemp: string): string;
-var
-  mLocal: string;
 begin
-  if AShared then
-  begin
-    Exit(TPath.Combine(ExtractFilePath(AFormFile), cSharedFile));
-  end;
-  mLocal := ALocalData;
-  if mLocal = '' then
-  begin
-    mLocal := ATemp;
-  end;
-  Result := TPath.Combine(TPath.Combine(mLocal, 'Atlas'), cLocalFile);
+  Result := TAtlasDesignerFormStore.StorePath(AFormFile, AShared, ALocalData, ATemp, cSharedFile, cLocalFile);
 end;
 
 class function TAtlasSelectionSets.FormKey(const AFormFile: string; AShared: Boolean): string;
 begin
-  Result := AFormFile;
-  if AShared then
-  begin
-    Result := ExtractFileName(AFormFile);
-  end;
+  Result := TAtlasDesignerFormStore.FormKey(AFormFile, AShared);
 end;
 
 { TAtlasSetMenu }
@@ -616,20 +603,6 @@ begin
   end;
 end;
 
-function ContainsComponent(const AList: TArray<TComponent>; AComponent: TComponent): Boolean;
-var
-  mItem: TComponent;
-begin
-  for mItem in AList do
-  begin
-    if mItem = AComponent then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasSetMenu.Combined(const ACurrent, ASet: TArray<TComponent>;
   AAction: TAtlasSetAction): TArray<TComponent>;
 var
@@ -643,7 +616,7 @@ begin
   Result := nil;
   for mComponent in ACurrent do
   begin
-    if (AAction = TAtlasSetAction.Add) or not ContainsComponent(ASet, mComponent) then
+    if (AAction = TAtlasSetAction.Add) or not TAtlasDesignerNames.ContainsComponent(ASet, mComponent) then
     begin
       Result := Result + [mComponent];
     end;
@@ -652,7 +625,7 @@ begin
   begin
     for mComponent in ASet do
     begin
-      if not ContainsComponent(Result, mComponent) then
+      if not TAtlasDesignerNames.ContainsComponent(Result, mComponent) then
       begin
         Result := Result + [mComponent];
       end;

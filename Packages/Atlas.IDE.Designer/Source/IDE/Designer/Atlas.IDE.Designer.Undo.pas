@@ -293,15 +293,8 @@ begin
 end;
 
 procedure TAtlasIdeDesignerUndo.AddItem(const ACaption: string; ATag: Integer; AChecked: Boolean);
-var
-  mItem: TMenuItem;
 begin
-  mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := ACaption;
-  mItem.Tag := ATag;
-  mItem.Checked := AChecked;
-  mItem.OnClick := MenuClick;
-  FMenu.Items.Add(mItem);
+  AddMenuItem(FMenu, ACaption, ATag, AChecked, MenuClick);
 end;
 
 procedure TAtlasIdeDesignerUndo.BuildMenu;
