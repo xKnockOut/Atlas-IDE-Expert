@@ -5,7 +5,7 @@
 // (QueryThreadCycleTime), wird er kurz angehalten (SuspendThread), sein Kontext gelesen ((Wow64)GetThreadContext)
 // und der Aufrufstapel mit StackWalk64 abgelaufen; dann läuft er weiter. Kein Debugger nötig, die IDE darf das
 // Programm gleichzeitig debuggen. Nur ein 64-Bit-Prozess kann so 32- und 64-Bit-Programme lesen, deshalb misst der
-// Server. Gemessen 13.11.2026: 0,2 bis 0,5 ms je Probe, bei 10 ms Abstand +1,5 % (Win64) bzw. +3 % (Win32).
+// Server. Gemessen: 0,2 bis 0,5 ms je Probe, bei 10 ms Abstand +1,5 % (Win64) bzw. +3 % (Win32).
 // Gleiche Stapel fasst TAtlasRawStacks zusammen; aufgelöst wird nach dem Lauf (Atlas.Common.Lsp.Profiler).
 
 interface

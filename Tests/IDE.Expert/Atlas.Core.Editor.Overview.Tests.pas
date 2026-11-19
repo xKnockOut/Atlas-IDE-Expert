@@ -189,12 +189,12 @@ begin
   mProblems[4].UsesUnit := 'System.Math';
   mMarks := TAtlasOverview.ProblemMarks(mProblems);
   Assert.AreEqual(3, Integer(Length(mMarks)), 'ohne inaktive Zweige und uses-Einträge');
-  Assert.IsTrue(mMarks[0].Kind = TAtlasOverviewMarkKind.Error);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Error, mMarks[0].Kind);
   Assert.AreEqual(3, mMarks[0].Count, 'über alle Zeilen des Befunds');
   Assert.AreEqual('m4', mMarks[0].Text);
-  Assert.IsTrue(mMarks[1].Kind = TAtlasOverviewMarkKind.Warning);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Warning, mMarks[1].Kind);
   Assert.AreEqual(1, mMarks[1].Count, 'mindestens eine Zeile');
-  Assert.IsTrue(mMarks[2].Kind = TAtlasOverviewMarkKind.Info);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Info, mMarks[2].Kind);
 end;
 
 procedure TAtlasOverviewTests.ChangesWithTextOfTheirKind;
@@ -207,14 +207,14 @@ begin
   mChange.Line := 5;
   mChange.Count := 2;
   mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
-  Assert.IsTrue(mMark.Kind = TAtlasOverviewMarkKind.Modified);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Modified, mMark.Kind);
   Assert.AreEqual(2, mMark.Count);
   Assert.AreEqual('anders', mMark.Text);
   mChange.Kind := TAtlasLineChangeKind.Deleted;
   mChange.Line := 20;
   mChange.Count := 0;
   mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
-  Assert.IsTrue(mMark.Kind = TAtlasOverviewMarkKind.Deleted);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Deleted, mMark.Kind);
   Assert.AreEqual(19, mMark.Line, 'am Ende auf die letzte Zeile');
   Assert.AreEqual(1, mMark.Count);
   mChange.Kind := TAtlasLineChangeKind.Added;

@@ -316,8 +316,7 @@ const
 var
   mFindings: TArray<TRuleFinding>;
 begin
-  // Protokoll, Prüfungen, Vergleiche, Registry, Masken, Markup und Schriftnamen liest kein Benutzer
-  // (Marcos Lauf 06.11.2026).
+  // Protokoll, Prüfungen, Vergleiche, Registry, Masken, Markup und Schriftnamen liest kein Benutzer.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
     '  TAtlasGuard.Log(Format(''Datei nicht gefunden: %s'', [Name]));'#10 +
     '  FLog(''Projekte weggefallen, Prüfung neu'');'#10'  Diagnose(''Starte den Server neu'');'#10 +

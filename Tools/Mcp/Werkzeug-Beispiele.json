@@ -111,6 +111,38 @@
       "arguments": { "project": "RefApp", "mode": "check" },
       "process": true
     },
+    "debug_start": {
+      "arguments": { "project": "RefApp", "waitSeconds": 0 },
+      "process": true
+    },
+    "debug_stop": {
+      "arguments": {},
+      "process": true
+    },
+    "set_breakpoint": {
+      "arguments": { "file": "Source/Ref.Komponenten.Anzeige.pas", "line": "{{zeile:procedure TRefAnzeige.SetStil}}" },
+      "process": true
+    },
+    "remove_breakpoint": {
+      "arguments": { "all": true },
+      "process": true
+    },
+    "debug_continue": {
+      "arguments": { "waitSeconds": 0 },
+      "process": true
+    },
+    "debug_step": {
+      "arguments": { "kind": "over", "waitSeconds": 0 },
+      "process": true
+    },
+    "debug_state": {
+      "arguments": { "frames": 5 },
+      "process": true
+    },
+    "debug_evaluate": {
+      "arguments": { "expression": "Self" },
+      "process": true
+    },
     "get_affected_tests": {
       "arguments": { "format": "json" },
       "process": true
@@ -151,6 +183,12 @@
     "find_path": {
       "arguments": { "from": "Ref.Formulare.Haupt", "to": "Ref.Daten.Suche" },
       "contains": "Ref.Daten.Suche"
+    },
+    "find_implementations": {
+      "arguments": {
+        "name": "IFormatierer.Formatieren"
+      },
+      "contains": "TDezimalFormatierer.Formatieren"
     },
     "get_impact": {
       "arguments": { "name": "TKundenSuche.Suchen", "depth": 2 },

@@ -3,7 +3,7 @@
 // Standardroutinen ohne Seiteneffekte (#1109): Sie ändern weder Parameter noch Zustand und greifen auf kein
 // Objekt zu. Eine gemeinsame Liste für Inline-Variable (Editing.Inlining), doppelte Bedingungen
 // (duplicate-condition), IfThen mit Aufrufen in den Zweigen (ifthen-side-effect) und verworfene Ergebnisse
-// (ignored-result, #624); vorher führte jede Stelle eine eigene, unvollständige Liste. Die Namen stehen je
+// (ignored-result, #624), damit keine Stelle eine eigene, unvollständige Liste führt. Die Namen stehen je
 // RTL-Unit, damit der Regelkatalog sie so zeigen und ignored-result eine eigene Routine gleichen Namens von der
 // RTL unterscheiden kann. Keine Routine mit var- oder out-Parameter und keine, die bei falscher Eingabe
 // absichtlich eine Exception wirft (StrToInt als Prüfung), steht in der Liste.

@@ -70,12 +70,12 @@ type
     /// <summary>Ein nicht geschriebener Cache wird gemeldet statt verschluckt.</summary>
     [Test]
     procedure ServiceReportsUnwrittenCache;
-    /// <summary>Rückmeldung 22.10.2026 (3 GB bei acht Projekten): Projekte, die zusammen aufbauen, schreiben
+    /// <summary>Speicher (3 GB bei acht Projekten): Projekte, die zusammen aufbauen, schreiben
     /// den gemeinsamen Bibliotheks-Cache nur einmal, statt jedes für sich gegen seinen Startstand.</summary>
     [Test]
     [IgnoreMemoryLeaks]
     procedure ConcurrentServicesWriteLibraryCacheOnce;
-    /// <summary>Diagnoselog nennt, warum Units nicht aus dem Cache kamen (Rückmeldung 22.10.2026).</summary>
+    /// <summary>Diagnoselog nennt, warum Units nicht aus dem Cache kamen .</summary>
     [Test]
     procedure CountsWhyUnitsWereParsed;
     [Test]
@@ -106,7 +106,7 @@ type
     procedure RestartDoesNotWaitForRunningBuild;
   end;
 
-  /// <summary>Speicher bei Projektgruppen (Rückmeldung 01.11.2026): gemeinsamer Suchpfad-Cache und keine doppelte
+  /// <summary>Speicher bei Projektgruppen: gemeinsamer Suchpfad-Cache und keine doppelte
   /// Übernahme. Eigene Klasse neben TIndexBuilderTests, deren Dateien sie über PutBuilderFiles teilt.</summary>
   [TestFixture]
   TIndexGroupCacheTests = class
@@ -121,11 +121,11 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
+    /// <summary>Speicher: Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
     /// jedes Projekts; ein zweites Projekt mit denselben Suchpfaden liest sie von dort.</summary>
     [Test]
     procedure ServiceSharesSearchPathCache;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
+    /// <summary>Speicher: Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
     /// Stand und gleichen Defines schon im Index stehen, nicht noch einmal; mit anderen Defines liest es neu.</summary>
     [Test]
     procedure BuilderSkipsUnitsAlreadyIndexed;
@@ -544,7 +544,7 @@ var
   mCache: TArray<TUnitIndex>;
   mBuildResult: TIndexBuildResult;
 begin
-  // Diagnoselog 15.10.2026: Bei knappem Budget stehen Bibliotheken kompakt im Cache. Sie werden
+  // Bei knappem Budget stehen Bibliotheken kompakt im Cache. Sie werden
   // wiederverwendet, solange ein Budget gilt; ohne Budget braucht es alle Symbole.
   FFiles.Put('C:\Lib\K.pas', cUnitText, 1);
   FIndex.SetBudget(1);

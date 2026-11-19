@@ -16,8 +16,8 @@ type
     /// <summary>Metriken und TODO-Übersicht stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersReportCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>Gesetzte Namensräume liest die Analyse unverändert zurück.</summary>

@@ -31,7 +31,7 @@ type
     /// <summary>Eine zweite gleichzeitige workspace/diagnostic-Anfrage prüft nicht noch einmal.</summary>
     [Test]
     procedure WorkspaceRequestDoesNotCompute;
-    /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende (Diagnoselog 15.10.2026).</summary>
+    /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende.</summary>
     [Test]
     procedure CancelStopsRuleChecks;
     /// <summary>#1761: Dauert die Prüfung einer geöffneten Datei länger als OpenJobs.WaitMs, antwortet die Anfrage
@@ -69,7 +69,7 @@ type
     [Test]
     procedure WorkspaceReportCarriesRun;
     /// <summary>Während eines Laufs bündelt eine Anfrage die Befunde mehrerer Units, statt je Unit zu antworten
-    /// (Diagnoselog 29.10.2026: 970 Anfragen mit je einem Befund).</summary>
+    /// (sonst 970 Anfragen mit je einem Befund).</summary>
     [Test]
     procedure WorkspaceBundlesReportsDuringRun;
   end;

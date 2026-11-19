@@ -127,7 +127,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
 - **Set up leak check …** in the project context menu: shows what leak hunting still needs (FastMM4/FastMM5 found, first unit in uses, report on shutdown, defines and DLL of the Debug configuration) and sets up the chosen variant with a preview, for the Debug build only (`tests.leakSetup`)
 - **Test from a debug stop:** "Create test …" in the exception bar turns the values of the stop into a DUnitX test that works or expects the exception
-- **Debugging:** values in the hover and inline, visualizers, evaluate window, variables window (autos, locals, watch, search also in children), smart step into, call stack window with named parameter values, search and comparison with the last stop
+- **Debugging:** values in the hover and inline, visualizers, evaluate window, variables window (autos, locals, watch, search also in children), smart step into, call stack window with named parameter values, search and comparison with the last stop; run time since the last stop at the end of the line
 - **Breakpoints:** own "Breakpoints" window with search, tags and hit counts; breakpoints on methods by pattern, only for one object, **break when a field changes**, rules (dependent, hit condition, thread), named sets, check before starting; they move with the code, “run to here” by clicking the gutter
 - **“Why am I here?” and predicting conditions:** at a stop, the surrounding `if`, `while` and `case` show the values of their conditions, the upcoming ones the predicted results; skipped branches are dimmed
 - **Values in the debug hover:** expand them (changed values highlighted, old value behind), **change** them directly (F2) and **pin** them
@@ -141,6 +141,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Who frees this?** On request every `T.Create(…)` shows who frees the object: green “freed in Destroy, line 48”, “freed in finally”, “owner Self”, “owned by FList” or “reference counted”, yellow “passed to Registry.Add” or “returned to the caller”, red “never freed” where a leak rule reports; a click jumps to the release, the tooltip explains how Atlas got there (`editor.ownershipHints`, off by default)
 - **“No source” window:** when the debugger stops in code without source, a small window names routine, module, reason (debug DCUs off, `{$D-}`, DCU only, not in search path, system code) and ways out
 - **“Atlas leaks” window:** when the program reports leaks at the end (message box of `ReportMemoryLeaksOnShutdown` or FastMM log), Atlas lists them per name compared with the last run (new, grown, known) and the places below: with call stacks the creation site, otherwise the server's rated candidates; Enter jumps there (`debug.leakReport`)
+- **Debug note:** “Capture debug state” records the paused state as Markdown (location, call stack, locals, watches, exception, last events, secrets masked), on the clipboard and optionally as a file next to the project (`debug.note`, `debug.note.saveFile`)
 - **Memory timeline while debugging:** the window “Atlas: Memory” shows private bytes, working set, handles, GDI and USER objects of the program over the session with a mark at every stop; a dragged range shows the growth, “Copy CSV” the timeline (`debug.memoryTimeline`). Experimental: “Count objects” counts live objects per class in the paused program and compares with the previous count, growth on top (`debug.memoryTimeline.objectCount`)
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
@@ -166,6 +167,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **33 MCP tools** to read, check, build, test, rename and fix Delphi code
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
+- **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
 

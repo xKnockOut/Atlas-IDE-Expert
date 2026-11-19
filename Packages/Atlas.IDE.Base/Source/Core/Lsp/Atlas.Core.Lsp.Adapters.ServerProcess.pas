@@ -7,8 +7,8 @@
 // (TLspClient.CloseWith).
 // stderr geht in die Datei server-stderr.log im Protokollordner (anhängen,
 // eine Kopfzeile je Start), nicht in eine Pipe, die volllaufen und den Server
-// blockieren könnte. Früher ging stderr nach NUL, und was die Laufzeit beim
-// Absturz noch schrieb, war verloren. Lässt sich die Datei nicht öffnen,
+// blockieren könnte. So bleibt erhalten, was die Laufzeit beim Absturz noch
+// schreibt. Lässt sich die Datei nicht öffnen,
 // bleibt es bei NUL und das Protokoll sagt es einmal.
 // Geschrieben wird in einem eigenen Thread: Write legt die Bytes nur in eine
 // Warteschlange. Liest der Server gerade nicht (etwa beim Einlesen eines
@@ -241,7 +241,7 @@ begin
         TAtlasGuard.Report(TAtlasFeature.Server, E);
     end;
   finally
-    // Mit Exit-Code: Der Server hat seine Ausgabe geschlossen, meist weil er endete (H5).
+    // Mit Exit-Code: Der Server hat seine Ausgabe geschlossen, meist weil er endete.
     FClient.CloseWith(FOwner.EndInfo);
   end;
 end;

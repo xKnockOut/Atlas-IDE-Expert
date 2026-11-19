@@ -52,7 +52,8 @@ uses
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Lsp.Hotspots,
   Atlas.Common.Architecture.UsesGraph.Tests,
-  Atlas.Common.Hotspots.Service.Tests;
+  Atlas.Common.Hotspots.Service.Tests,
+  Atlas.Text.Json;
 
 type
   /// <summary>Server-Teil für die Tests: Index mit zwei Units, Texte, Versionsverwaltung im Speicher.</summary>
@@ -148,11 +149,6 @@ begin
   Result := mAnswer as TJSONObject;
 end;
 
-function Flag(const AObject: TJSONObject; const AName: string): Boolean;
-begin
-  Result := (AObject.GetValue(AName) is TJSONBool) and TJSONBool(AObject.GetValue(AName)).AsBoolean;
-end;
-
 { TLspHotspotsTests }
 
 procedure TLspHotspotsTests.DisabledAnswersEnabledFalse;
@@ -168,7 +164,7 @@ begin
     mFixture.Settings := mSettings;
     mAnswer := mFixture.Ask('{}');
     try
-      Assert.IsFalse(Flag(mAnswer, 'enabled'));
+      Assert.IsFalse(TJsonRead.Flag(mAnswer, 'enabled'));
       Assert.AreEqual(1, mAnswer.Count);
     finally
       mAnswer.Free;
@@ -189,8 +185,8 @@ begin
     mFixture.NoVcs := True;
     mAnswer := mFixture.Ask('{}');
     try
-      Assert.IsTrue(Flag(mAnswer, 'enabled'));
-      Assert.IsFalse(Flag(mAnswer, 'vcs'));
+      Assert.IsTrue(TJsonRead.Flag(mAnswer, 'enabled'));
+      Assert.IsFalse(TJsonRead.Flag(mAnswer, 'vcs'));
       Assert.AreEqual('Keine Arbeitskopie (vcs.provider = auto)', mAnswer.GetValue('message').Value);
       Assert.IsNull(mAnswer.GetValue('data'), 'keine leere Liste');
     finally
@@ -211,7 +207,7 @@ begin
   try
     mAnswer := mFixture.Ask('{"level":"method"}');
     try
-      Assert.IsTrue(Flag(mAnswer, 'pending'), 'erste Anfrage wartet nicht');
+      Assert.IsTrue(TJsonRead.Flag(mAnswer, 'pending'), 'erste Anfrage wartet nicht');
       Assert.AreEqual('C:\Projekt', mAnswer.GetValue('root').Value);
     finally
       mAnswer.Free;
@@ -219,7 +215,7 @@ begin
     mFixture.Hotspots.WaitIdle;
     mAnswer := mFixture.Ask('{"level":"method"}');
     try
-      Assert.IsFalse(Flag(mAnswer, 'pending'));
+      Assert.IsFalse(TJsonRead.Flag(mAnswer, 'pending'));
       Assert.AreEqual('json', mAnswer.GetValue('format').Value);
       mData := mAnswer.GetValue('data') as TJSONObject;
       Assert.AreEqual('method', mData.GetValue('level').Value);
@@ -234,7 +230,7 @@ begin
     mFixture.Vcs.HeadValue := 'h2';
     mAnswer := mFixture.Ask('{"level":"method"}');
     try
-      Assert.IsTrue(Flag(mAnswer, 'pending'), 'neuer Commit');
+      Assert.IsTrue(TJsonRead.Flag(mAnswer, 'pending'), 'neuer Commit');
     finally
       mAnswer.Free;
     end;
@@ -256,7 +252,7 @@ begin
     mFixture.Hotspots.WaitIdle;
     mAnswer := mFixture.Ask('{"refresh":true}');
     try
-      Assert.IsTrue(Flag(mAnswer, 'pending'), '„Neu berechnen“');
+      Assert.IsTrue(TJsonRead.Flag(mAnswer, 'pending'), '„Neu berechnen“');
     finally
       mAnswer.Free;
     end;
@@ -291,7 +287,7 @@ begin
     end;
     mAnswer := mFixture.Ask('{}');
     try
-      Assert.IsTrue(Flag(mAnswer, 'pending'), 'ohne Stand nicht wiederverwendet');
+      Assert.IsTrue(TJsonRead.Flag(mAnswer, 'pending'), 'ohne Stand nicht wiederverwendet');
     finally
       mAnswer.Free;
     end;
@@ -319,7 +315,7 @@ begin
     mFixture.Vcs.LogError := '';
     mAnswer := mFixture.Ask('{}');
     try
-      Assert.IsTrue(Flag(mAnswer, 'pending'), 'nach dem Fehler wird neu gerechnet');
+      Assert.IsTrue(TJsonRead.Flag(mAnswer, 'pending'), 'nach dem Fehler wird neu gerechnet');
     finally
       mAnswer.Free;
     end;
@@ -376,7 +372,7 @@ begin
     mArguments.AddElement(TJSONObject.ParseJSONValue('{"level":"unit"}'));
     mAnswer := mFixture.Hotspots.SaveReport(mArguments);
     try
-      Assert.IsTrue(Flag(mAnswer as TJSONObject, 'pending'));
+      Assert.IsTrue(TJsonRead.Flag(mAnswer as TJSONObject, 'pending'));
     finally
       mAnswer.Free;
     end;

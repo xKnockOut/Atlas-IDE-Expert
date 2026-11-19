@@ -88,7 +88,8 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor;
 
 function BareTypeName(const AName: string): string;
 var
@@ -141,7 +142,7 @@ begin
   if (mIndex < Length(ATokens)) and SameText(ATokens[mIndex].Text, 'class') then
   begin
     Result.IsClass := True;
-    mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
   if (mIndex >= 0) and (mIndex < Length(ATokens)) then
   begin

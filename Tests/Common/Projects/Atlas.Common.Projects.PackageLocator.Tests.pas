@@ -33,7 +33,7 @@ type
     procedure RequiredFilesFollowRequires;
     [Test]
     procedure RequiresComeFromSource;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Jeder Arbeitsbereich und jeder Indexstart hat einen eigenen
+    /// <summary>Speicher: Jeder Arbeitsbereich und jeder Indexstart hat einen eigenen
     /// Locator; dieselbe .dcp liegt trotzdem nur einmal im Speicher.</summary>
     [Test]
     procedure CompiledFilesAreShared;

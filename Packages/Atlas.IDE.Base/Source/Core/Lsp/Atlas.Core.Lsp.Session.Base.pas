@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Session.Base;
 
-// Zustand der LSP-Sitzung (aus Atlas.Core.Lsp.Session ausgelagert): Client, initialize mit Projekten und
+// Zustand der LSP-Sitzung (Teil von Atlas.Core.Lsp.Session): Client, initialize mit Projekten und
 // Projektkontexten, Empfänger im Lese-Thread (refresh, $/progress, showMessage, Absturzfälle, applyEdit) und der
 // Dokumentabgleich (didOpen, didChange mit geändertem Bereich, didClose). Anfragen stehen in
 // Atlas.Core.Lsp.Session.Requests und Atlas.Core.Lsp.Session.

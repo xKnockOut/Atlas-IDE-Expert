@@ -77,7 +77,7 @@ type
     class function SetupKeys: TArray<TAtlasSetupKey>; static;
     /// <summary>Taste eines Atlas-Befehls der Palette als Text, wenn Atlas sie belegt, sonst '': Belegungen und
     /// Konflikte einmal auswerten, dann nur nachschlagen. Die ganze Palette fragte sonst je Befehl alle
-    /// Einstellungen und Aktionen der IDE ab (Willkommensseite: 60 s Start, 06.11.2026).</summary>
+    /// Einstellungen und Aktionen der IDE ab (die Willkommensseite brauchte so 60 s zum Start).</summary>
     class function AtlasShortCuts: TFunc<string, string>; static;
     /// <summary>Ziel des HTML-Exports.</summary>
     class function ExportFile: string; static;

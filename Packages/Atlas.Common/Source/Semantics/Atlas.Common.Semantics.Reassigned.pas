@@ -151,7 +151,8 @@ uses
   System.Math,
   System.Generics.Defaults,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.TokenCursor;
 
 { TReassignedScope }
 
@@ -859,7 +860,7 @@ begin
   mIndex := TRoutineBody.TokenAt(FTokens, AMethod.StartOffset);
   if (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'class') then
   begin
-    mIndex := TRoutineBody.NextToken(FTokens, mIndex);
+    mIndex := NextCodeAfter(FTokens, mIndex);
   end;
   Result := (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'constructor');
 end;

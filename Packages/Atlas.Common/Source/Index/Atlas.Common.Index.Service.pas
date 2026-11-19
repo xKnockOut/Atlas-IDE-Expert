@@ -36,13 +36,13 @@
 // Bibliothek. Mit einem gemeinsamen TIndexScheduler laufen die Aufbauten
 // mehrerer Projekte nacheinander und stufenweise.
 //
-// Speicher (Rückmeldung 15.10.2026, 1,5 GB bei sechs Projekten): Den
+// Speicher (gemessen 1,5 GB bei sechs Projekten): Den
 // gemeinsamen Bibliotheks-Cache lesen alle Dienste eines Prozesses nur einmal
 // (TSharedCacheReads), und nach einem vollständigen Aufbau gibt der Builder
 // seine Cache-Einträge frei. Vorher hielt jedes Projekt seinen Projekt- und
 // eine eigene Kopie des Bibliotheks-Caches bis zum nächsten Aufbau.
 //
-// Speicher (Rückmeldung 22.10.2026, 3 GB im Task-Manager bei acht Projekten): Die Aufbauten einer
+// Speicher (gemessen 3 GB im Task-Manager bei acht Projekten): Die Aufbauten einer
 // Projektgruppe enden fast gleichzeitig. Jeder verglich die Bibliothek mit seinem eigenen, beim Start
 // gelesenen Stand, fand die Units der anderen als neu und schrieb den ganzen gemeinsamen Cache, nach der
 // Projektstufe und am Ende: bis zu 16 vollständige Serialisierungen je Start, mehrere gleichzeitig. Jetzt
@@ -85,8 +85,8 @@ type
     /// Plattform; '' = Bibliothek im Projekt-Cache (#492).</summary>
     LibraryCacheFile: string;
     /// <summary>Gemeinsamer Cache der Units aus SearchFiles für alle Projekte mit denselben Suchpfaden,
-    /// Defines und Include-Pfaden (Speicher, Rückmeldung 01.11.2026): Vorher stand jede Suchpfad-Unit im Cache
-    /// jedes Projekts, und eine Gruppe hielt beim Laden alle Kopien gleichzeitig. '' = im Projekt-Cache.</summary>
+    /// Defines und Include-Pfaden (Speicher): Sonst stünde jede Suchpfad-Unit im Cache
+    /// jedes Projekts, und eine Gruppe hielte beim Laden alle Kopien gleichzeitig. '' = im Projekt-Cache.</summary>
     SearchCacheFile: string;
     /// <summary>Cache nur lesen, z. B. weil eine andere Instanz ihn schreibt (#184).</summary>
     ReadOnlyCache: Boolean;
@@ -661,7 +661,7 @@ end;
 
 /// <summary>Steht AUnit mit gleichem Stand (Zeitstempel, Prüfsumme) in AEntries? AByFile ordnet
 /// jedem Dateinamen (groß) seine Stelle in AEntries zu; linear wären es bei Tausenden
-/// Bibliotheks-Units Millionen Vergleiche (Diagnoselog 15.10.2026).</summary>
+/// Bibliotheks-Units Millionen Vergleiche.</summary>
 function ContainsUnit(const AEntries: TArray<TIndexCacheEntry>; AByFile: TDictionary<string, Integer>;
   const AUnit: TUnitIndex): Boolean;
 var
@@ -974,13 +974,13 @@ begin
   // Ein beschädigter Cache liefert nichts: Dann liest der Aufbau alles neu (#492).
   FCached := ReadCache(FRequest.CacheFile);
   // Bibliothek aus dem gemeinsamen Cache; Einträge im Projekt-Cache (ältere Stände) gelten weiter.
-  // Alle Projekte teilen eine gelesene Kopie (Rückmeldung 15.10.2026).
+  // Alle Projekte teilen eine gelesene Kopie.
   FLibraryCached := TSharedCacheHold.Acquire(FFileSystem, FRequest.LibraryCacheFile,
     function: TArray<TIndexCacheEntry>
     begin
       Result := ReadCache(FRequest.LibraryCacheFile);
     end, FLibraryHold);
-  // Suchpfade ebenso: Die Projekte einer Gruppe teilen meist dieselben (Speicher, Rückmeldung 01.11.2026).
+  // Suchpfade ebenso: Die Projekte einer Gruppe teilen meist dieselben.
   FSearchCached := TSharedCacheHold.Acquire(FFileSystem, FRequest.SearchCacheFile,
     function: TArray<TIndexCacheEntry>
     begin
@@ -999,7 +999,7 @@ begin
   begin
     Exit;
   end;
-  // Immer nur ein Dienst des Prozesses serialisiert (Rückmeldung 22.10.2026): Die Projekte einer Gruppe
+  // Immer nur ein Dienst des Prozesses serialisiert: Die Projekte einer Gruppe
   // enden fast gleichzeitig, jede Serialisierung belegt kurzzeitig ein Vielfaches der Datei. Gegen andere
   // Prozesse schützt die Schreibsperre der Datei.
   TSharedCacheWrites.Enter;
@@ -1087,9 +1087,8 @@ begin
         mCaches.WriteCaches(mResult.Parsed);
       end;
       // Der Index hat alles übernommen; spätere Units (EnsureUnit) liest der Builder aus der Datei. Auch nach
-      // einem Abbruch: Sonst hielt der Builder die Einträge samt String-Tabellen ganzer Cache-Dateien, bis ein
-      // neuer Aufbau ihn ersetzte, und ein abgebrochener Aufbau ohne Nachfolger behielt sie (Speicher,
-      // Rückmeldung 01.11.2026).
+      // einem Abbruch: Sonst hielte der Builder die Einträge samt String-Tabellen ganzer Cache-Dateien, bis ein
+      // neuer Aufbau ihn ersetzt, und ein abgebrochener Aufbau ohne Nachfolger behielte sie.
       mBuilder.ReleaseCache;
       mCaches.Release;
       if Assigned(FEvents.Finished) then
