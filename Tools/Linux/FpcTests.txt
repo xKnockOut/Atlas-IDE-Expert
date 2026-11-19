@@ -670,6 +670,7 @@ Atlas.Core.Tracker.TimePlan.Tests
 Atlas.Core.Tracker.BoardPlan.Tests
 Atlas.Core.Tracker.SyncPlan.Tests
 Atlas.Core.Tracker.Preview.Tests
+Atlas.Core.Tracker.PreviewLoad.Tests
 Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.OnSave.Tests
 Atlas.Core.Tests.Leaks.Tests

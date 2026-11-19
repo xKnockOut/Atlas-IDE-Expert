@@ -1365,6 +1365,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Review` | `Core/Tracker/Atlas.Core.Tracker.Review.pas` | Ordner `Core/Tracker`, „Prüfen“, #2126 |
 | `Atlas.Core.Tracker.PaletteSearch` | `Core/Tracker/Atlas.Core.Tracker.PaletteSearch.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Preview` | `Core/Tracker/Atlas.Core.Tracker.Preview.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.PreviewLoad` | `Core/Tracker/Atlas.Core.Tracker.PreviewLoad.pas` | Ordner `Core/Tracker`; Ablauf des Ladens im Fenster Atlas-Issue |
 | `Atlas.Core.Tracker.IssueWork` | `Core/Tracker/Atlas.Core.Tracker.IssueWork.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.AiSummary` | `Core/Tracker/Atlas.Core.Tracker.AiSummary.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Projects` | `Core/Tracker/Atlas.Core.Tracker.Projects.pas` | Ordner `Core/Tracker` |
