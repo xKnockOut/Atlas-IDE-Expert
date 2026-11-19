@@ -13,7 +13,7 @@
 //   %LOCALAPPDATA%\Atlas\startprofiles\<schlüssel>.json (Schlüssel wie die
 //   Projekt-Zusammenfassung #592, TAtlasProjectSummaries.KeyOf). Pfade dürfen
 //   absolut sein; relative gelten ab dem Ordner der .dproj. Lesen und
-//   Schreiben über TAtlasDataFile: atomar ersetzt (früher Löschen
+//   Schreiben über TAtlasDataFile: atomar ersetzt (kein Löschen
 //   und Umbenennen), eine unbrauchbare Datei (etwa nach einem Tippfehler beim
 //   Bearbeiten von Hand) liegt danach als .defekt daneben und steht im
 //   Protokoll, eine beim Lesen gesperrte wird nicht überschrieben.
@@ -266,29 +266,33 @@ end;
 function SplitEnvironment(const AText: string): TArray<string>;
 var
   mIndex: Integer;
-  mCurrent: string;
+  mCurrent: TStringBuilder;
   mQuoted: Boolean;
 begin
   Result := nil;
-  mCurrent := '';
   mQuoted := False;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if AText[mIndex] = '"' then
+  mCurrent := TStringBuilder.Create;
+  try
+    for mIndex := 1 to Length(AText) do
     begin
-      mQuoted := not mQuoted;
-    end
-    else if (AText[mIndex] = ';') and not mQuoted then
-    begin
-      Result := Result + [mCurrent];
-      mCurrent := '';
-    end
-    else
-    begin
-      mCurrent := mCurrent + AText[mIndex];
+      if AText[mIndex] = '"' then
+      begin
+        mQuoted := not mQuoted;
+      end
+      else if (AText[mIndex] = ';') and not mQuoted then
+      begin
+        Result := Result + [mCurrent.ToString];
+        mCurrent.Clear;
+      end
+      else
+      begin
+        mCurrent.Append(AText[mIndex]);
+      end;
     end;
+    Result := Result + [mCurrent.ToString];
+  finally
+    mCurrent.Free;
   end;
-  Result := Result + [mCurrent];
 end;
 
 { TAtlasStartOptions }

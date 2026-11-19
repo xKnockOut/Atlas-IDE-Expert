@@ -234,7 +234,7 @@ begin
   Name := '';
   FOpen := TDictionary<string, Boolean>.Create;
   // Fließende Leiste: Ist das Fenster schmal, bricht „Bilder“ in eine zweite Zeile um, statt die Knöpfe zu
-  // überdecken (vorher alLeft-Knöpfe und ein alRight-Häkchen in einem festen Panel).
+  // überdecken, wie es alLeft-Knöpfe und ein alRight-Häkchen in einem festen Panel täten.
   mBar := TFlowPanel.Create(Self);
   mBar.Parent := Self;
   mBar.Align := alTop;

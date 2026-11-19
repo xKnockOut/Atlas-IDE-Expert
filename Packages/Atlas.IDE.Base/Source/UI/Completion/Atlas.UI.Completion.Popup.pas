@@ -128,6 +128,10 @@ uses
 const
   // Rand neben dem Text „keine Treffer für …“ in der Breite des Fensters.
   cNoMatchesPadding = 32;
+  // Rand neben der Warnleiste bei unvollständigem Code: Ränder der Liste und der Leiste, Einzug des Textes.
+  cSyntaxPadding = 40;
+  // Zeilen je Rasterstufe des Mausrads.
+  cWheelRows = 3;
 
 type
   /// <summary>Linksklick ins Popup (MouseDown): Die Teile, die ihn abnehmen, kommen in fester Reihenfolge dran;
@@ -446,11 +450,11 @@ begin
   end;
   if WheelDelta > 0 then
   begin
-    FTop := Max(0, FTop - 3);
+    FTop := Max(0, FTop - cWheelRows);
   end
   else
   begin
-    FTop := Min(Max(0, Length(FOrder) - FVisibleRows), FTop + 3);
+    FTop := Min(Max(0, Length(FOrder) - FVisibleRows), FTop + cWheelRows);
   end;
   Invalidate;
 end;
@@ -762,7 +766,7 @@ begin
     // Die Leiste soll ganz lesbar sein: Breite wächst wie beim leeren Zustand.
     Canvas.Font := UIFont;
     FSessionWidth := Max(FSessionWidth, Canvas.TextWidth(TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust) +
-      TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line)) + Scale(40));
+      TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line)) + Scale(cSyntaxPadding));
     Canvas.Font := Font;
   end;
   if IsShown then

@@ -470,24 +470,6 @@ begin
   Result.AddPair('notes', TJSONArray.Create);
 end;
 
-function Ids(AObject: TJSONObject; const AKey: string): TArray<Integer>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AKey);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if mItem is TJSONNumber then
-      begin
-        Result := Result + [TJSONNumber(mItem).AsInt];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Text der Datei; EJsonRpcError, wenn sie nicht lesbar ist.</summary>
 function ReadFile(const AContext: TMoveMemberContext; const AFileName: string): string;
 begin
@@ -913,8 +895,8 @@ end;
 procedure TMemberMoveRun.ReadRequest(ABody: TJSONObject);
 begin
   FRequest := Default(TMoveMemberRequest);
-  FRequest.Members := Ids(ABody, 'members');
-  FRequest.Abstract := Ids(ABody, 'abstract');
+  FRequest.Members := TJsonRead.Ints(ABody, 'members');
+  FRequest.Abstract := TJsonRead.Ints(ABody, 'abstract');
   FRequest.RaiseVisibility := TClassVisibility.Protected_;
   if (ABody.GetValue('option') is TJSONBool) and FUp then
   begin

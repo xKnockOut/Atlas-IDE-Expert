@@ -150,19 +150,6 @@ const
 
 { Tokens }
 
-function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-  if Result > High(ATokens) then
-  begin
-    Result := -1;
-  end;
-end;
-
 function IsSymbolAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const ASymbol: string): Boolean;
 begin
   Result := (AIndex >= 0) and (AIndex <= High(ATokens)) and ATokens[AIndex].IsSymbol(ASymbol);
@@ -248,7 +235,7 @@ begin
       Dec(mDepth);
       if mDepth = 0 then
       begin
-        Exit(NextToken(ATokens, Result));
+        Exit(FollowingCode(ATokens, Result));
       end;
     end
     else if IsSymbolAt(ATokens, Result, ';') or IsSymbolAt(ATokens, Result, ':=') then
@@ -313,7 +300,7 @@ var
 begin
   Result := nil;
   mDepth := 0;
-  mIndex := NextToken(ATokens, AOpen);
+  mIndex := FollowingCode(ATokens, AOpen);
   while (mIndex >= 0) and (mIndex < AClose) do
   begin
     if IsSymbolAt(ATokens, mIndex, '(') or IsSymbolAt(ATokens, mIndex, '[') then
@@ -328,7 +315,7 @@ begin
     begin
       Result := Result + [mIndex];
     end;
-    mIndex := NextToken(ATokens, mIndex);
+    mIndex := FollowingCode(ATokens, mIndex);
   end;
 end;
 
@@ -1575,7 +1562,7 @@ function GetterUse(const ATokens: TArray<TPascalToken>; ANameToken, ABefore: Int
 var
   mAfter, mArgument: Integer;
 begin
-  mAfter := SkipGenericArgs(ATokens, NextToken(ATokens, ANameToken));
+  mAfter := SkipGenericArgs(ATokens, FollowingCode(ATokens, ANameToken));
   if IsSymbolAt(ATokens, mAfter, '(') then
   begin
     Result := TAccessorUse.Call;
@@ -1605,14 +1592,14 @@ function SetterUse(const ATokens: TArray<TPascalToken>; ANameToken, ABefore: Int
 var
   mAfter, mClose: Integer;
 begin
-  mAfter := SkipGenericArgs(ATokens, NextToken(ATokens, ANameToken));
+  mAfter := SkipGenericArgs(ATokens, FollowingCode(ATokens, ANameToken));
   if not IsSymbolAt(ATokens, mAfter, '(') then
   begin
     Exit(TAccessorUse.Pointer_);
   end;
   mClose := Closing(ATokens, mAfter);
   Result := TAccessorUse.Keep;
-  if (mClose >= 0) and StartsStatement(ATokens, ABefore) and EndsStatement(ATokens, NextToken(ATokens, mClose)) then
+  if (mClose >= 0) and StartsStatement(ATokens, ABefore) and EndsStatement(ATokens, FollowingCode(ATokens, mClose)) then
   begin
     Result := TAccessorUse.Call;
   end;
@@ -1706,7 +1693,7 @@ function ReadCall(const ATokens: TArray<TPascalToken>; ANameToken: Integer; out 
 begin
   ACall := Default(TCallShape);
   ACall.NameToken := ANameToken;
-  ACall.Open := SkipGenericArgs(ATokens, NextToken(ATokens, ANameToken));
+  ACall.Open := SkipGenericArgs(ATokens, FollowingCode(ATokens, ANameToken));
   ACall.Close := -1;
   Result := True;
   if not IsSymbolAt(ATokens, ACall.Open, '(') then
@@ -1718,7 +1705,7 @@ begin
   if Result then
   begin
     ACall.Commas := TopLevelCommas(ATokens, ACall.Open, ACall.Close);
-    if NextToken(ATokens, ACall.Open) <> ACall.Close then
+    if FollowingCode(ATokens, ACall.Open) <> ACall.Close then
     begin
       ACall.Count := Length(ACall.Commas) + 1;
     end;
@@ -1772,7 +1759,7 @@ begin
   begin
     // SetItem(I, V) → Items[I] := V
     mComma := ACall.Commas[High(ACall.Commas)];
-    mValue := NextToken(ATokens, mComma);
+    mValue := FollowingCode(ATokens, mComma);
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mNameStart, ATokens[ACall.Open].EndPos),
       AProperty.Name + '['), TTextEdit.Create(TTextRange.Create(ATokens[mComma].StartPos,
       ATokens[mValue].StartPos), '] := ')];
@@ -1780,7 +1767,7 @@ begin
   else
   begin
     // SetCaption(V) → Caption := V
-    mValue := NextToken(ATokens, ACall.Open);
+    mValue := FollowingCode(ATokens, ACall.Open);
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mNameStart, ATokens[mValue].StartPos),
       AProperty.Name + ' := ')];
   end;
@@ -1821,7 +1808,7 @@ begin
   Result := -1;
   mBefore := PreviousCode(ATokens, ChainStart(ATokens, ANameToken));
   // Der Getter muss der ganze Ausdruck sein: nach ihm ";" bzw. "," oder ")".
-  mAfter := SkipGenericArgs(ATokens, NextToken(ATokens, ANameToken));
+  mAfter := SkipGenericArgs(ATokens, FollowingCode(ATokens, ANameToken));
   if IsSymbolAt(ATokens, mBefore, ':=') then
   begin
     Result := AssignTarget(ATokens, mBefore, mAfter);

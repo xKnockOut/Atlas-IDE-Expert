@@ -21,7 +21,7 @@
 //   Dateinamen in %LOCALAPPDATA%\Atlas\Logs\Diagnose\atlas-diagnosemodus.txt.
 // - „Bericht kopieren“: Zeitwerte, Atlas- und IDE-Version, Einstellungen mit
 //   gekürzten Pfaden, kein Quelltext, Dateinamen nur mit Häkchen.
-// - Plugin-Zeiten (Variante A): Mit dem Modus misst TAtlasIdePluginTimings
+// - Plugin-Zeiten: Mit dem Modus misst TAtlasIdePluginTimings
 //   auch Hauptthread je Funktion, Server, Hintergrund und Hänger (abschaltbar
 //   mit diagnosticMode.pluginTimings); Bericht und letzte Diagnosedaten
 //   enthalten dann den Abschnitt „Plugin-Zeiten“.

@@ -1,8 +1,7 @@
 ﻿unit Atlas.UI.Build.SettingsSection.Tests;
 
 // Abschnitt „Compiler“ des Moduls Build-Werkzeuge (#1456): Compiler-Schalter (#558), Startprofile (#575), Bauen
-// beim Öffnen (#1293) und Projektaufgaben (#900); Laden und Speichern über die Seite (vorher in den Tests der
-// Seite von Base).
+// beim Öffnen (#1293) und Projektaufgaben (#900); Laden und Speichern über die Seite.
 
 interface
 

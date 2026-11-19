@@ -1,8 +1,7 @@
 ﻿unit Atlas.Core.Modules.KnownPackages;
 
-// Module unter „Known Packages“ der IDE (Meldung vom 05.11.2026:
-// nach einem Morgen standen dort nur noch Base, die 11 Module fehlten), ohne
-// VCL und Open Tools API:
+// Module unter „Known Packages“ der IDE (es kam vor, dass dort über Nacht nur
+// noch Base stand und alle Module fehlten), ohne VCL und Open Tools API:
 // - Modul-BPL: Atlas.IDE.<Name><Endung>.bpl im Ordner von Base mit derselben
 //   Versionsendung wie Base. Base selbst, die aufgelösten Verträge
 //   (Atlas.IDE.Contracts) und das Plugin aus 1.x (Atlas.IDE.Expert) zählen
@@ -195,7 +194,7 @@ begin
   mName := FileNameOf(AFile);
   if EndsText('.bpl', mName) then
   begin
-    mName := mName.Substring(0, Length(mName) - 4);
+    mName := ChangeFileExt(mName, '');
   end;
   Result := mName.Substring(Length(TUpdateVersions.PackageName(AFile)));
 end;
@@ -287,9 +286,10 @@ begin
 end;
 
 class function TAtlasKnownPackages.Report(const AState: TAtlasKnownPackagesState): string;
+const
+  cReport = 'Known Packages: %d Module im Ordner von Base, fehlend: %s; abgeschaltet: %s; aus anderem Ordner: %s';
 begin
-  Result := Format('Known Packages: %d Module im Ordner von Base, fehlend: %s; abgeschaltet: %s; ' +
-    'aus anderem Ordner: %s', [Length(AState.Modules), Names(AState.Missing), Names(AState.Disabled),
+  Result := Format(cReport, [Length(AState.Modules), Names(AState.Missing), Names(AState.Disabled),
     Names(AState.Elsewhere)]);
 end;
 
