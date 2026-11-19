@@ -406,7 +406,8 @@ begin
   FList.OnKeyUp := ListKeyUp;
   TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), cKeyWidth);
   TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), 100);
-  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), cValueWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent),
+    cValueWidth);
   TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), cValueWidth);
   TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), cNoteWidth);
 
