@@ -13,6 +13,8 @@
 //   läuft; sonst wird er aus Meldung und Ausdruck des Haltepunkts
 //   zurückgewonnen.
 // - Alle aus, an, löschen: nur Haltepunkte der Gruppe cGroup.
+// - „Zahl aufzeichnen“ (#2552) steht in der gemerkten Eingabe; RecordedInput
+//   findet sie zum Ort der Ausgabe für den Logpunkt-Verlauf.
 // - Lines/Item liefern der Rinne (TAtlasIdeLogpointGutter) die Zeilen ohne
 //   IDE-Aufrufe; Refresh liest die Haltepunkte höchstens alle cRefreshMs neu.
 // Nur im Hauptthread verwenden.
@@ -73,6 +75,9 @@ type
     class function Marks(const AFileName: string): TArray<TAtlasIdeLogpointMark>; static;
     class function TryMark(const AFileName: string; ALine: Integer; out AMark: TAtlasIdeLogpointMark): Boolean;
       static;
+    /// <summary>Eingabe des Logpunkts am Ort APlace („Unit1.pas:12“, wie in der Ausgabe), wenn er Werte
+    /// aufzeichnet (#2552); False sonst. Bei gleichnamigen Dateien gilt der erste.</summary>
+    class function RecordedInput(const APlace: string; out AInput: TAtlasLogpointInput): Boolean; static;
   end;
 
 implementation
@@ -327,7 +332,8 @@ begin
   mExisting := Find(mFileName, mLine);
   mInput := InputOf(mExisting, mLine);
   mPlace := PlaceOf(mFileName, mLine);
-  case TAtlasLogpointDialog.Execute(mPlace, IsLogpoint(mExisting), mInput) of
+  case TAtlasLogpointDialog.Execute(mPlace, IsLogpoint(mExisting), TAtlasIdeSettings.Current.DebugLogpointsRecordValues,
+    mInput) of
     TAtlasLogpointChoice.SetLogpoint:
       if Apply(mFileName, mLine, mExisting, mInput) then
       begin
@@ -346,6 +352,29 @@ begin
     Exit;
   end;
   Changed;
+end;
+
+class function TAtlasIdeLogpoints.RecordedInput(const APlace: string; out AInput: TAtlasLogpointInput): Boolean;
+var
+  mPair: TPair<string, TAtlasLogpointInput>;
+  mAt: Integer;
+begin
+  AInput := Default(TAtlasLogpointInput);
+  if (FInputs = nil) or (APlace = '') then
+  begin
+    Exit(False);
+  end;
+  for mPair in FInputs do
+  begin
+    mAt := mPair.Key.LastIndexOf('|');
+    if mPair.Value.RecordValues and (mAt > 0) and
+      SameText(PlaceOf(mPair.Key.Substring(0, mAt), StrToIntDef(mPair.Key.Substring(mAt + 1), -1)), APlace) then
+    begin
+      AInput := mPair.Value;
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class procedure TAtlasIdeLogpoints.DisableAll;

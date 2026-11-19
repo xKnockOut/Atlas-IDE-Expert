@@ -91,6 +91,7 @@ type
     TestsExplorer,
     StepFilter,
     MemoryTimeline,
+    LogpointValues,
     Profiler,
     Breakpoints,
     CompilerSwitches,
@@ -128,6 +129,7 @@ const
     (Id: 'AtlasTestsExplorer'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasStepFilter'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasMemoryTimeline'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
+    (Id: 'AtlasLogpointValues'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasProfiler'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasBreakpoints'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasCompilerSwitches'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname

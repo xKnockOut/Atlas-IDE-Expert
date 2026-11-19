@@ -722,6 +722,22 @@ Settings: `debug.eventLog`, `debug.eventLogColors`
 
 Settings: `debug.logpoints`, `debug.logpointPrefix`
 
+<a id="window-atlaslogpointvalues"></a>
+### Logpoint history
+
+Open: Atlas menu › Debug › Logpoint history, or command `Atlas.DebugLogpointValues`.
+
+- Tick “Record number” in the logpoint dialog, optionally with a series name; this needs exactly one placeholder (`Open: {FOpen.Count}`).
+- The window “Atlas: Logpoint history” shows the values of every recording logpoint as a line over the time since the session started, on the same chart as the memory timeline.
+- Numbers are read in German and English notation (`48`, `-3,5`, `1.234,5`, `1,234.5`); text values such as `nil` are a gap in the line, not 0.
+- At the top the series (name and place) and the thread (“all” or one); below it hits, minimum, maximum and last value.
+- Clicking the line shows the hit and jumps to its line in the event log; dragging selects a range.
+- “Copy CSV” puts `time_s,thread,value` for each hit of the chosen series and thread on the clipboard.
+- At most `debug.logpoints.recordLimit` hits per series (default 10000); the oldest drop out. Starting a session clears all series.
+- Atlas remembers “Record number” like the text with placeholders while the IDE is running.
+
+Settings: `debug.logpoints.recordValues`, `debug.logpoints.recordLimit`
+
 ## Debug: no source
 
 - When the debugger stops in a routine without source (the IDE shows the CPU window), a small window without focus appears at the top right: routine, module, address, unit and reason

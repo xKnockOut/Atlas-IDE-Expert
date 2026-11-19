@@ -128,6 +128,8 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionCapture.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.MemoryTimeline.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.TimeChart.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ValueSeries.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Profiler.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ProfilerFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ObjectCount.pas"/>
@@ -297,6 +299,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.MemoryChart.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.TimeChart.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ObjectCountPanel.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.MemoryFrame.pas">
             <Form>AtlasDebugMemoryFrame</Form>
@@ -362,7 +365,14 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Run.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Logpoint.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.LogpointDialog.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.LogpointValuesFrame.pas">
+            <Form>AtlasDebugLogpointValuesFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Logpoints.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LogpointValues.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LogpointValuesWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LogpointGutter.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.NoSource.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.NoSourceFlow.pas"/>

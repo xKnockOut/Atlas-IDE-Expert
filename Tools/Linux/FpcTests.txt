@@ -498,6 +498,8 @@ Atlas.Core.Debug.LeakCapture.Tests
 Atlas.Core.Debug.LeakView.Tests
 Atlas.Core.Debug.Note.Tests
 Atlas.Core.Debug.OpenedFiles.Tests
+Atlas.Core.Debug.TimeChart.Tests
+Atlas.Core.Debug.ValueSeries.Tests
 Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Debug.NoSource.Tests
 Atlas.Core.Debug.Restart.Tests

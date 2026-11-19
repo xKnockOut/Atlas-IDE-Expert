@@ -2547,6 +2547,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.MemoryTimeline.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.MemoryTimeline.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.TimeChart.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MemoryChart.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.MemoryFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.MemoryFrame.Tests.pas"/>
@@ -2573,6 +2574,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.OpenedFiles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Note.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.OpenedFiles.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.TimeChart.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ValueSeries.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.TimeChart.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ValueSeries.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.IgnoreList.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas"/>

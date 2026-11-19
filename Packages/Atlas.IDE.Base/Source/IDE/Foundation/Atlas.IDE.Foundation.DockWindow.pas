@@ -85,6 +85,10 @@ type
     function Show(out ACreated: Boolean): Boolean;
     /// <summary>Wie Show, ohne zu fragen, ob neu angelegt.</summary>
     procedure Present;
+    /// <summary>Gemeinsames Show der Fenster: AHost bei Bedarf mit AMake anlegen, zeigen und den Frame liefern
+    /// (nil ohne).</summary>
+    class function PresentFrame(var AHost: TAtlasIdeDockWindow;
+      const AMake: TFunc<TAtlasIdeDockWindow>): TCustomFrame; static;
     /// <summary>Lebende Form oder nil.</summary>
     function Form: TCustomForm;
     /// <summary>Lebender Frame oder nil (nil auch, wenn die Form schon weg ist).</summary>
@@ -448,6 +452,18 @@ var
   mCreated: Boolean;
 begin
   Show(mCreated);
+end;
+
+class function TAtlasIdeDockWindow.PresentFrame(var AHost: TAtlasIdeDockWindow;
+  const AMake: TFunc<TAtlasIdeDockWindow>): TCustomFrame;
+begin
+  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
+  if AHost = nil then
+  begin
+    AHost := AMake();
+  end;
+  AHost.Present;
+  Result := AHost.Frame;
 end;
 
 function TAtlasIdeDockWindow.Form: TCustomForm;

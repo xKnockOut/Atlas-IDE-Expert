@@ -17,6 +17,10 @@ const
   cMinMemoryTimelineIntervalMs = 250;
   cMaxMemoryTimelineIntervalMs = 10000;
   cDefaultMemoryTimelineIntervalMs = 1000;
+  /// <summary>Treffer je Reihe des Logpunkt-Verlaufs (#2552, debug.logpoints.recordLimit).</summary>
+  cMinLogpointRecordLimit = 10;
+  cMaxLogpointRecordLimit = 1000000;
+  cDefaultLogpointRecordLimit = 10000;
   /// <summary>Abstand der Proben des Profilers (#2057) in Millisekunden.</summary>
   cMinProfilerIntervalMs = 1;
   cMaxProfilerIntervalMs = 100;
@@ -354,6 +358,11 @@ type
     DebugLogpoints: Boolean;
     /// <summary>Präfix vor jeder Logpunkt-Ausgabe (#583, debug.logpointPrefix).</summary>
     DebugLogpointPrefix: string;
+    /// <summary>Logpunkt-Verlauf (#2552, debug.logpoints.recordValues): Im Dialog des Logpunkts „Zahl aufzeichnen“;
+    /// die Werte stehen als Linie im Fenster „Logpunkt-Verlauf“. Aus = kein Ankreuzfeld, keine Aufzeichnung.</summary>
+    DebugLogpointsRecordValues: Boolean;
+    /// <summary>Höchstzahl Treffer je Reihe (#2552, debug.logpoints.recordLimit); die ältesten fallen heraus.</summary>
+    DebugLogpointsRecordLimit: Integer;
     /// <summary>Fenster „Kein Quelltext“ (#869, debug.noSourcePage): Hält der Debugger in Code ohne Quelltext, nennt
     /// ein kleines Fenster Routine, Modul, Adresse, Grund und Auswege. Aus = nur das CPU-Fenster der IDE.</summary>
     DebugNoSourcePage: Boolean;
@@ -483,6 +492,8 @@ begin
   DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
     cMaxParallelStacksThreads);
   DebugLogpointPrefix := Trim(DebugLogpointPrefix);
+  DebugLogpointsRecordLimit := EnsureRange(DebugLogpointsRecordLimit, cMinLogpointRecordLimit,
+    cMaxLogpointRecordLimit);
   DebugAsyncOriginMaxPerSite := EnsureRange(DebugAsyncOriginMaxPerSite, cMinAsyncOriginPerSite,
     cMaxAsyncOriginPerSite);
   DebugNoSourceIgnoredUnits := Trim(DebugNoSourceIgnoredUnits);
@@ -610,6 +621,8 @@ begin
   DebugEventLogColors := cDefaultEventLogColors;
   DebugLogpoints := True;
   DebugLogpointPrefix := cDefaultLogpointPrefix;
+  DebugLogpointsRecordValues := True;
+  DebugLogpointsRecordLimit := cDefaultLogpointRecordLimit;
   DebugNoSourcePage := True;
   DebugNoSourceIgnoredUnits := '';
   DebugRestart := True;
@@ -655,6 +668,8 @@ begin
   AIo.Text('DebugEventLogColors', DebugEventLogColors);
   AIo.Flag('DebugLogpoints', DebugLogpoints);
   AIo.Text('DebugLogpointPrefix', DebugLogpointPrefix);
+  AIo.Flag('DebugLogpointsRecordValues', DebugLogpointsRecordValues);
+  AIo.Number('DebugLogpointsRecordLimit', DebugLogpointsRecordLimit);
   AIo.Flag('DebugNoSourcePage', DebugNoSourcePage);
   AIo.Text('DebugNoSourceIgnoredUnits', DebugNoSourceIgnoredUnits);
   AIo.Flag('DebugRestart', DebugRestart);

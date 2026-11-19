@@ -2697,6 +2697,31 @@
       "x-captionEn": "Logpoint prefix",
       "x-issue": "#583"
     },
+    "DebugLogpointsRecordValues": {
+      "description": "Logpunkt-Verlauf: Im Dialog des Logpunkts „Zahl aufzeichnen“ (nur bei genau einem Platzhalter); die Werte stehen als Linie über der Zeit im Fenster „Logpunkt-Verlauf“, je Thread wählbar, Text-Werte als Lücke, mit Kennzahlen und „CSV kopieren“. Aus = kein Ankreuzfeld, keine Aufzeichnung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.logpoints.recordValues",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.logpoints",
+      "x-caption": "Logpunkt-Werte aufzeichnen",
+      "x-captionEn": "Record logpoint values",
+      "x-issue": "#2552"
+    },
+    "DebugLogpointsRecordLimit": {
+      "type": "integer",
+      "default": 10000,
+      "minimum": 10,
+      "maximum": 1000000,
+      "description": "Höchstzahl Treffer je Reihe im Logpunkt-Verlauf (10 bis 1000000); die ältesten fallen heraus.",
+      "x-key": "debug.logpoints.recordLimit",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Zahl",
+      "x-parent": "debug.logpoints.recordValues",
+      "x-issue": "#2552"
+    },
     "DebugNoSourcePage": {
       "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
       "type": "boolean",

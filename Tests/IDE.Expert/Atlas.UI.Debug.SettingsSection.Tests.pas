@@ -129,6 +129,8 @@ begin
   Assert.IsTrue(CheckOf(APage, 'DebugNoteSaveFile').Checked, 'debug.note.saveFile (#582)');
   Assert.AreEqual(1, ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice, 'debug.closeOpenedFiles (#842)');
   Assert.IsFalse(CheckOf(APage, 'DebugPreviewTab').Checked, 'debug.previewTab (#842)');
+  Assert.IsTrue(CheckOf(APage, 'DebugLogpointsRecordValues').Checked, 'debug.logpoints.recordValues (#2552)');
+  Assert.AreEqual('10000', EditOf(APage, 'DebugLogpointsRecordLimit').Text, 'debug.logpoints.recordLimit (#2552)');
 end;
 
 /// <summary>Alle Schalter des Abschnitts umstellen.</summary>
@@ -167,6 +169,8 @@ begin
   CheckOf(APage, 'DebugNoteSaveFile').Checked := False;
   ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice := 2;
   CheckOf(APage, 'DebugPreviewTab').Checked := True;
+  CheckOf(APage, 'DebugLogpointsRecordValues').Checked := False;
+  EditOf(APage, 'DebugLogpointsRecordLimit').Text := '500';
   ASection.OwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
 end;
 
@@ -207,6 +211,8 @@ begin
   Assert.IsFalse(ASaved.DebugNoteSaveFile);
   Assert.AreEqual('auto', ASaved.DebugCloseOpenedFiles);
   Assert.IsTrue(ASaved.DebugPreviewTab);
+  Assert.IsFalse(ASaved.DebugLogpointsRecordValues);
+  Assert.AreEqual(500, ASaved.DebugLogpointsRecordLimit);
   Assert.AreEqual('C:\Komponenten', ASaved.DebugOwnCodeFolders, 'bereinigt (#578)');
 end;
 

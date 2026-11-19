@@ -273,6 +273,8 @@ begin
   Assert.IsTrue(ASettings.DebugNoteSaveFile, 'debug.note.saveFile (#582)');
   Assert.AreEqual('ask', ASettings.DebugCloseOpenedFiles, 'debug.closeOpenedFiles (#842)');
   Assert.IsFalse(ASettings.DebugPreviewTab, 'debug.previewTab (#842)');
+  Assert.IsTrue(ASettings.DebugLogpointsRecordValues, 'debug.logpoints.recordValues (#2552)');
+  Assert.AreEqual(10000, ASettings.DebugLogpointsRecordLimit, 'debug.logpoints.recordLimit (#2552)');
   Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
@@ -493,6 +495,8 @@ begin
   ASettings.DebugNoteSaveFile := False;
   ASettings.DebugCloseOpenedFiles := 'AUTO';
   ASettings.DebugPreviewTab := True;
+  ASettings.DebugLogpointsRecordValues := False;
+  ASettings.DebugLogpointsRecordLimit := 500;
   ASettings.DebugWhyHere := False;
   ASettings.DebugWhyHereDepth := 6;
   ASettings.DebugVariablesWindow := False;
@@ -700,6 +704,8 @@ begin
   Assert.IsFalse(ALoaded.DebugNoteSaveFile, 'debug.note.saveFile (#582)');
   Assert.AreEqual('auto', ALoaded.DebugCloseOpenedFiles, 'debug.closeOpenedFiles (#842)');
   Assert.IsTrue(ALoaded.DebugPreviewTab, 'debug.previewTab (#842)');
+  Assert.IsFalse(ALoaded.DebugLogpointsRecordValues, 'debug.logpoints.recordValues (#2552)');
+  Assert.AreEqual(500, ALoaded.DebugLogpointsRecordLimit, 'debug.logpoints.recordLimit (#2552)');
   Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
   Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');

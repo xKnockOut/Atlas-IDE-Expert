@@ -584,6 +584,10 @@ type
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;
     property DebugLogpointPrefix: string read FDebug.DebugLogpointPrefix write FDebug.DebugLogpointPrefix;
+    property DebugLogpointsRecordValues: Boolean read FDebug.DebugLogpointsRecordValues
+      write FDebug.DebugLogpointsRecordValues;
+    property DebugLogpointsRecordLimit: Integer read FDebug.DebugLogpointsRecordLimit
+      write FDebug.DebugLogpointsRecordLimit;
     property DebugNoSourcePage: Boolean read FDebug.DebugNoSourcePage write FDebug.DebugNoSourcePage;
     property DebugNoSourceIgnoredUnits: string read FDebug.DebugNoSourceIgnoredUnits
       write FDebug.DebugNoSourceIgnoredUnits;

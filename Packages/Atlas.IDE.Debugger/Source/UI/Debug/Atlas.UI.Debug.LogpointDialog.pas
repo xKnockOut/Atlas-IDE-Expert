@@ -3,7 +3,9 @@
 // Eingabe eines Logpunkts (#583), reine VCL: Text mit Platzhaltern
 // („x={x}, Summe {Summe:0.00}“), optional Bedingung und „nur die ersten N
 // Treffer“. Unter dem Text steht laufend der Fehler mit Stelle
-// (TAtlasLogpointTemplate) bzw. die Hilfe zu den Formaten. „Setzen“ schließt
+// (TAtlasLogpointTemplate) bzw. die Hilfe zu den Formaten. Mit
+// debug.logpoints.recordValues gibt es „Zahl aufzeichnen“ samt Name der Reihe
+// (#2552), nur bei genau einem Platzhalter wählbar. „Setzen“ schließt
 // nur mit gültigem Text; „Entfernen“ gibt es bei einem vorhandenen Logpunkt.
 // Aufgebaut im Code (keine DFM).
 
@@ -28,6 +30,10 @@ type
     Text: string;
     Condition: string;
     PassCount: Integer;
+    /// <summary>Werte als Zahlenreihe aufzeichnen (#2552).</summary>
+    RecordValues: Boolean;
+    /// <summary>Name der Reihe; '' = Text des Logpunkts.</summary>
+    SeriesName: string;
   end;
 
   TAtlasLogpointDialog = class(TAtlasDialog)
@@ -35,6 +41,8 @@ type
     FText: TEdit;
     FCondition: TEdit;
     FHits: TEdit;
+    FRecord: TCheckBox;
+    FSeriesName: TEdit;
     FNote: TAtlasNoteLabel;
     FSet: TButton;
     procedure InputChange(Sender: TObject);
@@ -43,11 +51,12 @@ type
     function GetInput: TAtlasLogpointInput;
     procedure SetInput(const AValue: TAtlasLogpointInput);
   public
-    constructor CreateFor(AOwner: TComponent; const APlace: string; ACanRemove: Boolean);
+    /// <summary>ARecordable: „Zahl aufzeichnen“ anbieten (debug.logpoints.recordValues).</summary>
+    constructor CreateFor(AOwner: TComponent; const APlace: string; ACanRemove, ARecordable: Boolean);
     /// <summary>Text zum Fehler in ATemplate; '' ohne Fehler.</summary>
     class function ErrorText(const ATemplate: TAtlasLogpointTemplate): string; static;
     /// <summary>Modal zeigen; AInput vorbelegt und bei „Setzen“ mit der Eingabe.</summary>
-    class function Execute(const APlace: string; ACanRemove: Boolean;
+    class function Execute(const APlace: string; ACanRemove, ARecordable: Boolean;
       var AInput: TAtlasLogpointInput): TAtlasLogpointChoice; static;
     property Input: TAtlasLogpointInput read GetInput write SetInput;
   end;
@@ -55,6 +64,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.ValueSeries,
   Atlas.Core.Style.Signal,
   Atlas.UI.Debug.Logpoints.Strings;
 
@@ -67,7 +77,8 @@ const
 
 { TAtlasLogpointDialog }
 
-constructor TAtlasLogpointDialog.CreateFor(AOwner: TComponent; const APlace: string; ACanRemove: Boolean);
+constructor TAtlasLogpointDialog.CreateFor(AOwner: TComponent; const APlace: string; ACanRemove,
+  ARecordable: Boolean);
 var
   mButtons: TAtlasButtonRow;
   mRemove: TButton;
@@ -81,6 +92,16 @@ begin
     TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointConditionHint));
   FHits := LabeledEdit(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointHits), '');
   FHits.NumbersOnly := True;
+  if ARecordable then
+  begin
+    FRecord := TCheckBox.Create(Self);
+    FRecord.Parent := AddRow(cRowHeight);
+    FRecord.Align := alClient;
+    FRecord.Caption := TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointRecord);
+    FRecord.OnClick := InputChange;
+    FSeriesName := LabeledEdit(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointSeriesName),
+      TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointSeriesNameHint));
+  end;
   mButtons := AddButtonRow;
   FSet := mButtons.AddButton(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointSet), TAtlasButtonKind.Default);
   FSet.ModalResult := mrNone;
@@ -101,6 +122,13 @@ begin
   Result.Text := FText.Text;
   Result.Condition := Trim(FCondition.Text);
   Result.PassCount := StrToIntDef(Trim(FHits.Text), 0);
+  Result.RecordValues := False;
+  Result.SeriesName := '';
+  if FRecord <> nil then
+  begin
+    Result.RecordValues := FRecord.Checked and FRecord.Enabled;
+    Result.SeriesName := Trim(FSeriesName.Text);
+  end;
 end;
 
 procedure TAtlasLogpointDialog.SetInput(const AValue: TAtlasLogpointInput);
@@ -111,6 +139,11 @@ begin
   if AValue.PassCount > 0 then
   begin
     FHits.Text := IntToStr(AValue.PassCount);
+  end;
+  if FRecord <> nil then
+  begin
+    FRecord.Checked := AValue.RecordValues;
+    FSeriesName.Text := AValue.SeriesName;
   end;
   InputChange(nil);
 end;
@@ -131,6 +164,16 @@ begin
     FNote.ShowNote(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointFormats), TAtlasSignalKind.Info);
   end;
   FSet.Enabled := (Trim(FText.Text) <> '') and mTemplate.Valid;
+  if FRecord <> nil then
+  begin
+    FRecord.Enabled := TAtlasLogpointValue.CanRecord(mTemplate);
+    FSeriesName.Enabled := FRecord.Enabled and FRecord.Checked;
+    if FRecord.Checked and not FRecord.Enabled and (mError = '') then
+    begin
+      FNote.ShowNote(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointRecordNeedsOne),
+        TAtlasSignalKind.Warn);
+    end;
+  end;
 end;
 
 procedure TAtlasLogpointDialog.SetClick(Sender: TObject);
@@ -171,13 +214,13 @@ begin
   end;
 end;
 
-class function TAtlasLogpointDialog.Execute(const APlace: string; ACanRemove: Boolean;
+class function TAtlasLogpointDialog.Execute(const APlace: string; ACanRemove, ARecordable: Boolean;
   var AInput: TAtlasLogpointInput): TAtlasLogpointChoice;
 var
   mDialog: TAtlasLogpointDialog;
 begin
   Result := TAtlasLogpointChoice.Cancel;
-  mDialog := TAtlasLogpointDialog.CreateFor(nil, APlace, ACanRemove);
+  mDialog := TAtlasLogpointDialog.CreateFor(nil, APlace, ACanRemove, ARecordable);
   try
     mDialog.Input := AInput;
     case mDialog.ShowModal of

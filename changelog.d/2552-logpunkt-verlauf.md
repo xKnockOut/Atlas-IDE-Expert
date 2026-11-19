@@ -1,0 +1,2 @@
+### Neu
+- Logpunkt-Verlauf: Logpunkte mit „Zahl aufzeichnen“ (nur bei genau einem Platzhalter) zeichnen ihre Werte als Linie über die Zeit im neuen Fenster „Atlas: Logpunkt-Verlauf“. Auswahl der Reihe und des Threads, Text-Werte als Lücke, Treffer, Minimum, Maximum und letzter Wert, Klick springt zur Zeile im Ereignisprotokoll, „CSV kopieren“. Höchstens `debug.logpoints.recordLimit` Treffer je Reihe. Speicherverlauf und Logpunkt-Verlauf teilen sich jetzt dieselbe Zeichenfläche (#2552, `debug.logpoints.recordValues`, `debug.logpoints.recordLimit`).
