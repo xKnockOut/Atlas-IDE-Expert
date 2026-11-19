@@ -11,9 +11,10 @@
 // "activeProject" das aktive: build_project wählt danach IDE und Projekt
 // (#261).
 // Beim Beenden löscht das Plugin seine Datei; Dateien beendeter Prozesse
-// übergeht der Server. Beim Start räumt das Plugin die Dateien und
-// Build-Eingänge (ide-builds\<pid>) abgestürzter oder hart beendeter Prozesse
-// weg (Atlas.Core.Files.ProcessLeftovers).
+// übergeht der Server. Beim Start räumt das Plugin die Dateien, den Zustand
+// für KI-Assistenten (ide-context-<pid>.json, #2050) und Build-Eingänge
+// (ide-builds\<pid>) abgestürzter oder hart beendeter Prozesse weg
+// (Atlas.Core.Files.ProcessLeftovers).
 
 interface
 
@@ -123,8 +124,8 @@ begin
   end;
 end;
 
-/// <summary>Exportierte Dateien in AFolder mit der Prozessnummer im Namen.</summary>
-function DirtyFiles(const AFolder: string): TArray<TAtlasLeftover>;
+/// <summary>Exportierte Dateien APrefix…json in AFolder mit der Prozessnummer im Namen.</summary>
+function PidFiles(const AFolder, APrefix: string): TArray<TAtlasLeftover>;
 var
   mPath: string;
   mPid: Cardinal;
@@ -134,10 +135,9 @@ begin
   begin
     Exit;
   end;
-  for mPath in TDirectory.GetFiles(AFolder, TAtlasProcessLeftovers.cDirtyPrefix + '*') do
+  for mPath in TDirectory.GetFiles(AFolder, APrefix + '*') do
   begin
-    if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), TAtlasProcessLeftovers.cDirtyPrefix,
-      TAtlasProcessLeftovers.cDirtySuffix, mPid) then
+    if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), APrefix, TAtlasProcessLeftovers.cDirtySuffix, mPid) then
     begin
       Result := Result + [TAtlasLeftover.Create(mPath, mPid, TFile.GetLastWriteTime(mPath))];
     end;
@@ -170,7 +170,8 @@ procedure RemoveLeftovers(const AFolder: string);
 var
   mPath: string;
 begin
-  for mPath in TAtlasProcessLeftovers.Stale(DirtyFiles(AFolder) + BuildFolders(AFolder), GetCurrentProcessId,
+  for mPath in TAtlasProcessLeftovers.Stale(PidFiles(AFolder, TAtlasProcessLeftovers.cDirtyPrefix) +
+    PidFiles(AFolder, TAtlasProcessLeftovers.cContextPrefix) + BuildFolders(AFolder), GetCurrentProcessId,
     ProcessAlive) do
   begin
     try
@@ -215,16 +216,8 @@ end;
 destructor TAtlasDirtyExport.Destroy;
 begin
   FTimer.Free;
-  try
-    if FileExists(FFileName) then
-    begin
-      TFile.Delete(FFileName);
-    end;
-  except
-    // Ein liegengebliebener Eintrag wird vom Server übergangen (Prozess beendet).
-    on Exception do
-      ;
-  end;
+  // Ein liegengebliebener Eintrag wird vom Server übergangen (Prozess beendet).
+  TAtlasDataFile.RemoveQuietly(FFileName);
   inherited Destroy;
 end;
 

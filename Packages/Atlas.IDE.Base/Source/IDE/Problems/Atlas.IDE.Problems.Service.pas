@@ -21,7 +21,9 @@
 // „Für diese Zeile unterdrücken“ und „Regel abschalten“ liefert das Modul
 // Prüfregeln (TAtlasRuleActions, #1755); ohne Modul fehlen die Einträge. „Alle sicheren Treffer
 // von <Regel> korrigieren …“ (#1352) bietet das Modul Prüfregeln über
-// IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag.
+// IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag. „Als Auftrag für KI-Assistenten
+// kopieren“ (#2570) schickt die Argumente des Fensters (markierte Befunde) an atlas.server.findingsPrompt (Hook
+// Command); den Text legt das Fenster in die Zwischenablage, gemeldet wird in der Meldungsansicht.
 // Markierung folgt dem Cursor (problems.window.followCursor); F8/Umschalt+F8
 // gehen bei sichtbarem Fenster durch dessen gefilterte Liste (StepWindow).
 // Offene Units zuerst (#1108): Der Takt gibt dem Frame die Datei des oberen
@@ -684,7 +686,28 @@ begin
     end;
 end;
 
-/// <summary>Regel erklären; Issue anlegen.</summary>
+/// <summary>„Als Auftrag für KI-Assistenten kopieren“ (#2570): Den Text erzeugt der Server (Katalog, Editorpuffer),
+/// das Plugin legt ihn in die Zwischenablage und meldet das in der Meldungsansicht.</summary>
+procedure CopyPrompt(const ACommand, AArgumentsJson: string; ACount: Integer; const ACopy: TFunc<TJSONValue, Boolean>);
+begin
+  if (State = nil) or not Assigned(State.Hooks.Command) then
+  begin
+    Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
+    Exit;
+  end;
+  State.Hooks.Command(ACommand, AArgumentsJson,
+    procedure(AAnswer: TJSONValue)
+    begin
+      if not ACopy(AAnswer) then
+      begin
+        Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
+        Exit;
+      end;
+      Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsPromptCopied, [ACount]));
+    end);
+end;
+
+/// <summary>Regel erklären; Issue anlegen; Auftrag für KI-Assistenten kopieren.</summary>
 procedure WireRules(AFrame: TAtlasProblemsFrame);
 begin
   AFrame.OnExplain :=
@@ -703,6 +726,15 @@ begin
       begin
         State.Hooks.CreateIssue(AFindings);
       end;
+    end;
+  AFrame.OnCopyPrompt :=
+    procedure(const ACommand, AArgumentsJson: string; ACount: Integer; const ACopy: TFunc<TJSONValue, Boolean>)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Problems,
+        procedure
+        begin
+          CopyPrompt(ACommand, AArgumentsJson, ACount, ACopy);
+        end);
     end;
   AFrame.CanCreateIssue :=
     function: Boolean

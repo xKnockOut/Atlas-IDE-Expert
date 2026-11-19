@@ -16,6 +16,7 @@ uses
   System.SysUtils;
 
 const
+  cProfileFile0 = 'alles-an-experimentell.json';
   cProfile0: array[0..77] of string = (
     '{',
     '  "format": "atlas-settings",',
@@ -95,6 +96,7 @@ const
     '    "search.enabled": true',
     '  }',
     '}');
+  cProfileFile1 = 'alles-an.json';
   cProfile1: array[0..61] of string = (
     '{',
     '  "format": "atlas-settings",',
@@ -158,6 +160,7 @@ const
     '    "search.enabled": true',
     '  }',
     '}');
+  cProfileFile2 = 'atlas-standard.json';
   cProfile2: array[0..10] of string = (
     '{',
     '  "format": "atlas-settings",',
@@ -170,6 +173,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
+  cProfileFile3 = 'minimal.json';
   cProfile3: array[0..61] of string = (
     '{',
     '  "format": "atlas-settings",',
@@ -233,6 +237,7 @@ const
     '    "search.enabled": false',
     '  }',
     '}');
+  cProfileFile4 = 'nur-code-insight.json';
   cProfile4: array[0..25] of string = (
     '{',
     '  "format": "atlas-settings",',
@@ -276,34 +281,34 @@ end;
 
 function AtlasProfileFiles: TArray<string>;
 begin
-  SetLength(Result, 5);
-  Result[0] := 'alles-an-experimentell.json';
-  Result[1] := 'alles-an.json';
-  Result[2] := 'atlas-standard.json';
-  Result[3] := 'minimal.json';
-  Result[4] := 'nur-code-insight.json';
+  Result := TArray<string>.Create(
+    cProfileFile0,
+    cProfileFile1,
+    cProfileFile2,
+    cProfileFile3,
+    cProfileFile4);
 end;
 
 function AtlasProfileJson(const AFileName: string): string;
 begin
   Result := '';
-  if SameText(AFileName, 'alles-an-experimentell.json') then
+  if SameText(AFileName, cProfileFile0) then
   begin
     Result := Joined(cProfile0);
   end;
-  if SameText(AFileName, 'alles-an.json') then
+  if SameText(AFileName, cProfileFile1) then
   begin
     Result := Joined(cProfile1);
   end;
-  if SameText(AFileName, 'atlas-standard.json') then
+  if SameText(AFileName, cProfileFile2) then
   begin
     Result := Joined(cProfile2);
   end;
-  if SameText(AFileName, 'minimal.json') then
+  if SameText(AFileName, cProfileFile3) then
   begin
     Result := Joined(cProfile3);
   end;
-  if SameText(AFileName, 'nur-code-insight.json') then
+  if SameText(AFileName, cProfileFile4) then
   begin
     Result := Joined(cProfile4);
   end;
