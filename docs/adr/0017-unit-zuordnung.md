@@ -178,6 +178,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Documentation.Typeset` | `Core/Documentation/Atlas.Core.Documentation.Typeset.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Editor.BlockComment` | `Core/Editor/Atlas.Core.Editor.BlockComment.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.CaretSteps` | `Core/Editor/Atlas.Core.Editor.CaretSteps.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.TabOrder` | `Core/Editor/Atlas.Core.Editor.TabOrder.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ChangeSignature` | `Core/Editor/Atlas.Core.Editor.ChangeSignature.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ClassExtraction` | `Core/Editor/Atlas.Core.Editor.ClassExtraction.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.CloseRules` | `Core/Editor/Atlas.Core.Editor.CloseRules.pas` | Ordner `Core/Editor` |
@@ -360,6 +361,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Colors` | `Core/Problems/Atlas.Core.Problems.Colors.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Contract` | `Core/Problems/Atlas.Core.Problems.Contract.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Explanation` | `Core/Problems/Atlas.Core.Problems.Explanation.pas` | Ordner `Core/Problems`: Katalogtext für „Regel erklären“ (#1755) |
+| `Atlas.Core.Problems.Prompt` | `Core/Problems/Atlas.Core.Problems.Prompt.pas` | Ordner `Core/Problems`: Argumente und Antwort von „Als Auftrag für KI-Assistenten kopieren“ (#2570) |
 | `Atlas.Core.Problems.Findings` | `Core/Problems/Atlas.Core.Problems.Findings.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.FindingsView` | `Core/Problems/Atlas.Core.Problems.FindingsView.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.ScopeProjects` | `Core/Problems/Atlas.Core.Problems.ScopeProjects.pas` | Ordner `Core/Problems` |
@@ -663,6 +665,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.EditorBarPlacement` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBarPlacement.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorWindows` | `IDE/Foundation/Atlas.IDE.Foundation.EditorWindows.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorBuffer` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBuffer.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.EditorTabs` | `IDE/Foundation/Atlas.IDE.Foundation.EditorTabs.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorFiles` | `IDE/Foundation/Atlas.IDE.Foundation.EditorFiles.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.ActiveEditor` | `IDE/Foundation/Atlas.IDE.Foundation.ActiveEditor.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorRefresh` | `IDE/Foundation/Atlas.IDE.Foundation.EditorRefresh.pas` | Ordner `IDE/Foundation` |
@@ -901,8 +904,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.EditInbox` | `Core/Assistants/Atlas.Core.Assistants.EditInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.Inbox` | `Core/Assistants/Atlas.Core.Assistants.Inbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.InboxPace` | `Core/Assistants/Atlas.Core.Assistants.InboxPace.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.ContextState` | `Core/Assistants/Atlas.Core.Assistants.ContextState.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.ContextExport` | `IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
