@@ -60,7 +60,29 @@ type
 implementation
 
 uses
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Core.Localization.Language;
+
+const
+  /// <summary>Trenner zwischen Eigenschaft und Wert in einer Zeile des Formulartexts.</summary>
+  cValueSeparator = ' = ';
+  /// <summary>Präfix der Ereignis-Eigenschaften (OnClick).</summary>
+  cEventPrefix = 'On';
+
+{$SCOPEDENUMS ON}
+type
+  TFormChangesText = (LineReason);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TFormChangesText] of string = (
+    ('Zeile %d: %s'),
+    ('Line %d: %s'));
+
+function UiText(AId: TFormChangesText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function IsIdentifier(const AValue: string): Boolean;
 var
@@ -96,14 +118,14 @@ function PropertyLine(const ALine: string; out AName, AValue: string): Boolean;
 var
   mSeparator: Integer;
 begin
-  mSeparator := Pos(' = ', ALine);
+  mSeparator := Pos(cValueSeparator, ALine);
   Result := mSeparator > 0;
   if not Result then
   begin
     Exit;
   end;
   AName := Trim(Copy(ALine, 1, mSeparator - 1));
-  AValue := Trim(Copy(ALine, mSeparator + 3, MaxInt));
+  AValue := Trim(Copy(ALine, mSeparator + Length(cValueSeparator), MaxInt));
   // Mehrzeilige Werte beginnen mit (, < oder { bzw. enden mit +.
   Result := IsPath(AName) and (AValue <> '') and not CharInSet(AValue[1], ['(', '<', '{']) and
     not AValue.EndsWith('+');
@@ -120,7 +142,8 @@ end;
 
 function IsEventName(const AName: string): Boolean;
 begin
-  Result := (Length(AName) > 2) and AName.StartsWith('On') and CharInSet(AName[3], ['A'..'Z']) and
+  Result := (Length(AName) > Length(cEventPrefix)) and AName.StartsWith(cEventPrefix) and
+    CharInSet(AName[Length(cEventPrefix) + 1], ['A'..'Z']) and
     IsIdentifier(AName);
 end;
 
@@ -197,7 +220,7 @@ function TFormDiff.Fail(ALine: Integer; const AText: string): Boolean;
 begin
   Changes := nil;
   Properties := nil;
-  Reason := Format('Zeile %d: %s', [ALine, Trim(AText)]);
+  Reason := Format(UiText(TFormChangesText.LineReason), [ALine, Trim(AText)]);
   Result := False;
 end;
 
@@ -338,32 +361,40 @@ begin
   if Result and (Length(mProperties) > 0) then
   begin
     AChanges := nil;
-    AReason := Format('Zeile %d: %s', [mProperties[0].Line, mProperties[0].PropertyPath]);
+    AReason := Format(UiText(TFormChangesText.LineReason), [mProperties[0].Line, mProperties[0].PropertyPath]);
     Result := False;
   end;
 end;
 
 /// <summary>'…' ab AIndex (auf dem Anführungszeichen) an AText hängen; '' steht für eines.</summary>
 procedure TakeQuoted(const AValue: string; var AIndex: Integer; var AText: string);
+var
+  mText: TStringBuilder;
 begin
-  Inc(AIndex);
-  while AIndex <= Length(AValue) do
-  begin
-    if AValue[AIndex] <> '''' then
+  mText := TStringBuilder.Create(AText);
+  try
+    Inc(AIndex);
+    while AIndex <= Length(AValue) do
     begin
-      AText := AText + AValue[AIndex];
-      Inc(AIndex);
-    end
-    else if (AIndex < Length(AValue)) and (AValue[AIndex + 1] = '''') then
-    begin
-      AText := AText + '''';
-      Inc(AIndex, 2);
-    end
-    else
-    begin
-      Inc(AIndex);
-      Break;
+      if AValue[AIndex] <> '''' then
+      begin
+        mText.Append(AValue[AIndex]);
+        Inc(AIndex);
+      end
+      else if (AIndex < Length(AValue)) and (AValue[AIndex + 1] = '''') then
+      begin
+        mText.Append('''');
+        Inc(AIndex, 2);
+      end
+      else
+      begin
+        Inc(AIndex);
+        Break;
+      end;
     end;
+    AText := mText.ToString;
+  finally
+    mText.Free;
   end;
 end;
 
@@ -449,5 +480,8 @@ begin
     AText := '';
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Forms.Changes', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
