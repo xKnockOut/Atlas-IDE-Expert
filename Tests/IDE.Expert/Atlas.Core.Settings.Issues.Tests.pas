@@ -326,6 +326,22 @@ begin
   VcsExternalsBranchOptions(mRegistry, mStore, mRouted);
   VcsExternalsShowOptions(mRegistry, mStore, mRouted);
 end;
+/// <summary>Meine Issues (#765): Vorgaben für Meldungen, Anhängen und die Namen des Beginnens.</summary>
+procedure AssertIssuesNotifyDefaults(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ASettings.IssuesNotify, 'Meldungen (#1271) aus');
+  Assert.AreEqual(10, ASettings.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assignedOrCreated', ASettings.IssuesNotifyScope);
+  Assert.IsTrue(ASettings.IssuesAttach, 'Anhängen (#1276) an');
+  Assert.AreEqual('', ASettings.IssuesAttachLogFiles);
+  Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
+  Assert.IsTrue(ASettings.IssuesAttachRaiseProgram, 'Programm nach vorn holen an');
+  // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
+  Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartBranch, TAtlasMyIssues.StartName(TAtlasIssueStart.Branch));
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartRemember,
+    TAtlasMyIssues.StartName(TAtlasIssueStart.Remember));
+end;
 /// <summary>Meine Issues (#765): Vorgaben.</summary>
 procedure AssertIssuesDefaults(const ASettings: TAtlasPluginSettings);
 begin
@@ -376,18 +392,7 @@ begin
   Assert.IsTrue(ASettings.IssuesPreviewDevelopment, 'Reiter „Entwicklung“ (#1269)');
   Assert.IsTrue(ASettings.IssuesAiSummary, 'Zusammenfassen (#2462) an');
   Assert.AreEqual(10, ASettings.IssuesAiSummaryMinComments, 'Knopf ab 10 Kommentaren');
-  Assert.IsFalse(ASettings.IssuesNotify, 'Meldungen (#1271) aus');
-  Assert.AreEqual(10, ASettings.IssuesNotifyIntervalMinutes);
-  Assert.AreEqual('assignedOrCreated', ASettings.IssuesNotifyScope);
-  Assert.IsTrue(ASettings.IssuesAttach, 'Anhängen (#1276) an');
-  Assert.AreEqual('', ASettings.IssuesAttachLogFiles);
-  Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
-  Assert.IsTrue(ASettings.IssuesAttachRaiseProgram, 'Programm nach vorn holen an');
-  // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
-  Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
-  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartBranch, TAtlasMyIssues.StartName(TAtlasIssueStart.Branch));
-  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartRemember,
-    TAtlasMyIssues.StartName(TAtlasIssueStart.Remember));
+  AssertIssuesNotifyDefaults(ASettings);
 end;
 /// <summary>Issue zusammenfassen (#2462): Knopf ab 0–1000 Kommentaren.</summary>
 procedure NormalizeIssuesAiSummary(var ASettings: TAtlasPluginSettings);
