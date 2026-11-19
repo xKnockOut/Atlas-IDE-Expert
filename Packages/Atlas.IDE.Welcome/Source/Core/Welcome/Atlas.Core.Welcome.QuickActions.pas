@@ -40,69 +40,23 @@ uses
   System.Generics.Collections,
   Atlas.Core.Projects.Summary,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Pull,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  TAtlasQuickAction = (Build, Tests, Run, Pull, Folder, Console, Tasks);
-  /// <summary>Stand einer Aktion je Projekt: läuft, fertig (ok bzw. fehlgeschlagen) oder nicht ausgeführt.</summary>
-  TAtlasQuickActionPhase = (Idle, Running, Succeeded, Failed, Refused);
-  /// <summary>Grund, aus dem „Pull“ gesperrt ist.</summary>
-  TAtlasPullBlock = (None, LocalChanges, NoWorkingCopy, Busy);
-  /// <summary>Text, den die IDE nach einem Pull in Detail und als Meldung setzt: keiner, lokale Änderungen
-  /// (mit Meldung), keine Arbeitskopie, Anmeldung fehlt (mit Meldung), sonst fehlgeschlagen (mit Meldung).</summary>
-  TAtlasPullNote = (None, LocalChanges, NoWorkingCopy, Login, Failed);
-{$SCOPEDENUMS OFF}
+  TAtlasQuickAction = Atlas.Core.Welcome.Contract.TAtlasQuickAction;
+  TAtlasQuickActionPhase = Atlas.Core.Welcome.Contract.TAtlasQuickActionPhase;
+  TAtlasPullBlock = Atlas.Core.Welcome.Contract.TAtlasPullBlock;
+  TAtlasPullNote = Atlas.Core.Welcome.Contract.TAtlasPullNote;
   TAtlasQuickActions = set of TAtlasQuickAction;
 
-  TAtlasQuickActionButton = record
-    Action: TAtlasQuickAction;
-    Enabled: Boolean;
-    /// <summary>Nur Pull: warum gesperrt; None sonst.</summary>
-    Block: TAtlasPullBlock;
-    /// <summary>Pull heißt „Aktualisieren“ (SVN).</summary>
-    Update: Boolean;
-    /// <summary>Der Knopf hat eine Auswahl (▾): Konfiguration und Plattform, Startprofil bzw. Aufgabe.</summary>
-    HasMenu: Boolean;
-    /// <summary>Nur Pull unter SVN mit vcs.externals.update = ask (#1292): Auswahl „mit Externals“ bzw. „ohne
-    /// Externals“ statt sofort zu aktualisieren.</summary>
-    AskExternals: Boolean;
-  end;
+  TAtlasQuickActionButton = Atlas.Core.Welcome.Contract.TAtlasQuickActionButton;
+  TAtlasQuickActionButtons = Atlas.Core.Welcome.Contract.TAtlasQuickActionButtons;
+  TAtlasQuickActionState = Atlas.Core.Welcome.Contract.TAtlasQuickActionState;
+  TAtlasProjectTargets = Atlas.Core.Welcome.Contract.TAtlasProjectTargets;
 
-  TAtlasQuickActionButtons = TArray<TAtlasQuickActionButton>;
-
-  /// <summary>Stand der letzten Schnellaktion eines Projekts in dieser Sitzung.</summary>
-  TAtlasQuickActionState = record
-    Action: TAtlasQuickAction;
-    Phase: TAtlasQuickActionPhase;
-    /// <summary>Beginn (Tick in ms).</summary>
-    StartedMs: UInt64;
-    /// <summary>Grund bzw. Ergebnis als fertiger Text der IDE-Schicht (etwa der Grund von „nicht gebaut“).</summary>
-    Detail: string;
-    /// <summary>Tests: bestanden und fehlgeschlagen (mit Fehlern); Pull: neue Commits geholt.</summary>
-    Passed: Integer;
-    Failed: Integer;
-    Pull: TAtlasPullOutcome;
-    class function Idle: TAtlasQuickActionState; static;
-    class function Started(AAction: TAtlasQuickAction; ANowMs: UInt64): TAtlasQuickActionState; static;
-    function Running: Boolean;
-    /// <summary>Ganze Sekunden seit dem Beginn; 0 vor dem Beginn.</summary>
-    function ElapsedSeconds(ANowMs: UInt64): Integer;
-    /// <summary>Stand nach einem Pull mit Ergebnis AOutcome; AReason ist der Grund eines Fehlschlags. ANote sagt,
-    /// welchen Text die IDE noch setzt; bei Failed steht der Name von AReason schon in Detail.</summary>
-    function AfterPull(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome;
-      out ANote: TAtlasPullNote): TAtlasQuickActionState;
-    /// <summary>Ein Testlauf endete ohne Ergebnis: läuft nicht mehr oder die Schonzeit AGraceMs ist um.</summary>
-    function TestEnded(ANowMs, AGraceMs: UInt64): Boolean;
-    /// <summary>Stand nach einem Testlauf mit APassed bestandenen und AFailed fehlgeschlagenen Tests.</summary>
-    function AfterTests(APassed, AFailed: Integer): TAtlasQuickActionState;
-  end;
-
-  /// <summary>Konfigurationen (ohne „Base“) und eingeschaltete Plattformen einer .dproj in Dateireihenfolge.</summary>
-  TAtlasProjectTargets = record
-    Configurations: TArray<string>;
-    Platforms: TArray<string>;
+  /// <summary>Logik zu TAtlasProjectTargets (der Record steht im Vertrag).</summary>
+  TAtlasProjectTargetsHelper = record helper for TAtlasProjectTargets
     function HasConfiguration(const AName: string): Boolean;
     function HasPlatform(const AName: string): Boolean;
   end;
@@ -336,98 +290,6 @@ begin
   Result := StringReplace(Result, '&lt;', '<', [rfReplaceAll]);
   Result := StringReplace(Result, '&gt;', '>', [rfReplaceAll]);
   Result := StringReplace(Result, '&amp;', '&', [rfReplaceAll]);
-end;
-
-{ TAtlasQuickActionState }
-
-class function TAtlasQuickActionState.Idle: TAtlasQuickActionState;
-begin
-  Result := Default(TAtlasQuickActionState);
-  Result.Phase := TAtlasQuickActionPhase.Idle;
-end;
-
-class function TAtlasQuickActionState.Started(AAction: TAtlasQuickAction; ANowMs: UInt64): TAtlasQuickActionState;
-begin
-  Result := Idle;
-  Result.Action := AAction;
-  Result.Phase := TAtlasQuickActionPhase.Running;
-  Result.StartedMs := ANowMs;
-end;
-
-function TAtlasQuickActionState.Running: Boolean;
-begin
-  Result := Phase = TAtlasQuickActionPhase.Running;
-end;
-
-function TAtlasQuickActionState.ElapsedSeconds(ANowMs: UInt64): Integer;
-begin
-  Result := 0;
-  if (StartedMs = 0) or (ANowMs <= StartedMs) then
-  begin
-    Exit;
-  end;
-  Result := Integer((ANowMs - StartedMs) div 1000);
-end;
-
-function TAtlasQuickActionState.AfterPull(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome;
-  out ANote: TAtlasPullNote): TAtlasQuickActionState;
-begin
-  Result := Self;
-  Result.Action := TAtlasQuickAction.Pull;
-  Result.Pull := AOutcome;
-  Result.Detail := '';
-  Result.Phase := TAtlasQuickActionPhase.Failed;
-  ANote := TAtlasPullNote.None;
-  case AOutcome of
-    TAtlasPullOutcome.Updated, TAtlasPullOutcome.UpToDate:
-      Result.Phase := TAtlasQuickActionPhase.Succeeded;
-    TAtlasPullOutcome.Blocked:
-      ANote := TAtlasPullNote.LocalChanges;
-    TAtlasPullOutcome.NoWorkingCopy:
-      ANote := TAtlasPullNote.NoWorkingCopy;
-  else
-    // Fehlende Anmeldung (#1287): Ursache und Weg zur Seite Versionsverwaltung statt eines Codes.
-    if AReason = TAtlasVcsOutcome.LoginNeeded then
-    begin
-      ANote := TAtlasPullNote.Login;
-    end
-    else
-    begin
-      ANote := TAtlasPullNote.Failed;
-      Result.Detail := AtlasVcsOutcomeName(AReason);
-    end;
-  end;
-end;
-
-function TAtlasQuickActionState.TestEnded(ANowMs, AGraceMs: UInt64): Boolean;
-begin
-  Result := not Running or (ANowMs >= StartedMs + AGraceMs);
-end;
-
-function TAtlasQuickActionState.AfterTests(APassed, AFailed: Integer): TAtlasQuickActionState;
-begin
-  Result := Self;
-  Result.Action := TAtlasQuickAction.Tests;
-  Result.Passed := APassed;
-  Result.Failed := AFailed;
-  Result.Detail := '';
-  Result.Phase := TAtlasQuickActionPhase.Succeeded;
-  if AFailed > 0 then
-  begin
-    Result.Phase := TAtlasQuickActionPhase.Failed;
-  end;
-end;
-
-{ TAtlasProjectTargets }
-
-function TAtlasProjectTargets.HasConfiguration(const AName: string): Boolean;
-begin
-  Result := (AName <> '') and ContainsText(Configurations, AName);
-end;
-
-function TAtlasProjectTargets.HasPlatform(const AName: string): Boolean;
-begin
-  Result := (AName <> '') and ContainsText(Platforms, AName);
 end;
 
 { TAtlasWelcomeQuickActions }
@@ -1010,6 +872,18 @@ begin
   begin
     AFallback := TAtlasWelcomeQuickActions.cFallbackConsole;
   end;
+end;
+
+{ TAtlasProjectTargetsHelper }
+
+function TAtlasProjectTargetsHelper.HasConfiguration(const AName: string): Boolean;
+begin
+  Result := (AName <> '') and ContainsText(Configurations, AName);
+end;
+
+function TAtlasProjectTargetsHelper.HasPlatform(const AName: string): Boolean;
+begin
+  Result := (AName <> '') and ContainsText(Platforms, AName);
 end;
 
 end.

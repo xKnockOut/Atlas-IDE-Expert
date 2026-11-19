@@ -36,7 +36,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Unsaved,
   Atlas.UI.Welcome.Unsaved,
-  Atlas.UI.Welcome.Push;
+  Atlas.UI.Welcome.Push,
+  Atlas.UI.Welcome.Contract;
 
 
 type

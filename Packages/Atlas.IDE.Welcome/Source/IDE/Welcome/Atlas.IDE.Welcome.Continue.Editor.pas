@@ -4,7 +4,7 @@
 // IDE: offene Reiter in der Reihenfolge des Editorfensters mit Cursorstelle
 // und Methode, Ziel eines Projekts (gespeicherte Projektgruppe, sonst das
 // Projekt), Öffnen von Projekt und Reiter, Text einer Datei (Puffer oder
-// Platte). Abgeteilt aus Atlas.IDE.Welcome.Continue (Atlas-Befunde).
+// Platte). Abgeteilt aus Atlas.IDE.Welcome.Adapters.Continue (Atlas-Befunde).
 
 interface
 

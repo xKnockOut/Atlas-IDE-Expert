@@ -52,7 +52,8 @@ uses
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
   Atlas.UI.Welcome.Setup,
-  Atlas.UI.Welcome.SetupPreview;
+  Atlas.UI.Welcome.SetupPreview,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Quelle des Bereichs „Projekt für Atlas einrichten“ für die Tests; merkt sich die Aufrufe.</summary>

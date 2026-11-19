@@ -1,24 +1,22 @@
-﻿unit Atlas.IDE.Welcome.Registry;
+﻿unit Atlas.IDE.Welcome.Adapters.Registry;
 
 // Zugriff auf HKCU für die Sicherung des Willkommensseiten-Layouts (#753):
-// liest einen Schlüssel samt Unterschlüsseln mit allen Werten und Typen in
-// einen TAtlasRegKey und schreibt ihn exakt zurück (vorher wird der Schlüssel
-// gelöscht, damit keine Reste bleiben). Basisschlüssel der IDE aus
-// IOTAServices.GetBaseRegistryKey (z. B. Software\Embarcadero\BDS\37.0).
+// liest einen Schlüssel samt Unterschlüsseln mit allen Werten und Typen
+// (über TAtlasRegKey) und schreibt ihn exakt zurück (vorher wird der Schlüssel
+// gelöscht, damit keine Reste bleiben). Den Basisschlüssel der IDE liefert
+// TAtlasIdeWelcomeIdeLayout.IdeBaseKey.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Welcome.Backup;
+  Atlas.Core.Welcome.Contract;
 
 type
   TAtlasIdeRegistryAccess = class(TInterfacedObject, IAtlasRegistryAccess)
   public
-    function Read(const APath: string): TAtlasRegKey;
-    procedure Replace(const APath: string; AKey: TAtlasRegKey);
-    /// <summary>Basisschlüssel der laufenden IDE ohne führenden Backslash.</summary>
-    class function IdeBaseKey: string; static;
+    function Read(const APath: string): TAtlasRegNodes;
+    procedure Replace(const APath: string; const ANodes: TAtlasRegNodes);
   end;
 
 implementation
@@ -27,7 +25,7 @@ uses
   Winapi.Windows,
   System.Classes,
   System.Win.Registry,
-  ToolsAPI;
+  Atlas.Core.Welcome.Backup;
 
 const
   // REG_QWORD; nicht in jeder Fassung von Winapi.Windows.
@@ -169,9 +167,10 @@ end;
 
 { TAtlasIdeRegistryAccess }
 
-function TAtlasIdeRegistryAccess.Read(const APath: string): TAtlasRegKey;
+function TAtlasIdeRegistryAccess.Read(const APath: string): TAtlasRegNodes;
 var
   mRegistry: TRegistry;
+  mKey: TAtlasRegKey;
 begin
   Result := nil;
   mRegistry := TRegistry.Create(KEY_READ);
@@ -181,8 +180,13 @@ begin
     begin
       Exit;
     end;
-    Result := TAtlasRegKey.Create(ExtractFileName(APath));
-    ReadKey(mRegistry, APath, Result);
+    mKey := TAtlasRegKey.Create(ExtractFileName(APath));
+    try
+      ReadKey(mRegistry, APath, mKey);
+      Result := mKey.Nodes;
+    finally
+      mKey.Free;
+    end;
   finally
     mRegistry.Free;
   end;
@@ -248,9 +252,10 @@ begin
   end;
 end;
 
-procedure TAtlasIdeRegistryAccess.Replace(const APath: string; AKey: TAtlasRegKey);
+procedure TAtlasIdeRegistryAccess.Replace(const APath: string; const ANodes: TAtlasRegNodes);
 var
   mRegistry: TRegistry;
+  mKey: TAtlasRegKey;
 begin
   mRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
   try
@@ -260,27 +265,17 @@ begin
     begin
       mRegistry.DeleteKey('\' + APath);
     end;
-    if AKey <> nil then
-    begin
-      WriteKey(mRegistry, APath, AKey);
+    mKey := TAtlasRegKey.FromNodes(ExtractFileName(APath), ANodes);
+    try
+      if mKey <> nil then
+      begin
+        WriteKey(mRegistry, APath, mKey);
+      end;
+    finally
+      mKey.Free;
     end;
   finally
     mRegistry.Free;
-  end;
-end;
-
-class function TAtlasIdeRegistryAccess.IdeBaseKey: string;
-var
-  mServices: IOTAServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result := mServices.GetBaseRegistryKey;
-  end;
-  while (Result <> '') and (Result[1] = '\') do
-  begin
-    Delete(Result, 1, 1);
   end;
 end;
 

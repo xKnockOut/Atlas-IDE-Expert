@@ -22,7 +22,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Welcome.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -45,23 +46,8 @@ type
     function Clickable: Boolean;
   end;
 
-  TAtlasProjectEntry = record
-    Summary: TAtlasProjectSummary;
-    /// <summary>Es gab eine lesbare Zusammenfassung.</summary>
-    HasSummary: Boolean;
-    /// <summary>Versionsverwaltung in dieser Sitzung abgefragt; sonst gilt der gespeicherte Stand.</summary>
-    VcsFresh: Boolean;
-    /// <summary>Die Abfrage der Versionsverwaltung läuft gerade.</summary>
-    VcsQuerying: Boolean;
-    function Project: string;
-    function Name: string;
-    /// <summary>Branch bzw. SVN-Pfad; bei losgelöstem HEAD die Kurzform des Commits; '' ohne Arbeitskopie.</summary>
-    function Branch: string;
-    /// <summary>Der gezeigte Stand der Versionsverwaltung stammt aus der Datei („Stand vom …“).</summary>
-    function VcsStale: Boolean;
-  end;
-
-  TAtlasProjectEntries = TArray<TAtlasProjectEntry>;
+  TAtlasProjectEntry = Atlas.Core.Welcome.Contract.TAtlasProjectEntry;
+  TAtlasProjectEntries = Atlas.Core.Welcome.Contract.TAtlasProjectEntries;
 
   TAtlasProjectSummaryLoader = reference to function(const AProject: string;
     out ASummary: TAtlasProjectSummary): Boolean;
@@ -119,37 +105,6 @@ end;
 function TAtlasProjectPill.Clickable: Boolean;
 begin
   Result := not Target.IsEmpty;
-end;
-
-{ TAtlasProjectEntry }
-
-function TAtlasProjectEntry.Project: string;
-begin
-  Result := Summary.Project;
-end;
-
-function TAtlasProjectEntry.Name: string;
-begin
-  Result := Summary.Name;
-end;
-
-function TAtlasProjectEntry.Branch: string;
-begin
-  Result := '';
-  if not Summary.Vcs.InWorkingCopy then
-  begin
-    Exit;
-  end;
-  Result := Summary.Vcs.Branch;
-  if (Result = '') and SameText(Summary.Vcs.Kind, 'git') then
-  begin
-    Result := Copy(Summary.Vcs.Revision, 1, 7);
-  end;
-end;
-
-function TAtlasProjectEntry.VcsStale: Boolean;
-begin
-  Result := not VcsFresh and Summary.Vcs.InWorkingCopy;
 end;
 
 { TAtlasWelcomeProjects }

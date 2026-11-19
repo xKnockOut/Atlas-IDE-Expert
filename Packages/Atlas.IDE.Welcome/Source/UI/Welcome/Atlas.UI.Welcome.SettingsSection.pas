@@ -13,7 +13,8 @@
 //   zurücksetzen“ und „Gesperrte Tipps wieder zeigen“ (#757, über Hooks; ohne
 //   Haken nichts), Ordnerauswahl der Hilfe.
 // Close gibt eigene Steuerelemente und Haken frei; danach erreicht den
-// Abschnitt nichts mehr (Regel 3).
+// Abschnitt nichts mehr (Regel 3). Für die Seite von Base hüllt ihn
+// Atlas.IDE.Welcome.Adapters.SettingsSection in IAtlasSettingsSection.
 
 interface
 
@@ -141,7 +142,8 @@ type
     NewFromTemplate: TCheckBox;
   end;
 
-  TAtlasWelcomeSettingsSection = class(TInterfacedObject, IAtlasSettingsSection)
+  /// <summary>Gehört dem, der ihn anlegt; die Methoden wie in IAtlasSettingsSection.</summary>
+  TAtlasWelcomeSettingsSection = class
   public const
     cOwnerId = 'atlas.welcome';
     cAreaId = 'welcome';
@@ -175,14 +177,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    { IAtlasSettingsSection }
-    function OwnerId: string;
-    function AreaId: string;
+    { wie IAtlasSettingsSection }
     procedure Build(const AHost: IAtlasSettingsSectionHost);
     procedure Load(const AValues: IAtlasSettingsValues);
     procedure Save(const AValues: IAtlasSettingsValues);
     procedure WindowReady;
-    function Show(const AKey, AArgument: string): Boolean;
     procedure Close;
     property Closed: Boolean read FClosed;
     property Hooks: TAtlasWelcomeSettingsHooks read FHooks;
@@ -593,16 +592,6 @@ begin
   FLayouts.Track(mSwitches, FStart.WhatsNew);
 end;
 
-function TAtlasWelcomeSettingsSection.OwnerId: string;
-begin
-  Result := cOwnerId;
-end;
-
-function TAtlasWelcomeSettingsSection.AreaId: string;
-begin
-  Result := cAreaId;
-end;
-
 procedure TAtlasWelcomeSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
 begin
   if FClosed or (FOwner <> nil) then
@@ -709,12 +698,6 @@ begin
       FTiles.ModuleTileLinks[mIndex].Visible := FHost.Shows(FHooks.TileSwitches[mIndex].SettingsKey);
     end;
   end;
-end;
-
-function TAtlasWelcomeSettingsSection.Show(const AKey, AArgument: string): Boolean;
-begin
-  // „Einstellung zeigen“ findet die Seite über die gebundenen Schlüssel selbst; keine Vorgaben.
-  Result := False;
 end;
 
 procedure TAtlasWelcomeSettingsSection.Close;
