@@ -146,11 +146,13 @@ end;
 /// <summary>Prüfung und Regelkatalog des Einstellungsdialogs (#227): nur ein laufender Server, keiner wird
 /// gestartet.</summary>
 function ProjectSettingsCommand(const ACommand, AArgumentsJson: string): TJSONValue;
+const
+  cCommandTimeoutMs = 5000;
 begin
   Result := nil;
   if Manager <> nil then
   begin
-    Result := Manager.RunServerCommand(ACommand, AArgumentsJson, 5000);
+    Result := Manager.RunServerCommand(ACommand, AArgumentsJson, cCommandTimeoutMs);
   end;
 end;
 

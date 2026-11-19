@@ -89,7 +89,7 @@ type
     /// </summary>
     procedure ShowAll;
     /// <summary>„Tastenkürzel-Übersicht…“ in der Befehlspalette, sichtbar nach keys.overview.</summary>
-    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+    class procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry); static;
     /// <summary>Package geladen: nach StartDelayMs einmal die eigenen Tasten prüfen (keys.startupCheck).</summary>
     procedure CheckAtStart;
     /// <summary>Eigene Tasten prüfen und neue Konflikte melden; offenes Fenster neu einlesen.</summary>
@@ -801,7 +801,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+class procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 var
   mRun: TProc;
   mVisible: TFunc<Boolean>;
