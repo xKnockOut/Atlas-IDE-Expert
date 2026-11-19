@@ -507,6 +507,8 @@ contains
   Atlas.Common.Rules.Builtin.Declarations.TypeSizes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.TypeSizes.pas',
   Atlas.Common.Rules.Builtin.Declarations.VariantRecords in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.VariantRecords.pas',
   Atlas.Common.Rules.Builtin.Declarations.Defaults in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Defaults.pas',
+  Atlas.Common.Rules.Builtin.Declarations.FieldOrder in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.FieldOrder.pas',
+  Atlas.Common.Rules.Builtin.Declarations.Includes in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Includes.pas',
   Atlas.Common.Rules.Builtin.Inheritance in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.pas',
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Ancestry.pas',
   Atlas.Common.Rules.Builtin.Inheritance.Shadowing in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Shadowing.pas',

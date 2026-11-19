@@ -293,6 +293,8 @@ Atlas.Common.Rules.Builtin.Credentials.Tests
 Atlas.Common.Rules.Builtin.DataBinding.Tests
 Atlas.Common.Rules.Builtin.Database.Statements.Tests
 Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests
+Atlas.Common.Rules.Builtin.Declarations.FieldOrder.Tests
+Atlas.Common.Rules.Builtin.Declarations.Includes.Tests
 Atlas.Common.Rules.Builtin.Declarations.Duplicates.Tests
 Atlas.Common.Rules.Builtin.Declarations.Overloads.Tests
 Atlas.Common.Rules.Builtin.Declarations.Shared.Tests

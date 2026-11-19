@@ -57,13 +57,14 @@
 // Den Abgleich (auch über Überladungen) liefert TClassCompletionScan.Unmatched aus
 // #42; Paare mit abweichendem Kopf ordnet TClassCompletionScan.Pairs zu. Die
 // drei Regeln teilen sich eine Zuordnung je Datei über den Ableitungscache,
-// statt sie je Regel und je Methode neu zu bilden (#1477). signature-mismatch meldet
-// nur signature-mismatch, die beiden anderen Regeln finden fehlende Namen. Abstrakte, externe und forward-Methoden,
-// Interfaces und generische
+// statt sie je Regel und je Methode neu zu bilden (#1477). signature-mismatch
+// meldet nur abweichende Köpfe, die beiden anderen Regeln finden fehlende
+// Namen. Abstrakte, externe und forward-Methoden, Interfaces und generische
 // Typen erzeugen keinen Treffer. Methoden innerhalb von {$IF…}-Blöcken werden
 // übergangen, weil der Syntaxbaum auch inaktive Zweige enthält. Bindet die
 // Datei Include-Dateien ein, können dort Rümpfe stehen: dann nur mittlere
-// Konfidenz (höchstens Warnung).
+// Konfidenz (höchstens Warnung; Declarations.Includes). field-after-method
+// liegt in Declarations.FieldOrder.
 //
 // Korrekturen: "Rumpf erzeugen" (#42) bzw. "Deklaration ergänzen" im
 // private-Abschnitt; bei signature-mismatch "Implementierung an die
@@ -83,7 +84,8 @@ uses
   Atlas.Common.Rules.Builtin.Declarations.Duplicates,
   Atlas.Common.Rules.Builtin.Declarations.TypeSizes,
   Atlas.Common.Rules.Builtin.Declarations.VariantRecords,
-  Atlas.Common.Rules.Builtin.Declarations.Defaults;
+  Atlas.Common.Rules.Builtin.Declarations.Defaults,
+  Atlas.Common.Rules.Builtin.Declarations.FieldOrder;
 
 type
   /// <summary>Vergleicht den Typ ADeclType der Deklaration mit dem Typ ABodyType des Rumpfs (#1324).</summary>
@@ -123,11 +125,8 @@ type
       const AMatch: TSignatureTypeMatch): TArray<string>; overload; static;
   end;
 
-  TFieldAfterMethodRule = class(TInterfacedObject, IRule)
-  public
-    function Descriptor: TRuleDescriptor;
-    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-  end;
+  /// <summary>Liegt in Atlas.Common.Rules.Builtin.Declarations.FieldOrder.</summary>
+  TFieldAfterMethodRule = Atlas.Common.Rules.Builtin.Declarations.FieldOrder.TFieldAfterMethodRule;
 
   /// <summary>Liegt in Atlas.Common.Rules.Builtin.Declarations.Overloads.</summary>
   TOverloadDirectiveMissingRule = Atlas.Common.Rules.Builtin.Declarations.Overloads.TOverloadDirectiveMissingRule;
@@ -146,7 +145,7 @@ type
   TDefaultParameterRule = Atlas.Common.Rules.Builtin.Declarations.Defaults.TDefaultParameterRule;
 
 const
-  cFieldAfterMethodRuleId = 'field-after-method';
+  cFieldAfterMethodRuleId = Atlas.Common.Rules.Builtin.Declarations.FieldOrder.cFieldAfterMethodRuleId;
   cDuplicateDeclarationRuleId = Atlas.Common.Rules.Builtin.Declarations.Duplicates.cDuplicateDeclarationRuleId;
   cOverloadDirectiveMissingRuleId = Atlas.Common.Rules.Builtin.Declarations.Overloads.cOverloadDirectiveMissingRuleId;
 
@@ -161,9 +160,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
@@ -171,10 +167,10 @@ uses
   Atlas.Common.Editing.MethodMatching,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
+  Atlas.Common.Rules.Builtin.Declarations.Includes,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -184,8 +180,7 @@ type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TDeclarationsText = (NotImplementedTitle, NotImplemented, NoDeclTitle, AddDeclaration, NoDecl, InterfaceTitle,
     Differs, MissingOne, MissingMany, NotInList, MismatchTitle, WithoutModifier, WithModifier, InsteadOf,
-    NoTypeInstead, InsteadOfNoType, Instead, ParamCount, ResultInstead, DiffersFrom, FieldTitle, MoveField, InsertVar,
-    FieldAfter);
+    NoTypeInstead, InsteadOfNoType, Instead, ParamCount, ResultInstead, DiffersFrom);
 
 const
   cTexts: array[TDeclarationsText] of TAtlasText = (
@@ -211,12 +206,7 @@ const
     (De: '%s statt %s'; En: '%s instead of %s'),
     (De: '%d statt %d Parameter'; En: '%d instead of %d parameters'),
     (De: 'Ergebnis %s statt %s'; En: 'result %s instead of %s'),
-    (De: '%s weicht von der Deklaration ab: %s (wie E2037).'; En: '%s differs from the declaration: %s (like E2037).'),
-    (De: 'Feld nach Methoden im selben Abschnitt'; En: 'Field after methods in the same section'),
-    (De: 'Feld an den Anfang des Abschnitts verschieben'; En: 'Move field to the start of the section'),
-    (De: 'var davor setzen'; En: 'Put var before it'),
-    (De: 'Feld nach Methoden im selben Abschnitt (wie E2169).';
-     En: 'Field after methods in the same section (like E2169).'));
+    (De: '%s weicht von der Deklaration ab: %s (wie E2037).'; En: '%s differs from the declaration: %s (like E2037).'));
 
 {$SCOPEDENUMS OFF}
 
@@ -290,27 +280,6 @@ begin
   end;
 end;
 
-/// <summary>Bindet die Datei Include-Dateien ein ({$I datei} oder {$INCLUDE datei})?</summary>
-function HasIncludes(const AContext: TRuleContext): Boolean;
-var
-  mToken: TPascalToken;
-  mText: string;
-begin
-  for mToken in AContext.Tree.Tokens do
-  begin
-    if mToken.Kind = TPascalTokenKind.Directive then
-    begin
-      mText := UpperCase(mToken.Text);
-      // {$I+} und {$I-} schalten die E/A-Prüfung um und sind keine Includes.
-      if StartsStr('{$INCLUDE ', mText) or StartsStr('{$I ', mText) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
 function IsConditional(const ALines: TArray<Boolean>; const AMethod: TUnmatchedMethod): Boolean;
 var
   mLine: Integer;
@@ -328,158 +297,13 @@ end;
 
 function Confidence(const AContext: TRuleContext): TRuleConfidence;
 begin
-  if HasIncludes(AContext) then
+  if TDeclarationIncludes.HasIncludes(AContext) then
   begin
     Result := TRuleConfidence.Medium;
   end
   else
   begin
     Result := TRuleConfidence.High;
-  end;
-end;
-
-const
-  /// <summary>Tiefe verschachtelter Include-Dateien, die IncludedBodies verfolgt.</summary>
-  cMaxIncludeDepth = 8;
-
-/// <summary>Dateiname aus {$I datei} bzw. {$INCLUDE 'datei'}; '' bei anderen Direktiven ({$I+}, {$IF …}).</summary>
-function IncludeName(const ADirective: string): string;
-var
-  mText: string;
-begin
-  Result := '';
-  mText := UpperCase(ADirective);
-  if not StartsStr('{$INCLUDE ', mText) and not StartsStr('{$I ', mText) then
-  begin
-    Exit;
-  end;
-  Result := Trim(Copy(ADirective, Pos(' ', ADirective) + 1, MaxInt));
-  if EndsStr('}', Result) then
-  begin
-    Result := Trim(Copy(Result, 1, Length(Result) - 1));
-  end;
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-end;
-
-/// <summary>Letzte zwei Teile eines Methodennamens ohne Typparameter, klein: 'TAussen.TInnen&lt;T&gt;' und 'Lies'
-/// ergeben 'tinnen.lies'.</summary>
-function BodyKey(const ATypeName, AMethod: string): string;
-var
-  mType: string;
-begin
-  mType := ATypeName;
-  if Pos('<', mType) > 0 then
-  begin
-    mType := Copy(mType, 1, Pos('<', mType) - 1);
-  end;
-  if Pos('.', mType) > 0 then
-  begin
-    mType := Copy(mType, LastDelimiter('.', mType) + 1, MaxInt);
-  end;
-  Result := LowerCase(mType + '.' + AMethod);
-end;
-
-/// <summary>Hängt die Rümpfe "Typ.Methode" der Tokens ATokens an ABodies an; Include-Dateien darin
-/// (bis cMaxIncludeDepth Ebenen) liest CollectInclude.</summary>
-procedure CollectBodies(const ATokens: TArray<TPascalToken>; const AContext: TRuleContext; ADepth: Integer;
-  ABodies: TStrings); forward;
-
-/// <summary>Liest die Include-Datei AName neben der Unit und sammelt ihre Rümpfe; lässt sie sich nicht lesen,
-/// bleibt es bei der mittleren Konfidenz (Confidence).</summary>
-procedure CollectInclude(const AName: string; const AContext: TRuleContext; ADepth: Integer; ABodies: TStrings);
-var
-  mBytes: TBytes;
-  mFormat: TFileFormat;
-begin
-  if (AName <> '') and (ADepth < cMaxIncludeDepth) and Assigned(AContext.ReadFile) and
-    AContext.ReadFile(AName, mBytes) then
-  begin
-    CollectBodies(TPascalLexer.Tokenize(TFileEncoding.Decode(mBytes, mFormat)), AContext, ADepth + 1, ABodies);
-  end;
-end;
-
-procedure CollectBodies(const ATokens: TArray<TPascalToken>; const AContext: TRuleContext; ADepth: Integer;
-  ABodies: TStrings);
-var
-  mIndex, mDepth: Integer;
-  mParts: TArray<string>;
-begin
-  mIndex := 0;
-  while mIndex <= High(ATokens) do
-  begin
-    if ATokens[mIndex].Kind = TPascalTokenKind.Directive then
-    begin
-      CollectInclude(IncludeName(ATokens[mIndex].Text), AContext, ADepth, ABodies);
-    end;
-    if (ATokens[mIndex].Kind = TPascalTokenKind.Keyword) and
-      MatchText(ATokens[mIndex].Text, ['procedure', 'function', 'constructor', 'destructor', 'operator']) then
-    begin
-      mParts := nil;
-      mDepth := 0;
-      Inc(mIndex);
-      while mIndex <= High(ATokens) do
-      begin
-        if ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-        begin
-          Inc(mIndex);
-          Continue;
-        end;
-        if ATokens[mIndex].Text = '<' then
-        begin
-          Inc(mDepth);
-        end
-        else if ATokens[mIndex].Text = '>' then
-        begin
-          Dec(mDepth);
-        end
-        else if (mDepth = 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) then
-        begin
-          mParts := mParts + [ATokens[mIndex].Text];
-        end
-        else if (mDepth = 0) and (ATokens[mIndex].Text <> '.') then
-        begin
-          Break;
-        end;
-        Inc(mIndex);
-      end;
-      if Length(mParts) >= 2 then
-      begin
-        ABodies.Add(BodyKey(mParts[High(mParts) - 1], mParts[High(mParts)]));
-      end;
-      Continue;
-    end;
-    Inc(mIndex);
-  end;
-end;
-
-/// <summary>Methodenrümpfe in Include-Dateien des implementation-Teils als 'typ.methode' (klein, mORMot legt
-/// sie in mormot.core.rtti.delphi.inc).</summary>
-function IncludedBodies(const AContext: TRuleContext): TStringList;
-var
-  mIndex: Integer;
-  mTokens: TArray<TPascalToken>;
-  mInImplementation: Boolean;
-begin
-  Result := TStringList.Create;
-  Result.Sorted := True;
-  Result.Duplicates := dupIgnore;
-  Result.CaseSensitive := False;
-  mTokens := AContext.Tree.Tokens;
-  mInImplementation := False;
-  // Rümpfe der Datei selbst ordnet TClassCompletion zu (auch Überladungen); hier zählen nur die Include-Dateien.
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if (mTokens[mIndex].Kind = TPascalTokenKind.Keyword) and SameText(mTokens[mIndex].Text, 'implementation') then
-    begin
-      mInImplementation := True;
-    end
-    else if mInImplementation and (mTokens[mIndex].Kind = TPascalTokenKind.Directive) then
-    begin
-      CollectInclude(IncludeName(mTokens[mIndex].Text), AContext, 0, Result);
-    end;
   end;
 end;
 
@@ -531,12 +355,12 @@ begin
   mCache := TRuleDerived.Open(AContext);
   mScan := CompletionScan(mCache, AContext);
   mOptions := TClassBodyOptions.FromSettings(AContext.ClassCompletion, AContext.Formatting);
-  mIncluded := IncludedBodies(AContext);
+  mIncluded := TDeclarationIncludes.Bodies(AContext);
   try
     for mMethod in mScan.Unmatched do
     begin
       if not mMethod.Declared or IsConditional(mLines, mMethod) or mScan.InPair(mMethod) or
-        (mIncluded.IndexOf(BodyKey(mMethod.TypeName, mMethod.Symbol.Name)) >= 0) then
+        (mIncluded.IndexOf(TDeclarationIncludes.BodyKey(mMethod.TypeName, mMethod.Symbol.Name)) >= 0) then
       begin
         Continue;
       end;
@@ -1188,7 +1012,7 @@ var
   mSelf: TRoutinePairs;
 begin
   Result := nil;
-  if (AContext.Tree.Root = nil) or HasIncludes(AContext) then
+  if (AContext.Tree.Root = nil) or TDeclarationIncludes.HasIncludes(AContext) then
   begin
     Exit;
   end;
@@ -1398,271 +1222,6 @@ begin
   begin
     Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([ABody.Convention, ConventionOf(ADeclaration)])];
   end;
-end;
-
-{ TFieldAfterMethodRule }
-
-function TFieldAfterMethodRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create(cFieldAfterMethodRuleId, TRuleSeverity.Error,
-    cTexts[TDeclarationsText.FieldTitle].Text);
-end;
-
-type
-  /// <summary>Ein Lauf von TFieldAfterMethodRule über eine Unit: Kontext, Bericht und der gemeinsame
-  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
-  TFieldAfterMethodScan = record
-  private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
-    FTokens: TArray<TPascalToken>;
-    FLines: TArray<string>;
-    FLineBreak: string;
-    FPaths: TArray<string>;
-    function FirstToken(ANode: TSyntaxNode): Integer;
-    function PathOf(ANode: TSyntaxNode): string;
-    function OnlySpaceBefore(const APosition: TTextPosition): Boolean;
-    function OnlyCommentAfter(const APosition: TTextPosition): Boolean;
-    function BlockFirst(ABody: TSyntaxNode; AIndex: Integer): TSyntaxNode;
-    function StartLine(ANode: TSyntaxNode): Integer;
-    function MoveFix(ABody: TSyntaxNode; AField, AMember: Integer): TArray<TRuleFix>;
-    function VarFix(ABody: TSyntaxNode; AField: Integer): TRuleFix;
-    function Guards(ABody: TSyntaxNode; AMember, AField: Integer): Boolean;
-    function HasGuard(ABody: TSyntaxNode; AFirst, AField: Integer): Boolean;
-    procedure CheckField(ABody: TSyntaxNode; AField, AFirst: Integer; ASamePaths: Boolean);
-    procedure CheckBody(ABody: TSyntaxNode);
-    procedure Visit(ARoot: TSyntaxNode);
-  public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
-    procedure Run;
-  end;
-
-{ TFieldAfterMethodScan }
-
-constructor TFieldAfterMethodScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-begin
-  FContext := AContext;
-  FReport := AReport;
-end;
-
-function TFieldAfterMethodScan.FirstToken(ANode: TSyntaxNode): Integer;
-begin
-  Result := TokenFrom(FTokens, ANode.StartOffset);
-end;
-
-function TFieldAfterMethodScan.PathOf(ANode: TSyntaxNode): string;
-begin
-  Result := TConditionalBranches.PathAt(FPaths, FirstToken(ANode));
-end;
-
-function TFieldAfterMethodScan.OnlySpaceBefore(const APosition: TTextPosition): Boolean;
-begin
-  Result := BlankBefore(FLines, APosition);
-end;
-
-function TFieldAfterMethodScan.OnlyCommentAfter(const APosition: TTextPosition): Boolean;
-begin
-  Result := BlankAfter(FLines, APosition);
-end;
-
-// Erstes Kind des Blocks um ABody[AIndex]: davorstehende Attribute gehören dazu.
-function TFieldAfterMethodScan.BlockFirst(ABody: TSyntaxNode; AIndex: Integer): TSyntaxNode;
-begin
-  while (AIndex > 0) and (ABody[AIndex - 1].Kind = TSyntaxKind.Attribute) do
-  begin
-    Dec(AIndex);
-  end;
-  Result := ABody[AIndex];
-end;
-
-// Erste Zeile des Blocks ab ANode samt Kommentarzeilen direkt darüber (XMLDoc).
-function TFieldAfterMethodScan.StartLine(ANode: TSyntaxNode): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := ANode.StartPos.Line;
-  mIndex := FirstToken(ANode) - 1;
-  while (mIndex >= 0) and (FTokens[mIndex].Kind = TPascalTokenKind.Comment) and
-    (FTokens[mIndex].EndPos.Line = Result - 1) and OnlySpaceBefore(FTokens[mIndex].StartPos) do
-  begin
-    Result := FTokens[mIndex].StartPos.Line;
-    Dec(mIndex);
-  end;
-end;
-
-// Feld samt Attributen und Kommentaren vor das erste Mitglied des Abschnitts; nil, wenn Zeilen nicht passen.
-function TFieldAfterMethodScan.MoveFix(ABody: TSyntaxNode; AField, AMember: Integer): TArray<TRuleFix>;
-var
-  mField, mTarget: TSyntaxNode;
-  mFieldStart, mFieldEnd, mTargetLine, mLine: Integer;
-  mMoved: string;
-begin
-  Result := nil;
-  mField := BlockFirst(ABody, AField);
-  mTarget := BlockFirst(ABody, AMember);
-  if not OnlySpaceBefore(mField.StartPos) or not OnlySpaceBefore(mTarget.StartPos) or
-    not OnlyCommentAfter(ABody[AField].EndPos) then
-  begin
-    Exit;
-  end;
-  mFieldStart := StartLine(mField);
-  mFieldEnd := ABody[AField].EndPos.Line;
-  mTargetLine := StartLine(mTarget);
-  if (mTargetLine >= mFieldStart) or (mFieldEnd + 1 >= Length(FLines)) then
-  begin
-    Exit;
-  end;
-  mMoved := '';
-  for mLine := mFieldStart to mFieldEnd do
-  begin
-    mMoved := mMoved + FLines[mLine] + FLineBreak;
-  end;
-  Result := [TRuleFix.Create(cTexts[TDeclarationsText.MoveField].Text, [
-    TRuleEdit.Create(TTextRange.Create(mTargetLine, 0, mTargetLine, 0), mMoved),
-    TRuleEdit.Create(TTextRange.Create(mFieldStart, 0, mFieldEnd + 1, 0), '')], True)];
-end;
-
-function TFieldAfterMethodScan.VarFix(ABody: TSyntaxNode; AField: Integer): TRuleFix;
-var
-  mFirst: TSyntaxNode;
-begin
-  mFirst := BlockFirst(ABody, AField);
-  Result := TRuleFix.Create(cTexts[TDeclarationsText.InsertVar].Text,
-    [TRuleEdit.Create(TTextRange.Create(mFirst.StartPos,
-    mFirst.StartPos), 'var ')], True);
-end;
-
-// Ist ABody[AMember] eine Methode oder Property, die immer mit übersetzt wird, wenn das Feld ABody[AField]
-// übersetzt wird?
-function TFieldAfterMethodScan.Guards(ABody: TSyntaxNode; AMember, AField: Integer): Boolean;
-begin
-  Result := (ABody[AMember].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) and
-    TConditionalBranches.Implies(PathOf(ABody[AField]), PathOf(ABody[AMember]));
-end;
-
-// Gibt es zwischen ABody[AFirst] und dem Feld ABody[AField] eine Methode, die es sicher vor dem Feld gibt?
-function TFieldAfterMethodScan.HasGuard(ABody: TSyntaxNode; AFirst, AField: Integer): Boolean;
-var
-  mMember: Integer;
-begin
-  mMember := AFirst;
-  while (mMember < AField) and not Guards(ABody, mMember, AField) do
-  begin
-    Inc(mMember);
-  end;
-  Result := mMember < AField;
-end;
-
-// Meldet das Feld ABody[AField] hinter dem ersten Mitglied ABody[AFirst]; ASamePaths: keine Bedingungen
-// zwischen den Mitgliedern.
-procedure TFieldAfterMethodScan.CheckField(ABody: TSyntaxNode; AField, AFirst: Integer; ASamePaths: Boolean);
-var
-  mFixes: TArray<TRuleFix>;
-begin
-  if not HasGuard(ABody, AFirst, AField) then
-  begin
-    Exit;
-  end;
-  mFixes := nil;
-  // Verschieben nur ohne Bedingungen dazwischen, sonst landet das Feld in einem anderen Zweig.
-  if ASamePaths and (PathOf(ABody[AField]) = PathOf(ABody[AFirst])) then
-  begin
-    mFixes := MoveFix(ABody, AField, AFirst);
-  end;
-  if ABody.Kind = TSyntaxKind.RecordType then
-  begin
-    // In Records verschiebt das Verschieben das Speicherlayout; var zuerst.
-    mFixes := [VarFix(ABody, AField)] + mFixes;
-  end
-  else
-  begin
-    mFixes := mFixes + [VarFix(ABody, AField)];
-  end;
-  FReport.Add(TTextRange.Create(ABody[AField].StartPos, ABody[AField].EndPos),
-    cTexts[TDeclarationsText.FieldAfter].Text, TRuleConfidence.High, mFixes);
-end;
-
-procedure TFieldAfterMethodScan.CheckBody(ABody: TSyntaxNode);
-var
-  mIndex, mFirst: Integer;
-  mSamePaths: Boolean;
-begin
-  mFirst := -1;
-  mSamePaths := True;
-  for mIndex := 0 to ABody.ChildCount - 1 do
-  begin
-    case ABody[mIndex].Kind of
-      // Ein neuer Abschnitt bzw. var erlaubt wieder Felder.
-      TSyntaxKind.Visibility, TSyntaxKind.VarSection, TSyntaxKind.TypeSection, TSyntaxKind.ConstSection:
-        begin
-          mFirst := -1;
-          mSamePaths := True;
-        end;
-      TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl:
-        if mFirst < 0 then
-        begin
-          mFirst := mIndex;
-        end
-        else if PathOf(ABody[mIndex]) <> PathOf(ABody[mFirst]) then
-        begin
-          mSamePaths := False;
-        end;
-      TSyntaxKind.Field:
-        if mFirst >= 0 then
-        begin
-          CheckField(ABody, mIndex, mFirst, mSamePaths);
-        end;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-  end;
-end;
-
-procedure TFieldAfterMethodScan.Visit(ARoot: TSyntaxNode);
-var
-  mIndex: Integer;
-  mNode: TSyntaxNode;
-  mPending: TStack<TSyntaxNode>;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(ARoot);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if mNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType] then
-      begin
-        CheckBody(mNode);
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
-procedure TFieldAfterMethodScan.Run;
-begin
-  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
-  begin
-    Exit;
-  end;
-  FTokens := FContext.Tree.Tokens;
-  FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
-  FPaths := TConditionalBranches.Paths(FTokens);
-  Visit(FContext.Tree.Root);
-end;
-
-procedure TFieldAfterMethodRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mScan: TFieldAfterMethodScan;
-begin
-  mScan := TFieldAfterMethodScan.Create(AContext, AReport);
-  mScan.Run;
 end;
 
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);

@@ -735,6 +735,8 @@ uses
   Atlas.Common.Rules.Builtin.Declarations.TypeSizes.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.TypeSizes.Tests.pas',
   Atlas.Common.Rules.Builtin.Declarations.VariantRecords.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.VariantRecords.Tests.pas',
   Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests.pas',
+  Atlas.Common.Rules.Builtin.Declarations.FieldOrder.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.FieldOrder.Tests.pas',
+  Atlas.Common.Rules.Builtin.Declarations.Includes.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Includes.Tests.pas',
   Atlas.Common.Rules.Builtin.Inheritance.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Tests.pas',
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests.pas',
   Atlas.Common.Rules.Builtin.Inheritance.Shadowing.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Shadowing.Tests.pas',

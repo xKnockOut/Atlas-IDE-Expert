@@ -1411,8 +1411,8 @@ begin
   Result := '';
   for mSymbol in APlan.Missing do
   begin
-    mHeader := QualifiedHeader(TRoutineSignatures.Head(TMethodText.RangeText(ALines, mSymbol.Range), mRest), mSymbol.Name,
-      APlan.TypeName);
+    mHeader := QualifiedHeader(TRoutineSignatures.Head(TMethodText.RangeText(ALines, mSymbol.Range), mRest),
+      mSymbol.Name, APlan.TypeName);
     if mHeader <> '' then
     begin
       Result := Result + ALineBreak + TClassBodies.Body(AShape, mHeader,
@@ -1523,7 +1523,8 @@ begin
   for mSymbol in mUnit.Symbols do
   begin
     if (mSymbol.Kind in cMethodKinds) and SameText(mSymbol.Container, ATypeName) and
-      not TMethodText.ContainsLine(mType.Range, mSymbol.Range.StartPos.Line) and (mSymbol.Range.EndPos.Line > mLastLine) then
+      not TMethodText.ContainsLine(mType.Range, mSymbol.Range.StartPos.Line) and
+      (mSymbol.Range.EndPos.Line > mLastLine) then
     begin
       mLastLine := mSymbol.Range.EndPos.Line;
     end;
