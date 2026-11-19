@@ -47,7 +47,6 @@ implementation
 
 uses
   Vcl.Controls,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets;
 
@@ -176,7 +175,7 @@ end;
 procedure TAtlasSettingsTeamFilePart.Build;
 begin
   // Was beim Übernehmen eingefügt wird.
-  AddSheet(TAtlasTextId.SettingsTabInsert);
+  AddSheet(TAtlasSettingsTextId.SettingsTabInsert);
   BindCheck('AutoParentheses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParentheses)));
   BindCheck('FixCase', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFixCase)));
   BindCheck('CommitCharacters', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCommitChars)));
@@ -194,7 +193,7 @@ end;
 
 procedure TAtlasSettingsTeamFilePart.Build2;
 begin
-  AddSheet(TAtlasTextId.SettingsTabTeamFile);
+  AddSheet(TAtlasSettingsTextId.SettingsTabTeamFile);
   AddTeamFileSection;
 end;
 
