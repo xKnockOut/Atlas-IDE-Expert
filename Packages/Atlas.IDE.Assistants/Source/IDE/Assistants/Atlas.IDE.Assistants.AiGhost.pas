@@ -106,6 +106,8 @@ type
     Request: TAtlasAiGhostRequest;
     TabSize: Integer;
     InsertSpaces: Boolean;
+    /// <summary>Zeitlimit der Anfrage: das des Anbieters (OpenAI-kompatibel) oder cTimeoutMs.</summary>
+    TimeoutMs: Integer;
     Status: string;
     Hint: string;
   end;
@@ -224,7 +226,7 @@ begin
     begin
       AProposal := Default(TAtlasGhostProposal);
       mJob.Request.Declarations := DeclarationsOf(mJob.Session, mJob.Uri, mJob.Request.Line);
-      mAnswer := mJob.Provider.Complete(TAtlasAiGhost.Prompt(mJob.Request, TAtlasIdeAiGhost.cTimeoutMs));
+      mAnswer := mJob.Provider.Complete(TAtlasAiGhost.Prompt(mJob.Request, mJob.TimeoutMs));
       if not mAnswer.Ok then
       begin
         AOwner.Failed(mAnswer.Error);
@@ -408,6 +410,7 @@ end;
 function TAtlasIdeAiGhost.Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
 var
   mSettings: TAtlasPluginSettings;
+  mProvider: TAtlasAiProviderSettings;
   mJob: TAiGhostJob;
 begin
   Result := nil;
@@ -419,7 +422,8 @@ begin
   begin
     Exit;
   end;
-  mJob.Provider := TAtlasAiProviders.Create(mSettings.AssistantsProvider, mSettings.AssistantsModel, FHttp, FKeys);
+  mProvider := TAtlasAiProviders.SettingsOf(mSettings);
+  mJob.Provider := TAtlasAiProviders.Create(mProvider, FHttp, FKeys);
   if (mJob.Provider = nil) or not Allowed(AContext) then
   begin
     Exit;
@@ -433,9 +437,14 @@ begin
   mJob.Request.ContextLines := mSettings.AssistantsContextLines;
   mJob.TabSize := AContext.TabSize;
   mJob.InsertSpaces := AContext.InsertSpaces;
+  mJob.TimeoutMs := cTimeoutMs;
+  if mProvider.TimeoutMs > 0 then
+  begin
+    mJob.TimeoutMs := mProvider.TimeoutMs;
+  end;
   mJob.Status := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.GhostStatus);
   mJob.Hint := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostHint,
-    [mSettings.AssistantsModel, FCount.CountOn(FormatDateTime('yyyy"-"mm"-"dd', Date))]);
+    [mProvider.Model, FCount.CountOn(FormatDateTime('yyyy"-"mm"-"dd', Date))]);
   Result := WorkOf(Self, mJob);
 end;
 

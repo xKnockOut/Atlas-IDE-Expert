@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.AiProviders.Contract;
 
 // KI-Anbieter des Moduls KI-Assistenten (#1922): eine Schnittstelle für alle
-// Anbieter (Anthropic-API, später OpenAI-kompatible Server, #2056), damit
+// Anbieter (Anthropic-API, OpenAI-kompatible Server, #2056), damit
 // Schattentext und andere Nutzer nur „Text zu einer Aufgabe“ kennen.
 // - IAtlasAiProvider.Complete schickt eine Aufgabe (System- und Nutzertext,
 //   Höchstlänge der Antwort, Zeitlimit) und liefert Text oder einen Fehler.
@@ -43,6 +43,8 @@ type
     /// <summary>Meldung des Anbieters ohne Schlüssel, höchstens cMaxDetail Zeichen.</summary>
     Detail: string;
     function Ok: Boolean;
+    /// <summary>Fehler nach dem HTTP-Status einer Fehlerantwort (gleich für alle Anbieter).</summary>
+    class function ErrorOfStatus(AStatus: Integer): TAtlasAiError; static;
   end;
 
   TAtlasAiHeader = record
@@ -80,6 +82,14 @@ type
     function Complete(const APrompt: TAtlasAiPrompt): TAtlasAiAnswer;
   end;
 
+  /// <summary>Anbieter, der seine Modelle auflisten kann (OpenAI-kompatibel, #2056); im Hintergrund-Thread.
+  /// </summary>
+  IAtlasAiModels = interface
+    ['{C7E3A915-4D28-4B6F-8F01-2A9D5E6C3B78}']
+    /// <summary>Namen der Modelle; Fehler wie bei Complete.</summary>
+    function Models(out AModels: TArray<string>): TAtlasAiAnswer;
+  end;
+
   /// <summary>Einträge der Schlüssel im Anmeldespeicher.</summary>
   TAtlasAiKeys = record
     /// <summary>Ziel im Anmeldespeicher für den Anbieter AProviderId ("Atlas:ai:anthropic").</summary>
@@ -98,6 +108,7 @@ const
   cAiHttpUnauthorized = 401;
   cAiHttpForbidden = 403;
   cAiHttpNotFound = 404;
+  cAiHttpRequestTimeout = 408;
   cAiHttpTooManyRequests = 429;
   cAiHttpServerError = 500;
   /// <summary>Anthropic: überlastet.</summary>
@@ -113,6 +124,29 @@ uses
 function TAtlasAiAnswer.Ok: Boolean;
 begin
   Result := Error = TAtlasAiError.None;
+end;
+
+class function TAtlasAiAnswer.ErrorOfStatus(AStatus: Integer): TAtlasAiError;
+begin
+  case AStatus of
+    cAiHttpUnauthorized, cAiHttpForbidden:
+      Result := TAtlasAiError.Unauthorized;
+    cAiHttpNotFound:
+      Result := TAtlasAiError.ModelMissing;
+    cAiHttpRequestTimeout:
+      Result := TAtlasAiError.Timeout;
+    cAiHttpTooManyRequests, cAiHttpOverloaded:
+      Result := TAtlasAiError.RateLimited;
+  else
+    if AStatus >= cAiHttpServerError then
+    begin
+      Result := TAtlasAiError.ServerError;
+    end
+    else
+    begin
+      Result := TAtlasAiError.BadAnswer;
+    end;
+  end;
 end;
 
 { TAtlasAiHeader }

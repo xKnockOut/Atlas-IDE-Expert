@@ -41,7 +41,7 @@ type
     [Test]
     procedure CompleteReportsTransportFailure;
     [Test]
-    procedure CatalogKnowsAnthropicOnly;
+    procedure CatalogBuildsProviders;
     [Test]
     procedure KeyTargetIsPerProvider;
   end;
@@ -53,42 +53,8 @@ uses
   System.JSON,
   Atlas.Core.AiProviders.Contract,
   Atlas.Core.AiProviders.Anthropic,
-  Atlas.Core.AiProviders.Catalog;
-
-type
-  TFakeHttp = class(TInterfacedObject, IAtlasAiHttp)
-  public
-    Calls: Integer;
-    Method: string;
-    Url: string;
-    Headers: TArray<TAtlasAiHeader>;
-    Body: string;
-    TimeoutMs: Integer;
-    Reply: TAtlasAiHttpReply;
-    Cancelled: Boolean;
-    function Send(const AMethod, AUrl: string; const AHeaders: TArray<TAtlasAiHeader>; const ABody: string;
-      ATimeoutMs: Integer): TAtlasAiHttpReply;
-    procedure Cancel;
-  end;
-
-{ TFakeHttp }
-
-function TFakeHttp.Send(const AMethod, AUrl: string; const AHeaders: TArray<TAtlasAiHeader>; const ABody: string;
-  ATimeoutMs: Integer): TAtlasAiHttpReply;
-begin
-  Inc(Calls);
-  Method := AMethod;
-  Url := AUrl;
-  Headers := AHeaders;
-  Body := ABody;
-  TimeoutMs := ATimeoutMs;
-  Result := Reply;
-end;
-
-procedure TFakeHttp.Cancel;
-begin
-  Cancelled := True;
-end;
+  Atlas.Core.AiProviders.Catalog,
+  Atlas.Core.AiProviders.TestSupport;
 
 function PromptOf(const AInstructions, ATask: string): TAtlasAiPrompt;
 begin
@@ -97,20 +63,6 @@ begin
   Result.Task := ATask;
   Result.MaxTokens := 100;
   Result.TimeoutMs := 5000;
-end;
-
-function HeaderValue(const AHeaders: TArray<TAtlasAiHeader>; const AName: string): string;
-var
-  mHeader: TAtlasAiHeader;
-begin
-  Result := '';
-  for mHeader in AHeaders do
-  begin
-    if SameText(mHeader.Name, AName) then
-    begin
-      Exit(mHeader.Value);
-    end;
-  end;
 end;
 
 { TAtlasAnthropicApiTests }
@@ -153,9 +105,9 @@ var
   mHeaders: TArray<TAtlasAiHeader>;
 begin
   mHeaders := TAtlasAnthropicApi.Headers('geheim');
-  Assert.AreEqual('geheim', HeaderValue(mHeaders, 'x-api-key'));
-  Assert.AreEqual(TAtlasAnthropicApi.cVersion, HeaderValue(mHeaders, 'anthropic-version'));
-  Assert.AreEqual('application/json', HeaderValue(mHeaders, 'content-type'));
+  Assert.AreEqual('geheim', AiHeaderValue(mHeaders, 'x-api-key'));
+  Assert.AreEqual(TAtlasAnthropicApi.cVersion, AiHeaderValue(mHeaders, 'anthropic-version'));
+  Assert.AreEqual('application/json', AiHeaderValue(mHeaders, 'content-type'));
 end;
 
 procedure TAtlasAnthropicApiTests.AnswerJoinsTextBlocks;
@@ -227,12 +179,12 @@ end;
 
 procedure TAtlasAnthropicApiTests.CompleteWithoutKeySendsNothing;
 var
-  mFake: TFakeHttp;
+  mFake: TFakeAiHttp;
   mHttp: IAtlasAiHttp;
   mProvider: IAtlasAiProvider;
   mAnswer: TAtlasAiAnswer;
 begin
-  mFake := TFakeHttp.Create;
+  mFake := TFakeAiHttp.Create;
   mHttp := mFake;
   mProvider := TAtlasAnthropicProvider.Create(mHttp,
     function(const AProviderId: string): string
@@ -246,13 +198,13 @@ end;
 
 procedure TAtlasAnthropicApiTests.CompleteSendsToTheApiWithKey;
 var
-  mFake: TFakeHttp;
+  mFake: TFakeAiHttp;
   mHttp: IAtlasAiHttp;
   mProvider: IAtlasAiProvider;
   mAnswer: TAtlasAiAnswer;
   mAsked: string;
 begin
-  mFake := TFakeHttp.Create;
+  mFake := TFakeAiHttp.Create;
   mHttp := mFake;
   mFake.Reply.Status := 200;
   mFake.Reply.Body := '{"content":[{"type":"text","text":"ok"}]}';
@@ -268,7 +220,7 @@ begin
   Assert.AreEqual(TAtlasAnthropicApi.cId, mAsked, 'Schlüssel des Anbieters');
   Assert.AreEqual('POST', mFake.Method);
   Assert.AreEqual(TAtlasAnthropicApi.cUrl, mFake.Url);
-  Assert.AreEqual('k1', HeaderValue(mFake.Headers, 'x-api-key'));
+  Assert.AreEqual('k1', AiHeaderValue(mFake.Headers, 'x-api-key'));
   Assert.AreEqual(5000, mFake.TimeoutMs);
   Assert.IsTrue(Pos('"modell-b"', mFake.Body) > 0, 'Modell aus den Einstellungen');
   Assert.IsFalse(Pos('k1', mFake.Body) > 0, 'Schlüssel nicht im Inhalt');
@@ -276,11 +228,11 @@ end;
 
 procedure TAtlasAnthropicApiTests.CompleteReportsTransportFailure;
 var
-  mFake: TFakeHttp;
+  mFake: TFakeAiHttp;
   mHttp: IAtlasAiHttp;
   mProvider: IAtlasAiProvider;
 begin
-  mFake := TFakeHttp.Create;
+  mFake := TFakeAiHttp.Create;
   mHttp := mFake;
   mFake.Reply.Failure := TAtlasAiError.Timeout;
   mProvider := TAtlasAnthropicProvider.Create(mHttp,
@@ -291,15 +243,27 @@ begin
   Assert.AreEqual<TAtlasAiError>(TAtlasAiError.Timeout, mProvider.Complete(PromptOf('', 'x')).Error);
 end;
 
-procedure TAtlasAnthropicApiTests.CatalogKnowsAnthropicOnly;
+function SettingsOf(const AId: string): TAtlasAiProviderSettings;
+begin
+  Result := Default(TAtlasAiProviderSettings);
+  Result.Id := AId;
+  Result.Model := 'm';
+  Result.Url := 'http://localhost:1234/v1';
+  Result.TimeoutMs := 1000;
+end;
+
+procedure TAtlasAnthropicApiTests.CatalogBuildsProviders;
 var
   mHttp: IAtlasAiHttp;
 begin
-  mHttp := TFakeHttp.Create;
-  Assert.IsNull(TAtlasAiProviders.Create(TAtlasAiProviders.cNone, 'm', mHttp, nil), 'keiner');
-  Assert.IsNull(TAtlasAiProviders.Create('unbekannt', 'm', mHttp, nil), 'unbekannt');
-  Assert.AreEqual(TAtlasAnthropicApi.cId, TAtlasAiProviders.Create('Anthropic', 'm', mHttp, nil).Id);
+  mHttp := TFakeAiHttp.Create;
+  Assert.IsNull(TAtlasAiProviders.Create(SettingsOf(TAtlasAiProviders.cNone), mHttp, nil), 'keiner');
+  Assert.IsNull(TAtlasAiProviders.Create(SettingsOf('unbekannt'), mHttp, nil), 'unbekannt');
+  Assert.AreEqual(TAtlasAnthropicApi.cId, TAtlasAiProviders.Create(SettingsOf('Anthropic'), mHttp, nil).Id);
+  Assert.AreEqual('openai-compatible', TAtlasAiProviders.Create(SettingsOf('openai-compatible'), mHttp, nil).Id);
   Assert.IsTrue(TAtlasAiProviders.NeedsKey('anthropic'), 'Schlüssel nötig');
+  Assert.IsFalse(TAtlasAiProviders.NeedsKey('openai-compatible'), 'Schlüssel freiwillig');
+  Assert.IsTrue(TAtlasAiProviders.TakesKey('openai-compatible'), 'Schlüssel möglich');
   Assert.IsFalse(TAtlasAiProviders.NeedsKey('none'), 'ohne Anbieter kein Schlüssel');
 end;
 

@@ -25,7 +25,8 @@
 //   solange assistants.context an ist; den letzten Build bekommt er über
 //   IAtlasBuildVerdictListener.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
-//   Schlüssel der KI-Anbieter.
+//   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
+//   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
 //   Atlas.IDE.Assistants.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
@@ -432,6 +433,7 @@ begin
   end;
   GScope.Provide(IAtlasCommandSource, mRef);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
+  StartAiProbe;
   TAtlasAssistantsSettingsSection.KeyHooks := AiKeyHooks;
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
   // Anweisungsdateien für KI-Assistenten (#2615): Befehl, Menüeintrag und Hinweis nach dem Speichern.
@@ -448,6 +450,7 @@ begin
     procedure
     begin
       TAtlasAssistantsSettingsSection.KeyHooks := Default(TAtlasAssistantsKeyHooks);
+      StopAiProbe;
     end);
   // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten die Aktivität bis dahin.
   FreeAndNil(GActivity);
