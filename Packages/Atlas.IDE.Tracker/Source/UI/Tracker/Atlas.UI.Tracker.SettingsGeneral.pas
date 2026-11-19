@@ -33,6 +33,7 @@ type
     PreviewChecklists: TCheckBox;
     ChecklistStatus: TCheckBox;
     ShareWithAssistants: TCheckBox;
+    DebugKnownErrors: TCheckBox;
     StatusState: TCheckBox;
     PreviewLinks: TCheckBox;
     WarnBlocked: TCheckBox;
@@ -139,6 +140,8 @@ begin
   // Begonnenes Issue für KI-Assistenten (#2051).
   FView.ShareWithAssistants := Check('issues.shareWithAssistants',
     TAtlasOptionsTextId.SettingsIssuesShareWithAssistants);
+  // Bekannte Fehler beim Exception-Halt (#2460).
+  FView.DebugKnownErrors := Check('issues.debugKnownErrors', TAtlasOptionsTextId.SettingsIssuesDebugKnownErrors);
   // Abhängigkeiten und Unteraufgaben (#1279): Baum in der Vorschau, Warnung beim Beginnen.
   FView.PreviewLinks := Check('issues.preview.links', TAtlasOptionsTextId.SettingsIssuesPreviewLinks);
   FView.WarnBlocked := Check('issues.warnBlocked', TAtlasOptionsTextId.SettingsIssuesWarnBlocked);

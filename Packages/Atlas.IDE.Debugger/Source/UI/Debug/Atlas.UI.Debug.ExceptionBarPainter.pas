@@ -8,6 +8,9 @@
 //      Maus unterstrichen in der Akzentfarbe.
 //   (Erklärung: Trennlinie, Ergebniszeile, geprüfte Glieder mit ✓/✗ in der
 //   Farbe ihres Zustands, „… n weitere“, Knöpfe der Erklärung.)
+//   (Bekannte Fehler, #2460: Trennlinie, je Treffer „⚑ Bekannter Fehler: KEY
+//   Titel · Zustand · Bearbeiter“ bzw. gedämpft „Erledigt: … – wieder
+//   aufgetreten?“, Knöpfe zum besten Treffer.)
 //   3. Knöpfe, „Fortsetzen“ als Hauptknopf im Akzent, rechts die
 //      Tastenhinweise, wenn Platz ist.
 // Wo was liegt, sagt TAtlasDebugBarLayout; Texte und Farben kommen von hier.
@@ -17,6 +20,7 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
+  Atlas.Core.KnownErrors.Contract,
   Atlas.Core.Style.Palette,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.ExceptionBarLayout;
@@ -35,6 +39,9 @@ type
     procedure PaintExplanation(const AFrame: TRect);
     procedure PaintVerdict(const AFrame: TRect);
     procedure PaintChecks(const AFrame: TRect);
+    procedure PaintKnown(const AFrame: TRect);
+    /// <summary>Waagrechte Trennlinie am oberen Rand der Zeile ARow.</summary>
+    procedure PaintSeparator(const AFrame: TRect; ARow: Integer);
     procedure PaintKeys(const AFrame: TRect);
     procedure DrawButton(AAction: TAtlasDebugBarAction);
   public
@@ -47,6 +54,9 @@ type
     class function Caption(AAction: TAtlasDebugBarAction; const AWhereName: string): string; static;
     /// <summary>Zeile 2: Thread, ausgeblendete Ebenen, erste eigene Zeile.</summary>
     class function DetailText(const AInfo: TAtlasDebugBannerInfo): string; static;
+    /// <summary>Zeile eines bekannten Fehlers: Kennung, Titel, Zustand, Bearbeiter; erledigt „wieder
+    /// aufgetreten?“.</summary>
+    class function KnownText(const AError: TAtlasKnownError): string; static;
   end;
 
 implementation
@@ -123,6 +133,14 @@ begin
       Result := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvCopy);
     TAtlasDebugBarAction.CreateTest:
       Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerCreateTest);
+    TAtlasDebugBarAction.KnownOpen:
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugKnownOpen);
+    TAtlasDebugBarAction.KnownComment:
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugKnownComment);
+    TAtlasDebugBarAction.KnownReopen:
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugKnownReopen);
+    TAtlasDebugBarAction.KnownNew:
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugKnownNew);
   else
     Result := '';
   end;
@@ -161,6 +179,33 @@ begin
   Result := string.Join(' · ', mParts);
 end;
 
+class function TAtlasDebugBarPainter.KnownText(const AError: TAtlasKnownError): string;
+var
+  mParts: TArray<string>;
+  mHead: string;
+begin
+  mHead := Trim(AError.Key + ' ' + AError.Title);
+  mParts := [mHead];
+  if AError.State <> '' then
+  begin
+    mParts := mParts + [AError.State];
+  end;
+  if AError.Assignee <> '' then
+  begin
+    mParts := mParts + [AError.Assignee];
+  end;
+  if AError.Resolved then
+  begin
+    Result := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugKnownResolved,
+      [string.Join(' ' + #$00B7 + ' ', mParts)]);
+  end
+  else
+  begin
+    Result := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugKnownFound,
+      [string.Join(' ' + #$00B7 + ' ', mParts)]);
+  end;
+end;
+
 procedure TAtlasDebugBarPainter.Paint(const AClient: TRect);
 var
   mFrame: TRect;
@@ -180,6 +225,7 @@ begin
   PaintTitle(mFrame);
   PaintDetail(mFrame);
   PaintExplanation(mFrame);
+  PaintKnown(mFrame);
   // Letzte Zeile: Knöpfe, rechts die Tastenhinweise.
   for mAction in cDebugBarButtons do
   begin
@@ -241,22 +287,27 @@ begin
   FCanvas.Font.Style := [];
 end;
 
+procedure TAtlasDebugBarPainter.PaintSeparator(const AFrame: TRect; ARow: Integer);
+var
+  mGap, mLineTop: Integer;
+begin
+  mGap := FLayout.Scale(TAtlasDebugBarLayout.cGap);
+  mLineTop := FLayout.RowTop(ARow) + FLayout.Scale(1);
+  FCanvas.Pen.Color := ToColor(FColors.Line);
+  FCanvas.MoveTo(AFrame.Left + mGap, mLineTop);
+  FCanvas.LineTo(AFrame.Right - mGap, mLineTop);
+  FCanvas.Brush.Style := bsClear;
+end;
+
 procedure TAtlasDebugBarPainter.PaintExplanation(const AFrame: TRect);
 var
   mAction: TAtlasDebugBarAction;
-  mGap, mLineTop: Integer;
 begin
   if not FLayout.Explanation.Active then
   begin
     Exit;
   end;
-  // Trennlinie über der Erklärung.
-  mGap := FLayout.Scale(TAtlasDebugBarLayout.cGap);
-  mLineTop := FLayout.RowTop(cVerdictRow) + FLayout.Scale(1);
-  FCanvas.Pen.Color := ToColor(FColors.Line);
-  FCanvas.MoveTo(AFrame.Left + mGap, mLineTop);
-  FCanvas.LineTo(AFrame.Right - mGap, mLineTop);
-  FCanvas.Brush.Style := bsClear;
+  PaintSeparator(AFrame, cVerdictRow);
   FCanvas.Font := FFont;
   PaintVerdict(AFrame);
   if FLayout.Explanation.Busy then
@@ -333,6 +384,41 @@ begin
       [Length(mLines) - TAtlasDebugBarLayout.cMaxExplanationLines]),
       Rect(AFrame.Left + 2 * mGap + mIndent, FLayout.RowTop(mRow), AFrame.Right - mGap, FLayout.RowTop(mRow + 1)),
       DT_LEFT);
+  end;
+end;
+
+/// <summary>Bekannte Fehler (#2460): Trennlinie, je Treffer eine Zeile, Knöpfe zum besten.</summary>
+procedure TAtlasDebugBarPainter.PaintKnown(const AFrame: TRect);
+var
+  mAction: TAtlasDebugBarAction;
+  mError: TAtlasKnownError;
+  mIndex, mRow, mGap: Integer;
+begin
+  if not FLayout.Known.HasErrors then
+  begin
+    Exit;
+  end;
+  PaintSeparator(AFrame, FLayout.KnownRow);
+  FCanvas.Font := FFont;
+  mGap := FLayout.Scale(TAtlasDebugBarLayout.cGap);
+  for mIndex := 0 to FLayout.ShownKnown - 1 do
+  begin
+    mError := FLayout.Known.Errors[mIndex];
+    mRow := FLayout.KnownRow + mIndex;
+    if mError.Resolved then
+    begin
+      FCanvas.Font.Color := ToColor(FColors.Muted);
+    end
+    else
+    begin
+      FCanvas.Font.Color := ToColor(FColors.Warn);
+    end;
+    TextIn(FCanvas, KnownText(mError), Rect(AFrame.Left + mGap, FLayout.RowTop(mRow), AFrame.Right - mGap,
+      FLayout.RowTop(mRow + 1)), DT_LEFT or DT_END_ELLIPSIS);
+  end;
+  for mAction in cDebugKnownButtons do
+  begin
+    DrawButton(mAction);
   end;
 end;
 

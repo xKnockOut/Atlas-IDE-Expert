@@ -487,6 +487,7 @@ Atlas.Core.Designer.SelectionSets.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Tracker.CurrentIssue.Tests
 Atlas.Core.Tracker.CurrentIssuePlan.Tests
+Atlas.Core.Tracker.KnownErrors.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Commands.QuickOpenTarget.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
@@ -656,6 +657,7 @@ Atlas.Core.Debug.StepIntoJump.Tests
 Atlas.Core.Debug.UnavailableNote.Tests
 Atlas.Core.Debug.ExceptionBarFlow.Tests
 Atlas.Core.Debug.ExceptionBarLayout.Tests
+Atlas.Core.Debug.KnownErrors.Tests
 Atlas.Core.Debug.ProfilerFlow.Tests
 Atlas.Core.Debug.MethodGroupFlow.Tests
 Atlas.Core.Debug.EventLogFlow.Tests

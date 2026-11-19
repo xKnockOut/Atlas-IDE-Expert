@@ -14,10 +14,13 @@
 //   - Info: Inhalt der Leiste. Der Aufrufstapel ist auf die erste eigene
 //     Zeile gekürzt (#578); die Rahmen darüber (RTL, VCL) zählen als
 //     „n Ebenen ausgeblendet“.
+//   - Known: bekannte Fehler aus dem Tracker zum Halt (#2460), über den
+//     Vertrag IAtlasKnownErrors; ohne Tracker-Modul leer.
 
 interface
 
 uses
+  Atlas.Core.KnownErrors.Contract,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionDialog;
 
@@ -29,9 +32,10 @@ type
 
   {$SCOPEDENUMS ON}
   TAtlasDebugBannerMark = (Neutral, Ok, Bad);
-  /// <summary>Knöpfe der Exception-Leiste und ihre anklickbare Ortszeile (Open).</summary>
+  /// <summary>Knöpfe der Exception-Leiste und ihre anklickbare Ortszeile (Open); Known*: bekannte Fehler (#2460).
+  /// </summary>
   TAtlasDebugBarAction = (None, BreakHere, Continue, IgnoreClass, IgnoreLocation, Copy, Open, WhereAssigned, Evaluate,
-    CopyExplanation, CreateTest);
+    CopyExplanation, CreateTest, KnownOpen, KnownComment, KnownReopen, KnownNew);
   {$SCOPEDENUMS OFF}
 
   TAtlasDebugBannerLine = record
@@ -58,6 +62,20 @@ type
     EvaluateExpression: string;
     /// <summary>Text für „Erklärung kopieren“; '' = kein Knopf.</summary>
     CopyText: string;
+  end;
+
+  /// <summary>Bekannte Fehler zum Halt (#2460); ohne Treffer keine Zeilen.</summary>
+  TAtlasDebugBannerKnown = record
+    /// <summary>Beste zuerst, höchstens vier; die Knöpfe gelten dem ersten.</summary>
+    Errors: TArray<TAtlasKnownError>;
+    CanComment: Boolean;
+    /// <summary>Knopf „Neues Issue …“ in der letzten Zeile.</summary>
+    CanCreate: Boolean;
+    /// <summary>Aus der Antwort des Trackers; Off und Busy ergeben eine leere Leiste.</summary>
+    class function FromResult(const AResult: TAtlasKnownErrorsResult): TAtlasDebugBannerKnown; static;
+    function HasErrors: Boolean;
+    /// <summary>Ist der beste Treffer erledigt („wieder aufgetreten?“)?</summary>
+    function FirstResolved: Boolean;
   end;
 
   TAtlasDebugBannerInfo = record
@@ -129,6 +147,30 @@ begin
   else
     Result := #$2013;
   end;
+end;
+
+{ TAtlasDebugBannerKnown }
+
+class function TAtlasDebugBannerKnown.FromResult(const AResult: TAtlasKnownErrorsResult): TAtlasDebugBannerKnown;
+begin
+  Result := Default(TAtlasDebugBannerKnown);
+  if AResult.State <> TAtlasKnownErrorsState.Done then
+  begin
+    Exit;
+  end;
+  Result.Errors := Copy(AResult.Errors);
+  Result.CanComment := AResult.CanComment;
+  Result.CanCreate := AResult.CanCreate;
+end;
+
+function TAtlasDebugBannerKnown.HasErrors: Boolean;
+begin
+  Result := Length(Errors) > 0;
+end;
+
+function TAtlasDebugBannerKnown.FirstResolved: Boolean;
+begin
+  Result := HasErrors and Errors[0].Resolved;
 end;
 
 { TAtlasDebugBannerInfo }

@@ -10159,6 +10159,16 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1273"
     },
+    "IssuesDebugKnownErrors": {
+      "type": "boolean",
+      "default": true,
+      "description": "Bekannte Fehler beim Exception-Halt: Hält der Debugger an einer Exception, sucht Atlas im Hintergrund im Tracker des Projekts nach Issues mit derselben Signatur (Exception-Klasse, Meldung ohne Zahlen, Adressen, Pfade und Anführungsinhalte, oberste eigene Methode) und zeigt bis zu vier Treffer in der Exception-Leiste, mit Öffnen, Als Kommentar anhängen bzw. Wieder öffnen; sonst Neues Issue. Ergebnis je Signatur für die Sitzung gemerkt; der Debugger wartet nie. Aus: keine Suche.",
+      "x-key": "issues.debugKnownErrors",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2460"
+    },
     "IssuesShareWithAssistants": {
       "type": "boolean",
       "default": true,

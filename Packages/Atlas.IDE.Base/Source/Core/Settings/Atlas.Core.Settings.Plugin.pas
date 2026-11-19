@@ -1398,6 +1398,8 @@ type
       write FIssueWork.IssuesChecklistStatus;
     property IssuesShareWithAssistants: Boolean read FIssueWork.IssuesShareWithAssistants
       write FIssueWork.IssuesShareWithAssistants;
+    property IssuesDebugKnownErrors: Boolean read FIssueWork.IssuesDebugKnownErrors
+      write FIssueWork.IssuesDebugKnownErrors;
     property IssuesStatusState: Boolean read FIssueWork.IssuesStatusState write FIssueWork.IssuesStatusState;
     property IssuesSprintOnStart: string read FIssueWork.IssuesSprintOnStart write FIssueWork.IssuesSprintOnStart;
     property IssuesPreviewLinks: Boolean read FIssueWork.IssuesPreviewLinks write FIssueWork.IssuesPreviewLinks;

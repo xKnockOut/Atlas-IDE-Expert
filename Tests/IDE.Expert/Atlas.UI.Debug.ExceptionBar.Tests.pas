@@ -4,7 +4,8 @@
 // ausgeblendeten Ebenen und erster eigener Zeile, Knöpfe in Reihenfolge,
 // „Nur an dieser Stelle ignorieren“ nur mit Ort, Klick meldet die Aktion erst
 // beim Loslassen auf demselben Knopf. Erklärung einer Zugriffsverletzung
-// (#865): mehr Zeilen, eigene Knöpfe nur mit Inhalt.
+// (#865): mehr Zeilen, eigene Knöpfe nur mit Inhalt. Bekannte Fehler (#2460):
+// je Treffer eine Zeile und Knöpfe, Text mit Zustand und Bearbeiter.
 
 interface
 
@@ -37,6 +38,10 @@ type
     procedure ClickReportsActionOnRelease;
     [Test]
     procedure ExplanationGrowsAndAddsButtons;
+    [Test]
+    procedure KnownErrorsGrowAndReport;
+    [Test]
+    procedure KnownTextNamesStateAndAssignee;
   end;
 
 implementation
@@ -45,6 +50,8 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Controls,
+  Atlas.Core.KnownErrors.Contract,
+  Atlas.UI.Debug.ExceptionBarPainter,
   Atlas.Core.Debug.ExceptionBanner;
 
 type
@@ -240,6 +247,60 @@ begin
   FBar.SetExplanation(Default(TAtlasDebugBannerExplanation));
   Assert.AreEqual(3, FBar.Rows);
   Assert.AreEqual(TAtlasDebugExceptionBar.BarHeight(FBar.CurrentPPI), FBar.Height);
+end;
+
+function KnownError(const AKey, AState, AAssignee: string; AResolved: Boolean): TAtlasKnownError;
+begin
+  Result := Default(TAtlasKnownError);
+  Result.Key := AKey;
+  Result.Title := 'Kasse stürzt ab';
+  Result.State := AState;
+  Result.Assignee := AAssignee;
+  Result.Resolved := AResolved;
+end;
+
+procedure TAtlasDebugExceptionBarTests.KnownErrorsGrowAndReport;
+var
+  mKnown: TAtlasDebugBannerKnown;
+  mReported: TAtlasDebugBarAction;
+begin
+  FBar.SetInfo(SampleInfo(True));
+  mKnown := Default(TAtlasDebugBannerKnown);
+  mKnown.Errors := [KnownError('ATL-2210', 'In Arbeit', 'Kim', False), KnownError('#7', 'open', '', False)];
+  mKnown.CanComment := True;
+  mKnown.CanCreate := True;
+  FBar.SetKnown(mKnown);
+  Assert.AreEqual(3 + 2 + 1, FBar.Rows);
+  Assert.AreEqual(TAtlasDebugExceptionBar.BarHeight(FBar.CurrentPPI, 6), FBar.Height);
+  Assert.IsFalse(FBar.ActionRect(TAtlasDebugBarAction.KnownComment).IsEmpty);
+  Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.KnownOpen).Bottom <=
+    FBar.ActionRect(TAtlasDebugBarAction.Continue).Top, 'über den Knöpfen der Leiste');
+  mReported := TAtlasDebugBarAction.None;
+  FBar.OnAction :=
+    procedure(AAction: TAtlasDebugBarAction)
+    begin
+      mReported := AAction;
+    end;
+  FBar.Trigger(TAtlasDebugBarAction.KnownReopen);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(mReported), 'offen: kein Wieder öffnen');
+  FBar.Trigger(TAtlasDebugBarAction.KnownNew);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.KnownNew), Ord(mReported));
+  FBar.SetKnown(Default(TAtlasDebugBannerKnown));
+  Assert.AreEqual(3, FBar.Rows, 'ohne Treffer wieder drei Zeilen');
+  mKnown := Default(TAtlasDebugBannerKnown);
+end;
+
+procedure TAtlasDebugExceptionBarTests.KnownTextNamesStateAndAssignee;
+var
+  mText: string;
+begin
+  mText := TAtlasDebugBarPainter.KnownText(KnownError('ATL-2210', 'In Arbeit', 'Kim', False));
+  Assert.Contains(mText, 'ATL-2210 Kasse stürzt ab');
+  Assert.Contains(mText, 'In Arbeit');
+  Assert.Contains(mText, 'Kim');
+  mText := TAtlasDebugBarPainter.KnownText(KnownError('#7', '', '', True));
+  Assert.Contains(mText, '#7 Kasse stürzt ab');
+  Assert.IsFalse(mText.Contains(#$00B7), 'ohne Zustand und Bearbeiter kein Trenner');
 end;
 
 end.

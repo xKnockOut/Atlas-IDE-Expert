@@ -30,6 +30,9 @@
 //     die Erklärung einer Zugriffsverletzung je Halt herein; sie erscheint
 //     unter der Meldung, sobald die Leiste für diesen Halt steht. Die Knöpfe
 //     der Erklärung meldet die Leiste an SetExplanationHandler.
+//   - Bekannte Fehler (#2460): Atlas.IDE.Debug.KnownErrors reicht über Known
+//     die Treffer aus dem Tracker je Halt herein, wie die Erklärung; ihre
+//     Knöpfe meldet die Leiste an SetKnownHandler.
 // Ohne debug.exceptionBanner ist nichts angemeldet, der Dialog der IDE bleibt
 // unverändert. Nur im Hauptthread verwenden.
 
@@ -76,6 +79,15 @@ type
     public
       procedure Tick(Sender: TObject);
     end;
+    /// <summary>Inhalte anderer Teile für einen Halt und die Empfänger ihrer Knöpfe.</summary>
+    TExtras = record
+      Explanation: TAtlasDebugBannerExplanation;
+      ExplanationStop: Integer;
+      ExplanationHandler: TProc<TAtlasDebugBarAction>;
+      Known: TAtlasDebugBannerKnown;
+      KnownStop: Integer;
+      KnownHandler: TProc<TAtlasDebugBarAction>;
+    end;
   private class var
     FListener: IAtlasIdeDebugListener;
     FHandler: Integer;
@@ -95,9 +107,8 @@ type
     FShown: TAtlasDebugException;
     FShownInfo: TAtlasDebugBannerInfo;
     FShownStop: Integer;
-    FExplanation: TAtlasDebugBannerExplanation;
-    FExplanationStop: Integer;
-    FExplanationHandler: TProc<TAtlasDebugBarAction>;
+    /// <summary>Was andere Teile je Halt hereinreichen: Erklärung (#865) und bekannte Fehler (#2460).</summary>
+    FExtras: TExtras;
     class procedure ExceptionTaken(const AStop: TAtlasDebugExceptionStop); static;
     class procedure CheckShow; static;
     class procedure ShowBar; static;
@@ -128,6 +139,10 @@ type
     /// <summary>Empfänger der Knöpfe der Erklärung (Wo zugewiesen, Auswerten, Erklärung kopieren); nil = keiner.
     /// </summary>
     class procedure SetExplanationHandler(const AHandler: TProc<TAtlasDebugBarAction>); static;
+    /// <summary>Bekannte Fehler für den Halt AStop (#2460); erscheinen, sobald die Leiste für ihn steht.</summary>
+    class procedure Known(AStop: Integer; const AKnown: TAtlasDebugBannerKnown); static;
+    /// <summary>Empfänger der Knöpfe zu bekannten Fehlern (Known*); nil = keiner.</summary>
+    class procedure SetKnownHandler(const AHandler: TProc<TAtlasDebugBarAction>); static;
   end;
 
 implementation
@@ -310,13 +325,21 @@ begin
   FBar.SetInfo(FShownInfo);
   FShownStop := FPending.Stop;
   // Erklärung einer Zugriffsverletzung nur für diesen Halt (#865).
-  if FExplanationStop = FShownStop then
+  if FExtras.ExplanationStop = FShownStop then
   begin
-    FBar.SetExplanation(FExplanation);
+    FBar.SetExplanation(FExtras.Explanation);
   end
   else
   begin
     FBar.SetExplanation(Default(TAtlasDebugBannerExplanation));
+  end;
+  if FExtras.KnownStop = FShownStop then
+  begin
+    FBar.SetKnown(FExtras.Known);
+  end
+  else
+  begin
+    FBar.SetKnown(Default(TAtlasDebugBannerKnown));
   end;
   FBar.Top := 0;
   FBar.Visible := True;
@@ -380,12 +403,18 @@ begin
         TAtlasIdeNavigation.MarkLine(FShownInfo.FileName, FShownInfo.Line - 1);
       end;
     TAtlasDebugBarAction.WhereAssigned, TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation:
-      if Assigned(FExplanationHandler) then
+      if Assigned(FExtras.ExplanationHandler) then
       begin
-        FExplanationHandler(AAction);
+        FExtras.ExplanationHandler(AAction);
       end;
     TAtlasDebugBarAction.CreateTest:
       TAtlasIdeHost.ExecuteCommand(cAtlasTestFromDebugStopCommand);
+    TAtlasDebugBarAction.KnownOpen, TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen,
+    TAtlasDebugBarAction.KnownNew:
+      if Assigned(FExtras.KnownHandler) then
+      begin
+        FExtras.KnownHandler(AAction);
+      end;
     TAtlasDebugBarAction.None: ;
   end;
 end;
@@ -513,8 +542,11 @@ begin
   FShown := Default(TAtlasDebugException);
   FShownInfo := Default(TAtlasDebugBannerInfo);
   FPending := Default(TAtlasDebugExceptionStop);
-  FExplanation := Default(TAtlasDebugBannerExplanation);
-  FExplanationStop := 0;
+  // Die Empfänger melden sich selbst ab (SetExplanationHandler, SetKnownHandler mit nil).
+  FExtras.Explanation := Default(TAtlasDebugBannerExplanation);
+  FExtras.ExplanationStop := 0;
+  FExtras.Known := Default(TAtlasDebugBannerKnown);
+  FExtras.KnownStop := 0;
   FShownStop := 0;
   FMessage := nil;
 end;
@@ -590,8 +622,8 @@ end;
 
 class procedure TAtlasIdeDebugExceptionBar.Explain(AStop: Integer; const AExplanation: TAtlasDebugBannerExplanation);
 begin
-  FExplanation := AExplanation;
-  FExplanationStop := AStop;
+  FExtras.Explanation := AExplanation;
+  FExtras.ExplanationStop := AStop;
   if (FBar <> nil) and FBar.Visible and (FShownStop = AStop) then
   begin
     FBar.SetExplanation(AExplanation);
@@ -606,7 +638,22 @@ end;
 
 class procedure TAtlasIdeDebugExceptionBar.SetExplanationHandler(const AHandler: TProc<TAtlasDebugBarAction>);
 begin
-  FExplanationHandler := AHandler;
+  FExtras.ExplanationHandler := AHandler;
+end;
+
+class procedure TAtlasIdeDebugExceptionBar.Known(AStop: Integer; const AKnown: TAtlasDebugBannerKnown);
+begin
+  FExtras.Known := AKnown;
+  FExtras.KnownStop := AStop;
+  if (FBar <> nil) and FBar.Visible and (FShownStop = AStop) then
+  begin
+    FBar.SetKnown(AKnown);
+  end;
+end;
+
+class procedure TAtlasIdeDebugExceptionBar.SetKnownHandler(const AHandler: TProc<TAtlasDebugBarAction>);
+begin
+  FExtras.KnownHandler := AHandler;
 end;
 
 end.

@@ -112,6 +112,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBarFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBarLayout.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.KnownErrors.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionDialogFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Modules.pas"/>
@@ -185,6 +186,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LeaksWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Leaks.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.KnownErrors.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionDialog.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Exceptions.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionsWindow.pas"/>

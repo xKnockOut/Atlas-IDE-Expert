@@ -644,6 +644,8 @@
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.GhostSuggestions.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.IssueWork.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.KnownErrors.pas"/>
+        <DCCReference Include="Source\Core\KnownErrors\Atlas.Core.KnownErrors.Contract.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.MouseHistory.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.Rules.pas"/>

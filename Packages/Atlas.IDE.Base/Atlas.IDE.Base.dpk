@@ -579,6 +579,8 @@ contains
   Atlas.IDE.Contracts.LineChanges in 'Source\Contracts\Atlas.IDE.Contracts.LineChanges.pas',
   Atlas.IDE.Contracts.GhostSuggestions in 'Source\Contracts\Atlas.IDE.Contracts.GhostSuggestions.pas',
   Atlas.IDE.Contracts.IssueWork in 'Source\Contracts\Atlas.IDE.Contracts.IssueWork.pas',
+  Atlas.IDE.Contracts.KnownErrors in 'Source\Contracts\Atlas.IDE.Contracts.KnownErrors.pas',
+  Atlas.Core.KnownErrors.Contract in 'Source\Core\KnownErrors\Atlas.Core.KnownErrors.Contract.pas',
   Atlas.IDE.Contracts.MouseHistory in 'Source\Contracts\Atlas.IDE.Contracts.MouseHistory.pas',
   Atlas.IDE.Contracts.VersionControl in 'Source\Contracts\Atlas.IDE.Contracts.VersionControl.pas',
   Atlas.Core.Build.Requests in 'Source\Core\Build\Atlas.Core.Build.Requests.pas',

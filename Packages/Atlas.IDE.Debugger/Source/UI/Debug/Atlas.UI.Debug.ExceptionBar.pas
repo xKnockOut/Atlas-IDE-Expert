@@ -17,6 +17,9 @@
 // „Wo wird X zugewiesen?“, „Ausdruck auswerten“, „Erklärung kopieren“. Die
 // Höhe wächst mit den Zeilen. Während Atlas prüft, steht nur die Ergebniszeile
 // („Atlas prüft …“) da.
+// Bekannte Fehler aus dem Tracker (#2460, SetKnown): darunter je Treffer eine
+// Zeile und die Knöpfe zum besten Treffer; „Neues Issue …“ in der letzten
+// Zeile. Ohne Treffer bleibt die Leiste, wie sie ist.
 // Gezeichnet wird alles selbst (kein Fokus, keine Fenster für Knöpfe), damit
 // der Editor die Tasten behält; die Tasten F8, F9 und Esc fängt die IDE-Schicht.
 // Wo Zeilen und Knöpfe liegen, rechnet TAtlasDebugBarLayout (Kern), gezeichnet
@@ -49,6 +52,7 @@ type
     function DetailText: string;
     function GetInfo: TAtlasDebugBannerInfo;
     function GetExplanation: TAtlasDebugBannerExplanation;
+    function GetKnown: TAtlasDebugBannerKnown;
     procedure ApplyHeight;
     procedure Layout;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -66,6 +70,8 @@ type
     procedure SetInfo(const AInfo: TAtlasDebugBannerInfo);
     /// <summary>Erklärung zeigen bzw. mit Active = False entfernen; die Höhe passt sich an.</summary>
     procedure SetExplanation(const AExplanation: TAtlasDebugBannerExplanation);
+    /// <summary>Bekannte Fehler zeigen bzw. leer entfernen; die Höhe passt sich an.</summary>
+    procedure SetKnown(const AKnown: TAtlasDebugBannerKnown);
     procedure SetColors(const AColors: TAtlasColors);
     /// <summary>Höhe der Leiste bei APPI (drei Zeilen, 78 px bei 96 DPI).</summary>
     class function BarHeight(APPI: Integer): Integer; overload; static;
@@ -83,6 +89,7 @@ type
     property Detail: string read DetailText;
     property Info: TAtlasDebugBannerInfo read GetInfo;
     property Explanation: TAtlasDebugBannerExplanation read GetExplanation;
+    property Known: TAtlasDebugBannerKnown read GetKnown;
     property OnAction: TAtlasDebugBarActionEvent read FOnAction write FOnAction;
   end;
 
@@ -131,6 +138,11 @@ end;
 function TAtlasDebugExceptionBar.GetExplanation: TAtlasDebugBannerExplanation;
 begin
   Result := FLayout.Explanation;
+end;
+
+function TAtlasDebugExceptionBar.GetKnown: TAtlasDebugBannerKnown;
+begin
+  Result := FLayout.Known;
 end;
 
 procedure TAtlasDebugExceptionBar.Resize;
@@ -274,6 +286,14 @@ end;
 procedure TAtlasDebugExceptionBar.SetExplanation(const AExplanation: TAtlasDebugBannerExplanation);
 begin
   FLayout.SetContent(FLayout.Info, AExplanation);
+  ApplyHeight;
+  FLaidOut := False;
+  Invalidate;
+end;
+
+procedure TAtlasDebugExceptionBar.SetKnown(const AKnown: TAtlasDebugBannerKnown);
+begin
+  FLayout.SetKnown(AKnown);
   ApplyHeight;
   FLaidOut := False;
   Invalidate;

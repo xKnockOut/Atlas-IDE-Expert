@@ -11,6 +11,10 @@
 //     die Ergebniszeile.
 //   - „Nur an dieser Stelle ignorieren“ und „Test daraus anlegen“ gibt es nur,
 //     wenn die Info sie anbietet; die Knöpfe der Erklärung nur mit Inhalt.
+//   - Bekannte Fehler aus dem Tracker (#2460) unter der Erklärung: je Treffer
+//     eine Zeile (höchstens cMaxKnownLines) und eine Zeile mit den Knöpfen zum
+//     besten Treffer (Öffnen, Als Kommentar anhängen bzw. Wieder öffnen).
+//     „Neues Issue …“ steht in der letzten Zeile, wenn der Tracker es anbietet.
 // Maße bei 96 dpi, skaliert mit der Auflösung (nie kleiner als 96 dpi).
 
 interface
@@ -22,12 +26,15 @@ uses
 
 const
   /// <summary>Knöpfe der letzten Zeile der Leiste in Reihenfolge.</summary>
-  cDebugBarButtons: array[0..5] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
+  cDebugBarButtons: array[0..6] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
     TAtlasDebugBarAction.Continue, TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation,
-    TAtlasDebugBarAction.Copy, TAtlasDebugBarAction.CreateTest);
+    TAtlasDebugBarAction.Copy, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.KnownNew);
   /// <summary>Knöpfe der Erklärung in Reihenfolge.</summary>
   cDebugExplanationButtons: array[0..2] of TAtlasDebugBarAction = (TAtlasDebugBarAction.WhereAssigned,
     TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation);
+  /// <summary>Knöpfe zum besten bekannten Fehler in Reihenfolge.</summary>
+  cDebugKnownButtons: array[0..2] of TAtlasDebugBarAction = (TAtlasDebugBarAction.KnownOpen,
+    TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen);
 
 type
   /// <summary>Breite der Beschriftung eines Knopfs in Pixeln.</summary>
@@ -37,6 +44,8 @@ type
   public const
     /// <summary>Höchstens so viele geprüfte Glieder; der Rest als „… n weitere“.</summary>
     cMaxExplanationLines = 6;
+    /// <summary>Höchstens so viele bekannte Fehler.</summary>
+    cMaxKnownLines = 4;
     cBaseRow = 24;
     cBarPadding = 6;
     cGap = 6;
@@ -51,9 +60,11 @@ type
   private
     FInfo: TAtlasDebugBannerInfo;
     FExplanation: TAtlasDebugBannerExplanation;
+    FKnown: TAtlasDebugBannerKnown;
     FPPI: Integer;
     FRects: array[TAtlasDebugBarAction] of TRect;
     function ExplanationRows: Integer;
+    function KnownRows: Integer;
     /// <summary>Knöpfe von links nach rechts in der Zeile ARow; nur die, die AShown zulässt.</summary>
     procedure PlaceButtons(const AActions: array of TAtlasDebugBarAction; ARow: Integer;
       const AShown: TFunc<TAtlasDebugBarAction, Boolean>; const AWidth: TAtlasDebugBarTextWidth);
@@ -61,6 +72,8 @@ type
     constructor Create;
     /// <summary>Inhalt und Auflösung; danach Arrange.</summary>
     procedure SetContent(const AInfo: TAtlasDebugBannerInfo; const AExplanation: TAtlasDebugBannerExplanation);
+    /// <summary>Bekannte Fehler (#2460); danach Arrange.</summary>
+    procedure SetKnown(const AKnown: TAtlasDebugBannerKnown);
     /// <summary>Knöpfe und Ortszeile anordnen. AClientWidth: Breite der Leiste; ADetailWidth: Breite des Texts der
     /// Ortszeile; AWidth: Breite einer Knopfbeschriftung.</summary>
     procedure Arrange(AClientWidth, ADetailWidth: Integer; const AWidth: TAtlasDebugBarTextWidth);
@@ -73,6 +86,10 @@ type
     function Rows: Integer;
     /// <summary>Geprüfte Glieder, die zu sehen sind.</summary>
     function ShownLines: Integer;
+    /// <summary>Zeile des ersten bekannten Fehlers (unter Ort und Erklärung).</summary>
+    function KnownRow: Integer;
+    /// <summary>Bekannte Fehler, die zu sehen sind.</summary>
+    function ShownKnown: Integer;
     /// <summary>Knopf bzw. Ortszeile unter dem Punkt; None = nichts.</summary>
     function ActionAt(AX, AY: Integer): TAtlasDebugBarAction;
     /// <summary>Fläche eines Knopfs; leer, wenn er fehlt.</summary>
@@ -89,8 +106,11 @@ type
     /// <summary>Steht der Knopf AAction der letzten Zeile bei AInfo da?</summary>
     class function BarButtonShown(const AInfo: TAtlasDebugBannerInfo; AAction: TAtlasDebugBarAction): Boolean;
       static;
+    /// <summary>Gibt es den Knopf AAction zu den bekannten Fehlern AKnown (Known*)?</summary>
+    class function KnownHas(const AKnown: TAtlasDebugBannerKnown; AAction: TAtlasDebugBarAction): Boolean; static;
     property Info: TAtlasDebugBannerInfo read FInfo;
     property Explanation: TAtlasDebugBannerExplanation read FExplanation;
+    property Known: TAtlasDebugBannerKnown read FKnown;
     /// <summary>Auflösung der Leiste (dpi).</summary>
     property PPI: Integer read FPPI write FPPI;
   end;
@@ -122,6 +142,11 @@ procedure TAtlasDebugBarLayout.SetContent(const AInfo: TAtlasDebugBannerInfo;
 begin
   FInfo := AInfo;
   FExplanation := AExplanation;
+end;
+
+procedure TAtlasDebugBarLayout.SetKnown(const AKnown: TAtlasDebugBannerKnown);
+begin
+  FKnown := AKnown;
 end;
 
 function TAtlasDebugBarLayout.Scale(AValue: Integer): Integer;
@@ -163,9 +188,29 @@ begin
   end;
 end;
 
+function TAtlasDebugBarLayout.KnownRows: Integer;
+begin
+  Result := 0;
+  // Je Treffer eine Zeile und die Zeile mit den Knöpfen.
+  if FKnown.HasErrors then
+  begin
+    Result := ShownKnown + 1;
+  end;
+end;
+
 function TAtlasDebugBarLayout.Rows: Integer;
 begin
-  Result := cBaseRows + ExplanationRows;
+  Result := cBaseRows + ExplanationRows + KnownRows;
+end;
+
+function TAtlasDebugBarLayout.KnownRow: Integer;
+begin
+  Result := cBaseRows - 1 + ExplanationRows;
+end;
+
+function TAtlasDebugBarLayout.ShownKnown: Integer;
+begin
+  Result := Min(Length(FKnown.Errors), cMaxKnownLines);
 end;
 
 function TAtlasDebugBarLayout.ShownLines: Integer;
@@ -199,6 +244,7 @@ var
   mWidth: Integer;
   mInfo: TAtlasDebugBannerInfo;
   mExplanation: TAtlasDebugBannerExplanation;
+  mKnown: TAtlasDebugBannerKnown;
 begin
   for mAction := Low(TAtlasDebugBarAction) to High(TAtlasDebugBarAction) do
   begin
@@ -215,17 +261,28 @@ begin
   mExplanation := FExplanation;
   if FExplanation.Active and not FExplanation.Busy then
   begin
-    PlaceButtons(cDebugExplanationButtons, Rows - 2,
+    PlaceButtons(cDebugExplanationButtons, KnownRow - 1,
       function(AAction: TAtlasDebugBarAction): Boolean
       begin
         Result := ExplanationHas(mExplanation, AAction);
+      end, AWidth);
+  end;
+  // Knöpfe zum besten bekannten Fehler unter den Treffern.
+  mKnown := FKnown;
+  if FKnown.HasErrors then
+  begin
+    PlaceButtons(cDebugKnownButtons, Rows - 2,
+      function(AAction: TAtlasDebugBarAction): Boolean
+      begin
+        Result := KnownHas(mKnown, AAction);
       end, AWidth);
   end;
   mInfo := FInfo;
   PlaceButtons(cDebugBarButtons, Rows - 1,
     function(AAction: TAtlasDebugBarAction): Boolean
     begin
-      Result := BarButtonShown(mInfo, AAction);
+      Result := BarButtonShown(mInfo, AAction) and
+        ((AAction <> TAtlasDebugBarAction.KnownNew) or KnownHas(mKnown, AAction));
     end, AWidth);
 end;
 
@@ -276,6 +333,11 @@ begin
   begin
     Exit;
   end;
+  if (AAction in [TAtlasDebugBarAction.KnownOpen, TAtlasDebugBarAction.KnownComment,
+    TAtlasDebugBarAction.KnownReopen, TAtlasDebugBarAction.KnownNew]) and not KnownHas(FKnown, AAction) then
+  begin
+    Exit;
+  end;
   Result := True;
 end;
 
@@ -301,7 +363,8 @@ begin
       Result := AExplanation.CopyText <> '';
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest: ;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.KnownOpen,
+    TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen, TAtlasDebugBarAction.KnownNew: ;
   end;
 end;
 
@@ -315,6 +378,23 @@ begin
       Result := AInfo.CanCreateTest;
   else
     Result := True;
+  end;
+end;
+
+class function TAtlasDebugBarLayout.KnownHas(const AKnown: TAtlasDebugBannerKnown;
+  AAction: TAtlasDebugBarAction): Boolean;
+begin
+  case AAction of
+    TAtlasDebugBarAction.KnownOpen:
+      Result := AKnown.HasErrors;
+    TAtlasDebugBarAction.KnownComment:
+      Result := AKnown.HasErrors and AKnown.CanComment and not AKnown.FirstResolved;
+    TAtlasDebugBarAction.KnownReopen:
+      Result := AKnown.FirstResolved;
+    TAtlasDebugBarAction.KnownNew:
+      Result := AKnown.CanCreate;
+  else
+    Result := False;
   end;
 end;
 

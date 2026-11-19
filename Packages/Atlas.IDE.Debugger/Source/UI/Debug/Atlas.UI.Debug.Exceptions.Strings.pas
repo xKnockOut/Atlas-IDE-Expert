@@ -22,7 +22,8 @@ type
     DebugBannerIgnoredLocationSaid, DebugBannerUnknownVersion, DebugBannerUnknownVersionSummary, DebugNoteTitle,
     DebugNoteProject, DebugNoteConfiguration, DebugNotePlatform, DebugNoteTime, DebugNoteThread, DebugNoteLocation,
     DebugNoteCallStack, DebugNoteLastException, DebugNoteCount, DebugNoteNoLocation, DebugNoteFileStem,
-    DebugBannerCreateTest);
+    DebugBannerCreateTest, DebugKnownFound, DebugKnownResolved, DebugKnownOpen, DebugKnownComment, DebugKnownReopen,
+    DebugKnownNew);
 
   TAtlasExceptionsStrings = class
   public
@@ -103,7 +104,13 @@ const
      '%d x an dieser Stelle',
      'Kein Halt mit Quelltext.',
      'debug-notiz',
-     'Test daraus anlegen …'),
+     'Test daraus anlegen …',
+     #$2691 + ' Bekannter Fehler: %s',
+     #$2691 + ' Erledigt: %s ' + #$2013 + ' wieder aufgetreten?',
+     'Issue öffnen',
+     'Als Kommentar anhängen',
+     'Wieder öffnen …',
+     'Neues Issue …'),
     ('Atlas: Exceptions',
      'Filter by class, message, location',
      'Go to location',
@@ -167,7 +174,13 @@ const
      '%d times at this location',
      'Not stopped in source code.',
      'debug-note',
-     'Create test …'));
+     'Create test …',
+     #$2691 + ' Known error: %s',
+     #$2691 + ' Resolved: %s ' + #$2013 + ' occurred again?',
+     'Open issue',
+     'Add as comment',
+     'Reopen …',
+     'New issue …'));
 
 { TAtlasExceptionsStrings }
 

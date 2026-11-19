@@ -26,12 +26,17 @@ type
     procedure ExplanationButtonsAboveBarButtons;
     [Test]
     procedure ScalesWithPPI;
+    [Test]
+    procedure KnownErrorsBelowExplanation;
+    [Test]
+    procedure KnownButtonsFollowFirstHit;
   end;
 
 implementation
 
 uses
   System.Types,
+  Atlas.Core.KnownErrors.Contract,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.ExceptionBarLayout;
 
@@ -43,6 +48,23 @@ begin
     begin
       Result := 50;
     end;
+end;
+
+function Known(AHits: Integer; AFirstResolved, ACanComment, ACanCreate: Boolean): TAtlasDebugBannerKnown;
+var
+  mIndex: Integer;
+  mError: TAtlasKnownError;
+begin
+  Result := Default(TAtlasDebugBannerKnown);
+  for mIndex := 1 to AHits do
+  begin
+    mError := Default(TAtlasKnownError);
+    mError.Key := 'ATL-' + Char(Ord('0') + mIndex);
+    mError.Resolved := AFirstResolved and (mIndex = 1);
+    Result.Errors := Result.Errors + [mError];
+  end;
+  Result.CanComment := ACanComment;
+  Result.CanCreate := ACanCreate;
 end;
 
 function Explanation(ALines: Integer; ABusy: Boolean): TAtlasDebugBannerExplanation;
@@ -195,6 +217,65 @@ begin
     mLayout.PPI := 192;
     Assert.AreEqual(48, mLayout.RowHeight);
     Assert.AreEqual(6 + 48, mLayout.RowTop(1));
+  finally
+    mLayout.Free;
+  end;
+end;
+
+procedure TAtlasDebugBarLayoutTests.KnownErrorsBelowExplanation;
+var
+  mLayout: TAtlasDebugBarLayout;
+  mWhere, mOpen, mBreak: TRect;
+begin
+  mLayout := TAtlasDebugBarLayout.Create;
+  try
+    mLayout.SetKnown(Known(0, False, True, False));
+    Assert.AreEqual(3, mLayout.Rows, 'ohne Treffer wie bisher');
+    // Erklärung: Ergebnis, ein Glied, Knöpfe (3 Zeilen); Treffer: sechs, gezeigt vier, dazu die Knöpfe.
+    mLayout.SetContent(Default(TAtlasDebugBannerInfo), Explanation(1, False));
+    mLayout.SetKnown(Known(6, False, True, False));
+    Assert.AreEqual(4, mLayout.ShownKnown);
+    Assert.AreEqual(3 + 3 + 5, mLayout.Rows);
+    Assert.AreEqual(5, mLayout.KnownRow, 'unter Ort und Erklärung');
+    mLayout.Arrange(800, 0, FixedWidth());
+    mWhere := mLayout.ActionRect(TAtlasDebugBarAction.WhereAssigned);
+    mOpen := mLayout.ActionRect(TAtlasDebugBarAction.KnownOpen);
+    mBreak := mLayout.ActionRect(TAtlasDebugBarAction.BreakHere);
+    Assert.AreEqual(mLayout.RowTop(4) + 2, mWhere.Top, 'Knöpfe der Erklärung bleiben über den Treffern');
+    Assert.AreEqual(mLayout.RowTop(mLayout.Rows - 2) + 2, mOpen.Top, 'Knöpfe der Treffer unter den Treffern');
+    Assert.AreEqual(mLayout.RowTop(mLayout.Rows - 1) + 2, mBreak.Top);
+  finally
+    mLayout.Free;
+  end;
+end;
+
+procedure TAtlasDebugBarLayoutTests.KnownButtonsFollowFirstHit;
+var
+  mLayout: TAtlasDebugBarLayout;
+begin
+  mLayout := TAtlasDebugBarLayout.Create;
+  try
+    mLayout.SetKnown(Known(2, False, True, True));
+    mLayout.Arrange(1200, 0, FixedWidth());
+    Assert.IsTrue(mLayout.CanTrigger(TAtlasDebugBarAction.KnownOpen));
+    Assert.IsTrue(mLayout.CanTrigger(TAtlasDebugBarAction.KnownComment));
+    Assert.IsFalse(mLayout.CanTrigger(TAtlasDebugBarAction.KnownReopen), 'offen: nicht wieder öffnen');
+    Assert.IsTrue(mLayout.CanTrigger(TAtlasDebugBarAction.KnownNew));
+    Assert.AreEqual(mLayout.ActionRect(TAtlasDebugBarAction.KnownNew).Right, mLayout.LastButtonRight,
+      'Neues Issue zuletzt in der letzten Zeile');
+    mLayout.SetKnown(Known(1, True, True, False));
+    mLayout.Arrange(1200, 0, FixedWidth());
+    Assert.IsFalse(mLayout.CanTrigger(TAtlasDebugBarAction.KnownComment), 'erledigt: wieder öffnen statt Kommentar');
+    Assert.IsTrue(mLayout.CanTrigger(TAtlasDebugBarAction.KnownReopen));
+    Assert.IsFalse(mLayout.CanTrigger(TAtlasDebugBarAction.KnownNew));
+    Assert.IsTrue(mLayout.ActionRect(TAtlasDebugBarAction.KnownNew).IsEmpty);
+    mLayout.SetKnown(Known(1, False, False, False));
+    Assert.IsFalse(mLayout.CanTrigger(TAtlasDebugBarAction.KnownComment), 'Tracker schreibt nicht');
+    mLayout.SetKnown(Known(0, False, False, True));
+    mLayout.Arrange(1200, 0, FixedWidth());
+    Assert.AreEqual(3, mLayout.Rows, 'ohne Treffer nur Neues Issue');
+    Assert.IsFalse(mLayout.CanTrigger(TAtlasDebugBarAction.KnownOpen));
+    Assert.IsFalse(mLayout.ActionRect(TAtlasDebugBarAction.KnownNew).IsEmpty);
   finally
     mLayout.Free;
   end;

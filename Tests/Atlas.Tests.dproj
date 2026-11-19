@@ -1256,6 +1256,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CurrentIssue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssuePlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CurrentIssuePlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\KnownErrors\Atlas.Core.KnownErrors.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.KnownErrors.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.KnownErrors.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.KnownErrors.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Files.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TestSupport.pas"/>
@@ -2615,6 +2619,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionBarFlow.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionBarLayout.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionBarLayout.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.KnownErrors.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.KnownErrors.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionBarFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionBarPainter.pas"/>

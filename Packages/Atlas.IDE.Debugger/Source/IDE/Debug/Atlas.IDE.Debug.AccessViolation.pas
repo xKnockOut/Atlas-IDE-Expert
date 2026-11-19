@@ -653,7 +653,8 @@ begin
       end;
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest: ;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.KnownOpen,
+    TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen, TAtlasDebugBarAction.KnownNew: ;
   end;
 end;
 
