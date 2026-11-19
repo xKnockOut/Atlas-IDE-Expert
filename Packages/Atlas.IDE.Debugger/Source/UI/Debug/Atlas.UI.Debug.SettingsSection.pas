@@ -65,6 +65,7 @@ uses
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.Memory.Strings,
+  Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.Profile.Strings;
 
 const
@@ -355,7 +356,8 @@ end;
 
 procedure TAtlasDebugSettingsSection.BuildRestartRows;
 begin
-  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057).
+  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057),
+  // Debug-Zustand festhalten (#582).
   Switch('debug.restart', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestart));
   Switch('debug.restart.reenableBreakpoints',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestartReenable));
@@ -376,6 +378,9 @@ begin
   Number('debug.profiler.intervalMs', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfilerInterval));
   Switch('debug.memoryTimeline.objectCount',
     TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineObjectCount));
+  // Debug-Zustand festhalten (#582).
+  Switch('debug.note', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNote));
+  Switch('debug.note.saveFile', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNoteSaveFile));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;

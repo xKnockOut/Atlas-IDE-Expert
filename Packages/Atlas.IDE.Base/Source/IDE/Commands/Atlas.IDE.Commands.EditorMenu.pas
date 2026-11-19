@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.Commands.EditorMenu;
 
-// Einträge des Untermenüs Atlas im Kontextmenü des Editors (#399), aus
-// TAtlasIdeEditorCommands.Install (Atlas.IDE.Commands.Editor, Beschreibung dort)
-// ausgelagert, in der Reihenfolge des Menüs. Oben die häufigsten Befehle
+// Einträge des Untermenüs Atlas im Kontextmenü des Editors (#399) für
+// TAtlasIdeEditorCommands.Install (Atlas.IDE.Commands.Editor, Beschreibung dort),
+// in der Reihenfolge des Menüs. Oben die häufigsten Befehle
 // (Code-Aktionen, Erzeugen), danach Untermenüs Navigation, Bearbeiten, Suchen
 // und analysieren, Befunde (mit der Zahl der Befunde der Datei), dann die
 // Einträge der Module (eigene Untermenüs nach Section) und „Element
