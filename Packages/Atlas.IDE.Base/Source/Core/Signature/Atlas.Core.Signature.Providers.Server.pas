@@ -355,6 +355,8 @@ end;
 
 function TAtlasServerSignatureProvider.SyncedSession(const AFileName, AText: string;
   out ASession: TLspSession): Boolean;
+const
+  cSyncSlow = 'Abgleich dauerte %d ms';
 var
   mWatch: TStopwatch;
 begin
@@ -383,7 +385,7 @@ begin
   end;
   if mWatch.ElapsedMilliseconds > TAtlasTimeLimit.LimitMs then
   begin
-    TAtlasGuard.ReportProviderSlow(ProviderTitle, Format('Abgleich dauerte %d ms', [mWatch.ElapsedMilliseconds]));
+    TAtlasGuard.ReportProviderSlow(ProviderTitle, Format(cSyncSlow, [mWatch.ElapsedMilliseconds]));
   end;
   Result := ASession <> nil;
 end;

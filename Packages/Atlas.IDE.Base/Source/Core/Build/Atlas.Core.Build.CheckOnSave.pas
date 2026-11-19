@@ -18,6 +18,11 @@ uses
 
 type
   TAtlasCheckOnSave = class
+  public const
+    /// <summary>Wartezeit nach dem Speichern bis zur Prüfung.</summary>
+    cDefaultDelayMs = 2000;
+    /// <summary>Dauert eine automatische Prüfung länger, schaltet die Automatik für das Projekt ab.</summary>
+    cDefaultMaxMs = 1500;
   private
     FDelayMs: Integer;
     FMaxMs: Integer;
@@ -28,9 +33,9 @@ type
     FDisabled: TDictionary<string, Boolean>;
   public
     constructor Create(ADelayMs, AMaxMs: Integer); overload;
-    /// <summary>Wie oben mit AMaxMs = 1500.</summary>
+    /// <summary>Wie oben mit AMaxMs = cDefaultMaxMs.</summary>
     constructor Create(ADelayMs: Integer); overload;
-    /// <summary>Wie oben mit ADelayMs = 2000 und AMaxMs = 1500.</summary>
+    /// <summary>Wie oben mit ADelayMs = cDefaultDelayMs und AMaxMs = cDefaultMaxMs.</summary>
     constructor Create; overload;
     destructor Destroy; override;
     /// <summary>AFileName gehört zu AProject (aktives Projekt) und wurde gespeichert.</summary>
@@ -67,12 +72,12 @@ end;
 
 constructor TAtlasCheckOnSave.Create(ADelayMs: Integer);
 begin
-  Create(ADelayMs, 1500);
+  Create(ADelayMs, cDefaultMaxMs);
 end;
 
 constructor TAtlasCheckOnSave.Create;
 begin
-  Create(2000, 1500);
+  Create(cDefaultDelayMs, cDefaultMaxMs);
 end;
 
 destructor TAtlasCheckOnSave.Destroy;

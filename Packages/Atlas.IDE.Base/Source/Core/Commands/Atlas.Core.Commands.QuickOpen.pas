@@ -387,24 +387,29 @@ begin
   Result := LowerCase(AFileName);
 end;
 
-/// <summary>Stufe der Datei: offen 3, zuletzt geöffnet (ABoost > 0) 2, Projekt 1, Rest 0.</summary>
+/// <summary>Stufe der Datei: offen vor zuletzt geöffnet (ABoost > 0) vor Projekt vor dem Rest.</summary>
 function TierOf(AOpen: TDictionary<string, Boolean>; const AFile: TAtlasQuickOpenFile; ABoost: Integer): Integer;
+const
+  cTierOther = 0;
+  cTierProject = 1;
+  cTierRecent = 2;
+  cTierOpen = 3;
 begin
   if AOpen.ContainsKey(LowerCase(AFile.FileName)) then
   begin
-    Result := 3;
+    Result := cTierOpen;
   end
   else if ABoost > 0 then
   begin
-    Result := 2;
+    Result := cTierRecent;
   end
   else if AFile.Origin = TAtlasQuickOpenOrigin.Project then
   begin
-    Result := 1;
+    Result := cTierProject;
   end
   else
   begin
-    Result := 0;
+    Result := cTierOther;
   end;
 end;
 
