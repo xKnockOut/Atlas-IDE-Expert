@@ -82,6 +82,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Status.Registry,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings;
 
@@ -362,11 +363,7 @@ end;
 procedure TAtlasStatusWindow.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if FHot >= 0 then
-  begin
-    FHot := -1;
-    Invalidate;
-  end;
+  TAtlasControls.ClearHot(Self, FHot);
 end;
 
 procedure TAtlasStatusWindow.SetItems(const AItems: TArray<IAtlasStatusItem>);

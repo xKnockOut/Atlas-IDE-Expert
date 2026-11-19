@@ -26,6 +26,9 @@ type
     /// <summary>Code liefert die Kennung für initialize.locale und --locale.</summary>
     [Test]
     procedure CodeFollowsLanguage;
+    /// <summary>Pick nimmt den englischen Text nur, wenn er gewünscht ist und es ihn gibt.</summary>
+    [Test]
+    procedure PickFallsBackToGerman;
   end;
 
   /// <summary>Erkennung der Sprache der IDE (#446, #1458): ohne "language" in settings.json bestimmt sie auch die
@@ -141,6 +144,13 @@ begin
   finally
     TAtlasTextLanguage.Current := mSaved;
   end;
+end;
+
+procedure TAtlasTextLanguageTests.PickFallsBackToGerman;
+begin
+  Assert.AreEqual('Suchfeld', TAtlasTextLanguage.Pick('Suchfeld', 'Search box', False));
+  Assert.AreEqual('Search box', TAtlasTextLanguage.Pick('Suchfeld', 'Search box', True));
+  Assert.AreEqual('Suchfeld', TAtlasTextLanguage.Pick('Suchfeld', '', True));
 end;
 
 { TAtlasIdeLanguageTests }

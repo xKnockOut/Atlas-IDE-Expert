@@ -105,7 +105,8 @@ implementation
 uses
   System.Math,
   System.Generics.Defaults,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Core.Editor.SourceFiles;
 
 { TAtlasWelcomeHit }
 
@@ -324,11 +325,8 @@ begin
 end;
 
 class function TAtlasWelcomeSearch.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
-  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.groupproj');
+  Result := TAtlasSourceFiles.IsProjectFile(Trim(AFileName));
 end;
 
 /// <summary>Absoluter Windows-Pfad (C:\… oder \\Server\…); relative Einträge taugen nicht zum Öffnen.</summary>

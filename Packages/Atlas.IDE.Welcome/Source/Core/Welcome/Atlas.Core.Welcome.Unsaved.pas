@@ -1350,15 +1350,8 @@ begin
 end;
 
 class function TAtlasWelcomeUnsaved.ToJson(const AState: TAtlasUnsavedState): string;
-var
-  mSection: TJSONObject;
 begin
-  mSection := SectionJson(AState);
-  try
-    Result := mSection.ToJSON;
-  finally
-    mSection.Free;
-  end;
+  Result := TJsonBuild.TextAndFree(SectionJson(AState));
 end;
 
 class function TAtlasWelcomeUnsaved.FromJson(const AJson: string; out AState: TAtlasUnsavedState): Boolean;

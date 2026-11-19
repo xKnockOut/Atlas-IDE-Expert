@@ -155,7 +155,8 @@ implementation
 uses
   System.SysUtils,
   System.Math,
-  Atlas.Core.Editor.Pairs;
+  Atlas.Core.Editor.Pairs,
+  Atlas.Core.Editor.SourceFiles;
 
 procedure AddRow(var AHints: TAtlasInlayLine; AKind: TAtlasInlayKind; const ALabels: TArray<string>);
 var
@@ -186,11 +187,8 @@ end;
 { TAtlasInlayPlan }
 
 class function TAtlasInlayPlan.IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
+  Result := TAtlasSourceFiles.IsPascal(AFileName);
 end;
 
 class function TAtlasInlayPlan.FetchDue(AHasView, AChanged: Boolean; AQuietMs: UInt64; ARetryReached,
