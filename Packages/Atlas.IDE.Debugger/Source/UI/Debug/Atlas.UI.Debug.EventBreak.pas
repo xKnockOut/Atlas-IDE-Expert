@@ -73,7 +73,7 @@ type
     property OkButton: TButton read FOk;
   end;
 
-  TAtlasEventBreakBar = class(TAtlasPopupWindow)
+  TAtlasEventBreakBar = class(TAtlasLayoutPopupWindow)
   public const
     cGap = 4;
   private
@@ -83,9 +83,8 @@ type
     FHot: Integer;
     FOnContinue: TProc;
     FOnClose: TProc;
-    function Layout(ADraw: Boolean): TSize;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -389,15 +388,6 @@ begin
   GuardFeature := TAtlasFeature.Debugger;
   FHot := -1;
   SetAccessible(cUiaToolTipControlType, TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakTitle));
-end;
-
-procedure TAtlasEventBreakBar.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasEventBreakBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

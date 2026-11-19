@@ -147,6 +147,9 @@ type
     /// <summary>Wie oben mit Argumenten; übernimmt AArguments.</summary>
     function ExecuteCommand(const ACommand: string; AArguments: TJSONArray; ATimeoutMs: Cardinal): TJSONValue;
       overload;
+    /// <summary>Sitzung aus ASource; nil ohne Quelle. Für Dienste, denen die Sitzung von außen gereicht wird.
+    /// </summary>
+    class function From(const ASource: TFunc<TLspSession>): TLspSession; static;
   end;
 
   /// <summary>Laufende Sitzung oder nil; startet nie einen Server. Aus beliebigem Thread
@@ -291,6 +294,15 @@ begin
 end;
 
 { TLspSession }
+
+class function TLspSession.From(const ASource: TFunc<TLspSession>): TLspSession;
+begin
+  Result := nil;
+  if Assigned(ASource) then
+  begin
+    Result := ASource();
+  end;
+end;
 
 function TLspSession.InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
   ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;

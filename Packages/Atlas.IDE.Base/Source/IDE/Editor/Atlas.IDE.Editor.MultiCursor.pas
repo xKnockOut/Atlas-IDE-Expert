@@ -153,7 +153,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Editor.EditSurface,
-  Atlas.IDE.Editor.WrapSelection;
+  Atlas.IDE.Editor.WrapSelection,
+  Atlas.IDE.Foundation.KeyHook;
 
 const
   // Fehlt in älteren Fassungen von Winapi.Windows.
@@ -172,23 +173,6 @@ type
     Brush: HBRUSH;
   end;
 
-function CurrentShift: TShiftState;
-begin
-  Result := [];
-  if GetKeyState(VK_SHIFT) < 0 then
-  begin
-    Include(Result, ssShift);
-  end;
-  if GetKeyState(VK_CONTROL) < 0 then
-  begin
-    Include(Result, ssCtrl);
-  end;
-  if GetKeyState(VK_MENU) < 0 then
-  begin
-    Include(Result, ssAlt);
-  end;
-end;
-
 /// <summary>Blinkt der Caret laut Windows (Animationen an)?</summary>
 function Blinking: Boolean;
 var
@@ -200,31 +184,6 @@ begin
     mAnimate := True;
   end;
   Result := mAnimate;
-end;
-
-procedure Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-/// <summary>Zeigt die IDE gerade ein Formular statt des Quelltexts?</summary>
-function FormShown: Boolean;
-var
-  mModules: IOTAModuleServices;
-  mModule: IOTAModule;
-  mForm: IOTAFormEditor;
-begin
-  Result := False;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    mModule := mModules.CurrentModule;
-    Result := (mModule <> nil) and Supports(mModule.CurrentEditor, IOTAFormEditor, mForm);
-  end;
 end;
 
 /// <summary>Setzt ein Klick mit AShift eine Marke (editor.multiCursorModifier, Funktion an)?</summary>
@@ -535,7 +494,7 @@ begin
   begin
     Exit;
   end;
-  mShift := CurrentShift;
+  mShift := TAtlasKeyHook.CurrentShift;
   if not ClickWanted(mShift) or IsBusy then
   begin
     // Ein einfacher Klick beendet die Zusatzmarken; der Klick selbst gehört der IDE.
@@ -570,7 +529,7 @@ begin
     Finish;
     Exit;
   end;
-  mShift := CurrentShift;
+  mShift := TAtlasKeyHook.CurrentShift;
   mCommand := Default(TAtlasMultiCursorKeyCommand);
   mCommand.Action := TAtlasMultiCursorKeys.Chord(FInput.Chord, mKey, mShift, mSettings.MultiCursorSkipKey);
   if mCommand.Action = TAtlasMultiCursorKeyAction.None then
@@ -628,7 +587,7 @@ begin
     else
     begin
       FBlink := not FBlink or not Blinking;
-      Invalidate;
+      TAtlasIdeEditorRefresh.InvalidateCurrent;
     end;
   except
     on E: Exception do
@@ -642,7 +601,7 @@ var
 begin
   mView := TAtlasEditorBuffer.ActiveView;
   Result := (mView <> nil) and (mView.Buffer <> nil) and FSession.ShowsFile(mView.Buffer.FileName) and Enabled and
-    not FormShown and
+    not TAtlasEditorBuffer.FormEditorInFront and
     not (FWasModified and not mView.Buffer.IsModified);
   if not Result then
   begin
@@ -730,7 +689,7 @@ begin
   FBlink := True;
   FTimer.Enabled := False;
   FTimer.Enabled := True;
-  Invalidate;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 procedure TAtlasIdeMultiCursor.Finished;
@@ -744,7 +703,7 @@ begin
   begin
     FStatus('', '');
   end;
-  Invalidate;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 procedure TAtlasIdeMultiCursor.Finish;

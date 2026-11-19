@@ -13,8 +13,10 @@
 interface
 
 uses
+  Winapi.Windows,
   Vcl.Controls,
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Editor.CloseRules;
 
 type
   TAtlasIdeEditorWindows = class
@@ -32,6 +34,8 @@ type
     class procedure FocusEditor(AControl: TControl); static;
     /// <summary>AControl mit seinen Eltern bis zum Formular („Klasse Name &lt; …“), für das Protokoll.</summary>
     class function ParentChain(AControl: TControl): string; static;
+    /// <summary>Zustand für TAtlasCloseRules (#414); AWindow ist das Editorfenster mit dem Caret.</summary>
+    class function WindowState(const AView: IOTAEditView; AWindow, AFocus: HWND): TAtlasEditorWindowState; static;
   end;
 
 implementation
@@ -42,6 +46,21 @@ uses
   Vcl.Forms;
 
 { TAtlasIdeEditorWindows }
+
+/// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
+function EditorSize(AWindow: HWND): TPoint;
+var
+  mArea: TRect;
+begin
+  if (AWindow <> 0) and GetClientRect(AWindow, mArea) then
+  begin
+    Result := Point(mArea.Width, mArea.Height);
+  end
+  else
+  begin
+    Result := Point(0, 0);
+  end;
+end;
 
 class function TAtlasIdeEditorWindows.EditorOf(const AWindow: INTAEditWindow): TWinControl;
 var
@@ -130,6 +149,25 @@ begin
     Result := Result + mControl.ClassName + ' ' + mControl.Name;
     mControl := mControl.Parent;
     Inc(mDepth);
+  end;
+end;
+
+class function TAtlasIdeEditorWindows.WindowState(const AView: IOTAEditView; AWindow,
+  AFocus: HWND): TAtlasEditorWindowState;
+begin
+  Result := Default(TAtlasEditorWindowState);
+  Result.AppActive := Application.Active;
+  Result.Focus := AFocus;
+  Result.Size := EditorSize(AWindow);
+  if AView = nil then
+  begin
+    Exit;
+  end;
+  Result.TopRow := AView.TopRow;
+  Result.Rows := AView.ViewSize.cy;
+  if AView.Buffer <> nil then
+  begin
+    Result.FileName := AView.Buffer.FileName;
   end;
 end;
 

@@ -89,7 +89,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.IDE.Foundation.Caret,
+  Atlas.Core.Notifications.MessageSink;
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).
@@ -110,19 +111,12 @@ end;
 
 class function TAtlasIdeGenerate.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class procedure TAtlasIdeGenerate.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasMessageSink.Create(FMessage).Say(AText);
 end;
 
 class procedure TAtlasIdeGenerate.LoadRecent;

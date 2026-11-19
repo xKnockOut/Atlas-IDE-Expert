@@ -44,20 +44,8 @@ uses
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot;
-
-function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
-var
-  mLineText: string;
-begin
-  mLineText := '';
-  if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
-  begin
-    mLineText := ALines[APosition.Line];
-  end;
-  Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
-end;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.Navigation;
 
 function PositionOf(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 var
@@ -127,14 +115,14 @@ begin
   if ASource.HasSelection then
   begin
     mView.Block.Style := btNonInclusive;
-    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
+    mView.CursorPos := TAtlasIdeNavigation.EditPosOf(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
     mView.Block.BeginBlock;
-    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionEnd, ASource.TabWidth);
+    mView.CursorPos := TAtlasIdeNavigation.EditPosOf(AToggled.Lines, AToggled.SelectionEnd, ASource.TabWidth);
     mView.Block.EndBlock;
   end
   else
   begin
-    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
+    mView.CursorPos := TAtlasIdeNavigation.EditPosOf(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
   end;
   mView.MoveViewToCursor;
   mView.Paint;
