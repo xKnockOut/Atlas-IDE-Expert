@@ -67,7 +67,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Undo.Target;
+  Atlas.IDE.Undo.Target,
+  Atlas.Core.Designer.Names;
 
 type
   /// <summary>Was ein Lauf braucht: Formular, Auswahl und die Texte vor dem Auslagern.</summary>
@@ -81,20 +82,6 @@ type
     Taken: TArray<string>;
     Project: string;
   end;
-
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
 
 function PartsOf(const AText: string; out AArg: string): string;
 var
@@ -188,8 +175,9 @@ begin
   begin
     Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfErrExists, [ExtractFileName(mFile)]);
   end
-  else if Contains(ASource.Taken, AInput.InstanceName) and not Contains(AResult.Moved, AInput.InstanceName) and
-    not Contains(ASource.Names, AInput.InstanceName) then
+  else if TAtlasDesignerNames.Contains(ASource.Taken, AInput.InstanceName) and
+    not TAtlasDesignerNames.Contains(AResult.Moved, AInput.InstanceName) and
+    not TAtlasDesignerNames.Contains(ASource.Names, AInput.InstanceName) then
   begin
     Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfErrTaken, [AInput.InstanceName]);
   end;

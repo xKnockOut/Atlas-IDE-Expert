@@ -133,7 +133,9 @@ type
     UndoReasonClass, UndoReasonValue, UndoReasonInherited, SettingsDesignerUndo,
     SettingsDesignerUndoSteps,
     // Untermenü im Hauptmenü Atlas.
-    MenuGroupDesigner);
+    MenuGroupDesigner,
+    // Maße in Meldungen und Vorschauen.
+    DesignerFitContainerSize, DesignerSearchBounds, DesignerPreviewDescribe);
 
   TAtlasDesignerStrings = class
   public
@@ -663,7 +665,10 @@ const
      'geerbt oder in einem Frame',
      'Rückgängig im Designer mit Strg+Z und Strg+Umschalt+Z (experimentell)',
      'Schritte je Formular',
-     'Designer'),
+     'Designer',
+     '%s %d x %d',
+     '%d, %d · %d × %d',
+     '%s: %s · %d × %d'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -1174,7 +1179,10 @@ const
      'inherited or in a frame',
      'Undo in the designer with Ctrl+Z and Ctrl+Shift+Z (experimental)',
      'Steps per form',
-     'Designer'));
+     'Designer',
+     '%s %d x %d',
+     '%d, %d · %d × %d',
+     '%s: %s · %d × %d'));
 
 { TAtlasDesignerStrings }
 

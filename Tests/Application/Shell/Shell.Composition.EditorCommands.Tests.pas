@@ -102,7 +102,8 @@ begin
       TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand,
       TEnumValueCommands.cCommand, TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
       TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand, TLspLearnedSuggestions.cSuggestCommand,
-      TLspLearnedSuggestions.cListCommand) do
+      TLspLearnedSuggestions.cListCommand, TLspLearnedSuggestions.cContextCommand,
+      TLspLearnedSuggestions.cCheckCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -127,7 +128,8 @@ begin
       TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand,
       TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
       TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand,
-      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand) do
+      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand,
+      TLspLearnedSuggestions.cContextCommand, TLspLearnedSuggestions.cCheckCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
