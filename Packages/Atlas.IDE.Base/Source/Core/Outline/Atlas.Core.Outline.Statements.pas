@@ -53,9 +53,11 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   Atlas.Core.Outline.TypeText;
 
 const
+  cCaseWord = 'case ';
   /// <summary>Längster Text eines Glieds (Marke, case-Ausdruck); danach „…“.</summary>
   cMaxText = 40;
 
@@ -226,8 +228,9 @@ var
   mToken: TAtlasTypeToken;
 begin
   mToken := FTokens[AIndex];
-  FStack[Top].Head.Text := 'case ' + Shortened(TextBetween(FLines, FStack[Top].Head.Line,
-    FStack[Top].Head.Character + 4, mToken.Line, mToken.Character)) + ' of';
+  // Kopf.Character zeigt auf das „case“; der Ausdruck beginnt nach dem Wort.
+  FStack[Top].Head.Text := cCaseWord + Shortened(TextBetween(FLines, FStack[Top].Head.Line,
+    FStack[Top].Head.Character + Length(Trim(cCaseWord)), mToken.Line, mToken.Character)) + ' of';
   FStack[Top].State := TCaseState.Label_;
   FStack[Top].SeparatorLine := mToken.Line;
   FStack[Top].SeparatorCharacter := mToken.Character + 2;
@@ -326,11 +329,11 @@ begin
   for mIndex := 0 to High(FTokens) do
   begin
     mToken := FTokens[mIndex];
-    if (mToken.Text = '(') or (mToken.Text = '[') then
+    if MatchStr(mToken.Text, ['(', '[']) then
     begin
       Inc(mDepth);
     end
-    else if (mToken.Text = ')') or (mToken.Text = ']') then
+    else if MatchStr(mToken.Text, [')', ']']) then
     begin
       Dec(mDepth);
     end

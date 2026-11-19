@@ -314,6 +314,7 @@ contains
   Atlas.Common.Editing.MethodOrder in 'Source\Editing\Atlas.Common.Editing.MethodOrder.pas',
   Atlas.Common.Editing.TypeComments in 'Source\Editing\Atlas.Common.Editing.TypeComments.pas',
   Atlas.Common.Editing.ClassBodies in 'Source\Editing\Atlas.Common.Editing.ClassBodies.pas',
+  Atlas.Common.Editing.BodySpacing in 'Source\Editing\Atlas.Common.Editing.BodySpacing.pas',
   Atlas.Common.Lsp.OverrideMarks in 'Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas',
   Atlas.Common.Lsp.InterfaceMethods in 'Source\Lsp\Atlas.Common.Lsp.InterfaceMethods.pas',
   Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
