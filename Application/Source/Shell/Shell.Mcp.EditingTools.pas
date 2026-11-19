@@ -1,7 +1,8 @@
 ﻿unit Shell.Mcp.EditingTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), schreibende Werkzeuge (rename_symbol, apply_code_action,
-// fix_findings, format_code, extract_method); mit dryRun nur der Diff.
+// fix_findings, format_code, extract_method); mit dryRun nur der Diff. Geschützte Dateien (#2608), Befunde nach dem
+// Schreiben (#2603) und die Ressource delphi://edits/last.
 
 interface
 
@@ -23,9 +24,18 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Mcp.ExtractTools,
+  Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Mcp.Paths,
+  Atlas.Common.Mcp.ProtectedFiles,
+  Atlas.Common.Mcp.EditFindings,
+  Atlas.Common.Mcp.CheckTools,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
-  Shell.Texts;
+  Shell.Texts,
+  Shell.WorkspaceGroup;
 
 type
 {$SCOPEDENUMS ON}
@@ -34,7 +44,7 @@ type
     ApplyCodeActionDryRun, FixFindingsTool, FixFindingsRules, FixFindingsFile, FixFindingsMinConfidence,
     FixFindingsDryRun, FormatCodeTool, FormatCodeFile, FormatCodeText, FormatCodeStartLine, FormatCodeEndLine,
     FormatCodeDryRun, LineRange, ExtractMethodTool, ExtractMethodFile, ExtractMethodStartLine, ExtractMethodEndLine,
-    ExtractMethodName, ExtractMethodDuplicates, ExtractMethodDryRun);
+    ExtractMethodName, ExtractMethodDuplicates, ExtractMethodDryRun, EditsLastName, EditsLastDescription);
 {$SCOPEDENUMS OFF}
 
 const
@@ -112,7 +122,12 @@ const
     (De: 'Letzte Zeile der Anweisungen; Vorgabe startLine'; En: 'Last line of the statements; default startLine'),
     (De: 'Name der neuen Methode; Vorgabe ExtractedMethod'; En: 'Name of the new method; default ExtractedMethod'),
     (De: 'Auch gleiche Stellen der Unit ersetzen'; En: 'Also replace equal places of the unit'),
-    (De: 'Nur Vorschau, nichts schreiben'; En: 'Preview only, write nothing'));
+    (De: 'Nur Vorschau, nichts schreiben'; En: 'Preview only, write nothing'),
+    (De: 'Befunde nach der letzten Änderung'; En: 'Findings after the last change'),
+    (De: 'Neue und behobene Befunde nach der letzten Änderung eines schreibenden Werkzeugs dieses MCP-Prozesses ' +
+      '(mcp.reportFindingsAfterEdit).';
+     En: 'New and fixed findings after the last change by a writing tool of this MCP process ' +
+      '(mcp.reportFindingsAfterEdit).'));
 
 function ToolRenameSymbol(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
@@ -340,8 +355,102 @@ begin
     ContextTool(AContext, ToolExtractMethod), TMcpToolKind.Write);
 end;
 
+/// <summary>Geschützte Dateien (#2608) für die schreibenden Werkzeuge, bei jedem Aufruf aus den aktuellen
+/// Einstellungen; eigene Routine, damit die anonyme Methode nur AGroup und AGuard einfängt. Ohne Gruppe (Tests) nichts
+/// geschützt.</summary>
+function ProtectedReportOf(AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard): TMcpProtectedReport;
+begin
+  Result :=
+    function(const AFileNames: TArray<string>; ADryRun: Boolean): string
+    var
+      mProtection: TMcpProtectedFiles;
+    begin
+      Result := '';
+      if (AGroup = nil) or (AGuard = nil) then
+      begin
+        Exit;
+      end;
+      mProtection := TMcpProtectedFiles.Create(AGuard.Root, AGroup.Main.Configuration.Settings.AssistantProtected);
+      try
+        Result := mProtection.Report(AFileNames, ADryRun);
+      finally
+        mProtection.Free;
+      end;
+    end;
+end;
+
+/// <summary>Befunde wie get_diagnostics (#2603): Regeln und overrides für den Pfad relativ zu ARoot, mit Symbolen,
+/// Include-Dateien und Index des Projekts. Ohne Gruppe (Tests) keine.</summary>
+function FindingsOf(AGroup: TShellWorkspaceGroup; const ARoot: string; const ASource: TCheckSourceFunc;
+  const AProject: TCheckProjectFunc): TMcpFindingsFunc;
+begin
+  Result :=
+    function(const AFileName, AText: string): TArray<TRuleFinding>
+    var
+      mScopes: TFindingScopes;
+    begin
+      Result := nil;
+      if AGroup = nil then
+      begin
+        Exit;
+      end;
+      Result := TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings,
+        TMcpCheckTools.RelativeTo(ARoot, AFileName), AText, TCheckOrigin.ForFile(AProject, ASource, AFileName),
+        mScopes);
+    end;
+end;
+
+/// <summary>mcp.reportFindingsAfterEdit, bei jedem Aufruf neu gelesen.</summary>
+function ReportFindingsOf(AGroup: TShellWorkspaceGroup): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := (AGroup <> nil) and AGroup.Main.Configuration.Settings.McpReportFindingsAfterEdit;
+    end;
+end;
+
+function AfterWriteOf(const AEvaluation: IMcpEditEvaluation): TMcpAfterWrite;
+begin
+  Result :=
+    function(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>): string
+    begin
+      Result := AEvaluation.Run(ATool, ANames, AOldTexts, ANewTexts);
+    end;
+end;
+
+function LastEditOf(const AEvaluation: IMcpEditEvaluation): TFunc<string>;
+begin
+  Result :=
+    function: string
+    begin
+      Result := AEvaluation.Last;
+    end;
+end;
+
+/// <summary>Befunde nach dem Schreiben (#2603) und Ressource delphi://edits/last; beide halten dieselbe Auswertung.
+/// </summary>
+procedure AddEditFindings(const AContext: TMcpToolContext);
+var
+  mEvaluation: IMcpEditEvaluation;
+begin
+  mEvaluation := TMcpEditEvaluation.Create(AContext.Root, FindingsOf(AContext.Group, AContext.Root,
+    AContext.CheckSource, AContext.CheckProject), ReadSourceText, ReportFindingsOf(AContext.Group));
+  if AContext.Edit <> nil then
+  begin
+    AContext.Edit.AfterWrite := AfterWriteOf(mEvaluation);
+  end;
+  AContext.Server.AddResource('delphi://edits/last', cTexts[TMcpEditingText.EditsLastName].Text,
+    cTexts[TMcpEditingText.EditsLastDescription].Text, 'text/plain', LastEditOf(mEvaluation));
+end;
+
 procedure RegisterEditingTools(const AContext: TMcpToolContext);
 begin
+  if AContext.Edit <> nil then
+  begin
+    AContext.Edit.ProtectedReport := ProtectedReportOf(AContext.Group, AContext.Guard);
+  end;
+  AddEditFindings(AContext);
   AddRenameSymbol(AContext);
   AddApplyCodeAction(AContext);
   AddFixFindings(AContext);

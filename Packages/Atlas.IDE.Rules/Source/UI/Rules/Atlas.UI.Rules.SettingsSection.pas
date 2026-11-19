@@ -52,6 +52,7 @@ type
     FSuppressionsRefresh: TButton;
     /// <summary>Zeile ohne eigenen Schlüssel im Rahmen des Modulschalters.</summary>
     function AddRow(AHeight: Integer): TWinControl;
+    /// <summary>Knopf in ARow an ALeft (logische Pixel, 96 dpi).</summary>
     function AddButton(ARow: TWinControl; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
     procedure AddRulesLinks;
     procedure AddBaseline;
@@ -98,6 +99,7 @@ uses
 
 const
   cButtonWidth = 210;
+  cButtonHeight = 25;
   cButtonGap = 216;
   cRowHeight = 28;
 
@@ -160,7 +162,8 @@ begin
   Result := TButton.Create(FControls);
   Result.Parent := ARow;
   Result.Caption := ACaption;
-  Result.SetBounds(ALeft, 1, cButtonWidth, 25);
+  Result.SetBounds(Result.ScaleValue(ALeft), Result.ScaleValue(1), Result.ScaleValue(cButtonWidth),
+    Result.ScaleValue(cButtonHeight));
   Result.OnClick := AClick;
 end;
 
