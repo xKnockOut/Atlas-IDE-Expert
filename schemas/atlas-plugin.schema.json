@@ -2957,6 +2957,30 @@
       "x-control": "Textfeld",
       "x-issue": "#856"
     },
+    "DebugDataBreaks": {
+      "description": "Anhalten bei Datenzugriff: Der Befehl „Anhalten bei Datenzugriff …“ (Menü Start, Befehlspalette, vor dem Start und während das Programm läuft) setzt vorübergehende Haltepunkte (Gruppe Atlas.Datenzugriff) auf die eigenen Aufrufe von Open, ExecSQL, Execute und ExecSQLScalar der beobachteten Datenbankklassen bzw. Get, Post, Put und Delete der HTTP-Klassen. Beim Halt wertet Atlas SQL-Text samt Parametern bzw. Methode und URL aus und hält nur an, wenn das Muster passt (* als Platzhalter, wahlweise ohne Groß-/Kleinschreibung, HTTP wie „POST */api/auftrag*“); sonst läuft das Programm ohne Anzeige weiter. Eine Leiste zeigt Stelle und Text mit „Weiter beobachten“, „Nur protokollieren“ und „Beenden“. Aus = kein Befehl, kein Menüeintrag.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.dataBreaks",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Anhalten bei Datenzugriff",
+      "x-captionEn": "Break on data access",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#870"
+    },
+    "DebugDataBreaksClasses": {
+      "description": "Klassen, deren Aufrufe „Anhalten bei Datenzugriff“ beobachtet, kommagetrennt; Nachfahren zählen mit. Bekannt sind FireDAC, dbExpress, ADO, Zeos, THTTPClient, TNetHTTPClient, TRESTRequest und TIdHTTP; eigene Klassen mit Art als „TMeineAbfrage=sql“ bzw. „TMeinClient=http“.",
+      "type": "string",
+      "default": "TFDQuery, TFDCommand, TFDConnection, TFDStoredProc, TSQLQuery, TSQLDataSet, TSQLConnection, TADOQuery, TADOCommand, TADOConnection, TADODataSet, TZQuery, TZReadOnlyQuery, TZConnection, THTTPClient, TNetHTTPClient, TRESTRequest, TIdHTTP",
+      "x-key": "debug.dataBreaks.classes",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.dataBreaks",
+      "x-control": "Textfeld",
+      "x-issue": "#870"
+    },
     "DebugCheckBreakpoints": {
       "description": "Haltepunkte, die nicht greifen werden: Vor dem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte und meldet Haltepunkte auf Zeilen ohne Code (Kommentar, Leerzeile, Deklaration), in inaktiven Zweigen der bedingten Kompilierung, in Units mit {$D-} bzw. ohne Debug-Informationen im Projekt und in Units, die zu einem anderen Projekt der Gruppe gehören. Der Dialog bietet „Trotzdem starten“, „Auf nächste Codezeile verschieben“ und „Abbrechen“; dazu der Befehl „Haltepunkte prüfen“. Aus = keine Prüfung, der Start bleibt, wie er ist.",
       "type": "boolean",

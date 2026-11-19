@@ -400,6 +400,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.Choices` | `Core/Settings/Atlas.Core.Settings.Choices.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Contract` | `Core/Settings/Atlas.Core.Settings.Contract.pas` | Ordner `Core/Settings`; Vertrag für die Einstellungsteile der Module (#1455, Entscheidung 3) |
 | `Atlas.Core.Settings.EventBreakNames` | `Core/Settings/Atlas.Core.Settings.EventBreakNames.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.DataBreakClasses` | `Core/Settings/Atlas.Core.Settings.DataBreakClasses.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Experimental` | `Core/Settings/Atlas.Core.Settings.Experimental.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.FolderList` | `Core/Settings/Atlas.Core.Settings.FolderList.pas` | Ordnerliste als Einstellungswert; Optionsdialog ohne Debugger, #1455 |
 | `Atlas.Core.Settings.Groups` | `Core/Settings/Atlas.Core.Settings.Groups.pas` | Ordner `Core/Settings` |
@@ -966,6 +967,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.RunToColumnFlow` | `Core/Debug/Atlas.Core.Debug.RunToColumnFlow.pas` | Entscheidungen der Spalte Bis hier ausführen ohne IDE (Spalte, Lesen, Maus, Tooltip, Pfeil), #1967 |
 | `Atlas.Core.Debug.EventBreak` | `Core/Debug/Atlas.Core.Debug.EventBreak.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EventBreakWatch` | `Core/Debug/Atlas.Core.Debug.EventBreakWatch.pas` | Beim nächsten Ereignis anhalten: Art des Setzens, Pause, neuer Halt, Zahl der Stellen, #1967 |
+| `Atlas.Core.Debug.DataBreak` | `Core/Debug/Atlas.Core.Debug.DataBreak.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.DataBreakPatterns` | `Core/Debug/Atlas.Core.Debug.DataBreakPatterns.pas` | Anhalten bei Datenzugriff: Musterabgleich SQL/HTTP, Zeichenketten des Debuggers, #870 |
 | `Atlas.Core.Debug.MethodBreakpoints` | `Core/Debug/Atlas.Core.Debug.MethodBreakpoints.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.MethodGroupFlow` | `Core/Debug/Atlas.Core.Debug.MethodGroupFlow.pas` | Entscheidungen der Methodenhaltepunkte ohne IDE (Startgruppe, gesehene Treffer, Umschalten, Meldung), #1967 |
 | `Atlas.Core.Debug.InstanceBreakpoint` | `Core/Debug/Atlas.Core.Debug.InstanceBreakpoint.pas` | Ordner `Core/Debug` |

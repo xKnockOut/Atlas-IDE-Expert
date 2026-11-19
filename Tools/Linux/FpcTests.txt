@@ -646,6 +646,9 @@ Atlas.Core.BuildPipeline.Plan.Tests
 Atlas.Core.Debug.ExceptionCapture.Tests
 Atlas.Core.Debug.InlineValuesFlow.Tests
 Atlas.Core.Debug.EventBreakWatch.Tests
+Atlas.Core.Debug.DataBreak.Tests
+Atlas.Core.Debug.DataBreakPatterns.Tests
+Atlas.Core.Settings.DataBreakClasses.Tests
 Atlas.Core.Debug.StopProgress.Tests
 Atlas.Core.Debug.Phases.Tests
 Atlas.Core.Debug.WhyHereFlow.Tests

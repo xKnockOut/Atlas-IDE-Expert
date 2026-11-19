@@ -53,6 +53,8 @@ contains
   Atlas.Core.Debug.Phases in 'Source\Core\Debug\Atlas.Core.Debug.Phases.pas',
   Atlas.Core.Debug.EventBreak in 'Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas',
   Atlas.Core.Debug.EventBreakWatch in 'Source\Core\Debug\Atlas.Core.Debug.EventBreakWatch.pas',
+  Atlas.Core.Debug.DataBreak in 'Source\Core\Debug\Atlas.Core.Debug.DataBreak.pas',
+  Atlas.Core.Debug.DataBreakPatterns in 'Source\Core\Debug\Atlas.Core.Debug.DataBreakPatterns.pas',
   Atlas.Core.Debug.InstanceBreakpoint in 'Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas',
   Atlas.Core.Debug.DataBreakpoint in 'Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas',
   Atlas.UI.Debug.Settings.Strings in 'Source\UI\Debug\Atlas.UI.Debug.Settings.Strings.pas',

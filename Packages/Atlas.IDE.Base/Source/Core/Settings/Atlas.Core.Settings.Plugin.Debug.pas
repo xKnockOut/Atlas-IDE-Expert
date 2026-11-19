@@ -135,6 +135,13 @@ type
     /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
     /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
     DebugBreakOnNextEventExcluded: string;
+    /// <summary>Anhalten bei Datenzugriff (#870, debug.dataBreaks): Befehl im Menü Start und in der Befehlspalette,
+    /// der vorübergehende Haltepunkte auf eigene SQL- und HTTP-Aufrufe setzt und nur bei passendem Text anhält;
+    /// aus = kein Befehl, kein Menüeintrag.</summary>
+    DebugDataBreaks: Boolean;
+    /// <summary>Beobachtete Klassen (debug.dataBreaks.classes, kommagetrennt, unbekannte mit =sql bzw. =http).
+    /// </summary>
+    DebugDataBreaksClasses: string;
     /// <summary>Haltepunkte, die nicht greifen werden (#577, debug.checkBreakpoints): Vor dem Start einer
     /// Debug-Sitzung meldet Atlas Haltepunkte auf Zeilen ohne Code, in inaktiven Zweigen, unter {$D-} und in Units
     /// anderer Projekte der Gruppe, mit Verschieben auf die nächste Codezeile; dazu der Befehl „Haltepunkte prüfen“.
@@ -398,6 +405,7 @@ uses
   System.Math,
   System.SysUtils,
   Atlas.Core.Settings.EventBreakNames,
+  Atlas.Core.Settings.DataBreakClasses,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Text.StepFilter;
 
@@ -428,6 +436,8 @@ begin
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
+  Result.DebugDataBreaks := True;
+  Result.DebugDataBreaksClasses := TAtlasDataBreakSettings.cDefaultClasses;
   Result.DebugCheckBreakpoints := True;
   Result.DebugMethodBreakpoints := True;
   Result.DebugInstanceBreakpoints := True;
@@ -494,6 +504,7 @@ begin
   DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
   DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
   DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.NormalizeExcluded(DebugBreakOnNextEventExcluded);
+  DebugDataBreaksClasses := TAtlasDataBreakSettings.NormalizeClasses(DebugDataBreaksClasses);
   DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(DebugVisualizerNameFields);
   DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerSettings.cMinMaxLength,
     TAtlasVisualizerSettings.cMaxMaxLength);
@@ -531,6 +542,8 @@ begin
   AIo.Number('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
   AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
+  AIo.Flag('DebugDataBreaks', DebugDataBreaks);
+  AIo.Text('DebugDataBreaksClasses', DebugDataBreaksClasses);
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
   AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
   AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);

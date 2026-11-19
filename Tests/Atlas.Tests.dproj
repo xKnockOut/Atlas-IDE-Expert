@@ -837,6 +837,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreakWatch.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepInto.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreak.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreak.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreakPatterns.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataBreak.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataBreakPatterns.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InstanceBreakpoint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas"/>
@@ -2699,6 +2703,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.VisualizerKinds.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.EventBreakNames.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.EventBreakNames.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.DataBreakClasses.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.DataBreakClasses.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.StepFilter.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StepFilter.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BreakpointCheck.Tests.pas"/>

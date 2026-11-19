@@ -503,6 +503,8 @@ type
     property DebugBreakOnNextEvent: Boolean read FDebug.DebugBreakOnNextEvent write FDebug.DebugBreakOnNextEvent;
     property DebugBreakOnNextEventExcluded: string read FDebug.DebugBreakOnNextEventExcluded
       write FDebug.DebugBreakOnNextEventExcluded;
+    property DebugDataBreaks: Boolean read FDebug.DebugDataBreaks write FDebug.DebugDataBreaks;
+    property DebugDataBreaksClasses: string read FDebug.DebugDataBreaksClasses write FDebug.DebugDataBreaksClasses;
     property DebugCheckBreakpoints: Boolean read FDebug.DebugCheckBreakpoints write FDebug.DebugCheckBreakpoints;
     property DebugMethodBreakpoints: Boolean read FDebug.DebugMethodBreakpoints
       write FDebug.DebugMethodBreakpoints;

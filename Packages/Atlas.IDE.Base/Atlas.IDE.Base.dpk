@@ -874,6 +874,7 @@ contains
   Atlas.Core.Lsp.AccessChains in 'Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas',
   Atlas.Core.Settings.VisualizerKinds in 'Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas',
   Atlas.Core.Settings.EventBreakNames in 'Source\Core\Settings\Atlas.Core.Settings.EventBreakNames.pas',
+  Atlas.Core.Settings.DataBreakClasses in 'Source\Core\Settings\Atlas.Core.Settings.DataBreakClasses.pas',
   Atlas.Text.StepFilter in '..\Atlas.Text\Source\StepFilter\Atlas.Text.StepFilter.pas',
   Atlas.Core.SavedPlaces.Contract in 'Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas',
   Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas',

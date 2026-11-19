@@ -961,6 +961,7 @@
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.EventBreakNames.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.DataBreakClasses.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\StepFilter\Atlas.Text.StepFilter.pas"/>
         <DCCReference Include="Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
