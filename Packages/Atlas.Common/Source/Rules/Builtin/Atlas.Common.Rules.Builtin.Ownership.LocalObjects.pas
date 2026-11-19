@@ -70,6 +70,9 @@ type
 /// <summary>Ist AValue ein Konstruktoraufruf T.Create(…), T.CreateFmt(…) … über einen Typnamen?</summary>
 function ConstructorCall(AValue: TSyntaxNode; out ACall: TConstructorCall): Boolean;
 
+/// <summary>Typ einer Variablendeklaration (VarDecl oder InlineVar); '' ohne Typangabe.</summary>
+function DeclaredType(ADecl: TSyntaxNode): string;
+
 /// <summary>Registriert local-object-not-freed und created-result-not-freed.</summary>
 procedure RegisterOwnershipLocalObjectRules(const ARegistry: TRuleRegistry);
 
@@ -310,7 +313,6 @@ begin
   Result := mFound;
 end;
 
-/// <summary>Typ einer Variablendeklaration (VarDecl oder InlineVar); '' ohne Typangabe.</summary>
 function DeclaredType(ADecl: TSyntaxNode): string;
 begin
   Result := '';

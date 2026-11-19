@@ -155,16 +155,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Typ der Deklaration ADecl; '' ohne Angabe.</summary>
-function DeclaredType(ADecl: TSyntaxNode): string;
-begin
-  Result := '';
-  if (ADecl.ChildCount > 0) and (ADecl[0].Kind = TSyntaxKind.TypeReference) then
-  begin
-    Result := ADecl[0].Name;
-  end;
-end;
-
 /// <summary>Folgt AName der Namensregel für Interfaces (IName, auch Unit.IName)?</summary>
 function LooksLikeInterface(const AName: string): Boolean;
 var

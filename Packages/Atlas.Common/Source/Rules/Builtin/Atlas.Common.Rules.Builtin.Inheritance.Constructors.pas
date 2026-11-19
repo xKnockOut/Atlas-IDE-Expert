@@ -28,6 +28,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
@@ -144,16 +145,6 @@ begin
   for mDirective in ASymbol.Directives do
   begin
     Result := Result or SameText(mDirective, ADirective);
-  end;
-end;
-
-// Der Rumpf einer Routine (Block), nil ohne.
-function BlockOf(ARoutine: TSyntaxNode): TSyntaxNode;
-begin
-  Result := nil;
-  if ARoutine <> nil then
-  begin
-    Result := ARoutine.FindChild(TSyntaxKind.Block);
   end;
 end;
 
@@ -398,7 +389,7 @@ begin
     mBody := nil;
     if not StartsText('class ', mConstructor.Signature) then
     begin
-      mBody := BlockOf(ADescendant.UnitData.Body(ADescendant.ClassName + '.' + mConstructor.Name));
+      mBody := TRoutineBody.BodyOf(ADescendant.UnitData.Body(ADescendant.ClassName + '.' + mConstructor.Name));
     end;
     if mBody = nil then
     begin
@@ -470,7 +461,7 @@ begin
       Result := TSyntaxSearchStep.Descend;
       if ANode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        if SameText(ANode.Name, AQualifiedName) and (BlockOf(ANode) <> nil) then
+        if SameText(ANode.Name, AQualifiedName) and (TRoutineBody.BodyOf(ANode) <> nil) then
         begin
           Result := TSyntaxSearchStep.Found;
         end
@@ -673,7 +664,7 @@ begin
     Exit;
   end;
   mOverride := ADescendant.UnitData.Body(ADescendant.ClassName + '.' + AMethod);
-  mBody := BlockOf(mOverride);
+  mBody := TRoutineBody.BodyOf(mOverride);
   if mBody = nil then
   begin
     Exit;
@@ -740,7 +731,7 @@ procedure TConstructorScan.FollowBody(const AChain: TCallChain; ARoutine: TSynta
 begin
   if (ARoutine <> nil) and (AChain.Depth < cMaxDepth) then
   begin
-    Visit(AChain.Deeper(ARoutine, AName, ATopCall), BlockOf(ARoutine));
+    Visit(AChain.Deeper(ARoutine, AName, ATopCall), TRoutineBody.BodyOf(ARoutine));
   end;
 end;
 
@@ -855,7 +846,7 @@ var
   mBody: TSyntaxNode;
   mInherited: string;
 begin
-  mBody := BlockOf(AConstructor);
+  mBody := TRoutineBody.BodyOf(AConstructor);
   if mBody <> nil then
   begin
     mChain := Default(TCallChain);
