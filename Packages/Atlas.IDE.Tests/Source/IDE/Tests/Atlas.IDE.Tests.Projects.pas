@@ -11,7 +11,8 @@ interface
 
 uses
   System.SysUtils,
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Tests.Run;
 
 type
   /// <summary>Das gefundene bzw. gewählte Testprojekt.</summary>
@@ -39,6 +40,10 @@ type
     /// <summary>Testprojekt zu AFileName ohne Frage (Lauf im Hintergrund, #1775): das einzige bzw. die gemerkte
     /// Wahl; nil ohne oder wenn noch nie gewählt wurde.</summary>
     class function Known(const AFileName: string): IOTAProject; static;
+    /// <summary>Datei der Unit AUnitName im Testprojekt AProjectFile; '' ohne.</summary>
+    class function UnitFileOf(const AProjectFile, AUnitName: string): string; static;
+    /// <summary>UnitFileOf für das Testprojekt AProjectFile als Rückruf (TAtlasTestRun.Failures, Stempel).</summary>
+    class function UnitFiles(const AProjectFile: string): TAtlasTestUnitFile; static;
   end;
 
 implementation
@@ -52,7 +57,6 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tests.ProjectChoice,
-  Atlas.Core.Tests.Run,
   Atlas.UI.Tests.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorStyle,
@@ -244,6 +248,45 @@ begin
   if mIndex >= 0 then
   begin
     Result := mFound[mIndex];
+  end;
+end;
+
+class function TAtlasIdeTestProjects.UnitFiles(const AProjectFile: string): TAtlasTestUnitFile;
+var
+  mProjectFile: string;
+begin
+  mProjectFile := AProjectFile;
+  Result :=
+    function(const AUnitName: string): string
+    begin
+      Result := UnitFileOf(mProjectFile, AUnitName);
+    end;
+end;
+
+class function TAtlasIdeTestProjects.UnitFileOf(const AProjectFile, AUnitName: string): string;
+var
+  mProject: IOTAProject;
+  mIndex: Integer;
+  mFileName: string;
+begin
+  Result := '';
+  mProject := ProjectByFile(AProjectFile);
+  if mProject <> nil then
+  begin
+    for mIndex := 0 to mProject.GetModuleCount - 1 do
+    begin
+      mFileName := mProject.GetModule(mIndex).FileName;
+      if TAtlasTestRun.IsUnitFile(mFileName, AUnitName) then
+      begin
+        Exit(mFileName);
+      end;
+    end;
+  end;
+  // Nicht im Projekt eingetragen: neben der .dproj.
+  mFileName := TPath.Combine(ExtractFileDir(AProjectFile), AUnitName + '.pas');
+  if FileExists(mFileName) then
+  begin
+    Result := mFileName;
   end;
 end;
 

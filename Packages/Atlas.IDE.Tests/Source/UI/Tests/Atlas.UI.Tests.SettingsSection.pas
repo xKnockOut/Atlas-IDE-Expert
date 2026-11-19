@@ -1,8 +1,7 @@
 ﻿unit Atlas.UI.Tests.SettingsSection;
 
-// Abschnitte des Moduls Tests im Optionsdialog (#1456; vorher in den Teilen
-// „Compiler“, „Debuggen“ und „Editor“ von Base): je Seite eine Klasse, weil die Einstellungen des Moduls auf drei
-// Seiten stehen.
+// Abschnitte des Moduls Tests im Optionsdialog (#1456) auf den Seiten „Compiler“, „Debuggen“
+// und „Editor“: je Seite eine Klasse, weil die Einstellungen des Moduls auf drei Seiten stehen.
 // - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69), betroffene Tests (#1353) und betroffene Tests beim
 //   Speichern (#1775),
 //   Fenster „Atlas-Tests“ (#1776) mit Testlisten (#2167), Vorgabe für „N-mal ausführen“ (#1782),
@@ -79,6 +78,7 @@ begin
   Key('tests.lists.runKey', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsListsRunKey));
   Switch('tests.log', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLog));
   Number('tests.log.maxLines', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLogMaxLines));
+  Switch('tests.lastRun', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsLastRun));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
   Switch('tests.boundaryCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryCases));
   Number('tests.boundaryCases.maxCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryMax));

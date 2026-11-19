@@ -431,6 +431,9 @@ end;
 
 class function TAtlasVcsWorkingCopies.FromSubmodules(const ARoot, ABranch, ARevision,
   AStatus: string): TArray<TAtlasVcsWorkingCopyRow>;
+const
+  /// <summary>Kürzeste Zeile: Zustand, ein Zeichen Kennung, Leerzeichen.</summary>
+  cMinStatusLine = 3;
 var
   mRow: TAtlasVcsWorkingCopyRow;
   mLine, mText, mHash, mPath: string;
@@ -445,7 +448,7 @@ begin
   for mLine in StringReplace(AStatus, #13, '', [rfReplaceAll]).Split([#10]) do
   begin
     // "<Zustand><Hash> <Pfad>[ (<Beschreibung>)]"; Zustand ' ', '+', '-' oder 'U'.
-    if Length(mLine) < 3 then
+    if Length(mLine) < cMinStatusLine then
     begin
       Continue;
     end;
@@ -470,7 +473,7 @@ begin
     mRow := TAtlasVcsWorkingCopyRow.Make(TAtlasVcsWorkingCopyKind.Submodule, ARoot, mPath);
     if mState <> '-' then
     begin
-      mRow.Revision := Copy(mHash, 1, 7);
+      mRow.Revision := Copy(mHash, 1, cAtlasVcsShortHashLength);
     end;
     mRow.Loaded := True;
     Result := Result + [mRow];

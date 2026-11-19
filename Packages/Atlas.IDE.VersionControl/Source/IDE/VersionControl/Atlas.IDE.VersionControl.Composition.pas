@@ -90,7 +90,7 @@ type
       const ARun: TAtlasVcsBranchRun): string;
   end;
 
-  /// <summary>Nach dem Speichern der Optionen (#1905, vorher in Base): settings.json neu lesen, damit ein neuer
+  /// <summary>Nach dem Speichern der Optionen (#1905): settings.json neu lesen, damit ein neuer
   /// Pfad und ein neues Zeitlimit sofort gelten.</summary>
   TAtlasVcsAppliesSettings = class(TInterfacedObject, IAtlasAppliesSettings, IAtlasFollowsTheme)
   public
@@ -432,7 +432,7 @@ begin
   // Vertrag in der Registry (#1903): Beiträge anderer Module zum Optionsdialog (Branches zu Issues des Trackers)
   // finden darüber ihren Gastgeber. Genutzt wird der Dienst weiter über TAtlasIdeVcs, sobald der Teil läuft.
   GScope.Provide(IAtlasVcsService, TAtlasVcsServiceAdapter.Create as IAtlasVcsService);
-  // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905, vorher in der Palette von Base).
+  // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905).
   GScope.Provide(IAtlasCommandSource, TAtlasVcsCommands.Create as IAtlasCommandSource);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeVcsSettings.Create as IAtlasSettingsSectionProvider);
