@@ -364,7 +364,7 @@ end;
 
 procedure TAtlasCommentEditorTests.SnippetsJson;
 var
-  mSnippets: TArray<TAtlasCommentSnippet>;
+  mSnippets, mBack: TArray<TAtlasCommentSnippet>;
 begin
   Assert.IsTrue(TAtlasCommentSnippets.Parse('[{"name":"A","text":"Erste"},{"name":"","text":"x"},' +
     '{"name":"B","text":"  "},3,{"name":" C ","text":"Zeile 1\nZeile 2"}]', mSnippets));
@@ -372,14 +372,16 @@ begin
   Assert.AreEqual('A', mSnippets[0].Name);
   Assert.AreEqual('C', mSnippets[1].Name, 'Name ohne Leerraum');
   Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
-  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mSnippets));
-  Assert.AreEqual(2, Integer(Length(mSnippets)), 'hin und zurück');
-  Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
+  // Eigene Variable: FPC leert den out-Parameter vor dem Auswerten von ToJson(mSnippets).
+  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mBack));
+  Assert.AreEqual(2, Integer(Length(mBack)), 'hin und zurück');
+  Assert.AreEqual('Zeile 1'#10'Zeile 2', mBack[1].Text);
   Assert.AreEqual(0, Integer(Length(TAtlasCommentSnippets.Read('[]', False))), 'leere Liste bleibt leer');
   Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults(False))),
     Integer(Length(TAtlasCommentSnippets.Read('kein JSON', False))), 'ungültig: Vorgaben');
   Assert.IsFalse(TAtlasCommentSnippets.Parse('{"name":"A"}', mSnippets), 'keine Liste');
   mSnippets := nil;
+  mBack := nil;
 end;
 
 procedure TAtlasCommentEditorTests.SnippetDefaultsMatchSetting;
