@@ -13,7 +13,7 @@
 //   %LOCALAPPDATA%\Atlas\startprofiles\<schlüssel>.json (Schlüssel wie die
 //   Projekt-Zusammenfassung #592, TAtlasProjectSummaries.KeyOf). Pfade dürfen
 //   absolut sein; relative gelten ab dem Ordner der .dproj. Lesen und
-//   Schreiben über TAtlasDataFile: atomar ersetzt (früher Löschen
+//   Schreiben über TAtlasDataFile: atomar ersetzt (kein Löschen
 //   und Umbenennen), eine unbrauchbare Datei (etwa nach einem Tippfehler beim
 //   Bearbeiten von Hand) liegt danach als .defekt daneben und steht im
 //   Protokoll, eine beim Lesen gesperrte wird nicht überschrieben.

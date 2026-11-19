@@ -881,7 +881,7 @@ begin
 end;
 
 // Baut ein Vorfahr in seinem Destruktor etwas ab? Ohne Destruktor in der ganzen Kette (bis TObject) ist die
-// Reihenfolge gleich (FP-Prüfung 28.10.2026); ein unbekannter Vorfahr zählt wie einer mit Destruktor.
+// Reihenfolge gleich; ein unbekannter Vorfahr zählt wie einer mit Destruktor.
 function TInheritedOrderScan.AncestorDestroys(const AClassName: string): Boolean;
 var
   mName: string;

@@ -3,8 +3,8 @@
 // Felder im Destruktor freigeben (#666):
 //   field-not-freed           im Konstruktor erzeugtes Objektfeld, das die
 //                             Klasse nirgends freigibt; Korrektur „Im
-//                             Destruktor freigeben“. Bis #918 hieß die Regel
-//                             owned-field-not-freed (Alias). Komponenten mit
+//                             Destruktor freigeben“. Der alte Name
+//                             owned-field-not-freed gilt als Alias (#918). Komponenten mit
 //                             Owner, Interfaces und Klassen aus ignoreTypes
 //                             bleiben stumm.
 //   owned-field-free-unclear  erzeugtes Feld, das zurückgegeben oder

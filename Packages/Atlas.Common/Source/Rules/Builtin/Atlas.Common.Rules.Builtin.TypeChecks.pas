@@ -8,8 +8,8 @@
 //                     E2246), New mit Länge auf einem Typ, der kein dynamisches
 //                     Array ist (wie E2008; Doku: E2307), und New(TArrayTyp)
 //                     ohne Länge (wie E2308) (#1038). Delphi 13 meldet Dispose
-//                     und New mit Länge als E2008 (dcc-Lauf vom 29.10.2026,
-//                     #1369). Korrekturen: Dispose(A) wird A := nil, New(A)
+//                     und New mit Länge als E2008 (#1369).
+//                     Korrekturen: Dispose(A) wird A := nil, New(A)
 //                     wird SetLength(A, 1).
 //   local-routine-as-callback
 //                     Eine lokale (verschachtelte) Routine wird einer Variablen

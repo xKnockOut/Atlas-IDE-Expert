@@ -12,9 +12,9 @@
 // paar Sekunden erneut ins Zeitlimit. Neue Antworten zeichnen den oberen
 // Editor neu. Nur im Hauptthread.
 // Überschreibungen und Glühbirne fragt eine Anfrage im Hintergrund
-// (TAtlasBackgroundRequest), höchstens eine zugleich. Früher wartete der
-// Hauptthread bis zu 800 ms; bei beschäftigtem Server kam keine Antwort an
-// und die IDE hing bei jedem Zeilenwechsel (2.0-stable).
+// (TAtlasBackgroundRequest), höchstens eine zugleich. Wartete der
+// Hauptthread (etwa bis zu 800 ms), käme bei beschäftigtem Server keine Antwort
+// an, und die IDE hinge bei jedem Zeilenwechsel.
 
 interface
 
@@ -121,7 +121,6 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  ToolsAPI.Editor,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.TextChanges,
@@ -137,16 +136,6 @@ uses
   Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Foundation.DesignerView,
   Atlas.Core.Editor.LineTracking;
-
-procedure InvalidateTop;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-end;
 
 { TAtlasIdeGutterColumnState }
 
@@ -279,7 +268,7 @@ begin
   FOverrides := AOverrides;
   FFetchedFile := AFileName;
   FFetchedText := AText;
-  InvalidateTop;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 procedure TAtlasIdeGutterColumnState.FetchAction(ASession: TLspSession);
@@ -350,7 +339,7 @@ begin
   end;
   if mHad or FAction.Found then
   begin
-    InvalidateTop;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -390,7 +379,7 @@ begin
   mStore := TAtlasProblemsController.Current;
   if (mStore <> nil) and SameText(FProblemsFile, AView.Buffer.FileName) and (mStore.Version <> FProblemsVersion) then
   begin
-    InvalidateTop;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   if Changed(AView) or not Settled or FRequest.Busy then
   begin

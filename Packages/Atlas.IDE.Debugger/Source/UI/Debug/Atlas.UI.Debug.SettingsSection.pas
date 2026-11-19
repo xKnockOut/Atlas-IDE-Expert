@@ -66,6 +66,7 @@ uses
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.Memory.Strings,
+  Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.Profile.Strings;
 
 const
@@ -333,6 +334,8 @@ begin
   // „Warum bin ich hier?“ (#1878).
   Switch('debug.whyHere', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHere));
   Number('debug.whyHere.depth', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHereDepth));
+  // Laufzeit zwischen Haltepunkten (#579).
+  Switch('debug.showElapsed', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugShowElapsed));
   BuildStopValues;
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLog));
@@ -346,7 +349,8 @@ end;
 
 procedure TAtlasDebugSettingsSection.BuildRestartRows;
 begin
-  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057).
+  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057),
+  // Debug-Zustand festhalten (#582).
   Switch('debug.restart', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestart));
   Switch('debug.restart.reenableBreakpoints',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestartReenable));
@@ -367,6 +371,9 @@ begin
   Number('debug.profiler.intervalMs', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfilerInterval));
   Switch('debug.memoryTimeline.objectCount',
     TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineObjectCount));
+  // Debug-Zustand festhalten (#582).
+  Switch('debug.note', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNote));
+  Switch('debug.note.saveFile', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNoteSaveFile));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildExceptions;

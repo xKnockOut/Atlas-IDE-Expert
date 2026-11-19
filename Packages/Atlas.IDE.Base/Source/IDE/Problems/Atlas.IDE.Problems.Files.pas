@@ -4,7 +4,7 @@
 // #1843) aus der Open Tools API, dazu die Zeilen ungeöffneter Dateien von der
 // Platte. Projekt = .dpr/.dpk und die .pas-Module des
 // Projekts; Projektgruppe = alle Dateien aller Projekte der Gruppe ohne
-// Doppelte (vorher galt jeder Befund im Speicher, auch von Units außerhalb
+// Doppelte (nicht jeder Befund im Speicher, auch nicht von Units außerhalb
 // der Gruppe). Die Dateien der Gruppe bleiben 2 s im Zwischenspeicher, weil
 // der Takt des Fensters alle 250 ms fragt; ändert sich die Gruppe, gilt der
 // Speicher sofort nicht mehr. Nur im Hauptthread verwenden.

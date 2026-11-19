@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Ownership.ComponentInterface;
 
-// Regel aus Atlas.Common.Rules.Builtin.Ownership ausgelagert (Länge der Unit):
+// Regel von Atlas.Common.Rules.Builtin.Ownership in eigener Unit (Länge der Unit):
 //   component-interface-dangling  Ein Nachfahr von TComponent (Option componentClasses) wird als Interface in
 //                     einem Feld, einer globalen Variablen oder einer Liste gespeichert (#1090): FAnsicht as IFoo als
 //                     Argument von Bus.Anmelden, FListe.Add …, die Zuweisung an ein Ziel außerhalb der Routine bzw.

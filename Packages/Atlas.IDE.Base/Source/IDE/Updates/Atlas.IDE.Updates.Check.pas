@@ -182,7 +182,7 @@ var
   mStage: TUpdateStage;
   mChosen: TArray<string>;
 begin
-  // Vorbereitet: Module wählen oder verwerfen (Mockup 6); sonst anbieten (Mockup 2).
+  // Vorbereitet: Module wählen oder verwerfen; sonst anbieten.
   if FInstaller.TryStage(ARelease.Version, mStage) and (mStage.Phase = TUpdatePhase.Ready) then
   begin
     case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0) of

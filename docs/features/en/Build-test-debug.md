@@ -422,6 +422,15 @@ Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Settings: `debug.whyHere`, `debug.whyHere.depth`
 
+### Run time between breakpoints
+
+- When stopped, the end of the line of the execution point shows, dimmed, how long the program ran since the last stop: `+124 ms`, from 10 s on `+12 s`
+- Only running time counts: time spent paused, stops that Atlas resumes on its own and evaluations do not
+- Always at a breakpoint, for single steps and pauses only from 1 ms on
+- A click on the time shows the last 20 measurements with start and target line. The time includes debugger overhead (debug build, events) and is a rough guide only
+
+Setting: `debug.showElapsed`
+
 ### Predict upcoming conditions
 
 - When stopped, the next `if`, `while` and `case` of the same routine (up to `debug.predictConditions.lines` lines ahead, default 20) show their predicted result, marked as a forecast: `⟨= False · FOnline⟩` (the deciding part), for `case` `⟨→ smManual⟩`
@@ -732,6 +741,16 @@ Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 - With `debug.restart.reenableBreakpoints` Atlas turns breakpoints back on before the start that were on when the last session started
 
 Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
+
+## Debug: debug note (#582)
+
+- “Capture debug state” in the Atlas menu and in the command palette, only while the debugger is paused
+- The Markdown note holds time, project, location with source line, call stack, local variables, the project's watches, the exception and the last lines of the event log
+- Values are cut to one line and 200 characters; values that are still missing or cannot be read say so; after 5 seconds the note is finished without the missing values
+- Passwords and keys in the event log and variables with such names appear masked
+- The note goes to the clipboard and, with `debug.note.saveFile`, into a file under `debug-notes` (German IDE: `debug-notizen`) next to the project
+
+Settings: `debug.note`, `debug.note.saveFile`
 
 ## Debug: leak and crash reports (#74)
 
