@@ -97,35 +97,16 @@ implementation
 
 uses
   System.Math,
-  System.DateUtils,
   Atlas.Text.Json,
   Atlas.Text.LogMarks,
-  Atlas.Text.TestResults;
+  Atlas.Text.TestResults,
+  Atlas.Text.Timestamps;
 
 const
   cKindCodes: array[TMcpCallKind] of string = ('tool', 'resource', 'prompt');
   cPercent = 100;
   cKilo = 1024;
   cTenths = 10;
-
-/// <summary>Zeitpunkt als ISO 8601 (Ortszeit); '' für 0.</summary>
-function DateText(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue <> 0 then
-  begin
-    Result := DateToISO8601(AValue, False);
-  end;
-end;
-
-/// <summary>Zeitpunkt aus ISO 8601; 0, wenn der Text fehlt oder ungültig ist.</summary>
-function DateOf(const AText: string): TDateTime;
-begin
-  if (AText = '') or not TryISO8601ToDate(AText, Result, False) then
-  begin
-    Result := 0;
-  end;
-end;
 
 /// <summary>AValue in Einheiten von AUnit mit einer Nachkommastelle unter 10, sonst ganz.</summary>
 function UnitText(AValue, AUnit: Int64; ADecimal: Char; const ASuffix: string): string;
@@ -218,7 +199,7 @@ begin
   if LastFailed.At <> 0 then
   begin
     mFailed := TJSONObject.Create;
-    mFailed.AddPair('at', DateText(LastFailed.At));
+    mFailed.AddPair('at', TTextTimestamp.IsoOrEmpty(LastFailed.At));
     mFailed.AddPair('arguments', LastFailed.Arguments);
     mFailed.AddPair('message', LastFailed.Message);
     Result.AddPair('lastFailed', mFailed);
@@ -239,7 +220,7 @@ begin
   Result.MedianBytes := TJsonRead.Int64Or(AObject, 'medianBytes', 0);
   Result.MaxBytes := TJsonRead.Int64Or(AObject, 'maxBytes', 0);
   mFailed := TJsonRead.Obj(AObject, 'lastFailed');
-  Result.LastFailed.At := DateOf(TJsonRead.Text(mFailed, 'at'));
+  Result.LastFailed.At := TTextTimestamp.IsoOrZero(TJsonRead.Text(mFailed, 'at'), False);
   Result.LastFailed.Arguments := TJsonRead.Text(mFailed, 'arguments');
   Result.LastFailed.Message := TJsonRead.Text(mFailed, 'message');
 end;
@@ -289,7 +270,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('client', Client);
   Result.AddPair('project', Project);
-  Result.AddPair('started', DateText(Started));
+  Result.AddPair('started', TTextTimestamp.IsoOrEmpty(Started));
   mItems := TJSONArray.Create;
   for mCall in Calls do
   begin
@@ -306,7 +287,7 @@ begin
   Result := Default(TMcpSessionStatistics);
   Result.Client := TJsonRead.Text(AObject, 'client');
   Result.Project := TJsonRead.Text(AObject, 'project');
-  Result.Started := DateOf(TJsonRead.Text(AObject, 'started'));
+  Result.Started := TTextTimestamp.IsoOrZero(TJsonRead.Text(AObject, 'started'), False);
   mItems := TJsonRead.Items(AObject, 'calls');
   if mItems = nil then
   begin

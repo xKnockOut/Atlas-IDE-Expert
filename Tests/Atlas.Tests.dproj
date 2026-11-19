@@ -79,6 +79,7 @@
         <DCCReference Include="Text\Atlas.Text.DUnitX.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestResults.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.McpStatistics.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.McpStatistics.TestSupport.pas"/>
         <DCCReference Include="Text\Atlas.Text.Xml.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Coverage.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>

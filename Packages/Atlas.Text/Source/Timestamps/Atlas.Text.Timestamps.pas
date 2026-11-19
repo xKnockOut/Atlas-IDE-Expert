@@ -4,7 +4,7 @@
 // Der eine Leser für Protokollzeilen, JSON-Dateien und Ausgaben von git/svn: Er prüft jede
 // Ziffer selbst und kann darum keinen negativen Teil an TryEncodeDate/TryEncodeTime
 // (Word-Parameter) weitergeben; mit Bereichsprüfung löste das sonst ERangeError aus statt False.
-// Dazu der eine Leser für ISO 8601 mit Zeitzone (RTL): Er wirft nie. ISO8601ToDate wirft je nach Text und Compiler
+// Dazu der eine Leser für ISO 8601 mit Zeitzone (RTL): Er wirft nie. IsoOrEmpty schreibt das Gegenstück. ISO8601ToDate wirft je nach Text und Compiler
 // verschiedene Klassen (Delphi EDateTimeException bei unlesbarem Text, EConvertError bei ungültigen Teilen; Free
 // Pascal EConvertError), ein Handler für nur eine davon greift nicht immer.
 
@@ -28,6 +28,9 @@ type
     class function TryParseIso(const AText: string; AReturnUTC: Boolean; out AStamp: TDateTime): Boolean; static;
     /// <summary>Wie TryParseIso, aber 0 statt False.</summary>
     class function IsoOrZero(const AText: string; AReturnUTC: Boolean): TDateTime; static;
+    /// <summary>AValue als ISO 8601 in Ortszeit mit Zeitzone; '' für 0 (Zeitpunkt fehlt). Gegenstück zu IsoOrZero
+    /// mit AReturnUTC False.</summary>
+    class function IsoOrEmpty(AValue: TDateTime): string; static;
   end;
 
 implementation
@@ -180,6 +183,15 @@ begin
   if not TryParseIso(AText, AReturnUTC, Result) then
   begin
     Result := 0;
+  end;
+end;
+
+class function TTextTimestamp.IsoOrEmpty(AValue: TDateTime): string;
+begin
+  Result := '';
+  if AValue <> 0 then
+  begin
+    Result := DateToISO8601(AValue, False);
   end;
 end;
 

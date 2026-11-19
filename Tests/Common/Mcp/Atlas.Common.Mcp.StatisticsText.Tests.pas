@@ -25,23 +25,12 @@ uses
   System.SysUtils,
   Atlas.Text.LogMarks,
   Atlas.Text.McpStatistics,
+  Atlas.Text.McpStatistics.TestSupport,
   Atlas.Common.Mcp.StatisticsHistory,
   Atlas.Common.Mcp.StatisticsText;
 
 const
   cNow: TDateTime = 46324.5;
-
-function Called(const AName: string; ACalls, AErrors: Integer): TMcpCallSummary;
-begin
-  Result := Default(TMcpCallSummary);
-  Result.Name := AName;
-  Result.Calls := ACalls;
-  Result.Errors := AErrors;
-  Result.MedianMs := 1200;
-  Result.MaxMs := 1500;
-  Result.MedianBytes := 4096;
-  Result.MaxBytes := 3 * 1024 * 1024 div 2;
-end;
 
 { TMcpStatisticsTextTests }
 
@@ -54,10 +43,10 @@ begin
   mStats := Default(TMcpSessionStatistics);
   mStats.Client := 'Assistent A';
   mStats.Started := cNow;
-  mCall := Called('check_code', 41, 9);
+  mCall := TMcpStatisticsTestSupport.Called('check_code', 41, 9);
   mCall.LastFailed.At := cNow;
   mCall.LastFailed.Arguments := 'file="' + TLogMarks.Path('C:\App\Run.pas') + '"';
-  mStats.Calls := TArray<TMcpCallSummary>.Create(mCall, Called('get_impact', 0, 0));
+  mStats.Calls := TArray<TMcpCallSummary>.Create(mCall, TMcpStatisticsTestSupport.Called('get_impact', 0, 0));
   mText := TMcpStatisticsText.Markdown(mStats);
   Assert.IsTrue(mText.Contains('Assistent A'), mText);
   Assert.IsTrue(mText.Contains('41 Aufrufe, 9 Fehler'), mText);
@@ -74,7 +63,8 @@ var
   mText: string;
 begin
   mStats := Default(TMcpSessionStatistics);
-  mStats.Calls := TArray<TMcpCallSummary>.Create(Called('check_code', 10, 5), Called('get_impact', 0, 0));
+  mStats.Calls := TArray<TMcpCallSummary>.Create(TMcpStatisticsTestSupport.Called('check_code', 10, 5),
+    TMcpStatisticsTestSupport.Called('get_impact', 0, 0));
   mText := TMcpStatisticsText.HistoryMarkdown(TMcpStatisticsHistory.Lines(mStats, 1, cNow) +
     TMcpStatisticsHistory.Lines(mStats, 2, cNow));
   Assert.IsTrue(mText.Contains('2 Sitzungen'), mText);

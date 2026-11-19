@@ -36,22 +36,11 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Text.LogMarks,
-  Atlas.Text.McpStatistics;
+  Atlas.Text.McpStatistics,
+  Atlas.Text.McpStatistics.TestSupport;
 
 const
   cNow: TDateTime = 46324.5;
-
-function Called(const AName: string; ACalls, AErrors: Integer): TMcpCallSummary;
-begin
-  Result := Default(TMcpCallSummary);
-  Result.Name := AName;
-  Result.Calls := ACalls;
-  Result.Errors := AErrors;
-  Result.MedianMs := 1200;
-  Result.MaxMs := 1500;
-  Result.MedianBytes := 4096;
-  Result.MaxBytes := 3 * 1024 * 1024 div 2;
-end;
 
 { TMcpStatisticsModelTests }
 
@@ -69,7 +58,7 @@ procedure TMcpStatisticsModelTests.CellsOfCalledTool;
 var
   mCells: TArray<string>;
 begin
-  mCells := Called('check_code', 41, 9).Cells(',', '–');
+  mCells := TMcpStatisticsTestSupport.Called('check_code', 41, 9).Cells(',', '–');
   Assert.AreEqual(Ord(High(TMcpCallColumn)) + 1, Integer(Length(mCells)));
   Assert.AreEqual('check_code', mCells[Ord(TMcpCallColumn.Name)]);
   Assert.AreEqual('41', mCells[Ord(TMcpCallColumn.Calls)]);
@@ -79,14 +68,15 @@ begin
   Assert.AreEqual('4,0 KB', mCells[Ord(TMcpCallColumn.MedianBytes)]);
   Assert.AreEqual('1,5 MB', mCells[Ord(TMcpCallColumn.MaxBytes)]);
   Assert.AreEqual('', mCells[Ord(TMcpCallColumn.LastFailed)]);
-  Assert.AreEqual('0', Called('a', 3, 0).Cells(',', '–')[Ord(TMcpCallColumn.Errors)], 'ohne Quote');
+  Assert.AreEqual('0', TMcpStatisticsTestSupport.Called('a', 3, 0).Cells(',', '–')[Ord(TMcpCallColumn.Errors)],
+    'ohne Quote');
 end;
 
 procedure TMcpStatisticsModelTests.UncalledToolShowsPlaceholders;
 var
   mCells: TArray<string>;
 begin
-  mCells := Called('get_impact', 0, 0).Cells(',', '–');
+  mCells := TMcpStatisticsTestSupport.Called('get_impact', 0, 0).Cells(',', '–');
   Assert.AreEqual('0', mCells[Ord(TMcpCallColumn.Calls)]);
   Assert.AreEqual('–', mCells[Ord(TMcpCallColumn.Errors)]);
   Assert.AreEqual('–', mCells[Ord(TMcpCallColumn.MedianMs)]);
@@ -95,18 +85,18 @@ end;
 
 procedure TMcpStatisticsModelTests.ErrorRateIsConspicuousFromFiveCalls;
 begin
-  Assert.IsFalse(Called('a', 4, 4).Conspicuous, 'unter fünf Aufrufen nie auffällig');
-  Assert.IsFalse(Called('a', 5, 1).Conspicuous, 'genau 20 % ist nicht über der Schwelle');
-  Assert.IsTrue(Called('a', 41, 9).Conspicuous, '22 %');
-  Assert.AreEqual(22, Called('a', 41, 9).ErrorPercent);
-  Assert.AreEqual(0, Called('a', 0, 0).ErrorPercent);
+  Assert.IsFalse(TMcpStatisticsTestSupport.Called('a', 4, 4).Conspicuous, 'unter fünf Aufrufen nie auffällig');
+  Assert.IsFalse(TMcpStatisticsTestSupport.Called('a', 5, 1).Conspicuous, 'genau 20 % ist nicht über der Schwelle');
+  Assert.IsTrue(TMcpStatisticsTestSupport.Called('a', 41, 9).Conspicuous, '22 %');
+  Assert.AreEqual(22, TMcpStatisticsTestSupport.Called('a', 41, 9).ErrorPercent);
+  Assert.AreEqual(0, TMcpStatisticsTestSupport.Called('a', 0, 0).ErrorPercent);
 end;
 
 procedure TMcpStatisticsModelTests.LastFailedIsPlainText;
 var
   mCall: TMcpCallSummary;
 begin
-  mCall := Called('check_code', 1, 1);
+  mCall := TMcpStatisticsTestSupport.Called('check_code', 1, 1);
   mCall.LastFailed.At := cNow;
   mCall.LastFailed.Arguments := 'file="' + TLogMarks.Path('C:\App\Run.pas') + '"';
   mCall.LastFailed.Message := TLogMarks.Text('Datei fehlt');
@@ -123,7 +113,7 @@ begin
   mStats.Client := 'Assistent A';
   mStats.Project := 'C:\App';
   mStats.Started := cNow;
-  mCall := Called('find_symbol', 5, 1);
+  mCall := TMcpStatisticsTestSupport.Called('find_symbol', 5, 1);
   mCall.Kind := TMcpCallKind.Resource;
   mCall.LastFailed.At := cNow;
   mCall.LastFailed.Arguments := 'name="x"';
@@ -157,7 +147,7 @@ var
   mCall: TMcpCallSummary;
 begin
   mStats := Default(TMcpSessionStatistics);
-  mCall := Called('check_code', 1, 1);
+  mCall := TMcpStatisticsTestSupport.Called('check_code', 1, 1);
   mCall.LastFailed.Arguments := 'file="' + TLogMarks.Path('C:\App\Run.pas') + '"';
   mCall.LastFailed.Message := TLogMarks.Text('kaputt');
   mStats.Calls := TArray<TMcpCallSummary>.Create(mCall);

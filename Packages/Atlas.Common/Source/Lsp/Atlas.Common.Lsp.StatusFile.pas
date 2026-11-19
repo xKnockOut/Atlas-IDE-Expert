@@ -111,7 +111,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.Math,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps;
 
 /// <summary>Ordner zum Vergleichen: klein, beide Trenner als „/“, mit „/“ am Ende.</summary>
 function NormalFolder(const AFolder: string): string;
@@ -120,16 +121,6 @@ begin
   if not Result.EndsWith('/') then
   begin
     Result := Result + '/';
-  end;
-end;
-
-/// <summary>Zeitpunkt als ISO 8601 (Ortszeit); '' für 0.</summary>
-function DateText(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue <> 0 then
-  begin
-    Result := DateToISO8601(AValue, False);
   end;
 end;
 
@@ -152,7 +143,7 @@ var
 begin
   Result := TJSONObject.Create;
   Result.AddPair('pid', TJSONNumber.Create(Pid));
-  Result.AddPair('written', DateText(Written));
+  Result.AddPair('written', TTextTimestamp.IsoOrEmpty(Written));
   mRoots := TJSONArray.Create;
   for mRoot in Roots do
   begin
@@ -164,7 +155,7 @@ begin
   Result.AddPair('target', Target);
   Result.AddPair('logFile', LogFile);
   Result.AddPair('version', Version);
-  Result.AddPair('started', DateText(Started));
+  Result.AddPair('started', TTextTimestamp.IsoOrEmpty(Started));
   Result.AddPair('memoryBytes', TJSONNumber.Create(MemoryBytes));
   Result.AddPair('state', State);
   mRunning := TJSONObject.Create;

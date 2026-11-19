@@ -44,6 +44,7 @@ uses
   Atlas.Text.DUnitX.Tests in 'Text\Atlas.Text.DUnitX.Tests.pas',
   Atlas.Text.TestResults.Tests in 'Text\Atlas.Text.TestResults.Tests.pas',
   Atlas.Text.McpStatistics.Tests in 'Text\Atlas.Text.McpStatistics.Tests.pas',
+  Atlas.Text.McpStatistics.TestSupport in 'Text\Atlas.Text.McpStatistics.TestSupport.pas',
   Atlas.Text.Xml.Tests in 'Text\Atlas.Text.Xml.Tests.pas',
   Atlas.Text.Coverage.Tests in 'Text\Atlas.Text.Coverage.Tests.pas',
   Atlas.Text.MapFile.Tests in 'Text\Atlas.Text.MapFile.Tests.pas',

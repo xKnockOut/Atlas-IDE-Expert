@@ -29,6 +29,8 @@ type
     procedure ReadsIsoWithZone;
     [Test]
     procedure IsoNeverRaises;
+    [Test]
+    procedure IsoOrEmptyRoundTrips;
   end;
 
 implementation
@@ -154,6 +156,19 @@ begin
   Assert.AreEqual<TDateTime>(0, mStamp);
   Assert.AreEqual<TDateTime>(0, TTextTimestamp.IsoOrZero('gestern', False));
   Assert.AreEqual<TDateTime>(0, TTextTimestamp.IsoOrZero('2026-02-30T10:00:00', False));
+end;
+
+procedure TTextTimestampTests.IsoOrEmptyRoundTrips;
+var
+  mStamp: TDateTime;
+begin
+  // 0 heißt „kein Zeitpunkt“ und wird zum leeren Text, der wieder 0 ergibt.
+  Assert.AreEqual('', TTextTimestamp.IsoOrEmpty(0));
+  Assert.AreEqual<TDateTime>(0, TTextTimestamp.IsoOrZero(TTextTimestamp.IsoOrEmpty(0), False));
+  mStamp := EncodeDateTime(2026, 11, 19, 1, 2, 3, 456);
+  Assert.IsTrue(TTextTimestamp.IsoOrEmpty(mStamp).StartsWith('2026-11-19T01:02:03.456'),
+    TTextTimestamp.IsoOrEmpty(mStamp));
+  Assert.AreEqual<TDateTime>(mStamp, TTextTimestamp.IsoOrZero(TTextTimestamp.IsoOrEmpty(mStamp), False));
 end;
 
 initialization
