@@ -896,10 +896,52 @@ Settings: `debug.justMyCode`
   - Continue (F9)
   - Ignore class
   - Ignore only here (class + unit + line per project, continued silently next time)
+  - Message … (rule by message text, see below)
   - Copy message
 - In Delphi 12 and 13 Atlas closes the IDE's dialog for it, otherwise the dialog stays and the bar follows.
 
 Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
+
+### Exceptions by message text
+
+- One class such as `EConfigError` often stands for very different errors; the message tells them apart.
+- "Message …" in the exception bar and in the context menu of the exception history opens a small dialog:
+  - kind: "Stop only on messages like this" (other messages of this class continue) or "Ignore messages like this"
+  - pattern, prefilled from the message; numbers, addresses and quoted texts become `*`: `Key unknown: * in line *`
+  - without a regular expression it is enough for the message to contain the pattern; `*` stands for any text; case does not matter
+  - optionally a regular expression (an invalid one is reported right away)
+  - unit: any, or only the unit of the first line of your own code
+- Continued exceptions show greyed out in the history.
+- Rules come before the ignore list, so they can also stop on an ignored class.
+- Without a message read, no rule with a message decides: Atlas rather stops.
+- "Remove rules with a message for X" in the history's context menu takes them away again.
+- The rules are stored with the ignore list in `debug-ignore.json` (field `rules`).
+
+Settings: `debug.exceptionMessageRules` (default on)
+
+### Exception rules by class and location
+
+- A rule names the class (optionally with descendants), optionally the location (method or unit as a pattern, e.g. `Report.Print.*` or `TCustomer.*`), optionally a pattern for the message, and the action:
+  - Stop
+  - Only log (greyed out in the history)
+  - Continue (not in the history)
+- The location is the first method of your own code on the call stack; `*` stands for any text, case does not matter.
+- "Ignore only here" in the exception bar creates such a rule for the first method of your own code (without one, class + unit + line as before).
+- Window "Exception rules" (context menu of the exception history or command palette, `Atlas.DebugExceptionRules`):
+  - per row: on/off, class, location, message, action, origin and hits in the current debug session
+  - New, Edit, On/Off, Delete, Up/Down or drag with the mouse; the first matching rule wins
+  - personal rules come before those of the project; both can be changed here, sorting works within their own group
+  - in the dialog "Exception rule", "Applies to" chooses between "only me" and "everyone in the project (.atlas)"; "Apply" writes changed project rules to `.atlas` (comments and other entries stay, one rule per line), "Open project file" shows the file
+- Personal rules are stored in `debug-ignore.json` (field `rules`), project rules in `.atlas` under `exceptionRules` and are checked in:
+
+```json
+"exceptionRules": [{"class": "EConvertError", "location": "Report.Print.*", "action": "continue"}]
+```
+
+  Fields: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`, `descendants`.
+- With "including descendants" the rule also matches derived classes (`EDatabaseError` catches `EFDDBEngineException`). Atlas asks the server's type hierarchy for the ancestors once per class and session when the debugger stops; if the class is unknown there, only the exact name counts.
+
+Settings: `debug.exceptionRules` (default on); rules with a message also need `debug.exceptionMessageRules`
 
 ### Access violation explained
 
