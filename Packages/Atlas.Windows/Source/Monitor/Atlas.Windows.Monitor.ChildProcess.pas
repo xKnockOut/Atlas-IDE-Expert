@@ -1,6 +1,6 @@
-﻿unit Atlas.Windows.Monitor.Adapters.Process;
+﻿unit Atlas.Windows.Monitor.ChildProcess;
 
-// Platform-Feature "Monitor" (#1900), Adapter: Kindprozess von AtlasMonitor für einen Lauf von AtlasServer.
+// Platform-Feature "Monitor" (#1900): Kindprozess von AtlasMonitor für einen Lauf von AtlasServer.
 // Startet unsichtbar (ohne Konsolenfenster), stdin aus NUL, stdout und stderr in eine Datei, damit keine Pipe
 // volllaufen kann; das Ergebnis schreibt der Server selbst in seine Ausgabedatei. Jeder Kindprozess gehört zu einem
 // Job mit „beim Schließen beenden“: Endet AtlasMonitor, auch unerwartet, schließt Windows den Job und beendet alle

@@ -101,7 +101,7 @@ uses
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.Completion.Values,
-  Atlas.Common.Lsp.IdeTypes;
+  Atlas.Common.Lsp.Contract;
 
 /// <summary>Eintrag, der jedes Datenfeld belegt.</summary>
 function FullDataItem: TCompletionItem;

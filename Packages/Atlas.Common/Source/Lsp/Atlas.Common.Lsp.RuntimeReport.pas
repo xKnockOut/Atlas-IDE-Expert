@@ -29,19 +29,10 @@ uses
   System.JSON,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Diagnostics.RuntimeReport;
 
 type
-  /// <summary>Dateien zum Bericht; die Komposition kennt Projekt und Arbeitsbereich.</summary>
-  IRuntimeReportFiles = interface
-    ['{8B2F6C41-3E7D-4A95-B1C8-5D0E9F27A6C3}']
-    /// <summary>Map aus AMapName, sonst neben AExeName, sonst neben der EXE des Projekts hinter AUri. Der Aufrufer
-    /// gibt ASymbols.Map frei.</summary>
-    procedure LoadSymbols(const AUri, AMapName, AExeName: string; ABase: UInt64; out ASymbols: TReportSymbols);
-    /// <summary>Datei im Projekt hinter AUri zu Unit bzw. Dateiname; '' außerhalb.</summary>
-    function UnitFileOf(const AUri: string): TReportUnitFileFunc;
-  end;
-
   /// <summary>Meldet geänderte Dateien zum Neuveröffentlichen der Diagnosen.</summary>
   TRuntimeReportPublish = reference to procedure(const AFileNames: TArray<string>);
 
@@ -366,7 +357,7 @@ end;
 
 function TLspRuntimeReport.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  mUri, mText: string;
+  mUri, mText, mMap, mExe: string;
   mOptions: TJSONObject;
   mSymbols: TReportSymbols;
   mReport: TRuntimeReport;
@@ -384,8 +375,13 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspRuntimeReportText.NeedsText].Fmt([cCommand]));
   end;
-  FFiles.LoadSymbols(mUri, TJsonRead.Text(mOptions, 'map'), TJsonRead.Text(mOptions, 'exe'), BaseOf(mOptions),
-    mSymbols);
+  mMap := TJsonRead.Text(mOptions, 'map');
+  mExe := TJsonRead.Text(mOptions, 'exe');
+  if (mMap = '') and (mExe = '') then
+  begin
+    mExe := FFiles.ExecutableOf(mUri);
+  end;
+  TRuntimeReports.LoadSymbols(mMap, mExe, BaseOf(mOptions), mSymbols);
   try
     mReport := TRuntimeReports.Build(mText, mSymbols, FFiles.UnitFileOf(mUri));
     mMessages := MessagesOf(mReport);

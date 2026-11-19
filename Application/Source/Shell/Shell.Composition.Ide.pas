@@ -17,7 +17,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Lsp.IdeProject,
-  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Lsp.Adapters.IdeTypes,
   Atlas.Common.Lsp.IdeUnits,
   Shell.Workspace,
   Shell.Composition.Workspaces;
@@ -87,10 +87,11 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Lsp.Contract,
   System.IOUtils,
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Text.LogMarks;
 

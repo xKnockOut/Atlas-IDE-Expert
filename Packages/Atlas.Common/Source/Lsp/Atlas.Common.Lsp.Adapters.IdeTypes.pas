@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.IdeTypes;
+﻿unit Atlas.Common.Lsp.Adapters.IdeTypes;
 
 // Typen aus der laufenden IDE. Die Delphi-IDE lädt jedes installierte Package als BPL in ihren Prozess; deren
 // Typen samt Unit kennt sie über die RTTI, Komponenten zusätzlich über RegisterComponents. Das gilt auch für
@@ -18,17 +18,10 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Lsp.Contract;
 
 type
-  /// <summary>Ein Typ, den die IDE kennt, mit seiner Unit.</summary>
-  TIdeTypeEntry = record
-    Name: string;
-    UnitName: string;
-    /// <summary>Direkter Vorfahr einer Klasse mit Unit (Vcl.Controls.TCustomControl); '' ohne Angabe.</summary>
-    Parent: string;
-  end;
-
   /// <summary>Typen der laufenden IDE; threadsicher. Inhalt ersetzt Replace.</summary>
   TIdeTypeCatalog = class(TInterfacedObject, IRuleIdeTypes)
   private
