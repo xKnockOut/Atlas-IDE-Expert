@@ -348,6 +348,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hotspots.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugDisplay.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EventHandlers.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataAccessSites.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests.pas"/>
@@ -2490,6 +2491,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeKinds.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeCompatibility.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.StepCalls.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.DataAccessCalls.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Dock.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Sections.pas"/>

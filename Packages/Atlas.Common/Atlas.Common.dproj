@@ -339,6 +339,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hotspots.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataAccessSites.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExitPoints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Reassigned.pas"/>
@@ -659,6 +660,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeCompatibility.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.StepCalls.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.DataAccessCalls.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Contract.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TreeUnits.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
