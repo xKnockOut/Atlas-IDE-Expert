@@ -101,17 +101,6 @@ begin
     '  end;'#10'implementation'#10'procedure Pruefen;'#10'var'#10 + ADecls + 'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 function Applied(const ASource: string; const AFix: TRuleFix): string;
 begin
   Result := TTextChanges.Apply(ASource, AFix.Edits);
@@ -141,7 +130,7 @@ begin
   mSource := Routine('  P: Pointer;'#10'  Kunde: TKunde;'#10'  Zahl: Integer;'#10,
     '  Zahl := Integer(P);'#10'  Zahl := LongInt(Kunde);'#10);
   mFound := TRuleAssert.Findings(TPointerIntegerCastRule.Create, mSource);
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cPointerIntegerCastRuleId, mFound[0].RuleId);
   Assert.AreEqual('Integer(P): P ist Pointer; unter Win64 gehen die oberen 32 Bit verloren.', mFound[0].Message);
   Assert.AreEqual('LongInt(Kunde): Kunde ist TKunde; unter Win64 gehen die oberen 32 Bit verloren.',
@@ -163,7 +152,7 @@ begin
     '  Zahl := Cardinal(Kunde);'#10'  Zahl := DWORD(@Pruefen);'#10'  Zahl := Cardinal(Pointer(Zahl));'#10 +
     '  Zahl := LongWord((PChar(''abc'')));'#10);
   mFound := TRuleAssert.Findings(TPointerIntegerCastRule.Create, mSource);
-  Assert.AreEqual(4, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(4, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('Cardinal(Kunde): Kunde ist IKunde; unter Win64 gehen die oberen 32 Bit verloren.',
     mFound[0].Message);
   Assert.AreEqual('DWORD(@Pruefen): @Pruefen ist Pointer; unter Win64 gehen die oberen 32 Bit verloren.',
@@ -178,14 +167,14 @@ var
 begin
   mFound := TRuleAssert.Findings(TPointerIntegerCastRule.Create, Routine('  Zahl: Integer;'#10'  K: TKunde;'#10,
     '  K := TKunde(Zahl);'#10'  K := TKunde(Pointer(Zahl));'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('TKunde(Zahl): Zahl ist Integer und kann unter Win64 keinen Zeiger halten.', mFound[0].Message);
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TPointerIntegerCastTests.IntegersAndUnknownAreSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TPointerIntegerCastRule.Create, Routine(
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TPointerIntegerCastRule.Create, Routine(
     '  Zahl: Integer;'#10'  N: NativeInt;'#10'  B: Byte;'#10'  K: TKunde;'#10 +
     '  {$IFDEF ALT}'#10'  Wechselnd: Pointer;'#10'  {$ELSE}'#10'  Wechselnd: Integer;'#10'  {$ENDIF}'#10,
     '  Zahl := Integer(Zahl);'#10'  Zahl := Integer(B);'#10'  Zahl := Integer(N);'#10 +
@@ -195,7 +184,7 @@ end;
 
 procedure TPointerIntegerCastTests.PlatformBranchesAreSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TPointerIntegerCastRule.Create, Routine(
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TPointerIntegerCastRule.Create, Routine(
     '  P: Pointer;'#10'  Zahl: Integer;'#10,
     '  {$IFDEF CPUX86}'#10'  Zahl := Integer(P);'#10'  {$ELSE}'#10'  Zahl := Integer(P);'#10'  {$ENDIF}'#10 +
     '  {$IF SizeOf(Pointer) = 4}'#10'  Zahl := Integer(P);'#10'  {$IFEND}'#10 +
@@ -252,7 +241,7 @@ begin
     'function FensterProc(Wnd: HWND; Msg: UINT; wParam: Longint; lParam: Longint): Longint; stdcall;'#10 +
     'begin'#10'  Result := 0;'#10'end;'#10'end.';
   mFound := TRuleAssert.Findings(THandleAsIntegerRule.Create, mSource);
-  Assert.AreEqual(3, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(3, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cHandleAsIntegerRuleId, mFound[0].RuleId);
   Assert.AreEqual('Parameter wParam ist Longint; unter Win64 ist WPARAM 64 Bit breit.', mFound[0].Message);
   Assert.AreEqual('Parameter lParam ist Longint; unter Win64 ist LPARAM 64 Bit breit.', mFound[1].Message);
@@ -265,9 +254,9 @@ begin
   end;
   mFixed := TTextChanges.Apply(mSource, mEdits);
   Assert.IsTrue(Pos('wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;', mFixed) > 0, mFixed);
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(THandleAsIntegerRule.Create, mFixed)));
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(THandleAsIntegerRule.Create, mFixed)));
   // Zwei Namen in einer Deklaration: Die Korrektur träfe beide, die Regel schweigt.
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(THandleAsIntegerRule.Create, 'unit Fenster;'#10'interface'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(THandleAsIntegerRule.Create, 'unit Fenster;'#10'interface'#10 +
     'implementation'#10'procedure Senden(wParam, lParam: Integer);'#10'begin'#10'end;'#10'end.')));
 end;
 
@@ -279,7 +268,7 @@ begin
   mSource := Routine('  Fenster: HWND;'#10'  Zahl: Integer;'#10'  A, B: Cardinal;'#10,
     '  Zahl := Fenster;'#10'  A := Fenster;'#10);
   mFound := TRuleAssert.Findings(THandleAsIntegerRule.Create, mSource);
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('Zahl ist Integer, Fenster ist HWND; unter Win64 gehen die oberen 32 Bit verloren.',
     mFound[0].Message);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
@@ -291,13 +280,13 @@ end;
 
 procedure THandleAsIntegerTests.MatchingTypesAreSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(THandleAsIntegerRule.Create, Routine(
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(THandleAsIntegerRule.Create, Routine(
     '  Fenster: HWND;'#10'  H: THandle;'#10'  N: NativeInt;'#10'  Zahl: Integer;'#10'  Wert: Int64;'#10,
     '  H := Fenster;'#10'  Zahl := N;'#10'  Wert := Fenster;'#10'  Zahl := Unbekannt;'#10'  Zahl := 5;'#10))));
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(THandleAsIntegerRule.Create, 'unit Fenster;'#10'interface'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(THandleAsIntegerRule.Create, 'unit Fenster;'#10'interface'#10 +
     'implementation'#10'function Senden: LRESULT;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
     'procedure Zaehlen;'#10'var'#10'  Anzahl: Integer;'#10'begin'#10'  Anzahl := Senden;'#10'end;'#10'end.')));
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(THandleAsIntegerRule.Create, 'unit Fenster;'#10'interface'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(THandleAsIntegerRule.Create, 'unit Fenster;'#10'interface'#10 +
     'implementation'#10'function Rueckruf(AWParam: WPARAM; ALParam: LPARAM; Zahl: Integer): LRESULT;'#10 +
     'begin'#10'  Result := 0;'#10'end;'#10'function Richtung(AMessage: Cardinal; AWParam, ALParam: NativeInt): ' +
     'Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10'function Summe(Wert: Integer): Integer;'#10'begin'#10 +
@@ -313,7 +302,7 @@ var
 begin
   mSource := Routine('', '  SetWindowLong(Handle, GWL_WNDPROC, Integer(@Pruefen));'#10);
   mFound := TRuleAssert.Findings(TWindowLongPtrRule.Create, mSource);
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cWindowLongPtrRuleId, mFound[0].RuleId);
   Assert.AreEqual('SetWindowLong mit GWL_WNDPROC liest bzw. schreibt unter Win64 nur 32 Bit eines Zeigers oder ' +
     'Handles.', mFound[0].Message);
@@ -331,7 +320,7 @@ begin
   mSource := Routine('  P: Pointer;'#10, '  P := Pointer(GetWindowLongW(Handle, GWL_USERDATA));'#10 +
     '  SetClassLong(Handle, GCL_HICON, Symbol);'#10);
   mFound := TRuleAssert.Findings(TWindowLongPtrRule.Create, mSource);
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.IsTrue(Pos('  P := Pointer(GetWindowLongPtrW(Handle, GWLP_USERDATA));'#10,
     Applied(mSource, mFound[0].Fixes[0])) > 0);
   Assert.IsTrue(Pos('  SetClassLongPtr(Handle, GCLP_HICON, Symbol);'#10, Applied(mSource, mFound[1].Fixes[0])) > 0);
@@ -342,7 +331,7 @@ end;
 
 procedure TWindowLongPtrTests.ValueIndicesAreSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TWindowLongPtrRule.Create, Routine('',
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TWindowLongPtrRule.Create, Routine('',
     '  SetWindowLong(Handle, GWL_STYLE, 0);'#10'  GetWindowLong(Handle, GWL_EXSTYLE);'#10 +
     '  SetWindowLongPtr(Handle, GWLP_WNDPROC, LONG_PTR(@Pruefen));'#10'  SetWindowLong(Handle, Index, 0);'#10 +
     '  {$IFDEF WIN32}'#10'  SetWindowLong(Handle, GWL_WNDPROC, Integer(@Pruefen));'#10'  {$ENDIF}'#10))));
@@ -357,7 +346,7 @@ begin
   mFound := TRuleAssert.Findings(TAsmWithoutWin64Rule.Create, 'unit Schnell;'#10'interface'#10'implementation'#10 +
     'function Tausche(Wert: Cardinal): Cardinal;'#10'asm'#10'  bswap eax'#10'end;'#10 +
     'procedure Warten;'#10'begin'#10'  asm'#10'    pause'#10'  end;'#10'end;'#10'end.');
-  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cAsmWithoutWin64RuleId, mFound[0].RuleId);
   Assert.AreEqual('Routine Tausche besteht aus x86-Assembler ohne Zweig für Win64 ({$IFDEF CPUX64} bzw. ' +
     'PUREPASCAL).', mFound[0].Message);
@@ -371,7 +360,7 @@ end;
 
 procedure TAsmWithoutWin64Tests.GuardedAndX64AreSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TAsmWithoutWin64Rule.Create, 'unit Schnell;'#10'interface'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TAsmWithoutWin64Rule.Create, 'unit Schnell;'#10'interface'#10 +
     'implementation'#10'function Tausche(Wert: Cardinal): Cardinal;'#10'{$IFDEF CPUX86}'#10'asm'#10 +
     '  bswap eax'#10'end;'#10'{$ELSE}'#10'begin'#10'  Result := Wert;'#10'end;'#10'{$ENDIF}'#10 +
     'function Breit(Wert: Int64): Int64;'#10'asm'#10'  mov rax, rcx'#10'end;'#10 +
@@ -385,7 +374,7 @@ end;
 
 procedure TAsmWithoutWin64Tests.FreePascalIsSilent;
 begin
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TAsmWithoutWin64Rule.Create, 'unit Schnell;'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TAsmWithoutWin64Rule.Create, 'unit Schnell;'#10 +
     '{$MODE DELPHI}'#10'interface'#10'implementation'#10'function Tausche(Wert: Cardinal): Cardinal;'#10'asm'#10 +
     '  bswap eax'#10'end;'#10'end.')));
 end;

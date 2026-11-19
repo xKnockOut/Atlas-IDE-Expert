@@ -81,7 +81,8 @@ uses
   Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Projects,
-  Atlas.UI.Tests.Strings;
+  Atlas.UI.Tests.Strings,
+  Atlas.IDE.Foundation.Files;
 
 type
 {$SCOPEDENUMS ON}
@@ -128,16 +129,6 @@ begin
   if (mView <> nil) and (mView.Buffer <> nil) then
   begin
     Result := mView.Buffer.FileName;
-  end;
-end;
-
-/// <summary>Datei des aktiven Projekts; '' ohne.</summary>
-function ActiveProjectFile: string;
-begin
-  Result := '';
-  if GetActiveProject <> nil then
-  begin
-    Result := GetActiveProject.FileName;
   end;
 end;
 
@@ -210,7 +201,7 @@ var
   mFound: TArray<IOTAProject>;
 begin
   mFile := TopFileName;
-  mFor := AnsiLowerCase(mFile + '|' + ActiveProjectFile);
+  mFor := AnsiLowerCase(mFile + '|' + TAtlasIdeFiles.ActiveProjectFile);
   if mFor = FResolvedFor then
   begin
     Exit;

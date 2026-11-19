@@ -65,7 +65,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Editor.EnterWatch;
+  Atlas.IDE.Editor.EnterWatch,
+  Atlas.Core.Editor.EditSurface;
 
 const
   cHandlerName = 'SmartIndent';
@@ -76,21 +77,19 @@ const
 /// AText.</summary>
 procedure WriteEdits(const ABuffer: IOTAEditBuffer; const AText: string; const AEdits: TArray<TLspTextEdit>);
 var
-  mWriter: IOTAEditWriter;
-  mEdit: TLspTextEdit;
+  mEdits: TAtlasTextEdits;
+  mIndex, mStart: Integer;
 begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  for mEdit in AEdits do
+  mEdits := nil;
+  SetLength(mEdits, Length(AEdits));
+  for mIndex := 0 to High(AEdits) do
   begin
-    mWriter.CopyTo(TAtlasEditorBuffer.ByteOffset(AText, mEdit.StartPos.Line, mEdit.StartPos.Character));
-    mWriter.DeleteTo(TAtlasEditorBuffer.ByteOffset(AText, mEdit.EndPos.Line, mEdit.EndPos.Character));
-    if mEdit.NewText <> '' then
-    begin
-      mWriter.Insert(PAnsiChar(UTF8Encode(mEdit.NewText)));
-    end;
+    mStart := TAtlasEditorBuffer.CharOffset(AText, AEdits[mIndex].StartPos.Line, AEdits[mIndex].StartPos.Character);
+    mEdits[mIndex] := TAtlasTextEdit.Create(mStart,
+      TAtlasEditorBuffer.CharOffset(AText, AEdits[mIndex].EndPos.Line, AEdits[mIndex].EndPos.Character) - mStart,
+      AEdits[mIndex].NewText);
   end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+  TAtlasEditorSnapshots.WriteEdits(ABuffer, AText, mEdits);
 end;
 
 /// <summary>AEdits nach ihrem Anfang aufsteigend.</summary>

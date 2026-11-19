@@ -64,6 +64,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Lines;
+
 { TStepFilterNames }
 
 class function TStepFilterNames.WildMatch(const APattern, AText: string): Boolean;
@@ -190,7 +193,7 @@ var
   mPart, mPattern: string;
 begin
   Result := nil;
-  for mPart in AText.Replace(#13, cPatternSeparator).Replace(#10, cPatternSeparator).Split([cPatternSeparator]) do
+  for mPart in TTextLines.NormalizeLineBreaks(AText, cPatternSeparator).Split([cPatternSeparator]) do
   begin
     mPattern := Trim(mPart);
     if Length(Result) >= cMaxPatterns then

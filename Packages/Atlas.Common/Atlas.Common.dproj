@@ -715,6 +715,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.RefactorTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ProtectedFiles.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditFindings.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ExtractTools.pas"/>
@@ -837,6 +838,9 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Scopes.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.MethodRefs.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.LineBreaks.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DelphiSemantics.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas"/>
@@ -948,6 +952,7 @@
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Targets.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnclosingConditions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugVariables.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugScope.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RoutineParameters.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UpcomingConditions.pas"/>
         <BuildConfiguration Include="Base">

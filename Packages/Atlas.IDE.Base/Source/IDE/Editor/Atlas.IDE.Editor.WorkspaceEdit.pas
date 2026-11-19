@@ -58,10 +58,11 @@ type
   end;
 
   TAtlasIdeWorkspaceEdit = class
-  private
+  public
+    /// <summary>Schreibt ARanges (Zeichenbereiche in AText, aufsteigend, ohne Überlappung) als einen
+    /// Rückgängig-Schritt in ABuffer mit Text AText.</summary>
     class procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string;
       const ARanges: TArray<TLspTextRange>); static;
-  public
     /// <summary>Aktueller Text: offener Puffer, offenes Formular (Stand des Designers), sonst die Datei auf der
     /// Platte; '' wenn sie fehlt (#400).</summary>
     class function CurrentText(const AFileName: string): string; static;
@@ -85,7 +86,8 @@ uses
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Undo.Target,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Core.Editor.EditSurface;
 
 {$SCOPEDENUMS ON}
 
@@ -517,26 +519,17 @@ end;
 class procedure TAtlasIdeWorkspaceEdit.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string;
   const ARanges: TArray<TLspTextRange>);
 var
-  mWriter: IOTAEditWriter;
-  mRange: TLspTextRange;
-  mStartByte, mEndByte: Integer;
+  mEdits: TAtlasTextEdits;
+  mIndex: Integer;
 begin
-  // Ein Schreiber = ein Rückgängig-Schritt. Er schreibt nur vorwärts; die Bereiche sind aufsteigend.
-  mWriter := ABuffer.CreateUndoableWriter;
-  for mRange in ARanges do
+  mEdits := nil;
+  SetLength(mEdits, Length(ARanges));
+  for mIndex := 0 to High(ARanges) do
   begin
-    mStartByte := TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.StartOffset));
-    mEndByte := TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.EndOffset));
-    mWriter.CopyTo(mStartByte);
-    mWriter.DeleteTo(mEndByte);
-    if mRange.NewText <> '' then
-    begin
-      mWriter.Insert(PAnsiChar(UTF8Encode(mRange.NewText)));
-    end;
+    mEdits[mIndex] := TAtlasTextEdit.Create(ARanges[mIndex].StartOffset,
+      ARanges[mIndex].EndOffset - ARanges[mIndex].StartOffset, ARanges[mIndex].NewText);
   end;
-  mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+  TAtlasEditorSnapshots.WriteEdits(ABuffer, AText, mEdits);
 end;
 
 class function TAtlasIdeWorkspaceEdit.CurrentText(const AFileName: string): string;
