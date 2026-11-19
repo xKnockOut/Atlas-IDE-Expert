@@ -33,7 +33,8 @@ implementation
 uses
   Atlas.Core.Modules.Registry,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Welcome.SettingsSection;
+  Atlas.UI.Welcome.SettingsSection,
+  Atlas.IDE.Welcome.Adapters.SettingsSection;
 
 type
   TWelcomeSettingsProvider = class(TInterfacedObject, IAtlasSettingsSectionProvider)
@@ -49,7 +50,7 @@ var
   mIssues, mSprint: TAtlasWelcomeTileSwitch;
 begin
   mSection := TAtlasWelcomeSettingsSection.Create;
-  Result := mSection;
+  Result := TAtlasIdeWelcomeSettingsSection.Create(mSection);
   // Kacheln des Trackers wie aus dem Kachel-Vertrag (#1903).
   mIssues.Key := 'welcomePage.issues';
   mIssues.Setting := 'WelcomePageIssues';

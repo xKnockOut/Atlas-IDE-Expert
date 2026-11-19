@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Trends;
+﻿unit Atlas.IDE.Welcome.Adapters.Trends;
 
 // Bereich „Projektverlauf“ in der IDE (#758): Quelle des Bereichs
 // (IAtlasTrendsSource) und Bereich atlas.history der Willkommensseite.

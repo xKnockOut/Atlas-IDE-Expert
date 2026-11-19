@@ -1,14 +1,15 @@
-﻿unit Atlas.IDE.Welcome.Settings;
+﻿unit Atlas.IDE.Welcome.Adapters.Settings;
 
 // Abschnitt „Willkommensseite“ im Optionsdialog, IDE-Teil des Moduls
 // Willkommensseite (#1456).
 // TAtlasIdeWelcomeSettings ist der IAtlasSettingsSectionProvider, den die
 // Composition des Moduls über seinen Scope anmeldet: Für jede Optionsseite
-// entsteht ein TAtlasWelcomeSettingsSection mit den Haken dazu.
+// entsteht ein TAtlasWelcomeSettingsSection mit den Haken dazu, den die
+// Composition in den Vertrag hüllt.
 // - „Zählung zurücksetzen“ leert die Befehlsnutzung von Base
 //   (TAtlasIdeCommandUsage, meldet das selbst an alle Hörer),
 // - „Gesperrte Tipps wieder zeigen“ hebt die Sperren von „Atlas entdecken“
-//   (#757) auf und speichert sie sofort.
+//   (#757) auf und speichert sie sofort (Haken der Composition).
 // - Schalter der Kacheln anderer Module (#1903): aus dem Kachel-Vertrag
 //   (SwitchKey, SettingsKey), in Reihenfolge der Kacheln; die Willkommensseite
 //   kennt die Schlüssel der Module nicht.
@@ -16,27 +17,33 @@
 interface
 
 uses
-  Atlas.UI.Settings.Contract;
+  System.SysUtils,
+  Atlas.UI.Settings.Contract,
+  Atlas.UI.Welcome.SettingsSection;
 
 type
   TAtlasIdeWelcomeSettings = class(TInterfacedObject, IAtlasSettingsSectionProvider)
+  private
+    FWrap: TFunc<TAtlasWelcomeSettingsSection, IAtlasSettingsSection>;
+    FUnblockTips: TProc;
   public
+    /// <summary>AWrap hüllt einen neuen Abschnitt in den Vertrag (übernimmt ihn); AUnblockTips hebt die Sperren
+    /// von „Atlas entdecken“ auf.</summary>
+    constructor Create(const AWrap: TFunc<TAtlasWelcomeSettingsSection, IAtlasSettingsSection>;
+      const AUnblockTips: TProc);
     function CreateSection: IAtlasSettingsSection;
   end;
 
 implementation
 
 uses
-  System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Settings.Catalog,
   Atlas.IDE.Contracts.WelcomeTiles,
-  Atlas.IDE.Commands.Usage,
-  Atlas.IDE.Welcome.Discover,
-  Atlas.UI.Welcome.SettingsSection;
+  Atlas.IDE.Commands.Usage;
 
 /// <summary>Schalter der Kacheln anderer Module in Reihenfolge ihrer Kacheln.</summary>
 function TileSwitches: TArray<TAtlasWelcomeTileSwitch>;
@@ -92,12 +99,22 @@ end;
 
 { TAtlasIdeWelcomeSettings }
 
+constructor TAtlasIdeWelcomeSettings.Create(const AWrap: TFunc<TAtlasWelcomeSettingsSection, IAtlasSettingsSection>;
+  const AUnblockTips: TProc);
+begin
+  inherited Create;
+  FWrap := AWrap;
+  FUnblockTips := AUnblockTips;
+end;
+
 function TAtlasIdeWelcomeSettings.CreateSection: IAtlasSettingsSection;
 var
   mSection: TAtlasWelcomeSettingsSection;
+  mUnblock: TProc;
 begin
   mSection := TAtlasWelcomeSettingsSection.Create;
-  Result := mSection;
+  Result := FWrap(mSection);
+  mUnblock := FUnblockTips;
   mSection.Hooks.TileSwitches := TileSwitches;
   mSection.Hooks.OnResetUsage :=
     procedure
@@ -114,7 +131,10 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
         procedure
         begin
-          TAtlasIdeDiscover.UnblockAll;
+          if Assigned(mUnblock) then
+          begin
+            mUnblock();
+          end;
         end);
     end;
 end;

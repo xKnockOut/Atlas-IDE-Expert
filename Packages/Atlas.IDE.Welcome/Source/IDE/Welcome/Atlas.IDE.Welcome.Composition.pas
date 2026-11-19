@@ -14,7 +14,7 @@
 //   zum Modul Tracker,
 // - die Einträge im Atlas-Menü und unter Ansicht › Atlas,
 // - Einstellungen und Thema an die laufende Seite,
-// - den Abschnitt der Optionsseite (Atlas.IDE.Welcome.Settings).
+// - den Abschnitt der Optionsseite (Atlas.IDE.Welcome.Adapters.Settings).
 // Andere Module erreicht die Seite nur über Verträge (TAtlasWelcomeNeighbors,
 // Kacheln über Atlas.IDE.Contracts.WelcomeTiles). Abmelden in der
 // Finalisierung, solange Base läuft (Regel 5); passt die Vertragsversion von
@@ -62,9 +62,12 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Layouts,
-  Atlas.IDE.Welcome.Settings,
-  Atlas.IDE.Welcome.Setup,
-  Atlas.IDE.Welcome.Startup,
+  Atlas.IDE.Welcome.Adapters.Settings,
+  Atlas.IDE.Welcome.Adapters.SettingsSection,
+  Atlas.IDE.Welcome.Adapters.Discover,
+  Atlas.UI.Welcome.SettingsSection,
+  Atlas.IDE.Welcome.Adapters.Setup,
+  Atlas.IDE.Welcome.Composition.Startup,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Welcome.Strings;
 
@@ -246,6 +249,19 @@ begin
   Result.Section := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.MenuGroupWelcome);
 end;
 
+{ Optionsdialog }
+
+function WrapSettings(ASection: TAtlasWelcomeSettingsSection): IAtlasSettingsSection;
+begin
+  Result := TAtlasIdeWelcomeSettingsSection.Create(ASection);
+end;
+
+/// <summary>„Gesperrte Tipps wieder zeigen“ (#757).</summary>
+procedure UnblockTips;
+begin
+  TAtlasIdeDiscover.UnblockAll;
+end;
+
 { TAtlasWelcomeModule }
 
 class function TAtlasWelcomeModule.Parts: TArray<IAtlasFeaturePart>;
@@ -348,7 +364,8 @@ begin
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
   // Ab der Anmeldung: Die Seite lässt sich auch bei ausgeschaltetem Modul einstellen.
-  GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeWelcomeSettings.Create as IAtlasSettingsSectionProvider);
+  GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeWelcomeSettings.Create(WrapSettings, UnblockTips) as
+    IAtlasSettingsSectionProvider);
   Result := True;
 end;
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.State;
+﻿unit Atlas.IDE.Welcome.Adapters.State;
 
 // Zustandskachel „Atlas“ in der IDE (#754): Quelle des Bereichs
 // (IAtlasStateSource) und Anmeldung als Bereich atlas.state der

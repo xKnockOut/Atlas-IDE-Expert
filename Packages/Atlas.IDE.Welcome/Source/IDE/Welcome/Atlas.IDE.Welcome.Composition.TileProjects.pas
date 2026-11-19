@@ -1,42 +1,34 @@
-﻿unit Atlas.IDE.Welcome.TileProjects;
+﻿unit Atlas.IDE.Welcome.Composition.TileProjects;
 
-// Bereich „Projekte“ (#592) für Kacheln anderer Module (#1455): baut aus der
-// laufenden Willkommensseite, was IAtlasWelcomeProjects erreicht (Liste,
-// gewähltes Projekt, Öffnen, Aktualisieren). Jeder Aufruf fragt die Seite neu;
-// ohne Seite oder ohne den Bereich liefert er nichts bzw. tut nichts.
+// Bereich „Projekte“ (#592) für Kacheln anderer Module (#1455): baut aus dem
+// laufenden Bereich, was IAtlasWelcomeProjects erreicht (Liste, gewähltes
+// Projekt, Öffnen, Aktualisieren). Jeder Aufruf fragt den Bereich neu; ohne
+// Bereich liefert er nichts bzw. tut nichts.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.IDE.Welcome.Commands,
-  Atlas.IDE.Welcome.Tiles;
+  Atlas.IDE.Welcome.Adapters.Projects,
+  Atlas.IDE.Welcome.Adapters.Tiles;
 
 type
   TAtlasWelcomeTileProjects = class
   public
-    /// <summary>Zugriff auf „Projekte“ der Seite, die ACurrent gerade liefert (nil = keine).</summary>
-    class function Access(const ACurrent: TFunc<TAtlasIdeWelcome>): TAtlasWelcomeProjectsAccess; static;
+    /// <summary>Zugriff auf den Bereich „Projekte“, den ACurrent gerade liefert (nil = keiner).</summary>
+    class function Access(const ACurrent: TFunc<TAtlasIdeProjects>): TAtlasWelcomeProjectsAccess; static;
   end;
 
 implementation
 
 uses
   Atlas.Core.Welcome.Projects,
-  Atlas.IDE.Contracts.WelcomeTiles,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Contracts.WelcomeTiles;
 
-/// <summary>Bereich „Projekte“ der Seite; nil ohne Seite oder Bereich.</summary>
-function ProjectsOf(const ACurrent: TFunc<TAtlasIdeWelcome>): TAtlasIdeProjects;
-var
-  mPage: TAtlasIdeWelcome;
+/// <summary>Bereich „Projekte“; nil ohne Bereich.</summary>
+function ProjectsOf(const ACurrent: TFunc<TAtlasIdeProjects>): TAtlasIdeProjects;
 begin
-  Result := nil;
-  mPage := ACurrent();
-  if mPage <> nil then
-  begin
-    Result := mPage.Areas.Projects;
-  end;
+  Result := ACurrent();
 end;
 
 function ListOf(AProjects: TAtlasIdeProjects): TArray<TAtlasWelcomeProject>;
@@ -59,10 +51,10 @@ end;
 
 { TAtlasWelcomeTileProjects }
 
-class function TAtlasWelcomeTileProjects.Access(const ACurrent: TFunc<TAtlasIdeWelcome>):
+class function TAtlasWelcomeTileProjects.Access(const ACurrent: TFunc<TAtlasIdeProjects>):
   TAtlasWelcomeProjectsAccess;
 var
-  mCurrent: TFunc<TAtlasIdeWelcome>;
+  mCurrent: TFunc<TAtlasIdeProjects>;
 begin
   mCurrent := ACurrent;
   Result := Default(TAtlasWelcomeProjectsAccess);

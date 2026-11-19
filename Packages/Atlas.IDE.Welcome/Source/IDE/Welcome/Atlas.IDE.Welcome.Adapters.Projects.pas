@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Projects;
+﻿unit Atlas.IDE.Welcome.Adapters.Projects;
 
 // Bereich „Projekte“ in der IDE (#592): Quelle des Bereichs
 // (IAtlasProjectsSource) und Anmeldung als Bereich atlas.projects der

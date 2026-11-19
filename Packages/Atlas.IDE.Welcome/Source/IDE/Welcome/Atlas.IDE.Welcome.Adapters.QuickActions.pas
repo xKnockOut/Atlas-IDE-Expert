@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.QuickActions;
+﻿unit Atlas.IDE.Welcome.Adapters.QuickActions;
 
 // Schnellaktionen je Projekt auf der Willkommensseite in der IDE (#764):
 // Quelle der Knopfleiste (IAtlasQuickActionsSource) in den Bereichen
@@ -50,40 +50,20 @@ uses
   Atlas.IDE.Contracts.BuildTools,
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns,
-  Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.QuickActions.Keys,
   Atlas.Core.Notifications.MessageSink,
-  Atlas.UI.Welcome.Contract;
+  Atlas.UI.Welcome.Contract,
+  Atlas.IDE.Welcome.Neighbors,
+  Atlas.Core.Projects.Contract.Summary;
 
 type
-  /// <summary>Ende eines Builds: AError &lt;&gt; '' = nicht gebaut (Grund), sonst Erfolg.</summary>
-  TAtlasQuickBuildDone = reference to procedure(ASucceeded: Boolean; const AError: string);
-  /// <summary>Baut das offene AProject (Konfiguration und Plattform '' = wie in der IDE); False mit Grund.</summary>
-  TAtlasQuickBuildFunc = reference to function(const AProject, AConfiguration, APlatform: string;
-    const ADone: TAtlasQuickBuildDone; out AReason: string): Boolean;
-  /// <summary>Startet die Tests des offenen Testprojekts ATestProject (mit Build vorab); False mit Grund.</summary>
-  TAtlasQuickTestsFunc = reference to function(const ATestProject: string; out AReason: string): Boolean;
-  /// <summary>Startprofile von AProject (Namen) und das aktive.</summary>
-  TAtlasQuickProfilesFunc = reference to function(const AProject: string; out AActive: string): TArray<string>;
-  /// <summary>Startet das offene AProject mit Profil AProfile ('' = ohne); False mit Grund.</summary>
-  TAtlasQuickRunFunc = reference to function(const AProject, AProfile: string; out AReason: string): Boolean;
-  /// <summary>Namen der Projektaufgaben von AProject (#900).</summary>
-  TAtlasQuickTaskNamesFunc = reference to function(const AProject: string): TArray<string>;
-  /// <summary>Startet die Projektaufgabe AName von AProject; False mit Grund.</summary>
-  TAtlasQuickRunTaskFunc = reference to function(const AProject, AName: string; out AReason: string): Boolean;
-
-  /// <summary>Haken der IDE-Schicht für die Schnellaktionen (Composition setzt sie).</summary>
-  TAtlasQuickActionHooks = record
-    OnBuild: TAtlasQuickBuildFunc;
-    OnTests: TAtlasQuickTestsFunc;
-    /// <summary>Läuft ein Testlauf (auch der Build davor)?</summary>
-    OnTestsBusy: TFunc<Boolean>;
-    /// <summary>Ist die IDE schon mit einem Build oder Testlauf beschäftigt (auch nicht von hier)?</summary>
-    OnIdeBusy: TFunc<Boolean>;
-    OnProfiles: TAtlasQuickProfilesFunc;
-    OnRun: TAtlasQuickRunFunc;
-    OnTaskNames: TAtlasQuickTaskNamesFunc;
-    OnRunTask: TAtlasQuickRunTaskFunc;
+  /// <summary>Was die Schnellaktionen von „Projekte“ brauchen; die Composition verbindet beide.</summary>
+  TAtlasQuickProjects = record
+    /// <summary>Stand der Versionsverwaltung von AProject (Branch, Rückstand, Änderungen).</summary>
+    VcsOf: TFunc<string, TAtlasProjectVcs>;
+    OpenFolder: TProc<string>;
+    /// <summary>Stand von AProject neu abfragen (nach Pull).</summary>
+    Refresh: TProc<string>;
   end;
 
   TAtlasIdeQuickActions = class(TInterfacedObject, IAtlasQuickActionsSource)
@@ -104,7 +84,7 @@ type
     end;
   private
     FMessage: TAtlasMessageSink;
-    FProjects: TAtlasIdeProjects;
+    FProjects: TAtlasQuickProjects;
     FStopped: Boolean;
     /// <summary>Stand je Projekt, laufende Testläufe und Projektaufgaben dieser Sitzung.</summary>
     FRuns: TAtlasQuickActionRuns;
@@ -122,7 +102,7 @@ type
     Hooks: TAtlasQuickActionHooks;
     /// <summary>AProjects: Quelle von „Projekte“ (Branch und Änderungen, Ordner, Neu-Abfrage nach Pull);
     /// AMessage: Zeile in die Meldungsansicht.</summary>
-    constructor Create(AProjects: TAtlasIdeProjects; const AMessage: TProc<string>);
+    constructor Create(const AProjects: TAtlasQuickProjects; const AMessage: TProc<string>);
     destructor Destroy; override;
     /// <summary>Tastaturbeobachtung anmelden.</summary>
     procedure Start;
@@ -396,7 +376,7 @@ end;
 
 { TAtlasIdeQuickActions }
 
-constructor TAtlasIdeQuickActions.Create(AProjects: TAtlasIdeProjects; const AMessage: TProc<string>);
+constructor TAtlasIdeQuickActions.Create(const AProjects: TAtlasQuickProjects; const AMessage: TProc<string>);
 begin
   inherited Create;
   FProjects := AProjects;
@@ -562,7 +542,7 @@ begin
   FStopped := True;
   FreeAndNil(FInput.Keys);
   FreeAndNil(FInput.Watch);
-  FProjects := nil;
+  FProjects := Default(TAtlasQuickProjects);
   Hooks := Default(TAtlasQuickActionHooks);
 end;
 
@@ -612,7 +592,7 @@ var
   mHasTasks: Boolean;
 begin
   Result := nil;
-  if not Enabled or (FProjects = nil) then
+  if not Enabled or not Assigned(FProjects.VcsOf) then
   begin
     Exit;
   end;
@@ -677,7 +657,7 @@ begin
     TAtlasQuickAction.Pull:
       Pull(AProject);
     TAtlasQuickAction.Folder:
-      if FProjects <> nil then
+      if Assigned(FProjects.OpenFolder) then
       begin
         FProjects.OpenFolder(AProject);
       end;
@@ -925,7 +905,7 @@ var
   mOutcome: TAtlasPullOutcome;
   mReason: TAtlasVcsOutcome;
 begin
-  if FStopped or not Enabled or State(AProject).Running or (FProjects = nil) then
+  if FStopped or not Enabled or State(AProject).Running or not Assigned(FProjects.VcsOf) then
   begin
     Exit;
   end;
@@ -959,7 +939,7 @@ begin
       end;
       FRuns.SetState(mProject, PullResult(State(mProject), FMessage, mProject, mOutcome, mReason, mUpdate));
       // Branch, Rückstand und Änderungen frisch abfragen; „Projekte“ meldet sich danach selbst.
-      if FProjects <> nil then
+      if Assigned(FProjects.Refresh) then
       begin
         FProjects.Refresh(mProject);
       end;

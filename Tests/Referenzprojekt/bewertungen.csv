@@ -27,9 +27,9 @@ possibly-uninitialized,Atlas.Common.Pascal.Lexer.pas,423,falsch,2026-10-17
 possibly-uninitialized,Atlas.Common.Semantics.NameResolver.pas,1235,falsch,2026-10-17
 possibly-uninitialized,Atlas.Text.TestResults.pas,485,falsch,2026-10-17
 security-command-injection,Atlas.IDE.UnitSearch.Commands.pas,770,falsch,2026-10-17
-security-command-injection,Atlas.IDE.Welcome.Help.pas,247,falsch,2026-10-17
-security-command-injection,Atlas.IDE.Welcome.Projects.pas,876,falsch,2026-10-17
-security-command-injection,Atlas.IDE.Welcome.Unsaved.pas,716,falsch,2026-10-17
+security-command-injection,Atlas.IDE.Welcome.Adapters.Help.pas,247,falsch,2026-10-17
+security-command-injection,Atlas.IDE.Welcome.Adapters.Projects.pas,876,falsch,2026-10-17
+security-command-injection,Atlas.IDE.Welcome.Adapters.Unsaved.pas,716,falsch,2026-10-17
 security-insecure-http,Atlas.Common.Editing.DocumentLinks.pas,152,falsch,2026-10-17
 security-insecure-http,Atlas.Common.Rules.Builtin.Security.pas,433,falsch,2026-10-17
 security-insecure-http,Atlas.Common.Rules.Builtin.Security.pas,440,falsch,2026-10-17
@@ -59,7 +59,7 @@ unused-assignment,Atlas.IDE.Editor.Pairs.pas,220,falsch,2026-10-17
 unused-assignment,Atlas.IDE.Editor.WorkspaceEdit.pas,432,falsch,2026-10-17
 unused-assignment,Atlas.IDE.Files.Reloader.pas,339,falsch,2026-10-17
 unused-assignment,Atlas.IDE.Undo.Target.pas,140,falsch,2026-10-17
-unused-assignment,Atlas.IDE.Welcome.Continue.pas,1184,falsch,2026-10-17
+unused-assignment,Atlas.IDE.Welcome.Adapters.Continue.pas,1184,falsch,2026-10-17
 unused-assignment,Atlas.UI.Settings.Page.pas,3518,falsch,2026-10-17
 unused-parameter,Atlas.Common.Lsp.MessageHandlers.pas,222,richtig,2026-10-17
 unused-parameter,Atlas.Common.Lsp.UnitSearch.pas,750,richtig,2026-10-17

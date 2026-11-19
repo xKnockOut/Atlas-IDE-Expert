@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Continue;
+﻿unit Atlas.IDE.Welcome.Adapters.Continue;
 
 // Bereich „Weiterarbeiten“ in der IDE (#755): Quelle des Bereichs
 // (IAtlasContinueSource), Anmeldung als Bereich atlas.continue der
@@ -38,7 +38,7 @@
 // - Schnellaktionen (#764): Die Quelle der Knopfleiste (QuickActions, aus der
 //   Composition) bekommt jeder Frame.
 // - Reiter „Issues“ (#2052): Arbeitsstand je Issue in
-//   Atlas.IDE.Welcome.ContinueIssues; WriteState schreibt denselben Stand
+//   Atlas.IDE.Welcome.ContinueIssueLink (legt die Composition an); WriteState schreibt denselben Stand
 //   dort unter dem aktiven Issue.
 // - Editor und Projekte der IDE: Atlas.IDE.Welcome.Continue.Editor; „Gemerkt“:
 //   Atlas.IDE.Welcome.Continue.Saved.
@@ -56,7 +56,7 @@ uses
   Atlas.Core.Welcome.ContinueQueries,
   Atlas.Core.Welcome.Saved,
   Atlas.IDE.Welcome.Continue.Editor,
-  Atlas.IDE.Welcome.ContinueIssues,
+  Atlas.IDE.Welcome.ContinueIssueLink,
   Atlas.Core.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
@@ -141,8 +141,8 @@ type
   public
     /// <summary>Quelle der Schnellaktionen und Seite Versionsverwaltung; setzt die Komposition.</summary>
     Hooks: TAtlasIdeContinueHooks;
-    /// <summary>AMessage: Zeile in die Meldungsansicht.</summary>
-    constructor Create(const AMessage: TProc<string>);
+    /// <summary>AMessage: Zeile in die Meldungsansicht; AIssues legt den Reiter „Issues“ an (#2052).</summary>
+    constructor Create(const AMessage: TProc<string>; const AIssues: TAtlasIdeContinueIssuesCreate);
     destructor Destroy; override;
     /// <summary>Bereich, Fabrik und Beobachter der IDE anmelden.</summary>
     procedure Start;
@@ -152,7 +152,7 @@ type
     /// <summary>Palettenbefehl Atlas.Continue: obersten Arbeitsstand fortsetzen.</summary>
     procedure ResumeLatest;
     /// <summary>Arbeitsstand je Issue (#2052); bis zur Freigabe vorhanden.</summary>
-    function Issues: TAtlasIdeContinueIssues;
+    function Issues: TAtlasIdeContinueIssueLink;
     { IAtlasContinueSource }
     function Entries: TAtlasContinueEntries;
     function Incoming: TAtlasContinueIncoming;
@@ -475,7 +475,7 @@ end;
 
 { TAtlasIdeContinue }
 
-constructor TAtlasIdeContinue.Create(const AMessage: TProc<string>);
+constructor TAtlasIdeContinue.Create(const AMessage: TProc<string>; const AIssues: TAtlasIdeContinueIssuesCreate);
 begin
   inherited Create;
   FMessage := TAtlasMessageSink.Create(AMessage);
@@ -484,7 +484,7 @@ begin
   FChanges := TDictionary<string, TAtlasWorkTab>.Create;
   FHeads := TAtlasContinueHeads.Create;
   FIncoming := TAtlasContinueIncomingQueries.Create;
-  FIssues := TAtlasIdeContinueIssues.Create(AMessage, FChanges, Changed);
+  FIssues := AIssues(AMessage, FChanges, Changed);
 end;
 
 destructor TAtlasIdeContinue.Destroy;
@@ -777,7 +777,7 @@ begin
       // Schnellaktionen (#764): dieselbe Quelle für jeden Frame.
       Frame.QuickActions := Hooks.QuickActions;
       // Reiter „Issues“ (#2052).
-      Frame.IssuesSource := Issues;
+      Frame.IssuesSource := Issues.Source;
       Result := Frame;
     end);
   TAtlasWelcomeSections.Default.Add(Section);
@@ -881,9 +881,9 @@ begin
   Resume(mEntry.Project);
 end;
 
-function TAtlasIdeContinue.Issues: TAtlasIdeContinueIssues;
+function TAtlasIdeContinue.Issues: TAtlasIdeContinueIssueLink;
 begin
-  Result := FIssues as TAtlasIdeContinueIssues;
+  Result := FIssues as TAtlasIdeContinueIssueLink;
 end;
 
 function TAtlasIdeContinue.Entries: TAtlasContinueEntries;

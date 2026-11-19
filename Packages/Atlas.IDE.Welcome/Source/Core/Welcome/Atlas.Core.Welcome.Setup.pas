@@ -27,9 +27,19 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup,
   Atlas.Core.Projects.PathCheck,
+  Atlas.Core.Generate.Contract,
   Atlas.Core.Welcome.Contract;
 
 type
+  /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
+  TAtlasSetupBaselineDone = reference to procedure(ASucceeded: Boolean; ATotal, AFiles: Integer;
+    const AError: string);
+  /// <summary>Startet atlas.updateBaseline für AProject; '' = gestartet, sonst der Grund in der Sprache der
+  /// Oberfläche (ADone kommt dann nicht).</summary>
+  TAtlasSetupBaselineStart = reference to function(const AProject: string;
+    const ADone: TAtlasSetupBaselineDone): string;
+  TAtlasSetupNewFile = reference to procedure(AKind: TAtlasNewFileKind);
+
 {$SCOPEDENUMS ON}
   TAtlasSetupRun = Atlas.Core.Welcome.Contract.TAtlasSetupRun;
   /// <summary>Was Refresh meldet: neu anmelden (Titel geändert), neu ordnen (Karte erscheint oder verschwindet)

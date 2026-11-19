@@ -1,10 +1,10 @@
-﻿unit Atlas.IDE.Welcome.Registry;
+﻿unit Atlas.IDE.Welcome.Adapters.Registry;
 
 // Zugriff auf HKCU für die Sicherung des Willkommensseiten-Layouts (#753):
 // liest einen Schlüssel samt Unterschlüsseln mit allen Werten und Typen
 // (über TAtlasRegKey) und schreibt ihn exakt zurück (vorher wird der Schlüssel
-// gelöscht, damit keine Reste bleiben). Basisschlüssel der IDE aus
-// IOTAServices.GetBaseRegistryKey (z. B. Software\Embarcadero\BDS\37.0).
+// gelöscht, damit keine Reste bleiben). Den Basisschlüssel der IDE liefert
+// TAtlasIdeWelcomeIdeLayout.IdeBaseKey.
 
 interface
 
@@ -17,8 +17,6 @@ type
   public
     function Read(const APath: string): TAtlasRegNodes;
     procedure Replace(const APath: string; const ANodes: TAtlasRegNodes);
-    /// <summary>Basisschlüssel der laufenden IDE ohne führenden Backslash.</summary>
-    class function IdeBaseKey: string; static;
   end;
 
 implementation
@@ -27,8 +25,7 @@ uses
   Winapi.Windows,
   System.Classes,
   System.Win.Registry,
-  Atlas.Core.Welcome.Backup,
-  ToolsAPI;
+  Atlas.Core.Welcome.Backup;
 
 const
   // REG_QWORD; nicht in jeder Fassung von Winapi.Windows.
@@ -279,21 +276,6 @@ begin
     end;
   finally
     mRegistry.Free;
-  end;
-end;
-
-class function TAtlasIdeRegistryAccess.IdeBaseKey: string;
-var
-  mServices: IOTAServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result := mServices.GetBaseRegistryKey;
-  end;
-  while (Result <> '') and (Result[1] = '\') do
-  begin
-    Delete(Result, 1, 1);
   end;
 end;
 

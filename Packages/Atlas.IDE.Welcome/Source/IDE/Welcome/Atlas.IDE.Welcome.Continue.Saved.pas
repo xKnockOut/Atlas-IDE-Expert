@@ -5,7 +5,7 @@
 // Projekte (bei Projektgruppen auch ihrer Projekte) und angeheftete Favoriten
 // (#458); für einen Favoriten die Datei der Unit aus den Index-Caches auf der
 // Platte und die Zeile der Deklaration. Abgeteilt aus
-// Atlas.IDE.Welcome.Continue (Atlas-Befunde).
+// Atlas.IDE.Welcome.Adapters.Continue (Atlas-Befunde).
 
 interface
 

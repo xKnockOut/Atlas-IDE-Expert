@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Discover;
+﻿unit Atlas.IDE.Welcome.Adapters.Discover;
 
 // Karte „Atlas entdecken“ in der IDE (#757): Quelle der Karte
 // (IAtlasDiscoverSource) und Bereich atlas.discover der Willkommensseite.

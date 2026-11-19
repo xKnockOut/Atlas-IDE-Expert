@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Help;
+﻿unit Atlas.IDE.Welcome.Adapters.Help;
 
 // Bereich „Hilfe und Rückmeldung“ in der IDE (#766): Quelle des Bereichs
 // (IAtlasHelpSource) und Bereich atlas.help der Willkommensseite.
