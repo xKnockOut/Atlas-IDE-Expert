@@ -80,6 +80,9 @@ type
     /// <summary>Ersetzt AFileName atomar durch ABytes wie Save, ohne die Prüfung auf binäre Formulare: für
     /// Datendateien des Plugins (TAtlasDataFile). Der Ordner muss vorhanden sein.</summary>
     class procedure Replace(const AFileName: string; const ABytes: TBytes); static;
+    /// <summary>Benennt ASource in ATarget um und ersetzt eine vorhandene ATarget in einem Schritt; False, wenn
+    /// es nicht ging (gesperrt, fort).</summary>
+    class function MoveReplacing(const ASource, ATarget: string): Boolean; static;
   end;
 
 implementation
@@ -364,6 +367,11 @@ end;
 class function TAtlasTextFile.ReadAllBytes(const AFileName: string): TBytes;
 begin
   Result := TAtlasSharedRead.ReadAllBytes(AFileName);
+end;
+
+class function TAtlasTextFile.MoveReplacing(const ASource, ATarget: string): Boolean;
+begin
+  Result := MoveFileEx(PChar(ASource), PChar(ATarget), MOVEFILE_REPLACE_EXISTING);
 end;
 
 class function TAtlasTextFile.Load(const AFileName: string; ADefaultCodePage: Integer): TAtlasTextFileContent;

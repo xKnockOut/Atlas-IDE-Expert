@@ -82,7 +82,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.Classes,
   System.SyncObjs,
   Atlas.Text.Encoding,
@@ -248,7 +247,7 @@ begin
   mTarget := AFileName + cDefectExtension;
   // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand. Erst
   // löschen, dann umbenennen konnte zwei Lesern die eben beiseitegelegte Datei kosten.
-  Result := MoveFileEx(PChar(AFileName), PChar(mTarget), MOVEFILE_REPLACE_EXISTING);
+  Result := TAtlasTextFile.MoveReplacing(AFileName, mTarget);
   if Result then
   begin
     TAtlasGuard.Log(Format('Datendatei %s: %s; beiseitegelegt als *%s, Atlas beginnt sie neu',
