@@ -10,7 +10,10 @@
 //   - AutoContinue: still fortsetzen, weil die Klasse (#517) oder Klasse +
 //     Datei + Zeile im Projekt („Nur an dieser Stelle ignorieren“) auf der
 //     Ignorier-Liste steht. Orte zählen nur mit
-//     debug.exceptionBanner.ignoreAtLocation.
+//     debug.exceptionBanner.ignoreAtLocation. Eine passende Exception-Regel
+//     (#2549, WithRule) geht beiden vor: „anhalten“ hält auch bei
+//     ignorierter Klasse, „protokollieren“ setzt fort und zählt grau,
+//     „weiterlaufen“ setzt ohne Eintrag fort.
 //   - Info: Inhalt der Leiste. Der Aufrufstapel ist auf die erste eigene
 //     Zeile gekürzt (#578); die Rahmen darüber (RTL, VCL) zählen als
 //     „n Ebenen ausgeblendet“.
@@ -22,12 +25,13 @@ interface
 uses
   Atlas.Core.KnownErrors.Contract,
   Atlas.Core.Debug.Exceptions,
-  Atlas.Core.Debug.ExceptionDialog;
+  Atlas.Core.Debug.ExceptionDialog,
+  Atlas.Core.Debug.ExceptionRules;
 
 type
   {$SCOPEDENUMS ON}
   TAtlasDebugBannerMode = (Off, Replace, Additional);
-  TAtlasDebugAutoContinue = (None, ByClass, ByLocation);
+  TAtlasDebugAutoContinue = (None, ByClass, ByLocation, ByRule, Silent);
   {$SCOPEDENUMS OFF}
 
   {$SCOPEDENUMS ON}
@@ -35,7 +39,7 @@ type
   /// <summary>Knöpfe der Exception-Leiste und ihre anklickbare Ortszeile (Open); Known*: bekannte Fehler (#2460).
   /// </summary>
   TAtlasDebugBarAction = (None, BreakHere, Continue, IgnoreClass, IgnoreLocation, Copy, Open, WhereAssigned, Evaluate,
-    CopyExplanation, CreateTest, KnownOpen, KnownComment, KnownReopen, KnownNew);
+    CopyExplanation, CreateTest, MessageRule, KnownOpen, KnownComment, KnownReopen, KnownNew);
   {$SCOPEDENUMS OFF}
 
   TAtlasDebugBannerLine = record
@@ -97,6 +101,8 @@ type
     CanIgnoreLocation: Boolean;
     /// <summary>Knopf „Test daraus anlegen …“ (#1873): Ein Modul bietet den Befehl an.</summary>
     CanCreateTest: Boolean;
+    /// <summary>Knopf „Meldung …“ (#2549): Einstellung an und eine Meldung da.</summary>
+    CanMessageRule: Boolean;
     function HasLocation: Boolean;
     /// <summary>„Unit1.pas:42“; '' ohne Datei.</summary>
     function LocationText: string;
@@ -115,6 +121,9 @@ type
       const ADialog: TAtlasDebugDialogScan): TAtlasDebugBannerMode; static;
     class function AutoContinue(AClassIgnored, ALocationIgnored,
       AIgnoreAtLocation: Boolean): TAtlasDebugAutoContinue; static;
+    /// <summary>AAuto aus AutoContinue, überstimmt von einer passenden Regel (AMatched) mit AAction.</summary>
+    class function WithRule(AAuto: TAtlasDebugAutoContinue; AMatched: Boolean;
+      AAction: TAtlasExceptionAction): TAtlasDebugAutoContinue; static;
     /// <summary>Inhalt der Leiste aus dem Eintrag des Verlaufs (Rahmen, Ort und Zähler gesetzt). AMainLabel:
     /// Text für den Hauptthread ohne Namen.</summary>
     class function Info(const AException: TAtlasDebugException; AJustMyCode: Boolean; const AProject,
@@ -215,6 +224,23 @@ begin
   else
   begin
     Result := TAtlasDebugBannerMode.Additional;
+  end;
+end;
+
+class function TAtlasDebugBannerRules.WithRule(AAuto: TAtlasDebugAutoContinue; AMatched: Boolean;
+  AAction: TAtlasExceptionAction): TAtlasDebugAutoContinue;
+begin
+  if not AMatched then
+  begin
+    Exit(AAuto);
+  end;
+  case AAction of
+    TAtlasExceptionAction.Log:
+      Result := TAtlasDebugAutoContinue.ByRule;
+    TAtlasExceptionAction.Continue:
+      Result := TAtlasDebugAutoContinue.Silent;
+  else
+    Result := TAtlasDebugAutoContinue.None;
   end;
 end;
 

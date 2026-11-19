@@ -26,7 +26,8 @@ type
     UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash, UpdatesErrorArchive, UpdatesErrorUnsigned,
     UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
     UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection, UpdatesErrorUnexpected, UpdatesErrorStart,
-    UpdatesCheckFailedMessage);
+    UpdatesCheckFailedMessage, UpdatesConsentTitle, UpdatesConsentText, UpdatesConsentYes, UpdatesConsentNo,
+    UpdatesAvailable);
 
   TAtlasUpdatesStrings = class
   public
@@ -112,7 +113,12 @@ const
      'unerwarteter Fehler',
      'AtlasUpdate.exe nicht gestartet',
      'Atlas-Update-Prüfung fehlgeschlagen (%s). Ob es eine neuere Version gibt, ist unbekannt; Atlas versucht ' +
-     'es beim nächsten Start der IDE wieder, frühestens in einer Stunde. Releases: %s'),
+     'es beim nächsten Start der IDE wieder, frühestens in einer Stunde. Releases: %s',
+     'Atlas: Updates',
+     'Soll Atlas einmal täglich nachsehen, ob eine neue Version vorliegt? Übertragen werden nur die Atlas-Version und die IDE-Version, keine Projektdaten. Atlas lädt nichts herunter und installiert nichts; ändern lässt sich das unter Tools › Optionen › Atlas.',
+     'Ja, prüfen',
+     'Nein',
+     'Atlas %s ist verfügbar (installiert: %s). Änderungen: %s'),
     ( 'Install updates:',
      'offer',
      'prepare without asking',
@@ -179,7 +185,12 @@ const
      'unexpected error',
      'AtlasUpdate.exe not started',
      'Atlas update check failed (%s). Whether a newer version exists is unknown; Atlas tries again at the ' +
-     'next IDE start, after one hour at the earliest. Releases: %s'));
+     'next IDE start, after one hour at the earliest. Releases: %s',
+     'Atlas: updates',
+     'Should Atlas check once a day whether a new version is available? Only the Atlas version and the IDE version are sent, no project data. Atlas downloads and installs nothing; change this under Tools › Options › Atlas.',
+     'Yes, check',
+     'No',
+     'Atlas %s is available (installed: %s). Changes: %s'));
 
 { TAtlasUpdatesStrings }
 

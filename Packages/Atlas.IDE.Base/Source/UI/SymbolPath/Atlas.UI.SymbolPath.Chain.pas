@@ -86,7 +86,6 @@ uses
   System.Math,
   Vcl.Forms,
   Atlas.Core.Style.Color,
-  Atlas.UI.Strings,
   Atlas.UI.SymbolPath.Strings,
   Atlas.UI.Foundation.Theme;
 
@@ -207,25 +206,25 @@ type
   /// <summary>Kantenart des Servers ohne Variante und ihr Text.</summary>
   TAtlasStepText = record
     Kind: string;
-    Id: TAtlasTextId;
+    Id: TAtlasSymbolPathTextId;
   end;
 
 const
   cStepTexts: array[0..4] of TAtlasStepText = (
-    (Kind: 'inherits'; Id: TAtlasTextId.SymbolPathEdgeInherits),
-    (Kind: 'parameter'; Id: TAtlasTextId.SymbolPathEdgeParameter),
-    (Kind: 'result'; Id: TAtlasTextId.SymbolPathEdgeResult),
-    (Kind: 'calls'; Id: TAtlasTextId.SymbolPathEdgeCalls),
-    (Kind: 'contains'; Id: TAtlasTextId.SymbolPathEdgeContains));
-  cUsesTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeUses,
-    TAtlasTextId.SymbolPathEdgeUsesImpl);
-  cImplementsTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeImplements,
-    TAtlasTextId.SymbolPathEdgeImplementedBy);
-  cHasFieldTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeHasField,
-    TAtlasTextId.SymbolPathEdgeOfType);
+    (Kind: 'inherits'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeInherits),
+    (Kind: 'parameter'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeParameter),
+    (Kind: 'result'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeResult),
+    (Kind: 'calls'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeCalls),
+    (Kind: 'contains'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeContains));
+  cUsesTexts: array[Boolean] of TAtlasSymbolPathTextId = (TAtlasSymbolPathTextId.SymbolPathEdgeUses,
+    TAtlasSymbolPathTextId.SymbolPathEdgeUsesImpl);
+  cImplementsTexts: array[Boolean] of TAtlasSymbolPathTextId = (TAtlasSymbolPathTextId.SymbolPathEdgeImplements,
+    TAtlasSymbolPathTextId.SymbolPathEdgeImplementedBy);
+  cHasFieldTexts: array[Boolean] of TAtlasSymbolPathTextId = (TAtlasSymbolPathTextId.SymbolPathEdgeHasField,
+    TAtlasSymbolPathTextId.SymbolPathEdgeOfType);
 
 /// <summary>Text einer Kantenart ohne Variante; False bei unbekannter Art.</summary>
-function SimpleStepText(const AKind: string; out AId: TAtlasTextId): Boolean;
+function SimpleStepText(const AKind: string; out AId: TAtlasSymbolPathTextId): Boolean;
 var
   mEntry: TAtlasStepText;
 begin
@@ -237,7 +236,7 @@ begin
       Exit(True);
     end;
   end;
-  AId := Default(TAtlasTextId);
+  AId := Default(TAtlasSymbolPathTextId);
   Result := False;
 end;
 
@@ -522,24 +521,24 @@ end;
 
 class function TAtlasSymbolPathChain.StepCaption(const AStep: TAtlasSymbolPathStep): string;
 var
-  mId: TAtlasTextId;
+  mId: TAtlasSymbolPathTextId;
 begin
   if AStep.Kind = 'uses' then
   begin
-    Result := TAtlasStrings.Text(cUsesTexts[AStep.Implementation_]);
+    Result := TAtlasSymbolPathStrings.Text(cUsesTexts[AStep.Implementation_]);
   end
   else if AStep.Kind = 'implements' then
   begin
-    Result := TAtlasStrings.Text(cImplementsTexts[AStep.Reverse]);
+    Result := TAtlasSymbolPathStrings.Text(cImplementsTexts[AStep.Reverse]);
   end
   else if AStep.Kind = 'hasField' then
   begin
     // Der Server unterscheidet „hat Feld“ (Typ → Typ) und „vom Typ“ (Feld, Variable → Typ).
-    Result := TAtlasStrings.Text(cHasFieldTexts[AStep.Caption = cServerOfType]);
+    Result := TAtlasSymbolPathStrings.Text(cHasFieldTexts[AStep.Caption = cServerOfType]);
   end
   else if SimpleStepText(AStep.Kind, mId) then
   begin
-    Result := TAtlasStrings.Text(mId);
+    Result := TAtlasSymbolPathStrings.Text(mId);
   end
   else
   begin

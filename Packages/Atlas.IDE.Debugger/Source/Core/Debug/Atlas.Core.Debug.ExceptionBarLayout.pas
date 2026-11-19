@@ -26,9 +26,10 @@ uses
 
 const
   /// <summary>Knöpfe der letzten Zeile der Leiste in Reihenfolge.</summary>
-  cDebugBarButtons: array[0..6] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
+  cDebugBarButtons: array[0..7] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
     TAtlasDebugBarAction.Continue, TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation,
-    TAtlasDebugBarAction.Copy, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.KnownNew);
+    TAtlasDebugBarAction.MessageRule, TAtlasDebugBarAction.Copy, TAtlasDebugBarAction.CreateTest,
+    TAtlasDebugBarAction.KnownNew);
   /// <summary>Knöpfe der Erklärung in Reihenfolge.</summary>
   cDebugExplanationButtons: array[0..2] of TAtlasDebugBarAction = (TAtlasDebugBarAction.WhereAssigned,
     TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation);
@@ -363,8 +364,9 @@ begin
       Result := AExplanation.CopyText <> '';
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.KnownOpen,
-    TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen, TAtlasDebugBarAction.KnownNew: ;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.MessageRule,
+    TAtlasDebugBarAction.KnownOpen, TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen,
+    TAtlasDebugBarAction.KnownNew: ;
   end;
 end;
 
@@ -376,6 +378,8 @@ begin
       Result := AInfo.CanIgnoreLocation;
     TAtlasDebugBarAction.CreateTest:
       Result := AInfo.CanCreateTest;
+    TAtlasDebugBarAction.MessageRule:
+      Result := AInfo.CanMessageRule;
   else
     Result := True;
   end;

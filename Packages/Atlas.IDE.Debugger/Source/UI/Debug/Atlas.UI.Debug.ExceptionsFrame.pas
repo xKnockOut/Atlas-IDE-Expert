@@ -10,7 +10,11 @@
 // Bedienung: Klick, Doppelklick oder Enter springt zur Stelle (OnOpen, nur mit
 // Quelltext), Strg+C kopiert die Meldung (OnCopy). Kontextmenü: Springen,
 // „Klasse künftig ignorieren“ bzw. „Wieder anhalten“ (OnIgnoreClass mit
-// True/False), „Meldung kopieren“, „Verlauf leeren“ (OnClear). Die
+// True/False), „Nur bei Meldungen wie dieser anhalten …“ und „Meldungen wie
+// diese ignorieren …“ (#2549, MessageRule, nur mit Meldung), „Regeln mit
+// Meldung für X entfernen“ (RemoveMessageRules, nur wenn es welche gibt),
+// „Exception-Regeln …“ (#838, ShowRules), „Meldung kopieren“, „Verlauf
+// leeren“ (OnClear). Die
 // IDE-Schicht hält den Verlauf und ruft nach jeder Änderung SetHistory.
 // Unten der Aufrufstapel des gewählten Eintrags (#578, Stack,
 // TAtlasDebugExceptionStack). Filterleiste und Meldungen an die IDE-Schicht
@@ -44,6 +48,10 @@ type
       FOpenItem: TMenuItem;
       FIgnoreItem: TMenuItem;
       FStopItem: TMenuItem;
+      FStopOnlyItem: TMenuItem;
+      FIgnoreMessageItem: TMenuItem;
+      FRemoveRulesItem: TMenuItem;
+      FRulesItem: TMenuItem;
       FCopyItem: TMenuItem;
       FClearItem: TMenuItem;
       function AddItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
@@ -51,6 +59,11 @@ type
       procedure OpenClick(Sender: TObject);
       procedure IgnoreClick(Sender: TObject);
       procedure StopClick(Sender: TObject);
+      procedure StopOnlyClick(Sender: TObject);
+      procedure IgnoreMessageClick(Sender: TObject);
+      procedure RemoveRulesClick(Sender: TObject);
+      procedure RulesClick(Sender: TObject);
+      procedure MessageRule(AIgnore: Boolean);
       procedure CopyClick(Sender: TObject);
       procedure ClearClick(Sender: TObject);
     public
@@ -156,6 +169,12 @@ begin
   FOpenItem.Default := True;
   FIgnoreItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsIgnoreClass), IgnoreClick);
   FStopItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStopAgain), StopClick);
+  FStopOnlyItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStopOnlyMessage),
+    StopOnlyClick);
+  FIgnoreMessageItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsIgnoreMessage),
+    IgnoreMessageClick);
+  FRemoveRulesItem := AddItem('', RemoveRulesClick);
+  FRulesItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsRules), RulesClick);
   FCopyItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsCopy), CopyClick);
   FClearItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsClear), ClearClick);
 end;
@@ -179,6 +198,12 @@ begin
   FIgnoreItem.Visible := not mIgnored;
   FIgnoreItem.Enabled := mHas;
   FStopItem.Visible := mIgnored;
+  FStopOnlyItem.Visible := mHas and FFrame.FHooks.MessageRulesOn and (Trim(mEntry.Message) <> '') and
+    Assigned(FFrame.FHooks.MessageRule);
+  FIgnoreMessageItem.Visible := FStopOnlyItem.Visible;
+  FRulesItem.Visible := Assigned(FFrame.FHooks.ShowRules);
+  FRemoveRulesItem.Visible := mHas and FFrame.FHooks.MessageRulesOn and Assigned(FFrame.FHooks.RemoveMessageRules) and
+    FFrame.FIgnore.HasMessageRules(mEntry.ExceptionClass);
   FCopyItem.Enabled := mHas;
   FClearItem.Enabled := FFrame.FHistory.Entries <> nil;
   if mHas then
@@ -186,6 +211,8 @@ begin
     FIgnoreItem.Caption := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugExceptionsIgnoreClassNamed,
       [mEntry.ExceptionClass]);
     FStopItem.Caption := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugExceptionsStopAgainNamed,
+      [mEntry.ExceptionClass]);
+    FRemoveRulesItem.Caption := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugExceptionsRemoveMessageRules,
       [mEntry.ExceptionClass]);
   end
   else
@@ -217,6 +244,44 @@ begin
   if FFrame.TrySelected(mEntry) and Assigned(FFrame.FHooks.IgnoreClass) then
   begin
     FFrame.FHooks.IgnoreClass(mEntry.ExceptionClass, False);
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.TListMenu.MessageRule(AIgnore: Boolean);
+var
+  mEntry: TAtlasDebugException;
+begin
+  if FFrame.TrySelected(mEntry) and Assigned(FFrame.FHooks.MessageRule) then
+  begin
+    FFrame.FHooks.MessageRule(mEntry, AIgnore);
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.TListMenu.StopOnlyClick(Sender: TObject);
+begin
+  MessageRule(False);
+end;
+
+procedure TAtlasDebugExceptionsFrame.TListMenu.IgnoreMessageClick(Sender: TObject);
+begin
+  MessageRule(True);
+end;
+
+procedure TAtlasDebugExceptionsFrame.TListMenu.RemoveRulesClick(Sender: TObject);
+var
+  mEntry: TAtlasDebugException;
+begin
+  if FFrame.TrySelected(mEntry) and Assigned(FFrame.FHooks.RemoveMessageRules) then
+  begin
+    FFrame.FHooks.RemoveMessageRules(mEntry.ExceptionClass);
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.TListMenu.RulesClick(Sender: TObject);
+begin
+  if Assigned(FFrame.FHooks.ShowRules) then
+  begin
+    FFrame.FHooks.ShowRules();
   end;
 end;
 
