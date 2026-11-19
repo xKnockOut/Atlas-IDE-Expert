@@ -25,7 +25,6 @@ type
     FUndoFile: string;
     FUndoNames: TArray<string>;
     FUndoAnchors: TArray<TAnchors>;
-    procedure HideOutlines;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -64,14 +63,6 @@ begin
   inherited Create(AOnMessage);
 end;
 
-procedure TAtlasIdeAnchors.HideOutlines;
-begin
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
-end;
-
 function IsFill(AControl: TControl; const AClasses: TArray<string>): Boolean;
 var
   mChain: TArray<string>;
@@ -89,22 +80,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-/// <summary>Name des Felds bei einem Label mit FocusControl; leer ohne.</summary>
-function FocusOf(AControl: TControl): string;
-var
-  mField: TObject;
-begin
-  Result := '';
-  if IsPublishedProp(AControl, 'FocusControl') and (PropType(AControl, 'FocusControl') = tkClass) then
-  begin
-    mField := GetObjectProp(AControl, 'FocusControl');
-    if mField is TComponent then
-    begin
-      Result := TComponent(mField).Name;
-    end;
-  end;
 end;
 
 /// <summary>Vorschläge für alle Kinder von AParent, die ARoot gehören.</summary>
@@ -131,7 +106,8 @@ begin
     end;
     mControls := mControls + [mControl];
     mItems := mItems + [TAtlasAnchorItem.Create(mControl.Name, mControl.BoundsRect, mControl.Align <> alNone,
-      IsFill(mControl, mFillClasses), TAtlasIdeAnchors.ToSet(mControl.Anchors), FocusOf(mControl))];
+      IsFill(mControl, mFillClasses), TAtlasIdeAnchors.ToSet(mControl.Anchors),
+      TAtlasDesignerAccess.FocusControlName(mControl))];
   end;
   mSuggestions := TAtlasAnchorSuggest.Suggest(mItems, TSize.Create(AParent.ClientWidth, AParent.ClientHeight),
     ASettings.DesignerSuggestAnchorsEdgeDistance, ASettings.DesignerSuggestAnchorsKeepExisting);

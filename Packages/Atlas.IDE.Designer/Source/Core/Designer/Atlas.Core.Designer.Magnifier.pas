@@ -71,6 +71,13 @@ uses
   System.Math;
 
 const
+  /// <summary>Farbe ohne das oberste Byte ($RRGGBB) und ihre Länge als Hex-Zahl.</summary>
+  cRgbMask = $FFFFFF;
+  cRgbHexDigits = 6;
+  /// <summary>Stufen der Vergrößerung; dazwischen gilt die nächste.</summary>
+  cZoomSmall = 2;
+  cZoomMedium = 4;
+  cZoomLarge = 8;
   /// <summary>Lage der Anteile in $RRGGBB.</summary>
   cRedShift = 16;
   cGreenShift = 8;
@@ -109,17 +116,17 @@ end;
 
 class function TAtlasMagnifier.NormalizeZoom(AZoom: Integer): Integer;
 begin
-  if AZoom <= 2 then
+  if AZoom <= cZoomSmall then
   begin
-    Result := 2;
+    Result := cZoomSmall;
   end
-  else if AZoom < 6 then
+  else if AZoom < (cZoomMedium + cZoomLarge) div 2 then
   begin
-    Result := 4;
+    Result := cZoomMedium;
   end
   else
   begin
-    Result := 8;
+    Result := cZoomLarge;
   end;
 end;
 
@@ -156,7 +163,7 @@ end;
 
 class function TAtlasMagnifier.HexOf(ARgb: Cardinal): string;
 begin
-  Result := '#' + IntToHex(ARgb and $FFFFFF, 6);
+  Result := '#' + IntToHex(ARgb and cRgbMask, cRgbHexDigits);
 end;
 
 class function TAtlasMagnifier.StandardName(ARgb: Cardinal): string;
@@ -165,7 +172,7 @@ var
 begin
   for mIndex := Low(cStandardRgb) to High(cStandardRgb) do
   begin
-    if cStandardRgb[mIndex] = (ARgb and $FFFFFF) then
+    if cStandardRgb[mIndex] = (ARgb and cRgbMask) then
     begin
       Exit(cStandardNames[mIndex]);
     end;
@@ -180,7 +187,7 @@ begin
   Result := nil;
   for mColor in AColors do
   begin
-    if (mColor.Rgb and $FFFFFF) = (ARgb and $FFFFFF) then
+    if (mColor.Rgb and cRgbMask) = (ARgb and cRgbMask) then
     begin
       Result := Result + [mColor.Name];
     end;

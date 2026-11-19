@@ -1615,6 +1615,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.SelectionBar` | `Core/Designer/Atlas.Core.Designer.SelectionBar.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Magnifier` | `Core/Designer/Atlas.Core.Designer.Magnifier.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Neighbours` | `Core/Designer/Atlas.Core.Designer.Neighbours.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Names` | `Core/Designer/Atlas.Core.Designer.Names.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.FormStore` | `Core/Designer/Atlas.Core.Designer.FormStore.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.GridSnap` | `Core/Designer/Atlas.Core.Designer.GridSnap.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionSets` | `Core/Designer/Atlas.Core.Designer.SelectionSets.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Similar` | `Core/Designer/Atlas.Core.Designer.Similar.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Measure` | `Core/Designer/Atlas.Core.Designer.Measure.pas` | Ordner `Core/Designer` |
@@ -1700,6 +1703,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Designer.DuplicateDialog` | `UI/Designer/Atlas.UI.Designer.DuplicateDialog.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Flash` | `UI/Designer/Atlas.UI.Designer.Flash.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Handles` | `UI/Designer/Atlas.UI.Designer.Handles.pas` | Ordner `UI/Designer` |
+| `Atlas.UI.Designer.Overlay` | `UI/Designer/Atlas.UI.Designer.Overlay.pas` | Ordner `UI/Designer`; Basis der Fenster über dem Designer |
 | `Atlas.UI.Designer.Outlines` | `UI/Designer/Atlas.UI.Designer.Outlines.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Search` | `UI/Designer/Atlas.UI.Designer.Search.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.SettingsSection` | `UI/Designer/Atlas.UI.Designer.SettingsSection.pas` | Ordner `UI/Designer`; Einstellungen des Moduls als Abschnitte (#1456) |

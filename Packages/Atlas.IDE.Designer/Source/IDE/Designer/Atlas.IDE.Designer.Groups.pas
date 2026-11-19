@@ -98,7 +98,6 @@ type
     function SecondClick(const ANames: TArray<string>): Boolean;
     function Frames(ARoot: TWinControl; const AFormFile: string): TArray<TAtlasOutline>;
     procedure ShowFrames(ARoot: TComponent; const AFormFile: string);
-    procedure HideFrames;
     procedure Refresh(ARoot: TComponent; const AEditor: IOTAFormEditor);
     procedure Deleted(AComponent: TComponent);
     procedure Inserted(AComponent: TComponent);
@@ -134,7 +133,8 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Core.Designer.Names;
 
 const
   cKeyPriority = 50;
@@ -153,17 +153,6 @@ end;
 function FormKey(const AFormFile: string): string;
 begin
   Result := TAtlasGroupRules.FormKey(AFormFile, Shared);
-end;
-
-function Names(const AComponents: TArray<TComponent>): TArray<string>;
-var
-  mComponent: TComponent;
-begin
-  Result := nil;
-  for mComponent in AComponents do
-  begin
-    Result := Result + [mComponent.Name];
-  end;
 end;
 
 function ParentNames(const AComponents: TArray<TComponent>): TArray<string>;
@@ -501,7 +490,7 @@ var
   mExpanded: TArray<string>;
   mDesigner: IDesigner;
 begin
-  mNames := Names(TAtlasDesignerAccess.Selection(AEditor, ARoot));
+  mNames := TAtlasDesignerNames.NamesOf(TAtlasDesignerAccess.Selection(AEditor, ARoot));
   if (Length(mNames) = 0) or (GetKeyState(VK_MENU) < 0) or SecondClick(mNames) then
   begin
     Exit;
@@ -586,7 +575,7 @@ begin
   end;
   if Length(mOutlines) = 0 then
   begin
-    HideFrames;
+    HideOutlines;
     Exit;
   end;
   mArea := mOutlines[0].Bounds;
@@ -605,17 +594,9 @@ begin
   Outlines.ShowOutlines(mArea, mShifted);
 end;
 
-procedure TAtlasIdeDesignerGroups.HideFrames;
-begin
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
-end;
-
 procedure TAtlasIdeDesignerGroups.Refresh(ARoot: TComponent; const AEditor: IOTAFormEditor);
 begin
-  FClick.Selected := Names(TAtlasDesignerAccess.Selection(AEditor, ARoot));
+  FClick.Selected := TAtlasDesignerNames.NamesOf(TAtlasDesignerAccess.Selection(AEditor, ARoot));
   ShowFrames(ARoot, AEditor.FileName);
 end;
 
@@ -663,7 +644,7 @@ begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsNeedTwo));
     Exit;
   end;
-  mName := TAtlasDesignerGroups.SuggestName(Names(mSelected), FirstLabel(mSelected));
+  mName := TAtlasDesignerGroups.SuggestName(TAtlasDesignerNames.NamesOf(mSelected), FirstLabel(mSelected));
   if not InputQuery(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsTitle),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsPrompt), mName) or (Trim(mName) = '') then
   begin
@@ -675,7 +656,7 @@ begin
     Exit;
   end;
   KeepUndo(mEditor.FileName);
-  Store(mEditor.FileName).Add(FormKey(mEditor.FileName), Trim(mName), Names(mSelected));
+  Store(mEditor.FileName).Add(FormKey(mEditor.FileName), Trim(mName), TAtlasDesignerNames.NamesOf(mSelected));
   Save(mEditor.FileName);
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerGroupsMade, [Trim(mName), Length(mSelected)]));
   Refresh(mRoot, mEditor);
@@ -696,7 +677,7 @@ begin
   KeepUndo(mEditor.FileName);
   mGroups := Store(mEditor.FileName);
   mDone := False;
-  for mName in Names(TAtlasDesignerAccess.Selection(mEditor, mRoot)) do
+  for mName in TAtlasDesignerNames.NamesOf(TAtlasDesignerAccess.Selection(mEditor, mRoot)) do
   begin
     mDone := mGroups.Ungroup(FormKey(mEditor.FileName), mName) or mDone;
   end;
@@ -744,7 +725,7 @@ begin
   else
   begin
     TAtlasKeyHook.Remove(FKeys);
-    HideFrames;
+    HideOutlines;
   end;
 end;
 
@@ -757,7 +738,7 @@ begin
   Result := False;
   if TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
-    for mName in Names(TAtlasDesignerAccess.Selection(mEditor, mRoot)) do
+    for mName in TAtlasDesignerNames.NamesOf(TAtlasDesignerAccess.Selection(mEditor, mRoot)) do
     begin
       Result := Result or (Store(mEditor.FileName).IndexOf(FormKey(mEditor.FileName), mName) >= 0);
     end;

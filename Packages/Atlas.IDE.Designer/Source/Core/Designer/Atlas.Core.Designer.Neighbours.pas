@@ -56,7 +56,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Designer.Names;
 
 const
   /// <summary>Überlappung in Pixeln, die noch als „jenseits der Kante“ gilt.</summary>
@@ -220,17 +221,12 @@ end;
 { TAtlasNeighbours }
 
 class function TAtlasNeighbours.IndexOf(const AItems: TArray<TAtlasNeighbourItem>; const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(AItems) do
-  begin
-    if SameText(AItems[mIndex].Name, AName) then
+  Result := TAtlasDesignerNames.IndexOfName<TAtlasNeighbourItem>(AItems, AName,
+    function(AItem: TAtlasNeighbourItem): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AItem.Name;
+    end);
 end;
 
 class function TAtlasNeighbours.Find(const AItems: TArray<TAtlasNeighbourItem>; AFrom: Integer;
