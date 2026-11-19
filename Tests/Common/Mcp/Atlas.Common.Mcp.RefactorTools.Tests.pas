@@ -169,8 +169,10 @@ begin
       mFiles.Created.Add(AFileName);
     end;
   Result.DeleteFile :=
-    procedure(const AFileName: string)
+    function(const AFileName: string; out AError: string): Boolean
     begin
+      AError := '';
+      Result := mFiles.Files.ContainsKey(AFileName);
       mFiles.Files.Remove(AFileName);
       mFiles.Deleted.Add(AFileName);
     end;

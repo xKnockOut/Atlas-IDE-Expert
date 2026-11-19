@@ -87,8 +87,8 @@ type
 
   /// <summary>Schreibt AText nach AFileName (Kodierung und Zeilenenden erhalten); Fehler als Exception.</summary>
   TMcpWriteText = reference to procedure(const AFileName, AText: string);
-  /// <summary>Löscht AFileName; Fehler als Exception.</summary>
-  TMcpDeleteFile = reference to procedure(const AFileName: string);
+  /// <summary>Löscht AFileName; False mit dem Grund in AError, wenn es nicht geht.</summary>
+  TMcpDeleteFile = reference to function(const AFileName: string; out AError: string): Boolean;
   /// <summary>Im Editor ungespeichert geänderte Dateien (IDE-Plugin); leer ohne Editor.</summary>
   TMcpDirtyFiles = reference to function: TArray<string>;
   TMcpAudit = reference to procedure(const AText: string);
@@ -700,6 +700,10 @@ procedure TMcpEditTools.CreateAll(const AFiles: TArray<TMcpNewFile>);
 var
   mIndex: Integer;
 begin
+  if not Assigned(FCreateFile) then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoCreating].Text);
+  end;
   for mIndex := 0 to High(AFiles) do
   begin
     try
@@ -714,34 +718,33 @@ end;
 procedure TMcpEditTools.RemoveCreated(const AFiles: TArray<TMcpNewFile>; ACount: Integer);
 var
   mIndex: Integer;
+  mError: string;
 begin
   // Aufräumen nach einem Fehler: Was sich nicht löschen lässt, bleibt; der ursprüngliche Fehler zählt.
+  if not Assigned(FDeleteFile) then
+  begin
+    Exit;
+  end;
   for mIndex := 0 to ACount - 1 do
   begin
-    try
-      if Assigned(FDeleteFile) then
-      begin
-        FDeleteFile(AFiles[mIndex].FileName);
-      end;
-    except
-      on Exception do
-        Continue;
-    end;
+    FDeleteFile(AFiles[mIndex].FileName, mError);
   end;
 end;
 
 function TMcpEditTools.DeleteAll(const ANames: TArray<string>): TArray<string>;
 var
-  mName: string;
+  mName, mError: string;
 begin
   Result := nil;
+  if not Assigned(FDeleteFile) then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoDeleting].Text);
+  end;
   for mName in ANames do
   begin
-    try
-      FDeleteFile(mName);
-    except
-      on E: Exception do
-        Result := Result + [Format('%s (%s)', [mName, E.Message])];
+    if not FDeleteFile(mName, mError) then
+    begin
+      Result := Result + [Format('%s (%s)', [mName, mError])];
     end;
   end;
 end;

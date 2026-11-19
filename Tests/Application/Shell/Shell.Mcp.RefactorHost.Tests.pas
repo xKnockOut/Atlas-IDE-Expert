@@ -33,7 +33,6 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Mcp.Server,
-  Shell.Mcp.Context,
   Shell.Mcp.Services,
   Shell.Mcp.EditingTools;
 

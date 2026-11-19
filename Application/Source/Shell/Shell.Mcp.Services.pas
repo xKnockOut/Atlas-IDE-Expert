@@ -307,11 +307,13 @@ begin
 end;
 
 /// <summary>Gelöschte Datei aus refactor (#2150), z. B. beim sicheren Löschen einer Unit.</summary>
-procedure DeleteSourceFile(const AFileName: string);
+function DeleteSourceFile(const AFileName: string; out AError: string): Boolean;
 begin
-  if not System.SysUtils.DeleteFile(AFileName) then
+  AError := '';
+  Result := System.SysUtils.DeleteFile(AFileName);
+  if not Result then
   begin
-    raise EMcpToolError.CreateFmt('%s: %s', [AFileName, SysErrorMessage(GetLastOSError)]);
+    AError := SysErrorMessage(GetLastOSError);
   end;
 end;
 
