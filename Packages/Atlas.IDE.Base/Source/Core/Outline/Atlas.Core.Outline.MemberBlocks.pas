@@ -64,6 +64,7 @@ uses
   Atlas.Core.Outline.VisibilitySections;
 
 const
+  cClassVar = 'class var';
   /// <summary>Wörter, mit denen der Methoden- und Eigenschaftsteil beginnt.</summary>
   cMemberWords: array[0..5] of string = ('procedure', 'function', 'constructor', 'destructor', 'property',
     'operator');
@@ -160,7 +161,7 @@ begin
   end
   else if (mToken.Text = 'class') and (NextText(AIndex) = 'var') then
   begin
-    Open('class var', mToken);
+    Open(cClassVar, mToken);
     Inc(AIndex);
   end
   else if EndsBlock(AIndex) then
