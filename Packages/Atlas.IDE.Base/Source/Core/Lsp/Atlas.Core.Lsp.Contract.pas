@@ -297,6 +297,31 @@ type
     OpenMethods: TArray<string>;
   end;
 
+  /// <summary>Diagnosebericht einer Datei (#398); TLspSessionJson.DiagnosticReport liest ihn aus der Antwort.
+  /// </summary>
+  TLspDiagnosticReport = record
+    FileName: string;
+    ResultId: string;
+    /// <summary>Seit der vorigen Ergebnis-Id unverändert; Problems ist dann leer.</summary>
+    Unchanged: Boolean;
+    Problems: TArray<TAtlasProblem>;
+  end;
+
+  /// <summary>Stand der Projektprüfung des Servers (#1247) aus "atlas.run" der Antwort auf workspace/diagnostic
+  /// (TLspSessionJson.WorkspaceRun).</summary>
+  TLspWorkspaceRun = record
+    /// <summary>Der Server hat einen Stand gemeldet (ältere Server nicht).</summary>
+    Known: Boolean;
+    Serial: Integer;
+    Active: Boolean;
+    Done: Integer;
+    Total: Integer;
+    Skipped: Integer;
+    /// <summary>"compile", "debug", "index" oder ''.</summary>
+    Paused: string;
+    ElapsedMs: Int64;
+  end;
+
   /// <summary>Clientseite einer Verbindung zum Sprachserver, wie der Transport sie bedient (#1443): empfangene
   /// Bytes weiterreichen und das Ende melden; threadsicher. Umgesetzt von TLspClientConnection.</summary>
   IAtlasLspConnection = interface

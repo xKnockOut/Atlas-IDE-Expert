@@ -119,6 +119,7 @@ uses
   System.Diagnostics,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Files.WatchedChanges,
@@ -869,7 +870,7 @@ begin
   mResponse := TJSONObject.ParseJSONValue('{"items":[],"atlas":{"run":{"serial":3,"active":true,"done":40,' +
     '"total":90,"skipped":1,"paused":"compile","elapsedMs":1500}}}');
   try
-    mRun := TLspWorkspaceRun.FromJson(mResponse);
+    mRun := TLspSessionJson.WorkspaceRun(mResponse);
   finally
     mResponse.Free;
   end;
@@ -884,7 +885,7 @@ begin
   // Ältere Server ohne Laufstand.
   mResponse := TJSONObject.ParseJSONValue('{"items":[]}');
   try
-    Assert.IsFalse(TLspWorkspaceRun.FromJson(mResponse).Known);
+    Assert.IsFalse(TLspSessionJson.WorkspaceRun(mResponse).Known);
   finally
     mResponse.Free;
   end;

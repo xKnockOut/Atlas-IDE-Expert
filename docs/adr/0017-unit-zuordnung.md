@@ -389,6 +389,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.AtCaret` | `Core/Problems/Atlas.Core.Problems.AtCaret.pas` | Ordner `Core/Problems`: Befund unter der Schreibmarke, ohne IDE testbar (#1967) |
 | `Atlas.Core.Problems.Plan` | `Core/Problems/Atlas.Core.Problems.Plan.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Marks` | `Core/Problems/Atlas.Core.Problems.Marks.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.Contract.Sync` | `Core/Problems/Atlas.Core.Problems.Contract.Sync.pas` | Ordner `Core/Problems`: Verträge des Abgleichs mit Server und IDE (`IAtlasProblemsServer`, `IAtlasProblemsEditors`) |
+| `Atlas.Core.Problems.Flow` | `Core/Problems/Atlas.Core.Problems.Flow.pas` | Ordner `Core/Problems`: Ablauf der Probleme hinter `IAtlasProblemsServer` und `IAtlasProblemsEditors`, ohne IDE testbar |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
@@ -742,6 +744,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Outline.Window` | `IDE/Outline/Atlas.IDE.Outline.Window.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Problems.Caret` | `IDE/Problems/Atlas.IDE.Problems.Caret.pas` | Ordner `IDE/Problems`: Befund unter der Einfügemarke für F1 (#1886) |
 | `Atlas.IDE.Problems.Controller` | `IDE/Problems/Atlas.IDE.Problems.Controller.pas` | Ordner `IDE/Problems` |
+| `Atlas.IDE.Problems.Adapters.Server` | `IDE/Problems/Atlas.IDE.Problems.Adapters.Server.pas` | Ordner `IDE/Problems`: Sitzung und Holthreads als `IAtlasProblemsServer` |
+| `Atlas.IDE.Problems.Adapters.Editors` | `IDE/Problems/Atlas.IDE.Problems.Adapters.Editors.pas` | Ordner `IDE/Problems`: Editor, Module, Debugger und Fehler der IDE als `IAtlasProblemsEditors` |
 | `Atlas.IDE.Problems.MessageList` | `IDE/Problems/Atlas.IDE.Problems.MessageList.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Painter` | `IDE/Problems/Atlas.IDE.Problems.Painter.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.RuleActions` | `IDE/Problems/Atlas.IDE.Problems.RuleActions.pas` | Ordner `IDE/Problems`: fragt das Modul Prüfregeln nach `IAtlasRuleActions` (#1755) |
