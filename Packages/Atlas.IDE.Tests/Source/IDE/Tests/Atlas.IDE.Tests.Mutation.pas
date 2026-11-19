@@ -9,7 +9,7 @@
 //   aus tests.mutation.operators), auswählen (Atlas.Core.Tests.MutationPlan),
 //   Schattenprojekt neben dem Testprojekt anlegen (Atlas.Core.Tests.
 //   MutationShadow) und in der Projektgruppe öffnen
-//   (Atlas.IDE.Tests.MutationShadowProject). Den Ablauf (erst unverändert,
+//   (Atlas.IDE.Tests.Adapters.MutationShadowProject). Den Ablauf (erst unverändert,
 //   dann je Mutant schreiben, bauen, Test-EXE mit Zeitlimit
 //   tests.mutation.timeoutSec ausführen, Ausgang festhalten) führt
 //   TAtlasMutationFlow (Atlas.Core.Tests.MutationFlow).
@@ -34,6 +34,7 @@ uses
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan,
+  Atlas.Core.Tests.Contract,
   Atlas.Core.Tests.MutationFlow,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Output,
@@ -62,6 +63,7 @@ type
     FOutput: TAtlasIdeTestsOutput;
     FNewRunner: TAtlasTestsRunnerFactory;
     FBuild: TAtlasMutationBuildFunc;
+    FNewShadow: TAtlasIdeMutationShadowFactory;
     FAlive: TAtlasMutationAlive;
     FAliveRef: IInterface;
     FFlow: TAtlasMutationFlow;
@@ -83,9 +85,11 @@ type
     procedure LoadResults(const AProject: string);
     procedure SaveResults;
   public
-    /// <summary>ATests und AOutput gehören dem Aufrufer und leben länger.</summary>
+    /// <summary>ATests und AOutput gehören dem Aufrufer und leben länger; ANewShadow legt das Schattenprojekt an
+    /// (Komposition: Atlas.IDE.Tests.Adapters.MutationShadowProject).</summary>
     constructor Create(const AScope: IAtlasModuleScope; ATests: TAtlasIdeTests; AOutput: TAtlasIdeTestsOutput;
-      const ANewRunner: TAtlasTestsRunnerFactory; const ABuild: TAtlasMutationBuildFunc);
+      const ANewRunner: TAtlasTestsRunnerFactory; const ABuild: TAtlasMutationBuildFunc;
+      const ANewShadow: TAtlasIdeMutationShadowFactory);
     destructor Destroy; override;
     /// <summary>Lauf für AScope im oberen Editor starten.</summary>
     procedure Start(AScope: TAtlasMutationScope);
@@ -198,9 +202,11 @@ end;
 { TAtlasIdeMutationRun }
 
 constructor TAtlasIdeMutationRun.Create(const AScope: IAtlasModuleScope; ATests: TAtlasIdeTests;
-  AOutput: TAtlasIdeTestsOutput; const ANewRunner: TAtlasTestsRunnerFactory; const ABuild: TAtlasMutationBuildFunc);
+  AOutput: TAtlasIdeTestsOutput; const ANewRunner: TAtlasTestsRunnerFactory; const ABuild: TAtlasMutationBuildFunc;
+  const ANewShadow: TAtlasIdeMutationShadowFactory);
 begin
   inherited Create;
+  FNewShadow := ANewShadow;
   FScope := AScope;
   FTests := ATests;
   FOutput := AOutput;
@@ -314,7 +320,11 @@ begin
   mSetup.NewRunner := FNewRunner;
   mSetup.Threads := FThreads;
   mSetup.Alive := FAlive;
-  Result := TAtlasIdeMutationShadowProject.Create(mSetup);
+  Result := nil;
+  if Assigned(FNewShadow) then
+  begin
+    Result := FNewShadow(mSetup);
+  end;
 end;
 
 procedure TAtlasIdeMutationRun.StartFlow(const AJobs: TArray<TAtlasMutationJob>);

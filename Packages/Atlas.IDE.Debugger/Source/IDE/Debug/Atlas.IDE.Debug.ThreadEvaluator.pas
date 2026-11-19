@@ -7,16 +7,17 @@
 //     (IOTAThread.Evaluate). Bei einem verzögerten Wert (LLDB) endet die eigene
 //     Auswertung erst mit ihm oder mit Cancel. Für alle, die beim Halt Werte
 //     nachladen (Werte im Editor, Zugriffsverletzung, TAtlasIdeDebugValueRequest).
-//   - TAtlasIdeDebugThreadEvaluator: dasselbe als IAtlasDebugEvaluator für die
+//   - TAtlasIdeDebugSession.NewEvaluator: dasselbe als IAtlasDebugEvaluator für die
 //     Auswertung in Zeitscheiben (TAtlasEvalSlices, Fenster „Auswerten“ und
-//     „Variablen“), in den Tests ersetzt durch eine Fälschung.
+//     „Variablen“) über die Fabrik der Komposition
+//     (Atlas.IDE.Debug.Adapters.ThreadEvaluator), in den Tests ersetzt durch
+//     eine Fälschung.
 // Nur im Hauptthread verwenden.
 
 interface
 
 uses
-  Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Debug.EvalSlices,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Hover.DebugValue;
 
 type
@@ -40,19 +41,6 @@ type
       out AResult: string): Boolean; static;
   end;
 
-  TAtlasIdeDebugThreadEvaluator = class(TInterfacedObject, IAtlasDebugEvaluator)
-  private
-    FValues: TAtlasIdeDebugThreadValues;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function Evaluate(const AExpression, AFileName: string; ALine: Integer; ASideEffects: Boolean;
-      const ADone: TAtlasDebugValueDone): TAtlasDebugValue;
-    procedure Cancel;
-    function Modify(const AExpression, AFileName: string; ALine: Integer; const ANewValue: string;
-      out AResult: string): Boolean;
-  end;
-
 implementation
 
 uses
@@ -70,22 +58,6 @@ begin
     procedure(const AValue: TAtlasDebugValue)
     begin
       AOwner.EndInternal;
-      if Assigned(mDone) then
-      begin
-        mDone(AValue);
-      end;
-    end;
-end;
-
-/// <summary>ADone als Rückruf von TAtlasIdeDebugValues (eigener Typ des Vertrags).</summary>
-function AsEvent(const ADone: TAtlasDebugValueDone): TAtlasDebugValueEvent;
-var
-  mDone: TAtlasDebugValueDone;
-begin
-  mDone := ADone;
-  Result :=
-    procedure(const AValue: TAtlasDebugValue)
-    begin
       if Assigned(mDone) then
       begin
         mDone(AValue);
@@ -154,37 +126,6 @@ begin
   finally
     TAtlasIdeDebugSession.EndInternal;
   end;
-end;
-
-{ TAtlasIdeDebugThreadEvaluator }
-
-constructor TAtlasIdeDebugThreadEvaluator.Create;
-begin
-  inherited Create;
-  FValues := TAtlasIdeDebugThreadValues.Create;
-end;
-
-destructor TAtlasIdeDebugThreadEvaluator.Destroy;
-begin
-  FreeAndNil(FValues);
-  inherited Destroy;
-end;
-
-function TAtlasIdeDebugThreadEvaluator.Evaluate(const AExpression, AFileName: string; ALine: Integer;
-  ASideEffects: Boolean; const ADone: TAtlasDebugValueDone): TAtlasDebugValue;
-begin
-  Result := FValues.Evaluate(AExpression, AFileName, ALine, ASideEffects, AsEvent(ADone));
-end;
-
-procedure TAtlasIdeDebugThreadEvaluator.Cancel;
-begin
-  FValues.Cancel;
-end;
-
-function TAtlasIdeDebugThreadEvaluator.Modify(const AExpression, AFileName: string; ALine: Integer;
-  const ANewValue: string; out AResult: string): Boolean;
-begin
-  Result := TAtlasIdeDebugThreadValues.Modify(AExpression, AFileName, ALine, ANewValue, AResult);
 end;
 
 end.

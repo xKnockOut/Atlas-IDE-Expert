@@ -11,6 +11,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.Phases;
 
 type

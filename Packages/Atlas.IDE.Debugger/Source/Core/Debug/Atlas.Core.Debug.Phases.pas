@@ -3,7 +3,8 @@
 // Phasen einer Debug-Sitzung ohne Open Tools API (#517 und folgende): Prozesse zählen, Halt, Weiterlaufen,
 // Ende, verzögert gemeldeter Halt, Filter für Halte, Zuhörer benachrichtigen. Die IDE-Schicht
 // (Atlas.IDE.Debug.Session) übersetzt den Notifier des Debuggers in die Ereignisse ProcessCreated,
-// ProcessDestroyed und StateChanged und gibt über IAtlasDebugTarget Auskunft über den Debugger. Tests
+// ProcessDestroyed und StateChanged und gibt über IAtlasDebugTarget (Atlas.Core.Debug.Contract) Auskunft über den
+// Debugger. Tests
 // ersetzen ihn durch eine Fälschung.
 //   - Gestartet: erster Prozess angelegt.
 //   - Angehalten: StateChanged mit Stopped (Haltepunkt, Schritt, Pause), Exception (Sprach-Exception) bzw.
@@ -24,15 +25,13 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Debug.Contract;
 
 type
   {$SCOPEDENUMS ON}
   /// <summary>Grund eines Halts.</summary>
   TAtlasDebugStop = (Paused, Exception, Fault);
-  /// <summary>Zustand des Prozesses, wie ihn der Debugger meldet; Other für alle übrigen (beendet, ohne).
-  /// </summary>
-  TAtlasDebugProcessState = (Other, Running, Stopped, Exception, Fault);
   {$SCOPEDENUMS OFF}
 
   IAtlasDebugListener = interface
@@ -45,23 +44,6 @@ type
     procedure DebugResumed;
     /// <summary>Letzter Prozess abgebaut.</summary>
     procedure DebugEnded;
-  end;
-
-  /// <summary>Der Debugger, wie ihn die Phasen sehen; in der IDE über IOTADebuggerServices.</summary>
-  IAtlasDebugTarget = interface
-    ['{B4D17E2A-6C93-4F0B-8E51-2A7C9D03F6B8}']
-    /// <summary>Anzahl der Prozesse der Sitzung.</summary>
-    function ProcessCount: Integer;
-    /// <summary>Zustand des aktuellen Prozesses; Other ohne Prozess.</summary>
-    function CurrentState: TAtlasDebugProcessState;
-    /// <summary>Ist der aktuelle Prozess angehalten und hat er einen aktuellen Thread?</summary>
-    function HasStoppedThread: Boolean;
-    /// <summary>TAtlasDebugPhases.Tick einmal aufrufen, sobald die Benachrichtigung des Debuggers vorbei ist.
-    /// </summary>
-    procedure RequestTick;
-    /// <summary>AProc geschützt ausführen (Zuhörer, Filter); ein Fehler darf die übrigen nicht aufhalten.
-    /// </summary>
-    procedure Run(const AProc: TProc);
   end;
 
   /// <summary>Prüft einen Halt vor den Zuhörern; True = erledigt (etwa fortgesetzt), die Zuhörer erfahren nichts.

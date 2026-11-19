@@ -8,7 +8,8 @@
 //   startet sie nicht noch einmal.
 // - Ist eine Reihe vor dem Build fertig, entscheidet TAtlasTaskGate über
 //   Abbruch; bestandene block-Läufe melden Passed (neu bauen).
-// - Prozess, Thread und Ausgabe übernimmt IAtlasTaskLauncher: in der IDE ein
+// - Prozess, Thread und Ausgabe übernimmt IAtlasTaskLauncher (Atlas.Core.Tasks.
+//   Contract): in der IDE ein
 //   Thread je Lauf, in den Tests eine Fälschung. Das Ende eines Laufs meldet
 //   der Aufrufer mit Finished im Hauptthread.
 // - Was zu melden oder nachzuführen ist, geht als TAtlasTaskFlowNote an den
@@ -20,25 +21,11 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Core.Build.Events,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Runs,
   Atlas.Core.Tasks.PreBuild;
 
 type
-  /// <summary>Startet und beendet die Prozesse der Läufe.</summary>
-  IAtlasTaskLauncher = interface
-    ['{86D5C598-12BC-476D-AA52-9D4C01ED9763}']
-    /// <summary>Kann ATask hier gar nicht laufen? AReason nennt den Grund.</summary>
-    function Refuses(const ATask: TAtlasTaskDefinition; out AReason: string): Boolean;
-    /// <summary>ATask für AProject als Lauf AId starten; AShow: Ausgabe zeigen. Das Ende kommt später über
-    /// TAtlasTaskFlow.Finished, auch wenn der Prozess nicht startet.</summary>
-    procedure Launch(AId: Integer; const AProject: string; const ATask: TAtlasTaskDefinition; AShow: Boolean);
-    /// <summary>Lauf AId abbrechen; sein Ende kommt wie sonst.</summary>
-    procedure Cancel(AId: Integer);
-    /// <summary>Lauf AId ist fertig gemeldet: aufräumen.</summary>
-    procedure Release(AId: Integer);
-  end;
-
   /// <summary>Projekt eines Laufs: Datei für den Starter ('' ohne Projekt) und Schlüssel für Verlauf und
   /// „läuft schon“.</summary>
   TAtlasTaskTarget = record

@@ -39,7 +39,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.InlineValues,
   Atlas.Core.Debug.InlineValuesFlow,
   Atlas.IDE.Debug.StopView,

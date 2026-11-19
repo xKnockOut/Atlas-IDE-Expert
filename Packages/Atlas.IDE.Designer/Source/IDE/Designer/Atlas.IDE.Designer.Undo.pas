@@ -32,7 +32,7 @@ uses
   Atlas.Core.Designer.Undo,
   Atlas.Core.Designer.UndoApply,
   Atlas.Core.Designer.UndoFlow,
-  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Contract,
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Designer.Tool;
@@ -129,7 +129,7 @@ procedure TAtlasIdeDesignerUndo.TNotification.ItemDeleted(const ADesigner: IDesi
 begin
   if FOwner <> nil then
   begin
-    FOwner.FFlow.ItemsChanged(TAtlasIdeDesignSurface.Wrap(ADesigner));
+    FOwner.FFlow.ItemsChanged(TAtlasIdeDesignSurfaces.Wrap(ADesigner));
   end;
 end;
 
@@ -137,7 +137,7 @@ procedure TAtlasIdeDesignerUndo.TNotification.ItemInserted(const ADesigner: IDes
 begin
   if FOwner <> nil then
   begin
-    FOwner.FFlow.ItemsChanged(TAtlasIdeDesignSurface.Wrap(ADesigner));
+    FOwner.FFlow.ItemsChanged(TAtlasIdeDesignSurfaces.Wrap(ADesigner));
   end;
 end;
 
@@ -145,7 +145,7 @@ procedure TAtlasIdeDesignerUndo.TNotification.ItemsModified(const ADesigner: IDe
 begin
   if FOwner <> nil then
   begin
-    FOwner.FFlow.ItemsChanged(TAtlasIdeDesignSurface.Wrap(ADesigner));
+    FOwner.FFlow.ItemsChanged(TAtlasIdeDesignSurfaces.Wrap(ADesigner));
   end;
 end;
 
@@ -154,7 +154,7 @@ procedure TAtlasIdeDesignerUndo.TNotification.SelectionChanged(const ADesigner: 
 begin
   if FOwner <> nil then
   begin
-    FOwner.FFlow.SelectionChanged(TAtlasIdeDesignSurface.Wrap(ADesigner));
+    FOwner.FFlow.SelectionChanged(TAtlasIdeDesignSurfaces.Wrap(ADesigner));
   end;
 end;
 
@@ -162,7 +162,7 @@ procedure TAtlasIdeDesignerUndo.TNotification.DesignerOpened(const ADesigner: ID
 begin
   if FOwner <> nil then
   begin
-    FOwner.FFlow.Opened(TAtlasIdeDesignSurface.Wrap(ADesigner));
+    FOwner.FFlow.Opened(TAtlasIdeDesignSurfaces.Wrap(ADesigner));
   end;
 end;
 
@@ -170,7 +170,7 @@ procedure TAtlasIdeDesignerUndo.TNotification.DesignerClosed(const ADesigner: ID
 begin
   if FOwner <> nil then
   begin
-    FOwner.FFlow.Closed(TAtlasIdeDesignSurface.Wrap(ADesigner));
+    FOwner.FFlow.Closed(TAtlasIdeDesignSurfaces.Wrap(ADesigner));
   end;
 end;
 
@@ -288,7 +288,7 @@ end;
 function TAtlasIdeDesignerUndo.Active(out ASurface: IAtlasDesignSurface;
   out AHistory: TAtlasFormUndoHistory): Boolean;
 begin
-  ASurface := TAtlasIdeDesignSurface.Active;
+  ASurface := TAtlasIdeDesignSurfaces.Active;
   Result := FFlow.Active(ASurface, AHistory);
 end;
 
@@ -349,7 +349,7 @@ begin
       else if mTag = cMenuClear then
       begin
         // Aktueller Stand wird neuer Ausgangsstand.
-        mOwner.FFlow.Reset(TAtlasIdeDesignSurface.Active);
+        mOwner.FFlow.Reset(TAtlasIdeDesignSurfaces.Active);
       end;
     end);
 end;
@@ -406,7 +406,7 @@ var
   mMessage: string;
 begin
   Sync;
-  if not FFlow.Restore(TAtlasIdeDesignSurface.Active, AIndex, mOutcome) then
+  if not FFlow.Restore(TAtlasIdeDesignSurfaces.Active, AIndex, mOutcome) then
   begin
     Exit;
   end;
@@ -435,12 +435,12 @@ end;
 
 function TAtlasIdeDesignerUndo.CanUndo: Boolean;
 begin
-  Result := FFlow.CanUndo(TAtlasIdeDesignSurface.Active);
+  Result := FFlow.CanUndo(TAtlasIdeDesignSurfaces.Active);
 end;
 
 function TAtlasIdeDesignerUndo.CanRedo: Boolean;
 begin
-  Result := FFlow.CanRedo(TAtlasIdeDesignSurface.Active);
+  Result := FFlow.CanRedo(TAtlasIdeDesignSurfaces.Active);
 end;
 
 procedure TAtlasIdeDesignerUndo.Undo;

@@ -16,8 +16,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Debug.EvalSlices;
+  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasDebugEvaluatorFake = class(TInterfacedObject, IAtlasDebugEvaluator)

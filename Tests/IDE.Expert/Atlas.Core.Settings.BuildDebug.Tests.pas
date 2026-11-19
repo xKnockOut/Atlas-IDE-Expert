@@ -72,6 +72,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Plugin.Debug,

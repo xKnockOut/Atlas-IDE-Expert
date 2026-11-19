@@ -1,9 +1,9 @@
 {
   "version": 1,
   "findings": [
-    {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas", "rule": "hardcoded-string", "fingerprint": "d10c26e0", "count": 1, "routine": "PrepareLaunch", "context": "a94dc1dd"},
-    {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas", "rule": "magic-number", "fingerprint": "d1804fa5", "count": 1, "routine": "StopProcess", "context": "5ea96822"},
-    {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas", "rule": "magic-number", "fingerprint": "d5897557", "count": 1, "routine": "Watch", "context": "d23707f8"},
+    {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Providers.Process.pas", "rule": "hardcoded-string", "fingerprint": "d10c26e0", "count": 1, "routine": "PrepareLaunch", "context": "a94dc1dd"},
+    {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Providers.Process.pas", "rule": "magic-number", "fingerprint": "d1804fa5", "count": 1, "routine": "StopProcess", "context": "5ea96822"},
+    {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Providers.Process.pas", "rule": "magic-number", "fingerprint": "d5897557", "count": 1, "routine": "Watch", "context": "d23707f8"},
     {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Commands.pas", "rule": "hardcoded-string", "fingerprint": "194cae12", "count": 1, "routine": "TAtlasTaskCommands.BuildCommandLine", "context": "7d60bb2e"},
     {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Definitions.pas", "rule": "magic-number", "fingerprint": "2e4bf6ff", "count": 1, "routine": "KeyCode", "context": "af58b193"},
     {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Definitions.pas", "rule": "magic-number", "fingerprint": "f743b86a", "count": 1, "routine": "KeyCode", "context": "992e6911"},

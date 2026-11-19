@@ -32,7 +32,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Unavailable,
   Atlas.Core.Debug.UnavailableNote;
 

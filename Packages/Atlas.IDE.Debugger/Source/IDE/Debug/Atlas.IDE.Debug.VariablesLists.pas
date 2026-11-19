@@ -61,7 +61,6 @@ type
 implementation
 
 uses
-  Atlas.IDE.Debug.ThreadEvaluator,
   Atlas.UI.Debug.Evaluate.Strings;
 
 /// <summary>Reiter in der Reihenfolge der Auswertung: AFirst, dann die übrigen.</summary>
@@ -97,7 +96,7 @@ begin
     FLists[mTab] := TAtlasEvalList.Create;
   end;
   FSearch := TAtlasVariableSearch.Create;
-  FSlices := TAtlasEvalSlices.Create(TAtlasIdeDebugThreadEvaluator.Create, cSliceMs, cDeferredTimeoutMs);
+  FSlices := TAtlasEvalSlices.Create(TAtlasIdeDebugSession.NewEvaluator, cSliceMs, cDeferredTimeoutMs);
   FSlices.TimeoutText := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateTimeout);
   FSlices.EmptyErrorText := FSlices.TimeoutText;
   FSlices.OnArrived := AOnArrived;
