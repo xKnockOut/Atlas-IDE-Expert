@@ -212,6 +212,7 @@ implementation
 uses
   Atlas.Core.Style.Palette,
   System.Math,
+  System.StrUtils,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Outline.Conditionals,
   Atlas.Core.Outline.MemberBlocks,
@@ -242,25 +243,26 @@ end;
 
 /// <summary>Abschnitt nach dem Schlüsselwort AWord am Zeilenanfang; sonst ACurrent.</summary>
 function SectionOfWord(const AWord, ALine: string; ACurrent: TAtlasCodeSection): TAtlasCodeSection;
+const
+  // Schlüsselwort, mit dem der Abschnitt beginnt; leer bei Abschnitten ohne eigenes Wort.
+  cSectionWords: array[TAtlasCodeSection] of string = ('', 'interface', 'implementation', '', 'initialization',
+    'finalization');
+var
+  mSection: TAtlasCodeSection;
 begin
   Result := ACurrent;
-  if AWord = 'interface' then
+  if AWord = '' then
   begin
-    Result := TAtlasCodeSection.InterfacePart;
-  end
-  else if AWord = 'implementation' then
+    Exit;
+  end;
+  for mSection := Low(TAtlasCodeSection) to High(TAtlasCodeSection) do
   begin
-    Result := TAtlasCodeSection.ImplementationPart;
-  end
-  else if AWord = 'initialization' then
-  begin
-    Result := TAtlasCodeSection.Initialization_;
-  end
-  else if AWord = 'finalization' then
-  begin
-    Result := TAtlasCodeSection.Finalization_;
-  end
-  else if (AWord = 'end') and (Copy(ALine, 4, 1) = '.') then
+    if cSectionWords[mSection] = AWord then
+    begin
+      Exit(mSection);
+    end;
+  end;
+  if (AWord = 'end') and StartsText('end.', ALine) then
   begin
     Result := TAtlasCodeSection.None;
   end;
@@ -457,6 +459,8 @@ end;
 
 class function TAtlasBreadcrumbs.BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   ANode: Integer): TAtlasBadge;
+const
+  cClassPrefix = 'class ';
 var
   mHead: string;
 begin
@@ -477,9 +481,9 @@ begin
           mHead := LowerCase(TrimLeft(Copy(ALines[ANodes[ANode].StartLine], ANodes[ANode].StartCharacter + 1, MaxInt)));
         end;
         // class procedure/class function: das Wort nach class zählt.
-        if mHead.StartsWith('class ') then
+        if mHead.StartsWith(cClassPrefix) then
         begin
-          mHead := TrimLeft(Copy(mHead, 7, MaxInt));
+          mHead := TrimLeft(Copy(mHead, Length(cClassPrefix) + 1, MaxInt));
         end;
         if mHead.StartsWith('procedure') or mHead.StartsWith('destructor') then
         begin
@@ -780,22 +784,7 @@ end;
 /// <summary>Text einer Sichtbarkeit der Gliederung („strict private“); leer bei None.</summary>
 function VisibilityText(AVisibility: TAtlasOutlineVisibility): string;
 begin
-  case AVisibility of
-    TAtlasOutlineVisibility.StrictPrivate:
-      Result := 'strict private';
-    TAtlasOutlineVisibility.Private:
-      Result := 'private';
-    TAtlasOutlineVisibility.StrictProtected:
-      Result := 'strict protected';
-    TAtlasOutlineVisibility.Protected:
-      Result := 'protected';
-    TAtlasOutlineVisibility.Public:
-      Result := 'public';
-    TAtlasOutlineVisibility.Published:
-      Result := 'published';
-  else
-    Result := '';
-  end;
+  Result := TAtlasOutline.cVisibilityNames[AVisibility];
 end;
 
 /// <summary>Genaue Sichtbarkeit der Methodendeklaration ADeclaration: Abschnitt im Typ (auch implizit), sonst die
