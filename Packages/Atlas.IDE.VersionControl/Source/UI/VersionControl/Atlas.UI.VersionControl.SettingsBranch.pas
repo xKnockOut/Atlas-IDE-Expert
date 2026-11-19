@@ -16,6 +16,9 @@ type
   TAtlasSettingsVcsBranchPart = class(TAtlasVcsSettingsPart)
   public const
     cRulesKey = 'vcs.externals.rules';
+    /// <summary>Feld für die Externals-Regeln (Pixel bei 96 dpi).</summary>
+    cRulesWidth = 466;
+    cRulesHeight = 80;
   private
     FVcsBranchSvnSource: TAtlasChoiceBox;
     FVcsBranchSvnAfter: TAtlasChoiceBox;
@@ -55,7 +58,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.ExternalRules,
   Atlas.UI.Strings,
-  Atlas.UI.VersionControl.Strings;
+  Atlas.UI.VersionControl.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 { TAtlasSettingsVcsBranchPart }
 
@@ -149,7 +153,7 @@ begin
   mPanel := AddPanel(84, [cRulesKey]);
   FVcsExternalsRules := TMemo.Create(FPage);
   FVcsExternalsRules.Parent := mPanel;
-  FVcsExternalsRules.SetBounds(0, 1, 466, 80);
+  TAtlasControlScaling.Place(FVcsExternalsRules, 0, 1, cRulesWidth, cRulesHeight);
   FVcsExternalsRules.Anchors := [akLeft, akTop, akRight];
   FVcsExternalsRules.ScrollBars := ssVertical;
   FVcsExternalsRules.WordWrap := False;
