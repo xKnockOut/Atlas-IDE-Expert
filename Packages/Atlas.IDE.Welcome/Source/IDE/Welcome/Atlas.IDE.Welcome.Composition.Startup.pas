@@ -30,7 +30,6 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Commands.Usage,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Status.Lines,
