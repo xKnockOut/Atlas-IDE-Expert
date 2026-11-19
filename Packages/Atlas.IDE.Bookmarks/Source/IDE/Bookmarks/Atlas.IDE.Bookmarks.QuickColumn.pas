@@ -214,16 +214,6 @@ type
     View: IOTAEditView;
   end;
 
-procedure InvalidateTop;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-end;
-
 function Services: INTACodeEditorServices280;
 begin
   if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
@@ -734,12 +724,12 @@ begin
         // Neue Datei vorn: gleich wiederfinden. Die IDE-Lesezeichen übernimmt CheckPainted, sobald die Spalte
         // zeichnet (#1281).
         TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text);
-        InvalidateTop;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
     TAtlasQuickTrackStep.Settled:
       if TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text) then
       begin
-        InvalidateTop;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
     TAtlasQuickTrackStep.Idle, TAtlasQuickTrackStep.Changed: ;
   end;
@@ -1107,7 +1097,7 @@ begin
   FHover.Row := ARow;
   FHover.Since := TThread.GetTickCount64;
   // Umriss auf freiem Platz folgt der Maus.
-  InvalidateTop;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.
