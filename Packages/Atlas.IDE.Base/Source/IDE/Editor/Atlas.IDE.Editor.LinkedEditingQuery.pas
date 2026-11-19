@@ -78,7 +78,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Editor.EditSurface;
+  Atlas.IDE.Editor.Surfaces;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>
 function NearIdentifier(const ALine: string; ACharacter: Integer): Boolean;
@@ -178,7 +178,7 @@ end;
 
 class procedure TAtlasIdeLinkedEditingQuery.ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
 begin
-  TAtlasIdeEditSurface.Wrap(AView).ReadCaret(ALine, ACharacter);
+  TAtlasIdeEditSurfaces.Wrap(AView).ReadCaret(ALine, ACharacter);
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Watch(const AView: IOTAEditView);

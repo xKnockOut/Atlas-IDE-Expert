@@ -45,6 +45,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Core.Undo.Contract,
   Atlas.Core.Editor.WorkspacePlan;
 
 type
@@ -57,7 +58,13 @@ type
     Error: string;
   end;
 
+  /// <summary>Sicht des Planers auf Dateien und Projekte der IDE; ATarget liest wie das Änderungsprotokoll.
+  /// </summary>
+  TAtlasEditEnvironmentFactory = reference to function(const ATarget: IAtlasUndoTarget): IAtlasEditEnvironment;
+
   TAtlasIdeWorkspaceEdit = class
+  private class var
+    FEnvironmentFactory: TAtlasEditEnvironmentFactory;
   public
     /// <summary>Schreibt ARanges (Zeichenbereiche in AText, aufsteigend, ohne Überlappung) als einen
     /// Rückgängig-Schritt in ABuffer mit Text AText.</summary>
@@ -70,6 +77,10 @@ type
     /// schreiben. AAction: Name der Aktion im Änderungsprotokoll (#721).</summary>
     class function Apply(const AEdit: TLspWorkspaceEdit; APolicy: TAtlasUnopenedPolicy;
       const AAction: string): TAtlasWorkspaceEditResult; static;
+    /// <summary>Dateien und Projekte für den Planer aus Sicht der IDE; setzt die Kompositionswurzel
+    /// (Atlas.IDE.Editor.Adapters.EditEnvironment).</summary>
+    class property EnvironmentFactory: TAtlasEditEnvironmentFactory read FEnvironmentFactory
+      write FEnvironmentFactory;
   end;
 
 implementation
@@ -79,13 +90,11 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Files.EncodingDefault,
   Atlas.Core.Forms.Changes,
-  Atlas.Core.Undo.Contract,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Undo.Target,
   Atlas.Core.Localization.Language,
   Atlas.Core.Editor.EditSurface;
 
@@ -97,6 +106,8 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  /// <summary>Programmierfehler beim Zusammenstecken, nie beim Benutzer.</summary>
+  cNoEnvironment = 'Atlas: Sicht des Planers auf die IDE nicht eingesetzt.'; // german-ok Programmierfehler
   cTexts: array[TAtlasLanguage, TWorkspaceEditText] of string = (
     ('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften',
      'schreibgeschützt',
@@ -132,21 +143,6 @@ type
     Change: TAtlasFileChange;
   end;
 
-  /// <summary>Dateien und Projekte für den Planer aus Sicht der IDE.</summary>
-  TAtlasIdeEditEnvironment = class(TInterfacedObject, IAtlasEditEnvironment)
-  private
-    FTarget: IAtlasUndoTarget;
-  public
-    constructor Create(const ATarget: IAtlasUndoTarget);
-    function Exists(const AFileName: string): Boolean;
-    function IsDirectory(const AFileName: string): Boolean;
-    function Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
-    function DiskEncoding(const AFileName: string): TAtlasTextFileContent;
-    function ProjectOfFile(const AFileName: string): string;
-    function ProjectForNewFile(const AFileName: string): string;
-    function ProjectLoaded(const AProjectFile: string): Boolean;
-  end;
-
 function Failure(const AFileName, AReason: string): string;
 begin
   Result := Format('%s: %s', [ExtractFileName(AFileName), AReason]);
@@ -156,49 +152,6 @@ function Content(const AFileName, AText: string): TAtlasTextFileContent;
 begin
   Result := TAtlasIdeFiles.DiskEncoding(AFileName);
   Result.Text := AText;
-end;
-
-{ TAtlasIdeEditEnvironment }
-
-constructor TAtlasIdeEditEnvironment.Create(const ATarget: IAtlasUndoTarget);
-begin
-  inherited Create;
-  FTarget := ATarget;
-end;
-
-function TAtlasIdeEditEnvironment.Exists(const AFileName: string): Boolean;
-begin
-  Result := FileExists(AFileName) or (TAtlasIdeFiles.BufferOf(AFileName) <> nil);
-end;
-
-function TAtlasIdeEditEnvironment.IsDirectory(const AFileName: string): Boolean;
-begin
-  Result := DirectoryExists(AFileName);
-end;
-
-function TAtlasIdeEditEnvironment.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
-begin
-  Result := FTarget.Read(AFileName, AContent);
-end;
-
-function TAtlasIdeEditEnvironment.DiskEncoding(const AFileName: string): TAtlasTextFileContent;
-begin
-  Result := TAtlasIdeFiles.DiskEncoding(AFileName);
-end;
-
-function TAtlasIdeEditEnvironment.ProjectOfFile(const AFileName: string): string;
-begin
-  Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
-end;
-
-function TAtlasIdeEditEnvironment.ProjectForNewFile(const AFileName: string): string;
-begin
-  Result := TAtlasIdeFiles.ProjectForNewFile(AFileName);
-end;
-
-function TAtlasIdeEditEnvironment.ProjectLoaded(const AProjectFile: string): Boolean;
-begin
-  Result := TAtlasIdeFiles.ProjectModule(AProjectFile) <> nil;
 end;
 
 /// <summary>Formular im Designer (#402): Ereignis-Zuordnungen und einzeilige Eigenschaften (#309); '' oder der
@@ -558,6 +511,16 @@ begin
   end;
 end;
 
+/// <summary>Sicht des Planers aus der Kompositionswurzel; EInvalidOpException ohne.</summary>
+function EditEnvironment(const ATarget: IAtlasUndoTarget): IAtlasEditEnvironment;
+begin
+  if not Assigned(TAtlasIdeWorkspaceEdit.FEnvironmentFactory) then
+  begin
+    raise EInvalidOpException.Create(cNoEnvironment);
+  end;
+  Result := TAtlasIdeWorkspaceEdit.FEnvironmentFactory(ATarget);
+end;
+
 class function TAtlasIdeWorkspaceEdit.Apply(const AEdit: TLspWorkspaceEdit; APolicy: TAtlasUnopenedPolicy;
   const AAction: string): TAtlasWorkspaceEditResult;
 var
@@ -567,8 +530,8 @@ var
   mFiles: TArray<TPreparedFile>;
 begin
   Result := Default(TAtlasWorkspaceEditResult);
-  mTarget := TAtlasIdeUndoTarget.Create;
-  mEnvironment := TAtlasIdeEditEnvironment.Create(mTarget);
+  mTarget := TAtlasIdeUndo.NewTarget;
+  mEnvironment := EditEnvironment(mTarget);
   // 1. Prüfen: Dateioperationen und alle Texte planen, noch nichts ändern.
   mPlan := TAtlasEditPlanner.Plan(AEdit, mEnvironment);
   if mPlan.Error <> '' then

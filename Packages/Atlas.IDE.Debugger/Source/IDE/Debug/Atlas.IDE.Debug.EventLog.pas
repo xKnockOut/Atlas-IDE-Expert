@@ -26,6 +26,8 @@ uses
   Atlas.Core.Debug.EventLog,
   Atlas.Core.Debug.Logpoint,
   Atlas.Core.Debug.DialogCompletion,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.EventLogFrame;
 
@@ -43,7 +45,7 @@ type
     cFilterFileName = 'debug-eventlog-filters.json';
     cFiltersPerProject = 30;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugEnded; override;
@@ -54,7 +56,7 @@ type
     end;
   private class var
     FServices: TAtlasEventLogServices;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FLog: TAtlasEventLog;
     FFilters: TAtlasExpressionHistory;
     FFiltersKept: Boolean;

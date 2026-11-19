@@ -28,6 +28,8 @@ uses
   ToolsAPI,
   Atlas.Core.Status.Contract,
   Atlas.Core.Debug.DialogCompletion,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ReattachWait;
 
@@ -42,7 +44,7 @@ type
     cStatusOrder = 86;
   private type
     /// <summary>Merkt angehängte Programme; ein Start der IDE meldet sich vorher über AllowLaunch.</summary>
-    TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
+    TListener = class(TAtlasDebugListener, IAtlasIdeDebugLaunchCheck)
     private
       FLaunching: Boolean;
     public
@@ -58,7 +60,7 @@ type
       procedure WaitClick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FHandler: THandler;
     FMessage: TProc<string>;
     FRegistry: IAtlasStatusRegistry;

@@ -30,7 +30,8 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Lines,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Completion.Snippets;
+  Atlas.Core.Completion.Snippets,
+  Atlas.Core.Files.Contract;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server; ADone bekommt das
@@ -95,6 +96,10 @@ type
     ShowMessages: TProc;
     /// <summary>Zeilen des Statusfelds (#591) laufen; die Willkommensseite (#754) beobachtet sie.</summary>
     StatusLinesReady: TFunc<Boolean>;
+    /// <summary>Datei und Schreibmarke des oberen Editors (Adapter der Kompositionswurzel, #1967).</summary>
+    ActiveEditor: TFunc<IAtlasActiveEditor>;
+    /// <summary>Puffer offener Dateien lesen und speichern (Adapter der Kompositionswurzel).</summary>
+    EditorFiles: TFunc<IAtlasEditorFiles>;
   end;
 
   /// <summary>Anfrage an den Server für TAtlasIdeHost.RunRequestAsync: Methode, Parameter als JSON, Zeitgrenze und
@@ -184,6 +189,10 @@ type
     class procedure ShowMessages; static;
     /// <summary>Laufen die Zeilen des Statusfelds? False vor Install und nach Uninstall.</summary>
     class function StatusLinesReady: Boolean; static;
+    /// <summary>Datei und Schreibmarke des oberen Editors; nil vor Install und nach Uninstall.</summary>
+    class function ActiveEditor: IAtlasActiveEditor; static;
+    /// <summary>Puffer offener Dateien lesen und speichern; nil vor Install und nach Uninstall.</summary>
+    class function EditorFiles: IAtlasEditorFiles; static;
     /// <summary>Ordner des Base-Packages mit Pfadtrenner am Ende (Regel 8, #1456): Daten, Vorlagen und Doku liegen
     /// dort, auch wenn ein Modul aus einem eigenen Package fragt. Braucht kein Install.</summary>
     class function InstallFolder: string; static;
@@ -554,6 +563,24 @@ end;
 class function TAtlasIdeHost.StatusLinesReady: Boolean;
 begin
   Result := Assigned(FServices.StatusLinesReady) and FServices.StatusLinesReady();
+end;
+
+class function TAtlasIdeHost.ActiveEditor: IAtlasActiveEditor;
+begin
+  Result := nil;
+  if Assigned(FServices.ActiveEditor) then
+  begin
+    Result := FServices.ActiveEditor();
+  end;
+end;
+
+class function TAtlasIdeHost.EditorFiles: IAtlasEditorFiles;
+begin
+  Result := nil;
+  if Assigned(FServices.EditorFiles) then
+  begin
+    Result := FServices.EditorFiles();
+  end;
 end;
 
 class function TAtlasIdeHost.InstallFolder: string;

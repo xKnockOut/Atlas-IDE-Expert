@@ -1,25 +1,6 @@
 # Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von
 # pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.
 adapter-name Atlas.Core.Diagnostics.ModuleHosting TListener IAtlasRegistryListener
-adapter-name Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-adapter-name Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
-adapter-name Atlas.IDE.Editor.LearnedSuggestions TLearnedProvider IAtlasGhostProvider
-adapter-name Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
-adapter-name Atlas.IDE.Foundation.ActiveEditor TAtlasIdeActiveEditor IAtlasActiveEditor
-adapter-name Atlas.IDE.Foundation.EditorFiles TAtlasIdeEditorFiles IAtlasEditorFiles
-adapter-name Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
-adapter-name Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
-adapter-name Atlas.IDE.Generate.Gallery TGalleryWatch IAtlasRegistryListener
-adapter-name Atlas.IDE.Settings.ModuleNodes TAtlasModuleNodeWatch IAtlasRegistryListener
-adapter-name Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
-adapter-name Atlas.IDE.Undo.Target TAtlasIdeUndoTarget IAtlasUndoTarget
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasAccessibleItems
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionHiddenView
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxView
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
-adapter-name Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
-adapter-name Atlas.UI.Settings.Page.Sections TAtlasSettingsSectionWatch IAtlasRegistryListener
-adapter-name Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
 adapters-own Atlas.Core.Credentials.Adapters.Windows TAtlasWindowsCredentials IAtlasCredentialStore
 adapters-own Atlas.Core.Files.Adapters.FolderWatcher TAtlasFolderWatcher IAtlasFolderWatcher
 adapters-own Atlas.Core.Lsp.Adapters.ServerProcess TLspServerProcess IAtlasLspServer
@@ -32,27 +13,27 @@ contract Atlas.IDE.Bookmarks.Composition TAtlasBookmarksModule IAtlasOverviewBoo
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBuildEvaluator
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasCompilerMessagesListener
 contract Atlas.IDE.CodeInsight.Composition.Build TNotificationsVerdictListener IAtlasBuildVerdictListener
-contract Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-contract Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
-contract Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
-contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
-contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
+contract Atlas.IDE.Commands.Adapters.PaletteRegistry TAtlasPaletteCommandRegistry IAtlasCommandRegistry
+contract Atlas.IDE.Editor.Adapters.EditEnvironment TAtlasIdeEditEnvironment IAtlasEditEnvironment
+contract Atlas.IDE.Editor.Adapters.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
+contract Atlas.IDE.Foundation.Adapters.RegistryStore TAtlasRegistrySettingsStore IAtlasSettingsNames
+contract Atlas.IDE.Foundation.Adapters.RegistryStore TAtlasRegistrySettingsStore IAtlasSettingsStore
 contract Atlas.IDE.Rules.Adapters.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
 contract Atlas.IDE.Rules.Adapters.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 contract Atlas.IDE.Search.Composition TAtlasSearchModule IAtlasTakenActions
-contract Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
+contract Atlas.IDE.Setup.Adapters.Environment TAtlasIdeSetupEnvironment IAtlasSetupEnvironment
 contract Atlas.IDE.Tests.Composition TAtlasTestsModule IAtlasBuildVerdictListener
 contract Atlas.IDE.Tracker.Adapters.PaletteSearch TAtlasIssuePaletteSourceAdapter IAtlasPaletteSource
 contract Atlas.IDE.Tracker.Adapters.TestResults TAtlasTestsSummaryListener IAtlasProjectSummaryListener
 contract Atlas.IDE.Tracker.Composition TAtlasTrackerModule IAtlasPaletteSourceProvider
 contract Atlas.IDE.Welcome.Adapters.Listener TAtlasWelcomeListener IAtlasCommandUsageListener
 contract Atlas.IDE.Welcome.Adapters.Projects TAtlasIdeProjects IAtlasProjectSummaryListener
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasAccessibleItems
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionHiddenView
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxView
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
-contract Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
-contract Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasAccessibleItems
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionHiddenView
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionSyntaxView
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionView
+contract Atlas.UI.Hover.Adapters.TipMeasure TAtlasHoverTipMeasure IAtlasHoverMeasure
+contract Atlas.UI.Signature.Adapters.HintView TAtlasSignatureHintView IAtlasSignatureView
 empty Atlas.Core.Credentials.Adapters.Windows
 empty Atlas.Core.Files.Adapters.FolderWatcher
 empty Atlas.Core.Lsp.Adapters.ServerProcess
@@ -60,6 +41,14 @@ empty Atlas.Core.Undo.Adapters.DiskTarget
 empty Atlas.Core.Undo.Adapters.FileStore
 empty Atlas.Core.Updates.Adapters.HttpSource
 empty Atlas.Core.VersionControl.Adapters.ProcessRunner
+empty Atlas.IDE.Commands.Adapters.PaletteRegistry
+empty Atlas.IDE.Editor.Adapters.EditEnvironment
+empty Atlas.IDE.Editor.Adapters.EditSurface
+empty Atlas.IDE.Foundation.Adapters.RegistryStore
 empty Atlas.IDE.Rules.Adapters.BulkFix
 empty Atlas.IDE.Rules.Adapters.SettingsDialog
+empty Atlas.IDE.Setup.Adapters.Environment
 empty Atlas.IDE.Tracker.Adapters.PaletteSearch
+empty Atlas.UI.Completion.Adapters.PopupView
+empty Atlas.UI.Hover.Adapters.TipMeasure
+empty Atlas.UI.Signature.Adapters.HintView

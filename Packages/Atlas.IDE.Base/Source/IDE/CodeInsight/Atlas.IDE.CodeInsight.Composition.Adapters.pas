@@ -4,7 +4,8 @@
 // Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Code-Aktionen für den Klick auf eine Marke,
 // Ziel und Sicherung des Änderungsprotokolls und die Update-Quelle. Nur diese
 // Unit erzeugt sie; die Features bekommen sie über
-// Schnittstellen und Fabriken.
+// Schnittstellen und Fabriken. Die Adapter der IDE- und UI-Features legt
+// Atlas.IDE.CodeInsight.Composition.IdeAdapters an.
 
 interface
 
@@ -43,7 +44,7 @@ uses
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Undo.Target;
+  Atlas.IDE.Undo.Adapters.Target;
 
 /// <summary>Quellen der Vervollständigung: Server, XML-Doku und Snippets, mit Abbau und Schaltern.</summary>
 function CompletionSources(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc): TAtlasCompletionSources;
@@ -135,6 +136,11 @@ begin
       mDisk.OnRemoveFromProject := AHooks.OnRemoveFromProject;
       mDisk.OnRecycle := AHooks.OnRecycle;
       Result := mDisk;
+    end;
+  TAtlasIdeUndo.TargetFactory :=
+    function: IAtlasUndoTarget
+    begin
+      Result := TAtlasIdeUndoTarget.Create;
     end;
   TAtlasIdeUndo.StoreFactory :=
     function(const AFolder: string; AMaxBytes: Int64): IAtlasUndoStore

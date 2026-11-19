@@ -53,6 +53,7 @@ uses
   Vcl.StdCtrls,
   Vcl.Graphics,
   Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Watch,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Settings.Strings;
 
@@ -67,11 +68,6 @@ type
     function ValidateContents: Boolean;
     function GetHelpContext: Integer;
     function IncludeInIDEInsight: Boolean;
-  end;
-
-  TAtlasModuleNodeWatch = class(TInterfacedObject, IAtlasRegistryListener)
-  public
-    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
   end;
 
 var
@@ -260,9 +256,8 @@ begin
   Result := True;
 end;
 
-{ TAtlasModuleNodeWatch }
-
-procedure TAtlasModuleNodeWatch.RegistryChanged(const AChange: TAtlasRegistryChange);
+/// <summary>Module kommen und gehen: Knoten angleichen.</summary>
+procedure ModuleNodesRegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if AChange.Kind in [rcModuleAdded, rcModuleRemoved] then
   begin
@@ -288,7 +283,7 @@ begin
   begin
     mServices.RegisterAddInOptions(BaseNode);
   end;
-  Subscription := AtlasModuleRegistry.Subscribe(TAtlasModuleNodeWatch.Create);
+  Subscription := TAtlasRegistryWatch.Subscribe(AtlasModuleRegistry, ModuleNodesRegistryChanged);
   Sync;
 end;
 

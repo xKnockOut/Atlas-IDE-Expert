@@ -2,7 +2,7 @@
 
 // Dateiübergreifendes Zurücknehmen von Atlas-Änderungen in der IDE (#721):
 // hält das Änderungsprotokoll (TAtlasUndoJournal) mit dem Ziel der IDE
-// (TAtlasIdeUndoTarget) und führt die Befehle aus.
+// (TargetFactory, Atlas.IDE.Undo.Adapters.Target) und führt die Befehle aus.
 // - Add: TAtlasIdeWorkspaceEdit meldet jede Änderung mehrerer Dateien.
 // - UndoLast/RedoLast: „Letzte Atlas-Änderung zurücknehmen“ (Strg+Alt+Z) und
 //   „… wiederherstellen“ (Strg+Alt+Umschalt+Z) aus Tastatur, Menü und Palette.
@@ -31,6 +31,7 @@ type
     FOnMessage: TProc<string>;
     FOnLog: TProc<string>;
     FStoreFactory: TAtlasUndoStoreFactory;
+    FTargetFactory: TFunc<IAtlasUndoTarget>;
   private
     class procedure Say(const ALines: TArray<string>); static;
     class procedure Report(const AReport: TAtlasUndoReport); static;
@@ -54,14 +55,23 @@ type
     class procedure ShowDiff(AId: Integer; const AFileName: string); static;
     /// <summary>%LOCALAPPDATA%\Atlas\undo.</summary>
     class function DefaultFolder: string; static;
+    /// <summary>Neues Ziel in der IDE (offene Puffer, Designer, Projekte, Platte); EInvalidOpException ohne
+    /// TargetFactory.</summary>
+    class function NewTarget: IAtlasUndoTarget; static;
+    /// <summary>Datei in den Papierkorb; EInOutError, wenn das nicht geht.</summary>
+    class procedure Recycle(const AFileName: string); static;
     class property Journal: TAtlasUndoJournal read FJournal;
     /// <summary>Legt die Sicherung an; setzt die Kompositionswurzel (TAtlasUndoFileStore).</summary>
     class property StoreFactory: TAtlasUndoStoreFactory read FStoreFactory write FStoreFactory;
+    /// <summary>Legt das Ziel in der IDE an; setzt die Kompositionswurzel (TAtlasIdeUndoTarget).</summary>
+    class property TargetFactory: TFunc<IAtlasUndoTarget> read FTargetFactory write FTargetFactory;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.ShellAPI,
   System.IOUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Undo.Names,
@@ -70,11 +80,12 @@ uses
   Atlas.UI.Undo.DiffView,
   Atlas.UI.Results.Frame,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Undo.Target;
+  Atlas.IDE.Foundation.ResultsWindow;
 
 const
   cBytesPerMb = 1024 * 1024;
+  /// <summary>Programmierfehler beim Zusammenstecken, nie beim Benutzer.</summary>
+  cNoTarget = 'Atlas: Ziel des Änderungsprotokolls nicht eingesetzt.'; // german-ok Programmierfehler
 
 { TAtlasIdeUndo }
 
@@ -139,7 +150,7 @@ begin
   FOnMessage := AMessage;
   FOnLog := ALog;
   FFolder := DefaultFolder;
-  FJournal := TAtlasUndoJournal.Create(TAtlasIdeUndoTarget.Create);
+  FJournal := TAtlasUndoJournal.Create(NewTarget);
   FJournal.OnLog :=
     procedure(AText: string)
     begin
@@ -315,6 +326,32 @@ end;
 class function TAtlasIdeUndo.DefaultFolder: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'undo');
+end;
+
+class function TAtlasIdeUndo.NewTarget: IAtlasUndoTarget;
+begin
+  if not Assigned(FTargetFactory) then
+  begin
+    raise EInvalidOpException.Create(cNoTarget);
+  end;
+  Result := FTargetFactory();
+end;
+
+class procedure TAtlasIdeUndo.Recycle(const AFileName: string);
+var
+  mOperation: TSHFileOpStruct;
+  mFrom: string;
+begin
+  // Doppelt nullterminiert, wie SHFileOperation es verlangt.
+  mFrom := AFileName + #0#0;
+  FillChar(mOperation, SizeOf(mOperation), 0);
+  mOperation.wFunc := FO_DELETE;
+  mOperation.pFrom := PChar(mFrom);
+  mOperation.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI;
+  if (SHFileOperation(mOperation) <> 0) or mOperation.fAnyOperationsAborted then
+  begin
+    raise EInOutError.Create(TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoRecycleBinNotReachable));
+  end;
 end;
 
 end.
