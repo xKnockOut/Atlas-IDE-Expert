@@ -179,6 +179,7 @@ uses
   System.Math,
   System.JSON,
   System.Generics.Defaults,
+  Atlas.Text.Fuzzy,
   Atlas.Core.Completion.Matching;
 
 { TAtlasPaletteGroup }
@@ -470,20 +471,6 @@ begin
 end;
 
 /// <summary>Alle Zeichen von APattern kommen in AText in dieser Reihenfolge vor (Großschreibung egal).</summary>
-function IsSubsequence(const APattern, AText: string): Boolean;
-var
-  mPatternIndex, mTextIndex: Integer;
-begin
-  mPatternIndex := 1;
-  for mTextIndex := 1 to Length(AText) do
-  begin
-    if (mPatternIndex <= Length(APattern)) and (UpCase(AText[mTextIndex]) = UpCase(APattern[mPatternIndex])) then
-    begin
-      Inc(mPatternIndex);
-    end;
-  end;
-  Result := mPatternIndex > Length(APattern);
-end;
 
 const
   cScoreLoose = 100;
@@ -545,7 +532,8 @@ begin
       Result := Result div 2;
     end;
   end;
-  if (Result = TAtlasCompletionMatcher.cNoMatch) and IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
+  if (Result = TAtlasCompletionMatcher.cNoMatch) and
+    TTextFuzzy.IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
   begin
     Result := cScoreLoose;
   end;

@@ -37,6 +37,9 @@ type
     /// <summary>#1775: Compiling zählt laufende Projekte außer Atlas' eigener Hintergrundprüfung.</summary>
     [Test]
     procedure CompilingIgnoresBackgroundChecks;
+    /// <summary>Eingesetzte Uhr gilt; ohne sie läuft die Uhr des Systems vorwärts.</summary>
+    [Test]
+    procedure ClocksUseGivenOrSystem;
   end;
 
 implementation
@@ -441,6 +444,20 @@ begin
     mEvents.Free;
     Sent := '';
   end;
+end;
+
+procedure TAtlasCompileEventsTests.ClocksUseGivenOrSystem;
+var
+  mFirst: Int64;
+begin
+  Assert.AreEqual(Int64(42), TAtlasClocks.Millis(
+    function: Int64
+    begin
+      Result := 42;
+    end));
+  mFirst := TAtlasClocks.Millis(nil);
+  Assert.IsTrue(mFirst > 0, 'Systemuhr');
+  Assert.IsTrue(TAtlasClocks.Millis(nil) >= mFirst, 'Systemuhr läuft nicht rückwärts');
 end;
 
 initialization

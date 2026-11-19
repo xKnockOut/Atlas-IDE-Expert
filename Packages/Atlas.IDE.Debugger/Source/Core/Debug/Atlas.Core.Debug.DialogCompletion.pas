@@ -87,6 +87,7 @@ implementation
 
 uses
   System.JSON,
+  System.StrUtils,
   Atlas.Text.Chars;
 
 const
@@ -111,20 +112,6 @@ begin
   for mWord in AWords do
   begin
     if Pos(mWord, AText) > 0 then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function IsAny(const AText: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  for mWord in AWords do
-  begin
-    if AText = mWord then
     begin
       Exit(True);
     end;
@@ -166,29 +153,29 @@ begin
   mText := CleanLabel(ALabel);
   case ADialog of
     TAtlasDebugDialog.Evaluate:
-      if (mText = '') or IsAny(mText, ['expression', 'ausdruck']) then
+      if (mText = '') or MatchStr(mText, ['expression', 'ausdruck']) then
       begin
         Result := TAtlasDebugField.Expression;
       end;
     TAtlasDebugDialog.Watch:
-      if IsAny(mText, ['expression', 'ausdruck']) then
+      if MatchStr(mText, ['expression', 'ausdruck']) then
       begin
         Result := TAtlasDebugField.Expression;
       end;
     TAtlasDebugDialog.Breakpoint:
-      if IsAny(mText, ['condition', 'bedingung']) then
+      if MatchStr(mText, ['condition', 'bedingung']) then
       begin
         Result := TAtlasDebugField.Condition;
       end
-      else if IsAny(mText, ['eval expression', 'evaluate expression', 'ausdruck auswerten', 'auswertung']) then
+      else if MatchStr(mText, ['eval expression', 'evaluate expression', 'ausdruck auswerten', 'auswertung']) then
       begin
         Result := TAtlasDebugField.LogExpression;
       end
-      else if IsAny(mText, ['filename', 'file name', 'dateiname', 'datei']) then
+      else if MatchStr(mText, ['filename', 'file name', 'dateiname', 'datei']) then
       begin
         Result := TAtlasDebugField.FileName;
       end
-      else if IsAny(mText, ['line number', 'line', 'zeilennummer', 'zeile']) then
+      else if MatchStr(mText, ['line number', 'line', 'zeilennummer', 'zeile']) then
       begin
         Result := TAtlasDebugField.LineNumber;
       end;

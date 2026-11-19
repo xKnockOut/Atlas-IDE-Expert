@@ -49,6 +49,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   Atlas.Text.Chars;
 
 type
@@ -365,17 +366,8 @@ begin
 end;
 
 class function TAtlasTypeText.IsOneOf(const AText: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
 begin
-  for mWord in AWords do
-  begin
-    if AText = mWord then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := MatchStr(AText, AWords);
 end;
 
 end.
