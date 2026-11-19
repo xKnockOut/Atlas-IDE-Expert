@@ -344,6 +344,7 @@ contains
   Atlas.Core.Debug.LaunchProcesses in 'Source\Core\Debug\Atlas.Core.Debug.LaunchProcesses.pas',
   Atlas.IDE.Debug.LaunchProbe in 'Source\IDE\Debug\Atlas.IDE.Debug.LaunchProbe.pas',
   Atlas.UI.Debug.LaunchGroupsDialog in 'Source\UI\Debug\Atlas.UI.Debug.LaunchGroupsDialog.pas',
+  Atlas.IDE.Debug.LaunchActive in 'Source\IDE\Debug\Atlas.IDE.Debug.LaunchActive.pas',
   Atlas.IDE.Debug.LaunchGroups in 'Source\IDE\Debug\Atlas.IDE.Debug.LaunchGroups.pas';
 
 end.

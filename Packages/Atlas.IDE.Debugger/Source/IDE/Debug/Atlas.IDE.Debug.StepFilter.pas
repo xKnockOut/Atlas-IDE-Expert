@@ -38,7 +38,9 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Trace,
   Atlas.UI.Debug.StepFilterFrame,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasStepFilterSessionFunc = reference to function: TLspSession;
@@ -54,7 +56,7 @@ type
     cIntervalMs = 100;
     cStackRetries = 10;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -85,7 +87,7 @@ type
   private class var
     FSession: TAtlasStepFilterSessionFunc;
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FCache: TAtlasStepRoutineCache;

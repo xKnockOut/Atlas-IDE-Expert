@@ -27,6 +27,8 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Debug.OpenedFiles,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Notifications.Notice;
 
@@ -39,7 +41,7 @@ type
       procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
       procedure AfterCompile(Succeeded: Boolean); overload;
     end;
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -47,7 +49,7 @@ type
     end;
   private class var
     FFiles: TAtlasOpenedFiles;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FNotifierIndex: Integer;
     FToast: TAtlasNoticeWindow;
     FToastActions: TArray<TProc>;

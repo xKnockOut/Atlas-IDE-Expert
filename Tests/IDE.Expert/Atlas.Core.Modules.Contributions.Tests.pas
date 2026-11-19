@@ -277,6 +277,8 @@ begin
   mEntries := TAtlasModuleContributions.MenuEntries(mRegistry, TAtlasMenuPlace.EditorContext);
   TAtlasModuleContributions.FindCommand(mRegistry, mEntries[0].CommandId, mCommand);
   Assert.IsFalse(TAtlasModuleContributions.IsVisible(mCommand));
+  Assert.IsFalse(TAtlasModuleContributions.Offers(mRegistry, mEntries[0].CommandId), 'unsichtbar nicht angeboten');
+  Assert.IsFalse(TAtlasModuleContributions.Offers(mRegistry, 'X.Unknown'), 'unbekannt');
   mCommand.Visible := nil;
   Assert.IsTrue(TAtlasModuleContributions.IsVisible(mCommand), 'ohne Visible sichtbar');
   mEntries := nil;

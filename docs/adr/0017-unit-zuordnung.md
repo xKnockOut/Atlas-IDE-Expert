@@ -1294,6 +1294,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.LaunchProbe` | `IDE/Debug/Atlas.IDE.Debug.LaunchProbe.pas` | Port und Hauptfenster prüfen, Programme ohne Debugger starten und beenden (Windows), #867 |
 | `Atlas.UI.Debug.LaunchGroupsDialog` | `UI/Debug/Atlas.UI.Debug.LaunchGroupsDialog.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EditValueDialog` | `UI/Debug/Atlas.UI.Debug.EditValueDialog.pas` | Ordner `UI/Debug` |
+| `Atlas.IDE.Debug.LaunchActive` | `IDE/Debug/Atlas.IDE.Debug.LaunchActive.pas` | Aktiver Startverbund je Projektgruppe (persönliche Datei) |
 | `Atlas.IDE.Debug.LaunchGroups` | `IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas` | Mehrere Programme gemeinsam debuggen, #867 |
 
 ## Atlas.IDE.Tracker

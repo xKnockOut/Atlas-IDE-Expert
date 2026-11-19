@@ -1493,6 +1493,13 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
             $homes[$key].Add($unit.Name)
         }
     }
+    # Aliase (IAtlasIdeX = IAtlasX;) zählen wie das Interface, auf das sie zeigen.
+    $aliases = @{}
+    foreach ($unit in $sources) {
+        foreach ($match in [regex]::Matches($unit.Text, '(?im)^\s*(I\w+)\s*=\s*(I\w+)\s*;')) {
+            $aliases[$match.Groups[1].Value.ToLowerInvariant()] = $match.Groups[2].Value
+        }
+    }
     # Erster Durchgang: Klassen mit Vorfahr und den Interfaces aus anderen Units, die sie direkt implementieren.
     $classes = @()
     $byName = @{}
@@ -1503,7 +1510,12 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
         foreach ($match in [regex]::Matches($unit.Text, $pattern)) {
             $parts = @($match.Groups[2].Value -split ',' | ForEach-Object { ($_ -replace '<.*$', '').Trim() })
             $implemented = @()
-            foreach ($interfaceName in $parts) {
+            foreach ($part in $parts) {
+                $interfaceName = $part
+                for ($depth = 0; $depth -lt 5 -and -not $homes.ContainsKey($interfaceName.ToLowerInvariant()) -and
+                    $aliases.ContainsKey($interfaceName.ToLowerInvariant()); $depth++) {
+                    $interfaceName = $aliases[$interfaceName.ToLowerInvariant()]
+                }
                 $key = $interfaceName.ToLowerInvariant()
                 if (-not $homes.ContainsKey($key) -or $homes[$key].Contains($unit.Name)) { continue }
                 # Bei gleichnamigen Interfaces zählt die Unit, die die implementierende Unit verwendet; ein

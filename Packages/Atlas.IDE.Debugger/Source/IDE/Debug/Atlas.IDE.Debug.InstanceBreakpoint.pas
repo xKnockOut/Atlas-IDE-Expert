@@ -27,20 +27,22 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.Evaluate,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeInstanceBreakpoint = class
   private const
     cTimeoutMs = 2000;
   private type
-    TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
+    TListener = class(TAtlasDebugListener, IAtlasIdeDebugLaunchCheck)
     public
       function AllowLaunch(const AProject: IOTAProject): Boolean;
     end;
   private class var
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     /// <summary>Felder der Objekte, auf die ein Haltepunkt eingeschränkt wurde, je Adresse.</summary>
     FFields: TDictionary<UInt64, TAtlasEvalParts>;
     /// <summary>Haltepunkt an der Zeile der Schreibmarke in einer Methode des angehaltenen Programms; False mit

@@ -48,6 +48,8 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionBanner,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
@@ -63,7 +65,7 @@ type
     cIntervalMs = 100;
     cKeyPriority = 30;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugResumed; override;
@@ -91,7 +93,7 @@ type
       KnownHandler: TProc<TAtlasDebugBarAction>;
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FHandler: Integer;
     FKeys: TKeys;
     FWatcher: TWatcher;
@@ -162,7 +164,6 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.DebugStop,
@@ -171,11 +172,8 @@ uses
 
 /// <summary>Bietet ein Modul „Test daraus anlegen …“ an (#1873)?</summary>
 function CreateTestOffered: Boolean;
-var
-  mCommand: TAtlasModuleCommand;
 begin
-  Result := TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, cAtlasTestFromDebugStopCommand, mCommand) and
-    TAtlasModuleContributions.IsVisible(mCommand);
+  Result := TAtlasModuleContributions.Offers(AtlasModuleRegistry, cAtlasTestFromDebugStopCommand);
 end;
 
 /// <summary>Knopf „Meldung …“ (#2549): Einstellung an und eine Meldung da.</summary>

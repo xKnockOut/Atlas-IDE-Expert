@@ -26,6 +26,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.NoSource,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.NoSourcePopup;
 
@@ -36,7 +38,7 @@ type
     cStackRetries = 10;
     cMaxReturns = 20;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugResumed; override;
@@ -47,7 +49,7 @@ type
       procedure Tick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FPopup: TAtlasNoSourcePopup;
