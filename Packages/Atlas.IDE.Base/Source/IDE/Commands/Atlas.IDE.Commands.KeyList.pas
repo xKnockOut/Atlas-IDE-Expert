@@ -22,6 +22,8 @@ type
     Proc: TProc;
     /// <summary>Statt Proc: sofort ausführen; False gibt die Taste an die nächste Bindung weiter.</summary>
     Attempt: TFunc<Boolean>;
+    /// <summary>Was die Taste tut (Text der Konfliktprüfung); Name des Befehls, wenn er scheitert.</summary>
+    What: string;
   end;
 
   /// <summary>Tasten der Editorbefehle, nach Konfliktprüfung aufgenommen.</summary>
@@ -31,7 +33,8 @@ type
     FBound: string;
     /// <summary>Taste schon aufgenommen?</summary>
     function Has(AKey: Word): Boolean;
-    procedure Append(AFeature: TAtlasFeature; AKey: Word; const AProc: TProc; const AAttempt: TFunc<Boolean>);
+    procedure Append(AFeature: TAtlasFeature; AKey: Word; const AWhat: string; const AProc: TProc;
+      const AAttempt: TFunc<Boolean>);
   protected
     /// <summary>Alle Tasten verwerfen (vor dem Neubelegen).</summary>
     procedure Clear;
@@ -79,7 +82,7 @@ begin
   end;
 end;
 
-procedure TAtlasEditorKeyList.Append(AFeature: TAtlasFeature; AKey: Word; const AProc: TProc;
+procedure TAtlasEditorKeyList.Append(AFeature: TAtlasFeature; AKey: Word; const AWhat: string; const AProc: TProc;
   const AAttempt: TFunc<Boolean>);
 var
   mKey: TAtlasEditorKey;
@@ -88,6 +91,7 @@ begin
   mKey.Feature := AFeature;
   mKey.Proc := AProc;
   mKey.Attempt := AAttempt;
+  mKey.What := AWhat;
   FKeys := FKeys + [mKey];
   FBound := FBound + IntToStr(AKey) + ';';
 end;
@@ -109,7 +113,7 @@ procedure TAtlasEditorKeyList.AddPriorityKey(AFeature: TAtlasFeature; AKey: Inte
 begin
   if TAtlasIdeKeys.Decide(Word(AKey), APriority, AWhat) then
   begin
-    Append(AFeature, Word(AKey), AProc, nil);
+    Append(AFeature, Word(AKey), AWhat, AProc, nil);
   end;
 end;
 
@@ -125,7 +129,7 @@ begin
   begin
     Exit;
   end;
-  Append(AFeature, Word(AKey), nil, AAttempt);
+  Append(AFeature, Word(AKey), AWhat, nil, AAttempt);
 end;
 
 procedure TAtlasEditorKeyList.AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
@@ -143,7 +147,7 @@ begin
   end;
   if TAtlasIdeKeys.Decide(Word(AKey), APriority, AWhat) then
   begin
-    Append(AFeature, Word(AKey), nil, AAttempt);
+    Append(AFeature, Word(AKey), AWhat, nil, AAttempt);
   end;
 end;
 

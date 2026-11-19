@@ -487,9 +487,14 @@ begin
   end;
 end;
 
-/// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält.</summary>
+/// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält. Kam die
+/// Anfrage aus einem Befehl des Benutzers, läuft die Antwort wieder als dieser Befehl: Scheitert sie, steht das
+/// sofort in der Meldungsansicht (sonst täte der Befehl scheinbar nichts).</summary>
 function DeliverInMainThread(const AAnswer: IAtlasModuleAnswer; AFeature: TAtlasFeature): TProc<string>;
+var
+  mCommand: string;
 begin
+  mCommand := TAtlasCommandScope.Current;
   Result :=
     procedure(AText: string)
     var
@@ -499,7 +504,11 @@ begin
       TAtlasMainThread.Queue(AFeature,
         procedure
         begin
-          AAnswer.Deliver(mText);
+          TAtlasCommandScope.Run(AFeature, mCommand,
+            procedure
+            begin
+              AAnswer.Deliver(mText);
+            end);
         end);
     end;
 end;

@@ -209,6 +209,7 @@ implementation
 
 uses
   Atlas.UI.Commands.Strings,
+  Atlas.UI.Foundation.Menus,
   Atlas.Core.Diagnostics.Guard,
   ToolsAPI,
   Atlas.IDE.Settings.Project,
@@ -283,11 +284,8 @@ end;
 
 function TAtlasMainMenuItems.AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(FRoot);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AOnClick;
-  FParent.Add(Result);
+  // Als Befehl des Benutzers: Scheitert er, steht das sofort in der Meldungsansicht.
+  Result := TAtlasMenus.Add(FRoot, FParent, ACaption, ATag, AOnClick);
 end;
 
 function TAtlasMainMenuItems.AddGroup(AText: TAtlasTextId): TMenuItem;
@@ -510,16 +508,12 @@ var
   mItem: TMenuItem;
 begin
   FRoot.Add(NewLine);
-  mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectSettingsMenu);
-  mItem.OnClick := ProjectClick;
-  FRoot.Add(mItem);
+  mItem := TAtlasMenus.Add(FRoot, FRoot, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectSettingsMenu), 0,
+    ProjectClick);
   FImageItems := [FRoot, mItem];
   // Globale Einstellungen stehen nur unter Tools › Optionen › Atlas, kein eigener Menüpunkt mehr.
-  mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuOptions);
-  mItem.OnClick := OptionsClick;
-  FRoot.Add(mItem);
+  mItem := TAtlasMenus.Add(FRoot, FRoot, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuOptions), 0,
+    OptionsClick);
   FImageItems := FImageItems + [mItem];
   // Nur sichtbar, wenn die Sicherung etwas abgeschaltet hat (#493).
   FEnableAll := TMenuItem.Create(FRoot);
@@ -553,11 +547,7 @@ end;
 
 function TAtlasMainMenu.AddViewItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(FViewAtlas);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AOnClick;
-  FViewAtlas.Add(Result);
+  Result := TAtlasMenus.Add(FViewAtlas, FViewAtlas, ACaption, ATag, AOnClick);
 end;
 
 procedure TAtlasMainMenu.AddViewMenu(AViews: TMenuItem);

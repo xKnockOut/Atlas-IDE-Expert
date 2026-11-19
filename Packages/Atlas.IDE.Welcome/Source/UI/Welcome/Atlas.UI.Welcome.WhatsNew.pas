@@ -141,6 +141,11 @@ type
     procedure AddDismiss;
   end;
 
+const
+  /// <summary>Anfangsgröße der Liste lebender Karten: Die Willkommensseite zeigt eine, beim Neuaufbau kurz zwei.
+  /// So wächst die Liste im Betrieb nicht.</summary>
+  cLiveCapacity = 4;
+
 var
   // Lebende Karten: Klicks auf Überschriften wirken über die Nachrichtenschleife, die Karte kann bis dahin frei
   // sein.
@@ -335,11 +340,6 @@ end;
 destructor TAtlasWelcomeWhatsNewFrame.Destroy;
 begin
   Live.Remove(Self);
-  if Live.Count = 0 then
-  begin
-    // Ohne lebende Karte hält die Liste keinen Speicher.
-    Live.Capacity := 0;
-  end;
   if FMenu <> nil then
   begin
     FMenu.Source := nil;
@@ -676,6 +676,7 @@ end;
 
 initialization
   Live := TList<TAtlasWelcomeWhatsNewFrame>.Create;
+  Live.Capacity := cLiveCapacity;
 
 finalization
   FreeAndNil(Live);

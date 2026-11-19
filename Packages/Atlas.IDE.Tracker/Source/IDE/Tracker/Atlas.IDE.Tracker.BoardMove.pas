@@ -4,7 +4,10 @@
 // Spalte darf (ohne Verbindung gesperrt, Workflow von YouTrack nennt die
 // erlaubten Übergänge), Rückfrage (issues.board.confirmMove; „Nicht mehr
 // fragen“ schaltet sie aus), die Karte sofort in der Zielspalte zeigen und im
-// Hintergrund über IAtlasTrackerBoards.MoveCard schreiben. Bei einem Fehler
+// Hintergrund über IAtlasTrackerBoards.MoveCard schreiben. Moving sperrt schon
+// während der Rückfrage Aktualisieren und weiteres Ziehen; danach werden Karte
+// und Spalte über Kennung und Namen im gezeigten Stand wiedergefunden
+// (TAtlasBoardPlan.Relocate). Bei einem Fehler
 // springt sie zurück und die Statuszeile nennt den Grund; nach dem Erfolg lädt
 // das Board neu (der Tracker kann mehr geändert haben).
 
@@ -47,6 +50,7 @@ type
     FMoving: Boolean;
     function Allowed(AFrame: TAtlasBoardFrame; ACard, AColumn: Integer; out AJob: TMoveJob): Boolean;
     function Prepare(AFrame: TAtlasBoardFrame; var AJob: TMoveJob): Boolean;
+    function Relocated(AFrame: TAtlasBoardFrame; var AJob: TMoveJob; out ACard: Integer): Boolean;
     procedure Run(const AJob: TMoveJob);
     procedure Moved(const ACard: TAtlasBoardCard; const AColumn, AOldState: string;
       const AResult: TAtlasTrackerWriteResult);
@@ -220,24 +224,57 @@ begin
   end;
 end;
 
+/// <summary>Nach der Rückfrage: Karte und Spalte im jetzt gezeigten Stand über Kennung und Spaltennamen (kann
+/// inzwischen neu geladen sein) und dort erneut prüfen; fehlt eine, Grund in der Statuszeile.</summary>
+function TAtlasIdeBoardMove.Relocated(AFrame: TAtlasBoardFrame; var AJob: TMoveJob; out ACard: Integer): Boolean;
+var
+  mColumn: Integer;
+  mComment: string;
+  mKey: string;
+begin
+  mKey := AJob.Card.Key;
+  mComment := AJob.Comment;
+  Result := TAtlasBoardPlan.Relocate(AFrame.Snapshot, mKey, AJob.Snapshot.Columns[AJob.Column].Name, ACard,
+    mColumn);
+  if not Result then
+  begin
+    AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveStale, [mKey]));
+    Exit;
+  end;
+  Result := Allowed(AFrame, ACard, mColumn, AJob);
+  AJob.Comment := mComment;
+end;
+
 procedure TAtlasIdeBoardMove.Move(ACard, AColumn: Integer);
 var
   mFrame: TAtlasBoardFrame;
   mJob: TMoveJob;
+  mCard: Integer;
   mGo: Boolean;
 begin
   mFrame := TAtlasIdeBoardWindow.ExistingFrame;
-  mGo := not FStopped and (mFrame <> nil) and not FMoving;
-  mGo := mGo and Allowed(mFrame, ACard, AColumn, mJob) and ConfirmMove(mJob.Card.Key, mJob.ColumnName, mJob.Comment)
-    and Prepare(mFrame, mJob);
-  if mGo then
+  if FStopped or (mFrame = nil) or FMoving or not Allowed(mFrame, ACard, AColumn, mJob) then
   begin
-    // Sofort in der Zielspalte; bei einem Fehler springt die Karte zurück.
-    mJob.Old := mFrame.MoveCard(ACard, AColumn);
-    mFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoving, [mJob.Card.Key]));
-    FMoving := True;
-    Run(mJob);
+    Exit;
   end;
+  // Schon während der Rückfrage gesperrt: Aktualisieren ersetzt den Stand nicht, ein zweites Ziehen wartet.
+  FMoving := True;
+  try
+    mGo := ConfirmMove(mJob.Card.Key, mJob.ColumnName, mJob.Comment) and Relocated(mFrame, mJob, mCard) and
+      Prepare(mFrame, mJob);
+  except
+    FMoving := False;
+    raise;
+  end;
+  if not mGo then
+  begin
+    FMoving := False;
+    Exit;
+  end;
+  // Sofort in der Zielspalte; bei einem Fehler springt die Karte zurück.
+  mJob.Old := mFrame.MoveCard(mCard, mJob.Column);
+  mFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoving, [mJob.Card.Key]));
+  Run(mJob);
 end;
 
 /// <summary>Text der Statuszeile, wenn das Verschieben scheiterte.</summary>

@@ -135,10 +135,10 @@ jobs:
       - name: Bereichs- und Überlaufprüfung im Debug-Build
         shell: pwsh
         run: ./Tools/Check-RuntimeChecks.ps1
-      - name: Aufwärm-Routinen der Tests nur weniger, Selbsttest
+      - name: Aufwärm-Routinen der Tests nur weniger, keine vorgewärmten Sperren, Selbsttest
         shell: pwsh
         run: ./Tools/Check-TestWarmUps.ps1 -SelfTest
-      - name: Aufwärm-Routinen der Tests nur weniger
+      - name: Aufwärm-Routinen der Tests nur weniger, keine vorgewärmten Sperren
         shell: pwsh
         run: ./Tools/Check-TestWarmUps.ps1
       - name: Fenster und Editorleisten über die gemeinsamen Hüllen (#1248)

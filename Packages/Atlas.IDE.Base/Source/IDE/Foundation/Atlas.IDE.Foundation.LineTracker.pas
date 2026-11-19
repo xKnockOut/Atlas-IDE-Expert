@@ -10,17 +10,24 @@
 // (Atlas.Core.Editor.LineTracking); der Zeichner fragt sie mit SourceAt.
 // - Neu angemeldet wird nur, wenn der Stand des Kanals wechselt und der Text des
 //   Stands dem Puffer entspricht (sonst stünden die Zeilen falsch); bis dahin gilt
-//   jede Zeile als sie selbst, wie ohne Verfolgung.
+//   jede Zeile als sie selbst, wie ohne Verfolgung. Dasselbe gilt nach einem
+//   Fehler beim Anmelden (GiveUp): Bis zum nächsten Stand versucht es niemand neu.
 // - Zeilen anderer Kanäle und anderer Experten im selben Tracker bleiben unberührt.
-// - Angemeldet werden nur Zeilen, die der Puffer hat, jede einmal
-//   (TAtlasLineTracking.Trackable). Eine Zeile hinter dem Ende lässt die IDE
-//   beim Vergrößern ihrer Tabelle in boreditu.dll abstürzen.
-// - Follow verändert die Tabelle der IDE und darf deshalb nicht beim Zeichnen
-//   laufen (das Zeichnen kommt auch aus WM_PRINTCLIENT, etwa beim Hover).
-//   Der Zeichner fragt nur Current und meldet neu an, wenn er fertig ist.
-// - Schließt die IDE den Puffer, meldet der Tracker Destroyed: Eintrag und
-//   Zuordnung entfallen. Uninstall meldet alle Beobachter ab und entfernt die
-//   Zeilen von Atlas.
+// - Beim Anmelden meldete die IDE einmal eine Zugriffsverletzung in boreditu.dll
+//   (Stapel: Zeichnen → Follow → AddLine → Vergrößern der Zeilentabelle). Drei
+//   Vorkehrungen kamen zugleich; welche davon die Ursache trifft, ist nicht
+//   eingegrenzt, jede gilt vorsorglich:
+//   1. Angemeldet werden nur Zeilen, die der Puffer hat, aufsteigend und jede
+//      einmal (TAtlasLineTracking.Trackable).
+//   2. Follow verändert die Tabelle der IDE und läuft nicht beim Zeichnen (das
+//      Zeichnen kommt auch aus WM_PRINTCLIENT, etwa beim Hover). Der Zeichner
+//      fragt nur Current und meldet über einen Zeitgeber danach an.
+//   3. Ein gemerkter Tracker wird nur angefasst, solange er der des geöffneten
+//      Puffers ist (EnsureBuffer, Uninstall); veraltete werden nur losgelassen.
+// - Schließt die IDE den Puffer, meldet der Tracker Destroyed: Die Anmeldung
+//   dieses Beobachters und die Zuordnung entfallen, die eines späteren Puffers
+//   gleichen Namens bleibt (Seriennummer, TAtlasLineBuffers). Uninstall meldet
+//   alle Beobachter ab und entfernt die Zeilen von Atlas.
 // Nur im Hauptthread verwenden.
 
 interface
@@ -38,6 +45,13 @@ type
     /// Zuordnung oder nil (ausgeschaltet, kein Puffer, Stand passt nicht).</summary>
     class function Follow(const AView: IOTAEditView; AChannel, AStamp: Integer; const ALines: TFunc<TArray<Integer>>;
       const ASourceText: TFunc<string>): TAtlasTrackedLines; static;
+    /// <summary>Follow für die Datei AFileName im obersten Editorfenster ihres Puffers, auch wenn sie nicht vorn
+    /// liegt (weiteres Editorfenster); nil, wenn sie nicht offen ist.</summary>
+    class function FollowFile(const AFileName: string; AChannel, AStamp: Integer;
+      const ALines: TFunc<TArray<Integer>>; const ASourceText: TFunc<string>): TAtlasTrackedLines; static;
+    /// <summary>Stand AStamp des Kanals für AFileName ohne Verfolgung (jede Zeile ist sie selbst), etwa nach einem
+    /// Fehler in Follow: Bis zum nächsten Stand meldet niemand neu an. Fasst die IDE nicht an.</summary>
+    class procedure GiveUp(const AFileName: string; AChannel, AStamp: Integer); static;
     /// <summary>Zuordnung des Kanals für AFileName, nur wenn sie zum Stand AStamp angemeldet ist (Leser ohne Ansicht,
     /// etwa die Randspalte); sonst nil.</summary>
     class function Current(const AFileName: string; AChannel, AStamp: Integer): TAtlasTrackedLines; static;
@@ -51,29 +65,35 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.Files;
 
 type
-  /// <summary>Beobachter eines Trackers; gehört zu einem Puffer.</summary>
+  /// <summary>Beobachter eines Trackers; gehört zu einer Anmeldung (Seriennummer).</summary>
   TLineNotifier = class(TNotifierObject, IOTANotifier, IOTAEditLineNotifier)
   private
     FFileName: string;
+    FSerial: Integer;
   public
-    constructor Create(const AFileName: string);
+    constructor Create(const AFileName: string; ASerial: Integer);
     procedure LineChanged(OldLine, NewLine: Integer; Data: NativeInt);
     procedure Destroyed;
   end;
 
-  TBufferEntry = record
-    Tracker: IOTAEditLineTracker;
-    NotifierIndex: Integer;
-  end;
+  // Die Tracker stehen als gezählte Referenz in den Anmeldungen: So verlangt es die Open Tools API für jedes
+  // Interface der IDE. Hält die IDE sich daran, bleibt ein veralteter Tracker gültig, bis seine Anmeldung ersetzt
+  // oder gelöscht wird, und seine Adresse geht nicht an einen neuen Tracker. Eine ungezählte Referenz ließe einen
+  // neuen Tracker an der Adresse eines freigegebenen als „derselbe“ erscheinen; Uninstall riefe dann RemoveNotifier
+  // mit der Nummer eines fremden Beobachters. Angefasst wird ein gemerkter Tracker trotzdem nur, solange er der des
+  // geöffneten Puffers ist; ob die IDE einen veralteten Tracker freigibt, obwohl er noch gezählt wird, ist in der
+  // IDE nicht geprüft.
+  TBufferEntry = TAtlasLineBuffer<IOTAEditLineTracker>;
+  TBuffers = TAtlasLineBuffers<IOTAEditLineTracker>;
 
 var
   GTracking: TAtlasLineTracking;
-  GBuffers: TDictionary<string, TBufferEntry>;
+  GBuffers: TBuffers;
 
 function Tracking: TAtlasLineTracking;
 begin
@@ -84,26 +104,22 @@ begin
   Result := GTracking;
 end;
 
-function Buffers: TDictionary<string, TBufferEntry>;
+function Buffers: TBuffers;
 begin
   if GBuffers = nil then
   begin
-    GBuffers := TDictionary<string, TBufferEntry>.Create;
+    GBuffers := TBuffers.Create;
   end;
   Result := GBuffers;
 end;
 
-function KeyOf(const AFileName: string): string;
-begin
-  Result := AnsiUpperCase(AFileName);
-end;
-
 { TLineNotifier }
 
-constructor TLineNotifier.Create(const AFileName: string);
+constructor TLineNotifier.Create(const AFileName: string; ASerial: Integer);
 begin
   inherited Create;
   FFileName := AFileName;
+  FSerial := ASerial;
 end;
 
 procedure TLineNotifier.LineChanged(OldLine, NewLine: Integer; Data: NativeInt);
@@ -122,40 +138,43 @@ end;
 
 procedure TLineNotifier.Destroyed;
 begin
-  // Puffer geschlossen: Der Tracker geht, mit ihm Eintrag und Zuordnung.
-  if GBuffers <> nil then
-  begin
-    GBuffers.Remove(KeyOf(FFileName));
-  end;
-  if GTracking <> nil then
-  begin
-    GTracking.Remove(FFileName);
+  try
+    // Nur die eigene Anmeldung: Unter demselben Dateinamen kann längst ein neuer Puffer angemeldet sein, dessen
+    // Anmeldung und Zuordnung bleiben.
+    if (GBuffers <> nil) and GBuffers.Forget(FFileName, FSerial) and (GTracking <> nil) then
+    begin
+      GTracking.Remove(FFileName);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Problems, E);
   end;
 end;
 
-/// <summary>Eintrag des Puffers, bei Bedarf mit neuem Beobachter; False, wenn die IDE keinen Tracker liefert.
+/// <summary>Anmeldung des Puffers, bei Bedarf mit neuem Beobachter; False, wenn die IDE keinen Tracker liefert.
 /// </summary>
 function EnsureBuffer(const ABuffer: IOTAEditBuffer; out AEntry: TBufferEntry): Boolean;
 var
-  mKey: string;
   mTracker: IOTAEditLineTracker;
 begin
-  mKey := KeyOf(ABuffer.FileName);
+  AEntry := Default(TBufferEntry);
   mTracker := ABuffer.GetEditLineTracker;
   if mTracker = nil then
   begin
     Exit(False);
   end;
-  // Ein Eintrag mit anderem Tracker gehört zu einem früheren Puffer gleichen Namens, dessen Ende nicht gemeldet
+  // Eine Anmeldung mit anderem Tracker gehört zu einem früheren Puffer gleichen Namens, dessen Ende nicht gemeldet
   // wurde: nicht mehr anfassen, nur ersetzen.
-  if Buffers.TryGetValue(mKey, AEntry) and (AEntry.Tracker = mTracker) then
+  if Buffers.TryGet(ABuffer.FileName, AEntry) and (AEntry.Tracker = mTracker) then
   begin
     Exit(True);
   end;
   AEntry := Default(TBufferEntry);
+  AEntry.FileName := ABuffer.FileName;
   AEntry.Tracker := mTracker;
-  AEntry.NotifierIndex := AEntry.Tracker.AddNotifier(TLineNotifier.Create(ABuffer.FileName));
-  Buffers.AddOrSetValue(mKey, AEntry);
+  AEntry.Serial := Buffers.NextSerial;
+  AEntry.NotifierIndex := mTracker.AddNotifier(TLineNotifier.Create(AEntry.FileName, AEntry.Serial));
+  Buffers.Put(AEntry);
   Result := True;
 end;
 
@@ -174,6 +193,15 @@ begin
   end;
 end;
 
+/// <summary>Ist der Tracker der Anmeldung noch der des geöffneten Puffers gleichen Namens?</summary>
+function StillOpen(const AEntry: TBufferEntry): Boolean;
+var
+  mBuffer: IOTAEditBuffer;
+begin
+  mBuffer := TAtlasIdeFiles.BufferOf(AEntry.FileName);
+  Result := (mBuffer <> nil) and (mBuffer.GetEditLineTracker = AEntry.Tracker);
+end;
+
 { TAtlasIdeLineTracker }
 
 class function TAtlasIdeLineTracker.Follow(const AView: IOTAEditView; AChannel, AStamp: Integer;
@@ -188,8 +216,8 @@ begin
   begin
     Exit;
   end;
-  Result := Tracking.Find(AView.Buffer.FileName, AChannel);
-  if (Result <> nil) and (Result.Stamp = AStamp) then
+  Result := Tracking.Current(AView.Buffer.FileName, AChannel, AStamp);
+  if Result <> nil then
   begin
     Exit;
   end;
@@ -197,9 +225,7 @@ begin
   // (jede Zeile ist sie selbst), ohne den Text bei jeder Zeile erneut zu vergleichen.
   if (ASourceText() <> TAtlasEditorSnapshots.Get(AView).Text) or not EnsureBuffer(AView.Buffer, mEntry) then
   begin
-    Result := Tracking.Ensure(AView.Buffer.FileName, AChannel);
-    Result.Reset(AStamp, nil);
-    Exit;
+    Exit(Tracking.Untracked(AView.Buffer.FileName, AChannel, AStamp));
   end;
   DropLines(mEntry.Tracker, AChannel);
   mLines := TAtlasLineTracking.Trackable(ALines(), AView.Buffer.GetLinesInBuffer);
@@ -214,16 +240,30 @@ begin
   Result.Reset(AStamp, mLines);
 end;
 
+class function TAtlasIdeLineTracker.FollowFile(const AFileName: string; AChannel, AStamp: Integer;
+  const ALines: TFunc<TArray<Integer>>; const ASourceText: TFunc<string>): TAtlasTrackedLines;
+var
+  mBuffer: IOTAEditBuffer;
+begin
+  Result := nil;
+  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+  if mBuffer <> nil then
+  begin
+    Result := Follow(mBuffer.TopView, AChannel, AStamp, ALines, ASourceText);
+  end;
+end;
+
+class procedure TAtlasIdeLineTracker.GiveUp(const AFileName: string; AChannel, AStamp: Integer);
+begin
+  Tracking.Untracked(AFileName, AChannel, AStamp);
+end;
+
 class function TAtlasIdeLineTracker.Current(const AFileName: string; AChannel, AStamp: Integer): TAtlasTrackedLines;
 begin
   Result := nil;
   if GTracking <> nil then
   begin
-    Result := GTracking.Find(AFileName, AChannel);
-  end;
-  if (Result <> nil) and (Result.Stamp <> AStamp) then
-  begin
-    Result := nil;
+    Result := GTracking.Current(AFileName, AChannel, AStamp);
   end;
 end;
 
@@ -240,7 +280,7 @@ end;
 
 class procedure TAtlasIdeLineTracker.Uninstall;
 var
-  mBuffers: TDictionary<string, TBufferEntry>;
+  mBuffers: TBuffers;
   mEntry: TBufferEntry;
 begin
   // Erst aus den globalen Variablen lösen: Meldet die IDE beim Abmelden Destroyed, findet der Beobachter nichts mehr.
@@ -252,11 +292,15 @@ begin
     Exit;
   end;
   try
-    for mEntry in mBuffers.Values.ToArray do
+    for mEntry in mBuffers.Entries do
     begin
       try
-        DropLines(mEntry.Tracker, 0);
-        mEntry.Tracker.RemoveNotifier(mEntry.NotifierIndex);
+        // Nur Tracker geöffneter Puffer: Einen veralteten fasst Atlas nicht an, er wird nur losgelassen.
+        if StillOpen(mEntry) then
+        begin
+          DropLines(mEntry.Tracker, 0);
+          mEntry.Tracker.RemoveNotifier(mEntry.NotifierIndex);
+        end;
       except
         on E: Exception do
           TAtlasGuard.Report(TAtlasFeature.Problems, E);

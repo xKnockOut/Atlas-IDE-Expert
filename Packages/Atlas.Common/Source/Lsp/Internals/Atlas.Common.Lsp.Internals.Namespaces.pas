@@ -23,15 +23,14 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Locked;
+
 { TLspNamespaces }
 
 class constructor TLspNamespaces.Create;
 begin
-  FLock := TObject.Create;
-  // Den Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Aufruf und gilt im ersten
-  // Test, der Namensräume setzt, als Leck (72 Byte, bis der Klassendestruktor die Sperre freigibt).
-  TMonitor.Enter(FLock);
-  TMonitor.Exit(FLock);
+  FLock := TAtlasSharedLock.New;
 end;
 
 class destructor TLspNamespaces.Destroy;

@@ -34,6 +34,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
+  Atlas.Text.Locked,
   Atlas.Text.MapFile,
   Atlas.Common.Documents.FileEncoding;
 
@@ -218,11 +219,7 @@ begin
 end;
 
 initialization
-  MapLock := TObject.Create;
-  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
-  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
-  TMonitor.Enter(MapLock);
-  TMonitor.Exit(MapLock);
+  MapLock := TAtlasSharedLock.New;
 
 finalization
   Map.Free;

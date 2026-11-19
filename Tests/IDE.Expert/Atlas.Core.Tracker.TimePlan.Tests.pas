@@ -2,7 +2,7 @@
 
 // Entscheidungen der Zeiterfassung (#1267, #1967) ohne IDE: welche Eingabe zählt, Summe mit ungeschriebenen
 // Spannen, Speichern im Takt, Angebot beim Wechsel und nach dem Beenden, Mindestzeit, korrigierte Dauer und
-// Kommentar für GitHub.
+// Kommentar für GitHub, gezähltes Issue aus Projekt und Tracker.
 
 interface
 
@@ -35,6 +35,10 @@ type
     procedure CorrectedMinutesAllowZero;
     [Test]
     procedure CommentWithDescription;
+    /// <summary>Uhr und Statusfeld zählen nur ein Issue mit Projekt und Kennung, mit dem Tracker des Projekts.
+    /// </summary>
+    [Test]
+    procedure IssueNeedsProjectAndKey;
   end;
 
 implementation
@@ -42,6 +46,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
+  Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Tracker.TimePlan;
 
@@ -146,6 +151,22 @@ procedure TAtlasTimePlanTests.CommentWithDescription;
 begin
   Assert.AreEqual('Aufwand: 1h', TAtlasTimePlan.BookComment('Aufwand: 1h', ''));
   Assert.AreEqual('Aufwand: 1h'#10#10'Fehler behoben', TAtlasTimePlan.BookComment('Aufwand: 1h', 'Fehler behoben'));
+end;
+
+procedure TAtlasTimePlanTests.IssueNeedsProjectAndKey;
+var
+  mTarget: TAtlasTrackerTarget;
+  mIssue: TAtlasTimeIssue;
+begin
+  mTarget := Default(TAtlasTrackerTarget);
+  mTarget.Provider := 'YouTrack';
+  mTarget.Url := 'https://firma.youtrack.cloud/';
+  mTarget.Project := 'ATL';
+  mIssue := TAtlasTimePlan.IssueOf(True, mTarget, ' ATL-7 ');
+  Assert.IsTrue(mIssue.Same(Issue('ATL-7')));
+  Assert.IsTrue(TAtlasTimePlan.IssueOf(False, mTarget, 'ATL-7').IsEmpty, 'ohne Projekt');
+  Assert.IsTrue(TAtlasTimePlan.IssueOf(True, mTarget, ' ').IsEmpty, 'ohne Kennung');
+  Assert.AreEqual('', TAtlasTimePlan.IssueOf(True, mTarget, '').Provider, 'kein halbes Issue');
 end;
 
 initialization

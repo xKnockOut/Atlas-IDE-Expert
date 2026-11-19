@@ -5,7 +5,9 @@
 // Board im Hintergrund mit 10 s Zeitgrenze holen und ohne Antwort den letzten
 // Stand mit Grund zeigen (Ziehen gesperrt). Merkt sich Tracker, Board und
 // Sprint; das Verschieben (Atlas.IDE.Tracker.BoardMove) fragt hier, ob
-// geschrieben werden darf.
+// geschrieben werden darf. Jedes Laden bricht das laufende ab und zählt die
+// Generation hoch (TAtlasBoardLoadRun); hat das neue Ziel keinen Tracker,
+// endet der Ladezustand sichtbar, die Antwort des alten zählt nicht.
 
 interface
 
@@ -15,6 +17,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
+  Atlas.Core.Tracker.BoardPlan,
   Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.BoardFrame;
@@ -67,8 +70,8 @@ type
     FWorker: TAtlasBackgroundJobs;
     FStopped: Boolean;
     FCancel: IAtlasCiCancel;
-    FGeneration: Integer;
-    FLoading: Boolean;
+    /// <summary>Generation des jüngsten Ladens und ob es läuft.</summary>
+    FRun: TAtlasBoardLoadRun;
     FOnline: Boolean;
     FCanWrite: Boolean;
     FTarget: TAtlasTrackerTarget;
@@ -81,6 +84,7 @@ type
     function PrepareLoad(AFrame: TAtlasBoardFrame; out AJob: TLoadJob): Boolean;
     procedure RunLoad(const AJob: TLoadJob);
     function ErrorText(AError: TAtlasCiFetchError): string;
+    function GetLoading: Boolean;
     class function NowUtc: TDateTime; static;
   public
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers ('' = keiner); AWorker gehört dem Board.</summary>
@@ -103,7 +107,7 @@ type
     /// <summary>Tracker des gezeigten Boards.</summary>
     property Target: TAtlasTrackerTarget read FTarget;
     property BoardId: string read FBoardId;
-    property Loading: Boolean read FLoading;
+    property Loading: Boolean read GetLoading;
     /// <summary>Letztes Laden mit Antwort: Ziehen nur dann.</summary>
     property Online: Boolean read FOnline;
     /// <summary>Schreibweg beim letzten Laden da.</summary>
@@ -114,7 +118,6 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.Tracker.BoardPlan,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Board.Strings,
@@ -172,6 +175,11 @@ begin
   end;
 end;
 
+function TAtlasIdeBoardLoad.GetLoading: Boolean;
+begin
+  Result := FRun.Loading;
+end;
+
 procedure TAtlasIdeBoardLoad.CancelLoad;
 begin
   TAtlasCiCancels.Cancel(FCancel);
@@ -195,7 +203,7 @@ begin
     Exit;
   end;
   FStopped := True;
-  Inc(FGeneration);
+  FRun.Next;
   CancelLoad;
   FHooks := Default(TAtlasBoardHooks);
 end;
@@ -235,12 +243,11 @@ var
   mSnapshot: TAtlasBoardSnapshot;
   mNotice: string;
 begin
-  if AGeneration <> FGeneration then
+  if not FRun.Answered(AGeneration) then
   begin
     Exit;
   end;
   FCancel := nil;
-  FLoading := False;
   mFrame := TAtlasIdeBoardWindow.ExistingFrame;
   if FStopped or (mFrame = nil) then
   begin
@@ -304,7 +311,7 @@ var
   mCached: TAtlasBoardSnapshot;
 begin
   AJob := Default(TLoadJob);
-  AJob.Generation := FGeneration;
+  AJob.Generation := FRun.Generation;
   AJob.Target := FTarget;
   AJob.BoardId := FBoardId;
   AJob.SprintId := FSprintId;
@@ -313,6 +320,8 @@ begin
   Result := (AJob.Target.Server <> '') and (mProvider <> nil) and (AJob.Boards <> nil);
   if not Result then
   begin
+    // Ein laufendes Laden (anderes Ziel) ist abgebrochen und zählt nicht mehr: Ladezustand sichtbar beenden.
+    AFrame.SetLoading(False);
     AFrame.ShowNotice(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoTracker));
     AFrame.SetStatus('');
   end
@@ -324,7 +333,7 @@ begin
       AFrame.SetSnapshot(mCached, '');
     end;
     AFrame.SetLoading(True);
-    FLoading := True;
+    FRun.Started;
     if Assigned(FHooks.Transport) then
     begin
       AJob.Transport := FHooks.Transport(mProvider, AJob.Target);
@@ -398,7 +407,7 @@ begin
   if not FStopped and (mFrame <> nil) then
   begin
     CancelLoad;
-    Inc(FGeneration);
+    FRun.Next;
     SelectTarget(mFrame, ABoardId, ASprintId);
     if PrepareLoad(mFrame, mJob) then
     begin

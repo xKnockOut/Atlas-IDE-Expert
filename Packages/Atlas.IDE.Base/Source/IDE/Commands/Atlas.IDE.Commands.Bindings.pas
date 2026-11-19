@@ -204,6 +204,7 @@ var
   mProc: TProc;
   mAttempt: TFunc<Boolean>;
   mDone: Boolean;
+  mWhat: string;
 begin
   BindingResult := krUnhandled;
   if FOwner = nil then
@@ -243,11 +244,14 @@ begin
       end;
       BindingResult := krHandled;
       mProc := mKey.Proc;
-      // Keine Exception an die IDE (#493); erst nach der Tastenverarbeitung.
+      mWhat := mKey.What;
+      // Keine Exception an die IDE (#493); erst nach der Tastenverarbeitung. Ein Befehl des Benutzers: Sein
+      // erster Fehler erscheint in der Meldungsansicht (Tasten mit Attempt bleiben still, ohne Treffer geht die
+      // Taste ohnehin an die IDE).
       TAtlasMainThread.ForceQueue(mFeature,
         procedure
         begin
-          TAtlasGuard.Run(mFeature, mProc);
+          TAtlasCommandScope.Run(mFeature, mWhat, mProc);
         end);
       Exit;
     end;
