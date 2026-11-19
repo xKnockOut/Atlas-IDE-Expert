@@ -2475,6 +2475,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Check.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Reports.pas"/>
         <DCCReference Include="Application\Shell\Shell.Linter.Parts.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Linter.Baseline.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Hotspots.pas"/>
         <DCCReference Include="Application\Shell\Shell.Hotspots.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>

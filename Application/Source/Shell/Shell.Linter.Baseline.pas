@@ -3,11 +3,21 @@
 // Internals-Rolle Shell: Baseline des Linter-Modus (#97). Bekannte Treffer aus --baseline, sonst
 // atlas-baseline.json neben atlas.json, werden ausgeblendet; --update-baseline schreibt sie neu und nennt auf
 // stderr die Zähler und, bevor sie herausfallen, die Einträge ohne Datei.
+//
+// Dazu die Kopien, die atlas-duplicates.json schon führt (TLinterKnownCopies, #1895). Seit --check <Projekt>.dproj
+// wie die IDE die ganze Projektgruppe lädt, meldet duplicate-routine-body bei der Prüfung eines Packages auch Kopien
+// in anderen Projekten der Gruppe. Diese Kopien führt die Baseline der wortgleichen Rümpfe (--check-duplicates), die
+// nur schrumpfen darf; die Prüfung eines einzelnen Projekts meldet sie nicht ein zweites Mal. Eine neue Kopie und
+// eine weitere Fassung einer bekannten Gruppe bleiben Befunde. Die Datei liegt neben der atlas.json der Wurzel, die
+// Prüfung eines Packages hat aber den Ordner des Packages als Wurzel: Gesucht wird deshalb von dort aufwärts bis zum
+// Stamm des Repositorys (Ordner mit .git).
 
 interface
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Metrics.DuplicateBaseline,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.Baseline,
@@ -47,6 +57,25 @@ type
     class procedure ReportUpdate(const AUpdate: TBaselineUpdate; const APath: string); static;
   end;
 
+  TLinterKnownCopies = class
+  private
+    // Ordner der Baseline; '' ohne.
+    FFolder: string;
+    // "Fingerabdruck|Pfad:Routine" in Kleinbuchstaben, nach dem Konstruktor nur gelesen.
+    FKnown: TDictionary<string, Boolean>;
+    function Known(const AHash, AMember: string): Boolean;
+  public
+    /// <summary>AFolder: Ordner der Baseline, gegen den die Pfade ihrer Fassungen gelten.</summary>
+    constructor Create(const AFolder: string; const ABaseline: TDuplicateBaseline);
+    destructor Destroy; override;
+    /// <summary>Baseline über AConfigRoot (dort oder in einem Ordner darüber bis zum Stamm des Repositorys);
+    /// ohne Datei eine leere, die nichts ausblendet.</summary>
+    class function Find(const AConfigRoot: string): TLinterKnownCopies; static;
+    /// <summary>AFindings ohne die Treffer von duplicate-routine-body, deren Routine samt Fingerabdruck in der
+    /// Baseline steht. AFileName absolut, AText ihr Inhalt.</summary>
+    function Filter(const AFileName, AText: string; const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
+  end;
+
 implementation
 
 uses
@@ -54,6 +83,9 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.Metrics.DuplicateBodies,
+  Atlas.Common.Rules.Builtin.DuplicateBodies,
+  Shell.Linter.Duplicates,
   Shell.Linter.Output,
   Atlas.Common.Localization.Texts;
 
@@ -235,6 +267,131 @@ begin
   if AUpdate.Completed > 0 then
   begin
     TLinterOutput.Error(cTexts[TLinterBaselineText.Completed].Fmt([AUpdate.Completed]));
+  end;
+end;
+
+/// <summary>Ordner mit atlas-duplicates.json ab AFolder aufwärts; '' ohne. Der Stamm des Repositorys (.git) ist der
+/// letzte Ordner, der zählt.</summary>
+function BaselineFolder(const AFolder: string): string;
+var
+  mFolder, mParent: string;
+begin
+  Result := '';
+  mFolder := ExcludeTrailingPathDelimiter(TPath.GetFullPath(AFolder));
+  repeat
+    if TFile.Exists(TPath.Combine(mFolder, TLinterDuplicates.cBaselineName)) then
+    begin
+      Exit(mFolder);
+    end;
+    if TDirectory.Exists(TPath.Combine(mFolder, '.git')) or TFile.Exists(TPath.Combine(mFolder, '.git')) then
+    begin
+      Exit;
+    end;
+    mParent := ExtractFileDir(mFolder);
+    if (mParent = '') or SameFileName(mParent, mFolder) then
+    begin
+      Exit;
+    end;
+    mFolder := mParent;
+  until False;
+end;
+
+/// <summary>Schlüssel in FKnown.</summary>
+function KeyOf(const AHash, AMember: string): string;
+begin
+  Result := LowerCase(AHash + '|' + AMember);
+end;
+
+{ TLinterKnownCopies }
+
+constructor TLinterKnownCopies.Create(const AFolder: string; const ABaseline: TDuplicateBaseline);
+var
+  mGroup: TDuplicateBaselineGroup;
+  mMember: string;
+begin
+  inherited Create;
+  FFolder := AFolder;
+  FKnown := TDictionary<string, Boolean>.Create;
+  for mGroup in ABaseline.Groups do
+  begin
+    for mMember in mGroup.Members do
+    begin
+      FKnown.AddOrSetValue(KeyOf(mGroup.Hash, mMember), True);
+    end;
+  end;
+end;
+
+destructor TLinterKnownCopies.Destroy;
+begin
+  FKnown.Free;
+  inherited Destroy;
+end;
+
+class function TLinterKnownCopies.Find(const AConfigRoot: string): TLinterKnownCopies;
+var
+  mFolder: string;
+  mFormat: TFileFormat;
+  mBaseline: TDuplicateBaseline;
+begin
+  mFolder := BaselineFolder(AConfigRoot);
+  mBaseline := Default(TDuplicateBaseline);
+  if mFolder <> '' then
+  begin
+    // Eine kaputte Datei meldet --check-duplicates; hier blendet sie nur nichts aus.
+    try
+      mBaseline := TDuplicateBaseline.Parse(TFileEncoding.LoadFromFile(TPath.Combine(mFolder,
+        TLinterDuplicates.cBaselineName), mFormat));
+    except
+      on EDuplicateBaseline do
+        mBaseline := Default(TDuplicateBaseline);
+    end;
+  end;
+  Result := TLinterKnownCopies.Create(mFolder, mBaseline);
+end;
+
+function TLinterKnownCopies.Known(const AHash, AMember: string): Boolean;
+begin
+  Result := FKnown.ContainsKey(KeyOf(AHash, AMember));
+end;
+
+function TLinterKnownCopies.Filter(const AFileName, AText: string;
+  const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
+var
+  mFinding: TRuleFinding;
+  mBodies: TArray<TRoutineBody>;
+  mBody: TRoutineBody;
+  mPath: string;
+  mKnown: Boolean;
+begin
+  Result := AFindings;
+  if FKnown.Count = 0 then
+  begin
+    Exit;
+  end;
+  mBodies := nil;
+  mPath := StringReplace(ExtractRelativePath(IncludeTrailingPathDelimiter(FFolder), AFileName), '\', '/',
+    [rfReplaceAll]);
+  Result := nil;
+  for mFinding in AFindings do
+  begin
+    mKnown := False;
+    if mFinding.RuleId = cDuplicateRoutineBodyRuleId then
+    begin
+      // Rümpfe erst, wenn die Regel trifft: Die meisten Dateien haben keine Kopie.
+      if mBodies = nil then
+      begin
+        mBodies := TDuplicateBodies.ForText(AText);
+      end;
+      for mBody in mBodies do
+      begin
+        mKnown := mKnown or ((mBody.HeaderRange.StartPos = mFinding.Range.StartPos) and
+          Known(mBody.Hash, mPath + ':' + mBody.Name));
+      end;
+    end;
+    if not mKnown then
+    begin
+      Result := Result + [mFinding];
+    end;
   end;
 end;
 

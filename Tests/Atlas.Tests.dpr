@@ -2459,6 +2459,7 @@ uses
   Shell.Linter.Check in '..\Application\Source\Shell\Shell.Linter.Check.pas',
   Shell.Linter.Reports in '..\Application\Source\Shell\Shell.Linter.Reports.pas',
   Shell.Linter.Parts.Tests in 'Application\Shell\Shell.Linter.Parts.Tests.pas',
+  Shell.Linter.Baseline.Tests in 'Application\Shell\Shell.Linter.Baseline.Tests.pas',
   Shell.Hotspots in '..\Application\Source\Shell\Shell.Hotspots.pas',
   Shell.Hotspots.Tests in 'Application\Shell\Shell.Hotspots.Tests.pas',
   Atlas.Common.Rules.Builtin.FormFields.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormFields.Tests.pas',
