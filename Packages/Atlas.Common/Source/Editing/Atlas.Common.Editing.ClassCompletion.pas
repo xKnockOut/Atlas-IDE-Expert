@@ -167,8 +167,8 @@ type
     FTypeBodies: TObjectDictionary<string, TObject>;
     FImplementationLine: Integer;
     FImplementationEnd: Integer;
-    FLinesReady: Boolean;
-    procedure ReadLines;
+    FImplementationKnown: Boolean;
+    procedure FindImplementation;
     function BuildPairs: TArray<TSignaturePair>;
     function InnermostType(ALine: Integer; out AType: TIndexSymbol): Boolean;
     function TypeBodies(const AType: TIndexSymbol): TObject;
@@ -1773,13 +1773,13 @@ begin
 end;
 
 /// <summary>Zeilen von "implementation" und vor dessen Ende, beim ersten Mal gelesen.</summary>
-procedure TClassCompletionScan.ReadLines;
+procedure TClassCompletionScan.FindImplementation;
 begin
-  if not FLinesReady then
+  if not FImplementationKnown then
   begin
     FImplementationLine := ImplementationLine(FTree);
     FImplementationEnd := ImplementationEndLine(FTree);
-    FLinesReady := True;
+    FImplementationKnown := True;
   end;
 end;
 
@@ -1808,7 +1808,7 @@ begin
   end;
   mBodies := TTypeBodies(TypeBodies(mType));
   mPlan := PlanAt(mBodies, APosition.Line);
-  ReadLines;
+  FindImplementation;
   mText := BodiesText(mLines, mPlan, mBodies.Shape, AOptions, FLineBreak);
   if mPlan.LastLine < 0 then
   begin
