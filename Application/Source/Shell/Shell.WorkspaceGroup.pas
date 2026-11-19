@@ -148,6 +148,30 @@ procedure TSilentTransport.WriteMessage(const AMessage: TJSONObject);
 begin
 end;
 
+/// <summary>Projekte der Gruppe von AWorkspace: die .groupproj in ARoot, sonst die nächste darüber, die das Projekt
+/// von AWorkspace enthält (#1895).</summary>
+function GroupProjectsOf(const ARoot: string; AWorkspace: TShellWorkspace; const ALogger: ILogger): TArray<string>;
+var
+  mInfo: TProjectInfo;
+  mProjectFile: string;
+begin
+  Result := TShellBootstrap.GroupProjects(ARoot, ALogger);
+  if Result <> nil then
+  begin
+    Exit;
+  end;
+  // --check <Projekt>.dproj prüft im Ordner des Projekts; die Gruppe liegt oft darüber (Application/,
+  // Packages/<Modul>/). Wie in der IDE mit geöffneter Gruppe gehören ihre Projekte dazu: Sonst fehlen Units, die ein
+  // anderes Projekt in einen Suchpfad übersetzt, im Index (unresolved-*) und als .dcu vor dem ersten Bau
+  // (uses-unit-not-found).
+  mProjectFile := AWorkspace.Setup.ProjectFile;
+  if (mProjectFile = '') and AWorkspace.State.Project(mInfo) then
+  begin
+    mProjectFile := mInfo.FileName;
+  end;
+  Result := TShellBootstrap.EnclosingGroupProjects(mProjectFile, ALogger);
+end;
+
 { TShellWorkspaceGroup }
 
 constructor TShellWorkspaceGroup.Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
@@ -244,7 +268,7 @@ begin
   AWorkspace.Setup.OnGroupProjects :=
     function: TArray<string>
     begin
-      Result := TShellBootstrap.GroupProjects(FRoot, FLogger);
+      Result := GroupProjectsOf(FRoot, AWorkspace, FLogger);
     end;
   // requires-Packages als Quelle bei den Projekten der Gruppe suchen (#46), auch wenn --check nur ein Projekt der
   // Gruppe prüft und die Gruppe darüber liegt (Packages/<Modul>/<Modul>.dproj): Sonst fehlen beim Prüfen eines
@@ -314,7 +338,7 @@ begin
   begin
     Exit;
   end;
-  for mProjectFile in TShellBootstrap.GroupProjects(FRoot, FLogger) do
+  for mProjectFile in GroupProjectsOf(FRoot, FMain, FLogger) do
   begin
     if FMain.State.Project(mInfo) and SameText(mInfo.FileName, mProjectFile) then
     begin
