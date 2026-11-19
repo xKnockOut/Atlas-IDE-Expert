@@ -182,9 +182,28 @@ uses
   Atlas.UI.EditorToolbar.Glyphs;
 
 const
+  // Maße bei 96 dpi.
   cBaseButton = 24;
   cBaseSeparator = 9;
   cMargin = 4;
+  /// <summary>Höhe der Leiste.</summary>
+  cBaseHeight = 24;
+  /// <summary>Kantenlänge eines Symbols.</summary>
+  cBaseIcon = 16;
+  /// <summary>Abstand des Symbols vom linken Rand eines Knopfs und zwischen Symbol und Beschriftung.</summary>
+  cIconLeft = 4;
+  cIconGap = 4;
+  /// <summary>Rand rechts der Beschriftung eines Knopfs bzw. des Rücksprungs.</summary>
+  cTextRight = 2;
+  cReturnRight = 6;
+  /// <summary>Eckenradius der Hinterlegung von Knopf und Rücksprung.</summary>
+  cFrameRadius = 4;
+  /// <summary>Punkt rechts oben am Knopf: Durchmesser, Abstand von rechts und von oben.</summary>
+  cDotSize = 6;
+  cDotRight = 3;
+  cDotTop = 2;
+  /// <summary>Abstand senkrechter Trennstriche vom oberen und unteren Rand.</summary>
+  cLineInset = 4;
   cPartReturn = TAtlasToolbarPlaces.cPartReturn;
   cPartMore = TAtlasToolbarPlaces.cPartMore;
   cPartGear = TAtlasToolbarPlaces.cPartGear;
@@ -351,6 +370,10 @@ type
   /// <summary>Zeichnen der Knöpfe, Trennstriche und des Rücksprungs.</summary>
   TAtlasToolbarPainter = record
     Bar: TAtlasEditorToolbar;
+    /// <summary>Hinterlegung mit runden Ecken in den Farben von Pinsel und Stift, ein Pixel eingerückt.</summary>
+    procedure Frame(const ARect: TRect);
+    /// <summary>Lage des Symbols links in ARect, senkrecht mittig.</summary>
+    function IconRect(const ARect: TRect): TRect;
     procedure Button(const ARect: TRect; const AButton: TAtlasToolbarButton; AHot: Boolean; const AText: string);
     procedure Separator(const ARect: TRect);
     procedure Return(const ARect: TRect; const AText: string);
@@ -374,7 +397,7 @@ type
 
 function TAtlasToolbarMeasure.IconSize: Integer;
 begin
-  Result := Bar.Scale(16);
+  Result := Bar.Scale(cBaseIcon);
 end;
 
 function TAtlasToolbarMeasure.ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
@@ -387,7 +410,7 @@ begin
   if Bar.FLabels and (AButton.Caption <> '') then
   begin
     Bar.Canvas.Font := Bar.Font;
-    Inc(Result, Bar.Canvas.TextWidth(AButton.Caption) + Bar.Scale(6));
+    Inc(Result, Bar.Scale(cIconGap) + Bar.Canvas.TextWidth(AButton.Caption) + Bar.Scale(cTextRight));
   end;
 end;
 
@@ -395,7 +418,8 @@ function TAtlasToolbarMeasure.ReturnWidth: Integer;
 begin
   Bar.Canvas.Font := Bar.Font;
   Bar.Canvas.Font.Style := [fsBold];
-  Result := Bar.Scale(4) + IconSize + Bar.Scale(4) + Bar.Canvas.TextWidth(Bar.FReturn.Text) + Bar.Scale(6);
+  Result := Bar.Scale(cIconLeft) + IconSize + Bar.Scale(cIconGap) + Bar.Canvas.TextWidth(Bar.FReturn.Text) +
+    Bar.Scale(cReturnRight);
   Bar.Canvas.Font := Bar.Font;
 end;
 
@@ -444,12 +468,29 @@ end;
 
 { TAtlasToolbarPainter }
 
+procedure TAtlasToolbarPainter.Frame(const ARect: TRect);
+begin
+  Bar.Canvas.RoundRect(ARect.Left + Bar.Scale(1), ARect.Top + Bar.Scale(1), ARect.Right - Bar.Scale(1),
+    ARect.Bottom - Bar.Scale(1), Bar.Scale(cFrameRadius), Bar.Scale(cFrameRadius));
+end;
+
+function TAtlasToolbarPainter.IconRect(const ARect: TRect): TRect;
+var
+  mIconSize: Integer;
+begin
+  mIconSize := Bar.Scale(cBaseIcon);
+  Result.Left := ARect.Left + Bar.Scale(cIconLeft);
+  Result.Top := ARect.Top + (ARect.Height - mIconSize) div 2;
+  Result.Right := Result.Left + mIconSize;
+  Result.Bottom := Result.Top + mIconSize;
+end;
+
 procedure TAtlasToolbarPainter.Button(const ARect: TRect; const AButton: TAtlasToolbarButton; AHot: Boolean;
   const AText: string);
 var
   mBack, mFore: TColor;
   mIcon, mPart: TRect;
-  mIconSize, mDotSize: Integer;
+  mDotSize: Integer;
 begin
   mBack := ToColor(Bar.Colors.Gutter);
   mFore := ToColor(Bar.Colors.Text);
@@ -468,16 +509,13 @@ begin
   if AButton.Pressed or (AHot and AButton.Enabled) then
   begin
     Bar.Canvas.Brush.Color := mBack;
-    Bar.Canvas.RoundRect(ARect.Left + Bar.Scale(1), ARect.Top + Bar.Scale(1), ARect.Right - Bar.Scale(1),
-      ARect.Bottom - Bar.Scale(1), Bar.Scale(4), Bar.Scale(4));
+    Frame(ARect);
   end;
   if not AButton.Enabled then
   begin
     mFore := ToColor(Bar.Colors.Muted);
   end;
-  mIconSize := Bar.Scale(16);
-  mIcon := Rect(ARect.Left + Bar.Scale(4), ARect.Top + (ARect.Height - mIconSize) div 2,
-    ARect.Left + Bar.Scale(4) + mIconSize, ARect.Top + (ARect.Height - mIconSize) div 2 + mIconSize);
+  mIcon := IconRect(ARect);
   Bar.Canvas.Font := Bar.Font;
   TAtlasGlyphPainter.Draw(Bar.Canvas, AButton.Icon, mIcon, mFore, mBack, AButton.Caption);
   if AText <> '' then
@@ -485,18 +523,18 @@ begin
     Bar.Canvas.Font := Bar.Font;
     Bar.Canvas.Font.Color := mFore;
     Bar.Canvas.Brush.Style := bsClear;
-    mPart := Rect(mIcon.Right + Bar.Scale(4), ARect.Top, ARect.Right - Bar.Scale(2), ARect.Bottom);
+    mPart := Rect(mIcon.Right + Bar.Scale(cIconGap), ARect.Top, ARect.Right - Bar.Scale(cTextRight), ARect.Bottom);
     DrawText(Bar.Canvas.Handle, PChar(AText), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
       DT_END_ELLIPSIS);
   end;
   if AButton.Dot then
   begin
-    mDotSize := Bar.Scale(6);
+    mDotSize := Bar.Scale(cDotSize);
     Bar.Canvas.Brush.Style := bsSolid;
     Bar.Canvas.Brush.Color := ToColor(Bar.Colors.Warn);
     Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Warn);
-    Bar.Canvas.Ellipse(ARect.Right - Bar.Scale(3) - mDotSize, ARect.Top + Bar.Scale(2), ARect.Right - Bar.Scale(3),
-      ARect.Top + Bar.Scale(2) + mDotSize);
+    Bar.Canvas.Ellipse(ARect.Right - Bar.Scale(cDotRight) - mDotSize, ARect.Top + Bar.Scale(cDotTop),
+      ARect.Right - Bar.Scale(cDotRight), ARect.Top + Bar.Scale(cDotTop) + mDotSize);
   end;
 end;
 
@@ -506,31 +544,27 @@ var
 begin
   mMiddle := (ARect.Left + ARect.Right) div 2;
   Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Line);
-  Bar.Canvas.MoveTo(mMiddle, ARect.Top + Bar.Scale(4));
-  Bar.Canvas.LineTo(mMiddle, ARect.Bottom - Bar.Scale(4));
+  Bar.Canvas.MoveTo(mMiddle, ARect.Top + Bar.Scale(cLineInset));
+  Bar.Canvas.LineTo(mMiddle, ARect.Bottom - Bar.Scale(cLineInset));
 end;
 
 procedure TAtlasToolbarPainter.Return(const ARect: TRect; const AText: string);
 var
-  mIconSize: Integer;
-  mArea: TRect;
+  mIcon, mArea: TRect;
 begin
   // Rücksprung: Akzentfarbe, Zeilennummer fett daneben.
-  mIconSize := Bar.Scale(16);
   Bar.Canvas.Brush.Style := bsSolid;
   Bar.Canvas.Brush.Color := ToColor(Bar.Colors.AccentSoft);
   Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Accent);
-  Bar.Canvas.RoundRect(ARect.Left + Bar.Scale(1), ARect.Top + Bar.Scale(1), ARect.Right - Bar.Scale(1),
-    ARect.Bottom - Bar.Scale(1), Bar.Scale(4), Bar.Scale(4));
-  TAtlasGlyphPainter.Draw(Bar.Canvas, TAtlasToolbarIcon.Return, Rect(ARect.Left + Bar.Scale(4),
-    ARect.Top + (ARect.Height - mIconSize) div 2, ARect.Left + Bar.Scale(4) + mIconSize,
-    ARect.Top + (ARect.Height - mIconSize) div 2 + mIconSize), ToColor(Bar.Colors.Accent),
+  Frame(ARect);
+  mIcon := IconRect(ARect);
+  TAtlasGlyphPainter.Draw(Bar.Canvas, TAtlasToolbarIcon.Return, mIcon, ToColor(Bar.Colors.Accent),
     ToColor(Bar.Colors.AccentSoft), '');
   Bar.Canvas.Font := Bar.Font;
   Bar.Canvas.Font.Style := [fsBold];
   Bar.Canvas.Font.Color := ToColor(Bar.Colors.Accent);
   Bar.Canvas.Brush.Style := bsClear;
-  mArea := Rect(ARect.Left + Bar.Scale(8) + mIconSize, ARect.Top, ARect.Right - Bar.Scale(2), ARect.Bottom);
+  mArea := Rect(mIcon.Right + Bar.Scale(cIconGap), ARect.Top, ARect.Right - Bar.Scale(cTextRight), ARect.Bottom);
   DrawText(Bar.Canvas.Handle, PChar(AText), -1, mArea, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   Bar.Canvas.Font := Bar.Font;
 end;
@@ -629,7 +663,7 @@ end;
 
 class function TAtlasEditorToolbar.BaseHeight: Integer;
 begin
-  Result := 24;
+  Result := cBaseHeight;
 end;
 
 function TAtlasEditorToolbar.PartAt(X, Y: Integer): Integer;
@@ -690,8 +724,8 @@ begin
   PaintChrome(False);
   if FInline then
   begin
-    Canvas.MoveTo(0, Scale(4));
-    Canvas.LineTo(0, ClientHeight - Scale(4));
+    Canvas.MoveTo(0, Scale(cLineInset));
+    Canvas.LineTo(0, ClientHeight - Scale(cLineInset));
   end;
   for mIndex := 0 to High(FPlaces.Rects) do
   begin

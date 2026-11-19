@@ -60,6 +60,7 @@ implementation
 uses
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Core.Settings.DataBreakClasses,
+  Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
@@ -70,6 +71,7 @@ uses
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Note.Strings,
+  Atlas.UI.Debug.OpenedFiles.Strings,
   Atlas.UI.Debug.Profile.Strings;
 
 const
@@ -393,6 +395,13 @@ begin
   // Debug-Zustand festhalten (#582).
   Switch('debug.note', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNote));
   Switch('debug.note.saveFile', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNoteSaveFile));
+  // Vom Debugger geöffnete Dateien schließen (#842).
+  Choice('debug.closeOpenedFiles', TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseOpenedFiles),
+    [TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseOff),
+    TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseAsk),
+    TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseAuto)],
+    TArray<string>.Create(cCloseOpenedFilesModes[0], cCloseOpenedFilesModes[1], cCloseOpenedFilesModes[2]));
+  Switch('debug.previewTab', TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsPreviewTab));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;
