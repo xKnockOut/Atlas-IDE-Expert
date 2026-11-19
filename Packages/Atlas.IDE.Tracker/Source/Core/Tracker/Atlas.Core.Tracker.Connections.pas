@@ -314,7 +314,7 @@ var
   mValue: TJSONValue;
 begin
   Result := '';
-  mValue := AItem.Values[AName];
+  mValue := TJsonRead.Value(AItem, AName);
   if mValue is TJSONBool then
   begin
     Result := TAtlasTrackerConnection.cOff;
