@@ -226,6 +226,9 @@ end;
 
 /// <summary>Bereichsstufe zum Sortieren (#488): ohne Angabe hinter allen Stufen.</summary>
 function ScopeRank(const AItem: TAtlasCompletionItem): Integer;
+const
+  // Ohne Angabe nach allen bekannten Bereichen.
+  cNoScopeRank = 9;
 begin
   if AItem.Scope > 0 then
   begin
@@ -233,7 +236,7 @@ begin
   end
   else
   begin
-    Result := 9;
+    Result := cNoScopeRank;
   end;
 end;
 
@@ -328,6 +331,8 @@ end;
 /// <summary>Nach "inherited " (#482): 0 = gleiche Parameter, 1 = andere Überladung, 2 = weiterer Konstruktor
 /// bzw. Destruktor, 3 = übrige Einträge.</summary>
 function InheritedRank(const AItem: TAtlasCompletionItem): Integer;
+const
+  cNoInheritedRank = 3;
 begin
   if AItem.InheritedMatch = 'same' then
   begin
@@ -343,7 +348,7 @@ begin
   end
   else
   begin
-    Result := 3;
+    Result := cNoInheritedRank;
   end;
 end;
 
@@ -628,6 +633,8 @@ begin
 end;
 
 procedure TRanker.Collect(const APattern: string; AFound: TList<Integer>);
+const
+  cMaxBoost = 99;
 var
   mIndex: Integer;
 begin
@@ -648,7 +655,7 @@ begin
     end;
     if Assigned(FOptions.Boost) then
     begin
-      FBoosts[mIndex] := EnsureRange(FOptions.Boost(mIndex), 0, 99);
+      FBoosts[mIndex] := EnsureRange(FOptions.Boost(mIndex), 0, cMaxBoost);
     end;
     // Ohne eigene Gewichtung ordnet die Verwendung im Projekt (#2109).
     if FBoosts[mIndex] = 0 then

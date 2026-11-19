@@ -74,8 +74,10 @@ type
 
   /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
   TAtlasHoverAlive = class(TInterfacedObject)
+  private
+    FAlive: Boolean;
   public
-    Alive: Boolean;
+    property Alive: Boolean read FAlive write FAlive;
   end;
 
   /// <summary>Tooltip, Verlauf, Sitzung, Probleme und das Wort unter der Maus.</summary>

@@ -305,6 +305,10 @@ begin
   inherited;
 end;
 
+const
+  cNoAnswer = 'keine Antwort innerhalb von %d ms';
+  cStillRunning = 'vorige Anfrage läuft seit %d ms, übersprungen';
+
 procedure TAtlasCompletionProviders.Abandon(const AEntry: TEntry; const APart: IAtlasCompletionSink);
 begin
   // Langsam: nicht länger warten und abbrechen; was später noch kommt, verwirft die Teilsenke. Kein Fehler.
@@ -315,8 +319,7 @@ begin
     on E: Exception do
       TAtlasGuard.ReportProvider(AEntry.Name, E);
   end;
-  TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('keine Antwort innerhalb von %d ms',
-    [TimeLimitOf(FTimeLimitMs)]));
+  TAtlasGuard.ReportProviderSlow(AEntry.Name, Format(cNoAnswer, [TimeLimitOf(FTimeLimitMs)]));
 end;
 
 procedure TAtlasCompletionProviders.QueryOne(const AEntry: TEntry; const AContext: TAtlasContext;
@@ -336,7 +339,7 @@ begin
   if TInterlocked.CompareExchange(mRunning.Active, 1, 0) <> 0 then
   begin
     APart.Complete;
-    TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('vorige Anfrage läuft seit %d ms, übersprungen',
+    TAtlasGuard.ReportProviderSlow(AEntry.Name, Format(cStillRunning,
       [Int64(TThread.GetTickCount64) - TInterlocked.Read(mRunning.Started)]));
     Exit;
   end;

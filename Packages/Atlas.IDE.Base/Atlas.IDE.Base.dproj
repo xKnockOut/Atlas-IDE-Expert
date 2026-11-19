@@ -193,6 +193,7 @@
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Theme.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Scaling.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.ListBox.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.WrapLabel.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.EditorFont.pas"/>
@@ -925,6 +926,7 @@
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.NavigationHiding.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.CrumbProbe.pas"/>
+        <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.CrumbCard.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.StickyScroll.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.StickyPaint.pas"/>
         <DCCReference Include="Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>

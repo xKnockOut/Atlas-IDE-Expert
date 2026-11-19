@@ -88,17 +88,25 @@ type
   TNavState = class(TComponent)
   private
     procedure Tick(Sender: TObject);
+  private
+    FHistory: TAtlasNavHistory;
+    FTimer: TTimer;
+    FNotifier: TEditNotifier;
+    FNotifierIndex: Integer;
+    FLast: TAtlasNavPlace;
+    FModified: Boolean;
+    FLineCounts: TDictionary<string, Integer>;
   public
-    History: TAtlasNavHistory;
-    Timer: TTimer;
-    Notifier: TEditNotifier;
-    NotifierIndex: Integer;
+    property History: TAtlasNavHistory read FHistory write FHistory;
+    property Timer: TTimer read FTimer write FTimer;
+    property Notifier: TEditNotifier read FNotifier write FNotifier;
+    property NotifierIndex: Integer read FNotifierIndex write FNotifierIndex;
     /// <summary>Letzte gelesene Stelle; FileName = '' ohne.</summary>
-    Last: TAtlasNavPlace;
+    property Last: TAtlasNavPlace read FLast write FLast;
     /// <summary>Seit dem letzten Tick wurde getippt: kein Sprung.</summary>
-    Modified: Boolean;
+    property Modified: Boolean read FModified write FModified;
     /// <summary>Großgeschriebener Dateiname → Zeilenzahl des Puffers.</summary>
-    LineCounts: TDictionary<string, Integer>;
+    property LineCounts: TDictionary<string, Integer> read FLineCounts write FLineCounts;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Edited(const AView: IOTAEditView);

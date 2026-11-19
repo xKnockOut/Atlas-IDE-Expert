@@ -121,6 +121,9 @@ end;
 
 /// <summary>AValues mit AName an dritter Stelle.</summary>
 function ReplaceName(const AValues: TJSONArray; const AName: string): string;
+const
+  // Ab hier folgen die übrigen Argumente
+  cFirstRest = 3;
 var
   mList: TJSONArray;
   mIndex: Integer;
@@ -130,7 +133,7 @@ begin
     mList.AddElement(AValues.Items[0].Clone as TJSONValue);
     mList.AddElement(AValues.Items[1].Clone as TJSONValue);
     mList.Add(AName);
-    for mIndex := 3 to AValues.Count - 1 do
+    for mIndex := cFirstRest to AValues.Count - 1 do
     begin
       mList.AddElement(AValues.Items[mIndex].Clone as TJSONValue);
     end;
@@ -144,6 +147,8 @@ end;
 
 class function TAtlasIdeServerEdit.AskName(const AArgumentsJson: string; ATitle, APrompt: TAtlasTextId; out AName,
   AArguments: string): Boolean;
+const
+  cMinArguments = 3;
 var
   mArguments: TJSONValue;
 begin
@@ -151,7 +156,7 @@ begin
   AArguments := '';
   mArguments := TJSONObject.ParseJSONValue(AArgumentsJson);
   try
-    Result := (mArguments is TJSONArray) and (TJSONArray(mArguments).Count >= 3);
+    Result := (mArguments is TJSONArray) and (TJSONArray(mArguments).Count >= cMinArguments);
     if not Result then
     begin
       Exit;

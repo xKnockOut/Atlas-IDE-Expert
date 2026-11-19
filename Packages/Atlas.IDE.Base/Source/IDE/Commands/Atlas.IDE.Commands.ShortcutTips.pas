@@ -90,7 +90,7 @@ type
     procedure MouseUse(const AId: string); overload;
     /// <summary>Wie oben mit schon bekanntem Kürzel und Beschriftung (Aktion der IDE).</summary>
     procedure MouseUse(const AId, AKeyText, ACaption: string); overload;
-    procedure Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean);
+    class procedure Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean); static;
     procedure Consider(const AId: string); overload;
     procedure Consider(const AId, AKeyText, ACaption: string; AIsAtlas: Boolean); overload;
     procedure ShowTip(const AId, AKeyText, ACaption: string);
@@ -401,7 +401,7 @@ begin
   Queue(AId, AKeyText, ACaption, True);
 end;
 
-procedure TAtlasIdeShortcutTips.Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean);
+class procedure TAtlasIdeShortcutTips.Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean);
 var
   mId, mKeyText, mCaption: string;
   mKnown: Boolean;
