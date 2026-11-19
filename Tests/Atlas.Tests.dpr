@@ -1370,6 +1370,8 @@ uses
   Atlas.UI.Tracker.BoardPainter in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardPainter.pas',
   Atlas.UI.Tracker.AttachDialog in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas',
   Atlas.UI.Tracker.AttachDialog.Tests in 'IDE.Expert\Atlas.UI.Tracker.AttachDialog.Tests.pas',
+  Atlas.Core.Projects.Contract.Summary in '..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Contract.Summary.pas',
+  Atlas.Core.Projects.Contract.Summary.Tests in 'IDE.Expert\Atlas.Core.Projects.Contract.Summary.Tests.pas',
   Atlas.Core.Projects.Summary in '..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.pas',
   Atlas.Core.Projects.Summary.Json in '..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas',
   Atlas.Core.Projects.Summary.Json.Tests in 'IDE.Expert\Atlas.Core.Projects.Summary.Json.Tests.pas',

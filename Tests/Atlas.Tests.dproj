@@ -1503,6 +1503,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardPainter.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.AttachDialog.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Contract.Summary.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Contract.Summary.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Json.Tests.pas"/>

@@ -27,28 +27,16 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Projects.Summary;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Vorlagen in der Reihenfolge der Auswahlliste; Existing ist die Vorgabe.</summary>
-  TAtlasSetupTemplate = (Existing, NewStrict, Legacy);
-  TAtlasSetupStep = (Found, Config, Baseline, Paths);
-{$SCOPEDENUMS OFF}
+  TAtlasSetupTemplate = Atlas.Core.Projects.Contract.Summary.TAtlasSetupTemplate;
+  TAtlasSetupStep = Atlas.Core.Projects.Contract.Summary.TAtlasSetupStep;
+  TAtlasSetupFacts = Atlas.Core.Projects.Contract.Summary.TAtlasSetupFacts;
 
   TAtlasSetupFileExists = reference to function(const AFileName: string): Boolean;
   TAtlasSetupReadText = reference to function(const AFileName: string; out AText: string): Boolean;
-
-  /// <summary>Was die Schritte brauchen: Dateien neben dem Projekt und der Abschnitt "setup".</summary>
-  TAtlasSetupFacts = record
-    /// <summary>Projektdatei (.dproj, .groupproj); '' = kein Projekt.</summary>
-    Project: string;
-    /// <summary>atlas.json oder delphi-lsp.json liegt neben der Projektdatei.</summary>
-    ConfigExists: Boolean;
-    /// <summary>Baseline liegt im Projektordner.</summary>
-    BaselineExists: Boolean;
-    Setup: TAtlasProjectSetup;
-  end;
 
   TAtlasProjectSetups = class
   public const
