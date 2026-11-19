@@ -76,7 +76,8 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Diagnostics.ServerPackage,
-  Atlas.IDE.CodeInsight.Composition.Session;
+  Atlas.IDE.CodeInsight.Composition.Session,
+  Atlas.IDE.Foundation.Host;
 
 const
   cProblemCountsExtra = 'problemCounts';
@@ -482,7 +483,7 @@ begin
   TAtlasMainThread.Queue(TAtlasFeature.Status,
     procedure
     begin
-      MessageLine(mText);
+      TAtlasIdeHost.Message(mText);
     end);
 end;
 

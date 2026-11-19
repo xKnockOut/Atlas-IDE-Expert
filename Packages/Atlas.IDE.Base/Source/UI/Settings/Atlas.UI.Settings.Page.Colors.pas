@@ -51,6 +51,14 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
+const
+  /// <summary>Farbfeld: Größe und Abstand von Feld zu Feld (Breite und Lücke).</summary>
+  cSwatchWidth = 28;
+  cSwatchHeight = 22;
+  cSwatchStep = 34;
+  /// <summary>Höhe der Hinweiszeile unter den Farbfeldern.</summary>
+  cHintHeight = 22;
+
 { TAtlasSettingsColorsPart }
 
 procedure TAtlasSettingsColorsPart.Load(const ASettings: TAtlasPluginSettings);
@@ -85,17 +93,19 @@ var
   mCaption: TLabel;
   mIndex: Integer;
 begin
-  mPanel := AddPanel(26);
+  mPanel := AddPanel(cFieldRowHeight);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
+  mCaption.Top := mCaption.ScaleValue(cFieldCaptionTop);
   for mIndex := 0 to High(ASwatches) do
   begin
     ASwatches[mIndex] := TShape.Create(FPage);
     ASwatches[mIndex].Parent := mPanel;
-    ASwatches[mIndex].SetBounds(cFieldLeft + mIndex * 34, 1, 28, 22);
+    // Skaliert wie die Felder der übrigen Zeilen.
+    ASwatches[mIndex].SetBounds(mPanel.ScaleValue(cFieldLeft + mIndex * cSwatchStep), 1,
+      mPanel.ScaleValue(cSwatchWidth), mPanel.ScaleValue(cSwatchHeight));
     ASwatches[mIndex].Pen.Color := clGray;
     ASwatches[mIndex].Cursor := crHandPoint;
     ASwatches[mIndex].Hint := IntToStr(mIndex + 1);
@@ -177,7 +187,6 @@ procedure TAtlasSettingsColorsPart.Build;
 var
   mPanel: TWinControl;
   mTitle: TLabel;
-  mButton: TButton;
 begin
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -185,21 +194,16 @@ begin
   AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsDark), FDarkSwatches);
   AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorLight), FNestedLight);
   AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorDark), FNestedDark);
-  mPanel := AddPanel(22);
+  mPanel := AddPanel(cHintHeight);
   mTitle := TLabel.Create(FPage);
   mTitle.Parent := mPanel;
   mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsHint);
   mTitle.Left := 0;
-  mTitle.Top := mTitle.ScaleValue(3);
+  mTitle.Top := mTitle.ScaleValue(cHeadingTop);
   mTitle.Font.Color := clGrayText;
-  mPanel := AddPanel(32);
-  mButton := TButton.Create(FPage);
-  mButton.Parent := mPanel;
-  mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsReset);
-  mButton.Left := 0;
-  mButton.Top := mButton.ScaleValue(3);
-  mButton.Width := mButton.ScaleValue(150);
-  mButton.OnClick := ResetColorsClick;
+  mPanel := AddPanel(cButtonRowHeight);
+  AddColumnButton(mPanel, 0, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsReset),
+    ResetColorsClick);
   Attach(mPanel, FLightSwatches[0]);
 end;
 

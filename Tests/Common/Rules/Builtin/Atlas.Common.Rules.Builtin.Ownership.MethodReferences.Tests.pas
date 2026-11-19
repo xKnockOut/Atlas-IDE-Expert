@@ -46,17 +46,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 /// <summary>Unit mit der Routine Lauf (Variablen AVars, Rumpf ABody).</summary>
 function Source(const AVars, ABody: string): string;
 begin
@@ -73,7 +62,7 @@ begin
   mFound := TRuleAssert.Findings(TAnonymousMethodSelfCycleRule.Create, Source('  Schritt: TProc;'#10,
     '  Schritt := procedure'#10'    begin'#10'    end;'#10'  TThread.Queue(nil,'#10'    procedure'#10 +
     '    begin'#10'      Schritt();'#10'    end);'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cAnonymousMethodSelfCycleRuleId, mFound[0].RuleId);
   Assert.AreEqual(9, mFound[0].Range.StartPos.Line);
   Assert.Contains(mFound[0].Message, 'Schritt hält eine anonyme Methode dieser Routine');
@@ -138,7 +127,7 @@ begin
   mSource := Observer('  FQuelle.OnChange := Geaendert;'#10, '');
   mFound := TRuleAssert.Findings(TEventHandlerNotUnhookedRule.Create, mSource);
   Assert.AreEqual('18: FQuelle.OnChange zeigt auf Geaendert, wird beim Freigeben von TBeobachter aber nicht ' +
-    'zurückgesetzt; lebt FQuelle länger, ruft es die Methode eines freigegebenen Objekts auf.|', Messages(mFound));
+    'zurückgesetzt; lebt FQuelle länger, ruft es die Methode eines freigegebenen Objekts auf.|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
   Assert.AreEqual('Im Destruktor FQuelle.OnChange := nil setzen', mFound[0].Fixes[0].Title);
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
@@ -154,7 +143,7 @@ begin
   // Self.Handler, Parameter ohne Feld: kein Destruktor kann ihn erreichen, also ohne Korrektur.
   mFound := TRuleAssert.Findings(TEventHandlerNotUnhookedRule.Create,
     Observer('  AQuelle.OnChanging := Self.Geaendert;'#10, ''));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
