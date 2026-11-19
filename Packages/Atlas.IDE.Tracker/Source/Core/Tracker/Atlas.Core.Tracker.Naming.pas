@@ -3,7 +3,7 @@
 // Namen rund um „Beginnen“ (#765), ohne VCL, Open Tools API und Netz:
 // - Kurztitel: die ersten drei Wörter des Titels, klein, Umlaute ersetzt
 //   (ä → ae, ß → ss), Akzente entfernt, mit Bindestrichen. Eine Vorsilbe aus
-//   einem Wort mit Doppelpunkt („Plugin: …“) entfällt, wie im Mockup.
+//   einem Wort mit Doppelpunkt („Plugin: …“) entfällt.
 // - Branch-Name aus issues.branchPattern mit den Platzhaltern
 //   {kennung} (753 bzw. ATL-123; das „#“ von GitHub entfällt), {nummer} und
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
