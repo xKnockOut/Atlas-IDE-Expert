@@ -101,7 +101,7 @@ uses
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
   TPresentationText = (NeverReached, Before, CircularReference, Active, SameParameters, Overload, PropertyText,
-    Field, From, Hides, Local, Parameter, Only, Branch, AsText, Recent, Frequent, InProject);
+    Field, From, Hides, Local, Parameter, Only, Branch, AsText, Recent, Frequent, InProject, OtherUsesPart);
 {$SCOPEDENUMS OFF}
 
 const
@@ -123,7 +123,8 @@ const
      'als ',
      'zuletzt',
      'häufig',
-     'im Projekt %d×'),
+     'im Projekt %d×',
+     'bereits im %s-Teil'),
     ('never reached: ',
      ' before',
      'circular reference',
@@ -141,7 +142,8 @@ const
      'as ',
      'recent',
      'frequent',
-     'in project %d×'));
+     'in project %d×',
+     'already in the %s section'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TPresentationText): string;
@@ -332,7 +334,7 @@ begin
   begin
     if AItem.UsesElsewhere <> '' then
     begin
-      Exit('bereits im ' + AItem.UsesElsewhere + '-Teil');
+      Exit(Format(UiText(TPresentationText.OtherUsesPart), [AItem.UsesElsewhere]));
     end;
     Exit('');
   end;
@@ -393,6 +395,8 @@ begin
 end;
 
 class function TAtlasItemPresentation.MissingUnit(const AItem: TAtlasCompletionItem): string;
+const
+  cUsesWord = 'uses';
 var
   mEdit: TAtlasTextEdit;
   mSuffix: string;
@@ -415,9 +419,10 @@ begin
   for mEdit in AItem.AdditionalEdits do
   begin
     mText := Trim(mEdit.NewText.Replace(',', ' ').Replace(';', ' '));
-    if StartsText('uses', mText) and ((Length(mText) = 4) or not mText[5].IsLetter) then
+    if StartsText(cUsesWord, mText) and ((Length(mText) = Length(cUsesWord)) or
+      not mText[Length(cUsesWord) + 1].IsLetter) then
     begin
-      mText := Trim(Copy(mText, 5, MaxInt));
+      mText := Trim(Copy(mText, Length(cUsesWord) + 1, MaxInt));
     end;
     if mText <> '' then
     begin
@@ -560,16 +565,16 @@ end;
 procedure AddScopeTags(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
 begin
   case AItem.Scope of
-    1: AddTag(ATags, UiText(TPresentationText.Local), TAtlasTagKind.Accent);
-    2: AddTag(ATags, UiText(TPresentationText.Parameter), TAtlasTagKind.Accent);
-    3: AddMemberTag(AItem, ATags);
-    4: AddTag(ATags, 'Unit', TAtlasTagKind.Neutral);
-    5:
+    cScopeLocal: AddTag(ATags, UiText(TPresentationText.Local), TAtlasTagKind.Accent);
+    cScopeParameter: AddTag(ATags, UiText(TPresentationText.Parameter), TAtlasTagKind.Accent);
+    cScopeSelfMember: AddMemberTag(AItem, ATags);
+    cScopeOwnUnit: AddTag(ATags, 'Unit', TAtlasTagKind.Neutral);
+    cScopeOtherUnit:
       if AItem.DeclaringUnit <> '' then
       begin
         AddTag(ATags, AItem.DeclaringUnit, TAtlasTagKind.Neutral);
       end;
-    6: AddWithTags(AItem, ATags);
+    cScopeWithMember: AddWithTags(AItem, ATags);
   end;
 end;
 

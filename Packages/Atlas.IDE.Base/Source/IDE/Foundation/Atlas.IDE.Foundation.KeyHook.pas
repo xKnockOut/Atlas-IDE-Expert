@@ -118,6 +118,9 @@ begin
 end;
 
 function KeyboardProc(ACode: Integer; AWParam: WPARAM; ALParam: LPARAM): LRESULT; stdcall;
+const
+  // Bit 31 von lParam: Taste losgelassen
+  cKeyReleased = $80000000;
 var
   mClient: TAtlasKeyClient;
   mShift: TShiftState;
@@ -127,7 +130,7 @@ begin
     if (ACode = HC_ACTION) and ClientFor(Word(AWParam), mShift, mClient) then
     begin
       // Gedrückt (auch Wiederholung): ausführen; losgelassen nur schlucken.
-      if (ALParam and $80000000) = 0 then
+      if (ALParam and cKeyReleased) = 0 then
       begin
         QueueKey(mClient, Word(AWParam), mShift);
       end;

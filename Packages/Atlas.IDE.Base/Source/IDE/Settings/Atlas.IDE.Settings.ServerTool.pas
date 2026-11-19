@@ -108,6 +108,8 @@ end;
 /// endete, sonst wird er beendet.</summary>
 function RunProcess(const ACall: TAtlasServerToolCall; const AHandles: TAtlasToolHandles;
   var AResult: TAtlasServerToolResult): Boolean;
+const
+  cWaitMs = 5000;
 var
   mInfo: TProcessInformation;
 begin
@@ -123,7 +125,7 @@ begin
     if WaitForSingleObject(mInfo.hProcess, ACall.TimeoutMs) <> WAIT_OBJECT_0 then
     begin
       TerminateProcess(mInfo.hProcess, 1);
-      WaitForSingleObject(mInfo.hProcess, 5000);
+      WaitForSingleObject(mInfo.hProcess, cWaitMs);
       AResult.Error := 'Zeitlimit';
       Exit;
     end;

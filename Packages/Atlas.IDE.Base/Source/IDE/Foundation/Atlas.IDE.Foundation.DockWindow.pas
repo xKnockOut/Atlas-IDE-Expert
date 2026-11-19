@@ -213,6 +213,11 @@ end;
 
 class procedure TAtlasIdeDockWindow.ApplyDarkCaption(AForm: TCustomForm);
 const
+  // Helligkeit nach ITU-R BT.601 in Promille
+  cRedWeight = 299;
+  cGreenWeight = 587;
+  cBlueWeight = 114;
+  cDarkLimit = 128;
   // Fehlt in Delphi 12 (Winapi.Dwmapi): ab Windows 10 20H1.
   cDWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 var
@@ -228,7 +233,8 @@ begin
   end;
   // Dunkel, wenn der Fenstergrund des IDE-Stils dunkel ist (Helligkeit nach Rec. 601).
   mWindow := ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow));
-  mDark := (GetRValue(mWindow) * 299 + GetGValue(mWindow) * 587 + GetBValue(mWindow) * 114) div 1000 < 128;
+  mDark := (GetRValue(mWindow) * cRedWeight + GetGValue(mWindow) * cGreenWeight + GetBValue(mWindow) * cBlueWeight)
+    div 1000 < cDarkLimit;
   // Ältere Windows-Versionen kennen den Wert nicht und lehnen ihn ab: dann bleibt die Titelleiste hell.
   DwmSetWindowAttribute(AForm.Handle, cDWMWA_USE_IMMERSIVE_DARK_MODE, @mDark, SizeOf(mDark));
 end;

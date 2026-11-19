@@ -49,6 +49,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Localization.Language;
+
 { TAtlasServerDiagnostics }
 
 class function TAtlasServerDiagnostics.ServerArguments(AAnonymize: Boolean): string;
@@ -120,6 +123,28 @@ begin
   Result := Result + AServerFiles;
 end;
 
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TServerPackageText = (FilesInPackage, FileSize, FileHeader);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TServerPackageText] of string = (
+    ('Dateien im Paket:',
+     '- %s (%d Bytes)',
+     '== %s (%d Bytes) =='),
+    ('Files in the package:',
+     '- %s (%d bytes)',
+     '== %s (%d bytes) =='));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TServerPackageText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
+
 class function TAtlasServerDiagnostics.Preview(const AFiles: TAtlasPackageFiles; const ACutNote: string): string;
 var
   mBuilder: TStringBuilder;
@@ -129,15 +154,15 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     // Erst die Liste aller Dateien, damit vor dem Speichern sichtbar ist, was in die ZIP kommt (#1478).
-    mBuilder.Append('Dateien im Paket:').Append(sLineBreak);
+    mBuilder.Append(UiText(TServerPackageText.FilesInPackage)).Append(sLineBreak);
     for mFile in AFiles do
     begin
-      mBuilder.Append('- ').Append(mFile.Name).Append(' (').Append(mFile.Size).Append(' Bytes)').Append(sLineBreak);
+      mBuilder.Append(Format(UiText(TServerPackageText.FileSize), [mFile.Name, mFile.Size])).Append(sLineBreak);
     end;
     for mFile in AFiles do
     begin
       mBuilder.Append(sLineBreak);
-      mBuilder.Append('== ').Append(mFile.Name).Append(' (').Append(mFile.Size).Append(' Bytes) ==');
+      mBuilder.Append(Format(UiText(TServerPackageText.FileHeader), [mFile.Name, mFile.Size]));
       mBuilder.Append(sLineBreak);
       mText := mFile.Text;
       if Length(mText) > cPreviewChars then
@@ -160,5 +185,8 @@ class function TAtlasServerDiagnostics.ZipName(ANow: TDateTime): string;
 begin
   Result := cZipPrefix + FormatDateTime('yyyy"-"mm"-"dd"-"hhnn', ANow) + '.zip';
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.ServerPackage', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
