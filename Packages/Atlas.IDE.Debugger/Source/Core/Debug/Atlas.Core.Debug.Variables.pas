@@ -1,8 +1,8 @@
 ﻿unit Atlas.Core.Debug.Variables;
 
 // Fenster „Variablen“ (#853) ohne Fenster und ohne IDE:
-//   - TAtlasVariables: Antwort von atlas.server.debugVariables lesen (Autos
-//     und lokale Variablen) und die Argumente bauen.
+//   - TAtlasVariables: Antwort von atlas.server.debugVariables lesen (Autos,
+//     lokale Variablen und Ort des Halts, #2550) und die Argumente bauen.
 //   - TAtlasVariableSearch: Suche nach Name oder Wert in einer TAtlasEvalList
 //     (eine Zeile je Ausdruck, Kinder sind Felder bzw. Teile). Ohne Tiefe
 //     sucht sie nur in dem, was schon da ist. Mit Unterelementen öffnet sie
@@ -21,7 +21,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Debug.Evaluate;
+  Atlas.Core.Debug.Evaluate,
+  Atlas.Core.Debug.WatchScopes;
 
 type
   {$SCOPEDENUMS ON}
@@ -32,6 +33,8 @@ type
   TAtlasVariablesAnswer = record
     Autos: TArray<string>;
     Locals: TArray<string>;
+    /// <summary>Unit, Klasse und Vorfahren am Halt (#2550); leer, wenn der Server sie nicht kennt.</summary>
+    Place: TAtlasWatchPlace;
   end;
 
   TAtlasVariables = class
@@ -137,7 +140,11 @@ begin
   AAnswer := Default(TAtlasVariablesAnswer);
   Result := (AJson is TJSONObject) and StringsOf(TJSONObject(AJson), 'autos', AAnswer.Autos) and
     StringsOf(TJSONObject(AJson), 'locals', AAnswer.Locals);
-  if not Result then
+  if Result then
+  begin
+    AAnswer.Place := TAtlasWatchPlace.Read(TJSONObject(AJson));
+  end
+  else
   begin
     AAnswer := Default(TAtlasVariablesAnswer);
   end;

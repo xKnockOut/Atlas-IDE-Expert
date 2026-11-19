@@ -66,18 +66,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function LineOf(AObject: TJSONObject; const AName: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := -1;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONNumber then
-  begin
-    Result := TJSONNumber(mValue).AsInt;
-  end;
-end;
-
 { TLspMutants }
 
 class procedure TLspMutants.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
@@ -148,8 +136,8 @@ begin
     end;
   end;
   AOptions.Defines := TJsonRead.Strings(mObject, 'defines');
-  AOptions.FirstLine := LineOf(mObject, 'firstLine');
-  AOptions.LastLine := LineOf(mObject, 'lastLine');
+  AOptions.FirstLine := TJsonRead.IntOr(mObject, 'firstLine', -1);
+  AOptions.LastLine := TJsonRead.IntOr(mObject, 'lastLine', -1);
 end;
 
 /// <summary>Namen der Routinen von AMutants, jeder einmal, in der Reihenfolge des Auftretens.</summary>

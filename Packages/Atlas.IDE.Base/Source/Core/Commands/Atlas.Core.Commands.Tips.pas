@@ -144,7 +144,7 @@ var
   mValue: TJSONValue;
 begin
   Result := nil;
-  mValue := AObject.GetValue(AName);
+  mValue := TJsonRead.Value(AObject, AName);
   if mValue is TJSONString then
   begin
     if Trim(TJSONString(mValue).Value) <> '' then

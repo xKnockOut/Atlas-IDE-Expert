@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Welcome.QuickActions;
 
-// Schnellaktionen je Projekt auf der Willkommensseite (#764, Mockup #ws10),
+// Schnellaktionen je Projekt auf der Willkommensseite (#764),
 // Teil mit VCL ohne Open Tools API. Die Bereiche „Projekte“ (#592) und
 // „Weiterarbeiten“ (#755) zeigen in der Zeile unter der Maus bzw. in der mit
 // der Tastatur gewählten Zeile eine Knopfleiste statt der Marken:
@@ -1490,7 +1490,7 @@ var
 begin
   if ARow = ActiveRow then
   begin
-    // Wie im Mockup: Die aktive Zeile ist hinterlegt.
+    // Die aktive Zeile ist hinterlegt.
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Brush.Color := StyleServices(FBox).GetSystemColor(clBtnFace);
     ACanvas.FillRect(ARowRect);

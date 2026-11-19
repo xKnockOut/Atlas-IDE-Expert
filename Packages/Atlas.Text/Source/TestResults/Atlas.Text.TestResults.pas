@@ -66,8 +66,12 @@ type
   end;
 
   TTestRunResult = record
-    /// <summary>Bericht gelesen; sonst Grund in Error.</summary>
+    /// <summary>Bericht gelesen; sonst NoReport oder ein Grund in Error.</summary>
     Valid: Boolean;
+    /// <summary>Der Text ist kein Testbericht (weder NUnit noch JUnit); den Grund nennt der Aufrufer in seiner
+    /// Sprache.</summary>
+    NoReport: Boolean;
+    /// <summary>Grund in der Sprache der Oberfläche, gesetzt von der Seite, die den Lauf ausführt.</summary>
     Error: string;
     /// <summary>"nunit2", "nunit3" oder "junit".</summary>
     Format: string;
@@ -173,6 +177,12 @@ end;
 { TTestResults }
 
 class function TTestResults.SplitValues(const AMessage: string; out AExpected, AActual: string): Boolean;
+const
+  // Meldungen der Frameworks, englisch und klein geschrieben verglichen.
+  cNUnitExpected = 'expected:';
+  cNUnitActual = 'but was:';
+  cDUnitXExpected = 'expected ';
+  cDUnitXActual = ' but got ';
 var
   mText: string;
   mExpectedAt, mActualAt, mLineEnd: Integer;
@@ -196,12 +206,13 @@ begin
   AActual := '';
   mText := StringReplace(AMessage, #13, '', [rfReplaceAll]);
   // NUnit: "Expected: 3" und in der nächsten Zeile "But was: 4".
-  mExpectedAt := Pos('expected:', LowerCase(mText));
-  mActualAt := Pos('but was:', LowerCase(mText));
+  mExpectedAt := Pos(cNUnitExpected, LowerCase(mText));
+  mActualAt := Pos(cNUnitActual, LowerCase(mText));
   if (mExpectedAt > 0) and (mActualAt > mExpectedAt) then
   begin
-    AExpected := Unquote(Copy(mText, mExpectedAt + 9, mActualAt - mExpectedAt - 9));
-    AActual := Copy(mText, mActualAt + 8, MaxInt);
+    AExpected := Unquote(Copy(mText, mExpectedAt + Length(cNUnitExpected),
+      mActualAt - mExpectedAt - Length(cNUnitExpected)));
+    AActual := Copy(mText, mActualAt + Length(cNUnitActual), MaxInt);
     mLineEnd := Pos(#10, AActual);
     if mLineEnd > 0 then
     begin
@@ -211,10 +222,10 @@ begin
     Exit(True);
   end;
   // DUnitX: "Expected 3 but got 4" (dahinter ggf. die eigene Meldung des Tests).
-  mExpectedAt := Pos('expected ', LowerCase(mText));
+  mExpectedAt := Pos(cDUnitXExpected, LowerCase(mText));
   if mExpectedAt > 0 then
   begin
-    mActualAt := PosEx(' but got ', LowerCase(mText), mExpectedAt + 9);
+    mActualAt := PosEx(cDUnitXActual, LowerCase(mText), mExpectedAt + Length(cDUnitXExpected));
   end
   else
   begin
@@ -222,8 +233,9 @@ begin
   end;
   if (mExpectedAt > 0) and (mActualAt > 0) then
   begin
-    AExpected := Unquote(Copy(mText, mExpectedAt + 9, mActualAt - mExpectedAt - 9));
-    AActual := Copy(mText, mActualAt + 9, MaxInt);
+    AExpected := Unquote(Copy(mText, mExpectedAt + Length(cDUnitXExpected),
+      mActualAt - mExpectedAt - Length(cDUnitXExpected)));
+    AActual := Copy(mText, mActualAt + Length(cDUnitXActual), MaxInt);
     mLineEnd := Pos(#10, AActual);
     if mLineEnd > 0 then
     begin
@@ -288,7 +300,7 @@ class procedure TTestResults.SplitName(const AFullName, AFixture: string; out AU
   ACaseName: string);
 var
   mParts: TArray<string>;
-  mAt, mIndex: Integer;
+  mAt: Integer;
   mRest: string;
 begin
   AUnitName := '';
@@ -316,14 +328,7 @@ begin
   begin
     AFixtureName := mParts[High(mParts) - 1];
     AMethod := mParts[High(mParts)];
-    for mIndex := 0 to High(mParts) - 2 do
-    begin
-      if AUnitName <> '' then
-      begin
-        AUnitName := AUnitName + '.';
-      end;
-      AUnitName := AUnitName + mParts[mIndex];
-    end;
+    AUnitName := string.Join('.', mParts, 0, Length(mParts) - 2);
   end
   else
   begin
@@ -440,20 +445,24 @@ end;
 // Ergebnis eines NUnit-Testfalls aus den Attributen result und label (klein geschrieben).
 function NUnitOutcome(const AResult, ALabel: string): TTestOutcome;
 begin
-  case IndexStr(AResult, ['success', 'passed', 'failure', 'failed', 'error']) of
-    0, 1:
-      Result := TTestOutcome.Passed;
-    2, 3:
-      begin
-        Result := TTestOutcome.Failed;
-        if (ALabel = 'error') or (ALabel = 'cancelled') then
-        begin
-          Result := TTestOutcome.Error;
-        end;
-      end;
-    4:
+  if MatchStr(AResult, ['success', 'passed']) then
+  begin
+    Result := TTestOutcome.Passed;
+  end
+  else if MatchStr(AResult, ['failure', 'failed']) then
+  begin
+    Result := TTestOutcome.Failed;
+    if (ALabel = 'error') or (ALabel = 'cancelled') then
+    begin
       Result := TTestOutcome.Error;
+    end;
+  end
+  else if AResult = 'error' then
+  begin
+    Result := TTestOutcome.Error;
+  end
   else
+  begin
     // Ignored, Skipped, Inconclusive, NotRunnable
     Result := TTestOutcome.Skipped;
   end;
@@ -469,14 +478,20 @@ end;
 
 procedure TReportReader.DetectFormat(const AElement: string);
 begin
-  case IndexStr(AElement, ['test-results', 'test-run', 'testsuites', 'testsuite']) of
-    0:
-      FResult.Format := 'nunit2';
-    1:
-      FResult.Format := 'nunit3';
-    2, 3:
-      FResult.Format := 'junit';
+  if AElement = 'test-results' then
+  begin
+    FResult.Format := 'nunit2';
+  end
+  else if AElement = 'test-run' then
+  begin
+    FResult.Format := 'nunit3';
+  end
+  else if MatchStr(AElement, ['testsuites', 'testsuite']) then
+  begin
+    FResult.Format := 'junit';
+  end
   else
+  begin
     Exit;
   end;
   if FCursor.SelfClosing then
@@ -751,7 +766,7 @@ begin
   end;
   if FResult.Format = '' then
   begin
-    FResult.Error := 'Kein Testbericht (NUnit oder JUnit) erkannt';
+    FResult.NoReport := True;
   end
   else
   begin

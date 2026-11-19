@@ -344,13 +344,14 @@ begin
   end;
 end;
 
+/// <summary>Knopf links neben AAfter; AWidth in logischen Pixeln (96 dpi).</summary>
 function NewButton(AFrame: TArchFrame; AParent: TWinControl; AAfter: TControl; AText: TAtlasAnalysisTextId;
   AWidth: Integer; AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(AFrame);
   PlaceLeft(Result, AParent, AAfter);
   Result.Caption := TAtlasAnalysisStrings.Text(AText);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.OnClick := AClick;
 end;
 
@@ -361,7 +362,7 @@ begin
   Result := TCheckBox.Create(AFrame);
   PlaceLeft(Result, AFrame.FParts.MapBar, AAfter);
   Result.Caption := TAtlasAnalysisStrings.Text(AText);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Tag := Ord(AFlag);
   Result.Checked := AFlag <> TAtlasArchMapFlag.MarkCycles;
   Result.OnClick := AFrame.FState.Events.FlagClick;

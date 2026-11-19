@@ -90,7 +90,7 @@ type
       const ARun: TAtlasVcsBranchRun): string;
   end;
 
-  /// <summary>Nach dem Speichern der Optionen (#1905, vorher in Base): settings.json neu lesen, damit ein neuer
+  /// <summary>Nach dem Speichern der Optionen (#1905): settings.json neu lesen, damit ein neuer
   /// Pfad und ein neues Zeitlimit sofort gelten.</summary>
   TAtlasVcsAppliesSettings = class(TInterfacedObject, IAtlasAppliesSettings, IAtlasFollowsTheme)
   public
@@ -126,11 +126,6 @@ var
   GStarted: Boolean;
 
 { Dienste von Base }
-
-procedure MessageLine(const AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
 
 /// <summary>Befehl ohne Argumente an den laufenden Server; die Antwort braucht niemand.</summary>
 function ServerCommand(ACommand: string): Boolean;
@@ -174,15 +169,11 @@ end;
 procedure StartVcs;
 begin
   // Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile (#571).
-  TAtlasIdeVcsCore.Start(MessageLine, Backend);
+  TAtlasIdeVcsCore.Start(TAtlasIdeHost.Messages(), Backend);
   TAtlasIdeBranching.ServerCommand := ServerCommand;
   TAtlasIdeVcs.Bind(TAtlasVcsServiceAdapter.Create, TAtlasVcsDialogsAdapter.Create);
   // Änderungsmarken und Zeilenhistorie (#507, #1905): mit den Haken, die der Tracker schon abgelegt hat.
-  TAtlasIdeLineChanges.Install(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
+  TAtlasIdeLineChanges.Install(TAtlasIdeHost.Messages());
   TAtlasIdeLineChanges.SetBlameHooks(TAtlasLineChangeMarks.BlameHooks);
   TAtlasLineChangeMarks.Bind(TAtlasLineChangesAdapter.Create);
   GStarted := True;
@@ -432,7 +423,7 @@ begin
   // Vertrag in der Registry (#1903): Beiträge anderer Module zum Optionsdialog (Branches zu Issues des Trackers)
   // finden darüber ihren Gastgeber. Genutzt wird der Dienst weiter über TAtlasIdeVcs, sobald der Teil läuft.
   GScope.Provide(IAtlasVcsService, TAtlasVcsServiceAdapter.Create as IAtlasVcsService);
-  // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905, vorher in der Palette von Base).
+  // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905).
   GScope.Provide(IAtlasCommandSource, TAtlasVcsCommands.Create as IAtlasCommandSource);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeVcsSettings.Create as IAtlasSettingsSectionProvider);

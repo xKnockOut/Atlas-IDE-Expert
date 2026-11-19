@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.BuildPipeline.SettingsSection.Tests;
 
 // Abschnitte des Moduls Build-Pipeline (#1456): Compiler (#261, #529, #530) und Reiter „Release-Build“ (#533);
-// Laden und Speichern über die Seite (vorher in den Tests der Seite von Base).
+// Laden und Speichern über die Seite.
 
 interface
 

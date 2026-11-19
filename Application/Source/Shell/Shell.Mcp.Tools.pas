@@ -15,6 +15,8 @@ implementation
 uses
   Shell.Mcp.NavigationTools,
   Shell.Mcp.BuildTestTools,
+  Shell.Mcp.DebugTools,
+  Shell.Mcp.IdeContextTools,
   Shell.Mcp.ReportTools,
   Shell.Mcp.CheckTools,
   Shell.Mcp.ArchitectureTools,
@@ -32,6 +34,8 @@ begin
   mContext.CheckProject := CheckProjectOf(mContext.Group);
   RegisterNavigationTools(mContext);
   RegisterBuildTestTools(mContext);
+  RegisterDebugTools(mContext);
+  RegisterIdeContextTools(mContext);
   RegisterReportTools(mContext);
   RegisterCheckTools(mContext);
   RegisterArchitectureTools(mContext);

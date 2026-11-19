@@ -146,16 +146,6 @@ begin
     end);
 end;
 
-/// <summary>Wert AName aus AParams; nil ohne Parameter oder Feld.</summary>
-function ParamValue(const AParams: TJSONObject; const AName: string): TJSONValue;
-begin
-  Result := nil;
-  if AParams <> nil then
-  begin
-    Result := AParams.GetValue(AName);
-  end;
-end;
-
 /// <summary>Liest "via" (Kantenarten und library) in ARequest.</summary>
 procedure ReadVia(AValue: TJSONArray; var ARequest: TSymbolPathRequest);
 var
@@ -312,17 +302,17 @@ begin
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
   end;
-  mValue := ParamValue(AParams, 'via');
+  mValue := TJsonRead.Value(AParams, 'via');
   if mValue is TJSONArray then
   begin
     ReadVia(TJSONArray(mValue), Result);
   end;
-  mValue := ParamValue(AParams, 'maxSteps');
+  mValue := TJsonRead.Value(AParams, 'maxSteps');
   if mValue is TJSONNumber then
   begin
     Result.MaxSteps := ReadMaxSteps(TJSONNumber(mValue));
   end;
-  mValue := ParamValue(AParams, 'all');
+  mValue := TJsonRead.Value(AParams, 'all');
   if mValue is TJSONBool then
   begin
     Result.All := TJSONBool(mValue).AsBoolean;

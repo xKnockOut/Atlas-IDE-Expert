@@ -117,17 +117,6 @@ begin
   end;
 end;
 
-function ActiveProject: IOTAProject;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := nil;
-  if ModuleServices(mModules) then
-  begin
-    Result := mModules.GetActiveProject;
-  end;
-end;
-
 { TAtlasIdeProblemFiles }
 
 class function TAtlasIdeProblemFiles.Projects: TArray<TAtlasScopeProject>;
@@ -137,9 +126,9 @@ var
 begin
   Result := nil;
   mActive := '';
-  if ActiveProject <> nil then
+  if GetActiveProject <> nil then
   begin
-    mActive := ActiveProject.FileName;
+    mActive := GetActiveProject.FileName;
   end;
   for mProject in GroupProjects do
   begin
@@ -152,7 +141,7 @@ end;
 
 class function TAtlasIdeProblemFiles.ActiveFiles: TArray<string>;
 begin
-  Result := FilesOfProject(ActiveProject);
+  Result := FilesOfProject(GetActiveProject);
 end;
 
 class function TAtlasIdeProblemFiles.FilesOf(const AName: string): TArray<string>;

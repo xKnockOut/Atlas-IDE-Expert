@@ -257,6 +257,33 @@ const
   cShrinkFindings = 4;
   cMethodSign = #$0192;
   cEllipsis = #$2026;
+  /// <summary>Größte Zahl auf der Plakette; darüber „99+“.</summary>
+  cBadgeMax = 99;
+  // Maße bei 96 dpi.
+  /// <summary>Durchmesser des Zustandspunkts, Kantenlänge der Symbole und des Zahnrads.</summary>
+  cDotSize = 8;
+  cIconSize = 14;
+  cGearSize = 16;
+  /// <summary>Abstand zwischen Symbol und Zahl der Zähler und nach der Zahl.</summary>
+  cKindIconGap = 3;
+  cKindGap = 6;
+  /// <summary>Abstand zwischen Symbol und Text der Live-Prüfung.</summary>
+  cLiveIconGap = 4;
+  /// <summary>Abstand nach dem Methodenzeichen und vor den Kennzahlen der Methode.</summary>
+  cSignGap = 4;
+  cDetailGap = 6;
+  /// <summary>Plakette: Höhe, kleinste Breite im Feld und Innenabstand zur Zahl.</summary>
+  cBadgeHeight = 16;
+  cBadgeMinWidth = 18;
+  cBadgePadding = 10;
+  /// <summary>Eckenhalbmesser der Hervorhebung.</summary>
+  cHotRadius = 4;
+  /// <summary>Kreispfeil: doppelte Strichstärke und halbe Breite der Spitze.</summary>
+  cCycleStroke = 3;
+  cCycleHead = 3;
+  /// <summary>Abstand des Trennstrichs vom oberen und unteren Rand.</summary>
+  cSeparatorTop = 5;
+  cSeparatorBottom = 4;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -312,9 +339,9 @@ end;
 
 function TAtlasStatusBarView.BadgeText: string;
 begin
-  if BadgeCount > 99 then
+  if BadgeCount > cBadgeMax then
   begin
-    Result := '99+';
+    Result := IntToStr(cBadgeMax) + '+';
   end
   else
   begin
@@ -508,12 +535,12 @@ end;
 
 function TAtlasStatusBarMeasure.DotSize: Integer;
 begin
-  Result := Bar.Scale(8);
+  Result := Bar.Scale(cDotSize);
 end;
 
 function TAtlasStatusBarMeasure.IconSize: Integer;
 begin
-  Result := Bar.Scale(14);
+  Result := Bar.Scale(cIconSize);
 end;
 
 function TAtlasStatusBarMeasure.TextWidthOf(const AText: string; ABold: Boolean): Integer;
@@ -529,7 +556,8 @@ end;
 
 function TAtlasStatusBarMeasure.KindWidth(AKind: TAtlasFindingKind): Integer;
 begin
-  Result := IconSize + Bar.Scale(3) + TextWidthOf(IntToStr(Bar.FView.Counts[AKind]), False) + Bar.Scale(6);
+  Result := IconSize + Bar.Scale(cKindIconGap) + TextWidthOf(IntToStr(Bar.FView.Counts[AKind]), False) +
+    Bar.Scale(cKindGap);
 end;
 
 function TAtlasStatusBarMeasure.KindWidths: TArray<Integer>;
@@ -566,10 +594,10 @@ var
   mFixed: Integer;
 begin
   // Methode: Zeichen, Name (kürzbar), Kennzahlen (bleiben).
-  mFixed := 2 * Bar.Scale(cSlotPadding) + TextWidthOf(cMethodSign, True) + Bar.Scale(4);
+  mFixed := 2 * Bar.Scale(cSlotPadding) + TextWidthOf(cMethodSign, True) + Bar.Scale(cSignGap);
   if Bar.FView.MethodDetail <> '' then
   begin
-    Inc(mFixed, Bar.Scale(6) + TextWidthOf(Bar.FView.MethodDetail, False));
+    Inc(mFixed, Bar.Scale(cDetailGap) + TextWidthOf(Bar.FView.MethodDetail, False));
   end;
   Result := TAtlasStatusSlot.Create(mFixed + TextWidthOf(Bar.FView.MethodName, False),
     mFixed + TextWidthOf(cEllipsis, False), cShrinkMethod);
@@ -581,11 +609,11 @@ var
 begin
   case APart of
     TAtlasStatusBarPart.Status:
-      Result := TextSlot(DotSize + Bar.Scale(5), Bar.FView.StatusText, cShrinkStatus);
+      Result := TextSlot(DotSize + Bar.Scale(cDotGap), Bar.FView.StatusText, cShrinkStatus);
     TAtlasStatusBarPart.Badge:
       begin
-        mWidth := 2 * Bar.Scale(cSlotPadding) + Max(Bar.Scale(18), TextWidthOf(Bar.FView.BadgeText, True) +
-          Bar.Scale(10));
+        mWidth := 2 * Bar.Scale(cSlotPadding) + Max(Bar.Scale(cBadgeMinWidth),
+          TextWidthOf(Bar.FView.BadgeText, True) + Bar.Scale(cBadgePadding));
         Result := TAtlasStatusSlot.Create(mWidth, mWidth, cShrinkFindings);
       end;
     TAtlasStatusBarPart.Findings:
@@ -598,7 +626,7 @@ begin
         Result := TAtlasStatusSlot.Create(mWidth, mWidth, cShrinkFindings);
       end;
     TAtlasStatusBarPart.LiveCheck:
-      Result := TextSlot(IconSize + Bar.Scale(4), Bar.FView.LiveText, cShrinkLive);
+      Result := TextSlot(IconSize + Bar.Scale(cLiveIconGap), Bar.FView.LiveText, cShrinkLive);
     TAtlasStatusBarPart.Extra:
       Result := TextSlot(ExtraMark(ASub), Bar.FView.Extras[ASub].Text, cShrinkExtra);
   else
@@ -698,8 +726,8 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Selection);
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.RoundRect(ARect.Left, ARect.Top + Bar.Scale(2), ARect.Right, ARect.Bottom - Bar.Scale(2), Bar.Scale(4),
-    Bar.Scale(4));
+  Canvas.RoundRect(ARect.Left, ARect.Top + Bar.Scale(2), ARect.Right, ARect.Bottom - Bar.Scale(2),
+    Bar.Scale(cHotRadius), Bar.Scale(cHotRadius));
 end;
 
 procedure TAtlasStatusBarPainter.Dot(ALeft, ACenter: Integer; AState: TAtlasStatusState);
@@ -725,7 +753,7 @@ begin
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  mPart := Rect(mLeft + mDot + Bar.Scale(5), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
+  mPart := Rect(mLeft + mDot + Bar.Scale(cDotGap), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.StatusText), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -738,8 +766,8 @@ var
 begin
   // Runde Plakette in der Farbe des schwersten ungelesenen Eintrags, Zahl hell darauf.
   mText := Bar.FView.BadgeText;
-  mHeight := Bar.Scale(16);
-  mWidth := Max(mHeight, Measure.TextWidthOf(mText, True) + Bar.Scale(10));
+  mHeight := Bar.Scale(cBadgeHeight);
+  mWidth := Max(mHeight, Measure.TextWidthOf(mText, True) + Bar.Scale(cBadgePadding));
   mPill := Rect(ARect.Left + Bar.Scale(cSlotPadding), ARect.Top + (ARect.Height - mHeight) div 2,
     ARect.Left + Bar.Scale(cSlotPadding) + mWidth, ARect.Top + (ARect.Height - mHeight) div 2 + mHeight);
   Canvas.Brush.Style := bsSolid;
@@ -785,7 +813,7 @@ begin
       Canvas.Font.Color := ToColor(Colors.Muted);
     end;
     Canvas.Brush.Style := bsClear;
-    mPart := Rect(mIcon.Right + Bar.Scale(3), ARect.Top, mSpans[mIndex].Right, ARect.Bottom);
+    mPart := Rect(mIcon.Right + Bar.Scale(cKindIconGap), ARect.Top, mSpans[mIndex].Right, ARect.Bottom);
     DrawText(Canvas.Handle, PChar(IntToStr(mCount)), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
       DT_NOPREFIX);
   end;
@@ -802,12 +830,12 @@ begin
   mCircle := Rect(ARect.Left + mInset, ARect.Top + mInset, ARect.Right - mInset, ARect.Bottom - mInset);
   mCenter := (mCircle.Top + mCircle.Bottom) div 2;
   Canvas.Pen.Color := AColor;
-  Canvas.Pen.Width := Max(1, Bar.Scale(3) div 2);
+  Canvas.Pen.Width := Max(1, Bar.Scale(cCycleStroke) div 2);
   Canvas.Brush.Style := bsClear;
   Canvas.Arc(mCircle.Left, mCircle.Top, mCircle.Right, mCircle.Bottom, mCircle.Right, mCircle.Top, mCircle.Right,
     mCenter);
   Canvas.Pen.Width := 1;
-  mHead := Bar.Scale(3);
+  mHead := Bar.Scale(cCycleHead);
   mPoints[0] := Point(mCircle.Right - 1 - mHead, mCenter);
   mPoints[1] := Point(mCircle.Right - 1 + mHead, mCenter);
   mPoints[2] := Point(mCircle.Right - 1, mCenter - mHead);
@@ -835,7 +863,7 @@ begin
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  mPart := Rect(mIcon.Right + Bar.Scale(4), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
+  mPart := Rect(mIcon.Right + Bar.Scale(cLiveIconGap), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.LiveText), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -862,13 +890,13 @@ begin
   Canvas.Font.Color := mTone;
   mPart := Rect(mLeft, ARect.Top, ARect.Right, ARect.Bottom);
   DrawText(Canvas.Handle, PChar(cMethodSign), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-  Inc(mLeft, Measure.TextWidthOf(cMethodSign, True) + Bar.Scale(4));
+  Inc(mLeft, Measure.TextWidthOf(cMethodSign, True) + Bar.Scale(cSignGap));
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := mTone;
   mDetail := 0;
   if Bar.FView.MethodDetail <> '' then
   begin
-    mDetail := Bar.Scale(6) + Measure.TextWidthOf(Bar.FView.MethodDetail, False);
+    mDetail := Bar.Scale(cDetailGap) + Measure.TextWidthOf(Bar.FView.MethodDetail, False);
   end;
   // Erst die Kennzahlen rechts, der Name kürzt sich davor.
   mPart := Rect(mLeft, ARect.Top, Max(mLeft, ARect.Right - Bar.Scale(cSlotPadding) - mDetail), ARect.Bottom);
@@ -883,7 +911,7 @@ begin
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);
   end;
-  mPart := Rect(Min(mLeft + Measure.TextWidthOf(Bar.FView.MethodName, False), mPart.Right) + Bar.Scale(6),
+  mPart := Rect(Min(mLeft + Measure.TextWidthOf(Bar.FView.MethodName, False), mPart.Right) + Bar.Scale(cDetailGap),
     ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.MethodDetail), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX);
@@ -920,7 +948,7 @@ begin
   begin
     Hot(ARect);
   end;
-  mSize := Bar.Scale(16);
+  mSize := Bar.Scale(cGearSize);
   mIcon := Rect(ARect.Left + (ARect.Width - mSize) div 2, ARect.Top + (ARect.Height - mSize) div 2,
     ARect.Left + (ARect.Width - mSize) div 2 + mSize, ARect.Top + (ARect.Height - mSize) div 2 + mSize);
   TAtlasGlyphPainter.Draw(Canvas, TAtlasToolbarIcon.Gear, mIcon, ToColor(Colors.Text), ToColor(Colors.Gutter), '');
@@ -1097,8 +1125,8 @@ begin
       // Trennstrich mitten im Abstand davor.
       mMiddle := mArea.Left - mPainter.Measure.Gap div 2;
       Canvas.Pen.Color := ToColor(Colors.Line);
-      Canvas.MoveTo(mMiddle, Scale(5));
-      Canvas.LineTo(mMiddle, ClientHeight - Scale(4));
+      Canvas.MoveTo(mMiddle, Scale(cSeparatorTop));
+      Canvas.LineTo(mMiddle, ClientHeight - Scale(cSeparatorBottom));
     end;
     mStarted := True;
     mPainter.Element(FPlaces.Parts[mIndex], FPlaces.Subs[mIndex], mArea);

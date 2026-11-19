@@ -137,12 +137,9 @@ begin
 end;
 
 function Flag(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
 begin
-  mValue := AObject.GetValue(AName);
-  Result := ((mValue is TJSONBool) and TJSONBool(mValue).AsBoolean) or
-    ((mValue is TJSONString) and SameText(Trim(TJSONString(mValue).Value), 'true'));
+  // Auch "true" als Zeichenkette (von Hand gepflegte Datei).
+  Result := TJsonRead.Flag(AObject, AName) or SameText(Trim(TJsonRead.StrictText(AObject, AName)), 'true');
 end;
 
 /// <summary>Eintrag aus AObject; Title '' bei einem unbrauchbaren Eintrag.</summary>

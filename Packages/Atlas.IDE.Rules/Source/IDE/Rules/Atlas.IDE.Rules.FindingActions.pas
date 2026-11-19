@@ -1,7 +1,6 @@
 ﻿unit Atlas.IDE.Rules.FindingActions;
 
-// Regel-Aktionen am Befund im Modul Prüfregeln (#909, #1755; vorher im
-// Fenster „Atlas-Prüfung“ von Base). Base fragt laufende Module nach
+// Regel-Aktionen am Befund im Modul Prüfregeln (#909, #1755). Base fragt laufende Module nach
 // IAtlasRuleActions (Atlas.IDE.Contracts.Rules), aus dem Fenster
 // „Atlas-Prüfung“, dem Befund-Hover und dem Serverfenster:
 // - „Regel einstellen…“ öffnet den Dialog der Projekt-Einstellungen (ohne

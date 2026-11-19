@@ -35,8 +35,8 @@ uses
 
 { TAtlasSettingsPagesTests }
 
-/// <summary>Feste Antworten für Cache und Rückfrage; Baseline und Unterdrückungen stehen seit #1755 im
-/// Abschnitt des Moduls Prüfregeln.</summary>
+/// <summary>Feste Antworten für Cache und Rückfrage; Baseline und Unterdrückungen stehen im
+/// Abschnitt des Moduls Prüfregeln (#1755).</summary>
 procedure WireServerPageAnswers(APage: TAtlasServerPage);
 begin
   APage.OnClearCache :=

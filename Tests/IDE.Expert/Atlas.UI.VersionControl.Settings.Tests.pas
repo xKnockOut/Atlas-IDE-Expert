@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.Settings.Tests;
 
-// Seite der Versionsverwaltung als Abschnitt des Moduls (#1905, vorher Teile der Optionsseite von Base).
+// Seite der Versionsverwaltung als Abschnitt des Moduls (#1905).
 
 interface
 

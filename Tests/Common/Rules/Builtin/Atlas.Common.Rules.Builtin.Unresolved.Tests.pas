@@ -83,6 +83,10 @@ type
     procedure NotATypeCodesLikeDelphi13;
     [Test]
     procedure SilentCases;
+    /// <summary>Typname gleich dem Parameternamen nach einer Umbenennung (AWParam: AWParam, #1896): Der Parameter
+    /// gilt im Kopf noch nicht, der Typ fehlt; auch im Rumpfkopf und bei lokalen Variablen.</summary>
+    [Test]
+    procedure ParameterNamedLikeItsType;
     [Test]
     procedure TypeOffGroupAndExclude;
     /// <summary>Die IDE kennt den Typ in einer Unit aus uses, deren Quelltext ihn nicht (mehr) deklariert.
@@ -771,6 +775,29 @@ begin
     KundenUnit('System.SysUtils', '  TX = class(TBasiz)'#10'  end;'#10), AttributeIndex(False), '', ''))));
   Assert.AreEqual(0, Integer(Length(TypeFindings(KundenUnit('System.SysUtils, Unbekannt',
     '  TX = class(TBasiz)'#10'  end;'#10)))));
+end;
+
+procedure TUnresolvedTypeTests.ParameterNamedLikeItsType;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := TypeFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
+    '  THaken = class'#10'    procedure Zeige(AWParam: AWParam);'#10'  end;'#10 +
+    'function KeyboardProc(ACode: Integer; AHWnd: AHWnd): Integer;'#10'implementation'#10 +
+    'procedure THaken.Zeige(AWParam: AWParam);'#10'var'#10'  mWert: AWert;'#10'begin'#10'end;'#10 +
+    'function KeyboardProc(ACode: Integer; AHWnd: AHWnd): Integer;'#10'begin'#10'  Result := ACode;'#10'end;'#10 +
+    'end.');
+  Assert.AreEqual(5, Integer(Length(mFound)));
+  Assert.AreEqual('Typ AWParam ist nicht deklariert (wie E2003).', mFound[0].Message);
+  Assert.AreEqual(6, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Typ AHWnd ist nicht deklariert (wie E2003).', mFound[1].Message);
+  Assert.AreEqual(8, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual('Typ AWParam ist nicht deklariert (wie E2003).', mFound[2].Message);
+  Assert.AreEqual(10, mFound[2].Range.StartPos.Line);
+  Assert.AreEqual('Typ AWert ist nicht deklariert (wie E2003).', mFound[3].Message);
+  Assert.AreEqual('Typ AHWnd ist nicht deklariert (wie E2003).', mFound[4].Message);
+  Assert.AreEqual(15, mFound[4].Range.StartPos.Line);
+  mFound := nil;
 end;
 
 procedure TUnresolvedTypeTests.TypeOffGroupAndExclude;

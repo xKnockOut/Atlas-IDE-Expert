@@ -1143,14 +1143,6 @@ end;
 
 { JSON }
 
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 function PlacesJson(const APlaces: TArray<TAtlasUnsavedPlace>): TJSONArray;
 var
   mPlace: TAtlasUnsavedPlace;
@@ -1189,8 +1181,8 @@ begin
   begin
     Result.AddPair('branches', TJsonBuild.Strings(AItem.Branches));
   end;
-  AddText(Result, 'name', AItem.Name);
-  AddText(Result, 'ref', AItem.Ref);
+  TJsonBuild.AddText(Result, 'name', AItem.Name);
+  TJsonBuild.AddText(Result, 'ref', AItem.Ref);
   if Length(AItem.Places) > 0 then
   begin
     Result.AddPair('places', PlacesJson(AItem.Places));
@@ -1210,8 +1202,8 @@ begin
     Result.AddPair('at', TAtlasProjectSummaries.TimeText(AState.At));
   end;
   Result.AddPair('kind', AState.Kind);
-  AddText(Result, 'root', AState.Root);
-  AddText(Result, 'branch', AState.Branch);
+  TJsonBuild.AddText(Result, 'root', AState.Root);
+  TJsonBuild.AddText(Result, 'branch', AState.Branch);
   mItems := TJSONArray.Create;
   Result.AddPair('items', mItems);
   for mItem in AState.Items do

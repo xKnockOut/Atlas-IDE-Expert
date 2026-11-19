@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsSection;
 
-// Abschnitt des Moduls Versionsverwaltung im Optionsdialog (#1891, seit #1905 die ganze Seite): Modulschalter
+// Abschnitt des Moduls Versionsverwaltung im Optionsdialog (#1891, #1905; die ganze Seite): Modulschalter
 // vcs.enabled, Art, Programme, Zeitlimit und aktuelles Projekt, Tabellen Projekte und Server, Links, Branches,
 // Externals und Git. Die Teile (Atlas.UI.VersionControl.Settings*) entstehen mit dem Abschnitt, damit die IDE-Schicht
 // ihre Haken vor Build setzen kann; ihre Steuerelemente gehören einem Besitzer, den Close freigibt (Regel 3).

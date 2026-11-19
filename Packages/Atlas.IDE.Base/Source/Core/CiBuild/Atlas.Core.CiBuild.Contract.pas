@@ -93,6 +93,9 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 const
   cOutcomeKeys: array[TAtlasCiOutcome] of string = ('unknown', 'success', 'unstable', 'failure', 'aborted',
     'notBuilt');
@@ -200,11 +203,11 @@ var
   mIndex: Integer;
 begin
   Result := '';
-  if SameText(Copy(Url, 1, 8), 'https://') then
+  if StartsText('https://', Url) then
   begin
     mScheme := 'https://';
   end
-  else if SameText(Copy(Url, 1, 7), 'http://') then
+  else if StartsText('http://', Url) then
   begin
     mScheme := 'http://';
   end
@@ -237,7 +240,7 @@ end;
 
 function TAtlasCiJob.Secure: Boolean;
 begin
-  Result := SameText(Copy(Server, 1, 8), 'https://');
+  Result := StartsText('https://', Server);
 end;
 
 end.

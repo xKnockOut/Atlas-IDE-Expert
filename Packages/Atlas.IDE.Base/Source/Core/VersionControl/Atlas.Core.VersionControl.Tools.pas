@@ -110,6 +110,24 @@ implementation
 uses
   Atlas.Core.VersionControl.ServerAccess;
 
+const
+  // Ordner unter den Programmordnern, in denen Git und die üblichen SVN-Clients ihre Programme ablegen.
+  cGitDirs: array[0..1] of string = ('Git\cmd', 'Git\bin');
+  cSvnDirs: array[0..3] of string = ('TortoiseSVN\bin', 'SlikSvn\bin', 'CollabNet\Subversion Client',
+    'VisualSVN Server\bin');
+
+/// <summary>AParts unter ADir, Trenner wie das System.</summary>
+function DirsUnder(const ADir: string; const AParts: array of string): TArray<string>;
+var
+  mPart: string;
+begin
+  Result := nil;
+  for mPart in AParts do
+  begin
+    Result := Result + [IncludeTrailingPathDelimiter(ADir) + StringReplace(mPart, '\', PathDelim, [rfReplaceAll])];
+  end;
+end;
+
 { TAtlasVcsToolLocation }
 
 class function TAtlasVcsToolLocation.Empty: TAtlasVcsToolLocation;
@@ -156,15 +174,9 @@ begin
     end;
     case AKind of
       TAtlasVcsKind.Git:
-        Result := Result + [
-          IncludeTrailingPathDelimiter(mDir) + 'Git' + PathDelim + 'cmd',
-          IncludeTrailingPathDelimiter(mDir) + 'Git' + PathDelim + 'bin'];
+        Result := Result + DirsUnder(mDir, cGitDirs);
       TAtlasVcsKind.Svn:
-        Result := Result + [
-          IncludeTrailingPathDelimiter(mDir) + 'TortoiseSVN' + PathDelim + 'bin',
-          IncludeTrailingPathDelimiter(mDir) + 'SlikSvn' + PathDelim + 'bin',
-          IncludeTrailingPathDelimiter(mDir) + 'CollabNet' + PathDelim + 'Subversion Client',
-          IncludeTrailingPathDelimiter(mDir) + 'VisualSVN Server' + PathDelim + 'bin'];
+        Result := Result + DirsUnder(mDir, cSvnDirs);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;

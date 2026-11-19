@@ -504,14 +504,15 @@ Läuft von selbst; Befehle im Menü Atlas und in der Befehlspalette. Nach `git p
 
 Einstellungen: `debug.breakpointAnchors`
 
-#### Haltepunkt-Regeln: abhängig, Treffer, Thread
+#### Haltepunkt-Regeln: abhängig, Treffer, Thread, Aufrufer
 
 Aufruf: Kontextmenü des Editors (Atlas › Debuggen › „Haltepunkt-Regeln …“, auch im Rand), Menü Atlas, Befehlspalette; auf der Zeile eines Haltepunkts. Ein Haltepunkt in einer viel benutzten Routine hält sonst hundertmal, bevor man an der Stelle ist, um die es geht.
 
 - „Erst aktiv nach“: Der Haltepunkt ist zu Beginn jeder Debug-Sitzung aus und wird eingeschaltet, sobald der gewählte andere Haltepunkt gehalten hat. „bis zum Ende der Sitzung“ lässt ihn danach an, „nur einmal“ schaltet ihn nach seinem Halt wieder aus, bis der auslösende erneut hält. Nach der Sitzung ist er wieder an.
 - „Anhalten“: bei jedem, genau beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer; gezählt wird je Sitzung.
 - „Thread“: alle, Name enthält (aus `TThread.NameThreadForDebugging`), eine Thread-ID oder nur der Hauptthread. Ein Halt in einem anderen Thread zählt nicht als Treffer.
-- Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Für Treffer und Thread hält der Debugger kurz an, Atlas zählt und setzt sofort fort; in heißen Schleifen kostet das Zeit.
+- „Nur wenn im Stapel“: Der Haltepunkt hält nur, wenn eine bestimmte Routine im Aufrufstapel steht, etwa `TKundenImport.LeseZeile`. Erlaubt sind `Unit.Klasse.Methode`, `Klasse.Methode`, eine ganze Unit oder Klasse und `*` als Platzhalter (`Kunden.*`, `*.LeseZeile`); Groß- und Kleinschreibung zählt nicht. „nur direkter Aufrufer“ prüft nur den Rahmen direkt unter dem Haltepunkt. Hält das Programm gerade, schlägt die Liste die Routinen des aktuellen Stapels vor. Halte ohne passenden Aufrufer zählen nicht als Treffer, „genau beim 2. Treffer“ meint also den zweiten Aufruf aus dieser Routine. Ist der Stapel nicht lesbar, hält Atlas lieber an. Rahmen ohne Debug-Informationen haben teils keinen Namen, und Inline-Routinen oder optimierter Code erscheinen nicht als eigener Rahmen. Haltepunkte mit Aufrufer tragen einen Haken (↳) in der Atlas-Spalte der Rinne; der Hinweis nennt den Aufrufer.
+- Bedingung der IDE, Trefferbedingung, Thread-Filter und Aufrufer gelten zusammen. Für Treffer, Thread und Aufrufer hält der Debugger kurz an, Atlas prüft und setzt sofort fort; in heißen Schleifen kostet das Zeit. Nach 1000 übergangenen Halten in einer Sitzung sagt es eine Zeile in den Meldungen.
 - Fehlt der auslösende Haltepunkt beim Start, bleibt der abhängige normal an, und eine Zeile in den Meldungen sagt es.
 - Regeln liegen in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` und ziehen mit, wenn „Haltepunkte wandern mit dem Code“ einen Haltepunkt verschiebt.
 
@@ -665,6 +666,7 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 - Ausgewertet wird ohne Nebenwirkungen; Werte klappen zu ihren Feldern auf wie im Fenster „Auswerten“, seit dem letzten Schritt geänderte Werte sind hervorgehoben.
 - Suche im gezeigten Reiter nach Name oder (mit „In Werten“) nach Wert. Mit „Unterelemente“ klappt Atlas Knoten bis `debug.variablesWindow.searchDepth` Ebenen selbst auf und hört nach `debug.variablesWindow.searchLimit` Auswertungen auf. Gezeigt werden Treffer (fett), ihr Pfad und ihre Unterelemente; unten steht die Zahl der Treffer. Ein Wert zählt nur bei einfachen Werten: Bei einer Suche nach „Berlin“ ist `Kunde.Adressen[1].Ort` der Treffer, nicht `Kunde`.
 - Autos und Lokal brauchen den Atlas-Server; die Überwachung geht ohne.
+- Überwachte Ausdrücke je Klasse oder Unit (#2550): Im Kontextmenü einer Zeile im Reiter Überwachung bindet „Nur in dieser Klasse zeigen“ bzw. „Nur in dieser Unit zeigen“ den Ausdruck an die Klasse bzw. Unit, in der das Programm gerade hält; „Überall zeigen“ hebt die Bindung auf. Beim nächsten Halt in der Klasse (auch in Nachfahren, soweit der Atlas-Index die Vererbung kennt) erscheint der Ausdruck von selbst, passende gebundene zuerst; anderswo wird er nicht ausgewertet und nicht gezeigt. Hinter der Zeile steht, wofür sie gilt („· gilt für TAuftragsLauf“), über der Liste „3 weitere ausgeblendet – zeigen“. Klasse, Unit und Vorfahren liefert der Atlas-Server; ohne ihn liest Atlas Klasse und Unit aus dem obersten Rahmen, ohne Vererbung. Gewertet wird immer im obersten Rahmen mit Quelltext, weil die ToolsAPI keinen anderen Rahmen wählt.
 
 | Bedienung | Wirkung |
 |---|---|
@@ -676,7 +678,7 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 | Entf (Reiter Überwachung) | Überwachung entfernen |
 | Enter im Eingabefeld des Reiters Überwachung | Ausdruck überwachen |
 
-Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
+Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
 
 ### Ereignisprotokoll
 

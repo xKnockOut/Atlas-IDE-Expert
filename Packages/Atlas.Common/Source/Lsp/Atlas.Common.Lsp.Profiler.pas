@@ -85,7 +85,8 @@ uses
   System.IOUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Profiling.Sampling;
+  Atlas.Common.Profiling.Sampling,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -102,24 +103,6 @@ const
     (De: 'Profil für Prozess %d lässt sich nicht starten: %s'; En: 'Cannot profile process %d: %s'));
 
 {$SCOPEDENUMS OFF}
-
-function TextParam(const AParams: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if AParams <> nil then
-  begin
-    AParams.TryGetValue<string>(AName, Result);
-  end;
-end;
-
-function IntParam(const AParams: TJSONObject; const AName: string; ADefault: Integer): Integer;
-begin
-  // TryGetValue setzt Result auch ohne Schlüssel (auf 0); die Vorgabe gilt nur, wenn er fehlt.
-  if (AParams = nil) or not AParams.TryGetValue<Integer>(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
 
 { TLspProfiler }
 
@@ -185,14 +168,14 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
       cTexts[TProfilerText.AlreadyRunning].Fmt([FProcessId]));
   end;
-  mProcessId := IntParam(mParams, 'processId', 0);
+  mProcessId := TJsonRead.IntOr(mParams, 'processId', 0);
   if mProcessId <= 0 then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TProfilerText.ProcessIdMissing].Text);
   end;
   mSampler := StartedSampler(mParams, mProcessId);
   BeginProfile(mParams, mSampler, mProcessId);
-  mMapFile := TextParam(mParams, 'mapFile');
+  mMapFile := TJsonRead.Text(mParams, 'mapFile');
   if mMapFile = '' then
   begin
     mMapFile := ChangeFileExt(mSampler.MainFileName, '.map');
@@ -261,7 +244,7 @@ begin
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TProfilerText.NotAvailable].Text);
   end;
-  if not Result.Start(Cardinal(AProcessId), EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs),
+  if not Result.Start(Cardinal(AProcessId), EnsureRange(TJsonRead.IntOr(AParams, 'intervalMs', cDefaultIntervalMs),
     cMinIntervalMs, cMaxIntervalMs), mError) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
@@ -277,11 +260,11 @@ begin
   ProcessChanged(FProcessId);
   FWatch := TStopwatch.StartNew;
   FProfile := Default(TAtlasProfile);
-  FProfile.ProgramName := TextParam(AParams, 'program');
-  FProfile.Project := TextParam(AParams, 'project');
-  FProfile.Platform := TextParam(AParams, 'platform');
+  FProfile.ProgramName := TJsonRead.Text(AParams, 'program');
+  FProfile.Project := TJsonRead.Text(AParams, 'project');
+  FProfile.Platform := TJsonRead.Text(AParams, 'platform');
   FProfile.StartedAt := Now;
-  FProfile.IntervalMs := EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs), cMinIntervalMs,
+  FProfile.IntervalMs := EnsureRange(TJsonRead.IntOr(AParams, 'intervalMs', cDefaultIntervalMs), cMinIntervalMs,
     cMaxIntervalMs);
   if FProfile.ProgramName = '' then
   begin

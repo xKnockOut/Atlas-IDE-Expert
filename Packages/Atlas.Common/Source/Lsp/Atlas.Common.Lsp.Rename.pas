@@ -13,6 +13,8 @@
 // nennt die Antwort im Feld atlasUnchanged, damit der Editor sie zum Prüfen zeigt.
 // Beim Umbenennen eines Typs wandert der Typkommentar über seinen Rümpfen
 // ({ TKunde }, // TKunde, {$REGION 'TKunde'}) mit (#1838).
+// Ein Parameter wird in beiden Köpfen seiner Routine und im Rumpf umbenannt,
+// von jedem Kopf und jeder Verwendung aus (#2425).
 
 interface
 
@@ -738,7 +740,8 @@ begin
   begin
     Result.Name := Copy(Result.Name, 2, MaxInt);
   end;
-  mTargets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  // Wie die Referenzsuche: Parameter auch aus dem Kopf ohne Rumpf (#2425).
+  mTargets := TLspReferences.Targets(AResolver, AIndex, ATree, AFileName, APosition);
   if Length(mTargets) > 0 then
   begin
     Result.DeclarationFile := mTargets[0].FileName;

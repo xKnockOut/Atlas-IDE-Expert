@@ -96,6 +96,9 @@ type
     cUsageFileName = 'usage.json';
     /// <summary>Ab so vielen Aufrufen insgesamt gilt „selten per Tastatur“.</summary>
     cRarelyMinUses = 3;
+    /// <summary>„Selten per Tastatur“: weniger als ein so großer Bruchteil (1/n) der Aufrufe per Tastatur.
+    /// </summary>
+    cRarelyKeyboardShare = 4;
   public
     /// <summary>Selten per Tastatur: mindestens RarelyMinUses Aufrufe, davon weniger als ein Viertel über das
     /// Kürzel.</summary>
@@ -235,7 +238,7 @@ var
   mTotal: Integer;
 begin
   mTotal := AMouse + AKeyboard;
-  Result := (mTotal >= cRarelyMinUses) and (AKeyboard * 4 < mTotal);
+  Result := (mTotal >= cRarelyMinUses) and (AKeyboard * cRarelyKeyboardShare < mTotal);
 end;
 
 { JSON-Helfer }
@@ -243,10 +246,12 @@ end;
 /// <summary>Text einer vorhandenen Datei, ohne das atomare Ersetzen durch eine zweite IDE zu blockieren;
 /// EInOutError, wenn sie nicht lesbar ist.</summary>
 function ReadText(const AFileName: string): string;
+const
+  cNotReadable = 'Datendatei nicht lesbar';
 begin
   if not TAtlasDataFile.TryRead(AFileName, Result) then
   begin
-    raise EInOutError.Create('Datendatei nicht lesbar');
+    raise EInOutError.Create(cNotReadable);
   end;
 end;
 

@@ -1,0 +1,2 @@
+### Neu
+- Befunde nach schreibenden MCP-Werkzeugen (#2603, `mcp.reportFindingsAfterEdit`, Vorgabe an): `apply_code_action`, `fix_findings`, `format_code`, `extract_method` und `rename_symbol` prüfen mit `dryRun: false` die geänderten Dateien vor und nach dem Schreiben wie `get_diagnostics` und hängen „Befunde nach der Änderung“ an: neue Befunde mit Datei:Zeile, Regel und Text, dazu behobene und unveränderte. Nur verschobene Befunde gelten nicht als neu. Die Ressource `delphi://edits/last` liefert die letzte Auswertung.

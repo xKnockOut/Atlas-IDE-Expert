@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.TestResults;
 
-// Kachel „Testergebnisse“ des Moduls Tracker (#763, Mockup #ws11; Kachel
+// Kachel „Testergebnisse“ des Moduls Tracker (#763; Kachel
 // über Atlas.IDE.Contracts.WelcomeTiles), ohne Open Tools API. Selbst
 // gezeichnet:
 //   ● Atlas.Tests  [2 fehlgeschlagen]  412 ok · 3 übersprungen · 18,4 s · 19:41
@@ -879,7 +879,7 @@ begin
       TAtlasTrackerTestResultsText.LevelColor(mRow.LocalLevel)).Right + Scaled(cGap);
     ACanvas.Font.Size := FOwner.Font.Size;
   end;
-  // Zahlen, Dauer und Zeit in gedämpfter Schrift (Mockup: mono).
+  // Zahlen, Dauer und Zeit in gedämpfter Schrift.
   mText := TAtlasTrackerTestResultsText.LocalText(mRow, ANowUtc);
   if (mText <> '') and (mLeft < Limit) then
   begin
@@ -957,7 +957,7 @@ begin
     ACanvas.Brush.Color := Color(clBtnFace);
     ACanvas.FillRect(Rect(mLeft, mTop, mLimit, mTop + Scaled(cFailureHeight) - Scaled(cSmallGap)));
   end;
-  // Roter Balken links (Mockup).
+  // Roter Balken links.
   ACanvas.Brush.Color := TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Failed);
   ACanvas.FillRect(Rect(mLeft, mTop, mLeft + Scaled(cBarWidth), mTop + Scaled(cFailureHeight) - Scaled(cSmallGap)));
   ACanvas.Brush.Style := bsClear;
@@ -999,7 +999,7 @@ begin
     mTop + Scaled(cButtonHeight));
   FButtonRects[AButton] := mArea;
   mEnabled := FOwner.ButtonEnabled(AButton);
-  // „Fehlgeschlagene erneut ausführen“ ist die Hauptaktion (Mockup: primary).
+  // „Fehlgeschlagene erneut ausführen“ ist die Hauptaktion.
   if (AButton = TAtlasTestResultsButton.Rerun) and mEnabled then
   begin
     ACanvas.Brush.Style := bsSolid;

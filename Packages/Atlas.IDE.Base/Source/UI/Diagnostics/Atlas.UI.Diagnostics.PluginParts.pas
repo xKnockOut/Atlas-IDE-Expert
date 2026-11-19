@@ -158,6 +158,21 @@ uses
 
 const
   cTabFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_CENTER;
+  // Reiter bei 96 dpi: Höhe und Innenabstand zum Text (links und rechts zusammen).
+  cTabHeight = 26;
+  cTabPadding = 20;
+  // Abstand der Verlaufslinie zum oberen und unteren Rand.
+  cSparkPadding = 2;
+  // Leiste bei 96 dpi: Zeilenhöhe, Knopfbreite, Breite der Verlaufslinie und vorläufige Lage der Angaben
+  // (alLeft ordnet nach Left, daher wachsende Werte).
+  cBarRowHeight = 32;
+  cBarButtonWidth = 110;
+  cSparkWidth = 150;
+  cSparkLeft = 400;
+  cThresholdLeft = 600;
+  cNoteLeft = 800;
+  // Knöpfe rechts: Kopieren, Zurücksetzen, Anhalten.
+  cBarButtonCount = 3;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -171,7 +186,7 @@ begin
   inherited Create(AOwner);
   FColors := TAtlasColors.Light;
   Align := alTop;
-  Height := MulDiv(26, CurrentPPI, 96);
+  Height := MulDiv(cTabHeight, CurrentPPI, 96);
 end;
 
 procedure TAtlasDiagnosticTabs.SetActive(AValue: TAtlasDiagnosticPage);
@@ -201,7 +216,7 @@ begin
   for mPage := Low(TAtlasDiagnosticPage) to High(TAtlasDiagnosticPage) do
   begin
     mText := Caption(mPage);
-    mWidth := Canvas.TextWidth(mText) + MulDiv(20, CurrentPPI, 96);
+    mWidth := Canvas.TextWidth(mText) + MulDiv(cTabPadding, CurrentPPI, 96);
     mRect := Rect(mLeft, 0, mLeft + mWidth, Height);
     FRects[mPage] := mRect;
     Canvas.Font.Color := ToColor(FColors.Muted);
@@ -290,7 +305,7 @@ begin
   for mIndex := 0 to mCount - 1 do
   begin
     mX := MulDiv(mSeconds - mCount + mIndex, Width - 1, mSeconds - 1);
-    mY := Height - 2 - Round(FValues[mIndex] * (Height - 4) / 100);
+    mY := Height - cSparkPadding - Round(FValues[mIndex] * (Height - 2 * cSparkPadding) / 100);
     if mIndex = 0 then
     begin
       Canvas.MoveTo(mX, mY);
@@ -337,14 +352,15 @@ begin
   FSpark.Parent := Self;
   FSpark.Align := alLeft;
   FSpark.AlignWithMargins := True;
-  FSpark.Width := MulDiv(150, CurrentPPI, 96);
-  FSpark.Left := MulDiv(400, CurrentPPI, 96);
+  FSpark.Width := MulDiv(cSparkWidth, CurrentPPI, 96);
+  FSpark.Left := MulDiv(cSparkLeft, CurrentPPI, 96);
   FThreshold := NewLabel;
-  FThreshold.Left := MulDiv(600, CurrentPPI, 96);
+  FThreshold.Left := MulDiv(cThresholdLeft, CurrentPPI, 96);
   FNote := NewLabel;
-  FNote.Left := MulDiv(800, CurrentPPI, 96);
+  FNote.Left := MulDiv(cNoteLeft, CurrentPPI, 96);
   FNote.Font.Color := clGrayText;
-  FButtonsWidth := FCopy.Width + FReset.Width + FPause.Width + 3 * (FCopy.Margins.Left + FCopy.Margins.Right);
+  FButtonsWidth := FCopy.Width + FReset.Width + FPause.Width +
+    cBarButtonCount * (FCopy.Margins.Left + FCopy.Margins.Right);
   FButtons.Width := FButtonsWidth;
   Arrange;
 end;
@@ -367,7 +383,7 @@ begin
   Result.Parent := FButtons;
   Result.Align := alRight;
   Result.AlignWithMargins := True;
-  Result.Width := MulDiv(110, CurrentPPI, 96);
+  Result.Width := MulDiv(cBarButtonWidth, CurrentPPI, 96);
   Result.Caption := TAtlasStrings.Text(AId);
   Result.OnClick := AClick;
 end;
@@ -384,7 +400,7 @@ end;
 
 function TAtlasDiagnosticBar.RowHeight: Integer;
 begin
-  Result := MulDiv(32, CurrentPPI, 96);
+  Result := MulDiv(cBarRowHeight, CurrentPPI, 96);
 end;
 
 function TAtlasDiagnosticBar.InfoWidth: Integer;

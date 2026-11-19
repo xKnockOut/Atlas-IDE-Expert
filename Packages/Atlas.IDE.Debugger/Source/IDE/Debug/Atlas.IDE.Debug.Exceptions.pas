@@ -22,7 +22,7 @@
 //     setzt Atlas den Prozess direkt fort. Das wirkt ab dem nächsten Halt, also
 //     auch im nächsten Lauf. Ob die IDE Exceptions, die in ihren eigenen
 //     Debugger-Optionen ignoriert werden, überhaupt meldet, prüft die Studie
-//     (Studie zu #783, Punkt S1).
+//     zu #783.
 //   - Fenster „Exception-Verlauf“ (Befehl Atlas.DebugExceptions): Klick springt
 //     zur Stelle (Datei aus dem Stapel, notfalls über die Dateien der
 //     Projektgruppe gesucht), Kopieren, Klasse ignorieren und wieder anhalten,
@@ -101,7 +101,7 @@ type
     FCapture: TCapture;
     FMessage: TProc<string>;
     FHandlers: THandlers;
-    /// <summary>Quelle der Klasse schon protokolliert (Studie #783, Punkt S3; einmal je Sitzung).</summary>
+    /// <summary>Quelle der Klasse schon protokolliert (Studie zu #783; einmal je Sitzung).</summary>
     FStatusLogged: Boolean;
     /// <summary>Rückruf der Exception-Leiste für FDialog.MayHide (auch vor Start gesetzt).</summary>
     FMayHide: TAtlasDebugDialogMayHide;

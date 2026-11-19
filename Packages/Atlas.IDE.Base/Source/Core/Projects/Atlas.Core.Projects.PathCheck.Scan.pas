@@ -56,8 +56,15 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Chars;
+
+const
+  /// <summary>Anfang und Ende eines mehrzeiligen Strings (Delphi 12).</summary>
+  cTripleQuote = '''''''';
+  /// <summary>defined ( Name ): so viele Token.</summary>
+  cDefinedTokens = 4;
 
 { Bedingungen }
 
@@ -481,11 +488,11 @@ end;
 function TScanner.BranchDirective(const AName, AArgument, ASymbol: string; ALine: Integer): Boolean;
 begin
   Result := True;
-  if (AName = 'IFDEF') or (AName = 'IFNDEF') then
+  if MatchStr(AName, ['IFDEF', 'IFNDEF']) then
   begin
     IfDef(ASymbol, AName = 'IFDEF', ALine);
   end
-  else if (AName = 'IF') or (AName = 'ELSEIF') then
+  else if MatchStr(AName, ['IF', 'ELSEIF']) then
   begin
     IfExpression(AArgument, AName = 'IF', ALine);
   end
@@ -497,7 +504,7 @@ begin
   begin
     ElseIf(TAtlasBranchState.Active);
   end
-  else if (AName = 'ENDIF') or (AName = 'IFEND') then
+  else if MatchStr(AName, ['ENDIF', 'IFEND']) then
   begin
     Pop;
   end
@@ -562,9 +569,10 @@ var
   mIndex: Integer;
 begin
   mTokens := Tokenize(AExpression);
-  for mIndex := 0 to High(mTokens) - 3 do
+  for mIndex := 0 to Length(mTokens) - cDefinedTokens do
   begin
-    if SameText(mTokens[mIndex], 'defined') and (mTokens[mIndex + 1] = '(') and (mTokens[mIndex + 3] = ')') then
+    if SameText(mTokens[mIndex], 'defined') and (mTokens[mIndex + 1] = '(') and
+      (mTokens[mIndex + cDefinedTokens - 1] = ')') then
     begin
       Reference(mTokens[mIndex + 2], ALine);
     end;
@@ -723,54 +731,59 @@ var
   mClose: Integer;
 begin
   // Mehrzeiliger String (Delphi 12): ''' am Zeilenende bis zum nächsten '''.
-  Result := StartsAt('''''''') and (FPos + 3 <= Length(FText)) and CharInSet(FText[FPos + 3], [#10, #13]);
+  Result := StartsAt(cTripleQuote) and (FPos + Length(cTripleQuote) <= Length(FText)) and
+    CharInSet(FText[FPos + Length(cTripleQuote)], [#10, #13]);
   if not Result then
   begin
     Exit;
   end;
-  mClose := Pos('''''''', FText, FPos + 3);
+  mClose := Pos(cTripleQuote, FText, FPos + Length(cTripleQuote));
   if mClose = 0 then
   begin
     mClose := Length(FText) + 1;
   end;
   CountLines(FPos, mClose);
-  FPos := mClose + 3;
+  FPos := mClose + Length(cTripleQuote);
   StringLiteral('');
 end;
 
 procedure TScanner.QuotedString;
 var
-  mValue: string;
+  mValue: TStringBuilder;
 begin
   if MultilineString then
   begin
     Exit;
   end;
-  mValue := '';
-  Inc(FPos);
-  while (FPos <= Length(FText)) and (FText[FPos] <> #10) do
-  begin
-    if StartsAt('''''') then
+  mValue := TStringBuilder.Create;
+  try
+    Inc(FPos);
+    while (FPos <= Length(FText)) and (FText[FPos] <> #10) do
     begin
-      mValue := mValue + '''';
-      Inc(FPos, 2);
-    end
-    else if FText[FPos] = '''' then
+      if StartsAt('''''') then
+      begin
+        mValue.Append('''');
+        Inc(FPos, 2);
+      end
+      else if FText[FPos] = '''' then
+      begin
+        Break;
+      end
+      else
+      begin
+        mValue.Append(FText[FPos]);
+        Inc(FPos);
+      end;
+    end;
+    // Schließendes Hochkomma überspringen; ein Zeilenende bleibt für die Zeilenzählung stehen.
+    if (FPos <= Length(FText)) and (FText[FPos] = '''') then
     begin
-      Break;
-    end
-    else
-    begin
-      mValue := mValue + FText[FPos];
       Inc(FPos);
     end;
+    StringLiteral(mValue.ToString);
+  finally
+    mValue.Free;
   end;
-  // Schließendes Hochkomma überspringen; ein Zeilenende bleibt für die Zeilenzählung stehen.
-  if (FPos <= Length(FText)) and (FText[FPos] = '''') then
-  begin
-    Inc(FPos);
-  end;
-  StringLiteral(mValue);
 end;
 
 procedure TScanner.ReadWord;

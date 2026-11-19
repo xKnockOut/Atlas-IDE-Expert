@@ -85,6 +85,33 @@ uses
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings;
 
+const
+  // Alle Maße bei 96 dpi. Kopf: Einzug links und rechts, Abstand des Texts hinter dem Punkt, Abstand der Trennlinie
+  // vom unteren Rand, Zuschlag zur Zeilenhöhe.
+  cHeaderIndent = 12;
+  cHeaderRightIndent = 8;
+  cHeaderTextOffset = 16;
+  cHeaderLineOffset = 3;
+  cHeaderExtra = 6;
+  // Zeilen: Einzug, Mitte des Punkts und Textanfang, Zuschlag zur Schrifthöhe, Halbmesser des Punkts.
+  cRowInset = 4;
+  cRowDotCenter = 12;
+  cRowTextLeft = 24;
+  cRowPadding = 8;
+  cDotRadius = 4;
+  // Breite: kleinste, größte und Zuschlag zum längsten Text (Punkt und Ränder).
+  cMinWidth = 280;
+  cMaxWidth = 720;
+  cTextExtra = 44;
+  // Knopfleiste: Höhe, Abstand oben, Knopfhöhe, Innenabstand zur Beschriftung, Ränder.
+  cButtonsHeight = 40;
+  cButtonTop = 8;
+  cButtonHeight = 25;
+  cButtonPadding = 24;
+  cButtonLeft = 10;
+  // Links, zwischen den Knöpfen und rechts zusammen.
+  cButtonMargins = 3 * cButtonLeft;
+
 { TAtlasStatusWindow }
 
 constructor TAtlasStatusWindow.CreateStatus(AOwner: TComponent; const AColors: TAtlasColors);
@@ -118,18 +145,19 @@ begin
   Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.FillRect(ClientRect);
   // Kopf: Punkt des Gesamtzustands und „Atlas“.
-  mPart := Rect(ScaleValue(12), 0, ClientWidth - ScaleValue(8), HeaderHeight);
-  DrawDot(Point(mPart.Left + ScaleValue(4), (mPart.Top + mPart.Bottom) div 2), TAtlasStatusSummary.Overall(FItems));
+  mPart := Rect(ScaleValue(cHeaderIndent), 0, ClientWidth - ScaleValue(cHeaderRightIndent), HeaderHeight);
+  DrawDot(Point(mPart.Left + ScaleValue(cDotRadius), (mPart.Top + mPart.Bottom) div 2),
+    TAtlasStatusSummary.Overall(FItems));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Text);
-  mPart.Left := mPart.Left + ScaleValue(16);
+  mPart.Left := mPart.Left + ScaleValue(cHeaderTextOffset);
   mText := TAtlasStatusSummary.cFieldCaption;
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(0, HeaderHeight - ScaleValue(3));
-  Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(3));
+  Canvas.MoveTo(0, HeaderHeight - ScaleValue(cHeaderLineOffset));
+  Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(cHeaderLineOffset));
   for mIndex := 0 to High(FItems) do
   begin
     mItem := FItems[mIndex];
@@ -140,9 +168,9 @@ begin
       Canvas.Brush.Color := ToColor(Colors.Selection);
       Canvas.FillRect(mRow);
     end;
-    DrawDot(Point(mRow.Left + ScaleValue(12), (mRow.Top + mRow.Bottom) div 2), mItem.State);
+    DrawDot(Point(mRow.Left + ScaleValue(cRowDotCenter), (mRow.Top + mRow.Bottom) div 2), mItem.State);
     Canvas.Brush.Style := bsClear;
-    mPart := Rect(mRow.Left + ScaleValue(24), mRow.Top, mRow.Right - ScaleValue(4), mRow.Bottom);
+    mPart := Rect(mRow.Left + ScaleValue(cRowTextLeft), mRow.Top, mRow.Right - ScaleValue(cRowInset), mRow.Bottom);
     if mItem.HasAction then
     begin
       Canvas.Font.Color := ToColor(Colors.Accent);
@@ -231,22 +259,22 @@ end;
 function TAtlasStatusWindow.RowHeight: Integer;
 begin
   Canvas.Font := Font;
-  Result := Canvas.TextHeight('Wg') + ScaleValue(8);
+  Result := Canvas.TextHeight('Wg') + ScaleValue(cRowPadding);
 end;
 
 function TAtlasStatusWindow.HeaderHeight: Integer;
 begin
-  Result := RowHeight + ScaleValue(6);
+  Result := RowHeight + ScaleValue(cHeaderExtra);
 end;
 
 function TAtlasStatusWindow.ButtonsHeight: Integer;
 begin
-  Result := ScaleValue(40);
+  Result := ScaleValue(cButtonsHeight);
 end;
 
 function TAtlasStatusWindow.RowRect(AIndex: Integer): TRect;
 begin
-  Result := Rect(ScaleValue(4), HeaderHeight + AIndex * RowHeight, ClientWidth - ScaleValue(4),
+  Result := Rect(ScaleValue(cRowInset), HeaderHeight + AIndex * RowHeight, ClientWidth - ScaleValue(cRowInset),
     HeaderHeight + (AIndex + 1) * RowHeight);
 end;
 
@@ -270,27 +298,27 @@ var
   mItem: IAtlasStatusItem;
 begin
   Canvas.Font := Font;
-  mWidth_ := ScaleValue(280);
+  mWidth_ := ScaleValue(cMinWidth);
   for mItem in FItems do
   begin
-    mWidth_ := Max(mWidth_, Canvas.TextWidth(mItem.Text) + ScaleValue(44));
+    mWidth_ := Max(mWidth_, Canvas.TextWidth(mItem.Text) + ScaleValue(cTextExtra));
   end;
-  mWidth_ := Min(mWidth_, ScaleValue(720));
+  mWidth_ := Min(mWidth_, ScaleValue(cMaxWidth));
   mButtonWidth := Max(Canvas.TextWidth(FLogButton.Caption), Canvas.TextWidth(FRestartButton.Caption)) +
-    ScaleValue(24);
-  mWidth_ := Max(mWidth_, 2 * mButtonWidth + ScaleValue(30));
+    ScaleValue(cButtonPadding);
+  mWidth_ := Max(mWidth_, 2 * mButtonWidth + ScaleValue(cButtonMargins));
   ClientWidth := mWidth_;
   ClientHeight := HeaderHeight + Length(FItems) * RowHeight + ButtonsHeight;
-  mIndex := ClientHeight - ButtonsHeight + ScaleValue(8);
-  FLogButton.SetBounds(ScaleValue(10), mIndex, mButtonWidth, ScaleValue(25));
-  FRestartButton.SetBounds(ScaleValue(20) + mButtonWidth, mIndex, mButtonWidth, ScaleValue(25));
+  mIndex := ClientHeight - ButtonsHeight + ScaleValue(cButtonTop);
+  FLogButton.SetBounds(ScaleValue(cButtonLeft), mIndex, mButtonWidth, ScaleValue(cButtonHeight));
+  FRestartButton.SetBounds(ScaleValue(2 * cButtonLeft) + mButtonWidth, mIndex, mButtonWidth, ScaleValue(cButtonHeight));
 end;
 
 procedure TAtlasStatusWindow.DrawDot(const ACenter: TPoint; AState: TAtlasStatusState);
 var
   mRadius: Integer;
 begin
-  mRadius := ScaleValue(4);
+  mRadius := ScaleValue(cDotRadius);
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
   Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(AState).Ring);
   Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(AState).Fill);

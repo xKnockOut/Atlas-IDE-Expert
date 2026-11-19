@@ -77,6 +77,13 @@ const
 const
   // Zeichen, an denen ein Pfad im Fließtext endet.
   cPathEnd: TSysCharSet = [#0..' ', '"', '''', '|', '`', '(', ')', '[', ']', '{', '}', ',', ';', '<', '>', '*', '?'];
+  /// <summary>Länge einer Laufwerkswurzel ("C:\").</summary>
+  cDriveRootLength = 3;
+  cFileScheme = 'file://';
+  /// <summary>Längste Dateiendung mit Punkt (Punkt und bis zu 8 Zeichen).</summary>
+  cMaxExtensionLength = 9;
+  /// <summary>Kürzere Namen der Identität werden nicht ersetzt, sie stecken in zu vielen Wörtern.</summary>
+  cMinIdentityLength = 3;
 
 function IsPathEnd(AC: Char): Boolean;
 begin
@@ -87,7 +94,7 @@ end;
 function TrimDelimiters(const APath: string): string;
 begin
   Result := APath;
-  while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  while (Length(Result) > cDriveRootLength) and CharInSet(Result[Length(Result)], ['\', '/']) do
   begin
     SetLength(Result, Length(Result) - 1);
   end;
@@ -107,16 +114,16 @@ begin
   if (AIndex + 2 <= Length(AText)) and CharInSet(AText[AIndex], ['A'..'Z', 'a'..'z']) and
     (AText[AIndex + 1] = ':') and CharInSet(AText[AIndex + 2], ['\', '/']) then
   begin
-    mStop := AIndex + 3;
+    mStop := AIndex + cDriveRootLength;
   end
   else if (AIndex + 2 <= Length(AText)) and (AText[AIndex] = '\') and (AText[AIndex + 1] = '\') and
     TTextChars.IsIdentChar(AText[AIndex + 2]) then
   begin
     mStop := AIndex + 2;
   end
-  else if SameText(Copy(AText, AIndex, 7), 'file://') then
+  else if SameText(Copy(AText, AIndex, Length(cFileScheme)), cFileScheme) then
   begin
-    mStop := AIndex + 7;
+    mStop := AIndex + Length(cFileScheme);
   end
   else
   begin
@@ -224,7 +231,7 @@ var
   mIndex: Integer;
 begin
   Result := ExtractFileExt(StringReplace(AName, '/', '\', [rfReplaceAll]));
-  if (Length(Result) < 2) or (Length(Result) > 9) then
+  if (Length(Result) < 2) or (Length(Result) > cMaxExtensionLength) then
   begin
     Exit('');
   end;
@@ -362,7 +369,7 @@ begin
   Result := ReplacePaths(RedactMarks(AText, ARoots), ARoots);
   for mName in AIdentity do
   begin
-    if Length(mName) >= 3 then
+    if Length(mName) >= cMinIdentityLength then
     begin
       Result := StringReplace(Result, mName, cUserLabel, [rfReplaceAll, rfIgnoreCase]);
     end;

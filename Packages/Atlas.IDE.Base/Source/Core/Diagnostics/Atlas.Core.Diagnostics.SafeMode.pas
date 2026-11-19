@@ -305,12 +305,6 @@ begin
   end;
 end;
 
-/// <summary>ISO-8601-Zeitpunkt (UTC); 0 bei leerem oder ungültigem Text.</summary>
-function MarkerDateOf(const AStamp: string): TDateTime;
-begin
-  Result := TTextTimestamp.IsoOrZero(AStamp, True);
-end;
-
 function MarkerFailuresOf(const AValue: TJSONValue): TArray<TPair<string, Integer>>;
 var
   mPair: TJSONPair;
@@ -348,7 +342,7 @@ begin
     end;
     AMarker.ProcessId := Cardinal(TJSONNumber(mValue).AsInt64);
     AMarker.Version := TJSONObject(mRoot).GetValue<string>('version', '');
-    AMarker.StartedAt := MarkerDateOf(TJSONObject(mRoot).GetValue<string>('startedAt', ''));
+    AMarker.StartedAt := TJsonRead.IsoTime(TJSONObject(mRoot), 'startedAt', True);
     mValue := TJSONObject(mRoot).GetValue('loaded');
     AMarker.Loaded := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
     mValue := TJSONObject(mRoot).GetValue('loadMs');
@@ -424,7 +418,7 @@ begin
     begin
       Result.CrashCount := Max(0, TJSONNumber(mValue).AsInt);
     end;
-    Result.LastCrashAt := MarkerDateOf(TJSONObject(mRoot).GetValue<string>('lastCrashAt', ''));
+    Result.LastCrashAt := TJsonRead.IsoTime(TJSONObject(mRoot), 'lastCrashAt', True);
     // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz.
     mValue := TJSONObject(mRoot).GetValue('crashed');
     if mValue is TJSONObject then

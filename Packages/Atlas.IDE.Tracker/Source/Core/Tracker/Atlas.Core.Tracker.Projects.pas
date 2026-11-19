@@ -29,7 +29,7 @@
 //   Tracker-Projekt die erste Zeile; ChoiceKey „projekt@verbindung“ merkt
 //   die Wahl (issues.welcomeProject). Als „Projekt“ gilt dann der Pfad aus
 //   „Gilt für“ der Zeile; Resolve nimmt für genau diesen Pfad genau diese Zeile.
-// - TAtlasTrackerProjectPick (#1967, vorher in der IDE): welche Wahl gilt,
+// - TAtlasTrackerProjectPick (#1967, ohne IDE testbar): welche Wahl gilt,
 //   welches Projekt daraus folgt („Alle“ #1928: die zuletzt bediente Gruppe),
 //   die Ziele aller Verbindungen mit Server.
 // Ohne Netz, ohne Dateizugriff.

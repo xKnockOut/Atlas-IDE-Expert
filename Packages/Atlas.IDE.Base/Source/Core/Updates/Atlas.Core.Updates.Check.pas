@@ -134,6 +134,10 @@ uses
   System.NetEncoding,
   System.IOUtils;
 
+const
+  /// <summary>Grund fürs Protokoll (nie übersetzt).</summary>
+  cInvalidVersionFile = 'Versionsdatei ungültig';
+
 { TAtlasUpdateState }
 
 function TAtlasUpdateState.ToJson: string;
@@ -381,7 +385,7 @@ begin
   if not TryParse(mText, Result.Release) then
   begin
     Result.Outcome := TAtlasUpdateOutcome.Failed;
-    Result.Error := 'Versionsdatei ungültig';
+    Result.Error := cInvalidVersionFile;
     Exit;
   end;
   if Compare(Result.Release.Version, AQuery.Installed) > 0 then

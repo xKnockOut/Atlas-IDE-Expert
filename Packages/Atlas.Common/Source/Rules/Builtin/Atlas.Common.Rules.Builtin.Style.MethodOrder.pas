@@ -76,6 +76,7 @@ begin
   Result := TMethodOrderOptions.Create(TMethodOrder.PlacementOf(TRuleOptions.Text(AContext.Options, 'placement',
     TMethodOrder.PlacementName(TMethodPlacement.Grouped))));
   Result.LifecycleFirst := mSettings.LifecycleFirst;
+  Result.BlankLines := mSettings.BlankLines;
   Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
   Result.LineLength := AContext.Formatting.MaxLineLength;
 end;

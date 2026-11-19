@@ -11,6 +11,11 @@
 //   ein. Steht er an einem Haltepunkt mit Regel, entscheidet
 //   TAtlasBreakpointRules.Decide; „weiter“ setzt sofort fort (ormRun), „nur
 //   einmal“ schaltet den Haltepunkt nach dem Halt wieder aus.
+// - Aufrufer (#2548): Nennt die Regel einen Aufrufer, liest Atlas beim Halt
+//   den Aufrufstapel (TAtlasIdeDebugSession.ReadStack). Ist er nicht lesbar,
+//   hält Atlas lieber an, als einen Halt zu verschlucken. Nach cCallerSkipWarn
+//   übergangenen Halten in einer Sitzung steht einmal ein Hinweis auf die
+//   Laufzeit in den Meldungen.
 // - Ende der Sitzung: abhängige Haltepunkte wieder an, wie der Benutzer sie
 //   gesetzt hat.
 // - Regeln liegen in %LOCALAPPDATA%\Atlas\breakpoint-rules.json und ziehen
@@ -38,7 +43,10 @@ type
     end;
   private const
     cStateFile = 'breakpoint-rules.json';
+    cCallerSkipWarn = 1000;
   private class var
+    /// <summary>Halte der Sitzung, die eine Aufrufer-Bedingung übergangen hat.</summary>
+    FCallerSkips: Integer;
     FListener: IAtlasIdeDebugListener;
     FMessage: TAtlasMessageSink;
     FRules: TAtlasBreakpointRuleList;
@@ -54,8 +62,12 @@ type
     class procedure SessionStarted; static;
     class procedure Stopped; static;
     class procedure ArmTriggered(const AFileName: string; ALine: Integer); static;
-    class function DecideHere(const AFileName: string; ALine: Integer; const AStop: TAtlasStopThread):
-      TAtlasRuleDecision; static;
+    class function DecideHere(const AFileName: string; ALine: Integer; const AProcess: IOTAProcess;
+      const AThread: IOTAThread): TAtlasRuleDecision; static;
+    /// <summary>Routinen des Stapels von AThread (die des Halts zuerst); False, wenn er nicht lesbar ist.
+    /// </summary>
+    class function ReadRoutines(const AThread: IOTAThread; out ARoutines: TArray<string>): Boolean; static;
+    class procedure CountCallerSkip(const ARule: TAtlasBreakpointRule); static;
     class procedure SessionEnded; static;
   public
     /// <summary>Teil starten: Zuhörer der Debug-Sitzung, Regeln laden. AMessage schreibt eine Zeile in die
@@ -73,16 +85,20 @@ type
     /// </summary>
     class function RuleAt(const AFileName: string; ALine: Integer; out ARule: TAtlasBreakpointRule): Boolean;
       static;
+    /// <summary>Hat eine Regel in AFileName einen Aufrufer (Rinne, #2548)?</summary>
+    class function HasCallers(const AFileName: string): Boolean; static;
   end;
 
 implementation
 
 uses
   System.IOUtils,
+  Atlas.Core.Debug.CallStack,
   Atlas.Core.Files.DataFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.GutterMarks,
+  Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.UI.Debug.BreakpointRules,
   Atlas.UI.Debug.Breakpoints.Strings;
@@ -185,6 +201,7 @@ var
   mState: TAtlasRuleState;
 begin
   FStates.Clear;
+  FCallerSkips := 0;
   if not Enabled then
   begin
     Exit;
@@ -218,7 +235,7 @@ begin
     Exit;
   end;
   // Erst die eigene Regel (ein Auslöser kann selbst Regeln haben), dann die abhängigen scharf schalten.
-  if DecideHere(mFileName, mLine, StopThread(mProcess, mThread)) = TAtlasRuleDecision.Continue then
+  if DecideHere(mFileName, mLine, mProcess, mThread) = TAtlasRuleDecision.Continue then
   begin
     ArmTriggered(mFileName, mLine);
     mProcess.Run(ormRun);
@@ -249,11 +266,37 @@ begin
   end;
 end;
 
+class function TAtlasIdeBreakpointRules.ReadRoutines(const AThread: IOTAThread;
+  out ARoutines: TArray<string>): Boolean;
+var
+  mFrames: TAtlasDebugFrames;
+  mFrame: TAtlasDebugFrame;
+begin
+  ARoutines := nil;
+  Result := TAtlasIdeDebugSession.ReadStack(AThread, TAtlasDebugCallStack.cMaxFrames, mFrames) =
+    TAtlasDebugStackRead.Ready;
+  for mFrame in mFrames do
+  begin
+    ARoutines := ARoutines + [mFrame.Routine];
+  end;
+end;
+
+class procedure TAtlasIdeBreakpointRules.CountCallerSkip(const ARule: TAtlasBreakpointRule);
+begin
+  Inc(FCallerSkips);
+  if FCallerSkips = cCallerSkipWarn then
+  begin
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesCallerSlow,
+      [PlaceText(ARule.FileName, ARule.Line), cCallerSkipWarn]));
+  end;
+end;
+
 class function TAtlasIdeBreakpointRules.DecideHere(const AFileName: string; ALine: Integer;
-  const AStop: TAtlasStopThread): TAtlasRuleDecision;
+  const AProcess: IOTAProcess; const AThread: IOTAThread): TAtlasRuleDecision;
 var
   mIndex: Integer;
   mState: TAtlasRuleState;
+  mStop: TAtlasStopThread;
 begin
   Result := TAtlasRuleDecision.Stop;
   mIndex := TAtlasBreakpointRules.IndexOf(FRules, AFileName, ALine);
@@ -261,8 +304,18 @@ begin
   begin
     Exit;
   end;
+  mStop := StopThread(AProcess, AThread);
+  // Stapel nicht lesbar: lieber halten als einen Halt verschlucken.
+  if FRules[mIndex].HasCaller and not ReadRoutines(AThread, mStop.Routines) then
+  begin
+    Exit;
+  end;
   mState := StateOf(FRules[mIndex]);
-  Result := TAtlasBreakpointRules.Decide(FRules[mIndex], mState, AStop);
+  Result := TAtlasBreakpointRules.Decide(FRules[mIndex], mState, mStop);
+  if FRules[mIndex].HasCaller and (Result = TAtlasRuleDecision.Continue) then
+  begin
+    CountCallerSkip(FRules[mIndex]);
+  end;
   SetState(FRules[mIndex], mState);
   SetEnabled(FRules[mIndex], TAtlasBreakpointRules.ShouldBeEnabled(FRules[mIndex], mState));
 end;
@@ -366,6 +419,23 @@ begin
   end;
 end;
 
+/// <summary>Vorschläge für den Aufrufer: Routinen des angehaltenen Stapels ohne die oberste.</summary>
+function CallerChoices: TArray<string>;
+var
+  mRoutines: TArray<string>;
+begin
+  Result := nil;
+  if TAtlasIdeDebugSession.StoppedThread = nil then
+  begin
+    Exit;
+  end;
+  if TAtlasIdeBreakpointRules.ReadRoutines(TAtlasIdeDebugSession.StoppedThread, mRoutines) and
+    (Length(mRoutines) > 1) then
+  begin
+    Result := Copy(mRoutines, 1, MaxInt);
+  end;
+end;
+
 class procedure TAtlasIdeBreakpointRules.Edit;
 var
   mFileName: string;
@@ -390,12 +460,13 @@ begin
   begin
     mRule := FRules[mIndex];
   end;
-  if not TAtlasBreakpointRuleDialog.Execute(mRule, Triggers(mFileName, mLine), mChosen) then
+  if not TAtlasBreakpointRuleDialog.Execute(mRule, Triggers(mFileName, mLine), CallerChoices, mChosen) then
   begin
     Exit;
   end;
   TAtlasBreakpointRules.Put(FRules, mChosen);
   Save;
+  TAtlasIdeEditorRefresh.RepaintTop;
   if mChosen.IsEmpty then
   begin
     SetEnabled(mChosen, True);
@@ -431,6 +502,20 @@ begin
   begin
     ARule := Default(TAtlasBreakpointRule);
   end;
+end;
+
+class function TAtlasIdeBreakpointRules.HasCallers(const AFileName: string): Boolean;
+var
+  mRule: TAtlasBreakpointRule;
+begin
+  for mRule in FRules do
+  begin
+    if mRule.HasCaller and SameText(mRule.FileName, AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 end.

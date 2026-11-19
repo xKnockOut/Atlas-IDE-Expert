@@ -37,12 +37,42 @@ const
     'BCB', 'DCC', 'ELF', 'PC_MAPPED_EXCEPTIONS', 'PIC', 'UNDERSCOREIMPORTNAME', 'WEAKREF', 'WEAKINSTREF',
     'WEAKINTFREF', 'AUTOREFCOUNT', 'NEXTGEN', 'ALIGN_STACK');
 
+type
+  /// <summary>Symbole, die der Compiler für eine Plattform setzt (durch Leerzeichen getrennt).</summary>
+  TPlatformSymbols = record
+    Name: string;
+    Symbols: string;
+  end;
+
+const
+  cPlatformSymbols: array[0..10] of TPlatformSymbols = (
+    (Name: ''; Symbols: 'MSWINDOWS WIN32 CPUX86 CPU386 CPU32BITS'),
+    (Name: 'WIN32'; Symbols: 'MSWINDOWS WIN32 CPUX86 CPU386 CPU32BITS'),
+    (Name: 'WIN64'; Symbols: 'MSWINDOWS WIN64 CPUX64 CPU64BITS'),
+    (Name: 'WIN64X'; Symbols: 'MSWINDOWS WIN64 CPUX64 CPU64BITS LLVM'),
+    (Name: 'LINUX64'; Symbols: 'LINUX LINUX64 POSIX POSIX64 CPUX64 CPU64BITS'),
+    (Name: 'OSX64'; Symbols: 'MACOS MACOS64 POSIX POSIX64 CPU64BITS CPUX64'),
+    (Name: 'OSXARM64'; Symbols: 'MACOS MACOS64 POSIX POSIX64 CPU64BITS CPUARM64'),
+    (Name: 'ANDROID'; Symbols: 'ANDROID ANDROID32 LINUX POSIX POSIX32 CPUARM CPUARM32 CPU32BITS'),
+    (Name: 'ANDROID64'; Symbols: 'ANDROID ANDROID64 LINUX POSIX POSIX64 CPUARM CPUARM64 CPU64BITS'),
+    (Name: 'IOSDEVICE64'; Symbols: 'IOS IOS64 MACOS POSIX POSIX64 CPUARM CPUARM64 CPU64BITS'),
+    (Name: 'IOSSIMARM64'; Symbols: 'IOS IOS64 IOSSIMULATOR MACOS POSIX POSIX64 CPUARM CPUARM64 CPU64BITS'));
+
+  /// <summary>Ab dieser BDS-Version (Delphi 13) ist die Compilerversion gleich der BDS-Version.</summary>
+  cFirstBdsWithSameVersion = 37;
+  /// <summary>Erste BDS-Version (Delphi 2005) und Abstand zur Compilerversion davor.</summary>
+  cFirstBdsVersion = 8;
+  cBdsToCompilerVersion = 13;
+  /// <summary>Vorsilbe der Versionssymbole VER80 … VER370.</summary>
+  cVersionPrefix = 'VER';
+
 { TTextDefines }
 
 class function TTextDefines.Predefined(const APlatform: string; ACompilerVersion: Double): TArray<string>;
 var
   mPlatform: string;
   mSymbols: TArray<string>;
+  mEntry: TPlatformSymbols;
 
   procedure Add(const ASymbols: array of string);
   var
@@ -59,65 +89,29 @@ begin
   Add(['CONDITIONALEXPRESSIONS', 'UNICODE', 'NATIVECODE', 'ASSEMBLER']);
   if ACompilerVersion > 0 then
   begin
-    Add([Format('VER%d', [Round(ACompilerVersion * 10)])]);
+    Add([cVersionPrefix + IntToStr(Round(ACompilerVersion * 10))]);
   end;
   mPlatform := UpperCase(APlatform);
-  if (mPlatform = 'WIN32') or (mPlatform = '') then
+  for mEntry in cPlatformSymbols do
   begin
-    Add(['MSWINDOWS', 'WIN32', 'CPUX86', 'CPU386', 'CPU32BITS']);
-  end
-  else if mPlatform = 'WIN64' then
-  begin
-    Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS']);
-  end
-  else if mPlatform = 'WIN64X' then
-  begin
-    Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS', 'LLVM']);
-  end
-  else if mPlatform = 'LINUX64' then
-  begin
-    Add(['LINUX', 'LINUX64', 'POSIX', 'POSIX64', 'CPUX64', 'CPU64BITS']);
-  end
-  else if (mPlatform = 'OSX64') or (mPlatform = 'OSXARM64') then
-  begin
-    Add(['MACOS', 'MACOS64', 'POSIX', 'POSIX64', 'CPU64BITS']);
-    if mPlatform = 'OSX64' then
+    if mEntry.Name = mPlatform then
     begin
-      Add(['CPUX64']);
-    end
-    else
-    begin
-      Add(['CPUARM64']);
+      Add(mEntry.Symbols.Split([' ']));
+      Break;
     end;
-  end
-  else if mPlatform = 'ANDROID' then
-  begin
-    Add(['ANDROID', 'ANDROID32', 'LINUX', 'POSIX', 'POSIX32', 'CPUARM', 'CPUARM32', 'CPU32BITS']);
-  end
-  else if mPlatform = 'ANDROID64' then
-  begin
-    Add(['ANDROID', 'ANDROID64', 'LINUX', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
-  end
-  else if mPlatform = 'IOSDEVICE64' then
-  begin
-    Add(['IOS', 'IOS64', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
-  end
-  else if mPlatform = 'IOSSIMARM64' then
-  begin
-    Add(['IOS', 'IOS64', 'IOSSIMULATOR', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
   end;
   Result := mSymbols;
 end;
 
 class function TTextDefines.CompilerVersionOfBds(ABdsVersion: Double): Double;
 begin
-  if ABdsVersion >= 37 then
+  if ABdsVersion >= cFirstBdsWithSameVersion then
   begin
     Result := ABdsVersion;
   end
-  else if ABdsVersion >= 8 then
+  else if ABdsVersion >= cFirstBdsVersion then
   begin
-    Result := ABdsVersion + 13;
+    Result := ABdsVersion + cBdsToCompilerVersion;
   end
   else
   begin
@@ -137,9 +131,9 @@ begin
     Exit(False);
   end;
   // VER80 bis VER370 und künftige Versionen.
-  if (Length(mName) > 3) and (Copy(mName, 1, 3) = 'VER') then
+  if (Length(mName) > Length(cVersionPrefix)) and mName.StartsWith(cVersionPrefix) then
   begin
-    mDigits := Copy(mName, 4, MaxInt);
+    mDigits := Copy(mName, Length(cVersionPrefix) + 1, MaxInt);
     if TryStrToInt(mDigits, mNumber) and (mNumber > 0) then
     begin
       Exit(True);

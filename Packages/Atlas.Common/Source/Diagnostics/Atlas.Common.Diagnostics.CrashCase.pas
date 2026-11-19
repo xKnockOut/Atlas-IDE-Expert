@@ -703,19 +703,6 @@ begin
   Result := AUri <> '';
 end;
 
-/// <summary>Wert AName aus AObject als JSON-Text; '' ohne Wert und bei null.</summary>
-function JsonOf(const AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  if (mValue <> nil) and not (mValue is TJSONNull) then
-  begin
-    Result := mValue.ToJSON;
-  end;
-end;
-
 /// <summary>Felder des Falls aus anfrage.json, ohne die Dateien.</summary>
 procedure ReadFields(AObject: TJSONObject; var ACase: TCrashCase);
 var
@@ -726,7 +713,8 @@ begin
   begin
     ACase.Kind := TCrashCaseKind.Timeout;
   end;
-  if TryISO8601ToDate(TJsonRead.Text(AObject, 'time'), mTime, False) then
+  mTime := TJsonRead.IsoTime(AObject, 'time', False);
+  if mTime <> 0 then
   begin
     ACase.Time := mTime;
   end;
@@ -736,7 +724,11 @@ begin
   begin
     ACase.Id := mValue.ToJSON;
   end;
-  ACase.Params := JsonOf(AObject, 'params');
+  // null zählt wie fehlende Parameter.
+  if not (TJsonRead.Value(AObject, 'params') is TJSONNull) then
+  begin
+    ACase.Params := TJsonRead.Json(AObject, 'params');
+  end;
   ACase.Uri := TJsonRead.Text(AObject, 'uri');
   ACase.FileName := TJsonRead.Text(AObject, 'file');
   ACase.Line := Integer(TJsonRead.Int64Or(AObject, 'line', ACase.Line));

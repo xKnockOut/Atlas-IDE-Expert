@@ -530,8 +530,8 @@ begin
   ADetails.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(ARoot, 'title'), TAtlasTrackerTextLimits.cDetailsTitle);
   ADetails.Description := TAtlasGitHubJson.Limited(TJsonRead.Text(ARoot, 'body'));
   ADetails.State := DetailsStateOf(ARoot);
-  ADetails.Created := TAtlasGitHubJson.TimeOf(ARoot, 'created_at');
-  ADetails.Updated := TAtlasGitHubJson.TimeOf(ARoot, 'updated_at');
+  ADetails.Created := TJsonRead.IsoTime(ARoot, 'created_at', True);
+  ADetails.Updated := TJsonRead.IsoTime(ARoot, 'updated_at', True);
   ADetails.Labels := IssueLabelsOf(ARoot.Values['labels'], MaxInt);
   ADetails.Assignee := TAtlasGitHubJson.AssigneesOf(ARoot);
   ADetails.Sprint := NestedText(ARoot, 'milestone', 'title', 60);
@@ -587,7 +587,7 @@ begin
       end;
       mComment := Default(TAtlasTrackerComment);
       mComment.Author := TAtlasGitHubJson.LoginOf(TJSONObject(mItem).Values['user']);
-      mComment.Created := TAtlasGitHubJson.TimeOf(TJSONObject(mItem), 'created_at');
+      mComment.Created := TJsonRead.IsoTime(TJSONObject(mItem), 'created_at', True);
       mComment.Text := TAtlasGitHubJson.Limited(TJsonRead.Text(TJSONObject(mItem), 'body'));
       AComments := AComments + [mComment];
     end;
@@ -1071,7 +1071,7 @@ begin
       mThread.Title := TAtlasGitHubJson.Shorten(TJsonRead.Text(mSubject, 'title'),
         TAtlasTrackerIssue.cMaxTitle);
       mThread.Reason := LowerCase(TJsonRead.Text(mObject, 'reason'));
-      mThread.Updated := TAtlasGitHubJson.TimeOf(mObject, 'updated_at');
+      mThread.Updated := TJsonRead.IsoTime(mObject, 'updated_at', True);
       if mThread.Updated > ASince then
       begin
         AThreads := AThreads + [mThread];
@@ -1126,7 +1126,7 @@ begin
         Continue;
       end;
       // since= filtert nach der letzten Bearbeitung; neu ist nur, was danach angelegt wurde.
-      mTime := TAtlasGitHubJson.TimeOf(TJSONObject(mItem), 'created_at');
+      mTime := TJsonRead.IsoTime(TJSONObject(mItem), 'created_at', True);
       if mTime > ASince then
       begin
         mChange := ChangeOf(AThread, TAtlasTrackerChangeKind.Comment,
@@ -1198,7 +1198,7 @@ begin
       begin
         Continue;
       end;
-      mTime := TAtlasGitHubJson.TimeOf(TJSONObject(mItem), 'created_at');
+      mTime := TJsonRead.IsoTime(TJSONObject(mItem), 'created_at', True);
       if (mTime > ASince) and EventChangeOf(TJSONObject(mItem), AThread, AMe, mTime, mChange) then
       begin
         AChanges := AChanges + [mChange];

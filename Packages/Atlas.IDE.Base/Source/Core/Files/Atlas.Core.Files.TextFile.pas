@@ -290,26 +290,27 @@ end;
 
 class function TAtlasTextFile.Decode(const ABytes: TBytes; ADefaultCodePage: Integer): TAtlasTextFileContent;
 var
-  mCount: Integer;
+  mCount, mStart: Integer;
   mBom: TTextBom;
 begin
   Result.CodePage := 0;
   mCount := Length(ABytes);
   mBom := TTextEncodingProbe.BomOf(ABytes);
+  mStart := TTextEncodingProbe.BomLength(mBom);
   if mBom = TTextBom.Utf8 then
   begin
     Result.Encoding := TAtlasTextEncoding.Utf8Bom;
-    Result.Text := TEncoding.UTF8.GetString(ABytes, 3, mCount - 3);
+    Result.Text := TEncoding.UTF8.GetString(ABytes, mStart, mCount - mStart);
   end
   else if mBom = TTextBom.Utf16LE then
   begin
     Result.Encoding := TAtlasTextEncoding.Utf16LE;
-    Result.Text := TEncoding.Unicode.GetString(ABytes, 2, mCount - 2);
+    Result.Text := TEncoding.Unicode.GetString(ABytes, mStart, mCount - mStart);
   end
   else if mBom = TTextBom.Utf16BE then
   begin
     Result.Encoding := TAtlasTextEncoding.Utf16BE;
-    Result.Text := TEncoding.BigEndianUnicode.GetString(ABytes, 2, mCount - 2);
+    Result.Text := TEncoding.BigEndianUnicode.GetString(ABytes, mStart, mCount - mStart);
   end
   else if IsAnsiDefault(ADefaultCodePage) and TTextEncodingProbe.IsAscii(ABytes) then
   begin
@@ -338,11 +339,11 @@ class function TAtlasTextFile.Encode(const AContent: TAtlasTextFileContent): TBy
 begin
   case AContent.Encoding of
     TAtlasTextEncoding.Utf8Bom:
-      Result := TBytes.Create($EF, $BB, $BF) + TEncoding.UTF8.GetBytes(AContent.Text);
+      Result := TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AContent.Text);
     TAtlasTextEncoding.Utf16LE:
-      Result := TBytes.Create($FF, $FE) + TEncoding.Unicode.GetBytes(AContent.Text);
+      Result := TEncoding.Unicode.GetPreamble + TEncoding.Unicode.GetBytes(AContent.Text);
     TAtlasTextEncoding.Utf16BE:
-      Result := TBytes.Create($FE, $FF) + TEncoding.BigEndianUnicode.GetBytes(AContent.Text);
+      Result := TEncoding.BigEndianUnicode.GetPreamble + TEncoding.BigEndianUnicode.GetBytes(AContent.Text);
     TAtlasTextEncoding.Utf8:
       Result := TEncoding.UTF8.GetBytes(AContent.Text);
   else

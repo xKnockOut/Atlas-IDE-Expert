@@ -39,7 +39,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Common.Mcp.IdeEdits;
+  Atlas.Common.Mcp.IdeEdits,
+  Atlas.Common.Mcp.IdeInbox.Tests;
 
 var
   Now_: Int64;
@@ -80,11 +81,7 @@ end;
 
 procedure TMcpIdeEditsTests.TearDown;
 begin
-  if TDirectory.Exists(FInbox) then
-  begin
-    TDirectory.Delete(FInbox, True);
-  end;
-  FInbox := '';
+  RemoveTestInbox(FInbox);
 end;
 
 procedure TMcpIdeEditsTests.WritesItselfWhenNobodyTakesTheRequest;

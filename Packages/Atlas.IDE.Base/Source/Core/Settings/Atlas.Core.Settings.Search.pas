@@ -396,17 +396,22 @@ begin
 end;
 
 class function TAtlasSettingsSearch.TypoScore(const AWord: string; const ATexts: TArray<string>): Integer;
+const
+  /// <summary>Kürzere Wörter gelten nie als Tippfehler; bis cShortWord ist nur ein Fehler erlaubt, sonst zwei.
+  /// </summary>
+  cMinWord = 4;
+  cShortWord = 5;
 var
   mText, mPart: string;
   mLimit, mScore: Integer;
 begin
   Result := 0;
-  if Length(AWord) < 4 then
+  if Length(AWord) < cMinWord then
   begin
     Exit;
   end;
   mLimit := 2;
-  if Length(AWord) <= 5 then
+  if Length(AWord) <= cShortWord then
   begin
     mLimit := 1;
   end;

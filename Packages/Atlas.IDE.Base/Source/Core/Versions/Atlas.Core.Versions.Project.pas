@@ -8,7 +8,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.StrUtils;
 
 type
   TAtlasProjectVersion = class
@@ -31,11 +32,11 @@ var
   mValue: string;
 begin
   mValue := LowerCase(Trim(AValue));
-  if (mValue = 'true') or (mValue = '1') or (mValue = '2') then
+  if MatchStr(mValue, ['true', '1', '2']) then
   begin
     Result := True;
   end
-  else if (mValue = 'false') or (mValue = '0') then
+  else if MatchStr(mValue, ['false', '0']) then
   begin
     Result := False;
   end

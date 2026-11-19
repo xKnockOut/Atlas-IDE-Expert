@@ -1198,7 +1198,7 @@ begin
     end
     else if CharInSet(Result[mIndex], ['a'..'z']) then
     begin
-      Result[mIndex] := Chr(Ord(Result[mIndex]) - 32);
+      Result[mIndex] := UpCase(Result[mIndex]);
     end;
   end;
 end;
@@ -1209,28 +1209,23 @@ class function TAtlasProjectSummaries.KeyOf(const AProject: string): string;
 const
   cOffset: UInt64 = $CBF29CE484222325;
   cPrime: UInt64 = $00000100000001B3;
-  cDigits: string = '0123456789abcdef';
 var
   mText: string;
   mHash: UInt64;
-  mIndex, mShift: Integer;
+  mIndex: Integer;
   mUnit_: Word;
 begin
   mText := NormalizedPath(AProject);
   mHash := cOffset;
   for mIndex := 1 to Length(mText) do
   begin
+    // UTF-16-Einheit als zwei Bytes, das niedrige zuerst.
     mUnit_ := Ord(mText[mIndex]);
-    mHash := (mHash xor (mUnit_ and $FF)) * cPrime;
-    mHash := (mHash xor (mUnit_ shr 8)) * cPrime;
+    mHash := (mHash xor Lo(mUnit_)) * cPrime;
+    mHash := (mHash xor Hi(mUnit_)) * cPrime;
   end;
-  Result := '';
-  mShift := 60;
-  while mShift >= 0 do
-  begin
-    Result := Result + cDigits[((mHash shr mShift) and $F) + 1];
-    Dec(mShift, 4);
-  end;
+  // Alle Stellen, klein geschrieben.
+  Result := LowerCase(IntToHex(mHash, SizeOf(mHash) * 2));
 end;
 {$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 

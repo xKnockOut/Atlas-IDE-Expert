@@ -33,6 +33,7 @@ type
   public const
     cMinDepth = 1;
     cMaxDepth = 200;
+    cDefaultDepth = 20;
   public
     /// <summary>undo.multiFile: aus = nichts protokollieren, Zurücknehmen meldet Disabled.</summary>
     Enabled: Boolean;
@@ -120,7 +121,7 @@ uses
 class function TAtlasUndoOptions.Defaults: TAtlasUndoOptions;
 begin
   Result.Enabled := True;
-  Result.Depth := 20;
+  Result.Depth := cDefaultDepth;
   Result.OnConflict := TAtlasUndoConflictMode.Partial;
   Result.NewFiles := TAtlasNewFilesMode.RecycleBin;
 end;

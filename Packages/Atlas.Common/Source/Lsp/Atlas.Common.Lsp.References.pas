@@ -93,6 +93,11 @@ type
     class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
       const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>; overload; static;
+    /// <summary>Ziel der Suche an APosition wie TLspDefinition.Targets zur Deklaration. Ein Parameter zielt auf
+    /// seinen Namen im Kopf mit Rumpf, den die Namensauflösung kennt, auch vom Kopf ohne Rumpf aus; hat seine
+    /// Routine keinen Rumpf (abstract), auf seinen Namen im Kopf (#2425). Leer, wenn nichts auflöst.</summary>
+    class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
     /// <summary>Inaktive Bereiche von AText unter den Symbolen, mit denen der Editor die Datei liest; leer ohne
     /// references.inferred.</summary>
     class function InactiveFor(const AFileName, AText: string;
@@ -115,6 +120,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -478,6 +484,38 @@ begin
   Result := Find(AResolver, AIndex, ATree, ASearch, nil);
 end;
 
+/// <summary>Stellen eines Parameters (#2425): die Fundstellen AFound aus seiner Routine, dazu sein Name in den
+/// Köpfen ohne Rumpf als sichere Stellen; die nur ohne ADeclaration nicht. Gleichnamiges außerhalb der Routine
+/// meint ihn nie.</summary>
+function ParameterLocations(const AFound: TArray<TReferenceLocation>; const AHeaders: TParameterHeaders;
+  const AFileName: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
+var
+  mLocation: TReferenceLocation;
+  mRange: TTextRange;
+begin
+  Result := nil;
+  for mLocation in AFound do
+  begin
+    if SameText(mLocation.FileName, AFileName) and (not AHeaders.HasBody or
+      AHeaders.Routine.Contains(mLocation.Range.StartPos)) and
+      not TTextRange.AnyContains(AHeaders.Declarations, mLocation.Range.StartPos) then
+    begin
+      Result := Result + [mLocation];
+    end;
+  end;
+  if not ADeclaration then
+  begin
+    Exit;
+  end;
+  for mRange in AHeaders.Declarations do
+  begin
+    mLocation.FileName := AFileName;
+    mLocation.Range := mRange;
+    mLocation.Confidence := TReferenceConfidence.Sure;
+    Result := Result + [mLocation];
+  end;
+end;
+
 class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
   const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
@@ -485,6 +523,9 @@ var
   mIndex: Integer;
   mWanted: TArray<TDefinitionTarget>;
   mRun: TReferenceRun;
+  mParameter: Boolean;
+  mHeaders: TParameterHeaders;
+  mPosition: TTextPosition;
 begin
   Result := nil;
   mIndex := IdentifierAt(ATree.Tokens, ASearch.Position);
@@ -497,19 +538,63 @@ begin
   // pinnt HitsInTree darüber und löst sie wieder.
   AResolver.PinTree(ATree, ASearch.FileName);
   try
-    mWanted := TLspDefinition.Targets(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, True);
+    // Ein Parameter ist ein Symbol mit Kopf ohne und Kopf mit Rumpf (#2425); gesucht wird vom Kopf mit Rumpf aus,
+    // den die Namensauflösung kennt.
+    mParameter := TParameterHeaders.Find(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, mHeaders);
+    mPosition := ASearch.Position;
+    if mParameter and mHeaders.HasBody then
+    begin
+      mPosition := mHeaders.Body.StartPos;
+    end;
+    mWanted := TLspDefinition.Targets(AResolver, AIndex, ATree, ASearch.FileName, mPosition, True);
     if Length(mWanted) = 0 then
     begin
+      // Parameter einer Routine ohne Rumpf (abstract, Interface): nur die Köpfe.
+      if mParameter then
+      begin
+        Result := ParameterLocations(nil, mHeaders, ASearch.FileName, ASearch.Declaration);
+      end;
       Exit;
     end;
     mRun.Prepare(ATree, mWanted[0], CleanName(ATree.Tokens[mIndex].Text));
     mRun.SearchOwn(ATree);
-    mRun.SearchFiles;
-    mRun.SearchForms(mWanted[0]);
+    // Ein Parameter kommt nur in seiner Routine vor.
+    if not mParameter then
+    begin
+      mRun.SearchFiles;
+      mRun.SearchForms(mWanted[0]);
+    end;
     Result := mRun.Locations(mWanted[0]);
+    if mParameter then
+    begin
+      Result := ParameterLocations(Result, mHeaders, ASearch.FileName, ASearch.Declaration);
+    end;
   finally
     AResolver.UnpinTree;
     mRun.Free;
+  end;
+end;
+
+class function TLspReferences.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>;
+var
+  mHeaders: TParameterHeaders;
+  mTarget: TDefinitionTarget;
+begin
+  if not TParameterHeaders.Find(AResolver, AIndex, ATree, AFileName, APosition, mHeaders) then
+  begin
+    Result := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  end
+  else if mHeaders.HasBody then
+  begin
+    Result := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, mHeaders.Body.StartPos, True);
+  end
+  else
+  begin
+    mTarget.FileName := AFileName;
+    mTarget.Range := mHeaders.Declarations[0];
+    mTarget.SelectionRange := mHeaders.Declarations[0];
+    Result := [mTarget];
   end;
 end;
 

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.TestResults.Tests;
 
-// Bereich „Testergebnisse“ der Willkommensseite (#763, Mockup #ws11): Texte
+// Bereich „Testergebnisse“ der Willkommensseite (#763): Texte
 // der Zeilen (Marke, lokaler Lauf, Zeile des Build-Servers mit „Stand vom …“,
 // „lokal grün, Server rot“), der Fehlschläge und der Knöpfe; Klicks wählen
 // Zeile und Fehlschlag, Knöpfe und Doppelklick erreichen die Quelle über die
@@ -249,7 +249,7 @@ begin
     mView := SampleView(False);
     mRow := mView.Rows[0];
     Assert.AreEqual('Atlas.Tests', mRow.Name);
-    // Mockup: Marke „2 fehlgeschlagen“, daneben „412 ok · 3 übersprungen · 18,4 s · 19:41“.
+    // Marke „2 fehlgeschlagen“, daneben „412 ok · 3 übersprungen · 18,4 s · 19:41“.
     Assert.AreEqual('2 fehlgeschlagen', TAtlasTrackerTestResultsText.PillText(mRow));
     Assert.AreEqual('412 ok · 3 übersprungen · ' + FormatFloat('0.0', 18.4, FormatSettings) + ' s · ' +
       FormatDateTime('t', TTimeZone.Local.ToLocalTime(NowUtc0), FormatSettings),

@@ -3,7 +3,7 @@
 // Gemeinsame Basis der Designer-Werkzeuge in der IDE: Meldungen in die
 // Meldungsansicht (Say), Umrisse über dem Designer (Outlines, erst beim
 // ersten Gebrauch angelegt) und Farben nach dem IDE-Thema (ApplyTheme).
-// Vorher stand das wortgleich in jedem Werkzeug. Werkzeuge mit weiteren
+// Damit steht das nicht wortgleich in jedem Werkzeug. Werkzeuge mit weiteren
 // Fenstern ergänzen ApplyTheme. Nur im Hauptthread.
 
 interface

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.Settings;
 
 // Abschnitt „Issue-Tracker“ im Optionsdialog, IDE-Teil des Moduls Tracker
-// (#1455; vorher Atlas.IDE.Settings.Options). TAtlasIdeTrackerSettings ist
+// (#1455). TAtlasIdeTrackerSettings ist
 // der IAtlasSettingsSectionProvider, den die Composition des Moduls über
 // seinen Scope anmeldet: Für jede Optionsseite entsteht ein
 // TAtlasTrackerSettingsSection mit den Haken dazu (Hooks).

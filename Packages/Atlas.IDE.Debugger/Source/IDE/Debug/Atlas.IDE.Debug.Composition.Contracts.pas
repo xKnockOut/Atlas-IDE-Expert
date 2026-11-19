@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Debug.Composition.Contracts;
 
-// Verträge des Moduls Debugger für andere Module (Modulregel 6), aus
-// Atlas.IDE.Debug.Composition ausgelagert: der Bericht über die Debug-Sitzung
+// Verträge des Moduls Debugger für andere Module (Modulregel 6),
+// eigene Unit neben Atlas.IDE.Debug.Composition: der Bericht über die Debug-Sitzung
 // (IAtlasDebugReportSource, #1276) und der Halt für „Test daraus anlegen …“
 // (IAtlasDebugStopSource, #1873). Beide gehen über den Scope des Moduls und
 // werden beim Abmelden mit ihm gelöst (Regel 4).

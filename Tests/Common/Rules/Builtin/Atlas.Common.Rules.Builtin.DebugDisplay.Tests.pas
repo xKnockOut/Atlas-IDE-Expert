@@ -120,7 +120,7 @@ begin
   mFound := Findings(StringReplace(cKunden, '{Ort}', '{}', []));
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
-  Assert.IsTrue(mFound[0].Message.StartsWith('Ungültige Wertdarstellung: '), mFound[0].Message);
+  Assert.IsTrue(mFound[0].Message.StartsWith('Ungültige Wertdarstellung: Leerer Platzhalter'), mFound[0].Message);
 end;
 
 procedure TDebugDisplayRuleTests.InheritedMembersFromIndex;

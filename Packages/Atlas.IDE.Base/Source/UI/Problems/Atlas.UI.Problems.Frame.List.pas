@@ -11,6 +11,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.JSON,
   Winapi.Windows,
   Vcl.Controls,
   Vcl.Graphics,
@@ -30,6 +31,12 @@ type
   TAtlasFindingScopeEvent = reference to procedure(AScope: TAtlasFindingScope);
   /// <summary>Mehrere markierte Befunde (#1268: ein Issue mit Liste).</summary>
   TAtlasFindingsEvent = reference to procedure(const AFindings: TArray<TAtlasFinding>);
+  /// <summary>Legt den Text der Antwort des Servers in die Zwischenablage; False ohne Text.</summary>
+  TAtlasPromptCopy = TFunc<TJSONValue, Boolean>;
+  /// <summary>„Als Auftrag für KI-Assistenten kopieren“ (#2570): Serverbefehl mit Argumenten für ACount markierte
+  /// Befunde; mit der Antwort ACopy aufrufen.</summary>
+  TAtlasPromptEvent = reference to procedure(const ACommand, AArgumentsJson: string; ACount: Integer;
+    const ACopy: TAtlasPromptCopy);
 
   /// <summary>Ereignisse des Fensters „Atlas-Prüfung“ (#909); Grundlage von TAtlasProblemsFrame.</summary>
   TAtlasProblemsFrameEvents = class(TFrame)
@@ -45,6 +52,7 @@ type
     FOnExplain: TAtlasFindingEvent;
     FOnCreateIssue: TAtlasFindingsEvent;
     FCanCreateIssue: TFunc<Boolean>;
+    FOnCopyPrompt: TAtlasPromptEvent;
     FOnScope: TAtlasFindingScopeEvent;
     FOnLayout: TProc;
   public
@@ -65,6 +73,9 @@ type
     property OnCreateIssue: TAtlasFindingsEvent read FOnCreateIssue write FOnCreateIssue;
     /// <summary>Eintrag sichtbar (issues.create); nil = unsichtbar.</summary>
     property CanCreateIssue: TFunc<Boolean> read FCanCreateIssue write FCanCreateIssue;
+    /// <summary>„Als Auftrag für KI-Assistenten kopieren“ (#2570) mit den markierten Befunden; nil = kein Eintrag.
+    /// </summary>
+    property OnCopyPrompt: TAtlasPromptEvent read FOnCopyPrompt write FOnCopyPrompt;
     /// <summary>Bereich gewechselt: Die IDE-Schicht liefert die Dateien des Bereichs neu.</summary>
     property OnScope: TAtlasFindingScopeEvent read FOnScope write FOnScope;
     /// <summary>Bereich, Gruppierung, Spalten oder „Offene zuerst“ geändert: zum Speichern.</summary>

@@ -54,7 +54,23 @@ uses
   System.JSON,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.JsonText,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TExperimentalText = (On);
+
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TExperimentalText] of string = (
+    (
+     'Experimentell an: '),
+    (
+     'Experimental on: '));
 
 function StoredText(const AStore: IAtlasMemorySettingsStore; const AEntry: TAtlasCatalogEntry): string;
 begin
@@ -236,20 +252,24 @@ begin
 end;
 
 class function TAtlasExperimental.Summary(const AKeys: TArray<string>; AEnglish: Boolean): string;
+var
+  mLanguage: TAtlasLanguage;
 begin
   Result := '';
   if Length(AKeys) = 0 then
   begin
     Exit;
   end;
+  mLanguage := TAtlasLanguage.German;
   if AEnglish then
   begin
-    Result := 'Experimental on: ' + string.Join(', ', AKeys);
-  end
-  else
-  begin
-    Result := 'Experimentell an: ' + string.Join(', ', AKeys);
+    mLanguage := TAtlasLanguage.English;
   end;
+  Result := cTexts[mLanguage, TExperimentalText.On] + string.Join(', ', AKeys);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.Experimental', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.

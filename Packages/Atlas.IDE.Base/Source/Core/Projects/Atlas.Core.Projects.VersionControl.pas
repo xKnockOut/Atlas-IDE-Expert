@@ -270,6 +270,9 @@ begin
 end;
 
 class function TAtlasVcsProjects.ToJson(const AItems: TArray<TAtlasVcsProjectMapping>): string;
+const
+  cMatchAndProvider = '{"match": %s, "provider": %s';
+  cMainBranch = ', "mainBranch": ';
 var
   mItem: TAtlasVcsProjectMapping;
   mParts: TArray<string>;
@@ -282,11 +285,10 @@ begin
     begin
       Continue;
     end;
-    mText := '{"match": ' + TJsonText.Quote(mItem.Match) + ', "provider": ' +
-      TJsonText.Quote(ProviderText(mItem.Provider));
+    mText := Format(cMatchAndProvider, [TJsonText.Quote(mItem.Match), TJsonText.Quote(ProviderText(mItem.Provider))]);
     if mItem.MainBranch <> '' then
     begin
-      mText := mText + ', "mainBranch": ' + TJsonText.Quote(mItem.MainBranch);
+      mText := mText + cMainBranch + TJsonText.Quote(mItem.MainBranch);
     end;
     mParts := mParts + [mText + '}'];
   end;

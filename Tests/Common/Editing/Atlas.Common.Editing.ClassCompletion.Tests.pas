@@ -3,7 +3,8 @@
 interface
 
 // Fehlende Methodenrümpfe (#647). Typkommentar in vier Formen (#1835),
-// Lebenszyklus und Get/Set-Paare zuerst (#1836), vorbefüllte Rümpfe (#1837).
+// Lebenszyklus und Get/Set-Paare zuerst (#1836), vorbefüllte Rümpfe (#1837),
+// eine Leerzeile um neue Rümpfe (#1839).
 
 uses
   DUnitX.TestFramework,
@@ -52,10 +53,10 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Editing.TextChanges,
   Atlas.Common.Editing.ClassCompletion;
 
 const
@@ -99,19 +100,10 @@ begin
 end;
 
 function TClassCompletionTests.Apply(const AText: string; const AAction: TCodeAction): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mLine: string;
 begin
-  // Genau eine Einfügung.
+  // Genau eine Änderung; mit angeglichenen Leerzeilen (#1839) kann sie mehrere Zeilen ersetzen.
   Assert.AreEqual(1, Integer(Length(AAction.Edits)));
-  mEdit := AAction.Edits[0];
-  mLines := AText.Split([#10]);
-  mLine := mLines[mEdit.Range.StartPos.Line];
-  mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
-    Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
-  Result := string.Join(#10, mLines);
+  Result := TTextChanges.Apply(AText, AAction.Edits);
 end;
 
 procedure TClassCompletionTests.AddsSingleMissingBody;
@@ -167,7 +159,7 @@ var
 begin
   Assert.IsTrue(ActionAt(cText, 5, mAction));
   Assert.Contains(Apply(cText, mAction),
-    'procedure TFoo.Eins;'#10'begin'#10'end;'#10#10'procedure TFoo.Zwei;'#10'begin'#10#10'end;'#10'procedure Frei;');
+    'procedure TFoo.Eins;'#10'begin'#10'end;'#10#10'procedure TFoo.Zwei;'#10'begin'#10#10'end;'#10#10'procedure Frei;');
 end;
 
 procedure TClassCompletionTests.KeepsFunctionsAndClassMethods;

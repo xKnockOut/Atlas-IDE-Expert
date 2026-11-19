@@ -127,12 +127,15 @@ begin
 end;
 
 class function TAtlasFileFormats.Decode(const ABytes: TBytes; AEncoding: TAtlasFileEncoding): string;
+var
+  mBomLength: Integer;
 begin
+  mBomLength := TTextEncodingProbe.BomLength(TTextBom.Utf8);
   case AEncoding of
     TAtlasFileEncoding.Utf8Bom:
-      if Length(ABytes) >= 3 then
+      if Length(ABytes) >= mBomLength then
       begin
-        Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3);
+        Result := TEncoding.UTF8.GetString(ABytes, mBomLength, Length(ABytes) - mBomLength);
       end
       else
       begin

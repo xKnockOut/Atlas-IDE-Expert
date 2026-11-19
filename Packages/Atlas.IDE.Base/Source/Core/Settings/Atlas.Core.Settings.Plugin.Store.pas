@@ -71,6 +71,8 @@ type
 /// <summary>Ohne Zeilenumbrüche und Steuerzeichen, höchstens MaxIssuesText Zeichen; ATrim kürzt Leerraum am Rand.
 /// </summary>
 function NormalizedIssuesText(const AText: string; ATrim: Boolean): string;
+/// <summary>AText mit Leerzeichen statt Steuerzeichen (unter #32, auch Zeilenumbrüche).</summary>
+function ControlCharsAsSpaces(const AText: string): string;
 /// <summary>AValue, wenn er (ohne Groß-/Kleinschreibung) unter AAllowed steht, in deren Schreibweise;
 /// sonst der erste erlaubte Wert.</summary>
 function Choice(const AValue: string; const AAllowed: array of string): string;
@@ -83,17 +85,8 @@ uses
   System.SysUtils;
 
 function NormalizedIssuesText(const AText: string; ATrim: Boolean): string;
-var
-  mIndex: Integer;
 begin
-  Result := AText;
-  for mIndex := 1 to Length(Result) do
-  begin
-    if Ord(Result[mIndex]) < 32 then
-    begin
-      Result[mIndex] := ' ';
-    end;
-  end;
+  Result := ControlCharsAsSpaces(AText);
   if ATrim then
   begin
     Result := Trim(Result);
@@ -101,6 +94,20 @@ begin
   if Length(Result) > cMaxIssuesText then
   begin
     Result := Copy(Result, 1, cMaxIssuesText);
+  end;
+end;
+
+function ControlCharsAsSpaces(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := AText;
+  for mIndex := 1 to Length(Result) do
+  begin
+    if Result[mIndex] < ' ' then
+    begin
+      Result[mIndex] := ' ';
+    end;
   end;
 end;
 

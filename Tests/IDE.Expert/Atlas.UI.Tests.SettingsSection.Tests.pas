@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Tests.SettingsSection.Tests;
 
 // Abschnitte des Moduls Tests (#1456) auf den Seiten „Compiler“, „Debuggen“ und „Editor“: Laden und Speichern
-// über die Seite (vorher in den Tests der Seite von Base) und der Platz auf den Reitern.
+// über die Seite und der Platz auf den Reitern.
 
 interface
 

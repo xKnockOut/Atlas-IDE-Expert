@@ -196,9 +196,6 @@ type
       static;
     /// <summary>Methode um ALine (ab 1) in AText (Pascal); '' außerhalb jeder Methode.</summary>
     class function MethodAt(const AText: string; ALine: Integer): string; static;
-    /// <summary>Dateien in der Reihenfolge der Reiterbeschriftungen ACaptions (Dateinamen ohne Pfad, mit oder ohne
-    /// Endung, ggf. mit Markierung wie „*“); nicht zuordenbare bleiben in ihrer Reihenfolge dahinter.</summary>
-    class function OrderByTabs(const AFiles, ACaptions: TArray<string>): TArray<string>; static;
     /// <summary>Plan für „Fortsetzen“; AExists prüft, ob es eine Datei gibt (nil = alle vorhanden).</summary>
     class function Plan(const AProject: string; const AState: TAtlasWorkState;
       const AExists: TAtlasContinueFileExists): TAtlasContinuePlan; static;
@@ -409,21 +406,13 @@ end;
 
 { JSON }
 
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 function TabJson(const ATab: TAtlasWorkTab): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('file', ATab.FileName);
   Result.AddPair('line', TJSONNumber.Create(ATab.Line));
   Result.AddPair('column', TJSONNumber.Create(ATab.Column));
-  AddText(Result, 'method', ATab.Method);
+  TJsonBuild.AddText(Result, 'method', ATab.Method);
   if ATab.Changed then
   begin
     Result.AddPair('changed', TJSONBool.Create(True));
@@ -446,10 +435,10 @@ begin
     Result.AddPair('at', TAtlasProjectSummaries.TimeText(AState.At));
   end;
   Result.AddPair('active', TJSONNumber.Create(AState.Active));
-  AddText(Result, 'vcs', AState.VcsKind);
-  AddText(Result, 'head', AState.Head);
-  AddText(Result, 'upstream', AState.Upstream);
-  AddText(Result, 'upstreamRevision', AState.UpstreamRevision);
+  TJsonBuild.AddText(Result, 'vcs', AState.VcsKind);
+  TJsonBuild.AddText(Result, 'head', AState.Head);
+  TJsonBuild.AddText(Result, 'upstream', AState.Upstream);
+  TJsonBuild.AddText(Result, 'upstreamRevision', AState.UpstreamRevision);
   mTabs := TJSONArray.Create;
   Result.AddPair('tabs', mTabs);
   for mTab in AState.Tabs do
@@ -826,57 +815,6 @@ begin
     Exit(TAtlasContinueAge.Yesterday);
   end;
   Result := TAtlasContinueAge.Date;
-end;
-
-/// <summary>Beschriftung eines Reiters ohne Markierungen (z. B. „*“ für geändert) und Leerraum.</summary>
-function CaptionName(const ACaption: string): string;
-begin
-  Result := Trim(ACaption);
-  while (Result <> '') and CharInSet(Result[Length(Result)], ['*', ' ']) do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-  while (Result <> '') and CharInSet(Result[1], ['*', ' ', '&']) do
-  begin
-    Delete(Result, 1, 1);
-  end;
-end;
-
-class function TAtlasWelcomeContinue.OrderByTabs(const AFiles, ACaptions: TArray<string>): TArray<string>;
-var
-  mUsed: TArray<Boolean>;
-  mCaption, mName: string;
-  mIndex: Integer;
-begin
-  Result := nil;
-  SetLength(mUsed, Length(AFiles));
-  for mCaption in ACaptions do
-  begin
-    mName := CaptionName(mCaption);
-    if mName = '' then
-    begin
-      Continue;
-    end;
-    // Gleich benannte Dateien in verschiedenen Ordnern: die erste noch nicht vergebene. Die IDE zeigt Units
-    // auch ohne Endung („Kunde“ statt „Kunde.pas“).
-    for mIndex := 0 to High(AFiles) do
-    begin
-      if not mUsed[mIndex] and (SameText(FileNameOf(AFiles[mIndex]), mName) or
-        SameText(ChangeFileExt(FileNameOf(AFiles[mIndex]), ''), mName)) then
-      begin
-        mUsed[mIndex] := True;
-        Result := Result + [AFiles[mIndex]];
-        Break;
-      end;
-    end;
-  end;
-  for mIndex := 0 to High(AFiles) do
-  begin
-    if not mUsed[mIndex] then
-    begin
-      Result := Result + [AFiles[mIndex]];
-    end;
-  end;
 end;
 
 class function TAtlasWelcomeContinue.Select(const ACommits: TArray<TAtlasVcsIncomingCommit>;

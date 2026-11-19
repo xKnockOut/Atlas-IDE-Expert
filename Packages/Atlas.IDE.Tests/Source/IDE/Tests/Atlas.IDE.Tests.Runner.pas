@@ -167,8 +167,6 @@ type
     /// <summary>Ergebnis eines Laufs außerhalb des Läufers (Debugger, #585) aus dem XML-Bericht AXml melden wie
     /// nach „Tests ausführen“; ohne Bericht nichts.</summary>
     procedure ReportRun(const ATarget: TAtlasTestTarget; const AXml: string);
-    /// <summary>Datei der Unit AUnitName im Testprojekt AProjectFile; '' ohne.</summary>
-    class function UnitFileOf(const AProjectFile, AUnitName: string): string; static;
     /// <summary>Zeile in der Meldungsansicht (Gruppe Atlas).</summary>
     procedure Say(const AText: string);
     /// <summary>Ein Test läuft im Debugger (#585): sperrt weitere Läufe, die Code Lens zeigt „Tests laufen …“.
@@ -208,12 +206,6 @@ const
   cOutputLines = 5;
   /// <summary>Höchstens so viele Namen in der Zeile der Lecks am Programmende (#1774).</summary>
   cShutdownLeakNames = 5;
-
-/// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
-function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-begin
-  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
 
 function ProjectByFile(const AFileName: string): IOTAProject;
 begin
@@ -614,33 +606,6 @@ begin
   Finish(ATarget, TAtlasVcsOutcome.Ok, 0, mExe);
 end;
 
-class function TAtlasIdeTests.UnitFileOf(const AProjectFile, AUnitName: string): string;
-var
-  mProject: IOTAProject;
-  mIndex: Integer;
-  mFileName: string;
-begin
-  Result := '';
-  mProject := ProjectByFile(AProjectFile);
-  if mProject <> nil then
-  begin
-    for mIndex := 0 to mProject.GetModuleCount - 1 do
-    begin
-      mFileName := mProject.GetModule(mIndex).FileName;
-      if TAtlasTestRun.IsUnitFile(mFileName, AUnitName) then
-      begin
-        Exit(mFileName);
-      end;
-    end;
-  end;
-  // Nicht im Projekt eingetragen: neben der .dproj.
-  mFileName := TPath.Combine(ExtractFileDir(AProjectFile), AUnitName + '.pas');
-  if FileExists(mFileName) then
-  begin
-    Result := mFileName;
-  end;
-end;
-
 /// <summary>Zeitpunkt der letzten Änderung von AFileName; 0 ohne Datei.</summary>
 function WrittenAt(const AFileName: string): TDateTime;
 begin
@@ -805,19 +770,6 @@ begin
   FThread.Start;
 end;
 
-/// <summary>Datei einer Unit im Testprojekt AProjectFile, als Rückruf für TAtlasTestRun.Failures.</summary>
-function UnitFileFunc(const AProjectFile: string): TAtlasTestUnitFile;
-var
-  mProjectFile: string;
-begin
-  mProjectFile := AProjectFile;
-  Result :=
-    function(const AUnitName: string): string
-    begin
-      Result := TAtlasIdeTests.UnitFileOf(mProjectFile, AUnitName);
-    end;
-end;
-
 procedure TAtlasIdeTests.Say(const AText: string);
 begin
   FOutput.Say(AText);
@@ -827,8 +779,8 @@ end;
 function LeakWarnings(const ACases: TArray<TTestCaseResult>;
   const AUnitFile: TAtlasTestUnitFile): TArray<TPair<string, TAtlasProblem>>;
 begin
-  Result := TAtlasTestRun.LeakProblems(TAtlasTestRun.Locate(TAtlasTestLeaks.Leaked(ACases), AUnitFile, ReadLines),
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLeakProblem));
+  Result := TAtlasTestRun.LeakProblems(TAtlasTestRun.Locate(TAtlasTestLeaks.Leaked(ACases), AUnitFile,
+    TAtlasIdeFiles.LineReader()), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLeakProblem));
 end;
 
 /// <summary>Zeile mit Anzahl und Bytes der bestandenen Tests mit Leck in ACases; nichts ohne (#1774).</summary>
@@ -864,6 +816,7 @@ var
   mFailures: TArray<TAtlasTestFailure>;
   mAtAssert: Boolean;
   mInline: string;
+  mUnitFiles: TAtlasTestUnitFile;
 begin
   // Fehlschlag an der Assert-Zeile, dahinter „erwartet …, erhalten …“ (#1771).
   mAtAssert := TAtlasIdeSettings.Current.TestsFailureAtAssert;
@@ -880,13 +833,14 @@ begin
   // Probleme aus allen Ergebnissen dieser Sitzung: Ein Lauf einzelner Tests lässt die übrigen Fehlschläge stehen.
   mAll := ARun;
   mAll.Cases := FCases;
-  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines, mAtAssert);
+  mUnitFiles := TAtlasIdeTestProjects.UnitFiles(ATarget.Project);
+  mFailures := TAtlasTestRun.Failures(ARun, mUnitFiles, TAtlasIdeFiles.LineReader(), mAtAssert);
   if Assigned(FHooks.OnProblems) then
   begin
-    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines,
+    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, mUnitFiles, TAtlasIdeFiles.LineReader(),
       mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline) +
-      LeakWarnings(mAll.Cases, UnitFileFunc(ATarget.Project)));
+      LeakWarnings(mAll.Cases, mUnitFiles));
   end;
   FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
     0).FailedTests);
@@ -908,7 +862,7 @@ begin
     // Die langsamsten Tests des Laufs für die Karte Testergebnisse (#1772).
     FHooks.OnFinished(ATarget.Project, TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
       TAtlasTestRun.Locate(TTestResults.Slowest(ARun.Cases, TAtlasProjectTests.cMaxSlowest),
-      UnitFileFunc(ATarget.Project), ReadLines), TTimeZone.Local.ToUniversalTime(Now)));
+      mUnitFiles, TAtlasIdeFiles.LineReader()), TTimeZone.Local.ToUniversalTime(Now)));
   end;
   FOutput.EndQuiet(True, ARun);
   FOutput.Ended(ATarget.Project, TAtlasTestFinish.Report, ARun);

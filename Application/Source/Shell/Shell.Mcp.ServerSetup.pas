@@ -1,7 +1,8 @@
 ﻿unit Shell.Mcp.ServerSetup;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Einrichtung des Servers: Werkzeuge und Sicherheit (#99), abgeschaltete
-// Werkzeuge (#227), Konventionen, Nachladen geänderter Dateien vor jedem Werkzeugaufruf und die Prompts (#1357).
+// Werkzeuge (#227), Konventionen, Nachladen geänderter Dateien vor jedem Werkzeugaufruf, batch (#2638) und die
+// Prompts (#1357).
 
 interface
 
@@ -27,11 +28,15 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.Paths,
+  Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Localization.Texts,
   Shell.Workspace,
   Shell.Mcp.Context,
+  Shell.Mcp.RefactorSources,
   Shell.Mcp.Tools,
   Shell.Mcp.Changes,
   Shell.Mcp.Conventions;
@@ -125,10 +130,34 @@ begin
     end;
 end;
 
+/// <summary>Grenzen von batch (#2638): requestTimeoutMs und Abbruch über notifications/cancelled.</summary>
+function BatchLimitsOf(AWorkspace: TShellWorkspace): TFunc<TMcpBatchLimits>;
+begin
+  Result :=
+    function: TMcpBatchLimits
+    var
+      Token: IJsonRpcCancellationToken;
+    begin
+      Result := Default(TMcpBatchLimits);
+      Result.TimeoutMs := AWorkspace.Configuration.Settings.RequestTimeoutMs;
+      Token := TJsonRpcCurrentRequest.Token;
+      Result.Cancelled :=
+        function: Boolean
+        begin
+          Result := (Token <> nil) and Token.IsCancellationRequested;
+        end;
+    end;
+end;
+
 procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
   const ALogger: ILogger);
+var
+  mContext: TMcpToolContext;
 begin
-  RegisterContextTools(AServices.ToolContext(AServer));
+  mContext := AServices.ToolContext(AServer);
+  TMcpRefactorSources.Attach(mContext, ALogger);
+  RegisterContextTools(mContext);
+  TMcpBatchTool.Register(AServer, BatchLimitsOf(AServices.Workspace));
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);

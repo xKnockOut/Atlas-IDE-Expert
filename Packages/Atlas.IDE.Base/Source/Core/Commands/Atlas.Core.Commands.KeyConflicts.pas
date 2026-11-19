@@ -117,6 +117,15 @@ type
     cScShift = $2000;
     cScCtrl = $4000;
     cScAlt = $8000;
+    /// <summary>Virtuelle Tastencodes (VK_…), die Core ohne Winapi braucht.</summary>
+    cVkReturn = $0D;
+    cVkUp = $26;
+    cVkDown = $28;
+    cVkF1 = $70;
+    cVkF24 = $87;
+    cVkComma = $BC;
+    cVkMinus = $BD;
+    cVkPeriod = $BE;
     cPaletteDefault = cScCtrl or cScShift or Ord('P');
     cCheckDefault = cScCtrl or cScAlt or $78; // VK_F9
     cIdeCompletionKey = cScCtrl or $20; // Strg+Leer
@@ -734,23 +743,26 @@ end;
 { TAtlasKeyConflicts }
 
 class function TAtlasKeyConflicts.KnownIdeKeys: TArray<TAtlasKeyOwner>;
+const
+  // Lesezeichen 0–9 der IDE.
+  cLastBookmarkDigit = 9;
 var
   mDigit: Integer;
 begin
   Result := [TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('P'), UiText(TKeyConflictsText.IDEPlayKeyboardMacro)),
     TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('R'), UiText(TKeyConflictsText.IDERecordKeyboardMacro)),
     // Zeilen verschieben und duplizieren (#634) nimmt diese Tasten mit Vorrang.
-    TAtlasKeyOwner.Create(cScAlt or $26, UiText(TKeyConflictsText.IDECodeBrowsingFindDeclaration)), // VK_UP
-    TAtlasKeyOwner.Create(cScShift or cScAlt or $26, UiText(TKeyConflictsText.IDESelectColumnBlockUp)),
-    TAtlasKeyOwner.Create(cScShift or cScAlt or $28, UiText(TKeyConflictsText.IDESelectColumnBlockDown)), // VK_DOWN
+    TAtlasKeyOwner.Create(cScAlt or cVkUp, UiText(TKeyConflictsText.IDECodeBrowsingFindDeclaration)),
+    TAtlasKeyOwner.Create(cScShift or cScAlt or cVkUp, UiText(TKeyConflictsText.IDESelectColumnBlockUp)),
+    TAtlasKeyOwner.Create(cScShift or cScAlt or cVkDown, UiText(TKeyConflictsText.IDESelectColumnBlockDown)),
     // Anweisung vervollständigen (#697) nimmt Strg+Umschalt+Enter mit Vorrang.
-    TAtlasKeyOwner.Create(cScCtrl or cScShift or $0D, UiText(TKeyConflictsText.IDEFindReferences)), // VK_RETURN
+    TAtlasKeyOwner.Create(cScCtrl or cScShift or cVkReturn, UiText(TKeyConflictsText.IDEFindReferences)),
     // Typ des markierten Ausdrucks (#689) nimmt Strg+Umschalt+T mit Vorrang.
     TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('T'), UiText(TKeyConflictsText.IDEAddToDoItem)),
     // Schnelle Lesezeichen (#1104): erster Teil der Faltungsakkorde.
     TAtlasKeyOwner.Create(cScCtrl or cScShift or Ord('K'), UiText(TKeyConflictsText.IDEFoldingCtrlShiftK))];
   // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.
-  for mDigit := 0 to 9 do
+  for mDigit := 0 to cLastBookmarkDigit do
   begin
     Result := Result + [TAtlasKeyOwner.Create(cScCtrl or cScShift or (Ord('0') + mDigit),
       Format(UiText(TKeyConflictsText.IDEToggleBookmark), [mDigit])),

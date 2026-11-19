@@ -48,7 +48,9 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Mcp.BuildTools,
-  Atlas.Common.Mcp.IdeBuilds;
+  Atlas.Common.Mcp.IdeInbox,
+  Atlas.Common.Mcp.IdeBuilds,
+  Atlas.Common.Mcp.IdeInbox.Tests;
 
 const
   /// <summary>Antwort des Plugins wie TAtlasBuildInbox.SuccessText (Zeilen und Spalten 1-basiert).</summary>
@@ -116,11 +118,7 @@ end;
 
 procedure TMcpIdeBuildsTests.TearDown;
 begin
-  if TDirectory.Exists(FInbox) then
-  begin
-    TDirectory.Delete(FInbox, True);
-  end;
-  FInbox := '';
+  RemoveTestInbox(FInbox);
 end;
 
 procedure TMcpIdeBuildsTests.ReadsIdeEntry;
@@ -248,7 +246,7 @@ var
   mBuildText, mReason, mSeen: string;
 begin
   Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.TimedOut,
-    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeBuildWaiting.Make(
+    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeWaiting.Make(
     procedure
     begin
       Inc(Now_, 1000);

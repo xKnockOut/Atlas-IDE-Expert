@@ -30,6 +30,10 @@ type
     procedure ParameterRenamedInDeclarationAndImplementation;
     [Test]
     procedure ParametersOfStandaloneRoutines;
+    /// <summary>WParam: WPARAM wird AWParam: WPARAM, nie AWParam: AWParam (#1896); Groß- und Kleinschreibung
+    /// unterscheiden den Typ nicht.</summary>
+    [Test]
+    procedure RenameKeepsSameNamedType;
     [Test]
     procedure ConstantsInRoutineClassAndUnit;
     [Test]
@@ -274,6 +278,44 @@ begin
   Assert.Contains(mFixed, 'reference to function(Wert: Integer)', 'der Prozedurtyp ist ein eigener Treffer');
   mFixed := ApplyFix(mSource, mFound[3].Fixes[0]);
   Assert.Contains(mFixed, 'function(ATeil: Integer): Integer'#10'    begin'#10'      Result := ATeil;');
+end;
+
+procedure TNamingRulesTests.RenameKeepsSameNamedType;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
+begin
+  mSource := UnitOf('type'#10'  WPARAM = NativeUInt;'#10'  THaken = class'#10 +
+    '    procedure Setzen(WParam: WPARAM; var LParam: LPARAM);'#10'  end;'#10 +
+    'function KeyboardProc(ACode: Integer; WParam: WPARAM): WPARAM;'#10,
+    'procedure THaken.Setzen(WParam: WPARAM; var LParam: LPARAM);'#10'begin'#10'  LParam := WParam;'#10'end;'#10 +
+    'function KeyboardProc(ACode: Integer; WParam: WPARAM): WPARAM;'#10'begin'#10'  Result := WParam;'#10'end;'#10 +
+    'procedure Lokal;'#10'var'#10'  WParam: WPARAM;'#10'begin'#10'  WParam := 0;'#10'end;'#10);
+  mFound := Findings(mSource);
+  Assert.AreEqual('Parameter WParam ohne Präfix A (erwartet: AWParam)|' +
+    'Parameter LParam ohne Präfix A (erwartet: ALParam)|Parameter WParam ohne Präfix A (erwartet: AWParam)|' +
+    'Lokale Variable WParam ohne Präfix m (erwartet: mWParam)|', Messages(mFound));
+  for mFinding in mFound do
+  begin
+    Assert.AreEqual(1, Integer(Length(mFinding.Fixes)), mFinding.Message);
+    mFixed := ApplyFix(mSource, mFinding.Fixes[0]);
+    Assert.DoesNotContain(mFixed, 'WParam: AWParam', mFixed);
+    Assert.DoesNotContain(mFixed, 'WParam: mWParam', mFixed);
+    Assert.DoesNotContain(mFixed, 'LParam: ALParam', mFixed);
+    Assert.DoesNotContain(mFixed, '): AWParam;', mFixed);
+    Assert.Contains(mFixed, '  WPARAM = NativeUInt;', mFixed);
+  end;
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.Contains(mFixed, 'procedure Setzen(AWParam: WPARAM; var LParam: LPARAM);');
+  Assert.Contains(mFixed, 'procedure THaken.Setzen(AWParam: WPARAM; var LParam: LPARAM);'#10'begin'#10 +
+    '  LParam := AWParam;');
+  mFixed := ApplyFix(mSource, mFound[2].Fixes[0]);
+  Assert.Contains(mFixed, 'function KeyboardProc(ACode: Integer; AWParam: WPARAM): WPARAM;'#10'implementation');
+  Assert.Contains(mFixed, 'function KeyboardProc(ACode: Integer; AWParam: WPARAM): WPARAM;'#10'begin'#10 +
+    '  Result := AWParam;');
+  mFixed := ApplyFix(mSource, mFound[3].Fixes[0]);
+  Assert.Contains(mFixed, '  mWParam: WPARAM;'#10'begin'#10'  mWParam := 0;');
 end;
 
 procedure TNamingRulesTests.ConstantsInRoutineClassAndUnit;

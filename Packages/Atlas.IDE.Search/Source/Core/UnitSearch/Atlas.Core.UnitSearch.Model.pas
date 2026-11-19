@@ -193,8 +193,7 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching,
-  Atlas.Text.Json,
-  Atlas.Text.Timestamps;
+  Atlas.Text.Json;
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');
@@ -407,18 +406,6 @@ end;
 
 { TAtlasUnitPreview }
 
-/// <summary>Zeitpunkt aus "modified" (ISO 8601); 0 ohne oder bei ungültigem Wert.</summary>
-function ModifiedOf(AObject: TJSONObject): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  if AObject.TryGetValue<string>('modified', mText) then
-  begin
-    Result := TTextTimestamp.IsoOrZero(mText, False);
-  end;
-end;
-
 function TypesOf(AObject: TJSONObject): TArray<TAtlasUnitType>;
 var
   mItems: TJSONArray;
@@ -508,7 +495,7 @@ begin
   end;
   mAnswer.TryGetValue<string>('header', Result.Header);
   mAnswer.TryGetValue<Integer>('lines', Result.Lines);
-  Result.Modified := ModifiedOf(mAnswer);
+  Result.Modified := TJsonRead.IsoTime(mAnswer, 'modified', False);
   mAnswer.TryGetValue<string>('git', Result.Git);
   Result.Types := TypesOf(mAnswer);
   Result.TypeCount := Length(Result.Types);

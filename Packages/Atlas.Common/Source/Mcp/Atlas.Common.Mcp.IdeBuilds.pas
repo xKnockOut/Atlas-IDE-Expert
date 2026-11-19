@@ -12,7 +12,7 @@
 //   {"ok": true, "build": {project, kind, configuration, platform, success,
 //    durationMs, finishedAt, messages[]}}  bzw. {"ok": false, "reason": "…"}
 // "build" hat das Format von TMcpBuildTools.ToFileText. Nimmt das Plugin den
-// Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück.
+// Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück (Austausch in Atlas.Common.Mcp.IdeInbox).
 // Welche IDE welche Projekte offen hat, steht unter "projects" und
 // "activeProject" in editor-dirty-<pid>.json (TAtlasDirtyExport im Plugin).
 // Gegenstück im Plugin: Atlas.Core.Assistants.BuildInbox und Atlas.IDE.Assistants.BuildInbox.
@@ -22,7 +22,8 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Mcp.IdeInbox;
 
 type
   /// <summary>Eine laufende IDE mit Atlas-Plugin laut editor-dirty-&lt;pid&gt;.json.</summary>
@@ -42,17 +43,6 @@ type
   end;
 
   TMcpIdeBuildOutcome = (Done, NotTaken, Refused, TimedOut);
-
-  /// <summary>Warten auf das Plugin: AWait schläft kurz, Clock liefert Millisekunden, dazu die Fristen bis zur
-  /// Übernahme und für den Build.</summary>
-  TMcpIdeBuildWaiting = record
-    Wait: TProc;
-    Clock: TFunc<Int64>;
-    TakeMs: Int64;
-    BuildMs: Int64;
-    class function Make(const AWait: TProc; const AClock: TFunc<Int64>; ATakeMs, ABuildMs: Int64):
-      TMcpIdeBuildWaiting; static;
-  end;
 
   TMcpIdeBuilds = class
   public const
@@ -86,7 +76,7 @@ type
       const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
     /// <summary>Wie oben mit eigenen Fristen (Tests).</summary>
     class function Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest;
-      const AWaiting: TMcpIdeBuildWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
+      const AWaiting: TMcpIdeWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
   end;
 
 implementation
@@ -303,81 +293,32 @@ begin
   end;
 end;
 
-procedure DeleteQuietly(const AFileName: string);
-begin
-  try
-    if FileExists(AFileName) then
-    begin
-      TFile.Delete(AFileName);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
-    on Exception do
-      ;
-  end;
-end;
-
-{ TMcpIdeBuildWaiting }
-
-class function TMcpIdeBuildWaiting.Make(const AWait: TProc; const AClock: TFunc<Int64>; ATakeMs,
-  ABuildMs: Int64): TMcpIdeBuildWaiting;
-begin
-  Result.Wait := AWait;
-  Result.Clock := AClock;
-  Result.TakeMs := ATakeMs;
-  Result.BuildMs := ABuildMs;
-end;
-
 class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest; const AWait: TProc;
   const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
 begin
-  Result := Send(AInbox, ARequest, TMcpIdeBuildWaiting.Make(AWait, AClock, cTakeMs, cBuildMs), ABuildText, AReason);
+  Result := Send(AInbox, ARequest, TMcpIdeWaiting.Make(AWait, AClock, cTakeMs, cBuildMs), ABuildText, AReason);
 end;
 
 class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest;
-  const AWaiting: TMcpIdeBuildWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
+  const AWaiting: TMcpIdeWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
 var
-  mId, mRequest, mAnswer, mText: string;
-  mStarted: Int64;
+  mText: string;
   mOk: Boolean;
 begin
   ABuildText := '';
   AReason := '';
-  mId := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
-  mRequest := TPath.Combine(AInbox, mId + '.json');
-  mAnswer := TPath.Combine(AInbox, mId + '.result.json');
-  ForceDirectories(AInbox);
-  TFile.WriteAllText(mRequest + '.tmp', RequestText(ARequest), TEncoding.UTF8);
-  TFile.Move(mRequest + '.tmp', mRequest);
-  mStarted := AWaiting.Clock();
-  // Warten, bis das Plugin den Auftrag übernimmt (die .json verschwindet) oder schon antwortet.
-  while (AWaiting.Clock() - mStarted < AWaiting.TakeMs) and FileExists(mRequest) and not FileExists(mAnswer) do
-  begin
-    AWaiting.Wait();
+  case TMcpIdeInbox.Exchange(AInbox, RequestText(ARequest), AWaiting, mText) of
+    TMcpIdeExchangeOutcome.NotTaken:
+      begin
+        AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
+        Exit(TMcpIdeBuildOutcome.NotTaken);
+      end;
+    TMcpIdeExchangeOutcome.TimedOut:
+      begin
+        AReason := cTexts[TIdeBuildsText.TheIDEAcceptedTheBuild].Text;
+        Exit(TMcpIdeBuildOutcome.TimedOut);
+      end;
   end;
-  if FileExists(mRequest) and not FileExists(mAnswer) and DeleteFile(mRequest) then
-  begin
-    AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
-    Exit(TMcpIdeBuildOutcome.NotTaken);
-  end;
-  mStarted := AWaiting.Clock();
-  while (AWaiting.Clock() - mStarted < AWaiting.BuildMs) and not FileExists(mAnswer) do
-  begin
-    AWaiting.Wait();
-  end;
-  if not FileExists(mAnswer) then
-  begin
-    AReason := cTexts[TIdeBuildsText.TheIDEAcceptedTheBuild].Text;
-    Exit(TMcpIdeBuildOutcome.TimedOut);
-  end;
-  try
-    mText := TFile.ReadAllText(mAnswer, TEncoding.UTF8);
-  except
-    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
-    on Exception do
-      mText := '';
-  end;
-  DeleteQuietly(mAnswer);
   if not ParseAnswer(mText, mOk, ABuildText, AReason) then
   begin
     AReason := cTexts[TIdeBuildsText.AnswerOfTheIDENot].Text;

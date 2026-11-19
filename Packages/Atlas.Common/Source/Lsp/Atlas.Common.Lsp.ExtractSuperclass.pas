@@ -94,7 +94,8 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.WorkspaceChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -315,33 +316,6 @@ begin
   end;
 end;
 
-function Ids(AObject: TJSONObject; const AKey: string): TArray<Integer>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AKey);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if mItem is TJSONNumber then
-      begin
-        Result := Result + [TJSONNumber(mItem).AsInt];
-      end;
-    end;
-  end;
-end;
-
-function Field(AObject: TJSONObject; const AKey: string): string;
-begin
-  Result := '';
-  if AObject.GetValue(AKey) <> nil then
-  begin
-    Result := Trim(AObject.GetValue(AKey).Value);
-  end;
-end;
-
 /// <summary>Fehlerfrei parsen wie vorher; sonst EJsonRpcError mit der ersten Meldung.</summary>
 procedure CheckParses(const AFileName, ANewText: string; ABefore: Integer);
 var
@@ -527,10 +501,10 @@ begin
   end;
   mBody := TJSONObject(ARequest);
   FRequest := Default(TSuperclassRequest);
-  FRequest.Name := Field(mBody, 'name');
-  FRequest.Members := Ids(mBody, 'members');
-  FRequest.Abstract := Ids(mBody, 'abstract');
-  FUnitName := Field(mBody, 'unit');
+  FRequest.Name := TJsonRead.TrimmedText(mBody, 'name');
+  FRequest.Members := TJsonRead.Ints(mBody, 'members');
+  FRequest.Abstract := TJsonRead.Ints(mBody, 'abstract');
+  FUnitName := TJsonRead.TrimmedText(mBody, 'unit');
   FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TUsesClauses.OwnName(FTree.Tokens));
   FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
   if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then

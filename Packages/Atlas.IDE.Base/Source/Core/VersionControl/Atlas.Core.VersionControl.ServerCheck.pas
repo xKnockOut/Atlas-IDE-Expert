@@ -74,6 +74,13 @@ implementation
 uses
   Atlas.Core.VersionControl.Internals.Text;
 
+const
+  cSchemeSeparator = '://';
+  // Befehle, die im Konsolenfenster die Anmeldung am Server auslösen (Argumente hinter dem Programm).
+  // In Anführungszeichen ist ^ für cmd kein Fluchtzeichen.
+  cSvnLoginArguments = ' info "^/"';
+  cGitLoginArguments = ' fetch ';
+
 { TAtlasVcsServerCheck }
 
 class function TAtlasVcsServerCheck.Empty: TAtlasVcsServerCheck;
@@ -124,12 +131,12 @@ var
   mAuthority: string;
 begin
   Result := Trim(AUrl);
-  mStart := Pos('://', Result);
+  mStart := Pos(cSchemeSeparator, Result);
   if mStart = 0 then
   begin
     Exit;
   end;
-  Inc(mStart, 3);
+  Inc(mStart, Length(cSchemeSeparator));
   mEnd := Pos('/', Result, mStart);
   if mEnd = 0 then
   begin
@@ -196,7 +203,7 @@ var
   mScheme: Integer;
 begin
   mText := Trim(AUrl);
-  mScheme := Pos('://', mText);
+  mScheme := Pos(cSchemeSeparator, mText);
   if mScheme = 0 then
   begin
     Result := ScpHost(mText);
@@ -207,7 +214,7 @@ begin
   end
   else
   begin
-    Result := AuthorityHost(Copy(mText, mScheme + 3, MaxInt));
+    Result := AuthorityHost(Copy(mText, mScheme + Length(cSchemeSeparator), MaxInt));
   end;
 end;
 
@@ -280,12 +287,11 @@ begin
   end;
   if AKind = TAtlasVcsKind.Svn then
   begin
-    // In Anführungszeichen ist ^ für cmd kein Fluchtzeichen.
-    mCommand := '"' + AExecutable + '" info "^/"';
+    mCommand := '"' + AExecutable + '"' + cSvnLoginArguments;
   end
   else if (AKind = TAtlasVcsKind.Git) and SafeRemote(ARemote) then
   begin
-    mCommand := '"' + AExecutable + '" fetch ' + ARemote;
+    mCommand := '"' + AExecutable + '"' + cGitLoginArguments + ARemote;
   end
   else
   begin

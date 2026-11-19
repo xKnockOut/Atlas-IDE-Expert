@@ -166,7 +166,7 @@ type
     IndexUnitsAsOfServer, IndexServerNotRunning, IndexBuilding, UnitsSoFar, IndexUnits, FullyIndexed, IndexUnknown,
     IndexBuilding2, IndexUnknown2, AsOf, ServerNotRunning, Indexed, Ready, UpdateCheckOff, UpToDate, NotCheckedYet,
     Installed, UpdateCheckOff2, UpToDate2, NotCheckedYet2, FileNoneActive, FileNotSavedYet, FileText, OnSave,
-    CheckFailed, CheckFailed2);
+    CheckFailed, CheckFailed2, VersionSuffix, IndexPercent, IndexBusy, VersionLine, UpdateSuffix);
 {$SCOPEDENUMS OFF}
 
 const
@@ -222,7 +222,12 @@ const
      'Datei %s: %s',
      ' → %s beim Speichern',
      ' (Prüfung fehlgeschlagen)',
-     'Prüfung fehlgeschlagen: %s'),
+     'Prüfung fehlgeschlagen: %s',
+     ', Version %s',
+     'Index %d %%',
+     'Index …',
+     'Version: Atlas %s',
+     ', Update %s'),
     ('1 request skipped after a crash',
      '%d requests skipped after a crash',
      'Server: running',
@@ -274,7 +279,12 @@ const
      'File %s: %s',
      ' → %s on save',
      ' (check failed)',
-     'check failed: %s'));
+     'check failed: %s',
+     ', version %s',
+     'Index %d %%',
+     'Index …',
+     'Version: Atlas %s',
+     ', update %s'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TLinesText): string;
@@ -406,7 +416,7 @@ begin
   end;
   if AInfo.Version <> '' then
   begin
-    Result := Result + ', Version ' + AInfo.Version;
+    Result := Result + Format(UiText(TLinesText.VersionSuffix), [AInfo.Version]);
   end;
 end;
 
@@ -625,11 +635,11 @@ begin
   end
   else if AInfo.Percent >= 0 then
   begin
-    Result := Format('Index %d %%', [AInfo.Percent]);
+    Result := Format(UiText(TLinesText.IndexPercent), [AInfo.Percent]);
   end
   else
   begin
-    Result := 'Index …';
+    Result := UiText(TLinesText.IndexBusy);
   end;
 end;
 
@@ -688,10 +698,10 @@ end;
 
 class function TAtlasStatusLines.VersionText(const AInfo: TAtlasVersionInfo): string;
 begin
-  Result := 'Version: Atlas ' + AInfo.Installed;
+  Result := Format(UiText(TLinesText.VersionLine), [AInfo.Installed]);
   if UpdateAvailable(AInfo) then
   begin
-    Result := Result + ', Update ' + AInfo.Available + UiText(TLinesText.Ready);
+    Result := Result + Format(UiText(TLinesText.UpdateSuffix), [AInfo.Available]) + UiText(TLinesText.Ready);
     if AInfo.Install <> '' then
     begin
       Result := Result + ' (' + AInfo.Install + ')';

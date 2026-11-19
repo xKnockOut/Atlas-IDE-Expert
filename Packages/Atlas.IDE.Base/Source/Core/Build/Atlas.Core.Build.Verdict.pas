@@ -167,13 +167,16 @@ end;
 { TAtlasBuildVerdicts }
 
 function IsWarningOrHintCode(const ACode: string): Boolean;
+const
+  // Compilercodes wie W1000 oder H2443: Buchstabe und vier Ziffern.
+  cCodeLength = 5;
 var
   mIndex: Integer;
 begin
-  Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['W', 'H']);
+  Result := (Length(ACode) = cCodeLength) and CharInSet(ACode[1], ['W', 'H']);
   if Result then
   begin
-    for mIndex := 2 to 5 do
+    for mIndex := 2 to cCodeLength do
     begin
       if not CharInSet(ACode[mIndex], ['0'..'9']) then
       begin

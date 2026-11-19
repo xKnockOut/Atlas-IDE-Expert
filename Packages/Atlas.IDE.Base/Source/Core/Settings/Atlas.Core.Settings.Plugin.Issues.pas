@@ -391,17 +391,9 @@ end;
 /// <summary>Kommentarvorlage bzw. Liste (#1266): einzeilig (Zeilenumbruch als "\n"), außen ohne Leerraum,
 /// höchstens MaxIssuesTemplate Zeichen.</summary>
 function NormalizedIssuesTemplate(const AText: string): string;
-var
-  mIndex: Integer;
 begin
-  Result := StringReplace(StringReplace(AText, #13#10, '\n', [rfReplaceAll]), #10, '\n', [rfReplaceAll]);
-  for mIndex := 1 to Length(Result) do
-  begin
-    if Ord(Result[mIndex]) < 32 then
-    begin
-      Result[mIndex] := ' ';
-    end;
-  end;
+  Result := ControlCharsAsSpaces(StringReplace(StringReplace(AText, #13#10, '\n', [rfReplaceAll]), #10, '\n',
+    [rfReplaceAll]));
   Result := Trim(Result);
   if Length(Result) > cMaxIssuesTemplate then
   begin

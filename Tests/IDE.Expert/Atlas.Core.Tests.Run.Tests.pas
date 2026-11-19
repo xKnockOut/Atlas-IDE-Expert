@@ -158,7 +158,7 @@ begin
   Result.TestsAfterBuild := True;
 end;
 
-/// <summary>Fixture mit vier Tests (einer mit zwei Fällen, einer mit [Ignore]) wie im Bild von Marco.</summary>
+/// <summary>Fixture mit vier Tests (einer mit zwei Fällen, einer mit [Ignore]) wie in einem echten Lauf.</summary>
 function WelcomeSource: TDUnitXUnit;
 begin
   Result := TDUnitXSource.Scan(TArray<string>.Create(

@@ -428,8 +428,8 @@ procedure TRtlTypePatternRulesTests.FormatWithoutSettingsOwnRoutineInOtherUnit;
 var
   mIndex: ISymbolIndex;
 begin
-  // Marcos Fall: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie steht in
-  // uses nach System.SysUtils und verdeckt damit die RTL.
+  // Fall aus der Praxis: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie
+  // steht in uses nach System.SysUtils und verdeckt damit die RTL.
   mIndex := ToolsIndex(True);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
     FormatCaller('System.SysUtils, Werkzeuge', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));

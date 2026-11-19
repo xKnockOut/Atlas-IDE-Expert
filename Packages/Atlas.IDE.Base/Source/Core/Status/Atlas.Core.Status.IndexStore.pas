@@ -80,42 +80,13 @@ uses
   System.IOUtils,
   System.DateUtils,
   System.JSON,
-  Atlas.Core.Files.DataFile;
+  Atlas.Core.Files.DataFile,
+  Atlas.Text.Json;
 
 function DateText(AValue: TDateTime): string;
 begin
   // Ortszeit mit Zeitzone: liest sich nach einer Umstellung der Uhr richtig zurück.
   Result := DateToISO8601(AValue, False);
-end;
-
-function ReadDate(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mField: TJSONValue;
-begin
-  Result := 0;
-  mField := AObject.GetValue(AName);
-  if not (mField is TJSONString) or (mField.Value = '') then
-  begin
-    Exit;
-  end;
-  if not TryISO8601ToDate(mField.Value, Result, False) then
-  begin
-    Result := 0;
-  end;
-end;
-
-/// <summary>Ganze Zahl des Felds AName; False ohne Zahl.</summary>
-function ReadInteger(AObject: TJSONObject; const AName: string; out AValue: Integer): Boolean;
-var
-  mField: TJSONValue;
-begin
-  AValue := 0;
-  mField := AObject.GetValue(AName);
-  Result := mField is TJSONNumber;
-  if Result then
-  begin
-    AValue := TJSONNumber(mField).AsInt;
-  end;
 end;
 
 { TAtlasIndexSnapshot }
@@ -173,16 +144,17 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if not ReadInteger(mRoot, 'format', mNumber) or (mNumber <> cFormatVersion) then
+    if TJsonRead.Int(mRoot, 'format') <> cFormatVersion then
     begin
       Exit;
     end;
-    if ReadInteger(mRoot, 'units', mNumber) and (mNumber >= 0) then
+    mNumber := TJsonRead.IntOr(mRoot, 'units', -1);
+    if mNumber >= 0 then
     begin
       Result.Units := mNumber;
     end;
-    Result.FullAt := ReadDate(mRoot, 'fullIndexAt');
-    Result.At := ReadDate(mRoot, 'at');
+    Result.FullAt := TJsonRead.IsoTime(mRoot, 'fullIndexAt', False);
+    Result.At := TJsonRead.IsoTime(mRoot, 'at', False);
   finally
     mValue.Free;
   end;

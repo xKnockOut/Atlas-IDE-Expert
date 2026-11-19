@@ -3,7 +3,7 @@
 // Namen rund um „Beginnen“ (#765), ohne VCL, Open Tools API und Netz:
 // - Kurztitel: die ersten drei Wörter des Titels, klein, Umlaute ersetzt
 //   (ä → ae, ß → ss), Akzente entfernt, mit Bindestrichen. Eine Vorsilbe aus
-//   einem Wort mit Doppelpunkt („Plugin: …“) entfällt, wie im Mockup.
+//   einem Wort mit Doppelpunkt („Plugin: …“) entfällt.
 // - Branch-Name aus issues.branchPattern mit den Platzhaltern
 //   {kennung} (753 bzw. ATL-123; das „#“ von GitHub entfällt), {nummer} und
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
@@ -53,7 +53,8 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.BranchNames;
+  Atlas.Core.VersionControl.BranchNames,
+  Atlas.Text.Lines;
 
 const
   // Paare: Zeichen und Ersatz. Großbuchstaben mit, weil LowerCase nur ASCII kennt.
@@ -283,7 +284,7 @@ begin
   end;
   Result := Fill(APattern, Trim(AIssue.Key), AIssue);
   // Zeilenumbrüche gehören nicht in einen Präfix.
-  Result := StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(Result, ' ');
 end;
 
 class function TAtlasTrackerNaming.Prefixed(const AMessage, APrefix: string): string;

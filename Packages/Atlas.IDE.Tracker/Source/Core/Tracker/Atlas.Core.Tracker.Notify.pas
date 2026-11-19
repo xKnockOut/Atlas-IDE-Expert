@@ -693,19 +693,6 @@ begin
   end;
 end;
 
-function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.Values[AName];
-  if not (mValue is TJSONString) or (TJSONString(mValue).Value = '') or
-    not TryISO8601ToDate(TJSONString(mValue).Value, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
 class function TAtlasTrackerNotify.ToJson(const AFile: TAtlasTrackerNotifyFile): string;
 var
   mRoot, mObject, mEntry: TJSONObject;
@@ -762,7 +749,7 @@ begin
     end;
     mUnseen.Key := Trim(TJsonRead.Text(TJSONObject(mEntry), 'key'));
     mUnseen.Project := Trim(TJsonRead.Text(TJSONObject(mEntry), 'project'));
-    mUnseen.Anchor := TimeOf(TJSONObject(mEntry), 'anchor');
+    mUnseen.Anchor := TJsonRead.IsoTime(TJSONObject(mEntry), 'anchor', True);
     if (mUnseen.Key <> '') and (AConnection.IndexOfUnseen(mUnseen.Key, mUnseen.Project) < 0) then
     begin
       AConnection.Unseen := AConnection.Unseen + [mUnseen];
@@ -781,7 +768,8 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AItem);
-  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TJsonRead.Text(mObject, 'id')), TimeOf(mObject, 'since'));
+  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TJsonRead.Text(mObject, 'id')),
+    TJsonRead.IsoTime(mObject, 'since', True));
   Result := (AConnection.Id <> '') and (AConnection.Since <> 0);
   if Result then
   begin

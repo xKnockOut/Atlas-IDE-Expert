@@ -19,8 +19,8 @@
 // Umbenennen ändert sichere und Matched-Stellen, also dieselben wie vor #1119.
 // Ohne references.inferred bleibt alles wie vor #1119: nur sichere Treffer,
 // auch aus inaktiven Zweigen (die Token-Liste jedes Baums enthält alle Zweige).
-// Namen in Routinenköpfen (procedure TBasis.Speichern) deklarieren und rufen
-// nicht auf; sie werden nie erschlossen.
+// Namen in Routinenköpfen (procedure TBasis.Speichern) und Parameternamen
+// darin deklarieren und rufen nicht auf; sie werden nie erschlossen (#2425).
 // Erschlossene Treffer entstehen nur für das gesuchte Symbol; teure Schritte
 // (ResolveAll, Nachfahren im Index) laufen nur für Stellen, die nicht sicher
 // sind, die Nachfahren je Typ einmal.
@@ -139,6 +139,7 @@ uses
   Atlas.Common.Index.Files,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.Implementations,
+  Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -505,9 +506,9 @@ begin
     Exit(True);
   end;
   // Erschlossen nur bei genau dem Namen, nicht bei der anderen Schreibweise eines Attributs; Köpfe anderer
-  // Routinen gleichen Namens deklarieren nur.
+  // Routinen gleichen Namens und gleichnamige Parameter in Routinenköpfen deklarieren nur (#2425).
   if not FSettings.Inferred or not SameText(CleanName(ATree.Tokens[ATokenIndex].Text), FName) or
-    InRoutineHeader(ATree.Tokens, ATokenIndex) then
+    InRoutineHeader(ATree.Tokens, ATokenIndex) or TParameterHeaders.IsHeaderParameter(ATree, ATokenIndex) then
   begin
     Exit(False);
   end;

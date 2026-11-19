@@ -574,17 +574,6 @@ begin
   end;
 end;
 
-function DateOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if not (mValue is TJSONString) or not TryISO8601ToDate(mValue.Value, Result, False) then
-  begin
-    Result := 0;
-  end;
-end;
-
 function ReadOutcome(AValue: TJSONValue): TAtlasTaskOutcome;
 var
   mOutcome: TAtlasTaskOutcome;
@@ -613,7 +602,7 @@ begin
   Result.Counts.Warnings := Integer(TJsonRead.Int64Or(AObject, 'warnings', 0));
   Result.Counts.Infos := Integer(TJsonRead.Int64Or(AObject, 'infos', 0));
   Result.DurationMs := TJsonRead.Int64Or(AObject, 'durationMs', 0);
-  Result.FinishedAt := DateOf(AObject, 'finished');
+  Result.FinishedAt := TJsonRead.IsoTime(AObject, 'finished', False);
 end;
 
 function ReadRuns(AValue: TJSONValue): TArray<TAtlasTaskLastRun>;
@@ -664,7 +653,7 @@ begin
       mProject := TProject.Create;
       FProjects.Add(mProject);
       mProject.FKey := Key(mPair.JsonString.Value);
-      mProject.FUsed := DateOf(mItem, 'used');
+      mProject.FUsed := TJsonRead.IsoTime(mItem, 'used', False);
       mProject.FHidden := TJsonRead.Strings(mItem.GetValue('hidden'));
       mProject.FLast := ReadRuns(mItem.GetValue('last'));
     end;

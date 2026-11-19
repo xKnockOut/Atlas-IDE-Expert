@@ -1,0 +1,2 @@
+### Behoben
+- Hohe DPI: Hilfsroutinen für Listenspalten, Zeilen, Knöpfe und Panels (Optionsseiten, Tracker, Versionsverwaltung, Willkommensseite, Prüfregeln, Debugger, Analyse, Abfrage, Serverfenster, Signatur ändern, Prozesse, Einstellungen übertragen) skalieren ihre Maße jetzt selbst über das Steuerelement. Bei 150 %, 200 % und auf Monitoren mit anderer DPI sind Spalten, Zeilen und Knöpfe nicht mehr zu schmal oder zu niedrig und nicht doppelt skaliert (#2060).

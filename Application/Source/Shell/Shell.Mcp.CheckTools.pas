@@ -23,6 +23,7 @@ uses
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.CheckTools,
+  Atlas.Common.Mcp.ProtectedFiles,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Rules.Contract,
@@ -37,10 +38,10 @@ uses
 type
 {$SCOPEDENUMS ON}
   TMcpCheckText = (GetDiagnosticsTool, GetDiagnosticsFile, HookCheckTool, HookCheckFile, HookCheckSeverity,
-    GetMetricsTool, GetMetricsFile, GetMetricsFormat, GetTodosTool, GetTodosFile, GetTodosUnit, GetTodosCategory,
-    GetTodosOwner, GetTodosKeyword, GetTodosIncludeDone, GetTodosFormat, CheckCodeTool, CheckCodeFile, CheckCodeText,
-    CheckCodeStartLine, CheckCodeEndLine, GetDfmInfoTool, GetDfmInfoFile, ExplainFindingTool, ExplainFindingFile,
-    ExplainFindingLine, ExplainFindingRule, IndexLoading, FormNotFound, Unreadable, NoFinding);
+    HookCheckMode, GetMetricsTool, GetMetricsFile, GetMetricsFormat, GetTodosTool, GetTodosFile, GetTodosUnit,
+    GetTodosCategory, GetTodosOwner, GetTodosKeyword, GetTodosIncludeDone, GetTodosFormat, CheckCodeTool, CheckCodeFile,
+    CheckCodeText, CheckCodeStartLine, CheckCodeEndLine, GetDfmInfoTool, GetDfmInfoFile, ExplainFindingTool,
+    ExplainFindingFile, ExplainFindingLine, ExplainFindingRule, IndexLoading, FormNotFound, Unreadable, NoFinding);
 {$SCOPEDENUMS OFF}
 
 const
@@ -51,12 +52,17 @@ const
     (De: 'Für Hooks von Claude Code (PostToolUse nach Edit/Write, siehe Plugin atlas): Befunde ab severity ' +
     '(Vorgabe warning) der gerade bearbeiteten Datei als Hook-Ausgabe mit additionalContext. Leer bei ' +
     'Dateien, die kein Pascal-Quelltext sind, außerhalb des Arbeitsbereichs liegen oder keine Befunde haben. ' +
-    'Abschalten über mcp.disabledTools.';
+    'Geschützte Dateien (assistants.protected) meldet es als Fehler, mit mode=pre (PreToolUse) lehnt es die ' +
+    'Bearbeitung ab. Abschalten über mcp.disabledTools.';
     En: 'For Claude Code hooks (PostToolUse after Edit/Write, see plugin atlas): findings from severity on ' +
     '(default warning) of the file just edited as hook output with additionalContext. Empty for files that ' +
-    'are not Pascal source, lie outside the workspace or have no findings. Turn off via mcp.disabledTools.'),
+    'are not Pascal source, lie outside the workspace or have no findings. Protected files ' +
+    '(assistants.protected) are reported as an error, with mode=pre (PreToolUse) the edit is refused. Turn off ' +
+    'via mcp.disabledTools.'),
     (De: 'Pfad der bearbeiteten Datei (tool_input.file_path)'; En: 'Path of the edited file (tool_input.file_path)'),
     (De: 'error, warning (Vorgabe), information oder hint'; En: 'error, warning (default), information or hint'),
+    (De: 'post (nach dem Schreiben, Vorgabe) oder pre (vor dem Schreiben: nur geschützte Dateien ablehnen)';
+    En: 'post (after writing, default) or pre (before writing: only refuse protected files)'),
     (De: 'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
     'Komplexität, Parameteranzahl; Grenzwerte aus atlas.json (Regeln metric-*, Option "max"). Als ' +
     'Markdown-Bericht mit den Methoden über einem Grenzwert oder als JSON-Daten.';
@@ -151,14 +157,29 @@ function ToolHookCheck(const AContext: TMcpToolContext; const AArguments: TJSONO
 var
   mFileName: string;
   mSeverity: TRuleSeverity;
+  mMoment: TMcpHookMoment;
+  mProtection: TMcpProtectedFiles;
 begin
   mSeverity := TMcpCheckTools.ParseHookSeverity(TMcpArgs.OptionalString(AArguments, 'severity'));
+  mMoment := TMcpProtectedFiles.ParseHookMoment(TMcpArgs.OptionalString(AArguments, 'mode'));
   try
     mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   except
     // Dateien außerhalb des Projekts gehen Atlas nichts an; eine Fehlermeldung je Bearbeitung wäre Rauschen.
     on EMcpToolError do
       Exit('');
+  end;
+  // Geschützte Dateien (#2608) vor den Befunden: vor dem Schreiben ablehnen, danach als Fehler melden.
+  mProtection := TMcpProtectedFiles.Create(AContext.Guard.Root,
+    AContext.Group.Main.Configuration.Settings.AssistantProtected);
+  try
+    Result := mProtection.HookOutput(mFileName, mMoment);
+  finally
+    mProtection.Free;
+  end;
+  if (Result <> '') or (mMoment = TMcpHookMoment.Before) then
+  begin
+    Exit;
   end;
   Result := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, ReadSourceText,
@@ -168,9 +189,10 @@ end;
 procedure AddHookCheck(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('hook_check', cTexts[TMcpCheckText.HookCheckTool].Text,
-    TMcpArgs.StringSchema(['file', 'severity'],
+    TMcpArgs.StringSchema(['file', 'severity', 'mode'],
       [cTexts[TMcpCheckText.HookCheckFile].Text,
-      cTexts[TMcpCheckText.HookCheckSeverity].Text], 1),
+      cTexts[TMcpCheckText.HookCheckSeverity].Text,
+      cTexts[TMcpCheckText.HookCheckMode].Text], 1),
     ContextTool(AContext, ToolHookCheck));
 end;
 

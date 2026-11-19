@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Welcome.QuickActions.Tests;
 
-// Schnellaktionen je Projekt auf der Willkommensseite (#764, Mockup #ws10):
+// Schnellaktionen je Projekt auf der Willkommensseite (#764):
 // Knopfleiste der Bereiche „Projekte“ und „Weiterarbeiten“ mit einer
 // Testquelle. Knöpfe nur in der aktiven Zeile und nur eingeschaltet, Liste
 // aus welcomePage.quickActions.items, Klicks und Tasten erreichen die Quelle

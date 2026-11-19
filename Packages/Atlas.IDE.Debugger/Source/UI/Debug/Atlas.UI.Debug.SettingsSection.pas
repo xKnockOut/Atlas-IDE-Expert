@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Debug.SettingsSection;
 
-// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456; vorher
-// Atlas.UI.Settings.Page.Debug in Base): Modulschalter, Werte im Hover, Visualisierer (#835), eigene
+// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456):
+// Modulschalter, Werte im Hover, Visualisierer (#835), eigene
 // Wertdarstellungen (#854), gezielt hineinspringen (#836), Schrittfilter (#850), nächstes Ereignis (#856),
 // Erklärungen (#840, #865), Auswerten (#784), Exceptions (#517, #783), eigener Code (#578) und Werte im
 // Editor (#508). Felder, die mehrere Werte in einer Einstellung sammeln (Arten), liest und schreibt der
@@ -410,6 +410,8 @@ begin
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchDepth));
   Number('debug.variablesWindow.searchLimit',
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchLimit));
+  Switch('debug.variablesWindow.scopedWatches',
+    TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesScopedWatches));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped',
