@@ -7,7 +7,8 @@
 // Admit: Base läuft, das Modul ist noch nicht angemeldet und die
 // Vertragsversion von Base passt (Regel 7). Die erwartete Version übergibt das
 // Modul (seine übersetzte cAtlasCoreContractVersion), sonst verglichen Base
-// und Base.
+// und Base. Ebenso seine übersetzte Produktversion (TAtlasVersion.cVersion):
+// Weicht sie von der von Base ab, meldet sich das Modul nicht an (#2372).
 // Unregister hält die Reihenfolge des Abbaus an einer Stelle:
 // 1. Scope des Moduls vergessen (danach stellt das Modul nichts mehr bereit),
 // 2. nur solange Base läuft (Regel 5) das Modul bei der Registry abmelden:
@@ -37,10 +38,11 @@ type
     /// seinem Package gehören und nicht zu Base.</summary>
     class function Info(const AId, AName, AVersion: string; AHandle: NativeUInt; AMinLevel: TAtlasSafeLevel;
       const ASwitch: string): TAtlasModuleInfo; static;
-    /// <summary>Darf sich Modul AId anmelden? True mit ARegistry, wenn Base läuft, AScope noch nil ist und die
-    /// Vertragsversion von Base AExpected ist (Regel 7, protokolliert, wenn nicht).</summary>
-    class function Admit(const AId: string; AExpected: Integer; const AScope: IAtlasModuleScope;
-      out ARegistry: IAtlasModuleRegistry): Boolean; static;
+    /// <summary>Darf sich Modul AId anmelden? True mit ARegistry, wenn Base läuft, AScope noch nil ist, die
+    /// Vertragsversion von Base AExpected ist und Base dieselbe Produktversion AVersion hat (Regel 7, protokolliert,
+    /// wenn nicht). AExpected und AVersion sind die Konstanten, gegen die das Modul übersetzt ist.</summary>
+    class function Admit(const AId: string; AExpected: Integer; const AVersion: string;
+      const AScope: IAtlasModuleScope; out ARegistry: IAtlasModuleRegistry): Boolean; static;
     /// <summary>Wie Admit mit ARegistry (nil: Base ist abgebaut), dem Ergebnis ACheck des Handschlags und ALog.
     /// </summary>
     class function AdmitTo(const ARegistry: IAtlasModuleRegistry; const AId: string; ACheck: TAtlasContractCheck;
@@ -59,12 +61,14 @@ type
 implementation
 
 uses
+  Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Registry;
 
 const
   cLogContractMismatch = 'Module %s: contract version of Base does not match, not registered';
+  cLogProductMismatch = 'Module %s: built for another Atlas version than Base, not registered';
   cLogUnregisterFailed = 'Module %s not unregistered cleanly: %s';
 
 procedure LogToGuard(AText: string);
@@ -86,10 +90,11 @@ begin
   Result.Switch := ASwitch;
 end;
 
-class function TAtlasModuleHost.Admit(const AId: string; AExpected: Integer; const AScope: IAtlasModuleScope;
-  out ARegistry: IAtlasModuleRegistry): Boolean;
+class function TAtlasModuleHost.Admit(const AId: string; AExpected: Integer; const AVersion: string;
+  const AScope: IAtlasModuleScope; out ARegistry: IAtlasModuleRegistry): Boolean;
 var
   mLog: TProc<string>;
+  mCheck: TAtlasContractCheck;
 begin
   ARegistry := AtlasModuleRegistry;
   if (ARegistry = nil) or (AScope <> nil) then
@@ -98,8 +103,10 @@ begin
   end;
   mLog := LogToGuard;
   // Regel 8: Base über FindClassHInstance einer Base-Klasse, nicht über HInstance.
-  Result := AdmitTo(ARegistry, AId, TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry),
-    AExpected), AScope, mLog);
+  mCheck := TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), AExpected);
+  // TAtlasVersion.cVersion ist hier die Version von Base, AVersion die des Moduls.
+  mCheck := TAtlasContractHandshake.WithProduct(mCheck, TAtlasVersion.cVersion, AVersion);
+  Result := AdmitTo(ARegistry, AId, mCheck, AScope, mLog);
 end;
 
 class function TAtlasModuleHost.AdmitTo(const ARegistry: IAtlasModuleRegistry; const AId: string;
@@ -110,7 +117,11 @@ begin
     Exit(False);
   end;
   Result := ACheck = ccMatch;
-  if not Result then
+  if ACheck = ccProductMismatch then
+  begin
+    ALog(Format(cLogProductMismatch, [AId], TFormatSettings.Invariant));
+  end
+  else if not Result then
   begin
     ALog(Format(cLogContractMismatch, [AId], TFormatSettings.Invariant));
   end;

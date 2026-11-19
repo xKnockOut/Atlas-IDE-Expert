@@ -176,6 +176,10 @@ begin
     mLog.Text := '';
     Assert.IsFalse(TAtlasModuleHost.AdmitTo(mRegistry, cId, ccMissing, nil, LogSink(mLog)));
     Assert.AreNotEqual('', mLog.Text);
+    // #2372: Modul aus einem anderen Bau als Base.
+    mLog.Text := '';
+    Assert.IsFalse(TAtlasModuleHost.AdmitTo(mRegistry, cId, ccProductMismatch, nil, LogSink(mLog)));
+    Assert.AreEqual('log:Module ' + cId + ': built for another Atlas version than Base, not registered', mLog.Text);
   finally
     mLog.Free;
   end;
