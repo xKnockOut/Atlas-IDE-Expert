@@ -2,8 +2,9 @@
 
 // Wünsche im Fenster „Atlas-Issue“ (#1264), die erst nach dem auslösenden Klick laufen dürfen: Neuaufbau (ältere
 // Kommentare aufklappen), verknüpftes Issue öffnen, Kästchen der Checkliste melden und „Punkt hinzufügen …“ melden
-// (#1273). Sie ersetzen den Inhalt samt dem Steuerelement des Klicks; deshalb merken, eine Nachricht an das Fenster
-// schicken und in deren Handler mit Run ausführen. Mit dem Fenster verfällt die Nachricht.
+// (#1273) und „Neu zusammenfassen“ melden (#2462). Sie ersetzen den Inhalt samt dem Steuerelement des Klicks;
+// deshalb merken, eine Nachricht an das Fenster schicken und in deren Handler mit Run ausführen. Mit dem Fenster
+// verfällt die Nachricht.
 
 interface
 
@@ -25,6 +26,7 @@ type
     FHasLink: Boolean;
     FTask: Integer;
     FAddTask: Boolean;
+    FSummarize: Boolean;
     /// <summary>Nachricht schicken; ohne Fenster bleibt der Wunsch bis zur nächsten.</summary>
     procedure Post;
   public
@@ -37,6 +39,8 @@ type
     procedure ToggleTask(AIndex: Integer);
     /// <summary>„Punkt hinzufügen …“ melden (Events.AddTask).</summary>
     procedure AddTask;
+    /// <summary>„Neu zusammenfassen“ melden (Events.Summarize, #2462).</summary>
+    procedure Summarize;
     /// <summary>Gemerkte Wünsche ausführen und vergessen: erst ARebuild, dann die Meldungen an AEvents.</summary>
     procedure Run(const AEvents: TAtlasIssueFrameEvents; const ARebuild: TProc);
   end;
@@ -89,6 +93,12 @@ begin
   Post;
 end;
 
+procedure TAtlasIssueDeferred.Summarize;
+begin
+  FSummarize := True;
+  Post;
+end;
+
 procedure TAtlasIssueDeferred.Run(const AEvents: TAtlasIssueFrameEvents; const ARebuild: TProc);
 var
   mTask: Integer;
@@ -117,6 +127,11 @@ begin
     AEvents.AddTask();
   end;
   FAddTask := False;
+  if FSummarize and Assigned(AEvents.Summarize) then
+  begin
+    AEvents.Summarize();
+  end;
+  FSummarize := False;
 end;
 
 end.

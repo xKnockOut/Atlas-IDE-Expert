@@ -20,6 +20,9 @@ type
     /// zwei Pixel und die letzte Zeile wird unten abgeschnitten).</summary>
     [Test]
     procedure BodyAreaHoldsMeasuredText;
+    /// <summary>HideShown blendet einen stehenden Tooltip aus und übergeht nil und verdeckte.</summary>
+    [Test]
+    procedure HideShownHidesOnlyShownTip;
   end;
 
 implementation
@@ -31,6 +34,26 @@ uses
   Atlas.UI.Popup.TitledTip;
 
 { TAtlasTitledTipTests }
+
+procedure TAtlasTitledTipTests.HideShownHidesOnlyShownTip;
+var
+  mTip: TAtlasTitledTip;
+begin
+  TAtlasTitledTip.HideShown(nil);
+  mTip := TAtlasTitledTip.Create(nil);
+  try
+    mTip.Colors := TAtlasColors.Light;
+    mTip.SetScaling(96, 1, 'Segoe UI', 9);
+    TAtlasTitledTip.HideShown(mTip);
+    Assert.IsFalse(mTip.IsShown);
+    mTip.ShowNote('Notiz', 'Text', Point(10, 10));
+    Assert.IsTrue(mTip.IsShown, 'ShowNote zeigt den Tooltip');
+    TAtlasTitledTip.HideShown(mTip);
+    Assert.IsFalse(mTip.IsShown);
+  finally
+    mTip.Free;
+  end;
+end;
 
 procedure TAtlasTitledTipTests.MeasuresWrappedText;
 var

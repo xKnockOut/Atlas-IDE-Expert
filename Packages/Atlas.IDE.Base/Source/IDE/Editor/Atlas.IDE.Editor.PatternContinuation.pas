@@ -169,12 +169,8 @@ begin
 end;
 
 class function TAtlasIdePatternContinuation.AtSuggestion: Boolean;
-var
-  mView: IOTAEditView;
 begin
-  mView := TAtlasEditorBuffer.ActiveView;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
-    (mView.CursorPos.Line = FLine) and (mView.CursorPos.Col = FColumn);
+  Result := TAtlasEditorBuffer.CursorAt(FFileName, FLine, FColumn);
 end;
 
 class function TAtlasIdePatternContinuation.CanSuggest(const AView: IOTAEditView): Boolean;

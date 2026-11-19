@@ -2,7 +2,7 @@
 
 // Feste Steuerelemente des Fensters „Atlas-Issue“ (#1264), die über jedem Issue gleich bleiben:
 //   Werkzeugleiste [◀] [▶] [Beginnen] [Beenden …] [Prüfen …] [Im Browser öffnen] [Kennung kopieren] [Anhängen …]
-//   [Aktualisieren] mit Kontextmenü (#1276) und Alt+Links/Alt+Rechts;
+//   [Zusammenfassen] [Aktualisieren] mit Kontextmenü (#1276, #2462) und Alt+Links/Alt+Rechts;
 //   Ladeleiste und Statuszeile (Stand, Fehler mit Knopf zum Beheben, „Wird gespeichert …“);
 //   Kommentarfeld unten (#1266, #1278);
 //   Reiter „Details“ (Bildlauf des Inhalts) und „Entwicklung“ (#1269).
@@ -20,6 +20,7 @@ uses
   Vcl.ComCtrls,
   Vcl.ActnList,
   Vcl.Forms,
+  Vcl.Menus,
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
@@ -39,6 +40,9 @@ type
     /// <summary>Knopf mit Text und Tooltip aus den Texten des Fensters.</summary>
     function AddHintedTool(ACaption, AHint: TAtlasIssueTextId; ATool: TAtlasIssueTool): TButton;
     procedure AddMenu;
+    function AddMenuItem(AText: TAtlasIssueTextId; ATool: TAtlasIssueTool): TMenuItem;
+    /// <summary>„Zusammenfassen“ (#2462) in Leiste und Kontextmenü.</summary>
+    procedure UpdateSummarize(AHasDetails: Boolean; AFlags: TAtlasIssueFlags);
     procedure AddToolbar;
     procedure AddStatus;
     function AddCommentLabel(AAlign: TAlign; const ACaption: string): TLabel;
@@ -67,6 +71,9 @@ type
     /// <summary>Ergebnis des Sendens: AError '' = gesendet (Feld und Entwurf leer), sonst der Grund unter dem Feld.
     /// </summary>
     procedure CommentDone(const AError: string);
+    /// <summary>AText als Entwurf ins Kommentarfeld (#2462: Zusammenfassung übernehmen); gesendet wird erst mit
+    /// „Senden“.</summary>
+    procedure SetCommentDraft(const AText: string);
     /// <summary>Text im Kommentarfeld ohne Leerraum außen, Zeilenenden als #10.</summary>
     function CommentText: string;
     /// <summary>Reiter „Entwicklung“ zeigen oder verbergen; ohne Fenster bleibt es beim nächsten Aufruf.</summary>
@@ -93,7 +100,6 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  Vcl.Menus,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.CommentEditor,
   Atlas.UI.Tracker.DevelopmentView,
@@ -158,16 +164,24 @@ end;
 procedure TAtlasIssueChrome.AddMenu;
 begin
   FParts.Menu := TPopupMenu.Create(FFrame);
-  FParts.AttachItem := TMenuItem.Create(FParts.Menu);
-  FParts.AttachItem.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachMenu);
-  FParts.AttachItem.Tag := cAtlasIssueToolTag + Ord(TAtlasIssueTool.Attach);
-  FParts.AttachItem.OnClick := FOnClick;
-  FParts.AttachItem.Visible := False;
-  FParts.Menu.Items.Add(FParts.AttachItem);
+  FParts.AttachItem := AddMenuItem(TAtlasIssueTextId.IssuePreviewAttachMenu, TAtlasIssueTool.Attach);
+  // Zusammenfassen (#2462) im Kontextmenü auch dann, wenn der Knopf wegen weniger Kommentare fehlt.
+  FParts.SummarizeItem := AddMenuItem(TAtlasIssueTextId.IssueSummaryMenu, TAtlasIssueTool.Summarize);
   FFrame.PopupMenu := FParts.Menu;
 end;
 
-/// <summary>Werkzeugleiste: Zurück, Vor, Beginnen, Beenden, Prüfen, Browser, Kennung, Anhängen,
+/// <summary>Verborgener Eintrag im Kontextmenü; Klicks wie die Knöpfe.</summary>
+function TAtlasIssueChrome.AddMenuItem(AText: TAtlasIssueTextId; ATool: TAtlasIssueTool): TMenuItem;
+begin
+  Result := TMenuItem.Create(FParts.Menu);
+  Result.Caption := TAtlasIssueStrings.Text(AText);
+  Result.Tag := cAtlasIssueToolTag + Ord(ATool);
+  Result.OnClick := FOnClick;
+  Result.Visible := False;
+  FParts.Menu.Items.Add(Result);
+end;
+
+/// <summary>Werkzeugleiste: Zurück, Vor, Beginnen, Beenden, Prüfen, Browser, Kennung, Anhängen, Zusammenfassen,
 /// Aktualisieren.</summary>
 procedure TAtlasIssueChrome.AddToolbar;
 begin
@@ -198,9 +212,21 @@ begin
   FParts.Attach := AddHintedTool(TAtlasIssueTextId.IssuePreviewAttach, TAtlasIssueTextId.IssuePreviewAttachHint,
     TAtlasIssueTool.Attach);
   FParts.Attach.Visible := False;
+  FParts.Summarize := AddHintedTool(TAtlasIssueTextId.IssueSummaryButton, TAtlasIssueTextId.IssueSummaryHint,
+    TAtlasIssueTool.Summarize);
+  FParts.Summarize.Visible := False;
   AddMenu;
   FParts.Refresh := AddTool(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRefresh),
     TAtlasIssueTool.Refresh);
+end;
+
+procedure TAtlasIssueChrome.UpdateSummarize(AHasDetails: Boolean; AFlags: TAtlasIssueFlags);
+var
+  mCan: Boolean;
+begin
+  mCan := AHasDetails and (TAtlasIssueFlag.CanSummarize in AFlags);
+  FParts.Summarize.Visible := mCan and (TAtlasIssueFlag.SummaryButton in AFlags);
+  FParts.SummarizeItem.Visible := mCan;
 end;
 
 /// <summary>Leiste beim Laden und Zeile für Stand, Fehler und Hinweise mit Knopf zum Beheben.</summary>
@@ -362,6 +388,7 @@ begin
   FParts.Attach.Enabled := AHasDetails;
   FParts.AttachItem.Visible := mAttach;
   FParts.AttachItem.Enabled := AHasDetails;
+  UpdateSummarize(AHasDetails, AFlags);
   FParts.Refresh.Enabled := AHasDetails or mLoading;
   FParts.Refresh.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRefresh);
   if mLoading then
@@ -445,6 +472,19 @@ begin
   if AValue then
   begin
     FParts.CommentNote.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCommentSending);
+  end;
+end;
+
+procedure TAtlasIssueChrome.SetCommentDraft(const AText: string);
+begin
+  if not FParts.CommentPanel.Visible or FParts.CommentEdit.ReadOnly then
+  begin
+    Exit;
+  end;
+  FParts.CommentEdit.Text := AText;
+  if FParts.CommentEdit.Showing and FParts.CommentEdit.CanFocus then
+  begin
+    FParts.CommentEdit.SetFocus;
   end;
 end;
 

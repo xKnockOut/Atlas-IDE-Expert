@@ -82,6 +82,9 @@ type
     function IncludeInIDEInsight: Boolean;
   end;
 
+/// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
+function HookText(const AHook: TFunc<string>): string;
+
 implementation
 
 uses
@@ -97,7 +100,6 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
-/// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
 function HookText(const AHook: TFunc<string>): string;
 begin
   Result := '';

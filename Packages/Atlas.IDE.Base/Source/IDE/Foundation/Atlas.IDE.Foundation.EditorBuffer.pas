@@ -30,6 +30,9 @@ type
     /// <summary>Editoransicht der aktuellen Datei, auch wenn der Fokus gerade in Palette, Menü oder einem
     /// angedockten Fenster liegt; nil ohne offene Quelltextdatei.</summary>
     class function ActiveView: IOTAEditView; static;
+    /// <summary>Steht die Schreibmarke von ActiveView in AFileName auf Zeile ALine und Spalte AColumn (1-basiert, wie
+    /// CursorPos)?</summary>
+    class function CursorAt(const AFileName: string; ALine, AColumn: Integer): Boolean; static;
     /// <summary>Oberste Editoransicht der IDE (IOTAEditorServices.TopView); nil ohne. Liegt der Fokus außerhalb des
     /// Editors, kann sie fehlen, siehe ActiveView.</summary>
     class function TopView: IOTAEditView; static;
@@ -196,6 +199,15 @@ begin
   begin
     Result := TopView;
   end;
+end;
+
+class function TAtlasEditorBuffer.CursorAt(const AFileName: string; ALine, AColumn: Integer): Boolean;
+var
+  mView: IOTAEditView;
+begin
+  mView := ActiveView;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, AFileName) and
+    (mView.CursorPos.Line = ALine) and (mView.CursorPos.Col = AColumn);
 end;
 
 class function TAtlasEditorBuffer.TopView: IOTAEditView;

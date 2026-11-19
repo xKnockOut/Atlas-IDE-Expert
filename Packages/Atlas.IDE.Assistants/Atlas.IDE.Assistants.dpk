@@ -65,6 +65,7 @@ contains
   Atlas.IDE.Assistants.FolderSignal in 'Source\IDE\Assistants\Atlas.IDE.Assistants.FolderSignal.pas',
   Atlas.IDE.Assistants.AiGhost in 'Source\IDE\Assistants\Atlas.IDE.Assistants.AiGhost.pas',
   Atlas.IDE.Assistants.AiProbe in 'Source\IDE\Assistants\Atlas.IDE.Assistants.AiProbe.pas',
+  Atlas.IDE.Assistants.AiText in 'Source\IDE\Assistants\Atlas.IDE.Assistants.AiText.pas',
   Atlas.IDE.Assistants.EditInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.EditInbox.pas',
   Atlas.IDE.Assistants.Instructions in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Instructions.pas',
   Atlas.IDE.Assistants.DebugInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.DebugInbox.pas',

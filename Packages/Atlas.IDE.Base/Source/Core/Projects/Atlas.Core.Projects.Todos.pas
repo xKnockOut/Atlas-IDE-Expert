@@ -76,27 +76,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.JSON,
+  Atlas.Text.Arrays,
   Atlas.Text.Json;
-
-/// <summary>AValue an AList anhängen, wenn es nicht leer und noch nicht drin ist (Groß-/Kleinschreibung
-/// egal).</summary>
-procedure AddDistinct(var AList: TArray<string>; const AValue: string);
-var
-  mItem: string;
-begin
-  if AValue = '' then
-  begin
-    Exit;
-  end;
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit;
-    end;
-  end;
-  AList := AList + [AValue];
-end;
 
 procedure SortTexts(var AList: TArray<string>);
 begin
@@ -149,12 +130,12 @@ end;
 /// <summary>Kategorie, Person und Marke eines Todos in AChoices aufnehmen.</summary>
 procedure AddTodoChoices(var AChoices: TAtlasTodoChoices; ATodo: TJSONObject);
 begin
-  AddDistinct(AChoices.Categories, TJsonRead.Text(ATodo, 'category'));
-  AddDistinct(AChoices.Owners, TJsonRead.Text(ATodo, 'owner'));
+  TTextArrays.AddText(AChoices.Categories, TJsonRead.Text(ATodo, 'category'));
+  TTextArrays.AddText(AChoices.Owners, TJsonRead.Text(ATodo, 'owner'));
   // Erledigt ist kein Filter nach Marke, sondern „Erledigte zeigen“.
   if not SameText(TJsonRead.Text(ATodo, 'keyword'), 'DONE') then
   begin
-    AddDistinct(AChoices.Keywords, UpperCase(TJsonRead.Text(ATodo, 'keyword')));
+    TTextArrays.AddText(AChoices.Keywords, UpperCase(TJsonRead.Text(ATodo, 'keyword')));
   end;
 end;
 
@@ -328,7 +309,7 @@ begin
     end;
     for mFileItem in ObjectsOf(mFiles) do
     begin
-      AddDistinct(AChoices.Units, TJsonRead.Text(mFileItem, 'unit'));
+      TTextArrays.AddText(AChoices.Units, TJsonRead.Text(mFileItem, 'unit'));
       for mTodo in ObjectsOf(TJsonRead.Items(TJsonRead.AsObject(mFileItem), 'todos')) do
       begin
         AddTodoChoices(AChoices, mTodo);

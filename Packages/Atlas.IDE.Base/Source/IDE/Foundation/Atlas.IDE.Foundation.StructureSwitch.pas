@@ -63,7 +63,8 @@ uses
   Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.CodeInsightKeys,
   Atlas.UI.Foundation.Strings,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Host;
 
 const
   cStructureKey = '\Editor\Highlight\Structural Highlighting';
@@ -186,15 +187,10 @@ begin
   end;
 end;
 
+/// <summary>Registrierungsschlüssel der IDE; '' ohne IDE.</summary>
 function BaseKey: string;
-var
-  mServices: IOTAServices;
 begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result := mServices.GetBaseRegistryKey;
-  end;
+  Result := TAtlasIdeHost.BaseRegistryKey;
 end;
 
 /// <summary>Unterschlüssel von Code Insight, die AValueName schon tragen (#1246).</summary>

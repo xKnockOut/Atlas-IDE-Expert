@@ -76,32 +76,15 @@ type
 
 implementation
 
-{ TAtlasLineAnchor }
-
-function SameTexts(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(A) do
-  begin
-    if A[mIndex] <> B[mIndex] then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
+uses
+  Atlas.Text.Arrays;
 
 { TAtlasLineAnchor }
 
 function TAtlasLineAnchor.SameAs(const AOther: TAtlasLineAnchor): Boolean;
 begin
-  Result := (Line = AOther.Line) and (Text = AOther.Text) and SameTexts(Before, AOther.Before) and
-    SameTexts(After, AOther.After);
+  Result := (Line = AOther.Line) and (Text = AOther.Text) and TTextArrays.Same<string>(Before, AOther.Before) and
+    TTextArrays.Same<string>(After, AOther.After);
 end;
 
 { TAtlasLineAnchors }

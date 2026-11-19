@@ -37,6 +37,9 @@ type
     class function PanelShown(const ASettings: TAtlasPluginSettings; ARelocated: Boolean): Boolean; static;
     /// <summary>Zusatzfelder in der Statuszeile: keine, wenn sie in der Atlas-Statusleiste stehen.</summary>
     class function ExtraPanels(AExtras: Integer; ARelocated: Boolean): Integer; static;
+    /// <summary>Braucht die Statuszeile Panels von Atlas: das Atlas-Feld (APanelShown) oder Zusatzfelder
+    /// (AExtraPanels, nach ExtraPanels)? Sonst hängt das Feld die Leisten aus.</summary>
+    class function Hooked(APanelShown: Boolean; AExtraPanels: Integer): Boolean; static;
     /// <summary>Linksklick in Zone AZone (0 = Atlas-Feld, 1.. = Zusatzfeld, -1 = keins) bei AExtras Zusatzfeldern.
     /// Im Atlas-Feld gilt die Plakette, wenn sie Einträge hat (ABadgeCount), ein Ziel kennt (ABadgeClick) und AX
     /// rechts von ABadgeLeft liegt.</summary>
@@ -94,6 +97,11 @@ begin
   begin
     Result := 0;
   end;
+end;
+
+class function TAtlasStatusFieldPlan.Hooked(APanelShown: Boolean; AExtraPanels: Integer): Boolean;
+begin
+  Result := APanelShown or (AExtraPanels > 0);
 end;
 
 class function TAtlasStatusFieldPlan.Click(AZone, AExtras, ABadgeCount: Integer; ABadgeClick: Boolean;

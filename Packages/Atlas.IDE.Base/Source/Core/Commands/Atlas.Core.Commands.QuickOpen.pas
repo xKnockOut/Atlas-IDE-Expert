@@ -23,7 +23,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Palette,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
 {$SCOPEDENUMS ON}
@@ -108,11 +109,10 @@ type
     FKey: string;
     FGeneration: Integer;
     FStopping: Boolean;
-    FThreads: TList<TThread>;
+    FThreads: TAtlasWorkerSlot;
     FLister: TAtlasQuickOpenLister;
     FBuilding: Integer;
     procedure Store(AGeneration: Integer; const AFiles: TAtlasQuickOpenFiles);
-    procedure Sweep;
   public
     constructor Create(const ALister: TAtlasQuickOpenLister);
     /// <summary>Wartet auf laufende Aufbauten (sie brechen zwischen zwei Ordnern ab).</summary>
@@ -534,13 +534,11 @@ constructor TAtlasQuickOpenList.Create(const ALister: TAtlasQuickOpenLister);
 begin
   inherited Create;
   FLock := TObject.Create;
-  FThreads := TList<TThread>.Create;
+  FThreads := TAtlasWorkerSlot.Create(HInstance);
   FLister := ALister;
 end;
 
 destructor TAtlasQuickOpenList.Destroy;
-var
-  mThread: TThread;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -548,11 +546,7 @@ begin
   finally
     System.TMonitor.Exit(FLock);
   end;
-  for mThread in FThreads do
-  begin
-    mThread.WaitFor;
-    mThread.Free;
-  end;
+  FThreads.Stop(TAtlasWorkerSlot.cWaitForever);
   FThreads.Free;
   FLock.Free;
   inherited;
@@ -575,20 +569,6 @@ begin
   end;
 end;
 
-procedure TAtlasQuickOpenList.Sweep;
-var
-  mIndex: Integer;
-begin
-  for mIndex := FThreads.Count - 1 downto 0 do
-  begin
-    if FThreads[mIndex].Finished then
-    begin
-      FThreads[mIndex].Free;
-      FThreads.Delete(mIndex);
-    end;
-  end;
-end;
-
 procedure TAtlasQuickOpenList.Refresh(const ASources: TAtlasQuickOpenSources);
 var
   mKey: string;
@@ -597,7 +577,7 @@ var
   mLister: TAtlasQuickOpenLister;
   mThread: TThread;
 begin
-  Sweep;
+  FThreads.Prune;
   mKey := ASources.Key;
   System.TMonitor.Enter(FLock);
   try
@@ -638,9 +618,7 @@ begin
       end;
       Store(mGeneration, mFiles);
     end);
-  mThread.FreeOnTerminate := False;
-  FThreads.Add(mThread);
-  mThread.Start;
+  FThreads.Start(mThread);
 end;
 
 function TAtlasQuickOpenList.Files: TAtlasQuickOpenFiles;
