@@ -169,8 +169,11 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Explain compiler messages:** `explain_compiler_message` gives the cause of messages like E2010 at their place, the known Delphi pitfall behind it (e.g. two identical method reference types under Delphi 12, `TMonitor` from `Vcl.Forms`, `Exit([...])`), the Atlas rule that catches it while typing and a safe fix as a diff; `build_project` and `get_last_build` point to it
 - **Last test run without a new run:** `get_last_tests` returns what the IDE saw in the last test run: red tests with file:line, expected and actual, log excerpt and the marks newly red, green again, flaky, leak and stale (`tests.lastRun`)
 - **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
+- **Several queries at once:** `batch` runs up to 10 read-only MCP tools in one call, on one shared index state with a single file comparison; an error affects only its section
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
+- **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)
+- **Protected files:** `assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md`), with reason and the right way; the writing MCP tools refuse such changes without writing anything, the hook refuses or reports them
 
 ### Planned
 
