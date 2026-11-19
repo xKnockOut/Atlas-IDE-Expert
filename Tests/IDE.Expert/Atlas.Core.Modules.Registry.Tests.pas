@@ -850,9 +850,11 @@ var
   mHooks: TLog;
   mRegistry: IAtlasModuleRegistry;
 begin
-  mLog := TLog.Create;
-  mHooks := TLog.Create;
+  mLog := nil;
+  mHooks := nil;
   try
+    mLog := TLog.Create;
+    mHooks := TLog.Create;
     TAtlasModuleRegistry.OnModuleOpened := HandleRecorder(mHooks, 'open');
     TAtlasModuleRegistry.OnModuleClosing := HandleRecorder(mHooks, 'close');
     mRegistry := TAtlasModuleRegistry.Create;

@@ -1,0 +1,2 @@
+### Neu
+- Prüfregel `multiple-create-in-try` (#2630): meldet mehrere lokale Objekte an einem gemeinsamen `try … finally`, wenn ein früheres Objekt leckt, sobald ein späteres `Create` vor dem `try` scheitert, oder wenn die `Create` im `try` stehen und das `finally` eine nicht vorbelegte Variable freigibt. Sichere Korrektur: Variablen vor dem `try` auf `nil` setzen und die `Create` in das `try` verschieben. Die Erkennung von Objekten ohne Besitzer teilt sie mit `local-object-not-freed`.

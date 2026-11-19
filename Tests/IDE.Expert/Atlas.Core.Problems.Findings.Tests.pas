@@ -510,9 +510,11 @@ var
   mStore: TAtlasProblemStore;
   mSelected: TAtlasFinding;
 begin
-  mStore := TAtlasProblemStore.Create;
-  mView := TAtlasFindingsView.Create;
+  mStore := nil;
+  mView := nil;
   try
+    mStore := TAtlasProblemStore.Create;
+    mView := TAtlasFindingsView.Create;
     mStore.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10 + 'c' + #10, True,
       [Problem(1, 'r1', 'eins', TAtlasProblemSeverity.Warning), Problem(2, 'r2', 'zwei', TAtlasProblemSeverity.Warning)],
       '', True);
@@ -1165,9 +1167,11 @@ var
   mCounter: TReadCounter;
   mItems: TArray<TAtlasFinding>;
 begin
-  mStore := TAtlasProblemStore.Create;
-  mCounter := TReadCounter.Create;
+  mStore := nil;
+  mCounter := nil;
   try
+    mStore := TAtlasProblemStore.Create;
+    mCounter := TReadCounter.Create;
     mStore.Update('C:\P\Zu.pas', '', False, ManyProblems(30), '', True);
     mItems := TAtlasFindings.FromStore(mStore, nil, mCounter.Reader());
     Assert.AreEqual(30, Integer(Length(mItems)));
@@ -1223,10 +1227,13 @@ var
   mItems: TArray<TAtlasFinding>;
   mChanged: Boolean;
 begin
-  mStore := TAtlasProblemStore.Create;
-  mCache := TAtlasFindingsCache.Create;
-  mCounter := TReadCounter.Create;
+  mStore := nil;
+  mCache := nil;
+  mCounter := nil;
   try
+    mStore := TAtlasProblemStore.Create;
+    mCache := TAtlasFindingsCache.Create;
+    mCounter := TReadCounter.Create;
     mStore.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
     mStore.Update('C:\P\B.pas', '', False, ManyProblems(2), '', True);
     mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
@@ -1273,10 +1280,13 @@ var
   mItems: TArray<TAtlasFinding>;
   mChanged: Boolean;
 begin
-  mCache := TAtlasFindingsCache.Create;
-  mFirst := TAtlasProblemStore.Create;
-  mSecond := TAtlasProblemStore.Create;
+  mCache := nil;
+  mFirst := nil;
+  mSecond := nil;
   try
+    mCache := TAtlasFindingsCache.Create;
+    mFirst := TAtlasProblemStore.Create;
+    mSecond := TAtlasProblemStore.Create;
     mFirst.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
     mItems := mCache.Build(mFirst, nil, nil, mChanged);
     Assert.AreEqual(3, Integer(Length(mItems)));
@@ -1307,10 +1317,13 @@ var
   mFirstMs, mSameMs, mOneMs: Int64;
 begin
   // Großes Projekt mit Prüfung über alle Units: 56000 Befunde, der Server liefert Datei für Datei.
-  mStore := TAtlasProblemStore.Create;
-  mCache := TAtlasFindingsCache.Create;
-  mCounter := TReadCounter.Create;
+  mStore := nil;
+  mCache := nil;
+  mCounter := nil;
   try
+    mStore := TAtlasProblemStore.Create;
+    mCache := TAtlasFindingsCache.Create;
+    mCounter := TReadCounter.Create;
     for mIndex := 0 to cFiles - 1 do
     begin
       mStore.Update(Format('C:\P\Unit%d.pas', [mIndex]), '', False, ManyProblems(cPerFile), '', True);

@@ -171,9 +171,11 @@ var
   mText: string;
   mName: string;
 begin
-  mBaselines := TShellBaselines.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mBaselines := nil;
+  mCommands := nil;
   try
+    mBaselines := TShellBaselines.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mBaselines.RegisterCommands(mCommands);
     mBaselines.RegisterClassifyCommand(mCommands);
     mCapability := mCommands.Capability;

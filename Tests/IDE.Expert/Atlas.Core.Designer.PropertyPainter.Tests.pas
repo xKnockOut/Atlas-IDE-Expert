@@ -167,9 +167,11 @@ var
   mMemory, mLoaded: TAtlasPaintMemory;
   mPaths: TArray<string>;
 begin
-  mMemory := TAtlasPaintMemory.Create;
-  mLoaded := TAtlasPaintMemory.Create;
+  mMemory := nil;
+  mLoaded := nil;
   try
+    mMemory := TAtlasPaintMemory.Create;
+    mLoaded := TAtlasPaintMemory.Create;
     mMemory.Put('TButton', ['Font.Style', 'Width']);
     Assert.IsTrue(mLoaded.LoadJson(mMemory.ToJson));
     Assert.IsTrue(mLoaded.TryGet('tbutton', mPaths));

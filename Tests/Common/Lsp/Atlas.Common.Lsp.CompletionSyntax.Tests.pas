@@ -302,9 +302,11 @@ begin
   mStore := TDocumentStore.Create;
   mStore.Open(mUri, 'delphi', 1, mText);
   mIndex := TSymbolIndex.Create;
-  mCompletion := TLspCompletion.Create(mStore, mIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, mIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Attach(mDispatcher);
     FSyntaxNotice := True;
     mCompletion.Hooks.SettingsFor :=

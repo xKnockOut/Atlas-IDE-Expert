@@ -125,9 +125,11 @@ var
   mRecorder: TRecorder;
   mIndex: Integer;
 begin
-  mRecorder := TRecorder.Create(1);
-  mDebouncer := TDebouncer.Create(50);
+  mRecorder := nil;
+  mDebouncer := nil;
   try
+    mRecorder := TRecorder.Create(1);
+    mDebouncer := TDebouncer.Create(50);
     for mIndex := 1 to 5 do
     begin
       mDebouncer.Schedule('a', mRecorder.Action(IntToStr(mIndex)));
@@ -146,9 +148,11 @@ var
   mDebouncer: TDebouncer;
   mRecorder: TRecorder;
 begin
-  mRecorder := TRecorder.Create(2);
-  mDebouncer := TDebouncer.Create(20);
+  mRecorder := nil;
+  mDebouncer := nil;
   try
+    mRecorder := TRecorder.Create(2);
+    mDebouncer := TDebouncer.Create(20);
     mDebouncer.Schedule('a', mRecorder.Action('a'));
     mDebouncer.Schedule('b', mRecorder.Action('b'));
     Assert.IsTrue(mRecorder.WaitFor(2000));
@@ -166,9 +170,11 @@ var
   mCancelled: Boolean;
 begin
   mCancelled := False;
-  mDone := TEvent.Create(nil, True, False, '');
-  mDebouncer := TDebouncer.Create(50);
+  mDone := nil;
+  mDebouncer := nil;
   try
+    mDone := TEvent.Create(nil, True, False, '');
+    mDebouncer := TDebouncer.Create(50);
     mDebouncer.Schedule('a',
       procedure
       begin
@@ -195,9 +201,11 @@ var
   mError: string;
 begin
   mError := '';
-  mDone := TEvent.Create(nil, True, False, '');
-  mDebouncer := TDebouncer.Create(10);
+  mDone := nil;
+  mDebouncer := nil;
   try
+    mDone := TEvent.Create(nil, True, False, '');
+    mDebouncer := TDebouncer.Create(10);
     mDebouncer.OnError :=
       procedure(AE: Exception)
       begin

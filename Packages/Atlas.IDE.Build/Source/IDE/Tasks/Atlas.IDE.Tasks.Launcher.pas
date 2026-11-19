@@ -133,31 +133,38 @@ var
   mOutcome: TAtlasTaskProcessResult;
   mStarted: UInt64;
 begin
-  FRun := Default(TAtlasTaskRun);
-  FRun.Name := FTask.Name;
-  FRun.CommandLine := FTask.CommandLine;
-  FRun.Cwd := FTask.Cwd;
-  mStarted := TThread.GetTickCount64;
-  FLastFlush := mStarted;
-  FExists := TAtlasTaskPaths.OnDisk();
-  FLineCount := 0;
   try
-    mOutcome := RunProcess;
-    Deliver;
-    FRun.Outcome := mOutcome.Outcome;
-    FRun.ExitCode := mOutcome.ExitCode;
-    FRun.Error := mOutcome.Error;
+    FRun := Default(TAtlasTaskRun);
+    FRun.Name := FTask.Name;
+    FRun.CommandLine := FTask.CommandLine;
+    FRun.Cwd := FTask.Cwd;
+    mStarted := TThread.GetTickCount64;
+    FLastFlush := mStarted;
+    FExists := TAtlasTaskPaths.OnDisk();
+    FLineCount := 0;
+    try
+      mOutcome := RunProcess;
+      Deliver;
+      FRun.Outcome := mOutcome.Outcome;
+      FRun.ExitCode := mOutcome.ExitCode;
+      FRun.Error := mOutcome.Error;
+    except
+      on E: Exception do
+      begin
+        FRun.Outcome := TAtlasTaskOutcome.StartFailed;
+        FRun.ExitCode := -1;
+        FRun.Error := E.Message;
+      end;
+    end;
+    FRun.DurationMs := Int64(TThread.GetTickCount64 - mStarted);
+    FRun.FinishedAt := Now;
+    Finish(FRun);
   except
     on E: Exception do
     begin
-      FRun.Outcome := TAtlasTaskOutcome.StartFailed;
-      FRun.ExitCode := -1;
-      FRun.Error := E.Message;
+      TAtlasGuard.Report(TAtlasFeature.Tasks, E);
     end;
   end;
-  FRun.DurationMs := Int64(TThread.GetTickCount64 - mStarted);
-  FRun.FinishedAt := Now;
-  Finish(FRun);
 end;
 
 procedure TAtlasIdeTaskLauncher.TWorker.Deliver;

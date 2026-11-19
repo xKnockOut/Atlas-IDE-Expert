@@ -482,14 +482,18 @@ begin
   mNewUnit := TPath.Combine(FFolder, 'Neu.pas');
   mOldUnit := TPath.Combine(FFolder, 'Alt.pas');
   mDpr := TPath.Combine(FFolder, 'P.dpr');
-  mAdded := TList<string>.Create;
-  mRemoved := TList<string>.Create;
-  mRecycled := TList<string>.Create;
-  mDisk := TAtlasUndoDiskTarget.Create;
-  mDiskRef := mDisk;
-  WireDiskLists(mDisk, mAdded, mRemoved, mRecycled);
-  mJournal := TAtlasUndoJournal.Create(mDiskRef);
+  mAdded := nil;
+  mRemoved := nil;
+  mRecycled := nil;
+  mJournal := nil;
   try
+    mAdded := TList<string>.Create;
+    mRemoved := TList<string>.Create;
+    mRecycled := TList<string>.Create;
+    mDisk := TAtlasUndoDiskTarget.Create;
+    mDiskRef := mDisk;
+    WireDiskLists(mDisk, mAdded, mRemoved, mRecycled);
+    mJournal := TAtlasUndoJournal.Create(mDiskRef);
     // Aktion: neue Unit angelegt, alte gelöscht (ANSI-Umlaut bleibt), .dpr geändert.
     TFile.WriteAllBytes(mNewUnit, TEncoding.UTF8.GetBytes('unit Neu;'));
     TFile.WriteAllText(TPath.Combine(FFolder, 'atlas.json'), '{"encoding": "windows-1252"}');
@@ -733,9 +737,11 @@ var
 begin
   mTarget := TMemoryTarget.Create;
   mTargetRef := mTarget;
-  mLines := TList<string>.Create;
-  mJournal := TAtlasUndoJournal.Create(mTargetRef);
+  mLines := nil;
+  mJournal := nil;
   try
+    mLines := TList<string>.Create;
+    mJournal := TAtlasUndoJournal.Create(mTargetRef);
     mJournal.OnLog :=
       procedure(AText: string)
       begin
