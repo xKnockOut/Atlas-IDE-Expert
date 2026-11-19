@@ -2481,6 +2481,7 @@ uses
   Shell.Linter.Parts.Tests in 'Application\Shell\Shell.Linter.Parts.Tests.pas',
   Shell.Hotspots in '..\Application\Source\Shell\Shell.Hotspots.pas',
   Shell.SymbolHistory in '..\Application\Source\Shell\Shell.SymbolHistory.pas',
+  Shell.VersionControl.TestSupport in 'Application\Shell\Shell.VersionControl.TestSupport.pas',
   Shell.Hotspots.Tests in 'Application\Shell\Shell.Hotspots.Tests.pas',
   Shell.SymbolHistory.Tests in 'Application\Shell\Shell.SymbolHistory.Tests.pas',
   Atlas.Common.Rules.Builtin.FormFields.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormFields.Tests.pas',

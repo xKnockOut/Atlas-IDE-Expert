@@ -41,55 +41,13 @@ uses
   Atlas.Common.Hotspots.Service,
   Shell.Platform,
   Shell.VersionControlChanges,
+  Shell.VersionControl.TestSupport,
   Shell.Hotspots;
-
-function Exec(const ARunner: IAtlasVcsRunner; const AExecutable: string; const AArguments: TArray<string>;
-  const AWorkingDir: string): string;
-var
-  mAnswer: TAtlasVcsRunResult;
-begin
-  mAnswer := ARunner.Run(AExecutable, AArguments, AWorkingDir, 60000);
-  if (mAnswer.Outcome <> TAtlasVcsOutcome.Ok) or (mAnswer.ExitCode <> 0) then
-  begin
-    raise Exception.CreateFmt('%s %s: Exit-Code %d', [ExtractFileName(AExecutable), string.Join(' ', AArguments),
-      mAnswer.ExitCode]);
-  end;
-  Result := Trim(TEncoding.UTF8.GetString(mAnswer.Output));
-end;
 
 function NewFolder(const AName: string): string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'AtlasHotspots-' + AName + '-' + TGUID.NewGuid.ToString.Substring(1, 8));
   TDirectory.CreateDirectory(Result);
-end;
-
-procedure RemoveFolder(const AFolder: string);
-{$IFDEF MSWINDOWS}
-var
-  mFileName: string;
-{$ENDIF}
-begin
-  if not TDirectory.Exists(AFolder) then
-  begin
-    Exit;
-  end;
-  {$IFDEF MSWINDOWS}
-  // git und svn legen schreibgeschützte Dateien an.
-  for mFileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
-  begin
-    {$WARN SYMBOL_PLATFORM OFF}
-    TFile.SetAttributes(mFileName, [TFileAttribute.faNormal]);
-    {$WARN SYMBOL_PLATFORM ON}
-  end;
-  {$ENDIF}
-  try
-    TDirectory.Delete(AFolder, True);
-  except
-    on EInOutError do
-      ;
-    on EOSError do
-      ;
-  end;
 end;
 
 /// <summary>Unit mit einer Prozedur Rechne aus AIfs if-Anweisungen; ATag ändert eine Zeile darin.</summary>

@@ -32,55 +32,13 @@ uses
   Atlas.Common.History.Service,
   Shell.Platform,
   Shell.VersionControlChanges,
+  Shell.VersionControl.TestSupport,
   Shell.SymbolHistory;
-
-function Exec(const ARunner: IAtlasVcsRunner; const AExecutable: string; const AArguments: TArray<string>;
-  const AWorkingDir: string): string;
-var
-  mAnswer: TAtlasVcsRunResult;
-begin
-  mAnswer := ARunner.Run(AExecutable, AArguments, AWorkingDir, 60000);
-  if (mAnswer.Outcome <> TAtlasVcsOutcome.Ok) or (mAnswer.ExitCode <> 0) then
-  begin
-    raise Exception.CreateFmt('%s %s: Exit-Code %d', [ExtractFileName(AExecutable), string.Join(' ', AArguments),
-      mAnswer.ExitCode]);
-  end;
-  Result := Trim(TEncoding.UTF8.GetString(mAnswer.Output));
-end;
 
 function NewFolder: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'AtlasSymbolHistory-' + TGUID.NewGuid.ToString.Substring(1, 8));
   TDirectory.CreateDirectory(Result);
-end;
-
-procedure RemoveFolder(const AFolder: string);
-{$IFDEF MSWINDOWS}
-var
-  mFileName: string;
-{$ENDIF}
-begin
-  if not TDirectory.Exists(AFolder) then
-  begin
-    Exit;
-  end;
-  {$IFDEF MSWINDOWS}
-  // git legt schreibgeschützte Dateien an.
-  for mFileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
-  begin
-    {$WARN SYMBOL_PLATFORM OFF}
-    TFile.SetAttributes(mFileName, [TFileAttribute.faNormal]);
-    {$WARN SYMBOL_PLATFORM ON}
-  end;
-  {$ENDIF}
-  try
-    TDirectory.Delete(AFolder, True);
-  except
-    on EInOutError do
-      ;
-    on EOSError do
-      ;
-  end;
 end;
 
 /// <summary>Routine AName mit einer Schleife; ATag ändert die erste Zeile des Rumpfs.</summary>
