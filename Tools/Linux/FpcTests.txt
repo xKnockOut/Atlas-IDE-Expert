@@ -462,6 +462,7 @@ Atlas.Common.Updates.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Assistants.Instructions.Tests
 Atlas.Core.AiProviders.Anthropic.Tests
+Atlas.Core.AiProviders.OpenAiCompatible.Tests
 Atlas.Core.Assistants.AiGhost.Tests
 Atlas.Core.Assistants.DebugInbox.Tests
 Atlas.Core.Assistants.DebugGate.Tests

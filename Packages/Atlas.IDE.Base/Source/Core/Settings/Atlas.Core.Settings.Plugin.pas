@@ -1493,6 +1493,11 @@ type
       write FAssistants.AssistantsContextLines;
     property AssistantsExclude: string read FAssistants.AssistantsExclude write FAssistants.AssistantsExclude;
     property AssistantsDailyLimit: Integer read FAssistants.AssistantsDailyLimit write FAssistants.AssistantsDailyLimit;
+    property AssistantsOpenAiUrl: string read FAssistants.AssistantsOpenAiUrl write FAssistants.AssistantsOpenAiUrl;
+    property AssistantsOpenAiModel: string read FAssistants.AssistantsOpenAiModel
+      write FAssistants.AssistantsOpenAiModel;
+    property AssistantsOpenAiTimeoutMs: Integer read FAssistants.AssistantsOpenAiTimeoutMs
+      write FAssistants.AssistantsOpenAiTimeoutMs;
   end;
 
 implementation
