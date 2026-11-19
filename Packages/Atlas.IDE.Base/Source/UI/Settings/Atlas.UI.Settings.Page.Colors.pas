@@ -49,7 +49,8 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   /// <summary>Farbfeld: Größe und Abstand von Feld zu Feld (Breite und Lücke).</summary>
@@ -103,9 +104,7 @@ begin
   begin
     ASwatches[mIndex] := TShape.Create(FPage);
     ASwatches[mIndex].Parent := mPanel;
-    // Skaliert wie die Felder der übrigen Zeilen.
-    ASwatches[mIndex].SetBounds(mPanel.ScaleValue(cFieldLeft + mIndex * cSwatchStep), 1,
-      mPanel.ScaleValue(cSwatchWidth), mPanel.ScaleValue(cSwatchHeight));
+    TAtlasControlScaling.Place(ASwatches[mIndex], cFieldLeft + mIndex * cSwatchStep, 1, cSwatchWidth, cSwatchHeight);
     ASwatches[mIndex].Pen.Color := clGray;
     ASwatches[mIndex].Cursor := crHandPoint;
     ASwatches[mIndex].Hint := IntToStr(mIndex + 1);
