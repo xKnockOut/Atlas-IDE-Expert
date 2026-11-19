@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.VersionControl.SettingsPart;
 
-// Bausteine der Seite „Versionsverwaltung“ im Optionsdialog (#1905, vorher Teile der Optionsseite von Base):
+// Bausteine der Seite „Versionsverwaltung“ im Optionsdialog (#1905):
 // - TAtlasVcsSettingsPart: ein Teil der Seite (Art, Programme, Projekt, Projekte, Server, Branches). Die Bausteine
 //   AddTitle, AddPanel, AddFieldRow … legen Zeilen über IAtlasSettingsSectionHost an; gebundene Felder lädt und
 //   speichert Base, eigene Zeilen liest und schreibt der Teil über IAtlasSettingsValues.

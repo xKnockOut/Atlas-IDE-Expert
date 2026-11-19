@@ -111,6 +111,9 @@
     "get_last_build": {
       "arguments": {}
     },
+    "get_last_tests": {
+      "arguments": { "only": "all", "format": "json" }
+    },
     "build_project": {
       "arguments": { "project": "RefApp", "mode": "check" },
       "process": true

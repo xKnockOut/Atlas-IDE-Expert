@@ -140,7 +140,23 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit, die erst später dazukamen, in beiden Sprachen.</summary>
+  TPromptsText = (LastTestsHint);
+
+const
+  cPromptTexts: array[TPromptsText] of TAtlasText = (
+    (De: ' Das Ergebnis des letzten Laufs in der IDE liefert get_last_tests ohne neuen Lauf: dort zuerst ' +
+      'nachsehen, dann run_tests nur für die betroffenen Tests.';
+     En: ' get_last_tests returns the result of the last run in the IDE without a new run: look there first, ' +
+      'then run_tests only for the affected tests.'));
+
+{$SCOPEDENUMS OFF}
 
 function Utf8Length(const AText: string): Integer;
 begin
@@ -598,6 +614,11 @@ begin
     mSteps := mSteps + Say('3. Prüfe den Code mit check_code, dann führe die neuen Tests mit run_tests aus ' +
       '(tests: Unit.Fixture.Methode) und behebe Fehlschläge.', '3. Check the code with check_code, then run the ' +
       'new tests with run_tests (tests: Unit.Fixture.Method) and fix failures.');
+    // Letzter Lauf in der IDE (#2409): erst lesen, dann gezielt ausführen.
+    if FServer.ToolAvailable('get_last_tests') then
+    begin
+      mSteps := mSteps + Say(cPromptTexts[TPromptsText.LastTestsHint].De, cPromptTexts[TPromptsText.LastTestsHint].En);
+    end;
   end
   else
   begin
@@ -1303,5 +1324,8 @@ begin
     mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.Prompts', cPromptTexts);
 
 end.

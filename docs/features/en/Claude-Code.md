@@ -30,6 +30,7 @@ The server offers Claude Code 33 MCP tools:
 - build through the IDE (`build_project`, `get_last_build`)
 - explain compiler messages at their place, with the known Delphi pitfall and a safe fix as a diff (`explain_compiler_message`)
 - run DUnitX tests
+- read the last test run of the IDE without running again (`get_last_tests`: red tests with file:line, expected/actual, log, newly red, flaky, leak, stale)
 
 ### Change
 
