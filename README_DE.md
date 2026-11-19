@@ -168,6 +168,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
+- **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

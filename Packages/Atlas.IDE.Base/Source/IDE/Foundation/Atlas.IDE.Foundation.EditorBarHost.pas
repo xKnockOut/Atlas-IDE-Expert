@@ -2,9 +2,9 @@
 
 // Gemeinsamer Leisten-Host (#1248). Jede Leiste im Editor (Editorleiste,
 // Statusleiste, Brotkrumen, Übersichtsleiste, Minimap, Suchleiste) braucht
-// dieselbe Verwaltung; früher hatte jeder Dienst eine eigene Kopie, und jede
-// Kopie hatte denselben Fehler mindestens einmal (zuletzt: Suchleiste nach
-// dem Projektwechsel von der IDE gesperrt). Der Host übernimmt:
+// dieselbe Verwaltung; eine Kopie je Dienst hätte jeden Fehler mehrfach
+// (etwa die Suchleiste, die die IDE nach dem Projektwechsel sperrt). Der
+// Host übernimmt:
 // - je Editorfenster eine Leiste: Ensure legt sie für jedes Fenster an
 //   (Fenster, die später aufgehen, beim nächsten Takt) und ordnet sie über
 //   den Haken Place ein; EnsureFor nur für ein Fenster (Suchleiste auf
