@@ -266,29 +266,33 @@ end;
 function SplitEnvironment(const AText: string): TArray<string>;
 var
   mIndex: Integer;
-  mCurrent: string;
+  mCurrent: TStringBuilder;
   mQuoted: Boolean;
 begin
   Result := nil;
-  mCurrent := '';
   mQuoted := False;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if AText[mIndex] = '"' then
+  mCurrent := TStringBuilder.Create;
+  try
+    for mIndex := 1 to Length(AText) do
     begin
-      mQuoted := not mQuoted;
-    end
-    else if (AText[mIndex] = ';') and not mQuoted then
-    begin
-      Result := Result + [mCurrent];
-      mCurrent := '';
-    end
-    else
-    begin
-      mCurrent := mCurrent + AText[mIndex];
+      if AText[mIndex] = '"' then
+      begin
+        mQuoted := not mQuoted;
+      end
+      else if (AText[mIndex] = ';') and not mQuoted then
+      begin
+        Result := Result + [mCurrent.ToString];
+        mCurrent.Clear;
+      end
+      else
+      begin
+        mCurrent.Append(AText[mIndex]);
+      end;
     end;
+    Result := Result + [mCurrent.ToString];
+  finally
+    mCurrent.Free;
   end;
-  Result := Result + [mCurrent];
 end;
 
 { TAtlasStartOptions }

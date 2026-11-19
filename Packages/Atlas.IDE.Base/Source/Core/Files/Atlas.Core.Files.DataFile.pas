@@ -79,8 +79,14 @@ uses
   Winapi.Windows,
   System.Classes,
   System.SyncObjs,
+  Atlas.Text.Encoding,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.Guard;
+
+const
+  // Protokoll- und Ausnahmetexte (nie übersetzt).
+  cInvalidContent = 'kein gültiger Inhalt';
+  cNoFolder = 'Ordner der Datendatei lässt sich nicht anlegen';
 
 var
   ReportLock: TCriticalSection;
@@ -88,7 +94,7 @@ var
   Reported: TStringList;
 
 /// <summary>Schreibt AText ins Protokoll, wenn AKey in dieser Sitzung noch nicht gemeldet ist.</summary>
-procedure ReportOnce(const AKey, AText: string);
+procedure LogOnce(const AKey, AText: string);
 var
   mFirst: Boolean;
 begin
@@ -109,22 +115,22 @@ begin
 end;
 
 /// <summary>Eine Zeile, dass die Datei der Art AKind unverändert bleibt.</summary>
-procedure ReportKept(const AKind, AReason: string);
+procedure LogKept(const AKind, AReason: string);
 begin
-  ReportOnce('k:' + AKind, Format('Datendatei %s: %s; sie bleibt in dieser Sitzung unverändert', [AKind, AReason]));
+  LogOnce('k:' + AKind, Format('Datendatei %s: %s; sie bleibt in dieser Sitzung unverändert', [AKind, AReason]));
 end;
 
 function TextOf(const ABytes: TBytes): string;
+var
+  mStart: Integer;
 begin
   // Mit oder ohne BOM.
-  if (Length(ABytes) >= 3) and (ABytes[0] = $EF) and (ABytes[1] = $BB) and (ABytes[2] = $BF) then
+  mStart := 0;
+  if TTextEncodingProbe.BomOf(ABytes) = TTextBom.Utf8 then
   begin
-    Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3);
-  end
-  else
-  begin
-    Result := TEncoding.UTF8.GetString(ABytes);
+    mStart := TTextEncodingProbe.BomLength(TTextBom.Utf8);
   end;
+  Result := TEncoding.UTF8.GetString(ABytes, mStart, Length(ABytes) - mStart);
 end;
 
 { TAtlasDataFile }
@@ -140,7 +146,7 @@ begin
     begin
       Exit(TAtlasDataLoad.Missing);
     end;
-    ReportKept(AKind, 'gesperrt oder nicht lesbar');
+    LogKept(AKind, 'gesperrt oder nicht lesbar');
     Exit(TAtlasDataLoad.Kept);
   end;
   try
@@ -153,7 +159,7 @@ begin
     // Meldung könnte Inhalt der Datei enthalten.
     on E: Exception do
     begin
-      ReportKept(AKind, 'Fehler beim Lesen (' + E.ClassName + ')');
+      LogKept(AKind, 'Fehler beim Lesen (' + E.ClassName + ')');
       Exit(TAtlasDataLoad.Kept);
     end;
   end;
@@ -163,7 +169,7 @@ begin
   end
   else
   begin
-    mReason := 'kein gültiger Inhalt';
+    mReason := cInvalidContent;
   end;
   // Fort: Ein zweiter Leser (anderer Thread, zweite IDE) hat sie eben beiseitegelegt.
   if SetAside(AFileName, AKind, mReason) or not FileExists(AFileName) then
@@ -206,7 +212,7 @@ begin
   mFolder := ExtractFileDir(AFileName);
   if (mFolder <> '') and not ForceDirectories(mFolder) then
   begin
-    raise EInOutError.Create('Ordner der Datendatei lässt sich nicht anlegen');
+    raise EInOutError.Create(cNoFolder);
   end;
   TAtlasTextFile.Replace(AFileName, TEncoding.UTF8.GetBytes(AText));
 end;
@@ -226,7 +232,7 @@ begin
   end
   else if FileExists(AFileName) then
   begin
-    ReportKept(AKind, AReason + ', lässt sich nicht beiseitelegen');
+    LogKept(AKind, AReason + ', lässt sich nicht beiseitelegen');
   end;
 end;
 
@@ -239,7 +245,7 @@ begin
   begin
     mReason := mReason + ': ' + TAtlasGuard.SafeMessage(AE.Message);
   end;
-  ReportOnce('w:' + AKind, Format('Datendatei %s nicht gespeichert (%s)', [AKind, mReason]));
+  LogOnce('w:' + AKind, Format('Datendatei %s nicht gespeichert (%s)', [AKind, mReason]));
 end;
 
 class procedure TAtlasDataFile.ForgetReports;
