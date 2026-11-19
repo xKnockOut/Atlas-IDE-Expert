@@ -54,6 +54,9 @@ type
     class function CodeLine(const ALines: TArray<string>; const APlaces: TArray<TAtlasMethodPlace>;
       ALine: Integer): Boolean; overload; static;
     class function CodeLine(const AText: string; ALine: Integer): Boolean; overload; static;
+    /// <summary>Wörter der Zeilen AFirst..ALast, je Zeile: klein, ohne Kommentare und ohne Inhalt von Strings;
+    /// Namen nach einem Punkt und &amp;Namen zählen nicht. Für „Nächste Anweisung hier“ (#871).</summary>
+    class function CodeWords(const ALines: TArray<string>; AFirst, ALast: Integer): TArray<TArray<string>>; static;
     /// <summary>Gleiche Stelle: Datei ohne Groß-/Kleinschreibung, gleiche Zeile.</summary>
     class function SamePlace(const AFileA: string; ALineA: Integer; const AFileB: string; ALineB: Integer): Boolean;
       static;
@@ -71,6 +74,7 @@ implementation
 
 uses
   System.Math,
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Json,
   Atlas.Core.Editor.LineAnchor;
@@ -238,7 +242,13 @@ type
     Open: Integer;
     /// <summary>Hat die zuletzt gelesene Zeile einen Rumpf geöffnet oder geschlossen?</summary>
     Edge: Boolean;
+    /// <summary>Je offenem Block: Ist es ein Record? Der variante Teil eines Records (case … of) öffnet keinen
+    /// eigenen Block, er endet mit dem end des Records.</summary>
+    Records: TArray<Boolean>;
     procedure Feed(const ACode: string; ALine: Integer);
+    procedure Enter(const AWord: string; ALine: Integer);
+    procedure Leave;
+    function InRecord: Boolean;
   end;
 
 { TBlockScan }
@@ -250,25 +260,43 @@ begin
   Edge := False;
   for mWord in WordsOf(ACode) do
   begin
-    if (mWord = 'begin') or (mWord = 'asm') or (mWord = 'try') or (mWord = 'case') or (mWord = 'record') then
+    if MatchStr(mWord, ['begin', 'asm', 'try', 'record']) or ((mWord = 'case') and not InRecord) then
     begin
-      if (Depth = 0) and ((mWord = 'begin') or (mWord = 'asm')) then
-      begin
-        Open := ALine;
-        Edge := True;
-      end;
-      Inc(Depth);
+      Enter(mWord, ALine);
     end
     else if (mWord = 'end') and (Depth > 0) then
     begin
-      Dec(Depth);
-      Edge := Edge or ((Depth = 0) and (Open >= 0));
-      if Depth = 0 then
-      begin
-        Open := -1;
-      end;
+      Leave;
     end;
   end;
+end;
+
+procedure TBlockScan.Enter(const AWord: string; ALine: Integer);
+begin
+  if (Depth = 0) and ((AWord = 'begin') or (AWord = 'asm')) then
+  begin
+    Open := ALine;
+    Edge := True;
+  end;
+  Inc(Depth);
+  SetLength(Records, Depth);
+  Records[Depth - 1] := AWord = 'record';
+end;
+
+procedure TBlockScan.Leave;
+begin
+  Dec(Depth);
+  SetLength(Records, Depth);
+  Edge := Edge or ((Depth = 0) and (Open >= 0));
+  if Depth = 0 then
+  begin
+    Open := -1;
+  end;
+end;
+
+function TBlockScan.InRecord: Boolean;
+begin
+  Result := (Depth > 0) and Records[Depth - 1];
 end;
 
 { TAtlasRunTo }
@@ -305,6 +333,20 @@ end;
 class function TAtlasRunTo.CodeLine(const AText: string; ALine: Integer): Boolean;
 begin
   Result := CodeLine(TAtlasLineAnchors.Lines(AText), TAtlasMethodToggle.Places(AText), ALine);
+end;
+
+class function TAtlasRunTo.CodeWords(const ALines: TArray<string>; AFirst, ALast: Integer): TArray<TArray<string>>;
+var
+  mState: TScanState;
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Max(0, ALast - AFirst + 1));
+  mState := TScanState.Code;
+  for mIndex := AFirst to ALast do
+  begin
+    Result[mIndex - AFirst] := WordsOf(StripComments(ALines[mIndex], mState));
+  end;
 end;
 
 class function TAtlasRunTo.SamePlace(const AFileA: string; ALineA: Integer; const AFileB: string;
