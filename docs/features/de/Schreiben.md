@@ -108,6 +108,7 @@ Einstellungen: `completion.formatPlaceholders`
   - Kommentar über dem Abschnitt einer Klasse (#1835, `typeComment`): `{ TKunde }` wie die IDE (Vorgabe), Trennlinie mit `// TKunde`, `{ TKunde: erster Satz der Doku }`, Region um alle Rümpfe oder keiner; ein vorhandener wird nicht verdoppelt
   - neue Rümpfe vorbefüllt (#1837, `bodyStubs`): `inherited` bei `override`, im Destruktor am Ende, Getter `Result := FName` und Setter `FName := AValue`
   - Umbenennen und „Klasse verschieben“ nehmen den Kommentar `{ TKunde }` mit (#1838)
+  - einheitliche Leerzeilen (#1839, `blankLines`): beim Anlegen und Ordnen genau eine Leerzeile zwischen zwei Rümpfen, vor und nach dem Klassenkommentar und vor `initialization`/`end.`; nur im betroffenen Bereich
 - var-Block pflegen (#644):
   - Variable an ihrer ersten Zuweisung zur Inline-Variablen machen und zurück
   - var-Abschnitt aufräumen (ungenutzte entfernen, nach erster Verwendung oder Namen sortieren, gleiche Typen zusammenfassen)
