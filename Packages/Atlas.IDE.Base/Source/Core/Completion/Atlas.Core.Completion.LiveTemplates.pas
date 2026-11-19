@@ -64,15 +64,18 @@ type
   TXmlNode = class
   private
     FChildren: TObjectList<TXmlNode>;
+    FName: string;
+    FText: string;
+    FAttributes: TDictionary<string, string>;
   public
-    Name: string;
-    Text: string;
-    Attributes: TDictionary<string, string>;
     constructor Create(const AName: string);
     destructor Destroy; override;
     function Attribute(const AName: string): string;
     function Child(const AName: string): TXmlNode;
     function ChildText(const AName: string): string;
+    property Name: string read FName write FName;
+    property Text: string read FText write FText;
+    property Attributes: TDictionary<string, string> read FAttributes;
     property Children: TObjectList<TXmlNode> read FChildren;
   end;
 
@@ -83,14 +86,14 @@ type
 constructor TXmlNode.Create(const AName: string);
 begin
   inherited Create;
-  Name := AName;
+  FName := AName;
   FChildren := TObjectList<TXmlNode>.Create(True);
-  Attributes := TDictionary<string, string>.Create;
+  FAttributes := TDictionary<string, string>.Create;
 end;
 
 destructor TXmlNode.Destroy;
 begin
-  Attributes.Free;
+  FAttributes.Free;
   FChildren.Free;
   inherited;
 end;
@@ -252,17 +255,28 @@ begin
   end;
 end;
 
+const
+  cCDataStart = '<![CDATA[';
+  cCDataEnd = ']]>';
+  cCommentStart = '<!--';
+  cCommentEnd = '-->';
+  cNoCDataEnd = 'CDATA ohne Ende';
+  cNoCommentEnd = 'Kommentar ohne Ende';
+  cNoTagEnd = 'Tag ohne Ende';
+  cUnexpectedEnd = 'Unerwartetes Ende-Tag';
+  cNoElementEnd = 'Element ohne Ende';
+
 procedure TXmlParser.ReadNext;
 begin
   if FXml[FIndex] <> '<' then
   begin
     ReadText;
   end
-  else if Copy(FXml, FIndex, 9) = '<![CDATA[' then
+  else if Copy(FXml, FIndex, Length(cCDataStart)) = cCDataStart then
   begin
     ReadCData;
   end
-  else if Copy(FXml, FIndex, 4) = '<!--' then
+  else if Copy(FXml, FIndex, Length(cCommentStart)) = cCommentStart then
   begin
     SkipComment;
   end
@@ -289,14 +303,14 @@ procedure TXmlParser.ReadCData;
 var
   mClose: Integer;
 begin
-  mClose := EndOf(']]>', 'CDATA ohne Ende', FIndex + 9);
-  Current.Text := Current.Text + Copy(FXml, FIndex + 9, mClose - FIndex - 9);
-  FIndex := mClose + 3;
+  mClose := EndOf(cCDataEnd, cNoCDataEnd, FIndex + Length(cCDataStart));
+  Current.Text := Current.Text + Copy(FXml, FIndex + Length(cCDataStart), mClose - FIndex - Length(cCDataStart));
+  FIndex := mClose + Length(cCDataEnd);
 end;
 
 procedure TXmlParser.SkipComment;
 begin
-  FIndex := EndOf('-->', 'Kommentar ohne Ende', FIndex + 4) + 3;
+  FIndex := EndOf(cCommentEnd, cNoCommentEnd, FIndex + Length(cCommentStart)) + Length(cCommentEnd);
 end;
 
 procedure TXmlParser.ReadTag;
@@ -304,7 +318,7 @@ var
   mClose: Integer;
   mTag: string;
 begin
-  mClose := EndOf('>', 'Tag ohne Ende', FIndex + 1);
+  mClose := EndOf('>', cNoTagEnd, FIndex + 1);
   mTag := Copy(FXml, FIndex + 1, mClose - FIndex - 1);
   FIndex := mClose + 1;
   // Verarbeitungsanweisung und DOCTYPE
@@ -326,7 +340,7 @@ procedure TXmlParser.CloseElement(const ATag: string);
 begin
   if (FStack.Count <= 1) or not SameText(Trim(Copy(ATag, 2, MaxInt)), Current.Name) then
   begin
-    raise EXmlError.Create('Unerwartetes Ende-Tag');
+    raise EXmlError.Create(cUnexpectedEnd);
   end;
   FStack.Delete(FStack.Count - 1);
 end;
@@ -367,7 +381,7 @@ begin
   end;
   if FStack.Count <> 1 then
   begin
-    raise EXmlError.Create('Element ohne Ende');
+    raise EXmlError.Create(cNoElementEnd);
   end;
 end;
 

@@ -58,10 +58,14 @@ type
 implementation
 
 uses
-  System.Character;
+  System.Character,
+  System.StrUtils;
 
 type
   TExprTokenKind = (etIdent, etNumber, etSymbol, etEnd);
+{$SCOPEDENUMS ON}
+  TCompareOp = (Equal, NotEqual, Less, Greater, LessEqual, GreaterEqual);
+{$SCOPEDENUMS OFF}
 
   TExprToken = record
     Kind: TExprTokenKind;
@@ -280,8 +284,11 @@ begin
 end;
 
 function TExprParser.ParseCompare: Double;
+const
+  cOps: array[TCompareOp] of string = ('=', '<>', '<', '>', '<=', '>=');
 var
-  mOp: string;
+  mText: string;
+  mOp, mCandidate: TCompareOp;
   mRight: Double;
 begin
   Result := ParseValue;
@@ -289,75 +296,74 @@ begin
   begin
     Exit;
   end;
-  mOp := Take.Text;
+  mText := Take.Text;
   mRight := ParseValue;
+  mOp := TCompareOp.GreaterEqual;
+  for mCandidate := Low(TCompareOp) to High(TCompareOp) do
+  begin
+    if cOps[mCandidate] = mText then
+    begin
+      mOp := mCandidate;
+      Break;
+    end;
+  end;
   // $IF vergleicht wie dcc exakt; eine Toleranz würde Zweige anders wählen als der Compiler.
-  if mOp = '=' then
-  begin
-    Result := Truth(Result = mRight); // lsp-ignore: float-equality
-  end
-  else if mOp = '<>' then
-  begin
-    Result := Truth(Result <> mRight); // lsp-ignore: float-equality
-  end
-  else if mOp = '<' then
-  begin
-    Result := Truth(Result < mRight);
-  end
-  else if mOp = '>' then
-  begin
-    Result := Truth(Result > mRight);
-  end
-  else if mOp = '<=' then
-  begin
-    Result := Truth(Result <= mRight);
-  end
+  case mOp of
+    TCompareOp.Equal:
+      Result := Truth(Result = mRight); // lsp-ignore: float-equality
+    TCompareOp.NotEqual:
+      Result := Truth(Result <> mRight); // lsp-ignore: float-equality
+    TCompareOp.Less:
+      Result := Truth(Result < mRight);
+    TCompareOp.Greater:
+      Result := Truth(Result > mRight);
+    TCompareOp.LessEqual:
+      Result := Truth(Result <= mRight);
   else
-  begin
     Result := Truth(Result >= mRight);
   end;
 end;
 
 function TExprParser.ParseDefined(const AWord: string): Double;
 var
-  mName: string;
+  mName: TStringBuilder;
 begin
   Result := cUnknownValue;
-  mName := '';
-  if IsSymbol('(') then
-  begin
-    Take;
-    while not ((Peek.Kind = etEnd) or IsSymbol(')')) do
+  mName := TStringBuilder.Create;
+  try
+    if IsSymbol('(') then
     begin
-      mName := mName + Take.Text;
+      Take;
+      while not ((Peek.Kind = etEnd) or IsSymbol(')')) do
+      begin
+        mName.Append(Take.Text);
+      end;
+      Take;
     end;
-    Take;
-  end;
-  // Declared kennt nur der Compiler: bleibt wahr.
-  if SameText(AWord, 'Defined') then
-  begin
-    Result := Truth(FOwner.Defined(mName));
+    // Declared kennt nur der Compiler: bleibt wahr.
+    if SameText(AWord, 'Defined') then
+    begin
+      Result := Truth(FOwner.Defined(mName.ToString));
+    end;
+  finally
+    mName.Free;
   end;
 end;
 
 function TExprParser.ParseIdent(const AWord: string): Double;
 begin
   Result := cUnknownValue;
-  if SameText(AWord, 'Defined') or SameText(AWord, 'Declared') then
+  if MatchText(AWord, ['Defined', 'Declared']) then
   begin
     Result := ParseDefined(AWord);
   end
-  else if SameText(AWord, 'CompilerVersion') or SameText(AWord, 'RTLVersion') then
+  else if MatchText(AWord, ['CompilerVersion', 'RTLVersion']) then
   begin
     Result := FOwner.CompilerVersion;
   end
-  else if SameText(AWord, 'True') then
+  else if MatchText(AWord, ['True', 'False']) then
   begin
-    Result := 1;
-  end
-  else if SameText(AWord, 'False') then
-  begin
-    Result := 0;
+    Result := Truth(SameText(AWord, 'True'));
   end;
 end;
 
