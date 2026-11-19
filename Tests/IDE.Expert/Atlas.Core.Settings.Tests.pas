@@ -43,6 +43,12 @@ type
     /// <summary>#2168: tests.log an, tests.log.maxLines mit Vorgabe 2000 und Grenzen 100..100000.</summary>
     [Test]
     procedure TestsLogRoundTrip;
+    /// <summary>#2409: tests.lastRun mit Vorgabe an.</summary>
+    [Test]
+    procedure TestsLastRunRoundTrip;
+    /// <summary>#2050: assistants.context, .selection und .selectionMax mit Vorgaben und Grenzen.</summary>
+    [Test]
+    procedure AssistantsContextRoundTrip;
     /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
     [Test]
     procedure HoverSignatureParamsRoundTrip;
@@ -1259,6 +1265,43 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsLogMaxLines, mLoaded.TestsLogMaxLines);
 end;
 
+procedure TAtlasPluginSettingsTests.TestsLastRunRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.TestsLastRun);
+  mStore := TMemoryStore.Create;
+  mSettings.TestsLastRun := False;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mStore.ReadInteger('TestsLastRun', 1));
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.TestsLastRun);
+end;
+
+procedure TAtlasPluginSettingsTests.AssistantsContextRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.AssistantsContext);
+  Assert.IsTrue(mSettings.AssistantsContextSelection);
+  Assert.AreEqual(4000, mSettings.AssistantsContextSelectionMax);
+  mStore := TMemoryStore.Create;
+  mSettings.AssistantsContext := False;
+  mSettings.AssistantsContextSelection := False;
+  mSettings.AssistantsContextSelectionMax := 999999;
+  mSettings.Save(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.AssistantsContext);
+  Assert.IsFalse(mLoaded.AssistantsContextSelection);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxAssistantsContextSelectionMax, mLoaded.AssistantsContextSelectionMax);
+end;
+
 procedure TAtlasPluginSettingsTests.HoverSignatureParamsRoundTrip;
 var
   mStore: IAtlasSettingsStore;
@@ -1670,7 +1713,7 @@ begin
   end;
   Assert.Contains(mPaths, '|language|');
   Assert.Contains(mPaths, '|completion.matching|');
-  // Versionsverwaltung (#571) hat seit #1285 eine eigene Seite, Issue-Tracker seit #1260: Das ganze Objekt
+  // Versionsverwaltung (#571) hat eine eigene Seite (#1285), Issue-Tracker auch (#1260): Das ganze Objekt
   // ("vcs", "issues") enthält Glieder dieser Seiten und steht deshalb nicht im Dialog.
   Assert.DoesNotContain(mPaths, '|vcs|');
   Assert.DoesNotContain(mPaths, '|vcs.provider|');

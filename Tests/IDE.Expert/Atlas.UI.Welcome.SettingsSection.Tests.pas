@@ -3,8 +3,8 @@
 // Abschnitt der Willkommensseite im Optionsdialog (#1456): Die Optionsseite
 // holt ihn vom Anbieter des Moduls und baut ihn in den Reiter
 // Willkommensseite samt Modulschalter. Geprüft werden
-// Laden und Speichern aller Werte über die Seite (vorher in den Tests der
-// Seite), die benannten Layouts (#767), die Knöpfe der Zählung (#757) und der
+// Laden und Speichern aller Werte über die Seite,
+// die benannten Layouts (#767), die Knöpfe der Zählung (#757) und der
 // Weg von „Meine Issues“ zur Seite Issue-Tracker.
 
 interface

@@ -1,8 +1,9 @@
 ﻿unit Atlas.Core.Files.ProcessLeftovers;
 
 // Reste beendeter IDE-Prozesse unter %LOCALAPPDATA%\Atlas: Die Liste offener und
-// ungespeicherter Dateien (editor-dirty-<pid>.json) und der Build-Eingang
-// (ide-builds\<pid>) gehören je einem Prozess. Endet er sauber, räumt er sie weg;
+// ungespeicherter Dateien (editor-dirty-<pid>.json), der Zustand für KI-Assistenten
+// (ide-context-<pid>.json, #2050) und der Build-Eingang (ide-builds\<pid>) gehören
+// je einem Prozess. Endet er sauber, räumt er sie weg;
 // stürzt er ab oder wird er hart beendet, bleiben sie liegen. Das Plugin räumt sie
 // beim Start auf: Weg darf ein Eintrag, dessen Prozess nicht mehr läuft oder dessen
 // Nummer inzwischen ein später gestarteter Prozess trägt (Stand des Eintrags älter
@@ -31,6 +32,9 @@ type
   TAtlasProcessLeftovers = class
   public const
     cDirtyPrefix = 'editor-dirty-';
+    /// <summary>Zustand der IDE für KI-Assistenten (#2050, Atlas.Text.IdeContext); Endung wie cDirtySuffix.
+    /// </summary>
+    cContextPrefix = 'ide-context-';
     cDirtySuffix = '.json';
     cBuildsFolder = 'ide-builds';
   public
