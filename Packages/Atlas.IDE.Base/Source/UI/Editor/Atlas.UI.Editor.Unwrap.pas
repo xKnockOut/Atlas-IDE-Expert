@@ -113,21 +113,21 @@ end;
 type
   TKindText = record
     Kind: string;
-    Text: TAtlasTextId;
+    Text: TAtlasEditorTextId;
   end;
 
 const
   cKindTexts: array[0..9] of TKindText = (
-    (Kind: 'beginEnd'; Text: TAtlasTextId.UnwrapBeginEnd),
-    (Kind: 'tryFinally'; Text: TAtlasTextId.UnwrapTryFinally),
-    (Kind: 'tryExcept'; Text: TAtlasTextId.UnwrapTryExcept),
-    (Kind: 'ifThen'; Text: TAtlasTextId.UnwrapIfThen),
-    (Kind: 'withDo'; Text: TAtlasTextId.UnwrapWith),
-    (Kind: 'forDo'; Text: TAtlasTextId.UnwrapFor),
-    (Kind: 'whileDo'; Text: TAtlasTextId.UnwrapWhile),
-    (Kind: 'repeatUntil'; Text: TAtlasTextId.UnwrapRepeat),
-    (Kind: 'ifdef'; Text: TAtlasTextId.UnwrapIfDef),
-    (Kind: 'region'; Text: TAtlasTextId.UnwrapRegion));
+    (Kind: 'beginEnd'; Text: TAtlasEditorTextId.UnwrapBeginEnd),
+    (Kind: 'tryFinally'; Text: TAtlasEditorTextId.UnwrapTryFinally),
+    (Kind: 'tryExcept'; Text: TAtlasEditorTextId.UnwrapTryExcept),
+    (Kind: 'ifThen'; Text: TAtlasEditorTextId.UnwrapIfThen),
+    (Kind: 'withDo'; Text: TAtlasEditorTextId.UnwrapWith),
+    (Kind: 'forDo'; Text: TAtlasEditorTextId.UnwrapFor),
+    (Kind: 'whileDo'; Text: TAtlasEditorTextId.UnwrapWhile),
+    (Kind: 'repeatUntil'; Text: TAtlasEditorTextId.UnwrapRepeat),
+    (Kind: 'ifdef'; Text: TAtlasEditorTextId.UnwrapIfDef),
+    (Kind: 'region'; Text: TAtlasEditorTextId.UnwrapRegion));
 
 /// <summary>„try … finally … end“ usw.; unbekannte Arten stehen, wie sie heißen.</summary>
 function KindCaption(const AEntry: TAtlasUnwrapEntry): string;
@@ -142,7 +142,7 @@ begin
   begin
     if mItem.Kind = AEntry.Kind then
     begin
-      Exit(TAtlasStrings.Text(mItem.Text));
+      Exit(TAtlasEditorStrings.Text(mItem.Text));
     end;
   end;
   Result := AEntry.Kind;
@@ -150,16 +150,16 @@ end;
 
 /// <summary>Welcher Zweig einer Bedingung bleibt: AFirst (then bzw. erster Zweig, nur bei mehreren Varianten) oder
 /// AElse; '' sonst.</summary>
-function BranchSuffix(const AEntry: TAtlasUnwrapEntry; AFirst, AElse: TAtlasTextId): string;
+function BranchSuffix(const AEntry: TAtlasUnwrapEntry; AFirst, AElse: TAtlasEditorTextId): string;
 begin
   Result := '';
   if (AEntry.VariantCount > 1) and (AEntry.VariantKind = 'then') then
   begin
-    Result := TAtlasStrings.Text(AFirst);
+    Result := TAtlasEditorStrings.Text(AFirst);
   end
   else if AEntry.VariantKind = 'else' then
   begin
-    Result := TAtlasStrings.Text(AElse);
+    Result := TAtlasEditorStrings.Text(AElse);
   end;
 end;
 
@@ -176,11 +176,11 @@ begin
   end
   else if AEntry.Kind = 'ifThen' then
   begin
-    Result := BranchSuffix(AEntry, TAtlasTextId.UnwrapKeepThen, TAtlasTextId.UnwrapKeepElse);
+    Result := BranchSuffix(AEntry, TAtlasEditorTextId.UnwrapKeepThen, TAtlasEditorTextId.UnwrapKeepElse);
   end
   else if AEntry.Kind = 'ifdef' then
   begin
-    Result := BranchSuffix(AEntry, TAtlasTextId.UnwrapKeepFirst, TAtlasTextId.UnwrapKeepIfDefElse);
+    Result := BranchSuffix(AEntry, TAtlasEditorTextId.UnwrapKeepFirst, TAtlasEditorTextId.UnwrapKeepIfDefElse);
   end
   else
   begin
