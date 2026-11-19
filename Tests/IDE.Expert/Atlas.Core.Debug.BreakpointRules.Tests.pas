@@ -35,6 +35,19 @@ type
     procedure JsonRoundTrip;
     [Test]
     procedure PutAndMove;
+    /// <summary>Akzeptanzkriterium: Aufruf aus B hält, aus A nicht; der Stapel lässt den Rahmen des Haltepunkts
+    /// selbst aus.</summary>
+    [Test]
+    procedure CallerAnywhere;
+    /// <summary>Akzeptanzkriterium: „nur direkter Aufrufer“ unterscheidet B → Hilfsroutine → Ziel von B → Ziel.
+    /// </summary>
+    [Test]
+    procedure CallerDirect;
+    /// <summary>Akzeptanzkriterium: „beim 2. Treffer“ zählt nur passende Aufrufe.</summary>
+    [Test]
+    procedure CallerAndHitCount;
+    [Test]
+    procedure CallerJsonOldAndNew;
   end;
 
 implementation
@@ -58,6 +71,26 @@ end;
 function MainStop: TAtlasStopThread;
 begin
   Result := TAtlasStopThread.Create('Main', cMain, cMain);
+end;
+
+/// <summary>Halt im Hauptthread mit dem Stapel ARoutines (Routine des Haltepunkts zuerst).</summary>
+function StackStop(const ARoutines: array of string): TAtlasStopThread;
+var
+  mIndex: Integer;
+begin
+  Result := MainStop;
+  SetLength(Result.Routines, Length(ARoutines));
+  for mIndex := 0 to High(ARoutines) do
+  begin
+    Result.Routines[mIndex] := ARoutines[mIndex];
+  end;
+end;
+
+function CallerRule(const ACaller: string; ADirect: Boolean): TAtlasBreakpointRule;
+begin
+  Result := Rule;
+  Result.Caller := ACaller;
+  Result.CallerDirect := ADirect;
 end;
 
 { TAtlasBreakpointRulesTests }
@@ -218,6 +251,72 @@ begin
   mRule.Hit := TAtlasHitMode.Any;
   TAtlasBreakpointRules.Put(mRules, mRule);
   Assert.AreEqual(1, Integer(Length(mRules)));
+end;
+
+procedure TAtlasBreakpointRulesTests.CallerAnywhere;
+var
+  mRule: TAtlasBreakpointRule;
+  mState: TAtlasRuleState;
+begin
+  mRule := CallerRule('TB.Run', False);
+  Assert.IsFalse(mRule.IsEmpty, 'Aufrufer allein ist eine Regel');
+  mState := TAtlasRuleState.Start(mRule);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Continue,
+    TAtlasBreakpointRules.Decide(mRule, mState, StackStop(['U.Ziel', 'U.TA.Run', 'P.Main'])));
+  Assert.AreEqual(0, mState.Hits, 'Anderer Aufrufer zählt nicht');
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Stop,
+    TAtlasBreakpointRules.Decide(mRule, mState, StackStop(['U.Ziel', 'U.Hilfe', 'U.TB.Run', 'P.Main'])));
+  // Die Routine des Haltepunkts selbst ist kein Aufrufer.
+  Assert.IsFalse(TAtlasBreakpointRules.CallerMatches(CallerRule('Ziel', False), ['U.Ziel', 'P.Main']));
+  Assert.IsFalse(TAtlasBreakpointRules.CallerMatches(mRule, nil), 'leerer Stapel');
+  Assert.IsFalse(TAtlasBreakpointRules.CallerMatches(mRule, ['U.Ziel', '', ':7714C3E2']), 'Rahmen ohne Namen');
+  Assert.IsTrue(TAtlasBreakpointRules.CallerMatches(Rule, nil), 'ohne Aufrufer immer');
+end;
+
+procedure TAtlasBreakpointRulesTests.CallerDirect;
+var
+  mRule: TAtlasBreakpointRule;
+begin
+  mRule := CallerRule('U.TB.*', True);
+  Assert.IsFalse(TAtlasBreakpointRules.CallerMatches(mRule, ['U.Ziel', 'U.Hilfe', 'U.TB.Run']));
+  Assert.IsTrue(TAtlasBreakpointRules.CallerMatches(mRule, ['U.Ziel', 'U.TB.Run', 'P.Main']));
+  Assert.IsFalse(TAtlasBreakpointRules.CallerMatches(mRule, ['U.Ziel']), 'kein Rahmen darunter');
+end;
+
+procedure TAtlasBreakpointRulesTests.CallerAndHitCount;
+var
+  mRule: TAtlasBreakpointRule;
+  mState: TAtlasRuleState;
+  mFromA, mFromB: TAtlasStopThread;
+begin
+  mRule := CallerRule('TB', False);
+  mRule.Hit := TAtlasHitMode.Exactly;
+  mRule.HitCount := 2;
+  mState := TAtlasRuleState.Start(mRule);
+  mFromA := StackStop(['U.Ziel', 'U.TA.Run']);
+  mFromB := StackStop(['U.Ziel', 'U.TB.Run']);
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Continue, TAtlasBreakpointRules.Decide(mRule, mState, mFromB));
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Continue, TAtlasBreakpointRules.Decide(mRule, mState, mFromA));
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Continue, TAtlasBreakpointRules.Decide(mRule, mState, mFromA));
+  Assert.AreEqual<TAtlasRuleDecision>(TAtlasRuleDecision.Stop, TAtlasBreakpointRules.Decide(mRule, mState, mFromB));
+  Assert.AreEqual(2, mState.Hits);
+end;
+
+procedure TAtlasBreakpointRulesTests.CallerJsonOldAndNew;
+var
+  mRules: TAtlasBreakpointRuleList;
+begin
+  Assert.IsTrue(TAtlasBreakpointRules.Parse(TAtlasBreakpointRules.ToJson([CallerRule('Kunden.*', True)]), mRules));
+  Assert.AreEqual(1, Integer(Length(mRules)));
+  Assert.AreEqual('Kunden.*', mRules[0].Caller);
+  Assert.IsTrue(mRules[0].CallerDirect);
+  // Datei vor #2548: ohne "caller", Regel bleibt erhalten.
+  Assert.IsTrue(TAtlasBreakpointRules.Parse('{"format": 1, "rules": [{"file": "C:\\Src\\Kunden.pas", ' +
+    '"line": 42, "hit": "exactly", "hitCount": 2}]}', mRules));
+  Assert.AreEqual(1, Integer(Length(mRules)));
+  Assert.AreEqual('', mRules[0].Caller);
+  Assert.IsFalse(mRules[0].CallerDirect);
+  Assert.AreEqual(41, mRules[0].Line);
 end;
 
 initialization
