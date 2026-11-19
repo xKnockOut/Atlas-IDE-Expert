@@ -74,7 +74,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary.Json;
 
 { TAtlasContinueHeads }
 
@@ -165,7 +165,7 @@ begin
   begin
     FData := Default(TAtlasContinueIncoming);
   end;
-  FKey := TAtlasProjectSummaries.NormalizedPath(AProject);
+  FKey := SummaryNormalizedPath(AProject);
 end;
 
 procedure TAtlasContinueIncomingQueries.NotStarted(ANowMs: UInt64);
@@ -215,7 +215,7 @@ end;
 
 function TAtlasContinueIncomingQueries.Concerns(const AProject: string): Boolean;
 begin
-  Result := (FKey <> '') and (TAtlasProjectSummaries.NormalizedPath(AProject) = FKey);
+  Result := (FKey <> '') and (SummaryNormalizedPath(AProject) = FKey);
 end;
 
 end.

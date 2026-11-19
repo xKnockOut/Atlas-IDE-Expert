@@ -38,7 +38,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Projects,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Contract;
@@ -226,7 +226,7 @@ begin
   end;
   if ATab.ChangedAt > 0 then
   begin
-    Result.AddPair('changedAt', TAtlasProjectSummaries.TimeText(ATab.ChangedAt));
+    Result.AddPair('changedAt', SummaryTimeText(ATab.ChangedAt));
   end;
 end;
 
@@ -239,7 +239,7 @@ begin
   Result := TJSONObject.Create;
   if AState.At > 0 then
   begin
-    Result.AddPair('at', TAtlasProjectSummaries.TimeText(AState.At));
+    Result.AddPair('at', SummaryTimeText(AState.At));
   end;
   Result.AddPair('active', TJSONNumber.Create(AState.Active));
   TJsonBuild.AddText(Result, 'vcs', AState.VcsKind);
@@ -279,7 +279,7 @@ begin
     Max(TJsonRead.IntOr(mEntry, 'column', 0), 0));
   ATab.Method := TJsonRead.Text(mEntry, 'method');
   ATab.Changed := TJsonRead.Flag(mEntry, 'changed');
-  ATab.ChangedAt := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mEntry, 'changedAt'));
+  ATab.ChangedAt := SummaryTimeOf(TJsonRead.Text(mEntry, 'changedAt'));
   Result := Trim(ATab.FileName) <> '';
 end;
 
@@ -311,7 +311,7 @@ begin
     Exit;
   end;
   AState.Known := True;
-  AState.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  AState.At := SummaryTimeOf(TJsonRead.Text(ASection, 'at'));
   AState.VcsKind := LowerCase(TJsonRead.Text(ASection, 'vcs'));
   AState.Head := TJsonRead.Text(ASection, 'head');
   AState.Upstream := TJsonRead.Text(ASection, 'upstream');
@@ -484,7 +484,7 @@ begin
   end;
   for mProject in ARecent do
   begin
-    mKey := TAtlasProjectSummaries.NormalizedPath(mProject);
+    mKey := SummaryNormalizedPath(mProject);
     if (Trim(mProject) = '') or HasKey(mSeen, mKey) then
     begin
       Continue;
@@ -699,7 +699,7 @@ end;
 
 class function TAtlasWelcomeContinue.SameFile(const A, B: string): Boolean;
 begin
-  Result := TAtlasProjectSummaries.NormalizedPath(A) = TAtlasProjectSummaries.NormalizedPath(B);
+  Result := SummaryNormalizedPath(A) = SummaryNormalizedPath(B);
 end;
 
 class function TAtlasWelcomeContinue.FileNameOf(const APath: string): string;
@@ -885,8 +885,8 @@ end;
 
 class function TAtlasContinueSession.IncomingFits(const ATop, AKey, ADataProject: string): Boolean;
 begin
-  Result := (ATop <> '') and (TAtlasProjectSummaries.NormalizedPath(ATop) = AKey) and
-    (TAtlasProjectSummaries.NormalizedPath(ADataProject) = AKey);
+  Result := (ATop <> '') and (SummaryNormalizedPath(ATop) = AKey) and
+    (SummaryNormalizedPath(ADataProject) = AKey);
 end;
 
 class function TAtlasContinueSession.MissingNames(const AMissing: TArray<string>): string;

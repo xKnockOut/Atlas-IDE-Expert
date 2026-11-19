@@ -485,6 +485,8 @@ Atlas.Core.Notifications.Listeners.Tests
 Atlas.Core.Notifications.OrderedItems.Tests
 Atlas.Core.Projects.Contract.Summary.Tests
 Atlas.Core.Welcome.Contract.Tests
+Atlas.Core.Welcome.ContinueQueries.Tests
+Atlas.Core.Welcome.ContinueWork.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests

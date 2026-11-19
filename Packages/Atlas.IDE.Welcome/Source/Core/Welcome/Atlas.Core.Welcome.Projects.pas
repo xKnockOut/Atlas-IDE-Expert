@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract;
 
 type
@@ -84,7 +84,8 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Atlas.Core.Projects.Summary.Json;
 
 const
   cEllipsis = #$2026;
@@ -161,7 +162,7 @@ begin
     begin
       Break;
     end;
-    if (Trim(mProject) = '') or SeenBefore(mSeen, TAtlasProjectSummaries.NormalizedPath(mProject)) then
+    if (Trim(mProject) = '') or SeenBefore(mSeen, SummaryNormalizedPath(mProject)) then
     begin
       Continue;
     end;

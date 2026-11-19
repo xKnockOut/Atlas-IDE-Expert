@@ -8,6 +8,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Status.Contract,
   Atlas.Core.VersionControl.Contract;
@@ -568,6 +569,88 @@ type
     function Read(const APath: string): TAtlasRegNodes;
     /// <summary>Ersetzt den Schlüssel unter APath vollständig durch ANodes; leer löscht ihn.</summary>
     procedure Replace(const APath: string; const ANodes: TAtlasRegNodes);
+  end;
+
+
+  /// <summary>Offene Reiter in ihrer Reihenfolge mit der Cursorstelle und aktive Datei.</summary>
+  TAtlasContinueSnapshot = record
+    Tabs: TArray<TAtlasWorkTab>;
+    Active: string;
+  end;
+
+  /// <summary>Einstellungen von „Weiterarbeiten“ (#755), je Aufruf frisch gelesen.</summary>
+  TAtlasContinueSettings = record
+    /// <summary>welcomePage.enabled: ohne Willkommensseite schreibt der Bereich nichts mit.</summary>
+    WelcomePage: Boolean;
+    /// <summary>welcomePage.continue.</summary>
+    Continue: Boolean;
+    /// <summary>welcomePage.continue.incoming: eingehende Commits und HEAD abfragen.</summary>
+    Incoming: Boolean;
+    /// <summary>welcomePage.continue.fetch.</summary>
+    Fetch: Boolean;
+    /// <summary>welcomePage.continue.count.</summary>
+    Count: Integer;
+  end;
+
+  {$SCOPEDENUMS ON}
+  /// <summary>Meldungen von „Weiterarbeiten“ in der Sprache der Oberfläche.</summary>
+  TAtlasContinueText = (Disabled, Nothing, ProjectMissing, FilesMissing);
+  {$SCOPEDENUMS OFF}
+
+  /// <summary>Was eine Abfrage eingehender Commits braucht.</summary>
+  TAtlasContinueIncomingRequest = record
+    Project: string;
+    MainBranch: string;
+    State: TAtlasWorkState;
+    Fetch: Boolean;
+    /// <summary>Zeitpunkt der Abfrage (UTC).</summary>
+    Stamp: TDateTime;
+  end;
+
+  /// <summary>Ende einer HEAD-Abfrage im Hauptthread.</summary>
+  TAtlasContinueHeadDone = reference to procedure(AOk: Boolean; const AHead: TAtlasWorkState);
+  /// <summary>Ende einer Abfrage eingehender Commits im Hauptthread.</summary>
+  TAtlasContinueIncomingDone = reference to procedure(AOk: Boolean; const AFound: TAtlasContinueIncoming);
+  /// <summary>Änderung an einer Projekt-Zusammenfassung unter der Sperre ihrer Datei.</summary>
+  TAtlasContinueSummaryChange = reference to procedure(var ASummary: TAtlasProjectSummary);
+
+  /// <summary>Was „Weiterarbeiten“ (TAtlasContinueWork) von der IDE braucht: Einstellungen, Uhr, Editor,
+  /// Projekt-Zusammenfassungen, Versionsverwaltung im Hintergrund und Meldungen.</summary>
+  IAtlasContinueHost = interface
+    ['{22678DF1-04FE-4B7B-AAFF-98CB160E92EC}']
+    function Settings: TAtlasContinueSettings;
+    /// <summary>Millisekunden seit dem Start (GetTickCount64).</summary>
+    function Ticks: UInt64;
+    function NowUtc: TDateTime;
+    /// <summary>Ziel des offenen Projekts bzw. der offenen Gruppe; '' ohne.</summary>
+    function CurrentTarget: string;
+    /// <summary>Gespeicherte Projektgruppe, zu der AFileName gehört, sonst das Projekt; '' ohne.</summary>
+    function TargetOf(const AFileName: string): string;
+    /// <summary>Offene Reiter festhalten; AChanges (großgeschriebener Pfad → letzte Änderung) bekommt die Methode
+    /// an der Änderungsstelle.</summary>
+    function TakeSnapshot(AChanges: TDictionary<string, TAtlasWorkTab>): TAtlasContinueSnapshot;
+    /// <summary>Zuletzt geschlossene Projekte, neueste zuerst; leer, wenn die Liste nicht lesbar ist.</summary>
+    function RecentProjects: TArray<string>;
+    function LoadSummary(const ATarget: string; out ASummary: TAtlasProjectSummary): Boolean;
+    procedure UpdateSummary(const ATarget: string; const AChange: TAtlasContinueSummaryChange);
+    /// <summary>HEAD des Ordners im Hintergrund abfragen; False, wenn die Abfrage nicht startet (ADone kommt
+    /// dann nicht).</summary>
+    function QueryHead(const AFolder: string; const ADone: TAtlasContinueHeadDone): Boolean;
+    /// <summary>Eingehende Commits im Hintergrund abfragen; False, wenn die Abfrage nicht startet.</summary>
+    function QueryIncoming(const ARequest: TAtlasContinueIncomingRequest;
+      const ADone: TAtlasContinueIncomingDone): Boolean;
+    /// <summary>Hauptbranch des Projekts für Branches ohne verfolgten Branch (#1286).</summary>
+    function MainBranchOf(const AProject: string): string;
+    function FileExists(const AFileName: string): Boolean;
+    /// <summary>Projekt öffnen, wenn es existiert und noch nicht offen ist.</summary>
+    procedure EnsureProject(const AProject: string);
+    /// <summary>Datei öffnen, Cursor an Zeile und Spalte des Reiters (ab 1).</summary>
+    procedure OpenTab(const ATab: TAtlasWorkTab);
+    function Text(AText: TAtlasContinueText; const AArgument: string): string;
+    /// <summary>Zeile in die Meldungsansicht.</summary>
+    procedure Say(const AText: string);
+    /// <summary>Bereich neu zeichnen.</summary>
+    procedure Changed;
   end;
 
 //@TYPES

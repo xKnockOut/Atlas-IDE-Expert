@@ -55,6 +55,7 @@ uses
   Atlas.IDE.Welcome.Adapters.Unsaved,
   Atlas.IDE.Welcome.Adapters.QuickActions,
   Atlas.IDE.Welcome.Adapters.Continue,
+  Atlas.IDE.Welcome.Adapters.ContinueHost,
   Atlas.IDE.Welcome.Adapters.State,
   Atlas.IDE.Welcome.Adapters.Discover,
   Atlas.IDE.Welcome.Adapters.Help,
@@ -181,7 +182,7 @@ begin
   AStep('Continue',
     procedure
     begin
-      AAreas.ContinueWork := TAtlasIdeContinue.Create(Warn, CreateIssues);
+      AAreas.ContinueWork := TAtlasIdeContinue.Create(Warn, TAtlasIdeContinueHost.Create(Warn), CreateIssues);
       AAreas.ContinueWork.Hooks.OnServerAccess := ShowVcsServer;
     end);
   AStep('State',
