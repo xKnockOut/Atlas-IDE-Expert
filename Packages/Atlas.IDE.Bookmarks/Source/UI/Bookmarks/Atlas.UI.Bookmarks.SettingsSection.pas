@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Bookmarks.SettingsSection;
 
-// Abschnitte des Moduls Lesezeichen im Optionsdialog (#1456; vorher in den Teilen
-// „Editor“ und „Befehle“ von Base).
+// Abschnitte des Moduls Lesezeichen im Optionsdialog (#1456) auf den
+// Seiten „Editor“ und „Befehle“.
 // - „Editor“: Modulschalter, Notizen an Codezeilen (#545), benannte Lesezeichen (#622) und schnelle Lesezeichen
 //   (#1104). Alle Elemente bindet die Seite; die Grenzen der Akkord-Wartezeit setzt TAtlasPluginSettings.Normalize.
 // - „Befehle“: Tasten „Lesezeichen setzen…“ (#622) und nächstes/voriges Lesezeichen (#1104).

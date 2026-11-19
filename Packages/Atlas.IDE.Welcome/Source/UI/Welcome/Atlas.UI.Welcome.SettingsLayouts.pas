@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Welcome.SettingsLayouts;
 
-// Benannte Layouts der Willkommensseite im Optionsdialog (#767, im Modul seit
-// #1456; vorher Teil von Atlas.UI.Settings.Page). Zeile mit Auswahl des aktiven
+// Benannte Layouts der Willkommensseite im Optionsdialog (#767, Modul
+// Willkommensseite, #1456). Zeile mit Auswahl des aktiven
 // Layouts und den Knöpfen „Neu …“, „Umbenennen …“ und „Löschen“; die Spalten
 // stehen als gebundene Zahl darüber. Beim Wechsel behält das bisherige Layout
 // Spalten und Sichtbarkeit der Bereiche, das neue setzt die Schalter der
