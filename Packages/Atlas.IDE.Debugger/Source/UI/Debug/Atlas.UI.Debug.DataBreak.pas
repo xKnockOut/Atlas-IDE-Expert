@@ -108,7 +108,7 @@ const
   /// </summary>
   cLineHeight = 22;
   cEditHeight = 26;
-  cCountHeight = 52;
+  cCountHeight = 36;
   /// <summary>Einzug der Muster und Optionsfelder unter ihrer Überschrift, logische Pixel.</summary>
   cIndent = 20;
 
@@ -136,8 +136,6 @@ begin
   FLog := AddRadio(TAtlasDataBreakStrings.Text(TAtlasDataBreakTextId.DataBreakModeLog));
   FCount := AddNote(cCountHeight);
   FCount.ShowAccelChar := False;
-  FCount.AutoSize := False;
-  FCount.WordWrap := True;
   CreateButtons;
   FitHeight;
 end;

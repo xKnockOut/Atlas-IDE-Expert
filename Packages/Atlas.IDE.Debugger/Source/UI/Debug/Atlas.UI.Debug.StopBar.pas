@@ -86,9 +86,6 @@ end;
 
 procedure TAtlasStopBar.Paint;
 begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
   Layout(True);
   PaintBorder;
 end;
@@ -145,12 +142,15 @@ function TAtlasStopBar.Layout(ADraw: Boolean): TSize;
 var
   X, Y, mTextHeight, mWidth, mIndex: Integer;
 begin
-  Canvas.Font := UIFont;
-  mTextHeight := Canvas.TextHeight('Wg');
   if ADraw then
   begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(Colors.Surface);
+    Canvas.FillRect(ClientRect);
     Canvas.Brush.Style := bsClear;
   end;
+  Canvas.Font := UIFont;
+  mTextHeight := Canvas.TextHeight('Wg');
   X := Scale(cPad);
   Y := Scale(cPad);
   Canvas.Font.Style := [fsBold];
