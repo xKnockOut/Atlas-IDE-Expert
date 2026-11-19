@@ -123,7 +123,6 @@ uses
   Atlas.UI.Updates.Selection,
   Atlas.UI.Updates.Texts,
   Atlas.Text.UpdateRun,
-  ToolsAPI,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.WorkerSlot;
@@ -214,17 +213,6 @@ begin
   ShellExecute(0, 'open', PChar(ARelease.ChangesUrl), nil, nil, SW_SHOWNORMAL);
 end;
 
-function RegistryKey: string;
-var
-  mServices: IOTAServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result := mServices.GetBaseRegistryKey;
-  end;
-end;
-
 procedure TAtlasIdeUpdates.StartInstaller;
 var
   mEnvironment: TAtlasUpdateEnvironment;
@@ -237,7 +225,7 @@ begin
   mEnvironment.Platform := 'Win32';
 {$ENDIF}
   mEnvironment.Ide := TAtlasUpdates.IdeVersion;
-  mEnvironment.RegistryKey := RegistryKey;
+  mEnvironment.RegistryKey := TAtlasIdeHost.BaseRegistryKey;
   mEnvironment.Installed := TAtlasPluginVersion.cVersion;
   mEnvironment.UpdaterExists := FileExists(TAtlasUpdateInstall.UpdaterOf(mEnvironment.PluginDir));
   FInstaller.Start(mEnvironment, TAtlasUpdateInstall.UpdatesRoot(GetEnvironmentVariable('LOCALAPPDATA')), FOnMessage,

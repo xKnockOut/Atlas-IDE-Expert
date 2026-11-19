@@ -187,6 +187,9 @@ type
     /// <summary>Ordner des Base-Packages mit Pfadtrenner am Ende (Regel 8, #1456): Daten, Vorlagen und Doku liegen
     /// dort, auch wenn ein Modul aus einem eigenen Package fragt. Braucht kein Install.</summary>
     class function InstallFolder: string; static;
+    /// <summary>Registrierungsschlüssel der IDE (IOTAServices.GetBaseRegistryKey, etwa Software\Embarcadero\BDS\37.0);
+    /// '' ohne IDE.</summary>
+    class function BaseRegistryKey: string; static;
   end;
 
 implementation
@@ -343,15 +346,8 @@ begin
 end;
 
 class procedure TAtlasIdeHost.SetStatusField(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
-var
-  mExtra: TAtlasStatusExtra;
 begin
-  mExtra := Default(TAtlasStatusExtra);
-  mExtra.Id := AId;
-  mExtra.Text := AText;
-  mExtra.Hint := AHint;
-  mExtra.OnClick := AOnClick;
-  SetStatusItem(mExtra);
+  SetStatusItem(TAtlasStatusExtra.Make(AId, AText, AHint, AOnClick));
 end;
 
 class procedure TAtlasIdeHost.SetStatusItem(const AExtra: TAtlasStatusExtra);
@@ -564,6 +560,17 @@ class function TAtlasIdeHost.InstallFolder: string;
 begin
   // HInstance ist hier das Base-Package, weil diese Unit dort liegt.
   Result := ExtractFilePath(GetModuleName(HInstance));
+end;
+
+class function TAtlasIdeHost.BaseRegistryKey: string;
+var
+  mServices: IOTAServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    Result := mServices.GetBaseRegistryKey;
+  end;
 end;
 
 end.

@@ -32,6 +32,10 @@ type
     /// <summary>Parameter von atlas/ideTypes: je Unit ein Eintrag in der Reihenfolge des ersten Vorkommens, ohne
     /// doppelte Typen. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const ATypes: TArray<TAtlasIdeType>): TJSONObject; static;
+    /// <summary>Liste "types" der Unit AUnit in AUnits, bei Bedarf als neuer Eintrag {"unit", "types"} in AOrder
+    /// angelegt (AOrder hält die Reihenfolge des ersten Vorkommens); auch für atlas/ideMembers.</summary>
+    class function UnitTypes(AUnits: TDictionary<string, TJSONArray>; AOrder: TJSONArray;
+      const AUnit: string): TJSONArray; static;
     /// <summary>Liegt AFileName unter einem der Ordner AFolders (ohne Groß-/Kleinschreibung)?</summary>
     class function InFolders(const AFileName: string; const AFolders: TArray<string>): Boolean; static;
   end;
@@ -72,9 +76,10 @@ begin
   Result := mObject;
 end;
 
-/// <summary>Liste "types" der Unit AUnit in AUnits, bei Bedarf neu angelegt (AOrder hält die Reihenfolge).
-/// </summary>
-function TypesOf(AUnits: TDictionary<string, TJSONArray>; AOrder: TJSONArray; const AUnit: string): TJSONArray;
+{ TAtlasIdeTypes }
+
+class function TAtlasIdeTypes.UnitTypes(AUnits: TDictionary<string, TJSONArray>; AOrder: TJSONArray;
+  const AUnit: string): TJSONArray;
 var
   mEntry: TJSONObject;
 begin
@@ -89,8 +94,6 @@ begin
   AOrder.AddElement(mEntry);
   AUnits.Add(UpperCase(AUnit), Result);
 end;
-
-{ TAtlasIdeTypes }
 
 class function TAtlasIdeTypes.ToJson(const ATypes: TArray<TAtlasIdeType>): TJSONObject;
 var
@@ -112,7 +115,7 @@ begin
       if (mType.Name <> '') and (mType.UnitName <> '') and not mSeen.ContainsKey(mKey) then
       begin
         mSeen.Add(mKey, True);
-        TypesOf(mUnits, mOrder, mType.UnitName).AddElement(TypeJson(mType));
+        UnitTypes(mUnits, mOrder, mType.UnitName).AddElement(TypeJson(mType));
       end;
     end;
   finally

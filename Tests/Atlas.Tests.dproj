@@ -56,6 +56,7 @@
         <DCCReference Include="Common\Atlas.Common.Product.Version.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Lines.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Chars.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Arrays.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Timestamps.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Encoding.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.LogMarks.Tests.pas"/>
@@ -1259,6 +1260,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Entries.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.DataFile.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.ProcessLeftovers.pas"/>
@@ -1631,6 +1633,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.PlaceholderPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.InlayPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Files.Entries.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Results.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.Plan.pas"/>

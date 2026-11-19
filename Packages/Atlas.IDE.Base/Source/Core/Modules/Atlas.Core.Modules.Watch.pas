@@ -33,7 +33,6 @@ type
     FListenerRef: IAtlasRegistryListener;
     FSubscription: IAtlasRegistration;
     procedure Refresh;
-    class function SameItems(const A, B: TArray<IInterface>): Boolean; static;
   public
     /// <summary>ARegistry darf nil sein (dann bleibt die Liste leer).</summary>
     constructor Create(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID);
@@ -45,6 +44,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Text.Arrays;
 
 { TAtlasProvidedWatch.TListener }
 
@@ -109,7 +111,7 @@ var
   mItems: TArray<IInterface>;
 begin
   mItems := FRegistry.FindAll(FIID);
-  if SameItems(mItems, FItems) then
+  if TTextArrays.Same<IInterface>(mItems, FItems) then
   begin
     Exit;
   end;
@@ -117,24 +119,6 @@ begin
   if Assigned(FOnChanged) then
   begin
     FOnChanged();
-  end;
-end;
-
-class function TAtlasProvidedWatch.SameItems(const A, B: TArray<IInterface>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(A) do
-  begin
-    if A[mIndex] <> B[mIndex] then
-    begin
-      Exit(False);
-    end;
   end;
 end;
 

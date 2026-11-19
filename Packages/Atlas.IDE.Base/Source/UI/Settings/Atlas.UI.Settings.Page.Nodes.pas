@@ -91,6 +91,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
+  Atlas.UI.Settings.Marks,
   Atlas.UI.Foundation.WrapLabel;
 
 const
@@ -106,19 +107,6 @@ type
   /// <summary>Art einer Zeile beim Aufteilen eines Bereichs: mit Einstellung, angehängt, Beschriftung, sonst.
   /// </summary>
   TAtlasRowKind = (rkBound, rkAttached, rkLabel, rkOther);
-
-/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
-function Inside(AControl, AParent: TControl): Boolean;
-var
-  mParent: TControl;
-begin
-  mParent := AControl;
-  while (mParent <> nil) and (mParent <> AParent) do
-  begin
-    mParent := mParent.Parent;
-  end;
-  Result := mParent <> nil;
-end;
 
 /// <summary>Zeilen von ABox in der Reihenfolge von oben nach unten.</summary>
 function SortedRows(ABox: TWinControl): TArray<TControl>;
@@ -212,7 +200,7 @@ var
 begin
   for mItem in FPage.FAttached do
   begin
-    if Inside(mItem.Value, AControl) then
+    if ControlInside(mItem.Value, AControl) then
     begin
       Exit(True);
     end;
@@ -226,7 +214,7 @@ var
 begin
   for mCandidate := 0 to High(FRows) do
   begin
-    if Inside(AAnchor, FRows[mCandidate]) then
+    if ControlInside(AAnchor, FRows[mCandidate]) then
     begin
       Exit(mCandidate);
     end;
