@@ -28,31 +28,11 @@ uses
   Vcl.Menus,
   Vcl.Graphics,
   Atlas.Core.Welcome.WhatsNew,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Schalter einer Zeile: keiner (keine oder unbekannte Einstellung), aus, an.</summary>
-  TAtlasWhatsNewSwitch = (None, Off, On);
-{$SCOPEDENUMS OFF}
-
-  IAtlasWhatsNewSource = interface
-    ['{6B0F3E52-8D1A-4C7E-9A35-2E4D7C1B8F60}']
-    /// <summary>Was die Karte gerade zeigt.</summary>
-    function View: TAtlasWhatsNewView;
-    /// <summary>Versionen zu View, neueste zuerst.</summary>
-    function Versions: TAtlasWhatsNewVersions;
-    function SwitchOf(const ASetting: string): TAtlasWhatsNewSwitch;
-    /// <summary>Tatsächliche Belegung der Tasten-Einstellung AKey als Text; '' ohne.</summary>
-    function KeyText(const AKey: string): string;
-    /// <summary>Hat der Eintrag einen ausführbaren Befehl oder eine vorhandene Beispieldatei?</summary>
-    function CanTry(const AItem: TAtlasWhatsNewItem): Boolean;
-    procedure SetSwitch(const ASetting: string; AOn: Boolean);
-    procedure TryItem(const AItem: TAtlasWhatsNewItem);
-    /// <summary>„Gelesen“ nach einem Update, sonst „Schließen“: zurück zur Vorgabe der Einstellung.</summary>
-    procedure Dismiss;
-    procedure Show(AView: TAtlasWhatsNewView);
-  end;
+  TAtlasWhatsNewSwitch = Atlas.UI.Welcome.Contract.TAtlasWhatsNewSwitch;
 
   /// <summary>Kontextmenü mit „Neuigkeiten dieser Version zeigen“ und „Alle Versionen“.</summary>
   TAtlasWhatsNewMenu = class(TPopupMenu)

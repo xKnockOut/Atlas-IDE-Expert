@@ -16,7 +16,8 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions,
-  DUnitX.TestFramework;
+  DUnitX.TestFramework,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Quelle der Knopfleiste für die Tests (auch für die Bereiche in Atlas.UI.Welcome.Tests); merkt sich

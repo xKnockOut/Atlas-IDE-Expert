@@ -34,7 +34,8 @@ uses
   Atlas.Core.Welcome.Discover,
   Atlas.UI.Welcome.Discover,
   System.IOUtils,
-  Vcl.Imaging.pngimage;
+  Vcl.Imaging.pngimage,
+  Atlas.UI.Welcome.Contract;
 
 
 type

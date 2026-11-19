@@ -37,38 +37,12 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   Vcl.Graphics,
-  Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Frame,
-  Atlas.UI.Welcome.QuickActions;
+  Atlas.UI.Welcome.QuickActions,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasProjectsSource = interface
-    ['{4E7C2A19-6B3D-4F80-9C51-8A2D0E6F3B47}']
-    /// <summary>Gezeigte Projekte mit Zusammenfassung und Stand der Versionsverwaltung.</summary>
-    function Entries: TAtlasProjectEntries;
-    procedure Open(const AProject: string);
-    /// <summary>Projekt öffnen und zu ATarget springen (Fehler-Marke).</summary>
-    procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
-    procedure OpenFolder(const AProject: string);
-    /// <summary>„Branch anlegen …“ (#1288): Dialog für die Arbeitskopie von AProject.</summary>
-    procedure CreateBranch(const AProject: string);
-    /// <summary>„Arbeitskopien …“ (#1292): Tabelle der Arbeitskopien von AProject (Wurzel, Externals,
-    /// Submodule).</summary>
-    procedure ShowWorkingCopies(const AProject: string);
-    /// <summary>vcs.externals.show: Eintrag „Arbeitskopien …“ zeigen.</summary>
-    function WorkingCopies: Boolean;
-    /// <summary>„Aus Liste entfernen“: nur in diesem Bereich, die Liste der IDE bleibt.</summary>
-    procedure Remove(const AProject: string);
-    /// <summary>Der Bereich wird gezeigt: Versionsverwaltung bei Bedarf im Hintergrund frisch abfragen.</summary>
-    procedure Shown;
-    /// <summary>Klick wählt eine Zeile für den Projektverlauf (#758) statt sie zu öffnen.</summary>
-    function Selectable: Boolean;
-    /// <summary>Projekt für den Projektverlauf wählen (#758).</summary>
-    procedure Select(const AProject: string);
-    /// <summary>Gewähltes Projekt; '' = keins (der Verlauf zeigt dann das oberste).</summary>
-    function Selected: string;
-  end;
 
   TAtlasProjectsHit = record
     /// <summary>Zeile; -1 = keine.</summary>
@@ -196,7 +170,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Core.Projects.Summary;
 
 type
   /// <summary>Zeichnet die Zeilen des Bereichs: Punkt, Name, Branch, zweite Zeile, Stand der Schnellaktion und

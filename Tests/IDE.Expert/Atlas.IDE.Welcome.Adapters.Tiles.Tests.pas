@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Tiles.Tests;
+﻿unit Atlas.IDE.Welcome.Adapters.Tiles.Tests;
 
 // Tests zu TAtlasIdeWelcomeTiles (#1455): Kacheln anderer Module erscheinen als
 // Bereich mit Fabrik, sobald ein Modul sie bereitstellt, und verschwinden samt
@@ -35,7 +35,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Contracts.WelcomeTiles,
-  Atlas.IDE.Welcome.Tiles;
+  Atlas.IDE.Welcome.Adapters.Tiles;
 
 type
   TFakeView = class(TInterfacedObject, IAtlasWelcomeTileView)

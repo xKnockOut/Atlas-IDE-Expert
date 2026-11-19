@@ -43,35 +43,10 @@ uses
   Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.ContinueIssues;
+  Atlas.UI.Welcome.ContinueIssues,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasContinueSource = interface
-    ['{2B7E9C41-5D3A-4E86-9F1B-C4A07D2E8B95}']
-    /// <summary>Gezeigte Arbeitsstände, neueste zuerst.</summary>
-    function Entries: TAtlasContinueEntries;
-    /// <summary>Eingehende Commits zum obersten Eintrag; Available = False: kein Abschnitt.</summary>
-    function Incoming: TAtlasContinueIncoming;
-    /// <summary>Die Abfrage der eingehenden Commits läuft gerade.</summary>
-    function IncomingQuerying: Boolean;
-    /// <summary>Reiter „Gemerkt“ zeigen (welcomePage.saved).</summary>
-    function SavedEnabled: Boolean;
-    /// <summary>Notizen, Lesezeichen und Favoriten aller Projekte.</summary>
-    function Saved: TAtlasSavedItems;
-    /// <summary>Hinweis unter der Liste (z. B. übersprungene Dateien); '' ohne.</summary>
-    function Notice: string;
-    /// <summary>„Fortsetzen“: Projekt öffnen, Reiter in ihrer Reihenfolge, Cursor an die letzte Änderung.</summary>
-    procedure Resume(const AProject: string);
-    /// <summary>Dateien eines eingehenden Commits zeigen.</summary>
-    procedure ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
-    /// <summary>Projekt öffnen und zum gemerkten Eintrag springen.</summary>
-    procedure OpenSaved(const AItem: TAtlasSavedItem);
-    /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung für AProject öffnen.
-    /// </summary>
-    procedure ShowServerAccess(const AProject: string);
-    /// <summary>Der Bereich wird gezeigt: eingehende Commits bei Bedarf im Hintergrund abfragen.</summary>
-    procedure Shown;
-  end;
 
   TAtlasContinueHit = record
     /// <summary>Zeile eines Arbeitsstands; -1 = keine.</summary>
@@ -502,7 +477,6 @@ begin
     Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
   end;
 end;
-
 
 { TContinuePainter }
 

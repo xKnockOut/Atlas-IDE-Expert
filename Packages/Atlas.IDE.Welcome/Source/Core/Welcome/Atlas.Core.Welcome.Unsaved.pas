@@ -50,49 +50,19 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.WorkingCopies;
+  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.Core.Welcome.Contract;
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasUnsavedKind = (Changes, Conflicts, Commits, NoUpstream, Stashes);
-  /// <summary>Ampel: Fresh grün, Warning gelb, Alert rot.</summary>
-  TAtlasUnsavedLevel = (Fresh, Warning, Alert);
+  TAtlasUnsavedKind = Atlas.Core.Welcome.Contract.TAtlasUnsavedKind;
+  TAtlasUnsavedLevel = Atlas.Core.Welcome.Contract.TAtlasUnsavedLevel;
   TAtlasUnsavedAgeUnit = (Minutes, Hours, Days);
 {$SCOPEDENUMS OFF}
   TAtlasUnsavedKinds = set of TAtlasUnsavedKind;
 
-  /// <summary>Anteil einer Arbeitskopie (#1292): Wurzel, External oder Submodul.</summary>
-  TAtlasUnsavedPlace = record
-    /// <summary>Ordner relativ zur Wurzel mit "/" ('' = Wurzel).</summary>
-    Path: string;
-    Count: Integer;
-    class function Create(const APath: string; ACount: Integer): TAtlasUnsavedPlace; static;
-  end;
-
-  TAtlasUnsavedItem = record
-    Kind: TAtlasUnsavedKind;
-    /// <summary>Changes und Conflicts: Dateien; Commits: Commits; NoUpstream: Branches; Stashes: Stashes.</summary>
-    Count: Integer;
-    /// <summary>Nur Changes: geänderte (auch umbenannt), neue (auch unversioniert) und gelöschte Dateien.</summary>
-    Modified: Integer;
-    Added: Integer;
-    Deleted: Integer;
-    /// <summary>Ältester Stand (UTC); 0 = unbekannt.</summary>
-    Since: TDateTime;
-    /// <summary>Commits und NoUpstream: betroffene Branches.</summary>
-    Branches: TArray<string>;
-    /// <summary>Nur NoUpstream: Commits, die auf keinem Remote liegen; -1 unbekannt.</summary>
-    Commits: Integer;
-    /// <summary>Nur Stashes: Name bzw. Nachricht und Commit des ältesten.</summary>
-    Name: string;
-    Ref: string;
-    /// <summary>Nur Changes und Conflicts mit vcs.externals.show (#1292): Anteile, wenn sich die Dateien auf
-    /// mehr als eine Arbeitskopie verteilen (Wurzel und Externals bzw. Submodule); sonst leer.</summary>
-    Places: TArray<TAtlasUnsavedPlace>;
-    class function Create(AKind: TAtlasUnsavedKind; ACount: Integer): TAtlasUnsavedItem; static;
-    /// <summary>„Push …“ statt „Ansehen“.</summary>
-    function CanPush: Boolean;
-  end;
+  TAtlasUnsavedPlace = Atlas.Core.Welcome.Contract.TAtlasUnsavedPlace;
+  TAtlasUnsavedItem = Atlas.Core.Welcome.Contract.TAtlasUnsavedItem;
 
   TAtlasUnsavedIgnore = record
     Kind: TAtlasUnsavedKind;
@@ -139,32 +109,8 @@ type
     class function Create(AMinAgeHours, AWarnHours, AAlertHours: Integer): TAtlasUnsavedOptions; static;
   end;
 
-  TAtlasUnsavedRow = record
-    Project: string;
-    /// <summary>Name des Projekts ohne Endung.</summary>
-    Name: string;
-    Branch: string;
-    /// <summary>"git" oder "svn".</summary>
-    VcsKind: string;
-    Item: TAtlasUnsavedItem;
-    Level: TAtlasUnsavedLevel;
-    /// <summary>Stand aus der Datei, nicht in dieser Sitzung abgefragt.</summary>
-    Stale: Boolean;
-    /// <summary>Zeitpunkt der Abfrage (UTC).</summary>
-    At: TDateTime;
-  end;
-
-  TAtlasUnsavedView = record
-    Rows: TArray<TAtlasUnsavedRow>;
-    /// <summary>Zeilen, die zu jung oder bis morgen ignoriert sind.</summary>
-    Hidden: Integer;
-    /// <summary>Für mindestens ein Projekt ist ein Stand bekannt.</summary>
-    Known: Boolean;
-    /// <summary>Mindestens eine Abfrage läuft.</summary>
-    Querying: Boolean;
-    /// <summary>Nichts zu zeigen.</summary>
-    function Clean: Boolean;
-  end;
+  TAtlasUnsavedRow = Atlas.Core.Welcome.Contract.TAtlasUnsavedRow;
+  TAtlasUnsavedView = Atlas.Core.Welcome.Contract.TAtlasUnsavedView;
 
   /// <summary>Ein Branch zum Pushen mit Ziel und Commits („Push …“).</summary>
   TAtlasUnsavedPush = record
@@ -319,29 +265,6 @@ const
   cAllKinds: TAtlasUnsavedKinds = [TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts,
     TAtlasUnsavedKind.Commits, TAtlasUnsavedKind.NoUpstream, TAtlasUnsavedKind.Stashes];
 
-{ TAtlasUnsavedItem }
-
-class function TAtlasUnsavedItem.Create(AKind: TAtlasUnsavedKind; ACount: Integer): TAtlasUnsavedItem;
-begin
-  Result := Default(TAtlasUnsavedItem);
-  Result.Kind := AKind;
-  Result.Count := ACount;
-  Result.Commits := -1;
-end;
-
-{ TAtlasUnsavedPlace }
-
-class function TAtlasUnsavedPlace.Create(const APath: string; ACount: Integer): TAtlasUnsavedPlace;
-begin
-  Result.Path := APath;
-  Result.Count := ACount;
-end;
-
-function TAtlasUnsavedItem.CanPush: Boolean;
-begin
-  Result := (Kind = TAtlasUnsavedKind.Commits) or (Kind = TAtlasUnsavedKind.NoUpstream);
-end;
-
 { TAtlasUnsavedState }
 
 class function TAtlasUnsavedState.Empty: TAtlasUnsavedState;
@@ -403,13 +326,6 @@ begin
   Result.FileTime := AFileTime;
   Result.Expired := AExpired;
   Result.WorkingCopies := False;
-end;
-
-{ TAtlasUnsavedView }
-
-function TAtlasUnsavedView.Clean: Boolean;
-begin
-  Result := Length(Rows) = 0;
 end;
 
 { TAtlasUnsavedPush }
