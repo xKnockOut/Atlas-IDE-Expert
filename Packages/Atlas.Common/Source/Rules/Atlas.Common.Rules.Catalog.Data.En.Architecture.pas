@@ -132,9 +132,10 @@ const
     '      "description": "A list under \"symbols\" in atlas.json forbids routines, types, constants, fields, properties, enum values or identifiers, each with a message and a replacement. Matching uses na' +
     'me resolution, not text: System.SysUtils.FileExists also hits FileExists, but not an own method of the same name. An entry may shorten the name from a dot boundary (TThread.Queue) and contain *. Ident' +
     'ifiers of System without source (Writeln, Halt) count as System.<Name>. If the left part of a qualified name cannot be resolved at all (unit not indexed), the written name is compared with the end of ' +
-    'the entry. Per entry: kind (routine, type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, \"!\" excludes), firs' +
-    'tArgument (only with this first argument, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by' +
-    ' default and silent without a list; on in the strict profile. High confidence. Quick fix: replace with the configured replacement.",',
+    'the entry. Likewise a simple name that cannot be resolved counts as Unit.Name of a used unit that is not indexed (CreateProcess with uses Winapi.Windows without RTL sources). Per entry: kind (routine,' +
+    ' type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, \"!\" excludes), firstArgument (only with this first argu' +
+    'ment, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by default and silent without a list; ' +
+    'on in the strict profile. High confidence. Quick fix: replace with the configured replacement.",',
     '      "bad": "// atlas.json: \"forbidden-symbol\": {\"symbols\": [{\"name\": \"System.Write*\", \"kind\": \"routine\", \"message\": \"Only via ILogger\"}]}\nprocedure TImport.Report(const AText: strin' +
     'g);\nbegin\n  Writeln(AText);\nend;",',
     '      "good": "procedure TImport.Report(const AText: string);\nbegin\n  FLogger.Info(AText);\nend;",',
