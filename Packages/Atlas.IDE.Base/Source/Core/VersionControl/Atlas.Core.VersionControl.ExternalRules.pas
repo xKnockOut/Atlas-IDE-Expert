@@ -113,18 +113,25 @@ end;
 class function TAtlasVcsExternalRules.RulesJson(const ARules: TArray<TAtlasVcsExternalRule>): string;
 var
   mRule: TAtlasVcsExternalRule;
-  mParts: TArray<string>;
+  mList: TJSONArray;
+  mItem: TJSONObject;
 begin
-  mParts := nil;
-  for mRule in ARules do
-  begin
-    if (mRule.Source <> '') and (mRule.Action <> TAtlasVcsExternalAction.Ask) then
+  mList := TJSONArray.Create;
+  try
+    for mRule in ARules do
     begin
-      mParts := mParts + ['{"source": ' + TJsonText.Quote(mRule.Source) + ', "onBranch": ' +
-        TJsonText.Quote(AtlasVcsExternalActionText(mRule.Action)) + '}'];
+      if (mRule.Source <> '') and (mRule.Action <> TAtlasVcsExternalAction.Ask) then
+      begin
+        mItem := TJSONObject.Create;
+        mList.AddElement(mItem);
+        mItem.AddPair('source', mRule.Source);
+        mItem.AddPair('onBranch', AtlasVcsExternalActionText(mRule.Action));
+      end;
     end;
+    Result := mList.ToJSON([]);
+  finally
+    mList.Free;
   end;
-  Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
 class function TAtlasVcsExternalRules.RulesText(const ARules: TArray<TAtlasVcsExternalRule>): string;

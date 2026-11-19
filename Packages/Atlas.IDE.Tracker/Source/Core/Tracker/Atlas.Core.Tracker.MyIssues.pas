@@ -1139,14 +1139,6 @@ end;
 
 { JSON }
 
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 procedure AddTime(AObject: TJSONObject; const AName: string; AValue: TDateTime);
 begin
   if AValue > 0 then
@@ -1176,9 +1168,9 @@ begin
       mLabels.Add(mLabelName);
     end;
   end;
-  AddText(Result, 'state', AItem.State);
-  AddText(Result, 'priority', AItem.Priority);
-  AddText(Result, 'sprint', AItem.Sprint);
+  TJsonBuild.AddText(Result, 'state', AItem.State);
+  TJsonBuild.AddText(Result, 'priority', AItem.Priority);
+  TJsonBuild.AddText(Result, 'sprint', AItem.Sprint);
   if AItem.PullRequest.Number > 0 then
   begin
     Result.AddPair('pr', TJSONNumber.Create(AItem.PullRequest.Number));
@@ -1194,9 +1186,9 @@ function ActiveJson(const AActive: TAtlasActiveIssue): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('key', AActive.Key);
-  AddText(Result, 'title', AActive.Title);
+  TJsonBuild.AddText(Result, 'title', AActive.Title);
   Result.AddPair('mode', TAtlasMyIssues.StartName(AActive.Mode));
-  AddText(Result, 'branch', AActive.Branch);
+  TJsonBuild.AddText(Result, 'branch', AActive.Branch);
   AddTime(Result, 'started', AActive.StartedUtc);
 end;
 
@@ -1217,12 +1209,12 @@ var
   mItem: TAtlasTrackerIssue;
 begin
   Result := TJSONObject.Create;
-  AddText(Result, 'provider', AState.Provider);
-  AddText(Result, 'server', AState.Server);
-  AddText(Result, 'project', AState.Project);
-  AddText(Result, 'query', AState.Query);
+  TJsonBuild.AddText(Result, 'provider', AState.Provider);
+  TJsonBuild.AddText(Result, 'server', AState.Server);
+  TJsonBuild.AddText(Result, 'project', AState.Project);
+  TJsonBuild.AddText(Result, 'query', AState.Query);
   AddTime(Result, 'attempt', AState.Attempt);
-  AddText(Result, 'error', TAtlasCiBuild.ErrorKey(AState.Error));
+  TJsonBuild.AddText(Result, 'error', TAtlasCiBuild.ErrorKey(AState.Error));
   AddTime(Result, 'at', AState.At);
   mItems := TJSONArray.Create;
   Result.AddPair('items', mItems);
@@ -1234,10 +1226,10 @@ begin
   begin
     Result.AddPair('active', ActiveJson(AState.Active));
   end;
-  AddText(Result, 'endedBranch', AState.EndedBranch);
-  AddText(Result, 'hook', AState.Hook);
-  AddText(Result, 'gitDir', AState.GitDir);
-  AddText(Result, 'selected', AState.Selected);
+  TJsonBuild.AddText(Result, 'endedBranch', AState.EndedBranch);
+  TJsonBuild.AddText(Result, 'hook', AState.Hook);
+  TJsonBuild.AddText(Result, 'gitDir', AState.GitDir);
+  TJsonBuild.AddText(Result, 'selected', AState.Selected);
   if Length(AState.Counts) > 0 then
   begin
     Result.AddPair('counts', CountsJson(AState.Counts));
