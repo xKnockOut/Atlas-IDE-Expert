@@ -54,7 +54,6 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -66,6 +65,7 @@ uses
   Atlas.IDE.Tracker.BlameLinks,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssueWork,
+  Atlas.IDE.Tracker.KnownErrors,
   Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.TestResults,
@@ -98,6 +98,8 @@ var
   GTiles: TArray<IAtlasRegistration>;
   /// <summary>Aktives Issue und Zustand für den Arbeitsstand je Issue (#2052), solange MyIssues läuft.</summary>
   GIssueWork: TAtlasTrackerIssueWork;
+  GKnownErrors: TAtlasTrackerKnownErrors;
+  GKnownErrorsRef: IInterface;
   /// <summary>„Testergebnisse“ (#763) mit eigener Verbindung zur Willkommensseite, solange TestResults läuft.
   /// </summary>
   GTestsWelcome: TAtlasTrackerWelcomeLink;
@@ -287,7 +289,11 @@ begin
     GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerSprintTile.Create(GIssues) as IAtlasWelcomeTile),
     GScope.Provide(IAtlasIssueCreation, TAtlasIdeIssueCreation.Create as IAtlasIssueCreation)];
   GIssueWork := TAtlasTrackerIssueWork.Create(GIssues.Context, GIssues.Services);
-  GTiles := GTiles + [GScope.Provide(IAtlasIssueWorkSource, GIssueWork as IAtlasIssueWorkSource)];
+  GTiles := GTiles + [GIssueWork.ProvideIn(GScope)];
+  // Bekannte Fehler beim Exception-Halt (#2460) für den Debugger.
+  GKnownErrors := TAtlasTrackerKnownErrors.Create(GIssues.Context, GIssues.Services);
+  GKnownErrorsRef := GKnownErrors as IInterface;
+  GTiles := GTiles + [GKnownErrors.ProvideIn(GScope)];
   // „Prüfen“ (#2126): Ende der betroffenen Tests.
   if GIssues.Services.Tracking.Review <> nil then
   begin
@@ -311,6 +317,12 @@ begin
     GIssueWork.Detach;
   end;
   GIssueWork := nil;
+  if GKnownErrors <> nil then
+  begin
+    GKnownErrors.Detach;
+  end;
+  GKnownErrors := nil;
+  GKnownErrorsRef := nil;
   // Vor „Meine Issues“: wartet auf laufende Anfragen.
   TAtlasIdeNewIssue.Stop;
   if GIssues <> nil then

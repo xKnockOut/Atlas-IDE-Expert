@@ -357,6 +357,7 @@ begin
   Assert.IsTrue(ASettings.IssuesPreviewChecklists);
   Assert.IsTrue(ASettings.IssuesChecklistStatus);
   Assert.IsTrue(ASettings.IssuesShareWithAssistants, 'begonnenes Issue für KI-Assistenten (#2051) an');
+  Assert.IsTrue(ASettings.IssuesDebugKnownErrors, 'bekannte Fehler beim Exception-Halt (#2460) an');
   Assert.IsTrue(ASettings.IssuesStatusState, 'Zustand im Statusfeld (#2124) an');
   Assert.AreEqual('ask', ASettings.IssuesSprintOnStart, 'Sprint beim Beginnen (#2128): fragen');
   Assert.IsTrue(ASettings.IssuesPreviewLinks, 'Verknüpfungen als Baum (#1279) an');
@@ -478,6 +479,7 @@ begin
   ASettings.IssuesPreviewChecklists := False;
   ASettings.IssuesChecklistStatus := False;
   ASettings.IssuesShareWithAssistants := False;
+  ASettings.IssuesDebugKnownErrors := False;
   ASettings.IssuesStatusState := False;
   ASettings.IssuesSprintOnStart := 'ALWAYS';
   ASettings.IssuesPreviewLinks := False;
@@ -533,6 +535,7 @@ begin
   Assert.IsFalse(ALoaded.IssuesPreviewChecklists);
   Assert.IsFalse(ALoaded.IssuesChecklistStatus);
   Assert.IsFalse(ALoaded.IssuesShareWithAssistants);
+  Assert.IsFalse(ALoaded.IssuesDebugKnownErrors);
   Assert.IsFalse(ALoaded.IssuesStatusState);
   Assert.AreEqual('always', ALoaded.IssuesSprintOnStart, 'auf den bekannten Wert gebracht');
   Assert.IsFalse(ALoaded.IssuesPreviewLinks);
