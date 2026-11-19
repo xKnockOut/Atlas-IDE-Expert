@@ -134,6 +134,22 @@ uses
   System.Math,
   Atlas.UI.Popup.Window;
 
+const
+  /// <summary>Bildschirmauflösung, auf die sich alle Maße beziehen.</summary>
+  cDefaultPpi = 96;
+  /// <summary>Großbuchstaben der Kapitälchen in Prozent der Schrifthöhe.</summary>
+  cSmallCapsPercent = 85;
+  /// <summary>Maße in Pixeln bei 96 dpi: Daumen (kleinste Höhe, Abstand links und rechts vom Text), Rundung der
+  /// Markierung, Innenrand.</summary>
+  cMinThumb = 16;
+  cThumbLeft = 4;
+  cThumbRight = 7;
+  cPillRadius = 6;
+  cPad = 3;
+  /// <summary>Kleinste Höhe in Zeilen und Zeilen je Schritt des Mausrads.</summary>
+  cMinLines = 3;
+  cWheelLines = 3;
+
 { TAtlasDocFonts }
 
 class function TAtlasDocFonts.Create(AMono, AUI: TFont; APPI: Integer): TAtlasDocFonts;
@@ -159,7 +175,7 @@ begin
   inherited Create;
   FMono := TFont.Create;
   FUI := TFont.Create;
-  FPPI := 96;
+  FPPI := cDefaultPpi;
 end;
 
 destructor TAtlasDocFontSet.Destroy;
@@ -247,7 +263,7 @@ begin
   // Überschriften in Kapitälchen: Großbuchstaben etwas kleiner.
   if AFace.Small then
   begin
-    Result.Height := MulDiv(Result.Height, 85, 100);
+    Result.Height := MulDiv(Result.Height, cSmallCapsPercent, 100);
   end;
   FFonts[AFace.Font, AFace.Bold, AFace.Italic, AFace.Small] := Result;
 end;
@@ -349,9 +365,10 @@ begin
   begin
     Exit;
   end;
-  mThumb := Max(FFonts.Scale(16), MulDiv(FViewport, FViewport, FLayout.Height));
+  mThumb := Max(FFonts.Scale(cMinThumb), MulDiv(FViewport, FViewport, FLayout.Height));
   mThumbTop := ATop + MulDiv(FViewport - mThumb, FScroll, Max(1, FLayout.Height - FViewport));
-  TAtlasDraw.Thumb(ACanvas, Rect(ALeft + FWidth + FFonts.Scale(4), mThumbTop, ALeft + FWidth + FFonts.Scale(7),
+  TAtlasDraw.Thumb(ACanvas, Rect(ALeft + FWidth + FFonts.Scale(cThumbLeft), mThumbTop,
+    ALeft + FWidth + FFonts.Scale(cThumbRight),
     mThumbTop + mThumb), AColors, 0);
 end;
 
@@ -360,7 +377,7 @@ procedure TAtlasDocView.Build(ACanvas: TCanvas; const AContent: TAtlasDocContent
 begin
   FFonts.Assign(ACanvas, AFonts.Mono, AFonts.UI, AFonts.PPI);
   FWidth := Max(AWidth, 1);
-  FMetrics := TAtlasDocMetrics.Create(FFonts.LineStep, FFonts.MonoHeight + FFonts.Scale(2), FFonts.PPI / 96);
+  FMetrics := TAtlasDocMetrics.Create(FFonts.LineStep, FFonts.MonoHeight + FFonts.Scale(2), FFonts.PPI / cDefaultPpi);
   FContent := AContent;
   FLabels := ALabels;
   Relayout(ACanvas);
@@ -399,7 +416,7 @@ begin
   end;
   if AMaxHeight > 0 then
   begin
-    FViewport := Min(FViewport, Max(AMaxHeight, FLayout.HeightOfLines(3)));
+    FViewport := Min(FViewport, Max(AMaxHeight, FLayout.HeightOfLines(cMinLines)));
   end;
   ClampScroll;
   Result := FViewport;
@@ -431,7 +448,7 @@ end;
 
 function TAtlasDocView.WheelStep: Integer;
 begin
-  Result := 3 * FFonts.LineStep;
+  Result := cWheelLines * FFonts.LineStep;
 end;
 
 function TAtlasDocView.CanScroll: Boolean;
@@ -616,7 +633,7 @@ begin
     Canvas.Brush.Color := ToColor(Colors.AccentSoft);
     Canvas.Pen.Style := psClear;
     Canvas.RoundRect(Left + ASpan.Left, mSpanTop, Left + ASpan.Right, mSpanTop + Fonts.FaceHeight(ASpan.Face),
-      Fonts.Scale(6), Fonts.Scale(6));
+      Fonts.Scale(cPillRadius), Fonts.Scale(cPillRadius));
     Canvas.Pen.Style := psSolid;
   end;
   if Selected and Layout.SpanRange(ASpan, From, Till, Measure, mSelLeft, mSelRight) then
@@ -675,7 +692,7 @@ begin
   mPainter.Width := FWidth;
   mPainter.Scroll := FScroll;
   mPainter.Viewport := FViewport;
-  mPainter.Pad := FFonts.Scale(3);
+  mPainter.Pad := FFonts.Scale(cPad);
   mPainter.HotLink := FHotLink;
   mPainter.Selected := HasSelection;
   mPainter.From := Min(FSelection.Anchor, FSelection.Caret);

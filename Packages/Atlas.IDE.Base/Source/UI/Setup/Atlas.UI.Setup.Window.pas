@@ -167,6 +167,29 @@ const
   cCheckHeight = 19;
   cCheckMinWidth = 80;
   cCheckGap = 24;
+  /// <summary>Zeilen, logische Pixel: Innenrand und kleinste Höhe einer Zeile, Innenrand der Unterzeile und des
+  /// Kopfs, Höhe des Fußes, Rand links und rechts, Mitte und Radius der Punkte, Beginn des Texts.</summary>
+  cRowPadding = 12;
+  cMinRowHeight = 31;
+  cSubRowPadding = 4;
+  cHeaderPadding = 4;
+  cButtonsHeight = 44;
+  cEdge = 12;
+  cDotCenter = 20;
+  cDotRadius = 5;
+  cProjectDotCenter = 40;
+  cProjectDotRadius = 3;
+  cTextLeft = 34;
+  /// <summary>Knopf der Korrektur in einer Zeile: Innenrand, kleinste Breite, Höhe, Abstand zum Text.</summary>
+  cFixButtonPadding = 24;
+  cFixButtonMinWidth = 90;
+  cFixButtonHeight = 25;
+  cFixButtonGap = 8;
+  /// <summary>Erklärung unter der Liste: Abstand oben, Rand links und rechts, Innenrand.</summary>
+  cNoteGap = 4;
+  cNoteMargin = 20;
+  cNotePadding = 8;
+  cBytesPerMegabyte = 1024 * 1024;
   /// <summary>Hauptzeile je Befund; Varianten (Einheiten, gewonnene Tasten) wählt ResultTextId.</summary>
   cResultTexts: array[TAtlasSetupFinding] of TAtlasTextId = (TAtlasTextId.SetupServerReady,
     TAtlasTextId.SetupServerMissing, TAtlasTextId.SetupServerNotStarted, TAtlasTextId.SetupServerStarting,
@@ -252,7 +275,7 @@ begin
       begin
         mBytes := StrToInt64Def(Arg(AResult, 0), 0);
         Result := TAtlasSetupStrings.Fmt(TAtlasSetupTextId.SetupLibrarySize,
-          [FormatFloat('0.0', mBytes / (1024 * 1024), FormatSettings)]);
+          [FormatFloat('0.0', mBytes / cBytesPerMegabyte, FormatSettings)]);
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
@@ -466,23 +489,23 @@ type
 function TAtlasSetupMetrics.RowHeight: Integer;
 begin
   Window.Canvas.Font := Window.Font;
-  Result := Max(Window.Canvas.TextHeight('Wg') + Window.ScaleValue(12), Window.ScaleValue(31));
+  Result := Max(Window.Canvas.TextHeight('Wg') + Window.ScaleValue(cRowPadding), Window.ScaleValue(cMinRowHeight));
 end;
 
 function TAtlasSetupMetrics.SubRowHeight: Integer;
 begin
   Window.Canvas.Font := Window.Font;
-  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(4);
+  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(cSubRowPadding);
 end;
 
 function TAtlasSetupMetrics.HeaderHeight: Integer;
 begin
-  Result := RowHeight + Window.ScaleValue(4);
+  Result := RowHeight + Window.ScaleValue(cHeaderPadding);
 end;
 
 function TAtlasSetupMetrics.ButtonsHeight: Integer;
 begin
-  Result := Window.ScaleValue(44);
+  Result := Window.ScaleValue(cButtonsHeight);
 end;
 
 { TAtlasSetupArranger }
@@ -527,9 +550,10 @@ begin
     mText := TAtlasSetupTexts.FixCaption(Window.FResults[mIndex].Fix);
     mButton.Caption := mText;
     mButton.Visible := mText <> '';
-    mWidth := Max(Window.Canvas.TextWidth(mText) + Window.ScaleValue(24), Window.ScaleValue(90));
-    mButton.SetBounds(Window.ClientWidth - mWidth - Window.ScaleValue(12),
-      Result + (mLine.Height - Window.ScaleValue(25)) div 2, mWidth, Window.ScaleValue(25));
+    mWidth := Max(Window.Canvas.TextWidth(mText) + Window.ScaleValue(cFixButtonPadding),
+      Window.ScaleValue(cFixButtonMinWidth));
+    mButton.SetBounds(Window.ClientWidth - mWidth - Window.ScaleValue(cEdge),
+      Result + (mLine.Height - Window.ScaleValue(cFixButtonHeight)) div 2, mWidth, Window.ScaleValue(cFixButtonHeight));
     Inc(Result, mLine.Height);
     for mProject := 0 to High(Window.FResults[mIndex].Projects) do
     begin
@@ -547,15 +571,15 @@ var
   mArea: TRect;
 begin
   // Erklärung bzw. Hinweis, umbrochen.
-  Window.FGeometry.NoteTop := ATop + Window.ScaleValue(4);
+  Window.FGeometry.NoteTop := ATop + Window.ScaleValue(cNoteGap);
   Window.FGeometry.NoteHeight := 0;
   if Window.FNote <> '' then
   begin
-    mArea := Rect(0, 0, Window.ClientWidth - Window.ScaleValue(40), 0);
+    mArea := Rect(0, 0, Window.ClientWidth - Window.ScaleValue(2 * cNoteMargin), 0);
     DrawText(Window.Canvas.Handle, PChar(Window.FNote), -1, mArea, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
-    Window.FGeometry.NoteHeight := mArea.Height + Window.ScaleValue(8);
+    Window.FGeometry.NoteHeight := mArea.Height + Window.ScaleValue(cNotePadding);
   end;
-  Window.FGeometry.FooterTop := Window.FGeometry.NoteTop + Window.FGeometry.NoteHeight + Window.ScaleValue(4);
+  Window.FGeometry.FooterTop := Window.FGeometry.NoteTop + Window.FGeometry.NoteHeight + Window.ScaleValue(cNoteGap);
 end;
 
 procedure TAtlasSetupArranger.Footer;
@@ -596,7 +620,7 @@ var
 begin
   // Kopf: Titel und Fortschritt.
   Window.Canvas.Brush.Style := bsClear;
-  mPart := Rect(Window.ScaleValue(12), 0, Window.ClientWidth - Window.ScaleValue(12), Metrics.HeaderHeight);
+  mPart := Rect(Window.ScaleValue(cEdge), 0, Window.ClientWidth - Window.ScaleValue(cEdge), Metrics.HeaderHeight);
   Window.Canvas.Font.Style := [fsBold];
   Window.Canvas.Font.Color := ToColor(Window.FColors.Text);
   mText := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle);
@@ -672,7 +696,7 @@ var
 begin
   // Unterzeile je Projekt (#619): kleiner Punkt, Name, Balken, rechts Prozent und Stufe (#2142).
   mProject := AItem.Projects[ALine.Project];
-  Dot(Point(Window.ScaleValue(40), ALine.Top + ALine.Height div 2), Window.ScaleValue(3),
+  Dot(Point(Window.ScaleValue(cProjectDotCenter), ALine.Top + ALine.Height div 2), Window.ScaleValue(cProjectDotRadius),
     TAtlasSetupTexts.ProjectState(mProject));
   Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
   ProjectColumns(AItem, mNameWidth, mStatusWidth);
@@ -703,15 +727,15 @@ var
   mRight: Integer;
   mButton: TButton;
 begin
-  Dot(Point(Window.ScaleValue(20), ALine.Top + ALine.Height div 2), Window.ScaleValue(5), AItem.State);
+  Dot(Point(Window.ScaleValue(cDotCenter), ALine.Top + ALine.Height div 2), Window.ScaleValue(cDotRadius), AItem.State);
   Window.Canvas.Brush.Style := bsClear;
-  mRight := Window.ClientWidth - Window.ScaleValue(12);
+  mRight := Window.ClientWidth - Window.ScaleValue(cEdge);
   mButton := Window.FixButton(ALine.Result_);
   if (mButton <> nil) and mButton.Visible then
   begin
-    mRight := mButton.Left - Window.ScaleValue(8);
+    mRight := mButton.Left - Window.ScaleValue(cFixButtonGap);
   end;
-  mPart := Rect(Window.ScaleValue(34), ALine.Top, mRight, ALine.Top + ALine.Height);
+  mPart := Rect(Window.ScaleValue(cTextLeft), ALine.Top, mRight, ALine.Top + ALine.Height);
   mText := TAtlasSetupTexts.ResultText(AItem);
   Window.Canvas.Font.Color := ToColor(Window.FColors.Text);
   DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
@@ -735,8 +759,8 @@ begin
   begin
     Exit;
   end;
-  mPart := Rect(Window.ScaleValue(20), Window.FGeometry.NoteTop + Window.ScaleValue(4),
-    Window.ClientWidth - Window.ScaleValue(20), Window.FGeometry.NoteTop + Window.FGeometry.NoteHeight);
+  mPart := Rect(Window.ScaleValue(cNoteMargin), Window.FGeometry.NoteTop + Window.ScaleValue(cNoteGap),
+    Window.ClientWidth - Window.ScaleValue(cNoteMargin), Window.FGeometry.NoteTop + Window.FGeometry.NoteHeight);
   Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
   DrawText(Window.Canvas.Handle, PChar(Window.FNote), -1, mPart, DT_WORDBREAK or DT_NOPREFIX);
 end;
@@ -762,7 +786,8 @@ begin
     mBefore := Copy(mText, 1, mKeyAt - 1);
     mAfter := Copy(mText, mKeyAt + Length(mKey), MaxInt);
   end;
-  mPart := Rect(Window.ScaleValue(12), mTop, Window.ClientWidth - Window.ScaleValue(12), mTop + Metrics.RowHeight);
+  mPart := Rect(Window.ScaleValue(cEdge), mTop, Window.ClientWidth - Window.ScaleValue(cEdge),
+    mTop + Metrics.RowHeight);
   Window.Canvas.Font.Color := ToColor(Window.FColors.Text);
   DrawText(Window.Canvas.Handle, PChar(mBefore), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   if mKeyAt > 0 then
