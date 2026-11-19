@@ -2614,7 +2614,6 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Reports.pas"/>
         <DCCReference Include="Application\Shell\Shell.Linter.Parts.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Instructions.Tests.pas"/>
-        <DCCReference Include="Application\Shell\Shell.Linter.Baseline.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Hotspots.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.SymbolHistory.pas"/>
         <DCCReference Include="Application\Shell\Shell.VersionControl.TestSupport.pas"/>

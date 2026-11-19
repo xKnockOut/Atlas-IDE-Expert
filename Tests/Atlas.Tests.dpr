@@ -2606,7 +2606,6 @@ uses
   Shell.Linter.Reports in '..\Application\Source\Shell\Shell.Linter.Reports.pas',
   Shell.Linter.Parts.Tests in 'Application\Shell\Shell.Linter.Parts.Tests.pas',
   Shell.Instructions.Tests in 'Application\Shell\Shell.Instructions.Tests.pas',
-  Shell.Linter.Baseline.Tests in 'Application\Shell\Shell.Linter.Baseline.Tests.pas',
   Shell.Hotspots in '..\Application\Source\Shell\Shell.Hotspots.pas',
   Shell.SymbolHistory in '..\Application\Source\Shell\Shell.SymbolHistory.pas',
   Shell.VersionControl.TestSupport in 'Application\Shell\Shell.VersionControl.TestSupport.pas',
