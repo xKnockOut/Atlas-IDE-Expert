@@ -264,19 +264,6 @@ begin
   end;
 end;
 
-/// <summary>Wert des Schlüssels AName als JSON-Text ('default', 'x-offValue'); '' ohne.</summary>
-function JsonOf(ASchema: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := ASchema.GetValue(AName);
-  if mValue <> nil then
-  begin
-    Result := mValue.ToJSON;
-  end;
-end;
-
 { TAtlasCatalogEntry }
 
 /// <summary>Eintrag der Plugin-Einstellung AName aus ihrem Schema.</summary>
@@ -295,7 +282,7 @@ begin
   Result.Page := TJsonRead.Text(ASchema, 'x-page');
   Result.Caption := TJsonRead.Text(ASchema, 'x-caption');
   Result.CaptionEn := TJsonRead.Text(ASchema, 'x-captionEn');
-  Result.DefaultJson := JsonOf(ASchema, 'default');
+  Result.DefaultJson := TJsonRead.Json(ASchema, 'default');
   Result.State := TJsonRead.Flag(ASchema, 'x-state');
   Result.Machine := TJsonRead.Flag(ASchema, 'x-machine');
   Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');
@@ -310,7 +297,7 @@ begin
   Result.Parent := OptionalText(ASchema, 'x-parent', Result.HasParent);
   Result.Node := OptionalText(ASchema, 'x-node', Result.HasNode);
   Result.Module := TJsonRead.Text(ASchema, 'x-module');
-  Result.OffJson := JsonOf(ASchema, 'x-offValue');
+  Result.OffJson := TJsonRead.Json(ASchema, 'x-offValue');
   Result.Description := TJsonRead.Text(ASchema, 'description');
   Result.Keywords := TJsonRead.Strings(ASchema, 'x-keywords');
   Result.QuickToggle := TJsonRead.Flag(ASchema, 'x-quickToggle');
@@ -353,7 +340,7 @@ begin
   Result.Caption := FirstSentence(TJsonRead.Text(ASchema, 'description'));
   // Englisch aus x-description-en (#1458), ebenso gekürzt.
   Result.CaptionEn := FirstSentence(TJsonRead.Text(ASchema, 'x-description-en'));
-  Result.DefaultJson := JsonOf(ASchema, 'default');
+  Result.DefaultJson := TJsonRead.Json(ASchema, 'default');
   Result.Machine := TJsonRead.Flag(ASchema, 'x-machine') or TJsonRead.Flag(AParent, 'x-machine');
   Result.State := TJsonRead.Flag(ASchema, 'x-state');
   Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');

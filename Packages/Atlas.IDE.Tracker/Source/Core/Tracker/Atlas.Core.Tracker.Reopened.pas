@@ -460,17 +460,6 @@ begin
   end;
 end;
 
-function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  mText := TJsonRead.Text(AObject, AName);
-  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
 /// <summary>Feld nur mit Inhalt schreiben.</summary>
 procedure AddText(AObject: TJSONObject; const AName, AValue: string);
 begin
@@ -540,7 +529,7 @@ begin
   Result := Default(TAtlasTrackerEnded);
   Result.Key := Trim(TJsonRead.Text(AObject, 'key'));
   Result.Branch := TJsonRead.Text(AObject, 'branch');
-  Result.At := TimeOf(AObject, 'at');
+  Result.At := TJsonRead.IsoTime(AObject, 'at', True);
   Result.State := TJsonRead.Text(AObject, 'state');
   Result.Done := TJsonRead.Flag(AObject, 'done');
 end;
@@ -552,11 +541,11 @@ begin
   Result.Title := TJsonRead.Text(AObject, 'title');
   Result.State := TJsonRead.Text(AObject, 'state');
   Result.Previous := TJsonRead.Text(AObject, 'previous');
-  Result.At := TimeOf(AObject, 'at');
-  Result.EndedAt := TimeOf(AObject, 'endedAt');
+  Result.At := TJsonRead.IsoTime(AObject, 'at', True);
+  Result.EndedAt := TJsonRead.IsoTime(AObject, 'endedAt', True);
   Result.Branch := TJsonRead.Text(AObject, 'branch');
   Result.CommentBy := TJsonRead.Text(AObject, 'commentBy');
-  Result.CommentAt := TimeOf(AObject, 'commentAt');
+  Result.CommentAt := TJsonRead.IsoTime(AObject, 'commentAt', True);
   Result.Comment := TJsonRead.Text(AObject, 'comment');
 end;
 
