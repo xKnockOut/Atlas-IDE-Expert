@@ -92,18 +92,6 @@ begin
   end;
 end;
 
-function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  mText := AObject.GetValue<string>(AName, '');
-  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
 function CommentsJson(const AComments: TArray<TAtlasTrackerComment>): TJSONArray;
 var
   mItem: TJSONObject;
@@ -165,7 +153,7 @@ function CommentOf(AItem: TJSONObject): TAtlasTrackerComment;
 begin
   Result := Default(TAtlasTrackerComment);
   Result.Author := AItem.GetValue<string>('author', '');
-  Result.Created := TimeOf(AItem, 'created');
+  Result.Created := TJsonRead.IsoTime(AItem, 'created', True);
   Result.Text := AItem.GetValue<string>('text', '');
 end;
 
@@ -255,11 +243,11 @@ begin
   ADetails.Kind := ARoot.GetValue<string>('kind', '');
   ADetails.Assignee := ARoot.GetValue<string>('assignee', '');
   ADetails.Sprint := ARoot.GetValue<string>('sprint', '');
-  ADetails.Created := TimeOf(ARoot, 'created');
-  ADetails.Updated := TimeOf(ARoot, 'updated');
+  ADetails.Created := TJsonRead.IsoTime(ARoot, 'created', True);
+  ADetails.Updated := TJsonRead.IsoTime(ARoot, 'updated', True);
   ADetails.Description := ARoot.GetValue<string>('description', '');
   ADetails.CommentsLoaded := ARoot.GetValue<Boolean>('commentsLoaded', False);
-  ADetails.Fetched := TimeOf(ARoot, 'fetched');
+  ADetails.Fetched := TJsonRead.IsoTime(ARoot, 'fetched', True);
 end;
 
 { TAtlasTrackerIssueCache }
