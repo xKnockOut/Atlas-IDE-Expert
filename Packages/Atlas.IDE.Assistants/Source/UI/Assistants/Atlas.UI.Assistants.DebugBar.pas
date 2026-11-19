@@ -63,6 +63,8 @@ const
   cPad = 8;
   cGap = 6;
   cInset = 3;
+  /// <summary>Rundung der Knopfecken.</summary>
+  cRound = 4;
 
 { TAtlasAssistantDebugBar }
 
@@ -194,7 +196,7 @@ begin
     begin
       Canvas.Brush.Color := TColor(Colors.AccentSoft);
     end;
-    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, Scale(4), Scale(4));
+    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, Scale(cRound), Scale(cRound));
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Color := TColor(Colors.Text);
     mText := Caption(mButton);

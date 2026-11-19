@@ -109,6 +109,10 @@ begin
   Result := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
 end;
 
+const
+  /// <summary>Abstand, in dem der Eingang nach neuen Aufträgen sieht (ms).</summary>
+  cPollMs = 250;
+
 { TAtlasIdeDebugInbox }
 
 constructor TAtlasIdeDebugInbox.Create(const AControl: TFunc<IAtlasDebugControl>;
@@ -139,7 +143,7 @@ begin
   FSignal := TAtlasFolderSignal.Create(FFolder);
   FPace := Default(TAtlasInboxPace);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cPollMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
