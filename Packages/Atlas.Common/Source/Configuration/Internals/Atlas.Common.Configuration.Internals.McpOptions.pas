@@ -371,7 +371,7 @@ begin
     Exit;
   end;
   mFlags := [TFlagOption.Create('globalSettings', ASettings.McpGlobalSettings),
-    TFlagOption.Create('prompts', ASettings.McpPrompts),
+    TFlagOption.Create('prompts', ASettings.McpPrompts), TFlagOption.Create('statistics', ASettings.McpStatistics),
     TFlagOption.Create('reportFindingsAfterEdit', ASettings.McpReportFindingsAfterEdit)];
   for mIndex := 0 to ANode.Count - 1 do
   begin
@@ -398,6 +398,10 @@ begin
   else if AMember = 'prompts' then
   begin
     ATarget.McpPrompts := ASource.McpPrompts;
+  end
+  else if AMember = 'statistics' then
+  begin
+    ATarget.McpStatistics := ASource.McpStatistics;
   end
   else if AMember = 'reportFindingsAfterEdit' then
   begin
