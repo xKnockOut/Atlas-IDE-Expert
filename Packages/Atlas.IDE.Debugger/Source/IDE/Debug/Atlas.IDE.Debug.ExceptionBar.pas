@@ -184,6 +184,24 @@ begin
   Result := TAtlasIdeSettings.Current.DebugExceptionMessageRules and (Trim(AInfo.Message) <> '');
 end;
 
+/// <summary>Knopf an seinen Empfänger weitergeben (Erklärung oder bekannte Fehler); ohne Empfänger nichts.</summary>
+procedure PassOn(const AHandler: TProc<TAtlasDebugBarAction>; AAction: TAtlasDebugBarAction);
+begin
+  if Assigned(AHandler) then
+  begin
+    AHandler(AAction);
+  end;
+end;
+
+/// <summary>Ort des Halts im Editor zeigen, wenn er bekannt ist.</summary>
+procedure OpenLocation(const AInfo: TAtlasDebugBannerInfo);
+begin
+  if AInfo.HasLocation then
+  begin
+    TAtlasIdeNavigation.MarkLine(AInfo.FileName, AInfo.Line - 1);
+  end;
+end;
+
 { TAtlasIdeDebugExceptionBar.TListener }
 
 procedure TAtlasIdeDebugExceptionBar.TListener.DebugStarted;
@@ -412,15 +430,9 @@ begin
     TAtlasDebugBarAction.Copy:
       Clipboard.AsText := FShown.CopyText;
     TAtlasDebugBarAction.Open:
-      if FShownInfo.HasLocation then
-      begin
-        TAtlasIdeNavigation.MarkLine(FShownInfo.FileName, FShownInfo.Line - 1);
-      end;
+      OpenLocation(FShownInfo);
     TAtlasDebugBarAction.WhereAssigned, TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation:
-      if Assigned(FExtras.ExplanationHandler) then
-      begin
-        FExtras.ExplanationHandler(AAction);
-      end;
+      PassOn(FExtras.ExplanationHandler, AAction);
     TAtlasDebugBarAction.CreateTest:
       TAtlasIdeHost.ExecuteCommand(cAtlasTestFromDebugStopCommand);
     TAtlasDebugBarAction.MessageRule:
@@ -430,10 +442,7 @@ begin
       end;
     TAtlasDebugBarAction.KnownOpen, TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen,
     TAtlasDebugBarAction.KnownNew:
-      if Assigned(FExtras.KnownHandler) then
-      begin
-        FExtras.KnownHandler(AAction);
-      end;
+      PassOn(FExtras.KnownHandler, AAction);
     TAtlasDebugBarAction.None: ;
   end;
 end;
