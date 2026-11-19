@@ -2291,6 +2291,7 @@ uses
   Atlas.Common.Mcp.EditTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas',
   Atlas.Common.Mcp.ExtractTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.ExtractTools.Tests.pas',
   Atlas.Common.Mcp.ImplementationTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.ImplementationTools.Tests.pas',
+  Atlas.Common.Mcp.BatchTool.Tests in 'Common\Mcp\Atlas.Common.Mcp.BatchTool.Tests.pas',
   Atlas.Common.Mcp.IdeEdits.Tests in 'Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas',
   Atlas.Common.Mcp.IdeBuilds.Tests in 'Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas',
   Atlas.Common.Mcp.IdeInbox.Tests in 'Common\Mcp\Atlas.Common.Mcp.IdeInbox.Tests.pas',

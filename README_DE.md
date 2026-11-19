@@ -168,6 +168,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
 - **Letzter Testlauf ohne neuen Lauf:** `get_last_tests` liefert, was die IDE beim letzten Testlauf gesehen hat: rote Tests mit Datei:Zeile, erwartet und erhalten, Protokollauszug und Marken neu rot, wieder grün, wackelig, Leck und veraltet (`tests.lastRun`)
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
+- **Mehrere Abfragen auf einmal:** `batch` führt bis zu 10 lesende MCP-Werkzeuge in einem Aufruf aus, auf einem gemeinsamen Indexstand mit einem einzigen Dateiabgleich; ein Fehler betrifft nur seinen Abschnitt
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

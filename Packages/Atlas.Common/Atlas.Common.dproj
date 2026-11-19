@@ -711,6 +711,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ExtractTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ImplementationTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BatchTool.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeInbox.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
