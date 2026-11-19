@@ -109,6 +109,8 @@ begin
   // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
   Switch('assistants.edit', T(TAtlasAssistantsTextId.SettingsEdit));
   Switch('compiler.mcpBuild', T(TAtlasAssistantsTextId.SettingsMcpBuild));
+  // Anzeige „KI-Assistent aktiv“ mit Pause (#1906).
+  Switch('assistants.banner', T(TAtlasAssistantsTextId.SettingsBanner));
   // IDE-Zustand (#2050): wo der Entwickler gerade ist, samt Auswahl bis zur Grenze.
   Switch('assistants.context', T(TAtlasAssistantsTextId.SettingsContext));
   Switch('assistants.context.selection', T(TAtlasAssistantsTextId.SettingsContextSelection));

@@ -185,6 +185,12 @@ begin
   end;
 end;
 
+const
+  cPartText = '%s %d ms';
+  cStartLine = 'Start: %d ms bis zur freien Nachrichtenschleife';
+  cSlowSuffix = ' (länger als %d ms)';
+  cAtlasShare = ', davon Atlas %d ms';
+
 function TAtlasStartTimes.SlowestText: string;
 var
   mPart: TAtlasStartPart;
@@ -196,7 +202,7 @@ begin
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Format('%s %d ms', [mPart.Name, mPart.Ms]);
+    Result := Result + Format(cPartText, [mPart.Name, mPart.Ms]);
   end;
 end;
 
@@ -209,12 +215,12 @@ function TAtlasStartTimes.LogLine(ALoadMs: Int64; ALimitMs: Integer): string;
 var
   mParts: string;
 begin
-  Result := Format('Start: %d ms bis zur freien Nachrichtenschleife', [ALoadMs]);
+  Result := Format(cStartLine, [ALoadMs]);
   if IsSlow(ALoadMs, ALimitMs) then
   begin
-    Result := Result + Format(' (länger als %d ms)', [ALimitMs]);
+    Result := Result + Format(cSlowSuffix, [ALimitMs]);
   end;
-  Result := Result + Format(', davon Atlas %d ms', [Total]);
+  Result := Result + Format(cAtlasShare, [Total]);
   mParts := SlowestText;
   if mParts <> '' then
   begin

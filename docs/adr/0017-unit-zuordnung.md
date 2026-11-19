@@ -704,6 +704,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Notifications.Service` | `IDE/Notifications/Atlas.IDE.Notifications.Service.pas` | Ordner `IDE/Notifications` |
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.CrumbProbe` | `IDE/Outline/Atlas.IDE.Outline.CrumbProbe.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.CrumbCard` | `IDE/Outline/Atlas.IDE.Outline.CrumbCard.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Cache` | `IDE/Outline/Atlas.IDE.Outline.Cache.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.CrumbMenu` | `IDE/Outline/Atlas.IDE.Outline.CrumbMenu.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.CrumbLists` | `IDE/Outline/Atlas.IDE.Outline.CrumbLists.pas` | Ordner `IDE/Outline` |
@@ -905,6 +906,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Unit | Datei | Begründung |
 |---|---|---|
+| `Atlas.Core.Assistants.Activity` | `Core/Assistants/Atlas.Core.Assistants.Activity.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.BuildInbox` | `Core/Assistants/Atlas.Core.Assistants.BuildInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditInbox` | `Core/Assistants/Atlas.Core.Assistants.EditInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.Inbox` | `Core/Assistants/Atlas.Core.Assistants.Inbox.pas` | Ordner `Core/Assistants` |
@@ -917,6 +919,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.AiProviders.Catalog` | `Core/AiProviders/Atlas.Core.AiProviders.Catalog.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.Assistants.AiGhost` | `Core/Assistants/Atlas.Core.Assistants.AiGhost.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.AiGhost` | `IDE/Assistants/Atlas.IDE.Assistants.AiGhost.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Banner` | `IDE/Assistants/Atlas.IDE.Assistants.Banner.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.ContextExport` | `IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |

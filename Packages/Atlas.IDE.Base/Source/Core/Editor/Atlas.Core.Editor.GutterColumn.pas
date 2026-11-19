@@ -354,8 +354,10 @@ begin
 end;
 
 class function TAtlasGutterColumn.Width(ALineHeight: Integer): Integer;
+const
+  cMinWidth = 12;
 begin
-  Result := Max(12, ALineHeight);
+  Result := Max(cMinWidth, ALineHeight);
 end;
 
 class function TAtlasGutterColumn.ProblemTitle(const AProblem: TAtlasProblem; const ASeverity: string): string;
@@ -368,8 +370,11 @@ begin
 end;
 
 class function TAtlasGutterColumn.TargetText(const ATarget: TAtlasGutterTarget): string;
+const
+  // Name — Datei:Zeile
+  cFormat = '%s — %s:%d';
 begin
-  Result := Format('%s — %s:%d', [ATarget.Name, ExtractFileName(ATarget.FileName), ATarget.Line + 1]);
+  Result := Format(cFormat, [ATarget.Name, ExtractFileName(ATarget.FileName), ATarget.Line + 1]);
 end;
 
 class function TAtlasGutterColumn.Handles(const AFileName: string): Boolean;

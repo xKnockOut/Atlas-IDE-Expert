@@ -389,6 +389,7 @@ type
     property McpBuild: Boolean read FBuild.McpBuild write FBuild.McpBuild;
     property AssistantsEnabled: Boolean read FBuild.AssistantsEnabled write FBuild.AssistantsEnabled;
     property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
+    property AssistantsBanner: Boolean read FBuild.AssistantsBanner write FBuild.AssistantsBanner;
     property AssistantsContext: Boolean read FBuild.AssistantsContext write FBuild.AssistantsContext;
     property AssistantsContextSelection: Boolean read FBuild.AssistantsContextSelection
       write FBuild.AssistantsContextSelection;

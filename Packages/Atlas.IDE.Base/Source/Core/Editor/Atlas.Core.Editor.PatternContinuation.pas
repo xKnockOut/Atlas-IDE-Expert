@@ -452,11 +452,14 @@ end;
 
 function IsPlainChar(AValue: Int64): Boolean;
 begin
-  Result := (AValue >= 32) and (AValue < $FFFF) and (AValue <> Ord(''''));
+  Result := (AValue >= Ord(' ')) and (AValue < $FFFF) and (AValue <> Ord(''''));
 end;
 
 /// <summary>Einzelne Zeichen mit fester Schrittweite bilden eine Folge, alles andere wird ein freies Feld.</summary>
 function StringNext(const AInput: TColumnInput; out AValue: string; out AFree: Boolean): Boolean;
+const
+  // Ein Zeichen in Hochkommas: 'x'.
+  cQuotedCharLength = 3;
 var
   mValues: TArray<Int64>;
   mStep: Int64;
@@ -467,7 +470,7 @@ begin
   SetLength(mValues, Length(AInput.Texts));
   for mIndex := 0 to High(AInput.Texts) do
   begin
-    if (Length(AInput.Texts[mIndex]) = 3) and (AInput.Texts[mIndex][2] <> '''') then
+    if (Length(AInput.Texts[mIndex]) = cQuotedCharLength) and (AInput.Texts[mIndex][2] <> '''') then
     begin
       mValues[mIndex] := Ord(AInput.Texts[mIndex][2]);
     end

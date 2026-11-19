@@ -78,7 +78,8 @@ uses
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
   TCrashesText = (Exception0x8X, WithoutErrorCode0, Code1UnhandledExceptionOr, RuntimeError217UnhandledException,
-    ExitCodeUnknownProcessWas);
+    ExitCodeUnknownProcessWas, CodeNumber, UnderOneSecond, ServerEnded, LastRequest, OpenRequests, StderrLines,
+    NothingOnStderr);
 {$SCOPEDENUMS OFF}
 
 const
@@ -87,12 +88,26 @@ const
      'ohne Fehler (Code 0)',
      'Code 1 (unbehandelte Ausnahme oder von außen beendet)',
      'Laufzeitfehler 217 (unbehandelte Ausnahme)',
-     'Exit-Code unbekannt (Prozess lief beim Ende der Verbindung noch)'),
+     'Exit-Code unbekannt (Prozess lief beim Ende der Verbindung noch)',
+     'Code %d',
+     'unter 1 s',
+     'Server beendet: %s nach %s',
+     '; letzte Anfrage %s',
+     '; offen: %s',
+     '; %d Zeilen auf stderr (%s)',
+     '; nichts auf stderr'),
     ('Exception 0x%.8X',
      'without error (code 0)',
      'code 1 (unhandled exception or terminated from outside)',
      'runtime error 217 (unhandled exception)',
-     'exit code unknown (process was still running when the connection ended)'));
+     'exit code unknown (process was still running when the connection ended)',
+     'code %d',
+     'under 1 s',
+     'Server ended: %s after %s',
+     '; last request %s',
+     '; open: %s',
+     '; %d lines on stderr (%s)',
+     '; nothing on stderr'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TCrashesText): string;
@@ -134,6 +149,17 @@ begin
   Result := False;
 end;
 
+const
+  // Name mit Code in Hex.
+  cNamedCodeFormat = '%s (0x%.8X)';
+  // Ab hier ist das Fehlerbit eines NTSTATUS gesetzt: Ausnahme statt Exit-Code.
+  cFirstExceptionCode = $80000000;
+  // Delphi beendet mit Laufzeitfehler 217 nach einer unbehandelten Ausnahme.
+  cRuntimeErrorExit = 217;
+  cSecondsFormat = '%d s';
+  cMinutesFormat = '%d min %d s';
+  cHoursFormat = '%d h %d min';
+
 /// <summary>Beschreibung eines Codes ohne eigenen Text: Name mit Hex-Code, sonst Ausnahme oder Zahl.</summary>
 function DescribeNamedExit(ACode: Cardinal): string;
 var
@@ -141,15 +167,15 @@ var
 begin
   if NamedExitText(ACode, mName) then
   begin
-    Result := Format('%s (0x%.8X)', [mName, ACode]);
+    Result := Format(cNamedCodeFormat, [mName, ACode]);
   end
-  else if ACode >= $80000000 then
+  else if ACode >= cFirstExceptionCode then
   begin
     Result := Format(UiText(TCrashesText.Exception0x8X), [ACode]);
   end
   else
   begin
-    Result := Format('Code %d', [ACode]);
+    Result := Format(UiText(TCrashesText.CodeNumber), [ACode]);
   end;
 end;
 
@@ -162,7 +188,7 @@ begin
       Result := UiText(TCrashesText.WithoutErrorCode0);
     1:
       Result := UiText(TCrashesText.Code1UnhandledExceptionOr);
-    217:
+    cRuntimeErrorExit:
       Result := UiText(TCrashesText.RuntimeError217UnhandledException);
     cUnknown:
       Result := UiText(TCrashesText.ExitCodeUnknownProcessWas);
@@ -175,41 +201,41 @@ class function TAtlasServerExits.Runtime(AMs: Int64): string;
 var
   mSeconds: Int64;
 begin
-  if AMs < 1000 then
+  if AMs < MSecsPerSec then
   begin
-    Exit('unter 1 s');
+    Exit(UiText(TCrashesText.UnderOneSecond));
   end;
-  mSeconds := AMs div 1000;
-  if mSeconds < 60 then
+  mSeconds := AMs div MSecsPerSec;
+  if mSeconds < SecsPerMin then
   begin
-    Exit(Format('%d s', [mSeconds]));
+    Exit(Format(cSecondsFormat, [mSeconds]));
   end;
-  if mSeconds < 3600 then
+  if mSeconds < SecsPerHour then
   begin
-    Exit(Format('%d min %d s', [mSeconds div 60, mSeconds mod 60]));
+    Exit(Format(cMinutesFormat, [mSeconds div SecsPerMin, mSeconds mod SecsPerMin]));
   end;
-  Result := Format('%d h %d min', [mSeconds div 3600, (mSeconds mod 3600) div 60]);
+  Result := Format(cHoursFormat, [mSeconds div SecsPerHour, (mSeconds mod SecsPerHour) div SecsPerMin]);
 end;
 
 class function TAtlasServerExits.Line(ACode: Cardinal; ARuntimeMs: Int64; const ALastMethod: string;
   const AOpenMethods: TArray<string>; AErrorLines: Integer): string;
 begin
-  Result := Format('Server beendet: %s nach %s', [Describe(ACode), Runtime(ARuntimeMs)]);
+  Result := Format(UiText(TCrashesText.ServerEnded), [Describe(ACode), Runtime(ARuntimeMs)]);
   if ALastMethod <> '' then
   begin
-    Result := Result + '; letzte Anfrage ' + ALastMethod;
+    Result := Result + Format(UiText(TCrashesText.LastRequest), [ALastMethod]);
   end;
   if Length(AOpenMethods) > 0 then
   begin
-    Result := Result + '; offen: ' + string.Join(', ', AOpenMethods);
+    Result := Result + Format(UiText(TCrashesText.OpenRequests), [string.Join(', ', AOpenMethods)]);
   end;
   if AErrorLines > 0 then
   begin
-    Result := Result + Format('; %d Zeilen auf stderr (%s)', [AErrorLines, cStderrName]);
+    Result := Result + Format(UiText(TCrashesText.StderrLines), [AErrorLines, cStderrName]);
   end
   else
   begin
-    Result := Result + '; nichts auf stderr';
+    Result := Result + UiText(TCrashesText.NothingOnStderr);
   end;
 end;
 

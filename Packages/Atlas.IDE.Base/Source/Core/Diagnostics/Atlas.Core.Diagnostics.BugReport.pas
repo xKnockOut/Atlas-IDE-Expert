@@ -124,13 +124,18 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
+const
+  cAtlasItem = '- Atlas: ';
+  cIdeItem = '- IDE: ';
+  cClientFormat = 'Atlas-Plugin %s, IDE %s, %s';
+
 { TAtlasBugReport }
 
 class procedure TAtlasBugReport.AppendPlugin(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput);
 begin
   ABuilder.Append('## Plugin').Append(sLineBreak).Append(sLineBreak);
-  ABuilder.Append('- Atlas: ').Append(AInput.PluginVersion).Append(sLineBreak);
-  ABuilder.Append('- IDE: ').Append(AInput.IdeVersion).Append(sLineBreak);
+  ABuilder.Append(cAtlasItem).Append(AInput.PluginVersion).Append(sLineBreak);
+  ABuilder.Append(cIdeItem).Append(AInput.IdeVersion).Append(sLineBreak);
   ABuilder.Append(UiText(TBugReportText.Platform)).Append(AInput.Platform).Append(sLineBreak);
   ABuilder.Append(UiText(TBugReportText.Experimental));
   if Length(AInput.Experimental) = 0 then
@@ -207,7 +212,7 @@ begin
     mOptions := TJSONObject.Create;
     mArguments.AddElement(mOptions);
     mOptions.AddPair('anonymize', TJSONBool.Create(AInput.Anonymize));
-    mOptions.AddPair('client', Format('Atlas-Plugin %s, IDE %s, %s', [AInput.PluginVersion, AInput.IdeVersion,
+    mOptions.AddPair('client', Format(cClientFormat, [AInput.PluginVersion, AInput.IdeVersion,
       AInput.Platform]));
     Result := mArguments.ToJSON;
   finally

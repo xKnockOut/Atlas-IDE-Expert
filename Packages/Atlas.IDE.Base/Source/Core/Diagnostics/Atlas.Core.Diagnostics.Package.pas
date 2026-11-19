@@ -164,26 +164,30 @@ end;
 { TAtlasDiagnosticPackage }
 
 class function TAtlasDiagnosticPackage.IsDrive(const AValue: string): Boolean;
+const
+  // Stelle des Trenners nach „C:“.
+  cSeparatorIndex = 3;
 begin
   // Laufwerk: „C:“ allein oder „C:/…“.
   Result := (Length(AValue) >= 2) and CharInSet(AValue[1], ['A'..'Z', 'a'..'z']) and (AValue[2] = ':');
   if Result and (Length(AValue) > 2) then
   begin
-    Result := CharInSet(AValue[3], ['\', '/']);
+    Result := CharInSet(AValue[cSeparatorIndex], ['\', '/']);
   end;
 end;
 
 /// <summary>Text einer Datei als UTF-8 (ein BOM fällt weg).</summary>
 function ReadText(const AFileName: string): string;
 var
-  mBytes: TBytes;
+  mBytes, mBom: TBytes;
   mStart: Integer;
 begin
   mBytes := TAtlasDiagnosticPackage.ReadShared(AFileName);
+  mBom := TEncoding.UTF8.GetPreamble;
   mStart := 0;
-  if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
+  if (Length(mBom) > 0) and (Length(mBytes) >= Length(mBom)) and CompareMem(@mBytes[0], @mBom[0], Length(mBom)) then
   begin
-    mStart := 3;
+    mStart := Length(mBom);
   end;
   Result := TEncoding.UTF8.GetString(mBytes, mStart, Length(mBytes) - mStart);
 end;
@@ -214,6 +218,9 @@ begin
 end;
 
 class function TAtlasDiagnosticPackage.DecodeEscape(const AJson: string; var AIndex: Integer): string;
+const
+  // \uXXXX
+  cHexDigits = 4;
 begin
   // AIndex steht auf dem Backslash; danach hinter der Folge.
   case AJson[AIndex + 1] of
@@ -229,8 +236,8 @@ begin
       Result := #12;
     'u':
       begin
-        Result := Char(StrToIntDef('$' + Copy(AJson, AIndex + 2, 4), 63));
-        Inc(AIndex, 4);
+        Result := Char(StrToIntDef('$' + Copy(AJson, AIndex + 2, cHexDigits), Ord('?')));
+        Inc(AIndex, cHexDigits);
       end;
   else
     Result := AJson[AIndex + 1];
@@ -282,6 +289,32 @@ begin
   end;
 end;
 
+const
+  // Texte der Issue-Vorlage, englisch und deutsch (die Vorlage folgt der Sprache des Issues, nicht der IDE).
+  cAtlasItem = '- Atlas: ';
+  cIdeItem = '- RAD Studio: ';
+  cWindowsItem = '- Windows: ';
+  cNotIncludedEn = '(not included)';
+  cNotIncludedDe = '(nicht angegeben)';
+  cZipNoteEn = '` (anonymized, checked before sharing; please attach it to this issue)';
+  cZipNoteDe = '` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)';
+  cNoZipEn = 'No diagnostic package created.';
+  cNoZipDe = 'Kein Diagnosepaket angelegt.';
+  cDescriptionHintEn = '(What happened? What did you expect? Steps to reproduce.)';
+  cDescriptionHintDe = '(Was ist passiert? Was hast du erwartet? Schritte zum Nachstellen.)';
+  cFooterEn = '_Created with Atlas › Report a problem; Atlas itself sends nothing._';
+  cFooterDe = '_Erstellt mit Atlas › Problem melden; Atlas selbst sendet nichts._';
+  // Info-Datei im Paket.
+  cLogAnonymous = 'Protokoll des Plugins anonym geschrieben';
+  cLogNames = 'Protokoll des Plugins mit Klarnamen geschrieben (diagnostics.log.names), im Paket über die Pfadregeln';
+  cInfoIde = 'RAD Studio ';
+  cInfoPlatform = 'Plattform ';
+  cInfoCreated = 'Erstellt ';
+  // Kürzere Namen kämen in zu vielen gewöhnlichen Wörtern vor.
+  cMinIdentityLength = 3;
+  cHttps = 'https://';
+  cHttp = 'http://';
+
 class procedure TAtlasDiagnosticPackage.AppendVersions(ABuilder: TStringBuilder; const AInput: TAtlasPackageInput;
   AParts: TAtlasPackageParts; AEnglish: Boolean);
 begin
@@ -289,14 +322,14 @@ begin
   ABuilder.Append(sLineBreak).Append(sLineBreak);
   if TAtlasPackagePart.Versions in AParts then
   begin
-    ABuilder.Append('- Atlas: ').Append(AInput.AtlasVersion).Append(sLineBreak);
-    ABuilder.Append('- RAD Studio: ').Append(AInput.IdeVersion).Append(', ').Append(AInput.Platform)
+    ABuilder.Append(cAtlasItem).Append(AInput.AtlasVersion).Append(sLineBreak);
+    ABuilder.Append(cIdeItem).Append(AInput.IdeVersion).Append(', ').Append(AInput.Platform)
       .Append(sLineBreak);
-    ABuilder.Append('- Windows: ').Append(AInput.WindowsVersion).Append(sLineBreak);
+    ABuilder.Append(cWindowsItem).Append(AInput.WindowsVersion).Append(sLineBreak);
   end
   else
   begin
-    ABuilder.Append(Pick(AEnglish, '(not included)', '(nicht angegeben)')).Append(sLineBreak);
+    ABuilder.Append(Pick(AEnglish, cNotIncludedEn, cNotIncludedDe)).Append(sLineBreak);
   end;
   ABuilder.Append(sLineBreak);
 end;
@@ -308,13 +341,11 @@ begin
   ABuilder.Append(sLineBreak).Append(sLineBreak);
   if AZipName <> '' then
   begin
-    ABuilder.Append('`').Append(ExtractFileName(AZipName)).Append(Pick(AEnglish,
-      '` (anonymized, checked before sharing; please attach it to this issue)',
-      '` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)'));
+    ABuilder.Append('`').Append(ExtractFileName(AZipName)).Append(Pick(AEnglish, cZipNoteEn, cZipNoteDe));
   end
   else
   begin
-    ABuilder.Append(Pick(AEnglish, 'No diagnostic package created.', 'Kein Diagnosepaket angelegt.'));
+    ABuilder.Append(Pick(AEnglish, cNoZipEn, cNoZipDe));
   end;
   ABuilder.Append(sLineBreak).Append(sLineBreak);
 end;
@@ -377,16 +408,16 @@ var
   mLog: string;
 begin
   // Klarnamen stehen nur nach ausdrücklicher Wahl im Protokoll; das Paket sagt es sichtbar (#1478).
-  mLog := 'Protokoll des Plugins anonym geschrieben';
+  mLog := cLogAnonymous;
   if AInput.PluginLogNames then
   begin
-    mLog := 'Protokoll des Plugins mit Klarnamen geschrieben (diagnostics.log.names), im Paket über die Pfadregeln';
+    mLog := cLogNames;
   end;
   Result := 'Atlas ' + AInput.AtlasVersion + sLineBreak +
-    'RAD Studio ' + AInput.IdeVersion + sLineBreak +
+    cInfoIde + AInput.IdeVersion + sLineBreak +
     'Windows ' + AInput.WindowsVersion + sLineBreak +
-    'Plattform ' + AInput.Platform + sLineBreak +
-    'Erstellt ' + FormatDateTime('yyyy"-"mm"-"dd hh":"nn', AInput.Created) + sLineBreak +
+    cInfoPlatform + AInput.Platform + sLineBreak +
+    cInfoCreated + FormatDateTime('yyyy"-"mm"-"dd hh":"nn', AInput.Created) + sLineBreak +
     mLog + sLineBreak;
 end;
 
@@ -529,7 +560,7 @@ begin
     end;
     for mValue in AIdentity do
     begin
-      if (Length(Trim(mValue)) >= 3) and (Pos(LowerCase(Trim(mValue)), mText) > 0) then
+      if (Length(Trim(mValue)) >= cMinIdentityLength) and (Pos(LowerCase(Trim(mValue)), mText) > 0) then
       begin
         mFound := True;
       end;
@@ -553,14 +584,12 @@ begin
     mDescription := Trim(ADescription);
     if mDescription = '' then
     begin
-      mDescription := Pick(AEnglish, '(What happened? What did you expect? Steps to reproduce.)',
-        '(Was ist passiert? Was hast du erwartet? Schritte zum Nachstellen.)');
+      mDescription := Pick(AEnglish, cDescriptionHintEn, cDescriptionHintDe);
     end;
     mBuilder.Append(mDescription).Append(sLineBreak).Append(sLineBreak);
     AppendVersions(mBuilder, AInput, AParts, AEnglish);
     AppendZip(mBuilder, AZipName, AEnglish);
-    mBuilder.Append(Pick(AEnglish, '_Created with Atlas › Report a problem; Atlas itself sends nothing._',
-      '_Erstellt mit Atlas › Problem melden; Atlas selbst sendet nichts._'));
+    mBuilder.Append(Pick(AEnglish, cFooterEn, cFooterDe));
     mBuilder.Append(sLineBreak);
     Result := Anonymize(mBuilder.ToString, AInput.Roots, AInput.Identity);
   finally
@@ -574,13 +603,13 @@ var
   mIndex: Integer;
 begin
   Result := False;
-  if StartsText('https://', AUrl) then
+  if StartsText(cHttps, AUrl) then
   begin
-    mRest := Copy(AUrl, 9, MaxInt);
+    mRest := Copy(AUrl, Length(cHttps) + 1, MaxInt);
   end
-  else if StartsText('http://', AUrl) then
+  else if StartsText(cHttp, AUrl) then
   begin
-    mRest := Copy(AUrl, 8, MaxInt);
+    mRest := Copy(AUrl, Length(cHttp) + 1, MaxInt);
   end
   else
   begin
@@ -593,7 +622,7 @@ begin
   end;
   for mIndex := 1 to Length(AUrl) do
   begin
-    if (Ord(AUrl[mIndex]) <= 32) or CharInSet(AUrl[mIndex], ['"', '<', '>', '\', '`', '^', '{', '}', '|']) then
+    if (AUrl[mIndex] <= ' ') or CharInSet(AUrl[mIndex], ['"', '<', '>', '\', '`', '^', '{', '}', '|']) then
     begin
       Exit;
     end;

@@ -18,8 +18,8 @@ type
   protected
     procedure DelayTimerTick(Sender: TObject);
     /// <summary>Kontext an der Cursorstelle; ALine ab 1, ACharacter und AWordStart 0-basiert.</summary>
-    function ContextAt(const AView: IOTAEditView; const ALineText: string; ALine, ACharacter,
-      AWordStart: Integer): TAtlasContext;
+    class function ContextAt(const AView: IOTAEditView; const ALineText: string; ALine, ACharacter,
+      AWordStart: Integer): TAtlasContext; static;
   private
     procedure ApplyStyle(const ACaret: TRect);
     /// <summary>Einstellungen der Liste in Popup und Ablauf übernehmen (vor jedem Öffnen).</summary>
@@ -129,7 +129,7 @@ begin
   end;
 end;
 
-function TAtlasEditorCompletionOpen.ContextAt(const AView: IOTAEditView; const ALineText: string; ALine,
+class function TAtlasEditorCompletionOpen.ContextAt(const AView: IOTAEditView; const ALineText: string; ALine,
   ACharacter, AWordStart: Integer): TAtlasContext;
 begin
   Result := Default(TAtlasContext);
