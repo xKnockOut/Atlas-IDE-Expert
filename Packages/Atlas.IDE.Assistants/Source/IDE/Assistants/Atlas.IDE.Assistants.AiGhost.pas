@@ -47,16 +47,14 @@ type
     /// <summary>Schon gemeldete Fehlerarten und der Tag der gemeldeten Tagesgrenze.</summary>
     FReported: set of TAtlasAiError;
     FLimitDay: string;
-    function Session: TLspSession;
     procedure Load;
     procedure Save;
-    procedure Report(const AText: string);
     procedure ReportLastError;
     function Allowed(const AContext: TAtlasGhostContext): Boolean;
     procedure Failed(AError: TAtlasAiError);
   public
     /// <summary>ASessionOf: laufende Serversitzung oder nil; AHttp: Transport; AKeys: Schlüssel je Anbieter;
-    /// AMessage: Meldung in der Meldungsansicht.</summary>
+    /// AMessage: Meldung in der Meldungsansicht. ASessionOf und AMessage sind nie nil.</summary>
     constructor Create(const ASessionOf: TFunc<TLspSession>; const AHttp: IAtlasAiHttp;
       const AKeys: TAtlasAiKeyReader; const AMessage: TProc<string>);
     destructor Destroy; override;
@@ -279,15 +277,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeAiGhost.Session: TLspSession;
-begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
-end;
-
 class function TAtlasIdeAiGhost.CountFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cCountFile);
@@ -320,14 +309,6 @@ begin
   except
     on E: Exception do
       TAtlasDataFile.ReportNotWritten(cCountKind, E);
-  end;
-end;
-
-procedure TAtlasIdeAiGhost.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 
@@ -377,7 +358,7 @@ begin
     Exit;
   end;
   Include(FReported, mError);
-  Report(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostFailed, [ErrorText(mError)]));
+  FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostFailed, [ErrorText(mError)]));
 end;
 
 function TAtlasIdeAiGhost.Enabled: Boolean;
@@ -406,7 +387,7 @@ begin
     if not (TAtlasAiError.NoKey in FReported) then
     begin
       Include(FReported, TAtlasAiError.NoKey);
-      Report(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostNoKey, [mSettings.AssistantsProvider]));
+      FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostNoKey, [mSettings.AssistantsProvider]));
     end;
     Exit;
   end;
@@ -416,7 +397,7 @@ begin
     if FLimitDay <> mDay then
     begin
       FLimitDay := mDay;
-      Report(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostLimit, [mSettings.AssistantsDailyLimit]));
+      FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostLimit, [mSettings.AssistantsDailyLimit]));
     end;
     Exit;
   end;
@@ -433,7 +414,7 @@ begin
   ReportLastError;
   mSettings := TAtlasIdeSettings.Current;
   mJob := Default(TAiGhostJob);
-  mJob.Session := Session;
+  mJob.Session := FSessionOf();
   if (mJob.Session = nil) or not mJob.Session.Initialized then
   begin
     Exit;
