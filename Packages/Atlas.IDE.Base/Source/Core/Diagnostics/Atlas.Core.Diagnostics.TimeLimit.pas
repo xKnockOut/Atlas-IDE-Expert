@@ -146,11 +146,14 @@ begin
 end;
 
 function TAtlasTimeLimit.TWorker.WaitForStart: Boolean;
+const
+  // Wartet in Schritten, damit Terminated geprüft wird.
+  cWaitStepMs = 1000;
 begin
   Result := False;
   while not Terminated do
   begin
-    if TAtlasShutdown.WaitFor(FStart, 1000) = wrSignaled then
+    if TAtlasShutdown.WaitFor(FStart, cWaitStepMs) = wrSignaled then
     begin
       Exit(not Terminated);
     end;
@@ -397,8 +400,10 @@ begin
 end;
 
 class function TAtlasTimeLimit.StopAll: Boolean;
+const
+  cStopMs = 1000;
 begin
-  Result := StopAll(1000);
+  Result := StopAll(cStopMs);
 end;
 
 class function TAtlasTimeLimit.BusyCount: Integer;

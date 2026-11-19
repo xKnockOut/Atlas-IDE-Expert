@@ -176,15 +176,17 @@ end;
 /// <summary>Detail des Servers "Operator|links|rechts" bzw. "Operator||Operand"; sonst der Text, wie er ist.
 /// </summary>
 function OperatorText(const ADetail: string; const ATexts: TAtlasExpressionTypeTexts): string;
+const
+  cParts = 3;
 var
   mParts: TArray<string>;
 begin
   mParts := ADetail.Split(['|']);
-  if (Length(mParts) = 3) and (mParts[1] = '') then
+  if (Length(mParts) = cParts) and (mParts[1] = '') then
   begin
     Result := Format(ATexts.OperatorUnary, [mParts[0], mParts[2]]);
   end
-  else if Length(mParts) = 3 then
+  else if Length(mParts) = cParts then
   begin
     Result := Format(ATexts.OperatorMismatch, [mParts[0], mParts[1], mParts[2]]);
   end

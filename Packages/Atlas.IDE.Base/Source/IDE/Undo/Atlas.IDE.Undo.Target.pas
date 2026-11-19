@@ -64,6 +64,8 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  /// <summary>Programmierfehler beim Zusammenstecken, nie beim Benutzer.</summary>
+  cNoDiskTarget = 'Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.';
   cTexts: array[TAtlasLanguage, TUndoTargetText] of string = (
     ('Projekt hat ungespeicherte Änderungen; bitte erst speichern',
      'im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften (%s)',
@@ -116,7 +118,7 @@ begin
     end;
   if not Assigned(FDiskFactory) then
   begin
-    raise EInvalidOpException.Create('Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.');
+    raise EInvalidOpException.Create(cNoDiskTarget);
   end;
   FDisk := FDiskFactory(mHooks);
 end;

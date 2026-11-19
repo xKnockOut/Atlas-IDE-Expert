@@ -362,6 +362,8 @@ end;
 
 /// <summary>Vor dem Wort steht (class) procedure, function … und sonst nur Namen mit Punkten.</summary>
 function IsRoutineHead(const ABefore: string): Boolean;
+const
+  cClassPrefix = 'class ';
 var
   mHead, mWord: string;
   mIndex: Integer;
@@ -374,9 +376,9 @@ begin
   end;
   if Result then
   begin
-    if mHead.StartsWith('class ') then
+    if mHead.StartsWith(cClassPrefix) then
     begin
-      mHead := TrimLeft(Copy(mHead, 7, MaxInt));
+      mHead := TrimLeft(Copy(mHead, Length(cClassPrefix) + 1, MaxInt));
     end;
     Result := False;
     for mWord in cHeaderWords do

@@ -75,7 +75,7 @@ type
     procedure RecordRules(const AProject: string; ANowUtc: TDateTime);
     class procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
       const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime); static;
-    procedure RecordTrend(const AProject: string; ANowUtc: TDateTime);
+    class procedure RecordTrend(const AProject: string; ANowUtc: TDateTime); static;
     class function TrendsOn: Boolean; static;
     class function IsProjectFile(const AFileName: string): Boolean; static;
   public
@@ -401,7 +401,7 @@ begin
     end);
 end;
 
-procedure TAtlasIdeProjectSummaries.RecordTrend(const AProject: string; ANowUtc: TDateTime);
+class procedure TAtlasIdeProjectSummaries.RecordTrend(const AProject: string; ANowUtc: TDateTime);
 var
   mStamp: TDateTime;
   mLimit: Integer;

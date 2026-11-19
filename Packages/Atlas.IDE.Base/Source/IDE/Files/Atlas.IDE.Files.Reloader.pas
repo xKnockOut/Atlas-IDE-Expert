@@ -90,12 +90,14 @@ end;
 { TAtlasFileReloader }
 
 constructor TAtlasFileReloader.Create(const AReport: TProc<string>);
+const
+  cTickMs = 500;
 begin
   inherited Create;
   FReport := AReport;
   FChanges := TAtlasExternalChanges.Create;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 500;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -359,6 +361,9 @@ begin
 end;
 
 class function TAtlasFileReloader.DiskStamp(const AFileName: string; out AStamp: Int64): Boolean;
+const
+  // FILETIME: oberes Doppelwort
+  cHighShift = 32;
 var
   mData: TWin32FileAttributeData;
 begin
@@ -366,7 +371,7 @@ begin
   Result := GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData);
   if Result then
   begin
-    AStamp := Int64(mData.ftLastWriteTime.dwHighDateTime) shl 32 or mData.ftLastWriteTime.dwLowDateTime;
+    AStamp := Int64(mData.ftLastWriteTime.dwHighDateTime) shl cHighShift or mData.ftLastWriteTime.dwLowDateTime;
   end;
 end;
 
@@ -422,16 +427,15 @@ end;
 procedure NotifyReloaded(const ACenter: IAtlasNotificationCenter; const AReloaded: TArray<string>);
 var
   mName, mNames: string;
+  mShort: TArray<string>;
+  mIndex: Integer;
 begin
-  mNames := '';
-  for mName in AReloaded do
+  SetLength(mShort, Length(AReloaded));
+  for mIndex := 0 to High(AReloaded) do
   begin
-    if mNames <> '' then
-    begin
-      mNames := mNames + ', ';
-    end;
-    mNames := mNames + ExtractFileName(mName);
+    mShort[mIndex] := ExtractFileName(AReloaded[mIndex]);
   end;
+  mNames := string.Join(', ', mShort);
   if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
     TAtlasNotificationMode.Show then
@@ -445,6 +449,10 @@ begin
 end;
 
 procedure TAtlasFileReloader.Process(const ADecisions: TArray<TAtlasReloadDecision>);
+const
+  // Tätigkeit und Protokollzeile.
+  cActivity = 'Dateien neu laden';
+  cChanged = 'Extern geändert: %s (%s)';
 var
   mDecision: TAtlasReloadDecision;
   mReloaded: TArray<string>;
@@ -452,7 +460,7 @@ var
   mCenter: IAtlasNotificationCenter;
   mActive: Boolean;
 begin
-  mActivity := TAtlasActivity.Scope('Dateien neu laden');
+  mActivity := TAtlasActivity.Scope(cActivity);
   mCenter := TAtlasNotificationCenter.Default;
   mReloaded := nil;
   mActive := TAtlasIdeSettings.Current.ReloadExternal;
@@ -460,7 +468,7 @@ begin
   begin
     if Assigned(FReport) and mActive then
     begin
-      FReport(Format('Extern geändert: %s (%s)', [mDecision.FileName,
+      FReport(Format(cChanged, [mDecision.FileName,
         TAtlasExternalChanges.ActionText(mDecision.Action)]));
     end;
   end;
