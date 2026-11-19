@@ -40,6 +40,8 @@ type
     /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
     /// </summary>
     class function Strings(const AItems: array of string): TJSONArray; static;
+    /// <summary>AValue unter AName in AObject; ein leerer Wert bleibt weg.</summary>
+    class procedure AddText(AObject: TJSONObject; const AName, AValue: string); static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -118,6 +120,10 @@ implementation
 uses
   Atlas.Text.Timestamps;
 
+const
+  /// <summary>Hexadezimalstellen einer Folge \uXXXX.</summary>
+  cUnicodeEscapeDigits = 4;
+
 { TJsonText }
 
 class function TJsonText.Quote(const AText: string): string;
@@ -145,9 +151,9 @@ begin
         #13:
           mBuilder.Append('\r');
       else
-        if Ord(mChar) < 32 then
+        if mChar < ' ' then
         begin
-          mBuilder.Append('\u' + IntToHex(Ord(mChar), 4));
+          mBuilder.Append('\u' + IntToHex(Ord(mChar), cUnicodeEscapeDigits));
         end
         else
         begin
@@ -196,6 +202,14 @@ begin
   for mItem in AItems do
   begin
     Result.Add(mItem);
+  end;
+end;
+
+class procedure TJsonBuild.AddText(AObject: TJSONObject; const AName, AValue: string);
+begin
+  if AValue <> '' then
+  begin
+    AObject.AddPair(AName, AValue);
   end;
 end;
 

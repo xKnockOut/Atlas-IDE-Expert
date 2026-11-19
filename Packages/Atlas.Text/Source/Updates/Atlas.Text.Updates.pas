@@ -95,7 +95,6 @@ uses
   System.JSON,
   System.RegularExpressions,
   System.Generics.Collections,
-  Atlas.Text.Json,
   Atlas.Text.Chars;
 
 const
@@ -103,6 +102,10 @@ const
   cSemVerPattern = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)' +
     '(-' + cIdentifier + '(?:\.' + cIdentifier + ')*)?' +
     '(\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$';
+  cHttpsScheme = 'https://';
+  /// <summary>Hexziffern einer SHA-256-Prüfsumme.</summary>
+  cSha256Digits = 64;
+  cPackageExtension = '.bpl';
 
 { TUpdateFile }
 
@@ -269,10 +272,10 @@ class function TUpdateVersions.IsSafeUrl(const AUrl: string): Boolean;
 var
   mChar: Char;
 begin
-  Result := AUrl.StartsWith('https://', True) and (Length(AUrl) > Length('https://'));
+  Result := AUrl.StartsWith(cHttpsScheme, True) and (Length(AUrl) > Length(cHttpsScheme));
   for mChar in AUrl do
   begin
-    if Ord(mChar) <= 32 then
+    if mChar <= ' ' then
     begin
       Exit(False);
     end;
@@ -283,7 +286,7 @@ class function TUpdateVersions.IsSha256(const AText: string): Boolean;
 var
   mChar: Char;
 begin
-  Result := Length(AText) = 64;
+  Result := Length(AText) = cSha256Digits;
   for mChar in AText do
   begin
     if not CharInSet(mChar, ['0'..'9', 'a'..'f', 'A'..'F']) then
@@ -298,9 +301,9 @@ var
   mEnd: Integer;
 begin
   Result := AFileName.Substring(AFileName.LastDelimiter('\/') + 1);
-  if Result.EndsWith('.bpl', True) then
+  if Result.EndsWith(cPackageExtension, True) then
   begin
-    Result := Result.Substring(0, Length(Result) - 4);
+    Result := Result.Substring(0, Length(Result) - Length(cPackageExtension));
   end;
   mEnd := Length(Result);
   while (mEnd > 0) and CharInSet(Result[mEnd], ['0'..'9']) do
@@ -436,39 +439,35 @@ begin
   end;
 end;
 
-function FileJson(const AFile: TUpdateFile): string;
+function FileObject(const AFile: TUpdateFile): TJSONObject;
 begin
-  Result := '{"url": ' + TJsonText.Quote(AFile.Url) + ', "sha256": ' + TJsonText.Quote(AFile.Sha256) + '}';
+  Result := TJSONObject.Create;
+  Result.AddPair('url', AFile.Url);
+  Result.AddPair('sha256', AFile.Sha256);
 end;
 
 class function TUpdateManifests.ToJson(const AManifest: TUpdateManifest): string;
 var
-  mBuilder: TStringBuilder;
-  mIndex: Integer;
+  mRoot, mPackages: TJSONObject;
+  mPackage: TUpdateIdePackage;
 begin
-  mBuilder := TStringBuilder.Create;
+  mRoot := TJSONObject.Create;
   try
-    mBuilder.Append('{"version": ').Append(TJsonText.Quote(AManifest.Version));
-    mBuilder.Append(', "changes": ').Append(TJsonText.Quote(AManifest.ChangesUrl));
-    mBuilder.Append(', "packages": {');
-    for mIndex := 0 to High(AManifest.Packages) do
+    mRoot.AddPair('version', AManifest.Version);
+    mRoot.AddPair('changes', AManifest.ChangesUrl);
+    mPackages := TJSONObject.Create;
+    mRoot.AddPair('packages', mPackages);
+    for mPackage in AManifest.Packages do
     begin
-      if mIndex > 0 then
-      begin
-        mBuilder.Append(', ');
-      end;
-      mBuilder.Append(TJsonText.Quote(AManifest.Packages[mIndex].Ide)).Append(': ');
-      mBuilder.Append(FileJson(AManifest.Packages[mIndex].Archive));
+      mPackages.AddPair(mPackage.Ide, FileObject(mPackage.Archive));
     end;
-    mBuilder.Append('}');
     if AManifest.Source.Url <> '' then
     begin
-      mBuilder.Append(', "source": ').Append(FileJson(AManifest.Source));
+      mRoot.AddPair('source', FileObject(AManifest.Source));
     end;
-    mBuilder.Append('}');
-    Result := mBuilder.ToString;
+    Result := mRoot.ToJSON([]);
   finally
-    mBuilder.Free;
+    mRoot.Free;
   end;
 end;
 

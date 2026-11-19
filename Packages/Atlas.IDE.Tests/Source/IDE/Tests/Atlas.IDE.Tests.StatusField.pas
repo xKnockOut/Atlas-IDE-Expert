@@ -330,7 +330,7 @@ begin
     mNames := mNames + [mCase.FullName];
     if mFile = '' then
     begin
-      mFile := TAtlasIdeTests.UnitFileOf(FProject, mCase.UnitName);
+      mFile := TAtlasIdeTestProjects.UnitFileOf(FProject, mCase.UnitName);
     end;
   end;
   if (Length(mNames) = 0) or (mFile = '') then

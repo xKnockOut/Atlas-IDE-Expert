@@ -26,11 +26,15 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Encoding;
+
 { TTextChars }
 
 class function TTextChars.IsIdentStart(AC: Char): Boolean;
 begin
-  Result := ((AC >= 'A') and (AC <= 'Z')) or ((AC >= 'a') and (AC <= 'z')) or (AC = '_') or (Ord(AC) >= 128);
+  Result := ((AC >= 'A') and (AC <= 'Z')) or ((AC >= 'a') and (AC <= 'z')) or (AC = '_') or
+    (Ord(AC) >= TTextEncodingProbe.cFirstNonAscii);
 end;
 
 class function TTextChars.IsIdentChar(AC: Char): Boolean;

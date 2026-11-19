@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Editor.Hide.Tests;
 
 // Ausblenden am Element (#628), Fensterteil: Menü mit den Bereichen, die das
-// Element anbietet (Mockup Runde 25 Z6 plus „In dieser Datei“), Untermenüs
+// Element anbietet (dazu „In dieser Datei“), Untermenüs
 // bei mehreren Elementen, Wahl an OnChoose; Hinweis „Ausgeblendet ·
 // Rückgängig“ mit Lage unter dem Element und Klick auf „Rückgängig“; die
 // Optionsseite kennt zu jedem Element und jedem Bereich der Willkommensseite
