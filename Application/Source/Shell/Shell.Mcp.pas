@@ -162,9 +162,10 @@ begin
   mServer := nil;
   mDispatcher := nil;
   mConnection := nil;
+  mCrashCases := nil;
+  mPrompts := nil;
   try
     mServer := TMcpServer.Create(TProductVersion.cName, TProductVersion.cVersion);
-    mPrompts := nil;
     mDispatcher := TJsonRpcDispatcher.Create;
     mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
     mRecent := TJsonRpcRecentMessages.Create;

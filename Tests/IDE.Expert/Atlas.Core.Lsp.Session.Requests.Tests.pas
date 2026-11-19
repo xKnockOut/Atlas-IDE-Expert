@@ -88,6 +88,7 @@ var
 begin
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mSeen := TStringList.Create;
     mClient := AnsweringClient(mSeen, 'null');
@@ -119,6 +120,7 @@ var
 begin
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mSeen := TStringList.Create;
     mClient := AnsweringClient(mSeen, '[{"uri":"file:///c:/p/kunde.pas","range":{"start":{"line":3,"character":4},' +

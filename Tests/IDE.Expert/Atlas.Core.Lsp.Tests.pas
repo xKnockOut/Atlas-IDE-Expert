@@ -395,12 +395,13 @@ var
 begin
   mDefinitionSent := nil;
   mDiagnosticSent := nil;
+  mDefinition := nil;
+  mDiagnostic := nil;
+  mClient := nil;
   try
     mDefinitionSent := TEvent.Create(nil, True, False, '');
     mDiagnosticSent := TEvent.Create(nil, True, False, '');
     mClient := CreateSilentClient(mDefinitionSent, mDiagnosticSent);
-    mDefinition := nil;
-    mDiagnostic := nil;
     mInfo := mClient.CloseInfo;
     Assert.AreEqual('', mInfo.LastMethod, 'offen: noch nichts');
     mDefinition := RequestInThread(mClient, 'textDocument/definition');
@@ -477,6 +478,29 @@ begin
     mSent.Free;
   end;
 end;
+// Antwort auf eine Anfrage mit partialResultToken: zwei Teilergebnisse, dazwischen fremder Fortschritt, dann das
+// Ergebnis.
+function PartialReplies(const ABytes: TBytes): TBytes;
+var
+  mRequest: TJSONObject;
+  mId: Integer;
+  mToken: string;
+begin
+  mRequest := Unframe(ABytes);
+  try
+    mId := mRequest.GetValue<Integer>('id');
+    mToken := mRequest.GetValue<string>('params.partialResultToken');
+  finally
+    mRequest.Free;
+  end;
+  Result := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
+    [mToken])) +
+    TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
+    TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
+    [mToken])) +
+    TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [mId]));
+end;
+
 procedure TLspClientTests.RoutesPartialResultsToRequest;
 var
   mClient: TLspClient;
@@ -491,28 +515,12 @@ begin
   try
     mPartials := TList<string>.Create;
     mSeen := TList<string>.Create;
-    mClient := nil;
     mClient := TLspClient.Create(
       procedure(const ABytes: TBytes)
       var
-        Request: TJSONObject;
         Reply: TBytes;
-        Id: Integer;
-        Token: string;
       begin
-        Request := Unframe(ABytes);
-        try
-          Id := Request.GetValue<Integer>('id');
-          Token := Request.GetValue<string>('params.partialResultToken');
-        finally
-          Request.Free;
-        end;
-        Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
-          [Token])) +
-          TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
-          TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
-          [Token])) +
-          TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [Id]));
+        Reply := PartialReplies(ABytes);
         mClient.Receive(Reply, Length(Reply));
       end);
     mClient.OnServerMessage :=
@@ -1048,6 +1056,27 @@ begin
     mMessages.Free;
   end;
 end;
+// Antwort des Testservers auf prepareRename (APrepareReply) bzw. rename (merkt den neuen Namen); False bei anderen
+// Nachrichten.
+function RenameAnswer(AMessage: TJSONObject; const APrepareReply: string; var ANewName: string;
+  out AAnswer: string): Boolean;
+var
+  mMethod: string;
+begin
+  mMethod := AMessage.GetValue<string>('method', '');
+  AAnswer := '';
+  if mMethod = 'textDocument/prepareRename' then
+  begin
+    AAnswer := APrepareReply;
+  end
+  else if mMethod = 'textDocument/rename' then
+  begin
+    ANewName := AMessage.GetValue<string>('params.newName');
+    AAnswer := '{"changes":{}}';
+  end;
+  Result := AAnswer <> '';
+end;
+
 procedure TLspSessionTests.PreparesAndRequestsRename;
 var
   mClient: TLspClient;
@@ -1063,28 +1092,17 @@ begin
       procedure(const ABytes: TBytes)
       var
         Message: TJSONObject;
-        Method, Answer: string;
+        Answer: string;
         Reply: TBytes;
       begin
         Message := Unframe(ABytes);
         try
-          Method := Message.GetValue<string>('method', '');
-          if Method = 'textDocument/prepareRename' then
+          if RenameAnswer(Message, mPrepareReply, mNewName, Answer) then
           begin
-            Answer := mPrepareReply;
-          end
-          else if Method = 'textDocument/rename' then
-          begin
-            mNewName := Message.GetValue<string>('params.newName');
-            Answer := '{"changes":{}}';
-          end
-          else
-          begin
-            Exit;
+            Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+              [Message.GetValue<Integer>('id'), Answer]));
+            mClient.Receive(Reply, Length(Reply));
           end;
-          Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
-            [Message.GetValue<Integer>('id'), Answer]));
-          mClient.Receive(Reply, Length(Reply));
         finally
           Message.Free;
         end;
@@ -1224,6 +1242,7 @@ var
 begin
   mSent := nil;
   mSession := nil;
+  mClient := nil;
   try
     mSent := TList<string>.Create;
     mCalls := 0;
@@ -1258,6 +1277,7 @@ var
 begin
   mSent := nil;
   mSession := nil;
+  mClient := nil;
   try
     mSent := TList<string>.Create;
     mClient := ApplyEditClient(mSent);
@@ -1354,6 +1374,7 @@ begin
   mReplies := nil;
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mReplies := TDictionary<string, string>.Create;
     mSeen := TStringList.Create;
@@ -1408,6 +1429,7 @@ begin
   mReplies := nil;
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mReplies := TDictionary<string, string>.Create;
     mSeen := TStringList.Create;
@@ -1561,6 +1583,7 @@ begin
   mReplies := nil;
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mReplies := TDictionary<string, string>.Create;
     mSeen := TStringList.Create;
@@ -1618,6 +1641,7 @@ begin
   mReplies := nil;
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mReplies := TDictionary<string, string>.Create;
     mSeen := TStringList.Create;
@@ -1665,6 +1689,7 @@ begin
   mReplies := nil;
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mReplies := TDictionary<string, string>.Create;
     mSeen := TStringList.Create;
@@ -1700,6 +1725,7 @@ begin
   mReplies := nil;
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mReplies := TDictionary<string, string>.Create;
     mSeen := TStringList.Create;
@@ -1734,6 +1760,7 @@ begin
   mReplies := nil;
   mSeen := nil;
   mSession := nil;
+  mClient := nil;
   try
     mReplies := TDictionary<string, string>.Create;
     mSeen := TStringList.Create;

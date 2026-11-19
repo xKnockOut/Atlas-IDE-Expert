@@ -18,6 +18,8 @@ type
     [Test]
     procedure ThreeObjects;
     [Test]
+    procedure OtherFreedVariables;
+    [Test]
     procedure InlineVariables;
     [Test]
     procedure StatementBetweenSafeCreates;
@@ -118,6 +120,39 @@ begin
     '    mList := TStringList.Create;'#10'    mStream := TFileStream.Create(AFile, fmOpenRead);'#10 +
     '    mReader := TStreamReader.Create(mStream);'#10'    mList.Text := mReader.ReadToEnd;'#10);
   TRuleAssert.Silent(TMultipleCreateInTryRule.Create, mFixed);
+end;
+
+procedure TCreateOrderRuleTests.OtherFreedVariables;
+const
+  cReader = '  mReader: TStreamReader;'#10;
+  cFreeAll = '  finally'#10'    mReader.Free;'#10'    mStream.Free;'#10'    mList.Free;'#10'  end;'#10;
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Eine weitere freigegebene Variable, die mit ins try wandert, wird ebenfalls vorbelegt.
+  mSource := Routine(cVars + cReader, '  mList := TStringList.Create;'#10 +
+    '  mStream := TFileStream.Create(AFile, fmOpenRead);'#10'  mReader := OpenReader(mStream);'#10'  try'#10 +
+    '    mList.Text := mReader.ReadToEnd;'#10 + cFreeAll);
+  mFindings := TRuleAssert.Findings(TMultipleCreateInTryRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.Contains(mFixed, '  mList := nil;'#10'  mStream := nil;'#10'  mReader := nil;'#10'  try'#10);
+  TRuleAssert.Silent(TMultipleCreateInTryRule.Create, mFixed);
+  // Typ unbekannt (vielleicht ein Record): Befund ohne Korrektur.
+  mFindings := TRuleAssert.Findings(TMultipleCreateInTryRule.Create, Routine(cVars + '  mReader: TUnbekannt;'#10,
+    '  mList := TStringList.Create;'#10'  mStream := TFileStream.Create(AFile, fmOpenRead);'#10 +
+    '  mReader := OpenReader(mStream);'#10'  try'#10'    mList.Text := mReader.ReadToEnd;'#10 + cFreeAll));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  // Im try: eine nach dem ersten Create zugewiesene Variable und TStringBuilder ohne Vorbelegung.
+  mFindings := TRuleAssert.Findings(TMultipleCreateInTryRule.Create, Routine(cVars + cReader +
+    '  mText: TStringBuilder;'#10, '  mList := nil;'#10'  mStream := nil;'#10'  try'#10 +
+    '    mList := TStringList.Create;'#10'    mStream := TFileStream.Create(AFile, fmOpenRead);'#10 +
+    '    mReader := OpenReader(mStream);'#10'    mText := TStringBuilder.Create;'#10'  finally'#10 +
+    '    mText.Free;'#10'    mReader.Free;'#10'    mStream.Free;'#10'    mList.Free;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'Variablen mReader, mText frei');
 end;
 
 procedure TCreateOrderRuleTests.InlineVariables;

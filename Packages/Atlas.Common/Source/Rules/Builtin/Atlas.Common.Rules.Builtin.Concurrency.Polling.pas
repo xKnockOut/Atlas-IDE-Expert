@@ -82,12 +82,15 @@ type
     function IsLocal(ANode: TSyntaxNode): Boolean;
     function IsLeave(AStatement: TSyntaxNode): Boolean;
     function IsWaitStep(AStatement: TSyntaxNode; var ASleeps: Integer): Boolean;
+    function IsNeutralOwner(AAccess: TSyntaxNode): Boolean;
+    function StateStep(ANode: TSyntaxNode; var AFound: string): TSyntaxSearchStep;
     function PolledState(ACondition: TSyntaxNode): string;
     function Advice(const AState: string): string;
     procedure CheckLoop(ALoop: TSyntaxNode);
     procedure CollectLocals(ARoutine: TSyntaxNode);
     function OuterMethod(ARoutine: TSyntaxNode): TSyntaxNode;
     function Skipped(ARoutine: TSyntaxNode): Boolean;
+    function IsThreadLoop(ARoutine, ALoop: TSyntaxNode): Boolean;
     procedure CheckRoutine(ARoutine: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -242,6 +245,48 @@ begin
   end;
 end;
 
+// X.Eigenschaft bzw. X.Methode an einem lokalen Record (TStopwatch) oder an TThread (Zeitfunktionen) ist kein
+// abgefragter Zustand.
+function TPollingScan.IsNeutralOwner(AAccess: TSyntaxNode): Boolean;
+begin
+  Result := (AAccess.ChildCount > 0) and (IsLocal(AAccess[0]) or MatchText(AAccess[0].Name, cNeutralNames));
+end;
+
+// Ein Schritt der Suche in PolledState; AFound bekommt den Zustand, wenn er gefunden ist.
+function TPollingScan.StateStep(ANode: TSyntaxNode; var AFound: string): TSyntaxSearchStep;
+begin
+  Result := TSyntaxSearchStep.Descend;
+  case ANode.Kind of
+    // Ein Aufruf mit Argumenten tut etwas (TryReplace(…), AtomicCmpExchange(…)): ein Wiederholen, kein Abfragen.
+    TSyntaxKind.Call:
+      if ANode.ChildCount > 1 then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end;
+    // Ein Vergleich mit einer Zeitmessung ist die Zeitgrenze.
+    TSyntaxKind.BinaryExpr:
+      if MatchText(ANode.Name, cComparisons) and MentionsTime(ANode) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end;
+    TSyntaxKind.MemberAccess:
+      begin
+        Result := TSyntaxSearchStep.Skip;
+        if not IsNeutralOwner(ANode) then
+        begin
+          AFound := SourceText(FContext.Text, ANode);
+          Result := TSyntaxSearchStep.Found;
+        end;
+      end;
+    TSyntaxKind.Identifier:
+      if not IsLocal(ANode) and not MatchText(ANode.Name, cNeutralNames) then
+      begin
+        AFound := ANode.Name;
+        Result := TSyntaxSearchStep.Found;
+      end;
+  end;
+end;
+
 // Der abgefragte fremde Zustand in der Bedingung (Feld, Eigenschaft, globale Variable, Funktion); '' wenn sie nur
 // lokale Variablen, Konstanten und Zeitfunktionen liest.
 function TPollingScan.PolledState(ACondition: TSyntaxNode): string;
@@ -252,41 +297,7 @@ begin
   ACondition.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      Result := TSyntaxSearchStep.Descend;
-      case ANode.Kind of
-        // Ein Aufruf mit Argumenten tut etwas (TryReplace(…), AtomicCmpExchange(…)): ein Wiederholen, kein Abfragen.
-        // Ein Vergleich mit einer Zeitmessung ist die Zeitgrenze.
-        TSyntaxKind.Call:
-          if ANode.ChildCount > 1 then
-          begin
-            Result := TSyntaxSearchStep.Skip;
-          end;
-        TSyntaxKind.BinaryExpr:
-          if MatchText(ANode.Name, cComparisons) and MentionsTime(ANode) then
-          begin
-            Result := TSyntaxSearchStep.Skip;
-          end;
-        TSyntaxKind.MemberAccess:
-          begin
-            // X.Eigenschaft bzw. X.Methode: ein Zustand des Objekts, außer an lokalen Records (TStopwatch) und
-            // Zeitfunktionen von TThread.
-            if not ((ANode.ChildCount > 0) and (IsLocal(ANode[0]) or MatchText(ANode[0].Name, cNeutralNames))) then
-            begin
-              mFound := SourceText(FContext.Text, ANode);
-              Result := TSyntaxSearchStep.Found;
-            end
-            else
-            begin
-              Result := TSyntaxSearchStep.Skip;
-            end;
-          end;
-        TSyntaxKind.Identifier:
-          if not IsLocal(ANode) and not MatchText(ANode.Name, cNeutralNames) then
-          begin
-            mFound := ANode.Name;
-            Result := TSyntaxSearchStep.Found;
-          end;
-      end;
+      Result := StateStep(ANode, mFound);
     end);
   Result := mFound;
 end;
@@ -405,6 +416,13 @@ begin
     RunsInMainThread(FAncestry, FThreads, mMethod);
 end;
 
+// Schleife einer Thread-Klasse, die Terminated prüft? (Die übrigen meldet thread-loop-without-terminated.)
+function TPollingScan.IsThreadLoop(ARoutine, ALoop: TSyntaxNode): Boolean;
+begin
+  Result := FAncestry.DescendsFrom(ClassPart(OuterMethod(ARoutine).Name), 'TThread') and
+    (Mentions(ALoop, 'Terminated') or Mentions(ALoop, 'CheckTerminated'));
+end;
+
 procedure TPollingScan.CheckRoutine(ARoutine: TSyntaxNode);
 var
   mThreadMethod: Boolean;
@@ -418,11 +436,9 @@ begin
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
-      // In Thread-Klassen nur Schleifen, die Terminated prüfen (die übrigen meldet thread-loop-without-terminated);
-      // im Hauptthread keine.
+      // In Thread-Klassen nur Schleifen, die Terminated prüfen; im Hauptthread keine.
       if (ANode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and (ANode.ChildCount >= 2) and
-        (not mThreadMethod or (FAncestry.DescendsFrom(ClassPart(OuterMethod(ARoutine).Name), 'TThread') and
-        (Mentions(ANode, 'Terminated') or Mentions(ANode, 'CheckTerminated')))) then
+        (not mThreadMethod or IsThreadLoop(ARoutine, ANode)) then
       begin
         CheckLoop(ANode);
       end;

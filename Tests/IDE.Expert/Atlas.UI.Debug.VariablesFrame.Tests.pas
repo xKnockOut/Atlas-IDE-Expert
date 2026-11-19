@@ -50,6 +50,7 @@ var
 begin
   mList := nil;
   mSearch := nil;
+  mHost := nil;
   try
     mList := TAtlasEvalList.Create;
     mSearch := TAtlasVariableSearch.Create;

@@ -1159,6 +1159,7 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cOverrideUnitMitte, cOverrideMitteFile, nil));
   mReads := nil;
   mResolver := nil;
+  mTree := nil;
   try
     mReads := TDictionary<string, Integer>.Create;
     mTree := TPascalParser.Parse(cOverrideText);

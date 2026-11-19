@@ -713,6 +713,7 @@ var
 begin
   mDeclared := nil;
   mGotos := nil;
+  mSets := nil;
   try
     mDeclared := TDictionary<string, Integer>.Create;
     mSets := TLabelSets.Create([doOwnsValues]);

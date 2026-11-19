@@ -174,6 +174,7 @@ begin
   ForceDirectories(ExtractFileDir(AFileName));
   mProgress := nil;
   mStream := nil;
+  mClient := nil;
   try
     mProgress := TUpdateDownloadProgress.Create(AProgress);
     mClient := NewClient;

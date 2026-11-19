@@ -103,18 +103,28 @@ type
     FLines: TArray<string>;
     FLineBreak: string;
     FRoutine: TSyntaxNode;
+    function LocalDeclaration(const AName: string): TSyntaxNode;
     function IsLocalObject(const AName: string): Boolean;
+    function IsKnownObjectVar(const AName: string): Boolean;
+    function FreedAssignments(AList: TSyntaxNode; AFirst, ALast: Integer; const AFreed: TArray<string>;
+      const ACreations: TArray<TCreation>; out ANames: TArray<string>): Boolean;
     function TryCreation(AStatement: TSyntaxNode; out ACreation: TCreation): Boolean;
     function FreedNames(AFinally: TSyntaxNode): TArray<string>;
-    function FreeStatementOf(AFinally: TSyntaxNode; const AName: string): TSyntaxNode;
     function SetToNilBefore(AList: TSyntaxNode; AIndex: Integer; const AName: string): Boolean;
     function OwnLine(ANode: TSyntaxNode; ATry: Boolean): Boolean;
     function NilLine(const AIndent: string; const ACreation: TCreation): string;
     function MovedText(const ACreations: TArray<TCreation>; AFirstLine, ALastLine: Integer;
       out AText: string): Boolean;
-    function MoveFix(const ACreations: TArray<TCreation>; ATry: TSyntaxNode): TArray<TRuleFix>;
+    function MoveFix(const ACreations: TArray<TCreation>; const AOthers: TArray<string>;
+      ATry: TSyntaxNode): TArray<TRuleFix>;
     function NilFix(const ANames: TArray<string>; ATry: TSyntaxNode): TArray<TRuleFix>;
+    function CreationsBefore(AList: TSyntaxNode; AIndex: Integer; const AFreed: TArray<string>;
+      out AFirst: Integer): TArray<TCreation>;
+    function IsRisky(AList: TSyntaxNode; AIndex, AFirst: Integer; const ACreations: TArray<TCreation>): Boolean;
+    procedure ReportBefore(AList: TSyntaxNode; AIndex, AFirst: Integer; const ACreations: TArray<TCreation>;
+      const AFreed: TArray<string>);
     procedure CheckBefore(AList: TSyntaxNode; AIndex: Integer; const AFreed: TArray<string>);
+    function InsideNames(ATry: TSyntaxNode; const AFreed: TArray<string>): TArray<string>;
     procedure CheckInside(AList: TSyntaxNode; AIndex: Integer; const AFreed: TArray<string>);
     procedure CheckList(AList: TSyntaxNode);
   public
@@ -246,11 +256,10 @@ begin
 end;
 
 // Lokale Variable der Routine (var-Abschnitt oder Inline-Variable), deren Typ kein Interface ist.
-function TCreateOrderScan.IsLocalObject(const AName: string): Boolean;
-var
-  mDecl: TSyntaxNode;
+// Deklaration der lokalen Variablen AName (var-Abschnitt oder Inline-Variable), nil ohne.
+function TCreateOrderScan.LocalDeclaration(const AName: string): TSyntaxNode;
 begin
-  mDecl := FRoutine.Search(
+  Result := FRoutine.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if (ANode <> FRoutine) and (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
@@ -266,7 +275,73 @@ begin
         Result := TSyntaxSearchStep.Descend;
       end;
     end);
+end;
+
+function TCreateOrderScan.IsLocalObject(const AName: string): Boolean;
+var
+  mDecl: TSyntaxNode;
+begin
+  mDecl := LocalDeclaration(AName);
   Result := (mDecl <> nil) and not LooksLikeInterface(DeclaredType(mDecl));
+end;
+
+// Lokale Variable, deren Typ sicher eine Klasse ist (darf auf nil gesetzt werden)?
+function TCreateOrderScan.IsKnownObjectVar(const AName: string): Boolean;
+var
+  mDecl: TSyntaxNode;
+begin
+  mDecl := LocalDeclaration(AName);
+  Result := (mDecl <> nil) and (mDecl.Kind = TSyntaxKind.VarDecl) and (DeclaredType(mDecl) <> '') and
+    FObjects.IsKnownClass(DeclaredType(mDecl));
+end;
+
+// Ziel einer Zuweisung X := … (Bezeichner), sonst ''.
+function AssignedName(AStatement: TSyntaxNode): string;
+begin
+  Result := '';
+  if (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) and
+    (AStatement[0].Kind = TSyntaxKind.Identifier) then
+  begin
+    Result := AStatement[0].Name;
+  end;
+end;
+
+function IsCreated(const ACreations: TArray<TCreation>; const AName: string): Boolean;
+var
+  mCreation: TCreation;
+begin
+  Result := False;
+  for mCreation in ACreations do
+  begin
+    Result := Result or SameText(mCreation.Name, AName);
+  end;
+end;
+
+// Weitere im finally freigegebene Variablen, die AList[AFirst..ALast] zuweist (X := Parse(…)); False, wenn eine
+// davon keine sichere Klasse ist oder als Inline-Variable entsteht (dann keine sichere Korrektur).
+function TCreateOrderScan.FreedAssignments(AList: TSyntaxNode; AFirst, ALast: Integer; const AFreed: TArray<string>;
+  const ACreations: TArray<TCreation>; out ANames: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  ANames := nil;
+  Result := True;
+  for mIndex := AFirst to ALast do
+  begin
+    mName := AssignedName(AList[mIndex]);
+    if (AList[mIndex].Kind = TSyntaxKind.InlineVar) and not IsCreated(ACreations, AList[mIndex].Name) and
+      InList(AFreed, AList[mIndex].Name) then
+    begin
+      Result := False;
+    end
+    else if (mName <> '') and InList(AFreed, mName) and not IsCreated(ACreations, mName) and
+      not InList(ANames, mName) then
+    begin
+      Result := Result and IsKnownObjectVar(mName);
+      ANames := ANames + [mName];
+    end;
+  end;
 end;
 
 function TCreateOrderScan.TryCreation(AStatement: TSyntaxNode; out ACreation: TCreation): Boolean;
@@ -314,20 +389,6 @@ begin
       Result := Result + [mName];
     end;
   end;
-end;
-
-function TCreateOrderScan.FreeStatementOf(AFinally: TSyntaxNode; const AName: string): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to AFinally.ChildCount - 1 do
-  begin
-    if SameText(FreedName(AFinally[mIndex]), AName) then
-    begin
-      Exit(AFinally[mIndex]);
-    end;
-  end;
-  Result := nil;
 end;
 
 // Steht vor AIndex in AList X := nil (bzw. var X: T := nil)?
@@ -423,11 +484,13 @@ begin
   Result := True;
 end;
 
-// Form 1: Variablen vor dem try auf nil, alles ab dem ersten Create in den try-Block.
-function TCreateOrderScan.MoveFix(const ACreations: TArray<TCreation>; ATry: TSyntaxNode): TArray<TRuleFix>;
+// Form 1: alle Variablen auf nil setzen (auch weitere, die mit ins try wandern: AOthers) und die Anweisungen ab dem
+// ersten Create in das try verschieben.
+function TCreateOrderScan.MoveFix(const ACreations: TArray<TCreation>; const AOthers: TArray<string>;
+  ATry: TSyntaxNode): TArray<TRuleFix>;
 var
   mFirst: TSyntaxNode;
-  mIndent, mText, mMoved: string;
+  mIndent, mText, mMoved, mName: string;
   mCreation: TCreation;
 begin
   Result := nil;
@@ -442,6 +505,10 @@ begin
   for mCreation in ACreations do
   begin
     mText := mText + NilLine(mIndent, mCreation);
+  end;
+  for mName in AOthers do
+  begin
+    mText := mText + mIndent + mName + ' := nil;' + FLineBreak;
   end;
   mText := mText + FLines[ATry.StartPos.Line] + FLineBreak + mMoved;
   Result := [TRuleFix.Create(cTexts[TCreateOrderText.MoveIntoTry].Text,
@@ -468,19 +535,18 @@ begin
     [TRuleEdit.Create(TTextRange.Create(ATry.StartPos.Line, 0, ATry.StartPos.Line, 0), mText)], True)];
 end;
 
-procedure TCreateOrderScan.CheckBefore(AList: TSyntaxNode; AIndex: Integer; const AFreed: TArray<string>);
+// Erzeugungen der im finally freigegebenen Variablen direkt vor dem try (bis zum vorigen try); AFirst ist der Index
+// der ersten.
+function TCreateOrderScan.CreationsBefore(AList: TSyntaxNode; AIndex: Integer; const AFreed: TArray<string>;
+  out AFirst: Integer): TArray<TCreation>;
 var
-  mIndex, mFirst, mCount: Integer;
-  mCreations: TArray<TCreation>;
+  mIndex: Integer;
   mCreation: TCreation;
   mNames: TArray<string>;
-  mRisky: Boolean;
-  mFixes: TArray<TRuleFix>;
-  mMessage: string;
 begin
-  mCreations := nil;
+  Result := nil;
   mNames := nil;
-  mFirst := -1;
+  AFirst := -1;
   for mIndex := AIndex - 1 downto 0 do
   begin
     if AList[mIndex].Kind = TSyntaxKind.TryStatement then
@@ -490,48 +556,64 @@ begin
     if TryCreation(AList[mIndex], mCreation) and InList(AFreed, mCreation.Name) and
       not InList(mNames, mCreation.Name) then
     begin
-      mCreations := [mCreation] + mCreations;
+      Result := [mCreation] + Result;
       mNames := mNames + [mCreation.Name];
-      mFirst := mIndex;
+      AFirst := mIndex;
     end;
   end;
-  if Length(mCreations) < 2 then
-  begin
-    Exit;
-  end;
-  // Gefährlich, sobald nach dem ersten Create etwas scheitern kann: ein weiteres Create mit Argumenten bzw. einer
-  // Klasse außerhalb der kurzen Liste oder eine andere Anweisung.
-  mRisky := False;
+end;
+
+// Gefährlich, sobald nach dem ersten Create etwas scheitern kann: ein weiteres Create mit Argumenten bzw. einer
+// Klasse außerhalb der kurzen Liste oder eine andere Anweisung.
+function TCreateOrderScan.IsRisky(AList: TSyntaxNode; AIndex, AFirst: Integer;
+  const ACreations: TArray<TCreation>): Boolean;
+var
+  mIndex, mCount: Integer;
+begin
+  Result := False;
   mCount := 0;
-  for mIndex := mFirst + 1 to AIndex - 1 do
+  for mIndex := AFirst + 1 to AIndex - 1 do
   begin
-    if (mCount + 1 < Length(mCreations)) and (AList[mIndex] = mCreations[mCount + 1].Statement) then
+    if (mCount + 1 < Length(ACreations)) and (AList[mIndex] = ACreations[mCount + 1].Statement) then
     begin
       Inc(mCount);
-      mRisky := mRisky or not IsSafe(mCreations[mCount].Call);
+      Result := Result or not IsSafe(ACreations[mCount].Call);
     end
     else if AList[mIndex].Kind <> TSyntaxKind.EmptyStatement then
     begin
-      mRisky := True;
+      Result := True;
     end;
   end;
-  if not mRisky then
+end;
+
+procedure TCreateOrderScan.ReportBefore(AList: TSyntaxNode; AIndex, AFirst: Integer;
+  const ACreations: TArray<TCreation>; const AFreed: TArray<string>);
+var
+  mIndex: Integer;
+  mCreation: TCreation;
+  mFixes: TArray<TRuleFix>;
+  mMessage: string;
+  mOthers: TArray<string>;
+begin
+  // Wandert eine weitere freigegebene Variable mit ins try, die sich nicht sicher auf nil setzen lässt: keine
+  // Korrektur.
+  mFixes := nil;
+  if FreedAssignments(AList, AFirst, AIndex - 1, AFreed, ACreations, mOthers) then
   begin
-    Exit;
+    mFixes := MoveFix(ACreations, mOthers, AList[AIndex]);
   end;
-  mFixes := MoveFix(mCreations, AList[AIndex]);
-  for mIndex := 1 to High(mCreations) do
+  for mIndex := 1 to High(ACreations) do
   begin
-    mCreation := mCreations[mIndex];
+    mCreation := ACreations[mIndex];
     if IsSafe(mCreation.Call) then
     begin
       mMessage := cTexts[PluralText(TCreateOrderText.StatementFails, TCreateOrderText.StatementFailsMany,
-        mIndex)].Fmt([NamesOf(mCreations, mIndex)]);
+        mIndex)].Fmt([NamesOf(ACreations, mIndex)]);
     end
     else
     begin
       mMessage := cTexts[PluralText(TCreateOrderText.CreateFails, TCreateOrderText.CreateFailsMany,
-        mIndex)].Fmt([mCreation.Call.ClassName, NamesOf(mCreations, mIndex)]);
+        mIndex)].Fmt([mCreation.Call.ClassName, NamesOf(ACreations, mIndex)]);
     end;
     FReport.Add(NodeRange(mCreation.Call.Node), mMessage, TRuleConfidence.High, mFixes);
     // Die Korrektur ändert alle zusammen; sie hängt nur am ersten Befund.
@@ -539,25 +621,58 @@ begin
   end;
 end;
 
+procedure TCreateOrderScan.CheckBefore(AList: TSyntaxNode; AIndex: Integer; const AFreed: TArray<string>);
+var
+  mFirst: Integer;
+  mCreations: TArray<TCreation>;
+begin
+  mCreations := CreationsBefore(AList, AIndex, AFreed, mFirst);
+  if (Length(mCreations) >= 2) and IsRisky(AList, AIndex, mFirst, mCreations) then
+  begin
+    ReportBefore(AList, AIndex, mFirst, mCreations, AFreed);
+  end;
+end;
+
+// Im finally freigegebene Variablen, die das try zuweist: Erzeugungen und, nach der ersten, weitere Variablen einer
+// sicheren Klasse (X := Parse(…)). Leer ohne Erzeugung.
+function TCreateOrderScan.InsideNames(ATry: TSyntaxNode; const AFreed: TArray<string>): TArray<string>;
+var
+  mIndex: Integer;
+  mCreation: TCreation;
+  mName: string;
+  mCreated: Boolean;
+begin
+  Result := nil;
+  mCreated := False;
+  for mIndex := 0 to ATry.ChildCount - 1 do
+  begin
+    mName := AssignedName(ATry[mIndex]);
+    if (mName = '') or not InList(AFreed, mName) or InList(Result, mName) then
+    begin
+      Continue;
+    end;
+    if TryCreation(ATry[mIndex], mCreation) then
+    begin
+      mCreated := True;
+      Result := Result + [mName];
+    end
+    else if mCreated and IsKnownObjectVar(mName) then
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+end;
+
 procedure TCreateOrderScan.CheckInside(AList: TSyntaxNode; AIndex: Integer; const AFreed: TArray<string>);
 var
   mTry, mFinally, mFree: TSyntaxNode;
   mIndex: Integer;
-  mCreation: TCreation;
   mNames, mOpen: TArray<string>;
   mName: string;
 begin
   mTry := AList[AIndex];
   mFinally := mTry.FindChild(TSyntaxKind.FinallyBlock);
-  mNames := nil;
-  for mIndex := 0 to mTry.ChildCount - 1 do
-  begin
-    if (mTry[mIndex].Kind = TSyntaxKind.AssignStatement) and TryCreation(mTry[mIndex], mCreation) and
-      InList(AFreed, mCreation.Name) and not InList(mNames, mCreation.Name) then
-    begin
-      mNames := mNames + [mCreation.Name];
-    end;
-  end;
+  mNames := InsideNames(mTry, AFreed);
   if Length(mNames) < 2 then
   begin
     Exit;

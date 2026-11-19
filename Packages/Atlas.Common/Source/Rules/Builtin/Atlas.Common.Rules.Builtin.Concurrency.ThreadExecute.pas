@@ -206,6 +206,7 @@ type
     function OnOwnLine(const APosition: TTextPosition; ALength: Integer): Boolean;
     function WrapFix(ABody: TSyntaxNode; const ALogger: string): TArray<TRuleFix>;
     procedure CheckExecute(ARoutine: TSyntaxNode; const AClass: string);
+    function IsThreadClass(const AOwner: string): Boolean;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
@@ -559,6 +560,25 @@ begin
   end;
 end;
 
+// Verschachtelte Klassen (TSampler.TWorker) stehen unter ihrem eigenen Namen mit der äußeren Klasse als Container.
+function TThreadExecuteScan.IsThreadClass(const AOwner: string): Boolean;
+var
+  mNested: TSymbolLocation;
+  mParent: string;
+begin
+  if FAncestry.DescendsFrom(AOwner, 'TThread') then
+  begin
+    Exit(True);
+  end;
+  Result := (Pos('.', AOwner) > 0) and FAncestry.FindNestedType(ClassPart(AOwner), MethodPart(AOwner), mNested) and
+    (Length(mNested.Symbol.Ancestors) > 0);
+  if Result then
+  begin
+    mParent := BareName(mNested.Symbol.Ancestors[0]);
+    Result := SameText(mParent, 'TThread') or FAncestry.DescendsFrom(mParent, 'TThread');
+  end;
+end;
+
 function TThreadExecuteScan.ThreadClassNames: TArray<string>;
 var
   mRoutine: TSyntaxNode;
@@ -568,10 +588,8 @@ begin
   for mRoutine in FRoutines do
   begin
     mOwner := ClassPart(mRoutine.Name);
-    // Verschachtelte Klassen (TSampler.TWorker) stehen im Index unter ihrem eigenen Namen.
     if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and not InList(Result, mOwner) and
-      (FAncestry.DescendsFrom(mOwner, 'TThread') or ((Pos('.', mOwner) > 0) and
-      FAncestry.DescendsFrom(MethodPart(mOwner), 'TThread'))) then
+      IsThreadClass(mOwner) then
     begin
       Result := Result + [mOwner];
     end;
@@ -620,6 +638,13 @@ begin
   end;
 end;
 
+// Rumpf (Block) einer Methode Execute?
+function IsExecuteBody(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Block) and (ANode.Parent <> nil) and
+    (ANode.Parent.Kind = TSyntaxKind.RoutineDecl) and SameText(MethodPart(ANode.Parent.Name), 'Execute');
+end;
+
 function IsThreadExecuteGuard(const AContext: TRuleContext; AHandler: TSyntaxNode): Boolean;
 var
   mTry, mNode: TSyntaxNode;
@@ -638,9 +663,7 @@ begin
   begin
     mNode := mNode.Parent;
   end;
-  if (mTry.Kind <> TSyntaxKind.TryStatement) or (mNode = nil) or (mNode.Kind <> TSyntaxKind.Block) or
-    (mNode.Parent = nil) or (mNode.Parent.Kind <> TSyntaxKind.RoutineDecl) or
-    not SameText(MethodPart(mNode.Parent.Name), 'Execute') or not CatchesAll(mTry) then
+  if (mTry.Kind <> TSyntaxKind.TryStatement) or not IsExecuteBody(mNode) or not CatchesAll(mTry) then
   begin
     Exit;
   end;

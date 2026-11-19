@@ -91,6 +91,18 @@ type
     Local: Boolean;
   end;
 
+  /// <summary>Stand der Kette eines Konstruktors: geprüfte Klasse, Routine (Konstruktor oder eingebettete bzw.
+  /// nicht virtuelle Methode), Offset von inherited, Tiefe, erste Hilfsroutine und oberster Aufruf.</summary>
+  TCallChain = record
+    ClassName: string;
+    Routine: TSyntaxNode;
+    InheritedOffset: Integer;
+    Depth: Integer;
+    Helper: string;
+    TopCall: TSyntaxNode;
+    function Deeper(ARoutine: TSyntaxNode; const AName: string; ATopCall: TSyntaxNode): TCallChain;
+  end;
+
   /// <summary>Ein Lauf von TVirtualCallInConstructorRule über eine Unit.</summary>
   TConstructorScan = class
   private
@@ -104,13 +116,18 @@ type
     FReported: TDictionary<string, Boolean>;
     function FindMethod(const AClass, AName: string; out AMethod: TIndexSymbol): Boolean;
     function LoadUnit(const AFileName: string): TConstructorUnit;
+    function LocalDescendants(const AClass: string): TArray<TDescendant>;
+    function InCheckedUnit(const ALocation: TSymbolLocation): Boolean;
+    procedure AddForeign(const ALocation: TSymbolLocation; var ADescendants: TArray<TDescendant>);
+    procedure AddIndexDescendants(const AClass: string; var ADescendants: TArray<TDescendant>);
     function DescendantsOf(const AClass: string): TArray<TDescendant>;
     function FindFieldRead(const AClass, AMethod: string): TFieldRead;
     function CheckOverride(const ADescendant: TDescendant; const AMethod: string): TFieldRead;
-    procedure Visit(const AClass: string; AConstructor, ABody: TSyntaxNode; AInheritedOffset, ADepth: Integer;
-      const AHelper: string; ATopCall: TSyntaxNode);
-    procedure CheckCall(const AClass: string; AConstructor, ACallee: TSyntaxNode; AInheritedOffset, ADepth: Integer;
-      const AHelper: string; ATopCall: TSyntaxNode);
+    procedure Visit(const AChain: TCallChain; ABody: TSyntaxNode);
+    procedure FollowBody(const AChain: TCallChain; ARoutine: TSyntaxNode; const AName: string; ATopCall: TSyntaxNode);
+    function IsLocalName(const AChain: TCallChain; const AName: string; ATopCall: TSyntaxNode): Boolean;
+    procedure CheckVirtual(const AChain: TCallChain; const AName: string; ATopCall: TSyntaxNode);
+    procedure CheckCall(const AChain: TCallChain; ACallee: TSyntaxNode);
     procedure Report(const AMethod, AHelper: string; ATopCall: TSyntaxNode; const ARead: TFieldRead);
     procedure CheckConstructor(const AClass: string; AConstructor: TSyntaxNode);
   public
@@ -118,19 +135,6 @@ type
     destructor Destroy; override;
     procedure Run;
   end;
-
-function ClassPartOf(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  mDot := LastDelimiter('.', AName);
-  Result := Copy(AName, 1, mDot - 1);
-end;
-
-function MethodPartOf(const AName: string): string;
-begin
-  Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
-end;
 
 function HasDirective(const ASymbol: TIndexSymbol; const ADirective: string): Boolean;
 var
@@ -219,6 +223,29 @@ begin
   Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and SameText(ANode.Name, 'nil');
 end;
 
+// Assigned(AField)?
+function IsAssignedOf(ANode: TSyntaxNode; const AField: string): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) and
+    SameText(ANode[0].Name, 'Assigned') and SameText(FieldAt(ANode[1]), AField);
+end;
+
+function ComparesWithNil(AField, ANil: TSyntaxNode; const AName: string): Boolean;
+begin
+  Result := SameText(FieldAt(AField), AName) and IsNilNode(ANil);
+end;
+
+// AField = nil, AField <> nil (auch nil links)?
+function IsNilComparison(ANode: TSyntaxNode; const AField: string): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.BinaryExpr) and ((ANode.Name = '=') or (ANode.Name = '<>')) and
+    (ANode.ChildCount = 2);
+  if Result then
+  begin
+    Result := ComparesWithNil(ANode[0], ANode[1], AField) or ComparesWithNil(ANode[1], ANode[0], AField);
+  end;
+end;
+
 // Prüft der Rumpf das Feld auf nil (Assigned(F), F <> nil, F = nil)?
 function ChecksNil(ABody: TSyntaxNode; const AField: string): Boolean;
 begin
@@ -226,18 +253,39 @@ begin
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) and
-        SameText(ANode[0].Name, 'Assigned') and SameText(FieldAt(ANode[1]), AField) then
-      begin
-        Result := TSyntaxSearchStep.Found;
-      end
-      else if (ANode.Kind = TSyntaxKind.BinaryExpr) and ((ANode.Name = '=') or (ANode.Name = '<>')) and
-        (ANode.ChildCount = 2) and ((SameText(FieldAt(ANode[0]), AField) and IsNilNode(ANode[1])) or
-        (SameText(FieldAt(ANode[1]), AField) and IsNilNode(ANode[0]))) then
+      if IsAssignedOf(ANode, AField) or IsNilComparison(ANode, AField) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
     end) <> nil;
+end;
+
+// Ist ANode ein Bezeichner rechts in X.Name (also nicht das Feld von Self)?
+function IsMemberNameOfOther(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Identifier) and (ANode.Parent <> nil) and
+    (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and (ANode.Parent[0] <> ANode);
+end;
+
+// Steht das Feld an ANode nur als Ziel einer Zuweisung oder in FreeAndNil(F) bzw. F.Free?
+function IsWriteOrFree(ANode: TSyntaxNode): Boolean;
+var
+  mParent: TSyntaxNode;
+begin
+  mParent := ANode.Parent;
+  if mParent = nil then
+  begin
+    Exit(False);
+  end;
+  if mParent.Kind = TSyntaxKind.AssignStatement then
+  begin
+    Exit(mParent[0] = ANode);
+  end;
+  if mParent.Kind = TSyntaxKind.Call then
+  begin
+    Exit((mParent[0].Kind = TSyntaxKind.Identifier) and SameText(mParent[0].Name, 'FreeAndNil'));
+  end;
+  Result := (mParent.Kind = TSyntaxKind.MemberAccess) and SameText(mParent.Name, 'Free');
 end;
 
 // Liest der Rumpf das Feld (nicht nur als Ziel einer Zuweisung oder in FreeAndNil bzw. F.Free)?
@@ -245,34 +293,23 @@ function ReadsField(ABody: TSyntaxNode; const AField: string): Boolean;
 begin
   Result := ABody.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
-    var
-      mParent: TSyntaxNode;
     begin
       Result := TSyntaxSearchStep.Descend;
       if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
       begin
-        Exit(TSyntaxSearchStep.Skip);
-      end;
-      if not SameText(FieldAt(ANode), AField) or ((ANode.Kind = TSyntaxKind.Identifier) and (ANode.Parent <> nil) and
-        (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and (ANode.Parent[0] <> ANode)) then
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if SameText(FieldAt(ANode), AField) and not IsMemberNameOfOther(ANode) then
       begin
-        Exit;
+        if IsWriteOrFree(ANode) then
+        begin
+          Result := TSyntaxSearchStep.Skip;
+        end
+        else
+        begin
+          Result := TSyntaxSearchStep.Found;
+        end;
       end;
-      mParent := ANode.Parent;
-      if (mParent <> nil) and (mParent.Kind = TSyntaxKind.AssignStatement) and (mParent[0] = ANode) then
-      begin
-        Exit(TSyntaxSearchStep.Skip);
-      end;
-      if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent[0].Kind = TSyntaxKind.Identifier) and
-        SameText(mParent[0].Name, 'FreeAndNil') then
-      begin
-        Exit(TSyntaxSearchStep.Skip);
-      end;
-      if (mParent <> nil) and (mParent.Kind = TSyntaxKind.MemberAccess) and SameText(mParent.Name, 'Free') then
-      begin
-        Exit(TSyntaxSearchStep.Skip);
-      end;
-      Result := TSyntaxSearchStep.Found;
     end) <> nil;
 end;
 
@@ -319,6 +356,79 @@ begin
         end;
       end;
     end) <> nil;
+end;
+
+// Eingebettete Routine AName von ARoutine, nil ohne.
+function NestedRoutine(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if (ARoutine[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(ARoutine[mIndex].Name, AName) then
+    begin
+      Exit(ARoutine[mIndex]);
+    end;
+  end;
+end;
+
+// Überschreibt der Nachfahr AMethod (override)?
+function OverridesMethod(const ADescendant: TDescendant; const AMethod: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  for mSymbol in ADescendant.UnitData.MemberSymbols(ADescendant.ClassName, TIndexSymbolKind.Method) do
+  begin
+    Result := Result or (SameText(mSymbol.Name, AMethod) and HasDirective(mSymbol, 'override'));
+  end;
+end;
+
+// Setzt ein Konstruktor des Nachfahren das Feld erst nach inherited? AInherited: Name des geerbten Konstruktors.
+function SetAfterInherited(const ADescendant: TDescendant; const AField: string; out AInherited: string): Boolean;
+var
+  mConstructor: TIndexSymbol;
+  mBody: TSyntaxNode;
+  mAfter: Integer;
+begin
+  AInherited := '';
+  for mConstructor in ADescendant.UnitData.MemberSymbols(ADescendant.ClassName, TIndexSymbolKind.Constructor_) do
+  begin
+    mBody := nil;
+    if not StartsText('class ', mConstructor.Signature) then
+    begin
+      mBody := BlockOf(ADescendant.UnitData.Body(ADescendant.ClassName + '.' + mConstructor.Name));
+    end;
+    if mBody = nil then
+    begin
+      Continue;
+    end;
+    mAfter := InheritedOffset(mBody, AInherited);
+    if (mAfter < MaxInt) and AssignsFieldAfter(mBody, AField, mAfter) then
+    begin
+      if AInherited = '' then
+      begin
+        AInherited := mConstructor.Name;
+      end;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+{ TCallChain }
+
+function TCallChain.Deeper(ARoutine: TSyntaxNode; const AName: string; ATopCall: TSyntaxNode): TCallChain;
+begin
+  Result := Self;
+  Result.Routine := ARoutine;
+  Result.Depth := Depth + 1;
+  if Result.Helper = '' then
+  begin
+    Result.Helper := AName;
+  end;
+  Result.TopCall := ATopCall;
 end;
 
 { TConstructorUnit }
@@ -461,20 +571,12 @@ begin
   FUnits.Add(mKey, Result);
 end;
 
-// Alle Nachfahren der Klasse (auch über mehrere Stufen): aus der Unit und über den Index aus anderen Units.
-function TConstructorScan.DescendantsOf(const AClass: string): TArray<TDescendant>;
+// Nachfahren der Klasse in der geprüften Unit.
+function TConstructorScan.LocalDescendants(const AClass: string): TArray<TDescendant>;
 var
-  mPending: TQueue<string>;
-  mSeen: TDictionary<string, Boolean>;
-  mName: string;
   mSymbol: TIndexSymbol;
-  mLocation: TSymbolLocation;
   mDescendant: TDescendant;
 begin
-  if FDescendants.TryGetValue(AnsiUpperCase(AClass), Result) then
-  begin
-    Exit;
-  end;
   Result := nil;
   for mSymbol in FLocal.Symbols do
   begin
@@ -486,62 +588,87 @@ begin
       Result := Result + [mDescendant];
     end;
   end;
-  if FContext.Index <> nil then
+end;
+
+// Steht der Fund des Index in der geprüften Unit? Deren Nachfahren kommen schon aus ihrem Baum.
+function TConstructorScan.InCheckedUnit(const ALocation: TSymbolLocation): Boolean;
+begin
+  Result := SameText(ALocation.UnitName, FAncestry.Local.UnitName) or ((FContext.FileName <> '') and
+    SameText(ALocation.FileName, FContext.FileName));
+end;
+
+// Nachfahr aus einer anderen Unit anhängen, wenn sie sich lesen lässt.
+procedure TConstructorScan.AddForeign(const ALocation: TSymbolLocation; var ADescendants: TArray<TDescendant>);
+var
+  mDescendant: TDescendant;
+begin
+  if InCheckedUnit(ALocation) then
   begin
-    mPending := TQueue<string>.Create;
-    mSeen := TDictionary<string, Boolean>.Create;
-    try
-      mPending.Enqueue(AClass);
-      mSeen.Add(AnsiUpperCase(AClass), True);
-      while (mPending.Count > 0) and (Length(Result) < cMaxDescendants) do
+    Exit;
+  end;
+  mDescendant.ClassName := ALocation.Symbol.Name;
+  mDescendant.UnitData := LoadUnit(ALocation.FileName);
+  if mDescendant.UnitData <> nil then
+  begin
+    ADescendants := ADescendants + [mDescendant];
+  end;
+end;
+
+// Nachfahren über den Index (Breitensuche über alle Stufen).
+procedure TConstructorScan.AddIndexDescendants(const AClass: string; var ADescendants: TArray<TDescendant>);
+var
+  mPending: TQueue<string>;
+  mSeen: TDictionary<string, Boolean>;
+  mLocation: TSymbolLocation;
+begin
+  if FContext.Index = nil then
+  begin
+    Exit;
+  end;
+  mPending := TQueue<string>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    mPending.Enqueue(AClass);
+    mSeen.Add(AnsiUpperCase(AClass), True);
+    while (mPending.Count > 0) and (Length(ADescendants) < cMaxDescendants) do
+    begin
+      for mLocation in FContext.Index.Descendants(mPending.Dequeue) do
       begin
-        mName := mPending.Dequeue;
-        for mLocation in FContext.Index.Descendants(mName) do
+        if not mSeen.ContainsKey(AnsiUpperCase(mLocation.Symbol.Name)) then
         begin
-          if mSeen.ContainsKey(AnsiUpperCase(mLocation.Symbol.Name)) then
-          begin
-            Continue;
-          end;
           mSeen.Add(AnsiUpperCase(mLocation.Symbol.Name), True);
           mPending.Enqueue(mLocation.Symbol.Name);
-          // Nachfahren der geprüften Unit kommen schon aus ihrem Baum.
-          if SameText(mLocation.UnitName, FAncestry.Local.UnitName) or ((FContext.FileName <> '') and
-            SameText(mLocation.FileName, FContext.FileName)) then
-          begin
-            Continue;
-          end;
-          mDescendant.ClassName := mLocation.Symbol.Name;
-          mDescendant.UnitData := LoadUnit(mLocation.FileName);
-          if mDescendant.UnitData <> nil then
-          begin
-            Result := Result + [mDescendant];
-          end;
+          AddForeign(mLocation, ADescendants);
         end;
       end;
-    finally
-      mSeen.Free;
-      mPending.Free;
     end;
+  finally
+    mSeen.Free;
+    mPending.Free;
   end;
+end;
+
+// Alle Nachfahren der Klasse (auch über mehrere Stufen): aus der Unit und über den Index aus anderen Units.
+function TConstructorScan.DescendantsOf(const AClass: string): TArray<TDescendant>;
+begin
+  if FDescendants.TryGetValue(AnsiUpperCase(AClass), Result) then
+  begin
+    Exit;
+  end;
+  Result := LocalDescendants(AClass);
+  AddIndexDescendants(AClass, Result);
   FDescendants.Add(AnsiUpperCase(AClass), Result);
 end;
 
 // Überschreibt der Nachfahr AMethod und liest dort ein eigenes Feld, das sein Konstruktor erst nach inherited setzt?
 function TConstructorScan.CheckOverride(const ADescendant: TDescendant; const AMethod: string): TFieldRead;
 var
-  mSymbol, mField, mConstructor: TIndexSymbol;
-  mOverride, mBody, mConstructorBody: TSyntaxNode;
-  mOverrides: Boolean;
-  mAfter: Integer;
+  mField: TIndexSymbol;
+  mOverride, mBody: TSyntaxNode;
   mInherited: string;
 begin
   Result := Default(TFieldRead);
-  mOverrides := False;
-  for mSymbol in ADescendant.UnitData.MemberSymbols(ADescendant.ClassName, TIndexSymbolKind.Method) do
-  begin
-    mOverrides := mOverrides or (SameText(mSymbol.Name, AMethod) and HasDirective(mSymbol, 'override'));
-  end;
-  if not mOverrides then
+  if not OverridesMethod(ADescendant, AMethod) then
   begin
     Exit;
   end;
@@ -553,37 +680,16 @@ begin
   end;
   for mField in ADescendant.UnitData.MemberSymbols(ADescendant.ClassName, TIndexSymbolKind.Field) do
   begin
-    if DeclaresLocal(mOverride, mField.Name) or ChecksNil(mBody, mField.Name) or not ReadsField(mBody, mField.Name)
-    then
+    if not DeclaresLocal(mOverride, mField.Name) and not ChecksNil(mBody, mField.Name) and
+      ReadsField(mBody, mField.Name) and SetAfterInherited(ADescendant, mField.Name, mInherited) then
     begin
-      Continue;
-    end;
-    for mConstructor in ADescendant.UnitData.MemberSymbols(ADescendant.ClassName, TIndexSymbolKind.Constructor_) do
-    begin
-      if StartsText('class ', mConstructor.Signature) then
-      begin
-        Continue;
-      end;
-      mConstructorBody := BlockOf(ADescendant.UnitData.Body(ADescendant.ClassName + '.' + mConstructor.Name));
-      if mConstructorBody = nil then
-      begin
-        Continue;
-      end;
-      mAfter := InheritedOffset(mConstructorBody, mInherited);
-      if (mAfter < MaxInt) and AssignsFieldAfter(mConstructorBody, mField.Name, mAfter) then
-      begin
-        Result.Found := True;
-        Result.ClassName := ADescendant.ClassName;
-        Result.FieldName := mField.Name;
-        Result.InheritedName := mInherited;
-        if Result.InheritedName = '' then
-        begin
-          Result.InheritedName := mConstructor.Name;
-        end;
-        Result.Override_ := mOverride;
-        Result.Local := ADescendant.UnitData.Local;
-        Exit;
-      end;
+      Result.Found := True;
+      Result.ClassName := ADescendant.ClassName;
+      Result.FieldName := mField.Name;
+      Result.InheritedName := mInherited;
+      Result.Override_ := mOverride;
+      Result.Local := ADescendant.UnitData.Local;
+      Exit;
     end;
   end;
 end;
@@ -628,91 +734,85 @@ begin
   FReport.Add(TTextRange.Create(ATopCall.StartPos, ATopCall.EndPos), mMessage, TRuleConfidence.Medium, mFixes);
 end;
 
-procedure TConstructorScan.CheckCall(const AClass: string; AConstructor, ACallee: TSyntaxNode;
-  AInheritedOffset, ADepth: Integer; const AHelper: string; ATopCall: TSyntaxNode);
-var
-  mName, mKey, mHelper: string;
-  mMember: TIndexSymbol;
-  mNested, mTop: TSyntaxNode;
-  mRead: TFieldRead;
-  mIndex: Integer;
+// Der Kette in den Rumpf einer eingebetteten oder nicht virtuellen eigenen Methode folgen (bis cMaxDepth).
+procedure TConstructorScan.FollowBody(const AChain: TCallChain; ARoutine: TSyntaxNode; const AName: string;
+  ATopCall: TSyntaxNode);
 begin
-  mName := SelfMember(ACallee);
-  if mName = '' then
+  if (ARoutine <> nil) and (AChain.Depth < cMaxDepth) then
+  begin
+    Visit(AChain.Deeper(ARoutine, AName, ATopCall), BlockOf(ARoutine));
+  end;
+end;
+
+// Ist AName (ohne Self) eine eingebettete Routine (der dann gefolgt wird) oder ein lokaler Name der Routine?
+function TConstructorScan.IsLocalName(const AChain: TCallChain; const AName: string; ATopCall: TSyntaxNode): Boolean;
+var
+  mNested: TSyntaxNode;
+begin
+  mNested := NestedRoutine(AChain.Routine, AName);
+  if mNested <> nil then
+  begin
+    FollowBody(AChain, mNested, AName, ATopCall);
+    Exit(True);
+  end;
+  Result := DeclaresLocal(AChain.Routine, AName);
+end;
+
+// Aufruf einer virtuellen Methode: melden, wenn ein Nachfahr in der Überschreibung ein noch ungesetztes Feld liest.
+procedure TConstructorScan.CheckVirtual(const AChain: TCallChain; const AName: string; ATopCall: TSyntaxNode);
+var
+  mKey: string;
+  mRead: TFieldRead;
+begin
+  mKey := IntToStr(ATopCall.StartOffset) + #0 + AnsiUpperCase(AName);
+  if FReported.ContainsKey(mKey) then
   begin
     Exit;
   end;
-  mTop := ATopCall;
+  FReported.Add(mKey, True);
+  mRead := FindFieldRead(AChain.ClassName, AName);
+  if mRead.Found then
+  begin
+    Report(AName, AChain.Helper, ATopCall, mRead);
+  end
+  else if (FContext.Index = nil) and (ATopCall.StartOffset < AChain.InheritedOffset) and
+    (AChain.InheritedOffset < MaxInt) then
+  begin
+    FReport.Add(TTextRange.Create(ATopCall.StartPos, ATopCall.EndPos),
+      cTexts[TConstructorsText.BeforeInherited].Fmt([AName]), TRuleConfidence.Low);
+  end;
+end;
+
+procedure TConstructorScan.CheckCall(const AChain: TCallChain; ACallee: TSyntaxNode);
+var
+  mName: string;
+  mMember: TIndexSymbol;
+  mTop: TSyntaxNode;
+begin
+  mName := SelfMember(ACallee);
+  mTop := AChain.TopCall;
   if mTop = nil then
   begin
     mTop := ACallee;
   end;
-  mHelper := AHelper;
-  // Eingebettete Routine des Konstruktors (Identifier ohne Self).
-  if ACallee.Kind = TSyntaxKind.Identifier then
-  begin
-    for mIndex := 0 to AConstructor.ChildCount - 1 do
-    begin
-      mNested := AConstructor[mIndex];
-      if (mNested.Kind = TSyntaxKind.RoutineDecl) and SameText(mNested.Name, mName) then
-      begin
-        if ADepth < cMaxDepth then
-        begin
-          if mHelper = '' then
-          begin
-            mHelper := mName;
-          end;
-          Visit(AClass, mNested, BlockOf(mNested), AInheritedOffset, ADepth + 1, mHelper, mTop);
-        end;
-        Exit;
-      end;
-    end;
-    if DeclaresLocal(AConstructor, mName) then
-    begin
-      Exit;
-    end;
-  end;
-  if not FindMethod(AClass, mName, mMember) or (mMember.Kind <> TIndexSymbolKind.Method) then
+  if (mName = '') or ((ACallee.Kind = TSyntaxKind.Identifier) and IsLocalName(AChain, mName, mTop)) or
+    not FindMethod(AChain.ClassName, mName, mMember) or (mMember.Kind <> TIndexSymbolKind.Method) then
   begin
     Exit;
   end;
   if mMember.IsVirtual then
   begin
-    mKey := IntToStr(mTop.StartOffset) + #0 + AnsiUpperCase(mName);
-    if FReported.ContainsKey(mKey) then
-    begin
-      Exit;
-    end;
-    FReported.Add(mKey, True);
-    mRead := FindFieldRead(AClass, mName);
-    if mRead.Found then
-    begin
-      Report(mName, mHelper, mTop, mRead);
-    end
-    else if (FContext.Index = nil) and (mTop.StartOffset < AInheritedOffset) and (AInheritedOffset < MaxInt) then
-    begin
-      FReport.Add(TTextRange.Create(mTop.StartPos, mTop.EndPos),
-        cTexts[TConstructorsText.BeforeInherited].Fmt([mName]), TRuleConfidence.Low);
-    end;
+    CheckVirtual(AChain, mName, mTop);
   end
-  else if ADepth < cMaxDepth then
+  else
   begin
     // Nicht virtuelle eigene Methode: ihr Rumpf in dieser Unit gehört zur Kette.
-    mNested := FLocal.Body(mMember.Container + '.' + mName);
-    if mNested <> nil then
-    begin
-      if mHelper = '' then
-      begin
-        mHelper := mName;
-      end;
-      Visit(AClass, mNested, BlockOf(mNested), AInheritedOffset, ADepth + 1, mHelper, mTop);
-    end;
+    FollowBody(AChain, FLocal.Body(mMember.Container + '.' + mName), mName, mTop);
   end;
 end;
 
 // Aufrufe im Rumpf: Anweisungen M; bzw. Self.M; und Aufrufe M(…) in Ausdrücken.
-procedure TConstructorScan.Visit(const AClass: string; AConstructor, ABody: TSyntaxNode;
-  AInheritedOffset, ADepth: Integer; const AHelper: string; ATopCall: TSyntaxNode);
+procedure TConstructorScan.Visit(const AChain: TCallChain; ABody: TSyntaxNode);
 var
   mCallees: TList<TSyntaxNode>;
   mCallee: TSyntaxNode;
@@ -742,7 +842,7 @@ begin
       end);
     for mCallee in mCallees do
     begin
-      CheckCall(AClass, AConstructor, mCallee, AInheritedOffset, ADepth, AHelper, ATopCall);
+      CheckCall(AChain, mCallee);
     end;
   finally
     mCallees.Free;
@@ -751,13 +851,18 @@ end;
 
 procedure TConstructorScan.CheckConstructor(const AClass: string; AConstructor: TSyntaxNode);
 var
+  mChain: TCallChain;
   mBody: TSyntaxNode;
   mInherited: string;
 begin
   mBody := BlockOf(AConstructor);
   if mBody <> nil then
   begin
-    Visit(AClass, AConstructor, mBody, InheritedOffset(mBody, mInherited), 0, '', nil);
+    mChain := Default(TCallChain);
+    mChain.ClassName := AClass;
+    mChain.Routine := AConstructor;
+    mChain.InheritedOffset := InheritedOffset(mBody, mInherited);
+    Visit(mChain, mBody);
   end;
 end;
 

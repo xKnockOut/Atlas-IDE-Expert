@@ -63,6 +63,8 @@ type
     function IsClass(const AClassName: string): Boolean;
     /// <summary>Bleibt das von ACall erzeugte Objekt ohne Besitzer?</summary>
     function IsLost(const ACall: TConstructorCall): Boolean;
+    /// <summary>Ist AClassName sicher eine Klasse (Vorfahren bis TObject bekannt oder bekannte RTL-Klasse)?</summary>
+    function IsKnownClass(const AClassName: string): Boolean;
   end;
 
 /// <summary>Ist AValue ein Konstruktoraufruf T.Create(…), T.CreateFmt(…) … über einen Typnamen?</summary>
@@ -412,7 +414,8 @@ begin
   begin
     Result := not FAncestry.FindAnyType(AClassName, mType) or (mType.Symbol.Kind = TIndexSymbolKind.ClassType);
   end;
-  Result := Result and not InList(AClassName, cNoObjectTypes);
+  // Bekannte RTL-Klassen auch dann, wenn ein anderes RTL (FPC) sie als Alias führt (TStringBuilder).
+  Result := (Result or InList(AClassName, cRtlClasses)) and not InList(AClassName, cNoObjectTypes);
 end;
 
 /// <summary>Art der Klasse über die Vorfahren in Datei und Index; Unknown, wenn die Kette vor TObject abbricht.
@@ -467,6 +470,12 @@ begin
   end;
   Result := not ACall.HasArguments or SameText(ACall.FirstArgument, 'nil') or ((mKind = TLocalClassKind.Plain) and
     not MatchText(ACall.FirstArgument, ['Self', 'Owner', 'AOwner', 'Application']));
+end;
+
+function TOwnerlessObjects.IsKnownClass(const AClassName: string): Boolean;
+begin
+  Result := (KindOf(Self, AClassName) in [TLocalClassKind.Plain, TLocalClassKind.Component, TLocalClassKind.Thread]) or
+    (IsClass(AClassName) and InList(AClassName, cRtlClasses));
 end;
 
 { TLocalObjectScan }

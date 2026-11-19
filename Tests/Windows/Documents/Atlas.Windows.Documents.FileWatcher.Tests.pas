@@ -48,6 +48,18 @@ begin
   FFolder := '';
 end;
 
+// Bisher gemeldete Dateien unter der Sperre lesen und zurücksetzen.
+function TakeSeen(ALock: TObject; var ASeen: string): string;
+begin
+  TMonitor.Enter(ALock);
+  try
+    Result := ASeen;
+    ASeen := '';
+  finally
+    TMonitor.Exit(ALock);
+  end;
+end;
+
 procedure TFileWatcherTests.ReportsChangedAndCreatedFiles;
 var
   mWatcher: TFileWatcher;
@@ -85,24 +97,13 @@ begin
       Sleep(200);
       TFile.WriteAllText(mConfig, '{"platform": "Win64"}');
       Assert.AreEqual<TWaitResult>(wrSignaled, mSignal.WaitFor(5000));
-      TMonitor.Enter(mLock);
-      try
-        Assert.AreEqual('atlas.json;', mSeen);
-        mSeen := '';
-      finally
-        TMonitor.Exit(mLock);
-      end;
+      Assert.AreEqual('atlas.json;', TakeSeen(mLock, mSeen));
       // Neu angelegte Datei wird ebenso gemeldet; andere Dateien im Ordner nicht.
       TFile.WriteAllText(TPath.Combine(FFolder, 'Unit1.pas'), 'unit Unit1;');
       TFile.WriteAllText(mOther, '{}');
       Assert.AreEqual<TWaitResult>(wrSignaled, mSignal.WaitFor(5000));
       Sleep(300);
-      TMonitor.Enter(mLock);
-      try
-        Assert.AreEqual('settings.json;', mSeen);
-      finally
-        TMonitor.Exit(mLock);
-      end;
+      Assert.AreEqual('settings.json;', TakeSeen(mLock, mSeen));
     finally
       mWatcher.Free;
     end;

@@ -919,6 +919,7 @@ begin
   mFiles := FFileSystem;
   mLocked := nil;
   mService := nil;
+  mReleaser := nil;
   try
     mLocked := TEvent.Create;
     mReleaser := TThread.CreateAnonymousThread(
@@ -1508,6 +1509,19 @@ begin
   end;
 end;
 
+// Bisher gelaufene Schritte, durch Komma getrennt.
+function StepsOf(AOrder: TThreadList<string>): string;
+var
+  mSeen: TList<string>;
+begin
+  mSeen := AOrder.LockList;
+  try
+    Result := string.Join(',', mSeen.ToArray);
+  finally
+    AOrder.UnlockList;
+  end;
+end;
+
 procedure TIndexBuilderTests.RestartDoesNotWaitForRunningBuild;
 var
   mService: TIndexService;
@@ -1515,8 +1529,6 @@ var
   mEntered, mRelease: TEvent;
   mOrder: TThreadList<string>;
   mWatch: TStopwatch;
-  mSeen: TList<string>;
-  mSteps: string;
 begin
   mEntered := nil;
   mRelease := nil;
@@ -1549,21 +1561,10 @@ begin
     mWatch := TStopwatch.StartNew;
     mService.Start(mSecond);
     Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, 'Start wartet nicht auf den laufenden Aufbau');
-    mSeen := mOrder.LockList;
-    try
-      Assert.AreEqual(0, Integer(mSeen.Count), 'der neue Aufbau beginnt nicht neben dem alten');
-    finally
-      mOrder.UnlockList;
-    end;
+    Assert.AreEqual('', StepsOf(mOrder), 'der neue Aufbau beginnt nicht neben dem alten');
     mRelease.SetEvent;
     mService.WaitFor;
-    mSeen := mOrder.LockList;
-    try
-      mSteps := string.Join(',', mSeen.ToArray);
-    finally
-      mOrder.UnlockList;
-    end;
-    Assert.AreEqual('erster,zweiter', mSteps);
+    Assert.AreEqual('erster,zweiter', StepsOf(mOrder));
     Assert.AreEqual(5, mService.Index.UnitCount, 'der zweite Aufbau läuft vollständig');
   finally
     mService.Free;

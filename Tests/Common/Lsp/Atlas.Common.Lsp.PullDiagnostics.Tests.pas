@@ -810,10 +810,10 @@ begin
   mProviders.Rules := FailingRules();
   mDiagnostics := nil;
   mLogged := nil;
+  mPull := nil;
   try
     mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
     mLogged := TStringList.Create;
-    mPull := nil;
     mDiagnostics.PullMode := True;
     // Die kaputte Datei steht vorn: früher scheiterte daran jede Anfrage, bis der Server starb.
     mPull := CreateFailingFirstPull(mStore, mDiagnostics, mLogged);

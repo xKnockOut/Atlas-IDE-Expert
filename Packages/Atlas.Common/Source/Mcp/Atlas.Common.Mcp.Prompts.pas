@@ -1175,11 +1175,12 @@ begin
   mDocument := TDfmParser.Parse(AFormText);
   mHandlers := nil;
   mUses := nil;
+  mTree := nil;
+  mBuilder := nil;
   try
     mHandlers := TList<string>.Create;
     mUses := TDictionary<string, string>.Create;
     mBuilder := TStringBuilder.Create;
-    mTree := nil;
     if mDocument.Root <> nil then
     begin
       CollectEvents(mDocument.Root, mHandlers, mUses);

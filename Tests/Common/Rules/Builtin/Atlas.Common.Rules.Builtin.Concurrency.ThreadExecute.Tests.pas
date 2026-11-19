@@ -28,6 +28,8 @@ type
     [Test]
     procedure CatchAllSilentInExecuteGuard;
     [Test]
+    procedure NestedThreadClassWithIndex;
+    [Test]
     procedure OffAndExclude;
   end;
 
@@ -36,6 +38,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Rules.Builtin.Exceptions,
@@ -214,6 +219,29 @@ begin
     'procedure TIndexWorker.Work;'#10'begin'#10'  try'#10'    Step;'#10'  except'#10'    on E: Exception do'#10 +
     '      Log(E.Message);'#10'  end;'#10'end;'#10);
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create, mSource, cCatchAllOn))));
+end;
+
+procedure TThreadExecuteRuleTests.NestedThreadClassWithIndex;
+const
+  cUnit = 'unit Sampler;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes;'#10'type'#10'  TSampler = class'#10 +
+    '  private type'#10'    TWorker = class(TThread)'#10'    protected'#10'      procedure Execute; override;'#10 +
+    '    end;'#10'  end;'#10'implementation'#10'procedure TSampler.TWorker.Execute;'#10'begin'#10;
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  // Mit Index steht die eingebettete Klasse unter ihrem eigenen Namen mit TSampler als Container.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'type'#10 +
+    '  TThread = class'#10'  end;'#10'implementation'#10'end.', 'C:\RTL\System.Classes.pas', nil));
+  mSource := cUnit + '  Prepare;'#10'  Work;'#10'end;'#10'end.';
+  mIndex.AddUnit(TIndexExtractor.ExtractText(mSource, 'C:\Projekt\Sampler.pas', nil));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TThreadExecuteWithoutExceptRule.Create, mSource,
+    mIndex, '', 'Sampler.pas'))));
+  mSource := cUnit + '  try'#10'    Work;'#10'  except'#10'    on E: Exception do'#10'      Log(E.Message);'#10 +
+    '  end;'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TCatchAllWithoutRaiseRule.Create, mSource, mIndex,
+    cCatchAllOn, 'Sampler.pas'))));
 end;
 
 procedure TThreadExecuteRuleTests.OffAndExclude;
