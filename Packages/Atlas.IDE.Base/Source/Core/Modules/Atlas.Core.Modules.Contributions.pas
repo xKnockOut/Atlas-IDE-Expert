@@ -36,6 +36,8 @@ type
       out ACommand: TAtlasModuleCommand): Boolean; static;
     /// <summary>Sichtbar ist ein Befehl ohne Visible oder wenn Visible True liefert.</summary>
     class function IsVisible(const ACommand: TAtlasModuleCommand): Boolean; static;
+    /// <summary>Bietet ein angemeldetes Modul den Befehl AId sichtbar an?</summary>
+    class function Offers(const ARegistry: IAtlasModuleRegistry; const AId: string): Boolean; static;
     /// <summary>Menüeinträge für APlace in Reihenfolge der Bereitstellung.</summary>
     class function MenuEntries(const ARegistry: IAtlasModuleRegistry;
       APlace: TAtlasMenuPlace): TArray<TAtlasMenuEntry>; static;
@@ -130,6 +132,13 @@ end;
 class function TAtlasModuleContributions.IsVisible(const ACommand: TAtlasModuleCommand): Boolean;
 begin
   Result := not Assigned(ACommand.Visible) or ACommand.Visible();
+end;
+
+class function TAtlasModuleContributions.Offers(const ARegistry: IAtlasModuleRegistry; const AId: string): Boolean;
+var
+  mCommand: TAtlasModuleCommand;
+begin
+  Result := FindCommand(ARegistry, AId, mCommand) and IsVisible(mCommand);
 end;
 
 class function TAtlasModuleContributions.MenuEntries(const ARegistry: IAtlasModuleRegistry;

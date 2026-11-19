@@ -46,10 +46,8 @@ uses
   Atlas.Core.Debug.Phases;
 
 type
-  /// <summary>Grund eines Halts (aus Atlas.Core.Debug.Phases).</summary>
-  TAtlasDebugStop = Atlas.Core.Debug.Phases.TAtlasDebugStop;
-  /// <summary>Zuhörer der Debug-Sitzung (aus Atlas.Core.Debug.Phases).</summary>
-  IAtlasIdeDebugListener = IAtlasDebugListener;
+  /// <summary>Grund eines Halts (aus Atlas.Core.Debug.Contract).</summary>
+  TAtlasDebugStop = Atlas.Core.Debug.Contract.TAtlasDebugStop;
   /// <summary>Filter für Halte (aus Atlas.Core.Debug.Phases).</summary>
   TAtlasIdeDebugStopFilter = TAtlasDebugStopFilter;
 
@@ -72,15 +70,6 @@ type
   IAtlasIdeDebugBreakpointListener = interface
     ['{9C3D5E71-2A4B-4F86-B1E0-7D58C2A94F13}']
     procedure BreakpointsChanged;
-  end;
-
-  /// <summary>Zuhörer mit leeren Methoden zum Überschreiben.</summary>
-  TAtlasIdeDebugListener = class(TInterfacedObject, IAtlasIdeDebugListener)
-  public
-    procedure DebugStarted; virtual;
-    procedure DebugStopped(AStop: TAtlasDebugStop); virtual;
-    procedure DebugResumed; virtual;
-    procedure DebugEnded; virtual;
   end;
 
   TAtlasIdeDebugSession = class
@@ -140,8 +129,8 @@ type
     /// <summary>Notifier abmelden, Zuhörer vergessen; RemoveListener ruft es beim letzten Zuhörer.</summary>
     class procedure Stop; static;
     class function Started: Boolean; static;
-    class procedure AddListener(const AListener: IAtlasIdeDebugListener); static;
-    class procedure RemoveListener(const AListener: IAtlasIdeDebugListener); static;
+    class procedure AddListener(const AListener: IAtlasDebugListener); static;
+    class procedure RemoveListener(const AListener: IAtlasDebugListener); static;
     /// <summary>Filter für Halte ohne Namen setzen (nil = keiner).</summary>
     class procedure SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter); static;
     /// <summary>Filter für Halte unter AName (neben dem ohne Namen); nil entfernt ihn.</summary>
@@ -244,31 +233,13 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugSession.StopTick);
 end;
 
-{ TAtlasIdeDebugListener }
-
-procedure TAtlasIdeDebugListener.DebugStarted;
-begin
-end;
-
-procedure TAtlasIdeDebugListener.DebugStopped(AStop: TAtlasDebugStop);
-begin
-end;
-
-procedure TAtlasIdeDebugListener.DebugResumed;
-begin
-end;
-
-procedure TAtlasIdeDebugListener.DebugEnded;
-begin
-end;
-
 { TAtlasIdeDebugSession.TNotifier }
 
 /// <summary>Zuhörer mit IAtlasIdeDebugBreakpointListener benachrichtigen (#863).</summary>
 procedure NotifyBreakpointsChanged;
 begin
   TAtlasIdeDebugSession.Phases.Notify(
-    procedure(AListener: IAtlasIdeDebugListener)
+    procedure(AListener: IAtlasDebugListener)
     var
       mBreakpoints: IAtlasIdeDebugBreakpointListener;
     begin
@@ -403,7 +374,7 @@ end;
 
 class function TAtlasIdeDebugSession.AllowLaunch(const AProject: IOTAProject): Boolean;
 var
-  mListener: IAtlasIdeDebugListener;
+  mListener: IAtlasDebugListener;
   mCheck: IAtlasIdeDebugLaunchCheck;
 begin
   Result := True;
@@ -472,12 +443,12 @@ begin
   Result := FNotifierIndex > 0;
 end;
 
-class procedure TAtlasIdeDebugSession.AddListener(const AListener: IAtlasIdeDebugListener);
+class procedure TAtlasIdeDebugSession.AddListener(const AListener: IAtlasDebugListener);
 begin
   Phases.AddListener(AListener);
 end;
 
-class procedure TAtlasIdeDebugSession.RemoveListener(const AListener: IAtlasIdeDebugListener);
+class procedure TAtlasIdeDebugSession.RemoveListener(const AListener: IAtlasDebugListener);
 begin
   if FPhases = nil then
   begin

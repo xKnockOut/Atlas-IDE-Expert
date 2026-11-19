@@ -46,6 +46,8 @@ uses
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.ExceptionDialog,
   Atlas.Core.Debug.ExceptionCapture,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ExceptionDialog,
   Atlas.UI.Debug.ExceptionsFrame;
@@ -74,7 +76,7 @@ type
   public const
     cStackRetries = 10;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -99,7 +101,7 @@ type
     FTicker: TTicker;
     FHistory: TAtlasDebugExceptionHistory;
     FIgnore: TAtlasDebugIgnoreList;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FDialog: TAtlasIdeExceptionDialog;
     FRetry: TTimer;
     FCapture: TCapture;

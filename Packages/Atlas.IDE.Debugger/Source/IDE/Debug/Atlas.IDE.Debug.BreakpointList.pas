@@ -49,6 +49,8 @@ uses
   Atlas.Core.Debug.BreakpointTags,
   Atlas.Core.Debug.BreakpointCheck,
   Atlas.Core.Debug.BreakpointRules,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -82,7 +84,7 @@ type
     Tags: TArray<string>;
   end;
 
-  TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugBreakpointListener)
+  TListener = class(TAtlasDebugListener, IAtlasIdeDebugBreakpointListener)
   public
     procedure DebugStarted; override;
     procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -97,7 +99,7 @@ type
 
 var
   GMessage: TProc<string>;
-  GListener: IAtlasIdeDebugListener;
+  GListener: IAtlasDebugListener;
   GHits: TAtlasBreakpointHits;
   GTags: TAtlasBreakpointTags;
   GTimer: TTimer;

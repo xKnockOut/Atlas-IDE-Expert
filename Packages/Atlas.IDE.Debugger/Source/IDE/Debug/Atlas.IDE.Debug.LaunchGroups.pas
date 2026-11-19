@@ -3,7 +3,7 @@
 // Mehrere Programme gemeinsam debuggen (#867) in der IDE:
 // - Verbünde aus der Projektdatei .atlas ("launchGroups", TAtlasIdeTeamFile;
 //   Pfade ab ihrem Ordner). Der aktive Verbund ist persönlich und gilt je
-//   Projektgruppe (%LOCALAPPDATA%\Atlas\debug-launchgroups.json).
+//   Projektgruppe (Atlas.IDE.Debug.LaunchActive).
 // - Starten (F9 ohne laufende Sitzung, Befehl, Fenster): erst baut Atlas die
 //   Projekte, die die IDE als geändert meldet (ShouldBuild), dann startet es
 //   sie in Reihenfolge, ein Schritt je Takt (cTickMs): mit Debugger über
@@ -26,33 +26,18 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Debug.DialogCompletion,
   Atlas.Core.Debug.LaunchGroups,
   Atlas.Core.Debug.LaunchProcesses,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.LaunchProbe,
   Atlas.UI.Debug.StepsBar;
 
 type
-  /// <summary>Aktiver Verbund je Projektgruppe, persönlich gespeichert.</summary>
-  TAtlasIdeLaunchActive = class
-  public const
-    cFileName = 'debug-launchgroups.json';
-  private class var
-    FStore: TAtlasExpressionHistory;
-    FKept: Boolean;
-    class function Store: TAtlasExpressionHistory; static;
-    class function GroupKey: string; static;
-  public
-    /// <summary>Name des aktiven Verbunds der Projektgruppe ('' = keiner).</summary>
-    class function Name: string; static;
-    class procedure SetName(const AName: string); static;
-    class procedure Release; static;
-  end;
-
   TAtlasIdeLaunchGroups = class
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugResumed; override;
@@ -64,7 +49,7 @@ type
     end;
     /// <summary>Gestartetes Programm des Verbunds.</summary>
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FHandler: THandler;
     FTimer: TTimer;
     FMessage: TProc<string>;
@@ -116,13 +101,11 @@ type
 implementation
 
 uses
-  System.IOUtils,
   System.Classes,
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
   Atlas.Core.Status.Registry,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
@@ -131,6 +114,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Debug.LaunchActive,
   Atlas.IDE.Debug.Processes,
   Atlas.UI.Debug.LaunchGroupsDialog,
   Atlas.UI.Debug.Session.Strings,
@@ -138,7 +122,6 @@ uses
   Atlas.IDE.Foundation.Debugger;
 
 const
-  cActiveWhat = 'debug launch groups';
   cStatusId = 'atlas.debug.launchGroups';
   cStatusOrder = 87;
   /// <summary>Takt des Laufs.</summary>
@@ -147,12 +130,6 @@ const
   cDoneMs = 3000;
   cDoneMark = '✓';
   cFailedMark = '✗';
-
-function ActiveFile: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasIdeLaunchActive.cFileName);
-end;
 
 function NowMs: UInt64;
 begin
@@ -211,75 +188,6 @@ begin
   AWorkingDir := mOptions.WorkingDir;
   AEnvironment := mOptions.Environment;
   Result := mOptions.Parameters;
-end;
-
-{ TAtlasIdeLaunchActive }
-
-class function TAtlasIdeLaunchActive.Store: TAtlasExpressionHistory;
-begin
-  if FStore = nil then
-  begin
-    FStore := TAtlasExpressionHistory.Create(1);
-    FKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(ActiveFile, cActiveWhat,
-      function(const AText: string): Boolean
-      begin
-        Result := FStore.LoadFromText(AText);
-      end));
-  end;
-  Result := FStore;
-end;
-
-class function TAtlasIdeLaunchActive.GroupKey: string;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.MainProjectGroup <> nil) then
-  begin
-    Result := mModules.MainProjectGroup.FileName;
-  end;
-end;
-
-class function TAtlasIdeLaunchActive.Name: string;
-var
-  mItems: TArray<string>;
-begin
-  Result := '';
-  mItems := Store.Items(GroupKey);
-  if mItems <> nil then
-  begin
-    Result := mItems[0];
-  end;
-end;
-
-class procedure TAtlasIdeLaunchActive.SetName(const AName: string);
-var
-  mChanged: Boolean;
-begin
-  if AName = '' then
-  begin
-    mChanged := Store.Remove(GroupKey, Name);
-  end
-  else
-  begin
-    mChanged := Store.Add(GroupKey, AName);
-  end;
-  if not mChanged or FKept then
-  begin
-    Exit;
-  end;
-  try
-    TAtlasDataFile.Write(ActiveFile, FStore.ToText);
-  except
-    on E: Exception do
-      TAtlasDataFile.ReportNotWritten(cActiveWhat, E);
-  end;
-end;
-
-class procedure TAtlasIdeLaunchActive.Release;
-begin
-  FreeAndNil(FStore);
-  FKept := False;
 end;
 
 { TAtlasIdeLaunchGroups.TListener }

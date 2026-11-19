@@ -26,7 +26,9 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.BreakpointCheck,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasBreakpointCheckSessionFunc = reference to function: TLspSession;
@@ -35,14 +37,14 @@ type
   private const
     cTimeoutMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
+    TListener = class(TAtlasDebugListener, IAtlasIdeDebugLaunchCheck)
     public
       function AllowLaunch(const AProject: IOTAProject): Boolean;
     end;
   private class var
     FSession: TAtlasBreakpointCheckSessionFunc;
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FLastProblems: TAtlasBreakpointProblems;
     class function Spots: TAtlasBreakpointSpots; static;
     class procedure SyncOpenFiles(const ASession: TLspSession; const ASpots: TAtlasBreakpointSpots); static;

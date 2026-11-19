@@ -112,7 +112,7 @@
     {"path": "Source/IDE/Debug/Atlas.IDE.Debug.InlineValues.pas", "rule": "duplicate-routine-body", "fingerprint": "94632515", "count": 1, "routine": "TAtlasIdeDebugInlineValues.Invalidate", "context": "94a80820"},
     {"path": "Source/IDE/Debug/Atlas.IDE.Debug.InlineValues.pas", "rule": "magic-number", "fingerprint": "d980a56c", "count": 1, "routine": "TAtlasIdeDebugInlineValues.ReadLocation", "context": "d12660ee"},
     {"path": "Source/IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas", "rule": "duplicate-routine-body", "fingerprint": "887b8e33", "count": 1, "routine": "Debugger", "context": "51b7b2e1"},
-    {"path": "Source/IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas", "rule": "duplicate-routine-body", "fingerprint": "8361b34d", "count": 1, "routine": "TAtlasIdeLaunchActive.GroupKey", "context": "a90605ec"},
+    {"path": "Source/IDE/Debug/Atlas.IDE.Debug.LaunchActive.pas", "rule": "duplicate-routine-body", "fingerprint": "8361b34d", "count": 1, "routine": "TAtlasIdeLaunchActive.GroupKey", "context": "a90605ec"},
     {"path": "Source/IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas", "rule": "duplicate-routine-body", "fingerprint": "31631489", "count": 1, "routine": "TAtlasIdeLaunchGroups.Say", "context": "269ccff6"},
     {"path": "Source/IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas", "rule": "duplicate-routine-body", "fingerprint": "01bfc9e2", "count": 1, "routine": "TAtlasIdeLaunchGroups.ThemeChanged", "context": "67c0f4f8"},
     {"path": "Source/IDE/Debug/Atlas.IDE.Debug.LeaksWindow.pas", "rule": "duplicate-routine-body", "fingerprint": "66d824c6", "count": 1, "routine": "TAtlasIdeDebugLeaksWindow.Show", "context": "f75d6bac"},

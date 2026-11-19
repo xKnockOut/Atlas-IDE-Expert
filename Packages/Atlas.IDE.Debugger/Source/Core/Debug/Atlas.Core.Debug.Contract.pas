@@ -2,6 +2,7 @@
 
 // Verträge des Debuggers ohne Open Tools API, die die IDE-Schicht erfüllt und
 // die Tests fälschen:
+//   - IAtlasDebugListener: Zuhörer der Debug-Sitzung (Atlas.Core.Debug.Phases).
 //   - IAtlasDebugTarget: der Debugger, wie ihn die Phasen der Sitzung sehen
 //     (Atlas.Core.Debug.Phases).
 //   - IAtlasDebugEvaluator: Auswerten und Ändern im angehaltenen Thread für die
@@ -21,6 +22,23 @@ type
   /// </summary>
   TAtlasDebugProcessState = (Other, Running, Stopped, Exception, Fault);
   {$SCOPEDENUMS OFF}
+
+  {$SCOPEDENUMS ON}
+  /// <summary>Grund eines Halts.</summary>
+  TAtlasDebugStop = (Paused, Exception, Fault);
+  {$SCOPEDENUMS OFF}
+
+  IAtlasDebugListener = interface
+    ['{6E4F2A8C-1B7D-4C55-9E2A-3F0B8D61C7A4}']
+    /// <summary>Erster Prozess der Sitzung angelegt.</summary>
+    procedure DebugStarted;
+    /// <summary>Prozess angehalten; AStop nennt den Grund.</summary>
+    procedure DebugStopped(AStop: TAtlasDebugStop);
+    /// <summary>Prozess läuft nach einem Halt weiter.</summary>
+    procedure DebugResumed;
+    /// <summary>Letzter Prozess abgebaut.</summary>
+    procedure DebugEnded;
+  end;
 
   /// <summary>Der Debugger, wie ihn die Phasen sehen; in der IDE über IOTADebuggerServices.</summary>
   IAtlasDebugTarget = interface

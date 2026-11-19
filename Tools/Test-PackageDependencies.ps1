@@ -191,6 +191,13 @@ try {
         Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
     }
 
+    Test-Fails 'Unit ohne Rolle implementiert einen fremden Contract über einen Alias' 'gehört in eine Unit Atlas.IDE.Undo.Adapters.*' {
+        Add-Assigned 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Probe' @()
+        Set-CopyText "$Source/IDE/Undo/Atlas.IDE.Undo.Probe.pas" ("unit Atlas.IDE.Undo.Probe;`r`n`r`ninterface`r`n`r`n" +
+            "uses`r`n  Atlas.Core.Undo.Contract;`r`n`r`ntype`r`n  IAtlasUndoProbe = IAtlasUndoTarget;`r`n`r`n" +
+            "  TProbe = class(TInterfacedObject, IAtlasUndoProbe)`r`n  end;`r`n`r`nimplementation`r`n`r`nend.`r`n")
+    }
+
     Test-Fails 'Fremd implementiertes Interface liegt nicht im Contract' 'gehört in den Contract von Atlas.Core.Projects' {
         Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.ProbeSpi' @()
         Set-CopyText "$Source/Core/Projects/Atlas.Core.Projects.ProbeSpi.pas" ("unit Atlas.Core.Projects.ProbeSpi;`r`n`r`ninterface`r`n`r`n" +
