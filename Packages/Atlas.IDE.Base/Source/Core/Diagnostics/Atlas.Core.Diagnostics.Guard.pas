@@ -61,6 +61,13 @@
 //   (Atlas.Text.LogMarks); die Meldung einer Exception kennzeichnet ErrorText
 //   bzw. ErrorLine. Klarnamen nur mit diagnostics.log.names (Redactor.Names).
 //   Warnungen an die Oberfläche gehen ohne Kennzeichen im Klartext.
+// - Befehle des Benutzers (TAtlasCommandScope): Für Hintergrundfunktionen ist
+//   Schweigen richtig, ein Fehler beim Zeichnen soll die IDE nicht mit Meldungen
+//   fluten. Ein Befehl, den der Benutzer gerade ausgelöst hat (Menü, Palette,
+//   Taste, Antwort des Servers darauf), darf dagegen nicht still scheitern: Sein
+//   erster Fehler und ein Aufruf unter einer abgeschalteten Funktion stehen
+//   sofort in der Meldungsansicht. Die Verteiler setzen den Merker; kein
+//   Aufrufer von Run muss sein Ergebnis auswerten. Die Zählung bleibt gleich.
 
 interface
 
@@ -296,6 +303,36 @@ type
     class property RotatingLog: TAtlasRotatingLog read FLog;
   end;
 
+  /// <summary>Befehl, den der Benutzer gerade ausgelöst hat: Sein erster Fehler (Report) und ein Aufruf unter einer
+  /// abgeschalteten Funktion (Run) erscheinen sofort in der Meldungsansicht, einmal je Befehl. Nur im Hauptthread;
+  /// geschachtelte Befehle zählen mit, es gilt der äußere Name. In anderen Threads tun Enter und Leave nichts.
+  /// </summary>
+  TAtlasCommandScope = class
+  private class var
+    FDepth: Integer;
+    FName: string;
+    FReported: Boolean;
+    FOnFailed: TProc;
+  public
+    class destructor Destroy;
+    /// <summary>Beginn des Befehls AName (Text aus Menü, Palette oder Taste; Kürzel-&amp; und Auslassungspunkte
+    /// fallen weg).</summary>
+    class procedure Enter(const AName: string); static;
+    class procedure Leave; static;
+    /// <summary>Name des laufenden Befehls; '' ohne Befehl oder außerhalb des Hauptthreads.</summary>
+    class function Current: string; static;
+    /// <summary>AProc als Befehl AName, geschützt über TAtlasGuard.Run(AFeature); False bei Fehler oder
+    /// abgeschalteter Funktion (beides schon gemeldet). AName '' läuft wie TAtlasGuard.Run, ohne Befehl.</summary>
+    class function Run(AFeature: TAtlasFeature; const AName: string; const AProc: TProc): Boolean; static;
+    /// <summary>AProc als Prozedur, die über Run als Befehl AName läuft.</summary>
+    class function Wrap(AFeature: TAtlasFeature; const AName: string; const AProc: TProc): TProc; static;
+    /// <summary>Menütext ohne Kürzel-&amp; (&amp;&amp; bleibt ein &amp;) und ohne Auslassungspunkte am Ende.</summary>
+    class function CleanName(const ACaption: string): string; static;
+    /// <summary>Nach der Meldung eines gescheiterten Befehls (Base holt die Meldungsansicht nach vorn); im
+    /// Hauptthread.</summary>
+    class property OnFailed: TProc read FOnFailed write FOnFailed;
+  end;
+
 implementation
 
 uses
@@ -310,15 +347,19 @@ uses
 
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
-  TGuardText = (FeatureTripped, SourceTripped);
+  TGuardText = (FeatureTripped, SourceTripped, CommandFailed, CommandSwitchedOff);
 {$SCOPEDENUMS OFF}
 
 const
   cTexts: array[TAtlasLanguage, TGuardText] of string = (
     ('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete Funktionen einschalten.',
-     'Atlas: Quelle „%s“ nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s); die übrigen Quellen laufen weiter. Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete Funktionen einschalten.'),
+     'Atlas: Quelle „%s“ nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s); die übrigen Quellen laufen weiter. Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete Funktionen einschalten.',
+     'Atlas: Der Befehl „%s“ ist gescheitert (%s: %s). Einzelheiten im Atlas-Protokoll.',
+     'Atlas: Der Befehl „%s“ läuft nicht, weil „%s“ abgeschaltet ist. Wieder einschalten unter Atlas > Abgeschaltete Funktionen einschalten.'),
     ('Atlas: %s switched off after %d errors in %d minutes (last: %s). Switch it on again under Tools > Options > Third Party > Atlas or via Atlas > Re-enable switched-off features.',
-     'Atlas: source "%s" switched off after %d errors in %d minutes (last: %s); the other sources keep running. Switch it on again under Tools > Options > Third Party > Atlas or via Atlas > Re-enable switched-off features.'));
+     'Atlas: source "%s" switched off after %d errors in %d minutes (last: %s); the other sources keep running. Switch it on again under Tools > Options > Third Party > Atlas or via Atlas > Re-enable switched-off features.',
+     'Atlas: The command "%s" failed (%s: %s). Details in the Atlas log.',
+     'Atlas: The command "%s" does not run because "%s" is switched off. Switch it on again via Atlas > Re-enable switched-off features.'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TGuardText): string;
@@ -915,14 +956,47 @@ begin
   end;
 end;
 
+/// <summary>Erster Fehler des laufenden Befehls? True genau einmal je äußerem Befehl, mit seinem Namen.</summary>
+function FirstCommandFailure(out AName: string): Boolean;
+begin
+  AName := TAtlasCommandScope.Current;
+  Result := (AName <> '') and not TAtlasCommandScope.FReported;
+  if Result then
+  begin
+    TAtlasCommandScope.FReported := True;
+  end;
+end;
+
+/// <summary>Gescheiterter Befehl: Zeile in die Meldungsansicht, dann OnFailed (Ansicht nach vorn).</summary>
+procedure WarnCommand(const AText: string);
+var
+  mFailed: TProc;
+begin
+  Warn(AText);
+  mFailed := TAtlasCommandScope.FOnFailed;
+  if Assigned(mFailed) then
+    try
+      mFailed();
+    except
+      // Auch das Zeigen der Meldung darf nicht in die IDE durchschlagen.
+    end;
+end;
+
 class procedure TAtlasGuard.Report(AFeature: TAtlasFeature; AE: Exception);
 var
   mFailure: TProc<TAtlasFeature>;
   mTripped: TAtlasGuardTripped;
   mFired, mRepeated: Boolean;
   mSkipped: Integer;
-  mWhere: string;
+  mWhere, mCommand: string;
 begin
+  // Ein Befehl des Benutzers: sofort sagen, dass er gescheitert ist, auch wenn derselbe Fehler gerade schon im
+  // Hintergrund gezählt wurde (der Benutzer hat geklickt und erwartet eine Antwort).
+  if FirstCommandFailure(mCommand) then
+  begin
+    WarnCommand(Format(UiText(TGuardText.CommandFailed), [mCommand, AE.ClassName,
+      TLogMarks.Text(SafeMessage(AE.Message))]));
+  end;
   mFired := False;
   mRepeated := False;
   mSkipped := 0;
@@ -1156,9 +1230,15 @@ class function TAtlasGuard.Run(AFeature: TAtlasFeature; const AProc: TProc): Boo
 var
   mTiming: TAtlasGuardTiming;
   mToken, mDepth: Integer;
+  mCommand: string;
 begin
   if Disabled(AFeature) then
   begin
+    // Abgeschaltet: Ein Befehl des Benutzers sagt das, statt still zurückzukehren.
+    if FirstCommandFailure(mCommand) then
+    begin
+      WarnCommand(Format(UiText(TGuardText.CommandSwitchedOff), [mCommand, FeatureName(AFeature)]));
+    end;
     Exit(False);
   end;
   mDepth := TRunningStack.Enter(Ord(AFeature));
@@ -1212,6 +1292,106 @@ begin
   if TRunningStack.Top(mEntry) and (mEntry >= Ord(Low(TAtlasFeature))) and (mEntry <= Ord(High(TAtlasFeature))) then
   begin
     Result := FeatureName(TAtlasFeature(mEntry));
+  end;
+end;
+
+{ TAtlasCommandScope }
+
+class destructor TAtlasCommandScope.Destroy;
+begin
+  FOnFailed := nil;
+  FName := '';
+end;
+
+class procedure TAtlasCommandScope.Enter(const AName: string);
+begin
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+  begin
+    Exit;
+  end;
+  if FDepth = 0 then
+  begin
+    FName := CleanName(AName);
+    FReported := False;
+  end;
+  Inc(FDepth);
+end;
+
+class procedure TAtlasCommandScope.Leave;
+begin
+  if (TThread.CurrentThread.ThreadID <> MainThreadID) or (FDepth = 0) then
+  begin
+    Exit;
+  end;
+  Dec(FDepth);
+  if FDepth = 0 then
+  begin
+    FName := '';
+  end;
+end;
+
+class function TAtlasCommandScope.Current: string;
+begin
+  Result := '';
+  if (FDepth > 0) and (TThread.CurrentThread.ThreadID = MainThreadID) then
+  begin
+    Result := FName;
+  end;
+end;
+
+class function TAtlasCommandScope.Run(AFeature: TAtlasFeature; const AName: string; const AProc: TProc): Boolean;
+begin
+  // Ohne Namen kein Befehl (etwa die Antwort auf eine Anfrage aus dem Hintergrund): still wie bisher.
+  if AName = '' then
+  begin
+    Exit(TAtlasGuard.Run(AFeature, AProc));
+  end;
+  Enter(AName);
+  try
+    Result := TAtlasGuard.Run(AFeature, AProc);
+  finally
+    Leave;
+  end;
+end;
+
+class function TAtlasCommandScope.Wrap(AFeature: TAtlasFeature; const AName: string; const AProc: TProc): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      Run(AFeature, AName, AProc);
+    end;
+end;
+
+class function TAtlasCommandScope.CleanName(const ACaption: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := 1;
+  while mIndex <= Length(ACaption) do
+  begin
+    if ACaption[mIndex] = '&' then
+    begin
+      Inc(mIndex);
+      if (mIndex <= Length(ACaption)) and (ACaption[mIndex] = '&') then
+      begin
+        Result := Result + '&';
+        Inc(mIndex);
+      end;
+      Continue;
+    end;
+    Result := Result + ACaption[mIndex];
+    Inc(mIndex);
+  end;
+  Result := Trim(Result);
+  if Result.EndsWith('...') then
+  begin
+    Result := TrimRight(Copy(Result, 1, Length(Result) - 3));
+  end
+  else if Result.EndsWith('…') then
+  begin
+    Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
   end;
 end;
 

@@ -2,6 +2,8 @@
 
 // Einträge in Kontext- und Aufklappmenüs der Atlas-Fenster anlegen: Beschriftung, Tag und Klick in einem Aufruf.
 // Der Eintrag gehört dem Menü bzw. dem angegebenen Besitzer und wird mit ihm freigegeben.
+// Jeder Eintrag ist ein TAtlasCommandMenuItem: Sein Klick läuft als Befehl des Benutzers
+// (TAtlasCommandScope), ein Fehler darin steht also sofort in der Meldungsansicht statt nur im Protokoll.
 
 interface
 
@@ -10,6 +12,14 @@ uses
   Vcl.Menus;
 
 type
+  /// <summary>Menüeintrag, dessen Klick als Befehl des Benutzers läuft (TAtlasCommandScope, Name aus der
+  /// Beschriftung): Der erste Fehler darin und ein Aufruf unter einer abgeschalteten Funktion erscheinen sofort in
+  /// der Meldungsansicht. Die Handler sichern sich weiter selbst über TAtlasGuard.Run.</summary>
+  TAtlasCommandMenuItem = class(TMenuItem)
+  public
+    procedure Click; override;
+  end;
+
   TAtlasMenus = class
   public
     /// <summary>Neuer Eintrag am Ende von AMenu.</summary>
@@ -24,6 +34,21 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Diagnostics.Guard;
+
+{ TAtlasCommandMenuItem }
+
+procedure TAtlasCommandMenuItem.Click;
+begin
+  TAtlasCommandScope.Enter(Caption);
+  try
+    inherited Click;
+  finally
+    TAtlasCommandScope.Leave;
+  end;
+end;
 
 { TAtlasMenus }
 
@@ -41,7 +66,7 @@ end;
 class function TAtlasMenus.Add(AOwner: TComponent; AParent: TMenuItem; const ACaption: string; ATag: Integer;
   AClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(AOwner);
+  Result := TAtlasCommandMenuItem.Create(AOwner);
   Result.Caption := ACaption;
   Result.Tag := ATag;
   Result.OnClick := AClick;

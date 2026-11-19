@@ -158,7 +158,7 @@ begin
     TAtlasGuard.Log('Gallery: command ' + ACommandId + ' is gone');
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.Generate, mCommand.Run);
+  TAtlasCommandScope.Run(TAtlasFeature.Generate, mCommand.Caption, mCommand.Run);
 end;
 
 { TGalleryWizard }

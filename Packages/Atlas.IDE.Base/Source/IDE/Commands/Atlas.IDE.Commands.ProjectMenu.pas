@@ -365,7 +365,7 @@ begin
     TAtlasGuard.Log('Project manager: command ' + AId + ' is gone');
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+  TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
 end;
 
 { TProjectMenuItem }
