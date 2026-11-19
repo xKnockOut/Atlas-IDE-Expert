@@ -2390,6 +2390,39 @@
       "x-captionEn": "Count objects per class",
       "x-issue": "#858"
     },
+    "DebugNote": {
+      "description": "Debug-Zustand festhalten: Der Befehl „Debug-Zustand festhalten“ (Atlas-Menü › Debuggen, Befehlspalette) legt im angehaltenen Programm eine Markdown-Notiz in die Zwischenablage: Projekt, Konfiguration, Plattform, Thread, Ort mit ±5 Zeilen Quelltext, Aufrufstapel mit eigenem Code fett, lokale Variablen und überwachte Ausdrücke des Fensters „Variablen“ (Teile strukturierter Werte eine Stufe tief, lange Werte gekürzt), letzte Exception und die letzten 20 Zeilen des Ereignisprotokolls. Werte von Namen wie Password, Token oder ApiKey erscheinen als ***. Aus = kein Befehl.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.note",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Debug-Zustand als Notiz festhalten",
+      "x-captionEn": "Capture the debug state as a note",
+      "x-keywords": [
+        "Notiz",
+        "Zwischenablage",
+        "Markdown",
+        "Fehlerbericht",
+        "note",
+        "clipboard",
+        "bug report"
+      ],
+      "x-issue": "#582"
+    },
+    "DebugNoteSaveFile": {
+      "type": "boolean",
+      "default": true,
+      "description": "Die Notiz zusätzlich als Datei im Ordner „debug-notizen“ neben dem Projekt speichern (debug-notiz-JJJJ-MM-TT-hhmm.md, UTF-8). Aus = nur Zwischenablage.",
+      "x-key": "debug.note.saveFile",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-parent": "debug.note",
+      "x-issue": "#582"
+    },
     "DebugWhyHere": {
       "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
       "type": "boolean",

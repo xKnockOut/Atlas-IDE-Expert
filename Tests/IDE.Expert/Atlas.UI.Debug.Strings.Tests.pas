@@ -37,6 +37,7 @@ uses
   Atlas.UI.Debug.Explain.Strings,
   Atlas.UI.Debug.Logpoints.Strings,
   Atlas.UI.Debug.MethodBreakpoints.Strings,
+  Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.RuntimeReport.Strings,
   Atlas.UI.Debug.Session.Strings,
   Atlas.UI.Debug.Settings.Strings,
@@ -152,6 +153,17 @@ begin
     end);
 end;
 
+/// <summary>Texttabellen rund um die Sitzung: Debug-Notiz.</summary>
+function SessionTables: TArray<TAtlasTextTable>;
+begin
+  SetLength(Result, 1);
+  Result[0] := TextTable('Note', Ord(High(TAtlasNoteTextId)) + 1,
+    function(AIndex: Integer): string
+    begin
+      Result := TAtlasNoteStrings.Text(TAtlasNoteTextId(AIndex));
+    end);
+end;
+
 /// <summary>Texttabellen der Anzeigen im Editor rund um den Ausführungspunkt.</summary>
 function EditorTables: TArray<TAtlasTextTable>;
 begin
@@ -171,7 +183,7 @@ end;
 /// <summary>Die Texttabellen aller Features des Moduls.</summary>
 function Tables: TArray<TAtlasTextTable>;
 begin
-  Result := ValueTables + BreakpointTables + RunTables + EditorTables;
+  Result := ValueTables + BreakpointTables + RunTables + SessionTables + EditorTables;
 end;
 
 { TAtlasDebugStringsTests }

@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Settings.ChoiceBox;
 
-// Auswahlliste der Optionsseiten (aus Atlas.UI.Settings.Page herausgelöst,
-// damit Dialoge der Seite sie nutzen, ohne die Seite einzubinden, #1450).
+// Auswahlliste der Optionsseiten (eigene Unit, damit Dialoge der Seite sie
+// nutzen, ohne die Seite einzubinden, #1450).
 
 interface
 

@@ -1,11 +1,11 @@
 ﻿unit Atlas.Core.Style.Signal;
 
 // Signalfarben je Design (#1255): Zustandspunkte (Statusfeld, Atlas-Statusleiste,
-// Statusfenster, Einrichtung), Plaketten und Befundsymbole. Früher nahmen sie
-// die Textfarben Add/Warn/Error/Muted, die für Text auf der Fensterfläche
-// gedacht sind; im hellen Design waren sie dunkel und entsättigt und als
-// kleiner Punkt kaum zu unterscheiden, das gelbe Warndreieck hatte auf hellem
-// Grund nur 1,8 : 1. Jetzt (Variante A, Entwurf in #1255):
+// Statusfenster, Einrichtung), Plaketten und Befundsymbole. Nicht die Textfarben
+// Add/Warn/Error/Muted, die für Text auf der Fensterfläche gedacht sind: Im
+// hellen Design sind sie dunkel und entsättigt und als kleiner Punkt kaum zu
+// unterscheiden, das gelbe Warndreieck hätte auf hellem Grund nur 1,8 : 1.
+// Stattdessen (Entwurf in #1255):
 // - Hell: kräftige Füllung (Fill) mit dunklem Rand (Ring); der Rand hält
 //   mindestens 4 : 1 zur Leistenfläche, die Füllung macht die Farbe auf einen
 //   Blick erkennbar.
