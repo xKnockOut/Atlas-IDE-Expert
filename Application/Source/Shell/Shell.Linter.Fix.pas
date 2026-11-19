@@ -203,7 +203,7 @@ begin
   mTimings := Default(TCheckTimings);
   if not FOptions.NoIndex then
   begin
-    FGroup := TLinterIndex.Load(FOptions, AConfigRoot, mTimings);
+    FGroup := TLinterIndex.Load(FOptions, AConfigRoot, mTimings, nil);
   end;
   Result := TLinterFiles.Collect(FOptions.CheckTarget, FSettings, FRoot, ASources);
   FPackages := TLinterFiles.Packages(Result);
