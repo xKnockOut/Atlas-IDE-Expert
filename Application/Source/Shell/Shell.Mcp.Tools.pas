@@ -23,6 +23,7 @@ uses
   Shell.Mcp.EditingTools,
   Shell.Mcp.ProjectTools,
   Shell.Mcp.ChangeTools,
+  Shell.Mcp.HistoryTools,
   Shell.Mcp.IssueTools;
 
 procedure RegisterContextTools(const AContext: TMcpToolContext);
@@ -45,6 +46,7 @@ begin
   RegisterAffectedTestsTool(mContext);
   RegisterQueryTools(mContext);
   RegisterHotspotTools(mContext);
+  RegisterSymbolHistoryTool(mContext);
   RegisterStatusTools(mContext);
   RegisterIssueTools(mContext);
 end;

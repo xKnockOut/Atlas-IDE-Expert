@@ -167,6 +167,49 @@ const
   // Anfang des Titels im Kopf und Rand der Knöpfe „Alles an/aus“.
   cTitlePrefix = 'Atlas · ';
   cAllButtonPadding = 24;
+  /// <summary>Zeilen: Luft über und unter dem Text, Kopf zusätzlich, Leiste der Knöpfe unten, Rand links und rechts.
+  /// </summary>
+  cRowPadding = 8;
+  cHeaderExtra = 6;
+  cButtonsHeight = 40;
+  cRowInset = 4;
+  /// <summary>Kopf: Rand des Titels links und rechts, Lage der Trennlinie über seiner Unterkante.</summary>
+  cHeaderLeft = 12;
+  cHeaderRight = 8;
+  cHeaderLineOffset = 3;
+  /// <summary>Überschrift einer Seite: Einrückung des Textes.</summary>
+  cPageTextInset = 6;
+  /// <summary>Kästchen: Größe, linke Kante; Haken als Teile der Größe (Fünftel und Viertel).</summary>
+  cCheckSize = 12;
+  cCheckLeft = 14;
+  cTickFifths = 5;
+  cTickQuarters = 4;
+  /// <summary>Symbol „Einstellung öffnen“: Größe, Abstand zum rechten Rand, Einzug des Kastens, Länge der
+  /// Pfeilspitze.</summary>
+  cOpenSize = 16;
+  cOpenRight = 8;
+  cOpenInset = 3;
+  cOpenArrowHead = 5;
+  /// <summary>Lücke zwischen Kästchen, Text, Kennzeichen und Symbol.</summary>
+  cTextGap = 8;
+  cOpenGap = 6;
+  /// <summary>Bildlaufbalken: Abstand seiner linken Kante vom rechten Rand.</summary>
+  cScrollBarInset = 5;
+  /// <summary>Zeilen je Raste des Mausrads, wie im Editor.</summary>
+  cWheelLines = 3;
+  /// <summary>Breite des Fensters: kleinste, größte; Platz neben dem Text für Kästchen und Ränder bzw. das Symbol.
+  /// </summary>
+  cMinWidth = 280;
+  cMaxWidth = 720;
+  cCheckAndMargins = 64;
+  cOpenSpace = 28;
+  /// <summary>Knopf „Alles an/aus“: Platz rechts daneben, Oberkante in der Leiste, Höhe.</summary>
+  cAllButtonMargin = 20;
+  cAllButtonTop = 8;
+  cAllButtonHeight = 25;
+  /// <summary>Höhe: mindestens so viele Zeilen, höchstens dieser Anteil der Arbeitsfläche in Prozent.</summary>
+  cMinVisibleRows = 3;
+  cMaxHeightPercent = 80;
 
 var
   /// <summary>Eingeklappte Seiten, für die IDE-Sitzung.</summary>
@@ -401,17 +444,17 @@ end;
 function TToggleGeometry.RowHeight: Integer;
 begin
   Window.Canvas.Font := Window.Font;
-  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(8);
+  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(cRowPadding);
 end;
 
 function TToggleGeometry.HeaderHeight: Integer;
 begin
-  Result := RowHeight + Window.ScaleValue(6);
+  Result := RowHeight + Window.ScaleValue(cHeaderExtra);
 end;
 
 function TToggleGeometry.ButtonsHeight: Integer;
 begin
-  Result := Window.ScaleValue(40);
+  Result := Window.ScaleValue(cButtonsHeight);
 end;
 
 function TToggleGeometry.RowRect(AIndex: Integer): TRect;
@@ -419,8 +462,8 @@ var
   mOffset: Integer;
 begin
   mOffset := AIndex - Window.FScroll.First;
-  Result := Rect(Window.ScaleValue(4), HeaderHeight + mOffset * RowHeight, Window.ClientWidth - Window.ScaleValue(4),
-    HeaderHeight + (mOffset + 1) * RowHeight);
+  Result := Rect(Window.ScaleValue(cRowInset), HeaderHeight + mOffset * RowHeight,
+    Window.ClientWidth - Window.ScaleValue(cRowInset), HeaderHeight + (mOffset + 1) * RowHeight);
 end;
 
 function TToggleGeometry.RowAt(const APoint: TPoint): Integer;
@@ -448,10 +491,10 @@ begin
     Exit;
   end;
   mRow := RowRect(ARow);
-  mSize := Window.ScaleValue(16);
+  mSize := Window.ScaleValue(cOpenSize);
   // Rechts, mit Abstand zum Bildlaufbalken.
-  Result := Rect(mRow.Right - Window.ScaleValue(8) - mSize, (mRow.Top + mRow.Bottom - mSize) div 2,
-    mRow.Right - Window.ScaleValue(8), (mRow.Top + mRow.Bottom + mSize) div 2);
+  Result := Rect(mRow.Right - Window.ScaleValue(cOpenRight) - mSize, (mRow.Top + mRow.Bottom - mSize) div 2,
+    mRow.Right - Window.ScaleValue(cOpenRight), (mRow.Top + mRow.Bottom + mSize) div 2);
 end;
 
 type
@@ -495,7 +538,8 @@ var
   mPart: TRect;
 begin
   // Kopf: „Atlas · Schnellschalter“, bei „Alles aus“ der Hinweis darauf.
-  mPart := Rect(Window.ScaleValue(12), 0, Window.ClientWidth - Window.ScaleValue(8), Geometry.HeaderHeight);
+  mPart := Rect(Window.ScaleValue(cHeaderLeft), 0, Window.ClientWidth - Window.ScaleValue(cHeaderRight),
+    Geometry.HeaderHeight);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Text);
@@ -507,8 +551,8 @@ begin
     Text(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOffActive), mPart, DT_RIGHT);
   end;
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(0, Geometry.HeaderHeight - Window.ScaleValue(3));
-  Canvas.LineTo(Window.ClientWidth, Geometry.HeaderHeight - Window.ScaleValue(3));
+  Canvas.MoveTo(0, Geometry.HeaderHeight - Window.ScaleValue(cHeaderLineOffset));
+  Canvas.LineTo(Window.ClientWidth, Geometry.HeaderHeight - Window.ScaleValue(cHeaderLineOffset));
 end;
 
 procedure TTogglePainter.HotBackground(AIndex: Integer; const ARow: TRect);
@@ -540,7 +584,8 @@ begin
   begin
     mText := #$25BE' ' + mRow.Text;
   end;
-  Text(mText, Rect(ARow.Left + Window.ScaleValue(6), ARow.Top, ARow.Right - Window.ScaleValue(6), ARow.Bottom), 0);
+  Text(mText, Rect(ARow.Left + Window.ScaleValue(cPageTextInset), ARow.Top,
+    ARow.Right - Window.ScaleValue(cPageTextInset), ARow.Bottom), 0);
   Canvas.Font.Style := [];
 end;
 
@@ -548,9 +593,9 @@ function TTogglePainter.CheckBox(const ARow: TRect; AChecked: Boolean): TRect;
 var
   mBox: Integer;
 begin
-  mBox := Window.ScaleValue(12);
-  Result := Rect(ARow.Left + Window.ScaleValue(14), (ARow.Top + ARow.Bottom - mBox) div 2,
-    ARow.Left + Window.ScaleValue(14) + mBox, (ARow.Top + ARow.Bottom + mBox) div 2);
+  mBox := Window.ScaleValue(cCheckSize);
+  Result := Rect(ARow.Left + Window.ScaleValue(cCheckLeft), (ARow.Top + ARow.Bottom - mBox) div 2,
+    ARow.Left + Window.ScaleValue(cCheckLeft) + mBox, (ARow.Top + ARow.Bottom + mBox) div 2);
   Canvas.Pen.Color := ToColor(Colors.Accent);
   Canvas.Brush.Style := bsClear;
   if AChecked then
@@ -563,9 +608,9 @@ begin
   begin
     Canvas.Pen.Color := ToColor(Colors.Surface);
     Canvas.Pen.Width := Max(1, Window.ScaleValue(2));
-    Canvas.MoveTo(Result.Left + mBox div 5, Result.Top + mBox div 2);
-    Canvas.LineTo(Result.Left + mBox * 2 div 5, Result.Bottom - mBox div 4);
-    Canvas.LineTo(Result.Right - mBox div 5, Result.Top + mBox div 4);
+    Canvas.MoveTo(Result.Left + mBox div cTickFifths, Result.Top + mBox div 2);
+    Canvas.LineTo(Result.Left + mBox * 2 div cTickFifths, Result.Bottom - mBox div cTickQuarters);
+    Canvas.LineTo(Result.Right - mBox div cTickFifths, Result.Top + mBox div cTickQuarters);
     Canvas.Pen.Width := 1;
   end;
   Canvas.Brush.Style := bsClear;
@@ -582,7 +627,7 @@ begin
     Canvas.Pen.Color := ToColor(Colors.Accent);
   end;
   Canvas.Pen.Width := Max(1, Window.ScaleValue(1));
-  mInset := Window.ScaleValue(3);
+  mInset := Window.ScaleValue(cOpenInset);
   mOne := Window.ScaleValue(1);
   mMid := (ARect.Left + ARect.Right) div 2;
   Canvas.MoveTo(mMid, ARect.Top + mInset);
@@ -593,9 +638,9 @@ begin
   // Pfeil.
   Canvas.MoveTo(mMid - mOne, (ARect.Top + ARect.Bottom) div 2 + mOne);
   Canvas.LineTo(ARect.Right - mOne, ARect.Top + mOne);
-  Canvas.MoveTo(ARect.Right - mOne - Window.ScaleValue(5), ARect.Top + mOne);
+  Canvas.MoveTo(ARect.Right - mOne - Window.ScaleValue(cOpenArrowHead), ARect.Top + mOne);
   Canvas.LineTo(ARect.Right - mOne, ARect.Top + mOne);
-  Canvas.LineTo(ARect.Right - mOne, ARect.Top + mOne + Window.ScaleValue(5));
+  Canvas.LineTo(ARect.Right - mOne, ARect.Top + mOne + Window.ScaleValue(cOpenArrowHead));
   Canvas.Pen.Width := 1;
 end;
 
@@ -613,14 +658,14 @@ begin
   begin
     OpenIcon(Geometry.OpenRect(AIndex), AIndex = Window.FHotOpen);
   end;
-  mPart := Rect(mCheck.Right + Window.ScaleValue(8), ARow.Top, Geometry.OpenRect(AIndex).Left - Window.ScaleValue(6),
-    ARow.Bottom);
+  mPart := Rect(mCheck.Right + Window.ScaleValue(cTextGap), ARow.Top,
+    Geometry.OpenRect(AIndex).Left - Window.ScaleValue(cOpenGap), ARow.Bottom);
   mTag := TagText(mItem);
   if mTag <> '' then
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);
     Text(mTag, mPart, DT_RIGHT);
-    mPart.Right := mPart.Right - Canvas.TextWidth(mTag) - Window.ScaleValue(8);
+    mPart.Right := mPart.Right - Canvas.TextWidth(mTag) - Window.ScaleValue(cTextGap);
   end;
   Canvas.Font.Color := ToColor(Colors.Text);
   Text(Window.FRows.Text(AIndex), mPart, DT_END_ELLIPSIS);
@@ -638,7 +683,7 @@ begin
   begin
     Exit;
   end;
-  mTrack := Rect(Window.ClientWidth - Window.ScaleValue(5), Geometry.HeaderHeight,
+  mTrack := Rect(Window.ClientWidth - Window.ScaleValue(cScrollBarInset), Geometry.HeaderHeight,
     Window.ClientWidth - Window.ScaleValue(2), Geometry.HeaderHeight + mVisible * Geometry.RowHeight);
   mThumb := mTrack;
   mThumb.Top := mTrack.Top + MulDiv(mTrack.Height, Window.FScroll.First, mCount);
@@ -807,14 +852,13 @@ end;
 
 function TAtlasQuickToggleWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  // Drei Zeilen je Raste, wie im Editor.
   if WheelDelta > 0 then
   begin
-    Dec(FScroll.First, 3);
+    Dec(FScroll.First, cWheelLines);
   end
   else
   begin
-    Inc(FScroll.First, 3);
+    Inc(FScroll.First, cWheelLines);
   end;
   FScroll.Clamp(FRows.Count);
   Invalidate;
@@ -850,25 +894,25 @@ begin
   Canvas.Font := Font;
   mTags := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesProject)),
     Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesSession)));
-  mWidth := ScaleValue(280);
+  mWidth := ScaleValue(cMinWidth);
   for mIndex := 0 to FRows.Count - 1 do
   begin
-    // 64: Kästchen und Ränder, 28: Symbol „Einstellung öffnen“.
-    mWidth := Max(mWidth, Canvas.TextWidth(FRows.Text(mIndex)) + mTags + ScaleValue(64 + 28));
+    mWidth := Max(mWidth, Canvas.TextWidth(FRows.Text(mIndex)) + mTags + ScaleValue(cCheckAndMargins + cOpenSpace));
   end;
-  mWidth := Min(mWidth, ScaleValue(720));
+  mWidth := Min(mWidth, ScaleValue(cMaxWidth));
   mButtonWidth := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff)),
     Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn))) +
     ScaleValue(cAllButtonPadding);
-  ClientWidth := Max(mWidth, mButtonWidth + ScaleValue(20));
+  ClientWidth := Max(mWidth, mButtonWidth + ScaleValue(cAllButtonMargin));
   // Höchstens 80 % der Arbeitsfläche hoch; der Rest per Mausrad bzw. Pfeiltasten.
-  FScroll.Visible := Max(3, (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * 4 div 5 -
+  FScroll.Visible := Max(cMinVisibleRows,
+    (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * cMaxHeightPercent div 100 -
     mGeometry.HeaderHeight - mGeometry.ButtonsHeight) div mGeometry.RowHeight);
   FScroll.Visible := Min(FScroll.Visible, Max(1, FRows.Count));
   FScroll.Clamp(FRows.Count);
   ClientHeight := mGeometry.HeaderHeight + FScroll.Visible * mGeometry.RowHeight + mGeometry.ButtonsHeight;
-  FAllButton.SetBounds(ScaleValue(10), ClientHeight - mGeometry.ButtonsHeight + ScaleValue(8), mButtonWidth,
-    ScaleValue(25));
+  FAllButton.SetBounds(ScaleValue(10), ClientHeight - mGeometry.ButtonsHeight + ScaleValue(cAllButtonTop),
+    mButtonWidth, ScaleValue(cAllButtonHeight));
 end;
 
 procedure TAtlasQuickToggleWindow.MoveHot(ADelta: Integer);

@@ -40,6 +40,9 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
 - `get_current_issue` zu Beginn einer Aufgabe auf einem Issue-Branch: das in der IDE begonnene Tracker-Issue mit Checkliste, Codeverweisen und (mit `section` = `body` bzw. `comments`) Beschreibung und letzten Kommentaren. Die Checkliste dort ist der Auftrag; Codeverweise sind die ersten Stellen zum Lesen.
+- `explain_compiler_message` bei Compilermeldungen, bevor du rätst und neu baust: Ursache an der Stelle, bekannte
+  Delphi-Falle (Delphi 12 gegen 13, Methodenreferenzen, Units, die FPC nicht verlangt) und eine sichere Korrektur als
+  Diff; die Meldungen aus `get_last_build`/`build_project` direkt als `messages` übergeben.
 - `get_last_tests` bei „Warum ist der Test rot?“: der letzte Testlauf aus der IDE ohne neuen Lauf, je rotem Test
   Meldung, Datei:Zeile, erwartet/erhalten, Protokollauszug und Marken (neu rot, wackelig, Leck, veraltet);
   `only` wählt `failed`, `flaky`, `slow`, `leaks`, `stale` oder `all`. Erst hier lesen, dann gezielt `run_tests`.
@@ -59,6 +62,10 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
   Es ändert auch .dfm/.fmx und automatisch benannte Ereignis-Handler.
   Erst mit `dryRun: true` (Vorgabe) den Diff ansehen, dann mit `dryRun: false` schreiben.
 - Korrekturen von Prüfregeln mit `apply_code_action`: ohne `title` auflisten, dann anwenden.
+- Umbauten wie Signatur ändern, Interface oder Basisklasse herauslösen, sicher löschen, Mitglied
+  verschieben oder Typ-Alias mit `refactor`: erst ohne `kind` an der Stelle auflisten (zeigt die
+  erwarteten `args`), dann mit `kind` und `args` als Vorschau, zuletzt mit `dryRun: false` schreiben.
+  Hand-Edits für solche Umbauten vermeiden: `refactor` findet auch die Aufrufer im Projekt.
 - Viele gleiche Befunde auf einmal mit `fix_findings` (z. B. `rules: ["unused-uses"]`):
   nur sichere Korrekturen, erst mit `dryRun: true` (Vorgabe) den Diff ansehen.
 - Ist eine Datei in der IDE ungespeichert geändert, schreibt Atlas nicht; erst speichern lassen.

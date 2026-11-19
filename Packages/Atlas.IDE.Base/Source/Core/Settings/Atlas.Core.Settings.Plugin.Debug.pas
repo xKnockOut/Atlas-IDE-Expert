@@ -55,6 +55,9 @@ const
   cDefaultParallelStacksThreads = 64;
   /// <summary>Vorgabe von debug.logpointPrefix (#583).</summary>
   cDefaultLogpointPrefix = '[LOG]';
+  /// <summary>Werte von debug.closeOpenedFiles (#842) in der Reihenfolge von TAtlasCloseOpenedFiles; Vorgabe ask.
+  /// </summary>
+  cCloseOpenedFilesModes: array[0..2] of string = ('off', 'ask', 'auto');
   /// <summary>Grenzen und Vorgabe für debug.asyncOrigin.maxPerSite (#859).</summary>
   cMinAsyncOriginPerSite = 1;
   cMaxAsyncOriginPerSite = 1000;
@@ -289,6 +292,13 @@ type
     /// <summary>Notiz auch als Datei im Ordner „debug-notizen“ neben dem Projekt (#582, debug.note.saveFile).
     /// </summary>
     DebugNoteSaveFile: Boolean;
+    /// <summary>Vom Debugger geöffnete Dateien nach der Sitzung schließen (#842, debug.closeOpenedFiles): off = nichts,
+    /// ask = Hinweis mit „Schließen“, „Offen lassen“, „Immer automatisch“, auto = selbst schließen mit „Wieder
+    /// öffnen“.</summary>
+    DebugCloseOpenedFiles: string;
+    /// <summary>Vom Debugger geöffnete Dateien teilen sich einen Reiter (#842, debug.previewTab): Beim Halt in einer
+    /// weiteren schließt Atlas die vorige, wenn sie unberührt ist.</summary>
+    DebugPreviewTab: Boolean;
     /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
     /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
     /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
@@ -308,6 +318,9 @@ type
     /// <summary>Höchstzahl der Auswertungen je Suche (#853, debug.variablesWindow.searchLimit, 10 bis 10000).
     /// </summary>
     DebugVariablesSearchLimit: Integer;
+    /// <summary>Überwachte Ausdrücke an Klasse oder Unit binden (#2550, debug.variablesWindow.scopedWatches): beim
+    /// Halt nur die Ausdrücke der Klasse bzw. Unit des Halts und die überall geltenden. Aus = alle überall.</summary>
+    DebugVariablesScopedWatches: Boolean;
     /// <summary>Bedingungen vorausschauen (#2169, debug.predictConditions): Beim Halt zeigt Atlas an den kommenden
     /// if, while und case derselben Routine das vorhergesagte Ergebnis („= False · FOnline“, „→ smManual“), wenn
     /// dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet. Aus = keine Anfrage.</summary>
@@ -504,6 +517,7 @@ begin
   DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
     TAtlasVisualizerSettings.cMinMaxImagePixels, TAtlasVisualizerSettings.cMaxMaxImagePixels);
   DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.cEvaluationNames);
+  DebugCloseOpenedFiles := Choice(DebugCloseOpenedFiles, cCloseOpenedFilesModes);
   TestsFromDebugStopMaxArray := EnsureRange(TestsFromDebugStopMaxArray, cMinTestsFromDebugStopMaxArray,
     cMaxTestsFromDebugStopMaxArray);
 end;
@@ -577,6 +591,7 @@ begin
   DebugVariablesWindow := True;
   DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
+  DebugVariablesScopedWatches := True;
   DebugPredictConditions := True;
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
@@ -592,6 +607,8 @@ begin
   DebugMemoryTimelineObjectCount := False;
   DebugNote := True;
   DebugNoteSaveFile := True;
+  DebugCloseOpenedFiles := cCloseOpenedFilesModes[1];
+  DebugPreviewTab := False;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
@@ -620,6 +637,7 @@ begin
   AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
   AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);
+  AIo.Flag('DebugVariablesScopedWatches', DebugVariablesScopedWatches);
   AIo.Flag('DebugPredictConditions', DebugPredictConditions);
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);
@@ -635,6 +653,8 @@ begin
   AIo.Flag('DebugMemoryTimelineObjectCount', DebugMemoryTimelineObjectCount);
   AIo.Flag('DebugNote', DebugNote);
   AIo.Flag('DebugNoteSaveFile', DebugNoteSaveFile);
+  AIo.Text('DebugCloseOpenedFiles', DebugCloseOpenedFiles);
+  AIo.Flag('DebugPreviewTab', DebugPreviewTab);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);

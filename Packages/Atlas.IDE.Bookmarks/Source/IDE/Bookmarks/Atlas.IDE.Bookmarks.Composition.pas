@@ -92,11 +92,6 @@ var
 
 { Dienste von Base }
 
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 procedure QuickStatus(AText: string);
 begin
   TAtlasIdeHost.SetStatusExtra(cQuickBookmarksExtra, AText);
@@ -160,7 +155,7 @@ end;
 
 procedure StartNotes;
 begin
-  TAtlasIdeNotes.Start(MessageLine);
+  TAtlasIdeNotes.Start(TAtlasIdeHost.Messages());
   GNotesStarted := True;
 end;
 
@@ -178,7 +173,7 @@ end;
 procedure StartBookmarks;
 begin
   // Hinweise der schnellen Lesezeichen (#1104) im Statusfeld.
-  TAtlasIdeBookmarks.Start(MessageLine, QuickStatus);
+  TAtlasIdeBookmarks.Start(TAtlasIdeHost.Messages(), QuickStatus);
   GBookmarksStarted := True;
 end;
 

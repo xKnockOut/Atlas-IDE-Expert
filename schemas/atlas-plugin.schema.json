@@ -2477,6 +2477,44 @@
       "x-parent": "debug.note",
       "x-issue": "#582"
     },
+    "DebugCloseOpenedFiles": {
+      "description": "Vom Debugger geöffnete Dateien nach der Sitzung schließen (RTL- und VCL-Units, in die F7 geführt hat): off = nichts geschieht, ask = Hinweis mit „Schließen“, „Offen lassen“ und „Immer automatisch“, auto = Atlas schließt sie und bietet „Wieder öffnen“ an. Offen bleiben geänderte Dateien, Dateien mit Haltepunkt oder Lesezeichen, festgehaltene und solche, die vor der Sitzung offen waren.",
+      "type": "string",
+      "enum": [
+        "off",
+        "ask",
+        "auto"
+      ],
+      "default": "ask",
+      "x-key": "debug.closeOpenedFiles",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Auswahl",
+      "x-caption": "Vom Debugger geöffnete Dateien nach der Sitzung schließen",
+      "x-captionEn": "Close files opened by the debugger after the session",
+      "x-keywords": [
+        "Reiter",
+        "Dateien schließen",
+        "System.pas",
+        "tabs",
+        "close files"
+      ],
+      "x-issue": "#842"
+    },
+    "DebugPreviewTab": {
+      "description": "Vom Debugger geöffnete Dateien teilen sich einen Reiter: Hält der Debugger in einer weiteren solchen Datei, schließt Atlas die vorige, sofern sie unberührt ist (nicht geändert, kein Haltepunkt, kein Lesezeichen, nicht festgehalten).",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.previewTab",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Vom Debugger geöffnete Dateien teilen sich einen Reiter",
+      "x-captionEn": "Files opened by the debugger share one tab",
+      "x-issue": "#842"
+    },
     "DebugWhyHere": {
       "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
       "type": "boolean",
@@ -2597,6 +2635,19 @@
       "x-page": "Debuggen",
       "x-parent": "debug.variablesWindow",
       "x-issue": "#853"
+    },
+    "DebugVariablesScopedWatches": {
+      "description": "Überwachte Ausdrücke im Fenster „Variablen“ an eine Klasse oder Unit binden (Kontextmenü der Zeile): Beim Halt zeigt und wertet Atlas nur die Ausdrücke der Klasse (auch in Nachfahren, soweit der Index sie kennt) bzw. Unit, in der das Programm steht, und die überall geltenden; die übrigen sind ausgeblendet. Aus = alle Ausdrücke überall wie bisher.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.variablesWindow.scopedWatches",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.variablesWindow",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Überwachte Ausdrücke an Klasse oder Unit binden",
+      "x-captionEn": "Bind watched expressions to a class or unit",
+      "x-issue": "#2550"
     },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",

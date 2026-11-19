@@ -13,6 +13,7 @@ The server offers Claude Code 33 MCP tools:
 - survey the project's architecture (`get_architecture`, also compared with a saved state)
 - query the index in a small language (`query_code`)
 - find hotspots and change coupling from Git or SVN history (`get_hotspots`)
+- follow the history of a method across renames and moves, with issues (`get_symbol_history`)
 - find the shortest path between two symbols or units (`find_path`)
 - read declarations with their rationale comments (`get_rationale`) and type and call hierarchies
 - the impact of a change (`get_impact`)
@@ -29,6 +30,7 @@ The server offers Claude Code 33 MCP tools:
 - report findings to Claude Code hooks (`hook_check`)
 - build through the IDE (`build_project`, `get_last_build`)
 - read the issue started in the IDE with checklist and code references (`get_current_issue`)
+- explain compiler messages at their place, with the known Delphi pitfall and a safe fix as a diff (`explain_compiler_message`)
 - run DUnitX tests
 - read the last test run of the IDE without running again (`get_last_tests`: red tests with file:line, expected/actual, log, newly red, flaky, leak, stale)
 - see where the developer currently is in the IDE (`get_ide_context`: file, cursor, method, selection, active project, last build, tabs)
@@ -41,6 +43,7 @@ Each with preview:
 - apply code actions
 - format (`format_code`)
 - extract method, optionally with equal places (`extract_method`)
+- refactorings of the context menu with arguments instead of questions (`refactor`)
 - fix all safe findings of rules at once (`fix_findings`)
 
 ### Resource

@@ -320,6 +320,8 @@ const
   /// <summary>Die Wörter, auf die Scan achtet, klein.</summary>
   cSectionWords: array[TSectionWord.Unit_..TSectionWord.End_] of string = ('unit', 'program', 'library',
     'package', 'uses', 'contains', 'interface', 'implementation', 'initialization', 'finalization', 'end');
+  /// <summary>Mindestzahl der Anführungszeichen, die einen mehrzeiligen String öffnen (Delphi 12).</summary>
+  cMultiLineQuotes = 3;
 
 { TSectionToken }
 
@@ -339,7 +341,7 @@ begin
     mChar := AText[AStart + mIndex - 1];
     if CharInSet(mChar, ['A'..'Z']) then
     begin
-      mChar := Char(Ord(mChar) + 32);
+      mChar := Char(Ord(mChar) - Ord('A') + Ord('a'));
     end;
     if mChar <> AWord[mIndex] then
     begin
@@ -521,7 +523,7 @@ var
 begin
   mRun := QuoteRun(Text, Position);
   // ''' (oder mehr, ungerade) am Zeilenende öffnet einen mehrzeiligen String (Delphi 12).
-  if (mRun >= 3) and Odd(mRun) and BlankToLineEnd(Position + mRun) then
+  if (mRun >= cMultiLineQuotes) and Odd(mRun) and BlankToLineEnd(Position + mRun) then
   begin
     MultiQuotes := mRun;
     SkipToLineEnd;

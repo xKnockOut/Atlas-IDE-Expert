@@ -534,6 +534,7 @@ Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 - Values are evaluated without side effects, expand into their fields like in the evaluate window, and values that changed since the last step are highlighted.
 - Search in the shown tab by name or (with "In values") by value. With "Children" Atlas expands nodes itself up to `debug.variablesWindow.searchDepth` levels and stops after `debug.variablesWindow.searchLimit` evaluations. It shows the matches (bold), their path and their children; the footer shows the number of matches. Only simple values count: searching for "Berlin" matches `Kunde.Adressen[1].Ort`, not `Kunde`.
 - Autos and Locals need the Atlas server; Watch works without it.
+- Watched expressions per class or unit (#2550): in the context menu of a row on the Watch tab, “Show only in this class” or “Show only in this unit” binds the expression to the class or unit the program is stopped in; “Show everywhere” removes the binding. At the next stop in the class (also in descendants, as far as the Atlas index knows the inheritance) the expression appears by itself, matching bound ones first; elsewhere it is neither evaluated nor shown. The row says what it applies to (“· applies to TAuftragsLauf”), above the list “3 more hidden – show”. Class, unit and ancestors come from the Atlas server; without it Atlas reads class and unit from the top frame, without inheritance. Evaluation always happens in the top frame with source because the ToolsAPI does not select another frame.
 
 | Key / command | Action |
 |---|---|
@@ -545,7 +546,7 @@ Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 | Del (Watch tab) | remove the watch |
 | Enter in the field of the Watch tab | watch the expression |
 
-Settings: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
+Settings: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
 
 ## Debug: stepping and breaking
 
@@ -751,6 +752,18 @@ Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
 - The note goes to the clipboard and, with `debug.note.saveFile`, into a file under `debug-notes` (German IDE: `debug-notizen`) next to the project
 
 Settings: `debug.note`, `debug.note.saveFile`
+
+## Debug: close files opened by the debugger (#842)
+
+- Atlas remembers which files the debugger opened during a session: the location of a stop (F7 into `System.pas`, `Vcl.Controls.pas` …), but not files you open yourself while paused
+- After the session (`debug.closeOpenedFiles`):
+  - `ask` (default): notice “The debugger opened N files” with “Close”, “Keep open” and “Always automatically”
+  - `auto`: Atlas closes them and reports “Closed N files opened by the debugger” with “Reopen”
+  - `off`: nothing happens
+- Files stay open if they were open before the session, are modified, have a breakpoint or bookmark, or were kept with “Keep file opened by the debugger” (Atlas menu, command palette)
+- Preview tab (`debug.previewTab`): when the debugger stops in another such file, Atlas closes the previous one if it is untouched; the status line names the preview tab (the IDE does not offer italic tab titles)
+
+Settings: `debug.closeOpenedFiles`, `debug.previewTab`
 
 ## Debug: leak and crash reports (#74)
 

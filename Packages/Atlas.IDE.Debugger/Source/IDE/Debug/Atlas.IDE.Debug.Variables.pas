@@ -10,7 +10,9 @@
 //     Gleiche Ausdrücke behalten Knoten, Aufklappzustand und die Markierung
 //     geänderter Werte. Ohne Server bleiben beide Reiter leer.
 //   - Reiter Überwachung: eigene Ausdrücke je Projekt
-//     (TAtlasIdeVariablesWatches), kommen mit dem Projekt wieder.
+//     (TAtlasIdeVariablesWatches), kommen mit dem Projekt wieder. Mit Bindung
+//     an Klasse oder Unit (#2550) ordnet die Antwort des Servers (sonst der
+//     oberste Rahmen) die Liste, bevor ausgewertet wird.
 //   - Werte: TAtlasIdeVariablesLists in Zeitscheiben ohne Nebenwirkungen,
 //     zuerst der gezeigte Reiter. Aufklappen holt Felder aus dem Atlas-Index
 //     (TAtlasIdeDebugFieldRequests), sonst Teile des Ergebnis-Strings.
@@ -59,10 +61,11 @@ type
       /// <summary>Die Suche ist durch (Treffer bestimmt).</summary>
       Done: Boolean;
     end;
-    /// <summary>Ausführungspunkt: Datei und Zeile (0-basiert, -1 ohne).</summary>
+    /// <summary>Ausführungspunkt: Datei und Zeile (0-basiert, -1 ohne), Routine des Rahmens.</summary>
     TPlace = record
       FileName: string;
       Line: Integer;
+      Routine: string;
     end;
   private class var
     FInstance: TAtlasIdeDebugVariables;
@@ -124,6 +127,7 @@ implementation
 
 uses
   Atlas.Core.Debug.Evaluate,
+  Atlas.Core.Debug.WatchScopes,
   Atlas.IDE.Debug.Session,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -261,6 +265,73 @@ begin
     end;
 end;
 
+/// <summary>Text hinter einer gebundenen Zeile: wofür sie gilt.</summary>
+function ScopeText(const AScope: TAtlasWatchScope): string;
+begin
+  Result := '';
+  if AScope.Kind <> TAtlasWatchScopeKind.Everywhere then
+  begin
+    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesScopeSuffix, [AScope.Name]);
+  end;
+end;
+
+/// <summary>Bindung an Klasse oder Unit (#2550): Kontextmenü, Text hinter der Zeile, Ausgeblendete zeigen.
+/// </summary>
+procedure WireScopes(AFrame: TAtlasDebugVariablesFrame);
+begin
+  AFrame.Hooks.CanBind :=
+    function(ANode: TAtlasEvalNode; AKind: TAtlasWatchScopeKind): Boolean
+    var
+      mWatches: TAtlasIdeVariablesWatches;
+    begin
+      Result := TAtlasIdeDebugVariables.FInstance <> nil;
+      if not Result then
+      begin
+        Exit;
+      end;
+      mWatches := TAtlasIdeDebugVariables.FInstance.FWatches;
+      // Überall: nur für gebundene Zeilen. Klasse und Unit: nur mit Halt dort, und nicht schon so gebunden.
+      if AKind = TAtlasWatchScopeKind.Everywhere then
+      begin
+        Result := mWatches.ScopeOf(ANode).Kind <> TAtlasWatchScopeKind.Everywhere;
+      end
+      else
+      begin
+        Result := mWatches.CanBind(AKind) and (mWatches.ScopeOf(ANode).Kind <> AKind);
+      end;
+    end;
+  AFrame.Hooks.Binding :=
+    function: Boolean
+    begin
+      Result := (TAtlasIdeDebugVariables.FInstance <> nil) and TAtlasIdeDebugVariables.FInstance.FWatches.Enabled;
+    end;
+  AFrame.Hooks.Bind :=
+    procedure(ANode: TAtlasEvalNode; AKind: TAtlasWatchScopeKind)
+    begin
+      if TAtlasIdeDebugVariables.FInstance <> nil then
+      begin
+        TAtlasIdeDebugVariables.FInstance.FWatches.Bind(ANode, AKind, StillStopped);
+      end;
+    end;
+  AFrame.Hooks.ScopeText :=
+    function(ANode: TAtlasEvalNode): string
+    begin
+      Result := '';
+      if (TAtlasIdeDebugVariables.FInstance <> nil) and TAtlasIdeDebugVariables.FInstance.FWatches.Enabled then
+      begin
+        Result := ScopeText(TAtlasIdeDebugVariables.FInstance.FWatches.ScopeOf(ANode));
+      end;
+    end;
+  AFrame.Hooks.ShowHidden :=
+    procedure(AShow: Boolean)
+    begin
+      if TAtlasIdeDebugVariables.FInstance <> nil then
+      begin
+        TAtlasIdeDebugVariables.FInstance.FWatches.SetShowHidden(AShow, StillStopped);
+      end;
+    end;
+end;
+
 /// <summary>Überwachung hinzufügen und entfernen.</summary>
 procedure WireWatches(AFrame: TAtlasDebugVariablesFrame);
 begin
@@ -280,6 +351,7 @@ begin
         TAtlasIdeDebugVariables.FInstance.FWatches.Remove(ANode);
       end;
     end;
+  WireScopes(AFrame);
 end;
 
 /// <summary>Wert ändern (#868): nur mit laufendem „Werte ändern“, im angehaltenen Programm und mit Ort.</summary>
@@ -389,6 +461,7 @@ end;
 procedure TAtlasIdeDebugVariables.SessionEnded;
 begin
   CancelWork;
+  FWatches.Ended;
   FLists.Unavailable;
   FPlace := NoPlace;
   FPrevious := NoPlace;
@@ -419,6 +492,7 @@ begin
     TAtlasIdeDebugSources.MarkFrames(mFrames);
     FPlace.FileName := mFrames[0].FileName;
     FPlace.Line := mFrames[0].Line - 1;
+    FPlace.Routine := mFrames[0].Routine;
   end;
 end;
 
@@ -467,6 +541,12 @@ begin
   end;
   FLists[TAtlasVariablesTab.Autos].Replace(mAnswer.Autos);
   FLists[TAtlasVariablesTab.Locals].Replace(mAnswer.Locals);
+  // Ohne Server bzw. ohne Felder dazu: Klasse und Unit aus dem Rahmen, ohne Vorfahren.
+  if not mAnswer.Place.Known then
+  begin
+    mAnswer.Place := TAtlasWatchPlace.FromFrame(FPlace.Routine, FPlace.FileName);
+  end;
+  FWatches.Stopped(mAnswer.Place);
   StartEvaluate;
   Refresh;
 end;
@@ -679,6 +759,7 @@ begin
     Exit;
   end;
   mHasServer := Assigned(FSession) and (FSession() <> nil);
+  mFrame.SetHidden(FWatches.Hidden, FWatches.ShowHidden);
   mFrame.Refresh;
   mFrame.SetStatus(StatusText(FLists, FTab, FSearch.Done, mHasServer));
 end;

@@ -12,6 +12,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - die Architektur des Projekts überblicken (`get_architecture`, auch im Vergleich mit einem gespeicherten Stand)
   - den Index in einer kleinen Sprache abfragen (`query_code`)
   - Hotspots und Änderungskopplung aus dem Git- oder SVN-Verlauf finden (`get_hotspots`)
+  - Geschichte einer Methode über Umbenennen und Verschieben verfolgen, mit Issues (`get_symbol_history`)
   - den kürzesten Weg zwischen zwei Symbolen oder Units finden (`find_path`)
   - Deklarationen samt Begründungskommentaren (`get_rationale`) und Typ- und Aufrufhierarchien lesen
   - die Auswirkungen einer Änderung ermitteln (`get_impact`)
@@ -26,6 +27,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
 - **Bauen und Testen:**
   - über die IDE bauen (`build_project`, `get_last_build`)
   - das in der IDE begonnene Issue mit Checkliste und Codeverweisen lesen (`get_current_issue`)
+  - Compilermeldungen an ihrer Stelle erklären, mit der bekannten Delphi-Falle und einer sicheren Korrektur als Diff (`explain_compiler_message`)
   - DUnitX-Tests ausführen
   - den letzten Testlauf der IDE lesen, ohne neu zu laufen (`get_last_tests`: rote Tests mit Datei:Zeile, erwartet/erhalten, Protokoll, neu rot, wackelig, Leck, veraltet)
   - sehen, wo der Entwickler in der IDE gerade ist (`get_ide_context`: Datei, Cursor, Methode, Auswahl, aktives Projekt, letzter Build, Reiter)
@@ -34,6 +36,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - Code-Aktionen anwenden
   - formatieren (`format_code`)
   - Methode extrahieren, auf Wunsch samt gleicher Stellen (`extract_method`)
+  - Refactorings des Kontextmenüs mit Argumenten statt Rückfragen (`refactor`)
   - oder alle sicheren Treffer von Regeln auf einmal korrigieren (`fix_findings`)
 
 Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts.

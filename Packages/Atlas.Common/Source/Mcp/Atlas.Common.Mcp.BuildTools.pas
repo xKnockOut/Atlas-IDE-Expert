@@ -4,7 +4,8 @@
 // die Build-Ergebnisse vom IDE-Plugin (TLspIdeBuild, #527/#528) und legt sie
 // als JSON-Datei im Atlas-Cache ab (TIndexCacheDirectory.BuildFileFor); der
 // MCP-Prozess liest sie für das Werkzeug get_last_build. Nur lesend; Meldungen
-// zu Dateien außerhalb des Arbeitsordners bleiben weg (#99), gezählt.
+// zu Dateien außerhalb des Arbeitsordners bleiben weg (#99), gezählt. Meldungen, zu denen Atlas eine Erklärung
+// kennt, tragen "explain": "explain_compiler_message" (#2621).
 
 interface
 
@@ -35,6 +36,7 @@ uses
   System.DateUtils,
   System.StrUtils,
   Atlas.Common.Mcp.Paths,
+  Atlas.Common.Mcp.CompilerMessageTools,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Timestamps;
 
@@ -53,6 +55,9 @@ const
     (De: 'Der letzte Build betraf %s, nicht %s.'; En: 'The last build concerned %s, not %s.'));
 
 {$SCOPEDENUMS OFF}
+
+const
+  cExplainTool = 'explain_compiler_message';
 
 function SeverityText(ASeverity: TCompilerSeverity): string;
 const
@@ -75,7 +80,7 @@ begin
   Result := TCompilerSeverity.Hint;
 end;
 
-function MessagesToJson(const AMessages: TArray<TCompilerMessage>; const ARoot: string;
+function MessagesToJson(const AMessages: TArray<TCompilerMessage>; const ARoot: string; AExplain: Boolean;
   out AOmitted: Integer): TJSONArray;
 var
   mMessage: TCompilerMessage;
@@ -99,6 +104,11 @@ begin
     mItem.AddPair('severity', SeverityText(mMessage.Severity));
     mItem.AddPair('code', mMessage.Code);
     mItem.AddPair('text', mMessage.Text);
+    // Hinweis für KI-Assistenten (#2621): Zu dieser Nummer kennt Atlas eine Erklärung.
+    if AExplain and TMcpCompilerMessageTools.Explains(mMessage.Code) then
+    begin
+      mItem.AddPair('explain', cExplainTool);
+    end;
     Result.AddElement(mItem);
   end;
 end;
@@ -119,7 +129,7 @@ begin
     mRoot.AddPair('success', TJSONBool.Create(ABuild.Success));
     mRoot.AddPair('durationMs', TJSONNumber.Create(ABuild.DurationMs));
     mRoot.AddPair('finishedAt', DateToISO8601(ABuild.FinishedAt, False));
-    mRoot.AddPair('messages', MessagesToJson(ABuild.Messages, '', mOmitted));
+    mRoot.AddPair('messages', MessagesToJson(ABuild.Messages, '', False, mOmitted));
     if ABuild.RequestedBy <> '' then
     begin
       mRoot.AddPair('requestedBy', ABuild.RequestedBy);
@@ -215,7 +225,7 @@ begin
     mRoot.AddPair('errors', TJSONNumber.Create(mCounts[TCompilerSeverity.Error] + mCounts[TCompilerSeverity.Fatal]));
     mRoot.AddPair('warnings', TJSONNumber.Create(mCounts[TCompilerSeverity.Warning]));
     mRoot.AddPair('hints', TJSONNumber.Create(mCounts[TCompilerSeverity.Hint]));
-    mRoot.AddPair('messages', MessagesToJson(ABuild.Messages, ARoot, mOmitted));
+    mRoot.AddPair('messages', MessagesToJson(ABuild.Messages, ARoot, True, mOmitted));
     if mOmitted > 0 then
     begin
       mRoot.AddPair('omittedOutsideWorkspace', TJSONNumber.Create(mOmitted));

@@ -570,6 +570,8 @@ type
       write FDebug.DebugMemoryTimelineObjectCount;
     property DebugNote: Boolean read FDebug.DebugNote write FDebug.DebugNote;
     property DebugNoteSaveFile: Boolean read FDebug.DebugNoteSaveFile write FDebug.DebugNoteSaveFile;
+    property DebugCloseOpenedFiles: string read FDebug.DebugCloseOpenedFiles write FDebug.DebugCloseOpenedFiles;
+    property DebugPreviewTab: Boolean read FDebug.DebugPreviewTab write FDebug.DebugPreviewTab;
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
@@ -579,6 +581,8 @@ type
       write FDebug.DebugVariablesSearchDepth;
     property DebugVariablesSearchLimit: Integer read FDebug.DebugVariablesSearchLimit
       write FDebug.DebugVariablesSearchLimit;
+    property DebugVariablesScopedWatches: Boolean read FDebug.DebugVariablesScopedWatches
+      write FDebug.DebugVariablesScopedWatches;
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;

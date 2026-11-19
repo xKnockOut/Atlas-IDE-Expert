@@ -100,11 +100,6 @@ begin
   Result := TAtlasIdeHost.RunningSession;
 end;
 
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 { Sichtbarkeit und Bedingungen }
 
 function NotMinimal(ALevel: TAtlasSafeLevel): Boolean;
@@ -193,7 +188,7 @@ end;
 
 procedure ToggleDebugJustMyCode;
 begin
-  TAtlasIdeDebugOwnCode.ToggleSetting(MessageLine);
+  TAtlasIdeDebugOwnCode.ToggleSetting(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Scope des Moduls für Befehle mit Antwort des Servers; nil vor dem Anmelden.</summary>
@@ -264,7 +259,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start.
   InstallBreakCommands;
   // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet das Teil DebugStepFilter.
@@ -272,7 +267,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   GCommandsInstalled := True;
 end;
 
@@ -418,8 +413,8 @@ begin
 end;
 
 /// <summary>Einträge im Atlas-Menü: Untermenü Debuggen (Fenster; Was wartet worauf?; Neu starten und
-/// Startverbünde; Profiler; Bericht einfügen und Debug-Zustand festhalten) und Untermenü Haltepunkte, je Gruppe
-/// durch Trennlinien getrennt.
+/// Startverbünde; Profiler; Bericht einfügen, Debug-Zustand festhalten und Datei offen halten) und Untermenü
+/// Haltepunkte, je Gruppe durch Trennlinien getrennt.
 /// </summary>
 function AtlasMenuEntries: TArray<TAtlasMenuEntry>;
 begin
@@ -427,7 +422,7 @@ begin
     'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
     'Atlas.DebugLeaks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart', 'Atlas.LaunchGroups', '-',
     'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-', 'Atlas.RuntimeReportPaste',
-    'Atlas.DebugNote'],
+    'Atlas.DebugNote', 'Atlas.DebugKeepOpenedFile'],
     TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result := Result + AtlasEntries(['Atlas.BreakpointsWindow', 'Atlas.CheckBreakpoints', '-', 'Atlas.Logpoint',
     '-', 'Atlas.MethodBreakpoints', 'Atlas.MethodBreakpointGroups', '-', 'Atlas.BreakpointRules', '-',
