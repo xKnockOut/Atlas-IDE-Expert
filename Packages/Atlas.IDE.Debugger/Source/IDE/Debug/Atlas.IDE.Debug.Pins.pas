@@ -27,7 +27,7 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   ToolsAPI.Editor,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Pins,
   Atlas.Core.Debug.PinsFlow,
   Atlas.IDE.Debug.StopView,

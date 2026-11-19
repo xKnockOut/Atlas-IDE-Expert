@@ -26,7 +26,7 @@ interface
 uses
   System.Classes,
   Atlas.Core.Designer.Undo,
-  Atlas.Core.Designer.Surface;
+  Atlas.Core.Designer.Contract;
 
 type
   /// <summary>Ereignis, dessen Handler im Code fehlt.</summary>
@@ -84,6 +84,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Designer.Surface,
   System.SysUtils,
   System.TypInfo;
 

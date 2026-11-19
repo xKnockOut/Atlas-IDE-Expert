@@ -31,7 +31,7 @@ interface
 uses
   System.SysUtils,
   System.RegularExpressions,
-  Atlas.Core.Tasks.Definitions;
+  Atlas.Core.Tasks.Contract;
 
 type
   TAtlasTaskFinding = record

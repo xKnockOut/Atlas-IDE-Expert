@@ -1,21 +1,7 @@
 # Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von
 # pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.
 adapter-name Atlas.Core.Diagnostics.ModuleHosting TListener IAtlasRegistryListener
-adapter-name Atlas.IDE.Assistants.AiGhost TAiGhostProvider IAtlasGhostProvider
-adapter-name Atlas.IDE.Assistants.AiText TAtlasIdeAiText IAtlasAiText
-adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasCommandSource
-adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasFollowsSaves
-adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasMenuSource
-adapter-name Atlas.IDE.Bookmarks.SavedPlaces TAtlasIdeSavedPlaces IAtlasSavedPlacesSource
 adapter-name Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-adapter-name Atlas.IDE.Debug.AssistantControl TAtlasIdeDebugAssistantControl IAtlasDebugControl
-adapter-name Atlas.IDE.Debug.KnownErrors TAtlasIdeDebugKnownErrorsView IAtlasKnownErrorsView
-adapter-name Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
-adapter-name Atlas.IDE.Debug.Report TAtlasIdeDebugReport IAtlasDebugReportSource
-adapter-name Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
-adapter-name Atlas.IDE.Debug.StopSource TAtlasIdeDebugStopSource IAtlasDebugStopSource
-adapter-name Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
-adapter-name Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
 adapter-name Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
 adapter-name Atlas.IDE.Editor.LearnedSuggestions TLearnedProvider IAtlasGhostProvider
 adapter-name Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
@@ -24,14 +10,8 @@ adapter-name Atlas.IDE.Foundation.EditorFiles TAtlasIdeEditorFiles IAtlasEditorF
 adapter-name Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
 adapter-name Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
 adapter-name Atlas.IDE.Generate.Gallery TGalleryWatch IAtlasRegistryListener
-adapter-name Atlas.IDE.Rules.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
-adapter-name Atlas.IDE.Rules.FindingActions TAtlasIdeRuleActions IAtlasRuleActions
-adapter-name Atlas.IDE.Rules.IdeErrors TAtlasIdeRulesIdeErrors IAtlasIdeErrors
-adapter-name Atlas.IDE.Rules.Settings TAtlasIdeRulesSettings IAtlasSettingsSectionProvider
 adapter-name Atlas.IDE.Settings.ModuleNodes TAtlasModuleNodeWatch IAtlasRegistryListener
 adapter-name Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
-adapter-name Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
-adapter-name Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 adapter-name Atlas.IDE.Tracker.Access TAtlasTrackerAccess IAtlasTrackerAccess
 adapter-name Atlas.IDE.Tracker.CommentAssist TAtlasIdeCommentAssist IAtlasCommentAssist
 adapter-name Atlas.IDE.Tracker.IssueWork TAtlasTrackerIssueWork IAtlasIssueWorkSource
@@ -49,20 +29,38 @@ adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerSprintTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerTestsTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerTileViewLink IAtlasWelcomeTileView
 adapter-name Atlas.IDE.Undo.Target TAtlasIdeUndoTarget IAtlasUndoTarget
-adapter-name Atlas.IDE.VersionControl.Commands TAtlasVcsCommands IAtlasCommandSource
-adapter-name Atlas.IDE.VersionControl.LineChanges TAtlasLineChangesAdapter IAtlasLineChanges
-adapter-name Atlas.IDE.VersionControl.Settings TAtlasIdeVcsSettings IAtlasSettingsSectionProvider
+adapter-name Atlas.IDE.Welcome.Continue TAtlasIdeContinue IAtlasContinueSource
+adapter-name Atlas.IDE.Welcome.ContinueIssues TAtlasIdeContinueIssues IAtlasContinueIssuesSource
+adapter-name Atlas.IDE.Welcome.Discover TAtlasIdeDiscover IAtlasDiscoverSource
+adapter-name Atlas.IDE.Welcome.Help TAtlasIdeHelp IAtlasHelpSource
+adapter-name Atlas.IDE.Welcome.IssueWork TAtlasWelcomeIssueWork IAtlasIssueWork
+adapter-name Atlas.IDE.Welcome.Layouts TAtlasIdeWelcomeLayouts IAtlasWelcomeArrangeSource
+adapter-name Atlas.IDE.Welcome.Listener TAtlasWelcomeListener IAtlasCommandUsageListener
+adapter-name Atlas.IDE.Welcome.Listener TAtlasWelcomeListener IAtlasTaskListener
+adapter-name Atlas.IDE.Welcome.Listener TAtlasWelcomeListener IAtlasTestsListener
+adapter-name Atlas.IDE.Welcome.Projects TAtlasIdeProjects IAtlasProjectsSource
+adapter-name Atlas.IDE.Welcome.Projects TAtlasIdeProjects IAtlasProjectSummaryListener
+adapter-name Atlas.IDE.Welcome.QuickActions TAtlasIdeQuickActions IAtlasQuickActionsSource
+adapter-name Atlas.IDE.Welcome.Registry TAtlasIdeRegistryAccess IAtlasRegistryAccess
+adapter-name Atlas.IDE.Welcome.Settings TAtlasIdeWelcomeSettings IAtlasSettingsSectionProvider
+adapter-name Atlas.IDE.Welcome.Setup TAtlasIdeSetup IAtlasSetupSource
+adapter-name Atlas.IDE.Welcome.State TAtlasIdeWelcomeState IAtlasStateSource
+adapter-name Atlas.IDE.Welcome.Tiles TBoard IAtlasWelcomeBoard
+adapter-name Atlas.IDE.Welcome.Tiles THost IAtlasWelcomeTileHost
+adapter-name Atlas.IDE.Welcome.Tiles TProjects IAtlasWelcomeProjects
+adapter-name Atlas.IDE.Welcome.Trends TAtlasIdeTrends IAtlasTrendsSource
+adapter-name Atlas.IDE.Welcome.Unsaved TAtlasIdeUnsaved IAtlasUnsavedSource
+adapter-name Atlas.IDE.Welcome.WhatsNew TAtlasIdeWhatsNew IAtlasWhatsNewSource
 adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasAccessibleItems
 adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionHiddenView
 adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxView
 adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
 adapter-name Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
-adapter-name Atlas.UI.Rules.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 adapter-name Atlas.UI.Settings.Page.Sections TAtlasSettingsSectionWatch IAtlasRegistryListener
 adapter-name Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
 adapter-name Atlas.UI.Tracker.SettingsBranches TAtlasTrackerBranchProvider IAtlasSettingsSectionProvider
 adapter-name Atlas.UI.Tracker.SettingsSection TAtlasTrackerSettingsSection IAtlasSettingsSection
-adapters-own Atlas.Core.AiProviders.Adapters.Http TAtlasAiHttpClient IAtlasAiHttp
+adapter-name Atlas.UI.Welcome.SettingsSection TAtlasWelcomeSettingsSection IAtlasSettingsSection
 adapters-own Atlas.Core.Ci.Adapters.Credentials TAtlasCiCredentialStore IAtlasCiCredentialStore
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiCancel
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiConditional
@@ -86,20 +84,15 @@ contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBui
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasCompilerMessagesListener
 contract Atlas.IDE.CodeInsight.Composition.Build TNotificationsVerdictListener IAtlasBuildVerdictListener
 contract Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-contract Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
-contract Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
-contract Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
-contract Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
 contract Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
 contract Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
 contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
 contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
-contract Atlas.IDE.Rules.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
+contract Atlas.IDE.Rules.Adapters.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
+contract Atlas.IDE.Rules.Adapters.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 contract Atlas.IDE.Search.Composition TAtlasSearchModule IAtlasTakenActions
 contract Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
-contract Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
 contract Atlas.IDE.Tests.Composition TAtlasTestsModule IAtlasBuildVerdictListener
-contract Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 contract Atlas.IDE.Tracker.Access TAtlasTrackerAccess IAtlasTrackerAccess
 contract Atlas.IDE.Tracker.CommentAssist TAtlasIdeCommentAssist IAtlasCommentAssist
 contract Atlas.IDE.Tracker.Composition TAtlasTrackerModule IAtlasPaletteSourceProvider
@@ -108,25 +101,37 @@ contract Atlas.IDE.Tracker.PaletteSearch TAtlasIdeIssueSearch IAtlasPaletteSourc
 contract Atlas.IDE.Tracker.SprintTile TAtlasIdeSprint IAtlasSprintSource
 contract Atlas.IDE.Tracker.TestResults TAtlasIdeTestResults IAtlasProjectSummaryListener
 contract Atlas.IDE.Tracker.TestResults TAtlasIdeTestResults IAtlasTestResultsSource
-contract Atlas.IDE.Welcome.Adapters.Listener TAtlasWelcomeListener IAtlasCommandUsageListener
-contract Atlas.IDE.Welcome.Adapters.Projects TAtlasIdeProjects IAtlasProjectSummaryListener
+contract Atlas.IDE.Welcome.Continue TAtlasIdeContinue IAtlasContinueSource
+contract Atlas.IDE.Welcome.ContinueIssues TAtlasIdeContinueIssues IAtlasContinueIssuesSource
+contract Atlas.IDE.Welcome.Discover TAtlasIdeDiscover IAtlasDiscoverSource
+contract Atlas.IDE.Welcome.Help TAtlasIdeHelp IAtlasHelpSource
+contract Atlas.IDE.Welcome.Layouts TAtlasIdeWelcomeLayouts IAtlasWelcomeArrangeSource
+contract Atlas.IDE.Welcome.Listener TAtlasWelcomeListener IAtlasCommandUsageListener
+contract Atlas.IDE.Welcome.Projects TAtlasIdeProjects IAtlasProjectsSource
+contract Atlas.IDE.Welcome.Projects TAtlasIdeProjects IAtlasProjectSummaryListener
+contract Atlas.IDE.Welcome.QuickActions TAtlasIdeQuickActions IAtlasQuickActionsSource
+contract Atlas.IDE.Welcome.Registry TAtlasIdeRegistryAccess IAtlasRegistryAccess
+contract Atlas.IDE.Welcome.Setup TAtlasIdeSetup IAtlasSetupSource
+contract Atlas.IDE.Welcome.State TAtlasIdeWelcomeState IAtlasStateSource
+contract Atlas.IDE.Welcome.Trends TAtlasIdeTrends IAtlasTrendsSource
+contract Atlas.IDE.Welcome.Unsaved TAtlasIdeUnsaved IAtlasUnsavedSource
+contract Atlas.IDE.Welcome.WhatsNew TAtlasIdeWhatsNew IAtlasWhatsNewSource
 contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasAccessibleItems
 contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionHiddenView
 contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxView
 contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
 contract Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
-contract Atlas.UI.Rules.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 contract Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
-empty Atlas.Core.AiProviders.Adapters.Http
 empty Atlas.Core.Ci.Adapters.Credentials
 empty Atlas.Core.Ci.Adapters.Http
 empty Atlas.Core.Credentials.Adapters.Windows
 empty Atlas.Core.Files.Adapters.FolderWatcher
 empty Atlas.Core.Lsp.Adapters.ServerProcess
-empty Atlas.Core.Tasks.Adapters.Process
 empty Atlas.Core.Tracker.Adapters.LocalFiles
 empty Atlas.Core.Tracker.Adapters.Shell
 empty Atlas.Core.Undo.Adapters.DiskTarget
 empty Atlas.Core.Undo.Adapters.FileStore
 empty Atlas.Core.Updates.Adapters.HttpSource
 empty Atlas.Core.VersionControl.Adapters.ProcessRunner
+empty Atlas.IDE.Rules.Adapters.BulkFix
+empty Atlas.IDE.Rules.Adapters.SettingsDialog

@@ -26,7 +26,7 @@ uses
   Vcl.Controls,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.Created,
   Atlas.IDE.Designer.Tool;
 
@@ -752,7 +752,7 @@ begin
     Exit;
   end;
   Remember(TAtlasWrapStep.Wrapped, mEditor.FileName, mControls[0].Parent, mRoot, mControls);
-  mSurface := TAtlasIdeDesignSurface.Create(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
+  mSurface := TAtlasIdeDesignSurfaces.Make(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
   mContainer := CreateContainer(mSurface, mClass, mControls[0].Parent, mName, mCaption);
   FState.Container := mContainer.Name;
   PlaceContainer(mContainer, InnerOf(mContainer), FState.ChildBounds,
@@ -812,7 +812,7 @@ begin
       mOffset)];
   end;
   MoveTo(mRoot, mParent, FState.Children, mBounds);
-  mSurface := TAtlasIdeDesignSurface.Create(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
+  mSurface := TAtlasIdeDesignSurfaces.Make(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
   mSurface.DeleteComponent(FState.Container);
   FinishUnwrap(mRoot, mParent);
   TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
@@ -844,7 +844,7 @@ begin
   begin
     Exit;
   end;
-  mSurface := TAtlasIdeDesignSurface.Wrap(TAtlasDesignerAccess.DesignerOf(mEditor));
+  mSurface := TAtlasIdeDesignSurfaces.Wrap(TAtlasDesignerAccess.DesignerOf(mEditor));
   if mSurface = nil then
   begin
     Exit;

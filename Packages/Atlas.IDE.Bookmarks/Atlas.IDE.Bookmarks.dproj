@@ -108,7 +108,7 @@
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickChord.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickColumn.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickPopups.pas"/>
-        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.SavedPlaces.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Adapters.SavedPlaces.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickService.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas"/>

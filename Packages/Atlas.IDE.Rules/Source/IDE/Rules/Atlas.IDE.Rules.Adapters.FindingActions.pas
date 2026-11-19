@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Rules.FindingActions;
+﻿unit Atlas.IDE.Rules.Adapters.FindingActions;
 
 // Regel-Aktionen am Befund im Modul Prüfregeln (#909, #1755). Base fragt laufende Module nach
 // IAtlasRuleActions (Atlas.IDE.Contracts.Rules), aus dem Fenster

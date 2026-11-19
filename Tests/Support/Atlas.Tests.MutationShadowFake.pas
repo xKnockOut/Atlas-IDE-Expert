@@ -11,7 +11,7 @@ interface
 
 uses
   System.Classes,
-  Atlas.Core.Tests.MutationFlow;
+  Atlas.Core.Tests.Contract;
 
 type
   TAtlasMutationShadowFake = class(TInterfacedObject, IAtlasMutationShadowProject)

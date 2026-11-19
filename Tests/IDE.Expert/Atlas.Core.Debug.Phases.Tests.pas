@@ -8,6 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.Phases,
   Atlas.Tests.DebugTargetFake;
 

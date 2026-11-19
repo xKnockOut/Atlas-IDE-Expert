@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Debug.ObjectCountReader;
+﻿unit Atlas.IDE.Debug.Adapters.ProcessMemory;
 
 // Speicher des debuggten Programms für die Objektzählung (#858, experimentell), dünner Adapter auf Windows:
 // Bereiche über VirtualQueryEx, Inhalt über ReadProcessMemory, geöffnet mit PROCESS_QUERY_INFORMATION und
@@ -10,7 +10,7 @@
 interface
 
 uses
-  Atlas.Core.Debug.ObjectCount;
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeProcessMemory = class(TInterfacedObject, IAtlasProcessMemory)

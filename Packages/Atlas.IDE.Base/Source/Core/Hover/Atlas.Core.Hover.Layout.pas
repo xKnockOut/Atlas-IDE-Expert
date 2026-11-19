@@ -87,7 +87,7 @@ uses
   Atlas.Core.Hover.Texts,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Style.Color,
   System.SysUtils,
   System.Math,

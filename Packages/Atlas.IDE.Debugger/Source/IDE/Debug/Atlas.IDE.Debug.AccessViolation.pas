@@ -35,7 +35,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,

@@ -11,8 +11,7 @@ interface
 
 uses
   System.Classes,
-  Atlas.Core.Tasks.Definitions,
-  Atlas.Core.Tasks.RunFlow;
+  Atlas.Core.Tasks.Contract;
 
 type
   TAtlasTaskLauncherFake = class(TInterfacedObject, IAtlasTaskLauncher)

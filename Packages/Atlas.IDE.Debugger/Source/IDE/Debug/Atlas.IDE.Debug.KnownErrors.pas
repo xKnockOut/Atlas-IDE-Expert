@@ -5,8 +5,8 @@
 //     (Tracker-Modul) mit Klasse, Meldung und eigenen Rahmen. Die Antwort
 //     kommt aus dem Zwischenspeicher des Trackers oder später: Der Tracker
 //     sucht im Hintergrund und meldet das Ende über IAtlasKnownErrorsView
-//     (TAtlasIdeDebugKnownErrorsView, über den Scope des Debuggers
-//     bereitgestellt); dann fragt Atlas für den gezeigten Halt erneut.
+//     (Atlas.IDE.Debug.Adapters.KnownErrorsView, über den Scope des Debuggers
+//     bereitgestellt); dann fragt Atlas für den gezeigten Halt erneut (Changed).
 //   - Die Treffer gehen über TAtlasIdeDebugExceptionBar.Known in die
 //     Exception-Leiste, ihre Knöpfe kommen über SetKnownHandler zurück und
 //     gehen an IAtlasKnownErrors.Run.
@@ -17,7 +17,6 @@ interface
 
 uses
   Atlas.Core.KnownErrors.Contract,
-  Atlas.IDE.Contracts.KnownErrors,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.IDE.Debug.Exceptions;
 
@@ -40,16 +39,11 @@ type
     class procedure Changed; static;
   end;
 
-  /// <summary>Empfänger der Meldung des Trackers (IAtlasKnownErrorsView).</summary>
-  TAtlasIdeDebugKnownErrorsView = class(TInterfacedObject, IAtlasKnownErrorsView)
-  public
-    procedure KnownErrorsChanged;
-  end;
-
 implementation
 
 uses
   System.SysUtils,
+  Atlas.IDE.Contracts.KnownErrors,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Debug.KnownErrors,
@@ -153,13 +147,6 @@ begin
   begin
     Ask;
   end;
-end;
-
-{ TAtlasIdeDebugKnownErrorsView }
-
-procedure TAtlasIdeDebugKnownErrorsView.KnownErrorsChanged;
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugKnownErrors.Changed);
 end;
 
 end.

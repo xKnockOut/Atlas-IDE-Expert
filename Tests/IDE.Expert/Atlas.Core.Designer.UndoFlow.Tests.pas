@@ -15,6 +15,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Core.Designer.Undo,
   Atlas.Core.Designer.UndoApply,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.Surface,
   Atlas.Core.Designer.UndoFlow,
   Atlas.Tests.DesignSurfaceFake;

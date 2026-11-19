@@ -1,0 +1,2 @@
+### Geändert
+- Rollen Adapters und Providers in den Modulen Debugger, Designer, Lesezeichen, Build und Tests: Klassen, die einen fremden Vertrag erfüllen (Open Tools API hinter Core-Verträgen, Atlas.IDE.Contracts.*), liegen in eigenen `Adapters`-Units und kommen über die Komposition des Moduls in die übrigen Units; Core-Verträge (`Atlas.Core.Debug.Contract`, `Atlas.Core.Designer.Contract`, `Atlas.Core.Tasks.Contract`, `Atlas.Core.Tests.Contract`, `Atlas.Core.Hover.Contract.DebugValue`) stehen in eigenen Units. Kein sichtbarer Unterschied (#1443).

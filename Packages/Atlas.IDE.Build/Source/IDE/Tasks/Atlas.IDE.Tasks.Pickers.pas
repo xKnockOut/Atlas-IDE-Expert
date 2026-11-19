@@ -10,7 +10,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.IDE.Tasks.Projects;
 
 type
