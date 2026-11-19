@@ -175,6 +175,7 @@ Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
 Atlas.Common.Lsp.AffectedTests.Report.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
+Atlas.Common.Lsp.FindingsPrompt.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
 Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Core.Debug.MethodBreakpoints.Tests
@@ -396,6 +397,7 @@ Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Rules.MessageCatalog.Tests
 Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
+Atlas.Common.Rules.Prompt.Tests
 Atlas.Common.Rules.Profiles.Tests
 Atlas.Common.Rules.Scopes.Tests
 Atlas.Common.Rules.SuppressionStats.Tests
@@ -439,6 +441,7 @@ Atlas.Core.Problems.Findings.Tests
 Atlas.Core.Projects.PathCheck.Tests
 Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
+Atlas.Core.Problems.Prompt.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Hover.Plan.Tests
 Atlas.Core.Hover.IdeHelpInsight.Tests
