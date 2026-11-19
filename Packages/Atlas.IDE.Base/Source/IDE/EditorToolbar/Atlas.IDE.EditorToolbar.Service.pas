@@ -143,8 +143,8 @@ type
     FLastFile: string;
     FLastLine: Integer;
     procedure Tick(Sender: TObject);
-    function ToolbarOn: Boolean;
-    function CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
+    class function ToolbarOn: Boolean; static;
+    class function CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar; static;
     function CreateBar: TAtlasEditorToolbar;
     procedure Place(ABar: TAtlasEditorToolbar; AHost: TWinControl);
     procedure Track(const AView: IOTAEditView; const AFileName: string; ALine: Integer);
@@ -322,12 +322,12 @@ begin
     end);
 end;
 
-function TToolbarState.ToolbarOn: Boolean;
+class function TToolbarState.ToolbarOn: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.EditorToolbar;
 end;
 
-function TToolbarState.CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
+class function TToolbarState.CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
 var
   mIndex: Integer;
 begin

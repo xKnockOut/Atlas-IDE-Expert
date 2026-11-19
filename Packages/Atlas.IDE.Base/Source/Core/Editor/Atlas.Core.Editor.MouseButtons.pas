@@ -20,6 +20,8 @@ type
   TAtlasMouseButtons = class
   public const
     cWmXButtonUp = $020C;
+    /// <summary>Verschiebung zum oberen Wort (HIWORD).</summary>
+    cHighWordShift = 16;
     cWmAppCommand = $0319;
     cXButton1 = 1;
     cXButton2 = 2;
@@ -47,7 +49,7 @@ begin
   Result := TAtlasNavDirection.None;
   if AMessage = cWmXButtonUp then
   begin
-    mCode := (AWParam shr 16) and $FFFF;
+    mCode := (AWParam shr cHighWordShift) and $FFFF;
     if mCode = cXButton1 then
     begin
       Result := TAtlasNavDirection.Back;
@@ -59,7 +61,7 @@ begin
   end
   else if AMessage = cWmAppCommand then
   begin
-    mCode := ((ALParam shr 16) and $FFFF) and not cAppCommandDeviceMask;
+    mCode := ((ALParam shr cHighWordShift) and $FFFF) and not cAppCommandDeviceMask;
     if mCode = cAppCommandBrowserBackward then
     begin
       Result := TAtlasNavDirection.Back;

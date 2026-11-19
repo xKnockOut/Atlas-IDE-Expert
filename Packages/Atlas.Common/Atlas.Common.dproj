@@ -355,6 +355,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeComments.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodMatching.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.BodySpacing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InterfaceMethods.pas"/>
@@ -555,6 +556,8 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.TypeSizes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.VariantRecords.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Defaults.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.FieldOrder.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Includes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Ancestry.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Shadowing.pas"/>

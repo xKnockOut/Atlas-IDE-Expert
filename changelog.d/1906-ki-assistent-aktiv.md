@@ -1,0 +1,2 @@
+### Neu
+- Anzeige „KI-Assistent aktiv“ mit Pause für KI (#1906, `assistants.banner`, Vorgabe an): Ein Feld im Atlas-Statusfeld zeigt, welches Projekt gerade für einen KI-Assistenten gebaut wird oder welche offene Datei er zuletzt geändert hat. Ein Klick darauf oder der Befehl „Pause für KI-Assistenten“ hält KI-Assistenten an: Neue Builds und Änderungen an offenen Dateien lehnt die IDE mit Grund ab, ein laufender Build läuft zu Ende.

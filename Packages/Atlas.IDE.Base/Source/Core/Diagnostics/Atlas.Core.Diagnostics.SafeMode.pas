@@ -697,6 +697,8 @@ const
 /// dann, wie sie war.
 /// </summary>
 procedure WriteFileSafely(const AFileName, AText: string);
+const
+  cNotReplaced = 'Datei des abgesicherten Starts nicht ersetzt';
 var
   mTemp, mBackup: string;
 begin
@@ -722,7 +724,7 @@ begin
     end;
     if TFile.Exists(mTemp) then
     begin
-      raise EInOutError.Create('Datei des abgesicherten Starts nicht ersetzt');
+      raise EInOutError.Create(cNotReplaced);
     end;
   finally
     if TFile.Exists(mTemp) then
