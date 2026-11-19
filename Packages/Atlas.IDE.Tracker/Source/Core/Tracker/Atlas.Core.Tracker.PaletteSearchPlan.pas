@@ -12,8 +12,7 @@ interface
 uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.PaletteSearch;
+  Atlas.Core.Tracker.Contract;
 
 type
 {$SCOPEDENUMS ON}

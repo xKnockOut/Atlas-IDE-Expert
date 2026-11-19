@@ -37,10 +37,10 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
-  Atlas.Core.Tracker.Reopened,
   Atlas.UI.Notifications.Notice,
   Atlas.IDE.Tracker.IssueContext,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Alle Tracker, die abgefragt werden sollen (auch doppelte; gezählt wird je Verbindung).</summary>

@@ -62,7 +62,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.TestSupport,
-  Atlas.Core.Settings.Contract;
+  Atlas.Core.Settings.Contract,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 { TAtlasIssueSettingsTests }
 

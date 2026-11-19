@@ -40,8 +40,11 @@
 // - Reiter „Issues“ (#2052): Arbeitsstand je Issue in
 //   Atlas.IDE.Welcome.ContinueIssueLink (legt die Composition an); WriteState schreibt denselben Stand
 //   dort unter dem aktiven Issue.
-// - Editor und Projekte der IDE: Atlas.IDE.Welcome.Continue.Editor; „Gemerkt“:
-//   Atlas.IDE.Welcome.Continue.Saved.
+// - Der Ablauf (Mitschreiben, Schreiben, Abfragen, Fortsetzen) liegt in
+//   Atlas.Core.Welcome.ContinueWork; die IDE erreicht er über
+//   IAtlasContinueHost (Atlas.IDE.Welcome.Adapters.ContinueHost, legt die
+//   Composition an). Hier bleiben die Beobachter der IDE, der Bereich und
+//   „Gemerkt“ (Atlas.IDE.Welcome.Continue.Saved).
 
 interface
 
@@ -51,11 +54,10 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   DockForm,
-  Atlas.Core.Welcome.Sections,
+  Atlas.Core.Welcome.Contract,
   Atlas.Core.Welcome.Continue,
-  Atlas.Core.Welcome.ContinueQueries,
+  Atlas.Core.Welcome.ContinueWork,
   Atlas.Core.Welcome.Saved,
-  Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.ContinueIssueLink,
   Atlas.Core.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
@@ -106,43 +108,25 @@ type
       Edit: TEditNotifier;
       EditIndex: Integer;
     end;
-
-    /// <summary>Festgehaltene Reiter beim ersten Schließen einer Datei.</summary>
-    TBatch = record
-      Snapshot: TAtlasContinueSnapshot;
-      /// <summary>Letztes Schließen einer Datei und letzter geschriebener Stand.</summary>
-      Ticks: TAtlasContinueTicks;
-    end;
   private
     FMessage: TAtlasMessageSink;
     FNotifiers: TNotifiers;
-    FStopped: Boolean;
-    // Großgeschriebener Pfad → letzte Änderungsstelle dieser Sitzung.
-    FChanges: TDictionary<string, TAtlasWorkTab>;
-    FBatch: TBatch;
-    // Normiertes Ziel → HEAD-Stand und Abfragen; eingehende Commits zum obersten Eintrag.
-    FHeads: TAtlasContinueHeads;
-    FIncoming: TAtlasContinueIncomingQueries;
-    FNotice: string;
+    // Ablauf in Core; die Referenz hält ihn am Leben, solange eine Abfrage läuft.
+    FWork: TAtlasContinueWork;
+    FWorkRef: IInterface;
     // Reiter „Issues“ (#2052); die Referenz hält es am Leben, auch solange Frames es noch kennen.
     FIssues: IInterface;
     procedure Changed;
     function Enabled: Boolean;
-    function Recording: Boolean;
     procedure Modified(const AView: IOTAEditView);
-    procedure Activated;
-    procedure SourceClosing;
-    procedure ProjectOpened(const AFileName: string);
-    procedure ProjectClosing(const AFileName: string);
-    procedure WriteState(const ATarget: string; const ASnapshot: TAtlasContinueSnapshot; AProbe: Boolean);
-    procedure QueryHead(const ATarget: string; AStamp: TDateTime);
-    procedure RefreshIncoming(AForce: Boolean);
     procedure OpenFavorite(const AItem: TAtlasSavedItem);
   public
     /// <summary>Quelle der Schnellaktionen und Seite Versionsverwaltung; setzt die Komposition.</summary>
     Hooks: TAtlasIdeContinueHooks;
-    /// <summary>AMessage: Zeile in die Meldungsansicht; AIssues legt den Reiter „Issues“ an (#2052).</summary>
-    constructor Create(const AMessage: TProc<string>; const AIssues: TAtlasIdeContinueIssuesCreate);
+    /// <summary>AMessage: Zeile in die Meldungsansicht; AHost: die IDE für den Ablauf; AIssues legt den Reiter
+    /// „Issues“ an (#2052).</summary>
+    constructor Create(const AMessage: TProc<string>; const AHost: IAtlasContinueHost;
+      const AIssues: TAtlasIdeContinueIssuesCreate);
     destructor Destroy; override;
     /// <summary>Bereich, Fabrik und Beobachter der IDE anmelden.</summary>
     procedure Start;
@@ -170,45 +154,18 @@ type
 implementation
 
 uses
-  Winapi.Windows,
-  System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Projects.Summary,
+  Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Search,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Foundation.Files,
   Atlas.IDE.Welcome.Neighbors,
-  Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Projects.Summaries,
+  Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.Continue.Saved,
   Atlas.IDE.Welcome.Continue.Commit,
   Atlas.UI.Welcome.Continue;
-
-type
-  /// <summary>Eine HEAD-Abfrage im Hintergrund: Ziel, normierter Schlüssel, Ordner der Zusammenfassungen,
-  /// Beginn (GetTickCount64) und Zeitstempel des eben geschriebenen Stands (0 = nichts nachtragen).</summary>
-  THeadQuery = record
-    Key: string;
-    Target: string;
-    Root: string;
-    Started: UInt64;
-    Stamp: TDateTime;
-  end;
-
-  /// <summary>Eine Abfrage eingehender Commits zum obersten Eintrag.</summary>
-  TIncomingQuery = record
-    Project: string;
-    Dir: string;
-    MainBranch: string;
-    State: TAtlasWorkState;
-    Fetch: Boolean;
-    Stamp: TDateTime;
-    Started: UInt64;
-  end;
 
 { TAtlasIdeContinue.TIdeNotifier }
 
@@ -234,16 +191,16 @@ begin
       begin
         if mCode = ofnFileClosing then
         begin
-          mOwner.SourceClosing;
+          mOwner.FWork.SourceClosing;
         end;
       end
       else if mCode = ofnFileOpened then
       begin
-        mOwner.ProjectOpened(mName);
+        mOwner.FWork.ProjectOpened(mName);
       end
       else
       begin
-        mOwner.ProjectClosing(mName);
+        mOwner.FWork.ProjectClosing(mName);
       end;
     end);
 end;
@@ -289,7 +246,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mOwner.Activated;
+      mOwner.FWork.Activated;
     end);
 end;
 
@@ -325,181 +282,37 @@ procedure TAtlasIdeContinue.TEditNotifier.DockFormRefresh(const EditWindow: INTA
 begin
 end;
 
-{ Hilfen }
-
-function NowUtc: TDateTime;
-begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-function Key(const APath: string): string;
-begin
-  Result := TAtlasProjectSummaries.NormalizedPath(APath);
-end;
-
-/// <summary>Oberster Eintrag; leer ohne.</summary>
-function Top(ASelf: TAtlasIdeContinue): TAtlasContinueEntry;
-var
-  mList: TAtlasContinueEntries;
-begin
-  Result := Default(TAtlasContinueEntry);
-  mList := ASelf.Entries;
-  if Length(mList) > 0 then
-  begin
-    Result := mList[0];
-  end;
-end;
-
-/// <summary>HEAD aus AHead in AState übernehmen.</summary>
-procedure TakeHead(var AState: TAtlasWorkState; const AHead: TAtlasWorkState);
-begin
-  AState.VcsKind := AHead.VcsKind;
-  AState.Head := AHead.Head;
-  AState.Upstream := AHead.Upstream;
-  AState.UpstreamRevision := AHead.UpstreamRevision;
-end;
-
-/// <summary>Nach dem Schließen: HEAD in den eben geschriebenen Stand nachtragen (nur, wenn es noch derselbe ist).
-/// </summary>
-procedure StoreHead(const AQuery: THeadQuery; const AHead: TAtlasWorkState);
-var
-  mStamp: TDateTime;
-  mHead: TAtlasWorkState;
-begin
-  mStamp := AQuery.Stamp;
-  mHead := AHead;
-  TAtlasProjectSummaries.Update(AQuery.Root, AQuery.Target,
-    procedure(var ASummary: TAtlasProjectSummary)
-    var
-      mStored: TAtlasWorkState;
-    begin
-      if not TAtlasWelcomeContinue.Read(ASummary, mStored) or (Abs(mStored.At - mStamp) > OneSecond) then
-      begin
-        Exit;
-      end;
-      TakeHead(mStored, mHead);
-      TAtlasWelcomeContinue.Write(ASummary, mStored);
-    end);
-end;
-
-/// <summary>Hauptbranch des Projekts (#1286) für Branches ohne verfolgten Branch; .atlas und Gruppe im
-/// Hauptthread.</summary>
-function MainBranchFor(const AProject: string): string;
-begin
-  if SameText(ExtractFileExt(AProject), '.groupproj') then
-  begin
-    Result := TAtlasIdeVcs.MainBranchOf(AProject, AProject);
-  end
-  else
-  begin
-    Result := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
-  end;
-end;
-
-/// <summary>Abfrage eingehender Commits für den obersten Eintrag fällig (AEntry); nicht bei laufender Abfrage
-/// oder (ohne AForce) frischem Ergebnis.</summary>
-function IncomingDue(ASelf: TAtlasIdeContinue; AQueries: TAtlasContinueIncomingQueries; AEnabled, AForce: Boolean;
-  out AEntry: TAtlasContinueEntry): Boolean;
-begin
-  AEntry := Default(TAtlasContinueEntry);
-  Result := AEnabled and TAtlasIdeSettings.Current.WelcomePageContinueIncoming and
-    not AQueries.Running(GetTickCount64);
-  if Result then
-  begin
-    AEntry := Top(ASelf);
-    Result := AEntry.Project <> '';
-  end;
-  if Result then
-  begin
-    Result := AQueries.Due(AForce, AEntry.Project, GetTickCount64);
-  end;
-end;
-
-/// <summary>Im Hintergrund: eingehende Commits abfragen; fetch mit eigenem Zeitlimit, Zugangsdaten fragt der
-/// Anbieter nie ab.</summary>
-function ProbeIncoming(const AQuery: TIncomingQuery; out AFound: TAtlasContinueIncoming): Boolean;
-var
-  mProbe: TAtlasContinueProbe;
-begin
-  mProbe := TAtlasContinueProbe.Create(AQuery.Project, AQuery.MainBranch, AQuery.State, AQuery.Stamp);
-  if AQuery.Fetch then
-  begin
-    Result := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(AQuery.Dir,
-      TAtlasWelcomeContinue.cCallTimeoutMs), TAtlasIdeVcs.ForFolder(AQuery.Dir, TAtlasWelcomeContinue.cFetchTimeoutMs),
-      mProbe, AFound);
-  end
-  else
-  begin
-    Result := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(AQuery.Dir,
-      TAtlasWelcomeContinue.cCallTimeoutMs), nil, mProbe, AFound);
-  end;
-end;
-
-/// <summary>Gespeicherter Stand des Projekts AProject mit Reitern; sonst False mit Meldung.</summary>
-function ResumeState(AEnabled: Boolean; const AMessage: TAtlasMessageSink; const AProject: string;
-  out AState: TAtlasWorkState): Boolean;
-var
-  mSummary: TAtlasProjectSummary;
-begin
-  Result := False;
-  AState := TAtlasWorkState.Empty;
-  if not AEnabled then
-  begin
-    AMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
-  end
-  else if not TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, mSummary) or
-    not TAtlasWelcomeContinue.Read(mSummary, AState) or (AState.TabCount = 0) then
-  begin
-    AMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
-  end
-  else if not FileExists(AProject) then
-  begin
-    AMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
-  end
-  else
-  begin
-    Result := True;
-  end;
-end;
-
-/// <summary>Hinweis auf fehlende Dateien beim Fortsetzen; '' ohne.</summary>
-function MissingNotice(const AMissing: TArray<string>): string;
-begin
-  Result := '';
-  if Length(AMissing) > 0 then
-  begin
-    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMissing,
-      [TAtlasContinueSession.MissingNames(AMissing)]);
-  end;
-end;
-
 { TAtlasIdeContinue }
 
-constructor TAtlasIdeContinue.Create(const AMessage: TProc<string>; const AIssues: TAtlasIdeContinueIssuesCreate);
+constructor TAtlasIdeContinue.Create(const AMessage: TProc<string>; const AHost: IAtlasContinueHost;
+  const AIssues: TAtlasIdeContinueIssuesCreate);
 begin
   inherited Create;
   FMessage := TAtlasMessageSink.Create(AMessage);
   FNotifiers.IdeIndex := -1;
   FNotifiers.EditIndex := -1;
-  FChanges := TDictionary<string, TAtlasWorkTab>.Create;
-  FHeads := TAtlasContinueHeads.Create;
-  FIncoming := TAtlasContinueIncomingQueries.Create;
-  FIssues := AIssues(AMessage, FChanges, Changed);
+  FWork := TAtlasContinueWork.Create(AHost);
+  FWorkRef := FWork;
+  FIssues := AIssues(AMessage, FWork.Changes, Changed);
+  FWork.OnWritten :=
+    procedure(ATarget: string; ASnapshot: TAtlasContinueSnapshot)
+    begin
+      Issues.ProjectWritten(ATarget, ASnapshot);
+    end;
 end;
 
 destructor TAtlasIdeContinue.Destroy;
 begin
   Stop;
   FIssues := nil;
-  FIncoming.Free;
-  FHeads.Free;
-  FChanges.Free;
+  FWork := nil;
+  FWorkRef := nil;
   inherited;
 end;
 
 procedure TAtlasIdeContinue.Changed;
 begin
-  if not FStopped then
+  if not FWork.Stopped then
   begin
     TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cContinue);
   end;
@@ -507,243 +320,16 @@ end;
 
 function TAtlasIdeContinue.Enabled: Boolean;
 begin
-  Result := not FStopped and TAtlasIdeSettings.Current.WelcomePageContinue;
-end;
-
-function TAtlasIdeContinue.Recording: Boolean;
-begin
-  // Ohne Willkommensseite gibt es den Bereich nicht: dann auch nichts mitschreiben.
-  Result := Enabled and TAtlasIdeSettings.Current.WelcomePage;
+  Result := FWork.Enabled;
 end;
 
 procedure TAtlasIdeContinue.Modified(const AView: IOTAEditView);
-var
-  mTab: TAtlasWorkTab;
 begin
-  if not Recording or (AView.Buffer = nil) or (AView.Buffer.FileName = '') then
+  if (AView.Buffer = nil) or (AView.Buffer.FileName = '') then
   begin
     Exit;
   end;
-  // Nur die Stelle merken (bei jedem Tastendruck): Methode erst beim Festhalten der Reiter.
-  mTab := TAtlasWorkTab.Create(AView.Buffer.FileName, AView.CursorPos.Line, AView.CursorPos.Col);
-  mTab.Changed := True;
-  mTab.ChangedAt := NowUtc;
-  FChanges.AddOrSetValue(AnsiUpperCase(mTab.FileName), mTab);
-end;
-
-procedure TAtlasIdeContinue.Activated;
-var
-  mTarget: string;
-begin
-  // HEAD beim Arbeiten aktuell halten (höchstens einmal je Minute), damit er beim Beenden bekannt ist.
-  if not Recording or not TAtlasIdeSettings.Current.WelcomePageContinueIncoming then
-  begin
-    Exit;
-  end;
-  mTarget := TAtlasIdeContinueEditor.CurrentTarget;
-  if (mTarget = '') or FHeads.Recent(Key(mTarget), GetTickCount64, TAtlasWelcomeContinue.cRefreshMs) then
-  begin
-    Exit;
-  end;
-  QueryHead(mTarget, 0);
-end;
-
-procedure TAtlasIdeContinue.SourceClosing;
-begin
-  if not Recording then
-  begin
-    Exit;
-  end;
-  // Erste Datei einer Folge: Reiter festhalten, solange sie noch alle offen sind.
-  if TAtlasContinueSession.HoldTabs(FBatch.Ticks, GetTickCount64) then
-  begin
-    FBatch.Snapshot := TAtlasIdeContinueEditor.TakeSnapshot(FChanges);
-  end;
-  FBatch.Ticks.Held := GetTickCount64;
-end;
-
-procedure TAtlasIdeContinue.ProjectOpened(const AFileName: string);
-var
-  mTarget: string;
-begin
-  if not Recording then
-  begin
-    Exit;
-  end;
-  mTarget := TAtlasIdeContinueEditor.TargetOf(AFileName);
-  if mTarget <> '' then
-  begin
-    QueryHead(mTarget, 0);
-  end;
-end;
-
-procedure TAtlasIdeContinue.ProjectClosing(const AFileName: string);
-var
-  mTarget: string;
-  mSnapshot: TAtlasContinueSnapshot;
-  mStep: TAtlasContinueCloseStep;
-begin
-  if not Recording then
-  begin
-    Exit;
-  end;
-  // Gruppe und ihre Projekte melden sich einzeln: einmal je Schließen schreiben.
-  mStep := TAtlasContinueSession.CloseStep(FBatch.Ticks, GetTickCount64);
-  mTarget := TAtlasIdeContinueEditor.TargetOf(AFileName);
-  if (mStep = TAtlasContinueCloseStep.Skip) or (mTarget = '') then
-  begin
-    Exit;
-  end;
-  if mStep = TAtlasContinueCloseStep.UseHeld then
-  begin
-    mSnapshot := FBatch.Snapshot;
-  end
-  else
-  begin
-    mSnapshot := TAtlasIdeContinueEditor.TakeSnapshot(FChanges);
-  end;
-  WriteState(mTarget, mSnapshot, True);
-end;
-
-procedure TAtlasIdeContinue.WriteState(const ATarget: string; const ASnapshot: TAtlasContinueSnapshot;
-  AProbe: Boolean);
-var
-  mOld, mState, mHead: TAtlasWorkState;
-  mSummary: TAtlasProjectSummary;
-  mStamp: TDateTime;
-  mRoot, mTargetKey: string;
-begin
-  // Ohne offene Reiter bleibt der vorige Stand (z. B. alles schon geschlossen).
-  if Length(ASnapshot.Tabs) = 0 then
-  begin
-    Exit;
-  end;
-  mRoot := TAtlasIdeProjectSummaries.Folder;
-  mTargetKey := Key(ATarget);
-  mStamp := NowUtc;
-  mOld := TAtlasWorkState.Empty;
-  if TAtlasProjectSummaries.Load(mRoot, ATarget, mSummary) then
-  begin
-    TAtlasWelcomeContinue.Read(mSummary, mOld);
-  end;
-  mState := TAtlasWelcomeContinue.Build(ASnapshot.Tabs, ASnapshot.Active, FChanges.Values.ToArray, mOld, mStamp);
-  if FHeads.TryHead(mTargetKey, mHead) then
-  begin
-    TakeHead(mState, mHead);
-  end;
-  TAtlasProjectSummaries.Update(mRoot, ATarget,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      TAtlasWelcomeContinue.Write(ASummary, mState);
-    end);
-  // Derselbe Stand unter dem aktiven Issue (#2052), solange die Änderungen dieser Sitzung noch da sind.
-  Issues.ProjectWritten(ATarget, ASnapshot);
-  FBatch.Ticks.Written := GetTickCount64;
-  FBatch.Ticks.Held := 0;
-  FBatch.Snapshot := Default(TAtlasContinueSnapshot);
-  // Neue Sitzung: Änderungen gehören zum geschriebenen Stand.
-  FChanges.Clear;
-  FIncoming.Outdate(ATarget);
-  // HEAD frisch abfragen und nachtragen; beim Beenden der IDE weder Abfrage noch neues Zeichnen.
-  if not AProbe then
-  begin
-    Exit;
-  end;
-  QueryHead(ATarget, mStamp);
-  Changed;
-end;
-
-procedure TAtlasIdeContinue.QueryHead(const ATarget: string; AStamp: TDateTime);
-var
-  mKeep: IAtlasContinueSource;
-  mQuery: THeadQuery;
-  mDir: string;
-  mOk: Boolean;
-  mHead: TAtlasWorkState;
-begin
-  if FStopped or (ATarget = '') then
-  begin
-    Exit;
-  end;
-  mQuery := Default(THeadQuery);
-  mQuery.Key := Key(ATarget);
-  if FHeads.Querying(mQuery.Key, GetTickCount64) then
-  begin
-    Exit;
-  end;
-  mQuery.Target := ATarget;
-  mQuery.Root := TAtlasIdeProjectSummaries.Folder;
-  mQuery.Started := GetTickCount64;
-  mQuery.Stamp := AStamp;
-  FHeads.Started(mQuery.Key, mQuery.Started);
-  mKeep := Self;
-  mDir := ExtractFileDir(ATarget);
-  mOk := False;
-  mHead := TAtlasWorkState.Empty;
-  if not TAtlasIdeVcs.Run(
-    procedure
-    begin
-      mOk := TAtlasWelcomeContinue.ProbeHead(TAtlasIdeVcs.ForFolder(mDir, TAtlasWelcomeContinue.cCallTimeoutMs),
-        mHead);
-    end,
-    procedure
-    begin
-      if (mKeep = nil) or FStopped then
-      begin
-        Exit;
-      end;
-      FHeads.Arrived(mQuery.Key, mQuery.Started, GetTickCount64, mOk, mHead);
-      if mOk and (mQuery.Stamp > 0) then
-      begin
-        StoreHead(mQuery, mHead);
-        Changed;
-      end;
-    end) then
-  begin
-    FHeads.NotStarted(mQuery.Key, GetTickCount64);
-  end;
-end;
-
-procedure TAtlasIdeContinue.RefreshIncoming(AForce: Boolean);
-var
-  mKeep: IAtlasContinueSource;
-  mEntry: TAtlasContinueEntry;
-  mQuery: TIncomingQuery;
-  mOk: Boolean;
-  mFound: TAtlasContinueIncoming;
-begin
-  if not IncomingDue(Self, FIncoming, Enabled, AForce, mEntry) then
-  begin
-    Exit;
-  end;
-  mKeep := Self;
-  mQuery := Default(TIncomingQuery);
-  mQuery.Project := mEntry.Project;
-  mQuery.State := mEntry.State;
-  mQuery.Dir := ExtractFileDir(mEntry.Project);
-  mQuery.MainBranch := MainBranchFor(mEntry.Project);
-  mQuery.Fetch := TAtlasIdeSettings.Current.WelcomePageContinueFetch;
-  mQuery.Stamp := NowUtc;
-  mQuery.Started := GetTickCount64;
-  mOk := False;
-  mFound := Default(TAtlasContinueIncoming);
-  FIncoming.Started(mQuery.Project, mQuery.Started);
-  if not TAtlasIdeVcs.Run(
-    procedure
-    begin
-      mOk := ProbeIncoming(mQuery, mFound);
-    end,
-    procedure
-    begin
-      if (mKeep <> nil) and not FStopped and
-        FIncoming.Arrived(mQuery.Project, mQuery.Started, GetTickCount64, mOk, mFound) then
-      begin
-        Changed;
-      end;
-    end) then
-  begin
-    FIncoming.NotStarted(GetTickCount64);
-  end;
+  FWork.Modified(AView.Buffer.FileName, AView.CursorPos.Line, AView.CursorPos.Col);
 end;
 
 procedure TAtlasIdeContinue.OpenFavorite(const AItem: TAtlasSavedItem);
@@ -765,7 +351,6 @@ var
   mEditors: IOTAEditorServices;
   mKeep: IAtlasContinueSource;
 begin
-  FStopped := False;
   mKeep := Self;
   TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cContinue,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
@@ -794,37 +379,26 @@ begin
     FNotifiers.EditIndex := mEditors.AddNotifier(FNotifiers.Edit);
   end;
   // Plugin nach dem Öffnen eines Projekts geladen: HEAD trotzdem kennen.
-  if Recording then
-  begin
-    QueryHead(TAtlasIdeContinueEditor.CurrentTarget, 0);
-  end;
+  FWork.Started;
 end;
 
 procedure TAtlasIdeContinue.Stop;
 var
   mServices: IOTAServices;
   mEditors: IOTAEditorServices;
-  mTarget: string;
 begin
-  if FStopped then
+  if (FWork = nil) or FWork.Stopped then
   begin
     Exit;
   end;
-  // Beenden der IDE: Ist das Projekt noch offen (kein Schließen gemeldet), jetzt schreiben, ohne Abfrage.
+  // Beenden der IDE: Ist das Projekt noch offen (kein Schließen gemeldet), schreibt der Ablauf jetzt.
   try
-    if Recording and TAtlasContinueSession.WriteOnStop(FBatch.Ticks, GetTickCount64) then
-    begin
-      mTarget := TAtlasIdeContinueEditor.CurrentTarget;
-      if mTarget <> '' then
-      begin
-        WriteState(mTarget, TAtlasIdeContinueEditor.TakeSnapshot(FChanges), False);
-      end;
-    end;
+    FWork.Stop;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
-  FStopped := True;
+  FWork.OnWritten := nil;
   Issues.Stop;
   Hooks.OnServerAccess := nil;
   if FNotifiers.Ide <> nil then
@@ -864,21 +438,12 @@ begin
 end;
 
 procedure TAtlasIdeContinue.ResumeLatest;
-var
-  mEntry: TAtlasContinueEntry;
 begin
-  if not Enabled then
-  begin
-    FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
-    Exit;
-  end;
-  mEntry := Top(Self);
-  if mEntry.Project = '' then
-  begin
-    FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
-    Exit;
-  end;
-  Resume(mEntry.Project);
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      FWork.ResumeLatest;
+    end);
 end;
 
 function TAtlasIdeContinue.Issues: TAtlasIdeContinueIssueLink;
@@ -887,54 +452,18 @@ begin
 end;
 
 function TAtlasIdeContinue.Entries: TAtlasContinueEntries;
-var
-  mRecent: TArray<string>;
-  mRoot: string;
 begin
-  Result := nil;
-  if not Enabled then
-  begin
-    Exit;
-  end;
-  mRecent := nil;
-  try
-    mRecent := TAtlasIdeWelcomeSearch.ClosedProjects;
-  except
-    // Registry nicht lesbar: leere Liste statt eines Fehlers in der Willkommensseite.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-  end;
-  mRoot := TAtlasIdeProjectSummaries.Folder;
-  Result := TAtlasWelcomeContinue.Entries(mRecent,
-    function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
-    begin
-      Result := TAtlasProjectSummaries.Load(mRoot, AProject, ASummary);
-    end,
-    TAtlasIdeSettings.Current.WelcomePageContinueCount);
+  Result := FWork.Entries;
 end;
 
 function TAtlasIdeContinue.Incoming: TAtlasContinueIncoming;
 begin
-  Result := Default(TAtlasContinueIncoming);
-  if not Enabled or not TAtlasIdeSettings.Current.WelcomePageContinueIncoming then
-  begin
-    Exit;
-  end;
-  Result := FIncoming.Current(Top(Self).Project);
+  Result := FWork.Incoming;
 end;
 
 function TAtlasIdeContinue.IncomingQuerying: Boolean;
-var
-  mEntry: TAtlasContinueEntry;
 begin
-  Result := False;
-  if not Enabled or not TAtlasIdeSettings.Current.WelcomePageContinueIncoming or
-    not FIncoming.Running(GetTickCount64) then
-  begin
-    Exit;
-  end;
-  mEntry := Top(Self);
-  Result := (mEntry.Project <> '') and FIncoming.Concerns(mEntry.Project);
+  Result := FWork.IncomingQuerying;
 end;
 
 function TAtlasIdeContinue.SavedEnabled: Boolean;
@@ -953,11 +482,7 @@ end;
 
 function TAtlasIdeContinue.Notice: string;
 begin
-  Result := '';
-  if Enabled then
-  begin
-    Result := FNotice;
-  end;
+  Result := FWork.Notice;
 end;
 
 procedure TAtlasIdeContinue.Resume(const AProject: string);
@@ -967,36 +492,8 @@ begin
   mProject := AProject;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
-    var
-      State: TAtlasWorkState;
-      Plan: TAtlasContinuePlan;
-      Tab: TAtlasWorkTab;
     begin
-      if not ResumeState(Enabled, FMessage, mProject, State) then
-      begin
-        Exit;
-      end;
-      Plan := TAtlasWelcomeContinue.Plan(mProject, State,
-        function(const AFileName: string): Boolean
-        begin
-          Result := FileExists(AFileName);
-        end);
-      FNotice := MissingNotice(Plan.Missing);
-      if FNotice <> '' then
-      begin
-        FMessage.Say(FNotice);
-      end;
-      TAtlasIdeContinueEditor.EnsureProject(mProject);
-      // Reiter in ihrer Reihenfolge; danach den zuvor aktiven noch einmal, damit er vorn liegt.
-      for Tab in Plan.Open do
-      begin
-        TAtlasIdeContinueEditor.OpenTab(Tab);
-      end;
-      if TAtlasContinueSession.ActiveInPlan(Plan.Active, Length(Plan.Open)) then
-      begin
-        TAtlasIdeContinueEditor.OpenTab(Plan.Open[Plan.Active]);
-      end;
-      Changed;
+      FWork.Resume(mProject);
     end);
 end;
 
@@ -1008,7 +505,7 @@ begin
   TAtlasIdeContinueCommit.Show(AProject, ACommit,
     function: Boolean
     begin
-      Result := (mKeep <> nil) and not FStopped;
+      Result := (mKeep <> nil) and not FWork.Stopped;
     end, FMessage);
 end;
 
@@ -1059,19 +556,19 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      if FStopped or not Assigned(Hooks.OnServerAccess) or (mFolder = '') then
+      if FWork.Stopped or not Assigned(Hooks.OnServerAccess) or (mFolder = '') then
       begin
         Exit;
       end;
       Hooks.OnServerAccess(mFolder);
       // Nach dem Dialog (vielleicht angemeldet): eingehende Commits neu abfragen.
-      RefreshIncoming(True);
+      FWork.RefreshIncoming(True);
     end);
 end;
 
 procedure TAtlasIdeContinue.Shown;
 begin
-  RefreshIncoming(False);
+  FWork.RefreshIncoming(False);
 end;
 
 end.

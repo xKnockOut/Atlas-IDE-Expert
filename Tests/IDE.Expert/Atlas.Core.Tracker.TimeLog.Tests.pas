@@ -125,7 +125,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.Providers.LocalFiles,
   Atlas.Core.Tracker.YouTrackApi;
 
 type

@@ -1,9 +1,9 @@
 {
   "version": 1,
   "findings": [
-    {"path": "Source/Core/Ci/Atlas.Core.Ci.Adapters.Credentials.pas", "rule": "hardcoded-string", "fingerprint": "06c7b986", "count": 1, "routine": "TAtlasCiCredentials.Write", "context": "bab5a6ef"},
-    {"path": "Source/Core/Ci/Atlas.Core.Ci.Adapters.Http.pas", "rule": "hardcoded-string", "fingerprint": "158c90ee", "count": 1, "routine": "TAtlasCiHttpTransport.TRequest.Create", "context": "585cde51"},
-    {"path": "Source/Core/Ci/Atlas.Core.Ci.Adapters.Http.pas", "rule": "magic-number", "fingerprint": "65341627", "count": 5, "routine": "IsRedirect", "context": "2e229fb4"},
+    {"path": "Source/Core/Ci/Atlas.Core.Ci.Providers.Credentials.pas", "rule": "hardcoded-string", "fingerprint": "06c7b986", "count": 1, "routine": "TAtlasCiCredentials.Write", "context": "bab5a6ef"},
+    {"path": "Source/Core/Ci/Atlas.Core.Ci.Providers.Http.pas", "rule": "hardcoded-string", "fingerprint": "158c90ee", "count": 1, "routine": "TAtlasCiHttpTransport.TRequest.Create", "context": "585cde51"},
+    {"path": "Source/Core/Ci/Atlas.Core.Ci.Providers.Http.pas", "rule": "magic-number", "fingerprint": "65341627", "count": 5, "routine": "IsRedirect", "context": "2e229fb4"},
     {"path": "Source/Core/Ci/Atlas.Core.Ci.Internals.Addresses.pas", "rule": "magic-number", "fingerprint": "003e88e9", "count": 1, "routine": "TAtlasCiAddresses.HostOf", "context": "efbf03cc"},
     {"path": "Source/Core/Ci/Atlas.Core.Ci.Providers.Jenkins.pas", "rule": "magic-number", "fingerprint": "52a7caa7", "count": 1, "routine": "TAtlasJenkinsProvider.ErrorOfStatus", "context": "a4b5ba37"},
     {"path": "Source/Core/Ci/Atlas.Core.Ci.Providers.Jenkins.pas", "rule": "magic-number", "fingerprint": "a3ebcd89", "count": 2, "routine": "TAtlasJenkinsProvider.ErrorOfStatus", "context": "6572c76a"},

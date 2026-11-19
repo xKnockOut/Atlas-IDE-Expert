@@ -74,6 +74,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Contract.MyIssues,
   Atlas.Core.Tracker.MyIssues;
 
 const

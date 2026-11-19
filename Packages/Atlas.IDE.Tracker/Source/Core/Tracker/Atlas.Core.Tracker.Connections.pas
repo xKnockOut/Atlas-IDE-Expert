@@ -19,8 +19,6 @@
 //   Bei geprüftem Token erkennt sie auch die Sprache der Oberfläche
 //   (YouTrack, #1263); die Seite merkt sie an der Verbindung ("language"),
 //   damit die Vorgabe „Mir zugewiesen“ in dieser Sprache gilt.
-// - IAtlasTrackerAccess: Anbieter, Token und Transport für Optionsseite und
-//   „Meine Issues“; setzt die Komposition um (Anmeldespeicher, Dialog).
 // - Zustand beim Beginnen und Beenden (#1266): je Verbindung optional
 //   stateField, assigneeField, startState, endStates und endFields (#2123),
 //   dazu reviewStates (#2126, #2127) und für GitHub githubStateTarget,
@@ -104,25 +102,6 @@ type
       AHttpStatus: Integer): TAtlasTrackerTokenStatus; static;
     /// <summary>Ohne Prüfung: gespeichert oder fehlt.</summary>
     class function Stored(AHasToken: Boolean): TAtlasTrackerTokenStatus; static;
-  end;
-
-  /// <summary>Anbieter, Token und Transport; setzt die Komposition um. Token nie im Protokoll.</summary>
-  IAtlasTrackerAccess = interface
-    ['{4C7E2A91-8B3D-4F06-9E15-A2D6C8B04F73}']
-    /// <summary>Alle Anbieter in fester Reihenfolge (Auswahl der Optionsseite).</summary>
-    function Providers: TArray<IAtlasTrackerProvider>;
-    /// <summary>Anbieter zum Namen; nil, wenn es ihn nicht gibt.</summary>
-    function Provider(const AName: string): IAtlasTrackerProvider;
-    /// <summary>Im Anmeldespeicher steht ein Token für den Server von ATarget.</summary>
-    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
-    /// <summary>Token abfragen (verdeckter Dialog) und speichern, leer entfernt es; nur über https. True, wenn
-    /// sich etwas geändert hat.</summary>
-    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-    /// <summary>Token des Servers entfernen; True auch, wenn es keins gab.</summary>
-    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
-    /// <summary>Transport mit dem Token, das nur an AProvider.ApiServer geht; nil ohne Token. Im Hintergrund
-    /// erlaubt.</summary>
-    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
   end;
 
   TAtlasTrackerConnections = class

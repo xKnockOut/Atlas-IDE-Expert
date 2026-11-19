@@ -20,7 +20,7 @@ uses
   Vcl.Controls,
   Vcl.Menus,
   Vcl.StdCtrls,
-  Atlas.Core.Tracker.MyIssues;
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   TAtlasTrackerProjectPicker = class

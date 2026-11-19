@@ -10,8 +10,7 @@
 interface
 
 uses
-  Atlas.Core.Tracker.Queries,
-  Atlas.Core.Tracker.MyIssues;
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
 {$SCOPEDENUMS ON}
@@ -50,7 +49,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Tracker.MyIssues;
 
 class function TAtlasMyIssuesPlan.CommonQueries(const AQueries,
   AOther: TArray<TAtlasTrackerQuery>): TArray<TAtlasTrackerQuery>;

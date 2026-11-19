@@ -45,7 +45,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.Core.Tracker.CommentKeyPlan;
+  Atlas.Core.Tracker.CommentKeyPlan,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   TAtlasCommentEditor = class;
@@ -261,7 +262,6 @@ uses
   System.UITypes,
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Markdown,
-  Atlas.Core.Tracker.PaletteSearch,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.DocBox;
 

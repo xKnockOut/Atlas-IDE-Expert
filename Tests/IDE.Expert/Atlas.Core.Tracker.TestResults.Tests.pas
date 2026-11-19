@@ -79,7 +79,8 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
-  Atlas.Core.Settings.Contract;
+  Atlas.Core.Settings.Contract,
+  Atlas.Core.Tracker.Contract.TestResults;
 
 const
   cTestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';

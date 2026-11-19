@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Tracker.KnownErrors;
+﻿unit Atlas.IDE.Tracker.Adapters.KnownErrors;
 
 // Bekannte Fehler beim Exception-Halt (#2460), Teil des Trackers, über den
 // Vertrag Atlas.IDE.Contracts.KnownErrors (Debugger und Tracker kennen sich

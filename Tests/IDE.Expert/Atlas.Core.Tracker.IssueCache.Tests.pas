@@ -46,7 +46,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles;
 
 const
   cNow = 46323.5;

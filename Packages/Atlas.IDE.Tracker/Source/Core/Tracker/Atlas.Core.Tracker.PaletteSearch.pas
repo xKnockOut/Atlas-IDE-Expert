@@ -27,24 +27,6 @@ uses
   Atlas.Core.Tracker.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>None: Befehle; Recent: zuletzt geöffnete; Key: eine Kennung; Text: Freitextsuche.</summary>
-  TAtlasIssueSearchKind = (None, Recent, Key, Text);
-{$SCOPEDENUMS OFF}
-
-  TAtlasIssueSearchQuery = record
-    Kind: TAtlasIssueSearchKind;
-    /// <summary>Key: Kennung wie im Tracker ("ATL-12", "#42").</summary>
-    Key: string;
-    /// <summary>Text: Suchtext ohne Auslöser ("Speicherleck").</summary>
-    Text: string;
-    class function None: TAtlasIssueSearchQuery; static;
-    /// <summary>Gleiche Anfrage (Art, Kennung, Text ohne Groß-/Kleinschreibung).</summary>
-    function SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
-    /// <summary>Text, dessen Zeichen in den Zeilen hervorgehoben werden.</summary>
-    function Highlight: string;
-  end;
-
   TAtlasIssuePaletteSearch = class
   public const
     /// <summary>Höchstens so viele Treffer je Suche.</summary>
@@ -136,32 +118,6 @@ uses
   System.StrUtils,
   System.JSON,
   Atlas.Text.Chars;
-
-{ TAtlasIssueSearchQuery }
-
-class function TAtlasIssueSearchQuery.None: TAtlasIssueSearchQuery;
-begin
-  Result.Kind := TAtlasIssueSearchKind.None;
-  Result.Key := '';
-  Result.Text := '';
-end;
-
-function TAtlasIssueSearchQuery.SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
-begin
-  Result := (Kind = AOther.Kind) and SameText(Key, AOther.Key) and SameText(Text, AOther.Text);
-end;
-
-function TAtlasIssueSearchQuery.Highlight: string;
-begin
-  case Kind of
-    TAtlasIssueSearchKind.Key:
-      Result := Key;
-    TAtlasIssueSearchKind.Text:
-      Result := Text;
-  else
-    Result := '';
-  end;
-end;
 
 { TAtlasIssuePaletteSearch }
 

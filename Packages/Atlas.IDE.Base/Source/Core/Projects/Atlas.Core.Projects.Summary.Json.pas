@@ -24,6 +24,9 @@ procedure AddTime(AObject: TJSONObject; const AName: string; AUtc: TDateTime);
 function SummaryTimeText(AUtc: TDateTime): string;
 /// <summary>Umkehrung von SummaryTimeText; Bruchteile und Zeitzone "Z" erlaubt; 0 bei ungültigem Text.</summary>
 function SummaryTimeOf(const AText: string): TDateTime;
+/// <summary>Schlüssel eines Projektpfads: getrimmt, „/“ als „\“, a–z groß (Pfade unter Windows ohne Rücksicht
+/// auf Groß- und Kleinschreibung).</summary>
+function SummaryNormalizedPath(const AProject: string): string;
 
 implementation
 
@@ -101,6 +104,24 @@ end;
 function SummaryTimeOf(const AText: string): TDateTime;
 begin
   Result := TTextTimestamp.ParseOrZero(AText);
+end;
+
+function SummaryNormalizedPath(const AProject: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Trim(AProject);
+  for mIndex := 1 to Length(Result) do
+  begin
+    if Result[mIndex] = '/' then
+    begin
+      Result[mIndex] := '\';
+    end
+    else if CharInSet(Result[mIndex], ['a'..'z']) then
+    begin
+      Result[mIndex] := UpCase(Result[mIndex]);
+    end;
+  end;
 end;
 
 end.

@@ -10,14 +10,11 @@ interface
 
 uses
   System.Generics.Collections,
+  Atlas.Core.Welcome.Contract,
   Atlas.Core.Welcome.Continue;
 
 type
-  /// <summary>Offene Reiter in ihrer Reihenfolge mit der Cursorstelle und aktive Datei.</summary>
-  TAtlasContinueSnapshot = record
-    Tabs: TArray<TAtlasWorkTab>;
-    Active: string;
-  end;
+  TAtlasContinueSnapshot = Atlas.Core.Welcome.Contract.TAtlasContinueSnapshot;
 
   TAtlasIdeContinueEditor = class
   public

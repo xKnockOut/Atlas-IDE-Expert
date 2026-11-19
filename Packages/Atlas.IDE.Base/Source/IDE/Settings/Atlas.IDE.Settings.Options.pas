@@ -17,7 +17,7 @@
 // die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
 // lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
 // Seite Issue-Tracker: Den Abschnitt mit Verbindungen, Projekten, Abfragen
-// und Prüfungen baut das Modul Tracker (#1455, Atlas.IDE.Tracker.Settings).
+// und Prüfungen baut das Modul Tracker (#1455, Atlas.IDE.Tracker.Adapters.Settings).
 // ShowSetting mit Vorgabe („zuordnen …“ aus „Meine Issues“, #1261) reicht die
 // Vorgabe nach dem Laden an den Abschnitt, dem die Einstellung gehört.
 // Seite Versionsverwaltung: baut und verdrahtet das Modul Versionsverwaltung
