@@ -118,7 +118,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
-  Atlas.UI.Strings,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Offer,
   Atlas.UI.Updates.Selection,
@@ -438,7 +437,7 @@ begin
         Log('Update-Prüfung: neue Version ' + AResult.Release.Version);
         if Assigned(FOnMessage) then
         begin
-          FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
+          FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesAvailable, [AResult.Release.Version,
             TAtlasPluginVersion.cVersion, AResult.Release.ChangesUrl]));
         end;
         AutoPrepare;

@@ -113,7 +113,6 @@ implementation
 uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Accessibility;
 
@@ -245,47 +244,50 @@ end;
 
 class function TAtlasHideMenu.ElementName(AElement: TAtlasDrawnElement; APlural: Boolean): string;
 const
-  cSingular: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetrics,
-    TAtlasTextId.ElementCodeLensTests, TAtlasTextId.ElementCodeLensTestUnit, TAtlasTextId.ElementBlockEndLabels,
-    TAtlasTextId.ElementInlayHints, TAtlasTextId.ElementProblems, TAtlasTextId.ElementNotes,
-    TAtlasTextId.ElementBookmarks, TAtlasTextId.ElementPairColors, TAtlasTextId.ElementPairGuides,
-    TAtlasTextId.ElementPairOwners, TAtlasTextId.ElementInactiveDim, TAtlasTextId.ElementCompletionPreview,
-    TAtlasTextId.ElementUnusedUses, TAtlasTextId.ElementRecursion, TAtlasTextId.ElementInlineDiagnostics,
-    TAtlasTextId.ElementInlayTypeHints, TAtlasTextId.ElementGitGutter, TAtlasTextId.ElementGitBlame,
-    TAtlasTextId.ElementPatternPreview, TAtlasTextId.ElementGutterColumn, TAtlasTextId.ElementSelectionMatches,
-    TAtlasTextId.ElementInlayDefineHints, TAtlasTextId.ElementInlayCharHints, TAtlasTextId.ElementQuickBookmarks,
-    TAtlasTextId.ElementInlayMethodHints,
-    TAtlasTextId.ElementExitPoints, TAtlasTextId.ElementReassigned, TAtlasTextId.ElementLearnedSuggestions,
-    TAtlasTextId.ElementCodeLensCoveredBy, TAtlasTextId.ElementThreadsInSource,
-    TAtlasTextId.ElementCodeLensUntested,
-    TAtlasTextId.ElementTestCoverage, TAtlasTextId.ElementOwnershipHints,
-    TAtlasTextId.ElementMutationResults, TAtlasTextId.ElementMovableUses);
-  cPlural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
-    TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
-    TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
-    TAtlasTextId.ElementProblemsPlural, TAtlasTextId.ElementNotesPlural, TAtlasTextId.ElementBookmarksPlural,
-    TAtlasTextId.ElementPairColorsPlural, TAtlasTextId.ElementPairGuidesPlural,
-    TAtlasTextId.ElementPairOwnersPlural, TAtlasTextId.ElementInactiveDimPlural,
-    TAtlasTextId.ElementCompletionPreviewPlural, TAtlasTextId.ElementUnusedUsesPlural,
-    TAtlasTextId.ElementRecursionPlural, TAtlasTextId.ElementInlineDiagnosticsPlural,
-    TAtlasTextId.ElementInlayTypeHintsPlural, TAtlasTextId.ElementGitGutterPlural, TAtlasTextId.ElementGitBlamePlural,
-    TAtlasTextId.ElementPatternPreviewPlural, TAtlasTextId.ElementGutterColumnPlural,
-    TAtlasTextId.ElementSelectionMatchesPlural, TAtlasTextId.ElementInlayDefineHintsPlural,
-    TAtlasTextId.ElementInlayCharHintsPlural, TAtlasTextId.ElementQuickBookmarksPlural,
-    TAtlasTextId.ElementInlayMethodHintsPlural,
-    TAtlasTextId.ElementExitPointsPlural, TAtlasTextId.ElementReassignedPlural,
-    TAtlasTextId.ElementLearnedSuggestionsPlural, TAtlasTextId.ElementCodeLensCoveredByPlural,
-    TAtlasTextId.ElementThreadsInSourcePlural, TAtlasTextId.ElementCodeLensUntestedPlural,
-    TAtlasTextId.ElementTestCoveragePlural, TAtlasTextId.ElementOwnershipHintsPlural,
-    TAtlasTextId.ElementMutationResultsPlural, TAtlasTextId.ElementMovableUsesPlural);
+  cSingular: array[TAtlasDrawnElement] of TAtlasEditorTextId = (TAtlasEditorTextId.ElementCodeLensMetrics,
+    TAtlasEditorTextId.ElementCodeLensTests, TAtlasEditorTextId.ElementCodeLensTestUnit,
+    TAtlasEditorTextId.ElementBlockEndLabels, TAtlasEditorTextId.ElementInlayHints, TAtlasEditorTextId.ElementProblems,
+    TAtlasEditorTextId.ElementNotes, TAtlasEditorTextId.ElementBookmarks, TAtlasEditorTextId.ElementPairColors,
+    TAtlasEditorTextId.ElementPairGuides, TAtlasEditorTextId.ElementPairOwners, TAtlasEditorTextId.ElementInactiveDim,
+    TAtlasEditorTextId.ElementCompletionPreview, TAtlasEditorTextId.ElementUnusedUses,
+    TAtlasEditorTextId.ElementRecursion, TAtlasEditorTextId.ElementInlineDiagnostics,
+    TAtlasEditorTextId.ElementInlayTypeHints, TAtlasEditorTextId.ElementGitGutter, TAtlasEditorTextId.ElementGitBlame,
+    TAtlasEditorTextId.ElementPatternPreview, TAtlasEditorTextId.ElementGutterColumn,
+    TAtlasEditorTextId.ElementSelectionMatches, TAtlasEditorTextId.ElementInlayDefineHints,
+    TAtlasEditorTextId.ElementInlayCharHints, TAtlasEditorTextId.ElementQuickBookmarks,
+    TAtlasEditorTextId.ElementInlayMethodHints, TAtlasEditorTextId.ElementExitPoints,
+    TAtlasEditorTextId.ElementReassigned, TAtlasEditorTextId.ElementLearnedSuggestions,
+    TAtlasEditorTextId.ElementCodeLensCoveredBy, TAtlasEditorTextId.ElementThreadsInSource,
+    TAtlasEditorTextId.ElementCodeLensUntested, TAtlasEditorTextId.ElementTestCoverage,
+    TAtlasEditorTextId.ElementOwnershipHints, TAtlasEditorTextId.ElementMutationResults,
+    TAtlasEditorTextId.ElementMovableUses);
+  cPlural: array[TAtlasDrawnElement] of TAtlasEditorTextId = (TAtlasEditorTextId.ElementCodeLensMetricsPlural,
+    TAtlasEditorTextId.ElementCodeLensTestsPlural, TAtlasEditorTextId.ElementCodeLensTestUnitPlural,
+    TAtlasEditorTextId.ElementBlockEndLabelsPlural, TAtlasEditorTextId.ElementInlayHintsPlural,
+    TAtlasEditorTextId.ElementProblemsPlural, TAtlasEditorTextId.ElementNotesPlural,
+    TAtlasEditorTextId.ElementBookmarksPlural, TAtlasEditorTextId.ElementPairColorsPlural,
+    TAtlasEditorTextId.ElementPairGuidesPlural, TAtlasEditorTextId.ElementPairOwnersPlural,
+    TAtlasEditorTextId.ElementInactiveDimPlural, TAtlasEditorTextId.ElementCompletionPreviewPlural,
+    TAtlasEditorTextId.ElementUnusedUsesPlural, TAtlasEditorTextId.ElementRecursionPlural,
+    TAtlasEditorTextId.ElementInlineDiagnosticsPlural, TAtlasEditorTextId.ElementInlayTypeHintsPlural,
+    TAtlasEditorTextId.ElementGitGutterPlural, TAtlasEditorTextId.ElementGitBlamePlural,
+    TAtlasEditorTextId.ElementPatternPreviewPlural, TAtlasEditorTextId.ElementGutterColumnPlural,
+    TAtlasEditorTextId.ElementSelectionMatchesPlural, TAtlasEditorTextId.ElementInlayDefineHintsPlural,
+    TAtlasEditorTextId.ElementInlayCharHintsPlural, TAtlasEditorTextId.ElementQuickBookmarksPlural,
+    TAtlasEditorTextId.ElementInlayMethodHintsPlural, TAtlasEditorTextId.ElementExitPointsPlural,
+    TAtlasEditorTextId.ElementReassignedPlural, TAtlasEditorTextId.ElementLearnedSuggestionsPlural,
+    TAtlasEditorTextId.ElementCodeLensCoveredByPlural, TAtlasEditorTextId.ElementThreadsInSourcePlural,
+    TAtlasEditorTextId.ElementCodeLensUntestedPlural, TAtlasEditorTextId.ElementTestCoveragePlural,
+    TAtlasEditorTextId.ElementOwnershipHintsPlural, TAtlasEditorTextId.ElementMutationResultsPlural,
+    TAtlasEditorTextId.ElementMovableUsesPlural);
 begin
   if APlural then
   begin
-    Result := TAtlasStrings.Text(cPlural[AElement]);
+    Result := TAtlasEditorStrings.Text(cPlural[AElement]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(cSingular[AElement]);
+    Result := TAtlasEditorStrings.Text(cSingular[AElement]);
   end;
 end;
 

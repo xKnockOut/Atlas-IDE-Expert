@@ -53,10 +53,13 @@ uses
   Atlas.UI.Designer.SpaceDialog,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.KeptForm,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.GridSnap;
 
 const
   cDefaultGrid = 8;
+  /// <summary>Vorschlag im Dialog: so viele Rasterschritte Platz.</summary>
+  cDefaultSteps = 3;
 
 type
   /// <summary>Ein Lauf: Formular, Achse, Wachsen erlaubt und gesammelte Hinweise.</summary>
@@ -114,15 +117,6 @@ begin
   end;
 end;
 
-function HiOf(const ARect: TRect; AAxis: TAtlasSpaceAxis): Integer;
-begin
-  Result := ARect.Bottom;
-  if AAxis = TAtlasSpaceAxis.Columns then
-  begin
-    Result := ARect.Right;
-  end;
-end;
-
 /// <summary>Kinder von AParent, die zum Formular gehören, ohne AExclude.</summary>
 function ChildrenOf(AParent: TWinControl; ARoot: TComponent; AExclude: TControl): TArray<TControl>;
 var
@@ -176,7 +170,7 @@ begin
     GrowContainer(ARun, AContainer.Parent, AGrow);
     Exit;
   end;
-  mOldHi := HiOf(AContainer.BoundsRect, ARun.Axis);
+  mOldHi := TAtlasInsertSpace.EndOf(AContainer.BoundsRect, ARun.Axis);
   if ARun.Axis = TAtlasSpaceAxis.Rows then
   begin
     AContainer.Height := AContainer.Height + AGrow;
@@ -275,7 +269,7 @@ begin
   mKept := TAtlasDesignerKept.Take(mEditor, mRun.Root);
   mKept.Add(mControls);
   mOptions.Axis := TAtlasSpaceAxis.Rows;
-  mOptions.Amount := cDefaultGrid * 3;
+  mOptions.Amount := cDefaultGrid * cDefaultSteps;
   mOptions.Snap := True;
   if not TAtlasSpaceDialog.Execute(ARemove, mOptions) or (mOptions.Amount = 0) then
   begin
@@ -289,7 +283,7 @@ begin
   mAmount := mOptions.Amount;
   if mOptions.Snap then
   begin
-    mAmount := Max(TAtlasInsertSpace.Snap(mAmount,
+    mAmount := Max(TAtlasGridSnap.Snap(mAmount,
       TAtlasDesignerAccess.GridSize(mOptions.Axis = TAtlasSpaceAxis.Rows)), 1);
   end;
   if ARemove then

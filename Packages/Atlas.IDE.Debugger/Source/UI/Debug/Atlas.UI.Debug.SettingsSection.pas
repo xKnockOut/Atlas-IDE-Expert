@@ -37,6 +37,7 @@ type
     procedure BuildRestartRows;
     /// <summary>Werte beim Halt: Fenster „Variablen“, Vorhersage, Werte ändern, Debug-Hover.</summary>
     procedure BuildStopValues;
+    procedure BuildExceptions;
   protected
     procedure BuildRows; override;
   public
@@ -343,16 +344,8 @@ begin
   Number('debug.parallelStacks.maxThreads',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugParallelStacksMaxThreads));
 
-  // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Werte im Editor (#508).
-  Switch('debug.exceptionHistory',
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionHistory));
-  Switch('debug.justMyCode', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugJustMyCode));
-  FOwnCodeFolders := Line(cOwnCodeFoldersKey,
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugOwnCodeFolders));
-  Switch('debug.exceptionBanner',
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBanner));
-  Switch('debug.exceptionBanner.ignoreAtLocation',
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
+  BuildExceptions;
+  // Werte im Editor (#508).
   Switch('debug.inlineValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugInlineValues));
   Number('debug.inlineValuesPerLine',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugInlineValuesPerLine));
@@ -406,6 +399,25 @@ begin
     TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseAuto)],
     TArray<string>.Create(cCloseOpenedFilesModes[0], cCloseOpenedFilesModes[1], cCloseOpenedFilesModes[2]));
   Switch('debug.previewTab', TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsPreviewTab));
+end;
+
+procedure TAtlasDebugSettingsSection.BuildExceptions;
+begin
+  // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Meldungstext (#2549), Regeln nach Ort
+  // (#838).
+  Switch('debug.exceptionHistory',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionHistory));
+  Switch('debug.justMyCode', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugJustMyCode));
+  FOwnCodeFolders := Line(cOwnCodeFoldersKey,
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugOwnCodeFolders));
+  Switch('debug.exceptionBanner',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBanner));
+  Switch('debug.exceptionBanner.ignoreAtLocation',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
+  Switch('debug.exceptionMessageRules',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionMessageRules));
+  Switch('debug.exceptionRules',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionRules));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;

@@ -14,6 +14,7 @@
 interface
 
 uses
+  Atlas.Core.Settings.Plugin.Assistants,
   Atlas.Core.Settings.Plugin.Bookmarks,
   Atlas.Core.Settings.Plugin.Build,
   Atlas.Core.Settings.Plugin.CodeActions,
@@ -66,6 +67,7 @@ type
     FWelcomeTiles: TAtlasPluginWelcomeTilesSettings;
     FIssueWork: TAtlasPluginIssueWorkSettings;
     FVcs: TAtlasPluginVcsSettings;
+    FAssistants: TAtlasPluginAssistantsSettings;
     procedure Exchange(const AIo: TAtlasSettingsExchange);
   public const
     cMinVisibleRows = Atlas.Core.Settings.Plugin.Completion.cMinVisibleRows;
@@ -568,6 +570,9 @@ type
     property DebugExceptionBanner: Boolean read FDebug.DebugExceptionBanner write FDebug.DebugExceptionBanner;
     property DebugExceptionBannerIgnoreAtLocation: Boolean read FDebug.DebugExceptionBannerIgnoreAtLocation
       write FDebug.DebugExceptionBannerIgnoreAtLocation;
+    property DebugExceptionMessageRules: Boolean read FDebug.DebugExceptionMessageRules
+      write FDebug.DebugExceptionMessageRules;
+    property DebugExceptionRules: Boolean read FDebug.DebugExceptionRules write FDebug.DebugExceptionRules;
     property DebugInlineValues: Boolean read FDebug.DebugInlineValues write FDebug.DebugInlineValues;
     property DebugInlineValuesPerLine: Integer read FDebug.DebugInlineValuesPerLine
       write FDebug.DebugInlineValuesPerLine;
@@ -1420,6 +1425,8 @@ type
       write FIssueWork.IssuesPreviewChecklists;
     property IssuesChecklistStatus: Boolean read FIssueWork.IssuesChecklistStatus
       write FIssueWork.IssuesChecklistStatus;
+    property IssuesShareWithAssistants: Boolean read FIssueWork.IssuesShareWithAssistants
+      write FIssueWork.IssuesShareWithAssistants;
     property IssuesStatusState: Boolean read FIssueWork.IssuesStatusState write FIssueWork.IssuesStatusState;
     property IssuesSprintOnStart: string read FIssueWork.IssuesSprintOnStart write FIssueWork.IssuesSprintOnStart;
     property IssuesPreviewLinks: Boolean read FIssueWork.IssuesPreviewLinks write FIssueWork.IssuesPreviewLinks;
@@ -1475,6 +1482,14 @@ type
     property SettingsBackupBeforeImport: Boolean read FGeneral.SettingsBackupBeforeImport
       write FGeneral.SettingsBackupBeforeImport;
     property SettingsExportSecrets: string read FGeneral.SettingsExportSecrets write FGeneral.SettingsExportSecrets;
+    property AssistantsInlineSuggestions: Boolean read FAssistants.AssistantsInlineSuggestions
+      write FAssistants.AssistantsInlineSuggestions;
+    property AssistantsProvider: string read FAssistants.AssistantsProvider write FAssistants.AssistantsProvider;
+    property AssistantsModel: string read FAssistants.AssistantsModel write FAssistants.AssistantsModel;
+    property AssistantsContextLines: Integer read FAssistants.AssistantsContextLines
+      write FAssistants.AssistantsContextLines;
+    property AssistantsExclude: string read FAssistants.AssistantsExclude write FAssistants.AssistantsExclude;
+    property AssistantsDailyLimit: Integer read FAssistants.AssistantsDailyLimit write FAssistants.AssistantsDailyLimit;
   end;
 
 implementation
@@ -1510,6 +1525,7 @@ begin
   FWelcomeTiles.Exchange(AIo);
   FIssueWork.Exchange(AIo);
   FVcs.Exchange(AIo);
+  FAssistants.Exchange(AIo);
 end;
 
 class function TAtlasPluginSettings.Defaults: TAtlasPluginSettings;
@@ -1538,6 +1554,7 @@ begin
   Result.FWelcomeTiles := TAtlasPluginWelcomeTilesSettings.Defaults;
   Result.FIssueWork := TAtlasPluginIssueWorkSettings.Defaults;
   Result.FVcs := TAtlasPluginVcsSettings.Defaults;
+  Result.FAssistants := TAtlasPluginAssistantsSettings.Defaults;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -1564,6 +1581,7 @@ begin
   FWelcomeTiles.Normalize;
   FIssueWork.Normalize;
   FVcs.Normalize;
+  FAssistants.Normalize;
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);

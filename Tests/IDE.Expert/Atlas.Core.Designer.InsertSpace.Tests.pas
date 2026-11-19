@@ -31,7 +31,7 @@ type
     [Test]
     procedure ParentChain;
     [Test]
-    procedure SnapToGrid;
+    procedure EndAlongAxis;
   end;
 
 implementation
@@ -164,11 +164,10 @@ begin
   Assert.AreEqual(0, mOuter.Grow, 'Formular hat Platz');
 end;
 
-procedure TAtlasInsertSpaceTests.SnapToGrid;
+procedure TAtlasInsertSpaceTests.EndAlongAxis;
 begin
-  Assert.AreEqual(32, TAtlasInsertSpace.Snap(30, 8));
-  Assert.AreEqual(24, TAtlasInsertSpace.Snap(26, 8));
-  Assert.AreEqual(30, TAtlasInsertSpace.Snap(30, 1), 'ohne Raster');
+  Assert.AreEqual(29, TAtlasInsertSpace.EndOf(Rect(8, 8, 250, 29), TAtlasSpaceAxis.Rows), 'Zeilen: unten');
+  Assert.AreEqual(250, TAtlasInsertSpace.EndOf(Rect(8, 8, 250, 29), TAtlasSpaceAxis.Columns), 'Spalten: rechts');
 end;
 
 end.

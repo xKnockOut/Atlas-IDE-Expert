@@ -36,6 +36,10 @@
       "caption": "Debug",
       "captionEn": "Debug"
     },
+    "assistants": {
+      "caption": "KI-Assistenten",
+      "captionEn": "AI assistants"
+    },
     "snippets": {
       "caption": "Vorlagen/Snippets",
       "captionEn": "Templates/snippets"
@@ -1389,6 +1393,99 @@
       "x-captionEn": "Writing to open files",
       "x-issue": "#1888"
     },
+    "AssistantsInlineSuggestions": {
+      "type": "boolean",
+      "default": false,
+      "description": "Schattentext-Vorschläge über einen KI-Anbieter: Passt kein gelernter Vorschlag und ist die Tipp-Pause (suggestions.delayMs) erreicht, fragt Atlas im Hintergrund den eingestellten Anbieter. Gesendet werden nur die Zeilen um die Schreibmarke (assistants.contextLines) und Köpfe der Klasse aus dem Index. Jeder Vorschlag läuft vor dem Zeigen durch Parser und Namensprüfung. Ohne Netz, ohne Schlüssel oder bei Fehlern bleibt es still. Aus = kein Netzverkehr.",
+      "x-key": "assistants.inlineSuggestions",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Schattentext-Vorschläge über den KI-Anbieter",
+      "x-captionEn": "Ghost text suggestions from the AI provider",
+      "x-issue": "#1922",
+      "x-keywords": [
+        "KI",
+        "AI",
+        "LLM",
+        "Schattentext",
+        "ghost text"
+      ]
+    },
+    "AssistantsProvider": {
+      "type": "string",
+      "enum": [
+        "none",
+        "anthropic"
+      ],
+      "default": "none",
+      "description": "KI-Anbieter für Schattentext-Vorschläge: none = keiner (keine Anfragen), anthropic = Anthropic-API (HTTPS). Der Schlüssel steht nur im Anmeldespeicher von Windows, nie in den Einstellungen.",
+      "x-key": "assistants.provider",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "KI-Anbieter",
+      "x-captionEn": "AI provider",
+      "x-issue": "#1922"
+    },
+    "AssistantsModel": {
+      "type": "string",
+      "default": "claude-haiku-5-5",
+      "description": "Modell des KI-Anbieters für Schattentext; Vorgabe ist ein kleines, schnelles Modell. Ein größeres Modell liefert bessere Vorschläge, antwortet aber langsamer und kostet mehr.",
+      "x-key": "assistants.model",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Modell",
+      "x-captionEn": "Model",
+      "x-issue": "#1922"
+    },
+    "AssistantsContextLines": {
+      "type": "integer",
+      "default": 40,
+      "minimum": 10,
+      "maximum": 200,
+      "description": "Zeilen um die Schreibmarke, die an den KI-Anbieter gehen (10 bis 200); mehr Zeilen geben dem Modell mehr Zusammenhang und kosten mehr.",
+      "x-key": "assistants.contextLines",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Zeilen um die Schreibmarke",
+      "x-captionEn": "Lines around the cursor",
+      "x-issue": "#1922"
+    },
+    "AssistantsExclude": {
+      "type": "string",
+      "default": "",
+      "description": "Dateien und Ordner, aus denen nichts an den KI-Anbieter geht: Muster mit * und ?, durch Semikolon getrennt, z. B. „*\\Geheim\\*;*Lizenz*.pas“. Verglichen wird der volle Pfad ohne Groß-/Kleinschreibung.",
+      "x-key": "assistants.exclude",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Nicht senden aus (Muster)",
+      "x-captionEn": "Never send from (patterns)",
+      "x-issue": "#1922"
+    },
+    "AssistantsDailyLimit": {
+      "type": "integer",
+      "default": 300,
+      "minimum": 1,
+      "maximum": 100000,
+      "description": "Höchstzahl der Anfragen an den KI-Anbieter je Tag; ist sie erreicht, fragt Atlas bis zum nächsten Tag nicht mehr. Gezählt wird je Benutzer auf diesem Rechner.",
+      "x-key": "assistants.dailyLimit",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Anfragen je Tag höchstens",
+      "x-captionEn": "Requests per day at most",
+      "x-issue": "#1922"
+    },
     "AssistantsBanner": {
       "type": "boolean",
       "default": true,
@@ -2419,6 +2516,34 @@
       "x-caption": "Nur an dieser Stelle ignorieren",
       "x-captionEn": "Ignore only here",
       "x-issue": "#783"
+    },
+    "DebugExceptionMessageRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exceptions nach Meldungstext anhalten oder fortsetzen: Regeln mit Muster für die Meldung, angelegt aus der Exception-Leiste oder dem Exception-Verlauf.",
+      "x-key": "debug.exceptionMessageRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exceptions nach Meldungstext anhalten oder fortsetzen",
+      "x-captionEn": "Stop or continue exceptions by message text",
+      "x-issue": "#2549"
+    },
+    "DebugExceptionRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exception-Regeln nach Klasse und Ort: anhalten, nur im Exception-Verlauf vermerken oder still weiterlaufen, je nach der ersten eigenen Methode im Aufrufstapel. Persönliche Regeln (Fenster „Exception-Regeln“) gelten vor denen der Projektdatei .atlas (exceptionRules). „Nur an dieser Stelle ignorieren“ legt eine Regel für die Methode an. Aus = nur die Ignorier-Liste und die Optionen der IDE.",
+      "x-key": "debug.exceptionRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exception-Regeln nach Klasse und Ort",
+      "x-captionEn": "Exception rules by class and place",
+      "x-issue": "#838"
     },
     "DebugInlineValues": {
       "type": "boolean",
@@ -10401,6 +10526,16 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1273"
+    },
+    "IssuesShareWithAssistants": {
+      "type": "boolean",
+      "default": true,
+      "description": "Begonnenes Issue für KI-Assistenten bereitstellen: Solange ein Issue aktuell ist, schreibt Atlas Kennung, Titel, Tracker, Zustand, Meilenstein, Branch, Beschreibung, Checkliste, Codeverweise und die letzten fünf Kommentare nach <gitdir>/atlas-current-issue.json (neben atlas-commit-prefix, bei Worktrees in deren eigenen Ordner); das MCP-Werkzeug get_current_issue liest sie. Nie ein Token, keine Anhänge. Aus: keine Datei, eine vorhandene wird gelöscht.",
+      "x-key": "issues.shareWithAssistants",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2051"
     },
     "IssuesStatusState": {
       "type": "boolean",
