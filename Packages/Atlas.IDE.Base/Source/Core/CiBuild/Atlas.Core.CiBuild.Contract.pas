@@ -5,7 +5,7 @@
 // einer Abfrage und der abgefragte Job (TAtlasCiJob, aus der .atlas #486 und
 // der Versionsverwaltung #571; nie Zugangsdaten). Liegt in Base, weil die
 // Projekt-Zusammenfassung (Atlas.Core.Projects.Summary) den Stand speichert
-// (#1455, vorher in Atlas.Core.Ci.Contract); Abfrage, Anbieter und Transport
+// (#1455); Abfrage, Anbieter und Transport
 // bleiben im Modul Tracker (Atlas.Core.Ci.Contract).
 
 interface
@@ -92,6 +92,9 @@ type
   end;
 
 implementation
+
+uses
+  System.StrUtils;
 
 const
   cOutcomeKeys: array[TAtlasCiOutcome] of string = ('unknown', 'success', 'unstable', 'failure', 'aborted',
@@ -200,11 +203,11 @@ var
   mIndex: Integer;
 begin
   Result := '';
-  if SameText(Copy(Url, 1, 8), 'https://') then
+  if StartsText('https://', Url) then
   begin
     mScheme := 'https://';
   end
-  else if SameText(Copy(Url, 1, 7), 'http://') then
+  else if StartsText('http://', Url) then
   begin
     mScheme := 'http://';
   end
@@ -237,7 +240,7 @@ end;
 
 function TAtlasCiJob.Secure: Boolean;
 begin
-  Result := SameText(Copy(Server, 1, 8), 'https://');
+  Result := StartsText('https://', Server);
 end;
 
 end.

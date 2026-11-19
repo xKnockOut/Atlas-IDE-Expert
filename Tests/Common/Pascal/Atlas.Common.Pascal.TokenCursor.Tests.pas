@@ -24,6 +24,14 @@ type
     [Test]
     procedure NextCodeSkipsCommentsAndDirectives;
     [Test]
+    procedure NextCodeAfterStartsBehindIndex;
+    [Test]
+    procedure FollowingCodeGivesMinusOneAtEnd;
+    [Test]
+    procedure NextCodeStopsBeforeStop;
+    [Test]
+    procedure IsCodeIsTheOppositeOfIsTrivia;
+    [Test]
     procedure PreviousCodeSkipsCommentsAndDirectives;
     [Test]
     procedure MatchingParenPairsNestedBrackets;
@@ -168,6 +176,64 @@ begin
   Assert.AreEqual(0, mCursor.NextCode(-1), 'negativ zählt wie 0');
 end;
 
+procedure TTokenCursorTests.NextCodeAfterStartsBehindIndex;
+var
+  mCursor: TTokenCursor;
+  mB: Integer;
+begin
+  mCursor := CursorOf('a {x} {$IFDEF D} b {z}');
+  mB := IndexOfText(mCursor, 'b');
+  Assert.AreEqual(mB, mCursor.NextCodeAfter(0));
+  Assert.AreEqual(mB, mCursor.NextCodeAfter(1), 'aus einem Kommentar heraus');
+  Assert.AreEqual(mCursor.Count, mCursor.NextCodeAfter(mB), 'nur Kommentar dahinter');
+  Assert.AreEqual(0, mCursor.NextCodeAfter(-1), '-1 beginnt beim ersten Token');
+  Assert.AreEqual(mCursor.Count, mCursor.NextCodeAfter(mCursor.Count));
+  Assert.AreEqual(mCursor.Count, mCursor.NextCodeAfter(MaxInt), 'kein Überlauf');
+end;
+
+procedure TTokenCursorTests.FollowingCodeGivesMinusOneAtEnd;
+var
+  mCursor: TTokenCursor;
+  mB: Integer;
+begin
+  mCursor := CursorOf('a {x} {$IFDEF D} b {z}');
+  mB := IndexOfText(mCursor, 'b');
+  Assert.AreEqual(mB, mCursor.FollowingCode(0));
+  Assert.AreEqual(-1, mCursor.FollowingCode(mB), 'nur Kommentar dahinter');
+  Assert.AreEqual(0, mCursor.FollowingCode(-1));
+  Assert.AreEqual(-1, mCursor.FollowingCode(mCursor.Count));
+  Assert.AreEqual(-1, mCursor.FollowingCode(MaxInt));
+end;
+
+procedure TTokenCursorTests.NextCodeStopsBeforeStop;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  // a {x} b
+  // 0 1   2
+  mTokens := TPascalLexer.Tokenize('a {x} b');
+  Assert.AreEqual(2, NextCode(mTokens, 1, 3));
+  Assert.AreEqual(2, NextCode(mTokens, 1, 2), 'ohne Treffer vor Stop gilt Stop');
+  Assert.AreEqual(2, NextCode(mTokens, 1, MaxInt), 'Stop höchstens Length');
+  Assert.AreEqual(3, NextCode(mTokens, 3, MaxInt));
+  Assert.AreEqual(5, NextCode(mTokens, 5, 2), 'Index hinter Stop bleibt');
+  Assert.AreEqual(0, NextCode(mTokens, -1, 2), 'negativ zählt wie 0');
+  Assert.AreEqual(0, NextCode(nil, 0, 5), 'leeres Array');
+end;
+
+procedure TTokenCursorTests.IsCodeIsTheOppositeOfIsTrivia;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in TPascalLexer.Tokenize('a {x} {$IFDEF D} // y'#10'(* z *) ''s'' 1 + begin') do
+  begin
+    Assert.AreEqual(not IsTrivia(mToken), IsCode(mToken), mToken.Text);
+  end;
+  Assert.IsFalse(IsCode(TPascalLexer.Tokenize('{x}')[0]));
+  Assert.IsFalse(IsCode(TPascalLexer.Tokenize('{$IFDEF D}')[0]));
+  Assert.IsTrue(IsCode(TPascalLexer.Tokenize('begin')[0]));
+end;
+
 procedure TTokenCursorTests.PreviousCodeSkipsCommentsAndDirectives;
 var
   mCursor: TTokenCursor;
@@ -241,6 +307,8 @@ begin
   Assert.AreEqual(0, mCursor.From(0));
   Assert.AreEqual(-1, mCursor.Exactly(0));
   Assert.AreEqual(0, mCursor.NextCode(0));
+  Assert.AreEqual(0, mCursor.NextCodeAfter(-1));
+  Assert.AreEqual(-1, mCursor.FollowingCode(-1));
   Assert.AreEqual(-1, mCursor.PreviousCode(0));
   Assert.AreEqual(-1, mCursor.MatchingParen(0));
 end;
@@ -386,20 +454,23 @@ procedure TTokenCursorTests.CodeIndexesFindOffsetAndClosingParen;
 var
   mTokens: TArray<TPascalToken>;
   mCode: TArray<Integer>;
-  mIndex: Integer;
+  mIndex, mCount: Integer;
 begin
   // Code-Token ohne Kommentar: F ( a [ 1 ] , ( b ) ) ;
   //                             0 1 2 3 4 5 6 7 8 9 10 11
   mTokens := TPascalLexer.Tokenize('F({c}a[1], (b));');
   mCode := nil;
+  SetLength(mCode, Length(mTokens));
+  mCount := 0;
   for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(mTokens[mIndex]) then
+    if IsCode(mTokens[mIndex]) then
     begin
-      SetLength(mCode, Length(mCode) + 1);
-      mCode[High(mCode)] := mIndex;
+      mCode[mCount] := mIndex;
+      Inc(mCount);
     end;
   end;
+  SetLength(mCode, mCount);
   Assert.AreEqual(12, Integer(Length(mCode)));
   Assert.AreEqual(2, CodeIndexAt(mTokens, mCode, 5), 'a beginnt bei 5');
   Assert.AreEqual(2, CodeIndexAt(mTokens, mCode, 3), 'im Kommentar: nächstes Code-Token');

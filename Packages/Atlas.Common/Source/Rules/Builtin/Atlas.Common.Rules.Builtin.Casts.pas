@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Casts;
 
-// Regeln für harte Typumwandlungen T(X) (Gruppe „Fehler finden“, Runde 69).
+// Regeln für harte Typumwandlungen T(X) (Gruppe „Fehler finden“).
 // Den Typ von X liefert TNameResolver.NodeType über TTypedScope; gemeldet wird
 // nur, wenn beide Typen sicher bekannt sind und ihre Deklarationen immer mit
 // der Stelle übersetzt werden:

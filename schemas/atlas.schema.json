@@ -150,8 +150,8 @@
               "max": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-size 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939); metric-boolean-operands 5 Operanden, metric-local-count 12 lokale Variablen, metric-exit-points 4 Ausstiege, metric-inheritance-depth 5 Vorfahren (#980). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120.",
-                "x-description-en": "Only metric-* (#66): limit of the metric; above it the rule reports the method. Defaults: length 60, depth 4, cyclomatic 15, cognitive 15, parameters 6; metric-class-size 40 members, metric-unit-length 2000 lines, metric-uses-count 30 units (#939); metric-boolean-operands 5 operands, metric-local-count 12 local variables, metric-exit-points 4 exits, metric-inheritance-depth 5 ancestors (#980). For line-length (#938) the maximum length of a line, default 120."
+                "description": "Nur metric-* (#66) und line-length: Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-size 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939); metric-boolean-operands 5 Operanden, metric-local-count 12 lokale Variablen, metric-exit-points 4 Ausstiege, metric-inheritance-depth 5 Vorfahren (#980). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120.",
+                "x-description-en": "Only metric-* (#66) and line-length: limit of the metric; above it the rule reports the method. Defaults: length 60, depth 4, cyclomatic 15, cognitive 15, parameters 6; metric-class-size 40 members, metric-unit-length 2000 lines, metric-uses-count 30 units (#939); metric-boolean-operands 5 operands, metric-local-count 12 local variables, metric-exit-points 4 exits, metric-inheritance-depth 5 ancestors (#980). For line-length (#938) the maximum length of a line, default 120."
               },
               "minLines": {
                 "type": "integer",
@@ -196,8 +196,8 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Nur architecture-role-import und architecture-contract-content: genehmigte Ausnahmen, bei architecture-role-import \"Quelle -> Ziel\" (beide Globs), bei architecture-contract-content \"Unit.Typ\" als Glob.",
-                "x-description-en": "Only architecture-role-import and architecture-contract-content: approved exceptions, for architecture-role-import \"source -> target\" (both globs), for architecture-contract-content \"Unit.Type\" as glob."
+                "description": "Nur architecture-role-import, architecture-contract-content und compiler-warnings-disabled: genehmigte Ausnahmen, bei architecture-role-import \"Quelle -> Ziel\" (beide Globs), bei architecture-contract-content \"Unit.Typ\" als Glob, bei compiler-warnings-disabled Schalter, die bis zum Ende der Unit aus bleiben dürfen (Warnungsnamen für {$WARN} wie SYMBOL_PLATFORM, WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw. OVERFLOWCHECKS).",
+                "x-description-en": "Only architecture-role-import, architecture-contract-content and compiler-warnings-disabled: approved exceptions, for architecture-role-import \"source -> target\" (both globs), for architecture-contract-content \"Unit.Type\" as glob, for compiler-warnings-disabled switches that may stay off up to the end of the unit (warning names for {$WARN} like SYMBOL_PLATFORM, WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS)."
               },
               "layers": {
                 "type": "array",
@@ -433,6 +433,70 @@
                 "description": "Nur hardcoded-string: weitere Routinen, deren Text-Argumente niemand übersetzt (z. B. eine eigene Pick(Englisch, 'en', 'de')). Protokoll-, Prüf-, Vergleichs- und Registry-Aufrufe gelten immer.",
                 "x-description-en": "Only hardcoded-string: further routines whose text arguments nobody translates (for example an own Pick(English, 'en', 'de')). Logging, check, comparison and registry calls always count."
               },
+              "implementation": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur uses-cycle: auch Zyklen mit mindestens einer Kante im implementation-Abschnitt melden (vom Compiler erlaubt).",
+                "x-description-en": "Only uses-cycle: also report cycles with at least one edge in an implementation section (allowed by the compiler)."
+              },
+              "kinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["deprecated", "experimental", "platform", "library"]
+                },
+                "default": ["deprecated", "experimental", "platform", "library"],
+                "description": "Nur deprecated-symbol: gemeldete Arten deprecated, experimental, platform, library (Standard alle vier; eine im Projekt oder in der Datei abgeschaltete Warnung bleibt ohnehin still).",
+                "x-description-en": "Only deprecated-symbol: reported kinds deprecated, experimental, platform, library (all four by default; a warning switched off in the project or file stays silent anyway)."
+              },
+              "calls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Sleep", "WaitFor", "WaitForSingleObject", "WaitForMultipleObjects", "Wait"],
+                "description": "Nur blocking-call-in-main-thread: Aufrufe, die blockieren. Andere Namen werden unabhängig von ihren Argumenten gemeldet.",
+                "x-description-en": "Only blocking-call-in-main-thread: calls that block. Other names are reported regardless of their arguments."
+              },
+              "maxSleepMs": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 50,
+                "description": "Nur blocking-call-in-main-thread: Literal-Timeouts unter diesem Wert (Millisekunden) werden nicht gemeldet; ein kurzes Sleep in einer Warteschleife schon.",
+                "x-description-en": "Only blocking-call-in-main-thread: literal timeouts below this value (milliseconds) are not reported; a short Sleep in a waiting loop still is."
+              },
+              "allowUnits": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur hardcoded-path: Units, in denen feste Pfade erlaubt sind, nach Unit-Namen; * am Ende passt auf ein Präfix (App.Config*).",
+                "x-description-en": "Only hardcoded-path: units in which hard-coded paths are allowed, by unit name; * at the end matches a prefix (App.Config*)."
+              },
+              "allowShareMem": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur dll-export-unsafe: mit ShareMem oder SimpleShareMem in der uses-Klausel sind Strings und dynamische Arrays in exportierten Routinen erlaubt.",
+                "x-description-en": "Only dll-export-unsafe: with ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed in exported routines."
+              },
+              "ansiCodePage": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 1252,
+                "description": "Nur string-conversion: ANSI-Codepage des Rechners, der übersetzt; Zeichen, die ihr sicher fehlen, meldet die Regel wie W1062, wenn sie an einen AnsiString gehen. Bekannt ist nur 1252; 0 oder ein anderer Wert schaltet diese Prüfung ab.",
+                "x-description-en": "Only string-conversion: ANSI code page of the machine that compiles; characters it surely lacks are reported like W1062 when assigned to an AnsiString. Only 1252 is known; 0 or another value turns this check off."
+              },
+              "unitKinds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["routine", "constant", "type", "variable"]
+                },
+                "default": ["routine", "constant", "type", "variable"],
+                "description": "Nur unused-public-member: mit unitLevel geprüfte Arten auf Unit-Ebene routine, constant, type, variable. Helfer werden nie gemeldet (sie werden über den erweiterten Typ verwendet).",
+                "x-description-en": "Only unused-public-member: unit-level kinds checked with unitLevel: routine, constant, type, variable. Helpers are never reported (they are used through the extended type)."
+              },
               "assertPatterns": {
                 "type": "array",
                 "items": {
@@ -557,6 +621,30 @@
                       }
                     },
                     {
+                      "type": "object",
+                      "required": ["start", "commit", "rollback"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "start": {
+                          "type": "string",
+                          "description": "Methode, die die Transaktion beginnt, z. B. StartTransaction.",
+                          "x-description-en": "Method that starts the transaction, e.g. StartTransaction."
+                        },
+                        "commit": {
+                          "type": "string",
+                          "description": "Methode, die die Transaktion bestätigt, z. B. Commit.",
+                          "x-description-en": "Method that commits the transaction, e.g. Commit."
+                        },
+                        "rollback": {
+                          "type": "string",
+                          "description": "Methode, die die Transaktion zurücknimmt, z. B. Rollback.",
+                          "x-description-en": "Method that rolls the transaction back, e.g. Rollback."
+                        }
+                      },
+                      "description": "Nur transaction-without-rollback: Transaktionsmethoden einer Bibliothek.",
+                      "x-description-en": "Only transaction-without-rollback: transaction methods of one library."
+                    },
+                    {
                       "type": "string",
                       "pattern": "^[^>]+>[^>]+$",
                       "description": "Nur handle-leak: Paar als Text Öffnen>Schließen, z. B. MeinOeffnen>MeinSchliessen.",
@@ -565,8 +653,8 @@
                   ]
                 },
                 "default": [],
-                "description": "Nur pair-without-finally und handle-leak: weitere Paare neben den eingebauten. pair-without-finally: Objekte mit open und close (DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor; #930). handle-leak: Texte \"Öffnen>Schließen\" oder Objekte mit open und close; das Handle ist das Ergebnis des Öffnens und das erste Argument des Schließens (#1088).",
-                "x-description-en": "Only pair-without-finally and handle-leak: further pairs besides the built-in ones. pair-without-finally: objects with open and close (DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor; #930). handle-leak: texts \"Open>Close\" or objects with open and close; the handle is the result of opening and the first argument of closing (#1088)."
+                "description": "Nur pair-without-finally, handle-leak und transaction-without-rollback: weitere Paare neben den eingebauten. transaction-without-rollback: Objekte mit start, commit und rollback je Bibliothek; ersetzen die eingebauten Paare. pair-without-finally: Objekte mit open und close (DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor; #930). handle-leak: Texte \"Öffnen>Schließen\" oder Objekte mit open und close; das Handle ist das Ergebnis des Öffnens und das erste Argument des Schließens (#1088).",
+                "x-description-en": "Only pair-without-finally, handle-leak and transaction-without-rollback: further pairs besides the built-in ones. transaction-without-rollback: objects with start, commit and rollback per library; they replace the built-in pairs. pair-without-finally: objects with open and close (DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor; #930). handle-leak: texts \"Open>Close\" or objects with open and close; the handle is the result of opening and the first argument of closing (#1088)."
               },
               "onlyAfterRaisingCode": {
                 "type": "boolean",
@@ -622,8 +710,8 @@
                   "type": "string"
                 },
                 "default": ["Text", "Cells", "Lines"],
-                "description": "Nur unchecked-conversion: Eigenschaften, die als Benutzereingabe gelten, z. B. Text in Edit.Text oder Cells in Grid.Cells[…] (#932).",
-                "x-description-en": "Only unchecked-conversion: properties that count as user input, e.g. Text in Edit.Text or Cells in Grid.Cells[…] (#932)."
+                "description": "Nur unchecked-conversion und unchecked-enum-cast. unchecked-conversion: Eigenschaften, die als Benutzereingabe gelten, z. B. Text in Edit.Text oder Cells in Grid.Cells[…] (#932); Vorgabe Text, Cells, Lines. unchecked-enum-cast: Aufrufe, deren Ergebnis als ungeprüft gilt; Vorgabe FieldByName, ReadInteger, AsInteger, StrToInt.",
+                "x-description-en": "Only unchecked-conversion and unchecked-enum-cast. unchecked-conversion: properties that count as user input, e.g. Text in Edit.Text or Cells in Grid.Cells[…] (#932); default Text, Cells, Lines. unchecked-enum-cast: calls whose result counts as unchecked; default FieldByName, ReadInteger, AsInteger, StrToInt."
               },
               "allowed": {
                 "type": "array",
@@ -697,8 +785,8 @@
                   "enum": ["application", "package", "library"]
                 },
                 "default": ["application"],
-                "description": "Nur unused-public-member (#1102): Projektarten, deren Units geprüft werden. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus.",
-                "x-description-en": "Only unused-public-member (#1102): project kinds whose units are checked. Packages and libraries have users outside the project group and are therefore off by default."
+                "description": "Nur unused-public-member (#1102) und unused-unit: Projektarten, deren Units geprüft werden. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus.",
+                "x-description-en": "Only unused-public-member (#1102) and unused-unit: project kinds whose units are checked. Packages and libraries have users outside the project group and are therefore off by default."
               },
               "unitLevel": {
                 "type": "boolean",
@@ -951,8 +1039,8 @@
                 "type": "integer",
                 "minimum": 2,
                 "default": 4,
-                "description": "Nur string-if-chain: so viele Vergleiche desselben Strings in einer if-Kette meldet die Regel (#1066).",
-                "x-description-en": "Only string-if-chain: the rule reports this many comparisons of the same string in an if chain (#1066)."
+                "description": "Nur string-if-chain und prefer-case: so viele Vergleiche desselben Strings in einer if-Kette (string-if-chain, #1066) bzw. so viele Zweige einschließlich des abschließenden else (prefer-case) meldet die Regel.",
+                "x-description-en": "Only string-if-chain and prefer-case: the rule reports this many comparisons of the same string in an if chain (string-if-chain, #1066) or this many branches including the final else (prefer-case)."
               },
               "ignoreStrictPrivate": {
                 "type": "boolean",
@@ -2994,13 +3082,21 @@
           "description": "Neue Rümpfe vorbefüllen: override mit inherited (Funktionen mit Result := inherited …), Destruktor mit inherited am Ende, Getter Result := FName und Setter FName := AValue, wenn ein Feld FName gleichen Typs existiert. false = leere Rümpfe.",
           "x-description-en": "Prefill new bodies: override with inherited (functions with Result := inherited …), destructor with inherited at the end, getter Result := FName and setter FName := AValue when a field FName of the same type exists. false = empty bodies.",
           "x-issue": "#1837"
+        },
+        "blankLines": {
+          "type": "boolean",
+          "default": true,
+          "description": "Leerzeilen zwischen Rümpfen angleichen: Wenn Atlas Rümpfe anlegt oder ordnet, steht im betroffenen Bereich genau eine Leerzeile zwischen zwei Rümpfen, vor und nach dem Klassenkommentar und vor initialization, finalization bzw. end.; mehrere Leerzeilen werden zu einer. Neben einer Direktive (etwa {$REGION}) kommt keine dazu. Zeilen mit Inhalt und der Rest der Unit bleiben unberührt. false = Leerzeilen wie bisher.",
+          "x-description-en": "Normalize blank lines between bodies: when Atlas creates or orders bodies, the affected area gets exactly one blank line between two bodies, before and after the class comment and before initialization, finalization or end.; several blank lines become one. None is added next to a directive (such as {$REGION}). Lines with content and the rest of the unit stay untouched. false = blank lines as before.",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#1839"
         }
       },
       "x-scope": "global",
       "x-area": "codeActions",
       "x-page": "Eingabehilfen",
       "x-control": "Auswahl, Kontrollkästchen",
-      "x-issue": "#1834, #1835, #1836, #1837"
+      "x-issue": "#1834, #1835, #1836, #1837, #1839"
     },
     "references": {
       "type": "object",
@@ -3462,6 +3558,15 @@
           "x-control": "Kontrollkästchen",
           "x-issue": "#1357"
         },
+        "reportFindingsAfterEdit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Schreibende Werkzeuge (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) prüfen die geänderten Dateien mit dryRun=false vor und nach dem Schreiben wie get_diagnostics und hängen „Befunde nach der Änderung“ an die Antwort: neue Befunde mit Datei:Zeile, Regel und Text, die Zahl der behobenen und unveränderten. Die letzte Auswertung liefert die Ressource delphi://edits/last.",
+          "x-description-en": "Writing tools (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) check the changed files with dryRun=false before and after writing like get_diagnostics and append “Findings after the change” to the answer: new findings with file:line, rule and text, the number of fixed and unchanged ones. The resource delphi://edits/last returns the last evaluation.",
+          "x-page": "MCP",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#2603"
+        },
         "promptLanguage": {
           "type": "string",
           "enum": [
@@ -3579,8 +3684,69 @@
       "x-scope": "global",
       "x-area": "build",
       "x-page": "MCP",
-      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings, prompts: Kontrollkästchen; promptLanguage: Auswahl; customPrompts: JSON",
-      "x-issue": "#99, #1357"
+      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings, prompts, reportFindingsAfterEdit: Kontrollkästchen; promptLanguage: Auswahl; customPrompts: JSON",
+      "x-issue": "#99, #1357, #2603"
+    },
+    "assistants": {
+      "type": "object",
+      "description": "Regeln für KI-Assistenten, die über Atlas (MCP-Werkzeuge, Hook hook_check) Dateien ändern.",
+      "x-description-en": "Rules for AI assistants that change files through Atlas (MCP tools, hook hook_check).",
+      "additionalProperties": false,
+      "properties": {
+        "protected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Muster relativ zum Ordner von atlas.json wie bei architecture.exclude: * innerhalb eines Ordners, ** über Ordner, ? ein Zeichen; / und \\ gleich, ohne Groß-/Kleinschreibung. Ein Ordner ohne Platzhalter schützt alles darunter.",
+                "x-description-en": "Pattern relative to the folder of atlas.json as with architecture.exclude: * within one folder, ** across folders, ? one character; / and \\ alike, ignoring case. A folder without wildcards protects everything below it."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Grund, den der Assistent bei der Ablehnung liest.",
+                "x-description-en": "Reason the assistant reads when the change is refused."
+              },
+              "use": {
+                "type": "string",
+                "description": "Richtiger Weg statt der Änderung, z. B. ein Werkzeug oder eine Fragmentdatei.",
+                "x-description-en": "The right way instead of the change, e.g. a tool or a fragment file."
+              }
+            }
+          },
+          "default": [],
+          "description": "Dateien, die KI-Assistenten nicht ändern dürfen, mit Grund. Die schreibenden MCP-Werkzeuge (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) lehnen eine Änderung daran ab und schreiben nichts; hook_check meldet eine Bearbeitung mit eigenen Werkzeugen als Fehler und lehnt sie als Hook vor dem Schreiben (mode \"pre\") ab; delphi://conventions listet die Dateien. Änderungen ohne Atlas erreicht der Schutz nicht.",
+          "x-description-en": "Files AI assistants must not change, with a reason. The writing MCP tools (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) refuse a change to them and write nothing; hook_check reports an edit with the assistant's own tools as an error and refuses it as a hook before writing (mode \"pre\"); delphi://conventions lists the files. Changes made without Atlas are not covered.",
+          "x-scope": "project",
+          "x-page": "MCP",
+          "x-control": "JSON in atlas.json (Liste aus path, reason, use)",
+          "x-issue": "#2608"
+        }
+      },
+      "examples": [
+        {
+          "protected": [
+            {
+              "path": "CHANGELOG.md",
+              "reason": "Wird beim Release aus Fragmenten erzeugt",
+              "use": "Fragment changelog.d/<Issue>-<Stichwort>.md anlegen"
+            },
+            {
+              "path": "**/*SchemaData.pas",
+              "reason": "Erzeugt von Tools/Update-ConfigDoc.ps1"
+            }
+          ]
+        }
+      ],
+      "x-scope": "project",
+      "x-page": "MCP",
+      "x-control": "JSON in atlas.json (Liste aus path, reason, use)",
+      "x-issue": "#2608"
     },
     "format": {
       "type": "object",

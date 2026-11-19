@@ -783,7 +783,7 @@ var
   mClient: TLspClient;
   mSamples: Integer;
 begin
-  // Rückmeldung 15.10.2026: workspace/diagnostic wartet absichtlich bis zu 10 s.
+  // workspace/diagnostic wartet absichtlich bis zu 10 s und zählt darum nicht mit.
   Assert.IsFalse(TLspResponseTimes.Counts('workspace/diagnostic'));
   Assert.IsTrue(TLspResponseTimes.Counts('textDocument/diagnostic'));
   mClient := nil;

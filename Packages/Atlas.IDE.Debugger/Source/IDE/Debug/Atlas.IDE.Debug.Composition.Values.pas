@@ -3,10 +3,10 @@
 // Modul Debugger (#1455), Teil der Komposition: die Teile der
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
 // Editor, angeheftete Werte, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Werte ändern, Debug-Hover aufklappen und
-// Fenster „Variablen“. Sie fragen den Server nur, wenn er ohnehin läuft. Dazu der Speicherverlauf (#858, Werte
-// des Prozesses über die Sitzung; ohne Server), der nach dem Schrittfilter startet. Atlas.IDE.Debug.Composition
-// stellt sie über den Scope des Moduls bereit.
+// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Laufzeit zwischen Haltepunkten, Werte ändern,
+// Debug-Hover aufklappen und Fenster „Variablen“. Sie fragen den Server nur, wenn er ohnehin läuft. Dazu der
+// Speicherverlauf (#858, Werte des Prozesses über die Sitzung; ohne Server), der nach dem Schrittfilter startet.
+// Atlas.IDE.Debug.Composition stellt sie über den Scope des Moduls bereit.
 
 interface
 
@@ -64,6 +64,7 @@ uses
   Atlas.IDE.Debug.Evaluate,
   Atlas.IDE.Debug.AccessViolation,
   Atlas.IDE.Debug.WhyHere,
+  Atlas.IDE.Debug.Elapsed,
   Atlas.IDE.Debug.Variables,
   Atlas.IDE.Debug.MemoryTimeline,
   Atlas.UI.Debug.Commands.Strings,
@@ -433,6 +434,21 @@ begin
     end, WhyHereStarter(AScope), TAtlasIdeDebugWhyHere.Release);
 end;
 
+/// <summary>Laufzeit zwischen Haltepunkten (#579): Zuhörer der Debug-Sitzung, Zeichner und Mausklick; aus = nichts
+/// angemeldet.</summary>
+function ElapsedPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugShowElapsed',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugShowElapsed;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugElapsed.Started;
+    end, TAtlasIdeDebugElapsed.Start, TAtlasIdeDebugElapsed.Release);
+end;
+
 /// <summary>Fenster „Variablen“ (#853): Zuhörer der Debug-Sitzung und Fenster; aus = nichts angemeldet, kein
 /// Fenster.</summary>
 function VariablesPart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
@@ -483,8 +499,8 @@ function DebugValueParts(const AProvider: TAtlasDialogProviderFactory;
   const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 begin
   GProvider := AProvider;
-  Result := EditorParts + DialogParts + [WhyHerePart(AScope), EditValuePart(AScope), HoverTreePart(AScope),
-    VariablesPart(AScope)];
+  Result := EditorParts + DialogParts + [WhyHerePart(AScope), ElapsedPart, EditValuePart(AScope),
+    HoverTreePart(AScope), VariablesPart(AScope)];
 end;
 
 function EditValueVisible: Boolean;

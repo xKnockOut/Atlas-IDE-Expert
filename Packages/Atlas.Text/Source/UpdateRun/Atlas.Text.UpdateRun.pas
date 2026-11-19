@@ -24,7 +24,7 @@ type
   TUpdateNewModules = (Ask, Install, Skip);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Ein Package der neuen Version in der Auswahl (Mockup 6).</summary>
+  /// <summary>Ein Package der neuen Version in der Auswahl der Module.</summary>
   TUpdateCandidate = record
     /// <summary>Name ohne Versionsendung, z. B. „Atlas.IDE.Debugger“.</summary>
     Name: string;
@@ -32,7 +32,7 @@ type
     Installed: Boolean;
     /// <summary>Gab es in der installierten Version nicht.</summary>
     IsNew: Boolean;
-    /// <summary>Früher als neues Modul abgelehnt; wird nicht erneut vorgeschlagen.</summary>
+    /// <summary>Bei einem früheren Update als neues Modul abgelehnt; wird nicht erneut vorgeschlagen.</summary>
     Declined: Boolean;
     Required: Boolean;
     /// <summary>Vorschlag: installiert bzw. nach updates.newModules.</summary>
@@ -163,7 +163,6 @@ type
 implementation
 
 uses
-  System.StrUtils,
   System.JSON,
   System.Generics.Collections,
   Atlas.Text.Json,
@@ -250,82 +249,52 @@ end;
 
 { JSON-Hilfen }
 
-function NamesJson(const ANames: TArray<string>): string;
-var
-  mBuilder: TStringBuilder;
-  mIndex: Integer;
+/// <summary>Text des JSON-Objekts AObject (Umlaute lesbar) und gibt es frei.</summary>
+function JsonTextOf(AObject: TJSONObject): string;
 begin
-  mBuilder := TStringBuilder.Create;
   try
-    mBuilder.Append('[');
-    for mIndex := 0 to High(ANames) do
-    begin
-      if mIndex > 0 then
-      begin
-        mBuilder.Append(', ');
-      end;
-      mBuilder.Append(TJsonText.Quote(ANames[mIndex]));
-    end;
-    mBuilder.Append(']');
-    Result := mBuilder.ToString;
+    Result := AObject.ToJSON([]);
   finally
-    mBuilder.Free;
+    AObject.Free;
   end;
 end;
 
-function BoolJson(AValue: Boolean): string;
+function CandidateObject(const ACandidate: TUpdateCandidate): TJSONObject;
 begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
-{ TUpdateStage }
-
-function CandidateJson(const ACandidate: TUpdateCandidate): string;
-begin
-  Result := '{"name": ' + TJsonText.Quote(ACandidate.Name) + ', "installed": ' + BoolJson(ACandidate.Installed) +
-    ', "new": ' + BoolJson(ACandidate.IsNew) + ', "declined": ' + BoolJson(ACandidate.Declined) +
-    ', "required": ' + BoolJson(ACandidate.Required) + ', "selected": ' + BoolJson(ACandidate.Selected) + '}';
+  Result := TJSONObject.Create;
+  Result.AddPair('name', ACandidate.Name);
+  Result.AddPair('installed', TJSONBool.Create(ACandidate.Installed));
+  Result.AddPair('new', TJSONBool.Create(ACandidate.IsNew));
+  Result.AddPair('declined', TJSONBool.Create(ACandidate.Declined));
+  Result.AddPair('required', TJSONBool.Create(ACandidate.Required));
+  Result.AddPair('selected', TJSONBool.Create(ACandidate.Selected));
 end;
 
 { TUpdateStage }
 
 function TUpdateStage.ToJson: string;
 var
-  mBuilder: TStringBuilder;
-  mIndex: Integer;
+  mRoot: TJSONObject;
+  mCandidates: TJSONArray;
+  mCandidate: TUpdateCandidate;
 begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mBuilder.Append('{"phase": ').Append(TJsonText.Quote(TUpdateNames.PhaseName(Phase)));
-    mBuilder.Append(', "progress": ').Append(IntToStr(Progress));
-    mBuilder.Append(', "version": ').Append(TJsonText.Quote(Version));
-    mBuilder.Append(', "previous": ').Append(TJsonText.Quote(Previous));
-    mBuilder.Append(', "error": ').Append(TJsonText.Quote(Error));
-    mBuilder.Append(', "detail": ').Append(TJsonText.Quote(Detail));
-    mBuilder.Append(', "fromSource": ').Append(BoolJson(FromSource));
-    mBuilder.Append(', "askSelection": ').Append(BoolJson(AskSelection));
-    mBuilder.Append(', "updater": ').Append(TJsonText.Quote(Updater));
-    mBuilder.Append(', "candidates": [');
-    for mIndex := 0 to High(Candidates) do
-    begin
-      if mIndex > 0 then
-      begin
-        mBuilder.Append(', ');
-      end;
-      mBuilder.Append(CandidateJson(Candidates[mIndex]));
-    end;
-    mBuilder.Append(']}');
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
+  mRoot := TJSONObject.Create;
+  mRoot.AddPair('phase', TUpdateNames.PhaseName(Phase));
+  mRoot.AddPair('progress', TJSONNumber.Create(Progress));
+  mRoot.AddPair('version', Version);
+  mRoot.AddPair('previous', Previous);
+  mRoot.AddPair('error', Error);
+  mRoot.AddPair('detail', Detail);
+  mRoot.AddPair('fromSource', TJSONBool.Create(FromSource));
+  mRoot.AddPair('askSelection', TJSONBool.Create(AskSelection));
+  mRoot.AddPair('updater', Updater);
+  mCandidates := TJSONArray.Create;
+  mRoot.AddPair('candidates', mCandidates);
+  for mCandidate in Candidates do
+  begin
+    mCandidates.AddElement(CandidateObject(mCandidate));
   end;
+  Result := JsonTextOf(mRoot);
 end;
 
 function CandidatesOf(const ARoot: TJSONObject): TArray<TUpdateCandidate>;
@@ -417,12 +386,19 @@ end;
 { TUpdateOutcome }
 
 function TUpdateOutcome.ToJson: string;
+var
+  mRoot: TJSONObject;
 begin
-  Result := '{"outcome": ' + TJsonText.Quote(TUpdateNames.OutcomeName(Kind)) +
-    ', "version": ' + TJsonText.Quote(Version) + ', "previous": ' + TJsonText.Quote(Previous) +
-    ', "reason": ' + TJsonText.Quote(Reason) + ', "detail": ' + TJsonText.Quote(Detail) +
-    ', "log": ' + TJsonText.Quote(LogFile) + ', "added": ' + NamesJson(Added) +
-    ', "removed": ' + NamesJson(Removed) + '}';
+  mRoot := TJSONObject.Create;
+  mRoot.AddPair('outcome', TUpdateNames.OutcomeName(Kind));
+  mRoot.AddPair('version', Version);
+  mRoot.AddPair('previous', Previous);
+  mRoot.AddPair('reason', Reason);
+  mRoot.AddPair('detail', Detail);
+  mRoot.AddPair('log', LogFile);
+  mRoot.AddPair('added', TJsonBuild.Strings(Added));
+  mRoot.AddPair('removed', TJsonBuild.Strings(Removed));
+  Result := JsonTextOf(mRoot);
 end;
 
 class function TUpdateOutcome.FromJson(const AJson: string): TUpdateOutcome;
@@ -452,9 +428,16 @@ end;
 
 { TUpdateArguments }
 
+type
+{$SCOPEDENUMS ON}
+  /// <summary>Argumente des Aktualisierers, gleich geordnet wie cArgumentNames.</summary>
+  TUpdateArgument = (Manifest, Version, Ide, Platform, RegistryKey, Target, Staging, Select, WaitPid, NewModules,
+    Previous);
+{$SCOPEDENUMS OFF}
+
 const
-  cArgumentNames: array[0..10] of string = ('manifest', 'version', 'ide', 'platform', 'registry-key', 'target',
-    'staging', 'select', 'wait-pid', 'new-modules', 'previous');
+  cArgumentNames: array[TUpdateArgument] of string = ('manifest', 'version', 'ide', 'platform', 'registry-key',
+    'target', 'staging', 'select', 'wait-pid', 'new-modules', 'previous');
 
 /// <summary>Prozesskennung aus dem Aufruf; 0 bei ungültigem Text oder einem Wert außerhalb von Cardinal.</summary>
 function ProcessIdOf(const AValue: string): Cardinal;
@@ -468,33 +451,55 @@ begin
   end;
 end;
 
-procedure AssignArgument(var AArguments: TUpdateArguments; const AName, AValue: string);
+/// <summary>Argument zum Namen AName (ohne "--"); False bei unbekanntem Namen.</summary>
+function ArgumentOf(const AName: string; out AArgument: TUpdateArgument): Boolean;
+var
+  mArgument: TUpdateArgument;
 begin
-  case IndexText(AName, cArgumentNames) of
-    0:
+  for mArgument := Low(TUpdateArgument) to High(TUpdateArgument) do
+  begin
+    if SameText(AName, cArgumentNames[mArgument]) then
+    begin
+      AArgument := mArgument;
+      Exit(True);
+    end;
+  end;
+  AArgument := TUpdateArgument.Manifest;
+  Result := False;
+end;
+
+procedure AssignArgument(var AArguments: TUpdateArguments; const AName, AValue: string);
+var
+  mArgument: TUpdateArgument;
+begin
+  // Unbekannte Namen übergeht der Aufruf (ältere oder neuere Plugins).
+  if not ArgumentOf(AName, mArgument) then
+  begin
+    Exit;
+  end;
+  case mArgument of
+    TUpdateArgument.Manifest:
       AArguments.ManifestUrl := AValue;
-    1:
+    TUpdateArgument.Version:
       AArguments.Version := AValue;
-    2:
+    TUpdateArgument.Ide:
       AArguments.Ide := AValue;
-    3:
+    TUpdateArgument.Platform:
       AArguments.Platform := AValue;
-    4:
+    TUpdateArgument.RegistryKey:
       AArguments.RegistryKey := AValue;
-    5:
+    TUpdateArgument.Target:
       AArguments.Target := AValue;
-    6:
+    TUpdateArgument.Staging:
       AArguments.Staging := AValue;
-    7:
+    TUpdateArgument.Select:
       AArguments.Select := AValue.Split([','], TStringSplitOptions.ExcludeEmpty);
-    8:
+    TUpdateArgument.WaitPid:
       AArguments.WaitPid := ProcessIdOf(AValue);
-    9:
+    TUpdateArgument.NewModules:
       AArguments.NewModules := TUpdateNames.ParseNewModules(AValue);
-    10:
+    TUpdateArgument.Previous:
       AArguments.Previous := AValue;
-  else
-    // Unbekannte Namen übergeht der Aufruf (ältere oder neuere Plugins).
   end;
 end;
 

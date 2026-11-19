@@ -7,9 +7,9 @@
 //   die sichtbaren Zeilen (mit Rand), die im Zwischenspeicher noch fehlen
 //   (TAtlasInlayHintStore, je Datei und Textstand). Startet keinen Server.
 //   Der Abruf läuft im Hintergrund (TAtlasBackgroundRequest), höchstens einer
-//   zugleich; nach einem Fehler wartet er einige Sekunden. Früher wartete der
-//   Hauptthread bis zu 800 ms: Bei beschäftigtem Server hing die IDE alle
-//   paar Sekunden, und keine Antwort kam je an (2.0-stable).
+//   zugleich; nach einem Fehler wartet er einige Sekunden. Wartete der
+//   Hauptthread (etwa bis zu 800 ms), hinge die IDE bei beschäftigtem Server
+//   alle paar Sekunden, und keine Antwort käme je an.
 // - Zeichnen: nach dem Zeichnen jeder Zeile (plsEndPaint) kleine Marken mit
 //   den Namen hinter dem Zeilenende, in der Reihenfolge der Argumente. Der
 //   Editor kennt keinen eingeschobenen Text; so bleiben Datei, Undo und

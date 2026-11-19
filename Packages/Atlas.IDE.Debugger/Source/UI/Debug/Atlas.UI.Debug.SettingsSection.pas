@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Debug.SettingsSection;
 
-// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456; vorher
-// Atlas.UI.Settings.Page.Debug in Base): Modulschalter, Werte im Hover, Visualisierer (#835), eigene
+// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456):
+// Modulschalter, Werte im Hover, Visualisierer (#835), eigene
 // Wertdarstellungen (#854), gezielt hineinspringen (#836), Schrittfilter (#850), nächstes Ereignis (#856),
 // Erklärungen (#840, #865), Auswerten (#784), Exceptions (#517, #783), eigener Code (#578) und Werte im
 // Editor (#508). Felder, die mehrere Werte in einer Einstellung sammeln (Arten), liest und schreibt der
@@ -65,6 +65,7 @@ uses
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.Memory.Strings,
+  Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.Profile.Strings;
 
 const
@@ -340,6 +341,8 @@ begin
   // „Warum bin ich hier?“ (#1878).
   Switch('debug.whyHere', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHere));
   Number('debug.whyHere.depth', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHereDepth));
+  // Laufzeit zwischen Haltepunkten (#579).
+  Switch('debug.showElapsed', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugShowElapsed));
   BuildStopValues;
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLog));
@@ -353,7 +356,8 @@ end;
 
 procedure TAtlasDebugSettingsSection.BuildRestartRows;
 begin
-  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057).
+  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057),
+  // Debug-Zustand festhalten (#582).
   Switch('debug.restart', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestart));
   Switch('debug.restart.reenableBreakpoints',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestartReenable));
@@ -374,6 +378,9 @@ begin
   Number('debug.profiler.intervalMs', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfilerInterval));
   Switch('debug.memoryTimeline.objectCount',
     TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineObjectCount));
+  // Debug-Zustand festhalten (#582).
+  Switch('debug.note', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNote));
+  Switch('debug.note.saveFile', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNoteSaveFile));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;

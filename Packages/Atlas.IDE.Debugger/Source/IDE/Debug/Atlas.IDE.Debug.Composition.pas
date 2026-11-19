@@ -418,14 +418,16 @@ begin
 end;
 
 /// <summary>Einträge im Atlas-Menü: Untermenü Debuggen (Fenster; Was wartet worauf?; Neu starten und
-/// Startverbünde; Profiler; Bericht einfügen) und Untermenü Haltepunkte, je Gruppe durch Trennlinien getrennt.
+/// Startverbünde; Profiler; Bericht einfügen und Debug-Zustand festhalten) und Untermenü Haltepunkte, je Gruppe
+/// durch Trennlinien getrennt.
 /// </summary>
 function AtlasMenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := AtlasEntries(['Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
     'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
     'Atlas.DebugLeaks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart', 'Atlas.LaunchGroups', '-',
-    'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-', 'Atlas.RuntimeReportPaste'],
+    'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-', 'Atlas.RuntimeReportPaste',
+    'Atlas.DebugNote'],
     TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result := Result + AtlasEntries(['Atlas.BreakpointsWindow', 'Atlas.CheckBreakpoints', '-', 'Atlas.Logpoint',
     '-', 'Atlas.MethodBreakpoints', 'Atlas.MethodBreakpointGroups', '-', 'Atlas.BreakpointRules', '-',
@@ -640,6 +642,8 @@ begin
   ProvideDebugThreadLayers(GScope);
   // Logpunkte in der Rinne (#583).
   ProvideRun(GScope);
+  // Haltepunkte mit Aufrufer in der Rinne (#2548).
+  ProvideBreakpoints(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

@@ -142,7 +142,7 @@ end;
 function PercentOf(AObject: TJSONObject; const AName: string): Integer;
 begin
   Result := -1;
-  if (AObject <> nil) and (AObject.GetValue(AName) is TJSONNumber) then
+  if TJsonRead.Value(AObject, AName) is TJSONNumber then
   begin
     Result := EnsureRange(Integer(TJsonRead.Int64Or(AObject, AName, -1)), 0, 100);
   end;
@@ -378,30 +378,39 @@ end;
 { TAtlasServerTexts }
 
 class function TAtlasServerTexts.Duration(AMs: Int64): string;
+const
+  // Einheiten gelten in beiden Sprachen; ab zwei Tagen nur noch Stunden.
+  cSeconds = '%d s';
+  cMinutes = '%d min';
+  cHours = '%d h';
+  cHoursMinutes = '%d h %.2d min';
+  cHoursOnlyFrom = 2 * HoursPerDay;
 var
   mSeconds, mMinutes, mHours: Int64;
 begin
-  mSeconds := Max(AMs, 0) div 1000;
-  if mSeconds < 60 then
+  mSeconds := Max(AMs, 0) div MSecsPerSec;
+  if mSeconds < SecsPerMin then
   begin
-    Exit(Format('%d s', [mSeconds]));
+    Exit(Format(cSeconds, [mSeconds]));
   end;
-  mMinutes := mSeconds div 60;
-  if mMinutes < 60 then
+  mMinutes := mSeconds div SecsPerMin;
+  if mMinutes < MinsPerHour then
   begin
-    Exit(Format('%d min', [mMinutes]));
+    Exit(Format(cMinutes, [mMinutes]));
   end;
-  mHours := mMinutes div 60;
-  if mHours >= 48 then
+  mHours := mMinutes div MinsPerHour;
+  if mHours >= cHoursOnlyFrom then
   begin
-    Exit(Format('%d h', [mHours]));
+    Exit(Format(cHours, [mHours]));
   end;
-  Result := Format('%d h %.2d min', [mHours, mMinutes mod 60]);
+  Result := Format(cHoursMinutes, [mHours, mMinutes mod MinsPerHour]);
 end;
 
 class function TAtlasServerTexts.Megabytes(ABytes: Int64; const AFormat: TFormatSettings): string;
+const
+  cBytesPerMegabyte = 1024 * 1024;
 begin
-  Result := FormatFloat('0.0', Max(ABytes, 0) / (1024 * 1024), AFormat) + ' MB';
+  Result := FormatFloat('0.0', Max(ABytes, 0) / cBytesPerMegabyte, AFormat) + ' MB';
 end;
 
 class function TAtlasServerTexts.Milliseconds(AMs: Double; const AFormat: TFormatSettings): string;

@@ -113,6 +113,7 @@ Code completion in its own popup:
   - comment above a class section (#1835, `typeComment`): `{ TCustomer }` like the IDE (default), separator line with `// TCustomer`, `{ TCustomer: first sentence of the doc }`, a region around all bodies, or none; an existing one is not duplicated
   - prefilled new bodies (#1837, `bodyStubs`): `inherited` for `override`, at the end of the destructor, getter `Result := FName` and setter `FName := AValue`
   - Rename and "Move class" take the `{ TCustomer }` comment along (#1838)
+  - uniform blank lines (#1839, `blankLines`): creating and ordering leaves exactly one blank line between two bodies, before and after the class comment and before `initialization`/`end.`; only in the affected area
 - Maintain var blocks (#644):
   - convert a variable to an inline variable at its first assignment and back
   - tidy the var section (remove unused, sort by first use or name, merge equal types)

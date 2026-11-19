@@ -70,6 +70,9 @@ type
     procedure ChecksTodoKeywordsOption;
     [Test]
     procedure ChecksForbiddenSymbolsOption;
+    /// <summary>#145: Jede Option des Regelkatalogs prüft der Parser auf ihren Typ, und ihre Vorgabe besteht.</summary>
+    [Test]
+    procedure ChecksEveryCatalogOption;
   end;
 
   [TestFixture]
@@ -101,6 +104,7 @@ implementation
 uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Catalog,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Configuration.Contract,
@@ -611,12 +615,14 @@ begin
   Assert.AreEqual('brace', mSettings.ClassCompletion.TypeComment, '{ TFoo } wie die IDE (#1835)');
   Assert.IsTrue(mSettings.ClassCompletion.LifecycleFirst, '#1836');
   Assert.IsTrue(mSettings.ClassCompletion.BodyStubs, '#1837');
-  mSettings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false}}',
-    mIssues);
+  Assert.IsTrue(mSettings.ClassCompletion.BlankLines, '#1839');
+  mSettings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false, ' +
+    '"blankLines": false}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.AreEqual('region', mSettings.ClassCompletion.TypeComment);
   Assert.IsFalse(mSettings.ClassCompletion.LifecycleFirst);
   Assert.IsFalse(mSettings.ClassCompletion.BodyStubs);
+  Assert.IsFalse(mSettings.ClassCompletion.BlankLines);
   mSettings := Parse('{"classCompletion": {"typeComment": "kasten"}}', mIssues);
   Assert.AreEqual('brace', mSettings.ClassCompletion.TypeComment, 'Unbekanntes bleibt bei der Vorgabe');
   Assert.AreEqual(1, Integer(Length(mIssues)));
@@ -866,6 +872,48 @@ begin
   Assert.Contains(mIssues[3].Message, '"message"');
   Assert.Contains(mIssues[4].Message, '"farbe"');
 end;
+/// <summary>Ein Wert, der nicht zur Art AKind einer Katalogoption passt; '' bei "json" (eigene Prüfungen).</summary>
+function WrongOptionValue(const AKind: string): string;
+begin
+  Result := '';
+  if AKind = 'string' then
+  begin
+    Result := '1';
+  end
+  else if AKind <> 'json' then
+  begin
+    Result := '"falsch"';
+  end;
+end;
+
+procedure TConfigurationParserTests.ChecksEveryCatalogOption;
+var
+  mEntry: TRuleCatalogEntry;
+  mOption: TRuleOption;
+  mWrong, mWhere: string;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  for mEntry in TRuleCatalog.Shared.Entries do
+  begin
+    for mOption in mEntry.Options do
+    begin
+      mWhere := mEntry.Id + '.' + mOption.Name;
+      if mOption.DefaultJson <> '' then
+      begin
+        Parse(Format('{"rules": {"%s": {"%s": %s}}}', [mEntry.Id, mOption.Name, mOption.DefaultJson]), mIssues);
+        Assert.AreEqual(0, Integer(Length(mIssues)), mWhere);
+      end;
+      mWrong := WrongOptionValue(mOption.Kind);
+      if mWrong <> '' then
+      begin
+        Parse(Format('{"rules": {"%s": {"%s": %s}}}', [mEntry.Id, mOption.Name, mWrong]), mIssues);
+        Assert.AreEqual(1, Integer(Length(mIssues)), mWhere);
+      end;
+    end;
+  end;
+  mIssues := nil;
+end;
+
 { TServerSettingsTests }
 
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;

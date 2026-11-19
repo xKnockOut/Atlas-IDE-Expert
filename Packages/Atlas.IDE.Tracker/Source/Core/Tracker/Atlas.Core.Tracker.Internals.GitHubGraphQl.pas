@@ -214,22 +214,12 @@ begin
 end;
 
 class function TAtlasGitHubGraphQl.NodesOf(AObject: TJSONObject; const AName: string): TJSONArray;
-var
-  mValue: TJSONValue;
 begin
-  Result := nil;
-  if AObject = nil then
+  // Liste direkt oder als Verbindung {"nodes": [...]}.
+  Result := TJsonRead.Items(AObject, AName);
+  if Result = nil then
   begin
-    Exit;
-  end;
-  mValue := AObject.Values[AName];
-  if mValue is TJSONObject then
-  begin
-    mValue := TJSONObject(mValue).Values['nodes'];
-  end;
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
+    Result := TJsonRead.Items(TJsonRead.Obj(AObject, AName), 'nodes');
   end;
 end;
 

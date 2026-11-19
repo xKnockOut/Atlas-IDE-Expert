@@ -504,14 +504,15 @@ Läuft von selbst; Befehle im Menü Atlas und in der Befehlspalette. Nach `git p
 
 Einstellungen: `debug.breakpointAnchors`
 
-#### Haltepunkt-Regeln: abhängig, Treffer, Thread
+#### Haltepunkt-Regeln: abhängig, Treffer, Thread, Aufrufer
 
 Aufruf: Kontextmenü des Editors (Atlas › Debuggen › „Haltepunkt-Regeln …“, auch im Rand), Menü Atlas, Befehlspalette; auf der Zeile eines Haltepunkts. Ein Haltepunkt in einer viel benutzten Routine hält sonst hundertmal, bevor man an der Stelle ist, um die es geht.
 
 - „Erst aktiv nach“: Der Haltepunkt ist zu Beginn jeder Debug-Sitzung aus und wird eingeschaltet, sobald der gewählte andere Haltepunkt gehalten hat. „bis zum Ende der Sitzung“ lässt ihn danach an, „nur einmal“ schaltet ihn nach seinem Halt wieder aus, bis der auslösende erneut hält. Nach der Sitzung ist er wieder an.
 - „Anhalten“: bei jedem, genau beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer; gezählt wird je Sitzung.
 - „Thread“: alle, Name enthält (aus `TThread.NameThreadForDebugging`), eine Thread-ID oder nur der Hauptthread. Ein Halt in einem anderen Thread zählt nicht als Treffer.
-- Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Für Treffer und Thread hält der Debugger kurz an, Atlas zählt und setzt sofort fort; in heißen Schleifen kostet das Zeit.
+- „Nur wenn im Stapel“: Der Haltepunkt hält nur, wenn eine bestimmte Routine im Aufrufstapel steht, etwa `TKundenImport.LeseZeile`. Erlaubt sind `Unit.Klasse.Methode`, `Klasse.Methode`, eine ganze Unit oder Klasse und `*` als Platzhalter (`Kunden.*`, `*.LeseZeile`); Groß- und Kleinschreibung zählt nicht. „nur direkter Aufrufer“ prüft nur den Rahmen direkt unter dem Haltepunkt. Hält das Programm gerade, schlägt die Liste die Routinen des aktuellen Stapels vor. Halte ohne passenden Aufrufer zählen nicht als Treffer, „genau beim 2. Treffer“ meint also den zweiten Aufruf aus dieser Routine. Ist der Stapel nicht lesbar, hält Atlas lieber an. Rahmen ohne Debug-Informationen haben teils keinen Namen, und Inline-Routinen oder optimierter Code erscheinen nicht als eigener Rahmen. Haltepunkte mit Aufrufer tragen einen Haken (↳) in der Atlas-Spalte der Rinne; der Hinweis nennt den Aufrufer.
+- Bedingung der IDE, Trefferbedingung, Thread-Filter und Aufrufer gelten zusammen. Für Treffer, Thread und Aufrufer hält der Debugger kurz an, Atlas prüft und setzt sofort fort; in heißen Schleifen kostet das Zeit. Nach 1000 übergangenen Halten in einer Sitzung sagt es eine Zeile in den Meldungen.
 - Fehlt der auslösende Haltepunkt beim Start, bleibt der abhängige normal an, und eine Zeile in den Meldungen sagt es.
 - Regeln liegen in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` und ziehen mit, wenn „Haltepunkte wandern mit dem Code“ einen Haltepunkt verschiebt.
 
@@ -563,6 +564,15 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 - Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
+
+#### Laufzeit zwischen Haltepunkten
+
+- Beim Halt steht am Ende der Zeile des Ausführungspunkts gedimmt, wie lange das Programm seit dem letzten Halt lief: `+124 ms`, ab 10 s `+12 s`.
+- Gezählt wird nur, solange das Programm läuft: Zeit im angehaltenen Zustand, Halte, die Atlas selbst gleich fortsetzt, und Auswertungen zählen nicht.
+- An einem Haltepunkt immer, bei Einzelschritten und Pausen erst ab 1 ms.
+- Ein Klick auf die Zeit zeigt die letzten 20 Messungen mit Start- und Zielzeile. Die Zeit enthält den Aufwand des Debuggers (Debug-Build, Ereignisse) und ist nur ein Richtwert.
+
+Einstellung: `debug.showElapsed`
 
 #### Bedingungen vorausschauen
 
@@ -712,6 +722,16 @@ Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 - Mit `debug.restart.reenableBreakpoints` schaltet Atlas vor dem Start Haltepunkte wieder ein, die beim Start der letzten Sitzung an waren
 
 Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
+
+### Debug-Notiz (#582)
+
+- „Debug-Zustand festhalten“ im Atlas-Menü und in der Befehlspalette, nur im angehaltenen Debugger
+- Die Notiz in Markdown enthält Zeitpunkt, Projekt, Stelle mit Quelltextzeile, Aufrufstapel, lokale Variablen, Überwachte Ausdrücke des Projekts, die Exception und die letzten Zeilen des Ereignisprotokolls
+- Werte sind auf eine Zeile und 200 Zeichen gekürzt; Werte, die noch fehlen oder nicht lesbar sind, stehen als solche da; nach 5 Sekunden wird die Notiz ohne die fehlenden Werte fertig
+- Kennwörter und Schlüssel im Ereignisprotokoll und in Variablen mit solchen Namen erscheinen maskiert
+- Die Notiz liegt in der Zwischenablage und, mit `debug.note.saveFile`, als Datei unter `debug-notizen` (englische IDE: `debug-notes`) neben dem Projekt
+
+Einstellungen: `debug.note`, `debug.note.saveFile`
 
 ### Leck- und Absturzberichte (#74)
 

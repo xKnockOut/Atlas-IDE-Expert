@@ -5,8 +5,8 @@
 //     ohne die Werte der übrigen Reiter) und die des aktiven Projekts (atlas.json)
 //     im Dialog bearbeiten; jede Einstellung hat genau einen Ort (#227).
 //   - „Index-Cache löschen“ (#184).
-// Baseline (#97) und Unterdrückungen je Regel (#147) stehen seit #1755 auf der
-// Seite Prüfregeln im Abschnitt des Moduls Prüfregeln.
+// Baseline (#97) und Unterdrückungen je Regel (#147) stehen auf der Seite
+// Prüfregeln im Abschnitt des Moduls Prüfregeln (#1755).
 // Reine VCL; die Seite kennt weder Server noch Dateien. Die IDE-Schicht liefert
 // Texte und führt die Aktionen aus (AtlasServer.exe als Prozess bzw. Dialog).
 
@@ -40,8 +40,10 @@ type
     FCacheInfo: TLabel;
     FCacheClear: TButton;
     FHooks: TAtlasServerPageHooks;
+    /// <summary>Zeile der Höhe AHeight in logischen Pixeln (96 dpi).</summary>
     function AddPanel(AHeight: Integer): TPanel;
     function AddTitle(const ACaption: string): TLabel;
+    /// <summary>Knopf in APanel an ALeft (logische Pixel, 96 dpi).</summary>
     function AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
     function Confirmed(const AQuestion: string): Boolean;
     procedure EditGlobalClick(Sender: TObject);
@@ -65,7 +67,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Settings.Page.Sheets;
 
 const
   // Linker Rand des Knopfs für die Projekteinstellungen.
@@ -107,16 +110,7 @@ end;
 
 function TAtlasServerPage.AddPanel(AHeight: Integer): TPanel;
 begin
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.BevelOuter := bvNone;
-  Result.Height := AHeight;
-  // alTop stapelt nach Top: jedes neue Element unter das vorige.
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
-  Result.ParentBackground := True;
+  Result := TAtlasSettingsPageSheets.NewTopPanel(Self, AHeight, FNextTop);
 end;
 
 function TAtlasServerPage.AddTitle(const ACaption: string): TLabel;
@@ -138,7 +132,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := APanel;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(3);
   Result.Width := Result.ScaleValue(220);
   Result.OnClick := AClick;

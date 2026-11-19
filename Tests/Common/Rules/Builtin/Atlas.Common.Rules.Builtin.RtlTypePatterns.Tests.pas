@@ -428,8 +428,8 @@ procedure TRtlTypePatternRulesTests.FormatWithoutSettingsOwnRoutineInOtherUnit;
 var
   mIndex: ISymbolIndex;
 begin
-  // Marcos Fall: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie steht in
-  // uses nach System.SysUtils und verdeckt damit die RTL.
+  // Fall aus der Praxis: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie
+  // steht in uses nach System.SysUtils und verdeckt damit die RTL.
   mIndex := ToolsIndex(True);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
     FormatCaller('System.SysUtils, Werkzeuge', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
@@ -605,7 +605,7 @@ begin
     '  S: string;'#10'  Puffer: array[0..15] of Byte;'#10'  Liste: TListe;',
     '  FillChar(S[1], Length(S) * SizeOf(Char), '' '');'#10'  FillChar(Puffer, SizeOf(Puffer), 0);'#10 +
     '  Liste.Move(0, 1);'));
-  // FP-Prüfung 28.10.2026 (F10): Nullen direkt nach New bzw. GetMem füllt frischen Speicher.
+  // Nullen direkt nach New bzw. GetMem füllt frischen Speicher.
   TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse, '  P, Q: PAdresse;',
     '  New(P);'#10'  FillChar(P^, SizeOf(TAdresse), 0);'#10'  GetMem(Q, SizeOf(TAdresse));'#10 +
     '  FillChar(Q^, SizeOf(TAdresse), 0);'#10'  Dispose(P);'#10'  Dispose(Q);'));

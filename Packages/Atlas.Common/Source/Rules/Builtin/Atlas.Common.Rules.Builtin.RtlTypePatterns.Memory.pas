@@ -464,7 +464,7 @@ end;
 
 /// <summary>Steht direkt vor dem Aufruf "New(AName);" oder "GetMem(AName, …);"? Dann füllt FillChar frischen
 /// Speicher: New hat die verwalteten Felder schon mit nil belegt, nach GetMem ist Nullen die Initialisierung
-/// (FP-Prüfung 28.10.2026, F10).</summary>
+/// (häufig in Fremdcode).</summary>
 function TRawMemoryScan.AllocatedJustBefore(const AName: string): Boolean;
 var
   mSemicolon, mClose, mOpen, mDepth, mFirst: Integer;

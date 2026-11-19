@@ -441,8 +441,8 @@ begin
     begin
       // Zeigervergleich statt Assert.AreSame: DUnitX ruft dort Equals auf dem erwarteten Objekt auf und
       // stürzt bei nil ab (Offset zwischen zwei Kindern, beide Suchen liefern nil).
-      Assert.IsTrue(LinearChildAround(mWide, mOffset) = TResolverNodes.ChildAround(mWide, mOffset),
-        IntToStr(mOffset));
+      Assert.AreEqual<Pointer>(Pointer(LinearChildAround(mWide, mOffset)),
+        Pointer(TResolverNodes.ChildAround(mWide, mOffset)), IntToStr(mOffset));
     end;
   finally
     mTree.Free;

@@ -126,6 +126,9 @@ type
   end;
 
   TAtlasCommandHistory = class
+  public const
+    /// <summary>Vorgabe für Kind.</summary>
+    cDefaultKind = 'Verlauf der Befehlspalette';
   private type
     TEntry = record
       Count: Integer;
@@ -151,8 +154,8 @@ type
     function LoadFromFile(const AFileName: string): TAtlasDataLoad;
     /// <summary>Schreibt atomar; False, wenn LoadFromFile die vorhandene Datei nicht lesen konnte.</summary>
     function SaveToFile(const AFileName: string): Boolean;
-    /// <summary>Name der Ablage im Protokoll; Vorgabe „Verlauf der Befehlspalette“ (Schnell öffnen nutzt die
-    /// Klasse auch).</summary>
+    /// <summary>Name der Ablage im Protokoll; Vorgabe cDefaultKind (Schnell öffnen nutzt die Klasse auch).
+    /// </summary>
     property Kind: string read FKind write FKind;
   end;
 
@@ -342,7 +345,7 @@ constructor TAtlasCommandHistory.Create;
 begin
   inherited Create;
   FEntries := TDictionary<string, TEntry>.Create;
-  FKind := 'Verlauf der Befehlspalette';
+  FKind := cDefaultKind;
 end;
 
 destructor TAtlasCommandHistory.Destroy;
@@ -366,6 +369,13 @@ begin
 end;
 
 function TAtlasCommandHistory.Boost(const AId: string): Integer;
+const
+  // Zuletzt ausgeführt: bis cRecentBoost, je späterem Befehl cRecentStep weniger; Häufigkeit: je Aufruf
+  // cCountStep, höchstens cCountBoost. Zusammen bleibt der Zuschlag unter 100.
+  cRecentBoost = 70;
+  cRecentStep = 10;
+  cCountBoost = 29;
+  cCountStep = 3;
 var
   mEntry: TEntry;
 begin
@@ -374,8 +384,9 @@ begin
   begin
     Exit;
   end;
-  // Der zuletzt ausgeführte Befehl steht vorn (bis 70), Häufigkeit gibt bis 29 dazu.
-  Result := Max(0, 70 - Integer(FTick - mEntry.Last) * 10) + Min(29, mEntry.Count * 3);
+  // Der zuletzt ausgeführte Befehl steht vorn, Häufigkeit gibt etwas dazu.
+  Result := Max(0, cRecentBoost - Integer(FTick - mEntry.Last) * cRecentStep) +
+    Min(cCountBoost, mEntry.Count * cCountStep);
 end;
 
 function TAtlasCommandHistory.Parse(const AText: string): Boolean;
@@ -396,7 +407,7 @@ begin
     end;
     for mPair in TJSONObject(mRoot) do
     begin
-      // Früher brach ein kurzes oder falsch getyptes Paar das Lesen mit einer Ausnahme ab.
+      // Ein kurzes oder falsch getyptes Paar wird übergangen, statt das Lesen mit einer Ausnahme abzubrechen.
       if not (mPair.JsonValue is TJSONArray) then
       begin
         Continue;
@@ -486,6 +497,9 @@ begin
 end;
 
 class function TAtlasCommandPalette.CleanCaption(const ACaption: string): string;
+const
+  cDots = '...';
+  cEllipsis = '…';
 var
   mIndex: Integer;
 begin
@@ -508,13 +522,13 @@ begin
     Inc(mIndex);
   end;
   Result := Trim(Result);
-  if Result.EndsWith('...') then
+  if Result.EndsWith(cDots) then
   begin
-    Result := TrimRight(Copy(Result, 1, Length(Result) - 3));
+    Result := TrimRight(Copy(Result, 1, Length(Result) - Length(cDots)));
   end
-  else if Result.EndsWith('…') then
+  else if Result.EndsWith(cEllipsis) then
   begin
-    Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
+    Result := TrimRight(Copy(Result, 1, Length(Result) - Length(cEllipsis)));
   end;
 end;
 
