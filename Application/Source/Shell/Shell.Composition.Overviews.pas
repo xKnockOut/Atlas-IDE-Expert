@@ -1,8 +1,8 @@
 ﻿unit Shell.Composition.Overviews;
 
 // Internals-Rolle Shell: Übersichten des Servers. Architektur (#1118), Code-Abfragen (#1351), Hotspots (#1354),
-// Unit-Beziehungen (#593), Weg zwischen Symbolen (#1117), Wertdarstellungen (#854), Ereignisbehandlungen und
-// Rekursionssymbole (#623). Die Komposition reicht Index, Quelltext, Defines und die Datenquellen der
+// Unit-Beziehungen (#593), Weg zwischen Symbolen (#1117), Wertdarstellungen (#854), Ereignisbehandlungen,
+// Aufrufstellen von Datenzugriffen (#870) und Rekursionssymbole (#623). Die Komposition reicht Index, Quelltext, Defines und die Datenquellen der
 // Arbeitsbereiche als Dienste herein.
 
 interface
@@ -27,6 +27,7 @@ uses
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Lsp.DebugDisplay,
   Atlas.Common.Lsp.EventHandlers,
+  Atlas.Common.Lsp.DataAccessSites,
   Atlas.Common.Lsp.Recursion;
 
 type
@@ -44,6 +45,8 @@ type
     HotspotSourceFor: TLspHotspotSourceFunc;
     UnitRelationsOptionsFor: TLspUnitRelationsOptionsFunc;
     SymbolPathSourceFor: TLspSymbolPathSourceFunc;
+    /// <summary>Namensräume des Projekts für die Namensauflösung (#870).</summary>
+    Namespaces: TLspDataAccessNamespacesFunc;
   end;
 
   /// <summary>Dienste, Anfragen und Befehle der Übersichten.</summary>
@@ -70,6 +73,8 @@ type
     /// <summary>Eigene Wertdarstellungen beim Debuggen (#854): Befehl atlas.server.debugDisplayRules.</summary>
     FDebugDisplay: TLspDebugDisplay;
     FEventHandlers: TLspEventHandlers;
+    /// <summary>Anhalten bei SQL oder HTTP (#870): Befehl atlas.server.dataAccessSites.</summary>
+    FDataAccessSites: TLspDataAccessSites;
     FRecursion: TLspRecursion;
     /// <summary>Quelltext über den Dienst; als eigene Methode an alle Leser mit ihren eigenen Typen.</summary>
     function ReadText(const AFileName: string; out AText: string): Boolean;
@@ -84,7 +89,7 @@ type
     /// <summary>Befehle der Architektur, der Abfragen und der Hotspots.</summary>
     procedure RegisterReportCommands(ACommands: TLspCommands);
     /// <summary>Befehle der Unit-Beziehungen, des Wegs zwischen Symbolen, der Wertdarstellungen, der
-    /// Ereignisbehandlungen und der Rekursion.</summary>
+    /// Ereignisbehandlungen, der Datenzugriffe und der Rekursion.</summary>
     procedure RegisterUnitCommands(ACommands: TLspCommands);
     /// <summary>Gespeicherte Abfragen für die Regeln query:&lt;name&gt; (#1351).</summary>
     property Queries: ICodeQueries read FQueries;
@@ -121,6 +126,7 @@ begin
   FreeAndNil(FUnitRelationsGraph);
   FreeAndNil(FDebugDisplay);
   FreeAndNil(FEventHandlers);
+  FreeAndNil(FDataAccessSites);
   FreeAndNil(FRecursion);
   inherited Destroy;
 end;
@@ -158,6 +164,9 @@ begin
   FDebugDisplay.Index := FServices.Index;
   FEventHandlers := TLspEventHandlers.Create(FServices.MetricsSourceFor, ReadText);
   FEventHandlers.Index := FServices.Index;
+  // Datenzugriffe (#870): Typen der Empfänger und ihre Vorfahren über die Namensauflösung.
+  FDataAccessSites := TLspDataAccessSites.Create(FServices.MetricsSourceFor, ReadText, FServices.Index,
+    FServices.EnsureUnit, FServices.Namespaces);
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadText);
 end;
@@ -245,6 +254,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FEventHandlers.Execute(AArguments);
+    end);
+  ACommands.Register(TLspDataAccessSites.cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FDataAccessSites.Execute(AArguments);
     end);
   ACommands.RegisterConcurrent(TLspRecursion.cCommand,
     function(const AArguments: TJSONArray): TJSONValue

@@ -401,6 +401,7 @@
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.PaletteSearch.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.PageOptions.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.KeyCodes.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Scopes.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas"/>
@@ -845,7 +846,7 @@
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Pull.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Switches.pas"/>
-        <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Worker.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.BackgroundJobs.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineMove.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.CommentContinuation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.EnterWatch.pas"/>
