@@ -180,6 +180,8 @@ type
     cBodyStubs = 'bodyStubs';
     /// <summary>classCompletion.lifecycleFirst (#1836); 'false' = Konstruktoren nicht vorziehen.</summary>
     cLifecycleFirst = 'lifecycleFirst';
+    /// <summary>classCompletion.blankLines (#1839); 'false' = Leerzeilen nicht angleichen.</summary>
+    cBlankLines = 'blankLines';
   end;
 
   /// <summary>Ort und Inhalt der Befehlszeile.</summary>
