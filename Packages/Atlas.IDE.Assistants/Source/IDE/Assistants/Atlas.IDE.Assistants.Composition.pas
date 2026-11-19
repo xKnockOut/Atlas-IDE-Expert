@@ -83,6 +83,7 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Contracts.AiText,
   Atlas.IDE.Contracts.BuildRequests,
   Atlas.IDE.Contracts.DebugControl,
   Atlas.Core.Assistants.DebugGate,
@@ -434,6 +435,8 @@ begin
   GScope.Provide(IAtlasCommandSource, mRef);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   StartAiProbe;
+  // Text für andere Module (Zusammenfassen im Tracker, #2462); wer fragt, filtert nach aktiven Modulen.
+  GScope.Provide(IAtlasAiText, StartAiText);
   TAtlasAssistantsSettingsSection.KeyHooks := AiKeyHooks;
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
   // Anweisungsdateien für KI-Assistenten (#2615): Befehl, Menüeintrag und Hinweis nach dem Speichern.
@@ -451,6 +454,7 @@ begin
     begin
       TAtlasAssistantsSettingsSection.KeyHooks := Default(TAtlasAssistantsKeyHooks);
       StopAiProbe;
+      StopAiText;
     end);
   // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten die Aktivität bis dahin.
   FreeAndNil(GActivity);

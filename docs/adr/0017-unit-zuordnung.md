@@ -221,6 +221,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.MethodToggle` | `Core/Editor/Atlas.Core.Editor.MethodToggle.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LensAsk` | `Core/Editor/Atlas.Core.Editor.LensAsk.pas` | Ordner `Core/Editor`; ausstehende Frage einer Code Lens im Hintergrund, Antwort nur für die jüngste Frage |
 | `Atlas.Core.Editor.Metrics` | `Core/Editor/Atlas.Core.Editor.Metrics.pas` | Ordner `Core/Editor`; Antwort von `atlas.server.metrics` für Statusleiste, Metrikbericht und Metrik-Lens (#1756) |
+| `Atlas.Core.Editor.LineItems` | `Core/Editor/Atlas.Core.Editor.LineItems.pas` | Ordner `Core/Editor`; Eintrag einer Editorzeile finden (Metrik-Lens, Marke „getestet von“) |
 | `Atlas.Core.Editor.InlayPlan` | `Core/Editor/Atlas.Core.Editor.InlayPlan.pas` | Ordner `Core/Editor`; Entscheidungen der Inlay-Hints (Abruf, Arten, klickbare Marken), #1967 |
 | `Atlas.Core.Editor.PlaceholderPlan` | `Core/Editor/Atlas.Core.Editor.PlaceholderPlan.pas` | Ordner `Core/Editor`; Entscheidungen des Platzhalter-Modus (Tasten, Rahmen, Undo-Schritt), #1967 |
 | `Atlas.Core.Editor.CrumbCard` | `Core/Editor/Atlas.Core.Editor.CrumbCard.pas` | Ordner `Core/Editor`; Kennzahlen-Karte der Brotkrumen aus `Core.Editor.Metrics` (Outline → Editor wäre ein Feature-Zyklus) |
@@ -326,6 +327,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Contracts.LineChanges` | `Contracts/Atlas.IDE.Contracts.LineChanges.pas` | Vertrag Änderungsmarken und Zeilenhistorie (#1905) |
 | `Atlas.IDE.Contracts.GhostSuggestions` | `Contracts/Atlas.IDE.Contracts.GhostSuggestions.pas` | Vertrag für Anbieter von Schattentext-Vorschlägen nach Enter (gelernte Vorschläge, später weitere), #1890 |
 | `Atlas.IDE.Contracts.IssueWork` | `Contracts/Atlas.IDE.Contracts.IssueWork.pas` | Vertrag Arbeitsstand je Issue zwischen Willkommensseite und Tracker (#2052) |
+| `Atlas.IDE.Contracts.AiText` | `Contracts/Atlas.IDE.Contracts.AiText.pas` | Vertrag Text vom KI-Anbieter zwischen KI-Assistenten und anderen Modulen (#2462) |
 | `Atlas.IDE.Contracts.KnownErrors` | `Contracts/Atlas.IDE.Contracts.KnownErrors.pas` | Vertrag bekannte Fehler beim Exception-Halt zwischen Debugger und Tracker (#2460) |
 | `Atlas.IDE.Contracts.MouseHistory` | `Contracts/Atlas.IDE.Contracts.MouseHistory.pas` | Vertrag Fenster mit eigenem Verlauf für die Maustasten Zurück/Vor (#1889) |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455 |
@@ -343,6 +345,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Notifications.Build` | `Core/Notifications/Atlas.Core.Notifications.Build.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Center` | `Core/Notifications/Atlas.Core.Notifications.Center.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Listeners` | `Core/Notifications/Atlas.Core.Notifications.Listeners.pas` | Ordner `Core/Notifications` |
+| `Atlas.Core.Notifications.OrderedItems` | `Core/Notifications/Atlas.Core.Notifications.OrderedItems.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Contract` | `Core/Notifications/Atlas.Core.Notifications.Contract.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.MessageSink` | `Core/Notifications/Atlas.Core.Notifications.MessageSink.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Sources` | `Core/Notifications/Atlas.Core.Notifications.Sources.pas` | Ordner `Core/Notifications` |
@@ -818,6 +821,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Foundation.Scaling` | `UI/Foundation/Atlas.UI.Foundation.Scaling.pas` | Ränder, Innenabstände und Lage in logischen Pixeln (#2675) |
 | `Atlas.UI.Foundation.ListBox` | `UI/Foundation/Atlas.UI.Foundation.ListBox.pas` | TListBox, die beim Löschen nur die Fläche ohne Zeilen füllt (kein Flackern unter dem IDE-Thema) |
 | `Atlas.UI.Foundation.WrapLabel` | `UI/Foundation/Atlas.UI.Foundation.WrapLabel.pas` | Umbrechende Beschriftung, Höhe folgt der Breite |
+| `Atlas.UI.Foundation.Controls` | `UI/Foundation/Atlas.UI.Foundation.Controls.pas` | Bausteine selbst gebauter Steuerelemente: Fenster oder nachholen, Hervorhebung löschen, Enter/Esc ohne Signalton, Inhaltshöhe |
 | `Atlas.UI.Foundation.EditorFont` | `UI/Foundation/Atlas.UI.Foundation.EditorFont.pas` | Fassung der Editorschrift mit fester Auszeichnung für Texte im Editor (Befunde, Werte, Änderungsmarken) |
 | `Atlas.UI.Generate.Strings` | `UI/Generate/Atlas.UI.Generate.Strings.pas` | Ordner `UI/Generate` |
 | `Atlas.UI.Hover.Strings` | `UI/Hover/Atlas.UI.Hover.Strings.pas` | Ordner `UI/Hover` |
@@ -930,6 +934,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.DebugGate` | `Core/Assistants/Atlas.Core.Assistants.DebugGate.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.Banner` | `IDE/Assistants/Atlas.IDE.Assistants.Banner.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.AiProbe` | `IDE/Assistants/Atlas.IDE.Assistants.AiProbe.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.AiText` | `IDE/Assistants/Atlas.IDE.Assistants.AiText.pas` | Ordner `IDE/Assistants`, Text vom KI-Anbieter für andere Module über den Vertrag, #2462 |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.DebugInbox` | `IDE/Assistants/Atlas.IDE.Assistants.DebugInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.DebugBar` | `IDE/Assistants/Atlas.IDE.Assistants.DebugBar.pas` | Ordner `IDE/Assistants` |
@@ -1332,6 +1337,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.PaletteSearch` | `Core/Tracker/Atlas.Core.Tracker.PaletteSearch.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Preview` | `Core/Tracker/Atlas.Core.Tracker.Preview.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.IssueWork` | `Core/Tracker/Atlas.Core.Tracker.IssueWork.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.AiSummary` | `Core/Tracker/Atlas.Core.Tracker.AiSummary.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Projects` | `Core/Tracker/Atlas.Core.Tracker.Projects.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.GitHubBoards` | `Core/Tracker/Atlas.Core.Tracker.GitHubBoards.pas` | Ordner `Core/Tracker` |
@@ -1423,6 +1429,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.LinkedStart` | `IDE/Tracker/Atlas.IDE.Tracker.LinkedStart.pas` | Ordner `IDE/Tracker`, verknüpfter Branch beim „Beginnen“, #2138 |
 | `Atlas.IDE.Tracker.EndPull` | `IDE/Tracker/Atlas.IDE.Tracker.EndPull.pas` | Ordner `IDE/Tracker`, Pull Request beim „Beenden“, #2136 |
 | `Atlas.IDE.Tracker.IssueWork` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWork.pas` | Ordner `IDE/Tracker`, Arbeitsstand je Issue über den Vertrag, #2052 |
+| `Atlas.IDE.Tracker.IssueSummary` | `IDE/Tracker/Atlas.IDE.Tracker.IssueSummary.pas` | Ordner `IDE/Tracker`, Zusammenfassen mit KI über den Vertrag, #2462 |
 | `Atlas.IDE.Tracker.NewIssue` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssue.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.NewIssuePlace` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssuePlace.pas` | Ordner `IDE/Tracker`, Editorseite von „Issue anlegen“, #1455 |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |

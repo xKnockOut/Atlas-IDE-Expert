@@ -1358,15 +1358,8 @@ begin
 end;
 
 class function TAtlasMyIssues.ToJson(const AState: TAtlasIssuesState): string;
-var
-  mSection: TJSONObject;
 begin
-  mSection := SectionJson(AState);
-  try
-    Result := mSection.ToJSON;
-  finally
-    mSection.Free;
-  end;
+  Result := TJsonBuild.TextAndFree(SectionJson(AState));
 end;
 
 class function TAtlasMyIssues.FromJson(const AJson: string; out AState: TAtlasIssuesState): Boolean;

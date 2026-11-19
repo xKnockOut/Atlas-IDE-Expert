@@ -16,19 +16,23 @@ interface
 uses
   System.SysUtils,
   System.SyncObjs,
-  System.Generics.Collections,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Notifications.Listeners;
+  Atlas.Core.Notifications.Listeners,
+  Atlas.Core.Notifications.OrderedItems;
 
 type
+  /// <summary>Zeilen nach Order und Kennung.</summary>
+  TAtlasStatusItems = class(TAtlasOrderedItems<IAtlasStatusItem>)
+  protected
+    function IdOf(const AItem: IAtlasStatusItem): string; override;
+    function OrderOf(const AItem: IAtlasStatusItem): Integer; override;
+  end;
+
   TAtlasStatusRegistry = class(TInterfacedObject, IAtlasStatusRegistry)
   private
-    FLock: TCriticalSection;
-    FItems: TList<IAtlasStatusItem>;
+    FItems: TAtlasStatusItems;
     FListeners: TAtlasNotificationListeners;
     class var FDefault: IAtlasStatusRegistry;
-    function IndexOf(const AId: string): Integer;
-    procedure Notify;
   public
     constructor Create;
     destructor Destroy; override;
@@ -139,13 +143,24 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
+{ TAtlasStatusItems }
+
+function TAtlasStatusItems.IdOf(const AItem: IAtlasStatusItem): string;
+begin
+  Result := AItem.Id;
+end;
+
+function TAtlasStatusItems.OrderOf(const AItem: IAtlasStatusItem): Integer;
+begin
+  Result := AItem.Order;
+end;
+
 { TAtlasStatusRegistry }
 
 constructor TAtlasStatusRegistry.Create;
 begin
   inherited Create;
-  FLock := TCriticalSection.Create;
-  FItems := TList<IAtlasStatusItem>.Create;
+  FItems := TAtlasStatusItems.Create;
   FListeners := TAtlasNotificationListeners.Create;
 end;
 
@@ -153,119 +168,40 @@ destructor TAtlasStatusRegistry.Destroy;
 begin
   FListeners.Free;
   FItems.Free;
-  FLock.Free;
   inherited;
 end;
 
-function TAtlasStatusRegistry.IndexOf(const AId: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to FItems.Count - 1 do
-  begin
-    if SameText(FItems[mIndex].Id, AId) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-procedure TAtlasStatusRegistry.Notify;
-begin
-  FListeners.Changed;
-end;
-
-procedure TAtlasStatusRegistry.Remove(const AId: string);
-var
-  mIndex: Integer;
-begin
-  FLock.Enter;
-  try
-    mIndex := IndexOf(AId);
-    if mIndex < 0 then
-    begin
-      Exit;
-    end;
-    FItems.Delete(mIndex);
-  finally
-    FLock.Leave;
-  end;
-  Notify;
-end;
-
-function Comes(const ALeft, ARight: IAtlasStatusItem): Boolean;
-begin
-  if ALeft.Order <> ARight.Order then
-  begin
-    Result := ALeft.Order < ARight.Order;
-  end
-  else
-  begin
-    Result := CompareText(ALeft.Id, ARight.Id) < 0;
-  end;
-end;
-
 procedure TAtlasStatusRegistry.Add(const AItem: IAtlasStatusItem);
-var
-  mIndex, mExisting: Integer;
 begin
   if AItem = nil then
   begin
     Exit;
   end;
-  FLock.Enter;
-  try
-    mExisting := IndexOf(AItem.Id);
-    if mExisting >= 0 then
-    begin
-      FItems.Delete(mExisting);
-    end;
-    mIndex := 0;
-    while (mIndex < FItems.Count) and not Comes(AItem, FItems[mIndex]) do
-    begin
-      Inc(mIndex);
-    end;
-    FItems.Insert(mIndex, AItem);
-  finally
-    FLock.Leave;
+  FItems.Put(AItem);
+  FListeners.Changed;
+end;
+
+procedure TAtlasStatusRegistry.Remove(const AId: string);
+begin
+  if FItems.Remove(AId) then
+  begin
+    FListeners.Changed;
   end;
-  Notify;
 end;
 
 function TAtlasStatusRegistry.Find(const AId: string): IAtlasStatusItem;
-var
-  mIndex: Integer;
 begin
-  FLock.Enter;
-  try
-    mIndex := IndexOf(AId);
-    if mIndex >= 0 then
-    begin
-      Result := FItems[mIndex];
-    end
-    else
-    begin
-      Result := nil;
-    end;
-  finally
-    FLock.Leave;
-  end;
+  FItems.Find(AId, Result);
 end;
 
 function TAtlasStatusRegistry.Items: TArray<IAtlasStatusItem>;
 begin
-  FLock.Enter;
-  try
-    Result := FItems.ToArray;
-  finally
-    FLock.Leave;
-  end;
+  Result := FItems.ToArray;
 end;
 
 procedure TAtlasStatusRegistry.Changed;
 begin
-  Notify;
+  FListeners.Changed;
 end;
 
 function TAtlasStatusRegistry.Version: Integer;

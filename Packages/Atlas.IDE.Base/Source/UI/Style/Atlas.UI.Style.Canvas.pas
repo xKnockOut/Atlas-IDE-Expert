@@ -6,7 +6,9 @@
 // lässt Windows vor jedem Neuzeichnen den Hintergrund der Eltern holen; beim
 // Hovern blitzt das. Hier kommen Hintergrund und Inhalt zusammen in einen
 // Puffer, gelöscht wird nie. Beim Zeichnen bekommen Panels, Frames und der
-// Rollbereich darüber die Hintergrundfarbe des aktiven Stils.
+// Rollbereich darüber die Hintergrundfarbe des aktiven Stils. OnLeftClick meldet
+// das Loslassen der linken Maustaste mit der Stelle (Klick auf eine Zeile oder
+// einen Knopf der Kachel).
 
 interface
 
@@ -17,14 +19,19 @@ uses
   Vcl.Graphics;
 
 type
+  /// <summary>Linke Maustaste über der Zeichenfläche losgelassen, an AX, AY (Client-Koordinaten).</summary>
+  TAtlasCanvasClickEvent = procedure(Sender: TObject; AX, AY: Integer) of object;
+
   TAtlasStyledCanvas = class(TCustomControl)
   private
     FOnPaint: TNotifyEvent;
+    FOnLeftClick: TAtlasCanvasClickEvent;
     procedure WMEraseBkgnd(var AMessage: TWMEraseBkgnd); message WM_ERASEBKGND;
     /// <summary>Panels, Frames und den Rollbereich über AControl auf AColor setzen, wo sie abweichen.</summary>
     class procedure ColorParents(AControl: TControl; AColor: TColor); static;
   protected
     procedure Paint; override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Hintergrund im aktuellen IDE-Thema (clWindow des Stils).</summary>
@@ -33,6 +40,7 @@ type
     property ShowHint;
     property PopupMenu;
     property OnPaint: TNotifyEvent read FOnPaint write FOnPaint;
+    property OnLeftClick: TAtlasCanvasClickEvent read FOnLeftClick write FOnLeftClick;
     property OnDblClick;
     property OnMouseDown;
     property OnMouseMove;
@@ -71,6 +79,15 @@ begin
   if Assigned(FOnPaint) then
   begin
     FOnPaint(Self);
+  end;
+end;
+
+procedure TAtlasStyledCanvas.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseUp(Button, Shift, X, Y);
+  if (Button = mbLeft) and Assigned(FOnLeftClick) then
+  begin
+    FOnLeftClick(Self, X, Y);
   end;
 end;
 

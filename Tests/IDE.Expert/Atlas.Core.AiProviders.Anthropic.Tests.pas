@@ -44,6 +44,8 @@ type
     procedure CatalogBuildsProviders;
     [Test]
     procedure KeyTargetIsPerProvider;
+    [Test]
+    procedure ReadyNeedsProviderModelAndKey;
   end;
 
 implementation
@@ -270,6 +272,23 @@ end;
 procedure TAtlasAnthropicApiTests.KeyTargetIsPerProvider;
 begin
   Assert.AreEqual('Atlas:ai:anthropic', TAtlasAiKeys.Target(' Anthropic '));
+end;
+
+procedure TAtlasAnthropicApiTests.ReadyNeedsProviderModelAndKey;
+var
+  mSettings: TAtlasAiProviderSettings;
+begin
+  Assert.IsFalse(TAtlasAiProviders.Ready(SettingsOf(TAtlasAiProviders.cNone), True), 'ohne Anbieter');
+  Assert.IsFalse(TAtlasAiProviders.Ready(SettingsOf('unbekannt'), True), 'unbekannter Anbieter');
+  Assert.IsTrue(TAtlasAiProviders.Ready(SettingsOf('anthropic'), True), 'Anthropic mit Schlüssel');
+  Assert.IsFalse(TAtlasAiProviders.Ready(SettingsOf('anthropic'), False), 'Anthropic ohne Schlüssel');
+  Assert.IsTrue(TAtlasAiProviders.Ready(SettingsOf('openai-compatible'), False), 'lokal ohne Schlüssel');
+  mSettings := SettingsOf('openai-compatible');
+  mSettings.Model := ' ';
+  Assert.IsFalse(TAtlasAiProviders.Ready(mSettings, True), 'ohne Modell');
+  mSettings := SettingsOf('openai-compatible');
+  mSettings.Url := '';
+  Assert.IsFalse(TAtlasAiProviders.Ready(mSettings, True), 'ohne Adresse');
 end;
 
 end.

@@ -10829,6 +10829,31 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1269"
     },
+    "IssuesAiSummary": {
+      "type": "boolean",
+      "default": true,
+      "description": "„Zusammenfassen“ im Fenster „Atlas-Issue“: Der KI-Anbieter des Moduls KI-Assistenten (assistants.provider, Modell und Schlüssel wie beim KI-Schattentext) fasst Beschreibung, Kommentare und verknüpfte Issues zusammen: Stand, offene Fragen (mit wem) und nächster Schritt mit den betroffenen Units als Links in den Editor. Nur auf Knopfdruck; vor dem ersten Senden je Verbindung ein Hinweis, dass die Inhalte an den Anbieter gehen. Ohne eingerichteten Anbieter oder aus: kein Knopf, nichts geht hinaus.",
+      "x-key": "issues.aiSummary",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Issues mit KI zusammenfassen",
+      "x-captionEn": "Summarize issues with AI",
+      "x-issue": "#2462"
+    },
+    "IssuesAiSummaryMinComments": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Knopf „Zusammenfassen“ in der Werkzeugleiste ab so vielen Kommentaren (0 = immer); im Kontextmenü des Fensters immer.",
+      "x-key": "issues.aiSummary.minComments",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Zahl (0–1000)",
+      "x-parent": "issues.aiSummary",
+      "x-issue": "#2462"
+    },
     "IssuesNotify": {
       "type": "boolean",
       "default": false,

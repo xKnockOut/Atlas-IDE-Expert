@@ -41,6 +41,10 @@
 // (#1269, TAtlasIssueDevelopmentView: Branches, Commits, Pull Requests,
 // geänderte Units); der zweite fehlt bei issues.preview.development aus.
 // Gesucht wird erst, wenn der Reiter sichtbar wird (Events.DevelopmentShown).
+// „Zusammenfassen“ (#2462) als Knopf (SummaryButton) und im Kontextmenü (CanSummarize) meldet
+// Events.Summarize; die IDE-Schicht fragt den KI-Anbieter und zeigt das Ergebnis mit ShowSummary als Karte unter
+// dem Kopf. Units darin öffnen über Events.OpenUnit, „Als Kommentar übernehmen“ schreibt sie als Entwurf ins
+// Kommentarfeld.
 // „Anhängen …“ (#1276) als Knopf und im Kontextmenü nur mit CanAttach
 // (issues.attach); die IDE-Schicht öffnet den Dialog für dieses Issue.
 // Ein Fenster, der Inhalt wechselt; Verlauf über Zurück/Vor (Alt+Links,
@@ -123,6 +127,8 @@ type
     /// <summary>Bild zu AUrl ist geladen (übernimmt AGraphic); nil = bleibt als Link.</summary>
     procedure SetImage(const AUrl: string; AGraphic: TGraphic);
     procedure SetHistory(ACanBack, ACanForward: Boolean);
+    /// <summary>Zusammenfassung zeigen bzw. ändern (#2462); Kind None nimmt sie weg. Bildlauf bleibt.</summary>
+    procedure ShowSummary(const AShown: TAtlasIssueSummaryShown);
     /// <summary>Ergebnis des Sendens: AError '' = gesendet (Feld leer), sonst der Grund unter dem Feld.</summary>
     procedure CommentDone(const AError: string);
     /// <summary>Beschreibung nach dem Zurückschreiben (#1273): neu setzen, Bildlauf bleibt.</summary>
@@ -151,6 +157,8 @@ implementation
 
 uses
   Atlas.Core.Tracker.Markdown,
+  Atlas.Core.Tracker.AiSummary,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueBoxes;
 
 {$R *.dfm}
@@ -283,6 +291,43 @@ begin
         TAtlasIssueFlag.CommentSending] = [TAtlasIssueFlag.CanWrite]));
     TAtlasIssueTool.Pages:
       FireIf(DevelopmentActive, FEvents.DevelopmentShown);
+    TAtlasIssueTool.Summarize:
+      FireIf(mHas and (TAtlasIssueFlag.CanSummarize in FFlags), FEvents.Summarize);
+  end;
+end;
+
+/// <summary>Zusammenfassung als Entwurf für das Kommentarfeld (#2462).</summary>
+function SummaryComment(const ASummary: TAtlasIssueSummary): string;
+var
+  mHeads: TAtlasIssueSummaryHeads;
+begin
+  mHeads := Default(TAtlasIssueSummaryHeads);
+  mHeads.Title := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryTitle);
+  mHeads.Status := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryStatus) + ':';
+  mHeads.Questions := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryQuestions) + ':';
+  mHeads.NextStep := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryNextStep) + ':';
+  mHeads.Units := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryUnits) + ':';
+  mHeads.Footer := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryFooter);
+  Result := TAtlasIssueSummaries.AsComment(ASummary, mHeads);
+end;
+
+/// <summary>Klick in der Karte der Zusammenfassung (#2462): Unit öffnen, neu fragen, als Kommentar übernehmen.
+/// </summary>
+procedure RunSummaryPart(AFrame: TAtlasIssueFrame; APart: TAtlasIssuePart; ASender: TObject;
+  ADeferred: TAtlasIssueDeferred; AChrome: TAtlasIssueChrome);
+begin
+  if APart = TAtlasIssuePart.SummaryAgain then
+  begin
+    // Die Karte samt Label wird dabei neu gebaut: nicht im Klick.
+    ADeferred.Summarize;
+  end
+  else if APart = TAtlasIssuePart.SummaryComment then
+  begin
+    AChrome.SetCommentDraft(SummaryComment(AFrame.State.Summary.Summary));
+  end
+  else if Assigned(AFrame.Events.OpenUnit) then
+  begin
+    AFrame.Events.OpenUnit((ASender as TControl).Hint);
   end;
 end;
 
@@ -329,6 +374,8 @@ begin
       Fire(FEvents.CreateSubtask);
     TAtlasIssuePart.AddLink:
       Fire(FEvents.AddLink);
+    TAtlasIssuePart.SummaryUnit, TAtlasIssuePart.SummaryAgain, TAtlasIssuePart.SummaryComment:
+      RunSummaryPart(Self, APart, ASender, FDeferred, FChrome);
   end;
 end;
 
@@ -457,6 +504,20 @@ begin
   FChrome.UpdateButtons(FState.HasDetails, FFlags);
 end;
 
+procedure TAtlasIssueFrame.ShowSummary(const AShown: TAtlasIssueSummaryShown);
+var
+  mPosition: Integer;
+begin
+  FState.Summary := AShown;
+  if not FState.HasDetails then
+  begin
+    Exit;
+  end;
+  mPosition := FChrome.Parts.Scroll.VertScrollBar.Position;
+  Rebuild;
+  FChrome.Parts.Scroll.VertScrollBar.Position := mPosition;
+end;
+
 procedure TAtlasIssueFrame.CommentDone(const AError: string);
 begin
   SetFlag(TAtlasIssueFlag.CommentSending, False);
@@ -531,7 +592,8 @@ begin
         end;
       end;
     TAtlasIssueFlag.CanStart, TAtlasIssueFlag.CanWrite, TAtlasIssueFlag.CanEnd, TAtlasIssueFlag.CanAttach,
-      TAtlasIssueFlag.CanReview, TAtlasIssueFlag.LinksAsTree, TAtlasIssueFlag.CanWriteLinks:
+      TAtlasIssueFlag.CanReview, TAtlasIssueFlag.LinksAsTree, TAtlasIssueFlag.CanWriteLinks,
+      TAtlasIssueFlag.CanSummarize, TAtlasIssueFlag.SummaryButton:
       begin
         // Nur die Knöpfe; Baum und Knöpfe darüber gelten ab dem nächsten ShowDetails.
       end;

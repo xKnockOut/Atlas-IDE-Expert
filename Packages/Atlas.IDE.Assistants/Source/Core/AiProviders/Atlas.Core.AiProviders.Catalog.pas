@@ -47,6 +47,9 @@ type
     class function NeedsKey(const AId: string): Boolean; static;
     /// <summary>Kann der Anbieter AId einen Schlüssel brauchen (Knöpfe auf der Optionsseite)?</summary>
     class function TakesKey(const AId: string): Boolean; static;
+    /// <summary>Lässt sich mit ASettings fragen (#2462)? Bekannter Anbieter, Modell (und Adresse) eingetragen,
+    /// Schlüssel da, wenn der Anbieter einen braucht (AHasKey).</summary>
+    class function Ready(const ASettings: TAtlasAiProviderSettings; AHasKey: Boolean): Boolean; static;
     /// <summary>Kleine Anfrage für „Verbindung testen“; misst die Dauer. Im Hintergrund-Thread.</summary>
     class function Probe(const AProvider: IAtlasAiProvider): TAtlasAiProbeResult; static;
   end;
@@ -91,6 +94,18 @@ end;
 class function TAtlasAiProviders.NeedsKey(const AId: string): Boolean;
 begin
   Result := SameText(AId, TAtlasAnthropicApi.cId);
+end;
+
+class function TAtlasAiProviders.Ready(const ASettings: TAtlasAiProviderSettings; AHasKey: Boolean): Boolean;
+begin
+  if SameText(ASettings.Id, TAtlasOpenAiApi.cId) then
+  begin
+    Result := (Trim(ASettings.Model) <> '') and (Trim(ASettings.Url) <> '');
+  end
+  else
+  begin
+    Result := SameText(ASettings.Id, TAtlasAnthropicApi.cId) and (Trim(ASettings.Model) <> '') and AHasKey;
+  end;
 end;
 
 class function TAtlasAiProviders.TakesKey(const AId: string): Boolean;
