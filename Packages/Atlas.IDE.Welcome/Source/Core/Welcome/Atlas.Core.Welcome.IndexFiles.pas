@@ -167,7 +167,8 @@ begin
 end;
 
 /// <summary>Ein Unit-Eintrag; liefert seine Flags. Alles außer Name und Datei wird übersprungen.</summary>
-function ReadEntry(var AReader: TIndexCacheReader; const AStrings: TArray<string>; out AEntry: TAtlasIndexFile): Integer;
+function ReadEntry(var AReader: TIndexCacheReader; const AStrings: TArray<string>;
+  out AEntry: TAtlasIndexFile): Integer;
 var
   mPart: Integer;
 begin

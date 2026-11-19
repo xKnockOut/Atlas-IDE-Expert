@@ -54,6 +54,19 @@ type
 
 implementation
 
+const
+  cFnvOffsetBasis = 2166136261;
+  cFnvPrime = 16777619;
+  // Zahlen mit variabler Länge: 7 Nutzbits je Byte, gesetztes oberstes Bit heißt "es folgt mehr".
+  cVarBits = 7;
+  cVarMask = $7F;
+  cVarMore = $80;
+  cVarMaxShift = 63;
+  cBitsPerByte = 8;
+
+resourcestring
+  sIndexCacheDamaged = 'Index cache damaged';
+
 { TIndexCacheReader }
 
 class function TIndexCacheReader.HasMagic(const AData: TBytes): Boolean;
@@ -73,16 +86,16 @@ class function TIndexCacheReader.Checksum(const AData: TBytes; AFrom, ATo: Integ
 var
   mIndex: Integer;
 begin
-  Result := 2166136261;
+  Result := cFnvOffsetBasis;
   for mIndex := AFrom to ATo - 1 do
   begin
-    Result := Cardinal(UInt64(Result xor AData[mIndex]) * 16777619);
+    Result := Cardinal(UInt64(Result xor AData[mIndex]) * cFnvPrime);
   end;
 end;
 
 class procedure TIndexCacheReader.Fail;
 begin
-  raise EIndexCacheFormat.Create('Index cache damaged');
+  raise EIndexCacheFormat.Create(sIndexCacheDamaged);
 end;
 
 function TIndexCacheReader.ReadByte: Byte;
@@ -103,14 +116,14 @@ begin
   Result := 0;
   mShift := 0;
   repeat
-    if mShift > 63 then
+    if mShift > cVarMaxShift then
     begin
       Fail;
     end;
     mValue := ReadByte;
-    Result := Result or (UInt64(mValue and $7F) shl mShift);
-    Inc(mShift, 7);
-  until mValue < $80;
+    Result := Result or (UInt64(mValue and cVarMask) shl mShift);
+    Inc(mShift, cVarBits);
+  until mValue < cVarMore;
 end;
 
 function TIndexCacheReader.ReadCount: Integer;
@@ -220,7 +233,7 @@ begin
   mStored := 0;
   for mIndex := cIndexCacheChecksumSize - 1 downto 0 do
   begin
-    mStored := (mStored shl 8) or Data[Position + mIndex];
+    mStored := (mStored shl cBitsPerByte) or Data[Position + mIndex];
   end;
   Inc(Position, cIndexCacheChecksumSize);
   Result := mStored = Checksum(Data, Position, Length(Data));

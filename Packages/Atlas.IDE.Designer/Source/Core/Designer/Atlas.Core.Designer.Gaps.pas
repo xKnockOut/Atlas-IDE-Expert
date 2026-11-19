@@ -292,7 +292,8 @@ begin
   Result := nil;
   for mPart in AText.Split([',', ';', ' '], TStringSplitOptions.ExcludeEmpty) do
   begin
-    if TryStrToInt(mPart.Trim, mValue) and (mValue >= 0) and (mValue <= cMaxGap) and not TTextArrays.ContainsInteger(Result, mValue) then
+    if TryStrToInt(mPart.Trim, mValue) and (mValue >= 0) and (mValue <= cMaxGap) and
+      not TTextArrays.ContainsInteger(Result, mValue) then
     begin
       Result := Result + [mValue];
     end;

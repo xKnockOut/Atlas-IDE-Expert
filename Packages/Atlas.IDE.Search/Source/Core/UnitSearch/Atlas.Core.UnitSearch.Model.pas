@@ -361,7 +361,8 @@ begin
   // Jede Regel des Matchers setzt eine Teilfolge voraus, und jede Teilfolge zählt (ScoreSubsequence):
   // Was das längere Wort trifft, traf auch das kürzere.
   Result := (Kinds = APrevious.Kinds) and (NotKinds = APrevious.NotKinds) and
-    TTextArrays.SameTexts(Projects, APrevious.Projects) and TTextArrays.SameTexts(NotProjects, APrevious.NotProjects) and
+    TTextArrays.SameTexts(Projects, APrevious.Projects) and
+    TTextArrays.SameTexts(NotProjects, APrevious.NotProjects) and
     (Length(Words) >= Length(APrevious.Words));
   if Result then
   begin
