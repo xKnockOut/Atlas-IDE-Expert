@@ -109,7 +109,7 @@ end;
 const
   cNavigationTools = 11;
   cCheckTools = 7;
-  cContextTools = 50;
+  cContextTools = 51;
 
 /// <summary>Deutsche Spuren in einem englischen Text: Umlaute oder häufige deutsche Wörter.</summary>
 function LooksGerman(const AText: string): Boolean;
