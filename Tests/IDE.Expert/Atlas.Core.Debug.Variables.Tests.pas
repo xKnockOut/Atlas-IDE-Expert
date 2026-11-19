@@ -175,6 +175,10 @@ begin
   Assert.IsTrue(TAtlasVariables.ReadAnswerText('{"format":1,"autos":["Betrag","S"],"locals":["Self","S"]}', mAnswer));
   Assert.AreEqual('Betrag,S', string.Join(',', mAnswer.Autos));
   Assert.AreEqual('Self,S', string.Join(',', mAnswer.Locals));
+  Assert.IsFalse(mAnswer.Place.Known, 'ohne unit und class (#2550)');
+  Assert.IsTrue(TAtlasVariables.ReadAnswerText('{"autos":[],"locals":[],"unit":"U","class":"TA","ancestors":["TB"]}',
+    mAnswer));
+  Assert.AreEqual('U TA TB', mAnswer.Place.UnitName + ' ' + mAnswer.Place.TypeName + ' ' + mAnswer.Place.Ancestors[0]);
   Assert.IsFalse(TAtlasVariables.ReadAnswerText('', mAnswer), 'leer');
   Assert.IsFalse(TAtlasVariables.ReadAnswerText('{kaputt', mAnswer), 'kaputt');
   Assert.IsFalse(TAtlasVariables.ReadAnswerText('{"format":1,"autos":[]}', mAnswer), 'ohne locals');

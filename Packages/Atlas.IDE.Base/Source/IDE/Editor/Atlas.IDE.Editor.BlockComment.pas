@@ -41,7 +41,6 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Editor.LineMove,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -122,15 +121,9 @@ end;
 procedure WriteToggled(const ASource: TBlockCommentSource; const AToggled: TAtlasBlockCommentResult);
 var
   mView: IOTAEditView;
-  mStart, mOldLength: Integer;
-  mInsert: string;
 begin
   mView := ASource.View;
-  if TAtlasLineMover.Difference(ASource.Text, string.Join(ASource.LineBreak, AToggled.Lines), mStart, mOldLength,
-    mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, ASource.Text, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mView.Buffer, ASource.Text, string.Join(ASource.LineBreak, AToggled.Lines));
   if ASource.HasSelection then
   begin
     mView.Block.Style := btNonInclusive;

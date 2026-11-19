@@ -13,7 +13,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Stand einer gelesenen Unit: Änderungszeit, Text (nur Testunits) und Fixtures.</summary>
@@ -24,8 +25,8 @@ type
     Found: TDUnitXUnit;
   end;
 
-  /// <summary>Text einer Datei; False, wenn sie sich nicht lesen lässt.</summary>
-  TAtlasTestReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+  /// <summary>Zeilen einer Datei; False, wenn sie sich nicht lesen lässt.</summary>
+  TAtlasTestReadLines = TTextReadLines;
   /// <summary>Änderungszeit einer Datei; 0, wenn es sie nicht gibt.</summary>
   TAtlasTestAgeOf = reference to function(const AFileName: string): TDateTime;
 
