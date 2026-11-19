@@ -32,7 +32,7 @@ uses
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
-  Atlas.IDE.CodeInsight.Composition.Adapters,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Tools,

@@ -45,8 +45,8 @@
 // Aufbau: Die Klasse erbt ihre Teile über die Kette TAtlasCompletionPopupState (Zustand, Höhen) →
 // TAtlasCompletionPopupLayout (Lage, Panel) → TAtlasCompletionPopupPainter (Zeichnen, Tooltip); hier stehen Maus,
 // Anzeige der Liste und Barrierefreiheit. Texte in Atlas.UI.Completion.PopupTexts.
-// Als Ansicht des Controllers und Quelle für UI Automation dient das Popup über View
-// (Atlas.UI.Completion.Adapters.PopupView, eingesetzt von der Kompositionswurzel über ViewFactory).
+// Als Ansicht des Controllers und Quelle für UI Automation dient das Popup über TAtlasCompletionViews
+// (Atlas.UI.Completion.Adapters.PopupView, eingesetzt von der Kompositionswurzel).
 
 interface
 
@@ -62,17 +62,7 @@ uses
   Atlas.UI.Completion.PopupPainter;
 
 type
-  TAtlasCompletionPopup = class;
-
-  /// <summary>Ansicht des Controllers zum Popup APopup; unterstützt auch IAtlasCompletionSyntaxView,
-  /// IAtlasCompletionHiddenView und IAtlasAccessibleItems.</summary>
-  TAtlasCompletionViewFactory = reference to function(APopup: TAtlasCompletionPopup): IAtlasCompletionView;
-
   TAtlasCompletionPopup = class(TAtlasCompletionPopupPainter)
-  private class var
-    FViewFactory: TAtlasCompletionViewFactory;
-  private
-    FView: IAtlasCompletionView;
   private
     /// <summary>Breite ziehen (#416): Bildschirmkoordinaten, weil das Fenster beim Ziehen mitwächst.</summary>
     procedure DragTo;
@@ -89,10 +79,7 @@ type
     procedure DblClick; override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
-    /// <summary>Ansicht für TAtlasCompletionController (aus ViewFactory, einmal je Popup); nil ohne ViewFactory.
-    /// </summary>
-    function View: IAtlasCompletionView;
-    { Einträge für UI Automation (IAtlasAccessibleItems über View) }
+    { Einträge für UI Automation (IAtlasAccessibleItems über TAtlasCompletionViews) }
     function AccessibleCount: Integer;
     function AccessibleSelected: Integer;
     function AccessibleId(APosition: Integer): Integer;
@@ -105,15 +92,15 @@ type
     /// <summary>Hinweis links in der Fußzeile (#458), auch für die Sprachausgabe; gilt bis zum nächsten
     /// getippten Zeichen bzw. Schließen.</summary>
     procedure ShowNotice(const AText: string);
-    { Ansicht (IAtlasCompletionView über View) }
+    { Ansicht des Controllers (IAtlasCompletionView über TAtlasCompletionViews) }
     procedure ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
       const APattern: string);
     procedure HideList;
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
-    { IAtlasCompletionSyntaxView über View }
+    { IAtlasCompletionSyntaxView über TAtlasCompletionViews }
     procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
-    { IAtlasCompletionHiddenView über View }
+    { IAtlasCompletionHiddenView über TAtlasCompletionViews }
     procedure ShowInaccessible(const AItems: TAtlasCompletionItems);
     property OnSelect: TAtlasPositionEvent read FEvents.OnSelect write FEvents.OnSelect;
     property OnAccept: TAtlasPositionEvent read FEvents.OnAccept write FEvents.OnAccept;
@@ -125,8 +112,21 @@ type
     property OnFavorite: TAtlasPositionEvent read FEvents.OnFavorite write FEvents.OnFavorite;
     /// <summary>Klick auf die Zeilenangabe der Warnleiste (#457).</summary>
     property OnSyntaxLine: TAtlasSyntaxLineEvent read FEvents.OnSyntaxLine write FEvents.OnSyntaxLine;
-    /// <summary>Legt die Ansicht an; setzt die Kompositionswurzel.</summary>
-    class property ViewFactory: TAtlasCompletionViewFactory read FViewFactory write FViewFactory;
+  end;
+
+  /// <summary>Ansicht des Controllers zum Popup APopup; unterstützt auch IAtlasCompletionSyntaxView,
+  /// IAtlasCompletionHiddenView und IAtlasAccessibleItems.</summary>
+  TAtlasCompletionViewFactory = reference to function(APopup: TAtlasCompletionPopup): IAtlasCompletionView;
+
+  /// <summary>Popup als Ansicht für TAtlasCompletionController (Atlas.UI.Completion.Adapters.PopupView); die
+  /// Fabrik setzt die Kompositionswurzel.</summary>
+  TAtlasCompletionViews = class
+  private class var
+    FFactory: TAtlasCompletionViewFactory;
+  public
+    /// <summary>Ansicht zu APopup; nil ohne Fabrik.</summary>
+    class function ViewOf(APopup: TAtlasCompletionPopup): IAtlasCompletionView; static;
+    class property Factory: TAtlasCompletionViewFactory read FFactory write FFactory;
   end;
 
 implementation
@@ -349,20 +349,11 @@ end;
 
 { TAtlasCompletionPopup }
 
-function TAtlasCompletionPopup.View: IAtlasCompletionView;
-begin
-  if (FView = nil) and Assigned(FViewFactory) then
-  begin
-    FView := FViewFactory(Self);
-  end;
-  Result := FView;
-end;
-
 function TAtlasCompletionPopup.CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement;
 var
   mItems: IAtlasAccessibleItems;
 begin
-  if Supports(View, IAtlasAccessibleItems, mItems) then
+  if Supports(TAtlasCompletionViews.ViewOf(Self), IAtlasAccessibleItems, mItems) then
   begin
     Result := TAtlasAccessibleList.Create(Handle, AName, mItems);
   end
@@ -832,6 +823,20 @@ begin
   if IsShown then
   begin
     Invalidate;
+  end;
+end;
+
+{ TAtlasCompletionViews }
+
+class function TAtlasCompletionViews.ViewOf(APopup: TAtlasCompletionPopup): IAtlasCompletionView;
+begin
+  if Assigned(FFactory) then
+  begin
+    Result := FFactory(APopup);
+  end
+  else
+  begin
+    Result := nil;
   end;
 end;
 

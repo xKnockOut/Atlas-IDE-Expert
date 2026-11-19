@@ -2,8 +2,8 @@
 
 // Das Popup der Vervollständigung (TAtlasCompletionPopup) als Ansicht des Controllers (IAtlasCompletionView,
 // IAtlasCompletionSyntaxView, IAtlasCompletionHiddenView aus Atlas.Core.Completion.Controller) und als Quelle der
-// Einträge für UI Automation (IAtlasAccessibleItems, #447). Reicht nur weiter; das Popup hält den Adapter
-// (TAtlasCompletionPopup.View), die Kompositionswurzel setzt ihn über TAtlasCompletionPopup.ViewFactory ein.
+// Einträge für UI Automation (IAtlasAccessibleItems, #447). Reicht nur weiter; Controller und UI-Automation-Liste
+// halten den Adapter, die Kompositionswurzel setzt ihn über TAtlasCompletionViews.Factory ein.
 
 interface
 
@@ -21,7 +21,7 @@ type
   private
     FPopup: TAtlasCompletionPopup;
   public
-    /// <summary>APopup lebt länger als der Adapter (es hält ihn).</summary>
+    /// <summary>APopup lebt so lange wie die Nutzer des Adapters (Controller, UI Automation).</summary>
     constructor Create(APopup: TAtlasCompletionPopup);
     { IAtlasCompletionView }
     procedure ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;

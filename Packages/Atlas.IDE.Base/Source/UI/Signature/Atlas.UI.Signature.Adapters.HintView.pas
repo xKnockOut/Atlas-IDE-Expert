@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Signature.Adapters.HintView;
 
 // Der Parameter-Hint (TAtlasSignatureHint) als Ansicht des Controllers (IAtlasSignatureView aus
-// Atlas.Core.Signature.Controller). Reicht nur weiter; der Hint hält den Adapter (TAtlasSignatureHint.View), die
-// Kompositionswurzel setzt ihn über TAtlasSignatureHint.ViewFactory ein.
+// Atlas.Core.Signature.Controller). Reicht nur weiter; der Controller hält den Adapter, die Kompositionswurzel
+// setzt ihn über TAtlasSignatureViews.Factory ein.
 
 interface
 
@@ -16,7 +16,7 @@ type
   private
     FHint: TAtlasSignatureHint;
   public
-    /// <summary>AHint lebt länger als der Adapter (er hält ihn).</summary>
+    /// <summary>AHint lebt so lange wie die Nutzer des Adapters (Controller).</summary>
     constructor Create(AHint: TAtlasSignatureHint);
     procedure ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
     procedure HideSignature;

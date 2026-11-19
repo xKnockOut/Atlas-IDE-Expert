@@ -39,7 +39,7 @@ uses
   Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.IDE.CodeInsight.Composition.Adapters,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.Foundation.Host;
 
 /// <summary>Vervollständigung oder Platzhalter des Managers offen?</summary>

@@ -1,24 +1,29 @@
 ﻿unit Atlas.UI.Hover.Adapters.TipMeasure;
 
-// Die Zeichenfläche des Tooltips (TAtlasHoverTipView) als Messung für den Satz (IAtlasHoverMeasure aus
-// Atlas.Core.Hover.Layout.Contract). Reicht nur weiter; der Tooltip hält den Adapter, die Kompositionswurzel setzt
-// ihn über TAtlasHoverTipView.MeasureFactory ein.
+// Die Zeichenfläche des Tooltips als Messung für den Satz (IAtlasHoverMeasure aus
+// Atlas.Core.Hover.Layout.Contract): Textbreiten und -höhen in den Schriften des Tooltips, Absatzhöhe in der
+// UI-Schrift, Breite und Umbruch der eingefärbten Deklaration in der Editorschrift. Die Kompositionswurzel setzt
+// ihn über TAtlasHoverMeasures.Factory ein; der Tooltip legt ihn je Satz an.
 
 interface
 
 uses
   System.Types,
+  Vcl.Graphics,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout.Contract,
-  Atlas.UI.Hover.Tip;
+  Atlas.UI.Popup.Styled;
 
 type
   TAtlasHoverTipMeasure = class(TInterfacedObject, IAtlasHoverMeasure)
   private
-    FTip: TAtlasHoverTipView;
+    FCanvas: TCanvas;
+    FFont: TFont;
+    FUIFont: TFont;
+    FDeclaration: TAtlasStyledText;
   public
-    /// <summary>ATip lebt länger als der Adapter (er hält ihn).</summary>
-    constructor Create(ATip: TAtlasHoverTipView);
+    /// <summary>ACanvas und die Schriften gehören dem Tooltip und leben länger als der Satz.</summary>
+    constructor Create(ACanvas: TCanvas; AFont, AUIFont: TFont; const ADeclaration: TAtlasStyledText);
     function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
     function TextHeight(const AFace: TAtlasHoverFace): Integer;
     function BlockHeight(const AText: string; AWidth: Integer): Integer;
@@ -28,37 +33,54 @@ type
 
 implementation
 
+uses
+  Winapi.Windows,
+  Atlas.UI.Hover.Tip;
+
 { TAtlasHoverTipMeasure }
 
-constructor TAtlasHoverTipMeasure.Create(ATip: TAtlasHoverTipView);
+constructor TAtlasHoverTipMeasure.Create(ACanvas: TCanvas; AFont, AUIFont: TFont;
+  const ADeclaration: TAtlasStyledText);
 begin
   inherited Create;
-  FTip := ATip;
+  FCanvas := ACanvas;
+  FFont := AFont;
+  FUIFont := AUIFont;
+  FDeclaration := ADeclaration;
 end;
 
 function TAtlasHoverTipMeasure.TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
 begin
-  Result := FTip.MeasureTextWidth(AFace, AText);
+  ApplyHoverFace(FCanvas, FFont, FUIFont, AFace, 0);
+  Result := FCanvas.TextWidth(AText);
 end;
 
 function TAtlasHoverTipMeasure.TextHeight(const AFace: TAtlasHoverFace): Integer;
 begin
-  Result := FTip.MeasureTextHeight(AFace);
+  ApplyHoverFace(FCanvas, FFont, FUIFont, AFace, 0);
+  Result := FCanvas.TextHeight('Wg');
 end;
 
 function TAtlasHoverTipMeasure.BlockHeight(const AText: string; AWidth: Integer): Integer;
+var
+  mArea: TRect;
 begin
-  Result := FTip.MeasureBlockHeight(AText, AWidth);
+  FCanvas.Font := FUIFont;
+  mArea := Rect(0, 0, AWidth, 0);
+  DrawText(FCanvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
+  Result := mArea.Bottom;
 end;
 
 function TAtlasHoverTipMeasure.DeclarationWidth(AFrom, ATill: Integer): Integer;
 begin
-  Result := FTip.MeasureDeclarationWidth(AFrom, ATill);
+  FCanvas.Font := FFont;
+  Result := FDeclaration.Width(FCanvas, AFrom, ATill);
 end;
 
 function TAtlasHoverTipMeasure.DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
 begin
-  Result := FTip.MeasureDeclarationLines(AWidth, AIndent);
+  FCanvas.Font := FFont;
+  Result := FDeclaration.WrapAtSpaces(FCanvas, AWidth, AIndent);
 end;
 
 end.

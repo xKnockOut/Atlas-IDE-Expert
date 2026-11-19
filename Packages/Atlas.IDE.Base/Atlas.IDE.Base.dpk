@@ -289,6 +289,8 @@ contains
   Atlas.IDE.CodeInsight.Manager in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.pas',
   Atlas.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.pas',
   Atlas.IDE.CodeInsight.Composition.Adapters in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Adapters.pas',
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.IdeAdapters.pas',
+  Atlas.IDE.CodeInsight.Composition.UiAdapters in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.UiAdapters.pas',
   Atlas.IDE.CodeInsight.Composition.Appearance in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Appearance.pas',
   Atlas.IDE.CodeInsight.Composition.Background in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Background.pas',
   Atlas.IDE.CodeInsight.Composition.Build in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Build.pas',

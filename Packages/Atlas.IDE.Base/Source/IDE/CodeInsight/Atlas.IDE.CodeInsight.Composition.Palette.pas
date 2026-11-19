@@ -51,7 +51,7 @@ uses
   Atlas.IDE.CodeInsight.Composition.Tools,
   Atlas.IDE.CodeInsight.Composition.PaletteNavigation,
   Atlas.IDE.CodeInsight.Composition.PaletteEditing,
-  Atlas.IDE.CodeInsight.Composition.Adapters;
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters;
 
 var
   PaletteInstance: TAtlasIdePalette;
