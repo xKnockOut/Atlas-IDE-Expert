@@ -108,14 +108,6 @@ const
   cMinArrow = 6;
   cArrowPad = 4;
 
-function Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 { TAtlasIdeDebugStopColumn.TEvents }
 
 function TAtlasIdeDebugStopColumn.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -204,7 +196,7 @@ begin
   begin
     Exit;
   end;
-  mEditors := Services;
+  mEditors := TAtlasIdeGutterColumns.Services;
   // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233).
   if (mEditors = nil) or not TAtlasIdeGutterColumns.Allowed then
   begin
@@ -218,20 +210,8 @@ begin
 end;
 
 procedure TAtlasIdeDebugStopColumn.DropColumn;
-var
-  mEditors: INTACodeEditorServices280;
 begin
-  if FColumn < 0 then
-  begin
-    Exit;
-  end;
-  mEditors := Services;
-  if mEditors <> nil then
-  begin
-    mEditors.RemoveGutterColumn(FColumn);
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-  FColumn := -1;
+  TAtlasIdeGutterColumns.Remove(FColumn);
   FRows.Clear;
 end;
 
@@ -383,7 +363,8 @@ end;
 
 procedure TAtlasIdeDebugStopColumn.HideTip;
 begin
-  if (FTip <> nil) and FTip.IsShown then
+  // HidePopup prüft selbst, ob die Tafel steht.
+  if FTip <> nil then
   begin
     FTip.HidePopup;
   end;
@@ -391,7 +372,7 @@ end;
 
 class procedure TAtlasIdeDebugStopColumn.Invalidate;
 begin
-  TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  TAtlasIdeEditorRefresh.InvalidateTop(TAtlasIdeGutterColumns.Services);
 end;
 
 class procedure TAtlasIdeDebugStopColumn.PaintArrow(ACanvas: TCanvas; const ARect: TRect; AWarn: Boolean);

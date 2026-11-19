@@ -177,14 +177,6 @@ begin
   Result := Top + Size - 1;
 end;
 
-function Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 /// <summary>↑ (AUp) bzw. ↓: Schaft und gefüllte Spitze.</summary>
 procedure PaintArrow(ACanvas: TCanvas; const ABox: TSymbolBox; AUp: Boolean);
 var
@@ -489,7 +481,7 @@ begin
   begin
     Exit;
   end;
-  mEditors := Services;
+  mEditors := TAtlasIdeGutterColumns.Services;
   // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233, TAtlasIdeGutterColumns).
   if (mEditors = nil) or not TAtlasIdeGutterColumns.Allowed then
   begin
@@ -503,20 +495,8 @@ begin
 end;
 
 procedure TAtlasIdeGutterColumn.DropColumn;
-var
-  mEditors: INTACodeEditorServices280;
 begin
-  if FColumn < 0 then
-  begin
-    Exit;
-  end;
-  mEditors := Services;
-  if mEditors <> nil then
-  begin
-    mEditors.RemoveGutterColumn(FColumn);
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-  FColumn := -1;
+  TAtlasIdeGutterColumns.Remove(FColumn);
   FRows.Clear;
 end;
 
