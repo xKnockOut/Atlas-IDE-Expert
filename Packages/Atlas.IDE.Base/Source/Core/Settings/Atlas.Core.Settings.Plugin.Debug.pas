@@ -7,6 +7,7 @@
 interface
 
 uses
+  Atlas.Core.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -59,7 +60,7 @@ const
   cMaxAsyncOriginPerSite = 1000;
   cDefaultAsyncOriginPerSite = 20;
   /// <summary>Vorgabe von debug.reattach.key (#2171): Umschalt+Alt+P.</summary>
-  cDefaultReattachKey = $A050;
+  cDefaultReattachKey = cKeyShift + cKeyAlt + Ord('P');
   /// <summary>Vorgabe und Grenzen von debug.reattach.waitIntervalMs (#2171).</summary>
   cDefaultReattachWaitMs = 100;
   cMinReattachWaitMs = 20;
@@ -431,7 +432,7 @@ begin
   Result.DebugStepFilters := True;
   Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.cDefaultKinds);
   Result.DebugStepFilterPatterns := '';
-  Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
+  Result.DebugStepIntoTargetKey := cKeyCtrl + cKeyAlt + cKeyF7; // Strg+Alt+F7
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
   Result.DebugCheckBreakpoints := True;

@@ -45,7 +45,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Style.Scaling;
 
 const
   cSizes: array[0..TAtlasSymbol.cSizeCount - 1] of Integer = (16, 20, 24, 32, 40, 48, 64, 128, 256);
@@ -71,12 +72,8 @@ end;
 
 class function TAtlasSymbol.PixelSize(ALogicalSize, APixelsPerInch: Integer): Integer;
 begin
-  if APixelsPerInch <= 0 then
-  begin
-    APixelsPerInch := 96;
-  end;
   // Kaufmännisch gerundet wie MulDiv: 16 px bei 150 % sind 24 px.
-  Result := (ALogicalSize * APixelsPerInch + 48) div 96;
+  Result := TAtlasScaling.ToDevice(ALogicalSize, APixelsPerInch);
 end;
 
 class function TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch: Integer): Integer;
