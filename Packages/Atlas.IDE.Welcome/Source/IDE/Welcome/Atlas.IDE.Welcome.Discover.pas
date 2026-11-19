@@ -53,7 +53,8 @@ type
     FCurrent: string;
     FTitle: string;
     FStarted: Boolean;
-    // Befehlsliste für einen Durchgang über alle Tipps (AllowedIds): einmal gebaut statt je Tipp (Start 06.11.2026).
+    // Befehlsliste für einen Durchgang über alle Tipps (AllowedIds): einmal gebaut statt je Tipp, damit der Start
+    // nicht bremst.
     FSnapshot: TArray<TAtlasCommand>;
     FSnapshotActive: Boolean;
     /// <summary>Befehle der Palette; während AllowedIds die einmal gebaute Liste.</summary>
