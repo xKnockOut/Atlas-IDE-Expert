@@ -363,11 +363,8 @@ end;
 
 procedure TAtlasIdeDebugStopColumn.HideTip;
 begin
-  // HidePopup prüft selbst, ob die Tafel steht.
-  if FTip <> nil then
-  begin
-    FTip.HidePopup;
-  end;
+  // Die Tafel lebt so lange wie die Spalte; HidePopup prüft selbst, ob sie steht.
+  FTip.HidePopup;
 end;
 
 class procedure TAtlasIdeDebugStopColumn.Invalidate;
