@@ -75,10 +75,15 @@ begin
     Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsBanner')),
       'Anzeige mit Pause auf der Seite des Moduls (#1906)');
     Assert.IsTrue(CheckOf(mPage, 'AssistantsBanner').Checked, 'Anzeige standardmäßig an');
+    // #2615: Hinweis auf veraltete Anweisungsdateien, standardmäßig an, auf derselben Seite.
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsInstructionsHint').Checked);
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsInstructionsHint')));
+    CheckOf(mPage, 'AssistantsInstructionsHint').Checked := False;
     CheckOf(mPage, 'McpBuild').Checked := False;
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.McpBuild, 'abschaltbar, Schlüssel unverändert');
+    Assert.IsFalse(mSaved.AssistantsInstructionsHint);
     Assert.IsTrue(mSaved.DebugMcp, 'einschaltbar');
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'McpBuild').Checked);
