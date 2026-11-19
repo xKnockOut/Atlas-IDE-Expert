@@ -50,7 +50,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Designer.Names;
 
 { TAtlasFormValue }
 
@@ -83,21 +84,6 @@ begin
   Result := False;
 end;
 
-function IsIdentifier(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not (CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_']) or
-      ((mIndex > 1) and CharInSet(AText[mIndex], ['0'..'9']))) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function IsPath(const AText: string): Boolean;
 var
   mPart: string;
@@ -105,18 +91,18 @@ begin
   Result := AText <> '';
   for mPart in AText.Split(['.']) do
   begin
-    if not IsIdentifier(mPart) then
+    if not TAtlasDesignerNames.IsIdentifier(mPart) then
     begin
       Exit(False);
     end;
   end;
 end;
 
-function IsEvent(const APath, AValue: string): Boolean;
-begin
-  Result := (Length(APath) > 2) and APath.StartsWith('On') and CharInSet(APath[3], ['A'..'Z']) and
-    IsIdentifier(APath) and IsIdentifier(AValue);
-end;
+const
+  /// <summary>Anfänge der Zeilen, die ein Objekt im Formulartext öffnen.</summary>
+  cObject = 'object ';
+  cInherited = 'inherited ';
+  cInline = 'inline ';
 
 /// <summary>„object Name: TTyp“ (auch inherited, inline, mit [n] dahinter); False sonst.</summary>
 function ObjectLine(const ALine: string; out AName, ATypeName: string): Boolean;
@@ -126,17 +112,17 @@ var
 begin
   AName := '';
   ATypeName := '';
-  if ALine.StartsWith('object ') then
+  if ALine.StartsWith(cObject) then
   begin
-    mRest := Copy(ALine, 8, MaxInt);
+    mRest := Copy(ALine, Length(cObject) + 1, MaxInt);
   end
-  else if ALine.StartsWith('inherited ') then
+  else if ALine.StartsWith(cInherited) then
   begin
-    mRest := Copy(ALine, 11, MaxInt);
+    mRest := Copy(ALine, Length(cInherited) + 1, MaxInt);
   end
-  else if ALine.StartsWith('inline ') then
+  else if ALine.StartsWith(cInline) then
   begin
-    mRest := Copy(ALine, 8, MaxInt);
+    mRest := Copy(ALine, Length(cInline) + 1, MaxInt);
   end
   else
   begin
@@ -157,7 +143,7 @@ begin
   begin
     ATypeName := Trim(mRest);
   end;
-  Result := IsIdentifier(ATypeName) and ((AName = '') or IsIdentifier(AName));
+  Result := TAtlasDesignerNames.IsIdentifier(ATypeName) and ((AName = '') or TAtlasDesignerNames.IsIdentifier(AName));
 end;
 
 type
@@ -208,7 +194,7 @@ begin
     Exit;
   end;
   mTop := Stack[High(Stack)];
-  if IsEvent(APath, AValue) then
+  if TAtlasDesignerNames.IsEventAssignment(APath, AValue) then
   begin
     Objects[mTop].Events := Objects[mTop].Events + [TAtlasFormValue.Create(APath, AValue)];
   end
@@ -390,7 +376,7 @@ begin
 end;
 
 /// <summary>Teil ab APos: 'Text' (mit '' für ein Hochkomma) oder #Zahl; False bei anderem.</summary>
-function StringPart(const AValue: string; var APos: Integer; var AText: string): Boolean;
+function StringPart(const AValue: string; var APos: Integer; AText: TStringBuilder): Boolean;
 var
   mStart, mCode: Integer;
 begin
@@ -404,14 +390,14 @@ begin
       begin
         if (APos < Length(AValue)) and (AValue[APos + 1] = '''') then
         begin
-          AText := AText + '''';
+          AText.Append('''');
           Inc(APos, 2);
           Continue;
         end;
         Inc(APos);
         Exit;
       end;
-      AText := AText + AValue[APos];
+      AText.Append(AValue[APos]);
       Inc(APos);
     end;
     Exit(False);
@@ -429,29 +415,36 @@ begin
   Result := TryStrToInt(Copy(AValue, mStart, APos - mStart), mCode) and (mCode >= 0) and (mCode <= $FFFF);
   if Result then
   begin
-    AText := AText + Char(mCode);
+    AText.Append(Char(mCode));
   end;
 end;
 
 class function TAtlasFormModel.StringValue(const AValue: string; out AText: string): Boolean;
 var
   mPos: Integer;
+  mText: TStringBuilder;
 begin
   AText := '';
   mPos := 1;
   Result := False;
-  while mPos <= Length(AValue) do
-  begin
-    if CharInSet(AValue[mPos], [' ', '+']) then
+  mText := TStringBuilder.Create;
+  try
+    while mPos <= Length(AValue) do
     begin
-      Inc(mPos);
-      Continue;
+      if CharInSet(AValue[mPos], [' ', '+']) then
+      begin
+        Inc(mPos);
+        Continue;
+      end;
+      if not StringPart(AValue, mPos, mText) then
+      begin
+        Exit(False);
+      end;
+      Result := True;
     end;
-    if not StringPart(AValue, mPos, AText) then
-    begin
-      Exit(False);
-    end;
-    Result := True;
+    AText := mText.ToString;
+  finally
+    mText.Free;
   end;
 end;
 

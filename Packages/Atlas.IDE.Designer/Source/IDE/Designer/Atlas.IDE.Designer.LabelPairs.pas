@@ -103,7 +103,8 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.NearAlign,
   Atlas.IDE.Designer.Surface,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.Names;
 
 function IsLabel(AControl: TControl): Boolean;
 begin
@@ -123,20 +124,6 @@ begin
   begin
     Result := GetObjectProp(ALabel, 'FocusControl');
   end;
-end;
-
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 /// <summary>Felder im selben Parent wie AControl, die ARoot gehören.</summary>
@@ -487,7 +474,8 @@ begin
     begin
       mTogether := mTogether or (mOther = mLabel);
     end;
-    if mTogether or Contains(AReleased, mLabel.Name) or not mSettings.DesignerLabelPairsMoveTogether then
+    if mTogether or TAtlasDesignerNames.Contains(AReleased, mLabel.Name) or
+      not mSettings.DesignerLabelPairsMoveTogether then
     begin
       Continue;
     end;
@@ -511,7 +499,7 @@ var
 begin
   Result := False;
   mSettings := TAtlasIdeSettings.Current;
-  if Contains(AReleased, ALabel.Name) then
+  if TAtlasDesignerNames.Contains(AReleased, ALabel.Name) then
   begin
     Exit;
   end;

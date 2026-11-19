@@ -400,9 +400,10 @@ begin
         (mFirst.Bottom + mNext.Top) div 2);
     end;
     mCenter := Point(mCenter.X + AOrigin.X, mCenter.Y + AOrigin.Y);
-    Result := Result + [TAtlasHandle.Create(Rect(mCenter.X - Overlay.S(cPillWidth) div 2,
-      mCenter.Y - Overlay.S(cPillHeight) div 2, mCenter.X + Overlay.S(cPillWidth) div 2,
-      mCenter.Y + Overlay.S(cPillHeight) div 2), TAtlasHandleKind.Pill, IntToStr(mGaps[mIndex]), mCursor, mIndex)];
+    Result := Result + [TAtlasHandle.Create(Rect(mCenter.X - Overlay.ScalePx(cPillWidth) div 2,
+      mCenter.Y - Overlay.ScalePx(cPillHeight) div 2, mCenter.X + Overlay.ScalePx(cPillWidth) div 2,
+      mCenter.Y + Overlay.ScalePx(cPillHeight) div 2), TAtlasHandleKind.Pill, IntToStr(mGaps[mIndex]), mCursor,
+      mIndex)];
   end;
   mMuted := TAtlasGaps.Deviating(mGaps);
   for mIndex := 0 to High(Result) do

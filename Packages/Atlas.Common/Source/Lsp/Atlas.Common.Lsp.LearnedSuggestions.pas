@@ -13,7 +13,14 @@
 //     dem Projekt ab zwei Stellen für die Liste „Gelernte Vorschläge“, je
 //     {"id", "trigger", "text", "count", "total", "share", "team",
 //     "evidence"}.
-// Die Logik liegt in Atlas.Common.Editing.LearnedSuggestions.
+//   - atlas.server.suggestionContext [uri, line]: Wissen aus dem Index für
+//     einen KI-Anbieter (#1922): {"declarations": [Kopf je Zeile]} der Klasse
+//     der Methode an line und ihrer Mitglieder, sonst leer.
+//   - atlas.server.checkSuggestion [uri, line, lines]: Prüfung eines fremden
+//     Vorschlags (#1922) wie bei den gelernten: keine neuen Syntaxfehler, jeder
+//     Bezeichner steht in der Datei oder im Index. Antwort {"valid": bool}.
+// Die Logik liegt in Atlas.Common.Editing.LearnedSuggestions und
+// Atlas.Common.Editing.SuggestionContext.
 
 interface
 
@@ -34,6 +41,8 @@ type
   public const
     cSuggestCommand = 'atlas.server.suggestNext';
     cListCommand = 'atlas.server.learnedPatterns';
+    cContextCommand = 'atlas.server.suggestionContext';
+    cCheckCommand = 'atlas.server.checkSuggestion';
   public
     /// <summary>Schwellen und Lernzähler aus AValue ({"minCount", "minShare", "adjust"}) in AOptions.</summary>
     class procedure ReadOptions(const AValue: TJSONValue; var AOptions: TLearnedOptions); static;
@@ -42,6 +51,12 @@ type
       const AOptionsFor: TLearnedOptionsFunc; const AArguments: TJSONArray): TJSONValue; static;
     /// <summary>atlas.server.learnedPatterns.</summary>
     class function ExecuteList(const AIndex: ISymbolIndex; const AOptionsFor: TLearnedOptionsFunc;
+      const AArguments: TJSONArray): TJSONValue; static;
+    /// <summary>atlas.server.suggestionContext; ungültige Argumente ergeben EArgumentException.</summary>
+    class function ExecuteContext(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+      const AArguments: TJSONArray): TJSONValue; static;
+    /// <summary>atlas.server.checkSuggestion; ungültige Argumente ergeben EArgumentException.</summary>
+    class function ExecuteCheck(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AArguments: TJSONArray): TJSONValue; static;
   end;
 
@@ -52,6 +67,7 @@ uses
   System.Math,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Editing.SuggestionContext,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts;
 
@@ -59,11 +75,12 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLearnedSuggestionsText = (ArgumentsUriAndLineMissing);
+  TLearnedSuggestionsText = (ArgumentsUriAndLineMissing, ArgumentLinesMissing);
 
 const
   cTexts: array[TLearnedSuggestionsText] of TAtlasText = (
-    (De: 'Argumente "uri" und "line" fehlen'; En: 'Arguments "uri" and "line" missing'));
+    (De: 'Argumente "uri" und "line" fehlen'; En: 'Arguments "uri" and "line" missing'),
+    (De: 'Argument "lines" fehlt'; En: 'Argument "lines" missing'));
 
 {$SCOPEDENUMS OFF}
 
@@ -231,6 +248,79 @@ begin
     mList.AddElement(mItem);
   end;
   Result := mList;
+end;
+
+/// <summary>Adresse und Zeile aus den ersten beiden Argumenten; sonst EArgumentException.</summary>
+procedure ReadUriAndLine(const AArguments: TJSONArray; out AUri: string; out ALine: Integer);
+begin
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
+  begin
+    raise EArgumentException.Create(cTexts[TLearnedSuggestionsText.ArgumentsUriAndLineMissing].Text);
+  end;
+  AUri := AArguments.Items[0].Value;
+  ALine := TJSONNumber(AArguments.Items[1]).AsInt;
+end;
+
+class function TLspLearnedSuggestions.ExecuteContext(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AArguments: TJSONArray): TJSONValue;
+var
+  mUri, mDeclaration: string;
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mList: TJSONArray;
+  mResult: TJSONObject;
+begin
+  ReadUriAndLine(AArguments, mUri, mLine);
+  mList := TJSONArray.Create;
+  mResult := TJSONObject.Create;
+  mResult.AddPair('declarations', mList);
+  if AStore.TryGet(mUri, mDocument) then
+  begin
+    for mDeclaration in TSuggestionContext.Declarations(AIndex, TDocumentUris.ToPath(mUri), mDocument.Text, mLine) do
+    begin
+      mList.Add(mDeclaration);
+    end;
+  end;
+  Result := mResult;
+end;
+
+class function TLspLearnedSuggestions.ExecuteCheck(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mLine, mItem: Integer;
+  mDocument: ITextDocument;
+  mLines: TJSONArray;
+  mSuggestion: TLearnedSuggestion;
+  mShared: ISharedSyntaxTree;
+  mIndex: ISymbolIndex;
+  mValid: Boolean;
+begin
+  ReadUriAndLine(AArguments, mUri, mLine);
+  if (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
+  begin
+    raise EArgumentException.Create(cTexts[TLearnedSuggestionsText.ArgumentLinesMissing].Text);
+  end;
+  mLines := TJSONArray(AArguments.Items[2]);
+  mSuggestion := Default(TLearnedSuggestion);
+  SetLength(mSuggestion.Lines, mLines.Count);
+  for mItem := 0 to mLines.Count - 1 do
+  begin
+    mSuggestion.Lines[mItem] := mLines.Items[mItem].Value;
+  end;
+  mValid := False;
+  if (Length(mSuggestion.Lines) > 0) and AStore.TryGet(mUri, mDocument) and (mLine >= 0) and
+    (mLine < Length(mDocument.Text.Split([#13#10, #10]))) then
+  begin
+    mIndex := AIndex;
+    mShared := TSyntaxTreeCache.Get(mDocument);
+    mValid := TLearnedSuggestions.Valid(mShared.Tree, mDocument.Text, mLine, mSuggestion,
+      function(const AName: string): Boolean
+      begin
+        Result := (mIndex <> nil) and (Length(mIndex.FindSymbols(AName)) > 0);
+      end);
+  end;
+  Result := TJSONObject.Create(TJSONPair.Create('valid', TJSONBool.Create(mValid)));
 end;
 
 initialization

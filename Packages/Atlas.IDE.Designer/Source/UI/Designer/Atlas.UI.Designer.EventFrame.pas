@@ -108,23 +108,10 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Designer.ViewStrings;
+  Atlas.UI.Designer.ViewStrings,
+  Atlas.UI.Foundation.Dialog;
 
 {$R *.dfm}
-
-/// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
-function TextWidthIn(AFont: TFont; const AText: string): Integer;
-var
-  mBitmap: TBitmap;
-begin
-  mBitmap := TBitmap.Create;
-  try
-    mBitmap.Canvas.Font := AFont;
-    Result := mBitmap.Canvas.TextWidth(AText);
-  finally
-    mBitmap.Free;
-  end;
-end;
 
 const
   cBasePpi = 96;
@@ -171,7 +158,7 @@ begin
   FParts.OnlyFindings.Parent := FParts.Top;
   FParts.OnlyFindings.AlignWithMargins := True;
   FParts.OnlyFindings.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmOnlyFindings);
-  FParts.OnlyFindings.Width := TextWidthIn(Font, FParts.OnlyFindings.Caption) +
+  FParts.OnlyFindings.Width := TAtlasDialog.TextWidth(Font, FParts.OnlyFindings.Caption) +
     MulDiv(cCheckBoxBox, CurrentPPI, cBasePpi);
   FParts.OnlyFindings.Height := FParts.Filter.Height;
   FParts.OnlyFindings.OnClick := OptionsChanged;
