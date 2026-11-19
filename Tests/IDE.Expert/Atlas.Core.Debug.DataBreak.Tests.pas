@@ -56,7 +56,7 @@ const
       '"routine": "TfrmKunde.Speichern"},' +
     '{"file": "C:\\P\\Kunde.pas", "line": 42, "character": 30, "breakLine": 42, "class": "TFDConnection", ' +
       '"kind": "sql", "method": "ExecSQL", "receiver": "FConn", "receiverType": "TFDConnection", ' +
-      '"arguments": ["''DELETE FROM Log''"], "routine": "TfrmKunde.Speichern"},' +
+      '"arguments": ["''DELETE FROM Log WHERE Alt = 1''"], "routine": "TfrmKunde.Speichern"},' +
     '{"file": "C:\\P\\Dienst.pas", "line": 9, "character": 10, "breakLine": 8, "class": "THTTPClient", ' +
       '"kind": "http", "method": "Post", "receiver": "FClient", "receiverType": "THTTPClient", ' +
       '"arguments": ["Basis + ''/api/auftrag''", "Body"], "routine": "TDienst.Senden"},' +
@@ -181,7 +181,7 @@ begin
   Assert.AreEqual('qryKunde.Params[3].Name', TAtlasDataBreak.ParamNameExpression(Site(0), mQuery, 3));
   Assert.AreEqual('qryKunde.Params[3].AsString', TAtlasDataBreak.ParamValueExpression(Site(0), mQuery, 3));
   // Text im Argument: keine Parameter der Abfrage.
-  Assert.AreEqual('''DELETE FROM Log''', TAtlasDataBreak.TextExpression(Site(1), mConnection));
+  Assert.AreEqual('''DELETE FROM Log WHERE Alt = 1''', TAtlasDataBreak.TextExpression(Site(1), mConnection));
   Assert.AreEqual('', TAtlasDataBreak.ParamCountExpression(Site(1), mConnection));
   Assert.AreEqual('Basis + ''/api/auftrag''', TAtlasDataBreak.TextExpression(Site(2), mHttp));
   Assert.AreEqual('', TAtlasDataBreak.MethodExpression(Site(2), mHttp));
@@ -200,12 +200,12 @@ begin
   mChoice.SqlPattern := 'UPDATE Kunden*';
   mValues := Default(TAtlasDataValues);
   mValues.Evaluated := True;
-  mValues.Text := 'update kunden set Name = :Name';
+  mValues.Text := 'update kunden set Name = :Name where ID = :ID';
   Assert.AreEqual(Ord(TAtlasDataOutcome.Stop), Ord(TAtlasDataBreak.Decide(mChoice, Site(0), mValues)));
   mValues.Text := 'SELECT * FROM Kunden';
   Assert.AreEqual(Ord(TAtlasDataOutcome.Continue), Ord(TAtlasDataBreak.Decide(mChoice, Site(0), mValues)));
   mChoice.IgnoreCase := False;
-  mValues.Text := 'update kunden set Name = :Name';
+  mValues.Text := 'update kunden set Name = :Name where ID = :ID';
   Assert.AreEqual(Ord(TAtlasDataOutcome.Continue), Ord(TAtlasDataBreak.Decide(mChoice, Site(0), mValues)));
   // Nicht auswertbar: lieber anhalten.
   mValues.Evaluated := False;
@@ -240,11 +240,13 @@ var
 begin
   mValues := Default(TAtlasDataValues);
   mValues.Evaluated := True;
-  mValues.Text := 'UPDATE Kunden'#13#10'  SET Name = :Name';
+  mValues.Text := 'UPDATE Kunden'#13#10'  SET Name = :Name WHERE ID = :ID';
   mValues.Params := TArray<string>.Create('Name=''A''', 'ID=5');
   Assert.AreEqual('Kunde.pas:43 · TfrmKunde.Speichern · qryKunde.ExecSQL', TAtlasDataBreak.Place(Site(0)));
-  Assert.AreEqual('UPDATE Kunden SET Name = :Name [Name=''A'', ID=5]', TAtlasDataBreak.Detail(Site(0), mValues, '?'));
-  Assert.AreEqual('[SQL] Kunde.pas:43 · TfrmKunde.Speichern · qryKunde.ExecSQL: UPDATE Kunden SET Name = :Name ' +
+  Assert.AreEqual('UPDATE Kunden SET Name = :Name WHERE ID = :ID [Name=''A'', ID=5]',
+    TAtlasDataBreak.Detail(Site(0), mValues, '?'));
+  Assert.AreEqual('[SQL] Kunde.pas:43 · TfrmKunde.Speichern · qryKunde.ExecSQL: ' +
+    'UPDATE Kunden SET Name = :Name WHERE ID = :ID ' +
     '[Name=''A'', ID=5]', TAtlasDataBreak.LogLine(Site(0), mValues, '?'));
   mValues := Default(TAtlasDataValues);
   mValues.Evaluated := True;

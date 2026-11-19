@@ -29,9 +29,10 @@ type
   public const
     cHttpMethods: array[0..6] of string = ('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS');
   private
-    class function Matches(const APattern, AText: string; APatternIndex, ATextIndex: Integer): Boolean; static;
+    class function Matches(const APattern, AText: string): Boolean; static;
     class function IsHttpMethod(const AText: string): Boolean; static;
     class function ReadChar(const AValue: string; var AIndex: Integer; var AResult: string): Boolean; static;
+    class function ReadQuoted(const AValue: string; var AIndex: Integer; var AResult: string): Boolean; static;
   public
     /// <summary>Leerraum zusammengefasst und außen entfernt.</summary>
     class function Squeeze(const AText: string): string; static;
@@ -81,40 +82,44 @@ begin
   end;
 end;
 
-class function TAtlasDataPatterns.Matches(const APattern, AText: string; APatternIndex, ATextIndex: Integer): Boolean;
+class function TAtlasDataPatterns.Matches(const APattern, AText: string): Boolean;
 var
-  mIndex: Integer;
+  mPattern, mText, mStar, mRetry: Integer;
 begin
-  // Rekursion nur an *: Folgen von * zählen wie eines.
-  while APatternIndex <= Length(APattern) do
+  // Platzhalter mit Rücksprung: Passt ein Zeichen nicht, schluckt der letzte * eines mehr.
+  mPattern := 1;
+  mText := 1;
+  mStar := 0;
+  mRetry := 0;
+  while mText <= Length(AText) do
   begin
-    if APattern[APatternIndex] = '*' then
+    if (mPattern <= Length(APattern)) and (APattern[mPattern] = '*') then
     begin
-      while (APatternIndex <= Length(APattern)) and (APattern[APatternIndex] = '*') do
-      begin
-        Inc(APatternIndex);
-      end;
-      if APatternIndex > Length(APattern) then
-      begin
-        Exit(True);
-      end;
-      for mIndex := ATextIndex to Length(AText) do
-      begin
-        if (AText[mIndex] = APattern[APatternIndex]) and Matches(APattern, AText, APatternIndex, mIndex) then
-        begin
-          Exit(True);
-        end;
-      end;
-      Exit(False);
-    end;
-    if (ATextIndex > Length(AText)) or (AText[ATextIndex] <> APattern[APatternIndex]) then
+      mStar := mPattern;
+      mRetry := mText;
+      Inc(mPattern);
+    end
+    else if (mPattern <= Length(APattern)) and (APattern[mPattern] = AText[mText]) then
+    begin
+      Inc(mPattern);
+      Inc(mText);
+    end
+    else if mStar > 0 then
+    begin
+      mPattern := mStar + 1;
+      Inc(mRetry);
+      mText := mRetry;
+    end
+    else
     begin
       Exit(False);
     end;
-    Inc(APatternIndex);
-    Inc(ATextIndex);
   end;
-  Result := ATextIndex > Length(AText);
+  while (mPattern <= Length(APattern)) and (APattern[mPattern] = '*') do
+  begin
+    Inc(mPattern);
+  end;
+  Result := mPattern > Length(APattern);
 end;
 
 class function TAtlasDataPatterns.Like(const APattern, AText: string; AIgnoreCase: Boolean): Boolean;
@@ -132,7 +137,7 @@ begin
     mPattern := AnsiUpperCase(mPattern);
     mText := AnsiUpperCase(mText);
   end;
-  Result := Matches(mPattern, mText, 1, 1);
+  Result := Matches(mPattern, mText);
 end;
 
 class function TAtlasDataPatterns.IsHttpMethod(const AText: string): Boolean;
@@ -246,6 +251,32 @@ begin
   end;
 end;
 
+class function TAtlasDataPatterns.ReadQuoted(const AValue: string; var AIndex: Integer;
+  var AResult: string): Boolean;
+begin
+  // AIndex steht auf dem öffnenden Hochkomma; danach hinter dem schließenden.
+  Inc(AIndex);
+  while AIndex <= Length(AValue) do
+  begin
+    if AValue[AIndex] <> '''' then
+    begin
+      AResult := AResult + AValue[AIndex];
+    end
+    else if (AIndex < Length(AValue)) and (AValue[AIndex + 1] = '''') then
+    begin
+      AResult := AResult + '''';
+      Inc(AIndex);
+    end
+    else
+    begin
+      Inc(AIndex);
+      Exit(True);
+    end;
+    Inc(AIndex);
+  end;
+  Result := False;
+end;
+
 class function TAtlasDataPatterns.DebuggerString(const AValue: string; out AText: string): Boolean;
 var
   mValue: string;
@@ -257,35 +288,12 @@ begin
   mIndex := 1;
   while Result and (mIndex <= Length(mValue)) do
   begin
-    if mValue[mIndex] = '#' then
-    begin
-      Result := ReadChar(mValue, mIndex, AText);
-    end
-    else if mValue[mIndex] = '''' then
-    begin
-      Inc(mIndex);
-      while mIndex <= Length(mValue) do
-      begin
-        if mValue[mIndex] <> '''' then
-        begin
-          AText := AText + mValue[mIndex];
-        end
-        else if (mIndex < Length(mValue)) and (mValue[mIndex + 1] = '''') then
-        begin
-          AText := AText + '''';
-          Inc(mIndex);
-        end
-        else
-        begin
-          Break;
-        end;
-        Inc(mIndex);
-      end;
-      Result := mIndex <= Length(mValue);
-      Inc(mIndex);
-    end
+    case mValue[mIndex] of
+      '#':
+        Result := ReadChar(mValue, mIndex, AText);
+      '''':
+        Result := ReadQuoted(mValue, mIndex, AText);
     else
-    begin
       // Lange Texte kürzt der Debugger mit „...“ am Ende.
       AText := AText + Copy(mValue, mIndex, MaxInt);
       mIndex := Length(mValue) + 1;

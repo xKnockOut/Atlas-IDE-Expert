@@ -50,15 +50,16 @@ end;
 
 procedure TAtlasDataPatternsTests.SqlPatternCaseAndWhitespace;
 begin
-  Assert.IsTrue(TAtlasDataPatterns.Like('update kunden*', 'UPDATE Kunden SET Größe = 1', True));
-  Assert.IsFalse(TAtlasDataPatterns.Like('update kunden*', 'UPDATE Kunden SET Größe = 1', False));
-  Assert.IsTrue(TAtlasDataPatterns.Like('UPDATE Kunden SET*', '  UPDATE'#13#10'  Kunden'#9'SET X = 1 ', False));
+  Assert.IsTrue(TAtlasDataPatterns.Like('update kunden*', 'UPDATE Kunden SET Größe = 1 WHERE ID = 2', True));
+  Assert.IsFalse(TAtlasDataPatterns.Like('update kunden*', 'UPDATE Kunden SET Größe = 1 WHERE ID = 2', False));
+  Assert.IsTrue(TAtlasDataPatterns.Like('UPDATE Kunden SET*', '  UPDATE'#13#10'  Kunden'#9'SET X = 1 WHERE ID = 2 ',
+    False));
   Assert.AreEqual('A B C', TAtlasDataPatterns.Squeeze(#13#10' A  B'#10#10'C '));
 end;
 
 procedure TAtlasDataPatternsTests.EmptyPatternMatchesAll;
 begin
-  Assert.IsTrue(TAtlasDataPatterns.Like('', 'DELETE FROM Kunden', True));
+  Assert.IsTrue(TAtlasDataPatterns.Like('', 'DELETE FROM Kunden WHERE ID = 3', True));
   Assert.IsTrue(TAtlasDataPatterns.Like('   ', '', True));
   Assert.IsTrue(TAtlasDataPatterns.Like('*', '', True));
   Assert.IsFalse(TAtlasDataPatterns.Like('A', '', True));

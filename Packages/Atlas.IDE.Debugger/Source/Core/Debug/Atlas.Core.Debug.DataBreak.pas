@@ -19,8 +19,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Settings.DataBreakClasses,
-  Atlas.Core.Debug.DataBreakPatterns;
+  Atlas.Core.Settings.DataBreakClasses;
 
 type
   {$SCOPEDENUMS ON}
@@ -163,7 +162,8 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Debug.DataBreakPatterns;
 
 type
   TKnownClass = record

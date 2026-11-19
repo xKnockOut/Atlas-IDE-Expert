@@ -397,6 +397,11 @@ type
     procedure SetStopAndLaunchDefaults;
     /// <summary>Werte ab debug.whyHere über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
     procedure ExchangeStopAndLaunch(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben der Haltepunkte (Ereignis, Datenzugriff, Prüfung, Methoden, Fenster …); Teil von
+    /// Defaults.</summary>
+    procedure SetBreakpointDefaults;
+    /// <summary>Werte der Haltepunkte über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
+    procedure ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -434,19 +439,7 @@ begin
   Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.cDefaultKinds);
   Result.DebugStepFilterPatterns := '';
   Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
-  Result.DebugBreakOnNextEvent := True;
-  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
-  Result.DebugDataBreaks := True;
-  Result.DebugDataBreaksClasses := TAtlasDataBreakSettings.cDefaultClasses;
-  Result.DebugCheckBreakpoints := True;
-  Result.DebugMethodBreakpoints := True;
-  Result.DebugInstanceBreakpoints := True;
-  Result.DebugDataBreakpoints := True;
-  Result.DebugBreakpointSetPerBranch := True;
-  Result.DebugRunToClick := True;
-  Result.DebugBreakpointsWindow := True;
-  Result.DebugBreakpointAnchors := True;
-  Result.DebugBreakpointRules := True;
+  Result.SetBreakpointDefaults;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
@@ -540,19 +533,7 @@ begin
   AIo.Text('DebugStepFilterKinds', DebugStepFilterKinds);
   AIo.Text('DebugStepFilterPatterns', DebugStepFilterPatterns);
   AIo.Number('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
-  AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
-  AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
-  AIo.Flag('DebugDataBreaks', DebugDataBreaks);
-  AIo.Text('DebugDataBreaksClasses', DebugDataBreaksClasses);
-  AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
-  AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
-  AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
-  AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
-  AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
-  AIo.Flag('DebugRunToClick', DebugRunToClick);
-  AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
-  AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
-  AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
+  ExchangeBreakpoints(AIo);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
@@ -578,6 +559,40 @@ begin
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
   ExchangeStopAndLaunch(AIo);
+end;
+
+procedure TAtlasPluginDebugSettings.SetBreakpointDefaults;
+begin
+  DebugBreakOnNextEvent := True;
+  DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
+  DebugDataBreaks := True;
+  DebugDataBreaksClasses := TAtlasDataBreakSettings.cDefaultClasses;
+  DebugCheckBreakpoints := True;
+  DebugMethodBreakpoints := True;
+  DebugInstanceBreakpoints := True;
+  DebugDataBreakpoints := True;
+  DebugBreakpointSetPerBranch := True;
+  DebugRunToClick := True;
+  DebugBreakpointsWindow := True;
+  DebugBreakpointAnchors := True;
+  DebugBreakpointRules := True;
+end;
+
+procedure TAtlasPluginDebugSettings.ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
+  AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
+  AIo.Flag('DebugDataBreaks', DebugDataBreaks);
+  AIo.Text('DebugDataBreaksClasses', DebugDataBreaksClasses);
+  AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
+  AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
+  AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
+  AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
+  AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
+  AIo.Flag('DebugRunToClick', DebugRunToClick);
+  AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
+  AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
+  AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
 end;
 
 procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;
