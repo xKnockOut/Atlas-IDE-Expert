@@ -63,7 +63,6 @@ type
 implementation
 
 uses
-  System.DateUtils,
   System.JSON,
   Atlas.Core.Tracker.Contract.Files,
   Atlas.Core.Tracker.Files,
@@ -83,15 +82,6 @@ begin
   end;
 end;
 
-function IsoOf(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
-end;
-
 function CommentsJson(const AComments: TArray<TAtlasTrackerComment>): TJSONArray;
 var
   mItem: TJSONObject;
@@ -102,7 +92,7 @@ begin
   begin
     mItem := TJSONObject.Create;
     mItem.AddPair('author', mComment.Author);
-    mItem.AddPair('created', IsoOf(mComment.Created));
+    mItem.AddPair('created', TJsonBuild.IsoTime(mComment.Created));
     mItem.AddPair('text', mComment.Text);
     Result.AddElement(mItem);
   end;
@@ -411,14 +401,14 @@ begin
     mRoot.AddPair('assignee', ADetails.Assignee);
     mRoot.AddPair('sprint', ADetails.Sprint);
     mRoot.AddPair('labels', TJsonBuild.Strings(ADetails.Labels));
-    mRoot.AddPair('created', IsoOf(ADetails.Created));
-    mRoot.AddPair('updated', IsoOf(ADetails.Updated));
+    mRoot.AddPair('created', TJsonBuild.IsoTime(ADetails.Created));
+    mRoot.AddPair('updated', TJsonBuild.IsoTime(ADetails.Updated));
     mRoot.AddPair('description', ADetails.Description);
     mRoot.AddPair('commentsLoaded', TJSONBool.Create(ADetails.CommentsLoaded));
     mRoot.AddPair('comments', CommentsJson(ADetails.Comments));
     mRoot.AddPair('attachments', AttachmentsJson(ADetails.Attachments));
     mRoot.AddPair('links', LinksJson(ADetails.Links));
-    mRoot.AddPair('fetched', IsoOf(ADetails.Fetched));
+    mRoot.AddPair('fetched', TJsonBuild.IsoTime(ADetails.Fetched));
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;

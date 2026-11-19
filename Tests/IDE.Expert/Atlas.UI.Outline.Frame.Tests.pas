@@ -49,7 +49,6 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.Menus,
-  Atlas.UI.Strings,
   Atlas.UI.Outline.Strings,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -183,7 +182,7 @@ begin
   Assert.IsTrue(mItem.Checked);
   Assert.IsFalse(MenuItem(FFrame.VisibilityMenu, 'private').Checked);
   // Art „Felder“ dazu: nur Button1.
-  MenuItem(FFrame.KindMenu, TAtlasStrings.Text(TAtlasTextId.OutlineKindFields)).Click;
+  MenuItem(FFrame.KindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineKindFields)).Click;
   Assert.AreEqual('interface,TForm1,Button1', Names(FFrame));
   // „Alle zeigen“ hebt den Filter auf.
   MenuItem(FFrame.VisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll)).Click;

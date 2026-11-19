@@ -105,7 +105,9 @@ implementation
 
 uses
   System.Math,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  System.StrUtils,
+  Atlas.Text.Chars;
 
 type
   TLexToken = record
@@ -197,26 +199,11 @@ type
     function Run(const AText: string; out ABlocks: TArray<TAtlasPairBlock>): TArray<TAtlasPairToken>;
   end;
 
-function IsOneOf(const AText: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  Result := False;
-  for mWord in AWords do
-  begin
-    Result := Result or (mWord = AText);
-  end;
-end;
-
 { TPairLexer }
 
 function TPairLexer.CharAt(AIndex: Integer): Char;
 begin
-  Result := #0;
-  if (AIndex >= 1) and (AIndex <= Length(FText)) then
-  begin
-    Result := FText[AIndex];
-  end;
+  Result := TTextChars.CharAt(FText, AIndex);
 end;
 
 procedure TPairLexer.Add(AStart, ALength: Integer; AIsWord, APlain: Boolean);
@@ -532,21 +519,21 @@ var
   mPrevious: string;
 begin
   mPrevious := TextAt(AIndex - 1);
-  if IsOneOf(AWord, ['begin', 'try', 'repeat', 'asm']) then
+  if MatchStr(AWord, ['begin', 'try', 'repeat', 'asm']) then
   begin
     Result := True;
   end
   else if AWord = 'case' then
   begin
-    Result := not IsOneOf(TopWord, ['record', 'class', 'object']);
+    Result := not MatchStr(TopWord, ['record', 'class', 'object']);
   end
   else if AWord = 'record' then
   begin
-    Result := IsOneOf(mPrevious, ['=', ':', 'of', 'packed']);
+    Result := MatchStr(mPrevious, ['=', ':', 'of', 'packed']);
   end
-  else if IsOneOf(AWord, ['class', 'interface', 'dispinterface']) then
+  else if MatchStr(AWord, ['class', 'interface', 'dispinterface']) then
   begin
-    Result := IsOneOf(mPrevious, ['=', 'packed']) and (TextAt(AIndex + 1) <> 'of') and
+    Result := MatchStr(mPrevious, ['=', 'packed']) and (TextAt(AIndex + 1) <> 'of') and
       (AfterParens(AIndex + 1) <> ';');
   end
   else
@@ -581,11 +568,11 @@ begin
   while Result >= 0 do
   begin
     mText := TextAt(Result);
-    if IsOneOf(mText, AWords) then
+    if MatchStr(mText, AWords) then
     begin
       Exit;
     end;
-    if IsOneOf(mText, [';', 'begin', 'end', 'then', 'do', 'else', 'of', 'try', 'finally', 'except', 'repeat',
+    if MatchStr(mText, [';', 'begin', 'end', 'then', 'do', 'else', 'of', 'try', 'finally', 'except', 'repeat',
       'until', 'asm']) then
     begin
       Break;
@@ -608,11 +595,11 @@ begin
   while not mDone and (mFound <= High(FTokens)) do
   begin
     mText := TextAt(mFound);
-    if IsOneOf(mText, ['(', '[']) then
+    if MatchStr(mText, ['(', '[']) then
     begin
       Inc(mParens);
     end
-    else if IsOneOf(mText, [')', ']']) then
+    else if MatchStr(mText, [')', ']']) then
     begin
       Dec(mParens);
     end
@@ -623,7 +610,7 @@ begin
     end
     else
     begin
-      mDone := IsOneOf(mText, [';', 'begin', 'end']);
+      mDone := MatchStr(mText, [';', 'begin', 'end']);
     end;
     Inc(mFound);
   end;
@@ -706,7 +693,7 @@ begin
   begin
     AddCaseOwner(AOpen, AIndex, FBlocks.Count);
   end
-  else if IsOneOf(AOpen.Word, ['begin', 'asm']) then
+  else if MatchStr(AOpen.Word, ['begin', 'asm']) then
   begin
     AddStatementOwners(AOpen, AIndex, FBlocks.Count);
   end;
@@ -717,14 +704,14 @@ var
   mPrevious: string;
 begin
   mPrevious := TextAt(AIndex - 1);
-  Result := (FBlocks.Count = 0) and not IsOneOf(mPrevious, ['=', ':', 'to', 'of', '(', ',']);
+  Result := (FBlocks.Count = 0) and not MatchStr(mPrevious, ['=', ':', 'to', 'of', '(', ',']);
   if Result and (AWord = 'operator') then
   begin
     Result := mPrevious = 'class';
   end
   else if Result then
   begin
-    Result := IsOneOf(AWord, ['procedure', 'function', 'constructor', 'destructor']);
+    Result := MatchStr(AWord, ['procedure', 'function', 'constructor', 'destructor']);
   end;
 end;
 
@@ -743,12 +730,12 @@ begin
     FInInterface := False;
   end
   // Abschnitt interface der Unit, nicht der Typ "IFoo = interface" (#1788).
-  else if (AWord = 'interface') and (FBlocks.Count = 0) and not IsOneOf(TextAt(AIndex - 1), ['=', 'packed']) then
+  else if (AWord = 'interface') and (FBlocks.Count = 0) and not MatchStr(TextAt(AIndex - 1), ['=', 'packed']) then
   begin
     FHeaders.Clear;
     FInInterface := True;
   end
-  else if IsOneOf(AWord, ['forward', 'external']) and (FBlocks.Count = 0) and (FHeaders.Count > 0) then
+  else if MatchStr(AWord, ['forward', 'external']) and (FBlocks.Count = 0) and (FHeaders.Count > 0) then
   begin
     FHeaders.Delete(FHeaders.Count - 1);
   end;
@@ -819,7 +806,7 @@ begin
   begin
     Emit(AIndex, 0, True);
   end
-  else if IsOneOf(AWord, ['finally', 'except']) and (TopWord = 'try') then
+  else if MatchStr(AWord, ['finally', 'except']) and (TopWord = 'try') then
   begin
     Emit(AIndex, FBlocks.Count - 1, False);
   end;
@@ -831,11 +818,11 @@ var
 begin
   if not FTokens[AIndex].IsWord then
   begin
-    if IsOneOf(FTokens[AIndex].Text, ['(', '[']) then
+    if MatchStr(FTokens[AIndex].Text, ['(', '[']) then
     begin
       OpenBracket(AIndex);
     end
-    else if IsOneOf(FTokens[AIndex].Text, [')', ']']) then
+    else if MatchStr(FTokens[AIndex].Text, [')', ']']) then
     begin
       CloseBracket(AIndex);
     end;

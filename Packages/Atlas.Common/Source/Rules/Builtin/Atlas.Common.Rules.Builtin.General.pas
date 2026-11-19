@@ -1143,13 +1143,18 @@ begin
     ATokens[mDot].IsSymbol('.') and SameText(ATokens[PreviousCode(ATokens, mDot)].Text, 'Font');
 end;
 
-/// <summary>Markup oder Daten statt Text: HTML/XML (&lt;), JSON ({ oder "Schlüssel":), Markdown-Überschrift (# bzw.
-/// ##). Ein Text, der nur mit einem Zitat beginnt ('"%s" ist keine Formulardatei'), zählt nicht.</summary>
+/// <summary>Markup oder Daten statt Text: HTML/XML (&lt;), JSON ({ oder "Schlüssel":, auch als Fortsetzung hinter
+/// Komma oder schließender Klammer wie ', "neu": '), Markdown-Überschrift (# bzw. ##). Ein Text, der nur mit einem
+/// Zitat beginnt ('"%s" ist keine Formulardatei'), zählt nicht.</summary>
 function LooksLikeMarkup(const AValue: string): Boolean;
 var
   mText: string;
 begin
   mText := TrimLeft(AValue);
+  while (mText <> '') and CharInSet(mText[1], [',', '}', ']']) do
+  begin
+    mText := TrimLeft(Copy(mText, 2, MaxInt));
+  end;
   if mText = '' then
   begin
     Exit(False);
