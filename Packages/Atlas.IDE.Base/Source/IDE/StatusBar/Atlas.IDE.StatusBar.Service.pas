@@ -52,7 +52,8 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.IDE.Status.Field,
-  Atlas.IDE.StatusBar.View;
+  Atlas.IDE.StatusBar.View,
+  Atlas.IDE.Foundation.EditorBarHost;
 
 type
   TAtlasIdeStatusBar = class
@@ -70,7 +71,7 @@ type
       Recheck: TProc;
     end;
   private class var
-    FState: TObject;
+    FState: TAtlasEditorBarState;
     FHooks: THooks;
     class procedure Say(const AText: string); static;
   public
@@ -104,7 +105,6 @@ uses
   Atlas.Core.Editor.BarDock,
   Atlas.UI.StatusBar.Strings,
   Atlas.UI.StatusBar.Bar,
-  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -130,7 +130,7 @@ const
 type
   TFieldAction = reference to procedure(AField: TAtlasStatusField; const APoint: TPoint);
 
-  TStatusBarState = class
+  TStatusBarState = class(TAtlasEditorBarState)
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
@@ -160,8 +160,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Reset;
-    procedure ApplyTheme;
+    procedure Reset; override;
+    procedure ApplyTheme; override;
     function TopBar: TAtlasEditorStatusBar;
     class procedure JumpToFinding(AKind: TAtlasFindingKind); static;
     procedure JumpToMethod;
@@ -662,18 +662,12 @@ end;
 
 class procedure TAtlasIdeStatusBar.ApplySettings;
 begin
-  if FState <> nil then
-  begin
-    State.Reset;
-  end;
+  TAtlasEditorBarState.ResetOf(FState);
 end;
 
 class procedure TAtlasIdeStatusBar.ThemeChanged;
 begin
-  if FState <> nil then
-  begin
-    State.ApplyTheme;
-  end;
+  TAtlasEditorBarState.ThemeOf(FState);
 end;
 
 class function TAtlasIdeStatusBar.Enabled: Boolean;

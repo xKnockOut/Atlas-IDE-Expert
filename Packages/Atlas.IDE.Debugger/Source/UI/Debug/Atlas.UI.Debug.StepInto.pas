@@ -27,16 +27,14 @@ uses
 type
   TAtlasStepIntoIndexEvent = reference to procedure(AIndex: Integer);
 
-  TAtlasStepIntoWindow = class(TAtlasLayoutPopupWindow)
+  TAtlasStepIntoWindow = class(TAtlasPickPopupWindow)
   public const
     /// <summary>Abstand unter der Zeile, logische Pixel.</summary>
     cGap = 4;
   private
     FRows: TArray<TAtlasStepRow>;
     FRow: Integer;
-    FRowRects: TArray<TRect>;
     FOnAccept: TAtlasStepIntoIndexEvent;
-    FOnCancel: TProc;
     /// <summary>Schriftfarbe der Zeile AIndex: gewählt, wählbar oder grau.</summary>
     function RowColor(AIndex: Integer): TColor;
     /// <summary>Zeile AIndex auf Höhe AY anordnen (mit ADraw auch zeichnen), Ort ab ARightX; Ergebnis: rechter Rand.
@@ -56,20 +54,16 @@ type
     class function RowCaption(const ARows: TArray<TAtlasStepRow>; AIndex: Integer): string; static;
     /// <summary>Zeigt ARows unter APoint (Bildschirm) und wählt den ersten wählbaren Eintrag.</summary>
     procedure ShowFor(const ARows: TArray<TAtlasStepRow>; const APoint: TPoint);
-    procedure Dismiss;
     /// <summary>Nächster bzw. voriger wählbarer Eintrag; False ohne solche.</summary>
     function MoveRow(ADelta: Integer): Boolean;
     /// <summary>Ziffer 1–9: Eintrag wählen und übernehmen; False, wenn er nicht wählbar ist.</summary>
     function AcceptDigit(ADigit: Integer): Boolean;
     procedure Select(AIndex: Integer);
-    function RowRect(AIndex: Integer): TRect;
     /// <summary>Gewählten Eintrag übernehmen (OnAccept); ohne Wahl nichts.</summary>
     procedure Accept;
-    procedure Cancel;
     property Rows: TArray<TAtlasStepRow> read FRows;
     property Row: Integer read FRow;
     property OnAccept: TAtlasStepIntoIndexEvent read FOnAccept write FOnAccept;
-    property OnCancel: TProc read FOnCancel write FOnCancel;
   end;
 
 implementation
@@ -337,11 +331,6 @@ begin
   end;
 end;
 
-procedure TAtlasStepIntoWindow.Dismiss;
-begin
-  HidePopup;
-end;
-
 function TAtlasStepIntoWindow.MoveRow(ADelta: Integer): Boolean;
 var
   mNext: Integer;
@@ -379,15 +368,6 @@ begin
   Announce(RowCaption(FRows, FRow));
 end;
 
-function TAtlasStepIntoWindow.RowRect(AIndex: Integer): TRect;
-begin
-  Result := TRect.Empty;
-  if (AIndex >= 0) and (AIndex <= High(FRowRects)) then
-  begin
-    Result := FRowRects[AIndex];
-  end;
-end;
-
 procedure TAtlasStepIntoWindow.Accept;
 var
   mChosen: Integer;
@@ -401,15 +381,6 @@ begin
   if Assigned(FOnAccept) then
   begin
     FOnAccept(mChosen);
-  end;
-end;
-
-procedure TAtlasStepIntoWindow.Cancel;
-begin
-  Dismiss;
-  if Assigned(FOnCancel) then
-  begin
-    FOnCancel();
   end;
 end;
 

@@ -10,16 +10,29 @@ uses
   Vcl.StdCtrls;
 
 type
+  /// <summary>Klappliste, deren Auswahl auch ohne Fensterhandle gilt: Choice liest und setzt mit Fenster
+  /// ItemIndex, ohne Fenster den gemerkten Wert FChoice. Nachfahren setzen FChoice in CreateWnd wieder und
+  /// sichern es in DestroyWnd.</summary>
+  TAtlasHeldChoiceBox = class(TComboBox)
+  private
+    function GetChoice: Integer;
+    procedure SetChoice(AValue: Integer);
+  protected
+    /// <summary>Auswahl ohne Fenster, -1 = keine.</summary>
+    FChoice: Integer;
+  public
+    constructor Create(AOwner: TComponent); override;
+    /// <summary>Gewählter Eintrag, -1 = keiner; gilt auch ohne Fenster.</summary>
+    property Choice: Integer read GetChoice write SetChoice;
+  end;
+
   /// <summary>Auswahlliste, die Einträge und Auswahl ohne Fensterhandle hält: Die IDE erzeugt und lädt die
   /// Optionsseiten, bevor sie ein übergeordnetes Fenster haben; Items.Add bräuchte dann schon eins. Mit
   /// Style = csDropDown (freie Eingabe) bleibt ein Text ohne passenden Eintrag (Choice = -1) beim Anlegen des
   /// Fensters und beim Füllen der Einträge stehen.</summary>
-  TAtlasChoiceBox = class(TComboBox)
+  TAtlasChoiceBox = class(TAtlasHeldChoiceBox)
   private
     FChoices: TArray<string>;
-    FChoice: Integer;
-    function GetChoice: Integer;
-    procedure SetChoice(AValue: Integer);
     /// <summary>Freie Eingabe AText wieder zeigen, wenn kein Eintrag gewählt ist (nur csDropDown).</summary>
     procedure KeepFreeText(const AText: string);
   protected
@@ -28,22 +41,19 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure SetChoices(const AItems: array of string);
-    /// <summary>Gewählter Eintrag, -1 = keiner; gilt auch ohne Fenster.</summary>
-    property Choice: Integer read GetChoice write SetChoice;
   end;
 
 implementation
 
-{ TAtlasChoiceBox }
+{ TAtlasHeldChoiceBox }
 
-constructor TAtlasChoiceBox.Create(AOwner: TComponent);
+constructor TAtlasHeldChoiceBox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Style := csDropDownList;
   FChoice := -1;
 end;
 
-function TAtlasChoiceBox.GetChoice: Integer;
+function TAtlasHeldChoiceBox.GetChoice: Integer;
 begin
   if HandleAllocated then
   begin
@@ -55,13 +65,21 @@ begin
   end;
 end;
 
-procedure TAtlasChoiceBox.SetChoice(AValue: Integer);
+procedure TAtlasHeldChoiceBox.SetChoice(AValue: Integer);
 begin
   FChoice := AValue;
   if HandleAllocated then
   begin
     ItemIndex := AValue;
   end;
+end;
+
+{ TAtlasChoiceBox }
+
+constructor TAtlasChoiceBox.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Style := csDropDownList;
 end;
 
 procedure TAtlasChoiceBox.CreateWnd;
