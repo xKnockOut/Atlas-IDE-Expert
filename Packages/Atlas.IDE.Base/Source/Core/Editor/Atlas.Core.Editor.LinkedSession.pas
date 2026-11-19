@@ -18,6 +18,8 @@
 // - Check: Takt; Änderung nachziehen, deren Meldung aussteht, und enden, wenn
 //   der Cursor den Namen verlassen hat.
 // - Restore: Esc bei Konflikt stellt den alten Namen wieder her.
+// - Wirft der Puffer beim Schreiben, endet die Sitzung (der Stand des Puffers
+//   ist unbekannt), und die Ausnahme geht an den Aufrufer.
 // Die IDE (Atlas.IDE.Editor.LinkedEditing) fragt den Server, fängt die Tasten
 // ab, zeichnet und erfährt über AOnRefresh und AOnFinish, wann sie neu zeigen
 // bzw. aufräumen muss. Nur im Hauptthread.
@@ -464,9 +466,13 @@ begin
   FWriting := True;
   try
     FSurface.Write(ABase, Edits(ABase, ARanges, AName, ASkip));
-  finally
+  except
+    // Was im Puffer steht, ist unbekannt: nicht weiter darauf rechnen.
     FWriting := False;
+    Finish;
+    raise;
   end;
+  FWriting := False;
 end;
 
 procedure TAtlasLinkedSession.Clear;

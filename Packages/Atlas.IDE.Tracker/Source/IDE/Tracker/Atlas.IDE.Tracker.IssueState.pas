@@ -131,7 +131,7 @@ begin
   inherited Create;
   FSync := ASync;
   FHooks := AHooks;
-  FWorker := TAtlasBackgroundJobs.Create(HInstance);
+  FWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Tracker);
   FIssue := TAtlasTimeIssue.None;
   FTime := TAtlasIdeTimeField.None;
 end;

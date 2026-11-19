@@ -293,7 +293,7 @@ begin
   inherited Create;
   FTransport := ATransport;
   FMessage := TAtlasMessageSink.Create(AReport);
-  FWorker := TAtlasBackgroundJobs.Create(HInstance);
+  FWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Tracker);
 end;
 
 destructor TAtlasIdeTrackerSync.Destroy;

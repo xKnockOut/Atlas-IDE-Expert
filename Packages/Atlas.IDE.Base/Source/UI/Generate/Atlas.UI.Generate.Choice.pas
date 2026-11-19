@@ -44,6 +44,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Generate.Choice,
+  Atlas.UI.Foundation.ListBox,
   Atlas.UI.Generate.Strings;
 
 const
@@ -87,7 +88,7 @@ begin
   FSearch.OnKeyDown := SearchKeyDown;
   FPrompt.FocusControl := FSearch;
   Inc(mY, FSearch.Height + ScaledPx(Self, cLineGap));
-  FList := TListBox.Create(Self);
+  FList := TAtlasListBox.Create(Self);
   FList.Parent := Self;
   FList.SetBounds(mGap, mY, ScaledPx(Self, cWidth), ScaledPx(Self, cListHeight));
   FList.OnDblClick := ListDblClick;

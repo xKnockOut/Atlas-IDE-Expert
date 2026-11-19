@@ -2,7 +2,7 @@
 
 // Basis der Atlas-Dialoge (#2062): Vorgaben von CreateDialog, Abo beim
 // Themendienst bis zum Freigeben, Thema beim Zeigen und bei jedem Wechsel,
-// Zeilen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
+// Zeilen und Listen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
 // Hinweiszeile in der Textfarbe der Palette. TAtlasPopupForm: ohne Rahmen
 // in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas,
 // das IDE-Thema an den Steuerelementen nur mit ThemedControls. Ohne Breite
@@ -32,6 +32,8 @@ type
     procedure ThemeChangeAppliesAndNotifies;
     [Test]
     procedure RowsStackFromTop;
+    [Test]
+    procedure ListStacksBelowRows;
     [Test]
     procedure ButtonsFitTextAndRoles;
     [Test]
@@ -73,6 +75,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.ListBox,
   Atlas.UI.Foundation.Dialog;
 
 type
@@ -214,6 +217,27 @@ begin
     mDialog.FitHeight;
     Assert.IsTrue(mDialog.ClientHeight >= mSecond.Top + mSecond.Height,
       Format('ClientHeight %d, Ende %d', [mDialog.ClientHeight, mSecond.Top + mSecond.Height]));
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.ListStacksBelowRows;
+var
+  mDialog: TAtlasDialog;
+  mRow: TPanel;
+  mList: TAtlasListBox;
+begin
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 300);
+  try
+    mRow := mDialog.AddRow(22);
+    mList := mDialog.AddList(120, 0);
+    mDialog.HandleNeeded;
+    Assert.AreSame(mDialog, mList.Parent, 'Parent');
+    Assert.AreEqual(mDialog.ScaleValue(120), mList.Height);
+    Assert.IsTrue(mList.Top > mRow.Top, Format('Top %d/%d', [mRow.Top, mList.Top]));
+    Assert.AreEqual(mRow.Margins.Left, mList.Margins.Left, 'Rand wie die Zeilen');
+    Assert.AreEqual(0, mList.Margins.Top);
   finally
     mDialog.Free;
   end;

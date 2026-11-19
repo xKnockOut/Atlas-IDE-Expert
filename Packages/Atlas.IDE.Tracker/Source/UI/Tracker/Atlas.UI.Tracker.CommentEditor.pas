@@ -262,6 +262,7 @@ uses
   System.UITypes,
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Markdown,
+  Atlas.UI.Foundation.ListBox,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.DocBox;
 
@@ -504,7 +505,8 @@ begin
   end
   else
   begin
-    Result := Point(SmallInt(LoWord(mPos)), SmallInt(HiWord(mPos)));
+    // LRESULT ist unter Win64 64 Bit breit: erst auf Cardinal kürzen, sonst ERangeError im Debug-Build.
+    Result := Point(SmallInt(LoWord(Cardinal(mPos))), SmallInt(HiWord(Cardinal(mPos))));
   end;
 end;
 
@@ -541,7 +543,7 @@ begin
   end;
   if FList = nil then
   begin
-    FList := TListBox.Create(FEditor);
+    FList := TAtlasListBox.Create(FEditor);
     FList.Parent := mForm;
     FList.TabStop := False;
     FList.OnClick := ListClick;

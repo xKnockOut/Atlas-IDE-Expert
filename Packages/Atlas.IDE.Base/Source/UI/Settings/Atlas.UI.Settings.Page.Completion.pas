@@ -87,6 +87,7 @@ implementation
 uses
   System.Math,
   Vcl.Controls,
+  Atlas.UI.Foundation.ListBox,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Editor.LearnedSuggestions,
   Atlas.UI.Settings.Strings,
@@ -286,7 +287,7 @@ begin
   mFavorites := FPage.Part<TAtlasSettingsCompletionPart>.FavoritesCheck;
   AddTitle(TAtlasSettingsTextId.SettingsFavoritesTitle);
   mPanel := AddPanel(cFavoritesListHeight);
-  FFavoritesList := TListBox.Create(FPage);
+  FFavoritesList := TAtlasListBox.Create(FPage);
   FFavoritesList.Parent := mPanel;
   FFavoritesList.Align := alClient;
   FFavoritesList.MultiSelect := True;

@@ -497,9 +497,10 @@ function TAtlasWelcomeBoardScroller.WheelMessage(const AMsg: TMsg): Boolean;
 var
   mControl: TControl;
 begin
-  // Strg (Zoom) und Umschalt (waagerecht) bleiben beim Fenster.
+  // Strg (Zoom) und Umschalt (waagerecht) bleiben beim Fenster. Unter Win64 kann wParam vorzeichenerweitert über
+  // 32 Bit reichen: erst auf Cardinal kürzen, sonst ERangeError im Debug-Build.
   Result := False;
-  if (LoWord(AMsg.wParam) and (MK_CONTROL or MK_SHIFT)) <> 0 then
+  if (LoWord(Cardinal(AMsg.wParam)) and (MK_CONTROL or MK_SHIFT)) <> 0 then
   begin
     Exit;
   end;
@@ -508,7 +509,7 @@ begin
   begin
     Exit;
   end;
-  ScrollWheel(mControl, SmallInt(HiWord(AMsg.wParam)));
+  ScrollWheel(mControl, SmallInt(HiWord(Cardinal(AMsg.wParam))));
   // Auch am Ende: Über der Seite gehört das Rad ihr, sonst scrollte das fokussierte Fenster (der Editor).
   Result := True;
 end;

@@ -5,7 +5,8 @@
 // <Projekt>“ mit „:show“, wenn die Ausgabe gezeigt wird, „cancel:<Id>“,
 // „release:<Id>“). Das Ende eines Laufs meldet der Test selbst über
 // TAtlasTaskFlow.Finished. Aufgaben, deren Namen in Refused stehen, lehnt
-// Refuses mit dem Grund „<Name> fehlt“ ab.
+// Refuses mit dem Grund „<Name> fehlt“ ab; für Aufgaben in Throwing wirft
+// Launch (nach dem Mitschreiben) eine Ausnahme „<Name> startet nicht“.
 
 interface
 
@@ -18,6 +19,7 @@ type
   private
     FCalls: TStringList;
     FRefused: TStringList;
+    FThrowing: TStringList;
     FLastId: Integer;
   public
     constructor Create;
@@ -31,6 +33,7 @@ type
     function CallText: string;
     property Calls: TStringList read FCalls;
     property Refused: TStringList read FRefused;
+    property Throwing: TStringList read FThrowing;
     /// <summary>Id des zuletzt gestarteten Laufs (0 = keiner).</summary>
     property LastId: Integer read FLastId;
   end;
@@ -48,10 +51,13 @@ begin
   FCalls := TStringList.Create;
   FRefused := TStringList.Create;
   FRefused.CaseSensitive := False;
+  FThrowing := TStringList.Create;
+  FThrowing.CaseSensitive := False;
 end;
 
 destructor TAtlasTaskLauncherFake.Destroy;
 begin
+  FreeAndNil(FThrowing);
   FreeAndNil(FRefused);
   FreeAndNil(FCalls);
   inherited Destroy;
@@ -79,6 +85,10 @@ begin
     mCall := mCall + ':show';
   end;
   FCalls.Add(mCall);
+  if FThrowing.IndexOf(ATask.Name) >= 0 then
+  begin
+    raise EInOutError.Create(ATask.Name + ' startet nicht');
+  end;
 end;
 
 procedure TAtlasTaskLauncherFake.Cancel(AId: Integer);

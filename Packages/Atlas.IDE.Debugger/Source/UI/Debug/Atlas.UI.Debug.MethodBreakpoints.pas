@@ -513,13 +513,7 @@ end;
 
 procedure TAtlasMethodGroupsDialog.CreateList;
 begin
-  FList := TListBox.Create(Self);
-  FList.Top := NextTop;
-  FList.Height := ScaleValue(cListHeight);
-  FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap), ScaleValue(cRowGap), 0);
-  FList.Align := alTop;
-  FList.Parent := Self;
+  FList := AddList(cListHeight, cRowGap);
 end;
 
 procedure TAtlasMethodGroupsDialog.CreateButtons;

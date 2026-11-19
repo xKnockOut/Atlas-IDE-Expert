@@ -54,7 +54,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal;
+  Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.ListBox;
 
 type
 {$SCOPEDENUMS ON}
@@ -130,6 +131,9 @@ type
     destructor Destroy; override;
     /// <summary>Zeile ohne Rahmen mit Höhe AHeight96 (logische Pixel) unter dem bisher Untersten.</summary>
     function AddRow(AHeight96: Integer): TPanel;
+    /// <summary>Liste mit Höhe AHeight96 unter dem bisher Untersten, seitlich Rand wie die Zeilen, oben ATopGap96
+    /// (logische Pixel).</summary>
+    function AddList(AHeight96, ATopGap96: Integer): TAtlasListBox;
     /// <summary>Beschriftung links in AParent.</summary>
     function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     /// <summary>Knopfleiste unter dem bisher Untersten.</summary>
@@ -442,6 +446,21 @@ begin
   Result.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap div 2), ScaleValue(cRowGap), 0);
   Result.BevelOuter := bvNone;
   Result.Caption := '';
+  Result.Align := alTop;
+  Result.Parent := Self;
+end;
+
+function TAtlasDialog.AddList(AHeight96, ATopGap96: Integer): TAtlasListBox;
+var
+  mTop: Integer;
+begin
+  mTop := NextTop;
+  Result := TAtlasListBox.Create(Self);
+  // Lage vor Align und Parent wie bei AddRow.
+  Result.Top := mTop;
+  Result.Height := ScaleValue(AHeight96);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(ATopGap96), ScaleValue(cRowGap), 0);
   Result.Align := alTop;
   Result.Parent := Self;
 end;
