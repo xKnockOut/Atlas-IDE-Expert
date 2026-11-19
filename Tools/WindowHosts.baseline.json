@@ -8,33 +8,6 @@
   "Packages/Atlas.IDE.Designer/Source/IDE/Designer/Atlas.IDE.Designer.SelectionBar.pas": {
     "cl-red": 1
   },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Flash.pas": {
-    "create-new": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Handles.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Magnifier.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.MeasureOverlay.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Outlines.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.SelectionBar.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
-  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.TabOverlay.pas": {
-    "create-new": 1,
-    "segoe-font": 1
-  },
   "Packages/Atlas.IDE.Rules/Source/UI/Rules/Atlas.UI.Rules.Editor.pas": {
     "cl-red": 1
   },
