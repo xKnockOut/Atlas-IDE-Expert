@@ -102,6 +102,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Locked;
+
 type
   TIndexTurn = class(TInterfacedObject, IIndexTurn)
   private
@@ -251,12 +254,7 @@ end;
 
 function TIndexStageWatch.State: TIndexStageState;
 begin
-  FLock.Enter;
-  try
-    Result := FState;
-  finally
-    FLock.Leave;
-  end;
+  Result := TTextLocked.Read<TIndexStageState>(FLock, FState);
 end;
 
 { TIndexScheduler }

@@ -126,6 +126,7 @@ type
 implementation
 
 uses
+  Atlas.Text.Locked,
   Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
@@ -272,32 +273,17 @@ end;
 
 function TAtlasStatusLine.Text: string;
 begin
-  FLock.Enter;
-  try
-    Result := FText;
-  finally
-    FLock.Leave;
-  end;
+  Result := TTextLocked.Read<string>(FLock, FText);
 end;
 
 function TAtlasStatusLine.Summary: string;
 begin
-  FLock.Enter;
-  try
-    Result := FSummary;
-  finally
-    FLock.Leave;
-  end;
+  Result := TTextLocked.Read<string>(FLock, FSummary);
 end;
 
 function TAtlasStatusLine.State: TAtlasStatusState;
 begin
-  FLock.Enter;
-  try
-    Result := FState;
-  finally
-    FLock.Leave;
-  end;
+  Result := TTextLocked.Read<TAtlasStatusState>(FLock, FState);
 end;
 
 function TAtlasStatusLine.Order: Integer;
@@ -320,22 +306,12 @@ end;
 
 function TAtlasStatusLine.Brief: string;
 begin
-  FLock.Enter;
-  try
-    Result := FBrief;
-  finally
-    FLock.Leave;
-  end;
+  Result := TTextLocked.Read<string>(FLock, FBrief);
 end;
 
 function TAtlasStatusLine.Detail: string;
 begin
-  FLock.Enter;
-  try
-    Result := FDetail;
-  finally
-    FLock.Leave;
-  end;
+  Result := TTextLocked.Read<string>(FLock, FDetail);
 end;
 
 procedure TAtlasStatusLine.Update(const AText: string; AState: TAtlasStatusState);

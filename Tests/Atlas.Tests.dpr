@@ -30,6 +30,7 @@ uses
   Atlas.Text.Diff.Tests in 'Text\Atlas.Text.Diff.Tests.pas',
   Atlas.Text.Fuzzy.Tests in 'Text\Atlas.Text.Fuzzy.Tests.pas',
   Atlas.Text.Files.Tests in 'Text\Atlas.Text.Files.Tests.pas',
+  Atlas.Text.Locked.Tests in 'Text\Atlas.Text.Locked.Tests.pas',
   Atlas.Text.Csv.Tests in 'Text\Atlas.Text.Csv.Tests.pas',
   Atlas.Text.IndexCache.Tests in 'Text\Atlas.Text.IndexCache.Tests.pas',
   Atlas.Text.Names.Tests in 'Text\Atlas.Text.Names.Tests.pas',

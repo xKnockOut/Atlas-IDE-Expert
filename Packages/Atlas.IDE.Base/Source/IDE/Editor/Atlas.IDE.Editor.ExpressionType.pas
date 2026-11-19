@@ -60,13 +60,13 @@ type
       out AInfo: TAtlasExpressionTypeInfo): Boolean;
     procedure Show(const AInfo: TAtlasExpressionTypeInfo);
     procedure Navigate;
-    procedure Close;
     procedure PaintLine(const ARect: TRect; const AStage: TPaintLineStage; ABeforeEvent: Boolean;
       const AContext: INTACodeEditorPaintContext);
     class function KeyText: string; static;
   protected
     procedure Execute; override;
     function Allowed: Boolean; override;
+    procedure Close; override;
   public
     constructor Create(const ASession: TAtlasExpressionTypeSessionFunc; const AMessage: TProc<string>);
     destructor Destroy; override;
@@ -405,10 +405,7 @@ end;
 
 class procedure TAtlasIdeExpressionType.Dismiss;
 begin
-  if FInstance <> nil then
-  begin
-    FInstance.Close;
-  end;
+  CloseCommand(FInstance);
 end;
 
 class procedure TAtlasIdeExpressionType.EditorModified;

@@ -62,12 +62,12 @@ type
     procedure CreateWindow;
     procedure Preview(AIndex: Integer);
     procedure Accept(AIndex: Integer);
-    procedure Close;
     procedure PaintLine(const ARect: TRect; const AStage: TPaintLineStage; ABeforeEvent: Boolean;
       const AContext: INTACodeEditorPaintContext);
   protected
     procedure Execute; override;
     function Allowed: Boolean; override;
+    procedure Close; override;
   public
     constructor Create(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
     destructor Destroy; override;
@@ -412,10 +412,7 @@ end;
 
 class procedure TAtlasIdeUnwrap.Dismiss;
 begin
-  if FInstance <> nil then
-  begin
-    FInstance.Close;
-  end;
+  CloseCommand(FInstance);
 end;
 
 class procedure TAtlasIdeUnwrap.EditorModified;
