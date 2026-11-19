@@ -66,7 +66,7 @@ begin
   Result := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates, APrefix, ACaption);
 end;
 
-/// <summary>Wie im Mockup AC7 plus Umschließen und Vorlagen.</summary>
+/// <summary>Die Schnellbefehle des Menüs plus Umschließen und Vorlagen.</summary>
 function Sample: TArray<TAtlasGenerateEntry>;
 begin
   Result := [Slash('ctor', 'Konstruktor aus Feldern'), Slash('dtor', 'Destruktor mit Freigabe'),
