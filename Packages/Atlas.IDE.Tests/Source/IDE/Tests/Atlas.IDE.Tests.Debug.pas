@@ -119,7 +119,8 @@ uses
   Atlas.IDE.Foundation.StartOptions,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.IDE.Tests.Projects;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -635,7 +636,7 @@ begin
   mName := Trim(AFullName);
   for mUnitName in TAtlasTestDebug.UnitNamesOf(mName) do
   begin
-    mFileName := TAtlasIdeTests.UnitFileOf(mProject.FileName, mUnitName);
+    mFileName := TAtlasIdeTestProjects.UnitFileOf(mProject.FileName, mUnitName);
     if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;
@@ -672,7 +673,7 @@ begin
   // Wie DebugByName: jede Teilung von hinten als Unitname versuchen.
   for mUnitName in TAtlasTestDebug.UnitNamesOf(mName) do
   begin
-    mFileName := TAtlasIdeTests.UnitFileOf(AProject, mUnitName);
+    mFileName := TAtlasIdeTestProjects.UnitFileOf(AProject, mUnitName);
     if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;

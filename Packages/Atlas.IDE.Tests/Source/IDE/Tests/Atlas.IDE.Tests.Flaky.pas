@@ -205,7 +205,7 @@ begin
         Continue;
       end;
       mDone := mDone + [mItem.UnitName];
-      mFileName := TAtlasIdeTests.UnitFileOf(ATarget.Project, mItem.UnitName);
+      mFileName := TAtlasIdeTestProjects.UnitFileOf(ATarget.Project, mItem.UnitName);
       if (mFileName <> '') and TAtlasIdeFiles.ReadLines(mFileName, mLines) then
       begin
         mKeys := mKeys + mHistory.Remember(TDUnitXSource.Scan(mLines), mLines, ARun.Cases, mNow);

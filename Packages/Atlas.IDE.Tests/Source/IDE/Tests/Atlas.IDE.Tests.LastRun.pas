@@ -54,7 +54,8 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Log,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Tests.Projects;
 
 /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
@@ -68,7 +69,7 @@ var
   mFailure: TAtlasTestFailure;
 begin
   Result := nil;
-  for mFailure in TAtlasTestRun.Failures(ARun, TAtlasIdeTests.UnitFiles(ATarget.Project), ReadLines,
+  for mFailure in TAtlasTestRun.Failures(ARun, TAtlasIdeTestProjects.UnitFiles(ATarget.Project), ReadLines,
     TAtlasIdeSettings.Current.TestsFailureAtAssert) do
   begin
     Result := Result + [TAtlasTestPlace.Make(mFailure.Test.FullName, mFailure.FileName, mFailure.Line)];
@@ -85,7 +86,7 @@ begin
   for mName in TAtlasTestLastRun.UnitNames(ARun.Cases) do
   begin
     mUnit.Name := mName;
-    mUnit.FileName := TAtlasIdeTests.UnitFileOf(ATarget.Project, mName);
+    mUnit.FileName := TAtlasIdeTestProjects.UnitFileOf(ATarget.Project, mName);
     Result := Result + [mUnit];
   end;
 end;

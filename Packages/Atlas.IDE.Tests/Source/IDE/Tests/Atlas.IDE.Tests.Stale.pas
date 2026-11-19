@@ -46,7 +46,8 @@ uses
   ToolsAPI,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Tests.Projects;
 
 /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
@@ -89,7 +90,7 @@ begin
     if (mItem.UnitName <> '') and (IndexText(mItem.UnitName, mDone) < 0) then
     begin
       mDone := mDone + [mItem.UnitName];
-      mFileName := TAtlasIdeTests.UnitFileOf(ATarget.Project, mItem.UnitName);
+      mFileName := TAtlasIdeTestProjects.UnitFileOf(ATarget.Project, mItem.UnitName);
     end;
     if (mFileName = '') or not ReadLines(mFileName, mLines) then
     begin
@@ -98,7 +99,7 @@ begin
     mUnits := nil;
     if TAtlasIdeSettings.Current.TestsStaleUnits then
     begin
-      mUnits := TAtlasTestStamps.UnitStamps(mLines, TAtlasIdeTests.UnitFiles(ATarget.Project), ReadLines);
+      mUnits := TAtlasTestStamps.UnitStamps(mLines, TAtlasIdeTestProjects.UnitFiles(ATarget.Project), ReadLines);
     end;
     FStamps.Remember(ATarget.Project, mFileName, TDUnitXSource.Scan(mLines), mLines, ARun.Cases, mUnits);
   end;
