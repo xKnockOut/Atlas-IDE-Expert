@@ -1009,7 +1009,7 @@ begin
   mTransport.Answer('https://api.github.com/graphql', 'PVT_atlas', 200, Fixture('GitHub', 'project-v2.json'));
   mBoards := TAtlasGitHubBoards.Create;
   // Sprint ausdrücklich (it2 trägt die Karten): Ohne Angabe gilt der Sprint von heute, und die Iterationen der
-  // Fixture enden (seit 09.11.2026 war it3 ohne Karten der aktuelle).
+  // Fixture enden (sonst wäre nach ihrem Ende it3 ohne Karten der aktuelle).
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', 'it2', 10000), mSnapshot,
     mError));
   Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));

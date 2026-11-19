@@ -36,6 +36,10 @@ uses
   System.Math,
   System.Character;
 
+const
+  /// <summary>Größter Abstand, bei dem Closest einen Namen noch vorschlägt.</summary>
+  cMaxCloseDistance = 3;
+
 { TTextFuzzy }
 
 class function TTextFuzzy.IsWordStart(const AName: string; AIndex: Integer): Boolean;
@@ -163,7 +167,7 @@ var
   mBest, mValue: Integer;
 begin
   Result := '';
-  mBest := Min(3, (Length(AName) + 1) div 2);
+  mBest := Min(cMaxCloseDistance, (Length(AName) + 1) div 2);
   for mCandidate in ACandidates do
   begin
     mValue := EditDistance(AName, mCandidate, mBest);

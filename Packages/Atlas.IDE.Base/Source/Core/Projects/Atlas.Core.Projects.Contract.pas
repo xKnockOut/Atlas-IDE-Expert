@@ -7,7 +7,7 @@
 // jeder Änderung als atlas/projectContext. Die Werte bleiben roh, wie sie in
 // den Projektoptionen stehen ($(Platform), $(BDS), relative Pfade): Der Server
 // löst sie mit den Variablen der Installation auf.
-// Contract des Features Projects (früher Atlas.Core.Projects.Context): Der LSP-Client
+// Contract des Features Projects: Der LSP-Client
 // importiert nur ihn, nicht die übrigen Projects-Units.
 // Präfixe (#452): Gibt die Projektdatei .atlas (#486) unter "naming" Präfixe für
 // Felder, Parameter oder lokale Variablen vor, gehen sie unter "naming" mit; sie
@@ -141,20 +141,24 @@ begin
 end;
 
 function TAtlasProjectContext.Describe: string;
+const
+  // Protokollzeile (nie übersetzt).
+  cNoOptions = 'keine Optionen';
+  cLine = '%s %s/%s (%s, BDS %s): Defines %s; %d Suchpfade, %d Namespaces, %d Bibliothekspfade';
+  cActive = ', aktiv';
 var
   mOrigin: string;
 begin
   mOrigin := Source;
   if mOrigin = '' then
   begin
-    mOrigin := 'keine Optionen';
+    mOrigin := cNoOptions;
   end;
-  Result := Format('%s %s/%s (%s, BDS %s): Defines %s; %d Suchpfade, %d Namespaces, %d Bibliothekspfade',
-    [ExtractFileName(Project), Configuration, Platform, mOrigin, BdsVersion, string.Join(';', Defines),
-    Length(SearchPaths), Length(Namespaces), Length(LibraryPaths)]);
+  Result := Format(cLine, [ExtractFileName(Project), Configuration, Platform, mOrigin, BdsVersion,
+    string.Join(';', Defines), Length(SearchPaths), Length(Namespaces), Length(LibraryPaths)]);
   if Active then
   begin
-    Result := Result + ', aktiv';
+    Result := Result + cActive;
   end;
 end;
 

@@ -63,7 +63,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Vorlagen:** Code-, Postfix- und klassenbezogene Vorlagen, eigene Snippets, Schrägstrich-Befehle wie `/uses` und `/extract`
 - **Generieren-Menü** (Alt+Einfg) und Bearbeitungshilfen: umschließen, Zeilen verschieben, Kommentare umschalten, var-Blöcke aufräumen
 - **Formatierer** (Strg+Umschalt+Alt+L), auch ohne IDE
-- **Klassenvervollständigung:** `{ TKunde }` über den Rümpfen (oder Trennlinie, Doku-Satz, Region), Konstruktor und Destruktor zuerst, dann Get/Set-Paare; neue Rümpfe mit `inherited` und `Result := FName` vorbefüllt
+- **Klassenvervollständigung:** `{ TKunde }` über den Rümpfen (oder Trennlinie, Doku-Satz, Region), Konstruktor und Destruktor zuerst, dann Get/Set-Paare; neue Rümpfe mit `inherited` und `Result := FName` vorbefüllt; genau eine Leerzeile zwischen angelegten oder geordneten Rümpfen (`classCompletion.blankLines`)
 - **Einrückung beim Tippen:** Nach Enter steht die Schreibmarke an der richtigen Stelle der Blockstruktur, `end`, `until`, `finally` und `else` rücken auf ihr Gegenstück, ein String wird beim Umbruch mit `' +` getrennt
 - **Gelernte Vorschläge:** Nach `X := TFoo.Create;` oder `L.BeginUpdate;` und Enter schlägt Atlas als grauen Schattentext vor, was im eigenen Projekt meist folgt (`try … finally X.Free; end;`), ohne KI und ohne Netz; Tab übernimmt, Esc verwirft, Hausregeln des Teams in `atlas.json`
 
@@ -140,6 +140,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Wer gibt das frei?** Hinter jedem `T.Create(…)` steht auf Wunsch, wer das Objekt freigibt: grün „frei in Destroy, Z. 48“, „frei in finally“, „Owner Self“, „gehört FListe“ oder „Referenzzählung“, gelb „weitergegeben an Registry.Add“ oder „an Aufrufer zurückgegeben“, rot „nie freigegeben“, wo eine Leck-Regel meldet; Klick springt zur Freigabe, der Tooltip erklärt den Weg (`editor.ownershipHints`, Vorgabe aus)
 - **Fenster „Kein Quelltext“:** Hält der Debugger in Code ohne Quelltext, nennt ein kleines Fenster Routine, Modul, Grund (Debug-DCUs aus, `{$D-}`, nur DCU, nicht im Suchpfad, Systemcode) und Auswege
 - **Fenster „Atlas-Lecks“:** Meldet das Programm am Ende Lecks (Meldungsfenster von `ReportMemoryLeaksOnShutdown` oder FastMM-Protokoll), zeigt Atlas sie je Name mit Vergleich zum letzten Lauf (neu, mehr geworden, bekannt) und darunter die Stellen: mit Aufrufstapeln die Erzeugungsstelle, sonst Kandidaten des Servers mit Bewertung; Enter springt hin (`debug.leakReport`)
+- **Debug-Notiz:** „Debug-Zustand festhalten“ hält den angehaltenen Zustand als Markdown fest (Stelle, Aufrufstapel, lokale Variablen, Überwachte Ausdrücke, Exception, letzte Ereignisse, Geheimnisse maskiert), in der Zwischenablage und auf Wunsch als Datei neben dem Projekt (`debug.note`, `debug.note.saveFile`)
 - **Speicherverlauf beim Debuggen:** Das Fenster „Atlas: Speicher“ zeigt privaten Speicher, Arbeitssatz, Handles, GDI- und USER-Objekte des Programms über die Sitzung mit Marken bei jedem Halt; ein gezogener Bereich zeigt den Zuwachs, „CSV kopieren“ den Verlauf (`debug.memoryTimeline`). Experimentell zählt „Objekte zählen“ im angehaltenen Programm lebende Objekte je Klasse und vergleicht mit der vorigen Zählung, Zuwächse oben (`debug.memoryTimeline.objectCount`)
 
 ### [IDE-Komfort](docs/features/de/IDE-Komfort.md)
@@ -165,6 +166,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
+- **Letzter Testlauf ohne neuen Lauf:** `get_last_tests` liefert, was die IDE beim letzten Testlauf gesehen hat: rote Tests mit Datei:Zeile, erwartet und erhalten, Protokollauszug und Marken neu rot, wieder grün, wackelig, Leck und veraltet (`tests.lastRun`)
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft

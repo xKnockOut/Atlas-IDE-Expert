@@ -1085,6 +1085,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Pins` | `IDE/Debug/Atlas.IDE.Debug.Pins.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.OwnCode` | `IDE/Debug/Atlas.IDE.Debug.OwnCode.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Report` | `IDE/Debug/Atlas.IDE.Debug.Report.pas` | Bericht über die Debug-Sitzung (IAtlasDebugReportSource), #1455 |
+| `Atlas.IDE.Debug.Note` | `IDE/Debug/Atlas.IDE.Debug.Note.pas` | Debug-Zustand festhalten: Notiz in Zwischenablage und Datei, #582 |
+| `Atlas.IDE.Debug.NoteValues` | `IDE/Debug/Atlas.IDE.Debug.NoteValues.pas` | Lokale Variablen und überwachte Ausdrücke für die Debug-Notiz, #582 |
 | `Atlas.IDE.Debug.StopSource` | `IDE/Debug/Atlas.IDE.Debug.StopSource.pas` | Halt der Sitzung für „Test daraus anlegen …“ (IAtlasDebugStopSource), #1873 |
 | `Atlas.IDE.Debug.Session` | `IDE/Debug/Atlas.IDE.Debug.Session.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.StopView` | `IDE/Debug/Atlas.IDE.Debug.StopView.pas` | Ordner `IDE/Debug` |
@@ -1148,6 +1150,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.MethodBreakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.MethodBreakpoints.Strings.pas` | Texte des Debuggers: Methodenhaltepunkte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.EventBreak.Strings` | `UI/Debug/Atlas.UI.Debug.EventBreak.Strings.pas` | Texte des Debuggers: beim nächsten Ereignis anhalten, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Logpoints.Strings` | `UI/Debug/Atlas.UI.Debug.Logpoints.Strings.pas` | Texte des Debuggers: Logpunkte, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Note.Strings` | `UI/Debug/Atlas.UI.Debug.Note.Strings.pas` | Texte des Debuggers: Debug-Notiz, Sprache von Base, #582 |
 | `Atlas.UI.Debug.Exceptions.Strings` | `UI/Debug/Atlas.UI.Debug.Exceptions.Strings.pas` | Texte des Debuggers: Exceptions, Exception-Leiste, Debug-Notiz, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.AccessViolation.Strings` | `UI/Debug/Atlas.UI.Debug.AccessViolation.Strings.pas` | Texte des Debuggers: Zugriffsverletzungen, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Threads.Strings` | `UI/Debug/Atlas.UI.Debug.Threads.Strings.pas` | Texte des Debuggers: Threads, Warteketten, parallele Aufrufstapel, Sprache von Base, #1455 |
@@ -1791,6 +1794,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Approval` | `Core/Tests/Atlas.Core.Tests.Approval.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Flaky` | `Core/Tests/Atlas.Core.Tests.Flaky.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.LastRun` | `Core/Tests/Atlas.Core.Tests.LastRun.pas` | Ordner `Core/Tests`; letzter Testlauf für KI-Assistenten ohne VCL (#2409) |
 | `Atlas.Core.Tests.Explorer` | `Core/Tests/Atlas.Core.Tests.Explorer.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Series` | `Core/Tests/Atlas.Core.Tests.Series.pas` | Ordner `Core/Tests`; Serien N-mal bzw. zufällige Reihenfolge (#1782) |
 | `Atlas.Core.Tests.UnitScans` | `Core/Tests/Atlas.Core.Tests.UnitScans.pas` | Ordner `Core/Tests`; gelesene Testunits des Fensters „Atlas-Tests“ mit Zwischenspeicher je Änderungszeit |
@@ -1819,6 +1823,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.ApprovalFiles` | `IDE/Tests/Atlas.IDE.Tests.ApprovalFiles.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Slowest` | `IDE/Tests/Atlas.IDE.Tests.Slowest.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Flaky` | `IDE/Tests/Atlas.IDE.Tests.Flaky.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.LastRun` | `IDE/Tests/Atlas.IDE.Tests.LastRun.pas` | Ordner `IDE/Tests`; Ablage des letzten Testlaufs (#2409) |
 | `Atlas.IDE.Tests.Explorer` | `IDE/Tests/Atlas.IDE.Tests.Explorer.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.StatusField` | `IDE/Tests/Atlas.IDE.Tests.StatusField.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.ExplorerWindow` | `IDE/Tests/Atlas.IDE.Tests.ExplorerWindow.pas` | Ordner `IDE/Tests` |

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Diagnostics.PluginTimings;
 
-// Zeiten des ganzen Plugins für das Diagnose-Fenster (Variante A, Punkt 5 der
-// Liste vom 03.11.2026), Teil ohne VCL und Open Tools API:
+// Zeiten des ganzen Plugins für das Diagnose-Fenster, Teil ohne VCL und Open
+// Tools API:
 // - Hauptthread je Funktion: TAtlasGuard.Run meldet jeden Aufruf über
 //   TAtlasGuardTiming (Enter/Leave). Gezählt wird die eigene Zeit eines
 //   Aufrufs, also ohne die darin verschachtelten Aufrufe anderer Funktionen,
@@ -14,8 +14,8 @@
 //   Aktion („atlas.server.testUnit“), damit der Verursacher dabeisteht.
 // - Modale Dialoge: Zwischen ModalBegin und ModalEnd verarbeitet die IDE
 //   Nachrichten, sie hängt nicht. Diese Zeit zählt nicht als eigene Zeit des
-//   Aufrufs, der den Dialog öffnete, und nicht zur Belegung (Diagnose vom
-//   06.11.2026: Tracker 34 s, Willkommensseite 11,8 s ohne Hänger).
+//   Aufrufs, der den Dialog öffnete, und nicht zur Belegung (sonst
+//   stehen etwa 34 s beim Tracker, obwohl nichts hängt).
 //   Ebenso Arbeit der IDE in einem Atlas-Aufruf (TAtlasGuard.RunIde, etwa
 //   das Laden eines Projekts, #1987): Sie gehört nicht Atlas; Aufrufe von
 //   Atlas darin (Notifier) zählen für sich.
@@ -29,8 +29,8 @@
 //   hielt, für die letzten 60 Sekunden (TAtlasBusyMeter).
 // - Server: Dauer, Zeitüberschreitung und Abbruch je Anfrage (TLspClient) und
 //   die Zeit, die dabei der Hauptthread wartete: Anzahl und Mittel je
-//   wartender Anfrage (#1990; vorher stand die Summe neben Mittel und
-//   Maximum und las sich wie eine Wartezeit je Anfrage).
+//   wartender Anfrage (#1990; die Summe neben Mittel und Maximum läse sich
+//   wie eine Wartezeit je Anfrage).
 // - Hintergrund: Dauer je Quelle (Vervollständigung u. a.) und wie oft sie zu
 //   langsam war (TAtlasGuard.ReportProviderSlow).
 // - Hänger: die Meldungen des Einfrier-Wächters (#501) dieser Sitzung.

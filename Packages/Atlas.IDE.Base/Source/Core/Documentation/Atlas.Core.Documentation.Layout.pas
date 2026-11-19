@@ -66,6 +66,15 @@ type
   TAtlasDocMeasure = reference to function(const AText: string; const AFace: TAtlasDocFace): Integer;
 
   TAtlasDocMetrics = record
+  public const
+    // Abstände bei 96 dpi, siehe die gleichnamigen Felder.
+    cIndent = 14;
+    cColumnGap = 8;
+    cParagraphGap = 5;
+    cSectionGap = 6;
+    cCodePad = 6;
+    cPillPad = 3;
+  public
     /// <summary>Zeilenhöhe der UI-Schrift bzw. der Editorschrift.</summary>
     LineHeight: Integer;
     MonoHeight: Integer;
@@ -196,6 +205,8 @@ type
     /// <summary>Parameter: Namens- und Typspalte höchstens so viel Prozent der Breite.</summary>
     cNameColumnPercent = 30;
     cTypeColumnPercent = 35;
+    /// <summary>Ausnahmen: Spalte der Klassennamen höchstens so viel Prozent der Breite.</summary>
+    cExceptionColumnPercent = 50;
     cSeparator = ' · ';
   public
     Lines: TArray<TAtlasDocLine>;
@@ -270,12 +281,12 @@ class function TAtlasDocMetrics.Create(ALineHeight, AMonoHeight: Integer; AScale
 begin
   Result.LineHeight := ALineHeight;
   Result.MonoHeight := AMonoHeight;
-  Result.Indent := Round(14 * AScale);
-  Result.ColumnGap := Round(8 * AScale);
-  Result.ParagraphGap := Round(5 * AScale);
-  Result.SectionGap := Round(6 * AScale);
-  Result.CodePad := Round(6 * AScale);
-  Result.PillPad := Round(3 * AScale);
+  Result.Indent := Round(cIndent * AScale);
+  Result.ColumnGap := Round(cColumnGap * AScale);
+  Result.ParagraphGap := Round(cParagraphGap * AScale);
+  Result.SectionGap := Round(cSectionGap * AScale);
+  Result.CodePad := Round(cCodePad * AScale);
+  Result.PillPad := Round(cPillPad * AScale);
 end;
 
 type

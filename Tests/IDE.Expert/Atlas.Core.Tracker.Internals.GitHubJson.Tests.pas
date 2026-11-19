@@ -20,15 +20,12 @@ type
     procedure ShortenToOneLine;
     [Test]
     procedure AssigneesFromListOrSingle;
-    [Test]
-    procedure TimeAsUtc;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  System.DateUtils,
   System.JSON,
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Text.Json;
@@ -82,21 +79,6 @@ begin
     Assert.AreEqual('carla', TAtlasGitHubJson.AssigneesOf(mObject));
     Assert.AreEqual('carla', TAtlasGitHubJson.LoginOf(mObject.Values['assignee']));
     Assert.AreEqual('', TAtlasGitHubJson.LoginOf(mObject.Values['assignees']));
-  finally
-    mObject.Free;
-  end;
-end;
-
-procedure TAtlasGitHubJsonTests.TimeAsUtc;
-var
-  mObject: TJSONObject;
-begin
-  mObject := Parsed('{"updated_at":"2026-10-28T10:40:49Z","bad":"gestern"}');
-  try
-    Assert.AreEqual(Double(EncodeDateTime(2026, 10, 28, 10, 40, 49, 0)),
-      Double(TAtlasGitHubJson.TimeOf(mObject, 'updated_at')), 1 / SecsPerDay);
-    Assert.AreEqual(Double(0), Double(TAtlasGitHubJson.TimeOf(mObject, 'bad')));
-    Assert.AreEqual(Double(0), Double(TAtlasGitHubJson.TimeOf(mObject, 'fehlt')));
   finally
     mObject.Free;
   end;

@@ -250,15 +250,6 @@ begin
   Result.Command := TMonitorCommand.Check;
 end;
 
-/// <summary>Setzt AName auf AValue; leere Werte bleiben weg.</summary>
-procedure PutText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 /// <summary>Setzt AName nur, wenn AValue an ist.</summary>
 procedure PutFlag(AObject: TJSONObject; const AName: string; AValue: Boolean);
 begin
@@ -271,24 +262,24 @@ end;
 function OptionsToJson(const AOptions: TMonitorOptions; AObject: TJSONObject): TJSONObject;
 begin
   Result := AObject;
-  PutText(Result, 'minSeverity', AOptions.MinSeverity);
-  PutText(Result, 'rules', AOptions.Rules);
-  PutText(Result, 'profile', AOptions.Profile);
-  PutText(Result, 'units', AOptions.Units);
+  TJsonBuild.AddText(Result, 'minSeverity', AOptions.MinSeverity);
+  TJsonBuild.AddText(Result, 'rules', AOptions.Rules);
+  TJsonBuild.AddText(Result, 'profile', AOptions.Profile);
+  TJsonBuild.AddText(Result, 'units', AOptions.Units);
   PutFlag(Result, 'changed', AOptions.Changed);
-  PutText(Result, 'changedBase', AOptions.ChangedBase);
-  PutText(Result, 'diff', AOptions.DiffRef);
+  TJsonBuild.AddText(Result, 'changedBase', AOptions.ChangedBase);
+  TJsonBuild.AddText(Result, 'diff', AOptions.DiffRef);
   PutFlag(Result, 'includeUncommitted', AOptions.IncludeUncommitted);
   PutFlag(Result, 'changedLines', AOptions.ChangedLines);
-  PutText(Result, 'baseline', AOptions.Baseline);
+  TJsonBuild.AddText(Result, 'baseline', AOptions.Baseline);
   PutFlag(Result, 'updateBaseline', AOptions.UpdateBaseline);
   PutFlag(Result, 'noIndex', AOptions.NoIndex);
   PutFlag(Result, 'timings', AOptions.Timings);
-  PutText(Result, 'fixRules', AOptions.FixRules);
-  PutText(Result, 'affectedBase', AOptions.AffectedBase);
-  PutText(Result, 'query', AOptions.Query);
-  PutText(Result, 'architectureFile', AOptions.ArchitectureFile);
-  PutText(Result, 'replayFile', AOptions.ReplayFile);
+  TJsonBuild.AddText(Result, 'fixRules', AOptions.FixRules);
+  TJsonBuild.AddText(Result, 'affectedBase', AOptions.AffectedBase);
+  TJsonBuild.AddText(Result, 'query', AOptions.Query);
+  TJsonBuild.AddText(Result, 'architectureFile', AOptions.ArchitectureFile);
+  TJsonBuild.AddText(Result, 'replayFile', AOptions.ReplayFile);
 end;
 
 function OptionsFromJson(AObject: TJSONObject): TMonitorOptions;
@@ -320,7 +311,7 @@ begin
   Result.AddPair(cTargets, Targets.ToJson);
   Result.AddPair(cCommand, cCommandNames[Command]);
   OptionsToJson(Options, Result);
-  PutText(Result, cEditor, Editor);
+  TJsonBuild.AddText(Result, cEditor, Editor);
 end;
 
 class function TMonitorCheckState.FromJson(AObject: TJSONObject): TMonitorCheckState;

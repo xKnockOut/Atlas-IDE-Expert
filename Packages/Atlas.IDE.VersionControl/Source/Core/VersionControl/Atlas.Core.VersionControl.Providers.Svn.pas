@@ -31,7 +31,7 @@
 // info --show-item relative-url (ohne Server). Schritte mit Long (switch,
 // checkout) laufen mit dem langen Zeitlimit.
 // IAtlasVcsSvnWorkingCopy: WorkingRevisions = svnversion . bzw. svnversion
-// <Ordner> (Programm neben svn, ohne Server); seit #1291 ExternalsXml =
+// <Ordner> (Programm neben svn, ohne Server); ExternalsXml (#1291) =
 // propget svn:externals --xml -R ., RepositoryRoot = info --show-item
 // repos-root-url ., ToolVersion = --version --quiet. RunStep schreibt vor
 // einem Schritt mit InputFile dessen Inhalt (UTF-8 ohne BOM, LF), etwa für

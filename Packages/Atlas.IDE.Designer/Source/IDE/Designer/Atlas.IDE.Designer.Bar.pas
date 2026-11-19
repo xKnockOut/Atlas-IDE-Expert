@@ -402,7 +402,7 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
-  // Takt nur bei offenem Formular-Designer (vorher alle 200 ms, auch auf der Willkommensseite).
+  // Takt nur bei offenem Formular-Designer, sonst liefe er alle 200 ms, auch auf der Willkommensseite.
   FOpen := TAtlasDesignerOpenWatch.Create(OpenChanged);
   FTimer.Enabled := FOpen.Any;
 end;
@@ -563,7 +563,7 @@ begin
   end;
   Result.Enabled := mEnabled;
   Result.Pressed := mPressed;
-  // Wie im Mockup: ausgeblendet = durchgestrichenes Auge.
+  // Ausgeblendet = durchgestrichenes Auge.
   if Result.Pressed then
   begin
     Result.Icon := TAtlasToolbarIcon.NonVisualHidden;

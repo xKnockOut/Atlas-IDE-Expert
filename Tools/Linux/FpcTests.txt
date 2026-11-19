@@ -25,6 +25,7 @@ Atlas.Text.LeakReport.Tests
 Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests
 Atlas.Text.TestResults.Tests
+Atlas.Text.TestRunFile.Tests
 Atlas.Text.Xml.Tests
 Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
@@ -68,6 +69,7 @@ Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Editing.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
+Atlas.Common.Editing.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Editing.ClassLayout.Tests
 Atlas.Common.Editing.CodeActions.Tests
@@ -203,9 +205,13 @@ Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
 Atlas.Common.Lsp.MethodBreakpoints.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
+Atlas.Common.Lsp.ParameterHeaders.Tests
 Atlas.Common.Lsp.Processes.Tests
 Atlas.Common.Lsp.RaiseVisibility.Tests
 Atlas.Common.Lsp.Rationale.Tests
+Atlas.Common.Lsp.ReferenceConfidence.Tests
+Atlas.Common.Lsp.References.Tests
+Atlas.Common.Lsp.Rename.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.RoutineParameters.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
@@ -224,6 +230,8 @@ Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
 Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
+Atlas.Common.Mcp.IdeInbox.Tests
+Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Lsp.ImplementationSites.Tests
 Atlas.Common.Mcp.ImplementationTools.Tests
@@ -231,6 +239,7 @@ Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
+Atlas.Common.Mcp.LastTests.Tests
 Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
@@ -498,6 +507,7 @@ Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Debug.EventLog.Tests
 Atlas.Core.Debug.LeakCapture.Tests
 Atlas.Core.Debug.LeakView.Tests
+Atlas.Core.Debug.Note.Tests
 Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Debug.NoSource.Tests
 Atlas.Core.Debug.Restart.Tests
@@ -595,6 +605,7 @@ Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.Series.Tests
 Atlas.Core.Tests.UnitScans.Tests
 Atlas.Core.Tests.Flaky.Tests
+Atlas.Core.Tests.LastRun.Tests
 Atlas.Core.Tests.StatusField.Tests
 Atlas.Core.Debug.BreakpointList.Tests
 Atlas.Core.Tests.CaseTable.Tests
