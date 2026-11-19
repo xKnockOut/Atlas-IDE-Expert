@@ -48,7 +48,9 @@ type
     FOwnerOf: TAtlasKeyOwnerFunc;
     FNextTop: Integer;
     FUpdating: Boolean;
+    /// <summary>Zeile der Höhe AHeight in logischen Pixeln (96 dpi).</summary>
     function AddPanel(AHeight: Integer): TPanel;
+    /// <summary>Beschriftung in AParent an ALeft, ATop (logische Pixel, 96 dpi).</summary>
     function AddLabel(AParent: TWinControl; const ACaption: string; ALeft, ATop: Integer): TLabel;
     function AddCheck(const ACaption: string): TCheckBox;
     procedure AddRow(AIndex: Integer);
@@ -83,7 +85,8 @@ implementation
 uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Commands.KeyMap,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Settings.Page.Sheets;
 
 {$R *.dfm}
 
@@ -172,16 +175,7 @@ end;
 
 function TAtlasKeysPage.AddPanel(AHeight: Integer): TPanel;
 begin
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.BevelOuter := bvNone;
-  Result.Height := AHeight;
-  // alTop stapelt nach Top: jedes neue Element unter das vorige.
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
-  Result.ParentBackground := True;
+  Result := TAtlasSettingsPageSheets.NewTopPanel(Self, AHeight, FNextTop);
 end;
 
 function TAtlasKeysPage.AddLabel(AParent: TWinControl; const ACaption: string; ALeft, ATop: Integer): TLabel;
@@ -189,8 +183,8 @@ begin
   Result := TLabel.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
-  Result.Top := ATop;
+  Result.Left := Result.ScaleValue(ALeft);
+  Result.Top := Result.ScaleValue(ATop);
 end;
 
 function TAtlasKeysPage.AddCheck(const ACaption: string): TCheckBox;

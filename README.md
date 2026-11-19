@@ -87,6 +87,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **354 check rules** while you type: 235 bugs, 108 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
+- **Findings as a task for an AI assistant:** "Copy as task for an AI assistant" in the "Atlas Findings" window (also several findings, grouped per file) and in the editor puts rule, message, code excerpt, explanation and the MCP tool to verify the fix into the clipboard
 - **Compiler messages explained:** the hover shows the typical cause of a dcc or IDE message such as E2003 or W1035 below the message, with the links "Explain" (dialog with a wrong and a right example) and "DocWiki"; about 40 messages in English and German, also without dcc (`hover.explainMessages`)
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Experimental style rules with few false alarms:** `hardcoded-string` skips log, check and comparison calls, date masks and markup; `magic-number` skips the DPI base 96, full bit masks, time units and point lists; `naming-prefix` keeps the parameter names of event handlers assigned in code; `public-field` skips helper classes under `private type`
@@ -169,8 +170,12 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **The started issue for AI assistants:** after "Start" the plugin stores the issue with checklist, code references, description and latest comments next to the commit prefix in the Git directory; `get_current_issue` reads it without tracker access and without a token. When someone ticks an item in the tracker, it shows there after the next refresh (`issues.shareWithAssistants`, on by default)
 - **Last test run without a new run:** `get_last_tests` returns what the IDE saw in the last test run: red tests with file:line, expected and actual, log excerpt and the marks newly red, green again, flaky, leak and stale (`tests.lastRun`)
 - **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
+- **Where you are in the IDE:** `get_ide_context` tells AI assistants the open file with cursor and method, the selection, the active project with configuration and platform, the last build and the tabs, so "this method" needs no copying (`assistants.context`)
+- **Several queries at once:** `batch` runs up to 10 read-only MCP tools in one call, on one shared index state with a single file comparison; an error affects only its section
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
+- **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)
+- **Protected files:** `assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md`), with reason and the right way; the writing MCP tools refuse such changes without writing anything, the hook refuses or reports them
 
 ### Planned
 
