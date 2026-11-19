@@ -101,7 +101,8 @@ uses
   System.Generics.Collections,
   System.RegularExpressions,
   Atlas.Common.Lsp.Rationale,
-  Atlas.Common.Lsp.IdeUnits;
+  Atlas.Common.Lsp.IdeUnits,
+  Atlas.Text.Json;
 
 // Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
 // Überschriften), *Name*: am Absatzanfang (Parameter) und `Code`. Andere Zeichen aus
@@ -135,15 +136,6 @@ begin
   Result.AddPair('file', LocationFile(ARef.FileName));
   Result.AddPair('line', TJSONNumber.Create(ARef.Line));
   Result.AddPair('character', TJSONNumber.Create(ARef.Character));
-end;
-
-/// <summary>AValue unter AName, wenn nicht leer.</summary>
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
 end;
 
 /// <summary>Doku strukturiert und als Klartext (#654), dahinter die Begründungen als eigene Abschnitte (#1123),
@@ -374,18 +366,18 @@ var
 begin
   Result := TJSONObject.Create;
   Result.AddPair('declaration', Declaration);
-  AddText(Result, 'unit', UnitName);
+  TJsonBuild.AddText(Result, 'unit', UnitName);
   // Strukturiert für die volle Anzeige, Klartext für die Kurzform (#654).
   AddDocumentation(Result, Self);
-  AddText(Result, 'value', Value);
+  TJsonBuild.AddText(Result, 'value', Value);
   if Deprecation <> '' then
   begin
     Result.AddPair('deprecation', StripMarkdown(Deprecation));
   end;
-  AddText(Result, 'kind', Kind);
-  AddText(Result, 'origin', Origin);
+  TJsonBuild.AddText(Result, 'kind', Kind);
+  TJsonBuild.AddText(Result, 'origin', Origin);
   AddLocation(Result, Self);
-  AddText(Result, 'docWiki', DocWikiUrl);
+  TJsonBuild.AddText(Result, 'docWiki', DocWikiUrl);
   AddLinks(Result, Links);
   // published-Properties und Ereignisse (#110).
   mMembers := TPublishedMembers.ToJson(PublishedItems, DefaultProperty);

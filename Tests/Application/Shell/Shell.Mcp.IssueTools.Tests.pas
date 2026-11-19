@@ -43,7 +43,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Core.Tracker.CurrentIssue,
   Shell.Mcp.Context,
-  Shell.Mcp.IssueTools;
+  Shell.Mcp.IssueTools,
+  Atlas.Tests.TempFolder;
 
 const
   cNow = 46000.5;
@@ -97,11 +98,7 @@ end;
 
 procedure TMcpIssueToolsTests.TearDown;
 begin
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TMcpIssueToolsTests.RegistersGetCurrentIssue;

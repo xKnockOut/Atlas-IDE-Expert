@@ -38,6 +38,11 @@ type
     /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
     /// </summary>
     class function Strings(const AItems: array of string): TJSONArray; static;
+    /// <summary>Paar AName mit AValue an AObject anhängen, nur wenn AValue nicht leer ist.</summary>
+    class procedure AddText(AObject: TJSONObject; const AName, AValue: string); static;
+    /// <summary>Zeitpunkt AValue (UTC) als ISO 8601 mit „Z“; '' für 0 und davor. Gegenstück zu
+    /// TJsonRead.IsoTime.</summary>
+    class function IsoTime(AValue: TDateTime): string; static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -111,6 +116,7 @@ type
 implementation
 
 uses
+  System.DateUtils,
   Atlas.Text.Timestamps;
 
 { TJsonText }
@@ -182,6 +188,23 @@ begin
   for mItem in AItems do
   begin
     Result.Add(mItem);
+  end;
+end;
+
+class procedure TJsonBuild.AddText(AObject: TJSONObject; const AName, AValue: string);
+begin
+  if AValue <> '' then
+  begin
+    AObject.AddPair(AName, AValue);
+  end;
+end;
+
+class function TJsonBuild.IsoTime(AValue: TDateTime): string;
+begin
+  Result := '';
+  if AValue > 0 then
+  begin
+    Result := DateToISO8601(AValue, True);
   end;
 end;
 

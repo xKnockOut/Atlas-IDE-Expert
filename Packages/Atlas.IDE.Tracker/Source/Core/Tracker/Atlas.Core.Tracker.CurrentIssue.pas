@@ -101,28 +101,10 @@ type
 implementation
 
 uses
-  System.DateUtils,
   System.Generics.Collections,
   Atlas.Text.Json;
 
 { Hilfen für JSON }
-
-function DateText(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
-end;
-
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
 
 function TasksJson(const ATasks: TArray<TAtlasCurrentIssueTask>): TJSONArray;
 var
@@ -154,7 +136,7 @@ begin
     begin
       mItem.AddPair('line', TJSONNumber.Create(mRef.Line));
     end;
-    AddText(mItem, 'symbol', mRef.Symbol);
+    TJsonBuild.AddText(mItem, 'symbol', mRef.Symbol);
     Result.AddElement(mItem);
   end;
 end;
@@ -169,7 +151,7 @@ begin
   begin
     mItem := TJSONObject.Create;
     mItem.AddPair('author', mComment.Author);
-    AddText(mItem, 'createdAt', DateText(mComment.Created));
+    TJsonBuild.AddText(mItem, 'createdAt', TJsonBuild.IsoTime(mComment.Created));
     mItem.AddPair('text', mComment.Text);
     Result.AddElement(mItem);
   end;
@@ -180,15 +162,15 @@ procedure AddHead(AObject: TJSONObject; const AIssue: TAtlasCurrentIssue);
 begin
   AObject.AddPair('version', TJSONNumber.Create(TAtlasCurrentIssue.cVersion));
   AObject.AddPair('key', AIssue.Key);
-  AddText(AObject, 'title', AIssue.Title);
-  AddText(AObject, 'tracker', AIssue.Tracker);
-  AddText(AObject, 'project', AIssue.Project);
-  AddText(AObject, 'state', AIssue.State);
-  AddText(AObject, 'milestone', AIssue.Milestone);
-  AddText(AObject, 'page', AIssue.Page);
-  AddText(AObject, 'branch', AIssue.Branch);
-  AddText(AObject, 'startedAt', DateText(AIssue.Started));
-  AddText(AObject, 'fetchedAt', DateText(AIssue.Fetched));
+  TJsonBuild.AddText(AObject, 'title', AIssue.Title);
+  TJsonBuild.AddText(AObject, 'tracker', AIssue.Tracker);
+  TJsonBuild.AddText(AObject, 'project', AIssue.Project);
+  TJsonBuild.AddText(AObject, 'state', AIssue.State);
+  TJsonBuild.AddText(AObject, 'milestone', AIssue.Milestone);
+  TJsonBuild.AddText(AObject, 'page', AIssue.Page);
+  TJsonBuild.AddText(AObject, 'branch', AIssue.Branch);
+  TJsonBuild.AddText(AObject, 'startedAt', TJsonBuild.IsoTime(AIssue.Started));
+  TJsonBuild.AddText(AObject, 'fetchedAt', TJsonBuild.IsoTime(AIssue.Fetched));
 end;
 
 function TasksOf(const AArray: TJSONArray): TArray<TAtlasCurrentIssueTask>;

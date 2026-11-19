@@ -51,7 +51,8 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Files.TestSupport,
   Atlas.Core.Tracker.CurrentIssue,
-  Atlas.Core.Tracker.CurrentIssuePlan;
+  Atlas.Core.Tracker.CurrentIssuePlan,
+  Atlas.Tests.TempFolder;
 
 const
   cNow = 46000.5;
@@ -94,11 +95,7 @@ end;
 procedure TAtlasCurrentIssuePlanTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TAtlasCurrentIssuePlanTests.BuildTakesDetailsAndChecklist;

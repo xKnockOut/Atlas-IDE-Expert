@@ -1100,11 +1100,7 @@ end;
 
 class function TAtlasTrackerBoard.TimeText(AValue: TDateTime): string;
 begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
+  Result := TJsonBuild.IsoTime(AValue);
 end;
 
 class function TAtlasTrackerBoard.TimeValue(const AText: string): TDateTime;
