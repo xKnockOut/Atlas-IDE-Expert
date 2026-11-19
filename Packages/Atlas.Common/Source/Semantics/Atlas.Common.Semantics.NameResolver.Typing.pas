@@ -23,8 +23,8 @@ type
     FLookup: TResolverLookup;
     FInfer: TResolverInferFunc;
     FLocals: TResolverLocals;
-    // Je Baum: Helfer je Typname und aufgelöste Vorfahren je Typ (Diagnoselog 15.10.2026: Jeder Mitgliedszugriff
-    // lief die ganze Vererbungskette neu durch). Gelten, solange FCacheEpoch dem Stand der Stelle entspricht.
+    // Je Baum: Helfer je Typname und aufgelöste Vorfahren je Typ (sonst läuft jeder Mitgliedszugriff
+    // die ganze Vererbungskette neu durch). Gelten, solange FCacheEpoch dem Stand der Stelle entspricht.
     FHelpers: TDictionary<string, TResolvedSymbol>;
     FAncestors: TDictionary<string, TResolvedSymbol>;
     FCacheEpoch: Integer;

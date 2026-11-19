@@ -203,9 +203,13 @@ Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
 Atlas.Common.Lsp.MethodBreakpoints.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
+Atlas.Common.Lsp.ParameterHeaders.Tests
 Atlas.Common.Lsp.Processes.Tests
 Atlas.Common.Lsp.RaiseVisibility.Tests
 Atlas.Common.Lsp.Rationale.Tests
+Atlas.Common.Lsp.ReferenceConfidence.Tests
+Atlas.Common.Lsp.References.Tests
+Atlas.Common.Lsp.Rename.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.RoutineParameters.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
@@ -225,6 +229,8 @@ Atlas.Common.Lsp.WinApiDocs.Tests
 Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
+Atlas.Common.Lsp.ImplementationSites.Tests
+Atlas.Common.Mcp.ImplementationTools.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
@@ -496,6 +502,7 @@ Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Debug.EventLog.Tests
 Atlas.Core.Debug.LeakCapture.Tests
 Atlas.Core.Debug.LeakView.Tests
+Atlas.Core.Debug.Note.Tests
 Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Debug.NoSource.Tests
 Atlas.Core.Debug.Restart.Tests
@@ -638,6 +645,7 @@ Atlas.Core.Debug.EventBreakWatch.Tests
 Atlas.Core.Debug.StopProgress.Tests
 Atlas.Core.Debug.Phases.Tests
 Atlas.Core.Debug.WhyHereFlow.Tests
+Atlas.Core.Debug.Elapsed.Tests
 Atlas.Core.Debug.BreakpointSetFlow.Tests
 Atlas.Core.Debug.StepIntoJump.Tests
 Atlas.Core.Debug.UnavailableNote.Tests
@@ -664,3 +672,4 @@ Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Tests
 Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
+Atlas.Core.Editor.SnapshotPolicy.Tests

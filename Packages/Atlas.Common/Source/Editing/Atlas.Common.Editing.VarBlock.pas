@@ -474,12 +474,12 @@ begin
   else if (ATokens[mFirst].Kind = TPascalTokenKind.Identifier) and SameText(mText, ATypeText) then
   begin
     // T.Create bzw. T.Create(…)
-    mNext := TRoutineBody.NextToken(ATokens, mFirst);
+    mNext := NextCodeAfter(ATokens, mFirst);
     if (mNext <= mLast) and ATokens[mNext].IsSymbol('.') then
     begin
-      mNext := TRoutineBody.NextToken(ATokens, mNext);
+      mNext := NextCodeAfter(ATokens, mNext);
       Result := (mNext <= mLast) and SameText(ATokens[mNext].Text, 'Create') and
-        ((mNext = mLast) or ATokens[TRoutineBody.NextToken(ATokens, mNext)].IsSymbol('('));
+        ((mNext = mLast) or ATokens[NextCodeAfter(ATokens, mNext)].IsSymbol('('));
       if Result and (mNext < mLast) then
       begin
         Result := ATokens[mLast].IsSymbol(')');
@@ -845,7 +845,7 @@ begin
   end;
   if Result then
   begin
-    NameToken := TRoutineBody.NextToken(Tokens, Keyword);
+    NameToken := NextCodeAfter(Tokens, Keyword);
   end;
 end;
 
@@ -964,7 +964,7 @@ begin
   end
   else
   begin
-    mSemicolon := TRoutineBody.NextToken(Tokens, LastTokenOf(Tokens, Decl));
+    mSemicolon := NextCodeAfter(Tokens, LastTokenOf(Tokens, Decl));
     Result := (mSemicolon <= High(Tokens)) and Tokens[mSemicolon].IsSymbol(';');
     if Result then
     begin

@@ -202,6 +202,10 @@ type
     /// <summary>Bezeichner, auf dem APosition steht oder direkt hinter dem sie steht (Cursor am Wortende); -1 ohne
     /// Bezeichner und für C in ^C (#862). Binär gesucht (#1323).</summary>
     function IdentifierAt(const APosition: TTextPosition): Integer;
+    /// <summary>Innerster Knoten, dessen Bereich AOffset enthält; die Wurzel, wenn kein Kind ihn enthält. Namen sind
+    /// keine eigenen Knoten: Für den Namen einer Typangabe ist das die TypeReference, für den Namen eines Parameters
+    /// der Parameter.</summary>
+    function InnermostAt(AOffset: Integer): TSyntaxNode;
     /// <summary>Einmal je Baum abgeleitete Daten, etwa die extrahierte Unit der Namensauflösung (#1761): Der erste
     /// Aufruf legt sie mit AFactory an, alle weiteren teilen sie; sie leben so lange wie der Baum. Threadsicher.
     /// Vorher extrahierte jeder Anbieter einer Code-Aktion die ganze Unit neu.</summary>
@@ -731,8 +735,8 @@ var
   mLow, mHigh, mMiddle: Integer;
 begin
   // Die Token folgen ohne Überlappung aufeinander, ihre Enden steigen also mit: Vor dem ersten Token, das nicht vor
-  // APosition endet, berührt keines APosition. Früher lief die Suche ab Dateianfang und kopierte jedes Token, und
-  // Regeln, die für jedes Element großer Konstanten-Arrays fragen, wurden quadratisch (#1323).
+  // APosition endet, berührt keines APosition. Eine Suche ab Dateianfang, die jedes Token kopiert, machte
+  // Regeln, die für jedes Element großer Konstanten-Arrays fragen, quadratisch (#1323).
   mLow := 0;
   mHigh := Length(FTokens);
   while mLow < mHigh do
@@ -761,6 +765,26 @@ begin
     Inc(mLow);
   end;
   Result := -1;
+end;
+
+function TSyntaxTree.InnermostAt(AOffset: Integer): TSyntaxNode;
+var
+  mIndex: Integer;
+  mDeeper: Boolean;
+begin
+  Result := FRoot;
+  repeat
+    mDeeper := False;
+    for mIndex := 0 to Result.ChildCount - 1 do
+    begin
+      if (Result[mIndex].StartOffset <= AOffset) and (AOffset < Result[mIndex].EndOffset) then
+      begin
+        Result := Result[mIndex];
+        mDeeper := True;
+        Break;
+      end;
+    end;
+  until not mDeeper;
 end;
 
 function TSyntaxTree.Derived(const AFactory: TFunc<IInterface>): IInterface;

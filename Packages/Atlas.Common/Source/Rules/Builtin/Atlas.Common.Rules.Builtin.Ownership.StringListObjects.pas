@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Ownership.StringListObjects;
 
-// Regel aus Atlas.Common.Rules.Builtin.Ownership ausgelagert (Länge der Unit):
+// Regel von Atlas.Common.Rules.Builtin.Ownership in eigener Unit (Länge der Unit):
 //   stringlist-objects-leak  AddObject/InsertObject mit einem neu erzeugten Objekt (T.Create(…) direkt oder über
 //                     eine lokale Variable, die sonst nur gelesen wird) in eine TStringList der Unit ohne
 //                     OwnsObjects bzw. in Items einer ListBox oder ComboBox (#1048). Still, wenn eine Routine

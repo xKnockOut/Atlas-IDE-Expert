@@ -6,8 +6,8 @@
 // - TAtlasDiagnosticBar: Belegung des Hauptthreads (Verlauf der letzten 60 s
 //   und Mittel), Schwelle, Anhalten/Weiter, Zurücksetzen, Bericht kopieren und
 //   ein kurzer Hinweis. Passen Angaben und Knöpfe nicht nebeneinander (das
-//   Fenster in seiner Startgröße), stehen die Knöpfe in einer zweiten Zeile;
-//   vorher lagen sie über Verlauf und Schwelle.
+//   Fenster in seiner Startgröße), stehen die Knöpfe in einer zweiten Zeile,
+//   statt über Verlauf und Schwelle zu liegen.
 // - TAtlasTablePage: eine Seite mit Kopfzeile und Tabelle (Server,
 //   Hintergrund, Hänger).
 // - TAtlasFeatureMenu: Kontextmenü der Funktionen (nur diese zeigen, alle

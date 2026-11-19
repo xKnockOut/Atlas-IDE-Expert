@@ -4,9 +4,8 @@
 // TAtlasIdeEditorCommands (Atlas.IDE.Commands.Editor, Beschreibung dort):
 // qualifizierter Name (#128), Formatieren (#43), Unit ⇄ Testunit (#189) und die
 // Schnellbefehle mit „/“ samt ///-Gerüsten (#293, #88).
-// Die Schnellbefehle fragen im Hintergrund (TAtlasBackgroundRequest): Die
-// Diagnose vom 06.11.2026 zeigte Hänger bis 3 s, solange der Hauptthread auf
-// onTypeFormatting wartete. Die Antwort gilt nur für den unveränderten Text
+// Die Schnellbefehle fragen im Hintergrund (TAtlasBackgroundRequest): Wartet
+// der Hauptthread auf onTypeFormatting, hängt die IDE bis zu 3 s. Die Antwort gilt nur für den unveränderten Text
 // (TAtlasSlashTrigger.StillValid); wurde weitergetippt, verfällt sie.
 // Ebenso Unit ⇄ Testunit: Ein Klick auf die Code Lens hielt die IDE 9 s an,
 // solange atlas.server.testUnit lief; jetzt öffnet die Antwort das Ziel.
