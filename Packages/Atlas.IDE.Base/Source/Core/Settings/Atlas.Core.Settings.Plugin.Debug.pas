@@ -173,6 +173,13 @@ type
     /// Spalte im Rand an ausführbaren Zeilen unter der Maus ▶; Klick führt bis dorthin aus, Strg+Klick ohne Halt an
     /// anderen Haltepunkten; dazu die Befehle „Bis hier“ und „Einmaliger Haltepunkt“. Aus = nichts davon.</summary>
     DebugRunToClick: Boolean;
+    /// <summary>Ausführungspfeil ziehen (#871, debug.dragNextStatement, experimentell): Im angehaltenen Zustand
+    /// lässt sich der Pfeil in einer Spalte im Rand auf eine andere ausführbare Zeile derselben Routine ziehen; dazu
+    /// der Befehl „Nächste Anweisung hier“. Setzt nur den Befehlszähler. Aus = nichts davon.</summary>
+    DebugDragNextStatement: Boolean;
+    /// <summary>Hinweis auf die Folgen beim ersten Setzen der nächsten Anweisung bestätigt (#871, Zustand).
+    /// </summary>
+    DebugNextStatementNoticeShown: Boolean;
     /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
     /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
     DebugBreakpointsWindow: Boolean;
@@ -418,7 +425,8 @@ type
     /// <summary>Vorgaben der Haltepunkte (Ereignis, Datenzugriff, Prüfung, Methoden, Fenster …); Teil von
     /// Defaults.</summary>
     procedure SetBreakpointDefaults;
-    /// <summary>Werte der Haltepunkte über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
+    /// <summary>Werte der Haltepunkte (Ereignis, Datenzugriff, Prüfen bis Regeln, mit „Bis hier“ und nächster
+    /// Anweisung) über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
     procedure ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
   end;
 
@@ -609,6 +617,8 @@ begin
   AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
   AIo.Flag('DebugRunToClick', DebugRunToClick);
+  AIo.Flag('DebugDragNextStatement', DebugDragNextStatement);
+  AIo.Flag('DebugNextStatementNoticeShown', DebugNextStatementNoticeShown);
   AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
   AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
   AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
