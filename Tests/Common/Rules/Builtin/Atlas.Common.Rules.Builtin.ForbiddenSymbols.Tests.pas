@@ -34,6 +34,8 @@ type
     [Test]
     procedure UnresolvedQualifierMatchesTail;
     [Test]
+    procedure BareNameFromUnindexedUnit;
+    [Test]
     procedure SeverityPerEntry;
     [Test]
     procedure ParseSymbols;
@@ -296,6 +298,36 @@ begin
   // Unbekanntes TThread (Unit nicht indexiert): geschriebener Name gegen das Ende des Eintrags.
   mSource := Source('', '', '  TThread.Queue(nil, nil);'#10'  Unbekannt.Queue(nil, nil);'#10'  Queue(nil, nil);'#10);
   Assert.AreEqual(1, Integer(Length(Found(mSource, '[{"name": "System.Classes.TThread.Queue"}]'))));
+end;
+
+procedure TForbiddenSymbolTests.BareNameFromUnindexedUnit;
+const
+  cEntry = '[{"name": "Winapi.Windows.CreateProcess"}]';
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  // Unit eingebunden, aber nicht indexiert (RTL ohne Quelltext): der einfache Name zählt.
+  mSource := 'unit Formular;'#10'interface'#10'implementation'#10'uses Winapi.Windows;'#10'procedure Pruefen;'#10 +
+    'begin'#10'  CreateProcess(nil, nil);'#10'end;'#10'end.';
+  Assert.AreEqual(1, Integer(Length(Found(mSource, cEntry))));
+  // Ohne die Unit in uses: unbekannter Name, kein Treffer.
+  mSource := Source('', '', '  CreateProcess(nil, nil);'#10);
+  Assert.AreEqual(0, Integer(Length(Found(mSource, cEntry))));
+  // Eigene Routine gleichen Namens: aufgelöst als Formular.CreateProcess.
+  mSource := 'unit Formular;'#10'interface'#10'implementation'#10'uses Winapi.Windows;'#10 +
+    'procedure CreateProcess(A, B: Pointer);'#10'begin'#10'end;'#10'procedure Pruefen;'#10'begin'#10 +
+    '  CreateProcess(nil, nil);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(Found(mSource, cEntry))));
+  // Indexierte Unit ohne diesen Namen: Der Name kommt nicht von dort.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Winapi.Windows;'#10'interface'#10 +
+    'function CloseHandle(AHandle: NativeUInt): Boolean;'#10'implementation'#10'end.',
+    'C:\BDS\source\Winapi.Windows.pas', nil));
+  mSource := 'unit Formular;'#10'interface'#10'implementation'#10'uses Winapi.Windows;'#10'procedure Pruefen;'#10 +
+    'begin'#10'  CreateProcess(nil, nil);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TForbiddenSymbolRule.Create, mSource, mIndex,
+    Config(cEntry), 'Formular.pas'))));
 end;
 
 procedure TForbiddenSymbolTests.SeverityPerEntry;

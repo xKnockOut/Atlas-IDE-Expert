@@ -1,0 +1,2 @@
+### Neu
+- `--check --timings` weist den Heap zu festen Zeitpunkten aus: wenn der Index des Zielprojekts fertig ist, wenn der aller Projekte der Gruppe fertig ist, den Gipfel über den ganzen Lauf (im Hintergrund alle 50 ms gemessen) und am Ende. So lassen sich zwei Fassungen vergleichen, auch wenn die übrigen Projekte unterschiedlich weit sind; im JSON als `memory.ready`, `memory.allProjects`, `memory.peak` und `memory.total` (#1480).

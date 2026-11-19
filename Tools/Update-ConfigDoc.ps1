@@ -44,6 +44,10 @@
       und boolesch, keine Zyklen, x-node bekannt, ein Knoten nur auf einer
       x-page, kein Knoten ohne Einstellungen. Einstellungen.md bekommt den
       Abschnitt „Optionsseite: Unterpunkte und Hauptschalter“.
+    - Atlas.Common.Mcp.DocsIndexData (#2376): Suchindex für das MCP-Werkzeug
+      search_atlas_docs aus beiden Schemata (Einstellungen, Tastenkürzel mit
+      x-format shortcut) und den Abschnitten von docs/features/de|en. Wer eine
+      Funktionsseite ändert, lässt das Skript ebenfalls laufen.
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn eine Datei veraltet ist
     oder der Parser abweicht.
@@ -1217,6 +1221,169 @@ if (-not (Same-Unit $CurrentScope $ScopeText)) {
         Write-Host "Geschrieben: $ScopeUnitPath"
     }
 }
+
+# --- Suchindex der Doku für das MCP-Werkzeug search_atlas_docs (#2376) ---
+# Einstellungen beider Schemata, Tastenkürzel (x-format shortcut) und die Abschnitte der Funktionsseiten
+# (docs/features/de|en, Überschriften ## und ###, Fenster an ihrem Anker window-…) als JSON, eine Zeile je Eintrag.
+# Eingebettet in den Server, damit das Werkzeug auch ohne Repository (Plugin-Installation) antwortet.
+$DocsUnitPath = Join-Path $Root 'Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.DocsIndexData.pas'
+$DocsKeyNames = @{
+    0x08 = @('Rücktaste', 'Backspace'); 0x09 = @('Tab', 'Tab'); 0x0D = @('Eingabe', 'Enter'); 0x1B = @('Esc', 'Esc')
+    0x20 = @('Leertaste', 'Space'); 0x21 = @('Bild auf', 'PgUp'); 0x22 = @('Bild ab', 'PgDn'); 0x23 = @('Ende', 'End')
+    0x24 = @('Pos1', 'Home'); 0x25 = @('Links', 'Left'); 0x26 = @('Oben', 'Up'); 0x27 = @('Rechts', 'Right')
+    0x28 = @('Unten', 'Down'); 0x2D = @('Einfg', 'Ins'); 0x2E = @('Entf', 'Del'); 0xBA = @('Ü', ';'); 0xBB = @('+', '=')
+    0xBC = @(',', ','); 0xBD = @('-', '-'); 0xBE = @('.', '.'); 0xBF = @('#', '/'); 0xC0 = @('Ö', '`'); 0xDB = @('ß', '[')
+    0xDC = @('^', '\'); 0xDD = @('´', ']'); 0xDE = @('Ä', "'"); 0xE2 = @('<', '\')
+}
+# TShortCut: niedriges Byte virtuelle Taste, $2000 Umschalt, $4000 Strg, $8000 Alt; 0 = keins.
+function Docs-ShortCut([int] $Value, [int] $Lang) {
+    if ($Value -le 0) { return '' }
+    $Key = $Value -band 0xFF
+    $Name = if ($DocsKeyNames.ContainsKey($Key)) { $DocsKeyNames[$Key][$Lang] }
+        elseif ((($Key -ge 0x30) -and ($Key -le 0x39)) -or (($Key -ge 0x41) -and ($Key -le 0x5A))) { [string][char]$Key }
+        elseif (($Key -ge 0x70) -and ($Key -le 0x87)) { 'F' + ($Key - 0x6F) }
+        else { '#' + $Key }
+    $Parts = @()
+    if ($Value -band 0x4000) { $Parts += @('Strg', 'Ctrl')[$Lang] }
+    if ($Value -band 0x2000) { $Parts += @('Umschalt', 'Shift')[$Lang] }
+    if ($Value -band 0x8000) { $Parts += 'Alt' }
+    return (($Parts + @($Name)) -join '+')
+}
+function Docs-Value($Value) {
+    if ($null -eq $Value) { return '' }
+    if ($Value -is [bool]) { return $Value.ToString().ToLowerInvariant() }
+    if ($Value -is [string]) { return $Value }
+    return ($Value | ConvertTo-Json -Compress -Depth 10)
+}
+function Docs-Json([System.Collections.Specialized.OrderedDictionary] $Item) {
+    return ($Item | ConvertTo-Json -Compress -Depth 5)
+}
+$DocsLines = New-Object System.Collections.Generic.List[string]
+# Einstellungen des Servers (atlas.json, settings.json); Objekte je Glied, "rules" steht im Regelkatalog.
+function Docs-ServerSetting([string] $Key, [hashtable] $Node, [string] $Scope, [hashtable] $Parent) {
+    $Item = [ordered]@{ kind = 'setting'; id = $Key; source = $Scope }
+    $Item.type = if (Has $Node 'type') { [string]$Node['type'] } else { '' }
+    if (Has $Node 'default') { $Item.default = Docs-Value $Node['default'] }
+    if (Has $Node 'enum') { $Item.values = @($Node['enum'] | ForEach-Object { Docs-Value $_ }) }
+    if (Has $Node 'minimum') { $Item.minimum = $Node['minimum'] }
+    if (Has $Node 'maximum') { $Item.maximum = $Node['maximum'] }
+    $Page = if (Has $Node 'x-page') { [string]$Node['x-page'] } elseif ($null -ne $Parent -and (Has $Parent 'x-page')) { [string]$Parent['x-page'] } else { '' }
+    if ($Page -ne '') { $Item.page = $Page; $Item.pageEn = if ($PageNamesEn.ContainsKey($Page)) { $PageNamesEn[$Page] } else { $Page } }
+    $Item.description = if (Has $Node 'description') { [string]$Node['description'] } else { '' }
+    if (Has $Node 'x-description-en') { $Item.descriptionEn = [string]$Node['x-description-en'] }
+    if (Is-Experimental $Node) { $Item.experimental = $true }
+    if (Has $Node 'x-issue') { $Item.issue = [string]$Node['x-issue'] }
+    $DocsLines.Add((Docs-Json $Item))
+}
+foreach ($Name in $Schema['properties'].Keys) {
+    if (($Name -eq '$schema') -or ($Name -eq 'rules')) { continue }
+    $P = $Schema['properties'][$Name]
+    $Scope = Scope-Of $P 'project'
+    Docs-ServerSetting $Name $P $Scope $null
+    if (Has $P 'properties') {
+        foreach ($Sub in $P['properties'].Keys) { Docs-ServerSetting "$Name.$Sub" $P['properties'][$Sub] (Scope-Of $P['properties'][$Sub] $Scope) $P }
+    }
+}
+# Einstellungen des Plugins; Tastenkürzel als Befehl.
+foreach ($Name in $PluginProps.Keys) {
+    $P = $PluginProps[$Name]
+    if ((Has $P 'x-state') -and $P['x-state']) { continue }
+    $IsKey = (Has $P 'x-format') -and ($P['x-format'] -ceq 'shortcut')
+    $Item = [ordered]@{ kind = if ($IsKey) { 'command' } else { 'setting' }; id = [string]$P['x-key']; source = 'plugin' }
+    $Item.type = [string]$P['type']
+    if ($IsKey) {
+        $Item.default = Docs-ShortCut ([int]$P['default']) 0
+        $Item.defaultEn = Docs-ShortCut ([int]$P['default']) 1
+    }
+    elseif (-not ((Has $P 'x-secret') -and $P['x-secret'])) { $Item.default = Docs-Value $P['default'] }
+    if (Has $P 'enum') { $Item.values = @($P['enum'] | ForEach-Object { Docs-Value $_ }) }
+    if (Has $P 'minimum') { $Item.minimum = $P['minimum'] }
+    if (Has $P 'maximum') { $Item.maximum = $P['maximum'] }
+    $Page = [string]$P['x-page']
+    $Item.page = $Page
+    $Item.pageEn = if ($PageNamesEn.ContainsKey($Page)) { $PageNamesEn[$Page] } else { $Page }
+    $Node = Node-Of $Name
+    if (($Node -ne '') -and $NodeTable.Contains($Node)) {
+        $Item.node = [string]$NodeTable[$Node]['caption']
+        $Item.nodeEn = [string]$NodeTable[$Node]['captionEn']
+    }
+    if (Has $P 'x-caption') { $Item.caption = [string]$P['x-caption'] }
+    if (Has $P 'x-captionEn') { $Item.captionEn = [string]$P['x-captionEn'] }
+    $Item.description = if (Has $P 'description') { [string]$P['description'] } else { '' }
+    if (Has $P 'x-keywords') { $Item.keywords = @($P['x-keywords']) }
+    if (Is-Experimental $P) { $Item.experimental = $true }
+    if (Has $P 'x-project') { $Item.project = [string]$P['x-project'] }
+    if ($Parents[$Name] -ne '') { $Item.parent = [string]$PluginProps[$Parents[$Name]]['x-key'] }
+    if (Has $P 'x-issue') { $Item.issue = [string]$P['x-issue'] }
+    $DocsLines.Add((Docs-Json $Item))
+}
+# Abschnitte der Funktionsseiten: Titel, Weg der Überschriften, Anker, erwähnte Schlüssel und der Anfang des Texts.
+function Docs-Plain([string] $Text) {
+    $Text = [regex]::Replace($Text, '<a id="[^"]*"></a>', '')
+    $Text = [regex]::Replace($Text, '\[([^\]]*)\]\([^)]*\)', '$1')
+    return ($Text.Replace('**', '').Replace('*', '').Replace('`', '').Trim())
+}
+function Docs-Slug([string] $Title) {
+    $Slug = [regex]::Replace($Title.ToLowerInvariant(), '[^\p{L}\p{Nd}\s_-]', '')
+    return $Slug.Replace(' ', '-')
+}
+$DocsKnownKeys = New-Object 'System.Collections.Generic.HashSet[string]'
+foreach ($Line in $DocsLines) { [void]$DocsKnownKeys.Add(($Line | ConvertFrom-Json).id) }
+function Docs-Section([string] $Lang, [string] $Page, [string[]] $Path, [string] $Anchor, [string] $Window, [string] $Body) {
+    $Item = [ordered]@{ kind = if ($Window -ne '') { 'window' } else { 'feature' }; language = $Lang; page = $Page }
+    $Item.title = $Path[-1]
+    $Item.path = ($Path -join ' › ')
+    $Item.anchor = $Anchor
+    if ($Window -ne '') { $Item.window = $Window }
+    $Keys = @()
+    foreach ($M in [regex]::Matches($Body, '`([A-Za-z][\w.]*)`')) {
+        $K = $M.Groups[1].Value
+        if ($DocsKnownKeys.Contains($K) -and ($Keys -notcontains $K)) { $Keys += $K }
+    }
+    if ($Keys.Count -gt 0) { $Item.settings = $Keys }
+    $Text = Docs-Plain ([regex]::Replace($Body, '\s+', ' '))
+    if ($Text.Length -gt 300) { $Text = $Text.Substring(0, 300).TrimEnd() + ' …' }
+    $Item.text = $Text
+    $DocsLines.Add((Docs-Json $Item))
+}
+foreach ($Lang in 'de', 'en') {
+    foreach ($File in @(Get-ChildItem -Path (Join-Path $Root "docs/features/$Lang") -Filter '*.md' -File | Sort-Object Name)) {
+        $Lines = [IO.File]::ReadAllText($File.FullName, $Utf8).TrimStart([char]0xFEFF).Replace("`r`n", "`n").Split("`n")
+        $Path = @('', '', '')
+        $Open = $null
+        $PendingAnchor = ''
+        foreach ($Line in $Lines + @('## ')) {
+            if ($Line -match '^(#{1,3}) (.*)$') {
+                if ($null -ne $Open) { Docs-Section $Lang $File.Name $Open.Path $Open.Anchor $Open.Window $Open.Body.ToString() }
+                $Depth = $Matches[1].Length
+                $Path[$Depth - 1] = (Docs-Plain $Matches[2])
+                for ($I = $Depth; $I -lt 3; $I++) { $Path[$I] = '' }
+                $Open = $null
+                if (($Depth -gt 1) -and ($Path[$Depth - 1] -ne '')) {
+                    $Anchor = if ($PendingAnchor -ne '') { $PendingAnchor } else { Docs-Slug $Path[$Depth - 1] }
+                    $Window = if ($PendingAnchor.StartsWith('window-')) { $PendingAnchor.Substring(7) } else { '' }
+                    $Open = @{ Path = @($Path[0..($Depth - 1)] | Where-Object { $_ -ne '' }); Anchor = $Anchor; Window = $Window
+                        Body = New-Object System.Text.StringBuilder }
+                }
+                $PendingAnchor = ''
+            }
+            elseif ($Line -match '^<a id="([^"]+)"></a>\s*$') { $PendingAnchor = $Matches[1] }
+            elseif ($Line -match '^\s*- <a id="(window-[^"]+)"></a>\*\*([^*]+)\*\*(.*)$') {
+                # Fenster als Listenpunkt (z. B. Gliederung): eigener Eintrag unter der Überschrift.
+                if ($null -ne $Open) {
+                    Docs-Section $Lang $File.Name ($Open.Path + @(Docs-Plain $Matches[2])) $Matches[1] $Matches[1].Substring(7) ($Matches[2] + $Matches[3])
+                    [void]$Open.Body.AppendLine($Line)
+                }
+            }
+            elseif ($null -ne $Open) { [void]$Open.Body.AppendLine($Line) }
+        }
+    }
+}
+$DocsSource = '[' + "`n" + ($DocsLines -join (",`n")) + "`n" + ']'
+Sync-Unit $DocsUnitPath (Text-Unit 'Atlas.Common.Mcp.DocsIndexData' @(
+    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json, schemas/atlas-plugin.schema.json und',
+    '// docs/features/de|en; nicht von Hand ändern. Suchindex für das MCP-Werkzeug search_atlas_docs (#2376).') `
+    'Einträge des Suchindex als JSON-Array (Einstellungen, Tastenkürzel, Abschnitte der Funktionsseiten).' 'AtlasDocsIndexJson' $DocsSource)
 
 if ($Problems.Count -gt 0) {
     foreach ($Problem in $Problems) { Write-Error $Problem -ErrorAction Continue }

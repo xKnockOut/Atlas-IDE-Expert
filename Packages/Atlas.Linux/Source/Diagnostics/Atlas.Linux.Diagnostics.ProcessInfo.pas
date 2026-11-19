@@ -3,7 +3,8 @@
 // Platform-Feature "Diagnostics" für Linux (#1109): Gegenstück zu
 // Atlas.Windows.Diagnostics.ProcessInfo (#647). Die Zahl der Threads steht in
 // /proc/self/status, die Rechenzeit des Threads liefert clock_gettime mit
-// CLOCK_THREAD_CPUTIME_ID.
+// CLOCK_THREAD_CPUTIME_ID. Den belegten Speicher des Prozesses (#1480) liefert
+// VmRSS in /proc/self/status: Der Heap von Free Pascal zählt je Thread.
 
 interface
 
@@ -12,6 +13,8 @@ type
   public
     /// <summary>Threads des eigenen Prozesses; -1, wenn die Abfrage scheitert.</summary>
     class function ThreadCount: Integer; static;
+    /// <summary>Belegter Speicher des Prozesses im RAM in Byte (VmRSS); -1, wenn die Abfrage scheitert.</summary>
+    class function ResidentBytes: Int64; static;
     /// <summary>Benutzer- und Rechnername; der Filter des Diagnoselogs verwirft Zeilen, die sie enthalten.</summary>
     class function IdentityNames: TArray<string>; static;
     /// <summary>Rechenzeit (Kernel und Benutzer) des aufrufenden Threads in ms;
@@ -28,14 +31,13 @@ uses
   BaseUnix,
   Linux;
 
-{ TProcessInfo }
-
-class function TProcessInfo.ThreadCount: Integer;
+/// <summary>Wert hinter AKey (etwa 'Threads:') in /proc/self/status ohne Einheit; '' ohne.</summary>
+function StatusValue(const AKey: string): string;
 var
   mLines: TStringList;
   mLine: string;
 begin
-  Result := -1;
+  Result := '';
   mLines := TStringList.Create;
   try
     try
@@ -46,13 +48,29 @@ begin
     end;
     for mLine in mLines do
     begin
-      if mLine.StartsWith('Threads:') then
+      if mLine.StartsWith(AKey) then
       begin
-        Exit(StrToIntDef(Trim(Copy(mLine, Length('Threads:') + 1, MaxInt)), -1));
+        Exit(Trim(Copy(mLine, Length(AKey) + 1, MaxInt)).Replace(' kB', ''));
       end;
     end;
   finally
     mLines.Free;
+  end;
+end;
+
+{ TProcessInfo }
+
+class function TProcessInfo.ThreadCount: Integer;
+begin
+  Result := StrToIntDef(StatusValue('Threads:'), -1);
+end;
+
+class function TProcessInfo.ResidentBytes: Int64;
+begin
+  Result := StrToInt64Def(StatusValue('VmRSS:'), -1);
+  if Result > 0 then
+  begin
+    Result := Result * 1024;
   end;
 end;
 
