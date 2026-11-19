@@ -143,13 +143,14 @@ begin
   Result.OnClick := AClick;
 end;
 
+/// <summary>Spalte ACaption mit der Breite AWidth (logische Pixel, 96 dpi); skaliert über AList.</summary>
 procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer; ARight: Boolean);
 var
   mColumn: TListColumn;
 begin
   mColumn := AList.Columns.Add;
   mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
+  mColumn.Width := AList.ScaleValue(AWidth);
   if ARight then
   begin
     mColumn.Alignment := taRightJustify;
@@ -246,26 +247,26 @@ begin
   mList.Columns.BeginUpdate;
   try
     mList.Columns.Clear;
-    AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnMethod), Px(Self, cNameWidth),
+    AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnMethod), cNameWidth,
       False);
     if ACompare then
     begin
       AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnBefore),
-        Px(Self, cNumberWidth), True);
-      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnAfter), Px(Self, cNumberWidth),
+        cNumberWidth, True);
+      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnAfter), cNumberWidth,
         True);
       AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnChange),
-        Px(Self, cNumberWidth), True);
+        cNumberWidth, True);
     end
     else
     begin
-      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnUnit), Px(Self, cUnitWidth),
+      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnUnit), cUnitWidth,
         False);
-      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnSelf), Px(Self, cNumberWidth),
+      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnSelf), cNumberWidth,
         True);
-      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnTotal), Px(Self, cNumberWidth),
+      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnTotal), cNumberWidth,
         True);
-      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnLine), Px(Self, cLineWidth),
+      AddColumn(mList, TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileColumnLine), cLineWidth,
         True);
     end;
   finally
