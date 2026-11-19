@@ -179,6 +179,11 @@
       "arguments": {},
       "contains": "Hotspots"
     },
+    "get_symbol_history": {
+      "arguments": { "name": "TKundenSuche.Suchen" },
+      "contains": "TKundenSuche.Suchen",
+      "process": true
+    },
     "get_unit_dependencies": {
       "arguments": { "unit": "Ref.Formulare.Haupt" },
       "contains": "Ref.Daten.Suche"

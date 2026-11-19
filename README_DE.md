@@ -169,6 +169,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Letzter Testlauf ohne neuen Lauf:** `get_last_tests` liefert, was die IDE beim letzten Testlauf gesehen hat: rote Tests mit Datei:Zeile, erwartet und erhalten, Protokollauszug und Marken neu rot, wieder grün, wackelig, Leck und veraltet (`tests.lastRun`)
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
 - **Mehrere Abfragen auf einmal:** `batch` führt bis zu 10 lesende MCP-Werkzeuge in einem Aufruf aus, auf einem gemeinsamen Indexstand mit einem einzigen Dateiabgleich; ein Fehler betrifft nur seinen Abschnitt
+- **Geschichte eines Symbols:** `get_symbol_history` nennt die Commits, die eine Routine oder einen Typ geändert haben, mit Issues, und folgt mit Git Umbenennungen und Verschiebungen in andere Units über die Ähnlichkeit der Rümpfe
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

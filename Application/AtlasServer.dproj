@@ -155,6 +155,7 @@
         <DCCReference Include="Source\Shell\Shell.VersionControlChanges.pas"/>
         <DCCReference Include="Source\Shell\Shell.AffectedTests.pas"/>
         <DCCReference Include="Source\Shell\Shell.Hotspots.pas"/>
+        <DCCReference Include="Source\Shell\Shell.SymbolHistory.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Internals.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.ServerAccess.pas"/>
@@ -188,6 +189,7 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.EditingTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.ChangeTools.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.HistoryTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Changes.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Conventions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>

@@ -21,7 +21,8 @@ uses
   Shell.Mcp.ArchitectureTools,
   Shell.Mcp.EditingTools,
   Shell.Mcp.ProjectTools,
-  Shell.Mcp.ChangeTools;
+  Shell.Mcp.ChangeTools,
+  Shell.Mcp.HistoryTools;
 
 procedure RegisterContextTools(const AContext: TMcpToolContext);
 var
@@ -42,6 +43,7 @@ begin
   RegisterAffectedTestsTool(mContext);
   RegisterQueryTools(mContext);
   RegisterHotspotTools(mContext);
+  RegisterSymbolHistoryTool(mContext);
   RegisterStatusTools(mContext);
 end;
 

@@ -337,6 +337,11 @@
         <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Service.pas"/>
         <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Report.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hotspots.pas"/>
+        <DCCReference Include="Source\History\Atlas.Common.History.Contract.pas"/>
+        <DCCReference Include="Source\History\Atlas.Common.History.Similarity.pas"/>
+        <DCCReference Include="Source\History\Atlas.Common.History.Commits.pas"/>
+        <DCCReference Include="Source\History\Atlas.Common.History.Service.pas"/>
+        <DCCReference Include="Source\History\Atlas.Common.History.Report.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
@@ -601,6 +606,7 @@
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.ComponentRename.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Server.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IndexTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.HistoryTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CodeTools.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
