@@ -20,6 +20,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Debug.Evaluate,
+  Atlas.UI.Debug.EvaluateTree,
   Atlas.UI.Debug.EvaluateTreeView,
   Atlas.UI.Debug.EvaluatePanels;
 
@@ -56,6 +57,8 @@ type
     function Selected: TAtlasEvalNode;
     /// <summary>Knoten mit AKey wählen.</summary>
     procedure Select(const AKey: string);
+    /// <summary>Text hinter „Name = Wert“ (Etikett markierter Objekte, #839); nil: keiner.</summary>
+    procedure SetSuffix(const ASuffix: TAtlasEvalNodeText);
     /// <summary>Meldungen an die IDE-Schicht.</summary>
     property Hooks: TAtlasEvalFrameHooks read FHooks;
     /// <summary>Eingabefeld und „Nebenwirkungen erlauben“.</summary>
@@ -186,6 +189,11 @@ begin
         FHooks.Expand(ANode);
       end;
     end;
+end;
+
+procedure TAtlasDebugEvaluateFrame.SetSuffix(const ASuffix: TAtlasEvalNodeText);
+begin
+  FView.Sync.Suffix := ASuffix;
 end;
 
 function TAtlasDebugEvaluateFrame.GetTree: TTreeView;
