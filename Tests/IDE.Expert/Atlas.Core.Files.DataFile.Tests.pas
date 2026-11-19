@@ -26,6 +26,8 @@ type
     [Test]
     procedure MissingFileIsMissing;
     [Test]
+    procedure RemoveQuietlyDeletesOrSkips;
+    [Test]
     procedure ReadsWithAndWithoutBom;
     /// <summary>Unbrauchbarer Inhalt: als .defekt beiseitegelegt, die Ablage beginnt neu und darf schreiben.
     /// </summary>
@@ -121,6 +123,15 @@ begin
   FFolder := '';
   FLogFolder := '';
   FOldLogFolder := '';
+end;
+
+procedure TAtlasDataFileTests.RemoveQuietlyDeletesOrSkips;
+begin
+  TAtlasDataFile.Write(DataFile('ide-context-1.json'), '{}');
+  TAtlasDataFile.RemoveQuietly(DataFile('ide-context-1.json'));
+  Assert.IsFalse(FileExists(DataFile('ide-context-1.json')));
+  TAtlasDataFile.RemoveQuietly(DataFile('ide-context-1.json'));
+  Assert.Pass('fehlende Datei ohne Fehler');
 end;
 
 procedure TAtlasDataFileTests.MissingFileIsMissing;

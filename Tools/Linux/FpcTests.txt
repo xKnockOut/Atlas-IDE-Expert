@@ -26,6 +26,7 @@ Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests
 Atlas.Text.TestResults.Tests
 Atlas.Text.TestRunFile.Tests
+Atlas.Text.IdeContext.Tests
 Atlas.Text.Xml.Tests
 Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
@@ -245,6 +246,7 @@ Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
 Atlas.Common.Mcp.LastTests.Tests
+Atlas.Common.Mcp.IdeContext.Tests
 Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
@@ -421,6 +423,7 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
@@ -460,6 +463,7 @@ Atlas.Core.Editor.ExitPointAsk.Tests
 Atlas.Core.Editor.SourceFiles.Tests
 Atlas.Core.Editor.GutterPanel.Tests
 Atlas.Core.Editor.CaretSteps.Tests
+Atlas.Core.Editor.TabOrder.Tests
 Atlas.Core.Editor.LinkedKeys.Tests
 Atlas.Core.Editor.LinkedSession.Tests
 Atlas.Core.Editor.MultiCursorSession.Tests
@@ -521,6 +525,7 @@ Atlas.Core.Debug.Restart.Tests
 Atlas.Core.Debug.Reattach.Tests
 Atlas.Core.Debug.LaunchGroups.Tests
 Atlas.Core.Settings.BuildDebug.Tests
+Atlas.Core.Settings.KeyCodes.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
 Atlas.UI.Analysis.Strings.Tests

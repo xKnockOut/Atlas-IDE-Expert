@@ -178,6 +178,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Documentation.Typeset` | `Core/Documentation/Atlas.Core.Documentation.Typeset.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Editor.BlockComment` | `Core/Editor/Atlas.Core.Editor.BlockComment.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.CaretSteps` | `Core/Editor/Atlas.Core.Editor.CaretSteps.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.TabOrder` | `Core/Editor/Atlas.Core.Editor.TabOrder.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ChangeSignature` | `Core/Editor/Atlas.Core.Editor.ChangeSignature.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ClassExtraction` | `Core/Editor/Atlas.Core.Editor.ClassExtraction.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.CloseRules` | `Core/Editor/Atlas.Core.Editor.CloseRules.pas` | Ordner `Core/Editor` |
@@ -409,6 +410,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.NodeScope` | `Core/Settings/Atlas.Core.Settings.NodeScope.pas` | Ordner `Core/Settings`; Knoten je Package in den Optionen (#1903) |
 | `Atlas.Core.Settings.Search` | `Core/Settings/Atlas.Core.Settings.Search.pas` | Ordner `Core/Settings`; Suche über die Einstellungen (#1884) |
 | `Atlas.Core.Settings.JsonText` | `Core/Settings/Atlas.Core.Settings.JsonText.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.KeyCodes` | `Core/Settings/Atlas.Core.Settings.KeyCodes.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Layers` | `Core/Settings/Atlas.Core.Settings.Layers.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ModuleSwitches` | `Core/Settings/Atlas.Core.Settings.ModuleSwitches.pas` | Ordner `Core/Settings`; Modul-Schalter (#1454) |
 | `Atlas.Core.Settings.OverviewKinds` | `Core/Settings/Atlas.Core.Settings.OverviewKinds.pas` | Ordner `Core/Settings` |
@@ -664,6 +666,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.EditorBarPlacement` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBarPlacement.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorWindows` | `IDE/Foundation/Atlas.IDE.Foundation.EditorWindows.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorBuffer` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBuffer.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.EditorTabs` | `IDE/Foundation/Atlas.IDE.Foundation.EditorTabs.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorFiles` | `IDE/Foundation/Atlas.IDE.Foundation.EditorFiles.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.ActiveEditor` | `IDE/Foundation/Atlas.IDE.Foundation.ActiveEditor.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorRefresh` | `IDE/Foundation/Atlas.IDE.Foundation.EditorRefresh.pas` | Ordner `IDE/Foundation` |
@@ -902,8 +905,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.EditInbox` | `Core/Assistants/Atlas.Core.Assistants.EditInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.Inbox` | `Core/Assistants/Atlas.Core.Assistants.Inbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.InboxPace` | `Core/Assistants/Atlas.Core.Assistants.InboxPace.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.ContextState` | `Core/Assistants/Atlas.Core.Assistants.ContextState.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.ContextExport` | `IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
