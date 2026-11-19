@@ -82,6 +82,7 @@ results in a tool error with a reason. Writing happens only in the working folde
 | URI | Content |
 |---|---|
 | `delphi://conventions` | Project conventions as Markdown (#272): rule profile, format style, naming rules and every active check rule with severity and short text from the rule catalog, plus the protected files from `assistants.protected` (#2608). Read before writing, check with `check_code` afterwards |
+| `delphi://stats` | Call statistics of this session (#2611): per tool, resource and prompt calls, errors, duration (median, longest) and response size (median, largest), conspicuous error rates with the last failed call and the history of the last 30 days (tools never called, often failed). See [Call statistics](#call-statistics-2611) |
 | `delphi://build/last` | Result and compiler messages of the last build in the IDE, like `get_last_build` (#1357, with `mcp.prompts`) |
 | `delphi://edits/last` | Findings after the last change by a writing tool of this MCP process (#2603): tool, time, files and the same section as in the answer; a notice before the first change |
 
@@ -199,6 +200,28 @@ Prompts compared with the commands of the Claude Code plugin (`/atlas:bauen`): t
 | `format_code` | `file`, `text` (optional), `startLine`/`endLine` (optional, from 1), `dryRun` (default `true`) | Writing (#1358): formats the unit according to the project's format rules (`format.*` in `atlas.json`, `.editorconfig`) like *Format document* in the IDE, entirely or only `startLine`..`endLine` (without `endLine` one line). With `text` (planned content of the whole unit, as for `check_code`) it returns the deviations and the formatted text and never writes; otherwise it shows the deviations (line and kind) and the diff, with `dryRun: false` it writes like `apply_code_action` (files open in the IDE via the plugin as one undo step, #397). It does not format files with syntax errors (tool error with line); `// atlas-format: off` … `on` remains unchanged. The file's line endings are kept; `format.endOfLine` is applied by `AtlasServer --check <Datei> --format-write` |
 | `extract_method` | `file`, `startLine`, `endLine` (default `startLine`), `name` (default `ExtractedMethod`), `replaceDuplicates` (default `refactoring.extractMethodDuplicates`), `dryRun` (default `true`) | Writing (#2054): *Extract method* for the whole statements of the lines; parameters by data flow. With `replaceDuplicates` the same call also replaces textually equal places of the unit where the same method would result (same class, same meaning of the names, same parameter list); the report lists them. If the lines are not complete statements or extracting is not possible (Exit, `with`, Result …), the reason comes as a tool error. Writes like `apply_code_action` |
 | `refactor` | `file`, `line`, `column` (from 1), `endLine`/`endColumn` (optional, selection), `kind`, `title`, `args` (object), `dryRun` (default `true`), `format` (`markdown`, `json`) | Writing (#2150): the refactorings of the editor's context menu. Without `kind` it lists the refactorings at the position with key, title and expected arguments with their defaults, blocked ones with the reason. With `kind` (key such as `changeSignature`, `extractInterface`, `safeDelete`, `moveMember`, `typeAlias`, `createOverload` … or the title) it runs the refactoring; `title` chooses among refactorings of the same kind, `args` replaces the plugin's questions (e.g. `name`, `scope`, `members` as ids or names, `parameters` as `[{origin?, name, type, modifier?, value?}]`); anything missing comes from the server's preparation. Unknown or wrongly typed arguments are a tool error with the expected form, as are failures of the refactoring. Actions with optional parts take `args.choices` (numbers from 1). Returns the diff of all files including new and deleted units and the notes of the refactoring; `format: json` returns the list or the changes as JSON. Writes like `apply_code_action`; new units are created as UTF-8 with BOM and added to the project as in the editor. Not included: disabling a warning (needs compiler messages) and refactorings that rename files |
+
+## Call statistics (#2611)
+
+Whether an AI assistant uses the Atlas tools and how well they help it, the MCP server counts per session (`mcp.statistics`, on by default). Every call of `tools/call`, `resources/read` and `prompts/get` is counted:
+
+- Calls and errors: `isError` (domain error, switched-off tool) and exceptions (unknown resource, missing argument of a prompt).
+- Duration and response size (bytes of the JSON answer), each as median over the last 1000 calls and maximum.
+- The last failed call per name with its arguments (at most 500 characters per argument), so it can be reproduced in the MCP Inspector. Paths and text are marked as in the log; the anonymous diagnostic package replaces them.
+- Resource templates count under their pattern (`delphi://unit/{name}`), not per unit. Offered tools are listed even without a call.
+- An error rate above 20 % with at least 5 calls is conspicuous.
+
+Where the numbers are:
+
+| Place | Content |
+|---|---|
+| `delphi://stats` | Tables of the session, conspicuous tools, history |
+| `get_server_status` | Section of the session (Markdown) or key `mcp` (JSON) |
+| `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` | Section `mcp` of the MCP process's status file, renewed every 5 s (for AtlasMonitor and the "Atlas server" window) |
+| `%LOCALAPPDATA%\Atlas\Status\mcp-stats.jsonl` | History: on exit one line per tool (also without calls) and per called resource or prompt with time, client, project folder and numbers, without arguments; lines older than 30 days are dropped on the next append |
+| Diagnostic package of the server | `server/mcp-<n>.json` per MCP process at the same folder; anonymous without paths, names and arguments |
+
+Nothing of this goes to the network. What the assistant does outside Atlas (its own file search) is not visible to the server. With `"mcp": {"statistics": false}` in `atlas.json` nothing is counted and nothing is written; the setting applies from the next start of the MCP process.
 
 ## Developing and testing tools
 
