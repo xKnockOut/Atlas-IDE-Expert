@@ -7,7 +7,10 @@
 // - Karten aus einem anderen Repository (GitHub „owner/repo#12“) öffnen nur im Browser; Beginnen, Prüfen und
 //   Zuweisen gehen nur mit eigener Kennung.
 // - Ob gezogen werden darf (ohne Verbindung gesperrt, Workflow von YouTrack) und ob die Fehlermeldung die
-//   erlaubten Übergänge nennt.
+//   erlaubten Übergänge nennt. Nach der Rückfrage findet Relocate Karte und Spalte über Kennung und Namen im
+//   dann gezeigten Stand wieder.
+// - Stand des Ladens (TAtlasBoardLoadRun): Jedes Laden beginnt mit einer neuen Generation und ohne
+//   Ladezustand; nur die Antwort der jüngsten Generation zählt und beendet ihn.
 
 interface
 
@@ -29,6 +32,24 @@ type
   /// <summary>Klick auf eine Karte: nichts, Vorschau oder Seite im Browser.</summary>
   TAtlasBoardCardOpen = (None, Preview, Browse);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Laden im Fenster „Atlas-Board“: Generation des jüngsten Ladens und ob eine Abfrage läuft. Nur im
+  /// Hauptthread.</summary>
+  TAtlasBoardLoadRun = record
+  private
+    FGeneration: Integer;
+    FLoading: Boolean;
+  public
+    /// <summary>Neues Laden: Ältere Antworten zählen nicht mehr, und es lädt erst nach Started (ohne Tracker
+    /// gar nicht). Ergebnis: die neue Generation.</summary>
+    function Next: Integer;
+    /// <summary>Die Abfrage der jüngsten Generation läuft.</summary>
+    procedure Started;
+    /// <summary>Antwort des Ladens AGeneration: True, wenn sie zählt; dann endet der Ladezustand.</summary>
+    function Answered(AGeneration: Integer): Boolean;
+    property Generation: Integer read FGeneration;
+    property Loading: Boolean read FLoading;
+  end;
 
   TAtlasBoardPlan = class
   public
@@ -60,6 +81,10 @@ type
     /// <summary>Neu laden bei Aktualisieren: nur gestartet, an, sichtbar und ohne laufendes Laden oder Verschieben.
     /// </summary>
     class function Refreshes(AStarted, AActive, AVisible, ALoading, AMoving: Boolean): Boolean; static;
+    /// <summary>Karte AKey und Spalte AColumnName (ohne Groß-/Kleinschreibung) in ASnapshot; False, wenn eine
+    /// fehlt (inzwischen neu geladen).</summary>
+    class function Relocate(const ASnapshot: TAtlasBoardSnapshot; const AKey, AColumnName: string;
+      out ACard, AColumn: Integer): Boolean; static;
   end;
 
 implementation
@@ -183,6 +208,47 @@ end;
 class function TAtlasBoardPlan.Refreshes(AStarted, AActive, AVisible, ALoading, AMoving: Boolean): Boolean;
 begin
   Result := AStarted and AActive and AVisible and not ALoading and not AMoving;
+end;
+
+class function TAtlasBoardPlan.Relocate(const ASnapshot: TAtlasBoardSnapshot; const AKey, AColumnName: string;
+  out ACard, AColumn: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  ACard := ASnapshot.CardIndex(AKey);
+  AColumn := -1;
+  for mIndex := 0 to High(ASnapshot.Columns) do
+  begin
+    if SameText(ASnapshot.Columns[mIndex].Name, AColumnName) then
+    begin
+      AColumn := mIndex;
+      Break;
+    end;
+  end;
+  Result := (ACard >= 0) and (AColumn >= 0);
+end;
+
+{ TAtlasBoardLoadRun }
+
+function TAtlasBoardLoadRun.Next: Integer;
+begin
+  Inc(FGeneration);
+  FLoading := False;
+  Result := FGeneration;
+end;
+
+procedure TAtlasBoardLoadRun.Started;
+begin
+  FLoading := True;
+end;
+
+function TAtlasBoardLoadRun.Answered(AGeneration: Integer): Boolean;
+begin
+  Result := AGeneration = FGeneration;
+  if Result then
+  begin
+    FLoading := False;
+  end;
 end;
 
 end.

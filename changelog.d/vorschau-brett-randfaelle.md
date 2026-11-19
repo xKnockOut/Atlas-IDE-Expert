@@ -1,0 +1,3 @@
+### Behoben
+- Fenster „Atlas-Issue“ (#1264): Wer schnell durch mehrere Issues klickt, startet nur noch eine Abfrage zur Zeit beim Tracker. Ein neuer Wunsch bricht die laufende ab und folgt ihr; „Abbrechen“ wirkt auch dann, wenn vorher noch die Antwort einer älteren Abfrage eintraf.
+- Fenster „Atlas-Board“ (#1272): Wechselt das Projekt während des Ladens auf eines ohne Tracker, endet der Ladezustand und „Aktualisieren“ ist wieder bedienbar. Während der Rückfrage zum Verschieben lädt das Board nicht mehr neu; wurde es doch neu geladen, verschiebt Atlas die Karte über ihre Kennung oder sagt, dass sie nicht mehr da ist.
