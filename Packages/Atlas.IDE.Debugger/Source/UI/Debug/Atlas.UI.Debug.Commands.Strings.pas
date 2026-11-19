@@ -21,7 +21,7 @@ type
     DebugEditorMenuGroup, EditValueCommand, EditValueUndoCommand, DebugEventLogCommand, LogpointCommand,
     LogpointDisableAll, LogpointEnableAll, LogpointDeleteAll, RestartCommand, ReattachCommandPlain,
     ReattachWaitCommand, RuntimeReportPasteCommand, RuntimeReportClearCommand, LaunchCommandWindow, LaunchCommandRun,
-    LaunchCommandStop,
+    LaunchCommandStop, DataBreakCommand,
     // Untermenü „Haltepunkte“ im Hauptmenü Atlas.
     MenuGroupBreakpoints);
 
@@ -94,6 +94,7 @@ const
      'Atlas: Startverbünde …',
      'Atlas: Startverbund starten',
      'Atlas: Startverbund beenden',
+     'Anhalten bei Datenzugriff …',
      'Haltepunkte'),
     ('Break on next event…',
      'Breakpoint on methods …',
@@ -146,6 +147,7 @@ const
      'Atlas: Launch groups …',
      'Atlas: Start launch group',
      'Atlas: Stop launch group',
+     'Break on data access …',
      'Breakpoints'));
 
 { TAtlasDebugCommandsStrings }

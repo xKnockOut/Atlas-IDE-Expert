@@ -44,7 +44,7 @@ implementation
 
 uses
   System.JSON,
-  Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Client,
   Atlas.UI.Editor.ExtractMembers,
   Atlas.IDE.Editor.Rename,
@@ -70,7 +70,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(APrepare.Failed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(APrepare.Failed, [E.Message]));
     end;
   end;
 end;

@@ -75,7 +75,6 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
@@ -193,7 +192,7 @@ begin
     begin
       Result := Result + sLineBreak;
     end;
-    Result := Result + TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [mWarning]);
+    Result := Result + TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigWarning, [mWarning]);
   end;
 end;
 

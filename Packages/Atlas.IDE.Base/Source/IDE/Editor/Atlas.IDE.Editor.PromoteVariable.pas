@@ -30,8 +30,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.IDE.Editor.NamedRefactoring;
+  Atlas.IDE.Editor.NamedRefactoring,
+  Atlas.UI.Editor.Strings;
 
 const
   cApplyCommand = 'atlas.server.promoteVariable';
@@ -43,14 +43,14 @@ class procedure TAtlasIdePromoteVariable.Execute(ASession: TLspSession; const AA
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.PromoteVariableTitle;
-  mTexts.Prompt := TAtlasTextId.PromoteVariablePrompt;
-  mTexts.Failed := TAtlasTextId.PromoteVariableFailed;
-  mTexts.Nothing := TAtlasTextId.PromoteVariableNothing;
-  mTexts.PreviewHint := TAtlasTextId.PromoteVariablePreviewHint;
-  mTexts.Apply := TAtlasTextId.PromoteVariableApply;
-  mTexts.Done := TAtlasTextId.PromoteVariableDone;
-  mTexts.Warning := TAtlasTextId.PromoteVariableWarning;
+  mTexts.Title := TAtlasEditorTextId.PromoteVariableTitle;
+  mTexts.Prompt := TAtlasEditorTextId.PromoteVariablePrompt;
+  mTexts.Failed := TAtlasEditorTextId.PromoteVariableFailed;
+  mTexts.Nothing := TAtlasEditorTextId.PromoteVariableNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.PromoteVariablePreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.PromoteVariableApply;
+  mTexts.Done := TAtlasEditorTextId.PromoteVariableDone;
+  mTexts.Warning := TAtlasEditorTextId.PromoteVariableWarning;
   TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 

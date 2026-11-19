@@ -82,7 +82,7 @@ begin
     Exit;
   end;
   if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(cPrepareCommand, AArgumentsJson,
-    cTimeoutMs, TAtlasTextId.MoveMemberFailed),
+    cTimeoutMs, TAtlasEditorTextId.MoveMemberFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
       Result := TitleOf(AModel);
@@ -94,7 +94,7 @@ begin
   mMoved := 0;
   mTargetLine := 0;
   if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mChoice.ApplyArguments,
-    cTimeoutMs, TAtlasTextId.MoveMemberFailed),
+    cTimeoutMs, TAtlasEditorTextId.MoveMemberFailed),
     procedure(const AReply: TJSONObject)
     begin
       mTargetFile := TJsonRead.Text(AReply, 'file');
@@ -115,13 +115,13 @@ begin
   end;
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, override, uses) im Hinweis.
   mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveMemberPreviewHint, [mMoved, mReply.Edit.EditCount,
-    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
+    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasEditorTextId.ExtractIntfWarning);
   mApply := TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveMemberApply);
   if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, mApply, mReply.Edit) and
     TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, mApply, AMessage, mOutcome) then
   begin
     AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveMemberDone, [mMoved, mOutcome.Edits, mOutcome.Files]));
-    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasEditorTextId.ExtractIntfWarning, AMessage);
     if mTargetFile <> '' then
     begin
       TAtlasIdeNavigation.GoToLocation(mTargetFile, mTargetLine, 0);

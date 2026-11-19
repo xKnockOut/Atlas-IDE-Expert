@@ -74,7 +74,8 @@ type
     DebugRulesClassDescendants,
     DebugRulesProjectSaved,
     DebugRulesProjectFailed,
-    DebugRulesProjectOff);
+    DebugRulesProjectOff,
+    DebugKnownFound, DebugKnownResolved, DebugKnownOpen, DebugKnownComment, DebugKnownReopen, DebugKnownNew);
 
   TAtlasExceptionsStrings = class
   public
@@ -225,7 +226,13 @@ const
      'Exception-Regeln des Projekts in %s gespeichert (%d).',
      'Exception-Regeln des Projekts nicht gespeichert: %s',
      'Exception-Regeln des Projekts nicht gespeichert: Die Projektdatei ist ausgeschaltet oder kein Projekt ist ' +
-      'offen.'),
+      'offen.',
+     #$2691 + ' Bekannter Fehler: %s',
+     #$2691 + ' Erledigt: %s ' + #$2013 + ' wieder aufgetreten?',
+     'Issue öffnen',
+     'Als Kommentar anhängen',
+     'Wieder öffnen …',
+     'Neues Issue …'),
     ('Atlas: Exceptions',
      'Filter by class, message, location',
      'Go to location',
@@ -358,7 +365,13 @@ const
      '%s (with descendants)',
      'Project exception rules saved to %s (%d).',
      'Project exception rules not saved: %s',
-     'Project exception rules not saved: the project file is switched off or no project is open.'));
+     'Project exception rules not saved: the project file is switched off or no project is open.',
+     #$2691 + ' Known error: %s',
+     #$2691 + ' Resolved: %s ' + #$2013 + ' occurred again?',
+     'Open issue',
+     'Add as comment',
+     'Reopen …',
+     'New issue …'));
 
 { TAtlasExceptionsStrings }
 

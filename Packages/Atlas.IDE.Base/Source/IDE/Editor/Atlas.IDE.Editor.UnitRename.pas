@@ -440,7 +440,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameFailed, [E.Message]));
+      Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameFailed, [E.Message]));
     end;
   end;
 end;
@@ -467,7 +467,7 @@ begin
   mAnswer := Default(TAtlasUnitRenameAnswer);
   if not TAtlasIdeServerEdit.Fetch(mSession, TAtlasServerEditCommand.Create(TAtlasUnitRename.cCommand,
     TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, ScopeFiles(AEvent.ProjectFile, AScope)), cTimeoutMs,
-    TAtlasTextId.UnitRenameFailed),
+    TAtlasEditorTextId.UnitRenameFailed),
     procedure(const AReply: TJSONObject)
     begin
       mAnswer := TAtlasUnitRename.ReadAnswer(AReply);
