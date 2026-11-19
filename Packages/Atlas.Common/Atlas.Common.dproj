@@ -123,6 +123,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownRest.pas"/>

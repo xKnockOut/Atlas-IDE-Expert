@@ -59,6 +59,7 @@ Atlas.Common.Dfm.EventHandlers.Tests
 Atlas.Common.Dfm.FormFiles.Tests
 Atlas.Common.Dfm.FormModel.Tests
 Atlas.Common.Dfm.Tests
+Atlas.Common.Diagnostics.CheckMemory.Tests
 Atlas.Common.Diagnostics.CheckProfile.Tests
 Atlas.Common.Diagnostics.CrashCase.Tests
 Atlas.Common.Diagnostics.ServerPackage.Tests

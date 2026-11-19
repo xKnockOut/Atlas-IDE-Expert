@@ -370,6 +370,7 @@ uses
   Atlas.Common.Lsp.Status.Tests in 'Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas',
   Atlas.Common.Diagnostics.BugReport.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas',
   Atlas.Common.Diagnostics.Anonymity.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.Anonymity.Tests.pas',
+  Atlas.Common.Diagnostics.CheckMemory.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.Tests.pas',
   Atlas.Common.Diagnostics.CheckProfile.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.Tests.pas',
   Atlas.Common.Diagnostics.ServerPackage.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.Tests.pas',
   Atlas.Common.Lsp.StatusFile.Tests in 'Common\Lsp\Atlas.Common.Lsp.StatusFile.Tests.pas',
