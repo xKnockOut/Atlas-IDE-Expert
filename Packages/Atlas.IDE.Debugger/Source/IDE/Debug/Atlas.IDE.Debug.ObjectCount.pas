@@ -1,7 +1,8 @@
 ﻿unit Atlas.IDE.Debug.ObjectCount;
 
 // Objektzählung im Fenster „Atlas: Speicher“ (#858, experimentell, debug.memoryTimeline.objectCount):
-// „Objekte zählen“ liest im angehaltenen Programm den Speicher (TAtlasIdeProcessMemory) und zählt lebende Objekte
+// „Objekte zählen“ liest im angehaltenen Programm den Speicher (IAtlasProcessMemory über OpenMemory, in der IDE
+// Atlas.IDE.Debug.Adapters.ProcessMemory; setzt die Komposition) und zählt lebende Objekte
 // je Klasse (TAtlasObjectCounter). Jede Zählung wird mit der vorigen derselben Sitzung verglichen; eine neue
 // Sitzung beginnt ohne Basis. Gezählt wird im Hauptthread, während das Programm steht; das dauert je nach
 // Speicher Bruchteile einer Sekunde bis wenige Sekunden (Sanduhr). Kein Zeitgeber, kein Thread: Nach Release
@@ -10,10 +11,15 @@
 interface
 
 uses
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.ObjectCount,
   Atlas.UI.Debug.ObjectCountPanel;
 
 type
+  /// <summary>Prozess APid zum Lesen öffnen; False mit AError, wenn es nicht geht.</summary>
+  TAtlasProcessMemoryOpen = reference to function(APid: Cardinal; out AMemory: IAtlasProcessMemory;
+    out AError: string): Boolean;
+
   TAtlasIdeDebugObjectCount = class
   private type
     TCounts = record
@@ -24,9 +30,12 @@ type
     end;
   private class var
     FCounts: TCounts;
+    FOpenMemory: TAtlasProcessMemoryOpen;
     class function Panel: TAtlasDebugObjectCountPanel; static;
     class procedure Count; static;
   public
+    /// <summary>Zugang zum Speicher des Programms; setzt die Komposition des Moduls, nil beim Abmelden.</summary>
+    class property OpenMemory: TAtlasProcessMemoryOpen read FOpenMemory write FOpenMemory;
     /// <summary>Bereich im Frame verdrahten und nach der Einstellung zeigen oder verbergen.</summary>
     class procedure Wire(APanel: TAtlasDebugObjectCountPanel); static;
     /// <summary>Neue Debug-Sitzung: Zählungen verwerfen.</summary>
@@ -46,7 +55,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Debug.ObjectCountReader,
   Atlas.IDE.Debug.MemoryWindow,
   Atlas.UI.Debug.MemoryFrame,
   Atlas.UI.Debug.Memory.Strings;
@@ -85,7 +93,7 @@ begin
     Exit;
   end;
   mPid := TAtlasIdeDebugSession.Process.ProcessId;
-  if not TAtlasIdeProcessMemory.Open(mPid, mMemory, mError) then
+  if not Assigned(FOpenMemory) or not FOpenMemory(mPid, mMemory, mError) then
   begin
     mPanel.ShowStatus(TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.ObjectCountNoAccess, [mPid, mError]));
     Exit;

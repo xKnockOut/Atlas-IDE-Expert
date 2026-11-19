@@ -50,8 +50,11 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Composition.Hooks,
   Atlas.IDE.Tests.Coverage,
+  Atlas.Core.Tests.Contract,
   Atlas.IDE.Tests.Mutation,
-  Atlas.IDE.Tests.MutationMarks;
+  Atlas.IDE.Tests.MutationMarks,
+  Atlas.IDE.Tests.MutationShadowProject,
+  Atlas.IDE.Tests.Adapters.MutationShadowProject;
 
 var
   GMutation: TAtlasIdeMutationRun;
@@ -95,10 +98,16 @@ end;
 
 { Mutationslauf (#1460) }
 
+/// <summary>Schattenprojekt des Mutationslaufs in der IDE.</summary>
+function NewMutationShadow(const ASetup: TAtlasIdeMutationShadowSetup): IAtlasMutationShadowProject;
+begin
+  Result := TAtlasIdeMutationShadowProject.Create(ASetup);
+end;
+
 procedure StartMutation(const AScope: IAtlasModuleScope; ATests: TAtlasIdeTests; AOutput: TAtlasIdeTestsOutput;
   const ANewRunner: TAtlasTestsRunnerFactory);
 begin
-  GMutation := TAtlasIdeMutationRun.Create(AScope, ATests, AOutput, ANewRunner, BuildForMutation);
+  GMutation := TAtlasIdeMutationRun.Create(AScope, ATests, AOutput, ANewRunner, BuildForMutation, NewMutationShadow);
 end;
 
 procedure StopMutation;

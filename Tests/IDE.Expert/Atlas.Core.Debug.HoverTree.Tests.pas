@@ -53,7 +53,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Hover.DebugValue;
+  Atlas.Core.Hover.Contract.DebugValue;
 
 { TAtlasHoverTreeTests }
 

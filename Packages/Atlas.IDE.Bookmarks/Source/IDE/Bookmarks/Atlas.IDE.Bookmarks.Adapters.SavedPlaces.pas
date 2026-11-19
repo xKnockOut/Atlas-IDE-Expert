@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Bookmarks.SavedPlaces;
+﻿unit Atlas.IDE.Bookmarks.Adapters.SavedPlaces;
 
 // Gemerkte Stellen des Moduls für andere Module (#1456, Vertrag
 // IAtlasSavedPlacesSource): liest die Notizbücher im Ordner der Notizen

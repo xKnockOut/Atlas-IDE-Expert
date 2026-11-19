@@ -126,6 +126,7 @@ contains
   Atlas.Core.Hover.Texts in 'Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.View in 'Source\Core\Hover\Atlas.Core.Hover.View.pas',
   Atlas.Core.Hover.Plan in 'Source\Core\Hover\Atlas.Core.Hover.Plan.pas',
+  Atlas.Core.Hover.Contract.DebugValue in 'Source\Core\Hover\Atlas.Core.Hover.Contract.DebugValue.pas',
   Atlas.Core.Hover.DebugValue in 'Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
   Atlas.Core.Hover.IdeHelpInsight in 'Source\Core\Hover\Atlas.Core.Hover.IdeHelpInsight.pas',
   Atlas.Core.Documentation.Contract in 'Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',

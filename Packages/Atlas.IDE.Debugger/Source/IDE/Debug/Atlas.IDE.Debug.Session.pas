@@ -23,9 +23,10 @@
 //     anhalten. Fehler darin lassen den Start zu.
 // Die Phasen selbst (Prozesse zählen, Halt, Weiterlaufen, Ende, Filter, Zuhörer)
 // stehen ohne Open Tools API in TAtlasDebugPhases (Atlas.Core.Debug.Phases) und
-// sind dort getestet. Diese Unit ist der Adapter dazu: Der Notifier übersetzt
-// IOTAProcess.ProcessState in TAtlasDebugProcessState, TTarget beantwortet die
-// Fragen der Phasen über IOTADebuggerServices, ein Zeitgeber liefert den Tick
+// sind dort getestet. Diese Unit verbindet sie mit der IDE: Der Notifier übersetzt
+// IOTAProcess.ProcessState in TAtlasDebugProcessState, das Ziel aus UseAdapters
+// (Atlas.IDE.Debug.Adapters.SessionTarget) beantwortet die Fragen der Phasen
+// über IOTADebuggerServices, ein Zeitgeber liefert den Tick
 // nach der Benachrichtigung des Debuggers, und jeder Zuhörer läuft unter der
 // Sicherung (Feature Debugger, #493).
 // Ein Halt, den der Filter (SetStopFilter) erledigt, etwa ein Haltepunkt der Herkunft eingereihter Methoden (#859),
@@ -41,6 +42,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.Phases;
 
 type
@@ -102,17 +104,10 @@ type
       function BeforeProgramLaunch(const Project: IOTAProject): Boolean;
       procedure ProcessMemoryChanged;
     end;
-    /// <summary>Der Debugger der IDE für TAtlasDebugPhases.</summary>
-    TTarget = class(TInterfacedObject, IAtlasDebugTarget)
-    public
-      function ProcessCount: Integer;
-      function CurrentState: TAtlasDebugProcessState;
-      function HasStoppedThread: Boolean;
-      procedure RequestTick;
-      procedure Run(const AProc: TProc);
-    end;
   private class var
     FNotifierIndex: Integer;
+    FTarget: IAtlasDebugTarget;
+    FNewEvaluator: TAtlasDebugEvaluatorFactory;
     FPhases: TAtlasDebugPhases;
     FProject: string;
     FConfiguration: string;
@@ -124,10 +119,22 @@ type
     FTicker: TObject;
     class procedure StopTick; static;
     class function Phases: TAtlasDebugPhases; static;
-    class procedure StartTimer; static;
     /// <summary>Zuhörer mit IAtlasIdeDebugLaunchCheck fragen; False, wenn einer ablehnt.</summary>
     class function AllowLaunch(const AProject: IOTAProject): Boolean; static;
   public
+    /// <summary>Adapter der Sitzung; setzt die Komposition des Moduls bei der Anmeldung, vor jedem Teil, und beim
+    /// Abmelden mit nil: ATarget ist der Debugger der IDE für die Phasen (Atlas.IDE.Debug.Adapters.SessionTarget),
+    /// ANewEvaluator die Fabrik der Auswertungen im angehaltenen Thread (Atlas.IDE.Debug.Adapters.ThreadEvaluator).
+    /// </summary>
+    class procedure UseAdapters(ATarget: IAtlasDebugTarget; const ANewEvaluator: TAtlasDebugEvaluatorFactory);
+      static;
+    /// <summary>Neue Auswertung im angehaltenen Thread über die Fabrik.</summary>
+    class function NewEvaluator: IAtlasDebugEvaluator; static;
+    /// <summary>Tick der Phasen nach der Benachrichtigung des Debuggers anfordern (Zeitgeber, nicht ForceQueue).
+    /// </summary>
+    class procedure RequestTick; static;
+    /// <summary>Zustand der Open Tools API für die Phasen.</summary>
+    class function PhaseState(AState: TOTAProcessState): TAtlasDebugProcessState; static;
     /// <summary>Notifier anmelden; mehrfacher Aufruf schadet nicht.</summary>
     class procedure Start; static;
     /// <summary>Notifier abmelden, Zuhörer vergessen; RemoveListener ruft es beim letzten Zuhörer.</summary>
@@ -191,8 +198,7 @@ begin
   Result := AState in [psStopped, psFault, psResFault, psException];
 end;
 
-/// <summary>Zustand der Open Tools API für TAtlasDebugPhases.</summary>
-function PhaseState(AState: TOTAProcessState): TAtlasDebugProcessState;
+class function TAtlasIdeDebugSession.PhaseState(AState: TOTAProcessState): TAtlasDebugProcessState;
 begin
   case AState of
     psRunning:
@@ -256,47 +262,6 @@ procedure TAtlasIdeDebugListener.DebugEnded;
 begin
 end;
 
-{ TAtlasIdeDebugSession.TTarget }
-
-function TAtlasIdeDebugSession.TTarget.ProcessCount: Integer;
-var
-  mServices: IOTADebuggerServices;
-begin
-  Result := 0;
-  mServices := TAtlasIdeDebugger.Services;
-  if mServices <> nil then
-  begin
-    Result := mServices.ProcessCount;
-  end;
-end;
-
-function TAtlasIdeDebugSession.TTarget.CurrentState: TAtlasDebugProcessState;
-var
-  mCurrent: IOTAProcess;
-begin
-  Result := TAtlasDebugProcessState.Other;
-  mCurrent := TAtlasIdeDebugSession.Process;
-  if mCurrent <> nil then
-  begin
-    Result := PhaseState(mCurrent.ProcessState);
-  end;
-end;
-
-function TAtlasIdeDebugSession.TTarget.HasStoppedThread: Boolean;
-begin
-  Result := TAtlasIdeDebugSession.StoppedThread <> nil;
-end;
-
-procedure TAtlasIdeDebugSession.TTarget.RequestTick;
-begin
-  TAtlasIdeDebugSession.StartTimer;
-end;
-
-procedure TAtlasIdeDebugSession.TTarget.Run(const AProc: TProc);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger, AProc);
-end;
-
 { TAtlasIdeDebugSession.TNotifier }
 
 /// <summary>Zuhörer mit IAtlasIdeDebugBreakpointListener benachrichtigen (#863).</summary>
@@ -347,7 +312,7 @@ procedure TAtlasIdeDebugSession.TNotifier.ProcessStateChanged(const Process: IOT
 begin
   if Process <> nil then
   begin
-    TAtlasIdeDebugSession.Phases.StateChanged(PhaseState(Process.ProcessState));
+    TAtlasIdeDebugSession.Phases.StateChanged(TAtlasIdeDebugSession.PhaseState(Process.ProcessState));
   end;
 end;
 
@@ -398,18 +363,32 @@ end;
 
 { TAtlasIdeDebugSession }
 
+class procedure TAtlasIdeDebugSession.UseAdapters(ATarget: IAtlasDebugTarget;
+  const ANewEvaluator: TAtlasDebugEvaluatorFactory);
+begin
+  // Die Phasen behalten ihr Ziel bis zum Entladen der Unit.
+  FTarget := ATarget;
+  FNewEvaluator := ANewEvaluator;
+end;
+
+class function TAtlasIdeDebugSession.NewEvaluator: IAtlasDebugEvaluator;
+begin
+  Result := FNewEvaluator();
+end;
+
 class function TAtlasIdeDebugSession.Phases: TAtlasDebugPhases;
 begin
   // Bleibt bis zum Entladen der Unit: Stop darf aus einem Zuhörer kommen, während Phases benachrichtigt.
   if FPhases = nil then
   begin
-    FPhases := TAtlasDebugPhases.Create(TTarget.Create);
+    Assert(FTarget <> nil);
+    FPhases := TAtlasDebugPhases.Create(FTarget);
     FPhases.Clock := MicrosecondsNow;
   end;
   Result := FPhases;
 end;
 
-class procedure TAtlasIdeDebugSession.StartTimer;
+class procedure TAtlasIdeDebugSession.RequestTick;
 begin
   if FStopTimer = nil then
   begin
@@ -754,5 +733,7 @@ initialization
 
 finalization
   FreeAndNil(TAtlasIdeDebugSession.FPhases);
+  TAtlasIdeDebugSession.FTarget := nil;
+  TAtlasIdeDebugSession.FNewEvaluator := nil;
 
 end.

@@ -18,6 +18,7 @@ uses
   System.Classes,
   System.TypInfo,
   System.Generics.Collections,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.Surface;
 
 type
