@@ -173,6 +173,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
 - **Wo du in der IDE bist:** `get_ide_context` nennt KI-Assistenten die offene Datei mit Cursor und Methode, die Auswahl, das aktive Projekt mit Konfiguration und Plattform, den letzten Build und die Reiter; „diese Methode“ muss niemand mehr kopieren (`assistants.context`)
 - **Mehrere Abfragen auf einmal:** `batch` führt bis zu 10 lesende MCP-Werkzeuge in einem Aufruf aus, auf einem gemeinsamen Indexstand mit einem einzigen Dateiabgleich; ein Fehler betrifft nur seinen Abschnitt
+- **Geschichte eines Symbols:** `get_symbol_history` nennt die Commits, die eine Routine oder einen Typ geändert haben, mit Issues, und folgt mit Git Umbenennungen und Verschiebungen in andere Units über die Ähnlichkeit der Rümpfe
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 - **Befunde nach der Änderung:** Die schreibenden MCP-Werkzeuge hängen die neuen und behobenen Befunde der geänderten Dateien an ihre Antwort (`delphi://edits/last` für die letzte Änderung)
