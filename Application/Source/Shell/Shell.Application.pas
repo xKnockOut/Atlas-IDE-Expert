@@ -81,6 +81,11 @@ begin
   begin
     Result := TLinterShell.Mutate(AOptions);
   end
+  // Anweisungsdateien (#2615): das Ziel aus --check ist hier nur der Ordner der atlas.json.
+  else if AOptions.WriteInstructions or AOptions.CheckInstructions then
+  begin
+    Result := TLinterShell.Instructions(AOptions);
+  end
   else if AOptions.CheckTarget <> '' then
   begin
     Result := TLinterShell.Run(AOptions);

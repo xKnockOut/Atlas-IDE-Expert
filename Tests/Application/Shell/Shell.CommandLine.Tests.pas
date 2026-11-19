@@ -486,6 +486,10 @@ begin
   Assert.AreEqual('fix', TCommandLineOptions.Parse(['--check', 'Src', '--fix', 'all']).RunCommand);
   Assert.AreEqual('format-check', TCommandLineOptions.Parse(['--check', 'Src', '--format-check']).RunCommand);
   Assert.AreEqual('format-write', TCommandLineOptions.Parse(['--check', 'Src', '--format-write']).RunCommand);
+  // #2615: Anweisungsdateien für KI-Assistenten, auch ohne --check.
+  Assert.AreEqual('write-instructions', TCommandLineOptions.Parse(['--write-instructions']).RunCommand);
+  Assert.AreEqual('check-instructions', TCommandLineOptions.Parse(['--check', 'Src', '--check-instructions',
+    '--write-instructions']).RunCommand);
   Assert.AreEqual('metrics', TCommandLineOptions.Parse(['--check', 'Src', '--metrics']).RunCommand);
   Assert.AreEqual('check-duplicates', TCommandLineOptions.Parse(['--check', 'Src', '--check-duplicates']).RunCommand);
   Assert.AreEqual('todos', TCommandLineOptions.Parse(['--check', 'Src', '--todos']).RunCommand);
