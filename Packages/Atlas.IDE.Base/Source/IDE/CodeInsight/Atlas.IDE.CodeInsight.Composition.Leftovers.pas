@@ -27,10 +27,12 @@ uses
 type
   /// <summary>Streicht Funde, die beim Freigeben eines anderen Fundes mit frei werden.</summary>
   TLeftoverTracker = class(TComponent)
-  public
-    Found: TList<TComponent>;
+  private
+    FFound: TList<TComponent>;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  public
+    property Found: TList<TComponent> read FFound write FFound;
   end;
 
 { TLeftoverTracker }

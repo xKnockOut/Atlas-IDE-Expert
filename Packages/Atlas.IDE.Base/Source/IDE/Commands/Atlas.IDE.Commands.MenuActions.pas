@@ -16,6 +16,41 @@ uses
 type
   /// <summary>Befehle der Einträge im Atlas-Menü, je Gruppe über den Tag des Eintrags.</summary>
   TAtlasMenuActions = record
+  public const
+    // Tags der Ergebnisbefehle (RunResults).
+    cResultsReferences = 0;
+    cResultsImplementations = 1;
+    cResultsSymbolSearch = 2;
+    cResultsIncoming = 3;
+    cResultsOutgoing = 4;
+    cResultsSupertypes = 5;
+    cResultsSubtypes = 6;
+    cResultsWindow = 7;
+    cResultsCallDiagram = 8;
+    cResultsImpact = 9;
+    cResultsDataFlowSources = 10;
+    cResultsDataFlowTargets = 11;
+    // Tags der Editorbefehle (RunEditor); 8 und 9 sind frei.
+    cEditorCodeActions = 0;
+    cEditorExpand = 1;
+    cEditorShrink = 2;
+    cEditorTypeDefinition = 3;
+    cEditorCopyQualified = 4;
+    cEditorCopyQualifiedParams = 5;
+    cEditorMethodToggle = 6;
+    cEditorTestUnit = 7;
+    cEditorGenerate = 10;
+    cEditorFormat = 11;
+    cEditorMethodOrder = 12;
+    cEditorCollapseRegions = 13;
+    cEditorExpandRegions = 14;
+    // Tags der Abschnittssprünge (RunSection).
+    cSectionInterface = 0;
+    cSectionImplementation = 1;
+    cSectionUses = 2;
+    cSectionInitialization = 3;
+    cSectionReturn = 4;
+    cSectionFindMethod = 5;
   public
     /// <summary>Ergebnisfenster (#400): 0 Referenzen, 1 Implementierungen, 2 Symbolsuche, 3–6 Hierarchien,
     /// 7 Fenster, 8 Aufrufdiagramm, 9 Auswirkungen, 10/11 Datenfluss.</summary>
@@ -80,17 +115,17 @@ end;
 procedure ResultsCommand(ACommand: Integer);
 begin
   case ACommand of
-    0: TAtlasIdeResults.FindReferences;
-    1: TAtlasIdeResults.FindImplementations;
-    2: TAtlasIdeResults.SearchSymbol;
-    3: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Incoming);
-    4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
-    5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
-    6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
-    8: TAtlasIdeResults.ShowCallDiagram;
-    9: TAtlasIdeImpact.ShowAtCursor;
-    10: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources);
-    11: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Targets);
+    TAtlasMenuActions.cResultsReferences: TAtlasIdeResults.FindReferences;
+    TAtlasMenuActions.cResultsImplementations: TAtlasIdeResults.FindImplementations;
+    TAtlasMenuActions.cResultsSymbolSearch: TAtlasIdeResults.SearchSymbol;
+    TAtlasMenuActions.cResultsIncoming: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Incoming);
+    TAtlasMenuActions.cResultsOutgoing: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
+    TAtlasMenuActions.cResultsSupertypes: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
+    TAtlasMenuActions.cResultsSubtypes: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+    TAtlasMenuActions.cResultsCallDiagram: TAtlasIdeResults.ShowCallDiagram;
+    TAtlasMenuActions.cResultsImpact: TAtlasIdeImpact.ShowAtCursor;
+    TAtlasMenuActions.cResultsDataFlowSources: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources);
+    TAtlasMenuActions.cResultsDataFlowTargets: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Targets);
   else
     TAtlasIdeResults.ShowWindow;
   end;
@@ -100,18 +135,21 @@ end;
 procedure EditorCommand(ACommand: Integer);
 begin
   case ACommand of
-    0: TAtlasIdeEditorCommands.CodeActions;
-    1: TAtlasIdeEditorCommands.ExpandSelection;
-    2: TAtlasIdeEditorCommands.ShrinkSelection;
-    3: TAtlasIdeEditorCommands.GoToTypeDefinition;
-    4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
-    6: TAtlasIdeEditorCommands.ToggleMethod;
-    7: TAtlasIdeEditorCommands.SwitchTestUnit;
-    10: TAtlasIdeGenerate.Show;
-    11: TAtlasIdeEditorCommands.FormatCode;
-    12: TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
-    13: TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.CollapseAll);
-    14: TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.ExpandAll);
+    TAtlasMenuActions.cEditorCodeActions: TAtlasIdeEditorCommands.CodeActions;
+    TAtlasMenuActions.cEditorExpand: TAtlasIdeEditorCommands.ExpandSelection;
+    TAtlasMenuActions.cEditorShrink: TAtlasIdeEditorCommands.ShrinkSelection;
+    TAtlasMenuActions.cEditorTypeDefinition: TAtlasIdeEditorCommands.GoToTypeDefinition;
+    TAtlasMenuActions.cEditorCopyQualified: TAtlasIdeEditorCommands.CopyQualifiedName(False);
+    TAtlasMenuActions.cEditorMethodToggle: TAtlasIdeEditorCommands.ToggleMethod;
+    TAtlasMenuActions.cEditorTestUnit: TAtlasIdeEditorCommands.SwitchTestUnit;
+    TAtlasMenuActions.cEditorGenerate: TAtlasIdeGenerate.Show;
+    TAtlasMenuActions.cEditorFormat: TAtlasIdeEditorCommands.FormatCode;
+    TAtlasMenuActions.cEditorMethodOrder:
+      TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
+    TAtlasMenuActions.cEditorCollapseRegions:
+      TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.CollapseAll);
+    TAtlasMenuActions.cEditorExpandRegions:
+      TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.ExpandAll);
   else
     TAtlasIdeEditorCommands.CopyQualifiedName(True);
   end;
@@ -121,11 +159,11 @@ end;
 procedure SectionCommand(ACommand: Integer);
 begin
   case ACommand of
-    0: TAtlasIdeEditorToolbar.GotoInterface;
-    1: TAtlasIdeEditorToolbar.GotoImplementation;
-    2: TAtlasIdeEditorToolbar.GotoUses;
-    3: TAtlasIdeEditorToolbar.GotoInitialization;
-    4: TAtlasIdeEditorToolbar.ReturnFromSection;
+    TAtlasMenuActions.cSectionInterface: TAtlasIdeEditorToolbar.GotoInterface;
+    TAtlasMenuActions.cSectionImplementation: TAtlasIdeEditorToolbar.GotoImplementation;
+    TAtlasMenuActions.cSectionUses: TAtlasIdeEditorToolbar.GotoUses;
+    TAtlasMenuActions.cSectionInitialization: TAtlasIdeEditorToolbar.GotoInitialization;
+    TAtlasMenuActions.cSectionReturn: TAtlasIdeEditorToolbar.ReturnFromSection;
   else
     TAtlasIdeEditorToolbar.FindMethod;
   end;

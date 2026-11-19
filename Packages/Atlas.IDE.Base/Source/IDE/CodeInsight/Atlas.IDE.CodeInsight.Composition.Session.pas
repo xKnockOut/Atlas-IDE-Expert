@@ -327,10 +327,12 @@ begin
 end;
 
 procedure ExecuteServerCommand(const ACommand: string; const ADone: TProc<TJSONValue>);
+const
+  cCommandTimeoutMs = 30000;
 begin
   if ManagerInstance <> nil then
   begin
-    ManagerInstance.ExecuteServerCommandAsync(ACommand, 30000, ADone);
+    ManagerInstance.ExecuteServerCommandAsync(ACommand, cCommandTimeoutMs, ADone);
   end
   else if Assigned(ADone) then
   begin
@@ -377,12 +379,14 @@ begin
 end;
 
 procedure CreateBugReport;
+const
+  cCommandTimeoutMs = 10000;
 begin
   TAtlasIdeBugReport.Execute(
     procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
       // Im Hintergrund (#874): Der Server antwortet auch während des Indexierens sofort, das Plugin wartet nicht.
-      RunServerCommand(ACommand, AArgumentsJson, 10000, ADone);
+      RunServerCommand(ACommand, AArgumentsJson, cCommandTimeoutMs, ADone);
     end,
     Warnings());
 end;

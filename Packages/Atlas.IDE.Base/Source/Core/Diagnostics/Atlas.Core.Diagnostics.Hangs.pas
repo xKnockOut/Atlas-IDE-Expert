@@ -281,8 +281,10 @@ end;
 
 class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>;
   const AModules: TArray<TAtlasModuleRange>): TArray<string>;
+const
+  cMaxFrames = 24;
 begin
-  Result := Frames(AAddresses, AModules, 24);
+  Result := Frames(AAddresses, AModules, cMaxFrames);
 end;
 
 class function TAtlasStackScan.FirstIn(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
@@ -342,9 +344,19 @@ begin
   FThresholdMs := AThresholdMs;
 end;
 
+const
+  // Ab dieser Dauer zählt ein blockierter Hauptthread als Hänger.
+  cDefaultThresholdMs = 500;
+  cHangLine = 'Hänger %d ms um %s';
+  cHangActivity = '; Atlas: %s, %d ms';
+  cHangInStack = '; Atlas im Aufrufstapel';
+  cHangWindow = '; Fenster: %s';
+  cHangCodeInsight = '; Code Insight bisher %d-mal, %d ms';
+  cHangSummary = 'Sitzung: %d Hänger, längster %d ms, %d mit Atlas';
+
 constructor TAtlasHangMonitor.Create;
 begin
-  Create(500);
+  Create(cDefaultThresholdMs);
 end;
 
 function TAtlasHangMonitor.Finish(const AHang: TAtlasHang): string;
@@ -370,22 +382,22 @@ begin
   TAtlasPluginTimings.NoteHang(AHang.At, AHang.DurationMs, AHang.Activity, InvolvesAtlas(AHang));
   mLines := TStringBuilder.Create;
   try
-    mLines.AppendFormat('Hänger %d ms um %s', [AHang.DurationMs, FormatDateTime('hh":"nn":"ss', AHang.At)]);
+    mLines.AppendFormat(cHangLine, [AHang.DurationMs, FormatDateTime('hh":"nn":"ss', AHang.At)]);
     if AHang.Activity <> '' then
     begin
-      mLines.AppendFormat('; Atlas: %s, %d ms', [AHang.Activity, AHang.DurationMs]);
+      mLines.AppendFormat(cHangActivity, [AHang.Activity, AHang.DurationMs]);
     end
     else if InvolvesAtlas(AHang) then
     begin
-      mLines.Append('; Atlas im Aufrufstapel');
+      mLines.Append(cHangInStack);
     end;
     if AHang.Window <> '' then
     begin
-      mLines.AppendFormat('; Fenster: %s', [AHang.Window]);
+      mLines.AppendFormat(cHangWindow, [AHang.Window]);
     end;
     if AHang.CodeInsightCount > 0 then
     begin
-      mLines.AppendFormat('; Code Insight bisher %d-mal, %d ms', [AHang.CodeInsightCount, AHang.CodeInsightMs]);
+      mLines.AppendFormat(cHangCodeInsight, [AHang.CodeInsightCount, AHang.CodeInsightMs]);
     end;
     for mFrame in AHang.Frames do
     begin
@@ -404,7 +416,7 @@ end;
 
 function TAtlasHangMonitor.Summary: string;
 begin
-  Result := Format('Sitzung: %d Hänger, längster %d ms, %d mit Atlas', [FCount, FLongestMs, FWithAtlas]);
+  Result := Format(cHangSummary, [FCount, FLongestMs, FWithAtlas]);
 end;
 
 class function TAtlasHangMonitor.InvolvesAtlas(const AHang: TAtlasHang): Boolean;

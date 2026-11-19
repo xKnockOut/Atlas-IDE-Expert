@@ -119,7 +119,7 @@ uses
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
   TCrashCasesText = (ExceededTheTimeLimitOf, Raised, Crash, TheAtlasServerCrashed, Method, FileText, Line, Exception,
-    CaseText, FilesAttachedReproduceWithAtlasServer);
+    CaseText, FilesAttachedReproduceWithAtlasServer, AtlasVersion);
 {$SCOPEDENUMS OFF}
 
 const
@@ -133,7 +133,8 @@ const
      ', Zeile ',
      '- Ausnahme: `',
      '- Fall: `',
-     '` (Dateien als Anhang; nachstellen mit `AtlasServer --replay anfrage.json`)'),
+     '` (Dateien als Anhang; nachstellen mit `AtlasServer --replay anfrage.json`)',
+     '- Atlas-Version: '),
     ('exceeded the time limit of %d ms',
      'raised %s',
      'Crash: ',
@@ -143,7 +144,8 @@ const
      ', line ',
      '- Exception: `',
      '- Case: `',
-     '` (files attached; reproduce with `AtlasServer --replay anfrage.json`)'));
+     '` (files attached; reproduce with `AtlasServer --replay anfrage.json`)',
+     '- Atlas version: '));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TCrashCasesText): string;
@@ -208,6 +210,9 @@ begin
 end;
 
 function SummaryOf(const ACase: TAtlasCrashCase; ATimeoutMs: Integer): string;
+const
+  // Methode in Datei:Zeile, was geschah.
+  cMethodWhereWhat = '%s in %s %s';
 var
   mWhere, mWhat: string;
 begin
@@ -234,7 +239,7 @@ begin
   end;
   if mWhere <> '' then
   begin
-    Result := Format('%s in %s %s', [ACase.Method, mWhere, mWhat]);
+    Result := Format(cMethodWhereWhat, [ACase.Method, mWhere, mWhat]);
   end
   else
   begin
@@ -389,7 +394,7 @@ begin
     end;
     if ACase.Version <> '' then
     begin
-      mLines.Append('- Atlas-Version: ').Append(ACase.Version).Append(sLineBreak);
+      mLines.Append(UiText(TCrashCasesText.AtlasVersion)).Append(ACase.Version).Append(sLineBreak);
     end;
     mLines.Append(UiText(TCrashCasesText.CaseText)).Append(ExtractFileName(ACase.Folder))
       .Append(UiText(TCrashCasesText.FilesAttachedReproduceWithAtlasServer)).Append(sLineBreak);

@@ -28,6 +28,9 @@ type
     procedure Apply;
     /// <summary>Netz für das Editorfenster AParent: Leiste umhängen, wenn die IDE keine Option hat.</summary>
     procedure ApplyTo(AParent: TWinControl);
+    /// <summary>Navigationsleiste über die Option der IDE wieder zeigen (auch ohne angelegten Stand, z. B. wenn die
+    /// IDE ohne Entladen endete).</summary>
+    class procedure ShowAgain; static;
   end;
 
 implementation
@@ -46,7 +49,7 @@ end;
 
 destructor TAtlasIdeNavigationHiding.Destroy;
 begin
-  TAtlasIdeNavigationOption.Apply(False);
+  ShowAgain;
   FToolbars.Free;
   inherited Destroy;
 end;
@@ -62,6 +65,11 @@ begin
   begin
     FToolbars.RestoreAll;
   end;
+end;
+
+class procedure TAtlasIdeNavigationHiding.ShowAgain;
+begin
+  TAtlasIdeNavigationOption.Apply(False);
 end;
 
 /// <summary>Netz, nur ohne Option der IDE (siehe Apply): Navigationsleiste in ein eigenes Panel umhängen.</summary>

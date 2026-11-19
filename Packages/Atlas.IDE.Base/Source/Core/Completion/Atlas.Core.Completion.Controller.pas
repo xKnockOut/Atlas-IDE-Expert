@@ -313,6 +313,9 @@ uses
 
 /// <summary>Art des Kontexts für den Diagnosemodus (#479); nie Text aus dem Editor.</summary>
 function TimingKind(const AContext: TAtlasContext): string;
+const
+  cAutomatic = ', automatisch';
+  cByKey = ', Strg+Leer';
 begin
   case AContext.Kind of
     TAtlasContextKind.MemberAccess:
@@ -330,11 +333,11 @@ begin
   end;
   if AContext.Automatic then
   begin
-    Result := Result + ', automatisch';
+    Result := Result + cAutomatic;
   end
   else
   begin
-    Result := Result + ', Strg+Leer';
+    Result := Result + cByKey;
   end;
 end;
 

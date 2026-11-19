@@ -96,6 +96,8 @@ end;
 
 procedure TAtlasIdeMinimapFolds.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+const
+  cMaxPainted = 1000;
 var
   mView: IOTAEditView;
   mIndex: Integer;
@@ -127,7 +129,7 @@ begin
       end;
     end;
     // Höchstens eine Bildschirmseite merken.
-    if Length(FPainted) < 1000 then
+    if Length(FPainted) < cMaxPainted then
     begin
       FPainted := FPainted + [TAtlasMinimapPainted.Create(Rect.Top, Context.LogicalLineNum - 1)];
     end;

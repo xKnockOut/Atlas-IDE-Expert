@@ -54,26 +54,31 @@ begin
 end;
 
 function TAtlasCompilerTools.LogText: string;
+const
+  cPrefix = 'command-line compiler: ';
+  cNotChecked = 'not checked';
+  cBoth = 'dcc32, dcc64';
+  cNone = 'none (Starter or Community edition), builds run through the IDE';
 begin
   if not Checked then
   begin
-    Result := 'command-line compiler: not checked';
+    Result := cPrefix + cNotChecked;
   end
   else if Dcc32 and Dcc64 then
   begin
-    Result := 'command-line compiler: dcc32, dcc64';
+    Result := cPrefix + cBoth;
   end
   else if Dcc32 then
   begin
-    Result := 'command-line compiler: dcc32';
+    Result := cPrefix + 'dcc32';
   end
   else if Dcc64 then
   begin
-    Result := 'command-line compiler: dcc64';
+    Result := cPrefix + 'dcc64';
   end
   else
   begin
-    Result := 'command-line compiler: none (Starter or Community edition), builds run through the IDE';
+    Result := cPrefix + cNone;
   end;
 end;
 
@@ -107,6 +112,8 @@ begin
 end;
 
 class function TAtlasEdition.NeedsCommandLine(const AProgram: string): Boolean;
+const
+  cExe = '.exe';
 var
   mName, mCompiler: string;
   mSlash: Integer;
@@ -118,9 +125,9 @@ begin
     mName := mName.Substring(mSlash + 1);
   end;
   mName := LowerCase(mName);
-  if mName.EndsWith('.exe') then
+  if mName.EndsWith(cExe) then
   begin
-    mName := mName.Substring(0, mName.Length - 4);
+    mName := mName.Substring(0, mName.Length - Length(cExe));
   end;
   for mCompiler in cCompilers do
   begin

@@ -528,6 +528,8 @@ begin
 end;
 
 procedure TAtlasIdeGutterMarks.ShowTip;
+const
+  cTipGap = 4;
 var
   mLayer: IAtlasGutterLayer;
   mTitle, mText, mFileName: string;
@@ -557,7 +559,7 @@ begin
     end;
   TAtlasIdeStyle.Apply(FTip, FHover.Screen);
   FTip.ShowNote(mTitle, mText, mLayer.TipLinks(mFileName, mLine),
-    Point(FHover.Screen.Right + 4, FHover.Screen.Bottom + 2));
+    Point(FHover.Screen.Right + cTipGap, FHover.Screen.Bottom + 2));
 end;
 
 

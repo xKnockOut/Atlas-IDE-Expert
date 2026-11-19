@@ -223,7 +223,7 @@ begin
   begin
     Result := AText.StartsWith('//');
     AHint.EndLabel := Result;
-    AText := Trim(Copy(AText, 3, MaxInt));
+    AText := Trim(Copy(AText, Length('//') + 1, MaxInt));
     // Blockanfang für den Sprung per Klick (#620).
     AHint.BlockLine := AEntry.GetValue<Integer>('data.blockStart.line', -1);
     AHint.BlockCharacter := AEntry.GetValue<Integer>('data.blockStart.character', 0);
@@ -527,6 +527,10 @@ begin
   end;
 end;
 
+const
+  // Mehrere Referenzsuchen: ein Vielfaches der üblichen Wartezeit.
+  cImpactTimeoutFactor = 30;
+
 function TLspSession.Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
 var
   mParams: TJSONObject;
@@ -535,7 +539,7 @@ begin
   mParams := PositionParams(AFileName, ALine, ACharacter);
   mParams.AddPair('depth', TJSONNumber.Create(ADepth));
   // Mehrere Referenzsuchen über das ganze Projekt; der Server begrenzt die Zeit selbst und meldet es.
-  mResponse := FClient.Request('atlas/impact', mParams, FTimeoutMs * 30);
+  mResponse := FClient.Request('atlas/impact', mParams, FTimeoutMs * cImpactTimeoutFactor);
   try
     Result := ImpactFromJson(mResponse);
   finally

@@ -260,6 +260,8 @@ begin
 end;
 
 procedure TAtlasIdeNotifications.Show;
+const
+  cAnchorInset = 40;
 var
   mAnchor: TPoint;
   mArea: TRect;
@@ -273,7 +275,7 @@ begin
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
     mArea := TAtlasIdeHost.PopupArea;
-    mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
+    mAnchor := Point(mArea.Left + cAnchorInset, mArea.Bottom - cAnchorInset);
   end;
   Show(mAnchor);
 end;
@@ -351,6 +353,9 @@ begin
 end;
 
 procedure TAtlasIdeNotifications.Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
+const
+  /// <summary>Stelle der ersten Meldung: Datei(Zeile): Text.</summary>
+  cTargetFormat = '%s(%d): %s';
 var
   mNotice: TAtlasBuildNotice;
   mProject, mTitle, mText, mAction: string;
@@ -375,7 +380,7 @@ begin
   if mNotice.HasTarget then
   begin
     mTarget := mNotice.Target;
-    mText := mText + ' · ' + Format('%s(%d): %s', [ExtractFileName(mTarget.FileName), mTarget.Line, mTarget.Text]);
+    mText := mText + ' · ' + Format(cTargetFormat, [ExtractFileName(mTarget.FileName), mTarget.Line, mTarget.Text]);
     mActions := [TAtlasNotificationCenter.Action(mAction,
       procedure
       begin

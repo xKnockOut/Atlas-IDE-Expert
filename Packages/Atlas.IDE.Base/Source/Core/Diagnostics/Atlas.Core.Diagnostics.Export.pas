@@ -46,7 +46,28 @@ uses
   System.IOUtils,
   System.DateUtils,
   System.Zip,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TExportText = (FileLines, MoreLines);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TExportText] of string = (
+    (' (%d Zeilen) ==',
+     '… %d weitere Zeilen'),
+    (' (%d lines) ==',
+     '… %d more lines'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TExportText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   // Wie TDiagnosticLogFolder.cFilePattern im Server; die Map-Dateien heißen diag-map-*.txt.
@@ -125,8 +146,8 @@ begin
       mBytes := ReadShared(mFileName);
       mLines := TEncoding.UTF8.GetString(mBytes).Split([#13#10, #10], TStringSplitOptions.ExcludeEmpty);
       Inc(mTotal, Length(mLines));
-      mBuilder.Append('== ').Append(ExtractFileName(mFileName)).Append(' (').Append(Length(mLines))
-        .Append(' Zeilen) ==').Append(sLineBreak);
+      mBuilder.Append('== ').Append(ExtractFileName(mFileName))
+        .Append(Format(UiText(TExportText.FileLines), [Length(mLines)])).Append(sLineBreak);
       for mLine in mLines do
       begin
         if mShown >= AMaxLines then
@@ -139,7 +160,7 @@ begin
     end;
     if mTotal > mShown then
     begin
-      mBuilder.Append(Format('… %d weitere Zeilen', [mTotal - mShown])).Append(sLineBreak);
+      mBuilder.Append(Format(UiText(TExportText.MoreLines), [mTotal - mShown])).Append(sLineBreak);
     end;
     Result := mBuilder.ToString;
   finally
@@ -204,5 +225,8 @@ begin
   Result := 'Atlas ' + AAtlasVersion + sLineBreak + 'IDE ' + AIdeVersion + sLineBreak + 'Plattform ' + APlatform +
     sLineBreak;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.Export', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

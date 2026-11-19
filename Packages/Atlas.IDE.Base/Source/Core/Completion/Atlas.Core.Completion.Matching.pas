@@ -203,12 +203,16 @@ begin
 end;
 
 class function TAtlasCompletionMatcher.TypoLimit(const APattern: string): Integer;
+const
+  // Kürzer: kein Tippfehler erlaubt; bis zur zweiten Grenze einer, darüber zwei.
+  cMinTypoLength = 3;
+  cOneTypoLength = 5;
 begin
-  if Length(APattern) < 3 then
+  if Length(APattern) < cMinTypoLength then
   begin
     Result := 0;
   end
-  else if Length(APattern) <= 5 then
+  else if Length(APattern) <= cOneTypoLength then
   begin
     Result := 1;
   end

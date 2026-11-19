@@ -309,11 +309,13 @@ end;
 
 /// <summary>Zusatz der Startzeile im Protokoll, wenn die Sitzung kein Sitzungsbuch führt.</summary>
 function NoBookNote(const ABook: TAtlasSessionBook): string;
+const
+  cNoMarker = ', ohne Sitzungsmarke (%s)';
 begin
   Result := '';
   if not ABook.Tracked then
   begin
-    Result := ', ohne Sitzungsmarke (' + TAtlasSafeMode.cNoMarkerEnvironmentName + ')';
+    Result := Format(cNoMarker, [TAtlasSafeMode.cNoMarkerEnvironmentName]);
   end;
 end;
 

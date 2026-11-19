@@ -287,9 +287,14 @@ end;
 
 { TLspSessionBase }
 
+const
+  cDefaultTimeoutMs = 3000;
+  // Der Server liest beim Start Projekte und Einstellungen ein.
+  cInitializeTimeoutMs = 15000;
+
 constructor TLspSessionBase.Create(AClient: TLspClient);
 begin
-  Create(AClient, 3000);
+  Create(AClient, cDefaultTimeoutMs);
 end;
 
 destructor TLspSessionBase.Destroy;
@@ -469,7 +474,7 @@ begin
   AttachClientHandlers;
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
   // außerhalb der gemeldeten Projekte.
-  mResponse := FClient.Request('initialize', mParams, 15000);
+  mResponse := FClient.Request('initialize', mParams, cInitializeTimeoutMs);
   try
     if mResponse is TJSONObject then
     begin

@@ -979,7 +979,7 @@ begin
   end
   else if FKind = TStatementKind.ElseHeader then
   begin
-    mRest := Trim(Copy(FCode, FScan.Starts[FFirst] + 4, MaxInt));
+    mRest := Trim(Copy(FCode, FScan.Starts[FFirst] + Length('else'), MaxInt));
   end;
   // Etwas hinter then/do/else: begin öffnet einen Block, sonst eine Anweisung in derselben Zeile.
   if SameText(mRest, 'begin') then
@@ -1120,6 +1120,8 @@ begin
 end;
 
 procedure TStatementJob.CompleteRepeat;
+const
+  cUntil = 'until ';
 begin
   if AfterStarts(['until']) then
   begin
@@ -1128,12 +1130,12 @@ begin
   else if FHasBody then
   begin
     // Rumpf steht schon da: until dahinter, Cursor an die Bedingung.
-    InsertLine(FLast + 1, FIndent + 'until ;');
-    CursorAt(FLast + 1, Length(FIndent) + 6);
+    InsertLine(FLast + 1, FIndent + cUntil + ';');
+    CursorAt(FLast + 1, Length(FIndent) + Length(cUntil));
   end
   else
   begin
-    InsertLine(FLine + 1, FIndent + 'until ;');
+    InsertLine(FLine + 1, FIndent + cUntil + ';');
     CursorLineAfter(FLine, FIndent + FStep);
   end;
 end;

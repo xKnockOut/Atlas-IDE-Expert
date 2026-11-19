@@ -164,26 +164,33 @@ const
 
 type
   TState = class
+  private
+    FHooks: TAtlasIdeProblemsHooks;
+    FTimer: TTimer;
+    FVersion: Integer;
+    FInputs: string;
+    FCursor: string;
+    FStatus: string;
+    FFindings: TAtlasFindingsCache;
+    FCatalog: TJSONValue;
+    FCatalogLanguage: TAtlasLanguage;
+    FCatalogLoading: Boolean;
   public
-    Hooks: TAtlasIdeProblemsHooks;
-    Timer: TTimer;
-    /// <summary>Zuletzt gezeigter Stand: Version des Speichers und Eingaben (Bereich, Dateien, obere Datei).</summary>
-    Version: Integer;
-    Inputs: string;
-    /// <summary>Datei und Zeile des Cursors beim letzten Folgen.</summary>
-    Cursor: string;
-    Status: string;
-    /// <summary>Befunde je Datei: Neu gebaut (und von der Platte gelesen) werden nur Dateien mit neuem Stand.
-    /// </summary>
-    Findings: TAtlasFindingsCache;
-    Catalog: TJSONValue;
-    CatalogLanguage: TAtlasLanguage;
     constructor Create;
     destructor Destroy; override;
     procedure Tick(Sender: TObject);
-  private
-    FCatalogLoading: Boolean;
-  public
+    property Hooks: TAtlasIdeProblemsHooks read FHooks write FHooks;
+    /// <summary>Zuletzt gezeigter Stand: Version des Speichers und Eingaben (Bereich, Dateien, obere Datei).</summary>
+    property Version: Integer read FVersion write FVersion;
+    property Inputs: string read FInputs write FInputs;
+    /// <summary>Datei und Zeile des Cursors beim letzten Folgen.</summary>
+    property Cursor: string read FCursor write FCursor;
+    property Status: string read FStatus write FStatus;
+    /// <summary>Befunde je Datei: Neu gebaut (und von der Platte gelesen) werden nur Dateien mit neuem Stand.
+    /// </summary>
+    property Findings: TAtlasFindingsCache read FFindings;
+    property Catalog: TJSONValue read FCatalog write FCatalog;
+    property CatalogLanguage: TAtlasLanguage read FCatalogLanguage write FCatalogLanguage;
     /// <summary>Eine Anfrage nach dem Katalog läuft (Hover fragt nur einmal, #54).</summary>
     property CatalogLoading: Boolean read FCatalogLoading write FCatalogLoading;
   end;
@@ -521,7 +528,7 @@ begin
         Exit;
       end;
       // Der Wert gehört dem Absender: eine Kopie merken.
-      FreeAndNil(State.Catalog);
+      State.Catalog.Free;
       State.Catalog := AValue.Clone as TJSONValue;
       State.CatalogLanguage := TAtlasStrings.Language;
       if Assigned(ADone) then
@@ -730,19 +737,19 @@ end;
 constructor TState.Create;
 begin
   inherited Create;
-  Findings := TAtlasFindingsCache.Create;
+  FFindings := TAtlasFindingsCache.Create;
   Version := -1;
-  Timer := TTimer.Create(nil);
-  Timer.Interval := cTickMs;
-  Timer.OnTimer := Tick;
-  Timer.Enabled := True;
+  FTimer := TTimer.Create(nil);
+  FTimer.Interval := cTickMs;
+  FTimer.OnTimer := Tick;
+  FTimer.Enabled := True;
 end;
 
 destructor TState.Destroy;
 begin
-  Timer.Free;
-  Findings.Free;
-  Catalog.Free;
+  FTimer.Free;
+  FFindings.Free;
+  FCatalog.Free;
   inherited Destroy;
 end;
 

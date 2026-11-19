@@ -339,6 +339,8 @@ begin
 end;
 
 procedure TAtlasIdeQuickToggles.Show;
+const
+  cAnchorInset = 40;
 var
   mAnchor: TPoint;
   mArea: TRect;
@@ -352,7 +354,7 @@ begin
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
     mArea := TAtlasIdeHost.PopupArea;
-    mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
+    mAnchor := Point(mArea.Left + cAnchorInset, mArea.Bottom - cAnchorInset);
   end;
   Show(mAnchor);
 end;

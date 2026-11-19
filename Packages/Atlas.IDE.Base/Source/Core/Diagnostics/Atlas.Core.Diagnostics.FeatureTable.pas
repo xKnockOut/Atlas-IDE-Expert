@@ -178,6 +178,8 @@ begin
 end;
 
 procedure TAtlasFeatureTable.Join(const AModule: string; const ANames: array of string);
+const
+  cUnknownPart = 'Teil "%s" für Modul "%s" unbekannt';
 var
   mName: string;
   mIndex: Integer;
@@ -199,7 +201,7 @@ begin
     end;
     if not mFound then
     begin
-      raise EArgumentException.CreateFmt('Teil "%s" für Modul "%s" unbekannt', [mName, AModule]);
+      raise EArgumentException.CreateFmt(cUnknownPart, [mName, AModule]);
     end;
   end;
 end;

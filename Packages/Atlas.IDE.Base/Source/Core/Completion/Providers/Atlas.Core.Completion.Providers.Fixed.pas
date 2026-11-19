@@ -75,6 +75,9 @@ begin
   Create(AItems, 0, False);
 end;
 
+const
+  cPollMs = 5;
+
 function TAtlasFixedCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
   const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
     out AState: TAtlasFetchState): TAtlasCompletionItems;
@@ -90,7 +93,7 @@ begin
     begin
       Exit(nil);
     end;
-    TThread.Sleep(5);
+    TThread.Sleep(cPollMs);
   end;
   Result := FItems;
 end;

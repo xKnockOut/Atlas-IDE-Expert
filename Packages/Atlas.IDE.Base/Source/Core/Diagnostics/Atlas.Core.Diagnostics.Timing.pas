@@ -856,6 +856,8 @@ end;
 
 class function TAtlasTimingReport.Build(const AQueries: TArray<TAtlasQueryTiming>;
   const AInput: TAtlasTimingReportInput): string;
+const
+  cVersions = 'Atlas: %s, IDE: %s';
 var
   mLines: TStringList;
   mIndex: Integer;
@@ -866,7 +868,8 @@ begin
     mLines.Add(UiText(TTimingText.AtlasDiagnosticMode479));
     mLines.Add('');
     mLines.Add(UiText(TTimingText.Created) + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
-    mLines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + UiText(TTimingText.Platform) + AInput.Platform);
+    mLines.Add(Format(cVersions, [AInput.AtlasVersion, AInput.IdeVersion]) + UiText(TTimingText.Platform) +
+      AInput.Platform);
     mLines.Add(Format(UiText(TTimingText.Budget409ContextMsSource),
       [TAtlasTimingBudget.cContextMs, TAtlasTimingBudget.cProviderMs,
       TAtlasTimingBudget.cFilterSortMs, TAtlasTimingBudget.cDrawMs, TAtlasTimingBudget.cFirstVisibleMs]));

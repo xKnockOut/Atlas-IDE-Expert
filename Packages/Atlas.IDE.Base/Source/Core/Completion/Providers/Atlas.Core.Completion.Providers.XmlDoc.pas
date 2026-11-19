@@ -100,6 +100,9 @@ begin
 end;
 
 class function TAtlasXmlDoc.FollowingDeclaration(const AText: string; ALine: Integer): string;
+const
+  // So weit sucht die Deklaration unter dem Kommentar.
+  cLookAhead = 12;
 var
   mAll: TArray<string>;
   mIndex, mDepth, mPosition: Integer;
@@ -108,7 +111,7 @@ begin
   Result := '';
   mAll := Lines(AText);
   mDepth := 0;
-  for mIndex := ALine + 1 to Min(High(mAll), ALine + 12) do
+  for mIndex := ALine + 1 to Min(High(mAll), ALine + cLookAhead) do
   begin
     mLine := Trim(mAll[mIndex]);
     if mLine.StartsWith('///') or ((Result = '') and ((mLine = '') or mLine.StartsWith('['))) then
@@ -193,9 +196,23 @@ begin
 end;
 
 class function TAtlasXmlDoc.TagItems(const ADeclaration: string): TAtlasCompletionItems;
+const
+  cParamLabel = 'param name="%s"';
+  cParamText = 'param name="%s">$0</param>';
+  cFunction = 'function ';
+  cClassFunction = 'class function ';
+  // Weitere Tags hinter returns: Anzeige und eingefügter Text.
+  cTrailing: array[0..6, 0..1] of string = (
+    ('remarks', 'remarks>$0</remarks>'),
+    ('exception cref=""', 'exception cref="$0"></exception>'),
+    ('see cref=""', 'see cref="$0"/>'),
+    ('value', 'value>$0</value>'),
+    ('para', 'para>$0</para>'),
+    ('c', 'c>$0</c>'),
+    ('code', 'code>$0</code>'));
 var
   mName: string;
-  mRank: Integer;
+  mRank, mIndex: Integer;
   mIsFunction: Boolean;
 begin
   mRank := 0;
@@ -203,18 +220,19 @@ begin
   for mName in ParamNames(ADeclaration) do
   begin
     Inc(mRank);
-    Result := Result + [Tag(Format('param name="%s"', [mName]), Format('param name="%s">$0</param>', [mName]), mRank)];
+    Result := Result + [Tag(Format(cParamLabel, [mName]), Format(cParamText, [mName]), mRank)];
   end;
-  mIsFunction := StartsText('function ', TrimLeft(ADeclaration)) or StartsText('class function ', TrimLeft(ADeclaration));
+  mIsFunction := StartsText(cFunction, TrimLeft(ADeclaration)) or StartsText(cClassFunction, TrimLeft(ADeclaration));
   if mIsFunction then
   begin
     Result := Result + [Tag('returns', 'returns>$0</returns>', mRank + 1)];
   end;
-  Result := Result + [Tag('remarks', 'remarks>$0</remarks>', mRank + 2),
-    Tag('exception cref=""', 'exception cref="$0"></exception>', mRank + 3),
-    Tag('see cref=""', 'see cref="$0"/>', mRank + 4), Tag('value', 'value>$0</value>', mRank + 5),
-    Tag('para', 'para>$0</para>', mRank + 6), Tag('c', 'c>$0</c>', mRank + 7),
-    Tag('code', 'code>$0</code>', mRank + 8)];
+  // Hinter returns, auch wenn es fehlt.
+  Inc(mRank, 2);
+  for mIndex := Low(cTrailing) to High(cTrailing) do
+  begin
+    Result := Result + [Tag(cTrailing[mIndex, 0], cTrailing[mIndex, 1], mRank + mIndex)];
+  end;
 end;
 
 { TAtlasXmlDocCompletionProvider }

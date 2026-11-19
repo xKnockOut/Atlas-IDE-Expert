@@ -108,13 +108,15 @@ uses
 
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
-  TManagerText = (Completion);
+  TManagerText = (Completion, GoToDefinitionFailed);
 {$SCOPEDENUMS OFF}
 
 const
   cTexts: array[TAtlasLanguage, TManagerText] of string = (
-    ('Vervollständigung: '),
-    ('Completion: '));
+    ('Vervollständigung: ',
+     'Gehe zu Definition: %s'),
+    ('Completion: ',
+     'Go to definition: %s'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TManagerText): string;
@@ -126,6 +128,9 @@ const
   // Unterscheidet sich vom gleichnamigen benutzerdefinierten LSP-Eintrag.
   cManagerName = 'Atlas IDE Expert';
   cManagerId = 'Atlas.CodeInsight';
+  // Namen der Tätigkeiten für die Hängererkennung (Protokoll).
+  cActivityCompletion = 'Vervollständigung öffnen';
+  cActivityDefinition = 'Gehe zu Definition';
 
 /// <summary>Fehler eines Einstiegspunkts an die Sicherung (#493); ein beendeter Server oder sein
 /// Zeitlimit (ELspClientError) ist erwartbar und zählt nicht.</summary>
@@ -472,7 +477,7 @@ function TAtlasCodeInsightManager.InvokeCodeCompletion(HowInvoked: TOTAInvokeTyp
 var
   mActivity: IInterface;
 begin
-  mActivity := TAtlasActivity.Scope('Vervollständigung öffnen');
+  mActivity := TAtlasActivity.Scope(cActivityCompletion);
   // False: Die IDE zeigt keine eigene Liste; unser Popup übernimmt (#407, #410).
   Result := False;
   Diagnose(Format('InvokeCodeCompletion(%d, %d Zeichen)', [Ord(HowInvoked), Length(Str)]));
@@ -579,7 +584,7 @@ var
   mView: IOTAEditView;
   mActivity: IInterface;
 begin
-  mActivity := TAtlasActivity.Scope('Gehe zu Definition');
+  mActivity := TAtlasActivity.Scope(cActivityDefinition);
   // Laut ToolsAPI: AFileName = '' und ALineNum = 0 bricht ohne Meldung ab. Mit False meldet die IDE „Datei ""
   // nicht gefunden“; deshalb True.
   AFileName := '';
@@ -614,7 +619,7 @@ begin
   except
     on E: Exception do
     begin
-      ReportError('Gehe zu Definition: ' + E.Message);
+      ReportError(Format(UiText(TManagerText.GoToDefinitionFailed), [E.Message]));
       ReportFailure(TAtlasFeature.GoToDefinition, E);
       AFileName := '';
       ALineNum := 0;

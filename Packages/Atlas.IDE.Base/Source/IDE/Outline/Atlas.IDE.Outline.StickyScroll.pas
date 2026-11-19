@@ -258,7 +258,7 @@ type
     procedure RunPendingJump;
     procedure Clear;
     procedure Update;
-    procedure QueueInvalidate;
+    class procedure QueueInvalidate; static;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -462,7 +462,7 @@ begin
   end;
 end;
 
-procedure TStickyState.QueueInvalidate;
+class procedure TStickyState.QueueInvalidate;
 begin
   if InvalidatePending then
   begin

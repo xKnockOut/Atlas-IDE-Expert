@@ -199,9 +199,11 @@ end;
 { TMinimapState }
 
 constructor TMinimapState.Create;
+const
+  cDefaultTabWidth = 4;
 begin
   inherited Create;
-  FTabWidth := 4;
+  FTabWidth := cDefaultTabWidth;
   FHost := TAtlasEditorBarHost.Create('Minimap', TAtlasFeature.Minimap,
     function(AEditorParent: TWinControl): TControl
     begin

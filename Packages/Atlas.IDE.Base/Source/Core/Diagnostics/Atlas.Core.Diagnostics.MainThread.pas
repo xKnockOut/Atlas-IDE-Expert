@@ -156,12 +156,14 @@ begin
 end;
 
 procedure TAtlasMainThread.TOwner.Execute;
+const
+  cWakeMs = 1000;
 begin
   NameThreadForDebugging('Atlas.MainThread');
   // Der Thread führt nichts aus; er besitzt nur die Einträge (RemoveQueuedEvents in Stop).
   while not Terminated do
   begin
-    FWake.WaitFor(1000);
+    FWake.WaitFor(cWakeMs);
   end;
 end;
 

@@ -35,6 +35,12 @@ uses
 
 const
   cPrefix = 'Format: ';
+  cLinesFormat = 'lines %d-%d';
+  cRequestFormat = 'block valid=%s size=%d, ';
+  cNoSelection = 'no selection -> formatting (whole file)';
+  cSelectionFormat = 'selection %s -> rangeFormatting';
+  cEditsFormat = '%d edits';
+  cOutsideFormat = ', %d outside selection';
 
 /// <summary>Erste und letzte Zeile (0-basiert) von AStart bis AEnd; ein Ende am Zeilenanfang zählt nicht
 /// mit.</summary>
@@ -50,7 +56,7 @@ end;
 
 function LinesText(AFirst, ALast: Integer): string;
 begin
-  Result := Format('lines %d-%d', [AFirst + 1, ALast + 1]);
+  Result := Format(cLinesFormat, [AFirst + 1, ALast + 1]);
 end;
 
 function YesNo(AValue: Boolean): string;
@@ -69,14 +75,14 @@ class function TAtlasFormatLog.Request(ABlockValid: Boolean; ABlockSize: Integer
 var
   mFirst, mLast: Integer;
 begin
-  Result := cPrefix + Format('block valid=%s size=%d, ', [YesNo(ABlockValid), ABlockSize]);
+  Result := cPrefix + Format(cRequestFormat, [YesNo(ABlockValid), ABlockSize]);
   if ASelection.IsEmpty then
   begin
-    Result := Result + 'no selection -> formatting (whole file)';
+    Result := Result + cNoSelection;
     Exit;
   end;
   LinesOf(ASelection.StartPos, ASelection.EndPos, mFirst, mLast);
-  Result := Result + 'selection ' + LinesText(mFirst, mLast) + ' -> rangeFormatting';
+  Result := Result + Format(cSelectionFormat, [LinesText(mFirst, mLast)]);
 end;
 
 class function TAtlasFormatLog.Answer(const AEdits: TArray<TLspTextEdit>; const ASelection: TLspRange): string;
@@ -84,7 +90,7 @@ var
   mEdit: TLspTextEdit;
   mFirst, mLast, mSelFirst, mSelLast, mEditFirst, mEditLast, mOutside: Integer;
 begin
-  Result := cPrefix + Format('%d edits', [Length(AEdits)]);
+  Result := cPrefix + Format(cEditsFormat, [Length(AEdits)]);
   if Length(AEdits) = 0 then
   begin
     Exit;
@@ -106,7 +112,7 @@ begin
   Result := Result + ', ' + LinesText(mFirst, mLast);
   if not ASelection.IsEmpty then
   begin
-    Result := Result + Format(', %d outside selection', [mOutside]);
+    Result := Result + Format(cOutsideFormat, [mOutside]);
   end;
 end;
 

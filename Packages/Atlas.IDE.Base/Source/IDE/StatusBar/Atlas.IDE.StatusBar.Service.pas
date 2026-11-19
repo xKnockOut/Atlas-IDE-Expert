@@ -120,6 +120,11 @@ const
   /// Willkommensseite); dafür reicht eine Sekunde.</summary>
   cIdleTickMs = 1000;
   cLogPrefix = 'Atlas-Statusleiste: ';
+  // Protokollzeilen der Klicks.
+  cLogStatus = 'Klick auf Status';
+  cLogBadge = 'Klick auf Benachrichtigungen';
+  cLogLiveCheck = 'Klick auf Live-Prüfung';
+  cLogMethod = 'Klick auf Methode';
 
 type
   TFieldAction = reference to procedure(AField: TAtlasStatusField; const APoint: TPoint);
@@ -150,18 +155,18 @@ type
     function ExtraClick: TAtlasStatusBarExtraEvent;
     /// <summary>AAction nach dem Klick; ALog ('' = nichts) ins Protokoll.</summary>
     function Deferred(const ALog: string; const AAction: TProc): TProc;
-    procedure RefreshField;
+    class procedure RefreshField; static;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Reset;
     procedure ApplyTheme;
     function TopBar: TAtlasEditorStatusBar;
-    procedure JumpToFinding(AKind: TAtlasFindingKind);
+    class procedure JumpToFinding(AKind: TAtlasFindingKind); static;
     procedure JumpToMethod;
-    procedure Recheck;
-    procedure ToggleItem(const AId: string);
-    procedure HideBar;
+    class procedure Recheck; static;
+    class procedure ToggleItem(const AId: string); static;
+    class procedure HideBar; static;
   end;
 
 function State: TStatusBarState;
@@ -331,7 +336,7 @@ end;
 
 procedure TStatusBarState.WireStatus(ABar: TAtlasEditorStatusBar);
 begin
-  ABar.OnStatus := FieldClick('Klick auf Status',
+  ABar.OnStatus := FieldClick(cLogStatus,
     procedure(AField: TAtlasStatusField; const APoint: TPoint)
     begin
       AField.OpenWindowAt(APoint);
@@ -341,7 +346,7 @@ begin
     begin
       AField.ContextAt(APoint);
     end);
-  ABar.OnBadge := FieldClick('Klick auf Benachrichtigungen',
+  ABar.OnBadge := FieldClick(cLogBadge,
     procedure(AField: TAtlasStatusField; const APoint: TPoint)
     begin
       AField.ClickBadge(APoint);
@@ -384,12 +389,12 @@ begin
     begin
       TAtlasIdeProblems.ShowCurrentFile;
     end);
-  ABar.OnLiveCheck := Deferred('Klick auf Live-Prüfung',
+  ABar.OnLiveCheck := Deferred(cLogLiveCheck,
     procedure
     begin
       Recheck;
     end);
-  ABar.OnMethod := Deferred('Klick auf Methode',
+  ABar.OnMethod := Deferred(cLogMethod,
     procedure
     begin
       JumpToMethod;
@@ -522,7 +527,7 @@ begin
     end;
 end;
 
-procedure TStatusBarState.RefreshField;
+class procedure TStatusBarState.RefreshField;
 var
   mField: TAtlasStatusField;
 begin
@@ -557,7 +562,7 @@ begin
   Result := TAtlasEditorStatusBar(FHost.ActiveBar);
 end;
 
-procedure TStatusBarState.JumpToFinding(AKind: TAtlasFindingKind);
+class procedure TStatusBarState.JumpToFinding(AKind: TAtlasFindingKind);
 var
   mView: IOTAEditView;
   mLine, mCharacter: Integer;
@@ -589,7 +594,7 @@ begin
   TAtlasIdeNavigation.GoToLocation(FTarget.FileName, FTarget.Method.Line, FTarget.Method.Character);
 end;
 
-procedure TStatusBarState.Recheck;
+class procedure TStatusBarState.Recheck;
 begin
   // Der Server verwirft alle Ergebnis-Ids; geöffnete Units holt der Controller nach dem refresh neu, die übrigen
   // liefert workspace/diagnostic nach und nach.
@@ -612,7 +617,7 @@ begin
   TAtlasIdeStatusBar.FHooks.Recheck();
 end;
 
-procedure TStatusBarState.ToggleItem(const AId: string);
+class procedure TStatusBarState.ToggleItem(const AId: string);
 var
   mNext: TAtlasPluginSettings;
 begin
@@ -623,7 +628,7 @@ begin
   RefreshField;
 end;
 
-procedure TStatusBarState.HideBar;
+class procedure TStatusBarState.HideBar;
 var
   mNext: TAtlasPluginSettings;
 begin

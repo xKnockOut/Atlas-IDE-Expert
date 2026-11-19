@@ -81,13 +81,16 @@ begin
 end;
 
 function Lines(const AUsages: TArray<TAtlasSafeDeleteUsage>): TArray<string>;
+const
+  // Datei:Zeile  Text
+  cUsageFormat = '%s:%d  %s';
 var
   mUsage: TAtlasSafeDeleteUsage;
 begin
   Result := nil;
   for mUsage in AUsages do
   begin
-    Result := Result + [Format('%s:%d  %s', [ExtractFileName(mUsage.FileName), mUsage.Line + 1, mUsage.Text])];
+    Result := Result + [Format(cUsageFormat, [ExtractFileName(mUsage.FileName), mUsage.Line + 1, mUsage.Text])];
   end;
 end;
 

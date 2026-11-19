@@ -119,6 +119,8 @@ end;
 
 constructor TAtlasEditorTestUnitLens.Create(const ASession: TAtlasTestUnitLensSessionFunc;
   const ARun: TAtlasLensCommandProc);
+const
+  cTickMs = 250;
 var
   mServices: INTACodeEditorServices;
 begin
@@ -136,7 +138,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -265,6 +267,10 @@ end;
 
 procedure TAtlasEditorTestUnitLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+const
+  // Rahmen und Fläche der Linse, Anteil der Akzentfarbe
+  cPillBorder = 0.35;
+  cPillFill = 0.12;
 var
   mText, mLine: string;
   mCell: TRect;
@@ -295,7 +301,8 @@ begin
     mCell := TAtlasLensPill.CellAfter(Context, mLine);
     mBack := TAtlasLensPill.BackAt(Context.Canvas, mCell.Left, Rect.Top + 1);
     FLensRect := TAtlasLensPill.Paint(Context.Canvas, Rect, mCell.Left, mText,
-      TAtlasLensPillStyle.Create(TAtlasColors.ForBackground(mBack).Accent, mBack, 0.35, 0.12, [fsUnderline]));
+      TAtlasLensPillStyle.Create(TAtlasColors.ForBackground(mBack).Accent, mBack, cPillBorder, cPillFill,
+      [fsUnderline]));
     FLensTopRow := Context.EditView.TopRow;
     TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName,
       FLine, ''), FLensRect, FLensTopRow, Rect.Height);

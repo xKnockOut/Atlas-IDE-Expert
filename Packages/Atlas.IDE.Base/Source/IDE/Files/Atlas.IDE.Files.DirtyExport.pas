@@ -54,6 +54,8 @@ uses
 
 const
   cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
+  /// <summary>Art der Datei im Protokoll, wenn sie nicht geschrieben werden konnte.</summary>
+  cDataKind = 'Liste ungespeicherter Dateien';
 
 /// <summary>Läuft unter APid dasselbe Programm wie im eigenen Prozess (bds.exe)? Eine wiederverwendete Nummer
 /// gehört oft einem ganz anderen Programm, auch einem, das sich nicht öffnen lässt. Die Prozessliste von Windows
@@ -191,6 +193,8 @@ end;
 { TAtlasDirtyExport }
 
 constructor TAtlasDirtyExport.Create;
+const
+  cTickMs = 1000;
 begin
   inherited Create;
   FFileName := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
@@ -203,7 +207,7 @@ begin
       ;
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 1000;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -267,7 +271,7 @@ begin
   except
     // Ohne Liste schützt der Server weiter über den Vergleich mit der Platte; der Grund steht einmal im Protokoll.
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Liste ungespeicherter Dateien', E);
+      TAtlasDataFile.ReportNotWritten(cDataKind, E);
   end;
 end;
 

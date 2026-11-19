@@ -167,6 +167,8 @@ begin
 end;
 
 procedure StartProblemsWindow;
+const
+  cCommandTimeoutMs = 10000;
 var
   mHooks: TAtlasIdeProblemsHooks;
 begin
@@ -175,7 +177,7 @@ begin
     procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
       // Im Hintergrund (#874).
-      RunServerCommand(ACommand, AArgumentsJson, 10000, ADone);
+      RunServerCommand(ACommand, AArgumentsJson, cCommandTimeoutMs, ADone);
     end;
   mHooks.Message := MessageLines();
   mHooks.Indexing := ServerIndexing;

@@ -95,21 +95,35 @@ const
 
 type
   TEntry = class
+  private
+    FFileName: string;
+    FNodes: TAtlasOutlineNodes;
+    FText: string;
+    FInterfaces: TAtlasInterfaceMethods;
+    FWithInterfaces: Boolean;
+    FVersion: Cardinal;
+    FStamp: Cardinal;
+    FLoaded: Boolean;
+    FNoServer: Boolean;
+    FPendingVersion: Cardinal;
+    FPendingSince: UInt64;
+    FRetryAt: UInt64;
+    FUsed: UInt64;
   public
-    FileName: string;
-    Nodes: TAtlasOutlineNodes;
-    Text: string;
-    Interfaces: TAtlasInterfaceMethods;
+    property FileName: string read FFileName write FFileName;
+    property Nodes: TAtlasOutlineNodes read FNodes write FNodes;
+    property Text: string read FText write FText;
+    property Interfaces: TAtlasInterfaceMethods read FInterfaces write FInterfaces;
     /// <summary>Der letzte Abruf hat die Interface-Methoden mitgeholt.</summary>
-    WithInterfaces: Boolean;
-    Version: Cardinal;
-    Stamp: Cardinal;
-    Loaded: Boolean;
-    NoServer: Boolean;
-    PendingVersion: Cardinal;
-    PendingSince: UInt64;
-    RetryAt: UInt64;
-    Used: UInt64;
+    property WithInterfaces: Boolean read FWithInterfaces write FWithInterfaces;
+    property Version: Cardinal read FVersion write FVersion;
+    property Stamp: Cardinal read FStamp write FStamp;
+    property Loaded: Boolean read FLoaded write FLoaded;
+    property NoServer: Boolean read FNoServer write FNoServer;
+    property PendingVersion: Cardinal read FPendingVersion write FPendingVersion;
+    property PendingSince: UInt64 read FPendingSince write FPendingSince;
+    property RetryAt: UInt64 read FRetryAt write FRetryAt;
+    property Used: UInt64 read FUsed write FUsed;
   end;
 
   /// <summary>Antwort eines Abrufs für den Eintrag Key in der Version Version; Ok ohne Zeitgrenze und Fehler.

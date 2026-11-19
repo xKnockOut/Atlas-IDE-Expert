@@ -85,7 +85,7 @@ type
     /// <summary>Fenster zeigen; der Modus bleibt, wie er ist.</summary>
     procedure ShowWindow;
     /// <summary>Befehl „Atlas: Diagnosefenster zeigen“ (schaltet bei Bedarf ein).</summary>
-    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+    class procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry); static;
     procedure ThemeChanged;
     /// <summary>Modus umschalten wie der Schnellschalter (Taste, Palette).</summary>
     class procedure Toggle; static;
@@ -386,7 +386,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDiagnosticMode.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+class procedure TAtlasIdeDiagnosticMode.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
   ARegistry.RegisterCommand('Atlas.DiagnosticWindow',
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticPaletteShow), '',

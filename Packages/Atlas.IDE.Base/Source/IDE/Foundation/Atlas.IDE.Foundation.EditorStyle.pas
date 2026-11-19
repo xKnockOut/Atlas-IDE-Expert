@@ -158,6 +158,8 @@ begin
 end;
 
 class function TAtlasIdeStyle.Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string;
+const
+  cScalingLine = 'Darstellung: %s %d pt, Monitor %d dpi, Caret %d px, Text %d px, Zoom %.2f';
 var
   mEditor: IOTAEditorServices;
   mFontName: string;
@@ -176,21 +178,24 @@ begin
   mTextHeight := TextHeightAt(mFontName, mFontSize, mMonitorPPI);
   mZoom := TAtlasScaling.ZoomFromCaret(ACaret.Height, mTextHeight);
   AWindow.SetScaling(mMonitorPPI, mZoom, mFontName, mFontSize);
-  Result := Format('Darstellung: %s %d pt, Monitor %d dpi, Caret %d px, Text %d px, Zoom %.2f',
+  Result := Format(cScalingLine,
     [mFontName, mFontSize, mMonitorPPI, ACaret.Height, mTextHeight, mZoom], TFormatSettings.Invariant);
 end;
 
 class function TAtlasIdeStyle.BaseTextHeight: Integer;
+const
+  cDefaultDpi = 96;
+  cDefaultHeight = 16;
 var
   mEditor: IOTAEditorServices;
 begin
   if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
   begin
-    Result := TextHeightAt(mEditor.EditOptions.FontName, mEditor.EditOptions.FontSize, 96);
+    Result := TextHeightAt(mEditor.EditOptions.FontName, mEditor.EditOptions.FontSize, cDefaultDpi);
   end
   else
   begin
-    Result := 16;
+    Result := cDefaultHeight;
   end;
 end;
 

@@ -832,6 +832,7 @@ contains
   Atlas.IDE.Outline.NavigationHiding in 'Source\IDE\Outline\Atlas.IDE.Outline.NavigationHiding.pas',
   Atlas.IDE.Outline.Breadcrumbs in 'Source\IDE\Outline\Atlas.IDE.Outline.Breadcrumbs.pas',
   Atlas.IDE.Outline.CrumbProbe in 'Source\IDE\Outline\Atlas.IDE.Outline.CrumbProbe.pas',
+  Atlas.IDE.Outline.CrumbCard in 'Source\IDE\Outline\Atlas.IDE.Outline.CrumbCard.pas',
   Atlas.IDE.Outline.StickyScroll in 'Source\IDE\Outline\Atlas.IDE.Outline.StickyScroll.pas',
   Atlas.IDE.Outline.StickyPaint in 'Source\IDE\Outline\Atlas.IDE.Outline.StickyPaint.pas',
   Atlas.Core.StartProfiles.Store in 'Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas',

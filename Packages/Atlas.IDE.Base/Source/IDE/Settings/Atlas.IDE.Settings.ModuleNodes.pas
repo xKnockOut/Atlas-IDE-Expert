@@ -168,6 +168,12 @@ end;
 { TAtlasModuleNodePage }
 
 procedure TAtlasModuleNodePage.ShowModules(const AModules: TArray<TAtlasKnownModule>);
+const
+  cMargin = 12;
+  cFirstTop = 40;
+  cLineHeight = 22;
+  // Name  Version  (Zustand)
+  cModuleLine = '%s  %s  (%s)';
 var
   mModule: TAtlasKnownModule;
   mTop: Integer;
@@ -176,11 +182,11 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := mLabel.ScaleValue(12);
-  mLabel.Top := mLabel.ScaleValue(12);
+  mLabel.Left := mLabel.ScaleValue(cMargin);
+  mLabel.Top := mLabel.ScaleValue(cMargin);
   mLabel.Font.Style := [fsBold];
   mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesTitle);
-  mTop := 40;
+  mTop := cFirstTop;
   for mModule in AModules do
   begin
     if mModule.Installed then
@@ -193,16 +199,16 @@ begin
     end;
     mLabel := TLabel.Create(Self);
     mLabel.Parent := Self;
-    mLabel.Left := mLabel.ScaleValue(12);
+    mLabel.Left := mLabel.ScaleValue(cMargin);
     mLabel.Top := mTop;
     mLabel.ShowAccelChar := False;
-    mLabel.Caption := Format('%s  %s  (%s)', [mModule.Info.Name, mModule.Info.Version, mState]);
-    Inc(mTop, 22);
+    mLabel.Caption := Format(cModuleLine, [mModule.Info.Name, mModule.Info.Version, mState]);
+    Inc(mTop, cLineHeight);
   end;
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := mLabel.ScaleValue(12);
-  mLabel.Top := mTop + mLabel.ScaleValue(12);
+  mLabel.Left := mLabel.ScaleValue(cMargin);
+  mLabel.Top := mTop + mLabel.ScaleValue(cMargin);
   mLabel.Font.Style := [fsItalic];
   mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesHint);
 end;

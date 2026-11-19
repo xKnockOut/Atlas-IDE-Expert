@@ -356,20 +356,25 @@ end;
 function TAtlasImpact.RunNames: TArray<string>;
 var
   mTest: TAtlasImpactTest;
-  mName, mSeen: string;
+  mName: string;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  mSeen := '|';
-  for mTest in Tests do
-  begin
-    for mName in mTest.RunNames do
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    for mTest in Tests do
     begin
-      if Pos('|' + UpperCase(mName) + '|', mSeen) = 0 then
+      for mName in mTest.RunNames do
       begin
-        mSeen := mSeen + UpperCase(mName) + '|';
-        Result := Result + [mName];
+        if not mSeen.ContainsKey(UpperCase(mName)) then
+        begin
+          mSeen.Add(UpperCase(mName), True);
+          Result := Result + [mName];
+        end;
       end;
     end;
+  finally
+    mSeen.Free;
   end;
 end;
 
@@ -516,13 +521,16 @@ end;
 
 /// <summary>LSP-Schweregrad (1 Fehler … 4 Hinweis); Unbekanntes gilt als Fehler.</summary>
 function ProblemSeverityOf(AValue: Integer): TAtlasProblemSeverity;
+const
+  cLspInformation = 3;
+  cLspHint = 4;
 begin
   case AValue of
     2:
       Result := TAtlasProblemSeverity.Warning;
-    3:
+    cLspInformation:
       Result := TAtlasProblemSeverity.Information;
-    4:
+    cLspHint:
       Result := TAtlasProblemSeverity.Hint;
   else
     Result := TAtlasProblemSeverity.Error;

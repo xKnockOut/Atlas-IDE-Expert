@@ -86,14 +86,20 @@ type
   end;
 
   TQuickOpenState = class
+  private
+    FList: TAtlasQuickOpenList;
+    FRecent: TAtlasCommandHistory;
+    FNotifier: TIdeNotifier;
+    FNotifierIndex: Integer;
+    FRefreshQueued: Boolean;
   public
-    List: TAtlasQuickOpenList;
-    Recent: TAtlasCommandHistory;
-    Notifier: TIdeNotifier;
-    NotifierIndex: Integer;
-    RefreshQueued: Boolean;
     constructor Create;
     destructor Destroy; override;
+    property List: TAtlasQuickOpenList read FList;
+    property Recent: TAtlasCommandHistory read FRecent;
+    property Notifier: TIdeNotifier read FNotifier write FNotifier;
+    property NotifierIndex: Integer read FNotifierIndex write FNotifierIndex;
+    property RefreshQueued: Boolean read FRefreshQueued write FRefreshQueued;
   end;
 
 function State: TQuickOpenState;
@@ -163,9 +169,9 @@ end;
 constructor TQuickOpenState.Create;
 begin
   inherited Create;
-  NotifierIndex := -1;
-  Recent := TAtlasCommandHistory.Create;
-  List := TAtlasQuickOpenList.Create(
+  FNotifierIndex := -1;
+  FRecent := TAtlasCommandHistory.Create;
+  FList := TAtlasQuickOpenList.Create(
     function(const AFolder: string; ARecursive: Boolean): TArray<string>
     begin
       Result := TAtlasQuickOpen.ListFolder(AFolder, ARecursive);
@@ -174,8 +180,8 @@ end;
 
 destructor TQuickOpenState.Destroy;
 begin
-  List.Free;
-  Recent.Free;
+  FList.Free;
+  FRecent.Free;
   inherited;
 end;
 
@@ -339,13 +345,27 @@ end;
 type
   /// <summary>Zustand eines offenen Fensters; gehört dem Fenster und geht mit ihm.</summary>
   TWindowState = class(TComponent)
+  private
+    FWindow: TAtlasPaletteWindow;
+    FFileSymbols: TArray<TAtlasSymbol>;
+    FFileSymbolsRead: Boolean;
+    FTop: string;
+    FOpen: TArray<string>;
   public
-    Window: TAtlasPaletteWindow;
-    FileSymbols: TArray<TAtlasSymbol>;
-    FileSymbolsRead: Boolean;
-    Top: string;
-    Open: TArray<string>;
+    /// <summary>AWindow ist zugleich Eigentümer: Der Zustand geht mit dem Fenster.</summary>
+    constructor Create(AWindow: TAtlasPaletteWindow); reintroduce;
+    property Window: TAtlasPaletteWindow read FWindow;
+    property FileSymbols: TArray<TAtlasSymbol> read FFileSymbols write FFileSymbols;
+    property FileSymbolsRead: Boolean read FFileSymbolsRead write FFileSymbolsRead;
+    property Top: string read FTop write FTop;
+    property Open: TArray<string> read FOpen write FOpen;
   end;
+
+constructor TWindowState.Create(AWindow: TAtlasPaletteWindow);
+begin
+  inherited Create(AWindow);
+  FWindow := AWindow;
+end;
 
 /// <summary>Treffer unter den Dateien; solange die Liste entsteht und leer ist, ein Hinweis.</summary>
 function FileResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
@@ -532,6 +552,8 @@ begin
 end;
 
 class procedure TAtlasIdeQuickOpen.Install(const ASessionOf: TFunc<TLspSession>);
+const
+  cRecentKind = 'Verlauf von Schnell öffnen';
 var
   mOwner: TQuickOpenState;
   mServices: IOTAServices;
@@ -541,7 +563,7 @@ begin
   FState := mOwner;
   // Fehlt, unbrauchbar oder gesperrt: leer weiter; TAtlasDataFile legt Unbrauchbares als quickopen.json.defekt
   // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht.
-  mOwner.Recent.Kind := 'Verlauf von Schnell öffnen';
+  mOwner.Recent.Kind := cRecentKind;
   mOwner.Recent.LoadFromFile(RecentFile);
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
@@ -607,7 +629,6 @@ begin
   Refresh;
   mPalette := TAtlasPaletteWindow.CreatePalette(Application, nil, nil, TAtlasIdeStyle.Colors);
   mWindow := TWindowState.Create(mPalette);
-  mWindow.Window := mPalette;
   mWindow.Top := TopFile;
   mWindow.Open := OpenFiles;
   mPalette.Prompt := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenPrompt);

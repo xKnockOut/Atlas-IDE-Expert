@@ -416,15 +416,15 @@ var
 begin
   AddItem(TAtlasTextId.RenameMenu, 0, RenameClick);
   // Editorbefehle (#399) und Ergebnisfenster (#400); Tag wählt den Befehl in EditorClick bzw. ResultsClick.
-  AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
+  AddItem(TAtlasTextId.EditorActions, TAtlasMenuActions.cEditorCodeActions, EditorClick);
   // Formatieren (#43).
-  FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, 11, EditorClick);
-  AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
+  FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, TAtlasMenuActions.cEditorFormat, EditorClick);
+  AddItem(TAtlasTextId.MenuSymbolSearch, TAtlasMenuActions.cResultsSymbolSearch, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   // Untermenü Code: Erzeugen-Menü (#719), Methodenrümpfe wie die Klasse ordnen (#660).
   FCodeGroup := AddGroup(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuGroupCode));
-  FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
-  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
+  FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, TAtlasMenuActions.cEditorGenerate, EditorClick);
+  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, TAtlasMenuActions.cEditorMethodOrder, EditorClick);
   FParent := FRoot;
   // Einträge der Module (#1455) in ihren Untermenüs (Section), z. B. Debuggen, Haltepunkte, Designer, Tests.
   mAnchor := AddItem('', 0, nil);
@@ -436,44 +436,46 @@ end;
 procedure TAtlasMainMenu.AddNavigationGroup;
 begin
   AddGroup(TAtlasTextId.MenuGroupNavigation);
-  AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
-  AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
-  AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
-  AddItem(TAtlasTextId.GotoInterfaceCommand, 0, SectionClick);
-  AddItem(TAtlasTextId.GotoImplementationCommand, 1, SectionClick);
-  AddItem(TAtlasTextId.GotoUsesCommand, 2, SectionClick);
-  AddItem(TAtlasTextId.GotoInitializationCommand, 3, SectionClick);
-  AddItem(TAtlasTextId.ReturnFromSectionCommand, 4, SectionClick);
-  AddItem(TAtlasTextId.FindMethodCommand, 5, SectionClick);
-  AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
-  AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  AddItem(TAtlasTextId.EditorTypeDefinition, TAtlasMenuActions.cEditorTypeDefinition, EditorClick);
+  AddItem(TAtlasTextId.EditorMethodToggle, TAtlasMenuActions.cEditorMethodToggle, EditorClick);
+  AddItem(TAtlasTextId.EditorTestUnit, TAtlasMenuActions.cEditorTestUnit, EditorClick);
+  AddItem(TAtlasTextId.GotoInterfaceCommand, TAtlasMenuActions.cSectionInterface, SectionClick);
+  AddItem(TAtlasTextId.GotoImplementationCommand, TAtlasMenuActions.cSectionImplementation, SectionClick);
+  AddItem(TAtlasTextId.GotoUsesCommand, TAtlasMenuActions.cSectionUses, SectionClick);
+  AddItem(TAtlasTextId.GotoInitializationCommand, TAtlasMenuActions.cSectionInitialization, SectionClick);
+  AddItem(TAtlasTextId.ReturnFromSectionCommand, TAtlasMenuActions.cSectionReturn, SectionClick);
+  AddItem(TAtlasTextId.FindMethodCommand, TAtlasMenuActions.cSectionFindMethod, SectionClick);
+  AddItem(TAtlasTextId.EditorExpand, TAtlasMenuActions.cEditorExpand, EditorClick);
+  AddItem(TAtlasTextId.EditorShrink, TAtlasMenuActions.cEditorShrink, EditorClick);
   FOutlineItem := AddItem(TAtlasTextId.OutlineCommand, 0, OutlineClick);
   // Regionen zu-/aufklappen (#1814).
   FRegionItems := TArray<TMenuItem>.Create(
-    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand), 13, EditorClick),
-    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand), 14, EditorClick));
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand),
+      TAtlasMenuActions.cEditorCollapseRegions, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand),
+      TAtlasMenuActions.cEditorExpandRegions, EditorClick));
 end;
 
 procedure TAtlasMainMenu.AddSearchGroups;
 begin
   AddGroup(TAtlasTextId.MenuGroupSearch);
-  AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
-  AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
-  AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
-  AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
+  AddItem(TAtlasTextId.MenuReferences, TAtlasMenuActions.cResultsReferences, ResultsClick);
+  AddItem(TAtlasTextId.MenuImplementations, TAtlasMenuActions.cResultsImplementations, ResultsClick);
+  AddItem(TAtlasTextId.MenuIncoming, TAtlasMenuActions.cResultsIncoming, ResultsClick);
+  AddItem(TAtlasTextId.MenuOutgoing, TAtlasMenuActions.cResultsOutgoing, ResultsClick);
   // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
-  FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, 8, ResultsClick);
-  AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
-  AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
-  FImpactItem := AddItem(TAtlasTextId.ImpactCommand, 9, ResultsClick);
+  FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, TAtlasMenuActions.cResultsCallDiagram, ResultsClick);
+  AddItem(TAtlasTextId.MenuSupertypes, TAtlasMenuActions.cResultsSupertypes, ResultsClick);
+  AddItem(TAtlasTextId.MenuSubtypes, TAtlasMenuActions.cResultsSubtypes, ResultsClick);
+  FImpactItem := AddItem(TAtlasTextId.ImpactCommand, TAtlasMenuActions.cResultsImpact, ResultsClick);
   // Datenfluss (#690).
-  FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, 10, ResultsClick),
-    AddItem(TAtlasTextId.MenuDataFlowTargets, 11, ResultsClick)];
+  FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, TAtlasMenuActions.cResultsDataFlowSources, ResultsClick),
+    AddItem(TAtlasTextId.MenuDataFlowTargets, TAtlasMenuActions.cResultsDataFlowTargets, ResultsClick)];
   FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, cResultsWindowTag, ResultsClick);
   AddGroup(TAtlasTextId.MenuGroupCopy);
-  AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
-  AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualified, TAtlasMenuActions.cEditorCopyQualified, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualifiedParams, TAtlasMenuActions.cEditorCopyQualifiedParams, EditorClick);
   // Atlas-Änderungen über mehrere Dateien (#721); Tag wählt den Befehl in UndoClick.
   AddGroup(TAtlasTextId.MenuGroupChanges);
   AddItem(TAtlasTextId.UndoMenu, 0, UndoClick);

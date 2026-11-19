@@ -371,6 +371,11 @@ begin
   end;
 end;
 
+const
+  cClientName = 'Atlas IDE Expert';
+  // MessageType.Info des LSP.
+  cMessageTypeInfo = 3;
+
 class function TLspSessionJson.InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
   const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject;
 begin
@@ -387,7 +392,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('processId', TJSONNull.Create);
   Result.AddPair('rootUri', TJSONNull.Create);
-  Result.AddPair('clientInfo', TJSONObject.Create(TJSONPair.Create('name', 'Atlas IDE Expert')));
+  Result.AddPair('clientInfo', TJSONObject.Create(TJSONPair.Create('name', cClientName)));
   Result.AddPair('capabilities', ClientCapabilities(AApplyEdit));
   if Length(AProjects) > 0 then
   begin
@@ -442,14 +447,14 @@ end;
 class function TLspSessionJson.ShowMessageParams(const AParams: TJSONValue; out AType: Integer;
   out AMessage: string): Boolean;
 begin
-  AType := 3;
+  AType := cMessageTypeInfo;
   AMessage := '';
   if not (AParams is TJSONObject) then
   begin
     Exit(False);
   end;
   AMessage := TJSONObject(AParams).GetValue<string>('message', '');
-  AType := TJSONObject(AParams).GetValue<Integer>('type', 3);
+  AType := TJSONObject(AParams).GetValue<Integer>('type', cMessageTypeInfo);
   Result := AMessage <> '';
 end;
 

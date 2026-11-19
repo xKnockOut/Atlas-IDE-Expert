@@ -140,20 +140,22 @@ begin
 end;
 
 class function TAtlasEditorBuffer.TabWidth(const ABuffer: IOTAEditBuffer): Integer;
+const
+  cDefaultTabWidth = 8;
 var
   mStops: string;
 begin
-  Result := 8;
+  Result := cDefaultTabWidth;
   if ABuffer.BufferOptions <> nil then
   begin
     mStops := Trim(ABuffer.BufferOptions.TabStops);
     if mStops <> '' then
     begin
-      Result := StrToIntDef(mStops.Split([' '])[0], 8);
+      Result := StrToIntDef(mStops.Split([' '])[0], cDefaultTabWidth);
     end;
     if Result < 1 then
     begin
-      Result := 8;
+      Result := cDefaultTabWidth;
     end;
   end;
 end;

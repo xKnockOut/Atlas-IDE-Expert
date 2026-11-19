@@ -123,6 +123,8 @@ begin
 end;
 
 class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>; AMs: Cardinal): Boolean;
+const
+  cPollMs = 5;
 var
   mWatch: TStopwatch;
   mThread: TThread;
@@ -143,7 +145,7 @@ begin
     end;
     // Bewusst Finished statt Thread-Handle: Das Handle wird erst nach DLL_THREAD_DETACH signalisiert, und das braucht
     // beim Prozessende die Ladersperre, die das Entladen unter Umständen hält.
-    Sleep(5);
+    Sleep(cPollMs);
   until mWatch.ElapsedMilliseconds >= AMs;
 end;
 

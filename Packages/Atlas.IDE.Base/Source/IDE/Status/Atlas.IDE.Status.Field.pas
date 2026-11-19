@@ -350,8 +350,10 @@ end;
 
 /// <summary>Platz für das Symbol samt Abstand in Gerätepixeln.</summary>
 function SymbolWidth(APPI: Integer): Integer;
+const
+  cIconPad = 4;
 begin
-  Result := TAtlasSymbol.PixelSize(TAtlasSymbol.cMenuSize + 4, APPI);
+  Result := TAtlasSymbol.PixelSize(TAtlasSymbol.cMenuSize + cIconPad, APPI);
 end;
 
 function BadgeText(ACount: Integer): string;
@@ -361,6 +363,8 @@ end;
 
 /// <summary>Breite der Plakette samt Abstand in Gerätepixeln; 0 ohne.</summary>
 function BadgeWidth(ABar: TStatusBar; ACount: Integer): Integer;
+const
+  cBadgePad = 18;
 begin
   Result := 0;
   if (ACount <= 0) or (ABar = nil) then
@@ -368,7 +372,7 @@ begin
     Exit;
   end;
   ABar.Canvas.Font := ABar.Font;
-  Result := ABar.Canvas.TextWidth(BadgeText(ACount)) + MulDiv(18, ABar.CurrentPPI, 96);
+  Result := ABar.Canvas.TextWidth(BadgeText(ACount)) + MulDiv(cBadgePad, ABar.CurrentPPI, 96);
 end;
 
 /// <summary>Atlas-Panel in der Statuszeile zeigen: statusField.enabled und nicht in die Statusleiste umgezogen.
@@ -555,12 +559,14 @@ end;
 /// <summary>Plakette der Benachrichtigungen (#601) von ALeft bis zum rechten Rand von ARect.</summary>
 procedure DrawBadge(ACanvas: TCanvas; const ARect: TRect; ALeft, APPI: Integer; const ABadge: TAtlasStatusBadge;
   const ASignals: TAtlasSignals);
+const
+  cInset = 3;
 var
   mInset: Integer;
   mBadge: TRect;
   mText: string;
 begin
-  mInset := MulDiv(3, APPI, 96);
+  mInset := MulDiv(cInset, APPI, 96);
   mBadge.Left := ALeft + mInset;
   mBadge.Top := ARect.Top + mInset;
   mBadge.Right := ARect.Right - mInset;
@@ -579,6 +585,9 @@ end;
 /// <summary>Atlas-Feld in ARect: Symbol, Punkt im Gesamtzustand, Kurztext und Plakette.</summary>
 procedure DrawField(ABar: TStatusBar; const ARect: TRect; const AShown: TAtlasStatusShown;
   const ABadge: TAtlasStatusBadge);
+const
+  cRadius = 4;
+  cRadiusSteps = 4;
 var
   mCanvas: TCanvas;
   mPPI, mRadius, mCenter, mLeft: Integer;
@@ -590,7 +599,7 @@ begin
   mPPI := ABar.CurrentPPI;
   mCanvas.Font := ABar.Font;
   mCanvas.Font.Color := StyleServices.GetSystemColor(clBtnText);
-  mRadius := MulDiv(4, mPPI, 96);
+  mRadius := MulDiv(cRadius, mPPI, 96);
   mCenter := (ARect.Top + ARect.Bottom) div 2;
   mLeft := DrawSymbol(mCanvas, mPPI, ARect.Left, mCenter);
   // Signalfarben der Statusleiste der IDE (Fläche clBtnFace), nicht der Editorfläche (#1255).
@@ -602,7 +611,7 @@ begin
     mCenter + mRadius + 1);
   mCanvas.Brush.Style := bsClear;
   mPart := ARect;
-  mPart.Left := mLeft + 4 * mRadius + MulDiv(2, mPPI, 96);
+  mPart.Left := mLeft + cRadiusSteps * mRadius + MulDiv(2, mPPI, 96);
   // Plakette der Benachrichtigungen (#601) ganz rechts, der Text endet davor.
   if ABadge.Count > 0 then
   begin
@@ -767,6 +776,8 @@ begin
 end;
 
 procedure TAtlasStatusField.THook.SyncExtras;
+const
+  cItemPad = 16;
 var
   mIndex, mCount: Integer;
   mItem: TFieldPanel;
@@ -791,11 +802,13 @@ begin
     end;
     mItem := Extras[mIndex];
     mItem.Text := Field.FExtras[mIndex].Text;
-    mItem.Width := Bar.Canvas.TextWidth(Field.FExtras[mIndex].Text) + MulDiv(16, Bar.CurrentPPI, 96);
+    mItem.Width := Bar.Canvas.TextWidth(Field.FExtras[mIndex].Text) + MulDiv(cItemPad, Bar.CurrentPPI, 96);
   end;
 end;
 
 procedure TAtlasStatusField.THook.Layout(AShown: Boolean);
+const
+  cShownPad = 30;
 var
   mWidth: Integer;
 begin
@@ -808,7 +821,7 @@ begin
   mWidth := 0;
   if AShown then
   begin
-    mWidth := Bar.Canvas.TextWidth(Field.FShown.Text) + MulDiv(30, Bar.CurrentPPI, 96) +
+    mWidth := Bar.Canvas.TextWidth(Field.FShown.Text) + MulDiv(cShownPad, Bar.CurrentPPI, 96) +
       SymbolWidth(Bar.CurrentPPI) + BadgeWidth(Bar, Field.FBadge.Count);
   end;
   // Text nur zum Erkennen und für Screenreader; gezeichnet wird in DrawPanel.

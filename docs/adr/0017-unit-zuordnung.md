@@ -697,6 +697,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Notifications.Service` | `IDE/Notifications/Atlas.IDE.Notifications.Service.pas` | Ordner `IDE/Notifications` |
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.CrumbProbe` | `IDE/Outline/Atlas.IDE.Outline.CrumbProbe.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.CrumbCard` | `IDE/Outline/Atlas.IDE.Outline.CrumbCard.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Cache` | `IDE/Outline/Atlas.IDE.Outline.Cache.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.CrumbMenu` | `IDE/Outline/Atlas.IDE.Outline.CrumbMenu.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.CrumbLists` | `IDE/Outline/Atlas.IDE.Outline.CrumbLists.pas` | Ordner `IDE/Outline` |

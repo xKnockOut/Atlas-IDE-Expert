@@ -90,7 +90,8 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Files,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  System.StrUtils;
 
 /// <summary>Dialogklasse mit Regel-Editor eines laufenden Moduls (Prüfregeln, #1755); sonst die von Base.
 /// </summary>
@@ -298,7 +299,7 @@ type
     /// könnte.</summary>
     function Fields: TArray<TAtlasSettingField>;
     /// <summary>Regelkatalog des Servers in der Sprache der Oberfläche (#446); nil ohne Server.</summary>
-    function LoadCatalog: TJSONValue;
+    class function LoadCatalog: TJSONValue; static;
     function DprojChoices(const APath: string): TArray<TAtlasSettingChoice>;
     function Choices(const APath: string): TArray<TAtlasSettingChoice>;
     function Validate(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>;
@@ -379,7 +380,7 @@ begin
   end;
 end;
 
-function TAtlasSettingsFileEdit.LoadCatalog: TJSONValue;
+class function TAtlasSettingsFileEdit.LoadCatalog: TJSONValue;
 begin
   if TAtlasStrings.Language = TAtlasLanguage.English then
   begin
@@ -422,7 +423,7 @@ begin
   begin
     Result := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
   end
-  else if (APath = 'profile') or (APath = 'testProfile') then
+  else if MatchStr(APath, ['profile', 'testProfile']) then
   begin
     mProfiles := FModel.IndexOf('profiles');
     if mProfiles >= 0 then

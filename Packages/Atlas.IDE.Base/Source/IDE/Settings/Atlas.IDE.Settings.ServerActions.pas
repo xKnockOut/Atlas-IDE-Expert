@@ -50,6 +50,9 @@ end;
 
 class function TAtlasIdeServerActions.RunTool(const AArguments: string; ATimeoutMs: Cardinal;
   out AOutput: string): string;
+const
+  // Exit-Code des Werkzeugs bei einem Fehler
+  cToolErrorExit = 3;
 var
   mCall: TAtlasServerToolCall;
   mResult: TAtlasServerToolResult;
@@ -63,7 +66,7 @@ begin
   begin
     Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, [mResult.Error]);
   end
-  else if mResult.ExitCode = 3 then
+  else if mResult.ExitCode = cToolErrorExit then
   begin
     Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, [cToolErrorExitText]);
   end;

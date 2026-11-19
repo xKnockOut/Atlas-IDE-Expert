@@ -832,6 +832,8 @@ end;
 
 function AddLineComments(const ALines: TArray<string>; AFirst, ALast: Integer; const AStart,
   AEnd: TLspTextPosition): TAtlasBlockCommentResult;
+const
+  cLineComment = '// ';
 var
   mLines: TArray<string>;
   mLine, mIndent: Integer;
@@ -847,9 +849,9 @@ begin
       Continue;
     end;
     mIndent := LeadingSpace(mLines[mLine]);
-    Insert('// ', mLines[mLine], mIndent + 1);
-    Result.SelectionStart := AfterInsert(Result.SelectionStart, mLine, mIndent, 3, True);
-    Result.SelectionEnd := AfterInsert(Result.SelectionEnd, mLine, mIndent, 3, True);
+    Insert(cLineComment, mLines[mLine], mIndent + 1);
+    Result.SelectionStart := AfterInsert(Result.SelectionStart, mLine, mIndent, Length(cLineComment), True);
+    Result.SelectionEnd := AfterInsert(Result.SelectionEnd, mLine, mIndent, Length(cLineComment), True);
   end;
   Result.Lines := mLines;
 end;

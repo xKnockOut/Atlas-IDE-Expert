@@ -178,6 +178,10 @@ uses
 /// <summary>Zeichnet ALabels als Pillen ab AX (Höhe AHeight ab ATop) und rückt AX hinter die letzte; liefert die
 /// Fläche aller Pillen, leer ohne.</summary>
 function DrawPills(ADC: HDC; const ALabels: TArray<string>; ATop, AHeight: Integer; var AX: Integer): TRect;
+const
+  cPillPad = 8;
+  cCorner = 6;
+  cTextPad = 4;
 var
   mName: string;
   mSize: TSize;
@@ -187,10 +191,10 @@ begin
   for mName in ALabels do
   begin
     GetTextExtentPoint32W(ADC, PChar(mName), Length(mName), mSize);
-    mPill := TRect.Create(AX, ATop, AX + mSize.cx + 8, ATop + AHeight + 2);
-    RoundRect(ADC, mPill.Left, mPill.Top, mPill.Right, mPill.Bottom, 6, 6);
-    TextOutW(ADC, mPill.Left + 4, mPill.Top + 1, PChar(mName), Length(mName));
-    AX := mPill.Right + 4;
+    mPill := TRect.Create(AX, ATop, AX + mSize.cx + cPillPad, ATop + AHeight + 2);
+    RoundRect(ADC, mPill.Left, mPill.Top, mPill.Right, mPill.Bottom, cCorner, cCorner);
+    TextOutW(ADC, mPill.Left + cTextPad, mPill.Top + 1, PChar(mName), Length(mName));
+    AX := mPill.Right + cTextPad;
     if Result.IsEmpty then
     begin
       Result := mPill;
@@ -217,6 +221,8 @@ end;
 { TAtlasEditorInlayHints }
 
 constructor TAtlasEditorInlayHints.Create(const ASession: TAtlasInlayHintsSessionFunc; const AMethodActions: TProc);
+const
+  cTickMs = 150;
 var
   mServices: INTACodeEditorServices;
 begin
@@ -236,7 +242,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 150;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -544,11 +550,13 @@ end;
 /// <summary>Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen; liefert ihre Fläche.
 /// </summary>
 function DrawEndLabel(ADC: HDC; const ALabel: string; AX, ATop, AHeight: Integer): TRect;
+const
+  cTextPad = 4;
 var
   mSize: TSize;
 begin
   GetTextExtentPoint32W(ADC, PChar(ALabel), Length(ALabel), mSize);
-  Result := TRect.Create(AX, ATop, AX + mSize.cx + 4, ATop + AHeight + 2);
+  Result := TRect.Create(AX, ATop, AX + mSize.cx + cTextPad, ATop + AHeight + 2);
   TextOutW(ADC, Result.Left + 2, Result.Top + 1, PChar(ALabel), Length(ALabel));
 end;
 

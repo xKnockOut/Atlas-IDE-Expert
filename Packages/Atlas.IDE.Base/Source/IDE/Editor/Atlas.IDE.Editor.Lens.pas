@@ -270,12 +270,15 @@ begin
 end;
 
 class function TAtlasLensPill.CellAfter(const AContext: INTACodeEditorPaintContext; const ALine: string): TRect;
+const
+  // Abstand der Linse hinter dem Zeilenende in Zeichen
+  cGapChars = 3;
 var
   mColumn: Integer;
 begin
   mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine,
     TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) + 1;
-  Result := AContext.EditorState.GetCharacterPosPx(mColumn + 3, AContext.EditorLineNum);
+  Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapChars, AContext.EditorLineNum);
 end;
 
 class function TAtlasLensPill.BackAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
@@ -295,6 +298,11 @@ end;
 
 class function TAtlasLensPill.Paint(ACanvas: TCanvas; const ARect: TRect; AX: Integer; const AText: string;
   const AStyle: TAtlasLensPillStyle): TRect;
+const
+  cMinFontSize = 6;
+  cTextTone = 0.85;
+  cCorner = 6;
+  cTextPad = 5;
 var
   mOldFont: TFont;
   mOldBrush: TBrush;
@@ -308,18 +316,18 @@ begin
     mOldFont.Assign(ACanvas.Font);
     mOldBrush.Assign(ACanvas.Brush);
     mOldPen.Assign(ACanvas.Pen);
-    ACanvas.Font.Size := Max(6, ACanvas.Font.Size - 1);
+    ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
     ACanvas.Font.Style := AStyle.FontStyle;
-    ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, 0.85));
+    ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, cTextTone));
     ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Border));
     ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Fill));
     mHeight := ACanvas.TextHeight('Xg');
     mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mHeight - 2) div 2);
     Result := TRect.Create(AX, mTop, AX + ACanvas.TextWidth(AText) + 10, mTop + mHeight + 2);
     ACanvas.Brush.Style := bsSolid;
-    ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, 6, 6);
+    ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, cCorner, cCorner);
     ACanvas.Brush.Style := bsClear;
-    ACanvas.TextOut(Result.Left + 5, Result.Top + 1, AText);
+    ACanvas.TextOut(Result.Left + cTextPad, Result.Top + 1, AText);
   finally
     ACanvas.Font.Assign(mOldFont);
     ACanvas.Brush.Assign(mOldBrush);

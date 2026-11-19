@@ -211,8 +211,10 @@ end;
 /// <summary>"1." bzw. "1)" an AIndex mit Leerzeichen oder am Ende; höchstens drei Ziffern davor (keine Jahreszahl
 /// wie "2026. ").</summary>
 function IsNumberMarker(const AContent: string; AIndex: Integer): Boolean;
+const
+  cMaxDigits = 3;
 begin
-  Result := (AIndex > 1) and (AIndex <= 4) and CharInSet(CharAt(AContent, AIndex), ['.', ')']) and
+  Result := (AIndex > 1) and (AIndex <= cMaxDigits + 1) and CharInSet(CharAt(AContent, AIndex), ['.', ')']) and
     CharInSet(CharAt(AContent, AIndex + 1), [' ', #0]);
 end;
 

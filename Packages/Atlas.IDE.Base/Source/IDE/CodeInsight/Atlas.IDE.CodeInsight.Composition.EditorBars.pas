@@ -95,10 +95,12 @@ end;
 
 /// <summary>Klick auf die Live-Prüfung (#1231); startet keinen Server.</summary>
 procedure Recheck;
+const
+  cRecheckTimeoutMs = 10000;
 begin
   if Manager <> nil then
   begin
-    Manager.RunServerCommandAsync('atlas.server.recheck', '[]', 10000, nil);
+    Manager.RunServerCommandAsync('atlas.server.recheck', '[]', cRecheckTimeoutMs, nil);
   end;
 end;
 

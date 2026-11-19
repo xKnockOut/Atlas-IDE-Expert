@@ -124,6 +124,8 @@ end;
 /// <summary>Wert mit geerbten Werten; AResolved wird True, wenn das Plugin $(AName) selbst einsetzen musste.</summary>
 function ConfigValue(const ABuild: IOTABuildConfiguration; const AName: string; ADepth: Integer;
   var AResolved: Boolean): string;
+const
+  cMaxDepth = 8;
 var
   mParent: IOTABuildConfiguration;
 begin
@@ -133,7 +135,7 @@ begin
     Exit;
   end;
   mParent := ABuild.Parent;
-  if (mParent = nil) or (ADepth > 8) then
+  if (mParent = nil) or (ADepth > cMaxDepth) then
   begin
     Result := TAtlasProjectContext.Inherit(Result, AName, '');
   end

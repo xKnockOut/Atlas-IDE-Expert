@@ -66,6 +66,11 @@ const
   cTreeNamePart = 'MESSAGETREEVIEW';
   cMessageLineClass = 'TCompilerMsgLine';
   cMaxNodes = 20000;
+  // Diagnosetexte für das Protokoll (nicht in der Oberfläche).
+  cFormMissing = '%s nicht gefunden';
+  cTreeMissing = 'Meldungsbaum nicht gefunden';
+  cNoRtti = '%s: über RTTI nicht erreichbar (GetFirst %s, GetNext %s, GetNodeData %s)';
+  cWalked = '%d Knoten, %d Meldungen';
 
 function FindTree(AOwner: TComponent): TComponent;
 var
@@ -247,14 +252,14 @@ begin
   end;
   if mForm = nil then
   begin
-    AInfo := cFormClass + ' nicht gefunden';
+    AInfo := Format(cFormMissing, [cFormClass]);
   end
   else
   begin
     Result := FindTree(mForm);
     if Result = nil then
     begin
-      AInfo := 'Meldungsbaum nicht gefunden';
+      AInfo := cTreeMissing;
     end;
   end;
 end;
@@ -314,7 +319,7 @@ begin
   Result := (GetFirst <> nil) and (GetNext <> nil) and (GetNodeData <> nil);
   if not Result then
   begin
-    AInfo := Format('%s: über RTTI nicht erreichbar (GetFirst %s, GetNext %s, GetNodeData %s)', [Tree.ClassName,
+    AInfo := Format(cNoRtti, [Tree.ClassName,
       BoolToStr(GetFirst <> nil, True), BoolToStr(GetNext <> nil, True), BoolToStr(GetNodeData <> nil, True)]);
   end;
 end;
@@ -384,7 +389,7 @@ begin
       mNode := mWalk.Next(mNode);
       Inc(mCount);
     end;
-    AInfo := Format('%d Knoten, %d Meldungen', [mCount, Length(AMessages)]);
+    AInfo := Format(cWalked, [mCount, Length(AMessages)]);
     Result := True;
   finally
     mContext.Free;

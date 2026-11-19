@@ -89,8 +89,8 @@ type
     procedure UpdateWindow(AForce: Boolean);
     procedure Fix(const AResult: TAtlasSetupResult);
     procedure CopyReport;
-    procedure SaveShowAtStart(AValue: Boolean);
-    procedure MarkSeen;
+    class procedure SaveShowAtStart(AValue: Boolean); static;
+    class procedure MarkSeen; static;
     procedure DecideAtStart;
     function WindowVisible: Boolean;
     class function TryKey: string; static;
@@ -102,7 +102,7 @@ type
     /// <summary>Prüfliste zeigen und sofort neu prüfen (Menü, Palette, Statusfeld, Zustandskachel #754).</summary>
     procedure ShowWindow;
     /// <summary>„Einrichtung prüfen…“ in der Befehlspalette.</summary>
-    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+    class procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry); static;
     /// <summary>Für die Zustandskachel (#754): grüne Punkte und alle; False vor der ersten Prüfung.</summary>
     function Progress(out ADone, ATotal: Integer): Boolean;
     function Results: TArray<TAtlasSetupResult>;
@@ -465,7 +465,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSetupChecklist.SaveShowAtStart(AValue: Boolean);
+class procedure TAtlasIdeSetupChecklist.SaveShowAtStart(AValue: Boolean);
 var
   mSettings: TAtlasPluginSettings;
 begin
@@ -478,7 +478,7 @@ begin
   TAtlasIdeSettings.Update(mSettings);
 end;
 
-procedure TAtlasIdeSetupChecklist.MarkSeen;
+class procedure TAtlasIdeSetupChecklist.MarkSeen;
 var
   mSettings: TAtlasPluginSettings;
 begin
@@ -605,7 +605,7 @@ begin
   MarkSeen;
 end;
 
-procedure TAtlasIdeSetupChecklist.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+class procedure TAtlasIdeSetupChecklist.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
   ARegistry.RegisterCommand(TAtlasSetupChecklist.cCommandId, TAtlasStrings.Text(TAtlasTextId.SetupMenu), '',
     procedure

@@ -252,6 +252,12 @@ end;
 
 { TAtlasPluginReport }
 
+const
+  // Tabellenzeilen des Berichts (Markdown).
+  cFeatureRow = '%s | %d | %s | %s | %s | %d | %s';
+  cSlowRow = '- %s %s, %s: %s ms';
+  cSourceRow = '%s | %d | %s | %s | %d';
+
 procedure AddFeatures(ALines: TStrings; const ASnapshot: TAtlasPluginSnapshot);
 var
   mRow: TAtlasFeatureRow;
@@ -262,7 +268,7 @@ begin
   ALines.Add('--- | --- | --- | --- | --- | --- | ---');
   for mRow in TAtlasPluginRows.Features(ASnapshot) do
   begin
-    ALines.Add(Format('%s | %d | %s | %s | %s | %d | %s', [mRow.Name, mRow.Stat.Calls,
+    ALines.Add(Format(cFeatureRow, [mRow.Name, mRow.Stat.Calls,
       TAtlasPluginRows.Ms(mRow.Stat.TotalMs), TAtlasPluginRows.Ms(mRow.Stat.MeanMs),
       TAtlasPluginRows.Ms(mRow.Stat.MaxMs), mRow.Stat.SlowCalls, TAtlasPluginRows.Percent(mRow.Share * 100)]));
   end;
@@ -289,7 +295,7 @@ begin
     begin
       mActivity := cNoValue;
     end;
-    ALines.Add(Format('- %s %s, %s: %s ms', [TAtlasPluginRows.Clock(mCalls[mIndex].At),
+    ALines.Add(Format(cSlowRow, [TAtlasPluginRows.Clock(mCalls[mIndex].At),
       TAtlasGuard.FeatureName(mCalls[mIndex].Feature), mActivity, TAtlasPluginRows.Ms(mCalls[mIndex].Ms)]));
   end;
   if Length(mCalls) = 0 then
@@ -326,7 +332,7 @@ begin
   ALines.Add('--- | --- | --- | --- | ---');
   for mSource in TAtlasPluginRows.Sources(ASnapshot) do
   begin
-    ALines.Add(Format('%s | %d | %s | %s | %d', [mSource.Name, mSource.Stat.Calls,
+    ALines.Add(Format(cSourceRow, [mSource.Name, mSource.Stat.Calls,
       TAtlasPluginRows.Ms(mSource.Stat.MeanMs), TAtlasPluginRows.Ms(mSource.Stat.MaxMs), mSource.Slow]));
   end;
   ALines.Add('');

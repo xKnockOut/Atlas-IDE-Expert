@@ -422,6 +422,8 @@ end;
 { TAtlasIdeMultiCursor }
 
 constructor TAtlasIdeMultiCursor.Create(const ABusy: TFunc<Boolean>; const AStatus: TAtlasMultiCursorStatusProc);
+const
+  cMinBlinkMs = 200;
 var
   mServices: INTACodeEditorServices;
 begin
@@ -442,7 +444,7 @@ begin
   FMessages.OnMessage := AppMessage;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := Max(200, Integer(GetCaretBlinkTime));
+  FTimer.Interval := Max(cMinBlinkMs, Integer(GetCaretBlinkTime));
   FTimer.OnTimer := TimerTick;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;

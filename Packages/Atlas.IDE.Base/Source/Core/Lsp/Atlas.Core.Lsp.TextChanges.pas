@@ -103,14 +103,20 @@ begin
     (TLspTextPosition.Compare(AOther.EndPos, EndPos) <= 0);
 end;
 
+const
+  cHighSurrogateFirst = $D800;
+  cHighSurrogateLast = $DBFF;
+  cLowSurrogateFirst = $DC00;
+  cLowSurrogateLast = $DFFF;
+
 function IsHighSurrogate(AChar: Char): Boolean;
 begin
-  Result := (Ord(AChar) >= $D800) and (Ord(AChar) <= $DBFF);
+  Result := (Ord(AChar) >= cHighSurrogateFirst) and (Ord(AChar) <= cHighSurrogateLast);
 end;
 
 function IsLowSurrogate(AChar: Char): Boolean;
 begin
-  Result := (Ord(AChar) >= $DC00) and (Ord(AChar) <= $DFFF);
+  Result := (Ord(AChar) >= cLowSurrogateFirst) and (Ord(AChar) <= cLowSurrogateLast);
 end;
 
 { TLspTextChanges }

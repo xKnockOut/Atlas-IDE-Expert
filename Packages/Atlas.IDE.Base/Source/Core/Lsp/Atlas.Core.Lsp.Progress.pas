@@ -476,18 +476,21 @@ begin
 end;
 
 class function TLspIndexStatus.SizeText(ABytes: Int64): string;
+const
+  cKilobyte = 1024;
+  cMegabyte = cKilobyte * cKilobyte;
 var
   mSettings: TFormatSettings;
 begin
   mSettings := TFormatSettings.Invariant;
   mSettings.DecimalSeparator := ',';
-  if ABytes < 1024 * 1024 then
+  if ABytes < cMegabyte then
   begin
-    Result := FormatFloat('0.0', ABytes / 1024, mSettings) + ' KB';
+    Result := FormatFloat('0.0', ABytes / cKilobyte, mSettings) + ' KB';
   end
   else
   begin
-    Result := FormatFloat('0.0', ABytes / (1024 * 1024), mSettings) + ' MB';
+    Result := FormatFloat('0.0', ABytes / cMegabyte, mSettings) + ' MB';
   end;
 end;
 

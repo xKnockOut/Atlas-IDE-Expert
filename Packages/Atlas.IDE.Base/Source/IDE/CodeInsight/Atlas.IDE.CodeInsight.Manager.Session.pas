@@ -126,17 +126,21 @@ uses
 
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
-  TSessionText = (ServerNotFoundTheBuilt, ServerNotFound, AtlasServerExeNotFound);
+  TSessionText = (ServerNotFoundTheBuilt, ServerNotFound, AtlasServerExeNotFound, StartFailed, Restarting);
 {$SCOPEDENUMS OFF}
 
 const
   cTexts: array[TAtlasLanguage, TSessionText] of string = (
     ('Server nicht gefunden: %s (die eingebaute Code Insight bleibt aktiv)',
      'Server nicht gefunden: %s',
-     'AtlasServer.exe nicht gefunden'),
+     'AtlasServer.exe nicht gefunden',
+     'Start fehlgeschlagen: %s',
+     'Server wird neu gestartet'),
     ('Server not found: %s (the built-in Code Insight stays active)',
      'Server not found: %s',
-     'AtlasServer.exe not found'));
+     'AtlasServer.exe not found',
+     'Start failed: %s',
+     'Restarting the server'));
   /// <summary>Höchstens so oft die Projektgruppe bzw. die Projektkontexte neu lesen (den Pfad des Servers:
   /// TAtlasCodeInsightPlan.cServerCheckMs).</summary>
   cProjectsCheckMs = 2000;
@@ -264,7 +268,7 @@ begin
   except
     on E: Exception do
     begin
-      ReportError('Start fehlgeschlagen: ' + E.Message);
+      ReportError(Format(UiText(TSessionText.StartFailed), [E.Message]));
       StopSession;
       SetPhase(TAtlasServerPhase.Failed, TAtlasCodeInsightPaths.WithoutPaths(E.Message));
       Result := False;
@@ -557,6 +561,8 @@ begin
 end;
 
 procedure TAtlasCodeInsightSession.StopSessionNow;
+const
+  cIdleWaitMs = 5000;
 begin
   Assert(TAtlasMainThread.IsMain, 'StopSessionNow außerhalb des Hauptthreads');
   if FEditors <> nil then
@@ -576,14 +582,14 @@ begin
     FEditors.EndStop;
   end;
   // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
-  FQueryIdle.WaitFor(5000);
+  FQueryIdle.WaitFor(cIdleWaitMs);
   // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken.
   if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.cStopMs) then
   begin
     Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
   end;
-  FCommandIdle.WaitFor(5000);
-  FServerCommandsIdle.WaitFor(5000);
+  FCommandIdle.WaitFor(cIdleWaitMs);
+  FServerCommandsIdle.WaitFor(cIdleWaitMs);
   FreeAndNil(FSession);
   FServer := nil;
 end;
@@ -701,7 +707,7 @@ end;
 
 function TAtlasCodeInsightSession.RestartServer: Boolean;
 begin
-  Report('Server wird neu gestartet');
+  Report(UiText(TSessionText.Restarting));
   AllowStart;
   StopSession;
   SetPhase(TAtlasServerPhase.Stopped, '', True);

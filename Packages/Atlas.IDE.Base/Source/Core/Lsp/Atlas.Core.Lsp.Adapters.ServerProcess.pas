@@ -214,11 +214,13 @@ begin
 end;
 
 procedure TReaderThread.Execute;
+const
+  cBufferSize = 65536;
 var
   mBuffer: TBytes;
   mRead: DWORD;
 begin
-  SetLength(mBuffer, 65536);
+  SetLength(mBuffer, cBufferSize);
   try
     try
       while not Terminated do
@@ -297,6 +299,14 @@ begin
 end;
 
 destructor TLspServerProcess.Destroy;
+const
+  // Wartezeiten in ms: beim Entladen knapp, sonst großzügig.
+  cUnloadWriterMs = 300;
+  cUnloadCancelMs = 150;
+  cUnloadProcessMs = 400;
+  cWriterMs = 1000;
+  cCancelMs = 500;
+  cProcessMs = 2000;
 begin
   if FClient <> nil then
   begin
@@ -306,13 +316,13 @@ begin
   // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.cStopMs.
   if TAtlasShutdown.Signalled then
   begin
-    StopWriter(300, 150);
-    StopProcess(400);
+    StopWriter(cUnloadWriterMs, cUnloadCancelMs);
+    StopProcess(cUnloadProcessMs);
   end
   else
   begin
-    StopWriter(1000, 500);
-    StopProcess(2000);
+    StopWriter(cWriterMs, cCancelMs);
+    StopProcess(cProcessMs);
   end;
   FClient.Free;
   FWriterLock.Free;
@@ -334,6 +344,8 @@ begin
 end;
 
 function TLspServerProcess.OpenStderr: THandle;
+const
+  cStartHeaderFormat = '---- %s Serverstart ----'#13#10;
 var
   mFolder, mOld: string;
   mHeader: TBytes;
@@ -358,7 +370,7 @@ begin
     begin
       RaiseLastOSError;
     end;
-    mHeader := TEncoding.UTF8.GetBytes(Format('---- %s Serverstart ----'#13#10,
+    mHeader := TEncoding.UTF8.GetBytes(Format(cStartHeaderFormat,
       [FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', Now)]));
     WriteFile(Result, mHeader[0], Length(mHeader), mWritten, nil);
     FStderrStart := TFile.GetSize(FStderrFile);

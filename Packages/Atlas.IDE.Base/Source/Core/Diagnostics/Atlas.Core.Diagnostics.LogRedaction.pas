@@ -62,6 +62,9 @@ const
 { TAtlasLogRedactor }
 
 constructor TAtlasLogRedactor.Create(const AIdentity: TArray<string>);
+const
+  // Kürzere Namen kämen in zu vielen gewöhnlichen Wörtern vor.
+  cMinNameLength = 3;
 var
   mName: string;
 begin
@@ -71,7 +74,7 @@ begin
   FIdentity := nil;
   for mName in AIdentity do
   begin
-    if Length(Trim(mName)) >= 3 then
+    if Length(Trim(mName)) >= cMinNameLength then
     begin
       FIdentity := FIdentity + [Trim(mName)];
     end;

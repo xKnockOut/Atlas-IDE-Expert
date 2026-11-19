@@ -155,12 +155,15 @@ begin
 end;
 
 class function TAtlasCodeInsightPaths.WithoutPaths(const AText: string): string;
+const
+  // Kürzere Namen kämen in zu vielen gewöhnlichen Wörtern vor
+  cMinUserName = 3;
 var
   mUserName: string;
 begin
   Result := TRegEx.Replace(AText, '(?:\b[A-Za-z]:|\\\\)[\\/]\S*|file:\S+|\S*\\\S*', '<pfad>');
   mUserName := GetEnvironmentVariable('USERNAME');
-  if Length(mUserName) >= 3 then
+  if Length(mUserName) >= cMinUserName then
   begin
     Result := StringReplace(Result, mUserName, '<benutzer>', [rfReplaceAll, rfIgnoreCase]);
   end;

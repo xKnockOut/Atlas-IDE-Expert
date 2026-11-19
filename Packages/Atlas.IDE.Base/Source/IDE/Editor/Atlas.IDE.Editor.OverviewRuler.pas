@@ -405,6 +405,8 @@ begin
 end;
 
 procedure TOverviewState.ShowPreview;
+const
+  cTipGap = 12;
 var
   mView: IOTAEditView;
   mTitle, mText: string;
@@ -433,7 +435,8 @@ begin
   TAtlasIdeStyle.Apply(FTip, TRect.Create(FHoverPoint, FHoverPoint));
   // Links neben dem Streifen, damit die Maus ihn nicht verdeckt.
   mWidth := FTip.Measure(mTitle, mText).cx;
-  FTip.ShowNote(mTitle, mText, Point(FHoverPoint.X - mWidth - MulDiv(12, FHoverRuler.CurrentPPI, 96), FHoverPoint.Y));
+  FTip.ShowNote(mTitle, mText, Point(FHoverPoint.X - mWidth - MulDiv(cTipGap, FHoverRuler.CurrentPPI, 96),
+    FHoverPoint.Y));
 end;
 
 procedure TOverviewState.Removed(ARuler: TControl);

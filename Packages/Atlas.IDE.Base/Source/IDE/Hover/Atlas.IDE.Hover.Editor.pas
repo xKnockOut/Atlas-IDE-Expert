@@ -230,6 +230,8 @@ end;
 
 constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
   const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
+const
+  cWatchMs = 250;
 var
   mServices: INTACodeEditorServices;
 begin
@@ -247,7 +249,7 @@ begin
   FHideTimer.OnTimer := HideTimerTick;
   FWatchTimer := TTimer.Create(nil);
   FWatchTimer.Enabled := False;
-  FWatchTimer.Interval := 250;
+  FWatchTimer.Interval := cWatchMs;
   FWatchTimer.OnTimer := WatchTimerTick;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;

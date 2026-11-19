@@ -77,7 +77,27 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.Classes;
+  System.Classes,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TProcessesText = (UnknownClient);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TProcessesText] of string = (
+    ('unbekannter Client'),
+    ('unknown client'));
+  cCaptionFormat = '%s (pid %d)';
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TProcessesText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasProcessRow }
 
@@ -88,9 +108,9 @@ begin
   mName := Client;
   if mName = '' then
   begin
-    mName := 'unbekannter Client';
+    mName := UiText(TProcessesText.UnknownClient);
   end;
-  Result := System.SysUtils.Format('%s (pid %d)', [mName, Pid]);
+  Result := System.SysUtils.Format(cCaptionFormat, [mName, Pid]);
 end;
 
 { TAtlasProcessWorkspace }
@@ -251,5 +271,8 @@ begin
     mNames.Free;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.Processes', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

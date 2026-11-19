@@ -117,8 +117,10 @@ begin
 end;
 
 class function TAtlasGuides.PenWidth(AWidth, ACellHeight, ABaseCellHeight: Integer): Integer;
+const
+  cMaxWidth = 3;
 begin
-  AWidth := EnsureRange(AWidth, 1, 3);
+  AWidth := EnsureRange(AWidth, 1, cMaxWidth);
   if (ACellHeight <= 0) or (ABaseCellHeight <= 0) then
   begin
     Exit(AWidth);

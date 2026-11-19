@@ -119,6 +119,13 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
+const
+  // Tätigkeit und Protokollzeile der Prüfung.
+  cActivity = 'Compilerprüfung nach dem Speichern';
+  cReport = 'Compilerprüfung %s: %s, %d ms';
+  cManual = 'von Hand';
+  cAfterSave = 'nach dem Speichern';
+
 function NowMs: Int64;
 begin
   Result := GetTickCount64;
@@ -198,6 +205,8 @@ end;
 { TAtlasIdeCheckOnSave }
 
 constructor TAtlasIdeCheckOnSave.Create(AEvents: TAtlasCompileEvents; const AReport: TProc<string>);
+const
+  cTickMs = 250;
 var
   mKeyboard: IOTAKeyboardServices;
 begin
@@ -218,7 +227,7 @@ begin
     Rebind;
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -289,7 +298,7 @@ begin
   begin
     Exit;
   end;
-  mActivity := TAtlasActivity.Scope('Compilerprüfung nach dem Speichern');
+  mActivity := TAtlasActivity.Scope(cActivity);
   FChecking := True;
   FEvents.Background := True;
   mStarted := NowMs;
@@ -302,7 +311,7 @@ begin
   mDuration := NowMs - mStarted;
   if Assigned(FReport) then
   begin
-    FReport(Format('Compilerprüfung %s: %s, %d ms', [IfThen(AManual, 'von Hand', 'nach dem Speichern'),
+    FReport(Format(cReport, [IfThen(AManual, cManual, cAfterSave),
       ExtractFileName(AProject), mDuration]));
   end;
   if not AManual and FCore.CheckFinished(AProject, mDuration) then

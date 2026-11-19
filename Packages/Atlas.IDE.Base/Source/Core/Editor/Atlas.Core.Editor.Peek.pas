@@ -365,11 +365,11 @@ end;
 function BracketDelta(const AToken: string): Integer;
 begin
   Result := 0;
-  if (AToken = '(') or (AToken = '[') then
+  if IsOneOf(AToken, ['(', '[']) then
   begin
     Result := 1;
   end
-  else if (AToken = ')') or (AToken = ']') then
+  else if IsOneOf(AToken, [')', ']']) then
   begin
     Result := -1;
   end;
@@ -592,7 +592,7 @@ begin
   while Result > 0 do
   begin
     mText := Trim(ALines[Result - 1]);
-    if (Copy(mText, 1, 3) = '///') or ((mText <> '') and (mText[1] = '[') and (mText[Length(mText)] = ']')) then
+    if mText.StartsWith('///') or ((mText <> '') and (mText[1] = '[') and (mText[Length(mText)] = ']')) then
     begin
       Dec(Result);
     end

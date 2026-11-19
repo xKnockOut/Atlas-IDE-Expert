@@ -78,6 +78,13 @@ begin
   end;
 end;
 
+const
+  // Stellen der Argumente im JSON-Array des Befehls.
+  cScopeArgument = 3;
+  cAskReasonArgument = 4;
+  cRequestArguments = cScopeArgument + 1;
+  cProjectArguments = 3;
+
 { TAtlasDisableWarningRequest }
 
 class function TAtlasDisableWarningRequest.TryParse(const AArgumentsJson: string;
@@ -88,7 +95,7 @@ begin
   ARequest := Default(TAtlasDisableWarningRequest);
   mArguments := ArgumentsOf(AArgumentsJson);
   try
-    Result := (mArguments <> nil) and (mArguments.Count >= 4);
+    Result := (mArguments <> nil) and (mArguments.Count >= cRequestArguments);
     if not Result then
     begin
       Exit;
@@ -96,9 +103,9 @@ begin
     ARequest.Uri := mArguments.Items[0].Value;
     ARequest.Line := StrToIntDef(mArguments.Items[1].Value, -1);
     ARequest.Code := mArguments.Items[2].Value;
-    ARequest.Scope := mArguments.Items[3].Value;
-    ARequest.AskReason := (mArguments.Count > 4) and (mArguments.Items[4] is TJSONBool) and
-      TJSONBool(mArguments.Items[4]).AsBoolean;
+    ARequest.Scope := mArguments.Items[cScopeArgument].Value;
+    ARequest.AskReason := (mArguments.Count > cAskReasonArgument) and
+      (mArguments.Items[cAskReasonArgument] is TJSONBool) and TJSONBool(mArguments.Items[cAskReasonArgument]).AsBoolean;
     Result := (ARequest.Uri <> '') and (ARequest.Line >= 0) and (ARequest.Code <> '') and (ARequest.Scope <> '');
   finally
     mArguments.Free;
@@ -132,7 +139,7 @@ begin
   ARequest := Default(TAtlasDisableWarningProject);
   mArguments := ArgumentsOf(AArgumentsJson);
   try
-    Result := (mArguments <> nil) and (mArguments.Count >= 3);
+    Result := (mArguments <> nil) and (mArguments.Count >= cProjectArguments);
     if not Result then
     begin
       Exit;

@@ -335,14 +335,25 @@ begin
   FRedactor := TAtlasLogRedactor.Create(TAtlasLogRedactor.EnvironmentIdentity);
 end;
 
+const
+  // Vorgaben des Protokolls: Größe, ab der rotiert wird, und Zahl der alten Dateien.
+  cDefaultMaxBytes = 1024 * 1024;
+  cDefaultKeep = 5;
+  cRotateFailed = 'Protokoll: Rotieren gescheitert (%s: %s); schreibe weiter in atlas.log';
+  cNotWritten = 'Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)';
+  // FNV-1a (32 Bit).
+  cFnvOffset = 2166136261;
+  cFnvPrime = 16777619;
+  cMutexPrefix = 'Local\Atlas.Log.';
+
 constructor TAtlasRotatingLog.Create(const AFolder: string; AMaxBytes: Int64);
 begin
-  Create(AFolder, AMaxBytes, 5);
+  Create(AFolder, AMaxBytes, cDefaultKeep);
 end;
 
 constructor TAtlasRotatingLog.Create(const AFolder: string);
 begin
-  Create(AFolder, 1024 * 1024, 5);
+  Create(AFolder, cDefaultMaxBytes, cDefaultKeep);
 end;
 
 destructor TAtlasRotatingLog.Destroy;
@@ -400,8 +411,7 @@ begin
       if E.Message <> FRotateError then
       begin
         FRotateError := E.Message;
-        Result := AStamp + 'Protokoll: Rotieren gescheitert (' + E.ClassName + ': ' + Clean(E.Message) +
-          '); schreibe weiter in atlas.log' + sLineBreak;
+        Result := AStamp + Format(cRotateFailed, [E.ClassName, Clean(E.Message)]) + sLineBreak;
       end;
     end;
   end;
@@ -415,8 +425,7 @@ begin
   mLines := RotateIfFull(mStamp);
   if FFailed > 0 then
   begin
-    mLines := mLines + mStamp + Format('Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)',
-      [FFailed, Clean(FLastError)]) + sLineBreak;
+    mLines := mLines + mStamp + Format(cNotWritten, [FFailed, Clean(FLastError)]) + sLineBreak;
   end;
   TFile.AppendAllText(FileName, mLines + ALine, TEncoding.UTF8);
 end;
@@ -502,12 +511,12 @@ var
 begin
   // FNV-1a über den Ordner; ein Mutexname darf außer nach „Local\“ keinen Backslash enthalten.
   mKey := UpperCase(ExcludeTrailingPathDelimiter(AFolder));
-  mHash := 2166136261;
+  mHash := cFnvOffset;
   for mIndex := 1 to Length(mKey) do
   begin
-    mHash := Cardinal((UInt64(mHash xor Ord(mKey[mIndex])) * 16777619) and $FFFFFFFF);
+    mHash := Cardinal((UInt64(mHash xor Ord(mKey[mIndex])) * cFnvPrime) and $FFFFFFFF);
   end;
-  Result := 'Local\Atlas.Log.' + IntToHex(mHash, 8);
+  Result := cMutexPrefix + IntToHex(mHash, SizeOf(mHash) * 2);
 end;
 
 function TAtlasRotatingLog.FileName: string;
@@ -791,11 +800,17 @@ begin
   FreeAndNil(FFuse);
 end;
 
+const
+  cErrorLine = 'Atlas %s · Fehler in %s: %s';
+  cNoTrace = 'nicht verfügbar (%s)';
+  cSkippedRepeats = '%s (seit der letzten Meldung %d Wiederholungen übergangen)';
+  cSkippedSlow = ' (dazu %d weitere seit der letzten Meldung)';
+
 class function TAtlasGuard.ErrorLine(const AWhere: string; AE: Exception): string;
 var
   mTrace: string;
 begin
-  Result := Format('Atlas %s · Fehler in %s: %s', [TAtlasPluginVersion.cVersion, AWhere, ErrorText(AE)]);
+  Result := Format(cErrorLine, [TAtlasPluginVersion.cVersion, AWhere, ErrorText(AE)]);
   // E.StackTrace nur mit installiertem Anbieter (JCL, madExcept); sonst der Mitschnitt des Plugins.
   mTrace := Trim(AE.StackTrace);
   if (mTrace = '') and Assigned(FStackOf) then
@@ -804,7 +819,7 @@ begin
     except
       // Sicherheitsnetz: Ein Fehler beim Auflösen darf die Fehlerzeile selbst nicht verhindern.
       on Inner: Exception do
-        mTrace := 'nicht verfügbar (' + Inner.ClassName + ')';
+        mTrace := Format(cNoTrace, [Inner.ClassName]);
     end;
   if mTrace <> '' then
   begin
@@ -921,7 +936,7 @@ begin
   mWhere := FeatureName(AFeature);
   if mSkipped > 0 then
   begin
-    mWhere := Format('%s (seit der letzten Meldung %d Wiederholungen übergangen)', [mWhere, mSkipped]);
+    mWhere := Format(cSkippedRepeats, [mWhere, mSkipped]);
   end;
   Log(ErrorLine(mWhere, AE));
   mFailure := FOnFailure;
@@ -1041,7 +1056,7 @@ begin
   mSuffix := '';
   if mSkipped > 0 then
   begin
-    mSuffix := Format(' (dazu %d weitere seit der letzten Meldung)', [mSkipped]);
+    mSuffix := Format(cSkippedSlow, [mSkipped]);
   end;
   Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, MessageText(AText), mSuffix]));
 end;

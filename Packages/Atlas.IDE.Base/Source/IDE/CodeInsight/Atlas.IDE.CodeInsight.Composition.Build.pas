@@ -57,7 +57,26 @@ uses
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.CodeInsight.Composition.Session,
-  Atlas.IDE.CodeInsight.Composition.Status;
+  Atlas.IDE.CodeInsight.Composition.Status,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TBuildCompositionText = (MessagesWindow);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TBuildCompositionText] of string = (
+    ('Meldungsfenster: %s (z. B. %s, Zeile %d)'),
+    ('Messages window: %s (e.g. %s, line %d)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TBuildCompositionText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   cMetricsCommand = 'atlas.server.metrics';
@@ -148,6 +167,8 @@ end;
 /// Projekt-Zusammenfassung (Projektverlauf #758, Einrichtung #759): in einem Hintergrundlauf vom laufenden Server
 /// (startet ihn nicht), Zeitpunkt AStampUtc der des Builds: Damit kommen die Werte in seinen Messpunkt.</summary>
 procedure RecordProjectMetrics(const AProject: string; AStampUtc: TDateTime);
+const
+  cSummaryTimeoutMs = 60000;
 var
   mProject: string;
   mStamp: TDateTime;
@@ -160,7 +181,7 @@ begin
   mProject := AProject;
   mStamp := AStampUtc;
   Manager.RunCommandsAsync([cMetricsCommand, cTodosCommand],
-    [MetricsArguments(mProject, 'summary'), MetricsArguments(mProject, 'summary')], 60000,
+    [MetricsArguments(mProject, 'summary'), MetricsArguments(mProject, 'summary')], cSummaryTimeoutMs,
     procedure(AAnswers: TArray<string>)
     var
       mAnswers: TArray<string>;
@@ -221,6 +242,8 @@ begin
 end;
 
 procedure MetricsReport;
+const
+  cReportTimeoutMs = 120000;
 var
   mProject: IOTAProject;
   mFileName: string;
@@ -243,7 +266,7 @@ begin
     GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportFailed));
     Exit;
   end;
-  if Manager.RunCommandAsync(cMetricsCommand, MetricsArguments(mProject.FileName, 'markdown'), 120000,
+  if Manager.RunCommandAsync(cMetricsCommand, MetricsArguments(mProject.FileName, 'markdown'), cReportTimeoutMs,
     MetricsReportDone(mFileName)) then
   begin
     GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportRunning));
@@ -383,7 +406,7 @@ begin
   end;
   if Length(AMessages) > 0 then
   begin
-    Manager.Report(Format('Meldungsfenster: %s (z. B. %s, Zeile %d)', [AInfo, AMessages[0].FileName,
+    Manager.Report(Format(UiText(TBuildCompositionText.MessagesWindow), [AInfo, AMessages[0].FileName,
       AMessages[0].Line]));
   end
   else
@@ -494,5 +517,8 @@ function ProjectSummariesStarted: Boolean;
 begin
   Result := ProjectSummaries <> nil;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.CodeInsight.Composition.Build', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

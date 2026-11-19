@@ -94,9 +94,12 @@ end;
 
 /// <summary>UTF-8 ohne BOM, Zeilenende CRLF.</summary>
 procedure WriteText(const AFileName, AText: string);
+const
+  cUtf8CodePage = 65001;
 begin
   ForceDirectories(ExtractFileDir(AFileName));
-  TFile.WriteAllText(AFileName, StringReplace(AText, #10, #13#10, [rfReplaceAll]), TEncoding.GetEncoding(65001));
+  TFile.WriteAllText(AFileName, StringReplace(AText, #10, #13#10, [rfReplaceAll]),
+    TEncoding.GetEncoding(cUtf8CodePage));
 end;
 
 { TAtlasIdeSettingsTransfer }

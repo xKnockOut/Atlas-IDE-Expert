@@ -29,8 +29,10 @@ type
 
   /// <summary>Merker, ob die Quelle noch lebt; eingereihte Aufrufe halten ihn selbst.</summary>
   TAtlasAliveToken = class(TInterfacedObject)
+  private
+    FAlive: Boolean;
   public
-    Alive: Boolean;
+    property Alive: Boolean read FAlive write FAlive;
   end;
 
   TAtlasAsyncCompletionProvider = class(TInterfacedObject, IAtlasCompletionProvider, IAtlasNamedProvider)
