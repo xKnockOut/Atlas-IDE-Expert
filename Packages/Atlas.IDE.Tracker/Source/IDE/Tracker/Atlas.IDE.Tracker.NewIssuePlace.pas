@@ -39,14 +39,14 @@ uses
   Atlas.Core.Editor.MethodToggle,
   Atlas.UI.Tracker.NewIssue.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  System.Math;
 
 /// <summary>Ersetzt Zeile ALine (ab 1) der Ansicht durch ANew; ein Rückgängig-Schritt der IDE.</summary>
 function WriteLine(const AView: IOTAEditView; ALine: Integer; const ANew: string): Boolean;
 var
   mText: string;
   mFrom, mTill: Integer;
-  mWriter: IOTAEditWriter;
 begin
   Result := False;
   if (AView = nil) or AView.Buffer.IsReadOnly then
@@ -56,19 +56,7 @@ begin
   mText := TAtlasEditorBuffer.Text(AView.Buffer);
   mFrom := TAtlasEditorBuffer.CharOffset(mText, ALine - 1, 0);
   mTill := TAtlasEditorBuffer.CharOffset(mText, ALine - 1, MaxInt div 2);
-  mWriter := AView.Buffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(mText, 1, mFrom)));
-  if mTill > mFrom then
-  begin
-    mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(mText, 1, mTill)));
-  end;
-  if ANew <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
-  end;
-  mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
-  TAtlasEditorSnapshots.Invalidate(AView.Buffer.FileName);
+  TAtlasEditorSnapshots.ReplaceText(AView.Buffer, mText, mFrom, Max(0, mTill - mFrom), ANew);
   AView.Paint;
   Result := True;
 end;

@@ -81,7 +81,8 @@ type
 implementation
 
 uses
-  System.Classes;
+  System.Classes,
+  Atlas.Text.Lines;
 
 const
   cLf = #10;
@@ -89,7 +90,7 @@ const
 /// <summary>Text ohne Zeilenumbrüche: Sie würden das Skript zerreißen.</summary>
 function OneLine(const AText: string): string;
 begin
-  Result := StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(AText, ' ');
 end;
 
 function Comment(const AText: string): string;
