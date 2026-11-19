@@ -1278,8 +1278,9 @@ begin
   Assert.AreEqual('^/Packages/Basis', mRules[0].Source);
   Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Keep, mRules[0].Action);
   Assert.AreEqual<TAtlasVcsExternalAction>(TAtlasVcsExternalAction.Branch, mRules[1].Action);
-  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}, ' +
-    '{"source": "https://svn.x/Libs", "onBranch": "branch"}]', TAtlasVcsExternalRules.RulesJson(mRules));
+  // Das Format schreibt System.JSON; es zählt, dass die Regeln unverändert wieder herauskommen.
+  Assert.AreEqual(TAtlasVcsExternalRules.RulesText(mRules),
+    TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(TAtlasVcsExternalRules.RulesJson(mRules))));
   Assert.AreEqual('^/Packages/Basis = keep' + sLineBreak + 'https://svn.x/Libs = branch',
     TAtlasVcsExternalRules.RulesText(mRules));
   Assert.AreEqual(0, Integer(Length(TAtlasVcsExternalRules.RulesOf('kaputt'))));

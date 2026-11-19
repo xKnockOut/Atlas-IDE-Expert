@@ -101,6 +101,8 @@ type
     // Protokoll je Test (#2168).
     ExplorerDetailsTab, ExplorerLogTab, ExplorerLogCopy, LogStart, LogFinish, LogWarning, LogError, LogConsole,
     LogAfterEnd, LogDropped, LogFixture, LogNoLogger, LogOutput, LogEmpty, SettingsTestsLog, SettingsTestsLogMaxLines,
+    // Letzter Testlauf für KI-Assistenten (#2409).
+    SettingsTestsLastRun,
     // Teststand in der Statusleiste (#1777).
     StatusFieldText, StatusFieldRunning, StatusFieldNotRun, StatusFieldProject, StatusFieldLastRun, StatusFieldNoRun,
     StatusFieldCounts, StatusFieldStale, StatusFieldClickFailed, StatusFieldClickAll, StatusFieldContext,
@@ -494,6 +496,7 @@ const
      'Keine Zeilen für diesen Test im letzten Lauf.',
      'Protokoll je Test (Log- und Konsolenausgabe)',
      'Höchstens Zeilen je Test',
+     'Letzten Testlauf für KI-Assistenten ablegen (get_last_tests)',
      'Tests %d/%d',
      'Tests laufen …',
      'Tests –',
@@ -1005,6 +1008,7 @@ const
      'No lines for this test in the last run.',
      'Log per test (log and console output)',
      'At most lines per test',
+     'Store the last test run for AI assistants (get_last_tests)',
      'Tests %d/%d',
      'Tests running …',
      'Tests –',
