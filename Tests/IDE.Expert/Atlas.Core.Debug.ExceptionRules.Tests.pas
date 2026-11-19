@@ -51,6 +51,12 @@ type
     procedure MoveChangesOrder;
     [Test]
     procedure HitsPerRule;
+    [Test]
+    procedure DescendantsUseAncestors;
+    [Test]
+    procedure ProjectRulesIntoTeamFile;
+    [Test]
+    procedure SameRulesIgnoresOrigin;
   end;
 
 implementation
@@ -221,6 +227,7 @@ begin
   mRules[1].Regex := True;
   mRules[1].Location := 'Kunden.*';
   mRules[1].Enabled := False;
+  mRules[1].Descendants := True;
   mJson := TAtlasExceptionRules.ToJson(mRules);
   try
     mRead := TAtlasExceptionRules.Parse(mJson);
@@ -237,6 +244,8 @@ begin
   Assert.AreEqual('Kunden.*', mRead[1].Location);
   Assert.AreEqual(Ord(TAtlasExceptionAction.Continue), Ord(mRead[1].Action));
   Assert.IsFalse(mRead[1].Enabled);
+  Assert.IsTrue(mRead[1].Descendants);
+  Assert.IsFalse(mRead[0].Descendants);
   Assert.AreEqual('continue', TAtlasExceptionRules.ActionName(TAtlasExceptionAction.Continue));
 end;
 
@@ -340,6 +349,81 @@ begin
   Assert.AreEqual(0, mHits.CountOf('c'));
   mHits.Clear;
   Assert.AreEqual(0, mHits.CountOf('a'));
+end;
+
+procedure TAtlasExceptionRulesTests.DescendantsUseAncestors;
+var
+  mRule: TAtlasExceptionRule;
+  mFacts: TAtlasExceptionFacts;
+  mRules: TAtlasExceptionRuleList;
+begin
+  mRule := TAtlasExceptionRule.Create('EDatabaseError', '', TAtlasMessageMatch.Matches,
+    TAtlasExceptionAction.Continue);
+  mFacts := TAtlasExceptionFacts.Create('EFDDBEngineException', 'Verbindung weg', '');
+  Assert.IsFalse(mRule.Matches(mFacts), 'ohne Vorfahren');
+  mFacts.Ancestors := TArray<string>.Create('EFDException', 'edatabaseerror', 'Exception');
+  Assert.IsFalse(mRule.Matches(mFacts), 'ohne „mit Nachfahren“');
+  mRule.Descendants := True;
+  Assert.IsTrue(mRule.Matches(mFacts));
+  mRules := TAtlasExceptionRuleList.Create(mRule);
+  Assert.IsTrue(TAtlasExceptionRules.NeedsAncestors(mRules, 'EFDDBEngineException', cAll));
+  Assert.IsFalse(TAtlasExceptionRules.NeedsAncestors(mRules, 'EDatabaseError', cAll), 'gleiche Klasse');
+  Assert.IsFalse(TAtlasExceptionRules.NeedsAncestors(mRules, 'EFDDBEngineException',
+    [TAtlasExceptionRuleKind.Message]), 'Art aus');
+  mRules[0].Enabled := False;
+  Assert.IsFalse(TAtlasExceptionRules.NeedsAncestors(mRules, 'EFDDBEngineException', cAll), 'ausgeschaltet');
+  mFacts.Ancestors := nil;
+end;
+
+procedure TAtlasExceptionRulesTests.ProjectRulesIntoTeamFile;
+const
+  cText = '{' + #13#10 + '  // Team' + #13#10 + '  "version": 1' + #13#10 + '}' + #13#10;
+var
+  mRule: TAtlasExceptionRule;
+  mText: string;
+  mValue: TJSONValue;
+  mRead: TAtlasExceptionRuleList;
+begin
+  mRule := TAtlasExceptionRule.Create('EConvertError', '', TAtlasMessageMatch.Matches,
+    TAtlasExceptionAction.Continue);
+  mRule.Location := 'Bericht.Druck.*';
+  mRule.Origin := TAtlasExceptionRuleOrigin.Project;
+  mText := TAtlasExceptionRules.WithProjectRules(cText, '', TAtlasExceptionRuleList.Create(mRule));
+  Assert.IsTrue(mText.Contains('// Team'), 'Kommentar bleibt');
+  Assert.IsTrue(mText.Contains('"version": 1'));
+  Assert.IsTrue(mText.Contains('"exceptionRules"'));
+  mValue := TJSONObject.ParseJSONValue(mText.Replace('// Team', ''));
+  try
+    Assert.IsNotNull(mValue);
+    mRead := TAtlasExceptionRules.Parse((mValue as TJSONObject).GetValue('exceptionRules'));
+  finally
+    mValue.Free;
+  end;
+  Assert.AreEqual(1, Integer(Length(mRead)));
+  Assert.AreEqual('Bericht.Druck.*', mRead[0].Location);
+  // Leer: das Gerüst, dann die Regeln; ohne Regeln ein leeres Array.
+  mText := TAtlasExceptionRules.WithProjectRules('', cText, nil);
+  Assert.IsTrue(mText.Contains('// Team'));
+  Assert.IsTrue(mText.Contains('"exceptionRules": []'));
+  mText := '';
+  mRead := nil;
+end;
+
+procedure TAtlasExceptionRulesTests.SameRulesIgnoresOrigin;
+var
+  mLeft, mRight: TAtlasExceptionRuleList;
+begin
+  mLeft := TAtlasExceptionRuleList.Create(TAtlasExceptionRule.Create('EConvertError', '',
+    TAtlasMessageMatch.Matches, TAtlasExceptionAction.Continue));
+  mRight := Copy(mLeft);
+  mRight[0].Origin := TAtlasExceptionRuleOrigin.Project;
+  Assert.IsTrue(TAtlasExceptionRules.SameRules(mLeft, mRight), 'Herkunft zählt nicht');
+  mRight[0].Enabled := False;
+  Assert.IsFalse(TAtlasExceptionRules.SameRules(mLeft, mRight), 'ausgeschaltet');
+  Assert.IsFalse(TAtlasExceptionRules.SameRules(mLeft, nil), 'Anzahl');
+  Assert.IsTrue(TAtlasExceptionRules.SameRules(nil, nil));
+  mLeft := nil;
+  mRight := nil;
 end;
 
 initialization

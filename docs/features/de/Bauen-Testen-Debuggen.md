@@ -832,7 +832,7 @@ Einstellungen: `debug.exceptionMessageRules` (Vorgabe an)
 
 #### Exception-Regeln nach Klasse und Ort
 
-- Eine Regel nennt die Klasse, wahlweise den Ort (Methode oder Unit als Muster, z. B. `Bericht.Druck.*` oder `TKunde.*`), wahlweise ein Muster für die Meldung und die Aktion:
+- Eine Regel nennt die Klasse (wahlweise mit Nachfahren), wahlweise den Ort (Methode oder Unit als Muster, z. B. `Bericht.Druck.*` oder `TKunde.*`), wahlweise ein Muster für die Meldung und die Aktion:
   - Anhalten
   - Nur protokollieren (grau im Verlauf)
   - Weiterlaufen (nicht im Verlauf)
@@ -840,16 +840,17 @@ Einstellungen: `debug.exceptionMessageRules` (Vorgabe an)
 - „Nur an dieser Stelle ignorieren“ in der Exception-Leiste legt dafür eine Regel für die erste eigene Methode an (ohne eigene Methode wie bisher Klasse + Unit + Zeile).
 - Fenster „Exception-Regeln“ (Kontextmenü des Exception-Verlaufs oder Befehlspalette, `Atlas.DebugExceptionRules`):
   - je Zeile: an/aus, Klasse, Ort, Meldung, Aktion, Herkunft und Treffer der laufenden Debug-Sitzung
-  - Neu, Bearbeiten, Ein/Aus, Löschen, Nach oben/unten; die erste passende Regel gewinnt
-  - persönliche Regeln stehen vor denen des Projekts und lassen sich hier ändern; die des Projekts nur in der Projektdatei („.atlas öffnen“)
+  - Neu, Bearbeiten, Ein/Aus, Löschen, Nach oben/unten oder Ziehen mit der Maus; die erste passende Regel gewinnt
+  - persönliche Regeln stehen vor denen des Projekts; beide lassen sich hier ändern, Sortieren geht innerhalb der eigenen Gruppe
+  - im Dialog „Exception-Regel“ wählt „Gilt für“ zwischen „nur für mich“ und „alle im Projekt (.atlas)“; „Übernehmen“ schreibt geänderte Projektregeln in `.atlas` (Kommentare und übrige Einträge bleiben, eine Regel je Zeile), „Projektdatei öffnen“ zeigt die Datei
 - Persönliche Regeln stehen in `debug-ignore.json` (Feld `rules`), die des Projekts in `.atlas` unter `exceptionRules` und werden eingecheckt:
 
 ```json
 "exceptionRules": [{"class": "EConvertError", "location": "Bericht.Druck.*", "action": "continue"}]
 ```
 
-  Felder: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`.
-- Die Klasse muss genau passen; Nachfahren zählen nicht mit.
+  Felder: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`, `descendants`.
+- Mit „mit Nachfahren“ passt die Regel auch zu abgeleiteten Klassen (`EDatabaseError` fängt `EFDDBEngineException`). Die Vorfahren fragt Atlas beim Halt einmal je Klasse und Sitzung über die Typhierarchie des Servers ab; ist die Klasse dort unbekannt, zählt nur der genaue Name.
 
 Einstellungen: `debug.exceptionRules` (Vorgabe an); Regeln mit Meldung zusätzlich `debug.exceptionMessageRules`
 

@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Debug.ExceptionRuleList.Tests;
 
 // Fenster „Exception-Regeln“ (#838): Zeilen mit Treffern, persönliche vor
-// denen des Projekts, nur persönliche ändern, anlegen, verschieben, ein- und
-// ausschalten, löschen.
+// denen des Projekts, anlegen, verschieben (Knöpfe und Ziehen, nur in der
+// Gruppe), ein- und ausschalten, löschen, Herkunft wechseln.
 
 interface
 
@@ -24,9 +24,11 @@ type
     [Test]
     procedure CellsOfRule;
     [Test]
-    procedure ProjectRulesStayLocked;
+    procedure MovesStayInGroup;
     [Test]
     procedure NewMoveToggleDelete;
+    [Test]
+    procedure OriginChangeMovesRule;
   end;
 
 implementation
@@ -47,6 +49,18 @@ begin
     TAtlasExceptionRuleList.Create(Rule('EAbort', TAtlasExceptionAction.Continue),
     Rule('EConvertError', TAtlasExceptionAction.Log)),
     TAtlasExceptionRuleList.Create(Rule('EDatabaseError', TAtlasExceptionAction.Stop)));
+end;
+
+/// <summary>Editor ohne Fenster: macht die Regel zu einer des Projekts mit Nachfahren.</summary>
+function ToProjectEditor: TAtlasExceptionRuleEditor;
+begin
+  Result :=
+    function(var ARule: TAtlasExceptionRule; ANew: Boolean): Boolean
+    begin
+      ARule.Origin := TAtlasExceptionRuleOrigin.Project;
+      ARule.Descendants := True;
+      Result := True;
+    end;
 end;
 
 /// <summary>Editor ohne Fenster: legt EInOutError an bzw. setzt beim Bearbeiten die Aktion auf Anhalten.</summary>
@@ -99,9 +113,12 @@ begin
   mCells := TAtlasExceptionRuleListDialog.Cells(mRule, 0);
   Assert.AreEqual('', mCells[0], 'ausgeschaltet');
   Assert.AreEqual('Kunden.*', mCells[2]);
+  mRule.Descendants := True;
+  mCells := TAtlasExceptionRuleListDialog.Cells(mRule, 0);
+  Assert.AreEqual('EKonfig (mit Nachfahren)', mCells[1]);
 end;
 
-procedure TAtlasExceptionRuleListDialogTests.ProjectRulesStayLocked;
+procedure TAtlasExceptionRuleListDialogTests.MovesStayInGroup;
 var
   mDialog: TAtlasExceptionRuleListDialog;
   mHits: TAtlasExceptionRuleHits;
@@ -117,14 +134,17 @@ begin
     Assert.AreEqual(3, mDialog.List.Items.Count);
     Assert.AreEqual('1', mDialog.List.Items[2].SubItems[5], 'Treffer der Projektregel');
     mDialog.Select(2);
-    Assert.IsFalse(mDialog.Buttons[TAtlasRuleListButton.Edit].Enabled, 'Regel des Projekts');
-    Assert.IsFalse(mDialog.Buttons[TAtlasRuleListButton.Delete].Enabled);
-    Assert.IsFalse(mDialog.Buttons[TAtlasRuleListButton.Up].Enabled);
+    Assert.IsTrue(mDialog.Buttons[TAtlasRuleListButton.Edit].Enabled, 'Regel des Projekts');
+    Assert.IsTrue(mDialog.Buttons[TAtlasRuleListButton.Delete].Enabled);
+    Assert.IsFalse(mDialog.Buttons[TAtlasRuleListButton.Up].Enabled, 'nicht über die persönlichen');
     mDialog.Select(1);
-    Assert.IsTrue(mDialog.Buttons[TAtlasRuleListButton.Edit].Enabled);
     Assert.IsTrue(mDialog.Buttons[TAtlasRuleListButton.Up].Enabled);
     Assert.IsFalse(mDialog.Buttons[TAtlasRuleListButton.Down].Enabled, 'nicht unter die Projektregeln');
     Assert.IsFalse(mDialog.Buttons[TAtlasRuleListButton.OpenProject].Enabled, 'ohne Rückruf');
+    Assert.IsFalse(mDialog.DropAt(2), 'Ziehen in die andere Gruppe');
+    Assert.IsTrue(mDialog.DropAt(0), 'Ziehen in der Gruppe');
+    Assert.AreEqual('EConvertError', mDialog.Rules[0].ExceptionClass);
+    Assert.AreEqual(0, mDialog.Selected);
   finally
     mDialog.Free;
   end;
@@ -153,10 +173,33 @@ begin
     mDialog.Buttons[TAtlasRuleListButton.Edit].Click;
     Assert.AreEqual(Ord(TAtlasExceptionAction.Stop), Ord(mDialog.Rules[0].Action));
     mDialog.Buttons[TAtlasRuleListButton.Delete].Click;
-    mPersonal := mDialog.Personal;
+    mPersonal := mDialog.RulesOf(TAtlasExceptionRuleOrigin.Personal);
     Assert.AreEqual(2, Integer(Length(mPersonal)), 'Projektregel nicht dabei');
     Assert.AreEqual('EInOutError', mPersonal[0].ExceptionClass);
     Assert.AreEqual('EConvertError', mPersonal[1].ExceptionClass);
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasExceptionRuleListDialogTests.OriginChangeMovesRule;
+var
+  mDialog: TAtlasExceptionRuleListDialog;
+  mProject: TAtlasExceptionRuleList;
+begin
+  mDialog := TAtlasExceptionRuleListDialog.CreateFor(nil, SampleRules, Default(TAtlasExceptionRuleHits));
+  try
+    mDialog.Editor := ToProjectEditor;
+    mDialog.List.HandleNeeded;
+    mDialog.Fill;
+    mDialog.Select(0);
+    mDialog.Buttons[TAtlasRuleListButton.Edit].Click;
+    Assert.AreEqual(2, mDialog.Selected, 'ans Ende der Projektregeln');
+    mProject := mDialog.RulesOf(TAtlasExceptionRuleOrigin.Project);
+    Assert.AreEqual(2, Integer(Length(mProject)));
+    Assert.AreEqual('EAbort', mProject[1].ExceptionClass);
+    Assert.IsTrue(mProject[1].Descendants);
+    Assert.AreEqual(1, Integer(Length(mDialog.RulesOf(TAtlasExceptionRuleOrigin.Personal))));
   finally
     mDialog.Free;
   end;

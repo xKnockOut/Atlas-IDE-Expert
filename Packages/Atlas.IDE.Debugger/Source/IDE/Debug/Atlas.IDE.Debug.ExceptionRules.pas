@@ -11,6 +11,12 @@
 //   „Exception-Regeln“).
 // - „Nur an dieser Stelle ignorieren“ legt mit debug.exceptionRules eine
 //   Regel für die erste eigene Methode an (IgnoreHere).
+// - Regeln „mit Nachfahren“: Die Vorfahren der Klasse fragt Atlas beim Server
+//   (workspace/symbol, dann typeHierarchy/supertypes), nur wenn eine solche
+//   Regel sie braucht, und merkt sie je Klasse bis zur nächsten Debug-Sitzung.
+//   Ohne Server oder ohne die Klasse im Index passt nur die Klasse selbst.
+// - Im Fenster geänderte Regeln des Projekts schreibt Atlas in die .atlas
+//   (TAtlasIdeTeamFile.TargetFile); Kommentare und übrige Schlüssel bleiben.
 // - Die persönlichen Regeln liest und speichert TAtlasIdeDebugExceptions; es
 //   meldet dafür beim Start seinen Speicher an (Bind), damit diese Unit es
 //   nicht einbinden muss.
@@ -42,8 +48,15 @@ type
     /// </summary>
     FProjectText: string;
     FProject: TAtlasExceptionRuleList;
+    /// <summary>Gefragte Klassen und ihre Vorfahren (je Sitzung).</summary>
+    FAncestorClasses: TArray<string>;
+    FAncestorLists: TArray<TArray<string>>;
     class function Personal: TAtlasExceptionRuleList; static;
     class procedure SavePersonal(const ARules: TAtlasExceptionRuleList; const ASaid: string); static;
+    /// <summary>Vorfahren von AClass, nächster zuerst; aus dem Zwischenspeicher oder vom Server.</summary>
+    class function AncestorsOf(const AClass: string): TArray<string>; static;
+    /// <summary>Regeln des Projekts in die .atlas schreiben (Meldung über SavePersonal-Weg).</summary>
+    class procedure SaveProject(const ARules: TAtlasExceptionRuleList); static;
   public
     /// <summary>Ablage der persönlichen Regeln anmelden; Default(TAtlasExceptionRuleStore) meldet sie ab.</summary>
     class procedure Bind(const AStore: TAtlasExceptionRuleStore); static;
@@ -75,6 +88,13 @@ implementation
 
 uses
   System.JSON,
+  System.Generics.Collections,
+  Atlas.Core.Lsp.Contract,
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.Files.Contract,
+  Atlas.Core.Files.TextFile,
+  Atlas.Core.Settings.TeamFile,
+  Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.Core.Debug.IgnoreList,
@@ -82,7 +102,121 @@ uses
   Atlas.UI.Debug.ExceptionRuleList,
   Atlas.UI.Debug.Exceptions.Strings;
 
+const
+  /// <summary>LSP SymbolKind Class.</summary>
+  cSymbolClass = 5;
+  cSymbolTimeoutMs = 1000;
+  cMaxAncestors = 16;
+
+/// <summary>Erster Eintrag, der eine Klasse ist; False ohne.</summary>
+function FirstClass(const AItems: TArray<TAtlasHierarchyItem>; out AItem: TAtlasHierarchyItem): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AItems) do
+  begin
+    if AItems[mIndex].Kind = cSymbolClass then
+    begin
+      AItem := AItems[mIndex];
+      Exit(True);
+    end;
+  end;
+  AItem := Default(TAtlasHierarchyItem);
+  Result := False;
+end;
+
+/// <summary>Deklaration der Klasse AClass im Index; False ohne.</summary>
+function FindClass(ASession: TLspSession; const AClass: string; out ASymbol: TAtlasSymbol): Boolean;
+var
+  mSymbols: TArray<TAtlasSymbol>;
+  mIndex: Integer;
+begin
+  mSymbols := ASession.WorkspaceSymbols(AClass, cSymbolTimeoutMs);
+  for mIndex := 0 to High(mSymbols) do
+  begin
+    if (mSymbols[mIndex].Kind = cSymbolClass) and SameText(mSymbols[mIndex].Name, AClass) then
+    begin
+      ASymbol := mSymbols[mIndex];
+      Exit(True);
+    end;
+  end;
+  ASymbol := Default(TAtlasSymbol);
+  Result := False;
+end;
+
+/// <summary>Vorfahren von AClass laut Server, nächster zuerst; nil ohne Server oder Klasse.</summary>
+function QueryAncestors(const AClass: string): TArray<string>;
+var
+  mSession: TLspSession;
+  mSymbol: TAtlasSymbol;
+  mItem: TAtlasHierarchyItem;
+begin
+  Result := nil;
+  mSession := TAtlasIdeHost.RunningSession;
+  if (mSession = nil) or not FindClass(mSession, AClass, mSymbol) or
+    not FirstClass(mSession.PrepareHierarchy(TAtlasHierarchyDirection.Supertypes, mSymbol.FileName, mSymbol.Line,
+    mSymbol.Character), mItem) then
+  begin
+    Exit;
+  end;
+  while (Length(Result) < cMaxAncestors) and
+    FirstClass(mSession.HierarchyChildren(TAtlasHierarchyDirection.Supertypes, mItem), mItem) do
+  begin
+    Result := Result + [mItem.Name];
+  end;
+end;
+
 { TAtlasIdeExceptionRules }
+
+class function TAtlasIdeExceptionRules.AncestorsOf(const AClass: string): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FAncestorClasses) do
+  begin
+    if SameText(FAncestorClasses[mIndex], AClass) then
+    begin
+      Exit(Copy(FAncestorLists[mIndex]));
+    end;
+  end;
+  Result := QueryAncestors(AClass);
+  FAncestorClasses := FAncestorClasses + [AClass];
+  SetLength(FAncestorLists, Length(FAncestorLists) + 1);
+  FAncestorLists[High(FAncestorLists)] := Copy(Result);
+end;
+
+class procedure TAtlasIdeExceptionRules.SaveProject(const ARules: TAtlasExceptionRuleList);
+var
+  mFileName: string;
+  mContent: TAtlasTextFileContent;
+begin
+  mFileName := TAtlasIdeTeamFile.TargetFile;
+  if not (TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.TeamFile) or (mFileName = '') then
+  begin
+    SavePersonal(Personal, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRulesProjectOff));
+    Exit;
+  end;
+  try
+    mContent := Default(TAtlasTextFileContent);
+    mContent.Encoding := TAtlasTextEncoding.Utf8;
+    if FileExists(mFileName) then
+    begin
+      mContent := TAtlasTextFile.Load(mFileName);
+    end;
+    mContent.Text := TAtlasExceptionRules.WithProjectRules(mContent.Text, TAtlasTeamFile.Skeleton, ARules);
+    TAtlasTextFile.Save(mFileName, mContent);
+  except
+    on E: Exception do
+    begin
+      SavePersonal(Personal, TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugRulesProjectFailed,
+        [E.Message]));
+      Exit;
+    end;
+  end;
+  TAtlasIdeTeamFile.Refresh;
+  SavePersonal(Personal, TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugRulesProjectSaved,
+    [mFileName, Length(ARules)]));
+end;
 
 class procedure TAtlasIdeExceptionRules.Bind(const AStore: TAtlasExceptionRuleStore);
 begin
@@ -140,6 +274,8 @@ class function TAtlasIdeExceptionRules.Decide(const APersonal: TAtlasExceptionRu
 var
   mAll: TAtlasExceptionRuleList;
   mIndex: Integer;
+  mKinds: TAtlasExceptionRuleKinds;
+  mFacts: TAtlasExceptionFacts;
 begin
   AAction := TAtlasExceptionAction.Stop;
   mAll := TAtlasExceptionRules.Combined(APersonal, nil);
@@ -147,8 +283,14 @@ begin
   begin
     mAll := TAtlasExceptionRules.Combined(APersonal, ProjectRules);
   end;
-  mIndex := TAtlasExceptionRules.FirstMatch(mAll, AFacts, TAtlasExceptionRules.Kinds(
-    TAtlasIdeSettings.Current.DebugExceptionMessageRules, TAtlasIdeSettings.Current.DebugExceptionRules));
+  mKinds := TAtlasExceptionRules.Kinds(TAtlasIdeSettings.Current.DebugExceptionMessageRules,
+    TAtlasIdeSettings.Current.DebugExceptionRules);
+  mFacts := AFacts;
+  if TAtlasExceptionRules.NeedsAncestors(mAll, AFacts.ExceptionClass, mKinds) then
+  begin
+    mFacts.Ancestors := AncestorsOf(AFacts.ExceptionClass);
+  end;
+  mIndex := TAtlasExceptionRules.FirstMatch(mAll, mFacts, mKinds);
   Result := mIndex >= 0;
   if Result then
   begin
@@ -160,6 +302,9 @@ end;
 class procedure TAtlasIdeExceptionRules.SessionStarted;
 begin
   FHits.Clear;
+  // Klassen können sich seit der letzten Sitzung geändert haben.
+  FAncestorClasses := nil;
+  FAncestorLists := nil;
 end;
 
 class function TAtlasIdeExceptionRules.AddRule(const ARule: TAtlasExceptionRule): Boolean;
@@ -233,16 +378,22 @@ end;
 
 class procedure TAtlasIdeExceptionRules.ShowWindow;
 var
-  mPersonal: TAtlasExceptionRuleList;
+  mPersonal, mProject, mOld: TAtlasExceptionRuleList;
 begin
+  mOld := ProjectRules;
   if TAtlasExceptionRuleListDialog.Execute(All, FHits,
     procedure
     begin
       TAtlasIdeTeamFile.OpenInEditor;
-    end, mPersonal) then
+    end, mPersonal, mProject) then
   begin
+    // Zuerst die persönlichen Regeln: SaveProject meldet über denselben Weg und liest sie neu.
     SavePersonal(mPersonal, TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugRulesSaid,
       [Length(mPersonal)]));
+    if not TAtlasExceptionRules.SameRules(mOld, mProject) then
+    begin
+      SaveProject(mProject);
+    end;
   end;
 end;
 

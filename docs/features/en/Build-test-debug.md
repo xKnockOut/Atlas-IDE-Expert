@@ -884,7 +884,7 @@ Settings: `debug.exceptionMessageRules` (default on)
 
 ### Exception rules by class and location
 
-- A rule names the class, optionally the location (method or unit as a pattern, e.g. `Report.Print.*` or `TCustomer.*`), optionally a pattern for the message, and the action:
+- A rule names the class (optionally with descendants), optionally the location (method or unit as a pattern, e.g. `Report.Print.*` or `TCustomer.*`), optionally a pattern for the message, and the action:
   - Stop
   - Only log (greyed out in the history)
   - Continue (not in the history)
@@ -892,16 +892,17 @@ Settings: `debug.exceptionMessageRules` (default on)
 - "Ignore only here" in the exception bar creates such a rule for the first method of your own code (without one, class + unit + line as before).
 - Window "Exception rules" (context menu of the exception history or command palette, `Atlas.DebugExceptionRules`):
   - per row: on/off, class, location, message, action, origin and hits in the current debug session
-  - New, Edit, On/Off, Delete, Up/Down; the first matching rule wins
-  - personal rules come before those of the project and can be changed here; project rules only in the project file ("Open .atlas")
+  - New, Edit, On/Off, Delete, Up/Down or drag with the mouse; the first matching rule wins
+  - personal rules come before those of the project; both can be changed here, sorting works within their own group
+  - in the dialog "Exception rule", "Applies to" chooses between "only me" and "everyone in the project (.atlas)"; "Apply" writes changed project rules to `.atlas` (comments and other entries stay, one rule per line), "Open project file" shows the file
 - Personal rules are stored in `debug-ignore.json` (field `rules`), project rules in `.atlas` under `exceptionRules` and are checked in:
 
 ```json
 "exceptionRules": [{"class": "EConvertError", "location": "Report.Print.*", "action": "continue"}]
 ```
 
-  Fields: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`.
-- The class must match exactly; descendants do not count.
+  Fields: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`, `descendants`.
+- With "including descendants" the rule also matches derived classes (`EDatabaseError` catches `EFDDBEngineException`). Atlas asks the server's type hierarchy for the ancestors once per class and session when the debugger stops; if the class is unknown there, only the exact name counts.
 
 Settings: `debug.exceptionRules` (default on); rules with a message also need `debug.exceptionMessageRules`
 

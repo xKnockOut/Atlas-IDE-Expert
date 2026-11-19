@@ -66,7 +66,15 @@ type
     DebugRuleNoClass,
     DebugRulesSaid,
     DebugRulePlaceSaid,
-    DebugExceptionsRules);
+    DebugExceptionsRules,
+    DebugRuleDescendants,
+    DebugRuleOrigin,
+    DebugRuleOriginMine,
+    DebugRuleOriginTeam,
+    DebugRulesClassDescendants,
+    DebugRulesProjectSaved,
+    DebugRulesProjectFailed,
+    DebugRulesProjectOff);
 
   TAtlasExceptionsStrings = class
   public
@@ -194,7 +202,7 @@ const
      'Übernehmen',
      'Abbrechen',
      'Die erste passende Regel gewinnt; persönliche Regeln gelten vor denen der Projektdatei .atlas. ' +
-      'Regeln des Projekts ändert man dort.',
+      'Regeln des Projekts gelten für alle im Team; „Übernehmen“ schreibt sie in .atlas.',
      'Exception-Regel anlegen',
      'Exception-Regel bearbeiten',
      'Ort:',
@@ -208,7 +216,16 @@ const
      'Die Klasse fehlt.',
      'Exception-Regeln gespeichert (%d persönliche).',
      'Exception-Regel: %s in %s wird künftig nur vermerkt.',
-     'Exception-Regeln …'),
+     'Exception-Regeln …',
+     'mit Nachfahren',
+     'Gilt für:',
+     'nur für mich',
+     'alle im Projekt (.atlas)',
+     '%s (mit Nachfahren)',
+     'Exception-Regeln des Projekts in %s gespeichert (%d).',
+     'Exception-Regeln des Projekts nicht gespeichert: %s',
+     'Exception-Regeln des Projekts nicht gespeichert: Die Projektdatei ist ausgeschaltet oder kein Projekt ist ' +
+      'offen.'),
     ('Atlas: Exceptions',
      'Filter by class, message, location',
      'Go to location',
@@ -319,7 +336,7 @@ const
      'Apply',
      'Cancel',
      'The first matching rule wins; personal rules come before those of the project file .atlas. ' +
-      'Change project rules there.',
+      'Project rules apply to everyone in the team; “Apply” writes them to .atlas.',
      'New exception rule',
      'Edit exception rule',
      'Place:',
@@ -333,7 +350,15 @@ const
      'The class is missing.',
      'Exception rules saved (%d personal).',
      'Exception rule: %s in %s will only be logged from now on.',
-     'Exception rules …'));
+     'Exception rules …',
+     'including descendants',
+     'Applies to:',
+     'only me',
+     'everyone in the project (.atlas)',
+     '%s (with descendants)',
+     'Project exception rules saved to %s (%d).',
+     'Project exception rules not saved: %s',
+     'Project exception rules not saved: the project file is switched off or no project is open.'));
 
 { TAtlasExceptionsStrings }
 

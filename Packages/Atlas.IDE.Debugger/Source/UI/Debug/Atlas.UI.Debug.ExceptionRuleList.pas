@@ -8,10 +8,12 @@
 //   [Projektdatei öffnen]
 //   Die erste passende Regel gewinnt; …
 //                                            [Übernehmen] [Abbrechen]
-// Ändern, Löschen und Verschieben gehen nur bei persönlichen Regeln (Regeln
-// des Projekts stehen in .atlas, „Projektdatei öffnen“). Neue Regeln kommen
-// ans Ende der persönlichen. Bearbeitet wird über Editor (Vorgabe
-// TAtlasExceptionRuleEditDialog.Execute). Aufgebaut im Code (keine DFM).
+// Persönliche Regeln und die des Projekts lassen sich ändern, löschen und
+// innerhalb ihrer Gruppe verschieben (Knöpfe oder Ziehen mit der Maus); „Gilt
+// für“ im Dialog wechselt die Gruppe, die Regel kommt dann an deren Ende,
+// ebenso neue Regeln. Speichern übernimmt der Aufrufer (RulesOf je Herkunft).
+// Bearbeitet wird über Editor (Vorgabe TAtlasExceptionRuleEditDialog.Execute).
+// Aufgebaut im Code (keine DFM).
 
 interface
 
@@ -48,6 +50,8 @@ type
     procedure CreateButtons;
     procedure ListSelect(Sender: TObject; AItem: TListItem; ASelected: Boolean);
     procedure ListDblClick(Sender: TObject);
+    procedure ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
+    procedure ListDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure NewClick(Sender: TObject);
     procedure EditClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
@@ -55,7 +59,10 @@ type
     procedure UpClick(Sender: TObject);
     procedure DownClick(Sender: TObject);
     procedure OpenProjectClick(Sender: TObject);
-    function PersonalCount: Integer;
+    /// <summary>Index hinter der letzten Regel der Herkunft AOrigin (persönliche stehen vorn).</summary>
+    function GroupEnd(AOrigin: TAtlasExceptionRuleOrigin): Integer;
+    /// <summary>Beide Indizes gültig und von gleicher Herkunft?</summary>
+    function SameGroup(AIndex, AOther: Integer): Boolean;
     procedure MoveSelected(ADelta: Integer);
     function AddAction(ARow: TAtlasButtonRow; AId: TAtlasExceptionsTextId; AClick: TNotifyEvent): TButton;
     procedure UpdateButtons;
@@ -70,13 +77,15 @@ type
     /// <summary>Zeile wählen (-1: keine).</summary>
     procedure Select(AIndex: Integer);
     function Selected: Integer;
-    /// <summary>Persönliche Regeln nach dem Bearbeiten, in Reihenfolge.</summary>
-    function Personal: TAtlasExceptionRuleList;
+    /// <summary>Regeln der Herkunft AOrigin nach dem Bearbeiten, in Reihenfolge.</summary>
+    function RulesOf(AOrigin: TAtlasExceptionRuleOrigin): TAtlasExceptionRuleList;
+    /// <summary>Gewählte Regel an die Stelle ATarget ziehen (nur in ihrer Gruppe); False sonst.</summary>
+    function DropAt(ATarget: Integer): Boolean;
     /// <summary>Spalten einer Zeile: Ein, Klasse, Ort, Meldung, Aktion, Herkunft, Treffer.</summary>
     class function Cells(const ARule: TAtlasExceptionRule; AHits: Integer): TArray<string>; static;
-    /// <summary>Fenster zeigen; True mit APersonal nach „Übernehmen“.</summary>
+    /// <summary>Fenster zeigen; True mit den Regeln je Herkunft nach „Übernehmen“.</summary>
     class function Execute(const ARules: TAtlasExceptionRuleList; const AHits: TAtlasExceptionRuleHits;
-      const AOpenProject: TProc; out APersonal: TAtlasExceptionRuleList): Boolean; static;
+      const AOpenProject: TProc; out APersonal, AProject: TAtlasExceptionRuleList): Boolean; static;
     property List: TListView read FList;
     property Rules: TAtlasExceptionRuleList read FRules;
     property Editor: TAtlasExceptionRuleEditor read FEditor write FEditor;
@@ -165,6 +174,9 @@ begin
   end;
   FList.OnSelectItem := ListSelect;
   FList.OnDblClick := ListDblClick;
+  FList.DragMode := dmAutomatic;
+  FList.OnDragOver := ListDragOver;
+  FList.OnDragDrop := ListDragDrop;
 end;
 
 function TAtlasExceptionRuleListDialog.AddAction(ARow: TAtlasButtonRow; AId: TAtlasExceptionsTextId;
@@ -197,7 +209,7 @@ end;
 
 class function TAtlasExceptionRuleListDialog.Cells(const ARule: TAtlasExceptionRule; AHits: Integer): TArray<string>;
 var
-  mPlace, mMessage, mOrigin, mOn: string;
+  mPlace, mMessage, mOrigin, mOn, mClass: string;
 begin
   mOn := '';
   if ARule.Enabled then
@@ -219,7 +231,12 @@ begin
   begin
     mOrigin := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRulesOriginProject);
   end;
-  Result := TArray<string>.Create(mOn, ARule.ExceptionClass, mPlace, mMessage,
+  mClass := ARule.ExceptionClass;
+  if ARule.Descendants then
+  begin
+    mClass := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugRulesClassDescendants, [mClass]);
+  end;
+  Result := TArray<string>.Create(mOn, mClass, mPlace, mMessage,
     TAtlasExceptionRuleEditDialog.ActionText(ARule.Action), mOrigin, IntToStr(AHits));
 end;
 
@@ -273,28 +290,34 @@ begin
   end;
 end;
 
-function TAtlasExceptionRuleListDialog.PersonalCount: Integer;
+function TAtlasExceptionRuleListDialog.GroupEnd(AOrigin: TAtlasExceptionRuleOrigin): Integer;
 var
   mRule: TAtlasExceptionRule;
 begin
   Result := 0;
   for mRule in FRules do
   begin
-    if mRule.Origin = TAtlasExceptionRuleOrigin.Personal then
+    if Ord(mRule.Origin) <= Ord(AOrigin) then
     begin
       Inc(Result);
     end;
   end;
 end;
 
-function TAtlasExceptionRuleListDialog.Personal: TAtlasExceptionRuleList;
+function TAtlasExceptionRuleListDialog.SameGroup(AIndex, AOther: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(FRules)) and (AOther >= 0) and (AOther <= High(FRules)) and
+    (FRules[AIndex].Origin = FRules[AOther].Origin);
+end;
+
+function TAtlasExceptionRuleListDialog.RulesOf(AOrigin: TAtlasExceptionRuleOrigin): TAtlasExceptionRuleList;
 var
   mRule: TAtlasExceptionRule;
 begin
   Result := nil;
   for mRule in FRules do
   begin
-    if mRule.Origin = TAtlasExceptionRuleOrigin.Personal then
+    if mRule.Origin = AOrigin then
     begin
       Result := Result + [mRule];
     end;
@@ -304,16 +327,16 @@ end;
 procedure TAtlasExceptionRuleListDialog.UpdateButtons;
 var
   mIndex: Integer;
-  mOwn: Boolean;
+  mAny: Boolean;
 begin
   mIndex := Selected;
-  // Persönliche Regeln stehen vorn (TAtlasExceptionRules.Combined).
-  mOwn := (mIndex >= 0) and (mIndex < PersonalCount);
-  FButtons[TAtlasRuleListButton.Edit].Enabled := mOwn;
-  FButtons[TAtlasRuleListButton.Toggle].Enabled := mOwn;
-  FButtons[TAtlasRuleListButton.Delete].Enabled := mOwn;
-  FButtons[TAtlasRuleListButton.Up].Enabled := mOwn and (mIndex > 0);
-  FButtons[TAtlasRuleListButton.Down].Enabled := mOwn and (mIndex < PersonalCount - 1);
+  mAny := (mIndex >= 0) and (mIndex <= High(FRules));
+  FButtons[TAtlasRuleListButton.Edit].Enabled := mAny;
+  FButtons[TAtlasRuleListButton.Toggle].Enabled := mAny;
+  FButtons[TAtlasRuleListButton.Delete].Enabled := mAny;
+  // Verschoben wird nur innerhalb der Gruppe: persönliche Regeln gelten immer vor denen des Projekts.
+  FButtons[TAtlasRuleListButton.Up].Enabled := SameGroup(mIndex, mIndex - 1);
+  FButtons[TAtlasRuleListButton.Down].Enabled := SameGroup(mIndex, mIndex + 1);
   FButtons[TAtlasRuleListButton.OpenProject].Enabled := Assigned(FOpenProject);
 end;
 
@@ -330,6 +353,40 @@ begin
   end;
 end;
 
+procedure TAtlasExceptionRuleListDialog.ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState;
+  var Accept: Boolean);
+var
+  mItem: TListItem;
+begin
+  mItem := FList.GetItemAt(X, Y);
+  Accept := (Source = FList) and (mItem <> nil) and SameGroup(Selected, mItem.Index);
+end;
+
+procedure TAtlasExceptionRuleListDialog.ListDragDrop(Sender, Source: TObject; X, Y: Integer);
+var
+  mItem: TListItem;
+begin
+  mItem := FList.GetItemAt(X, Y);
+  if (Source = FList) and (mItem <> nil) then
+  begin
+    DropAt(mItem.Index);
+  end;
+end;
+
+function TAtlasExceptionRuleListDialog.DropAt(ATarget: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := Selected;
+  Result := (ATarget <> mIndex) and SameGroup(mIndex, ATarget) and
+    TAtlasExceptionRules.MoveRule(FRules, mIndex, ATarget - mIndex);
+  if Result then
+  begin
+    Fill;
+    Select(ATarget);
+  end;
+end;
+
 procedure TAtlasExceptionRuleListDialog.NewClick(Sender: TObject);
 var
   mRule: TAtlasExceptionRule;
@@ -340,8 +397,7 @@ begin
   begin
     Exit;
   end;
-  mRule.Origin := TAtlasExceptionRuleOrigin.Personal;
-  mAt := PersonalCount;
+  mAt := GroupEnd(mRule.Origin);
   Insert(mRule, FRules, mAt);
   Fill;
   Select(mAt);
@@ -358,12 +414,23 @@ begin
     Exit;
   end;
   mRule := FRules[mIndex];
-  if FEditor(mRule, False) then
+  if not FEditor(mRule, False) then
   begin
-    mRule.Origin := TAtlasExceptionRuleOrigin.Personal;
-    FRules[mIndex] := mRule;
-    Fill;
+    Exit;
   end;
+  if mRule.Origin = FRules[mIndex].Origin then
+  begin
+    FRules[mIndex] := mRule;
+  end
+  else
+  begin
+    // Andere Herkunft: ans Ende der anderen Gruppe.
+    Delete(FRules, mIndex, 1);
+    mIndex := GroupEnd(mRule.Origin);
+    Insert(mRule, FRules, mIndex);
+  end;
+  Fill;
+  Select(mIndex);
 end;
 
 procedure TAtlasExceptionRuleListDialog.ToggleClick(Sender: TObject);
@@ -392,15 +459,8 @@ begin
 end;
 
 procedure TAtlasExceptionRuleListDialog.MoveSelected(ADelta: Integer);
-var
-  mIndex: Integer;
 begin
-  mIndex := Selected;
-  if TAtlasExceptionRules.MoveRule(FRules, mIndex, ADelta) then
-  begin
-    Fill;
-    Select(mIndex + ADelta);
-  end;
+  DropAt(Selected + ADelta);
 end;
 
 procedure TAtlasExceptionRuleListDialog.UpClick(Sender: TObject);
@@ -428,18 +488,21 @@ begin
 end;
 
 class function TAtlasExceptionRuleListDialog.Execute(const ARules: TAtlasExceptionRuleList;
-  const AHits: TAtlasExceptionRuleHits; const AOpenProject: TProc; out APersonal: TAtlasExceptionRuleList): Boolean;
+  const AHits: TAtlasExceptionRuleHits; const AOpenProject: TProc; out APersonal, AProject: TAtlasExceptionRuleList):
+  Boolean;
 var
   mDialog: TAtlasExceptionRuleListDialog;
 begin
   APersonal := nil;
+  AProject := nil;
   mDialog := TAtlasExceptionRuleListDialog.CreateFor(nil, ARules, AHits);
   try
     mDialog.OpenProject := AOpenProject;
     Result := mDialog.ShowModal = mrOk;
     if Result then
     begin
-      APersonal := mDialog.Personal;
+      APersonal := mDialog.RulesOf(TAtlasExceptionRuleOrigin.Personal);
+      AProject := mDialog.RulesOf(TAtlasExceptionRuleOrigin.Project);
     end;
   finally
     mDialog.Free;

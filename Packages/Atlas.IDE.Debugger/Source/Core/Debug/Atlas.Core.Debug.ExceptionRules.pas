@@ -9,6 +9,9 @@
 //     nicht → fortsetzen“.
 //   - einen Ort (#838): Muster nach TAtlasRoutinePattern für die Routine des
 //     ersten eigenen Rahmens („Kunden.*“, „TKundenImport.LeseZeile“).
+//   - „mit Nachfahren“ (#838): Die Klasse passt auch, wenn sie unter den
+//     Vorfahren der Exception steht (TAtlasExceptionFacts.Ancestors; die IDE
+//     fragt sie beim Server nach, nur wenn eine solche Regel sie braucht).
 // und eine Aktion: anhalten, nur im Verlauf vermerken (fortsetzen, Eintrag
 // grau) oder still weiterlaufen. Die erste eingeschaltete passende Regel
 // gewinnt; ohne passende Regel gelten die Ignorier-Liste und die IDE. Damit
@@ -16,7 +19,8 @@
 // Ablage in debug-ignore.json (Atlas.Core.Debug.IgnoreList), Feld "rules":
 //   [{"class": "EKonfigFehler", "message": "Schlüssel unbekannt: *",
 //     "regex": false, "messageMatch": "notMatches", "location": "",
-//     "action": "log", "enabled": true}]
+//     "action": "log", "enabled": true, "descendants": false}]
+// Dasselbe Format haben die Regeln des Projekts in .atlas ("exceptionRules").
 
 interface
 
@@ -44,6 +48,9 @@ type
     Message: string;
     /// <summary>Routine des ersten eigenen Rahmens ('' = unbekannt).</summary>
     Routine: string;
+    /// <summary>Vorfahren der Klasse, nächster zuerst; nil = unbekannt (dann passt nur die Klasse selbst).
+    /// </summary>
+    Ancestors: TArray<string>;
     class function Create(const AClass, AMessage, ARoutine: string): TAtlasExceptionFacts; static;
   end;
 
@@ -57,12 +64,16 @@ type
     Location: string;
     Action: TAtlasExceptionAction;
     Enabled: Boolean;
+    /// <summary>Auch abgeleitete Klassen (TAtlasExceptionFacts.Ancestors).</summary>
+    Descendants: Boolean;
     /// <summary>Nicht in der Datei; setzt Combined.</summary>
     Origin: TAtlasExceptionRuleOrigin;
     class function Create(const AClass, AMessage: string; AMatch: TAtlasMessageMatch;
       AAction: TAtlasExceptionAction): TAtlasExceptionRule; static;
     function HasMessage: Boolean;
     function SameCriteria(const AOther: TAtlasExceptionRule): Boolean;
+    /// <summary>Klasse gleich oder, mit Descendants, unter den Vorfahren von AFacts.</summary>
+    function ClassMatches(const AFacts: TAtlasExceptionFacts): Boolean;
     function Matches(const AFacts: TAtlasExceptionFacts): Boolean;
     function Kind: TAtlasExceptionRuleKind;
     /// <summary>Schlüssel für die Treffer der Sitzung: Herkunft und Bedingungen.</summary>
@@ -94,6 +105,10 @@ type
       AKinds: TAtlasExceptionRuleKinds): Integer; static;
     /// <summary>Arten nach den Schaltern debug.exceptionMessageRules und debug.exceptionRules.</summary>
     class function Kinds(AMessages, APlaces: Boolean): TAtlasExceptionRuleKinds; static;
+    /// <summary>Braucht eine eingeschaltete Regel der Arten AKinds die Vorfahren von AClass (mit Nachfahren und
+    /// anderer Klasse)?</summary>
+    class function NeedsAncestors(const ARules: TAtlasExceptionRuleList; const AClass: string;
+      AKinds: TAtlasExceptionRuleKinds): Boolean; static;
     /// <summary>Persönliche Regeln vor denen des Projekts, mit gesetzter Herkunft.</summary>
     class function Combined(const APersonal, AProject: TAtlasExceptionRuleList): TAtlasExceptionRuleList; static;
     /// <summary>Regel AIndex um ADelta Plätze verschieben (Reihenfolge = Vorrang); False außerhalb.</summary>
@@ -101,6 +116,12 @@ type
     /// <summary>Regel hinzufügen; eine mit gleichen Bedingungen wird ersetzt. True bei einer Änderung.</summary>
     class function Put(var ARules: TAtlasExceptionRuleList; const ARule: TAtlasExceptionRule): Boolean; static;
     class function ToJson(const ARules: TAtlasExceptionRuleList): TJSONArray; static;
+    /// <summary>Gleiche Regeln in gleicher Reihenfolge (Inhalt wie in der Datei, ohne Herkunft)?</summary>
+    class function SameRules(const ALeft, ARight: TAtlasExceptionRuleList): Boolean; static;
+    /// <summary>Text der Projektdatei mit ARules unter "exceptionRules"; Kommentare und übrige Schlüssel bleiben.
+    /// Ein leerer Text beginnt mit ASkeleton.</summary>
+    class function WithProjectRules(const AText, ASkeleton: string; const ARules: TAtlasExceptionRuleList): string;
+      static;
     /// <summary>Regeln aus dem Feld "rules"; unbrauchbare (ohne Klasse, ungültiges Muster) entfallen.</summary>
     class function Parse(AValue: TJSONValue): TAtlasExceptionRuleList; static;
     class function ActionName(AAction: TAtlasExceptionAction): string; static;
@@ -117,7 +138,10 @@ implementation
 uses
   System.StrUtils,
   System.RegularExpressions,
+  System.Generics.Collections,
   Atlas.Text.Json,
+  Atlas.Text.Lines,
+  Atlas.Core.Settings.JsonText,
   Atlas.Core.Debug.OwnCode,
   Atlas.Core.Debug.RoutinePattern;
 
@@ -126,6 +150,9 @@ const
   cMatchNames: array[TAtlasMessageMatch] of string = ('matches', 'notMatches');
   cWildcard = '*';
   cQuote = '''';
+  cProjectKey = 'exceptionRules';
+  cRuleIndent = '    ';
+  cArrayIndent = '  ';
 
 { TAtlasExceptionFacts }
 
@@ -134,6 +161,7 @@ begin
   Result.ExceptionClass := AClass;
   Result.Message := AMessage;
   Result.Routine := ARoutine;
+  Result.Ancestors := nil;
 end;
 
 { TAtlasExceptionRule }
@@ -157,12 +185,31 @@ end;
 function TAtlasExceptionRule.SameCriteria(const AOther: TAtlasExceptionRule): Boolean;
 begin
   Result := SameText(ExceptionClass, AOther.ExceptionClass) and (Message = AOther.Message) and
-    (Regex = AOther.Regex) and (MessageMatch = AOther.MessageMatch) and SameText(Location, AOther.Location);
+    (Regex = AOther.Regex) and (MessageMatch = AOther.MessageMatch) and SameText(Location, AOther.Location) and
+    (Descendants = AOther.Descendants);
+end;
+
+function TAtlasExceptionRule.ClassMatches(const AFacts: TAtlasExceptionFacts): Boolean;
+var
+  mAncestor: string;
+begin
+  Result := SameText(ExceptionClass, AFacts.ExceptionClass);
+  if Result or not Descendants then
+  begin
+    Exit;
+  end;
+  for mAncestor in AFacts.Ancestors do
+  begin
+    if SameText(ExceptionClass, mAncestor) then
+    begin
+      Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasExceptionRule.Matches(const AFacts: TAtlasExceptionFacts): Boolean;
 begin
-  Result := Enabled and SameText(ExceptionClass, AFacts.ExceptionClass);
+  Result := Enabled and ClassMatches(AFacts);
   if Result and (Location <> '') then
   begin
     Result := TAtlasRoutinePattern.Matches(Location, AFacts.Routine);
@@ -186,8 +233,8 @@ end;
 
 function TAtlasExceptionRule.Key: string;
 begin
-  Result := Format('%d|%s|%s|%d|%d|%s', [Ord(Origin), LowerCase(ExceptionClass), Message, Ord(Regex),
-    Ord(MessageMatch), LowerCase(Location)]);
+  Result := Format('%d|%s|%s|%d|%d|%s|%d', [Ord(Origin), LowerCase(ExceptionClass), Message, Ord(Regex),
+    Ord(MessageMatch), LowerCase(Location), Ord(Descendants)]);
 end;
 
 { TAtlasExceptionRuleHits }
@@ -338,6 +385,22 @@ begin
   Result := -1;
 end;
 
+class function TAtlasExceptionRules.NeedsAncestors(const ARules: TAtlasExceptionRuleList; const AClass: string;
+  AKinds: TAtlasExceptionRuleKinds): Boolean;
+var
+  mRule: TAtlasExceptionRule;
+begin
+  for mRule in ARules do
+  begin
+    if mRule.Enabled and mRule.Descendants and (mRule.Kind in AKinds) and
+      not SameText(mRule.ExceptionClass, AClass) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TAtlasExceptionRules.Kinds(AMessages, APlaces: Boolean): TAtlasExceptionRuleKinds;
 begin
   Result := [];
@@ -427,7 +490,61 @@ begin
     mItem.AddPair('location', mRule.Location);
     mItem.AddPair('action', cActionNames[mRule.Action]);
     mItem.AddPair('enabled', TJSONBool.Create(mRule.Enabled));
+    mItem.AddPair('descendants', TJSONBool.Create(mRule.Descendants));
     Result.AddElement(mItem);
+  end;
+end;
+
+class function TAtlasExceptionRules.SameRules(const ALeft, ARight: TAtlasExceptionRuleList): Boolean;
+var
+  mLeft, mRight: TJSONArray;
+begin
+  mLeft := ToJson(ALeft);
+  mRight := ToJson(ARight);
+  try
+    Result := mLeft.ToJSON([]) = mRight.ToJSON([]);
+  finally
+    mRight.Free;
+    mLeft.Free;
+  end;
+end;
+
+class function TAtlasExceptionRules.WithProjectRules(const AText, ASkeleton: string;
+  const ARules: TAtlasExceptionRuleList): string;
+var
+  mArray: TJSONArray;
+  mLineBreak: string;
+  mJson: TStringBuilder;
+  mIndex: Integer;
+begin
+  Result := AText;
+  if Trim(Result) = '' then
+  begin
+    Result := ASkeleton;
+  end;
+  mLineBreak := TTextLines.LineBreakOf(Result);
+  mArray := ToJson(ARules);
+  mJson := TStringBuilder.Create;
+  try
+    // Eine Regel je Zeile, lesbar im Diff der eingecheckten Datei.
+    mJson.Append('[');
+    for mIndex := 0 to mArray.Count - 1 do
+    begin
+      if mIndex > 0 then
+      begin
+        mJson.Append(',');
+      end;
+      mJson.Append(mLineBreak).Append(cRuleIndent).Append(mArray.Items[mIndex].ToJSON([]));
+    end;
+    if mArray.Count > 0 then
+    begin
+      mJson.Append(mLineBreak).Append(cArrayIndent);
+    end;
+    mJson.Append(']');
+    Result := TAtlasJsonText.SetValue(Result, cProjectKey, mJson.ToString);
+  finally
+    mJson.Free;
+    mArray.Free;
   end;
 end;
 
@@ -458,6 +575,7 @@ begin
   end;
   ARule.Location := TJsonRead.TrimmedText(AObject, 'location');
   ARule.Enabled := TJsonRead.FlagOr(AObject, 'enabled', True);
+  ARule.Descendants := TJsonRead.Flag(AObject, 'descendants');
   Result := (ARule.ExceptionClass <> '') and
     (not ARule.HasMessage or TAtlasExceptionRules.ValidPattern(ARule.Message, ARule.Regex, mError));
 end;

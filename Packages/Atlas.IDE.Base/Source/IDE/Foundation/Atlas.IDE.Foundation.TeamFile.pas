@@ -25,6 +25,8 @@
 //   Willkommensseite: Build-Server #763, Tracker #765, Startprofile #764).
 // - Version zählt jeden neu gelesenen Stand (für Zwischenspeicher wie die
 //   ausgeblendeten Stellen, #628).
+// - TargetFile: wohin Änderungen aus dem Plugin gehen (Ausblenden #628,
+//   Exception-Regeln #838): die gelesene Datei, sonst neben der .dproj.
 // - OpenInEditor: legt die Datei mit Gerüst (TAtlasTeamFile.Skeleton, UTF-8
 //   ohne BOM) neben der .dproj an, wenn es noch keine gibt, und öffnet sie.
 // Nur im Hauptthread verwenden.
@@ -86,6 +88,8 @@ type
     class procedure Refresh; static;
     /// <summary>Befehl Atlas.TeamFile: anlegen, falls nötig, und im Editor öffnen.</summary>
     class procedure OpenInEditor; static;
+    /// <summary>Gelesene .atlas des aktiven Projekts, sonst der Pfad neben der .dproj; '' ohne Projekt.</summary>
+    class function TargetFile: string; static;
   end;
 
 implementation
@@ -371,6 +375,22 @@ begin
   FInstance.FStamp := '';
   FInstance.FLocatedAt := 0;
   FInstance.Check;
+end;
+
+class function TAtlasIdeTeamFile.TargetFile: string;
+var
+  mProject: string;
+begin
+  Result := Current.FileName;
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
+  if mProject <> '' then
+  begin
+    Result := TPath.Combine(ExtractFileDir(mProject), TAtlasTeamFile.cFileName);
+  end;
 end;
 
 class procedure TAtlasIdeTeamFile.OpenInEditor;

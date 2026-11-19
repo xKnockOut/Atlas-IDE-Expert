@@ -71,6 +71,8 @@ begin
     Assert.AreEqual(Ord(TAtlasExceptionAction.Continue), mDialog.ActionBox.ItemIndex);
     Assert.AreEqual('Weiterlaufen', mDialog.ActionBox.Text);
     Assert.IsTrue(mDialog.EnabledBox.Checked);
+    Assert.IsFalse(mDialog.DescendantsBox.Checked);
+    Assert.AreEqual(Ord(TAtlasExceptionRuleOrigin.Personal), mDialog.OriginBox.ItemIndex);
     Assert.IsTrue(mDialog.SaveButton.Enabled);
   finally
     mDialog.Free;
@@ -95,7 +97,9 @@ begin
     mDialog.MatchBox.ItemIndex := Ord(TAtlasMessageMatch.NotMatches);
     mDialog.ActionBox.ItemIndex := Ord(TAtlasExceptionAction.Stop);
     mDialog.EnabledBox.Checked := False;
+    mDialog.DescendantsBox.Checked := True;
     Assert.IsTrue(mDialog.TryRule(mRule));
+    Assert.IsTrue(mRule.Descendants);
     Assert.AreEqual('EAbort', mRule.ExceptionClass);
     Assert.AreEqual('', mRule.Location, 'überall');
     Assert.AreEqual('Abbruch', mRule.Message);
@@ -104,6 +108,9 @@ begin
     Assert.AreEqual(Ord(TAtlasExceptionAction.Stop), Ord(mRule.Action));
     Assert.IsFalse(mRule.Enabled);
     Assert.AreEqual(Ord(TAtlasExceptionRuleOrigin.Project), Ord(mRule.Origin), 'Herkunft bleibt');
+    mDialog.OriginBox.ItemIndex := Ord(TAtlasExceptionRuleOrigin.Personal);
+    Assert.IsTrue(mDialog.TryRule(mRule));
+    Assert.AreEqual(Ord(TAtlasExceptionRuleOrigin.Personal), Ord(mRule.Origin), 'Gilt für');
   finally
     mDialog.Free;
   end;

@@ -1,15 +1,16 @@
 ﻿unit Atlas.UI.Debug.ExceptionRuleEdit;
 
 // Eine Exception-Regel anlegen oder bearbeiten (#838), reine VCL:
-//   Klasse:   [EConvertError                    ]
+//   Klasse:   [EConvertError                    ] [ ] mit Nachfahren
 //   Ort:      [Bericht.Druck.*                  ]
 //             Unit, Klasse oder Unit.Klasse.Methode; * als Platzhalter; leer = überall
 //   Meldung:  [                                 ] [ ] regulärer Ausdruck
 //             [Meldung passt ▾]
 //   Aktion:   [Weiterlaufen ▾]                    [x] eingeschaltet
+//   Gilt für: [nur für mich ▾]  (oder alle im Projekt, .atlas)
 //                                           [Übernehmen] [Abbrechen]
-// „Übernehmen“ geht nur mit Klasse und gültigem Muster. Die Herkunft der Regel
-// bleibt, wie sie war. Aufgebaut im Code (keine DFM).
+// „Übernehmen“ geht nur mit Klasse und gültigem Muster. „Gilt für“ ist mit
+// der Herkunft der Regel vorbelegt. Aufgebaut im Code (keine DFM).
 
 interface
 
@@ -21,13 +22,16 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.ExceptionRules,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Debug.Exceptions.Strings;
 
 type
   TAtlasExceptionRuleEditDialog = class(TAtlasDialog)
   private
     FRule: TAtlasExceptionRule;
     FClass: TEdit;
+    FDescendants: TCheckBox;
+    FOrigin: TComboBox;
     FPlace: TEdit;
     FMessage: TEdit;
     FRegex: TCheckBox;
@@ -40,6 +44,7 @@ type
     function AddField(const ACaption: string): TPanel;
     function AddEdit(ARow: TPanel; const AText: string): TEdit;
     function AddCombo(ARow: TPanel): TComboBox;
+    function AddCheck(ARow: TPanel; AText: TAtlasExceptionsTextId; AChecked: Boolean): TCheckBox;
     procedure CreateMessageRows;
     procedure InputChange(Sender: TObject);
     procedure SaveClick(Sender: TObject);
@@ -57,6 +62,8 @@ type
     /// <summary>Text der Aktion für Listen und Auswahl.</summary>
     class function ActionText(AAction: TAtlasExceptionAction): string; static;
     property ClassEdit: TEdit read FClass;
+    property DescendantsBox: TCheckBox read FDescendants;
+    property OriginBox: TComboBox read FOrigin;
     property PlaceEdit: TEdit read FPlace;
     property MessageEdit: TEdit read FMessage;
     property RegexBox: TCheckBox read FRegex;
@@ -70,8 +77,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Debug.Exceptions.Strings;
+  Atlas.Core.Style.Signal;
 
 const
   cWidth = 560;
@@ -104,8 +110,9 @@ var
 begin
   inherited CreateDialog(AOwner, TitleOf(ANew), cWidth);
   FRule := ARule;
-  FClass := AddEdit(AddField(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugMessageRuleClass)),
-    ARule.ExceptionClass);
+  mRow := AddField(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugMessageRuleClass));
+  FClass := AddEdit(mRow, ARule.ExceptionClass);
+  FDescendants := AddCheck(mRow, TAtlasExceptionsTextId.DebugRuleDescendants, ARule.Descendants);
   FPlace := AddEdit(AddField(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRulePlace)), ARule.Location);
   mRow := AddRow(cHintHeight);
   AddLabel(mRow, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRulePlaceHint)).Left :=
@@ -113,12 +120,8 @@ begin
   CreateMessageRows;
   mRow := AddField(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRuleAction));
   FAction := AddCombo(mRow);
-  FEnabled := TCheckBox.Create(Self);
-  FEnabled.Left := ScaleValue(cLabelWidth + cFieldWidth + cGap);
-  FEnabled.Width := ScaleValue(cWidth - cLabelWidth - cFieldWidth - 2 * cGap);
-  FEnabled.Caption := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRuleEnabled);
-  FEnabled.Parent := mRow;
-  FEnabled.Checked := ARule.Enabled;
+  FEnabled := AddCheck(mRow, TAtlasExceptionsTextId.DebugRuleEnabled, ARule.Enabled);
+  FOrigin := AddCombo(AddField(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRuleOrigin)));
   FNote := AddNote(cNoteHeight);
   mButtons := AddButtonRow;
   FSave := mButtons.AddButton(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRulesSave),
@@ -138,12 +141,7 @@ begin
   mRow := AddField(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRuleMessage));
   FMessage := AddEdit(mRow, FRule.Message);
   FMessage.TextHint := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRuleMessageHint);
-  FRegex := TCheckBox.Create(Self);
-  FRegex.Left := ScaleValue(cLabelWidth + cFieldWidth + cGap);
-  FRegex.Width := ScaleValue(cWidth - cLabelWidth - cFieldWidth - 2 * cGap);
-  FRegex.Caption := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugMessageRuleRegex);
-  FRegex.Parent := mRow;
-  FRegex.Checked := FRule.Regex;
+  FRegex := AddCheck(mRow, TAtlasExceptionsTextId.DebugMessageRuleRegex, FRule.Regex);
   FRegex.OnClick := InputChange;
   FMatch := AddCombo(AddRow(cRowHeight));
 end;
@@ -168,6 +166,17 @@ begin
   Result.Parent := ARow;
   Result.Text := AText;
   Result.OnChange := InputChange;
+end;
+
+function TAtlasExceptionRuleEditDialog.AddCheck(ARow: TPanel; AText: TAtlasExceptionsTextId;
+  AChecked: Boolean): TCheckBox;
+begin
+  Result := TCheckBox.Create(Self);
+  Result.Left := ScaleValue(cLabelWidth + cFieldWidth + cGap);
+  Result.Width := ScaleValue(cWidth - cLabelWidth - cFieldWidth - 2 * cGap);
+  Result.Caption := TAtlasExceptionsStrings.Text(AText);
+  Result.Parent := ARow;
+  Result.Checked := AChecked;
 end;
 
 function TAtlasExceptionRuleEditDialog.AddCombo(ARow: TPanel): TComboBox;
@@ -202,6 +211,10 @@ begin
     FAction.Items.EndUpdate;
   end;
   FAction.ItemIndex := Ord(FRule.Action);
+  // Reihenfolge wie TAtlasExceptionRuleOrigin.
+  FOrigin.Items.Add(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRuleOriginMine));
+  FOrigin.Items.Add(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRuleOriginTeam));
+  FOrigin.ItemIndex := Ord(FRule.Origin);
 end;
 
 class function TAtlasExceptionRuleEditDialog.ActionText(AAction: TAtlasExceptionAction): string;
@@ -267,6 +280,15 @@ begin
     ARule.Action := TAtlasExceptionAction(FAction.ItemIndex);
   end;
   ARule.Enabled := FEnabled.Checked;
+  ARule.Descendants := FDescendants.Checked;
+  if FOrigin.ItemIndex = Ord(TAtlasExceptionRuleOrigin.Project) then
+  begin
+    ARule.Origin := TAtlasExceptionRuleOrigin.Project;
+  end
+  else if FOrigin.ItemIndex = Ord(TAtlasExceptionRuleOrigin.Personal) then
+  begin
+    ARule.Origin := TAtlasExceptionRuleOrigin.Personal;
+  end;
   Result := (ARule.ExceptionClass <> '') and
     ((ARule.Message = '') or TAtlasExceptionRules.ValidPattern(ARule.Message, ARule.Regex, mError));
 end;
