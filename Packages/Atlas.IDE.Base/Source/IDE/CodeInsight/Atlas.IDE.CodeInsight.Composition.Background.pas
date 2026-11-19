@@ -53,7 +53,8 @@ uses
   Atlas.IDE.Diagnostics.Edition,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.IDE.CodeInsight.Composition.Build;
+  Atlas.IDE.CodeInsight.Composition.Build,
+  Atlas.IDE.Foundation.Host;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -102,7 +103,7 @@ begin
   begin
     mActivity := ' (' + mHang.Activity + ')';
   end;
-  MessageLine(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.HangHint, [mHang.DurationMs, mActivity]));
+  TAtlasIdeHost.Message(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.HangHint, [mHang.DurationMs, mActivity]));
 end;
 
 procedure StartWatchdog;
