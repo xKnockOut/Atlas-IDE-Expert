@@ -111,9 +111,7 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.JSON,
-  Vcl.Controls,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.EventBreakNames,

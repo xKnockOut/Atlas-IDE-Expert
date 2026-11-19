@@ -44,8 +44,7 @@ type
 implementation
 
 uses
-  System.SysUtils,
-  Atlas.Core.Debug.BreakLocations;
+  System.SysUtils;
 
 { TAtlasDataBreakWatchTests }
 
@@ -146,7 +145,7 @@ begin
     'qryKunde.Params[0].Name', '''Name''', 'qryKunde.Params[0].AsString', '''Müller''',
     'qryKunde.Params[1].Name', '''ID''', 'qryKunde.Params[1].AsString', '''7''');
   mValues := TAtlasDataBreakWatch.Values(NewSite('TFDQuery', 'ExecSQL', 'qryKunde', TAtlasDataKind.Sql),
-    ClassNamed('TFDQuery'), Evaluator);
+    ClassNamed('TFDQuery'), Evaluator());
   Assert.IsTrue(mValues.Evaluated);
   Assert.AreEqual('UPDATE Kunden SET Name = :Name WHERE ID = :ID', mValues.Text);
   Assert.AreEqual('Name=''Müller'', ID=''7''', string.Join(', ', mValues.Params));
@@ -160,7 +159,7 @@ begin
   mSite := NewSite('TFDConnection', 'ExecSQL', 'FConn', TAtlasDataKind.Sql);
   mSite.Arguments := TArray<string>.Create('cLoeschen');
   FPairs := TArray<string>.Create('cLoeschen', '''DELETE FROM Log WHERE Alt = 1''');
-  mValues := TAtlasDataBreakWatch.Values(mSite, ClassNamed('TFDConnection'), Evaluator);
+  mValues := TAtlasDataBreakWatch.Values(mSite, ClassNamed('TFDConnection'), Evaluator());
   Assert.IsTrue(mValues.Evaluated);
   Assert.AreEqual('DELETE FROM Log WHERE Alt = 1', mValues.Text);
   Assert.AreEqual(0, Integer(Length(mValues.Params)));
@@ -175,12 +174,12 @@ begin
   mSite.Arguments := TArray<string>.Create('FBasis + ''/api/auftrag''');
   FPairs := TArray<string>.Create('FBasis + ''/api/auftrag''', '''https://x.de/api/auftrag''',
     'reqAuftrag.GetFullRequestURL(True)', '''https://x.de/api/kunde/3''', 'reqAuftrag.Method', 'rmDELETE');
-  mValues := TAtlasDataBreakWatch.Values(mSite, ClassNamed('THTTPClient'), Evaluator);
+  mValues := TAtlasDataBreakWatch.Values(mSite, ClassNamed('THTTPClient'), Evaluator());
   Assert.IsTrue(mValues.Evaluated);
   Assert.AreEqual('POST', mValues.HttpMethod);
   Assert.AreEqual('https://x.de/api/auftrag', mValues.Text);
   mValues := TAtlasDataBreakWatch.Values(NewSite('TRESTRequest', 'Execute', 'reqAuftrag', TAtlasDataKind.Http),
-    ClassNamed('TRESTRequest'), Evaluator);
+    ClassNamed('TRESTRequest'), Evaluator());
   Assert.IsTrue(mValues.Evaluated);
   Assert.AreEqual('DELETE', mValues.HttpMethod);
   Assert.AreEqual('https://x.de/api/kunde/3', mValues.Text);
@@ -192,14 +191,14 @@ var
 begin
   // Kein Ausdruck auswertbar, kein Text als Zeichenkette, Methode unbekannt: jeweils nicht ausgewertet.
   mValues := TAtlasDataBreakWatch.Values(NewSite('TFDQuery', 'Open', 'qryKunde', TAtlasDataKind.Sql),
-    ClassNamed('TFDQuery'), Evaluator);
+    ClassNamed('TFDQuery'), Evaluator());
   Assert.IsFalse(mValues.Evaluated);
   FPairs := TArray<string>.Create('qryKunde.SQL.Text', '<nicht verfügbar>', 'reqAuftrag.GetFullRequestURL(True)',
     '''http://a''');
   Assert.IsFalse(TAtlasDataBreakWatch.Values(NewSite('TFDQuery', 'Open', 'qryKunde', TAtlasDataKind.Sql),
-    ClassNamed('TFDQuery'), Evaluator).Evaluated);
+    ClassNamed('TFDQuery'), Evaluator()).Evaluated);
   Assert.IsFalse(TAtlasDataBreakWatch.Values(NewSite('TRESTRequest', 'Execute', 'reqAuftrag', TAtlasDataKind.Http),
-    ClassNamed('TRESTRequest'), Evaluator).Evaluated);
+    ClassNamed('TRESTRequest'), Evaluator()).Evaluated);
 end;
 
 procedure TAtlasDataBreakWatchTests.JudgeFirstMatchingSite;
@@ -217,22 +216,22 @@ begin
     'qryAuftrag.SQL.Text', '''UPDATE Auftrag SET Stand = 2 WHERE ID = 1''');
   mChoice := TAtlasDataChoice.Defaults;
   mChoice.SqlPattern := 'update auftrag * where *';
-  mVerdict := TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator);
+  mVerdict := TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator());
   Assert.AreEqual(Ord(TAtlasDataOutcome.Stop), Ord(mVerdict.Outcome));
   Assert.AreEqual(1, mVerdict.Site);
   Assert.AreEqual('UPDATE Auftrag SET Stand = 2 WHERE ID = 1', mVerdict.Values.Text);
   mChoice.Mode := TAtlasDataMode.Log;
   Assert.AreEqual(Ord(TAtlasDataOutcome.Log),
-    Ord(TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator).Outcome));
+    Ord(TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator()).Outcome));
   mChoice.SqlPattern := 'DELETE FROM * WHERE *';
-  mVerdict := TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator);
+  mVerdict := TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator());
   Assert.AreEqual(Ord(TAtlasDataOutcome.Continue), Ord(mVerdict.Outcome));
   Assert.AreEqual(-1, mVerdict.Site);
   // Art nicht gewählt: keine Auswertung.
   FCalls := 0;
   mChoice.Kinds := [TAtlasDataKind.Http];
   Assert.AreEqual(Ord(TAtlasDataOutcome.Continue),
-    Ord(TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator).Outcome));
+    Ord(TAtlasDataBreakWatch.Judge(mChoice, mSites, FClasses, mLocations[0], Evaluator()).Outcome));
   Assert.AreEqual(0, FCalls);
 end;
 

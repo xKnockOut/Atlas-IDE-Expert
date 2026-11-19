@@ -67,7 +67,8 @@ begin
     mDialog.IgnoreCaseCheck.Checked := False;
     mDialog.LogRadio.Checked := True;
     mChoice := mDialog.Choice;
-    Assert.IsTrue(mChoice.Kinds = [TAtlasDataKind.Sql]);
+    Assert.IsTrue(TAtlasDataKind.Sql in mChoice.Kinds);
+    Assert.IsFalse(TAtlasDataKind.Http in mChoice.Kinds);
     Assert.AreEqual('*Auftrag*', mChoice.SqlPattern);
     Assert.IsFalse(mChoice.IgnoreCase);
     Assert.AreEqual(Ord(TAtlasDataMode.Log), Ord(mChoice.Mode));
