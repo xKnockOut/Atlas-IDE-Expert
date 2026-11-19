@@ -65,6 +65,7 @@ uses
   Atlas.IDE.Debug.AccessViolation,
   Atlas.IDE.Debug.WhyHere,
   Atlas.IDE.Debug.Elapsed,
+  Atlas.IDE.Debug.ReturnValues,
   Atlas.IDE.Debug.Variables,
   Atlas.IDE.Debug.ObjectMarks,
   Atlas.IDE.Debug.MemoryTimeline,
@@ -488,6 +489,41 @@ begin
     end, TAtlasIdeDebugElapsed.Start, TAtlasIdeDebugElapsed.Release);
 end;
 
+/// <summary>Start der Rückgabewerte (#844) mit Serverbefehlen im Hintergrund über Base und den Scope AScope; die
+/// Antwort kommt nur, solange das Modul angemeldet ist.</summary>
+function ReturnValuesStarter(const AScope: IAtlasModuleScope): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeDebugReturnValues.Start(
+        function: TLspSession
+        begin
+          Result := Session;
+        end,
+        function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+        begin
+          Result := TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger, ACommand, AArgumentsJson,
+            ATimeoutMs, ADone);
+        end);
+    end;
+end;
+
+/// <summary>Rückgabewerte (#844, experimentell): Zuhörer, Haltfilter, Schritt-Haken, Zeichner; aus = nichts
+/// angemeldet, keine Haltepunkte.</summary>
+function ReturnValuesPart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugReturnValues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugReturnValues;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugReturnValues.Started;
+    end, ReturnValuesStarter(AScope), TAtlasIdeDebugReturnValues.Release);
+end;
+
 /// <summary>Fenster „Variablen“ (#853): Zuhörer der Debug-Sitzung und Fenster; aus = nichts angemeldet, kein
 /// Fenster.</summary>
 function VariablesPart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
@@ -553,8 +589,8 @@ function DebugValueParts(const AProvider: TAtlasDialogProviderFactory;
   const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 begin
   GProvider := AProvider;
-  Result := EditorParts + DialogParts + [WhyHerePart(AScope), ElapsedPart, EditValuePart(AScope),
-    HoverTreePart(AScope), VariablesPart(AScope), ObjectMarksPart];
+  Result := EditorParts + DialogParts + [WhyHerePart(AScope), ElapsedPart, ReturnValuesPart(AScope),
+    EditValuePart(AScope), HoverTreePart(AScope), VariablesPart(AScope), ObjectMarksPart];
 end;
 
 function EditValueVisible: Boolean;

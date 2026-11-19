@@ -13,8 +13,9 @@
 //   - Fortgesetzt: Running nach einem Halt.
 //   - Beendet: letzter Prozess abgebaut.
 // Zustandswechsel zwischen BeginInternal und EndInternal (eigene Auswertungen) zählen nicht. Ein Halt, den
-// der Filter erledigt, erreicht die Zuhörer nicht, auch nicht das Weiterlaufen danach. Jeder Zuhörer läuft
-// einzeln über IAtlasDebugTarget.Run (in der IDE unter der Sicherung).
+// ein Filter erledigt, erreicht die Zuhörer nicht, auch nicht das Weiterlaufen danach. Filter stehen unter einem
+// Namen (je Funktion einer); der erste, der den Halt erledigt, beendet die Runde. Jeder Zuhörer und jeder Filter
+// läuft einzeln über IAtlasDebugTarget.Run (in der IDE unter der Sicherung).
 // Laufzeit (#579): Mit Uhr (Clock) zählen die Phasen die Zeit, in der der Prozess läuft. Halte, die der Filter
 // erledigt, unterbrechen die Zählung nur; eigene Auswertungen zählen nicht. Beim gemeldeten Halt steht die Summe
 // seit dem vorigen gemeldeten Halt bzw. dem Start in RunTimeBeforeStop. Nur im Hauptthread verwenden.
@@ -94,10 +95,15 @@ type
   end;
 
   TAtlasDebugPhases = class
+  private type
+    TNamedFilter = record
+      Name: string;
+      Filter: TAtlasDebugStopFilter;
+    end;
   private
     FTarget: IAtlasDebugTarget;
     FListeners: TList<IAtlasDebugListener>;
-    FFilter: TAtlasDebugStopFilter;
+    FFilters: TArray<TNamedFilter>;
     FProcesses: Integer;
     FStopped: Boolean;
     FInternal: Integer;
@@ -125,8 +131,12 @@ type
     function Listeners: TArray<IAtlasDebugListener>;
     /// <summary>AEvent für jeden noch angemeldeten Zuhörer, jeder einzeln über IAtlasDebugTarget.Run.</summary>
     procedure Notify(const AEvent: TProc<IAtlasDebugListener>);
-    /// <summary>Filter für Halte (nil = keiner); es gibt nur einen.</summary>
+    /// <summary>Filter für Halte ohne Namen (nil = keiner); wie SetNamedStopFilter('', AFilter).</summary>
     procedure SetStopFilter(const AFilter: TAtlasDebugStopFilter);
+    /// <summary>Filter für Halte unter AName setzen bzw. ersetzen; nil entfernt ihn.</summary>
+    procedure SetNamedStopFilter(const AName: string; const AFilter: TAtlasDebugStopFilter);
+    /// <summary>Anzahl der gesetzten Filter.</summary>
+    function StopFilterCount: Integer;
     { Ereignisse des Debuggers }
     procedure ProcessCreated;
     procedure ProcessDestroyed;
@@ -164,7 +174,7 @@ end;
 destructor TAtlasDebugPhases.Destroy;
 begin
   FListeners.Free;
-  FFilter := nil;
+  FFilters := nil;
   FRunTime.Clock := nil;
   FTarget := nil;
   inherited Destroy;
@@ -249,7 +259,34 @@ end;
 
 procedure TAtlasDebugPhases.SetStopFilter(const AFilter: TAtlasDebugStopFilter);
 begin
-  FFilter := AFilter;
+  SetNamedStopFilter('', AFilter);
+end;
+
+procedure TAtlasDebugPhases.SetNamedStopFilter(const AName: string; const AFilter: TAtlasDebugStopFilter);
+var
+  mIndex: Integer;
+  mEntry: TNamedFilter;
+begin
+  for mIndex := High(FFilters) downto 0 do
+  begin
+    if SameText(FFilters[mIndex].Name, AName) then
+    begin
+      FFilters[mIndex].Filter := nil;
+      Delete(FFilters, mIndex, 1);
+    end;
+  end;
+  if Assigned(AFilter) then
+  begin
+    mEntry.Name := AName;
+    mEntry.Filter := AFilter;
+    SetLength(FFilters, Length(FFilters) + 1);
+    FFilters[High(FFilters)] := mEntry;
+  end;
+end;
+
+function TAtlasDebugPhases.StopFilterCount: Integer;
+begin
+  Result := Length(FFilters);
 end;
 
 procedure TAtlasDebugPhases.ProcessCreated;
@@ -324,24 +361,42 @@ begin
   FTarget.RequestTick;
 end;
 
-function TAtlasDebugPhases.Filtered(AStop: TAtlasDebugStop): Boolean;
+/// <summary>AFilter für AStop über ATarget.Run fragen; ein Fehler gilt als nicht erledigt.</summary>
+function AskFilter(const ATarget: IAtlasDebugTarget; const AFilter: TAtlasDebugStopFilter;
+  AStop: TAtlasDebugStop): Boolean;
 var
-  mFilter: TAtlasDebugStopFilter;
   mHandled: Boolean;
 begin
-  mFilter := FFilter;
-  if not Assigned(mFilter) then
+  mHandled := False;
+  ATarget.Run(
+    procedure
+    begin
+      mHandled := AFilter(AStop);
+    end);
+  Result := mHandled;
+end;
+
+function TAtlasDebugPhases.Filtered(AStop: TAtlasDebugStop): Boolean;
+var
+  mFilters: TArray<TNamedFilter>;
+  mIndex: Integer;
+  mHandled: Boolean;
+begin
+  // Kopie: Ein Filter darf sich dabei ab- oder einen anderen anmelden.
+  mFilters := Copy(FFilters);
+  if Length(mFilters) = 0 then
   begin
     Exit(False);
   end;
-  // Vorher als weitergelaufen markieren: Setzt der Filter fort, meldet StateChanged kein DebugResumed.
+  // Vorher als weitergelaufen markieren: Setzt ein Filter fort, meldet StateChanged kein DebugResumed.
   FStopped := False;
   mHandled := False;
-  FTarget.Run(
-    procedure
-    begin
-      mHandled := mFilter(AStop);
-    end);
+  mIndex := 0;
+  while not mHandled and (mIndex <= High(mFilters)) do
+  begin
+    mHandled := AskFilter(FTarget, mFilters[mIndex].Filter, AStop);
+    Inc(mIndex);
+  end;
   if not mHandled then
   begin
     FStopped := True;

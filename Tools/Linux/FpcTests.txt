@@ -714,6 +714,8 @@ Atlas.Core.Debug.LeakFlow.Tests
 Atlas.Core.Debug.BreakpointAnchorFlow.Tests
 Atlas.Core.Debug.ThreadsInSourceFlow.Tests
 Atlas.Core.Debug.RunToColumnFlow.Tests
+Atlas.Core.Debug.ReturnValues.Tests
+Atlas.Core.Debug.ReturnFlow.Tests
 Atlas.Core.Debug.ExceptionDialogFlow.Tests
 Atlas.Core.Debug.AsyncOriginFlow.Tests
 Atlas.Core.Designer.KeptComponents.Tests

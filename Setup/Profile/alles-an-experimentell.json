@@ -61,6 +61,7 @@
     "debug.asyncOrigin": true,
     "debug.profiler": true,
     "debug.dragNextStatement": true,
+    "debug.returnValues": true,
     "debug.memoryTimeline.objectCount": true,
     "debug.enabled": true,
     "issues.enabled": true,
