@@ -221,7 +221,7 @@ begin
   mItem.SetValue(Number('ColumnSpan', APlace[3]));
 end;
 
-/// <summary>Schlüssel WelcomePage wie in Marcos Export aus Delphi 12 (BDS 23.0).</summary>
+/// <summary>Schlüssel WelcomePage wie im Export der Registry aus Delphi 12 (BDS 23.0).</summary>
 function Delphi12Export: TAtlasRegKey;
 var
   mLayout, mAvailable: TAtlasRegKey;

@@ -12,6 +12,11 @@
     Tests, Skripten, Workflows und Doku. Die Berichte liegen nicht im Repository, eine Kennung führt den Leser
     also ins Leere. Der Kommentar soll den Grund selbst nennen.
 
+    Ebenso lehnt es in Kommentaren der Delphi-Quellen (Packages/, Application/, Setup/, Tests/) Verweise auf
+    Quellen ab, die nicht im Repository liegen: Mockups, Entwurfsrunden ("Runde 25"), datierte Diagnosen,
+    Rückmeldungen und Entscheidungen ("Diagnoselog 15.10.2026") und Chronik alter Namen ("bis #918 hieß").
+    An ihre Stelle gehört die Messung oder der Grund (docs/Architektur.md, Abschnitt "Kommentare").
+
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
 
 .EXAMPLE
@@ -47,6 +52,18 @@ $ReviewIdRegex = [regex]::new(
     "(?i:code-?(?:\s|//|\#|\*)*review|befund)[\s:(]{1,4}$ReviewId\b|\(\s*$ReviewId(?:\s*[/,]\s*$ReviewId)*\s*\)|[,;]\s*$ReviewId\s*\)",
     'Compiled')
 
+# Verweis auf eine Quelle außerhalb des Repositorys in einem Kommentar (nur der Teil ab "//").
+$SourceRefDirs = @('Packages', 'Application', 'Setup', 'Tests')
+$SourceRefRegex = [regex]::new(
+    '\bMockups?\b|\bRunde \d+\b|\b(?:Diagnoselog|Diagnose-Log|Rückmeldung|FP-Prüfung|dcc-Lauf|Diagnose|Meldung|' +
+    'Entscheidung|Startzeit)(?: vom)? \d{1,2}\.\d{1,2}\.20\d\d|\bbis #\d+ hieß', 'Compiled')
+
+function Test-SourceRef([string] $Line) {
+    $Index = $Line.IndexOf('//')
+    if ($Index -lt 0) { return $false }
+    return $SourceRefRegex.IsMatch($Line.Substring($Index))
+}
+
 function Find-ReviewIds([string] $Text) {
     $Lines = New-Object 'System.Collections.Generic.List[int]'
     foreach ($Match in $ReviewIdRegex.Matches($Text)) {
@@ -75,12 +92,28 @@ if ($SelfTest) {
     $Failed = @()
     foreach ($Sample in $Hits) { if ((Find-ReviewIds $Sample).Count -eq 0) { $Failed += "nicht erkannt: $Sample" } }
     foreach ($Sample in $Misses) { if ((Find-ReviewIds $Sample).Count -gt 0) { $Failed += "falsch erkannt: $Sample" } }
+    $Mock = 'Mockup'
+    $RefHits = @(
+        "// Wie im $Mock`: Die aktive Zeile ist hinterlegt.",
+        "// Menü (${Mock} Runde 25 Z6)",
+        "  // Langsam (Diagnoselog 15.10.2026: 3 s).",
+        "/// <summary>Rückmeldung vom 01.11.2026: zählt nicht.</summary>",
+        "// bis #918 hieß die Regel anders"
+    )
+    $RefMisses = @(
+        "Assert.AreEqual('Stand vom 15.10.2026', Text); // Beispiel",
+        "procedure TextsFollow${Mock};",
+        "// Notiz vom 15.10.2026 als Titel des Tooltips",
+        "// Runden auf zwei Stellen"
+    )
+    foreach ($Sample in $RefHits) { if (-not (Test-SourceRef $Sample)) { $Failed += "nicht erkannt: $Sample" } }
+    foreach ($Sample in $RefMisses) { if (Test-SourceRef $Sample) { $Failed += "falsch erkannt: $Sample" } }
     if ($Failed.Count -gt 0) {
-        Write-Host 'Selbsttest der Review-Kennungen fehlgeschlagen:' -ForegroundColor Red
+        Write-Host 'Selbsttest der Review-Kennungen und Quellenverweise fehlgeschlagen:' -ForegroundColor Red
         $Failed | ForEach-Object { Write-Host "  $_" }
         exit 1
     }
-    Write-Host 'Selbsttest der Review-Kennungen bestanden.' -ForegroundColor Green
+    Write-Host 'Selbsttest der Review-Kennungen und Quellenverweise bestanden.' -ForegroundColor Green
     exit 0
 }
 
@@ -100,6 +133,22 @@ foreach ($file in $ReviewIdPaths) {
     $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
     foreach ($line in (Find-ReviewIds ([IO.File]::ReadAllText($file.FullName)))) {
         $problems += "${relative}:${line}: Kennung aus einem Code-Review (den Grund selbst nennen)"
+    }
+}
+
+foreach ($dir in $SourceRefDirs) {
+    $path = Join-Path $Root $dir
+    if (-not (Test-Path $path)) { continue }
+    foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas', '*.dpr', '*.dpk', '*.inc' |
+            Where-Object { $_.FullName -notmatch '[\\/]Output[\\/]' }) {
+        $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
+        $lines = [IO.File]::ReadAllLines($file.FullName)
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if (Test-SourceRef $lines[$i]) {
+                $problems += "${relative}:$($i + 1): Verweis auf eine Quelle außerhalb des Repositorys" +
+                    ' (Grund oder Messung nennen)'
+            }
+        }
     }
 }
 
@@ -126,11 +175,12 @@ foreach ($dir in $SourceDirs) {
 }
 
 if ($problems.Count -gt 0) {
-    Write-Host 'Doppelte XML-Doku-Kommentare (der Text gehört vermutlich zu einer anderen Deklaration) oder' `
-        'Kennungen aus Code-Reviews:' -ForegroundColor Red
+    Write-Host 'Doppelte XML-Doku-Kommentare (der Text gehört vermutlich zu einer anderen Deklaration),' `
+        'Kennungen aus Code-Reviews oder Verweise auf Quellen außerhalb des Repositorys:' -ForegroundColor Red
     $problems | ForEach-Object { Write-Host "  $_" }
     exit 1
 }
 
-Write-Host 'Keine doppelten XML-Doku-Kommentare und keine Review-Kennungen.' -ForegroundColor Green
+Write-Host 'Keine doppelten XML-Doku-Kommentare, keine Review-Kennungen und keine Quellenverweise.' `
+    -ForegroundColor Green
 exit 0
