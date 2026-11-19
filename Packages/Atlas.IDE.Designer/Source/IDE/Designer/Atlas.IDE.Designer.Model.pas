@@ -43,12 +43,16 @@ uses
   Winapi.Windows,
   Vcl.Forms;
 
+const
+  /// <summary>Auflösung bei 100 %, wenn das Formular keine gültige nennt.</summary>
+  cDefaultPpi = 96;
+
 { TAtlasDesignScale }
 
 class function TAtlasDesignScale.ForRoot(ARoot: TWinControl): TAtlasDesignScale;
 begin
-  Result.Design := 96;
-  Result.Current := 96;
+  Result.Design := cDefaultPpi;
+  Result.Current := cDefaultPpi;
   if ARoot is TCustomForm then
   begin
     Result.Design := TCustomForm(ARoot).PixelsPerInch;
@@ -56,8 +60,8 @@ begin
   end;
   if (Result.Design <= 0) or (Result.Current <= 0) then
   begin
-    Result.Design := 96;
-    Result.Current := 96;
+    Result.Design := cDefaultPpi;
+    Result.Current := cDefaultPpi;
   end;
 end;
 

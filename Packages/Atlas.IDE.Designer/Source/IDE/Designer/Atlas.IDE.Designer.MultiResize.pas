@@ -170,7 +170,7 @@ begin
   FCount := mResult.Changed;
   FLabel := SizeText(FItems[FDragged].Bounds, mResult.Items[FDragged], mResult.Changed);
   mAt := TAtlasDesignerAccess.BoundsInRoot(FControls[FDragged], FRoot);
-  FLabelAt := Point(mAt.Right + Overlay.S(cMargin), mAt.Bottom + Overlay.S(cMargin) div 2);
+  FLabelAt := Point(mAt.Right + Overlay.ScalePx(cMargin), mAt.Bottom + Overlay.ScalePx(cMargin) div 2);
   ShowItems;
 end;
 
@@ -350,7 +350,7 @@ var
   mAt: TPoint;
 begin
   Result := nil;
-  mHalf := Overlay.S(cHandleSize) div 2;
+  mHalf := Overlay.ScalePx(cHandleSize) div 2;
   for mIndex := 0 to High(FControls) do
   begin
     if FItems[mIndex].Fixed then
@@ -396,7 +396,7 @@ var
   mVisible: TRect;
 begin
   EnsureOverlay;
-  if not TAtlasDesignerAccess.ClientArea(FRoot, Overlay.S(cMargin), mOrigin, mVisible) then
+  if not TAtlasDesignerAccess.ClientArea(FRoot, Overlay.ScalePx(cMargin), mOrigin, mVisible) then
   begin
     Hide;
     Exit;
