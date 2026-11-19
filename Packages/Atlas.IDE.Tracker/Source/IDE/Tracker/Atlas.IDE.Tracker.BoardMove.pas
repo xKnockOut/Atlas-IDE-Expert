@@ -14,7 +14,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.Core.Notifications.MessageSink,
   Atlas.UI.Tracker.BoardFrame,
   Atlas.IDE.Tracker.BoardLoad;
@@ -42,7 +42,7 @@ type
     FLoadRef: IInterface;
     FTransport: TAtlasBoardTransportHook;
     FMessage: TAtlasMessageSink;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FStopped: Boolean;
     FMoving: Boolean;
     function Allowed(AFrame: TAtlasBoardFrame; ACard, AColumn: Integer; out AJob: TMoveJob): Boolean;
@@ -53,7 +53,7 @@ type
   public
     /// <summary>ALoad liefert Tracker und Verbindung und lädt nach dem Verschieben neu; AWorker gehört dem
     /// Board.</summary>
-    constructor Create(ALoad: TAtlasIdeBoardLoad; const AHooks: TAtlasBoardHooks; AWorker: TAtlasVcsWorker);
+    constructor Create(ALoad: TAtlasIdeBoardLoad; const AHooks: TAtlasBoardHooks; AWorker: TAtlasBackgroundJobs);
     /// <summary>Karte ACard nach Spalte AColumn ziehen (Ereignis des Frames).</summary>
     procedure Move(ACard, AColumn: Integer);
     /// <summary>Danach wirkungslos (auf den Worker wartet das Board).</summary>
@@ -80,7 +80,7 @@ uses
 { TAtlasIdeBoardMove }
 
 constructor TAtlasIdeBoardMove.Create(ALoad: TAtlasIdeBoardLoad; const AHooks: TAtlasBoardHooks;
-  AWorker: TAtlasVcsWorker);
+  AWorker: TAtlasBackgroundJobs);
 begin
   inherited Create;
   FLoad := ALoad;
