@@ -598,8 +598,7 @@ begin
   mFolder := ExtractFilePath(AProjectFile);
   mSeen := TDictionary<string, Boolean>.Create;
   try
-    for mEntry in StringReplace(StringReplace(AList, #13, ';', [rfReplaceAll]), #10, ';',
-      [rfReplaceAll]).Split([';']) do
+    for mEntry in TTextLines.NormalizeLineBreaks(AList, ';').Split([';']) do
     begin
       mPath := Trim(Expand(Trim(mEntry), AProjectFile));
       if mPath <> '' then
