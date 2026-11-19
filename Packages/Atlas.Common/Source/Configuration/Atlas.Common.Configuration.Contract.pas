@@ -636,6 +636,17 @@ type
     Required: Boolean;
   end;
 
+  /// <summary>Geschützte Datei aus assistants.protected (#2608): KI-Assistenten dürfen Dateien, auf die Path passt,
+  /// nicht ändern.</summary>
+  TProtectedPath = record
+    /// <summary>Glob relativ zum Ordner der Konfiguration (*, **, ?), "/" oder "\".</summary>
+    Path: string;
+    /// <summary>Grund, den der Assistent bei der Ablehnung liest.</summary>
+    Reason: string;
+    /// <summary>Richtiger Weg statt der Änderung; '' ohne.</summary>
+    Use: string;
+  end;
+
   /// <summary>Eigener MCP-Prompt aus mcp.customPrompts (#1357): Text mit Platzhaltern {argument} und
   /// eingebettete Inhalte aus Include.</summary>
   TMcpCustomPrompt = record
@@ -702,10 +713,15 @@ type
     McpPrompts: Boolean;
     /// <summary>Werkzeugaufrufe je Sitzung zählen und lokal ablegen (mcp.statistics, #2611); Vorgabe True.</summary>
     McpStatistics: Boolean;
+    /// <summary>Schreibende MCP-Werkzeuge melden neue und behobene Befunde der geänderten Dateien
+    /// (mcp.reportFindingsAfterEdit, #2603); Vorgabe True.</summary>
+    McpReportFindingsAfterEdit: Boolean;
     /// <summary>Sprache der Anleitungen in den Prompts (mcp.promptLanguage): de (Vorgabe) oder en.</summary>
     McpPromptLanguage: string;
     /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
     McpCustomPrompts: TArray<TMcpCustomPrompt>;
+    /// <summary>Dateien, die KI-Assistenten nicht ändern dürfen (assistants.protected, #2608).</summary>
+    AssistantProtected: TArray<TProtectedPath>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
     /// <summary>Projektaufgaben (#900) als JSON-Liste (Text), sonst ''. Ausführen tut sie das Plugin; der Server
@@ -1529,8 +1545,10 @@ begin
   ASettings.McpGlobalSettings := True;
   ASettings.McpPrompts := True;
   ASettings.McpStatistics := True;
+  ASettings.McpReportFindingsAfterEdit := True;
   ASettings.McpPromptLanguage := 'de';
   ASettings.McpCustomPrompts := nil;
+  ASettings.AssistantProtected := nil;
   ASettings.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
   ASettings.IndexLibraryPaths := False;

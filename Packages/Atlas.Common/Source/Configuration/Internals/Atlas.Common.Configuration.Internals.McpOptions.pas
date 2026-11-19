@@ -3,7 +3,10 @@
 // Abschnitt "mcp" von atlas.json: abgeschaltete Werkzeuge, globale
 // Einstellungen, Prompts, ihre Sprache und eigene Prompts (customPrompts).
 // mcp ist ein gemischtes Objekt (global und Projekt): Die Schichtung übernimmt
-// nur die Glieder, die die Datei nennt (#1357).
+// nur die Glieder, die die Datei nennt (#1357). reportFindingsAfterEdit (#2603): Befunde nach schreibenden
+// Werkzeugen melden.
+// Abschnitt "assistants" (#2608): Dateien, die KI-Assistenten nicht ändern dürfen
+// (protected); nur im Projekt.
 
 interface
 
@@ -29,7 +32,8 @@ type
   TMcpOptionsText = (AnArgumentIsAnObject, NameOfAnArgumentLetter, ArgumentsMustBeAList, IncludeMustBeAList,
     PlaceholderHasNoArgument, NameOfAPromptLetter, APromptIsAnObject, McpCustomPromptsMustBeA, ThePromptAlreadyExists,
     DisabledToolsMustBeAList, McpPromptLanguageIsDeOr, UnknownSettingMcp, UnknownEntryInAnArgument,
-    ArgumentWithoutName, UnknownEntryInAPrompt, PromptWithoutName, UnknownContentAllowed);
+    ArgumentWithoutName, UnknownEntryInAPrompt, PromptWithoutName, UnknownContentAllowed, ProtectedMustBeAList,
+    AProtectedFileIsAnObject, UnknownEntryInAProtectedFile, ProtectedFileWithoutPath, UnknownSettingAssistants);
 
 const
   cTexts: array[TMcpOptionsText] of TAtlasText = (
@@ -55,7 +59,14 @@ const
     (De: 'Argument ohne "name"'; En: 'Argument without "name"'),
     (De: 'Unbekannte Angabe "%s" in einem Prompt'; En: 'Unknown entry "%s" in a prompt'),
     (De: 'Prompt ohne "name"'; En: 'Prompt without "name"'),
-    (De: 'Unbekannter Inhalt "%s"; erlaubt: %s'; En: 'Unknown content "%s"; allowed: %s'));
+    (De: 'Unbekannter Inhalt "%s"; erlaubt: %s'; En: 'Unknown content "%s"; allowed: %s'),
+    (De: '"assistants.protected" muss eine Liste geschützter Dateien sein';
+     En: '"assistants.protected" must be a list of protected files'),
+    (De: 'Eine geschützte Datei ist ein Objekt mit "path", "reason" und "use"';
+     En: 'A protected file is an object with "path", "reason" and "use"'),
+    (De: 'Unbekannte Angabe "%s" in einer geschützten Datei'; En: 'Unknown entry "%s" in a protected file'),
+    (De: 'Geschützte Datei ohne "path"'; En: 'Protected file without "path"'),
+    (De: 'Unbekannte Einstellung "assistants.%s"'; En: 'Unknown setting "assistants.%s"'));
 
 {$SCOPEDENUMS OFF}
 
@@ -355,7 +366,8 @@ begin
     Exit;
   end;
   mFlags := [TFlagOption.Create('globalSettings', ASettings.McpGlobalSettings),
-    TFlagOption.Create('prompts', ASettings.McpPrompts), TFlagOption.Create('statistics', ASettings.McpStatistics)];
+    TFlagOption.Create('prompts', ASettings.McpPrompts), TFlagOption.Create('statistics', ASettings.McpStatistics),
+    TFlagOption.Create('reportFindingsAfterEdit', ASettings.McpReportFindingsAfterEdit)];
   for mIndex := 0 to ANode.Count - 1 do
   begin
     // Unbekanntes ist hier ein Fehler am Wert, nicht eine Warnung am Schlüssel.
@@ -386,6 +398,10 @@ begin
   begin
     ATarget.McpStatistics := ASource.McpStatistics;
   end
+  else if AMember = 'reportFindingsAfterEdit' then
+  begin
+    ATarget.McpReportFindingsAfterEdit := ASource.McpReportFindingsAfterEdit;
+  end
   else if AMember = 'promptLanguage' then
   begin
     ATarget.McpPromptLanguage := ASource.McpPromptLanguage;
@@ -408,9 +424,104 @@ begin
   end;
 end;
 
+/// <summary>Glied AIndex einer geschützten Datei.</summary>
+procedure ReadProtectedMember(AReader: TConfigurationReader; ANode: TJsonNode; AIndex: Integer;
+  var AEntry: TProtectedPath);
+var
+  mKey: string;
+begin
+  mKey := ANode.Keys[AIndex];
+  if mKey = 'path' then
+  begin
+    AReader.ExpectString(ANode[AIndex], mKey, AEntry.Path);
+  end
+  else if mKey = 'reason' then
+  begin
+    AReader.ExpectString(ANode[AIndex], mKey, AEntry.Reason);
+  end
+  else if mKey = 'use' then
+  begin
+    AReader.ExpectString(ANode[AIndex], mKey, AEntry.Use);
+  end
+  else
+  begin
+    AReader.Report(ANode.KeyStarts[AIndex], ANode.KeyStarts[AIndex] + Length(mKey) + 2,
+      cTexts[TMcpOptionsText.UnknownEntryInAProtectedFile].Fmt([mKey]), False);
+  end;
+end;
+
+function ReadProtectedPath(AReader: TConfigurationReader; ANode: TJsonNode; out AEntry: TProtectedPath): Boolean;
+var
+  mIndex: Integer;
+begin
+  AEntry := Default(TProtectedPath);
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.AProtectedFileIsAnObject].Text);
+    Exit(False);
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    ReadProtectedMember(AReader, ANode, mIndex, AEntry);
+  end;
+  AEntry.Path := Trim(AEntry.Path);
+  Result := AEntry.Path <> '';
+  if not Result then
+  begin
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.ProtectedFileWithoutPath].Text);
+  end;
+end;
+
+procedure ReadProtected(AReader: TConfigurationReader; AValue: TJsonNode; var ASettings: TServerSettings);
+var
+  mIndex: Integer;
+  mEntry: TProtectedPath;
+begin
+  if AValue.Kind <> TJsonKind.Array_ then
+  begin
+    AReader.ReportNode(AValue, cTexts[TMcpOptionsText.ProtectedMustBeAList].Text);
+    Exit;
+  end;
+  ASettings.AssistantProtected := nil;
+  for mIndex := 0 to AValue.Count - 1 do
+  begin
+    if ReadProtectedPath(AReader, AValue[mIndex], mEntry) then
+    begin
+      ASettings.AssistantProtected := ASettings.AssistantProtected + [mEntry];
+    end;
+  end;
+end;
+
+procedure ReadAssistants(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
+var
+  mIndex: Integer;
+begin
+  if not AReader.ExpectObject(ANode, 'assistants') then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    if ANode.Keys[mIndex] = 'protected' then
+    begin
+      ReadProtected(AReader, ANode[mIndex], ASettings);
+    end
+    else
+    begin
+      AReader.ReportNode(ANode[mIndex], cTexts[TMcpOptionsText.UnknownSettingAssistants].Fmt([ANode.Keys[mIndex]]));
+    end;
+  end;
+end;
+
+procedure TakeAssistants(const ASource: TServerSettings; const AFileText: string; var ATarget: TServerSettings);
+begin
+  ATarget.AssistantProtected := ASource.AssistantProtected;
+end;
+
 const
-  cSections: array[0..0] of TConfigurationSection = (
-    (Section: 'mcp'; Read: ReadMcp; Take: TakeMcp)
+  cSections: array[0..1] of TConfigurationSection = (
+    (Section: 'mcp'; Read: ReadMcp; Take: TakeMcp),
+    (Section: 'assistants'; Read: ReadAssistants; Take: TakeAssistants)
   );
 
 function McpSections: TArray<TConfigurationSection>;

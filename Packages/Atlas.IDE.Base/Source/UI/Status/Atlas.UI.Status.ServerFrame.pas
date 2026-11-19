@@ -69,6 +69,8 @@ type
     FOnOpenUnit: TProc<TAtlasServerSlowUnit>;
     FOnOpenRule: TProc<string>;
     function Px(AValue: Integer): Integer;
+    /// <summary>Tabelle mit den Spalten AColumns; AWidths in logischen Pixeln (96 dpi), skaliert über die Liste.
+    /// </summary>
     function NewList(const AColumns: array of string; const AWidths: array of Integer): TListView;
     procedure UnitsData(Sender: TObject; Item: TListItem);
     procedure RulesData(Sender: TObject; Item: TListItem);
@@ -102,6 +104,7 @@ type
     FOnRefresh: TProc;
     FOnRebuild: TProc;
     FOnPackage: TProc;
+    /// <summary>Knopf mit der Breite AWidth in logischen Pixeln (96 dpi).</summary>
     function NewButton(const ACaption: string; AWidth: Integer): TButton;
     procedure ButtonClick(Sender: TObject);
   public
@@ -429,7 +432,7 @@ begin
   begin
     mColumn := Result.Columns.Add;
     mColumn.Caption := AColumns[mIndex];
-    mColumn.Width := AWidths[mIndex];
+    mColumn.Width := Result.ScaleValue(AWidths[mIndex]);
     if mIndex > 0 then
     begin
       mColumn.Alignment := taRightJustify;
@@ -558,7 +561,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := Self;
   Result.AlignWithMargins := True;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Caption := ACaption;
   Result.OnClick := ButtonClick;
 end;

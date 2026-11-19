@@ -180,6 +180,9 @@ type
     function Prompts: TArray<TMcpPrompt>;
     /// <summary>Werkzeug AName gibt es und es ist angeboten (Available).</summary>
     function ToolAvailable(const AName: string): Boolean;
+    /// <summary>Registriertes Werkzeug AName, auch wenn es nicht angeboten ist (z. B. für seine Art, batch #2638).
+    /// </summary>
+    function FindTool(const AName: string; out ATool: TMcpTool): Boolean;
     /// <summary>Ruft ein Werkzeug für einen Prompt auf, mit den Regeln von tools/call, aber ohne
     /// OnBeforeToolCall. False mit Begründung in AText, wenn es fehlt, nicht angeboten ist oder einen
     /// fachlichen Fehler meldet. AArguments kann nil sein und gehört dem Aufrufer.</summary>
@@ -493,6 +496,11 @@ var
   mTool: TMcpTool;
 begin
   Result := FindToolIn(FCatalog.Tools, AName, mTool) and Available(mTool);
+end;
+
+function TMcpServer.FindTool(const AName: string; out ATool: TMcpTool): Boolean;
+begin
+  Result := FindToolIn(FCatalog.Tools, AName, ATool);
 end;
 
 function TMcpServer.InvokeTool(const AName: string; const AArguments: TJSONObject; out AText: string): Boolean;

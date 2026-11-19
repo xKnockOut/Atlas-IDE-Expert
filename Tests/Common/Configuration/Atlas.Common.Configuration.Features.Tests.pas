@@ -32,6 +32,12 @@ type
     /// <summary>#1357: atlas.json mit nur mcp.customPrompts lässt das globale mcp.prompts stehen.</summary>
     [Test]
     procedure LayersMcpMembersSeparately;
+    /// <summary>#2608: assistants.protected mit path, reason und use; Fehler werden gemeldet.</summary>
+    [Test]
+    procedure ReadsAssistantProtected;
+    /// <summary>#2603: mcp.reportFindingsAfterEdit, Vorgabe an, je Glied geschichtet.</summary>
+    [Test]
+    procedure ReadsMcpReportFindingsAfterEdit;
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
@@ -268,6 +274,47 @@ begin
   mSettings := TConfigurationParser.ParseLayered('{"mcp": {"promptLanguage": "en"}}',
     '{"mcp": {"promptLanguage": "de"}}', mIssues);
   Assert.AreEqual('de', mSettings.McpPromptLanguage, 'Datei vor Editor');
+end;
+procedure TConfigurationFeatureTests.ReadsAssistantProtected;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mSettings.AssistantProtected)), 'Vorgabe: nichts geschützt');
+  mSettings := Parse('{"assistants": {"protected": [{"path": "CHANGELOG.md", "reason": "Fragmente", ' +
+    '"use": "changelog.d"}, {"path": "**/*SchemaData.pas"}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(2, Integer(Length(mSettings.AssistantProtected)));
+  Assert.AreEqual('CHANGELOG.md', mSettings.AssistantProtected[0].Path);
+  Assert.AreEqual('Fragmente', mSettings.AssistantProtected[0].Reason);
+  Assert.AreEqual('changelog.d', mSettings.AssistantProtected[0].Use);
+  Assert.AreEqual('', mSettings.AssistantProtected[1].Reason, 'Grund ist freiwillig');
+  Parse('{"assistants": {"protected": "CHANGELOG.md"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+  Parse('{"assistants": {"geschützt": []}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekannte Einstellung');
+  // Kein Objekt, ohne path, unbekannte Angabe (nur Warnung, der Eintrag gilt).
+  mSettings := Parse('{"assistants": {"protected": ["a.pas", {"reason": "x"}, {"path": "b.pas", "grund": "y"}]}}',
+    mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[2].IsError, 'unbekannte Angabe ist eine Warnung');
+  Assert.AreEqual(1, Integer(Length(mSettings.AssistantProtected)), 'nur b.pas');
+  Assert.AreEqual('b.pas', mSettings.AssistantProtected[0].Path);
+end;
+procedure TConfigurationFeatureTests.ReadsMcpReportFindingsAfterEdit;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpReportFindingsAfterEdit, 'Vorgabe an');
+  mSettings := Parse('{"mcp": {"reportFindingsAfterEdit": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpReportFindingsAfterEdit);
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"reportFindingsAfterEdit": false}}',
+    '{"mcp": {"customPrompts": []}}', mIssues);
+  Assert.IsFalse(mSettings.McpReportFindingsAfterEdit, 'globale Ebene bleibt');
 end;
 procedure TConfigurationFeatureTests.ChecksTasks;
 var
