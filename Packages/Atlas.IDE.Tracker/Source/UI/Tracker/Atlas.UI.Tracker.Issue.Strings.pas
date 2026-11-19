@@ -46,7 +46,9 @@ type
     IssueSummaryButton, IssueSummaryHint, IssueSummaryMenu, IssueSummaryTitle, IssueSummaryStatus,
     IssueSummaryQuestions, IssueSummaryNoQuestions, IssueSummaryNextStep, IssueSummaryUnits, IssueSummaryRunning,
     IssueSummaryStale, IssueSummaryAgain, IssueSummaryFailed, IssueSummaryUnreadable, IssueSummaryAsComment,
-    IssueSummaryFooter, IssueSummaryConsent);
+    IssueSummaryFooter, IssueSummaryConsent,
+    KnownErrorsAgain, KnownErrorsLocation, KnownErrorsStack, KnownErrorsBranch, KnownErrorsCommented,
+    KnownErrorsCommentFailed);
 
   TAtlasIssueStrings = class
   public
@@ -230,7 +232,13 @@ const
      'Als Kommentar übernehmen',
      'Mit KI zusammengefasst',
      'Titel, Beschreibung, Kommentare und verknüpfte Issues gehen an den KI-Anbieter (%s).%s' +
-       'Für diese Tracker-Verbindung fortfahren und nicht mehr fragen?'),
+       'Für diese Tracker-Verbindung fortfahren und nicht mehr fragen?',
+     'Wieder aufgetreten beim Debuggen',
+     'Ort',
+     'Aufrufstapel (eigener Code)',
+     'Branch',
+     '%s: Exception als Kommentar angehängt',
+     '%s: Kommentar nicht geschrieben'),
     ('No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
      'Forward (Alt+Right)',
@@ -397,7 +405,13 @@ const
      'Use as comment',
      'Summarized with AI',
      'Title, description, comments and linked issues go to the AI provider (%s).%s' +
-       'Continue for this tracker connection and do not ask again?'));
+       'Continue for this tracker connection and do not ask again?',
+     'Occurred again while debugging',
+     'Location',
+     'Call stack (own code)',
+     'Branch',
+     '%s: exception attached as a comment',
+     '%s: comment not written'));
 
 { TAtlasIssueStrings }
 
