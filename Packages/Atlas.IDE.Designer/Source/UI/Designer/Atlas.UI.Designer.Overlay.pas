@@ -4,8 +4,8 @@
 // Marken, Maße, Aufblitzen, Auswahlleiste, Lupe), reine VCL. Jedes Fenster
 // gehört dem Hauptfenster der IDE und nimmt nie den Fokus, damit Auswahl und
 // Tastatur im Designer bleiben. Je nach Art ist es rahmenlos (Popup), an der
-// Schlüsselfarbe durchsichtig und lässt alle Klicks durch. Vorher stand das
-// in jedem Fenster wortgleich.
+// Schlüsselfarbe durchsichtig und lässt alle Klicks durch. Damit steht das
+// nicht wortgleich in jedem Fenster.
 
 interface
 

@@ -61,7 +61,7 @@ var
   GWelcome: TAtlasIdeWelcome;
   GTiles: TAtlasIdeWelcomeTiles;
   GRegistrations: TArray<IAtlasRegistration>;
-  // Dauer der langsamen Schritte beim Start (Startzeit 06.11.2026: Welcome 10 s), für atlas.log.
+  // Dauer der langsamen Schritte beim Start (der Aufbau der Willkommensseite kann 10 s dauern), für atlas.log.
   GSteps: string;
 
 const

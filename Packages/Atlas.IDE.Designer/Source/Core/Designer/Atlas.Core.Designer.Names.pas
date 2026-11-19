@@ -4,8 +4,7 @@
 // Suche in Namenslisten (ohne Groß-/Kleinschreibung, wie Delphi Bezeichner
 // vergleicht), Suche nach Namen in Listen beliebiger Einträge, Namen einer
 // Komponentenliste, Bezeichner und Ereignis-Zuweisungen im Formulartext
-// prüfen. Die Werkzeuge brauchen das alle; jedes hatte seine eigene
-// Kopie.
+// prüfen. Die Werkzeuge brauchen das alle und nutzen diese eine Fassung.
 
 interface
 

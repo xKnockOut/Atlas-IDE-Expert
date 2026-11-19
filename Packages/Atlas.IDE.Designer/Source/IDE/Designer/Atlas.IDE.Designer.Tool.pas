@@ -3,9 +3,9 @@
 // Gemeinsame Basis der Designer-Werkzeuge in der IDE: Meldungen in die
 // Meldungsansicht (Say), Umrisse über dem Designer (Outlines, erst beim
 // ersten Gebrauch angelegt), Farben nach dem IDE-Thema (ApplyTheme) und die
-// Tasten des Werkzeugs (OwnKeys, beim Freigeben abgemeldet). Vorher stand
-// das wortgleich in jedem Werkzeug. Werkzeuge mit weiteren Fenstern ergänzen
-// ApplyTheme über ThemeWindow. Nur im Hauptthread.
+// Tasten des Werkzeugs (OwnKeys, beim Freigeben abgemeldet). Damit steht das
+// nicht wortgleich in jedem Werkzeug. Werkzeuge mit weiteren Fenstern
+// ergänzen ApplyTheme über ThemeWindow. Nur im Hauptthread.
 
 interface
 

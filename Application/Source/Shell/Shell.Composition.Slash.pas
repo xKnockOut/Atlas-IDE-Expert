@@ -132,6 +132,10 @@ begin
   else if AName = TSlashSettings.cLifecycleFirst then
   begin
     Result := LowerCase(BoolToStr(ASettings.LifecycleFirst, True));
+  end
+  else if AName = TSlashSettings.cBlankLines then
+  begin
+    Result := LowerCase(BoolToStr(ASettings.BlankLines, True));
   end;
 end;
 
