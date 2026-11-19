@@ -64,7 +64,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Trends,
-  Atlas.Core.Welcome.Trends;
+  Atlas.Core.Welcome.Trends,
+  Atlas.Core.Settings.Contract;
 
 const
   cProject = 'C:\Projekte\Kasse\Kasse.dproj';

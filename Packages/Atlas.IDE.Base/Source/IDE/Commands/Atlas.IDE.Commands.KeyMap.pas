@@ -44,7 +44,7 @@ uses
   Atlas.Core.Commands.KeyMap,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Commands.KeyMap,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeKeyMap = class
@@ -118,7 +118,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Commands.Palette;
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

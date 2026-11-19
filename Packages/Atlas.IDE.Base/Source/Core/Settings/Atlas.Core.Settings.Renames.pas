@@ -16,8 +16,8 @@
 interface
 
 uses
-  Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog;
+  Atlas.Core.Settings.Catalog,
+  Atlas.Core.Settings.Contract;
 
 type
   TAtlasSettingsRenameOutcome = (srMoved, srSuperseded, srInvalid);

@@ -76,6 +76,15 @@ type
     function Caret: TAtlasActiveEditorPos;
   end;
 
+  /// <summary>Beobachtet Ordner und meldet an TAtlasWatchedChanges (#395); die Freigabe hält die Threads an. Die
+  /// Umsetzung (TAtlasFolderWatcher) setzt die Kompositionswurzel ein.</summary>
+  IAtlasFolderWatcher = interface
+    ['{967E5852-0525-40F5-815C-047BF4E416F1}']
+    /// <summary>Beobachtet genau diese Ordner; neue starten, weggefallene enden.</summary>
+    procedure SetRoots(const ARoots: TArray<string>);
+    function Roots: TArray<string>;
+  end;
+
 implementation
 
 { TAtlasEditorFile }

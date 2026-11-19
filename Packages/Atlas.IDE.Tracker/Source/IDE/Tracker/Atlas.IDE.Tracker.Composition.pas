@@ -23,8 +23,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
-  Atlas.Core.Modules.Contract;
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasTrackerModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -61,7 +61,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Ci.Adapters.Credentials,
   Atlas.Core.Credentials.Contract,
-  Atlas.Core.Credentials.Adapters.Windows,
+  Atlas.Core.Credentials.Providers.Windows,
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Tracker.Contract,

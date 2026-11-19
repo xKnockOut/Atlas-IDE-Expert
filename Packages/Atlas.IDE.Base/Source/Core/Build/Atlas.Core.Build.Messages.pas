@@ -14,20 +14,13 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Build.Contract;
 
 type
-  TAtlasCompilerSeverity = (Info, Hint, Warning, Error, Fatal);
+  TAtlasCompilerSeverity = Atlas.Core.Build.Contract.TAtlasCompilerSeverity;
 
-  TAtlasCompilerMessage = record
-    FileName: string;
-    /// <summary>1-basiert wie in der IDE; 0 ohne.</summary>
-    Line: Integer;
-    Column: Integer;
-    Severity: TAtlasCompilerSeverity;
-    Code: string;
-    Text: string;
-  end;
+  TAtlasCompilerMessage = Atlas.Core.Build.Contract.TAtlasCompilerMessage;
 
   TAtlasCompilerMessages = class
   public

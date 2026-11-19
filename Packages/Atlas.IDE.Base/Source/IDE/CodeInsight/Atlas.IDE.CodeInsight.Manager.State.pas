@@ -11,10 +11,12 @@ uses
   System.Classes,
   Atlas.Core.Status.Lines,
   Atlas.Core.Diagnostics.ThreadList,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Crashes,
   Atlas.Core.Lsp.CrashCases,
+  Atlas.Core.Files.Contract,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Notifications.Contract,
@@ -24,8 +26,9 @@ uses
 type
   /// <summary>Adapter des Kerns, eingesetzt von der Kompositionswurzel.</summary>
   TAtlasCodeInsightAdapters = record
-    /// <summary>Startet AtlasServer.exe; löst bei Fehlern EOSError aus.</summary>
-    NewServer: TFunc<string, string, IAtlasLspServer>;
+    /// <summary>Startet AtlasServer.exe und legt über den dritten Parameter die Clientseite an; löst bei Fehlern
+    /// EOSError aus.</summary>
+    NewServer: TFunc<string, string, TAtlasLspConnect, IAtlasLspServer>;
     NewFolderWatcher: TFunc<TAtlasWatchedChanges, IAtlasFolderWatcher>;
     NewCompletionSources: TAtlasCompletionSourcesFactory;
     NewSignatureSource: TFunc<TAtlasSessionFunc, IAtlasSignatureSource>;
@@ -292,9 +295,9 @@ begin
   begin
     Result.Version := FSession.ServerVersion;
   end;
-  if FServer <> nil then
+  if FSession <> nil then
   begin
-    Result.AverageMs := FServer.Client.AverageMs(Result.Samples);
+    Result.AverageMs := FSession.Client.AverageMs(Result.Samples);
   end;
   if (FCrashSkips <> nil) and (FPhase.Phase = TAtlasServerPhase.Running) then
   begin

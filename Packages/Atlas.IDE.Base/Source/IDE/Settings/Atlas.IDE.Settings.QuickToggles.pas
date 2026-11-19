@@ -24,7 +24,7 @@ uses
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.QuickToggles,
   Atlas.IDE.Foundation.Keys,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeQuickToggles = class(TAtlasPopupFormHolder<TAtlasQuickToggleWindow>)

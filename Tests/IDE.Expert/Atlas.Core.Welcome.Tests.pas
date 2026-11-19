@@ -174,7 +174,8 @@ uses
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Greeting,
   Atlas.Core.Welcome.Backup,
-  Atlas.Core.Welcome.HostLayout;
+  Atlas.Core.Welcome.HostLayout,
+  Atlas.Core.Settings.Contract;
 
 const
   cWelcomePath = 'Software\Embarcadero\BDS\23.0\WelcomePage';

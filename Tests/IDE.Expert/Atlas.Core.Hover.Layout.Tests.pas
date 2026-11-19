@@ -13,7 +13,7 @@ uses
   System.Types,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
-  Atlas.Core.Hover.Layout.Contract,
+  Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Hover.View;
 
 type

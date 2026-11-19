@@ -43,16 +43,10 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Commands.Contract;
 
 type
-  /// <summary>Hörer der Zählung (#757, #1455), etwa die Karte „Atlas entdecken“ eines Moduls; ein Modul stellt ihn
-  /// über seinen Scope bereit. Hauptthread.</summary>
-  IAtlasCommandUsageListener = interface
-    ['{F66EA46F-1AE5-4CD7-94C5-3BACEC4433D8}']
-    /// <summary>„Zählung zurücksetzen“ (Einstellungen): Zähler sind leer.</summary>
-    procedure UsageReset;
-  end;
 
   {$SCOPEDENUMS ON}
   /// <summary>Wie ein Befehl aufgerufen wurde: Mouse = Menü, Kontextmenü, Werkzeugleiste, Palette;

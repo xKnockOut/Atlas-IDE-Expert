@@ -288,8 +288,8 @@ end;
 
 procedure TArchitectureMatrixTests.DescribesOwnAndForeign;
 begin
-  Assert.AreEqual('fremde Adapters aus Root', TArchitectureMatrix.Describe(Classify('Atlas.IDE.Undo.Changes'),
-    Classify('Atlas.Core.Undo.Adapters.FileStore')));
+  Assert.AreEqual('fremde Providers aus Root', TArchitectureMatrix.Describe(Classify('Atlas.IDE.Undo.Changes'),
+    Classify('Atlas.Core.Undo.Providers.FileStore')));
   Assert.AreEqual('eigene Providers aus Contract', TArchitectureMatrix.Describe(
     Classify('Atlas.Common.Logging.Contract'), Classify('Atlas.Common.Logging.Providers.Logger')));
 end;
@@ -347,9 +347,9 @@ begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, cSource, cRoleConfig,
     'Source/x.pas'))));
   Assert.IsTrue(TRoleImportRule.Approved(['Atlas.IDE.* -> Atlas.Core.*'], 'Atlas.IDE.Undo.Changes',
-    'Atlas.Core.Undo.Adapters.FileStore'));
+    'Atlas.Core.Undo.Providers.FileStore'));
   Assert.IsFalse(TRoleImportRule.Approved(['Atlas.IDE.* -> Atlas.Core.*'], 'Atlas.UI.Undo.Changes',
-    'Atlas.Core.Undo.Adapters.FileStore'));
+    'Atlas.Core.Undo.Providers.FileStore'));
   Assert.IsFalse(TRoleImportRule.Approved(['ohne Pfeil'], 'A', 'B'));
 end;
 

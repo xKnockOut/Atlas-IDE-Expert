@@ -105,6 +105,14 @@ type
     procedure Shutdown;
   end;
 
+  IAtlasSignatureView = interface
+    ['{2A6C9E14-7B3D-4F58-9C21-E5D84B7A0F36}']
+    /// <summary>Zeigt bzw. aktualisiert den Hint. AParameter kann über die Parameter der Signatur
+    /// hinausgehen (dann ist keiner hervorgehoben).</summary>
+    procedure ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
+    procedure HideSignature;
+  end;
+
 implementation
 
 { TAtlasSignatureParameter }

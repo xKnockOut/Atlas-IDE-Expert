@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Undo.Adapters.DiskTarget;
+﻿unit Atlas.Core.Undo.Providers.DiskTarget;
 
 // Ziel des Änderungsprotokolls (#721) für Dateien auf der Platte: Lesen und
 // Schreiben in der Kodierung der Datei (TAtlasTextFile, Vorgabe "encoding"

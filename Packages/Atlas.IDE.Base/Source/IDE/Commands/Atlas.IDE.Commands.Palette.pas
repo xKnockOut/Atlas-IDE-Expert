@@ -27,7 +27,8 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Commands.Palette;
+  Atlas.UI.Commands.Palette,
+  Atlas.Core.Commands.Contract;
 
 type
   /// <summary>Ohne Referenzzählung (TNoRefCountObject): Die Composition gibt die Palette frei.</summary>

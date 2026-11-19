@@ -109,7 +109,7 @@ uses
   Atlas.IDE.VersionControl.Commands,
   Atlas.IDE.VersionControl.LineChanges,
   Atlas.IDE.Contracts.LineChanges,
-  Atlas.Core.VersionControl.Adapters.ProcessRunner,
+  Atlas.Core.VersionControl.Providers.ProcessRunner,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.VersionControl.Service,
   Atlas.IDE.VersionControl.Branching,

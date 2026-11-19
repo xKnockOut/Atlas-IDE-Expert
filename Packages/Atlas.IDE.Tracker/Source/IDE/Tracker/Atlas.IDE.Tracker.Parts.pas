@@ -22,10 +22,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Tracker.Connections,
-  Atlas.IDE.Tracker.Access;
+  Atlas.IDE.Tracker.Access,
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasTrackerParts = class
@@ -58,7 +58,6 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.LineChanges,
-  Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
@@ -73,7 +72,8 @@ uses
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Commands.Strings,
-  Atlas.Core.Modules.Contributions;
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Projects.Contract;
 
 const
   // Zusatzfeld der Zeiterfassung im Statusfeld (#1267).

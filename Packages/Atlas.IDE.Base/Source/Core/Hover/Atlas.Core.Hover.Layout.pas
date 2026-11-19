@@ -42,7 +42,8 @@ uses
   System.Types,
   Atlas.Core.Style.Palette,
   Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.Layout.Contract;
+  Atlas.Core.Hover.Layout.Input,
+  Atlas.Core.Hover.Contract;
 
 type
   TAtlasHoverLayout = record
@@ -85,7 +86,6 @@ implementation
 uses
   Atlas.Core.Hover.View,
   Atlas.Core.Hover.Texts,
-  Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Style.Color,

@@ -211,7 +211,8 @@ uses
   Atlas.Core.Problems.Colors,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Strings,
-  Atlas.UI.Problems.KindIcon;
+  Atlas.UI.Problems.KindIcon,
+  Atlas.Core.Problems.IdeErrors;
 
 const
   /// <summary>Vorgabebreiten bei 96 dpi.</summary>
@@ -644,7 +645,7 @@ begin
     TAtlasFindingColumn.Compiler:
       Result := mFinding.CompilerText;
     TAtlasFindingColumn.Source:
-      Result := mFinding.SourceText;
+      Result := TAtlasIdeErrors.OriginText(mFinding.Problem);
   else
     // Symbol: kein Text.
     Result := '';

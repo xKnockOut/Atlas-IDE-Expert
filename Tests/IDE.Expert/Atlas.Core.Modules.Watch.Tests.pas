@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Modules.Watch.Tests;
 
 // Tests zu TAtlasProvidedWatch (#1455): Die Liste folgt Bereitstellen und
-// Zurückziehen sofort, OnChanged nur bei einer echten Änderung.
+// Zurückziehen sofort, OnChanged nur bei einer echten Änderung. Dazu
+// TAtlasRegistryCallback (#1443): reicht Änderungen weiter, bis Detach ihn trennt.
 
 interface
 
@@ -20,6 +21,13 @@ type
     procedure WithoutRegistryEmpty;
     [Test]
     procedure DestroyedWatchHearsNothing;
+  end;
+
+  [TestFixture]
+  TRegistryCallbackTests = class
+  public
+    [Test]
+    procedure ForwardsUntilDetached;
   end;
 
 implementation
@@ -200,7 +208,35 @@ begin
   Assert.AreEqual(0, mCalls);
 end;
 
+{ TRegistryCallbackTests }
+
+procedure TRegistryCallbackTests.ForwardsUntilDetached;
+var
+  mCallback: TAtlasRegistryCallback;
+  mListener: IAtlasRegistryListener;
+  mKinds: TArray<TAtlasRegistryChangeKind>;
+  mChange: TAtlasRegistryChange;
+begin
+  mKinds := nil;
+  mCallback := TAtlasRegistryCallback.Create(
+    procedure(const AChange: TAtlasRegistryChange)
+    begin
+      mKinds := mKinds + [AChange.Kind];
+    end);
+  mListener := mCallback;
+  mChange := Default(TAtlasRegistryChange);
+  mChange.Kind := rcModuleAdded;
+  mListener.RegistryChanged(mChange);
+  mCallback.Detach;
+  mChange.Kind := rcModuleRemoved;
+  mListener.RegistryChanged(mChange);
+  mListener := nil;
+  Assert.AreEqual(1, Integer(Length(mKinds)));
+  Assert.AreEqual(Ord(rcModuleAdded), Ord(mKinds[0]));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TProvidedWatchTests);
+  TDUnitX.RegisterTestFixture(TRegistryCallbackTests);
 
 end.

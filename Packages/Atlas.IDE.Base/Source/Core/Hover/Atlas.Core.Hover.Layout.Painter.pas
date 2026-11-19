@@ -12,7 +12,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.Layout.Contract;
+  Atlas.Core.Hover.Layout.Input;
 
 const
   // Maße des Satzes bei 96 dpi, gemeinsam für alle Abschnitte.

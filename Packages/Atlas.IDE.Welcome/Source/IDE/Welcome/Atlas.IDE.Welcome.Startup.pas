@@ -29,7 +29,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Commands.Usage,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Tests,
   System.Types,
@@ -55,7 +54,8 @@ uses
   Atlas.IDE.Welcome.TileProjects,
   Atlas.IDE.Welcome.Neighbors,
   Atlas.IDE.Welcome.IssueWork,
-  Atlas.IDE.Welcome.Listener;
+  Atlas.IDE.Welcome.Listener,
+  Atlas.Core.Commands.Contract;
 
 var
   GWelcome: TAtlasIdeWelcome;

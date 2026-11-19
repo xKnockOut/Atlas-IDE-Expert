@@ -35,7 +35,8 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Setup.Window,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract,
+  Atlas.Core.Setup.Contract;
 
 type
   TAtlasSetupIndexingFunc = reference to function(out APercent: Integer): Boolean;
@@ -329,7 +330,7 @@ begin
   FShownVersion := -1;
   FIdeEnvironment := TIdeEnvironment.Create(AHooks);
   FEnvironment := TIdeEnvironment(FIdeEnvironment);
-  FController := TAtlasSetupController.Create(FEnvironment);
+  FController := TAtlasSetupController.Create(FEnvironment, TIdeEnvironment(FIdeEnvironment).Snapshot);
   FLine := TAtlasStatusLine.Create(FRegistry, TAtlasSetupChecklist.cStatusId, TAtlasSetupChecklist.cStatusOrder,
     procedure
     begin

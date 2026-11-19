@@ -1,10 +1,10 @@
-﻿unit Atlas.Core.Lsp.Adapters.ServerProcess;
+﻿unit Atlas.Core.Lsp.Providers.ServerProcess;
 
 // Startet Atlas als Kindprozess mit umgeleitetem stdin/stdout und
-// verbindet ihn mit einem TLspClient. Ein Lese-Thread reicht die
-// Ausgabe an TLspClient.Receive weiter; endet der Prozess, wird der Client
-// geschlossen, mit Exit-Code, Laufzeit und Zeilen auf stderr
-// (TLspClient.CloseWith).
+// verbindet ihn mit der Clientseite (IAtlasLspConnection, angelegt über
+// TAtlasLspConnect, in der IDE ein TLspClient). Ein Lese-Thread reicht die
+// Ausgabe an Receive weiter; endet der Prozess, wird die Verbindung
+// geschlossen, mit Exit-Code, Laufzeit und Zeilen auf stderr (CloseWith).
 // stderr geht in die Datei server-stderr.log im Protokollordner (anhängen,
 // eine Kopfzeile je Start), nicht in eine Pipe, die volllaufen und den Server
 // blockieren könnte. So bleibt erhalten, was die Laufzeit beim Absturz noch
@@ -22,7 +22,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Lsp.Client;
+  Atlas.Core.Lsp.Contract;
 
 type
   TLspServerProcess = class(TInterfacedObject, IAtlasLspServer)
@@ -37,7 +37,7 @@ type
     FWriter: TThread;
     // Schützt FWriter: Der Lese-Thread antwortet über Write noch, während Destroy den Schreib-Thread abbaut.
     FWriterLock: TObject;
-    FClient: TLspClient;
+    FConnection: IAtlasLspConnection;
     FStarted: UInt64;
     // stderr-Datei und ihre Größe nach der Kopfzeile dieses Starts; '' = NUL.
     FStderrFile: string;
@@ -53,15 +53,14 @@ type
     /// der anderen Server).</summary>
     function StderrLines: Integer;
     /// <summary>Exit-Code (bis ExitWaitMs gewartet), Laufzeit und stderr; leer, wenn Atlas schon geschlossen hat.
-    /// Aus dem Lese- oder Schreib-Thread, bevor sie den Client schließen.</summary>
+    /// Aus dem Lese- oder Schreib-Thread, bevor sie die Verbindung schließen.</summary>
     function EndInfo: TLspCloseInfo;
   public
-    /// <summary>Startet AExeName mit AArguments; löst bei Fehlern EOSError aus.</summary>
-    constructor Create(const AExeName, AArguments: string);
+    /// <summary>Startet AExeName mit AArguments und legt über AConnect die Clientseite an; löst bei Fehlern
+    /// EOSError aus.</summary>
+    constructor Create(const AExeName, AArguments: string; const AConnect: TAtlasLspConnect);
     destructor Destroy; override;
     function Running: Boolean;
-    function GetClient: TLspClient;
-    property Client: TLspClient read FClient;
   end;
 
 implementation
@@ -87,18 +86,18 @@ type
   TReaderThread = class(TThread)
   private
     FHandle: THandle;
-    FClient: TLspClient;
+    FConnection: IAtlasLspConnection;
     FOwner: TLspServerProcess;
   protected
     procedure Execute; override;
   public
-    constructor Create(AHandle: THandle; AClient: TLspClient; AOwner: TLspServerProcess);
+    constructor Create(AHandle: THandle; const AConnection: IAtlasLspConnection; AOwner: TLspServerProcess);
   end;
 
   TWriterThread = class(TThread)
   private
     FHandle: THandle;
-    FClient: TLspClient;
+    FConnection: IAtlasLspConnection;
     FOwner: TLspServerProcess;
     FLock: TObject;
     FQueue: TArray<TBytes>;
@@ -112,7 +111,7 @@ type
     constructor Create(AHandle: THandle);
     destructor Destroy; override;
     procedure Add(const ABytes: TBytes);
-    property Client: TLspClient read FClient write FClient;
+    property Connection: IAtlasLspConnection read FConnection write FConnection;
     property Owner: TLspServerProcess read FOwner write FOwner;
   end;
 
@@ -192,9 +191,9 @@ begin
     end;
   end;
   // Server nimmt nichts mehr an: Wartende Anfragen sollen nicht bis zum Zeitlimit hängen.
-  if not Result and not Terminated and (FClient <> nil) and (FOwner <> nil) then
+  if not Result and not Terminated and (FConnection <> nil) and (FOwner <> nil) then
   begin
-    FClient.CloseWith(FOwner.EndInfo);
+    FConnection.CloseWith(FOwner.EndInfo);
   end;
 end;
 
@@ -211,10 +210,10 @@ end;
 
 { TReaderThread }
 
-constructor TReaderThread.Create(AHandle: THandle; AClient: TLspClient; AOwner: TLspServerProcess);
+constructor TReaderThread.Create(AHandle: THandle; const AConnection: IAtlasLspConnection; AOwner: TLspServerProcess);
 begin
   FHandle := AHandle;
-  FClient := AClient;
+  FConnection := AConnection;
   FOwner := AOwner;
   inherited Create(False);
 end;
@@ -235,7 +234,7 @@ begin
         begin
           Break;
         end;
-        FClient.Receive(mBuffer, Integer(mRead));
+        FConnection.Receive(mBuffer, Integer(mRead));
       end;
     except
       // Kein stilles Ende (#493): protokollieren; die Sitzung gilt dann als beendet.
@@ -244,7 +243,7 @@ begin
     end;
   finally
     // Mit Exit-Code: Der Server hat seine Ausgabe geschlossen, meist weil er endete.
-    FClient.CloseWith(FOwner.EndInfo);
+    FConnection.CloseWith(FOwner.EndInfo);
   end;
 end;
 
@@ -273,7 +272,7 @@ end;
 
 { TLspServerProcess }
 
-constructor TLspServerProcess.Create(const AExeName, AArguments: string);
+constructor TLspServerProcess.Create(const AExeName, AArguments: string; const AConnect: TAtlasLspConnect);
 var
   mInputRead, mOutputWrite, mErrorHandle: THandle;
   mInfo: TProcessInformation;
@@ -298,10 +297,10 @@ begin
   FProcess := mInfo.hProcess;
   FStarted := TThread.GetTickCount64;
   FWriter := TWriterThread.Create(FInputWrite);
-  FClient := TLspClient.Create(Write);
-  TWriterThread(FWriter).Client := FClient;
+  FConnection := AConnect(Write);
+  TWriterThread(FWriter).Connection := FConnection;
   TWriterThread(FWriter).Owner := Self;
-  FReader := TReaderThread.Create(FOutputRead, FClient, Self);
+  FReader := TReaderThread.Create(FOutputRead, FConnection, Self);
 end;
 
 destructor TLspServerProcess.Destroy;
@@ -314,9 +313,9 @@ const
   cCancelMs = 500;
   cProcessMs = 2000;
 begin
-  if FClient <> nil then
+  if FConnection <> nil then
   begin
-    FClient.Close;
+    FConnection.Close;
   end;
   // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
   // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.cStopMs.
@@ -330,7 +329,8 @@ begin
     StopWriter(cWriterMs, cCancelMs);
     StopProcess(cProcessMs);
   end;
-  FClient.Free;
+  // Erst nach beiden Threads: Sie halten die Verbindung bis zu ihrem Ende.
+  FConnection := nil;
   FWriterLock.Free;
   inherited;
 end;
@@ -511,8 +511,8 @@ var
   mWaitMs: Cardinal;
 begin
   Result := Default(TLspCloseInfo);
-  // Atlas beendet den Server selbst (Destroy schließt den Client vorher): kein Absturz, nichts zu warten.
-  if (FClient = nil) or FClient.Closed then
+  // Atlas beendet den Server selbst (Destroy schließt die Verbindung vorher): kein Absturz, nichts zu warten.
+  if (FConnection = nil) or FConnection.IsClosed then
   begin
     Exit;
   end;
@@ -532,12 +532,7 @@ end;
 
 function TLspServerProcess.Running: Boolean;
 begin
-  Result := (FProcess <> 0) and (WaitForSingleObject(FProcess, 0) = WAIT_TIMEOUT) and not FClient.Closed;
-end;
-
-function TLspServerProcess.GetClient: TLspClient;
-begin
-  Result := FClient;
+  Result := (FProcess <> 0) and (WaitForSingleObject(FProcess, 0) = WAIT_TIMEOUT) and not FConnection.IsClosed;
 end;
 
 end.

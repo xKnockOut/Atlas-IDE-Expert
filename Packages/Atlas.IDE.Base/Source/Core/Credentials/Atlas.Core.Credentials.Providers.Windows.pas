@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Credentials.Adapters.Windows;
+﻿unit Atlas.Core.Credentials.Providers.Windows;
 
 // Anmeldespeicher von Windows (Anmeldeinformationsverwaltung, „Windows-
 // Anmeldeinformationen“) für Atlas.Core.Credentials.Contract: ein Eintrag je

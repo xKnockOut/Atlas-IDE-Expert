@@ -124,9 +124,9 @@ uses
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Results.Model,
   Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Core.Lsp.Framing,
+  Atlas.Core.Lsp.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;

@@ -43,6 +43,20 @@ type
     property OnChanged: TProc read FOnChanged write FOnChanged;
   end;
 
+  TAtlasRegistryChangeProc = reference to procedure(const AChange: TAtlasRegistryChange);
+
+  /// <summary>Hörer der Registry, der jede Änderung an einen Rückruf gibt: für Verbraucher in anderen Features
+  /// (#1443), die IAtlasRegistryListener nicht selbst umsetzen. Nach Detach erreicht den Rückruf nichts mehr
+  /// (Regel 3); vor der Freigabe des Verbrauchers aufrufen.</summary>
+  TAtlasRegistryCallback = class(TInterfacedObject, IAtlasRegistryListener)
+  private
+    FOnChange: TAtlasRegistryChangeProc;
+  public
+    constructor Create(const AOnChange: TAtlasRegistryChangeProc);
+    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
+    procedure Detach;
+  end;
+
 implementation
 
 uses
@@ -120,6 +134,27 @@ begin
   begin
     FOnChanged();
   end;
+end;
+
+{ TAtlasRegistryCallback }
+
+constructor TAtlasRegistryCallback.Create(const AOnChange: TAtlasRegistryChangeProc);
+begin
+  inherited Create;
+  FOnChange := AOnChange;
+end;
+
+procedure TAtlasRegistryCallback.RegistryChanged(const AChange: TAtlasRegistryChange);
+begin
+  if Assigned(FOnChange) then
+  begin
+    FOnChange(AChange);
+  end;
+end;
+
+procedure TAtlasRegistryCallback.Detach;
+begin
+  FOnChange := nil;
 end;
 
 end.

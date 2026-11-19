@@ -53,11 +53,11 @@ uses
   System.Types,
   Vcl.Controls,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
   Atlas.UI.Popup.Accessibility,
   Atlas.UI.Completion.PopupState,
-  Atlas.UI.Completion.PopupPainter;
+  Atlas.UI.Completion.PopupPainter,
+  Atlas.UI.Popup.Contract;
 
 type
   TAtlasCompletionPopup = class(TAtlasCompletionPopupPainter, IAtlasCompletionView, IAtlasCompletionSyntaxView,

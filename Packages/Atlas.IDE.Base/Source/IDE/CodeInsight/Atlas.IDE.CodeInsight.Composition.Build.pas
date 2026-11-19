@@ -58,7 +58,8 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Core.Build.Contract;
 
 {$SCOPEDENUMS ON}
 

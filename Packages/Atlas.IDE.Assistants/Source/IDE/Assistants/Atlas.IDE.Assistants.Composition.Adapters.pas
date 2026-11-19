@@ -35,7 +35,7 @@ uses
   Atlas.Core.AiProviders.Contract,
   Atlas.Core.AiProviders.Adapters.Http,
   Atlas.Core.Credentials.Contract,
-  Atlas.Core.Credentials.Adapters.Windows,
+  Atlas.Core.Credentials.Providers.Windows,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Assistants.AiGhost,

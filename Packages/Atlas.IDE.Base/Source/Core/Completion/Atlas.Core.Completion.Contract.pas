@@ -400,6 +400,42 @@ type
     function ProviderName: string;
   end;
 
+  TAtlasChip = (All, Methods, Properties, Events, Types, Snippets);
+
+  TAtlasChipCounts = array[TAtlasChip] of Integer;
+
+  /// <summary>Anzeige der Liste; umgesetzt vom Popup (Atlas.UI) bzw. von Tests.</summary>
+  IAtlasCompletionView = interface
+    ['{8D2F4B61-3E9A-4C57-A1D0-6B7E2F9C3A15}']
+    /// <summary>Zeigt bzw. aktualisiert die Liste. AOrder: Indizes in AItems in Anzeigereihenfolge;
+    /// ASelected: Position in AOrder; APattern: getippter Anfang, zum Hervorheben der Treffer.</summary>
+    procedure ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
+      const APattern: string);
+    procedure HideList;
+    /// <summary>Leerer Zustand (#423): keine Treffer für APrefix unter ATotal Einträgen.</summary>
+    procedure ShowEmpty(const APrefix: string; ATotal: Integer);
+    /// <summary>Zahl der sichtbaren Zeilen für Bild auf/ab.</summary>
+    function PageSize: Integer;
+    /// <summary>Filter-Chips (#422): Treffer je Art, gewählter Chip; AVisible = False blendet sie aus.</summary>
+    procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
+  end;
+
+  /// <summary>Ansicht mit Hinweis bei unvollständigem Code (#457); das Popup, wahlweise auch Tests.</summary>
+  IAtlasCompletionSyntaxView = interface
+    ['{2C6E9B41-7A3D-4E85-B0F2-9D1C5A8E3B76}']
+    /// <summary>Warnleiste bzw. Hinweis im leeren Zustand; Trust Sure blendet ihn aus.</summary>
+    procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
+  end;
+
+  /// <summary>Ansicht, die nur wegen der Sichtbarkeit fehlende Treffer nennt (#2108); das Popup, wahlweise auch
+  /// Tests.</summary>
+  IAtlasCompletionHiddenView = interface
+    ['{6B1F3D84-92C5-4E7A-8D36-1F0A5C9E2B47}']
+    /// <summary>AItems: passende Mitglieder mit Inaccessible, die die Liste noch nicht zeigt; leer ohne. Vor jedem
+    /// Zeigen der Liste bzw. des leeren Zustands.</summary>
+    procedure ShowInaccessible(const AItems: TAtlasCompletionItems);
+  end;
+
 implementation
 
 { TAtlasCompletionItem }

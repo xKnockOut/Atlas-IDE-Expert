@@ -30,7 +30,8 @@ uses
   Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.IDE.Projects.Contract;
 
 type
   TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource, IAtlasProjectSummaryListener)

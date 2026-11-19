@@ -62,10 +62,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Verdict,
-  Atlas.IDE.Contracts.Tests;
+  Atlas.IDE.Contracts.Tests,
+  Atlas.Core.Build.Contract;
 
 type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -113,7 +111,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Adapters.ProcessRunner,
+  Atlas.Core.VersionControl.Providers.ProcessRunner,
   Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Tests.Debug, // TAtlasTestCompareHooks

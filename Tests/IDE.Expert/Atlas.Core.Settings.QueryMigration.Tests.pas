@@ -26,10 +26,10 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.QueryMigration,
-  Atlas.Core.Tracker.Queries;
+  Atlas.Core.Tracker.Queries,
+  Atlas.Core.Settings.Contract;
 
 function Names(const AQueries: TArray<TAtlasTrackerQuery>): string;
 var

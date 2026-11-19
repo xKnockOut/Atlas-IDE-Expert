@@ -23,23 +23,10 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Verdict;
+  Atlas.Core.Build.Verdict,
+  Atlas.Core.Build.Contract;
 
 type
-  /// <summary>Gelesene Compilermeldungen eines Builds (#528), Hauptthread.</summary>
-  IAtlasCompilerMessagesListener = interface
-    ['{28D76957-B5BE-4AB0-8E6C-469673E9C75D}']
-    procedure MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject);
-  end;
-
-  /// <summary>Bewertung eines Builds des Benutzers mit lesbaren Meldungen (#530), Hauptthread.</summary>
-  IAtlasBuildEvaluator = interface
-    ['{7A57B5A5-A39B-4709-9063-BFE893CBA09B}']
-    /// <summary>True: übernimmt die Bewertung (Folgen über IAtlasBuildVerdictListener); False: Base trägt den Build
-    /// ohne Bewertung ein.</summary>
-    function Evaluate(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      ASucceeded: Boolean): Boolean;
-  end;
 
   /// <summary>Beiträge der Build-Pipeline über die Registry; jeder Aufruf fragt neu.</summary>
   TAtlasBuildPipeline = class

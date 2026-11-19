@@ -17,7 +17,8 @@ uses
   System.SysUtils,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Undo.Contract;
+  Atlas.Core.Undo.Contract,
+  Atlas.Core.Editor.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -60,24 +61,6 @@ type
     CreatedEdits: Integer;
     /// <summary>"Datei.pas: Grund" oder ''.</summary>
     Error: string;
-  end;
-
-  /// <summary>Was der Planer über Dateien und Projekte wissen muss; in der IDE TAtlasIdeEditEnvironment.</summary>
-  IAtlasEditEnvironment = interface
-    ['{7A9F35E4-0FD4-4DD2-9F8D-1B75CDA6E1C1}']
-    /// <summary>Datei auf der Platte oder offener Puffer.</summary>
-    function Exists(const AFileName: string): Boolean;
-    function IsDirectory(const AFileName: string): Boolean;
-    /// <summary>Wie IAtlasUndoTarget.Read: Puffer, Designer oder Platte; False, wenn sie fehlt.</summary>
-    function Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
-    /// <summary>Kodierung der Datei auf der Platte (Text leer); UTF-8 mit BOM, wenn sie fehlt.</summary>
-    function DiskEncoding(const AFileName: string): TAtlasTextFileContent;
-    /// <summary>Projektdatei des Projekts, das AFileName enthält; '' wenn keins.</summary>
-    function ProjectOfFile(const AFileName: string): string;
-    /// <summary>Aktives Projekt für eine neue Unit; '' wenn keins passt.</summary>
-    function ProjectForNewFile(const AFileName: string): string;
-    /// <summary>Ist die Projektdatei in der IDE geladen?</summary>
-    function ProjectLoaded(const AProjectFile: string): Boolean;
   end;
 
   TAtlasEditPlanner = class

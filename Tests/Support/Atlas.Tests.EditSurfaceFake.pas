@@ -17,7 +17,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.Core.Editor.EditSurface,
+  Atlas.Core.Editor.Contract;
 
 type
   TAtlasEditSurfaceFake = class(TInterfacedObject, IAtlasEditSurface)

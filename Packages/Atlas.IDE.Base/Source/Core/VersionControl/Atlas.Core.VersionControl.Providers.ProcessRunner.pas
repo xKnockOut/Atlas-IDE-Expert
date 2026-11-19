@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.VersionControl.Adapters.ProcessRunner;
+﻿unit Atlas.Core.VersionControl.Providers.ProcessRunner;
 
 // Startet git bzw. svn für die Versionsverwaltung (#571):
 //   - unsichtbar: CREATE_NO_WINDOW und SW_HIDE, kein Konsolenfenster blitzt auf

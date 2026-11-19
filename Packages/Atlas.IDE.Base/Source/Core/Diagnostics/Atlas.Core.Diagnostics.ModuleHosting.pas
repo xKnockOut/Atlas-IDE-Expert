@@ -22,6 +22,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Watch,
   Atlas.Core.Diagnostics.FeatureTable;
 
 type
@@ -34,23 +35,17 @@ type
       Part: IAtlasFeaturePart;
       Name: string;
     end;
-
-    /// <summary>Hört auf die Registry; FOwner ist nil, sobald der Wirt abgebaut wird.</summary>
-    TListener = class(TInterfacedObject, IAtlasRegistryListener)
-    private
-      FOwner: TAtlasModuleHosting;
-    public
-      procedure RegistryChanged(const AChange: TAtlasRegistryChange);
-    end;
   private
     FRegistry: IAtlasModuleRegistry;
     FFeatures: TAtlasFeatureTable;
-    FListener: TListener;
+    /// <summary>Hört auf die Registry; Destroy trennt ihn, bevor der Wirt abgebaut wird.</summary>
+    FListener: TAtlasRegistryCallback;
     FListenerRef: IAtlasRegistryListener;
     FSubscription: IAtlasRegistration;
     FOnChanged: TProc;
     FParts: TArray<TPartEntry>;
     FFailures: TArray<string>;
+    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
     procedure Added(const AModuleId: string);
     procedure Removed(const AModuleId: string);
     procedure AddPart(const AModule: IAtlasModule);
@@ -91,30 +86,24 @@ implementation
 uses
   Atlas.Text.LogMarks;
 
-{ TAtlasModuleHosting.TListener }
+{ TAtlasModuleHosting }
 
-procedure TAtlasModuleHosting.TListener.RegistryChanged(const AChange: TAtlasRegistryChange);
+procedure TAtlasModuleHosting.RegistryChanged(const AChange: TAtlasRegistryChange);
 begin
-  if FOwner = nil then
-  begin
-    Exit;
-  end;
   case AChange.Kind of
     rcModuleAdded:
-      FOwner.Added(AChange.ModuleId);
+      Added(AChange.ModuleId);
     rcModuleRemoved:
-      FOwner.Removed(AChange.ModuleId);
+      Removed(AChange.ModuleId);
     rcProvided, rcRevoked:
-      if IsEqualGUID(AChange.IID, IAtlasFeaturePart) and FOwner.SyncParts and Assigned(FOwner.FOnChanged) then
+      if IsEqualGUID(AChange.IID, IAtlasFeaturePart) and SyncParts and Assigned(FOnChanged) then
       begin
-        FOwner.FOnChanged();
+        FOnChanged();
       end;
   else
     // Bereitstellungen und die Liste bekannter Module ändern die Tabelle nicht.
   end;
 end;
-
-{ TAtlasModuleHosting }
 
 constructor TAtlasModuleHosting.Create(const ARegistry: IAtlasModuleRegistry; AFeatures: TAtlasFeatureTable);
 var
@@ -123,8 +112,7 @@ begin
   inherited Create;
   FRegistry := ARegistry;
   FFeatures := AFeatures;
-  FListener := TListener.Create;
-  FListener.FOwner := Self;
+  FListener := TAtlasRegistryCallback.Create(RegistryChanged);
   FListenerRef := FListener;
   if FRegistry = nil then
   begin
@@ -140,7 +128,7 @@ end;
 
 destructor TAtlasModuleHosting.Destroy;
 begin
-  FListener.FOwner := nil;
+  FListener.Detach;
   if FSubscription <> nil then
   begin
     FSubscription.Revoke;

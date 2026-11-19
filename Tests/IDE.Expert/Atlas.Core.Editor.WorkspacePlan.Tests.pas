@@ -57,7 +57,8 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Editor.Contract;
 
 type
   TFakeEnvironment = class(TInterfacedObject, IAtlasEditEnvironment)

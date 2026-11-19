@@ -87,7 +87,8 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Undo.Target,
   Atlas.Core.Localization.Language,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.Core.Editor.EditSurface,
+  Atlas.Core.Editor.Contract;
 
 {$SCOPEDENUMS ON}
 

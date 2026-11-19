@@ -230,7 +230,8 @@ uses
   Atlas.Core.Settings.QueryMigration,
   Atlas.Core.Settings.ProblemsUpdate,
   Atlas.Core.Localization.Language,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Settings.Contract;
 
 {$SCOPEDENUMS ON}
 

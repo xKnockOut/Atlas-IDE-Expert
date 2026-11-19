@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Contract;
 
 type
   TAtlasRoutedSetting = record

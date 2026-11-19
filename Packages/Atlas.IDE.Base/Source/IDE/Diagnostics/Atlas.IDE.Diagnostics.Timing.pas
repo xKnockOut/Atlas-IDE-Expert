@@ -39,7 +39,7 @@ uses
   Atlas.IDE.Build.IdleGate,
   Atlas.IDE.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.PluginFrame,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeDiagnosticMode = class

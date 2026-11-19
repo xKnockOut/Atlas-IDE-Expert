@@ -78,7 +78,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Tracker.TestResults;
+  Atlas.Core.Tracker.TestResults,
+  Atlas.Core.Settings.Contract;
 
 const
   cTestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';

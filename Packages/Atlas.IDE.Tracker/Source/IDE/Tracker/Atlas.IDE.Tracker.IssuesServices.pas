@@ -14,7 +14,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.IDE.Tracker.IssuePreview,
@@ -27,7 +26,8 @@ uses
   Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.Reopened,
   Atlas.IDE.Tracker.IssuesTracking,
-  Atlas.IDE.Tracker.IssuesContext;
+  Atlas.IDE.Tracker.IssuesContext,
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeIssuesServices = class
@@ -97,7 +97,8 @@ uses
   Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.IssueState,
-  Atlas.IDE.Tracker.WorkingCopies;
+  Atlas.IDE.Tracker.WorkingCopies,
+  Atlas.Core.Commands.Palette;
 
 type
   /// <summary>Was die Hooks der Dienste einfangen: den Besitzer (hält ihn bis Stop), Kontext und Dienste.

@@ -50,7 +50,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Build,
   Atlas.IDE.CodeInsight.Composition.Tools,
   Atlas.IDE.CodeInsight.Composition.PaletteNavigation,
-  Atlas.IDE.CodeInsight.Composition.PaletteEditing;
+  Atlas.IDE.CodeInsight.Composition.PaletteEditing,
+  Atlas.Core.Commands.Contract;
 
 var
   PaletteInstance: TAtlasIdePalette;

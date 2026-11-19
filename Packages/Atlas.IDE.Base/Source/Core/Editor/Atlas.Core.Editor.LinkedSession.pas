@@ -27,7 +27,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Editor.LinkedEditing,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.Core.Editor.EditSurface,
+  Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Stand des Puffers, den die Sitzung kennt: Text, seine Zeilen und die Vorkommen darin. Die Arrays

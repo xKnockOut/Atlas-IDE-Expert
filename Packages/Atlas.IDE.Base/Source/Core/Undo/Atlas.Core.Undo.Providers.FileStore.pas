@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Undo.Adapters.FileStore;
+﻿unit Atlas.Core.Undo.Providers.FileStore;
 
 // Sicherung der Atlas-Änderungssätze (#721, undo.multiFile.persist) in einem
 // Ordner, in der IDE %LOCALAPPDATA%\Atlas\undo: je Satz eine Datei

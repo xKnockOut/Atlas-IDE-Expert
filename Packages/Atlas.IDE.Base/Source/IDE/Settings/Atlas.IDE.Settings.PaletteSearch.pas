@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeSettingsPalette = class

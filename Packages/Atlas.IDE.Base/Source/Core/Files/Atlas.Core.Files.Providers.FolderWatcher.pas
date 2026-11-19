@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Files.Adapters.FolderWatcher;
+﻿unit Atlas.Core.Files.Providers.FolderWatcher;
 
 // Beobachtet Ordner samt Unterordnern mit ReadDirectoryChangesW (#395) und
 // gibt jedes Ereignis an TAtlasWatchedChanges weiter. Je Wurzel ein Thread;
@@ -14,7 +14,8 @@ uses
   System.Classes,
   System.Generics.Collections,
   Winapi.Windows,
-  Atlas.Core.Files.WatchedChanges;
+  Atlas.Core.Files.WatchedChanges,
+  Atlas.Core.Files.Contract;
 
 type
   TAtlasFolderWatcher = class(TInterfacedObject, IAtlasFolderWatcher)

@@ -13,10 +13,9 @@ interface
 uses
   System.SysUtils,
   DUnitX.TestFramework,
-  Atlas.Core.Editor.MultiCursor,
-  Atlas.Core.Editor.EditSurface,
   Atlas.Core.Editor.MultiCursorSession,
-  Atlas.Tests.EditSurfaceFake;
+  Atlas.Tests.EditSurfaceFake,
+  Atlas.Core.Editor.Contract;
 
 type
   [TestFixture]
@@ -69,6 +68,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Editor.MultiCursor;
 
 const
   cFile = 'C:\Projekt\Unit1.pas';

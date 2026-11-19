@@ -228,7 +228,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Hover.Layout.Contract,
+  Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,

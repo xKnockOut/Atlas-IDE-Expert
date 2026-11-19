@@ -33,7 +33,8 @@ uses
   Atlas.Core.Tracker.PaletteSearchPlan,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.PaletteSearchFetch,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Commands.Contract;
 
 type
   /// <summary>Tracker des aktiven Projekts; nil ohne Anbieter bzw. Server.</summary>

@@ -12,8 +12,9 @@ uses
   System.Types,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Hover.Layout.Contract,
-  Atlas.Core.Hover.Layout.Members;
+  Atlas.Core.Hover.Layout.Input,
+  Atlas.Core.Hover.Layout.Members,
+  Atlas.Core.Hover.Contract;
 
 type
   TAtlasHoverDebugPainter = class(TAtlasHoverMembersPainter)

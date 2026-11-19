@@ -45,7 +45,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Verdict;
+  Atlas.Core.Build.Verdict,
+  Atlas.Core.Build.Contract;
 
 type
   TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasAppliesSettings,

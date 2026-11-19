@@ -18,7 +18,8 @@ uses
   System.Classes,
   Vcl.ComCtrls,
   Atlas.UI.Settings.ProjectDialog,
-  Atlas.UI.Rules.Editor;
+  Atlas.UI.Rules.Editor,
+  Atlas.UI.Settings.Contract;
 
 type
   /// <summary>Der Dialog mit dem Regel-Editor (#909) für das Feld "rules".</summary>
@@ -58,7 +59,7 @@ type
   /// <summary>Anbieter der Dialogklasse für Base (IAtlasSettingsDialogProvider).</summary>
   TAtlasRulesDialogProvider = class(TInterfacedObject, IAtlasSettingsDialogProvider)
   public
-    function DialogClass: TAtlasProjectSettingsDialogClass;
+    function DialogClass: TComponentClass;
   end;
 
 implementation
@@ -289,7 +290,7 @@ end;
 
 { TAtlasRulesDialogProvider }
 
-function TAtlasRulesDialogProvider.DialogClass: TAtlasProjectSettingsDialogClass;
+function TAtlasRulesDialogProvider.DialogClass: TComponentClass;
 begin
   Result := TAtlasRulesSettingsDialog;
 end;

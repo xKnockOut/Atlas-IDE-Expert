@@ -74,7 +74,6 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.Core.Commands.Usage,
   Atlas.Core.Status.Registry,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.WorkspacePlan,
@@ -86,7 +85,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Adapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Commands.Contract;
 
 const
   /// <summary>Zeitlimit eines Serverbefehls aus dem Menü ohne Antwortverarbeitung.</summary>

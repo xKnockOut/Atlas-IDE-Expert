@@ -4,7 +4,7 @@
 // braucht (Zugang zum Build-Server, Token des Issue-Trackers, Schlüssel eines
 // KI-Anbieters), steht nur im Anmeldespeicher von Windows, nie in einer Datei,
 // der Registry, den Einstellungen oder dem Protokoll. Die Umsetzung liegt in
-// Atlas.Core.Credentials.Adapters.Windows; Tests setzen eine Fälschung ein.
+// Atlas.Core.Credentials.Providers.Windows; Tests setzen eine Fälschung ein.
 // Lesen auch im Hintergrund-Thread.
 
 interface

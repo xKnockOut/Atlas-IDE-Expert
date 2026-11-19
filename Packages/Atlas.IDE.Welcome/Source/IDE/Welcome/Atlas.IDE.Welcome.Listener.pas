@@ -12,10 +12,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Usage,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Tests,
-  Atlas.IDE.Welcome.Commands;
+  Atlas.IDE.Welcome.Commands,
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasWelcomeListener = class(TInterfacedObject, IAtlasTaskListener, IAtlasTestsListener,

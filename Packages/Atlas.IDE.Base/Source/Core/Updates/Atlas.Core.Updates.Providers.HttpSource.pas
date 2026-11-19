@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Updates.Adapters.HttpSource;
+﻿unit Atlas.Core.Updates.Providers.HttpSource;
 
 // Versionsdatei über HTTPS lesen (#495), aus einem Hintergrund-Thread. Jede
 // Abfrage läuft asynchron und wird abgebrochen, sobald das Abbruchsignal des

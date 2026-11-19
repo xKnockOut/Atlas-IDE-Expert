@@ -45,7 +45,8 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Renames,
-  Atlas.Core.Settings.QueryMigration;
+  Atlas.Core.Settings.QueryMigration,
+  Atlas.Core.Settings.Contract;
 
 /// <summary>Katalog mit Text-, Wahrheits- und Zahleinstellung unter neuem Namen, je mit früherem Namen.</summary>
 function TestCatalog: TAtlasSettingsCatalog;
