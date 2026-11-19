@@ -41,7 +41,9 @@ type
     IssuePreviewPrompt, IssuePreviewNoTracker, IssuePreviewInvalidKey, IssuePreviewErrorToken,
     IssuePreviewErrorNetwork, IssuePreviewErrorTimeout, IssuePreviewErrorInvalid, IssueChecklistProgress,
     IssueChecklistStatusLine, IssueChecklistStatusHint, IssuePreviewDescription, IssuePreviewAttach,
-    IssuePreviewAttachHint, IssuePreviewReview, IssuePreviewReviewHint, IssuePreviewAttachMenu);
+    IssuePreviewAttachHint, IssuePreviewReview, IssuePreviewReviewHint, IssuePreviewAttachMenu,
+    KnownErrorsAgain, KnownErrorsLocation, KnownErrorsStack, KnownErrorsBranch, KnownErrorsCommented,
+    KnownErrorsCommentFailed);
 
   TAtlasIssueStrings = class
   public
@@ -207,7 +209,13 @@ const
      'Bildschirmfoto, Formular, Log oder Debug-Notiz an das aktuelle Issue anhängen',
      'Prüfen …',
      'Branch des Issues auschecken, bauen, die betroffenen Tests ausführen und verifizieren oder zurückgeben',
-     'An Issue anhängen …'),
+     'An Issue anhängen …',
+     'Wieder aufgetreten beim Debuggen',
+     'Ort',
+     'Aufrufstapel (eigener Code)',
+     'Branch',
+     '%s: Exception als Kommentar angehängt',
+     '%s: Kommentar nicht geschrieben'),
     ('No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
      'Forward (Alt+Right)',
@@ -356,7 +364,13 @@ const
      'Attach a screenshot, form, log or debug note to the current issue',
      'Review…',
      'Check out the issue''s branch, build, run the affected tests, then verify or hand back',
-     'Attach to issue …'));
+     'Attach to issue …',
+     'Occurred again while debugging',
+     'Location',
+     'Call stack (own code)',
+     'Branch',
+     '%s: exception attached as a comment',
+     '%s: comment not written'));
 
 { TAtlasIssueStrings }
 
