@@ -32,7 +32,8 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
-  Atlas.Core.Build.Pipeline;
+  Atlas.Core.Build.Pipeline,
+  Atlas.Core.Build.Contract;
 
 type
   TFakeModule = class(TInterfacedObject, IAtlasModule)

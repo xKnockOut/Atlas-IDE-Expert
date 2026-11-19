@@ -26,7 +26,8 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Editor.LineChanges;
+  Atlas.Core.Editor.LineChanges,
+  Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Gruppe für editor.overviewRulerKinds (bei den Einstellungen, damit der Parser ohne diesen Kern
@@ -34,37 +35,14 @@ type
   TAtlasOverviewKind = Atlas.Core.Settings.OverviewKinds.TAtlasOverviewKind;
   TAtlasOverviewKinds = Atlas.Core.Settings.OverviewKinds.TAtlasOverviewKinds;
 {$SCOPEDENUMS ON}
-  /// <summary>Art einer Marke; die Reihenfolge ist zugleich die Zeichenreihenfolge (spätere liegen oben).</summary>
-  TAtlasOverviewMarkKind = (Cursor, Added, Modified, Deleted, Search, Bookmark, Breakpoint, Info, Warning, Error);
+  TAtlasOverviewMarkKind = Atlas.Core.Editor.Contract.TAtlasOverviewMarkKind;
   /// <summary>Spur im Streifen.</summary>
   TAtlasOverviewLane = (Left, Middle, Right, Full);
 {$SCOPEDENUMS OFF}
 
-  TAtlasOverviewMark = record
-    Kind: TAtlasOverviewMarkKind;
-    Line: Integer;
-    /// <summary>Zeilen ab Line (mindestens 1).</summary>
-    Count: Integer;
-    /// <summary>Beschreibung für die Vorschau (etwa die Meldung); '' ohne.</summary>
-    Text: string;
-    class function Create(AKind: TAtlasOverviewMarkKind; ALine, ACount: Integer): TAtlasOverviewMark; overload; static;
-    class function Create(AKind: TAtlasOverviewMarkKind; ALine, ACount: Integer;
-      const AText: string): TAtlasOverviewMark; overload; static;
-    /// <summary>Indizes der Marken von AKind in AMarks, nach Zeile sortiert (bei gleicher Zeile in Eingabefolge).
-    /// </summary>
-    class function IndexesOfKind(const AMarks: TArray<TAtlasOverviewMark>;
-      AKind: TAtlasOverviewMarkKind): TArray<Integer>; static;
-  end;
+  TAtlasOverviewMark = Atlas.Core.Editor.Contract.TAtlasOverviewMark;
 
-  TAtlasOverviewMarks = TArray<TAtlasOverviewMark>;
-
-  /// <summary>Eigene Lesezeichen eines Moduls für die Übersichtsleiste (#1104, #1455): Das Modul stellt die Quelle
-  /// über seinen Scope bereit; die Leiste fragt bei jedem Sammeln die Registry. Nur im Hauptthread.</summary>
-  IAtlasOverviewBookmarks = interface
-    ['{CF205299-AA82-4210-8294-D1E4064066BA}']
-    /// <summary>Lesezeichen für AFileName; False: keine eigenen, die Leiste zeigt die der IDE.</summary>
-    function Marks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
-  end;
+  TAtlasOverviewMarks = Atlas.Core.Editor.Contract.TAtlasOverviewMarks;
 
   /// <summary>Gezeichneter Balken: Pixel von Top bis Bottom (ausschließlich) in seiner Spur.</summary>
   TAtlasOverviewBar = record
@@ -125,22 +103,6 @@ implementation
 
 uses
   System.Math;
-
-{ TAtlasOverviewMark }
-
-class function TAtlasOverviewMark.Create(AKind: TAtlasOverviewMarkKind; ALine, ACount: Integer): TAtlasOverviewMark;
-begin
-  Result := Create(AKind, ALine, ACount, '');
-end;
-
-class function TAtlasOverviewMark.Create(AKind: TAtlasOverviewMarkKind; ALine, ACount: Integer;
-  const AText: string): TAtlasOverviewMark;
-begin
-  Result.Kind := AKind;
-  Result.Line := Max(0, ALine);
-  Result.Count := Max(1, ACount);
-  Result.Text := AText;
-end;
 
 { TAtlasOverview }
 
@@ -227,30 +189,6 @@ begin
     Exit(ALineCount - 1);
   end;
   Result := EnsureRange(Integer((Int64(Max(0, AY)) * ALineCount) div AHeight), 0, ALineCount - 1);
-end;
-
-/// <summary>Marken der Art AKind nach Zeile (Einfügen; die Listen sind meist schon sortiert).</summary>
-class function TAtlasOverviewMark.IndexesOfKind(const AMarks: TArray<TAtlasOverviewMark>;
-  AKind: TAtlasOverviewMarkKind): TArray<Integer>;
-var
-  mIndex, mPosition, mMoved: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to High(AMarks) do
-  begin
-    if AMarks[mIndex].Kind = AKind then
-    begin
-      Result := Result + [mIndex];
-      mPosition := High(Result);
-      while (mPosition > 0) and (AMarks[Result[mPosition - 1]].Line > AMarks[mIndex].Line) do
-      begin
-        mMoved := Result[mPosition - 1];
-        Result[mPosition - 1] := Result[mPosition];
-        Result[mPosition] := mMoved;
-        Dec(mPosition);
-      end;
-    end;
-  end;
 end;
 
 /// <summary>Pixelbereich einer Marke, mindestens AMinHeight hoch und innerhalb von AHeight.</summary>

@@ -22,7 +22,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Commands.KeyMap;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasSearchModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,

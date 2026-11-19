@@ -73,10 +73,8 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Problems.Findings,
   Atlas.Core.Rules.CustomLayer,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ProjectDialog,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -91,7 +89,8 @@ uses
   Atlas.IDE.Rules.Adapters.SettingsDialog,
   Atlas.UI.Rules.SettingsSection,
   Atlas.UI.Strings,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.Core.Problems.Contract;
 
 var
   GScope: IAtlasModuleScope;

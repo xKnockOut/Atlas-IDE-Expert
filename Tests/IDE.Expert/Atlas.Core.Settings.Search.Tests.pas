@@ -86,7 +86,8 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Search,
-  Atlas.Core.Commands.SettingsPalette;
+  Atlas.Core.Commands.SettingsPalette,
+  Atlas.Core.Commands.Contract;
 
 { TAtlasSettingsSearchTests }
 

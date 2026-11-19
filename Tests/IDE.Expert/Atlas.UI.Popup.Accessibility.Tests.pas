@@ -33,7 +33,8 @@ uses
   System.SysUtils,
   System.Types,
   System.Variants,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.UI.Popup.Accessibility,
+  Atlas.UI.Popup.Contract;
 
 const
   cControlTypeProperty = 30003;

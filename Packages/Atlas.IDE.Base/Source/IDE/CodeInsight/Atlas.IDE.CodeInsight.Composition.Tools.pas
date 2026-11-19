@@ -74,7 +74,6 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.Core.Commands.Usage,
   Atlas.Core.Status.Registry,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.WorkspacePlan,
@@ -88,7 +87,9 @@ uses
   Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Commands.Contract,
+  Atlas.Core.Setup.Contract;
 
 const
   /// <summary>Zeitlimit eines Serverbefehls aus dem Menü ohne Antwortverarbeitung.</summary>
@@ -261,6 +262,7 @@ procedure StartSetup;
 var
   mHooks: TAtlasSetupHooks;
   mForgetKeys: TProc;
+  mSnapshot: TAtlasSetupSnapshot;
   mEnvironment: IAtlasSetupEnvironment;
 begin
   mHooks.ServerInfo := ServerInfo;
@@ -270,8 +272,9 @@ begin
   mHooks.StartServer := StartServer;
   mHooks.ServerCommand := SendServerCommand;
   mHooks.ServerPath := ServerPath;
-  mEnvironment := SetupEnvironment(mHooks, mForgetKeys);
-  SetupInstance := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, mEnvironment, mForgetKeys);
+  mEnvironment := SetupEnvironment(mHooks, mForgetKeys, mSnapshot);
+  SetupInstance := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, mEnvironment, mSnapshot,
+    mForgetKeys);
 end;
 
 procedure StopSetup;

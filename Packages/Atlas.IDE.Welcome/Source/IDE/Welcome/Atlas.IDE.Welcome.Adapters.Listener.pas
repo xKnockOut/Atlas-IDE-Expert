@@ -12,9 +12,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Usage,
   Atlas.IDE.Contracts.BuildTools,
-  Atlas.IDE.Contracts.Tests;
+  Atlas.IDE.Contracts.Tests,
+  Atlas.Core.Commands.Contract;
 
 type
   /// <summary>Ziele der Ereignisse; ein nicht gesetzter Haken lässt das Ereignis fallen.</summary>

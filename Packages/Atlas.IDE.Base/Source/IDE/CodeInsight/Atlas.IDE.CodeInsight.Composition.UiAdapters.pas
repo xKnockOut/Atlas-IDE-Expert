@@ -13,16 +13,16 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.Core.Completion.Controller,
-  Atlas.Core.Signature.Controller,
-  Atlas.Core.Hover.Layout.Contract,
   Atlas.UI.Popup.Styled,
   Atlas.UI.Completion.Popup,
   Atlas.UI.Completion.Adapters.PopupView,
   Atlas.UI.Signature.Hint,
   Atlas.UI.Signature.Adapters.HintView,
   Atlas.UI.Hover.Tip,
-  Atlas.UI.Hover.Adapters.TipMeasure;
+  Atlas.UI.Hover.Adapters.TipMeasure,
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Signature.Contract,
+  Atlas.Core.Hover.Contract;
 
 procedure InstallUiAdapters;
 begin

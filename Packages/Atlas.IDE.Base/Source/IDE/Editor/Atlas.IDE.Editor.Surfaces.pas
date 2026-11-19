@@ -8,7 +8,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Puffer der Ansicht AView (AView und ihr Puffer nicht nil).</summary>

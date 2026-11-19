@@ -1,11 +1,13 @@
-﻿unit Atlas.Core.Lsp.Adapters.ServerProcess.Tests;
+﻿unit Atlas.Core.Lsp.Providers.ServerProcess.Tests;
 
 // Tests des Serverprozesses (Start, Ende, Handles).
 
 interface
 
 uses
-  DUnitX.TestFramework;
+  DUnitX.TestFramework,
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Providers.ServerProcess;
 
 type
   [TestFixture]
@@ -27,6 +29,10 @@ type
     procedure EndReportsExitCodeAndStderr;
   end;
 
+/// <summary>Startet AExeName mit AArguments wie die IDE; AClient ist der Client der Verbindung und lebt so lange wie
+/// der Prozess. Löst bei Fehlern EOSError aus.</summary>
+function StartLspServer(const AExeName, AArguments: string; out AClient: TLspClient): TLspServerProcess;
+
 implementation
 
 uses
@@ -35,10 +41,9 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Crashes,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Problems.Contract,
   Atlas.Tests.Wait;
 
@@ -55,6 +60,19 @@ const
     '  Gibtsnicht.Create;'#13#10 +
     'end;'#13#10 +
     'end.';
+
+function StartLspServer(const AExeName, AArguments: string; out AClient: TLspClient): TLspServerProcess;
+var
+  mClient: TLspClient;
+begin
+  mClient := nil;
+  Result := TLspServerProcess.Create(AExeName, AArguments,
+    function(const ASend: TLspSendProc): IAtlasLspConnection
+    begin
+      Result := TLspClientConnection.Open(ASend, mClient);
+    end);
+  AClient := mClient;
+end;
 
 { TLspServerProcessTests }
 
@@ -77,6 +95,7 @@ const
 var
   mServerExe, mFileName: string;
   mServer: TLspServerProcess;
+  mClient: TLspClient;
   mSession: TLspSession;
   mLocation: TLspLocation;
 begin
@@ -86,9 +105,9 @@ begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
   mFileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbe.pas');
-  mServer := TLspServerProcess.Create(mServerExe, '');
+  mServer := StartLspServer(mServerExe, '', mClient);
   try
-    mSession := TLspSession.Create(mServer.Client, 5000);
+    mSession := TLspSession.Create(mClient, 5000);
     try
       mSession.Initialize;
       Assert.IsTrue(mServer.Running);
@@ -117,6 +136,7 @@ const
 var
   mServerExe, mFileName: string;
   mServer: TLspServerProcess;
+  mClient: TLspClient;
   mSession: TLspSession;
   mReport, mAgain: TLspDiagnosticReport;
 begin
@@ -126,9 +146,9 @@ begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
   mFileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeFehler.pas');
-  mServer := TLspServerProcess.Create(mServerExe, '');
+  mServer := StartLspServer(mServerExe, '', mClient);
   try
-    mSession := TLspSession.Create(mServer.Client, 5000);
+    mSession := TLspSession.Create(mClient, 5000);
     try
       mSession.Initialize;
       mSession.Sync(mFileName, cUnitText);
@@ -153,6 +173,7 @@ procedure TLspServerProcessTests.CompilerMessagesReachPulledDiagnostics;
 var
   mServerExe, mFileName: string;
   mServer: TLspServerProcess;
+  mClient: TLspClient;
   mSession: TLspSession;
   mReport: TLspDiagnosticReport;
   mParams: TJSONObject;
@@ -166,9 +187,9 @@ begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
   mFileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeCompiler.pas');
-  mServer := TLspServerProcess.Create(mServerExe, '');
+  mServer := StartLspServer(mServerExe, '', mClient);
   try
-    mSession := TLspSession.Create(mServer.Client, 5000);
+    mSession := TLspSession.Create(mClient, 5000);
     try
       mSession.Initialize;
       mSession.Sync(mFileName, cCompilerMessagesUnitText);
@@ -214,8 +235,10 @@ begin
   // Vorlauf außerhalb der Messung: einmalige Handles der RTL (Ausnahmen, Codepages) vorwegnehmen.
   Assert.WillRaise(
     procedure
+    var
+      mClient: TLspClient;
     begin
-      TLspServerProcess.Create(cMissing, '').Free;
+      StartLspServer(cMissing, '', mClient).Free;
     end, EOSError);
   mBefore := 0;
   mAfter := 0;
@@ -224,8 +247,10 @@ begin
   begin
     Assert.WillRaise(
       procedure
+      var
+        mClient: TLspClient;
       begin
-        TLspServerProcess.Create(cMissing, '').Free;
+        StartLspServer(cMissing, '', mClient).Free;
       end, EOSError);
   end;
   Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, mAfter));
@@ -233,28 +258,30 @@ begin
   Assert.IsTrue(Integer(mAfter) - Integer(mBefore) < 5, Format('Handles vorher %d, nachher %d', [mBefore, mAfter]));
 end;
 
-/// <summary>Ist die Verbindung zu AServer geschlossen? Eigene Routine, damit die anonyme Methode nur AServer
+/// <summary>Ist die Verbindung von AClient geschlossen? Eigene Routine, damit die anonyme Methode nur AClient
 /// einfängt.</summary>
-function ClientClosed(const AServer: IAtlasLspServer): TFunc<Boolean>;
+function ClientClosed(AClient: TLspClient): TFunc<Boolean>;
 begin
   Result :=
     function: Boolean
     begin
-      Result := AServer.Client.Closed;
+      Result := AClient.Closed;
     end;
 end;
 
 procedure TLspServerProcessTests.EndReportsExitCodeAndStderr;
 var
   mServer: IAtlasLspServer;
+  mClient: TLspClient;
   mInfo: TLspCloseInfo;
   mText: string;
 begin
   // Ein „Server“, der eine Zeile auf stderr schreibt und mit Code 3 endet.
-  mServer := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
-  Assert.IsTrue(TTestWait.Reached(ClientClosed(mServer), 10000),
+  mServer := StartLspServer(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3',
+    mClient);
+  Assert.IsTrue(TTestWait.Reached(ClientClosed(mClient), 10000),
     'Verbindung nach dem Ende des Prozesses geschlossen');
-  mInfo := mServer.Client.CloseInfo;
+  mInfo := mClient.CloseInfo;
   Assert.IsTrue(mInfo.ExitKnown, 'Exit-Code bekannt');
   Assert.AreEqual(Int64(3), Int64(mInfo.ExitCode));
   Assert.AreEqual(1, mInfo.ErrorLines);

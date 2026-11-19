@@ -129,7 +129,8 @@ uses
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.Core.Settings.Contract;
 
 type
   /// <summary>Zustand von TAtlasIdeSettings (gelesene, wirksame Werte, Schnellschalter, Stände, Katalogteile).

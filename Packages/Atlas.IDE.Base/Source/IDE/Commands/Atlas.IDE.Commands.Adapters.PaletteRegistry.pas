@@ -8,8 +8,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
-  Atlas.IDE.Commands.Palette;
+  Atlas.IDE.Commands.Palette,
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasPaletteCommandRegistry = class(TInterfacedObject, IAtlasCommandRegistry)

@@ -15,7 +15,7 @@ interface
 
 uses
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Problems.Findings;
+  Atlas.Core.Problems.Contract;
 
 type
   TAtlasIdeRulesBulkFix = class(TInterfacedObject, IAtlasBulkFixer)

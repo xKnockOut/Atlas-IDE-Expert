@@ -14,9 +14,9 @@ uses
   System.SysUtils,
   DUnitX.TestFramework,
   Atlas.Core.Editor.LinkedEditing,
-  Atlas.Core.Editor.EditSurface,
   Atlas.Core.Editor.LinkedSession,
-  Atlas.Tests.EditSurfaceFake;
+  Atlas.Tests.EditSurfaceFake,
+  Atlas.Core.Editor.Contract;
 
 type
   [TestFixture]
@@ -78,6 +78,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Editor.EditSurface;
 
 const
   cFile = 'C:\Projekt\Unit1.pas';

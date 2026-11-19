@@ -39,9 +39,9 @@ uses
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
-  Atlas.UI.Settings.ProjectDialog,
   Atlas.UI.Rules.Editor,
   Atlas.UI.Rules.SettingsDialog,
+  Atlas.UI.Settings.Contract,
   Atlas.IDE.Rules.Adapters.SettingsDialog;
 
 { TAtlasRulesSettingsDialogTests }

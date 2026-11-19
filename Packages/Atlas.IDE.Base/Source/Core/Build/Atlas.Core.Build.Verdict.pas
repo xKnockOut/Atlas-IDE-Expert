@@ -25,12 +25,10 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages;
+  Atlas.Core.Build.Contract;
 
 type
-  /// <summary>Warum der Build nicht als erfolgreich gilt; None = erfolgreich.</summary>
-  TAtlasBuildVerdictReason = (None, CompilerFailed, WarningsAsErrors, ZeroHints);
+  TAtlasBuildVerdictReason = Atlas.Core.Build.Contract.TAtlasBuildVerdictReason;
 
   TAtlasBuildVerdictSettings = record
     /// <summary>build.zeroHints.</summary>
@@ -40,28 +38,7 @@ type
     class function Create(AZeroHints: Boolean; const AWarningsAsErrors: string): TAtlasBuildVerdictSettings; static;
   end;
 
-  TAtlasBuildVerdict = record
-    /// <summary>Ergebnis des Compilers.</summary>
-    Succeeded: Boolean;
-    /// <summary>Gezählte Meldungen (ohne Basislinie).</summary>
-    Errors: Integer;
-    Warnings: Integer;
-    Hints: Integer;
-    /// <summary>Warnungen und Hinweise in der Basislinie, nicht gezählt.</summary>
-    Baselined: Integer;
-    /// <summary>Gezählte Warnungen und Hinweise aus build.warningsAsErrors.</summary>
-    Promoted: Integer;
-    /// <summary>Erster Code aus build.warningsAsErrors unter den Meldungen; '' ohne.</summary>
-    PromotedCode: string;
-    /// <summary>Basislinie befragt (Server antwortete)?</summary>
-    BaselineChecked: Boolean;
-    Reason: TAtlasBuildVerdictReason;
-    /// <summary>Position der ersten maßgeblichen Meldung (Fehler, sonst Code aus warningsAsErrors, sonst erste
-    /// gezählte Warnung bzw. Hinweis) mit Datei; -1 ohne.</summary>
-    First: Integer;
-    /// <summary>Gilt der Build als erfolgreich?</summary>
-    function Effective: Boolean;
-  end;
+  TAtlasBuildVerdict = Atlas.Core.Build.Contract.TAtlasBuildVerdict;
 
   /// <summary>Je Meldung: steht sie in der Basislinie? nil = keine Antwort.</summary>
   TAtlasBuildBaselined = reference to procedure(const ABaselined: TArray<Boolean>);
@@ -70,14 +47,6 @@ type
   TAtlasBuildClassify = reference to function(const AMessages: TArray<TAtlasCompilerMessage>;
     const ADone: TAtlasBuildBaselined): Boolean;
   TAtlasBuildVerdictDone = reference to procedure(const AVerdict: TAtlasBuildVerdict);
-
-  /// <summary>Hört auf bewertete Builds des Benutzers (#530); Module stellen ihn über ihren Scope bereit (#1455),
-  /// etwa die Tests nach dem Build (#69). Hauptthread, nach Zusammenfassung und Benachrichtigung.</summary>
-  IAtlasBuildVerdictListener = interface
-    ['{5F6C837F-1473-4EC8-B2F9-1A81BF8A7DAD}']
-    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      const AVerdict: TAtlasBuildVerdict);
-  end;
 
   TAtlasBuildVerdicts = class
   public const
@@ -155,13 +124,6 @@ class function TAtlasBuildVerdictSettings.Create(AZeroHints: Boolean;
 begin
   Result.ZeroHints := AZeroHints;
   Result.WarningsAsErrors := TAtlasBuildVerdicts.ParseCodes(AWarningsAsErrors);
-end;
-
-{ TAtlasBuildVerdict }
-
-function TAtlasBuildVerdict.Effective: Boolean;
-begin
-  Result := Reason = TAtlasBuildVerdictReason.None;
 end;
 
 { TAtlasBuildVerdicts }

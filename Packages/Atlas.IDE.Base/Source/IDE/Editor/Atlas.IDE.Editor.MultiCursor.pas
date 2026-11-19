@@ -53,8 +53,8 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Editor.EditSurface,
-  Atlas.Core.Editor.MultiCursorSession;
+  Atlas.Core.Editor.MultiCursorSession,
+  Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Statusfeld setzen; AText '' entfernt es.</summary>

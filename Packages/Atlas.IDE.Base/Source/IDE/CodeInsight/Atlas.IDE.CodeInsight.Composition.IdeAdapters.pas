@@ -12,10 +12,11 @@ uses
   System.SysUtils,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Files.Contract,
-  Atlas.Core.Commands.Palette,
   Atlas.IDE.Contracts.GhostSuggestions,
   Atlas.IDE.Commands.Palette,
-  Atlas.IDE.Setup.Checklist;
+  Atlas.IDE.Setup.Checklist,
+  Atlas.Core.Commands.Contract,
+  Atlas.Core.Setup.Contract;
 
 /// <summary>Fabriken der IDE-Adapter einsetzen: Einstellungsspeicher in der Registry, Sicht des Planers, Puffer
 /// der Editoransicht, dazu die Fenster-Adapter (InstallUiAdapters). Ab der Unit-Initialisierung, vor dem ersten
@@ -30,7 +31,8 @@ function PaletteRegistry(APalette: TAtlasIdePalette): IAtlasCommandRegistry;
 /// <summary>Vorschläge aus dem Index des Servers für den Schattentext (#1890).</summary>
 function LearnedGhostProvider: IAtlasGhostProvider;
 /// <summary>Was die Knöpfe der Einrichtung tun; AForgetKeys liest die Tasten beim nächsten Snapshot neu.</summary>
-function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc): IAtlasSetupEnvironment;
+function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc;
+  out ASnapshot: TAtlasSetupSnapshot): IAtlasSetupEnvironment;
 
 implementation
 
@@ -38,7 +40,6 @@ uses
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Editor.EditSurface,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Adapters.ActiveEditor,
@@ -51,7 +52,8 @@ uses
   Atlas.IDE.Editor.Adapters.LearnedGhost,
   Atlas.IDE.Commands.Adapters.PaletteRegistry,
   Atlas.IDE.Setup.Adapters.Environment,
-  Atlas.IDE.CodeInsight.Composition.UiAdapters;
+  Atlas.IDE.CodeInsight.Composition.UiAdapters,
+  Atlas.Core.Editor.Contract;
 
 procedure InstallIdeAdapters;
 begin
@@ -103,13 +105,25 @@ begin
     end;
 end;
 
-function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc): IAtlasSetupEnvironment;
+/// <summary>Eigene Routine: Die Methodenreferenz fängt nur AEnvironment ein.</summary>
+function SnapshotOf(AEnvironment: TAtlasIdeSetupEnvironment): TAtlasSetupSnapshot;
+begin
+  Result :=
+    function: TAtlasSetupInput
+    begin
+      Result := AEnvironment.Snapshot;
+    end;
+end;
+
+function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc;
+  out ASnapshot: TAtlasSetupSnapshot): IAtlasSetupEnvironment;
 var
   mEnvironment: TAtlasIdeSetupEnvironment;
 begin
   mEnvironment := TAtlasIdeSetupEnvironment.Create(AHooks);
   Result := mEnvironment;
   AForgetKeys := ForgetKeysOf(mEnvironment);
+  ASnapshot := SnapshotOf(mEnvironment);
 end;
 
 end.

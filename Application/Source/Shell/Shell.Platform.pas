@@ -108,7 +108,7 @@ uses
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Editing.SystemColors,
   Atlas.Windows.Profiling.Adapters.Sampler,
-  Atlas.Core.VersionControl.Adapters.ProcessRunner;
+  Atlas.Core.VersionControl.Providers.ProcessRunner;
 {$ELSE}
   BaseUnix,
   Atlas.Linux.Documents.PathCanonicalizer,

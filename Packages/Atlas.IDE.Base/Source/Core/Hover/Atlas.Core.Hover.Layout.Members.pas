@@ -12,7 +12,7 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.Layout.Contract,
+  Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Hover.Layout.Painter;
 
 type

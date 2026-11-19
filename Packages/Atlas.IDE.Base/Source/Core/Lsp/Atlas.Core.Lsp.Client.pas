@@ -31,10 +31,10 @@ uses
   System.JSON,
   System.Diagnostics,
   System.Generics.Collections,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Framing;
 
 type
-  TLspSendProc = reference to procedure(const ABytes: TBytes);
   /// <summary>Anfrage oder Benachrichtigung des Servers; läuft im Lese-Thread, AParams gehört dem Client.</summary>
   TLspServerMessageProc = reference to procedure(const AMethod: string; const AParams: TJSONValue);
   /// <summary>Teilergebnis zu einer Anfrage (#616); läuft im Lese-Thread, AValue gehört dem Client.</summary>
@@ -50,21 +50,6 @@ type
   ELspTimeoutError = class(ELspClientError);
   /// <summary>Der Aufrufer hat die Anfrage abgebrochen.</summary>
   ELspCancelledError = class(ELspClientError);
-
-  /// <summary>Wie die Verbindung endete; Exit-Angaben setzt der Transport über CloseWith.</summary>
-  TLspCloseInfo = record
-    /// <summary>Exit-Code des Serverprozesses bekannt?</summary>
-    ExitKnown: Boolean;
-    ExitCode: Cardinal;
-    /// <summary>Laufzeit des Serverprozesses in ms; 0 = unbekannt.</summary>
-    RuntimeMs: Int64;
-    /// <summary>Zeilen, die der Server in diesem Lauf auf stderr schrieb.</summary>
-    ErrorLines: Integer;
-    /// <summary>Zuletzt gesendete Anfrage ohne Long-Polling; setzt der Client.</summary>
-    LastMethod: string;
-    /// <summary>Beim Ende noch offene Anfragen ohne Long-Polling; setzt der Client.</summary>
-    OpenMethods: TArray<string>;
-  end;
 
   /// <summary>Ringpuffer der Antwortzeiten der letzten Samples Anfragen (#591); nicht threadsicher, TLspClient
   /// sperrt.</summary>
@@ -167,13 +152,22 @@ type
     property OnServerRequest: TLspServerRequestFunc read FOnServerRequest write FOnServerRequest;
   end;
 
-  /// <summary>Laufender Sprachserver mit seinem Client; die Freigabe beendet den Prozess. Den Prozess
-  /// startet die Kompositionswurzel (TLspServerProcess).</summary>
-  IAtlasLspServer = interface
-    ['{EAC5AE10-77D6-42EA-8AD8-CF869F7B79EC}']
-    function Running: Boolean;
-    function GetClient: TLspClient;
-    property Client: TLspClient read GetClient;
+  /// <summary>Clientseite für den Transport (IAtlasLspConnection, #1443): besitzt den TLspClient und gibt ihn mit
+  /// sich frei. Der Transport (TLspServerProcess) hält die einzige Referenz; wer den Client braucht, merkt ihn sich
+  /// beim Anlegen (TAtlasLspConnect).</summary>
+  TLspClientConnection = class(TInterfacedObject, IAtlasLspConnection)
+  private
+    FClient: TLspClient;
+  public
+    constructor Create(const ASend: TLspSendProc);
+    destructor Destroy; override;
+    procedure Receive(const ABytes: TBytes; ACount: Integer);
+    procedure CloseWith(const AInfo: TLspCloseInfo);
+    procedure Close;
+    function IsClosed: Boolean;
+    /// <summary>Für TAtlasLspConnect: neue Clientseite mit ASend; AClient ist ihr Client (gehört ihr).</summary>
+    class function Open(const ASend: TLspSendProc; out AClient: TLspClient): IAtlasLspConnection; static;
+    property Client: TLspClient read FClient;
   end;
 
 implementation
@@ -882,6 +876,49 @@ end;
 class function TLspResponseTimes.Counts(const AMethod: string): Boolean;
 begin
   Result := not SameText(AMethod, 'workspace/diagnostic');
+end;
+
+{ TLspClientConnection }
+
+constructor TLspClientConnection.Create(const ASend: TLspSendProc);
+begin
+  inherited Create;
+  FClient := TLspClient.Create(ASend);
+end;
+
+destructor TLspClientConnection.Destroy;
+begin
+  FClient.Free;
+  inherited;
+end;
+
+procedure TLspClientConnection.Receive(const ABytes: TBytes; ACount: Integer);
+begin
+  FClient.Receive(ABytes, ACount);
+end;
+
+procedure TLspClientConnection.CloseWith(const AInfo: TLspCloseInfo);
+begin
+  FClient.CloseWith(AInfo);
+end;
+
+procedure TLspClientConnection.Close;
+begin
+  FClient.Close;
+end;
+
+function TLspClientConnection.IsClosed: Boolean;
+begin
+  Result := FClient.Closed;
+end;
+
+class function TLspClientConnection.Open(const ASend: TLspSendProc; out AClient: TLspClient): IAtlasLspConnection;
+var
+  mConnection: TLspClientConnection;
+begin
+  mConnection := TLspClientConnection.Create(ASend);
+  AClient := mConnection.Client;
+  Result := mConnection;
 end;
 
 initialization

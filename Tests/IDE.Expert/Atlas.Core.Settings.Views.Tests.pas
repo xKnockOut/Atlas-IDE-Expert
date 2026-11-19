@@ -78,7 +78,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems,
-  Atlas.Core.Settings.TestSupport;
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Settings.Contract;
 
 /// <summary>Ausblenden am Element: Werte von der Vorgabe abweichend setzen.</summary>
 procedure SetHideElementOptions(var ASettings: TAtlasPluginSettings);

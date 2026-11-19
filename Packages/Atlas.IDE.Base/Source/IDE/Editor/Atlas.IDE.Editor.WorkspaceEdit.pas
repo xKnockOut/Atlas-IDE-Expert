@@ -46,7 +46,8 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Editor.Contract;
 
 type
   TAtlasWorkspaceEditResult = record
@@ -95,8 +96,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
-  Atlas.Core.Localization.Language,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

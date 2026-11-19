@@ -27,7 +27,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Editor.LinkedEditing,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Stand des Puffers, den die Sitzung kennt: Text, seine Zeilen und die Vorkommen darin. Die Arrays
@@ -120,7 +120,8 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Core.Editor.EditSurface;
 
 { TAtlasLinkedState }
 

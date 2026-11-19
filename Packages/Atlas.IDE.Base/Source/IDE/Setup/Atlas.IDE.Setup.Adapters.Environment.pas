@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Setup.Adapters.Environment;
 
-// Zustand und Knöpfe der Einrichtung (#625) in der IDE (IAtlasSetupEnvironment aus Atlas.Core.Setup.Checklist):
+// Zustand und Knöpfe der Einrichtung (#625) in der IDE (IAtlasSetupEnvironment aus Atlas.Core.Setup.Contract):
 // Snapshot sammelt im Hauptthread Pfad und Phase des Servers, Version der IDE, Plattform und Projekte der Gruppe,
 // Error Insight, Atlas-Probleme und die Belegung der Atlas-Tasten; die Knöpfe wählen und speichern den
 // Server-Pfad, starten den Server, bauen den Index neu auf, schalten Error Insight und öffnen die Tastenkonflikte.
@@ -10,7 +10,8 @@ interface
 
 uses
   Atlas.Core.Setup.Checklist,
-  Atlas.IDE.Setup.Checklist;
+  Atlas.IDE.Setup.Checklist,
+  Atlas.Core.Setup.Contract;
 
 type
   /// <summary>Was die Knöpfe in der IDE tun; Snapshot sammelt den Zustand.</summary>

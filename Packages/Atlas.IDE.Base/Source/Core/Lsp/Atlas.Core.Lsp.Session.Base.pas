@@ -119,6 +119,8 @@ type
     /// <summary>Version aus serverInfo der Antwort auf initialize; '' = unbekannt (#591).</summary>
     property ServerVersion: string read FServerVersion;
     property Initialized: Boolean read FInitialized;
+    /// <summary>Client der Sitzung; gehört dem Aufrufer.</summary>
+    property Client: TLspClient read FClient;
   end;
 
 implementation

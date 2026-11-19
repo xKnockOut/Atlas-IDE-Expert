@@ -10,7 +10,8 @@ interface
 uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Dateien und Projekte für den Planer aus Sicht der IDE.</summary>

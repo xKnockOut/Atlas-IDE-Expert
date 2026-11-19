@@ -35,7 +35,7 @@ uses
   System.Types,
   Atlas.Core.Style.Color,
   Atlas.Core.Hover.Items,
-  Atlas.Core.Hover.Layout.Contract,
+  Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Hover.Layout.Painter,
   Atlas.Core.Hover.Layout.TestSupport;
 

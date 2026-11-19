@@ -24,7 +24,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Editor.Overview;
+  Atlas.Core.Editor.Contract;
 
 type
   TAtlasBookmarksModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,

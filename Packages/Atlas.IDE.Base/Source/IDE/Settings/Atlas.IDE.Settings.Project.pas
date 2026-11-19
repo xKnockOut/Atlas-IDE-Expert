@@ -91,7 +91,8 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Files,
   Atlas.Text.Json,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.UI.Settings.Contract;
 
 /// <summary>Dialogklasse mit Regel-Editor eines laufenden Moduls (Prüfregeln, #1755); sonst die von Base.
 /// </summary>
@@ -103,9 +104,11 @@ begin
   Result := TAtlasProjectSettingsDialog;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasSettingsDialogProvider) do
   begin
-    if Supports(mItem, IAtlasSettingsDialogProvider, mProvider) then
+    if Supports(mItem, IAtlasSettingsDialogProvider, mProvider) and (mProvider.DialogClass <> nil) and
+      mProvider.DialogClass.InheritsFrom(TAtlasProjectSettingsDialog) then
     begin
-      Exit(mProvider.DialogClass);
+      Result := TAtlasProjectSettingsDialogClass(mProvider.DialogClass);
+      Exit;
     end;
   end;
 end;

@@ -26,11 +26,12 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Adapters.ServerProcess,
+  Atlas.Core.Lsp.Providers.ServerProcess,
+  Atlas.Core.Files.Contract,
   Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Files.Adapters.FolderWatcher,
+  Atlas.Core.Files.Providers.FolderWatcher,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Providers.Server,
   Atlas.Core.Completion.Snippets,
@@ -38,9 +39,9 @@ uses
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Undo.Adapters.DiskTarget,
-  Atlas.Core.Undo.Adapters.FileStore,
-  Atlas.Core.Updates.Adapters.HttpSource,
+  Atlas.Core.Undo.Providers.DiskTarget,
+  Atlas.Core.Undo.Providers.FileStore,
+  Atlas.Core.Updates.Providers.HttpSource,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Undo.Changes,
@@ -90,9 +91,9 @@ end;
 function CodeInsightAdapters: TAtlasCodeInsightAdapters;
 begin
   Result.NewServer :=
-    function(AExeName, AArguments: string): IAtlasLspServer
+    function(AExeName, AArguments: string; AConnect: TAtlasLspConnect): IAtlasLspServer
     begin
-      Result := TLspServerProcess.Create(AExeName, AArguments);
+      Result := TLspServerProcess.Create(AExeName, AArguments, AConnect);
     end;
   Result.NewFolderWatcher :=
     function(AChanges: TAtlasWatchedChanges): IAtlasFolderWatcher

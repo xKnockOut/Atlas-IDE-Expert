@@ -35,7 +35,8 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Setup.Window,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract,
+  Atlas.Core.Setup.Contract;
 
 type
   TAtlasSetupIndexingFunc = reference to function(out APercent: Integer): Boolean;
@@ -95,10 +96,11 @@ type
     function WindowVisible: Boolean;
     class function TryKey: string; static;
   public
-    /// <summary>AEnvironment: Zustand und Knöpfe in der IDE (Atlas.IDE.Setup.Adapters.Environment, von der
-    /// Kompositionswurzel); AForgetKeys lässt es die Tasten neu lesen.</summary>
+    /// <summary>AEnvironment: Knöpfe in der IDE, ASnapshot: Zustand für die Prüfungen (beide aus
+    /// Atlas.IDE.Setup.Adapters.Environment, von der Kompositionswurzel); AForgetKeys lässt es die Tasten neu
+    /// lesen.</summary>
     constructor Create(const ARegistry: IAtlasStatusRegistry; const AEnvironment: IAtlasSetupEnvironment;
-      const AForgetKeys: TProc);
+      const ASnapshot: TAtlasSetupSnapshot; const AForgetKeys: TProc);
     destructor Destroy; override;
     /// <summary>Package geladen: ab jetzt entscheidet der Start, ob die Prüfliste von selbst aufgeht.</summary>
     procedure Start;
@@ -134,7 +136,7 @@ uses
 { TAtlasIdeSetupChecklist }
 
 constructor TAtlasIdeSetupChecklist.Create(const ARegistry: IAtlasStatusRegistry;
-  const AEnvironment: IAtlasSetupEnvironment; const AForgetKeys: TProc);
+  const AEnvironment: IAtlasSetupEnvironment; const ASnapshot: TAtlasSetupSnapshot; const AForgetKeys: TProc);
 begin
   inherited Create;
   FInstance := Self;
@@ -142,7 +144,7 @@ begin
   FShownVersion := -1;
   FEnvironment := AEnvironment;
   FForgetKeys := AForgetKeys;
-  FController := TAtlasSetupController.Create(FEnvironment);
+  FController := TAtlasSetupController.Create(FEnvironment, ASnapshot);
   FLine := TAtlasStatusLine.Create(FRegistry, TAtlasSetupChecklist.cStatusId, TAtlasSetupChecklist.cStatusOrder,
     procedure
     begin

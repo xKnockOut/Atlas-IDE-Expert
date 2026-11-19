@@ -93,6 +93,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
+| `Atlas.Core.Build.Contract` | `Core/Build/Atlas.Core.Build.Contract.pas` | Contract des Features Build, Verträge zu Modulen, #1443 |
 | `Atlas.Core.Build.Requests` | `Core/Build/Atlas.Core.Build.Requests.pas` | Daten der Builds auf Auftrag für Läufer, Eingang der KI-Assistenten und Vertrag (#1888) |
 | `Atlas.Core.DebugControl.Types` | `Core/DebugControl/Atlas.Core.DebugControl.Types.pas` | Daten der Debugger-Steuerung für KI-Assistenten: Debugger, Eingang der KI-Assistenten und Vertrag (#1874) |
 | `Atlas.Core.Build.OpenBuildSettings` | `Core/Build/Atlas.Core.Build.OpenBuildSettings.pas` | Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455 |
@@ -102,7 +103,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Bewertung als Typen und `IAtlasBuildVerdictListener`; Benachrichtigungszentrale (Base) und Module lesen sie, #1455 |
 | `Atlas.Core.CiBuild.Contract` | `Core/CiBuild/Atlas.Core.CiBuild.Contract.pas` | CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455 |
 | `Atlas.Core.Credentials.Contract` | `Core/Credentials/Atlas.Core.Credentials.Contract.pas` | Anmeldespeicher für Schlüssel und Token als Schnittstelle; Module Tracker und KI-Assistenten, #1922 |
-| `Atlas.Core.Credentials.Adapters.Windows` | `Core/Credentials/Atlas.Core.Credentials.Adapters.Windows.pas` | Anmeldespeicher von Windows, einmal für alle Module (Build-Server, Issue-Tracker, KI-Anbieter), #1922 |
+| `Atlas.Core.Credentials.Providers.Windows` | `Core/Credentials/Atlas.Core.Credentials.Providers.Windows.pas` | Anmeldespeicher von Windows, einmal für alle Module (Build-Server, Issue-Tracker, KI-Anbieter), #1922 |
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyScan` | `Core/Commands/Atlas.Core.Commands.KeyScan.pas` | Ordner `Core/Commands` |
@@ -112,6 +113,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Commands.MenuContext` | `Core/Commands/Atlas.Core.Commands.MenuContext.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.ProjectSelection` | `Core/Commands/Atlas.Core.Commands.ProjectSelection.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.Palette` | `Core/Commands/Atlas.Core.Commands.Palette.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.Contract` | `Core/Commands/Atlas.Core.Commands.Contract.pas` | Contract des Features Commands, Verträge zu Modulen, #1443 |
 | `Atlas.Core.Commands.SettingsPalette` | `Core/Commands/Atlas.Core.Commands.SettingsPalette.pas` | Ordner `Core/Commands`; Einstellungen mit @ in der Befehlspalette (#1884) |
 | `Atlas.Core.Commands.QuickOpen` | `Core/Commands/Atlas.Core.Commands.QuickOpen.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.QuickOpenTarget` | `Core/Commands/Atlas.Core.Commands.QuickOpenTarget.pas` | Ordner `Core/Commands` |
@@ -234,6 +236,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.NavHistory` | `Core/Editor/Atlas.Core.Editor.NavHistory.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.NewLine` | `Core/Editor/Atlas.Core.Editor.NewLine.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Overview` | `Core/Editor/Atlas.Core.Editor.Overview.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.Contract` | `Core/Editor/Atlas.Core.Editor.Contract.pas` | Contract des Features Editor, Verträge zu Modulen, #1443 |
 | `Atlas.Core.Editor.Pairs` | `Core/Editor/Atlas.Core.Editor.Pairs.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.PatternContinuation` | `Core/Editor/Atlas.Core.Editor.PatternContinuation.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Peek` | `Core/Editor/Atlas.Core.Editor.Peek.pas` | Ordner `Core/Editor` |
@@ -261,7 +264,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.EditorToolbar.ReturnPoint` | `Core/EditorToolbar/Atlas.Core.EditorToolbar.ReturnPoint.pas` | Ordner `Core/EditorToolbar` |
 | `Atlas.Core.EditorToolbar.Sections` | `Core/EditorToolbar/Atlas.Core.EditorToolbar.Sections.pas` | Ordner `Core/EditorToolbar` |
 | `Atlas.Core.EditorToolbar.Plan` | `Core/EditorToolbar/Atlas.Core.EditorToolbar.Plan.pas` | Ordner `Core/EditorToolbar` |
-| `Atlas.Core.Files.Adapters.FolderWatcher` | `Core/Files/Atlas.Core.Files.Adapters.FolderWatcher.pas` | Ordner `Core/Files` |
+| `Atlas.Core.Files.Providers.FolderWatcher` | `Core/Files/Atlas.Core.Files.Providers.FolderWatcher.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Contract` | `Core/Files/Atlas.Core.Files.Contract.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.DataFile` | `Core/Files/Atlas.Core.Files.DataFile.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Foundation.Calls` | `Core/Foundation/Atlas.Core.Foundation.Calls.pas` | Gesetzte oder leere Rückrufe für Base und Module aufrufen |
@@ -290,7 +293,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Hover.History` | `Core/Hover/Atlas.Core.Hover.History.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Items` | `Core/Hover/Atlas.Core.Hover.Items.pas` | Ordner `Core/Hover`; Bausteine, Klickflächen und Rollbereich des Hover-Satzes (#1841) |
 | `Atlas.Core.Hover.Layout` | `Core/Hover/Atlas.Core.Hover.Layout.pas` | Ordner `Core/Hover` |
-| `Atlas.Core.Hover.Layout.Contract` | `Core/Hover/Atlas.Core.Hover.Layout.Contract.pas` | Ordner `Core/Hover` |
+| `Atlas.Core.Hover.Layout.Input` | `Core/Hover/Atlas.Core.Hover.Layout.Input.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Layout.Painter` | `Core/Hover/Atlas.Core.Hover.Layout.Painter.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Layout.Members` | `Core/Hover/Atlas.Core.Hover.Layout.Members.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Layout.DebugTree` | `Core/Hover/Atlas.Core.Hover.Layout.DebugTree.pas` | Ordner `Core/Hover` |
@@ -300,7 +303,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
 | `Atlas.Core.Localization.Language` | `Core/Localization/Atlas.Core.Localization.Language.pas` | Sprache der Plugin-Texte für Core und UI, Texttabellen der Units (#1458) |
 | `Atlas.Core.Lsp.AccessChains` | `Core/Lsp/Atlas.Core.Lsp.AccessChains.pas` | Ordner `Core/Lsp` |
-| `Atlas.Core.Lsp.Adapters.ServerProcess` | `Core/Lsp/Atlas.Core.Lsp.Adapters.ServerProcess.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.Providers.ServerProcess` | `Core/Lsp/Atlas.Core.Lsp.Providers.ServerProcess.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Client` | `Core/Lsp/Atlas.Core.Lsp.Client.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Framing` | `Core/Lsp/Atlas.Core.Lsp.Framing.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.BackgroundRequest` | `Core/Lsp/Atlas.Core.Lsp.BackgroundRequest.pas` | Ordner `Core/Lsp` |
@@ -468,6 +471,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.Validation` | `Core/Settings/Atlas.Core.Settings.Validation.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.VisualizerKinds` | `Core/Settings/Atlas.Core.Settings.VisualizerKinds.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Setup.Checklist` | `Core/Setup/Atlas.Core.Setup.Checklist.pas` | Ordner `Core/Setup` |
+| `Atlas.Core.Setup.Contract` | `Core/Setup/Atlas.Core.Setup.Contract.pas` | Contract des Features Setup, Umgebung der Prüfliste, #1443 |
 | `Atlas.Core.Signature.CallScanner` | `Core/Signature/Atlas.Core.Signature.CallScanner.pas` | Ordner `Core/Signature` |
 | `Atlas.Core.Signature.EditorPlan` | `Core/Signature/Atlas.Core.Signature.EditorPlan.pas` | Ordner `Core/Signature`; Entscheidungen des Parameter-Hints im Editor (Tasten, Schritte, Wieder öffnen), #1967 |
 | `Atlas.Core.Signature.Contract` | `Core/Signature/Atlas.Core.Signature.Contract.pas` | Ordner `Core/Signature` |
@@ -493,17 +497,17 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Style.Syntax` | `Core/Style/Atlas.Core.Style.Syntax.pas` | Ordner `Core/Style` |
 | `Atlas.Core.Style.Wrap` | `Core/Style/Atlas.Core.Style.Wrap.pas` | Ordner `Core/Style` |
 | `Atlas.Core.SymbolPath.Model` | `Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
-| `Atlas.Core.Undo.Adapters.DiskTarget` | `Core/Undo/Atlas.Core.Undo.Adapters.DiskTarget.pas` | Ordner `Core/Undo` |
-| `Atlas.Core.Undo.Adapters.FileStore` | `Core/Undo/Atlas.Core.Undo.Adapters.FileStore.pas` | Ordner `Core/Undo` |
+| `Atlas.Core.Undo.Providers.DiskTarget` | `Core/Undo/Atlas.Core.Undo.Providers.DiskTarget.pas` | Ordner `Core/Undo` |
+| `Atlas.Core.Undo.Providers.FileStore` | `Core/Undo/Atlas.Core.Undo.Providers.FileStore.pas` | Ordner `Core/Undo` |
 | `Atlas.Core.Undo.Contract` | `Core/Undo/Atlas.Core.Undo.Contract.pas` | Ordner `Core/Undo` |
 | `Atlas.Core.Undo.Journal` | `Core/Undo/Atlas.Core.Undo.Journal.pas` | Ordner `Core/Undo` |
 | `Atlas.Core.Undo.LinePatch` | `Core/Undo/Atlas.Core.Undo.LinePatch.pas` | Ordner `Core/Undo` |
 | `Atlas.Core.Undo.Names` | `Core/Undo/Atlas.Core.Undo.Names.pas` | Ordner `Core/Undo` |
-| `Atlas.Core.Updates.Adapters.HttpSource` | `Core/Updates/Atlas.Core.Updates.Adapters.HttpSource.pas` | Ordner `Core/Updates` |
+| `Atlas.Core.Updates.Providers.HttpSource` | `Core/Updates/Atlas.Core.Updates.Providers.HttpSource.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Check` | `Core/Updates/Atlas.Core.Updates.Check.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Contract` | `Core/Updates/Atlas.Core.Updates.Contract.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Install` | `Core/Updates/Atlas.Core.Updates.Install.pas` | Ordner `Core/Updates` |
-| `Atlas.Core.VersionControl.Adapters.ProcessRunner` | `Core/VersionControl/Atlas.Core.VersionControl.Adapters.ProcessRunner.pas` | Allgemeiner Prozessläufer (git, svn, Testprogramme des Moduls Tests); einziger Prozessaufruf im Kern (#1891) |
+| `Atlas.Core.VersionControl.Providers.ProcessRunner` | `Core/VersionControl/Atlas.Core.VersionControl.Providers.ProcessRunner.pas` | Allgemeiner Prozessläufer (git, svn, Testprogramme des Moduls Tests); einziger Prozessaufruf im Kern (#1891) |
 | `Atlas.Core.VersionControl.BranchNames` | `Core/VersionControl/Atlas.Core.VersionControl.BranchNames.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.BranchPlan` | `Core/VersionControl/Atlas.Core.VersionControl.BranchPlan.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.ExternalRules` | `Core/VersionControl/Atlas.Core.VersionControl.ExternalRules.pas` | Regeln für SVN-Externals (#1291) als JSON und Text; Base (Einstellungen) und das Modul VersionControl nutzen sie |
@@ -746,6 +750,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Problems.Service` | `IDE/Problems/Atlas.IDE.Problems.Service.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Window` | `IDE/Problems/Atlas.IDE.Problems.Window.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Projects.Context` | `IDE/Projects/Atlas.IDE.Projects.Context.pas` | Ordner `IDE/Projects` |
+| `Atlas.IDE.Projects.Contract` | `IDE/Projects/Atlas.IDE.Projects.Contract.pas` | Contract des Features Projects (IDE), Zusammenfassungen hören, #1443 |
 | `Atlas.IDE.Projects.Summaries` | `IDE/Projects/Atlas.IDE.Projects.Summaries.pas` | Projekt-Zusammenfassungen pflegen (auch ohne Willkommensseite), `IAtlasProjectSummaryListener`, #1455 |
 | `Atlas.IDE.Results.Commands` | `IDE/Results/Atlas.IDE.Results.Commands.pas` | Ordner `IDE/Results` |
 | `Atlas.IDE.Results.Impact` | `IDE/Results/Atlas.IDE.Results.Impact.pas` | Ordner `IDE/Results` |
@@ -846,6 +851,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Notifications.Strings` | `UI/Notifications/Atlas.UI.Notifications.Strings.pas` | Ordner `UI/Notifications` |
 | `Atlas.UI.Outline.Strings` | `UI/Outline/Atlas.UI.Outline.Strings.pas` | Ordner `UI/Outline` |
 | `Atlas.UI.Popup.Accessibility` | `UI/Popup/Atlas.UI.Popup.Accessibility.pas` | Ordner `UI/Popup` |
+| `Atlas.UI.Popup.Contract` | `UI/Popup/Atlas.UI.Popup.Contract.pas` | Contract des Features Popup, Einträge für UI Automation, #1443 |
 | `Atlas.UI.Popup.Draw` | `UI/Popup/Atlas.UI.Popup.Draw.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Styled` | `UI/Popup/Atlas.UI.Popup.Styled.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Tip` | `UI/Popup/Atlas.UI.Popup.Tip.pas` | Ordner `UI/Popup` |

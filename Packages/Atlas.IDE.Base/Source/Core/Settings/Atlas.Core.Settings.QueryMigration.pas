@@ -13,7 +13,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Contract;
 
 type
   /// <summary>Ergebnis der Übernahme von issues.query.</summary>

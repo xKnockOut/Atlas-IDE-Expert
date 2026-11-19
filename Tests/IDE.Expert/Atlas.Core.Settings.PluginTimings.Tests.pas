@@ -27,7 +27,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Contract;
 
 type
   TValueStore = class(TInterfacedObject, IAtlasSettingsStore)

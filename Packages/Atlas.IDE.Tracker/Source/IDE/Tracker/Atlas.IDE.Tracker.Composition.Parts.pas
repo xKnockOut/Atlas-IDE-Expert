@@ -24,10 +24,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.IDE.Tracker.Access;
+  Atlas.IDE.Tracker.Access,
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasTrackerParts = class

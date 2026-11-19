@@ -14,6 +14,7 @@
 interface
 
 uses
+  System.Types,
   System.JSON,
   Atlas.Core.Documentation.Contract;
 
@@ -130,6 +131,32 @@ type
     /// <summary>Index des Links an der Textstelle AIndex (0-basiert); -1 ohne.</summary>
     function LinkAt(AIndex: Integer): Integer;
     class function FromHover(const AHover: TJSONValue): TAtlasHoverData; static;
+  end;
+
+  {$SCOPEDENUMS ON}
+  /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
+  TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
+  {$SCOPEDENUMS OFF}
+
+  TAtlasHoverFace = record
+    Font: TAtlasHoverFont;
+    Bold: Boolean;
+    Underline: Boolean;
+    class function Create(AFont: TAtlasHoverFont; ABold, AUnderline: Boolean): TAtlasHoverFace; static;
+  end;
+
+  /// <summary>Messen in der Oberfläche; Build ruft nur diese Funktionen.</summary>
+  IAtlasHoverMeasure = interface
+    ['{96C7EBD2-5C83-4DC6-8E88-88DB86BCD6D5}']
+    function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
+    /// <summary>Zeilenhöhe der Schrift (Höhe von „Wg“).</summary>
+    function TextHeight(const AFace: TAtlasHoverFace): Integer;
+    /// <summary>Höhe von AText in der UI-Schrift, umbrochen an Wortgrenzen auf AWidth.</summary>
+    function BlockHeight(const AText: string; AWidth: Integer): Integer;
+    /// <summary>Breite der eingefärbten Deklaration [AFrom, ATill) in der Editorschrift.</summary>
+    function DeclarationWidth(AFrom, ATill: Integer): Integer;
+    /// <summary>Zeilen der eingefärbten Deklaration bei Umbruch an Leerzeichen.</summary>
+    function DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
   end;
 
 implementation
@@ -642,6 +669,15 @@ begin
   begin
     Result.Location.Name := Result.Ancestors[0].Name;
   end;
+end;
+
+{ TAtlasHoverFace }
+
+class function TAtlasHoverFace.Create(AFont: TAtlasHoverFont; ABold, AUnderline: Boolean): TAtlasHoverFace;
+begin
+  Result.Font := AFont;
+  Result.Bold := ABold;
+  Result.Underline := AUnderline;
 end;
 
 end.

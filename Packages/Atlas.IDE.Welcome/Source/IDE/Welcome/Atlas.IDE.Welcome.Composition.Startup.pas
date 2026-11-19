@@ -30,7 +30,6 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Commands.Usage,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Status.Lines,
@@ -51,7 +50,8 @@ uses
   Atlas.IDE.Welcome.Adapters.ContinueIssues,
   Atlas.IDE.Welcome.Adapters.Projects,
   Atlas.IDE.Welcome.Adapters.Tiles,
-  Atlas.IDE.Welcome.Adapters.Listener;
+  Atlas.IDE.Welcome.Adapters.Listener,
+  Atlas.Core.Commands.Contract;
 
 var
   GWelcome: TAtlasIdeWelcome;

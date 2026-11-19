@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.Core.Commands.Palette,
+  Atlas.Core.Commands.Contract,
   Atlas.Core.Modules.Contract,
   Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Tracker.MyIssues,

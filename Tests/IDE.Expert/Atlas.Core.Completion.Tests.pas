@@ -126,8 +126,10 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Providers.XmlDoc,
   System.Diagnostics,
+  Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Adapters.ServerProcess;
+  Atlas.Core.Lsp.Providers.ServerProcess,
+  Atlas.Core.Lsp.Providers.ServerProcess.Tests;
 
 type
   /// <summary>Sammelt Einträge aus beliebigen Threads und meldet Complete über ein Ereignis.</summary>
@@ -700,6 +702,7 @@ procedure TAtlasServerCompletionTests.CompletesMembersFromServer;
 var
   mServerExe: string;
   mServer: TLspServerProcess;
+  mClient: TLspClient;
   mSession: TLspSession;
   mProvider: TAtlasServerCompletionProvider;
   mProviderRef: IAtlasCompletionProvider;
@@ -712,9 +715,9 @@ begin
   begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
-  mServer := TLspServerProcess.Create(mServerExe, '');
+  mServer := StartLspServer(mServerExe, '', mClient);
   try
-    mSession := TLspSession.Create(mServer.Client, 5000);
+    mSession := TLspSession.Create(mClient, 5000);
     try
       mSession.Initialize;
       mProvider := TAtlasServerCompletionProvider.Create(
