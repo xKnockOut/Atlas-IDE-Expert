@@ -57,6 +57,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.TextChanges,
+  Atlas.Text.Lines,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WrapSelection,
   Atlas.Core.Settings.Plugin,
@@ -64,24 +65,16 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot;
 
-function LineOf(const ALines: TArray<string>; ARow: Integer): string;
-begin
-  Result := '';
-  if (ARow >= 1) and (ARow <= Length(ALines)) then
-  begin
-    Result := ALines[ARow - 1];
-  end;
-end;
-
 function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
 begin
   Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(LineOf(ALines, Result.Line), APosition.Character, ATabWidth);
+  Result.Col := TLspSession.IndexToColumn(TTextLines.LineAt(ALines, APosition.Line), APosition.Character, ATabWidth);
 end;
 
 function PositionOf(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 begin
-  Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineOf(ALines, ARow), AColumn, ATabWidth));
+  Result := TLspTextPosition.Create(ARow - 1,
+    TLspSession.ColumnToIndex(TTextLines.LineAt(ALines, ARow - 1), AColumn, ATabWidth));
 end;
 
 /// <summary>AView hat einen beschreibbaren Puffer und eine Markierung.</summary>
@@ -119,7 +112,7 @@ begin
   begin
     mStart := PositionOf(ALines, mRow, mFirstColumn, ATabWidth);
     mStop := PositionOf(ALines, mRow, mLastColumn, ATabWidth);
-    if mStart.Character < Length(LineOf(ALines, mRow)) then
+    if mStart.Character < Length(TTextLines.LineAt(ALines, mRow - 1)) then
     begin
       Result := Result + [TLspRange.Create(mStart.Line, mStart.Character, mStop.Line, mStop.Character)];
     end;

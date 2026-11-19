@@ -21,23 +21,21 @@ uses
   System.Classes,
   System.Types,
   Atlas.Core.Settings.QuickToggles,
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.QuickToggles,
   Atlas.IDE.Foundation.Keys,
   Atlas.Core.Commands.Palette;
 
 type
-  TAtlasIdeQuickToggles = class(TComponent)
+  TAtlasIdeQuickToggles = class(TAtlasPopupFormHolder<TAtlasQuickToggleWindow>)
   private class var
     FInstance: TAtlasIdeQuickToggles;
   private
     FKey: TAtlasIdeKeyBinding;
-    FWindow: TAtlasQuickToggleWindow;
     FOnAnchor: TFunc<TPoint>;
     procedure Refresh;
     class procedure Applied; static;
     class function AskTarget(const AItem: TAtlasQuickToggleItem; out ATarget: TAtlasToggleTarget): Boolean; static;
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -109,28 +107,15 @@ begin
     FInstance := nil;
   end;
   FreeAndNil(FKey);
-  if FWindow <> nil then
-  begin
-    FWindow.RemoveFreeNotification(Self);
-    FreeAndNil(FWindow);
-  end;
+  FreeWindow;
   inherited;
-end;
-
-procedure TAtlasIdeQuickToggles.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-  if (Operation = opRemove) and (AComponent = FWindow) then
-  begin
-    FWindow := nil;
-  end;
 end;
 
 procedure TAtlasIdeQuickToggles.Refresh;
 begin
-  if FWindow <> nil then
+  if Window <> nil then
   begin
-    FWindow.SetItems(Items, TAtlasIdeSettings.Session.AllOff);
+    Window.SetItems(Items, TAtlasIdeSettings.Session.AllOff);
   end;
 end;
 
@@ -299,14 +284,13 @@ end;
 procedure TAtlasIdeQuickToggles.Show(const AAnchor: TPoint);
 begin
   // Zweiter Aufruf schließt.
-  if FWindow <> nil then
+  if Window <> nil then
   begin
-    FWindow.Dismiss;
+    Window.Dismiss;
     Exit;
   end;
-  FWindow := TAtlasQuickToggleWindow.CreateToggles(Application, TAtlasIdeStyle.Colors);
-  FWindow.FreeNotification(Self);
-  FWindow.OnToggle :=
+  Hold(TAtlasQuickToggleWindow.CreateToggles(Application, TAtlasIdeStyle.Colors));
+  Window.OnToggle :=
     procedure(AItem: TAtlasQuickToggleItem)
     begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -316,7 +300,7 @@ begin
         end);
     end;
   // Symbol rechts: Tools › Optionen › Atlas an dieser Einstellung öffnen und markieren (#628).
-  FWindow.OnOpenSetting :=
+  Window.OnOpenSetting :=
     procedure(AItem: TAtlasQuickToggleItem)
     begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -325,7 +309,7 @@ begin
           TAtlasOptionsRegistration.ShowSetting(AItem.Toggle.Key);
         end);
     end;
-  FWindow.OnAllOff :=
+  Window.OnAllOff :=
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -334,8 +318,8 @@ begin
           ToggleAllOff;
         end);
     end;
-  FWindow.SetItems(Items, TAtlasIdeSettings.Session.AllOff);
-  FWindow.ShowAbove(AAnchor);
+  Window.SetItems(Items, TAtlasIdeSettings.Session.AllOff);
+  Window.ShowAbove(AAnchor);
 end;
 
 procedure TAtlasIdeQuickToggles.Show;

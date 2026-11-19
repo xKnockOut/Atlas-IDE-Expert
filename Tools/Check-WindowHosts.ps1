@@ -179,8 +179,10 @@ foreach ($file in $files) {
         }
     }
 
-    # Rahmenlose Fenster gehören auf TAtlasPopupForm: Ein Nachfahre von TAtlasDialog, der den Rahmen abschaltet.
-    if ($text -match '(?i)=\s*class\s*\(\s*TAtlasDialog\s*\)') {
+    # Rahmenlose Fenster gehören auf TAtlasPopupForm: Ein Nachfahre von TAtlasDialog (auch über TAtlasAnswerDialog),
+    # der den Rahmen abschaltet. Die Unit der Basisklassen selbst schaltet ihn nur in TAtlasPopupForm.CreatePopup ab.
+    $declaresPopupForm = $text -match '(?i)\bTAtlasPopupForm\s*=\s*class\s*\(\s*TForm\s*\)'
+    if (-not $declaresPopupForm -and $text -match '(?i)=\s*class\s*\(\s*TAtlas(Answer)?Dialog\s*\)') {
         foreach ($match in [regex]::Matches($text, '(?im)^\s*(Self\s*\.\s*)?BorderStyle\s*:=\s*bsNone\b')) {
             $violations += "${relative}:$(Get-LineNumber $text $match.Index): Rahmenloses Fenster auf TAtlasDialog; von TAtlasPopupForm erben (CreatePopup)"
         }

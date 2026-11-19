@@ -266,6 +266,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Files.DataFile` | `Core/Files/Atlas.Core.Files.DataFile.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.ProcessLeftovers` | `Core/Files/Atlas.Core.Files.ProcessLeftovers.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.EncodingDefault` | `Core/Files/Atlas.Core.Files.EncodingDefault.pas` | Ordner `Core/Files` |
+| `Atlas.Core.Files.Entries` | `Core/Files/Atlas.Core.Files.Entries.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.ExternalChanges` | `Core/Files/Atlas.Core.Files.ExternalChanges.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Format` | `Core/Files/Atlas.Core.Files.Format.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.TextDiff` | `Core/Files/Atlas.Core.Files.TextDiff.pas` | Ordner `Core/Files` |
