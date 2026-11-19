@@ -175,6 +175,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
 - **Where you are in the IDE:** `get_ide_context` tells AI assistants the open file with cursor and method, the selection, the active project with configuration and platform, the last build and the tabs, so "this method" needs no copying (`assistants.context`)
 - **Several queries at once:** `batch` runs up to 10 read-only MCP tools in one call, on one shared index state with a single file comparison; an error affects only its section
+- **History of a symbol:** `get_symbol_history` lists the commits that changed a routine or type, with issues, and with Git follows renames and moves into other units by the similarity of the bodies
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
 - **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)

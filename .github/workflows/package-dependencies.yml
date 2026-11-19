@@ -93,7 +93,8 @@ jobs:
           foreach ($zeile in @($text)) {
             if (-not $grund -and $zeile -match '^\s*Neue Kopien:\s*(\S.*)$') { $grund = $Matches[1].Trim() }
           }
-          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:BASIS) {
+          # Pull Request vergleicht gegen HEAD^1 (Stand des Ziels im Merge-Commit), workflow_dispatch gegen die Basis.
+          if ($env:BASIS) {
             $ref = $env:BASIS
           } elseif ($env:BASE_REF) {
             git fetch --no-tags --depth=1 origin "+refs/heads/$($env:BASE_REF):refs/remotes/origin/$($env:BASE_REF)"
