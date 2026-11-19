@@ -44,7 +44,7 @@ uses
 type
   TAtlasIndexEvent = reference to procedure(AIndex: Integer);
 
-  TAtlasSignatureHint = class(TAtlasPopupWindow, IAtlasSignatureView)
+  TAtlasSignatureHint = class(TAtlasPopupWindow)
   public const
     cMaxWidth = 520;
     /// <summary>Mehr Überladungen werden nicht gezeigt; eine Zeile nennt den Rest.</summary>
@@ -92,7 +92,7 @@ type
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
-    { IAtlasSignatureView }
+    { Ansicht des Controllers (IAtlasSignatureView über TAtlasSignatureViews) }
     procedure ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
     procedure HideSignature;
     /// <summary>Neue Lage der Zeile (z. B. nach dem Scrollen, #414); ein offener Hint wandert mit.</summary>
@@ -110,6 +110,20 @@ type
     property FormatPlaceholders: Boolean read FFormatPlaceholders write FFormatPlaceholders;
     /// <summary>Zum Testen: die gezeigte Zeile der Platzhalter.</summary>
     property FormatLine: TAtlasFormatLine read FFormatLine;
+  end;
+
+  /// <summary>Ansicht des Controllers zum Hint AHint.</summary>
+  TAtlasSignatureViewFactory = reference to function(AHint: TAtlasSignatureHint): IAtlasSignatureView;
+
+  /// <summary>Hint als Ansicht für TAtlasSignatureController (Atlas.UI.Signature.Adapters.HintView); die Fabrik
+  /// setzt die Kompositionswurzel.</summary>
+  TAtlasSignatureViews = class
+  private class var
+    FFactory: TAtlasSignatureViewFactory;
+  public
+    /// <summary>Ansicht zu AHint; nil ohne Fabrik.</summary>
+    class function ViewOf(AHint: TAtlasSignatureHint): IAtlasSignatureView; static;
+    class property Factory: TAtlasSignatureViewFactory read FFactory write FFactory;
   end;
 
 implementation
@@ -830,6 +844,17 @@ procedure TAtlasSignatureHint.SetPath(const AOuter: TArray<string>; const ACallN
 begin
   FOuter := AOuter;
   FCallName := ACallName;
+end;
+
+{ TAtlasSignatureViews }
+
+class function TAtlasSignatureViews.ViewOf(AHint: TAtlasSignatureHint): IAtlasSignatureView;
+begin
+  Result := nil;
+  if Assigned(FFactory) then
+  begin
+    Result := FFactory(AHint);
+  end;
 end;
 
 end.

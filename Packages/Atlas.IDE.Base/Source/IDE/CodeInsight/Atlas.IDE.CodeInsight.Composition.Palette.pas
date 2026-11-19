@@ -50,7 +50,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Build,
   Atlas.IDE.CodeInsight.Composition.Tools,
   Atlas.IDE.CodeInsight.Composition.PaletteNavigation,
-  Atlas.IDE.CodeInsight.Composition.PaletteEditing;
+  Atlas.IDE.CodeInsight.Composition.PaletteEditing,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters;
 
 var
   PaletteInstance: TAtlasIdePalette;
@@ -237,22 +238,25 @@ end;
 
 /// <summary>Befehle der Teile mit eigenem Fenster: Schnellschalter, Diagnosemodus, Einrichtung, Tasten.</summary>
 procedure RegisterPartCommands;
+var
+  mRegistry: IAtlasCommandRegistry;
 begin
+  mRegistry := PaletteRegistry(PaletteInstance);
   if QuickToggles <> nil then
   begin
-    QuickToggles.RegisterCommands(PaletteInstance);
+    QuickToggles.RegisterCommands(mRegistry);
   end;
   if DiagnosticMode <> nil then
   begin
-    DiagnosticMode.RegisterCommands(PaletteInstance);
+    DiagnosticMode.RegisterCommands(mRegistry);
   end;
   if Setup <> nil then
   begin
-    Setup.RegisterCommands(PaletteInstance);
+    Setup.RegisterCommands(mRegistry);
   end;
   if KeyMap <> nil then
   begin
-    KeyMap.RegisterCommands(PaletteInstance);
+    KeyMap.RegisterCommands(mRegistry);
   end;
 end;
 

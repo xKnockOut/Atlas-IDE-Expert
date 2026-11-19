@@ -78,12 +78,14 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Setup.Checklist,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Commands.ProjectMenu,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.CodeInsight.Composition.Adapters,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.Foundation.Host;
@@ -258,6 +260,8 @@ end;
 procedure StartSetup;
 var
   mHooks: TAtlasSetupHooks;
+  mForgetKeys: TProc;
+  mEnvironment: IAtlasSetupEnvironment;
 begin
   mHooks.ServerInfo := ServerInfo;
   mHooks.Indexing := ServerIndexing;
@@ -266,7 +270,8 @@ begin
   mHooks.StartServer := StartServer;
   mHooks.ServerCommand := SendServerCommand;
   mHooks.ServerPath := ServerPath;
-  SetupInstance := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, mHooks);
+  mEnvironment := SetupEnvironment(mHooks, mForgetKeys);
+  SetupInstance := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, mEnvironment, mForgetKeys);
 end;
 
 procedure StopSetup;

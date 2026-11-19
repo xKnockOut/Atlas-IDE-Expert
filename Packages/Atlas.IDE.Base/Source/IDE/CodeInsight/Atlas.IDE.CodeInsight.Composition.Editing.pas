@@ -39,6 +39,7 @@ uses
   Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.Foundation.Host;
 
 /// <summary>Vervollständigung oder Platzhalter des Managers offen?</summary>
@@ -113,7 +114,7 @@ begin
   TAtlasIdePatternContinuation.Install(RunningSession, CompletionVisible);
   // Gelernte Vorschläge (#1890): nach dem Muster, nur wenn es nichts vorschlägt; nie neben Vervollständigung,
   // Platzhaltern, mehreren Einfügemarken und dem Mitziehen von Bezeichnern.
-  TAtlasIdeLearnedSuggestions.Install(RunningSession, TAtlasIdeHost.Messages());
+  TAtlasIdeLearnedSuggestions.Install(RunningSession, TAtlasIdeHost.Messages(), LearnedGhostProvider);
   TAtlasIdeGhostSuggestions.Install(TypingBusy, GhostStatus);
 end;
 

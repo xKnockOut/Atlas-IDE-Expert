@@ -45,6 +45,8 @@
 // Aufbau: Die Klasse erbt ihre Teile über die Kette TAtlasCompletionPopupState (Zustand, Höhen) →
 // TAtlasCompletionPopupLayout (Lage, Panel) → TAtlasCompletionPopupPainter (Zeichnen, Tooltip); hier stehen Maus,
 // Anzeige der Liste und Barrierefreiheit. Texte in Atlas.UI.Completion.PopupTexts.
+// Als Ansicht des Controllers und Quelle für UI Automation dient das Popup über TAtlasCompletionViews
+// (Atlas.UI.Completion.Adapters.PopupView, eingesetzt von der Kompositionswurzel).
 
 interface
 
@@ -60,24 +62,13 @@ uses
   Atlas.UI.Completion.PopupPainter;
 
 type
-  TAtlasCompletionPopup = class(TAtlasCompletionPopupPainter, IAtlasCompletionView, IAtlasCompletionSyntaxView,
-    IAtlasCompletionHiddenView, IAtlasAccessibleItems)
+  TAtlasCompletionPopup = class(TAtlasCompletionPopupPainter)
   private
     /// <summary>Breite ziehen (#416): Bildschirmkoordinaten, weil das Fenster beim Ziehen mitwächst.</summary>
     procedure DragTo;
     /// <summary>Mauszeiger über Splitter, Rand, Leiste, Verweis, Stern, Warnleiste oder Doku.</summary>
     procedure UpdateCursor(AX, AY: Integer);
     procedure AnnounceSelected;
-    { IAtlasAccessibleItems }
-    function AccessibleCount: Integer;
-    function AccessibleSelected: Integer;
-    function AccessibleId(APosition: Integer): Integer;
-    function AccessibleName(APosition: Integer): string;
-    function AccessibleStatus(APosition: Integer): string;
-    function AccessibleHelp(APosition: Integer): string;
-    function AccessibleIsHeader(APosition: Integer): Boolean;
-    function AccessibleBounds(APosition: Integer; out ARect: TRect): Boolean;
-    procedure AccessibleSelect(APosition: Integer);
     /// <summary>Liste für UI Automation, sofern schon angefragt.</summary>
     function AccessibleList: TAtlasAccessibleList;
   protected
@@ -88,18 +79,28 @@ type
     procedure DblClick; override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
+    { Einträge für UI Automation (IAtlasAccessibleItems über TAtlasCompletionViews) }
+    function AccessibleCount: Integer;
+    function AccessibleSelected: Integer;
+    function AccessibleId(APosition: Integer): Integer;
+    function AccessibleName(APosition: Integer): string;
+    function AccessibleStatus(APosition: Integer): string;
+    function AccessibleHelp(APosition: Integer): string;
+    function AccessibleIsHeader(APosition: Integer): Boolean;
+    function AccessibleBounds(APosition: Integer; out ARect: TRect): Boolean;
+    procedure AccessibleSelect(APosition: Integer);
     /// <summary>Hinweis links in der Fußzeile (#458), auch für die Sprachausgabe; gilt bis zum nächsten
     /// getippten Zeichen bzw. Schließen.</summary>
     procedure ShowNotice(const AText: string);
-    { IAtlasCompletionView }
+    { Ansicht des Controllers (IAtlasCompletionView über TAtlasCompletionViews) }
     procedure ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
       const APattern: string);
     procedure HideList;
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
-    { IAtlasCompletionSyntaxView }
+    { IAtlasCompletionSyntaxView über TAtlasCompletionViews }
     procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
-    { IAtlasCompletionHiddenView }
+    { IAtlasCompletionHiddenView über TAtlasCompletionViews }
     procedure ShowInaccessible(const AItems: TAtlasCompletionItems);
     property OnSelect: TAtlasPositionEvent read FEvents.OnSelect write FEvents.OnSelect;
     property OnAccept: TAtlasPositionEvent read FEvents.OnAccept write FEvents.OnAccept;
@@ -111,6 +112,21 @@ type
     property OnFavorite: TAtlasPositionEvent read FEvents.OnFavorite write FEvents.OnFavorite;
     /// <summary>Klick auf die Zeilenangabe der Warnleiste (#457).</summary>
     property OnSyntaxLine: TAtlasSyntaxLineEvent read FEvents.OnSyntaxLine write FEvents.OnSyntaxLine;
+  end;
+
+  /// <summary>Ansicht des Controllers zum Popup APopup; unterstützt auch IAtlasCompletionSyntaxView,
+  /// IAtlasCompletionHiddenView und IAtlasAccessibleItems.</summary>
+  TAtlasCompletionViewFactory = reference to function(APopup: TAtlasCompletionPopup): IAtlasCompletionView;
+
+  /// <summary>Popup als Ansicht für TAtlasCompletionController (Atlas.UI.Completion.Adapters.PopupView); die
+  /// Fabrik setzt die Kompositionswurzel.</summary>
+  TAtlasCompletionViews = class
+  private class var
+    FFactory: TAtlasCompletionViewFactory;
+  public
+    /// <summary>Ansicht zu APopup; nil ohne Fabrik.</summary>
+    class function ViewOf(APopup: TAtlasCompletionPopup): IAtlasCompletionView; static;
+    class property Factory: TAtlasCompletionViewFactory read FFactory write FFactory;
   end;
 
 implementation
@@ -334,8 +350,17 @@ end;
 { TAtlasCompletionPopup }
 
 function TAtlasCompletionPopup.CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement;
+var
+  mItems: IAtlasAccessibleItems;
 begin
-  Result := TAtlasAccessibleList.Create(Handle, AName, Self);
+  if Supports(TAtlasCompletionViews.ViewOf(Self), IAtlasAccessibleItems, mItems) then
+  begin
+    Result := TAtlasAccessibleList.Create(Handle, AName, mItems);
+  end
+  else
+  begin
+    Result := inherited CreateAccessible(ARole, AName);
+  end;
 end;
 
 procedure TAtlasCompletionPopup.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -798,6 +823,20 @@ begin
   if IsShown then
   begin
     Invalidate;
+  end;
+end;
+
+{ TAtlasCompletionViews }
+
+class function TAtlasCompletionViews.ViewOf(APopup: TAtlasCompletionPopup): IAtlasCompletionView;
+begin
+  if Assigned(FFactory) then
+  begin
+    Result := FFactory(APopup);
+  end
+  else
+  begin
+    Result := nil;
   end;
 end;
 

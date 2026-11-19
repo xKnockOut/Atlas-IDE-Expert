@@ -35,7 +35,8 @@
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
 // Satz: Positionen, Klickflächen und Bausteine rechnet
 // Atlas.Core.Hover.Layout ohne VCL einmal je Inhalt, Breite und Doku-Höhe;
-// Paint zeichnet nur die Bausteine und färbt den Hot-Zustand.
+// Paint zeichnet nur die Bausteine und färbt den Hot-Zustand. Gemessen wird über
+// Atlas.UI.Hover.Adapters.TipMeasure (TAtlasHoverMeasures.Factory, eingesetzt von der Kompositionswurzel).
 
 interface
 
@@ -52,6 +53,7 @@ uses
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Hover.View,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
@@ -78,6 +80,22 @@ type
     SignatureParams: Boolean;
     /// <summary>Link „Beispiel zeigen“ unter Regelbefunden (hover.ruleExamples, #145).</summary>
     RuleExamples: Boolean;
+  end;
+
+  /// <summary>Messung für TAtlasHoverLayout in ACanvas: Editorschrift AFont, UI-Schrift AUIFont, eingefärbte
+  /// Deklaration ADeclaration. Gilt für einen Satz.</summary>
+  TAtlasHoverMeasureFactory = reference to function(ACanvas: TCanvas; AFont, AUIFont: TFont;
+    const ADeclaration: TAtlasStyledText): IAtlasHoverMeasure;
+
+  /// <summary>Fabrik der Messung (Atlas.UI.Hover.Adapters.TipMeasure); setzt die Kompositionswurzel.</summary>
+  TAtlasHoverMeasures = class
+  private class var
+    FFactory: TAtlasHoverMeasureFactory;
+  public
+    /// <summary>Messung über ACanvas; löst EInvalidOpException aus, solange keine Fabrik eingesetzt ist.</summary>
+    class function Measure(ACanvas: TCanvas; AFont, AUIFont: TFont;
+      const ADeclaration: TAtlasStyledText): IAtlasHoverMeasure; static;
+    class property Factory: TAtlasHoverMeasureFactory read FFactory write FFactory;
   end;
 
   /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen.</summary>
@@ -225,10 +243,14 @@ type
     property OnDebugRow: TAtlasHoverDebugRowEvent read FOnDebugRow write FOnDebugRow;
   end;
 
+/// <summary>Wählt die Schrift AFace in ACanvas; Kleinere Schrift für Beschriftungen (UI) bzw. Abschnittstitel
+/// (Editorschrift).</summary>
+procedure ApplyHoverFace(ACanvas: TCanvas; AFont, AUIFont: TFont; const AFace: TAtlasHoverFace;
+  ABadgeHeight: Integer);
+
 implementation
 
 uses
-  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,
@@ -244,6 +266,8 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
+  /// <summary>Programmierfehler: Die Komposition hat TAtlasHoverMeasures.Factory nicht gesetzt.</summary>
+  cNoMeasure = 'Atlas: Messung des Tooltips nicht eingesetzt.'; // german-ok Programmierfehler
   /// <summary>So viele Zeilen des aufgeklappten Debug-Werts (#895) ohne Scrollen.</summary>
   cDebugRows = 12;
   /// <summary>Zeilen je Rasterstufe des Mausrads in den Rollbereichen.</summary>
@@ -387,8 +411,6 @@ begin
   end;
 end;
 
-/// <summary>Wählt die Schrift AFace in ACanvas; Kleinere Schrift für Beschriftungen (UI) bzw. Abschnittstitel
-/// (Editorschrift).</summary>
 procedure ApplyHoverFace(ACanvas: TCanvas; AFont, AUIFont: TFont; const AFace: TAtlasHoverFace;
   ABadgeHeight: Integer);
 begin
@@ -432,60 +454,16 @@ begin
   Result := Result or AView.Data.Location.HasLocation or AView.Pinned or (Length(AView.Data.Members) > 0);
 end;
 
-type
-  /// <summary>Messen über die Zeichenfläche des Tooltips für TAtlasHoverLayout.</summary>
-  TTipMeasure = class(TInterfacedObject, IAtlasHoverMeasure)
-  private
-    FTip: TAtlasHoverTipView;
-  public
-    constructor Create(ATip: TAtlasHoverTipView);
-    function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-    function TextHeight(const AFace: TAtlasHoverFace): Integer;
-    function BlockHeight(const AText: string; AWidth: Integer): Integer;
-    function DeclarationWidth(AFrom, ATill: Integer): Integer;
-    function DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
+{ TAtlasHoverMeasures }
+
+class function TAtlasHoverMeasures.Measure(ACanvas: TCanvas; AFont, AUIFont: TFont;
+  const ADeclaration: TAtlasStyledText): IAtlasHoverMeasure;
+begin
+  if not Assigned(FFactory) then
+  begin
+    raise EInvalidOpException.Create(cNoMeasure);
   end;
-
-{ TTipMeasure }
-
-constructor TTipMeasure.Create(ATip: TAtlasHoverTipView);
-begin
-  inherited Create;
-  FTip := ATip;
-end;
-
-function TTipMeasure.TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-begin
-  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
-  Result := FTip.Canvas.TextWidth(AText);
-end;
-
-function TTipMeasure.TextHeight(const AFace: TAtlasHoverFace): Integer;
-begin
-  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
-  Result := FTip.Canvas.TextHeight('Wg');
-end;
-
-function TTipMeasure.BlockHeight(const AText: string; AWidth: Integer): Integer;
-var
-  mArea: TRect;
-begin
-  FTip.Canvas.Font := FTip.UIFont;
-  mArea := Rect(0, 0, AWidth, 0);
-  DrawText(FTip.Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
-  Result := mArea.Bottom;
-end;
-
-function TTipMeasure.DeclarationWidth(AFrom, ATill: Integer): Integer;
-begin
-  FTip.Canvas.Font := FTip.Font;
-  Result := FTip.FDeclaration.Width(FTip.Canvas, AFrom, ATill);
-end;
-
-function TTipMeasure.DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-begin
-  FTip.Canvas.Font := FTip.Font;
-  Result := FTip.FDeclaration.WrapAtSpaces(FTip.Canvas, AWidth, AIndent);
+  Result := FFactory(ACanvas, AFont, AUIFont, ADeclaration);
 end;
 
 { TAtlasHoverTipView }
@@ -671,7 +649,7 @@ begin
   mInput.Members := FMembers;
   mInput.DebugRows := FDebugRows;
   mInput.DebugSelectedRow := FDebugSelectedRow;
-  FLayout := TAtlasHoverLayout.Build(mInput, TTipMeasure.Create(Self));
+  FLayout := TAtlasHoverLayout.Build(mInput, TAtlasHoverMeasures.Measure(Canvas, Font, UIFont, FDeclaration));
   // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
   FMembers.Scroll := FLayout.Members.Scroll;
   FDebugRows.Scroll := FLayout.DebugRows.Scroll;

@@ -1,10 +1,11 @@
-﻿unit Atlas.IDE.Editor.EditSurface;
+﻿unit Atlas.IDE.Editor.Adapters.EditSurface;
 
 // IAtlasEditSurface über eine Ansicht der IDE (IOTAEditView und ihr
 // IOTAEditBuffer): Text, Cursor und Markierung lesen und setzen, Ersetzungen mit
 // einem Schreiber (ein Rückgängig-Schritt) schreiben, Rückgängig und
 // Wiederholen des Puffers. Zeichen werden mit der Tabulatorweite des Puffers
-// in Spalten der IDE umgerechnet. Nur im Hauptthread.
+// in Spalten der IDE umgerechnet. Erzeugt nur die Kompositionswurzel (TAtlasIdeEditSurfaces.Factory); die
+// Features fragen TAtlasIdeEditSurfaces.Wrap. Nur im Hauptthread.
 
 interface
 
@@ -19,9 +20,8 @@ type
     /// <summary>Cursor auf Zeile ALine, Zeichen ACharacter, ohne die Markierung anzufassen.</summary>
     procedure PlaceCursor(ALine, ACharacter: Integer);
   public
+    /// <summary>AView hat einen Puffer (TAtlasIdeEditSurfaces.Wrap prüft das).</summary>
     constructor Create(const AView: IOTAEditView);
-    /// <summary>Puffer der Ansicht AView; nil ohne Ansicht oder Puffer.</summary>
-    class function Wrap(const AView: IOTAEditView): IAtlasEditSurface; static;
     function FileName: string;
     function IsReadOnly: Boolean;
     function IsModified: Boolean;
@@ -55,15 +55,6 @@ constructor TAtlasIdeEditSurface.Create(const AView: IOTAEditView);
 begin
   inherited Create;
   FView := AView;
-end;
-
-class function TAtlasIdeEditSurface.Wrap(const AView: IOTAEditView): IAtlasEditSurface;
-begin
-  Result := nil;
-  if (AView <> nil) and (AView.Buffer <> nil) then
-  begin
-    Result := TAtlasIdeEditSurface.Create(AView);
-  end;
 end;
 
 function TAtlasIdeEditSurface.FileName: string;

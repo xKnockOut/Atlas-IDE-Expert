@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Undo.Target;
+﻿unit Atlas.IDE.Undo.Adapters.Target;
 
 // Ziel des Änderungsprotokolls in der IDE (#721): schreibt beim Zurücknehmen
 // und Wiederherstellen dorthin, wo der aktuelle Stand liegt.
@@ -11,8 +11,8 @@
 //     laden; mit ungespeicherten Projektänderungen nicht.
 //   - Sonst die Platte in der Kodierung der Datei (TAtlasUndoDiskTarget).
 // Neue Dateien trägt es aus dem Projekt aus, schließt sie und verschiebt sie in
-// den Papierkorb (SHFileOperation mit FOF_ALLOWUNDO) oder löscht sie;
-// wiederhergestellte trägt es wieder ins Projekt ein. Nur im Hauptthread.
+// den Papierkorb (TAtlasIdeUndo.Recycle) oder löscht sie; wiederhergestellte trägt es wieder ins Projekt ein.
+// Erzeugt nur die Kompositionswurzel (TAtlasIdeUndo.TargetFactory). Nur im Hauptthread.
 
 interface
 
@@ -37,8 +37,6 @@ type
     procedure Write(const AFileName: string; const AContent: TAtlasTextFileContent);
     procedure CreateFile(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);
     procedure RemoveFile(const AFileName, AProject: string; AMode: TAtlasNewFilesMode);
-    /// <summary>Datei in den Papierkorb; EInOutError, wenn das nicht geht.</summary>
-    class procedure Recycle(const AFileName: string); static;
     /// <summary>Legt das Plattenziel an; setzt die Kompositionswurzel (TAtlasUndoDiskTarget).</summary>
     class property DiskFactory: TAtlasUndoDiskFactory read FDiskFactory write FDiskFactory;
   end;
@@ -46,35 +44,32 @@ type
 implementation
 
 uses
-  Winapi.Windows,
-  Winapi.ShellAPI,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Forms.Changes,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Undo.Changes,
   Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
-  TUndoTargetText = (ProjectHasUnsavedChangesPlease, OpenInTheDesignerThere, ReadOnly, RecycleBinNotReachable);
+  TUndoTargetText = (ProjectHasUnsavedChangesPlease, OpenInTheDesignerThere, ReadOnly);
 {$SCOPEDENUMS OFF}
 
 const
   /// <summary>Programmierfehler beim Zusammenstecken, nie beim Benutzer.</summary>
-  cNoDiskTarget = 'Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.';
+  cNoDiskTarget = 'Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.'; // german-ok Programmierfehler
   cTexts: array[TAtlasLanguage, TUndoTargetText] of string = (
     ('Projekt hat ungespeicherte Änderungen; bitte erst speichern',
      'im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften (%s)',
-     'schreibgeschützt',
-     'Papierkorb nicht erreichbar'),
+     'schreibgeschützt'),
     ('project has unsaved changes; please save first',
      'open in the designer; there Atlas only changes event assignments and properties (%s)',
-     'read-only',
-     'recycle bin not reachable'));
+     'read-only'));
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TUndoTargetText): string;
@@ -114,7 +109,7 @@ begin
   mHooks.OnRecycle :=
     procedure(AFileName: string)
     begin
-      Recycle(AFileName);
+      TAtlasIdeUndo.Recycle(AFileName);
     end;
   if not Assigned(FDiskFactory) then
   begin
@@ -264,24 +259,7 @@ begin
   FDisk.RemoveFile(AFileName, AProject, AMode);
 end;
 
-class procedure TAtlasIdeUndoTarget.Recycle(const AFileName: string);
-var
-  mOperation: TSHFileOpStruct;
-  mFrom: string;
-begin
-  // Doppelt nullterminiert, wie SHFileOperation es verlangt.
-  mFrom := AFileName + #0#0;
-  FillChar(mOperation, SizeOf(mOperation), 0);
-  mOperation.wFunc := FO_DELETE;
-  mOperation.pFrom := PChar(mFrom);
-  mOperation.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI;
-  if (SHFileOperation(mOperation) <> 0) or mOperation.fAnyOperationsAborted then
-  begin
-    raise EInOutError.Create(UiText(TUndoTargetText.RecycleBinNotReachable));
-  end;
-end;
-
 initialization
-  TAtlasTextLanguage.AddTable('Atlas.IDE.Undo.Target', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Undo.Adapters.Target', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

@@ -22,6 +22,7 @@ uses
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Build,
@@ -182,6 +183,8 @@ begin
   // Felder der Module im Atlas-Statusfeld, etwa Hinweise der schnellen Lesezeichen (#1104).
   mServices.StatusExtra := SetStatusItem;
   mServices.CompileEvents := CompileEvents;
+  mServices.ActiveEditor := ActiveEditorAdapter;
+  mServices.EditorFiles := EditorFilesAdapter;
   InstallShellServices(mServices);
   TAtlasIdeHost.Install(mServices);
 end;
