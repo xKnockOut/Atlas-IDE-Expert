@@ -116,11 +116,7 @@ end;
 
 class function TAtlasIdeSmartIndent.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class function TAtlasIdeSmartIndent.Idle: Boolean;

@@ -539,11 +539,7 @@ end;
 
 class function TAtlasIdeQuickOpen.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class function TAtlasIdeQuickOpen.RecentFile: string;

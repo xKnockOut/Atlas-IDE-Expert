@@ -75,9 +75,11 @@ var
   mList: TAtlasEvalList;
   mStatus: TAtlasVariablesStatus;
 begin
-  mSearch := TAtlasVariableSearch.Create;
-  mList := TAtlasEvalList.Create;
+  mSearch := nil;
+  mList := nil;
   try
+    mSearch := TAtlasVariableSearch.Create;
+    mList := TAtlasEvalList.Create;
     mList.SetResult(mList.Add('Kunde'), True, '(Name: ''Meier''; Ort: ''Berlin'')');
     // Ohne erlaubte Auswertung ist die Suche sofort an der Grenze.
     mSearch.Start('Berlin', TAtlasVariableSearchMode.Value, True, 3, 0);

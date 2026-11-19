@@ -422,6 +422,8 @@ end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;
 begin
+  // Rückgabewerte (#844, experimentell).
+  Switch('debug.returnValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReturnValues));
   // Fenster „Variablen“ (#853).
   Switch('debug.variablesWindow', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesWindow));
   Number('debug.variablesWindow.searchDepth',

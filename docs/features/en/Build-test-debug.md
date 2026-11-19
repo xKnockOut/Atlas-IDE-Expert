@@ -431,6 +431,19 @@ Settings: `debug.whyHere`, `debug.whyHere.depth`
 
 Setting: `debug.showElapsed`
 
+### Return values *(experimental)*
+
+What did the function just return, without watching `Result` beforehand?
+
+- After “Step over” (F8) on a line that calls your own functions, the end of that line shows, dimmed, `→ CalculateNet = 109.16`; if the line calls several functions, all of them appear in the order they returned
+- After “Run until return” (Shift+F8) inside your own function, its result appears at the calling line where the program stops afterwards
+- A click on the text shows “Recently returned”: the last 20 results with function, value, `end` line and time
+- To do this Atlas sets temporary breakpoints on the `end` lines of the functions before the step, evaluates `Result` there and continues the step; the other displays do not notice these stops. After the step the breakpoints are gone. Your own breakpoint inside the function stops as usual, recursive calls do not stop in deeper frames
+- Only your own code with source and only functions (local ones and operators too); procedures and library code are left out. With optimization (`$O+`) `Result` often cannot be evaluated at the `end` line, then it shows ‹no access›
+- Works for the IDE commands (key, menu and toolbar) once Atlas knows the calls of the line; pressing very quickly after the stop gets no values for that step
+
+Setting: `debug.returnValues` (default off)
+
 ### Predict upcoming conditions
 
 - When stopped, the next `if`, `while` and `case` of the same routine (up to `debug.predictConditions.lines` lines ahead, default 20) show their predicted result, marked as a forecast: `⟨= False · FOnline⟩` (the deciding part), for `case` `⟨→ smManual⟩`

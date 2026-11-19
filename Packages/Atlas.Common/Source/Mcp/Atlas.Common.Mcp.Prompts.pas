@@ -1194,11 +1194,14 @@ var
   mHandler: string;
 begin
   mDocument := TDfmParser.Parse(AFormText);
-  mHandlers := TList<string>.Create;
-  mUses := TDictionary<string, string>.Create;
-  mBuilder := TStringBuilder.Create;
+  mHandlers := nil;
+  mUses := nil;
   mTree := nil;
+  mBuilder := nil;
   try
+    mHandlers := TList<string>.Create;
+    mUses := TDictionary<string, string>.Create;
+    mBuilder := TStringBuilder.Create;
     if mDocument.Root <> nil then
     begin
       CollectEvents(mDocument.Root, mHandlers, mUses);

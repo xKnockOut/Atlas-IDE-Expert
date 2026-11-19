@@ -17,7 +17,7 @@ uses
   Atlas.UI.Popup.Window;
 
 type
-  TAtlasStopBar = class(TAtlasPopupWindow)
+  TAtlasStopBar = class(TAtlasLayoutPopupWindow)
   public const
     cGap = 4;
     /// <summary>Längere Zeilen unter der Überschrift kürzt die Leiste mit „…“.</summary>
@@ -29,10 +29,9 @@ type
     FRects: TArray<TRect>;
     FHot: Integer;
     FOnLink: TProc<Integer>;
-    function Layout(ADraw: Boolean): TSize;
     function LinkAt(const APoint: TPoint): Integer;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -82,12 +81,6 @@ begin
   begin
     Result := Copy(Result, 1, cMaxDetail - 1) + cEllipsis;
   end;
-end;
-
-procedure TAtlasStopBar.Paint;
-begin
-  Layout(True);
-  PaintBorder;
 end;
 
 function TAtlasStopBar.LinkAt(const APoint: TPoint): Integer;
@@ -144,9 +137,6 @@ var
 begin
   if ADraw then
   begin
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Colors.Surface);
-    Canvas.FillRect(ClientRect);
     Canvas.Brush.Style := bsClear;
   end;
   Canvas.Font := UIFont;
@@ -154,21 +144,13 @@ begin
   X := Scale(cPad);
   Y := Scale(cPad);
   Canvas.Font.Style := [fsBold];
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, FHeading);
-  end;
+  PutText(ADraw, X, Y, FHeading, Colors.Text);
   mWidth := X + Canvas.TextWidth(FHeading);
   Canvas.Font.Style := [];
   if FDetail <> '' then
   begin
     Y := Y + mTextHeight + Scale(cGap);
-    if ADraw then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Text);
-      Canvas.TextOut(X, Y, FDetail);
-    end;
+    PutText(ADraw, X, Y, FDetail, Colors.Text);
     mWidth := Max(mWidth, X + Canvas.TextWidth(FDetail));
   end;
   Y := Y + mTextHeight + Scale(cGap) * 2;
@@ -176,16 +158,12 @@ begin
   for mIndex := 0 to High(FLinks) do
   begin
     FRects[mIndex] := Rect(X, Y, X + Canvas.TextWidth(FLinks[mIndex]), Y + mTextHeight);
-    if ADraw then
+    if ADraw and (FHot = mIndex) then
     begin
-      Canvas.Font.Color := ToColor(Colors.Accent);
-      if FHot = mIndex then
-      begin
-        Canvas.Font.Style := [fsUnderline];
-      end;
-      Canvas.TextOut(X, Y, FLinks[mIndex]);
-      Canvas.Font.Style := [];
+      Canvas.Font.Style := [fsUnderline];
     end;
+    PutText(ADraw, X, Y, FLinks[mIndex], Colors.Accent);
+    Canvas.Font.Style := [];
     mWidth := Max(mWidth, FRects[mIndex].Right);
     X := FRects[mIndex].Right + Scale(cButtonGap);
   end;

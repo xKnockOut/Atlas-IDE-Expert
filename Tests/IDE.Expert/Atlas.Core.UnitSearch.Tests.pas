@@ -472,9 +472,11 @@ var
   mOrigins: TAtlasUnitOrigins;
   mKinds: TAtlasUnitKinds;
 begin
-  mState := TAtlasUnitSearchState.Create;
-  mLoaded := TAtlasUnitSearchState.Create;
+  mState := nil;
+  mLoaded := nil;
   try
+    mState := TAtlasUnitSearchState.Create;
+    mLoaded := TAtlasUnitSearchState.Create;
     Assert.IsFalse(mState.Filters('C:\P\Gruppe.groupproj', mOrigins, mKinds));
     mState.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project, ['Atlas.Common', 'atlas.tests']);
     mState.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder, ['Tests']);

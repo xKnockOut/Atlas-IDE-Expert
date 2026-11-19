@@ -142,9 +142,11 @@ var
 begin
   mStore := TDocumentStore.Create;
   mStore.Open('file:///u.pas', 'objectpascal', 1, string.Join(#13#10, cCode));
-  mDispatcher := TJsonRpcDispatcher.Create;
-  mFeature := TLspSelectionRanges.Create(mStore);
+  mDispatcher := nil;
+  mFeature := nil;
   try
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mFeature := TLspSelectionRanges.Create(mStore);
     mFeature.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue(
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/selectionRange","params":{' +

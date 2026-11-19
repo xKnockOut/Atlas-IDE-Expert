@@ -97,14 +97,18 @@ var
   mLocation: TUsesLocation;
   mMain: TUnitIndex;
 begin
-  mFiles := TDictionary<string, string>.Create;
-  mReads := TList<string>.Create;
-  mMain := UsesUnit('Main', ['Kern'], ['Daten', 'Kern.Hilfe']);
-  mFiles.Add(mMain.FileName, cMainText);
-  mGraph := TUsesGraph.Create([mMain, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
-    UsesUnit('Kern.Hilfe', nil, nil)], TUsesGraphOptions.Default);
-  mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
+  mFiles := nil;
+  mReads := nil;
+  mGraph := nil;
+  mLocator := nil;
   try
+    mFiles := TDictionary<string, string>.Create;
+    mReads := TList<string>.Create;
+    mMain := UsesUnit('Main', ['Kern'], ['Daten', 'Kern.Hilfe']);
+    mFiles.Add(mMain.FileName, cMainText);
+    mGraph := TUsesGraph.Create([mMain, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
+      UsesUnit('Kern.Hilfe', nil, nil)], TUsesGraphOptions.Default);
+    mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
     Assert.IsTrue(mLocator.Locate(mGraph, EdgeTo(mGraph, 'Main', 'Kern'), mLocation));
     Assert.AreEqual(mMain.FileName, mLocation.FileName);
     Assert.AreEqual(2, mLocation.Range.StartPos.Line);
@@ -131,14 +135,18 @@ var
   mMain: TUnitIndex;
 begin
   // Ohne ALT gilt der $ELSE-Zweig: Kern steht in Zeile 6 hinter Daten.
-  mFiles := TDictionary<string, string>.Create;
-  mReads := TList<string>.Create;
-  mMain := UsesUnit('Main', ['Daten', 'Kern', 'Ende'], nil);
-  mFiles.Add(mMain.FileName, cBranchText);
-  mGraph := TUsesGraph.Create([mMain, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
-    UsesUnit('Ende', nil, nil)], TUsesGraphOptions.Default);
-  mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
+  mFiles := nil;
+  mReads := nil;
+  mGraph := nil;
+  mLocator := nil;
   try
+    mFiles := TDictionary<string, string>.Create;
+    mReads := TList<string>.Create;
+    mMain := UsesUnit('Main', ['Daten', 'Kern', 'Ende'], nil);
+    mFiles.Add(mMain.FileName, cBranchText);
+    mGraph := TUsesGraph.Create([mMain, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
+      UsesUnit('Ende', nil, nil)], TUsesGraphOptions.Default);
+    mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
     Assert.IsTrue(mLocator.Locate(mGraph, EdgeTo(mGraph, 'Main', 'Kern'), mLocation));
     Assert.AreEqual(6, mLocation.Range.StartPos.Line);
     Assert.AreEqual(9, mLocation.Range.StartPos.Character);
@@ -159,15 +167,19 @@ var
   mLocation: TUsesLocation;
   mMain, mOther: TUnitIndex;
 begin
-  mFiles := TDictionary<string, string>.Create;
-  mReads := TList<string>.Create;
-  mMain := UsesUnit('Main', ['Kern'], nil);
-  mOther := UsesUnit('Other', ['Kern'], nil);
-  // Datei von Main ohne den Eintrag (veralteter Index), Datei von Other fehlt.
-  mFiles.Add(mMain.FileName, 'unit Main; interface implementation end.');
-  mGraph := TUsesGraph.Create([mMain, mOther, UsesUnit('Kern', nil, nil)], TUsesGraphOptions.Default);
-  mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
+  mFiles := nil;
+  mReads := nil;
+  mGraph := nil;
+  mLocator := nil;
   try
+    mFiles := TDictionary<string, string>.Create;
+    mReads := TList<string>.Create;
+    mMain := UsesUnit('Main', ['Kern'], nil);
+    mOther := UsesUnit('Other', ['Kern'], nil);
+    // Datei von Main ohne den Eintrag (veralteter Index), Datei von Other fehlt.
+    mFiles.Add(mMain.FileName, 'unit Main; interface implementation end.');
+    mGraph := TUsesGraph.Create([mMain, mOther, UsesUnit('Kern', nil, nil)], TUsesGraphOptions.Default);
+    mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
     Assert.IsFalse(mLocator.Locate(mGraph, EdgeTo(mGraph, 'Main', 'Kern'), mLocation));
     Assert.IsFalse(mLocator.Locate(mGraph, EdgeTo(mGraph, 'Other', 'Kern'), mLocation));
     Assert.AreEqual(mOther.FileName, mLocation.FileName, 'Datei bleibt für die Anzeige');
@@ -188,14 +200,18 @@ var
   mLocation: TUsesLocation;
   mMain: TUnitIndex;
 begin
-  mFiles := TDictionary<string, string>.Create;
-  mReads := TList<string>.Create;
-  mMain := UsesUnit('Main', ['Kern'], ['Daten', 'Kern.Hilfe']);
-  mFiles.Add(mMain.FileName, cMainText);
-  mGraph := TUsesGraph.Create([mMain, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
-    UsesUnit('Kern.Hilfe', nil, nil)], TUsesGraphOptions.Default);
-  mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
+  mFiles := nil;
+  mReads := nil;
+  mGraph := nil;
+  mLocator := nil;
   try
+    mFiles := TDictionary<string, string>.Create;
+    mReads := TList<string>.Create;
+    mMain := UsesUnit('Main', ['Kern'], ['Daten', 'Kern.Hilfe']);
+    mFiles.Add(mMain.FileName, cMainText);
+    mGraph := TUsesGraph.Create([mMain, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
+      UsesUnit('Kern.Hilfe', nil, nil)], TUsesGraphOptions.Default);
+    mLocator := TUsesLocator.Create(Reader(mFiles, mReads), NoDefines());
     mLocator.Locate(mGraph, EdgeTo(mGraph, 'Main', 'Kern'), mLocation);
     mLocator.Locate(mGraph, EdgeTo(mGraph, 'Main', 'Daten'), mLocation);
     Assert.AreEqual(1, Integer(mReads.Count));

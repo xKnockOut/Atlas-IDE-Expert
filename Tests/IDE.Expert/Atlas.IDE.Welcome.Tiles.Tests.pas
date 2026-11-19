@@ -143,9 +143,11 @@ var
   mSection: TAtlasWelcomeSection;
 begin
   mRegistry := TAtlasModuleRegistry.Create;
-  mSections := TAtlasWelcomeSections.Create;
-  mTiles := TAtlasIdeWelcomeTiles.Create(mRegistry, mSections);
+  mSections := nil;
+  mTiles := nil;
   try
+    mSections := TAtlasWelcomeSections.Create;
+    mTiles := TAtlasIdeWelcomeTiles.Create(mRegistry, mSections);
     mTiles.Start(NewAccess(''));
     Assert.AreEqual(0, Integer(Length(mTiles.TileIds)), 'ohne Modul keine Kachel');
     mTile := TFakeTile.Create;
@@ -186,10 +188,13 @@ var
   mControl: TWinControl;
 begin
   mRegistry := TAtlasModuleRegistry.Create;
-  mSections := TAtlasWelcomeSections.Create;
-  mTiles := TAtlasIdeWelcomeTiles.Create(mRegistry, mSections);
-  mOwner := TComponent.Create(nil);
+  mSections := nil;
+  mTiles := nil;
+  mOwner := nil;
   try
+    mSections := TAtlasWelcomeSections.Create;
+    mTiles := TAtlasIdeWelcomeTiles.Create(mRegistry, mSections);
+    mOwner := TComponent.Create(nil);
     mTiles.Start(NewAccess(''));
     mTile := TFakeTile.Create;
     mKeep := mTile;
@@ -229,9 +234,11 @@ var
   mBoard: IAtlasWelcomeBoard;
 begin
   mRegistry := TAtlasModuleRegistry.Create;
-  mSections := TAtlasWelcomeSections.Create;
-  mTiles := TAtlasIdeWelcomeTiles.Create(mRegistry, mSections);
+  mSections := nil;
+  mTiles := nil;
   try
+    mSections := TAtlasWelcomeSections.Create;
+    mTiles := TAtlasIdeWelcomeTiles.Create(mRegistry, mSections);
     mTiles.Start(NewAccess('C:\P\Kasse.dproj'));
     Assert.IsTrue(Supports(FirstOf(mRegistry, IAtlasWelcomeProjects), IAtlasWelcomeProjects, mProjects));
     Assert.IsTrue(Supports(FirstOf(mRegistry, IAtlasWelcomeBoard), IAtlasWelcomeBoard, mBoard));

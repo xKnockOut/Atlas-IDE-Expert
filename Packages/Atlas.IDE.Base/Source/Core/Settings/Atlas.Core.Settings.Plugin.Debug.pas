@@ -327,6 +327,11 @@ type
     /// Ausführungspunkts gedimmt die Zeit seit dem letzten Halt („+124 ms“, ohne angehaltene Zeit); Klick zeigt die
     /// letzten 20 Messungen. Aus = nichts gezeichnet.</summary>
     DebugShowElapsed: Boolean;
+    /// <summary>Rückgabewerte (#844, debug.returnValues, experimentell): Nach F8 über eine Zeile mit Aufrufen eigener
+    /// Funktionen bzw. Umschalt+F8 in einer eigenen Funktion steht am Ende der Aufrufzeile gedimmt
+    /// „→ Name = Wert“; Klick zeigt die letzten 20. Setzt dafür vorübergehende Haltepunkte auf die end-Zeilen.
+    /// Aus = keine Haltepunkte, keine Anzeige.</summary>
+    DebugReturnValues: Boolean;
     /// <summary>Fenster „Variablen“ (#853, debug.variablesWindow): andockbares Fenster mit den Reitern Autos
     /// (Ausdrücke der aktuellen und der vorigen Anweisung, ohne Aufrufe), Lokal und Überwachung, Suche nach Name
     /// oder Wert. Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
@@ -636,6 +641,7 @@ begin
   DebugWhyHere := True;
   DebugWhyHereDepth := cDefaultWhyHereDepth;
   DebugShowElapsed := True;
+  DebugReturnValues := False;
   DebugVariablesWindow := True;
   DebugVariablesSearchDepth := cDefaultVariablesSearchDepth;
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
@@ -685,6 +691,7 @@ begin
   AIo.Flag('DebugWhyHere', DebugWhyHere);
   AIo.Number('DebugWhyHereDepth', DebugWhyHereDepth);
   AIo.Flag('DebugShowElapsed', DebugShowElapsed);
+  AIo.Flag('DebugReturnValues', DebugReturnValues);
   AIo.Flag('DebugVariablesWindow', DebugVariablesWindow);
   AIo.Number('DebugVariablesSearchDepth', DebugVariablesSearchDepth);
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);

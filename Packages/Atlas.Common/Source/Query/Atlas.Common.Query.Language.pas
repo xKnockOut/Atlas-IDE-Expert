@@ -938,9 +938,11 @@ begin
   begin
     raise EQueryError.Create(cTexts[TLanguageText.EmptyQueryExampleClassesWhere].Text, 1, '');
   end;
-  mParser := TQueryParser.Create;
-  mAst := TQueryAst.Create;
+  mParser := nil;
+  mAst := nil;
   try
+    mParser := TQueryParser.Create;
+    mAst := TQueryAst.Create;
     mAst.Text := AText;
     mAst.Limit := -1;
     mParser.FTokens := TQueryLexer.Tokenize(AText);

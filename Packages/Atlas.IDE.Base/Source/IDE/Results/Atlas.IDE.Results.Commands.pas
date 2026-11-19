@@ -92,7 +92,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Notifications.MessageSink;
 
 const
   // Beim Tippen: lieber leer als die IDE aufhalten.
@@ -321,19 +322,12 @@ end;
 
 class function TAtlasIdeResults.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class procedure TAtlasIdeResults.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasMessageSink.Create(FMessage).Say(AText);
 end;
 
 class function TAtlasIdeResults.AtCursor(out AFileName: string; out ALine, ACharacter: Integer;

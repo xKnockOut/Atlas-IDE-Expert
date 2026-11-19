@@ -248,7 +248,7 @@ var
   mPanel: TWinControl;
   mTitle: TLabel;
 begin
-  AddSheet(TAtlasTextId.SettingsTabGeneral);
+  AddSheet(TAtlasSettingsTextId.SettingsTabGeneral);
   BindCheck('Enabled', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEnabled)));
   // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
   mPanel := AddPanel(cHeadingHeight);

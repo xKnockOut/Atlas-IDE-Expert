@@ -575,13 +575,8 @@ begin
 end;
 
 class procedure TAtlasIdeExitPoints.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 class procedure TAtlasIdeExitPoints.Install(const ASession: TAtlasExitPointsSessionFunc);

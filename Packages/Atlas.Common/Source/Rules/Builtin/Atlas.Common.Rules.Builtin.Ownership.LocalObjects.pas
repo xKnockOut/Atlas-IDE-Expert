@@ -17,8 +17,10 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Registry;
+  Atlas.Common.Rules.Registry,
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
 
 const
   cLocalObjectNotFreedRuleId = 'local-object-not-freed';
@@ -37,6 +39,40 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  /// <summary>Ein Aufruf T.Create(…) bzw. T.Create: Klasse, ob Argumente folgen, erstes Argument (Name oder nil).
+  /// </summary>
+  TConstructorCall = record
+    Node: TSyntaxNode;
+    ClassName: string;
+    HasArguments: Boolean;
+    FirstArgument: string;
+  end;
+
+  /// <summary>Erkennung neuer Objekte ohne Besitzer, gemeinsam für local-object-not-freed und multiple-create-in-try:
+  /// Klassen, deren Vorfahren bis TObject bekannt sind (Datei, Index oder eine bekannte RTL-Klasse), Komponenten nur
+  /// ohne Owner bzw. mit nil.</summary>
+  TOwnerlessObjects = record
+  private
+    FRoot: TSyntaxNode;
+    FAncestry: TAncestry;
+  public
+    /// <summary>ARoot: Wurzel des Syntaxbaums der Datei; AAncestry gehört dem Aufrufer.</summary>
+    class function Create(ARoot: TSyntaxNode; AAncestry: TAncestry): TOwnerlessObjects; static;
+    /// <summary>Ist AClassName eine Klasse? Records, Arrays und Interfaces der Datei bzw. des Index und bekannte
+    /// Records der RTL nicht; unbekannte Namen gelten als Klasse.</summary>
+    function IsClass(const AClassName: string): Boolean;
+    /// <summary>Bleibt das von ACall erzeugte Objekt ohne Besitzer?</summary>
+    function IsLost(const ACall: TConstructorCall): Boolean;
+    /// <summary>Ist AClassName sicher eine Klasse (Vorfahren bis TObject bekannt oder bekannte RTL-Klasse)?</summary>
+    function IsKnownClass(const AClassName: string): Boolean;
+  end;
+
+/// <summary>Ist AValue ein Konstruktoraufruf T.Create(…), T.CreateFmt(…) … über einen Typnamen?</summary>
+function ConstructorCall(AValue: TSyntaxNode; out ACall: TConstructorCall): Boolean;
+
+/// <summary>Typ einer Variablendeklaration (VarDecl oder InlineVar); '' ohne Typangabe.</summary>
+function DeclaredType(ADecl: TSyntaxNode): string;
+
 /// <summary>Registriert local-object-not-freed und created-result-not-freed.</summary>
 procedure RegisterOwnershipLocalObjectRules(const ARegistry: TRuleRegistry);
 
@@ -48,7 +84,6 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
@@ -164,17 +199,6 @@ begin
   end;
 end;
 
-/// <summary>Ein Aufruf T.Create(…) bzw. T.Create: Klasse, ob Argumente folgen, erstes Argument (Name oder nil).
-/// </summary>
-type
-  TConstructorCall = record
-    Node: TSyntaxNode;
-    ClassName: string;
-    HasArguments: Boolean;
-    FirstArgument: string;
-  end;
-
-/// <summary>Ist AValue ein Konstruktoraufruf T.Create(…), T.CreateFmt(…) … über einen Typnamen?</summary>
 function ConstructorCall(AValue: TSyntaxNode; out ACall: TConstructorCall): Boolean;
 var
   mAccess: TSyntaxNode;
@@ -210,14 +234,12 @@ type
     FLines: TArray<string>;
     FLineBreak: string;
     FAncestry: TAncestry;
+    FObjects: TOwnerlessObjects;
     FDerived: IRuleDerivedCache;
     /// <summary>Kurznamen der Funktionen der Datei, die immer ein neues Objekt liefern (Wert True), bzw. nicht.
     /// </summary>
     FFactories: TDictionary<string, Boolean>;
     FOptionFactories: TArray<string>;
-    function IsClass(const AClassName: string): Boolean;
-    function KindOf(const AClassName: string): TLocalClassKind;
-    function IsLost(const ACall: TConstructorCall): Boolean;
     function IsFactoryRoutine(ARoutine: TSyntaxNode): Boolean;
     procedure CollectFactories;
     function FactoryCall(AValue: TSyntaxNode; out AName: string): Boolean;
@@ -291,7 +313,6 @@ begin
   Result := mFound;
 end;
 
-/// <summary>Typ einer Variablendeklaration (VarDecl oder InlineVar); '' ohne Typangabe.</summary>
 function DeclaredType(ADecl: TSyntaxNode): string;
 begin
   Result := '';
@@ -373,33 +394,20 @@ begin
   Result := mOk;
 end;
 
-{ TLocalObjectScan }
+{ TOwnerlessObjects }
 
-constructor TLocalObjectScan.Create(const AContext: TRuleContext; const AReport: IRuleReport;
-  AMode: TLocalScanMode);
+class function TOwnerlessObjects.Create(ARoot: TSyntaxNode; AAncestry: TAncestry): TOwnerlessObjects;
 begin
-  inherited Create;
-  FContext := AContext;
-  FReport := AReport;
-  FMode := AMode;
-  FFactories := TDictionary<string, Boolean>.Create;
+  Result.FRoot := ARoot;
+  Result.FAncestry := AAncestry;
 end;
 
-destructor TLocalObjectScan.Destroy;
-begin
-  FFactories.Free;
-  FAncestry.Free;
-  inherited Destroy;
-end;
-
-/// <summary>Ist AClassName eine Klasse? Records, Arrays und Interfaces der Datei bzw. des Index und bekannte
-/// Records der RTL nicht; unbekannte Namen gelten als Klasse.</summary>
-function TLocalObjectScan.IsClass(const AClassName: string): Boolean;
+function TOwnerlessObjects.IsClass(const AClassName: string): Boolean;
 var
   mBody: TSyntaxNode;
   mType: TSymbolLocation;
 begin
-  mBody := TRoutineBody.TypeBody(FContext.Tree.Root, AClassName);
+  mBody := TRoutineBody.TypeBody(FRoot, AClassName);
   if mBody <> nil then
   begin
     Result := mBody.Kind = TSyntaxKind.ClassType;
@@ -408,18 +416,19 @@ begin
   begin
     Result := not FAncestry.FindAnyType(AClassName, mType) or (mType.Symbol.Kind = TIndexSymbolKind.ClassType);
   end;
-  Result := Result and not InList(AClassName, cNoObjectTypes);
+  // Bekannte RTL-Klassen auch dann, wenn ein anderes RTL (FPC) sie als Alias führt (TStringBuilder).
+  Result := (Result or InList(AClassName, cRtlClasses)) and not InList(AClassName, cNoObjectTypes);
 end;
 
 /// <summary>Art der Klasse über die Vorfahren in Datei und Index; Unknown, wenn die Kette vor TObject abbricht.
 /// </summary>
-function TLocalObjectScan.KindOf(const AClassName: string): TLocalClassKind;
+function KindOf(const AObjects: TOwnerlessObjects; const AClassName: string): TLocalClassKind;
 var
   mName: string;
   mDepth: Integer;
 begin
   Result := TLocalClassKind.NoClass;
-  if not IsClass(AClassName) then
+  if not AObjects.IsClass(AClassName) then
   begin
     Exit;
   end;
@@ -440,18 +449,18 @@ begin
     begin
       Result := TLocalClassKind.Plain;
     end;
-    mName := FAncestry.ParentOf(mName);
+    mName := AObjects.FAncestry.ParentOf(mName);
     Inc(mDepth);
   end;
 end;
 
 /// <summary>Bleibt das erzeugte Objekt ohne Besitzer? Nur Klassen, deren Vorfahren bis TObject bekannt sind (Datei,
 /// Index oder eine bekannte RTL-Klasse); Komponenten nur ohne Owner bzw. mit nil.</summary>
-function TLocalObjectScan.IsLost(const ACall: TConstructorCall): Boolean;
+function TOwnerlessObjects.IsLost(const ACall: TConstructorCall): Boolean;
 var
   mKind: TLocalClassKind;
 begin
-  mKind := KindOf(ACall.ClassName);
+  mKind := KindOf(Self, ACall.ClassName);
   if (mKind = TLocalClassKind.Unknown) and InList(ACall.ClassName, cRtlClasses) then
   begin
     mKind := TLocalClassKind.Plain;
@@ -465,6 +474,31 @@ begin
     not MatchText(ACall.FirstArgument, ['Self', 'Owner', 'AOwner', 'Application']));
 end;
 
+function TOwnerlessObjects.IsKnownClass(const AClassName: string): Boolean;
+begin
+  Result := (KindOf(Self, AClassName) in [TLocalClassKind.Plain, TLocalClassKind.Component, TLocalClassKind.Thread]) or
+    (IsClass(AClassName) and InList(AClassName, cRtlClasses));
+end;
+
+{ TLocalObjectScan }
+
+constructor TLocalObjectScan.Create(const AContext: TRuleContext; const AReport: IRuleReport;
+  AMode: TLocalScanMode);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FMode := AMode;
+  FFactories := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TLocalObjectScan.Destroy;
+begin
+  FFactories.Free;
+  FAncestry.Free;
+  inherited Destroy;
+end;
+
 /// <summary>Liefert ARoutine immer ein neues Objekt ohne Owner? Der Ergebnistyp ist eine Klasse (kein Record aus
 /// einer Klassenfunktion Create), alle Zuweisungen an Result sind T.Create, Result wird sonst nur über seine
 /// Mitglieder benutzt oder freigegeben (Aufräumen im except), nie weitergegeben.</summary>
@@ -476,7 +510,8 @@ var
   mCall: TConstructorCall;
   mCreates: Boolean;
 begin
-  if (ResultType(ARoutine) = '') or LooksLikeInterface(ResultType(ARoutine)) or not IsClass(ResultType(ARoutine)) or
+  if (ResultType(ARoutine) = '') or LooksLikeInterface(ResultType(ARoutine)) or
+    not FObjects.IsClass(ResultType(ARoutine)) or
     (TRoutineBody.BodyOf(ARoutine) = nil) or HasAsmOrWith(ARoutine) then
   begin
     Exit(False);
@@ -488,7 +523,7 @@ begin
     mUse := Classify(mNode);
     if mUse = TLocalUse.Alloc then
     begin
-      if not ConstructorCall(mNode.Parent[1], mCall) or not IsLost(mCall) then
+      if not ConstructorCall(mNode.Parent[1], mCall) or not FObjects.IsLost(mCall) then
       begin
         Exit(False);
       end;
@@ -576,7 +611,7 @@ begin
   end;
   if FMode = TLocalScanMode.Constructors then
   begin
-    Result := ConstructorCall(AValue, mCall) and IsLost(mCall);
+    Result := ConstructorCall(AValue, mCall) and FObjects.IsLost(mCall);
     AWhat := mCall.ClassName;
   end
   else
@@ -803,6 +838,7 @@ begin
   end;
   FDerived := TRuleDerived.Open(FContext);
   FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(FDerived, FContext));
+  FObjects := TOwnerlessObjects.Create(FContext.Tree.Root, FAncestry);
   if FMode = TLocalScanMode.Factories then
   begin
     FOptionFactories := TRuleOptions.Strings(FContext.Options, 'factories', nil);

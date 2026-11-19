@@ -90,7 +90,8 @@ implementation
 
 uses
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Core.Notifications.MessageSink;
 
 /// <summary>Zeile ARow (1-basiert) von ALines, '' außerhalb.</summary>
 function LineAt(const ALines: TArray<string>; ARow: Integer): string;
@@ -112,19 +113,12 @@ end;
 
 class function TAtlasEditorCommandContext.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class procedure TAtlasEditorCommandContext.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasMessageSink.Create(FMessage).Say(AText);
 end;
 
 class function TAtlasEditorCommandContext.Current(out AView: IOTAEditView; out AFileName: string;

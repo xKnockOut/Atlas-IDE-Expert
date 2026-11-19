@@ -287,11 +287,14 @@ var
   mEntries: TArray<TProtectedPath>;
   mReport, mError: string;
 begin
-  mFiles := TProtectedTestFiles.Create;
-  mEdit := NewTools(mFiles);
-  mEntries := [Entry('U.pas', 'Fremdcode', '')];
-  mProtection := TMcpProtectedFiles.Create('', mEntries);
+  mFiles := nil;
+  mEdit := nil;
+  mProtection := nil;
   try
+    mFiles := TProtectedTestFiles.Create;
+    mEdit := NewTools(mFiles);
+    mEntries := [Entry('U.pas', 'Fremdcode', '')];
+    mProtection := TMcpProtectedFiles.Create('', mEntries);
     mFiles.Files.Add('U.pas', cAssignedFree);
     mEdit.ProtectedReport := ReportOf(mProtection);
     mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],

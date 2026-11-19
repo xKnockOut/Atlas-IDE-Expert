@@ -50,7 +50,6 @@ uses
   Vcl.StdCtrls,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Settings.Page.EditorView,
@@ -83,16 +82,16 @@ procedure AssertTreeAreas(APage: TAtlasSettingsPage; const AAreas: TArray<TTreeN
 var
   mIndex: Integer;
 begin
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), AAreas[0].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), AAreas[6].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRules), AAreas[7].Text);
+  Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabGeneral), AAreas[0].Text);
+  Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabCompiler), AAreas[6].Text);
+  Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabRules), AAreas[7].Text);
   // Ohne angemeldete Module nur die Bereiche von Base (#1456): Debuggen, Release-Build, Willkommensseite und
   // Issue-Tracker bringen die Module als Abschnitte mit.
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCommands), AAreas[8].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), AAreas[11].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), AAreas[12].Text);
+  Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabCommands), AAreas[8].Text);
+  Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabUndo), AAreas[11].Text);
+  Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabUnitSearch), AAreas[12].Text);
   // Versionsverwaltung bringt das Modul als Abschnitt mit (#1905).
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), AAreas[13].Text);
+  Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabTeamFile), AAreas[13].Text);
   Assert.IsTrue(APage.Pages.PageCount > 13, 'Unterpunkte haben eigene Seiten');
   for mIndex := 0 to APage.Pages.PageCount - 1 do
   begin
@@ -128,7 +127,7 @@ begin
     mNode := TreeNodeOf(mPage, mMinimap);
     Assert.IsNotNull(mNode, 'Knoten im Baum');
     Assert.AreEqual(1, mNode.Level);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabEditor), mNode.Parent.Text);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTabEditor), mNode.Parent.Text);
     mPage.Navigation.OnChange(mPage.Navigation, mAreas[11]);
     Assert.AreEqual('', mPage.NodeOfSheet(mPage.Pages.ActivePage), 'Hauptknoten zeigt den Bereich');
     mPage.Navigation.OnChange(mPage.Navigation, mNode);
