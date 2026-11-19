@@ -42,7 +42,7 @@ uses
   Atlas.Text.Json,
   Atlas.Text.TestResults,
   Atlas.Common.Lsp.IdeBuild,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Mutation.Contract,
   Atlas.Common.Mutation.Report,

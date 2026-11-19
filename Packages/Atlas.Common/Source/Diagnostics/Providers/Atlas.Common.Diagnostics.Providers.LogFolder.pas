@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Diagnostics.Adapters.LogFolder;
+﻿unit Atlas.Common.Diagnostics.Providers.LogFolder;
 
 // Ziel des Diagnoselogs (#647): Tagesdateien in einem Ordner, je Prozess eine
 // eigene ("diag-JJJJMMTT-<Kennung>.log"), damit mehrere Server (jede IDE

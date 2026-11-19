@@ -11,7 +11,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Processes,
-  Atlas.Common.Index.Adapters.Processes,
+  Atlas.Common.Index.ProcessFiles,
   Shell.Workspace.Setup;
 
 type
@@ -73,7 +73,7 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Index.CacheHousekeeping,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;

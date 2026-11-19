@@ -97,6 +97,9 @@ type
     function Dropped: Integer;
   end;
 
+  /// <summary>Datei im Projekt zu Unit bzw. Dateiname aus einem Bericht; '' unbekannt.</summary>
+  TReportUnitFileFunc = reference to function(const AUnitName, AFileName: string): string;
+
 const
   cDiagnosticEndReasonCodes: array[TDiagnosticEndReason] of string = ('clean', 'inputClosed', 'parentExited',
     'exception');

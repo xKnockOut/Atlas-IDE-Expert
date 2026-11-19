@@ -82,7 +82,8 @@
         <DCCReference Include="Source\Process\Atlas.Windows.Process.ParentWatcher.pas"/>
         <DCCReference Include="Source\Process\Atlas.Windows.Process.Instances.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Windows.Profiling.Adapters.Sampler.pas"/>
-        <DCCReference Include="Source\Projects\Atlas.Windows.Projects.DelphiInstallation.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Windows.Projects.Adapters.DelphiInstallation.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Windows.Projects.DelphiRegistry.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.PathCanonicalizer.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.FileWatcher.pas"/>
@@ -96,8 +97,8 @@
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Network.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Archive.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Builder.pas"/>
-        <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.Adapters.System.pas"/>
-        <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.Adapters.Process.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.System.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Windows.Monitor.ChildProcess.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

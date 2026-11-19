@@ -2,7 +2,8 @@
 
 // Gruppen und Listen des Erzeugen-Menüs (#719), wie sie in den Einstellungen stehen
 // (keys.generateMenu.groups, keys.generateMenu.hidden). Eigene Unit, damit die Einstellungen sie
-// normalisieren können, ohne das Menü (und darüber den LSP-Client) zu importieren.
+// normalisieren können, ohne das Menü (und darüber den LSP-Client) zu importieren. Dazu die Art einer neuen
+// Datei (TAtlasNewFileKind), die die Willkommensseite in ihrer Quelle für „Neu mit Atlas“ trägt.
 
 interface
 
@@ -10,6 +11,8 @@ type
   {$SCOPEDENUMS ON}
   /// <summary>Recent ist keine eigene Herkunft, nur die Gruppe „Zuletzt gewählt“ oben.</summary>
   TAtlasGenerateGroup = (Recent, Generate, Surround, Templates);
+  /// <summary>Knöpfe „Neu mit Atlas“ (Willkommensseite, TAtlasFileTemplates) in ihrer Reihenfolge.</summary>
+  TAtlasNewFileKind = (UnitFile, FormFile, TestFile);
   {$SCOPEDENUMS OFF}
 
   TAtlasGenerateLists = record

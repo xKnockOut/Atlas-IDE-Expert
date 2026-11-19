@@ -30,7 +30,7 @@ uses
   System.JSON,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.IdeProject,
-  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Compiler.Contract,

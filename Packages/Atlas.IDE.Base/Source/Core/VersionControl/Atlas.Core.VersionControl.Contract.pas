@@ -109,6 +109,10 @@ type
 
   /// <summary>Update mit oder ohne Externals (#1292, vcs.externals.update); Ask fragt beim Pull.</summary>
   TAtlasVcsExternalsUpdate = (WithExternals, WithoutExternals, Ask);
+
+  /// <summary>Ergebnis von Pull (TAtlasVcsPull): neue Commits geholt, schon aktuell, wegen lokaler Änderungen nicht
+  /// geholt, keine Arbeitskopie, Fehler (auch Zeitüberschreitung oder fehlendes Programm).</summary>
+  TAtlasPullOutcome = (Updated, UpToDate, Blocked, NoWorkingCopy, Failed);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Feste Behandlung je Quelle (#1291, vcs.externals.rules): Source ist ein Präfix einer Repository-URL
