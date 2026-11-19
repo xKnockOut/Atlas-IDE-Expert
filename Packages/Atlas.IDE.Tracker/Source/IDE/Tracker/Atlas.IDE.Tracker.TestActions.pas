@@ -14,10 +14,10 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.TestResults,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Tracker.Contract.TestResults;
 
 type
   /// <summary>Aktionen der Kachel: Projekt öffnen, Test öffnen, ausführen und debuggen, Seite des Builds.</summary>
@@ -230,34 +230,20 @@ begin
   end;
 end;
 
-/// <summary>Vergleich des ersten laufenden Moduls (#1779); False ohne. Jedes Mal neu gefragt (Regel 3).</summary>
-function FindTestValues(out AValues: IAtlasTestValues): Boolean;
-var
-  mItem: IInterface;
-begin
-  AValues := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestValues) do
-  begin
-    if Supports(mItem, IAtlasTestValues, AValues) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasTestResultsActions.CanCompare(const AItem: TAtlasTestFailureItem): Boolean;
 var
   mValues: IAtlasTestValues;
 begin
-  Result := AItem.Local and (AItem.Test <> '') and FindTestValues(mValues) and mValues.HasValues(AItem.Test);
+  // Vergleich des ersten laufenden Moduls (#1779); jedes Mal neu gefragt (Regel 3).
+  Result := AItem.Local and (AItem.Test <> '') and
+    TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasTestValues, mValues) and mValues.HasValues(AItem.Test);
 end;
 
 class procedure TAtlasTestResultsActions.Compare(const AItem: TAtlasTestFailureItem);
 var
   mValues: IAtlasTestValues;
 begin
-  if (AItem.Test <> '') and FindTestValues(mValues) then
+  if (AItem.Test <> '') and TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasTestValues, mValues) then
   begin
     mValues.Compare(AItem.Test);
   end;

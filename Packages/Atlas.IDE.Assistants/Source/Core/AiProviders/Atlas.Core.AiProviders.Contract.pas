@@ -8,7 +8,7 @@
 //   Läuft im Hintergrund-Thread; blockiert bis zur Antwort, zum Zeitlimit oder
 //   zum Abbruch über IAtlasAiHttp.Cancel.
 // - IAtlasAiHttp ist der Transport (HTTPS über THTTPClient in
-//   Atlas.Core.AiProviders.Adapters.Http); Tests setzen eine Attrappe ein.
+//   Atlas.Core.AiProviders.Providers.Http); Tests setzen eine Attrappe ein.
 // - Schlüssel liest ein Anbieter erst beim Senden aus dem Anmeldespeicher von
 //   Windows (TAtlasAiKeys.Target); sie stehen nie in Einstellungen, Dateien
 //   oder Protokollen, auch nicht in Fehlermeldungen.

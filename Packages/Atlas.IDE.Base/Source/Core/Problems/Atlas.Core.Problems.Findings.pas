@@ -35,8 +35,8 @@
 // - Fehler der IDE (#1819, problems.ideErrors): Die Befunde kommen aus
 //   WithIde des Speichers, abgeglichen mit Error Insight. Spalte „Quelle“
 //   (Atlas, Atlas + IDE, IDE) und Filter Origin (alle, nur Atlas, nur IDE).
-// - IAtlasBulkFixer: Vertrag der Sammelkorrektur (#1352) für das Modul
-//   Prüfregeln (#1455).
+// - IAtlasBulkFixer (Atlas.Core.Problems.Contract): Vertrag der Sammelkorrektur
+//   (#1352) für das Modul Prüfregeln (#1455).
 
 interface
 
@@ -44,64 +44,25 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Problems.IdeErrors,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin;
 
 type
   {$SCOPEDENUMS ON}
-  /// <summary>Spalte „Art“: Error (auch Bug), Warnung, Info (information und hint).</summary>
-  TAtlasFindingKind = (Error, Warning, Info);
-  TAtlasFindingCategory = (Bug, Vulnerability, CodeSmell, SecurityHotspot, Compiler, Other);
+  TAtlasFindingKind = Atlas.Core.Problems.Contract.TAtlasFindingKind;
+  TAtlasFindingCategory = Atlas.Core.Problems.Contract.TAtlasFindingCategory;
   TAtlasFindingColumn = (Icon, Kind, Category, Message, Line, Location, Rule, Compiler, Source);
   /// <summary>Filter „Quelle“ (#1819): Atlas und IDE (alle), nur Atlas, nur IDE.</summary>
   TAtlasFindingOrigin = (All, AtlasOnly, IdeOnly);
   TAtlasFindingScope = (CurrentFile, Project, Group);
   TAtlasFindingGrouping = (None, ByFile, ByRule, ByCategory);
-  /// <summary>Stufe einer Datei (#1108): Datei des oberen Editors, in der IDE geöffnet, nicht geöffnet.</summary>
-  TAtlasFindingTier = (Active, Open, Closed);
+  TAtlasFindingTier = Atlas.Core.Problems.Contract.TAtlasFindingTier;
   /// <summary>Darstellung nicht geöffneter Units (problems.window.closedUnits).</summary>
   TAtlasClosedUnits = (Dimmed, Normal, Hidden);
   {$SCOPEDENUMS OFF}
   TAtlasFindingKinds = set of TAtlasFindingKind;
 
-  TAtlasFinding = record
-    FileName: string;
-    Problem: TAtlasProblem;
-    Kind: TAtlasFindingKind;
-    Category: TAtlasFindingCategory;
-    /// <summary>Betroffene Quelltextzeile ohne führenden und folgenden Leerraum; '' wenn unbekannt.</summary>
-    LineText: string;
-    /// <summary>Datei, Regel, Meldung und laufende Nummer: unabhängig von der Zeile.</summary>
-    Key: string;
-    /// <summary>Stufe der Datei (#1108); setzt TAtlasFindingsView aus den geöffneten Dateien.</summary>
-    Tier: TAtlasFindingTier;
-    /// <summary>"Unit1.pas:12:5" (1-basiert).</summary>
-    function Location: string;
-    /// <summary>Zeilentext, gekürzt auf AMax Zeichen mit „…“.</summary>
-    function ShortLine(AMax: Integer): string;
-    /// <summary>Regel-ID bzw. Meldungsnummer des Compilers.</summary>
-    function Rule: string;
-    /// <summary>Spalte „Compiler“ (#1024): "E2035", "E2034, E2035" oder "E2035 · Atlas + dcc" bei einem vom
-    /// Build bestätigten Befund; '' ohne Code.</summary>
-    function CompilerText: string;
-    /// <summary>Spalte „Quelle“ (#1819): "Atlas", "Atlas + IDE", "IDE" bzw. die Quelle (dcc, DUnitX, Aufgabe).
-    /// </summary>
-    function SourceText: string;
-    /// <summary>Meldung; ohne AShowCompilerCode (problems.showCompilerCode aus) ohne „(wie E2035)“.</summary>
-    function MessageText(AShowCompilerCode: Boolean): string;
-  end;
-
-  /// <summary>Sammelkorrektur (#1352) im Kontextmenü von „Atlas-Prüfung“; ein Modul stellt sie bereit (#1455, Modul
-  /// Prüfregeln), das Fenster fragt laufende Module. Ohne Modul fehlt der Eintrag.</summary>
-  IAtlasBulkFixer = interface
-    ['{3B7E2D91-5A4C-4F68-9E13-C82D6A0F7B54}']
-    /// <summary>Eintrag sichtbar (fix.bulk an).</summary>
-    function CanFixAll: Boolean;
-    /// <summary>Alle sicheren Treffer von ARule in den Dateien von AFindings (den angezeigten Befunden) korrigieren:
-    /// Vorschau, dann die gewählten Dateien. Nur im Hauptthread.</summary>
-    procedure FixAll(const ARule: string; const AFindings: TArray<TAtlasFinding>);
-  end;
+  TAtlasFinding = Atlas.Core.Problems.Contract.TAtlasFinding;
 
   TAtlasFindingColumnState = record
     Column: TAtlasFindingColumn;
@@ -279,51 +240,12 @@ implementation
 
 uses
   System.Math,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Problems.IdeErrors;
 
 const
   cCategoryNames: array[TAtlasFindingCategory] of string = ('bug', 'vulnerability', 'code-smell',
     'security-hotspot', 'compiler', '');
-
-{ TAtlasFinding }
-
-function TAtlasFinding.Location: string;
-begin
-  Result := Format('%s:%d:%d', [ExtractFileName(FileName), Problem.StartLine + 1, Problem.StartCharacter + 1]);
-end;
-
-function TAtlasFinding.ShortLine(AMax: Integer): string;
-begin
-  Result := TAtlasFindings.Shorten(LineText, AMax);
-end;
-
-function TAtlasFinding.Rule: string;
-begin
-  Result := Problem.Code;
-end;
-
-function TAtlasFinding.CompilerText: string;
-begin
-  Result := Problem.CompilerCodeText;
-  if Problem.Confirmed then
-  begin
-    Result := Result + ' ' + #$00B7 + ' ' + TAtlasFindings.cConfirmedMark;
-  end;
-end;
-
-function TAtlasFinding.SourceText: string;
-begin
-  Result := TAtlasIdeErrors.OriginText(Problem);
-end;
-
-function TAtlasFinding.MessageText(AShowCompilerCode: Boolean): string;
-begin
-  Result := Problem.Message;
-  if not AShowCompilerCode then
-  begin
-    Result := TAtlasProblem.WithoutCompilerCode(Result);
-  end;
-end;
 
 { TAtlasFindingColumnState }
 
@@ -648,11 +570,7 @@ end;
 
 class function TAtlasFindings.Shorten(const AText: string; AMax: Integer): string;
 begin
-  Result := AText.Trim;
-  if (AMax > 1) and (Length(Result) > AMax) then
-  begin
-    Result := Copy(Result, 1, AMax - 1).TrimRight + '…';
-  end;
+  Result := TAtlasFinding.Shorten(AText, AMax);
 end;
 
 /// <summary>Teil einer Spaltenliste („-rule:120“): Name, Breite (0 ohne) und ob ausgeblendet.</summary>

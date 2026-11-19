@@ -115,7 +115,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Core.Lsp.Framing,
+  Atlas.Core.Settings.Contract;
 
 type
   /// <summary>Zeile eines anderen Issues, ohne TAtlasStatusLine (Abnahme: erscheint ohne Änderung).</summary>

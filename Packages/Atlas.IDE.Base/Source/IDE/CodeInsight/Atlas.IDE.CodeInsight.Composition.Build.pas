@@ -33,7 +33,8 @@ procedure MetricsReport;
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections,
+  // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
   System.IOUtils,
@@ -42,7 +43,6 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Pipeline,
-  Atlas.Core.Build.Verdict,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
@@ -58,7 +58,8 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Core.Build.Contract;
 
 {$SCOPEDENUMS ON}
 

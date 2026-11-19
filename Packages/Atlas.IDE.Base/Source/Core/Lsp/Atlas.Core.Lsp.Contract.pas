@@ -280,6 +280,47 @@ type
 
   TAtlasInlineValueRefs = TArray<TAtlasInlineValueRef>;
 
+  TLspSendProc = reference to procedure(const ABytes: TBytes);
+
+  /// <summary>Wie die Verbindung endete; Exit-Angaben setzt der Transport über CloseWith.</summary>
+  TLspCloseInfo = record
+    /// <summary>Exit-Code des Serverprozesses bekannt?</summary>
+    ExitKnown: Boolean;
+    ExitCode: Cardinal;
+    /// <summary>Laufzeit des Serverprozesses in ms; 0 = unbekannt.</summary>
+    RuntimeMs: Int64;
+    /// <summary>Zeilen, die der Server in diesem Lauf auf stderr schrieb.</summary>
+    ErrorLines: Integer;
+    /// <summary>Zuletzt gesendete Anfrage ohne Long-Polling; setzt der Client.</summary>
+    LastMethod: string;
+    /// <summary>Beim Ende noch offene Anfragen ohne Long-Polling; setzt der Client.</summary>
+    OpenMethods: TArray<string>;
+  end;
+
+  /// <summary>Clientseite einer Verbindung zum Sprachserver, wie der Transport sie bedient (#1443): empfangene
+  /// Bytes weiterreichen und das Ende melden; threadsicher. Umgesetzt von TLspClientConnection.</summary>
+  IAtlasLspConnection = interface
+    ['{83343D82-A49E-4B15-8A16-E392EDABAD7C}']
+    /// <summary>Empfangene Bytes vom Server (Lese-Thread).</summary>
+    procedure Receive(const ABytes: TBytes; ACount: Integer);
+    /// <summary>Verbindung beendet, mit den Angaben des Transports (Exit-Code, Laufzeit, stderr); nur das erste
+    /// Schließen zählt.</summary>
+    procedure CloseWith(const AInfo: TLspCloseInfo);
+    /// <summary>Verbindung beendet, ohne Angaben (Atlas beendet den Server selbst).</summary>
+    procedure Close;
+    function IsClosed: Boolean;
+  end;
+
+  /// <summary>Legt beim Start des Servers die Clientseite an; ASend schreibt an den Server.</summary>
+  TAtlasLspConnect = reference to function(const ASend: TLspSendProc): IAtlasLspConnection;
+
+  /// <summary>Laufender Sprachserver; die Freigabe beendet den Prozess und gibt die Clientseite frei. Den Prozess
+  /// startet die Kompositionswurzel (TLspServerProcess).</summary>
+  IAtlasLspServer = interface
+    ['{B13ADB82-A690-40EB-AECE-24A420893699}']
+    function Running: Boolean;
+  end;
+
 implementation
 
 uses

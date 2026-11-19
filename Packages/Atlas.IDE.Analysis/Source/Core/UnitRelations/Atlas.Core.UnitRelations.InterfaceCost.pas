@@ -53,19 +53,14 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 { TAtlasInterfaceCostModel }
 
 class function TAtlasInterfaceCostModel.Arguments(const AUri: string): string;
-var
-  mItems: TJSONArray;
 begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
-  end;
+  Result := TJsonText.List([AUri]);
 end;
 
 class function TAtlasInterfaceCostModel.Parse(const AJson: string; out ACost: TAtlasInterfaceCost): Boolean;

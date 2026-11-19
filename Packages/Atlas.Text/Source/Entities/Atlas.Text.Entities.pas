@@ -3,6 +3,7 @@
 // XML-Entities entschlüsseln (gemeinsam für Server und Plugin):
 // &lt; &gt; &amp; &quot; &apos; sowie numerische &#NN; und &#xNN;
 // (auch über U+FFFF als Surrogatpaar). Unbekanntes bleibt stehen.
+// Encode ist die Gegenrichtung für Text in HTML und XML: & < > " als Entity.
 
 interface
 
@@ -10,6 +11,9 @@ type
   TTextEntities = class
   public
     class function Decode(const AText: string): string; static;
+    /// <summary>Und-Zeichen, spitze Klammern und doppelte Anführungszeichen als Entity (Text und Attributwerte in
+    /// HTML/XML).</summary>
+    class function Encode(const AText: string): string; static;
     /// <summary>Zeichen zum Codepunkt; '' für 0, Surrogate und Werte über U+10FFFF.</summary>
     class function CodePointText(ACode: Integer): string; static;
   end;
@@ -28,6 +32,14 @@ const
   cHexPrefix = '#x';
 
 { TTextEntities }
+
+class function TTextEntities.Encode(const AText: string): string;
+begin
+  Result := StringReplace(AText, '&', '&amp;', [rfReplaceAll]);
+  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
+end;
 
 class function TTextEntities.CodePointText(ACode: Integer): string;
 begin

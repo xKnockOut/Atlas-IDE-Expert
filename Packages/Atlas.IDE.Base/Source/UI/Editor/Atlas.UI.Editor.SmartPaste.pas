@@ -24,7 +24,7 @@ uses
   Atlas.UI.Popup.Window;
 
 type
-  TAtlasSmartPasteWindow = class(TAtlasLayoutPopupWindow)
+  TAtlasSmartPasteWindow = class(TAtlasPickPopupWindow)
   public const
     /// <summary>Abstand unter der Einfügestelle, logische Pixel.</summary>
     cGap = 4;
@@ -35,7 +35,6 @@ type
     FAcceptRect: TRect;
     FCancelRect: TRect;
     FOnAccept: TProc;
-    FOnCancel: TProc;
     /// <summary>Zeile der Wahl AIndex bei AY; merkt die Flächen der Units und liefert das rechte Ende.</summary>
     function LayoutChoice(ADraw: Boolean; AIndex, AY, ATextHeight: Integer): Integer;
     /// <summary>Fußzeile „Übernehmen · Verwerfen“ bei AY; merkt beide Flächen und liefert das rechte Ende.</summary>
@@ -49,7 +48,6 @@ type
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeigt AAnalysis unter APoint (Bildschirm).</summary>
     procedure ShowFor(const AAnalysis: TAtlasPasteAnalysis; const APoint: TPoint);
-    procedure Dismiss;
     /// <summary>Nächste bzw. vorige Zeile mit Auswahl; False ohne Auswahlzeilen.</summary>
     function MoveRow(ADelta: Integer): Boolean;
     /// <summary>Nächste bzw. vorige Unit der aktuellen Zeile (keine, dann die Units); False ohne
@@ -60,13 +58,11 @@ type
     /// <summary>Fläche der Wahl AOption (-1 = keine) in Zeile ARow; leer, wenn es sie nicht gibt.</summary>
     function OptionRect(ARow, AOption: Integer): TRect;
     procedure Accept;
-    procedure Cancel;
     function AcceptRect: TRect;
     property Analysis: TAtlasPasteAnalysis read FAnalysis;
     property Row: Integer read FRow;
     property Caption: string read Title;
     property OnAccept: TProc read FOnAccept write FOnAccept;
-    property OnCancel: TProc read FOnCancel write FOnCancel;
   end;
 
 implementation
@@ -294,11 +290,6 @@ begin
   Announce(Title);
 end;
 
-procedure TAtlasSmartPasteWindow.Dismiss;
-begin
-  HidePopup;
-end;
-
 function TAtlasSmartPasteWindow.MoveRow(ADelta: Integer): Boolean;
 var
   mCount: Integer;
@@ -362,15 +353,6 @@ begin
   if Assigned(FOnAccept) then
   begin
     FOnAccept();
-  end;
-end;
-
-procedure TAtlasSmartPasteWindow.Cancel;
-begin
-  Dismiss;
-  if Assigned(FOnCancel) then
-  begin
-    FOnCancel();
   end;
 end;
 

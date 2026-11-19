@@ -13,8 +13,10 @@ interface
 
 uses
   System.SyncObjs,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Files.Contract,
   Atlas.Core.Files.WatchedChanges,
   Atlas.IDE.CodeInsight.Manager.State;
 
@@ -42,10 +44,11 @@ type
     function EnsureSession: Boolean;
     /// <summary>Server starten und Sitzung aufbauen; nur aus EnsureSession, nur im Hauptthread.</summary>
     function StartSession: Boolean;
-    /// <summary>Server starten; sein Ende färbt das Statusfeld sofort (#591).</summary>
-    procedure ConnectServer(const APath, AArguments: string);
+    /// <summary>Server starten; sein Ende färbt das Statusfeld sofort (#591).
+    /// AClient: Clientseite der Verbindung; gehört dem Server und lebt so lange wie er.</summary>
+    procedure ConnectServer(const APath, AArguments: string; out AClient: TLspClient);
     /// <summary>Sitzung auf dem neuen Server anlegen und initialisieren; ADocuments wieder öffnen (#393).</summary>
-    procedure OpenSession(const ADocuments: TArray<TLspOpenDocument>);
+    procedure OpenSession(AClient: TLspClient; const ADocuments: TArray<TLspOpenDocument>);
     /// <summary>Eintrag „Server neu gestartet“ ab dem zweiten Start (#601).</summary>
     procedure NotifyRestart(ACrashed: Boolean; APreviousStart: TDateTime; AReopened: Integer);
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
@@ -222,6 +225,7 @@ end;
 function TAtlasCodeInsightSession.StartSession: Boolean;
 var
   mPath, mArguments: string;
+  mClient: TLspClient;
   mDocuments: TArray<TLspOpenDocument>;
   mCrashed: Boolean;
   mPreviousStart: TDateTime;
@@ -253,8 +257,8 @@ begin
   end;
   SetPhase(TAtlasServerPhase.Starting, '');
   try
-    ConnectServer(mPath, mArguments);
-    OpenSession(mDocuments);
+    ConnectServer(mPath, mArguments, mClient);
+    OpenSession(mClient, mDocuments);
     FLastError := '';
     FStartedAt := Now;
     SetPhase(TAtlasServerPhase.Running, '');
@@ -276,12 +280,17 @@ begin
   end;
 end;
 
-procedure TAtlasCodeInsightSession.ConnectServer(const APath, AArguments: string);
+procedure TAtlasCodeInsightSession.ConnectServer(const APath, AArguments: string; out AClient: TLspClient);
 var
   mClient: TLspClient;
 begin
-  FServer := FAdapters.NewServer(APath, AArguments);
-  mClient := FServer.Client;
+  mClient := nil;
+  FServer := FAdapters.NewServer(APath, AArguments,
+    function(const ASend: TLspSendProc): IAtlasLspConnection
+    begin
+      Result := TLspClientConnection.Open(ASend, mClient);
+    end);
+  AClient := mClient;
   // Ende des Prozesses (z. B. im Task-Manager beendet) färbt das Statusfeld sofort rot (#591).
   mClient.OnClosed :=
     procedure
@@ -299,11 +308,11 @@ begin
     end;
 end;
 
-procedure TAtlasCodeInsightSession.OpenSession(const ADocuments: TArray<TLspOpenDocument>);
+procedure TAtlasCodeInsightSession.OpenSession(AClient: TLspClient; const ADocuments: TArray<TLspOpenDocument>);
 var
   mProjects: TArray<string>;
 begin
-  FSession := TLspSession.Create(FServer.Client);
+  FSession := TLspSession.Create(AClient);
   // Sprache der Oberfläche (#1458): Befunde, Code-Aktionen und Hover wie die Oberfläche; ohne "language" in
   // settings.json entscheidet allein diese Angabe.
   FSession.InitializeOptions := TLspInitializeOptions.ForLocale(TAtlasTextLanguage.Code);
@@ -573,9 +582,9 @@ begin
   begin
     FSession.SetOnProgress(nil);
   end;
-  if FServer <> nil then
+  if FSession <> nil then
   begin
-    FServer.Client.Close;
+    FSession.Client.Close;
   end;
   if FEditors <> nil then
   begin

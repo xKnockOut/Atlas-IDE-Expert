@@ -30,12 +30,14 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.BreakpointRules,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeBreakpointRules = class
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -47,7 +49,7 @@ type
   private class var
     /// <summary>Halte der Sitzung, die eine Aufrufer-Bedingung übergangen hat.</summary>
     FCallerSkips: Integer;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FMessage: TAtlasMessageSink;
     FRules: TAtlasBreakpointRuleList;
     FStates: TDictionary<string, TAtlasRuleState>;
@@ -101,7 +103,8 @@ uses
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.UI.Debug.BreakpointRules,
-  Atlas.UI.Debug.Breakpoints.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeBreakpointRules.TListener }
 
@@ -383,7 +386,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

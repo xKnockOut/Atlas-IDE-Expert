@@ -98,8 +98,8 @@ implementation
 uses
   Shell.Workspace.Requests,
   System.StrUtils,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.Providers.DiskFileSystem,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Index.ProjectFiles,
   Atlas.Common.Projects.UnitAliases,

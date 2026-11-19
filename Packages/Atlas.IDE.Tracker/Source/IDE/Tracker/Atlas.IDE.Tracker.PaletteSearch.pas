@@ -1,7 +1,8 @@
 ﻿unit Atlas.IDE.Tracker.PaletteSearch;
 
 // Issues in der Befehlspalette suchen (#1270, issues.paletteSearch): Quelle
-// der Palette (IAtlasPaletteSource) für den Tracker des aktiven Projekts.
+// der Palette für den Tracker des aktiven Projekts (für die Palette über
+// Atlas.IDE.Tracker.Adapters.PaletteSearch).
 // - Auslöser und Anfrage aus Atlas.Core.Tracker.PaletteSearch: "#Text",
 //   "#42", bei YouTrack "ATL-12" und "ATL-Text"; andere Eingaben bleiben
 //   bei den Befehlen, ohne Netz.
@@ -27,13 +28,12 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.PaletteSearchPlan,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.PaletteSearchFetch,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Commands.Contract;
 
 type
   /// <summary>Tracker des aktiven Projekts; nil ohne Anbieter bzw. Server.</summary>
@@ -63,7 +63,7 @@ type
     StateRun: TFunc<string, Boolean>;
   end;
 
-  TAtlasIdeIssueSearch = class(TInterfacedObject, IAtlasPaletteSource)
+  TAtlasIdeIssueSearch = class(TInterfacedObject)
   private
     FHooks: TAtlasIssueSearchHooks;
     FMessage: TAtlasMessageSink;
@@ -99,7 +99,7 @@ type
     procedure Stop;
     /// <summary>issues.paletteSearch an?</summary>
     class function Active: Boolean; static;
-    { IAtlasPaletteSource }
+    { Für die Palette (IAtlasPaletteSource über Atlas.IDE.Tracker.Adapters.PaletteSearch) }
     procedure Opened(const AShow: TProc<TAtlasPaletteGroup>);
     procedure Changed(const APattern: string);
     procedure Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
@@ -114,7 +114,8 @@ uses
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Tracker.PaletteSearch;
 
 { TAtlasIdeIssueSearch }
 

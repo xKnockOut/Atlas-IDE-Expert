@@ -73,7 +73,8 @@ uses
   Winapi.Windows,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Versions.Project,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Foundation.Host;
 
 /// <summary>Konfiguration AConfiguration ('' = aktive), für APlatform deren Plattformkonfiguration; nil ohne.
 /// </summary>
@@ -211,17 +212,6 @@ begin
   end;
 end;
 
-function BaseRegistryKey: string;
-var
-  mServices: IOTAServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result := mServices.GetBaseRegistryKey;
-  end;
-end;
-
 /// <summary>Umgebungsvariablen der IDE-Optionen unter ABaseKey in AMacros; nichts ohne Schlüssel.</summary>
 procedure AddIdeEnvironment(var AMacros: TAtlasPathMacros; const ABaseKey: string);
 var
@@ -300,7 +290,7 @@ begin
   Result.Project := AProject.FileName;
   Result.Configuration := AProject.CurrentConfiguration;
   Result.Platform := AProject.CurrentPlatform;
-  mBaseKey := BaseRegistryKey;
+  mBaseKey := TAtlasIdeHost.BaseRegistryKey;
   Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(mBaseKey);
   ReadOptions(AProject, Result);
   Result.LibraryPaths := LibraryPaths(mBaseKey, Result.Platform);
@@ -347,7 +337,7 @@ begin
       Result := GetEnvironmentVariable(AName);
     end);
   // Umgebungsvariablen aus den IDE-Optionen (Tools › Optionen › Umgebungsvariablen) gehen allem vor.
-  AddIdeEnvironment(Result, BaseRegistryKey);
+  AddIdeEnvironment(Result, TAtlasIdeHost.BaseRegistryKey);
   // Ordner der laufenden IDE.
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin

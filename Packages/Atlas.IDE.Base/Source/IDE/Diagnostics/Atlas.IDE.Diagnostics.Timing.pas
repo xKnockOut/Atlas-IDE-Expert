@@ -39,7 +39,7 @@ uses
   Atlas.IDE.Build.IdleGate,
   Atlas.IDE.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.PluginFrame,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeDiagnosticMode = class
@@ -100,21 +100,20 @@ implementation
 
 uses
   System.IOUtils,
-  System.JSON,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Timing,
   Atlas.Core.Diagnostics.Export,
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.History,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.QuickToggles,
-  Atlas.IDE.Diagnostics.TimingWindow;
+  Atlas.IDE.Diagnostics.TimingWindow,
+  Atlas.IDE.Diagnostics.BugReport;
 
 { TAtlasIdeDiagnosticMode }
 
@@ -413,18 +412,6 @@ begin
   Refresh(TAtlasIdeTimingWindow.ExistingFrame, True);
 end;
 
-function SettingsJson: string;
-var
-  mValues: TJSONObject;
-begin
-  mValues := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Current).ToJson;
-  try
-    Result := mValues.Format(2);
-  finally
-    mValues.Free;
-  end;
-end;
-
 class procedure TAtlasIdeDiagnosticMode.Toggle;
 begin
   TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -447,7 +434,7 @@ begin
   {$ELSE}
   mInput.Platform := 'Win32';
   {$ENDIF}
-  mInput.Settings := SettingsJson;
+  mInput.Settings := TAtlasIdeBugReport.SettingsJson;
   mInput.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')];
   mInput.FileNames := AFileNames;

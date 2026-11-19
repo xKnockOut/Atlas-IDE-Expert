@@ -67,7 +67,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.IDE.Foundation.EditorBuffer;
 
 const
   cSymbolTimeoutMs = 1500;
@@ -186,17 +187,6 @@ begin
 end;
 
 { Quellen }
-
-function TopFile: string;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.TopBuffer <> nil) then
-  begin
-    Result := mEditors.TopBuffer.FileName;
-  end;
-end;
 
 function OpenFiles: TArray<string>;
 var
@@ -625,7 +615,7 @@ begin
   Refresh;
   mPalette := TAtlasPaletteWindow.CreatePalette(Application, nil, nil, TAtlasIdeStyle.Colors);
   mWindow := TWindowState.Create(mPalette);
-  mWindow.Top := TopFile;
+  mWindow.Top := TAtlasEditorBuffer.TopFileName;
   mWindow.Open := OpenFiles;
   mPalette.Prompt := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenPrompt);
   mPalette.Presorted := True;

@@ -24,7 +24,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.IdeTypes;
+  Atlas.Common.Lsp.Contract;
 
 type
   TCompletionContextKind = (None, Scope, Member, UsesClause);

@@ -37,12 +37,15 @@
 // seinen Hintergrund nie. Sonst malt der Stil der IDE (ThemedControls hängt
 // ihn ans Fenster) bei jedem Invalidate erst die ganze Fläche leer und am
 // Bildschirm vorbei an der Doppelpufferung; beim Überfahren der Zeilen
-// flackert es.
+// flackert es. Dismiss schließt ein solches Fenster genau einmal und gibt es
+// frei; TAtlasPopupFormHolder hält höchstens eins davon (Liste über dem
+// Statusfeld) und erfährt, wenn es sich selbst freigibt.
 
 interface
 
 uses
   Winapi.Messages,
+  System.SysUtils,
   System.Types,
   System.Classes,
   Vcl.Graphics,
@@ -118,6 +121,9 @@ type
     /// <summary>Größte Anfangsgröße eines Dialogs: cMaxScreenShare Prozent der Arbeitsfläche aus MainFormWorkArea,
     /// Gerätepixel.</summary>
     class function MaxInitialSize: TSize; static;
+    /// <summary>Ja/Nein-Frage AQuestion über AHook (Tests, Einbettung), ohne ihn als Meldung; True bei Ja.
+    /// </summary>
+    class function Confirmed(const AHook: TFunc<string, Boolean>; const AQuestion: string): Boolean; static;
     /// <summary>Leeren Dialog mit Titel ACaption und Innenbreite AWidth96 (logische Pixel) anlegen. Mit 0 setzt
     /// der Dialog die Breite selbst; das Fenster entsteht dann noch nicht im Konstruktor.</summary>
     constructor CreateDialog(AOwner: TComponent; const ACaption: string; AWidth96: Integer);
@@ -148,6 +154,19 @@ type
     procedure FitRight(AControl: TControl);
   end;
 
+  /// <summary>Nicht modale Frage, die nur eine Antwort annimmt: Answer schließt das Fenster und führt die Aktion
+  /// danach im Hauptthread aus.</summary>
+  TAtlasAnswerDialog = class(TAtlasDialog)
+  private
+    FAnswered: Boolean;
+  protected
+    /// <summary>Nur die erste Antwort zählt: schließen, AProc (darf nil sein) danach einreihen.</summary>
+    procedure Answer(const AProc: TProc);
+  public
+    /// <summary>Eine Antwort ist gegeben.</summary>
+    property Answered: Boolean read FAnswered;
+  end;
+
   /// <summary>Selbst gezeichnetes Fenster ohne Rahmen, das den Fokus nimmt; Farben folgen dem IDE-Thema.</summary>
   TAtlasPopupForm = class(TForm)
   private
@@ -155,6 +174,7 @@ type
     FRounded: Boolean;
     FThemedControls: Boolean;
     FPaintsAll: Boolean;
+    FClosing: Boolean;
     procedure SetPaintsAll(AValue: Boolean);
     procedure HandleThemeChanged;
     /// <summary>Runde Ecken und Rand in der Akzentfarbe beim Fenstermanager setzen (nur mit Rounded und Fenster).
@@ -186,6 +206,27 @@ type
     /// <summary>Paint füllt die ganze Fläche selbst: Invalidate und Windows löschen den Hintergrund nie (kein
     /// Flackern beim Neuzeichnen, auch unter dem Stil der IDE).</summary>
     property PaintsAll: Boolean read FPaintsAll write SetPaintsAll;
+    /// <summary>Schließen und freigeben (Release); nur der erste Aufruf wirkt.</summary>
+    procedure Dismiss;
+    /// <summary>Hat Dismiss das Fenster schon geschlossen?</summary>
+    property Closing: Boolean read FClosing;
+  end;
+
+  /// <summary>Hält höchstens ein Fenster T: Gibt es sich selbst frei (Dismiss), steht Window wieder auf nil;
+  /// Destroy gibt ein offenes frei.</summary>
+  TAtlasPopupFormHolder<T: TAtlasPopupForm> = class(TComponent)
+  private
+    FWindow: T;
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// <summary>AWindow als Fenster übernehmen (vorher keins offen).</summary>
+    procedure Hold(AWindow: T);
+    /// <summary>Offenes Fenster sofort freigeben; ohne nichts.</summary>
+    procedure FreeWindow;
+    /// <summary>Offenes Fenster; nil ohne.</summary>
+    property Window: T read FWindow;
+  public
+    destructor Destroy; override;
   end;
 
 implementation
@@ -194,6 +235,10 @@ uses
   Winapi.Windows,
   Winapi.Dwmapi,
   System.Math,
+  System.UITypes,
+  Vcl.Dialogs,
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Foundation.Theme;
 
 { TAtlasButtonRow }
@@ -336,6 +381,18 @@ var
 begin
   mArea := MainFormWorkArea;
   Result := TSize.Create(mArea.Width * cMaxScreenShare div 100, mArea.Height * cMaxScreenShare div 100);
+end;
+
+class function TAtlasDialog.Confirmed(const AHook: TFunc<string, Boolean>; const AQuestion: string): Boolean;
+begin
+  if Assigned(AHook) then
+  begin
+    Result := AHook(AQuestion);
+  end
+  else
+  begin
+    Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+  end;
 end;
 
 procedure TAtlasDialog.VisibleChanging;
@@ -547,6 +604,17 @@ begin
   inherited;
 end;
 
+procedure TAtlasPopupForm.Dismiss;
+begin
+  if FClosing then
+  begin
+    Exit;
+  end;
+  FClosing := True;
+  Close;
+  Release;
+end;
+
 procedure TAtlasPopupForm.CreateParams(var Params: TCreateParams);
 begin
   inherited CreateParams(Params);
@@ -623,6 +691,62 @@ end;
 
 procedure TAtlasPopupForm.ColorsChanged;
 begin
+end;
+
+{ TAtlasAnswerDialog }
+
+procedure TAtlasAnswerDialog.Answer(const AProc: TProc);
+begin
+  if FAnswered then
+  begin
+    Exit;
+  end;
+  FAnswered := True;
+  Close;
+  if Assigned(AProc) then
+  begin
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
+      procedure
+      begin
+        AProc();
+      end);
+  end;
+end;
+
+{ TAtlasPopupFormHolder<T> }
+
+destructor TAtlasPopupFormHolder<T>.Destroy;
+begin
+  FreeWindow;
+  inherited;
+end;
+
+procedure TAtlasPopupFormHolder<T>.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation = opRemove) and (AComponent = TComponent(FWindow)) then
+  begin
+    FWindow := nil;
+  end;
+end;
+
+procedure TAtlasPopupFormHolder<T>.Hold(AWindow: T);
+begin
+  FWindow := AWindow;
+  FWindow.FreeNotification(Self);
+end;
+
+procedure TAtlasPopupFormHolder<T>.FreeWindow;
+var
+  mWindow: T;
+begin
+  mWindow := FWindow;
+  FWindow := nil;
+  if mWindow <> nil then
+  begin
+    mWindow.RemoveFreeNotification(Self);
+    mWindow.Free;
+  end;
 end;
 
 end.

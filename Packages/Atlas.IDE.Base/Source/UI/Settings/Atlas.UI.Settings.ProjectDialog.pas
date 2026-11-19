@@ -201,13 +201,6 @@ type
 
   TAtlasProjectSettingsDialogClass = class of TAtlasProjectSettingsDialog;
 
-  /// <summary>Dialogklasse mit Regel-Editor; das Modul Prüfregeln stellt sie bereit (#1755), der Aufrufer fragt
-  /// laufende Module bei jedem Öffnen. Ohne Modul gilt TAtlasProjectSettingsDialog.</summary>
-  IAtlasSettingsDialogProvider = interface
-    ['{C41D7E62-9B35-4F08-A2D7-5E8F13B9C604}']
-    function DialogClass: TAtlasProjectSettingsDialogClass;
-  end;
-
 implementation
 
 uses

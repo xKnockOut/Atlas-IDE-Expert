@@ -267,20 +267,6 @@ begin
   end;
 end;
 
-function Contains(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if mItem = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Andere Schreibweisen von ARef in allen Einträgen.</summary>
 function OthersOf(const ARef: TWordRef; const AWords: TArray<TArray<TWordRef>>): TArray<string>;
 var
@@ -293,7 +279,7 @@ begin
     for mOther in mEntry do
     begin
       if (mOther.Key = ARef.Key) and (SpellingOf(mOther.Spelling) <> SpellingOf(ARef.Spelling)) and
-        not Contains(Result, mOther.Spelling) then
+        not MatchStr(mOther.Spelling, Result) then
       begin
         Result := Result + [mOther.Spelling];
       end;
@@ -320,7 +306,7 @@ begin
     for mRef in mWords[mIndex] do
     begin
       mOthers := OthersOf(mRef, mWords);
-      if (Length(mOthers) > 0) and not Contains(mDone, mRef.Key) then
+      if (Length(mOthers) > 0) and not MatchStr(mRef.Key, mDone) then
       begin
         mDone := mDone + [mRef.Key];
         AEntries[mIndex].Findings := AEntries[mIndex].Findings + [Finding(TAtlasTextCheck.Variants,

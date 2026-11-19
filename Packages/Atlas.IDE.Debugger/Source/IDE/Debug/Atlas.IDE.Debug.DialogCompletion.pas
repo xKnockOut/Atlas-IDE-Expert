@@ -158,7 +158,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
-  Atlas.Core.Debug.DialogInput;
+  Atlas.Core.Debug.DialogInput,
+  Atlas.Core.Foundation.Calls;
 
 type
   // FocusControl ist in TCustomLabel geschützt.
@@ -548,7 +549,7 @@ begin
       Result := FHistory.Items;
     end);
   FPopup := TAtlasCompletionPopup.Create(nil);
-  FController := TAtlasCompletionController.Create(FProviderRef, FPopup);
+  FController := TAtlasCompletionController.Create(FProviderRef, TAtlasCompletionViews.ViewOf(FPopup));
   FController.OnCommit :=
     procedure(const AItem: TAtlasCompletionItem)
     begin
@@ -884,10 +885,7 @@ end;
 
 procedure TAtlasIdeDebugDialogCompletion.Say(const AText: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
+  TAtlasCalls.Send(FLog, AText);
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.LogDialog(AForm: TCustomForm);

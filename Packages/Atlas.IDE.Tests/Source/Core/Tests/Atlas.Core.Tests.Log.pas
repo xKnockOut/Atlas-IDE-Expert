@@ -343,17 +343,6 @@ begin
   end;
 end;
 
-/// <summary>Zeilen von AText ohne Zeilenende (CRLF, LF, CR).</summary>
-function LinesOf(const AText: string): TArray<string>;
-begin
-  Result := TTextLines.SplitLines(AText);
-  // Ein Zeilenende am Schluss ergibt keine leere letzte Zeile.
-  if (Length(Result) > 0) and (Result[High(Result)] = '') then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
-end;
-
 /// <summary>Wiederholt ATrimmed eine Log-Meldung von AEntry (Konsolen-Logger von DUnitX, ggf. mit Stufe davor)?
 /// </summary>
 function RepeatsLog(const AEntry: TAtlasTestLogEntry; const ATrimmed: string): Boolean;
@@ -425,7 +414,7 @@ var
 begin
   mEntry := -1;
   mOrdinal := 0;
-  for mLine in LinesOf(AConsole) do
+  for mLine in TTextLines.SplitLikeStrings(AConsole) do
   begin
     if mLine.StartsWith(TAtlasTestLog.cConsoleBegin) then
     begin
@@ -452,7 +441,7 @@ procedure ReadOutput(var ARun: TAtlasTestLogRun; const AConsole: string; AMaxLin
 var
   mLines: TArray<string>;
 begin
-  mLines := LinesOf(AConsole);
+  mLines := TTextLines.SplitLikeStrings(AConsole);
   ARun.OutputDropped := Max(0, Length(mLines) - AMaxLines);
   ARun.Output := Copy(mLines, 0, AMaxLines);
 end;
@@ -480,7 +469,7 @@ begin
     ReadOutput(mReader.Run, AConsole, mReader.MaxLines);
     Exit(mReader.Run);
   end;
-  for mLine in LinesOf(ASide) do
+  for mLine in TTextLines.SplitLikeStrings(ASide) do
   begin
     mReader.Read(mLine);
   end;

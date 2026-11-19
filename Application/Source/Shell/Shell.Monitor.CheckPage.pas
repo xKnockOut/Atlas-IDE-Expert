@@ -22,7 +22,7 @@ uses
   Atlas.Common.Monitor.Commands,
   Atlas.Common.Monitor.Targets,
   Atlas.Common.Monitor.Runs,
-  Atlas.Windows.Monitor.Adapters.Process,
+  Atlas.Windows.Monitor.ChildProcess,
   Shell.Monitor.CheckOptions,
   Shell.Monitor.ReportPage;
 
@@ -181,7 +181,7 @@ uses
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Monitor.Results,
   Atlas.Common.Monitor.Texts,
-  Atlas.Windows.Monitor.Adapters.System;
+  Atlas.Windows.Monitor.System;
 
 const
   cTickMs = 500;

@@ -20,7 +20,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog;
+  Atlas.Core.Settings.Catalog,
+  Atlas.Core.Settings.Contract;
 
 type
   /// <summary>Einstellungen im Arbeitsspeicher; Namen ohne Groß-/Kleinschreibung wie in der Registry.</summary>

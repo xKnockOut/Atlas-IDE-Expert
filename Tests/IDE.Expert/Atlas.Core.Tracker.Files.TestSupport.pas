@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Tracker.Files.TestSupport;
 
 // Dateizugriff des Trackers für Tests, die auch unter FPC laufen (Tools/Linux/FpcTests.txt): Die Umsetzung des
-// Plugins (Atlas.Core.Tracker.Adapters.LocalFiles) ersetzt Dateien über Atlas.Core.Files.TextFile und braucht
+// Plugins (Atlas.Core.Tracker.Providers.LocalFiles) ersetzt Dateien über Atlas.Core.Files.TextFile und braucht
 // Windows. Diese hier liest und schreibt über System.IOUtils (UTF-8, ReplaceText ohne Zwischendatei); Sperre,
 // Umgebung und Änderungszeit braucht kein Test, sie tun nichts.
 

@@ -11,7 +11,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.Reopened;
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
 {$SCOPEDENUMS ON}

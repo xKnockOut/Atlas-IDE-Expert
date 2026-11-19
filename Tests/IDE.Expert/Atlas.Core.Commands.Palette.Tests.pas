@@ -51,7 +51,8 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Palette,
+  Atlas.Core.Commands.Contract;
 
 function Command(const AId, ACaption: string; const APath: string): TAtlasCommand;
 begin

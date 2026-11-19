@@ -67,7 +67,7 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Undo.Target,
+  Atlas.IDE.Undo.Changes,
   Atlas.Core.Designer.Names;
 
 type
@@ -297,8 +297,8 @@ begin
       try
         SaveText(mLast.FormFile, mLast.OldUnit);
         SaveText(mLast.FormDfm, mLast.OldDfm);
-        TAtlasIdeUndoTarget.Recycle(ChangeFileExt(mLast.FrameFile, '.dfm'));
-        TAtlasIdeUndoTarget.Recycle(mLast.FrameFile);
+        TAtlasIdeUndo.Recycle(ChangeFileExt(mLast.FrameFile, '.dfm'));
+        TAtlasIdeUndo.Recycle(mLast.FrameFile);
       except
         on E: EAtlasTextFileError do
         begin

@@ -150,7 +150,7 @@ uses
   Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.Providers.LocalFiles,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Core.Tracker.Internals.GitHubGraphQl,
   Atlas.Core.Tracker.YouTrackBoards;

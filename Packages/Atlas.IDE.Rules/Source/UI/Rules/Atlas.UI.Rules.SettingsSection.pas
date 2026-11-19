@@ -5,7 +5,7 @@
 // - „Prüfregeln“: Modulschalter, Sammelkorrektur im Kontextmenü des Fensters (#1352), der Weg zu den Regeln (sie
 //   stehen in den Dialogen der Einstellungsdateien, Projekt und global), Profile, Stand der Baseline mit „neu
 //   erzeugen“ und „löschen“ und die Unterdrückungen je Regel (#909, #97, #147, #1755). Was dafür Dateien oder
-//   den Server braucht, kommt über Hooks (Atlas.IDE.Rules.Settings).
+//   den Server braucht, kommt über Hooks (Atlas.IDE.Rules.Adapters.Settings).
 // - „Editor“: Basislinie aktualisieren, DFM-Eigenschaftsregeln anwenden und die Marke „Wer gibt das frei?“
 //   (#1877) samt „nur Problemfälle“.
 
@@ -57,7 +57,6 @@ type
     procedure AddRulesLinks;
     procedure AddBaseline;
     procedure AddSuppressions;
-    function Confirmed(const AQuestion: string): Boolean;
     procedure RulesLinkClick(Sender: TObject);
     procedure BaselineClick(Sender: TObject);
     procedure SuppressionsClick(Sender: TObject);
@@ -93,8 +92,8 @@ implementation
 
 uses
   System.UITypes,
-  Vcl.Dialogs,
   Vcl.Graphics,
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.Rules.Strings,
   Atlas.UI.Foundation.Scaling;
 
@@ -237,18 +236,6 @@ begin
   FSuppressionsRefresh.Enabled := Assigned(FHooks.Suppressions);
 end;
 
-function TAtlasRulesChecksSection.Confirmed(const AQuestion: string): Boolean;
-begin
-  if Assigned(FHooks.Confirm) then
-  begin
-    Result := FHooks.Confirm(AQuestion);
-  end
-  else
-  begin
-    Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
-  end;
-end;
-
 procedure TAtlasRulesChecksSection.RulesLinkClick(Sender: TObject);
 var
   mOpen: TProc;
@@ -274,7 +261,8 @@ begin
     end;
   end
   else if Assigned(FHooks.BaselineDelete) and
-    Confirmed(TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineDeleteConfirm)) then
+    TAtlasDialog.Confirmed(FHooks.Confirm, TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineDeleteConfirm))
+  then
   begin
     FBaselineInfo.Caption := FHooks.BaselineDelete();
   end;

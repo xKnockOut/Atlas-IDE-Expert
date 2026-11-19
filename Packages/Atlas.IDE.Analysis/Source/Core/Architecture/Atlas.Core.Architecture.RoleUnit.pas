@@ -72,7 +72,8 @@ implementation
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.JSON,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Uris;
 
 const
   cRoleNames: array[TAtlasArchitectureRole] of string = ('', 'Contract', 'Internals', 'Providers', 'Adapters',
@@ -316,15 +317,6 @@ begin
   end;
 end;
 
-/// <summary>Unitname einer Datei: ohne Ordner (beide Trennzeichen) und Endung.</summary>
-function UnitNameOfFile(const AFileName: string): string;
-begin
-  // Selbst an '/' trennen: ExtractFileName trennt unter Windows nur an '\', ChangeFileExt erst danach, sonst
-  // gälte ein Punkt im Ordnernamen als Endung.
-  Result := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
-  Result := ChangeFileExt(Copy(Result, LastDelimiter('/', Result) + 1, MaxInt), '');
-end;
-
 /// <summary>Ordner von AFileName mit Trennzeichen am Ende, wie die Datei es schreibt.</summary>
 function FolderOf(const AFileName: string): string;
 begin
@@ -347,7 +339,7 @@ begin
     begin
       Continue;
     end;
-    mName := UnitNameOfFile(mFile) + '.';
+    mName := TTextUris.BaseName(mFile) + '.';
     if (mInput.Role <> TAtlasArchitectureRole.Root) and mName.StartsWith(mRoleUnit, True) then
     begin
       Exit(FolderOf(mFile));

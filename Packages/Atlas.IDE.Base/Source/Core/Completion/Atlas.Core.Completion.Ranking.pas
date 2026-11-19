@@ -50,9 +50,9 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasChip = (All, Methods, Properties, Events, Types, Snippets);
+  TAtlasChip = Atlas.Core.Completion.Contract.TAtlasChip;
 
-  TAtlasChipCounts = array[TAtlasChip] of Integer;
+  TAtlasChipCounts = Atlas.Core.Completion.Contract.TAtlasChipCounts;
 
   /// <summary>Was mit Präfix außer den Treffern sichtbar bleibt (#497).</summary>
   TAtlasListMode = (Filter, All, Rest);

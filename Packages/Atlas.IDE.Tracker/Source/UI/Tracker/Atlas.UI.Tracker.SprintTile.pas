@@ -26,44 +26,14 @@ uses
   Vcl.Forms,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.Sprint,
   Atlas.UI.Style.Canvas,
-  Atlas.UI.Tracker.TileView;
+  Atlas.UI.Tracker.TileView,
+  Atlas.UI.Tracker.Contract.Sprint;
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasSprintTileStatus = (NoProject, NoTracker, NoBoard, NoSprint, Loading, Failed, Ready);
   TAtlasSprintHitKind = (None, Title, MineOpen, MineDone, TeamLeft, Chart, Assign);
 {$SCOPEDENUMS OFF}
-
-  /// <summary>Was die Kachel zeigt.</summary>
-  TAtlasSprintTile = record
-    Status: TAtlasSprintTileStatus;
-    Sprint: TAtlasSprintView;
-    /// <summary>Der Stand ist alt (ohne Netz bzw. Fehler); AError nennt den Grund.</summary>
-    Stale: Boolean;
-    Error: TAtlasCiFetchError;
-    Loading: Boolean;
-    /// <summary>issues.sprint.burndown bzw. issues.sprint.compare.</summary>
-    Burndown: Boolean;
-    Compare: Boolean;
-    /// <summary>„zuordnen …“ möglich (#1261).</summary>
-    CanAssign: Boolean;
-  end;
-
-  IAtlasSprintSource = interface
-    ['{2F7C9B14-6E3A-4D58-8B1F-0A4C7E2D9561}']
-    function View: TAtlasSprintTile;
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf den Sprint im Hintergrund laden.</summary>
-    procedure Shown;
-    /// <summary>Fenster „Atlas-Board“ (#1272).</summary>
-    procedure OpenBoard;
-    procedure BrowseBoard;
-    /// <summary>„Meine Issues“ auf die eigenen offenen (ADone = False) bzw. erledigten Issues des Sprints
-    /// filtern.</summary>
-    procedure FilterIssues(ADone: Boolean);
-    procedure AssignProject;
-  end;
 
   TAtlasTrackerSprintView = class(TAtlasTrackerTileView)
   public const
@@ -141,7 +111,8 @@ uses
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.Sprint.Strings;
+  Atlas.UI.Tracker.Sprint.Strings,
+  Atlas.Core.Tracker.Contract.Sprint;
 
 const
   cFullPercent = 100;

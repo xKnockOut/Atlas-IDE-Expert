@@ -51,7 +51,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Metrics.Calculator;
+  Atlas.Common.Metrics.Calculator,
+  Atlas.Text.Names;
 
 { TMetricsCollector }
 
@@ -163,11 +164,8 @@ begin
 end;
 
 class function TMetricsCollector.IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
+  Result := TTextNames.IsPascalFile(AFileName);
 end;
 
 class function TMetricsCollector.Checksum(const AText: string): Cardinal;

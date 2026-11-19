@@ -143,7 +143,8 @@ uses
   Atlas.Common.Index.Files,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Semantics.SystemIntrinsics;
+  Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Text.Names;
 
 const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -163,18 +164,6 @@ begin
       Exit(True);
     end;
     ANode := ANode.Parent;
-  end;
-end;
-
-function LastPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := AName;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 
@@ -674,7 +663,7 @@ begin
   begin
     Exit;
   end;
-  mName := LastPart(ASite.Callee.Name);
+  mName := TTextNames.LastPart(ASite.Callee.Name);
   if (mName = '') or TSystemIntrinsics.IsKnown(mName) then
   begin
     Exit;

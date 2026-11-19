@@ -61,7 +61,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Projects.MissingUnit,
-  Atlas.Common.Projects.UnitLookup,
+  Atlas.Common.Projects.Adapters.UnitLookup,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,

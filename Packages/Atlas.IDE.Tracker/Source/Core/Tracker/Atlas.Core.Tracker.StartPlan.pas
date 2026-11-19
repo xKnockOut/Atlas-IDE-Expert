@@ -14,7 +14,8 @@ uses
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.VersionControl.BranchPlan;
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Was ein Lauf von „Beginnen“ über Plan, Arbeitskopie und Wahl im Dialog weiß.</summary>

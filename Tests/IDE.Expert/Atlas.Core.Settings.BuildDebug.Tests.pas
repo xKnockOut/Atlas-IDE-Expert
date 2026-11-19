@@ -72,10 +72,12 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Plugin.Debug,
-  Atlas.Core.Settings.TestSupport;
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Settings.Contract;
 
 { TAtlasBuildDebugSettingsTests }
 

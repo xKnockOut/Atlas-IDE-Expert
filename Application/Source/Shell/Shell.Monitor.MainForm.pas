@@ -121,9 +121,9 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Monitor.Texts,
-  Atlas.Windows.Monitor.Adapters.System;
+  Atlas.Windows.Monitor.System;
 
 const
   cRefreshMs = 2000;

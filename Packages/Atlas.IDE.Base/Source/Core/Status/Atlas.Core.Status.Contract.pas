@@ -60,6 +60,8 @@ type
     State: TAtlasStatusState;
     OnClick: TProc<TPoint>;
     OnContext: TProc<TPoint>;
+    /// <summary>Feld AId mit Text, Tooltip und Linksklick; Zustand neutral, ohne Rechtsklick.</summary>
+    class function Make(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>): TAtlasStatusExtra; static;
   end;
 
   IAtlasStatusRegistry = interface
@@ -81,5 +83,17 @@ type
   end;
 
 implementation
+
+{ TAtlasStatusExtra }
+
+class function TAtlasStatusExtra.Make(const AId, AText, AHint: string;
+  const AOnClick: TProc<TPoint>): TAtlasStatusExtra;
+begin
+  Result := Default(TAtlasStatusExtra);
+  Result.Id := AId;
+  Result.Text := AText;
+  Result.Hint := AHint;
+  Result.OnClick := AOnClick;
+end;
 
 end.

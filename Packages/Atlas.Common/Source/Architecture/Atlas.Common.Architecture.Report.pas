@@ -138,7 +138,8 @@ uses
   Atlas.Common.Architecture.MapTemplate,
   Atlas.Common.Architecture.MapTemplateEn,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Entities;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -1270,14 +1271,6 @@ begin
   end;
 end;
 
-function HtmlEscape(const AText: string): string;
-begin
-  Result := StringReplace(AText, '&', '&amp;', [rfReplaceAll]);
-  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
-end;
-
 /// <summary>Vorlage der Karte in der Sprache der Servertexte (#1458).</summary>
 function MapTemplate: string;
 begin
@@ -1294,7 +1287,7 @@ end;
 function Page(const ATitle, AData: string): string;
 begin
   // In einem <script> darf "</" nicht vorkommen (schlösse das Element); \/ ist in JSON gleichwertig.
-  Result := StringReplace(MapTemplate, '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
+  Result := StringReplace(MapTemplate, '{{TITLE}}', TTextEntities.Encode(ATitle), [rfReplaceAll]);
   Result := StringReplace(Result, '{{DATA}}', StringReplace(AData, '</', '<\/', [rfReplaceAll]), []);
 end;
 

@@ -80,15 +80,6 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
@@ -267,14 +258,14 @@ begin
   APrefix := -1;
   for mIndex := 0 to High(ATokens) do
   begin
-    if Compare(ATokens[mIndex].StartPos, APosition) >= 0 then
+    if TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) >= 0 then
     begin
       Break;
     end;
     ABefore := mIndex;
   end;
   if (ABefore >= 0) and (ATokens[ABefore].Kind = TPascalTokenKind.Identifier) and
-    (Compare(APosition, ATokens[ABefore].EndPos) <= 0) then
+    (TTextPosition.Compare(APosition, ATokens[ABefore].EndPos) <= 0) then
   begin
     APrefix := ABefore;
     Dec(ABefore);
@@ -415,7 +406,7 @@ begin
   begin
     InElse := True;
     // Cursor im else-Teil: dort stehen Anweisungen, keine Zweige.
-    Result := Compare(Tokens[AIndex].StartPos, Position) >= 0;
+    Result := TTextPosition.Compare(Tokens[AIndex].StartPos, Position) >= 0;
   end;
 end;
 
@@ -505,7 +496,7 @@ begin
     begin
       Break;
     end;
-    if (mIndex <> Prefix) and (Compare(Tokens[mIndex].StartPos, Position) >= 0) then
+    if (mIndex <> Prefix) and (TTextPosition.Compare(Tokens[mIndex].StartPos, Position) >= 0) then
     begin
       Slot.Following := True;
     end;
@@ -676,7 +667,7 @@ end;
 
 function Contains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 begin
-  Result := (Compare(ANode.StartPos, APosition) <= 0) and (Compare(APosition, ANode.EndPos) <= 0);
+  Result := (TTextPosition.Compare(ANode.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ANode.EndPos) <= 0);
 end;
 
 class function TCaseCompletion.CaseAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;

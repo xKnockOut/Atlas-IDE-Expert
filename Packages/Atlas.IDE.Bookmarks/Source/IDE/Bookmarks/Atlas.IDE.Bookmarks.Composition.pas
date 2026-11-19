@@ -24,7 +24,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Editor.Overview;
+  Atlas.Core.Editor.Contract;
 
 type
   TAtlasBookmarksModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -74,7 +74,7 @@ uses
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Bookmarks.QuickColumn,
   Atlas.IDE.Bookmarks.QuickChord,
-  Atlas.IDE.Bookmarks.SavedPlaces,
+  Atlas.IDE.Bookmarks.Adapters.SavedPlaces,
   Atlas.IDE.Bookmarks.Composition.Todos,
   Atlas.Core.SavedPlaces.Contract,
   Atlas.UI.Strings,
@@ -219,23 +219,13 @@ end;
 
 { Befehle }
 
-/// <summary>Befehl abgesichert ausführen (#493): eine Ausnahme schaltet nur AFeature ab.</summary>
-function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(AFeature, AProc);
-    end;
-end;
-
 function Command(AFeature: TAtlasFeature; const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
   Result.Caption := ACaption;
-  Result.Run := Guarded(AFeature, ARun);
+  Result.Run := TAtlasGuard.Wrap(AFeature, ARun);
   Result.Visible := AVisible;
 end;
 
@@ -473,7 +463,7 @@ begin
   begin
     Result := Result + [ModuleKey('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
       mSettings.BookmarkKey, TAtlasKeyPriority.Shared,
-      Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark))];
+      TAtlasGuard.Wrap(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark))];
   end;
   // Schnelle Lesezeichen (#1104): aus = alle Tasten gehören wieder der IDE.
   if not mSettings.QuickBookmarks then
@@ -500,10 +490,10 @@ begin
   end;
   Result := Result + [
     ModuleKey('Atlas.NextBookmark', TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand), mSettings.NextBookmarkKey,
-      TAtlasKeyPriority.Shared, Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.NextBookmark)),
+      TAtlasKeyPriority.Shared, TAtlasGuard.Wrap(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.NextBookmark)),
     ModuleKey('Atlas.PreviousBookmark', TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand),
       mSettings.PreviousBookmarkKey, TAtlasKeyPriority.Shared,
-      Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.PreviousBookmark))];
+      TAtlasGuard.Wrap(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.PreviousBookmark))];
 end;
 
 procedure TAtlasBookmarksModule.ApplySettings;

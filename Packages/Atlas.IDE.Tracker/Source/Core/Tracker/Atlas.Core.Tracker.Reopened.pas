@@ -27,7 +27,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Notify;
+  Atlas.Core.Tracker.Notify,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Ein mit Atlas beendetes Issue.</summary>
@@ -41,26 +42,6 @@ type
     State: string;
     /// <summary>Erledigt geschrieben oder seitdem erledigt gesehen.</summary>
     Done: Boolean;
-  end;
-
-  /// <summary>Marke „wieder offen“ an einem Issue.</summary>
-  TAtlasTrackerReopen = record
-    Key: string;
-    Title: string;
-    /// <summary>Zustand jetzt und davor; '' unbekannt.</summary>
-    State: string;
-    Previous: string;
-    /// <summary>Zeitpunkt der Rückkehr bzw. der Erkennung (UTC).</summary>
-    At: TDateTime;
-    /// <summary>Beendet am (UTC); 0 = nicht mit Atlas beendet. Kommentare danach sind der Grund.</summary>
-    EndedAt: TDateTime;
-    /// <summary>Branch aus dem Beenden; '' = nach dem Muster.</summary>
-    Branch: string;
-    /// <summary>Neuester Kommentar seit dem Beenden: Urheber, Zeitpunkt (UTC), Text gekürzt; '' bzw. 0 ohne.
-    /// </summary>
-    CommentBy: string;
-    CommentAt: TDateTime;
-    Comment: string;
   end;
 
   /// <summary>Was als erledigt gilt.</summary>

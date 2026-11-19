@@ -625,6 +625,7 @@ begin
   mModule := TAtlasDebugModule.Create;
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
+  UseDebugAdapters;
   for mPart in Parts do
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);
@@ -651,6 +652,7 @@ end;
 class procedure TAtlasDebugModule.UnregisterModule;
 begin
   TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  ReleaseDebugAdapters;
 end;
 
 initialization

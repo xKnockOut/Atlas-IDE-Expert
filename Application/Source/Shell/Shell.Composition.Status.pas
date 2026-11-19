@@ -66,7 +66,7 @@ uses
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.ServerPackage,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Text.Anonymize,

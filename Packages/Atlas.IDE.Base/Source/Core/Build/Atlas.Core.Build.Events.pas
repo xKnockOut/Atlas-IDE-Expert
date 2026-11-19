@@ -27,28 +27,13 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Build.Contract;
 
 type
-  TAtlasCompileKind = (Make, Build, Check, MakeUnit, Clean, Link);
+  TAtlasCompileKind = Atlas.Core.Build.Contract.TAtlasCompileKind;
 
-  TAtlasCompileProject = record
-    FileName: string;
-    Kind: TAtlasCompileKind;
-    Configuration: string;
-    Platform: string;
-    OutputFile: string;
-    /// <summary>Eigene Hintergrundprüfung von Atlas (#548), kein Build des Benutzers.</summary>
-    Background: Boolean;
-    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = ein KI-Assistent über build_project (#261).
-    /// </summary>
-    RequestedBy: string;
-    /// <summary>Dauer des Compiles in ms (#758); setzt nur der Leser des Meldungsfensters nach dem Ende, sonst 0.
-    /// </summary>
-    DurationMs: Int64;
-    /// <summary>Dauer des ganzen Laufs (Gruppe) in ms (#758); 0 = unbekannt.</summary>
-    GroupDurationMs: Int64;
-  end;
+  TAtlasCompileProject = Atlas.Core.Build.Contract.TAtlasCompileProject;
 
   /// <summary>Teilnehmer an den Compile-Ereignissen; alle Methoden sind optional.</summary>
   TAtlasCompileParticipant = class

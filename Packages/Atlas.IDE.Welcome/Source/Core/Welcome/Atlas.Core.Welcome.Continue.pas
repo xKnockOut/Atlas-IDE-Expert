@@ -38,9 +38,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Projects,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.Welcome.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -49,62 +50,17 @@ type
   TAtlasContinueAge = (JustNow, Minutes, Hours, Yesterday, Date);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Ein Reiter des Arbeitsstands.</summary>
-  TAtlasWorkTab = record
-    /// <summary>Vollständiger Pfad.</summary>
-    FileName: string;
-    /// <summary>Letzte Änderung (Changed) bzw. Cursor; ab 1, 0 = unbekannt.</summary>
-    Line: Integer;
-    Column: Integer;
-    /// <summary>Methode an dieser Stelle, z. B. TKunde.Laden; '' außerhalb einer Methode.</summary>
-    Method: string;
-    /// <summary>Line und Column sind eine Änderung.</summary>
-    Changed: Boolean;
-    /// <summary>Zeitpunkt der Änderung (UTC); 0 = unbekannt.</summary>
-    ChangedAt: TDateTime;
-    class function Create(const AFileName: string; ALine, AColumn: Integer): TAtlasWorkTab; static;
-  end;
+  TAtlasWorkTab = Atlas.Core.Welcome.Contract.TAtlasWorkTab;
+  TAtlasWorkState = Atlas.Core.Welcome.Contract.TAtlasWorkState;
 
-  /// <summary>Gespeicherter Arbeitsstand eines Projekts (Abschnitt "continue").</summary>
-  TAtlasWorkState = record
-    Known: Boolean;
-    /// <summary>Zeitpunkt des Schließens (UTC).</summary>
-    At: TDateTime;
-    /// <summary>Reiter in ihrer Reihenfolge.</summary>
-    Tabs: TArray<TAtlasWorkTab>;
-    /// <summary>Zuletzt aktiver Reiter (Index in Tabs); -1 = unbekannt.</summary>
-    Active: Integer;
-    /// <summary>In der Sitzung geänderte Dateien, die beim Schließen nicht mehr offen waren.</summary>
-    Edited: TArray<string>;
-    /// <summary>"git", "svn", "none" oder '' (nicht abgefragt).</summary>
-    VcsKind: string;
-    /// <summary>HEAD-Commit beim Schließen; '' unbekannt.</summary>
-    Head: string;
-    /// <summary>Verfolgter Branch beim Schließen, z. B. "origin/main"; '' ohne.</summary>
-    Upstream: string;
-    /// <summary>Commit des verfolgten Branchs beim Schließen; '' unbekannt.</summary>
-    UpstreamRevision: string;
-    class function Empty: TAtlasWorkState; static;
-    function TabCount: Integer;
+  /// <summary>Logik zu TAtlasWorkState (der Record steht im Vertrag).</summary>
+  TAtlasWorkStateHelper = record helper for TAtlasWorkState
     function IndexOf(const AFileName: string): Integer;
-    /// <summary>Reiter mit der jüngsten Änderung, sonst der aktive, sonst der erste; -1 ohne Reiter.</summary>
-    function LastIndex: Integer;
     /// <summary>Dateien des Arbeitsstands (Reiter und geänderte), jede einmal.</summary>
     function Files: TArray<string>;
   end;
-
-  TAtlasContinueEntry = record
-    /// <summary>Projekt oder Projektgruppe (vollständiger Pfad).</summary>
-    Project: string;
-    State: TAtlasWorkState;
-    /// <summary>Dateiname ohne Endung.</summary>
-    function Name: string;
-    function IsGroup: Boolean;
-    /// <summary>Zuletzt bearbeitete Datei (siehe TAtlasWorkState.LastIndex); leer ohne Reiter.</summary>
-    function LastTab: TAtlasWorkTab;
-  end;
-
-  TAtlasContinueEntries = TArray<TAtlasContinueEntry>;
+  TAtlasContinueEntry = Atlas.Core.Welcome.Contract.TAtlasContinueEntry;
+  TAtlasContinueEntries = Atlas.Core.Welcome.Contract.TAtlasContinueEntries;
 
   /// <summary>Was „Fortsetzen“ öffnet.</summary>
   TAtlasContinuePlan = record
@@ -117,12 +73,7 @@ type
     Active: Integer;
   end;
 
-  /// <summary>Eingehender Commit mit den betroffenen Dateien des Arbeitsstands.</summary>
-  TAtlasContinueCommit = record
-    Commit: TAtlasVcsIncomingCommit;
-    /// <summary>Dateien des Arbeitsstands, die der Commit ändert.</summary>
-    Files: TArray<string>;
-  end;
+  TAtlasContinueCommit = Atlas.Core.Welcome.Contract.TAtlasContinueCommit;
 
   /// <summary>Anfrage für TAtlasWelcomeContinue.ProbeIncoming: Projekt, Hauptbranch (#1286; '' = keiner),
   /// Arbeitsstand beim Schließen und Zeitpunkt der Abfrage (UTC).</summary>
@@ -135,25 +86,7 @@ type
       ANowUtc: TDateTime): TAtlasContinueProbe; static;
   end;
 
-  /// <summary>Abschnitt „Neu seit deinem letzten Öffnen“ für einen Arbeitsstand.</summary>
-  TAtlasContinueIncoming = record
-    /// <summary>Abschnitt zeigen: Arbeitskopie mit verfolgtem Branch, Abfrage gelungen.</summary>
-    Available: Boolean;
-    /// <summary>Projekt, zu dem die Abfrage gehört.</summary>
-    Project: string;
-    /// <summary>Verfolgter Branch, z. B. "origin/main".</summary>
-    Upstream: string;
-    /// <summary>Neueste zuerst.</summary>
-    Commits: TArray<TAtlasContinueCommit>;
-    /// <summary>Es gibt mehr passende Commits als aufgeführt.</summary>
-    More: Boolean;
-    /// <summary>fetch war gewünscht und ist misslungen (Stand ohne Abruf).</summary>
-    FetchFailed: Boolean;
-    /// <summary>fetch ist misslungen, weil die Anmeldung am Server fehlt (#1287); dann auch FetchFailed.</summary>
-    LoginNeeded: Boolean;
-    /// <summary>Zeitpunkt der Abfrage (UTC).</summary>
-    At: TDateTime;
-  end;
+  TAtlasContinueIncoming = Atlas.Core.Welcome.Contract.TAtlasContinueIncoming;
 
   TAtlasContinueFileExists = reference to function(const AFileName: string): Boolean;
 
@@ -278,132 +211,6 @@ uses
   Atlas.Text.Json,
   Atlas.Core.Projects.Summary.Json;
 
-{ TAtlasWorkTab }
-
-class function TAtlasWorkTab.Create(const AFileName: string; ALine, AColumn: Integer): TAtlasWorkTab;
-begin
-  Result := Default(TAtlasWorkTab);
-  Result.FileName := AFileName;
-  Result.Line := ALine;
-  Result.Column := AColumn;
-end;
-
-{ TAtlasWorkState }
-
-class function TAtlasWorkState.Empty: TAtlasWorkState;
-begin
-  Result := Default(TAtlasWorkState);
-  Result.Active := -1;
-end;
-
-function TAtlasWorkState.TabCount: Integer;
-begin
-  Result := Length(Tabs);
-end;
-
-function TAtlasWorkState.IndexOf(const AFileName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(Tabs) do
-  begin
-    if TAtlasWelcomeContinue.SameFile(Tabs[mIndex].FileName, AFileName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-end;
-
-function TAtlasWorkState.LastIndex: Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(Tabs) do
-  begin
-    if Tabs[mIndex].Changed and (Tabs[mIndex].ChangedAt > 0) and
-      ((Result < 0) or (Tabs[mIndex].ChangedAt > Tabs[Result].ChangedAt)) then
-    begin
-      Result := mIndex;
-    end;
-  end;
-  if Result >= 0 then
-  begin
-    Exit;
-  end;
-  if (Active >= 0) and (Active <= High(Tabs)) then
-  begin
-    Exit(Active);
-  end;
-  if Length(Tabs) > 0 then
-  begin
-    Result := 0;
-  end;
-end;
-
-function TAtlasWorkState.Files: TArray<string>;
-
-  procedure Add(const AFileName: string);
-  var
-    mKnown: string;
-  begin
-    if Trim(AFileName) = '' then
-    begin
-      Exit;
-    end;
-    for mKnown in Result do
-    begin
-      if TAtlasWelcomeContinue.SameFile(mKnown, AFileName) then
-      begin
-        Exit;
-      end;
-    end;
-    Result := Result + [AFileName];
-  end;
-
-var
-  mTab: TAtlasWorkTab;
-  mFileName: string;
-begin
-  Result := nil;
-  for mTab in Tabs do
-  begin
-    Add(mTab.FileName);
-  end;
-  for mFileName in Edited do
-  begin
-    Add(mFileName);
-  end;
-end;
-
-{ TAtlasContinueEntry }
-
-function TAtlasContinueEntry.Name: string;
-var
-  mSummary: TAtlasProjectSummary;
-begin
-  mSummary := TAtlasProjectSummary.Create(Project);
-  Result := mSummary.Name;
-end;
-
-function TAtlasContinueEntry.IsGroup: Boolean;
-begin
-  Result := SameText(ExtractFileExt(Project), '.groupproj');
-end;
-
-function TAtlasContinueEntry.LastTab: TAtlasWorkTab;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TAtlasWorkTab);
-  mIndex := State.LastIndex;
-  if mIndex >= 0 then
-  begin
-    Result := State.Tabs[mIndex];
-  end;
-end;
-
 { JSON }
 
 function TabJson(const ATab: TAtlasWorkTab): TJSONObject;
@@ -419,7 +226,7 @@ begin
   end;
   if ATab.ChangedAt > 0 then
   begin
-    Result.AddPair('changedAt', TAtlasProjectSummaries.TimeText(ATab.ChangedAt));
+    Result.AddPair('changedAt', SummaryTimeText(ATab.ChangedAt));
   end;
 end;
 
@@ -432,7 +239,7 @@ begin
   Result := TJSONObject.Create;
   if AState.At > 0 then
   begin
-    Result.AddPair('at', TAtlasProjectSummaries.TimeText(AState.At));
+    Result.AddPair('at', SummaryTimeText(AState.At));
   end;
   Result.AddPair('active', TJSONNumber.Create(AState.Active));
   TJsonBuild.AddText(Result, 'vcs', AState.VcsKind);
@@ -472,7 +279,7 @@ begin
     Max(TJsonRead.IntOr(mEntry, 'column', 0), 0));
   ATab.Method := TJsonRead.Text(mEntry, 'method');
   ATab.Changed := TJsonRead.Flag(mEntry, 'changed');
-  ATab.ChangedAt := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mEntry, 'changedAt'));
+  ATab.ChangedAt := SummaryTimeOf(TJsonRead.Text(mEntry, 'changedAt'));
   Result := Trim(ATab.FileName) <> '';
 end;
 
@@ -504,7 +311,7 @@ begin
     Exit;
   end;
   AState.Known := True;
-  AState.At := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(ASection, 'at'));
+  AState.At := SummaryTimeOf(TJsonRead.Text(ASection, 'at'));
   AState.VcsKind := LowerCase(TJsonRead.Text(ASection, 'vcs'));
   AState.Head := TJsonRead.Text(ASection, 'head');
   AState.Upstream := TJsonRead.Text(ASection, 'upstream');
@@ -677,7 +484,7 @@ begin
   end;
   for mProject in ARecent do
   begin
-    mKey := TAtlasProjectSummaries.NormalizedPath(mProject);
+    mKey := SummaryNormalizedPath(mProject);
     if (Trim(mProject) = '') or HasKey(mSeen, mKey) then
     begin
       Continue;
@@ -892,7 +699,7 @@ end;
 
 class function TAtlasWelcomeContinue.SameFile(const A, B: string): Boolean;
 begin
-  Result := TAtlasProjectSummaries.NormalizedPath(A) = TAtlasProjectSummaries.NormalizedPath(B);
+  Result := SummaryNormalizedPath(A) = SummaryNormalizedPath(B);
 end;
 
 class function TAtlasWelcomeContinue.FileNameOf(const APath: string): string;
@@ -1078,8 +885,8 @@ end;
 
 class function TAtlasContinueSession.IncomingFits(const ATop, AKey, ADataProject: string): Boolean;
 begin
-  Result := (ATop <> '') and (TAtlasProjectSummaries.NormalizedPath(ATop) = AKey) and
-    (TAtlasProjectSummaries.NormalizedPath(ADataProject) = AKey);
+  Result := (ATop <> '') and (SummaryNormalizedPath(ATop) = AKey) and
+    (SummaryNormalizedPath(ADataProject) = AKey);
 end;
 
 class function TAtlasContinueSession.MissingNames(const AMissing: TArray<string>): string;
@@ -1125,6 +932,57 @@ end;
 class function TAtlasContinueSession.ActiveInPlan(AActive, AOpenCount: Integer): Boolean;
 begin
   Result := (AActive >= 0) and (AActive < AOpenCount);
+end;
+
+{ TAtlasWorkStateHelper }
+
+function TAtlasWorkStateHelper.IndexOf(const AFileName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(Tabs) do
+  begin
+    if TAtlasWelcomeContinue.SameFile(Tabs[mIndex].FileName, AFileName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+function TAtlasWorkStateHelper.Files: TArray<string>;
+
+  procedure Add(const AFileName: string);
+  var
+    mKnown: string;
+  begin
+    if Trim(AFileName) = '' then
+    begin
+      Exit;
+    end;
+    for mKnown in Result do
+    begin
+      if TAtlasWelcomeContinue.SameFile(mKnown, AFileName) then
+      begin
+        Exit;
+      end;
+    end;
+    Result := Result + [AFileName];
+  end;
+
+var
+  mTab: TAtlasWorkTab;
+  mFileName: string;
+begin
+  Result := nil;
+  for mTab in Tabs do
+  begin
+    Add(mTab.FileName);
+  end;
+  for mFileName in Edited do
+  begin
+    Add(mFileName);
+  end;
 end;
 
 end.

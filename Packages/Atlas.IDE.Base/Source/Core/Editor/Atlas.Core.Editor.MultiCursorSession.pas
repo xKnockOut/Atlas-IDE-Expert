@@ -24,7 +24,7 @@ uses
   System.SysUtils,
   Atlas.Core.Editor.MultiCursor,
   Atlas.Core.Editor.CaretSteps,
-  Atlas.Core.Editor.EditSurface;
+  Atlas.Core.Editor.Contract;
 
 type
   TAtlasMultiCursorSession = class
@@ -99,7 +99,8 @@ implementation
 
 uses
   Atlas.Core.Editor.LineMove,
-  Atlas.Core.Editor.WrapSelection;
+  Atlas.Core.Editor.WrapSelection,
+  Atlas.Core.Editor.EditSurface;
 
 { TAtlasMultiCursorSession }
 

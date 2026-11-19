@@ -19,7 +19,8 @@ interface
 
 uses
   Winapi.Windows,
-  System.Types;
+  System.Types,
+  Atlas.UI.Popup.Contract;
 
 const
   cUiaListControlType = 50008;
@@ -89,26 +90,6 @@ type
     function RemoveFromSelection: HResult; stdcall;
     function get_IsSelected(out ARetVal: BOOL): HResult; stdcall;
     function get_SelectionContainer(out ARetVal: IAtlasRawElementProvider): HResult; stdcall;
-  end;
-
-  /// <summary>Einträge einer Liste für UI Automation (#447); Positionen in der Anzeigereihenfolge.</summary>
-  IAtlasAccessibleItems = interface
-    ['{5C0F3E52-8A47-4D3B-9E61-2B7A4C1D9F08}']
-    function AccessibleCount: Integer;
-    /// <summary>Gewählte Position; -1 ohne.</summary>
-    function AccessibleSelected: Integer;
-    /// <summary>Schlüssel des Eintrags an APosition, der beim Filtern gleich bleibt.</summary>
-    function AccessibleId(APosition: Integer): Integer;
-    function AccessibleName(APosition: Integer): string;
-    /// <summary>Zustand in Worten („deprecated, Helper“); '' ohne.</summary>
-    function AccessibleStatus(APosition: Integer): string;
-    /// <summary>Kurzbeschreibung (Signatur, Herkunft); '' ohne.</summary>
-    function AccessibleHelp(APosition: Integer): string;
-    /// <summary>Überschrift einer Gruppe statt eines Eintrags; nicht wählbar.</summary>
-    function AccessibleIsHeader(APosition: Integer): Boolean;
-    /// <summary>Zeile in Bildschirmkoordinaten; False, wenn sie nicht sichtbar ist.</summary>
-    function AccessibleBounds(APosition: Integer; out ARect: TRect): Boolean;
-    procedure AccessibleSelect(APosition: Integer);
   end;
 
   /// <summary>Element eines Atlas-Fensters: Rolle, Name, Ansagen.</summary>

@@ -15,14 +15,14 @@ uses
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.Projects,
   Atlas.Core.VersionControl.Contract,
+  Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.IDE.Tracker.WorkingCopies,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Tracker-Anbieter zum Namen ("github", "youtrack"); nil, wenn es ihn nicht gibt.</summary>
@@ -48,6 +48,9 @@ type
     EditQueries: TProc;
     /// <summary>Zusatzfeld des aktuellen Issues im Statusfeld: Zustand (#2124) und Zeit (#1267).</summary>
     TimeStatus: TAtlasIdeTimeStatus;
+    /// <summary>Adapter der Kommentar-Hilfe auf IAtlasCommentAssist (#1278); ohne ihn bleiben die Felder einfach.
+    /// </summary>
+    CommentAssist: TAtlasCommentAssistAdapt;
   end;
 
   /// <summary>Tracker eines Projekts mit Verbindung und Abfragen.</summary>
@@ -255,7 +258,9 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Projects.Summaries;
+  Atlas.IDE.Projects.Summaries,
+  Atlas.Core.Tracker.Queries,
+  Atlas.Core.Tracker.Projects;
 
 const
   cAppFolder = 'Atlas';

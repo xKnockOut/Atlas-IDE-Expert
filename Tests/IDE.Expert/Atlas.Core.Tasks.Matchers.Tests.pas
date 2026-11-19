@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Matchers;
 
 function Matcher(AKind: TAtlasTaskMatcherKind): TAtlasTaskLineMatcher;

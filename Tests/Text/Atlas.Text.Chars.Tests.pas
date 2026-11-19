@@ -21,6 +21,12 @@ type
     procedure IsDigitsNeedsOneDigit;
     [Test]
     procedure PastNextBehindChar;
+    [Test]
+    procedure RunEndStopsAtOtherChar;
+    [Test]
+    procedure IdentEndCountsUnicode;
+    [Test]
+    procedure AsciiIdentEndStopsAtUmlaut;
   end;
 
 implementation
@@ -83,6 +89,27 @@ begin
   Assert.AreEqual(2, TTextChars.PastNext('}', 1, '}'));
   // Ohne Abschluss: Length + 2, wie hinter einem gedachten Zeichen hinter dem Text.
   Assert.AreEqual(6, TTextChars.PastNext('{abc', 1, '}'));
+end;
+
+procedure TTextCharsTests.RunEndStopsAtOtherChar;
+begin
+  Assert.AreEqual(3, TTextChars.RunEnd('12a', 1, ['0'..'9']));
+  Assert.AreEqual(2, TTextChars.RunEnd('a  b', 2, ['x']));
+  Assert.AreEqual(4, TTextChars.RunEnd('a  b', 2, [' ']));
+  Assert.AreEqual(5, TTextChars.RunEnd('a  b', 5, [' ']));
+end;
+
+procedure TTextCharsTests.IdentEndCountsUnicode;
+begin
+  Assert.AreEqual(6, TTextChars.IdentEnd('ab'#$00E4'_1.x', 1));
+  Assert.AreEqual(1, TTextChars.IdentEnd('.x', 1));
+  Assert.AreEqual(5, TTextChars.IdentEnd('x.ab', 3));
+end;
+
+procedure TTextCharsTests.AsciiIdentEndStopsAtUmlaut;
+begin
+  Assert.AreEqual(3, TTextChars.AsciiIdentEnd('ab'#$00E4, 1));
+  Assert.AreEqual(5, TTextChars.AsciiIdentEnd('$1_a', 2));
 end;
 
 initialization

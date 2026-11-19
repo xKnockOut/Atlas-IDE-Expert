@@ -13,7 +13,7 @@ uses
   System.Classes,
   System.TypInfo,
   DUnitX.TestFramework,
-  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.Created,
   Atlas.Tests.DesignSurfaceFake;
 

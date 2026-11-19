@@ -68,14 +68,14 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Documentation.Layout,
-  Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.IssueLookups,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 { TAtlasIdeIssueCommands }
 

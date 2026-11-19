@@ -32,6 +32,7 @@ uses
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Tools,
@@ -39,7 +40,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Features,
   Atlas.IDE.CodeInsight.Composition.Settings,
   Atlas.IDE.CodeInsight.Composition.Services,
-  Atlas.IDE.CodeInsight.Composition.Leftovers;
+  Atlas.IDE.CodeInsight.Composition.Leftovers,
+  Atlas.Core.Diagnostics.ModuleHost;
 
 /// <summary>Sicherung, Protokoll, Stacktraces, Sprache, Versionsverwaltung und Atlas-Symbol: vor allen Teilen.
 /// </summary>
@@ -50,6 +52,8 @@ begin
   TAtlasGuard.SetLogNames(TAtlasIdeSettings.Current.LogNames);
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasGuard.OnTripped := GuardTripped;
+  // Scheitert ein Befehl des Benutzers, die Meldungsansicht nach vorn: Wer sie geschlossen hat, sähe sonst nichts.
+  TAtlasCommandScope.OnFailed := ShowAtlasMessages;
   TAtlasGuard.RotatingLog.OnError := LogError;
   // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
   TAtlasIdeStackCapture.Install;
@@ -145,6 +149,7 @@ begin
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnTripped := nil;
   TAtlasGuard.OnFailure := nil;
+  TAtlasCommandScope.OnFailed := nil;
   TAtlasGuard.RotatingLog.OnError := nil;
   DetachSettings;
   // Entladen vor der freien Nachrichtenschleife: Die Startanteile hängen noch an Aktionen und Teilen.
@@ -257,25 +262,10 @@ begin
   end;
 end;
 
-/// <summary>Einträge in den Hauptthread verfallen mit ihrem Modul: Die Registry meldet Ab- und Anmelden mit dem
-/// Handle des Packages an TAtlasMainThread. Schon in der Initialisierung: Module können sich anmelden, bevor die
-/// IDE Register von Base ruft (Regel 1).</summary>
-procedure ConnectModuleQueue;
-begin
-  TAtlasModuleRegistry.OnModuleClosing :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.CloseModule(AHandle);
-    end;
-  TAtlasModuleRegistry.OnModuleOpened :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.OpenModule(AHandle);
-    end;
-end;
-
 initialization
-  ConnectModuleQueue;
+  // Vor dem ersten Lesen der Einstellungen: der Speicher in der Registry und die übrigen Adapter der IDE.
+  InstallIdeAdapters;
+  TAtlasModuleHost.ConnectMainThread;
 
 finalization
   Unregister;

@@ -216,13 +216,8 @@ begin
 end;
 
 class procedure TAtlasIdeAvUnderline.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

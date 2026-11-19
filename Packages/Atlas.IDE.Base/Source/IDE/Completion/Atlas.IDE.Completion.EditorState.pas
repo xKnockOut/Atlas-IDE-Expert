@@ -152,7 +152,7 @@ type
     /// <summary>Indiziert der Server gerade (#492)?</summary>
     function IndexingNow: Boolean;
   public
-    /// <summary>ASources legt die Quellen des Kerns an (Kompositionswurzel).</summary>
+    /// <summary>ASources legt die Quellen des Kerns an (Kompositionswurzel); ALog: Protokoll, nie nil.</summary>
     constructor Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc;
       const ASources: TAtlasCompletionSourcesFactory);
     destructor Destroy; override;
@@ -240,7 +240,7 @@ begin
   FProviders.Add(FSources.Snippets);
   FPlaceholders := TAtlasEditorPlaceholders.Create;
   FPopup := TAtlasCompletionPopup.Create(nil);
-  FController := TAtlasCompletionController.Create(FProvidersRef, FPopup);
+  FController := TAtlasCompletionController.Create(FProvidersRef, TAtlasCompletionViews.ViewOf(FPopup));
   WirePopup;
   FPreview := TAtlasEditorPreview.Create;
   FTimer := TTimer.Create(nil);
@@ -315,10 +315,7 @@ end;
 
 procedure TAtlasEditorCompletionState.Log(const AMessage: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
+  FLog(AMessage);
 end;
 
 procedure TAtlasEditorCompletionState.CancelDelay;

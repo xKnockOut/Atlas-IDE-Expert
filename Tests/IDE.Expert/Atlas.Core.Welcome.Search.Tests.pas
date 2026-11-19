@@ -83,7 +83,7 @@ uses
   System.IOUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Cache,
-  Atlas.Common.Index.Adapters.CacheDirectory;
+  Atlas.Common.Index.CacheDirectory;
 
 type
   TUnitSpec = record

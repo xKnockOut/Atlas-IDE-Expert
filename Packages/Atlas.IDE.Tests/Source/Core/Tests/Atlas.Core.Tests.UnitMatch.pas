@@ -35,22 +35,14 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Defaults,
-  System.Generics.Collections;
-
-function BaseName(const AFileName: string): string;
-begin
-  // Trennzeichen beider Systeme: Die Tests laufen auch unter Linux.
-  // Selbst an '/' trennen: ExtractFileName trennt unter Windows nur an '\', ChangeFileExt erst danach, sonst
-  // gälte ein Punkt im Ordnernamen als Endung.
-  Result := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
-  Result := ChangeFileExt(Copy(Result, LastDelimiter('/', Result) + 1, MaxInt), '');
-end;
+  System.Generics.Collections,
+  Atlas.Text.Uris;
 
 function Matches(const ACandidate, AUnitName: string): Boolean;
 var
   mName: string;
 begin
-  mName := BaseName(ACandidate);
+  mName := TTextUris.BaseName(ACandidate);
   Result := SameText(mName, AUnitName + '.Tests') or SameText(mName, AUnitName + 'Tests') or
     SameText(mName, AUnitName + '.Test') or SameText(mName, AUnitName + 'Test') or
     SameText(mName, 'Test' + AUnitName) or SameText(mName, 'Test.' + AUnitName);
@@ -78,7 +70,7 @@ var
   mUnitName, mFile: string;
 begin
   Result := [AUnitFile];
-  mUnitName := BaseName(AUnitFile);
+  mUnitName := TTextUris.BaseName(AUnitFile);
   for mFile in AFiles do
   begin
     if SameText(ExtractFileExt(mFile), '.pas') and Matches(mFile, mUnitName) and not Contains(Result, mFile) then
@@ -114,7 +106,7 @@ begin
   TArray.Sort<string>(Result, TComparer<string>.Construct(
     function(const ALeft, ARight: string): Integer
     begin
-      Result := CompareText(BaseName(ALeft), BaseName(ARight));
+      Result := CompareText(TTextUris.BaseName(ALeft), TTextUris.BaseName(ARight));
       if Result = 0 then
       begin
         Result := CompareText(ALeft, ARight);
@@ -138,7 +130,7 @@ end;
 
 class function TAtlasTestUnitMatch.UnitNameOf(const AFileName: string): string;
 begin
-  Result := BaseName(AFileName);
+  Result := TTextUris.BaseName(AFileName);
 end;
 
 end.

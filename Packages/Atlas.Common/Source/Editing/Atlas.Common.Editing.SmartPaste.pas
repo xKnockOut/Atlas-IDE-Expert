@@ -72,7 +72,8 @@ implementation
 uses
   Atlas.Common.Editing.UsesActions,
   System.Math,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  System.StrUtils;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -86,20 +87,6 @@ begin
   begin
     Result := Result.Substring(1);
   end;
-end;
-
-function Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 { TSmartPaste }
@@ -131,7 +118,7 @@ begin
       Continue;
     end;
     mName := Bare(mToken.Text);
-    if Contains(mSeen, mName) then
+    if MatchText(mName, mSeen) then
     begin
       Continue;
     end;
@@ -157,7 +144,7 @@ begin
   Result := nil;
   for mItem in ANames do
   begin
-    if (Length(mItem.Units) = 1) and not Contains(Result, mItem.Units[0]) then
+    if (Length(mItem.Units) = 1) and not MatchText(mItem.Units[0], Result) then
     begin
       Result := Result + [mItem.Units[0]];
     end;
@@ -227,7 +214,7 @@ type
 procedure TUsesSplit.Add(const AName: string; const AInterfaceUses: TInterfaceUsesFunc;
   var AUses: TSmartPasteUses);
 begin
-  if Upper and CheckCycles and Contains(AInterfaceUses(AName), Own) then
+  if Upper and CheckCycles and MatchText(Own, AInterfaceUses(AName)) then
   begin
     ForImplementation := ForImplementation + [AName];
     AUses.ToImplementation := AUses.ToImplementation + [AName];
@@ -274,7 +261,7 @@ begin
   mSplit.CheckCycles := (mImplementationOffset >= 0) and Assigned(ATarget.InterfaceUses) and (mSplit.Own <> '');
   for mName in AUnits do
   begin
-    if (Trim(mName) <> '') and not SameText(mName, mSplit.Own) and not Contains(AUses.Added, mName) and
+    if (Trim(mName) <> '') and not SameText(mName, mSplit.Own) and not MatchText(mName, AUses.Added) and
       not TUsesClauses.IsUsed(mUsed, mName, ATarget.Namespaces) then
     begin
       mSplit.Add(mName, ATarget.InterfaceUses, AUses);

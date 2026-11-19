@@ -25,6 +25,9 @@ type
     class function BufferOf(const AFileName: string): IOTAEditBuffer; static;
     /// <summary>Datei des aktiven Projekts der IDE; '' ohne Projekt.</summary>
     class function ActiveProjectFile: string; static;
+    /// <summary>file-URI der Datei des aktiven Projekts in AUri; False (AUri leer) ohne Projekt oder ohne Datei.
+    /// </summary>
+    class function ActiveProjectUri(out AUri: string): Boolean; static;
     /// <summary>Zeilen von AFileName: aus dem Editorpuffer, wenn die Datei offen ist, sonst von der Platte;
     /// False, wenn sie fehlt oder nicht lesbar ist.</summary>
     class function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean; static;
@@ -55,6 +58,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Files.EncodingDefault,
+  Atlas.Core.Lsp.Uris,
   Atlas.IDE.Foundation.EditorBuffer;
 
 { TAtlasIdeFiles }
@@ -147,6 +151,19 @@ begin
   if mProject <> nil then
   begin
     Result := mProject.FileName;
+  end;
+end;
+
+class function TAtlasIdeFiles.ActiveProjectUri(out AUri: string): Boolean;
+var
+  mFile: string;
+begin
+  AUri := '';
+  mFile := ActiveProjectFile;
+  Result := mFile <> '';
+  if Result then
+  begin
+    AUri := TLspUris.FromPath(mFile);
   end;
 end;
 

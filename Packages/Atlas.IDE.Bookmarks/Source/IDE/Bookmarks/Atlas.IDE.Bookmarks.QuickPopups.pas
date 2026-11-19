@@ -69,7 +69,8 @@ uses
   Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.Service,
-  Atlas.IDE.Bookmarks.QuickService;
+  Atlas.IDE.Bookmarks.QuickService,
+  Atlas.UI.Foundation.Menus;
 
 { TAtlasIdeQuickTip }
 
@@ -194,11 +195,7 @@ end;
 
 function TAtlasIdeQuickMenu.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer): TMenuItem;
 begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := MenuClick;
-  AParent.Add(Result);
+  Result := TAtlasMenus.Add(FMenu, AParent, ACaption, ATag, MenuClick);
 end;
 
 procedure TAtlasIdeQuickMenu.MenuClick(Sender: TObject);

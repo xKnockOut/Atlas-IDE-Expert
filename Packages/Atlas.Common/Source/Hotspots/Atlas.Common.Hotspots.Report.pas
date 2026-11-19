@@ -64,7 +64,8 @@ implementation
 uses
   System.Math,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Entities;
 
 {$SCOPEDENUMS ON}
 
@@ -160,14 +161,6 @@ begin
   begin
     Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"Z"', ADate);
   end;
-end;
-
-function HtmlEscape(const AText: string): string;
-begin
-  Result := StringReplace(AText, '&', '&amp;', [rfReplaceAll]);
-  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
 end;
 
 function Cell(const AText: string): string;
@@ -658,7 +651,7 @@ begin
     mRadius := 3 + 22 * Sqrt(mEntry.Lines / mMaxLines);
     ABuilder.Append(cTexts[THotspotsReportText.CircleCxCyRFill].Fmt([Coordinate(mX), Coordinate(mY),
       Coordinate(mRadius),
-      ScoreColor(mEntry.Score), HtmlEscape(THotspotReport.EntryName(mEntry)), mEntry.Changes.Changes,
+      ScoreColor(mEntry.Score), TTextEntities.Encode(THotspotReport.EntryName(mEntry)), mEntry.Changes.Changes,
       mEntry.Complexity, mEntry.Lines, ScoreText(mEntry.Score)])).Append(cLineBreak);
   end;
   ABuilder.Append('</svg>').Append(cLineBreak);
@@ -685,17 +678,17 @@ begin
     mEntry := AEntries[mIndex];
     if AMethods then
     begin
-      mName := Format('%s <span class="path">%s:%d</span>', [HtmlEscape(mEntry.Method), HtmlEscape(mEntry.Path),
+      mName := Format('%s <span class="path">%s:%d</span>', [TTextEntities.Encode(mEntry.Method), TTextEntities.Encode(mEntry.Path),
         mEntry.Line]);
     end
     else
     begin
-      mName := Format('%s <span class="path">%s</span>', [HtmlEscape(mEntry.UnitName), HtmlEscape(mEntry.Path)]);
+      mName := Format('%s <span class="path">%s</span>', [TTextEntities.Encode(mEntry.UnitName), TTextEntities.Encode(mEntry.Path)]);
     end;
     ABuilder.Append(Format('<tr><td>%d</td><td>%s</td><td>%s</td><td>%d</td><td title="%s">%d</td><td>%d</td>' +
       '<td>%d</td><td>%s</td><td>%s</td><td>%s</td></tr>', [mIndex + 1, mName, ScoreText(mEntry.Score),
-      mEntry.Changes.Changes, HtmlEscape(string.Join(', ', mEntry.Changes.Authors)), Length(mEntry.Changes.Authors),
-      mEntry.Complexity, mEntry.Lines, HtmlEscape(ChurnText(mEntry.Changes)), HtmlEscape(TrendText(mEntry)),
+      mEntry.Changes.Changes, TTextEntities.Encode(string.Join(', ', mEntry.Changes.Authors)), Length(mEntry.Changes.Authors),
+      mEntry.Complexity, mEntry.Lines, TTextEntities.Encode(ChurnText(mEntry.Changes)), TTextEntities.Encode(TrendText(mEntry)),
       DateText(mEntry.Changes.LastChange)])).Append(cLineBreak);
   end;
   ABuilder.Append('</tbody></table>').Append(cLineBreak);
@@ -707,7 +700,7 @@ begin
   ABuilder.Append('<!DOCTYPE html>').Append(cLineBreak).Append('<html lang="')
     .Append(cTexts[THotspotsReportText.HtmlLanguage].Text).Append('"><head><meta charset="utf-8">')
     .Append('<meta name="viewport" content="width=device-width, initial-scale=1">')
-    .Append('<title>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</title>').Append(cLineBreak);
+    .Append('<title>Hotspots ').Append(TTextEntities.Encode(AResult.Title)).Append('</title>').Append(cLineBreak);
   ABuilder.Append('<style>:root{color-scheme:light dark;--fg:#1f2328;--bg:#fff;--line:#d0d7de;--muted:#656d76}' +
     '@media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--bg:#0d1117;--line:#30363d;--muted:#8d96a0}}' +
     'body{font:14px/1.45 "Segoe UI",system-ui,sans-serif;color:var(--fg);background:var(--bg);margin:24px;' +
@@ -717,8 +710,8 @@ begin
     'th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:right}th:nth-child(2),' +
     'td:nth-child(2){text-align:left}.path{color:var(--muted);font-size:12px}.note{color:var(--muted)}' +
     '</style></head><body>').Append(cLineBreak);
-  ABuilder.Append('<h1>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</h1>').Append(cLineBreak);
-  ABuilder.Append('<p class="note">').Append(HtmlEscape(THotspotReport.RangeText(AResult)))
+  ABuilder.Append('<h1>Hotspots ').Append(TTextEntities.Encode(AResult.Title)).Append('</h1>').Append(cLineBreak);
+  ABuilder.Append('<p class="note">').Append(TTextEntities.Encode(THotspotReport.RangeText(AResult)))
     .Append(cTexts[THotspotsReportText.ScoreNormalizedChangesNormalizedCognitive2].Text).Append(cLineBreak);
 end;
 
@@ -753,7 +746,7 @@ begin
   ABuilder.Append('<ul>');
   for mPair in ACoupling do
   begin
-    ABuilder.Append('<li>').Append(HtmlEscape(CouplingLine(mPair))).Append('</li>');
+    ABuilder.Append('<li>').Append(TTextEntities.Encode(CouplingLine(mPair))).Append('</li>');
   end;
   ABuilder.Append('</ul>').Append(cLineBreak);
 end;

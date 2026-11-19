@@ -28,6 +28,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Debug.LeakCapture,
   Atlas.Core.Debug.LeakView,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session;
 
 type
@@ -37,7 +39,7 @@ type
     cTimeoutMs = 30000;
     cLocalFolder = '.atlas-local';
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugEnded; override;
@@ -48,7 +50,7 @@ type
     end;
   private class var
     FScope: IAtlasModuleScope;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FMessage: TProc<string>;

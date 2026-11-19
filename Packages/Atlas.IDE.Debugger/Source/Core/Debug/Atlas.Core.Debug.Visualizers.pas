@@ -125,7 +125,8 @@ uses
   System.StrUtils,
   System.Math,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Names;
 
 const
   // Leerer Platz eines Dictionaries (EMPTY_HASH in System.Generics.Collections).
@@ -313,19 +314,6 @@ begin
   end;
 end;
 
-/// <summary>Letzter Teil eines qualifizierten Namens (ohne Typargumente).</summary>
-function StripUnit(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := Trim(AName);
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
-end;
-
 class function TAtlasVisualizers.ShortTypeName(const ATypeName: string): string;
 var
   mIndex, mStart: Integer;
@@ -341,7 +329,7 @@ begin
       mPart := Copy(ATypeName, mStart, mIndex - mStart);
       if mPart <> '' then
       begin
-        Result := Result + StripUnit(mPart);
+        Result := Result + TTextNames.LastPart(Trim(mPart));
       end;
       if mIndex <= Length(ATypeName) then
       begin
@@ -369,7 +357,7 @@ begin
   begin
     Result := Copy(Result, 1, mAngle - 1);
   end;
-  Result := StripUnit(Result);
+  Result := TTextNames.LastPart(Trim(Result));
 end;
 
 class function TAtlasVisualizers.KindOf(const ATypeName: string; out AKind: TAtlasVisualizerKind): Boolean;

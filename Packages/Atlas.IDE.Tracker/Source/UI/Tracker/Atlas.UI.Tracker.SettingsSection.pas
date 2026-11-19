@@ -1,13 +1,14 @@
 ﻿unit Atlas.UI.Tracker.SettingsSection;
 
-// Abschnitt „Issue-Tracker“ des Moduls Tracker im Optionsdialog (#1455).
-// Die Seite von Base baut ihn über IAtlasSettingsSectionHost in den Bereich „issues“. Der
-// Abschnitt fügt nur die Teile zusammen:
+// Abschnitt „Issue-Tracker“ des Moduls Tracker im Optionsdialog (#1455), auf
+// Grundlage von TAtlasSettingsSection (Base). Die Seite von Base baut ihn über
+// IAtlasSettingsSectionHost in den Bereich „issues“. Der Abschnitt fügt nur
+// die Teile zusammen:
 // - TAtlasTrackerSettingsTables (Core): Zeilen der Tabellen und ihre Regeln.
 // - Teile der Oberfläche: Verbindungen (#1260), Projekte (#1261), Abfragen
 //   (#1262), Allgemein, Zustand im Tracker (#1266), Textbausteine (#1278).
 // - TAtlasTrackerSettingsHooks: Netz, Anmeldespeicher und Projekt der IDE;
-//   sie setzt Atlas.IDE.Tracker.Settings. Ohne Haken: keine Prüfung, kein
+//   sie setzt Atlas.IDE.Tracker.Adapters.Settings. Ohne Haken: keine Prüfung, kein
 //   Token.
 // Close gibt Teile, Steuerelemente und Haken frei; danach erreicht den
 // Abschnitt nichts mehr (Regel 3).
@@ -17,7 +18,7 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
-  Atlas.UI.Settings.Contract,
+  Atlas.UI.Settings.Section,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.SettingsTables,
@@ -30,7 +31,7 @@ uses
   Atlas.UI.Tracker.SettingsGeneral;
 
 type
-  TAtlasTrackerSettingsSection = class(TInterfacedObject, IAtlasSettingsSection)
+  TAtlasTrackerSettingsSection = class(TAtlasSettingsSection)
   public const
     cOwnerId = 'atlas.tracker';
     cAreaId = 'issues';
@@ -46,22 +47,21 @@ type
     FSnippets: TAtlasTrackerSnippetsPart;
     FWorkflow: TAtlasTrackerWorkflowPart;
     FGeneral: TAtlasTrackerGeneralPart;
-    FClosed: Boolean;
     function Active: Boolean;
     procedure ConnectionsChanged;
     procedure ProjectsChanged;
+  protected
+    procedure BuildRows; override;
   public
-    constructor Create;
+    constructor Create; override;
     destructor Destroy; override;
-    { IAtlasSettingsSection }
-    function OwnerId: string;
-    function AreaId: string;
-    procedure Build(const AHost: IAtlasSettingsSectionHost);
-    procedure Load(const AValues: IAtlasSettingsValues);
-    procedure Save(const AValues: IAtlasSettingsValues);
-    procedure WindowReady;
-    function Show(const AKey, AArgument: string): Boolean;
-    procedure Close;
+    function OwnerId: string; override;
+    function AreaId: string; override;
+    procedure Load(const AValues: IAtlasSettingsValues); override;
+    procedure Save(const AValues: IAtlasSettingsValues); override;
+    procedure WindowReady; override;
+    function Show(const AKey, AArgument: string): Boolean; override;
+    procedure Close; override;
     /// <summary>Anbieter der Auswahl (Namen und Beschriftungen); auch vor Build.</summary>
     procedure SetTrackerProviders(const ANames, ACaptions: TArray<string>);
     /// <summary>Prüfung einer Verbindung ist fertig (Zustand über Hooks.OnState).</summary>
@@ -70,7 +70,6 @@ type
     procedure TrackerValuesDone(const AValues: TAtlasTrackerValueSet; const AError: string);
     /// <summary>„zuordnen …“ aus „Meine Issues“ (#1261): Zeile für AMatch anlegen bzw. wählen und zeigen.</summary>
     procedure AssignTrackerProject(const AMatch: string);
-    property Closed: Boolean read FClosed;
     /// <summary>Schalter des Moduls (issues.enabled); früher in Base (#1456).</summary>
     property Enabled: TCheckBox read FEnabled;
     property Hooks: TAtlasTrackerSettingsHooks read FHooks;
@@ -108,7 +107,7 @@ end;
 
 function TAtlasTrackerSettingsSection.Active: Boolean;
 begin
-  Result := not FClosed and (FRows <> nil) and FRows.Active;
+  Result := not Closed and (FRows <> nil) and FRows.Active;
 end;
 
 procedure TAtlasTrackerSettingsSection.ConnectionsChanged;
@@ -131,14 +130,10 @@ begin
   Result := cAreaId;
 end;
 
-procedure TAtlasTrackerSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
+procedure TAtlasTrackerSettingsSection.BuildRows;
 begin
-  if FClosed or (FRows <> nil) then
-  begin
-    Exit;
-  end;
-  FRows := TAtlasTrackerSettingsRows.Create(AHost);
-  FEnabled := AHost.AddModuleSwitch(cEnabledKey) as TCheckBox;
+  FRows := TAtlasTrackerSettingsRows.Create(Host);
+  FEnabled := ModuleSwitch(cEnabledKey);
   FConnections := TAtlasTrackerConnectionsPart.Create(FRows, FHooks, FTables, ConnectionsChanged);
   FProjects := TAtlasTrackerProjectsPart.Create(FRows, FHooks, FTables, ProjectsChanged);
   FQueries := TAtlasTrackerQueriesPart.Create(FRows, FHooks, FTables);
@@ -200,11 +195,12 @@ end;
 
 procedure TAtlasTrackerSettingsSection.Close;
 begin
-  if FClosed then
+  if Closed then
   begin
     Exit;
   end;
-  FClosed := True;
+  // Zuerst geschlossen: Späte Antworten während des Abbaus verfallen.
+  inherited Close;
   // Rückwärts zum Aufbau: Teile, dann die Steuerelemente, zuletzt die Haken zur IDE.
   FreeAndNil(FSnippets);
   FreeAndNil(FWorkflow);
@@ -220,7 +216,7 @@ end;
 
 procedure TAtlasTrackerSettingsSection.SetTrackerProviders(const ANames, ACaptions: TArray<string>);
 begin
-  if FClosed or not FTables.Connections.SetProviders(ANames, ACaptions) then
+  if Closed or not FTables.Connections.SetProviders(ANames, ACaptions) then
   begin
     Exit;
   end;

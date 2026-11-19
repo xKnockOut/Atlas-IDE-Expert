@@ -115,7 +115,8 @@ uses
   System.StrUtils,
   Atlas.Common.Lsp.StepTargets,
   Atlas.Text.Json,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
 var
@@ -129,18 +130,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-function LastPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := AName;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
 end;
 
 function ContainerPart(const AName: string): string;
@@ -471,7 +460,7 @@ begin
     end;
   end;
   Result.Container := ContainerPart(mName);
-  Result.Routine := LastPart(mName);
+  Result.Routine := TTextNames.LastPart(mName);
   if UnitName(ATree) <> '' then
   begin
     Result.Name := UnitName(ATree) + '.' + mName;
@@ -525,7 +514,7 @@ var
 begin
   Result := [];
   mContainer := ContainerPart(AName);
-  mShort := LastPart(AName);
+  mShort := TTextNames.LastPart(AName);
   if (mContainer = '') or (Length(ABody) <> 1) or not TLspStepFilter.IsSimple(ABody[0]) then
   begin
     Exit;
@@ -604,7 +593,7 @@ begin
   begin
     Include(Result, TStepFilterKind.EmptyConstructors);
   end;
-  if IsTrivial(ARoutine, LastPart(mName)) then
+  if IsTrivial(ARoutine, TTextNames.LastPart(mName)) then
   begin
     Include(Result, TStepFilterKind.Trivial);
   end;

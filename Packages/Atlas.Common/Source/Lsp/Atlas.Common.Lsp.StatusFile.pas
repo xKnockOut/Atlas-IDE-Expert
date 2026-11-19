@@ -112,7 +112,8 @@ uses
   System.Generics.Defaults,
   System.Math,
   Atlas.Text.Json,
-  Atlas.Text.Timestamps;
+  Atlas.Text.Timestamps,
+  Atlas.Text.Files;
 
 /// <summary>Ordner zum Vergleichen: klein, beide Trenner als „/“, mit „/“ am Ende.</summary>
 function NormalFolder(const AFolder: string): string;
@@ -303,21 +304,6 @@ begin
   end;
 end;
 
-/// <summary>Löscht AFileName; Fehler bleiben still (ein anderer Leser war schneller).</summary>
-procedure DeleteQuietly(const AFileName: string);
-begin
-  try
-    if TFile.Exists(AFileName) then
-    begin
-      TFile.Delete(AFileName);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
-    on Exception do
-      Exit;
-  end;
-end;
-
 /// <summary>Verwaiste Dateien anderer Prozesse in AFolder wegräumen (Absturz ohne Delete); AOwn bleibt.</summary>
 procedure DeleteOrphans(const AFolder, AOwn: string; ANow: TDateTime);
 var
@@ -333,7 +319,7 @@ begin
     if not ReadEntry(mOther, mEntry) or (SecondsBetween(ANow, mEntry.Written) > TServerStatusFile.cOrphanSeconds)
     then
     begin
-      DeleteQuietly(mOther);
+      TTextFiles.DeleteQuietly(mOther);
     end;
   end;
 end;
@@ -378,7 +364,7 @@ end;
 
 class procedure TServerStatusFile.Delete(const ARoot: string; APid: Cardinal);
 begin
-  DeleteQuietly(FileFor(ARoot, APid));
+  TTextFiles.DeleteQuietly(FileFor(ARoot, APid));
 end;
 
 class function TServerStatusFile.Matches(const AWorkspaceRoots: TArray<string>; const AFolder: string): Boolean;
@@ -477,7 +463,7 @@ begin
       if (SecondsBetween(ANow, mEntry.Written) > cOrphanSeconds) or (Assigned(AIsAlive) and not AIsAlive(mEntry.Pid))
       then
       begin
-        DeleteQuietly(mFile);
+        TTextFiles.DeleteQuietly(mFile);
         Continue;
       end;
       mEntries.Add(mEntry);

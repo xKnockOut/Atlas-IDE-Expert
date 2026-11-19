@@ -344,7 +344,7 @@ begin
     Exit;
   end;
   TAtlasIdeShortcutTips.Invoked(mCommand.Id);
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+  TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
 end;
 
 function TAtlasIdeContextMenu.IndexOfAction(AAction: TBasicAction): Integer;
@@ -689,7 +689,7 @@ begin
   begin
     TAtlasIdeShortcutTips.Invoked(FEntries[mIndex].Id);
   end;
-  TAtlasGuard.Run(FEntries[mIndex].Feature, FEntries[mIndex].Proc);
+  TAtlasCommandScope.Run(FEntries[mIndex].Feature, FEntries[mIndex].Caption, FEntries[mIndex].Proc);
 end;
 
 procedure TAtlasIdeContextMenu.RootExecute(Sender: TObject);

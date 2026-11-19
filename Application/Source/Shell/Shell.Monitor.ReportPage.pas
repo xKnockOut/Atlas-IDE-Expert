@@ -39,7 +39,7 @@ uses
   System.IOUtils,
   Atlas.Text.Uris,
   Atlas.Common.Monitor.Texts,
-  Atlas.Windows.Monitor.Adapters.System;
+  Atlas.Windows.Monitor.System;
 
 { TMonitorReportPage }
 

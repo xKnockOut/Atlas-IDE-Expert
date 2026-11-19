@@ -3,7 +3,7 @@
 // Kern der Debug-Steuerung für KI-Assistenten (#1874), ohne IDE: Startparameter aus dem Auftrag (eigene Argumente
 // oder die des Projekts, mit test nur dieser DUnitX-Test), Rahmen des Aufrufstapels für den Vertrag
 // IAtlasDebugControl, Ort des Halts (erster Rahmen mit Quelltext) und Grund des Halts als festes Wort des Protokolls
-// (exception, breakpoint, step, pause). Die IDE-Schicht ist Atlas.IDE.Debug.AssistantControl.
+// (exception, breakpoint, step, pause). Die IDE-Schicht ist Atlas.IDE.Debug.Adapters.AssistantControl.
 
 interface
 

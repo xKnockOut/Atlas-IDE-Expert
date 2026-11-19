@@ -10,27 +10,30 @@ uses
   Atlas.Common.Pascal.Contract;
 
 type
-  TRequestCancellation = class(TInterfacedObject, IPascalCancellation)
-  private
-    FToken: IJsonRpcCancellationToken;
+  TRequestCancellation = record
   public
-    constructor Create(const AToken: IJsonRpcCancellationToken);
-    function IsCancelled: Boolean;
+    /// <summary>Signal für den Parser, das dem Token folgt; ohne Token bricht es nie ab.</summary>
+    class function Create(const AToken: IJsonRpcCancellationToken): IPascalCancellation; static;
   end;
 
 implementation
 
+uses
+  System.SysUtils,
+  Atlas.Common.Pascal.Cancellation;
+
 { TRequestCancellation }
 
-constructor TRequestCancellation.Create(const AToken: IJsonRpcCancellationToken);
+class function TRequestCancellation.Create(const AToken: IJsonRpcCancellationToken): IPascalCancellation;
+var
+  mToken: IJsonRpcCancellationToken;
 begin
-  inherited Create;
-  FToken := AToken;
-end;
-
-function TRequestCancellation.IsCancelled: Boolean;
-begin
-  Result := (FToken <> nil) and FToken.IsCancellationRequested;
+  mToken := AToken;
+  Result := TPascalCancellations.FromCheck(
+    function: Boolean
+    begin
+      Result := (mToken <> nil) and mToken.IsCancellationRequested;
+    end);
 end;
 
 end.

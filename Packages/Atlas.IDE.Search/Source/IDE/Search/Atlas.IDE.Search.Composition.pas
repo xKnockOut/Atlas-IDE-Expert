@@ -22,7 +22,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Commands.KeyMap;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasSearchModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -73,7 +73,8 @@ uses
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Query.Service,
   Atlas.UI.Strings,
-  Atlas.UI.Search.Strings;
+  Atlas.UI.Search.Strings,
+  Atlas.Core.Modules.Contributions;
 
 const
   /// <summary>Symbolnamen beim Tippen im Fenster „Atlas-Abfrage“: lieber keine Vorschläge als die IDE aufhalten.
@@ -196,23 +197,10 @@ end;
 
 { Befehle }
 
-function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(AFeature, AProc);
-    end;
-end;
-
 function Command(const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := ACaption;
-  Result.Run := ARun;
-  Result.Visible := AVisible;
+  Result := TAtlasModuleContributions.NewCommand(AId, ACaption, ARun, AVisible);
 end;
 
 function UnitSearchVisible: Boolean;
@@ -383,7 +371,7 @@ begin
       TAtlasIdeSearch.ClearHighlights, nil),
     // Code-Abfragen (#1351); nur sichtbar, solange query.enabled an ist.
     Command('Atlas.Query', TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCommand),
-      Guarded(TAtlasFeature.Query, ShowQuery), QueryVisible)];
+      TAtlasGuard.Wrap(TAtlasFeature.Query, ShowQuery), QueryVisible)];
 end;
 
 function TAtlasSearchModule.MenuEntries: TArray<TAtlasMenuEntry>;

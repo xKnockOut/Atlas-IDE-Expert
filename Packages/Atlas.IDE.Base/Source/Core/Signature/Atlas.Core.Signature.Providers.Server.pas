@@ -23,12 +23,11 @@ interface
 uses
   System.SysUtils,
   System.Types,
-  System.Classes,
   System.SyncObjs,
   System.JSON,
-  System.Generics.Collections,
   Atlas.Core.Signature.Contract,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.Diagnostics.ThreadList;
 
 type
   TAtlasSignatureCallback = Atlas.Core.Signature.Contract.TAtlasSignatureCallback;
@@ -49,12 +48,10 @@ type
   private
     FSession: TAtlasSessionFunc;
     FTimeoutMs: Cardinal;
-    FLock: TCriticalSection;
     FGeneration: Integer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasThreadList;
     FFlag: TAliveFlag;
     FFlagRef: IInterface;
-    procedure ReapWorkers;
     /// <summary>Sitzung holen und den Text abgleichen; False ohne Server.</summary>
     function SyncedSession(const AFileName, AText: string; out ASession: TLspSession): Boolean;
     /// <summary>Fragt im eigenen Thread an; APosition: X Zeichen, Y Zeile (0-basiert).</summary>
@@ -82,6 +79,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Localization.Language;
 
@@ -110,11 +108,10 @@ begin
   inherited Create;
   FSession := ASession;
   FTimeoutMs := ATimeoutMs;
-  FLock := TCriticalSection.Create;
-  FWorkers := TList<TThread>.Create;
   FFlag := TAliveFlag.Create;
   FFlag.Alive := True;
   FFlagRef := FFlag;
+  FWorkers := TAtlasThreadList.Create;
 end;
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc);
@@ -129,7 +126,6 @@ begin
   FFlag.Alive := False;
   FFlagRef := nil;
   FWorkers.Free;
-  FLock.Free;
   inherited;
 end;
 
@@ -334,25 +330,6 @@ begin
   Result.Parameters := ParametersFromLsp(AItem.GetValue('parameters'), Result.Label_);
 end;
 
-procedure TAtlasServerSignatureProvider.ReapWorkers;
-var
-  mIndex: Integer;
-begin
-  FLock.Enter;
-  try
-    for mIndex := FWorkers.Count - 1 downto 0 do
-    begin
-      if FWorkers[mIndex].Finished then
-      begin
-        FWorkers[mIndex].Free;
-        FWorkers.Delete(mIndex);
-      end;
-    end;
-  finally
-    FLock.Leave;
-  end;
-end;
-
 function TAtlasServerSignatureProvider.SyncedSession(const AFileName, AText: string;
   out ASession: TLspSession): Boolean;
 const
@@ -397,7 +374,7 @@ var
   mGeneration: Integer;
 begin
   mGeneration := TInterlocked.Increment(FGeneration);
-  ReapWorkers;
+  FWorkers.Prune;
   Result := False;
   if (AFileName = '') or TAtlasGuard.ProviderDisabled(ProviderTitle) then
   begin
@@ -416,23 +393,9 @@ begin
 end;
 
 procedure TAtlasServerSignatureProvider.Shutdown;
-var
-  mWorkers: TArray<TThread>;
-  mWorker: TThread;
 begin
   Cancel;
-  FLock.Enter;
-  try
-    mWorkers := FWorkers.ToArray;
-    FWorkers.Clear;
-  finally
-    FLock.Leave;
-  end;
-  for mWorker in mWorkers do
-  begin
-    mWorker.WaitFor;
-    mWorker.Free;
-  end;
+  FWorkers.StopAll(TAtlasWorkerSlot.cWaitForever);
 end;
 
 /// <summary>Signaturen vom Server; leer, wenn er weg ist oder das Zeitlimit greift.</summary>
@@ -465,7 +428,6 @@ end;
 procedure TAtlasServerSignatureProvider.StartWorker(ASession: TLspSession; const AFileName: string;
   const APosition: TPoint; AGeneration: Integer; const ACallback: TAtlasSignatureCallback);
 var
-  mWorker: TThread;
   mProvider: TAtlasServerSignatureProvider;
   mFlag: TAliveFlag;
   mFlagRef: IInterface;
@@ -477,7 +439,7 @@ begin
   mFlagRef := FFlagRef;
   mFileName := AFileName;
   mPosition := APosition;
-  mWorker := TThread.CreateAnonymousThread(
+  FWorkers.Start(
     procedure
     var
       mHelp: TAtlasSignatureHelp;
@@ -502,14 +464,6 @@ begin
           end;
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  FLock.Enter;
-  try
-    FWorkers.Add(mWorker);
-  finally
-    FLock.Leave;
-  end;
-  mWorker.Start;
 end;
 class function TAtlasServerSignatureProvider.HelpFromLsp(AResponse: TJSONValue): TAtlasSignatureHelp;
 var

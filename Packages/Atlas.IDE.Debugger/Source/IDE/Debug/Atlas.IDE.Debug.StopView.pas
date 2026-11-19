@@ -17,12 +17,14 @@ interface
 uses
   Vcl.ExtCtrls,
   Atlas.Core.Debug.StopProgress,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session;
 
 type
   TAtlasIdeDebugStopView = class abstract
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     private
       FView: TAtlasIdeDebugStopView;
     public
@@ -33,7 +35,7 @@ type
     end;
   private
     FListener: TListener;
-    FListenerRef: IAtlasIdeDebugListener;
+    FListenerRef: IAtlasDebugListener;
     procedure Tick(Sender: TObject);
     procedure Unlisten;
   protected

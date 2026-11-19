@@ -144,7 +144,8 @@ uses
   Atlas.Common.Index.Extractor.TypeText,
   Atlas.Common.Index.Extractor.Conditions,
   Atlas.Common.Index.Extractor.InlineRefs,
-  Atlas.Common.Index.Extractor.Patterns;
+  Atlas.Common.Index.Extractor.Patterns,
+  Atlas.Text.Names;
 
 const
   // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
@@ -286,18 +287,6 @@ begin
   if not mWithArgs then
   begin
     AArgs := nil;
-  end;
-end;
-
-function QualifiedOf(const AContainer, AName: string): string;
-begin
-  if AContainer = '' then
-  begin
-    Result := AName;
-  end
-  else
-  begin
-    Result := AContainer + '.' + AName;
   end;
 end;
 
@@ -542,11 +531,11 @@ begin
   end;
   if mBody.Kind = TSyntaxKind.EnumType then
   begin
-    AddEnumMembers(mBody, QualifiedOf(AContainer, ADecl.Name));
+    AddEnumMembers(mBody, TTextNames.Qualified(AContainer, ADecl.Name));
   end
   else if mBody.Kind in cMemberBodies then
   begin
-    AddBodyMembers(mBody, QualifiedOf(AContainer, ADecl.Name), mCount);
+    AddBodyMembers(mBody, TTextNames.Qualified(AContainer, ADecl.Name), mCount);
   end
   else
   begin

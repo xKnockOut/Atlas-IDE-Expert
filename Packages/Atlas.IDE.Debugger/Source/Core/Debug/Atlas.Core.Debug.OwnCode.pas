@@ -77,7 +77,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.FolderList;
+  Atlas.Core.Settings.FolderList,
+  Atlas.Text.Arrays;
 
 function NormalFolder(const AFolder: string): string;
 begin
@@ -88,20 +89,6 @@ end;
 function NormalPath(const APath: string): string;
 begin
   Result := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
-end;
-
-function Contains(const AList: TArray<Integer>; AValue: Integer): Boolean;
-var
-  mItem: Integer;
-begin
-  for mItem in AList do
-  begin
-    if mItem = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function Row(AKind: TAtlasDebugStackRowKind; AFirst, ACount: Integer; AFaded: Boolean): TAtlasDebugStackRow;
@@ -244,7 +231,7 @@ begin
     begin
       Inc(mStop);
     end;
-    if (mStop - mIndex >= cGroupFrom) and not Contains(AExpanded, mIndex) then
+    if (mStop - mIndex >= cGroupFrom) and not TTextArrays.ContainsInteger(AExpanded, mIndex) then
     begin
       Result := Result + [Row(TAtlasDebugStackRowKind.LibraryGroup, mIndex, mStop - mIndex, True)];
     end

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.MyIssues;
 
-// Bereich „Meine Issues“ in der IDE (#765): Quelle des Bereichs
-// (IAtlasIssuesSource), Anmeldung als Bereich atlas.issues der
+// Bereich „Meine Issues“ in der IDE (#765): Quelle des Bereichs (für die
+// Kachel über Atlas.IDE.Tracker.Adapters.MyIssues), Anmeldung als Bereich atlas.issues der
 // Willkommensseite (bzw. des Fensters „Atlas-Start“), Abfrage beim
 // Issue-Tracker im Hintergrund, „Beginnen“, das aktuelle Issue im
 // Statusfeld (#591) und das Commit-Präfix.
@@ -116,18 +116,18 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.MyIssues,
-  Atlas.UI.Tracker.MyIssues,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,
   Atlas.IDE.Tracker.IssueCommands,
   Atlas.IDE.Tracker.IssuesStatus,
   Atlas.IDE.Tracker.IssuesQuery,
-  Atlas.IDE.Tracker.IssueStart;
+  Atlas.IDE.Tracker.IssueStart,
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.UI.Tracker.Contract.MyIssues;
 
 type
-  TAtlasIdeIssues = class(TInterfacedObject, IAtlasIssuesSource, IAtlasIdeIssuesActions)
+  TAtlasIdeIssues = class(TInterfacedObject, IAtlasIdeIssuesActions)
   public const
     /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite (Layouts bleiben).
     /// </summary>
@@ -164,7 +164,7 @@ type
     procedure UpdateTileInfo;
     procedure SetFilter(const ACaption: string; const AIssues: TArray<TAtlasTrackerIssue>);
     function ViewOf(const AProject: string): TAtlasIssuesView;
-    { IAtlasIssuesSource }
+    { Für die Kachel (IAtlasIssuesSource über Atlas.IDE.Tracker.Adapters.MyIssues) }
     function View: TAtlasIssuesView;
     procedure Shown;
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart); overload;
@@ -198,14 +198,13 @@ implementation
 uses
   Atlas.UI.Tracker.MyIssues.Text,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Tracker.Reopened,
-  Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.MyIssuesPlan,
   Atlas.Core.Tracker.Templates,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Tracker.Workflow;
+  Atlas.IDE.Tracker.Workflow,
+  Atlas.Core.Tracker.MyIssues;
 
 const
   cRowActions: array[TAtlasIssueAction] of TAtlasIssueRowAction = (TAtlasIssueRowAction.Continue,

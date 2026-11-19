@@ -20,7 +20,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Hover.DebugValue;
+  Atlas.Core.Hover.Contract.DebugValue;
 
 {$SCOPEDENUMS ON}
 

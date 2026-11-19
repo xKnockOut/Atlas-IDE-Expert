@@ -71,6 +71,7 @@ type
     /// <summary>Gilt für Dateien unter ARoot; 65001 = UTF-8.</summary>
     class procedure SetFolder(const ARoot: string; ACodePage: Integer); static;
     class procedure RemoveFolder(const ARoot: string); static;
+    /// <summary>Vergisst alle Vorgaben; die Tabelle behält ihre Größe.</summary>
     class procedure Clear; static;
     /// <summary>Vorgabe des tiefsten Ordners, der AFileName enthält; sonst 65001.</summary>
     class function CodePageFor(const AFileName: string): Integer; static;
@@ -187,6 +188,7 @@ uses
   System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Text.Encoding,
+  Atlas.Text.Locked,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -204,6 +206,11 @@ const
     (De: 'reinem ASCII'; En: 'plain ASCII'));
 
 {$SCOPEDENUMS OFF}
+
+const
+  /// <summary>Anfangsgröße der Tabelle der Vorgaben je Ordner: ein Eintrag je offenem Arbeitsbereich oder
+  /// Prüflauf. So wächst sie im üblichen Betrieb nie.</summary>
+  cDefaultFoldersCapacity = 16;
 
 var
   DefaultsLock: TObject;
@@ -249,21 +256,32 @@ begin
   TMonitor.Enter(DefaultsLock);
   try
     DefaultFolders.Remove(FolderKey(ARoot));
-    // Leer gewordene Tabelle gibt ihre Hashfelder frei; sonst lebten sie nach dem letzten Eintrag bis Programmende.
-    if DefaultFolders.Count = 0 then
-    begin
-      DefaultFolders.Clear;
-    end;
   finally
     TMonitor.Exit(DefaultsLock);
   end;
 end;
 
 class procedure TFileEncodingDefaults.Clear;
+var
+  mRoots: TArray<string>;
+  mPair: TPair<string, Integer>;
+  mIndex: Integer;
 begin
   TMonitor.Enter(DefaultsLock);
   try
-    DefaultFolders.Clear;
+    // Einzeln entfernen: TDictionary.Clear gäbe auch die Anfangsgröße ab, und die nächste Angabe ließe die Tabelle
+    // neu wachsen.
+    SetLength(mRoots, DefaultFolders.Count);
+    mIndex := 0;
+    for mPair in DefaultFolders do
+    begin
+      mRoots[mIndex] := mPair.Key;
+      Inc(mIndex);
+    end;
+    for mIndex := 0 to High(mRoots) do
+    begin
+      DefaultFolders.Remove(mRoots[mIndex]);
+    end;
   finally
     TMonitor.Exit(DefaultsLock);
   end;
@@ -923,11 +941,7 @@ end;
 
 class function TFileEncoding.LoadLines(const AFileName: string): TArray<string>;
 begin
-  Result := TTextLines.SplitLines(LoadText(AFileName));
-  if (Length(Result) > 0) and (Result[High(Result)] = '') then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
+  Result := TTextLines.SplitLikeStrings(LoadText(AFileName));
 end;
 
 class procedure TFileEncoding.SaveToFile(const AFileName, AText: string; const AFormat: TFileFormat);
@@ -955,12 +969,8 @@ end;
 
 initialization
   TAtlasTextTables.Add('Atlas.Common.Documents.FileEncoding', cTexts);
-  DefaultsLock := TObject.Create;
-  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
-  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
-  TMonitor.Enter(DefaultsLock);
-  TMonitor.Exit(DefaultsLock);
-  DefaultFolders := TDictionary<string, Integer>.Create;
+  DefaultsLock := TAtlasSharedLock.New;
+  DefaultFolders := TDictionary<string, Integer>.Create(cDefaultFoldersCapacity);
 
 finalization
   DefaultFolders.Free;

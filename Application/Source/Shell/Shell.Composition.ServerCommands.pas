@@ -96,7 +96,7 @@ uses
   Atlas.Common.Index.Cache,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,

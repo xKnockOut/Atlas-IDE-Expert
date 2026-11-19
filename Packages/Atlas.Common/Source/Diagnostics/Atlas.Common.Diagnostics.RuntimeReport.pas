@@ -12,13 +12,11 @@ uses
   System.SysUtils,
   Atlas.Text.MapFile,
   Atlas.Text.PeImage,
+  Atlas.Common.Diagnostics.Contract,
   Atlas.Text.LeakReport,
   Atlas.Text.CrashReport;
 
 type
-  /// <summary>Datei im Projekt zu Unit bzw. Dateiname aus einem Bericht; '' unbekannt.</summary>
-  TReportUnitFileFunc = reference to function(const AUnitName, AFileName: string): string;
-
 {$SCOPEDENUMS ON}
   /// <summary>Stand der Map: keine angegeben, angegeben und fehlt, sonst Ergebnis des Vergleichs mit der EXE.
   /// </summary>

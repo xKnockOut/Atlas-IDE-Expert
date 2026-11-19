@@ -131,7 +131,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Index.Adapters.CacheDirectory;
+  Atlas.Common.Index.CacheDirectory;
 
 { TShellWorkspaceServices }
 

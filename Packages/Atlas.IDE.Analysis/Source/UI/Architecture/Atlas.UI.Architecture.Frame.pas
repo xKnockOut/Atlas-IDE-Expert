@@ -261,7 +261,9 @@ uses
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.Core.Foundation.Calls,
+  Atlas.UI.Foundation.Menus;
 
 {$R *.dfm}
 
@@ -1163,15 +1165,6 @@ end;
 
 { Menü „Teilsysteme ▾“ }
 
-function NewMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AClick;
-  AMenu.Items.Add(Result);
-end;
-
 /// <summary>Überschrift der Teile eines nachgeteilten Teilsystems (#1364), nicht wählbar.</summary>
 procedure AddFamilyItem(AFrame: TArchFrame; const AFamily: string);
 var
@@ -1185,8 +1178,9 @@ begin
       Inc(mParts);
     end;
   end;
-  NewMenuItem(AFrame.FParts.SubsystemsMenu, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemFamily,
-    [AFamily, mParts]), -1, nil).Enabled := False;
+  TAtlasMenus.Add(AFrame.FParts.SubsystemsMenu,
+    TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemFamily, [AFamily, mParts]), -1,
+    nil).Enabled := False;
 end;
 
 /// <summary>Wie die Legende der HTML-Karte: die Teile eines nachgeteilten Teilsystems (#1364) eingerückt unter
@@ -1210,7 +1204,7 @@ begin
       mCaption := '      ' + mCaption;
     end;
     mFamily := mParent;
-    NewMenuItem(AFrame.FParts.SubsystemsMenu, mCaption, mIndex, AFrame.FState.Events.SubsystemItemClick).Checked :=
+    TAtlasMenus.Add(AFrame.FParts.SubsystemsMenu, mCaption, mIndex, AFrame.FState.Events.SubsystemItemClick).Checked :=
       AFrame.FParts.Map.State.SubsystemVisible[mIndex];
   end;
 end;
@@ -1226,14 +1220,14 @@ begin
   // Kanten zum Fundament (#1365) ein- und ausblenden.
   if AFrame.FState.Model.HasFoundation then
   begin
-    NewMenuItem(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationEdges), -1,
+    TAtlasMenus.Add(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationEdges), -1,
       mEvents.FoundationEdgesClick).Checked := AFrame.FParts.Map.State.Has(TAtlasArchMapFlag.ShowFoundationEdges);
   end;
-  NewMenuItem(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureShowAll), 0, mEvents.ShowAllClick);
+  TAtlasMenus.Add(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureShowAll), 0, mEvents.ShowAllClick);
   // Farben und Namen neu vergeben (#1367), nur wenn der Dienst es anbietet.
   if Assigned(AFrame.FHandlers.OnRenameSubsystems) then
   begin
-    NewMenuItem(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameSubsystems), -1,
+    TAtlasMenus.Add(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameSubsystems), -1,
       mEvents.RenameSubsystemsClick).Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameHint);
   end;
 end;
@@ -1309,14 +1303,6 @@ begin
   end;
 end;
 
-procedure CallProc(const AProc: TProc);
-begin
-  if Assigned(AProc) then
-  begin
-    AProc();
-  end;
-end;
-
 { TAtlasArchitectureFrame.TEvents }
 
 constructor TAtlasArchitectureFrame.TEvents.Create(AFrame: TAtlasArchitectureFrame);
@@ -1327,7 +1313,7 @@ end;
 
 procedure TAtlasArchitectureFrame.TEvents.RefreshClick(Sender: TObject);
 begin
-  CallProc(FFrame.FHandlers.OnRefresh);
+  TAtlasCalls.Call(FFrame.FHandlers.OnRefresh);
 end;
 
 procedure TAtlasArchitectureFrame.TEvents.SaveClick(Sender: TObject);
@@ -1364,7 +1350,7 @@ end;
 
 procedure TAtlasArchitectureFrame.TEvents.ClearCompareClick(Sender: TObject);
 begin
-  CallProc(FFrame.FHandlers.OnClearComparison);
+  TAtlasCalls.Call(FFrame.FHandlers.OnClearComparison);
 end;
 
 procedure TAtlasArchitectureFrame.TEvents.ScopeChange(Sender: TObject);
@@ -1451,7 +1437,7 @@ end;
 
 procedure TAtlasArchitectureFrame.TEvents.RenameSubsystemsClick(Sender: TObject);
 begin
-  CallProc(FFrame.FHandlers.OnRenameSubsystems);
+  TAtlasCalls.Call(FFrame.FHandlers.OnRenameSubsystems);
 end;
 
 procedure TAtlasArchitectureFrame.TEvents.CentralColumnClick(Sender: TObject; Column: TListColumn);

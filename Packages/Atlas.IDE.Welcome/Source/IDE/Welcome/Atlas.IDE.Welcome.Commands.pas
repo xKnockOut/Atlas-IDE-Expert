@@ -67,7 +67,7 @@
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten;
 // einzige Ausnahme ist die Abfrage beim Build-Server (#763,
 // welcomePage.tests.ci, Vorgabe aus).
-// Die Quellen der Bereiche hält Atlas.IDE.Welcome.Areas, das Layout der
+// Die Quellen der Bereiche legt die Composition an (Sicht: Atlas.IDE.Welcome.Areas), das Layout der
 // Willkommensseite der IDE Atlas.IDE.Welcome.IdeLayout, den Beobachter für
 // welcomePage.openWhenNoProject Atlas.IDE.Welcome.ProjectWatch.
 
@@ -77,7 +77,6 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Board,
   Atlas.IDE.Status.Lines,
@@ -87,9 +86,22 @@ uses
   Atlas.IDE.Welcome.Areas,
   Atlas.IDE.Welcome.Headers,
   Atlas.IDE.Welcome.IdeLayout,
-  Atlas.IDE.Welcome.ProjectWatch;
+  Atlas.IDE.Welcome.ProjectWatch,
+  Atlas.Core.Welcome.Contract,
+  Atlas.UI.Welcome.Contract;
 
 type
+  /// <summary>Was die Composition der Seite mitgibt: Teile, die die Steuerung nur über ihre Verträge kennt.
+  /// </summary>
+  TAtlasIdeWelcomeParts = record
+    /// <summary>Quellen der Bereiche; gehören der Composition und leben länger als die Seite.</summary>
+    Areas: TAtlasIdeWelcomeAreas;
+    /// <summary>Zugriff auf die Registry für das Layout der Willkommensseite der IDE.</summary>
+    Registry: IAtlasRegistryAccess;
+    /// <summary>Quelle für „Seite anpassen“ zu den Layouts der Seite.</summary>
+    Arrange: TFunc<TAtlasIdeWelcomeLayouts, IAtlasWelcomeArrangeSource>;
+  end;
+
   TAtlasIdeWelcome = class
   private type
     /// <summary>Kennungen der Beobachter bei den Bereichen und beim Statusfeld.</summary>
@@ -126,8 +138,10 @@ type
     FSearch: TAtlasIdeWelcomeSearch;
     FAreas: TAtlasIdeWelcomeAreas;
     FLayouts: TAtlasIdeWelcomeLayouts;
-    // Hält die Quelle für „Seite anpassen“ am Leben; die Tafeln halten sie ebenfalls.
+    // Hält die Layouts am Leben; die Quelle für „Seite anpassen“ hält sie ebenfalls.
     FLayoutsRef: IInterface;
+    // Quelle für „Seite anpassen“ der Tafeln.
+    FArrange: IAtlasWelcomeArrangeSource;
     procedure Announce(const AIds: TArray<string>);
     procedure SectionChanged(const AId: string);
     procedure Flush;
@@ -143,9 +157,10 @@ type
     /// <summary>Vor dem Abbau: Kacheln melden beim Freigeben Änderungen, die niemand mehr zeichnet.</summary>
     procedure BeginStop;
     /// <summary>AServerInfo: Phase und Version des Servers; AIndexing(Prozent): läuft die Indizierung;
-    /// AUnits: Units im Index (-1 unbekannt); AMessage: Zeile in die Meldungsansicht.</summary>
+    /// AUnits: Units im Index (-1 unbekannt); AMessage: Zeile in die Meldungsansicht; AParts: Teile aus der
+    /// Composition.</summary>
     constructor Create(const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;
-      const AUnits: TFunc<Integer>; const AMessage: TProc<string>);
+      const AUnits: TFunc<Integer>; const AMessage: TProc<string>; const AParts: TAtlasIdeWelcomeParts);
     destructor Destroy; override;
     /// <summary>Einstellungen anwenden (beim Laden und nach jeder Änderung).</summary>
     procedure Sync;
@@ -164,8 +179,6 @@ type
     procedure ThemeChanged;
     /// <summary>Suchfeld (#760); gehört danach der Steuerung. nil = ohne Suchfeld.</summary>
     property Search: TAtlasIdeWelcomeSearch read FSearch write FSearch;
-    /// <summary>Quellen der Bereiche; gehören der Steuerung (Start beim Setzen).</summary>
-    property Areas: TAtlasIdeWelcomeAreas read FAreas;
     /// <summary>Quelle für „Seite anpassen“ (#767); gehört der Steuerung.</summary>
     property Layouts: TAtlasIdeWelcomeLayouts read FLayouts;
   end;
@@ -377,13 +390,14 @@ end;
 { TAtlasIdeWelcome }
 
 constructor TAtlasIdeWelcome.Create(const AServerInfo: TFunc<TAtlasServerInfo>;
-  const AIndexing: TAtlasIndexingFunc; const AUnits: TFunc<Integer>; const AMessage: TProc<string>);
+  const AIndexing: TAtlasIndexingFunc; const AUnits: TFunc<Integer>; const AMessage: TProc<string>;
+  const AParts: TAtlasIdeWelcomeParts);
 begin
   inherited Create;
   Instance := Self;
-  FAreas := TAtlasIdeWelcomeAreas.Create;
+  FAreas := AParts.Areas;
   CreateHeaders(StatusHooks(AServerInfo, AIndexing, AUnits));
-  FIdeLayout := TAtlasIdeWelcomeIdeLayout.Create(AMessage);
+  FIdeLayout := TAtlasIdeWelcomeIdeLayout.Create(AParts.Registry, AMessage);
   FLayouts := TAtlasIdeWelcomeLayouts.Create(
     procedure
     begin
@@ -393,6 +407,7 @@ begin
       end;
     end);
   FLayoutsRef := FLayouts;
+  FArrange := AParts.Arrange(FLayouts);
   FLayouts.OnAnnounce :=
     procedure(AIds: TArray<string>)
     begin
@@ -452,7 +467,8 @@ begin
   TAtlasIdeWelcomeWindow.Release;
   // Nach den Frames: Sie halten die Quellen ebenfalls.
   FAreas.Release;
-  FreeAndNil(FAreas);
+  FAreas := nil;
+  FArrange := nil;
   FLayouts := nil;
   FLayoutsRef := nil;
   FreeAndNil(FIdeLayout);
@@ -484,7 +500,7 @@ var
   mSection: TAtlasWelcomeSection;
   mId: string;
 begin
-  if FAreas.WhatsNew = nil then
+  if FAreas.News = nil then
   begin
     Exit;
   end;
@@ -502,7 +518,7 @@ begin
     mItem.Command := TAtlasIdeWelcomeLayouts.cCommandId;
     mItems := mItems + [mItem];
   end;
-  FAreas.WhatsNew.Announce(mItems);
+  FAreas.AnnounceNews(mItems);
 end;
 
 procedure TAtlasIdeWelcome.SectionChanged(const AId: string);
@@ -643,7 +659,7 @@ begin
       Result := ViewHeight(mBoard, AId);
     end);
   // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756); beim Anpassen der echte Platz.
-  if (FAreas.WhatsNew <> nil) and FAreas.WhatsNew.OnTop and not FLayouts.Editing then
+  if FAreas.NewsOnTop and not FLayouts.Editing then
   begin
     mLayout := mLayout.MovedToTop(TAtlasWelcomeIds.cNews);
   end;
@@ -651,7 +667,7 @@ begin
   FHeaders.Fill(ABoard.Header);
   FHeaders.AttachMenu(ABoard);
   ABoard.AutoFold := AFold;
-  ABoard.Source := FLayouts;
+  ABoard.Source := FArrange;
   ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, mLayout, mLayout.Columns);
 end;
 
@@ -723,14 +739,14 @@ end;
 
 procedure TAtlasIdeWelcome.ShowWhatsNew(AView: TAtlasWhatsNewView);
 begin
-  if FAreas.WhatsNew = nil then
+  if FAreas.News = nil then
   begin
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      FAreas.WhatsNew.Show(AView);
+      FAreas.ShowNews(AView);
       // Auf der Willkommensseite der IDE zeigt die Karte sich dort; sonst im Fenster.
       if not FSync.ShownIde then
       begin

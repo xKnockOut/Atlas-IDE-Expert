@@ -6,6 +6,7 @@
 # Atlas.Text
 Atlas.Text.Anonymize.Tests
 Atlas.Text.Chars.Tests
+Atlas.Text.Arrays.Tests
 Atlas.Text.Timestamps.Tests
 Atlas.Text.Checkin.Tests
 Atlas.Text.CommandLine.Tests
@@ -16,6 +17,12 @@ Atlas.Text.Diff.Tests
 Atlas.Text.Encoding.Tests
 Atlas.Text.Entities.Tests
 Atlas.Text.Fuzzy.Tests
+Atlas.Text.Csv.Tests
+Atlas.Text.Files.Tests
+Atlas.Text.Locked.Tests
+Atlas.Text.IndexCache.Tests
+Atlas.Text.Names.Tests
+Atlas.Text.Numbers.Tests
 Atlas.Text.Json.Tests
 Atlas.Text.Jsonc.Tests
 Atlas.Text.LogMarks.Tests
@@ -165,6 +172,7 @@ Atlas.Common.Index.Extractor.TypeText.Tests
 Atlas.Common.Index.Processes.Tests
 Atlas.Common.Index.UsageCounts.Tests
 Atlas.Common.JsonRpc.CurrentRequest.Tests
+Atlas.Common.JsonRpc.CustomCancellation.Tests
 Atlas.Common.JsonRpc.Messages.Tests
 Atlas.Common.JsonRpc.PendingRequests.Tests
 Atlas.Common.JsonRpc.StreamTransport.Tests
@@ -235,6 +243,7 @@ Atlas.Common.Lsp.SettingsCommands.Tests
 Atlas.Common.Lsp.SmartIndent.Tests
 Atlas.Common.Lsp.SmartPaste.Tests
 Atlas.Common.Lsp.ServerActivity.Tests
+Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests
 Atlas.Common.Lsp.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
@@ -294,6 +303,7 @@ Atlas.Common.Monitor.Targets.Tests
 Atlas.Common.Mutation.Generator.Tests
 Atlas.Common.Mutation.Report.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
+Atlas.Common.Pascal.Cancellation.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests
 Atlas.Common.Pascal.DirectiveNames.Tests
@@ -459,6 +469,8 @@ Atlas.Common.Updates.Prepare.Tests
 Atlas.Common.Updates.Tests
 
 # Plugin-Kern
+Atlas.Core.Foundation.Calls.Tests
+Atlas.Core.Modules.Contributions.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Assistants.Instructions.Tests
 Atlas.Core.AiProviders.Anthropic.Tests
@@ -471,6 +483,10 @@ Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Notifications.Listeners.Tests
 Atlas.Core.Notifications.OrderedItems.Tests
+Atlas.Core.Projects.Contract.Summary.Tests
+Atlas.Core.Welcome.Contract.Tests
+Atlas.Core.Welcome.ContinueQueries.Tests
+Atlas.Core.Welcome.ContinueWork.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
@@ -634,7 +650,7 @@ Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.Internals.GitHubProjects.Tests
 Atlas.Core.Tracker.Internals.GitHubLinkedBranches.Tests
 Atlas.Core.Tracker.LinkedStart.Tests
-Atlas.Core.Ci.Adapters.Credentials.Tests
+Atlas.Core.Ci.Providers.Credentials.Tests
 Atlas.Core.Tracker.Internals.FormYaml.Tests
 Atlas.Core.Tracker.IssueForms.Tests
 Atlas.Core.Tracker.NewIssueGitHub.Tests
@@ -649,12 +665,14 @@ Atlas.Core.Tracker.CodeLinkPlan.Tests
 Atlas.Core.Tracker.BlamePlan.Tests
 Atlas.Core.Tracker.SprintLoad.Tests
 Atlas.Core.Tracker.CommentPlan.Tests
+Atlas.Core.Tracker.CommentEditor.Tests
 Atlas.Core.Tracker.NotifyPlan.Tests
 Atlas.Core.Tracker.DevelopmentPlan.Tests
 Atlas.Core.Tracker.TimePlan.Tests
 Atlas.Core.Tracker.BoardPlan.Tests
 Atlas.Core.Tracker.SyncPlan.Tests
 Atlas.Core.Tracker.Preview.Tests
+Atlas.Core.Tracker.PreviewLoad.Tests
 Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.OnSave.Tests
 Atlas.Core.Tests.Leaks.Tests
@@ -685,6 +703,7 @@ Atlas.Core.Tests.ListText.Tests
 Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
 Atlas.Core.InlayHints.Store.Tests
+Atlas.Core.Files.Entries.Tests
 Atlas.Core.Editor.InlayPlan.Tests
 Atlas.Core.Editor.PlaceholderPlan.Tests
 Atlas.Core.Lsp.TextOffsets.Tests

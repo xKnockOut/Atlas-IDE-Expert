@@ -78,7 +78,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Commands.KeyMap;
+  Atlas.Core.Commands.KeyMap,
+  Atlas.Core.Settings.Contract;
 
 const
   cCtrlShiftP = $6050;

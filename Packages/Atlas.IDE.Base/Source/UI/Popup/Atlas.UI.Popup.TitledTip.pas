@@ -59,6 +59,8 @@ type
     /// <summary>Bereich des Textes in einem Tooltip der Größe ASize (#1281: Messen und Zeichnen teilen die Lage,
     /// sonst fehlten unten zwei Pixel und die letzte Zeile wurde abgeschnitten).</summary>
     function BodyArea(const ASize: TSize): TRect;
+    /// <summary>ATip ausblenden, wenn er steht; nil erlaubt.</summary>
+    class procedure HideShown(ATip: TAtlasTitledTip); static;
     /// <summary>Höhe des umbrochenen Textes aus dem letzten Measure.</summary>
     property BodyHeight: Integer read FBodyHeight;
     property Title: string read FTitle;
@@ -276,6 +278,14 @@ function TAtlasTitledTip.BodyArea(const ASize: TSize): TRect;
 begin
   Result := Rect(Scale(cPadding), TitleArea(ASize.cx).Bottom + Scale(cTitleGap), ASize.cx - Scale(cPadding),
     ASize.cy - Scale(cPadding));
+end;
+
+class procedure TAtlasTitledTip.HideShown(ATip: TAtlasTitledTip);
+begin
+  if (ATip <> nil) and ATip.IsShown then
+  begin
+    ATip.HidePopup;
+  end;
 end;
 
 end.

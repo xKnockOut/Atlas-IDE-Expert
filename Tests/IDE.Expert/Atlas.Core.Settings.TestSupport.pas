@@ -7,7 +7,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Contract;
 
 type
   /// <summary>Einstellungsspeicher im Speicher statt in der Registry.</summary>

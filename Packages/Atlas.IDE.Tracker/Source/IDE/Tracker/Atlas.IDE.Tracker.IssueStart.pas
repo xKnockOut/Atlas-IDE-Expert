@@ -44,7 +44,8 @@ uses
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.LinkedStart,
   Atlas.IDE.Tracker.IssuesServices,
-  Atlas.IDE.Tracker.IssuesStatus;
+  Atlas.IDE.Tracker.IssuesStatus,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Ein „Beginnen“ vom Prüfen der Arbeitskopie bis zum Ergebnis.</summary>

@@ -74,7 +74,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.Providers.LocalFiles,
   Atlas.Core.Tracker.FlowMap,
   Atlas.Core.Tracker.YouTrackFlow;
 

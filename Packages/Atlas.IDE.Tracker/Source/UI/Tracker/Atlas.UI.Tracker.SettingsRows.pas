@@ -6,7 +6,7 @@
 //   Hinweise). Eigene Steuerelemente gehören einem Besitzer, den Detach
 //   freigibt; danach legt nichts mehr Zeilen an.
 // - TAtlasTrackerSettingsHooks: Haken zur IDE (Token, Prüfung, Projekt, Werte
-//   vom Tracker …). Atlas.IDE.Tracker.Settings setzt sie; ohne Haken keine
+//   vom Tracker …). Atlas.IDE.Tracker.Adapters.Settings setzt sie; ohne Haken keine
 //   Prüfung, kein Token. Der Abschnitt gibt sie in Close frei (Regel 3).
 
 interface
@@ -20,10 +20,10 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Tracker.Queries,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
-  Atlas.UI.Tracker.QueryDialog;
+  Atlas.UI.Tracker.QueryDialog,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Zustand des Tokens einer Tracker-Verbindung (#1260), ohne Netz.</summary>

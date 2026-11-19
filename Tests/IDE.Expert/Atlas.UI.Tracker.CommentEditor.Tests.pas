@@ -73,7 +73,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.UI.Tracker.CommentEditor;
+  Atlas.UI.Tracker.CommentEditor,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   /// <summary>Assist mit festen Antworten, sofort im selben Aufruf.</summary>

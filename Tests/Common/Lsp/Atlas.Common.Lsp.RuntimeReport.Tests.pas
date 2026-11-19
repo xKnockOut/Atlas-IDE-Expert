@@ -9,7 +9,8 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Compiler.Results,
-  Atlas.Common.Lsp.RuntimeReport;
+  Atlas.Common.Lsp.RuntimeReport,
+  Atlas.Common.Lsp.Contract;
 
 type
   [TestFixture]
@@ -54,6 +55,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Diagnostics.RuntimeReport,
+  Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Localization.Texts;
 
 const
@@ -87,18 +89,15 @@ type
   /// <summary>Ohne Map; das Projekt kennt Kunden.Liste und Main.</summary>
   TFakeFiles = class(TInterfacedObject, IRuntimeReportFiles)
   public
-    procedure LoadSymbols(const AUri, AMapName, AExeName: string; ABase: UInt64; out ASymbols: TReportSymbols);
+    function ExecutableOf(const AUri: string): string;
     function UnitFileOf(const AUri: string): TReportUnitFileFunc;
   end;
 
 { TFakeFiles }
 
-procedure TFakeFiles.LoadSymbols(const AUri, AMapName, AExeName: string; ABase: UInt64;
-  out ASymbols: TReportSymbols);
+function TFakeFiles.ExecutableOf(const AUri: string): string;
 begin
-  ASymbols := Default(TReportSymbols);
-  ASymbols.MapName := AMapName;
-  ASymbols.Base := ABase;
+  Result := '';
 end;
 
 function TFakeFiles.UnitFileOf(const AUri: string): TReportUnitFileFunc;

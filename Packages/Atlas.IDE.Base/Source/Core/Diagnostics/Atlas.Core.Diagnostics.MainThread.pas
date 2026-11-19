@@ -108,8 +108,8 @@ const
   /// <summary>Platz der Methode Invoke in der Schnittstellentabelle einer anonymen Methode (nach QueryInterface,
   /// _AddRef und _Release).</summary>
   cInvokeSlot = 3;
-  /// <summary>Anfangsgrößen: Erst beim Wachsen angelegter Speicher zählte im ersten Test, der einreiht, als Leck.
-  /// </summary>
+  /// <summary>Anfangsgrößen der Tabellen wartender Einträge und geschlossener Module: So wachsen sie im üblichen
+  /// Betrieb nicht, und Einreihen belegt nur den Eintrag selbst.</summary>
   cPendingCapacity = 256;
   cClosedCapacity = 32;
 
@@ -185,7 +185,7 @@ end;
 class constructor TAtlasMainThread.Create;
 begin
   FLock := TCriticalSection.Create;
-  // Gleich beim Laden: Ein späteres Anlegen zählte im ersten Test, der einreiht, als Leck.
+  // Gleich beim Laden: Der Besitzer lebt bis Stop, und das erste Einreihen muss keinen Thread starten.
   FOwner := TOwner.Create;
   FStopped := False;
   FPending := TDictionary<UInt64, TPending>.Create(cPendingCapacity);

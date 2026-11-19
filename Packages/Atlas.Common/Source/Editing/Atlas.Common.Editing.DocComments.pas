@@ -61,7 +61,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -404,23 +405,6 @@ begin
   end;
 end;
 
-function SameNames(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(A[mIndex], B[mIndex]) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Rumpf (Klasse, Objekt, Record, Helfer) des Typs, dessen Methode AParts benennt ("TFoo.Bar",
 /// "TFoo.TInner.Bar" zerlegt an den Punkten); nil, wenn er fehlt.</summary>
 function TypeBody(ARoot: TSyntaxNode; const AParts: TArray<string>): TSyntaxNode;
@@ -465,7 +449,7 @@ begin
     if (mMember.Kind = TSyntaxKind.RoutineHeader) and SameText(mMember.Name, AName) then
     begin
       // Überladung: an den Parameternamen erkennen.
-      if SameNames(HeaderParams(mMember), AParams) then
+      if TTextArrays.SameTexts(HeaderParams(mMember), AParams) then
       begin
         Exit(mMember);
       end;

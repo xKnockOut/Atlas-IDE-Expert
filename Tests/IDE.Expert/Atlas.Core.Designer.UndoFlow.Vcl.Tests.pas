@@ -10,7 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.UndoFlow,
   Atlas.Tests.DesignSurfaceFake;
 

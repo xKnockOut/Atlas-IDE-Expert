@@ -29,13 +29,14 @@ uses
   Atlas.Core.Settings.Plugin.Snippets,
   Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Settings.Plugin.VersionControl,
-  Atlas.Core.Settings.Plugin.Welcome;
+  Atlas.Core.Settings.Plugin.Welcome,
+  Atlas.Core.Settings.Contract;
 
 type
-  /// <summary>Ablage für Einstellungen (Atlas.Core.Settings.Plugin.Store).</summary>
-  IAtlasSettingsStore = Atlas.Core.Settings.Plugin.Store.IAtlasSettingsStore;
-  /// <summary>Ablage, die gespeicherte Namen kennt und entfernen kann (Atlas.Core.Settings.Plugin.Store).</summary>
-  IAtlasSettingsNames = Atlas.Core.Settings.Plugin.Store.IAtlasSettingsNames;
+  /// <summary>Ablage für Einstellungen (Atlas.Core.Settings.Contract).</summary>
+  IAtlasSettingsStore = Atlas.Core.Settings.Contract.IAtlasSettingsStore;
+  /// <summary>Ablage, die gespeicherte Namen kennt und entfernen kann (Atlas.Core.Settings.Contract).</summary>
+  IAtlasSettingsNames = Atlas.Core.Settings.Contract.IAtlasSettingsNames;
 
   TAtlasPluginSettings = record
   public const

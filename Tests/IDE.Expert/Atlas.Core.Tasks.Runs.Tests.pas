@@ -34,7 +34,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Matchers,
   Atlas.Core.Tasks.Runs;
 

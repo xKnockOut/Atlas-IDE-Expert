@@ -20,17 +20,15 @@ uses
   Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasUpdateConsent = class(TAtlasDialog)
+  TAtlasUpdateConsent = class(TAtlasAnswerDialog)
   private
     FText: TLabel;
     FSymbol: TAtlasSymbolImage;
     FYes: TButton;
     FNo: TButton;
-    FDone: Boolean;
     FOnYes: TProc;
     FOnNo: TProc;
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
-    procedure Run(const AProc: TProc);
     procedure YesClick(Sender: TObject);
     procedure NoClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -50,8 +48,6 @@ implementation
 
 uses
   Atlas.Core.Style.Symbol,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Scaling,
   Atlas.UI.Updates.Strings;
@@ -111,33 +107,14 @@ begin
   Result.OnClick := AClick;
 end;
 
-procedure TAtlasUpdateConsent.Run(const AProc: TProc);
-begin
-  // Nur die erste Antwort zählt; ausgeführt wird nach dem Schließen.
-  if FDone then
-  begin
-    Exit;
-  end;
-  FDone := True;
-  Close;
-  if Assigned(AProc) then
-  begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-      procedure
-      begin
-        AProc();
-      end);
-  end;
-end;
-
 procedure TAtlasUpdateConsent.YesClick(Sender: TObject);
 begin
-  Run(FOnYes);
+  Answer(FOnYes);
 end;
 
 procedure TAtlasUpdateConsent.NoClick(Sender: TObject);
 begin
-  Run(FOnNo);
+  Answer(FOnNo);
 end;
 
 procedure TAtlasUpdateConsent.FormClose(Sender: TObject; var Action: TCloseAction);

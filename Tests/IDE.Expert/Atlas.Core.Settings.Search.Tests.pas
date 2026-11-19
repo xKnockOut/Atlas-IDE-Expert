@@ -26,6 +26,8 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
+    procedure ModuleCaptionFallsBack;
+    [Test]
     procedure EmptyTextFindsNothing;
     [Test]
     procedure KeepsLimit;
@@ -84,7 +86,8 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Search,
-  Atlas.Core.Commands.SettingsPalette;
+  Atlas.Core.Commands.SettingsPalette,
+  Atlas.Core.Commands.Contract;
 
 { TAtlasSettingsSearchTests }
 
@@ -107,6 +110,25 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+procedure TAtlasSettingsSearchTests.ModuleCaptionFallsBack;
+var
+  mNames: TFunc<string, string>;
+begin
+  mNames :=
+    function(ASwitch: string): string
+    begin
+      Result := '';
+      if ASwitch = 'modules.debug' then
+      begin
+        Result := 'Debug';
+      end;
+    end;
+  Assert.AreEqual('Debug', TAtlasSettingsSearch.ModuleCaption('modules.debug', mNames));
+  Assert.AreEqual('modules.tests', TAtlasSettingsSearch.ModuleCaption('modules.tests', mNames), 'ohne Namen der Schalter');
+  Assert.AreEqual('modules.tests', TAtlasSettingsSearch.ModuleCaption('modules.tests', nil));
+  Assert.AreEqual('Base', TAtlasSettingsSearch.ModuleCaption('', mNames), 'ohne Schalter Base');
 end;
 
 procedure TAtlasSettingsSearchTests.Setup;

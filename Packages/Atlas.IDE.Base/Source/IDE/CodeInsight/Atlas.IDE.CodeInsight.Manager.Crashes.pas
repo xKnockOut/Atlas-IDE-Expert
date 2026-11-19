@@ -16,7 +16,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.CrashCases,
   Atlas.IDE.CodeInsight.Manager.Commands;

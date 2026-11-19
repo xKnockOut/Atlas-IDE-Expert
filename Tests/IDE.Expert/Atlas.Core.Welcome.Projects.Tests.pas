@@ -62,7 +62,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Welcome.Projects;
+  Atlas.Core.Welcome.Projects,
+  Atlas.Core.Settings.Contract;
 
 function Entry(const ASummary: TAtlasProjectSummary): TAtlasProjectEntry;
 begin

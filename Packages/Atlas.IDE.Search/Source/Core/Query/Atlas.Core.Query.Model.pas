@@ -164,7 +164,8 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   System.Generics.Collections,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Csv;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
@@ -214,18 +215,6 @@ begin
   end;
 end;
 
-function CsvCell(const AText: string): string;
-begin
-  if (Pos(';', AText) > 0) or (Pos('"', AText) > 0) or (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) then
-  begin
-    Result := '"' + StringReplace(AText, '"', '""', [rfReplaceAll]) + '"';
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 { TAtlasQueryAnswer }
 
 function TAtlasQueryAnswer.Failed: Boolean;
@@ -243,7 +232,7 @@ begin
   try
     for mIndex := 0 to High(Columns) do
     begin
-      mBuilder.Append(CsvCell(Columns[mIndex])).Append(';');
+      mBuilder.Append(TTextCsv.Cell(Columns[mIndex])).Append(';');
     end;
     mBuilder.Append('path;inferred').Append(sLineBreak);
     for mRow in Rows do
@@ -252,14 +241,14 @@ begin
       begin
         if mIndex <= High(mRow.Cells) then
         begin
-          mBuilder.Append(CsvCell(mRow.Cells[mIndex].Text)).Append(';');
+          mBuilder.Append(TTextCsv.Cell(mRow.Cells[mIndex].Text)).Append(';');
         end
         else
         begin
           mBuilder.Append(';');
         end;
       end;
-      mBuilder.Append(CsvCell(mRow.Path)).Append(';');
+      mBuilder.Append(TTextCsv.Cell(mRow.Path)).Append(';');
       if mRow.Inferred then
       begin
         mBuilder.Append('erschlossen');
@@ -427,17 +416,8 @@ begin
 end;
 
 function TAtlasQueryAnswer.ColumnOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Columns) do
-  begin
-    if SameText(Columns[mIndex], AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := IndexText(AName, Columns);
 end;
 
 { TAtlasQueryCatalog }

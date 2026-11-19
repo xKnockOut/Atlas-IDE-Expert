@@ -17,13 +17,8 @@ uses
   Atlas.Text.Lines;
 
 type
-  TLspTextPosition = record
-    Line: Integer;
-    Character: Integer;
-    class function Create(ALine, ACharacter: Integer): TLspTextPosition; static;
-    /// <summary>Negativ, 0 oder positiv wie CompareText.</summary>
-    class function Compare(const A, B: TLspTextPosition): Integer; static;
-  end;
+  /// <summary>Derselbe Typ wie beim Server (Zeile und Zeichen 0-basiert, Compare wie CompareText).</summary>
+  TLspTextPosition = TTextPosition;
 
   /// <summary>Bereich im Text, Ende ausschließlich (#399).</summary>
   TLspRange = record
@@ -64,23 +59,6 @@ type
   end;
 
 implementation
-
-{ TLspTextPosition }
-
-class function TLspTextPosition.Create(ALine, ACharacter: Integer): TLspTextPosition;
-begin
-  Result.Line := ALine;
-  Result.Character := ACharacter;
-end;
-
-class function TLspTextPosition.Compare(const A, B: TLspTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
 
 { TLspRange }
 

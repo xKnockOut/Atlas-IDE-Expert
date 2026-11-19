@@ -35,12 +35,14 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Setup.Window,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract,
+  Atlas.Core.Setup.Contract;
 
 type
   TAtlasSetupIndexingFunc = reference to function(out APercent: Integer): Boolean;
 
-  /// <summary>Verbindung zum Code Insight-Manager und zum Statusfeld; gesetzt von der Komposition.</summary>
+  /// <summary>Verbindung zum Code Insight-Manager und zum Statusfeld für Atlas.IDE.Setup.Adapters.Environment;
+  /// gesetzt von der Komposition.</summary>
   TAtlasSetupHooks = record
     ServerInfo: TFunc<TAtlasServerInfo>;
     Indexing: TAtlasSetupIndexingFunc;
@@ -69,10 +71,9 @@ type
     FInstance: TAtlasIdeSetupChecklist;
   private
     FRegistry: IAtlasStatusRegistry;
-    FHooks: TAtlasSetupHooks;
     FEnvironment: IAtlasSetupEnvironment;
-    // Dasselbe Objekt wie FEnvironment, für ForgetKeys; Lebensdauer über FEnvironment.
-    FIdeEnvironment: TObject;
+    /// <summary>Tasten beim nächsten Snapshot neu lesen („Erneut prüfen“).</summary>
+    FForgetKeys: TProc;
     FController: TAtlasSetupController;
     FWindow: TAtlasSetupWindow;
     FLine: TAtlasStatusLine;
@@ -95,7 +96,11 @@ type
     function WindowVisible: Boolean;
     class function TryKey: string; static;
   public
-    constructor Create(const ARegistry: IAtlasStatusRegistry; const AHooks: TAtlasSetupHooks);
+    /// <summary>AEnvironment: Knöpfe in der IDE, ASnapshot: Zustand für die Prüfungen (beide aus
+    /// Atlas.IDE.Setup.Adapters.Environment, von der Kompositionswurzel); AForgetKeys lässt es die Tasten neu
+    /// lesen.</summary>
+    constructor Create(const ARegistry: IAtlasStatusRegistry; const AEnvironment: IAtlasSetupEnvironment;
+      const ASnapshot: TAtlasSetupSnapshot; const AForgetKeys: TProc);
     destructor Destroy; override;
     /// <summary>Package geladen: ab jetzt entscheidet der Start, ob die Prüfliste von selbst aufgeht.</summary>
     procedure Start;
@@ -116,220 +121,30 @@ implementation
 
 uses
   Vcl.Forms,
-  Vcl.Dialogs,
   Vcl.Menus,
   Vcl.Clipbrd,
-  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Product.Version,
-  Atlas.Core.Projects.Contract,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
   Atlas.UI.Setup.Strings,
-  Atlas.IDE.Commands.KeyMap,
-  Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
 
-type
-  /// <summary>Was die Knöpfe in der IDE tun; Snapshot sammelt den Zustand.</summary>
-  TIdeEnvironment = class(TInterfacedObject, IAtlasSetupEnvironment)
-  private
-    FHooks: TAtlasSetupHooks;
-    FKeys: TArray<TAtlasSetupKey>;
-    FKeysAt: UInt64;
-    FKeysRead: Boolean;
-    function Keys: TArray<TAtlasSetupKey>;
-  public
-    constructor Create(const AHooks: TAtlasSetupHooks);
-    /// <summary>Tasten beim nächsten Snapshot neu lesen („Erneut prüfen“, nach den Tastenkonflikten).</summary>
-    procedure ForgetKeys;
-    function Snapshot: TAtlasSetupInput;
-    function ChooseServerPath(out APath: string): Boolean;
-    procedure SaveServerPath(const APath: string);
-    function StartServer(ARestart: Boolean): Boolean;
-    function RebuildIndex: Boolean;
-    function SetErrorInsight(AEnabled: Boolean): Boolean;
-    procedure OpenKeyConflicts;
-  end;
-
-{ TIdeEnvironment }
-
-constructor TIdeEnvironment.Create(const AHooks: TAtlasSetupHooks);
-begin
-  inherited Create;
-  FHooks := AHooks;
-end;
-
-function TIdeEnvironment.Keys: TArray<TAtlasSetupKey>;
-begin
-  if FKeysRead and (TThread.GetTickCount64 - FKeysAt < TAtlasIdeSetupChecklist.cKeysMaxAgeMs) then
-  begin
-    Exit(FKeys);
-  end;
-  // Gemeinsame Quelle mit der Tastenkürzel-Übersicht (#520): auch Editorbefehle, Undo/Redo, das Suchfeld der
-  // Willkommensseite und Tastaturbelegungen anderer Erweiterungen.
-  FKeys := TAtlasIdeKeyMap.SetupKeys;
-  FKeysAt := TThread.GetTickCount64;
-  FKeysRead := True;
-  Result := FKeys;
-end;
-
-procedure TIdeEnvironment.ForgetKeys;
-begin
-  FKeysRead := False;
-end;
-
-/// <summary>Plattform des aktiven Projekts und Namen der .dproj der Projektgruppe.</summary>
-procedure ReadProjects(var APlatform: string; var AProjects: TArray<string>);
-var
-  mModules: IOTAModuleServices;
-  mGroup: IOTAProjectGroup;
-  mIndex: Integer;
-begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Exit;
-  end;
-  if mModules.GetActiveProject <> nil then
-  begin
-    APlatform := mModules.GetActiveProject.CurrentPlatform;
-  end;
-  mGroup := mModules.MainProjectGroup;
-  if mGroup = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mGroup.ProjectCount - 1 do
-  begin
-    if SameText(ExtractFileExt(mGroup.Projects[mIndex].FileName), '.dproj') then
-    begin
-      AProjects := AProjects + [TAtlasSetupChecklist.ProjectName(mGroup.Projects[mIndex].FileName)];
-    end;
-  end;
-end;
-
-function TIdeEnvironment.Snapshot: TAtlasSetupInput;
-var
-  mSettings: TAtlasPluginSettings;
-  mServices: IOTAServices;
-  mPath: string;
-  mPercent: Integer;
-begin
-  Result := Default(TAtlasSetupInput);
-  mSettings := TAtlasIdeSettings.Current;
-  mPath := '';
-  if Assigned(FHooks.ServerPath) then
-  begin
-    mPath := FHooks.ServerPath();
-  end;
-  Result.ServerFound := (mPath <> '') and FileExists(mPath);
-  if Assigned(FHooks.ServerInfo) then
-  begin
-    Result.Server := FHooks.ServerInfo();
-  end;
-  Result.PluginVersion := TAtlasPluginVersion.cVersion;
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(mServices.GetBaseRegistryKey);
-  end;
-  ReadProjects(Result.Platform, Result.Projects);
-  Result.IndexPercent := -1;
-  if (Result.Server.Phase = TAtlasServerPhase.Running) and Assigned(FHooks.Indexing) then
-  begin
-    Result.Indexing := FHooks.Indexing(mPercent);
-    Result.IndexPercent := mPercent;
-  end;
-  if Assigned(FHooks.StatusJson) and (Result.Server.Phase = TAtlasServerPhase.Running) then
-  begin
-    // Prozent je Projekt live aus $/progress, Stufe und Warten aus dem Status (#2142).
-    Result.Status := TAtlasSetupServerStatus.Parse(FHooks.StatusJson()).WithLiveProgress(FHooks.IndexingOf);
-  end;
-  Result.ErrorInsight := TAtlasIdeStructureSwitch.ErrorInsight;
-  Result.ErrorInsightRestart := TAtlasIdeStructureSwitch.ErrorInsightChanged;
-  Result.AtlasProblems := mSettings.Enabled and mSettings.Problems;
-  Result.Keys := Keys;
-end;
-
-function TIdeEnvironment.ChooseServerPath(out APath: string): Boolean;
-var
-  mDialog: TOpenDialog;
-begin
-  APath := '';
-  mDialog := TOpenDialog.Create(nil);
-  try
-    mDialog.Title := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupChooseTitle);
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
-    mDialog.Options := mDialog.Options + [ofFileMustExist];
-    if Assigned(FHooks.ServerPath) then
-    begin
-      mDialog.InitialDir := ExtractFilePath(FHooks.ServerPath());
-    end;
-    Result := mDialog.Execute;
-    if Result then
-    begin
-      APath := mDialog.FileName;
-    end;
-  finally
-    mDialog.Free;
-  end;
-end;
-
-procedure TIdeEnvironment.SaveServerPath(const APath: string);
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  // Wie die Optionsseite: gespeicherte Werte, ohne Sitzungswerte der Schnellschalter.
-  mSettings := TAtlasIdeSettings.Stored;
-  mSettings.ServerPath := APath;
-  TAtlasIdeSettings.Update(mSettings);
-  TAtlasGuard.Log('Einrichtung: Server-Pfad gewählt (#625)');
-end;
-
-function TIdeEnvironment.StartServer(ARestart: Boolean): Boolean;
-begin
-  Result := Assigned(FHooks.StartServer) and FHooks.StartServer(ARestart);
-end;
-
-function TIdeEnvironment.RebuildIndex: Boolean;
-begin
-  // Abschicken genügt (#874): Auf die Antwort zu warten hielte die IDE an, solange der Server indexiert.
-  Result := Assigned(FHooks.ServerCommand) and FHooks.ServerCommand(TAtlasSetupChecklist.cRebuildCommand);
-end;
-
-function TIdeEnvironment.SetErrorInsight(AEnabled: Boolean): Boolean;
-begin
-  Result := TAtlasIdeStructureSwitch.SetErrorInsight(AEnabled);
-end;
-
-procedure TIdeEnvironment.OpenKeyConflicts;
-var
-  mOptions: IOTAEnvironmentOptions140;
-  mServices: IOTAServices;
-begin
-  // Seite „Atlas.Tastenkonflikte“ (#494) unter Tools › Optionen; danach Tasten neu lesen.
-  if Supports(BorlandIDEServices, IOTAServices, mServices) and
-    Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mOptions) then
-  begin
-    mOptions.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
-  end;
-  ForgetKeys;
-end;
-
 { TAtlasIdeSetupChecklist }
 
-constructor TAtlasIdeSetupChecklist.Create(const ARegistry: IAtlasStatusRegistry; const AHooks: TAtlasSetupHooks);
+constructor TAtlasIdeSetupChecklist.Create(const ARegistry: IAtlasStatusRegistry;
+  const AEnvironment: IAtlasSetupEnvironment; const ASnapshot: TAtlasSetupSnapshot; const AForgetKeys: TProc);
 begin
   inherited Create;
   FInstance := Self;
   FRegistry := ARegistry;
-  FHooks := AHooks;
   FShownVersion := -1;
-  FIdeEnvironment := TIdeEnvironment.Create(AHooks);
-  FEnvironment := TIdeEnvironment(FIdeEnvironment);
-  FController := TAtlasSetupController.Create(FEnvironment);
+  FEnvironment := AEnvironment;
+  FForgetKeys := AForgetKeys;
+  FController := TAtlasSetupController.Create(FEnvironment, ASnapshot);
   FLine := TAtlasStatusLine.Create(FRegistry, TAtlasSetupChecklist.cStatusId, TAtlasSetupChecklist.cStatusOrder,
     procedure
     begin
@@ -366,7 +181,7 @@ begin
   FLine := nil;
   FreeAndNil(FController);
   FEnvironment := nil;
-  FIdeEnvironment := nil;
+  FForgetKeys := nil;
   inherited;
 end;
 
@@ -542,7 +357,10 @@ begin
           begin
             Exit;
           end;
-          TIdeEnvironment(TAtlasIdeSetupChecklist.FInstance.FIdeEnvironment).ForgetKeys;
+          if Assigned(TAtlasIdeSetupChecklist.FInstance.FForgetKeys) then
+          begin
+            TAtlasIdeSetupChecklist.FInstance.FForgetKeys();
+          end;
           TAtlasIdeSetupChecklist.FInstance.Refresh;
         end);
     end;

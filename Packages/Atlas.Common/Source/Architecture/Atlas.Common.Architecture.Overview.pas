@@ -293,7 +293,8 @@ uses
   Atlas.Common.Architecture.Overview.Foundations,
   Atlas.Common.Architecture.Overview.Naming,
   Atlas.Common.Architecture.Overview.Splitting,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -313,20 +314,6 @@ const
 class function TArchitectureAnalyzer.FoundationRule: string;
 begin
   Result := cTexts[TOverviewText.UnitsWithTheFoundationRole].Text;
-end;
-
-function ContainsInt(AValue: Integer; const AValues: TArray<Integer>): Boolean;
-var
-  mValue: Integer;
-begin
-  for mValue in AValues do
-  begin
-    if mValue = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 /// <summary>AUnit (Nummer AIndex) ist zentraler als AOther (Nummer AOtherIndex): mehr Verbindungen insgesamt,
@@ -511,17 +498,12 @@ begin
 end;
 
 function TArchitectureOverview.IndexOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Units) do
-  begin
-    if SameText(Units[mIndex].Name, AName) then
+  Result := TTextArrays.IndexOfText<TOverviewUnit>(Units, AName,
+    function(AUnit: TOverviewUnit): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AUnit.Name;
+    end);
 end;
 
 function TArchitectureOverview.Assignment(AUnit: Integer): TOverviewAssignment;
@@ -543,7 +525,7 @@ begin
   Result := nil;
   for mIndex := 0 to High(ACycles) do
   begin
-    if ContainsInt(AUnit, ACycles[mIndex].Component) then
+    if TTextArrays.ContainsInteger(ACycles[mIndex].Component, AUnit) then
     begin
       Result := Result + [mIndex];
     end;
@@ -607,11 +589,11 @@ begin
   Result.Unit_ := AUnit;
   for mEdge in Edges do
   begin
-    if (mEdge.Source = AUnit) and not ContainsInt(mEdge.Target, Result.DependsOn) then
+    if (mEdge.Source = AUnit) and not TTextArrays.ContainsInteger(Result.DependsOn, mEdge.Target) then
     begin
       Result.DependsOn := Result.DependsOn + [mEdge.Target];
     end;
-    if (mEdge.Target = AUnit) and not ContainsInt(mEdge.Source, Result.UsedBy) then
+    if (mEdge.Target = AUnit) and not TTextArrays.ContainsInteger(Result.UsedBy, mEdge.Source) then
     begin
       Result.UsedBy := Result.UsedBy + [mEdge.Source];
     end;

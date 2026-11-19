@@ -25,6 +25,8 @@ type
     procedure NormalizesPaths;
     [Test]
     procedure RoundTrip;
+    [Test]
+    procedure BaseNameSplitsAtBothSeparators;
   end;
 
 implementation
@@ -83,6 +85,16 @@ begin
   Assert.AreEqual('\\server\share\A.pas', TTextUris.NormalizePath('\\?\UNC\server\share\A.pas'));
   Assert.AreEqual('/home/a/A.pas', TTextUris.NormalizePath('/home/a/b/../A.pas'));
   Assert.AreEqual('..\A.pas', TTextUris.NormalizePath('..\A.pas'));
+end;
+
+procedure TTextUrisTests.BaseNameSplitsAtBothSeparators;
+begin
+  Assert.AreEqual('Atlas.Core.A', TTextUris.BaseName('C:\P\Atlas.Core.A.pas'));
+  Assert.AreEqual('Atlas.Core.A', TTextUris.BaseName('Src/Atlas.Core.A.pas'));
+  Assert.AreEqual('Einheit', TTextUris.BaseName('C:\Ordner.mit.Punkt/Unter\Einheit'),
+    'Punkt im Ordner ist keine Endung');
+  Assert.AreEqual('A', TTextUris.BaseName('A.pas'));
+  Assert.AreEqual('', TTextUris.BaseName(''));
 end;
 
 procedure TTextUrisTests.RoundTrip;

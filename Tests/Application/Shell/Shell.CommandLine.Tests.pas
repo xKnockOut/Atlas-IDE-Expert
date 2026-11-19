@@ -82,6 +82,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Output,
@@ -500,20 +501,6 @@ begin
   Assert.AreEqual('mutate', TCommandLineOptions.Parse(['--mutate', 'Preise.pas', '--routine', 'Satz']).RunCommand);
 end;
 
-function Contains(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if mItem = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure TCommandLineOptionsTests.MonitorKnowsEverySwitch;
 var
   mSwitch: string;
@@ -523,12 +510,12 @@ begin
   mMonitor := TMonitorCommands.CoveredSwitches + TMonitorCommands.SkippedSwitches;
   for mSwitch in mKnown do
   begin
-    Assert.IsTrue(Contains(mMonitor, mSwitch), mSwitch + ' fehlt in TMonitorCommands (CoveredSwitches oder ' +
+    Assert.IsTrue(MatchStr(mSwitch, mMonitor), mSwitch + ' fehlt in TMonitorCommands (CoveredSwitches oder ' +
       'SkippedSwitches)');
   end;
   for mSwitch in mMonitor do
   begin
-    Assert.IsTrue(Contains(mKnown, mSwitch), mSwitch + ' kennt der Server nicht');
+    Assert.IsTrue(MatchStr(mSwitch, mKnown), mSwitch + ' kennt der Server nicht');
   end;
   mKnown := nil;
   mMonitor := nil;

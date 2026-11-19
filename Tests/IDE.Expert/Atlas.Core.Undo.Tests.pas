@@ -65,8 +65,8 @@ uses
   Atlas.Core.Undo.Contract,
   Atlas.Core.Undo.LinePatch,
   Atlas.Core.Undo.Journal,
-  Atlas.Core.Undo.Adapters.FileStore,
-  Atlas.Core.Undo.Adapters.DiskTarget,
+  Atlas.Core.Undo.Providers.FileStore,
+  Atlas.Core.Undo.Providers.DiskTarget,
   Atlas.Tests.TempFolder;
 
 type

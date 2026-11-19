@@ -4,20 +4,17 @@
 // IDE: offene Reiter in der Reihenfolge des Editorfensters mit Cursorstelle
 // und Methode, Ziel eines Projekts (gespeicherte Projektgruppe, sonst das
 // Projekt), Öffnen von Projekt und Reiter, Text einer Datei (Puffer oder
-// Platte). Abgeteilt aus Atlas.IDE.Welcome.Continue (Atlas-Befunde).
+// Platte). Abgeteilt aus Atlas.IDE.Welcome.Adapters.Continue (Atlas-Befunde).
 
 interface
 
 uses
   System.Generics.Collections,
+  Atlas.Core.Welcome.Contract,
   Atlas.Core.Welcome.Continue;
 
 type
-  /// <summary>Offene Reiter in ihrer Reihenfolge mit der Cursorstelle und aktive Datei.</summary>
-  TAtlasContinueSnapshot = record
-    Tabs: TArray<TAtlasWorkTab>;
-    Active: string;
-  end;
+  TAtlasContinueSnapshot = Atlas.Core.Welcome.Contract.TAtlasContinueSnapshot;
 
   TAtlasIdeContinueEditor = class
   public

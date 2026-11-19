@@ -18,6 +18,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Definitions;
 
 type
@@ -72,21 +73,11 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Settings.Project,
-  Atlas.UI.Tasks.Texts;
+  Atlas.UI.Tasks.Texts,
+  Atlas.IDE.Foundation.StartOptions;
 
 const
   cMessageGroup = 'Atlas';
-
-function ProjectByFile(const AFileName: string): IOTAProject;
-var
-  mServices: IOTAModuleServices;
-begin
-  Result := nil;
-  if (AFileName <> '') and Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Supports(mServices.FindModule(AFileName), IOTAProject, Result);
-  end;
-end;
 
 function Stamp(const AFileName: string): string;
 var
@@ -187,7 +178,7 @@ var
 begin
   Result := nil;
   ASearchPath := nil;
-  mProject := ProjectByFile(AProject);
+  mProject := TAtlasIdeStartOptions.FindProject(AProject);
   if mProject = nil then
   begin
     Exit;
@@ -220,7 +211,7 @@ begin
   begin
     Result.FileName := mEditors.TopBuffer.FileName;
   end;
-  mProject := ProjectByFile(AProject);
+  mProject := TAtlasIdeStartOptions.FindProject(AProject);
   if mProject <> nil then
   begin
     Result.Config := mProject.CurrentConfiguration;

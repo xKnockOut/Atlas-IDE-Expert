@@ -217,7 +217,7 @@ uses
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.Providers.LocalFiles,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.GitHubParse,
   Atlas.Core.Tracker.YouTrackApi,

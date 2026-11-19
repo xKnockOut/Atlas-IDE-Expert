@@ -69,7 +69,9 @@ uses
   Atlas.Core.Tracker.CommentEditor,
   Atlas.UI.Settings.Page,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Settings.Strings;
+  Atlas.UI.Tracker.Settings.Strings,
+  Atlas.Core.Tracker.Contract.CommentAssist,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Anbieter der Tests: liefert den vorbereiteten Abschnitt.</summary>

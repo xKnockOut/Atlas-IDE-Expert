@@ -52,6 +52,8 @@ type
     [Test]
     procedure WritesAtomicallyWithoutBom;
     [Test]
+    procedure WriteUnlessKeptSkipsKeptFile;
+    [Test]
     procedure ReportsNotWrittenOncePerKind;
   end;
 
@@ -313,6 +315,18 @@ begin
   Assert.IsTrue(TAtlasDataFile.TryRead(mFileName, mText));
   Assert.AreEqual('[]', mText);
   Assert.IsFalse(TFile.Exists(mFileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
+end;
+
+procedure TAtlasDataFileTests.WriteUnlessKeptSkipsKeptFile;
+var
+  mText: string;
+begin
+  Assert.IsTrue(TAtlasDataFile.WriteUnlessKept(DataFile('wahl.json'), '', '[1]'));
+  Assert.IsTrue(TAtlasDataFile.TryRead(DataFile('wahl.json'), mText));
+  Assert.AreEqual('[1]', mText);
+  Assert.IsFalse(TAtlasDataFile.WriteUnlessKept(DataFile('wahl.json'), DataFile('wahl.json'), '[2]'));
+  Assert.IsTrue(TAtlasDataFile.TryRead(DataFile('wahl.json'), mText));
+  Assert.AreEqual('[1]', mText, 'stehen gelassene Datei bleibt');
 end;
 
 procedure TAtlasDataFileTests.ReportsNotWrittenOncePerKind;

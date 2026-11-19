@@ -31,37 +31,12 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Commands.Contract;
 
 type
   {$SCOPEDENUMS ON}
-  /// <summary>Die ersten sechs stehen auf der Seite „Tastenkonflikte“ (FromSettings); die übrigen nur in der
-  /// Übersicht (#520, AllFromSettings): Editorbefehle mit gemeinsamem Vorrang EditorKeysPriority, das Suchfeld
-  /// der Willkommensseite, Deklaration ⇄ Implementierung mit zwei Tasten (#775), Unit ⇄ Testunit (#189), die
-  /// eigene Taste für „Units suchen“, die Übernahme von Strg+F12 durch „Units suchen“ (#777) und „Lesezeichen
-  /// setzen…“ (#622), das Erzeugen-Menü (#719), die Benachrichtigungen (#601) und die Schnellaktionen der
-  /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764), „Element ausblenden …“ (#628), nächster und voriger
-  /// Befund (#509), „Schnell öffnen“ (#503), Zurück, Vor und letzte Bearbeitungsstelle (#504) sowie Definition und
-  /// Referenzen einblenden (#505), das Fenster „Atlas-Prüfung“ (#909) und die Abschnittssprünge zum interface- und
-  /// implementation-Teil (#1101). Schnelle Lesezeichen (#1104): QuickBookmark (Strg+Umschalt+K), QuickBookmarkSet
-  /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
-  /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Gezielt
-  /// hineinspringen (#836) nur in der Übersicht. „Datei jetzt prüfen“ (#1744). Neue Funktionen
-  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716). Neue Zeile am Ende
-  /// des Abschnitts (#1768).</summary>
-  TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
-    ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
-    MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
-    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
-    NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
-    JumpToMatchSelect, NextChange, PreviousChange, MoveLinesUp, MoveLinesDown, DuplicateLinesUp,
-    DuplicateLinesDown, CompleteStatement, MultiCursorNext, MultiCursorSkip, MultiCursorLineEnds,
-    MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
-    SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
-    SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
-    DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent,
-    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier, DesignerUsages, TestsListRun, DebugReattach);
+  TAtlasKeyFunction = Atlas.Core.Commands.Contract.TAtlasKeyFunction;
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -148,7 +123,6 @@ type
   end;
 
 implementation
-
 
 uses
   Atlas.Core.Localization.Language;

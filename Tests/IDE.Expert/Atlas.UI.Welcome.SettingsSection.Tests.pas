@@ -13,7 +13,8 @@ uses
   DUnitX.TestFramework,
   Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Welcome.SettingsSection;
+  Atlas.UI.Welcome.SettingsSection,
+  Atlas.IDE.Welcome.Adapters.SettingsSection;
 
 type
   [TestFixture]
@@ -113,7 +114,7 @@ begin
   // Kacheln des Trackers wie aus dem Kachel-Vertrag (#1903): Meine Issues mit Weg zum Tracker, Sprint.
   FSection.Hooks.TileSwitches := [TileSwitch('welcomePage.issues', 'WelcomePageIssues', 'issues.tracker'),
     TileSwitch('welcomePage.sprint', 'WelcomePageSprint', '')];
-  FSectionRef := FSection;
+  FSectionRef := TAtlasIdeWelcomeSettingsSection.Create(FSection);
   FRegistration := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
     TFixedProvider.Create(FSectionRef) as IAtlasSettingsSectionProvider);
 end;
@@ -122,8 +123,9 @@ procedure TWelcomeSettingsSectionTests.TearDown;
 begin
   FRegistration.Revoke;
   FRegistration := nil;
-  FSection := nil;
+  // Die Hülle gibt den Abschnitt frei.
   FSectionRef := nil;
+  FSection := nil;
 end;
 
 /// <summary>Vorgaben nach dem Laden (#753, #755, #758, #763, #764, #757, #766).</summary>

@@ -28,7 +28,7 @@
 //   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
 //   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
-//   Atlas.IDE.Assistants.Instructions).
+//   Atlas.IDE.Assistants.Adapters.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
 // (TAtlasAssistantsActivity), gehört dem Modul und lebt von der Anmeldung bis
 // nach dem Abmelden: Die Pause bleibt so über das Neustarten einzelner Teile
@@ -43,9 +43,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Verdict;
+  Atlas.Core.Build.Contract;
 
 type
   TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasAppliesSettings,
@@ -89,7 +87,6 @@ uses
   Atlas.Core.Assistants.DebugGate,
   Atlas.IDE.Assistants.DebugInbox,
   Atlas.IDE.Assistants.DebugBar,
-  Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
@@ -98,7 +95,7 @@ uses
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
-  Atlas.IDE.Assistants.Instructions,
+  Atlas.IDE.Assistants.Adapters.Instructions,
   Atlas.UI.Assistants.SettingsSection;
 
 const
@@ -118,17 +115,8 @@ var
 
 /// <summary>Builds des Moduls Build-Pipeline; nil, solange es fehlt oder nicht läuft.</summary>
 function BuildRequests: IAtlasBuildRequests;
-var
-  mItem: IInterface;
 begin
-  Result := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildRequests) do
-  begin
-    if Supports(mItem, IAtlasBuildRequests, Result) then
-    begin
-      Exit;
-    end;
-  end;
+  TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasBuildRequests, Result);
 end;
 
 function ModuleScope: IAtlasModuleScope;
@@ -187,7 +175,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, GActivity, TAtlasIdeHost.Warnings());
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeHost.EditorFiles, GActivity, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopEdits;
