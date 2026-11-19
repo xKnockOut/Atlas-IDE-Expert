@@ -125,6 +125,7 @@ begin
   Assert.IsFalse(CheckOf(APage, 'DebugProfiler').Checked, 'debug.profiler (#2057)');
   Assert.AreEqual('10', EditOf(APage, 'DebugProfilerIntervalMs').Text, 'debug.profiler.intervalMs (#2057)');
   Assert.IsFalse(CheckOf(APage, 'DebugMemoryTimelineObjectCount').Checked, 'objectCount (#858)');
+  Assert.IsTrue(CheckOf(APage, 'DebugVariablesScopedWatches').Checked, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsTrue(CheckOf(APage, 'DebugNote').Checked, 'debug.note (#582)');
   Assert.IsTrue(CheckOf(APage, 'DebugNoteSaveFile').Checked, 'debug.note.saveFile (#582)');
   Assert.AreEqual(1, ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice, 'debug.closeOpenedFiles (#842)');
@@ -163,6 +164,7 @@ begin
   CheckOf(APage, 'DebugProfiler').Checked := True;
   EditOf(APage, 'DebugProfilerIntervalMs').Text := '25';
   CheckOf(APage, 'DebugMemoryTimelineObjectCount').Checked := True;
+  CheckOf(APage, 'DebugVariablesScopedWatches').Checked := False;
   CheckOf(APage, 'DebugNote').Checked := False;
   CheckOf(APage, 'DebugNoteSaveFile').Checked := False;
   ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice := 2;
@@ -203,6 +205,7 @@ begin
   Assert.IsTrue(ASaved.DebugProfiler);
   Assert.AreEqual(25, ASaved.DebugProfilerIntervalMs);
   Assert.IsTrue(ASaved.DebugMemoryTimelineObjectCount);
+  Assert.IsFalse(ASaved.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsFalse(ASaved.DebugNote);
   Assert.IsFalse(ASaved.DebugNoteSaveFile);
   Assert.AreEqual('auto', ASaved.DebugCloseOpenedFiles);
