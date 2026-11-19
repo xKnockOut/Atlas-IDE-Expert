@@ -143,13 +143,16 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
   cButtonWidth = 180;
   cCheckWidth = 120;
   cCloseWidth = 100;
+  cButtonTop = 8;
+  cButtonHeight = 28;
   cIndent = '    ';
   cBranchMark = #$2514' ';
 
@@ -331,8 +334,8 @@ begin
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesUpdateAll), UpdateClick);
   FUpdateOnlyButton := AddButton(cCheckWidth + cButtonWidth + 3 * cGap, cButtonWidth,
     TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateOnly, [AName]), UpdateClick);
-  mClose := AddButton(Width - (cCloseWidth + cGap), cCloseWidth,
-    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose), nil);
+  mClose := AddButton(0, cCloseWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose), nil);
+  mClose.Left := Width - ScaleValue(cCloseWidth + cGap);
   mClose.Anchors := [akTop, akRight];
   mClose.Cancel := True;
   mClose.ModalResult := mrCancel;
@@ -343,7 +346,7 @@ function TAtlasWorkingCopiesButtons.AddButton(ALeft, AWidth: Integer; const ACap
 begin
   Result := TButton.Create(Owner);
   Result.Parent := Self;
-  Result.SetBounds(ALeft, 8, AWidth, 28);
+  TAtlasControlScaling.Place(Result, ALeft, cButtonTop, AWidth, cButtonHeight);
   Result.Caption := ACaption;
   Result.OnClick := AOnClick;
 end;
@@ -422,7 +425,7 @@ begin
   mHint.Parent := Self;
   mHint.Align := alBottom;
   mHint.AlignWithMargins := True;
-  mHint.Margins.SetBounds(cGap, 2, cGap, 2);
+  TAtlasControlScaling.SetMargins(mHint, cGap, 2, cGap, 2);
   mHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesHint);
 end;
 
@@ -437,7 +440,7 @@ begin
   FView.Parent := Self;
   FView.Align := alClient;
   FView.AlignWithMargins := True;
-  FView.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FView, cGap, cGap, cGap, 0);
   FView.ViewStyle := vsReport;
   FView.ReadOnly := True;
   FView.RowSelect := True;

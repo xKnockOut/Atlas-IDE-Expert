@@ -182,7 +182,8 @@ uses
   Winapi.Windows,
   Atlas.Core.Style.Color,
   Atlas.UI.Tracker.Flow.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 {$R *.dfm}
 
@@ -636,7 +637,7 @@ begin
   AFrame.FParts.Summary.Align := alClient;
   AFrame.FParts.Summary.Layout := tlCenter;
   AFrame.FParts.Summary.AlignWithMargins := True;
-  AFrame.FParts.Summary.Margins.SetBounds(cTextMarginX, cTextMarginY, cTextMarginX, cTextMarginY);
+  TAtlasControlScaling.SetMargins(AFrame.FParts.Summary, cTextMarginX, cTextMarginY, cTextMarginX, cTextMarginY);
   AFrame.FParts.Summary.Font.Style := [fsBold];
   AFrame.FParts.Summary.EllipsisPosition := epEndEllipsis;
 end;
@@ -662,7 +663,7 @@ begin
   AFrame.FParts.ListTitle.Parent := AFrame.FParts.Bottom;
   AFrame.FParts.ListTitle.Align := alTop;
   AFrame.FParts.ListTitle.AlignWithMargins := True;
-  AFrame.FParts.ListTitle.Margins.SetBounds(cTextMarginX, cTitleMarginTop, cTextMarginX, cTextMarginY);
+  TAtlasControlScaling.SetMargins(AFrame.FParts.ListTitle, cTextMarginX, cTitleMarginTop, cTextMarginX, cTextMarginY);
   AFrame.FParts.ListTitle.Font.Style := [fsBold];
   AFrame.FParts.List := TListView.Create(AFrame);
   AFrame.FParts.List.Parent := AFrame.FParts.Bottom;
@@ -693,7 +694,7 @@ begin
   AFrame.FParts.Status.Parent := AFrame;
   AFrame.FParts.Status.Align := alTop;
   AFrame.FParts.Status.AlignWithMargins := True;
-  AFrame.FParts.Status.Margins.SetBounds(cTextMarginX, cTextMarginY, cTextMarginX, cTextMarginY);
+  TAtlasControlScaling.SetMargins(AFrame.FParts.Status, cTextMarginX, cTextMarginY, cTextMarginX, cTextMarginY);
   AFrame.FParts.Status.Visible := False;
   AFrame.FParts.Status.Top := AFrame.FParts.Head.Top + AFrame.FParts.Head.Height + 1;
   AFrame.FParts.Scroll := TScrollBox.Create(AFrame);

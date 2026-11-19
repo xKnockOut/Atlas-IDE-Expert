@@ -141,7 +141,8 @@ uses
   System.Types,
   Vcl.Dialogs,
   Atlas.UI.Tracker.Attach.Strings,
-  Atlas.UI.Tracker.ImageMarkup;
+  Atlas.UI.Tracker.ImageMarkup,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
@@ -280,18 +281,18 @@ function AddCheck(AOwner: TComponent; AParent: TWinControl; ATop: Integer; const
 begin
   Result := TCheckBox.Create(AOwner);
   Result.Parent := AParent;
-  Result.SetBounds(cGap, ATop, cCheckWidth, cCheckHeight);
+  TAtlasControlScaling.Place(Result, cGap, ATop, cCheckWidth, cCheckHeight);
   Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
 
-/// <summary>Knopf in AParent; ABounds mit Bounds(Links, Oben, Breite, cButtonHeight).</summary>
+/// <summary>Knopf in AParent; ABounds mit Bounds(Links, Oben, Breite, cButtonHeight) in logischen Pixeln.</summary>
 function AddButton(AOwner: TComponent; AParent: TWinControl; const ABounds: TRect; const ACaption: string;
   AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(AOwner);
   Result.Parent := AParent;
-  Result.BoundsRect := ABounds;
+  TAtlasControlScaling.Place(Result, ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height);
   Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
@@ -300,7 +301,7 @@ function AddInfo(AOwner: TComponent; AParent: TWinControl; ATop: Integer): TLabe
 begin
   Result := TLabel.Create(AOwner);
   Result.Parent := AParent;
-  Result.SetBounds(cInfoLeft, ATop, cInfoWidth, cInfoHeight);
+  TAtlasControlScaling.Place(Result, cInfoLeft, ATop, cInfoWidth, cInfoHeight);
   Result.Caption := '';
 end;
 
@@ -340,7 +341,7 @@ begin
   FParts.WindowBox := TComboBox.Create(FDialog);
   FParts.WindowBox.Parent := AGroup;
   FParts.WindowBox.Style := csDropDownList;
-  FParts.WindowBox.SetBounds(cWindowLeft, ARow - cBoxRaise, cWindowWidth, cBoxHeight);
+  TAtlasControlScaling.Place(FParts.WindowBox, cWindowLeft, ARow - cBoxRaise, cWindowWidth, cBoxHeight);
   FParts.WindowBox.OnChange := WindowChanged;
   FParts.Pick := AddButton(FDialog, AGroup, Bounds(cPickLeft, ARow - cButtonRaise, cPickWidth, cButtonHeight),
     TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachWindowPick), PickClick);
@@ -384,7 +385,7 @@ begin
   FParts.LogBox := TComboBox.Create(FDialog);
   FParts.LogBox.Parent := AGroup;
   FParts.LogBox.Style := csDropDown;
-  FParts.LogBox.SetBounds(cLogLeft, ARow - cBoxRaise, cLogBoxWidth, cBoxHeight);
+  TAtlasControlScaling.Place(FParts.LogBox, cLogLeft, ARow - cBoxRaise, cLogBoxWidth, cBoxHeight);
   if Length(FInput.LogFiles) > 0 then
   begin
     FParts.LogBox.Text := FInput.LogFiles[0];
@@ -394,12 +395,12 @@ begin
     TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachLogBrowse), LogBrowseClick);
   FParts.LogLines := AddCheck(FDialog, AGroup, ARow, TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachLogLines),
     Changed);
-  FParts.LogLines.SetBounds(cLinesLeft, ARow, cLinesWidth, cCheckHeight);
+  TAtlasControlScaling.Place(FParts.LogLines, cLinesLeft, ARow, cLinesWidth, cCheckHeight);
   FParts.LogLines.Checked := True;
   FParts.LogCount := TEdit.Create(FDialog);
   FParts.LogCount.Parent := AGroup;
   FParts.LogCount.NumbersOnly := True;
-  FParts.LogCount.SetBounds(cCountLeft, ARow - cBoxRaise, cCountWidth, cBoxHeight);
+  TAtlasControlScaling.Place(FParts.LogCount, cCountLeft, ARow - cBoxRaise, cCountWidth, cBoxHeight);
   FParts.LogCount.Text := IntToStr(TAtlasAttachLog.cDefaultLines);
   FParts.LogCount.OnChange := Changed;
   Inc(ARow, cRow);
@@ -446,14 +447,14 @@ begin
   mGroup := TGroupBox.Create(FDialog);
   mGroup.Parent := FDialog;
   mGroup.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachSources);
-  mGroup.SetBounds(cGap, ATop, cGroupWidth, cGroupHeight);
+  TAtlasControlScaling.Place(mGroup, cGap, ATop, cGroupWidth, cGroupHeight);
   mGroup.Anchors := [akLeft, akTop, akRight];
   mRow := cFirstRow;
   AddScreenshotRows(mGroup, mRow);
   AddFormRow(mGroup, mRow);
   AddLogRows(mGroup, mRow);
   AddNoteRows(mGroup, mRow);
-  Inc(ATop, mGroup.Height + cGap);
+  Inc(ATop, cGroupHeight + cGap);
   // Fenster des Programms; das Hauptfenster zuerst. In die Liste erst mit Fenster (FillLists).
   if FInput.ProcessId <> 0 then
   begin
