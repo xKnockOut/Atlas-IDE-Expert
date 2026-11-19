@@ -64,7 +64,7 @@ Stand 01.11.2026 (8510d10a). Das sind echte Verstöße, nicht genehmigt. Das Skr
 | Von | Nach | Behebt |
 |---|---|---|
 
-Seit #1456 leer: Die Einstellungen der Willkommensseite baut das Modul als Abschnitt (`Atlas.UI.Welcome.SettingsSection`, Anbieter `Atlas.IDE.Welcome.Settings`) samt Modulschalter. Seit 05.11.2026 baut Base überhaupt keine Einstellungen eines Moduls mehr: Jedes Modul meldet seine Abschnitte `Atlas.UI.<Modul>.SettingsSection` an; ohne Modul fehlen seine Einstellungen im Optionsdialog.
+Seit #1456 leer: Die Einstellungen der Willkommensseite baut das Modul als Abschnitt (`Atlas.UI.Welcome.SettingsSection`, Anbieter `Atlas.IDE.Welcome.Adapters.Settings`) samt Modulschalter. Seit 05.11.2026 baut Base überhaupt keine Einstellungen eines Moduls mehr: Jedes Modul meldet seine Abschnitte `Atlas.UI.<Modul>.SettingsSection` an; ohne Modul fehlen seine Einstellungen im Optionsdialog.
 
 ## Summen
 
@@ -1543,6 +1543,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Welcome.Backup` | `Core/Welcome/Atlas.Core.Welcome.Backup.pas` | Ordner `Core/Welcome` |
+| `Atlas.Core.Welcome.Contract` | `Core/Welcome/Atlas.Core.Welcome.Contract.pas` | Datentypen der Bereiche und Zugriff auf die Registry als Vertrag; die IDE-Seite implementiert ihn als Adapter, #1443 |
 | `Atlas.Core.Welcome.Continue` | `Core/Welcome/Atlas.Core.Welcome.Continue.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.ContinueIssues` | `Core/Welcome/Atlas.Core.Welcome.ContinueIssues.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Discover` | `Core/Welcome/Atlas.Core.Welcome.Discover.pas` | Ordner `Core/Welcome` |
@@ -1569,40 +1570,45 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.WhatsNew` | `Core/Welcome/Atlas.Core.Welcome.WhatsNew.pas` | Ordner `Core/Welcome` |
 | `Atlas.IDE.Welcome.Commands` | `IDE/Welcome/Atlas.IDE.Welcome.Commands.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Headers` | `IDE/Welcome/Atlas.IDE.Welcome.Headers.pas` | Ordner `IDE/Welcome`; Köpfe der Willkommensseite (Gruß, Kurzstatus, Suchfeld, Menü) |
+| `Atlas.IDE.Welcome.Composition.Areas` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.Areas.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Areas` | `IDE/Welcome/Atlas.IDE.Welcome.Areas.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Continue.Commit` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Commit.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.IdeLayout` | `IDE/Welcome/Atlas.IDE.Welcome.IdeLayout.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.ProjectWatch` | `IDE/Welcome/Atlas.IDE.Welcome.ProjectWatch.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Composition` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.pas` | Anmeldung des Moduls `atlas.welcome` (Teil Welcome, Befehle, Menüeinträge), #1455 |
-| `Atlas.IDE.Welcome.Continue` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Continue` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Continue.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Continue.Editor` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Editor.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.ContinueIssueLink` | `IDE/Welcome/Atlas.IDE.Welcome.ContinueIssueLink.pas` | Sicht von „Weiterarbeiten“ auf den Reiter „Issues“, #1443 |
 | `Atlas.IDE.Welcome.Continue.Saved` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Saved.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.ContinueIssues` | `IDE/Welcome/Atlas.IDE.Welcome.ContinueIssues.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.IssueWork` | `IDE/Welcome/Atlas.IDE.Welcome.IssueWork.pas` | Arbeitsstand je Issue für den Tracker über den Vertrag, #2052 |
-| `Atlas.IDE.Welcome.Discover` | `IDE/Welcome/Atlas.IDE.Welcome.Discover.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Help` | `IDE/Welcome/Atlas.IDE.Welcome.Help.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.ContinueIssues` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.ContinueIssues.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Discover` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Discover.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Help` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Help.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Layouts` | `IDE/Welcome/Atlas.IDE.Welcome.Layouts.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Layouts` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Layouts.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.QuickActions.Keys` | `IDE/Welcome/Atlas.IDE.Welcome.QuickActions.Keys.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.TileProjects` | `IDE/Welcome/Atlas.IDE.Welcome.TileProjects.pas` | Bereich „Projekte“ für Kacheln anderer Module (IAtlasWelcomeProjects), #1455 |
-| `Atlas.IDE.Welcome.Tiles` | `IDE/Welcome/Atlas.IDE.Welcome.Tiles.pas` | Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455 |
-| `Atlas.IDE.Welcome.Listener` | `IDE/Welcome/Atlas.IDE.Welcome.Listener.pas` | Ende von Projektaufgaben, Testläufen und Befehlsnutzung an die Seite, #1455 |
-| `Atlas.IDE.Welcome.Settings` | `IDE/Welcome/Atlas.IDE.Welcome.Settings.pas` | Anbieter des Abschnitts im Optionsdialog mit seinen Haken, #1456 |
+| `Atlas.IDE.Welcome.Composition.TileProjects` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.TileProjects.pas` | Bereich „Projekte“ für Kacheln anderer Module (IAtlasWelcomeProjects), #1455 |
+| `Atlas.IDE.Welcome.Adapters.Tiles` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Tiles.pas` | Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455 |
+| `Atlas.IDE.Welcome.Adapters.Listener` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Listener.pas` | Ende von Projektaufgaben, Testläufen und Befehlsnutzung an die Seite, #1455 |
+| `Atlas.IDE.Welcome.Adapters.Settings` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Settings.pas` | Anbieter des Abschnitts im Optionsdialog mit seinen Haken, #1456 |
+| `Atlas.IDE.Welcome.Adapters.SettingsSection` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.SettingsSection.pas` | Abschnitt „Willkommensseite“ im Vertrag des Optionsdialogs, #1443 |
 | `Atlas.IDE.Welcome.Neighbors` | `IDE/Welcome/Atlas.IDE.Welcome.Neighbors.pas` | Schnellaktionen und Einrichtung über die Verträge der Module Build-Pipeline, Tests, Build und Prüfregeln, #1455 |
 | `Atlas.IDE.Welcome.Page` | `IDE/Welcome/Atlas.IDE.Welcome.Page.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Projects` | `IDE/Welcome/Atlas.IDE.Welcome.Projects.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.QuickActions` | `IDE/Welcome/Atlas.IDE.Welcome.QuickActions.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Registry` | `IDE/Welcome/Atlas.IDE.Welcome.Registry.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Projects` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Projects.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.QuickActions` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.QuickActions.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Registry` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Registry.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Search` | `IDE/Welcome/Atlas.IDE.Welcome.Search.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Setup` | `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Setup` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Setup.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Setup.Paths` | `IDE/Welcome/Atlas.IDE.Welcome.Setup.Paths.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Setup.ProjectEvents` | `IDE/Welcome/Atlas.IDE.Welcome.Setup.ProjectEvents.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Startup` | `IDE/Welcome/Atlas.IDE.Welcome.Startup.pas` | Aufbau und Abbau der Seite aus den Diensten von Base, Kacheln anderer Module, #1455 |
-| `Atlas.IDE.Welcome.State` | `IDE/Welcome/Atlas.IDE.Welcome.State.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Trends` | `IDE/Welcome/Atlas.IDE.Welcome.Trends.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.Unsaved` | `IDE/Welcome/Atlas.IDE.Welcome.Unsaved.pas` | Ordner `IDE/Welcome` |
-| `Atlas.IDE.Welcome.WhatsNew` | `IDE/Welcome/Atlas.IDE.Welcome.WhatsNew.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Composition.Startup` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.Startup.pas` | Aufbau und Abbau der Seite aus den Diensten von Base, Kacheln anderer Module, #1455 |
+| `Atlas.IDE.Welcome.Composition.Sources` | `IDE/Welcome/Atlas.IDE.Welcome.Composition.Sources.pas` | Quellen der Bereiche anlegen und verbinden, #1443 |
+| `Atlas.IDE.Welcome.Adapters.State` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.State.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Trends` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Trends.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.Unsaved` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.Unsaved.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Adapters.WhatsNew` | `IDE/Welcome/Atlas.IDE.Welcome.Adapters.WhatsNew.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Window` | `IDE/Welcome/Atlas.IDE.Welcome.Window.pas` | Ordner `IDE/Welcome` |
 | `Atlas.UI.Welcome.Arrange` | `UI/Welcome/Atlas.UI.Welcome.Arrange.pas` | Ordner `UI/Welcome` |
+| `Atlas.UI.Welcome.Contract` | `UI/Welcome/Atlas.UI.Welcome.Contract.pas` | Quellen der Bereiche als Vertrag; die IDE-Seite implementiert sie als Adapter, #1443 |
 | `Atlas.UI.Welcome.Board` | `UI/Welcome/Atlas.UI.Welcome.Board.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.Continue` | `UI/Welcome/Atlas.UI.Welcome.Continue.pas` | Ordner `UI/Welcome` |
 | `Atlas.UI.Welcome.ContinueIssues` | `UI/Welcome/Atlas.UI.Welcome.ContinueIssues.pas` | Ordner `UI/Welcome` |

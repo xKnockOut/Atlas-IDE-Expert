@@ -281,7 +281,7 @@ begin
   begin
     mMenu := TAtlasWhatsNewMenu(AFrame.PopupMenu);
   end;
-  if (FAreas.WhatsNew = nil) or not FAreas.WhatsNew.Active then
+  if not FAreas.NewsActive then
   begin
     if mMenu <> nil then
     begin
@@ -295,7 +295,7 @@ begin
     mMenu := TAtlasWhatsNewMenu.Create(AFrame);
     AFrame.PopupMenu := mMenu;
   end;
-  mMenu.Source := FAreas.WhatsNew;
+  mMenu.Source := FAreas.News;
 end;
 
 procedure TAtlasIdeWelcomeHeaders.UpdateAll;

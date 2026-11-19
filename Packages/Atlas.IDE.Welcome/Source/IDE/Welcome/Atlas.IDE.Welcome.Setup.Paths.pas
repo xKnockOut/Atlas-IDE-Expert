@@ -5,7 +5,7 @@
 // (#396), Dateien und Makros je Projekt sammeln, im Hintergrund Pfade
 // auflösen, .dproj und Dateien lesen und prüfen (Atlas.Core.Projects.PathCheck).
 // Dazu die Projekte einer Gruppe und das Lesen von Dateien, das beim Entladen
-// abbricht. Abgeteilt aus Atlas.IDE.Welcome.Setup (Atlas-Befunde).
+// abbricht. Abgeteilt aus Atlas.IDE.Welcome.Adapters.Setup (Atlas-Befunde).
 
 interface
 

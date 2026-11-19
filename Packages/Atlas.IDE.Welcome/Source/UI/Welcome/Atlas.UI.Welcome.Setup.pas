@@ -30,29 +30,10 @@ uses
   Atlas.Core.Projects.Setup,
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasSetupSource = interface
-    ['{8C2D4E61-7A3B-4F95-B1C0-2E9D6A4F7B13}']
-    /// <summary>Stand der Karte für das Ziel.</summary>
-    function Card: TAtlasSetupCard;
-    /// <summary>„Anlegen …“: Inhalt zeigen, nach Bestätigung atlas.json neben die Projektdatei schreiben.
-    /// </summary>
-    procedure CreateConfig(ATemplate: TAtlasSetupTemplate);
-    /// <summary>„Starten“: Baseline erzeugen (#97).</summary>
-    procedure StartBaseline;
-    /// <summary>„Prüfen“: Suchpfade und Defines prüfen.</summary>
-    procedure CheckPaths;
-    /// <summary>Projektoptionen des Ziels öffnen.</summary>
-    procedure OpenOptions;
-    /// <summary>Ziel in der IDE öffnen.</summary>
-    procedure OpenProject;
-    /// <summary>„Für dieses Projekt nicht mehr fragen“.</summary>
-    procedure Dismiss;
-    /// <summary>„Neu mit Atlas“: Erzeugen-Menü mit den Dateivorlagen der Art AKind.</summary>
-    procedure NewFile(AKind: TAtlasNewFileKind);
-  end;
 
 {$SCOPEDENUMS ON}
   /// <summary>Knöpfe des Bereichs (für Tests und ClickButton).</summary>

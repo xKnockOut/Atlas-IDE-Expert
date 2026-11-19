@@ -19,37 +19,14 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Welcome.Contract;
 
 type
   TAtlasTrendSeriesList = TArray<TAtlasTrendSeries>;
 
-  TAtlasTrendTile = record
-    Series: TAtlasTrendSeries;
-    /// <summary>Wert je Punkt in Zehnteln; nur mit Has.</summary>
-    Values: TArray<Integer>;
-    Has: TArray<Boolean>;
-    /// <summary>Skala in Zehnteln: Bottom ≤ 0 ≤ Top, Bottom &lt; Top.</summary>
-    Bottom: Integer;
-    Top: Integer;
-    /// <summary>Der letzte Punkt hat einen Wert.</summary>
-    function HasLast: Boolean;
-    function Last: Integer;
-    /// <summary>Letzter bekannter Wert vor dem letzten Punkt; False ohne.</summary>
-    function Previous(out AValue: Integer): Boolean;
-  end;
-
-  TAtlasTrendView = record
-    /// <summary>Projektdatei; '' ohne Projekt.</summary>
-    Project: string;
-    /// <summary>Gezeigte Punkte, älteste zuerst.</summary>
-    Points: TArray<TAtlasTrendPoint>;
-    /// <summary>Eine Kachel je gewählter Reihe.</summary>
-    Tiles: TArray<TAtlasTrendTile>;
-    /// <summary>Höchstens so viele Builds (welcomePage.trends.points).</summary>
-    Limit: Integer;
-    function Name: string;
-  end;
+  TAtlasTrendTile = Atlas.Core.Welcome.Contract.TAtlasTrendTile;
+  TAtlasTrendView = Atlas.Core.Welcome.Contract.TAtlasTrendView;
 
   TAtlasWelcomeTrends = class
   public const
@@ -105,48 +82,6 @@ begin
   begin
     Result := -Integer((-mProduct + ADenominator div 2) div ADenominator);
   end;
-end;
-
-{ TAtlasTrendTile }
-
-function TAtlasTrendTile.HasLast: Boolean;
-begin
-  Result := (Length(Has) > 0) and Has[System.High(Has)];
-end;
-
-function TAtlasTrendTile.Last: Integer;
-begin
-  Result := 0;
-  if HasLast then
-  begin
-    Result := Values[System.High(Values)];
-  end;
-end;
-
-function TAtlasTrendTile.Previous(out AValue: Integer): Boolean;
-var
-  mIndex: Integer;
-begin
-  AValue := 0;
-  for mIndex := System.High(Has) - 1 downto 0 do
-  begin
-    if Has[mIndex] then
-    begin
-      AValue := Values[mIndex];
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-{ TAtlasTrendView }
-
-function TAtlasTrendView.Name: string;
-var
-  mSummary: TAtlasProjectSummary;
-begin
-  mSummary := TAtlasProjectSummary.Create(Project);
-  Result := mSummary.Name;
 end;
 
 { TAtlasWelcomeTrends }

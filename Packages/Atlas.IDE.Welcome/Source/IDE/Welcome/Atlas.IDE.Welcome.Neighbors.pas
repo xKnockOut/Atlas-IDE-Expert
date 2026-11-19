@@ -17,21 +17,51 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.SavedPlaces.Contract,
-  Atlas.IDE.Contracts.IssueWork,
-  Atlas.IDE.Welcome.QuickActions,
-  Atlas.IDE.Welcome.Setup;
+  Atlas.Core.Welcome.Setup,
+  Atlas.IDE.Contracts.IssueWork;
 
 type
+  /// <summary>Ende eines Builds: AError &lt;&gt; '' = nicht gebaut (Grund), sonst Erfolg.</summary>
+  TAtlasQuickBuildDone = reference to procedure(ASucceeded: Boolean; const AError: string);
+  /// <summary>Baut das offene AProject (Konfiguration und Plattform '' = wie in der IDE); False mit Grund.</summary>
+  TAtlasQuickBuildFunc = reference to function(const AProject, AConfiguration, APlatform: string;
+    const ADone: TAtlasQuickBuildDone; out AReason: string): Boolean;
+  /// <summary>Startet die Tests des offenen Testprojekts ATestProject (mit Build vorab); False mit Grund.</summary>
+  TAtlasQuickTestsFunc = reference to function(const ATestProject: string; out AReason: string): Boolean;
+  /// <summary>Startprofile von AProject (Namen) und das aktive.</summary>
+  TAtlasQuickProfilesFunc = reference to function(const AProject: string; out AActive: string): TArray<string>;
+  /// <summary>Startet das offene AProject mit Profil AProfile ('' = ohne); False mit Grund.</summary>
+  TAtlasQuickRunFunc = reference to function(const AProject, AProfile: string; out AReason: string): Boolean;
+  /// <summary>Namen der Projektaufgaben von AProject (#900).</summary>
+  TAtlasQuickTaskNamesFunc = reference to function(const AProject: string): TArray<string>;
+  /// <summary>Startet die Projektaufgabe AName von AProject; False mit Grund.</summary>
+  TAtlasQuickRunTaskFunc = reference to function(const AProject, AName: string; out AReason: string): Boolean;
+
+  /// <summary>Haken der IDE-Schicht für die Schnellaktionen (Composition setzt sie).</summary>
+  TAtlasQuickActionHooks = record
+    OnBuild: TAtlasQuickBuildFunc;
+    OnTests: TAtlasQuickTestsFunc;
+    /// <summary>Läuft ein Testlauf (auch der Build davor)?</summary>
+    OnTestsBusy: TFunc<Boolean>;
+    /// <summary>Ist die IDE schon mit einem Build oder Testlauf beschäftigt (auch nicht von hier)?</summary>
+    OnIdeBusy: TFunc<Boolean>;
+    OnProfiles: TAtlasQuickProfilesFunc;
+    OnRun: TAtlasQuickRunFunc;
+    OnTaskNames: TAtlasQuickTaskNamesFunc;
+    OnRunTask: TAtlasQuickRunTaskFunc;
+  end;
+
   TAtlasWelcomeNeighbors = class
   public
     /// <summary>Haken der Schnellaktionen (#764) an die Module Build-Pipeline, Tests und Build-Werkzeuge.</summary>
-    class procedure Connect(AQuickActions: TAtlasIdeQuickActions); static;
+    class procedure Connect(var AHooks: TAtlasQuickActionHooks); static;
     /// <summary>Baseline von AProject über das Modul Prüfregeln aktualisieren (#759); '' = gestartet, sonst der
     /// Grund.</summary>
     class function StartBaseline(const AProject: string; const ADone: TAtlasSetupBaselineDone): string; static;
-    /// <summary>Bereich „Projekt für Atlas einrichten“ (#759) mit Baseline und „Neu mit Atlas“; AMessage bekommt
-    /// die Zeilen der Einrichtung.</summary>
-    class function CreateSetup(const AMessage: TProc<string>): TAtlasIdeSetup; static;
+    /// <summary>Baseline für den Bereich „Projekt für Atlas einrichten“ (#759) über das Modul Prüfregeln.</summary>
+    class function SetupBaseline: TAtlasSetupBaselineStart; static;
+    /// <summary>„Neu mit Atlas“ für die Einrichtung (#759): Dateivorlagen von Base.</summary>
+    class function SetupNewFile: TAtlasSetupNewFile; static;
     /// <summary>Notizen und Lesezeichen neben AProjects vom Modul Lesezeichen; leer ohne das Modul.</summary>
     class function SavedPlaces(const AProjects: TArray<string>): TAtlasSavedPlaces; static;
     /// <summary>Lesezeichen über das Modul Lesezeichen öffnen (#622); False, wenn es fehlt oder das gerade nicht
@@ -248,16 +278,16 @@ end;
 
 { TAtlasWelcomeNeighbors }
 
-class procedure TAtlasWelcomeNeighbors.Connect(AQuickActions: TAtlasIdeQuickActions);
+class procedure TAtlasWelcomeNeighbors.Connect(var AHooks: TAtlasQuickActionHooks);
 begin
-  AQuickActions.Hooks.OnBuild := StartBuild;
-  AQuickActions.Hooks.OnTests := RunTests;
-  AQuickActions.Hooks.OnTestsBusy := TestsRunning;
-  AQuickActions.Hooks.OnIdeBusy := IdeBusy;
-  AQuickActions.Hooks.OnProfiles := Profiles;
-  AQuickActions.Hooks.OnRun := RunProfile;
-  AQuickActions.Hooks.OnTaskNames := TaskNames;
-  AQuickActions.Hooks.OnRunTask := RunTask;
+  AHooks.OnBuild := StartBuild;
+  AHooks.OnTests := RunTests;
+  AHooks.OnTestsBusy := TestsRunning;
+  AHooks.OnIdeBusy := IdeBusy;
+  AHooks.OnProfiles := Profiles;
+  AHooks.OnRun := RunProfile;
+  AHooks.OnTaskNames := TaskNames;
+  AHooks.OnRunTask := RunTask;
 end;
 
 class function TAtlasWelcomeNeighbors.StartBaseline(const AProject: string;
@@ -288,9 +318,14 @@ begin
   TAtlasIdeNewFile.Show(AKind, TAtlasIdeHost.FileSnippets, NoteNewFile);
 end;
 
-class function TAtlasWelcomeNeighbors.CreateSetup(const AMessage: TProc<string>): TAtlasIdeSetup;
+class function TAtlasWelcomeNeighbors.SetupBaseline: TAtlasSetupBaselineStart;
 begin
-  Result := TAtlasIdeSetup.Create(AMessage, StartBaselineOf, NewFile);
+  Result := StartBaselineOf;
+end;
+
+class function TAtlasWelcomeNeighbors.SetupNewFile: TAtlasSetupNewFile;
+begin
+  Result := NewFile;
 end;
 
 class function TAtlasWelcomeNeighbors.SavedPlaces(const AProjects: TArray<string>): TAtlasSavedPlaces;

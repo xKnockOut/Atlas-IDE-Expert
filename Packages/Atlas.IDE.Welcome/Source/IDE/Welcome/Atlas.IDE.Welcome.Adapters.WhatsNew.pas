@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.WhatsNew;
+﻿unit Atlas.IDE.Welcome.Adapters.WhatsNew;
 
 // Karte „Neu in Atlas“ in der IDE (#756): Quelle der Karte
 // (IAtlasWhatsNewSource) und Bereich atlas.news der Willkommensseite.
@@ -23,7 +23,8 @@ uses
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
   TAtlasIdeWhatsNew = class(TInterfacedObject, IAtlasWhatsNewSource)

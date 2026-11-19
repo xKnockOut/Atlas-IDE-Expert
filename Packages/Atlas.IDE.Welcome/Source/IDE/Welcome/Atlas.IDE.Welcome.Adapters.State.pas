@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.State;
+﻿unit Atlas.IDE.Welcome.Adapters.State;
 
 // Zustandskachel „Atlas“ in der IDE (#754): Quelle des Bereichs
 // (IAtlasStateSource) und Anmeldung als Bereich atlas.state der
@@ -25,7 +25,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.State,
-  Atlas.UI.Welcome.State;
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Knöpfe der Kachel; gesetzt von der Komposition. nil = Knopf ohne Wirkung.</summary>
@@ -78,7 +78,8 @@ uses
   Atlas.UI.Welcome.Frame,
   Atlas.Core.Status.Registry,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Welcome.State;
 
 var
   // Laufende Quelle; für Arbeit, die über die Nachrichtenschleife kommt.

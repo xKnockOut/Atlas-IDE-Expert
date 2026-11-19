@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.ContinueIssues;
+﻿unit Atlas.IDE.Welcome.Adapters.ContinueIssues;
 
 // Reiter „Issues“ von „Weiterarbeiten“ in der IDE (#2052): Arbeitsstand je
 // Issue mitschreiben, auflisten und fortsetzen.
@@ -19,21 +19,28 @@
 //   Restore stellt ohne Rückfrage wieder her (#2127, „Weiterarbeiten“);
 //   Forget verwirft den Stand eines als „nicht geplant“ oder „Duplikat“
 //   beendeten Issues (#2135).
+// TAtlasWelcomeIssueWork bietet das anderen Modulen über den Vertrag
+// Atlas.IDE.Contracts.IssueWork an (#2052): Das Modul stellt IAtlasIssueWork über seinen Scope bereit; der
+// Tracker meldet darüber den Wechsel des aktiven Issues und bietet nach „Beginnen“ das Wiederherstellen an.
+// Das Objekt fragt bei jedem Aufruf neu nach dem Arbeitsstand der laufenden Seite und tut ohne sie nichts
+// (Regel 3).
 
 interface
 
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueIssues,
   Atlas.IDE.Contracts.IssueWork,
-  Atlas.UI.Welcome.ContinueIssues,
   Atlas.IDE.Welcome.Continue.Editor,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.IDE.Welcome.ContinueIssueLink,
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
-  TAtlasIdeContinueIssues = class(TInterfacedObject, IAtlasContinueIssuesSource)
+  TAtlasIdeContinueIssues = class(TAtlasIdeContinueIssueLink, IAtlasContinueIssuesSource)
   private
     FMessage: TAtlasMessageSink;
     FChanged: TProc;
@@ -58,13 +65,14 @@ type
     constructor Create(const AMessage: TProc<string>; AChanges: TDictionary<string, TAtlasWorkTab>;
       const AChanged: TProc);
     /// <summary>Danach wirkungslos; laufende Abfragen tun nichts mehr.</summary>
-    procedure Stop;
+    procedure Stop; override;
     /// <summary>welcomePage.continue.issues (mit Willkommensseite und „Weiterarbeiten“) an?</summary>
     function Enabled: Boolean;
     /// <summary>„Zuletzt“ hat ASnapshot für ATarget geschrieben (Schließen, Beenden): denselben Stand unter dem
     /// aktiven Issue sichern.</summary>
-    procedure ProjectWritten(const ATarget: string; const ASnapshot: TAtlasContinueSnapshot);
-    { IAtlasIssueWork (über Atlas.IDE.Welcome.IssueWork) }
+    procedure ProjectWritten(const ATarget: string; const ASnapshot: TAtlasContinueSnapshot); override;
+    function Source: IAtlasContinueIssuesSource; override;
+    { IAtlasIssueWork (über TAtlasWelcomeIssueWork weiter unten) }
     procedure SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
     function HasState(const AProject, AKey: string): Boolean;
     procedure OfferRestore(const AProject, AKey: string);
@@ -79,6 +87,26 @@ type
     function IssueRows: TAtlasIssueWorkRows;
     function IssuesNotice: string;
     procedure ResumeIssue(const AProject, AKey: string);
+  end;
+
+  TAtlasWelcomeIssueWork = class(TInterfacedObject, IAtlasIssueWork)
+  private
+    FIssues: TFunc<TAtlasIdeContinueIssues>;
+    /// <summary>Arbeitsstand je Issue der laufenden Seite; nil ohne.</summary>
+    function Issues: TAtlasIdeContinueIssues;
+  public
+    /// <summary>AIssues: Arbeitsstand je Issue der laufenden Seite, nil ohne.</summary>
+    constructor Create(const AIssues: TFunc<TAtlasIdeContinueIssues>);
+    /// <summary>Über AScope als IAtlasIssueWork bereitstellen.</summary>
+    class function Provide(const AScope: IAtlasModuleScope;
+      const AIssues: TFunc<TAtlasIdeContinueIssues>): IAtlasRegistration; static;
+    function Enabled: Boolean;
+    procedure SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
+    function HasState(const AProject, AKey: string): Boolean;
+    procedure OfferRestore(const AProject, AKey: string);
+    procedure Restore(const AProject, AKey: string);
+    procedure Forget(const AProject, AKey: string);
+    procedure StatusesChanged;
   end;
 
 implementation
@@ -96,7 +124,8 @@ uses
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Welcome.Neighbors,
-  Atlas.IDE.Welcome.Search;
+  Atlas.IDE.Welcome.Search,
+  Atlas.UI.Welcome.ContinueIssues;
 
 function NowUtc: TDateTime;
 begin
@@ -393,6 +422,11 @@ begin
     mSettings.WelcomePageContinueIssues;
 end;
 
+function TAtlasIdeContinueIssues.Source: IAtlasContinueIssuesSource;
+begin
+  Result := Self;
+end;
+
 procedure TAtlasIdeContinueIssues.ProjectWritten(const ATarget: string; const ASnapshot: TAtlasContinueSnapshot);
 var
   mSource: IAtlasIssueWorkSource;
@@ -604,6 +638,130 @@ begin
     end) then
   begin
     OpenPlan(mTarget, mEntry);
+  end;
+end;
+
+{ TAtlasWelcomeIssueWork }
+
+constructor TAtlasWelcomeIssueWork.Create(const AIssues: TFunc<TAtlasIdeContinueIssues>);
+begin
+  inherited Create;
+  FIssues := AIssues;
+end;
+
+function TAtlasWelcomeIssueWork.Issues: TAtlasIdeContinueIssues;
+begin
+  Result := nil;
+  if Assigned(FIssues) then
+  begin
+    Result := FIssues();
+  end;
+end;
+
+class function TAtlasWelcomeIssueWork.Provide(const AScope: IAtlasModuleScope;
+  const AIssues: TFunc<TAtlasIdeContinueIssues>): IAtlasRegistration;
+begin
+  Result := AScope.Provide(IAtlasIssueWork, TAtlasWelcomeIssueWork.Create(AIssues) as IAtlasIssueWork);
+end;
+
+function TAtlasWelcomeIssueWork.Enabled: Boolean;
+var
+  mIssues: TAtlasIdeContinueIssues;
+begin
+  mIssues := Issues;
+  Result := (mIssues <> nil) and mIssues.Enabled;
+end;
+
+procedure TAtlasWelcomeIssueWork.SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
+var
+  mIssues: TAtlasIdeContinueIssues;
+  mProject: string;
+  mIssue: TAtlasIssueWorkIssue;
+begin
+  mIssues := Issues;
+  mProject := AProject;
+  mIssue := AIssue;
+  if mIssues <> nil then
+  begin
+    // Keine Exception zurück in den Tracker: Sein „Beginnen“ läuft weiter.
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        mIssues.SaveIssue(mProject, mIssue);
+      end);
+  end;
+end;
+
+function TAtlasWelcomeIssueWork.HasState(const AProject, AKey: string): Boolean;
+var
+  mIssues: TAtlasIdeContinueIssues;
+begin
+  mIssues := Issues;
+  Result := (mIssues <> nil) and mIssues.HasState(AProject, AKey);
+end;
+
+procedure TAtlasWelcomeIssueWork.OfferRestore(const AProject, AKey: string);
+var
+  mIssues: TAtlasIdeContinueIssues;
+  mProject, mKey: string;
+begin
+  mIssues := Issues;
+  mProject := AProject;
+  mKey := AKey;
+  if mIssues <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        mIssues.OfferRestore(mProject, mKey);
+      end);
+  end;
+end;
+
+procedure TAtlasWelcomeIssueWork.Restore(const AProject, AKey: string);
+var
+  mIssues: TAtlasIdeContinueIssues;
+  mProject, mKey: string;
+begin
+  mIssues := Issues;
+  mProject := AProject;
+  mKey := AKey;
+  if (mIssues <> nil) and mIssues.HasState(mProject, mKey) then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        mIssues.Restore(mProject, mKey);
+      end);
+  end;
+end;
+
+procedure TAtlasWelcomeIssueWork.Forget(const AProject, AKey: string);
+var
+  mIssues: TAtlasIdeContinueIssues;
+  mProject, mKey: string;
+begin
+  mIssues := Issues;
+  mProject := AProject;
+  mKey := AKey;
+  if mIssues <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        mIssues.Forget(mProject, mKey);
+      end);
+  end;
+end;
+
+procedure TAtlasWelcomeIssueWork.StatusesChanged;
+var
+  mIssues: TAtlasIdeContinueIssues;
+begin
+  mIssues := Issues;
+  if mIssues <> nil then
+  begin
+    mIssues.StatusesChanged;
   end;
 end;
 

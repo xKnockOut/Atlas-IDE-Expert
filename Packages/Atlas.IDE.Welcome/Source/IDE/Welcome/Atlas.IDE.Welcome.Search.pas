@@ -83,7 +83,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Welcome.Registry;
+  Atlas.IDE.Welcome.IdeLayout;
 
 type
   TBoxWatch = class(TComponent)
@@ -198,7 +198,7 @@ var
   mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  mBase := TAtlasIdeRegistryAccess.IdeBaseKey;
+  mBase := TAtlasIdeWelcomeIdeLayout.IdeBaseKey;
   if mBase = '' then
   begin
     Exit;

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Welcome.Setup;
+﻿unit Atlas.IDE.Welcome.Adapters.Setup;
 
 // Bereich „<Projekt> für Atlas einrichten“ in der IDE (#759): Quelle des
 // Bereichs (IAtlasSetupSource) und Bereich atlas.setup der Willkommensseite.
@@ -44,21 +44,12 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
-  Atlas.UI.Welcome.Setup,
   Atlas.IDE.Welcome.Setup.Paths,
   Atlas.IDE.Welcome.Setup.ProjectEvents,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
 
 type
-  /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
-  TAtlasSetupBaselineDone = reference to procedure(ASucceeded: Boolean; ATotal, AFiles: Integer;
-    const AError: string);
-  /// <summary>Startet atlas.updateBaseline für AProject; '' = gestartet, sonst der Grund in der Sprache der
-  /// Oberfläche (ADone kommt dann nicht).</summary>
-  TAtlasSetupBaselineStart = reference to function(const AProject: string;
-    const ADone: TAtlasSetupBaselineDone): string;
-  TAtlasSetupNewFile = reference to procedure(AKind: TAtlasNewFileKind);
-
   TAtlasIdeSetup = class(TInterfacedObject, IAtlasSetupSource)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: vor „Projekte“.</summary>
@@ -158,7 +149,8 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.UI.Welcome.Setup;
 
 { Hilfen }
 

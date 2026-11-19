@@ -14,32 +14,12 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Notifications.Listeners,
-  Atlas.Core.Notifications.OrderedItems;
+  Atlas.Core.Notifications.OrderedItems,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Spalte im Atlas-Layout; im Fenster „Atlas-Start“ stehen beide untereinander.</summary>
-  TAtlasWelcomeColumn = (Left, Right);
-{$SCOPEDENUMS OFF}
-
-  TAtlasWelcomeSection = record
-    /// <summary>Kennung, z. B. "atlas.state"; siehe TAtlasWelcomeIds.</summary>
-    Id: string;
-    /// <summary>Überschrift in der Sprache der IDE.</summary>
-    Title: string;
-    /// <summary>Reihenfolge außerhalb eines Layouts, kleiner zuerst; bei Gleichstand nach Kennung.</summary>
-    Order: Integer;
-    /// <summary>Spalte, wenn das Layout den Bereich nicht kennt.</summary>
-    Column: TAtlasWelcomeColumn;
-    /// <summary>Schalter des Bereichs (z. B. welcomePage.state); nil = immer an.</summary>
-    Enabled: TFunc<Boolean>;
-    /// <summary>Ein Satz für „Seite anpassen“ (#767), wenn TAtlasIdeWelcomeLayouts den Bereich nicht kennt
-    /// (Kacheln anderer Module, #1455); '' = keiner.</summary>
-    Description: string;
-    function IsEnabled: Boolean;
-    class function Create(const AId, ATitle: string; AOrder: Integer; AColumn: TAtlasWelcomeColumn;
-      const AEnabled: TFunc<Boolean>): TAtlasWelcomeSection; static;
-  end;
+  TAtlasWelcomeColumn = Atlas.Core.Welcome.Contract.TAtlasWelcomeColumn;
+  TAtlasWelcomeSection = Atlas.Core.Welcome.Contract.TAtlasWelcomeSection;
 
   /// <summary>Kennungen der Bereiche und der Plugins auf der Willkommensseite der IDE.</summary>
   TAtlasWelcomeIds = class
@@ -129,28 +109,6 @@ type
   end;
 
 implementation
-
-{ TAtlasWelcomeSection }
-
-function TAtlasWelcomeSection.IsEnabled: Boolean;
-begin
-  Result := True;
-  if Assigned(Enabled) then
-  begin
-    Result := Enabled();
-  end;
-end;
-
-class function TAtlasWelcomeSection.Create(const AId, ATitle: string; AOrder: Integer;
-  AColumn: TAtlasWelcomeColumn; const AEnabled: TFunc<Boolean>): TAtlasWelcomeSection;
-begin
-  Result.Id := AId;
-  Result.Title := ATitle;
-  Result.Order := AOrder;
-  Result.Column := AColumn;
-  Result.Enabled := AEnabled;
-  Result.Description := '';
-end;
 
 { TAtlasWelcomeIds }
 

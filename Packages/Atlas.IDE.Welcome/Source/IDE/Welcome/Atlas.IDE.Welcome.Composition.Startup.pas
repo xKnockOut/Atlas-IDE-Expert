@@ -1,8 +1,8 @@
-﻿unit Atlas.IDE.Welcome.Startup;
+﻿unit Atlas.IDE.Welcome.Composition.Startup;
 
 // Aufbau der Willkommensseite im Modul atlas.welcome (#1455): erzeugt
-// TAtlasIdeWelcome mit allen eigenen Bereichen aus den Diensten von Base
-// (TAtlasIdeHost), verbindet die Schnellaktionen mit anderen Modulen
+// TAtlasIdeWelcome mit allen eigenen Bereichen (Quellen aus
+// Atlas.IDE.Welcome.Composition.Sources), verbindet die Schnellaktionen mit anderen Modulen
 // (TAtlasWelcomeNeighbors), hört auf Projektaufgaben, Testläufe und die
 // Befehlsnutzung und zeigt Kacheln anderer Module (TAtlasIdeWelcomeTiles).
 // Alle Anmeldungen laufen über den Scope des Moduls und werden beim Stoppen
@@ -29,36 +29,34 @@ type
 implementation
 
 uses
-  Atlas.Core.Commands.Usage,
-  Atlas.IDE.Contracts.BuildTools,
-  Atlas.IDE.Contracts.Tests,
   System.Types,
+  Atlas.Core.Commands.Usage,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Status.Lines,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Welcome.Frame,
+  Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Settings.Options,
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.WhatsNew,
-  Atlas.IDE.Welcome.Projects,
-  Atlas.IDE.Welcome.Trends,
-  Atlas.IDE.Welcome.Unsaved,
-  Atlas.IDE.Welcome.QuickActions,
-  Atlas.IDE.Welcome.Continue,
-  Atlas.IDE.Welcome.State,
-  Atlas.IDE.Welcome.Discover,
-  Atlas.IDE.Welcome.Help,
-  Atlas.IDE.Welcome.Tiles,
-  Atlas.IDE.Welcome.TileProjects,
-  Atlas.IDE.Welcome.Neighbors,
-  Atlas.IDE.Welcome.IssueWork,
-  Atlas.IDE.Welcome.Listener;
+  Atlas.IDE.Welcome.Layouts,
+  Atlas.IDE.Welcome.Composition.Areas,
+  Atlas.IDE.Welcome.Composition.Sources,
+  Atlas.IDE.Welcome.Composition.TileProjects,
+  Atlas.IDE.Welcome.Adapters.Layouts,
+  Atlas.IDE.Welcome.Adapters.Registry,
+  Atlas.IDE.Welcome.Adapters.ContinueIssues,
+  Atlas.IDE.Welcome.Adapters.Projects,
+  Atlas.IDE.Welcome.Adapters.Tiles,
+  Atlas.IDE.Welcome.Adapters.Listener;
 
 var
   GWelcome: TAtlasIdeWelcome;
+  // Quellen der Bereiche; leben länger als die Seite (erst nach ihr frei).
+  GAreas: TAtlasIdeWelcomeSources;
   GTiles: TAtlasIdeWelcomeTiles;
   GRegistrations: TArray<IAtlasRegistration>;
   // Dauer der langsamen Schritte beim Start (der Aufbau der Willkommensseite kann 10 s dauern), für atlas.log.
@@ -94,39 +92,19 @@ begin
   end;
 end;
 
-procedure Warn(AText: string);
+function Arrange(ALayouts: TAtlasIdeWelcomeLayouts): IAtlasWelcomeArrangeSource;
 begin
-  TAtlasIdeHost.Warning(AText);
-end;
-
-procedure Note(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
-procedure Execute(AId: string);
-begin
-  TAtlasIdeHost.ExecuteCommand(AId);
-end;
-
-function PaletteCommands: TArray<TAtlasCommand>;
-begin
-  Result := TAtlasIdeHost.PaletteCommands;
-end;
-
-function PaletteHas(AId: string): Boolean;
-var
-  mCommand: TAtlasCommand;
-begin
-  Result := False;
-  for mCommand in TAtlasIdeHost.PaletteCommands do
-  begin
-    Result := Result or SameText(mCommand.Id, AId);
-  end;
+  Result := TAtlasIdeWelcomeArrange.Create(ALayouts);
 end;
 
 function CreatePage: TAtlasIdeWelcome;
+var
+  mParts: TAtlasIdeWelcomeParts;
 begin
+  mParts := Default(TAtlasIdeWelcomeParts);
+  mParts.Areas := GAreas;
+  mParts.Registry := TAtlasIdeRegistryAccess.Create;
+  mParts.Arrange := Arrange;
   Result := TAtlasIdeWelcome.Create(
     function: TAtlasServerInfo
     begin
@@ -139,17 +117,7 @@ begin
     function: Integer
     begin
       Result := TAtlasIdeHost.IndexedUnits;
-    end, Warn);
-end;
-
-procedure TryCommand(AId: string);
-begin
-  TAtlasIdeDiscover.TryCommand(AId);
-end;
-
-procedure ShowKeys;
-begin
-  TAtlasIdeHost.ShowKeyMap;
+    end, TAtlasWelcomeSourcesBuild.Warn, mParts);
 end;
 
 function HideSetting(AKey: string; APoint: TPoint): Boolean;
@@ -166,11 +134,6 @@ begin
     end);
 end;
 
-procedure ShowVcsServer(AFolder: string);
-begin
-  TAtlasOptionsRegistration.ShowVcsServer(AFolder);
-end;
-
 function ScopeProvide(const AScope: IAtlasModuleScope): TAtlasWelcomeProvide;
 var
   mScope: IAtlasModuleScope;
@@ -185,91 +148,34 @@ end;
 
 { Aufbau }
 
-/// <summary>Kopf, „Neu in Atlas“ (#756), „Projekte“ (#592), „Projektverlauf“ (#758) und „Nicht gesichert“ (#762).
-/// </summary>
-procedure StartProjectSections;
+function CurrentAreas: TAtlasIdeWelcomeSources;
 begin
-  Step('Search',
-    procedure
-    begin
-      GWelcome.Search := TAtlasIdeWelcomeSearch.Create(PaletteCommands, Execute);
-    end);
-  Step('WhatsNew',
-    procedure
-    begin
-      GWelcome.Areas.WhatsNew := TAtlasIdeWhatsNew.Create(PaletteHas, Execute, Warn);
-    end);
-  Step('Projects',
-    procedure
-    begin
-      GWelcome.Areas.Projects := TAtlasIdeProjects.Create(Warn);
-    end);
-  Step('Trends',
-    procedure
-    begin
-      GWelcome.Areas.Trends := TAtlasIdeTrends.Create(GWelcome.Areas.Projects);
-    end);
-  Step('Unsaved',
-    procedure
-    begin
-      GWelcome.Areas.Unsaved := TAtlasIdeUnsaved.Create(Warn);
-    end);
+  Result := GAreas;
 end;
 
-/// <summary>Schnellaktionen (#764), „Weiterarbeiten“ (#755), Zustand (#754), „Atlas entdecken“ (#757), Hilfe
-/// (#766), Einrichtung (#759) und „Seite anpassen“ (#767).</summary>
-procedure StartWorkSections;
+function CurrentIssues: TAtlasIdeContinueIssues;
 begin
-  // Meldungen tragen Pfade und gehen deshalb nur in die Meldungsansicht.
-  Step('QuickActions',
-    procedure
-    begin
-      GWelcome.Areas.QuickActions := TAtlasIdeQuickActions.Create(GWelcome.Areas.Projects, Note);
-      TAtlasWelcomeNeighbors.Connect(GWelcome.Areas.QuickActions);
-    end);
-  Step('Continue',
-    procedure
-    begin
-      GWelcome.Areas.ContinueWork := TAtlasIdeContinue.Create(Warn);
-      GWelcome.Areas.ContinueWork.Hooks.OnServerAccess := ShowVcsServer;
-    end);
-  Step('State',
-    procedure
-    begin
-      GWelcome.Areas.State := TAtlasIdeWelcomeState.CreateForHost;
-    end);
-  Step('Discover',
-    procedure
-    begin
-      GWelcome.Areas.Discover := TAtlasIdeDiscover.Create(PaletteCommands, TryCommand, Warn);
-    end);
-  Step('Help',
-    procedure
-    begin
-      GWelcome.Areas.Help := TAtlasIdeHelp.Create(ShowKeys);
-    end);
-  Step('Setup',
-    procedure
-    begin
-      GWelcome.Areas.Setup := TAtlasWelcomeNeighbors.CreateSetup(Note);
-    end);
-  GWelcome.Layouts.OnHideSetting := HideSetting;
-  GWelcome.Layouts.OnShowSetting := ShowSetting;
+  Result := TAtlasWelcomeSourcesBuild.Issues(GAreas);
 end;
 
-function CurrentPage: TAtlasIdeWelcome;
+function CurrentProjects: TAtlasIdeProjects;
 begin
-  Result := GWelcome;
+  Result := nil;
+  if GAreas <> nil then
+  begin
+    Result := GAreas.Projects;
+  end;
 end;
 
 procedure Provide(const AScope: IAtlasModuleScope);
 var
   mListener: IInterface;
 begin
-  mListener := TAtlasWelcomeListener.Create(CurrentPage) as IAtlasTaskListener;
+  mListener := TAtlasWelcomeListener.Create(TAtlasWelcomeSourcesBuild.ListenerHooks(CurrentAreas)) as
+    IAtlasTaskListener;
   GRegistrations := [AScope.Provide(IAtlasTaskListener, mListener), AScope.Provide(IAtlasTestsListener, mListener),
     AScope.Provide(IAtlasCommandUsageListener, mListener),
-    TAtlasWelcomeIssueWork.Provide(AScope, CurrentPage)];
+    TAtlasWelcomeIssueWork.Provide(AScope, CurrentIssues)];
 end;
 
 { TAtlasIdeWelcomeStartup }
@@ -289,10 +195,19 @@ begin
   Step('Page',
     procedure
     begin
+      GAreas := TAtlasIdeWelcomeSources.Create;
       GWelcome := CreatePage;
     end);
-  StartProjectSections;
-  StartWorkSections;
+  Step('Search',
+    procedure
+    begin
+      GWelcome.Search := TAtlasIdeWelcomeSearch.Create(TAtlasWelcomeSourcesBuild.PaletteCommands,
+        TAtlasWelcomeSourcesBuild.Execute);
+    end);
+  TAtlasWelcomeSourcesBuild.StartProjectSections(GAreas, Step);
+  TAtlasWelcomeSourcesBuild.StartWorkSections(GAreas, Step);
+  GWelcome.Layouts.OnHideSetting := HideSetting;
+  GWelcome.Layouts.OnShowSetting := ShowSetting;
   Step('Provide',
     procedure
     begin
@@ -302,7 +217,7 @@ begin
     procedure
     begin
       GTiles := TAtlasIdeWelcomeTiles.Create(AtlasModuleRegistry, ScopeProvide(mScope), TAtlasWelcomeSections.Default);
-      GTiles.Start(TAtlasWelcomeTileProjects.Access(CurrentPage));
+      GTiles.Start(TAtlasWelcomeTileProjects.Access(CurrentProjects));
     end);
   Step('Sync',
     procedure
@@ -330,6 +245,7 @@ begin
   end;
   GRegistrations := nil;
   FreeAndNil(GWelcome);
+  FreeAndNil(GAreas);
   TAtlasWelcomeViews.Release;
   TAtlasWelcomeSections.ReleaseDefault;
 end;

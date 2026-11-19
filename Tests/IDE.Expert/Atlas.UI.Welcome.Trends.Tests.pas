@@ -42,7 +42,8 @@ uses
   Atlas.Core.Projects.Trends,
   Atlas.Core.Welcome.Trends,
   Atlas.UI.Welcome.Trends,
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.UI.Welcome.Contract;
 
 
 type

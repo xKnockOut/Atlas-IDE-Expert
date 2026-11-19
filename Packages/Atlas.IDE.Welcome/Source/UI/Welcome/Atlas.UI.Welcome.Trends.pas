@@ -28,14 +28,10 @@ uses
   Vcl.Graphics,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Trends,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasTrendsSource = interface
-    ['{9C3B6E21-4A7D-4F18-B2E5-7D0A1C8F5E93}']
-    /// <summary>Verlauf des gewählten (sonst obersten) Projekts mit den eingestellten Reihen.</summary>
-    function View: TAtlasTrendView;
-  end;
 
   TAtlasTrendsHit = record
     /// <summary>Kachel; -1 = keine.</summary>

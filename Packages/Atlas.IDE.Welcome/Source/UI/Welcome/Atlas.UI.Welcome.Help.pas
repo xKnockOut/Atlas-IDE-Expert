@@ -19,22 +19,10 @@ uses
   Vcl.StdCtrls,
   Vcl.Graphics,
   Atlas.Core.Welcome.Help,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasHelpSource = interface
-    ['{6B1E2F7A-3C94-4D58-9A0B-5E7C1D2F8A46}']
-    /// <summary>Gibt es die Tastenkürzel-Übersicht (#520)?</summary>
-    function KeysAvailable: Boolean;
-    /// <summary>„Atlas-Doku“: installierte Doku oder Doku-Seite des Repositorys im Browser.</summary>
-    procedure OpenDocs;
-    /// <summary>„Tastenkürzel“: Übersicht aus #520.</summary>
-    procedure ShowKeys;
-    /// <summary>„Problem melden …“: Dialog mit Diagnosepaket.</summary>
-    procedure ReportProblem;
-    /// <summary>„Atlas unterstützen“: Spendenseite im Browser.</summary>
-    procedure Donate;
-  end;
 
   TAtlasWelcomeHelpFrame = class(TAtlasWelcomeSectionFrame)
   public const
