@@ -27,6 +27,8 @@
 // Zeilenenden der Datei bleiben dabei; format.endOfLine setzt --format-write um.
 // Geschützte Dateien (assistants.protected, #2608): Trifft eine Änderung eine davon, schreibt der Aufruf nichts und
 // nennt Grund und richtigen Weg; die Vorschau nennt sie schon.
+// Nach dem Schreiben hängt AfterWrite die neuen und behobenen Befunde der geänderten Dateien an (#2603,
+// TMcpEditEvaluation); dryRun und abgelehnte Änderungen bekommen den Abschnitt nicht.
 
 interface
 
@@ -62,6 +64,10 @@ type
   /// <summary>Geschützte unter AFileNames mit Grund und richtigem Weg (#2608, TMcpProtectedFiles.Report); '' ohne.
   /// ADryRun: Abschnitt der Vorschau, sonst die Ablehnung.</summary>
   TMcpProtectedReport = reference to function(const AFileNames: TArray<string>; ADryRun: Boolean): string;
+  /// <summary>Nach dem Schreiben von ANames (AOldTexts vorher, ANewTexts geplant) durch ATool: Abschnitt „Befunde
+  /// nach der Änderung“ (#2603, IMcpEditEvaluation.Run); '' ohne.</summary>
+  TMcpAfterWrite = reference to function(const ATool: string; const ANames, AOldTexts,
+    ANewTexts: TArray<string>): string;
 
   TMcpEditTools = class
   private
@@ -77,6 +83,8 @@ type
     FCheckProject: TCheckProjectFunc;
     FSettingsFor: TReferenceSettingsProvider;
     FProtectedReport: TMcpProtectedReport;
+    FAfterWrite: TMcpAfterWrite;
+    function FindingsAfterWrite(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>): string;
     function CheckProtected(const ANames: TArray<string>; ADryRun: Boolean): string;
     procedure ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
       out AOldTexts, ANewTexts: TArray<string>);
@@ -128,6 +136,8 @@ type
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
     /// <summary>Geschützte Dateien (#2608); nil = keine.</summary>
     property ProtectedReport: TMcpProtectedReport read FProtectedReport write FProtectedReport;
+    /// <summary>Befunde nach dem Schreiben (#2603); nil = kein Abschnitt.</summary>
+    property AfterWrite: TMcpAfterWrite read FAfterWrite write FAfterWrite;
   end;
 
 implementation
@@ -239,6 +249,20 @@ begin
   if not ADryRun and (Result <> '') then
   begin
     raise EMcpToolError.Create(Result);
+  end;
+end;
+
+function TMcpEditTools.FindingsAfterWrite(const ATool: string; const ANames, AOldTexts,
+  ANewTexts: TArray<string>): string;
+begin
+  Result := '';
+  if Assigned(FAfterWrite) then
+  begin
+    Result := FAfterWrite(ATool, ANames, AOldTexts, ANewTexts);
+  end;
+  if Result <> '' then
+  begin
+    Result := sLineBreak + sLineBreak + Result;
   end;
 end;
 
@@ -634,6 +658,10 @@ begin
       mReport.AppendLine(Diff(mNames[mIndex], mOldTexts[mIndex], mNewTexts[mIndex]));
     end;
     Result := TrimRight(mReport.ToString);
+    if not ADryRun then
+    begin
+      Result := Result + FindingsAfterWrite(ATool, mNames, mOldTexts, mNewTexts);
+    end;
   finally
     mReport.Free;
   end;
@@ -722,17 +750,21 @@ begin
   end;
 end;
 
-/// <summary>Dateien, die fix_findings ändert.</summary>
-function ChangedFiles(const AResults: TArray<TBulkFixFile>): TArray<string>;
+/// <summary>Namen sowie alte und neue Texte der Dateien, die fix_findings geändert hat.</summary>
+procedure ChangedTexts(const AResults: TArray<TBulkFixFile>; out ANames, AOldTexts, ANewTexts: TArray<string>);
 var
   mResult: TBulkFixFile;
 begin
-  Result := nil;
+  ANames := nil;
+  AOldTexts := nil;
+  ANewTexts := nil;
   for mResult in AResults do
   begin
     if mResult.Changed then
     begin
-      Result := Result + [mResult.FileName];
+      ANames := ANames + [mResult.FileName];
+      AOldTexts := AOldTexts + [mResult.OldText];
+      ANewTexts := ANewTexts + [mResult.NewText];
     end;
   end;
 end;
@@ -745,6 +777,7 @@ var
   mUntouched: TArray<string>;
   mResults: TArray<TBulkFixFile>;
   mProtected: string;
+  mNames, mOldTexts, mNewTexts: TArray<string>;
 begin
   if AFixRules = nil then
   begin
@@ -756,12 +789,17 @@ begin
   end;
   mResults := RunFixes(AScope, AFiles, TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries),
     TBulkFix.RulesFor(AScope.Rules, AFixRules), ADryRun, mUntouched);
-  mProtected := CheckProtected(ChangedFiles(mResults), ADryRun);
+  ChangedTexts(mResults, mNames, mOldTexts, mNewTexts);
+  mProtected := CheckProtected(mNames, ADryRun);
   if not ADryRun then
   begin
     WriteFixes(AFixRules, mResults);
   end;
   Result := FixReport(AScope.Root, mResults, mUntouched, ADryRun);
+  if not ADryRun and (mNames <> nil) then
+  begin
+    Result := Result + FindingsAfterWrite('fix_findings', mNames, mOldTexts, mNewTexts);
+  end;
   if mProtected <> '' then
   begin
     Result := Result + sLineBreak + sLineBreak + mProtected;

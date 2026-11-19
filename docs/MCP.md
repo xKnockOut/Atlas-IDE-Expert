@@ -50,6 +50,16 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
   selbst; das Neuladen der IDE holt die Datei dann nach.
 - Jeder schreibende Aufruf steht mit Werkzeug, Parametern und geänderten Dateien im Log
   (`--log`).
+- Befunde nach der Änderung (#2603): Mit `dryRun: false` prüfen `apply_code_action`, `fix_findings`,
+  `format_code`, `extract_method` und `rename_symbol` jede geänderte Datei vor und nach dem Schreiben wie
+  `get_diagnostics` und hängen „Befunde nach der Änderung“ an die Antwort: neue Befunde mit Datei:Zeile, Regel
+  und Text (höchstens 50, der Rest gezählt), die Zahl der behobenen (die ersten zehn mit Regel und Zeile) und der
+  unveränderten; ohne neue Befunde eine Zeile. Befunde, die nur durch eingefügte oder gelöschte Zeilen wandern,
+  gelten nicht als neu (Zeilenversatz aus dem Diff); ein gleicher Befund in einer geänderten Zeile bleibt derselbe.
+  Nach dem Schreiben zählt der Text, der wirklich in der Datei bzw. im Editorpuffer steht. Lehnt das IDE-Plugin
+  die Änderung ab, scheitert der Aufruf wie bisher ohne Abschnitt. Projektweite Regeln sehen dabei den Index vor
+  dem Nachladen. Abschalten: `"mcp": { "reportFindingsAfterEdit": false }`. Die letzte Auswertung liefert
+  `delphi://edits/last`.
 - Geschützte Dateien (#2608): `assistants.protected` in `atlas.json` listet Dateien, die KI-Assistenten nicht
   ändern dürfen, je Eintrag mit Muster (`path`, wie `architecture.exclude`: `*`, `**`, `?`, `/` oder `\`, ohne
   Groß-/Kleinschreibung, relativ zum Ordner von `atlas.json`), Grund (`reason`) und richtigem Weg (`use`):
@@ -74,6 +84,7 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 |---|---|
 | `delphi://conventions` | Projektkonventionen als Markdown (#272): Regelprofil, Formatstil, Benennungsregeln und jede aktive Prüfregel mit Schweregrad und Kurztext aus dem Regelkatalog, dazu die geschützten Dateien aus `assistants.protected` (#2608). Vor dem Schreiben lesen, danach mit `check_code` prüfen |
 | `delphi://build/last` | Ergebnis und Compilermeldungen des letzten Builds in der IDE wie `get_last_build` (#1357, mit `mcp.prompts`) |
+| `delphi://edits/last` | Befunde nach der letzten Änderung eines schreibenden Werkzeugs dieses MCP-Prozesses (#2603): Werkzeug, Uhrzeit, Dateien und derselbe Abschnitt wie in der Antwort; vor der ersten Änderung ein Hinweis |
 
 Ressourcen mit Vorlage (#1357, `resources/templates/list`) hängt man in Claude Code mit `@` an eine Frage, z. B. `@delphi:delphi://unit/UI.Auftrag`. Der Wert in `{…}` darf %-kodiert sein (`Source%2FA.pas`). Units und Pfade gelten wie Pfadparameter (#99): außerhalb des Arbeitsordners und seiner Such- und Bibliothekspfade ergibt das Lesen einen Fehler mit Begründung. Der Inhalt ist Markdown, höchstens 64 KB; darüber gekürzt mit Hinweis auf das Werkzeug für alles.
 

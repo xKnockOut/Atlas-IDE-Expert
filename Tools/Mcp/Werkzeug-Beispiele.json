@@ -173,7 +173,8 @@
   },
   "resources": {
     "delphi://conventions": { "contains": "with-statement" },
-    "delphi://build/last": {}
+    "delphi://build/last": {},
+    "delphi://edits/last": {}
   },
   "prompts": {
     "unit_review": {

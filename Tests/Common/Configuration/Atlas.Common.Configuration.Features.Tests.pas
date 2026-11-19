@@ -32,6 +32,9 @@ type
     /// <summary>#2608: assistants.protected mit path, reason und use; Fehler werden gemeldet.</summary>
     [Test]
     procedure ReadsAssistantProtected;
+    /// <summary>#2603: mcp.reportFindingsAfterEdit, Vorgabe an, je Glied geschichtet.</summary>
+    [Test]
+    procedure ReadsMcpReportFindingsAfterEdit;
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
@@ -279,6 +282,20 @@ begin
   Assert.IsFalse(mIssues[2].IsError, 'unbekannte Angabe ist eine Warnung');
   Assert.AreEqual(1, Integer(Length(mSettings.AssistantProtected)), 'nur b.pas');
   Assert.AreEqual('b.pas', mSettings.AssistantProtected[0].Path);
+end;
+procedure TConfigurationFeatureTests.ReadsMcpReportFindingsAfterEdit;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpReportFindingsAfterEdit, 'Vorgabe an');
+  mSettings := Parse('{"mcp": {"reportFindingsAfterEdit": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpReportFindingsAfterEdit);
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"reportFindingsAfterEdit": false}}',
+    '{"mcp": {"customPrompts": []}}', mIssues);
+  Assert.IsFalse(mSettings.McpReportFindingsAfterEdit, 'globale Ebene bleibt');
 end;
 procedure TConfigurationFeatureTests.ChecksTasks;
 var

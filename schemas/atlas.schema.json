@@ -3550,6 +3550,15 @@
           "x-control": "Kontrollkästchen",
           "x-issue": "#1357"
         },
+        "reportFindingsAfterEdit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Schreibende Werkzeuge (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) prüfen die geänderten Dateien mit dryRun=false vor und nach dem Schreiben wie get_diagnostics und hängen „Befunde nach der Änderung“ an die Antwort: neue Befunde mit Datei:Zeile, Regel und Text, die Zahl der behobenen und unveränderten. Die letzte Auswertung liefert die Ressource delphi://edits/last.",
+          "x-description-en": "Writing tools (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) check the changed files with dryRun=false before and after writing like get_diagnostics and append “Findings after the change” to the answer: new findings with file:line, rule and text, the number of fixed and unchanged ones. The resource delphi://edits/last returns the last evaluation.",
+          "x-page": "MCP",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#2603"
+        },
         "promptLanguage": {
           "type": "string",
           "enum": [
@@ -3667,8 +3676,8 @@
       "x-scope": "global",
       "x-area": "build",
       "x-page": "MCP",
-      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings, prompts: Kontrollkästchen; promptLanguage: Auswahl; customPrompts: JSON",
-      "x-issue": "#99, #1357"
+      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings, prompts, reportFindingsAfterEdit: Kontrollkästchen; promptLanguage: Auswahl; customPrompts: JSON",
+      "x-issue": "#99, #1357, #2603"
     },
     "assistants": {
       "type": "object",

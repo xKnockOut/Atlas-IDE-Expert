@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  cGlobalSettingPaths: array[0..74] of string = (
+  cGlobalSettingPaths: array[0..75] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -79,6 +79,7 @@ const
     'tests.affectedDepth',
     'mcp.disabledTools',
     'mcp.prompts',
+    'mcp.reportFindingsAfterEdit',
     'mcp.promptLanguage',
     'tasks',
     'issues',

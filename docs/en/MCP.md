@@ -50,6 +50,15 @@ results in a tool error with a reason. Writing happens only in the working folde
   the file itself as before; the IDE's reload then picks up the file.
 - Every writing call is logged with tool, parameters and changed files
   (`--log`).
+- Findings after the change (#2603): with `dryRun: false`, `apply_code_action`, `fix_findings`, `format_code`,
+  `extract_method` and `rename_symbol` check every changed file before and after writing like `get_diagnostics`
+  and append “Findings after the change” to the answer: new findings with file:line, rule and text (at most 50,
+  the rest counted), the number of fixed ones (the first ten with rule and line) and of unchanged ones; without
+  new findings one line. Findings that only move because lines were inserted or deleted do not count as new (line
+  offset from the diff); an equal finding in a changed line stays the same one. After writing, the text that is
+  actually in the file or the editor buffer counts. If the IDE plugin refuses the change, the call fails as before
+  without the section. Project-wide rules see the index before it is reloaded. Switch off:
+  `"mcp": { "reportFindingsAfterEdit": false }`. `delphi://edits/last` returns the last evaluation.
 - Protected files (#2608): `assistants.protected` in `atlas.json` lists files AI assistants must not change,
   each entry with a pattern (`path`, as in `architecture.exclude`: `*`, `**`, `?`, `/` or `\`, ignoring case,
   relative to the folder of `atlas.json`), a reason (`reason`) and the right way (`use`):
@@ -74,6 +83,7 @@ results in a tool error with a reason. Writing happens only in the working folde
 |---|---|
 | `delphi://conventions` | Project conventions as Markdown (#272): rule profile, format style, naming rules and every active check rule with severity and short text from the rule catalog, plus the protected files from `assistants.protected` (#2608). Read before writing, check with `check_code` afterwards |
 | `delphi://build/last` | Result and compiler messages of the last build in the IDE, like `get_last_build` (#1357, with `mcp.prompts`) |
+| `delphi://edits/last` | Findings after the last change by a writing tool of this MCP process (#2603): tool, time, files and the same section as in the answer; a notice before the first change |
 
 Resource templates (#1357, `resources/templates/list`) are attached to a question in Claude Code with `@`, e.g. `@delphi:delphi://unit/UI.Auftrag`. The value in `{…}` may be %-encoded (`Source%2FA.pas`). Units and paths are treated like path parameters (#99): outside the working folder and its search and library paths, reading results in an error with a reason. The content is Markdown, at most 64 KB; beyond that it is truncated with a pointer to the tool for the full content.
 

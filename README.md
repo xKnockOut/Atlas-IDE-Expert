@@ -169,6 +169,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
+- **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)
 - **Protected files:** `assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md`), with reason and the right way; the writing MCP tools refuse such changes without writing anything, the hook refuses or reports them
 
 ### Planned

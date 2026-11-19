@@ -3,7 +3,8 @@
 // Abschnitt "mcp" von atlas.json: abgeschaltete Werkzeuge, globale
 // Einstellungen, Prompts, ihre Sprache und eigene Prompts (customPrompts).
 // mcp ist ein gemischtes Objekt (global und Projekt): Die Schichtung übernimmt
-// nur die Glieder, die die Datei nennt (#1357).
+// nur die Glieder, die die Datei nennt (#1357). reportFindingsAfterEdit (#2603): Befunde nach schreibenden
+// Werkzeugen melden.
 // Abschnitt "assistants" (#2608): Dateien, die KI-Assistenten nicht ändern dürfen
 // (protected); nur im Projekt.
 
@@ -365,7 +366,8 @@ begin
     Exit;
   end;
   mFlags := [TFlagOption.Create('globalSettings', ASettings.McpGlobalSettings),
-    TFlagOption.Create('prompts', ASettings.McpPrompts)];
+    TFlagOption.Create('prompts', ASettings.McpPrompts),
+    TFlagOption.Create('reportFindingsAfterEdit', ASettings.McpReportFindingsAfterEdit)];
   for mIndex := 0 to ANode.Count - 1 do
   begin
     // Unbekanntes ist hier ein Fehler am Wert, nicht eine Warnung am Schlüssel.
@@ -391,6 +393,10 @@ begin
   else if AMember = 'prompts' then
   begin
     ATarget.McpPrompts := ASource.McpPrompts;
+  end
+  else if AMember = 'reportFindingsAfterEdit' then
+  begin
+    ATarget.McpReportFindingsAfterEdit := ASource.McpReportFindingsAfterEdit;
   end
   else if AMember = 'promptLanguage' then
   begin

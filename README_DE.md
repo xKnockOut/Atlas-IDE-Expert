@@ -169,6 +169,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
+- **Befunde nach der Änderung:** Die schreibenden MCP-Werkzeuge hängen die neuen und behobenen Befunde der geänderten Dateien an ihre Antwort (`delphi://edits/last` für die letzte Änderung)
 - **Geschützte Dateien:** `assistants.protected` in `atlas.json` nennt Dateien, die KI-Assistenten nicht ändern dürfen (erzeugte Units, `CHANGELOG.md`), mit Grund und richtigem Weg; die schreibenden MCP-Werkzeuge lehnen solche Änderungen ab, ohne etwas zu schreiben, der Hook lehnt sie ab oder meldet sie
 
 ### Geplant
