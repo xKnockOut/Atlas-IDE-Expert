@@ -194,7 +194,7 @@ begin
   mName := FileNameOf(AFile);
   if EndsText('.bpl', mName) then
   begin
-    mName := mName.Substring(0, Length(mName) - 4);
+    mName := ChangeFileExt(mName, '');
   end;
   Result := mName.Substring(Length(TUpdateVersions.PackageName(AFile)));
 end;
@@ -286,9 +286,10 @@ begin
 end;
 
 class function TAtlasKnownPackages.Report(const AState: TAtlasKnownPackagesState): string;
+const
+  cReport = 'Known Packages: %d Module im Ordner von Base, fehlend: %s; abgeschaltet: %s; aus anderem Ordner: %s';
 begin
-  Result := Format('Known Packages: %d Module im Ordner von Base, fehlend: %s; abgeschaltet: %s; ' +
-    'aus anderem Ordner: %s', [Length(AState.Modules), Names(AState.Missing), Names(AState.Disabled),
+  Result := Format(cReport, [Length(AState.Modules), Names(AState.Missing), Names(AState.Disabled),
     Names(AState.Elsewhere)]);
 end;
 
