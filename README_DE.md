@@ -178,6 +178,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 - **Aufrufstatistik:** `delphi://stats` und `get_server_status` zeigen, welche Atlas-Werkzeuge der KI-Assistent aufruft, wie oft sie scheitern und wie langsam und groß ihre Antworten sind; ein Verlauf über 30 Tage nennt Werkzeuge, die nie vorkommen (`mcp.statistics`, bleibt lokal)
+- **KI-Assistent aktiv:** Das Atlas-Statusfeld zeigt, was ein KI-Assistent gerade über die IDE baut oder ändert; ein Klick hält KI-Assistenten an („Pause für KI“, `assistants.banner`)
 - **Befunde nach der Änderung:** Die schreibenden MCP-Werkzeuge hängen die neuen und behobenen Befunde der geänderten Dateien an ihre Antwort (`delphi://edits/last` für die letzte Änderung)
 - **Geschützte Dateien:** `assistants.protected` in `atlas.json` nennt Dateien, die KI-Assistenten nicht ändern dürfen (erzeugte Units, `CHANGELOG.md`), mit Grund und richtigem Weg; die schreibenden MCP-Werkzeuge lehnen solche Änderungen ab, ohne etwas zu schreiben, der Hook lehnt sie ab oder meldet sie
 

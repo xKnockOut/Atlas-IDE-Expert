@@ -206,23 +206,23 @@ class procedure TAtlasRecursionMarks.TipText(const ACalls: TArray<TAtlasRecursio
   ATitleChain: string; out ATitle, AText: string);
 var
   mCall: TAtlasRecursionCall;
-  mMost: Integer;
+  mMost, mIndex: Integer;
+  mTexts: TArray<string>;
 begin
   ATitle := '';
-  AText := '';
   mMost := 0;
+  SetLength(mTexts, Length(ACalls));
+  mIndex := 0;
   for mCall in ACalls do
   begin
     if mCall.Methods > mMost then
     begin
       mMost := mCall.Methods;
     end;
-    if AText <> '' then
-    begin
-      AText := AText + #10;
-    end;
-    AText := AText + mCall.Text;
+    mTexts[mIndex] := mCall.Text;
+    Inc(mIndex);
   end;
+  AText := string.Join(#10, mTexts);
   if Length(ACalls) = 0 then
   begin
     Exit;

@@ -76,38 +76,33 @@ begin
 end;
 
 class function TAtlasAvJson.PointerSize(const APlatform: string): Integer;
+const
+  cPointerSize64 = 8;
+  cPointerSize32 = 4;
 begin
   if StartsText('win64', Trim(APlatform)) then
   begin
-    Result := 8;
+    Result := cPointerSize64;
   end
   else
   begin
-    Result := 4;
+    Result := cPointerSize32;
   end;
 end;
 
 function KindOf(const AName: string): TAtlasAvLinkKind;
+const
+  cNames: array[TAtlasAvLinkKind] of string = ('', 'class', 'interface', 'pointer', 'dynArray');
+var
+  mKind: TAtlasAvLinkKind;
 begin
-  if AName = 'class' then
+  Result := TAtlasAvLinkKind.Unknown;
+  for mKind := Low(TAtlasAvLinkKind) to High(TAtlasAvLinkKind) do
   begin
-    Result := TAtlasAvLinkKind.ClassRef;
-  end
-  else if AName = 'interface' then
-  begin
-    Result := TAtlasAvLinkKind.InterfaceRef;
-  end
-  else if AName = 'pointer' then
-  begin
-    Result := TAtlasAvLinkKind.Pointer;
-  end
-  else if AName = 'dynArray' then
-  begin
-    Result := TAtlasAvLinkKind.DynArray;
-  end
-  else
-  begin
-    Result := TAtlasAvLinkKind.Unknown;
+    if cNames[mKind] = AName then
+    begin
+      Exit(mKind);
+    end;
   end;
 end;
 
