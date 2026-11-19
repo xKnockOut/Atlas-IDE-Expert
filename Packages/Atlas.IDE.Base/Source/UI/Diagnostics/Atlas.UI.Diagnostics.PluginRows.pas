@@ -42,44 +42,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Diagnostics.Strings;
 
-type
-  /// <summary>Spalte einer Tabelle: Überschrift, Breite vor dem Skalieren (0: Rest der Breite), rechtsbündig.</summary>
-  TColumnSpec = record
-    Id: TAtlasDiagnosticsTextId;
-    Width: Integer;
-    Right: Boolean;
-  end;
-
 const
-  /// <summary>Spalten des Reiters „Hauptthread“: Funktion, Aufrufe, Summe, Mittel, Maximum, langsam, Anteil.</summary>
-  cFeatureColumns: array[0..6] of TColumnSpec = (
-    (Id: TAtlasDiagnosticsTextId.DiagColFeature; Width: 0; Right: False),
-    (Id: TAtlasDiagnosticsTextId.DiagColCalls; Width: 64; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColTotal; Width: 80; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColMean; Width: 72; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColMax; Width: 72; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColSlow; Width: 80; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColShare; Width: 96; Right: True));
-  /// <summary>Spalten der langsamen Aufrufe: Funktion, Zeit, Aktion, Dauer.</summary>
-  cSlowColumns: array[0..3] of TColumnSpec = (
-    (Id: TAtlasDiagnosticsTextId.DiagColFeature; Width: 0; Right: False),
-    (Id: TAtlasDiagnosticsTextId.DiagColTime; Width: 96; Right: False),
-    (Id: TAtlasDiagnosticsTextId.DiagColAction; Width: 200; Right: False),
-    (Id: TAtlasDiagnosticsTextId.DiagColDuration; Width: 80; Right: True));
-  /// <summary>Spalten des Reiters „Hintergrund“: Quelle, Aufrufe, Mittel, Maximum, zu langsam.</summary>
-  cSourceColumns: array[0..4] of TColumnSpec = (
-    (Id: TAtlasDiagnosticsTextId.DiagColSource; Width: 0; Right: False),
-    (Id: TAtlasDiagnosticsTextId.DiagColCalls; Width: 64; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColMean; Width: 72; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColMax; Width: 72; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColTooSlow; Width: 90; Right: True));
-  /// <summary>Spalten des Reiters „Hänger“: Aktion, Zeit, Dauer, mit Atlas.</summary>
-  cHangColumns: array[0..3] of TColumnSpec = (
-    (Id: TAtlasDiagnosticsTextId.DiagColAction; Width: 0; Right: False),
-    (Id: TAtlasDiagnosticsTextId.DiagColTime; Width: 96; Right: False),
-    (Id: TAtlasDiagnosticsTextId.DiagColDuration; Width: 80; Right: True),
-    (Id: TAtlasDiagnosticsTextId.DiagColWithAtlas; Width: 110; Right: True));
-
   cNoValue = '–';
   /// <summary>Spalten des Reiters „Server“: Anfrage, Anzahl, Mittel, Maximum, wartend, Hauptthread Ø,
   /// Zeitüberschreitung, abgebrochen, gescheitert.</summary>
@@ -93,6 +56,36 @@ const
   cWaitedMeanColumn = 5;
   cTimedOutColumn = 6;
   cFailedColumn = 8;
+  /// <summary>Reiter „Funktionen“: Funktion, Aufrufe, Summe, Mittel, Maximum, langsam, Anteil.</summary>
+  cFeatureColumnIds: array[0..6] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColFeature,
+    TAtlasDiagnosticsTextId.DiagColCalls, TAtlasDiagnosticsTextId.DiagColTotal, TAtlasDiagnosticsTextId.DiagColMean,
+    TAtlasDiagnosticsTextId.DiagColMax, TAtlasDiagnosticsTextId.DiagColSlow, TAtlasDiagnosticsTextId.DiagColShare);
+  cFeatureColumnWidths: array[0..6] of Integer = (0, 64, 80, 72, 72, 80, 96);
+  cFeatureColumnRight: array[0..6] of Boolean = (False, True, True, True, True, True, True);
+  cFeatureMeanColumn = 3;
+  cFeatureMaxColumn = 4;
+  cFeatureSlowColumn = 5;
+  /// <summary>Langsame Aufrufe: Funktion, Zeit, Aktion, Dauer.</summary>
+  cSlowColumnIds: array[0..3] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColFeature,
+    TAtlasDiagnosticsTextId.DiagColTime, TAtlasDiagnosticsTextId.DiagColAction,
+    TAtlasDiagnosticsTextId.DiagColDuration);
+  cSlowColumnWidths: array[0..3] of Integer = (0, 96, 200, 80);
+  cSlowColumnRight: array[0..3] of Boolean = (False, False, False, True);
+  cSlowDurationColumn = 3;
+  /// <summary>Quellen: Quelle, Aufrufe, Mittel, Maximum, zu langsam.</summary>
+  cSourceColumnIds: array[0..4] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColSource,
+    TAtlasDiagnosticsTextId.DiagColCalls, TAtlasDiagnosticsTextId.DiagColMean, TAtlasDiagnosticsTextId.DiagColMax,
+    TAtlasDiagnosticsTextId.DiagColTooSlow);
+  cSourceColumnWidths: array[0..4] of Integer = (0, 64, 72, 72, 90);
+  cSourceColumnRight: array[0..4] of Boolean = (False, True, True, True, True);
+  cSourceTooSlowColumn = 4;
+  /// <summary>Hänger: Aktion, Zeit, Dauer, mit Atlas.</summary>
+  cHangColumnIds: array[0..3] of TAtlasDiagnosticsTextId = (TAtlasDiagnosticsTextId.DiagColAction,
+    TAtlasDiagnosticsTextId.DiagColTime, TAtlasDiagnosticsTextId.DiagColDuration,
+    TAtlasDiagnosticsTextId.DiagColWithAtlas);
+  cHangColumnWidths: array[0..3] of Integer = (0, 96, 80, 110);
+  cHangColumnRight: array[0..3] of Boolean = (False, False, True, True);
+  cHangDurationColumn = 2;
 
 function Cells(const AValues: array of string): TArray<string>;
 var
@@ -121,14 +114,17 @@ begin
   Result := TAtlasGridColumn.Make(TAtlasDiagnosticsStrings.Text(AId), AWidth, ARight);
 end;
 
-function Columns(const ASpecs: array of TColumnSpec): TArray<TAtlasGridColumn>;
+/// <summary>Spalten aus gleich langen Listen von Überschrift, Breite und Ausrichtung.</summary>
+function Columns(const AIds: array of TAtlasDiagnosticsTextId; const AWidths: array of Integer;
+  const ARight: array of Boolean): TArray<TAtlasGridColumn>;
 var
   mIndex: Integer;
 begin
-  SetLength(Result, Length(ASpecs));
-  for mIndex := 0 to High(ASpecs) do
+  Result := nil;
+  SetLength(Result, Length(AIds));
+  for mIndex := 0 to High(AIds) do
   begin
-    Result[mIndex] := Column(ASpecs[mIndex].Id, ASpecs[mIndex].Width, ASpecs[mIndex].Right);
+    Result[mIndex] := Column(AIds[mIndex], AWidths[mIndex], ARight[mIndex]);
   end;
 end;
 
@@ -171,12 +167,12 @@ end;
 
 class function TAtlasPluginGridRows.FeatureColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := Columns(cFeatureColumns);
+  Result := Columns(cFeatureColumnIds, cFeatureColumnWidths, cFeatureColumnRight);
 end;
 
 class function TAtlasPluginGridRows.SlowColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := Columns(cSlowColumns);
+  Result := Columns(cSlowColumnIds, cSlowColumnWidths, cSlowColumnRight);
 end;
 
 class function TAtlasPluginGridRows.RequestColumns: TArray<TAtlasGridColumn>;
@@ -193,12 +189,12 @@ end;
 
 class function TAtlasPluginGridRows.SourceColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := Columns(cSourceColumns);
+  Result := Columns(cSourceColumnIds, cSourceColumnWidths, cSourceColumnRight);
 end;
 
 class function TAtlasPluginGridRows.HangColumns: TArray<TAtlasGridColumn>;
 begin
-  Result := Columns(cHangColumns);
+  Result := Columns(cHangColumnIds, cHangColumnWidths, cHangColumnRight);
 end;
 
 class function TAtlasPluginGridRows.Features(const ARows: TArray<TAtlasFeatureRow>;
@@ -214,10 +210,10 @@ begin
     Result[mIndex].Cells := Cells([mRow.Name, IntToStr(mRow.Stat.Calls), TAtlasPluginRows.Ms(mRow.Stat.TotalMs),
       TAtlasPluginRows.Ms(mRow.Stat.MeanMs), TAtlasPluginRows.Ms(mRow.Stat.MaxMs), IntToStr(mRow.Stat.SlowCalls),
       TAtlasPluginRows.Percent(mRow.Share * 100)]);
-    Result[mIndex].Marks := Plain(7);
-    Result[mIndex].Marks[3] := Mark(mRow.Stat.MeanMs, AThresholdMs);
-    Result[mIndex].Marks[4] := Mark(mRow.Stat.MaxMs, AThresholdMs);
-    Result[mIndex].Marks[5] := WarnIf(mRow.Stat.SlowCalls > 0, TAtlasGridMark.Warn);
+    Result[mIndex].Marks := Plain(Length(cFeatureColumnIds));
+    Result[mIndex].Marks[cFeatureMeanColumn] := Mark(mRow.Stat.MeanMs, AThresholdMs);
+    Result[mIndex].Marks[cFeatureMaxColumn] := Mark(mRow.Stat.MaxMs, AThresholdMs);
+    Result[mIndex].Marks[cFeatureSlowColumn] := WarnIf(mRow.Stat.SlowCalls > 0, TAtlasGridMark.Warn);
     Result[mIndex].Bar := mRow.Share;
   end;
 end;
@@ -233,8 +229,8 @@ begin
     Result[mIndex].Cells := Cells([TAtlasGuard.FeatureName(ACalls[mIndex].Feature),
       TAtlasPluginRows.Clock(ACalls[mIndex].At), TextOrDash(ACalls[mIndex].Activity),
       TAtlasPluginRows.Ms(ACalls[mIndex].Ms)]);
-    Result[mIndex].Marks := Plain(4);
-    Result[mIndex].Marks[3] := Mark(ACalls[mIndex].Ms, AThresholdMs);
+    Result[mIndex].Marks := Plain(Length(cSlowColumnIds));
+    Result[mIndex].Marks[cSlowDurationColumn] := Mark(ACalls[mIndex].Ms, AThresholdMs);
     Result[mIndex].Bar := -1;
   end;
 end;
@@ -272,8 +268,8 @@ begin
     Result[mIndex].Cells := Cells([ASources[mIndex].Name, IntToStr(ASources[mIndex].Stat.Calls),
       TAtlasPluginRows.Ms(ASources[mIndex].Stat.MeanMs), TAtlasPluginRows.Ms(ASources[mIndex].Stat.MaxMs),
       IntToStr(ASources[mIndex].Slow)]);
-    Result[mIndex].Marks := Plain(5);
-    Result[mIndex].Marks[4] := WarnIf(ASources[mIndex].Slow > 0, TAtlasGridMark.Warn);
+    Result[mIndex].Marks := Plain(Length(cSourceColumnIds));
+    Result[mIndex].Marks[cSourceTooSlowColumn] := WarnIf(ASources[mIndex].Slow > 0, TAtlasGridMark.Warn);
     Result[mIndex].Bar := -1;
   end;
 end;
@@ -293,8 +289,8 @@ begin
     end;
     Result[mIndex].Cells := Cells([TextOrDash(AHangs[mIndex].Activity), TAtlasPluginRows.Clock(AHangs[mIndex].At),
       IntToStr(AHangs[mIndex].DurationMs), mWithAtlas]);
-    Result[mIndex].Marks := Plain(4);
-    Result[mIndex].Marks[2] := TAtlasGridMark.Bad;
+    Result[mIndex].Marks := Plain(Length(cHangColumnIds));
+    Result[mIndex].Marks[cHangDurationColumn] := TAtlasGridMark.Bad;
     Result[mIndex].Bar := -1;
   end;
 end;

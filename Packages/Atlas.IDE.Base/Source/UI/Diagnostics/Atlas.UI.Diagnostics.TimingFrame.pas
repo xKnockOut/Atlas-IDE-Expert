@@ -88,6 +88,14 @@ const
   cButtonHeight = 24;
   /// <summary>Abstand oben des Hinweises in der Leiste bei 96 dpi, mittig zum Knopf.</summary>
   cNoteTop = 7;
+  /// <summary>Breiten von „Dateinamen“ und „Kopieren“ bei 96 dpi.</summary>
+  cFileNamesWidth = 200;
+  cCopyWidth = 130;
+  /// <summary>Zeilenhöhe, Breite einer Zahlenspalte, Innenabstand und Einzug der Quellen bei 96 dpi.</summary>
+  cRowHeight = 20;
+  cValueWidth = 72;
+  cCellPadding = 4;
+  cProviderIndent = 12;
 
 {$R *.dfm}
 
@@ -130,13 +138,13 @@ begin
   FFileNames := TCheckBox.Create(Self);
   FFileNames.Parent := FBottom;
   FFileNames.AlignWithMargins := True;
-  FFileNames.Width := FFileNames.ScaleValue(200);
+  FFileNames.Width := FFileNames.ScaleValue(cFileNamesWidth);
   FFileNames.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticFileNames);
   FFileNames.Checked := False;
   FCopy := TButton.Create(Self);
   FCopy.Parent := FBottom;
   FCopy.AlignWithMargins := True;
-  FCopy.Width := FCopy.ScaleValue(130);
+  FCopy.Width := FCopy.ScaleValue(cCopyWidth);
   FCopy.Height := FCopy.ScaleValue(cButtonHeight);
   FCopy.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopy);
   FCopy.OnClick := CopyClick;
@@ -163,7 +171,7 @@ end;
 
 function TAtlasTimingFrame.RowHeight: Integer;
 begin
-  Result := Scale(20);
+  Result := Scale(cRowHeight);
 end;
 
 procedure TAtlasTimingFrame.GridPaint(Sender: TObject);
@@ -189,15 +197,16 @@ function TAtlasTimingFrame.CellRect(const ABounds: TRect; ATop, AColumn: Integer
 var
   mValueWidth: Integer;
 begin
-  mValueWidth := Scale(72);
-  if AColumn = 0 then
+  mValueWidth := Scale(cValueWidth);
+  // Die Zahlenspalten liegen rechts mit fester Breite, der Schritt nimmt den Rest.
+  if AColumn = cColumnStep then
   begin
-    Result := Rect(ABounds.Left, ATop, ABounds.Right - 4 * mValueWidth, ATop + RowHeight);
+    Result := Rect(ABounds.Left, ATop, ABounds.Right - cColumnBudget * mValueWidth, ATop + RowHeight);
   end
   else
   begin
-    Result := Rect(ABounds.Right - (5 - AColumn) * mValueWidth, ATop, ABounds.Right - (4 - AColumn) * mValueWidth,
-      ATop + RowHeight);
+    Result := Rect(ABounds.Right - (cColumnBudget + 1 - AColumn) * mValueWidth, ATop,
+      ABounds.Right - (cColumnBudget - AColumn) * mValueWidth, ATop + RowHeight);
   end;
 end;
 
@@ -229,7 +238,7 @@ begin
   end;
   mCanvas.Brush.Style := bsClear;
   mRect := ARect;
-  InflateRect(mRect, -Scale(4), 0);
+  InflateRect(mRect, -Scale(cCellPadding), 0);
   mFlags := cTextFlags or DT_LEFT;
   if ARight then
   begin
@@ -269,32 +278,32 @@ begin
 end;
 
 type
-  TCellTexts = array[0..4] of string;
-  TCellWarns = array[0..4] of Boolean;
+  TCellTexts = array[cColumnStep..cColumnBudget] of string;
+  TCellWarns = array[cColumnStep..cColumnBudget] of Boolean;
 
 /// <summary>Texte und Warnmarken der Spalten einer Zeile: Zähler ohne Budget, Zeiten in ms.</summary>
 procedure RowCells(const ARow: TAtlasTimingRow; out ATexts: TCellTexts; out AWarns: TCellWarns);
 begin
-  ATexts[0] := TAtlasTimingFrame.Caption(ARow);
+  ATexts[cColumnStep] := TAtlasTimingFrame.Caption(ARow);
   if ARow.Kind = TAtlasTimingRowKind.Entries then
   begin
-    ATexts[1] := TAtlasTimingRows.CountText(ARow.Last);
-    ATexts[2] := TAtlasTimingRows.CountText(ARow.Mean);
-    ATexts[3] := TAtlasTimingRows.CountText(ARow.Maximum);
-    ATexts[4] := '';
+    ATexts[cColumnLast] := TAtlasTimingRows.CountText(ARow.Last);
+    ATexts[cColumnMean] := TAtlasTimingRows.CountText(ARow.Mean);
+    ATexts[cColumnMax] := TAtlasTimingRows.CountText(ARow.Maximum);
+    ATexts[cColumnBudget] := '';
   end
   else
   begin
-    ATexts[1] := TAtlasTimingRows.Ms(ARow.Last);
-    ATexts[2] := TAtlasTimingRows.Ms(ARow.Mean);
-    ATexts[3] := TAtlasTimingRows.Ms(ARow.Maximum);
-    ATexts[4] := TAtlasTimingRows.Ms(ARow.Budget);
+    ATexts[cColumnLast] := TAtlasTimingRows.Ms(ARow.Last);
+    ATexts[cColumnMean] := TAtlasTimingRows.Ms(ARow.Mean);
+    ATexts[cColumnMax] := TAtlasTimingRows.Ms(ARow.Maximum);
+    ATexts[cColumnBudget] := TAtlasTimingRows.Ms(ARow.Budget);
   end;
-  AWarns[0] := False;
-  AWarns[1] := ARow.LastWarn;
-  AWarns[2] := ARow.MeanWarn;
-  AWarns[3] := ARow.MaxWarn;
-  AWarns[4] := False;
+  AWarns[cColumnStep] := False;
+  AWarns[cColumnLast] := ARow.LastWarn;
+  AWarns[cColumnMean] := ARow.MeanWarn;
+  AWarns[cColumnMax] := ARow.MaxWarn;
+  AWarns[cColumnBudget] := False;
 end;
 
 procedure TAtlasTimingFrame.DrawHeader(const ABounds: TRect);
@@ -310,7 +319,7 @@ begin
   mTexts[cColumnBudget] := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticColumnBudget);
   for mColumn := cColumnStep to cColumnBudget do
   begin
-    DrawCell(CellRect(ABounds, ABounds.Top, mColumn), mTexts[mColumn], False, mColumn > 0, True);
+    DrawCell(CellRect(ABounds, ABounds.Top, mColumn), mTexts[mColumn], False, mColumn > cColumnStep, True);
   end;
   FGrid.Canvas.Pen.Color := ToColor(FColors.Line);
   FGrid.Canvas.MoveTo(ABounds.Left, ABounds.Top + RowHeight - 1);
@@ -325,15 +334,15 @@ var
   mColumn: Integer;
 begin
   RowCells(ARow, mTexts, mWarns);
-  for mColumn := 0 to 4 do
+  for mColumn := cColumnStep to cColumnBudget do
   begin
     mCell := CellRect(ABounds, ATop, mColumn);
     // Quellen eingerückt unter dem Kontext.
-    if (mColumn = 0) and (ARow.Kind = TAtlasTimingRowKind.Provider) then
+    if (mColumn = cColumnStep) and (ARow.Kind = TAtlasTimingRowKind.Provider) then
     begin
-      Inc(mCell.Left, Scale(12));
+      Inc(mCell.Left, Scale(cProviderIndent));
     end;
-    DrawCell(mCell, mTexts[mColumn], mWarns[mColumn], mColumn > 0, mColumn = 4);
+    DrawCell(mCell, mTexts[mColumn], mWarns[mColumn], mColumn > cColumnStep, mColumn = cColumnBudget);
   end;
 end;
 
