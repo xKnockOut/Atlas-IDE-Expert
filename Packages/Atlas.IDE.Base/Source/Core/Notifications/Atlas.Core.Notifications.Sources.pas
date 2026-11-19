@@ -53,7 +53,7 @@ type
     /// <summary>Absturzsicherung (#493): eine Funktion wurde nach wiederholten Fehlern abgeschaltet. Nicht in Known:
     /// Dieser Hinweis lässt sich nicht abstellen, sonst fiele eine abgeschaltete Funktion wieder nicht auf.</summary>
     cFuse = 'fuse';
-    /// <summary>Atlas-Module fehlen unter „Known Packages“ der IDE (Meldung vom 05.11.2026). Nicht in Known: Der
+    /// <summary>Atlas-Module fehlen unter „Known Packages“ der IDE. Nicht in Known: Der
     /// Hinweis lässt sich nicht abstellen, sonst fiele ein nicht geladenes Modul nicht auf.</summary>
     cPackages = 'packages';
     /// <summary>Kein Kommandozeilen-Compiler (#1822): einmal überhaupt, gemerkt in ui.editionNoticeShown. Nicht in

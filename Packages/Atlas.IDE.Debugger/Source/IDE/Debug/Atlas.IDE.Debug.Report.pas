@@ -4,6 +4,8 @@
 // IAtlasDebugReportSource bereit (Prozess, gestartetes Projekt, Debug-Notiz
 // #582, Exception-Verlauf #517). Der Tracker („An Issue anhängen …“, #1276)
 // fragt den Vertrag über die Registry und kennt den Debugger nicht.
+// NoteData und NoteTexts nutzt auch „Debug-Zustand festhalten“ (#582,
+// Atlas.IDE.Debug.Note), das die Werte des Halts selbst nachlädt.
 
 interface
 
@@ -13,9 +15,17 @@ uses
 
 type
   TAtlasIdeDebugReport = class(TInterfacedObject, IAtlasDebugReportSource)
-  private
-    class function NoteTexts: TAtlasDebugNoteTexts; static;
+  public const
+    /// <summary>Zeilen des Ereignisprotokolls in der Notiz.</summary>
+    cNoteEvents = TAtlasDebugNote.cMaxEvents;
   public
+    /// <summary>Überschriften der Notiz in der Sprache der Oberfläche.</summary>
+    class function NoteTexts: TAtlasDebugNoteTexts; static;
+    /// <summary>Zustand des Halts ohne Werte: Projekt, Ort mit Ausschnitt, Aufrufstapel, letzte Exception und die
+    /// letzten Zeilen des Ereignisprotokolls; False, wenn das Programm nicht angehalten ist.</summary>
+    class function NoteData(out AData: TAtlasDebugNoteData): Boolean; static;
+    /// <summary>Dateiname der Notiz zur Zeit ATime in der Sprache der Oberfläche.</summary>
+    class function NoteFileName(ATime: TDateTime): string; static;
     function DebuggedProcessId: Cardinal;
     function LaunchProject: string;
     function DebugNote(out AMarkdown, AFileName: string): Boolean;
@@ -36,6 +46,8 @@ uses
   Atlas.UI.Debug.Exceptions.Strings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
+  Atlas.IDE.Debug.EventLog,
+  Atlas.UI.Debug.Note.Strings,
   Atlas.IDE.Debug.Exceptions;
 
 { TAtlasIdeDebugReport }
@@ -53,6 +65,16 @@ begin
   Result.LastException := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteLastException);
   Result.Count := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteCount);
   Result.NoLocation := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteNoLocation);
+  Result.Locals := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteLocals);
+  Result.Watches := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteWatches);
+  Result.Events := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteEvents);
+  Result.Unavailable := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteUnavailable);
+  Result.Pending := TAtlasNoteStrings.Text(TAtlasNoteTextId.NotePending);
+end;
+
+class function TAtlasIdeDebugReport.NoteFileName(ATime: TDateTime): string;
+begin
+  Result := TAtlasDebugNote.FileName(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteFileStem), ATime);
 end;
 
 function TAtlasIdeDebugReport.DebuggedProcessId: Cardinal;
@@ -136,35 +158,44 @@ begin
   end;
 end;
 
-function TAtlasIdeDebugReport.DebugNote(out AMarkdown, AFileName: string): Boolean;
+class function TAtlasIdeDebugReport.NoteData(out AData: TAtlasDebugNoteData): Boolean;
 var
   mThread: IOTAThread;
-  mData: TAtlasDebugNoteData;
 begin
-  AMarkdown := '';
-  AFileName := '';
+  AData := TAtlasDebugNoteData.Empty;
   mThread := TAtlasIdeDebugSession.StoppedThread;
   if mThread = nil then
   begin
     Exit(False);
   end;
-  mData := TAtlasDebugNoteData.Empty;
-  mData.Project := TAtlasIdeDebugSession.LaunchProject;
-  mData.Configuration := TAtlasIdeDebugSession.LaunchConfiguration;
-  mData.TargetPlatform := TAtlasIdeDebugSession.LaunchPlatform;
-  mData.Time := Now;
-  mData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
+  AData.Project := TAtlasIdeDebugSession.LaunchProject;
+  AData.Configuration := TAtlasIdeDebugSession.LaunchConfiguration;
+  AData.TargetPlatform := TAtlasIdeDebugSession.LaunchPlatform;
+  AData.Time := Now;
+  AData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
     TAtlasIdeDebugSession.ThreadName(mThread)).ThreadText(
     TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsThread));
-  mData.FileName := mThread.CurrentFile;
-  mData.Line := Integer(mThread.CurrentLine);
-  AddFrames(mData, mThread);
-  AddSource(mData);
-  AddException(mData);
-  AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
-  AFileName := TAtlasDebugNote.FileName(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteFileStem),
-    mData.Time);
+  AData.FileName := mThread.CurrentFile;
+  AData.Line := Integer(mThread.CurrentLine);
+  AddFrames(AData, mThread);
+  AddSource(AData);
+  AddException(AData);
+  AData.Events := TAtlasIdeDebugEventLog.LastLines(cNoteEvents);
   Result := True;
+end;
+
+function TAtlasIdeDebugReport.DebugNote(out AMarkdown, AFileName: string): Boolean;
+var
+  mData: TAtlasDebugNoteData;
+begin
+  AMarkdown := '';
+  AFileName := '';
+  Result := NoteData(mData);
+  if Result then
+  begin
+    AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
+    AFileName := NoteFileName(mData.Time);
+  end;
 end;
 
 function TAtlasIdeDebugReport.ExceptionsText(AMax: Integer; out ACount: Integer): string;

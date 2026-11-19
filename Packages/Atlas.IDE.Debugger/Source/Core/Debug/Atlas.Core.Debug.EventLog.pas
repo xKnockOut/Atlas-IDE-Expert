@@ -111,6 +111,9 @@ type
     function Filter(const AFilter: TAtlasEventFilter): TArray<Integer>;
     /// <summary>Alle Einträge als Text: Zeit, Art, Thread, Text durch Tabulator getrennt, Zeilen mit CRLF.</summary>
     function ToText: string;
+    /// <summary>Die letzten AMax Einträge wie in ToText, ohne Zeilenende, älteste zuerst (Debug-Notiz #582).
+    /// </summary>
+    function LastLines(AMax: Integer): TArray<string>;
     /// <summary>Art einer Zeile aus dem Ereignisprotokoll der IDE; AText ohne Präfix und angehängten Prozess,
     /// AThread die Thread-Kennung ('' ohne).</summary>
     class function Classify(const ALine: string; out AText, AThread: string): TAtlasEventKind; static;
@@ -511,6 +514,14 @@ begin
   end;
 end;
 
+/// <summary>Ein Eintrag als Zeile: Zeit, Art, Thread und Text durch Tabulatoren getrennt, ohne Zeilenumbruch.
+/// </summary>
+function EntryLine(const AEntry: TAtlasEventEntry): string;
+begin
+  Result := AEntry.TimeText + #9 + TAtlasEventLog.cKindNames[AEntry.Kind] + #9 + AEntry.Thread + #9 +
+    AEntry.Text.Replace(#13#10, ' ').Replace(#13, ' ').Replace(#10, ' ');
+end;
+
 function TAtlasEventLog.ToText: string;
 var
   mBuilder: TStringBuilder;
@@ -520,12 +531,28 @@ begin
   try
     for mEntry in FEntries do
     begin
-      mBuilder.Append(mEntry.TimeText).Append(#9).Append(cKindNames[mEntry.Kind]).Append(#9).Append(mEntry.Thread)
-        .Append(#9).Append(mEntry.Text.Replace(#13#10, ' ').Replace(#13, ' ').Replace(#10, ' ')).Append(#13#10);
+      mBuilder.Append(EntryLine(mEntry)).Append(#13#10);
     end;
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+function TAtlasEventLog.LastLines(AMax: Integer): TArray<string>;
+var
+  mFirst, mIndex: Integer;
+begin
+  Result := nil;
+  mFirst := FEntries.Count - AMax;
+  if mFirst < 0 then
+  begin
+    mFirst := 0;
+  end;
+  SetLength(Result, FEntries.Count - mFirst);
+  for mIndex := mFirst to FEntries.Count - 1 do
+  begin
+    Result[mIndex - mFirst] := EntryLine(FEntries[mIndex]);
   end;
 end;
 

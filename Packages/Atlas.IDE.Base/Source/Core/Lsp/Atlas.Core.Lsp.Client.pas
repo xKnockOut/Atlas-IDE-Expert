@@ -18,8 +18,7 @@
 // letzten 50 Anfragen (AverageMs) und meldet das Ende der Verbindung über
 // OnClosed (etwa wenn der Serverprozess beendet wurde). workspace/diagnostic
 // zählt nicht mit: Der Server hält es absichtlich bis zu 10 s offen
-// (Long-Polling), das Statusfeld meldete sonst dauerhaft "langsam"
-// (Rückmeldung 15.10.2026).
+// (Long-Polling), das Statusfeld meldete sonst dauerhaft "langsam".
 // Ende der Verbindung: CloseInfo nennt die zuletzt gesendete
 // Anfrage, die beim Ende noch offenen und, wenn der Transport sie über
 // CloseWith mitgibt, Exit-Code, Laufzeit und Zeilen auf stderr des Servers.

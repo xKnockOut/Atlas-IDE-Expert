@@ -252,8 +252,8 @@ type
     /// <summary>Exception-Leiste beim Debuggen (#783, debug.exceptionBanner): Hält der Debugger wegen einer
     /// Exception, zeigt Atlas oben im Editor eine Leiste mit Klasse, Meldung, Thread, Anzahl an dieser Stelle und
     /// der ersten eigenen Zeile; in Delphi 12 und 13 schließt Atlas den Dialog der IDE dafür über „Anhalten“, sonst
-    /// bleibt er und die Leiste kommt danach. Baut auf debug.exceptionHistory auf. Vorgabe aus bis zur
-    /// Studie.</summary>
+    /// bleibt er und die Leiste kommt danach. Baut auf debug.exceptionHistory auf. Vorgabe aus, bis die
+    /// Studie zu #783 positiv ist.</summary>
     DebugExceptionBanner: Boolean;
     /// <summary>Knopf „Nur an dieser Stelle ignorieren“ der Exception-Leiste (#783,
     /// debug.exceptionBanner.ignoreAtLocation): merkt Klasse, Datei und Zeile je Projekt; trifft dieselbe
@@ -282,6 +282,13 @@ type
     /// <summary>Objekte je Klasse zählen und vergleichen (#858, debug.memoryTimeline.objectCount, experimentell):
     /// Bereich „Objekte zählen“ im Fenster „Atlas: Speicher“. Aus = kein Bereich, nichts wird gelesen.</summary>
     DebugMemoryTimelineObjectCount: Boolean;
+    /// <summary>„Debug-Zustand festhalten“ (#582, debug.note): Befehl, der im angehaltenen Programm Ort, Aufrufstapel,
+    /// lokale Variablen, überwachte Ausdrücke, letzte Exception und das Ende des Ereignisprotokolls als
+    /// Markdown-Notiz in die Zwischenablage legt. Aus = kein Befehl.</summary>
+    DebugNote: Boolean;
+    /// <summary>Notiz auch als Datei im Ordner „debug-notizen“ neben dem Projekt (#582, debug.note.saveFile).
+    /// </summary>
+    DebugNoteSaveFile: Boolean;
     /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
     /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
     /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
@@ -583,6 +590,8 @@ begin
   DebugProfiler := False;
   DebugProfilerIntervalMs := cDefaultProfilerIntervalMs;
   DebugMemoryTimelineObjectCount := False;
+  DebugNote := True;
+  DebugNoteSaveFile := True;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
@@ -624,6 +633,8 @@ begin
   AIo.Flag('DebugProfiler', DebugProfiler);
   AIo.Number('DebugProfilerIntervalMs', DebugProfilerIntervalMs);
   AIo.Flag('DebugMemoryTimelineObjectCount', DebugMemoryTimelineObjectCount);
+  AIo.Flag('DebugNote', DebugNote);
+  AIo.Flag('DebugNoteSaveFile', DebugNoteSaveFile);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
