@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Debug.SettingsSection.Tests;
 
 // Abschnitt „Debuggen“ des Moduls Debugger (#1456): Die Optionsseite holt ihn vom Anbieter des Moduls; ohne das
-// Modul fehlt der Reiter. Geprüft werden Laden und Speichern aller Werte über die Seite (vorher in den Tests der
-// Seite von Base), die Arten als Haken und die einheitliche Form der Listen beim Speichern.
+// Modul fehlt der Reiter. Geprüft werden Laden und Speichern aller Werte über die Seite,
+// die Arten als Haken und die einheitliche Form der Listen beim Speichern.
 
 interface
 

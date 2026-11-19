@@ -1692,7 +1692,7 @@ begin
   end;
   Assert.Contains(mPaths, '|language|');
   Assert.Contains(mPaths, '|completion.matching|');
-  // Versionsverwaltung (#571) hat seit #1285 eine eigene Seite, Issue-Tracker seit #1260: Das ganze Objekt
+  // Versionsverwaltung (#571) hat eine eigene Seite (#1285), Issue-Tracker auch (#1260): Das ganze Objekt
   // ("vcs", "issues") enthält Glieder dieser Seiten und steht deshalb nicht im Dialog.
   Assert.DoesNotContain(mPaths, '|vcs|');
   Assert.DoesNotContain(mPaths, '|vcs.provider|');

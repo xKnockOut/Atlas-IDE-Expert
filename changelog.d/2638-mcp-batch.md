@@ -1,0 +1,2 @@
+### Neu
+- MCP-Werkzeug `batch` (#2638): bis zu 10 lesende Werkzeugaufrufe in einem Aufruf, auf einem gemeinsamen Indexstand mit einem einzigen Abgleich der Dateien; schreibende und Prozess-Werkzeuge werden je Abschnitt abgelehnt, ein Fehler betrifft nur seinen Abschnitt, Zeitlimit und Abbruch behalten fertige Abschnitte, Antworten über etwa 200 KB werden je Abschnitt gekürzt; als Markdown oder JSON.

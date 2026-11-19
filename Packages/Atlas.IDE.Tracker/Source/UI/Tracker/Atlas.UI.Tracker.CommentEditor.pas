@@ -1077,12 +1077,13 @@ end;
 
 { TAtlasCommentEditor }
 
+/// <summary>Knopf in der Leiste; AWidth in logischen Pixeln (96 dpi).</summary>
 function AddBarButton(AOwner: TComponent; ABar: TFlowPanel; AWidth: Integer; const ACaption: string): TButton;
 begin
   Result := TButton.Create(AOwner);
   Result.Parent := ABar;
   Result.AlignWithMargins := True;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Caption := ACaption;
 end;
 
