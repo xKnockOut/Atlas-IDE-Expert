@@ -135,8 +135,10 @@ type
     class function Started: Boolean; static;
     class procedure AddListener(const AListener: IAtlasIdeDebugListener); static;
     class procedure RemoveListener(const AListener: IAtlasIdeDebugListener); static;
-    /// <summary>Filter für Halte setzen (nil = keiner); es gibt nur einen.</summary>
+    /// <summary>Filter für Halte ohne Namen setzen (nil = keiner).</summary>
     class procedure SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter); static;
+    /// <summary>Filter für Halte unter AName (neben dem ohne Namen); nil entfernt ihn.</summary>
+    class procedure SetNamedStopFilter(const AName: string; const AFilter: TAtlasIdeDebugStopFilter); static;
     /// <summary>Läuft eine Debug-Sitzung (mindestens ein Prozess)?</summary>
     class function Active: Boolean; static;
     /// <summary>Aktueller Prozess der IDE oder nil.</summary>
@@ -526,6 +528,12 @@ end;
 class procedure TAtlasIdeDebugSession.SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter);
 begin
   Phases.SetStopFilter(AFilter);
+end;
+
+class procedure TAtlasIdeDebugSession.SetNamedStopFilter(const AName: string;
+  const AFilter: TAtlasIdeDebugStopFilter);
+begin
+  Phases.SetNamedStopFilter(AName, AFilter);
 end;
 
 class function TAtlasIdeDebugSession.Active: Boolean;

@@ -94,9 +94,11 @@ var
   mTable: TAtlasFeatureTable;
   mProbe: TProbe;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
@@ -114,9 +116,11 @@ var
   mTable: TAtlasFeatureTable;
   mProbe: TProbe;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Normal);
     mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
@@ -137,9 +141,11 @@ var
   mTable: TAtlasFeatureTable;
   mProbe: TProbe;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Normal);
     mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Safe);
     mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
@@ -162,9 +168,11 @@ var
   mTable: TAtlasFeatureTable;
   mProbe: TProbe;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Minimal);
     mTable.StartWanted(TAtlasSafeLevel.Normal);
@@ -182,9 +190,11 @@ var
   mProbe: TProbe;
   mSwitch: Boolean;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     // Schnellschalter: Das Teil ist erst nach dem Einschalten gewünscht.
     mSwitch := False;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
@@ -210,9 +220,11 @@ var
   mProbe: TProbe;
   mSeen: TAtlasSafeLevel;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mSeen := TAtlasSafeLevel.Normal;
     mProbe.AddWantedTo(mTable, 0,
       function(ALevel: TAtlasSafeLevel): Boolean
@@ -236,9 +248,11 @@ var
   mFailures: TArray<string>;
 begin
   // #886: Ein Stop mit Ausnahme (Entladen mitten im Gruppen-Build) darf die übrigen Teile nicht stehen lassen.
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     mTable.Add('Kaputt', TAtlasSafeLevel.Minimal,
       function: Boolean
@@ -282,10 +296,13 @@ begin
       Inc(mTick, 25);
       Result := mTick;
     end;
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
-  mTimes := TAtlasStartTimes.Create(mClock);
+  mTable := nil;
+  mProbe := nil;
+  mTimes := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
+    mTimes := TAtlasStartTimes.Create(mClock);
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Normal);
     mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
@@ -315,9 +332,11 @@ var
   mProbe: TProbe;
   mDebugOn: Boolean;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
@@ -350,9 +369,11 @@ var
   mDebugOn: Boolean;
   mFailures: TArray<string>;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 1, TAtlasSafeLevel.Minimal);
     mProbe.AddTo(mTable, 2, TAtlasSafeLevel.Minimal);
@@ -390,9 +411,11 @@ var
   mTable: TAtlasFeatureTable;
   mProbe: TProbe;
 begin
-  mTable := TAtlasFeatureTable.Create;
-  mProbe := TProbe.Create;
+  mTable := nil;
+  mProbe := nil;
   try
+    mTable := TAtlasFeatureTable.Create;
+    mProbe := TProbe.Create;
     mProbe.AddTo(mTable, 0, TAtlasSafeLevel.Minimal);
     Assert.WillRaise(
       procedure

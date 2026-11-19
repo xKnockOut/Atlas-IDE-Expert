@@ -468,10 +468,12 @@ var
   mSaved, mWhen: TDateTime;
 begin
   mWhen := EncodeDateTime(2026, 10, 28, 14, 30, 0, 0);
-  mDrafts := TAtlasCommentDrafts.Create;
-  mRead := TAtlasCommentDrafts.Create;
-  mFile := TPath.Combine(TPath.GetTempPath, 'atlas-drafts-' + TGUID.NewGuid.ToString + '.json');
+  mDrafts := nil;
+  mRead := nil;
   try
+    mDrafts := TAtlasCommentDrafts.Create;
+    mRead := TAtlasCommentDrafts.Create;
+    mFile := TPath.Combine(TPath.GetTempPath, 'atlas-drafts-' + TGUID.NewGuid.ToString + '.json');
     mDrafts.Put('yt.firma.de/atl', 'ATL-12', TAtlasCommentDrafts.cFieldPreview, 'Zeile 1'#10'**fett** "zitiert"',
       mWhen);
     Assert.IsTrue(mRead.Parse(mDrafts.ToJson));

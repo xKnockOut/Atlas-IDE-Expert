@@ -180,9 +180,11 @@ begin
   mStore := TDocumentStore.Create;
   mUri := TDocumentUris.FromPath(cLocalFile);
   mStore.Open(mUri, 'delphi', 1, cLocalText);
-  mLinked := TLspLinkedEditing.Create(mStore, FIndex, nil);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mLinked := nil;
+  mDispatcher := nil;
   try
+    mLinked := TLspLinkedEditing.Create(mStore, FIndex, nil);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mLinked.Attach(mDispatcher);
     mFlag := '';
     if ALocalsOnly then

@@ -2768,6 +2768,20 @@
       "x-captionEn": "Run time since the last stop",
       "x-issue": "#579"
     },
+    "DebugReturnValues": {
+      "description": "Rückgabewerte anzeigen: Nach „Gesamte Routine“ (F8) über eine Zeile, die eigene Funktionen aufruft, bzw. nach „Bis zur Rückkehr ausführen“ (Umschalt+F8) in einer eigenen Funktion steht am Ende der Aufrufzeile gedimmt „→ BerechneNetto = 109,16“, bei mehreren Funktionen alle in der Reihenfolge ihrer Rückkehr. Klick darauf zeigt die letzten 20 Rückgabewerte mit Funktion, Ergebnis, end-Zeile und Zeitpunkt. Dafür setzt Atlas vor dem Schritt vorübergehende Haltepunkte auf die end-Zeilen der Funktionen, wertet dort Result aus und setzt den Schritt fort; danach sind sie wieder entfernt. Rekursive Aufrufe halten nicht in tieferen Rahmen. Bibliothekscode und Prozeduren bleiben außen vor. Aus = keine Haltepunkte, keine Anzeige.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.returnValues",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Rückgabewerte nach F8 und Umschalt+F8 anzeigen",
+      "x-captionEn": "Show return values after F8 and Shift+F8",
+      "x-issue": "#844"
+    },
     "DebugPredictConditions": {
       "description": "Bedingungen vorausschauen: Beim Halt stehen an den kommenden if, while und case derselben Routine die vorhergesagten Ergebnisse, wenn dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet.",
       "type": "boolean",

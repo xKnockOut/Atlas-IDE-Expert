@@ -101,9 +101,11 @@ var
   mHandler: TTestHandler;
   mText: string;
 begin
-  mRoot := TTestRoot.Create(nil);
-  mHandler := TTestHandler.Create;
+  mRoot := nil;
+  mHandler := nil;
   try
+    mRoot := TTestRoot.Create(nil);
+    mHandler := TTestHandler.Create;
     mRoot.Name := 'Form1';
     mPing := TTestPing.Create(mRoot);
     mPing.Name := 'Ping1';

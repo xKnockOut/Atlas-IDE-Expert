@@ -55,9 +55,11 @@ begin
   mParts.Events := TShellWorkspaceEvents.Create;
   mParts.State := TShellProjectState.Create(mParts.Setup);
   mParts.Cache := TShellWorkspaceCache.Create('Test', mLogger, mParts.Setup, mParts.Events);
-  mIndexing := TShellWorkspaceIndexing.Create(mParts);
-  mReport := TShellEncodingReport.Create('Test', TPath.GetTempPath, mLogger, nil, mIndex);
+  mIndexing := nil;
+  mReport := nil;
   try
+    mIndexing := TShellWorkspaceIndexing.Create(mParts);
+    mReport := TShellEncodingReport.Create('Test', TPath.GetTempPath, mLogger, nil, mIndex);
     Assert.AreEqual(-1, mIndexing.Loading, 'Kein Aufbau läuft');
     Assert.AreSame(mIndex, mIndexing.Index);
     mReport.Report(nil);

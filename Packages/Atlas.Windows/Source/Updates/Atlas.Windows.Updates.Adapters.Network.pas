@@ -172,10 +172,13 @@ begin
     Exit(False);
   end;
   ForceDirectories(ExtractFileDir(AFileName));
-  mProgress := TUpdateDownloadProgress.Create(AProgress);
-  mClient := NewClient;
-  mStream := TFileStream.Create(AFileName, fmCreate);
+  mProgress := nil;
+  mStream := nil;
+  mClient := nil;
   try
+    mProgress := TUpdateDownloadProgress.Create(AProgress);
+    mClient := NewClient;
+    mStream := TFileStream.Create(AFileName, fmCreate);
     mClient.OnReceiveData := mProgress.Received;
     Result := WithRetries(
       function: Integer

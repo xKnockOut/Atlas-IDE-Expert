@@ -138,9 +138,11 @@ var
   mTable: TAtlasFeatureTable;
   mHost: TAtlasModuleHosting;
 begin
-  mLog := TLog.Create;
-  mTable := TAtlasFeatureTable.Create;
+  mLog := nil;
+  mTable := nil;
   try
+    mLog := TLog.Create;
+    mTable := TAtlasFeatureTable.Create;
     mRegistry := TAtlasModuleRegistry.Create;
     mRegistry.RegisterModule(Module(mLog, 'atlas.a'));
     mHost := TAtlasModuleHosting.Create(mRegistry, mTable);
@@ -168,9 +170,11 @@ var
   mTable: TAtlasFeatureTable;
   mHost: TAtlasModuleHosting;
 begin
-  mLog := TLog.Create;
-  mTable := TAtlasFeatureTable.Create;
+  mLog := nil;
+  mTable := nil;
   try
+    mLog := TLog.Create;
+    mTable := TAtlasFeatureTable.Create;
     mRegistry := TAtlasModuleRegistry.Create;
     mHost := TAtlasModuleHosting.Create(mRegistry, mTable);
     try
@@ -200,9 +204,11 @@ var
   mTable: TAtlasFeatureTable;
   mHost: TAtlasModuleHosting;
 begin
-  mLog := TLog.Create;
-  mTable := TAtlasFeatureTable.Create;
+  mLog := nil;
+  mTable := nil;
   try
+    mLog := TLog.Create;
+    mTable := TAtlasFeatureTable.Create;
     mRegistry := TAtlasModuleRegistry.Create;
     mRegistry.RegisterModule(Module(mLog, 'atlas.a'));
     mHost := TAtlasModuleHosting.Create(mRegistry, mTable);
@@ -231,9 +237,11 @@ var
   mHost: TAtlasModuleHosting;
   mOff: string;
 begin
-  mLog := TLog.Create;
-  mTable := TAtlasFeatureTable.Create;
+  mLog := nil;
+  mTable := nil;
   try
+    mLog := TLog.Create;
+    mTable := TAtlasFeatureTable.Create;
     mRegistry := TAtlasModuleRegistry.Create;
     mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.safe', TAtlasSafeLevel.Safe, '') as IAtlasModule);
     mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.dbg', TAtlasSafeLevel.Normal, 'debug') as IAtlasModule);
@@ -301,9 +309,11 @@ var
   mScope: IAtlasModuleScope;
   mActive: array[0..1] of Boolean;
 begin
-  mLog := TLog.Create;
-  mTable := TAtlasFeatureTable.Create;
+  mLog := nil;
+  mTable := nil;
   try
+    mLog := TLog.Create;
+    mTable := TAtlasFeatureTable.Create;
     mActive[0] := False;
     mActive[1] := False;
     mRegistry := TAtlasModuleRegistry.Create;
@@ -342,9 +352,11 @@ var
   mScope: IAtlasModuleScope;
   mActive: Boolean;
 begin
-  mLog := TLog.Create;
-  mTable := TAtlasFeatureTable.Create;
+  mLog := nil;
+  mTable := nil;
   try
+    mLog := TLog.Create;
+    mTable := TAtlasFeatureTable.Create;
     mActive := False;
     mRegistry := TAtlasModuleRegistry.Create;
     mHost := TAtlasModuleHosting.Create(mRegistry, mTable);

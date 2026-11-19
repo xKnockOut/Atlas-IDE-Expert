@@ -560,9 +560,11 @@ var
   mFileName: string;
 begin
   mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-recent-' + IntToStr(Random(MaxInt)) + '.json');
-  mRecent := TAtlasRecentIssues.Create;
-  mCopy := TAtlasRecentIssues.Create;
+  mRecent := nil;
+  mCopy := nil;
   try
+    mRecent := TAtlasRecentIssues.Create;
+    mCopy := TAtlasRecentIssues.Create;
     mIssue := Issue('ATL-12', 'Speicherleck "beim" Schließen');
     mIssue.Number := 12;
     mIssue.State := 'Offen';

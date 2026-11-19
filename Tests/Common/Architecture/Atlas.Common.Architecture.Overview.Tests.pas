@@ -364,20 +364,23 @@ var
 begin
   mUnits := Project;
   mMain := mUnits[11];
-  mFiles := TDictionary<string, string>.Create;
-  mFiles.Add(mMain.FileName, 'unit App.Ui.Main;'#10'interface'#10'uses App.Ui.Form, App.Ui.Grid;'#10 +
-    'implementation'#10'uses'#10'  App.Data.Model;'#10'end.');
-  mGraph := TUsesGraph.Create(mUnits, TUsesGraphOptions.Default);
-  mLocator := TUsesLocator.Create(
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := mFiles.TryGetValue(AFileName, AText);
-    end,
-    function(const AFileName: string): TArray<string>
-    begin
-      Result := nil;
-    end);
+  mFiles := nil;
+  mGraph := nil;
+  mLocator := nil;
   try
+    mFiles := TDictionary<string, string>.Create;
+    mFiles.Add(mMain.FileName, 'unit App.Ui.Main;'#10'interface'#10'uses App.Ui.Form, App.Ui.Grid;'#10 +
+      'implementation'#10'uses'#10'  App.Data.Model;'#10'end.');
+    mGraph := TUsesGraph.Create(mUnits, TUsesGraphOptions.Default);
+    mLocator := TUsesLocator.Create(
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := mFiles.TryGetValue(AFileName, AText);
+      end,
+      function(const AFileName: string): TArray<string>
+      begin
+        Result := nil;
+      end);
     mOverview := TArchitectureAnalyzer.Analyze(mGraph, mLocator, 5);
     Assert.AreEqual(2, Integer(Length(mOverview.CrossLinks)), 'Data.Db → Core.Base und Ui.Main → Data.Model');
     mLink := mOverview.CrossLinks[1];

@@ -168,30 +168,37 @@ var
   mChanged: TEvent;
   mHandles: array[0..1] of THandle;
 begin
-  if RegOpenKeyEx(HKEY_CURRENT_USER, PChar(FKey), 0, KEY_NOTIFY or KEY_READ, mKey) <> ERROR_SUCCESS then
-  begin
-    TAtlasGuard.Log('Known Packages: Schlüssel lässt sich nicht beobachten'); // german-ok Protokoll
-    Exit;
-  end;
-  mChanged := TEvent.Create(nil, False, False, '');
   try
-    mHandles[0] := FStop.Handle;
-    mHandles[1] := mChanged.Handle;
-    while not Terminated do
+    if RegOpenKeyEx(HKEY_CURRENT_USER, PChar(FKey), 0, KEY_NOTIFY or KEY_READ, mKey) <> ERROR_SUCCESS then
     begin
-      if RegNotifyChangeKeyValue(mKey, False, cNotifyFilter, mChanged.Handle, True) <> ERROR_SUCCESS then
-      begin
-        Break;
-      end;
-      if WaitForMultipleObjects(2, @mHandles, False, INFINITE) <> WAIT_OBJECT_0 + 1 then
-      begin
-        Break;
-      end;
-      Changed;
+      TAtlasGuard.Log('Known Packages: Schlüssel lässt sich nicht beobachten'); // german-ok Protokoll
+      Exit;
     end;
-  finally
-    mChanged.Free;
-    RegCloseKey(mKey);
+    mChanged := TEvent.Create(nil, False, False, '');
+    try
+      mHandles[0] := FStop.Handle;
+      mHandles[1] := mChanged.Handle;
+      while not Terminated do
+      begin
+        if RegNotifyChangeKeyValue(mKey, False, cNotifyFilter, mChanged.Handle, True) <> ERROR_SUCCESS then
+        begin
+          Break;
+        end;
+        if WaitForMultipleObjects(2, @mHandles, False, INFINITE) <> WAIT_OBJECT_0 + 1 then
+        begin
+          Break;
+        end;
+        Changed;
+      end;
+    finally
+      mChanged.Free;
+      RegCloseKey(mKey);
+    end;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Known Packages: ' + TAtlasGuard.ErrorText(E));
+    end;
   end;
 end;
 

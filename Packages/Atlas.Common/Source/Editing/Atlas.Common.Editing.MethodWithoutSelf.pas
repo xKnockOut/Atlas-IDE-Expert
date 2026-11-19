@@ -1096,9 +1096,11 @@ begin
     AReason := cTexts[TEditingMethodWithoutSelfText.NoTree].Text;
     Exit(False);
   end;
-  mPlan := TMethodPlan.Create(ADeclaring.Text, ADeclaring.Tree, ARequest.Lookup);
-  mBuild := TMethodBuild.Create(mPlan);
+  mPlan := nil;
+  mBuild := nil;
   try
+    mPlan := TMethodPlan.Create(ADeclaring.Text, ADeclaring.Tree, ARequest.Lookup);
+    mBuild := TMethodBuild.Create(mPlan);
     AReason := ConversionIssue(mPlan, ARequest);
     if AReason = '' then
     begin

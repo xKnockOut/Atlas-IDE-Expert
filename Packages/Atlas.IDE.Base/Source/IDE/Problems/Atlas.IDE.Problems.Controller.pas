@@ -348,43 +348,50 @@ var
   mReport: TLspDiagnosticReport;
   mStarted: UInt64;
 begin
-  while not Terminated do
-  begin
-    FWake.WaitFor(cDocumentWakeMs);
-    System.TMonitor.Enter(FLock);
-    try
-      mJobs := FJobs;
-      FJobs := nil;
-      if Length(mJobs) > 0 then
-      begin
-        FBusy := 1;
-      end;
-    finally
-      System.TMonitor.Exit(FLock);
-    end;
-    for mJob in mJobs do
+  try
+    while not Terminated do
     begin
-      if Terminated then
-      begin
-        Break;
-      end;
+      FWake.WaitFor(cDocumentWakeMs);
+      System.TMonitor.Enter(FLock);
       try
-        mStarted := TAtlasTicks.Now;
-        mReport := FSession.DocumentDiagnostics(mJob.FileName, mJob.PreviousId, cDocumentTimeoutMs);
-        // Kopie: Die Schleifenvariable ist nicht zuweisbar.
-        mDone := mJob;
-        mDone.DurationMs := TAtlasTicks.SinceMs(mStarted);
-        Deliver(mDone, mReport);
-      except
-        on E: Exception do
-          LogLater('Probleme: ' + ExtractFileName(mJob.FileName) + ': ' + E.Message);
+        mJobs := FJobs;
+        FJobs := nil;
+        if Length(mJobs) > 0 then
+        begin
+          FBusy := 1;
+        end;
+      finally
+        System.TMonitor.Exit(FLock);
+      end;
+      for mJob in mJobs do
+      begin
+        if Terminated then
+        begin
+          Break;
+        end;
+        try
+          mStarted := TAtlasTicks.Now;
+          mReport := FSession.DocumentDiagnostics(mJob.FileName, mJob.PreviousId, cDocumentTimeoutMs);
+          // Kopie: Die Schleifenvariable ist nicht zuweisbar.
+          mDone := mJob;
+          mDone.DurationMs := TAtlasTicks.SinceMs(mStarted);
+          Deliver(mDone, mReport);
+        except
+          on E: Exception do
+            LogLater('Probleme: ' + ExtractFileName(mJob.FileName) + ': ' + E.Message);
+        end;
+      end;
+      System.TMonitor.Enter(FLock);
+      try
+        FBusy := 0;
+      finally
+        System.TMonitor.Exit(FLock);
       end;
     end;
-    System.TMonitor.Enter(FLock);
-    try
-      FBusy := 0;
-    finally
-      System.TMonitor.Exit(FLock);
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(TAtlasFeature.Problems, E);
     end;
   end;
 end;
@@ -467,31 +474,38 @@ var
   mStarted: UInt64;
   mRun: TLspWorkspaceRun;
 begin
-  while not Terminated do
-  begin
-    mStarted := TAtlasTicks.Now;
-    try
-      mChanged := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, cWorkspaceTimeoutMs, mRun));
-      // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
-      if (Length(mChanged) > 0) or mRun.Known then
-      begin
-        Deliver(mChanged, mRun);
-      end;
-      // Antwortet der Server sofort ohne Neues, nicht im Kreis fragen.
-      if (Length(mChanged) = 0) and (TAtlasTicks.Since(mStarted) < cWorkspaceQuietMs) then
-      begin
-        FStop.WaitFor(cWorkspaceQuietMs);
-      end;
-    except
-      on E: Exception do
-      begin
-        if not Terminated then
+  try
+    while not Terminated do
+    begin
+      mStarted := TAtlasTicks.Now;
+      try
+        mChanged := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, cWorkspaceTimeoutMs, mRun));
+        // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
+        if (Length(mChanged) > 0) or mRun.Known then
         begin
-          LogLater('Probleme (Projekt): ' + E.Message);
+          Deliver(mChanged, mRun);
         end;
-        // Nach einem Fehler oder einer Zeitüberschreitung länger warten: Der Server ist ausgelastet.
-        FStop.WaitFor(cWorkspaceRetryMs);
+        // Antwortet der Server sofort ohne Neues, nicht im Kreis fragen.
+        if (Length(mChanged) = 0) and (TAtlasTicks.Since(mStarted) < cWorkspaceQuietMs) then
+        begin
+          FStop.WaitFor(cWorkspaceQuietMs);
+        end;
+      except
+        on E: Exception do
+        begin
+          if not Terminated then
+          begin
+            LogLater('Probleme (Projekt): ' + E.Message);
+          end;
+          // Nach einem Fehler oder einer Zeitüberschreitung länger warten: Der Server ist ausgelastet.
+          FStop.WaitFor(cWorkspaceRetryMs);
+        end;
       end;
+    end;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(TAtlasFeature.Problems, E);
     end;
   end;
 end;
