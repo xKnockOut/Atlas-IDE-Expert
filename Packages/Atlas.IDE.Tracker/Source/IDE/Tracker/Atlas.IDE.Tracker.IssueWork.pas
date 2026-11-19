@@ -18,6 +18,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Tracker.IssuesContext,
@@ -37,6 +38,8 @@ type
     constructor Create(AContext: TAtlasIdeIssuesContext; AServices: TAtlasIdeIssuesServices);
     /// <summary>Vor dem Stoppen von „Meine Issues“: danach antwortet das Objekt leer.</summary>
     procedure Detach;
+    /// <summary>Als IAtlasIssueWorkSource über AScope bereitstellen.</summary>
+    function ProvideIn(const AScope: IAtlasModuleScope): IAtlasRegistration;
     function ActiveIssue(const AProject: string; out AIssue: TAtlasIssueWorkIssue): Boolean;
     function Statuses(const AProject: string; const AKeys: TArray<string>): TArray<TAtlasIssueWorkInfo>;
   end;
@@ -93,6 +96,11 @@ procedure TAtlasTrackerIssueWork.Detach;
 begin
   FContext := nil;
   FServices := nil;
+end;
+
+function TAtlasTrackerIssueWork.ProvideIn(const AScope: IAtlasModuleScope): IAtlasRegistration;
+begin
+  Result := AScope.Provide(IAtlasIssueWorkSource, Self as IAtlasIssueWorkSource);
 end;
 
 function TAtlasTrackerIssueWork.ActiveIssue(const AProject: string; out AIssue: TAtlasIssueWorkIssue): Boolean;

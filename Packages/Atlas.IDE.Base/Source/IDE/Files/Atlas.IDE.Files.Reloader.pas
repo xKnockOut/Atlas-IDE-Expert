@@ -64,7 +64,6 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
-  Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -74,7 +73,8 @@ uses
   Atlas.Core.Files.EncodingDefault,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.UI.Notifications.Strings;
 
 /// <summary>Text der Datei auf der Platte in ihrer Kodierung; Ausnahme, wenn sie nicht lesbar ist.</summary>
 function DiskText(const AFileName: string): string;
@@ -201,7 +201,8 @@ begin
   begin
     Exit;
   end;
-  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
+  TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadDiffTitle,
+    [ExtractFileName(AFileName)]));
   for mIndex := 0 to High(mLines) do
   begin
     if mIndex < cMaxDiffLines then
@@ -221,7 +222,8 @@ end;
 
 class function TAtlasFileReloader.CompareAction(const AFileName: string): TAtlasNotificationAction;
 begin
-  Result := TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NotificationsCompare),
+  Result := TAtlasNotificationCenter.Action(
+    TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsCompare),
     procedure
     begin
       ShowDiff(AFileName, True);
@@ -401,11 +403,11 @@ var
 begin
   mName := ExtractFileName(AFileName);
   if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Warning,
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKept, [mName]),
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKeptText, [mName]),
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloadKept, [mName]),
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloadKeptText, [mName]),
     [TAtlasFileReloader.CompareAction(AFileName)]) = TAtlasNotificationMode.Show then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [mName]));
+    TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadKeptModified, [mName]));
     TAtlasFileReloader.ShowDiff(AFileName, False);
   end;
 end;
@@ -416,10 +418,10 @@ var
 begin
   mName := ExtractFileName(AFileName);
   if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Warning,
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [mName]), AFileName) =
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloadDeleted, [mName]), AFileName) =
     TAtlasNotificationMode.Show then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [mName]));
+    TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadDeleted, [mName]));
   end;
 end;
 
@@ -437,10 +439,10 @@ begin
   end;
   mNames := string.Join(', ', mShort);
   if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Info,
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
     TAtlasNotificationMode.Show then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(AReloaded)]));
+    TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadDone, [Length(AReloaded)]));
     for mName in AReloaded do
     begin
       TAtlasIdeHost.Message('    ' + mName);
