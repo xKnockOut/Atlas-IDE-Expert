@@ -9,7 +9,8 @@
 //     Kontextmenü und Tasten: als Überwachung hinzufügen (Strg+W), Wert kopieren
 //     (Strg+C), Ausdruck kopieren (Strg+Umschalt+C), Wert ändern (F2, über
 //     „Werte ändern“ #868), Überwachung entfernen (Entf, nur im Reiter
-//     Überwachung).
+//     Überwachung), im Reiter Überwachung an Klasse oder Unit des Halts binden
+//     bzw. überall zeigen (#2550).
 // Welcher Knoten gewählt ist, weiß nur der Frame; die Zeilenaktionen fragen ihn
 // über TAtlasEvalNodeSource.
 
@@ -24,11 +25,16 @@ uses
   Vcl.Menus,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.Variables,
+  Atlas.Core.Debug.WatchScopes,
+  Atlas.UI.Debug.EvaluateTree,
   Atlas.UI.Debug.EvaluateTreeView;
 
 type
   TAtlasVariablesSearchProc = reference to procedure(const AText: string; AMode: TAtlasVariableSearchMode;
     ADeep: Boolean);
+  /// <summary>Lässt sich ANode an AKind binden (Everywhere: Bindung lösen)?</summary>
+  TAtlasWatchBindTest = reference to function(ANode: TAtlasEvalNode; AKind: TAtlasWatchScopeKind): Boolean;
+  TAtlasWatchBindProc = reference to procedure(ANode: TAtlasEvalNode; AKind: TAtlasWatchScopeKind);
 
   /// <summary>Was der Frame an die IDE-Schicht meldet; nicht gesetzte Einträge bleiben still. Gehört dem Frame.
   /// </summary>
@@ -41,6 +47,11 @@ type
     FRemoveWatch: TAtlasEvalNodeProc;
     FEditValue: TAtlasEvalNodeProc;
     FCanEditValue: TFunc<Boolean>;
+    FCanBind: TAtlasWatchBindTest;
+    FBinding: TFunc<Boolean>;
+    FBind: TAtlasWatchBindProc;
+    FScopeText: TAtlasEvalNodeText;
+    FShowHidden: TProc<Boolean>;
   public
     /// <summary>Anderer Reiter; danach SetList mit dessen Liste.</summary>
     property Tab: TProc<TAtlasVariablesTab> read FTab write FTab;
@@ -54,6 +65,15 @@ type
     property EditValue: TAtlasEvalNodeProc read FEditValue write FEditValue;
     /// <summary>Lässt sich gerade ein Wert ändern (debug.editValues an, Programm angehalten)?</summary>
     property CanEditValue: TFunc<Boolean> read FCanEditValue write FCanEditValue;
+    /// <summary>Überwachung an Klasse oder Unit des Halts binden bzw. lösen (#2550).</summary>
+    property CanBind: TAtlasWatchBindTest read FCanBind write FCanBind;
+    /// <summary>Gibt es die Bindung (debug.variablesWindow.scopedWatches)? Sonst fehlen die Menüeinträge.</summary>
+    property Binding: TFunc<Boolean> read FBinding write FBinding;
+    property Bind: TAtlasWatchBindProc read FBind write FBind;
+    /// <summary>Text hinter der Zeile: wofür sie gilt; '' ohne Bindung.</summary>
+    property ScopeText: TAtlasEvalNodeText read FScopeText write FScopeText;
+    /// <summary>Ausgeblendete Überwachungen zeigen oder nicht.</summary>
+    property ShowHidden: TProc<Boolean> read FShowHidden write FShowHidden;
   end;
 
   /// <summary>Suchfeld mit „In Werten“ und „Unterelemente“; meldet über Hooks.Search.</summary>
@@ -122,7 +142,8 @@ const
 type
   {$SCOPEDENUMS ON}
   /// <summary>Einträge des Kontextmenüs, als Tag der Menüeinträge.</summary>
-  TRowAction = (None, AddWatch, CopyValue, CopyExpression, EditValue, RemoveWatch);
+  TRowAction = (None, AddWatch, CopyValue, CopyExpression, EditValue, RemoveWatch, BindClass, BindUnit,
+    BindEverywhere);
   {$SCOPEDENUMS OFF}
 
 function AddCheck(AFrame, AParent: TWinControl; AText: TAtlasVariablesTextId; AOrder: Integer;
@@ -137,6 +158,19 @@ begin
   Result.Width := MulDiv(cCheckWidth, AFrame.CurrentPPI, 96);
   Result.Caption := TAtlasVariablesStrings.Text(AText);
   Result.OnClick := AClick;
+end;
+
+/// <summary>Bindung, die eine Aktion setzt.</summary>
+function BindKind(AAction: TRowAction): TAtlasWatchScopeKind;
+begin
+  case AAction of
+    TRowAction.BindClass:
+      Result := TAtlasWatchScopeKind.ClassType;
+    TRowAction.BindUnit:
+      Result := TAtlasWatchScopeKind.UnitName;
+  else
+    Result := TAtlasWatchScopeKind.Everywhere;
+  end;
 end;
 
 function KeyAction(AKey: Word; AShift: TShiftState): TRowAction;
@@ -269,6 +303,10 @@ begin
     ShortCut(VK_F2, []));
   AddItem(TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesRemoveWatch), Ord(TRowAction.RemoveWatch),
     ShortCut(VK_DELETE, []));
+  AddItem(TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesScopeClass), Ord(TRowAction.BindClass), 0);
+  AddItem(TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesScopeUnit), Ord(TRowAction.BindUnit), 0);
+  AddItem(TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesScopeEverywhere), Ord(TRowAction.BindEverywhere),
+    0);
 end;
 
 procedure TAtlasVariablesRowActions.AddItem(const AText: string; AAction: Integer; AShortCut: TShortCut);
@@ -294,6 +332,11 @@ begin
   begin
     mItem := FMenu.Items[mIndex];
     mItem.Enabled := Enabled(mNode, mItem.Tag);
+    // Binden nur im Reiter Überwachung und nur mit „Bindung“ an (#2550).
+    if TRowAction(mItem.Tag) in [TRowAction.BindClass, TRowAction.BindUnit, TRowAction.BindEverywhere] then
+    begin
+      mItem.Visible := FWatches and Assigned(FHooks.CanBind) and Assigned(FHooks.Binding) and FHooks.Binding();
+    end;
   end;
 end;
 
@@ -322,6 +365,9 @@ begin
         Assigned(FHooks.CanEditValue) and FHooks.CanEditValue();
     TRowAction.RemoveWatch:
       Result := FWatches and (ANode.Parent = nil);
+    TRowAction.BindClass, TRowAction.BindUnit, TRowAction.BindEverywhere:
+      Result := FWatches and (ANode.Parent = nil) and Assigned(FHooks.CanBind) and
+        FHooks.CanBind(ANode, BindKind(TRowAction(AAction)));
     TRowAction.None: ;
   end;
 end;
@@ -348,6 +394,11 @@ begin
       if Assigned(FHooks.RemoveWatch) then
       begin
         FHooks.RemoveWatch(ANode);
+      end;
+    TRowAction.BindClass, TRowAction.BindUnit, TRowAction.BindEverywhere:
+      if Assigned(FHooks.Bind) then
+      begin
+        FHooks.Bind(ANode, BindKind(TRowAction(AAction)));
       end;
     TRowAction.None: ;
   end;

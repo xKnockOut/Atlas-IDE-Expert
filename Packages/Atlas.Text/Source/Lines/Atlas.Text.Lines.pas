@@ -18,6 +18,10 @@ type
   TTextLineBreak = (None, CRLF, LF, CR, Mixed);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Zeilen einer Datei ohne Zeilenende; False, wenn sie fehlt oder nicht lesbar ist. Ein gemeinsamer Typ
+  /// für Server, Plugin und Module (Delphi 12 hält gleich gebaute Methodenreferenztypen auseinander).</summary>
+  TTextReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+
   /// <summary>Zeile und Zeichen, 0-basiert, Zeichen in UTF-16-Einheiten (LSP).</summary>
   TTextPosition = record
     Line: Integer;
