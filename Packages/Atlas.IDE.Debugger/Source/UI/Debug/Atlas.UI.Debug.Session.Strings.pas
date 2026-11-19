@@ -18,7 +18,8 @@ type
     LaunchStateRunning, LaunchStatePaused, LaunchStateEnded, LaunchStoppedAt, LaunchDialogTitle, LaunchColGroup,
     LaunchColProjects, LaunchColProject, LaunchColProfile, LaunchColDebug, LaunchColWait, LaunchActivate, LaunchStart,
     LaunchEdit, LaunchClose, LaunchYes, LaunchNo, LaunchWaitSeconds, LaunchWaitPort, LaunchWaitWindow,
-    LaunchActiveMark, LaunchProblems);
+    LaunchActiveMark, LaunchProblems, AssistantRunning, AssistantNoProject, AssistantStartFailed, AssistantNotStopped,
+    AssistantNoCode, AssistantRunToOff, AssistantNoBreakpoint, AssistantNoValue);
 
   TAtlasSessionStrings = class
   public
@@ -94,7 +95,15 @@ const
      'Port %d (höchstens %d s)',
      'Hauptfenster (höchstens %d s)',
      '%s (aktiv)',
-     'Atlas: Einträge in launchGroups übergangen: %s'),
+     'Atlas: Einträge in launchGroups übergangen: %s',
+     'Es läuft schon ein Programm im Debugger.',
+     'Kein Projekt zum Starten: %s ist nicht in der geöffneten Projektgruppe.',
+     'Start im Debugger nicht möglich: %s',
+     'Das Programm hält gerade nicht an.',
+     'In Zeile %d steht kein ausführbarer Code.',
+     '„Bis hier ausführen“ ist aus (Einstellung debug.runToClick).',
+     'Haltepunkt in %s, Zeile %d ließ sich nicht setzen (kein Code oder dort steht schon einer).',
+     'Der Ausdruck ließ sich nicht auswerten: %s'),
     ('Stop',
      'Build',
      'Start',
@@ -154,7 +163,15 @@ const
      'Port %d (at most %d s)',
      'Main window (at most %d s)',
      '%s (active)',
-     'Atlas: Entries in launchGroups skipped: %s'));
+     'Atlas: Entries in launchGroups skipped: %s',
+     'A program is already running in the debugger.',
+     'No project to start: %s is not in the open project group.',
+     'Cannot start in the debugger: %s',
+     'The program is not stopped.',
+     'Line %d has no executable code.',
+     '“Run to here” is off (setting debug.runToClick).',
+     'Could not set a breakpoint in %s, line %d (no code, or one is already there).',
+     'The expression could not be evaluated: %s'));
 
 { TAtlasSessionStrings }
 
