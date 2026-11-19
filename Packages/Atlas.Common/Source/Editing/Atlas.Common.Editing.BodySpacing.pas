@@ -32,7 +32,11 @@ type
       ALast: Integer; out ASources: TArray<Integer>): TArray<string>; static;
     /// <summary>Einfügung AEdit in AText mit angeglichenen Leerzeilen an ihren Rändern; AEdit selbst, wenn dort
     /// schon alles passt oder die Einfügung mitten in einer Zeile mit Inhalt beginnt und endet.</summary>
-    class function SpacedInsert(const AText: string; const AEdit: TTextEdit): TTextEdit; static;
+    class function SpacedInsert(const AText: string; const AEdit: TTextEdit): TTextEdit; overload; static;
+    /// <summary>Wie oben über die schon geteilten Zeilen ALines von AText (#1477: ohne den ganzen Text je
+    /// Einfügung neu zu teilen).</summary>
+    class function SpacedInsert(const ALines: TArray<string>; const ALineBreak: string;
+      const AEdit: TTextEdit): TTextEdit; overload; static;
     /// <summary>Zeilen von ANew (AFirst bis ALast, ALast &lt; AFirst bei einer reinen Löschung), die sich von AOld
     /// unterscheiden, ohne den gleichen Anfang und das gleiche Ende; False, wenn beide gleich sind.</summary>
     class function ChangedRange(const AOld, ANew: TArray<string>; out AFirst, ALast: Integer): Boolean; static;
@@ -193,21 +197,51 @@ begin
   Result := -1;
 end;
 
-class function TBodySpacing.SpacedInsert(const AText: string; const AEdit: TTextEdit): TTextEdit;
+/// <summary>Zeilen um die Einfügung ab AFirst bis ALast (alter Stand): von der letzten Zeile mit Inhalt davor bis
+/// zur ersten danach. Nur dort kann SpacedInsert etwas ändern; so bleibt jede Einfügung unabhängig von der
+/// Länge der Unit (#1477).</summary>
+procedure InsertWindow(const ALines: TArray<string>; AFirst, ALast: Integer; out AFrom, ATo: Integer);
+begin
+  AFrom := AFirst - 1;
+  while (AFrom > 0) and IsBlank(ALines[AFrom]) do
+  begin
+    Dec(AFrom);
+  end;
+  if AFrom < 0 then
+  begin
+    AFrom := 0;
+  end;
+  ATo := ALast + 1;
+  while (ATo < High(ALines)) and IsBlank(ALines[ATo]) do
+  begin
+    Inc(ATo);
+  end;
+  if ATo > High(ALines) then
+  begin
+    ATo := High(ALines);
+  end;
+end;
+
+/// <summary>AEdit um ALines Zeilen verschoben.</summary>
+function Shifted(const AEdit: TTextEdit; ALines: Integer): TTextEdit;
+begin
+  Result := AEdit;
+  Result.Range.StartPos.Line := AEdit.Range.StartPos.Line + ALines;
+  Result.Range.EndPos.Line := AEdit.Range.EndPos.Line + ALines;
+end;
+
+/// <summary>SpacedInsert über die Zeilen AOld; AEdit liegt in ihnen, das Ergebnis ebenso.</summary>
+function SpacedInsertInLines(const AOld: TArray<string>; const ALineBreak: string; const AEdit: TTextEdit;
+  out AResult: TTextEdit): Boolean;
 var
-  mOld, mNew, mInserted, mSpaced: TArray<string>;
+  mNew, mInserted, mSpaced: TArray<string>;
   mStarts, mEnds: TArray<Boolean>;
   mSources: TArray<Integer>;
   mFirst, mLast, mStart: Integer;
   mBefore, mAfter: string;
 begin
-  Result := AEdit;
-  mOld := TTextLines.SplitLines(AText);
+  Result := False;
   mStart := AEdit.Range.StartPos.Line;
-  if (mStart < 0) or (AEdit.Range.EndPos.Line > High(mOld)) then
-  begin
-    Exit;
-  end;
   mInserted := TTextLines.SplitLines(AEdit.NewText);
   mFirst := ContentLine(mInserted, False);
   mLast := ContentLine(mInserted, True);
@@ -215,18 +249,43 @@ begin
   begin
     Exit;
   end;
-  mNew := TTextLines.SplitLines(TTextChanges.Apply(AText, [AEdit]));
+  mNew := TTextLines.SplitLines(TTextChanges.Apply(TTextLines.JoinLines(AOld, ALineBreak), [AEdit]));
   SetLength(mStarts, Length(mNew));
   SetLength(mEnds, Length(mNew));
   // Teilt die erste bzw. letzte eingefügte Zeile die Zeile mit vorhandenem Code, bleibt dieser Rand, wie er ist.
-  mBefore := Copy(mOld[mStart], 1, AEdit.Range.StartPos.Character);
-  mAfter := Copy(mOld[AEdit.Range.EndPos.Line], AEdit.Range.EndPos.Character + 1, MaxInt);
+  mBefore := Copy(AOld[mStart], 1, AEdit.Range.StartPos.Character);
+  mAfter := Copy(AOld[AEdit.Range.EndPos.Line], AEdit.Range.EndPos.Character + 1, MaxInt);
   mStarts[mStart + mFirst] := (mFirst > 0) or IsBlank(mBefore);
   mEnds[mStart + mLast] := (mLast < High(mInserted)) or IsBlank(mAfter);
-  mSpaced := Spaced(mNew, mStarts, mEnds, mStart + mFirst, mStart + mLast, mSources);
-  if (Length(mSpaced) <> Length(mNew)) or (string.Join(#10, mSpaced) <> string.Join(#10, mNew)) then
+  mSpaced := TBodySpacing.Spaced(mNew, mStarts, mEnds, mStart + mFirst, mStart + mLast, mSources);
+  Result := (Length(mSpaced) <> Length(mNew)) or (string.Join(#10, mSpaced) <> string.Join(#10, mNew));
+  if Result then
   begin
-    LinesEdit(mOld, mSpaced, TTextLines.LineBreakOf(AText), Result);
+    TBodySpacing.LinesEdit(AOld, mSpaced, ALineBreak, AResult);
+  end;
+end;
+
+class function TBodySpacing.SpacedInsert(const AText: string; const AEdit: TTextEdit): TTextEdit;
+begin
+  Result := SpacedInsert(TTextLines.SplitLines(AText), TTextLines.LineBreakOf(AText), AEdit);
+end;
+
+class function TBodySpacing.SpacedInsert(const ALines: TArray<string>; const ALineBreak: string;
+  const AEdit: TTextEdit): TTextEdit;
+var
+  mFrom, mTo: Integer;
+  mWindowEdit: TTextEdit;
+begin
+  Result := AEdit;
+  if (AEdit.Range.StartPos.Line < 0) or (AEdit.Range.EndPos.Line > High(ALines)) then
+  begin
+    Exit;
+  end;
+  InsertWindow(ALines, AEdit.Range.StartPos.Line, AEdit.Range.EndPos.Line, mFrom, mTo);
+  if SpacedInsertInLines(Copy(ALines, mFrom, mTo - mFrom + 1), ALineBreak, Shifted(AEdit, -mFrom),
+    mWindowEdit) then
+  begin
+    Result := Shifted(mWindowEdit, mFrom);
   end;
 end;
 

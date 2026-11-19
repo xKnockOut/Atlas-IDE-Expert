@@ -1819,7 +1819,7 @@ begin
   begin
     if AOptions.BlankLines then
     begin
-      mEdit := TBodySpacing.SpacedInsert(AText, mEdit);
+      mEdit := TBodySpacing.SpacedInsert(mLines, FLineBreak, mEdit);
     end;
     AAction.Edits := [mEdit];
     AAction.Title := BodiesTitle(mPlan);
