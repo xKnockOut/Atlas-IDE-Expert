@@ -45,15 +45,11 @@ procedure LogLine(const AText: string);
 procedure ReportLine(const AText: string);
 /// <summary>Warnung der Sicherung (#493): Meldungsansicht und Plugin-Protokoll, nie als Dialog.</summary>
 procedure GuardWarning(const AText: string);
-/// <summary>Zeile in der Meldungsansicht, ohne Plugin-Protokoll (z. B. Hinweis auf eine neue Version, #495).</summary>
-procedure MessageLine(const AText: string);
 /// <summary>Meldungsansicht mit der Gruppe Atlas nach vorn holen: für Ergebnisse eines Befehls, den der Benutzer
 /// gerade ausgelöst hat (sonst sieht es aus, als passiere nichts).</summary>
 procedure ShowAtlasMessages;
 /// <summary>GuardWarning als Methodenreferenz für die Haken der Features.</summary>
 function Warnings: TProc<string>;
-/// <summary>MessageLine als Methodenreferenz für die Haken der Features.</summary>
-function MessageLines: TProc<string>;
 /// <summary>ReportLine als Methodenreferenz für die Haken der Features.</summary>
 function Reports: TProc<string>;
 /// <summary>LogLine als Methodenreferenz für die Haken der Features.</summary>
@@ -244,11 +240,6 @@ end;
 procedure GuardWarning(const AText: string);
 begin
   ReportLine(AText);
-  MessageLine(AText);
-end;
-
-procedure MessageLine(const AText: string);
-begin
   TAtlasIdeHost.Message(AText);
 end;
 
@@ -274,15 +265,6 @@ begin
     procedure(AText: string)
     begin
       GuardWarning(AText);
-    end;
-end;
-
-function MessageLines: TProc<string>;
-begin
-  Result :=
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
     end;
 end;
 
@@ -444,7 +426,7 @@ var
 begin
   if not IssueCreation(mCreation) or not mCreation.Enabled then
   begin
-    MessageLine(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashCaseTitle) + ': ' + ACase.Folder);
+    TAtlasIdeHost.Message(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashCaseTitle) + ': ' + ACase.Folder);
     Exit;
   end;
   mCaseFiles := TAtlasCrashCases.AttachFiles(ACase.Folder);

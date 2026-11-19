@@ -55,7 +55,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.EditorBars,
   Atlas.IDE.CodeInsight.Composition.Drawing,
   Atlas.IDE.CodeInsight.Composition.Keys,
-  Atlas.IDE.CodeInsight.Composition.Startup;
+  Atlas.IDE.CodeInsight.Composition.Startup,
+  Atlas.IDE.Foundation.Host;
 
 var
   // Teile des Plugins in Startreihenfolge; gefüllt beim ersten RegisterFeatures.
@@ -348,8 +349,8 @@ begin
   begin
     mParts := ': ' + mParts;
   end;
-  MessageLine(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow, [ALoadMs, ALimit, StartTimes.Total,
-    mParts]));
+  TAtlasIdeHost.Message(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow,
+    [ALoadMs, ALimit, StartTimes.Total, mParts]));
 end;
 
 procedure ReportStartup(ALoadMs: Int64);
