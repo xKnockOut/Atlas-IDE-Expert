@@ -115,41 +115,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.Caret;
-
-/// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
-function EditorSize(AWindow: HWND): TPoint;
-var
-  mArea: TRect;
-begin
-  if (AWindow <> 0) and GetClientRect(AWindow, mArea) then
-  begin
-    Result := Point(mArea.Width, mArea.Height);
-  end
-  else
-  begin
-    Result := Point(0, 0);
-  end;
-end;
-
-/// <summary>Zustand für TAtlasCloseRules (#414).</summary>
-function WindowState(const AView: IOTAEditView; AWindow, AFocus: HWND): TAtlasEditorWindowState;
-begin
-  Result := Default(TAtlasEditorWindowState);
-  Result.AppActive := Application.Active;
-  Result.Focus := AFocus;
-  Result.Size := EditorSize(AWindow);
-  if AView = nil then
-  begin
-    Exit;
-  end;
-  Result.TopRow := AView.TopRow;
-  Result.Rows := AView.ViewSize.cy;
-  if AView.Buffer <> nil then
-  begin
-    Result.FileName := AView.Buffer.FileName;
-  end;
-end;
+  Atlas.IDE.Foundation.Caret,
+  Atlas.IDE.Foundation.EditorWindows;
 
 type
   /// <summary>Cursor eines Editors: Text, Zeile (ab 1), Zeichen in der Zeile und Offset im Text.</summary>
@@ -468,7 +435,7 @@ begin
     Exit;
   end;
   // IDE inaktiv, Fokus woanders, Größe geändert, Ankerzeile außer Sicht: schließen (#414).
-  mNow := WindowState(FView, FEditorWindow, GetFocus);
+  mNow := TAtlasIdeEditorWindows.WindowState(FView, FEditorWindow, GetFocus);
   if TAtlasCloseRules.Hint(FOpened, mNow, FAnchorLine, mMove) <> TAtlasCloseReason.None then
   begin
     Close;
@@ -610,7 +577,7 @@ begin
   FView := AView;
   FEditorWindow := mWindow;
   FOpenParen := mSite.OpenParen;
-  FOpened := WindowState(AView, FEditorWindow, FEditorWindow);
+  FOpened := TAtlasIdeEditorWindows.WindowState(AView, FEditorWindow, FEditorWindow);
   FAnchorLine := mSpot.Line;
   FPending := FProvider.Query(AView.Buffer.FileName, mSpot.Text, mSpot.Line - 1, mSpot.Character,
     procedure(const AHelp: TAtlasSignatureHelp)

@@ -24,14 +24,13 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
-  Atlas.Core.Style.Color,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Popup.Window;
 
 type
   TAtlasUnwrapIndexEvent = reference to procedure(AIndex: Integer);
 
-  TAtlasUnwrapWindow = class(TAtlasPopupWindow)
+  TAtlasUnwrapWindow = class(TAtlasLayoutPopupWindow)
   public const
     /// <summary>Abstand unter der Schreibmarke, logische Pixel.</summary>
     cGap = 4;
@@ -45,14 +44,12 @@ type
     FOnSelect: TAtlasUnwrapIndexEvent;
     FOnAccept: TAtlasUnwrapIndexEvent;
     FOnCancel: TProc;
-    function Layout(ADraw: Boolean): TSize;
     procedure LayoutRow(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
     procedure LayoutEntry(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
     procedure LayoutFooter(ADraw: Boolean; AY, ATextHeight: Integer; var AWidth: Integer);
-    procedure Put(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
     function Title: string;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -88,6 +85,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.Core.Style.Color,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
@@ -204,15 +202,6 @@ begin
   end;
 end;
 
-procedure TAtlasUnwrapWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
 procedure TAtlasUnwrapWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   mIndex: Integer;
@@ -287,7 +276,7 @@ begin
   mY := Scale(cPad);
   mTitle := Title;
   Canvas.Font.Style := [fsBold];
-  Put(ADraw, Scale(cPad), mY, mTitle, Colors.Text);
+  PutText(ADraw, Scale(cPad), mY, mTitle, Colors.Text);
   mWidth := Scale(cPad) + Canvas.TextWidth(mTitle);
   Canvas.Font.Style := [];
   SetLength(FRowRects, Length(FEntries));
@@ -332,10 +321,10 @@ begin
   begin
     mX := mX + Canvas.TextWidth(cMarker);
   end;
-  Put(ADraw, mX, AY, mText, mColor);
+  PutText(ADraw, mX, AY, mText, mColor);
   Inc(mX, Canvas.TextWidth(mText));
   mLine := cSeparator + TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapLine, [mEntry.Line + 1]);
-  Put(ADraw, mX, AY, mLine, Colors.Muted);
+  PutText(ADraw, mX, AY, mLine, Colors.Muted);
   Inc(mX, Canvas.TextWidth(mLine));
   AWidth := Max(AWidth, mX);
   FRowRects[AIndex] := Rect(Scale(cPad), mTop, mX, AY + ATextHeight);
@@ -359,7 +348,7 @@ begin
   end;
   AY := AY + ATextHeight + Scale(cRowGap);
   mX := Scale(cPad) + 2 * Canvas.TextWidth(cMarker);
-  Put(ADraw, mX, AY, mNote, Colors.Warn);
+  PutText(ADraw, mX, AY, mNote, Colors.Warn);
   AWidth := Max(AWidth, mX + Canvas.TextWidth(mNote));
   if not FCompact then
   begin
@@ -383,21 +372,12 @@ begin
   begin
     mColor := Colors.Accent;
   end;
-  Put(ADraw, mX, AY, mAccept, mColor);
-  Put(ADraw, FAcceptRect.Right, AY, cSeparator, Colors.Muted);
+  PutText(ADraw, mX, AY, mAccept, mColor);
+  PutText(ADraw, FAcceptRect.Right, AY, cSeparator, Colors.Muted);
   mX := FAcceptRect.Right + Canvas.TextWidth(cSeparator);
   FCancelRect := Rect(mX, AY, mX + Canvas.TextWidth(mCancel), AY + ATextHeight);
-  Put(ADraw, mX, AY, mCancel, Colors.Accent);
+  PutText(ADraw, mX, AY, mCancel, Colors.Accent);
   AWidth := Max(AWidth, FCancelRect.Right);
-end;
-
-procedure TAtlasUnwrapWindow.Put(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
-begin
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(AColor);
-    Canvas.TextOut(AX, AY, AText);
-  end;
 end;
 
 class function TAtlasUnwrapWindow.EntryCaption(const AEntry: TAtlasUnwrapEntry): string;

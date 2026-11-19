@@ -28,7 +28,7 @@ uses
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
-  TAtlasGutterColumnSessionFunc = reference to function: TLspSession;
+  TAtlasGutterColumnSessionFunc = TFunc<TLspSession>;
 
   /// <summary>Zuletzt erfragte Glühbirne: Datei, Zeile und Zeilentext der Frage und ob es eine Aktion gibt.</summary>
   TAtlasGutterActionAsk = record
@@ -159,11 +159,7 @@ end;
 
 function TAtlasIdeGutterColumnState.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSession) then
-  begin
-    Result := FSession();
-  end;
+  Result := TLspSession.From(FSession);
 end;
 
 function TAtlasIdeGutterColumnState.Changed(const AView: IOTAEditView): Boolean;

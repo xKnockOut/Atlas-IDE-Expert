@@ -162,11 +162,7 @@ end;
 
 class function TAtlasIdeLearnedSuggestions.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class function TAtlasIdeLearnedSuggestions.UsageFile: string;

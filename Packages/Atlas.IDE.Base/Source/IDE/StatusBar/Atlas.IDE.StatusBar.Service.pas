@@ -112,7 +112,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.Service,
-  Atlas.IDE.Status.ServerWindow;
+  Atlas.IDE.Status.ServerWindow,
+  Atlas.Core.Notifications.MessageSink;
 
 const
   cTickMs = 250;
@@ -642,10 +643,7 @@ end;
 
 class procedure TAtlasIdeStatusBar.Say(const AText: string);
 begin
-  if Assigned(FHooks.Message) then
-  begin
-    FHooks.Message(AText);
-  end;
+  TAtlasMessageSink.Create(FHooks.Message).Say(AText);
 end;
 
 class procedure TAtlasIdeStatusBar.Install(const AHooks: THooks);
