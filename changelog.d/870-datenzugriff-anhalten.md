@@ -1,0 +1,2 @@
+### Neu
+- Server-Befehl `atlas.server.dataAccessSites` (#870, Grundlage für „Anhalten bei Datenzugriff“): eigene Aufrufstellen von `Open`, `ExecSQL`, `Execute`, `ExecSQLScalar` bzw. `Get`, `Post`, `Put`, `Delete` auf Objekten der übergebenen Klassen und ihrer Nachfahren (Typ des Empfängers über die Namensauflösung, der nächste Vorfahr entscheidet), mit Zeile der Anweisung, Empfänger, Argumenten als Quelltext und umgebender Routine; nicht bestimmbare Empfänger zählt `unresolved`. Neue Units `Atlas.Common.Semantics.DataAccessCalls`, `Atlas.Common.Lsp.DataAccessSites`.

@@ -34,6 +34,11 @@ uses
 const
   /// <summary>Überabtastung für die Glättung.</summary>
   cFactor = 4;
+  /// <summary>Buchstabensymbol: Rahmen eine Rastereinheit eingerückt, Eckenradius ein Viertel und Linienbreite ein
+  /// Vierzehntel der Kantenlänge, Buchstabe 70 % der Rahmenhöhe.</summary>
+  cLetterCornerDiv = 4;
+  cLetterPenDiv = 14;
+  cLetterHeight = 0.7;
 
 procedure DrawLetter(ACanvas: TCanvas; const ARect: TRect; AFore: TColor; const ALetter: string);
 var
@@ -42,11 +47,11 @@ var
   mRadius: Integer;
 begin
   mBox := ARect;
-  InflateRect(mBox, -Max(1, ARect.Width div 16), -Max(1, ARect.Height div 16));
-  mRadius := Max(2, ARect.Width div 4);
+  InflateRect(mBox, -Max(1, ARect.Width div TAtlasGlyphs.cSize), -Max(1, ARect.Height div TAtlasGlyphs.cSize));
+  mRadius := Max(2, ARect.Width div cLetterCornerDiv);
   ACanvas.Brush.Style := bsClear;
   ACanvas.Pen.Color := AFore;
-  ACanvas.Pen.Width := Max(1, ARect.Width div 14);
+  ACanvas.Pen.Width := Max(1, ARect.Width div cLetterPenDiv);
   ACanvas.RoundRect(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mRadius, mRadius);
   mText := UpperCase(Copy(Trim(ALetter), 1, 1));
   if mText = '' then
@@ -55,7 +60,7 @@ begin
   end;
   ACanvas.Font.Color := AFore;
   ACanvas.Font.Style := [fsBold];
-  ACanvas.Font.Height := -Round(mBox.Height * 0.7);
+  ACanvas.Font.Height := -Round(mBox.Height * cLetterHeight);
   DrawText(ACanvas.Handle, PChar(mText), -1, mBox, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   ACanvas.Pen.Width := 1;
 end;
