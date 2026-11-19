@@ -205,9 +205,13 @@ Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
 Atlas.Common.Lsp.MethodBreakpoints.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
+Atlas.Common.Lsp.ParameterHeaders.Tests
 Atlas.Common.Lsp.Processes.Tests
 Atlas.Common.Lsp.RaiseVisibility.Tests
 Atlas.Common.Lsp.Rationale.Tests
+Atlas.Common.Lsp.ReferenceConfidence.Tests
+Atlas.Common.Lsp.References.Tests
+Atlas.Common.Lsp.Rename.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.RoutineParameters.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
