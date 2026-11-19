@@ -112,7 +112,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Designer.ViewStrings;
+  Atlas.UI.Designer.ViewStrings,
+  Atlas.UI.Foundation.Dialog;
 
 {$R *.dfm}
 
@@ -136,20 +137,6 @@ const
   cLinkColor = clGrayText;
 
 { Hilfen }
-
-/// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
-function TextWidthIn(AFont: TFont; const AText: string): Integer;
-var
-  mBitmap: TBitmap;
-begin
-  mBitmap := TBitmap.Create;
-  try
-    mBitmap.Canvas.Font := AFont;
-    Result := mBitmap.Canvas.TextWidth(AText);
-  finally
-    mBitmap.Free;
-  end;
-end;
 
 function NewButton(ABar: TFlowPanel; const ACaption, AHint: string; AWidth: Integer): TSpeedButton;
 begin
@@ -260,7 +247,7 @@ begin
   FShowImages.AlignWithMargins := True;
   FShowImages.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StShowImages);
   FShowImages.Height := MulDiv(cBarHeight - cBarPadding, CurrentPPI, cBasePpi);
-  FShowImages.Width := TextWidthIn(Font, FShowImages.Caption) + MulDiv(cCheckBox, CurrentPPI, cBasePpi);
+  FShowImages.Width := TAtlasDialog.TextWidth(Font, FShowImages.Caption) + MulDiv(cCheckBox, CurrentPPI, cBasePpi);
   FShowImages.Checked := True;
   FShowImages.OnClick := ImagesClick;
   FFilter := TEdit.Create(Self);
