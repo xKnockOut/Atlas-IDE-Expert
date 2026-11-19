@@ -174,6 +174,19 @@ const
   cPackageWidth = 170;
   /// <summary>Abstand oben des Hinweises in der Leiste bei 96 dpi, mittig zu den Knöpfen.</summary>
   cNoteTop = 7;
+  /// <summary>Spalten der Anfragen: Anfrage, Anzahl, Mittel, Maximum, gescheitert; Spalte Unit.</summary>
+  cRequestColumnWidths: array[0..4] of Integer = (260, 70, 80, 90, 60);
+  cUnitWidth = 260;
+  /// <summary>Speicheranzeige bei 96 dpi: Breiten von Name und Wert, Zeilenhöhe, Abstände des Balkens.</summary>
+  cChartLabelWidth = 130;
+  cChartValueWidth = 150;
+  cChartRowHeight = 18;
+  cChartBarInset = 4;
+  cChartBarGap = 8;
+  /// <summary>Tabellen untereinander: Anzahl, kleinste Höhe und Abzug je Tabelle bei 96 dpi.</summary>
+  cTableCount = 3;
+  cTableMinHeight = 60;
+  cTableGap = 6;
 
 {$R *.dfm}
 
@@ -253,8 +266,8 @@ begin
   begin
     Exit;
   end;
-  FLabelWidth := Px(130);
-  FValueWidth := Px(150);
+  FLabelWidth := Px(cChartLabelWidth);
+  FValueWidth := Px(cChartValueWidth);
   mIndex := 0;
   for mPart := Low(TAtlasServerMemoryPart) to High(TAtlasServerMemoryPart) do
   begin
@@ -276,7 +289,7 @@ end;
 
 function TAtlasServerMemoryChart.RowHeight: Integer;
 begin
-  Result := Px(18);
+  Result := Px(cChartRowHeight);
 end;
 
 function TAtlasServerMemoryChart.TotalText: string;
@@ -336,7 +349,8 @@ begin
   DrawText(Canvas.Handle, PChar(ACaption), Length(ACaption), mCell, cTextFlags or DT_LEFT);
   mCell := Rect(mRow.Right - FValueWidth, mRow.Top, mRow.Right, mRow.Bottom);
   DrawText(Canvas.Handle, PChar(AValue), Length(AValue), mCell, cTextFlags or DT_RIGHT);
-  mBar := Rect(mRow.Left + FLabelWidth, mRow.Top + Px(4), mRow.Right - FValueWidth - Px(8), mRow.Bottom - Px(4));
+  mBar := Rect(mRow.Left + FLabelWidth, mRow.Top + Px(cChartBarInset), mRow.Right - FValueWidth - Px(cChartBarGap),
+    mRow.Bottom - Px(cChartBarInset));
   if mBar.Right > mBar.Left then
   begin
     DrawBar(mBar, AFraction, AWarnColor);
@@ -369,7 +383,7 @@ begin
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnAverage),
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMax),
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnFailed)],
-    [260, 70, 80, 90, 60]);
+    cRequestColumnWidths);
   FRequests.Align := alClient;
   FRequests.OnData := RequestsData;
   FRules := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnRule),
@@ -381,7 +395,7 @@ begin
   FRules.OnDblClick := RulesDblClick;
   FUnits := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnUnit),
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMs)],
-    [260, 80]);
+    [cUnitWidth, cNumberWidth]);
   FUnits.Align := alTop;
   FUnits.Top := 0;
   FUnits.OnData := UnitsData;
@@ -392,7 +406,7 @@ procedure TAtlasServerTables.Resize;
 begin
   inherited;
   // Drei gleich hohe Tabellen untereinander; die Anfragen nehmen den Rest.
-  FUnits.Height := Max(Px(60), ClientHeight div 3 - Px(6));
+  FUnits.Height := Max(Px(cTableMinHeight), ClientHeight div cTableCount - Px(cTableGap));
   FRules.Height := FUnits.Height;
 end;
 

@@ -46,8 +46,10 @@ type
 
   /// <summary>Lebt, solange das Fenster lebt; Antworten prüfen es vor dem Zugriff.</summary>
   TAtlasProcessesAlive = class(TInterfacedObject)
+  private
+    FAlive: Boolean;
   public
-    Alive: Boolean;
+    property Alive: Boolean read FAlive write FAlive;
   end;
 
   TAtlasProcessesDialog = class(TAtlasDialog)
@@ -129,13 +131,52 @@ uses
 const
   // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.
   cFootButtonWidth = 110;
+  cButtonHeight = 28;
+  // Höhe einer Textzeile und ihr Abstand nach oben und unten.
+  cLabelHeight = 18;
+  cLabelGap = 2;
+  // Fenstergröße bei 96 dpi und kleinste Größe.
+  cDialogWidth = 760;
+  cDialogHeight = 680;
+  cDialogMinWidth = 520;
+  cDialogMinHeight = 480;
+  // Kopf: Überschrift (zwei Punkt größer) und Auswahl des Arbeitsbereichs.
+  cHeadHeight = 36;
+  cHeadingWidth = 400;
+  cHeadingHeight = 20;
+  cHeadingGrowth = 2;
+  cChoiceWidth = 260;
+  cChoiceHeight = 24;
+  // Zeilen „Cache“, „Sperre“, „Stand“.
+  cInfoRowHeight = 22;
+  cInfoRows = 3;
+  // Fußleiste: Status rechts neben den beiden Knöpfen.
+  cFootHeight = 44;
+  cStatusLeft = 3 * TAtlasProcessesDialog.cGap + 2 * cFootButtonWidth;
+  cStatusTop = 14;
+  cStatusWidth = 300;
+  // Höhen von Protokoll und ungespeicherten Ständen.
+  cLogHeight = 150;
+  cLogFontName = 'Consolas';
+  cLogFontSize = 9;
+  cDirtyHeight = 140;
+  cDirtyFileWidth = 260;
+  cDirtyVersionWidth = 180;
+  // Zählzeile unter der Prozessliste und Spalten der Liste.
+  cCountsHeight = 24;
+  cCountsTop = 4;
+  cBuiltOnceWidth = 400;
+  cCountWidth = 200;
+  cKindWidth = 60;
+  cClientWidth = 380;
+  cStateWidth = 160;
 
 function NewLabel(AOwner: TComponent; AParent: TWinControl; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(AOwner);
   Result.Parent := AParent;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(TAtlasProcessesDialog.cGap, 2, TAtlasProcessesDialog.cGap, 2);
+  Result.Margins.SetBounds(TAtlasProcessesDialog.cGap, cLabelGap, TAtlasProcessesDialog.cGap, cLabelGap);
   Result.Caption := ACaption;
 end;
 
@@ -145,11 +186,11 @@ var
   mName: TLabel;
 begin
   mName := NewLabel(AOwner, AParent, TAtlasStrings.Text(ACaption));
-  mName.SetBounds(TAtlasProcessesDialog.cGap, ATop + 2, TAtlasProcessesDialog.cLabelWidth, 18);
+  mName.SetBounds(TAtlasProcessesDialog.cGap, ATop + cLabelGap, TAtlasProcessesDialog.cLabelWidth, cLabelHeight);
   mName.Font.Color := clGrayText;
   Result := NewLabel(AOwner, AParent, '');
   Result.Left := TAtlasProcessesDialog.cGap + TAtlasProcessesDialog.cLabelWidth + TAtlasProcessesDialog.cGap;
-  Result.Top := ATop + Result.ScaleValue(2);
+  Result.Top := ATop + Result.ScaleValue(cLabelGap);
 end;
 
 function NewButton(AOwner: TComponent; AParent: TWinControl; const ACaption: string; ALeft: Integer;
@@ -157,7 +198,7 @@ function NewButton(AOwner: TComponent; AParent: TWinControl; const ACaption: str
 begin
   Result := TButton.Create(AOwner);
   Result.Parent := AParent;
-  Result.SetBounds(ALeft, 8, 110, 28);
+  Result.SetBounds(ALeft, TAtlasProcessesDialog.cGap, cFootButtonWidth, cButtonHeight);
   Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
@@ -231,10 +272,10 @@ begin
   FAliveRef := FAlive;
   Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone);
   BorderStyle := bsSizeable;
-  Width := ScaleValue(760);
-  Height := ScaleValue(680);
-  Constraints.MinWidth := 520;
-  Constraints.MinHeight := 480;
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
+  Constraints.MinWidth := cDialogMinWidth;
+  Constraints.MinHeight := cDialogMinHeight;
   CreateTop;
   CreateFoot;
   // Protokoll unten, darüber die ungespeicherten Stände; die Prozessliste füllt den Rest.
@@ -258,28 +299,28 @@ var
   mHead, mInfo: TPanel;
 begin
   // Kopf: Gruppe und (ab zwei Arbeitsbereichen) die Auswahl.
-  mHead := NewPanel(Self, alTop, 36);
+  mHead := NewPanel(Self, alTop, cHeadHeight);
   FParts.Heading := NewLabel(Self, mHead, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone));
-  FParts.Heading.SetBounds(cGap, cGap + 2, 400, 20);
+  FParts.Heading.SetBounds(cGap, cGap + cLabelGap, cHeadingWidth, cHeadingHeight);
   FParts.Heading.Font.Style := [fsBold];
-  FParts.Heading.Font.Size := FParts.Heading.Font.Size + 2;
+  FParts.Heading.Font.Size := FParts.Heading.Font.Size + cHeadingGrowth;
   FParts.Choice := TComboBox.Create(Self);
   FParts.Choice.Parent := mHead;
   FParts.Choice.Style := csDropDownList;
-  FParts.Choice.SetBounds(mHead.Width - 260 - cGap, cGap, 260, 24);
+  FParts.Choice.SetBounds(mHead.Width - cChoiceWidth - cGap, cGap, cChoiceWidth, cChoiceHeight);
   FParts.Choice.Anchors := [akTop, akRight];
   FParts.Choice.Visible := False;
   FParts.Choice.OnChange := ChoiceChange;
 
   // Cache, Sperre, Stand.
-  mInfo := NewPanel(Self, alTop, 3 * 22 + cGap);
+  mInfo := NewPanel(Self, alTop, cInfoRows * cInfoRowHeight + cGap);
   mInfo.Top := mHead.Top + mHead.Height;
   FParts.CacheValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesCache, 0);
-  FParts.LockValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesLock, 22);
+  FParts.LockValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesLock, cInfoRowHeight);
   FParts.WriterTag := NewLabel(Self, mInfo, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesWrites));
   FParts.WriterTag.Font.Style := [fsBold];
   FParts.WriterTag.Visible := False;
-  FParts.StateValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesState, 44);
+  FParts.StateValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesState, 2 * cInfoRowHeight);
 end;
 
 procedure TAtlasProcessesDialog.CreateFoot;
@@ -287,7 +328,7 @@ var
   mFoot: TPanel;
   mClose: TButton;
 begin
-  mFoot := NewPanel(Self, alBottom, 44);
+  mFoot := NewPanel(Self, alBottom, cFootHeight);
   FParts.RefreshButton := NewButton(Self, mFoot,
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesRefresh), cGap,
     RefreshClick);
@@ -301,60 +342,60 @@ begin
   mClose.Cancel := True;
   mClose.ModalResult := mrCancel;
   FParts.Status := NewLabel(Self, mFoot, '');
-  FParts.Status.SetBounds(3 * cGap + 220, 14, 300, 18);
+  FParts.Status.SetBounds(cStatusLeft, cStatusTop, cStatusWidth, cLabelHeight);
 end;
 
 procedure TAtlasProcessesDialog.CreateLog;
 var
   mBox: TPanel;
 begin
-  mBox := NewPanel(Self, alBottom, 150);
+  mBox := NewPanel(Self, alBottom, cLogHeight);
   NewLabel(Self, mBox, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesLog)).Align := alTop;
   FParts.Log := TMemo.Create(Self);
   FParts.Log.Parent := mBox;
   FParts.Log.Align := alClient;
   FParts.Log.AlignWithMargins := True;
-  FParts.Log.Margins.SetBounds(cGap, 2, cGap, 0);
+  FParts.Log.Margins.SetBounds(cGap, cLabelGap, cGap, 0);
   FParts.Log.ReadOnly := True;
   FParts.Log.ScrollBars := ssBoth;
   FParts.Log.WordWrap := False;
-  FParts.Log.Font.Name := 'Consolas';
-  FParts.Log.Font.Size := 9;
+  FParts.Log.Font.Name := cLogFontName;
+  FParts.Log.Font.Size := cLogFontSize;
 end;
 
 procedure TAtlasProcessesDialog.CreateDirty;
 var
   mBox: TPanel;
 begin
-  mBox := NewPanel(Self, alBottom, 140);
+  mBox := NewPanel(Self, alBottom, cDirtyHeight);
   NewLabel(Self, mBox, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyCaption)).Align := alTop;
   FParts.DirtyNote := NewLabel(Self, mBox, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesDirtyNote));
   FParts.DirtyNote.Align := alBottom;
   FParts.Dirty := NewList(Self, mBox);
-  FParts.Dirty.Margins.SetBounds(cGap, 2, cGap, 2);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyFile, 260);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyIde, 180);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyMcp, 180);
+  FParts.Dirty.Margins.SetBounds(cGap, cLabelGap, cGap, cLabelGap);
+  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyFile, cDirtyFileWidth);
+  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyIde, cDirtyVersionWidth);
+  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyMcp, cDirtyVersionWidth);
 end;
 
 procedure TAtlasProcessesDialog.CreateList;
 var
   mCounts: TPanel;
 begin
-  mCounts := NewPanel(Self, alBottom, 24);
+  mCounts := NewPanel(Self, alBottom, cCountsHeight);
   FParts.BuiltOnce := NewLabel(Self, mCounts, '');
-  FParts.BuiltOnce.SetBounds(cGap, 4, 400, 18);
+  FParts.BuiltOnce.SetBounds(cGap, cCountsTop, cBuiltOnceWidth, cLabelHeight);
   FParts.Count := NewLabel(Self, mCounts, '');
   FParts.Count.Alignment := taRightJustify;
   FParts.Count.AutoSize := False;
-  FParts.Count.SetBounds(mCounts.Width - 200 - cGap, 4, 200, 18);
+  FParts.Count.SetBounds(mCounts.Width - cCountWidth - cGap, cCountsTop, cCountWidth, cLabelHeight);
   FParts.Count.Anchors := [akTop, akRight];
 
   FParts.List := NewList(Self, Self);
   FParts.List.Margins.SetBounds(cGap, 0, cGap, 0);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnKind, 60);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnClient, 380);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnState, 160);
+  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnKind, cKindWidth);
+  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnClient, cClientWidth);
+  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnState, cStateWidth);
 end;
 
 procedure TAtlasProcessesDialog.ChoiceChange(Sender: TObject);
