@@ -23,7 +23,8 @@ type
     /// <summary>Unter AIID bereitgestellte Objekte laufender Module (und solche ohne Modul) in Reihenfolge der
     /// Bereitstellung; ohne Registry leer.</summary>
     class function Active(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID): TArray<IInterface>; static;
-    /// <summary>Erster aktiver Beitrag unter AIID als Interface AIID in AItem; False (AItem nil) ohne.</summary>
+    /// <summary>Erster aktiver Beitrag unter AIID als Interface AIID in AItem (eine Interface-Variable dieses
+    /// Typs); False und nil ohne.</summary>
     class function First(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID; out AItem): Boolean; static;
     /// <summary>Befehl mit Kennung, Beschriftung, Aktion und Sichtbarkeit; übrige Felder leer.</summary>
     class function NewCommand(const AId, ACaption: string; const ARun: TProc;
@@ -78,22 +79,6 @@ begin
       Result := Result + [mItem.Instance];
     end;
   end;
-end;
-
-class function TAtlasModuleContributions.First(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID;
-  out AItem): Boolean;
-var
-  mItem: IInterface;
-begin
-  IInterface(AItem) := nil;
-  for mItem in Active(ARegistry, AIID) do
-  begin
-    if Supports(mItem, AIID, AItem) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 class function TAtlasModuleContributions.NewCommand(const AId, ACaption: string; const ARun: TProc;
@@ -304,6 +289,22 @@ begin
           Result := Result + ['IAtlasFollowsSaves: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
   end;
+end;
+
+class function TAtlasModuleContributions.First(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID;
+  out AItem): Boolean;
+var
+  mItem: IInterface;
+begin
+  IInterface(AItem) := nil;
+  for mItem in Active(ARegistry, AIID) do
+  begin
+    if Supports(mItem, AIID, AItem) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TAtlasModuleContributions.HoverValue(const ARegistry: IAtlasModuleRegistry; const AExpression: string;

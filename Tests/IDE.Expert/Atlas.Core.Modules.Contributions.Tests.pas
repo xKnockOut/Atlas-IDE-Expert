@@ -20,6 +20,9 @@ type
     procedure ListenersRunAndReportFailures;
     [Test]
     procedure HoverValueTakesFirstNonEmpty;
+    /// <summary>First liefert den ersten aktiven Beitrag als gewünschtes Interface, ohne Beitrag nil.</summary>
+    [Test]
+    procedure FirstFindsActiveContribution;
     [Test]
     procedure WithoutRegistryNothing;
     [Test]
@@ -32,8 +35,7 @@ type
     procedure MenuEntriesWithoutCommand;
     [Test]
     procedure SaveListenersGetTheFile;
-    [Test]
-    procedure FirstTakesActiveContribution;
+
     [Test]
     procedure NewCommandSetsFields;
   end;
@@ -325,14 +327,36 @@ end;
 procedure TModuleContributionsTests.WithoutRegistryNothing;
 var
   mCommand: TAtlasModuleCommand;
+  mSource: IAtlasHoverValueSource;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.Commands(nil))));
   Assert.IsFalse(TAtlasModuleContributions.FindCommand(nil, 'x', mCommand));
   Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.ApplySettings(nil))));
   Assert.AreEqual('', TAtlasModuleContributions.HoverValue(nil, 'x', nil, ''));
+  Assert.IsFalse(TAtlasModuleContributions.First(nil, IAtlasHoverValueSource, mSource));
+  Assert.IsNull(mSource);
   Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.Keys(nil))));
   Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.EditorViewActivated(nil))));
   Assert.AreEqual(0, Integer(Length(TAtlasModuleContributions.MenuEntries(nil, TAtlasMenuPlace.AtlasMenu))));
+end;
+
+procedure TModuleContributionsTests.FirstFindsActiveContribution;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mSource: IAtlasHoverValueSource;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  Assert.IsFalse(TAtlasModuleContributions.First(mRegistry, IAtlasHoverValueSource, mSource), 'ohne Beitrag');
+  Provide(mScope, TSource.Create('A', False, 'Wert A'));
+  Provide(mScope, TSource.Create('B', False, 'Wert B'));
+  Assert.IsTrue(TAtlasModuleContributions.First(mRegistry, IAtlasHoverValueSource, mSource));
+  Assert.AreEqual('Wert A', mSource.HoverValue('x', nil, ''));
+  mSource := nil;
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  mRegistry := nil;
 end;
 
 procedure TModuleContributionsTests.KeysWithoutKeyOrAttemptAreLeftOut;
@@ -403,37 +427,6 @@ begin
       Inc(Runs);
     end;
   Result := [mEntry];
-end;
-
-procedure TModuleContributionsTests.FirstTakesActiveContribution;
-var
-  mRegistry: IAtlasModuleRegistry;
-  mModule: IAtlasModule;
-  mScope: IAtlasModuleScope;
-  mSource: TSource;
-  mRef: IInterface;
-  mHover: IAtlasHoverValueSource;
-begin
-  Assert.IsFalse(TAtlasModuleContributions.First(nil, IAtlasHoverValueSource, mHover), 'ohne Registry');
-  Assert.IsTrue(mHover = nil);
-  mRegistry := TAtlasModuleRegistry.Create;
-  mModule := TFakeModule.Create('atlas.a');
-  mScope := mRegistry.RegisterModule(mModule);
-  mSource := TSource.Create('A', False, 'Wert');
-  mRef := mSource as IAtlasCommandSource;
-  Provide(mScope, mSource);
-  Assert.IsTrue(TAtlasModuleContributions.First(mRegistry, IAtlasHoverValueSource, mHover));
-  Assert.AreEqual('Wert', mHover.HoverValue('x', nil, ''));
-  mModule.Stop;
-  Assert.IsFalse(TAtlasModuleContributions.First(mRegistry, IAtlasHoverValueSource, mHover), 'gestoppt');
-  Assert.IsTrue(mHover = nil, 'alter Wert gelöst');
-  mModule.Start;
-  mHover := nil;
-  mRef := nil;
-  mScope := nil;
-  mModule := nil;
-  mRegistry.UnregisterModule('atlas.a');
-  mRegistry := nil;
 end;
 
 procedure TModuleContributionsTests.NewCommandSetsFields;

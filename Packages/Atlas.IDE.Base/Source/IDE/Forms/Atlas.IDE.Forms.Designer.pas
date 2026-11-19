@@ -190,16 +190,6 @@ begin
   end;
 end;
 
-function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
-var
-  mNative: INTAFormEditor;
-begin
-  Result := nil;
-  if Supports(AEditor, INTAFormEditor, mNative) then
-  begin
-    Result := mNative.FormDesigner;
-  end;
-end;
 
 function TextOf(const AEditor: IOTAFormEditor): string;
 var
@@ -208,7 +198,7 @@ var
 begin
   Result := '';
   mRoot := TAtlasIdeDesignerView.RootOf(AEditor);
-  mDesigner := DesignerOf(AEditor);
+  mDesigner := TAtlasIdeDesignerView.DesignerOf(AEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit;
@@ -585,7 +575,7 @@ var
 begin
   mEditor := EditorOf(AFileName);
   mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
-  mDesigner := DesignerOf(mEditor);
+  mDesigner := TAtlasIdeDesignerView.DesignerOf(mEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit(UiText(TDesignerText.FormIsNoLongerOpen));

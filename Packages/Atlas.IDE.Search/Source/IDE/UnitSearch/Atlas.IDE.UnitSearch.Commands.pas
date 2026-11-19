@@ -92,7 +92,8 @@ uses
   Atlas.UI.UnitSearch.Window,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.ActionHook;
+  Atlas.IDE.Foundation.ActionHook,
+  Atlas.IDE.Foundation.EditorBuffer;
 
 type
   /// <summary>Hängt sich an OnExecute der IDE-Aktion „Units“, „Unit verwenden“ oder „Formulare“ und gibt sie
@@ -228,17 +229,6 @@ begin
     end;
   end;
   TAtlasUnitSearchPlan.GroupInfo(mGroupFile, mProjectFile, AGroupFile, AActiveProject, ARoot);
-end;
-
-function TopFile: string;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.TopBuffer <> nil) then
-  begin
-    Result := mEditors.TopBuffer.FileName;
-  end;
 end;
 
 { TAtlasIdeUnitSearch }
@@ -579,7 +569,7 @@ begin
     end;
     Exit;
   end;
-  mTargetFile := TopFile;
+  mTargetFile := TAtlasEditorBuffer.TopFileName;
   if (AMode = TAtlasUnitSearchMode.UseUnit) and not TAtlasIdeUnitSearchActions.UsesTarget(mTargetFile) then
   begin
     Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchUsesNone));

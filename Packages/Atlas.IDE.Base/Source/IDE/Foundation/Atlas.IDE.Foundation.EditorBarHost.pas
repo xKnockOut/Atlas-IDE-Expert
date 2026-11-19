@@ -58,6 +58,20 @@ type
   /// <summary>In welcher Ansicht des Editorfensters die Leiste erscheint (für Aufrufer ohne Placement).</summary>
   TAtlasEditorBarView = Atlas.IDE.Foundation.EditorBarPlacement.TAtlasEditorBarView;
 
+  /// <summary>Zustand eines Leisten-Dienstes (Editorleiste, Statusleiste, Designer-Leiste), solange er läuft.
+  /// </summary>
+  TAtlasEditorBarState = class abstract
+  public
+    /// <summary>Einstellungen neu anwenden.</summary>
+    procedure Reset; virtual; abstract;
+    /// <summary>Farben des Themas neu anwenden.</summary>
+    procedure ApplyTheme; virtual; abstract;
+    /// <summary>Reset von AState; nil (Dienst gestoppt) übergeht es.</summary>
+    class procedure ResetOf(AState: TAtlasEditorBarState); static;
+    /// <summary>ApplyTheme von AState; nil (Dienst gestoppt) übergeht es.</summary>
+    class procedure ThemeOf(AState: TAtlasEditorBarState); static;
+  end;
+
   TAtlasEditorBarHost = class
   public type
     /// <summary>Neue Leiste für das Eltern-Steuerelement des Editors; noch ohne Parent.</summary>
@@ -495,6 +509,24 @@ end;
 function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
 begin
   Result := Contains(ABar) and ABar.Visible;
+end;
+
+{ TAtlasEditorBarState }
+
+class procedure TAtlasEditorBarState.ResetOf(AState: TAtlasEditorBarState);
+begin
+  if AState <> nil then
+  begin
+    AState.Reset;
+  end;
+end;
+
+class procedure TAtlasEditorBarState.ThemeOf(AState: TAtlasEditorBarState);
+begin
+  if AState <> nil then
+  begin
+    AState.ApplyTheme;
+  end;
 end;
 
 end.

@@ -39,7 +39,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Features,
   Atlas.IDE.CodeInsight.Composition.Settings,
   Atlas.IDE.CodeInsight.Composition.Services,
-  Atlas.IDE.CodeInsight.Composition.Leftovers;
+  Atlas.IDE.CodeInsight.Composition.Leftovers,
+  Atlas.Core.Diagnostics.ModuleHost;
 
 /// <summary>Sicherung, Protokoll, Stacktraces, Sprache, Versionsverwaltung und Atlas-Symbol: vor allen Teilen.
 /// </summary>
@@ -257,25 +258,8 @@ begin
   end;
 end;
 
-/// <summary>Einträge in den Hauptthread verfallen mit ihrem Modul: Die Registry meldet Ab- und Anmelden mit dem
-/// Handle des Packages an TAtlasMainThread. Schon in der Initialisierung: Module können sich anmelden, bevor die
-/// IDE Register von Base ruft (Regel 1).</summary>
-procedure ConnectModuleQueue;
-begin
-  TAtlasModuleRegistry.OnModuleClosing :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.CloseModule(AHandle);
-    end;
-  TAtlasModuleRegistry.OnModuleOpened :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.OpenModule(AHandle);
-    end;
-end;
-
 initialization
-  ConnectModuleQueue;
+  TAtlasModuleHost.ConnectMainThread;
 
 finalization
   Unregister;

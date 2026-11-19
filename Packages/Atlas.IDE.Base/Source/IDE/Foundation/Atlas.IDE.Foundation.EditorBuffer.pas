@@ -41,6 +41,8 @@ type
     class function TopView: IOTAEditView; static;
     /// <summary>Wie TopView, aber nil, wenn die Ansicht keinen Puffer hat.</summary>
     class function TopSourceView: IOTAEditView; static;
+    /// <summary>Datei des obersten Editorpuffers (IOTAEditorServices.TopBuffer); '' ohne.</summary>
+    class function TopFileName: string; static;
     /// <summary>Ist AWnd das Editorfenster der IDE (TEditControl)?</summary>
     class function IsEditorWindow(AWnd: HWND): Boolean; static;
     /// <summary>Zeigt das aktuelle Modul gerade seinen Formular-Editor statt des Codes? Dann gehören Tasten dem
@@ -233,6 +235,17 @@ begin
   if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
     Result := mEditors.TopView;
+  end;
+end;
+
+class function TAtlasEditorBuffer.TopFileName: string;
+var
+  mEditors: IOTAEditorServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.TopBuffer <> nil) then
+  begin
+    Result := mEditors.TopBuffer.FileName;
   end;
 end;
 

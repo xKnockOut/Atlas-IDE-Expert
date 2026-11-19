@@ -134,7 +134,8 @@ uses
   Atlas.IDE.Debug.Processes,
   Atlas.UI.Debug.LaunchGroupsDialog,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Core.Foundation.Calls,
+  Atlas.IDE.Foundation.Debugger;
 
 const
   cActiveWhat = 'debug launch groups';
@@ -153,14 +154,6 @@ begin
     TAtlasIdeLaunchActive.cFileName);
 end;
 
-function Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 function NowMs: UInt64;
 begin
   Result := TThread.GetTickCount64;
@@ -173,7 +166,7 @@ var
   mIndex: Integer;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (APid = 0) then
   begin
     Exit;
@@ -423,7 +416,7 @@ begin
   begin
     // Die Kennung kennt erst die Prozessliste: neuer Prozess mit diesem Pfad (TrackPid).
     FKnown := TAtlasReattach.Pids(TAtlasIdeDebugProcesses.Named(TAtlasReattach.NameOf(mStarted.Exe), False));
-    Debugger.CreateProcess(mStarted.Exe, mArgs);
+    TAtlasIdeDebugger.Services.CreateProcess(mStarted.Exe, mArgs);
   end
   else
   begin
@@ -625,7 +618,7 @@ var
   mProcess: IOTAProcess;
   mCurrentPid: Cardinal;
 begin
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

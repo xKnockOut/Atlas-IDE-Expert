@@ -49,8 +49,6 @@ type
   public const
     cChunkSize = 64 * 1024;
   public
-    /// <summary>Thread des angehaltenen Prozesses (psStopped, psFault, psException); sonst nil.</summary>
-    class function StoppedThread: IOTAThread; static;
     class function SideEffects(AEvaluation: TAtlasVisualizerEvaluation): TOTAEvalSideEffects; static;
     /// <summary>Wertet AExpression im angehaltenen Thread aus; False bei Fehler, ohne angehaltenen Prozess oder nach
     /// ATimeoutMs.</summary>
@@ -66,7 +64,8 @@ type
 implementation
 
 uses
-  Winapi.Windows;
+  Winapi.Windows,
+  Atlas.IDE.Hover.DebugValue;
 
 const
   cBufferSize = 4096;
@@ -143,24 +142,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeDebugEvaluator.StoppedThread: IOTAThread;
-var
-  mDebugger: IOTADebuggerServices;
-  mProcess: IOTAProcess;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
-  begin
-    Exit;
-  end;
-  mProcess := mDebugger.CurrentProcess;
-  if (mProcess = nil) or not (mProcess.ProcessState in [psStopped, psFault, psException]) then
-  begin
-    Exit;
-  end;
-  Result := mProcess.CurrentThread;
-end;
-
 class function TAtlasIdeDebugEvaluator.SideEffects(AEvaluation: TAtlasVisualizerEvaluation): TOTAEvalSideEffects;
 begin
   case AEvaluation of
@@ -185,7 +166,7 @@ var
 begin
   AText := '';
   Result := False;
-  mThread := StoppedThread;
+  mThread := TAtlasIdeDebugValues.StoppedThread;
   if (mThread = nil) or (AExpression = '') or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;

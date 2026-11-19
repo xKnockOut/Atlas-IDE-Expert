@@ -78,7 +78,8 @@ uses
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.DataBreakpoints.Strings,
-  Atlas.UI.Debug.InstanceBreakpoint;
+  Atlas.UI.Debug.InstanceBreakpoint,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeInstanceBreakpoint.TListener }
 
@@ -190,7 +191,7 @@ var
   mFound: TList<IOTABreakpoint>;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

@@ -174,7 +174,6 @@ end;
 
 class function TAtlasIdeCodeQueryWindow.Show: TAtlasCodeQueryFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;
