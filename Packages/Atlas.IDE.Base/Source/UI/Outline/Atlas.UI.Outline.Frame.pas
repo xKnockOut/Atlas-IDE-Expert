@@ -172,7 +172,6 @@ uses
   System.Math,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Strings,
   Atlas.UI.Outline.Strings,
   Atlas.UI.Foundation.ListBox,
   Atlas.UI.Foundation.WrapLabel,
@@ -198,15 +197,18 @@ const
   cButtonHeight = 24;
   /// <summary>Tag der Menüeinträge „Alle zeigen“.</summary>
   cTagAll = -1;
-  cKindTexts: array[0..7] of TAtlasTextId = (TAtlasTextId.OutlineKindTypes, TAtlasTextId.OutlineKindFields,
-    TAtlasTextId.OutlineKindMethods, TAtlasTextId.OutlineKindProperties, TAtlasTextId.OutlineKindConstants,
-    TAtlasTextId.OutlineKindVariables, TAtlasTextId.OutlineKindRoutines, TAtlasTextId.OutlineKindEnumMembers);
+  cKindTexts: array[0..7] of TAtlasOutlineTextId = (TAtlasOutlineTextId.OutlineKindTypes,
+    TAtlasOutlineTextId.OutlineKindFields, TAtlasOutlineTextId.OutlineKindMethods,
+    TAtlasOutlineTextId.OutlineKindProperties, TAtlasOutlineTextId.OutlineKindConstants,
+    TAtlasOutlineTextId.OutlineKindVariables, TAtlasOutlineTextId.OutlineKindRoutines,
+    TAtlasOutlineTextId.OutlineKindEnumMembers);
   cKindCategories: array[0..7] of TAtlasOutlineCategory = (TAtlasOutlineCategory.TypeDecl,
     TAtlasOutlineCategory.Field, TAtlasOutlineCategory.Method, TAtlasOutlineCategory.PropertyDecl,
     TAtlasOutlineCategory.Constant, TAtlasOutlineCategory.Variable, TAtlasOutlineCategory.Routine,
     TAtlasOutlineCategory.EnumMember);
-  cVisibilityTexts: array[0..3] of TAtlasTextId = (TAtlasTextId.OutlineVisPrivate, TAtlasTextId.OutlineVisProtected,
-    TAtlasTextId.OutlineVisPublic, TAtlasTextId.OutlineVisPublished);
+  cVisibilityTexts: array[0..3] of TAtlasOutlineTextId = (TAtlasOutlineTextId.OutlineVisPrivate,
+    TAtlasOutlineTextId.OutlineVisProtected, TAtlasOutlineTextId.OutlineVisPublic,
+    TAtlasOutlineTextId.OutlineVisPublished);
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -296,8 +298,8 @@ begin
   FVisibilityMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cVisibilityTexts) do
   begin
-    AddMenuItem(FVisibilityMenu, TAtlasStrings.Text(cVisibilityTexts[mIndex]), mIndex, VisibilityItemClick).Checked :=
-      True;
+    AddMenuItem(FVisibilityMenu, TAtlasOutlineStrings.Text(cVisibilityTexts[mIndex]), mIndex,
+      VisibilityItemClick).Checked := True;
   end;
 
   FKindMenu := TPopupMenu.Create(Self);
@@ -305,7 +307,7 @@ begin
   FKindMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cKindTexts) do
   begin
-    AddMenuItem(FKindMenu, TAtlasStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
+    AddMenuItem(FKindMenu, TAtlasOutlineStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
   end;
 
   FListMenu := TPopupMenu.Create(Self);
