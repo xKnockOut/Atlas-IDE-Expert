@@ -87,6 +87,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **354 check rules** while you type: 235 bugs, 108 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
+- **Findings as a task for an AI assistant:** "Copy as task for an AI assistant" in the "Atlas Findings" window (also several findings, grouped per file) and in the editor puts rule, message, code excerpt, explanation and the MCP tool to verify the fix into the clipboard
 - **Compiler messages explained:** the hover shows the typical cause of a dcc or IDE message such as E2003 or W1035 below the message, with the links "Explain" (dialog with a wrong and a right example) and "DocWiki"; about 40 messages in English and German, also without dcc (`hover.explainMessages`)
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Experimental style rules with few false alarms:** `hardcoded-string` skips log, check and comparison calls, date masks and markup; `magic-number` skips the DPI base 96, full bit masks, time units and point lists; `naming-prefix` keeps the parameter names of event handlers assigned in code; `public-field` skips helper classes under `private type`
@@ -127,7 +128,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Set up leak check …** in the project context menu: shows what leak hunting still needs (FastMM4/FastMM5 found, first unit in uses, report on shutdown, defines and DLL of the Debug configuration) and sets up the chosen variant with a preview, for the Debug build only (`tests.leakSetup`)
 - **Test from a debug stop:** "Create test …" in the exception bar turns the values of the stop into a DUnitX test that works or expects the exception
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, variables window (autos, locals, watch, search also in children), smart step into, call stack window with named parameter values, search and comparison with the last stop; run time since the last stop at the end of the line
-- **Breakpoints:** own "Breakpoints" window with search, tags and hit counts; breakpoints on methods by pattern, only for one object, **break when a field changes**, rules (dependent, hit condition, thread), named sets, check before starting; they move with the code, “run to here” by clicking the gutter
+- **Breakpoints:** own "Breakpoints" window with search, tags and hit counts; breakpoints on methods by pattern, only for one object, **break when a field changes**, rules (dependent, hit condition, thread, **only when called from a given method**), named sets, check before starting; they move with the code, “run to here” by clicking the gutter
 - **“Why am I here?” and predicting conditions:** at a stop, the surrounding `if`, `while` and `case` show the values of their conditions, the upcoming ones the predicted results; skipped branches are dimmed
 - **Values in the debug hover:** expand them (changed values highlighted, old value behind), **change** them directly (F2) and **pin** them
 - **Restart** with Ctrl+Shift+F2 (stop, build if changed, start, back to the same place), **reattach to a process** (Shift+Alt+P) and **debug several programs together** (launch groups `launchGroups` in `.atlas`)
@@ -166,10 +167,15 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **33 MCP tools** to read, check, build, test, rename and fix Delphi code
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
+- **Last test run without a new run:** `get_last_tests` returns what the IDE saw in the last test run: red tests with file:line, expected and actual, log excerpt and the marks newly red, green again, flaky, leak and stale (`tests.lastRun`)
 - **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
+- **Where you are in the IDE:** `get_ide_context` tells AI assistants the open file with cursor and method, the selection, the active project with configuration and platform, the last build and the tabs, so "this method" needs no copying (`assistants.context`)
+- **Several queries at once:** `batch` runs up to 10 read-only MCP tools in one call, on one shared index state with a single file comparison; an error affects only its section
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
 - **AI assistant active:** the Atlas status field shows what an AI assistant is building or changing through the IDE; a click pauses AI assistants (“pause for AI”, `assistants.banner`)
+- **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)
+- **Protected files:** `assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md`), with reason and the right way; the writing MCP tools refuse such changes without writing anything, the hook refuses or reports them
 
 ### Planned
 

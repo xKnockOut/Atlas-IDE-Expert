@@ -13,6 +13,9 @@
 // - Teil „AssistantBanner“: Feld „KI-Assistent aktiv“ im Statusfeld mit Pause
 //   für KI-Assistenten (#1906), solange assistants.banner an ist.
 // - den Befehl „Pause für KI-Assistenten“ in der Palette (#1906).
+// - Teil „AssistantContext“: Zustand der IDE für get_ide_context (#2050),
+//   solange assistants.context an ist; den letzten Build bekommt er über
+//   IAtlasBuildVerdictListener.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog.
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
 // (TAtlasAssistantsActivity), gehört dem Modul und lebt von der Anmeldung bis
@@ -27,10 +30,13 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Build.Events,
+  Atlas.Core.Build.Messages,
+  Atlas.Core.Build.Verdict;
 
 type
-  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource)
+  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasBuildVerdictListener)
   public const
     cModuleId = 'atlas.assistants';
     cSwitch = 'assistants';
@@ -44,6 +50,8 @@ type
     function IsActive: Boolean;
     /// <summary>Befehl „Pause für KI-Assistenten“ (#1906).</summary>
     function Commands: TArray<TAtlasModuleCommand>;
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
@@ -68,6 +76,7 @@ uses
   Atlas.IDE.Assistants.EditInbox,
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
+  Atlas.IDE.Assistants.ContextExport,
   Atlas.UI.Assistants.SettingsSection;
 
 const
@@ -79,6 +88,7 @@ var
   GBuildInbox: TAtlasIdeBuildInbox;
   GEditInbox: TAtlasIdeEditInbox;
   GBanner: TAtlasIdeAssistantsBanner;
+  GContext: TAtlasIdeContextExport;
 
 { Dienste von Base und anderer Module }
 
@@ -189,6 +199,21 @@ begin
   end;
 end;
 
+procedure StartContext;
+begin
+  GContext := TAtlasIdeContextExport.Create;
+end;
+
+procedure StopContext;
+begin
+  FreeAndNil(GContext);
+end;
+
+function ContextStarted: Boolean;
+begin
+  Result := GContext <> nil;
+end;
+
 { TAtlasAssistantsModule }
 
 class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
@@ -211,7 +236,13 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsBanner;
-      end, BannerStarted, StartBanner, StopBanner)];
+      end, BannerStarted, StartBanner, StopBanner),
+    // Zustand der IDE für get_ide_context (#2050): solange assistants.context an ist.
+    TAtlasFeaturePart.When('AssistantContext',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsContext;
+      end, ContextStarted, StartContext, StopContext)];
 end;
 
 function TAtlasAssistantsModule.Commands: TArray<TAtlasModuleCommand>;
@@ -246,6 +277,16 @@ begin
   Result := FActive;
 end;
 
+procedure TAtlasAssistantsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+begin
+  // Letzter Build für den IDE-Zustand (#2050); ohne laufenden Teil nichts.
+  if GContext <> nil then
+  begin
+    GContext.BuildRemembered(AMessages, AProject, AVerdict);
+  end;
+end;
+
 class function TAtlasAssistantsModule.RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
@@ -263,6 +304,8 @@ begin
   mModule := TAtlasAssistantsModule.Create;
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
+  // Letzter Build für den IDE-Zustand (#2050).
+  GScope.Provide(IAtlasBuildVerdictListener, mModule as IAtlasBuildVerdictListener);
   for mPart in Parts do
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);

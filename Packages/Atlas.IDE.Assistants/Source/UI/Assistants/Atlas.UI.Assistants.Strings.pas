@@ -14,7 +14,9 @@ type
     McpEditApplied, UndoActionMcp,
     // Anzeige „KI-Assistent aktiv“ mit Pause (#1906).
     SettingsBanner, BannerBuilding, BannerEdited, BannerPaused, BannerHintActive, BannerHintPaused,
-    PauseOn, PauseOff, RefusedPaused, PauseCommandOn, PauseCommandOff, PauseCommandHint);
+    PauseOn, PauseOff, RefusedPaused, PauseCommandOn, PauseCommandOff, PauseCommandHint,
+    // IDE-Zustand für KI-Assistenten (#2050).
+    SettingsContext, SettingsContextSelection, SettingsContextSelectionMax, ContextKind);
 
   TAtlasAssistantsStrings = class
   public
@@ -56,7 +58,11 @@ const
      'Pause für KI-Assistenten',
      'Pause für KI-Assistenten aufheben',
      'Hält KI-Assistenten (MCP-Clients) an: Neue Builds und Änderungen an offenen Dateien lehnt die IDE mit Grund ' +
-       'ab, bis die Pause aufgehoben ist.'),
+       'ab, bis die Pause aufgehoben ist.',
+     'IDE-Zustand für KI-Assistenten bereitstellen (Datei, Cursor, Methode, Projekt, Build; get_ide_context)',
+     'Markierten Text mitgeben',
+     'Höchstens Zeichen der Auswahl',
+     'IDE-Zustand für KI-Assistenten'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -81,7 +87,11 @@ const
      'Pause AI assistants',
      'End pause for AI assistants',
      'Pauses AI assistants (MCP clients): the IDE refuses new builds and changes to open files with a reason ' +
-       'until the pause ends.'));
+       'until the pause ends.',
+     'Provide the IDE state to AI assistants (file, cursor, method, project, build; get_ide_context)',
+     'Include the selected text',
+     'At most characters of the selection',
+     'IDE state for AI assistants'));
 
 { TAtlasAssistantsStrings }
 

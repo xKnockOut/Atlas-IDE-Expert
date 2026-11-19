@@ -3,7 +3,7 @@
 // Atlas-Layout der Willkommensseite (#753, frei anordnen #767), ohne VCL und
 // Open Tools API: welche Bereiche in welcher Spalte, in welcher Reihenfolge
 // und wie breit stehen.
-// TAtlasWelcomeLayout.Atlas ist die Anordnung aus dem Mockup (links
+// TAtlasWelcomeLayout.Atlas ist die Standardanordnung (links
 // Weiterarbeiten, Projekte, Projektverlauf, Testergebnisse; rechts
 // Zustandskachel, Nicht gesichert, Neu in Atlas, Atlas entdecken, Projekt
 // einrichten, Meine Issues, Hilfe). Arrange verteilt die eingeschalteten
@@ -68,7 +68,7 @@ type
     Columns: Integer;
     /// <summary>Plätze in Lesereihenfolge; innerhalb einer Spalte gilt diese Reihenfolge.</summary>
     Slots: TArray<TAtlasWelcomeSlot>;
-    /// <summary>Anordnung aus dem Mockup (#753, mit den späteren Bereichen #762–#766).</summary>
+    /// <summary>Standardanordnung (#753, mit den Bereichen #762–#766).</summary>
     class function Atlas: TAtlasWelcomeLayout; static;
     /// <summary>Platz von AId; False, wenn das Layout den Bereich nicht kennt.</summary>
     function SlotOf(const AId: string; out ASlot: TAtlasWelcomeSlot): Boolean;
@@ -225,7 +225,7 @@ class function TAtlasWelcomeLayout.Atlas: TAtlasWelcomeLayout;
 begin
   Result.Name := cDefaultName;
   Result.Columns := 2;
-  // Testergebnisse (#763) nach dem Projektverlauf (Mockup WS17), Nicht gesichert (#762) unter der Kachel,
+  // Testergebnisse (#763) nach dem Projektverlauf, Nicht gesichert (#762) unter der Kachel,
   // Meine Issues (#765), Sprint (#1277) und Hilfe (#766) am Ende der rechten Spalte.
   Result.Slots := [
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cContinue, 0),

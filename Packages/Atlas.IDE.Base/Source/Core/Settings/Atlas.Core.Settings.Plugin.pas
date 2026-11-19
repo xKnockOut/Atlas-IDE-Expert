@@ -101,6 +101,8 @@ type
     cMaxTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsBoundaryMax;
     cMinTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMinTestsLogMaxLines;
     cMaxTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMaxTestsLogMaxLines;
+    cMinAssistantsContextSelectionMax = Atlas.Core.Settings.Plugin.Build.cMinAssistantsContextSelectionMax;
+    cMaxAssistantsContextSelectionMax = Atlas.Core.Settings.Plugin.Build.cMaxAssistantsContextSelectionMax;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -386,6 +388,11 @@ type
     property AssistantsEnabled: Boolean read FBuild.AssistantsEnabled write FBuild.AssistantsEnabled;
     property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
     property AssistantsBanner: Boolean read FBuild.AssistantsBanner write FBuild.AssistantsBanner;
+    property AssistantsContext: Boolean read FBuild.AssistantsContext write FBuild.AssistantsContext;
+    property AssistantsContextSelection: Boolean read FBuild.AssistantsContextSelection
+      write FBuild.AssistantsContextSelection;
+    property AssistantsContextSelectionMax: Integer read FBuild.AssistantsContextSelectionMax
+      write FBuild.AssistantsContextSelectionMax;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
     property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram
@@ -447,6 +454,7 @@ type
     property TestsListsRunKey: Integer read FBuild.TestsListsRunKey write FBuild.TestsListsRunKey;
     property TestsLog: Boolean read FBuild.TestsLog write FBuild.TestsLog;
     property TestsLogMaxLines: Integer read FBuild.TestsLogMaxLines write FBuild.TestsLogMaxLines;
+    property TestsLastRun: Boolean read FBuild.TestsLastRun write FBuild.TestsLastRun;
     property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
     property TestsBoundaryCases: Boolean read FBuild.TestsBoundaryCases write FBuild.TestsBoundaryCases;

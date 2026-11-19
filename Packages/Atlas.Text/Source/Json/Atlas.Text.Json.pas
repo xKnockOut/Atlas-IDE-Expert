@@ -38,6 +38,8 @@ type
     /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
     /// </summary>
     class function Strings(const AItems: array of string): TJSONArray; static;
+    /// <summary>AValue unter AName in AObject; ein leerer Wert bleibt weg.</summary>
+    class procedure AddText(AObject: TJSONObject; const AName, AValue: string); static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -186,6 +188,14 @@ begin
   for mItem in AItems do
   begin
     Result.Add(mItem);
+  end;
+end;
+
+class procedure TJsonBuild.AddText(AObject: TJSONObject; const AName, AValue: string);
+begin
+  if AValue <> '' then
+  begin
+    AObject.AddPair(AName, AValue);
   end;
 end;
 
