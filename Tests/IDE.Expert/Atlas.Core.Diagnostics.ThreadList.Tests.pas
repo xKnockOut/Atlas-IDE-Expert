@@ -108,9 +108,11 @@ var
   mDone: Boolean;
 begin
   mDone := False;
-  mRelease := TEvent.Create(nil, True, False, '');
-  mList := TAtlasThreadList.Create;
+  mRelease := nil;
+  mList := nil;
   try
+    mRelease := TEvent.Create(nil, True, False, '');
+    mList := TAtlasThreadList.Create;
     mList.Start(
       procedure
       begin

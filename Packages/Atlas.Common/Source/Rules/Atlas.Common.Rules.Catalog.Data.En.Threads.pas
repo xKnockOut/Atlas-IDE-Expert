@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnThreads: array[0..225] of string = (
+  cCatalogLinesEnThreads: array[0..247] of string = (
     '{',
     '      "id": "thread-vcl-access",',
     '      "name": "VCL access from a thread",',
@@ -225,6 +225,42 @@ const
     '      "bad": "TTask.Run(\n  procedure\n  begin\n    Importieren(Datei);\n  end);",',
     '      "good": "TTask.Run(\n  procedure\n  begin\n    try\n      Importieren(Datei);\n    except\n      on E: Exception do\n      begin\n        var Fehler := E.Message;\n        TThread.Queue(nil,\n  ' +
     '        procedure\n          begin\n            ShowMessage(Fehler);\n          end);\n      end;\n    end;\n  end);",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "thread-execute-without-except",',
+    '      "name": "Exception in TThread.Execute ends the thread silently",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "threads",',
+    '      "description": "An override of Execute in a descendant of TThread (from the unit and the index, also through own thread ancestors) whose body is not entirely inside a try … except that catches e' +
+    'very exception (except without on, on E: Exception, on TObject or an else part). An exception that leaves Execute ends the thread silently: Delphi only stores it in FatalException, and nothing reports' +
+    ' it unless someone reads that property. Also allowed around the guard: try … finally and a leading NameThreadForDebugging. A body that only calls one routine (also with a method reference as argument,' +
+    ' inherited, a method of the class or a nested routine) counts as guarded when that routine is guarded itself; if its body is not in the unit, the finding has low confidence and names the routine. Sile' +
+    'nt when the class evaluates FatalException: another method of the class or an ancestor (DoTerminate) reads it, a routine that names the class reads it (code after WaitFor, OnTerminate handler) or assi' +
+    'gns such an OnTerminate handler, or another project unit names the class and FatalException (index with index.usages). High confidence. Quick fix only when the class has a field of type ILogger: wrap ' +
+    'the body in try … except on E: Exception do and log the message with Error (adds System.SysUtils when missing); without a log no fix, so no empty handler appears. catch-all-without-raise stays silent ' +
+    'for this outer handler.",',
+    '      "bad": "procedure TIndexWorker.Execute;\nbegin\n  while not Terminated do\n    ProcessNext;\nend;",',
+    '      "good": "procedure TIndexWorker.Execute;\nbegin\n  try\n    while not Terminated do\n      ProcessNext;\n  except\n    on E: Exception do\n      FLogger.Error(ClassName + ''.Execute: '' + E.Messag' +
+    'e);\n  end;\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "sleep-polling-loop",',
+    '      "name": "Waiting loop with Sleep instead of an event",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "threads",',
+    '      "description": "A while or repeat loop whose body only waits with Sleep or SleepEx (optionally with a counter, a time measurement in local variables or a time check that leaves with Exit, Break ' +
+    'or raise) and whose condition reads state outside the routine: a field, a property, a global variable or a function (not only local variables, constants, time functions or Terminated). Such a loop rea' +
+    'cts late (up to one Sleep interval), costs CPU time on every pass and hangs silently when the state never changes. The message names the polled state and the replacement: TThread.WaitFor for Finished,' +
+    ' ITask.Wait for Status, otherwise TEvent.WaitFor or TLightweightEvent.WaitFor with a timeout. Silent when the body does other work, when it already waits on an event, for Sleep(0) (yielding in a spin ' +
+    'lock), for conditions that repeat an action (a call with arguments such as TryReplace(…)), for the time limit itself (a comparison with GetTickCount64 or ElapsedMilliseconds), for loops in anonymous m' +
+    'ethods (checked on their own) and where another rule already reports the loop: methods of thread classes without Terminated in the loop (thread-loop-without-terminated) and methods that run in the mai' +
+    'n thread such as forms, frames and event handlers (blocking-call-in-main-thread). Medium confidence; no quick fix, because the event has to be set where the state changes.",',
+    '      "bad": "procedure TAtlasBuildInbox.WaitForSignal;\nbegin\n  while not FSignalled do\n    Sleep(25);\nend;",',
+    '      "good": "procedure TAtlasBuildInbox.WaitForSignal;\nbegin\n  FSignal.WaitFor(cTimeoutMs);\nend;",',
     '      "safeFix": false',
     '    },',
     '{',

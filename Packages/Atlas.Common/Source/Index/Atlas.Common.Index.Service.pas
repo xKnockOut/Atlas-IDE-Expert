@@ -603,15 +603,21 @@ end;
 procedure TIndexThread.Execute;
 begin
   NameThreadForDebugging('Atlas.Index');
-  // Erst den abgebrochenen Vorgänger beenden: Builder und Cache-Dateien gehören immer nur einem Aufbau.
-  if FPrevious <> nil then
-  begin
-    FPrevious.WaitFor;
-    FreeAndNil(FPrevious);
-  end;
-  if not FCancelled then
-  begin
-    FService.Run(FRequest, IsCancelled, Pause);
+  // Auch ein Fehler beim Warten auf den Vorgänger geht an OnError, statt ungelesen in FatalException zu liegen.
+  try
+    // Erst den abgebrochenen Vorgänger beenden: Builder und Cache-Dateien gehören immer nur einem Aufbau.
+    if FPrevious <> nil then
+    begin
+      FPrevious.WaitFor;
+      FreeAndNil(FPrevious);
+    end;
+    if not FCancelled then
+    begin
+      FService.Run(FRequest, IsCancelled, Pause);
+    end;
+  except
+    on E: Exception do
+      FService.ReportError(E);
   end;
 end;
 

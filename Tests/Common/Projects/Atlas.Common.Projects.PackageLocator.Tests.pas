@@ -201,9 +201,11 @@ var
   mContains: Boolean;
   mCount: Integer;
 begin
-  mReads := TList<string>.Create;
-  mLocator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), cBasisDpk)], mReads));
+  mReads := nil;
+  mLocator := nil;
   try
+    mReads := TList<string>.Create;
+    mLocator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), cBasisDpk)], mReads));
     mLocator.Provides('Basis', 'uBasis', mContains);
     mCount := mReads.Count;
     mLocator.Provides('BASIS', 'uHilfe', mContains);
@@ -319,9 +321,11 @@ begin
   TDirectory.CreateDirectory(mFolder);
   TFile.WriteAllBytes(TPath.Combine(mFolder, 'Geteilt.dcp'), TEncoding.ASCII.GetBytes('xx GETEILT.EINS yy'));
   mBefore := TPackageCompiledFiles.Bytes;
-  mFirst := TPackageLocator.Create([mFolder]);
-  mSecond := TPackageLocator.Create([mFolder]);
+  mFirst := nil;
+  mSecond := nil;
   try
+    mFirst := TPackageLocator.Create([mFolder]);
+    mSecond := TPackageLocator.Create([mFolder]);
     Assert.IsTrue(mFirst.Provides('Geteilt', 'Geteilt.Eins', mContains));
     Assert.IsTrue(mContains);
     Assert.IsTrue(mSecond.Provides('Geteilt', 'Geteilt.Eins', mContains));

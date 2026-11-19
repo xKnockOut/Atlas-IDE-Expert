@@ -111,23 +111,31 @@ var
   mWork: TProc;
 begin
   try
-    while FPool.Take(Self, mWork) do
-    begin
-      try
-        mWork();
-      except
-        // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Arbeitsthreads; der Dispatcher meldet Fehler selbst
-        on Exception do
-        begin
+    try
+      while FPool.Take(Self, mWork) do
+      begin
+        try
+          mWork();
+        except
+          // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Arbeitsthreads; der Dispatcher meldet Fehler selbst
+          on Exception do
+          begin
+          end;
         end;
+        // Erfasstes des Auftrags nicht bis zum nächsten festhalten.
+        mWork := nil;
       end;
-      // Erfasstes des Auftrags nicht bis zum nächsten festhalten.
-      mWork := nil;
+    finally
+      FPool.Leave(Self);
+      // Letzte Referenz: Der Pool kann mit dem Thread enden, wenn Close nicht mehr auf ihn wartet.
+      FKeep := nil;
     end;
-  finally
-    FPool.Leave(Self);
-    // Letzte Referenz: Der Pool kann mit dem Thread enden, wenn Close nicht mehr auf ihn wartet.
-    FKeep := nil;
+  except
+    on E: Exception do
+    begin
+      // Take und Leave scheitern nur bei Speichermangel; der Pool verschluckt Ausnahmen wie die der Aufträge.
+      FKeep := nil;
+    end;
   end;
 end;
 

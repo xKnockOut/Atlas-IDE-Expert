@@ -122,9 +122,11 @@ begin
       AContext := RulesWith(AMemo);
       Result := True;
     end;
-  mActions := TLspCodeActions.Create(mStore, mProvider);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mActions := nil;
+  mDispatcher := nil;
   try
+    mActions := TLspCodeActions.Create(mStore, mProvider);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mActions.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/codeAction",' +
       '"params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"range":{"start":{"line":' +
@@ -336,9 +338,11 @@ var
   mFound: TArray<TRuleFinding>;
 begin
   mMemo := TRuleFindingsMemo.Create;
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
+  mStarted := nil;
+  mGo := nil;
   try
+    mStarted := TEvent.Create(nil, True, False, '');
+    mGo := TEvent.Create(nil, True, False, '');
     mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
     try
       Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
@@ -368,9 +372,11 @@ var
   mThread: TThread;
 begin
   mMemo := TRuleFindingsMemo.Create;
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
+  mStarted := nil;
+  mGo := nil;
   try
+    mStarted := TEvent.Create(nil, True, False, '');
+    mGo := TEvent.Create(nil, True, False, '');
     mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
     try
       Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
@@ -405,9 +411,11 @@ var
   mFound: TArray<TRuleFinding>;
 begin
   mMemo := TRuleFindingsMemo.Create;
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
+  mStarted := nil;
+  mGo := nil;
   try
+    mStarted := TEvent.Create(nil, True, False, '');
+    mGo := TEvent.Create(nil, True, False, '');
     mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
     try
       Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
@@ -447,9 +455,11 @@ var
   mFound: TArray<TRuleFinding>;
 begin
   mMemo := TRuleFindingsMemo.Create;
-  mStarted := TEvent.Create(nil, True, False, '');
-  mGo := TEvent.Create(nil, True, False, '');
+  mStarted := nil;
+  mGo := nil;
   try
+    mStarted := TEvent.Create(nil, True, False, '');
+    mGo := TEvent.Create(nil, True, False, '');
     mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
     try
       Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));

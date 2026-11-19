@@ -176,6 +176,29 @@ end;
 
 { TShellDiagnosticsTests }
 
+function NewHover(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AFileName: string): TLspHover;
+begin
+  Result := TLspHover.Create(AStore, AIndex,
+    function(const AName: string; out AText: string): Boolean
+    begin
+      Result := SameText(AName, AFileName);
+      AText := cMarkerUnit;
+    end,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := False;
+    end);
+end;
+
+function NewCompletion(const AStore: IDocumentStore; const AIndex: ISymbolIndex): TLspCompletion;
+begin
+  Result := TLspCompletion.Create(AStore, AIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := False;
+    end);
+end;
+
 procedure TShellDiagnosticsTests.RunSession(AEnabled: Boolean);
 var
   mFolder, mFileName, mUri: string;
@@ -197,23 +220,13 @@ begin
   mStore.Open(mUri, 'delphi', 3, cMarkerUnit);
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cMarkerUnit, mFileName, nil));
-  mHover := TLspHover.Create(mStore, mIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := SameText(AFileName, mFileName);
-      AText := cMarkerUnit;
-    end,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := False;
-    end);
-  mCompletion := TLspCompletion.Create(mStore, mIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := False;
-    end);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mHover := nil;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mHover := NewHover(mStore, mIndex, mFileName);
+    mCompletion := NewCompletion(mStore, mIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mHover.Attach(mDispatcher);
     mCompletion.Attach(mDispatcher);
     mDiagnostics := TShellDiagnostics.Create(FLogFolder, 'test', mStore, mIndex);

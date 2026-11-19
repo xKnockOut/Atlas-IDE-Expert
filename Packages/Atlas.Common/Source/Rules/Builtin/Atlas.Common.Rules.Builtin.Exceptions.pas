@@ -3,7 +3,8 @@
 // Exception-Regeln (#277, abgetrennt aus #57):
 //   generic-exception-raised    raise Exception.Create(…) statt einer eigenen Klasse
 //   catch-all-without-raise     on E: Exception do ohne raise; nur für Bibliothekscode,
-//                               deshalb Standard aus und über Profile/Pfadregeln einzuschalten (#146)
+//                               deshalb Standard aus und über Profile/Pfadregeln einzuschalten (#146);
+//                               still im äußeren Handler von TThread.Execute
 //   exception-freed             Exception-Objekt nach raise bzw. im Handler zusätzlich freigegeben
 //   exception-in-destructor     raise in einem Destruktor, das kein except im Destruktor abfängt (#927)
 //   except-handler-order        on-Handler, der nie erreicht wird, weil ein früherer die Klasse schon fängt (#957)
@@ -92,6 +93,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -429,6 +431,31 @@ end;
 
 { TCatchAllWithoutRaiseRule }
 
+/// <summary>Knoten des Ausnahme-Handlers, der bei AOffset beginnt; nil ohne.</summary>
+function HandlerNode(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
+begin
+  Result := nil;
+  if ATree.Root <> nil then
+  begin
+    Result := ATree.Root.Search(
+      function(ANode: TSyntaxNode): TSyntaxSearchStep
+      begin
+        if (ANode.StartOffset > AOffset) or (ANode.EndOffset <= AOffset) then
+        begin
+          Result := TSyntaxSearchStep.Skip;
+        end
+        else if (ANode.Kind = TSyntaxKind.ExceptionHandler) and (ANode.StartOffset = AOffset) then
+        begin
+          Result := TSyntaxSearchStep.Found;
+        end
+        else
+        begin
+          Result := TSyntaxSearchStep.Descend;
+        end;
+      end);
+  end;
+end;
+
 function TCatchAllWithoutRaiseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('catch-all-without-raise', TRuleSeverity.Warning,
@@ -461,7 +488,9 @@ begin
         mRaises := True;
       end;
     end;
-    if not mRaises then
+    // Der äußere Handler von TThread.Execute fängt zu Recht ohne erneutes Auslösen (thread-execute-without-except).
+    if not mRaises and not (ContainsText(AContext.Text, 'Execute') and
+      IsThreadExecuteGuard(AContext, HandlerNode(AContext.Tree, mTokens[mHandler.OnToken].Offset))) then
     begin
       AReport.Add(RangeOf(mTokens, mHandler.OnToken, mHandler.DoToken), cTexts[TExceptionsText.CatchAll].Text,
         TRuleConfidence.Medium);

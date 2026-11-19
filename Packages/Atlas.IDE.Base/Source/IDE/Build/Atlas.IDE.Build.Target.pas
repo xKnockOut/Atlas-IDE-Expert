@@ -73,7 +73,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Core.Diagnostics.Guard;
 
 { TAtlasIdeBuildTarget.TRequest }
 
@@ -98,24 +99,31 @@ var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
 begin
-  mArguments := FArguments;
-  // ExecuteCommand übernimmt die Argumente.
-  FArguments := nil;
-  mAnswer := FSession.ExecuteCommand(cSelectBuildCommand, mArguments, cRequestTimeoutMs);
-  if Terminated then
-  begin
-    mAnswer.Free;
-    Exit;
-  end;
-  Queue(
-    procedure
+  try
+    mArguments := FArguments;
+    // ExecuteCommand übernimmt die Argumente.
+    FArguments := nil;
+    mAnswer := FSession.ExecuteCommand(cSelectBuildCommand, mArguments, cRequestTimeoutMs);
+    if Terminated then
     begin
-      try
-        FDone(mAnswer);
-      finally
-        mAnswer.Free;
-      end;
-    end);
+      mAnswer.Free;
+      Exit;
+    end;
+    Queue(
+      procedure
+      begin
+        try
+          FDone(mAnswer);
+        finally
+          mAnswer.Free;
+        end;
+      end);
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
+    end;
+  end;
 end;
 
 { TAtlasIdeBuildTarget }

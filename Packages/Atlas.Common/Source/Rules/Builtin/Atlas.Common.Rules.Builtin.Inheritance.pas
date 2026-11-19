@@ -42,6 +42,9 @@
 //                                       (#1144): tut nichts, meist fehlt override. Nicht in Konstruktoren,
 //                                       Destruktoren und Message-Handlern; unbekannter Vorfahr: still.
 //                                       Korrektur entfernt das inherited
+//   virtual-call-in-constructor         Konstruktor ruft eine virtuelle Methode, deren Überschreibung in
+//                                       einem Nachfahren ein Feld liest, das erst nach inherited gesetzt
+//                                       wird (#2623, Unit Inheritance.Constructors)
 //
 // Vorfahren werden zuerst in der Datei, dann im Symbolindex gesucht (auch RTL
 // und VCL, soweit eingelesen). Ist ein Vorfahr nicht auflösbar oder mehrdeutig,
@@ -63,7 +66,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls,
   Atlas.Common.Rules.Builtin.Inheritance.Abstract,
   Atlas.Common.Rules.Builtin.Inheritance.ClassReferences,
-  Atlas.Common.Rules.Builtin.Inheritance.MemberHides;
+  Atlas.Common.Rules.Builtin.Inheritance.MemberHides,
+  Atlas.Common.Rules.Builtin.Inheritance.Constructors;
 
 type
   /// <summary>Liegt in Atlas.Common.Rules.Builtin.Inheritance.Ancestry.</summary>
@@ -126,6 +130,9 @@ type
 
   /// <summary>Liegt in Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.</summary>
   TInheritedWithoutAncestorRule = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.TInheritedWithoutAncestorRule;
+
+  /// <summary>Liegt in Atlas.Common.Rules.Builtin.Inheritance.Constructors.</summary>
+  TVirtualCallInConstructorRule = Atlas.Common.Rules.Builtin.Inheritance.Constructors.TVirtualCallInConstructorRule;
 
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
@@ -421,6 +428,7 @@ begin
   ARegistry.Register(TOverrideCaseMismatchRule.Create);
   ARegistry.Register(TOverrideOnlyInheritedRule.Create);
   ARegistry.Register(TInheritedWithoutAncestorRule.Create);
+  ARegistry.Register(TVirtualCallInConstructorRule.Create);
 end;
 
 initialization

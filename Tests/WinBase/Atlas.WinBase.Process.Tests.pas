@@ -202,8 +202,10 @@ var
   mLong: TLongStarter;
   mIndex: Integer;
   mEofMs, mWorstMs: Int64;
+  mLongFailure: string;
 begin
   mWorstMs := 0;
+  mLongFailure := '';
   mLong := TLongStarter.Create(False);
   try
     Sleep(100);
@@ -218,8 +220,14 @@ begin
   finally
     mLong.Terminate;
     mLong.WaitFor;
+    // Endet der Hintergrund-Thread mit einer Ausnahme, starten keine langen Prozesse mehr: Der Test sagt dann nichts.
+    if mLong.FatalException is Exception then
+    begin
+      mLongFailure := Exception(mLong.FatalException).Message;
+    end;
     mLong.Free;
   end;
+  Assert.AreEqual('', mLongFailure);
   Assert.IsTrue(mWorstMs < cMaxEofMs, Format('Dateiende erst nach %d ms', [mWorstMs]));
 end;
 

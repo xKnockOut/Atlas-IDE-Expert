@@ -292,9 +292,11 @@ var
   mJson: string;
   mMarks: TArray<TAtlasTestRunMark>;
 begin
-  mHistory := TAtlasTestHistory.Create;
-  mLoaded := TAtlasTestHistory.Create;
+  mHistory := nil;
+  mLoaded := nil;
   try
+    mHistory := TAtlasTestHistory.Create;
+    mLoaded := TAtlasTestHistory.Create;
     RunAddiert(mHistory, FSource, [True, False, True], 0);
     mJson := mHistory.ToJson('C:\Projekt\Tests\RechnerTests.dproj');
     Assert.IsTrue(Pos('"format":1', mJson) > 0, mJson);
