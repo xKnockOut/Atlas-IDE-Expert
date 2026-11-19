@@ -130,15 +130,6 @@ begin
   end;
 end;
 
-/// <summary>Zeitpunkt aus ISO 8601; 0, wenn der Text fehlt oder ungültig ist.</summary>
-function DateOf(const AText: string): TDateTime;
-begin
-  if (AText = '') or not TryISO8601ToDate(AText, Result, False) then
-  begin
-    Result := 0;
-  end;
-end;
-
 { TServerStatusEntry }
 
 function TServerStatusEntry.KindOrLsp: string;
@@ -231,7 +222,7 @@ begin
   AEntry.Target := TJsonRead.Text(AObject, 'target');
   AEntry.LogFile := TJsonRead.Text(AObject, 'logFile');
   AEntry.Version := TJsonRead.Text(AObject, 'version');
-  AEntry.Started := DateOf(TJsonRead.Text(AObject, 'started'));
+  AEntry.Started := TJsonRead.IsoTime(AObject, 'started', False);
   AEntry.MemoryBytes := TJsonRead.Int64Or(AObject, 'memoryBytes', 0);
   AEntry.State := TJsonRead.Text(AObject, 'state');
   ReadActivity(AObject, AEntry);

@@ -229,6 +229,8 @@ Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
 Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
+Atlas.Common.Mcp.IdeInbox.Tests
+Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Lsp.ImplementationSites.Tests
 Atlas.Common.Mcp.ImplementationTools.Tests
