@@ -19,6 +19,7 @@ interface
 uses
   System.SysUtils,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WorkspacePlan;
 
@@ -26,14 +27,14 @@ type
   /// <summary>Texte einer Aktion: Titel, Frage nach dem Namen, Fehler (%s), nichts zu tun, Hinweis der Vorschau
   /// (%d Stellen, %d Dateien), Knopf, Ergebnis (%d Änderungen, %d Dateien), Warnung (%s).</summary>
   TAtlasNamedRefactoringTexts = record
-    Title: TAtlasTextId;
-    Prompt: TAtlasTextId;
-    Failed: TAtlasTextId;
-    Nothing: TAtlasTextId;
-    PreviewHint: TAtlasTextId;
-    Apply: TAtlasTextId;
-    Done: TAtlasTextId;
-    Warning: TAtlasTextId;
+    Title: TAtlasEditorTextId;
+    Prompt: TAtlasEditorTextId;
+    Failed: TAtlasEditorTextId;
+    Nothing: TAtlasEditorTextId;
+    PreviewHint: TAtlasEditorTextId;
+    Apply: TAtlasEditorTextId;
+    Done: TAtlasEditorTextId;
+    Warning: TAtlasEditorTextId;
   end;
 
   TAtlasIdeNamedRefactoring = class
@@ -95,20 +96,20 @@ begin
   end;
   if mReply.Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Text(ATexts.Nothing));
+    AMessage(TAtlasEditorStrings.Text(ATexts.Nothing));
     Exit;
   end;
-  mHint := TAtlasStrings.Fmt(ATexts.PreviewHint, [mPlaces, mFiles]);
+  mHint := TAtlasEditorStrings.Fmt(ATexts.PreviewHint, [mPlaces, mFiles]);
   if mExplanation <> '' then
   begin
     mHint := mHint + sLineBreak + mExplanation;
   end;
   mHint := mHint + TAtlasIdeServerEdit.WarningLines(mReply, ATexts.Warning);
-  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(ATexts.Title), mHint, TAtlasStrings.Text(ATexts.Apply),
-    mReply.Edit) and TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(ATexts.Title), AMessage,
+  if TAtlasIdeServerEdit.Confirm(TAtlasEditorStrings.Text(ATexts.Title), mHint, TAtlasEditorStrings.Text(ATexts.Apply),
+    mReply.Edit) and TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasEditorStrings.Text(ATexts.Title), AMessage,
     mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(ATexts.Done, [mOutcome.Edits, mOutcome.Files]));
+    AMessage(TAtlasEditorStrings.Fmt(ATexts.Done, [mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, ATexts.Warning, AMessage);
   end;
 end;

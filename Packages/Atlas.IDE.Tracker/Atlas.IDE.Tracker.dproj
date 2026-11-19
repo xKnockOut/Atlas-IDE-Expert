@@ -116,6 +116,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssue.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssuePlan.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.KnownErrors.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Connections.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Contract.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Contract.Files.pas"/>
@@ -226,6 +227,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueCommands.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesStatus.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CurrentIssue.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.KnownErrors.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesQuery.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueStart.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.LinkedStart.pas"/>

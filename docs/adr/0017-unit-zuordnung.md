@@ -327,6 +327,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Contracts.LineChanges` | `Contracts/Atlas.IDE.Contracts.LineChanges.pas` | Vertrag Änderungsmarken und Zeilenhistorie (#1905) |
 | `Atlas.IDE.Contracts.GhostSuggestions` | `Contracts/Atlas.IDE.Contracts.GhostSuggestions.pas` | Vertrag für Anbieter von Schattentext-Vorschlägen nach Enter (gelernte Vorschläge, später weitere), #1890 |
 | `Atlas.IDE.Contracts.IssueWork` | `Contracts/Atlas.IDE.Contracts.IssueWork.pas` | Vertrag Arbeitsstand je Issue zwischen Willkommensseite und Tracker (#2052) |
+| `Atlas.IDE.Contracts.KnownErrors` | `Contracts/Atlas.IDE.Contracts.KnownErrors.pas` | Vertrag bekannte Fehler beim Exception-Halt zwischen Debugger und Tracker (#2460) |
 | `Atlas.IDE.Contracts.MouseHistory` | `Contracts/Atlas.IDE.Contracts.MouseHistory.pas` | Vertrag Fenster mit eigenem Verlauf für die Maustasten Zurück/Vor (#1889) |
 | `Atlas.IDE.Contracts.Tests` | `Contracts/Atlas.IDE.Contracts.Tests.pas` | Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455 |
 | `Atlas.IDE.Contracts.DebugReport` | `Contracts/Atlas.IDE.Contracts.DebugReport.pas` | Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), Vertrag zwischen Modulen, #1455 |
@@ -500,6 +501,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.VersionControl.BranchNames` | `Core/VersionControl/Atlas.Core.VersionControl.BranchNames.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.BranchPlan` | `Core/VersionControl/Atlas.Core.VersionControl.BranchPlan.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.ExternalRules` | `Core/VersionControl/Atlas.Core.VersionControl.ExternalRules.pas` | Regeln für SVN-Externals (#1291) als JSON und Text; Base (Einstellungen) und das Modul VersionControl nutzen sie |
+| `Atlas.Core.KnownErrors.Contract` | `Core/KnownErrors/Atlas.Core.KnownErrors.Contract.pas` | Daten der bekannten Fehler beim Exception-Halt (Halt, Treffer, Antwort) für Debugger und Tracker, die Interfaces in `Atlas.IDE.Contracts.KnownErrors` (#2460) |
 | `Atlas.Core.VersionControl.Contract` | `Core/VersionControl/Atlas.Core.VersionControl.Contract.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.Internals.SvnExternals` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnExternals.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.Internals.SvnLayout` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnLayout.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
@@ -1005,6 +1007,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.EventBreakWatch` | `Core/Debug/Atlas.Core.Debug.EventBreakWatch.pas` | Beim nächsten Ereignis anhalten: Art des Setzens, Pause, neuer Halt, Zahl der Stellen, #1967 |
 | `Atlas.Core.Debug.DataBreak` | `Core/Debug/Atlas.Core.Debug.DataBreak.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DataBreakPatterns` | `Core/Debug/Atlas.Core.Debug.DataBreakPatterns.pas` | Anhalten bei Datenzugriff: Musterabgleich SQL/HTTP, Zeichenketten des Debuggers, #870 |
+| `Atlas.Core.Debug.DataBreakWatch` | `Core/Debug/Atlas.Core.Debug.DataBreakWatch.pas` | Anhalten bei Datenzugriff: neuer Halt, Auswertung und Entscheidung an einer Haltestelle, #870 |
 | `Atlas.Core.Debug.MethodBreakpoints` | `Core/Debug/Atlas.Core.Debug.MethodBreakpoints.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.MethodGroupFlow` | `Core/Debug/Atlas.Core.Debug.MethodGroupFlow.pas` | Entscheidungen der Methodenhaltepunkte ohne IDE (Startgruppe, gesehene Treffer, Umschalten, Meldung), #1967 |
 | `Atlas.Core.Debug.InstanceBreakpoint` | `Core/Debug/Atlas.Core.Debug.InstanceBreakpoint.pas` | Ordner `Core/Debug` |
@@ -1012,6 +1015,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.ExceptionBanner` | `Core/Debug/Atlas.Core.Debug.ExceptionBanner.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBarFlow` | `Core/Debug/Atlas.Core.Debug.ExceptionBarFlow.pas` | Exception-Leiste: Warten auf die Anzeige, Tasten, abgedeckter Halt, Ort ignorieren, #1967 |
 | `Atlas.Core.Debug.ExceptionBarLayout` | `Core/Debug/Atlas.Core.Debug.ExceptionBarLayout.pas` | Exception-Leiste: Zeilen, Höhe, Lage der Knöpfe und der Ortszeile |
+| `Atlas.Core.Debug.KnownErrors` | `Core/Debug/Atlas.Core.Debug.KnownErrors.pas` | Bekannte Fehler beim Exception-Halt: Anfrage an den Tracker, Knöpfe, #2460 |
 | `Atlas.Core.Debug.ExceptionDialog` | `Core/Debug/Atlas.Core.Debug.ExceptionDialog.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionDialogFlow` | `Core/Debug/Atlas.Core.Debug.ExceptionDialogFlow.pas` | Entscheidungen beim Exception-Dialog der IDE ohne IDE (Formulare, Ausblenden, Ablauf, Knöpfe), #1967 |
 | `Atlas.Core.Debug.Modules` | `Core/Debug/Atlas.Core.Debug.Modules.pas` | Ordner `Core/Debug` |
@@ -1090,6 +1094,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.EvaluateWindow` | `IDE/Debug/Atlas.IDE.Debug.EvaluateWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Evaluator` | `IDE/Debug/Atlas.IDE.Debug.Evaluator.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.EventBreak` | `IDE/Debug/Atlas.IDE.Debug.EventBreak.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.DataBreak` | `IDE/Debug/Atlas.IDE.Debug.DataBreak.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.RunMenu` | `IDE/Debug/Atlas.IDE.Debug.RunMenu.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Modules` | `IDE/Debug/Atlas.IDE.Debug.Modules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Deadlocks` | `IDE/Debug/Atlas.IDE.Debug.Deadlocks.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Threads` | `IDE/Debug/Atlas.IDE.Debug.Threads.pas` | Ordner `IDE/Debug` |
@@ -1106,6 +1112,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.ObjectMarks` | `IDE/Debug/Atlas.IDE.Debug.ObjectMarks.pas` | Objekte beim Debuggen markieren: Befehl, Etiketten an Werten, Abgleich beim Halt, Fenster „Markierte Objekte“, #839 |
 | `Atlas.IDE.Debug.Leaks` | `IDE/Debug/Atlas.IDE.Debug.Leaks.pas` | Leckbericht am Ende einer Debug-Sitzung einsammeln, Kandidaten vom Server, Sprung, #1875 |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.KnownErrors` | `IDE/Debug/Atlas.IDE.Debug.KnownErrors.pas` | Bekannte Fehler beim Exception-Halt in der Leiste, Vertrag IAtlasKnownErrors, #2460 |
 | `Atlas.IDE.Debug.ExceptionRules` | `IDE/Debug/Atlas.IDE.Debug.ExceptionRules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionDialog` | `IDE/Debug/Atlas.IDE.Debug.ExceptionDialog.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Exceptions` | `IDE/Debug/Atlas.IDE.Debug.Exceptions.pas` | Ordner `IDE/Debug` |
@@ -1180,6 +1187,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.EvaluateTreeView` | `UI/Debug/Atlas.UI.Debug.EvaluateTreeView.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.VariablesParts` | `UI/Debug/Atlas.UI.Debug.VariablesParts.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventBreak` | `UI/Debug/Atlas.UI.Debug.EventBreak.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.DataBreak` | `UI/Debug/Atlas.UI.Debug.DataBreak.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.StopBar` | `UI/Debug/Atlas.UI.Debug.StopBar.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionBar` | `UI/Debug/Atlas.UI.Debug.ExceptionBar.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionBarPainter` | `UI/Debug/Atlas.UI.Debug.ExceptionBarPainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
@@ -1208,6 +1217,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.DataBreakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.DataBreakpoints.Strings.pas` | Texte des Debuggers: Datenhaltepunkte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.MethodBreakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.MethodBreakpoints.Strings.pas` | Texte des Debuggers: Methodenhaltepunkte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.EventBreak.Strings` | `UI/Debug/Atlas.UI.Debug.EventBreak.Strings.pas` | Texte des Debuggers: beim nächsten Ereignis anhalten, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.DataBreak.Strings` | `UI/Debug/Atlas.UI.Debug.DataBreak.Strings.pas` | Texte des Debuggers: Anhalten bei Datenzugriff, Sprache von Base, #870 |
 | `Atlas.UI.Debug.Logpoints.Strings` | `UI/Debug/Atlas.UI.Debug.Logpoints.Strings.pas` | Texte des Debuggers: Logpunkte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Note.Strings` | `UI/Debug/Atlas.UI.Debug.Note.Strings.pas` | Texte des Debuggers: Debug-Notiz, Sprache von Base, #582 |
 | `Atlas.UI.Debug.OpenedFiles.Strings` | `UI/Debug/Atlas.UI.Debug.OpenedFiles.Strings.pas` | Texte des Debuggers: vom Debugger geöffnete Dateien, Sprache von Base, #842 |
@@ -1294,6 +1304,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CurrentIssue` | `Core/Tracker/Atlas.Core.Tracker.CurrentIssue.pas` | Ordner `Core/Tracker`, begonnenes Issue für KI-Assistenten, #2051 |
 | `Atlas.Core.Tracker.CurrentIssuePlan` | `Core/Tracker/Atlas.Core.Tracker.CurrentIssuePlan.pas` | Ordner `Core/Tracker`, Aufbau und Ablage von atlas-current-issue.json, #2051 |
+| `Atlas.Core.Tracker.KnownErrors` | `Core/Tracker/Atlas.Core.Tracker.KnownErrors.pas` | Ordner `Core/Tracker`, Signatur, Suche und Zwischenspeicher bekannter Fehler beim Exception-Halt, #2460 |
 | `Atlas.Core.Tracker.Connections` | `Core/Tracker/Atlas.Core.Tracker.Connections.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Contract` | `Core/Tracker/Atlas.Core.Tracker.Contract.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Contract.Files` | `Core/Tracker/Atlas.Core.Tracker.Contract.Files.pas` | Ordner `Core/Tracker`; Verträge für Platte und Shell des Trackers (Paket 2d) |
@@ -1401,6 +1412,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.CurrentIssue` | `IDE/Tracker/Atlas.IDE.Tracker.CurrentIssue.pas` | Ordner `IDE/Tracker`, begonnenes Issue für KI-Assistenten, #2051 |
+| `Atlas.IDE.Tracker.KnownErrors` | `IDE/Tracker/Atlas.IDE.Tracker.KnownErrors.pas` | Ordner `IDE/Tracker`, bekannte Fehler beim Exception-Halt für den Debugger (IAtlasKnownErrors), #2460 |
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssueStart` | `IDE/Tracker/Atlas.IDE.Tracker.IssueStart.pas` | Ordner `IDE/Tracker`, „Beginnen“ und „Beenden“, #1455 |
 | `Atlas.IDE.Tracker.LinkedStart` | `IDE/Tracker/Atlas.IDE.Tracker.LinkedStart.pas` | Ordner `IDE/Tracker`, verknüpfter Branch beim „Beginnen“, #2138 |
