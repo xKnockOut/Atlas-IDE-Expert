@@ -31,8 +31,9 @@ uses
   Atlas.Core.Commands.Contract;
 
 type
-  /// <summary>Ohne Referenzzählung (TNoRefCountObject): Die Composition gibt die Palette frei.</summary>
-  TAtlasIdePalette = class(TNoRefCountObject, IAtlasCommandRegistry)
+  /// <summary>Die Composition gibt die Palette frei; als IAtlasCommandRegistry reicht sie
+  /// Atlas.IDE.Commands.Adapters.PaletteRegistry weiter.</summary>
+  TAtlasIdePalette = class
   private type
     TBinding = class(TNotifierObject, IOTAKeyboardBinding)
     private
@@ -63,9 +64,9 @@ type
     function IsVisible(const AId: string): Boolean;
     /// <summary>Sichtbare Befehle der angemeldeten Module (#1455, IAtlasCommandSource), bei jedem Aufruf neu
     /// gefragt: Sie kommen und gehen mit ihrem Modul.</summary>
-    function ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
+    class function ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>; static;
     /// <summary>Befehl AId eines Moduls ausführen; False, wenn ihn keins anbietet.</summary>
-    function RunModuleCommand(const AId: string): Boolean;
+    class function RunModuleCommand(const AId: string): Boolean; static;
     /// <summary>Tasten aller Atlas-Befehle, einmal je Aufruf ausgewertet (ShortCutsOf); nil ohne.</summary>
     function ShortCuts: TFunc<string, string>;
     /// <summary>Atlas-Befehl mit seiner Taste aus AShortCuts (nil: ohne Taste).</summary>
@@ -301,7 +302,7 @@ begin
   Result := not FVisible.TryGetValue(AId, mVisible) or mVisible();
 end;
 
-function TAtlasIdePalette.ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
+class function TAtlasIdePalette.ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
 var
   mModuleCommand: TAtlasModuleCommand;
   mCommand: TAtlasCommand;
@@ -321,7 +322,7 @@ begin
   end;
 end;
 
-function TAtlasIdePalette.RunModuleCommand(const AId: string): Boolean;
+class function TAtlasIdePalette.RunModuleCommand(const AId: string): Boolean;
 var
   mCommand: TAtlasModuleCommand;
 begin

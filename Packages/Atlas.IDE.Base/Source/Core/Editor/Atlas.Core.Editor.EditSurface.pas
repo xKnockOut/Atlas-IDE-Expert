@@ -5,7 +5,7 @@
 // mehrere Einfügemarken): Datei, Text, Cursor und Markierung, Schreiben als
 // ein Rückgängig-Schritt, Rückgängig und Wiederholen. Der Vertrag (IAtlasEditSurface) steht in
 // Atlas.Core.Editor.Contract; die IDE setzt ihn über IOTAEditView um
-// (Atlas.IDE.Editor.EditSurface), die Tests über einen Text mit
+// (Atlas.IDE.Editor.Adapters.EditSurface), die Tests über einen Text mit
 // Rückgängig-Stapel (Atlas.Tests.EditSurfaceFake).
 // Zeilen und Zeichen sind 0-basiert, Zeichen in UTF-16-Einheiten wie im LSP.
 // Nur im Hauptthread.

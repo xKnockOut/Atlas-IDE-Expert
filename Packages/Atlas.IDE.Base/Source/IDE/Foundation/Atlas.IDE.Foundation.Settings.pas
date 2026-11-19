@@ -3,7 +3,8 @@
 // Einstellungen des Plugins in der Registry (HKCU\Software\Atlas\IdePlugin,
 // #227) und der aktuelle Stand für alle Teile des Plugins. Gelesen wird
 // einmal beim ersten Zugriff, geschrieben über Update (Optionsseite, gezogene
-// Breiten, eingeklapptes Panel).
+// Breiten, eingeklapptes Panel). Die Ablage in der Registry setzt die
+// Kompositionswurzel ein (StoreFactory, Atlas.IDE.Foundation.Adapters.RegistryStore).
 // Schnellschalter (#604): Current liefert die wirksamen Werte, also die
 // gespeicherten mit den Sitzungswerten darüber (nur für diese Sitzung, „Alles
 // aus“); Stored die gespeicherten für Optionsseite und Update. Sitzungswerte
@@ -45,12 +46,20 @@ uses
 type
   PAtlasPluginSettings = ^TAtlasPluginSettings;
 
+  /// <summary>Ablage der gespeicherten Plugin-Einstellungen (Registry); AWrite: zum Schreiben öffnen. Muss auch
+  /// IAtlasSettingsNames unterstützen.</summary>
+  TAtlasSettingsStoreFactory = reference to function(AWrite: Boolean): IAtlasSettingsStore;
+
   TAtlasIdeSettings = class
   private class var
     FOnChanged: TProc;
+    FStoreFactory: TAtlasSettingsStoreFactory;
   private
     class procedure EnsureLoaded; static;
     class procedure Changed; static;
+    /// <summary>Ablage in der Registry (AWrite: zum Schreiben); ohne StoreFactory eine leere Ablage im Speicher.
+    /// </summary>
+    class function Store(AWrite: Boolean): IAtlasSettingsStore; static;
   public
     /// <summary>Globale Einstellungsdatei; öffentlich für die Seite Prüfregeln und das Fenster Atlas-Prüfung
     /// (#909), die Regeln ohne Projekt dort speichern.</summary>
@@ -99,6 +108,9 @@ type
     class procedure Reload; static;
     /// <summary>Nach Update (Optionsseite, Menü Atlas): z. B. Tastenkürzel neu belegen (#494).</summary>
     class property OnChanged: TProc read FOnChanged write FOnChanged;
+    /// <summary>Legt die Ablage in der Registry an; setzt die Kompositionswurzel, bevor jemand Einstellungen liest
+    /// (Atlas.IDE.Foundation.Adapters.RegistryStore).</summary>
+    class property StoreFactory: TAtlasSettingsStoreFactory read FStoreFactory write FStoreFactory;
   end;
 
 const
@@ -108,10 +120,8 @@ implementation
 
 uses
   Atlas.Core.Settings.QueryMigration,
-  Winapi.Windows,
   System.IOUtils,
   System.DateUtils,
-  System.Win.Registry,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Scopes,
@@ -121,140 +131,6 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings,
   Atlas.Core.Settings.Contract;
-
-type
-  TRegistryStore = class(TInterfacedObject, IAtlasSettingsStore, IAtlasSettingsNames)
-  private
-    FRegistry: TRegistry;
-    FWritable: Boolean;
-  public
-    constructor Create(AWrite: Boolean);
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
-    function Contains(const AName: string): Boolean;
-    procedure Remove(const AName: string);
-  end;
-
-{ TRegistryStore }
-
-constructor TRegistryStore.Create(AWrite: Boolean);
-begin
-  inherited Create;
-  if AWrite then
-  begin
-    FRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
-  end
-  else
-  begin
-    FRegistry := TRegistry.Create(KEY_READ);
-  end;
-  FRegistry.RootKey := HKEY_CURRENT_USER;
-  if AWrite then
-  begin
-    FWritable := FRegistry.OpenKey(cAtlasRegistryKey, True);
-  end
-  else
-  begin
-    FRegistry.OpenKeyReadOnly(cAtlasRegistryKey);
-  end;
-end;
-
-destructor TRegistryStore.Destroy;
-begin
-  FRegistry.Free;
-  inherited Destroy;
-end;
-
-function TRegistryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-begin
-  Result := ADefault;
-  try
-    if (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName) and
-      (FRegistry.GetDataType(AName) = rdInteger) then
-    begin
-      Result := FRegistry.ReadInteger(AName);
-    end;
-  except
-    on ERegistryException do
-      Result := ADefault;
-  end;
-end;
-
-procedure TRegistryStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  if not FWritable then
-  begin
-    Exit;
-  end;
-  try
-    FRegistry.WriteInteger(AName, AValue);
-  except
-    // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
-    on ERegistryException do
-      ;
-  end;
-end;
-
-function TRegistryStore.ReadString(const AName, ADefault: string): string;
-begin
-  Result := ADefault;
-  try
-    if (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName) and
-      (FRegistry.GetDataType(AName) in [rdString, rdExpandString]) then
-    begin
-      Result := FRegistry.ReadString(AName);
-    end;
-  except
-    on ERegistryException do
-      Result := ADefault;
-  end;
-end;
-
-procedure TRegistryStore.WriteString(const AName, AValue: string);
-begin
-  if not FWritable then
-  begin
-    Exit;
-  end;
-  try
-    FRegistry.WriteString(AName, AValue);
-  except
-    // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
-    on ERegistryException do
-      ;
-  end;
-end;
-
-function TRegistryStore.Contains(const AName: string): Boolean;
-begin
-  try
-    Result := (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName);
-  except
-    on ERegistryException do
-      Result := False;
-  end;
-end;
-
-procedure TRegistryStore.Remove(const AName: string);
-begin
-  if not FWritable then
-  begin
-    Exit;
-  end;
-  try
-    if FRegistry.ValueExists(AName) then
-    begin
-      FRegistry.DeleteValue(AName);
-    end;
-  except
-    // Ohne Schreibrecht bleibt der alte Wert; die Übernahme versucht es beim nächsten Start erneut.
-    on ERegistryException do
-      ;
-  end;
-end;
 
 type
   /// <summary>Zustand von TAtlasIdeSettings (gelesene, wirksame Werte, Schnellschalter, Stände, Katalogteile).
@@ -284,16 +160,14 @@ var
 /// einmal im Protokoll.</summary>
 procedure ApplyRenames;
 var
-  mRegistry: TRegistryStore;
   mStore: IAtlasSettingsStore;
   mCatalog: TAtlasSettingsCatalog;
   mRename: TAtlasSettingsRename;
 begin
-  mRegistry := TRegistryStore.Create(True);
-  mStore := mRegistry;
+  mStore := TAtlasIdeSettings.Store(True);
   mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    for mRename in TAtlasSettingsRenames.Apply(mStore, mRegistry, mCatalog) do
+    for mRename in TAtlasSettingsRenames.Apply(mStore, mStore as IAtlasSettingsNames, mCatalog) do
     begin
       TAtlasGuard.Log(mRename.LogLine);
     end;
@@ -307,26 +181,22 @@ end;
 function MigrateQuery(const ARouted: IAtlasSettingsStore;
   out AMigration: TAtlasSettingsQueryMigration): Boolean;
 var
-  mRegistry: TRegistryStore;
   mLegacy: IAtlasSettingsStore;
 begin
-  mRegistry := TRegistryStore.Create(False);
-  mLegacy := mRegistry;
-  AMigration := TAtlasSettingsQueryMigrations.Migrate(mLegacy, mRegistry, ARouted);
+  mLegacy := TAtlasIdeSettings.Store(False);
+  AMigration := TAtlasSettingsQueryMigrations.Migrate(mLegacy, mLegacy as IAtlasSettingsNames, ARouted);
   Result := AMigration.Moved;
 end;
 
 procedure RemoveLegacyQuery(const AMigration: TAtlasSettingsQueryMigration);
 var
-  mRegistry: TRegistryStore;
   mNames: IAtlasSettingsNames;
 begin
   if not AMigration.Found then
   begin
     Exit;
   end;
-  mRegistry := TRegistryStore.Create(True);
-  mNames := mRegistry;
+  mNames := TAtlasIdeSettings.Store(True) as IAtlasSettingsNames;
   TAtlasSettingsQueryMigrations.RemoveLegacy(mNames);
   TAtlasGuard.Log(AMigration.LogLine);
 end;
@@ -375,7 +245,7 @@ begin
   GState.Stored := TAtlasPluginSettings.Defaults;
   ApplyRenames;
   mReadable := LoadGlobal(mContent);
-  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), mContent.Text);
+  mRouted := TAtlasRoutedSettingsStore.Create(Store(False), mContent.Text);
   mStore := mRouted;
   // Einmalig: Werte, die bis hierher in der Registry lagen, nach settings.json.
   mChanged := mRouted.Migrate;
@@ -404,6 +274,20 @@ begin
   if Assigned(FOnChanged) then
   begin
     FOnChanged();
+  end;
+end;
+
+class function TAtlasIdeSettings.Store(AWrite: Boolean): IAtlasSettingsStore;
+begin
+  Result := nil;
+  if Assigned(FStoreFactory) then
+  begin
+    Result := FStoreFactory(AWrite);
+  end;
+  if Result = nil then
+  begin
+    // Ohne Kompositionswurzel (Werkzeuge, Tests): Vorgaben, nichts landet in der Registry.
+    Result := TAtlasMemorySettingsStore.Create;
   end;
 end;
 
@@ -498,7 +382,7 @@ begin
   GState.Loaded := True;
   // settings.json frisch lesen: Der Dialog der globalen Einstellungen schreibt dieselbe Datei.
   mReadable := LoadGlobal(mContent);
-  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(True), mContent.Text);
+  mRouted := TAtlasRoutedSettingsStore.Create(Store(True), mContent.Text);
   mStore := mRouted;
   GState.Stored.Save(mStore);
   if mReadable then

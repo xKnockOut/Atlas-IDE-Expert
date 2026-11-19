@@ -37,6 +37,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Watch,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Generate.Gallery,
   Atlas.IDE.Foundation.Settings;
@@ -64,12 +65,6 @@ type
     { IOTARepositoryWizard80 }
     function GetGalleryCategory: IOTAGalleryCategory;
     function GetPersonality: string;
-  end;
-
-  /// <summary>Hört auf die Registry und gleicht die Assistenten an.</summary>
-  TGalleryWatch = class(TInterfacedObject, IAtlasRegistryListener)
-  public
-    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
   end;
 
 var
@@ -230,16 +225,13 @@ begin
   Result := sDelphiPersonality;
 end;
 
-{ TGalleryWatch }
-
 procedure RefreshGallery;
 begin
   TAtlasIdeGallery.Refresh;
 end;
 
-{ TGalleryWatch }
-
-procedure TGalleryWatch.RegistryChanged(const AChange: TAtlasRegistryChange);
+/// <summary>Hört auf die Registry und gleicht die Assistenten an.</summary>
+procedure GalleryRegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if AChange.Kind in [rcModuleAdded, rcModuleRemoved, rcProvided, rcRevoked] then
   begin
@@ -256,7 +248,7 @@ begin
     Exit;
   end;
   GInstalled := True;
-  GSubscription := AtlasModuleRegistry.Subscribe(TGalleryWatch.Create);
+  GSubscription := TAtlasRegistryWatch.Subscribe(AtlasModuleRegistry, GalleryRegistryChanged);
   Refresh;
 end;
 

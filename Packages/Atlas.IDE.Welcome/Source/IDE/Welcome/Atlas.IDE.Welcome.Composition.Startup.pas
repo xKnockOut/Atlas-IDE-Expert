@@ -50,7 +50,8 @@ uses
   Atlas.IDE.Welcome.Adapters.ContinueIssues,
   Atlas.IDE.Welcome.Adapters.Projects,
   Atlas.IDE.Welcome.Adapters.Tiles,
-  Atlas.IDE.Welcome.Adapters.Listener;
+  Atlas.IDE.Welcome.Adapters.Listener,
+  Atlas.Core.Commands.Contract;
 
 var
   GWelcome: TAtlasIdeWelcome;

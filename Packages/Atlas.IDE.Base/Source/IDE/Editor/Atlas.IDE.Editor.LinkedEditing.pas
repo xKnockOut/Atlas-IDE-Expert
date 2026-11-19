@@ -3,7 +3,7 @@
 // Bezeichner live mitziehen (#658, experimentell) im Editor. Was eine Taste
 // aus dem Namen macht und wie er in alle Vorkommen kommt, rechnet
 // Atlas.Core.Editor.LinkedEditing; den Ablauf der Sitzung im Puffer führt
-// Atlas.Core.Editor.LinkedSession über Atlas.IDE.Editor.EditSurface. Hier
+// Atlas.Core.Editor.LinkedSession über Atlas.IDE.Editor.Surfaces. Hier
 // bleiben Anfrage, Tasten, Takt, Statusfeld und Zeichnen.
 // - Ruht der Cursor auf einem Bezeichner, fragt Atlas im Hintergrund den
 //   Server nach den Vorkommen (linkedEditingRange mit "atlasLocals"). Nur
@@ -134,7 +134,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Editor.EditSurface,
+  Atlas.IDE.Editor.Surfaces,
   Atlas.IDE.Editor.PaintedLine,
   Atlas.IDE.Foundation.KeyHook;
 
@@ -470,7 +470,7 @@ begin
     Finish;
     Exit;
   end;
-  FSession.Check(TAtlasIdeEditSurface.Wrap(mView));
+  FSession.Check(TAtlasIdeEditSurfaces.Wrap(mView));
 end;
 
 function TAtlasIdeLinkedEditing.Lost(const AView: IOTAEditView): Boolean;
@@ -515,7 +515,7 @@ var
   mCandidate: TAtlasLinkedCandidate;
 begin
   mCandidate := FQuery.Candidate;
-  Result := Enabled and not IsBusy and mCandidate.Valid and FSession.Start(TAtlasIdeEditSurface.Wrap(AView),
+  Result := Enabled and not IsBusy and mCandidate.Valid and FSession.Start(TAtlasIdeEditSurfaces.Wrap(AView),
     mCandidate.FileName, mCandidate.Text, mCandidate.Ranges, mCandidate.Conflicts);
   if Result then
   begin
@@ -541,7 +541,7 @@ begin
   begin
     Exit;
   end;
-  Result := FSession.Key(TAtlasIdeEditSurface.Wrap(mView), AKind, AInsert);
+  Result := FSession.Key(TAtlasIdeEditSurfaces.Wrap(mView), AKind, AInsert);
 end;
 
 function TAtlasIdeLinkedEditing.ProblemText: string;

@@ -7,9 +7,9 @@
 // sind (Puffer lesen, Modul speichern). Entscheidungen, die den Pufferzustand
 // brauchen, hängen nur daran und lassen sich mit einer Fälschung ohne IDE
 // testen (#1967); die Umsetzung über die Open Tools API ist
-// Atlas.IDE.Foundation.EditorFiles. IAtlasActiveEditor ist ebenso die schmale
+// Atlas.IDE.Foundation.Adapters.EditorFiles. IAtlasActiveEditor ist ebenso die schmale
 // Sicht auf den oberen Editor (Datei und Schreibmarke), umgesetzt in
-// Atlas.IDE.Foundation.ActiveEditor.
+// Atlas.IDE.Foundation.Adapters.ActiveEditor.
 
 interface
 

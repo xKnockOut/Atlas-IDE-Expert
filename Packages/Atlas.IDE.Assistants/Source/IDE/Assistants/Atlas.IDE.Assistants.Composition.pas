@@ -87,7 +87,6 @@ uses
   Atlas.Core.Assistants.DebugGate,
   Atlas.IDE.Assistants.DebugInbox,
   Atlas.IDE.Assistants.DebugBar,
-  Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
@@ -176,7 +175,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, GActivity, TAtlasIdeHost.Warnings());
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeHost.EditorFiles, GActivity, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopEdits;

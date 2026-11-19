@@ -1,8 +1,8 @@
 ﻿unit Atlas.Core.Modules.Watch.Tests;
 
 // Tests zu TAtlasProvidedWatch (#1455): Die Liste folgt Bereitstellen und
-// Zurückziehen sofort, OnChanged nur bei einer echten Änderung. Dazu
-// TAtlasRegistryCallback (#1443): reicht Änderungen weiter, bis Detach ihn trennt.
+// Zurückziehen sofort, OnChanged nur bei einer echten Änderung. TAtlasRegistryWatch reicht jede Änderung an die
+// Methodenreferenz weiter, bis die Anmeldung gelöst ist.
 
 interface
 
@@ -24,10 +24,14 @@ type
   end;
 
   [TestFixture]
-  TRegistryCallbackTests = class
+  TRegistryWatchTests = class
   public
     [Test]
-    procedure ForwardsUntilDetached;
+    procedure ForwardsEveryChange;
+    [Test]
+    procedure RevokedHearsNothing;
+    [Test]
+    procedure WithoutRegistryNil;
   end;
 
 implementation
@@ -208,35 +212,82 @@ begin
   Assert.AreEqual(0, mCalls);
 end;
 
-{ TRegistryCallbackTests }
+{ TRegistryWatchTests }
 
-procedure TRegistryCallbackTests.ForwardsUntilDetached;
+procedure TRegistryWatchTests.ForwardsEveryChange;
 var
-  mCallback: TAtlasRegistryCallback;
-  mListener: IAtlasRegistryListener;
-  mKinds: TArray<TAtlasRegistryChangeKind>;
-  mChange: TAtlasRegistryChange;
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mRegistration: IAtlasRegistration;
+  mProvided: Integer;
+  mRevoked: Integer;
 begin
-  mKinds := nil;
-  mCallback := TAtlasRegistryCallback.Create(
+  mProvided := 0;
+  mRevoked := 0;
+  mRegistry := TAtlasModuleRegistry.Create;
+  mRegistration := TAtlasRegistryWatch.Subscribe(mRegistry,
     procedure(const AChange: TAtlasRegistryChange)
     begin
-      mKinds := mKinds + [AChange.Kind];
+      if (AChange.Kind = rcProvided) and IsEqualGUID(AChange.IID, IWatchTestThing) then
+      begin
+        Inc(mProvided);
+      end;
+      if (AChange.Kind = rcRevoked) and IsEqualGUID(AChange.IID, IWatchTestThing) then
+      begin
+        Inc(mRevoked);
+      end;
     end);
-  mListener := mCallback;
-  mChange := Default(TAtlasRegistryChange);
-  mChange.Kind := rcModuleAdded;
-  mListener.RegistryChanged(mChange);
-  mCallback.Detach;
-  mChange.Kind := rcModuleRemoved;
-  mListener.RegistryChanged(mChange);
-  mListener := nil;
-  Assert.AreEqual(1, Integer(Length(mKinds)));
-  Assert.AreEqual(Ord(rcModuleAdded), Ord(mKinds[0]));
+  Assert.IsNotNull(mRegistration);
+  Assert.IsFalse(mRegistration.IsRevoked);
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  mScope.Provide(IWatchTestThing, TThing.Create('x') as IWatchTestThing);
+  Assert.AreEqual(1, mProvided);
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  Assert.AreEqual(1, mRevoked, 'Abmelden zieht die Objekte zurück');
+  mRegistration.Revoke;
+  mRegistration := nil;
+  mRegistry := nil;
+end;
+
+procedure TRegistryWatchTests.RevokedHearsNothing;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mRegistration: IAtlasRegistration;
+  mCalls: Integer;
+begin
+  mCalls := 0;
+  mRegistry := TAtlasModuleRegistry.Create;
+  mRegistration := TAtlasRegistryWatch.Subscribe(mRegistry,
+    procedure(const AChange: TAtlasRegistryChange)
+    begin
+      Inc(mCalls);
+    end);
+  mRegistration.Revoke;
+  Assert.IsTrue(mRegistration.IsRevoked);
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  mScope.Provide(IWatchTestThing, TThing.Create('x') as IWatchTestThing);
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  Assert.AreEqual(0, mCalls);
+  mRegistration := nil;
+  mRegistry := nil;
+end;
+
+procedure TRegistryWatchTests.WithoutRegistryNil;
+var
+  mRegistration: IAtlasRegistration;
+begin
+  mRegistration := TAtlasRegistryWatch.Subscribe(nil,
+    procedure(const AChange: TAtlasRegistryChange)
+    begin
+    end);
+  Assert.IsNull(mRegistration);
 end;
 
 initialization
   TDUnitX.RegisterTestFixture(TProvidedWatchTests);
-  TDUnitX.RegisterTestFixture(TRegistryCallbackTests);
+  TDUnitX.RegisterTestFixture(TRegistryWatchTests);
 
 end.

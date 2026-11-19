@@ -38,9 +38,8 @@ type
   private
     FRegistry: IAtlasModuleRegistry;
     FFeatures: TAtlasFeatureTable;
-    /// <summary>Hört auf die Registry; Destroy trennt ihn, bevor der Wirt abgebaut wird.</summary>
-    FListener: TAtlasRegistryCallback;
-    FListenerRef: IAtlasRegistryListener;
+    /// <summary>Anmeldung an der Registry (TAtlasRegistryWatch); Destroy löst sie, bevor der Wirt abgebaut wird.
+    /// </summary>
     FSubscription: IAtlasRegistration;
     FOnChanged: TProc;
     FParts: TArray<TPartEntry>;
@@ -112,8 +111,6 @@ begin
   inherited Create;
   FRegistry := ARegistry;
   FFeatures := AFeatures;
-  FListener := TAtlasRegistryCallback.Create(RegistryChanged);
-  FListenerRef := FListener;
   if FRegistry = nil then
   begin
     Exit;
@@ -123,18 +120,16 @@ begin
     AddPart(mModule);
   end;
   SyncParts;
-  FSubscription := FRegistry.Subscribe(FListenerRef);
+  FSubscription := TAtlasRegistryWatch.Subscribe(FRegistry, RegistryChanged);
 end;
 
 destructor TAtlasModuleHosting.Destroy;
 begin
-  FListener.Detach;
   if FSubscription <> nil then
   begin
     FSubscription.Revoke;
   end;
   FSubscription := nil;
-  FListenerRef := nil;
   FParts := nil;
   FRegistry := nil;
   inherited;

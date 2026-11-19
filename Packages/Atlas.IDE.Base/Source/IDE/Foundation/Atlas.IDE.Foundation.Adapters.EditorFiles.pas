@@ -1,8 +1,9 @@
-﻿unit Atlas.IDE.Foundation.EditorFiles;
+﻿unit Atlas.IDE.Foundation.Adapters.EditorFiles;
 
 // IAtlasEditorFiles über die Open Tools API: Puffer über die Editoren der offenen Module
 // (TAtlasIdeFiles.BufferOf, auch die .dpr des Projektmoduls), Speichern über FindModule.
-// Dünner Adapter ohne eigene Entscheidung; was mit dem Puffer geschieht, entscheidet Core.
+// Dünner Adapter ohne eigene Entscheidung; was mit dem Puffer geschieht, entscheidet Core. Erzeugt nur die
+// Kompositionswurzel; die Module fragen TAtlasIdeHost.EditorFiles.
 
 interface
 
