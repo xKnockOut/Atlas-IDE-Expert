@@ -38,6 +38,8 @@ type
     FDescriptors: TArray<TRuleDescriptor>;
     FBaselinePath: string;
     FBaseline: IRuleBaseline;
+    // Kopien aus atlas-duplicates.json, die duplicate-routine-body nicht noch einmal meldet (#1895).
+    FKnownCopies: TLinterKnownCopies;
     FRoot: string;
     FPackages: TArray<TPackageSource>;
     FPrograms: TArray<string>;
@@ -106,6 +108,7 @@ end;
 destructor TLinterCheck.Destroy;
 begin
   FProfiler.Free;
+  FKnownCopies.Free;
   TLinterIndex.Release(FGroup);
   FCheckedPaths.Free;
   FGit.Free;
@@ -123,6 +126,7 @@ begin
   FRules := BuiltinRules;
   FDescriptors := TLinterSettings.DescriptorsOf(FRules, FSettings, not FOptions.NoIndex);
   FBaselinePath := TLinterBaseline.PathOf(FOptions, FConfigRoot);
+  FKnownCopies := TLinterKnownCopies.Find(FConfigRoot);
   Result := TLinterBaseline.Load(FOptions, FBaselinePath, FBaseline);
 end;
 
@@ -179,8 +183,8 @@ begin
   end
   else
   begin
-    AddFindings(AFileName, mRelativePath, mText, mScopes, RunRules(AFileName, mRelativePath, mText, ASource,
-      mScopes));
+    AddFindings(AFileName, mRelativePath, mText, mScopes, FKnownCopies.Filter(AFileName, mText,
+      RunRules(AFileName, mRelativePath, mText, ASource, mScopes)));
   end;
 end;
 
