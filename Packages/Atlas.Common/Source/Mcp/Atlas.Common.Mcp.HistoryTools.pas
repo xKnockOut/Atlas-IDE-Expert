@@ -120,9 +120,11 @@ var
   mKey: string;
 begin
   Result := nil;
-  mSeen := TDictionary<string, Boolean>.Create;
-  mLookup := TMcpIndexTools.Create(FIndex, nil);
+  mSeen := nil;
+  mLookup := nil;
   try
+    mSeen := TDictionary<string, Boolean>.Create;
+    mLookup := TMcpIndexTools.Create(FIndex, nil);
     for mLocation in mLookup.Matches(AName) do
     begin
       mKey := UpperCase(mLocation.FileName + '|' + mLocation.Symbol.QualifiedName);
