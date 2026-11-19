@@ -633,11 +633,7 @@ end;
 
 function TAtlasIdeUnitRename.CurrentSession: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class function TAtlasIdeUnitRename.RunAction(const AEvent: TAtlasUnitRenameEvent;

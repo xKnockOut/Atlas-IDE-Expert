@@ -27,7 +27,7 @@ uses
 type
   TAtlasStepIntoIndexEvent = reference to procedure(AIndex: Integer);
 
-  TAtlasStepIntoWindow = class(TAtlasPopupWindow)
+  TAtlasStepIntoWindow = class(TAtlasLayoutPopupWindow)
   public const
     /// <summary>Abstand unter der Zeile, logische Pixel.</summary>
     cGap = 4;
@@ -37,14 +37,13 @@ type
     FRowRects: TArray<TRect>;
     FOnAccept: TAtlasStepIntoIndexEvent;
     FOnCancel: TProc;
-    function Layout(ADraw: Boolean): TSize;
     /// <summary>Schriftfarbe der Zeile AIndex: gewählt, wählbar oder grau.</summary>
     function RowColor(AIndex: Integer): TColor;
     /// <summary>Zeile AIndex auf Höhe AY anordnen (mit ADraw auch zeichnen), Ort ab ARightX; Ergebnis: rechter Rand.
     /// </summary>
     function LayoutRow(AIndex, AY, ARightX, ATextHeight: Integer; ADraw: Boolean): Integer;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -96,15 +95,6 @@ begin
   GuardFeature := TAtlasFeature.Debugger;
   FRow := -1;
   SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
-end;
-
-procedure TAtlasStepIntoWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasStepIntoWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

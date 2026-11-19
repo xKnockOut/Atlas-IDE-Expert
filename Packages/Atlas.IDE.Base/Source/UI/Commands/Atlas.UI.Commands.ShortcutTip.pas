@@ -30,7 +30,7 @@ type
   TAtlasShortcutTipLink = (None, Never, AllKeys);
   {$SCOPEDENUMS OFF}
 
-  TAtlasShortcutTipWindow = class(TAtlasPopupWindow)
+  TAtlasShortcutTipWindow = class(TAtlasLayoutPopupWindow)
   public const
     /// <summary>Abstand zum Rand der Fläche, logische Pixel.</summary>
     cMargin = 12;
@@ -60,11 +60,10 @@ type
     procedure PutKeys;
     /// <summary>Befehlsname, höchstens MaxCommandWidth breit.</summary>
     procedure PutCommand;
-    /// <summary>Misst bzw. zeichnet (ADraw) den Inhalt; setzt die Flächen der Links.</summary>
-    function Layout(ADraw: Boolean): TSize;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure Paint; override;
+    /// <summary>Misst bzw. zeichnet (ADraw) den Inhalt; setzt die Flächen der Links.</summary>
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -116,15 +115,6 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := TAtlasShortcutTips.cVisibleMs;
   FTimer.OnTimer := TimerTick;
-end;
-
-procedure TAtlasShortcutTipWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasShortcutTipWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

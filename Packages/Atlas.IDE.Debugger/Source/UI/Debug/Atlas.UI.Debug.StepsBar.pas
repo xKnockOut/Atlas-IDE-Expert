@@ -14,16 +14,15 @@ uses
   Atlas.UI.Popup.Window;
 
 type
-  TAtlasStepsBar = class(TAtlasPopupWindow)
+  TAtlasStepsBar = class(TAtlasLayoutPopupWindow)
   public const
     cGap = 4;
     cPad = 10;
   private
     FTitle: string;
     FText: string;
-    function Layout(ADraw: Boolean): TSize;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeigt ATitle und AText mit der rechten oberen Ecke an APoint (Bildschirm); schon sichtbar, nur
@@ -58,15 +57,6 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   SetAccessible(cUiaToolTipControlType, '');
-end;
-
-procedure TAtlasStepsBar.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 function TAtlasStepsBar.Layout(ADraw: Boolean): TSize;

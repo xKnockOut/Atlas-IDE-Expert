@@ -205,7 +205,7 @@ begin
   Assert.AreEqual(7, Integer(Length(mLocations)));
   mAt := TAtlasEventBreak.LocationAt(mLocations, 'c:\p\kunde.pas', 41);
   Assert.AreEqual(0, mAt);
-  Assert.AreEqual(2, Integer(Length(mLocations[mAt].Handlers)));
+  Assert.AreEqual(2, Integer(Length(mLocations[mAt].Items)));
   Assert.AreEqual(1, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], 'btnOk'));
   Assert.AreEqual(0, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], 'BTNSPEICHERN'));
   Assert.AreEqual(-1, TAtlasEventBreak.Identify(FAnswer.Handlers, mLocations[mAt], ''));
