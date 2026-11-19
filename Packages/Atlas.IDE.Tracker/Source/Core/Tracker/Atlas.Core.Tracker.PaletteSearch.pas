@@ -134,21 +134,8 @@ implementation
 
 uses
   System.StrUtils,
-  System.JSON;
-
-function IsDigits(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not CharInSet(AText[mIndex], ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
+  System.JSON,
+  Atlas.Text.Chars;
 
 { TAtlasIssueSearchQuery }
 
@@ -189,7 +176,7 @@ end;
 function NumberKey(const ATarget: TAtlasTrackerTarget; const ANumber: string): string;
 begin
   Result := '';
-  if not IsDigits(ANumber) or (StrToIntDef(ANumber, 0) <= 0) then
+  if not TTextChars.IsDigits(ANumber) or (StrToIntDef(ANumber, 0) <= 0) then
   begin
     Exit;
   end;
@@ -207,7 +194,7 @@ end;
 function IsProjectKey(const ATarget: TAtlasTrackerTarget; const ARest: string): Boolean;
 begin
   Result := not SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) and (ATarget.Project <> '') and
-    StartsText(ATarget.Project + '-', ARest) and IsDigits(Copy(ARest, Length(ATarget.Project) + 2, MaxInt));
+    StartsText(ATarget.Project + '-', ARest) and TTextChars.IsDigits(Copy(ARest, Length(ATarget.Project) + 2, MaxInt));
 end;
 
 /// <summary>Suche nach "#": leer die letzten Issues, "#42" die Nummer, "#ATL-12" die Kennung, sonst Text.</summary>

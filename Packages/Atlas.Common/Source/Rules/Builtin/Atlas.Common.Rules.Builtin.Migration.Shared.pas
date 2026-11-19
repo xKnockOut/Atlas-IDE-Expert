@@ -75,15 +75,6 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.LanguageFeatures;
 
-function ComparePosition(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 { TMigrationScope }
 
 constructor TMigrationScope.Create(const AContext: TRuleContext);
@@ -141,7 +132,7 @@ begin
   Result := False;
   for mRange in FInactive do
   begin
-    if (ComparePosition(mRange.StartPos, APosition) <= 0) and (ComparePosition(APosition, mRange.EndPos) < 0) then
+    if (TTextPosition.Compare(mRange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, mRange.EndPos) < 0) then
     begin
       Exit(True);
     end;

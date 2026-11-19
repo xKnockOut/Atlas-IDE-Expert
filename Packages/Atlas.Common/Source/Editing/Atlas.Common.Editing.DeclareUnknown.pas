@@ -64,16 +64,8 @@ implementation
 uses
   System.StrUtils,
   System.Math,
-  Atlas.Common.Pascal.TokenCursor;
-
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
@@ -111,7 +103,7 @@ var
 begin
   Result := -1;
   mIndex := 0;
-  while (mIndex <= High(ATokens)) and (Compare(ATokens[mIndex].StartPos, APosition) < 0) do
+  while (mIndex <= High(ATokens)) and (TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) < 0) do
   begin
     if not IsTrivia(ATokens[mIndex]) then
     begin
@@ -125,7 +117,7 @@ end;
 function IsNameAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const APosition: TTextPosition): Boolean;
 begin
   Result := (AIndex >= 0) and (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
-    (Compare(APosition, ATokens[AIndex].EndPos) <= 0);
+    (TTextPosition.Compare(APosition, ATokens[AIndex].EndPos) <= 0);
 end;
 
 /// <summary>Mitglied ("X.Name"), Aufruf ("Name(" ist #472), Kette ("Name.X") oder generischer Typ.</summary>

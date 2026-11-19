@@ -19,6 +19,8 @@ type
     procedure DecodesSurrogatePair;
     [Test]
     procedure KeepsUnknown;
+    [Test]
+    procedure EncodeEscapesMarkup;
   end;
 
 implementation
@@ -56,6 +58,13 @@ procedure TTextEntitiesTests.KeepsUnknown;
 begin
   Assert.AreEqual('&nbsp; & x; &#xZZ; &#0;', TTextEntities.Decode('&nbsp; & x; &#xZZ; &#0;'));
   Assert.AreEqual('ohne', TTextEntities.Decode('ohne'));
+end;
+
+procedure TTextEntitiesTests.EncodeEscapesMarkup;
+begin
+  Assert.AreEqual('&lt;a href=&quot;x&quot;&gt;A &amp; B&lt;/a&gt;', TTextEntities.Encode('<a href="x">A & B</a>'));
+  Assert.AreEqual('ohne', TTextEntities.Encode('ohne'));
+  Assert.AreEqual('<a> & "b"', TTextEntities.Decode(TTextEntities.Encode('<a> & "b"')));
 end;
 
 initialization

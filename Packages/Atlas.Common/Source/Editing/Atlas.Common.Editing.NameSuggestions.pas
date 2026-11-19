@@ -75,7 +75,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.CreateMethod,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 type
   TSyntaxKindSet = set of TSyntaxKind;
@@ -85,15 +86,6 @@ const
   cVisibilityWords: array[0..6] of string = ('private', 'protected', 'public', 'published', 'strict', 'automated',
     'class');
   cRoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
-
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
 
 function IsWord(const AToken: TPascalToken): Boolean;
 begin
@@ -319,12 +311,12 @@ var
 begin
   // Erstes Token, das am Cursor oder dahinter endet.
   mIndex := 0;
-  while (mIndex <= High(ATokens)) and (Compare(ATokens[mIndex].EndPos, APosition) < 0) do
+  while (mIndex <= High(ATokens)) and (TTextPosition.Compare(ATokens[mIndex].EndPos, APosition) < 0) do
   begin
     Inc(mIndex);
   end;
   if (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-    (Compare(ATokens[mIndex].StartPos, APosition) <= 0) then
+    (TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) <= 0) then
   begin
     ASite.NameRange := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
     ASite.Typed := Copy(ATokens[mIndex].Text, 1, APosition.Character - ATokens[mIndex].StartPos.Character);
@@ -335,7 +327,7 @@ begin
   end;
   ASite.NameRange := TTextRange.Create(APosition, APosition);
   ANext := mIndex;
-  while (ANext <= High(ATokens)) and ((Compare(ATokens[ANext].StartPos, APosition) < 0) or
+  while (ANext <= High(ATokens)) and ((TTextPosition.Compare(ATokens[ANext].StartPos, APosition) < 0) or
     (ATokens[ANext].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
   begin
     Inc(ANext);

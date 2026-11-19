@@ -114,7 +114,8 @@ uses
   System.JSON,
   System.Generics.Defaults,
   System.Math,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Chars;
 
 { TAtlasWhatsNewItem }
 
@@ -268,20 +269,6 @@ begin
   end;
 end;
 
-function IsNumber(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not CharInSet(AText[mIndex], ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function CompareParts(const A, B: TArray<string>; ANumbersOnly: Boolean): Integer;
 var
   mIndex: Integer;
@@ -295,16 +282,16 @@ begin
     end;
     mLeft := A[mIndex];
     mRight := B[mIndex];
-    if ANumbersOnly or (IsNumber(mLeft) and IsNumber(mRight)) then
+    if ANumbersOnly or (TTextChars.IsDigits(mLeft) and TTextChars.IsDigits(mRight)) then
     begin
       Result := StrToIntDef(mLeft, 0) - StrToIntDef(mRight, 0);
     end
-    else if IsNumber(mLeft) then
+    else if TTextChars.IsDigits(mLeft) then
     begin
       // SemVer: Zahlen vor Text.
       Result := -1;
     end
-    else if IsNumber(mRight) then
+    else if TTextChars.IsDigits(mRight) then
     begin
       Result := 1;
     end

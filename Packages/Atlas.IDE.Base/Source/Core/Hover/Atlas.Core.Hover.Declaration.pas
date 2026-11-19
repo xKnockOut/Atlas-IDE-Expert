@@ -56,15 +56,6 @@ begin
   Result := 0;
 end;
 
-function SkipSpaces(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and (AText[Result] = ' ') do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Endet der Typname vor AChar? ADepth zählt offene spitze Klammern.</summary>
 function EndsType(AChar: Char; var ADepth: Integer): Boolean;
 begin
@@ -102,12 +93,12 @@ begin
   begin
     Exit;
   end;
-  mStart := SkipSpaces(ADeclaration, mIndex + 1);
+  mStart := TTextChars.RunEnd(ADeclaration, mIndex + 1, [' ']);
   mIndex := mStart;
   // Name mit Units und Typargumenten; „array of Byte“ und „set of …“ als Ganzes.
   if StartsText(cArrayOf, Copy(ADeclaration, mStart, MaxInt)) then
   begin
-    mIndex := SkipSpaces(ADeclaration, mStart + Length(cArrayOf));
+    mIndex := TTextChars.RunEnd(ADeclaration, mStart + Length(cArrayOf), [' ']);
   end;
   mDepth := 0;
   while (mIndex <= Length(ADeclaration)) and not EndsType(ADeclaration[mIndex], mDepth) do

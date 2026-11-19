@@ -54,7 +54,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lines;
 
 {$SCOPEDENUMS ON}
 
@@ -158,19 +159,6 @@ begin
   end;
 end;
 
-/// <summary>Zeilenende des Texts: CRLF, wenn er eins enthält.</summary>
-function LineEndOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-  begin
-    Result := #13#10;
-  end
-  else
-  begin
-    Result := #10;
-  end;
-end;
-
 /// <summary>Vorschlag der Anfrage: Fehler je Zeile und das Edit bzw. warum es keins gibt.</summary>
 procedure AddProposal(AResult: TJSONObject; const AUri: string; const ATable: TTestCaseTable;
   const ARows: TArray<TTestCaseRow>; const AText: string);
@@ -189,7 +177,7 @@ begin
     mProposed.AddElement(mEntry);
     AddProblems(mEntry, ATable, mRow);
   end;
-  if TTestCaseTables.Write(ATable, ARows, LineEndOf(AText), mTextEdit, mReason) then
+  if TTestCaseTables.Write(ATable, ARows, TTextLines.LineBreakOf(AText), mTextEdit, mReason) then
   begin
     mEdit := TJSONObject.Create;
     mEdit.AddPair('range', TLspPositions.RangeToJson(mTextEdit.Range));

@@ -448,14 +448,6 @@ begin
   end;
 end;
 
-procedure SkipIdent(const AText: string; var AIndex: Integer);
-begin
-  while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
-  begin
-    Inc(AIndex);
-  end;
-end;
-
 /// <summary>Bis hinter das nächste "}".</summary>
 procedure SkipPastClose(const AText: string; var AIndex: Integer);
 begin
@@ -483,7 +475,7 @@ end;
 function PlaceholderText(const AText: string; var AIndex: Integer): string;
 begin
   Result := '';
-  SkipIdent(AText, AIndex);
+  AIndex := TTextChars.AsciiIdentEnd(AText, AIndex);
   if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
   begin
     Inc(AIndex);
@@ -514,7 +506,7 @@ begin
   begin
     // $1; "$" vor einem Buchstaben bleibt Text ($FF).
     Inc(AIndex);
-    SkipIdent(AText, AIndex);
+    AIndex := TTextChars.AsciiIdentEnd(AText, AIndex);
   end
   else if AText[AIndex + 1] = '{' then
   begin

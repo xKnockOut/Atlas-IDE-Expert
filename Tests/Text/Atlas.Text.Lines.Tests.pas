@@ -52,6 +52,10 @@ type
     procedure ReplaceRangeReplacesAndKeepsRest;
     [Test]
     procedure ShortLine;
+    [Test]
+    procedure SplitFileLinesDropsFinalBreak;
+    [Test]
+    procedure PositionCompareLineFirst;
   end;
 
   [TestFixture]
@@ -375,6 +379,23 @@ begin
   mLines := TTextLines.ReplaceRange(TArray<string>.Create('a', 'b'), 0, 1, nil);
   Assert.AreEqual('b', string.Join('|', mLines));
   mLines := nil;
+end;
+
+procedure TTextLinesTests.SplitFileLinesDropsFinalBreak;
+begin
+  Assert.AreEqual(2, Integer(Length(TTextLines.SplitFileLines('a'#13#10'b'#13#10))));
+  Assert.AreEqual('b', TTextLines.SplitFileLines('a'#10'b'#10)[1]);
+  Assert.AreEqual(2, Integer(Length(TTextLines.SplitFileLines('a'#13#10'b'))));
+  // Nur der letzte Umbruch fällt weg, eine leere Zeile davor bleibt.
+  Assert.AreEqual(2, Integer(Length(TTextLines.SplitFileLines('a'#10#10))));
+  Assert.AreEqual(0, Integer(Length(TTextLines.SplitFileLines(''))));
+end;
+
+procedure TTextLinesTests.PositionCompareLineFirst;
+begin
+  Assert.IsTrue(TTextPosition.Compare(TTextPosition.Create(1, 9), TTextPosition.Create(2, 0)) < 0);
+  Assert.IsTrue(TTextPosition.Compare(TTextPosition.Create(2, 3), TTextPosition.Create(2, 1)) > 0);
+  Assert.AreEqual(0, TTextPosition.Compare(TTextPosition.Create(4, 5), TTextPosition.Create(4, 5)));
 end;
 
 initialization

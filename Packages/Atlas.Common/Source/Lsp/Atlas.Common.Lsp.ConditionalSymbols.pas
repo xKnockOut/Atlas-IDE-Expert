@@ -104,7 +104,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Chars;
 
 {$SCOPEDENUMS ON}
 
@@ -268,15 +269,6 @@ begin
   end;
 end;
 
-function SkipSpaces(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and (AText[Result] = ' ') do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Name in "Defined(Name)" zum Wort Defined bei AKeyword: Anfang AStart, Ende AEnd (dahinter). AEnd
 /// bleibt AKeyword, wenn keine Klammer folgt; False ohne Namen.</summary>
 function DefinedArgument(const AText: string; AKeyword: Integer; out AStart, AEnd: Integer): Boolean;
@@ -285,12 +277,12 @@ var
 begin
   AStart := 0;
   AEnd := AKeyword;
-  mOpen := SkipSpaces(AText, AKeyword + Length('DEFINED'));
+  mOpen := TTextChars.RunEnd(AText, AKeyword + Length('DEFINED'), [' ']);
   if (mOpen > Length(AText)) or (AText[mOpen] <> '(') or ((AKeyword > 1) and IsNameChar(AText[AKeyword - 1])) then
   begin
     Exit(False);
   end;
-  AStart := SkipSpaces(AText, mOpen + 1);
+  AStart := TTextChars.RunEnd(AText, mOpen + 1, [' ']);
   AEnd := AStart;
   while (AEnd <= Length(AText)) and IsNameChar(AText[AEnd]) do
   begin
