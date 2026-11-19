@@ -284,7 +284,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
-  Atlas.UI.Strings,
   Atlas.UI.Problems.Strings,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -1239,10 +1238,11 @@ end;
 
 class function TAtlasProblemsController.UsesHint(const AProblem: TAtlasProblem): string;
 const
-  cHints: array[TAtlasProblemsUsesHint] of TAtlasTextId = (TAtlasTextId.UsesUnusedHint,
-    TAtlasTextId.UsesInitializationHint, TAtlasTextId.UsesAllowlistHint, TAtlasTextId.UsesImplementationHint);
+  cHints: array[TAtlasProblemsUsesHint] of TAtlasProblemsTextId = (TAtlasProblemsTextId.UsesUnusedHint,
+    TAtlasProblemsTextId.UsesInitializationHint, TAtlasProblemsTextId.UsesAllowlistHint,
+    TAtlasProblemsTextId.UsesImplementationHint);
 begin
-  Result := TAtlasStrings.Fmt(cHints[TAtlasProblemsPlan.UsesHint(AProblem.UsesState)], [AProblem.UsesUnit]);
+  Result := TAtlasProblemsStrings.Fmt(cHints[TAtlasProblemsPlan.UsesHint(AProblem.UsesState)], [AProblem.UsesUnit]);
 end;
 
 class function TAtlasProblemsController.Current: TAtlasProblemStore;

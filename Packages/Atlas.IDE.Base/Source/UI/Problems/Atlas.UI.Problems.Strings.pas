@@ -26,7 +26,8 @@ type
     // Compilermeldungen erklären (#54).
     ProblemsMenuExplainMessage, ProblemsExplainMessageTitle, ProblemsExplainCause, ProblemsExplainDocWiki,
     // Auftrag für KI-Assistenten (#2570).
-    ProblemsMenuCopyPrompt, ProblemsPromptCopied, ProblemsPromptFailed);
+    ProblemsMenuCopyPrompt, ProblemsPromptCopied, ProblemsPromptFailed,
+    UsesUnusedHint, UsesInitializationHint, UsesAllowlistHint, UsesImplementationHint);
 
   TAtlasProblemsStrings = class
   public
@@ -109,7 +110,11 @@ const
      'Im DocWiki öffnen',
      'Als Auftrag für KI-Assistenten kopieren',
      'Auftrag mit %d Befunden in die Zwischenablage kopiert',
-     'Auftrag für KI-Assistenten: Der Server hat keinen Text geliefert.'),
+     'Auftrag für KI-Assistenten: Der Server hat keinen Text geliefert.',
+     'Aus %s wird nichts verwendet',
+     '%s wird wegen initialization nicht als ungenutzt gezeigt',
+     '%s steht in usesKeep (atlas.json) und wird nicht als ungenutzt gezeigt',
+     '%s wird nur in der implementation gebraucht'),
     ('Atlas problems',
      '… %d more problems',
      'Error',
@@ -176,7 +181,11 @@ const
      'Open in DocWiki',
      'Copy as task for an AI assistant',
      'Task with %d findings copied to the clipboard',
-     'Task for an AI assistant: the server returned no text.'));
+     'Task for an AI assistant: the server returned no text.',
+     'Nothing from %s is used',
+     '%s is not shown as unused because of its initialization',
+     '%s is listed in usesKeep (atlas.json) and not shown as unused',
+     '%s is only needed in the implementation'));
 
 { TAtlasProblemsStrings }
 
