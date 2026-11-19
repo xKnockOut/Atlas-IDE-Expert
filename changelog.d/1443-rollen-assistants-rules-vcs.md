@@ -1,0 +1,2 @@
+### Geändert
+- Module KI-Assistenten, Prüfregeln und Versionsverwaltung nach den Rollen Adapters und Providers (#1443): Was einen fremden Vertrag erfüllt, steht in `…Adapters.*` (Schattentext, Text für andere Module, Anweisungsdateien, Sammelkorrektur, Regel-Aktionen, Error Insight, Abschnitte der Optionen, Dialog mit Regel-Editor, Befehle, Änderungsmarken); der HTTP-Transport der KI-Anbieter heißt `Atlas.Core.AiProviders.Providers.Http`. Keine Änderung im Verhalten.

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.VersionControl.Commands;
+﻿unit Atlas.IDE.VersionControl.Adapters.Commands;
 
 // Befehle des Moduls Versionsverwaltung (#1905): „Branch anlegen …“ (#1288,
 // Atlas.CreateBranch, immer mit Dialog) und „Arbeitskopien“ (#1292, Atlas.WorkingCopies, sichtbar mit
