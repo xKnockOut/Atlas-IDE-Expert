@@ -33,7 +33,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Profiling.Contract,
   Atlas.Text.Profile,

@@ -133,6 +133,18 @@ type
   TJsonRpcRequestFailedEvent = reference to procedure(const AMethod: string; const AParams: TJSONValue;
     const AError: Exception);
 
+  /// <summary>Beobachter je Anfrage (#647, Diagnoselog). Beide Aufrufe laufen im Thread des Handlers;
+  /// Ausnahmen darin werden verschluckt.</summary>
+  IJsonRpcRequestObserver = interface
+    ['{9D41E6B2-0C7A-4F35-A8E3-6B2F5C1D7094}']
+    /// <summary>Direkt vor dem Handler.</summary>
+    procedure Started(const AMethod: string);
+    /// <summary>Nach dem Handler: AResult bei Erfolg (gehört der Antwort), sonst AError.
+    /// AQueueMs ist die Wartezeit vor dem Start, AElapsedMs die Laufzeit des Handlers.</summary>
+    procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
+      AQueueMs, AElapsedMs: Int64);
+  end;
+
 implementation
 
 { EJsonRpcError }

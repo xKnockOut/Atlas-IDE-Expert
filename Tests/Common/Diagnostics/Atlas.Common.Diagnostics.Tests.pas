@@ -103,6 +103,7 @@ uses
   System.Diagnostics,
   System.DateUtils,
   System.Generics.Collections,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
@@ -110,7 +111,7 @@ uses
   Atlas.Common.Diagnostics.ShutdownRest,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Diagnostics.Providers.Log,
-  Atlas.Common.Diagnostics.Adapters.LogFolder;
+  Atlas.Common.Diagnostics.Providers.LogFolder;
 
 type
   TMemoryWriter = class(TInterfacedObject, IDiagnosticWriter)

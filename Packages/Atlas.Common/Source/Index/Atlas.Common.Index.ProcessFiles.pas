@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Index.Adapters.Processes;
+﻿unit Atlas.Common.Index.ProcessFiles;
 
 // Prozesse am selben Index-Cache (#62), für „Atlas › Diagnose › Prozesse am
 // Projekt“. Jeder Server-Prozess (LSP aus der IDE oder aus einem MCP-Client)

@@ -172,6 +172,7 @@ Atlas.Common.Index.Extractor.TypeText.Tests
 Atlas.Common.Index.Processes.Tests
 Atlas.Common.Index.UsageCounts.Tests
 Atlas.Common.JsonRpc.CurrentRequest.Tests
+Atlas.Common.JsonRpc.CustomCancellation.Tests
 Atlas.Common.JsonRpc.Messages.Tests
 Atlas.Common.JsonRpc.PendingRequests.Tests
 Atlas.Common.JsonRpc.StreamTransport.Tests
@@ -242,6 +243,7 @@ Atlas.Common.Lsp.SettingsCommands.Tests
 Atlas.Common.Lsp.SmartIndent.Tests
 Atlas.Common.Lsp.SmartPaste.Tests
 Atlas.Common.Lsp.ServerActivity.Tests
+Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests
 Atlas.Common.Lsp.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
@@ -301,6 +303,7 @@ Atlas.Common.Monitor.Targets.Tests
 Atlas.Common.Mutation.Generator.Tests
 Atlas.Common.Mutation.Report.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
+Atlas.Common.Pascal.Cancellation.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests
 Atlas.Common.Pascal.DirectiveNames.Tests

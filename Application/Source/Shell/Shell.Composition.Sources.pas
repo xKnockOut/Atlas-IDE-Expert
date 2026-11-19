@@ -108,7 +108,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Rules.Builtin.Metrics,
   Shell.Hotspots;
 

@@ -105,7 +105,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Shell.Composition.Refactorings,
   Shell.Platform;
 

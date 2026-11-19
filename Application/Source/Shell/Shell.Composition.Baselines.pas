@@ -81,7 +81,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Checker,

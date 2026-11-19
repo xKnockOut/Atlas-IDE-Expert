@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Index.Adapters.DiskFileSystem;
+﻿unit Atlas.Common.Index.Providers.DiskFileSystem;
 
 // IIndexFileSystem auf der echten Platte. Lesen erkennt die Kodierung wie
 // beim Öffnen im Editor; der binäre Index-Cache (#617) geht über ReadBytes und
@@ -216,7 +216,7 @@ function TDiskIndexFileSystem.TryLockWrite(const AFileName: string): IInterface;
 begin
   // Dieselbe Sperrdatei wie TIndexCacheDirectory.TryLock (LockExtension), die TShellWorkspace.LockCache hält:
   // Aufräumen und Leeren lassen den Cache dann in Ruhe. Der Test DiskWriteLockIsExclusive prüft, dass beide
-  // übereinstimmen; ein Adapter importiert den anderen nicht (Rollenmatrix).
+  // übereinstimmen; ein Provider importiert den anderen nicht (Rollenmatrix).
   try
     ForceDirectories(ExtractFileDir(AFileName));
     Result := TWriteLock.Create(TFileStream.Create(AFileName + '.lock', fmCreate or fmShareExclusive));
@@ -230,6 +230,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Index.Adapters.DiskFileSystem', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Index.Providers.DiskFileSystem', cTexts);
 
 end.

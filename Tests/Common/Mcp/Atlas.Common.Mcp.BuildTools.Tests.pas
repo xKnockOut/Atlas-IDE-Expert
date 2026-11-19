@@ -34,7 +34,7 @@ uses
   System.JSON,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.IdeBuild,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Mcp.BuildTools;
 
 function Message(const AFile: string; ALine: Integer; ASeverity: TCompilerSeverity;

@@ -20,7 +20,7 @@ uses
   Atlas.Windows.Process.Instances,
   Atlas.Windows.Documents.FileWatcher,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
-  Atlas.Windows.Projects.DelphiInstallation,
+  Atlas.Windows.Projects.Adapters.DelphiInstallation,
   Atlas.Windows.Diagnostics.DebugOutput,
   Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Windows.Diagnostics.ProcessInfo;
@@ -30,7 +30,7 @@ uses
   Atlas.Linux.Process.Instances,
   Atlas.Linux.Documents.FileWatcher,
   Atlas.Linux.Compiler.Adapters.ProcessRunner,
-  Atlas.Linux.Projects.DelphiInstallation,
+  Atlas.Linux.Projects.Adapters.DelphiInstallation,
   Atlas.Linux.Diagnostics.DebugOutput,
   Atlas.Linux.Diagnostics.StackTrace,
   Atlas.Linux.Diagnostics.ProcessInfo;
@@ -44,7 +44,7 @@ type
   TFileWatcherChanged = Atlas.Windows.Documents.FileWatcher.TFileWatcherChanged;
   TFileWatcher = Atlas.Windows.Documents.FileWatcher.TFileWatcher;
   TProcessRunner = Atlas.Windows.Compiler.Adapters.ProcessRunner.TProcessRunner;
-  TDelphiInstallation = Atlas.Windows.Projects.DelphiInstallation.TDelphiInstallation;
+  TDelphiInstallation = Atlas.Windows.Projects.Adapters.DelphiInstallation.TDelphiInstallation;
   TDebugOutput = Atlas.Windows.Diagnostics.DebugOutput.TDebugOutput;
   TStackTrace = Atlas.Windows.Diagnostics.StackTrace.TStackTrace;
   TProcessInfo = Atlas.Windows.Diagnostics.ProcessInfo.TProcessInfo;
@@ -55,7 +55,7 @@ type
   TFileWatcherChanged = Atlas.Linux.Documents.FileWatcher.TFileWatcherChanged;
   TFileWatcher = Atlas.Linux.Documents.FileWatcher.TFileWatcher;
   TProcessRunner = Atlas.Linux.Compiler.Adapters.ProcessRunner.TProcessRunner;
-  TDelphiInstallation = Atlas.Linux.Projects.DelphiInstallation.TDelphiInstallation;
+  TDelphiInstallation = Atlas.Linux.Projects.Adapters.DelphiInstallation.TDelphiInstallation;
   TDebugOutput = Atlas.Linux.Diagnostics.DebugOutput.TDebugOutput;
   TStackTrace = Atlas.Linux.Diagnostics.StackTrace.TStackTrace;
   TProcessInfo = Atlas.Linux.Diagnostics.ProcessInfo.TProcessInfo;

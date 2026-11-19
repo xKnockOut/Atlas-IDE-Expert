@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Index.Adapters.Processes.Tests;
+﻿unit Atlas.Common.Index.ProcessFiles.Tests;
 
 // Tests der Prozesse am Index-Cache (#62): Anmelden, Zustand und Ereignisse,
 // Abmelden, verwaiste Dateien.
@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Index.Processes,
-  Atlas.Common.Index.Adapters.Processes;
+  Atlas.Common.Index.ProcessFiles;
 
 function Info(APid: Cardinal; const AKind: string): TIndexProcessInfo;
 begin

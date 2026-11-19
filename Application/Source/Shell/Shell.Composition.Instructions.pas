@@ -32,7 +32,7 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.Rules.Builtin,
   Shell.Workspace;
 

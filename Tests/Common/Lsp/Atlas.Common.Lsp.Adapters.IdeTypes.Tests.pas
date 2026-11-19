@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.IdeTypes.Tests;
+﻿unit Atlas.Common.Lsp.Adapters.IdeTypes.Tests;
 
 // Tests für die Typen aus den Packages der IDE (atlas/ideTypes): Lesen der Meldung (Namen und Objekte mit
 // Vorfahr, ungültige Einträge, Doppelte), Nachschlagen ohne Groß-/Kleinschreibung, Ersetzen des Stands und die
@@ -31,7 +31,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.IdeTypes;
+  Atlas.Common.Lsp.Adapters.IdeTypes,
+  Atlas.Common.Lsp.Contract;
 
 const
   cSample = '{"units":[{"unit":"Vendor.Grid","types":[{"name":"TVendorGrid","parent":"Vcl.Controls.TCustomControl"},' +
