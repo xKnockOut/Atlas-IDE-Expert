@@ -32,7 +32,7 @@
 // mit höherem Format wird weder gelesen noch überschrieben. Ein leeres
 // Notizbuch löscht seine Datei.
 // Lesen und Schreiben über TAtlasDataFile: atomar ersetzt
-// (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
+// (kein Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
 // .defekt daneben; eine beim Lesen gesperrte merkt sich das Notizbuch
 // (KeptFile), und Save überschreibt sie nicht.
 // Nicht threadsicher: Die IDE liest und schreibt nur im Hauptthread.
