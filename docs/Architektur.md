@@ -150,6 +150,20 @@ Die Matrix wird zweimal umgesetzt und gegen dieselbe Fallliste `Tests/Data/Archi
 
 Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann ein Rollenbezeichner oder Root. Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units dürfen im interface keine Klassen deklarieren, außer Ausnahmen.
 
+### Rollen Adapters und Providers (#1443)
+
+Die Rollen folgen dem Konzept ohne Abweichung; maßgeblich ist, wessen Interface eine Klasse implementiert, nicht ob sie Platte, Prozess oder Netz berührt:
+
+- **Providers** implementieren Interfaces aus dem **eigenen** Contract (`Atlas.Core.Completion.Providers.Snippets` erfüllt `IAtlasCompletionProvider` aus `Atlas.Core.Completion.Contract`).
+- **Adapters** implementieren Interfaces aus dem Contract eines **fremden** Features. Fremd ist auch dasselbe Feature in einem anderen Ausgabeartefakt oder einer anderen Schicht: `Atlas.Windows.Compiler.Adapters.ProcessRunner` implementiert `ICompilerProcess` aus `Atlas.Common.Compiler.Contract`, eine Unit von `Atlas.IDE.Welcome` eine Quelle aus `Atlas.UI.Welcome`.
+- Die Verträge zwischen Modulen (`Atlas.IDE.Contracts.*` in Base) sind für jedes Modul ein fremder Contract: Ein Modul erfüllt sie in `Atlas.IDE.<Modul>.Adapters.<Sache>`.
+- Eine Unit ohne Rolle (Root), `Internals` und `Contract` implementiert kein Interface eines fremden Features; diese Klasse gehört in eine eigene Unit unter `Adapters`. Ausgenommen sind `Composition` und `Hosting` (Modulklassen, die `IAtlasModule` und die Quellen aus `Atlas.Core.Modules.Contract` erfüllen, Notifier und Wizards der Open Tools API) und die Host-Units der Anwendung (`Shell.*`).
+- Ein Interface, das ein anderes Feature implementiert, steht im Contract seines Features (Rolle `Contract` oder `Atlas.IDE.Contracts.*`), auch wenn nur die Shell es implementiert.
+- Eine Unit unter `Adapters` bzw. `Providers` implementiert mindestens ein solches Interface, auch geerbt über einen Vorfahren des eigenen Features. Was den Rand nach außen ohne Vertrag kapselt, ist Root oder `Internals`.
+- Adapters und Providers erzeugt nur die eigene Composition oder der Host (Rollenmatrix); wer sie braucht, bekommt sie über ihr Interface.
+
+`Tools/Check-PackageDependencies.ps1` prüft diese Regeln für alle Units unter `Packages/` und `Application/`; `Tools/Test-PackageDependencies.ps1` deckt jede Regel mit einem absichtlichen Verstoß ab. Noch nicht umgebaute Altfälle stehen in `Tools/AdapterRoles.known.txt` (je Zeile Regel, Unit, Klasse, Interface). Ein neuer Verstoß ist ein Fehler, ebenso eine Zeile, die nicht mehr vorkommt; die Liste wird nur kürzer (`-UpdateAdapterRoles` schreibt sie nach einem Umbau neu).
+
 ### Selbstprüfung je Plugin-Package (#2011)
 
 Jedes Plugin-Package (`Packages/Atlas.IDE.*`) hat eine eigene `atlas.json` und `atlas-baseline.json`. Atlas nimmt bei `AtlasServer --check Packages/<Package>/<Package>.dproj` und im Editor die nächstgelegene `atlas.json` über dem Projekt und die Baseline daneben; ohne eigene Datei gälte für ein Modul die Wurzel-Konfiguration mit abgeschalteten Metriken.

@@ -31,7 +31,7 @@ $Failures = [System.Collections.Generic.List[string]]::new()
 $Touched = @{}
 
 $CopyRoot = Join-Path ([IO.Path]::GetTempPath()) ('atlas-modules-' + [Guid]::NewGuid().ToString('N'))
-foreach ($Item in 'Packages', 'Application', 'Tests/Atlas.Tests.dpr', 'Tests/Data/Architecture', $Assignment, 'atlas.json') {
+foreach ($Item in 'Packages', 'Application', 'Tests/Atlas.Tests.dpr', 'Tests/Data/Architecture', 'Tools/AdapterRoles.known.txt', $Assignment, 'atlas.json') {
     $From = Join-Path $Root $Item
     if (-not (Test-Path $From)) { continue }
     $To = Join-Path $CopyRoot $Item
@@ -88,6 +88,15 @@ function Add-Assigned([string] $Package, [string] $Folder, [string] $Name, [stri
     if (Test-Path (Join-Path $CopyRoot "Packages/$Package/Source")) { $Base = "Packages/$Package/Source" }
     Add-UnitIn $Base $Folder $Name $Uses
     Add-TableRow "## $Package" "| ``$Name`` | ``$Folder/$Name.pas`` | Probe für Test-PackageDependencies |"
+}
+
+function Add-Implementer([string] $Package, [string] $Folder, [string] $Name, [string] $Uses, [string] $Interface) {
+    # Unit mit einer Klasse, die $Interface aus der Unit $Uses implementiert (Rollen Adapters und Providers, #1443).
+    Add-Assigned $Package $Folder $Name @()
+    $Base = $Source
+    if (Test-Path (Join-Path $CopyRoot "Packages/$Package/Source")) { $Base = "Packages/$Package/Source" }
+    Set-CopyText "$Base/$Folder/$Name.pas" ("unit $Name;`r`n`r`ninterface`r`n`r`nuses`r`n  $Uses;`r`n`r`ntype`r`n" +
+        "  TProbe = class(TInterfacedObject, $Interface)`r`n  end;`r`n`r`nimplementation`r`n`r`nend.`r`n")
 }
 
 function Invoke-Check {
@@ -161,6 +170,41 @@ try {
 
     Test-Fails 'Behobener bekannter Verstoß bleibt stehen' 'Atlas.Core.Projects.VersionControl -> Atlas.IDE.Tracker kommt nicht mehr vor' {
         Add-TableRow '### Bekannte Verstöße' '| `Atlas.Core.Projects.VersionControl` | `Atlas.IDE.Tracker` | Probe |'
+    }
+    Test-Passes 'Adapter implementiert einen fremden Contract' {
+        Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Adapters.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
+    }
+
+    Test-Passes 'Provider implementiert den eigenen Contract' {
+        Add-Implementer 'Atlas.IDE.Base' 'Core/Undo' 'Atlas.Core.Undo.Providers.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
+    }
+
+    Test-Fails 'Adapter implementiert den eigenen Contract' 'eigener Contract, das ist die Rolle Providers' {
+        Add-Implementer 'Atlas.IDE.Base' 'Core/Undo' 'Atlas.Core.Undo.Adapters.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
+    }
+
+    Test-Fails 'Provider implementiert einen fremden Contract' 'fremdes Feature, das ist die Rolle Adapters' {
+        Add-Implementer 'Atlas.IDE.Base' 'Core/Files' 'Atlas.Core.Files.Providers.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
+    }
+
+    Test-Fails 'Unit ohne Rolle implementiert einen fremden Contract' 'gehört in eine Unit Atlas.IDE.Undo.Adapters.*' {
+        Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
+    }
+
+    Test-Fails 'Fremd implementiertes Interface liegt nicht im Contract' 'gehört in den Contract von Atlas.Core.Projects' {
+        Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.ProbeSpi' @()
+        Set-CopyText "$Source/Core/Projects/Atlas.Core.Projects.ProbeSpi.pas" ("unit Atlas.Core.Projects.ProbeSpi;`r`n`r`ninterface`r`n`r`n" +
+            "type`r`n  IAtlasProbeSpi = interface`r`n  end;`r`n`r`nimplementation`r`n`r`nend.`r`n")
+        Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Adapters.Probe' 'Atlas.Core.Projects.ProbeSpi' 'IAtlasProbeSpi'
+    }
+
+    Test-Fails 'Adapter ohne Interface' 'Adapters ohne Interface aus einem fremden Contract' {
+        Add-Assigned 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Adapters.Probe' @()
+    }
+
+    Test-Fails 'Behobener Altfall der Adapter-Rollen bleibt stehen' 'adapter-name Atlas.IDE.Undo.Gone TGone IAtlasUndoTarget kommt nicht mehr vor' {
+        $Known = [IO.File]::ReadAllText((Join-Path $CopyRoot 'Tools/AdapterRoles.known.txt'))
+        Set-CopyText 'Tools/AdapterRoles.known.txt' ($Known + "adapter-name Atlas.IDE.Undo.Gone TGone IAtlasUndoTarget`r`n")
     }
 }
 finally {
