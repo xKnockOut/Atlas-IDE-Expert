@@ -182,11 +182,11 @@ begin
 end;
 
 /// <summary>Zeile „Name  Wert“ ab ATop (logische Pixel, 96 dpi); liefert die Beschriftung des Werts.</summary>
-function NewRow(AOwner: TComponent; AParent: TWinControl; ACaption: TAtlasTextId; ATop: Integer): TLabel;
+function NewRow(AOwner: TComponent; AParent: TWinControl; ACaption: TAtlasDiagnosticsTextId; ATop: Integer): TLabel;
 var
   mName: TLabel;
 begin
-  mName := NewLabel(AOwner, AParent, TAtlasStrings.Text(ACaption));
+  mName := NewLabel(AOwner, AParent, TAtlasDiagnosticsStrings.Text(ACaption));
   mName.SetBounds(mName.ScaleValue(TAtlasProcessesDialog.cGap), mName.ScaleValue(ATop + cLabelGap),
     mName.ScaleValue(TAtlasProcessesDialog.cLabelWidth), mName.ScaleValue(cLabelHeight));
   mName.Font.Color := clGrayText;
@@ -232,12 +232,12 @@ begin
 end;
 
 /// <summary>Spalte ACaption mit der Breite AWidth (logische Pixel, 96 dpi); skaliert über AList.</summary>
-procedure AddColumn(AList: TListView; ACaption: TAtlasTextId; AWidth: Integer);
+procedure AddColumn(AList: TListView; ACaption: TAtlasDiagnosticsTextId; AWidth: Integer);
 var
   mColumn: TListColumn;
 begin
   mColumn := AList.Columns.Add;
-  mColumn.Caption := TAtlasStrings.Text(ACaption);
+  mColumn.Caption := TAtlasDiagnosticsStrings.Text(ACaption);
   mColumn.Width := AList.ScaleValue(AWidth);
 end;
 
@@ -323,12 +323,12 @@ begin
   // Cache, Sperre, Stand.
   mInfo := NewPanel(Self, alTop, cInfoRows * cInfoRowHeight + cGap);
   mInfo.Top := mHead.Top + mHead.Height;
-  FParts.CacheValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesCache, 0);
-  FParts.LockValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesLock, cInfoRowHeight);
+  FParts.CacheValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesCache, 0);
+  FParts.LockValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesLock, cInfoRowHeight);
   FParts.WriterTag := NewLabel(Self, mInfo, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesWrites));
   FParts.WriterTag.Font.Style := [fsBold];
   FParts.WriterTag.Visible := False;
-  FParts.StateValue := NewRow(Self, mInfo, TAtlasTextId.ProcessesState, 2 * cInfoRowHeight);
+  FParts.StateValue := NewRow(Self, mInfo, TAtlasDiagnosticsTextId.ProcessesState, 2 * cInfoRowHeight);
 end;
 
 procedure TAtlasProcessesDialog.CreateFoot;
@@ -384,9 +384,9 @@ begin
   FParts.Dirty := NewList(Self, mBox);
   FParts.Dirty.Margins.SetBounds(FParts.Dirty.ScaleValue(cGap), FParts.Dirty.ScaleValue(cLabelGap),
     FParts.Dirty.ScaleValue(cGap), FParts.Dirty.ScaleValue(cLabelGap));
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyFile, cDirtyFileWidth);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyIde, cDirtyVersionWidth);
-  AddColumn(FParts.Dirty, TAtlasTextId.ProcessesDirtyMcp, cDirtyVersionWidth);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyFile, cDirtyFileWidth);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyIde, cDirtyVersionWidth);
+  AddColumn(FParts.Dirty, TAtlasDiagnosticsTextId.ProcessesDirtyMcp, cDirtyVersionWidth);
 end;
 
 procedure TAtlasProcessesDialog.CreateList;
@@ -407,9 +407,9 @@ begin
 
   FParts.List := NewList(Self, Self);
   FParts.List.Margins.SetBounds(FParts.List.ScaleValue(cGap), 0, FParts.List.ScaleValue(cGap), 0);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnKind, cKindWidth);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnClient, cClientWidth);
-  AddColumn(FParts.List, TAtlasTextId.ProcessesColumnState, cStateWidth);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnKind, cKindWidth);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnClient, cClientWidth);
+  AddColumn(FParts.List, TAtlasDiagnosticsTextId.ProcessesColumnState, cStateWidth);
 end;
 
 procedure TAtlasProcessesDialog.ChoiceChange(Sender: TObject);

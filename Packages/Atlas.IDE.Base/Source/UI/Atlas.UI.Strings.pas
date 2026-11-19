@@ -46,7 +46,7 @@ type
     SettingsTabCompiler, SettingsTabRobustness, SettingsTabColors, SettingsTabInsert, SettingsTabCommands,
     SettingsTabStartup, SettingsTabUndo, EditorMethodToggle, SettingsMethodToggleDown, EditorTestUnit,
     TestUnitLensCreate, UnitSearchTitle, SettingsTabUnitSearch, SettingsWelcomeSearchKey, SettingsDiagnosticModeKey,
-    DiagnosticCopy, SetupMenu, SetupServerReady, SetupServerMissing, SetupServerNotStarted, SetupServerStarting,
+    SetupMenu, SetupServerReady, SetupServerMissing, SetupServerNotStarted, SetupServerStarting,
     SetupServerStopped, SetupServerFailed, SetupServerVersionUnknown, SetupServerVersionMismatch, SetupDelphiReady,
     SetupDelphiNoProject, SetupDelphiUnknown, SetupIndexReady, SetupIndexReadyUnits, SetupIndexBuilding,
     SetupIndexIncomplete, SetupIndexNoServer, SetupIndexNoProjects, SetupLibraryReady, SetupLibraryMissing,
@@ -90,9 +90,8 @@ type
     MultiCursorNextCommand, MultiCursorSkipCommand, MultiCursorLineEndsCommand, MultiCursorAboveCommand,
     MultiCursorBelowCommand, MoveClassTitle, MoveClassPrompt, MoveClassFailed, MoveClassWarning, UnitRenameTitle,
     UnitRenameFailed, MinimapNoticeTitle, SearchCommand, SearchNextCommand, SearchPreviousCommand,
-    SearchInMethodCommand, FormatCodeCommand, ProcessesMenu, ProcessesCache, ProcessesLock, ProcessesState,
-    ProcessesColumnKind, ProcessesColumnClient, ProcessesColumnState, ProcessesDirtyFile, ProcessesDirtyIde,
-    ProcessesDirtyMcp, UsesHiddenOne, UsesHiddenFew, UsesHiddenMore, UsesCycleDirect, UsesCycleChain,
+    SearchInMethodCommand, FormatCodeCommand, ProcessesMenu,
+    UsesHiddenOne, UsesHiddenFew, UsesHiddenMore, UsesCycleDirect, UsesCycleChain,
     InheritedAbstractOne, InheritedAbstractMore, PropertyAccessorsFailed, PropertyAccessorsWarning,
     InvertBooleanTitle, InvertBooleanPrompt, InvertBooleanFailed, InvertBooleanNothing, InvertBooleanPreviewHint,
     InvertBooleanApply, InvertBooleanDone, InvertBooleanWarning, PromoteVariableTitle, PromoteVariablePrompt,
@@ -180,11 +179,6 @@ type
     ServerWindowCommand,
     // Designer-Leiste im Formular-Designer (#1442).
     DesignerBarSearchHint,
-    // Diagnose-Fenster des Plugins: Reiter Hauptthread, Server, Hintergrund, Hänger.
-    DiagPause, DiagReset, DiagColFeature, DiagColCalls, DiagColTotal, DiagColMean, DiagColMax, DiagColSlow,
-    DiagColShare, DiagColTime, DiagColAction, DiagColDuration, DiagColRequest, DiagColCount, DiagColWaitedCount,
-    DiagColWaited, DiagColTimedOut, DiagColCancelled, DiagColFailed, DiagColSource, DiagColTooSlow,
-    DiagColWithAtlas,
     // Aktualisierung der Prüfung (problems.update, problems.liveDelayMs).
     ProblemsCheckFileCommand,
     // Sprungmenü am Sichtbarkeitsglied (#1768).
@@ -266,9 +260,23 @@ implementation
 
 uses
   Atlas.Core.Signature.Contract,
+  System.StrUtils,
   System.SysUtils;
 
 const
+  /// <summary>Bis zu so viele Namen stehen ausgeschrieben in einem Hinweis, darüber nur die ersten und die Anzahl.
+  /// </summary>
+  cMaxNamesListed = 3;
+  /// <summary>Arten von Literalen, wie der Server sie nennt, und ihre Beschriftung.</summary>
+  cLiteralKinds: array[0..4] of string = ('string', 'char', 'integer', 'float', 'boolean');
+  cLiteralKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.FormatLiteralString,
+    TAtlasTextId.FormatLiteralChar, TAtlasTextId.FormatLiteralInteger, TAtlasTextId.FormatLiteralFloat,
+    TAtlasTextId.FormatLiteralBoolean);
+  /// <summary>Arten von Typen, die der Server für ein Typargument ausblendet, und ihre Beschriftung.</summary>
+  cTypeArgKinds: array[0..4] of string = ('classes', 'records', 'interfaces', 'enums', 'basic');
+  cTypeArgKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.TypeArgKindClasses,
+    TAtlasTextId.TypeArgKindRecords, TAtlasTextId.TypeArgKindInterfaces, TAtlasTextId.TypeArgKindEnums,
+    TAtlasTextId.TypeArgKindBasic);
   cTexts: array[TAtlasLanguage, TAtlasTextId] of string = (
     ( 'optional, Standard %s',
      'Keine Überladung mit %d Parametern.', '… %d weitere', 'Alle', 'Methoden', 'Eigenschaften', 'Ereignisse',
@@ -377,7 +385,7 @@ const
      'Zwischen Unit und Testunit wechseln', '+ Testunit %s anlegen',
      'Units suchen',
      'Units suchen',
-     'Suchfeld der Willkommensseite', 'Diagnosemodus ein/aus', 'Bericht kopieren', 'Einrichtung prüfen…',
+     'Suchfeld der Willkommensseite', 'Diagnosemodus ein/aus', 'Einrichtung prüfen…',
      'Server gefunden, gestartet, Version passt', 'AtlasServer.exe nicht gefunden',
      'Server gefunden, noch nicht gestartet', 'Server wird gestartet…', 'Server gestoppt',
      'Server-Start fehlgeschlagen', 'Server läuft, Version noch unbekannt',
@@ -459,15 +467,6 @@ const
      'Zwei Minimaps sichtbar',
      'Suchen (Atlas) …', 'Weitersuchen (Atlas)', 'Rückwärts weitersuchen (Atlas)', 'In Methode suchen …', 'Formatieren',
      'Prozesse am Projekt…',
-     'Index-Cache',
-     'Sperre',
-     'Stand',
-     'Art',
-     'Client',
-     'Zustand',
-     'Datei',
-     'IDE (dieser Prozess)',
-     'MCP-Prozess',
      '%s ist schon eingebunden und fehlt hier',
      '%s sind schon eingebunden und fehlen hier',
      '%s und %d weitere sind schon eingebunden und fehlen hier',
@@ -659,28 +658,6 @@ const
      'Branch anlegen: Den Ordner %s gibt es schon; nichts angelegt.',
      'Atlas-Server: Speicher und Laufzeiten',
      'Komponenten suchen',
-     'Anhalten',
-     'Zurücksetzen',
-     'Funktion',
-     'Aufrufe',
-     'Summe ms',
-     'Mittel ms',
-     'Max ms',
-     'ab Schwelle',
-     'Anteil %',
-     'Zeit',
-     'Aktion',
-     'Dauer ms',
-     'Anfrage',
-     'Anzahl',
-     'Im Hauptthread',
-     'Hauptthread Ø ms',
-     'Zeitüberschreitung',
-     'Abgebrochen',
-     'Fehler',
-     'Quelle',
-     'zu langsam',
-     'Atlas beteiligt',
      'Datei jetzt prüfen',
      'Neue Zeile am Ende des Abschnitts',
      'Namen kopieren',
@@ -834,7 +811,7 @@ const
      'Switch between unit and test unit', '+ Create test unit %s',
      'Search units',
      'Search units',
-     'Welcome page search field', 'Diagnostic mode on/off', 'Copy report', 'Check setup…', 'Server found, running, version matches', 'AtlasServer.exe not found', 'Server found, not started yet', 'Server is starting…',
+     'Welcome page search field', 'Diagnostic mode on/off', 'Check setup…', 'Server found, running, version matches', 'AtlasServer.exe not found', 'Server found, not started yet', 'Server is starting…',
      'Server stopped', 'Server failed to start', 'Server running, version not known yet',
      'Server %s does not match plugin %s', '%s detected',
      '%s detected, platform needs an open project', 'Delphi version not detected',
@@ -906,15 +883,6 @@ const
      'Updating uses failed: %s', 'Two minimaps visible',
      'Find (Atlas) …', 'Find next (Atlas)', 'Find previous (Atlas)', 'Find in method …', 'Format',
      'Processes on the project…',
-     'Index cache',
-     'Lock',
-     'State',
-     'Kind',
-     'Client',
-     'State',
-     'File',
-     'IDE (this process)',
-     'MCP process',
      '%s is already used and not listed',
      '%s are already used and not listed',
      '%s and %d more are already used and not listed',
@@ -1106,28 +1074,6 @@ const
      'Create branch: the folder %s already exists; nothing created.',
      'Atlas server: memory and timings',
      'Find components',
-     'Pause',
-     'Reset',
-     'Feature',
-     'Calls',
-     'Total ms',
-     'Mean ms',
-     'Max ms',
-     'Slow',
-     'Share %',
-     'Time',
-     'Action',
-     'Duration ms',
-     'Request',
-     'Count',
-     'On main thread',
-     'Main thread mean ms',
-     'Timed out',
-     'Cancelled',
-     'Failed',
-     'Source',
-     'Too slow',
-     'Atlas involved',
      'Check file now',
      'New line at the end of the section',
      'Copy name',
@@ -1222,31 +1168,15 @@ begin
 end;
 
 function LiteralKind(const AKind: string): string;
+var
+  mIndex: Integer;
 begin
-  if AKind = 'string' then
+  mIndex := IndexStr(AKind, cLiteralKinds);
+  if mIndex < 0 then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralString);
-  end
-  else if AKind = 'char' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralChar);
-  end
-  else if AKind = 'integer' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralInteger);
-  end
-  else if AKind = 'float' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralFloat);
-  end
-  else if AKind = 'boolean' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralBoolean);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther);
+    Exit(TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther));
   end;
+  Result := TAtlasStrings.Text(cLiteralKindTexts[mIndex]);
 end;
 
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
@@ -1288,29 +1218,15 @@ class function TAtlasStrings.TypeArgHidden(const AKinds: string): string;
 var
   mKind: string;
   mNames: TArray<string>;
+  mIndex: Integer;
 begin
   mNames := nil;
   for mKind in AKinds.Split([',']) do
   begin
-    if mKind = 'classes' then
+    mIndex := IndexStr(mKind, cTypeArgKinds);
+    if mIndex >= 0 then
     begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindClasses)];
-    end
-    else if mKind = 'records' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindRecords)];
-    end
-    else if mKind = 'interfaces' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindInterfaces)];
-    end
-    else if mKind = 'enums' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindEnums)];
-    end
-    else if mKind = 'basic' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindBasic)];
+      mNames := mNames + [Text(cTypeArgKindTexts[mIndex])];
     end;
   end;
   if Length(mNames) = 0 then
@@ -1325,7 +1241,7 @@ begin
   case Length(AUnits) of
     0: Result := '';
     1: Result := Fmt(TAtlasTextId.UsesHiddenOne, [AUnits[0]]);
-    2, 3: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
+    2..cMaxNamesListed: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
   else
     Result := Fmt(TAtlasTextId.UsesHiddenMore, [string.Join(', ', Copy(AUnits, 0, 2)), Length(AUnits) - 2]);
   end;
@@ -1384,9 +1300,9 @@ begin
   case Length(AMethods) of
     0: Result := '';
     1: Result := Fmt(TAtlasTextId.InheritedAbstractOne, [AMethods[0]]);
-    2, 3: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
+    2..cMaxNamesListed: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
   else
-    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, 3)) + ', …']);
+    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, cMaxNamesListed)) + ', …']);
   end;
 end;
 

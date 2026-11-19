@@ -36,6 +36,16 @@ type
     Valid: Boolean;
   end;
 
+  /// <summary>Warten auf den Indexaufbau der Arbeitsbereiche einer Gruppe.</summary>
+  TShellIndexWait = record
+    /// <summary>Arbeitsbereiche, deren Indexaufbau seit Load fertig ist; unter FLock der Gruppe.</summary>
+    Finished: TList<TShellWorkspace>;
+    /// <summary>Gesetzt, sobald einer fertig wird.</summary>
+    Event: TEvent;
+    /// <summary>Meldung je fertigem Arbeitsbereich (#1480), True beim Hauptarbeitsbereich; nil erlaubt.</summary>
+    OnFinished: TProc<Boolean>;
+  end;
+
   TShellWorkspaceGroup = class
   private
     FRoot: string;
@@ -49,9 +59,7 @@ type
     FOthers: TObjectList<TShellWorkspace>;
     FProcessIdentity: TIndexProcessInfo;
     FCacheRoot: string;
-    /// <summary>Arbeitsbereiche, deren Indexaufbau seit Load fertig ist; unter FLock.</summary>
-    FFinished: TList<TShellWorkspace>;
-    FFinishedEvent: TEvent;
+    FIndexWait: TShellIndexWait;
     FLock: TObject;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102), bis Invalidate; unter FLock.</summary>
     FRuleProjects: TShellRuleProjectCache;
@@ -109,6 +117,9 @@ type
     property ProcessIdentity: TIndexProcessInfo read FProcessIdentity write FProcessIdentity;
     /// <summary>Vor Load setzen (#1112): Ordner der Index-Caches.</summary>
     property CacheRoot: string read FCacheRoot write FCacheRoot;
+    /// <summary>Vor Load setzen (#1480): Index eines Arbeitsbereichs fertig, True beim Hauptarbeitsbereich; läuft
+    /// im Thread des Indexaufbaus, auch nach einem erneuten Aufbau.</summary>
+    property OnIndexFinished: TProc<Boolean> read FIndexWait.OnFinished write FIndexWait.OnFinished;
   end;
 
 implementation
@@ -186,8 +197,8 @@ begin
   FReadText := AReadText;
   FTransport := TSilentTransport.Create;
   FLock := TObject.Create;
-  FFinished := TList<TShellWorkspace>.Create;
-  FFinishedEvent := TEvent.Create(nil, False, False, '');
+  FIndexWait.Finished := TList<TShellWorkspace>.Create;
+  FIndexWait.Event := TEvent.Create(nil, False, False, '');
   FOthers := TObjectList<TShellWorkspace>.Create(True);
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
   FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot),
@@ -205,8 +216,8 @@ begin
   FUsesGraph.Free;
   FOthers.Free;
   FMain.Free;
-  FFinishedEvent.Free;
-  FFinished.Free;
+  FIndexWait.Event.Free;
+  FIndexWait.Finished.Free;
   FLock.Free;
   inherited;
 end;
@@ -253,15 +264,19 @@ begin
     begin
       System.TMonitor.Enter(FLock);
       try
-        if not FFinished.Contains(AWorkspace) then
+        if not FIndexWait.Finished.Contains(AWorkspace) then
         begin
-          FFinished.Add(AWorkspace);
+          FIndexWait.Finished.Add(AWorkspace);
         end;
         FRuleProjects.Valid := False;
       finally
         System.TMonitor.Exit(FLock);
       end;
-      FFinishedEvent.SetEvent;
+      FIndexWait.Event.SetEvent;
+      if Assigned(FIndexWait.OnFinished) then
+      begin
+        FIndexWait.OnFinished(AWorkspace = FMain);
+      end;
     end;
   // uses-unit-not-found: Was ein anderes Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der
   // Gruppe (wie in der Komposition; hier für --check und MCP).
@@ -380,7 +395,7 @@ begin
     try
       for mWorkspace in Workspaces do
       begin
-        if mWorkspace.State.Project(mInfo) and not FFinished.Contains(mWorkspace) then
+        if mWorkspace.State.Project(mInfo) and not FIndexWait.Finished.Contains(mWorkspace) then
         begin
           mMissing := True;
         end;
@@ -396,7 +411,7 @@ begin
     begin
       Exit(False);
     end;
-    FFinishedEvent.WaitFor(200);
+    FIndexWait.Event.WaitFor(200);
   until False;
 end;
 

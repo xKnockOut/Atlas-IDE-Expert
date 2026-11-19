@@ -203,6 +203,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.Anonymity.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StatusFile.Tests.pas"/>
@@ -2302,6 +2303,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.IdleGate.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CompilerMessageTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DocsIndex.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DocsTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.Listings.pas"/>
