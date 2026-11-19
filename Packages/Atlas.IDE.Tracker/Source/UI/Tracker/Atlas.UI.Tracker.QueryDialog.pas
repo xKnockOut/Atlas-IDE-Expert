@@ -25,11 +25,11 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
-  Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
   Atlas.UI.Settings.ChoiceBox,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.UI.Foundation.Dialog,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Ergebnis von „Testen“ (#1263), im Hauptthread.</summary>

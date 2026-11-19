@@ -14,9 +14,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.MyIssues,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.Notify,
@@ -27,7 +25,8 @@ uses
   Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.Reopened,
   Atlas.IDE.Tracker.IssuesTracking,
-  Atlas.IDE.Tracker.IssuesContext;
+  Atlas.IDE.Tracker.IssuesContext,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   TAtlasIdeIssuesServices = class
@@ -39,7 +38,7 @@ type
     FSprint: TAtlasIdeSprint;
     FTracking: TAtlasIdeIssuesTracking;
     FSearch: TAtlasIdeIssueSearch;
-    FSearchRef: IAtlasPaletteSource;
+    FSearchRef: IInterface;
     FComments: TAtlasIdeCommentService;
     FNotify: TAtlasIdeIssueNotify;
     FAttach: TAtlasIdeIssueAttach;
@@ -76,7 +75,7 @@ type
     /// <summary>Tracker nachführen, Zeiterfassung, Statusfeld und „Prüfen“ (#1266, #1267, #2124, #2126).</summary>
     property Tracking: TAtlasIdeIssuesTracking read FTracking;
     /// <summary>Quelle der Befehlspalette für Issues (#1270); nil vor Start bzw. nach Stop.</summary>
-    property PaletteSearch: IAtlasPaletteSource read FSearchRef;
+    property PaletteSearch: TAtlasIdeIssueSearch read FSearch;
     /// <summary>Meldungen zu meinen Issues (#1271; nil vor Start bzw. nach Stop).</summary>
     property Notify: TAtlasIdeIssueNotify read FNotify;
     /// <summary>„An Issue anhängen“ (#1276; nil vor Start bzw. nach Stop).</summary>
@@ -92,12 +91,13 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Notify,
-  Atlas.Core.Tracker.Reopened,
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.IssueState,
-  Atlas.IDE.Tracker.WorkingCopies;
+  Atlas.IDE.Tracker.WorkingCopies,
+  Atlas.Core.Tracker.Contract.CommentAssist,
+  Atlas.Core.Commands.Palette;
 
 type
   /// <summary>Was die Hooks der Dienste einfangen: den Besitzer (hält ihn bis Stop), Kontext und Dienste.
@@ -394,6 +394,15 @@ begin
     begin
       // Haupt-Arbeitskopie (#1926), sonst der Ordner des Projekts.
       Result := TAtlasIdeTrackerWorkingCopies.FolderOf(mLink.Project);
+    end;
+  Result.Adapt :=
+    function(AAssist: TAtlasIdeCommentAssist): IAtlasCommentAssist
+    begin
+      Result := nil;
+      if (mLink.Keep <> nil) and Assigned(mLink.Context.Hooks.CommentAssist) then
+      begin
+        Result := mLink.Context.Hooks.CommentAssist(AAssist);
+      end;
     end;
 end;
 

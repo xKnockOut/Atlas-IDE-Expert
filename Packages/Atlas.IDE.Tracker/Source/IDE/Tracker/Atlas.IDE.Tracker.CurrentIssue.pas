@@ -14,9 +14,9 @@
 interface
 
 uses
-  Atlas.Core.Tracker.MyIssues,
   Atlas.IDE.Tracker.IssuesContext,
-  Atlas.IDE.Tracker.IssuesServices;
+  Atlas.IDE.Tracker.IssuesServices,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   TAtlasIdeCurrentIssue = class

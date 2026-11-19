@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Ci.Adapters.Credentials.Tests;
+﻿unit Atlas.Core.Ci.Providers.Credentials.Tests;
 
 // Tests für den Zugang zum Build-Server und zum Issue-Tracker (#763, #765) über einen Anmeldespeicher (#1922: der
 // Speicher von Windows liegt jetzt in Base und wird übergeben): Lesen, Schreiben mit Vorgabekommentar, Löschen. Der
@@ -27,7 +27,7 @@ implementation
 uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Credentials.Contract,
-  Atlas.Core.Ci.Adapters.Credentials;
+  Atlas.Core.Ci.Providers.Credentials;
 
 type
   TFakeStore = class(TInterfacedObject, IAtlasCredentialStore)

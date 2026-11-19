@@ -22,8 +22,7 @@ uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Connections;
+  Atlas.Core.Tracker.Contract;
 
 type
   /// <summary>Alle Anbieter des Issue-Trackers, je Aufruf neu (der Hintergrund bekommt eigene).</summary>
@@ -37,27 +36,14 @@ type
     Transports: IAtlasCiTransports;
     /// <summary>Zeile in die Meldungsansicht, sichtbar gemacht (folgt immer auf eine Aktion des Benutzers).</summary>
     Notice: TProc<string>;
+    /// <summary>AText an Notice, sofern gesetzt.</summary>
+    procedure Say(const AText: string);
   end;
 
-  TAtlasTrackerAccess = class(TInterfacedObject, IAtlasTrackerAccess)
-  public const
-    cComment = 'Atlas: Issue-Tracker';
-  private
-    FProviders: TAtlasTrackerProvidersFactory;
-    FParts: TAtlasAccessParts;
-    procedure Notice(const AText: string);
-    procedure SavedOrFailed(AOk: Boolean);
-    class procedure Wipe(var AToken: string); static;
-  public
-    constructor Create(const AProviders: TAtlasTrackerProvidersFactory; const AParts: TAtlasAccessParts);
-    function Providers: TArray<IAtlasTrackerProvider>;
-    function Provider(const AName: string): IAtlasTrackerProvider;
-    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
-    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
-    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
-  end;
+/// <summary>Leert ein Token und überschreibt die Kopie im Speicher.</summary>
+procedure WipeToken(var AToken: string);
 
+type
   /// <summary>Zugang zum Build-Server; die Kachel „Testergebnisse“ hält ihn, auch im Hintergrund-Thread.</summary>
   IAtlasCiAccess = interface
     ['{7C1F4E9B-2A6D-4B83-9E50-D84A3C7B1F62}']
@@ -73,7 +59,6 @@ type
   private
     FProviders: TAtlasCiProviderFactory;
     FParts: TAtlasAccessParts;
-    procedure Notice(const AText: string);
     function StoredUser(const AJob: TAtlasCiJob): string;
     function Remove(const AJob: TAtlasCiJob): Boolean;
   public
@@ -86,41 +71,10 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Tracker.TestResults.Strings,
   Atlas.UI.Tracker.CiLogin;
 
-{ TAtlasTrackerAccess }
-
-constructor TAtlasTrackerAccess.Create(const AProviders: TAtlasTrackerProvidersFactory;
-  const AParts: TAtlasAccessParts);
-begin
-  inherited Create;
-  FProviders := AProviders;
-  FParts := AParts;
-end;
-
-procedure TAtlasTrackerAccess.Notice(const AText: string);
-begin
-  if Assigned(FParts.Notice) then
-  begin
-    FParts.Notice(AText);
-  end;
-end;
-
-procedure TAtlasTrackerAccess.SavedOrFailed(AOk: Boolean);
-begin
-  if AOk then
-  begin
-    Notice(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginSaved));
-  end
-  else
-  begin
-    Notice(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginFailed));
-  end;
-end;
-
-class procedure TAtlasTrackerAccess.Wipe(var AToken: string);
+procedure WipeToken(var AToken: string);
 begin
   // Die Kopie des Tokens nicht im Speicher liegen lassen.
   if AToken <> '' then
@@ -131,105 +85,14 @@ begin
   AToken := '';
 end;
 
-function TAtlasTrackerAccess.Providers: TArray<IAtlasTrackerProvider>;
-begin
-  Result := nil;
-  if Assigned(FProviders) then
-  begin
-    Result := FProviders();
-  end;
-end;
+{ TAtlasAccessParts }
 
-function TAtlasTrackerAccess.Provider(const AName: string): IAtlasTrackerProvider;
-var
-  mProvider: IAtlasTrackerProvider;
+procedure TAtlasAccessParts.Say(const AText: string);
 begin
-  Result := nil;
-  for mProvider in Providers do
+  if Assigned(Notice) then
   begin
-    if SameText(mProvider.Name, Trim(AName)) then
-    begin
-      Exit(mProvider);
-    end;
+    Notice(AText);
   end;
-end;
-
-function TAtlasTrackerAccess.HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  mUser, mToken: string;
-begin
-  Result := False;
-  if (ATarget.CredentialTarget = '') or (FParts.Credentials = nil) then
-  begin
-    Exit;
-  end;
-  Result := FParts.Credentials.Read(ATarget.CredentialTarget, mUser, mToken) and (mToken <> '');
-  Wipe(mToken);
-end;
-
-function TAtlasTrackerAccess.EnterToken(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  mToken: string;
-begin
-  Result := False;
-  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
-  if not ATarget.Secure then
-  begin
-    Notice(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginInsecure));
-    Exit;
-  end;
-  mToken := '';
-  if (FParts.Credentials = nil) or not TAtlasCiLoginPrompt.AskToken(
-    TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.TrackerLoginTitle, [AProvider.Caption, ATarget.Server]),
-    TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginToken), mToken) then
-  begin
-    Exit;
-  end;
-  if mToken = '' then
-  begin
-    Exit(RemoveToken(ATarget));
-  end;
-  Result := FParts.Credentials.Write(ATarget.CredentialTarget, AProvider.Name, mToken, cComment);
-  Wipe(mToken);
-  // Anonym: weder Server noch Projekt.
-  SavedOrFailed(Result);
-end;
-
-function TAtlasTrackerAccess.RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
-begin
-  Result := True;
-  if (ATarget.CredentialTarget = '') or (FParts.Credentials = nil) then
-  begin
-    Exit;
-  end;
-  Result := FParts.Credentials.Delete(ATarget.CredentialTarget);
-  if Result then
-  begin
-    Notice(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginRemoved));
-  end
-  else
-  begin
-    Notice(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginFailed));
-  end;
-end;
-
-function TAtlasTrackerAccess.Transport(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
-var
-  mUser, mToken: string;
-begin
-  Result := nil;
-  if (AProvider = nil) or not ATarget.Secure or (FParts.Credentials = nil) or (FParts.Transports = nil) then
-  begin
-    Exit;
-  end;
-  // Ohne Token kein Transport (kein Netz). „Authorization: Bearer“ nur über https an die API des Trackers.
-  if FParts.Credentials.Read(ATarget.CredentialTarget, mUser, mToken) and (mToken <> '') then
-  begin
-    Result := FParts.Transports.Bearer(AProvider.ApiServer(ATarget), mToken);
-  end;
-  Wipe(mToken);
 end;
 
 { TAtlasCiAccess }
@@ -241,14 +104,6 @@ begin
   FParts := AParts;
 end;
 
-procedure TAtlasCiAccess.Notice(const AText: string);
-begin
-  if Assigned(FParts.Notice) then
-  begin
-    FParts.Notice(AText);
-  end;
-end;
-
 function TAtlasCiAccess.StoredUser(const AJob: TAtlasCiJob): string;
 var
   mToken: string;
@@ -256,7 +111,7 @@ begin
   // Nur der Benutzer wird vorbelegt; das gespeicherte Token wird nie angezeigt.
   Result := '';
   FParts.Credentials.Read(AJob.CredentialTarget, Result, mToken);
-  TAtlasTrackerAccess.Wipe(mToken);
+  WipeToken(mToken);
 end;
 
 function TAtlasCiAccess.Remove(const AJob: TAtlasCiJob): Boolean;
@@ -264,11 +119,11 @@ begin
   Result := FParts.Credentials.Delete(AJob.CredentialTarget);
   if Result then
   begin
-    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginRemoved));
+    FParts.Say(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginRemoved));
   end
   else
   begin
-    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginFailed));
+    FParts.Say(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginFailed));
   end;
 end;
 
@@ -298,7 +153,7 @@ begin
     FParts.Credentials.Read(AJob.CredentialTarget, mUser, mToken);
   end;
   Result := FParts.Transports.Basic(AJob.Server, mUser, mToken);
-  TAtlasTrackerAccess.Wipe(mToken);
+  WipeToken(mToken);
 end;
 
 function TAtlasCiAccess.EnterCredentials(const AJob: TAtlasCiJob): Boolean;
@@ -322,19 +177,19 @@ begin
   end;
   if (mUser = '') or (mToken = '') then
   begin
-    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginIncomplete));
+    FParts.Say(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginIncomplete));
     Exit;
   end;
   Result := FParts.Credentials.Write(AJob.CredentialTarget, mUser, mToken, '');
-  TAtlasTrackerAccess.Wipe(mToken);
+  WipeToken(mToken);
   // Anonym: weder Server noch Benutzer.
   if Result then
   begin
-    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginSaved));
+    FParts.Say(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginSaved));
   end
   else
   begin
-    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginFailed));
+    FParts.Say(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginFailed));
   end;
 end;
 

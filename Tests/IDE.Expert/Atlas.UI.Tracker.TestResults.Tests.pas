@@ -44,7 +44,9 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.TestResults;
+  Atlas.UI.Tracker.TestResults,
+  Atlas.Core.Tracker.Contract.TestResults,
+  Atlas.UI.Tracker.Contract.TestResults;
 
 const
   cTestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';

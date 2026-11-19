@@ -86,7 +86,7 @@ uses
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten auf POST; merkt sich Adressen, Inhaltstypen und Rümpfe.</summary>

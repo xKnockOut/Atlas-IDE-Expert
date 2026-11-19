@@ -121,7 +121,8 @@ uses
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.StateDialog,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 { TAtlasIdeIssueState }
 

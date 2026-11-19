@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Tracker.Adapters.LocalFiles.Tests;
+﻿unit Atlas.Core.Tracker.Providers.LocalFiles.Tests;
 
 // Dateizugriff des Trackers auf der Platte (#1455 Paket 2d): Text mit BOM
 // schreiben und ohne lesen, Ersetzen ohne Zwischendatei, Anfang und Ende
@@ -43,7 +43,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles;
 
 const
   cUtf8Bom: array[0..2] of Byte = ($EF, $BB, $BF);

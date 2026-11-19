@@ -29,9 +29,8 @@ implementation
 
 uses
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Queries,
-  Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.MyIssuesPlan;
+  Atlas.Core.Tracker.MyIssuesPlan,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 function Query(const AName: string): TAtlasTrackerQuery;
 begin

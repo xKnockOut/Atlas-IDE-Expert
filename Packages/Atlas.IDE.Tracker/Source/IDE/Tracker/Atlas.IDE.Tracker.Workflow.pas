@@ -55,12 +55,12 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.EndSteps,
-  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.SyncPlan,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   /// <summary>Transport mit dem Token aus dem Anmeldespeicher; nil ohne Token. Läuft im Hintergrund.</summary>
@@ -205,7 +205,8 @@ uses
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.IDE.Tracker.EndPull,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.Core.Tracker.CommentEditor;
 
 type
   /// <summary>Der offene Beenden-Dialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>

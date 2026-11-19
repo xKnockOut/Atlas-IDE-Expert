@@ -1,10 +1,12 @@
-﻿unit Atlas.IDE.Tracker.Parts;
+﻿unit Atlas.IDE.Tracker.Composition.Parts;
 
 // Teile, Befehle und Menüeinträge des Moduls Tracker (#1455), eigene
 // Unit neben Atlas.IDE.Tracker.Composition, damit die Komposition nur
 // anmeldet und die Adapter baut (Rolle Composition). Die Komposition übergibt
 // Scope und Zugänge (Install) und reicht Teile, Befehle, Menü, Tasten,
-// Einstellungen und Palette ihres Moduls hierher weiter.
+// Einstellungen und Palette ihres Moduls hierher weiter. Die Adapter der Teile
+// (Kacheln, Zuhörer, Palette, Kommentar-Hilfe) legt
+// Atlas.IDE.Tracker.Composition.Adapters an.
 // - MyIssues: „Meine Issues“ (#765) mit Vorschau, Beginnen, Board,
 //   Zeiterfassung, Anhängen und „Issue anlegen“ (#1268); die Kacheln „Meine
 //   Issues“ und „Sprint“ (#1277) und IAtlasIssueCreation für Base (#1355);
@@ -24,7 +26,7 @@ uses
   System.SysUtils,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Contract,
   Atlas.IDE.Tracker.Access;
 
 type
@@ -53,27 +55,24 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Tracker.Contract,
-  Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.LineChanges,
-  Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
   Atlas.IDE.Tracker.IssuesContext,
-  Atlas.IDE.Tracker.IssueWork,
-  Atlas.IDE.Tracker.KnownErrors,
+  Atlas.IDE.Tracker.Adapters.IssueWork,
+  Atlas.IDE.Tracker.Adapters.KnownErrors,
   Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.TestResults,
-  Atlas.IDE.Tracker.Tiles,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Commands.Strings,
-  Atlas.Core.Modules.Contributions;
+  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Tracker.Composition.Adapters;
 
 const
   // Zusatzfeld der Zeiterfassung im Statusfeld (#1267).
@@ -274,6 +273,7 @@ begin
   mHooks.Settings := ShowTrackerSettings;
   mHooks.AssignProject := AssignProject;
   mHooks.EditQueries := EditQueries;
+  mHooks.CommentAssist := TAtlasTrackerAdapters.CommentAssist();
   Result.Context.Hooks := mHooks;
 end;
 
@@ -285,9 +285,7 @@ begin
   GIssues.Start;
   // „Issue anlegen …“ (#1268): Tracker, Transport und „Beginnen“ wie „Meine Issues“.
   TAtlasIdeNewIssue.Start(GIssues, NewIssueMessage);
-  GTiles := [GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerIssuesTile.Create(GIssues) as IAtlasWelcomeTile),
-    GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerSprintTile.Create(GIssues) as IAtlasWelcomeTile),
-    GScope.Provide(IAtlasIssueCreation, TAtlasIdeIssueCreation.Create as IAtlasIssueCreation)];
+  GTiles := TAtlasTrackerAdapters.ProvideIssues(GScope, GIssues);
   GIssueWork := TAtlasTrackerIssueWork.Create(GIssues.Context, GIssues.Services);
   GTiles := GTiles + [GIssueWork.ProvideIn(GScope)];
   // Bekannte Fehler beim Exception-Halt (#2460) für den Debugger.
@@ -297,7 +295,7 @@ begin
   // „Prüfen“ (#2126): Ende der betroffenen Tests.
   if GIssues.Services.Tracking.Review <> nil then
   begin
-    GTiles := GTiles + [GIssues.Services.Tracking.Review.ProvideIn(GScope)];
+    GTiles := GTiles + [TAtlasTrackerAdapters.ProvideReview(GScope, GIssues.Services.Tracking.Review)];
   end;
 end;
 
@@ -350,9 +348,7 @@ begin
   GTests := TAtlasIdeTestResults.Create(GTestsWelcome, GCiAccess, NewIssueMessage);
   GTestsRef := GTests;
   GTests.Start;
-  GTestsRegistrations := [
-    GScope.Provide(IAtlasWelcomeTile, TAtlasTrackerTestsTile.Create(GTests) as IAtlasWelcomeTile),
-    GScope.Provide(IAtlasProjectSummaryListener, GTests as IAtlasProjectSummaryListener)];
+  GTestsRegistrations := TAtlasTrackerAdapters.ProvideTests(GScope, GTests);
 end;
 
 procedure StopTestResults;
@@ -690,7 +686,7 @@ begin
   Result := nil;
   if SessionAvailable then
   begin
-    Result := GIssues.Services.PaletteSearch;
+    Result := TAtlasTrackerAdapters.PaletteSource(GIssues);
   end;
 end;
 

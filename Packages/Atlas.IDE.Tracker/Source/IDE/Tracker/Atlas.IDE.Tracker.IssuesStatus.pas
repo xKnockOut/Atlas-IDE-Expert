@@ -123,7 +123,8 @@ uses
   Atlas.UI.Tracker.MyIssues.Text,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuePreview,
-  Atlas.IDE.Tracker.Attach;
+  Atlas.IDE.Tracker.Attach,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 const
   // Commit-Dialog der Versionsverwaltung der IDE (Git, SVN, Mercurial): am Namen der Formularklasse erkannt.

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Ci.Adapters.Http;
+﻿unit Atlas.Core.Ci.Providers.Http;
 
 // GET beim Build-Server (#763), aus einem Hintergrund-Thread. Wie die
 // Versionsabfrage (#495): asynchron, abgebrochen beim Entladen des Plugins
@@ -7,7 +7,7 @@
 // abgebrochenen Anfrage freigegeben (TAtlasAsyncWait.AwaitSettled); die
 // Antwort liest ein Stream, der an der Größengrenze der Anfrage abbricht.
 // Anmeldung: Benutzer und API-Token aus dem Anmeldespeicher von Windows
-// (Atlas.Core.Ci.Adapters.Credentials) gehen als „Authorization: Basic“ nur
+// (Atlas.Core.Ci.Providers.Credentials) gehen als „Authorization: Basic“ nur
 // über https und nur an den eingetragenen Server; über http fragt Atlas ohne
 // Anmeldung. Weiterleitungen nur auf denselben Rechner (http → https erlaubt),
 // damit das Token nie an einen anderen Server geht. Weder Adresse noch Token

@@ -14,10 +14,10 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.TestResults,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Tracker.Contract.TestResults;
 
 type
   /// <summary>Aktionen der Kachel: Projekt öffnen, Test öffnen, ausführen und debuggen, Seite des Builds.</summary>

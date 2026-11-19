@@ -5,7 +5,7 @@
 // Titelzeile, Griff und Spalte gehören der Seite; die Kachel zeichnet nur
 // ihren Inhalt, nennt ihre Höhe (BodyHeight) und meldet Änderungen der Höhe
 // über OnHeightChanged. Den Vertrag Atlas.IDE.Contracts.WelcomeTiles setzt
-// Atlas.IDE.Tracker.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
+// Atlas.IDE.Tracker.Adapters.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
 // misst sie keinen Text und holt UpdateContent in CreateWnd nach.
 
 interface

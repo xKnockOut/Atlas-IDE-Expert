@@ -13,10 +13,10 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.SettingsTables,
   Atlas.UI.Settings.ChoiceBox,
-  Atlas.UI.Tracker.SettingsRows;
+  Atlas.UI.Tracker.SettingsRows,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Steuerelemente der Tabelle Abfragen und der Schalter darunter.</summary>

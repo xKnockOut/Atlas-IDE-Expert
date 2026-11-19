@@ -54,6 +54,11 @@
 //   Supports) legt Unteraufgaben an und verknüpft Issues über IAtlasCiSend.
 // - Search und Lookup (#1270): Suche der Befehlspalette, je eine Abfrage ohne
 //   Pull Requests und Ampeln; Lookup liest ein Issue zur Kennung.
+// - IAtlasTrackerAccess: Anbieter, Token und Transport für Optionsseite und
+//   „Meine Issues“; setzt Atlas.IDE.Tracker.Adapters.Access um
+//   (Anmeldespeicher, Dialog).
+// - TAtlasIssueSearchQuery (#1270): Anfrage der Befehlspalette und der
+//   Issue-Vorschläge im Kommentar-Editor (Kennung, Text oder zuletzt geöffnete).
 // - IAtlasTrackerPeople (#1278): Benutzer für @-Erwähnungen im
 //   Kommentar-Editor (TAtlasTrackerUser mit Anmelde- und Anzeigename);
 //   Filter und Ranked ordnen die Treffer zum getippten Text.
@@ -891,6 +896,43 @@ type
       out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
+  /// <summary>Anbieter, Token und Transport; setzt die Komposition um. Token nie im Protokoll.</summary>
+  IAtlasTrackerAccess = interface
+    ['{4C7E2A91-8B3D-4F06-9E15-A2D6C8B04F73}']
+    /// <summary>Alle Anbieter in fester Reihenfolge (Auswahl der Optionsseite).</summary>
+    function Providers: TArray<IAtlasTrackerProvider>;
+    /// <summary>Anbieter zum Namen; nil, wenn es ihn nicht gibt.</summary>
+    function Provider(const AName: string): IAtlasTrackerProvider;
+    /// <summary>Im Anmeldespeicher steht ein Token für den Server von ATarget.</summary>
+    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    /// <summary>Token abfragen (verdeckter Dialog) und speichern, leer entfernt es; nur über https. True, wenn
+    /// sich etwas geändert hat.</summary>
+    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
+    /// <summary>Token des Servers entfernen; True auch, wenn es keins gab.</summary>
+    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    /// <summary>Transport mit dem Token, das nur an AProvider.ApiServer geht; nil ohne Token. Im Hintergrund
+    /// erlaubt.</summary>
+    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>None: Befehle; Recent: zuletzt geöffnete; Key: eine Kennung; Text: Freitextsuche.</summary>
+  TAtlasIssueSearchKind = (None, Recent, Key, Text);
+{$SCOPEDENUMS OFF}
+
+  TAtlasIssueSearchQuery = record
+    Kind: TAtlasIssueSearchKind;
+    /// <summary>Key: Kennung wie im Tracker ("ATL-12", "#42").</summary>
+    Key: string;
+    /// <summary>Text: Suchtext ohne Auslöser ("Speicherleck").</summary>
+    Text: string;
+    class function None: TAtlasIssueSearchQuery; static;
+    /// <summary>Gleiche Anfrage (Art, Kennung, Text ohne Groß-/Kleinschreibung).</summary>
+    function SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
+    /// <summary>Text, dessen Zeichen in den Zeilen hervorgehoben werden.</summary>
+    function Highlight: string;
+  end;
+
 implementation
 
 uses
@@ -1411,6 +1453,32 @@ end;
 function TAtlasTrackerTarget.Secure: Boolean;
 begin
   Result := SameText(Copy(Server, 1, 8), 'https://');
+end;
+
+{ TAtlasIssueSearchQuery }
+
+class function TAtlasIssueSearchQuery.None: TAtlasIssueSearchQuery;
+begin
+  Result.Kind := TAtlasIssueSearchKind.None;
+  Result.Key := '';
+  Result.Text := '';
+end;
+
+function TAtlasIssueSearchQuery.SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
+begin
+  Result := (Kind = AOther.Kind) and SameText(Key, AOther.Key) and SameText(Text, AOther.Text);
+end;
+
+function TAtlasIssueSearchQuery.Highlight: string;
+begin
+  case Kind of
+    TAtlasIssueSearchKind.Key:
+      Result := Key;
+    TAtlasIssueSearchKind.Text:
+      Result := Text;
+  else
+    Result := '';
+  end;
 end;
 
 end.

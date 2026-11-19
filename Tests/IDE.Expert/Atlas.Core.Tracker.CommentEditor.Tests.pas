@@ -81,14 +81,14 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.GitHubParse,
   Atlas.Core.Tracker.YouTrackApi,
-  Atlas.Core.Tracker.YouTrackParse;
+  Atlas.Core.Tracker.YouTrackParse,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt die Adressen.</summary>

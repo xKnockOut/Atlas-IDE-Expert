@@ -48,7 +48,7 @@ uses
   System.DateUtils,
   System.IOUtils,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.Providers.LocalFiles,
   Atlas.Core.Tracker.TimeLog;
 
 function Issue(const AKey: string): TAtlasTimeIssue;

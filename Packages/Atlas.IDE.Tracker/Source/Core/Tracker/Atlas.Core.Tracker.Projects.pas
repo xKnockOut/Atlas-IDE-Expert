@@ -40,7 +40,8 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Matching,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Connections;
+  Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Wodurch ein Tracker für ein Projekt gilt; zugleich die Art einer Zeile (Project, Group, Folder).
@@ -72,20 +73,6 @@ type
     function MainFolder: string;
     /// <summary>Alle Arbeitskopien: Paths, sonst nur MatchFolder.</summary>
     function Folders: TArray<string>;
-  end;
-
-  /// <summary>Ein Eintrag der Klappliste „Tracker-Projekt“ (#1927).</summary>
-  TAtlasTrackerChoice = record
-    /// <summary>„projekt@verbindung“.</summary>
-    Key: string;
-    Connection: string;
-    Project: string;
-    /// <summary>„Gilt für“ der ersten Zeile mit diesem Paar; dient als Projekt für Zustand und Auflösung.</summary>
-    Match: string;
-    /// <summary>Index dieser Zeile in den persönlichen Zeilen.</summary>
-    Index: Integer;
-    /// <summary>„Verbindung · Projekt“ (ohne Projekt nur die Verbindung).</summary>
-    function Caption: string;
   end;
 
   /// <summary>Welche Zeile bzw. welcher Tracker für ein Projekt gilt.</summary>
@@ -281,17 +268,6 @@ begin
   for mIndex := 0 to High(Paths) do
   begin
     Result[mIndex] := TAtlasTrackerProjects.WithoutTrailingDelimiter(Paths[mIndex]);
-  end;
-end;
-
-{ TAtlasTrackerChoice }
-
-function TAtlasTrackerChoice.Caption: string;
-begin
-  Result := Connection;
-  if Project <> '' then
-  begin
-    Result := Result + ' ' + #$00B7 + ' ' + Project;
   end;
 end;
 
