@@ -93,6 +93,15 @@ uses
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Foundation.WrapLabel;
 
+const
+  /// <summary>Oberkante der ersten Zeile, die Place beim Aufteilen eines Bereichs setzt (alTop ordnet nach Top;
+  /// weiter in Schritten von 100).</summary>
+  cFirstPlaceTop = 1000;
+  /// <summary>Oberkante der Übersicht des Hauptknotens: unter allen anderen Zeilen seiner Seite.</summary>
+  cOverviewTop = 100000;
+  /// <summary>Höhe einer Zeile der Übersicht (Spiegel und „Details“).</summary>
+  cOverviewRowHeight = 24;
+
 type
   /// <summary>Art einer Zeile beim Aufteilen eines Bereichs: mit Einstellung, angehängt, Beschriftung, sonst.
   /// </summary>
@@ -599,7 +608,7 @@ procedure TAtlasSettingsPageNodes.BuildArea(AArea: Integer);
 var
   mLayout: TAtlasSettingsAreaLayout;
 begin
-  FPlaceTop := 1000;
+  FPlaceTop := cFirstPlaceTop;
   mLayout := TAtlasSettingsAreaLayout.Create(Self, AArea);
   try
     mLayout.Run;
@@ -650,7 +659,7 @@ var
   mCaption: TLabel;
 begin
   Result := TAtlasSettingsGroup.Create(Self);
-  FPlaceTop := 100000;
+  FPlaceTop := cOverviewTop;
   Place(Result, FNodePages[AMain].Box);
   mCaption := TLabel.Create(Self);
   mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewTitle);
@@ -667,7 +676,7 @@ var
   mMirror: TCheckBox;
 begin
   mRow := TAtlasSettingsRow.Create(Self);
-  mRow.Height := mRow.ScaleValue(24);
+  mRow.Height := mRow.ScaleValue(cOverviewRowHeight);
   AOverview.AddRow(mRow);
   FOverviewRows := FOverviewRows + [mRow];
   FOverviewFrames := FOverviewFrames + [AFrame];
