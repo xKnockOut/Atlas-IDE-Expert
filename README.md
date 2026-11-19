@@ -142,6 +142,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **“No source” window:** when the debugger stops in code without source, a small window names routine, module, reason (debug DCUs off, `{$D-}`, DCU only, not in search path, system code) and ways out
 - **“Atlas leaks” window:** when the program reports leaks at the end (message box of `ReportMemoryLeaksOnShutdown` or FastMM log), Atlas lists them per name compared with the last run (new, grown, known) and the places below: with call stacks the creation site, otherwise the server's rated candidates; Enter jumps there (`debug.leakReport`)
 - **Debug note:** “Capture debug state” records the paused state as Markdown (location, call stack, locals, watches, exception, last events, secrets masked), on the clipboard and optionally as a file next to the project (`debug.note`, `debug.note.saveFile`)
+- **Close files opened by the debugger:** units the debugger opened while stepping (`System.pas` …) are closed after the session on request or automatically, with “Reopen”; modified files and files with breakpoints or bookmarks stay open; optionally they share one preview tab (`debug.closeOpenedFiles`, `debug.previewTab`)
 - **Memory timeline while debugging:** the window “Atlas: Memory” shows private bytes, working set, handles, GDI and USER objects of the program over the session with a mark at every stop; a dragged range shows the growth, “Copy CSV” the timeline (`debug.memoryTimeline`). Experimental: “Count objects” counts live objects per class in the paused program and compares with the previous count, growth on top (`debug.memoryTimeline.objectCount`)
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
@@ -174,6 +175,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Where you are in the IDE:** `get_ide_context` tells AI assistants the open file with cursor and method, the selection, the active project with configuration and platform, the last build and the tabs, so "this method" needs no copying (`assistants.context`)
 - **Several queries at once:** `batch` runs up to 10 read-only MCP tools in one call, on one shared index state with a single file comparison; an error affects only its section
 - **Search the Atlas docs:** `search_atlas_docs` answers questions like “How do I turn off the breadcrumbs?” or “What does `method-order` do?” from the embedded rule catalog, settings, windows and shortcuts, with the effective severity of a rule and the current value of a setting in the project, also without the repository
+- **History of a symbol:** `get_symbol_history` lists the commits that changed a routine or type, with issues, and with Git follows renames and moves into other units by the similarity of the bodies
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
 - **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)
