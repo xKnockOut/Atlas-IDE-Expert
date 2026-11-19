@@ -598,14 +598,15 @@ end;
 function SignatureWord(const AText: string): string;
 const
   cWords: array[0..5] of string = ('function', 'procedure', 'constructor', 'destructor', 'operator', 'property');
+  cClassPrefix = 'class ';
 var
   mHead, mWord: string;
 begin
   Result := '';
   mHead := LowerCase(AText);
-  if mHead.StartsWith('class ') then
+  if mHead.StartsWith(cClassPrefix) then
   begin
-    mHead := Trim(Copy(mHead, 7, MaxInt));
+    mHead := Trim(Copy(mHead, Length(cClassPrefix) + 1, MaxInt));
   end;
   mWord := Copy(mHead, 1, Pos(' ', mHead + ' ') - 1);
   for mHead in cWords do

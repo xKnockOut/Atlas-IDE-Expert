@@ -159,6 +159,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -210,11 +211,11 @@ class function TAtlasStickyScroll.OwnerKind(const AOwner: string; out AKind: TAt
 begin
   Result := True;
   AKind := TAtlasStickyKind.Branches;
-  if (AOwner = 'if') or (AOwner = 'else') then
+  if MatchStr(AOwner, ['if', 'else']) then
   begin
     AKind := TAtlasStickyKind.Branches;
   end
-  else if (AOwner = 'for') or (AOwner = 'while') or (AOwner = 'repeat') then
+  else if MatchStr(AOwner, ['for', 'while', 'repeat']) then
   begin
     AKind := TAtlasStickyKind.Loops;
   end

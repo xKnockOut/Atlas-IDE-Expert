@@ -132,10 +132,10 @@ type
   TAtlasCompileLog = class(TAtlasCompileParticipant)
   private
     FEvents: TAtlasCompileEvents;
-    FWrite: TAtlasTextProc;
+    FLog: TAtlasTextProc;
   public
-    /// <summary>AEvents liefert die Zahlen der Code-Insight-Kompilierungen.</summary>
-    constructor Create(AEvents: TAtlasCompileEvents; const AWrite: TAtlasTextProc);
+    /// <summary>AEvents liefert die Zahlen der Code-Insight-Kompilierungen; ALog schreibt eine Zeile.</summary>
+    constructor Create(AEvents: TAtlasCompileEvents; const ALog: TAtlasTextProc);
     procedure GroupStarted(AKind: TAtlasCompileKind); override;
     procedure GroupFinished(ASucceeded: Boolean; ADurationMs: Int64); override;
     procedure ProjectStarted(const AProject: TAtlasCompileProject); override;
@@ -149,29 +149,29 @@ uses
 
 { TAtlasCompileLog }
 
-constructor TAtlasCompileLog.Create(AEvents: TAtlasCompileEvents; const AWrite: TAtlasTextProc);
+constructor TAtlasCompileLog.Create(AEvents: TAtlasCompileEvents; const ALog: TAtlasTextProc);
 begin
   inherited Create;
   FEvents := AEvents;
-  FWrite := AWrite;
+  FLog := ALog;
 end;
 
 procedure TAtlasCompileLog.GroupStarted(AKind: TAtlasCompileKind);
 begin
-  FWrite(Format('Compile: Gruppe %s beginnt', [TAtlasCompileEvents.KindText(AKind)]));
+  FLog(Format('Compile: Gruppe %s beginnt', [TAtlasCompileEvents.KindText(AKind)]));
 end;
 
 procedure TAtlasCompileLog.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 const
   cResults: array[Boolean] of string = ('fehlgeschlagen', 'erfolgreich');
 begin
-  FWrite(Format('Compile: Gruppe %s nach %d ms; Code Insight bisher %d-mal, %d ms',
+  FLog(Format('Compile: Gruppe %s nach %d ms; Code Insight bisher %d-mal, %d ms',
     [cResults[ASucceeded], ADurationMs, FEvents.CodeInsightCount, FEvents.CodeInsightMs]));
 end;
 
 procedure TAtlasCompileLog.ProjectStarted(const AProject: TAtlasCompileProject);
 begin
-  FWrite(Format('Compile: %s %s (%s, %s) beginnt', [TAtlasCompileEvents.KindText(AProject.Kind),
+  FLog(Format('Compile: %s %s (%s, %s) beginnt', [TAtlasCompileEvents.KindText(AProject.Kind),
     ExtractFileName(AProject.FileName), AProject.Configuration, AProject.Platform]));
 end;
 
@@ -180,7 +180,7 @@ procedure TAtlasCompileLog.ProjectFinished(const AProject: TAtlasCompileProject;
 const
   cResults: array[Boolean] of string = ('fehlgeschlagen', 'erfolgreich');
 begin
-  FWrite(Format('Compile: %s %s nach %d ms', [ExtractFileName(AProject.FileName), cResults[ASucceeded], ADurationMs]));
+  FLog(Format('Compile: %s %s nach %d ms', [ExtractFileName(AProject.FileName), cResults[ASucceeded], ADurationMs]));
 end;
 
 { TAtlasCompileParticipant }
