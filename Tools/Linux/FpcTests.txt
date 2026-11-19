@@ -525,6 +525,7 @@ Atlas.Core.Debug.Restart.Tests
 Atlas.Core.Debug.Reattach.Tests
 Atlas.Core.Debug.LaunchGroups.Tests
 Atlas.Core.Settings.BuildDebug.Tests
+Atlas.Core.Settings.KeyCodes.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
 Atlas.UI.Analysis.Strings.Tests

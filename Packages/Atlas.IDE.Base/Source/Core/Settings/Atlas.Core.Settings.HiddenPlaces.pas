@@ -88,6 +88,18 @@ uses
   Atlas.Core.Settings.JsonText,
   Atlas.Text.Json;
 
+const
+  /// <summary>Schlüssel eines Eintrags in der Datei.</summary>
+  cSettingKey = 'setting';
+  cFileKey = 'file';
+  cAnchorKey = 'anchor';
+
+/// <summary>"Schlüssel": Wert als JSON.</summary>
+function JsonMember(const AKey, AValue: string): string;
+begin
+  Result := TJsonText.Quote(AKey) + ': ' + TJsonText.Quote(AValue);
+end;
+
 function IsSeparator(ACh: Char): Boolean;
 begin
   Result := (ACh = '\') or (ACh = '/');
@@ -142,6 +154,8 @@ begin
 end;
 
 class function TAtlasHiddenPlaces.NormalizePath(const APath: string): string;
+const
+  cCurrentFolder = './';
 var
   mIndex: Integer;
 begin
@@ -153,9 +167,9 @@ begin
       Result[mIndex] := '/';
     end;
   end;
-  while Result.StartsWith('./') do
+  while Result.StartsWith(cCurrentFolder) do
   begin
-    Result := Copy(Result, 3, MaxInt);
+    Result := Copy(Result, Length(cCurrentFolder) + 1, MaxInt);
   end;
 end;
 
@@ -187,11 +201,11 @@ begin
   Result := '[';
   for mIndex := 0 to High(APlaces) do
   begin
-    mItem := '{"setting": ' + TJsonText.Quote(APlaces[mIndex].Setting) + ', "file": ' +
-      TJsonText.Quote(NormalizePath(APlaces[mIndex].FileName));
+    mItem := '{' + JsonMember(cSettingKey, APlaces[mIndex].Setting) + ', ' +
+      JsonMember(cFileKey, NormalizePath(APlaces[mIndex].FileName));
     if APlaces[mIndex].Anchor <> '' then
     begin
-      mItem := mItem + ', "anchor": ' + TJsonText.Quote(APlaces[mIndex].Anchor);
+      mItem := mItem + ', ' + JsonMember(cAnchorKey, APlaces[mIndex].Anchor);
     end;
     mItem := mItem + '}';
     if mIndex < High(APlaces) then
@@ -261,8 +275,8 @@ begin
       begin
         Continue;
       end;
-      mPlace := TAtlasHiddenPlace.Create(TJSONObject(mItem).GetValue<string>('setting', ''),
-        TJSONObject(mItem).GetValue<string>('file', ''), TJSONObject(mItem).GetValue<string>('anchor', ''));
+      mPlace := TAtlasHiddenPlace.Create(TJSONObject(mItem).GetValue<string>(cSettingKey, ''),
+        TJSONObject(mItem).GetValue<string>(cFileKey, ''), TJSONObject(mItem).GetValue<string>(cAnchorKey, ''));
       if (mPlace.Setting <> '') and (mPlace.FileName <> '') then
       begin
         Result := Result + [mPlace];
