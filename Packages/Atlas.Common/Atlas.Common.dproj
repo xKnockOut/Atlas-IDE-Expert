@@ -123,6 +123,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownRest.pas"/>
@@ -722,6 +723,9 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeIndex.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CompilerMessageTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DocsIndexData.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DocsIndex.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DocsTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditTools.pas"/>

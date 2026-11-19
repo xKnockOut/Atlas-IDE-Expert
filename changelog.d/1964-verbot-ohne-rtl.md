@@ -1,0 +1,2 @@
+### Behoben
+- Prüfregel forbidden-symbol: Ein einfacher Name aus einer eingebundenen Unit ohne Quelltext im Index (etwa `CreateProcess` bei `uses Winapi.Windows`, wenn die RTL-Quelltexte fehlen) blieb ungemeldet; nur die qualifizierte Schreibweise wurde erkannt. Er gilt jetzt als `Unit.Name` dieser Unit (#1964). Startverbünde starten Programme ohne Debugger jetzt ebenfalls über den gemeinsamen Prozessstarter.

@@ -322,6 +322,28 @@ begin
   Result := Trim(Text);
 end;
 
+const
+  // Maße in Pixeln bei 96 dpi.
+  cWidth = 440;
+  cScreenMargin = 40;
+  cTopOffset = 60;
+  cFrameMargin = 4;
+  cRowPadding = 8;
+  cTitleGap = 6;
+  cListMargin = 4;
+  cEdge = 12;
+  cTextIndent = 8;
+  cNameGap = 12;
+  cInputMargin = 6;
+  cBadgeWidth = 18;
+  cBadgeInset = 4;
+  cBadgeRadius = 4;
+  cCheckSize = 14;
+  cCheckInset = 5;
+  cCheckColumn = 22;
+  // Zeilen je Schritt des Mausrads.
+  cWheelRows = 3;
+
 type
   /// <summary>Höhen und Zeilen des Fensters in der Fensterschrift.</summary>
   TAtlasGenerateMetrics = record
@@ -356,16 +378,16 @@ type
 function TAtlasGenerateMetrics.RowHeight: Integer;
 begin
   Window.Canvas.Font := Window.Font;
-  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(8);
+  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(cRowPadding);
 end;
 
 function TAtlasGenerateMetrics.TitleHeight: Integer;
 begin
-  Result := RowHeight + Window.ScaleValue(6);
+  Result := RowHeight + Window.ScaleValue(cTitleGap);
   // Im zweiten Schritt steht unter dem Titel das Eingabefeld.
   if Window.FStep.Active then
   begin
-    Inc(Result, RowHeight + Window.ScaleValue(6));
+    Inc(Result, RowHeight + Window.ScaleValue(cTitleGap));
   end;
 end;
 
@@ -381,7 +403,8 @@ end;
 
 function TAtlasGenerateMetrics.RowRect(AVisibleRow: Integer): TRect;
 begin
-  Result := Rect(Window.ScaleValue(4), ListTop + AVisibleRow * RowHeight, Window.ClientWidth - Window.ScaleValue(4),
+  Result := Rect(Window.ScaleValue(cListMargin), ListTop + AVisibleRow * RowHeight,
+    Window.ClientWidth - Window.ScaleValue(cListMargin),
     ListTop + (AVisibleRow + 1) * RowHeight);
 end;
 
@@ -451,11 +474,12 @@ var
   mBadge: TRect;
 begin
   // Ziffer 1–9 als Badge.
-  mBadge := Rect(ABounds.Left, ABounds.Top + Px(4), ABounds.Left + Px(18), ABounds.Bottom - Px(4));
+  mBadge := Rect(ABounds.Left, ABounds.Top + Px(cBadgeInset), ABounds.Left + Px(cBadgeWidth),
+    ABounds.Bottom - Px(cBadgeInset));
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Window.Colors.AccentSoft);
   Canvas.Pen.Color := ToColor(Window.Colors.Line);
-  Canvas.RoundRect(mBadge.Left, mBadge.Top, mBadge.Right, mBadge.Bottom, Px(4), Px(4));
+  Canvas.RoundRect(mBadge.Left, mBadge.Top, mBadge.Right, mBadge.Bottom, Px(cBadgeRadius), Px(cBadgeRadius));
   Canvas.Brush.Style := bsClear;
   DrawLabel(IntToStr(ADigit), mBadge, Window.Colors.Text, DT_CENTER);
 end;
@@ -474,7 +498,7 @@ begin
   begin
     Canvas.Font.Size := Window.Font.Size - 1;
     mPart := mBounds;
-    Inc(mPart.Left, Px(8));
+    Inc(mPart.Left, Px(cTextIndent));
     DrawLabel(TAtlasGenerateTexts.GroupCaption(mRow.Group), mPart, Window.Colors.Muted, 0);
     Canvas.Font.Size := Window.Font.Size;
     Canvas.Brush.Style := bsSolid;
@@ -488,12 +512,12 @@ begin
     Canvas.FillRect(mBounds);
     Canvas.Brush.Style := bsClear;
   end;
-  InflateRect(mBounds, -Px(8), 0);
+  InflateRect(mBounds, -Px(cTextIndent), 0);
   if mRow.Digit > 0 then
   begin
     Badge(mBounds, mRow.Digit);
   end;
-  Inc(mBounds.Left, Px(18) + Px(8));
+  Inc(mBounds.Left, Px(cBadgeWidth) + Px(cTextIndent));
   // /name gedimmt rechts.
   mNameWidth := 0;
   if Window.FOptions.ShowCommandNames and (mEntry.CommandName <> '') then
@@ -501,7 +525,7 @@ begin
     mNameWidth := Canvas.TextWidth(mEntry.CommandName);
     mPart := Rect(mBounds.Right - mNameWidth, mBounds.Top, mBounds.Right, mBounds.Bottom);
     DrawLabel(mEntry.CommandName, mPart, Window.Colors.Muted, 0);
-    Inc(mNameWidth, Px(12));
+    Inc(mNameWidth, Px(cNameGap));
   end;
   DrawHighlighted(TAtlasGenerateTexts.EntryCaption(mEntry), CaptionPattern(Window.FPattern),
     Rect(mBounds.Left, mBounds.Top, mBounds.Right - mNameWidth, mBounds.Bottom));
@@ -524,7 +548,7 @@ begin
     Canvas.FillRect(mBounds);
   end;
   Canvas.Brush.Style := bsClear;
-  InflateRect(mBounds, -Px(8), 0);
+  InflateRect(mBounds, -Px(cTextIndent), 0);
   if mIndex > High(mStep.Order) then
   begin
     // Eigene Eingabe.
@@ -536,7 +560,8 @@ begin
   end;
   if mStep.Entry.Multi then
   begin
-    mBox := Rect(mBounds.Left, mBounds.Top + Px(5), mBounds.Left + Px(14), mBounds.Bottom - Px(5));
+    mBox := Rect(mBounds.Left, mBounds.Top + Px(cCheckInset), mBounds.Left + Px(cCheckSize),
+      mBounds.Bottom - Px(cCheckInset));
     Canvas.Pen.Color := ToColor(Window.Colors.Muted);
     if mStep.Checked[mStep.Order[mIndex]] then
     begin
@@ -545,7 +570,7 @@ begin
     end;
     Canvas.Rectangle(mBox);
     Canvas.Brush.Style := bsClear;
-    Inc(mBounds.Left, Px(22));
+    Inc(mBounds.Left, Px(cCheckColumn));
   end;
   DrawHighlighted(mStep.Choices[mStep.Order[mIndex]], mStep.Text, mBounds);
   Canvas.Brush.Style := bsSolid;
@@ -554,7 +579,7 @@ end;
 function TAtlasGeneratePainter.Title: TRect;
 begin
   // Titel: „Erzeugen“ bzw. der gewählte Eintrag.
-  Result := Rect(Px(12), Px(2), Window.ClientWidth - Px(12), Px(2) + Metrics.RowHeight);
+  Result := Rect(Px(cEdge), Px(2), Window.ClientWidth - Px(cEdge), Px(2) + Metrics.RowHeight);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   if Window.FStep.Active then
@@ -580,12 +605,13 @@ var
   mInput: TRect;
 begin
   // Eingabefeld mit Akzentrahmen.
-  mInput := Rect(Px(6), ATitle.Bottom + Px(6), Window.ClientWidth - Px(6), ATitle.Bottom + Px(6) + Metrics.RowHeight);
+  mInput := Rect(Px(cInputMargin), ATitle.Bottom + Px(cInputMargin), Window.ClientWidth - Px(cInputMargin),
+    ATitle.Bottom + Px(cInputMargin) + Metrics.RowHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Color := ToColor(Window.Colors.Accent);
   Canvas.Brush.Color := ToColor(Window.Colors.Gutter);
   Canvas.Rectangle(mInput);
-  InflateRect(mInput, -Px(8), 0);
+  InflateRect(mInput, -Px(cTextIndent), 0);
   Canvas.Brush.Style := bsClear;
   if Window.FStep.Text <> '' then
   begin
@@ -621,7 +647,7 @@ begin
   begin
     mReason := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateEmpty);
   end;
-  DrawLabel(mReason, Rect(Px(12), Metrics.ListTop, Window.ClientWidth - Px(12),
+  DrawLabel(mReason, Rect(Px(cEdge), Metrics.ListTop, Window.ClientWidth - Px(cEdge),
     Metrics.ListTop + Metrics.RowHeight), Window.Colors.Muted, 0);
 end;
 
@@ -631,7 +657,7 @@ var
   mHint: string;
 begin
   // Fußzeile: Filter oder Hinweis.
-  mFooter := Rect(Px(12), Window.ClientHeight - Metrics.FooterHeight - Px(2), Window.ClientWidth - Px(12),
+  mFooter := Rect(Px(cEdge), Window.ClientHeight - Metrics.FooterHeight - Px(2), Window.ClientWidth - Px(cEdge),
     Window.ClientHeight - Px(2));
   Canvas.Pen.Color := ToColor(Window.Colors.Line);
   Canvas.MoveTo(0, mFooter.Top);
@@ -837,7 +863,7 @@ end;
 
 function TAtlasGenerateWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
+  FTop := EnsureRange(FTop - Sign(WheelDelta) * cWheelRows, 0, Max(0, RowCount - cVisibleRows));
   Invalidate;
   Result := True;
 end;
@@ -1074,7 +1100,8 @@ var
 begin
   mMetrics.Window := Self;
   mVisible := EnsureRange(RowCount, 1, cVisibleRows);
-  ClientHeight := mMetrics.TitleHeight + mVisible * mMetrics.RowHeight + mMetrics.FooterHeight + ScaleValue(4);
+  ClientHeight := mMetrics.TitleHeight + mVisible * mMetrics.RowHeight + mMetrics.FooterHeight +
+    ScaleValue(cFrameMargin);
 end;
 
 procedure TAtlasGenerateWindow.FormDeactivate(Sender: TObject);
@@ -1092,7 +1119,7 @@ var
   mArea: TRect;
   mLeft, mTop: Integer;
 begin
-  Width := ScaleValue(440);
+  Width := ScaleValue(cWidth);
   UpdateHeight;
   mArea := Screen.MonitorFromPoint(ACaret.TopLeft, mdNearest).WorkareaRect;
   mLeft := EnsureRange(ACaret.Left, mArea.Left, Max(mArea.Left, mArea.Right - Width));
@@ -1109,9 +1136,9 @@ end;
 
 procedure TAtlasGenerateWindow.ShowOver(const AArea: TRect);
 begin
-  Width := Min(ScaleValue(440), AArea.Width - ScaleValue(40));
+  Width := Min(ScaleValue(cWidth), AArea.Width - ScaleValue(cScreenMargin));
   UpdateHeight;
-  SetBounds(AArea.Left + (AArea.Width - Width) div 2, AArea.Top + ScaleValue(60), Width, Height);
+  SetBounds(AArea.Left + (AArea.Width - Width) div 2, AArea.Top + ScaleValue(cTopOffset), Width, Height);
   Show;
   SetFocus;
 end;
