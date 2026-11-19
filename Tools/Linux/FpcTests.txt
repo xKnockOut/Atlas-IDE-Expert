@@ -470,6 +470,8 @@ Atlas.Core.Assistants.DebugGate.Tests
 Atlas.Core.Assistants.Activity.Tests
 Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
+Atlas.Core.Notifications.Listeners.Tests
+Atlas.Core.Notifications.OrderedItems.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests

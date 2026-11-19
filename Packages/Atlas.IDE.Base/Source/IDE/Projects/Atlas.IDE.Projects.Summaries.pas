@@ -145,6 +145,7 @@ uses
   Atlas.Core.Projects.Trends,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
+  Atlas.Core.Editor.SourceFiles,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
 
@@ -421,12 +422,8 @@ begin
 end;
 
 class function TAtlasIdeProjectSummaries.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
-  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or
-    (mExtension = '.groupproj');
+  Result := TAtlasSourceFiles.IsProjectFile(Trim(AFileName));
 end;
 
 class function TAtlasIdeProjectSummaries.Current: TAtlasIdeProjectSummaries;

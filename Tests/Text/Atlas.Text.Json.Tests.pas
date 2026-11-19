@@ -41,6 +41,10 @@ type
     procedure AddTextLeavesOutEmptyValue;
     [Test]
     procedure IsoTimeRoundTrips;
+    /// <summary>TextAndFree gibt den Text und gibt den Wert frei (sonst meldet der Leckmonitor); nil ergibt ''.
+    /// </summary>
+    [Test]
+    procedure TextAndFreeGivesTextAndFrees;
   end;
 
   [TestFixture]
@@ -234,6 +238,16 @@ begin
   finally
     mObject.Free;
   end;
+end;
+
+procedure TJsonBuildTests.TextAndFreeGivesTextAndFrees;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  mObject.AddPair('a', 'b');
+  Assert.AreEqual('{"a":"b"}', TJsonBuild.TextAndFree(mObject));
+  Assert.AreEqual('', TJsonBuild.TextAndFree(nil));
 end;
 
 { TJsonReadTests }

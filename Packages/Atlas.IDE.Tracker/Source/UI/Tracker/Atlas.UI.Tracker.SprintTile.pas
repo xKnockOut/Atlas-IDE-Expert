@@ -86,7 +86,7 @@ type
     procedure SetSource(const AValue: IAtlasSprintSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxLeftClick(Sender: TObject; AX, AY: Integer);
     procedure BodyResize(Sender: TObject);
     function HeightFor(AWidth: Integer): Integer;
     class procedure Post(const AAction: TThreadProcedure); static;
@@ -138,6 +138,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Sprint.Strings;
@@ -349,7 +350,7 @@ begin
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnLeftClick := BoxLeftClick;
   OnResize := BodyResize;
 end;
 
@@ -444,25 +445,14 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasTrackerSprintView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+procedure TAtlasTrackerSprintView.BoxLeftClick(Sender: TObject; AX, AY: Integer);
 begin
-  if Button = mbLeft then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  ClickAt(HitTest(AX, AY));
 end;
 
 procedure TAtlasTrackerSprintView.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  FContentHeight := HeightFor(ClientWidth);
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  TAtlasControls.Remeasure(FContentHeight, HeightFor(ClientWidth), HeightChanged);
 end;
 
 function TAtlasTrackerSprintView.HeightFor(AWidth: Integer): Integer;
