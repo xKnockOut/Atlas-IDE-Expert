@@ -151,7 +151,7 @@ var
 begin
   // Die Abfrage misst nicht (--timings gilt nur für die Prüfung).
   mTimings := Default(TCheckTimings);
-  mGroup := TLinterIndex.Load(AOptions, AConfigRoot, mTimings);
+  mGroup := TLinterIndex.Load(AOptions, AConfigRoot, mTimings, nil);
   try
     if Length(mGroup.AllFiles) > 0 then
     begin

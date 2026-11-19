@@ -227,6 +227,7 @@ begin
   Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(ASettings.TeamFile, 'Projektdatei standardmäßig an (#486)');
   Assert.IsTrue(ASettings.McpBuild, 'Builds für Claude Code standardmäßig erlaubt (#261)');
+  Assert.IsTrue(ASettings.AssistantsBanner, 'Anzeige „KI-Assistent aktiv“ standardmäßig an (#1906)');
   Assert.IsTrue(ASettings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
   Assert.IsTrue(ASettings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(ASettings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
@@ -285,6 +286,7 @@ begin
   Assert.AreEqual(3, ASettings.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
   Assert.AreEqual(500, ASettings.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
   Assert.IsTrue(ASettings.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
+  Assert.IsTrue(ASettings.DebugObjectMarks, 'debug.objectMarks (#839)');
   Assert.IsTrue(ASettings.DebugPredictConditions, 'debug.predictConditions (#2169)');
   Assert.IsTrue(ASettings.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
   Assert.AreEqual(20, ASettings.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
@@ -444,6 +446,7 @@ begin
   ASettings.MetricsReport := False;
   ASettings.TeamFile := False;
   ASettings.McpBuild := False;
+  ASettings.AssistantsBanner := False;
   ASettings.BaselineUpdate := False;
   ASettings.EditorKeysPriority := True;
   ASettings.SlashCommands := False;
@@ -506,6 +509,7 @@ begin
   ASettings.DebugVariablesSearchDepth := 5;
   ASettings.DebugVariablesSearchLimit := 250;
   ASettings.DebugVariablesScopedWatches := False;
+  ASettings.DebugObjectMarks := False;
   ASettings.DebugPredictConditions := False;
   ASettings.DebugPredictDimSkipped := False;
   ASettings.DebugPredictLines := 40;
@@ -651,6 +655,7 @@ begin
   Assert.IsFalse(ALoaded.MetricsReport);
   Assert.IsFalse(ALoaded.TeamFile);
   Assert.IsFalse(ALoaded.McpBuild);
+  Assert.IsFalse(ALoaded.AssistantsBanner);
   Assert.IsFalse(ALoaded.BaselineUpdate);
   Assert.IsTrue(ALoaded.EditorKeysPriority);
   Assert.IsFalse(ALoaded.SlashCommands);
@@ -714,6 +719,7 @@ begin
   Assert.AreEqual(5, ALoaded.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
   Assert.AreEqual(250, ALoaded.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
   Assert.IsFalse(ALoaded.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
+  Assert.IsFalse(ALoaded.DebugObjectMarks, 'debug.objectMarks (#839)');
   Assert.IsFalse(ALoaded.DebugPredictConditions, 'debug.predictConditions (#2169)');
   Assert.IsFalse(ALoaded.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
   Assert.AreEqual(40, ALoaded.DebugPredictLines, 'debug.predictConditions.lines (#2169)');

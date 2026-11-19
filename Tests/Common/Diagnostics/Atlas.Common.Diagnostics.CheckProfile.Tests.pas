@@ -318,9 +318,12 @@ var
   mMarkdown: string;
 begin
   mTimings := Default(TCheckTimings);
+  mTimings.ClearHeap;
   mTimings.IndexMs := 1200;
   mTimings.IndexUnits := 340;
   mTimings.ProjectBytes := 2 * 1024 * 1024;
+  mTimings.ReadyBytes := 40 * 1024 * 1024;
+  mTimings.PeakBytes := 80 * 1024 * 1024;
   mTimings.TotalBytes := 64 * 1024 * 1024;
   mProfiler := TCheckProfiler.Create;
   try
@@ -334,12 +337,21 @@ begin
   mMarkdown := mTimings.ToMarkdown;
   Assert.IsTrue(mMarkdown.Contains('Symbolindex: 340 Units in 1200 ms'), mMarkdown);
   Assert.IsTrue(mMarkdown.Contains('| Symbole | 2.0 |'), mMarkdown);
-  Assert.IsTrue(mMarkdown.Contains('| Gesamt (Heap) | 64.0 |'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('| Heap, Zielprojekt bereit | 40.0 |'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('| Heap, Gipfel | 80.0 |'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('| Heap am Ende | 64.0 |'), mMarkdown);
+  // Nicht gemessen (-1): keine Zeile.
+  Assert.IsFalse(mMarkdown.Contains('alle Projekte fertig'), mMarkdown);
   Assert.IsTrue(mMarkdown.Contains('Langsamste Units'), mMarkdown);
   mJson := mTimings.ToJson;
   try
     Assert.AreEqual<Int64>(1200, (mJson.GetValue('index') as TJSONObject).GetValue<Int64>('ms'));
     Assert.AreEqual<Int64>(2 * 1024 * 1024, (mJson.GetValue('memory') as TJSONObject).GetValue<Int64>('symbols'));
+    // Speicher zu festen Zeitpunkten (#1480): bereit, alle Projekte, Gipfel, Ende.
+    Assert.AreEqual<Int64>(40 * 1024 * 1024, (mJson.GetValue('memory') as TJSONObject).GetValue<Int64>('ready'));
+    Assert.AreEqual<Int64>(-1, (mJson.GetValue('memory') as TJSONObject).GetValue<Int64>('allProjects'));
+    Assert.AreEqual<Int64>(80 * 1024 * 1024, (mJson.GetValue('memory') as TJSONObject).GetValue<Int64>('peak'));
+    Assert.AreEqual<Int64>(64 * 1024 * 1024, (mJson.GetValue('memory') as TJSONObject).GetValue<Int64>('total'));
     Assert.IsTrue(mJson.GetValue('checkRun') is TJSONObject);
   finally
     mJson.Free;

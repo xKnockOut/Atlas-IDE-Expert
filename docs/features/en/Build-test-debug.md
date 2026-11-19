@@ -548,6 +548,18 @@ Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
 Settings: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
 
+### Marked objects (#839)
+
+Following an object through the code no longer means comparing addresses. At a stop, “Mark object …” (editor context menu, Debug submenu) labels the object under the cursor; class and name are suggested (“Kunde Meier”). Wherever the same address shows up again, the label is next to it: in front of the value in the editor (“‹Kunde A› (FNr: 4; …)”), behind the value in the debug hover and in the Evaluate window. Each mark gets one of eight colors.
+
+- The “Marked objects” window (Atlas › Debug or View › Atlas › Debug) shows label, class, address, where the object was last seen (expression and file:line) and the state. Del removes, F2 renames the label, Space changes the color.
+- Atlas reads the address via `Pointer(expression)` without side effects and the class from the VMT in the program's memory; nothing is called in the program.
+- If another class sits at a marked address at a stop, the object counts as “probably freed”: the window shows it in gray and the label no longer appears anywhere.
+- Marks last for the running debug session; when the process ends, the list is empty.
+- Not covered: IDE windows (Watches, Local Variables), visualizer replacement texts and call stack parameters show no labels.
+
+Setting: `debug.objectMarks`
+
 ## Debug: stepping and breaking
 
 ### Smart step into
@@ -686,6 +698,18 @@ Editor margin while paused, context menu Atlas › Debug, command palette. Inste
 - Executable lines are those between `begin` and `end` of a body, without blank and comment lines and without lines that only contain `begin`, `end`, `try`, `finally`, `except` or `else`.
 
 Settings: `debug.runToClick`
+
+### Drag the execution point *(experimental)*
+
+Editor margin while paused, context menu Atlas › Debug › “Set next statement here”, command palette. Run a line again or skip a block without switching to the CPU window.
+
+- When the program is paused, a narrow column to the right of the line numbers shows an arrow at the line of the execution point.
+- Drag the arrow to another line of the same routine: a tooltip names the effect, e.g. “Lines 117–119 run again” or “Lines 121–124 are skipped”. Releasing sets the next statement there without executing anything; F7 or F8 continues from there.
+- Blocked (the mouse pointer shows a no-entry sign, the tooltip the reason): lines outside the routine, lines without executable code, the head of a counted `for` loop and targets in another part of a `try` block (`try`, `finally`, `except`) or of an anonymous method.
+- “Set next statement here” works like dragging, for the line of the caret or of the last right-click in the margin.
+- Atlas only moves the instruction pointer; stack, registers and variables stay as they are. A notice asks the first time. Win32 and Win64 only; Atlas refuses other platforms.
+
+Setting: `debug.dragNextStatement` (default off)
 
 ### Breakpoint only for one object
 

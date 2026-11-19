@@ -1389,6 +1389,19 @@
       "x-captionEn": "Writing to open files",
       "x-issue": "#1888"
     },
+    "AssistantsBanner": {
+      "type": "boolean",
+      "default": true,
+      "description": "Feld „KI-Assistent“ im Atlas-Statusfeld (#1906): zeigt, solange ein KI-Assistent (MCP-Client) über die IDE baut oder eine offene Datei geändert hat, wer gerade was tut. Ein Klick hält KI-Assistenten an („Pause für KI“): Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann mit Grund ab, ein laufender Build läuft zu Ende; ein zweiter Klick hebt die Pause auf. Aus = kein Feld und keine Pause.",
+      "x-key": "assistants.banner",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Anzeige „KI-Assistent aktiv“ mit Pause",
+      "x-captionEn": "“AI assistant active” display with pause",
+      "x-issue": "#1906"
+    },
     "AssistantsContext": {
       "type": "boolean",
       "default": true,
@@ -1442,6 +1455,72 @@
       "x-caption": "Builds für KI-Assistenten (MCP)",
       "x-captionEn": "Builds for AI assistants (MCP)",
       "x-issue": "#261"
+    },
+    "DebugMcp": {
+      "type": "boolean",
+      "default": false,
+      "description": "KI-Assistenten (MCP) debuggen in dieser IDE (#1874): Die MCP-Werkzeuge debug_start, debug_stop, set_breakpoint, remove_breakpoint, debug_continue, debug_step, debug_state und debug_evaluate starten Programme im Debugger, setzen Haltepunkte der Gruppe Atlas-KI, steppen und lesen Werte. Aus = die IDE nimmt keine Debug-Aufträge an, die Werkzeuge melden das.",
+      "x-key": "debug.mcp",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-caption": "Debuggen durch KI-Assistenten (MCP)",
+      "x-captionEn": "Debugging by AI assistants (MCP)",
+      "x-issue": "#1874"
+    },
+    "DebugMcpSideEffects": {
+      "type": "boolean",
+      "default": false,
+      "description": "debug_evaluate darf Ausdrücke mit Aufrufen auswerten (Getter, Funktionen; #1874). Aus = nur Felder und Variablen, Aufrufe lehnt das Plugin mit Begründung ab.",
+      "x-key": "debug.mcp.sideEffects",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Ausdrücke mit Aufrufen",
+      "x-captionEn": "Expressions with calls",
+      "x-issue": "#1874"
+    },
+    "DebugMcpModify": {
+      "type": "boolean",
+      "default": false,
+      "description": "debug_evaluate darf Werte ändern (Zuweisungen wie I := 3; #1874). Aus = Ablehnung mit Begründung.",
+      "x-key": "debug.mcp.modify",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Werte ändern",
+      "x-captionEn": "Change values",
+      "x-issue": "#1874"
+    },
+    "DebugMcpAttach": {
+      "type": "boolean",
+      "default": false,
+      "description": "Ein KI-Assistent darf eine Debug-Sitzung übernehmen, die der Benutzer selbst gestartet hat (#1874). Aus = solange der Benutzer debuggt, lehnt die IDE Debug-Aufträge mit Grund ab.",
+      "x-key": "debug.mcp.attach",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Laufende Sitzung des Benutzers übernehmen",
+      "x-captionEn": "Take over the user's running session",
+      "x-issue": "#1874"
+    },
+    "DebugMcpBanner": {
+      "type": "boolean",
+      "default": true,
+      "description": "Leiste im Editorfenster, solange ein KI-Assistent den Debugger steuert (#1874): Name des MCP-Clients, Zahl der Schritte, zuletzt benutztes Werkzeug, „Pause für KI“ und „Übernehmen“.",
+      "x-key": "debug.mcp.banner",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Leiste zeigen",
+      "x-captionEn": "Show bar",
+      "x-issue": "#1874"
     },
     "BuildToolsEnabled": {
       "type": "boolean",
@@ -2649,6 +2728,18 @@
       "x-captionEn": "Bind watched expressions to a class or unit",
       "x-issue": "#2550"
     },
+    "DebugObjectMarks": {
+      "description": "Objekte beim Debuggen markieren: Befehl „Objekt markieren …“ im Kontextmenü des Editors (im Halt), Etikett hinter dem Wert im Editor, im Debug-Hover und im Fenster „Auswerten“, Fenster „Markierte Objekte“. Steht an einer markierten Adresse eine andere Klasse, gilt das Objekt als vermutlich freigegeben. Markierungen gelten bis zum Ende der Debug-Sitzung. Aus = kein Menüpunkt, keine Etiketten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.objectMarks",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Objekte beim Debuggen markieren",
+      "x-captionEn": "Mark objects while debugging",
+      "x-issue": "#839"
+    },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
       "type": "boolean",
@@ -3162,6 +3253,29 @@
       "x-captionEn": "Run to here by clicking the margin",
       "x-control": "Kontrollkästchen",
       "x-issue": "#851"
+    },
+    "DebugDragNextStatement": {
+      "description": "Ausführungspfeil ziehen (#871): Hält das Programm im Debugger an, steht in einer schmalen Spalte im Rand ein Pfeil an der Zeile des Ausführungspunkts. Ihn auf eine andere ausführbare Zeile derselben Routine ziehen setzt die nächste Anweisung dorthin, ohne etwas auszuführen; ein Tooltip nennt die Zeilen, die erneut laufen bzw. übersprungen werden. Gesperrt sind Zeilen außerhalb der Routine, ohne Code, im Kopf einer for-Schleife mit Zähler und in einem anderen Teil eines try-Blocks oder einer anonymen Methode. Dazu „Nächste Anweisung hier“ im Kontextmenü des Editors und in der Befehlspalette. Setzt nur den Befehlszähler: Stack und Register können danach ungültig sein. Aus = keine Spalte, kein Befehl.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.dragNextStatement",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Ausführungspfeil ziehen (nächste Anweisung setzen)",
+      "x-captionEn": "Drag the execution point (set next statement)",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#871"
+    },
+    "DebugNextStatementNoticeShown": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.dragNextStatement.noticeShown",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-state": true,
+      "x-issue": "#871"
     },
     "DebugBreakpointsWindow": {
       "description": "Haltepunktfenster: eigenes andockbares Fenster „Haltepunkte“ neben der Liste der IDE, mit Suche über Datei, Methode, Bedingung und Etikett, Filterchips (aktiv, mit Bedingung, nie getroffen, greift nicht), Trefferzahl dieser Sitzung, persönlichen Etiketten, Gruppieren nach Etikett, Datei oder Gruppe und Befehlen für mehrere Haltepunkte (ein, aus, Etikett, löschen mit Rückgängig). Aus = kein Fenster, kein Befehl.",

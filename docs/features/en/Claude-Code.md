@@ -27,6 +27,7 @@ The server offers Claude Code 33 MCP tools:
 
 - check planned code with `check_code` before writing it
 - explain findings (`explain_finding`): the same task as "Copy as task for an AI assistant" in the "Atlas Findings" window, with a ±8 line excerpt and a closing line telling the assistant how to verify (`check_code`, for safe fixes `fix_findings`)
+- look up the Atlas documentation: rules with their severity in the project, settings with their current value, windows and shortcuts (`search_atlas_docs`)
 - report findings to Claude Code hooks (`hook_check`)
 - build through the IDE (`build_project`, `get_last_build`)
 - explain compiler messages at their place, with the known Delphi pitfall and a safe fix as a diff (`explain_compiler_message`)
@@ -48,6 +49,13 @@ Each with preview:
 ### Resource
 
 - `delphi://conventions` with the project's conventions
+
+## AI assistants in the IDE
+
+The AI assistants module (`assistants.enabled`) takes requests from MCP clients in the running IDE: builds through `build_project` and changes to open files, which land in the editor buffer as one undo step.
+
+- **“AI assistant active” display** (#1906, `assistants.banner`): a field in the Atlas status field shows which project is being built for an AI assistant or which open file it changed last (for one minute).
+- **Pause for AI:** a click on the field or the command “Pause AI assistants” in the palette pauses AI assistants. The IDE then refuses new builds and changes to open files with a reason, and the MCP server does not write the file itself either; a running build finishes. While paused the field stays visible, a second click ends the pause.
 
 ## Prompts (#1357)
 

@@ -133,9 +133,11 @@ end;
 { TAtlasEditorPlaceholders.TKeys }
 
 constructor TAtlasEditorPlaceholders.TKeys.Create(AOwner: TAtlasEditorPlaceholders);
+const
+  cMaxDepth = 20;
 begin
   // Nach Vervollständigung (0) und Parameter-Hint (10): Tab und Esc gehören zuerst deren Fenstern.
-  inherited Create(20);
+  inherited Create(cMaxDepth);
   FOwner := AOwner;
 end;
 

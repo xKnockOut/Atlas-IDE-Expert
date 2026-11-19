@@ -108,8 +108,8 @@ end;
 
 const
   cNavigationTools = 11;
-  cCheckTools = 7;
-  cContextTools = 51;
+  cCheckTools = 8;
+  cContextTools = 53;
 
 /// <summary>Deutsche Spuren in einem englischen Text: Umlaute oder häufige deutsche Wörter.</summary>
 function LooksGerman(const AText: string): Boolean;
@@ -200,6 +200,7 @@ begin
     'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
   Assert.AreEqual(' get_ide_context ', Joined(NamesOf(RegisterIdeContextTools)));
   Assert.AreEqual(cCheckTools, Integer(Length(NamesOf(RegisterCheckTools))));
+  Assert.IsTrue(Pos(' search_atlas_docs ', Joined(NamesOf(RegisterCheckTools))) > 0);
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));
   Assert.AreEqual(' rename_symbol apply_code_action fix_findings format_code extract_method refactor ',
     Joined(NamesOf(RegisterEditingTools)));

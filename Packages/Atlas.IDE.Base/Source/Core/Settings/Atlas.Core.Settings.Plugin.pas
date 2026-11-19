@@ -387,6 +387,12 @@ type
     property McpBuild: Boolean read FBuild.McpBuild write FBuild.McpBuild;
     property AssistantsEnabled: Boolean read FBuild.AssistantsEnabled write FBuild.AssistantsEnabled;
     property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
+    property DebugMcp: Boolean read FBuild.DebugMcp write FBuild.DebugMcp;
+    property DebugMcpSideEffects: Boolean read FBuild.DebugMcpSideEffects write FBuild.DebugMcpSideEffects;
+    property DebugMcpModify: Boolean read FBuild.DebugMcpModify write FBuild.DebugMcpModify;
+    property DebugMcpAttach: Boolean read FBuild.DebugMcpAttach write FBuild.DebugMcpAttach;
+    property DebugMcpBanner: Boolean read FBuild.DebugMcpBanner write FBuild.DebugMcpBanner;
+    property AssistantsBanner: Boolean read FBuild.AssistantsBanner write FBuild.AssistantsBanner;
     property AssistantsContext: Boolean read FBuild.AssistantsContext write FBuild.AssistantsContext;
     property AssistantsContextSelection: Boolean read FBuild.AssistantsContextSelection
       write FBuild.AssistantsContextSelection;
@@ -522,6 +528,9 @@ type
     property DebugBreakpointSetPerBranch: Boolean read FDebug.DebugBreakpointSetPerBranch
       write FDebug.DebugBreakpointSetPerBranch;
     property DebugRunToClick: Boolean read FDebug.DebugRunToClick write FDebug.DebugRunToClick;
+    property DebugDragNextStatement: Boolean read FDebug.DebugDragNextStatement write FDebug.DebugDragNextStatement;
+    property DebugNextStatementNoticeShown: Boolean read FDebug.DebugNextStatementNoticeShown
+      write FDebug.DebugNextStatementNoticeShown;
     property DebugBreakpointsWindow: Boolean read FDebug.DebugBreakpointsWindow write FDebug.DebugBreakpointsWindow;
     property DebugBreakpointAnchors: Boolean read FDebug.DebugBreakpointAnchors write FDebug.DebugBreakpointAnchors;
     property DebugBreakpointRules: Boolean read FDebug.DebugBreakpointRules write FDebug.DebugBreakpointRules;
@@ -585,6 +594,7 @@ type
       write FDebug.DebugVariablesSearchLimit;
     property DebugVariablesScopedWatches: Boolean read FDebug.DebugVariablesScopedWatches
       write FDebug.DebugVariablesScopedWatches;
+    property DebugObjectMarks: Boolean read FDebug.DebugObjectMarks write FDebug.DebugObjectMarks;
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;

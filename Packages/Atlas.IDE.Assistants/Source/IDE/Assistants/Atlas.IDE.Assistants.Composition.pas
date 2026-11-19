@@ -10,10 +10,22 @@
 //   normalen Start und solange compiler.mcpBuild an ist.
 // - Teil „AssistantEdits“: Eingang für Änderungen an offenen Dateien (#397),
 //   solange assistants.edit an ist.
+// - Teil „AssistantDebug“: Eingang der MCP-Werkzeuge debug_* (#1874); ausgeführt
+//   wird über IAtlasDebugControl des Moduls Debugger, das der Eingang bei jedem
+//   Auftrag neu in der Registry sucht (Regel 2). Nur im normalen Start und
+//   solange debug.mcp an ist; Rechte aus debug.mcp.sideEffects, .modify, .attach.
+//   Dazu die Leiste „KI-Assistent debuggt“ im Editor (debug.mcp.banner).
+// - Teil „AssistantBanner“: Feld „KI-Assistent aktiv“ im Statusfeld mit Pause
+//   für KI-Assistenten (#1906), solange assistants.banner an ist.
+// - den Befehl „Pause für KI-Assistenten“ in der Palette (#1906).
 // - Teil „AssistantContext“: Zustand der IDE für get_ide_context (#2050),
 //   solange assistants.context an ist; den letzten Build bekommt er über
 //   IAtlasBuildVerdictListener.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog.
+// Was KI-Assistenten gerade tun und ob sie pausiert sind
+// (TAtlasAssistantsActivity), gehört dem Modul und lebt von der Anmeldung bis
+// nach dem Abmelden: Die Pause bleibt so über das Neustarten einzelner Teile
+// hinweg stehen.
 // Die Liste der offenen und ungespeicherten Dateien (DirtyExport) bleibt in
 // Base: Sie schützt Dateien auch dann vor dem Überschreiben, wenn das Modul
 // fehlt. Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt
@@ -29,7 +41,8 @@ uses
   Atlas.Core.Build.Verdict;
 
 type
-  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasBuildVerdictListener)
+  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasAppliesSettings,
+    IAtlasFollowsTheme, IAtlasBuildVerdictListener)
   public const
     cModuleId = 'atlas.assistants';
     cSwitch = 'assistants';
@@ -41,6 +54,10 @@ type
     procedure Start;
     procedure Stop;
     function IsActive: Boolean;
+    procedure ApplySettings;
+    procedure ThemeChanged;
+    /// <summary>Befehl „Pause für KI-Assistenten“ (#1906).</summary>
+    function Commands: TArray<TAtlasModuleCommand>;
     procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
       const AVerdict: TAtlasBuildVerdict);
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
@@ -52,6 +69,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Registry,
@@ -59,18 +77,31 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Contracts.DebugControl,
+  Atlas.Core.Assistants.DebugGate,
+  Atlas.IDE.Assistants.DebugInbox,
+  Atlas.IDE.Assistants.DebugBar,
   Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
+  Atlas.IDE.Assistants.Banner,
+  Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
   Atlas.UI.Assistants.SettingsSection;
 
+const
+  cPauseCommand = 'Atlas.AssistantsPause';
+
 var
   GScope: IAtlasModuleScope;
+  GActivity: TAtlasAssistantsActivity;
   GBuildInbox: TAtlasIdeBuildInbox;
   GEditInbox: TAtlasIdeEditInbox;
+  GDebugInbox: TAtlasIdeDebugInbox;
+  GDebugBar: TAtlasIdeAssistantDebugBar;
+  GBanner: TAtlasIdeAssistantsBanner;
   GContext: TAtlasIdeContextExport;
 
 { Dienste von Base und anderer Module }
@@ -90,11 +121,33 @@ begin
   end;
 end;
 
+/// <summary>Debugger des Moduls Debugger; nil, solange es fehlt oder nicht läuft.</summary>
+function DebugControl: IAtlasDebugControl;
+var
+  mItem: IInterface;
+begin
+  Result := nil;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasDebugControl) do
+  begin
+    if Supports(mItem, IAtlasDebugControl, Result) then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Rechte des Assistenten aus den Einstellungen, bei jedem Auftrag neu gelesen.</summary>
+function DebugRights: TAtlasDebugRights;
+begin
+  Result := TAtlasDebugRights.Make(TAtlasIdeSettings.Current.DebugMcpSideEffects,
+    TAtlasIdeSettings.Current.DebugMcpModify, TAtlasIdeSettings.Current.DebugMcpAttach);
+end;
+
 { Teile der Feature-Tabelle }
 
 procedure StartBuilds;
 begin
-  GBuildInbox := TAtlasIdeBuildInbox.Create(BuildRequests, TAtlasIdeHost.Warnings());
+  GBuildInbox := TAtlasIdeBuildInbox.Create(BuildRequests, GActivity, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopBuilds;
@@ -107,6 +160,8 @@ begin
   begin
     mRequests.Forget(TAtlasBuildInbox.cRequestedBy);
   end;
+  // Der verworfene Rückruf meldet das Ende nicht mehr; sonst bliebe „baut …“ stehen.
+  GActivity.BuildEnded;
   FreeAndNil(GBuildInbox);
 end;
 
@@ -117,7 +172,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, TAtlasIdeHost.Warnings());
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, GActivity, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopEdits;
@@ -128,6 +183,96 @@ end;
 function EditsStarted: Boolean;
 begin
   Result := GEditInbox <> nil;
+end;
+
+procedure DebugChanged;
+begin
+  if GDebugBar <> nil then
+  begin
+    GDebugBar.Refresh;
+  end;
+end;
+
+function DebugInbox: TAtlasIdeDebugInbox;
+begin
+  Result := GDebugInbox;
+end;
+
+function DebugBanner: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugMcpBanner;
+end;
+
+procedure StartDebug;
+begin
+  GDebugInbox := TAtlasIdeDebugInbox.Create(DebugControl, DebugRights, DebugChanged, MessageLine);
+  GDebugBar := TAtlasIdeAssistantDebugBar.Create(DebugInbox, DebugBanner);
+  // Die Pause für KI-Assistenten (#1906) gilt auch für Debug-Aufträge.
+  if GActivity.Paused then
+  begin
+    GDebugInbox.SetPaused(True);
+  end;
+end;
+
+procedure StopDebug;
+begin
+  // Zuerst die Leiste: Der Eingang meldet beim Abbau noch eine Änderung.
+  FreeAndNil(GDebugBar);
+  FreeAndNil(GDebugInbox);
+end;
+
+function DebugStarted: Boolean;
+begin
+  Result := GDebugInbox <> nil;
+end;
+
+/// <summary>Pause für KI-Assistenten ein bzw. aus (Befehl und Klick auf die Anzeige).</summary>
+procedure TogglePause;
+begin
+  GActivity.Paused := not GActivity.Paused;
+  if GActivity.Paused then
+  begin
+    TAtlasIdeHost.Message(TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.PauseOn));
+  end
+  else
+  begin
+    TAtlasIdeHost.Message(TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.PauseOff));
+  end;
+  if GBanner <> nil then
+  begin
+    GBanner.Refresh;
+  end;
+  if GDebugInbox <> nil then
+  begin
+    GDebugInbox.SetPaused(GActivity.Paused);
+  end;
+end;
+
+procedure StartBanner;
+begin
+  GBanner := TAtlasIdeAssistantsBanner.Create(GActivity, TogglePause);
+end;
+
+procedure StopBanner;
+begin
+  FreeAndNil(GBanner);
+end;
+
+function BannerStarted: Boolean;
+begin
+  Result := GBanner <> nil;
+end;
+
+function PauseCaption: string;
+begin
+  if GActivity.Paused then
+  begin
+    Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.PauseCommandOff);
+  end
+  else
+  begin
+    Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.PauseCommandOn);
+  end;
 end;
 
 procedure StartContext;
@@ -162,12 +307,34 @@ begin
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsEdit;
       end, EditsStarted, StartEdits, StopEdits),
+    // Debuggen durch KI-Assistenten (#1874): nur im normalen Start und solange debug.mcp an ist.
+    TAtlasFeaturePart.When('AssistantDebug',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugMcp;
+      end, DebugStarted, StartDebug, StopDebug),
+    // Anzeige „KI-Assistent aktiv“ mit Pause (#1906): solange assistants.banner an ist.
+    TAtlasFeaturePart.When('AssistantBanner',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsBanner;
+      end, BannerStarted, StartBanner, StopBanner),
     // Zustand der IDE für get_ide_context (#2050): solange assistants.context an ist.
     TAtlasFeaturePart.When('AssistantContext',
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsContext;
       end, ContextStarted, StartContext, StopContext)];
+end;
+
+function TAtlasAssistantsModule.Commands: TArray<TAtlasModuleCommand>;
+begin
+  SetLength(Result, 1);
+  Result[0] := Default(TAtlasModuleCommand);
+  Result[0].Id := cPauseCommand;
+  Result[0].Caption := PauseCaption;
+  Result[0].Description := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.PauseCommandHint);
+  Result[0].Run := TogglePause;
 end;
 
 function TAtlasAssistantsModule.Info: TAtlasModuleInfo;
@@ -192,6 +359,20 @@ begin
   Result := FActive;
 end;
 
+procedure TAtlasAssistantsModule.ApplySettings;
+begin
+  // debug.mcp.banner gilt sofort.
+  DebugChanged;
+end;
+
+procedure TAtlasAssistantsModule.ThemeChanged;
+begin
+  if GDebugBar <> nil then
+  begin
+    GDebugBar.ApplyTheme;
+  end;
+end;
+
 procedure TAtlasAssistantsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
 begin
@@ -207,6 +388,7 @@ var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasAssistantsModule;
   mPart: IAtlasFeaturePart;
+  mRef: IInterface;
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
@@ -214,7 +396,9 @@ begin
   begin
     Exit;
   end;
+  GActivity := TAtlasAssistantsActivity.Create;
   mModule := TAtlasAssistantsModule.Create;
+  mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   // Letzter Build für den IDE-Zustand (#2050).
   GScope.Provide(IAtlasBuildVerdictListener, mModule as IAtlasBuildVerdictListener);
@@ -222,6 +406,7 @@ begin
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);
   end;
+  GScope.Provide(IAtlasCommandSource, mRef);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
   Result := True;
@@ -230,6 +415,8 @@ end;
 class procedure TAtlasAssistantsModule.UnregisterModule;
 begin
   TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten die Aktivität bis dahin.
+  FreeAndNil(GActivity);
 end;
 
 initialization

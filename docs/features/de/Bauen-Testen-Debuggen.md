@@ -479,6 +479,18 @@ Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debugge
 
 Einstellungen: `debug.runToClick`
 
+#### Ausführungspfeil ziehen *(experimentell)*
+
+Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debuggen › „Nächste Anweisung hier“, Befehlspalette. Eine Zeile noch einmal ausführen oder einen Block überspringen, ohne ins CPU-Fenster zu wechseln.
+
+- Hält das Programm an, steht in einer schmalen Spalte rechts der Zeilennummern ein Pfeil an der Zeile des Ausführungspunkts.
+- Den Pfeil mit der Maus auf eine andere Zeile derselben Routine ziehen: Ein Tooltip nennt die Folge, etwa „Zeilen 117–119 laufen erneut“ oder „Zeilen 121–124 werden übersprungen“. Loslassen setzt die nächste Anweisung dorthin, ohne etwas auszuführen; F7 oder F8 geht dort weiter.
+- Gesperrt (der Mauszeiger zeigt ein Verbot, der Tooltip den Grund): Zeilen außerhalb der Routine, Zeilen ohne ausführbaren Code, der Kopf einer `for`-Schleife mit Zähler und Ziele in einem anderen Teil eines `try`-Blocks (`try`, `finally`, `except`) oder einer anonymen Methode.
+- „Nächste Anweisung hier“ wirkt wie das Ziehen, für die Zeile der Schreibmarke bzw. des letzten Rechtsklicks in den Rand.
+- Atlas setzt nur den Befehlszähler; Stack, Register und Variablen bleiben, wie sie sind. Beim ersten Mal fragt ein Hinweis nach. Unter Win32 und Win64, andere Plattformen lehnt Atlas ab.
+
+Einstellung: `debug.dragNextStatement` (Vorgabe aus)
+
 #### Haltepunkt nur für ein Objekt
 
 Ein Haltepunkt in `TKunde.Speichere` hält bei 500 Kunden 500 Mal. Im angehaltenen Programm, mit der Schreibmarke auf der Zeile des Haltepunkts, bietet das Kontextmenü des Editors unter Debuggen:
@@ -691,6 +703,18 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 | Enter im Eingabefeld des Reiters Überwachung | Ausdruck überwachen |
 
 Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
+
+### Markierte Objekte (#839)
+
+Wer einem Objekt durch den Code folgt, muss keine Adressen mehr vergleichen. Im Halt markiert „Objekt markieren …“ (Kontextmenü des Editors, Untermenü Debuggen) das Objekt unter der Schreibmarke mit einem Etikett; vorgeschlagen werden Klasse und Name („Kunde Meier“). Wo dieselbe Adresse wieder auftaucht, steht das Etikett daneben: vor dem Wert im Editor („‹Kunde A› (FNr: 4; …)“), hinter dem Wert im Debug-Hover und im Fenster „Auswerten“. Jede Markierung bekommt eine von acht Farben.
+
+- Das Fenster „Markierte Objekte“ (Atlas › Debuggen bzw. Ansicht › Atlas › Debuggen) zeigt Etikett, Klasse, Adresse, wo das Objekt zuletzt zu sehen war (Ausdruck und Datei:Zeile) und den Zustand. Entf entfernt, F2 ändert das Etikett, die Leertaste wechselt die Farbe.
+- Die Adresse liest Atlas über `Pointer(Ausdruck)` ohne Nebenwirkungen, die Klasse aus der VMT im Speicher des Programms; im Programm wird dafür nichts aufgerufen.
+- Steht an einer markierten Adresse beim Halt eine andere Klasse, gilt das Objekt als „vermutlich freigegeben“: Das Fenster zeigt es grau, das Etikett erscheint nirgends mehr.
+- Markierungen gelten für die laufende Debug-Sitzung; mit dem Ende des Prozesses ist die Liste leer.
+- Nicht abgedeckt: Fenster der IDE (Überwachte Ausdrücke, Lokale Variablen), Ersatztexte der Visualisierer und Parameter im Aufrufstapel zeigen keine Etiketten.
+
+Einstellung: `debug.objectMarks`
 
 ### Ereignisprotokoll
 
