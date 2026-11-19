@@ -63,9 +63,6 @@ type
     class function FieldsOf(const AResponse: TJSONValue; AWithProperties: Boolean): TArray<string>; static;
     /// <summary>Text mit sichtbaren Steuerzeichen: ␍␊ samt Umbruch, → für Tab, Bildzeichen ␀…␟.</summary>
     class function VisibleText(const AText: string): string; static;
-    /// <summary>Zeilen wie TStrings sie aus AText macht: ein Umbruch am Ende ergibt keine leere letzte Zeile.
-    /// </summary>
-    class function StringsLines(const AText: string): TArray<string>; static;
     /// <summary>JSON eingerückt (zwei Leerzeichen); False, wenn AText kein JSON ist.</summary>
     class function TryFormatJson(const AText: string; out AFormatted: string): Boolean; static;
     /// <summary>„$0000002A (42)“; False, wenn AValue keine ganze Zahl ist.</summary>
@@ -604,16 +601,6 @@ begin
   end;
 end;
 
-class function TAtlasEvalText.StringsLines(const AText: string): TArray<string>;
-begin
-  Result := TTextLines.SplitLines(AText);
-  // TStrings: Ein Umbruch am Ende ergibt keine leere letzte Zeile, leerer Text keine Zeile.
-  if (Length(Result) > 0) and (Result[High(Result)] = '') then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
-end;
-
 procedure AppendJsonLine(ABuilder: TStringBuilder; ADepth: Integer);
 begin
   ABuilder.Append(sLineBreak).Append(StringOfChar(' ', ADepth * 2));
@@ -739,7 +726,7 @@ begin
   Result := True;
   case AView of
     TAtlasEvalView.Lines:
-      AText := string.Join(sLineBreak, StringsLines(mDecoded));
+      AText := string.Join(sLineBreak, TTextLines.SplitLikeStrings(mDecoded));
     TAtlasEvalView.Json:
       Result := TryFormatJson(mDecoded, AText);
     TAtlasEvalView.Hex:

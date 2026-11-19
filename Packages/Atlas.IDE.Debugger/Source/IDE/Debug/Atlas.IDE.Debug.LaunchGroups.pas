@@ -133,7 +133,8 @@ uses
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Processes,
   Atlas.UI.Debug.LaunchGroupsDialog,
-  Atlas.UI.Debug.Session.Strings;
+  Atlas.UI.Debug.Session.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cActiveWhat = 'debug launch groups';
@@ -326,10 +327,7 @@ end;
 
 class procedure TAtlasIdeLaunchGroups.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeLaunchGroups.BuildChanged(const AGroup: TAtlasLaunchGroup): Boolean;

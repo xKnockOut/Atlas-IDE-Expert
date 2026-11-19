@@ -32,6 +32,10 @@ type
     procedure MenuEntriesWithoutCommand;
     [Test]
     procedure SaveListenersGetTheFile;
+    [Test]
+    procedure FirstTakesActiveContribution;
+    [Test]
+    procedure NewCommandSetsFields;
   end;
 
 implementation
@@ -399,6 +403,58 @@ begin
       Inc(Runs);
     end;
   Result := [mEntry];
+end;
+
+procedure TModuleContributionsTests.FirstTakesActiveContribution;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mModule: IAtlasModule;
+  mScope: IAtlasModuleScope;
+  mSource: TSource;
+  mRef: IInterface;
+  mHover: IAtlasHoverValueSource;
+begin
+  Assert.IsFalse(TAtlasModuleContributions.First(nil, IAtlasHoverValueSource, mHover), 'ohne Registry');
+  Assert.IsTrue(mHover = nil);
+  mRegistry := TAtlasModuleRegistry.Create;
+  mModule := TFakeModule.Create('atlas.a');
+  mScope := mRegistry.RegisterModule(mModule);
+  mSource := TSource.Create('A', False, 'Wert');
+  mRef := mSource as IAtlasCommandSource;
+  Provide(mScope, mSource);
+  Assert.IsTrue(TAtlasModuleContributions.First(mRegistry, IAtlasHoverValueSource, mHover));
+  Assert.AreEqual('Wert', mHover.HoverValue('x', nil, ''));
+  mModule.Stop;
+  Assert.IsFalse(TAtlasModuleContributions.First(mRegistry, IAtlasHoverValueSource, mHover), 'gestoppt');
+  Assert.IsTrue(mHover = nil, 'alter Wert gelöst');
+  mModule.Start;
+  mHover := nil;
+  mRef := nil;
+  mScope := nil;
+  mModule := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  mRegistry := nil;
+end;
+
+procedure TModuleContributionsTests.NewCommandSetsFields;
+var
+  mRan: Boolean;
+  mCommand: TAtlasModuleCommand;
+begin
+  mRan := False;
+  mCommand := TAtlasModuleContributions.NewCommand('Atlas.X', 'Befehl X',
+    procedure
+    begin
+      mRan := True;
+    end, nil);
+  Assert.AreEqual('Atlas.X', mCommand.Id);
+  Assert.AreEqual('Befehl X', mCommand.Caption);
+  Assert.AreEqual('', mCommand.Description);
+  Assert.IsTrue(TAtlasModuleContributions.IsVisible(mCommand), 'ohne Visible sichtbar');
+  Assert.IsFalse(Assigned(mCommand.Key));
+  mCommand.Run();
+  Assert.IsTrue(mRan);
+  mCommand := Default(TAtlasModuleCommand);
 end;
 
 procedure TModuleContributionsTests.StoppedModuleContributesNothing;

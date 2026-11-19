@@ -86,7 +86,8 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.UI.Debug.Logpoints.Strings;
+  Atlas.UI.Debug.Logpoints.Strings,
+  Atlas.Core.Foundation.Calls;
 
 /// <summary>Ort für Meldung und Titel: "Unit1.pas:12".</summary>
 function PlaceOf(const AFileName: string; ALine: Integer): string;
@@ -258,10 +259,7 @@ end;
 
 class procedure TAtlasIdeLogpoints.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class procedure TAtlasIdeLogpoints.Changed;

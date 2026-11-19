@@ -161,7 +161,8 @@ uses
   Vcl.Themes,
   Atlas.UI.Bookmarks.Strings,
   Atlas.Core.Marks.Ids,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Menus;
 
 {$R *.dfm}
 
@@ -170,14 +171,6 @@ begin
   Result := AList.Columns.Add;
   Result.Caption := ACaption;
   Result.Width := MulDiv(AWidth, APPI, 96);
-end;
-
-function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  AMenu.Items.Add(Result);
 end;
 
 function ListColor(AList: TListView; AColor: TColor): TColor;
@@ -251,12 +244,12 @@ procedure BuildMenu(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.
 begin
   AParts.Menu := TPopupMenu.Create(AFrame);
   AParts.Menu.OnPopup := AEvents.MenuPopup;
-  AParts.OpenItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo),
+  AParts.OpenItem := TAtlasMenus.Add(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo),
     AEvents.OpenClick);
   AParts.OpenItem.Default := True;
-  AParts.RenameItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksRename),
+  AParts.RenameItem := TAtlasMenus.Add(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksRename),
     AEvents.RenameClick);
-  AParts.DeleteItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDelete),
+  AParts.DeleteItem := TAtlasMenus.Add(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDelete),
     AEvents.DeleteClick);
 end;
 

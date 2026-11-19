@@ -150,16 +150,6 @@ var
   // Jede Hintergrundarbeit merkt sich die Generation; nach Reset oder Freigabe verfällt ihr Ergebnis.
   GGeneration: Integer;
 
-procedure Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 function AgeText(const AAge: TAtlasAge): string;
 begin
   case AAge.Unit_ of
@@ -345,7 +335,7 @@ begin
       FDiff.Changes := nil;
       if not FHead.Ok and FDiff.Shown then
       begin
-        Invalidate;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
     end) then
   begin
@@ -470,7 +460,7 @@ begin
       FDiff.Changes := mChanges;
       FBlame.DiskHunks := mHunks;
       FDiff.Shown := True;
-      Invalidate;
+      TAtlasIdeEditorRefresh.RepaintTop;
     end) then
   begin
     FDiff.Busy := False;
@@ -504,7 +494,7 @@ begin
   FMessages.Clear;
   if mShown then
   begin
-    Invalidate;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 

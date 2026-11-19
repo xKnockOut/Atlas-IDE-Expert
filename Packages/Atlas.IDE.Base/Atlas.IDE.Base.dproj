@@ -104,6 +104,7 @@
         <DCCReference Include="..\Atlas.Text\Source\Uris\Atlas.Text.Uris.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Diff\Atlas.Text.Diff.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Fuzzy\Atlas.Text.Fuzzy.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Numbers\Atlas.Text.Numbers.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Json\Atlas.Text.Json.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Jsonc\Atlas.Text.Jsonc.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas"/>
@@ -192,6 +193,8 @@
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Listeners.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Theme.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.FillFrame.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Menus.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Scaling.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.ListBox.pas"/>
@@ -735,6 +738,7 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.ProcessLeftovers.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.DataFile.pas"/>
+        <DCCReference Include="Source\Core\Foundation\Atlas.Core.Foundation.Calls.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
@@ -825,6 +829,7 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.IdleGate.pas"/>
         <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.ActionHook.pas"/>
         <DCCReference Include="Source\IDE\ElementHelp\Atlas.IDE.ElementHelp.Keys.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarPlacement.pas"/>

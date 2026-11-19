@@ -151,24 +151,17 @@ implementation
 
 uses
   Atlas.Core.Tracker.Markdown,
-  Atlas.UI.Tracker.IssueBoxes;
+  Atlas.UI.Tracker.IssueBoxes,
+  Atlas.Core.Foundation.Calls;
 
 {$R *.dfm}
-
-procedure Fire(const AEvent: TProc);
-begin
-  if Assigned(AEvent) then
-  begin
-    AEvent();
-  end;
-end;
 
 /// <summary>AEvent nur, wenn ACondition gilt.</summary>
 procedure FireIf(ACondition: Boolean; const AEvent: TProc);
 begin
   if ACondition then
   begin
-    Fire(AEvent);
+    TAtlasCalls.Call(AEvent);
   end;
 end;
 
@@ -204,7 +197,7 @@ begin
   begin
     FChrome.Parts.Comment.Unbind;
   end;
-  Fire(FEvents.Hidden);
+  TAtlasCalls.Call(FEvents.Hidden);
   FEvents := Default(TAtlasIssueFrameEvents);
   inherited;
 end;
@@ -255,15 +248,15 @@ begin
     TAtlasIssueTool.Forward:
       FireIf(FChrome.Parts.Forward.Enabled, FEvents.Forward);
     TAtlasIssueTool.Start:
-      Fire(FEvents.Start);
+      TAtlasCalls.Call(FEvents.Start);
     TAtlasIssueTool.Finish:
       FireIf(mHas and (TAtlasIssueFlag.CanEnd in FFlags), FEvents.Finish);
     TAtlasIssueTool.Review:
       FireIf(mHas and (TAtlasIssueFlag.CanReview in FFlags), FEvents.Review);
     TAtlasIssueTool.Browse:
-      Fire(FEvents.Browse);
+      TAtlasCalls.Call(FEvents.Browse);
     TAtlasIssueTool.CopyKey:
-      Fire(FEvents.CopyKey);
+      TAtlasCalls.Call(FEvents.CopyKey);
     TAtlasIssueTool.Attach:
       FireIf(mHas and (TAtlasIssueFlag.CanAttach in FFlags), FEvents.Attach);
     TAtlasIssueTool.Refresh:
@@ -293,7 +286,7 @@ var
 begin
   case APart of
     TAtlasIssuePart.Title:
-      Fire(FEvents.Browse);
+      TAtlasCalls.Call(FEvents.Browse);
     TAtlasIssuePart.Older:
       begin
         // Nicht im Klick des Labels, das dabei freigegeben wird.
@@ -326,9 +319,9 @@ begin
         end;
       end;
     TAtlasIssuePart.CreateSubtask:
-      Fire(FEvents.CreateSubtask);
+      TAtlasCalls.Call(FEvents.CreateSubtask);
     TAtlasIssuePart.AddLink:
-      Fire(FEvents.AddLink);
+      TAtlasCalls.Call(FEvents.AddLink);
   end;
 end;
 

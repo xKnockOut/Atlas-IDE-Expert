@@ -112,7 +112,8 @@ uses
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Tracker.IssueLookups;
+  Atlas.IDE.Tracker.IssueLookups,
+  Atlas.UI.Foundation.Menus;
 
 const
   cTipStates: array[TAtlasBlameKeyState] of TAtlasIssueTipState = (TAtlasIssueTipState.Loading,
@@ -528,11 +529,7 @@ end;
 
 function TAtlasIdeBlameLinks.AddMenuItem(AParent: TMenuItem; const ACaption: string; ATag: Integer): TMenuItem;
 begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := MenuClick;
-  AParent.Add(Result);
+  Result := TAtlasMenus.Add(FMenu, AParent, ACaption, ATag, MenuClick);
 end;
 
 /// <summary>Im Hauptthread nachgereicht: Menü zum Rechtsklick auf ACommit an AWhere.</summary>

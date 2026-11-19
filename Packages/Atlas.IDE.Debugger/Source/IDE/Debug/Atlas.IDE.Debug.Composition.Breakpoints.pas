@@ -60,7 +60,8 @@ uses
   Atlas.IDE.Debug.NextStatement,
   Atlas.IDE.Debug.NextStatementColumn,
   Atlas.UI.Debug.Commands.Strings,
-  Atlas.UI.Debug.NextStatement.Strings;
+  Atlas.UI.Debug.NextStatement.Strings,
+  Atlas.Core.Modules.Contributions;
 
 const
   /// <summary>Strg+F4: nur im angehaltenen Zustand, sonst schließt die IDE wie gewohnt die Datei.</summary>
@@ -352,11 +353,7 @@ end;
 function Command(const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := ACaption;
-  Result.Run := ARun;
-  Result.Visible := AVisible;
+  Result := TAtlasModuleContributions.NewCommand(AId, ACaption, ARun, AVisible);
 end;
 
 function BreakpointCommands: TArray<TAtlasModuleCommand>;

@@ -176,19 +176,6 @@ begin
   end;
 end;
 
-/// <summary>Unitname der Datei im Editor; '' ohne.</summary>
-function ActiveUnitName: string;
-var
-  mView: IOTAEditView;
-begin
-  Result := '';
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
-  begin
-    Result := ChangeFileExt(ExtractFileName(mView.Buffer.FileName), '');
-  end;
-end;
-
 /// <summary>Neue Schicht in forbidden-uses der Projektdatei, dann den Regel-Editor bei der Regel öffnen.</summary>
 procedure NewCustomRule;
 var
@@ -200,7 +187,7 @@ begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGalleryNoProject));
     Exit;
   end;
-  mFrom := TAtlasCustomLayer.LayerFrom(ActiveUnitName);
+  mFrom := TAtlasCustomLayer.LayerFrom(TAtlasEditorBuffer.ActiveUnitName);
   TAtlasCustomLayer.NewLayer(ProjectRulesJson, mFrom, mPath, mJson);
   if not TAtlasProjectSettings.WriteValue(mPath, mJson) then
   begin

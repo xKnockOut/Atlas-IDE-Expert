@@ -113,7 +113,8 @@ uses
   Atlas.Core.Forms.PropertyValues,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Localization.Language,
-  Atlas.IDE.Foundation.DesignerView;
+  Atlas.IDE.Foundation.DesignerView,
+  Atlas.Core.Foundation.Calls;
 
 {$SCOPEDENUMS ON}
 
@@ -510,10 +511,7 @@ end;
 
 procedure TAtlasIdeForms.Log(const AText: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
+  TAtlasCalls.Send(FLog, AText);
 end;
 
 class procedure TAtlasIdeForms.SyncNow(ASession: TLspSession);

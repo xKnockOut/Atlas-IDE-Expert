@@ -29,6 +29,9 @@ type
     class function ToPath(const AUri: string): string; static;
     /// <summary>Pfad mit Laufwerk ("c:…") oder UNC ("\\…").</summary>
     class function IsWindowsPath(const APath: string): Boolean; static;
+    /// <summary>Dateiname ohne Ordner und Endung („Atlas.Core.A“ aus „C:\P\Atlas.Core.A.pas“); trennt unter jedem
+    /// System an „\“ und „/“, ein Punkt im Ordnernamen zählt nie als Endung.</summary>
+    class function BaseName(const APath: string): string; static;
   end;
 
 implementation
@@ -170,6 +173,14 @@ end;
 class function TTextUris.IsWindowsPath(const APath: string): Boolean;
 begin
   Result := ((Length(APath) >= 2) and (APath[2] = ':')) or (Copy(APath, 1, 2) = '\\');
+end;
+
+class function TTextUris.BaseName(const APath: string): string;
+begin
+  // Selbst trennen: ExtractFileName trennt unter Windows nur an '\', ChangeFileExt erst danach, sonst gälte ein
+  // Punkt im Ordnernamen als Endung.
+  Result := StringReplace(APath, '\', '/', [rfReplaceAll]);
+  Result := ChangeFileExt(Copy(Result, LastDelimiter('/', Result) + 1, MaxInt), '');
 end;
 
 // Lange Pfade: \\?\C:\... und \\?\UNC\server\... in die kurze Form.

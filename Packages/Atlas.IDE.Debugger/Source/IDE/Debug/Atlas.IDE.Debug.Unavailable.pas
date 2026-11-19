@@ -133,7 +133,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.UnavailableFixes,
-  Atlas.UI.Debug.Explain.Strings;
+  Atlas.UI.Debug.Explain.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
@@ -356,10 +357,7 @@ end;
 
 procedure TAtlasIdeDebugUnavailable.Say(AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeDebugUnavailable.StopLocation(out AFileName: string; out ALine: Integer): Boolean;

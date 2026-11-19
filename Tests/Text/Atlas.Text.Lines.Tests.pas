@@ -13,6 +13,8 @@ type
     [Test]
     procedure LineBreakOfPrefersCrlf;
     [Test]
+    procedure SplitLikeStringsDropsTrailingEmpty;
+    [Test]
     procedure KindOfMixed;
     [Test]
     procedure DominantOfPrefersGivenOnTie;
@@ -80,6 +82,19 @@ uses
   Atlas.Tests.RecordText;
 
 { TTextLinesTests }
+
+procedure TTextLinesTests.SplitLikeStringsDropsTrailingEmpty;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextLines.SplitLikeStrings('eins'#13#10'zwei'#13#10);
+  Assert.AreEqual(2, Integer(Length(mLines)), 'Umbruch am Ende ohne leere Zeile');
+  Assert.AreEqual('zwei', mLines[1]);
+  Assert.AreEqual(3, Integer(Length(TTextLines.SplitLikeStrings('a'#10'b'#13'c'))));
+  Assert.AreEqual(2, Integer(Length(TTextLines.SplitLikeStrings('a'#10#10))), 'nur der letzte Umbruch zählt nicht');
+  Assert.AreEqual(0, Integer(Length(TTextLines.SplitLikeStrings(''))));
+  mLines := nil;
+end;
 
 procedure TTextLinesTests.LineBreakOfPrefersCrlf;
 begin

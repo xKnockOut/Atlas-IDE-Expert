@@ -22,6 +22,7 @@ interface
 uses
   System.SysUtils,
   System.Types,
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
@@ -119,6 +120,9 @@ type
     class function ActiveSession: TLspSession; static;
     /// <summary>Zeile in der Meldungsansicht der IDE, Gruppe „Atlas“.</summary>
     class procedure Message(const AText: string); static;
+    /// <summary>Gruppe AName der Meldungsansicht; legt sie an, wenn es sie noch nicht gibt.</summary>
+    class function MessageGroup(const AMessages: IOTAMessageServices; const AName: string): IOTAMessageGroup;
+      static;
     /// <summary>Message als Methodenreferenz für die Start-Routinen der Features und Module (mit () aufrufen).
     /// </summary>
     class function Messages: TProc<string>; static;
@@ -189,7 +193,6 @@ implementation
 
 uses
   Vcl.Forms,
-  ToolsAPI,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Modules.Answer;
 
@@ -237,18 +240,21 @@ end;
 class procedure TAtlasIdeHost.Message(const AText: string);
 var
   mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
-    Exit;
+    mMessages.AddTitleMessage(AText, MessageGroup(mMessages, 'Atlas'));
   end;
-  mGroup := mMessages.GetGroup('Atlas');
-  if mGroup = nil then
+end;
+
+class function TAtlasIdeHost.MessageGroup(const AMessages: IOTAMessageServices;
+  const AName: string): IOTAMessageGroup;
+begin
+  Result := AMessages.GetGroup(AName);
+  if Result = nil then
   begin
-    mGroup := mMessages.AddMessageGroup('Atlas');
+    Result := AMessages.AddMessageGroup(AName);
   end;
-  mMessages.AddTitleMessage(AText, mGroup);
 end;
 
 class function TAtlasIdeHost.Messages: TProc<string>;

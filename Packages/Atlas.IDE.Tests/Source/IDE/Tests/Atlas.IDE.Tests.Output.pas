@@ -82,18 +82,15 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.UI.Tests.Strings;
+  Atlas.UI.Tests.Strings,
+  Atlas.IDE.Foundation.Host;
 
 const
   cMessageGroup = 'Atlas';
 
 function Group(const AMessages: IOTAMessageServices): IOTAMessageGroup;
 begin
-  Result := AMessages.GetGroup(cMessageGroup);
-  if Result = nil then
-  begin
-    Result := AMessages.AddMessageGroup(cMessageGroup);
-  end;
+  Result := TAtlasIdeHost.MessageGroup(AMessages, cMessageGroup);
 end;
 
 function ProblemText(const ACase: TTestCaseResult): string;

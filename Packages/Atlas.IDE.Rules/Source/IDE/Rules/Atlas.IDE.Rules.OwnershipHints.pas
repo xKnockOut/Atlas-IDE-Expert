@@ -151,16 +151,6 @@ end;
 
 { Hilfen }
 
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 /// <summary>Antwort an die Marke, solange sie lebt (Regel 3); eigene Routine, damit die Referenz nur Zustand,
 /// Generation und Datei einfängt.</summary>
 function AnswerFor(AHints: TAtlasIdeOwnershipHints; const AState: IInterface; AGeneration: Integer;
@@ -216,7 +206,7 @@ begin
   end;
   if Wanted then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -247,7 +237,7 @@ begin
   FScope := nil;
   if mShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -265,7 +255,7 @@ begin
   HideTip;
   if mShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -301,7 +291,7 @@ begin
   FMarks := TAtlasOwnershipMarks.Parse(AJson);
   FHits := nil;
   HideTip;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 procedure TAtlasIdeOwnershipHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
@@ -582,7 +572,7 @@ begin
     Exit;
   end;
   // An und aus von „nur Problemfälle“ zeichnet nur neu; die Antwort enthält alle Stellen.
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 class function TAtlasIdeOwnershipHints.Wanted: Boolean;

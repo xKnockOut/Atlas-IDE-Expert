@@ -207,17 +207,6 @@ uses
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.Core.Diagnostics.Deadline;
 
-/// <summary>Oberen Editor neu zeichnen.</summary>
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 { TAtlasIdeTestsLens.TEvents }
 
 function TAtlasIdeTestsLens.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -280,7 +269,7 @@ begin
   FQueries := Default(TAtlasTestStateQueries);
   if FShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -323,7 +312,7 @@ begin
     begin
       FVersion := FTests.Version;
       UpdateStale;
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.RepaintTop;
     end;
   except
     on E: Exception do
@@ -351,7 +340,7 @@ begin
   if FShowing then
   begin
     FShowing := False;
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -382,7 +371,7 @@ begin
   UpdateStale;
   FShowing := Length(mItems) > 0;
   FVersion := FTests.Version;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 function TAtlasIdeTestsLens.ItemAt(ALine: Integer): Integer;
