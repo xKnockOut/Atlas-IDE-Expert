@@ -37,7 +37,9 @@ type
     BreakpointRulesHitExactly, BreakpointRulesHitAtLeast, BreakpointRulesHitEvery, BreakpointRulesThreadAny,
     BreakpointRulesThreadName, BreakpointRulesThreadId, BreakpointRulesThreadMain, BreakpointRulesNoEditor,
     BreakpointRulesNoBreakpoint, BreakpointRulesSaved, BreakpointRulesRemoved, BreakpointRulesArmed,
-    BreakpointRulesTriggerMissing);
+    BreakpointRulesTriggerMissing, BreakpointRulesCaller, BreakpointRulesCallerHint, BreakpointRulesCallerDirect,
+    BreakpointRulesCallerSlow, BreakpointsRuleCaller, BreakpointsRuleCallerDirect, BreakpointRulesCallerTipTitle,
+    BreakpointRulesCallerTip, BreakpointRulesCallerTipDirect);
 
   TAtlasBreakpointsStrings = class
   public
@@ -178,7 +180,17 @@ const
      'Haltepunkt-Regeln für %s gespeichert.',
      'Haltepunkt-Regeln für %s entfernt.',
      'Haltepunkt %s ist jetzt aktiv (ausgelöst von %s).',
-     'Haltepunkt %s: Der auslösende Haltepunkt %s fehlt; er ist normal aktiv.'),
+     'Haltepunkt %s: Der auslösende Haltepunkt %s fehlt; er ist normal aktiv.',
+     'Nur wenn im Stapel:',
+     'Unit, Klasse.Methode oder Muster mit *',
+     'nur direkter Aufrufer',
+     'Haltepunkt %s hat %d Halte ohne passenden Aufrufer übergangen; jeder kostet Laufzeit. ' +
+      'Eine Bedingung oder ein Haltepunkt im Aufrufer ist schneller.',
+     'Aufruf aus %s',
+     'direkt aus %s',
+     'Haltepunkt mit Aufrufer',
+     'Hält nur bei Aufruf aus %s',
+     'Hält nur bei direktem Aufruf aus %s'),
     ('Breakpoints that will not be hit',
      '%d breakpoints will probably not be hit. Double-click jumps to the location.',
      'Start anyway',
@@ -302,7 +314,17 @@ const
      'Breakpoint rules for %s saved.',
      'Breakpoint rules for %s removed.',
      'Breakpoint %s is active now (triggered by %s).',
-     'Breakpoint %s: the triggering breakpoint %s is missing; it is active as usual.'));
+     'Breakpoint %s: the triggering breakpoint %s is missing; it is active as usual.',
+     'Only if on the stack:',
+     'Unit, Class.Method or pattern with *',
+     'direct caller only',
+     'Breakpoint %s skipped %d stops without a matching caller; each one costs run time. ' +
+      'A condition or a breakpoint in the caller is faster.',
+     'called from %s',
+     'directly from %s',
+     'Breakpoint with caller',
+     'Stops only when called from %s',
+     'Stops only when called directly from %s'));
 
 { TAtlasBreakpointsStrings }
 
