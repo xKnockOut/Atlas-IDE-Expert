@@ -260,6 +260,7 @@ Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.HistoryTools.Tests
 Shell.SymbolHistory.Tests
 Shell.Mcp.HistoryTools.Tests
+Shell.Mcp.Tools.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
 Atlas.Common.Mcp.LastTests.Tests
