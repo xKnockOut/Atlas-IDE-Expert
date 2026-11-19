@@ -50,6 +50,10 @@ type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasInlineValuesSessionFunc = reference to function: TLspSession;
 
+  /// <summary>Wert AText des Namens AName an AFileName, ALine (1-basiert) mit Etikett (#839); ohne Etikett AText.
+  /// </summary>
+  TAtlasInlineValueMarker = reference to function(const AName, AText, AFileName: string; ALine: Integer): string;
+
   TAtlasIdeDebugInlineValues = class(TAtlasIdeDebugStopView)
   public const
     /// <summary>Höchstens so lange wertet Atlas am Stück aus.</summary>
@@ -71,6 +75,9 @@ type
       Name: string;
       Since: UInt64;
     end;
+  public class var
+    /// <summary>Setzt die Composition, solange markierte Objekte (#839) laufen; sonst nil.</summary>
+    OnMarked: TAtlasInlineValueMarker;
   private class var
     FInstance: TAtlasIdeDebugInlineValues;
   private
@@ -96,6 +103,7 @@ type
     /// <summary>Wartet Atlas noch auf den verzögerten Wert? Nach DeferredTimeoutMs ohne ihn weiter.</summary>
     function DeferredPending: Boolean;
     function EvaluateOne(const AName: string; var AChanged: Boolean): TAtlasInlineStep;
+    function Marked(const AName, AText: string): string;
     procedure DeferredDone(const AValue: TAtlasDebugValue);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -439,6 +447,16 @@ begin
   end;
 end;
 
+/// <summary>AText mit dem Etikett eines markierten Objekts (#839), solange der Teil läuft.</summary>
+function TAtlasIdeDebugInlineValues.Marked(const AName, AText: string): string;
+begin
+  Result := AText;
+  if Assigned(OnMarked) then
+  begin
+    Result := OnMarked(AName, AText, FFileName, FLine + 1);
+  end;
+end;
+
 function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChanged: Boolean): TAtlasInlineStep;
 var
   mValue: TAtlasDebugValue;
@@ -456,7 +474,7 @@ begin
     TAtlasInlineStep.Next:
       if mValue.State = TAtlasDebugValueState.Value then
       begin
-        FValues.Put(AName, mValue.Text, True);
+        FValues.Put(AName, Marked(AName, mValue.Text), True);
         AChanged := True;
       end
       else
@@ -475,7 +493,7 @@ begin
   begin
     Exit;
   end;
-  FValues.Put(FDeferred.Name, AValue.Text, AValue.State = TAtlasDebugValueState.Value);
+  FValues.Put(FDeferred.Name, Marked(FDeferred.Name, AValue.Text), AValue.State = TAtlasDebugValueState.Value);
   FDeferred.Name := '';
   Invalidate;
 end;
