@@ -759,7 +759,8 @@ var
   mOpenChar, mCloseChar: Char;
 begin
   Result := Default(TAtlasDocSignature);
-  mText := Trim(StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+  mText := Trim(StringReplace(StringReplace(StringReplace(ADeclaration, #13#10, ' ', [rfReplaceAll]), #13, ' ',
+    [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
   mWord := SignatureWord(mText);
   if mWord = '' then
   begin

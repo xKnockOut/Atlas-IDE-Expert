@@ -1,14 +1,15 @@
 ﻿unit Atlas.Common.Rules.Builtin.CompilerTraps.MethodRefs;
 
 // Methodenreferenzen, die Delphi aufruft, wo Free Pascal sie als Wert nimmt (#1899, #1345, Gruppe Compiler vorab):
-//   method-reference-called  Eine Variable, ein Parameter oder ein Feld vom Typ einer Methodenreferenz (TProc,
-//                            TFunc<…>, TPredicate<T>, eigener reference to-Typ) steht als einziges Argument in
+//   method-reference-called  Eine Variable, ein Parameter oder ein Feld vom Typ einer Referenz auf eine Funktion
+//                            (TFunc<…>, TPredicate<T>, eigener reference to function) steht als einziges Argument in
 //                            Exit(…) oder als Element eines Array-Literals neben + (FListe + [ARef]). Delphi ruft die
 //                            Referenz dort auf, statt sie als Wert zu nehmen (wie E2035 bzw. E2010). Korrektur bei
 //                            Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: SetLength und zuweisen.
 //                            Erkannt wird der Typ aus der Deklaration in der Datei (Parameter, lokale Variable, Feld
 //                            der eigenen Klasse); ein eigener Typ zählt, wenn die Datei oder der Index ihn als
-//                            reference to deklariert.
+//                            reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als
+//                            Wert (Links + [AAction] übersetzt).
 
 interface
 
@@ -51,6 +52,9 @@ type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TMethodRefText = (Title, ExitMessage, ExitFix, LiteralMessage);
 
+  /// <summary>Art eines Typs: keine Methodenreferenz, Referenz auf eine Prozedur oder auf eine Funktion.</summary>
+  TReferenceKind = (None, Procedure_, Function_);
+
 const
   cTexts: array[TMethodRefText] of TAtlasText = (
     (De: 'Methodenreferenz wird aufgerufen statt übergeben'; En: 'Method reference is called instead of passed'),
@@ -74,11 +78,14 @@ type
     FRoot: TSyntaxNode;
     FIndex: ISymbolIndex;
     FReport: IRuleReport;
-    /// <summary>Ergebnis von IsReferenceType je Typtext (klein).</summary>
-    FKnown: TDictionary<string, Boolean>;
-    function DeclaredInFile(const AName: string; out AIsReference: Boolean): Boolean;
-    function DeclaredInIndex(const AName: string): Boolean;
+    /// <summary>Ergebnis von KindOf je Typtext (klein).</summary>
+    FKnown: TDictionary<string, TReferenceKind>;
+    function DeclaredInFile(const AName: string; out AKind: TReferenceKind): Boolean;
+    function DeclaredInIndex(const AName: string; out AKind: TReferenceKind): Boolean;
+    function KindOf(const ATypeText: string): TReferenceKind;
     function IsReferenceType(const ATypeText: string): Boolean;
+    /// <summary>Nur Referenzen auf Funktionen ruft Delphi als Wert auf; TProc neben + nimmt es als Element.</summary>
+    function IsFunctionReference(const ATypeText: string): Boolean;
     function TypeOfName(ANode: TSyntaxNode; const AName: string): string;
     function TypeInRoutine(ARoutine: TSyntaxNode; const AKey: string): string;
     function TypeInClass(const AClassName, AKey: string): string;
@@ -131,7 +138,7 @@ begin
   FRoot := ARoot;
   FIndex := AIndex;
   FReport := AReport;
-  FKnown := TDictionary<string, Boolean>.Create;
+  FKnown := TDictionary<string, TReferenceKind>.Create;
 end;
 
 destructor TMethodRefScan.Destroy;
@@ -140,36 +147,49 @@ begin
   inherited;
 end;
 
-function TMethodRefScan.DeclaredInFile(const AName: string; out AIsReference: Boolean): Boolean;
+/// <summary>Art der Methodenreferenz AProc (ProcedureType "reference"): mit Ergebnistyp eine Funktion.</summary>
+function KindOfProcedureType(AProc: TSyntaxNode): TReferenceKind;
+begin
+  Result := TReferenceKind.None;
+  if (AProc <> nil) and SameText(AProc.Name, 'reference') then
+  begin
+    Result := TReferenceKind.Procedure_;
+    if AProc.FindChild(TSyntaxKind.TypeReference) <> nil then
+    begin
+      Result := TReferenceKind.Function_;
+    end;
+  end;
+end;
+
+function TMethodRefScan.DeclaredInFile(const AName: string; out AKind: TReferenceKind): Boolean;
 var
-  mFound, mReference: Boolean;
+  mFound: Boolean;
+  mKind: TReferenceKind;
 begin
   mFound := False;
-  mReference := False;
+  mKind := TReferenceKind.None;
   FRoot.Walk(
     function(ANode: TSyntaxNode): Boolean
-    var
-      mProc: TSyntaxNode;
     begin
       Result := not mFound;
       if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
       begin
         mFound := True;
-        mProc := ANode.FindChild(TSyntaxKind.ProcedureType);
-        mReference := (mProc <> nil) and SameText(mProc.Name, 'reference');
+        mKind := KindOfProcedureType(ANode.FindChild(TSyntaxKind.ProcedureType));
       end;
     end);
-  AIsReference := mReference;
+  AKind := mKind;
   Result := mFound;
 end;
 
-function TMethodRefScan.DeclaredInIndex(const AName: string): Boolean;
+function TMethodRefScan.DeclaredInIndex(const AName: string; out AKind: TReferenceKind): Boolean;
 var
   mLocation: TSymbolLocation;
   mSeen: Boolean;
 begin
   Result := False;
   mSeen := False;
+  AKind := TReferenceKind.Function_;
   if FIndex = nil then
   begin
     Exit;
@@ -183,37 +203,56 @@ begin
       begin
         Exit(False);
       end;
+      // Eine Prozedur unter den gleichnamigen genügt: dann nicht als Funktion melden.
+      if not ContainsText(mLocation.Symbol.Signature, 'reference to function') then
+      begin
+        AKind := TReferenceKind.Procedure_;
+      end;
       mSeen := True;
     end;
   end;
   Result := mSeen;
 end;
 
-function TMethodRefScan.IsReferenceType(const ATypeText: string): Boolean;
+function TMethodRefScan.KindOf(const ATypeText: string): TReferenceKind;
 var
   mReference: TRtlMethodReference;
   mBase: string;
-  mInFile: Boolean;
+  mKind: TReferenceKind;
 begin
-  Result := False;
-  if (ATypeText = '') or FKnown.TryGetValue(LowerCase(ATypeText), Result) then
+  if ATypeText = '' then
   begin
-    Exit;
+    Exit(TReferenceKind.None);
+  end;
+  if FKnown.TryGetValue(LowerCase(ATypeText), mKind) then
+  begin
+    Exit(mKind);
   end;
   TRtlMethodReferences.TypeArgs(ATypeText, mBase);
-  if DeclaredInFile(mBase, mInFile) then
+  if not DeclaredInFile(mBase, mKind) and not DeclaredInIndex(mBase, mKind) then
   begin
-    Result := mInFile;
-  end
-  else if DeclaredInIndex(mBase) then
-  begin
-    Result := True;
-  end
-  else
-  begin
-    Result := TRtlMethodReferences.Find(ATypeText, mReference);
+    mKind := TReferenceKind.None;
+    if TRtlMethodReferences.Find(ATypeText, mReference) then
+    begin
+      mKind := TReferenceKind.Procedure_;
+      if ContainsText(mReference.Signature, 'reference to function') then
+      begin
+        mKind := TReferenceKind.Function_;
+      end;
+    end;
   end;
-  FKnown.Add(LowerCase(ATypeText), Result);
+  FKnown.Add(LowerCase(ATypeText), mKind);
+  Result := mKind;
+end;
+
+function TMethodRefScan.IsReferenceType(const ATypeText: string): Boolean;
+begin
+  Result := KindOf(ATypeText) <> TReferenceKind.None;
+end;
+
+function TMethodRefScan.IsFunctionReference(const ATypeText: string): Boolean;
+begin
+  Result := KindOf(ATypeText) = TReferenceKind.Function_;
 end;
 
 function TMethodRefScan.TypeInRoutine(ARoutine: TSyntaxNode; const AKey: string): string;
@@ -356,7 +395,7 @@ begin
   mArgument := ACall[1];
   mName := mArgument.Name;
   mType := TypeOfName(ACall, mName);
-  if not IsReferenceType(mType) or not ResultIsReference(ACall) then
+  if not IsFunctionReference(mType) or not ResultIsReference(ACall) then
   begin
     Exit;
   end;
@@ -397,7 +436,7 @@ begin
       Continue;
     end;
     mType := TypeOfName(ALiteral, mElement.Name);
-    if IsReferenceType(mType) then
+    if IsFunctionReference(mType) then
     begin
       FReport.Add(TTextRange.Create(mElement.StartPos, mElement.EndPos), cTexts[TMethodRefText.LiteralMessage].Fmt(
         [mElement.Name, mType]), TRuleConfidence.High);

@@ -15,7 +15,7 @@ type
     /// <summary>Exit(ALookup) mit eigenem reference to-Typ; Korrektur Result := ALookup; Exit.</summary>
     [Test]
     procedure ExitWithReference;
-    /// <summary>FHandlers + [AHandler] mit TArray&lt;TProc&gt;, auch über ein Feld und einen Typ aus dem Index.
+    /// <summary>FHandlers + [AHandler] mit TArray&lt;TFunc&lt;Boolean&gt;&gt;, auch über ein Feld und einen Typ aus dem Index.
     /// </summary>
     [Test]
     procedure ArrayLiteralWithReference;
@@ -89,13 +89,13 @@ const
     'type'#10 +
     '  TListe = class'#10 +
     '  private'#10 +
-    '    FHandlers: TArray<TProc>;'#10 +
+    '    FHandlers: TArray<TFunc<Boolean>>;'#10 +
     '    FHoerer: TArray<THoerer>;'#10 +
     '  public'#10 +
-    '    procedure Add(const AHandler: TProc; const AHoerer: THoerer);'#10 +
+    '    procedure Add(const AHandler: TFunc<Boolean>; const AHoerer: THoerer);'#10 +
     '  end;'#10 +
     'implementation'#10 +
-    'procedure TListe.Add(const AHandler: TProc; const AHoerer: THoerer);'#10 +
+    'procedure TListe.Add(const AHandler: TFunc<Boolean>; const AHoerer: THoerer);'#10 +
     'begin'#10 +
     '  FHandlers := FHandlers + [AHandler];'#10 +
     '  FHoerer := [AHoerer] + FHoerer;'#10 +
@@ -106,9 +106,9 @@ var
 begin
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText('unit Werk.Typen;'#10'interface'#10'type'#10 +
-    '  THoerer = reference to procedure(const AText: string);'#10'implementation'#10'end.', 'C:\P\Werk.Typen.pas',
+    '  THoerer = reference to function(const AText: string): Boolean;'#10'implementation'#10'end.', 'C:\P\Werk.Typen.pas',
     nil));
-  Assert.AreEqual('15:28 [AHandler]: AHandler ist eine Methodenreferenz (TProc); im Array-Literal neben + ruft ' +
+  Assert.AreEqual('15:28 [AHandler]: AHandler ist eine Methodenreferenz (TFunc<Boolean>); im Array-Literal neben + ruft ' +
     'Delphi sie auf (wie E2035 bzw. E2010). Länge mit SetLength erhöhen und das Element zuweisen.|16:14 [AHoerer]: ' +
     'AHoerer ist eine Methodenreferenz (THoerer); im Array-Literal neben + ruft Delphi sie auf (wie E2035 bzw. ' +
     'E2010). Länge mit SetLength erhöhen und das Element zuweisen.|',
@@ -124,6 +124,7 @@ const
     '  System.SysUtils;'#10 +
     'function Frage(const AFunc: TFunc<Boolean>): Boolean;'#10 +
     'function Gib(const AProc: TProc): TProc;'#10 +
+    'function Haenge(const A: TArray<TProc>; const AProc: TProc): TArray<TProc>;'#10 +
     'function Zahlen(const A: TArray<Integer>; AZahl: Integer): TArray<Integer>;'#10 +
     'function Werte(const A: TArray<Boolean>; const AFunc: TFunc<Boolean>): TArray<Boolean>;'#10 +
     'implementation'#10 +
@@ -136,6 +137,10 @@ const
     '  Result := AProc;'#10 +
     '  Exit;'#10 +
     'end;'#10 +
+    'function Haenge(const A: TArray<TProc>; const AProc: TProc): TArray<TProc>;'#10 +
+    'begin'#10 +
+    '  Result := A + [AProc];'#10 +
+    'end;'#10 +
     'function Zahlen(const A: TArray<Integer>; AZahl: Integer): TArray<Integer>;'#10 +
     'begin'#10 +
     '  Result := A + [AZahl];'#10 +
@@ -146,7 +151,8 @@ const
     'end;'#10 +
     'end.';
 begin
-  // Exit(AFunc) mit Boolean als Ergebnis und [AFunc] neben TArray<Boolean> rufen gewollt auf.
+  // Exit(AFunc) mit Boolean als Ergebnis und [AFunc] neben TArray<Boolean> rufen gewollt auf; eine Referenz auf
+  // eine Prozedur (TProc) nimmt Delphi im Array-Literal als Element.
   TRuleAssert.Silent(TMethodReferenceCalledRule.Create, cSource);
 end;
 

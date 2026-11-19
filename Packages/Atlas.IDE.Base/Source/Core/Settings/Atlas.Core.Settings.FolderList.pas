@@ -22,7 +22,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Lines;
 
 { TAtlasFolderList }
 
@@ -46,8 +47,7 @@ var
   mSeen: Boolean;
 begin
   Result := nil;
-  for mPart in StringReplace(StringReplace(AText, #13, ';', [rfReplaceAll]), #10, ';',
-    [rfReplaceAll]).Split([';']) do
+  for mPart in TTextLines.NormalizeLineBreaks(AText, ';').Split([';']) do
   begin
     mFolder := Normal(mPart);
     if mFolder = '' then

@@ -84,7 +84,8 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.RoutineSignatures,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 function StripModifier(const AText: string): string;
 var
@@ -518,7 +519,7 @@ begin
       Break;
     end;
   end;
-  Result := StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(Result, ' ');
 end;
 
 end.

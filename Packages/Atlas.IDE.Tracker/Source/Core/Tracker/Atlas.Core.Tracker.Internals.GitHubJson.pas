@@ -34,7 +34,8 @@ uses
   System.DateUtils,
   System.Math,
   Atlas.Core.Tracker.Contract,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lines;
 
 { TAtlasGitHubJson }
 
@@ -45,7 +46,7 @@ end;
 
 class function TAtlasGitHubJson.Shorten(const AText: string; AMax: Integer): string;
 begin
-  Result := Trim(StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+  Result := Trim(TTextLines.NormalizeLineBreaks(AText, ' '));
   if Length(Result) > AMax then
   begin
     Result := Copy(Result, 1, AMax - 1) + '…';

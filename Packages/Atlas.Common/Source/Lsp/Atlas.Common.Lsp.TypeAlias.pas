@@ -191,7 +191,7 @@ end;
 
 function Shortened(const AText: string): string;
 begin
-  Result := StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(AText, ' ');
   if Length(Result) > cTitleLength then
   begin
     Result := Copy(Result, 1, cTitleLength - 1) + '…';

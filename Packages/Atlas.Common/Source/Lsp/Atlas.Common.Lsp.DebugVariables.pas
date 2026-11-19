@@ -82,7 +82,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lines;
 
 const
   cStatementKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement,
@@ -166,7 +167,7 @@ begin
   end;
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   // Mehrzeilig bzw. mit Leerraum: in eine Zeile, ohne Leerzeichen um Punkte und Klammern.
-  Result := Result.Replace(#13, ' ').Replace(#10, ' ').Replace(#9, ' ');
+  Result := TTextLines.NormalizeLineBreaks(Result, ' ').Replace(#9, ' ');
   while Pos('  ', Result) > 0 do
   begin
     Result := Result.Replace('  ', ' ');

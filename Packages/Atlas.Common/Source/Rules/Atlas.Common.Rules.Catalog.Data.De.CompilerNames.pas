@@ -365,11 +365,12 @@ const
     '{',
     '      "id": "method-reference-called",',
     '      "name": "Methodenreferenz wird aufgerufen statt übergeben",',
-    '      "description": "Eine Variable, ein Parameter oder ein Feld vom Typ einer Methodenreferenz (TProc, TFunc<…>, TPredicate<T> oder ein eigener reference to-Typ) steht als einziges Argument in Exit(…' +
-    ') einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. Delphi ruft di' +
-    'e Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigenen Klasse); ' +
-    'ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to deklariert. Exit(AFunc) in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Korrektur bei Exit ' +
-    '(sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweisen."',
+    '      "description": "Eine Variable, ein Parameter oder ein Feld vom Typ einer Referenz auf eine Funktion (TFunc<…>, TPredicate<T> oder ein eigener reference to function-Typ) steht als einziges Argume' +
+    'nt in Exit(…) einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. De' +
+    'lphi ruft die Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigen' +
+    'en Klasse); ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als Wert; sie bleiben still. Exit(AFunc)' +
+    ' in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweis' +
+    'en."',
     '    },',
     '{',
     '      "id": "interface-uses-missing",',

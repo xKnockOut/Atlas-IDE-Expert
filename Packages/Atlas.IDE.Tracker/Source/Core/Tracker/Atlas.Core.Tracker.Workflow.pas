@@ -218,7 +218,8 @@ uses
   System.StrUtils,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Transitions,
-  Atlas.Core.VersionControl.BranchNames;
+  Atlas.Core.VersionControl.BranchNames,
+  Atlas.Text.Lines;
 
 { TAtlasTrackerSyncOptions }
 
@@ -317,8 +318,7 @@ var
   mFound: Boolean;
 begin
   Result := nil;
-  for mPart in StringReplace(StringReplace(StringReplace(AText, ';', ',', [rfReplaceAll]), #13, ',',
-    [rfReplaceAll]), #10, ',', [rfReplaceAll]).Split([',']) do
+  for mPart in TTextLines.NormalizeLineBreaks(StringReplace(AText, ';', ',', [rfReplaceAll]), ',').Split([',']) do
   begin
     if Trim(mPart) = '' then
     begin
