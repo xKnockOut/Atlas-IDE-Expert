@@ -106,6 +106,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EvaluateRows.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EvalSlices.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakLocations.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreakWatch.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DataBreak.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DataBreakPatterns.pas"/>

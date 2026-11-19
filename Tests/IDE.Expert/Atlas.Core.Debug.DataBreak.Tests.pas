@@ -159,13 +159,13 @@ var
 begin
   mLocations := TAtlasDataBreak.Locations(FAnswer.Sites, [TAtlasDataKind.Sql, TAtlasDataKind.Http]);
   Assert.AreEqual(3, Integer(Length(mLocations)));
-  Assert.AreEqual(2, Integer(Length(mLocations[0].Sites)));
+  Assert.AreEqual(2, Integer(Length(mLocations[0].Items)));
   Assert.AreEqual(8, mLocations[1].Line);
   Assert.AreEqual(1, TAtlasDataBreak.LocationAt(mLocations, 'c:\p\dienst.pas', 8));
   Assert.AreEqual(-1, TAtlasDataBreak.LocationAt(mLocations, 'C:\P\Dienst.pas', 9));
   mLocations := TAtlasDataBreak.Locations(FAnswer.Sites, [TAtlasDataKind.Http]);
   Assert.AreEqual(2, Integer(Length(mLocations)));
-  Assert.AreEqual(2, mLocations[0].Sites[0]);
+  Assert.AreEqual(2, mLocations[0].Items[0]);
 end;
 
 procedure TAtlasDataBreakTests.ExpressionsPerClass;

@@ -28,11 +28,13 @@ type
   TAtlasDataPatterns = class
   public const
     cHttpMethods: array[0..6] of string = ('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS');
+    /// <summary>Vorsilbe der Werte von TRESTRequestMethod (rmGET, rmPOST …).</summary>
+    cRestPrefix = 'rm';
   private
     class function Matches(const APattern, AText: string): Boolean; static;
     class function IsHttpMethod(const AText: string): Boolean; static;
-    class function ReadChar(const AValue: string; var AIndex: Integer; var AResult: string): Boolean; static;
-    class function ReadQuoted(const AValue: string; var AIndex: Integer; var AResult: string): Boolean; static;
+    class function ReadChar(const AValue: string; var AIndex: Integer; AResult: TStringBuilder): Boolean; static;
+    class function ReadQuoted(const AValue: string; var AIndex: Integer; AResult: TStringBuilder): Boolean; static;
   public
     /// <summary>Leerraum zusammengefasst und außen entfernt.</summary>
     class function Squeeze(const AText: string): string; static;
@@ -204,13 +206,13 @@ end;
 
 class function TAtlasDataPatterns.HttpMethodOf(const AText: string): string;
 var
-  mText: string;
+  mText, mRest: string;
 begin
   mText := Trim(AText);
-  // TRESTRequestMethod: rmGET, rmPOST …
-  if (Length(mText) > 2) and SameText(Copy(mText, 1, 2), 'rm') and IsHttpMethod(Copy(mText, 3, MaxInt)) then
+  mRest := Copy(mText, Length(cRestPrefix) + 1, MaxInt);
+  if mText.StartsWith(cRestPrefix, True) and IsHttpMethod(mRest) then
   begin
-    mText := Copy(mText, 3, MaxInt);
+    mText := mRest;
   end;
   Result := '';
   if IsHttpMethod(mText) then
@@ -219,7 +221,8 @@ begin
   end;
 end;
 
-class function TAtlasDataPatterns.ReadChar(const AValue: string; var AIndex: Integer; var AResult: string): Boolean;
+class function TAtlasDataPatterns.ReadChar(const AValue: string; var AIndex: Integer;
+  AResult: TStringBuilder): Boolean;
 var
   mStart: Integer;
   mCode: Integer;
@@ -247,12 +250,12 @@ begin
   Result := TryStrToInt(mDigits, mCode) and (mCode >= 0) and (mCode <= $FFFF);
   if Result then
   begin
-    AResult := AResult + Char(mCode);
+    AResult.Append(Char(mCode));
   end;
 end;
 
 class function TAtlasDataPatterns.ReadQuoted(const AValue: string; var AIndex: Integer;
-  var AResult: string): Boolean;
+  AResult: TStringBuilder): Boolean;
 begin
   // AIndex steht auf dem öffnenden Hochkomma; danach hinter dem schließenden.
   Inc(AIndex);
@@ -260,11 +263,11 @@ begin
   begin
     if AValue[AIndex] <> '''' then
     begin
-      AResult := AResult + AValue[AIndex];
+      AResult.Append(AValue[AIndex]);
     end
     else if (AIndex < Length(AValue)) and (AValue[AIndex + 1] = '''') then
     begin
-      AResult := AResult + '''';
+      AResult.Append('''');
       Inc(AIndex);
     end
     else
@@ -281,27 +284,33 @@ class function TAtlasDataPatterns.DebuggerString(const AValue: string; out AText
 var
   mValue: string;
   mIndex: Integer;
+  mText: TStringBuilder;
 begin
   AText := '';
   mValue := Trim(AValue);
   Result := (mValue <> '') and CharInSet(mValue[1], ['''', '#']);
   mIndex := 1;
-  while Result and (mIndex <= Length(mValue)) do
-  begin
-    case mValue[mIndex] of
-      '#':
-        Result := ReadChar(mValue, mIndex, AText);
-      '''':
-        Result := ReadQuoted(mValue, mIndex, AText);
-    else
-      // Lange Texte kürzt der Debugger mit „...“ am Ende.
-      AText := AText + Copy(mValue, mIndex, MaxInt);
-      mIndex := Length(mValue) + 1;
+  mText := TStringBuilder.Create;
+  try
+    while Result and (mIndex <= Length(mValue)) do
+    begin
+      case mValue[mIndex] of
+        '#':
+          Result := ReadChar(mValue, mIndex, mText);
+        '''':
+          Result := ReadQuoted(mValue, mIndex, mText);
+      else
+        // Lange Texte kürzt der Debugger mit „...“ am Ende.
+        mText.Append(Copy(mValue, mIndex, MaxInt));
+        mIndex := Length(mValue) + 1;
+      end;
     end;
-  end;
-  if not Result then
-  begin
-    AText := '';
+    if Result then
+    begin
+      AText := mText.ToString;
+    end;
+  finally
+    mText.Free;
   end;
 end;
 

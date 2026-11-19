@@ -146,7 +146,7 @@ end;
 
 class function TAtlasEventBreakWatch.NeedsSender(const ALocation: TAtlasEventLocation): Boolean;
 begin
-  Result := Length(ALocation.Handlers) > 1;
+  Result := Length(ALocation.Items) > 1;
 end;
 
 class function TAtlasEventBreakWatch.FormCount(const AValue: string; out ACount: Integer): Boolean;

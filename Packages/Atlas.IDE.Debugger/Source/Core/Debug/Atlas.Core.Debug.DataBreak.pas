@@ -19,7 +19,8 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Settings.DataBreakClasses;
+  Atlas.Core.Settings.DataBreakClasses,
+  Atlas.Core.Debug.BreakLocations;
 
 type
   {$SCOPEDENUMS ON}
@@ -67,12 +68,8 @@ type
     Unresolved: Integer;
   end;
 
-  TAtlasDataLocation = record
-    FileName: string;
-    Line: Integer;
-    /// <summary>Indizes der Stellen in dieser Zeile.</summary>
-    Sites: TArray<Integer>;
-  end;
+  /// <summary>Haltestelle: Datei, Zeile und die Stellen (Indizes in Items) dieser Zeile.</summary>
+  TAtlasDataLocation = TAtlasBreakLocation;
 
   TAtlasDataChoice = record
     Kinds: TAtlasDataKinds;
@@ -464,43 +461,22 @@ end;
 class function TAtlasDataBreak.Locations(const ASites: TArray<TAtlasDataSite>;
   AKinds: TAtlasDataKinds): TArray<TAtlasDataLocation>;
 var
-  mIndex, mFound: Integer;
-  mLocation: TAtlasDataLocation;
+  mIndex: Integer;
 begin
   Result := nil;
   for mIndex := 0 to High(ASites) do
   begin
-    if not (ASites[mIndex].Kind in AKinds) then
+    if ASites[mIndex].Kind in AKinds then
     begin
-      Continue;
+      TAtlasBreakLocations.Add(Result, ASites[mIndex].FileName, ASites[mIndex].BreakLine, mIndex);
     end;
-    mFound := LocationAt(Result, ASites[mIndex].FileName, ASites[mIndex].BreakLine);
-    if mFound >= 0 then
-    begin
-      Result[mFound].Sites := Result[mFound].Sites + [mIndex];
-      Continue;
-    end;
-    mLocation := Default(TAtlasDataLocation);
-    mLocation.FileName := ASites[mIndex].FileName;
-    mLocation.Line := ASites[mIndex].BreakLine;
-    mLocation.Sites := [mIndex];
-    Result := Result + [mLocation];
   end;
 end;
 
 class function TAtlasDataBreak.LocationAt(const ALocations: TArray<TAtlasDataLocation>; const AFileName: string;
   ALine: Integer): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(ALocations) do
-  begin
-    if (ALocations[mIndex].Line = ALine) and SameText(ALocations[mIndex].FileName, AFileName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := TAtlasBreakLocations.IndexOf(ALocations, AFileName, ALine);
 end;
 
 class function TAtlasDataBreak.Fill(const ATemplate, AReceiver: string; AIndex: Integer): string;

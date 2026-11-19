@@ -640,6 +640,8 @@ uses
   Atlas.Core.Debug.Phases in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Phases.pas',
   Atlas.Core.Debug.Phases.Tests in 'IDE.Expert\Atlas.Core.Debug.Phases.Tests.pas',
   Atlas.Core.Debug.EventBreak in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas',
+  Atlas.Core.Debug.BreakLocations in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakLocations.pas',
+  Atlas.Core.Debug.BreakLocations.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakLocations.Tests.pas',
   Atlas.Core.Debug.EventBreakWatch in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreakWatch.pas',
   Atlas.Core.Debug.EventBreakWatch.Tests in 'IDE.Expert\Atlas.Core.Debug.EventBreakWatch.Tests.pas',
   Atlas.Core.Debug.StepInto.Tests in 'IDE.Expert\Atlas.Core.Debug.StepInto.Tests.pas',

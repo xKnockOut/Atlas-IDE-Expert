@@ -966,6 +966,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.RunTo` | `Core/Debug/Atlas.Core.Debug.RunTo.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.RunToColumnFlow` | `Core/Debug/Atlas.Core.Debug.RunToColumnFlow.pas` | Entscheidungen der Spalte Bis hier ausführen ohne IDE (Spalte, Lesen, Maus, Tooltip, Pfeil), #1967 |
 | `Atlas.Core.Debug.EventBreak` | `Core/Debug/Atlas.Core.Debug.EventBreak.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.BreakLocations` | `Core/Debug/Atlas.Core.Debug.BreakLocations.pas` | Haltestellen vorübergehender Haltepunkte je Datei und Zeile (Ereignisse, Datenzugriff), #870 |
 | `Atlas.Core.Debug.EventBreakWatch` | `Core/Debug/Atlas.Core.Debug.EventBreakWatch.pas` | Beim nächsten Ereignis anhalten: Art des Setzens, Pause, neuer Halt, Zahl der Stellen, #1967 |
 | `Atlas.Core.Debug.DataBreak` | `Core/Debug/Atlas.Core.Debug.DataBreak.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DataBreakPatterns` | `Core/Debug/Atlas.Core.Debug.DataBreakPatterns.pas` | Anhalten bei Datenzugriff: Musterabgleich SQL/HTTP, Zeichenketten des Debuggers, #870 |

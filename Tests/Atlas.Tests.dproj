@@ -833,6 +833,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Phases.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Phases.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakLocations.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakLocations.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreakWatch.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreakWatch.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepInto.Tests.pas"/>

@@ -19,7 +19,8 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Debug.BreakLocations;
 
 type
   {$SCOPEDENUMS ON}
@@ -63,12 +64,8 @@ type
     class function Defaults: TAtlasEventChoice; static;
   end;
 
-  /// <summary>Eine Haltestelle: Datei, Zeile und die Handler (Indizes), die dort beginnen.</summary>
-  TAtlasEventLocation = record
-    FileName: string;
-    Line: Integer;
-    Handlers: TArray<Integer>;
-  end;
+  /// <summary>Eine Haltestelle: Datei, Zeile und die Handler (Indizes in Items), die dort beginnen.</summary>
+  TAtlasEventLocation = TAtlasBreakLocation;
 
   TAtlasEventBreak = class
   public const
@@ -298,40 +295,19 @@ end;
 class function TAtlasEventBreak.Locations(const AHandlers: TArray<TAtlasEventHandler>;
   const ASelected: TArray<Integer>): TArray<TAtlasEventLocation>;
 var
-  mIndex, mFound: Integer;
-  mLocation: TAtlasEventLocation;
+  mIndex: Integer;
 begin
   Result := nil;
   for mIndex in ASelected do
   begin
-    mFound := LocationAt(Result, AHandlers[mIndex].FileName, AHandlers[mIndex].BreakLine);
-    if mFound < 0 then
-    begin
-      mLocation.FileName := AHandlers[mIndex].FileName;
-      mLocation.Line := AHandlers[mIndex].BreakLine;
-      mLocation.Handlers := [mIndex];
-      Result := Result + [mLocation];
-    end
-    else
-    begin
-      Result[mFound].Handlers := Result[mFound].Handlers + [mIndex];
-    end;
+    TAtlasBreakLocations.Add(Result, AHandlers[mIndex].FileName, AHandlers[mIndex].BreakLine, mIndex);
   end;
 end;
 
 class function TAtlasEventBreak.LocationAt(const ALocations: TArray<TAtlasEventLocation>;
   const AFileName: string; ALine: Integer): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(ALocations) do
-  begin
-    if (ALocations[mIndex].Line = ALine) and SameText(ALocations[mIndex].FileName, AFileName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := TAtlasBreakLocations.IndexOf(ALocations, AFileName, ALine);
 end;
 
 /// <summary>Letzter Teil eines Ausdrucks: FTimer → FTimer, Self.FTimer → FTimer.</summary>
@@ -348,9 +324,9 @@ class function TAtlasEventBreak.Identify(const AHandlers: TArray<TAtlasEventHand
 var
   mIndex, mFound: Integer;
 begin
-  if Length(ALocation.Handlers) = 1 then
+  if Length(ALocation.Items) = 1 then
   begin
-    Exit(ALocation.Handlers[0]);
+    Exit(ALocation.Items[0]);
   end;
   Result := -1;
   if ASenderName = '' then
@@ -358,7 +334,7 @@ begin
     Exit;
   end;
   mFound := 0;
-  for mIndex in ALocation.Handlers do
+  for mIndex in ALocation.Items do
   begin
     if SameText(LastPart(AHandlers[mIndex].Component), ASenderName) then
     begin
@@ -396,9 +372,9 @@ begin
   begin
     mHandler := AHandlers[AIdentified];
   end
-  else if Length(ALocation.Handlers) > 0 then
+  else if Length(ALocation.Items) > 0 then
   begin
-    mHandler := AHandlers[ALocation.Handlers[0]];
+    mHandler := AHandlers[ALocation.Items[0]];
   end
   else
   begin
@@ -411,7 +387,7 @@ begin
   else
   begin
     mSources := nil;
-    for mIndex in ALocation.Handlers do
+    for mIndex in ALocation.Items do
     begin
       if IndexText(Source(AHandlers[mIndex]), mSources) < 0 then
       begin
