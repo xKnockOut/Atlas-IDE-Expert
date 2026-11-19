@@ -107,7 +107,8 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.Issue.Strings;
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
@@ -175,7 +176,7 @@ begin
   FTitle.Parent := Self;
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
-  FTitle.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FTitle, cGap, 0, cGap, 0);
   FTitle.Top := FTitle.ScaleValue(cTitleTop);
   FTitle.MaxLength := TAtlasTrackerIssue.cMaxTitle;
   FTitle.OnChange := TitleChange;
@@ -187,7 +188,7 @@ begin
   FDescription.Parent := Self;
   FDescription.Align := alTop;
   FDescription.AlignWithMargins := True;
-  FDescription.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDescription, cGap, 0, cGap, 0);
   FDescription.Top := FDescription.ScaleValue(cDescriptionTop);
   FDescription.Height := ScaleValue(140);
   FDescription.ScrollBars := ssVertical;
@@ -223,7 +224,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(Result, cGap, cGap, cGap, cGap div 2);
   Result.Top := ATop;
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
@@ -293,7 +294,7 @@ begin
   FDependsOn.Parent := Self;
   FDependsOn.Align := alTop;
   FDependsOn.AlignWithMargins := True;
-  FDependsOn.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDependsOn, cGap, cGap, cGap, 0);
   FDependsOn.Top := 0;
   FDependsOn.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkDependsOn, [AKey]);
   FDependsOn.Checked := True;
@@ -302,7 +303,7 @@ begin
   FBlocks.Parent := Self;
   FBlocks.Align := alTop;
   FBlocks.AlignWithMargins := True;
-  FBlocks.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FBlocks, cGap, cGap div 2, cGap, 0);
   FBlocks.Top := FBlocks.ScaleValue(100);
   FBlocks.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkBlocks, [AKey]);
 
@@ -310,7 +311,7 @@ begin
   FOtherLabel.Parent := Self;
   FOtherLabel.Align := alTop;
   FOtherLabel.AlignWithMargins := True;
-  FOtherLabel.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(FOtherLabel, cGap, cGap, cGap, cGap div 2);
   FOtherLabel.Top := FOtherLabel.ScaleValue(200);
   FOtherLabel.ShowAccelChar := False;
   FOtherLabel.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkKey,
@@ -320,7 +321,7 @@ begin
   FOther.Parent := Self;
   FOther.Align := alTop;
   FOther.AlignWithMargins := True;
-  FOther.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FOther, cGap, 0, cGap, 0);
   FOther.Top := FOther.ScaleValue(300);
   FOther.OnChange := OtherChange;
   FOtherLabel.FocusControl := FOther;

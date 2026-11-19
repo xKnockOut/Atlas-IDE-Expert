@@ -247,7 +247,8 @@ uses
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.UI.Tracker.BoardPainter,
-  Atlas.UI.Tracker.Workflow.Strings;
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 {$R *.dfm}
 
@@ -815,7 +816,7 @@ begin
   FParts.Status.Parent := Self;
   FParts.Status.Align := alTop;
   FParts.Status.AlignWithMargins := True;
-  FParts.Status.Margins.SetBounds(cStatusMargin, 2, cStatusMargin, 2);
+  TAtlasControlScaling.SetMargins(FParts.Status, cStatusMargin, 2, cStatusMargin, 2);
   FParts.Status.Visible := False;
   FParts.Status.Top := FParts.Head.Top + FParts.Head.Height + 1;
   FParts.Scroll := TScrollBox.Create(Self);
