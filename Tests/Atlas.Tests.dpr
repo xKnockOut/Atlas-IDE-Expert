@@ -2291,6 +2291,8 @@ uses
   Shell.Bootstrap in '..\Application\Source\Shell\Shell.Bootstrap.pas',
   Atlas.Common.Mcp.Freshness.Tests in 'Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas',
   Atlas.Common.Mcp.EditTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas',
+  Atlas.Common.Mcp.ProtectedFiles.Tests in 'Common\Mcp\Atlas.Common.Mcp.ProtectedFiles.Tests.pas',
+  Atlas.Common.Mcp.EditFindings.Tests in 'Common\Mcp\Atlas.Common.Mcp.EditFindings.Tests.pas',
   Atlas.Common.Mcp.ExtractTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.ExtractTools.Tests.pas',
   Atlas.Common.Mcp.ImplementationTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.ImplementationTools.Tests.pas',
   Atlas.Common.Mcp.BatchTool.Tests in 'Common\Mcp\Atlas.Common.Mcp.BatchTool.Tests.pas',
