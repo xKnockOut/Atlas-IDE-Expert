@@ -12,7 +12,7 @@
 // bearbeiteten und zu einer fremden Datei; erst nach fetch kennt die
 // Arbeitskopie sie, und nur der Commit zur bearbeiteten Datei erscheint.
 // Dazu der Prozessläufer selbst: Hauptthread abgelehnt, Zeitlimit, fehlendes
-// Programm, Hintergrund über TAtlasVcsWorker.
+// Programm, Hintergrund über TAtlasBackgroundJobs.
 
 interface
 
@@ -48,7 +48,7 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.Switches,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.Core.VersionControl.Composition,
   Atlas.Core.VersionControl.Adapters.ProcessRunner,
   Atlas.Core.Welcome.Unsaved,
@@ -671,7 +671,7 @@ end;
 
 procedure TAtlasVcsIntegrationTests.WorkerRunsInBackgroundAndDeliversInMainThread;
 var
-  mWorker: TAtlasVcsWorker;
+  mWorker: TAtlasBackgroundJobs;
   mVcs: IAtlasVersionControl;
   mOutcome: TAtlasVcsOutcome;
   mHead: TAtlasVcsHead;
@@ -688,7 +688,7 @@ begin
   mDone := False;
   mInMain := False;
   mOutcome := TAtlasVcsOutcome.Failed;
-  mWorker := TAtlasVcsWorker.Create;
+  mWorker := TAtlasBackgroundJobs.Create(HInstance);
   try
     Assert.IsTrue(mWorker.Run(
       procedure

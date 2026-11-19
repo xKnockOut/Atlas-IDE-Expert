@@ -77,6 +77,31 @@ const
   cPrefixTop = 4;
   cNameTop = 32;
   cDescriptionTop = 60;
+  /// <summary>Anfangsgröße der Seite (logische Pixel); die IDE passt sie an ihren Bereich an.</summary>
+  cPageWidth = 560;
+  cPageHeight = 420;
+  /// <summary>Leiste der Knöpfe unten: Höhe, Oberkante und Höhe der Knöpfe.</summary>
+  cButtonBarHeight = 34;
+  cButtonTop = 4;
+  cButtonHeight = 25;
+  /// <summary>Liste links: Breite und Breiten der Spalten Präfix und Name.</summary>
+  cListWidth = 230;
+  cPrefixColumnWidth = 90;
+  cNameColumnWidth = 130;
+  /// <summary>Rand der Felder im Bereich rechts.</summary>
+  cEditorMargin = 4;
+  /// <summary>Feldzeile: Beschriftung (Breite, Höhe, Versatz nach unten auf Höhe des Textes im Feld), linke Kante
+  /// und Höhe des Feldes.</summary>
+  cCaptionWidth = 90;
+  cCaptionHeight = 15;
+  cCaptionOffset = 4;
+  cFieldLeft = 100;
+  cFieldHeight = 23;
+  /// <summary>Text der Vorlage: Oberkante und Breite der Beschriftung, Oberkante und Höhe des Feldes.</summary>
+  cBodyCaptionTop = 92;
+  cBodyCaptionWidth = 300;
+  cBodyTop = 110;
+  cBodyHeight = 200;
 
 {$R *.dfm}
 
@@ -87,7 +112,7 @@ function NewButton(APanel: TPanel; const ACaption: string; ALeft, AWidth: Intege
 begin
   Result := TButton.Create(APanel.Owner);
   Result.Parent := APanel;
-  Result.SetBounds(ALeft, 4, AWidth, 25);
+  Result.SetBounds(ALeft, cButtonTop, AWidth, cButtonHeight);
   Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
@@ -98,8 +123,8 @@ constructor TAtlasSnippetsPage.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Name := 'AtlasSnippetsPage';
-  Width := ScaleValue(560);
-  Height := ScaleValue(420);
+  Width := ScaleValue(cPageWidth);
+  Height := ScaleValue(cPageHeight);
   CreateButtons;
   CreateList;
   CreateEditor;
@@ -118,11 +143,11 @@ var
 begin
   mCaption := TLabel.Create(Self);
   mCaption.Parent := AParent;
-  mCaption.SetBounds(4, ATop + 4, 90, 15);
+  mCaption.SetBounds(cEditorMargin, ATop + cCaptionOffset, cCaptionWidth, cCaptionHeight);
   mCaption.Caption := ACaption;
   Result := TEdit.Create(Self);
   Result.Parent := AParent;
-  Result.SetBounds(100, ATop, AParent.Width - 104, 23);
+  Result.SetBounds(cFieldLeft, ATop, AParent.Width - cFieldLeft - cEditorMargin, cFieldHeight);
   Result.Anchors := [akLeft, akTop, akRight];
   Result.OnChange := FieldChange;
 end;
@@ -135,7 +160,7 @@ begin
   mButtons.Parent := Self;
   mButtons.Align := alBottom;
   mButtons.BevelOuter := bvNone;
-  mButtons.Height := mButtons.ScaleValue(34);
+  mButtons.Height := mButtons.ScaleValue(cButtonBarHeight);
   mButtons.ParentBackground := True;
   FNew := NewButton(mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsNew), cNewLeft,
     cNarrowButtonWidth, NewClick);
@@ -153,17 +178,17 @@ begin
   FList.Parent := Self;
   FList.Align := alLeft;
   FList.AlignWithMargins := True;
-  FList.Width := FList.ScaleValue(230);
+  FList.Width := FList.ScaleValue(cListWidth);
   FList.ViewStyle := vsReport;
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsPrefix);
-  mColumn.Width := FList.ScaleValue(90);
+  mColumn.Width := FList.ScaleValue(cPrefixColumnWidth);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsName);
-  mColumn.Width := FList.ScaleValue(130);
+  mColumn.Width := FList.ScaleValue(cNameColumnWidth);
   FList.OnSelectItem := ListSelect;
 end;
 
@@ -183,11 +208,11 @@ begin
     cDescriptionTop);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := mEditor;
-  mCaption.SetBounds(4, 92, 300, 15);
+  mCaption.SetBounds(cEditorMargin, cBodyCaptionTop, cBodyCaptionWidth, cCaptionHeight);
   mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsBody);
   FBody := TMemo.Create(Self);
   FBody.Parent := mEditor;
-  FBody.SetBounds(4, 110, mEditor.Width - 8, 200);
+  FBody.SetBounds(cEditorMargin, cBodyTop, mEditor.Width - 2 * cEditorMargin, cBodyHeight);
   FBody.Anchors := [akLeft, akTop, akRight, akBottom];
   FBody.ScrollBars := ssBoth;
   FBody.WordWrap := False;
