@@ -375,17 +375,6 @@ begin
   Result := Started and TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugBreakpointRules;
 end;
 
-/// <summary>Rinne neu zeichnen (Marke für Aufrufer, #2548).</summary>
-procedure RepaintEditor;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-end;
-
 /// <summary>Andere Quelltext-Haltepunkte als mögliche Auslöser.</summary>
 function Triggers(const AFileName: string; ALine: Integer): TAtlasRuleTriggers;
 var
@@ -477,7 +466,7 @@ begin
   end;
   TAtlasBreakpointRules.Put(FRules, mChosen);
   Save;
-  RepaintEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
   if mChosen.IsEmpty then
   begin
     SetEnabled(mChosen, True);
