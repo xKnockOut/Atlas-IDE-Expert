@@ -46,11 +46,11 @@ type
     /// <summary>Sprungmarke @@End im asm-Rumpf beendet die Methode nicht (#861).</summary>
     [Test]
     procedure AsmLabelEndDoesNotCloseBody;
-    /// <summary>BodyAt (#1455, vorher TAtlasBookmarks.MethodAt): Rumpf um die Zeile, nicht die Deklaration, außerhalb
+    /// <summary>BodyAt (#1455): Rumpf um die Zeile, nicht die Deklaration, außerhalb
     /// jeder Methode False.</summary>
     [Test]
     procedure BodyAtFindsImplementationAroundLine;
-    /// <summary>MethodNameAt (#1455, vorher TAtlasWelcomeContinue.MethodAt): Name um die Zeile ab 1; leer ohne Text,
+    /// <summary>MethodNameAt (#1455): Name um die Zeile ab 1; leer ohne Text,
     /// vor Zeile 1 und außerhalb jeder Methode.</summary>
     [Test]
     procedure MethodNameAtLine;

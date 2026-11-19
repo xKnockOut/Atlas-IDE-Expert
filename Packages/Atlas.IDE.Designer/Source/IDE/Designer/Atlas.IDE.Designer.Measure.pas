@@ -42,7 +42,7 @@ type
     FStart: TRect;
     FStartNames: string;
     FHoldUntil: UInt64;
-    /// <summary>Offene Formular-Designer: ohne Designer ruht der 40-ms-Takt (lief vorher immer).</summary>
+    /// <summary>Offene Formular-Designer: ohne Designer ruht der 40-ms-Takt.</summary>
     FOpen: TAtlasDesignerOpenWatch;
     procedure Tick(Sender: TObject);
     procedure OpenChanged;

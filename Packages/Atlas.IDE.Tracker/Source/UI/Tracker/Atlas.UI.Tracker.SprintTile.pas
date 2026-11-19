@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SprintTile;
 
-// Bereich „Sprint“ der Willkommensseite (#1277, Mockup IX5), ohne Open Tools
+// Bereich „Sprint“ der Willkommensseite (#1277), ohne Open Tools
 // API. Selbst gezeichnet:
 //   Sprint 12 · 27.10.–07.11. · noch 4 Tage            (Klick: Board im Browser)
 //   ┌ MEINE OFFEN ┐ ┌ MEINE ERLEDIGT ┐ ┌ TEAM ÜBRIG ┐

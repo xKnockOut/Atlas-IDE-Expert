@@ -151,7 +151,7 @@ type
     ThereIsNoSymbolThat, NoFixInLineAvailable, FixesInLineApplyWith, NoFixInLine, RepeatWithDryRunFalseTo,
     NotTouchedUnsavedChangesIn, ArgumentRulesMissingRuleIds, DeviationsFromTheFormatRules, AndMore,
     NoteTheFormattingIsNot, SyntaxErrorInLineNot, NoDeviationFromTheFormat, NoDeviationFromTheFormat2,
-    OnlyTheLineEndingsDiffer, Line, FormattedTextPascal);
+    OnlyTheLineEndingsDiffer, Line, FormattedTextPascal, DiffLine, DiffFromLine);
 
 const
   cTexts: array[TEditToolsText] of TAtlasText = (
@@ -191,7 +191,9 @@ const
       '<file> --format-write for that.'),
     (De: '- Zeile %d: %s'; En: '- Line %d: %s'),
     (De: 'Formatierter Text:' + sLineBreak + '```pascal' + sLineBreak + '%s' + sLineBreak + '```';
-     En: 'Formatted text:' + sLineBreak + '```pascal' + sLineBreak + '%s' + sLineBreak + '```'));
+     En: 'Formatted text:' + sLineBreak + '```pascal' + sLineBreak + '%s' + sLineBreak + '```'),
+    (De: 'Zeile %d:'; En: 'Line %d:'),
+    (De: 'ab Zeile %d:'; En: 'from line %d:'));
 
 {$SCOPEDENUMS OFF}
 
@@ -521,12 +523,15 @@ class function TMcpEditTools.Diff(const AFileName, AOld, ANew: string): string;
 var
   mLine: string;
   mBuilder: TStringBuilder;
+  mLabels: TTextDiffLabels;
 begin
+  mLabels.Line := cTexts[TEditToolsText.DiffLine].Text;
+  mLabels.FromLine := cTexts[TEditToolsText.DiffFromLine].Text;
   mBuilder := TStringBuilder.Create;
   try
     mBuilder.AppendFormat('--- %s', [AFileName]).AppendLine;
     // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen, sonst der geänderte Block.
-    for mLine in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew)) do
+    for mLine in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew), mLabels) do
     begin
       mBuilder.AppendLine(mLine);
     end;

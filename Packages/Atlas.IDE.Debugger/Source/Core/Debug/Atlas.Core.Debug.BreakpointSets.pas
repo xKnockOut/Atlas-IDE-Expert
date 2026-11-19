@@ -270,38 +270,30 @@ begin
   end;
 end;
 
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 function EntryJson(const AEntry: TAtlasBreakpointSetEntry; const AFolder: string): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('file', ToStored(AEntry.FileName, AFolder));
   TAtlasMethodAnchors.AddTo(Result, AEntry.Anchor);
   Result.AddPair('enabled', TJSONBool.Create(AEntry.Props.Enabled));
-  AddText(Result, 'condition', AEntry.Props.Condition);
+  TJsonBuild.AddText(Result, 'condition', AEntry.Props.Condition);
   if AEntry.Props.PassCount > 0 then
   begin
     Result.AddPair('passCount', TJSONNumber.Create(AEntry.Props.PassCount));
   end;
-  AddText(Result, 'group', AEntry.Props.Group);
+  TJsonBuild.AddText(Result, 'group', AEntry.Props.Group);
   if not AEntry.Props.DoBreak then
   begin
     Result.AddPair('break', TJSONBool.Create(False));
   end;
-  AddText(Result, 'logMessage', AEntry.Props.LogMessage);
-  AddText(Result, 'evalExpression', AEntry.Props.EvalExpression);
+  TJsonBuild.AddText(Result, 'logMessage', AEntry.Props.LogMessage);
+  TJsonBuild.AddText(Result, 'evalExpression', AEntry.Props.EvalExpression);
   if not AEntry.Props.LogResult then
   begin
     Result.AddPair('logResult', TJSONBool.Create(False));
   end;
-  AddText(Result, 'enableGroup', AEntry.Props.EnableGroup);
-  AddText(Result, 'disableGroup', AEntry.Props.DisableGroup);
+  TJsonBuild.AddText(Result, 'enableGroup', AEntry.Props.EnableGroup);
+  TJsonBuild.AddText(Result, 'disableGroup', AEntry.Props.DisableGroup);
   if AEntry.Props.HandleExceptions then
   begin
     Result.AddPair('handleExceptions', TJSONBool.Create(True));
@@ -353,7 +345,7 @@ begin
   try
     mRoot.AddPair('format', TJSONNumber.Create(cFormat));
     mRoot.AddPair('name', Trim(ASet.Name));
-    AddText(mRoot, 'branch', ASet.Branch);
+    TJsonBuild.AddText(mRoot, 'branch', ASet.Branch);
     mList := TJSONArray.Create;
     mRoot.AddPair('breakpoints', mList);
     for mEntry in ASet.Entries do
