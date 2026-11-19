@@ -34,7 +34,7 @@
 // Lesbar ohne Server und ohne geöffnetes Projekt (Load), etwa für
 // „Weiterarbeiten“ auf der Willkommensseite (#755).
 // Lesen und Schreiben über TAtlasDataFile: atomar ersetzt
-// (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
+// (kein Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
 // .defekt daneben; eine beim Lesen gesperrte merkt sich die Liste
 // (KeptFile), und Save überschreibt sie nicht.
 //

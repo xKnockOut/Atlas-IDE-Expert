@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SettingsSection;
 
-// Abschnitt „Issue-Tracker“ des Moduls Tracker im Optionsdialog (#1455; vorher Teil von Atlas.UI.Settings.Page).
+// Abschnitt „Issue-Tracker“ des Moduls Tracker im Optionsdialog (#1455).
 // Die Seite von Base baut ihn über IAtlasSettingsSectionHost in den Bereich „issues“. Der
 // Abschnitt fügt nur die Teile zusammen:
 // - TAtlasTrackerSettingsTables (Core): Zeilen der Tabellen und ihre Regeln.
@@ -145,7 +145,7 @@ begin
   FGeneral := TAtlasTrackerGeneralPart.Create(FRows);
   FWorkflow := TAtlasTrackerWorkflowPart.Create(FRows, FHooks, FTables);
   FSnippets := TAtlasTrackerSnippetsPart.Create(FRows, FTables);
-  // Reihenfolge der Seite: Tabellen (Mockups IT1 bis IT3), Allgemein, Zustand, Zeit, Textbausteine, Rest.
+  // Reihenfolge der Seite: Tabellen (Verbindungen, Projekte, Abfragen), Allgemein, Zustand, Zeit, Textbausteine, Rest.
   FConnections.Build;
   FProjects.Build;
   FQueries.Build;
