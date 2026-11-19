@@ -663,6 +663,7 @@ Atlas.Core.Tracker.CodeLinkPlan.Tests
 Atlas.Core.Tracker.BlamePlan.Tests
 Atlas.Core.Tracker.SprintLoad.Tests
 Atlas.Core.Tracker.CommentPlan.Tests
+Atlas.Core.Tracker.CommentEditor.Tests
 Atlas.Core.Tracker.NotifyPlan.Tests
 Atlas.Core.Tracker.DevelopmentPlan.Tests
 Atlas.Core.Tracker.TimePlan.Tests

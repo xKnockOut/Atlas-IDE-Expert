@@ -48,6 +48,13 @@ type
     function GetPreamble: TBytes; override;
   end;
 
+  /// <summary>Delphis Exception.StackTrace: leer ohne installierten Anbieter, wie in Delphi ohne JCL/madExcept.
+  /// FPC kennt die Eigenschaft nicht.</summary>
+  TExceptionCompat = class helper for Exception
+  public
+    function StackTrace: string;
+  end;
+
 // FPC bringt LastDelimiter, IsDelimiter und AnsiPos nur für AnsiString mit: Ein UnicodeString wird nach UTF-8
 // umgewandelt, das Ergebnis zählt dann Bytes statt Zeichen und verrutscht hinter jedem Nicht-ASCII-Zeichen
 // (Pfad „Programação/Unt_X.pas“ ergab den Dateinamen „t_X.pas“). Convert-ForFpc.py ruft deshalb diese
@@ -61,6 +68,11 @@ function IsDelimiter(const ADelimiters, AText: UnicodeString; AIndex: Integer): 
 function AnsiPos(const ASubstr, AText: UnicodeString): Integer;
 
 implementation
+
+function TExceptionCompat.StackTrace: string;
+begin
+  Result := '';
+end;
 
 function LastDelimiter(const ADelimiters, AText: UnicodeString): Integer;
 begin
