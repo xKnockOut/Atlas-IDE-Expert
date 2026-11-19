@@ -88,6 +88,7 @@ contains
   Atlas.Common.Diagnostics.Contract in 'Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas',
   Atlas.Common.Diagnostics.Anonymizer in 'Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas',
   Atlas.Common.Diagnostics.BugReport in 'Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas',
+  Atlas.Common.Diagnostics.CheckMemory in 'Source\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.pas',
   Atlas.Common.Diagnostics.CheckProfile in 'Source\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.pas',
   Atlas.Common.Diagnostics.ServerPackage in 'Source\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.pas',
   Atlas.Common.Diagnostics.ShutdownRest in 'Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownRest.pas',
