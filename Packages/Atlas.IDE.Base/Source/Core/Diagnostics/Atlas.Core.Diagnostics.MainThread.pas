@@ -158,10 +158,17 @@ end;
 procedure TAtlasMainThread.TOwner.Execute;
 begin
   NameThreadForDebugging('Atlas.MainThread');
-  // Der Thread führt nichts aus; er besitzt nur die Einträge (RemoveQueuedEvents in Stop).
-  while not Terminated do
-  begin
-    FWake.WaitFor(1000);
+  try
+    // Der Thread führt nichts aus; er besitzt nur die Einträge (RemoveQueuedEvents in Stop).
+    while not Terminated do
+    begin
+      FWake.WaitFor(1000);
+    end;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('TAtlasMainThread: ' + TAtlasGuard.ErrorText(E));
+    end;
   end;
 end;
 

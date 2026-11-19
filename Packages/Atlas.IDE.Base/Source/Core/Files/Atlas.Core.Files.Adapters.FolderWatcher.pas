@@ -49,7 +49,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   // FILE_NOTIFY_INFORMATION; Winapi.Windows deklariert den Satz nicht.
@@ -91,45 +92,52 @@ var
   mBytes: DWORD;
 begin
   NameThreadForDebugging('Atlas.FolderWatcher');
-  mDirectory := CreateFile(PChar(FRoot), FILE_LIST_DIRECTORY,
-    FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
-    FILE_FLAG_BACKUP_SEMANTICS or FILE_FLAG_OVERLAPPED, 0);
-  if mDirectory = INVALID_HANDLE_VALUE then
-  begin
-    Exit;
-  end;
   try
-    SetLength(mBuffer, cBufferBytes);
-    FillChar(mOverlapped, SizeOf(mOverlapped), 0);
-    mOverlapped.hEvent := CreateEvent(nil, True, False, nil);
+    mDirectory := CreateFile(PChar(FRoot), FILE_LIST_DIRECTORY,
+      FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
+      FILE_FLAG_BACKUP_SEMANTICS or FILE_FLAG_OVERLAPPED, 0);
+    if mDirectory = INVALID_HANDLE_VALUE then
+    begin
+      Exit;
+    end;
     try
-      mHandles[0] := mOverlapped.hEvent;
-      mHandles[1] := FStopEvent;
-      while not Terminated do
-      begin
-        ResetEvent(mOverlapped.hEvent);
-        if not ReadDirectoryChangesW(mDirectory, @mBuffer[0], cBufferBytes, True, cNotifyFilter, nil,
-          @mOverlapped, nil) then
+      SetLength(mBuffer, cBufferBytes);
+      FillChar(mOverlapped, SizeOf(mOverlapped), 0);
+      mOverlapped.hEvent := CreateEvent(nil, True, False, nil);
+      try
+        mHandles[0] := mOverlapped.hEvent;
+        mHandles[1] := FStopEvent;
+        while not Terminated do
         begin
-          Break;
+          ResetEvent(mOverlapped.hEvent);
+          if not ReadDirectoryChangesW(mDirectory, @mBuffer[0], cBufferBytes, True, cNotifyFilter, nil,
+            @mOverlapped, nil) then
+          begin
+            Break;
+          end;
+          if WaitForMultipleObjects(2, @mHandles[0], False, INFINITE) <> WAIT_OBJECT_0 then
+          begin
+            // Stop: laufendes Lesen abbrechen und dessen Ende abwarten, bevor der Puffer frei wird.
+            CancelIo(mDirectory);
+            GetOverlappedResult(mDirectory, mOverlapped, mBytes, True);
+            Break;
+          end;
+          if GetOverlappedResult(mDirectory, mOverlapped, mBytes, False) and (mBytes > 0) then
+          begin
+            Report(@mBuffer[0]);
+          end;
         end;
-        if WaitForMultipleObjects(2, @mHandles[0], False, INFINITE) <> WAIT_OBJECT_0 then
-        begin
-          // Stop: laufendes Lesen abbrechen und dessen Ende abwarten, bevor der Puffer frei wird.
-          CancelIo(mDirectory);
-          GetOverlappedResult(mDirectory, mOverlapped, mBytes, True);
-          Break;
-        end;
-        if GetOverlappedResult(mDirectory, mOverlapped, mBytes, False) and (mBytes > 0) then
-        begin
-          Report(@mBuffer[0]);
-        end;
+      finally
+        CloseHandle(mOverlapped.hEvent);
       end;
     finally
-      CloseHandle(mOverlapped.hEvent);
+      CloseHandle(mDirectory);
     end;
-  finally
-    CloseHandle(mDirectory);
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(TAtlasFeature.Files, E);
+    end;
   end;
 end;
 

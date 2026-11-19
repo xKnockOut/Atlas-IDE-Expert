@@ -129,18 +129,25 @@ procedure TAtlasTimeLimit.TWorker.Execute;
 var
   mError: string;
 begin
-  while WaitForStart do
-  begin
-    mError := RunCurrent;
-    // StopAll hat aufgegeben (Entladen): nichts mehr anfassen, was dem Vorrat gehört.
-    if Terminated then
+  try
+    while WaitForStart do
     begin
-      Exit;
+      mError := RunCurrent;
+      // StopAll hat aufgegeben (Entladen): nichts mehr anfassen, was dem Vorrat gehört.
+      if Terminated then
+      begin
+        Exit;
+      end;
+      // Der Aufrufer hat aufgegeben: Erst jetzt ist der Arbeiter wieder frei.
+      if Finish(mError) then
+      begin
+        TAtlasTimeLimit.Release(Self);
+      end;
     end;
-    // Der Aufrufer hat aufgegeben: Erst jetzt ist der Arbeiter wieder frei.
-    if Finish(mError) then
+  except
+    on E: Exception do
     begin
-      TAtlasTimeLimit.Release(Self);
+      TAtlasGuard.Log('TAtlasTimeLimit: ' + TAtlasGuard.ErrorText(E));
     end;
   end;
 end;
