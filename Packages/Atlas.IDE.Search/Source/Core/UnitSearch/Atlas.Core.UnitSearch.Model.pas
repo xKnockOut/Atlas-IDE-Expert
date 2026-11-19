@@ -193,6 +193,7 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching,
+  Atlas.Text.Fuzzy,
   Atlas.Text.Json;
 
 const
@@ -738,20 +739,6 @@ begin
   end;
 end;
 
-function IsSubsequence(const APattern, AText: string): Boolean;
-var
-  mPatternIndex, mTextIndex: Integer;
-begin
-  mPatternIndex := 1;
-  for mTextIndex := 1 to Length(AText) do
-  begin
-    if (mPatternIndex <= Length(APattern)) and (UpCase(AText[mTextIndex]) = UpCase(APattern[mPatternIndex])) then
-    begin
-      Inc(mPatternIndex);
-    end;
-  end;
-  Result := mPatternIndex > Length(APattern);
-end;
 
 const
   /// <summary>Längster Namensteil, den SegmentScore ohne Speicheranforderung prüft.</summary>
@@ -960,7 +947,7 @@ var
   mDot: Integer;
 begin
   // Schneller Ausschluss: Ohne Teilfolge passt keine Regel des Matchers (die meisten Units je Tastendruck).
-  if not IsSubsequence(AWordUpper, AUpper) then
+  if not TTextFuzzy.IsSubsequence(AWordUpper, AUpper) then
   begin
     Exit(TAtlasCompletionMatcher.cNoMatch);
   end;

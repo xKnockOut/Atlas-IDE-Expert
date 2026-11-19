@@ -92,7 +92,8 @@ type
 implementation
 
 uses
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Editor.LineItems;
 
 { TAtlasFileMetrics }
 
@@ -238,31 +239,21 @@ begin
 end;
 
 function TAtlasFileMetrics.IndexAt(ALine: Integer): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Methods) do
-  begin
-    if Methods[mIndex].Line = ALine then
+  Result := TAtlasLineItems.IndexAt<TAtlasMethodMetrics>(Methods, ALine,
+    function(AMethod: TAtlasMethodMetrics): Integer
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AMethod.Line;
+    end);
 end;
 
 function TAtlasFileMetrics.StructureAt(ALine: Integer): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Structures) do
-  begin
-    if Structures[mIndex].Line = ALine then
+  Result := TAtlasLineItems.IndexAt<TAtlasStructureItem>(Structures, ALine,
+    function(AStructure: TAtlasStructureItem): Integer
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AStructure.Line;
+    end);
 end;
 
 function TAtlasFileMetrics.StructuresAt(ALine: Integer): TArray<TAtlasStructureItem>;
