@@ -38,14 +38,14 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `experimental` | global (settings.json) | object | – |  | Experimental features (#834): risky or not yet mature, can be turned off, marked as "Experimental" and off after installation. |
 | `slashCommands` | global (settings.json) | object | – |  | Slash commands: a line starting with /name is executed after Enter and disappears. After / completion suggests all commands. |
 | `sortUses` | project (atlas.json) | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "Organize uses" (source.organizeImports, e.g. on save) sorts the uses: true or "alphabetic" alphabetically, "namespace" grouped by namespace (System, Vcl, ... and units without namespace last). Caution: the order determines the initialization of the units. |
-| `usesKeep` | project (atlas.json) | array<string> | `` |  | Units that "Remove unused uses" never removes, in addition to all units with an initialization section. |
+| `usesKeep` | project (atlas.json) | array<string> | `[]` |  | Units that "Remove unused uses" never removes, in addition to all units with an initialization section. |
 | `deadCode` | project (atlas.json) | object | – |  | Dead code: elements that count as used although their name does not appear in the code (RTTI, serialization, plugins). Applies to unused-private-member, unused-public-member and unused-declaration, in addition to the options keepAttributes and keepPatterns of the rules. |
-| `dfmPropertyRules` | project (atlas.json) | array<object> | `` |  | Property rules for form files: requirements for component properties, reported as dfm-property on the field of the component in the unit. Properties not stored count with their default value. |
+| `dfmPropertyRules` | project (atlas.json) | array<object> | `[]` |  | Property rules for form files: requirements for component properties, reported as dfm-property on the field of the component in the unit. Properties not stored count with their default value. |
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Upper limit for the symbol index in memory in MB. Above it first library units (RTL, VCL) are kept compact (interface symbols only), then the usages of project units are swapped out (they stay in the cache on disk) and finally project units are kept compact. 0: unlimited. |
 | `index` | mixed, see below | object | – |  | Scope of the symbol index. Default: all projects of the project group, all units of the project search paths and all units of the library and search paths of the Delphi installation, even if no unit uses them. Order: active project, other projects, search paths, library; everything in the background, the library from the shared cache. |
 | `architecture` | mixed, see below | object | – |  | Architecture overview from the index: central units, subsystems, cycles and cross connections in the window "Atlas Architecture", as a report (Markdown or HTML, also AtlasServer --architecture) and in the MCP tool get_architecture. |
 | `query` | global (settings.json) | object | – |  | Code queries over the index (#1351): a small language such as "classes where inherits TForm and methods > 40 order by methods desc" in the window "Atlas Query", in the MCP tool query_code and with AtlasServer --check <target> --query. Fields and numbers come from index, metrics, uses graph, form files and call hierarchy (the same as get_metrics and find_unused_code). |
-| `queries` | project (atlas.json) | array<object> | `` | e.g. `{"name":"grosse-formulare","query":"classes where inherits TForm and methods > 40","failIfAny":true,"severity":"warning","message":"{name} hat {methods} Methoden"}` | Saved code queries (#1351) for the window "Atlas Query", query_code and AtlasServer --query @name. With failIfAny every hit becomes a finding of the rule query:<name> in the editor, with --check and in SARIF; baseline, suppressions and rules act as for other rules. |
+| `queries` | project (atlas.json) | array<object> | `[]` | e.g. `[{"name":"grosse-formulare","query":"classes where inherits TForm and methods > 40","failIfAny":true,"severity":"warning","message":"{name} hat {methods} Methoden"}]` | Saved code queries (#1351) for the window "Atlas Query", query_code and AtlasServer --query @name. With failIfAny every hit becomes a finding of the rule query:<name> in the editor, with --check and in SARIF; baseline, suppressions and rules act as for other rules. |
 | `hotspots` | global (settings.json) | object | – |  | Hotspots: units and methods that are changed often and are complex at the same time (changes from Git or SVN in the period × cognitive complexity), with trend compared to three months ago and change coupling (units without uses edge that are often changed together). Window "Atlas Hotspots", report (AtlasServer --hotspots <file.html\|.md\|.json>) and MCP tool get_hotspots. Library units and architecture.exclude do not count; the version control comes from vcs.provider. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Time limit for requests in milliseconds. Requests running longer are cancelled and reported in the log. |
 | `server` | global (settings.json) | object | – |  | Crash cases of the server: if a request crashes with an unexpected exception or the watchdog cancels it, the server saves a reproducible case under %LOCALAPPDATA%\Atlas\crash (request, snapshot of the file, settings without credentials, call stack, wiederholen.cmd; at most 20). No network access. |
@@ -54,7 +54,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `inlayHints` | global (settings.json) | object | – |  | Inlay hints in the editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code lens in the editor. |
 | `smartIndent` | global (settings.json) | object | – |  | Indentation while typing (#1827): after Enter Atlas computes where the cursor belongs, with the same block logic as format.reindent. Atlas never inserts end; (the IDE's block completion does that); only whitespace changes, and for a string the quote and +. Width of one level and tabs follow format or .editorconfig. |
-| `suggestions` | project (atlas.json) | object | – | e.g. `{"patterns":[{"after":"Log.Enter","insert":"try   $| finally   Log.Leave; end;"}]}` | Learned suggestions (#1890): after a trigger such as X := TFoo.Create; or L.BeginUpdate; the plugin suggests as grey ghost text what usually follows in the project (try … finally X.Free; end;). The switches and thresholds live in the plugin settings (suggestions.*). This holds the team's house rules. |
+| `suggestions` | project (atlas.json) | object | – | e.g. `{"patterns":[{"after":"Log.Enter","insert":["try","  $|","finally","  Log.Leave;","end;"]}]}` | Learned suggestions (#1890): after a trigger such as X := TFoo.Create; or L.BeginUpdate; the plugin suggests as grey ghost text what usually follows in the project (try … finally X.Free; end;). The switches and thresholds live in the plugin settings (suggestions.*). This holds the team's house rules. |
 | `classCompletion` | global (settings.json) | object | – |  | Class completion (#1834): comment above a class section in the implementation part, order and content of new method bodies from the action "Create missing method bodies", /impl and method ordering (editor.methodPlacement in the plugin). |
 | `references` | global (settings.json) | object | – |  | Accuracy of usages, call hierarchy and rename: besides the certain (uniquely resolved) places, inferred ones appear with a reason, for example calls via an interface or in an inactive {$IFDEF} branch. Rename only changes certain places and lists the inferred ones. |
 | `navigation` | global (settings.json) | object | – |  | Navigation through the code: path between two symbols or units via calls, fields, interfaces, inheritance and uses (plugin command "Path between symbols…", MCP tool find_path) and impact analysis: what is affected if I change a symbol? Callers, references, overrides, interface implementations and form bindings by level, plus the affected tests (plugin command "Show impact", MCP tool get_impact). |
@@ -97,7 +97,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `vcs.provider` | global (settings.json) | string | `"auto"` | `"auto"`, `"git"`, `"svn"`, `"off"` | auto: by the working copy found (.git or .svn, the nearest one applies, on a tie Git). git or svn: only this kind. off: without version control. Git and SVN through the command line (git or svn, TortoiseSVN with command line tools is enough); if the program is missing, Atlas reports it once and continues without version information. |
 | `vcs.git` | global (settings.json) | object | – |  | Program git (#1285): path = path to git.exe, empty = search automatically. |
 | `vcs.svn` | global (settings.json) | object | – |  | Program svn (#1285): path = path to svn.exe, empty = search automatically. |
-| `vcs.projects` | global (settings.json) | array<object> | `` |  | Personal kind and main branch per Delphi project (#1286). The section vcs of the .atlas applies (per field), otherwise the row for exactly this .dproj, then the one of the opened .groupproj, then the longest matching folder, otherwise vcs.provider. For a folder (change markers) .dproj and .groupproj rows apply to their folder, the longest match wins. |
+| `vcs.projects` | global (settings.json) | array<object> | `[]` |  | Personal kind and main branch per Delphi project (#1286). The section vcs of the .atlas applies (per field), otherwise the row for exactly this .dproj, then the one of the opened .groupproj, then the longest matching folder, otherwise vcs.provider. For a folder (change markers) .dproj and .groupproj rows apply to their folder, the longest match wins. |
 | `vcs.timeoutSeconds` | global (settings.json) | integer | `15` | 1…300 | Time limit per call of git or svn in seconds (#1285); after it Atlas ends the process. Calls with their own shorter limit (welcome page 1 s) keep theirs; creating a branch and pull take the larger of this value and 30 s. |
 
 ## completion
@@ -225,7 +225,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
 | `slashCommands.enabled` | global (settings.json) | boolean | `true` |  | Evaluate slash commands. |
-| `slashCommands.disabled` | global (settings.json) | array<string> | `` |  | Disabled commands without /, e.g. ["uses"]. usesCommand: false acts like "uses" in this list. |
+| `slashCommands.disabled` | global (settings.json) | array<string> | `[]` |  | Disabled commands without /, e.g. ["uses"]. usesCommand: false acts like "uses" in this list. |
 | `slashCommands.headerTemplate` | global (settings.json) | string | `""` |  | Template for /header with the placeholders {unit}, {jahr} (year) and {autor} (author). Empty: the template of the rule file-header, otherwise a simple header. |
 | `slashCommands.logCall` | global (settings.json) | string | `""` |  | Logging call for /log, /except and /measure: a routine name such as "Log.Debug" gets the text as argument, {text} puts it at that place, e.g. "Logger.Send(TLogLevel.Debug, {text})". Empty: OutputDebugString(PChar(…)). |
 | `slashCommands.componentPalette` | global (settings.json) | string | `"Eigene"` |  | Palette page on which /component registers the new component with RegisterComponents. |
@@ -239,8 +239,8 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
-| `deadCode.keepAttributes` | project (atlas.json) | array<string> | `` |  | Attribute names without "Attribute", e.g. "JsonName": all members of a type with this attribute count as used. |
-| `deadCode.keepPatterns` | project (atlas.json) | array<string> | `` |  | Name patterns with * and ?, also as Type.Name, e.g. "*Handler" or "TPlugin.*": matching elements count as used. |
+| `deadCode.keepAttributes` | project (atlas.json) | array<string> | `[]` |  | Attribute names without "Attribute", e.g. "JsonName": all members of a type with this attribute count as used. |
+| `deadCode.keepPatterns` | project (atlas.json) | array<string> | `[]` |  | Name patterns with * and ?, also as Type.Name, e.g. "*Handler" or "TPlugin.*": matching elements count as used. |
 
 ## index
 
@@ -253,7 +253,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `index.removeOrphans` | global (settings.json) | boolean | `true` |  | Delete index caches of deleted projects (e.g. removed branch folders) and caches in the old format when loading a project. If the project is on a drive that is currently not connected, the cache stays. |
 | `index.cacheMaxAgeDays` | global (settings.json) | integer | `14` | 0…3650 | Delete index caches not used for this many days (loading the project counts as use); 0 = off. This also affects the library caches of uninstalled Delphi versions. |
 | `index.cacheMaxMb` | global (settings.json) | integer | `1024` | 0…1048576 | Maximum size of the cache folder in MB; above it the caches unused for the longest time go first. 0 = no limit. |
-| `index.exclude` | project (atlas.json) | array<string> | `` | e.g. `["**/Demos/**","**/Samples/**"]` | Folders or files that are not indexed (glob patterns against the full path: *, **, ?). |
+| `index.exclude` | project (atlas.json) | array<string> | `[]` | e.g. `["**/Demos/**","**/Samples/**"]` | Folders or files that are not indexed (glob patterns against the full path: *, **, ?). |
 
 ## architecture
 
@@ -263,9 +263,9 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `architecture.scope` | global (settings.json) | string | `"projectGroup"` | `"project"`, `"projectGroup"` | Scope of the analysis: only the active project or the whole project group. |
 | `architecture.includeLibraryUnits` | global (settings.json) | boolean | `false` |  | Count units from RTL, VCL and the library paths; off = only units of the projects and their search paths. |
 | `architecture.centralUnits` | global (settings.json) | integer | `15` | 5…100 | How many central units window, report and get_architecture show. |
-| `architecture.exclude` | project (atlas.json) | array<string> | `` | e.g. `["Tests/**","*.Tests"]` | Units that are left out of the analysis: glob patterns on the unit name or the path relative to the project (*, **, ?). |
+| `architecture.exclude` | project (atlas.json) | array<string> | `[]` | e.g. `["Tests/**","*.Tests"]` | Units that are left out of the analysis: glob patterns on the unit name or the path relative to the project (*, **, ?). |
 | `architecture.baseline` | project (atlas.json) | string | `""` | e.g. `"architektur-main.json"` | Saved architecture state (JSON from AtlasServer --architecture <file.json> or "Save state …"), path relative to the project: window, report and get_architecture compare with it automatically. Empty = no comparison. |
-| `architecture.failOn` | project (atlas.json) | array<string> | `"newCycle"` |  | Which deviations AtlasServer --compare reports as errors (exit code 1) if --fail-on is missing: new cycles, new cross connections, units changing subsystem, central units with strongly grown dependency. |
+| `architecture.failOn` | project (atlas.json) | array<string> | `["newCycle"]` |  | Which deviations AtlasServer --compare reports as errors (exit code 1) if --fail-on is missing: new cycles, new cross connections, units changing subsystem, central units with strongly grown dependency. |
 | `architecture.explainAssignment` | global (settings.json) | boolean | `true` |  | Explain the assignment of each unit: table of edges per subsystem (interface, implementation, weighted sum) in the hint and profile of the window, in the report and in get_architecture with unit, plus the column "close" for units where another subsystem reaches at least 75 % of the sum. |
 | `architecture.grouping` | global (settings.json) | object | – |  | How the architecture overview groups the units into subsystems (Louvain on the uses graph). Applies to window, report, AtlasServer --architecture and get_architecture. |
 
@@ -342,7 +342,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
-| `suggestions.patterns` | project (atlas.json) | array<object> | `` |  | The team's own patterns; they take precedence over learned ones and need no minimum count. |
+| `suggestions.patterns` | project (atlas.json) | array<object> | `[]` |  | The team's own patterns; they take precedence over learned ones and need no minimum count. |
 
 ## classCompletion
 
@@ -431,19 +431,19 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
-| `mcp.disabledTools` | global (settings.json) | array<string> | `` |  | Tools the MCP server does not offer, e.g. rename_symbol or apply_code_action. In restricted mode (--restricted) writing tools are always off. |
+| `mcp.disabledTools` | global (settings.json) | array<string> | `[]` |  | Tools the MCP server does not offer, e.g. rename_symbol or apply_code_action. In restricted mode (--restricted) writing tools are always off. |
 | `mcp.globalSettings` | project (atlas.json) | boolean | `true` |  | Like the LSP server and the linter, the MCP server reads the global file %APPDATA%\Atlas\settings.json (e.g. mcp.disabledTools, index, hints). false: only atlas.json, for example for reproducible results in the team. |
 | `mcp.prompts` | global (settings.json) | boolean | `true` |  | Offer prompts (offered as commands by MCP clients, in Claude Code e.g. /mcp__delphi__unit_review) and resource templates (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last). false: prompts/list and resources/templates/list are empty, the tools stay. |
 | `mcp.statistics` | global (settings.json) | boolean | `true` |  | Count the calls of tools, resources and prompts per session (calls, errors, duration, response size, last failed call) and keep them locally: status file of the MCP process, resource delphi://stats, get_server_status, AtlasMonitor and window "Atlas Server"; on exit one line per tool in %LOCALAPPDATA%\Atlas\Status\mcp-stats.jsonl (30 days). Nothing goes to the network. false: nothing is counted and nothing is written. |
 | `mcp.reportFindingsAfterEdit` | global (settings.json) | boolean | `true` |  | Writing tools (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) check the changed files with dryRun=false before and after writing like get_diagnostics and append “Findings after the change” to the answer: new findings with file:line, rule and text, the number of fixed and unchanged ones. The resource delphi://edits/last returns the last evaluation. |
 | `mcp.promptLanguage` | global (settings.json) | string | `"de"` | `"de"`, `"en"` | Language of the instructions in the prompts. |
-| `mcp.customPrompts` | project (atlas.json) | array<object> | `` |  | Own prompts of the project with placeholders {argument} in the text and embedded contents from include (e.g. diagnostics, metrics). |
+| `mcp.customPrompts` | project (atlas.json) | array<object> | `[]` |  | Own prompts of the project with placeholders {argument} in the text and embedded contents from include (e.g. diagnostics, metrics). |
 
 ## assistants
 
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
-| `assistants.protected` | project (atlas.json) | array<object> | `` |  | Files AI assistants must not change, with a reason. The writing MCP tools (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) refuse a change to them and write nothing; hook_check reports an edit with the assistant's own tools as an error and refuses it as a hook before writing (mode "pre"); delphi://conventions lists the files. Changes made without Atlas are not covered. |
+| `assistants.protected` | project (atlas.json) | array<object> | `[]` |  | Files AI assistants must not change, with a reason. The writing MCP tools (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) refuse a change to them and write nothing; hook_check reports an edit with the assistant's own tools as an error and refuses it as a hook before writing (mode "pre"); delphi://conventions lists the files. Changes made without Atlas are not covered. |
 
 ## format
 
@@ -469,9 +469,9 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
-| `issues.connections` | global (settings.json) | array<object> | `` |  | Personal tracker connections (#1260), e.g. the company YouTrack and GitHub side by side. The token is never stored here but in the Windows credential store (Atlas:tracker:<server>, "Store token …"). |
-| `issues.projects` | global (settings.json) | array<object> | `` |  | Personal mapping Delphi project → tracker project (#1261) for projects without tracker in the .atlas. The line for exactly this .dproj applies, otherwise the one for the open .groupproj, otherwise the longest matching folder; an .atlas with tracker takes precedence. |
-| `issues.queries` | global (settings.json) | array<object> | `` |  | Named queries for "My issues" (#1262), selectable in the drop-down next to the title. Without own queries "Assigned to me" applies per provider (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). An earlier issues.query becomes the query "Default" once. |
+| `issues.connections` | global (settings.json) | array<object> | `[]` |  | Personal tracker connections (#1260), e.g. the company YouTrack and GitHub side by side. The token is never stored here but in the Windows credential store (Atlas:tracker:<server>, "Store token …"). |
+| `issues.projects` | global (settings.json) | array<object> | `[]` |  | Personal mapping Delphi project → tracker project (#1261) for projects without tracker in the .atlas. The line for exactly this .dproj applies, otherwise the one for the open .groupproj, otherwise the longest matching folder; an .atlas with tracker takes precedence. |
+| `issues.queries` | global (settings.json) | array<object> | `[]` |  | Named queries for "My issues" (#1262), selectable in the drop-down next to the title. Without own queries "Assigned to me" applies per provider (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). An earlier issues.query becomes the query "Default" once. |
 
 ## Example
 

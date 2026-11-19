@@ -36,14 +36,14 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `experimental` | global (settings.json) | object | – |  | Experimentelle Funktionen (#834): riskant oder noch unreif, abschaltbar, als „Experimentell“ gekennzeichnet und nach der Installation aus. |
 | `slashCommands` | global (settings.json) | object | – |  | Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. |
 | `sortUses` | Projekt (atlas.json) | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
-| `usesKeep` | Projekt (atlas.json) | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
+| `usesKeep` | Projekt (atlas.json) | array<string> | `[]` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
 | `deadCode` | Projekt (atlas.json) | object | – |  | Toter Code: Elemente, die als verwendet gelten, obwohl ihr Name im Code nicht vorkommt (RTTI, Serialisierung, Plugins). Gilt für unused-private-member, unused-public-member und unused-declaration, zusätzlich zu den Optionen keepAttributes und keepPatterns der Regeln. |
-| `dfmPropertyRules` | Projekt (atlas.json) | array<object> | `` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
+| `dfmPropertyRules` | Projekt (atlas.json) | array<object> | `[]` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL) kompakt gehalten (nur interface-Symbole), dann die Verwendungen der Projekt-Units ausgelagert (sie bleiben im Cache auf der Platte) und zuletzt Projekt-Units kompakt gehalten. 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
 | `query` | global (settings.json) | object | – |  | Code-Abfragen über den Index (#1351): eine kleine Sprache wie „classes where inherits TForm and methods > 40 order by methods desc“ im Fenster „Atlas-Abfrage“, im MCP-Werkzeug query_code und mit AtlasServer --check <Ziel> --query. Felder und Zahlen stammen aus Index, Metriken, Uses-Graph, Formulardateien und Aufrufhierarchie (dieselben wie get_metrics und find_unused_code). |
-| `queries` | Projekt (atlas.json) | array<object> | `` | z. B. `{"name":"grosse-formulare","query":"classes where inherits TForm and methods > 40","failIfAny":true,"severity":"warning","message":"{name} hat {methods} Methoden"}` | Gespeicherte Code-Abfragen (#1351) für das Fenster „Atlas-Abfrage“, query_code und AtlasServer --query @name. Mit failIfAny wird jeder Treffer ein Befund der Regel query:<name> im Editor, bei --check und in SARIF; Baseline, Unterdrückungen und rules wirken wie bei anderen Regeln. |
+| `queries` | Projekt (atlas.json) | array<object> | `[]` | z. B. `[{"name":"grosse-formulare","query":"classes where inherits TForm and methods > 40","failIfAny":true,"severity":"warning","message":"{name} hat {methods} Methoden"}]` | Gespeicherte Code-Abfragen (#1351) für das Fenster „Atlas-Abfrage“, query_code und AtlasServer --query @name. Mit failIfAny wird jeder Treffer ein Befund der Regel query:<name> im Editor, bei --check und in SARIF; Baseline, Unterdrückungen und rules wirken wie bei anderen Regeln. |
 | `hotspots` | global (settings.json) | object | – |  | Hotspots: Units und Methoden, die oft geändert werden und zugleich komplex sind (Änderungen aus Git oder SVN im Zeitraum × kognitive Komplexität), mit Trend gegenüber vor drei Monaten und Änderungskopplung (Units ohne uses-Kante, die oft zusammen geändert werden). Fenster „Atlas-Hotspots“, Bericht (AtlasServer --hotspots <Datei.html\|.md\|.json>) und MCP-Werkzeug get_hotspots. Bibliotheks-Units und architecture.exclude zählen nicht; die Versionsverwaltung kommt aus vcs.provider. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `server` | global (settings.json) | object | – |  | Absturzfälle des Servers: Stürzt eine Anfrage mit einer unerwarteten Ausnahme ab oder bricht der Watchdog sie ab, sichert der Server einen nachstellbaren Fall unter %LOCALAPPDATA%\Atlas\crash (Anfrage, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, wiederholen.cmd; höchstens 20). Kein Netzzugriff. |
@@ -52,7 +52,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `smartIndent` | global (settings.json) | object | – |  | Einrückung beim Tippen (#1827): Nach Enter rechnet Atlas mit derselben Blocklogik wie format.reindent aus, wo die Schreibmarke stehen soll. Atlas setzt kein end; ein, das macht der Blockabschluss der IDE; geändert werden nur Leerraum und beim String das Hochkomma und +. Breite einer Ebene und Tabulatoren nach format bzw. .editorconfig. |
-| `suggestions` | Projekt (atlas.json) | object | – | z. B. `{"patterns":[{"after":"Log.Enter","insert":"try   $| finally   Log.Leave; end;"}]}` | Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; schlägt das Plugin als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Die Schalter und Schwellen stehen in den Einstellungen des Plugins (suggestions.*). Hier stehen die Hausregeln des Teams. |
+| `suggestions` | Projekt (atlas.json) | object | – | z. B. `{"patterns":[{"after":"Log.Enter","insert":["try","  $|","finally","  Log.Leave;","end;"]}]}` | Gelernte Vorschläge (#1890): Nach einem Auslöser wie X := TFoo.Create; oder L.BeginUpdate; schlägt das Plugin als grauen Schattentext vor, was im Projekt meist folgt (try … finally X.Free; end;). Die Schalter und Schwellen stehen in den Einstellungen des Plugins (suggestions.*). Hier stehen die Hausregeln des Teams. |
 | `classCompletion` | global (settings.json) | object | – |  | Klassenvervollständigung (#1834): Kommentar über dem Abschnitt einer Klasse im implementation-Teil, Reihenfolge und Inhalt neuer Methodenrümpfe aus der Aktion „Fehlende Methodenrümpfe anlegen“, /impl und dem Ordnen der Methoden (editor.methodPlacement im Plugin). |
 | `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
 | `navigation` | global (settings.json) | object | – |  | Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_path) und Auswirkungsanalyse: Was ist betroffen, wenn ich ein Symbol ändere? Aufrufer, Verweise, Overrides, Interface-Umsetzungen und Formularbindungen nach Ebenen, dazu die betroffenen Tests (Plugin-Befehl „Auswirkungen anzeigen“, MCP-Werkzeug get_impact). |
@@ -95,7 +95,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `vcs.provider` | global (settings.json) | string | `"auto"` | `"auto"`, `"git"`, `"svn"`, `"off"` | auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter. |
 | `vcs.git` | global (settings.json) | object | – |  | Programm git (#1285): path = Pfad zu git.exe, leer = automatisch suchen. |
 | `vcs.svn` | global (settings.json) | object | – |  | Programm svn (#1285): path = Pfad zu svn.exe, leer = automatisch suchen. |
-| `vcs.projects` | global (settings.json) | array<object> | `` |  | Persönliche Art und Hauptbranch je Delphi-Projekt (#1286). Es gilt der Abschnitt vcs der .atlas (je Feld), sonst die Zeile für genau diese .dproj, dann die der geöffneten .groupproj, dann der längste passende Ordner, sonst vcs.provider. Für einen Ordner (Änderungsmarken) gelten .dproj- und .groupproj-Zeilen für ihren Ordner, der längste passende gewinnt. |
+| `vcs.projects` | global (settings.json) | array<object> | `[]` |  | Persönliche Art und Hauptbranch je Delphi-Projekt (#1286). Es gilt der Abschnitt vcs der .atlas (je Feld), sonst die Zeile für genau diese .dproj, dann die der geöffneten .groupproj, dann der längste passende Ordner, sonst vcs.provider. Für einen Ordner (Änderungsmarken) gelten .dproj- und .groupproj-Zeilen für ihren Ordner, der längste passende gewinnt. |
 | `vcs.timeoutSeconds` | global (settings.json) | integer | `15` | 1…300 | Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285); danach beendet Atlas den Prozess. Aufrufe mit eigenem, kürzerem Limit (Willkommensseite 1 s) behalten ihres; Branch anlegen und Pull nehmen das größere aus diesem Wert und 30 s. |
 
 ## completion
@@ -223,7 +223,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `slashCommands.enabled` | global (settings.json) | boolean | `true` |  | Schnellbefehle auswerten. |
-| `slashCommands.disabled` | global (settings.json) | array<string> | `` |  | Abgeschaltete Befehle ohne /, z. B. ["uses"]. usesCommand: false wirkt wie "uses" in dieser Liste. |
+| `slashCommands.disabled` | global (settings.json) | array<string> | `[]` |  | Abgeschaltete Befehle ohne /, z. B. ["uses"]. usesCommand: false wirkt wie "uses" in dieser Liste. |
 | `slashCommands.headerTemplate` | global (settings.json) | string | `""` |  | Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf. |
 | `slashCommands.logCall` | global (settings.json) | string | `""` |  | Protokollaufruf für /log, /except und /measure: ein Routinenname wie "Log.Debug" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. "Logger.Send(TLogLevel.Debug, {text})". Leer: OutputDebugString(PChar(…)). |
 | `slashCommands.componentPalette` | global (settings.json) | string | `"Eigene"` |  | Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt. |
@@ -237,8 +237,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `deadCode.keepAttributes` | Projekt (atlas.json) | array<string> | `` |  | Attributnamen ohne "Attribute", z. B. "JsonName": Alle Mitglieder eines Typs mit diesem Attribut gelten als verwendet. |
-| `deadCode.keepPatterns` | Projekt (atlas.json) | array<string> | `` |  | Namensmuster mit * und ?, auch als Typ.Name, z. B. "*Handler" oder "TPlugin.*": Passende Elemente gelten als verwendet. |
+| `deadCode.keepAttributes` | Projekt (atlas.json) | array<string> | `[]` |  | Attributnamen ohne "Attribute", z. B. "JsonName": Alle Mitglieder eines Typs mit diesem Attribut gelten als verwendet. |
+| `deadCode.keepPatterns` | Projekt (atlas.json) | array<string> | `[]` |  | Namensmuster mit * und ?, auch als Typ.Name, z. B. "*Handler" oder "TPlugin.*": Passende Elemente gelten als verwendet. |
 
 ## index
 
@@ -251,7 +251,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `index.removeOrphans` | global (settings.json) | boolean | `true` |  | Index-Caches gelöschter Projekte (z. B. entfernter Branch-Ordner) und Caches im alten Format beim Laden eines Projekts löschen. Liegt das Projekt auf einem gerade nicht verbundenen Laufwerk, bleibt der Cache. |
 | `index.cacheMaxAgeDays` | global (settings.json) | integer | `14` | 0…3650 | Index-Caches löschen, die so viele Tage nicht benutzt wurden (Laden des Projekts zählt als Benutzung); 0 = aus. Das betrifft auch die Bibliotheks-Caches deinstallierter Delphi-Versionen. |
 | `index.cacheMaxMb` | global (settings.json) | integer | `1024` | 0…1048576 | Höchstgröße des Cache-Ordners in MB; darüber gehen die am längsten nicht benutzten Caches zuerst. 0 = ohne Grenze. |
-| `index.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["**/Demos/**","**/Samples/**"]` | Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?). |
+| `index.exclude` | Projekt (atlas.json) | array<string> | `[]` | z. B. `["**/Demos/**","**/Samples/**"]` | Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?). |
 
 ## architecture
 
@@ -261,9 +261,9 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.scope` | global (settings.json) | string | `"projectGroup"` | `"project"`, `"projectGroup"` | Umfang der Auswertung: nur das aktive Projekt oder die ganze Projektgruppe. |
 | `architecture.includeLibraryUnits` | global (settings.json) | boolean | `false` |  | Units aus RTL, VCL und den Bibliothekspfaden mitzählen; aus = nur Units der Projekte und ihrer Suchpfade. |
 | `architecture.centralUnits` | global (settings.json) | integer | `15` | 5…100 | Wie viele zentrale Units Fenster, Bericht und get_architecture zeigen. |
-| `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
+| `architecture.exclude` | Projekt (atlas.json) | array<string> | `[]` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
 | `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
-| `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
+| `architecture.failOn` | Projekt (atlas.json) | array<string> | `["newCycle"]` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
 | `architecture.explainAssignment` | global (settings.json) | boolean | `true` |  | Zuordnung jeder Unit erklären: Tabelle der Kanten je Teilsystem (interface, implementation, gewichtete Summe) im Hinweis und Steckbrief des Fensters, im Bericht und in get_architecture mit unit, dazu die Spalte „knapp“ für Units, bei denen ein anderes Teilsystem mindestens 75 % der Summe erreicht. |
 | `architecture.grouping` | global (settings.json) | object | – |  | Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture. |
 
@@ -340,7 +340,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `suggestions.patterns` | Projekt (atlas.json) | array<object> | `` |  | Eigene Muster des Teams; sie gehen den gelernten vor und brauchen keine Mindestzahl. |
+| `suggestions.patterns` | Projekt (atlas.json) | array<object> | `[]` |  | Eigene Muster des Teams; sie gehen den gelernten vor und brauchen keine Mindestzahl. |
 
 ## classCompletion
 
@@ -429,19 +429,19 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `mcp.disabledTools` | global (settings.json) | array<string> | `` |  | Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus. |
+| `mcp.disabledTools` | global (settings.json) | array<string> | `[]` |  | Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus. |
 | `mcp.globalSettings` | Projekt (atlas.json) | boolean | `true` |  | Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\Atlas\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa für reproduzierbare Ergebnisse im Team. |
 | `mcp.prompts` | global (settings.json) | boolean | `true` |  | Prompts (in MCP-Clients als Befehle angeboten, in Claude Code etwa /mcp__delphi__unit_review) und Ressourcenvorlagen (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last) anbieten. false: prompts/list und resources/templates/list sind leer, die Werkzeuge bleiben. |
 | `mcp.statistics` | global (settings.json) | boolean | `true` |  | Aufrufe der Werkzeuge, Ressourcen und Prompts je Sitzung zählen (Aufrufe, Fehler, Dauer, Antwortgröße, letzter fehlgeschlagener Aufruf) und lokal ablegen: Statusdatei des MCP-Prozesses, Ressource delphi://stats, get_server_status, AtlasMonitor und Fenster „Atlas-Server“; beim Beenden eine Zeile je Werkzeug in %LOCALAPPDATA%\Atlas\Status\mcp-stats.jsonl (30 Tage). Nichts geht ins Netz. false: nichts wird gezählt und nichts geschrieben. |
 | `mcp.reportFindingsAfterEdit` | global (settings.json) | boolean | `true` |  | Schreibende Werkzeuge (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) prüfen die geänderten Dateien mit dryRun=false vor und nach dem Schreiben wie get_diagnostics und hängen „Befunde nach der Änderung“ an die Antwort: neue Befunde mit Datei:Zeile, Regel und Text, die Zahl der behobenen und unveränderten. Die letzte Auswertung liefert die Ressource delphi://edits/last. |
 | `mcp.promptLanguage` | global (settings.json) | string | `"de"` | `"de"`, `"en"` | Sprache der Anleitungen in den Prompts. |
-| `mcp.customPrompts` | Projekt (atlas.json) | array<object> | `` |  | Eigene Prompts des Projekts mit Platzhaltern {argument} im Text und eingebetteten Inhalten aus include (z. B. diagnostics, metrics). |
+| `mcp.customPrompts` | Projekt (atlas.json) | array<object> | `[]` |  | Eigene Prompts des Projekts mit Platzhaltern {argument} im Text und eingebetteten Inhalten aus include (z. B. diagnostics, metrics). |
 
 ## assistants
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `assistants.protected` | Projekt (atlas.json) | array<object> | `` |  | Dateien, die KI-Assistenten nicht ändern dürfen, mit Grund. Die schreibenden MCP-Werkzeuge (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) lehnen eine Änderung daran ab und schreiben nichts; hook_check meldet eine Bearbeitung mit eigenen Werkzeugen als Fehler und lehnt sie als Hook vor dem Schreiben (mode "pre") ab; delphi://conventions listet die Dateien. Änderungen ohne Atlas erreicht der Schutz nicht. |
+| `assistants.protected` | Projekt (atlas.json) | array<object> | `[]` |  | Dateien, die KI-Assistenten nicht ändern dürfen, mit Grund. Die schreibenden MCP-Werkzeuge (apply_code_action, fix_findings, format_code, extract_method, rename_symbol) lehnen eine Änderung daran ab und schreiben nichts; hook_check meldet eine Bearbeitung mit eigenen Werkzeugen als Fehler und lehnt sie als Hook vor dem Schreiben (mode "pre") ab; delphi://conventions listet die Dateien. Änderungen ohne Atlas erreicht der Schutz nicht. |
 
 ## format
 
@@ -467,9 +467,9 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `issues.connections` | global (settings.json) | array<object> | `` |  | Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“). |
-| `issues.projects` | global (settings.json) | array<object> | `` |  | Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261) für Projekte ohne tracker in der .atlas. Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner; eine .atlas mit tracker hat Vorrang. |
-| `issues.queries` | global (settings.json) | array<object> | `` |  | Benannte Abfragen für „Meine Issues“ (#1262), wählbar in der Klappliste neben dem Titel. Ohne eigene Abfragen gilt je Anbieter „Mir zugewiesen“ (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). Ein früheres issues.query wird einmal zur Abfrage „Standard“. |
+| `issues.connections` | global (settings.json) | array<object> | `[]` |  | Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“). |
+| `issues.projects` | global (settings.json) | array<object> | `[]` |  | Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261) für Projekte ohne tracker in der .atlas. Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner; eine .atlas mit tracker hat Vorrang. |
+| `issues.queries` | global (settings.json) | array<object> | `[]` |  | Benannte Abfragen für „Meine Issues“ (#1262), wählbar in der Klappliste neben dem Titel. Ohne eigene Abfragen gilt je Anbieter „Mir zugewiesen“ (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). Ein früheres issues.query wird einmal zur Abfrage „Standard“. |
 
 ## Beispiel
 

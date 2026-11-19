@@ -32,14 +32,14 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Allgemein | `experimental`: `enabled` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen „Experimentelle Funktionen erlauben“ | #834 |
 | Eingabehilfen | `slashCommands`: `enabled`, `disabled`, `headerTemplate`, `logCall`, `componentPalette`, `todoOwner`, `todoCategory`, `sortUsesRemoveUnused`, `enumHelper`, `setHelper` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #182, #284 |
-| Eingabehilfen | `usesKeep` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste | #284 |
+| Eingabehilfen | `usesKeep` | `[]` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste | #284 |
 | Prüfregeln | `deadCode`: `keepAttributes`, `keepPatterns` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste mit Hinzufügen/Entfernen | #64 |
-| Prüfregeln | `dfmPropertyRules` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
+| Prüfregeln | `dfmPropertyRules` | `[]` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
 | Speicher | `memoryBudgetMb` | `768` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (MB) | #185, #492 |
 | Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `removeOrphans`, `cacheMaxAgeDays`, `cacheMaxMb`, `exclude` | – | settings.json (Tools › Optionen › Atlas); `exclude` in atlas.json | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648, #492, #905 |
 | Architektur | `architecture`: `enabled`, `scope`, `includeLibraryUnits`, `centralUnits`, `exclude`, `baseline`, `failOn`, `explainAssignment`, `grouping` | – | settings.json (Tools › Optionen › Atlas); `exclude`, `baseline`, `failOn` in atlas.json | nein | Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Einstellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366), keepPrevious: Farben und Namen halten (#1367) | #1118 |
 | Allgemein | `query`: `enabled` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen „Code-Abfragen (Fenster Atlas-Abfrage, query_code)“ | #1351 |
-| Allgemein | `queries` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Bearbeiten im Fenster „Atlas-Abfrage“ („Als Regel speichern …“) oder in atlas.json | #1351 |
+| Allgemein | `queries` | `[]` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Bearbeiten im Fenster „Atlas-Abfrage“ („Als Regel speichern …“) oder in atlas.json | #1351 |
 | Hotspots | `hotspots`: `enabled`, `months`, `coupling` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahl (1–60), Zahl (2–1000) | #1354 |
 | Robustheit | `requestTimeoutMs` | `10000` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (ms) | #283 |
 | Robustheit | `server`: `crashCases`, `crashSkip`, `statusFile` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #1355, #1901 |

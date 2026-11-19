@@ -32,14 +32,14 @@ All settings with page and control in the settings plugin (#227). Details on val
 | General | `experimental`: `enabled` | – | settings.json (Tools › Options › Atlas) | no | Checkbox “Allow experimental features” | #834 |
 | Typing aids | `slashCommands`: `enabled`, `disabled`, `headerTemplate`, `logCall`, `componentPalette`, `todoOwner`, `todoCategory`, `sortUsesRemoveUnused`, `enumHelper`, `setHelper` | – | settings.json (Tools › Options › Atlas) | no | Checkbox, list | #293 |
 | Typing aids | `sortUses` | `false` | atlas.json (Atlas › Project settings) | no | Choice | #182, #284 |
-| Typing aids | `usesKeep` | `` | atlas.json (Atlas › Project settings) | no | List | #284 |
+| Typing aids | `usesKeep` | `[]` | atlas.json (Atlas › Project settings) | no | List | #284 |
 | Check rules | `deadCode`: `keepAttributes`, `keepPatterns` | – | atlas.json (Atlas › Project settings) | no | List with Add/Remove | #64 |
-| Check rules | `dfmPropertyRules` | `` | atlas.json (Atlas › Project settings) | no | Own editor (class and property from the index) | #309 |
+| Check rules | `dfmPropertyRules` | `[]` | atlas.json (Atlas › Project settings) | no | Own editor (class and property from the index) | #309 |
 | Memory | `memoryBudgetMb` | `768` | settings.json (Tools › Options › Atlas) | no | Number field (MB) | #185, #492 |
 | Memory | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `removeOrphans`, `cacheMaxAgeDays`, `cacheMaxMb`, `exclude` | – | settings.json (Tools › Options › Atlas); `exclude` in atlas.json | no | Checkbox, list with Add/Remove | #648, #492, #905 |
 | Architecture | `architecture`: `enabled`, `scope`, `includeLibraryUnits`, `centralUnits`, `exclude`, `baseline`, `failOn`, `explainAssignment`, `grouping` | – | settings.json (Tools › Options › Atlas); `exclude`, `baseline`, `failOn` in atlas.json | no | Checkbox, choice, checkbox, number (5–100); exclude: list with Add/Remove in the project settings; baseline: choose file, failOn: list (project settings, #1121); grouping: grouping of the subsystems (#1366), keepPrevious: keep colours and names (#1367) | #1118 |
 | General | `query`: `enabled` | – | settings.json (Tools › Options › Atlas) | no | Checkbox “Code queries (window Atlas Query, query_code)” | #1351 |
-| General | `queries` | `` | atlas.json (Atlas › Project settings) | no | Edit in the window “Atlas Query” (“Save as rule …”) or in atlas.json | #1351 |
+| General | `queries` | `[]` | atlas.json (Atlas › Project settings) | no | Edit in the window “Atlas Query” (“Save as rule …”) or in atlas.json | #1351 |
 | Hotspots | `hotspots`: `enabled`, `months`, `coupling` | – | settings.json (Tools › Options › Atlas) | no | Checkbox, number (1–60), number (2–1000) | #1354 |
 | Robustness | `requestTimeoutMs` | `10000` | settings.json (Tools › Options › Atlas) | no | Number field (ms) | #283 |
 | Robustness | `server`: `crashCases`, `crashSkip`, `statusFile` | – | settings.json (Tools › Options › Atlas) | no | Checkbox | #1355, #1901 |

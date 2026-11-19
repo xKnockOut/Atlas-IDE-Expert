@@ -84,7 +84,9 @@ function Has([hashtable] $Node, [string] $Key) { $Node.ContainsKey($Key) -and $n
 function Format-Value($Value) {
     if ($Value -is [bool]) { return '`' + $Value.ToString().ToLowerInvariant() + '`' }
     if ($Value -is [string]) { return '`"' + $Value + '"`' }
-    return '`' + ($Value | ConvertTo-Json -Compress) + '`'
+    # -InputObject statt Pipe: Ein leeres Array käme durch die Pipe als nichts an und würde zur leeren Code-Spanne,
+    # an der die HTML-Doku (Build-Docs) bei mehreren in einer Tabelle abbricht.
+    return '`' + (ConvertTo-Json -InputObject $Value -Compress -Depth 20) + '`'
 }
 
 function Escape([string] $Text) { $Text.Replace('|', '\|').Replace("`r", '').Replace("`n", ' ') }
