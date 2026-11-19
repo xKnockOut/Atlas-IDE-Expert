@@ -909,6 +909,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.ListBox.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.WrapLabel.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.WrapLabel.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.Controls.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.Controls.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Foundation\Atlas.UI.Foundation.EditorFont.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Foundation.EditorFont.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Style\Atlas.Core.Style.Symbol.pas"/>
@@ -1854,10 +1856,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Sources.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Center.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Listeners.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.OrderedItems.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Build.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Notifications\Atlas.UI.Notifications.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.Listeners.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.OrderedItems.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.MessageSink.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.MessageSink.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Notifications.Window.Tests.pas"/>

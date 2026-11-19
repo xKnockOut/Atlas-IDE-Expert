@@ -915,12 +915,8 @@ end;
 
 function TAtlasPluginRecorder.Version: Integer;
 begin
-  FLock.Enter;
-  try
-    Result := FVersion;
-  finally
-    FLock.Leave;
-  end;
+  // Nur lesen: Geändert wird der Zähler unter der Sperre.
+  Result := TInterlocked.Add(FVersion, 0);
 end;
 
 { TAtlasPluginTimings }

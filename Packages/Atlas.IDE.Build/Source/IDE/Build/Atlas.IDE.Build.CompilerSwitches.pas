@@ -100,6 +100,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Editor.SourceFiles,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Navigation,
@@ -188,7 +189,8 @@ begin
   begin
     mFileName := mView.Buffer.FileName;
   end;
-  if not TAtlasSwitchFollow.Applies(mFileName) then
+  // Nur Dateien, für die der Präprozessor Schalter kennt.
+  if not TAtlasSourceFiles.IsPascal(mFileName) then
   begin
     if FFollow.Moved('', -1, -1, GetTickCount64) or FHasView then
     begin

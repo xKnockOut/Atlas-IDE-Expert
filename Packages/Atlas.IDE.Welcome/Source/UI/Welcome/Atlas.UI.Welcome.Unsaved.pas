@@ -108,7 +108,7 @@ type
     procedure SetSource(const AValue: IAtlasUnsavedSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxLeftClick(Sender: TObject; AX, AY: Integer);
     procedure MenuPopup(Sender: TObject);
     procedure OpenFolderClick(Sender: TObject);
     procedure IgnoreClick(Sender: TObject);
@@ -162,7 +162,7 @@ begin
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnLeftClick := BoxLeftClick;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FOpenFolderItem := TMenuItem.Create(Self);
@@ -528,13 +528,9 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasWelcomeUnsavedFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+procedure TAtlasWelcomeUnsavedFrame.BoxLeftClick(Sender: TObject; AX, AY: Integer);
 begin
-  if Button = mbLeft then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  ClickAt(HitTest(AX, AY));
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.MenuPopup(Sender: TObject);

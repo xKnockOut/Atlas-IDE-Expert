@@ -85,8 +85,6 @@ type
     function Due(ANow: UInt64): Boolean;
     /// <summary>Beim nächsten Due sofort abfragen (Fenster geöffnet, Einstellung geändert).</summary>
     procedure Invalidate;
-    /// <summary>Datei, für die der Präprozessor Schalter kennt (.pas, .dpr, .dpk, .inc).</summary>
-    class function Applies(const AFileName: string): Boolean; static;
     property FileName: string read FFileName;
     property Line: Integer read FLine;
     property Character: Integer read FCharacter;
@@ -274,14 +272,6 @@ procedure TAtlasSwitchFollow.Invalidate;
 begin
   FPending := True;
   FImmediate := True;
-end;
-
-class function TAtlasSwitchFollow.Applies(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
 end;
 
 end.
