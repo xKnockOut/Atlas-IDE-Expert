@@ -59,6 +59,18 @@ type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasEvaluateSessionFunc = reference to function: TLspSession;
 
+  /// <summary>Text hinter dem Wert AValue des Ausdrucks AExpression an AFileName, ALine (1-basiert): Etikett eines
+  /// markierten Objekts (#839); '' ohne.</summary>
+  TAtlasEvaluateValueSuffix = reference to function(const AExpression, AValue, AFileName: string;
+    ALine: Integer): string;
+
+  /// <summary>Zusätze anderer Teile an den Werten des Fensters „Auswerten“.</summary>
+  TAtlasIdeEvaluateDecoration = class abstract
+  public class var
+    /// <summary>Setzt die Composition, solange markierte Objekte (#839) laufen; sonst nil.</summary>
+    OnValueSuffix: TAtlasEvaluateValueSuffix;
+  end;
+
   TAtlasIdeDebugEvaluate = class(TAtlasIdeDebugStopView)
   public const
     cSliceMs = 30;
@@ -356,6 +368,18 @@ begin
   end;
   WireRows(AFrame);
   WireValues(AFrame);
+  // Etiketten markierter Objekte (#839) hinter dem Wert; ohne den Teil keine.
+  AFrame.SetSuffix(
+    function(ANode: TAtlasEvalNode): string
+    begin
+      Result := '';
+      if (TAtlasIdeDebugEvaluate.FInstance <> nil) and Assigned(TAtlasIdeEvaluateDecoration.OnValueSuffix) and
+        (ANode.State = TAtlasEvalState.Value) then
+      begin
+        Result := TAtlasIdeEvaluateDecoration.OnValueSuffix(ANode.Expression, ANode.Value,
+          TAtlasIdeDebugEvaluate.FInstance.FPlace.FileName, TAtlasIdeDebugEvaluate.FInstance.FPlace.Line + 1);
+      end;
+    end);
   AFrame.InputBar.SetSideEffects(TAtlasIdeDebugEvaluate.FInstance.FSideEffects);
   AFrame.SetList(TAtlasIdeDebugEvaluate.FInstance.FList);
 end;

@@ -2690,6 +2690,18 @@
       "x-captionEn": "Bind watched expressions to a class or unit",
       "x-issue": "#2550"
     },
+    "DebugObjectMarks": {
+      "description": "Objekte beim Debuggen markieren: Befehl „Objekt markieren …“ im Kontextmenü des Editors (im Halt), Etikett hinter dem Wert im Editor, im Debug-Hover und im Fenster „Auswerten“, Fenster „Markierte Objekte“. Steht an einer markierten Adresse eine andere Klasse, gilt das Objekt als vermutlich freigegeben. Markierungen gelten bis zum Ende der Debug-Sitzung. Aus = kein Menüpunkt, keine Etiketten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.objectMarks",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Objekte beim Debuggen markieren",
+      "x-captionEn": "Mark objects while debugging",
+      "x-issue": "#839"
+    },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
       "type": "boolean",

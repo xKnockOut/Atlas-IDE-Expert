@@ -424,9 +424,9 @@ function AtlasMenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := AtlasEntries(['Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
     'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
-    'Atlas.DebugLeaks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart', 'Atlas.LaunchGroups', '-',
-    'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-', 'Atlas.RuntimeReportPaste',
-    'Atlas.DebugNote', 'Atlas.DebugKeepOpenedFile'],
+    'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart',
+    'Atlas.LaunchGroups', '-', 'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-',
+    'Atlas.RuntimeReportPaste', 'Atlas.DebugNote', 'Atlas.DebugKeepOpenedFile'],
     TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result := Result + AtlasEntries(['Atlas.BreakpointsWindow', 'Atlas.CheckBreakpoints', '-', 'Atlas.Logpoint',
     '-', 'Atlas.MethodBreakpoints', 'Atlas.MethodBreakpointGroups', '-', 'Atlas.BreakpointRules', '-',
@@ -438,9 +438,9 @@ end;
 /// damit sich das Layout einrichten lässt.</summary>
 function ViewMenuEntries: TArray<TAtlasMenuEntry>;
 const
-  cWindows: array[0..10] of string = ('Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
+  cWindows: array[0..11] of string = ('Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
     'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
-    'Atlas.DebugLeaks', 'Atlas.StepFilters', 'Atlas.DebugProfile', 'Atlas.BreakpointsWindow');
+    'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks', 'Atlas.StepFilters', 'Atlas.DebugProfile', 'Atlas.BreakpointsWindow');
 var
   mIndex: Integer;
 begin
