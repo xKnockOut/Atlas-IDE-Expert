@@ -549,7 +549,7 @@ begin
       Result := FHistory.Items;
     end);
   FPopup := TAtlasCompletionPopup.Create(nil);
-  FController := TAtlasCompletionController.Create(FProviderRef, FPopup);
+  FController := TAtlasCompletionController.Create(FProviderRef, FPopup.View);
   FController.OnCommit :=
     procedure(const AItem: TAtlasCompletionItem)
     begin

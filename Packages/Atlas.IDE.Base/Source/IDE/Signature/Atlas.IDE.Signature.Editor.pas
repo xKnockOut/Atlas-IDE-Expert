@@ -268,7 +268,7 @@ begin
   FProvider := ASource;
   FMarks := TAtlasIdeFormatMarks.Create;
   FHint := TAtlasSignatureHint.Create(nil);
-  FController := TAtlasSignatureController.Create(FHint);
+  FController := TAtlasSignatureController.Create(FHint.View);
   FHint.OnSelect :=
     procedure(AIndex: Integer)
     begin

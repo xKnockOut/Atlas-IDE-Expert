@@ -30,8 +30,9 @@ uses
   Atlas.UI.Commands.Palette;
 
 type
-  /// <summary>Ohne Referenzzählung (TNoRefCountObject): Die Composition gibt die Palette frei.</summary>
-  TAtlasIdePalette = class(TNoRefCountObject, IAtlasCommandRegistry)
+  /// <summary>Die Composition gibt die Palette frei; als IAtlasCommandRegistry reicht sie
+  /// Atlas.IDE.Commands.Adapters.PaletteRegistry weiter.</summary>
+  TAtlasIdePalette = class
   private type
     TBinding = class(TNotifierObject, IOTAKeyboardBinding)
     private

@@ -1,8 +1,8 @@
-﻿unit Atlas.IDE.Foundation.ActiveEditor;
+﻿unit Atlas.IDE.Foundation.Adapters.ActiveEditor;
 
 // IAtlasActiveEditor über die Open Tools API: Datei und Schreibmarke der oberen Editoransicht (#1967).
 // Dünner Adapter ohne eigene Entscheidung; die Spalte des Editors (Tabulatoren ausgedehnt) wird zum
-// Zeichenindex wie beim Server.
+// Zeichenindex wie beim Server. Erzeugt nur die Kompositionswurzel; die Features fragen TAtlasIdeHost.ActiveEditor.
 
 interface
 

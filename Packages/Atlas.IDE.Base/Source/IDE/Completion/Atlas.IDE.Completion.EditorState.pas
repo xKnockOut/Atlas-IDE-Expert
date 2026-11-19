@@ -240,7 +240,7 @@ begin
   FProviders.Add(FSources.Snippets);
   FPlaceholders := TAtlasEditorPlaceholders.Create;
   FPopup := TAtlasCompletionPopup.Create(nil);
-  FController := TAtlasCompletionController.Create(FProvidersRef, FPopup);
+  FController := TAtlasCompletionController.Create(FProvidersRef, FPopup.View);
   WirePopup;
   FPreview := TAtlasEditorPreview.Create;
   FTimer := TTimer.Create(nil);

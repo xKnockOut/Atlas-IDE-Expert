@@ -14,7 +14,6 @@ adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasComma
 adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasFollowsSaves
 adapter-name Atlas.IDE.Assistants.Instructions TAtlasIdeInstructions IAtlasMenuSource
 adapter-name Atlas.IDE.Bookmarks.SavedPlaces TAtlasIdeSavedPlaces IAtlasSavedPlacesSource
-adapter-name Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
 adapter-name Atlas.IDE.Debug.AssistantControl TAtlasIdeDebugAssistantControl IAtlasDebugControl
 adapter-name Atlas.IDE.Debug.KnownErrors TAtlasIdeDebugKnownErrorsView IAtlasKnownErrorsView
 adapter-name Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
@@ -23,20 +22,10 @@ adapter-name Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
 adapter-name Atlas.IDE.Debug.StopSource TAtlasIdeDebugStopSource IAtlasDebugStopSource
 adapter-name Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
 adapter-name Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
-adapter-name Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
-adapter-name Atlas.IDE.Editor.LearnedSuggestions TLearnedProvider IAtlasGhostProvider
-adapter-name Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
-adapter-name Atlas.IDE.Foundation.ActiveEditor TAtlasIdeActiveEditor IAtlasActiveEditor
-adapter-name Atlas.IDE.Foundation.EditorFiles TAtlasIdeEditorFiles IAtlasEditorFiles
-adapter-name Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
-adapter-name Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
-adapter-name Atlas.IDE.Generate.Gallery TGalleryWatch IAtlasRegistryListener
 adapter-name Atlas.IDE.Rules.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
 adapter-name Atlas.IDE.Rules.FindingActions TAtlasIdeRuleActions IAtlasRuleActions
 adapter-name Atlas.IDE.Rules.IdeErrors TAtlasIdeRulesIdeErrors IAtlasIdeErrors
 adapter-name Atlas.IDE.Rules.Settings TAtlasIdeRulesSettings IAtlasSettingsSectionProvider
-adapter-name Atlas.IDE.Settings.ModuleNodes TAtlasModuleNodeWatch IAtlasRegistryListener
-adapter-name Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
 adapter-name Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
 adapter-name Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 adapter-name Atlas.IDE.Tracker.Access TAtlasTrackerAccess IAtlasTrackerAccess
@@ -55,7 +44,6 @@ adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerIssuesTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerSprintTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerTestsTile IAtlasWelcomeTile
 adapter-name Atlas.IDE.Tracker.Tiles TAtlasTrackerTileViewLink IAtlasWelcomeTileView
-adapter-name Atlas.IDE.Undo.Target TAtlasIdeUndoTarget IAtlasUndoTarget
 adapter-name Atlas.IDE.VersionControl.Commands TAtlasVcsCommands IAtlasCommandSource
 adapter-name Atlas.IDE.VersionControl.LineChanges TAtlasLineChangesAdapter IAtlasLineChanges
 adapter-name Atlas.IDE.VersionControl.Settings TAtlasIdeVcsSettings IAtlasSettingsSectionProvider
@@ -81,14 +69,7 @@ adapter-name Atlas.IDE.Welcome.Tiles TProjects IAtlasWelcomeProjects
 adapter-name Atlas.IDE.Welcome.Trends TAtlasIdeTrends IAtlasTrendsSource
 adapter-name Atlas.IDE.Welcome.Unsaved TAtlasIdeUnsaved IAtlasUnsavedSource
 adapter-name Atlas.IDE.Welcome.WhatsNew TAtlasIdeWhatsNew IAtlasWhatsNewSource
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasAccessibleItems
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionHiddenView
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxView
-adapter-name Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
-adapter-name Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
 adapter-name Atlas.UI.Rules.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
-adapter-name Atlas.UI.Settings.Page.Sections TAtlasSettingsSectionWatch IAtlasRegistryListener
-adapter-name Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
 adapter-name Atlas.UI.Tracker.SettingsBranches TAtlasTrackerBranchProvider IAtlasSettingsSectionProvider
 adapter-name Atlas.UI.Tracker.SettingsSection TAtlasTrackerSettingsSection IAtlasSettingsSection
 adapter-name Atlas.UI.Welcome.SettingsSection TAtlasWelcomeSettingsSection IAtlasSettingsSection
@@ -119,18 +100,18 @@ contract Atlas.IDE.Bookmarks.Composition TAtlasBookmarksModule IAtlasOverviewBoo
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBuildEvaluator
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasCompilerMessagesListener
 contract Atlas.IDE.CodeInsight.Composition.Build TNotificationsVerdictListener IAtlasBuildVerdictListener
-contract Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
+contract Atlas.IDE.Commands.Adapters.PaletteRegistry TAtlasPaletteCommandRegistry IAtlasCommandRegistry
 contract Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
 contract Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
 contract Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
 contract Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
-contract Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
-contract Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
-contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
-contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
+contract Atlas.IDE.Editor.Adapters.EditEnvironment TAtlasIdeEditEnvironment IAtlasEditEnvironment
+contract Atlas.IDE.Editor.Adapters.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
+contract Atlas.IDE.Foundation.Adapters.RegistryStore TAtlasRegistrySettingsStore IAtlasSettingsNames
+contract Atlas.IDE.Foundation.Adapters.RegistryStore TAtlasRegistrySettingsStore IAtlasSettingsStore
 contract Atlas.IDE.Rules.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
 contract Atlas.IDE.Search.Composition TAtlasSearchModule IAtlasTakenActions
-contract Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
+contract Atlas.IDE.Setup.Adapters.Environment TAtlasIdeSetupEnvironment IAtlasSetupEnvironment
 contract Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
 contract Atlas.IDE.Tests.Composition TAtlasTestsModule IAtlasBuildVerdictListener
 contract Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
@@ -157,13 +138,13 @@ contract Atlas.IDE.Welcome.State TAtlasIdeWelcomeState IAtlasStateSource
 contract Atlas.IDE.Welcome.Trends TAtlasIdeTrends IAtlasTrendsSource
 contract Atlas.IDE.Welcome.Unsaved TAtlasIdeUnsaved IAtlasUnsavedSource
 contract Atlas.IDE.Welcome.WhatsNew TAtlasIdeWhatsNew IAtlasWhatsNewSource
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasAccessibleItems
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionHiddenView
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxView
-contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
-contract Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasAccessibleItems
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionHiddenView
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionSyntaxView
+contract Atlas.UI.Completion.Adapters.PopupView TAtlasCompletionPopupView IAtlasCompletionView
+contract Atlas.UI.Hover.Adapters.TipMeasure TAtlasHoverTipMeasure IAtlasHoverMeasure
 contract Atlas.UI.Rules.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
-contract Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
+contract Atlas.UI.Signature.Adapters.HintView TAtlasSignatureHintView IAtlasSignatureView
 contract Shell.Composition.LeakCandidates TShellLeakCandidateFiles ILeakCandidateFiles
 contract Shell.Composition.LeakSetup TShellLeakSetupFiles ILeakSetupFiles
 contract Shell.Composition.RuntimeReport TShellRuntimeReportFiles IRuntimeReportFiles
@@ -185,5 +166,13 @@ empty Atlas.Core.Undo.Adapters.DiskTarget
 empty Atlas.Core.Undo.Adapters.FileStore
 empty Atlas.Core.Updates.Adapters.HttpSource
 empty Atlas.Core.VersionControl.Adapters.ProcessRunner
+empty Atlas.IDE.Commands.Adapters.PaletteRegistry
+empty Atlas.IDE.Editor.Adapters.EditEnvironment
+empty Atlas.IDE.Editor.Adapters.EditSurface
+empty Atlas.IDE.Foundation.Adapters.RegistryStore
+empty Atlas.IDE.Setup.Adapters.Environment
+empty Atlas.UI.Completion.Adapters.PopupView
+empty Atlas.UI.Hover.Adapters.TipMeasure
+empty Atlas.UI.Signature.Adapters.HintView
 empty Atlas.Windows.Monitor.Adapters.Process
 empty Atlas.Windows.Monitor.Adapters.System

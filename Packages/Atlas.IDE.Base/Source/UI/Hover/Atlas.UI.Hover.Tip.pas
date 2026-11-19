@@ -52,6 +52,7 @@ uses
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Hover.View,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
@@ -80,12 +81,21 @@ type
     RuleExamples: Boolean;
   end;
 
+  TAtlasHoverTipView = class;
+
+  /// <summary>Baut die Messung für TAtlasHoverLayout über die Zeichenfläche von ATip (eingesetzt von der
+  /// Komposition).</summary>
+  TAtlasHoverMeasureFactory = reference to function(ATip: TAtlasHoverTipView): IAtlasHoverMeasure;
+
   /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen.</summary>
   TAtlasHoverTipView = class(TAtlasPopupWindow)
   public const
     cMaxWidth = 460;
+  private class var
+    FMeasureFactory: TAtlasHoverMeasureFactory;
   private
     FDeclaration: TAtlasStyledText;
+    FMeasure: IAtlasHoverMeasure;
     /// <summary>Schalter aus den Einstellungen: Aktionszeile, Compilercode, Signaturparameter.</summary>
     FOptions: TAtlasHoverTipOptions;
     /// <summary>Über dem Wort gezeigt: Beim Auf- und Zuklappen bleibt der untere Rand.</summary>
@@ -139,6 +149,13 @@ type
     procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
     /// <summary>Tauscht den Inhalt; Position bleibt, Breite und Höhe wachsen höchstens.</summary>
     procedure UpdateContent(const AView: TAtlasHoverView);
+    /// <summary>Messen für den Satz: Breite und Höhe eines Texts, Höhe eines Absatzes, Breite und Umbruch der
+    /// Deklaration.</summary>
+    function MeasureTextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
+    function MeasureTextHeight(const AFace: TAtlasHoverFace): Integer;
+    function MeasureBlockHeight(const AText: string; AWidth: Integer): Integer;
+    function MeasureDeclarationWidth(AFrom, ATill: Integer): Integer;
+    function MeasureDeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
     property View: TAtlasHoverView read FView;
     /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
     property ProblemActions: Boolean read FOptions.ProblemActions write SetProblemActions;
@@ -152,6 +169,8 @@ type
     property MembersMaxLines: Integer read FMembers.MaxLines write FMembers.MaxLines;
     /// <summary>hover.signatureParams (#1919): Parameter und Rückgabe immer offen, auch ohne XMLDoc.</summary>
     property SignatureParams: Boolean read FOptions.SignatureParams write FOptions.SignatureParams;
+    /// <summary>Baut die Messung für den Satz; ohne Fabrik setzt der Tooltip keinen Inhalt.</summary>
+    class property MeasureFactory: TAtlasHoverMeasureFactory read FMeasureFactory write FMeasureFactory;
   end;
 
   /// <summary>Tooltip mit Maus, Tastatur im Befund-Hover und Ereignissen.</summary>
@@ -228,7 +247,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,
@@ -244,6 +262,8 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
+  /// <summary>Programmierfehler: Die Komposition hat MeasureFactory nicht gesetzt.</summary>
+  cNoMeasure = 'Atlas: Messung des Tooltips nicht eingesetzt.'; // german-ok Programmierfehler
   /// <summary>So viele Zeilen des aufgeklappten Debug-Werts (#895) ohne Scrollen.</summary>
   cDebugRows = 12;
   /// <summary>Zeilen je Rasterstufe des Mausrads in den Rollbereichen.</summary>
@@ -432,62 +452,6 @@ begin
   Result := Result or AView.Data.Location.HasLocation or AView.Pinned or (Length(AView.Data.Members) > 0);
 end;
 
-type
-  /// <summary>Messen über die Zeichenfläche des Tooltips für TAtlasHoverLayout.</summary>
-  TTipMeasure = class(TInterfacedObject, IAtlasHoverMeasure)
-  private
-    FTip: TAtlasHoverTipView;
-  public
-    constructor Create(ATip: TAtlasHoverTipView);
-    function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-    function TextHeight(const AFace: TAtlasHoverFace): Integer;
-    function BlockHeight(const AText: string; AWidth: Integer): Integer;
-    function DeclarationWidth(AFrom, ATill: Integer): Integer;
-    function DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-  end;
-
-{ TTipMeasure }
-
-constructor TTipMeasure.Create(ATip: TAtlasHoverTipView);
-begin
-  inherited Create;
-  FTip := ATip;
-end;
-
-function TTipMeasure.TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-begin
-  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
-  Result := FTip.Canvas.TextWidth(AText);
-end;
-
-function TTipMeasure.TextHeight(const AFace: TAtlasHoverFace): Integer;
-begin
-  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
-  Result := FTip.Canvas.TextHeight('Wg');
-end;
-
-function TTipMeasure.BlockHeight(const AText: string; AWidth: Integer): Integer;
-var
-  mArea: TRect;
-begin
-  FTip.Canvas.Font := FTip.UIFont;
-  mArea := Rect(0, 0, AWidth, 0);
-  DrawText(FTip.Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
-  Result := mArea.Bottom;
-end;
-
-function TTipMeasure.DeclarationWidth(AFrom, ATill: Integer): Integer;
-begin
-  FTip.Canvas.Font := FTip.Font;
-  Result := FTip.FDeclaration.Width(FTip.Canvas, AFrom, ATill);
-end;
-
-function TTipMeasure.DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-begin
-  FTip.Canvas.Font := FTip.Font;
-  Result := FTip.FDeclaration.WrapAtSpaces(FTip.Canvas, AWidth, AIndent);
-end;
-
 { TAtlasHoverTipView }
 
 constructor TAtlasHoverTipView.Create(AOwner: TComponent);
@@ -526,6 +490,40 @@ begin
   FOptions.HideCompilerCode := AValue;
   FLayoutKey := '';
   Invalidate;
+end;
+
+function TAtlasHoverTipView.MeasureTextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
+begin
+  ApplyHoverFace(Canvas, Font, UIFont, AFace, 0);
+  Result := Canvas.TextWidth(AText);
+end;
+
+function TAtlasHoverTipView.MeasureTextHeight(const AFace: TAtlasHoverFace): Integer;
+begin
+  ApplyHoverFace(Canvas, Font, UIFont, AFace, 0);
+  Result := Canvas.TextHeight('Wg');
+end;
+
+function TAtlasHoverTipView.MeasureBlockHeight(const AText: string; AWidth: Integer): Integer;
+var
+  mArea: TRect;
+begin
+  Canvas.Font := UIFont;
+  mArea := Rect(0, 0, AWidth, 0);
+  DrawText(Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
+  Result := mArea.Bottom;
+end;
+
+function TAtlasHoverTipView.MeasureDeclarationWidth(AFrom, ATill: Integer): Integer;
+begin
+  Canvas.Font := Font;
+  Result := FDeclaration.Width(Canvas, AFrom, ATill);
+end;
+
+function TAtlasHoverTipView.MeasureDeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
+begin
+  Canvas.Font := Font;
+  Result := FDeclaration.WrapAtSpaces(Canvas, AWidth, AIndent);
 end;
 
 { TAtlasHoverTip }
@@ -671,7 +669,15 @@ begin
   mInput.Members := FMembers;
   mInput.DebugRows := FDebugRows;
   mInput.DebugSelectedRow := FDebugSelectedRow;
-  FLayout := TAtlasHoverLayout.Build(mInput, TTipMeasure.Create(Self));
+  if FMeasure = nil then
+  begin
+    if not Assigned(FMeasureFactory) then
+    begin
+      raise EInvalidOpException.Create(cNoMeasure);
+    end;
+    FMeasure := FMeasureFactory(Self);
+  end;
+  FLayout := TAtlasHoverLayout.Build(mInput, FMeasure);
   // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
   FMembers.Scroll := FLayout.Members.Scroll;
   FDebugRows.Scroll := FLayout.DebugRows.Scroll;

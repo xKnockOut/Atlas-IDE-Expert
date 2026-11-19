@@ -8,6 +8,8 @@
 // nur wenn sich die Liste wirklich geändert hat. Nach Destroy oder ohne
 // Registry ist die Liste leer. Nur im Hauptthread verwenden; die Registry
 // meldet im Thread der Änderung.
+// TAtlasRegistryWatch hört über eine Methodenreferenz auf die Registry: Wer nur auf Änderungen reagieren will,
+// braucht so keine eigene Klasse, die IAtlasRegistryListener implementiert.
 
 interface
 
@@ -16,6 +18,28 @@ uses
   Atlas.Core.Modules.Contract;
 
 type
+  /// <summary>Rückruf für jede Änderung der Registry (TAtlasRegistryWatch).</summary>
+  TAtlasRegistryChangeProc = reference to procedure(const AChange: TAtlasRegistryChange);
+
+  /// <summary>Hört über eine Methodenreferenz auf die Registry (Regel 2).</summary>
+  TAtlasRegistryWatch = class
+  private type
+    TListener = class(TInterfacedObject, IAtlasRegistryListener, IAtlasRegistration)
+    private
+      FOnChange: TAtlasRegistryChangeProc;
+      FSubscription: IAtlasRegistration;
+    public
+      procedure RegistryChanged(const AChange: TAtlasRegistryChange);
+      procedure Revoke;
+      function IsRevoked: Boolean;
+    end;
+  public
+    /// <summary>AOnChange bei jeder Änderung von ARegistry, bis Revoke der Anmeldung; nach Revoke kommt nichts
+    /// mehr an. Ohne Registry nil.</summary>
+    class function Subscribe(const ARegistry: IAtlasModuleRegistry;
+      const AOnChange: TAtlasRegistryChangeProc): IAtlasRegistration; static;
+  end;
+
   TAtlasProvidedWatch = class
   private type
     TListener = class(TInterfacedObject, IAtlasRegistryListener)
@@ -47,6 +71,57 @@ implementation
 
 uses
   Atlas.Text.Arrays;
+
+{ TAtlasRegistryWatch.TListener }
+
+procedure TAtlasRegistryWatch.TListener.RegistryChanged(const AChange: TAtlasRegistryChange);
+var
+  mOnChange: TAtlasRegistryChangeProc;
+begin
+  mOnChange := FOnChange;
+  if Assigned(mOnChange) then
+  begin
+    mOnChange(AChange);
+  end;
+end;
+
+procedure TAtlasRegistryWatch.TListener.Revoke;
+var
+  mSubscription: IAtlasRegistration;
+begin
+  FOnChange := nil;
+  mSubscription := FSubscription;
+  FSubscription := nil;
+  if mSubscription <> nil then
+  begin
+    mSubscription.Revoke;
+  end;
+end;
+
+function TAtlasRegistryWatch.TListener.IsRevoked: Boolean;
+begin
+  Result := FSubscription = nil;
+end;
+
+{ TAtlasRegistryWatch }
+
+class function TAtlasRegistryWatch.Subscribe(const ARegistry: IAtlasModuleRegistry;
+  const AOnChange: TAtlasRegistryChangeProc): IAtlasRegistration;
+var
+  mListener: TListener;
+  mListenerRef: IAtlasRegistryListener;
+begin
+  Result := nil;
+  if ARegistry = nil then
+  begin
+    Exit;
+  end;
+  mListener := TListener.Create;
+  mListenerRef := mListener;
+  mListener.FOnChange := AOnChange;
+  mListener.FSubscription := ARegistry.Subscribe(mListenerRef);
+  Result := mListener;
+end;
 
 { TAtlasProvidedWatch.TListener }
 

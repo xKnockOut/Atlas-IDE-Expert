@@ -2,14 +2,21 @@
 
 // Adapters, Providers und Compositions der Core-Features für die Kompositionswurzel: Serverprozess,
 // Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Code-Aktionen für den Klick auf eine Marke,
-// Ziel und Sicherung des Änderungsprotokolls und die Update-Quelle. Nur diese
-// Unit erzeugt sie; die Features bekommen sie über
-// Schnittstellen und Fabriken.
+// Ziel und Sicherung des Änderungsprotokolls, die Update-Quelle und die Adapter der IDE-Features
+// (Einstellungsspeicher, Editoransichten, Fenster als Ansichten der Controller, Palette, Einrichtung, Schattentext).
+// Nur diese Unit erzeugt sie; die Features bekommen sie über Schnittstellen und Fabriken.
 
 interface
 
 uses
+  System.SysUtils,
   Atlas.Core.Updates.Contract,
+  Atlas.Core.Setup.Checklist,
+  Atlas.Core.Files.Contract,
+  Atlas.Core.Commands.Palette,
+  Atlas.IDE.Contracts.GhostSuggestions,
+  Atlas.IDE.Commands.Palette,
+  Atlas.IDE.Setup.Checklist,
   Atlas.IDE.CodeInsight.Manager.State;
 
 /// <summary>Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und Parameter-Hint aus dem Kern,
@@ -20,11 +27,24 @@ function CodeInsightAdapters: TAtlasCodeInsightAdapters;
 procedure InstallUndoAdapters;
 /// <summary>Quelle der Update-Prüfung (#495) über HTTP.</summary>
 function UpdateSource: IAtlasVersionSource;
+/// <summary>Fabriken der IDE-Adapter einsetzen: Einstellungsspeicher in der Registry, Sicht des Planers, Puffer
+/// der Editoransicht, Fenster von Vervollständigung, Parameter-Hint und Tooltip. Ab der Unit-Initialisierung, vor
+/// dem ersten Lesen der Einstellungen.</summary>
+procedure InstallIdeAdapters;
+/// <summary>Aktiver Editor und Puffer der offenen Dateien für TAtlasIdeHost.</summary>
+function ActiveEditorAdapter: IAtlasActiveEditor;
+function EditorFilesAdapter: IAtlasEditorFiles;
+/// <summary>Die Palette als Ziel der Befehle der Teile.</summary>
+function PaletteRegistry(APalette: TAtlasIdePalette): IAtlasCommandRegistry;
+/// <summary>Vorschläge aus dem Index des Servers für den Schattentext (#1890).</summary>
+function LearnedGhostProvider: IAtlasGhostProvider;
+/// <summary>Was die Knöpfe der Einrichtung tun; AForgetKeys liest die Tasten beim nächsten Snapshot neu.</summary>
+function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc): IAtlasSetupEnvironment;
 
 implementation
 
 uses
-  System.SysUtils,
+  ToolsAPI,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Adapters.ServerProcess,
@@ -42,8 +62,31 @@ uses
   Atlas.Core.Updates.Adapters.HttpSource,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Commands.Editor,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Editor.EditSurface,
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Completion.Controller,
+  Atlas.Core.Signature.Controller,
+  Atlas.Core.Hover.Layout.Contract,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Undo.Target;
+  Atlas.IDE.Undo.Adapters.Target,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Adapters.ActiveEditor,
+  Atlas.IDE.Foundation.Adapters.EditorFiles,
+  Atlas.IDE.Foundation.Adapters.RegistryStore,
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Editor.Surfaces,
+  Atlas.IDE.Editor.Adapters.EditEnvironment,
+  Atlas.IDE.Editor.Adapters.EditSurface,
+  Atlas.IDE.Editor.Adapters.LearnedGhost,
+  Atlas.IDE.Commands.Adapters.PaletteRegistry,
+  Atlas.IDE.Setup.Adapters.Environment,
+  Atlas.UI.Completion.Popup,
+  Atlas.UI.Completion.Adapters.PopupView,
+  Atlas.UI.Signature.Hint,
+  Atlas.UI.Signature.Adapters.HintView,
+  Atlas.UI.Hover.Tip,
+  Atlas.UI.Hover.Adapters.TipMeasure;
 
 /// <summary>Quellen der Vervollständigung: Server, XML-Doku und Snippets, mit Abbau und Schaltern.</summary>
 function CompletionSources(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc): TAtlasCompletionSources;
@@ -136,6 +179,11 @@ begin
       mDisk.OnRecycle := AHooks.OnRecycle;
       Result := mDisk;
     end;
+  TAtlasIdeUndo.TargetFactory :=
+    function: IAtlasUndoTarget
+    begin
+      Result := TAtlasIdeUndoTarget.Create;
+    end;
   TAtlasIdeUndo.StoreFactory :=
     function(const AFolder: string; AMaxBytes: Int64): IAtlasUndoStore
     begin
@@ -146,6 +194,80 @@ end;
 function UpdateSource: IAtlasVersionSource;
 begin
   Result := TAtlasHttpVersionSource.Create;
+end;
+
+
+procedure InstallIdeAdapters;
+begin
+  TAtlasIdeSettings.StoreFactory :=
+    function(AWrite: Boolean): IAtlasSettingsStore
+    begin
+      Result := TAtlasRegistrySettingsStore.Create(AWrite);
+    end;
+  TAtlasIdeWorkspaceEdit.EnvironmentFactory :=
+    function(const ATarget: IAtlasUndoTarget): IAtlasEditEnvironment
+    begin
+      Result := TAtlasIdeEditEnvironment.Create(ATarget);
+    end;
+  TAtlasIdeEditSurfaces.Factory :=
+    function(const AView: IOTAEditView): IAtlasEditSurface
+    begin
+      Result := TAtlasIdeEditSurface.Create(AView);
+    end;
+  TAtlasCompletionPopup.ViewFactory :=
+    function(APopup: TAtlasCompletionPopup): IAtlasCompletionView
+    begin
+      Result := TAtlasCompletionPopupView.Create(APopup);
+    end;
+  TAtlasSignatureHint.ViewFactory :=
+    function(AHint: TAtlasSignatureHint): IAtlasSignatureView
+    begin
+      Result := TAtlasSignatureHintView.Create(AHint);
+    end;
+  TAtlasHoverTipView.MeasureFactory :=
+    function(ATip: TAtlasHoverTipView): IAtlasHoverMeasure
+    begin
+      Result := TAtlasHoverTipMeasure.Create(ATip);
+    end;
+end;
+
+function ActiveEditorAdapter: IAtlasActiveEditor;
+begin
+  Result := TAtlasIdeActiveEditor.Create;
+end;
+
+function EditorFilesAdapter: IAtlasEditorFiles;
+begin
+  Result := TAtlasIdeEditorFiles.Create;
+end;
+
+function PaletteRegistry(APalette: TAtlasIdePalette): IAtlasCommandRegistry;
+begin
+  Result := TAtlasPaletteCommandRegistry.Create(APalette);
+end;
+
+function LearnedGhostProvider: IAtlasGhostProvider;
+begin
+  Result := TAtlasLearnedGhostProvider.Create;
+end;
+
+/// <summary>Eigene Routine: Die Methodenreferenz fängt nur AEnvironment ein.</summary>
+function ForgetKeysOf(AEnvironment: TAtlasIdeSetupEnvironment): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      AEnvironment.ForgetKeys;
+    end;
+end;
+
+function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc): IAtlasSetupEnvironment;
+var
+  mEnvironment: TAtlasIdeSetupEnvironment;
+begin
+  mEnvironment := TAtlasIdeSetupEnvironment.Create(AHooks);
+  Result := mEnvironment;
+  AForgetKeys := ForgetKeysOf(mEnvironment);
 end;
 
 end.

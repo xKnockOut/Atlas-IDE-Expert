@@ -44,12 +44,20 @@ uses
 type
   TAtlasIndexEvent = reference to procedure(AIndex: Integer);
 
-  TAtlasSignatureHint = class(TAtlasPopupWindow, IAtlasSignatureView)
+  TAtlasSignatureHint = class;
+
+  /// <summary>Ansicht des Controllers zum Hint AHint.</summary>
+  TAtlasSignatureViewFactory = reference to function(AHint: TAtlasSignatureHint): IAtlasSignatureView;
+
+  TAtlasSignatureHint = class(TAtlasPopupWindow)
   public const
     cMaxWidth = 520;
     /// <summary>Mehr Überladungen werden nicht gezeigt; eine Zeile nennt den Rest.</summary>
     cMaxSignatures = 12;
+  private class var
+    FViewFactory: TAtlasSignatureViewFactory;
   private
+    FView: IAtlasSignatureView;
     FHelp: TAtlasSignatureHelp;
     FSignature: Integer;
     FParameter: Integer;
@@ -92,7 +100,10 @@ type
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
-    { IAtlasSignatureView }
+    /// <summary>Ansicht für TAtlasSignatureController (aus ViewFactory, einmal je Hint); nil ohne ViewFactory.
+    /// </summary>
+    function View: IAtlasSignatureView;
+    { Ansicht (IAtlasSignatureView über View) }
     procedure ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
     procedure HideSignature;
     /// <summary>Neue Lage der Zeile (z. B. nach dem Scrollen, #414); ein offener Hint wandert mit.</summary>
@@ -108,6 +119,8 @@ type
     property OnSelect: TAtlasIndexEvent read FOnSelect write FOnSelect;
     /// <summary>Zeile der Platzhalter von Format zeigen (#451); vor ShowSignature setzen.</summary>
     property FormatPlaceholders: Boolean read FFormatPlaceholders write FFormatPlaceholders;
+    /// <summary>Legt die Ansicht an; setzt die Kompositionswurzel (Atlas.UI.Signature.Adapters.HintView).</summary>
+    class property ViewFactory: TAtlasSignatureViewFactory read FViewFactory write FViewFactory;
     /// <summary>Zum Testen: die gezeigte Zeile der Platzhalter.</summary>
     property FormatLine: TAtlasFormatLine read FFormatLine;
   end;
@@ -761,6 +774,15 @@ begin
   end;
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
+end;
+
+function TAtlasSignatureHint.View: IAtlasSignatureView;
+begin
+  if (FView = nil) and Assigned(FViewFactory) then
+  begin
+    FView := FViewFactory(Self);
+  end;
+  Result := FView;
 end;
 
 procedure TAtlasSignatureHint.ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);

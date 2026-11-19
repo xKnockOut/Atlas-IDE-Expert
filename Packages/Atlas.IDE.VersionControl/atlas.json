@@ -34,6 +34,8 @@
         "Atlas.Core.Lsp.Contract -> Atlas.Text.Json",
         "Atlas.Core.Projects.Contract -> Atlas.Text.Json",
         "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.Core.*",
+        "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.IDE.*.Adapters.*",
+        "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.UI.*.Adapters.*",
         "Atlas.IDE.Debug.Composition -> Atlas.Core.*",
         "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*",
         "Atlas.IDE.Assistants.Composition -> Atlas.Core.*",

@@ -13,7 +13,7 @@ type
     UndoListTitle, UndoDisabled, UndoConflictChanged, UndoConflictExists, UndoConflictMissing, UndoFailed,
     UndoStateApplied, UndoStatePartly, UndoStateUndone, UndoKindCreated, UndoKindDeleted, UndoDiffTitle, UndoNoDiff,
     UndoSetCaption, UndoClose, UndoNothing, RedoNothing, UndoDone, RedoDone, UndoPartial, RedoPartial, UndoAborted,
-    RedoAborted);
+    RedoAborted, UndoRecycleBinNotReachable);
 
   TAtlasUndoStrings = class
   public
@@ -52,7 +52,8 @@ const
      'Atlas: „%s“ in %d Dateien zurückgenommen, %d Dateien blieben unverändert:',
      'Atlas: „%s“ in %d Dateien wiederhergestellt, %d Dateien blieben unverändert:',
      'Atlas: „%s“ nicht zurückgenommen, %d Dateien haben Konflikte (undo.multiFile.onConflict = abort):',
-     'Atlas: „%s“ nicht wiederhergestellt, %d Dateien haben Konflikte (undo.multiFile.onConflict = abort):'),
+     'Atlas: „%s“ nicht wiederhergestellt, %d Dateien haben Konflikte (undo.multiFile.onConflict = abort):',
+     'Papierkorb nicht erreichbar'),
     ('Atlas changes (%d) – double-click shows the difference, right-click undoes',
      'Atlas: undo across files is switched off (undo.multiFile).',
      '  %s: changed at these places after the action',
@@ -75,7 +76,8 @@ const
      'Atlas: "%s" undone in %d files, %d files were left unchanged:',
      'Atlas: "%s" redone in %d files, %d files were left unchanged:',
      'Atlas: "%s" not undone, %d files have conflicts (undo.multiFile.onConflict = abort):',
-     'Atlas: "%s" not redone, %d files have conflicts (undo.multiFile.onConflict = abort):'));
+     'Atlas: "%s" not redone, %d files have conflicts (undo.multiFile.onConflict = abort):',
+     'recycle bin not reachable'));
 
 { TAtlasUndoStrings }
 
