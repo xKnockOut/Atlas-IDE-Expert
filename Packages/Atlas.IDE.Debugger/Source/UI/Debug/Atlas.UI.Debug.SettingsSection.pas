@@ -66,6 +66,7 @@ uses
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.ObjectMarks.Strings,
+  Atlas.UI.Debug.ParallelWatch.Strings,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.OpenedFiles.Strings,
@@ -405,6 +406,9 @@ begin
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesScopedWatches));
   // Objekte markieren (#839).
   Switch('debug.objectMarks', TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.SettingsDebugObjectMarks));
+  // Parallel auswerten (#866).
+  Switch('debug.parallelWatch',
+    TAtlasParallelWatchStrings.Text(TAtlasParallelWatchTextId.SettingsDebugParallelWatch));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped',

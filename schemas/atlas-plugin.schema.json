@@ -2674,6 +2674,18 @@
       "x-captionEn": "Mark objects while debugging",
       "x-issue": "#839"
     },
+    "DebugParallelWatch": {
+      "description": "Ausdrücke in allen Threads auswerten: Fenster „Parallel auswerten“ mit einer Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens) und einer Spalte je Ausdruck. Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, ab 32 Threads erst auf Knopfdruck. Gilt ein Ausdruck in einem Thread nicht, steht dort „–“. Filter je Spalte, Sortieren nach Spalte, markierte Threads oben; Doppelklick wechselt zum Thread. Die Ausdrücke werden je Projekt gespeichert. Aus = kein Fenster, kein Menüpunkt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.parallelWatch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Ausdrücke in allen Threads auswerten",
+      "x-captionEn": "Evaluate expressions in all threads",
+      "x-issue": "#866"
+    },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
       "type": "boolean",

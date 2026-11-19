@@ -896,6 +896,18 @@ Schalter: `debug.callStackWindow` (aus: der Aufrufstack der IDE bleibt, wie er i
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
 
+#### Parallel auswerten (#866)
+
+- Atlas > „Parallel auswerten“ öffnet ein andockbares Fenster, das einen oder mehrere Ausdrücke in allen Threads auswertet: eine Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens), eine Spalte je Ausdruck. Bei acht Arbeitern sieht man so auf einen Blick, welcher gerade welchen Auftrag bearbeitet (`FAuftrag.Nr`).
+- Ausdrücke kommen über das Eingabefeld und „Hinzufügen“ (oder Enter) dazu; das Kontextmenü einer Spalte ändert oder entfernt den Ausdruck. Sie werden je Projekt gespeichert.
+- Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, im Thread selbst mit dem obersten eigenen Rahmen als Ort; der aktuelle Thread bleibt derselbe. Gilt ein Ausdruck in einem Thread nicht (unbekannter Bezeichner), steht dort „–“. Ab 32 Threads wertet Atlas erst auf „Auswerten“ aus.
+- Threads ohne eigenen Rahmen (Pool im Leerlauf, Systemthreads) sind ausgeblendet; „Threads ohne eigenen Code zeigen“ blendet sie ein.
+- Klick auf einen Spaltenkopf sortiert (Zahlen nach Wert), ein zweiter Klick absteigend. „Nur Zeilen mit …“ im Kontextmenü einer Spalte filtert, etwa die Spalte `Abbrechen` auf `True`. Markierte Threads (⚑, „Threads im Quelltext“) stehen oben.
+- Enter oder Doppelklick wechselt zum Thread und springt zur Zeile seines Rahmens.
+- Grenze der ToolsAPI: Einen anderen Rahmen als den, den der Debugger für den Thread wählt, kann Atlas nicht vorgeben; Datei und Zeile des eigenen Rahmens bekommt der Debugger als Ort mit.
+
+Schalter: `debug.parallelWatch`.
+
 <a id="window-atlasdebugleaks"></a>
 #### Atlas-Lecks
 

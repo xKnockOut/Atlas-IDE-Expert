@@ -950,6 +950,18 @@ Settings: `debug.callStackWindow` (off: the IDE call stack stays as it is), `deb
 
 Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`
 
+### Parallel watch (#866)
+
+- Atlas > "Parallel watch" opens a dockable window that evaluates one or more expressions in all threads: one row per thread (ID, name, location of the top own frame), one column per expression. With eight workers you see at a glance which one is working on which order (`FOrder.No`).
+- Add expressions with the field and "Add" (or Enter); the context menu of a column changes or removes the expression. They are stored per project.
+- Atlas evaluates at every stop while the window is visible, in the thread itself with the top own frame as location; the current thread stays the same. If an expression does not apply in a thread (unknown identifier), the cell shows "–". From 32 threads Atlas evaluates only on "Evaluate".
+- Threads without an own frame (idle pool, system threads) are hidden; "Show threads without own code" shows them.
+- Clicking a column header sorts (numbers by value), a second click descending. "Only rows with …" in the context menu of a column filters, for example the column `Cancel` for `True`. Flagged threads (⚑, "Threads in source") come first.
+- Enter or a double click switches to the thread and jumps to the line of its frame.
+- Limit of the ToolsAPI: Atlas cannot choose a frame other than the one the debugger uses for the thread; it passes file and line of the own frame as the location.
+
+Setting: `debug.parallelWatch`
+
 <a id="window-atlasdebugleaks"></a>
 ### Atlas leaks
 

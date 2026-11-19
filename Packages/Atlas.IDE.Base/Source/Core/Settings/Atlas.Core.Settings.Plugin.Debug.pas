@@ -324,6 +324,9 @@ type
     /// <summary>Objekte beim Debuggen markieren (#839, debug.objectMarks): Etiketten an Werten, Fenster „Markierte
     /// Objekte“. Aus = kein Menüpunkt, keine Etiketten.</summary>
     DebugObjectMarks: Boolean;
+    /// <summary>Ausdrücke in allen Threads auswerten (#866, debug.parallelWatch): Fenster „Parallel auswerten“.
+    /// Aus = kein Fenster, kein Menüpunkt.</summary>
+    DebugParallelWatch: Boolean;
     /// <summary>Bedingungen vorausschauen (#2169, debug.predictConditions): Beim Halt zeigt Atlas an den kommenden
     /// if, while und case derselben Routine das vorhergesagte Ergebnis („= False · FOnline“, „→ smManual“), wenn
     /// dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet. Aus = keine Anfrage.</summary>
@@ -596,6 +599,7 @@ begin
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
   DebugVariablesScopedWatches := True;
   DebugObjectMarks := True;
+  DebugParallelWatch := True;
   DebugPredictConditions := True;
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
@@ -643,6 +647,7 @@ begin
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);
   AIo.Flag('DebugVariablesScopedWatches', DebugVariablesScopedWatches);
   AIo.Flag('DebugObjectMarks', DebugObjectMarks);
+  AIo.Flag('DebugParallelWatch', DebugParallelWatch);
   AIo.Flag('DebugPredictConditions', DebugPredictConditions);
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);

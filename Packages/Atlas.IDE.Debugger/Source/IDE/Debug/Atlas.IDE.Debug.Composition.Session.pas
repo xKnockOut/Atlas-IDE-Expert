@@ -30,6 +30,12 @@ function DebugDeadlocksVisible: Boolean;
 procedure ShowDebugParallelStacks;
 /// <summary>Befehl „Parallele Aufrufstapel“ zeigen? (debug.parallelStacks)</summary>
 function DebugParallelStacksVisible: Boolean;
+/// <summary>Befehl Atlas.DebugParallelWatch: Fenster „Parallel auswerten“ (#866).</summary>
+procedure ShowDebugParallelWatch;
+/// <summary>Befehl „Parallel auswerten“ zeigen? (debug.parallelWatch)</summary>
+function DebugParallelWatchVisible: Boolean;
+/// <summary>Text des Befehls Atlas.DebugParallelWatch.</summary>
+function DebugParallelWatchCommandText: string;
 /// <summary>Teil „DebugLeakReport“ (#1875); Serverantworten über AScope.</summary>
 function DebugLeakParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 /// <summary>Befehl Atlas.DebugLeaks: Fenster „Atlas-Lecks“ mit dem letzten Bericht.</summary>
@@ -38,7 +44,8 @@ procedure ShowDebugLeaks;
 function DebugLeaksVisible: Boolean;
 /// <summary>Text des Befehls Atlas.DebugLeaks.</summary>
 function DebugLeaksCommandText: string;
-/// <summary>Nach einem Wechsel des IDE-Themas (Parallele Aufrufstapel, Atlas-Aufrufstapel, Atlas-Lecks).</summary>
+/// <summary>Nach einem Wechsel des IDE-Themas (Parallele Aufrufstapel, Parallel auswerten, Atlas-Aufrufstapel,
+/// Atlas-Lecks).</summary>
 procedure DebugThreadsThemeChanged;
 /// <summary>Befehle „Thread markieren“, „einfrieren“, „auftauen“, „Alle auftauen“ (#852) und
 /// „Atlas-Aufrufstapel“ (#843).</summary>
@@ -60,6 +67,7 @@ uses
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.IDE.Debug.Deadlocks,
   Atlas.IDE.Debug.ParallelStacks,
+  Atlas.IDE.Debug.ParallelWatch,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.ThreadsInSource,
   Atlas.IDE.Debug.ThreadsGutter,
@@ -67,6 +75,7 @@ uses
   Atlas.IDE.Debug.Leaks,
   Atlas.IDE.Debug.Composition.CallStack,
   Atlas.UI.Debug.Leaks.Strings,
+  Atlas.UI.Debug.ParallelWatch.Strings,
   Atlas.UI.Debug.Commands.Strings;
 
 { Dienste von Base }
@@ -101,9 +110,25 @@ begin
   TAtlasIdeDebugParallelStacks.ShowWindow;
 end;
 
+function DebugParallelWatchVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugParallelWatch;
+end;
+
+procedure ShowDebugParallelWatch;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugParallelWatch.ShowWindow);
+end;
+
+function DebugParallelWatchCommandText: string;
+begin
+  Result := TAtlasParallelWatchStrings.Text(TAtlasParallelWatchTextId.ParallelWatchCommand);
+end;
+
 procedure DebugThreadsThemeChanged;
 begin
   TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugParallelStacks.ThemeChanged);
+  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugParallelWatch.ThemeChanged);
   TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugLeaks.ThemeChanged);
   CallStackThemeChanged;
 end;
@@ -268,6 +293,16 @@ begin
       begin
         Result := TAtlasIdeDebugParallelStacks.Started;
       end, TAtlasIdeDebugParallelStacks.Start, TAtlasIdeDebugParallelStacks.Release),
+    // Parallel auswerten (#866): Zuhörer der Debug-Sitzung und Fenster; aus = weder Fenster noch Menüpunkt.
+    TAtlasFeaturePart.When('DebugParallelWatch',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugParallelWatch;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugParallelWatch.Started;
+      end, TAtlasIdeDebugParallelWatch.Start, TAtlasIdeDebugParallelWatch.Release),
     // Threads im Quelltext (#852): Zuhörer der Debug-Sitzung; Release taut alle eingefrorenen Threads auf.
     TAtlasFeaturePart.When('DebugThreadsInSource',
       function(ALevel: TAtlasSafeLevel): Boolean

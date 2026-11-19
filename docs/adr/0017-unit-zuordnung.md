@@ -990,6 +990,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Threads` | `Core/Debug/Atlas.Core.Debug.Threads.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Deadlocks` | `Core/Debug/Atlas.Core.Debug.Deadlocks.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ParallelStacks` | `Core/Debug/Atlas.Core.Debug.ParallelStacks.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.ParallelWatch` | `Core/Debug/Atlas.Core.Debug.ParallelWatch.pas` | Parallel auswerten: Tabelle je Thread, nicht gültige Werte, Filter, Sortierung, #866 |
 | `Atlas.Core.Debug.CallStackParams` | `Core/Debug/Atlas.Core.Debug.CallStackParams.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.CallStackView` | `Core/Debug/Atlas.Core.Debug.CallStackView.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.CallStackFlow` | `Core/Debug/Atlas.Core.Debug.CallStackFlow.pas` | Entscheidungen des Fensters Aufrufstapel ohne IDE (Nachfragen, Antworten, nächster Parameter, Rahmen öffnen), #1967 |
@@ -1075,6 +1076,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.LeaksWindow` | `IDE/Debug/Atlas.IDE.Debug.LeaksWindow.pas` | Andockbares Fenster „Atlas-Lecks“, #1875 |
 | `Atlas.IDE.Debug.DockPanel` | `IDE/Debug/Atlas.IDE.Debug.DockPanel.pas` | Gemeinsamer Gastgeber für neue andockbare Fenster des Debuggers (TAtlasIdeDockWindow) |
 | `Atlas.IDE.Debug.ObjectMarks` | `IDE/Debug/Atlas.IDE.Debug.ObjectMarks.pas` | Objekte beim Debuggen markieren: Befehl, Etiketten an Werten, Abgleich beim Halt, Fenster „Markierte Objekte“, #839 |
+| `Atlas.IDE.Debug.ParallelWatch` | `IDE/Debug/Atlas.IDE.Debug.ParallelWatch.pas` | Parallel auswerten: Stapel aller Threads lesen, je Thread auswerten, Fenster, Sprung zum Thread, #866 |
 | `Atlas.IDE.Debug.Leaks` | `IDE/Debug/Atlas.IDE.Debug.Leaks.pas` | Leckbericht am Ende einer Debug-Sitzung einsammeln, Kandidaten vom Server, Sprung, #1875 |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionDialog` | `IDE/Debug/Atlas.IDE.Debug.ExceptionDialog.pas` | Ordner `IDE/Debug` |
@@ -1130,6 +1132,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.Leaks` | `UI/Debug/Atlas.UI.Debug.Leaks.pas` | Texte des Fensters „Atlas-Lecks“, #1875 |
 | `Atlas.UI.Debug.Leaks.Strings` | `UI/Debug/Atlas.UI.Debug.Leaks.Strings.pas` | Oberflächentexte des Fensters „Atlas-Lecks“, Sprache von Base, #1875 |
 | `Atlas.UI.Debug.ObjectMarks.Strings` | `UI/Debug/Atlas.UI.Debug.ObjectMarks.Strings.pas` | Oberflächentexte für markierte Objekte, Sprache von Base, #839 |
+| `Atlas.UI.Debug.ParallelWatch.Strings` | `UI/Debug/Atlas.UI.Debug.ParallelWatch.Strings.pas` | Oberflächentexte für „Parallel auswerten“, Sprache von Base, #866 |
 | `Atlas.UI.Debug.BreakpointAnchors` | `UI/Debug/Atlas.UI.Debug.BreakpointAnchors.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointRules` | `UI/Debug/Atlas.UI.Debug.BreakpointRules.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointSets` | `UI/Debug/Atlas.UI.Debug.BreakpointSets.pas` | Ordner `UI/Debug` |
@@ -1150,6 +1153,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.CallStackFrame` | `UI/Debug/Atlas.UI.Debug.CallStackFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.LeaksFrame` | `UI/Debug/Atlas.UI.Debug.LeaksFrame.pas` | Inhalt des Fensters „Atlas-Lecks“, #1875 |
 | `Atlas.UI.Debug.ObjectMarksFrame` | `UI/Debug/Atlas.UI.Debug.ObjectMarksFrame.pas` | Inhalt des Fensters „Markierte Objekte“, #839 |
+| `Atlas.UI.Debug.ParallelWatchFrame` | `UI/Debug/Atlas.UI.Debug.ParallelWatchFrame.pas` | Inhalt des Fensters „Parallel auswerten“: Tabelle, Filter, Sortierung, #866 |
 | `Atlas.UI.Debug.InlineValuePainter` | `UI/Debug/Atlas.UI.Debug.InlineValuePainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.MemoryChart` | `UI/Debug/Atlas.UI.Debug.MemoryChart.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.MemoryFrame` | `UI/Debug/Atlas.UI.Debug.MemoryFrame.pas` | Ordner `UI/Debug` |
