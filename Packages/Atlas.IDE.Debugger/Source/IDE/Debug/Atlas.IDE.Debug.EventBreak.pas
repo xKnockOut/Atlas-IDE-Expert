@@ -111,9 +111,7 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.JSON,
-  Vcl.Controls,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.EventBreakNames,
@@ -123,10 +121,12 @@ uses
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.EventBreak.Strings,
   Atlas.UI.Popup.Window,
+  Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Debug.RunMenu,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Caret;
@@ -134,25 +134,6 @@ uses
 const
   cMenuItemName = 'AtlasBreakOnNextEventItem';
   cBreakpointGroup = 'Atlas.Ereignis';
-
-function RunMenu: TMenuItem;
-var
-  mServices: INTAServices;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.MainMenu = nil) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.MainMenu.Items.Count - 1 do
-  begin
-    if SameText(mServices.MainMenu.Items[mIndex].Name, 'RunMenu') then
-    begin
-      Exit(mServices.MainMenu.Items[mIndex]);
-    end;
-  end;
-end;
 
 /// <summary>Laufender Prozess; ohne ihn eine Meldung an AReport.</summary>
 function CurrentProcess(out AProcess: IOTAProcess; const AReport: TAtlasMessageSink): Boolean;
@@ -616,35 +597,19 @@ end;
 
 procedure TAtlasIdeEventBreak.HideBar;
 begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Dismiss;
-  end;
+  TAtlasStopBar.Hide(FBar);
 end;
 
 procedure TAtlasIdeEventBreak.InstallMenu;
-var
-  mParent: TMenuItem;
 begin
-  mParent := RunMenu;
-  if mParent = nil then
-  begin
-    Exit;
-  end;
-  FMenuItem := TMenuItem.Create(nil);
-  FMenuItem.Name := cMenuItemName;
-  FMenuItem.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EventBreakCommand);
-  FMenuItem.OnClick := MenuClick;
-  mParent.Add(FMenuItem);
+  FMenuItem := TAtlasIdeRunMenu.AddItem(cMenuItemName,
+    TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EventBreakCommand), MenuClick);
   UpdateMenu;
 end;
 
 procedure TAtlasIdeEventBreak.UpdateMenu;
 begin
-  if FMenuItem <> nil then
-  begin
-    FMenuItem.Visible := Enabled;
-  end;
+  TAtlasIdeRunMenu.ShowItem(FMenuItem, Enabled);
 end;
 
 class function TAtlasIdeEventBreak.Evaluate(const AExpression: string; out AValue: string): Boolean;
