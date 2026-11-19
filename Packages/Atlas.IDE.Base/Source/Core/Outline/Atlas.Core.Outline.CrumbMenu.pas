@@ -53,7 +53,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Forms.Changes;
+  Atlas.Core.Forms.Changes,
+  Atlas.Text.Lines;
 
 function IsRoutine(const ANode: TAtlasOutlineNode): Boolean;
 begin
@@ -154,16 +155,6 @@ begin
   Result := Trim(Result);
 end;
 
-/// <summary>Erstes Zeichen der Zeile ohne Leerraum davor, 0-basiert.</summary>
-function FirstCharacter(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and CharInSet(ALine[Result + 1], [' ', #9]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 class function TAtlasCrumbMenu.SignatureOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   ANode: Integer): string;
 var
@@ -186,10 +177,10 @@ begin
   mLine := ALines[mNode.NameLine];
   if Pos('.', mNode.Name) > 0 then
   begin
-    Exit(HeaderFrom(ALines, mNode.NameLine, FirstCharacter(mLine)));
+    Exit(HeaderFrom(ALines, mNode.NameLine, TTextLines.IndentLength(mLine)));
   end;
   // Deklaration ohne Rumpf: Wörter vor dem Namen, dann der Name mit Besitzer, dann der Rest.
-  mHead := Trim(Copy(mLine, FirstCharacter(mLine) + 1, mNode.NameCharacter - FirstCharacter(mLine)));
+  mHead := Trim(Copy(mLine, TTextLines.IndentLength(mLine) + 1, mNode.NameCharacter - TTextLines.IndentLength(mLine)));
   Result := HeaderFrom(ALines, mNode.NameLine, mNode.NameCharacter + Length(TAtlasBreadcrumbs.ShortName(mNode.Name)));
   Result := NameOf(ANodes, mTarget) + Result;
   if mHead <> '' then

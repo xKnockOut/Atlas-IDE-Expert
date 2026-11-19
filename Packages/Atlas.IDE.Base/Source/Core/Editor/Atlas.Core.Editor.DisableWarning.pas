@@ -46,23 +46,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.JSON;
-
-function ArgumentsOf(const AJson: string): TJSONArray;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  if mValue is TJSONArray then
-  begin
-    Result := TJSONArray(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
+  System.JSON,
+  Atlas.Text.Json;
 
 function IsIdentifier(const AText: string): Boolean;
 var
@@ -93,7 +78,7 @@ var
   mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasDisableWarningRequest);
-  mArguments := ArgumentsOf(AArgumentsJson);
+  mArguments := TJsonRead.ParseArray(AArgumentsJson);
   try
     Result := (mArguments <> nil) and (mArguments.Count >= cRequestArguments);
     if not Result then
@@ -137,7 +122,7 @@ var
   mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasDisableWarningProject);
-  mArguments := ArgumentsOf(AArgumentsJson);
+  mArguments := TJsonRead.ParseArray(AArgumentsJson);
   try
     Result := (mArguments <> nil) and (mArguments.Count >= cProjectArguments);
     if not Result then

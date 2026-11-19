@@ -63,7 +63,8 @@ implementation
 uses
   System.Math,
   Atlas.Text.Chars,
-  Atlas.Core.Editor.BlockComment;
+  Atlas.Core.Editor.BlockComment,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Ersetzung von [Start, Stop) durch Text; danach markiert SelStart bis SelStop (relativ zu Start).
@@ -147,18 +148,6 @@ begin
   Result := TLspTextPosition.Create(mFirst, AOffset - AStarts[mFirst]);
 end;
 
-function LeadingWhitespace(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(ALine, 1, mIndex - 1);
-end;
-
 /// <summary>Beginnt APos in einem String (nach dem öffnenden Hochkomma)?</summary>
 function InString(const ASpans: TArray<TAtlasCommentSpan>; const APos: TLspTextPosition): Boolean;
 var
@@ -193,7 +182,7 @@ end;
 /// Zeile.</summary>
 function WholeLines(const ALines: TArray<string>; const AStart, AStop: TLspTextPosition): Boolean;
 begin
-  Result := (AStart.Character <= Length(LeadingWhitespace(ALines[AStart.Line]))) and
+  Result := (AStart.Character <= Length(TTextLines.IndentOf(ALines[AStart.Line]))) and
     (((AStop.Line > AStart.Line) and (AStop.Character = 0)) or
     (AStop.Character >= Length(ALines[AStop.Line])));
 end;
@@ -311,7 +300,7 @@ var
   mIndent: string;
   mLineStart: Integer;
 begin
-  mIndent := LeadingWhitespace(FLines[AStartPos.Line]);
+  mIndent := TTextLines.IndentOf(FLines[AStartPos.Line]);
   mLineStart := FStarts[AStartPos.Line];
   APlan.Text := mIndent + AOpener + #10 + Copy(FText, mLineStart + 1, APlan.Stop - mLineStart);
   APlan.SelStart := Length(mIndent) + Length(AOpener) + 1 + (APlan.Start - mLineStart);
