@@ -62,7 +62,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.CodeInsightKeys,
-  Atlas.UI.Strings,
+  Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -361,7 +361,7 @@ begin
 end;
 
 /// <summary>Meldung zu einem geänderten Schalter: AOffId, wenn Atlas übernimmt, sonst AOnId.</summary>
-procedure AddSwitchText(var ATexts: TArray<string>; AChanged, AOwn: Boolean; AOffId, AOnId: TAtlasTextId);
+procedure AddSwitchText(var ATexts: TArray<string>; AChanged, AOwn: Boolean; AOffId, AOnId: TAtlasFoundationTextId);
 begin
   if not AChanged then
   begin
@@ -369,11 +369,11 @@ begin
   end;
   if AOwn then
   begin
-    ATexts := ATexts + [TAtlasStrings.Text(AOffId)];
+    ATexts := ATexts + [TAtlasFoundationStrings.Text(AOffId)];
   end
   else
   begin
-    ATexts := ATexts + [TAtlasStrings.Text(AOnId)];
+    ATexts := ATexts + [TAtlasFoundationStrings.Text(AOnId)];
   end;
 end;
 
@@ -407,11 +407,12 @@ begin
   mOwnTooltip := mSettings.Enabled and mSettings.HoverTooltip;
   mOwnValues := mOwnTooltip and mSettings.DebugHoverValues;
   mTexts := nil;
-  AddSwitchText(mTexts, Apply(mOwn), mOwn, TAtlasTextId.PairGuidesIdeOff, TAtlasTextId.PairGuidesIdeOn);
-  AddSwitchText(mTexts, ApplyHelpInsight(mOwnTooltip), mOwnTooltip, TAtlasTextId.HelpInsightIdeOff,
-    TAtlasTextId.HelpInsightIdeOn);
-  AddSwitchText(mTexts, ApplyTooltipWatches(mOwnValues), mOwnValues, TAtlasTextId.TooltipWatchesIdeOff,
-    TAtlasTextId.TooltipWatchesIdeOn);
+  AddSwitchText(mTexts, Apply(mOwn), mOwn, TAtlasFoundationTextId.PairGuidesIdeOff,
+    TAtlasFoundationTextId.PairGuidesIdeOn);
+  AddSwitchText(mTexts, ApplyHelpInsight(mOwnTooltip), mOwnTooltip, TAtlasFoundationTextId.HelpInsightIdeOff,
+    TAtlasFoundationTextId.HelpInsightIdeOn);
+  AddSwitchText(mTexts, ApplyTooltipWatches(mOwnValues), mOwnValues, TAtlasFoundationTextId.TooltipWatchesIdeOff,
+    TAtlasFoundationTextId.TooltipWatchesIdeOn);
   if Length(mTexts) > 0 then
   begin
     ShowSwitchTexts(mTexts);
