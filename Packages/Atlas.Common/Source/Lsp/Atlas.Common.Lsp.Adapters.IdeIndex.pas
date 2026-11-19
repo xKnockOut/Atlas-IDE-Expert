@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.IdeIndex;
+﻿unit Atlas.Common.Lsp.Adapters.IdeIndex;
 
 // Index für Hover, Vervollständigung und Parameterhilfe: der gemeinsame Index, ergänzt um die Ersatz-Units der
 // IDE (Atlas.Common.Lsp.IdeUnits). Gefragt wird immer zuerst der gemeinsame Index; eine Ersatz-Unit zählt nur,

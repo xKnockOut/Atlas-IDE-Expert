@@ -117,7 +117,8 @@
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.Selection.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.DelphiVersions.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.DprojEditor.Tests.pas"/>
-        <DCCReference Include="Windows\Projects\Atlas.Windows.Projects.DelphiInstallation.Tests.pas"/>
+        <DCCReference Include="Windows\Projects\Atlas.Windows.Projects.Adapters.DelphiInstallation.Tests.pas"/>
+        <DCCReference Include="Windows\Projects\Atlas.Windows.Projects.DelphiRegistry.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Backend.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.StackGuard.Tests.pas"/>
@@ -147,7 +148,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.LibraryUnits.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Processes.Tests.pas"/>
-        <DCCReference Include="Common\Index\Atlas.Common.Index.Adapters.Processes.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.ProcessFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Processes.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Memory.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Content.Tests.pas"/>
@@ -179,6 +180,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.RoutineSignatures.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FormatStrings.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.AsmStatements.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Cancellation.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FormatRoutines.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.WarningCodes.Tests.pas"/>
@@ -217,6 +219,7 @@
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StatusFile.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ServerActivity.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StatusHeartbeat.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StringLiteralCommands.Tests.pas"/>
@@ -441,7 +444,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitAliases.Tests.pas"/>
-        <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.Adapters.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Tests.pas"/>
@@ -509,6 +512,7 @@
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.WorkerPool.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.CustomCancellation.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Messages.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackGuard.Tests.pas"/>
@@ -2342,7 +2346,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Messages.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeProject.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeTypes.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Adapters.IdeTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeUnits.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas"/>

@@ -40,7 +40,7 @@
 //   Verwendung: Name Anzahl, je Stelle Zeilenabstand zur vorigen und Spalte
 //            Merker: 1 = InInterface, 2 = Default, 4 = Virtuell, 8 = NichtVerfügbar
 // Listen: Anzahl, dann die Einträge. Die Datei heißt index.atlasidx (Ablage in
-// Index.Adapters.CacheDirectory).
+// Index.CacheDirectory).
 
 interface
 

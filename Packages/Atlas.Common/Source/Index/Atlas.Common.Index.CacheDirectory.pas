@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Index.Adapters.CacheDirectory;
+﻿unit Atlas.Common.Index.CacheDirectory;
 
 // Cache-Ordner auf der Platte (#184, #492):
 // - Ablage: <Wurzel>\Index\<IDE-Version>\<Projekt-Hash>\index-<Format>.atlasidx,

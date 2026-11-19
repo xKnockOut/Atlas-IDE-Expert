@@ -13,7 +13,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Diagnostics.RuntimeReport;
+  Atlas.Common.Diagnostics.RuntimeReport,
+  Atlas.Common.Diagnostics.Contract;
 
 type
   /// <summary>Eine Adresse aus resolve_address.</summary>

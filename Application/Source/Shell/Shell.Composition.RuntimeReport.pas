@@ -41,7 +41,8 @@ uses
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Leaks.Setup,
-  Atlas.Common.Diagnostics.RuntimeReport;
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Diagnostics.Contract;
 
 type
   /// <summary>Projekt und Map aus den Arbeitsbereichen.</summary>
@@ -50,7 +51,7 @@ type
     FServices: TShellLeakSetupServices;
   public
     constructor Create(const AServices: TShellLeakSetupServices);
-    procedure LoadSymbols(const AUri, AMapName, AExeName: string; ABase: UInt64; out ASymbols: TReportSymbols);
+    function ExecutableOf(const AUri: string): string;
     function UnitFileOf(const AUri: string): TReportUnitFileFunc;
   end;
 
@@ -62,19 +63,16 @@ begin
   FServices := AServices;
 end;
 
-procedure TShellRuntimeReportFiles.LoadSymbols(const AUri, AMapName, AExeName: string; ABase: UInt64;
-  out ASymbols: TReportSymbols);
+function TShellRuntimeReportFiles.ExecutableOf(const AUri: string): string;
 var
-  mExe, mReason: string;
+  mReason: string;
   mInput: TLeakSetupInput;
 begin
-  mExe := AExeName;
-  if (AMapName = '') and (mExe = '') and TShellLeakSetup.InputFor(FServices, AUri, mInput, mReason) and
-    (mInput.OutputFolder <> '') then
+  Result := '';
+  if TShellLeakSetup.InputFor(FServices, AUri, mInput, mReason) and (mInput.OutputFolder <> '') then
   begin
-    mExe := TShellRuntimeReport.ExecutableOf(mInput.OutputFolder, mInput.MainSource);
+    Result := TShellRuntimeReport.ExecutableOf(mInput.OutputFolder, mInput.MainSource);
   end;
-  TRuntimeReports.LoadSymbols(AMapName, mExe, ABase, ASymbols);
 end;
 
 function TShellRuntimeReportFiles.UnitFileOf(const AUri: string): TReportUnitFileFunc;

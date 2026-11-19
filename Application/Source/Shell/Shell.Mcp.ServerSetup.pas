@@ -27,7 +27,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Mcp.Freshness,

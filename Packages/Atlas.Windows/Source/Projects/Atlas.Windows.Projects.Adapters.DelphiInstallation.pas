@@ -1,4 +1,4 @@
-﻿unit Atlas.Windows.Projects.DelphiInstallation;
+﻿unit Atlas.Windows.Projects.Adapters.DelphiInstallation;
 
 // Bibliothekspfade einer Delphi-Installation aus der Registry.
 //
@@ -33,9 +33,6 @@ type
     class function Versions: TArray<string>; static;
     /// <summary>Neueste Installation oder nil, wenn keine gefunden wurde.</summary>
     class function Latest: ILibraryPathProvider; static;
-    /// <summary>Installationsordner der Version (z. B. "37.0") ohne abschließenden Trenner; '' ohne Installation.
-    /// </summary>
-    class function RootDirOf(const AVersion: string): string; static;
     /// <summary>EProjectError, wenn die Version nicht installiert ist.</summary>
     constructor Create(const AVersion: string);
     { ILibraryPathProvider }
@@ -50,33 +47,14 @@ implementation
 
 uses
   System.Classes,
-  System.Generics.Defaults,
   System.Win.Registry,
   Winapi.Windows,
   Winapi.ShlObj,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Windows.Projects.DelphiRegistry;
 
 const
-  cBdsKey = 'Software\Embarcadero\BDS';
-  // Die IDE ist eine 32-Bit-Anwendung; ihre HKLM-Einträge liegen je nach Version in einer der Ansichten.
-  cRegistryViews: array[0..1] of LongWord = (KEY_READ, KEY_READ or KEY_WOW64_32KEY);
   cEnvironmentNames: array[0..4] of string = ('PUBLIC', 'USERPROFILE', 'APPDATA', 'ProgramFiles', 'ProgramFiles(x86)');
-
-function OpenRead(ARoot: HKEY; const AKey: string; AAccess: LongWord): TRegistry; overload;
-begin
-  Result := TRegistry.Create(AAccess);
-  Result.RootKey := ARoot;
-  if not Result.OpenKeyReadOnly(AKey) then
-  begin
-    FreeAndNil(Result);
-  end;
-end;
-
-// Wie oben mit AAccess = KEY_READ.
-function OpenRead(ARoot: HKEY; const AKey: string): TRegistry; overload;
-begin
-  Result := OpenRead(ARoot, AKey, KEY_READ);
-end;
 
 function FolderPath(AFolder: Integer): string;
 var
@@ -92,69 +70,13 @@ begin
   end;
 end;
 
-function CompareVersions(const A, B: string): Integer;
-var
-  mNumberA: Double;
-  mNumberB: Double;
-begin
-  mNumberA := StrToFloatDef(A, 0, TFormatSettings.Invariant);
-  mNumberB := StrToFloatDef(B, 0, TFormatSettings.Invariant);
-  if mNumberA < mNumberB then
-  begin
-    Result := -1;
-  end
-  else if mNumberA > mNumberB then
-  begin
-    Result := 1;
-  end
-  else
-  begin
-    Result := 0;
-  end;
-end;
-
-function ReadRootDir(const AVersion: string): string;
-var
-  mRegistry: TRegistry;
-  mAccess: LongWord;
-begin
-  Result := '';
-  for mAccess in cRegistryViews do
-  begin
-    mRegistry := OpenRead(HKEY_LOCAL_MACHINE, cBdsKey + '\' + AVersion, mAccess);
-    if mRegistry <> nil then
-      try
-        if mRegistry.ValueExists('RootDir') then
-        begin
-          Result := ExcludeTrailingPathDelimiter(mRegistry.ReadString('RootDir'));
-        end;
-      finally
-        mRegistry.Free;
-      end;
-    if Result <> '' then
-    begin
-      Exit;
-    end;
-  end;
-  mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + AVersion);
-  if mRegistry <> nil then
-    try
-      if mRegistry.ValueExists('RootDir') then
-      begin
-        Result := ExcludeTrailingPathDelimiter(mRegistry.ReadString('RootDir'));
-      end;
-    finally
-      mRegistry.Free;
-    end;
-end;
-
 { TDelphiInstallation }
 
 constructor TDelphiInstallation.Create(const AVersion: string);
 begin
   inherited Create;
   FVersion := AVersion;
-  FRootDir := ReadRootDir(AVersion);
+  FRootDir := TDelphiRegistry.RootDirOf(AVersion);
   if FRootDir = '' then
   begin
     raise EProjectError.CreateFmt('Delphi-Version %s ist nicht installiert', [AVersion]);
@@ -168,7 +90,8 @@ var
   mItem: string;
 begin
   Result := nil;
-  mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + FVersion + '\Library\' + APlatform);
+  mRegistry := TDelphiRegistry.OpenRead(HKEY_CURRENT_USER,
+    TDelphiRegistry.cBdsKey + '\' + FVersion + '\Library\' + APlatform);
   if mRegistry = nil then
   begin
     Exit;
@@ -216,7 +139,8 @@ begin
   mNames := TStringList.Create;
   try
     // Benutzerdefinierte Variablen der IDE zuerst, damit sie Vorrang haben.
-    mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + FVersion + '\Environment Variables');
+    mRegistry := TDelphiRegistry.OpenRead(HKEY_CURRENT_USER,
+      TDelphiRegistry.cBdsKey + '\' + FVersion + '\Environment Variables');
     if mRegistry <> nil then
       try
         mRegistry.GetValueNames(mNames);
@@ -253,35 +177,8 @@ begin
 end;
 
 class function TDelphiInstallation.Versions: TArray<string>;
-var
-  mRegistry: TRegistry;
-  mNames: TStringList;
-  mFound: TList<string>;
-  mName: string;
 begin
-  mFound := TList<string>.Create;
-  mNames := TStringList.Create;
-  try
-    mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey);
-    if mRegistry <> nil then
-      try
-        mRegistry.GetKeyNames(mNames);
-      finally
-        mRegistry.Free;
-      end;
-    for mName in mNames do
-    begin
-      if (StrToFloatDef(mName, 0, TFormatSettings.Invariant) > 0) and (ReadRootDir(mName) <> '') then
-      begin
-        mFound.Add(mName);
-      end;
-    end;
-    mFound.Sort(TComparer<string>.Construct(CompareVersions));
-    Result := mFound.ToArray;
-  finally
-    mNames.Free;
-    mFound.Free;
-  end;
+  Result := TDelphiRegistry.Versions;
 end;
 
 class function TDelphiInstallation.Latest: ILibraryPathProvider;
@@ -297,11 +194,6 @@ begin
   begin
     Result := TDelphiInstallation.Create(mInstalled[High(mInstalled)]);
   end;
-end;
-
-class function TDelphiInstallation.RootDirOf(const AVersion: string): string;
-begin
-  Result := ReadRootDir(AVersion);
 end;
 
 function TDelphiInstallation.LibraryPaths(const APlatform: string): TArray<string>;

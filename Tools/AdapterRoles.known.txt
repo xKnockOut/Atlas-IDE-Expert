@@ -1,12 +1,5 @@
 # Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von
 # pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.
-adapter-name Atlas.Common.Lsp.IdeIndex TIdeIndex ISymbolIndex
-adapter-name Atlas.Common.Lsp.IdeTypes TIdeTypeCatalog IRuleIdeTypes
-adapter-name Atlas.Common.Lsp.Impact TImpactDeadline IJsonRpcCancellationToken
-adapter-name Atlas.Common.Lsp.Internals.Cancellation TRequestCancellation IPascalCancellation
-adapter-name Atlas.Common.Lsp.ServerActivity TServerActivityObserver IJsonRpcRequestObserver
-adapter-name Atlas.Common.Lsp.WorkspaceCheck TCheckToken IJsonRpcCancellationToken
-adapter-name Atlas.Common.Projects.UnitLookup TUnitLookup IRuleUnitLookup
 adapter-name Atlas.Core.Diagnostics.ModuleHosting TListener IAtlasRegistryListener
 adapter-name Atlas.IDE.Bookmarks.SavedPlaces TAtlasIdeSavedPlaces IAtlasSavedPlacesSource
 adapter-name Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
@@ -79,9 +72,6 @@ adapter-name Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
 adapter-name Atlas.UI.Tracker.SettingsBranches TAtlasTrackerBranchProvider IAtlasSettingsSectionProvider
 adapter-name Atlas.UI.Tracker.SettingsSection TAtlasTrackerSettingsSection IAtlasSettingsSection
 adapter-name Atlas.UI.Welcome.SettingsSection TAtlasWelcomeSettingsSection IAtlasSettingsSection
-adapter-name Atlas.Windows.Projects.DelphiInstallation TDelphiInstallation ILibraryPathProvider
-adapters-own Atlas.Common.Diagnostics.Adapters.LogFolder TDiagnosticLogFolder IDiagnosticWriter
-adapters-own Atlas.Common.Index.Adapters.DiskFileSystem TDiskIndexFileSystem IIndexFileSystem
 adapters-own Atlas.Core.Ci.Adapters.Credentials TAtlasCiCredentialStore IAtlasCiCredentialStore
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiCancel
 adapters-own Atlas.Core.Ci.Adapters.Http TAtlasCiHttpTransport IAtlasCiConditional
@@ -99,7 +89,6 @@ adapters-own Atlas.Core.Undo.Adapters.DiskTarget TAtlasUndoDiskTarget IAtlasUndo
 adapters-own Atlas.Core.Undo.Adapters.FileStore TAtlasUndoFileStore IAtlasUndoStore
 adapters-own Atlas.Core.Updates.Adapters.HttpSource TAtlasHttpVersionSource IAtlasVersionSource
 adapters-own Atlas.Core.VersionControl.Adapters.ProcessRunner TAtlasVcsProcessRunner IAtlasVcsRunner
-contract Atlas.Common.Lsp.ServerActivity TServerActivityObserver IJsonRpcRequestObserver
 contract Atlas.IDE.Assistants.Composition TAtlasAssistantsModule IAtlasBuildVerdictListener
 contract Atlas.IDE.Bookmarks.Composition TAtlasBookmarksModule IAtlasOverviewBookmarks
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBuildEvaluator
@@ -150,14 +139,6 @@ contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionSyntaxV
 contract Atlas.UI.Completion.Popup TAtlasCompletionPopup IAtlasCompletionView
 contract Atlas.UI.Hover.Tip TTipMeasure IAtlasHoverMeasure
 contract Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
-contract Shell.Composition.LeakCandidates TShellLeakCandidateFiles ILeakCandidateFiles
-contract Shell.Composition.LeakSetup TShellLeakSetupFiles ILeakSetupFiles
-contract Shell.Composition.RuntimeReport TShellRuntimeReportFiles IRuntimeReportFiles
-contract Shell.Diagnostics TShellDiagnostics IJsonRpcRequestObserver
-empty Atlas.Common.Diagnostics.Adapters.LogFolder
-empty Atlas.Common.Index.Adapters.CacheDirectory
-empty Atlas.Common.Index.Adapters.DiskFileSystem
-empty Atlas.Common.Index.Adapters.Processes
 empty Atlas.Core.Ci.Adapters.Credentials
 empty Atlas.Core.Ci.Adapters.Http
 empty Atlas.Core.Credentials.Adapters.Windows
@@ -172,5 +153,3 @@ empty Atlas.Core.Updates.Adapters.HttpSource
 empty Atlas.Core.VersionControl.Adapters.ProcessRunner
 empty Atlas.IDE.Rules.Adapters.BulkFix
 empty Atlas.IDE.Rules.Adapters.SettingsDialog
-empty Atlas.Windows.Monitor.Adapters.Process
-empty Atlas.Windows.Monitor.Adapters.System
