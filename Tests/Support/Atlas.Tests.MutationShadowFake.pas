@@ -4,7 +4,9 @@
 // Mutationslaufs ohne IDE. Build und Run antworten nicht sofort, sondern erst,
 // wenn der Test FinishBuild bzw. FinishRun ruft (wie Build-Pipeline und
 // Thread der Test-EXE). Fehler legt der Test vorher fest: OpenProblem,
-// WriteError, BuildRefusal, CloseError. Calls schreibt mit („open“,
+// WriteError, BuildRefusal, CloseError; ThrowOn („open“, „build“ oder
+// „run“) lässt diesen Aufruf eine Ausnahme „<Aufruf> wirft“ auslösen.
+// Calls schreibt mit („open“,
 // „write“, „build“, „run:<EXE>“, „close“), Written jeden geschriebenen Text.
 
 interface
@@ -22,8 +24,10 @@ type
     FWriteError: string;
     FBuildRefusal: string;
     FCloseError: string;
+    FThrowOn: string;
     FBuilt: TAtlasMutationBuilt;
     FRan: TAtlasMutationRan;
+    procedure Call(const ACall: string);
   public
     constructor Create;
     destructor Destroy; override;
@@ -46,6 +50,7 @@ type
     property WriteError: string read FWriteError write FWriteError;
     property BuildRefusal: string read FBuildRefusal write FBuildRefusal;
     property CloseError: string read FCloseError write FCloseError;
+    property ThrowOn: string read FThrowOn write FThrowOn;
   end;
 
 const
@@ -83,9 +88,18 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasMutationShadowFake.Call(const ACall: string);
+begin
+  FCalls.Add(ACall);
+  if (FThrowOn <> '') and ACall.StartsWith(FThrowOn) then
+  begin
+    raise EInOutError.Create(FThrowOn + ' wirft');
+  end;
+end;
+
 function TAtlasMutationShadowFake.Open(out AProblem: string): Boolean;
 begin
-  FCalls.Add('open');
+  Call('open');
   AProblem := FOpenProblem;
   Result := FOpenProblem = '';
 end;
@@ -107,7 +121,7 @@ end;
 
 function TAtlasMutationShadowFake.Build(const ADone: TAtlasMutationBuilt; out AReason: string): Boolean;
 begin
-  FCalls.Add('build');
+  Call('build');
   AReason := FBuildRefusal;
   Result := FBuildRefusal = '';
   if Result then
@@ -118,7 +132,7 @@ end;
 
 procedure TAtlasMutationShadowFake.Run(const AExecutable: string; const ADone: TAtlasMutationRan);
 begin
-  FCalls.Add('run:' + AExecutable);
+  Call('run:' + AExecutable);
   FRan := ADone;
 end;
 

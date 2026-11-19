@@ -81,6 +81,12 @@ type
     [Test]
     procedure CloseErrorIsNoted;
     [Test]
+    procedure ThrowingOpenStops;
+    [Test]
+    procedure ThrowingBuildMidRunKeepsResults;
+    [Test]
+    procedure ThrowingRunStops;
+    [Test]
     procedure BuildRefusedMidRunKeepsResults;
     [Test]
     procedure BuildErrorMidRunKeepsResults;
@@ -406,6 +412,46 @@ begin
   Assert.AreEqual('Zugriff verweigert', LastNote.Text);
   Assert.AreEqual('open,write,close', FFake.Calls.CommaText);
   Assert.AreEqual('Stopped', FEnds);
+end;
+
+procedure TAtlasMutationFlowTests.ThrowingOpenStops;
+begin
+  FFake.ThrowOn := 'open';
+  Start;
+  Assert.AreEqual('open,close', FFake.Calls.CommaText);
+  Assert.AreEqual('OpenFailed', Kinds);
+  Assert.AreEqual('open wirft', LastNote.Text);
+  Assert.AreEqual('Stopped', FEnds);
+  Assert.IsFalse(FFlow.Active, 'bleibt nicht als aktiv stehen');
+  FFake.ThrowOn := '';
+  Start;
+  Assert.IsTrue(FFlow.Active, 'neuer Lauf möglich');
+end;
+
+procedure TAtlasMutationFlowTests.ThrowingBuildMidRunKeepsResults;
+begin
+  Start;
+  Pass(True);
+  FFake.ThrowOn := 'build';
+  Pass(False);
+  Assert.AreEqual('Started,Outcome,BuildRefused,Cancelled,Finished', Kinds);
+  Assert.AreEqual('build wirft', FNotes[2].Text);
+  Assert.AreEqual('Cancelled', FEnds);
+  Assert.AreEqual(1, FEndedDone, 'der erste Mutant zählt');
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Killed, FEndedStatus[0]);
+  Assert.IsFalse(FFlow.Active);
+end;
+
+procedure TAtlasMutationFlowTests.ThrowingRunStops;
+begin
+  FFake.ThrowOn := 'run';
+  Start;
+  Assert.IsTrue(FFake.FinishBuild(True, cExe, ''));
+  Assert.AreEqual('Started,NotStarted', Kinds);
+  Assert.AreEqual('run wirft', LastNote.Text);
+  Assert.AreEqual('Stopped', FEnds);
+  Assert.AreEqual('close', FFake.Calls[FFake.Calls.Count - 1]);
+  Assert.IsFalse(FFlow.Active);
 end;
 
 procedure TAtlasMutationFlowTests.CloseErrorIsNoted;

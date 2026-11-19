@@ -3,7 +3,8 @@
 // Hintergrundaufträge der Versionsverwaltung: Das Ergebnis kommt im
 // Hauptthread, beendete Threads werden freigegeben, und ein Thread, der nach
 // Stop noch läuft, geht an TAtlasOverdueThreads, statt ohne Besitzer liegen
-// zu bleiben.
+// zu bleiben. Eine Ausnahme im Ergebnis zählt für das Feature und erreicht
+// den Hauptthread nicht.
 
 interface
 
@@ -34,6 +35,10 @@ type
     /// <summary>Ein schon eingereihtes, aber noch nicht zugestelltes Ergebnis verwirft Stop.</summary>
     [Test]
     procedure StopDropsQueuedResult;
+    /// <summary>Wirft das Ergebnis, fängt die Sicherung die Ausnahme und rechnet sie dem Feature an; der Thread
+    /// wird trotzdem freigegeben.</summary>
+    [Test]
+    procedure ThrowingDoneIsGuarded;
   end;
 
 implementation
@@ -41,7 +46,9 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.IOUtils,
   Atlas.Core.Diagnostics.Deadline,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.UnloadSafety,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Diagnostics.BackgroundJobs;
@@ -67,6 +74,8 @@ end;
 
 procedure TAtlasBackgroundJobsTests.TearDown;
 begin
+  TAtlasGuard.OnFailure := nil;
+  TAtlasGuard.Fuse.ResetAll;
   // Ein überfälliger Auftrag endet hier; ohne Freigabe hielte ihn erst der Abbau der Liste.
   FRelease.SetEvent;
   TAtlasOverdueThreads.Settle(cModule, 2000);
@@ -79,7 +88,7 @@ var
   mDone: Boolean;
 begin
   mDone := False;
-  mWorker := TAtlasBackgroundJobs.Create(cModule);
+  mWorker := TAtlasBackgroundJobs.Create(cModule, TAtlasFeature.Tracker);
   try
     Assert.IsTrue(mWorker.Run(
       procedure
@@ -111,7 +120,7 @@ var
 begin
   mDone := False;
   mRelease := FRelease;
-  mWorker := TAtlasBackgroundJobs.Create(cModule);
+  mWorker := TAtlasBackgroundJobs.Create(cModule, TAtlasFeature.Tracker);
   try
     Assert.IsTrue(mWorker.Run(
       procedure
@@ -145,7 +154,7 @@ begin
   mDone := False;
   mFinished := TEvent.Create(nil, True, False, '');
   try
-    mWorker := TAtlasBackgroundJobs.Create(cModule);
+    mWorker := TAtlasBackgroundJobs.Create(cModule, TAtlasFeature.Tracker);
     try
       Assert.IsTrue(mWorker.Run(
         procedure
@@ -165,6 +174,62 @@ begin
     Assert.IsFalse(mDone);
   finally
     mFinished.Free;
+  end;
+end;
+
+procedure TAtlasBackgroundJobsTests.ThrowingDoneIsGuarded;
+var
+  mWorker: TAtlasBackgroundJobs;
+  mReached: Boolean;
+  mFailures: Integer;
+  mFeature: TAtlasFeature;
+  mOldFolder, mFolder: string;
+begin
+  mReached := False;
+  mFailures := 0;
+  mFeature := TAtlasFeature.Completion;
+  TAtlasGuard.Fuse.ResetAll;
+  TAtlasGuard.OnFailure :=
+    procedure(AFeature: TAtlasFeature)
+    begin
+      Inc(mFailures);
+      mFeature := AFeature;
+    end;
+  // Die Fehlerzeile der Sicherung nicht ins Protokoll des Benutzers.
+  mOldFolder := TAtlasGuard.RotatingLog.Folder;
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasBackgroundJobsTests' + TGUID.NewGuid.ToString);
+  TAtlasGuard.RotatingLog.Folder := mFolder;
+  mWorker := TAtlasBackgroundJobs.Create(cModule, TAtlasFeature.Tracker);
+  try
+    Assert.IsTrue(mWorker.Run(
+      procedure
+      begin
+      end,
+      procedure
+      begin
+        mReached := True;
+        raise EInvalidOpException.Create('Anzeige kaputt');
+      end));
+    Assert.WillNotRaise(
+      procedure
+      begin
+        DeliverUntil(
+          function: Boolean
+          begin
+            Result := mReached;
+          end, 5000);
+      end);
+    Assert.IsTrue(mReached);
+    Assert.AreEqual(1, mFailures);
+    Assert.AreEqual<TAtlasFeature>(TAtlasFeature.Tracker, mFeature);
+    Assert.AreEqual(0, mWorker.Pending, 'Thread trotzdem freigegeben');
+  finally
+    mWorker.Free;
+    TAtlasGuard.RotatingLog.Folder := mOldFolder;
+    if TDirectory.Exists(mFolder) then
+    begin
+      TDirectory.Delete(mFolder, True);
+    end;
   end;
 end;
 

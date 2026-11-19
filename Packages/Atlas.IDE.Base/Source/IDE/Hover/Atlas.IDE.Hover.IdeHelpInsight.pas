@@ -9,6 +9,12 @@
 // Schalter eines fremden Managers nicht und beginnt jeden Start mit „an“.
 // Es gibt nur einen Wächter; der Haken endet mit Destroy, danach erreicht
 // kein Ereignis mehr Atlas.
+// Grenzen: Der Haken läuft außerhalb des Kontexts, das Fenster wird also erst
+// nach dem Anzeigen versteckt und kann kurz aufblitzen. Entschieden wird nach
+// der Datei im Editor unter der Maus (MouseOver aus dem Hover), sonst nach dem
+// obersten Editor. Scheitert SetWinEventHook, oder erscheint das Fenster in
+// einer Sitzung mit Atlas-Tooltip nie (Klasse umbenannt), steht das im
+// Protokoll; der Wächter wirkt dann nicht.
 
 interface
 
@@ -20,12 +26,18 @@ type
   private
     FHook: THandle;
     FOwnTooltip: TFunc<Boolean>;
-    FHandlesTopFile: TFunc<Boolean>;
+    FTopFile: TFunc<string>;
+    FHandles: TFunc<string, Boolean>;
+    FMouseFile: string;
+    FSeen: Boolean;
   public
-    /// <summary>Haken anlegen; nur im Hauptthread. AOwnTooltip: zeigt Atlas den Tooltip selbst? AHandlesTopFile:
-    /// bedient Atlas die Datei im obersten Editor?</summary>
-    constructor Create(const AOwnTooltip, AHandlesTopFile: TFunc<Boolean>);
+    /// <summary>Haken anlegen; nur im Hauptthread. AOwnTooltip: zeigt Atlas den Tooltip selbst? ATopFile: Datei im
+    /// obersten Editor ('' ohne); AHandles: bedient Atlas diese Datei?</summary>
+    constructor Create(const AOwnTooltip: TFunc<Boolean>; const ATopFile: TFunc<string>;
+      const AHandles: TFunc<string, Boolean>);
     destructor Destroy; override;
+    /// <summary>Die Maus steht im Editor mit AFileName (aus der Mausbewegung des Hovers).</summary>
+    procedure MouseOver(const AFileName: string);
     /// <summary>Fenster AWindow ausblenden, wenn es das Help-Insight-Fenster ist und der Atlas-Tooltip gilt.</summary>
     procedure WindowShown(AWindow: THandle);
   end;
@@ -77,17 +89,24 @@ end;
 
 { TAtlasIdeHelpInsightGuard }
 
-constructor TAtlasIdeHelpInsightGuard.Create(const AOwnTooltip, AHandlesTopFile: TFunc<Boolean>);
+constructor TAtlasIdeHelpInsightGuard.Create(const AOwnTooltip: TFunc<Boolean>; const ATopFile: TFunc<string>;
+  const AHandles: TFunc<string, Boolean>);
 begin
   inherited Create;
   FOwnTooltip := AOwnTooltip;
-  FHandlesTopFile := AHandlesTopFile;
+  FTopFile := ATopFile;
+  FHandles := AHandles;
   if Guard = nil then
   begin
     Guard := Self;
     // Außerhalb des Kontexts: Die Meldung kommt über die Nachrichtenschleife des Hauptthreads.
     FHook := AtlasSetWinEventHook(cEventObjectShow, cEventObjectShow, 0, WinEventShown, GetCurrentProcessId, 0,
       cWinEventOutOfContext);
+    if FHook = 0 then
+    begin
+      TAtlasGuard.Log(Format('Help Insight: SetWinEventHook gescheitert (Fehler %d), ' + // german-ok: Protokoll
+        'das Fenster der IDE bleibt neben dem Atlas-Tooltip sichtbar', [GetLastError])); // german-ok: Protokoll
+    end;
   end;
 end;
 
@@ -97,29 +116,48 @@ begin
   begin
     Guard := nil;
   end;
+  if TAtlasIdeHelpInsight.ReportUnseen(FHook <> 0, FMouseFile <> '', FSeen) then
+  begin
+    TAtlasGuard.Log('Help Insight: Fenster der Klasse ' + // german-ok: Protokoll
+      TAtlasIdeHelpInsight.cWindowClass + ' in dieser Sitzung nie gesehen; ' + // german-ok: Protokoll
+      'heißt es in dieser IDE anders, wirkt der Wächter nicht'); // german-ok: Protokoll
+  end;
   if FHook <> 0 then
   begin
     AtlasUnhookWinEvent(FHook);
     FHook := 0;
   end;
   FOwnTooltip := nil;
-  FHandlesTopFile := nil;
+  FTopFile := nil;
+  FHandles := nil;
+  FMouseFile := '';
   inherited Destroy;
+end;
+
+procedure TAtlasIdeHelpInsightGuard.MouseOver(const AFileName: string);
+begin
+  FMouseFile := AFileName;
 end;
 
 procedure TAtlasIdeHelpInsightGuard.WindowShown(AWindow: THandle);
 var
-  mClass: string;
+  mClass, mFile: string;
 begin
   try
     // Zuerst die Klasse: Jedes Fenster der IDE, das sichtbar wird, kommt hier vorbei.
     mClass := WindowClassName(AWindow);
-    if not TAtlasIdeHelpInsight.IsHelpInsightWindow(mClass) or TAtlasGuard.Disabled(TAtlasFeature.Hover) or
-      not Assigned(FOwnTooltip) or not Assigned(FHandlesTopFile) then
+    if not TAtlasIdeHelpInsight.IsHelpInsightWindow(mClass) then
     begin
       Exit;
     end;
-    if TAtlasIdeHelpInsight.ShouldHide(mClass, FOwnTooltip(), FHandlesTopFile()) then
+    FSeen := True;
+    if TAtlasGuard.Disabled(TAtlasFeature.Hover) or not Assigned(FOwnTooltip) or not Assigned(FTopFile) or
+      not Assigned(FHandles) then
+    begin
+      Exit;
+    end;
+    mFile := TAtlasIdeHelpInsight.FileToDecide(FMouseFile, FTopFile());
+    if TAtlasIdeHelpInsight.ShouldHide(mClass, FOwnTooltip(), (mFile <> '') and FHandles(mFile)) then
     begin
       ShowWindow(AWindow, SW_HIDE);
     end;

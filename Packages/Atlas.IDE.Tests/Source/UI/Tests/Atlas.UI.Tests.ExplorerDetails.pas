@@ -66,6 +66,7 @@ implementation
 
 uses
   Vcl.Clipbrd,
+  Atlas.UI.Foundation.ListBox,
   Atlas.UI.Tests.Strings;
 
 const
@@ -105,7 +106,7 @@ begin
   FTabs.Align := alClient;
   FTabs.OnChange := TabChange;
   FTabs.Parent := FPanel;
-  FList := TListBox.Create(FFrame);
+  FList := TAtlasListBox.Create(FFrame);
   FList.Align := alClient;
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;

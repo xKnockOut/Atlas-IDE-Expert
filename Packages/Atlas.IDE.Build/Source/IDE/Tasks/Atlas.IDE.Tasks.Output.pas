@@ -80,6 +80,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Tasks.Contract,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Build.Strings,
   Atlas.UI.Tasks.Texts;
@@ -361,6 +362,12 @@ var
   mEntry: TEntry;
 begin
   mEntry := Find(AId);
+  // Scheiterte schon der Start (Variablen einsetzen), fehlt der Kopf noch: Der Fehler soll trotzdem sichtbar sein.
+  if (mEntry = nil) and (ARun.Outcome = TAtlasTaskOutcome.StartFailed) then
+  begin
+    Started(AId, ARun.Name, ARun.CommandLine, 0, True);
+    mEntry := Find(AId);
+  end;
   if mEntry = nil then
   begin
     Exit;

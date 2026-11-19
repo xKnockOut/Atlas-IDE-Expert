@@ -79,6 +79,7 @@ uses
   System.UITypes,
   Vcl.Forms,
   Atlas.Core.Style.Signal,
+  Atlas.UI.Foundation.ListBox,
   Atlas.UI.Tests.Strings;
 
 { TAtlasTestsListDialog }
@@ -170,7 +171,7 @@ var
   mRow: TPanel;
   mLeft: Integer;
 begin
-  FRules := TListBox.Create(Self);
+  FRules := TAtlasListBox.Create(Self);
   FRules.Parent := AddRow(cRulesHeight);
   FRules.Align := alClient;
   mRow := AddRow(cLineHeight);

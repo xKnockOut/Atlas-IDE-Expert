@@ -274,12 +274,20 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.HoverTooltip;
     end,
-    function: Boolean
+    function: string
     var
       mView: IOTAEditView;
     begin
+      Result := '';
       mView := TAtlasEditorBuffer.TopView;
-      Result := (mView <> nil) and (mView.Buffer <> nil) and Handles(mView.Buffer.FileName);
+      if (mView <> nil) and (mView.Buffer <> nil) then
+      begin
+        Result := mView.Buffer.FileName;
+      end;
+    end,
+    function(AFileName: string): Boolean
+    begin
+      Result := Handles(AFileName);
     end);
 end;
 
@@ -390,6 +398,11 @@ begin
       begin
         mKey := ProblemKey(mPos);
       end;
+    end;
+    // Help Insight der IDE entscheidet nach dem Editor unter der Maus (auch in Dateien, die Atlas nicht bedient).
+    if (FHelpInsight <> nil) and (mPos.View <> nil) and (mPos.View.Buffer <> nil) then
+    begin
+      FHelpInsight.MouseOver(mPos.View.Buffer.FileName);
     end;
     TrackKey(mKey);
   except
