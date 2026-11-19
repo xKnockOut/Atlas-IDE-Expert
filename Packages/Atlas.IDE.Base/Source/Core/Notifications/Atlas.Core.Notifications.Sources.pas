@@ -59,6 +59,9 @@ type
     /// <summary>Kein Kommandozeilen-Compiler (#1822): einmal überhaupt, gemerkt in ui.editionNoticeShown. Nicht in
     /// Known.</summary>
     cEdition = 'edition';
+    /// <summary>Vom Debugger geöffnete Dateien nach der Sitzung (#842): Frage bzw. „geschlossen“ mit „Wieder öffnen“.
+    /// Nicht in Known: abgeschaltet wird über debug.closeOpenedFiles.</summary>
+    cDebugFiles = 'debugFiles';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;

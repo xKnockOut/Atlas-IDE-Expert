@@ -339,6 +339,11 @@
         <DCCReference Include="Common\Hotspots\Atlas.Common.Hotspots.History.Tests.pas"/>
         <DCCReference Include="Common\Hotspots\Atlas.Common.Hotspots.Analysis.Tests.pas"/>
         <DCCReference Include="Common\Hotspots\Atlas.Common.Hotspots.Service.Tests.pas"/>
+        <DCCReference Include="Common\History\Atlas.Common.History.Similarity.Tests.pas"/>
+        <DCCReference Include="Common\History\Atlas.Common.History.Commits.Tests.pas"/>
+        <DCCReference Include="Common\History\Atlas.Common.History.Service.Tests.pas"/>
+        <DCCReference Include="Common\History\Atlas.Common.History.Report.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.HistoryTools.Tests.pas"/>
         <DCCReference Include="Common\Hotspots\Atlas.Common.Hotspots.Report.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Report.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Service.Tests.pas"/>
@@ -1043,6 +1048,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EventBreak.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Logpoints.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Note.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.OpenedFiles.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Exceptions.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.AccessViolation.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Threads.Strings.pas"/>
@@ -2318,6 +2324,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.RefactorSources.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ChangeTools.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.HistoryTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Changes.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Conventions.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Conventions.Tests.pas"/>
@@ -2351,6 +2358,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CheckTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tools.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.HistoryTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorSources.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
@@ -2513,8 +2521,12 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Check.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Reports.pas"/>
         <DCCReference Include="Application\Shell\Shell.Linter.Parts.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Linter.Baseline.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Hotspots.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.SymbolHistory.pas"/>
+        <DCCReference Include="Application\Shell\Shell.VersionControl.TestSupport.pas"/>
         <DCCReference Include="Application\Shell\Shell.Hotspots.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.SymbolHistory.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.FreeRoutineMembers.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.RtlMethodReferences.Tests.pas"/>
@@ -2609,7 +2621,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.RuntimeReport.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.LaunchGroups.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.OpenedFiles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Note.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.OpenedFiles.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.IgnoreList.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionDialog.Tests.pas"/>
