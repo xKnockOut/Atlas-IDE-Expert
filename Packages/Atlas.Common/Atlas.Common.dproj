@@ -339,6 +339,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hotspots.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataAccessSites.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExitPoints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Reassigned.pas"/>
@@ -352,6 +353,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InterfaceMethods.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BulkFix.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FindingsPrompt.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DisableWarning.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerFixes.pas"/>
@@ -661,6 +663,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeCompatibility.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.StepCalls.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.DataAccessCalls.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Contract.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TreeUnits.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
@@ -722,6 +725,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ProfileTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.LastTests.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeContext.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ReportTools.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Contract.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Sampling.pas"/>

@@ -127,17 +127,8 @@ begin
 end;
 
 class function TAtlasReassignedNames.TryColor(const AText: string; out AColor: TAtlasColor): Boolean;
-var
-  mValue: Integer;
-  mText: string;
 begin
-  AColor := 0;
-  mText := Trim(AText);
-  Result := (Length(mText) = 7) and (mText[1] = '#') and TryStrToInt('$' + Copy(mText, 2, 6), mValue);
-  if Result then
-  begin
-    AColor := TAtlasColorMath.FromHex(mText);
-  end;
+  Result := TAtlasColorMath.TryFromHex(Trim(AText), AColor);
 end;
 
 class function TAtlasReassignedNames.NormalizeColor(const AText: string): string;

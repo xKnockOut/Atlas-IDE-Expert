@@ -16,6 +16,10 @@ const
   cMaxListWidth = 720;
   cMinPanelWidth = 220;
   cMaxPanelWidth = 600;
+  /// <summary>Vorgaben: sichtbare Zeilen der Liste, Breite der Seitenleiste in Pixel, Verzögerung in ms.</summary>
+  cDefaultCompletionRows = 9;
+  cDefaultCompletionPanelWidth = 320;
+  cDefaultCompletionOpenDelay = 150;
   /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
   cMaxOpenDelay = 2000;
   /// <summary>Grenzen der gelernten Vorschläge (#1890): Pause in ms, Anteil in %, Mindestzahl.</summary>
@@ -110,9 +114,9 @@ uses
 class function TAtlasPluginCompletionSettings.Defaults: TAtlasPluginCompletionSettings;
 begin
   Result.Enabled := True;
-  Result.VisibleRows := 9;
+  Result.VisibleRows := cDefaultCompletionRows;
   Result.ListWidth := 0;
-  Result.PanelWidth := 320;
+  Result.PanelWidth := cDefaultCompletionPanelWidth;
   Result.PanelCollapsed := False;
   Result.SelectionMarker := True;
   Result.AutoParentheses := True;
@@ -121,7 +125,7 @@ begin
   Result.AutoUses := True;
   Result.ParameterHints := True;
   Result.FormatPlaceholders := True;
-  Result.OpenDelayMs := 150;
+  Result.OpenDelayMs := cDefaultCompletionOpenDelay;
   Result.FilterChips := True;
   Result.Learning := True;
   Result.Favorites := True;

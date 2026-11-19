@@ -2,7 +2,8 @@
 
 // Abschnitt des Moduls KI-Assistenten im Optionsdialog (#1888, Muster #1456): eigene Seite „KI-Assistenten“
 // (#1906) mit dem Modulschalter assistants.enabled, Schreiben in offene Dateien (assistants.edit) und Builds für
-// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline).
+// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline) und
+// IDE-Zustand für get_ide_context (assistants.context, #2050).
 // KI-Schattentext (#1922): Schalter, Anbieter, Modell, Zeilen, Ausnahmen, Tagesgrenze und der Schlüssel des
 // gewählten Anbieters. Der Schlüssel wird nie angezeigt; hinterlegen und entfernen gehen über KeyHooks, die die
 // Komposition setzt (Anmeldespeicher von Windows).
@@ -108,6 +109,11 @@ begin
   // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
   Switch('assistants.edit', T(TAtlasAssistantsTextId.SettingsEdit));
   Switch('compiler.mcpBuild', T(TAtlasAssistantsTextId.SettingsMcpBuild));
+  // IDE-Zustand (#2050): wo der Entwickler gerade ist, samt Auswahl bis zur Grenze.
+  Switch('assistants.context', T(TAtlasAssistantsTextId.SettingsContext));
+  Switch('assistants.context.selection', T(TAtlasAssistantsTextId.SettingsContextSelection));
+  Number('assistants.context.selectionMax',
+    T(TAtlasAssistantsTextId.SettingsContextSelectionMax));
   // KI-Schattentext (#1922).
   Switch('assistants.inlineSuggestions', T(TAtlasAssistantsTextId.SettingsInline));
   Host.AddHint(T(TAtlasAssistantsTextId.SettingsPrivacy), cPrivacyHeight);
