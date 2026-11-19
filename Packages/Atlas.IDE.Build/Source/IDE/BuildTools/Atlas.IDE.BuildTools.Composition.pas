@@ -74,8 +74,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.Build.RunningProgram,
-  Atlas.Core.Tasks.Adapters.Process,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Providers.Process,
   Atlas.Core.Tasks.Runs,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -83,6 +82,7 @@ uses
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Build.RunningProgram,
   Atlas.IDE.StartProfiles.Service,
+  Atlas.IDE.BuildTools.Adapters.TaskLauncher,
   Atlas.IDE.Tasks.Projects,
   Atlas.IDE.Tasks.Runner,
   Atlas.UI.Tasks.Texts,
@@ -143,18 +143,6 @@ begin
 end;
 
 { Projektaufgaben (#900) }
-
-/// <summary>Prozessstart der Projektaufgaben (Adapter); eigene Routine, damit die Referenz nichts aus StartTasks
-/// einfängt.</summary>
-function TaskProcess: TAtlasTaskProcessRun;
-begin
-  Result :=
-    function(const ATask: TAtlasTaskDefinition; ACodePage: Integer; const ACancelled: TFunc<Boolean>;
-      const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult
-    begin
-      Result := TAtlasTaskProcess.Run(ATask, ACodePage, ACancelled, AOnLine);
-    end;
-end;
 
 /// <summary>Ende einer Aufgabe an jeden IAtlasTaskListener (etwa die Schnellaktionen der Willkommensseite).</summary>
 procedure AnnounceTask(const AProject: string; const ARun: TAtlasTaskRun);
@@ -221,7 +209,7 @@ procedure StartTasks;
 var
   mEvents: TAtlasCompileEvents;
 begin
-  GTasks := TAtlasIdeTasks.Create(TaskProcess());
+  GTasks := TAtlasIdeTasks.Create(TAtlasIdeTaskLauncher.Factory(TAtlasTaskProcess.Create));
   GTasks.OnRebuild := RebuildAfterTasks;
   GTasks.OnFinished := AnnounceTask;
   // Projektaufgaben vor dem Build (tasks.beforeBuild); beim Stoppen wieder abgemeldet.

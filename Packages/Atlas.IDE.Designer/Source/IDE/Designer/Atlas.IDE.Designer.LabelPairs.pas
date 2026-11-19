@@ -93,7 +93,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   ToolsAPI,
-  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.LabelPairs,
   Atlas.Core.Designer.NearAlign,
   Atlas.Core.Diagnostics.Guard,
@@ -699,7 +699,7 @@ begin
   begin
     Exit;
   end;
-  mSurface := TAtlasIdeDesignSurface.Create(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
+  mSurface := TAtlasIdeDesignSurfaces.Make(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
   mSettings := TAtlasIdeSettings.Current;
   FSnapshot.Take(mEditor.FileName, mRoot);
   FCreated.Clear;
@@ -779,7 +779,7 @@ begin
   try
     // Erst die erzeugten Labels löschen (nur die noch lebenden dieses Formulars), dann die Lage der übrigen
     // zurücksetzen.
-    mSurface := TAtlasIdeDesignSurface.Wrap(TAtlasDesignerAccess.DesignerOf(mEditor));
+    mSurface := TAtlasIdeDesignSurfaces.Wrap(TAtlasDesignerAccess.DesignerOf(mEditor));
     if mSurface <> nil then
     begin
       FCreated.Undo(mSurface);
@@ -814,7 +814,7 @@ end;
 
 function TAtlasIdeLabelPairs.CanUndo: Boolean;
 begin
-  Result := FSnapshot.CanRestore or FCreated.Holds(TAtlasIdeDesignSurface.Active);
+  Result := FSnapshot.CanRestore or FCreated.Holds(TAtlasIdeDesignSurfaces.Active);
 end;
 
 class function TAtlasIdeLabelPairs.CanCreate: Boolean;

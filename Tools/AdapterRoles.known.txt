@@ -1,16 +1,7 @@
 # Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von
 # pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.
 adapter-name Atlas.Core.Diagnostics.ModuleHosting TListener IAtlasRegistryListener
-adapter-name Atlas.IDE.Bookmarks.SavedPlaces TAtlasIdeSavedPlaces IAtlasSavedPlacesSource
 adapter-name Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-adapter-name Atlas.IDE.Debug.AssistantControl TAtlasIdeDebugAssistantControl IAtlasDebugControl
-adapter-name Atlas.IDE.Debug.KnownErrors TAtlasIdeDebugKnownErrorsView IAtlasKnownErrorsView
-adapter-name Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
-adapter-name Atlas.IDE.Debug.Report TAtlasIdeDebugReport IAtlasDebugReportSource
-adapter-name Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
-adapter-name Atlas.IDE.Debug.StopSource TAtlasIdeDebugStopSource IAtlasDebugStopSource
-adapter-name Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
-adapter-name Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
 adapter-name Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
 adapter-name Atlas.IDE.Editor.LearnedSuggestions TLearnedProvider IAtlasGhostProvider
 adapter-name Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
@@ -21,8 +12,6 @@ adapter-name Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsStore
 adapter-name Atlas.IDE.Generate.Gallery TGalleryWatch IAtlasRegistryListener
 adapter-name Atlas.IDE.Settings.ModuleNodes TAtlasModuleNodeWatch IAtlasRegistryListener
 adapter-name Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
-adapter-name Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
-adapter-name Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 adapter-name Atlas.IDE.Undo.Target TAtlasIdeUndoTarget IAtlasUndoTarget
 adapter-name Atlas.IDE.Welcome.Continue TAtlasIdeContinue IAtlasContinueSource
 adapter-name Atlas.IDE.Welcome.ContinueIssues TAtlasIdeContinueIssues IAtlasContinueIssuesSource
@@ -67,10 +56,6 @@ contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasBui
 contract Atlas.IDE.BuildPipeline.Composition TAtlasBuildPipelineModule IAtlasCompilerMessagesListener
 contract Atlas.IDE.CodeInsight.Composition.Build TNotificationsVerdictListener IAtlasBuildVerdictListener
 contract Atlas.IDE.Commands.Palette TAtlasIdePalette IAtlasCommandRegistry
-contract Atlas.IDE.Debug.ObjectCountReader TAtlasIdeProcessMemory IAtlasProcessMemory
-contract Atlas.IDE.Debug.Session TTarget IAtlasDebugTarget
-contract Atlas.IDE.Debug.ThreadEvaluator TAtlasIdeDebugThreadEvaluator IAtlasDebugEvaluator
-contract Atlas.IDE.Designer.Surface TAtlasIdeDesignSurface IAtlasDesignSurface
 contract Atlas.IDE.Editor.EditSurface TAtlasIdeEditSurface IAtlasEditSurface
 contract Atlas.IDE.Editor.WorkspaceEdit TAtlasIdeEditEnvironment IAtlasEditEnvironment
 contract Atlas.IDE.Foundation.Settings TRegistryStore IAtlasSettingsNames
@@ -79,9 +64,7 @@ contract Atlas.IDE.Rules.Adapters.BulkFix TAtlasIdeRulesBulkFix IAtlasBulkFixer
 contract Atlas.IDE.Rules.Adapters.SettingsDialog TAtlasRulesDialogProvider IAtlasSettingsDialogProvider
 contract Atlas.IDE.Search.Composition TAtlasSearchModule IAtlasTakenActions
 contract Atlas.IDE.Setup.Checklist TIdeEnvironment IAtlasSetupEnvironment
-contract Atlas.IDE.Tasks.Launcher TAtlasIdeTaskLauncher IAtlasTaskLauncher
 contract Atlas.IDE.Tests.Composition TAtlasTestsModule IAtlasBuildVerdictListener
-contract Atlas.IDE.Tests.MutationShadowProject TAtlasIdeMutationShadowProject IAtlasMutationShadowProject
 contract Atlas.IDE.Tracker.Adapters.PaletteSearch TAtlasIssuePaletteSourceAdapter IAtlasPaletteSource
 contract Atlas.IDE.Tracker.Adapters.TestResults TAtlasTestsSummaryListener IAtlasProjectSummaryListener
 contract Atlas.IDE.Tracker.Composition TAtlasTrackerModule IAtlasPaletteSourceProvider
@@ -109,7 +92,6 @@ contract Atlas.UI.Signature.Hint TAtlasSignatureHint IAtlasSignatureView
 empty Atlas.Core.Credentials.Adapters.Windows
 empty Atlas.Core.Files.Adapters.FolderWatcher
 empty Atlas.Core.Lsp.Adapters.ServerProcess
-empty Atlas.Core.Tasks.Adapters.Process
 empty Atlas.Core.Undo.Adapters.DiskTarget
 empty Atlas.Core.Undo.Adapters.FileStore
 empty Atlas.Core.Updates.Adapters.HttpSource

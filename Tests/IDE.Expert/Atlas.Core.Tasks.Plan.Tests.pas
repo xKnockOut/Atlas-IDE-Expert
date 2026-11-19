@@ -39,7 +39,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.PreBuild,
   Atlas.Core.Tasks.Plan,
   Atlas.Core.Tasks.Runs;

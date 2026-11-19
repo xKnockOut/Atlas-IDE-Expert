@@ -5,8 +5,8 @@
 //   Ergebnis wertlos), dann je Mutant: Kopie schreiben, Schattenprojekt bauen,
 //   Test-EXE ausführen, Ausgang festhalten.
 // - Öffnen, Schreiben, Bauen, Ausführen und Schließen des Schattenprojekts
-//   übernimmt IAtlasMutationShadowProject: in der IDE das echte
-//   Schattenprojekt, in den Tests eine Fälschung.
+//   übernimmt IAtlasMutationShadowProject (Atlas.Core.Tests.Contract): in der
+//   IDE das echte Schattenprojekt, in den Tests eine Fälschung.
 // - Ein Ende mitten im Lauf (Kopie nicht schreibbar, Build abgelehnt, keine
 //   oder nicht startbare Test-EXE) behält wie „Abbrechen“ alles bis dahin
 //   Bewertete: Grund, Überlebende, Schlusszeile, Ende Cancelled. Nur vor dem
@@ -24,44 +24,16 @@ interface
 
 uses
   Atlas.Core.VersionControl.Contract,
+  Atlas.Core.Tests.Contract,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan;
 
 type
-  {$SCOPEDENUMS ON}
-  /// <summary>Wie die Test-EXE endete: Completed = gelaufen (Exitcode und Bericht zählen), Cancelled = abgebrochen,
-  /// TimedOut = Zeitlimit, NotStarted = gar nicht gelaufen (fehlt, gesperrt, nicht startbar).</summary>
-  TAtlasMutationRunState = (Completed, Cancelled, TimedOut, NotStarted);
-  {$SCOPEDENUMS OFF}
-
-  /// <summary>Ende des Builds: ASucceeded = übersetzt; AExecutable: die Test-EXE ('' = keine gefunden); AError: Build
-  /// gar nicht gelaufen.</summary>
-  TAtlasMutationBuilt = reference to procedure(ASucceeded: Boolean; const AExecutable, AError: string);
-  /// <summary>Ende der Test-EXE: wie sie endete, Exitcode und XML-Bericht ('' = keiner).</summary>
-  TAtlasMutationRan = reference to procedure(AState: TAtlasMutationRunState; AExitCode: Integer; const AXml: string);
-
   TAtlasMutationRunStates = class
   public
     /// <summary>Zustand der Test-EXE aus dem Ergebnis des Prozessläufers: fehlende oder nicht startbare EXE
     /// (ToolMissing, Failed mit Exitcode -1) und jede Ablehnung ohne Prozess gelten als NotStarted.</summary>
     class function FromRunner(AOutcome: TAtlasVcsOutcome; AExitCode: Integer): TAtlasMutationRunState; static;
-  end;
-
-  /// <summary>Das Schattenprojekt neben dem Testprojekt, wie der Ablauf es braucht.</summary>
-  IAtlasMutationShadowProject = interface
-    ['{4E5D92B9-A5F1-428C-9F07-B64BC3698A39}']
-    /// <summary>Anlegen und öffnen; False mit Meldung AProblem.</summary>
-    function Open(out AProblem: string): Boolean;
-    /// <summary>Name für Meldungen.</summary>
-    function Name: string;
-    /// <summary>Kopie der Unit mit den Zeilen ALines schreiben; wirft bei Fehler.</summary>
-    procedure Write(const ALines: TArray<string>);
-    /// <summary>Vollständig bauen; False mit AReason, wenn nicht gebaut wird, sonst kommt ADone.</summary>
-    function Build(const ADone: TAtlasMutationBuilt; out AReason: string): Boolean;
-    /// <summary>Test-EXE AExecutable ausführen; ADone kommt im Hauptthread.</summary>
-    procedure Run(const AExecutable: string; const ADone: TAtlasMutationRan);
-    /// <summary>Schließen; auch nach gescheitertem Open. Wirft bei Fehler, der Ablauf meldet ihn.</summary>
-    procedure Close;
   end;
 
   /// <summary>Was geprüft wird.</summary>

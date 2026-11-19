@@ -58,7 +58,7 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Designer.DuplicateRow,
-  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.DuplicateDialog,
@@ -508,7 +508,7 @@ end;
 
 function TAtlasIdeDuplicateRow.CanUndo: Boolean;
 begin
-  Result := FCreated.Holds(TAtlasIdeDesignSurface.Active);
+  Result := FCreated.Holds(TAtlasIdeDesignSurfaces.Active);
 end;
 
 /// <summary>Vorschau zu AOptions: Umrisse im Designer, Zeile „Kopien: …“ und Hinweis im Dialog.</summary>
@@ -618,7 +618,7 @@ begin
     Exit;
   end;
   mRun.Designer := TAtlasDesignerAccess.DesignerOf(mEditor);
-  mRun.Surface := TAtlasIdeDesignSurface.Wrap(mRun.Designer);
+  mRun.Surface := TAtlasIdeDesignSurfaces.Wrap(mRun.Designer);
   mRun.Controls := TAtlasDesignerAccess.SelectedSiblings(mEditor, mRun.Root);
   if (mRun.Designer = nil) or (Length(mRun.Controls) = 0) then
   begin
@@ -663,7 +663,7 @@ begin
   begin
     Exit;
   end;
-  mSurface := TAtlasIdeDesignSurface.Active;
+  mSurface := TAtlasIdeDesignSurfaces.Active;
   if mSurface = nil then
   begin
     Exit;

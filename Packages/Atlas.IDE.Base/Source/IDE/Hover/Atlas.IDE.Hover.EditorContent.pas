@@ -26,7 +26,7 @@ uses
   Atlas.Core.Hover.View,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Hover.Tip;
 

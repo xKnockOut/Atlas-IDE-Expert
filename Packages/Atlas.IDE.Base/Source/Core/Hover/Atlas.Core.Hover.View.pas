@@ -16,7 +16,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Hover.DebugValue;
+  Atlas.Core.Hover.Contract.DebugValue;
 
 type
   {$SCOPEDENUMS ON}
