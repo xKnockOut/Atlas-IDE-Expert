@@ -677,7 +677,7 @@ end;
 
 procedure TAtlasIdeWelcome.Sync;
 const
-  // Langsamer Abgleich (Startzeit 06.11.2026) mit Dauer je Schritt nach atlas.log.
+  // Langsamer Abgleich mit Dauer je Schritt nach atlas.log, damit ein langsamer Start erklärbar ist.
   cSlowSyncMs = 200;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,

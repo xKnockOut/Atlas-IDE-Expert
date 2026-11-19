@@ -460,22 +460,13 @@ begin
   end;
 end;
 
-/// <summary>Feld nur mit Inhalt schreiben.</summary>
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 function EndedJson(const AEntry: TAtlasTrackerEnded): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('key', AEntry.Key);
-  AddText(Result, 'branch', AEntry.Branch);
-  AddText(Result, 'at', IsoOf(AEntry.At));
-  AddText(Result, 'state', AEntry.State);
+  TJsonBuild.AddText(Result, 'branch', AEntry.Branch);
+  TJsonBuild.AddText(Result, 'at', IsoOf(AEntry.At));
+  TJsonBuild.AddText(Result, 'state', AEntry.State);
   if AEntry.Done then
   begin
     Result.AddPair('done', TJSONBool.Create(True));
@@ -486,15 +477,15 @@ function ReopenJson(const AReopen: TAtlasTrackerReopen): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('key', AReopen.Key);
-  AddText(Result, 'title', AReopen.Title);
-  AddText(Result, 'state', AReopen.State);
-  AddText(Result, 'previous', AReopen.Previous);
-  AddText(Result, 'at', IsoOf(AReopen.At));
-  AddText(Result, 'endedAt', IsoOf(AReopen.EndedAt));
-  AddText(Result, 'branch', AReopen.Branch);
-  AddText(Result, 'commentBy', AReopen.CommentBy);
-  AddText(Result, 'commentAt', IsoOf(AReopen.CommentAt));
-  AddText(Result, 'comment', AReopen.Comment);
+  TJsonBuild.AddText(Result, 'title', AReopen.Title);
+  TJsonBuild.AddText(Result, 'state', AReopen.State);
+  TJsonBuild.AddText(Result, 'previous', AReopen.Previous);
+  TJsonBuild.AddText(Result, 'at', IsoOf(AReopen.At));
+  TJsonBuild.AddText(Result, 'endedAt', IsoOf(AReopen.EndedAt));
+  TJsonBuild.AddText(Result, 'branch', AReopen.Branch);
+  TJsonBuild.AddText(Result, 'commentBy', AReopen.CommentBy);
+  TJsonBuild.AddText(Result, 'commentAt', IsoOf(AReopen.CommentAt));
+  TJsonBuild.AddText(Result, 'comment', AReopen.Comment);
 end;
 
 class procedure TAtlasTrackerReopened.WriteJson(ASection: TJSONObject; const AEnded: TArray<TAtlasTrackerEnded>;

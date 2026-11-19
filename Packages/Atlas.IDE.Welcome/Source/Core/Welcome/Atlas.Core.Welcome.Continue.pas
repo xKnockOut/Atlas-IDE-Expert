@@ -409,21 +409,13 @@ end;
 
 { JSON }
 
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 function TabJson(const ATab: TAtlasWorkTab): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('file', ATab.FileName);
   Result.AddPair('line', TJSONNumber.Create(ATab.Line));
   Result.AddPair('column', TJSONNumber.Create(ATab.Column));
-  AddText(Result, 'method', ATab.Method);
+  TJsonBuild.AddText(Result, 'method', ATab.Method);
   if ATab.Changed then
   begin
     Result.AddPair('changed', TJSONBool.Create(True));
@@ -446,10 +438,10 @@ begin
     Result.AddPair('at', TAtlasProjectSummaries.TimeText(AState.At));
   end;
   Result.AddPair('active', TJSONNumber.Create(AState.Active));
-  AddText(Result, 'vcs', AState.VcsKind);
-  AddText(Result, 'head', AState.Head);
-  AddText(Result, 'upstream', AState.Upstream);
-  AddText(Result, 'upstreamRevision', AState.UpstreamRevision);
+  TJsonBuild.AddText(Result, 'vcs', AState.VcsKind);
+  TJsonBuild.AddText(Result, 'head', AState.Head);
+  TJsonBuild.AddText(Result, 'upstream', AState.Upstream);
+  TJsonBuild.AddText(Result, 'upstreamRevision', AState.UpstreamRevision);
   mTabs := TJSONArray.Create;
   Result.AddPair('tabs', mTabs);
   for mTab in AState.Tabs do
