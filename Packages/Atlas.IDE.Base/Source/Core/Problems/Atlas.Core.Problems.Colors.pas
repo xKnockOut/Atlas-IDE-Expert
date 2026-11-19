@@ -62,6 +62,10 @@ begin
 end;
 
 function DimmedTextColor(AText, ABack: TAtlasColor): TAtlasColor;
+const
+  // Schrittweite beim Annähern an den vollen Text bzw. beim Verstärken; höchstens so viele Verstärkungen.
+  cStep = 0.05;
+  cMaxSteps = 20;
 var
   mAlpha: Double;
   mSteps: Integer;
@@ -71,7 +75,7 @@ begin
   // Schrittweise zurück zum vollen Text, bis der Kontrast reicht; der volle Text ist die Untergrenze.
   while (TAtlasColorMath.Contrast(Result, ABack) < cAtlasDimmedMinContrast) and (mAlpha < 1) do
   begin
-    mAlpha := mAlpha + 0.05;
+    mAlpha := mAlpha + cStep;
     if mAlpha > 1 then
     begin
       mAlpha := 1;
@@ -80,15 +84,15 @@ begin
   end;
   // Schon der volle Text ist zu blass (manche Themen): vom Hintergrund weg verstärken.
   mSteps := 0;
-  while (TAtlasColorMath.Contrast(Result, ABack) < cAtlasDimmedMinContrast) and (mSteps < 20) do
+  while (TAtlasColorMath.Contrast(Result, ABack) < cAtlasDimmedMinContrast) and (mSteps < cMaxSteps) do
   begin
     if TAtlasColorMath.IsDark(ABack) then
     begin
-      Result := TAtlasColorMath.Lighten(Result, 0.05);
+      Result := TAtlasColorMath.Lighten(Result, cStep);
     end
     else
     begin
-      Result := TAtlasColorMath.Darken(Result, 0.05);
+      Result := TAtlasColorMath.Darken(Result, cStep);
     end;
     Inc(mSteps);
   end;

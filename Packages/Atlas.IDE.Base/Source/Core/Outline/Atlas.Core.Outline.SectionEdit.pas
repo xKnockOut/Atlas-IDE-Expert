@@ -259,6 +259,8 @@ end;
 
 /// <summary>Steht das end des Typs am Anfang seiner Zeile (nicht hinter Mitgliedern)?</summary>
 function EndStartsLine(const ALines: TArray<string>; const AType: TAtlasOutlineNode): Boolean;
+const
+  cEnd = 'end';
 var
   mText: string;
 begin
@@ -266,8 +268,8 @@ begin
   if Result then
   begin
     mText := LowerCase(TrimLeft(ALines[AType.EndLine]));
-    Result := mText.StartsWith('end') and ((Length(mText) = 3) or not CharInSet(mText[4], ['a'..'z', '0'..'9',
-      '_']));
+    Result := mText.StartsWith(cEnd) and ((Length(mText) = Length(cEnd)) or
+      not CharInSet(mText[Length(cEnd) + 1], ['a'..'z', '0'..'9', '_']));
   end;
 end;
 
