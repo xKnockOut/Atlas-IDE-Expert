@@ -178,6 +178,9 @@ type
     /// <summary>Höchstens so viele Zeilen je Test im Protokoll (#2168, tests.log.maxLines), cMinTestsLogMaxLines bis
     /// cMaxTestsLogMaxLines.</summary>
     TestsLogMaxLines: Integer;
+    /// <summary>Letzten Testlauf je Testprojekt für KI-Assistenten ablegen (#2409, tests.lastRun; MCP-Werkzeug
+    /// get_last_tests).</summary>
+    TestsLastRun: Boolean;
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
@@ -472,6 +475,7 @@ begin
   TestsListsRunKey := cDefaultTestsListsRunKey;
   TestsLog := True;
   TestsLogMaxLines := cDefaultTestsLogMaxLines;
+  TestsLastRun := True;
   TestsSlowMs := cDefaultTestsSlowMs;
   TestsCaseTable := True;
   TestsBoundaryCases := True;
@@ -514,6 +518,7 @@ begin
   AIo.Number('TestsListsRunKey', TestsListsRunKey);
   AIo.Flag('TestsLog', TestsLog);
   AIo.Number('TestsLogMaxLines', TestsLogMaxLines);
+  AIo.Flag('TestsLastRun', TestsLastRun);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsBoundaryCases', TestsBoundaryCases);

@@ -132,7 +132,7 @@ type
     /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite (Layouts bleiben).
     /// </summary>
     cTileId = TAtlasIdeIssuesContext.cTileId;
-    /// <summary>Reihenfolge außerhalb des Atlas-Layouts: nach „Testergebnisse“ (Mockup: rechte Spalte, im
+    /// <summary>Reihenfolge außerhalb des Atlas-Layouts: nach „Testergebnisse“ (rechte Spalte, im
     /// Atlas-Layout ohne festen Platz).</summary>
     cOrder = 26;
   private

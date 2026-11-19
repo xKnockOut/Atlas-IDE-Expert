@@ -153,6 +153,18 @@ uses
   System.SysUtils,
   Atlas.Text.Chars;
 
+const
+  /// <summary>Platz, um den die Tokenliste mindestens wächst.</summary>
+  cTokenGrowth = 64;
+  /// <summary>Endung, die DUnitX an Attributnamen erlaubt (TestFixtureAttribute).</summary>
+  cAttributeSuffix = 'Attribute';
+  /// <summary>Token von „DUnitX.TestFramework“ samt Trenner dahinter.</summary>
+  cUsesPatternTokens = 4;
+  /// <summary>Tiefste Verschachtelung lokaler Routinen, die der Scanner verfolgt.</summary>
+  cMaxLocalRoutineDepth = 16;
+  /// <summary>Token von „Klasse.Methode“ bzw. „RegisterTestFixture(TKlasse“.</summary>
+  cQualifiedNameTokens = 3;
+
 type
   TTokenKind = (Ident, Str, Sym, Num);
 
@@ -204,7 +216,7 @@ procedure TTokenizer.Add(AKind: TTokenKind; const AText: string);
 begin
   if Count = Length(Tokens) then
   begin
-    SetLength(Tokens, Count * 2 + 64);
+    SetLength(Tokens, Count * 2 + cTokenGrowth);
   end;
   Tokens[Count].Kind := AKind;
   Tokens[Count].Text := AText;
@@ -259,26 +271,31 @@ begin
 end;
 
 procedure TTokenizer.ReadQuoted(var AValue: string);
+var
+  mStart, mStop: Integer;
 begin
   Inc(Index);
+  mStart := Index;
+  mStop := Length(Line) + 1;
   while Index <= Length(Line) do
   begin
     if Line[Index] <> '''' then
     begin
-      AValue := AValue + Line[Index];
       Inc(Index);
     end
     else if NextIs('''') then
     begin
-      AValue := AValue + '''';
       Inc(Index, 2);
     end
     else
     begin
+      mStop := Index;
       Inc(Index);
-      Exit;
+      Break;
     end;
   end;
+  // Im Stück stehen Anführungszeichen nur verdoppelt.
+  AValue := AValue + StringReplace(Copy(Line, mStart, mStop - mStart), '''''', '''', [rfReplaceAll]);
 end;
 
 procedure TTokenizer.ReadString;
@@ -659,9 +676,9 @@ begin
   begin
     mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  if (Length(mName) > Length('Attribute')) and SameText(Copy(mName, Length(mName) - 8, 9), 'Attribute') then
+  if (Length(mName) > Length(cAttributeSuffix)) and mName.EndsWith(cAttributeSuffix, True) then
   begin
-    SetLength(mName, Length(mName) - 9);
+    SetLength(mName, Length(mName) - Length(cAttributeSuffix));
   end;
   for mKind := Succ(TDUnitXAttribute.None) to High(TDUnitXAttribute) do
   begin
@@ -684,10 +701,10 @@ var
   mIndex: Integer;
 begin
   mTokens := Tokenize(ALines);
-  for mIndex := 0 to High(mTokens) - 4 do
+  for mIndex := 0 to Length(mTokens) - cUsesPatternTokens do
   begin
     if IsWord(mTokens[mIndex], 'DUnitX') and IsSym(mTokens[mIndex + 1], '.') and
-      IsWord(mTokens[mIndex + 2], 'TestFramework') and IsUsesSeparator(mTokens[mIndex + 3]) then
+      IsWord(mTokens[mIndex + 2], 'TestFramework') and IsUsesSeparator(mTokens[mIndex + cUsesPatternTokens - 1]) then
     begin
       Exit(True);
     end;
@@ -1240,7 +1257,7 @@ begin
     begin
       Exit;
     end;
-    if (ADepth < 16) and StartsLocalRoutine then
+    if (ADepth < cMaxLocalRoutineDepth) and StartsLocalRoutine then
     begin
       Inc(FIndex);
       SkipHeader;
@@ -1302,7 +1319,7 @@ begin
   end;
   mClassName := Token.Text;
   mMethod := Peek(2).Text;
-  Inc(FIndex, 3);
+  Inc(FIndex, cQualifiedNameTokens);
   if not MarkBody(mClassName, mMethod, mLine, mCandidate, mTest) then
   begin
     Exit;
@@ -1361,7 +1378,7 @@ begin
   else if IsRegistration then
   begin
     FRegistered := FRegistered + [Peek(2).Text];
-    Inc(FIndex, 3);
+    Inc(FIndex, cQualifiedNameTokens);
   end
   else if IsClassStart then
   begin
@@ -1802,11 +1819,12 @@ class function TDUnitXCommandLine.Arguments(const AResultFile: string; const ATe
 var
   mRun: string;
   mTest: string;
+  mRunNames: TArray<string>;
 begin
   // Nur Optionen, die alle DUnitX-Fassungen seit RAD Studio 10 kennen; eine unbekannte Option lässt das
   // Testprogramm ohne Lauf enden (TDUnitX.CheckCommandLine).
   Result := ['--exitbehavior:Continue', '--xmlfile:' + AResultFile];
-  mRun := '';
+  mRunNames := nil;
   for mTest in ATests do
   begin
     if Copy(mTest, 1, 2) = '--' then
@@ -1815,13 +1833,10 @@ begin
     end
     else if mTest <> '' then
     begin
-      if mRun <> '' then
-      begin
-        mRun := mRun + ',';
-      end;
-      mRun := mRun + mTest;
+      mRunNames := mRunNames + [mTest];
     end;
   end;
+  mRun := string.Join(',', mRunNames);
   if (mRun <> '') and (Length(mRun) <= cMaxRunLength) then
   begin
     Result := Result + ['--run:' + mRun];
