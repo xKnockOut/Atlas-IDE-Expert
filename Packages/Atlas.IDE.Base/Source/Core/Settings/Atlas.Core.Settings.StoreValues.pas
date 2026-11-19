@@ -49,7 +49,31 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TStoreValuesText = (NotPlugin, OtherKind);
+
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TStoreValuesText] of string = (
+    (
+     'Einstellung %s ist keine Plugin-Einstellung',
+     'Einstellung %s hat eine andere Art'),
+    (
+     'Setting %s is not a plugin setting',
+     'Setting %s has a different kind'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TStoreValuesText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasSettingsStoreValues }
 
@@ -69,11 +93,11 @@ begin
   mIndex := FCatalog.IndexOfKey(AKey);
   if (mIndex < 0) or (FCatalog[mIndex].Source <> asPlugin) then
   begin
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist keine Plugin-Einstellung', [AKey]);
+    raise EAtlasSettingsKey.CreateFmt(UiText(TStoreValuesText.NotPlugin), [AKey]);
   end;
   if FCatalog[mIndex].Kind <> AKind then
   begin
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s hat eine andere Art', [AKey]);
+    raise EAtlasSettingsKey.CreateFmt(UiText(TStoreValuesText.OtherKind), [AKey]);
   end;
   Result := FCatalog[mIndex].Name;
 end;
@@ -151,7 +175,7 @@ begin
   mName := PluginName(FCatalog, AKey);
   if mName = '' then
   begin
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist keine Plugin-Einstellung', [AKey]);
+    raise EAtlasSettingsKey.CreateFmt(UiText(TStoreValuesText.NotPlugin), [AKey]);
   end;
   if FDefaults.HasInteger(mName) then
   begin
@@ -201,5 +225,9 @@ begin
     Result := ACatalog[mIndex].Name;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.StoreValues', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.
