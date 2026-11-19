@@ -1,9 +1,10 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.IdeAdapters;
 
 // Adapter der IDE-Features von Base für die Kompositionswurzel: Einstellungsspeicher in der Registry, aktiver
-// Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Palette als Befehlsziel, Einrichtung und
-// Schattentext aus dem Index. Nur diese Unit erzeugt sie; die Features bekommen sie über Fabriken an ihrer Wurzel,
-// über TAtlasIdeHost oder als Parameter. Die Fenster als Ansichten der Controller setzt
+// Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Palette als Befehlsziel, Einrichtung,
+// Schattentext aus dem Index und Statuszeilen des Atlas-Felds. Nur diese Unit erzeugt sie; die Features bekommen
+// sie über Fabriken an ihrer Wurzel, über TAtlasIdeHost oder als Parameter. Die Fenster als Ansichten der
+// Controller setzt
 // Atlas.IDE.CodeInsight.Composition.UiAdapters ein.
 
 interface
@@ -16,7 +17,8 @@ uses
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Setup.Checklist,
   Atlas.Core.Commands.Contract,
-  Atlas.Core.Setup.Contract;
+  Atlas.Core.Setup.Contract,
+  Atlas.Core.Status.Contract;
 
 /// <summary>Fabriken der IDE-Adapter einsetzen: Einstellungsspeicher in der Registry, Sicht des Planers, Puffer
 /// der Editoransicht, dazu die Fenster-Adapter (InstallUiAdapters). Ab der Unit-Initialisierung, vor dem ersten
@@ -30,6 +32,8 @@ function EditorFilesAdapter: IAtlasEditorFiles;
 function PaletteRegistry(APalette: TAtlasIdePalette): IAtlasCommandRegistry;
 /// <summary>Vorschläge aus dem Index des Servers für den Schattentext (#1890).</summary>
 function LearnedGhostProvider: IAtlasGhostProvider;
+/// <summary>Statuszeilen der Editorfenster und Statusfenster für das Atlas-Feld (#591).</summary>
+function StatusFieldSurface: IAtlasStatusFieldSurface;
 /// <summary>Was die Knöpfe der Einrichtung tun; AForgetKeys liest die Tasten beim nächsten Snapshot neu.</summary>
 function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc;
   out ASnapshot: TAtlasSetupSnapshot): IAtlasSetupEnvironment;
@@ -52,6 +56,7 @@ uses
   Atlas.IDE.Editor.Adapters.LearnedGhost,
   Atlas.IDE.Commands.Adapters.PaletteRegistry,
   Atlas.IDE.Setup.Adapters.Environment,
+  Atlas.IDE.Status.Adapters.FieldSurface,
   Atlas.IDE.CodeInsight.Composition.UiAdapters,
   Atlas.Core.Editor.Contract;
 
@@ -93,6 +98,11 @@ end;
 function LearnedGhostProvider: IAtlasGhostProvider;
 begin
   Result := TAtlasLearnedGhostProvider.Create;
+end;
+
+function StatusFieldSurface: IAtlasStatusFieldSurface;
+begin
+  Result := TAtlasIdeStatusFieldSurface.Create;
 end;
 
 /// <summary>Eigene Routine: Die Methodenreferenz fängt nur AEnvironment ein.</summary>

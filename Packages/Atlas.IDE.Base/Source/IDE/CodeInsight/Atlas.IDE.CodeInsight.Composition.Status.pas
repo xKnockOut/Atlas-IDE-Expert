@@ -11,13 +11,13 @@ uses
   System.Types,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Status.Contract,
-  Atlas.IDE.Status.Field,
+  Atlas.Core.Status.FieldFlow,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Notifications.Service;
 
 /// <summary>Atlas-Statusfeld; nil vor RegisterStatusField und nach UnregisterStatusField.</summary>
-function StatusField: TAtlasStatusField;
+function StatusField: TAtlasStatusFieldFlow;
 /// <summary>Zeilen des Statusfelds; nil ohne Statusfeld.</summary>
 function StatusLines: TAtlasIdeStatusLines;
 /// <summary>Benachrichtigungszentrale; nil vor StartNotifications.</summary>
@@ -62,6 +62,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Status.Server,
@@ -77,6 +78,8 @@ uses
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Diagnostics.ServerPackage,
   Atlas.IDE.CodeInsight.Composition.Session,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Host;
 
 const
@@ -84,14 +87,14 @@ const
 
 var
   // Atlas-Statusfeld mit Server, Index und Datei (#591).
-  StatusFieldInstance: TAtlasStatusField;
+  StatusFieldInstance: TAtlasStatusFieldFlow;
   StatusLinesInstance: TAtlasIdeStatusLines;
   // Benachrichtigungszentrale mit Liste, Plakette im Statusfeld und Build-Einträgen (#601).
   NotificationsInstance: TAtlasIdeNotifications;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickTogglesInstance: TAtlasIdeQuickToggles;
 
-function StatusField: TAtlasStatusField;
+function StatusField: TAtlasStatusFieldFlow;
 begin
   Result := StatusFieldInstance;
 end;
@@ -302,10 +305,17 @@ begin
   StatusLinesInstance := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default, mSources);
 end;
 
+/// <summary>Aktuelle Einstellungen für das Statusfeld.</summary>
+function CurrentSettings: TAtlasPluginSettings;
+begin
+  Result := TAtlasIdeSettings.Current;
+end;
+
 /// <summary>Atlas-Statusfeld mit Aktualisieren, Protokoll, Schnellschaltern und Neustart des Servers.</summary>
 procedure CreateStatusField;
 begin
-  StatusFieldInstance := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
+  StatusFieldInstance := TAtlasStatusFieldFlow.Create(TAtlasStatusRegistry.Default, StatusFieldSurface,
+    CurrentSettings);
   StatusFieldInstance.OnRefresh :=
     procedure
     begin
