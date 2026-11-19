@@ -1,9 +1,10 @@
 ﻿unit Atlas.UI.Assistants.SettingsSection;
 
 // Abschnitt des Moduls KI-Assistenten im Optionsdialog (#1888, Muster #1456): eigene Seite „KI-Assistenten“
-// (#1906) mit dem Modulschalter assistants.enabled, Schreiben in offene Dateien (assistants.edit) und Builds für
-// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline),
-// IDE-Zustand für get_ide_context (assistants.context, #2050) und dem Hinweis auf veraltete Anweisungsdateien
+// (#1906) mit dem Modulschalter assistants.enabled, Schreiben in offene Dateien (assistants.edit), Builds für
+// KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline), Debuggen
+// durch KI-Assistenten (debug.mcp mit Rechten und Leiste, #1874; ausgeführt im Modul Debugger), IDE-Zustand für
+// get_ide_context (assistants.context, #2050) und dem Hinweis auf veraltete Anweisungsdateien
 // (assistants.instructionsHint, #2615).
 
 interface
@@ -36,6 +37,12 @@ begin
   // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
   Switch('assistants.edit', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsEdit));
   Switch('compiler.mcpBuild', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsMcpBuild));
+  // Debuggen durch KI-Assistenten (#1874): Rechte und Leiste.
+  Switch('debug.mcp', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugMcp));
+  Switch('debug.mcp.sideEffects', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugSideEffects));
+  Switch('debug.mcp.modify', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugModify));
+  Switch('debug.mcp.attach', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugAttach));
+  Switch('debug.mcp.banner', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsDebugBanner));
   // Anzeige „KI-Assistent aktiv“ mit Pause (#1906).
   Switch('assistants.banner', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsBanner));
   // IDE-Zustand (#2050): wo der Entwickler gerade ist, samt Auswahl bis zur Grenze.
