@@ -158,8 +158,7 @@ type
 implementation
 
 uses
-  System.Math,
-  System.Diagnostics;
+  System.Math;
 
 { TAtlasGateSettings }
 
@@ -330,14 +329,7 @@ end;
 
 function TAtlasBuildGateParticipant.Now_: Int64;
 begin
-  if Assigned(FClock) then
-  begin
-    Result := FClock();
-  end
-  else
-  begin
-    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
-  end;
+  Result := TAtlasClocks.Millis(FClock);
 end;
 
 /// <summary>Stände der Unit AFileName in AUnits.</summary>

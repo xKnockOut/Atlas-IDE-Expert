@@ -1521,6 +1521,8 @@ uses
   Atlas.Core.Lsp.TextOffsets in '..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.TextOffsets.pas',
   Atlas.Core.Lsp.TextOffsets.Tests in 'IDE.Expert\Atlas.Core.Lsp.TextOffsets.Tests.pas',
   Atlas.Core.Editor.Metrics.Tests in 'IDE.Expert\Atlas.Core.Editor.Metrics.Tests.pas',
+  Atlas.Core.Editor.LineItems in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineItems.pas',
+  Atlas.Core.Editor.LineItems.Tests in 'IDE.Expert\Atlas.Core.Editor.LineItems.Tests.pas',
   Atlas.Core.Projects.Todos in '..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Todos.pas',
   Atlas.Core.Projects.Todos.Tests in 'IDE.Expert\Atlas.Core.Projects.Todos.Tests.pas',
   Atlas.Core.Projects.UnitRename in '..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.UnitRename.pas',

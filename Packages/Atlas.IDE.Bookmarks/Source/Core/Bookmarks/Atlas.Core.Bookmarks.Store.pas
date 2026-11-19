@@ -213,6 +213,7 @@ uses
   System.JSON,
   System.Math,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Summary.Json,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Marks.Ids,
   Atlas.Text.Json;
@@ -593,44 +594,11 @@ end;
 
 { JSON-Helfer }
 
-function Known(const AKeys: array of string; const AName: string): Boolean;
-var
-  mKey: string;
-begin
-  Result := False;
-  for mKey in AKeys do
-  begin
-    if mKey = AName then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 begin
   Result := Copy(TJsonRead.Strings(AObject, AName), 0, TAtlasLineAnchors.cContextLines);
 end;
 
-/// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
-procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
-var
-  mIndex: Integer;
-  mPair: TJSONPair;
-begin
-  if AOriginal = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to AOriginal.Count - 1 do
-  begin
-    mPair := AOriginal.Pairs[mIndex];
-    if not Known(AKeys, mPair.JsonString.Value) then
-    begin
-      ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
-    end;
-  end;
-end;
 
 /// <summary>Nur die unbekannten Felder eines Lesezeichens als JSON-Objekt; '' ohne.</summary>
 function ExtraOf(AObject: TJSONObject): string;

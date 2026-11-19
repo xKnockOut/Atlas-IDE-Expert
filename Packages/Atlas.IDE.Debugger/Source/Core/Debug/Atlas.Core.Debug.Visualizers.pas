@@ -966,17 +966,6 @@ begin
   Result := TAtlasVisualizerFormat.Shorten(Result, AOptions.MaxLength);
 end;
 
-function Row(const AValues: array of string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
-  end;
-end;
-
 procedure ViewList(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator);
 var
   mCount: Int64;
@@ -992,7 +981,7 @@ begin
   mItems := ListItems(AEvaluator, mCount, TAtlasVisualizerOptions.cViewItems);
   for mIndex := 0 to High(mItems) do
   begin
-    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mItems[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(IntToStr(mIndex), mItems[mIndex])];
   end;
   AView.Total := mCount;
 end;
@@ -1012,7 +1001,7 @@ begin
   for mValue in DictionaryPairs(AEvaluator, mCount, TAtlasVisualizerOptions.cViewItems) do
   begin
     mTab := Pos(#9, mValue);
-    AView.Rows := AView.Rows + [Row([Copy(mValue, 1, mTab - 1), Copy(mValue, mTab + 1, MaxInt)])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(Copy(mValue, 1, mTab - 1), Copy(mValue, mTab + 1, MaxInt))];
   end;
   AView.Total := mCount;
 end;
@@ -1028,8 +1017,8 @@ begin
     TAtlasVisualizerColumn.Value, TAtlasVisualizerColumn.OldValue];
   for mIndex := 0 to High(mDataSet.Names) do
   begin
-    AView.Rows := AView.Rows + [Row([mDataSet.Names[mIndex], mDataSet.Types[mIndex], mDataSet.Values[mIndex],
-      mDataSet.OldValues[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(mDataSet.Names[mIndex], mDataSet.Types[mIndex],
+      mDataSet.Values[mIndex], mDataSet.OldValues[mIndex])];
   end;
 end;
 
@@ -1058,7 +1047,7 @@ begin
   AView.Columns := [TAtlasVisualizerColumn.Index, TAtlasVisualizerColumn.Key];
   for mIndex := 0 to High(mJson.Keys) do
   begin
-    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mJson.Keys[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(IntToStr(mIndex), mJson.Keys[mIndex])];
   end;
   AView.Total := mJson.Count;
 end;

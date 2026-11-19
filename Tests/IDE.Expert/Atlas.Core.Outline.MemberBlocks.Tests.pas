@@ -41,7 +41,8 @@ uses
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.TypeText,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.MemberBlocks;
+  Atlas.Core.Outline.MemberBlocks,
+  Atlas.Core.Outline.CrumbMenu;
 
 const
   cCode =
@@ -125,21 +126,6 @@ begin
   end;
 end;
 
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
-  end;
-end;
-
 function NamesOf(const ANodes: TAtlasOutlineNodes; const AItems: TArray<Integer>): string;
 var
   mItem: Integer;
@@ -169,7 +155,7 @@ end;
 
 function PathAt(ALine, ACharacter: Integer): string;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Result := TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(ALine, ACharacter, '', False,
       [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks])));
 end;
@@ -252,9 +238,9 @@ begin
   Assert.AreEqual(0, mCrumbs[2].Current);
   Assert.AreEqual(5, mCrumbs[2].Places[0].Line);
   // Ohne Unterblöcke bzw. ohne Abschnitt.
-  Assert.AreEqual('TKunde › private › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TKunde › private › cRabatt', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(6, 7, '', False, [TAtlasCrumbPart.Visibility]))));
-  Assert.AreEqual('TKunde › const › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TKunde › const › cRabatt', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(6, 7, '', False, [TAtlasCrumbPart.MemberBlocks]))));
 end;
 
