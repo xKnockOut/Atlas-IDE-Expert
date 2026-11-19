@@ -20,7 +20,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Lsp.Impact,
-  Shell.WorkspaceGroup;
+  Atlas.Common.Configuration.Contract,
+  Shell.WorkspaceGroup,
+  Shell.Mcp.RefactorHost;
 
 type
   /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
@@ -41,6 +43,9 @@ type
     Root: string;
     Guard: TMcpPathGuard;
     Edit: TMcpEditTools;
+    /// <summary>Quelle von refactor (#2150, TMcpRefactorSources.Attach); nil, wenn nur die Namen der Werkzeuge
+    /// gebraucht werden.</summary>
+    Refactor: IMcpRefactorHost;
     Architecture: TMcpArchitectureFunc;
     FindPath: TMcpFindPathFunc;
     CheckSource: TCheckSourceFunc;
@@ -68,6 +73,8 @@ function SchemaWith(const ASchema: string; const ADescriptions: array of string)
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
 function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
+/// <summary>Formatregeln wie im Editor für AFileName: format.* über .editorconfig über den Vorgaben.</summary>
+function FormatStyleOf(AGroup: TShellWorkspaceGroup; const AFileName: string): TFormatStyle;
 /// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
 function IsTestProject(const AFileName: string): Boolean;
 /// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
@@ -88,6 +95,7 @@ uses
   System.IOUtils,
   System.StrUtils,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Lsp.Formatting,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Shell.Bootstrap,
@@ -126,6 +134,15 @@ end;
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+end;
+
+function FormatStyleOf(AGroup: TShellWorkspaceGroup; const AFileName: string): TFormatStyle;
+begin
+  Result := TLspFormatting.Resolve(nil, AFileName, AGroup.WorkspaceOf(AFileName).Configuration.Settings.Formatting,
+    function(const AConfigFile: string; out AConfigText: string): Boolean
+    begin
+      Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
+    end);
 end;
 
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>

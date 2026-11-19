@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The user documentation is available in English ([Documentation](#documentation)); developer documents such as the architecture and the handover notes are German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 354 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 360 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -84,7 +84,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
-- **354 check rules** while you type: 235 bugs, 108 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
+- **360 check rules** while you type: 241 bugs, 108 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
 - **Findings as a task for an AI assistant:** "Copy as task for an AI assistant" in the "Atlas Findings" window (also several findings, grouped per file) and in the editor puts rule, message, code excerpt, explanation and the MCP tool to verify the fix into the clipboard
@@ -127,7 +127,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
 - **Set up leak check …** in the project context menu: shows what leak hunting still needs (FastMM4/FastMM5 found, first unit in uses, report on shutdown, defines and DLL of the Debug configuration) and sets up the chosen variant with a preview, for the Debug build only (`tests.leakSetup`)
 - **Test from a debug stop:** "Create test …" in the exception bar turns the values of the stop into a DUnitX test that works or expects the exception
-- **Debugging:** values in the hover and inline, visualizers, evaluate window, variables window (autos, locals, watch, search also in children), smart step into, call stack window with named parameter values, search and comparison with the last stop; run time since the last stop at the end of the line
+- **Debugging:** values in the hover and inline, visualizers, evaluate window, variables window (autos, locals, watch also per class or unit, search also in children), smart step into, call stack window with named parameter values, search and comparison with the last stop; run time since the last stop at the end of the line
 - **Breakpoints:** own "Breakpoints" window with search, tags and hit counts; breakpoints on methods by pattern, only for one object, **break when a field changes**, rules (dependent, hit condition, thread, **only when called from a given method**), named sets, check before starting; they move with the code, “run to here” by clicking the gutter
 - **“Why am I here?” and predicting conditions:** at a stop, the surrounding `if`, `while` and `case` show the values of their conditions, the upcoming ones the predicted results; skipped branches are dimmed
 - **Values in the debug hover:** expand them (changed values highlighted, old value behind), **change** them directly (F2) and **pin** them
@@ -166,7 +166,9 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **33 MCP tools** to read, check, build, test, rename and fix Delphi code
+- **Refactorings over MCP:** `refactor` lists the refactorings of the context menu at a position with their arguments and runs them with arguments instead of questions (change signature, extract interface or superclass, safe delete, move member, type alias …), with a preview of all files and as one undo step in the IDE
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
+- **Explain compiler messages:** `explain_compiler_message` gives the cause of messages like E2010 at their place, the known Delphi pitfall behind it (e.g. two identical method reference types under Delphi 12, `TMonitor` from `Vcl.Forms`, `Exit([...])`), the Atlas rule that catches it while typing and a safe fix as a diff; `build_project` and `get_last_build` point to it
 - **Last test run without a new run:** `get_last_tests` returns what the IDE saw in the last test run: red tests with file:line, expected and actual, log excerpt and the marks newly red, green again, flaky, leak and stale (`tests.lastRun`)
 - **Find implementations:** `find_implementations` lists all bodies of an interface or virtual method with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`), optionally with the body; "Go to implementation" in the editor now also finds method resolutions and delegation
 - **Instructions for AI assistants:** `AtlasServer --write-instructions` writes rule profile, thresholds, naming, forbidden symbols, error rules, protected files and required checks from `atlas.json` as a marked section into `AGENTS.md` (or the files in `assistants.instructions.file`); `--check-instructions` reports a stale section in CI, and in the IDE “Update instructions for AI assistants” updates it and shows the change
