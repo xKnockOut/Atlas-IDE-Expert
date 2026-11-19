@@ -171,6 +171,9 @@ type
     class function Display(const AJson: string): string; static;
   end;
 
+/// <summary>Index zu AText in einem Verzeichnis mit klein geschriebenen Schlüsseln; -1 ohne Eintrag.</summary>
+function IndexOfLowerKey(AMap: TDictionary<string, Integer>; const AText: string): Integer;
+
 implementation
 
 uses
@@ -662,20 +665,22 @@ begin
   Result := TAtlasSettingsCatalog.Create(AtlasPluginSchemaJson, AtlasSchemaJson);
 end;
 
-function TAtlasSettingsCatalog.IndexOfKey(const AKey: string): Integer;
+function IndexOfLowerKey(AMap: TDictionary<string, Integer>; const AText: string): Integer;
 begin
-  if not FByKey.TryGetValue(LowerCase(AKey), Result) then
+  if not AMap.TryGetValue(LowerCase(AText), Result) then
   begin
     Result := -1;
   end;
 end;
 
+function TAtlasSettingsCatalog.IndexOfKey(const AKey: string): Integer;
+begin
+  Result := IndexOfLowerKey(FByKey, AKey);
+end;
+
 function TAtlasSettingsCatalog.IndexOfName(const AName: string): Integer;
 begin
-  if not FByName.TryGetValue(LowerCase(AName), Result) then
-  begin
-    Result := -1;
-  end;
+  Result := IndexOfLowerKey(FByName, AName);
 end;
 
 function TAtlasSettingsCatalog.Resolve(const AKey: string; out AMigrated: Boolean): Integer;

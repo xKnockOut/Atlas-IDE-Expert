@@ -305,10 +305,7 @@ end;
 
 function TAtlasSettingsGroups.Find(const AName: string): Integer;
 begin
-  if not FByName.TryGetValue(LowerCase(AName), Result) then
-  begin
-    Result := -1;
-  end;
+  Result := IndexOfLowerKey(FByName, AName);
 end;
 
 procedure TAtlasSettingsGroups.AddIssue(const AText: string);
