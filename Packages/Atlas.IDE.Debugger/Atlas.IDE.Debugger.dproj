@@ -221,6 +221,8 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.OpenedFiles.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.NoteValues.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopSource.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.AssistantControl.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AssistantControl.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Session.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopView.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Sources.pas"/>
