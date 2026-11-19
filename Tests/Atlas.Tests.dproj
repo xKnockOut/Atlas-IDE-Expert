@@ -1686,7 +1686,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Instructions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Anthropic.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.AiProviders.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.AiProviders.Anthropic.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.OpenAiCompatible.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.AiProviders.OpenAiCompatible.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Catalog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.AiGhost.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.AiGhost.Tests.pas"/>

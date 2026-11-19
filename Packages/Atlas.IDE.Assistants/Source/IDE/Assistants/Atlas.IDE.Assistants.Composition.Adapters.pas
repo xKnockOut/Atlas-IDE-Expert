@@ -11,6 +11,10 @@ uses
 
 /// <summary>Haken der Einstellungsseite für die Schlüssel der KI-Anbieter.</summary>
 function AiKeyHooks: TAtlasAssistantsKeyHooks;
+/// <summary>„Verbindung testen“ und „Modelle abrufen“ der Einstellungsseite (#2056); ab der Anmeldung.</summary>
+procedure StartAiProbe;
+/// <summary>Bricht laufende Proben ab und wartet ihre Threads ab (Regel 3).</summary>
+procedure StopAiProbe;
 /// <summary>Teil „AiGhostText“ (#1922): Schattentext-Anbieter anlegen und bei Base anmelden.</summary>
 procedure StartAiGhost;
 /// <summary>Bricht die laufende Anfrage ab und meldet den Anbieter bei Base ab (Regel 3).</summary>
@@ -28,10 +32,12 @@ uses
   Atlas.Core.Credentials.Adapters.Windows,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Assistants.AiGhost;
+  Atlas.IDE.Assistants.AiGhost,
+  Atlas.IDE.Assistants.AiProbe;
 
 var
   GAiGhost: TAtlasIdeAiGhost;
+  GAiProbe: TAtlasIdeAiProbe;
 
 /// <summary>Schlüssel des KI-Anbieters AProviderId aus dem Anmeldespeicher; '' ohne Eintrag. Auch im
 /// Hintergrund-Thread.</summary>
@@ -68,12 +74,40 @@ begin
   mStore.Delete(TAtlasAiKeys.Target(AProviderId));
 end;
 
+procedure ProbeAi(const AInput: TAtlasAssistantsProbeInput; const ADone: TAtlasAssistantsProbeDone);
+begin
+  if GAiProbe <> nil then
+  begin
+    GAiProbe.Probe(AInput, ADone);
+  end;
+end;
+
+procedure ListAiModels(const AInput: TAtlasAssistantsProbeInput; const ADone: TAtlasAssistantsModelsDone);
+begin
+  if GAiProbe <> nil then
+  begin
+    GAiProbe.Models(AInput, ADone);
+  end;
+end;
+
 function AiKeyHooks: TAtlasAssistantsKeyHooks;
 begin
   Result := Default(TAtlasAssistantsKeyHooks);
   Result.Has := HasAiKey;
   Result.Store := StoreAiKey;
   Result.Delete := DeleteAiKey;
+  Result.Probe := ProbeAi;
+  Result.Models := ListAiModels;
+end;
+
+procedure StartAiProbe;
+begin
+  GAiProbe := TAtlasIdeAiProbe.Create(TAtlasAiHttpClient.Create, ReadAiKey);
+end;
+
+procedure StopAiProbe;
+begin
+  FreeAndNil(GAiProbe);
 end;
 
 procedure StartAiGhost;
