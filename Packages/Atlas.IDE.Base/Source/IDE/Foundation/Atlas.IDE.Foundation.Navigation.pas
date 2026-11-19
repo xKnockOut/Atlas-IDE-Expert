@@ -8,6 +8,10 @@
 
 interface
 
+uses
+  ToolsAPI,
+  Atlas.Core.Lsp.TextChanges;
+
 type
   TAtlasIdeNavigation = class
   public
@@ -23,14 +27,18 @@ type
     /// <summary>Öffnet AFileName, markiert die ganze Zeile ALine (0-basiert) und setzt den Cursor an ihren Anfang,
     /// z. B. für den Sprung in eigenen Code nach einer Exception (#578).</summary>
     class procedure MarkLine(const AFileName: string; ALine: Integer); static;
+    /// <summary>Editorposition (1-basiert, Tabs als ATabWidth Spalten) zu APosition in ALines; außerhalb der Zeilen
+    /// mit leerem Zeilentext.</summary>
+    class function EditPosOf(const ALines: TArray<string>; const APosition: TLspTextPosition;
+      ATabWidth: Integer): TOTAEditPos; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  ToolsAPI,
-  Atlas.Core.Lsp.IdeMembers;
+  Atlas.Core.Lsp.IdeMembers,
+  Atlas.Core.Lsp.Session;
 
 /// <summary>Modul von AFileName; öffnet die Datei nur, wenn sie noch nicht offen ist. OpenFile öffnete sie sonst
 /// jedes Mal neu (Doppelklick in „Atlas-Prüfung“), bei Formular-Units samt Designer. nil, wenn das scheitert.
@@ -182,6 +190,20 @@ begin
   mView.CursorPos := mCursor;
   mView.MoveViewToCursor;
   mView.Paint;
+end;
+
+class function TAtlasIdeNavigation.EditPosOf(const ALines: TArray<string>; const APosition: TLspTextPosition;
+  ATabWidth: Integer): TOTAEditPos;
+var
+  mLineText: string;
+begin
+  mLineText := '';
+  if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
+  begin
+    mLineText := ALines[APosition.Line];
+  end;
+  Result.Line := APosition.Line + 1;
+  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
 end;
 
 end.

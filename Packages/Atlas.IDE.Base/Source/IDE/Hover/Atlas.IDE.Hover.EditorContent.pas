@@ -31,7 +31,7 @@ uses
   Atlas.UI.Hover.Tip;
 
 type
-  TAtlasHoverSessionFunc = reference to function: TLspSession;
+  TAtlasHoverSessionFunc = TFunc<TLspSession>;
   TAtlasHoverLogFunc = reference to procedure(const AMessage: string);
   /// <summary>Probleme an der Stelle (0-basiert, #398).</summary>
   TAtlasHoverProblemsFunc = reference to function(const AFileName: string; ALine, ACharacter: Integer):
@@ -289,11 +289,7 @@ end;
 
 function TAtlasEditorHoverContent.CurrentSession: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSession) then
-  begin
-    Result := FSession();
-  end;
+  Result := TLspSession.From(FSession);
 end;
 
 function TAtlasEditorHoverContent.Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;

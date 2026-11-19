@@ -500,13 +500,8 @@ begin
 end;
 
 class procedure TAtlasIdeReassigned.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 class procedure TAtlasIdeReassigned.Install(const ASession: TAtlasReassignedSessionFunc);

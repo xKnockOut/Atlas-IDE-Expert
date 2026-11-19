@@ -114,9 +114,9 @@ var
   mLocation: TAtlasEventLocation;
 begin
   mLocation := Default(TAtlasEventLocation);
-  mLocation.Handlers := [3];
+  mLocation.Items := [3];
   Assert.IsFalse(TAtlasEventBreakWatch.NeedsSender(mLocation));
-  mLocation.Handlers := [3, 4];
+  mLocation.Items := [3, 4];
   Assert.IsTrue(TAtlasEventBreakWatch.NeedsSender(mLocation));
 end;
 

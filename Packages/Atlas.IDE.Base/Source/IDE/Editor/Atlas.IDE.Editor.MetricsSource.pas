@@ -206,16 +206,6 @@ begin
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 procedure TAtlasEditorMetricsSource.Tick(Sender: TObject);
 var
   mView: IOTAEditView;
@@ -250,7 +240,7 @@ begin
   // Nur für die Statusleiste geholt: Der Editor zeigt nichts davon.
   if Demand = TAtlasMetricsDemand.Paint then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
@@ -269,7 +259,7 @@ begin
   // Gezeigte Werte verschwinden (metrics aus, Code Lens gesperrt).
   if Demand = TAtlasMetricsDemand.Paint then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
