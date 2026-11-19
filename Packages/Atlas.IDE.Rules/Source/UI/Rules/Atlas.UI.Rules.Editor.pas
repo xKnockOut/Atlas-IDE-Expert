@@ -225,11 +225,14 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.Rules.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 6;
   cListHeight = 230;
+  /// <summary>Einrückung des Kästchens für die Typebene unter der Auswahl.</summary>
+  cSubIndent = 18;
   /// <summary>Höhe der Beispiel-Memos bei kurzen Beispielen.</summary>
   cMinMemoHeight = 72;
   /// <summary>Auswahl des Schweregrads; Eintrag 0 ist die Vorgabe.</summary>
@@ -584,7 +587,7 @@ begin
   FGroupChoice.Parent := FTopBar;
   FGroupChoice.Align := alRight;
   FGroupChoice.AlignWithMargins := True;
-  FGroupChoice.Margins.SetBounds(cGap, 0, 0, 0);
+  TAtlasControlScaling.SetMargins(FGroupChoice, cGap, 0, 0, 0);
   FGroupChoice.Width := FGroupChoice.ScaleValue(200);
   FGroupChoice.Style := csDropDownList;
   FMaster := TCheckBox.Create(Self);
@@ -596,7 +599,7 @@ begin
   FTypeLevel.Visible := False;
   FTypeLevel.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesTypeLevel);
   FTypeLevel.AlignWithMargins := True;
-  FTypeLevel.Margins.SetBounds(18, 0, 0, 0);
+  TAtlasControlScaling.SetMargins(FTypeLevel, cSubIndent, 0, 0, 0);
   Stack(Self, FTypeLevel);
   FStatus := AddLabel(Self, '');
   FStatus.Font.Color := clGrayText;
