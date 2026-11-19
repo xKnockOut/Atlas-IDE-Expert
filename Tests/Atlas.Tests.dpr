@@ -2800,6 +2800,8 @@ uses
   Atlas.UI.Debug.BreakpointAnchors.Tests in 'IDE.Expert\Atlas.UI.Debug.BreakpointAnchors.Tests.pas',
   Atlas.Core.Debug.BreakpointRules in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointRules.pas',
   Atlas.Core.Debug.BreakpointRules.Tests in 'IDE.Expert\Atlas.Core.Debug.BreakpointRules.Tests.pas',
+  Atlas.Core.Debug.RoutinePattern in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.RoutinePattern.pas',
+  Atlas.Core.Debug.RoutinePattern.Tests in 'IDE.Expert\Atlas.Core.Debug.RoutinePattern.Tests.pas',
   Atlas.UI.Debug.BreakpointRules in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointRules.pas',
   Atlas.UI.Debug.BreakpointRules.Tests in 'IDE.Expert\Atlas.UI.Debug.BreakpointRules.Tests.pas',
   Atlas.Tests.UpdateFakes in 'Support\Atlas.Tests.UpdateFakes.pas',
