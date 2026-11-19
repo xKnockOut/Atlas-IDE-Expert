@@ -120,15 +120,8 @@ begin
 end;
 
 procedure SetStatusExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
-var
-  mExtra: TAtlasStatusExtra;
 begin
-  mExtra := Default(TAtlasStatusExtra);
-  mExtra.Id := AId;
-  mExtra.Text := AText;
-  mExtra.Hint := AHint;
-  mExtra.OnClick := AOnClick;
-  SetStatusItem(mExtra);
+  SetStatusItem(TAtlasStatusExtra.Make(AId, AText, AHint, AOnClick));
 end;
 
 procedure SetStatusItem(const AExtra: TAtlasStatusExtra);

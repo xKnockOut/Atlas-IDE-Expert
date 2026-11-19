@@ -16,9 +16,9 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  System.Generics.Collections,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.ThreadList;
 
 type
   /// <summary>True, sobald der Query abgebrochen oder durch einen neuen ersetzt ist.</summary>
@@ -40,10 +40,8 @@ type
     FName: string;
     FToken: TAtlasAliveToken;
     FTokenRef: IInterface;
-    FLock: TCriticalSection;
     FGeneration: Integer;
-    FWorkers: TList<TThread>;
-    procedure ReapWorkers;
+    FWorkers: TAtlasThreadList;
     function IsCurrent(AGeneration: Integer): Boolean;
     procedure Failed(AE: Exception);
     /// <summary>Arbeit eines Hintergrund-Threads von Query: Fetch mit Teilergebnissen, dann das Ergebnis an
@@ -84,6 +82,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Diagnostics.WorkerSlot;
+
 { TAtlasAsyncCompletionProvider }
 
 constructor TAtlasAsyncCompletionProvider.Create;
@@ -92,8 +93,7 @@ begin
   FToken := TAtlasAliveToken.Create;
   FToken.Alive := True;
   FTokenRef := FToken;
-  FLock := TCriticalSection.Create;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasThreadList.Create;
 end;
 
 destructor TAtlasAsyncCompletionProvider.Destroy;
@@ -102,27 +102,7 @@ begin
   FToken.Alive := False;
   FTokenRef := nil;
   FWorkers.Free;
-  FLock.Free;
   inherited;
-end;
-
-procedure TAtlasAsyncCompletionProvider.ReapWorkers;
-var
-  mIndex: Integer;
-begin
-  FLock.Enter;
-  try
-    for mIndex := FWorkers.Count - 1 downto 0 do
-    begin
-      if FWorkers[mIndex].Finished then
-      begin
-        FWorkers[mIndex].Free;
-        FWorkers.Delete(mIndex);
-      end;
-    end;
-  finally
-    FLock.Leave;
-  end;
 end;
 
 function TAtlasAsyncCompletionProvider.IsCurrent(AGeneration: Integer): Boolean;
@@ -154,11 +134,8 @@ begin
 end;
 
 procedure TAtlasAsyncCompletionProvider.RunInBackground(const AWork: TProc);
-var
-  mWorker: TThread;
 begin
-  ReapWorkers;
-  mWorker := TThread.CreateAnonymousThread(
+  FWorkers.Start(
     procedure
     begin
       try
@@ -169,34 +146,12 @@ begin
           Failed(E);
       end;
     end);
-  mWorker.FreeOnTerminate := False;
-  FLock.Enter;
-  try
-    FWorkers.Add(mWorker);
-  finally
-    FLock.Leave;
-  end;
-  mWorker.Start;
 end;
 
 procedure TAtlasAsyncCompletionProvider.Shutdown;
-var
-  mWorkers: TArray<TThread>;
-  mWorker: TThread;
 begin
   Cancel;
-  FLock.Enter;
-  try
-    mWorkers := FWorkers.ToArray;
-    FWorkers.Clear;
-  finally
-    FLock.Leave;
-  end;
-  for mWorker in mWorkers do
-  begin
-    mWorker.WaitFor;
-    mWorker.Free;
-  end;
+  FWorkers.StopAll(TAtlasWorkerSlot.cWaitForever);
 end;
 
 procedure TAtlasAsyncCompletionProvider.Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
@@ -208,7 +163,7 @@ var
   mWorker: TThread;
 begin
   mGeneration := TInterlocked.Increment(FGeneration);
-  ReapWorkers;
+  FWorkers.Prune;
   if not Prepare(AContext, mData) then
   begin
     ASink.Complete;
@@ -217,24 +172,21 @@ begin
   mContext := AContext;
   mSink := ASink;
   mWorker := nil;
-  FLock.Enter;
+  FWorkers.Enter;
   try
     // Prepare läuft im Zeitlimit-Arbeiter und kann das Zeitlimit überdauern: Ist die Anfrage
     // inzwischen überholt, abgebrochen oder hat Shutdown die Arbeiter eingesammelt, keine Vollanfrage mehr stellen.
-    // Unter FLock und mit Start in der Sperre, damit Shutdown keinen danach gestarteten Arbeiter übersieht.
+    // In der Sperre der Threadliste und mit Start darin, damit Shutdown keinen danach gestarteten Arbeiter übersieht.
     if IsCurrent(mGeneration) then
     begin
-      mWorker := TThread.CreateAnonymousThread(
+      mWorker := FWorkers.Start(
         procedure
         begin
           RunFetch(mContext, mData, mSink, mGeneration);
         end);
-      mWorker.FreeOnTerminate := False;
-      FWorkers.Add(mWorker);
-      mWorker.Start;
     end;
   finally
-    FLock.Leave;
+    FWorkers.Leave;
   end;
   // Überholt: Die Senken verwerfen veraltete Aufrufe; Composite erwartet je Teil ein Complete.
   if mWorker = nil then

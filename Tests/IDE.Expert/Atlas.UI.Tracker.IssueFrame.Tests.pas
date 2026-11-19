@@ -9,7 +9,9 @@
 // Checklisten (#1273): Fortschritt in der Kopfzeile, Kästchen, „Punkt
 // hinzufügen …“, nur lesbar, abgeschaltet; Reiter „Details“ und „Entwicklung“
 // mit Schalter (#1269); Teile des Frames: Ablage im Bildlauf (Reihenfolge,
-// Karten, Leeren) und Wünsche nach dem Klick (Reihenfolge, nur einmal).
+// Karten, Leeren) und Wünsche nach dem Klick (Reihenfolge, nur einmal);
+// „Zusammenfassen“ mit KI (#2462): Knopf und Menüeintrag nach Schaltern, Karte
+// mit Stand, Fragen, Units als Links, „veraltet“ und „Als Kommentar übernehmen“.
 
 interface
 
@@ -63,10 +65,18 @@ type
     /// </summary>
     [Test]
     procedure LayoutPlacesInOrderAndClears;
-    /// <summary>Wünsche nach dem Klick: erst Neuaufbau, dann Link, Kästchen, „Punkt hinzufügen …“; je nur einmal.
-    /// </summary>
+    /// <summary>Wünsche nach dem Klick: erst Neuaufbau, dann Link, Kästchen, „Punkt hinzufügen …“, „Neu
+    /// zusammenfassen“ (#2462); je nur einmal.</summary>
     [Test]
     procedure DeferredRunsInOrderOnce;
+    /// <summary>#2462: ohne KI kein Knopf und kein Menüeintrag; Menü immer, Knopf erst ab genug Kommentaren.
+    /// </summary>
+    [Test]
+    procedure SummarizeButtonAndMenu;
+    /// <summary>#2462: Karte mit Stand, offenen Fragen, nächstem Schritt und Units; Unit-Link meldet den Pfad,
+    /// „Als Kommentar übernehmen“ füllt das Kommentarfeld; anderes Issue zeigt keine Karte.</summary>
+    [Test]
+    procedure SummaryCardSectionsAndLinks;
   end;
 
 implementation
@@ -80,6 +90,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Preview,
+  Atlas.Core.Tracker.AiSummary,
   Atlas.UI.Tracker.IssueBoxes,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.IssueFrame.Contract,
@@ -142,6 +153,43 @@ begin
   mLink.Relation := 'depends on';
   mLink.Local := True;
   Result.Links := [mLink];
+end;
+
+/// <summary>Label mit ACaption im Frame; nil ohne.</summary>
+function LabelOf(AFrame: TAtlasIssueFrame; const ACaption: string): TLabel;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AFrame.ComponentCount - 1 do
+  begin
+    if (AFrame.Components[mIndex] is TLabel) and (TLabel(AFrame.Components[mIndex]).Caption = ACaption) then
+    begin
+      Exit(TLabel(AFrame.Components[mIndex]));
+    end;
+  end;
+  Result := nil;
+end;
+
+function SampleSummary(const AKey: string; AStale: Boolean): TAtlasIssueSummaryShown;
+var
+  mQuestion: TAtlasIssueSummaryQuestion;
+  mUnit: TAtlasIssueSummaryUnit;
+begin
+  Result := Default(TAtlasIssueSummaryShown);
+  Result.Kind := TAtlasIssueSummaryKind.Ready;
+  Result.Key := AKey;
+  Result.Stale := AStale;
+  Result.Summary.Status := 'Fix liegt im PR.';
+  mQuestion := Default(TAtlasIssueSummaryQuestion);
+  mQuestion.Question := 'Welche Version?';
+  mQuestion.Who := 'Anna';
+  Result.Summary.Questions := [mQuestion];
+  Result.Summary.NextStep := 'PR prüfen';
+  Result.Summary.Units := ['Atlas.Core.Save'];
+  mUnit := Default(TAtlasIssueSummaryUnit);
+  mUnit.Name := 'Atlas.Core.Save';
+  mUnit.Path := 'C:\Src\Atlas.Core.Save.pas';
+  Result.Units := [mUnit];
 end;
 
 { TAtlasIssueFrameTests }
@@ -745,6 +793,11 @@ begin
       begin
         mLog := mLog + 'Punkt;';
       end;
+    mEvents.Summarize :=
+      procedure
+      begin
+        mLog := mLog + 'Zusammenfassen;';
+      end;
     mRebuild :=
       procedure
       begin
@@ -752,18 +805,102 @@ begin
       end;
     mLink := Default(TAtlasTrackerLink);
     mLink.Key := 'ATL-7';
+    mDeferred.Summarize;
     mDeferred.AddTask;
     mDeferred.ToggleTask(2);
     mDeferred.OpenLink(mLink);
     mDeferred.Rebuild;
     mDeferred.Run(mEvents, mRebuild);
-    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;', mLog);
+    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;Zusammenfassen;', mLog);
     mDeferred.Run(mEvents, mRebuild);
-    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;', mLog, 'nur einmal');
+    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;Zusammenfassen;', mLog, 'nur einmal');
   finally
     mHost.Free;
     mEvents := Default(TAtlasIssueFrameEvents);
     mRebuild := nil;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.SummarizeButtonAndMenu;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mEvents: TAtlasIssueFrameEvents;
+  mCalls: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mCalls := 0;
+    mEvents := mFrame.Events;
+    mEvents.Summarize :=
+      procedure
+      begin
+        Inc(mCalls);
+      end;
+    mFrame.Events := mEvents;
+    mFrame.ShowDetails(Sample(1), cNow, '', False);
+    Assert.IsFalse(mFrame.Parts.Summarize.Visible, 'ohne KI kein Knopf');
+    Assert.IsFalse(mFrame.Parts.SummarizeItem.Visible, 'ohne KI kein Menüeintrag');
+    mFrame.Parts.Summarize.Click;
+    Assert.AreEqual(0, mCalls, 'ohne KI nichts melden');
+    mFrame.SetFlag(TAtlasIssueFlag.CanSummarize, True);
+    Assert.IsTrue(mFrame.Parts.SummarizeItem.Visible, 'Menüeintrag immer');
+    Assert.IsFalse(mFrame.Parts.Summarize.Visible, 'Knopf erst ab genug Kommentaren');
+    mFrame.SetFlag(TAtlasIssueFlag.SummaryButton, True);
+    Assert.IsTrue(mFrame.Parts.Summarize.Visible);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryMenu), mFrame.Parts.SummarizeItem.Caption);
+    mFrame.Parts.Summarize.Click;
+    mFrame.Parts.SummarizeItem.Click;
+    Assert.AreEqual(2, mCalls);
+    mFrame.Events := Default(TAtlasIssueFrameEvents);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.SummaryCardSectionsAndLinks;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mEvents: TAtlasIssueFrameEvents;
+  mOpened: string;
+  mLink: TLabel;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mOpened := '';
+    mEvents := mFrame.Events;
+    mEvents.OpenUnit :=
+      procedure(APath: string)
+      begin
+        mOpened := APath;
+      end;
+    mFrame.Events := mEvents;
+    mFrame.SetFlag(TAtlasIssueFlag.CanWrite, True);
+    mFrame.ShowDetails(Sample(1), cNow, '', False);
+    mFrame.ShowSummary(SampleSummary('ATL-999', False));
+    Assert.IsNull(LabelOf(mFrame, 'Fix liegt im PR.'), 'anderes Issue: keine Karte');
+    mFrame.ShowSummary(SampleSummary('ATL-123', True));
+    Assert.IsNotNull(LabelOf(mFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryTitle)), 'Titel');
+    Assert.IsNotNull(LabelOf(mFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryStale)), 'veraltet');
+    Assert.IsNotNull(LabelOf(mFrame, 'Fix liegt im PR.'), 'Stand');
+    Assert.IsNotNull(LabelOf(mFrame, '• Welche Version? (Anna)'), 'Frage mit wem');
+    Assert.IsNotNull(LabelOf(mFrame, 'PR prüfen'), 'nächster Schritt');
+    mLink := LabelOf(mFrame, 'Atlas.Core.Save');
+    Assert.IsNotNull(mLink, 'Unit als Link');
+    mLink.OnClick(mLink);
+    Assert.AreEqual('C:\Src\Atlas.Core.Save.pas', mOpened, 'Pfad an die IDE-Schicht');
+    mLink := LabelOf(mFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryAsComment));
+    Assert.IsNotNull(mLink, 'Als Kommentar übernehmen');
+    mLink.OnClick(mLink);
+    Assert.IsTrue(mFrame.Parts.CommentEdit.Text.Contains('Fix liegt im PR.'), 'Entwurf im Kommentarfeld');
+    mFrame.Events := Default(TAtlasIssueFrameEvents);
+  finally
+    mHost.Free;
   end;
 end;
 

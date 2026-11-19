@@ -2,7 +2,8 @@
 
 // Teile des Fensters „Atlas-Issue“ (#1264): gemeinsamer Kontext, Kurzabfrage
 // für den Hover (#1265), Checklisten (#1273), Verknüpfungen (#1279), Bilder
-// und Anhänge, Kommentare (#1278) und der Reiter „Entwicklung“ (#1269).
+// und Anhänge, Kommentare (#1278), der Reiter „Entwicklung“ (#1269) und
+// „Zusammenfassen“ mit KI (#2462).
 // Legt sie an und gibt sie frei; die Vorschau (Atlas.IDE.Tracker.IssuePreview)
 // und das Laden (Atlas.IDE.Tracker.IssueLoad) arbeiten mit ihnen.
 
@@ -17,7 +18,8 @@ uses
   Atlas.IDE.Tracker.IssueChecklists,
   Atlas.IDE.Tracker.IssueLinkWrites,
   Atlas.IDE.Tracker.IssueMedia,
-  Atlas.IDE.Tracker.IssueComments;
+  Atlas.IDE.Tracker.IssueComments,
+  Atlas.IDE.Tracker.IssueSummary;
 
 type
   /// <summary>Was die Teile von außen brauchen.</summary>
@@ -41,6 +43,7 @@ type
     FLinkWrites: TAtlasIdeIssueLinkWrites;
     FMedia: TAtlasIdeIssueMedia;
     FComments: TAtlasIdeIssueComments;
+    FSummary: TAtlasIdeIssueSummary;
     FDevelopment: TAtlasIdeIssueDevelopment;
     FDevelopmentRef: IInterface;
     procedure CreateDevelopment(const AProject: TFunc<string>);
@@ -57,6 +60,8 @@ type
     property LinkWrites: TAtlasIdeIssueLinkWrites read FLinkWrites;
     property Media: TAtlasIdeIssueMedia read FMedia;
     property Comments: TAtlasIdeIssueComments read FComments;
+    /// <summary>Zusammenfassen mit KI (#2462).</summary>
+    property Summary: TAtlasIdeIssueSummary read FSummary;
     property Development: TAtlasIdeIssueDevelopment read FDevelopment;
   end;
 
@@ -79,6 +84,7 @@ begin
   FLinkWrites := TAtlasIdeIssueLinkWrites.Create(FContext, AHooks.Refresh);
   FMedia := TAtlasIdeIssueMedia.Create(FContext);
   FComments := TAtlasIdeIssueComments.Create(FContext, AHooks.Comments, AHooks.Refresh);
+  FSummary := TAtlasIdeIssueSummary.Create(FContext, ACacheFolder);
   CreateDevelopment(AHooks.Project);
 end;
 
@@ -90,6 +96,7 @@ begin
   end;
   FDevelopment := nil;
   FDevelopmentRef := nil;
+  FSummary.Free;
   FComments.Free;
   FMedia.Free;
   FLinkWrites.Free;

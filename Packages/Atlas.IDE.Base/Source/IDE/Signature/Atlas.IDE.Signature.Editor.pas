@@ -88,7 +88,7 @@ type
   public
     /// <summary>Beim nächsten Hint für AName die Überladung AIndex wählen (aus dem Detailpanel, #425).</summary>
     class procedure PreferOverload(const AName: string; AIndex: Integer); static;
-    /// <summary>ASource: Server-Anbieter, eingesetzt von der Kompositionswurzel.</summary>
+    /// <summary>ASource: Server-Anbieter, eingesetzt von der Kompositionswurzel; ALog: Protokoll, nie nil.</summary>
     constructor Create(const ASource: IAtlasSignatureSource; const ACompletionOpen: TAtlasBoolFunc;
       const ALog: TAtlasLogFunc);
     destructor Destroy; override;
@@ -399,10 +399,7 @@ end;
 
 procedure TAtlasEditorSignature.Log(const AMessage: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
+  FLog(AMessage);
 end;
 
 procedure TAtlasEditorSignature.TimerTick(Sender: TObject);

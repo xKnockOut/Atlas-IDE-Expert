@@ -52,6 +52,8 @@ type
     procedure PopupFormPaintsAllKeepsBackground;
     [Test]
     procedure WorkAreaWithoutMainForm;
+    [Test]
+    procedure AnswerDialogTakesFirstAnswerAfterClosing;
   end;
 
 implementation
@@ -82,6 +84,12 @@ type
     ThemeCount: Integer;
   end;
 
+  /// <summary>Gibt Answer nach außen.</summary>
+  TProbeAnswer = class(TAtlasAnswerDialog)
+  public
+    procedure Say(const AProc: TProc);
+  end;
+
   /// <summary>Zählt ColorsChanged und merkt sich die Fläche dabei.</summary>
   TProbePopup = class(TAtlasPopupForm)
   protected
@@ -90,6 +98,13 @@ type
     ColorsCount: Integer;
     SurfaceSeen: TAtlasColor;
   end;
+
+{ TProbeAnswer }
+
+procedure TProbeAnswer.Say(const AProc: TProc);
+begin
+  Answer(AProc);
+end;
 
 { TProbePopup }
 
@@ -435,6 +450,36 @@ begin
     Assert.IsFalse(csOpaque in mPopup.ControlStyle, 'wieder aus');
   finally
     mPopup.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.AnswerDialogTakesFirstAnswerAfterClosing;
+var
+  mDialog: TProbeAnswer;
+  mFirst, mSecond: Integer;
+begin
+  mFirst := 0;
+  mSecond := 0;
+  mDialog := TProbeAnswer.CreateDialog(nil, 'Frage', 300);
+  try
+    Assert.IsFalse(mDialog.Answered);
+    mDialog.Say(
+      procedure
+      begin
+        Inc(mFirst);
+      end);
+    mDialog.Say(
+      procedure
+      begin
+        Inc(mSecond);
+      end);
+    Assert.IsTrue(mDialog.Answered);
+    Assert.AreEqual(0, mFirst, 'Aktion erst über die Nachrichtenschleife');
+    CheckSynchronize;
+    Assert.AreEqual(1, mFirst);
+    Assert.AreEqual(0, mSecond, 'nur die erste Antwort zählt');
+  finally
+    mDialog.Free;
   end;
 end;
 

@@ -30,6 +30,7 @@ uses
   Atlas.Core.Build.Verdict,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Build,
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.Notifications.Window;
 
 type
@@ -37,11 +38,10 @@ type
   /// </summary>
   TAtlasNotificationBadgeEvent = reference to procedure(AUnread: Integer; AWorst: TAtlasNotificationSeverity);
 
-  TAtlasIdeNotifications = class(TComponent)
+  TAtlasIdeNotifications = class(TAtlasPopupFormHolder<TAtlasNotificationsWindow>)
   private class var
     FInstance: TAtlasIdeNotifications;
   private
-    FWindow: TAtlasNotificationsWindow;
     FListener: Integer;
     FPending: Integer;
     FOnAnchor: TFunc<TPoint>;
@@ -51,8 +51,6 @@ type
     procedure Changed;
     procedure Refresh;
     procedure Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -138,22 +136,9 @@ begin
   begin
     FInstance := nil;
   end;
-  if FWindow <> nil then
-  begin
-    FWindow.RemoveFreeNotification(Self);
-    FreeAndNil(FWindow);
-  end;
+  FreeWindow;
   FreeAndNil(FCheckErrors);
   inherited;
-end;
-
-procedure TAtlasIdeNotifications.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-  if (Operation = opRemove) and (AComponent = FWindow) then
-  begin
-    FWindow := nil;
-  end;
 end;
 
 procedure TAtlasIdeNotifications.Changed;
@@ -178,9 +163,9 @@ begin
   begin
     FOnBadge(mUnread, mWorst);
   end;
-  if FWindow <> nil then
+  if Window <> nil then
   begin
-    FWindow.Reload;
+    Window.Reload;
   end;
 end;
 
@@ -224,9 +209,9 @@ begin
   if not mCenter.Enabled then
   begin
     FCheckErrors.Clear;
-    if FWindow <> nil then
+    if Window <> nil then
     begin
-      FWindow.Dismiss;
+      Window.Dismiss;
     end;
   end;
   Changed;
@@ -235,19 +220,18 @@ end;
 procedure TAtlasIdeNotifications.Show(const AAnchor: TPoint);
 begin
   // Zweiter Aufruf schließt.
-  if FWindow <> nil then
+  if Window <> nil then
   begin
-    FWindow.Dismiss;
+    Window.Dismiss;
     Exit;
   end;
   if not Active then
   begin
     Exit;
   end;
-  FWindow := TAtlasNotificationsWindow.CreateList(Application, TAtlasIdeStyle.Colors,
-    TAtlasNotificationCenter.Default);
-  FWindow.FreeNotification(Self);
-  FWindow.OnModeChange :=
+  Hold(TAtlasNotificationsWindow.CreateList(Application, TAtlasIdeStyle.Colors,
+    TAtlasNotificationCenter.Default));
+  Window.OnModeChange :=
     procedure(const ASource: string; AMode: TAtlasNotificationMode)
     begin
       TAtlasGuard.Run(TAtlasFeature.Notifications,
@@ -256,7 +240,7 @@ begin
           SaveMode(ASource, AMode);
         end);
     end;
-  FWindow.ShowAbove(AAnchor);
+  Window.ShowAbove(AAnchor);
 end;
 
 procedure TAtlasIdeNotifications.Show;
