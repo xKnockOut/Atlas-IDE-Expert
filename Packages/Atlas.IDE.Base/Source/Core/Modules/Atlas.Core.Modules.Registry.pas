@@ -124,7 +124,8 @@ function AtlasModuleRegistryInstance: TAtlasModuleRegistry;
 implementation
 
 uses
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Text.Lines;
 
 const
   // Ausnahme- und Protokolltexte für Entwickler von Modulen (nie übersetzt).
@@ -220,9 +221,7 @@ end;
 
 function CleanField(const AText: string): string;
 begin
-  Result := StringReplace(AText, #9, ' ', [rfReplaceAll]);
-  Result := StringReplace(Result, #13, ' ', [rfReplaceAll]);
-  Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(StringReplace(AText, #9, ' ', [rfReplaceAll]), ' ');
 end;
 
 { TAtlasKnownModulesText }

@@ -210,6 +210,7 @@ end;
 function TAtlasHoverData.ReassignedText(const AOne, ACount: string): string;
 var
   mIndex: Integer;
+  mParts: TArray<string>;
   mLines: string;
 begin
   Result := '';
@@ -217,19 +218,17 @@ begin
   begin
     Exit;
   end;
-  mLines := '';
-  for mIndex := 0 to Min(High(ReassignedLines), cMaxReassignedLines - 1) do
+  SetLength(mParts, Min(Length(ReassignedLines), cMaxReassignedLines));
+  for mIndex := 0 to High(mParts) do
   begin
-    if mLines <> '' then
-    begin
-      mLines := mLines + ', ';
-    end;
-    mLines := mLines + IntToStr(ReassignedLines[mIndex] + 1);
+    mParts[mIndex] := IntToStr(ReassignedLines[mIndex] + 1);
   end;
   if Length(ReassignedLines) > cMaxReassignedLines then
   begin
-    mLines := mLines + ', …';
+    SetLength(mParts, Length(mParts) + 1);
+    mParts[High(mParts)] := '…';
   end;
+  mLines := string.Join(', ', mParts);
   if ReassignedWrites = 1 then
   begin
     Result := Format(AOne, [mLines]);

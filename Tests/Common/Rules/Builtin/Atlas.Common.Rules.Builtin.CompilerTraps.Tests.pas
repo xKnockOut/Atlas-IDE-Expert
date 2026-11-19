@@ -43,17 +43,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
-  end;
-end;
-
 /// <summary>Index mit Unit Werk.Basis: TCaption (type string), TKnopf mit Caption und TZahlen.</summary>
 function BasisIndex: ISymbolIndex;
 begin
@@ -78,13 +67,13 @@ begin
   mFound := TRuleAssert.Findings(TExitArrayLiteralRule.Create, mSource);
   Assert.AreEqual('6: Exit([''a'', ''b'']): Delphi liest [...] hier als Menge, nicht als TArray<string> (wie E2001 ' +
     'bzw. E2010). Erst Result zuweisen, dann Exit.|7: Exit([''c'']): Delphi liest [...] hier als Menge, nicht als ' +
-    'TArray<string> (wie E2001 bzw. E2010). Erst Result zuweisen, dann Exit.|', Messages(mFound));
+    'TArray<string> (wie E2001 bzw. E2010). Erst Result zuweisen, dann Exit.|', TRuleAssert.LineMessages(mFound));
   Assert.IsTrue(mFound[0].Fixes[0].Safe);
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[1].Fixes[0].Edits);
   mFixed := TChangeSignature.ApplyEdits(mFixed, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(StringReplace(mSource, 'Exit([''a'', ''b''])',
     'begin Result := [''a'', ''b'']; Exit; end', []), 'Exit([''c''])', 'Result := [''c'']; Exit', []), mFixed);
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TExitArrayLiteralRule.Create, mFixed)));
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TExitArrayLiteralRule.Create, mFixed)));
   // Eigener Typ der Datei (array of) und TBytes.
   Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TExitArrayLiteralRule.Create, 'unit U;'#10'interface'#10 +
     'type'#10'  TListe = array of Integer;'#10'implementation'#10'function A: TListe;'#10'begin'#10 +
@@ -112,7 +101,7 @@ begin
     'string(K.Caption).EndsWith(''c'') then'#10'    K.Caption := '''';'#10'end;'#10'end.';
   mFound := TRuleAssert.IndexFindings(TCaptionStringHelperRule.Create, mSource, BasisIndex, '', 'U.pas');
   Assert.AreEqual('7: K.Caption ist vom Typ TCaption, einem eigenen String-Typ: StartsWith aus TStringHelper gilt ' +
-    'dafür nicht (wie E2018). string(...) darum setzen.|', Messages(mFound));
+    'dafür nicht (wie E2018). string(...) darum setzen.|', TRuleAssert.LineMessages(mFound));
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, 'K.Caption.StartsWith', 'string(K.Caption).StartsWith', []), mFixed);
 end;
@@ -140,7 +129,7 @@ begin
   Assert.AreEqual('19: ATeile.Inhalt.Notiz.Text ist vom Typ TCaption, einem eigenen String-Typ: StartsWith aus ' +
     'TStringHelper gilt dafür nicht (wie E2018). string(...) darum setzen.|19: ATeile.Inhalt.Titel.Caption ist vom ' +
     'Typ TCaption, einem eigenen String-Typ: Contains aus TStringHelper gilt dafür nicht (wie E2018). string(...) ' +
-    'darum setzen.|', Messages(TRuleAssert.IndexFindings(TCaptionStringHelperRule.Create, mSource, mIndex, '',
+    'darum setzen.|', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TCaptionStringHelperRule.Create, mSource, mIndex, '',
     'U.pas')));
 end;
 
@@ -154,11 +143,11 @@ begin
   mFound := TRuleAssert.Findings(TUsesOrderHidesTypeRule.Create, mSource);
   Assert.AreEqual('5: Winapi.Windows steht in uses hinter Vcl.Graphics: TBitmap meint hier den Record aus ' +
     'Winapi.Windows, TBitmap.Create und die Methoden scheitern (wie E2003). Winapi.Windows vor Vcl.Graphics ' +
-    'einbinden.|', Messages(mFound));
+    'einbinden.|', TRuleAssert.LineMessages(mFound));
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, '  Vcl.Graphics,'#10'  Winapi.Windows;',
     '  Winapi.Windows,'#10'  Vcl.Graphics;', []), mFixed);
-  Assert.AreEqual('', Messages(TRuleAssert.Findings(TUsesOrderHidesTypeRule.Create, mFixed)));
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TUsesOrderHidesTypeRule.Create, mFixed)));
   // Über interface und implementation hinweg: Meldung ohne Korrektur.
   mFound := TRuleAssert.Findings(TUsesOrderHidesTypeRule.Create, 'unit U;'#10'interface'#10'uses'#10 +
     '  Vcl.Graphics;'#10'implementation'#10'uses'#10'  Winapi.Windows;'#10'procedure Lauf(B: TBitmap);'#10 +
@@ -186,13 +175,13 @@ begin
     '  Result := nil;'#10'end;'#10'function TLeser.Zwei: TZahlen;'#10'begin'#10'  Result := nil;'#10'end;'#10'end.';
   mFound := TRuleAssert.IndexFindings(TInterfaceUsesMissingRule.Create, mSource, BasisIndex, '', 'U.pas');
   Assert.AreEqual('7: TZahlen kommt aus Werk.Basis, die nur im uses des implementation-Teils steht; im ' +
-    'interface-Teil ist der Name unbekannt (wie E2003).|', Messages(mFound));
+    'interface-Teil ist der Name unbekannt (wie E2003).|', TRuleAssert.LineMessages(mFound));
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(StringReplace(mSource, '  Werk.Neben;', '  Werk.Neben, Werk.Basis;', []),
     'implementation'#10'uses'#10'  Werk.Basis;'#10, 'implementation'#10#10, []), mFixed);
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInterfaceUsesMissingRule.Create, mFixed, BasisIndex, '',
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TInterfaceUsesMissingRule.Create, mFixed, BasisIndex, '',
     'U.pas')));  // Gleichnamige Deklaration im interface ist keine Verwendung.
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInterfaceUsesMissingRule.Create, 'unit U;'#10 +
+  Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TInterfaceUsesMissingRule.Create, 'unit U;'#10 +
     'interface'#10'procedure cNeben(A: Integer);'#10'implementation'#10'uses'#10'  Werk.Neben;'#10 +
     'procedure cNeben(A: Integer);'#10'begin'#10'end;'#10'end.', BasisIndex, '', 'U.pas')));
 end;

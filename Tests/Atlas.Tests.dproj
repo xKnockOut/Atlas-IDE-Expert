@@ -440,6 +440,9 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Scopes.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.MethodRefs.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.LineBreaks.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DelphiSemantics.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas"/>
@@ -2510,6 +2513,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Check.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Reports.pas"/>
         <DCCReference Include="Application\Shell\Shell.Linter.Parts.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Linter.Baseline.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Hotspots.pas"/>
         <DCCReference Include="Application\Shell\Shell.Hotspots.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>
