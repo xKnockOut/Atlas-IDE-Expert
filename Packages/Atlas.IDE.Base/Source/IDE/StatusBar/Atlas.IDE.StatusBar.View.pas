@@ -18,7 +18,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.StatusBar.Content,
   Atlas.UI.StatusBar.Bar,
-  Atlas.IDE.Status.Field;
+  Atlas.Core.Status.FieldFlow;
 
 type
   /// <summary>Letzte Metriken der Datei; False ohne.</summary>
@@ -37,9 +37,9 @@ type
     /// <summary>Caret der Ansicht als 0-basierte Zeile und Zeichenindex; False ohne Ansicht.</summary>
     class function CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean; static;
     /// <summary>Status und Plakette aus AField; ohne Feld nur „Atlas“.</summary>
-    class procedure StatusInto(AField: TAtlasStatusField; var AView: TAtlasStatusBarView); static;
+    class procedure StatusInto(AField: TAtlasStatusFieldFlow; var AView: TAtlasStatusBarView); static;
     /// <summary>Ganze Ansicht für AView mit den Elementen AItems; ATarget: Methode am Cursor (leer ohne).</summary>
-    class function ViewFor(const AView: IOTAEditView; const AItems: TArray<string>; AField: TAtlasStatusField;
+    class function ViewFor(const AView: IOTAEditView; const AItems: TArray<string>; AField: TAtlasStatusFieldFlow;
       const AMetrics: TAtlasStatusMetricsFunc; out ATarget: TAtlasStatusBarMethodTarget): TAtlasStatusBarView;
       static;
   end;
@@ -224,15 +224,15 @@ begin
     TAtlasStatusBarStrings.Text(TAtlasStatusBarTextId.StatusBarMethodJump);
 end;
 
-/// <summary>Zusatzfelder des Atlas-Felds, solange es umgezogen ist (TAtlasStatusField.Relocated); sonst stehen sie
+/// <summary>Zusatzfelder des Atlas-Felds, solange es umgezogen ist (TAtlasStatusFieldFlow.Relocated); sonst stehen sie
 /// in der Statuszeile.</summary>
-procedure ExtrasInto(AField: TAtlasStatusField; var AView: TAtlasStatusBarView);
+procedure ExtrasInto(AField: TAtlasStatusFieldFlow; var AView: TAtlasStatusBarView);
 var
   mItems: TArray<TAtlasStatusExtraItem>;
   mIndex: Integer;
 begin
   AView.Extras := nil;
-  if not TAtlasStatusField.Relocated then
+  if not AField.Relocated then
   begin
     Exit;
   end;
@@ -279,7 +279,7 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasStatusBarViews.StatusInto(AField: TAtlasStatusField; var AView: TAtlasStatusBarView);
+class procedure TAtlasStatusBarViews.StatusInto(AField: TAtlasStatusFieldFlow; var AView: TAtlasStatusBarView);
 var
   mText: string;
 begin
@@ -318,7 +318,7 @@ begin
 end;
 
 class function TAtlasStatusBarViews.ViewFor(const AView: IOTAEditView; const AItems: TArray<string>;
-  AField: TAtlasStatusField; const AMetrics: TAtlasStatusMetricsFunc;
+  AField: TAtlasStatusFieldFlow; const AMetrics: TAtlasStatusMetricsFunc;
   out ATarget: TAtlasStatusBarMethodTarget): TAtlasStatusBarView;
 var
   mSettings: TAtlasPluginSettings;
