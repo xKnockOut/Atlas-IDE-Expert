@@ -95,46 +95,67 @@ begin
   Result := (Pos('.', mText) = 0) and (Pos('e', LowerCase(mText)) = 0);
 end;
 
-function HasType(AValue: TJSONValue; const AType: string): Boolean;
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Typen von JSON Schema ("type").</summary>
+  TSchemaType = (Text, WholeNumber, Number, Flag, JsonObject, JsonArray, Null);
+
+{$SCOPEDENUMS OFF}
+
+const
+  cSchemaTypeNames: array[TSchemaType] of string = ('string', 'integer', 'number', 'boolean', 'object', 'array',
+    'null');
+
+/// <summary>Typ mit dem Namen AName; False bei einem unbekannten Namen.</summary>
+function TryParseSchemaType(const AName: string; out AType: TSchemaType): Boolean;
+var
+  mType: TSchemaType;
 begin
-  if AType = 'string' then
+  for mType := Low(TSchemaType) to High(TSchemaType) do
   begin
-    Result := IsText(AValue);
-  end
-  else if AType = 'integer' then
-  begin
-    Result := IsInteger(AValue);
-  end
-  else if AType = 'number' then
-  begin
-    Result := AValue is TJSONNumber;
-  end
-  else if AType = 'boolean' then
-  begin
-    Result := AValue is TJSONBool;
-  end
-  else if AType = 'object' then
-  begin
-    Result := AValue is TJSONObject;
-  end
-  else if AType = 'array' then
-  begin
-    Result := AValue is TJSONArray;
-  end
-  else if AType = 'null' then
-  begin
-    Result := AValue is TJSONNull;
-  end
-  else
+    if cSchemaTypeNames[mType] = AName then
+    begin
+      AType := mType;
+      Exit(True);
+    end;
+  end;
+  AType := TSchemaType.Text;
+  Result := False;
+end;
+
+function HasType(AValue: TJSONValue; const AType: string): Boolean;
+var
+  mType: TSchemaType;
+begin
+  if not TryParseSchemaType(AType, mType) then
   begin
     // Unbekannter Typ im Schema: nicht ablehnen.
-    Result := True;
+    Exit(True);
+  end;
+  case mType of
+    TSchemaType.Text:
+      Result := IsText(AValue);
+    TSchemaType.WholeNumber:
+      Result := IsInteger(AValue);
+    TSchemaType.Number:
+      Result := AValue is TJSONNumber;
+    TSchemaType.Flag:
+      Result := AValue is TJSONBool;
+    TSchemaType.JsonObject:
+      Result := AValue is TJSONObject;
+    TSchemaType.JsonArray:
+      Result := AValue is TJSONArray;
+  else
+    Result := AValue is TJSONNull;
   end;
 end;
 
 function TypeMatches(AValue: TJSONValue; AType: TJSONValue; out AExpected: string): Boolean;
 var
   mItem: TJSONValue;
+  mNames: TArray<string>;
+  mCount: Integer;
 begin
   AExpected := '';
   if IsText(AType) then
@@ -142,26 +163,24 @@ begin
     AExpected := AType.Value;
     Exit(HasType(AValue, AExpected));
   end;
+  Result := True;
   if AType is TJSONArray then
   begin
+    Result := False;
+    SetLength(mNames, TJSONArray(AType).Count);
+    mCount := 0;
     for mItem in TJSONArray(AType) do
     begin
       if IsText(mItem) then
       begin
-        if AExpected <> '' then
-        begin
-          AExpected := AExpected + '|';
-        end;
-        AExpected := AExpected + mItem.Value;
-        if HasType(AValue, mItem.Value) then
-        begin
-          Exit(True);
-        end;
+        mNames[mCount] := mItem.Value;
+        Inc(mCount);
+        Result := Result or HasType(AValue, mItem.Value);
       end;
     end;
-    Exit(False);
+    SetLength(mNames, mCount);
+    AExpected := string.Join('|', mNames);
   end;
-  Result := True;
 end;
 
 procedure Add(var AIssues: TArray<string>; const APath, AMessage: string);

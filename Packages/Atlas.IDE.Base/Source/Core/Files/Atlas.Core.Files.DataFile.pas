@@ -59,6 +59,9 @@ type
     /// <summary>Schreibt AText als UTF-8 ohne BOM und ersetzt die Datei atomar; legt den Ordner an. Fehler
     /// (Ordner, Datei von einem anderen Programm gesperrt) als Ausnahme.</summary>
     class procedure Write(const AFileName, AText: string); static;
+    /// <summary>Löscht AFileName, wenn es sie gibt; gesperrt oder schon fort zählt nicht als Fehler (eine Datei
+    /// für andere Prozesse, die beim Beenden wegsoll; Reste räumt der nächste Start weg).</summary>
+    class procedure RemoveQuietly(const AFileName: string); static;
     /// <summary>Benennt AFileName in AFileName + DefectExtension um (eine ältere .defekt-Datei wird in einem
     /// Schritt ersetzt) und protokolliert es mit AKind und AReason. False, wenn es nicht ging; das steht dann
     /// auch im Protokoll, außer die Datei ist inzwischen fort (ein anderer Leser hat sie beiseitegelegt).
@@ -215,6 +218,15 @@ begin
     raise EInOutError.Create(cNoFolder);
   end;
   TAtlasTextFile.Replace(AFileName, TEncoding.UTF8.GetBytes(AText));
+end;
+
+class procedure TAtlasDataFile.RemoveQuietly(const AFileName: string);
+begin
+  // Gesperrt oder gerade fort: DeleteFile meldet es nur im Ergebnis, die Datei bleibt bis zum nächsten Aufräumen.
+  if FileExists(AFileName) then
+  begin
+    System.SysUtils.DeleteFile(AFileName);
+  end;
 end;
 
 class function TAtlasDataFile.SetAside(const AFileName, AKind, AReason: string): Boolean;
