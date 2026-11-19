@@ -329,7 +329,7 @@ begin
   Result := TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run);
   if Result then
   begin
-    mCommand.Run();
+    TAtlasCommandScope.Run(TAtlasFeature.Palette, mCommand.Caption, mCommand.Run);
   end;
 end;
 
@@ -470,7 +470,8 @@ begin
     begin
       if mPair.Key.Id = ACommand.Id then
       begin
-        mPair.Value();
+        // Ein Befehl des Benutzers: Sein erster Fehler erscheint in der Meldungsansicht.
+        TAtlasCommandScope.Run(TAtlasFeature.Palette, ACommand.Caption, mPair.Value);
         mFound := True;
       end;
     end;

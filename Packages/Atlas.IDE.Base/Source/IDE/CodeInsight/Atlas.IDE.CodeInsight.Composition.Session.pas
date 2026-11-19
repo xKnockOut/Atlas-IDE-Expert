@@ -461,7 +461,7 @@ begin
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
     TAtlasModuleContributions.IsVisible(mCommand) then
   begin
-    TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+    TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
   end;
 end;
 

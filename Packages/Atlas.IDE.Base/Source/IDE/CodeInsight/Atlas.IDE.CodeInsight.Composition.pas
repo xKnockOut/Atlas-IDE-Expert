@@ -52,6 +52,8 @@ begin
   TAtlasGuard.SetLogNames(TAtlasIdeSettings.Current.LogNames);
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasGuard.OnTripped := GuardTripped;
+  // Scheitert ein Befehl des Benutzers, die Meldungsansicht nach vorn: Wer sie geschlossen hat, sähe sonst nichts.
+  TAtlasCommandScope.OnFailed := ShowAtlasMessages;
   TAtlasGuard.RotatingLog.OnError := LogError;
   // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
   TAtlasIdeStackCapture.Install;
@@ -147,6 +149,7 @@ begin
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnTripped := nil;
   TAtlasGuard.OnFailure := nil;
+  TAtlasCommandScope.OnFailed := nil;
   TAtlasGuard.RotatingLog.OnError := nil;
   DetachSettings;
   // Entladen vor der freien Nachrichtenschleife: Die Startanteile hängen noch an Aktionen und Teilen.
