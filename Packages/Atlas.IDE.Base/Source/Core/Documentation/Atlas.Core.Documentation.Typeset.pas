@@ -1359,7 +1359,7 @@ begin
     Exit;
   end;
   FBuilder.Heading(FLabels.Exceptions);
-  mNameWidth := NameColumn(mSections, MaxInt, FMono, 50);
+  mNameWidth := NameColumn(mSections, MaxInt, FMono, TAtlasDocLayout.cExceptionColumnPercent);
   for mSection in mSections do
   begin
     FBuilder.Columns([LinkCell(mSection), TDocCell.OfRuns(mSection.Runs, TAtlasDocColor.Muted)], [mNameWidth]);
