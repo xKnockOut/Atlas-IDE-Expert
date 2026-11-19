@@ -28,14 +28,12 @@ implementation
 
 uses
   System.SysUtils,
-  System.IOUtils,
   Atlas.Core.Files.Contract,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.TeamFile,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.TeamFile;
 
 /// <summary>Inhalt von AFileName oder eine leere Datei in UTF-8 ohne BOM.</summary>
 function LoadOrNew(const AFileName: string): TAtlasTextFileContent;
@@ -84,23 +82,15 @@ end;
 class function TAtlasIdeHideTeamFile.Folder(out AFileName: string): string;
 var
   mTeam: TAtlasTeamSettings;
-  mProject: string;
 begin
   // Vorhandene .atlas des aktiven Projekts, sonst neben der .dproj (wie „Projektdatei öffnen“).
+  AFileName := TAtlasIdeTeamFile.TargetFile;
   mTeam := TAtlasIdeTeamFile.Current;
   if mTeam.FileName <> '' then
   begin
-    AFileName := mTeam.FileName;
     Exit(mTeam.Folder);
   end;
-  mProject := TAtlasIdeFiles.ActiveProjectFile;
-  if mProject = '' then
-  begin
-    AFileName := '';
-    Exit('');
-  end;
-  Result := ExtractFileDir(mProject);
-  AFileName := TPath.Combine(Result, TAtlasTeamFile.cFileName);
+  Result := ExtractFileDir(AFileName);
 end;
 
 class function TAtlasIdeHideTeamFile.Add(const APlace: TAtlasHiddenPlace; out AFileName, ADetail: string): Boolean;
