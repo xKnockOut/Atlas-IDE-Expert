@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Rules.IdeErrors;
+﻿unit Atlas.IDE.Rules.Adapters.IdeErrors;
 
 // Fehler der IDE (#1819, problems.ideErrors) im Modul Prüfregeln: liest
 // Error Insight über die Open Tools API (IOTAModuleServices.FindModule,

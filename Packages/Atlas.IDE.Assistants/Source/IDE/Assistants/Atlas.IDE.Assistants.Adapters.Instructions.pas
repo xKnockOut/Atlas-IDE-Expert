@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Assistants.Instructions;
+﻿unit Atlas.IDE.Assistants.Adapters.Instructions;
 
 // Anweisungsdateien für KI-Assistenten im Modul KI-Assistenten (#2615): Befehl „Anweisungen für KI-Assistenten
 // aktualisieren“ (Atlas-Menü und Befehlspalette) lässt den Server den Abschnitt aus atlas.json in jede Datei aus

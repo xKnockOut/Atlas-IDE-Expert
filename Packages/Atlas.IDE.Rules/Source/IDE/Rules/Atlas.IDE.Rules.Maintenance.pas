@@ -5,7 +5,7 @@
 // Baseline zählen, neu erzeugen (--check … --update-baseline) und löschen,
 // Unterdrückungen je Regel auswerten (--suppression-stats). AtlasServer.exe
 // läuft über TAtlasIdeServerActions.RunTool von Base. Die Seite Prüfregeln
-// (Abschnitt des Moduls, Atlas.IDE.Rules.Settings) ruft diese Funktionen. Das
+// (Abschnitt des Moduls, Atlas.IDE.Rules.Adapters.Settings) ruft diese Funktionen. Das
 // Format der Baseline-Datei bleibt in Base (TAtlasBaselineInfo).
 
 interface
