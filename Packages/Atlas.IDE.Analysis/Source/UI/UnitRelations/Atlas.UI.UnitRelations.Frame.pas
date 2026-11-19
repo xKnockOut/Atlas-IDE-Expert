@@ -458,6 +458,7 @@ begin
   AMenu.Items.Add(Result);
 end;
 
+/// <summary>Leiste oben im Rahmen; AHeight in logischen Pixeln (96 dpi).</summary>
 function NewPanel(AFrame: TRelationsFrame; AHeight: Integer): TPanel;
 begin
   Result := TPanel.Create(AFrame);
@@ -465,7 +466,7 @@ begin
   Result.Align := alTop;
   Result.BevelOuter := bvNone;
   Result.ParentBackground := True;
-  Result.Height := AHeight;
+  Result.Height := Result.ScaleValue(AHeight);
 end;
 
 /// <summary>Titelzeile mit Symbol (#751) und Unit, darunter Kosten und Zyklus der Unit.</summary>
@@ -497,6 +498,7 @@ begin
   AFrame.FParts.Info.ShowHint := True;
 end;
 
+/// <summary>Auswahl der Tiefe rechts in ABar; AWidth in logischen Pixeln (96 dpi).</summary>
 function NewRadio(ABar: TPanel; AWidth: Integer; AText: TAtlasAnalysisTextId;
   AEvents: TRelationsFrame.TEvents): TRadioButton;
 begin
@@ -504,7 +506,7 @@ begin
   Result.Parent := ABar;
   Result.Align := alRight;
   Result.AlignWithMargins := True;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Caption := TAtlasAnalysisStrings.Text(AText);
   Result.OnClick := AEvents.DepthClick;
 end;
