@@ -228,8 +228,7 @@ begin
   mLineBreak := TTextLines.LineBreakOf(ADocument.Text);
   Result := Default(TExpressionPlacement);
   // Mehrzeilige Ausdrücke aus dem Feld bleiben eine Zeile: Die Spalten der Schreibmarke gelten dann weiter.
-  Result.Text := mIndent + StringReplace(StringReplace(AExpression, #13, ' ', [rfReplaceAll]), #10, ' ',
-    [rfReplaceAll]) + ';' + mLineBreak;
+  Result.Text := mIndent + TTextLines.NormalizeLineBreaks(AExpression, ' ') + ';' + mLineBreak;
   Result.Column := Length(mIndent);
   if StartsWithOpener(mScopeText) and (mLine + 1 < ADocument.LineCount) then
   begin
