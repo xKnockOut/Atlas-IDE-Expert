@@ -130,6 +130,13 @@ const
   cLabelHeight = 20;
   /// <summary>Kästchen vor dem Text eines TCheckBox, logische Pixel.</summary>
   cCheckMark = 16;
+  /// <summary>Knöpfe, logische Pixel: Höhe, Abstand untereinander, Abstand zwischen Gruppen.</summary>
+  cButtonHeight = 28;
+  cButtonGap = 4;
+  cGroupGap = 3 * cGap;
+  /// <summary>Höhe des Kopfs und der Liste der Ziele, logische Pixel.</summary>
+  cHeaderHeight = 64;
+  cTargetListHeight = 66;
   /// <summary>Anfangs so viele Zeilen der Liste sichtbar.</summary>
   cInitialRows = 16;
 
@@ -402,7 +409,7 @@ begin
   Result.Width := Max(TextWidth(Font, ACaption) + ScaleValue(TAtlasButtonRow.cButtonPadding),
     ScaleValue(TAtlasButtonRow.cButtonMinWidth));
   Result.Top := ScaleValue(cGap);
-  Result.Height := ScaleValue(28);
+  Result.Height := ScaleValue(cButtonHeight);
   Result.Anchors := [akTop, akRight];
 end;
 
@@ -460,7 +467,7 @@ begin
   mHeader := TPanel.Create(Self);
   mHeader.Parent := Self;
   mHeader.Align := alTop;
-  mHeader.Height := ScaleValue(64);
+  mHeader.Height := ScaleValue(cHeaderHeight);
   mHeader.BevelOuter := bvNone;
   mHeader.Caption := '';
   // Beschriftungen so breit wie die längste, damit auch längere Übersetzungen nicht abgeschnitten werden.
@@ -493,7 +500,7 @@ begin
     FTargetList := TCheckListBox.Create(Self);
     Result := AddLabeled(AHeader, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersTargets), Result,
       FTargetList);
-    FTargetList.Height := ScaleValue(66);
+    FTargetList.Height := ScaleValue(cTargetListHeight);
     Result := Result + FTargetList.Height - ScaleValue(cRowHeight);
     FTargetList.OnClickCheck := TargetClickCheck;
   end
@@ -546,8 +553,8 @@ begin
   mRight.Width := Max(Max(mAll.Width, mNone.Width), Max(mNeeds.Width, TextWidth(Font, FAbstract.Caption) +
     ScaleValue(2 * cGap + cCheckMark))) + ScaleValue(2 * cGap);
   mAll.Top := ScaleValue(cGap);
-  mNone.Top := mAll.Top + mAll.Height + ScaleValue(4);
-  mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(3 * cGap);
+  mNone.Top := mAll.Top + mAll.Height + ScaleValue(cButtonGap);
+  mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(cGroupGap);
   FAbstract.Top := mNeeds.Top + mNeeds.Height + ScaleValue(cGap);
   // Nur für die Basisklasse (#713): Abhängigkeiten und abstrakte Methoden.
   mNeeds.Visible := FModel.HasNeeds;

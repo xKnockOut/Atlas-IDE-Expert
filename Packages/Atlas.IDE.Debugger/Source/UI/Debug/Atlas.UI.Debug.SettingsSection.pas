@@ -66,6 +66,7 @@ uses
   Atlas.UI.Debug.Values.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
+  Atlas.UI.Debug.ObjectMarks.Strings,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.Logpoints.Strings,
@@ -412,6 +413,8 @@ begin
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchLimit));
   Switch('debug.variablesWindow.scopedWatches',
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesScopedWatches));
+  // Objekte markieren (#839).
+  Switch('debug.objectMarks', TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.SettingsDebugObjectMarks));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped',

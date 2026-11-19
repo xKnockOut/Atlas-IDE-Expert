@@ -1,0 +1,2 @@
+### Neu
+- MCP-Werkzeug `search_atlas_docs` (#2376): durchsucht für KI-Assistenten Prüfregeln, Einstellungen, Fenster, Abschnitte der Funktionsseiten und Tastenkürzel von Atlas, auch ohne Repository (Index beim Bau aus den Schemata und `docs/features` erzeugt und eingebettet). Eine genaue Kennung liefert den ganzen Abschnitt; Regeln mit wirksamem Schweregrad im Projekt, Einstellungen des Servers mit aktuellem Wert, jeweils mit Herkunft; ohne Treffer ähnliche Kennungen.

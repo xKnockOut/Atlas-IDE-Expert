@@ -128,6 +128,7 @@ begin
   Assert.IsTrue(CheckOf(APage, 'DebugVariablesScopedWatches').Checked, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsTrue(CheckOf(APage, 'DebugNote').Checked, 'debug.note (#582)');
   Assert.IsTrue(CheckOf(APage, 'DebugNoteSaveFile').Checked, 'debug.note.saveFile (#582)');
+  Assert.IsTrue(CheckOf(APage, 'DebugObjectMarks').Checked, 'debug.objectMarks (#839)');
   Assert.AreEqual(1, ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice, 'debug.closeOpenedFiles (#842)');
   Assert.IsFalse(CheckOf(APage, 'DebugPreviewTab').Checked, 'debug.previewTab (#842)');
   Assert.IsTrue(CheckOf(APage, 'DebugLogpointsRecordValues').Checked, 'debug.logpoints.recordValues (#2552)');
@@ -169,6 +170,7 @@ begin
   CheckOf(APage, 'DebugVariablesScopedWatches').Checked := False;
   CheckOf(APage, 'DebugNote').Checked := False;
   CheckOf(APage, 'DebugNoteSaveFile').Checked := False;
+  CheckOf(APage, 'DebugObjectMarks').Checked := False;
   ChoiceOf(APage, 'DebugCloseOpenedFiles').Choice := 2;
   CheckOf(APage, 'DebugPreviewTab').Checked := True;
   CheckOf(APage, 'DebugLogpointsRecordValues').Checked := False;
@@ -212,6 +214,7 @@ begin
   Assert.IsFalse(ASaved.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
   Assert.IsFalse(ASaved.DebugNote);
   Assert.IsFalse(ASaved.DebugNoteSaveFile);
+  Assert.IsFalse(ASaved.DebugObjectMarks, 'debug.objectMarks (#839)');
   Assert.AreEqual('auto', ASaved.DebugCloseOpenedFiles);
   Assert.IsTrue(ASaved.DebugPreviewTab);
   Assert.IsFalse(ASaved.DebugLogpointsRecordValues);

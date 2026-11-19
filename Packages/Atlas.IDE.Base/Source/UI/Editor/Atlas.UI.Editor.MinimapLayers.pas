@@ -123,6 +123,19 @@ const
   /// <summary>Breite des Änderungsstreifens links bei 96 DPI.</summary>
   cBaseChangeWidth = 3;
   cBaseLabelHeight = 11;
+  /// <summary>Schrifthöhe und Innenrand der Überschriften bei 96 DPI; Deckkraft (0–255) ihres Hintergrunds.</summary>
+  cBaseLabelFont = 8;
+  cBaseLabelPadding = 4;
+  cLabelAlpha = 200;
+  /// <summary>Bildschirmauflösung, auf die sich alle Maße beziehen.</summary>
+  cDefaultPpi = 96;
+  /// <summary>Tabweite, bis die Optionen eine andere setzen.</summary>
+  cDefaultTabWidth = 4;
+  /// <summary>Balken je Wort sind um diesen Teil der Zeilenhöhe dünner als die Zeile.</summary>
+  cBlockGapDivisor = 3;
+  /// <summary>Anteil der Farbe des Tokens bzw. der Textfarbe (Bezeichner) gegen den Hintergrund.</summary>
+  cTokenShare = 0.8;
+  cIdentifierShare = 0.85;
 
 /// <summary>ARect mit AColor überziehen, Deckkraft AAlpha.</summary>
 procedure Blend(ACanvas: TCanvas; const ARect: TRect; AColor: TAtlasColor; AAlpha: Byte);
@@ -158,7 +171,7 @@ end;
 constructor TAtlasMinimapCode.Create;
 begin
   inherited Create;
-  FTabWidth := 4;
+  FTabWidth := cDefaultTabWidth;
   FBitmap := Vcl.Graphics.TBitmap.Create;
   FBitmap.PixelFormat := pf24bit;
 end;
@@ -275,10 +288,11 @@ var
   mHeight, mLeft, mRight: Integer;
 begin
   // Balken je Wort, eine Spur dünner als die Zeile.
-  mHeight := Max(1, AHeight - AHeight div 3);
+  mHeight := Max(1, AHeight - AHeight div cBlockGapDivisor);
   for mRun in FRuns[ALine] do
   begin
-    FBitmap.Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(TokenColor(FColors, mRun.Kind), FColors.Surface, 0.8));
+    FBitmap.Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(TokenColor(FColors, mRun.Kind), FColors.Surface,
+      cTokenShare));
     mLeft := FOptions.ColumnX(mRun.Start, FWidth);
     mRight := Max(mLeft + 1, FOptions.ColumnX(mRun.Stop, FWidth));
     FBitmap.Canvas.FillRect(TRect.Create(mLeft, ATop, mRight, ATop + mHeight));
@@ -298,7 +312,7 @@ begin
       Result := AColors.Accent;
   else
     // Kräftig wie in VS Code: Bezeichner sind der Großteil des Codes und müssen auf einen Blick lesbar sein.
-    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, 0.85);
+    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, cIdentifierShare);
   end;
 end;
 
@@ -412,14 +426,15 @@ begin
     FHeaders := TAtlasMinimap.Headers(FNodes, AMap, mLabelHeight);
     FHeadersValid := True;
   end;
-  ACanvas.Font.Height := -Scaled(8, AFrame.PPI);
+  ACanvas.Font.Height := -Scaled(cBaseLabelFont, AFrame.PPI);
   ACanvas.Font.Style := [fsBold];
   for mHeader in FHeaders do
   begin
     mArea := TRect.Create(Scaled(cBaseChangeWidth, AFrame.PPI) + 1, mHeader.Top, AFrame.Width,
       mHeader.Top + mLabelHeight);
     Blend(ACanvas, TRect.Create(mArea.Left, mArea.Top, Min(AFrame.Width, mArea.Left +
-      ACanvas.TextWidth(mHeader.Text) + Scaled(4, AFrame.PPI)), mArea.Bottom), AFrame.Colors.Surface, 200);
+      ACanvas.TextWidth(mHeader.Text) + Scaled(cBaseLabelPadding, AFrame.PPI)), mArea.Bottom), AFrame.Colors.Surface,
+        cLabelAlpha);
     ACanvas.Brush.Style := bsClear;
     ACanvas.Font.Color := TColor(AFrame.Colors.Text);
     if mHeader.IsType then
@@ -433,7 +448,7 @@ end;
 
 class function TAtlasMinimapOverlays.Scaled(AValue, APPI: Integer): Integer;
 begin
-  Result := MulDiv(AValue, Max(APPI, 96), 96);
+  Result := MulDiv(AValue, Max(APPI, cDefaultPpi), cDefaultPpi);
 end;
 
 procedure TAtlasMinimapOverlays.SetNodes(const ANodes: TAtlasOutlineNodes);

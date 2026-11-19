@@ -186,6 +186,8 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.CallStack.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.CallStackWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LeaksWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DockPanel.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ObjectMarks.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Leaks.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionDialog.pas"/>
@@ -263,8 +265,14 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ParallelStacks.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Leaks.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Leaks.Strings.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ObjectMarks.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.LeaksFrame.pas">
             <Form>AtlasDebugLeaksFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ObjectMarksFrame.pas">
+            <Form>AtlasDebugObjectMarksFrame</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
@@ -401,6 +409,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.VariablesFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.WatchScopes.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.WatchStore.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ObjectMarks.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.FieldRequests.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.VariablesFrame.pas">
             <Form>AtlasDebugVariablesFrame</Form>
