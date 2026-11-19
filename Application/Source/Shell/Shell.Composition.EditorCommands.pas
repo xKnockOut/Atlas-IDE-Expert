@@ -67,6 +67,8 @@ type
     function RunSmartIndent(const AArguments: TJSONArray): TJSONValue;
     function RunSuggestNext(const AArguments: TJSONArray): TJSONValue;
     function RunLearnedPatterns(const AArguments: TJSONArray): TJSONValue;
+    function RunSuggestionContext(const AArguments: TJSONArray): TJSONValue;
+    function RunCheckSuggestion(const AArguments: TJSONArray): TJSONValue;
   public
     constructor Create(const AServices: TShellEditorCommandServices);
     /// <summary>Markierungen im Plugin: Austrittspunkte, neu zugewiesene Variablen, Ausdruckstyp,
@@ -208,6 +210,26 @@ begin
   Result := TLspLearnedSuggestions.ExecuteList(FServices.Index, FServices.LearnedOptionsFor, AArguments);
 end;
 
+function TShellEditorCommands.RunSuggestionContext(const AArguments: TJSONArray): TJSONValue;
+begin
+  try
+    Result := TLspLearnedSuggestions.ExecuteContext(FServices.Documents, FServices.Index, AArguments);
+  except
+    on E: EArgumentException do
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
+  end;
+end;
+
+function TShellEditorCommands.RunCheckSuggestion(const AArguments: TJSONArray): TJSONValue;
+begin
+  try
+    Result := TLspLearnedSuggestions.ExecuteCheck(FServices.Documents, FServices.Index, AArguments);
+  except
+    on E: EArgumentException do
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
+  end;
+end;
+
 procedure TShellEditorCommands.RegisterMarkCommands(ACommands: TLspCommands);
 begin
   // Alle Markierungen lesen nur Dokumente und Index wie Hover und Hervorhebung: nebenläufig.
@@ -238,6 +260,9 @@ begin
   ACommands.RegisterConcurrent(TLspSmartIndent.cCommand, RunSmartIndent);
   ACommands.RegisterConcurrent(TLspLearnedSuggestions.cSuggestCommand, RunSuggestNext);
   ACommands.RegisterConcurrent(TLspLearnedSuggestions.cListCommand, RunLearnedPatterns);
+  // Wissen und Prüfung für Vorschläge eines KI-Anbieters im Plugin (#1922).
+  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cContextCommand, RunSuggestionContext);
+  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cCheckCommand, RunCheckSuggestion);
 end;
 
 end.
