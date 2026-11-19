@@ -39,9 +39,15 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - `find_path` bei „Wie hängt X mit Y zusammen?“ oder „Warum zieht diese Unit jene herein?“: ein Aufruf liefert die kürzeste Kette mit Kantenart und Datei:Zeile je Schritt, statt sich über `find_references` und `get_call_hierarchy` zu hangeln. „Kein Weg“ ist verlässlich; `[erschlossen]` heißt: über eine von mehreren Umsetzungen.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
+- `explain_compiler_message` bei Compilermeldungen, bevor du rätst und neu baust: Ursache an der Stelle, bekannte
+  Delphi-Falle (Delphi 12 gegen 13, Methodenreferenzen, Units, die FPC nicht verlangt) und eine sichere Korrektur als
+  Diff; die Meldungen aus `get_last_build`/`build_project` direkt als `messages` übergeben.
 - `get_last_tests` bei „Warum ist der Test rot?“: der letzte Testlauf aus der IDE ohne neuen Lauf, je rotem Test
   Meldung, Datei:Zeile, erwartet/erhalten, Protokollauszug und Marken (neu rot, wackelig, Leck, veraltet);
   `only` wählt `failed`, `flaky`, `slow`, `leaks`, `stale` oder `all`. Erst hier lesen, dann gezielt `run_tests`.
+- `get_ide_context` bei „diese Methode“, „die Auswahl“, „hier“: offene Datei mit Cursor und Methode, markierter
+  Text, aktives Projekt mit Konfiguration und Plattform, letzter Build, Reiter. Danach mit den übrigen Werkzeugen
+  lesen und prüfen.
 - `build_project` baut das Projekt in der laufenden IDE (auch in der Starter Edition ohne
   Kommandozeilen-Compiler) und liefert die Compilermeldungen; das Projekt muss dort offen sein.
 - `run_tests` führt die DUnitX-Tests aus (vorhandene Test-EXE, mit `build: true` vorher in der IDE

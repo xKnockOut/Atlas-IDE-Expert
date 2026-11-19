@@ -72,6 +72,10 @@
       "arguments": { "file": "Source/Ref.Formulare.Haupt.dfm" },
       "contains": "TButton"
     },
+    "explain_compiler_message": {
+      "arguments": { "code": "E2010", "message": "Incompatible types: 'Integer' and 'string'" },
+      "contains": "E2010"
+    },
     "explain_finding": {
       "arguments": {
         "file": "Source/Ref.Pruefung.Verstoesse.pas",
@@ -109,6 +113,9 @@
     },
     "get_last_tests": {
       "arguments": { "only": "all", "format": "json" }
+    },
+    "get_ide_context": {
+      "arguments": { "include": ["editor", "project", "build"], "format": "json" }
     },
     "build_project": {
       "arguments": { "project": "RefApp", "mode": "check" },

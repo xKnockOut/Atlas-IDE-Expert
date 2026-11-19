@@ -22,12 +22,14 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - die Abhängigkeiten einer Unit samt Zyklen lesen (`get_unit_dependencies`)
 - **Prüfen:**
   - geplanten Code mit `check_code` vor dem Schreiben prüfen
-  - Treffer erklären
+  - Treffer erklären (`explain_finding`): derselbe Auftrag wie „Als Auftrag für KI-Assistenten kopieren“ im Fenster „Atlas-Prüfung“, mit Ausschnitt ±8 Zeilen und der Schlusszeile, womit der Assistent nachprüft (`check_code`, bei sicheren Korrekturen `fix_findings`)
   - Befunde an Hooks von Claude Code melden (`hook_check`)
 - **Bauen und Testen:**
   - über die IDE bauen (`build_project`, `get_last_build`)
+  - Compilermeldungen an ihrer Stelle erklären, mit der bekannten Delphi-Falle und einer sicheren Korrektur als Diff (`explain_compiler_message`)
   - DUnitX-Tests ausführen
   - den letzten Testlauf der IDE lesen, ohne neu zu laufen (`get_last_tests`: rote Tests mit Datei:Zeile, erwartet/erhalten, Protokoll, neu rot, wackelig, Leck, veraltet)
+  - sehen, wo der Entwickler in der IDE gerade ist (`get_ide_context`: Datei, Cursor, Methode, Auswahl, aktives Projekt, letzter Build, Reiter)
 - **Ändern:**
   - schreibend umbenennen
   - Code-Aktionen anwenden
