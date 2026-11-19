@@ -5,8 +5,8 @@
 // mcp ist ein gemischtes Objekt (global und Projekt): Die Schichtung übernimmt
 // nur die Glieder, die die Datei nennt (#1357). reportFindingsAfterEdit (#2603): Befunde nach schreibenden
 // Werkzeugen melden.
-// Abschnitt "assistants" (#2608): Dateien, die KI-Assistenten nicht ändern dürfen
-// (protected); nur im Projekt.
+// Abschnitt "assistants": Dateien, die KI-Assistenten nicht ändern dürfen (protected, #2608; nur im Projekt),
+// Anweisungsdateien für KI-Assistenten und ihre Pflichtprüfungen (instructions.file/.checks, #2615).
 
 interface
 
@@ -33,7 +33,8 @@ type
     PlaceholderHasNoArgument, NameOfAPromptLetter, APromptIsAnObject, McpCustomPromptsMustBeA, ThePromptAlreadyExists,
     DisabledToolsMustBeAList, McpPromptLanguageIsDeOr, UnknownSettingMcp, UnknownEntryInAnArgument,
     ArgumentWithoutName, UnknownEntryInAPrompt, PromptWithoutName, UnknownContentAllowed, ProtectedMustBeAList,
-    AProtectedFileIsAnObject, UnknownEntryInAProtectedFile, ProtectedFileWithoutPath, UnknownSettingAssistants);
+    AProtectedFileIsAnObject, UnknownEntryInAProtectedFile, ProtectedFileWithoutPath, UnknownSettingAssistants,
+    InstructionFilesMustBeAList, InstructionChecksMustBeAList);
 
 const
   cTexts: array[TMcpOptionsText] of TAtlasText = (
@@ -66,7 +67,11 @@ const
      En: 'A protected file is an object with "path", "reason" and "use"'),
     (De: 'Unbekannte Angabe "%s" in einer geschützten Datei'; En: 'Unknown entry "%s" in a protected file'),
     (De: 'Geschützte Datei ohne "path"'; En: 'Protected file without "path"'),
-    (De: 'Unbekannte Einstellung "assistants.%s"'; En: 'Unknown setting "assistants.%s"'));
+    (De: 'Unbekannte Einstellung "assistants.%s"'; En: 'Unknown setting "assistants.%s"'),
+    (De: '"assistants.instructions.file" muss eine Liste von Dateinamen sein';
+     En: '"assistants.instructions.file" must be a list of file names'),
+    (De: '"assistants.instructions.checks" muss eine Liste von Befehlen sein';
+     En: '"assistants.instructions.checks" must be a list of commands'));
 
 {$SCOPEDENUMS OFF}
 
@@ -420,6 +425,37 @@ begin
   end;
 end;
 
+procedure ReadInstructionFiles(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+  var ASettings: TServerSettings);
+var
+  mItems: TArray<string>;
+begin
+  if AReader.ExpectStrings(AValue, AKey, cTexts[TMcpOptionsText.InstructionFilesMustBeAList].Text, mItems) then
+  begin
+    ASettings.AssistantsInstructionFiles := mItems;
+  end;
+end;
+
+procedure ReadInstructionChecks(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+  var ASettings: TServerSettings);
+var
+  mItems: TArray<string>;
+begin
+  if AReader.ExpectStrings(AValue, AKey, cTexts[TMcpOptionsText.InstructionChecksMustBeAList].Text, mItems) then
+  begin
+    ASettings.AssistantsInstructionChecks := mItems;
+  end;
+end;
+
+const
+  cInstructionMembers: array[0..1] of TMemberOption = ((Key: 'file'; Read: ReadInstructionFiles),
+    (Key: 'checks'; Read: ReadInstructionChecks));
+
+procedure ReadInstructions(AReader: TConfigurationReader; AValue: TJsonNode; var ASettings: TServerSettings);
+begin
+  AReader.ReadObject(AValue, 'assistants.instructions', [], cInstructionMembers, ASettings);
+end;
+
 /// <summary>Glied AIndex einer geschützten Datei.</summary>
 procedure ReadProtectedMember(AReader: TConfigurationReader; ANode: TJsonNode; AIndex: Integer;
   var AEntry: TProtectedPath);
@@ -502,6 +538,10 @@ begin
     begin
       ReadProtected(AReader, ANode[mIndex], ASettings);
     end
+    else if ANode.Keys[mIndex] = 'instructions' then
+    begin
+      ReadInstructions(AReader, ANode[mIndex], ASettings);
+    end
     else
     begin
       AReader.ReportNode(ANode[mIndex], cTexts[TMcpOptionsText.UnknownSettingAssistants].Fmt([ANode.Keys[mIndex]]));
@@ -512,6 +552,8 @@ end;
 procedure TakeAssistants(const ASource: TServerSettings; const AFileText: string; var ATarget: TServerSettings);
 begin
   ATarget.AssistantProtected := ASource.AssistantProtected;
+  ATarget.AssistantsInstructionFiles := ASource.AssistantsInstructionFiles;
+  ATarget.AssistantsInstructionChecks := ASource.AssistantsInstructionChecks;
 end;
 
 const
