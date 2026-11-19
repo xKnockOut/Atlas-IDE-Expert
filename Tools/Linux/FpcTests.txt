@@ -26,6 +26,7 @@ Atlas.Text.LeakReport.Tests
 Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests
 Atlas.Text.TestResults.Tests
+Atlas.Text.McpStatistics.Tests
 Atlas.Text.TestRunFile.Tests
 Atlas.Text.IdeContext.Tests
 Atlas.Text.Xml.Tests
@@ -261,6 +262,9 @@ Atlas.Common.Mcp.ImplementationTools.Tests
 Atlas.Common.Mcp.BatchTool.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
+Atlas.Common.Mcp.Statistics.Tests
+Atlas.Common.Mcp.StatisticsHistory.Tests
+Atlas.Common.Mcp.StatisticsText.Tests
 Atlas.Common.Mcp.HistoryTools.Tests
 Shell.SymbolHistory.Tests
 Shell.Mcp.HistoryTools.Tests

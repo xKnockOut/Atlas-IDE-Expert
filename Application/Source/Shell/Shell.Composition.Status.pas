@@ -451,6 +451,8 @@ begin
   end;
   mInput.Workspaces := WorkspaceRoots;
   mInput.Identity := TProcessInfo.IdentityNames;
+  // Aufrufstatistik der KI-Assistenten am selben Ordner (#2611).
+  mInput.McpStatistics := TServerPackage.McpSectionsIn(TIndexCacheDirectory.DefaultRoot, mInput.Workspaces, Now);
   Result := TServerPackage.ToJson(TServerPackage.Build(mInput));
   FServices.Logger.Info('Diagnosepaket des Servers erstellt');
 end;

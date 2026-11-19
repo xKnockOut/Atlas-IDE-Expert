@@ -34,7 +34,10 @@ permissions:
 
 concurrency:
   group: linux-server-${{ github.ref }}
-  cancel-in-progress: true
+  # Bei Pull Requests laufende Bauten nicht abbrechen: Der Abgleich merged main-merging häufiger in die Branches,
+  # als Bauen und FPC-Tests samt Warteschlange dauern, sonst wird kein Lauf fertig und Auto-Merge greift nie.
+  # Ein wartender Lauf wird weiterhin durch den neuesten ersetzt.
+  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 jobs:
   bauen:
