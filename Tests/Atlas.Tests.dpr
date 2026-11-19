@@ -148,6 +148,7 @@ uses
   Atlas.Common.Semantics.TypeInfoClasses.Tests in 'Common\Semantics\Atlas.Common.Semantics.TypeInfoClasses.Tests.pas',
   Atlas.Common.Lsp.References.Tests in 'Common\Lsp\Atlas.Common.Lsp.References.Tests.pas',
   Atlas.Common.Lsp.ReferenceConfidence.Tests in 'Common\Lsp\Atlas.Common.Lsp.ReferenceConfidence.Tests.pas',
+  Atlas.Common.Lsp.ParameterHeaders.Tests in 'Common\Lsp\Atlas.Common.Lsp.ParameterHeaders.Tests.pas',
   Atlas.Common.Lsp.Rename.Tests in 'Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas',
   Atlas.Common.Lsp.Completion.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas',
   Atlas.Common.Lsp.Completion.TestSupport in 'Common\Lsp\Atlas.Common.Lsp.Completion.TestSupport.pas',
