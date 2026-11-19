@@ -1036,9 +1036,11 @@ var
 begin
   mFileName := TPath.Combine(TPath.GetTempPath, 'AtlasUsage' + IntToStr(TThread.GetTickCount64) + '.json');
   mItem := Member('BeginUpdate', 'TStrings', 1, 0);
-  mUsage := TAtlasUsage.Create;
-  mLoaded := TAtlasUsage.Create;
+  mUsage := nil;
+  mLoaded := nil;
   try
+    mUsage := TAtlasUsage.Create;
+    mLoaded := TAtlasUsage.Create;
     mUsage.Record_(mItem);
     mUsage.Record_(mItem);
     Assert.IsTrue(mUsage.Changed);
@@ -1105,10 +1107,12 @@ begin
   // Akzeptanz #418: nach dreimaliger Übernahme von BeginUpdate steht es ohne Präfix vor Add.
   mView := TRecordingView.Create;
   mViewRef := mView;
-  mUsage := TAtlasUsage.Create;
-  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(
-    [Member('Add', 'TStrings', 0, 0), Member('BeginUpdate', 'TStrings', 0, 1)]) as IAtlasCompletionProvider, mViewRef);
+  mUsage := nil;
+  mController := nil;
   try
+    mUsage := TAtlasUsage.Create;
+    mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(
+      [Member('Add', 'TStrings', 0, 0), Member('BeginUpdate', 'TStrings', 0, 1)]) as IAtlasCompletionProvider, mViewRef);
     mController.Usage := mUsage;
     for mRound := 1 to 3 do
     begin
