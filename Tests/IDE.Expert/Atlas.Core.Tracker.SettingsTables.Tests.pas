@@ -55,7 +55,8 @@ uses
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.Core.Tracker.SettingsTables;
+  Atlas.Core.Tracker.SettingsTables,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 const
   cTwoConnections = '[{"name": "Firma", "provider": "youtrack", "url": "https://yt.firma.local"},' +

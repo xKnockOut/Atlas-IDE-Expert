@@ -62,8 +62,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.Review;
+  Atlas.Core.Tracker.Review,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 function Ref(const AName, ALocalName: string; ARemote: Boolean): TAtlasVcsRef;
 begin

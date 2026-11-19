@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Tracker.SettingsPlan;
 
 // Entscheidungen des Abschnitts „Issue-Tracker“ im Optionsdialog ohne IDE prüfbar (#1967); die IDE
-// (Atlas.IDE.Tracker.Settings) ruft nur noch Hintergrund, Anmeldespeicher, .atlas und den Abschnitt:
+// (Atlas.IDE.Tracker.Adapters.Settings) ruft nur noch Hintergrund, Anmeldespeicher, .atlas und den Abschnitt:
 // - Schlüssel und Stand einer geprüften Verbindung (ohne Token „fehlt“, geprüft gilt bis zum Entladen);
 // - Ziel für „Werte vom Tracker laden“ (mit dem Projekt aus der .atlas bei gleichem Server) und Name der Verbindung
 //   aus der .atlas;

@@ -7,15 +7,15 @@
 //   GitLab CI, TeamCity) kommen als eigene Umsetzung dazu, ohne dass sich der
 //   Bereich ändert; die Komposition wählt sie über TAtlasCiJob.Provider.
 // - IAtlasCiTransport: ein GET mit Zeitlimit. Die echte Umsetzung
-//   (Atlas.Core.Ci.Adapters.Http) sendet Benutzer und Token aus dem
-//   Anmeldespeicher von Windows (Atlas.Core.Ci.Adapters.Credentials); Tests
+//   (Atlas.Core.Ci.Providers.Http) sendet Benutzer und Token aus dem
+//   Anmeldespeicher von Windows (Atlas.Core.Ci.Providers.Credentials); Tests
 //   setzen eine Fassung mit festen Antworten ein.
 // - IAtlasCiSend (#1273): Schreiben (POST, PATCH) mit JSON, nur angemeldet;
 //   die Issue-Vorschau schreibt darüber abgehakte Checklisten zurück.
 // - TAtlasCiJob, TAtlasCiBuild und die Fehlerart liegen als Daten in Base
 //   (Atlas.Core.CiBuild.Contract, #1455), weil die Projekt-Zusammenfassung sie
 //   speichert.
-// - IAtlasCiCredentialStore und IAtlasCiTransports (#1455, Rolle Adapters):
+// - IAtlasCiCredentialStore und IAtlasCiTransports (#1455, Rolle Providers):
 //   Anmeldespeicher und Transporte als Schnittstellen; die Umsetzungen
 //   erzeugt nur Atlas.IDE.Tracker.Composition.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.

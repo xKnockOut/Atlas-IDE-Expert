@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.Tracker.TestResults;
 
 // Kachel „Testergebnisse“ in der IDE (#763; Kachel des Moduls
-// Tracker über Atlas.IDE.Contracts.WelcomeTiles): Quelle der Kachel
-// (IAtlasTestResultsSource), Abfrage beim Build-Server im Hintergrund und die
+// Tracker über Atlas.IDE.Contracts.WelcomeTiles): Quelle der Kachel (für sie
+// über Atlas.IDE.Tracker.Adapters.TestResults), Abfrage beim Build-Server im Hintergrund und die
 // Aktionen.
 // - Projekte: dieselbe Liste wie der Bereich „Projekte“ der Willkommensseite
 //   (IAtlasWelcomeProjects), Zusammenfassungen aus Base samt Branch (#571).
@@ -28,7 +28,8 @@
 //   „Fehlgeschlagene erneut ausführen“, „Im Debugger“, „Vergleichen“ (#1779)
 //   und „Im Browser“.
 // - Geänderte Zusammenfassungen (Testlauf, Branch) meldet Base über
-//   IAtlasProjectSummaryListener; die Kachel liest dann neu.
+//   IAtlasProjectSummaryListener (Atlas.IDE.Tracker.Adapters.TestResults);
+//   die Kachel liest dann neu.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse, Job,
 //   Benutzer oder Token.
 
@@ -42,11 +43,9 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestFetch,
   Atlas.Core.Tracker.TestResults,
-  Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.TestActions,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.UI.Tracker.TestResults,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Notifications.MessageSink;
 
@@ -96,19 +95,19 @@ type
   TAtlasTestResultsFetchJob = record
     Batch: TArray<TAtlasTestResultsFetch>;
     Access: IAtlasCiAccess;
-    Keep: IAtlasTestResultsSource;
+    Keep: IInterface;
     Owner: TAtlasIdeTestResults;
     /// <summary>Ein Job; Ausnahmen gelten als Netzfehler (kein Dialog, kein Fehler an die IDE).</summary>
     function FetchOne(const AJob: TAtlasCiJob; out ABuild: TAtlasCiBuild; out AError: TAtlasCiFetchError): Boolean;
     procedure Execute;
     /// <summary>Ergebnis eines Jobs an den Hauptthread; eigene Prozedur, damit jede Rückgabe ihre eigenen Werte
     /// behält (die Schleife im Thread läuft weiter).</summary>
-    class procedure Deliver(const AKeep: IAtlasTestResultsSource; AOwner: TAtlasIdeTestResults;
+    class procedure Deliver(const AKeep: IInterface; AOwner: TAtlasIdeTestResults;
       const AFetch: TAtlasTestResultsFetch; ASucceeded: Boolean; const ABuild: TAtlasCiBuild;
       AError: TAtlasCiFetchError); static;
   end;
 
-  TAtlasIdeTestResults = class(TInterfacedObject, IAtlasTestResultsSource, IAtlasProjectSummaryListener)
+  TAtlasIdeTestResults = class(TInterfacedObject)
   public const
     /// <summary>Kennung wie früher als Bereich, damit gespeicherte Layouts gelten.</summary>
     cTileId = 'atlas.tests';
@@ -151,9 +150,9 @@ type
     procedure EnterCredentialsForActive;
     /// <summary>Zugang für AJob hinterlegen und danach gleich abfragen.</summary>
     procedure EnterCredentials(const AJob: TAtlasCiJob);
-    { IAtlasProjectSummaryListener }
+    /// <summary>Geänderte Zusammenfassung (über Atlas.IDE.Tracker.Adapters.TestResults).</summary>
     procedure SummaryChanged(const AProject: string);
-    { IAtlasTestResultsSource }
+    { Für die Kachel (IAtlasTestResultsSource über Atlas.IDE.Tracker.Adapters.TestResults) }
     function View: TAtlasTestResultsView;
     procedure Select(const AProject: string);
     procedure OpenTest(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
@@ -187,7 +186,9 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.UI.Tracker.TestResults.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Projects.Summaries,
+  Atlas.UI.Tracker.TestResults;
 
 const
   cLogFetched = 'Testergebnisse: %s-Build %s, Tests %d/%d/%d';
@@ -387,7 +388,7 @@ begin
   end;
 end;
 
-class procedure TAtlasTestResultsFetchJob.Deliver(const AKeep: IAtlasTestResultsSource; AOwner: TAtlasIdeTestResults;
+class procedure TAtlasTestResultsFetchJob.Deliver(const AKeep: IInterface; AOwner: TAtlasIdeTestResults;
   const AFetch: TAtlasTestResultsFetch; ASucceeded: Boolean; const ABuild: TAtlasCiBuild; AError: TAtlasCiFetchError);
 begin
   TAtlasMainThread.Queue(TAtlasFeature.Tracker,
@@ -645,7 +646,7 @@ begin
 end;
 
 /// <summary>„Im Browser“ des Hinweises; eigene Routine, damit die Methodenreferenz nur ihre Werte hält.</summary>
-function BrowseAction(const AKeep: IAtlasTestResultsSource; AActions: TAtlasTestResultsActions;
+function BrowseAction(const AKeep: IInterface; AActions: TAtlasTestResultsActions;
   const AJob: TAtlasCiJob; ANumber: Integer): TProc;
 begin
   Result :=

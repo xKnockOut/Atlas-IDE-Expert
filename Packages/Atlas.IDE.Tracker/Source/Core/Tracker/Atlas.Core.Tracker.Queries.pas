@@ -24,24 +24,10 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Connections;
+  Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
-  TAtlasTrackerQuery = record
-    Name: string;
-    /// <summary>Syntax des Trackers; '' = Vorgabe des Anbieters.</summary>
-    Query: string;
-    /// <summary>Name der Verbindung; '' = überall.</summary>
-    Connection: string;
-    /// <summary>Tracker-Projekt; '' = jedes.</summary>
-    Project: string;
-    /// <summary>Vorgabe des Anbieters, wenn keine eigene Abfrage passt; nie gespeichert.</summary>
-    Builtin: Boolean;
-    class function Create(const AName, AQuery, AConnection, AProject: string): TAtlasTrackerQuery; static;
-    /// <summary>Vorgabe des Anbieters mit Anzeigename AName (z. B. „Mir zugewiesen“).</summary>
-    class function Fallback(const AName: string): TAtlasTrackerQuery; static;
-  end;
-
   TAtlasTrackerQueries = class
   public
     /// <summary>Zeilen aus issues.queries; ohne Name oder Abfrage und doppelte Namen fallen weg.</summary>
@@ -71,26 +57,6 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Text.Json;
-
-{ TAtlasTrackerQuery }
-
-class function TAtlasTrackerQuery.Create(const AName, AQuery, AConnection, AProject: string): TAtlasTrackerQuery;
-begin
-  Result.Name := Trim(AName);
-  // Einzeilig: der Anbieter hängt die Abfrage an die Adresse.
-  Result.Query := Trim(AQuery.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' '));
-  Result.Connection := Trim(AConnection);
-  Result.Project := Trim(AProject);
-  Result.Builtin := False;
-end;
-
-class function TAtlasTrackerQuery.Fallback(const AName: string): TAtlasTrackerQuery;
-begin
-  Result := Create(AName, '', '', '');
-  Result.Builtin := True;
-end;
-
-{ TAtlasTrackerQueries }
 
 { TAtlasTrackerQueries }
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Tracker.IssueWork;
+﻿unit Atlas.IDE.Tracker.Adapters.IssueWork;
 
 // Arbeitsstand je Issue (#2052), Teil des Trackers, über den Vertrag
 // Atlas.IDE.Contracts.IssueWork (Willkommensseite und Tracker kennen sich

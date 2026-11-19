@@ -1,4 +1,4 @@
-﻿﻿# ADR 0017: Zuordnung der Units zu Packages
+﻿# ADR 0017: Zuordnung der Units zu Packages
 
 - Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
 - Bezug: #1455, #1456; Regeln für Laden, Entladen und Versionen in [docs/Architektur.md](../Architektur.md) („Module und Verträge des Plugins“)
@@ -1293,13 +1293,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Unit | Datei | Begründung |
 |---|---|---|
-| `Atlas.Core.Ci.Adapters.Credentials` | `Core/Ci/Atlas.Core.Ci.Adapters.Credentials.pas` | Ordner `Core/Ci` |
-| `Atlas.Core.Ci.Adapters.Http` | `Core/Ci/Atlas.Core.Ci.Adapters.Http.pas` | Ordner `Core/Ci` |
+| `Atlas.Core.Ci.Providers.Credentials` | `Core/Ci/Atlas.Core.Ci.Providers.Credentials.pas` | Ordner `Core/Ci`, Rolle Providers: Anmeldespeicher für den eigenen Vertrag `IAtlasCiCredentialStore`, #1443 |
+| `Atlas.Core.Ci.Providers.Http` | `Core/Ci/Atlas.Core.Ci.Providers.Http.pas` | Ordner `Core/Ci`, Rolle Providers: HTTP-Transporte für den eigenen Vertrag `IAtlasCiTransport`, #1443 |
 | `Atlas.Core.Ci.Contract` | `Core/Ci/Atlas.Core.Ci.Contract.pas` | Ordner `Core/Ci` |
 | `Atlas.Core.Ci.Internals.Addresses` | `Core/Ci/Atlas.Core.Ci.Internals.Addresses.pas` | Ordner `Core/Ci` |
 | `Atlas.Core.Ci.Providers.Jenkins` | `Core/Ci/Atlas.Core.Ci.Providers.Jenkins.pas` | Ordner `Core/Ci` |
-| `Atlas.Core.Tracker.Adapters.LocalFiles` | `Core/Tracker/Atlas.Core.Tracker.Adapters.LocalFiles.pas` | Ordner `Core/Tracker`; Platte über System.IOUtils, nur in der Composition erzeugt (Paket 2d) |
-| `Atlas.Core.Tracker.Adapters.Shell` | `Core/Tracker/Atlas.Core.Tracker.Adapters.Shell.pas` | Ordner `Core/Tracker`; ShellExecute, nur in der Composition erzeugt (Paket 2d) |
+| `Atlas.Core.Tracker.Providers.LocalFiles` | `Core/Tracker/Atlas.Core.Tracker.Providers.LocalFiles.pas` | Ordner `Core/Tracker`, Rolle Providers; Platte über System.IOUtils, nur in der Composition erzeugt (Paket 2d, #1443) |
+| `Atlas.Core.Tracker.Providers.Shell` | `Core/Tracker/Atlas.Core.Tracker.Providers.Shell.pas` | Ordner `Core/Tracker`, Rolle Providers; ShellExecute, nur in der Composition erzeugt (Paket 2d, #1443) |
 | `Atlas.Core.Tracker.Attach` | `Core/Tracker/Atlas.Core.Tracker.Attach.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.BlameLinks` | `Core/Tracker/Atlas.Core.Tracker.BlameLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Board` | `Core/Tracker/Atlas.Core.Tracker.Board.pas` | Ordner `Core/Tracker` |
@@ -1311,6 +1311,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.CodeLinks` | `Core/Tracker/Atlas.Core.Tracker.CodeLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CommentKeyPlan` | `Core/Tracker/Atlas.Core.Tracker.CommentKeyPlan.pas` | Ordner `Core/Tracker`, Tasten des Kommentarfelds |
 | `Atlas.Core.Tracker.CommentEditor` | `Core/Tracker/Atlas.Core.Tracker.CommentEditor.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Contract.CommentAssist` | `Core/Tracker/Atlas.Core.Tracker.Contract.CommentAssist.pas` | Ordner `Core/Tracker`; Vertrag des Kommentar-Editors (#1443) |
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CurrentIssue` | `Core/Tracker/Atlas.Core.Tracker.CurrentIssue.pas` | Ordner `Core/Tracker`, begonnenes Issue für KI-Assistenten, #2051 |
 | `Atlas.Core.Tracker.CurrentIssuePlan` | `Core/Tracker/Atlas.Core.Tracker.CurrentIssuePlan.pas` | Ordner `Core/Tracker`, Aufbau und Ablage von atlas-current-issue.json, #2051 |
@@ -1327,6 +1328,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Links` | `Core/Tracker/Atlas.Core.Tracker.Links.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Markdown` | `Core/Tracker/Atlas.Core.Tracker.Markdown.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.MyIssues` | `Core/Tracker/Atlas.Core.Tracker.MyIssues.pas` | Ordner `Core/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.Core.Tracker.Contract.MyIssues` | `Core/Tracker/Atlas.Core.Tracker.Contract.MyIssues.pas` | Ordner `Core/Tracker`; Vertrag des Bereichs „Meine Issues“ (#1443) |
 | `Atlas.Core.Tracker.Naming` | `Core/Tracker/Atlas.Core.Tracker.Naming.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.NewIssue` | `Core/Tracker/Atlas.Core.Tracker.NewIssue.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.NewIssueGitHub` | `Core/Tracker/Atlas.Core.Tracker.NewIssueGitHub.pas` | Ordner `Core/Tracker`, GitHub-Teil von „Issue anlegen“, #2137 |
@@ -1357,6 +1359,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.SettingsTables` | `Core/Tracker/Atlas.Core.Tracker.SettingsTables.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Sprint` | `Core/Tracker/Atlas.Core.Tracker.Sprint.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Contract.Sprint` | `Core/Tracker/Atlas.Core.Tracker.Contract.Sprint.pas` | Ordner `Core/Tracker`; Vertrag der Sprint-Kachel (#1443) |
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.TestResults` | `Core/Tracker/Atlas.Core.Tracker.TestResults.pas` | Ordner `Core/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.Core.Tracker.TimeClock` | `Core/Tracker/Atlas.Core.Tracker.TimeClock.pas` | Ordner `Core/Tracker` |
@@ -1385,6 +1388,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.SyncPlan` | `Core/Tracker/Atlas.Core.Tracker.SyncPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Tracker nachführen“ ohne IDE (#1266, #1967) |
 | `Atlas.Core.Tracker.Transitions` | `Core/Tracker/Atlas.Core.Tracker.Transitions.pas` | Ordner `Core/Tracker`; Zuordnung der Übergänge einer Zustandsmaschine für Board, Beginnen, Beenden und Statusfeld (#2122) |
 | `Atlas.IDE.Tracker.Access` | `IDE/Tracker/Atlas.IDE.Tracker.Access.pas` | Ordner `IDE/Tracker`, Zugang zu Issue-Tracker und Build-Server aus der Kompositionswurzel, #1455 |
+| `Atlas.IDE.Tracker.Adapters.Access` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Access.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasTrackerAccess` aus `Atlas.Core.Tracker.Contract`, #1443 |
 | `Atlas.IDE.Tracker.Attach` | `IDE/Tracker/Atlas.IDE.Tracker.Attach.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Attach.Sources` | `IDE/Tracker/Atlas.IDE.Tracker.Attach.Sources.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BlameLinks` | `IDE/Tracker/Atlas.IDE.Tracker.BlameLinks.pas` | Ordner `IDE/Tracker` |
@@ -1398,6 +1402,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.CodeLinks` | `IDE/Tracker/Atlas.IDE.Tracker.CodeLinks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CodeLinkMarks` | `IDE/Tracker/Atlas.IDE.Tracker.CodeLinkMarks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.CommentAssist.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Adapters.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.CommentAssist.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasCommentAssist` aus `Atlas.Core.Tracker.Contract.CommentAssist`, #1443 |
 | `Atlas.IDE.Tracker.Composition` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Development` | `IDE/Tracker/Atlas.IDE.Tracker.Development.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssueContext.pas` | Ordner `IDE/Tracker` |
@@ -1411,6 +1416,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssueLoad` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLoad.pas` | Ordner `IDE/Tracker`, Laden des Issues im Fenster „Atlas-Issue“ |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.Adapters.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.MyIssues.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasIssuesSource` aus `Atlas.UI.Tracker.Contract.MyIssues`, #1443 |
 | `Atlas.IDE.Tracker.IssuesContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesContext.pas` | Ordner `IDE/Tracker`, gemeinsamer Stand von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.WorkingCopies` | `IDE/Tracker/Atlas.IDE.Tracker.WorkingCopies.pas` | Ordner `IDE/Tracker`, Arbeitskopien je Tracker-Projekt, #1926 |
 | `Atlas.UI.Tracker.SettingsPaths` | `UI/Tracker/Atlas.UI.Tracker.SettingsPaths.pas` | Ordner `UI/Tracker`, Feld Arbeitskopien der Seite Issue-Tracker, #1926 |
@@ -1423,28 +1429,34 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.CurrentIssue` | `IDE/Tracker/Atlas.IDE.Tracker.CurrentIssue.pas` | Ordner `IDE/Tracker`, begonnenes Issue für KI-Assistenten, #2051 |
-| `Atlas.IDE.Tracker.KnownErrors` | `IDE/Tracker/Atlas.IDE.Tracker.KnownErrors.pas` | Ordner `IDE/Tracker`, bekannte Fehler beim Exception-Halt für den Debugger (IAtlasKnownErrors), #2460 |
+| `Atlas.IDE.Tracker.Adapters.KnownErrors` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.KnownErrors.pas` | Ordner `IDE/Tracker`, Rolle Adapters: bekannte Fehler beim Exception-Halt für den Debugger (`IAtlasKnownErrors`), #2460, #1443 |
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssueStart` | `IDE/Tracker/Atlas.IDE.Tracker.IssueStart.pas` | Ordner `IDE/Tracker`, „Beginnen“ und „Beenden“, #1455 |
 | `Atlas.IDE.Tracker.LinkedStart` | `IDE/Tracker/Atlas.IDE.Tracker.LinkedStart.pas` | Ordner `IDE/Tracker`, verknüpfter Branch beim „Beginnen“, #2138 |
 | `Atlas.IDE.Tracker.EndPull` | `IDE/Tracker/Atlas.IDE.Tracker.EndPull.pas` | Ordner `IDE/Tracker`, Pull Request beim „Beenden“, #2136 |
-| `Atlas.IDE.Tracker.IssueWork` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWork.pas` | Ordner `IDE/Tracker`, Arbeitsstand je Issue über den Vertrag, #2052 |
+| `Atlas.IDE.Tracker.Adapters.IssueWork` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.IssueWork.pas` | Ordner `IDE/Tracker`, Rolle Adapters: Arbeitsstand je Issue über den Vertrag (`IAtlasIssueWorkSource`), #2052, #1443 |
 | `Atlas.IDE.Tracker.IssueSummary` | `IDE/Tracker/Atlas.IDE.Tracker.IssueSummary.pas` | Ordner `IDE/Tracker`, Zusammenfassen mit KI über den Vertrag, #2462 |
 | `Atlas.IDE.Tracker.NewIssue` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssue.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.Adapters.NewIssue` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.NewIssue.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasIssueCreation` aus `Atlas.Core.Modules.Contract`, #1443 |
 | `Atlas.IDE.Tracker.NewIssuePlace` | `IDE/Tracker/Atlas.IDE.Tracker.NewIssuePlace.pas` | Ordner `IDE/Tracker`, Editorseite von „Issue anlegen“, #1455 |
 | `Atlas.IDE.Tracker.Notify` | `IDE/Tracker/Atlas.IDE.Tracker.Notify.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Reopened` | `IDE/Tracker/Atlas.IDE.Tracker.Reopened.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Review` | `IDE/Tracker/Atlas.IDE.Tracker.Review.pas` | Ordner `IDE/Tracker`, „Prüfen“, #2126 |
+| `Atlas.IDE.Tracker.Adapters.Review` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Review.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasTestsListener` aus `Atlas.IDE.Contracts.Tests`, #1443 |
 | `Atlas.IDE.Tracker.IssueWorkLink` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWorkLink.pas` | Ordner `IDE/Tracker`, Arbeitsstand bei „Beginnen“, „Beenden“, „Prüfen“ |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Adapters.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.PaletteSearch.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasPaletteSource` aus `Atlas.Core.Commands.Palette`, #1443 |
 | `Atlas.IDE.Tracker.PaletteSearchFetch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearchFetch.pas` | Ordner `IDE/Tracker`, Abfrage der Palettensuche beim Tracker |
-| `Atlas.IDE.Tracker.Parts` | `IDE/Tracker/Atlas.IDE.Tracker.Parts.pas` | Teile, Befehle und Menü des Moduls; die Komposition meldet nur an und baut die Adapter, #1455 |
-| `Atlas.IDE.Tracker.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Settings.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.Composition.Parts` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.Parts.pas` | Ordner `IDE/Tracker`, Rolle Composition: Teile, Befehle und Menü des Moduls; legt die Adapter der Teile an, #1455, #1443 |
+| `Atlas.IDE.Tracker.Composition.Adapters` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.Adapters.pas` | Ordner `IDE/Tracker`, Rolle Composition: legt die Adapter der Teile an und meldet sie über den Scope an, #1443 |
+| `Atlas.IDE.Tracker.Adapters.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Settings.pas` | Ordner `IDE/Tracker`, Rolle Adapters: Abschnitt Issue-Tracker im Optionsdialog (`IAtlasSettingsSectionProvider`), #1443 |
 | `Atlas.UI.Tracker.SettingsBranches` | `UI/Tracker/Atlas.UI.Tracker.SettingsBranches.pas` | Unterpunkt „Versionsverwaltung“ des Issue-Trackers, nur mit Versionsverwaltung (#1903) |
 | `Atlas.IDE.Tracker.SprintTile` | `IDE/Tracker/Atlas.IDE.Tracker.SprintTile.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.IDE.Tracker.Adapters.Sprint` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Sprint.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasSprintSource` aus `Atlas.UI.Tracker.Contract.Sprint`, #1443 |
 | `Atlas.IDE.Tracker.TestActions` | `IDE/Tracker/Atlas.IDE.Tracker.TestActions.pas` | Aktionen der Kachel „Testergebnisse“ (Test öffnen, erneut ausführen, debuggen, Build im Browser), #1455 |
 | `Atlas.IDE.Tracker.TestResults` | `IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas` | Ordner `IDE/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
-| `Atlas.IDE.Tracker.Tiles` | `IDE/Tracker/Atlas.IDE.Tracker.Tiles.pas` | Kacheln „Meine Issues“ und „Sprint“ (`IAtlasWelcomeTile`), #1455 |
+| `Atlas.IDE.Tracker.Adapters.TestResults` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.TestResults.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasTestResultsSource` und `IAtlasProjectSummaryListener` aus `Atlas.UI.Tracker.TestResults` bzw. `Atlas.IDE.Projects.Summaries`, #1443 |
+| `Atlas.IDE.Tracker.Adapters.Tiles` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Tiles.pas` | Ordner `IDE/Tracker`, Rolle Adapters: Kacheln „Meine Issues“, „Sprint“ und „Testergebnisse“ (`IAtlasWelcomeTile`), #1455, #1443 |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.TimeBooking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeBooking.pas` | Ordner `IDE/Tracker`, erfasste Zeit buchen |
 | `Atlas.IDE.Tracker.IssueState` | `IDE/Tracker/Atlas.IDE.Tracker.IssueState.pas` | Ordner `IDE/Tracker` |
@@ -1477,6 +1489,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MyIssues` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.Contract.MyIssues` | `UI/Tracker/Atlas.UI.Tracker.Contract.MyIssues.pas` | Ordner `UI/Tracker`; Vertrag der Kachel „Meine Issues“ zwischen IDE und Oberfläche (#1443) |
 | `Atlas.UI.Tracker.MyIssues.Text` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.Text.pas` | Texte und Farben von „Meine Issues“ ohne Steuerelement (Kachel, Zustandskachel), #1455 |
 | `Atlas.UI.Tracker.NewIssueDialog` | `UI/Tracker/Atlas.UI.Tracker.NewIssueDialog.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.NewIssueBox` | `UI/Tracker/Atlas.UI.Tracker.NewIssueBox.pas` | Ordner `UI/Tracker`, Klappliste des Dialogs „Neues Issue“ ohne Fenster füllbar, #2137 |
@@ -1492,6 +1505,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SettingsSnippets` | `UI/Tracker/Atlas.UI.Tracker.SettingsSnippets.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsWorkflow` | `UI/Tracker/Atlas.UI.Tracker.SettingsWorkflow.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SprintTile` | `UI/Tracker/Atlas.UI.Tracker.SprintTile.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.Contract.Sprint` | `UI/Tracker/Atlas.UI.Tracker.Contract.Sprint.pas` | Ordner `UI/Tracker`; Vertrag der Sprint-Kachel zwischen IDE und Oberfläche (#1443) |
 | `Atlas.UI.Tracker.Attach.Strings` | `UI/Tracker/Atlas.UI.Tracker.Attach.Strings.pas` | Texte des Features Attach (Tracker) |
 | `Atlas.UI.Tracker.Board.Strings` | `UI/Tracker/Atlas.UI.Tracker.Board.Strings.pas` | Texte des Features Board (Tracker) |
 | `Atlas.UI.Tracker.Commands.Strings` | `UI/Tracker/Atlas.UI.Tracker.Commands.Strings.pas` | Texte der Befehle und Menüeinträge (Tracker) |

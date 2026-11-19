@@ -59,7 +59,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.UI.Tracker.Settings.Strings;
+  Atlas.UI.Tracker.Settings.Strings,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 const
   cSnippetsRow = 100;

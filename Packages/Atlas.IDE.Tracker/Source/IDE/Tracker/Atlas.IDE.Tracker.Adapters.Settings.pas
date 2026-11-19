@@ -1,10 +1,12 @@
-﻿unit Atlas.IDE.Tracker.Settings;
+﻿unit Atlas.IDE.Tracker.Adapters.Settings;
 
 // Abschnitt „Issue-Tracker“ im Optionsdialog, IDE-Teil des Moduls Tracker
-// (#1455). TAtlasIdeTrackerSettings ist
-// der IAtlasSettingsSectionProvider, den die Composition des Moduls über
-// seinen Scope anmeldet: Für jede Optionsseite entsteht ein
+// (#1455), Rolle Adapters für IAtlasSettingsSectionProvider aus
+// Atlas.UI.Settings.Contract. TAtlasIdeTrackerSettings meldet die Composition
+// des Moduls über seinen Scope an: Für jede Optionsseite entsteht ein
 // TAtlasTrackerSettingsSection mit den Haken dazu (Hooks).
+// TAtlasIdeTrackerBranchSettings legt den Unterpunkt „Versionsverwaltung“
+// (TAtlasTrackerBranchSection, #1903) nur an, solange es sie gibt.
 // - Anbieter, Token und Transport kommen über IAtlasTrackerAccess aus der
 //   Registry (stellt die Komposition des Moduls ab der Anmeldung bereit); ohne ihn keine Token und keine
 //   Prüfung, die Seite bleibt bedienbar.
@@ -33,6 +35,13 @@ type
     class procedure Release; static;
   end;
 
+  /// <summary>Unterpunkt „Versionsverwaltung“ (#1903): ein neuer Abschnitt je Seite, nil ohne
+  /// Versionsverwaltung (TAtlasTrackerBranchSection.Available).</summary>
+  TAtlasIdeTrackerBranchSettings = class(TInterfacedObject, IAtlasSettingsSectionProvider)
+  public
+    function CreateSection: IAtlasSettingsSection;
+  end;
+
 implementation
 
 uses
@@ -59,6 +68,7 @@ uses
   Atlas.IDE.Tracker.PathSuggestions,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.QueryDialog,
+  Atlas.UI.Tracker.SettingsBranches,
   Atlas.UI.Tracker.SettingsSection,
   Atlas.UI.Tracker.Settings.Strings;
 
@@ -650,6 +660,17 @@ end;
 class procedure TAtlasIdeTrackerSettings.Release;
 begin
   TAtlasTrackerChecks.Release;
+end;
+
+{ TAtlasIdeTrackerBranchSettings }
+
+function TAtlasIdeTrackerBranchSettings.CreateSection: IAtlasSettingsSection;
+begin
+  Result := nil;
+  if TAtlasTrackerBranchSection.IsAvailable then
+  begin
+    Result := TAtlasTrackerBranchSection.Create;
+  end;
 end;
 
 end.

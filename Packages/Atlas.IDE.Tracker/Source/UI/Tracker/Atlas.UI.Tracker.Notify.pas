@@ -17,7 +17,7 @@ interface
 uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Notify,
-  Atlas.Core.Tracker.Reopened;
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   TAtlasTrackerNoticeText = class

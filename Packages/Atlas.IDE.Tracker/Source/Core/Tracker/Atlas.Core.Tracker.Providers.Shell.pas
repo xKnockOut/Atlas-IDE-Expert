@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Tracker.Adapters.Shell;
+﻿unit Atlas.Core.Tracker.Providers.Shell;
 
 // Shell des Trackers unter Windows (#1455 Paket 2d), ohne VCL und Open Tools
 // API: IAtlasTrackerShell über ShellExecute (Verb "open"). Adressen und Dateien

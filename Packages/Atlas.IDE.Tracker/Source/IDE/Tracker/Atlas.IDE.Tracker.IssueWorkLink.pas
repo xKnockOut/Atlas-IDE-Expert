@@ -7,15 +7,15 @@
 // Rückweg von „Prüfen“ stellt sie ihn ohne Rückfrage her; nach dem Beenden
 // als „nicht geplant“ oder „Duplikat“ (#2135) verwirft sie ihn. Ohne
 // Willkommensseite wirkungslos. Eigene Unit, damit die Dienste von „Meine
-// Issues“ sie ohne Zyklus nutzen (aus Atlas.IDE.Tracker.IssueWork gelöst).
+// Issues“ sie ohne Zyklus nutzen (aus Atlas.IDE.Tracker.Adapters.IssueWork gelöst).
 // Hauptthread.
 
 interface
 
 uses
-  Atlas.Core.Tracker.MyIssues,
   Atlas.IDE.Contracts.IssueWork,
-  Atlas.IDE.Tracker.IssuesContext;
+  Atlas.IDE.Tracker.IssuesContext,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   TAtlasTrackerIssueWorkLink = class
@@ -47,7 +47,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.MyIssues;
 
 function IssueOf(const AActive: TAtlasActiveIssue; const ABranch: string): TAtlasIssueWorkIssue;
 begin

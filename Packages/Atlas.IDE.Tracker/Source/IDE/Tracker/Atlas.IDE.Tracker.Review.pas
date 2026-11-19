@@ -11,7 +11,8 @@
 // - Build über IAtlasBuildRequests des Moduls Build-Pipeline (aktive
 //   Konfiguration, issues.reviewBuild), danach der Befehl
 //   Atlas.RunAffectedTests; das Ende meldet das Modul Tests über
-//   IAtlasTestsListener (dieses Objekt, angemeldet in Atlas.IDE.Tracker.Parts).
+//   IAtlasTestsListener (Atlas.IDE.Tracker.Adapters.Review, angemeldet in
+//   Atlas.IDE.Tracker.Composition.Parts).
 // - „Senden“ schreibt über TAtlasIdeTrackerSync.Apply. Der Rückweg wechselt auf
 //   den eigenen Branch und stellt den Arbeitsstand ohne Rückfrage her.
 // - Regel 3: Nach Stop erreicht kein Rückruf mehr den Ablauf (FStopped,
@@ -24,17 +25,15 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Build.Requests,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Review,
   Atlas.Core.VersionControl.Contract,
-  Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.Workflow,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.UI.Tracker.ReviewDialog;
+  Atlas.UI.Tracker.ReviewDialog,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Was der Hintergrund über die Arbeitskopie herausfindet.</summary>
@@ -53,7 +52,7 @@ type
       const AOptions: TAtlasIssuesOptions; const AIssue: TAtlasTrackerIssue);
   end;
 
-  TAtlasIdeIssueReview = class(TInterfacedObject, IAtlasTestsListener)
+  TAtlasIdeIssueReview = class(TInterfacedObject)
   public const
     /// <summary>Befehl des Moduls Tests: betroffene Tests des aktiven Projekts ausführen (#1353).</summary>
     cAffectedTests = 'Atlas.RunAffectedTests';
@@ -97,12 +96,10 @@ type
     procedure Review(const AIssue: TAtlasTrackerIssue; const AOptions: TAtlasIssuesOptions);
     /// <summary>Beim Stoppen: Dialog schließen, Build vergessen; danach wirkungslos.</summary>
     procedure Stop;
-    /// <summary>Als IAtlasTestsListener in AScope anmelden (Ende der betroffenen Tests).</summary>
-    function ProvideIn(const AScope: IAtlasModuleScope): IAtlasRegistration;
     /// <summary>Ist der Dialog offen?</summary>
     function Busy: Boolean;
-    { IAtlasTestsListener }
-    procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
+    /// <summary>Ende der betroffenen Tests (über Atlas.IDE.Tracker.Adapters.Review).</summary>
+    procedure TestsFinished(APassed, AFailed: Integer);
   end;
 
 implementation
@@ -124,7 +121,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWorkLink,
   Atlas.IDE.Tracker.WorkingCopies,
-  Atlas.UI.Tracker.Workflow.Strings;
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung.</summary>
@@ -682,17 +680,12 @@ begin
   CloseDialog;
 end;
 
-function TAtlasIdeIssueReview.ProvideIn(const AScope: IAtlasModuleScope): IAtlasRegistration;
-begin
-  Result := AScope.Provide(IAtlasTestsListener, Self as IAtlasTestsListener);
-end;
-
 function TAtlasIdeIssueReview.Busy: Boolean;
 begin
   Result := FDialog <> nil;
 end;
 
-procedure TAtlasIdeIssueReview.TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
+procedure TAtlasIdeIssueReview.TestsFinished(APassed, AFailed: Integer);
 begin
   if FStopped or (FDialog = nil) or (FState.Marks[TAtlasReviewStep.Tests] <> TAtlasReviewMark.Running) then
   begin

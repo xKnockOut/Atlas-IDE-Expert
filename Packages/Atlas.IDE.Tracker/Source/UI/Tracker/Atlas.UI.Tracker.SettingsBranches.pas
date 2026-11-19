@@ -5,15 +5,14 @@
 // mit der Versionsverwaltung. Fehlt sie, legt der Anbieter keinen Abschnitt an: Der Unterpunkt fällt weg, die
 // Werte bleiben gespeichert. Ob sie da ist, fragt Available; das setzt die Composition über den Vertrag der
 // Versionsverwaltung (Atlas.UI.* bindet keine Atlas.IDE-Units ein). Den Namen des Moduls kennt der Tracker nicht.
+// Angemeldet wird der Abschnitt über TAtlasIdeTrackerBranchSettings (Atlas.IDE.Tracker.Adapters.Settings).
 
 interface
 
 uses
   System.SysUtils,
   Vcl.StdCtrls,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Contract,
-  Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section;
 
 type
@@ -32,16 +31,8 @@ type
     function AreaId: string; override;
     procedure Save(const AValues: IAtlasSettingsValues); override;
     procedure Close; override;
-    /// <summary>Meldet den Anbieter über AScope an: je Optionsseite ein Abschnitt, solange Available.</summary>
-    class procedure ProvideBranches(const AScope: IAtlasModuleScope);
     class function IsAvailable: Boolean;
     property CommitPattern: TEdit read FCommitPattern;
-  end;
-
-  /// <summary>Anbieter: ein neuer Abschnitt je Seite, nil ohne Versionsverwaltung.</summary>
-  TAtlasTrackerBranchProvider = class(TInterfacedObject, IAtlasSettingsSectionProvider)
-  public
-    function CreateSection: IAtlasSettingsSection;
   end;
 
 implementation
@@ -89,25 +80,9 @@ begin
   inherited Close;
 end;
 
-class procedure TAtlasTrackerBranchSection.ProvideBranches(const AScope: IAtlasModuleScope);
-begin
-  AScope.Provide(IAtlasSettingsSectionProvider, TAtlasTrackerBranchProvider.Create as IAtlasSettingsSectionProvider);
-end;
-
 class function TAtlasTrackerBranchSection.IsAvailable: Boolean;
 begin
   Result := Assigned(Available) and Available();
-end;
-
-{ TAtlasTrackerBranchProvider }
-
-function TAtlasTrackerBranchProvider.CreateSection: IAtlasSettingsSection;
-begin
-  Result := nil;
-  if TAtlasTrackerBranchSection.IsAvailable then
-  begin
-    Result := TAtlasTrackerBranchSection.Create;
-  end;
 end;
 
 end.

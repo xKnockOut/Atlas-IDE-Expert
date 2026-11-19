@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Ci.Adapters.Credentials;
+﻿unit Atlas.Core.Ci.Providers.Credentials;
 
 // Zugang zum Build-Server (#763) im Anmeldespeicher von Windows (den die
 // Komposition aus Base übergibt, IAtlasCredentialStore), nie in einer Datei, der

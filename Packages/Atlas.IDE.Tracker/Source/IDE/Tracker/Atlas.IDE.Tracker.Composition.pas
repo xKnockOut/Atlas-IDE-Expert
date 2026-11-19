@@ -5,14 +5,15 @@
 // und stellt über dessen Scope bereit:
 // - die Teile MyIssues, IssueLinks, BlameIssues und TestResults der
 //   Feature-Tabelle samt Befehlen, Menüeinträgen, Taste, Einstellungen und
-//   Palette (Atlas.IDE.Tracker.Parts),
+//   Palette (Atlas.IDE.Tracker.Composition.Parts),
 // - den Zugang zum Tracker (IAtlasTrackerAccess) ab der Anmeldung, auch
 //   ausgeschaltet für den Abschnitt „Issue-Tracker“ im Optionsdialog
-//   (Atlas.IDE.Tracker.Settings, damit man es einstellen kann).
-// Rolle Adapters nur hier (#1455): Anmeldespeicher (TAtlasCiCredentialStore),
+//   (Atlas.IDE.Tracker.Adapters.Settings, damit man es einstellen kann).
+// Rollen (#1455, #1443): Anmeldespeicher (TAtlasCiCredentialStore),
 // HTTP-Transporte (TAtlasCiHttpTransports) und die Anbieter (YouTrack, GitHub,
-// Jenkins) entstehen in dieser Unit und gehen als Schnittstellen an
-// TAtlasTrackerAccess und TAtlasCiAccess (Atlas.IDE.Tracker.Access).
+// Jenkins) entstehen nur in dieser Unit und gehen als Schnittstellen an
+// TAtlasTrackerAccess (Atlas.IDE.Tracker.Adapters.Access) und TAtlasCiAccess
+// (Atlas.IDE.Tracker.Access).
 // Ebenso Platte und Shell (#1455 Paket 2d): TAtlasTrackerLocalFiles und
 // TAtlasTrackerShellExecute meldet RegisterModule vor allen Teilen bei
 // Atlas.Core.Tracker.Files an, UnregisterModule meldet sie zuletzt ab.
@@ -59,25 +60,25 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Ci.Adapters.Credentials,
+  Atlas.Core.Ci.Providers.Credentials,
   Atlas.Core.Credentials.Contract,
   Atlas.Core.Credentials.Adapters.Windows,
-  Atlas.Core.Ci.Adapters.Http,
+  Atlas.Core.Ci.Providers.Http,
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles,
-  Atlas.Core.Tracker.Adapters.Shell,
+  Atlas.Core.Tracker.Providers.LocalFiles,
+  Atlas.Core.Tracker.Providers.Shell,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Tracker.Access,
-  Atlas.IDE.Tracker.Parts,
-  Atlas.IDE.Tracker.Settings,
+  Atlas.IDE.Tracker.Composition.Parts,
+  Atlas.IDE.Tracker.Adapters.Settings,
   Atlas.UI.Tracker.SettingsBranches,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.UI.Settings.Contract;
+  Atlas.UI.Settings.Contract,
+  Atlas.IDE.Tracker.Adapters.Access;
 
 var
   GScope: IAtlasModuleScope;
@@ -218,7 +219,8 @@ begin
   GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeTrackerSettings.Create as IAtlasSettingsSectionProvider);
   // Unterpunkt „Versionsverwaltung“ (#1903): nur, wenn ein Modul deren Vertrag bereitstellt.
   TAtlasTrackerBranchSection.Available := VcsProvided;
-  TAtlasTrackerBranchSection.ProvideBranches(GScope);
+  GScope.Provide(IAtlasSettingsSectionProvider,
+    TAtlasIdeTrackerBranchSettings.Create as IAtlasSettingsSectionProvider);
   Result := True;
 end;
 

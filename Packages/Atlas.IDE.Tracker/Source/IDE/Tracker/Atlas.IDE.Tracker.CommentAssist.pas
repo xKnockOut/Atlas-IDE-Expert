@@ -1,7 +1,9 @@
 ﻿unit Atlas.IDE.Tracker.CommentAssist;
 
 // Kommentar-Editor in der IDE (#1278): was TAtlasCommentEditor von der IDE
-// bekommt (IAtlasCommentAssist), je Tracker, Issue und Feld.
+// bekommt, je Tracker, Issue und Feld; als IAtlasCommentAssist über den
+// Adapter, den die Komposition als Hook Adapt hereinreicht
+// (Atlas.IDE.Tracker.Adapters.CommentAssist).
 // - Benutzer für "@": über IAtlasTrackerPeople des Anbieters (YouTrack
 //   /api/users, GitHub zuweisbare Benutzer), höchstens MaxSuggestions, im
 //   Hintergrund mit TimeoutMs; dieselbe Anfrage binnen CacheMs ohne Netz.
@@ -32,15 +34,19 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.Core.Tracker.PaletteSearch,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
+  TAtlasIdeCommentAssist = class;
+
   TAtlasCommentProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
   /// <summary>Transport mit dem Token aus dem Anmeldespeicher; nil ohne Token. Ohne Dialog.</summary>
   TAtlasCommentTransportHook = reference to function(const AProvider: IAtlasTrackerProvider;
     const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
   TAtlasCommentRecentHook = reference to function(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
+  /// <summary>Macht aus der Hilfe eines Felds die Schnittstelle für den Editor; nil = keine Hilfe.</summary>
+  TAtlasCommentAssistAdapt = reference to function(AAssist: TAtlasIdeCommentAssist): IAtlasCommentAssist;
 
   TAtlasCommentAssistHooks = record
     Provider: TAtlasCommentProviderHook;
@@ -49,6 +55,8 @@ type
     Recent: TAtlasCommentRecentHook;
     /// <summary>Ordner des Projekts für {branch} und {commit}; '' ohne Projekt.</summary>
     Folder: TFunc<string>;
+    /// <summary>Adapter auf IAtlasCommentAssist; ohne ihn liefert Assist nil.</summary>
+    Adapt: TAtlasCommentAssistAdapt;
   end;
 
   /// <summary>Dienst hinter allen Kommentarfeldern: Entwurfsdatei, Zwischenspeicher der Benutzer, Threads.
@@ -99,7 +107,8 @@ type
     class function Active: Boolean; static;
   end;
 
-  TAtlasIdeCommentAssist = class(TInterfacedObject, IAtlasCommentAssist)
+  /// <summary>Hilfe für ein Feld; erreicht den Editor über den Adapter (Hook Adapt).</summary>
+  TAtlasIdeCommentAssist = class(TInterfacedObject)
   private
     FService: TAtlasIdeCommentService;
     FServiceRef: IInterface;
@@ -125,7 +134,7 @@ type
     constructor Create(AService: TAtlasIdeCommentService; const ATarget: TAtlasTrackerTarget;
       const AKey, AField: string);
     destructor Destroy; override;
-    { IAtlasCommentAssist }
+    { Für den Editor (IAtlasCommentAssist über Atlas.IDE.Tracker.Adapters.CommentAssist) }
     function Target: TAtlasTrackerTarget;
     function Snippets: TArray<TAtlasCommentSnippet>;
     procedure FindUsers(const AText: string; const ADone: TAtlasCommentUsersDone);
@@ -305,11 +314,17 @@ end;
 
 function TAtlasIdeCommentService.Assist(const ATarget: TAtlasTrackerTarget; const AKey, AField: string):
   IAtlasCommentAssist;
+var
+  mAssist: TAtlasIdeCommentAssist;
+  mKeep: IInterface;
 begin
   Result := nil;
-  if TAtlasCommentPlan.Assists(FStarted, Active, AKey) then
+  if TAtlasCommentPlan.Assists(FStarted, Active, AKey) and Assigned(FHooks.Adapt) then
   begin
-    Result := TAtlasIdeCommentAssist.Create(Self, ATarget, AKey, AField);
+    mAssist := TAtlasIdeCommentAssist.Create(Self, ATarget, AKey, AField);
+    // Ohne Adapter gibt mKeep die Hilfe am Ende wieder frei.
+    mKeep := mAssist;
+    Result := FHooks.Adapt(mAssist);
   end;
 end;
 
@@ -452,11 +467,11 @@ type
 
 /// <summary>Arbeit des Hintergrundthreads der Benutzerabfrage; die Antwort geht über den Hauptthread an AOwner,
 /// solange AKeep ihn hält. Eigene Routine: Die anonyme Methode hält nur ihre Parameter.</summary>
-function UsersWorker(AOwner: TAtlasIdeCommentAssist; const AKeep: IAtlasCommentAssist; const AJob: TUserJob;
+function UsersWorker(AOwner: TAtlasIdeCommentAssist; const AKeep: IInterface; const AJob: TUserJob;
   const ADone: TAtlasCommentUsersDone): TProc;
 var
   mJob: TUserJob;
-  mKeep: IAtlasCommentAssist;
+  mKeep: IInterface;
 begin
   mJob := AJob;
   mKeep := AKeep;
@@ -554,11 +569,11 @@ begin
 end;
 
 /// <summary>Arbeit des Hintergrundthreads der Issue-Suche (siehe UsersWorker).</summary>
-function IssuesWorker(AOwner: TAtlasIdeCommentAssist; const AKeep: IAtlasCommentAssist; const AJob: TIssueJob;
+function IssuesWorker(AOwner: TAtlasIdeCommentAssist; const AKeep: IInterface; const AJob: TIssueJob;
   const ADone: TAtlasCommentIssuesDone): TProc;
 var
   mJob: TIssueJob;
-  mKeep: IAtlasCommentAssist;
+  mKeep: IInterface;
 begin
   mJob := AJob;
   mKeep := AKeep;
@@ -689,7 +704,7 @@ var
   mValues: TAtlasCommentValues;
   mFolder: string;
   mGeneration: Integer;
-  mKeep: IAtlasCommentAssist;
+  mKeep: IInterface;
   mOwner: TAtlasIdeCommentAssist;
 begin
   Inc(FValueGeneration);

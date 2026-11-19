@@ -31,7 +31,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract.Files,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles;
 
 type
   /// <summary>Shell, die nur mitschreibt.</summary>

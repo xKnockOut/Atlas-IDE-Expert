@@ -1,21 +1,25 @@
-﻿unit Atlas.IDE.Tracker.Tiles;
+﻿unit Atlas.IDE.Tracker.Adapters.Tiles;
 
-// Kacheln des Trackers auf der Willkommensseite (#1455, Vertrag
-// Atlas.IDE.Contracts.WelcomeTiles): „Meine Issues“ (#765), „Sprint“
-// (#1277) und „Testergebnisse“ (#763). Die Komposition stellt sie über den Scope des Moduls bereit; die
-// Willkommensseite zeigt sie mit Titelzeile, Griff und Spalte und legt die
-// Ansicht in ihren Rahmen. Kennungen wie früher als Bereiche (atlas.issues,
+// Kacheln des Trackers auf der Willkommensseite (#1455), Rolle Adapters für
+// den Vertrag Atlas.IDE.Contracts.WelcomeTiles: „Meine Issues“ (#765),
+// „Sprint“ (#1277) und „Testergebnisse“ (#763). Die Komposition stellt sie
+// über den Scope des Moduls bereit und reicht die Quellen der Ansichten als
+// Adapter herein; die Willkommensseite zeigt sie mit Titelzeile, Griff und
+// Spalte und legt die Ansicht in ihren Rahmen. Kennungen wie früher als Bereiche (atlas.issues,
 // atlas.sprint, atlas.tests), damit gespeicherte Layouts gelten. Hauptthread.
 
 interface
 
 uses
   System.Classes,
+  System.SysUtils,
   Vcl.Controls,
   Atlas.UI.Tracker.TileView,
+  Atlas.UI.Tracker.Contract.MyIssues,
+  Atlas.UI.Tracker.Contract.Sprint,
+  Atlas.UI.Tracker.TestResults,
   Atlas.IDE.Contracts.WelcomeTiles,
-  Atlas.IDE.Tracker.MyIssues,
-  Atlas.IDE.Tracker.TestResults;
+  Atlas.IDE.Tracker.MyIssues;
 
 type
   /// <summary>Ansicht einer Kachel für die Seite; reicht an das Steuerelement weiter. Gibt die Seite das Steuerelement
@@ -30,37 +34,38 @@ type
     procedure UpdateContent;
   end;
 
-  /// <summary>Kachel „Meine Issues“; zeigt die Quelle AIssues.</summary>
+  /// <summary>Kachel „Meine Issues“; Titel von AIssues, die Ansicht zeigt ASource.</summary>
   TAtlasTrackerIssuesTile = class(TInterfacedObject, IAtlasWelcomeTile)
   private
     FIssues: TAtlasIdeIssues;
-    FIssuesRef: IInterface;
+    FSource: IAtlasIssuesSource;
   public
-    constructor Create(AIssues: TAtlasIdeIssues);
+    constructor Create(AIssues: TAtlasIdeIssues; const ASource: IAtlasIssuesSource);
     function Info: TAtlasWelcomeTileInfo;
     function Enabled: Boolean;
     function CreateView(AOwner: TComponent; const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
   end;
 
-  /// <summary>Kachel „Sprint“; Quelle ist die Sprint-Steuerung von AIssues (nil vor Start bzw. nach Stop).</summary>
+  /// <summary>Kachel „Sprint“; ASource liefert die Quelle zur Sprint-Steuerung von AIssues (nil vor Start bzw.
+  /// nach Stop).</summary>
   TAtlasTrackerSprintTile = class(TInterfacedObject, IAtlasWelcomeTile)
   private
     FIssues: TAtlasIdeIssues;
     FIssuesRef: IInterface;
+    FSource: TFunc<IAtlasSprintSource>;
   public
-    constructor Create(AIssues: TAtlasIdeIssues);
+    constructor Create(AIssues: TAtlasIdeIssues; const ASource: TFunc<IAtlasSprintSource>);
     function Info: TAtlasWelcomeTileInfo;
     function Enabled: Boolean;
     function CreateView(AOwner: TComponent; const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
   end;
 
-  /// <summary>Kachel „Testergebnisse“; zeigt die Quelle ATests.</summary>
+  /// <summary>Kachel „Testergebnisse“; die Ansicht zeigt ASource.</summary>
   TAtlasTrackerTestsTile = class(TInterfacedObject, IAtlasWelcomeTile)
   private
-    FTests: TAtlasIdeTestResults;
-    FTestsRef: IInterface;
+    FSource: IAtlasTestResultsSource;
   public
-    constructor Create(ATests: TAtlasIdeTestResults);
+    constructor Create(const ASource: IAtlasTestResultsSource);
     function Info: TAtlasWelcomeTileInfo;
     function Enabled: Boolean;
     function CreateView(AOwner: TComponent; const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
@@ -69,11 +74,10 @@ type
 implementation
 
 uses
-  System.SysUtils,
   Atlas.IDE.Tracker.SprintTile,
   Atlas.UI.Tracker.MyIssues,
   Atlas.UI.Tracker.SprintTile,
-  Atlas.UI.Tracker.TestResults;
+  Atlas.IDE.Tracker.TestResults;
 
 /// <summary>Höhe an die Seite melden; eigene Routine, damit die Methodenreferenz nur den Host hält.</summary>
 function HeightToHost(const AHost: IAtlasWelcomeTileHost): TProc;
@@ -114,11 +118,12 @@ end;
 
 { TAtlasTrackerIssuesTile }
 
-constructor TAtlasTrackerIssuesTile.Create(AIssues: TAtlasIdeIssues);
+constructor TAtlasTrackerIssuesTile.Create(AIssues: TAtlasIdeIssues; const ASource: IAtlasIssuesSource);
 begin
   inherited Create;
   FIssues := AIssues;
-  FIssuesRef := AIssues as IAtlasIssuesSource;
+  // Die Quelle hält AIssues am Leben.
+  FSource := ASource;
 end;
 
 function TAtlasTrackerIssuesTile.Info: TAtlasWelcomeTileInfo;
@@ -145,16 +150,17 @@ var
 begin
   mView := TAtlasTrackerIssuesView.Create(AOwner);
   Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
-  mView.Source := FIssues;
+  mView.Source := FSource;
 end;
 
 { TAtlasTrackerSprintTile }
 
-constructor TAtlasTrackerSprintTile.Create(AIssues: TAtlasIdeIssues);
+constructor TAtlasTrackerSprintTile.Create(AIssues: TAtlasIdeIssues; const ASource: TFunc<IAtlasSprintSource>);
 begin
   inherited Create;
   FIssues := AIssues;
-  FIssuesRef := AIssues as IAtlasIssuesSource;
+  FIssuesRef := AIssues;
+  FSource := ASource;
 end;
 
 function TAtlasTrackerSprintTile.Info: TAtlasWelcomeTileInfo;
@@ -176,24 +182,29 @@ function TAtlasTrackerSprintTile.CreateView(AOwner: TComponent;
   const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
 var
   mView: TAtlasTrackerSprintView;
+  mSource: IAtlasSprintSource;
 begin
   Result := nil;
-  if FIssues.Services.Sprint = nil then
+  mSource := nil;
+  if Assigned(FSource) then
+  begin
+    mSource := FSource();
+  end;
+  if mSource = nil then
   begin
     Exit;
   end;
   mView := TAtlasTrackerSprintView.Create(AOwner);
   Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
-  mView.Source := FIssues.Services.Sprint;
+  mView.Source := mSource;
 end;
 
 { TAtlasTrackerTestsTile }
 
-constructor TAtlasTrackerTestsTile.Create(ATests: TAtlasIdeTestResults);
+constructor TAtlasTrackerTestsTile.Create(const ASource: IAtlasTestResultsSource);
 begin
   inherited Create;
-  FTests := ATests;
-  FTestsRef := ATests as IAtlasTestResultsSource;
+  FSource := ASource;
 end;
 
 function TAtlasTrackerTestsTile.Info: TAtlasWelcomeTileInfo;
@@ -217,7 +228,7 @@ var
 begin
   mView := TAtlasTrackerTestResultsView.Create(AOwner);
   Result := TAtlasTrackerTileViewLink.Create(mView, AHost);
-  mView.Source := FTests;
+  mView.Source := FSource;
 end;
 
 end.

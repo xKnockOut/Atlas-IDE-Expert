@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Tracker.Adapters.LocalFiles;
+﻿unit Atlas.Core.Tracker.Providers.LocalFiles;
 
 // Dateizugriff des Trackers auf der lokalen Platte (#1455 Paket 2d), ohne VCL
 // und Open Tools API: IAtlasTrackerFiles über System.IOUtils und TFileStream.

@@ -55,7 +55,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Notify,
-  Atlas.Core.Tracker.Reopened;
+  Atlas.Core.Tracker.Reopened,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 function T0: TDateTime;
 begin
