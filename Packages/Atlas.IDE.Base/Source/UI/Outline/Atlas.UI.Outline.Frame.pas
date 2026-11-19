@@ -172,7 +172,6 @@ uses
   System.Math,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Strings,
   Atlas.UI.Outline.Strings,
   Atlas.UI.Foundation.ListBox,
   Atlas.UI.Foundation.WrapLabel,
@@ -184,6 +183,13 @@ const
   cIndentPx = 14;
   cExpanderPx = 14;
   cRowPx = 20;
+  /// <summary>Einzug der ersten Ebene bei 96 dpi.</summary>
+  cRowIndentPx = 4;
+  /// <summary>Schlüsselwörter hinter dem Namen; Delphi-Syntax, daher nicht übersetzt.</summary>
+  cMarkClass = ' · class';
+  cMarkOverride = ' · override';
+  cMarkVirtual = ' · virtual';
+  cMarkAbstract = ' · abstract';
   /// <summary>Feste Breite des Suchfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
   cButtonWidth = 92;
   cSortButtonWidth = 150;
@@ -191,15 +197,18 @@ const
   cButtonHeight = 24;
   /// <summary>Tag der Menüeinträge „Alle zeigen“.</summary>
   cTagAll = -1;
-  cKindTexts: array[0..7] of TAtlasTextId = (TAtlasTextId.OutlineKindTypes, TAtlasTextId.OutlineKindFields,
-    TAtlasTextId.OutlineKindMethods, TAtlasTextId.OutlineKindProperties, TAtlasTextId.OutlineKindConstants,
-    TAtlasTextId.OutlineKindVariables, TAtlasTextId.OutlineKindRoutines, TAtlasTextId.OutlineKindEnumMembers);
+  cKindTexts: array[0..7] of TAtlasOutlineTextId = (TAtlasOutlineTextId.OutlineKindTypes,
+    TAtlasOutlineTextId.OutlineKindFields, TAtlasOutlineTextId.OutlineKindMethods,
+    TAtlasOutlineTextId.OutlineKindProperties, TAtlasOutlineTextId.OutlineKindConstants,
+    TAtlasOutlineTextId.OutlineKindVariables, TAtlasOutlineTextId.OutlineKindRoutines,
+    TAtlasOutlineTextId.OutlineKindEnumMembers);
   cKindCategories: array[0..7] of TAtlasOutlineCategory = (TAtlasOutlineCategory.TypeDecl,
     TAtlasOutlineCategory.Field, TAtlasOutlineCategory.Method, TAtlasOutlineCategory.PropertyDecl,
     TAtlasOutlineCategory.Constant, TAtlasOutlineCategory.Variable, TAtlasOutlineCategory.Routine,
     TAtlasOutlineCategory.EnumMember);
-  cVisibilityTexts: array[0..3] of TAtlasTextId = (TAtlasTextId.OutlineVisPrivate, TAtlasTextId.OutlineVisProtected,
-    TAtlasTextId.OutlineVisPublic, TAtlasTextId.OutlineVisPublished);
+  cVisibilityTexts: array[0..3] of TAtlasOutlineTextId = (TAtlasOutlineTextId.OutlineVisPrivate,
+    TAtlasOutlineTextId.OutlineVisProtected, TAtlasOutlineTextId.OutlineVisPublic,
+    TAtlasOutlineTextId.OutlineVisPublished);
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -289,8 +298,8 @@ begin
   FVisibilityMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cVisibilityTexts) do
   begin
-    AddMenuItem(FVisibilityMenu, TAtlasStrings.Text(cVisibilityTexts[mIndex]), mIndex, VisibilityItemClick).Checked :=
-      True;
+    AddMenuItem(FVisibilityMenu, TAtlasOutlineStrings.Text(cVisibilityTexts[mIndex]), mIndex,
+      VisibilityItemClick).Checked := True;
   end;
 
   FKindMenu := TPopupMenu.Create(Self);
@@ -298,7 +307,7 @@ begin
   FKindMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cKindTexts) do
   begin
-    AddMenuItem(FKindMenu, TAtlasStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
+    AddMenuItem(FKindMenu, TAtlasOutlineStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
   end;
 
   FListMenu := TPopupMenu.Create(Self);
@@ -425,7 +434,7 @@ end;
 function TAtlasOutlineFrameRows.ExpanderRect(AIndex: Integer; const ARect: TRect): TRect;
 begin
   Result := ARect;
-  Result.Left := ARect.Left + Scale(4) + FRows[AIndex].Depth * Scale(cIndentPx);
+  Result.Left := ARect.Left + Scale(cRowIndentPx) + FRows[AIndex].Depth * Scale(cIndentPx);
   Result.Right := Result.Left + Scale(cExpanderPx);
 end;
 
@@ -861,19 +870,19 @@ begin
   end;
   if mNode.ClassMember then
   begin
-    Result := Result + ' · class';
+    Result := Result + cMarkClass;
   end;
   if mNode.IsOverride then
   begin
-    Result := Result + ' · override';
+    Result := Result + cMarkOverride;
   end;
   if mNode.IsVirtual and not mNode.IsOverride then
   begin
-    Result := Result + ' · virtual';
+    Result := Result + cMarkVirtual;
   end;
   if mNode.IsAbstract then
   begin
-    Result := Result + ' · abstract';
+    Result := Result + cMarkAbstract;
   end;
   if mNode.Unimplemented then
   begin

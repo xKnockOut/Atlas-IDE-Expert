@@ -440,12 +440,6 @@ begin
     end);
 end;
 
-/// <summary>Zeilen einer Testunit: offener Puffer, sonst die Platte.</summary>
-function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-begin
-  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
-
 procedure TAtlasIdeCoveredByLens.UpdateStale;
 begin
   FStale := nil;
@@ -453,7 +447,7 @@ begin
   begin
     Exit;
   end;
-  FStale := TAtlasCoveredBy.StaleKeysOf(FUnit.AllTests, ReadLines, FStaleKeys);
+  FStale := TAtlasCoveredBy.StaleKeysOf(FUnit.AllTests, TAtlasIdeFiles.LineReader(), FStaleKeys);
 end;
 
 procedure TAtlasIdeCoveredByLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;

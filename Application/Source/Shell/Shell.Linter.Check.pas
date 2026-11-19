@@ -22,6 +22,7 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Diagnostics.CheckProfile,
+  Atlas.Common.Diagnostics.CheckMemory,
   Shell.CommandLine,
   Shell.VersionControlChanges,
   Shell.WorkspaceGroup,
@@ -38,6 +39,8 @@ type
     FDescriptors: TArray<TRuleDescriptor>;
     FBaselinePath: string;
     FBaseline: IRuleBaseline;
+    // Kopien aus atlas-duplicates.json, die duplicate-routine-body nicht noch einmal meldet (#1895).
+    FKnownCopies: TLinterKnownCopies;
     FRoot: string;
     FPackages: TArray<TPackageSource>;
     FPrograms: TArray<string>;
@@ -45,6 +48,8 @@ type
     FGroup: TShellWorkspaceGroup;
     FTimings: TCheckTimings;
     FProfiler: TCheckProfiler;
+    /// <summary>Speicher des Laufs mit --timings (#1480); sonst nil.</summary>
+    FMemory: TCheckMemoryTrack;
     FStats: TSuppressionStats;
     FCheckedPaths: TList<string>;
     FFiles: TArray<TCheckedFile>;
@@ -81,7 +86,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Lsp.ServerActivity,
   Shell.Linter.Output,
   Shell.Linter.Settings,
@@ -99,6 +103,7 @@ begin
   FConfigRoot := AConfigRoot;
   FTimings := Default(TCheckTimings);
   FTimings.IndexMs := -1;
+  FTimings.ClearHeap;
   FStats := TSuppressionStats.Create;
   FCheckedPaths := TList<string>.Create;
 end;
@@ -106,7 +111,10 @@ end;
 destructor TLinterCheck.Destroy;
 begin
   FProfiler.Free;
+  FKnownCopies.Free;
   TLinterIndex.Release(FGroup);
+  // Erst nach der Gruppe: Der Indexaufbau meldet sich bis zum Anhalten bei FMemory.
+  FMemory.Free;
   FCheckedPaths.Free;
   FGit.Free;
   FStats.Free;
@@ -123,6 +131,7 @@ begin
   FRules := BuiltinRules;
   FDescriptors := TLinterSettings.DescriptorsOf(FRules, FSettings, not FOptions.NoIndex);
   FBaselinePath := TLinterBaseline.PathOf(FOptions, FConfigRoot);
+  FKnownCopies := TLinterKnownCopies.Find(FConfigRoot);
   Result := TLinterBaseline.Load(FOptions, FBaselinePath, FBaseline);
 end;
 
@@ -179,8 +188,8 @@ begin
   end
   else
   begin
-    AddFindings(AFileName, mRelativePath, mText, mScopes, RunRules(AFileName, mRelativePath, mText, ASource,
-      mScopes));
+    AddFindings(AFileName, mRelativePath, mText, mScopes, FKnownCopies.Filter(AFileName, mText,
+      RunRules(AFileName, mRelativePath, mText, ASource, mScopes)));
   end;
 end;
 
@@ -341,7 +350,11 @@ begin
   end;
   FProfiler.FinishRun(AElapsedMs);
   FTimings.Profile := FProfiler.Snapshot(TCheckRunProfile.cTop);
-  FTimings.TotalBytes := TShutdownLeaks.AllocatedBytes;
+  FMemory.Finish;
+  FTimings.ReadyBytes := FMemory.ReadyBytes;
+  FTimings.GroupBytes := FMemory.GroupBytes;
+  FTimings.PeakBytes := FMemory.PeakBytes;
+  FTimings.TotalBytes := FMemory.EndBytes;
   TLinterOutput.Timings(FOptions, FTimings);
 end;
 
@@ -357,10 +370,14 @@ begin
   begin
     Exit(TFindingsOutput.cExitFailure);
   end;
+  if FOptions.Timings then
+  begin
+    FMemory := TLinterIndex.MemoryTrack;
+  end;
   // Metriken und TODOs brauchen keinen Index.
   if not (FOptions.NoIndex or FOptions.Metrics or FOptions.Todos) then
   begin
-    FGroup := TLinterIndex.Load(FOptions, FConfigRoot, FTimings);
+    FGroup := TLinterIndex.Load(FOptions, FConfigRoot, FTimings, FMemory);
   end;
   if FOptions.Timings then
   begin

@@ -1,13 +1,11 @@
 ﻿unit Atlas.UI.Rules.SettingsSection;
 
-// Abschnitte des Moduls Prüfregeln im Optionsdialog (#1456; vorher in den Teilen
-// „Prüfregeln“ und „Editor“ von Base). Fenster „Atlas-Prüfung“, Prüfen beim Speichern und deren Einstellungen
-// bleiben in Base.
+// Abschnitte des Moduls Prüfregeln im Optionsdialog (#1456) auf den Seiten „Prüfregeln“ und
+// „Editor“. Fenster „Atlas-Prüfung“, Prüfen beim Speichern und deren Einstellungen bleiben in Base.
 // - „Prüfregeln“: Modulschalter, Sammelkorrektur im Kontextmenü des Fensters (#1352), der Weg zu den Regeln (sie
 //   stehen in den Dialogen der Einstellungsdateien, Projekt und global), Profile, Stand der Baseline mit „neu
-//   erzeugen“ und „löschen“ und die Unterdrückungen je Regel (#909, #97, #147; seit #1755 hier statt in Base und
-//   auf der Seite „Atlas.Server“). Was dafür Dateien oder den Server braucht, kommt über Hooks
-//   (Atlas.IDE.Rules.Settings).
+//   erzeugen“ und „löschen“ und die Unterdrückungen je Regel (#909, #97, #147, #1755). Was dafür Dateien oder
+//   den Server braucht, kommt über Hooks (Atlas.IDE.Rules.Settings).
 // - „Editor“: Basislinie aktualisieren, DFM-Eigenschaftsregeln anwenden und die Marke „Wer gibt das frei?“
 //   (#1877) samt „nur Problemfälle“.
 
@@ -54,6 +52,7 @@ type
     FSuppressionsRefresh: TButton;
     /// <summary>Zeile ohne eigenen Schlüssel im Rahmen des Modulschalters.</summary>
     function AddRow(AHeight: Integer): TWinControl;
+    /// <summary>Knopf in ARow an ALeft (logische Pixel, 96 dpi).</summary>
     function AddButton(ARow: TWinControl; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
     procedure AddRulesLinks;
     procedure AddBaseline;
@@ -96,12 +95,18 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Vcl.Graphics,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cButtonWidth = 210;
+  cButtonHeight = 25;
   cButtonGap = 216;
   cRowHeight = 28;
+  // Beschriftungen der Baseline-Zeilen (logische Pixel).
+  cInfoWidth = 400;
+  cInfoHeight = 16;
+  cInfoTop = 6;
 
 { TAtlasRulesChecksSection }
 
@@ -162,7 +167,8 @@ begin
   Result := TButton.Create(FControls);
   Result.Parent := ARow;
   Result.Caption := ACaption;
-  Result.SetBounds(ALeft, 1, cButtonWidth, 25);
+  Result.SetBounds(Result.ScaleValue(ALeft), Result.ScaleValue(1), Result.ScaleValue(cButtonWidth),
+    Result.ScaleValue(cButtonHeight));
   Result.OnClick := AClick;
 end;
 
@@ -192,14 +198,14 @@ begin
   mRow := AddRow(20);
   mTitle := TLabel.Create(FControls);
   mTitle.Parent := mRow;
-  mTitle.SetBounds(0, 2, 400, 16);
+  TAtlasControlScaling.Place(mTitle, 0, 2, cInfoWidth, cInfoHeight);
   mTitle.ShowAccelChar := False;
   mTitle.Font.Style := [TFontStyle.fsBold];
   mTitle.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineTitle);
   mRow := AddRow(cRowHeight);
   FBaselineInfo := TLabel.Create(FControls);
   FBaselineInfo.Parent := mRow;
-  FBaselineInfo.SetBounds(0, 6, 400, 16);
+  TAtlasControlScaling.Place(FBaselineInfo, 0, cInfoTop, cInfoWidth, cInfoHeight);
   FBaselineInfo.ShowAccelChar := False;
   FBaselineInfo.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineNone);
   if Assigned(FHooks.BaselineInfo) then

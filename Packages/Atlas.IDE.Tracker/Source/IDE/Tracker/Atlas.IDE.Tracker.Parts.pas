@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.Parts;
 
-// Teile, Befehle und Menüeinträge des Moduls Tracker (#1455), aus
-// Atlas.IDE.Tracker.Composition herausgelöst, damit die Komposition nur
+// Teile, Befehle und Menüeinträge des Moduls Tracker (#1455), eigene
+// Unit neben Atlas.IDE.Tracker.Composition, damit die Komposition nur
 // anmeldet und die Adapter baut (Rolle Composition). Die Komposition übergibt
 // Scope und Zugänge (Install) und reicht Teile, Befehle, Menü, Tasten,
 // Einstellungen und Palette ihres Moduls hierher weiter.

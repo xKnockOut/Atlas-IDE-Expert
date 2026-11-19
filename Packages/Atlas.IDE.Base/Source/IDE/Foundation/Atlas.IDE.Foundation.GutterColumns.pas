@@ -20,7 +20,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  ToolsAPI.Editor;
 
 type
   TAtlasIdeGutterColumns = class
@@ -33,6 +34,11 @@ type
     class procedure Unregister(AHandle: Integer); static;
     /// <summary>Darf ein Dienst jetzt eine Spalte anfordern?</summary>
     class function Allowed: Boolean; static;
+    /// <summary>Dienst für eigene Spalten der Zeilenleiste; nil, wenn die IDE ihn nicht bietet.</summary>
+    class function Services: INTACodeEditorServices280; static;
+    /// <summary>Gibt die angeforderte Spalte AColumn ab (ohne Spalte, AColumn &lt; 0, nichts), zeichnet den Editor
+    /// neu und setzt AColumn auf -1.</summary>
+    class procedure Remove(var AColumn: Integer); static;
   end;
 
 implementation
@@ -42,7 +48,8 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   DockForm,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 type
   TWindowWatch = class(TNotifierObject, INTAEditServicesNotifier)
@@ -167,6 +174,31 @@ end;
 class function TAtlasIdeGutterColumns.Allowed: Boolean;
 begin
   Result := TThread.GetTickCount64 >= PausedUntil;
+end;
+
+class function TAtlasIdeGutterColumns.Services: INTACodeEditorServices280;
+begin
+  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+class procedure TAtlasIdeGutterColumns.Remove(var AColumn: Integer);
+var
+  mEditors: INTACodeEditorServices280;
+begin
+  if AColumn < 0 then
+  begin
+    Exit;
+  end;
+  mEditors := Services;
+  if mEditors <> nil then
+  begin
+    mEditors.RemoveGutterColumn(AColumn);
+    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
+  end;
+  AColumn := -1;
 end;
 
 end.

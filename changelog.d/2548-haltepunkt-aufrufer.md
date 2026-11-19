@@ -1,0 +1,2 @@
+### Neu
+- Haltepunkt-Regeln: „Nur wenn im Stapel“ hält einen Haltepunkt nur, wenn eine bestimmte Methode, Klasse oder Unit im Aufrufstapel steht (`Unit.Klasse.Methode`, `*` als Platzhalter), wahlweise nur als direkter Aufrufer. Trefferbedingungen zählen nur passende Aufrufe; das Haltepunktfenster zeigt den Aufrufer in der Spalte Regeln, die Rinne einen Haken mit Hinweis (#2548, `debug.breakpointRules`).

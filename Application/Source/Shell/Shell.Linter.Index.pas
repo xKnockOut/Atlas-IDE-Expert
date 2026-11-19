@@ -10,6 +10,7 @@ uses
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Diagnostics.CheckProfile,
+  Atlas.Common.Diagnostics.CheckMemory,
   Shell.CommandLine,
   Shell.WorkspaceGroup;
 
@@ -20,13 +21,17 @@ type
       /// <summary>Höchstens so lange auf den Index warten; danach mit dem bis dahin aufgebauten prüfen.</summary>
       cTimeoutMs = 30 * 60 * 1000;
     /// <summary>Arbeitsbereiche mit Symbolindex, wie im MCP-Modus; wartet auf den Index und trägt Aufbauzeit und
-    /// Speicher in ATimings ein (#1356).</summary>
+    /// Speicher in ATimings ein (#1356). Mit AMemory (#1480) misst es den Speicher, wenn der Index des
+    /// Zielprojekts und wenn der aller Projekte fertig ist; nil erlaubt.</summary>
     class function Load(const AOptions: TCommandLineOptions; const AConfigRoot: string;
-      var ATimings: TCheckTimings): TShellWorkspaceGroup; static;
+      var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TShellWorkspaceGroup; static;
     /// <summary>Projekt einer geprüften Datei: Package aus APackages, Formulare der Programme, Formulardatei
     /// daneben und mit AGroup Index und Projektdienste (#1112) wie im Server.</summary>
     class function ProjectOf(const AFileName: string; const APackages: TArray<TPackageSource>;
       const APrograms: TArray<string>; AGroup: TShellWorkspaceGroup): TCheckProject; static;
+    /// <summary>Speicher eines Laufs mit --timings (#1480), misst ab jetzt im Hintergrund den Gipfel; der
+    /// Aufrufer gibt ihn nach der Gruppe frei.</summary>
+    class function MemoryTrack: TCheckMemoryTrack; static;
     /// <summary>Hält AGroup an und gibt sie frei; nil erlaubt.</summary>
     class procedure Release(AGroup: TShellWorkspaceGroup); static;
   end;
@@ -113,15 +118,37 @@ begin
   AGroup.ProcessIdentity := mIdentity;
 end;
 
-/// <summary>Lädt AGroup, wartet auf den Index und meldet das Ergebnis auf stderr.</summary>
-procedure LoadAndWait(AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex; const AWatch: TStopwatch);
+/// <summary>Speicher (#1480) beim fertigen Index des Zielprojekts; die übrigen Projekte zählen nur zum Gipfel.
+/// </summary>
+procedure TrackIndex(AGroup: TShellWorkspaceGroup; AMemory: TCheckMemoryTrack);
+begin
+  if AMemory = nil then
+  begin
+    Exit;
+  end;
+  AGroup.OnIndexFinished :=
+    procedure(AMain: Boolean)
+    begin
+      AMemory.IndexFinished(AMain);
+    end;
+end;
+
+/// <summary>Lädt AGroup, wartet auf den Index und meldet das Ergebnis auf stderr; mit AMemory der Speicher, wenn
+/// alle Projekte fertig sind.</summary>
+procedure LoadAndWait(AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex; const AWatch: TStopwatch;
+  AMemory: TCheckMemoryTrack);
 begin
   AGroup.Load(TShellBootstrap.LoadGlobalSettings(nil));
   if not AGroup.WaitForIndex(TLinterIndex.cTimeoutMs) then
   begin
     TLinterOutput.Error(cTexts[TLinterIndexText.NotReady].Fmt([TLinterIndex.cTimeoutMs div 60000]));
-  end
-  else if AIndex.UnitCount = 0 then
+    Exit;
+  end;
+  if AMemory <> nil then
+  begin
+    AMemory.MarkGroup;
+  end;
+  if AIndex.UnitCount = 0 then
   begin
     TLinterOutput.Error(cTexts[TLinterIndexText.NoProject].Text);
   end
@@ -146,7 +173,7 @@ end;
 { TLinterIndex }
 
 class function TLinterIndex.Load(const AOptions: TCommandLineOptions; const AConfigRoot: string;
-  var ATimings: TCheckTimings): TShellWorkspaceGroup;
+  var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TShellWorkspaceGroup;
 var
   mIndex: ISymbolIndex;
   mWatch: TStopwatch;
@@ -155,13 +182,24 @@ begin
   Result := NewGroup(AConfigRoot, mIndex);
   try
     Configure(Result, AOptions);
+    TrackIndex(Result, AMemory);
     mWatch := TStopwatch.StartNew;
-    LoadAndWait(Result, mIndex, mWatch);
+    LoadAndWait(Result, mIndex, mWatch, AMemory);
     RecordTimings(mIndex, mWatch, ATimings);
   except
     Result.Free;
     raise;
   end;
+end;
+
+class function TLinterIndex.MemoryTrack: TCheckMemoryTrack;
+begin
+  Result := TCheckMemoryTrack.Create(
+    function: Int64
+    begin
+      Result := TShellPlatform.MemoryInUseBytes;
+    end);
+  Result.StartSampling;
 end;
 
 class function TLinterIndex.ProjectOf(const AFileName: string; const APackages: TArray<TPackageSource>;

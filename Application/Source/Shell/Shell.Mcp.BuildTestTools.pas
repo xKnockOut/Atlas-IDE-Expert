@@ -1,16 +1,18 @@
 ﻿unit Shell.Mcp.BuildTestTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge für Builds in der IDE und DUnitX-Testläufe
-// (get_last_build, build_project, run_tests), das Profil aus „Mit Profil ausführen“ (get_profile, #2057) und die
-// Mutanten einer Unit (get_mutants, #1460) und Grenzfälle einer Routine als Testfälle (suggest_test_cases, #2173).
+// (get_last_build, build_project, run_tests), den letzten Testlauf der IDE (get_last_tests, #2409), das Profil
+// aus „Mit Profil ausführen“ (get_profile, #2057) und die Mutanten einer Unit (get_mutants, #1460), Grenzfälle
+// einer Routine als Testfälle (suggest_test_cases, #2173) und die Erklärung von Compilermeldungen an ihrer Stelle
+// (explain_compiler_message, #2621).
 
 interface
 
 uses
   Shell.Mcp.Context;
 
-/// <summary>Meldet get_last_build, build_project, run_tests, get_profile, get_mutants und suggest_test_cases an.
-/// </summary>
+/// <summary>Meldet get_last_build, get_last_tests, build_project, run_tests, get_profile, get_mutants,
+/// suggest_test_cases und explain_compiler_message an.</summary>
 procedure RegisterBuildTestTools(const AContext: TMcpToolContext);
 
 implementation
@@ -31,6 +33,8 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.TestTools,
   Atlas.Common.Mcp.ProfileTools,
+  Atlas.Common.Mcp.LastTests,
+  Atlas.Text.TestRunFile,
   Atlas.Text.Profile,
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
@@ -44,6 +48,10 @@ uses
   Atlas.Common.Mutation.Report,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.BoundaryCases,
+  Atlas.Common.Mcp.CompilerMessageTools,
+  Atlas.Common.Mcp.IndexTools,
+  Atlas.Common.Mcp.Paths,
+  Atlas.Common.Configuration.Contract,
   Shell.Platform,
   Shell.Texts,
   Shell.Mcp.Ide,
@@ -58,7 +66,10 @@ type
     GetProfileFormat, GetProfileOwnCode,
     GetMutantsTool, GetMutantsFile, GetMutantsRoutine, GetMutantsOperators, GetMutantsFirstLine,
     GetMutantsLastLine, GetMutantsFormat, UnknownOperators, SourceUnreadable,
-    SuggestTool, SuggestFile, SuggestRoutine, SuggestLine, SuggestMax, SuggestFormat, SuggestNoRoutine);
+    SuggestTool, SuggestFile, SuggestRoutine, SuggestLine, SuggestMax, SuggestFormat, SuggestNoRoutine,
+    ExplainTool, ExplainCode, ExplainMessage, ExplainFile, ExplainLine, ExplainColumn, ExplainMessages,
+    ExplainDelphiVersion, ExplainFormat, GetLastTestsTool, GetLastTestsProject, GetLastTestsOnly, GetLastTestsMax,
+    GetLastTestsFormat);
 {$SCOPEDENUMS OFF}
 
 const
@@ -172,7 +183,49 @@ const
     (De: 'Höchstens so viele Fälle; Vorgabe 20, 1 bis 200'; En: 'At most this many cases; default 20, 1 to 200'),
     (De: 'markdown (Vorgabe) oder json'; En: 'markdown (default) or json'),
     (De: 'Keine Routine mit Rumpf in %s (routine oder line angeben)';
-    En: 'No routine with a body in %s (give routine or line)'));
+    En: 'No routine with a body in %s (give routine or line)'),
+    (De: 'Erklärt Compilermeldungen an ihrer Stelle (#2621): je Meldung die allgemeine Erklärung (Name, Ursache, ' +
+    'Beispiel), die passende bekannte Delphi-Falle mit dem Merkmal im Code (z. B. zwei gleich gebaute ' +
+    'Methodenreferenztypen unter Delphi 12, TMonitor aus Vcl.Forms, Exit([...]), Units, die Free Pascal nicht ' +
+    'verlangt), die Atlas-Regel, die das schon beim Tippen meldet, und eine Korrektur: als Diff, wenn sie sicher ' +
+    'ist, sonst als Text. Mehrere Meldungen auf einmal über messages (z. B. aus build_project oder ' +
+    'get_last_build); Folgefehler sind markiert. Ohne file und line nur die allgemeine Erklärung. Lesend.';
+    En: 'Explains compiler messages at their place (#2621): for each message the general explanation (name, ' +
+    'cause, example), the matching known Delphi pitfall with its mark in the code (e.g. two method reference ' +
+    'types of the same shape under Delphi 12, TMonitor from Vcl.Forms, Exit([...]), units Free Pascal does not ' +
+    'require), the Atlas rule that reports it while typing, and a fix: as a diff when it is safe, otherwise as ' +
+    'text. Several messages at once via messages (e.g. from build_project or get_last_build); follow-up errors ' +
+    'are marked. Without file and line only the general explanation. Read-only.'),
+    (De: 'Meldungsnummer, z. B. E2010; leer = aus message'; En: 'Message number, e.g. E2010; empty = from message'),
+    (De: 'Meldungstext, deutsch oder englisch'; En: 'Message text, German or English'),
+    (De: 'Datei der Meldung (relativ zum Projekt oder absolut)';
+    En: 'File of the message (relative to the project or absolute)'),
+    (De: 'Zeile der Meldung (ab 1)'; En: 'Line of the message (from 1)'),
+    (De: 'Spalte der Meldung (ab 1), optional'; En: 'Column of the message (from 1), optional'),
+    (De: 'Mehrere Meldungen statt der Einzelfelder, je mit code, message, file, line, column';
+    En: 'Several messages instead of the single fields, each with code, message, file, line, column'),
+    (De: 'Delphi-Version für die DocWiki-Links, z. B. 12 oder 37.0; leer = delphiVersion aus atlas.json';
+    En: 'Delphi version for the DocWiki links, e.g. 12 or 37.0; empty = delphiVersion from atlas.json'),
+    (De: 'text (Vorgabe) oder json'; En: 'text (default) or json'),
+    (De: 'Ergebnis des letzten Testlaufs in der IDE ohne neuen Lauf (#2409): Testprojekt, Plattform, ' +
+    'Konfiguration, Zeitpunkt, Dauer und Zahlen; je Test Meldung, Datei und Zeile, erwartet und erhalten, ' +
+    'Protokollauszug und Marken neu rot, wieder grün, wackelig, Leck und veraltet (Testunit seit dem Lauf ' +
+    'geändert). Erst hier nachsehen, dann gezielt run_tests mit tests. Ohne laufende IDE die zuletzt abgelegte ' +
+    'Fassung mit Zeitstempel. Lesend.';
+    En: 'Result of the last test run in the IDE without a new run (#2409): test project, platform, ' +
+    'configuration, time, duration and counts; per test message, file and line, expected and actual, log ' +
+    'excerpt and marks newly red, green again, flaky, leak and stale (test unit changed since the run). Look ' +
+    'here first, then run_tests with tests for the ones that matter. Without a running IDE the last stored ' +
+    'version with time stamp. Read-only.'),
+    (De: 'Testprojekt (Name, .dproj oder Pfad); leer = letzter Lauf, bevorzugt unter dem Arbeitsordner';
+    En: 'Test project (name, .dproj or path); empty = last run, preferably below the working folder'),
+    (De: 'failed (Vorgabe): rote Tests; flaky: wackelnde; slow: langsamste zuerst; leaks: mit Leck; stale: ' +
+    'veraltete Ergebnisse; all: alle';
+    En: 'failed (default): red tests; flaky: flaky ones; slow: slowest first; leaks: with leak; stale: stale ' +
+    'results; all: all'),
+    (De: 'Höchstens so viele Tests (Vorgabe 20, bis 500); der Rest als Zahl';
+    En: 'At most this many tests (default 20, up to 500); the rest as a number'),
+    (De: 'text oder json'; En: 'text or json'));
 
 function ReadSourceLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 var
@@ -654,14 +707,146 @@ begin
     ContextTool(AContext, ToolSuggestTestCases));
 end;
 
+/// <summary>Liest Dateien unter ARoot (relativ oder absolut); False für Dateien außerhalb, z. B. Meldungen zur RTL.
+/// </summary>
+function WorkspaceReader(const ARoot: string): TMcpReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      mPath: string;
+    begin
+      AText := '';
+      mPath := AFileName;
+      if not TPath.IsPathRooted(mPath) then
+      begin
+        mPath := TPath.Combine(ARoot, mPath);
+      end;
+      Result := TMcpPathGuard.Contains(ARoot, mPath) and ReadSourceText(TPath.GetFullPath(mPath), AText);
+    end;
+end;
+
+function ToolExplainCompilerMessage(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mRequest: TMcpExplainRequest;
+begin
+  mRequest := Default(TMcpExplainRequest);
+  mRequest.Messages := TMcpCompilerMessageTools.MessagesOf(AArguments);
+  mRequest.DelphiVersion := BdsVersionOf(TMcpArgs.OptionalString(AArguments, 'delphiVersion'));
+  if mRequest.DelphiVersion = '' then
+  begin
+    mRequest.DelphiVersion := AContext.Group.Main.Configuration.Settings.DelphiVersion;
+  end;
+  mRequest.Json := SameText(TMcpArgs.OptionalString(AArguments, 'format'), 'json');
+  mRequest.ReadText := WorkspaceReader(AContext.Root);
+  Result := TMcpCompilerMessageTools.Explain(mRequest);
+end;
+
+procedure AddExplainCompilerMessage(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('explain_compiler_message', cTexts[TMcpBuildTestText.ExplainTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"code":{"type":"string","description":%s},' +
+      '"message":{"type":"string","description":%s},' +
+      '"file":{"type":"string","description":%s},' +
+      '"line":{"type":"integer","minimum":1,"description":%s},' +
+      '"column":{"type":"integer","minimum":1,"description":%s},' +
+      '"messages":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},' +
+      '"message":{"type":"string"},"file":{"type":"string"},"line":{"type":"integer"},' +
+      '"column":{"type":"integer"}}},"description":%s},' +
+      '"delphiVersion":{"type":"string","description":%s},' +
+      '"format":{"type":"string","enum":["text","json"],"description":%s}}}',
+      [cTexts[TMcpBuildTestText.ExplainCode].Text,
+      cTexts[TMcpBuildTestText.ExplainMessage].Text,
+      cTexts[TMcpBuildTestText.ExplainFile].Text,
+      cTexts[TMcpBuildTestText.ExplainLine].Text,
+      cTexts[TMcpBuildTestText.ExplainColumn].Text,
+      cTexts[TMcpBuildTestText.ExplainMessages].Text,
+      cTexts[TMcpBuildTestText.ExplainDelphiVersion].Text,
+      cTexts[TMcpBuildTestText.ExplainFormat].Text]),
+    ContextTool(AContext, ToolExplainCompilerMessage));
+end;
+
+/// <summary>Abgelegte Testläufe der IDE (#2409); unlesbare Dateien fallen weg.</summary>
+function LoadTestRuns(const AFolder: string): TArray<TTestRunFile>;
+var
+  mFile, mText: string;
+  mRun: TTestRunFile;
+begin
+  Result := nil;
+  if not TDirectory.Exists(AFolder) then
+  begin
+    Exit;
+  end;
+  for mFile in TDirectory.GetFiles(AFolder, '*.json') do
+  begin
+    // Das Plugin ersetzt die Datei atomar; gesperrt oder halb geschrieben zählt wie nicht vorhanden.
+    if ReadSourceText(mFile, mText) and TTestRunFiles.Parse(mText, mRun) then
+    begin
+      Result := Result + [mRun];
+    end;
+  end;
+end;
+
+/// <summary>Letzte Schreibzeit von AFileName in UTC; 0, wenn die Datei fehlt.</summary>
+function WrittenUtc(const AFileName: string): TDateTime;
+begin
+  Result := 0;
+  if FileExists(AFileName) then
+  begin
+    Result := TFile.GetLastWriteTimeUtc(AFileName);
+  end;
+end;
+
+function ToolGetLastTests(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mFolder, mReason: string;
+  mRuns: TArray<TTestRunFile>;
+  mRequest: TMcpLastTestsRequest;
+  mIndex: Integer;
+begin
+  mRequest := TMcpLastTestsRequest.FromArguments(AArguments);
+  mFolder := TTestRunFiles.Folder(TIndexCacheDirectory.DefaultRoot);
+  mRuns := LoadTestRuns(mFolder);
+  if Length(mRuns) = 0 then
+  begin
+    Exit(TMcpLastTests.NoRuns(mFolder));
+  end;
+  mIndex := TMcpLastTests.Pick(mRuns, AContext.Root, mRequest.Project, mReason);
+  if mIndex < 0 then
+  begin
+    raise EMcpToolError.Create(mReason);
+  end;
+  Result := TMcpLastTests.Report(mRuns[mIndex], TMcpLastTests.StaleUnits(mRuns[mIndex], WrittenUtc,
+    EditorDirtyFiles), mRequest);
+end;
+
+procedure AddGetLastTests(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('get_last_tests', cTexts[TMcpBuildTestText.GetLastTestsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"project":{"type":"string","description":%s},' +
+      '"only":{"type":"string","enum":["failed","flaky","slow","leaks","stale","all"],"default":"failed",' +
+      '"description":%s},' +
+      '"max":{"type":"integer","minimum":1,"maximum":500,"default":20,"description":%s},' +
+      '"format":{"type":"string","enum":["text","json"],"default":"text","description":%s}}}',
+      [cTexts[TMcpBuildTestText.GetLastTestsProject].Text,
+      cTexts[TMcpBuildTestText.GetLastTestsOnly].Text,
+      cTexts[TMcpBuildTestText.GetLastTestsMax].Text,
+      cTexts[TMcpBuildTestText.GetLastTestsFormat].Text]),
+    ContextTool(AContext, ToolGetLastTests));
+end;
+
 procedure RegisterBuildTestTools(const AContext: TMcpToolContext);
 begin
   AddGetLastBuild(AContext);
+  AddGetLastTests(AContext);
   AddBuildProject(AContext);
   AddRunTests(AContext);
   AddGetProfile(AContext);
   AddGetMutants(AContext);
   AddSuggestTestCases(AContext);
+  AddExplainCompilerMessage(AContext);
 end;
 
 initialization

@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Debug.SettingsSection;
 
-// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456; vorher
-// Atlas.UI.Settings.Page.Debug in Base): Modulschalter, Werte im Hover, Visualisierer (#835), eigene
+// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456):
+// Modulschalter, Werte im Hover, Visualisierer (#835), eigene
 // Wertdarstellungen (#854), gezielt hineinspringen (#836), Schrittfilter (#850), nächstes Ereignis (#856),
 // Erklärungen (#840, #865), Auswerten (#784), Exceptions (#517, #783), eigener Code (#578) und Werte im
 // Editor (#508). Felder, die mehrere Werte in einer Einstellung sammeln (Arten), liest und schreibt der
@@ -56,6 +56,7 @@ implementation
 
 uses
   Atlas.Core.Settings.EventBreakNames,
+  Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
@@ -64,8 +65,10 @@ uses
   Atlas.UI.Debug.Values.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
+  Atlas.UI.Debug.ObjectMarks.Strings,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Note.Strings,
+  Atlas.UI.Debug.OpenedFiles.Strings,
   Atlas.UI.Debug.Profile.Strings;
 
 const
@@ -267,6 +270,9 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointSetPerBranch));
   // Bis hier ausführen per Klick (#851).
   Switch('debug.runToClick', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRunToClick));
+  // Ausführungspfeil ziehen (#871, experimentell).
+  Switch('debug.dragNextStatement',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDragNextStatement));
   // Haltepunktfenster mit Suche, Etiketten und Trefferzahlen (#863).
   Switch('debug.breakpointsWindow',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointsWindow));
@@ -381,6 +387,13 @@ begin
   // Debug-Zustand festhalten (#582).
   Switch('debug.note', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNote));
   Switch('debug.note.saveFile', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNoteSaveFile));
+  // Vom Debugger geöffnete Dateien schließen (#842).
+  Choice('debug.closeOpenedFiles', TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseOpenedFiles),
+    [TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseOff),
+    TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseAsk),
+    TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseAuto)],
+    TArray<string>.Create(cCloseOpenedFilesModes[0], cCloseOpenedFilesModes[1], cCloseOpenedFilesModes[2]));
+  Switch('debug.previewTab', TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsPreviewTab));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;
@@ -391,6 +404,10 @@ begin
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchDepth));
   Number('debug.variablesWindow.searchLimit',
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchLimit));
+  Switch('debug.variablesWindow.scopedWatches',
+    TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesScopedWatches));
+  // Objekte markieren (#839).
+  Switch('debug.objectMarks', TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.SettingsDebugObjectMarks));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped',

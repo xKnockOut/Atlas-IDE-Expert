@@ -66,6 +66,8 @@ uses
 const
   cExtensions: array[0..3] of string = ('.pas', '.dpr', '.dpk', '.inc');
   cGitEntry = '.git';
+  /// <summary>Doppelpunkt und öffnender Backtick vor dem Symbol einer Methodenzeile.</summary>
+  cMethodMark = ': `';
   /// <summary>So viele Ordner steigt GitDirOf höchstens auf.</summary>
   cMaxDepth = 32;
 
@@ -203,10 +205,10 @@ var
   mPos: Integer;
 begin
   Result := '';
-  mPos := Pos(': `', ALine);
+  mPos := Pos(cMethodMark, ALine);
   if (mPos > 1) and EndsStr('`', TrimRight(ALine)) then
   begin
-    Result := SymbolAt(ALine, mPos + 3);
+    Result := SymbolAt(ALine, mPos + Length(cMethodMark));
   end;
 end;
 

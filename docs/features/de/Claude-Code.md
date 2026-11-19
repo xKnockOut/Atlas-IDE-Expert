@@ -12,6 +12,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - die Architektur des Projekts überblicken (`get_architecture`, auch im Vergleich mit einem gespeicherten Stand)
   - den Index in einer kleinen Sprache abfragen (`query_code`)
   - Hotspots und Änderungskopplung aus dem Git- oder SVN-Verlauf finden (`get_hotspots`)
+  - Geschichte einer Methode über Umbenennen und Verschieben verfolgen, mit Issues (`get_symbol_history`)
   - den kürzesten Weg zwischen zwei Symbolen oder Units finden (`find_path`)
   - Deklarationen samt Begründungskommentaren (`get_rationale`) und Typ- und Aufrufhierarchien lesen
   - die Auswirkungen einer Änderung ermitteln (`get_impact`)
@@ -21,20 +22,32 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - die Abhängigkeiten einer Unit samt Zyklen lesen (`get_unit_dependencies`)
 - **Prüfen:**
   - geplanten Code mit `check_code` vor dem Schreiben prüfen
-  - Treffer erklären
+  - Treffer erklären (`explain_finding`): derselbe Auftrag wie „Als Auftrag für KI-Assistenten kopieren“ im Fenster „Atlas-Prüfung“, mit Ausschnitt ±8 Zeilen und der Schlusszeile, womit der Assistent nachprüft (`check_code`, bei sicheren Korrekturen `fix_findings`)
+  - in der Doku von Atlas nachschlagen: Regeln mit Schweregrad im Projekt, Einstellungen mit aktuellem Wert, Fenster und Tastenkürzel (`search_atlas_docs`)
   - Befunde an Hooks von Claude Code melden (`hook_check`)
 - **Bauen und Testen:**
   - über die IDE bauen (`build_project`, `get_last_build`)
   - das in der IDE begonnene Issue mit Checkliste und Codeverweisen lesen (`get_current_issue`)
+  - Compilermeldungen an ihrer Stelle erklären, mit der bekannten Delphi-Falle und einer sicheren Korrektur als Diff (`explain_compiler_message`)
   - DUnitX-Tests ausführen
+  - den letzten Testlauf der IDE lesen, ohne neu zu laufen (`get_last_tests`: rote Tests mit Datei:Zeile, erwartet/erhalten, Protokoll, neu rot, wackelig, Leck, veraltet)
+  - sehen, wo der Entwickler in der IDE gerade ist (`get_ide_context`: Datei, Cursor, Methode, Auswahl, aktives Projekt, letzter Build, Reiter)
 - **Ändern:**
   - schreibend umbenennen
   - Code-Aktionen anwenden
   - formatieren (`format_code`)
   - Methode extrahieren, auf Wunsch samt gleicher Stellen (`extract_method`)
+  - Refactorings des Kontextmenüs mit Argumenten statt Rückfragen (`refactor`)
   - oder alle sicheren Treffer von Regeln auf einmal korrigieren (`fix_findings`)
 
 Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts.
+
+## KI-Assistenten in der IDE
+
+Das Modul KI-Assistenten (`assistants.enabled`) nimmt Aufträge von MCP-Clients in der laufenden IDE an: Builds über `build_project` und Änderungen an offenen Dateien, die als ein Rückgängig-Schritt im Editorpuffer landen.
+
+- **Anzeige „KI-Assistent aktiv“** (#1906, `assistants.banner`): Ein Feld im Atlas-Statusfeld zeigt, welches Projekt gerade für einen KI-Assistenten gebaut wird oder welche offene Datei er zuletzt geändert hat (eine Minute lang).
+- **Pause für KI:** Ein Klick auf das Feld oder der Befehl „Pause für KI-Assistenten“ in der Palette hält KI-Assistenten an. Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann mit Grund ab, der MCP-Server schreibt die Datei auch nicht selbst; ein laufender Build läuft zu Ende. Während der Pause bleibt das Feld stehen, ein zweiter Klick hebt sie auf.
 
 ## Prompts (#1357)
 

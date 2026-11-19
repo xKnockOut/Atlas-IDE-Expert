@@ -110,7 +110,7 @@ end;
 
 /// <summary>Eintrag der Komponente AClassName unter AGroup (rekursiv); nil ohne.</summary>
 /// <remarks>Nur für den Moment des Malens: Ein Eintrag gehört dem Package der Komponente. Festgehalten zeigte er nach
-/// dem Entladen des Packages (oder nach dem Abbau der Palette beim Beenden) in fremden Speicher (Review 2.1.0, M1).
+/// dem Entladen des Packages (oder nach dem Abbau der Palette beim Beenden) in fremden Speicher.
 /// </remarks>
 function FindPaletteItem(const AGroup: IOTAPaletteGroup; const AClassName: string): IOTABasePaletteItem;
 var
@@ -191,7 +191,7 @@ begin
     Exit;
   end;
   // Die IDE malt mit Kantenglättung auf den Grund. Auf Schwarz und auf Weiß gemalt ergibt sich die echte
-  // Durchsicht je Pixel; mit einer Schlüsselfarbe (vorher Magenta) behielten die Kanten deren Stich.
+  // Durchsicht je Pixel; mit einer Schlüsselfarbe (etwa Magenta) behielten die Kanten deren Stich.
   mPixels := TAtlasIconAlpha.Combine(PaintOn(mPaint, clBlack), PaintOn(mPaint, clWhite));
   mBitmap := TBitmap.Create;
   try

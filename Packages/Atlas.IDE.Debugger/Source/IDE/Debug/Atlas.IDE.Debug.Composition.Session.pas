@@ -72,11 +72,6 @@ uses
 
 { Dienste von Base }
 
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 function NotMinimal(ALevel: TAtlasSafeLevel): Boolean;
 begin
   Result := ALevel <> TAtlasSafeLevel.Minimal;
@@ -133,17 +128,17 @@ end;
 
 procedure StartDebugExceptions;
 begin
-  TAtlasIdeDebugExceptions.Start(MessageLine);
+  TAtlasIdeDebugExceptions.Start(TAtlasIdeHost.Messages());
 end;
 
 procedure StartDebugOwnCode;
 begin
-  TAtlasIdeDebugOwnCode.Start(MessageLine);
+  TAtlasIdeDebugOwnCode.Start(TAtlasIdeHost.Messages());
 end;
 
 procedure StartDebugExceptionBar;
 begin
-  TAtlasIdeDebugExceptionBar.Start(MessageLine, TAtlasStatusRegistry.Default);
+  TAtlasIdeDebugExceptionBar.Start(TAtlasIdeHost.Messages(), TAtlasStatusRegistry.Default);
   // Bekannte Fehler aus dem Tracker (#2460) zeigt die Leiste; ohne Tracker-Modul bleibt sie leer.
   TAtlasIdeDebugKnownErrors.Start;
 end;
@@ -156,17 +151,17 @@ end;
 
 procedure StartDebugDeadlocks;
 begin
-  TAtlasIdeDebugDeadlocks.Start(MessageLine);
+  TAtlasIdeDebugDeadlocks.Start(TAtlasIdeHost.Messages());
 end;
 
 procedure StartDebugThreadsInSource;
 begin
-  TAtlasIdeDebugThreadsInSource.Start(MessageLine, TAtlasStatusRegistry.Default);
+  TAtlasIdeDebugThreadsInSource.Start(TAtlasIdeHost.Messages(), TAtlasStatusRegistry.Default);
 end;
 
 procedure StartDebugAsyncOrigin;
 begin
-  TAtlasIdeDebugAsyncOrigin.Start(MessageLine, TAtlasStatusRegistry.Default);
+  TAtlasIdeDebugAsyncOrigin.Start(TAtlasIdeHost.Messages(), TAtlasStatusRegistry.Default);
 end;
 
 { Threads im Quelltext (#852) }
@@ -313,7 +308,7 @@ begin
   Result :=
     procedure
     begin
-      TAtlasIdeDebugLeaks.Start(AScope, MessageLine);
+      TAtlasIdeDebugLeaks.Start(AScope, TAtlasIdeHost.Messages());
     end;
 end;
 

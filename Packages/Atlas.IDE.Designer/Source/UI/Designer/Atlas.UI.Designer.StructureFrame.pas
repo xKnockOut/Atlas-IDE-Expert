@@ -112,7 +112,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Designer.ViewStrings;
+  Atlas.UI.Designer.ViewStrings,
+  Atlas.UI.Foundation.Dialog;
 
 {$R *.dfm}
 
@@ -136,20 +137,6 @@ const
   cLinkColor = clGrayText;
 
 { Hilfen }
-
-/// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
-function TextWidthIn(AFont: TFont; const AText: string): Integer;
-var
-  mBitmap: TBitmap;
-begin
-  mBitmap := TBitmap.Create;
-  try
-    mBitmap.Canvas.Font := AFont;
-    Result := mBitmap.Canvas.TextWidth(AText);
-  finally
-    mBitmap.Free;
-  end;
-end;
 
 function NewButton(ABar: TFlowPanel; const ACaption, AHint: string; AWidth: Integer): TSpeedButton;
 begin
@@ -234,7 +221,7 @@ begin
   Name := '';
   FOpen := TDictionary<string, Boolean>.Create;
   // Fließende Leiste: Ist das Fenster schmal, bricht „Bilder“ in eine zweite Zeile um, statt die Knöpfe zu
-  // überdecken (vorher alLeft-Knöpfe und ein alRight-Häkchen in einem festen Panel).
+  // überdecken, wie es alLeft-Knöpfe und ein alRight-Häkchen in einem festen Panel täten.
   mBar := TFlowPanel.Create(Self);
   mBar.Parent := Self;
   mBar.Align := alTop;
@@ -260,7 +247,7 @@ begin
   FShowImages.AlignWithMargins := True;
   FShowImages.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StShowImages);
   FShowImages.Height := MulDiv(cBarHeight - cBarPadding, CurrentPPI, cBasePpi);
-  FShowImages.Width := TextWidthIn(Font, FShowImages.Caption) + MulDiv(cCheckBox, CurrentPPI, cBasePpi);
+  FShowImages.Width := TAtlasDialog.TextWidth(Font, FShowImages.Caption) + MulDiv(cCheckBox, CurrentPPI, cBasePpi);
   FShowImages.Checked := True;
   FShowImages.OnClick := ImagesClick;
   FFilter := TEdit.Create(Self);

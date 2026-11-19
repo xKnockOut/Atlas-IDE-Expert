@@ -48,7 +48,9 @@ type
     FOwnerOf: TAtlasKeyOwnerFunc;
     FNextTop: Integer;
     FUpdating: Boolean;
+    /// <summary>Zeile der Höhe AHeight in logischen Pixeln (96 dpi).</summary>
     function AddPanel(AHeight: Integer): TPanel;
+    /// <summary>Beschriftung in AParent an ALeft, ATop (logische Pixel, 96 dpi).</summary>
     function AddLabel(AParent: TWinControl; const ACaption: string; ALeft, ATop: Integer): TLabel;
     function AddCheck(const ACaption: string): TCheckBox;
     procedure AddRow(AIndex: Integer);
@@ -83,13 +85,26 @@ implementation
 uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Commands.KeyMap,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Settings.Page.Sheets;
 
 {$R *.dfm}
 
 const
   cKeyLeft = 150;
   cChoiceLeft = 290;
+  /// <summary>Anfangsgröße der Seite (logische Pixel); die IDE passt sie an ihren Bereich an.</summary>
+  cPageSize = 480;
+  /// <summary>Kopfzeile der Tabelle: Höhe und Oberkante der Spaltentitel.</summary>
+  cHeaderHeight = 20;
+  cHeaderTop = 2;
+  /// <summary>Zeile je Funktion: Höhe für zwei Zeilen (Feld und Status darunter), Oberkante der Beschriftung, der
+  /// Statuszeile und Breiten der Felder.</summary>
+  cRowHeight = 46;
+  cRowCaptionTop = 5;
+  cRowStatusTop = 27;
+  cKeyWidth = 130;
+  cChoiceWidth = 180;
 
 { TAtlasKeysPage }
 
@@ -101,8 +116,8 @@ var
 begin
   inherited Create(AOwner);
   Name := 'AtlasKeysPage';
-  Width := ScaleValue(480);
-  Height := ScaleValue(480);
+  Width := ScaleValue(cPageSize);
+  Height := ScaleValue(cPageSize);
   FNextTop := 0;
   mTitle := TLabel.Create(Self);
   mTitle.Parent := Self;
@@ -119,11 +134,13 @@ begin
   FIntro.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysIntro);
   FIntro.Top := FNextTop;
   Inc(FNextTop, 100);
-  mPanel := AddPanel(20);
-  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderFunction), 0, 2).Font.Style := [fsBold];
-  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderKey), cKeyLeft, 2).Font.Style := [fsBold];
+  mPanel := AddPanel(cHeaderHeight);
+  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderFunction), 0,
+    cHeaderTop).Font.Style := [fsBold];
+  AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderKey), cKeyLeft,
+    cHeaderTop).Font.Style := [fsBold];
   AddLabel(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysHeaderChoice), cChoiceLeft,
-    2).Font.Style := [fsBold];
+    cHeaderTop).Font.Style := [fsBold];
   FEntries := TAtlasKeyEntry.FromSettings(TAtlasPluginSettings.Defaults);
   SetLength(FRows, Length(FEntries));
   for mIndex := 0 to High(FEntries) do
@@ -172,16 +189,7 @@ end;
 
 function TAtlasKeysPage.AddPanel(AHeight: Integer): TPanel;
 begin
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.BevelOuter := bvNone;
-  Result.Height := AHeight;
-  // alTop stapelt nach Top: jedes neue Element unter das vorige.
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
-  Result.ParentBackground := True;
+  Result := TAtlasSettingsPageSheets.NewTopPanel(Self, AHeight, FNextTop);
 end;
 
 function TAtlasKeysPage.AddLabel(AParent: TWinControl; const ACaption: string; ALeft, ATop: Integer): TLabel;
@@ -189,8 +197,8 @@ begin
   Result := TLabel.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
-  Result.Top := ATop;
+  Result.Left := Result.ScaleValue(ALeft);
+  Result.Top := Result.ScaleValue(ATop);
 end;
 
 function TAtlasKeysPage.AddCheck(const ACaption: string): TCheckBox;
@@ -209,13 +217,13 @@ procedure TAtlasKeysPage.AddRow(AIndex: Integer);
 var
   mPanel: TPanel;
 begin
-  mPanel := AddPanel(46);
-  AddLabel(mPanel, FunctionCaption(FEntries[AIndex].Func), 0, 5);
+  mPanel := AddPanel(cRowHeight);
+  AddLabel(mPanel, FunctionCaption(FEntries[AIndex].Func), 0, cRowCaptionTop);
   FRows[AIndex].Key := TEdit.Create(Self);
   FRows[AIndex].Key.Parent := mPanel;
   FRows[AIndex].Key.Left := FRows[AIndex].Key.ScaleValue(cKeyLeft);
   FRows[AIndex].Key.Top := 1;
-  FRows[AIndex].Key.Width := FRows[AIndex].Key.ScaleValue(130);
+  FRows[AIndex].Key.Width := FRows[AIndex].Key.ScaleValue(cKeyWidth);
   FRows[AIndex].Key.Tag := AIndex;
   // Leer bei Vervollständigung und Parameter-Hint: die Taste der IDE.
   if FEntries[AIndex].IdeKey <> 0 then
@@ -227,7 +235,7 @@ begin
   FRows[AIndex].Choice.Parent := mPanel;
   FRows[AIndex].Choice.Left := FRows[AIndex].Choice.ScaleValue(cChoiceLeft);
   FRows[AIndex].Choice.Top := 1;
-  FRows[AIndex].Choice.Width := FRows[AIndex].Choice.ScaleValue(180);
+  FRows[AIndex].Choice.Width := FRows[AIndex].Choice.ScaleValue(cChoiceWidth);
   FRows[AIndex].Choice.Anchors := [akLeft, akTop, akRight];
   FRows[AIndex].Choice.Tag := AIndex;
   // Reihenfolge wie TAtlasKeyChoice.
@@ -235,7 +243,7 @@ begin
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceOther),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceNewKey)]);
   FRows[AIndex].Choice.OnChange := ChoiceChange;
-  FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, 27);
+  FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, cRowStatusTop);
   FRows[AIndex].Status.Font.Color := clGrayText;
 end;
 

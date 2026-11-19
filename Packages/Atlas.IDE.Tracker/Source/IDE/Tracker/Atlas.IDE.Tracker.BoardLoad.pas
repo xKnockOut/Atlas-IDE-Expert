@@ -15,7 +15,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.BoardFrame;
 
@@ -64,7 +64,7 @@ type
   private
     FHooks: TAtlasBoardHooks;
     FCacheFolder: string;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FStopped: Boolean;
     FCancel: IAtlasCiCancel;
     FGeneration: Integer;
@@ -84,7 +84,7 @@ type
     class function NowUtc: TDateTime; static;
   public
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers ('' = keiner); AWorker gehört dem Board.</summary>
-    constructor Create(const AHooks: TAtlasBoardHooks; const ACacheFolder: string; AWorker: TAtlasVcsWorker);
+    constructor Create(const AHooks: TAtlasBoardHooks; const ACacheFolder: string; AWorker: TAtlasBackgroundJobs);
     /// <summary>Board ABoardId mit Sprint ASprintId laden ('' = Vorgabe des Trackers), wenn das Fenster da
     /// ist.</summary>
     procedure Load(const ABoardId, ASprintId: string);
@@ -123,7 +123,7 @@ uses
 { TAtlasIdeBoardLoad }
 
 constructor TAtlasIdeBoardLoad.Create(const AHooks: TAtlasBoardHooks; const ACacheFolder: string;
-  AWorker: TAtlasVcsWorker);
+  AWorker: TAtlasBackgroundJobs);
 begin
   inherited Create;
   FHooks := AHooks;

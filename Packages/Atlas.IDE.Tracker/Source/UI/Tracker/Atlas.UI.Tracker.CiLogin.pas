@@ -3,8 +3,8 @@
 // Abfrage des Zugangs zum Build-Server (#763) und zum Issue-Tracker (#765):
 // Benutzer und API-Token bzw. nur ein Token, verdeckt eingegeben. Das Token
 // wird nie vorbelegt (es steht nur im Anmeldespeicher von Windows) und nach
-// dem Lesen im Feld überschrieben. Seit #1455 eigene Unit des Moduls Tracker
-// (vorher Teil des Bereichs „Testergebnisse“ der Willkommensseite).
+// dem Lesen im Feld überschrieben. Eigene Unit des Moduls Tracker (#1455),
+// für Build-Server und Tracker gemeinsam (Atlas.IDE.Tracker.Access).
 
 interface
 

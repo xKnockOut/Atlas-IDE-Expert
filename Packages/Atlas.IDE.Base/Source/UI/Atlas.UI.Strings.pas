@@ -46,13 +46,8 @@ type
     SettingsTabCompiler, SettingsTabRobustness, SettingsTabColors, SettingsTabInsert, SettingsTabCommands,
     SettingsTabStartup, SettingsTabUndo, EditorMethodToggle, SettingsMethodToggleDown, EditorTestUnit,
     TestUnitLensCreate, UnitSearchTitle, SettingsTabUnitSearch, SettingsWelcomeSearchKey, SettingsDiagnosticModeKey,
-    DiagnosticCopy, SetupMenu, SetupServerReady, SetupServerMissing, SetupServerNotStarted, SetupServerStarting,
-    SetupServerStopped, SetupServerFailed, SetupServerVersionUnknown, SetupServerVersionMismatch, SetupDelphiReady,
-    SetupDelphiNoProject, SetupDelphiUnknown, SetupIndexReady, SetupIndexReadyUnits, SetupIndexBuilding,
-    SetupIndexIncomplete, SetupIndexNoServer, SetupIndexNoProjects, SetupLibraryReady, SetupLibraryMissing,
-    SetupLibraryPending, SetupLibraryUnknown, SetupErrorInsightAtlas, SetupErrorInsightIde,
-    SetupErrorInsightDuplicate, SetupErrorInsightNone, SetupErrorInsightRestart, SetupKeysReady, SetupKeysReadyWins,
-    SetupKeysConflict, KeyMapMenu, SettingsFavoritesTitle, KeyMapUnitSearchIde, BookmarksMenuAdd,
+    SetupMenu,
+    KeyMapMenu, SettingsFavoritesTitle, KeyMapUnitSearchIde, BookmarksMenuAdd,
     MetricsReportCommand, GenerateMenuCommand,
     WelcomeSetupNewNoProject,
     TeamFileCommand, SettingsTabTeamFile, TestsNoBuildRunner, StartProfilesNotOpen, StartProfilesWriteFailed,
@@ -66,56 +61,46 @@ type
     SettingsIssuesProjectPersonal, SettingsIssuesProjectTeam, SettingsIssuesProjectCovered,
     SettingsIssuesProjectMatchTaken, SettingsIssuesProjectNoProject, SettingsIssuesProjectReadOnly,
     SettingsIssuesProjectFileFilter, CreateIssueCommand, NewIssueCreatedTitle, HideElementCommand,
-    ElementCodeLensMetrics, ElementCodeLensMetricsPlural, ElementCodeLensTests, ElementCodeLensTestsPlural,
-    ElementCodeLensTestUnit, ElementCodeLensTestUnitPlural, ElementBlockEndLabels, ElementBlockEndLabelsPlural,
-    ElementInlayHints, ElementInlayHintsPlural, ElementProblems, ElementProblemsPlural, ElementNotes,
-    ElementNotesPlural, ElementBookmarks, ElementBookmarksPlural, ElementPairColors, ElementPairColorsPlural,
-    ElementPairGuides, ElementPairGuidesPlural, ElementPairOwners, ElementPairOwnersPlural, ElementInactiveDim,
-    ElementInactiveDimPlural, ElementCompletionPreview, ElementCompletionPreviewPlural, SettingsTransferTitle,
+    SettingsTransferTitle,
     SettingsExportCommand, SettingsImportCommand, SettingsProfileCommand, SettingsResetCommand, SigWarning,
-    SigFailed, ElementUnusedUses, ElementUnusedUsesPlural, UsesUnusedHint, UsesInitializationHint,
-    UsesAllowlistHint, UsesImplementationHint, ProblemNextCommand, ProblemPreviousCommand, ElementRecursion,
-    ElementRecursionPlural, ElementInlineDiagnostics, ElementInlineDiagnosticsPlural, TypeArgHeader,
+    SigFailed, UsesUnusedHint, UsesInitializationHint,
+    UsesAllowlistHint, UsesImplementationHint, ProblemNextCommand, ProblemPreviousCommand,
+    TypeArgHeader,
     TypeArgHeaderPlain, TypeArgOnlyClasses, TypeArgOnlyValues, TypeArgOnlyConstructible, TypeArgImplements,
     TypeArgDescends, TypeArgHiddenFooter, TypeArgKindClasses, TypeArgKindRecords, TypeArgKindInterfaces,
-    TypeArgKindEnums, TypeArgKindBasic, ElementInlayTypeHints, ElementInlayTypeHintsPlural, QuickOpenTitle,
+    TypeArgKindEnums, TypeArgKindBasic, QuickOpenTitle,
     NavBackCommand, NavForwardCommand, NavLastEditCommand, NavListCommand, PeekDefinitionCommand,
-    PeekReferencesCommand, OutlineCommand, OutlineVisPrivate, OutlineVisProtected, OutlineVisPublic,
-    OutlineVisPublished, OutlineKindTypes, OutlineKindFields, OutlineKindMethods, OutlineKindProperties,
-    OutlineKindConstants, OutlineKindVariables, OutlineKindRoutines, OutlineKindEnumMembers, BreadcrumbsCommand,
+    PeekReferencesCommand, OutlineCommand,
+    BreadcrumbsCommand,
     JumpToMatchCommand, JumpToMatchSelectCommand, NextChangeCommand, PreviousChangeCommand, ChangeAddedTitle,
-    ElementGitGutter, ElementGitGutterPlural, ElementGitBlame, ElementGitBlamePlural, MoveLinesUpCommand,
+    MoveLinesUpCommand,
     MoveLinesDownCommand, DuplicateLinesUpCommand, DuplicateLinesDownCommand, CompleteStatementCommand,
-    CompleteStatementTryFinally, CompleteStatementTryExcept, ElementPatternPreview, ElementPatternPreviewPlural,
+    CompleteStatementTryFinally, CompleteStatementTryExcept,
     MultiCursorNextCommand, MultiCursorSkipCommand, MultiCursorLineEndsCommand, MultiCursorAboveCommand,
     MultiCursorBelowCommand, MoveClassTitle, MoveClassPrompt, MoveClassFailed, MoveClassWarning, UnitRenameTitle,
     UnitRenameFailed, MinimapNoticeTitle, SearchCommand, SearchNextCommand, SearchPreviousCommand,
-    SearchInMethodCommand, FormatCodeCommand, ProcessesMenu, ProcessesCache, ProcessesLock, ProcessesState,
-    ProcessesColumnKind, ProcessesColumnClient, ProcessesColumnState, ProcessesDirtyFile, ProcessesDirtyIde,
-    ProcessesDirtyMcp, UsesHiddenOne, UsesHiddenFew, UsesHiddenMore, UsesCycleDirect, UsesCycleChain,
+    SearchInMethodCommand, FormatCodeCommand, ProcessesMenu,
+    UsesHiddenOne, UsesHiddenFew, UsesHiddenMore, UsesCycleDirect, UsesCycleChain,
     InheritedAbstractOne, InheritedAbstractMore, PropertyAccessorsFailed, PropertyAccessorsWarning,
     InvertBooleanTitle, InvertBooleanPrompt, InvertBooleanFailed, InvertBooleanNothing, InvertBooleanPreviewHint,
     InvertBooleanApply, InvertBooleanDone, InvertBooleanWarning, PromoteVariableTitle, PromoteVariablePrompt,
     PromoteVariableFailed, PromoteVariableNothing, PromoteVariablePreviewHint, PromoteVariableApply,
     PromoteVariableDone, PromoteVariableWarning, AnonymousMethodTitle, AnonymousMethodPrompt, AnonymousMethodFailed,
     AnonymousMethodNothing, AnonymousMethodPreviewHint, AnonymousMethodApply, AnonymousMethodDone,
-    AnonymousMethodWarning, ElementGutterColumn, ElementGutterColumnPlural, ElementSelectionMatches,
-    ElementSelectionMatchesPlural, ToggleBlockCommentCommand, NewLineBelowCommand, NewLineAboveCommand,
-    UnwrapCommand, UnwrapBeginEnd, UnwrapTryFinally, UnwrapTryExcept, UnwrapIfThen, UnwrapWith, UnwrapFor,
-    UnwrapWhile, UnwrapRepeat, UnwrapIfDef, UnwrapRegion, UnwrapKeepThen, UnwrapKeepElse, UnwrapKeepFirst,
-    UnwrapKeepIfDefElse, ProblemsWindowCaption, ProblemsWindowCommand, ProblemsScopeFile, ProblemsScopeProject,
+    AnonymousMethodWarning,
+    ToggleBlockCommentCommand, NewLineBelowCommand, NewLineAboveCommand,
+    UnwrapCommand,
+    ProblemsWindowCaption, ProblemsWindowCommand, ProblemsScopeFile, ProblemsScopeProject,
     ProblemsScopeGroup, ProblemsKindError, ProblemsKindWarning, ProblemsKindInfo, ProblemsGroupNone,
     ProblemsGroupFile, ProblemsGroupRule, ProblemsGroupCategory, ProblemsColumnCategory, ProblemsStatusProject,
     ProblemsMenuSuppress, ProblemsMenuConfigure, ProblemsExplainBad, ProblemsExplainGood, ProblemsNoServer,
     ProblemsExperimental, SettingsTabRules, ProblemsCompilerConfirmed, ProblemsCompilerConfirmedCode,
-    ElementInlayDefineHints, ElementInlayDefineHintsPlural, InlayDefinesLabel, ElementInlayCharHints,
-    ElementInlayCharHintsPlural, GotoInterfaceCommand, GotoImplementationCommand, GotoUsesCommand,
+    InlayDefinesLabel,
+    GotoInterfaceCommand, GotoImplementationCommand, GotoUsesCommand,
     GotoInitializationCommand, ReturnFromSectionCommand, FindMethodCommand, EditorToolbarCustomizeCommand,
     EditorToolbarLabels, EditorToolbarPosition, EditorToolbarPositionBelow, EditorToolbarPositionAbove,
     EditorToolbarPositionInline, QuickBookmarkToggleCommand, NextBookmarkCommand, PreviousBookmarkCommand,
     QuickBookmarkSetCommand, QuickBookmarkJumpCommand,
-    // Element „Schnelle Lesezeichen“ im Menü „Ausblenden“ (#1104).
-    ElementQuickBookmarks, ElementQuickBookmarksPlural,
     // Platzhalter im Parameter-Hint (#451).
     FormatPlaceholder, FormatWidth, FormatPrecision, FormatUnused, FormatInvalid, FormatTooMany, FormatConflict,
     FormatKindInteger, FormatKindUnsigned, FormatKindHex, FormatKindFloat, FormatKindMoney, FormatKindString,
@@ -138,7 +123,7 @@ type
     // Datenfluss „Woher kommt der Wert?“ / „Wohin geht der Wert?“ (#690)
     MenuDataFlowSources, MenuDataFlowTargets,
     // Methode ohne Self (#686): Marke und Code-Aktion.
-    ElementInlayMethodHints, ElementInlayMethodHintsPlural, InlayMethodWithoutSelf, MethodKindTitle,
+    InlayMethodWithoutSelf, MethodKindTitle,
     MethodKindFailed, MethodKindNothing, MethodKindPreviewHint, MethodKindApply, MethodKindDone, MethodKindWarning,
     // Typ-Alias einführen und auflösen (#681).
     TypeAliasTitle, TypeAliasPrompt, TypeAliasFailed, TypeAliasNothing, TypeAliasPreviewHint, TypeAliasApply,
@@ -150,14 +135,6 @@ type
     EnumTablesSyncApply, EnumTablesSyncDone,
     // Überladung anlegen (#674).
     OverloadFailed,
-    // Austrittspunkte hervorheben (#698): Optionsseite, Marke, Element.
-    ElementExitPoints, ElementExitPointsPlural,
-    // Neu zugewiesene Variablen (#712): Optionsseite, Hover, Element.
-    ElementReassigned, ElementReassignedPlural,
-    // Gelernte Vorschläge (#1890): Element zum Ausblenden.
-    ElementLearnedSuggestions, ElementLearnedSuggestionsPlural,
-    // Testabdeckung (#275): Element zum Ausblenden.
-    ElementTestCoverage, ElementTestCoveragePlural,
     // Typ des markierten Ausdrucks (#689): Befehl, Optionsseite, Tooltip.
     ExpressionTypeCommand,
     // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
@@ -180,19 +157,10 @@ type
     ServerWindowCommand,
     // Designer-Leiste im Formular-Designer (#1442).
     DesignerBarSearchHint,
-    // Diagnose-Fenster des Plugins: Reiter Hauptthread, Server, Hintergrund, Hänger.
-    DiagPause, DiagReset, DiagColFeature, DiagColCalls, DiagColTotal, DiagColMean, DiagColMax, DiagColSlow,
-    DiagColShare, DiagColTime, DiagColAction, DiagColDuration, DiagColRequest, DiagColCount, DiagColWaitedCount,
-    DiagColWaited, DiagColTimedOut, DiagColCancelled, DiagColFailed, DiagColSource, DiagColTooSlow,
-    DiagColWithAtlas,
     // Aktualisierung der Prüfung (problems.update, problems.liveDelayMs).
     ProblemsCheckFileCommand,
     // Sprungmenü am Sichtbarkeitsglied (#1768).
-    SectionAppendCommand, CrumbCopyName, CrumbCopyWithUnit, CrumbCopySignature, CrumbCopyPath, CrumbShowComponent,
-    CrumbFindReferences, CrumbRename, CrumbCopyUnitName, CrumbCopyFilePath,
-    // Kennzahlen-Karte an Methoden und Typen (#1787).
-    BreadcrumbsMetricsLines, BreadcrumbsMetricsCyclomatic, BreadcrumbsMetricsNesting, BreadcrumbsMetricsParameters,
-    BreadcrumbsMetricsMembers, BreadcrumbsMetricsInheritance, BreadcrumbsMetricsLimit, BreadcrumbsMetricsMissing,
+    SectionAppendCommand,
     // Auswahlsätze im Designer: Taste in der Übersicht (#739).
     DesignerSelectionSetsSaveCommand,
     // Im Designer zeigen (#511): Taste in der Übersicht.
@@ -205,18 +173,6 @@ type
     SmartPasteDone, SmartPasteFailed, SmartPasteImplementation, SmartPasteUsesTitle, CommandPaletteCommand,
     EditorToolbarFindings, EditorToolbarMore, EditorToolbarNoParts, EditorToolbarNoReturn, EditorToolbarNoSection,
     EditorToolbarReturnLine, EditorToolbarReturnLineIn, GotoUsesToward, TestsCompareValues,
-    // Marke „getestet von“ (#1778) im Menü „Ausblenden“.
-    ElementCodeLensCoveredBy, ElementCodeLensCoveredByPlural,
-    // Marke „n von m Methoden getestet“ (#1783) im Menü „Ausblenden“.
-    ElementCodeLensUntested, ElementCodeLensUntestedPlural,
-    // Zeichen der anderen Threads in der Rinne (#852) im Menü „Ausblenden“.
-    ElementThreadsInSource, ElementThreadsInSourcePlural,
-    // Marke „Wer gibt das frei?“ (#1877) im Menü „Ausblenden“.
-    ElementOwnershipHints, ElementOwnershipHintsPlural,
-    // Symbole des Mutationslaufs (#1460) im Menü „Ausblenden“.
-    ElementMutationResults, ElementMutationResultsPlural,
-    // Nur in der implementation gebrauchte uses-Einträge (#2465) im Menü „Ausblenden“.
-    ElementMovableUses, ElementMovableUsesPlural,
     // Zuletzt benutzte Testliste ausführen (#2167): Taste in der Übersicht.
     TestsListsRunCommand,
     // Erneut anhängen (Debugger): Taste in der Übersicht.
@@ -266,9 +222,23 @@ implementation
 
 uses
   Atlas.Core.Signature.Contract,
+  System.StrUtils,
   System.SysUtils;
 
 const
+  /// <summary>Bis zu so viele Namen stehen ausgeschrieben in einem Hinweis, darüber nur die ersten und die Anzahl.
+  /// </summary>
+  cMaxNamesListed = 3;
+  /// <summary>Arten von Literalen, wie der Server sie nennt, und ihre Beschriftung.</summary>
+  cLiteralKinds: array[0..4] of string = ('string', 'char', 'integer', 'float', 'boolean');
+  cLiteralKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.FormatLiteralString,
+    TAtlasTextId.FormatLiteralChar, TAtlasTextId.FormatLiteralInteger, TAtlasTextId.FormatLiteralFloat,
+    TAtlasTextId.FormatLiteralBoolean);
+  /// <summary>Arten von Typen, die der Server für ein Typargument ausblendet, und ihre Beschriftung.</summary>
+  cTypeArgKinds: array[0..4] of string = ('classes', 'records', 'interfaces', 'enums', 'basic');
+  cTypeArgKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.TypeArgKindClasses,
+    TAtlasTextId.TypeArgKindRecords, TAtlasTextId.TypeArgKindInterfaces, TAtlasTextId.TypeArgKindEnums,
+    TAtlasTextId.TypeArgKindBasic);
   cTexts: array[TAtlasLanguage, TAtlasTextId] of string = (
     ( 'optional, Standard %s',
      'Keine Überladung mit %d Parametern.', '… %d weitere', 'Alle', 'Methoden', 'Eigenschaften', 'Ereignisse',
@@ -377,23 +347,7 @@ const
      'Zwischen Unit und Testunit wechseln', '+ Testunit %s anlegen',
      'Units suchen',
      'Units suchen',
-     'Suchfeld der Willkommensseite', 'Diagnosemodus ein/aus', 'Bericht kopieren', 'Einrichtung prüfen…',
-     'Server gefunden, gestartet, Version passt', 'AtlasServer.exe nicht gefunden',
-     'Server gefunden, noch nicht gestartet', 'Server wird gestartet…', 'Server gestoppt',
-     'Server-Start fehlgeschlagen', 'Server läuft, Version noch unbekannt',
-     'Server %s passt nicht zum Plugin %s', '%s erkannt',
-     '%s erkannt, Plattform erst mit einem Projekt', 'Delphi-Version nicht erkannt',
-     'Projektgruppe: %s Projekte indiziert', 'Projektgruppe: %s Projekte, %s Units',
-     'Projektgruppe wird indiziert: %s von %s Projekten fertig',
-     'Projektgruppe: %s von %s Projekten nicht im Index (%s)', 'Index: Server läuft nicht',
-     'Index: kein Projekt geöffnet',
-     'Bibliotheks-Cache vorhanden', 'Bibliotheks-Cache fehlt, erster Start dauert länger',
-     'Bibliotheks-Cache entsteht beim ersten Indexlauf', 'Bibliotheks-Cache: Server läuft nicht',
-     'Error Insight der IDE aus, Atlas zeigt die Probleme', 'Error Insight der IDE an, Atlas-Probleme aus',
-     'Error Insight der IDE ist noch an (doppelte Meldungen)',
-     'Weder Error Insight noch Atlas zeigen Fehler im Editor',
-     'Error Insight umgeschaltet, wirkt nach dem Neustart der IDE', 'Tastenkürzel ohne Konflikt',
-     'Tastenkürzel ohne Konflikt (%s mit Vorrang für Atlas)', '%s Tastenkürzel anders belegt, z. B. %s von „%s“',
+     'Suchfeld der Willkommensseite', 'Diagnosemodus ein/aus', 'Einrichtung prüfen…',
      'Tastenkürzel-Übersicht…',
      'Angeheftete Favoriten (höchstens 5 je Typ)',
      'Units suchen über Strg+F12 (statt IDE-Dialog)',
@@ -423,34 +377,23 @@ const
      'Delphi-Projekte (*.dproj, *.groupproj)|*.dproj;*.groupproj',
      'Issue anlegen …',
      'Issue angelegt', 'Element ausblenden …',
-     'Metrik-Lens', 'Metrik-Lenses', 'Test-Lens', 'Test-Lenses', 'Testunit-Lens', 'Testunit-Lenses',
-     'Blockende-Beschriftung', 'Blockende-Beschriftungen', 'Inlay-Hint', 'Inlay-Hints', 'Befund-Unterstreichung',
-     'Befund-Unterstreichungen', 'Notizsymbol', 'Notizsymbole', 'Lesezeichen-Band', 'Lesezeichen-Bänder',
-     'Klammerfarben', 'Klammerfarben', 'Blocklinien', 'Blocklinien', 'Mitgefärbte Anweisungen',
-     'Mitgefärbte Anweisungen', 'Ausgegraute {$IFDEF}-Zweige', 'Ausgegraute {$IFDEF}-Zweige',
-     'Vorschau der Vervollständigung', 'Vorschauen der Vervollständigung',
      'Einstellungen übertragen', 'Einstellungen exportieren…', 'Einstellungen importieren…',
      'Einstellungsprofil laden…', 'Alle Einstellungen zurücksetzen…', 'Hinweis: %s',
-     'Signatur ändern fehlgeschlagen: %s', 'ungenutzter uses-Eintrag', 'ungenutzte uses-Einträge',
-     'Aus %s wird nichts verwendet', '%s wird wegen initialization nicht als ungenutzt gezeigt',
+     'Signatur ändern fehlgeschlagen: %s', 'Aus %s wird nichts verwendet', '%s wird wegen initialization nicht als ungenutzt gezeigt',
      '%s steht in usesKeep (atlas.json) und wird nicht als ungenutzt gezeigt',
-     '%s wird nur in der implementation gebraucht', 'Nächster Befund', 'Vorheriger Befund', 'Rekursionssymbol', 'Rekursionssymbole', 'Fehlertext am Zeilenende',
-     'Fehlertexte am Zeilenende', '%s: %s · %s', 'Typargument %s', 'nur Klassen',
+     '%s wird nur in der implementation gebraucht', 'Nächster Befund', 'Vorheriger Befund', '%s: %s · %s', 'Typargument %s', 'nur Klassen',
      'nur Records und Grundtypen', 'nur Klassen mit parameterlosem Konstruktor', 'nur Typen, die %s implementieren',
      'nur Typen, die von %s abgeleitet sind', 'Ausgeblendet: %s', 'Klassen', 'Records', 'Interfaces',
      'Aufzählungen', 'Grundtypen',
-     'Typmarke', 'Typmarken', 'Schnell öffnen', 'Zurück (Navigationsverlauf)', 'Vor (Navigationsverlauf)',
+     'Schnell öffnen', 'Zurück (Navigationsverlauf)', 'Vor (Navigationsverlauf)',
      'Letzte Bearbeitungsstelle', 'Navigationsverlauf …',
-     'Definition einblenden', 'Referenzen einblenden', 'Gliederung …', 'private', 'protected', 'public', 'published',
-     'Typen', 'Felder', 'Methoden', 'Eigenschaften', 'Konstanten', 'Variablen', 'Routinen', 'Aufzählungswerte', 'Brotkrumenleiste', 'Zum Gegenstück springen',
+     'Definition einblenden', 'Referenzen einblenden', 'Gliederung …', 'Brotkrumenleiste', 'Zum Gegenstück springen',
      'Bis zum Gegenstück markieren',
      'Nächste Änderung', 'Vorherige Änderung', 'Neu seit dem letzten Commit',
-     'Änderungsmarke', 'Änderungsmarken', 'Zeilenhistorie', 'Zeilenhistorie',
      'Zeilen nach oben verschieben', 'Zeilen nach unten verschieben', 'Zeilen darüber duplizieren',
      'Zeilen darunter duplizieren',
      'Anweisung vervollständigen', 'try … finally … end;',
      'try … except … end;',
-     'Mustervorschlag', 'Mustervorschläge',
      'Wort bzw. nächstes Vorkommen markieren (Mehrfachmarken)', 'Vorkommen überspringen (Mehrfachmarken)',
      'Marken an die Zeilenenden setzen', 'Marke in der Zeile darüber', 'Marke in der Zeile darunter',
      'Klasse in eigene Unit verschieben', 'Name der neuen Unit:', 'Klasse verschieben fehlgeschlagen: %s', 'Hinweis: %s',
@@ -459,15 +402,6 @@ const
      'Zwei Minimaps sichtbar',
      'Suchen (Atlas) …', 'Weitersuchen (Atlas)', 'Rückwärts weitersuchen (Atlas)', 'In Methode suchen …', 'Formatieren',
      'Prozesse am Projekt…',
-     'Index-Cache',
-     'Sperre',
-     'Stand',
-     'Art',
-     'Client',
-     'Zustand',
-     'Datei',
-     'IDE (dieser Prozess)',
-     'MCP-Prozess',
      '%s ist schon eingebunden und fehlt hier',
      '%s sind schon eingebunden und fehlen hier',
      '%s und %d weitere sind schon eingebunden und fehlen hier',
@@ -501,28 +435,10 @@ const
      'Umwandeln',
      'Umgewandelt: %d Änderungen in %d Dateien',
      'Warnung: %s',
-     'Symbol der Atlas-Spalte',
-     'Symbole der Atlas-Spalte',
-     'Hervorhebung gleichen Texts',
-     'Hervorhebungen gleichen Texts',
      'Blockkommentar umschalten',
      'Neue Zeile darunter',
      'Neue Zeile darüber',
      'Umschließung entfernen',
-     'begin … end',
-     'try … finally … end',
-     'try … except … end',
-     'if … then',
-     'with … do',
-     'for … do',
-     'while … do',
-     'repeat … until',
-     '{$IFDEF} … {$ENDIF}',
-     '{$REGION} … {$ENDREGION}',
-     'then-Zweig behalten',
-     'else-Zweig behalten',
-     'ersten Zweig behalten',
-     '{$ELSE}-Zweig behalten',
      'Atlas-Prüfung',
      'Fenster „Atlas-Prüfung“',
      'Aktuelle Datei',
@@ -546,11 +462,7 @@ const
      'Prüfregeln',
      'vom Compiler bestätigt',
      'vom Compiler bestätigt (%s)',
-     'Include-Symbol',
-     'Include-Symbole',
      'definiert %s',
-     'Steuerzeichen-Code',
-     'Steuerzeichen-Codes',
      'Zum interface-Teil',
      'Zum implementation-Teil',
      'Zur uses-Klausel',
@@ -568,7 +480,6 @@ const
      'Voriges Lesezeichen',
      'Lesezeichen 1–9 setzen',
      'Zu Lesezeichen 1–9 springen',
-     'Marker eines schnellen Lesezeichens', 'Marker der schnellen Lesezeichen',
      'Platzhalter %d von %d erwartet %s',
      'Breite für Platzhalter %d von %d (%s), ganzzahlig',
      'Genauigkeit für Platzhalter %d von %d (%s), ganzzahlig',
@@ -599,8 +510,6 @@ const
      '%d Hinweise',
      '%s, %s',
      'Gezielt hineinspringen', 'Woher kommt der Wert?', 'Wohin geht der Wert?',
-     'Marke „braucht kein Self“',
-     'Marken „braucht kein Self“',
      'braucht kein Self',
      'Methode ohne Self umwandeln',
      'Umwandeln fehlgeschlagen: %s',
@@ -636,10 +545,6 @@ const
      'Nachziehen',
      'Tabellen nachgezogen: %d Änderungen in %d Dateien',
      'Überladung anlegen fehlgeschlagen: %s',
-     'Hervorhebung der Austrittspunkte', 'Hervorhebungen der Austrittspunkte', 'Unterstreichung einer neu zugewiesenen Variablen',
-     'Unterstreichungen neu zugewiesener Variablen',
-     'gelernter Vorschlag', 'gelernte Vorschläge',
-     'Balken der Testabdeckung', 'Balken der Testabdeckung',
      'Typ des Ausdrucks',
      'implementation wie Klasse ordnen',
      'Interface herauslösen fehlgeschlagen: %s',
@@ -659,47 +564,8 @@ const
      'Branch anlegen: Den Ordner %s gibt es schon; nichts angelegt.',
      'Atlas-Server: Speicher und Laufzeiten',
      'Komponenten suchen',
-     'Anhalten',
-     'Zurücksetzen',
-     'Funktion',
-     'Aufrufe',
-     'Summe ms',
-     'Mittel ms',
-     'Max ms',
-     'ab Schwelle',
-     'Anteil %',
-     'Zeit',
-     'Aktion',
-     'Dauer ms',
-     'Anfrage',
-     'Anzahl',
-     'Im Hauptthread',
-     'Hauptthread Ø ms',
-     'Zeitüberschreitung',
-     'Abgebrochen',
-     'Fehler',
-     'Quelle',
-     'zu langsam',
-     'Atlas beteiligt',
      'Datei jetzt prüfen',
      'Neue Zeile am Ende des Abschnitts',
-     'Namen kopieren',
-     'Mit Unit kopieren',
-     'Mit Signatur kopieren',
-     'Pfad der Leiste kopieren',
-     'Komponente im Designer zeigen',
-     'Verwendungen suchen',
-     'Umbenennen …',
-     'Unit-Namen kopieren',
-     'Dateipfad kopieren',
-     'Zeilen',
-     'Zyklomatische Komplexität',
-     'Verschachtelungstiefe',
-     'Parameter',
-     'Mitglieder',
-     'Vererbungstiefe',
-     '%s (Grenze %d)',
-     'Kennzahlen noch nicht verfügbar',
      'Designer: Auswahl speichern …',
      'Im Designer zeigen',
      'Designer: Text bearbeiten',
@@ -720,12 +586,6 @@ const
      'Zurück zu Zeile %d · %s',
      'Zur uses-Klausel (%s)',
      'Vergleichen',
-     'Marke „getestet von“', 'Marken „getestet von“',
-     'Marke „Methoden getestet“', 'Marken „Methoden getestet“',
-     'Thread-Zeichen in der Rinne', 'Thread-Zeichen in der Rinne',
-     'Marke „Wer gibt das frei?“', 'Marken „Wer gibt das frei?“',
-     'Symbol des Mutationslaufs', 'Symbole des Mutationslaufs',
-     'verschiebbarer uses-Eintrag', 'verschiebbare uses-Einträge',
      'Tests: zuletzt benutzte Testliste ausführen',
      'Debugger: erneut an Prozess anhängen'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -834,20 +694,7 @@ const
      'Switch between unit and test unit', '+ Create test unit %s',
      'Search units',
      'Search units',
-     'Welcome page search field', 'Diagnostic mode on/off', 'Copy report', 'Check setup…', 'Server found, running, version matches', 'AtlasServer.exe not found', 'Server found, not started yet', 'Server is starting…',
-     'Server stopped', 'Server failed to start', 'Server running, version not known yet',
-     'Server %s does not match plugin %s', '%s detected',
-     '%s detected, platform needs an open project', 'Delphi version not detected',
-     'Project group: %s projects indexed', 'Project group: %s projects, %s units',
-     'Indexing project group: %s of %s projects done',
-     'Project group: %s of %s projects not indexed (%s)', 'Index: server not running', 'Index: no project open', 'Library cache present',
-     'Library cache missing, first start takes longer', 'Library cache is created by the first indexing run',
-     'Library cache: server not running', 'IDE Error Insight off, Atlas shows the problems',
-     'IDE Error Insight on, Atlas problems off', 'IDE Error Insight is still on (duplicate messages)',
-     'Neither Error Insight nor Atlas shows errors in the editor',
-     'Error Insight switched, takes effect after restarting the IDE', 'Shortcuts without conflict',
-     'Shortcuts without conflict (%s with priority for Atlas)', '%s shortcuts taken by others, e.g. %s by "%s"',
-     'Keyboard shortcuts…',
+     'Welcome page search field', 'Diagnostic mode on/off', 'Check setup…', 'Keyboard shortcuts…',
      'Pinned favorites (at most 5 per type)',
      'Search units via Ctrl+F12 (instead of IDE dialog)',
      'Set bookmark…', 'Project metrics report',
@@ -874,31 +721,21 @@ const
      'Delphi projects (*.dproj, *.groupproj)|*.dproj;*.groupproj',
      'Create issue …',
      'Issue created',
-     'Hide element…', 'metrics lens', 'metrics lenses',
-     'test lens', 'test lenses', 'test unit lens', 'test unit lenses', 'block end label', 'block end labels',
-     'inlay hint', 'inlay hints', 'finding underline', 'finding underlines', 'note icon', 'note icons',
-     'bookmark band', 'bookmark bands', 'bracket colors', 'bracket colors', 'block guides', 'block guides',
-     'colored statements', 'colored statements', 'dimmed {$IFDEF} branches', 'dimmed {$IFDEF} branches',
-     'completion preview', 'completion previews',
-     'Transfer settings',
+     'Hide element…', 'Transfer settings',
      'Export settings…', 'Import settings…', 'Load settings profile…', 'Reset all settings…',
      'Note: %s',
-     'Changing the signature failed: %s', 'unused uses entry', 'unused uses entries',
-     'Nothing from %s is used', '%s is not shown as unused because of its initialization',
+     'Changing the signature failed: %s', 'Nothing from %s is used', '%s is not shown as unused because of its initialization',
      '%s is listed in usesKeep (atlas.json) and not shown as unused',
-     '%s is only needed in the implementation', 'Next finding', 'Previous finding', 'Recursion marker', 'Recursion markers', 'Error text at line end', 'Error texts at line end', '%s: %s · %s',
+     '%s is only needed in the implementation', 'Next finding', 'Previous finding', '%s: %s · %s',
      'Type argument %s', 'classes only', 'records and basic types only',
      'only classes with a parameterless constructor', 'only types implementing %s', 'only types descending from %s',
-     'Hidden: %s', 'classes', 'records', 'interfaces', 'enumerations', 'basic types', 'type mark', 'type marks', 'Quick open', 'Back (navigation history)',
+     'Hidden: %s', 'classes', 'records', 'interfaces', 'enumerations', 'basic types', 'Quick open', 'Back (navigation history)',
      'Forward (navigation history)', 'Last edit location', 'Navigation history …',
-     'Peek definition', 'Peek references', 'Outline …', 'private', 'protected', 'public', 'published', 'Types', 'Fields', 'Methods',
-     'Properties', 'Constants', 'Variables', 'Routines', 'Enum values', 'Breadcrumbs',
+     'Peek definition', 'Peek references', 'Outline …', 'Breadcrumbs',
      'Jump to match', 'Select to match', 'Next change',
-     'Previous change', 'New since the last commit', 'change mark', 'change marks', 'line history', 'line history',
-     'Move lines up', 'Move lines down', 'Duplicate lines above', 'Duplicate lines below',
+     'Previous change', 'New since the last commit', 'Move lines up', 'Move lines down', 'Duplicate lines above', 'Duplicate lines below',
      'Complete statement', 'try … finally … end;',
      'try … except … end;',
-     'pattern suggestion', 'pattern suggestions',
      'Select word or next occurrence (multiple cursors)', 'Skip occurrence (multiple cursors)',
      'Add cursors at line ends', 'Add cursor on the line above', 'Add cursor on the line below',
      'Move class to its own unit', 'Name of the new unit:', 'Moving the class failed: %s', 'Note: %s',
@@ -906,15 +743,6 @@ const
      'Updating uses failed: %s', 'Two minimaps visible',
      'Find (Atlas) …', 'Find next (Atlas)', 'Find previous (Atlas)', 'Find in method …', 'Format',
      'Processes on the project…',
-     'Index cache',
-     'Lock',
-     'State',
-     'Kind',
-     'Client',
-     'State',
-     'File',
-     'IDE (this process)',
-     'MCP process',
      '%s is already used and not listed',
      '%s are already used and not listed',
      '%s and %d more are already used and not listed',
@@ -948,28 +776,10 @@ const
      'Convert',
      'Converted: %d changes in %d files',
      'Warning: %s',
-     'Atlas column symbol',
-     'Atlas column symbols',
-     'Selection match highlight',
-     'Selection match highlights',
      'Toggle block comment',
      'New line below',
      'New line above',
      'Remove surrounding construct',
-     'begin … end',
-     'try … finally … end',
-     'try … except … end',
-     'if … then',
-     'with … do',
-     'for … do',
-     'while … do',
-     'repeat … until',
-     '{$IFDEF} … {$ENDIF}',
-     '{$REGION} … {$ENDREGION}',
-     'keep the then branch',
-     'keep the else branch',
-     'keep the first branch',
-     'keep the {$ELSE} branch',
      'Atlas Findings',
      '"Atlas Findings" window',
      'Current file',
@@ -993,11 +803,7 @@ const
      'Code checks',
      'confirmed by the compiler',
      'confirmed by the compiler (%s)',
-     'include symbol',
-     'include symbols',
      'defines %s',
-     'control character code',
-     'control character codes',
      'Go to interface section',
      'Go to implementation section',
      'Go to uses clause',
@@ -1015,7 +821,6 @@ const
      'Previous bookmark',
      'Set bookmark 1–9',
      'Go to bookmark 1–9',
-     'quick bookmark marker', 'quick bookmark markers',
      'Placeholder %d of %d expects %s',
      'Width for placeholder %d of %d (%s), integer',
      'Precision for placeholder %d of %d (%s), integer',
@@ -1046,8 +851,6 @@ const
      '%d hints',
      '%s, %s',
      'Step into specific call', 'Where does the value come from?', 'Where does the value go?',
-     '“Self unused” marker',
-     '“Self unused” markers',
      'Self unused',
      'Convert method without Self',
      'Converting failed: %s',
@@ -1083,10 +886,6 @@ const
      'Update',
      'Tables updated: %d changes in %d files',
      'Creating the overload failed: %s',
-     'exit point highlight', 'exit point highlights', 'reassigned variable underline',
-     'reassigned variable underlines',
-     'learned suggestion', 'learned suggestions',
-     'test coverage bar', 'test coverage bars',
      'Expression type',
      'Order implementation like class',
      'Extract interface failed: %s',
@@ -1106,47 +905,8 @@ const
      'Create branch: the folder %s already exists; nothing created.',
      'Atlas server: memory and timings',
      'Find components',
-     'Pause',
-     'Reset',
-     'Feature',
-     'Calls',
-     'Total ms',
-     'Mean ms',
-     'Max ms',
-     'Slow',
-     'Share %',
-     'Time',
-     'Action',
-     'Duration ms',
-     'Request',
-     'Count',
-     'On main thread',
-     'Main thread mean ms',
-     'Timed out',
-     'Cancelled',
-     'Failed',
-     'Source',
-     'Too slow',
-     'Atlas involved',
      'Check file now',
      'New line at the end of the section',
-     'Copy name',
-     'Copy with unit',
-     'Copy with signature',
-     'Copy bar path',
-     'Show component in designer',
-     'Find references',
-     'Rename …',
-     'Copy unit name',
-     'Copy file path',
-     'Lines',
-     'Cyclomatic complexity',
-     'Nesting depth',
-     'Parameters',
-     'Members',
-     'Inheritance depth',
-     '%s (limit %d)',
-     'Metrics not available yet',
      'Designer: Save selection …',
      'Show in designer',
      'Designer: Edit text',
@@ -1167,12 +927,6 @@ const
      'Back to line %d · %s',
      'Go to uses clause (%s)',
      'Compare',
-     '“tested by” mark', '“tested by” marks',
-     '“methods tested” mark', '“methods tested” marks',
-     'thread sign in the gutter', 'thread signs in the gutter',
-     '“who frees this?” mark', '“who frees this?” marks',
-     'mutation result mark', 'mutation result marks',
-     'movable uses entry', 'movable uses entries',
      'Tests: run last used test list',
      'Debugger: reattach to process'));
 
@@ -1222,31 +976,15 @@ begin
 end;
 
 function LiteralKind(const AKind: string): string;
+var
+  mIndex: Integer;
 begin
-  if AKind = 'string' then
+  mIndex := IndexStr(AKind, cLiteralKinds);
+  if mIndex < 0 then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralString);
-  end
-  else if AKind = 'char' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralChar);
-  end
-  else if AKind = 'integer' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralInteger);
-  end
-  else if AKind = 'float' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralFloat);
-  end
-  else if AKind = 'boolean' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralBoolean);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther);
+    Exit(TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther));
   end;
+  Result := TAtlasStrings.Text(cLiteralKindTexts[mIndex]);
 end;
 
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
@@ -1288,29 +1026,15 @@ class function TAtlasStrings.TypeArgHidden(const AKinds: string): string;
 var
   mKind: string;
   mNames: TArray<string>;
+  mIndex: Integer;
 begin
   mNames := nil;
   for mKind in AKinds.Split([',']) do
   begin
-    if mKind = 'classes' then
+    mIndex := IndexStr(mKind, cTypeArgKinds);
+    if mIndex >= 0 then
     begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindClasses)];
-    end
-    else if mKind = 'records' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindRecords)];
-    end
-    else if mKind = 'interfaces' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindInterfaces)];
-    end
-    else if mKind = 'enums' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindEnums)];
-    end
-    else if mKind = 'basic' then
-    begin
-      mNames := mNames + [Text(TAtlasTextId.TypeArgKindBasic)];
+      mNames := mNames + [Text(cTypeArgKindTexts[mIndex])];
     end;
   end;
   if Length(mNames) = 0 then
@@ -1325,7 +1049,7 @@ begin
   case Length(AUnits) of
     0: Result := '';
     1: Result := Fmt(TAtlasTextId.UsesHiddenOne, [AUnits[0]]);
-    2, 3: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
+    2..cMaxNamesListed: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
   else
     Result := Fmt(TAtlasTextId.UsesHiddenMore, [string.Join(', ', Copy(AUnits, 0, 2)), Length(AUnits) - 2]);
   end;
@@ -1384,9 +1108,9 @@ begin
   case Length(AMethods) of
     0: Result := '';
     1: Result := Fmt(TAtlasTextId.InheritedAbstractOne, [AMethods[0]]);
-    2, 3: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
+    2..cMaxNamesListed: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
   else
-    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, 3)) + ', …']);
+    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, cMaxNamesListed)) + ', …']);
   end;
 end;
 

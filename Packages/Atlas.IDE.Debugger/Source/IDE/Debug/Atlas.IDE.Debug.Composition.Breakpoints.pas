@@ -5,8 +5,9 @@
 // Ereignis anhalten“ (#856), „Haltepunkte prüfen“ (#577), „Haltepunkt auf
 // Methoden“ (#855), Haltepunkt-Sätze (#586), „Bis hier ausführen“ (#851), das
 // Haltepunktfenster (#863), „Haltepunkt nur für ein Objekt“ (#857), Haltepunkte,
-// die mit dem Code wandern (#841), Haltepunkt-Regeln (#864) und „Anhalten, wenn
-// sich ein Feld ändert“ (#584).
+// die mit dem Code wandern (#841), Haltepunkt-Regeln (#864), „Anhalten, wenn
+// sich ein Feld ändert“ (#584), die Marke für Haltepunkte mit Aufrufer in der
+// Rinne (#2548) und „Nächste Anweisung hier“ samt gezogenem Ausführungspfeil (#871).
 // Atlas.IDE.Debug.Composition hängt die Befehle unter die Sicherung des
 // Debuggers, ruft Install/Uninstall mit seinen übrigen Befehlen und stellt
 // alles über den Scope des Moduls bereit.
@@ -31,6 +32,8 @@ procedure UninstallBreakCommands;
 procedure ApplyBreakSettings;
 /// <summary>IDE-Thema gewechselt: Fenster der Haltepunkte nachziehen.</summary>
 procedure BreakpointsThemeChanged;
+/// <summary>Schicht der Rinne: Haltepunkte mit Aufrufer (#2548).</summary>
+procedure ProvideBreakpoints(const AScope: IAtlasModuleScope);
 
 implementation
 
@@ -51,17 +54,17 @@ uses
   Atlas.IDE.Debug.InstanceBreakpoint,
   Atlas.IDE.Debug.BreakpointAnchors,
   Atlas.IDE.Debug.BreakpointRules,
+  Atlas.IDE.Debug.BreakpointRulesGutter,
+  Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.DataBreakpoint,
-  Atlas.UI.Debug.Commands.Strings;
+  Atlas.IDE.Debug.NextStatement,
+  Atlas.IDE.Debug.NextStatementColumn,
+  Atlas.UI.Debug.Commands.Strings,
+  Atlas.UI.Debug.NextStatement.Strings;
 
 const
   /// <summary>Strg+F4: nur im angehaltenen Zustand, sonst schließt die IDE wie gewohnt die Datei.</summary>
   cRunToSkipKey = $4073;
-
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
 
 function NotMinimal(ALevel: TAtlasSafeLevel): Boolean;
 begin
@@ -90,7 +93,7 @@ end;
 
 procedure StartBreakpointSets;
 begin
-  TAtlasIdeBreakpointSets.Start(MessageLine);
+  TAtlasIdeBreakpointSets.Start(TAtlasIdeHost.Messages());
 end;
 
 function RunToVisible: Boolean;
@@ -100,7 +103,7 @@ end;
 
 procedure StartRunTo;
 begin
-  TAtlasIdeRunTo.Start(MessageLine);
+  TAtlasIdeRunTo.Start(TAtlasIdeHost.Messages());
   TAtlasIdeRunToColumn.Install;
 end;
 
@@ -110,6 +113,23 @@ begin
   TAtlasIdeRunTo.Release;
 end;
 
+function NextStatementVisible: Boolean;
+begin
+  Result := TAtlasIdeNextStatement.Enabled;
+end;
+
+procedure StartNextStatement;
+begin
+  TAtlasIdeNextStatement.Start(MessageLine);
+  TAtlasIdeNextStatementColumn.Install;
+end;
+
+procedure ReleaseNextStatement;
+begin
+  TAtlasIdeNextStatementColumn.Uninstall;
+  TAtlasIdeNextStatement.Release;
+end;
+
 function BreakpointAnchorsVisible: Boolean;
 begin
   Result := TAtlasIdeBreakpointAnchors.Enabled;
@@ -117,7 +137,7 @@ end;
 
 procedure StartBreakpointAnchors;
 begin
-  TAtlasIdeBreakpointAnchors.Start(MessageLine);
+  TAtlasIdeBreakpointAnchors.Start(TAtlasIdeHost.Messages());
 end;
 
 function BreakpointRulesVisible: Boolean;
@@ -127,7 +147,7 @@ end;
 
 procedure StartBreakpointRules;
 begin
-  TAtlasIdeBreakpointRules.Start(MessageLine);
+  TAtlasIdeBreakpointRules.Start(TAtlasIdeHost.Messages());
 end;
 
 procedure StartBreakpointCheck;
@@ -136,7 +156,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Haltepunkte, die nicht greifen werden (#577): Prüfung vor dem Start; aus = Start wie bisher.</summary>
@@ -164,7 +184,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Haltepunkte auf Methoden nach Muster (#855): Gruppen laden und beim Start mitwachsen; aus = keine
@@ -189,7 +209,7 @@ end;
 
 procedure StartInstanceBreakpoints;
 begin
-  TAtlasIdeInstanceBreakpoint.Start(MessageLine);
+  TAtlasIdeInstanceBreakpoint.Start(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Haltepunkt nur für ein Objekt (#857): Frage zu Adressbedingungen vor dem Start; aus = kein Zuhörer.
@@ -214,7 +234,7 @@ end;
 
 procedure StartDataBreakpoints;
 begin
-  TAtlasIdeDataBreakpoint.Start(MessageLine);
+  TAtlasIdeDataBreakpoint.Start(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Anhalten, wenn sich ein Feld ändert (#584): Datenhaltepunkte beobachten und am Ende der Sitzung
@@ -258,6 +278,20 @@ begin
     begin
       Result := TAtlasIdeRunTo.Started;
     end, StartRunTo, ReleaseRunTo);
+end;
+
+/// <summary>Ausführungspfeil ziehen (#871, experimentell): Spalte im Rand und Befehl; aus = nichts davon.</summary>
+function NextStatementPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugDragNextStatement',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugDragNextStatement;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeNextStatement.Started;
+    end, StartNextStatement, ReleaseNextStatement);
 end;
 
 function BreakpointsWindowVisible: Boolean;
@@ -309,7 +343,8 @@ end;
 
 function BreakpointParts: TArray<IAtlasFeaturePart>;
 begin
-  Result := [BreakpointCheckPart, MethodBreakpointsPart, BreakpointSetsPart, RunToPart, BreakpointsWindowPart,
+  Result := [BreakpointCheckPart, MethodBreakpointsPart, BreakpointSetsPart, RunToPart, NextStatementPart,
+    BreakpointsWindowPart,
     InstanceBreakpointPart, BreakpointAnchorsPart, BreakpointRulesPart,
     DataBreakpointPart];
 end;
@@ -362,6 +397,9 @@ begin
       TAtlasIdeRunTo.RunHereSkip, RunToVisible),
     Command('Atlas.OnceBreakpoint', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RunToOnceCommand),
       TAtlasIdeRunTo.SetOnce, RunToVisible),
+    // Nächste Anweisung hier (#871); nur sichtbar, solange debug.dragNextStatement an ist.
+    Command('Atlas.DebugSetNextStatement', TAtlasNextStatementStrings.Text(TAtlasNextStatementTextId.Command),
+      TAtlasIdeNextStatement.SetHere, NextStatementVisible),
     // Haltepunktfenster (#863); nur sichtbar, solange debug.breakpointsWindow an ist.
     Command('Atlas.BreakpointsWindow',
       TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointsWindowCommand),
@@ -417,6 +455,7 @@ begin
     ContextEntry('Atlas.RunToHere', WhileDebugging),
     ContextEntry('Atlas.RunToHereSkip', WhileDebugging),
     ContextEntry('Atlas.OnceBreakpoint', nil),
+    ContextEntry('Atlas.DebugSetNextStatement', WhileDebugging),
     // Haltepunkt auf Methoden (#855): ohne Sitzung, das Wort am Cursor wird zum Startmuster.
     ContextEntry('Atlas.MethodBreakpoints', nil),
     ContextEntry('Atlas.BreakpointOnlyForObject', WhileDebugging),
@@ -467,8 +506,8 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
-  TAtlasIdeDebugBreakpointList.Install(MessageLine);
+    end, TAtlasIdeHost.Messages());
+  TAtlasIdeDebugBreakpointList.Install(TAtlasIdeHost.Messages());
 end;
 
 procedure UninstallBreakCommands;
@@ -486,6 +525,11 @@ end;
 procedure BreakpointsThemeChanged;
 begin
   TAtlasIdeDebugBreakpointList.ThemeChanged;
+end;
+
+procedure ProvideBreakpoints(const AScope: IAtlasModuleScope);
+begin
+  AScope.Provide(IAtlasGutterLayer, TAtlasIdeBreakpointRulesGutter.Create as IAtlasGutterLayer);
 end;
 
 end.

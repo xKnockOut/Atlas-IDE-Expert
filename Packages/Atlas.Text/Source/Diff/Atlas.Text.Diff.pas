@@ -19,6 +19,15 @@ type
     NewCount: Integer;
   end;
 
+  /// <summary>Überschriften der Blöcke von ChangedLines in der Sprache des Aufrufers; %d ist die Zeilennummer
+  /// ab 1.</summary>
+  TTextDiffLabels = record
+    /// <summary>Eine geänderte Zeile bei gleicher Zeilenzahl, etwa „Zeile %d:“.</summary>
+    Line: string;
+    /// <summary>Beginn des geänderten Blocks, etwa „ab Zeile %d:“.</summary>
+    FromLine: string;
+  end;
+
   TTextDiff = class
   public const
     /// <summary>Größte Fläche (Zeilen alt × neu) für den genauen Vergleich der Mitte.</summary>
@@ -34,12 +43,14 @@ type
     /// <summary>Geänderte Blöcke von AOld nach ANew, aufsteigend (LCS der Mitte; ist sie größer als
     /// MaxCells, ein Block).</summary>
     class function Hunks(const AOld, ANew: TArray<string>): TArray<TTextLineHunk>; static;
-    /// <summary>Bei gleicher Zeilenzahl je geänderte Zeile "Zeile n:", "- alt", "+ neu"; sonst
-    /// "ab Zeile n:" und der geänderte Block. Höchstens AMaxLines Einträge, dann "…". Leer, wenn gleich.</summary>
-    class function ChangedLines(const AOld, ANew: TArray<string>; AMaxLines: Integer): TArray<string>;
-      overload; static;
+    /// <summary>Bei gleicher Zeilenzahl je geänderte Zeile ALabels.Line, "- alt", "+ neu"; sonst
+    /// ALabels.FromLine und der geänderte Block. Höchstens AMaxLines Einträge, dann "…". Leer, wenn gleich.
+    /// </summary>
+    class function ChangedLines(const AOld, ANew: TArray<string>; const ALabels: TTextDiffLabels;
+      AMaxLines: Integer): TArray<string>; overload; static;
     /// <summary>Wie oben, ohne Begrenzung.</summary>
-    class function ChangedLines(const AOld, ANew: TArray<string>): TArray<string>; overload; static;
+    class function ChangedLines(const AOld, ANew: TArray<string>; const ALabels: TTextDiffLabels): TArray<string>;
+      overload; static;
     /// <summary>Vereinigter Diff (#1358): "--- AOldName", "+++ ANewName" und je Block "@@ -a,b +c,d @@" mit
     /// AContext Zeilen Umgebung; Blöcke, deren Umgebung sich berührt, werden zusammengefasst. Leer, wenn gleich.
     /// </summary>
@@ -52,6 +63,10 @@ implementation
 uses
   System.SysUtils,
   System.Math;
+
+const
+  /// <summary>Platz, um den die Ergebniszeilen mindestens wachsen.</summary>
+  cLineGrowth = 8;
 
 { TTextDiff }
 
@@ -287,7 +302,8 @@ begin
   Result := mCollector.Hunks;
 end;
 
-class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>; AMaxLines: Integer): TArray<string>;
+class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>; const ALabels: TTextDiffLabels;
+  AMaxLines: Integer): TArray<string>;
 var
   mPrefix, mSuffix, mIndex, mCount: Integer;
   mFull: Boolean;
@@ -312,7 +328,7 @@ var
     end;
     if mCount = Length(Result) then
     begin
-      SetLength(Result, mCount * 2 + 8);
+      SetLength(Result, mCount * 2 + cLineGrowth);
     end;
     Result[mCount] := AText;
     Inc(mCount);
@@ -334,7 +350,7 @@ begin
     begin
       if AOld[mIndex] <> ANew[mIndex] then
       begin
-        Add(Format('Zeile %d:', [mIndex + 1]));
+        Add(Format(ALabels.Line, [mIndex + 1]));
         Add('- ' + AOld[mIndex]);
         Add('+ ' + ANew[mIndex]);
       end;
@@ -342,7 +358,7 @@ begin
   end
   else
   begin
-    Add(Format('ab Zeile %d:', [mPrefix + 1]));
+    Add(Format(ALabels.FromLine, [mPrefix + 1]));
     for mIndex := mPrefix to High(AOld) - mSuffix do
     begin
       Add('- ' + AOld[mIndex]);
@@ -355,9 +371,10 @@ begin
   SetLength(Result, mCount);
 end;
 
-class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>): TArray<string>;
+class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>;
+  const ALabels: TTextDiffLabels): TArray<string>;
 begin
-  Result := ChangedLines(AOld, ANew, -1);
+  Result := ChangedLines(AOld, ANew, ALabels, -1);
 end;
 
 /// <summary>Bereich im Kopf eines Blocks: Start ab 1 und Anzahl; ein leerer Bereich nennt die Zeile davor.</summary>

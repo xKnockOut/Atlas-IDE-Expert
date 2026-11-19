@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SettingsProjects;
 
-// Tabelle Projekte der Seite Issue-Tracker (#1261, Mockup IT2): Zuordnung
+// Tabelle Projekte der Seite Issue-Tracker (#1261): Zuordnung
 // Delphi-Projekt → Tracker-Projekt. Zeilen aus der .atlas sind
 // schreibgeschützt, von ihr überdeckte persönliche Zeilen grau. „Hinzufügen …“
 // fragt nach Projektdatei oder Ordner (Haken OnBrowse, sonst die Dialoge von
@@ -350,7 +350,7 @@ procedure TAtlasTrackerProjectsPart.DrawItem(Sender: TCustomListView; Item: TLis
 var
   mRows: TArray<TAtlasTrackerProjectMapping>;
 begin
-  // Von der .atlas überdeckte persönliche Zeile grau (Mockup IT2).
+  // Von der .atlas überdeckte persönliche Zeile grau.
   mRows := Table.Rows;
   if (Item <> nil) and (Item.Index <= High(mRows)) and Table.Covered(mRows[Item.Index]) then
   begin

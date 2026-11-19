@@ -1,6 +1,6 @@
 ﻿unit Shell.Mcp.IssueText.Tests;
 
-// Tests der Ausgabe von get_current_issue (#2051): Text wie im Mockup je Abschnitt, Namen der Abschnitte, JSON des
+// Tests der Ausgabe von get_current_issue (#2051): lesbarer Text je Abschnitt, Namen der Abschnitte, JSON des
 // Abschnitts, relative Zeiten auf Deutsch und Englisch.
 
 interface

@@ -72,6 +72,14 @@
       "arguments": { "file": "Source/Ref.Formulare.Haupt.dfm" },
       "contains": "TButton"
     },
+    "explain_compiler_message": {
+      "arguments": { "code": "E2010", "message": "Incompatible types: 'Integer' and 'string'" },
+      "contains": "E2010"
+    },
+    "search_atlas_docs": {
+      "arguments": { "query": "method-order", "kind": "rule" },
+      "contains": "method-order"
+    },
     "explain_finding": {
       "arguments": {
         "file": "Source/Ref.Pruefung.Verstoesse.pas",
@@ -104,8 +112,25 @@
       },
       "contains": "Vorschau"
     },
+    "refactor": {
+      "arguments": {
+        "file": "Source/Ref.Daten.Suche.pas",
+        "line": "{{zeile:class function Suchen}}",
+        "column": "{{spalte:Suchen}}",
+        "kind": "createOverload",
+        "args": { "kind": "copy" },
+        "dryRun": true
+      },
+      "contains": "overload;"
+    },
     "get_last_build": {
       "arguments": {}
+    },
+    "get_last_tests": {
+      "arguments": { "only": "all", "format": "json" }
+    },
+    "get_ide_context": {
+      "arguments": { "include": ["editor", "project", "build"], "format": "json" }
     },
     "build_project": {
       "arguments": { "project": "RefApp", "mode": "check" },
@@ -176,6 +201,11 @@
       "arguments": {},
       "contains": "Hotspots"
     },
+    "get_symbol_history": {
+      "arguments": { "name": "TKundenSuche.Suchen" },
+      "contains": "TKundenSuche.Suchen",
+      "process": true
+    },
     "get_unit_dependencies": {
       "arguments": { "unit": "Ref.Formulare.Haupt" },
       "contains": "Ref.Daten.Suche"
@@ -189,6 +219,15 @@
         "name": "IFormatierer.Formatieren"
       },
       "contains": "TDezimalFormatierer.Formatieren"
+    },
+    "batch": {
+      "arguments": {
+        "calls": [
+          {"tool": "find_symbol", "args": {"name": "TKundenSuche"}},
+          {"tool": "get_call_hierarchy", "args": {"name": "TKundenSuche.Suchen", "direction": "incoming"}}
+        ]
+      },
+      "contains": "## 2 get_call_hierarchy"
     },
     "get_impact": {
       "arguments": { "name": "TKundenSuche.Suchen", "depth": 2 },
@@ -209,7 +248,8 @@
   },
   "resources": {
     "delphi://conventions": { "contains": "with-statement" },
-    "delphi://build/last": {}
+    "delphi://build/last": {},
+    "delphi://edits/last": {}
   },
   "prompts": {
     "unit_review": {

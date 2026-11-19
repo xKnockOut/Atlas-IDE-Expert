@@ -280,22 +280,12 @@ end;
 class procedure TAtlasIdeMethodPlacement.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText, ANewText: string);
 var
   mRange: TLspTextRange;
-  mWriter: IOTAEditWriter;
 begin
-  if not TAtlasMethodPlacement.Difference(AText, ANewText, mRange) then
+  if TAtlasMethodPlacement.Difference(AText, ANewText, mRange) then
   begin
-    Exit;
+    TAtlasEditorSnapshots.ReplaceText(ABuffer, AText, mRange.StartOffset, mRange.EndOffset - mRange.StartOffset,
+      mRange.NewText);
   end;
-  // Ein Schreiber = ein Rückgängig-Schritt.
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.StartOffset)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.EndOffset)));
-  if mRange.NewText <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(mRange.NewText)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 class procedure TAtlasIdeMethodPlacement.Install(const ASession: TAtlasMethodPlacementSessionFunc;

@@ -316,7 +316,7 @@ begin
   begin
     FFilterChecks[mFilter] := TCheckBox.Create(FFrame);
     FFilterChecks[mFilter].Caption := TAtlasTestsStrings.Text(cFilterTexts[mFilter]);
-    // Breite nach dem Text (vorher fest, „Nicht gelaufen“ lief in den nächsten Filter).
+    // Breite nach dem Text, sonst läuft „Nicht gelaufen“ in den nächsten Filter.
     FFilterChecks[mFilter].AlignWithMargins := True;
     FFilterChecks[mFilter].SetBounds(mLeft, Scaled96(cGap) div 2,
       TextWidth(FFilterChecks[mFilter].Caption) + Scaled96(cCheckBox), Scaled96(cBarHeight - cGap));

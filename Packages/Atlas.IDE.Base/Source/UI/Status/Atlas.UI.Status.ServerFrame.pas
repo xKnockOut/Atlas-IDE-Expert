@@ -69,6 +69,8 @@ type
     FOnOpenUnit: TProc<TAtlasServerSlowUnit>;
     FOnOpenRule: TProc<string>;
     function Px(AValue: Integer): Integer;
+    /// <summary>Tabelle mit den Spalten AColumns; AWidths in logischen Pixeln (96 dpi), skaliert über die Liste.
+    /// </summary>
     function NewList(const AColumns: array of string; const AWidths: array of Integer): TListView;
     procedure UnitsData(Sender: TObject; Item: TListItem);
     procedure RulesData(Sender: TObject; Item: TListItem);
@@ -102,6 +104,7 @@ type
     FOnRefresh: TProc;
     FOnRebuild: TProc;
     FOnPackage: TProc;
+    /// <summary>Knopf mit der Breite AWidth in logischen Pixeln (96 dpi).</summary>
     function NewButton(const ACaption: string; AWidth: Integer): TButton;
     procedure ButtonClick(Sender: TObject);
   public
@@ -160,7 +163,8 @@ uses
   Winapi.Windows,
   System.Math,
   Atlas.UI.Status.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Scaling;
 
 const
   // Breiten der Spalten Regel, ms und Aufrufe; Breite der Knöpfe der Leiste.
@@ -429,7 +433,7 @@ begin
   begin
     mColumn := Result.Columns.Add;
     mColumn.Caption := AColumns[mIndex];
-    mColumn.Width := AWidths[mIndex];
+    mColumn.Width := Result.ScaleValue(AWidths[mIndex]);
     if mIndex > 0 then
     begin
       mColumn.Alignment := taRightJustify;
@@ -539,7 +543,7 @@ begin
   // Fließende Leiste: bei schmalem Fenster brechen Knöpfe und Hinweis in weitere Zeilen um.
   AutoWrap := True;
   AutoSize := True;
-  Padding.SetBounds(2, 2, 2, 2);
+  TAtlasControlScaling.SetPadding(Self, 2, 2, 2, 2);
   FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), cRefreshWidth);
   FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), cRebuildWidth);
   FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), cPackageWidth);
@@ -558,7 +562,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := Self;
   Result.AlignWithMargins := True;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Caption := ACaption;
   Result.OnClick := ButtonClick;
 end;

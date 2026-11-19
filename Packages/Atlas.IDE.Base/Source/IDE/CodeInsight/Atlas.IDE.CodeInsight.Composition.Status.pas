@@ -76,7 +76,8 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Diagnostics.ServerPackage,
-  Atlas.IDE.CodeInsight.Composition.Session;
+  Atlas.IDE.CodeInsight.Composition.Session,
+  Atlas.IDE.Foundation.Host;
 
 const
   cProblemCountsExtra = 'problemCounts';
@@ -164,23 +165,27 @@ end;
 /// <summary>Diagnosepaket des Fensters „Atlas-Server“ (#1356): Bericht und Dateien des laufenden Servers im
 /// Hintergrund.</summary>
 procedure CreateServerPackage;
+const
+  cCommandTimeoutMs = 30000;
 begin
   TAtlasIdeServerPackage.Execute(
     procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
-      RunServerCommand(ACommand, AArgumentsJson, 30000, ADone);
+      RunServerCommand(ACommand, AArgumentsJson, cCommandTimeoutMs, ADone);
     end,
     Warnings());
 end;
 
 /// <summary>„Index neu aufbauen“ im Fenster „Atlas-Server“; ohne Manager nichts.</summary>
 procedure RebuildIndex;
+const
+  cCommandTimeoutMs = 30000;
 begin
   if Manager = nil then
   begin
     Exit;
   end;
-  Manager.ExecuteServerCommandAsync('atlas.server.rebuildIndex', 30000,
+  Manager.ExecuteServerCommandAsync('atlas.server.rebuildIndex', cCommandTimeoutMs,
     procedure(AAnswer: TJSONValue)
     begin
       if AAnswer = nil then
@@ -478,7 +483,7 @@ begin
   TAtlasMainThread.Queue(TAtlasFeature.Status,
     procedure
     begin
-      MessageLine(mText);
+      TAtlasIdeHost.Message(mText);
     end);
 end;
 

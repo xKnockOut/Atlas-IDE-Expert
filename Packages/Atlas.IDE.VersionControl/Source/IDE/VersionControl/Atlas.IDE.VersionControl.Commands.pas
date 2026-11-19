@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.VersionControl.Commands;
 
-// Befehle des Moduls Versionsverwaltung (#1905, vorher in der Palette von Base): „Branch anlegen …“ (#1288,
+// Befehle des Moduls Versionsverwaltung (#1905): „Branch anlegen …“ (#1288,
 // Atlas.CreateBranch, immer mit Dialog) und „Arbeitskopien“ (#1292, Atlas.WorkingCopies, sichtbar mit
 // vcs.externals.show) für die Arbeitskopie des aktiven Projekts. Base fragt die Befehle bei jedem Öffnen der
 // Palette bzw. des Menüs (IAtlasCommandSource); nach dem Abmelden des Moduls erreicht sie nichts mehr (Regel 3).

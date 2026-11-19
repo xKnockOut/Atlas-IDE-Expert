@@ -113,18 +113,6 @@ uses
   Atlas.Core.Settings.PluginSchemaData,
   Atlas.Text.Json;
 
-function BoolJson(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
 function CaptionOf(ASchema: TJSONObject; AEnglish: Boolean): string;
 begin
   Result := '';
@@ -522,7 +510,7 @@ begin
     TAtlasToggleTarget.Project:
       begin
         ASession.Drop(AItem.Toggle.Key);
-        Result := BoolJson(not AItem.Checked);
+        Result := TJsonText.Bool(not AItem.Checked);
       end;
   else
     begin

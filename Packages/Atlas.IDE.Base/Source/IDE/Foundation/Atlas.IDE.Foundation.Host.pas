@@ -119,12 +119,20 @@ type
     class function ActiveSession: TLspSession; static;
     /// <summary>Zeile in der Meldungsansicht der IDE, Gruppe „Atlas“.</summary>
     class procedure Message(const AText: string); static;
+    /// <summary>Message als Methodenreferenz für die Start-Routinen der Features und Module (mit () aufrufen).
+    /// </summary>
+    class function Messages: TProc<string>; static;
     /// <summary>Fläche, über der ein Popup oder eine Palette erscheint: aktives Formular, sonst Hauptfenster,
     /// sonst Arbeitsfläche.</summary>
     class function PopupArea: TRect; static;
+    /// <summary>Anker (Bildschirm) für ein Popup über dem Statusfeld: AOnAnchor, solange es eins gibt (X nicht
+    /// MaxInt); sonst unten links im aktiven Fenster (PopupArea).</summary>
+    class function PopupAnchor(const AOnAnchor: TFunc<TPoint>): TPoint; static;
     /// <summary>Warnung wie die der Sicherung: Meldungsansicht und Bericht; vor Install nur die
     /// Meldungsansicht.</summary>
     class procedure Warning(const AText: string); static;
+    /// <summary>Warning als Methodenreferenz (mit () aufrufen).</summary>
+    class function Warnings: TProc<string>; static;
     /// <summary>Zeile im Diagnoselog des Servers; ohne Server nichts.</summary>
     class procedure Log(const AText: string); static;
     /// <summary>Zeile im Bericht des Managers (Diagnose); vor Install nichts.</summary>
@@ -243,6 +251,24 @@ begin
   mMessages.AddTitleMessage(AText, mGroup);
 end;
 
+class function TAtlasIdeHost.Messages: TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      Message(AText);
+    end;
+end;
+
+class function TAtlasIdeHost.Warnings: TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      Warning(AText);
+    end;
+end;
+
 class function TAtlasIdeHost.PopupArea: TRect;
 begin
   if Screen.ActiveForm <> nil then
@@ -256,6 +282,24 @@ begin
   else
   begin
     Result := Screen.WorkAreaRect;
+  end;
+end;
+
+class function TAtlasIdeHost.PopupAnchor(const AOnAnchor: TFunc<TPoint>): TPoint;
+const
+  cAnchorInset = 40;
+var
+  mArea: TRect;
+begin
+  Result := Point(MaxInt, MaxInt);
+  if Assigned(AOnAnchor) then
+  begin
+    Result := AOnAnchor();
+  end;
+  if Result.X = MaxInt then
+  begin
+    mArea := PopupArea;
+    Result := Point(mArea.Left + cAnchorInset, mArea.Bottom - cAnchorInset);
   end;
 end;
 

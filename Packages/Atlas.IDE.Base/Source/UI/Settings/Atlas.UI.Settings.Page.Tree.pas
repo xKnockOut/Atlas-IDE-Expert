@@ -99,6 +99,10 @@ uses
   Atlas.UI.Settings.Page.Host,
   Atlas.UI.Settings.Page.General;
 
+const
+  /// <summary>Breite der linken Spalte mit Suchfeld und Baum der Bereiche.</summary>
+  cNavigationWidth = 176;
+
 procedure AddUnique(var AList: TArray<string>; const AText: string);
 var
   mItem: string;
@@ -158,7 +162,7 @@ begin
   mPanel := TPanel.Create(Self);
   mPanel.Parent := Self;
   mPanel.Align := alLeft;
-  mPanel.Width := mPanel.ScaleValue(176);
+  mPanel.Width := mPanel.ScaleValue(cNavigationWidth);
   mPanel.BevelOuter := bvNone;
   mPanel.ParentBackground := True;
   FSearch := TAtlasSettingsSearchBox.Create(Self, mPanel, Catalog,
@@ -709,28 +713,34 @@ begin
   FScope := AScope;
   FSearch.OwnModule := AScope.Switch;
   SetLength(FScopeHidden, Length(FNodePages));
-  for mIndex := 0 to High(FNodePages) do
-  begin
-    mBox := FNodePages[mIndex].Box;
-    mAny := False;
-    for mChild := 0 to mBox.ControlCount - 1 do
+  // InScope fragt je Element nach den Namen und Abschnitten darin: aus einem Stand, nicht je Element alle Bindungen.
+  FSectionOwners.BeginQueries;
+  try
+    for mIndex := 0 to High(FNodePages) do
     begin
-      mControl := mBox.Controls[mChild];
-      if (mControl = FNodePages[mIndex].Banner) or ((mControl is TAtlasSettingsGroup) and
-        IsOverview(TAtlasSettingsGroup(mControl))) then
+      mBox := FNodePages[mIndex].Box;
+      mAny := False;
+      for mChild := 0 to mBox.ControlCount - 1 do
       begin
-        Continue;
+        mControl := mBox.Controls[mChild];
+        if (mControl = FNodePages[mIndex].Banner) or ((mControl is TAtlasSettingsGroup) and
+          IsOverview(TAtlasSettingsGroup(mControl))) then
+        begin
+          Continue;
+        end;
+        if InScope(mControl) then
+        begin
+          mAny := mAny or mControl.Visible;
+        end
+        else
+        begin
+          mControl.Visible := False;
+        end;
       end;
-      if InScope(mControl) then
-      begin
-        mAny := mAny or mControl.Visible;
-      end
-      else
-      begin
-        mControl.Visible := False;
-      end;
+      FScopeHidden[mIndex] := not mAny;
     end;
-    FScopeHidden[mIndex] := not mAny;
+  finally
+    FSectionOwners.EndQueries;
   end;
   ScopeOverviews;
   if ListReady(FTree) then
@@ -762,12 +772,18 @@ begin
   begin
     Exit;
   end;
-  for mIndex := 0 to High(FNodePages) do
-  begin
-    mOutside := nil;
-    ApplyLocks(FNodePages[mIndex].Box, False, mOutside);
-    FNodePages[mIndex].Banner.Caption := string.Join(sLineBreak, mOutside);
-    FNodePages[mIndex].Banner.Visible := Length(mOutside) > 0;
+  // Sperren fragen je Zeile nach den Namen darin (#2372): aus einem Stand.
+  FSectionOwners.BeginQueries;
+  try
+    for mIndex := 0 to High(FNodePages) do
+    begin
+      mOutside := nil;
+      ApplyLocks(FNodePages[mIndex].Box, False, mOutside);
+      FNodePages[mIndex].Banner.Caption := string.Join(sLineBreak, mOutside);
+      FNodePages[mIndex].Banner.Visible := Length(mOutside) > 0;
+    end;
+  finally
+    FSectionOwners.EndQueries;
   end;
   // Spiegel in der Übersicht folgen ihrem Hauptschalter.
   FSyncing := True;

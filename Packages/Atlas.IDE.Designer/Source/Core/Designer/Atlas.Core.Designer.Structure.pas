@@ -129,7 +129,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Defaults,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Designer.Names;
 
 type
   TKindClass = record
@@ -224,17 +225,12 @@ begin
 end;
 
 function ItemIndex(const AItems: TArray<TAtlasStructureItem>; const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(AItems) do
-  begin
-    if SameText(AItems[mIndex].Name, AName) then
+  Result := TAtlasDesignerNames.IndexOfName<TAtlasStructureItem>(AItems, AName,
+    function(AItem: TAtlasStructureItem): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AItem.Name;
+    end);
 end;
 
 function NewNode(AKind: TAtlasStructureNodeKind; ALevel: Integer; const AKey: string): TAtlasStructureNode;

@@ -15,6 +15,7 @@ uses
   Atlas.Text.TestResults,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Tests.Run,
+  Atlas.Core.Tests.LastRun,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Series;
@@ -26,6 +27,9 @@ procedure StartExplorer(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger
   const AStaleKeys: TAtlasTestStaleKeys; const ANext: TAtlasTestsReportedProc);
 /// <summary>Abfragen veralteter (AStaleKeys) und wackelnder Tests, etwa für die Testlinse.</summary>
 function StateQueries(const AStaleKeys: TAtlasTestStaleKeys): TAtlasTestStateQueries;
+/// <summary>Wackelnde Tests des Testprojekts AProject für den letzten Testlauf (#2409); fragt erst beim Aufruf, ob
+/// es sie gibt.</summary>
+function FlakyCountFor(const AProject: string): TAtlasTestFlakyCount;
 /// <summary>Teststand, Fenster und Testlisten freigeben (in dieser Reihenfolge: Der Teststand liest aus dem
 /// Fenster, das Fenster findet die Testlisten).</summary>
 procedure StopExplorer;
@@ -85,6 +89,20 @@ end;
 function StateQueries(const AStaleKeys: TAtlasTestStaleKeys): TAtlasTestStateQueries;
 begin
   Result := GFlaky.QueriesWith(AStaleKeys);
+end;
+
+function FlakyCountFor(const AProject: string): TAtlasTestFlakyCount;
+var
+  mProject: string;
+begin
+  mProject := AProject;
+  Result :=
+    function(const ACase: TTestCaseResult; out AFailed, ARuns: Integer): Boolean
+    begin
+      AFailed := 0;
+      ARuns := 0;
+      Result := (GFlaky <> nil) and GFlaky.CountOf(mProject, ACase, AFailed, ARuns);
+    end;
 end;
 
 procedure StopExplorer;

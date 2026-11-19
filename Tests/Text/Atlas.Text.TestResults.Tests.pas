@@ -277,9 +277,10 @@ var
 begin
   mRun := TTestResults.Parse('<html><body>kein Bericht</body></html>');
   Assert.IsFalse(mRun.Valid);
-  Assert.AreNotEqual('', mRun.Error);
+  Assert.IsTrue(mRun.NoReport);
   mRun := TTestResults.Parse('');
   Assert.IsFalse(mRun.Valid);
+  Assert.IsTrue(mRun.NoReport);
   mRun := TTestResults.Parse('<test-results total="0"></test-results>');
   Assert.IsTrue(mRun.Valid, 'leerer Lauf ist ein Bericht');
   Assert.AreEqual(0, mRun.Total);

@@ -13,6 +13,7 @@ The server offers Claude Code 33 MCP tools:
 - survey the project's architecture (`get_architecture`, also compared with a saved state)
 - query the index in a small language (`query_code`)
 - find hotspots and change coupling from Git or SVN history (`get_hotspots`)
+- follow the history of a method across renames and moves, with issues (`get_symbol_history`)
 - find the shortest path between two symbols or units (`find_path`)
 - read declarations with their rationale comments (`get_rationale`) and type and call hierarchies
 - the impact of a change (`get_impact`)
@@ -25,11 +26,15 @@ The server offers Claude Code 33 MCP tools:
 ### Check, build, test
 
 - check planned code with `check_code` before writing it
-- explain findings
+- explain findings (`explain_finding`): the same task as "Copy as task for an AI assistant" in the "Atlas Findings" window, with a ±8 line excerpt and a closing line telling the assistant how to verify (`check_code`, for safe fixes `fix_findings`)
+- look up the Atlas documentation: rules with their severity in the project, settings with their current value, windows and shortcuts (`search_atlas_docs`)
 - report findings to Claude Code hooks (`hook_check`)
 - build through the IDE (`build_project`, `get_last_build`)
 - read the issue started in the IDE with checklist and code references (`get_current_issue`)
+- explain compiler messages at their place, with the known Delphi pitfall and a safe fix as a diff (`explain_compiler_message`)
 - run DUnitX tests
+- read the last test run of the IDE without running again (`get_last_tests`: red tests with file:line, expected/actual, log, newly red, flaky, leak, stale)
+- see where the developer currently is in the IDE (`get_ide_context`: file, cursor, method, selection, active project, last build, tabs)
 
 ### Change
 
@@ -39,11 +44,19 @@ Each with preview:
 - apply code actions
 - format (`format_code`)
 - extract method, optionally with equal places (`extract_method`)
+- refactorings of the context menu with arguments instead of questions (`refactor`)
 - fix all safe findings of rules at once (`fix_findings`)
 
 ### Resource
 
 - `delphi://conventions` with the project's conventions
+
+## AI assistants in the IDE
+
+The AI assistants module (`assistants.enabled`) takes requests from MCP clients in the running IDE: builds through `build_project` and changes to open files, which land in the editor buffer as one undo step.
+
+- **“AI assistant active” display** (#1906, `assistants.banner`): a field in the Atlas status field shows which project is being built for an AI assistant or which open file it changed last (for one minute).
+- **Pause for AI:** a click on the field or the command “Pause AI assistants” in the palette pauses AI assistants. The IDE then refuses new builds and changes to open files with a reason, and the MCP server does not write the file itself either; a running build finishes. While paused the field stays visible, a second click ends the pause.
 
 ## Prompts (#1357)
 

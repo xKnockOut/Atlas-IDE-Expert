@@ -15,7 +15,7 @@ type
   public
     [Test]
     procedure TextsFollowLanguage;
-    /// <summary>Mockup #ws7: erledigte Schritte grün mit ✓ und ohne Knöpfe, offene mit Knopf.</summary>
+    /// <summary>Erledigte Schritte grün mit ✓ und ohne Knöpfe, offene mit Knopf.</summary>
     [Test]
     procedure StepsShowMarksAndButtons;
     /// <summary>Abnahme: Ein fehlender Suchpfad wird mit dem Unit-Namen gemeldet.</summary>

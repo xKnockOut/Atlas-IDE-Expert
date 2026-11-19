@@ -54,7 +54,31 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Settings.JsonText,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TQueryMigrationText = (Moved, Dropped);
+
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TQueryMigrationText] of string = (
+    (
+     'Einstellung %s ist jetzt die Abfrage „%s“ in %s',
+     'Einstellung %s entfällt (%s gilt)'),
+    (
+     'Setting %s is now the query "%s" in %s',
+     'Setting %s is dropped (%s applies)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TQueryMigrationText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasSettingsQueryMigration }
 
@@ -62,16 +86,21 @@ function TAtlasSettingsQueryMigration.LogLine: string;
 begin
   if Moved then
   begin
-    Result := Format('Einstellung %s ist jetzt die Abfrage „%s“ in %s', [OldKey,
+    Result := Format(UiText(TQueryMigrationText.Moved), [OldKey,
       TAtlasSettingsQueryMigrations.cStandardName, TAtlasSettingsQueryMigrations.cPath]);
   end
   else
   begin
-    Result := Format('Einstellung %s entfällt (%s gilt)', [OldKey, TAtlasSettingsQueryMigrations.cPath]);
+    Result := Format(UiText(TQueryMigrationText.Dropped), [OldKey, TAtlasSettingsQueryMigrations.cPath]);
   end;
 end;
 
 { TAtlasSettingsQueryMigrations }
+
+const
+  /// <summary>Schlüssel einer Zeile von issues.queries.</summary>
+  cNameKey = 'name';
+  cQueryKey = 'query';
 
 /// <summary>Eine gültige Zeile „Standard“ (wie TAtlasTrackerQueries.Read: Name und Abfrage nicht leer).</summary>
 function IsStandard(AItem: TJSONValue): Boolean;
@@ -79,8 +108,8 @@ var
   mObject: TJSONObject;
 begin
   mObject := TJsonRead.AsObject(AItem);
-  Result := SameText(TJsonRead.TrimmedText(mObject, 'name'), TAtlasSettingsQueryMigrations.cStandardName) and
-    (TJsonRead.TrimmedText(mObject, 'query') <> '');
+  Result := SameText(TJsonRead.TrimmedText(mObject, cNameKey), TAtlasSettingsQueryMigrations.cStandardName) and
+    (TJsonRead.TrimmedText(mObject, cQueryKey) <> '');
 end;
 
 { TAtlasSettingsQueryMigrations }
@@ -99,8 +128,8 @@ begin
   begin
     Exit;
   end;
-  mParts := TArray<string>.Create('{"name": ' + TJsonText.Quote(cStandardName) + ', "query": ' +
-    TJsonText.Quote(mQuery) + '}');
+  mParts := TArray<string>.Create('{' + TJsonText.Quote(cNameKey) + ': ' + TJsonText.Quote(cStandardName) + ', ' +
+    TJsonText.Quote(cQueryKey) + ': ' + TJsonText.Quote(mQuery) + '}');
   mRoot := nil;
   if Trim(AJson) <> '' then
   begin
@@ -160,5 +189,9 @@ begin
   ALegacyNames.Remove(cLegacyName);
   ALegacyNames.Remove(cOlderLegacyName);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.QueryMigration', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.

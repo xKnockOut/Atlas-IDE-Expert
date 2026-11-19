@@ -46,6 +46,12 @@ type
     procedure NormalizeLineBreaks;
     [Test]
     procedure CollapseSpace;
+    [Test]
+    procedure SplitAtLineFeedKeepsLoneCr;
+    [Test]
+    procedure ReplaceRangeReplacesAndKeepsRest;
+    [Test]
+    procedure ShortLine;
   end;
 
   [TestFixture]
@@ -239,6 +245,14 @@ begin
   Assert.AreEqual('a'#10'b', TTextLines.NormalizeLineBreaks('a'#13#10'b', #10));
 end;
 
+procedure TTextLinesTests.ShortLine;
+begin
+  // Windows-Zeilenende ergibt ein Leerzeichen, nicht zwei.
+  Assert.AreEqual('a b c', TTextLines.ShortLine(' a'#13#10'b'#10'c ', 10));
+  Assert.AreEqual('abc…', TTextLines.ShortLine('abcdef', 4));
+  Assert.AreEqual('abcd', TTextLines.ShortLine('abcd', 4));
+end;
+
 procedure TTextLinesTests.CollapseSpace;
 begin
   Assert.AreEqual('a b c', TTextLines.CollapseSpace('  a'#9#10' b   c  '));
@@ -335,6 +349,32 @@ begin
   Assert.AreEqual<Integer>(6, mTable.LineStart(2));
   Assert.AreEqual<Integer>(6, mTable.LineContentEnd(2));
   Assert.AreEqual<Integer>(6, mTable.TextLength);
+end;
+
+procedure TTextLinesTests.SplitAtLineFeedKeepsLoneCr;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextLines.SplitAtLineFeed('a'#13#10'b'#13'c'#10);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual('a', mLines[0]);
+  Assert.AreEqual('b'#13'c', mLines[1]);
+  Assert.AreEqual('', mLines[2]);
+  mLines := nil;
+end;
+
+procedure TTextLinesTests.ReplaceRangeReplacesAndKeepsRest;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextLines.ReplaceRange(TArray<string>.Create('a', 'b', 'c', 'd'), 1, 2,
+    TArray<string>.Create('x', 'y', 'z'));
+  Assert.AreEqual('a|x|y|z|d', string.Join('|', mLines));
+  mLines := TTextLines.ReplaceRange(TArray<string>.Create('a', 'b'), 2, 0, TArray<string>.Create('c'));
+  Assert.AreEqual('a|b|c', string.Join('|', mLines));
+  mLines := TTextLines.ReplaceRange(TArray<string>.Create('a', 'b'), 0, 1, nil);
+  Assert.AreEqual('b', string.Join('|', mLines));
+  mLines := nil;
 end;
 
 initialization

@@ -46,26 +46,8 @@ uses
   ToolsAPI,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Settings;
-
-/// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
-function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-begin
-  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
-
-/// <summary>Datei einer Unit im Testprojekt AProjectFile.</summary>
-function UnitFileFunc(const AProjectFile: string): TAtlasTestUnitFile;
-var
-  mProjectFile: string;
-begin
-  mProjectFile := AProjectFile;
-  Result :=
-    function(const AUnitName: string): string
-    begin
-      Result := TAtlasIdeTests.UnitFileOf(mProjectFile, AUnitName);
-    end;
-end;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Tests.Projects;
 
 { TAtlasIdeStaleTests }
 
@@ -102,16 +84,17 @@ begin
     if (mItem.UnitName <> '') and (IndexText(mItem.UnitName, mDone) < 0) then
     begin
       mDone := mDone + [mItem.UnitName];
-      mFileName := TAtlasIdeTests.UnitFileOf(ATarget.Project, mItem.UnitName);
+      mFileName := TAtlasIdeTestProjects.UnitFileOf(ATarget.Project, mItem.UnitName);
     end;
-    if (mFileName = '') or not ReadLines(mFileName, mLines) then
+    if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;
     end;
     mUnits := nil;
     if TAtlasIdeSettings.Current.TestsStaleUnits then
     begin
-      mUnits := TAtlasTestStamps.UnitStamps(mLines, UnitFileFunc(ATarget.Project), ReadLines);
+      mUnits := TAtlasTestStamps.UnitStamps(mLines, TAtlasIdeTestProjects.UnitFiles(ATarget.Project),
+        TAtlasIdeFiles.LineReader());
     end;
     FStamps.Remember(ATarget.Project, mFileName, TDUnitXSource.Scan(mLines), mLines, ARun.Cases, mUnits);
   end;
@@ -122,7 +105,7 @@ begin
   Result := nil;
   if TAtlasIdeSettings.Current.TestsStale and (FStamps.Count > 0) then
   begin
-    Result := FStamps.StaleIn(AUnit, ALines, TAtlasIdeSettings.Current.TestsStaleUnits, ReadLines);
+    Result := FStamps.StaleIn(AUnit, ALines, TAtlasIdeSettings.Current.TestsStaleUnits, TAtlasIdeFiles.LineReader());
   end;
 end;
 
@@ -136,7 +119,7 @@ begin
   begin
     Exit;
   end;
-  mRuns := FStamps.StaleRuns(TAtlasIdeSettings.Current.TestsStaleUnits, ReadLines);
+  mRuns := FStamps.StaleRuns(TAtlasIdeSettings.Current.TestsStaleUnits, TAtlasIdeFiles.LineReader());
   if Length(mRuns) = 0 then
   begin
     FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoStale));

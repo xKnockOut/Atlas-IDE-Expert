@@ -30,6 +30,8 @@ type
     class function Quote(const AText: string): string; static;
     /// <summary>AItems als JSON-Array von Strings in einer Zeile, getrennt durch ", ".</summary>
     class function List(const AItems: array of string): string; static;
+    /// <summary>AValue als JSON-Literal true oder false.</summary>
+    class function Bool(AValue: Boolean): string; static;
   end;
 
   /// <summary>JSON-Werte aus Pascal-Werten bauen.</summary>
@@ -38,7 +40,7 @@ type
     /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
     /// </summary>
     class function Strings(const AItems: array of string): TJSONArray; static;
-    /// <summary>Paar AName mit AValue an AObject anhängen, nur wenn AValue nicht leer ist.</summary>
+    /// <summary>AValue unter AName in AObject; ein leerer Wert bleibt weg.</summary>
     class procedure AddText(AObject: TJSONObject; const AName, AValue: string); static;
     /// <summary>Zeitpunkt AValue (UTC) als ISO 8601 mit „Z“; '' für 0 und davor. Gegenstück zu
     /// TJsonRead.IsoTime.</summary>
@@ -60,6 +62,9 @@ type
     class function ParseObject(const AJson: string): TJSONObject; static;
     /// <summary>Wie ParseObject, aber ein leeres Objekt statt nil. Der Aufrufer gibt das Objekt frei.</summary>
     class function ParseObjectOrEmpty(const AJson: string): TJSONObject; static;
+    /// <summary>AJson als JSON-Array; nil bei leerem, ungültigem Text oder anderem Wert. Der Aufrufer gibt das Array
+    /// frei.</summary>
+    class function ParseArray(const AJson: string): TJSONArray; static;
     /// <summary>AValue als Objekt, sonst nil.</summary>
     class function AsObject(AValue: TJSONValue): TJSONObject; static;
     /// <summary>Der Wert AName in AObject; nil, wenn AObject nil ist oder den Namen nicht hat.</summary>
@@ -119,6 +124,10 @@ uses
   System.DateUtils,
   Atlas.Text.Timestamps;
 
+const
+  /// <summary>Hexadezimalstellen einer Folge \uXXXX.</summary>
+  cUnicodeEscapeDigits = 4;
+
 { TJsonText }
 
 class function TJsonText.Quote(const AText: string): string;
@@ -146,9 +155,9 @@ begin
         #13:
           mBuilder.Append('\r');
       else
-        if Ord(mChar) < 32 then
+        if mChar < ' ' then
         begin
-          mBuilder.Append('\u' + IntToHex(Ord(mChar), 4));
+          mBuilder.Append('\u' + IntToHex(Ord(mChar), cUnicodeEscapeDigits));
         end
         else
         begin
@@ -176,6 +185,15 @@ begin
     Result := Result + Quote(AItems[mIndex]);
   end;
   Result := Result + ']';
+end;
+
+class function TJsonText.Bool(AValue: Boolean): string;
+begin
+  Result := 'false';
+  if AValue then
+  begin
+    Result := 'true';
+  end;
 end;
 
 { TJsonBuild }
@@ -265,6 +283,19 @@ begin
   begin
     Result := TJSONObject.Create;
   end;
+end;
+
+class function TJsonRead.ParseArray(const AJson: string): TJSONArray;
+var
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  mValue := Parse(AJson);
+  if mValue is TJSONArray then
+  begin
+    Exit(TJSONArray(mValue));
+  end;
+  mValue.Free;
 end;
 
 class function TJsonRead.AsObject(AValue: TJSONValue): TJSONObject;

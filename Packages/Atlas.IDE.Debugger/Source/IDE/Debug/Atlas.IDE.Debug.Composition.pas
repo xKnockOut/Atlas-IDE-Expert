@@ -100,11 +100,6 @@ begin
   Result := TAtlasIdeHost.RunningSession;
 end;
 
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
-
 { Sichtbarkeit und Bedingungen }
 
 function NotMinimal(ALevel: TAtlasSafeLevel): Boolean;
@@ -193,7 +188,7 @@ end;
 
 procedure ToggleDebugJustMyCode;
 begin
-  TAtlasIdeDebugOwnCode.ToggleSetting(MessageLine);
+  TAtlasIdeDebugOwnCode.ToggleSetting(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Scope des Moduls für Befehle mit Antwort des Servers; nil vor dem Anmelden.</summary>
@@ -264,7 +259,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start.
   InstallBreakCommands;
   // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet das Teil DebugStepFilter.
@@ -272,7 +267,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   GCommandsInstalled := True;
 end;
 
@@ -418,16 +413,16 @@ begin
 end;
 
 /// <summary>Einträge im Atlas-Menü: Untermenü Debuggen (Fenster; Was wartet worauf?; Neu starten und
-/// Startverbünde; Profiler; Bericht einfügen und Debug-Zustand festhalten) und Untermenü Haltepunkte, je Gruppe
-/// durch Trennlinien getrennt.
+/// Startverbünde; Profiler; Bericht einfügen, Debug-Zustand festhalten und Datei offen halten) und Untermenü
+/// Haltepunkte, je Gruppe durch Trennlinien getrennt.
 /// </summary>
 function AtlasMenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := AtlasEntries(['Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
     'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
-    'Atlas.DebugLeaks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart', 'Atlas.LaunchGroups', '-',
-    'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-', 'Atlas.RuntimeReportPaste',
-    'Atlas.DebugNote'],
+    'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart',
+    'Atlas.LaunchGroups', '-', 'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-',
+    'Atlas.RuntimeReportPaste', 'Atlas.DebugNote', 'Atlas.DebugKeepOpenedFile'],
     TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result := Result + AtlasEntries(['Atlas.BreakpointsWindow', 'Atlas.CheckBreakpoints', '-', 'Atlas.Logpoint',
     '-', 'Atlas.MethodBreakpoints', 'Atlas.MethodBreakpointGroups', '-', 'Atlas.BreakpointRules', '-',
@@ -439,9 +434,9 @@ end;
 /// damit sich das Layout einrichten lässt.</summary>
 function ViewMenuEntries: TArray<TAtlasMenuEntry>;
 const
-  cWindows: array[0..10] of string = ('Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
+  cWindows: array[0..11] of string = ('Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
     'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
-    'Atlas.DebugLeaks', 'Atlas.StepFilters', 'Atlas.DebugProfile', 'Atlas.BreakpointsWindow');
+    'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks', 'Atlas.StepFilters', 'Atlas.DebugProfile', 'Atlas.BreakpointsWindow');
 var
   mIndex: Integer;
 begin
@@ -642,6 +637,8 @@ begin
   ProvideDebugThreadLayers(GScope);
   // Logpunkte in der Rinne (#583).
   ProvideRun(GScope);
+  // Haltepunkte mit Aufrufer in der Rinne (#2548).
+  ProvideBreakpoints(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

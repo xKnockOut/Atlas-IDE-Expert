@@ -25,13 +25,34 @@ implementation
 
 uses
   Atlas.Text.Lines,
-  Atlas.Text.Diff;
+  Atlas.Text.Diff,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  TTextDiffText = (Line, FromLine);
+
+const
+  cTexts: array[TAtlasLanguage, TTextDiffText] of string = (
+    ('Zeile %d:', 'ab Zeile %d:'),
+    ('Line %d:', 'from line %d:'));
+
+{$SCOPEDENUMS OFF}
 
 { TAtlasTextDiff }
 
 class function TAtlasTextDiff.Lines(const AOld, ANew: string): TArray<string>;
+var
+  mLabels: TTextDiffLabels;
 begin
-  Result := TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew), cMaxLines);
+  mLabels.Line := cTexts[TAtlasTextLanguage.Current, TTextDiffText.Line];
+  mLabels.FromLine := cTexts[TAtlasTextLanguage.Current, TTextDiffText.FromLine];
+  Result := TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew), mLabels, cMaxLines);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Files.TextDiff', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.

@@ -385,6 +385,11 @@ uses
 
 const
   cDefaultRemote = 'origin';
+  /// <summary>Anfang der Stash-Nachricht vor dem Anlegen; fester Text, den auch die englische Oberfläche nennt.
+  /// </summary>
+  cStashPrefix = 'Atlas: vor ';
+  /// <summary>Trenner der Hinweise je Definition (", Ordner -r 12, …").</summary>
+  cNoteSeparator = ', ';
 
 { TAtlasVcsGitBranchOptions }
 
@@ -656,7 +661,7 @@ begin
   Result := Trim(AText);
   for mIndex := 1 to Length(Result) do
   begin
-    if (Ord(Result[mIndex]) < 32) or CharInSet(Result[mIndex], ['/', '\', ':', '*', '?', '"', '<', '>', '|']) then
+    if (Result[mIndex] < ' ') or CharInSet(Result[mIndex], ['/', '\', ':', '*', '?', '"', '<', '>', '|']) then
     begin
       Result[mIndex] := '-';
     end;
@@ -1051,7 +1056,7 @@ begin
   end;
   for mIndex := 1 to Length(AFolder) do
   begin
-    if Ord(AFolder[mIndex]) < 32 then
+    if AFolder[mIndex] < ' ' then
     begin
       Exit(False);
     end;
@@ -1087,7 +1092,7 @@ end;
 
 class function TAtlasVcsBranchPlan.StashMessage(const AName: string): string;
 begin
-  Result := 'Atlas: vor ' + AName;
+  Result := cStashPrefix + AName;
 end;
 
 class function TAtlasVcsBranchPlan.FetchFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
@@ -1343,6 +1348,8 @@ type
     FNotes: TArray<string>;
     /// <summary>Schon vergebene Orte, je mit "|" umschlossen.</summary>
     FUsed: string;
+    FPackages: TArray<TAtlasVcsBranchStep>;
+    FRewrites: TArray<TAtlasVcsBranchStep>;
     function ActionOf(AIndex: Integer): TAtlasVcsExternalAction;
     function DefinitionOf(const AOwner: string): Integer;
     function PinnedLine(const AExternal: TAtlasVcsSvnExternal; ADefinition: Integer): string;
@@ -1350,11 +1357,13 @@ type
     function AddExternal(AIndex: Integer): Boolean;
     function RewriteSteps(ADefinition: Integer): TArray<TAtlasVcsBranchStep>;
   public
-    Packages: TArray<TAtlasVcsBranchStep>;
-    Rewrites: TArray<TAtlasVcsBranchStep>;
     constructor Create(const ARequest: TAtlasVcsBranchRequest; const AMessage: string);
     /// <summary>False, wenn eine Wahl fehlt (Ask) oder nicht taugt.</summary>
     function Build: Boolean;
+    /// <summary>Kopien der Packages, die mitverzweigt werden.</summary>
+    property Packages: TArray<TAtlasVcsBranchStep> read FPackages;
+    /// <summary>Schritte, die svn:externals im neuen Branch umschreiben.</summary>
+    property Rewrites: TArray<TAtlasVcsBranchStep> read FRewrites;
   end;
 
 { TExternalStepBuilder }
@@ -1411,7 +1420,7 @@ begin
     Exit;
   end;
   Result := TAtlasSvnExternals.PinnedLine(FRequest.Definitions[ADefinition].Text, AExternal, mRevision);
-  FNotes[ADefinition] := FNotes[ADefinition] + ', ' + AExternal.Folder + ' -r ' + mRevision;
+  FNotes[ADefinition] := FNotes[ADefinition] + cNoteSeparator + AExternal.Folder + ' -r ' + mRevision;
 end;
 
 function TExternalStepBuilder.BranchedLine(AIndex, ADefinition: Integer): string;
@@ -1434,11 +1443,11 @@ begin
     Exit;
   end;
   FUsed := FUsed + mLocation + '|';
-  Packages := Packages + [TAtlasVcsBranchStep.Make(TArray<string>.Create('copy', '^/' + mExternal.Source + '@' +
+  FPackages := FPackages + [TAtlasVcsBranchStep.Make(TArray<string>.Create('copy', '^/' + mExternal.Source + '@' +
     mRevision, '^/' + mLocation + '@', '--parents', '-m', FMessage), True, True)];
   Result := TAtlasSvnExternals.RetargetedLine(FRequest.Definitions[ADefinition].Text, mExternal, mLocation,
     FRequest.RepositoryRoot);
-  FNotes[ADefinition] := FNotes[ADefinition] + ', ' + mExternal.Folder + ' → ^/' + mLocation;
+  FNotes[ADefinition] := FNotes[ADefinition] + cNoteSeparator + mExternal.Folder + ' → ^/' + mLocation;
 end;
 
 function TExternalStepBuilder.AddExternal(AIndex: Integer): Boolean;
@@ -1492,7 +1501,7 @@ begin
     False, False);
   mStep.InputFile := mDir + '.txt';
   mStep.InputText := FTexts[ADefinition];
-  mStep.Note := 'svn:externals: ' + Copy(FNotes[ADefinition], 3, MaxInt);
+  mStep.Note := 'svn:externals: ' + Copy(FNotes[ADefinition], Length(cNoteSeparator) + 1, MaxInt);
   Result := [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', mUrl + '@', mDir, '--depth', 'empty'), True,
     False), mStep, TAtlasVcsBranchStep.Make(TArray<string>.Create('commit', mDir, '-m', FMessage), True, True)];
 end;
@@ -1518,7 +1527,7 @@ begin
     begin
       Exit(False);
     end;
-    Rewrites := Rewrites + RewriteSteps(mIndex);
+    FRewrites := FRewrites + RewriteSteps(mIndex);
   end;
   Result := True;
 end;

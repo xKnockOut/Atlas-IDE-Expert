@@ -33,6 +33,7 @@
 //   „Testserie abbrechen“ (#1782, Atlas.IDE.Tests.Series; Kontextmenü einer
 //   Testunit und Palette; der Prozessläufer fragt den Abbruch der Serie ab),
 // - die Marke „getestet von“ an Methoden normaler Units (#1778),
+// - die Ablage des letzten Testlaufs für KI-Assistenten (#2409, tests.lastRun; Atlas.IDE.Tests.LastRun),
 // - die Schicht der Testabdeckung in der Rinne (#275, IAtlasGutterLayer) mit den Befehlen „Testabdeckung laden …“
 //   und „Testabdeckung ausblenden“; ihr Zustand ist ein eigener Teil der Feature-Tabelle (läuft auch ohne
 //   tests.run, solange tests.coverage an ist),
@@ -125,6 +126,7 @@ uses
   Atlas.IDE.Tests.CoveredBy,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
+  Atlas.IDE.Tests.LastRun,
   Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.Composition.Cases,
   Atlas.IDE.Tests.Affected,
@@ -143,6 +145,7 @@ var
   GCoveredBy: TAtlasIdeCoveredByLens;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
+  GLastRun: TAtlasIdeTestLastRun;
   GSlowest: TAtlasIdeTestSlowest;
   /// <summary>Serien (#1782) und ihr Abbruchwunsch, den der Prozessläufer liest; GStopRef hält ihn.</summary>
   GSeries: TAtlasIdeTestSeries;
@@ -286,8 +289,11 @@ begin
   GTests.OnLastFailed := LastFailed;
   // Veraltete Ergebnisse (#1770): Stand je Test nach jedem Lauf.
   GStale := TAtlasIdeStaleTests.Create(GTests);
-  // Erwartet und erhalten vergleichen (#1779): Fehlschläge mit Werten; reicht den Lauf an die Stände weiter.
-  GCompare := TAtlasIdeTestCompare.Create(GTests, GStale.Remember);
+  // Letzter Testlauf für KI-Assistenten (#2409): nach den wackelnden Tests (#1773), deren Verlauf er abfragt; reicht
+  // den Lauf an die Stände weiter.
+  GLastRun := TAtlasIdeTestLastRun.Create(GStale.Remember, FlakyCountFor);
+  // Erwartet und erhalten vergleichen (#1779): Fehlschläge mit Werten; reicht den Lauf an den letzten Testlauf weiter.
+  GCompare := TAtlasIdeTestCompare.Create(GTests, GLastRun.Remember);
   // Langsamste Tests (#1772): Ergebnisse des Testprojekts; reicht den Lauf an den Vergleich weiter.
   GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
@@ -350,6 +356,7 @@ begin
   StopFlakyTests;
   FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
+  FreeAndNil(GLastRun);
   FreeAndNil(GStale);
   try
     FreeAndNil(GTests);

@@ -22,6 +22,10 @@ type
 
 implementation
 
+const
+  /// <summary>Plätze, um die die Zeilenliste mindestens wächst.</summary>
+  cMinGrowth = 4;
+
 { TAtlasWrap }
 
 class function TAtlasWrap.AtSpaces(const AText: string; const ACum: TArray<Integer>; AWidth, AIndent: Integer):
@@ -33,7 +37,7 @@ var
   begin
     if mCount = Length(Result) then
     begin
-      SetLength(Result, 2 * mCount + 4);
+      SetLength(Result, 2 * mCount + cMinGrowth);
     end;
     Result[mCount] := Point(AStart, AStop);
     Inc(mCount);

@@ -132,7 +132,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.StickyPaint,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.Core.Editor.GuideStroke;
 
 const
   cTickMs = 100;
@@ -258,7 +259,7 @@ type
     procedure RunPendingJump;
     procedure Clear;
     procedure Update;
-    procedure QueueInvalidate;
+    class procedure QueueInvalidate; static;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -462,7 +463,7 @@ begin
   end;
 end;
 
-procedure TStickyState.QueueInvalidate;
+class procedure TStickyState.QueueInvalidate;
 begin
   if InvalidatePending then
   begin
@@ -501,7 +502,7 @@ begin
     begin
       QueueInvalidate;
     end;
-    mRow := TAtlasStickyPlan.ScreenRow(Rect.Top, mHeight);
+    mRow := TAtlasGuideStroke.RowIndex(Rect.Top, mHeight);
     if mRow >= Length(FRows) then
     begin
       // Nicht übermalte Zeile: deren Hintergrund ist der des Editors.

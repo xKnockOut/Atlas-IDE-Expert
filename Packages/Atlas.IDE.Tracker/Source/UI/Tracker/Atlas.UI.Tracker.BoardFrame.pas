@@ -247,7 +247,8 @@ uses
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.UI.Tracker.BoardPainter,
-  Atlas.UI.Tracker.Workflow.Strings;
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 {$R *.dfm}
 
@@ -700,19 +701,21 @@ end;
 
 { TAtlasBoardFrame }
 
+/// <summary>Auswahl in der Kopfleiste; AWidth in logischen Pixeln (96 dpi).</summary>
 function AddCombo(AOwner: TComponent; AParent: TWinControl; AWidth: Integer; const AHint: string;
   AChange: TNotifyEvent): TComboBox;
 begin
   Result := TComboBox.Create(AOwner);
   Result.Parent := AParent;
   Result.Style := csDropDownList;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Hint := AHint;
   Result.ShowHint := True;
   Result.AlignWithMargins := True;
   Result.OnChange := AChange;
 end;
 
+/// <summary>Schalter in der Kopfleiste; AWidth und AHeight in logischen Pixeln (96 dpi).</summary>
 function AddToggle(AOwner: TComponent; AParent: TWinControl; AWidth, AHeight: Integer; const ACaption: string;
   AClick: TNotifyEvent): TSpeedButton;
 begin
@@ -721,8 +724,8 @@ begin
   Result.Caption := ACaption;
   Result.GroupIndex := 1;
   Result.Flat := True;
-  Result.Width := AWidth;
-  Result.Height := AHeight;
+  Result.Width := Result.ScaleValue(AWidth);
+  Result.Height := Result.ScaleValue(AHeight);
   Result.AlignWithMargins := True;
   Result.OnClick := AClick;
 end;
@@ -746,14 +749,14 @@ begin
   FParts.Head.BevelOuter := bvNone;
   FParts.Head.AlignWithMargins := True;
   FParts.Head.Margins.SetBounds(cHeadMargin, cHeadMargin, cHeadMargin, 0);
-  FParts.Boards := AddCombo(Self, FParts.Head, ScaleValue(cBoardsWidth),
+  FParts.Boards := AddCombo(Self, FParts.Head, cBoardsWidth,
     TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardBoardHint), ChoiceChange);
-  FParts.Sprints := AddCombo(Self, FParts.Head, ScaleValue(cSprintsWidth),
+  FParts.Sprints := AddCombo(Self, FParts.Head, cSprintsWidth,
     TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardSprintHint), ChoiceChange);
-  FParts.Mine := AddToggle(Self, FParts.Head, ScaleValue(cMineWidth), ScaleValue(cToggleHeight),
+  FParts.Mine := AddToggle(Self, FParts.Head, cMineWidth, cToggleHeight,
     TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardOnlyMine), ButtonClick);
   FParts.Mine.Down := True;
-  FParts.All := AddToggle(Self, FParts.Head, ScaleValue(cAllWidth), ScaleValue(cToggleHeight),
+  FParts.All := AddToggle(Self, FParts.Head, cAllWidth, cToggleHeight,
     TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardAll), ButtonClick);
   FParts.Search := TEdit.Create(Self);
   FParts.Search.Parent := FParts.Head;
@@ -813,7 +816,7 @@ begin
   FParts.Status.Parent := Self;
   FParts.Status.Align := alTop;
   FParts.Status.AlignWithMargins := True;
-  FParts.Status.Margins.SetBounds(cStatusMargin, 2, cStatusMargin, 2);
+  TAtlasControlScaling.SetMargins(FParts.Status, cStatusMargin, 2, cStatusMargin, 2);
   FParts.Status.Visible := False;
   FParts.Status.Top := FParts.Head.Top + FParts.Head.Height + 1;
   FParts.Scroll := TScrollBox.Create(Self);

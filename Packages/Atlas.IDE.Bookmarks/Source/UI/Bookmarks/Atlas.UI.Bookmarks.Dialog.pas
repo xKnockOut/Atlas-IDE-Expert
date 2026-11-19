@@ -43,7 +43,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Bookmarks.Strings;
+  Atlas.UI.Bookmarks.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
@@ -62,7 +63,7 @@ begin
   FPrompt.Parent := Self;
   FPrompt.Align := alTop;
   FPrompt.AlignWithMargins := True;
-  FPrompt.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(FPrompt, cGap, cGap, cGap, cGap div 2);
   FPrompt.ShowAccelChar := False;
   FPrompt.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogPrompt);
 
@@ -70,7 +71,7 @@ begin
   FEdit.Parent := Self;
   FEdit.Align := alTop;
   FEdit.AlignWithMargins := True;
-  FEdit.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FEdit, cGap, 0, cGap, 0);
   FEdit.Top := FPrompt.Top + FPrompt.Height + 1;
   FEdit.Text := AName;
   FEdit.OnChange := EditChange;

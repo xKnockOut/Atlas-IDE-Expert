@@ -33,7 +33,7 @@ uses
 
 type
   /// <summary>AChange im Hintergrund schreiben und ADone im Hauptthread aufrufen (genau einmal). Eigener Typ:
-  /// Der frühere gemeinsame TAtlasTrackerSendEvent gilt seit #2123 nur noch als Plan des Beenden-Dialogs.</summary>
+  /// TAtlasTrackerSendEvent gilt nur für den Plan des Beenden-Dialogs (#2123).</summary>
   TAtlasReviewSendEvent = reference to procedure(const AChange: TAtlasTrackerWrite;
     const ADone: TAtlasTrackerSendDone);
 
@@ -131,7 +131,8 @@ implementation
 uses
   Atlas.Core.Style.Signal,
   Atlas.Core.Tracker.Transitions,
-  Atlas.UI.Tracker.Workflow.Strings;
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cGap = 8;
@@ -235,7 +236,7 @@ begin
   FParts.Editor.Parent := Self;
   FParts.Editor.Align := alTop;
   FParts.Editor.AlignWithMargins := True;
-  FParts.Editor.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Editor, cGap, cGap div 2, cGap, 0);
   FParts.Editor.Top := NextTop;
   FParts.Editor.Height := ScaleValue(cCommentHeight + cEditorBarHeight);
   FParts.Editor.Events := TAtlasCommentEditorEvents.Create(SendClick, EditorCancel);

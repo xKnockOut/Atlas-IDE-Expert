@@ -58,10 +58,14 @@ type
 implementation
 
 uses
-  System.Character;
+  System.Character,
+  System.StrUtils;
 
 type
   TExprTokenKind = (etIdent, etNumber, etSymbol, etEnd);
+{$SCOPEDENUMS ON}
+  TCompareOp = (Equal, NotEqual, Less, Greater, LessEqual, GreaterEqual);
+{$SCOPEDENUMS OFF}
 
   TExprToken = record
     Kind: TExprTokenKind;
@@ -95,17 +99,6 @@ type
 const
   /// <summary>Wert für Unbekanntes: gilt als wahr bzw. als erfüllter Vergleich.</summary>
   cUnknownValue = 1.0;
-
-function IsOneOf(const AText: string; const AList: array of string): Boolean;
-var
-  mItem: string;
-begin
-  Result := False;
-  for mItem in AList do
-  begin
-    Result := Result or (AText = mItem);
-  end;
-end;
 
 /// <summary>Zwei Zeichen lange Vergleiche: "&lt;=", "&gt;=", "&lt;&gt;".</summary>
 function IsTwoCharSymbol(const AText: string; AStart: Integer): Boolean;
@@ -150,7 +143,7 @@ end;
 
 function IsCompareOperator(const AToken: TExprToken): Boolean;
 begin
-  Result := (AToken.Kind = etSymbol) and IsOneOf(AToken.Text, ['=', '<>', '<', '>', '<=', '>=']);
+  Result := (AToken.Kind = etSymbol) and MatchStr(AToken.Text, ['=', '<>', '<', '>', '<=', '>=']);
 end;
 
 /// <summary>Name und Argument einer Direktive: "IFDEF FPC" → IFDEF, FPC.</summary>
@@ -280,8 +273,11 @@ begin
 end;
 
 function TExprParser.ParseCompare: Double;
+const
+  cOps: array[TCompareOp] of string = ('=', '<>', '<', '>', '<=', '>=');
 var
-  mOp: string;
+  mText: string;
+  mOp, mCandidate: TCompareOp;
   mRight: Double;
 begin
   Result := ParseValue;
@@ -289,75 +285,74 @@ begin
   begin
     Exit;
   end;
-  mOp := Take.Text;
+  mText := Take.Text;
   mRight := ParseValue;
+  mOp := TCompareOp.GreaterEqual;
+  for mCandidate := Low(TCompareOp) to High(TCompareOp) do
+  begin
+    if cOps[mCandidate] = mText then
+    begin
+      mOp := mCandidate;
+      Break;
+    end;
+  end;
   // $IF vergleicht wie dcc exakt; eine Toleranz würde Zweige anders wählen als der Compiler.
-  if mOp = '=' then
-  begin
-    Result := Truth(Result = mRight); // lsp-ignore: float-equality
-  end
-  else if mOp = '<>' then
-  begin
-    Result := Truth(Result <> mRight); // lsp-ignore: float-equality
-  end
-  else if mOp = '<' then
-  begin
-    Result := Truth(Result < mRight);
-  end
-  else if mOp = '>' then
-  begin
-    Result := Truth(Result > mRight);
-  end
-  else if mOp = '<=' then
-  begin
-    Result := Truth(Result <= mRight);
-  end
+  case mOp of
+    TCompareOp.Equal:
+      Result := Truth(Result = mRight); // lsp-ignore: float-equality
+    TCompareOp.NotEqual:
+      Result := Truth(Result <> mRight); // lsp-ignore: float-equality
+    TCompareOp.Less:
+      Result := Truth(Result < mRight);
+    TCompareOp.Greater:
+      Result := Truth(Result > mRight);
+    TCompareOp.LessEqual:
+      Result := Truth(Result <= mRight);
   else
-  begin
     Result := Truth(Result >= mRight);
   end;
 end;
 
 function TExprParser.ParseDefined(const AWord: string): Double;
 var
-  mName: string;
+  mName: TStringBuilder;
 begin
   Result := cUnknownValue;
-  mName := '';
-  if IsSymbol('(') then
-  begin
-    Take;
-    while not ((Peek.Kind = etEnd) or IsSymbol(')')) do
+  mName := TStringBuilder.Create;
+  try
+    if IsSymbol('(') then
     begin
-      mName := mName + Take.Text;
+      Take;
+      while not ((Peek.Kind = etEnd) or IsSymbol(')')) do
+      begin
+        mName.Append(Take.Text);
+      end;
+      Take;
     end;
-    Take;
-  end;
-  // Declared kennt nur der Compiler: bleibt wahr.
-  if SameText(AWord, 'Defined') then
-  begin
-    Result := Truth(FOwner.Defined(mName));
+    // Declared kennt nur der Compiler: bleibt wahr.
+    if SameText(AWord, 'Defined') then
+    begin
+      Result := Truth(FOwner.Defined(mName.ToString));
+    end;
+  finally
+    mName.Free;
   end;
 end;
 
 function TExprParser.ParseIdent(const AWord: string): Double;
 begin
   Result := cUnknownValue;
-  if SameText(AWord, 'Defined') or SameText(AWord, 'Declared') then
+  if MatchText(AWord, ['Defined', 'Declared']) then
   begin
     Result := ParseDefined(AWord);
   end
-  else if SameText(AWord, 'CompilerVersion') or SameText(AWord, 'RTLVersion') then
+  else if MatchText(AWord, ['CompilerVersion', 'RTLVersion']) then
   begin
     Result := FOwner.CompilerVersion;
   end
-  else if SameText(AWord, 'True') then
+  else if MatchText(AWord, ['True', 'False']) then
   begin
-    Result := 1;
-  end
-  else if SameText(AWord, 'False') then
-  begin
-    Result := 0;
+    Result := Truth(SameText(AWord, 'True'));
   end;
 end;
 
@@ -509,7 +504,7 @@ var
 begin
   SplitDirective(ADirective, mName, mArgument);
   Result := True;
-  if IsOneOf(mName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
+  if MatchStr(mName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
   begin
     OpenBranch(mName, mArgument);
   end
@@ -521,7 +516,7 @@ begin
   begin
     LastBranch;
   end
-  else if IsOneOf(mName, ['ENDIF', 'IFEND']) then
+  else if MatchStr(mName, ['ENDIF', 'IFEND']) then
   begin
     CloseBranch;
   end

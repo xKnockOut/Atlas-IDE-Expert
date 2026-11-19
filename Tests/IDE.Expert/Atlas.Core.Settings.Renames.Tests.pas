@@ -225,7 +225,7 @@ begin
     mStore.WriteString('WelcomePageIssuesCommitPattern', '[{kennung}] ');
     mStore.WriteInteger('TrackerLogin', 0);
     mRenames := Apply(mStore, mCatalog);
-    // Die Abfrage übernimmt seit #1262 TAtlasSettingsQueryMigrations (als „Standard“ in issues.queries).
+    // Die Abfrage übernimmt TAtlasSettingsQueryMigrations (#1262) (als „Standard“ in issues.queries).
     Assert.AreEqual(5, Integer(Length(mRenames)), 'je früherem Namen eine Übernahme');
     Assert.IsTrue((mStore as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
     mMigration := TAtlasSettingsQueryMigrations.Migrate(mStore, mStore as IAtlasSettingsNames, mStore);
@@ -290,7 +290,7 @@ var
 begin
   mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    // issues.query (#1280) geht seit #1262 in issues.queries auf.
+    // issues.query (#1280) geht in issues.queries auf (#1262).
     mExpected := mCatalog.IndexOfKey('issues.queries');
     Assert.IsTrue(mExpected >= 0);
     Assert.IsTrue(mCatalog.IndexOfKey('issues.query') < 0);

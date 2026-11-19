@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SettingsConnections;
 
-// Tabelle Verbindungen der Seite Issue-Tracker (#1260, Mockup IT1): Name,
+// Tabelle Verbindungen der Seite Issue-Tracker (#1260): Name,
 // Anbieter, Adresse und Zustand des Tokens, darunter die gewählte Zeile mit
 // Zustand und Zuständigkeit je Verbindung (#1266) und die Knöpfe. Die Zeilen
 // und alle Prüfungen hält TAtlasTrackerConnectionTable; hier steht nur, was

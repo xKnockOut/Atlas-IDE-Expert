@@ -260,7 +260,8 @@ uses
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.Scaling;
 
 {$R *.dfm}
 
@@ -344,13 +345,14 @@ begin
   end;
 end;
 
+/// <summary>Knopf links neben AAfter; AWidth in logischen Pixeln (96 dpi).</summary>
 function NewButton(AFrame: TArchFrame; AParent: TWinControl; AAfter: TControl; AText: TAtlasAnalysisTextId;
   AWidth: Integer; AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(AFrame);
   PlaceLeft(Result, AParent, AAfter);
   Result.Caption := TAtlasAnalysisStrings.Text(AText);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.OnClick := AClick;
 end;
 
@@ -361,7 +363,7 @@ begin
   Result := TCheckBox.Create(AFrame);
   PlaceLeft(Result, AFrame.FParts.MapBar, AAfter);
   Result.Caption := TAtlasAnalysisStrings.Text(AText);
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Tag := Ord(AFlag);
   Result.Checked := AFlag <> TAtlasArchMapFlag.MarkCycles;
   Result.OnClick := AFrame.FState.Events.FlagClick;
@@ -451,7 +453,7 @@ var
 begin
   mEvents := AFrame.FState.Events;
   AFrame.FParts.Top := NewFlowBar(AFrame, AFrame);
-  AFrame.FParts.Top.Padding.SetBounds(2, 2, 2, 2);
+  TAtlasControlScaling.SetPadding(AFrame.FParts.Top, 2, 2, 2, 2);
   AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh, 110,
     mEvents.RefreshClick);
   AFrame.FParts.Save := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Refresh,
@@ -528,7 +530,7 @@ begin
   AFrame.FParts.AssignmentSplit.Visible := False;
   AFrame.FParts.Assignment := TPaintBox.Create(AFrame);
   AFrame.FParts.Assignment.Parent := AFrame.FParts.AssignmentBox;
-  AFrame.FParts.Assignment.SetBounds(0, 0, 10, 10);
+  TAtlasControlScaling.Place(AFrame.FParts.Assignment, 0, 0, 10, 10);
   AFrame.FParts.Assignment.OnPaint := AFrame.FState.Events.AssignmentPaint;
 end;
 

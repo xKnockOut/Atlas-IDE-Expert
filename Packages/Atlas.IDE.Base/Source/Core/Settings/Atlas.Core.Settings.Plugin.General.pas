@@ -12,19 +12,43 @@ uses
 const
   cMinHangThreshold = 100;
   cMaxHangThreshold = 10000;
+  cDefaultHangThreshold = 500;
   /// <summary>Wie TAtlasTimeLimit.cMinMs/MaxMs (#493).</summary>
   cMinProviderTimeLimit = 50;
   cMaxProviderTimeLimit = 5000;
+  cDefaultProviderTimeLimit = 200;
+  /// <summary>Vorgabe der Speichergrenze des Symbolindex in MB.</summary>
+  cDefaultMemoryBudgetMb = 768;
+  /// <summary>Grenzen und Vorgabe für diagnostic.slowMs: ab so vielen ms gilt ein Aufruf als langsam.</summary>
+  cMinDiagnosticSlowMs = 1;
+  cMaxDiagnosticSlowMs = 1000;
+  cDefaultDiagnosticSlowMs = 16;
+  /// <summary>Grenzen und Vorgabe für architecture.centralUnits (Zahl der zentralen Units).</summary>
+  cMinCentralUnits = 5;
+  cMaxCentralUnits = 100;
+  cDefaultCentralUnits = 15;
+  /// <summary>Grenzen und Vorgaben für hotspots.months und hotspots.coupling.minCommits.</summary>
+  cMinHotspotsMonths = 1;
+  cMaxHotspotsMonths = 60;
+  cDefaultHotspotsMonths = 12;
+  cMinCouplingCommits = 2;
+  cMaxCouplingCommits = 1000;
+  cDefaultCouplingCommits = 5;
   /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
   cMaxMemoryBudgetMb = 65536;
   /// <summary>Grenzen für safeMode.startupTimeoutMs und safeMode.keepSettingsHistory (#722).</summary>
   cMinSafeStartupTimeout = 1000;
   cMaxSafeStartupTimeout = 120000;
   cMaxSafeSettingsHistory = 50;
+  /// <summary>Vorgaben: Zeitgrenze des Starts in ms (gemessen bis zur freien Nachrichtenschleife, mit Desktop,
+  /// übrigen Packages und Projekt, #874) und Zahl der aufbewahrten Einstellungsstände.</summary>
+  cDefaultSafeStartupTimeout = 30000;
+  cDefaultSafeSettingsHistory = 5;
   /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.cMinEntries/MaxMaxEntries
   /// (Test prüft Gleichheit).</summary>
   cMinNotificationEntries = 10;
   cMaxNotificationEntries = 1000;
+  cDefaultNotificationEntries = 200;
   /// <summary>Werte von help.source (#1886): GitHub-Doku des installierten Versionstags bzw. lokale HTML-Seiten.
   /// </summary>
   cHelpSourceOnline = 'online';
@@ -229,8 +253,8 @@ uses
 
 class function TAtlasPluginGeneralServerSettings.Defaults: TAtlasPluginGeneralServerSettings;
 begin
-  Result.HangThresholdMs := 500;
-  Result.ProviderTimeLimitMs := 200;
+  Result.HangThresholdMs := cDefaultHangThreshold;
+  Result.ProviderTimeLimitMs := cDefaultProviderTimeLimit;
   Result.HangHint := True;
   Result.ServerPath := '';
   Result.TeamFile := True;
@@ -239,10 +263,10 @@ begin
   Result.IndexSearchPaths := True;
   Result.IndexLibraryPaths := False;
   Result.IndexUsages := True;
-  Result.MemoryBudgetMb := 768;
+  Result.MemoryBudgetMb := cDefaultMemoryBudgetMb;
   Result.DiagnosticMode := False;
   Result.DiagnosticPluginTimings := True;
-  Result.DiagnosticSlowMs := 16;
+  Result.DiagnosticSlowMs := cDefaultDiagnosticSlowMs;
   Result.DiagnosticsProcesses := True;
   Result.ServerStatusWindow := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
@@ -250,18 +274,17 @@ begin
   Result.QueryEnabled := True;
   Result.ArchitectureScope := 'projectGroup';
   Result.ArchitectureIncludeLibraryUnits := False;
-  Result.ArchitectureCentralUnits := 15;
+  Result.ArchitectureCentralUnits := cDefaultCentralUnits;
   // Wie die Vorgaben im Schema (atlas.schema.json, hotspots).
   Result.HotspotsEnabled := True;
-  Result.HotspotsMonths := 12;
-  Result.HotspotsCouplingMinCommits := 5;
+  Result.HotspotsMonths := cDefaultHotspotsMonths;
+  Result.HotspotsCouplingMinCommits := cDefaultCouplingCommits;
   Result.ExperimentalEnabled := False;
   Result.SafeAskAfterCrash := True;
   Result.SafeAutoAfterRepeatedCrash := True;
   Result.SafeStartupKey := 'shift';
-  // Gemessen bis zur freien Nachrichtenschleife, mit Desktop, übrigen Packages und Projekt (#874).
-  Result.SafeStartupTimeoutMs := 30000;
-  Result.SafeKeepSettingsHistory := 5;
+  Result.SafeStartupTimeoutMs := cDefaultSafeStartupTimeout;
+  Result.SafeKeepSettingsHistory := cDefaultSafeSettingsHistory;
   Result.BugReportAnonymize := True;
   Result.LogNames := False;
   Result.AnalysisEnabled := True;
@@ -269,14 +292,14 @@ end;
 
 procedure TAtlasPluginGeneralServerSettings.Normalize;
 begin
-  DiagnosticSlowMs := EnsureRange(DiagnosticSlowMs, 1, 1000);
+  DiagnosticSlowMs := EnsureRange(DiagnosticSlowMs, cMinDiagnosticSlowMs, cMaxDiagnosticSlowMs);
   HangThresholdMs := EnsureRange(HangThresholdMs, cMinHangThreshold, cMaxHangThreshold);
   ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, cMinProviderTimeLimit, cMaxProviderTimeLimit);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, cMaxMemoryBudgetMb);
   ArchitectureScope := Choice(ArchitectureScope, ['projectGroup', 'project']);
-  ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, 5, 100);
-  HotspotsMonths := EnsureRange(HotspotsMonths, 1, 60);
-  HotspotsCouplingMinCommits := EnsureRange(HotspotsCouplingMinCommits, 2, 1000);
+  ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, cMinCentralUnits, cMaxCentralUnits);
+  HotspotsMonths := EnsureRange(HotspotsMonths, cMinHotspotsMonths, cMaxHotspotsMonths);
+  HotspotsCouplingMinCommits := EnsureRange(HotspotsCouplingMinCommits, cMinCouplingCommits, cMaxCouplingCommits);
   SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, cMinSafeStartupTimeout, cMaxSafeStartupTimeout);
   SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, cMaxSafeSettingsHistory);
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
@@ -344,7 +367,7 @@ begin
   Result.UpdatesNewModules := 'ask';
   Result.Notifications := True;
   Result.NotificationsSources := '';
-  Result.NotificationsMaxEntries := 200;
+  Result.NotificationsMaxEntries := cDefaultNotificationEntries;
   Result.SettingsExportImport := True;
   Result.SettingsMarkModified := True;
   Result.SettingsSearch := True;

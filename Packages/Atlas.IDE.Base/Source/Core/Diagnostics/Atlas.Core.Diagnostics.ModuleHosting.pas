@@ -264,6 +264,8 @@ begin
 end;
 
 procedure TAtlasModuleHosting.AppendPart(const AItem: TAtlasProvided; const APart: IAtlasFeaturePart);
+const
+  cDuplicatePart = 'Teil %s gibt es schon (Modul %s)';
 var
   mEntry: TPartEntry;
   mSwitch: string;
@@ -272,7 +274,7 @@ begin
   mEntry.Name := APart.Name;
   if FFeatures.Contains(mEntry.Name) then
   begin
-    raise EAtlasModuleRegistry.CreateFmt('Teil %s gibt es schon (Modul %s)', [mEntry.Name, AItem.OwnerId]);
+    raise EAtlasModuleRegistry.CreateFmt(cDuplicatePart, [mEntry.Name, AItem.OwnerId]);
   end;
   FFeatures.AddWanted(mEntry.Name, PartWanted(APart), PartIsActive(APart), PartStart(APart), PartStop(APart));
   mSwitch := SwitchOf(AItem.OwnerId);

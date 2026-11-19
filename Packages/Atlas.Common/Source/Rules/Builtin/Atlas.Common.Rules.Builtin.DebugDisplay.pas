@@ -47,7 +47,7 @@ uses
 
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
-  TDebugDisplayRuleText = (Title, Invalid, NoMember, NoChildMember);
+  TDebugDisplayRuleText = (Title, Invalid, NoMember, NoChildMember, MissingClose, StrayClose, EmptyPlaceholder);
 
 const
   cTexts: array[TDebugDisplayRuleText] of TAtlasText = (
@@ -55,7 +55,14 @@ const
     (De: 'Ungültige Wertdarstellung: %s.'; En: 'Invalid value display: %s.'),
     (De: '%s hat kein Mitglied „%s“; der Platzhalter {%s} bleibt beim Debuggen leer.';
      En: '%s has no member “%s”; the placeholder {%s} stays empty while debugging.'),
-    (De: '%s hat kein Mitglied „%s“ für die Unterelemente.'; En: '%s has no member “%s” for the child elements.'));
+    (De: '%s hat kein Mitglied „%s“ für die Unterelemente.'; En: '%s has no member “%s” for the child elements.'),
+    (De: 'Platzhalter ohne schließende Klammer'; En: 'placeholder without closing brace'),
+    (De: 'Schließende Klammer ohne öffnende'; En: 'closing brace without opening brace'),
+    (De: 'Leerer Platzhalter'; En: 'empty placeholder'));
+
+  /// <summary>Text zum Grund einer ungültigen Vorlage.</summary>
+  cErrorTexts: array[TDebugDisplayError] of TDebugDisplayRuleText = (TDebugDisplayRuleText.Invalid,
+    TDebugDisplayRuleText.MissingClose, TDebugDisplayRuleText.StrayClose, TDebugDisplayRuleText.EmptyPlaceholder);
 
 {$SCOPEDENUMS OFF}
 
@@ -89,7 +96,7 @@ begin
     mSegment.Offset := ATemplate.ErrorOffset;
     mColumn := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, mSegment);
     AReport.Add(TTextRange.Create(ASource.TemplateLine, mColumn, ASource.TemplateLine, mColumn + 1),
-      cTexts[TDebugDisplayRuleText.Invalid].Fmt([ATemplate.Error]));
+      cTexts[TDebugDisplayRuleText.Invalid].Fmt([cTexts[cErrorTexts[ATemplate.Error]].Text]));
   end;
 end;
 

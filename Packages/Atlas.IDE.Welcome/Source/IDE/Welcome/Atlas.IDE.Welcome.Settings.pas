@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Welcome.Settings;
 
 // Abschnitt „Willkommensseite“ im Optionsdialog, IDE-Teil des Moduls
-// Willkommensseite (#1456; vorher fest in Atlas.UI.Settings.Page).
+// Willkommensseite (#1456).
 // TAtlasIdeWelcomeSettings ist der IAtlasSettingsSectionProvider, den die
 // Composition des Moduls über seinen Scope anmeldet: Für jede Optionsseite
 // entsteht ein TAtlasWelcomeSettingsSection mit den Haken dazu.

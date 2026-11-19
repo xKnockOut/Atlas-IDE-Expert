@@ -25,7 +25,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.FlowMap,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.FlowFrame;
 
 type
@@ -50,7 +50,7 @@ type
     FHooks: TAtlasFlowMapHooks;
     FCacheFolder: string;
     FStarted: Boolean;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FCancel: IAtlasCiCancel;
     FGeneration: Integer;
     FTarget: TAtlasTrackerTarget;
@@ -102,7 +102,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
 end;
 
 destructor TAtlasIdeFlowMap.Destroy;

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.MyIssues;
 
-// Bereich „Meine Issues“ der Willkommensseite (#765, Mockup #ws12), ohne
+// Bereich „Meine Issues“ der Willkommensseite (#765), ohne
 // Open Tools API. Selbst gezeichnet, je Issue zwei Zeilen im Raster:
 //   #753     Atlas-Bereiche und Layout der Willkommens…   [Beginnen]
 //            (plugin) (welcome) (PR #760 · CI grün)
@@ -322,7 +322,8 @@ uses
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.MyIssues.Strings;
+  Atlas.UI.Tracker.MyIssues.Strings,
+  Atlas.UI.Foundation.Scaling;
 
 const
   cMenuLine = '-';
@@ -420,7 +421,7 @@ begin
   end;
   mWidth := ACanvas.TextWidth(mText) + 2 * Scaled(TAtlasTrackerIssuesView.cButtonPadding);
   mHeight := Scaled(TAtlasTrackerIssuesView.cButtonHeight);
-  // Über beide Zeilen der Zeile mittig (Mockup).
+  // Über beide Zeilen der Zeile mittig.
   mTop := RowTop(AIndex) + (RowHeight(AIndex) - mHeight) div 2;
   mArea := Rect(ARight - mWidth, mTop, ARight, mTop + mHeight);
   FStartRects[AIndex] := mArea;
@@ -518,7 +519,7 @@ begin
   mLeft := Scaled(TAtlasTrackerIssuesView.cIndent);
   mRight := FOwner.PaintBox.Width - mLeft;
   mLine := Scaled(TAtlasTrackerIssuesView.cLineHeight);
-  // Trennlinie zwischen den Zeilen (Mockup).
+  // Trennlinie zwischen den Zeilen.
   if AIndex > 0 then
   begin
     ACanvas.Pen.Color := Color(clBtnFace);
@@ -1117,7 +1118,7 @@ begin
   FLabel.Parent := FBar;
   FLabel.Align := alRight;
   FLabel.AlignWithMargins := True;
-  FLabel.Margins.SetBounds(cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
+  TAtlasControlScaling.SetMargins(FLabel, cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
   FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryHint);

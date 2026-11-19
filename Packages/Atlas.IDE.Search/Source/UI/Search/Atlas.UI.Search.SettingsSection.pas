@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Search.SettingsSection;
 
-// Abschnitte des Moduls Suche im Optionsdialog (#1456; vorher in den Teilen „Units
-// suchen“ und „Allgemein“ von Base).
+// Abschnitte des Moduls Suche im Optionsdialog (#1456) auf den
+// Seiten „Units suchen“ und „Allgemein“.
 // - „Units suchen“: Modulschalter, Dialog „Units suchen“ (#777) und Suchleiste im Editor (#878, #893). Base behält
 //   auf dieser Seite nur „Datei und Symbol schnell öffnen“.
 // - „Allgemein“: Code-Abfragen (#1351).

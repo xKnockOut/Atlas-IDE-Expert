@@ -214,24 +214,6 @@ type
     View: IOTAEditView;
   end;
 
-procedure InvalidateTop;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-end;
-
-function Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 function SampleBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
 var
   mSample: COLORREF;
@@ -642,7 +624,7 @@ begin
   begin
     Exit;
   end;
-  mEditors := Services;
+  mEditors := TAtlasIdeGutterColumns.Services;
   if mEditors = nil then
   begin
     if not FLog.NoServices then
@@ -672,20 +654,12 @@ begin
 end;
 
 procedure TAtlasIdeQuickColumn.DropColumn;
-var
-  mEditors: INTACodeEditorServices280;
 begin
   if FSlot.Column < 0 then
   begin
     Exit;
   end;
-  mEditors := Services;
-  if mEditors <> nil then
-  begin
-    mEditors.RemoveGutterColumn(FSlot.Column);
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-  FSlot.Column := -1;
+  TAtlasIdeGutterColumns.Remove(FSlot.Column);
   FArea.Rows.Clear;
   if FLog.Painted then
   begin
@@ -734,12 +708,12 @@ begin
         // Neue Datei vorn: gleich wiederfinden. Die IDE-Lesezeichen übernimmt CheckPainted, sobald die Spalte
         // zeichnet (#1281).
         TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text);
-        InvalidateTop;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
     TAtlasQuickTrackStep.Settled:
       if TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text) then
       begin
-        InvalidateTop;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
     TAtlasQuickTrackStep.Idle, TAtlasQuickTrackStep.Changed: ;
   end;
@@ -1107,7 +1081,7 @@ begin
   FHover.Row := ARow;
   FHover.Since := TThread.GetTickCount64;
   // Umriss auf freiem Platz folgt der Maus.
-  InvalidateTop;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

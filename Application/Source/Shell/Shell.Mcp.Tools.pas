@@ -16,12 +16,14 @@ uses
   Shell.Mcp.NavigationTools,
   Shell.Mcp.BuildTestTools,
   Shell.Mcp.DebugTools,
+  Shell.Mcp.IdeContextTools,
   Shell.Mcp.ReportTools,
   Shell.Mcp.CheckTools,
   Shell.Mcp.ArchitectureTools,
   Shell.Mcp.EditingTools,
   Shell.Mcp.ProjectTools,
   Shell.Mcp.ChangeTools,
+  Shell.Mcp.HistoryTools,
   Shell.Mcp.IssueTools;
 
 procedure RegisterContextTools(const AContext: TMcpToolContext);
@@ -35,6 +37,7 @@ begin
   RegisterNavigationTools(mContext);
   RegisterBuildTestTools(mContext);
   RegisterDebugTools(mContext);
+  RegisterIdeContextTools(mContext);
   RegisterReportTools(mContext);
   RegisterCheckTools(mContext);
   RegisterArchitectureTools(mContext);
@@ -43,6 +46,7 @@ begin
   RegisterAffectedTestsTool(mContext);
   RegisterQueryTools(mContext);
   RegisterHotspotTools(mContext);
+  RegisterSymbolHistoryTool(mContext);
   RegisterStatusTools(mContext);
   RegisterIssueTools(mContext);
 end;

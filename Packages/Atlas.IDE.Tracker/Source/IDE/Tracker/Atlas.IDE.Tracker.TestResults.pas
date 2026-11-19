@@ -112,7 +112,7 @@ type
   public const
     /// <summary>Kennung wie früher als Bereich, damit gespeicherte Layouts gelten.</summary>
     cTileId = 'atlas.tests';
-    /// <summary>Reihenfolge außerhalb des Atlas-Layouts: nach „Projektverlauf“ in der linken Spalte (Mockup).
+    /// <summary>Reihenfolge außerhalb des Atlas-Layouts: nach „Projektverlauf“ in der linken Spalte.
     /// </summary>
     cOrder = 23;
   private

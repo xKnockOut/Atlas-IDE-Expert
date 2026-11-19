@@ -379,6 +379,11 @@ begin
   Assert.Contains(mText, 'Ergebnis get_impact');
   Assert.Contains(mText, 'Test.{unit}', 'Namensmuster der Testunit');
   Assert.Contains(mText, 'run_tests');
+  Assert.DoesNotContain(mText, 'get_last_tests', 'Werkzeug nicht angemeldet');
+  // #2409: Mit get_last_tests erst den letzten Lauf der IDE lesen.
+  AddTool('get_last_tests', TMcpToolKind.Read);
+  mText := Get('write_tests', '{"name":"TAuftrag.Speichern"}');
+  Assert.Contains(mText, 'get_last_tests ohne neuen Lauf');
 end;
 
 procedure TMcpPromptsTests.FixFindingEmbedsExplanationSnippetAndFixes;

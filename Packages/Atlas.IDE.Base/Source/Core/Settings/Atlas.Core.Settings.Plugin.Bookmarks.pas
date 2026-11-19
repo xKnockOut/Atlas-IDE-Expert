@@ -13,6 +13,8 @@ const
   /// <summary>Höchste Wartezeit in ms auf den zweiten Teil der Faltungsakkorde (#1104,
   /// bookmarks.quick.chordWait).</summary>
   cMaxQuickChordWait = 5000;
+  /// <summary>Vorgabe für bookmarks.quick.chordWait in ms.</summary>
+  cDefaultQuickChordWait = 800;
 
 type
   /// <summary>Plugin-Einstellungen: Lesezeichen und Schnell-Lesezeichen.</summary>
@@ -57,7 +59,8 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Atlas.Core.Settings.KeyCodes;
 
 { TAtlasPluginBookmarksSettings }
 
@@ -69,8 +72,8 @@ begin
   Result.QuickBookmarksGutter := True;
   Result.QuickBookmarksGutterClick := True;
   Result.QuickBookmarksNumberedKeys := True;
-  Result.QuickBookmarkKey := $604B; // Strg+Umschalt+K
-  Result.QuickBookmarkChordWait := 800;
+  Result.QuickBookmarkKey := cKeyShift + cKeyCtrl + Ord('K'); // Strg+Umschalt+K
+  Result.QuickBookmarkChordWait := cDefaultQuickChordWait;
   Result.QuickBookmarksScope := 'project';
   Result.QuickBookmarksImportIde := True;
   Result.BookmarksEnabled := True;

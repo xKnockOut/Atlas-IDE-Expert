@@ -68,7 +68,7 @@ begin
   Assert.AreEqual(1234, mSnapshot.Units);
   Assert.AreEqual<Int64>(200 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.Usages]);
   Assert.AreEqual<Int64>(30 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.TreeCache]);
-  // Übersetzte Packages (.dcp) als eigener Bereich statt im Rest (Speicher, Rückmeldung 01.11.2026).
+  // Übersetzte Packages (.dcp) als eigener Bereich statt im Rest, sonst bleibt viel Speicher unerklärt.
   Assert.AreEqual<Int64>(2 * cMb, mSnapshot.Memory[TAtlasServerMemoryPart.Packages]);
   Assert.AreEqual<Int64>(500 * cMb, mSnapshot.MemoryTotal);
   Assert.AreEqual<Int64>(400 * cMb, mSnapshot.MemoryBudget);

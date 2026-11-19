@@ -12,7 +12,7 @@
 //       "project": "C:\\b.dproj"}]}
 //   Neueste Wahl zuerst, höchstens cMaxEntries; ein höheres Format bleibt
 //   unangetastet. Lesen und Schreiben über TAtlasDataFile:
-//   atomar ersetzt (früher Löschen und Umbenennen), eine unbrauchbare Datei
+//   atomar ersetzt (kein Löschen und Umbenennen), eine unbrauchbare Datei
 //   liegt danach als .defekt daneben, eine gesperrte wird nicht überschrieben.
 
 interface

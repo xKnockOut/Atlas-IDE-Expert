@@ -1,7 +1,8 @@
 ﻿unit Shell.Mcp.CheckTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge der Prüfregeln, Metriken und TODOs
-// (get_diagnostics, hook_check, get_metrics, get_todos, check_code, get_dfm_info, explain_finding).
+// (get_diagnostics, hook_check, get_metrics, get_todos, check_code, get_dfm_info, explain_finding,
+// search_atlas_docs).
 
 interface
 
@@ -23,6 +24,8 @@ uses
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.CheckTools,
+  Atlas.Common.Mcp.ProtectedFiles,
+  Atlas.Common.Mcp.DocsTools,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Rules.Contract,
@@ -32,15 +35,17 @@ uses
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
+  Shell.Bootstrap,
   Shell.Texts;
 
 type
 {$SCOPEDENUMS ON}
   TMcpCheckText = (GetDiagnosticsTool, GetDiagnosticsFile, HookCheckTool, HookCheckFile, HookCheckSeverity,
-    GetMetricsTool, GetMetricsFile, GetMetricsFormat, GetTodosTool, GetTodosFile, GetTodosUnit, GetTodosCategory,
-    GetTodosOwner, GetTodosKeyword, GetTodosIncludeDone, GetTodosFormat, CheckCodeTool, CheckCodeFile, CheckCodeText,
-    CheckCodeStartLine, CheckCodeEndLine, GetDfmInfoTool, GetDfmInfoFile, ExplainFindingTool, ExplainFindingFile,
-    ExplainFindingLine, ExplainFindingRule, IndexLoading, FormNotFound, Unreadable, NoFinding);
+    HookCheckMode, GetMetricsTool, GetMetricsFile, GetMetricsFormat, GetTodosTool, GetTodosFile, GetTodosUnit,
+    GetTodosCategory, GetTodosOwner, GetTodosKeyword, GetTodosIncludeDone, GetTodosFormat, CheckCodeTool, CheckCodeFile,
+    CheckCodeText, CheckCodeStartLine, CheckCodeEndLine, GetDfmInfoTool, GetDfmInfoFile, ExplainFindingTool,
+    ExplainFindingFile, ExplainFindingLine, ExplainFindingRule, IndexLoading, FormNotFound, Unreadable, NoFinding,
+    SearchDocsTool, SearchDocsQuery, SearchDocsKind, SearchDocsLanguage, SearchDocsLimit, SearchDocsFormat);
 {$SCOPEDENUMS OFF}
 
 const
@@ -51,12 +56,17 @@ const
     (De: 'Für Hooks von Claude Code (PostToolUse nach Edit/Write, siehe Plugin atlas): Befunde ab severity ' +
     '(Vorgabe warning) der gerade bearbeiteten Datei als Hook-Ausgabe mit additionalContext. Leer bei ' +
     'Dateien, die kein Pascal-Quelltext sind, außerhalb des Arbeitsbereichs liegen oder keine Befunde haben. ' +
-    'Abschalten über mcp.disabledTools.';
+    'Geschützte Dateien (assistants.protected) meldet es als Fehler, mit mode=pre (PreToolUse) lehnt es die ' +
+    'Bearbeitung ab. Abschalten über mcp.disabledTools.';
     En: 'For Claude Code hooks (PostToolUse after Edit/Write, see plugin atlas): findings from severity on ' +
     '(default warning) of the file just edited as hook output with additionalContext. Empty for files that ' +
-    'are not Pascal source, lie outside the workspace or have no findings. Turn off via mcp.disabledTools.'),
+    'are not Pascal source, lie outside the workspace or have no findings. Protected files ' +
+    '(assistants.protected) are reported as an error, with mode=pre (PreToolUse) the edit is refused. Turn off ' +
+    'via mcp.disabledTools.'),
     (De: 'Pfad der bearbeiteten Datei (tool_input.file_path)'; En: 'Path of the edited file (tool_input.file_path)'),
     (De: 'error, warning (Vorgabe), information oder hint'; En: 'error, warning (default), information or hint'),
+    (De: 'post (nach dem Schreiben, Vorgabe) oder pre (vor dem Schreiben: nur geschützte Dateien ablehnen)';
+    En: 'post (after writing, default) or pre (before writing: only refuse protected files)'),
     (De: 'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
     'Komplexität, Parameteranzahl; Grenzwerte aus atlas.json (Regeln metric-*, Option "max"). Als ' +
     'Markdown-Bericht mit den Methoden über einem Grenzwert oder als JSON-Daten.';
@@ -109,7 +119,19 @@ const
     En: 'Note: %s; findings that need the symbol index may still be missing.'),
     (De: 'Formulardatei "%s" nicht gefunden'; En: 'Form file "%s" not found'),
     (De: '%s ist nicht lesbar'; En: '%s is not readable'),
-    (De: 'Kein Befund in Zeile %d von %s.'; En: 'No finding in line %d of %s.'));
+    (De: 'Kein Befund in Zeile %d von %s.'; En: 'No finding in line %d of %s.'),
+    (De: 'Durchsucht die Doku von Atlas: Prüfregeln (mit Schweregrad im Projekt), Einstellungen (mit aktuellem Wert ' +
+      'und Herkunft), Fenster, Abschnitte der Funktionsseiten und Tastenkürzel. Eine genaue Kennung ' +
+      '(method-order, editor.breadcrumbs) liefert den ganzen Abschnitt. Auch ohne Repository.';
+     En: 'Searches the Atlas documentation: check rules (with severity in the project), settings (with current ' +
+      'value and origin), windows, sections of the feature pages and shortcuts. An exact id (method-order, ' +
+      'editor.breadcrumbs) returns the whole section. Works without the repository.'),
+    (De: 'Frage oder Stichwort, auch eine Kennung'; En: 'Question or keyword, also an id'),
+    (De: 'rule, setting, window, feature, command oder all (Vorgabe)';
+     En: 'rule, setting, window, feature, command or all (default)'),
+    (De: 'de (Vorgabe) oder en'; En: 'de (default) or en'),
+    (De: 'Höchstzahl der Treffer, 1 bis 20 (Vorgabe 5)'; En: 'Maximum number of hits, 1 to 20 (default 5)'),
+    (De: 'text (Vorgabe) oder json'; En: 'text (default) or json'));
 
 function ToolGetDiagnostics(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
@@ -151,14 +173,29 @@ function ToolHookCheck(const AContext: TMcpToolContext; const AArguments: TJSONO
 var
   mFileName: string;
   mSeverity: TRuleSeverity;
+  mMoment: TMcpHookMoment;
+  mProtection: TMcpProtectedFiles;
 begin
   mSeverity := TMcpCheckTools.ParseHookSeverity(TMcpArgs.OptionalString(AArguments, 'severity'));
+  mMoment := TMcpProtectedFiles.ParseHookMoment(TMcpArgs.OptionalString(AArguments, 'mode'));
   try
     mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   except
     // Dateien außerhalb des Projekts gehen Atlas nichts an; eine Fehlermeldung je Bearbeitung wäre Rauschen.
     on EMcpToolError do
       Exit('');
+  end;
+  // Geschützte Dateien (#2608) vor den Befunden: vor dem Schreiben ablehnen, danach als Fehler melden.
+  mProtection := TMcpProtectedFiles.Create(AContext.Guard.Root,
+    AContext.Group.Main.Configuration.Settings.AssistantProtected);
+  try
+    Result := mProtection.HookOutput(mFileName, mMoment);
+  finally
+    mProtection.Free;
+  end;
+  if (Result <> '') or (mMoment = TMcpHookMoment.Before) then
+  begin
+    Exit;
   end;
   Result := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, ReadSourceText,
@@ -168,9 +205,10 @@ end;
 procedure AddHookCheck(const AContext: TMcpToolContext);
 begin
   AContext.Server.AddTool('hook_check', cTexts[TMcpCheckText.HookCheckTool].Text,
-    TMcpArgs.StringSchema(['file', 'severity'],
+    TMcpArgs.StringSchema(['file', 'severity', 'mode'],
       [cTexts[TMcpCheckText.HookCheckFile].Text,
-      cTexts[TMcpCheckText.HookCheckSeverity].Text], 1),
+      cTexts[TMcpCheckText.HookCheckSeverity].Text,
+      cTexts[TMcpCheckText.HookCheckMode].Text], 1),
     ContextTool(AContext, ToolHookCheck));
 end;
 
@@ -405,6 +443,47 @@ begin
     ContextTool(AContext, ToolExplainFinding));
 end;
 
+/// <summary>Inhalt von AFileName; '' ohne Datei oder unlesbar.</summary>
+function SettingsText(const AFileName: string): string;
+begin
+  if (AFileName = '') or not FileExists(AFileName) or not ReadSourceText(AFileName, Result) then
+  begin
+    Result := '';
+  end;
+end;
+
+function ToolSearchAtlasDocs(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mRequest: TMcpDocsRequest;
+begin
+  mRequest := TMcpDocsTools.RequestOf(AArguments);
+  mRequest.Settings := AContext.Group.Main.Configuration.Settings;
+  mRequest.ProjectText := SettingsText(AContext.Group.Main.Configuration.Files.Read);
+  if mRequest.Settings.McpGlobalSettings then
+  begin
+    mRequest.GlobalText := SettingsText(TShellBootstrap.GlobalSettingsFile);
+  end;
+  Result := TMcpDocsTools.Search(mRequest);
+end;
+
+procedure AddSearchAtlasDocs(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('search_atlas_docs', cTexts[TMcpCheckText.SearchDocsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"query":{"type":"string","description":%s},' +
+      '"kind":{"type":"string","enum":["all","rule","setting","window","feature","command"],"description":%s},' +
+      '"language":{"type":"string","enum":["de","en"],"description":%s},' +
+      '"limit":{"type":"integer","minimum":1,"maximum":20,"description":%s},' +
+      '"format":{"type":"string","enum":["text","json"],"description":%s}},' +
+      '"required":["query"]}',
+      [cTexts[TMcpCheckText.SearchDocsQuery].Text,
+      cTexts[TMcpCheckText.SearchDocsKind].Text,
+      cTexts[TMcpCheckText.SearchDocsLanguage].Text,
+      cTexts[TMcpCheckText.SearchDocsLimit].Text,
+      cTexts[TMcpCheckText.SearchDocsFormat].Text]),
+    ContextTool(AContext, ToolSearchAtlasDocs));
+end;
+
 procedure RegisterCheckTools(const AContext: TMcpToolContext);
 begin
   AddGetDiagnostics(AContext);
@@ -414,6 +493,7 @@ begin
   AddCheckCode(AContext);
   AddGetDfmInfo(AContext);
   AddExplainFinding(AContext);
+  AddSearchAtlasDocs(AContext);
 end;
 
 initialization

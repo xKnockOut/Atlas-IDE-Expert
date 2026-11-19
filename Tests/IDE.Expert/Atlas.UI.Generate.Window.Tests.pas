@@ -20,7 +20,7 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    /// <summary>Entwurf AC7: Kopf „Erzeugen“, Zeilen 1–6.</summary>
+    /// <summary>Kopf „Erzeugen“, Zeilen 1–6.</summary>
     [Test]
     procedure CaptionsLikeMockup;
     [Test]

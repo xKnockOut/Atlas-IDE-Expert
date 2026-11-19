@@ -29,6 +29,8 @@ type
     /// <summary>InvalidateTopEditor, aber nur bei offenem Editorfenster.</summary>
     class procedure InvalidateTop(const AServices: INTACodeEditorServices); overload; static;
     class procedure InvalidateTop(const AServices: INTACodeEditorServices280); overload; static;
+    /// <summary>Wie InvalidateTop, holt INTACodeEditorServices selbst; ohne Dienst nichts.</summary>
+    class procedure RepaintTop; static;
     /// <summary>InvalidateTopEditorLogicalLine, aber nur bei offenem Editorfenster.</summary>
     class procedure InvalidateTopLine(const AServices: INTACodeEditorServices; ALogicalLine: Integer); static;
   end;
@@ -38,7 +40,8 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  Vcl.Forms;
+  Vcl.Forms,
+  ToolsAPI;
 
 const
   cEditWindowClass = 'TEditWindow';
@@ -79,6 +82,16 @@ begin
   if (AServices <> nil) and EditorOpen then
   begin
     AServices.InvalidateTopEditor;
+  end;
+end;
+
+class procedure TAtlasIdeEditorRefresh.RepaintTop;
+var
+  mEditors: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
+  begin
+    InvalidateTop(mEditors);
   end;
 end;
 
