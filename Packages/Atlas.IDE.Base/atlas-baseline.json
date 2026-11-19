@@ -404,7 +404,6 @@
     {"path": "Source/Core/Style/Atlas.Core.Style.Syntax.pas", "rule": "duplicate-routine-body", "fingerprint": "d535022e", "count": 1, "routine": "AfterBrace", "context": "7404dda4"},
     {"path": "Source/Core/Style/Atlas.Core.Style.Syntax.pas", "rule": "duplicate-routine-body", "fingerprint": "fd786f65", "count": 1, "routine": "AfterQuote", "context": "61118da2"},
     {"path": "Source/Core/Undo/Atlas.Core.Undo.Journal.pas", "rule": "duplicate-routine-body", "fingerprint": "91724c96", "count": 1, "routine": "TAtlasUndoJournal.Log", "context": "12349d8c"},
-    {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Worker.pas", "rule": "duplicate-routine-body", "fingerprint": "938b6caa", "count": 1, "routine": "TAtlasVcsWorker.Pending", "context": "edf304f8"},
     {"path": "Source/IDE/Build/Atlas.IDE.Build.CheckOnSave.pas", "rule": "hardcoded-string", "fingerprint": "4835051e", "count": 3, "routine": "TAtlasIdeCheckOnSave.Run", "context": "3ffd56ae"},
     {"path": "Source/IDE/Build/Atlas.IDE.Build.CheckOnSave.pas", "rule": "hardcoded-string", "fingerprint": "669d7eb4", "count": 1, "routine": "TAtlasIdeCheckOnSave.Run", "context": "d3308d40"},
     {"path": "Source/IDE/Build/Atlas.IDE.Build.CheckOnSave.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeCheckOnSave.Create", "context": "9df66e02"},
