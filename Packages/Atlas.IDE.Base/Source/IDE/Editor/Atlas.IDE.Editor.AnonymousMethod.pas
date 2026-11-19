@@ -32,8 +32,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.IDE.Editor.NamedRefactoring;
+  Atlas.IDE.Editor.NamedRefactoring,
+  Atlas.UI.Editor.Strings;
 
 const
   cApplyCommand = 'atlas.server.anonymousMethod';
@@ -45,14 +45,14 @@ class procedure TAtlasIdeAnonymousMethod.Execute(ASession: TLspSession; const AA
 var
   mTexts: TAtlasNamedRefactoringTexts;
 begin
-  mTexts.Title := TAtlasTextId.AnonymousMethodTitle;
-  mTexts.Prompt := TAtlasTextId.AnonymousMethodPrompt;
-  mTexts.Failed := TAtlasTextId.AnonymousMethodFailed;
-  mTexts.Nothing := TAtlasTextId.AnonymousMethodNothing;
-  mTexts.PreviewHint := TAtlasTextId.AnonymousMethodPreviewHint;
-  mTexts.Apply := TAtlasTextId.AnonymousMethodApply;
-  mTexts.Done := TAtlasTextId.AnonymousMethodDone;
-  mTexts.Warning := TAtlasTextId.AnonymousMethodWarning;
+  mTexts.Title := TAtlasEditorTextId.AnonymousMethodTitle;
+  mTexts.Prompt := TAtlasEditorTextId.AnonymousMethodPrompt;
+  mTexts.Failed := TAtlasEditorTextId.AnonymousMethodFailed;
+  mTexts.Nothing := TAtlasEditorTextId.AnonymousMethodNothing;
+  mTexts.PreviewHint := TAtlasEditorTextId.AnonymousMethodPreviewHint;
+  mTexts.Apply := TAtlasEditorTextId.AnonymousMethodApply;
+  mTexts.Done := TAtlasEditorTextId.AnonymousMethodDone;
+  mTexts.Warning := TAtlasEditorTextId.AnonymousMethodWarning;
   TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 

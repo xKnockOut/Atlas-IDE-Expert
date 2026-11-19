@@ -59,14 +59,15 @@ begin
     Exit;
   end;
   // Name abfragen und das dritte Argument ersetzen.
-  if not TAtlasIdeServerEdit.AskName(AArgumentsJson, TAtlasTextId.MoveClassTitle, TAtlasTextId.MoveClassPrompt, mName,
+  if not TAtlasIdeServerEdit.AskName(AArgumentsJson, TAtlasEditorTextId.MoveClassTitle,
+    TAtlasEditorTextId.MoveClassPrompt, mName,
     mApplyArguments) then
   begin
     Exit;
   end;
   mNewFile := '';
   if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mApplyArguments, cTimeoutMs,
-    TAtlasTextId.MoveClassFailed),
+    TAtlasEditorTextId.MoveClassFailed),
     procedure(const AReply: TJSONObject)
     begin
       mNewFile := TJsonRead.Text(AReply, 'file');
@@ -80,14 +81,15 @@ begin
     Exit;
   end;
   mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveClassPreviewHint, [mName, mReply.Edit.EditCount,
-    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.MoveClassWarning);
-  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), mHint,
+    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasEditorTextId.MoveClassWarning);
+  if TAtlasIdeServerEdit.Confirm(TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveClassTitle), mHint,
     TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveClassApply), mReply.Edit) and
-    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), AMessage,
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasEditorStrings.Text(TAtlasEditorTextId.MoveClassTitle),
+      AMessage,
     mOutcome) then
   begin
     AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MoveClassDone, [mName, mOutcome.Edits, mOutcome.Files]));
-    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.MoveClassWarning, AMessage);
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasEditorTextId.MoveClassWarning, AMessage);
     if mNewFile <> '' then
     begin
       TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(mNewFile), 0, 0);
