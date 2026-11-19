@@ -133,12 +133,11 @@ end;
 /// <summary>Millisekunden seit 1970 (YouTrack) als UTC; 0 ohne.</summary>
 class function TAtlasYouTrackJson.TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
 var
-  mValue: TJSONValue;
   mMs: Int64;
 begin
   Result := 0;
-  mValue := AObject.Values[AName];
-  if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mMs) and (mMs > 0) then
+  // Millisekunden seit 1970 (UTC), kein ISO-Text.
+  if (TJsonRead.Value(AObject, AName) is TJSONNumber) and TJsonRead.TryInt64(AObject, AName, mMs) and (mMs > 0) then
   begin
     Result := UnixToDateTime(mMs div 1000, True) + (mMs mod 1000) / MSecsPerDay;
   end;

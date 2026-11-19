@@ -127,6 +127,17 @@ uses
   Atlas.Text.LogMarks,
   Atlas.Text.Lines;
 
+const
+  // Ausnahme- und Protokolltexte für Entwickler von Modulen (nie übersetzt).
+  cScopeClosed = 'Modul %s ist abgemeldet; es kann nichts mehr anmelden';
+  cListenerOf = 'Hörer von ';
+  cNotSupported = 'Objekt unterstützt %s nicht';
+  cNoListener = 'Kein Hörer angegeben';
+  cNoModule = 'Kein Modul angegeben';
+  cNoModuleId = 'Modul ohne Id';
+  cShutDown = 'Base ist abgebaut; Modul %s wird nicht angemeldet';
+  cAlreadyRegistered = 'Modul %s ist schon angemeldet';
+
 type
   TAtlasModuleScope = class(TInterfacedObject, IAtlasModuleScope)
   private
@@ -292,7 +303,7 @@ begin
   try
     if not FOpen then
     begin
-      raise EAtlasModuleRegistry.CreateFmt('Modul %s ist abgemeldet; es kann nichts mehr anmelden', [FModuleId]);
+      raise EAtlasModuleRegistry.CreateFmt(cScopeClosed, [FModuleId]);
     end;
     Result := FRegistry;
   finally
@@ -545,7 +556,7 @@ begin
       mListener.Listener.RegistryChanged(mChange);
     except
       on mError: Exception do
-        Result := Result + [FailureOf('Hörer von ' + mListener.OwnerId, mError)];
+        Result := Result + [FailureOf(cListenerOf + mListener.OwnerId, mError)];
     end;
   end;
 end;
@@ -563,7 +574,7 @@ var
 begin
   if (AObject = nil) or not Supports(AObject, AIID) then
   begin
-    raise EAtlasModuleRegistry.CreateFmt('Objekt unterstützt %s nicht', [GUIDToString(AIID)]);
+    raise EAtlasModuleRegistry.CreateFmt(cNotSupported, [GUIDToString(AIID)]);
   end;
   mItem := TAtlasProvisionRegistration.Create(Self);
   mProvision.IID := AIID;
@@ -589,7 +600,7 @@ var
 begin
   if AListener = nil then
   begin
-    raise EAtlasModuleRegistry.Create('Kein Hörer angegeben');
+    raise EAtlasModuleRegistry.Create(cNoListener);
   end;
   mItem := TAtlasListenerRegistration.Create(Self);
   mEntry.Listener := AListener;
@@ -668,24 +679,24 @@ var
 begin
   if AModule = nil then
   begin
-    raise EAtlasModuleRegistry.Create('Kein Modul angegeben');
+    raise EAtlasModuleRegistry.Create(cNoModule);
   end;
   mEntry.Module := AModule;
   mEntry.Info := AModule.Info;
   mEntry.Info.Id := Trim(mEntry.Info.Id);
   if mEntry.Info.Id = '' then
   begin
-    raise EAtlasModuleRegistry.Create('Modul ohne Id');
+    raise EAtlasModuleRegistry.Create(cNoModuleId);
   end;
   FLock.Acquire;
   try
     if FShutDown then
     begin
-      raise EAtlasModuleRegistry.CreateFmt('Base ist abgebaut; Modul %s wird nicht angemeldet', [mEntry.Info.Id]);
+      raise EAtlasModuleRegistry.CreateFmt(cShutDown, [mEntry.Info.Id]);
     end;
     if IndexOfModule(mEntry.Info.Id) >= 0 then
     begin
-      raise EAtlasModuleRegistry.CreateFmt('Modul %s ist schon angemeldet', [mEntry.Info.Id]);
+      raise EAtlasModuleRegistry.CreateFmt(cAlreadyRegistered, [mEntry.Info.Id]);
     end;
     mScope := TAtlasModuleScope.Create(Self, mEntry.Info.Id);
     mEntry.Scope := mScope;

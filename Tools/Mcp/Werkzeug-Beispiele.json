@@ -107,8 +107,43 @@
     "get_last_build": {
       "arguments": {}
     },
+    "get_last_tests": {
+      "arguments": { "only": "all", "format": "json" }
+    },
     "build_project": {
       "arguments": { "project": "RefApp", "mode": "check" },
+      "process": true
+    },
+    "debug_start": {
+      "arguments": { "project": "RefApp", "waitSeconds": 0 },
+      "process": true
+    },
+    "debug_stop": {
+      "arguments": {},
+      "process": true
+    },
+    "set_breakpoint": {
+      "arguments": { "file": "Source/Ref.Komponenten.Anzeige.pas", "line": "{{zeile:procedure TRefAnzeige.SetStil}}" },
+      "process": true
+    },
+    "remove_breakpoint": {
+      "arguments": { "all": true },
+      "process": true
+    },
+    "debug_continue": {
+      "arguments": { "waitSeconds": 0 },
+      "process": true
+    },
+    "debug_step": {
+      "arguments": { "kind": "over", "waitSeconds": 0 },
+      "process": true
+    },
+    "debug_state": {
+      "arguments": { "frames": 5 },
+      "process": true
+    },
+    "debug_evaluate": {
+      "arguments": { "expression": "Self" },
       "process": true
     },
     "get_affected_tests": {

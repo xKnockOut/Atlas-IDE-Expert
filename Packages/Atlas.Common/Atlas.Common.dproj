@@ -225,6 +225,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Colors.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Statistics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ReferenceConfidence.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ParameterHeaders.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.References.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rename.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.pas"/>
@@ -346,6 +347,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeComments.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.BodySpacing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InterfaceMethods.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
@@ -710,9 +712,12 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ExtractTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ImplementationTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeInbox.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeDebug.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ProfileTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.LastTests.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ReportTools.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Contract.pas"/>
         <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Sampling.pas"/>

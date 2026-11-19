@@ -18,8 +18,6 @@ type
     class function Shorten(const AText: string; AMax: Integer): string; static;
     /// <summary>Logins aus "assignees" mit ", ", ersatzweise "assignee"; '' ohne.</summary>
     class function AssigneesOf(AObject: TJSONObject): string; static;
-    /// <summary>ISO 8601 ("2026-10-28T10:40:49Z") als UTC; 0 ohne.</summary>
-    class function TimeOf(AObject: TJSONObject; const AName: string): TDateTime; static;
     /// <summary>"login" eines Benutzerobjekts, gekürzt; '' ohne.</summary>
     class function LoginOf(AValue: TJSONValue): string; static;
     /// <summary>AText, höchstens TAtlasTrackerDetails.cMaxText Zeichen.</summary>
@@ -85,19 +83,6 @@ begin
   if (Result = '') and (mItem is TJSONObject) then
   begin
     Result := Shorten(TJsonRead.Text(TJSONObject(mItem), 'login'), TAtlasTrackerTextLimits.cName);
-  end;
-end;
-
-/// <summary>ISO 8601 ("2026-10-28T10:40:49Z") als UTC; 0 ohne.</summary>
-class function TAtlasGitHubJson.TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  mText := TJsonRead.Text(AObject, AName);
-  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
-  begin
-    Result := 0;
   end;
 end;
 

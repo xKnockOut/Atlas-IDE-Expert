@@ -261,6 +261,7 @@ begin
       'begin',
       '  $0',
       'end;',
+      '',
       'end.']), TChangeSignature.ApplyEdits(mText, mEdits));
     // public vorhanden: dort am Ende.
     mPlan.Section := 'public';

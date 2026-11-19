@@ -121,6 +121,24 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+type
+  TRegistryText = (AllGood);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TRegistryText] of string = (
+    ('%s: alles in Ordnung'),
+    ('%s: all good'));
+
+function UiText(AId: TRegistryText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
+
 { TAtlasStatusRegistry }
 
 constructor TAtlasStatusRegistry.Create;
@@ -540,7 +558,7 @@ begin
   end;
   if Length(mLines) = 0 then
   begin
-    Result := cFieldCaption + ': alles in Ordnung';
+    Result := Format(UiText(TRegistryText.AllGood), [cFieldCaption]);
   end
   else
   begin
@@ -566,5 +584,9 @@ class function TAtlasStatusSummary.JoinIds(const AIds: TArray<string>): string;
 begin
   Result := string.Join(', ', AIds);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Status.Registry', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.
