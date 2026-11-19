@@ -811,6 +811,11 @@ begin
     begin
       Continue;
     end;
+    // Ein gleichnamiger Typ (WParam: WPARAM) bleibt (#1896).
+    if FContext.Tree.InnermostAt(FTokens[mIndex].Offset).Kind = TSyntaxKind.TypeReference then
+    begin
+      Continue;
+    end;
     Result := Result + [mIndex];
   end;
 end;

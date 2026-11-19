@@ -390,8 +390,8 @@ end;
 
 procedure TAtlasResultsHierarchyPart.SwitchDirection(ADirection: TAtlasHierarchyDirection);
 const
-  cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
-    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
+  cTitles: array[TAtlasHierarchyDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsIncoming,
+    TAtlasResultsTextId.ResultsOutgoing, TAtlasResultsTextId.ResultsSupertypes, TAtlasResultsTextId.ResultsSubtypes);
 var
   mRoots: TArray<TAtlasHierarchyItem>;
 begin
@@ -400,7 +400,7 @@ begin
     Exit;
   end;
   mRoots := FRoots;
-  Show(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots, ShowsDiagram);
+  Show(TAtlasResultsStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots, ShowsDiagram);
 end;
 
 function TAtlasResultsHierarchyPart.DiagramHtml: string;
