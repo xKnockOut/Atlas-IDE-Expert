@@ -62,7 +62,6 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Status.Server,
@@ -79,7 +78,6 @@ uses
   Atlas.IDE.Diagnostics.ServerPackage,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.IdeAdapters,
-  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Host;
 
 const
@@ -305,17 +303,10 @@ begin
   StatusLinesInstance := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default, mSources);
 end;
 
-/// <summary>Aktuelle Einstellungen für das Statusfeld.</summary>
-function CurrentSettings: TAtlasPluginSettings;
-begin
-  Result := TAtlasIdeSettings.Current;
-end;
-
 /// <summary>Atlas-Statusfeld mit Aktualisieren, Protokoll, Schnellschaltern und Neustart des Servers.</summary>
 procedure CreateStatusField;
 begin
-  StatusFieldInstance := TAtlasStatusFieldFlow.Create(TAtlasStatusRegistry.Default, StatusFieldSurface,
-    CurrentSettings);
+  StatusFieldInstance := NewStatusField(TAtlasStatusRegistry.Default);
   StatusFieldInstance.OnRefresh :=
     procedure
     begin

@@ -18,7 +18,8 @@ uses
   Atlas.IDE.Setup.Checklist,
   Atlas.Core.Commands.Contract,
   Atlas.Core.Setup.Contract,
-  Atlas.Core.Status.Contract;
+  Atlas.Core.Status.Contract,
+  Atlas.Core.Status.FieldFlow;
 
 /// <summary>Fabriken der IDE-Adapter einsetzen: Einstellungsspeicher in der Registry, Sicht des Planers, Puffer
 /// der Editoransicht, dazu die Fenster-Adapter (InstallUiAdapters). Ab der Unit-Initialisierung, vor dem ersten
@@ -32,8 +33,9 @@ function EditorFilesAdapter: IAtlasEditorFiles;
 function PaletteRegistry(APalette: TAtlasIdePalette): IAtlasCommandRegistry;
 /// <summary>Vorschläge aus dem Index des Servers für den Schattentext (#1890).</summary>
 function LearnedGhostProvider: IAtlasGhostProvider;
-/// <summary>Statuszeilen der Editorfenster und Statusfenster für das Atlas-Feld (#591).</summary>
-function StatusFieldSurface: IAtlasStatusFieldSurface;
+/// <summary>Atlas-Feld (#591) über ARegistry mit den Statuszeilen der Editorfenster als Oberfläche und den
+/// Einstellungen der IDE.</summary>
+function NewStatusField(const ARegistry: IAtlasStatusRegistry): TAtlasStatusFieldFlow;
 /// <summary>Was die Knöpfe der Einrichtung tun; AForgetKeys liest die Tasten beim nächsten Snapshot neu.</summary>
 function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc;
   out ASnapshot: TAtlasSetupSnapshot): IAtlasSetupEnvironment;
@@ -100,9 +102,17 @@ begin
   Result := TAtlasLearnedGhostProvider.Create;
 end;
 
-function StatusFieldSurface: IAtlasStatusFieldSurface;
+function NewStatusField(const ARegistry: IAtlasStatusRegistry): TAtlasStatusFieldFlow;
+var
+  mSurface: IAtlasStatusFieldSurface;
 begin
-  Result := TAtlasIdeStatusFieldSurface.Create;
+  // Erst in eine Interface-Variable: direkt an den const-Parameter übergeben zählte niemand mit.
+  mSurface := TAtlasIdeStatusFieldSurface.Create;
+  Result := TAtlasStatusFieldFlow.Create(ARegistry, mSurface,
+    function: TAtlasPluginSettings
+    begin
+      Result := TAtlasIdeSettings.Current;
+    end);
 end;
 
 /// <summary>Eigene Routine: Die Methodenreferenz fängt nur AEnvironment ein.</summary>
