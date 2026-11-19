@@ -77,7 +77,7 @@ var
 begin
   mContext := Default(TRuleContext);
   mContext.Text := 'unit U;'#10'{$I-}'#10'interface'#10'{$I x.inc}'#10'implementation'#10'{$I a.inc}'#10'end.';
-  mContext.ReadFile := FixedReader;
+  mContext.ReadFile := FixedReader();
   mTree := TPascalParser.Parse(mContext.Text);
   try
     mContext.Tree := mTree;

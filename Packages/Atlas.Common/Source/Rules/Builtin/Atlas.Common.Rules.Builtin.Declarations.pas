@@ -165,13 +165,10 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.MethodMatching,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
   Atlas.Common.Rules.Builtin.Declarations.Includes,
-  Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
