@@ -1096,6 +1096,7 @@ uses
   Atlas.UI.Tracker.SettingsBranches.Tests in 'IDE.Expert\Atlas.UI.Tracker.SettingsBranches.Tests.pas',
   Atlas.UI.Rules.Editor in '..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.Editor.pas',
   Atlas.UI.Rules.SettingsDialog in '..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas',
+  Atlas.IDE.Rules.Adapters.SettingsDialog in '..\Packages\Atlas.IDE.Rules\Source\IDE\Rules\Atlas.IDE.Rules.Adapters.SettingsDialog.pas',
   Atlas.UI.Settings.Marks in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Marks.pas',
   Atlas.UI.Settings.Group in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Group.pas',
   Atlas.UI.Settings.Transfer in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Transfer.pas',

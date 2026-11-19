@@ -933,15 +933,16 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.AiProviders.Contract` | `Core/AiProviders/Atlas.Core.AiProviders.Contract.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.Anthropic` | `Core/AiProviders/Atlas.Core.AiProviders.Anthropic.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.OpenAiCompatible` | `Core/AiProviders/Atlas.Core.AiProviders.OpenAiCompatible.pas` | Ordner `Core/AiProviders` |
-| `Atlas.Core.AiProviders.Adapters.Http` | `Core/AiProviders/Atlas.Core.AiProviders.Adapters.Http.pas` | Ordner `Core/AiProviders` |
+| `Atlas.Core.AiProviders.Providers.Http` | `Core/AiProviders/Atlas.Core.AiProviders.Providers.Http.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.Catalog` | `Core/AiProviders/Atlas.Core.AiProviders.Catalog.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.Assistants.AiGhost` | `Core/Assistants/Atlas.Core.Assistants.AiGhost.pas` | Ordner `Core/Assistants` |
-| `Atlas.IDE.Assistants.AiGhost` | `IDE/Assistants/Atlas.IDE.Assistants.AiGhost.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Adapters.AiGhost` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.AiGhost.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.AiErrors` | `IDE/Assistants/Atlas.IDE.Assistants.AiErrors.pas` | Ordner `IDE/Assistants`: Texte zu den Fehlern der KI-Anbieter |
 | `Atlas.Core.Assistants.DebugInbox` | `Core/Assistants/Atlas.Core.Assistants.DebugInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.DebugGate` | `Core/Assistants/Atlas.Core.Assistants.DebugGate.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.Banner` | `IDE/Assistants/Atlas.IDE.Assistants.Banner.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.AiProbe` | `IDE/Assistants/Atlas.IDE.Assistants.AiProbe.pas` | Ordner `IDE/Assistants` |
-| `Atlas.IDE.Assistants.AiText` | `IDE/Assistants/Atlas.IDE.Assistants.AiText.pas` | Ordner `IDE/Assistants`, Text vom KI-Anbieter für andere Module über den Vertrag, #2462 |
+| `Atlas.IDE.Assistants.Adapters.AiText` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.AiText.pas` | Ordner `IDE/Assistants`, Text vom KI-Anbieter für andere Module über den Vertrag, #2462 |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.DebugInbox` | `IDE/Assistants/Atlas.IDE.Assistants.DebugInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.DebugBar` | `IDE/Assistants/Atlas.IDE.Assistants.DebugBar.pas` | Ordner `IDE/Assistants` |
@@ -949,7 +950,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition.Adapters` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.Adapters.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
-| `Atlas.IDE.Assistants.Instructions` | `IDE/Assistants/Atlas.IDE.Assistants.Instructions.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Adapters.Instructions` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.Instructions.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
 | `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.DebugBar` | `UI/Assistants/Atlas.UI.Assistants.DebugBar.pas` | Ordner `UI/Assistants` |
@@ -970,8 +971,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.VersionControl.Providers.Svn` | `Core/VersionControl/Atlas.Core.VersionControl.Providers.Svn.pas` | Ordner `Core/VersionControl` |
 | `Atlas.IDE.VersionControl.Branching` | `IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas` | Ordner `IDE/VersionControl` |
 | `Atlas.IDE.VersionControl.Composition` | `IDE/VersionControl/Atlas.IDE.VersionControl.Composition.pas` | Ordner `IDE/VersionControl` |
-| `Atlas.IDE.VersionControl.Commands` | `IDE/VersionControl/Atlas.IDE.VersionControl.Commands.pas` | Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905) |
+| `Atlas.IDE.VersionControl.Adapters.Commands` | `IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Commands.pas` | Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905) |
 | `Atlas.IDE.VersionControl.LineChanges` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChanges.pas` | Änderungsmarken und Zeilenhistorie (#507, #1905) |
+| `Atlas.IDE.VersionControl.Adapters.LineChanges` | `IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.LineChanges.pas` | Änderungsmarken für Base und Tracker (`IAtlasLineChanges`, #1905) |
 | `Atlas.IDE.VersionControl.LineChangesData` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChangesData.pas` | Daten der Änderungsmarken (#507, #1905) |
 | `Atlas.IDE.VersionControl.LineChangesPaint` | `IDE/VersionControl/Atlas.IDE.VersionControl.LineChangesPaint.pas` | Zeichnen und Hilfen der Änderungsmarken (#507) |
 | `Atlas.IDE.VersionControl.Service` | `IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas` | Ordner `IDE/VersionControl` |
@@ -983,7 +985,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.VersionControl.SettingsProject` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsProject.pas` | Zeitlimit und aktuelles Projekt (#1285, #1905) |
 | `Atlas.UI.VersionControl.SettingsProjects` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsProjects.pas` | Tabellen Projekte und Server (#1286, #1287, #1905) |
 | `Atlas.UI.VersionControl.SettingsBranch` | `UI/VersionControl/Atlas.UI.VersionControl.SettingsBranch.pas` | Branches, SVN, Externals, Git (#1288–#1292, #1905) |
-| `Atlas.IDE.VersionControl.Settings` | `IDE/VersionControl/Atlas.IDE.VersionControl.Settings.pas` | Anbieter und Haken des Abschnitts Versionsverwaltung (#1905) |
+| `Atlas.IDE.VersionControl.Adapters.Settings` | `IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Settings.pas` | Anbieter und Haken des Abschnitts Versionsverwaltung (#1905) |
 | `Atlas.UI.VersionControl.Strings` | `UI/VersionControl/Atlas.UI.VersionControl.Strings.pas` | Texte des Moduls Versionsverwaltung (#1905) |
 | `Atlas.UI.VersionControl.BranchDialog` | `UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas` | Ordner `UI/VersionControl` |
 | `Atlas.UI.VersionControl.WorkingCopies` | `UI/VersionControl/Atlas.UI.VersionControl.WorkingCopies.pas` | Ordner `UI/VersionControl` |
@@ -1868,16 +1870,17 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Rules.OwnershipPlan` | `Core/Rules/Atlas.Core.Rules.OwnershipPlan.pas` | Ordner `Core/Rules` |
 | `Atlas.IDE.Editor.DfmPropertyRules` | `IDE/Editor/Atlas.IDE.Editor.DfmPropertyRules.pas` | Eigenschaftsregeln anwenden (#309), Schalter dfmRules.apply unter ruleChecks, #1455 |
 | `Atlas.IDE.Rules.Baseline` | `IDE/Rules/Atlas.IDE.Rules.Baseline.pas` | Ordner `IDE/Rules`: Baseline aktualisieren, Compilermeldungen in die Baseline, #1455 |
-| `Atlas.IDE.Rules.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
+| `Atlas.IDE.Rules.Adapters.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.Adapters.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
 | `Atlas.IDE.Rules.Composition` | `IDE/Rules/Atlas.IDE.Rules.Composition.pas` | Anmeldung des Moduls `atlas.rules`, #1455 |
-| `Atlas.IDE.Rules.FindingActions` | `IDE/Rules/Atlas.IDE.Rules.FindingActions.pas` | Ordner `IDE/Rules`: Regel-Aktionen am Befund (`IAtlasRuleActions`), #1755 |
-| `Atlas.IDE.Rules.IdeErrors` | `IDE/Rules/Atlas.IDE.Rules.IdeErrors.pas` | Ordner `IDE/Rules`: Error Insight der IDE lesen (`IAtlasIdeErrors`), #1819 |
+| `Atlas.IDE.Rules.Adapters.FindingActions` | `IDE/Rules/Atlas.IDE.Rules.Adapters.FindingActions.pas` | Ordner `IDE/Rules`: Regel-Aktionen am Befund (`IAtlasRuleActions`), #1755 |
+| `Atlas.IDE.Rules.Adapters.IdeErrors` | `IDE/Rules/Atlas.IDE.Rules.Adapters.IdeErrors.pas` | Ordner `IDE/Rules`: Error Insight der IDE lesen (`IAtlasIdeErrors`), #1819 |
 | `Atlas.IDE.Rules.Maintenance` | `IDE/Rules/Atlas.IDE.Rules.Maintenance.pas` | Ordner `IDE/Rules`: Baseline und Unterdrückungen des aktiven Projekts, #1755 |
 | `Atlas.IDE.Rules.OwnershipHints` | `IDE/Rules/Atlas.IDE.Rules.OwnershipHints.pas` | Ordner `IDE/Rules`: Marke „Wer gibt das frei?“ im Editor, Schalter editor.ownershipHints unter ruleChecks, #1877 |
-| `Atlas.IDE.Rules.Settings` | `IDE/Rules/Atlas.IDE.Rules.Settings.pas` | Ordner `IDE/Rules`: Abschnitt „Prüfregeln“ mit seinen Hooks, #1755 |
+| `Atlas.IDE.Rules.Adapters.Settings` | `IDE/Rules/Atlas.IDE.Rules.Adapters.Settings.pas` | Ordner `IDE/Rules`: Abschnitt „Prüfregeln“ mit seinen Hooks, #1755 |
 | `Atlas.UI.Problems.BulkFix` | `UI/Problems/Atlas.UI.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
 | `Atlas.UI.Rules.Editor` | `UI/Rules/Atlas.UI.Rules.Editor.pas` | Ordner `UI/Rules`: Regel-Editor, #1755 |
 | `Atlas.UI.Rules.SettingsDialog` | `UI/Rules/Atlas.UI.Rules.SettingsDialog.pas` | Ordner `UI/Rules`: Dialog der Einstellungsdateien mit Regel-Editor (`IAtlasSettingsDialogProvider`), #1755 |
+| `Atlas.IDE.Rules.Adapters.SettingsDialog` | `IDE/Rules/Atlas.IDE.Rules.Adapters.SettingsDialog.pas` | Ordner `IDE/Rules`: nennt Base den Dialog mit Regel-Editor (`IAtlasSettingsDialogProvider`), #1755 |
 | `Atlas.UI.Rules.SettingsSection` | `UI/Rules/Atlas.UI.Rules.SettingsSection.pas` | Ordner `UI/Rules`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Rules.Strings` | `UI/Rules/Atlas.UI.Rules.Strings.pas` | Texte des Moduls (Prüfregeln), Sprache von Base, #1455 |
 

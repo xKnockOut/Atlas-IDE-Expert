@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Rules.BulkFix;
+﻿unit Atlas.IDE.Rules.Adapters.BulkFix;
 
 // Sammelkorrektur im Modul Prüfregeln (#1352, #1455): „Alle sicheren Treffer
 // von <Regel> korrigieren …“ im Kontextmenü von „Atlas-Prüfung“, nur mit

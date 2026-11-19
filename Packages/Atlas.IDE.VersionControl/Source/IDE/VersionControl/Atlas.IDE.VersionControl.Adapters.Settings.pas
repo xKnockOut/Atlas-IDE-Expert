@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.VersionControl.Settings;
+﻿unit Atlas.IDE.VersionControl.Adapters.Settings;
 
 // Seite Versionsverwaltung in Tools › Optionen › Atlas › Module › Versionsverwaltung (#1285, #1286, #1287; seit
 // #1905 im Modul): TAtlasIdeVcsSettings ist der IAtlasSettingsSectionProvider, den die Composition über den Scope
