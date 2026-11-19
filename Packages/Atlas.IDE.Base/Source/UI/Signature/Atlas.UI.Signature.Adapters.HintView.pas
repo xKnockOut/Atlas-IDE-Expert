@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Signature.Adapters.HintView;
 
 // Der Parameter-Hint (TAtlasSignatureHint) als Ansicht des Controllers (IAtlasSignatureView aus
-// Atlas.Core.Signature.Controller). Reicht nur weiter; der Controller hält den Adapter, die Kompositionswurzel
+// Atlas.Core.Signature.Contract). Reicht nur weiter; der Controller hält den Adapter, die Kompositionswurzel
 // setzt ihn über TAtlasSignatureViews.Factory ein.
 
 interface

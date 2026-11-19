@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Completion.Adapters.PopupView;
 
 // Das Popup der Vervollständigung (TAtlasCompletionPopup) als Ansicht des Controllers (IAtlasCompletionView,
-// IAtlasCompletionSyntaxView, IAtlasCompletionHiddenView aus Atlas.Core.Completion.Controller) und als Quelle der
+// IAtlasCompletionSyntaxView, IAtlasCompletionHiddenView aus Atlas.Core.Completion.Contract) und als Quelle der
 // Einträge für UI Automation (IAtlasAccessibleItems, #447). Reicht nur weiter; Controller und UI-Automation-Liste
 // halten den Adapter, die Kompositionswurzel setzt ihn über TAtlasCompletionViews.Factory ein.
 

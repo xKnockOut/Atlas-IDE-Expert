@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Hover.Adapters.TipMeasure;
 
 // Die Zeichenfläche des Tooltips als Messung für den Satz (IAtlasHoverMeasure aus
-// Atlas.Core.Hover.Layout.Input): Textbreiten und -höhen in den Schriften des Tooltips, Absatzhöhe in der
+// Atlas.Core.Hover.Contract): Textbreiten und -höhen in den Schriften des Tooltips, Absatzhöhe in der
 // UI-Schrift, Breite und Umbruch der eingefärbten Deklaration in der Editorschrift. Die Kompositionswurzel setzt
 // ihn über TAtlasHoverMeasures.Factory ein; der Tooltip legt ihn je Satz an.
 
