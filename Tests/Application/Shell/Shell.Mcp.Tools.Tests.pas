@@ -214,7 +214,7 @@ var
   mIndex, mOther: Integer;
 begin
   mNames := NamesOf(RegisterContextTools);
-  Assert.AreEqual(47, Integer(Length(mNames)));
+  Assert.AreEqual(48, Integer(Length(mNames)));
   for mIndex := 0 to High(mNames) do
   begin
     for mOther := mIndex + 1 to High(mNames) do
