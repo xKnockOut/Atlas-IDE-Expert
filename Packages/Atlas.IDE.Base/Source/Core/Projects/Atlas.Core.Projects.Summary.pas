@@ -413,7 +413,8 @@ uses
   System.JSON,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary.Json,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Arrays;
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
@@ -743,17 +744,8 @@ begin
 end;
 
 function TAtlasProjectTodos.CountOf(const AKeyword: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Keywords) do
-  begin
-    if SameText(Keywords[mIndex], AKeyword) then
-    begin
-      Exit(KeywordCounts[mIndex]);
-    end;
-  end;
-  Result := 0;
+  Result := TTextArrays.CountOfText(Keywords, KeywordCounts, AKeyword);
 end;
 
 class function TAtlasProjectTodos.FromServer(const AJson: string; AAtUtc: TDateTime;

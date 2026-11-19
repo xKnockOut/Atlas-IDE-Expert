@@ -41,21 +41,8 @@ type
 implementation
 
 uses
-  System.IOUtils;
-
-procedure DeleteQuietly(const AFileName: string);
-begin
-  try
-    if FileExists(AFileName) then
-    begin
-      TFile.Delete(AFileName);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
-    on Exception do
-      ;
-  end;
-end;
+  System.IOUtils,
+  Atlas.Text.Files;
 
 { TMcpIdeWaiting }
 
@@ -109,7 +96,7 @@ begin
     on Exception do
       AAnswerText := '';
   end;
-  DeleteQuietly(mAnswer);
+  TTextFiles.DeleteQuietly(mAnswer);
   Result := TMcpIdeExchangeOutcome.Answered;
 end;
 

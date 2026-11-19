@@ -154,7 +154,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.StrUtils;
 
 { TQueryValue }
 
@@ -230,17 +231,8 @@ begin
 end;
 
 function TQueryResult.ColumnOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Columns) do
-  begin
-    if SameText(Columns[mIndex], AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := IndexText(AName, Columns);
 end;
 
 function TQueryResult.Truncated: Boolean;

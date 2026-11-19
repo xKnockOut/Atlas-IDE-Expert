@@ -64,6 +64,10 @@
         <DCCReference Include="Text\Atlas.Text.Uris.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Diff.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Fuzzy.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Files.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Csv.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.IndexCache.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Names.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Numbers.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Json.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Jsonc.Tests.pas"/>

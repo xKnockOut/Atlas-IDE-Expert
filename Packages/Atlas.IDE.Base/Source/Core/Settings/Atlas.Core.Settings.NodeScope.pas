@@ -78,21 +78,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
-
-function Contains(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
+  System.SysUtils,
+  System.StrUtils;
 
 { TAtlasSettingsBatch }
 
@@ -177,13 +164,13 @@ begin
   // Beitrags), nicht das Modul der Einstellungen darin.
   if Length(AOwners) > 0 then
   begin
-    Exit(Contains(AOwners, ModuleId));
+    Exit(MatchText(ModuleId, AOwners));
   end;
   if IsBase then
   begin
-    Exit(Contains(ASwitches, ''));
+    Exit(MatchText('', ASwitches));
   end;
-  Result := (Switch <> '') and Contains(ASwitches, Switch);
+  Result := (Switch <> '') and MatchText(Switch, ASwitches);
 end;
 
 class function TAtlasSettingsNodeScope.ModuleOf(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;

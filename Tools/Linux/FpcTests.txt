@@ -17,6 +17,10 @@ Atlas.Text.Diff.Tests
 Atlas.Text.Encoding.Tests
 Atlas.Text.Entities.Tests
 Atlas.Text.Fuzzy.Tests
+Atlas.Text.Csv.Tests
+Atlas.Text.Files.Tests
+Atlas.Text.IndexCache.Tests
+Atlas.Text.Names.Tests
 Atlas.Text.Numbers.Tests
 Atlas.Text.Json.Tests
 Atlas.Text.Jsonc.Tests

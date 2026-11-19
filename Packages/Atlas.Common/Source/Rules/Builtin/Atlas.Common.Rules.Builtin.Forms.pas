@@ -86,7 +86,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -391,20 +392,6 @@ begin
   end;
 end;
 
-function IntInArray(AValue: Integer; const AValues: TArray<Integer>): Boolean;
-var
-  mValue: Integer;
-begin
-  for mValue in AValues do
-  begin
-    if mValue = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 { TFormAutoCreateAndManualRule }
 
 type
@@ -675,7 +662,7 @@ begin
   for mPosition := mFirst to mLast - 4 do
   begin
     // Verschachtelte Routinen liegen im Rumpf der äußeren: jede Stelle einmal.
-    if not IsCreateAssignment(mPosition) or IntInArray(mPosition, FReported) then
+    if not IsCreateAssignment(mPosition) or TTextArrays.ContainsInteger(FReported, mPosition) then
     begin
       Continue;
     end;

@@ -79,7 +79,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  System.StrUtils;
 
 const
   cGroupNames: array [TAtlasPaintGroup] of string = ('font', 'colors', 'size', 'position', 'layout', 'text',
@@ -291,20 +292,6 @@ begin
   FixParents(Result);
 end;
 
-function Listed(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasPropertyPainter.Preselect(const ARows: TArray<TAtlasPaintRow>; AGroups: TAtlasPaintGroups;
   const ARemembered: TArray<string>; AHasRemembered: Boolean): TArray<Boolean>;
 var
@@ -318,7 +305,7 @@ begin
   begin
     if ARows[mIndex].Kind = TAtlasPaintRowKind.Leaf then
     begin
-      Result[mIndex] := (AHasRemembered and Listed(ARemembered, ARows[mIndex].Path)) or
+      Result[mIndex] := (AHasRemembered and MatchText(ARows[mIndex].Path, ARemembered)) or
         (not AHasRemembered and (ARows[mIndex].Group in AGroups));
     end;
   end;

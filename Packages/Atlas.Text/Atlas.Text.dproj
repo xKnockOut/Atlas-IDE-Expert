@@ -82,6 +82,10 @@
         <DCCReference Include="Source\Uris\Atlas.Text.Uris.pas"/>
         <DCCReference Include="Source\Diff\Atlas.Text.Diff.pas"/>
         <DCCReference Include="Source\Fuzzy\Atlas.Text.Fuzzy.pas"/>
+        <DCCReference Include="Source\Files\Atlas.Text.Files.pas"/>
+        <DCCReference Include="Source\Csv\Atlas.Text.Csv.pas"/>
+        <DCCReference Include="Source\IndexCache\Atlas.Text.IndexCache.pas"/>
+        <DCCReference Include="Source\Names\Atlas.Text.Names.pas"/>
         <DCCReference Include="Source\Numbers\Atlas.Text.Numbers.pas"/>
         <DCCReference Include="Source\Json\Atlas.Text.Json.pas"/>
         <DCCReference Include="Source\Jsonc\Atlas.Text.Jsonc.pas"/>
