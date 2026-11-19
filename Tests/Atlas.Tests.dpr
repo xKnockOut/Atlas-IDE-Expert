@@ -28,6 +28,7 @@ uses
   Atlas.Text.Uris.Tests in 'Text\Atlas.Text.Uris.Tests.pas',
   Atlas.Text.Diff.Tests in 'Text\Atlas.Text.Diff.Tests.pas',
   Atlas.Text.Fuzzy.Tests in 'Text\Atlas.Text.Fuzzy.Tests.pas',
+  Atlas.Text.IndexCache.Tests in 'Text\Atlas.Text.IndexCache.Tests.pas',
   Atlas.Text.Names.Tests in 'Text\Atlas.Text.Names.Tests.pas',
   Atlas.Text.Lists.Tests in 'Text\Atlas.Text.Lists.Tests.pas',
   Atlas.Text.Json.Tests in 'Text\Atlas.Text.Json.Tests.pas',

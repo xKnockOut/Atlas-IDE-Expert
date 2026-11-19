@@ -124,7 +124,8 @@ uses
   System.Hash,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.IndexCache;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -142,13 +143,10 @@ const
     (De: 'Formatversion %d statt %d'; En: 'Format version %d instead of %d'));
 
 const
-  cMagic: array[0..7] of Byte = (Ord('A'), Ord('T'), Ord('L'), Ord('A'), Ord('S'), Ord('I'), Ord('D'), Ord('X'));
   cFlagLibrary = 1;
   cFlagCompact = 2;
   cFlagInitialization = 4;
   cFlagUsages = 8;
-  // Magic, Version (1 Byte bis 127) und 4 Byte Prüfsumme.
-  cChecksumSize = 4;
   cSymbolInInterface = 1;
   cSymbolDefault = 2;
   cSymbolVirtual = 4;
@@ -156,8 +154,6 @@ const
   cSymbolScopedEnum = 16;
 
 type
-  ECacheFormat = class(Exception);
-
   /// <summary>Wachsender Bytepuffer. Ein zählender Puffer (Counter) legt nichts ab, sondern zählt nur die
   /// Bytes; Serialize misst damit vorab die genaue Größe.</summary>
   TCacheWriter = class
@@ -178,22 +174,6 @@ type
     property Length_: Integer read FLength;
   end;
 
-  /// <summary>Liest Werte aus einem Bytepuffer; jede Überschreitung löst ECacheFormat aus.</summary>
-  TCacheReader = record
-    Data: TBytes;
-    Position: Integer;
-    Limit: Integer;
-    function ReadByte: Byte;
-    function ReadVar: UInt64;
-    function ReadCount: Integer;
-    /// <summary>Nicht negative Zahl bis High(Integer), unabhängig von der Dateigröße.</summary>
-    function ReadNumber: Integer;
-    function ReadInt: Int64;
-    function ReadInt32: Integer;
-    function ReadString(const AStrings: TArray<string>): string;
-    function ReadList(const AStrings: TArray<string>): TArray<string>;
-  end;
-
   /// <summary>Sammelt beim Schreiben die String-Tabelle.</summary>
   TStringTable = class
   private
@@ -208,19 +188,7 @@ type
 
 procedure Fail;
 begin
-  raise ECacheFormat.Create(cTexts[TCacheText.IndexCacheDamaged].Text);
-end;
-
-/// <summary>FNV-1a (32 Bit) über AData ab AFrom.</summary>
-function ChecksumOf(const AData: TBytes; AFrom, ATo: Integer): Cardinal;
-var
-  mIndex: Integer;
-begin
-  Result := 2166136261;
-  for mIndex := AFrom to ATo - 1 do
-  begin
-    Result := Cardinal(UInt64(Result xor AData[mIndex]) * 16777619);
-  end;
+  raise EIndexCacheFormat.Create(cTexts[TCacheText.IndexCacheDamaged].Text);
 end;
 
 { TCacheWriter }
@@ -321,112 +289,6 @@ begin
     SetLength(Result, FLength);
   end;
   FLength := 0;
-end;
-
-{ TCacheReader }
-
-function TCacheReader.ReadByte: Byte;
-begin
-  if Position >= Limit then
-  begin
-    Fail;
-  end;
-  Result := Data[Position];
-  Inc(Position);
-end;
-
-function TCacheReader.ReadVar: UInt64;
-var
-  mShift: Integer;
-  mValue: Byte;
-begin
-  Result := 0;
-  mShift := 0;
-  repeat
-    if mShift > 63 then
-    begin
-      Fail;
-    end;
-    mValue := ReadByte;
-    Result := Result or (UInt64(mValue and $7F) shl mShift);
-    Inc(mShift, 7);
-  until mValue < $80;
-end;
-
-function TCacheReader.ReadCount: Integer;
-var
-  mValue: UInt64;
-begin
-  mValue := ReadVar;
-  // Mehr Einträge als Bytes kann es nicht geben.
-  if mValue > UInt64(Limit) then
-  begin
-    Fail;
-  end;
-  Result := Integer(mValue);
-end;
-
-function TCacheReader.ReadNumber: Integer;
-var
-  mValue: UInt64;
-begin
-  mValue := ReadVar;
-  if mValue > UInt64(High(Integer)) then
-  begin
-    Fail;
-  end;
-  Result := Integer(mValue);
-end;
-
-function TCacheReader.ReadInt: Int64;
-var
-  mValue: UInt64;
-begin
-  mValue := ReadVar;
-  if (mValue and 1) <> 0 then
-  begin
-    Result := not Int64(mValue shr 1);
-  end
-  else
-  begin
-    Result := Int64(mValue shr 1);
-  end;
-end;
-
-function TCacheReader.ReadInt32: Integer;
-var
-  mValue: Int64;
-begin
-  mValue := ReadInt;
-  if (mValue < Low(Integer)) or (mValue > High(Integer)) then
-  begin
-    Fail;
-  end;
-  Result := Integer(mValue);
-end;
-
-function TCacheReader.ReadString(const AStrings: TArray<string>): string;
-var
-  mIndex: UInt64;
-begin
-  mIndex := ReadVar;
-  if mIndex >= UInt64(Length(AStrings)) then
-  begin
-    Fail;
-  end;
-  Result := AStrings[Integer(mIndex)];
-end;
-
-function TCacheReader.ReadList(const AStrings: TArray<string>): TArray<string>;
-var
-  mIndex, mCount: Integer;
-begin
-  mCount := ReadCount;
-  SetLength(Result, mCount);
-  for mIndex := 0 to mCount - 1 do
-  begin
-    Result[mIndex] := ReadString(AStrings);
-  end;
 end;
 
 { TStringTable }
@@ -700,7 +562,7 @@ var
   mValue: string;
   mSize: Integer;
 begin
-  Result := Int64(Length(cMagic)) + VarSize(TIndexCache.cFormatVersion) + cChecksumSize +
+  Result := Int64(Length(cIndexCacheMagic)) + VarSize(TIndexCache.cFormatVersion) + cIndexCacheChecksumSize +
     VarSize(ATable.Items.Count) + ACounter.Length_;
   for mValue in ATable.Items do
   begin
@@ -716,14 +578,14 @@ var
   mValue: string;
   mBytes: TBytes;
 begin
-  for mIndex := Low(cMagic) to High(cMagic) do
+  for mIndex := Low(cIndexCacheMagic) to High(cIndexCacheMagic) do
   begin
-    AOutput.WriteByte(cMagic[mIndex]);
+    AOutput.WriteByte(cIndexCacheMagic[mIndex]);
   end;
   AOutput.WriteVar(TIndexCache.cFormatVersion);
   // Platz für die Prüfsumme; sie wird zuletzt über alles dahinter berechnet.
   Result := AOutput.Length_;
-  for mIndex := 1 to cChecksumSize do
+  for mIndex := 1 to cIndexCacheChecksumSize do
   begin
     AOutput.WriteByte(0);
   end;
@@ -741,8 +603,8 @@ var
   mChecksum: Cardinal;
   mIndex: Integer;
 begin
-  mChecksum := ChecksumOf(AData, AChecksumAt + cChecksumSize, Length(AData));
-  for mIndex := 0 to cChecksumSize - 1 do
+  mChecksum := TIndexCacheReader.Checksum(AData, AChecksumAt + cIndexCacheChecksumSize, Length(AData));
+  for mIndex := 0 to cIndexCacheChecksumSize - 1 do
   begin
     AData[AChecksumAt + mIndex] := Byte(mChecksum shr (8 * mIndex));
   end;
@@ -771,7 +633,7 @@ begin
     mCapacity := SerializedSize(mTable, mCounter);
     if mCapacity > MaxInt then
     begin
-      raise ECacheFormat.Create(cTexts[TCacheText.IndexCacheTooLarge].Text);
+      raise EIndexCacheFormat.Create(cTexts[TCacheText.IndexCacheTooLarge].Text);
     end;
     mOutput := TCacheWriter.Create(Integer(mCapacity));
     mChecksumAt := WriteHead(mOutput, mTable);
@@ -792,7 +654,7 @@ end;
 
 { Lesen }
 
-function ReadSymbol(var AReader: TCacheReader; const AStrings: TArray<string>): TIndexSymbol;
+function ReadSymbol(var AReader: TIndexCacheReader; const AStrings: TArray<string>): TIndexSymbol;
 var
   mKind: UInt64;
   mFlags: Integer;
@@ -849,7 +711,7 @@ begin
   Result.Rationale := AReader.ReadList(AStrings);
 end;
 
-function ReadUsage(var AReader: TCacheReader; const AStrings: TArray<string>): TIndexUsage;
+function ReadUsage(var AReader: TIndexCacheReader; const AStrings: TArray<string>): TIndexUsage;
 var
   mIndex, mLine: Integer;
 begin
@@ -870,42 +732,8 @@ begin
   Result := ReadEntries(AData, mReason);
 end;
 
-function HasMagic(const AData: TBytes): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(AData) >= Length(cMagic);
-  for mIndex := Low(cMagic) to High(cMagic) do
-  begin
-    if not Result then
-    begin
-      Break;
-    end;
-    Result := AData[mIndex] = cMagic[mIndex];
-  end;
-end;
-
-/// <summary>Liest die gespeicherte Prüfsumme und vergleicht sie mit dem Rest der Datei.</summary>
-function ChecksumMatches(var AReader: TCacheReader; const AData: TBytes): Boolean;
-var
-  mStored: Cardinal;
-  mIndex: Integer;
-begin
-  if AReader.Position + cChecksumSize > AReader.Limit then
-  begin
-    Fail;
-  end;
-  mStored := 0;
-  for mIndex := cChecksumSize - 1 downto 0 do
-  begin
-    mStored := (mStored shl 8) or AData[AReader.Position + mIndex];
-  end;
-  Inc(AReader.Position, cChecksumSize);
-  Result := mStored = ChecksumOf(AData, AReader.Position, Length(AData));
-end;
-
 /// <summary>Die Länge davor und Platz dahinter prüfen; liefert die Länge.</summary>
-function ReadBlockSize(var AReader: TCacheReader): Integer;
+function ReadBlockSize(var AReader: TIndexCacheReader): Integer;
 begin
   Result := AReader.ReadCount;
   if AReader.Position + Result > AReader.Limit then
@@ -914,7 +742,7 @@ begin
   end;
 end;
 
-function ReadStringTable(var AReader: TCacheReader; const AData: TBytes): TArray<string>;
+function ReadStringTable(var AReader: TIndexCacheReader; const AData: TBytes): TArray<string>;
 var
   mIndex, mSize: Integer;
 begin
@@ -927,7 +755,7 @@ begin
   end;
 end;
 
-function ReadPatterns(var AReader: TCacheReader; const AStrings: TArray<string>): TArray<TIndexFollowPattern>;
+function ReadPatterns(var AReader: TIndexCacheReader; const AStrings: TArray<string>): TArray<TIndexFollowPattern>;
 var
   mIndex, mLine: Integer;
 begin
@@ -945,7 +773,7 @@ begin
   end;
 end;
 
-function ReadUnitHeader(var AReader: TCacheReader; const AStrings: TArray<string>): TUnitIndex;
+function ReadUnitHeader(var AReader: TIndexCacheReader; const AStrings: TArray<string>): TUnitIndex;
 var
   mFlags, mIndex: Integer;
   mKind: TNamingKind;
@@ -980,7 +808,7 @@ begin
   Result.Patterns := ReadPatterns(AReader, AStrings);
 end;
 
-function ReadEntry(var AReader: TCacheReader; const AData: TBytes; const AStrings: TArray<string>): TIndexCacheEntry;
+function ReadEntry(var AReader: TIndexCacheReader; const AData: TBytes; const AStrings: TArray<string>): TIndexCacheEntry;
 var
   mSize: Integer;
 begin
@@ -1006,14 +834,14 @@ begin
 end;
 
 /// <summary>Liest den Inhalt hinter Kopf und Version; '' in AReason, wenn alles stimmt.</summary>
-function ReadBody(var AReader: TCacheReader; const AData: TBytes; out AReason: string): TArray<TIndexCacheEntry>;
+function ReadBody(var AReader: TIndexCacheReader; const AData: TBytes; out AReason: string): TArray<TIndexCacheEntry>;
 var
   mStrings: TArray<string>;
   mIndex: Integer;
 begin
   Result := nil;
   // Prüfsumme (#492): abgeschnittene oder veränderte Dateien vor dem Dekodieren erkennen.
-  if not ChecksumMatches(AReader, AData) then
+  if not AReader.ChecksumMatches then
   begin
     AReason := cTexts[TCacheText.ChecksumDoesNotMatch].Text;
     Exit;
@@ -1033,7 +861,7 @@ end;
 
 class function TIndexCache.ReadEntries(const AData: TBytes; out AReason: string): TArray<TIndexCacheEntry>;
 var
-  mReader: TCacheReader;
+  mReader: TIndexCacheReader;
   mVersion: UInt64;
 begin
   Result := nil;
@@ -1043,12 +871,12 @@ begin
     Exit;
   end;
   AReason := cTexts[TCacheText.NoAtlasIndexHeaderMissing].Text;
-  if not HasMagic(AData) then
+  if not TIndexCacheReader.HasMagic(AData) then
   begin
     Exit;
   end;
   mReader.Data := AData;
-  mReader.Position := Length(cMagic);
+  mReader.Position := Length(cIndexCacheMagic);
   mReader.Limit := Length(AData);
   try
     mVersion := mReader.ReadVar;
@@ -1061,7 +889,7 @@ begin
       Result := ReadBody(mReader, AData, AReason);
     end;
   except
-    on ECacheFormat do
+    on EIndexCacheFormat do
     begin
       Result := nil;
       AReason := cTexts[TCacheText.ContentDamaged].Text;
@@ -1071,7 +899,7 @@ end;
 
 class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex; AUsages: Boolean): Boolean;
 var
-  mReader: TCacheReader;
+  mReader: TIndexCacheReader;
   mIndex: Integer;
 begin
   AUnit := AEntry.Header;
@@ -1095,7 +923,7 @@ begin
     end;
     Result := mReader.Position = mReader.Limit;
   except
-    on ECacheFormat do
+    on EIndexCacheFormat do
       Result := False;
   end;
   if Result and AEntry.Header.UsagesIndexed then
@@ -1122,7 +950,7 @@ end;
 
 class function TIndexCache.ExpandUsages(const AEntry: TIndexCacheEntry; out AUsages: TArray<TIndexUsage>): Boolean;
 var
-  mReader: TCacheReader;
+  mReader: TIndexCacheReader;
   mIndex: Integer;
 begin
   AUsages := nil;
@@ -1142,7 +970,7 @@ begin
     end;
     Result := mReader.Position = mReader.Limit;
   except
-    on ECacheFormat do
+    on EIndexCacheFormat do
       Result := False;
   end;
   if not Result then

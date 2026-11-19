@@ -2,10 +2,10 @@
 
 // Dateien der zuletzt geöffneten Projekte für das Suchfeld der
 // Willkommensseite (#760), aus dem Index-Cache des Servers (#16) auf der
-// Platte, ohne laufenden Server. Das Plugin bindet Atlas.Common nicht ein,
-// deshalb steht hier ein kleiner Leser für Format 16 von
-// Atlas.Common.Index.Cache: Kopf mit Prüfsumme, Texttabelle und die Köpfe der
-// Units; Symbol- und Verwendungsblöcke werden übersprungen. Andere Version,
+// Platte, ohne laufenden Server. Das Plugin bindet Atlas.Common nicht ein;
+// Kopf, Prüfsumme und Grundwerte des Formats liest es wie der Server über
+// Atlas.Text.IndexCache. Gelesen werden Kopf mit Prüfsumme, Texttabelle und
+// die Köpfe der Units; Symbol- und Verwendungsblöcke werden übersprungen. Andere Version,
 // falsche Prüfsumme oder fremder Inhalt ergeben eine leere Liste statt
 // Unsinn.
 // Ablage: <Cache>\Atlas\Index\<IDE-Version>\<Schlüssel>\index-<Format>.atlasidx
@@ -103,119 +103,11 @@ type
 implementation
 
 uses
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.IndexCache;
 
 const
-  cMagic: array[0..7] of Byte = (Ord('A'), Ord('T'), Ord('L'), Ord('A'), Ord('S'), Ord('I'), Ord('D'), Ord('X'));
-  cChecksumSize = 4;
   cFlagLibrary = 1;
-
-type
-  EIndexFormat = class(Exception);
-
-  TReader = record
-    Data: TBytes;
-    Position: Integer;
-    Limit: Integer;
-    function ReadByte: Byte;
-    function ReadVar: UInt64;
-    function ReadCount: Integer;
-    procedure Skip(ACount: Integer);
-    function ReadString(const AStrings: TArray<string>): string;
-    procedure SkipList;
-  end;
-
-procedure Fail;
-begin
-  raise EIndexFormat.Create('Index-Cache beschädigt');
-end;
-
-/// <summary>FNV-1a (32 Bit) wie Atlas.Common.Index.Cache.</summary>
-function ChecksumOf(const AData: TBytes; AFrom, ATo: Integer): Cardinal;
-var
-  mIndex: Integer;
-begin
-  Result := 2166136261;
-  for mIndex := AFrom to ATo - 1 do
-  begin
-    Result := Cardinal(UInt64(Result xor AData[mIndex]) * 16777619);
-  end;
-end;
-
-{ TReader }
-
-function TReader.ReadByte: Byte;
-begin
-  if Position >= Limit then
-  begin
-    Fail;
-  end;
-  Result := Data[Position];
-  Inc(Position);
-end;
-
-function TReader.ReadVar: UInt64;
-var
-  mShift: Integer;
-  mValue: Byte;
-begin
-  Result := 0;
-  mShift := 0;
-  repeat
-    if mShift > 63 then
-    begin
-      Fail;
-    end;
-    mValue := ReadByte;
-    Result := Result or (UInt64(mValue and $7F) shl mShift);
-    Inc(mShift, 7);
-  until mValue < $80;
-end;
-
-function TReader.ReadCount: Integer;
-var
-  mValue: UInt64;
-begin
-  mValue := ReadVar;
-  // Mehr Einträge als Bytes kann es nicht geben.
-  if mValue > UInt64(Limit) then
-  begin
-    Fail;
-  end;
-  Result := Integer(mValue);
-end;
-
-procedure TReader.Skip(ACount: Integer);
-begin
-  if (ACount < 0) or (Position + ACount > Limit) then
-  begin
-    Fail;
-  end;
-  Inc(Position, ACount);
-end;
-
-function TReader.ReadString(const AStrings: TArray<string>): string;
-var
-  mIndex: UInt64;
-begin
-  mIndex := ReadVar;
-  if mIndex >= UInt64(Length(AStrings)) then
-  begin
-    Fail;
-  end;
-  Result := AStrings[Integer(mIndex)];
-end;
-
-procedure TReader.SkipList;
-var
-  mCount, mIndex: Integer;
-begin
-  mCount := ReadCount;
-  for mIndex := 1 to mCount do
-  begin
-    ReadVar;
-  end;
-end;
 
 { TAtlasWelcomeIndexFiles }
 
@@ -243,39 +135,7 @@ begin
   Result := ReadEntries(AData, True, mReason);
 end;
 
-function HasMagic(const AData: TBytes): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(AData) >= Length(cMagic);
-  mIndex := Low(cMagic);
-  while Result and (mIndex <= High(cMagic)) do
-  begin
-    Result := AData[mIndex] = cMagic[mIndex];
-    Inc(mIndex);
-  end;
-end;
-
-/// <summary>Liest die gespeicherte Prüfsumme und vergleicht sie mit der des Rests.</summary>
-function ChecksumMatches(var AReader: TReader): Boolean;
-var
-  mIndex: Integer;
-  mStored: Cardinal;
-begin
-  if AReader.Position + cChecksumSize > AReader.Limit then
-  begin
-    Fail;
-  end;
-  mStored := 0;
-  for mIndex := cChecksumSize - 1 downto 0 do
-  begin
-    mStored := (mStored shl 8) or AReader.Data[AReader.Position + mIndex];
-  end;
-  Inc(AReader.Position, cChecksumSize);
-  Result := mStored = ChecksumOf(AReader.Data, AReader.Position, Length(AReader.Data));
-end;
-
-function ReadStrings(var AReader: TReader): TArray<string>;
+function ReadStrings(var AReader: TIndexCacheReader): TArray<string>;
 var
   mIndex, mSize: Integer;
 begin
@@ -285,7 +145,7 @@ begin
     mSize := AReader.ReadCount;
     if AReader.Position + mSize > AReader.Limit then
     begin
-      Fail;
+      TIndexCacheReader.Fail;
     end;
     Result[mIndex] := TEncoding.UTF8.GetString(AReader.Data, AReader.Position, mSize);
     Inc(AReader.Position, mSize);
@@ -293,7 +153,7 @@ begin
 end;
 
 /// <summary>Folgemuster der gelernten Vorschläge (#1890): je Muster Auslöser, Folge, Zahl und Zeilen.</summary>
-procedure SkipPatterns(var AReader: TReader);
+procedure SkipPatterns(var AReader: TIndexCacheReader);
 var
   mIndex: Integer;
 begin
@@ -307,7 +167,7 @@ begin
 end;
 
 /// <summary>Ein Unit-Eintrag; liefert seine Flags. Alles außer Name und Datei wird übersprungen.</summary>
-function ReadEntry(var AReader: TReader; const AStrings: TArray<string>; out AEntry: TAtlasIndexFile): Integer;
+function ReadEntry(var AReader: TIndexCacheReader; const AStrings: TArray<string>; out AEntry: TAtlasIndexFile): Integer;
 var
   mPart: Integer;
 begin
@@ -335,12 +195,12 @@ begin
   AReader.Skip(AReader.ReadCount); // Verwendungsblock
   if AEntry.FileName = '' then
   begin
-    Fail;
+    TIndexCacheReader.Fail;
   end;
 end;
 
-/// <summary>Einträge nach Prüfsumme; wirft EIndexFormat bei kaputtem Inhalt.</summary>
-function ReadUnits(var AReader: TReader; AWithLibrary: Boolean): TArray<TAtlasIndexFile>;
+/// <summary>Einträge nach Prüfsumme; wirft EIndexCacheFormat bei kaputtem Inhalt.</summary>
+function ReadUnits(var AReader: TIndexCacheReader; AWithLibrary: Boolean): TArray<TAtlasIndexFile>;
 var
   mStrings: TArray<string>;
   mFound: TList<TAtlasIndexFile>;
@@ -359,7 +219,7 @@ begin
     end;
     if AReader.Position <> AReader.Limit then
     begin
-      Fail;
+      TIndexCacheReader.Fail;
     end;
     Result := mFound.ToArray;
   finally
@@ -370,23 +230,23 @@ end;
 class function TAtlasWelcomeIndexFiles.ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
   out AReason: string): TArray<TAtlasIndexFile>;
 var
-  mReader: TReader;
+  mReader: TIndexCacheReader;
 begin
   Result := nil;
   AReason := 'kein Atlas-Index (Kopf fehlt)';
-  if not HasMagic(AData) then
+  if not TIndexCacheReader.HasMagic(AData) then
   begin
     Exit;
   end;
   mReader.Data := AData;
-  mReader.Position := Length(cMagic);
+  mReader.Position := Length(cIndexCacheMagic);
   mReader.Limit := Length(AData);
   try
     if mReader.ReadVar <> cFormatVersion then
     begin
       AReason := 'andere Formatversion';
     end
-    else if not ChecksumMatches(mReader) then
+    else if not mReader.ChecksumMatches then
     begin
       AReason := 'Prüfsumme stimmt nicht';
     end
@@ -396,7 +256,7 @@ begin
       AReason := '';
     end;
   except
-    on EIndexFormat do
+    on EIndexCacheFormat do
     begin
       Result := nil;
       AReason := 'Inhalt beschädigt';
