@@ -107,6 +107,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Style.Color,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Welcome.Strings;
 
 const
@@ -342,11 +343,7 @@ end;
 
 procedure TAtlasWelcomeSearchBox.EditKeyPress(Sender: TObject; var Key: Char);
 begin
-  // Kein Signalton für Enter und Esc.
-  if (Key = #13) or (Key = #27) then
-  begin
-    Key := #0;
-  end;
+  TAtlasControls.SuppressBeep(Key);
 end;
 
 procedure TAtlasWelcomeSearchBox.TimerTick(Sender: TObject);

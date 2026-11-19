@@ -6,7 +6,8 @@
 // - Zeigt origin nicht auf das Repository des Trackers (Fork): Foreign, nichts
 //   gepusht.
 // - Hat die Arbeitskopie ungesicherte Änderungen (unversionierte Dateien
-//   zählen nicht): Dirty, nichts gepusht; erst committen.
+//   zählen nicht, dieselbe Regel wie vor einem Pull): Dirty, nichts gepusht;
+//   erst committen.
 // - Sonst git push --set-upstream origin <Branch>, dann legt der Tracker den
 //   Pull Request an bzw. nennt den schon offenen (Existing). Der Push läuft
 //   auch bei einem offenen Pull Request: Er bringt ihn auf den Stand.
@@ -35,31 +36,16 @@ type
   public
     /// <summary>Pushen und Pull Request anlegen bzw. finden (siehe Kopf der Unit).</summary>
     class function Run(const ARequest: TAtlasEndPullRequest): TAtlasTrackerPullResult; static;
-    /// <summary>AChanges enthalten Änderungen außer unversionierten Dateien.</summary>
-    class function Dirty(const AChanges: TArray<TAtlasVcsChange>): Boolean; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Core.CiBuild.Contract,
+  Atlas.Core.VersionControl.Pull;
 
 { TAtlasEndPull }
-
-class function TAtlasEndPull.Dirty(const AChanges: TArray<TAtlasVcsChange>): Boolean;
-var
-  mChange: TAtlasVcsChange;
-begin
-  Result := False;
-  for mChange in AChanges do
-  begin
-    if mChange.Kind <> TAtlasVcsChangeKind.Untracked then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
 
 /// <summary>Was vor dem Push zu prüfen ist; False mit AResult, wenn es nicht weitergeht.</summary>
 function Eligible(const ARequest: TAtlasEndPullRequest; out AWork: IAtlasVcsLocalWork;
@@ -82,7 +68,7 @@ begin
     Exit;
   end;
   mOutcome := ARequest.Vcs.Changes(mChanges);
-  if (mOutcome <> TAtlasVcsOutcome.Ok) or TAtlasEndPull.Dirty(mChanges) then
+  if (mOutcome <> TAtlasVcsOutcome.Ok) or TAtlasVcsPull.ChangesBlockPull(mChanges) then
   begin
     AResult := TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.Dirty);
     if mOutcome <> TAtlasVcsOutcome.Ok then

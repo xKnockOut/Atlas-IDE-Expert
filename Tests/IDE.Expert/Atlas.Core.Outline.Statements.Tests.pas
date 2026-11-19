@@ -36,7 +36,8 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.Statements;
+  Atlas.Core.Outline.Statements,
+  Atlas.Core.Outline.CrumbMenu;
 
 const
   cCode =
@@ -111,21 +112,6 @@ begin
   end;
 end;
 
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
-  end;
-end;
-
 { TAtlasStatementsTests }
 
 procedure TAtlasStatementsTests.TryParts;
@@ -173,9 +159,9 @@ end;
 
 procedure TAtlasStatementsTests.PathShowsAtMostThree;
 begin
-  Assert.AreEqual('Laden › case Art of › akFirma › except', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('Laden › case Art of › akFirma › except', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(21, 10, '', False, [TAtlasCrumbPart.Statements]))));
-  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('Laden', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(21, 10, '', False, []))), 'ausgeschaltet');
 end;
 

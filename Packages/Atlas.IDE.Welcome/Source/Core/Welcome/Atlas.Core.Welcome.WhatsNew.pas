@@ -114,6 +114,7 @@ uses
   System.JSON,
   System.Generics.Defaults,
   System.Math,
+  Atlas.Core.Localization.Language,
   Atlas.Text.Json,
   Atlas.Text.Chars;
 
@@ -121,20 +122,12 @@ uses
 
 function TAtlasWhatsNewItem.TitleFor(AEnglish: Boolean): string;
 begin
-  Result := Title;
-  if AEnglish and (TitleEn <> '') then
-  begin
-    Result := TitleEn;
-  end;
+  Result := TAtlasTextLanguage.Pick(Title, TitleEn, AEnglish);
 end;
 
 function TAtlasWhatsNewItem.TextFor(AEnglish: Boolean): string;
 begin
-  Result := Text;
-  if AEnglish and (TextEn <> '') then
-  begin
-    Result := TextEn;
-  end;
+  Result := TAtlasTextLanguage.Pick(Text, TextEn, AEnglish);
 end;
 
 function Flag(AObject: TJSONObject; const AName: string): Boolean;

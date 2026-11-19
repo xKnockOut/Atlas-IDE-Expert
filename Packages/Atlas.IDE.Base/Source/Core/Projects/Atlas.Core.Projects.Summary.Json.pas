@@ -30,22 +30,9 @@ implementation
 uses
   System.Generics.Collections,
   System.SysUtils,
+  System.StrUtils,
   Atlas.Text.Json,
   Atlas.Text.Timestamps;
-
-function Known(const AKeys: array of string; const AName: string): Boolean;
-var
-  mKey: string;
-begin
-  Result := False;
-  for mKey in AKeys do
-  begin
-    if mKey = AName then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
 
 procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
 var
@@ -59,7 +46,7 @@ begin
   for mIndex := 0 to AOriginal.Count - 1 do
   begin
     mPair := AOriginal.Pairs[mIndex];
-    if not Known(AKeys, mPair.JsonString.Value) then
+    if not MatchStr(mPair.JsonString.Value, AKeys) then
     begin
       ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
     end;
