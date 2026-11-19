@@ -113,6 +113,10 @@ implementation
 uses
   Atlas.Text.Timestamps;
 
+const
+  /// <summary>Hexadezimalstellen einer Folge \uXXXX.</summary>
+  cUnicodeEscapeDigits = 4;
+
 { TJsonText }
 
 class function TJsonText.Quote(const AText: string): string;
@@ -140,9 +144,9 @@ begin
         #13:
           mBuilder.Append('\r');
       else
-        if Ord(mChar) < 32 then
+        if mChar < ' ' then
         begin
-          mBuilder.Append('\u' + IntToHex(Ord(mChar), 4));
+          mBuilder.Append('\u' + IntToHex(Ord(mChar), cUnicodeEscapeDigits));
         end
         else
         begin
