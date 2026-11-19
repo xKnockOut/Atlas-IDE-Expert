@@ -159,6 +159,7 @@ begin
   Result.HotspotSourceFor := FCore.Sources.HotspotSource();
   Result.UnitRelationsOptionsFor := FCore.Sources.UnitRelationsOptions();
   Result.SymbolPathSourceFor := FCore.Sources.SymbolPathSource();
+  Result.Namespaces := Namespaces;
 end;
 
 function TShellAnalysisArea.BaselineServices: TShellBaselineServices;

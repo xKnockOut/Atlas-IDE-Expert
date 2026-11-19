@@ -17,7 +17,7 @@
 //   Zeile in der Meldungsansicht.
 // Zustand nur mit issues.syncState und einem Anbieter, der schreiben kann.
 // Nach Stop erreicht nichts mehr das Feld: Lesen läuft über einen eigenen
-// TAtlasVcsWorker, Klicks und Antworten prüfen FStopped.
+// TAtlasBackgroundJobs, Klicks und Antworten prüfen FStopped.
 
 interface
 
@@ -29,7 +29,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.StatusState,
   Atlas.Core.Tracker.TimeLog,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.Workflow;
 
@@ -64,7 +64,7 @@ type
   private
     FSync: TAtlasIdeTrackerSync;
     FHooks: TAtlasIdeIssueStateHooks;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FMenu: TPopupMenu;
     FIssue: TAtlasTimeIssue;
     // Zustand aus „Meine Issues“ (wie zuletzt gemeldet) und der angezeigte (nach Lesen bzw. Übergang neuer).
@@ -130,7 +130,7 @@ begin
   inherited Create;
   FSync := ASync;
   FHooks := AHooks;
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
   FIssue := TAtlasTimeIssue.None;
   FTime := TAtlasIdeTimeField.None;
 end;

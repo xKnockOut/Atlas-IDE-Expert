@@ -7,7 +7,7 @@
 //     der die Pipe offen hält
 //   - Zeitlimit: danach wird der Prozess beendet (Outcome TimedOut)
 //   - Abbruch: endet der aufrufende Thread (TThread.Terminate, z. B.
-//     TAtlasVcsWorker.Stop) oder meldet ACancelled True (Entladen der IDE), wird
+//     TAtlasBackgroundJobs.Stop) oder meldet ACancelled True (Entladen der IDE), wird
 //     der Prozess sofort beendet (Outcome Cancelled)
 //   - im Hauptthread abgelehnt (Outcome MainThread), außer der Aufrufer erlaubt
 //     es ausdrücklich (Server auf der Kommandozeile, Tests)

@@ -9,7 +9,7 @@
 // - Keine eigene Abfrage-Schleife: geladen wird beim Anzeigen des Bereichs
 //   und nach jeder Abfrage von „Meine Issues“, höchstens alle 10 Minuten
 //   (DueMinutes von „Meine Issues“); „Jetzt abfragen“ lädt sofort. Im
-//   Hintergrund (TAtlasVcsWorker) mit 15 s für alles zusammen: aktueller
+//   Hintergrund (TAtlasBackgroundJobs) mit 15 s für alles zusammen: aktueller
 //   Sprint, Arbeitstage (YouTrack, IAtlasTrackerWorkDays) und mit
 //   issues.sprint.compare die drei vorherigen Sprints.
 // - Zwischenspeicher neben dem Board (%LOCALAPPDATA%\Atlas\issues):
@@ -29,7 +29,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.SprintLoad,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.SprintTile,
   Atlas.IDE.Tracker.WelcomeLink;
 
@@ -73,7 +73,7 @@ type
     FStarted: Boolean;
     FTitle: string;
     FActive: Boolean;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FCancel: IAtlasCiCancel;
     FGeneration: Integer;
     FLoading: Boolean;
@@ -146,7 +146,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
   FState.Calendar := TAtlasSprintCalendar.WorkWeek;
 end;
 

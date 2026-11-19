@@ -409,27 +409,6 @@ begin
   FreeAndNil(FInstance);
 end;
 
-/// <summary>Ersetzt in ABuffer (Text AText) die Zeichen AFrom bis ATill (0-basiert, ATill ausschließlich) durch
-/// ANew; ein Rückgängig-Schritt der IDE.</summary>
-procedure WriteRange(const ABuffer: IOTAEditBuffer; const AText: string; AFrom, ATill: Integer; const ANew: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AFrom)));
-  if ATill > AFrom then
-  begin
-    mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, ATill)));
-  end;
-  if ANew <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
-  end;
-  mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
-
 function TAtlasIdeHide.RunText(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
 var
   mView: IOTAEditView;
@@ -447,7 +426,7 @@ begin
   end;
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
   mOffset := APlan.Insert.OffsetIn(mText);
-  WriteRange(mView.Buffer, mText, mOffset, mOffset, APlan.Insert.Text);
+  TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mOffset, 0, APlan.Insert.Text);
   AStep.Valid := True;
   AStep.Kind := APlan.Kind;
   AStep.Insert := APlan.Insert;
@@ -486,7 +465,7 @@ begin
           Exit;
         end;
         mOffset := AStep.Insert.OffsetIn(mText);
-        WriteRange(mView.Buffer, mText, mOffset, mOffset + Length(AStep.Insert.Text), '');
+        TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mOffset, Length(AStep.Insert.Text), '');
       end;
     TAtlasHideKind.TeamFile:
       begin
