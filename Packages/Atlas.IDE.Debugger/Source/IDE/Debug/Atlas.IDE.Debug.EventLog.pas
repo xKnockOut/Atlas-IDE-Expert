@@ -83,6 +83,8 @@ type
     class procedure ShowWindow; static;
     /// <summary>Eintrag anfügen (Logpunkte #583 und andere); ohne laufendes Teil nichts.</summary>
     class procedure AddEntry(AKind: TAtlasEventKind; const AThread, AText: string); static;
+    /// <summary>Die letzten AMax Zeilen (Debug-Notiz #582); ohne laufendes Teil leer.</summary>
+    class function LastLines(AMax: Integer): TArray<string>; static;
   end;
 
 implementation
@@ -578,6 +580,15 @@ begin
   if (FTimer <> nil) and not FTimer.Enabled then
   begin
     FTimer.Enabled := True;
+  end;
+end;
+
+class function TAtlasIdeDebugEventLog.LastLines(AMax: Integer): TArray<string>;
+begin
+  Result := nil;
+  if FLog <> nil then
+  begin
+    Result := FLog.LastLines(AMax);
   end;
 end;
 

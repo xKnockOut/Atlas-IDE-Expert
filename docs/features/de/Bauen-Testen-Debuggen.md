@@ -722,6 +722,16 @@ Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
 
+### Debug-Notiz (#582)
+
+- „Debug-Zustand festhalten“ im Atlas-Menü und in der Befehlspalette, nur im angehaltenen Debugger
+- Die Notiz in Markdown enthält Zeitpunkt, Projekt, Stelle mit Quelltextzeile, Aufrufstapel, lokale Variablen, Überwachte Ausdrücke des Projekts, die Exception und die letzten Zeilen des Ereignisprotokolls
+- Werte sind auf eine Zeile und 200 Zeichen gekürzt; Werte, die noch fehlen oder nicht lesbar sind, stehen als solche da; nach 5 Sekunden wird die Notiz ohne die fehlenden Werte fertig
+- Kennwörter und Schlüssel im Ereignisprotokoll und in Variablen mit solchen Namen erscheinen maskiert
+- Die Notiz liegt in der Zwischenablage und, mit `debug.note.saveFile`, als Datei unter `debug-notizen` (englische IDE: `debug-notes`) neben dem Projekt
+
+Einstellungen: `debug.note`, `debug.note.saveFile`
+
 ### Leck- und Absturzberichte (#74)
 
 - Bericht kopieren, dann Atlas > „Absturz- oder Leckbericht einfügen …“ (auch in der Befehlspalette): Atlas liest FastMM-Logs (FullDebugMode), die Meldung von `ReportMemoryLeaksOnShutdown`, Berichte von madExcept, EurekaLog 6/7 und JclDebug und die Meldung einer Exception allein („Zugriffsverletzung bei Adresse … in Modul …“)
