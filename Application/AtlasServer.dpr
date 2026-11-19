@@ -147,6 +147,8 @@ uses
   Shell.Mcp.CheckTools in 'Source\Shell\Shell.Mcp.CheckTools.pas',
   Shell.Mcp.ArchitectureTools in 'Source\Shell\Shell.Mcp.ArchitectureTools.pas',
   Shell.Mcp.EditingTools in 'Source\Shell\Shell.Mcp.EditingTools.pas',
+  Shell.Mcp.RefactorHost in 'Source\Shell\Shell.Mcp.RefactorHost.pas',
+  Shell.Mcp.RefactorSources in 'Source\Shell\Shell.Mcp.RefactorSources.pas',
   Shell.Mcp.ProjectTools in 'Source\Shell\Shell.Mcp.ProjectTools.pas',
   Shell.Mcp.ChangeTools in 'Source\Shell\Shell.Mcp.ChangeTools.pas',
   Shell.Mcp.Changes in 'Source\Shell\Shell.Mcp.Changes.pas',
