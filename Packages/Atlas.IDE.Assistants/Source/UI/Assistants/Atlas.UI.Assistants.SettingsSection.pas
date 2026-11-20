@@ -5,7 +5,8 @@
 // KI-Assistenten (compiler.mcpBuild; der Schlüssel bleibt, gebaut wird über das Modul Build-Pipeline), Debuggen
 // durch KI-Assistenten (debug.mcp mit Rechten und Leiste, #1874; ausgeführt im Modul Debugger), IDE-Zustand für
 // get_ide_context (assistants.context, #2050) und Hinweis auf veraltete Anweisungsdateien
-// (assistants.instructionsHint, #2615).
+// (assistants.instructionsHint, #2615); verbundene IDE für Kommandozeilen-Assistenten (assistants.link mit Auswahl,
+// Vergleich und Taste, #2377).
 // KI-Schattentext (#1922): Schalter, Anbieter, Modell, Zeilen, Ausnahmen, Tagesgrenze und der Schlüssel des
 // gewählten Anbieters. Der Schlüssel wird nie angezeigt; hinterlegen und entfernen gehen über KeyHooks, die die
 // Komposition setzt (Anmeldespeicher von Windows).
@@ -253,6 +254,11 @@ begin
     T(TAtlasAssistantsTextId.SettingsContextSelectionMax));
   // Hinweis auf veraltete Anweisungsdateien für KI-Assistenten (#2615).
   Switch('assistants.instructionsHint', T(TAtlasAssistantsTextId.SettingsInstructionsHint));
+  // Verbundene IDE für Kommandozeilen-Assistenten (#2377).
+  Switch('assistants.link', T(TAtlasAssistantsTextId.SettingsLink));
+  Switch('assistants.link.shareSelection', T(TAtlasAssistantsTextId.SettingsLinkShareSelection));
+  Switch('assistants.link.diffPreview', T(TAtlasAssistantsTextId.SettingsLinkDiffPreview));
+  Key('assistants.link.mentionKey', T(TAtlasAssistantsTextId.SettingsLinkMentionKey));
   // Rückfragen in der IDE (#2620) und KI-Protokoll (#2049).
   Switch('assistants.questionsInIde', T(TAtlasAssistantsTextId.SettingsQuestions));
   Switch('assistants.log', T(TAtlasAssistantsTextId.SettingsLog));

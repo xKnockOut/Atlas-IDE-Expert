@@ -498,6 +498,10 @@ Atlas.IDE.Assistants.Adapters.TextRequests.Tests
 Atlas.IDE.Assistants.Adapters.TextSource.Tests
 Atlas.IDE.Assistants.IdeBridge.Tests
 Atlas.Core.Assistants.ContextState.Tests
+Atlas.Core.Assistants.LinkFrames.Tests
+Atlas.Core.Assistants.LinkLock.Tests
+Atlas.Core.Assistants.LinkProtocol.Tests
+Atlas.Core.Assistants.LinkState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Notifications.Listeners.Tests
 Atlas.Core.Notifications.OrderedItems.Tests

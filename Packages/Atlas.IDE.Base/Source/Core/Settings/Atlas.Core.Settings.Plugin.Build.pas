@@ -63,6 +63,8 @@ const
   cMinAssistantsContextSelectionMax = 0;
   cMaxAssistantsContextSelectionMax = 50000;
   cDefaultAssistantsContextSelectionMax = 4000;
+  /// <summary>Strg+Umschalt+Alt+K (TShortCut).</summary>
+  cDefaultAssistantsLinkMentionKey = $E000 + Ord('K');
   cMinAssistantsLogMax = 50;
   cMaxAssistantsLogMax = 5000;
   cDefaultAssistantsLogMax = 500;
@@ -112,6 +114,18 @@ type
     /// <summary>assistants.instructionsHint (#2615): Hinweis in der Meldungsansicht, wenn nach dem Speichern der
     /// atlas.json der Abschnitt in einer Anweisungsdatei für KI-Assistenten veraltet ist.</summary>
     AssistantsInstructionsHint: Boolean;
+    /// <summary>assistants.link (#2377): RAD Studio als verbundene IDE für Kommandozeilen-Assistenten (WebSocket
+    /// nur auf 127.0.0.1, Lock-Datei, Werkzeuge der IDE); aus = kein Port, keine Lock-Datei.</summary>
+    AssistantsLink: Boolean;
+    /// <summary>assistants.link.shareSelection (#2377): Auswahl im Editor laufend an den Assistenten melden.
+    /// </summary>
+    AssistantsLinkShareSelection: Boolean;
+    /// <summary>assistants.link.diffPreview (#2377): Vorschläge des Assistenten als Vergleich zeigen und erst nach
+    /// der Entscheidung antworten; aus = openDiff wird nicht angeboten.</summary>
+    AssistantsLinkDiffPreview: Boolean;
+    /// <summary>assistants.link.mentionKey (#2377): Taste „Auswahl an den Assistenten“ (TShortCut, 0 = keine;
+    /// Vorgabe Strg+Umschalt+Alt+K).</summary>
+    AssistantsLinkMentionKey: Integer;
     /// <summary>assistants.editHoldModified (#2605): Änderungen von KI-Assistenten an ungespeichert geänderten
     /// Dateien zurückhalten, bis der Benutzer entscheidet; aus = ablehnen wie bisher.</summary>
     AssistantsEditHoldModified: Boolean;
@@ -389,6 +403,10 @@ begin
   Result.AssistantsContextSelection := True;
   Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
   Result.AssistantsInstructionsHint := True;
+  Result.AssistantsLink := False;
+  Result.AssistantsLinkShareSelection := True;
+  Result.AssistantsLinkDiffPreview := True;
+  Result.AssistantsLinkMentionKey := cDefaultAssistantsLinkMentionKey;
   Result.AssistantsEditHoldModified := True;
   Result.AssistantsQuestionsInIde := True;
   Result.AssistantsLog := True;
@@ -448,6 +466,7 @@ begin
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
+  AssistantsLinkMentionKey := EnsureRange(AssistantsLinkMentionKey, 0, $FFFF);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
   TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
   TestsUntestedWarnPercent := EnsureRange(TestsUntestedWarnPercent, cMinTestsUntestedWarnPercent,
@@ -486,6 +505,10 @@ begin
   AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
   AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);
   AIo.Flag('AssistantsInstructionsHint', AssistantsInstructionsHint);
+  AIo.Flag('AssistantsLink', AssistantsLink);
+  AIo.Flag('AssistantsLinkShareSelection', AssistantsLinkShareSelection);
+  AIo.Flag('AssistantsLinkDiffPreview', AssistantsLinkDiffPreview);
+  AIo.Number('AssistantsLinkMentionKey', AssistantsLinkMentionKey);
   AIo.Flag('AssistantsEditHoldModified', AssistantsEditHoldModified);
   AIo.Flag('AssistantsQuestionsInIde', AssistantsQuestionsInIde);
   AIo.Flag('AssistantsLog', AssistantsLog);
