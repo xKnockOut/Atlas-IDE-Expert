@@ -398,6 +398,12 @@ Compilerfehler schon beim Tippen, ohne Build.
 - Dateinamen mit `=` statt `SameFileName` verglichen (still bei plattformabhängigen Vergleichen mit `SameText` und in Test-Units)
 - DLL-Exporte ohne Aufrufkonvention oder mit Strings, dynamischen Arrays, Objekten oder Interfaces ohne GUID (Korrektur `stdcall`, Option `allowShareMem`)
 
+### IDE-Packages und Experten (#2751, #2752, #2753)
+
+- `Register`-Routinen von Packages, die Arbeit starten (Timer, Threads, Formulare, `Sleep`, auch über Hilfsroutinen, die nur von dort aufgerufen werden), statt nur anzumelden (`register-does-work`)
+- öffentliche Methoden von Notifiern, Wizards und Tastaturbindungen, aus denen eine Ausnahme ohne Schutzroutine oder `try … except` die IDE erreicht (`ota-entry-without-guard`, Schutzroutinen einstellbar, mit Korrektur)
+- Threads, die mit `Queue` am eigenen Thread einreihen, ohne dass jemand die Einträge mit `RemoveQueuedEvents` entfernt (`queue-without-remove`, mit Korrektur)
+
 ### Sicherheit
 
 - SQL- und Befehlsinjektion
