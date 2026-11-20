@@ -23,10 +23,6 @@ type
     procedure CsvWithMarks;
     [Test]
     procedure FormatsValues;
-    [Test]
-    procedure ScaleMapsBothWays;
-    [Test]
-    procedure NiceMaxRoundsUp;
   end;
 
 implementation
@@ -154,32 +150,6 @@ begin
   Assert.AreEqual('+120', TAtlasMemoryFormat.Signed(TAtlasMemorySeries.Handles, 120, mFormat));
   Assert.AreEqual('-3', TAtlasMemoryFormat.Signed(TAtlasMemorySeries.GdiObjects, -3, mFormat));
   Assert.AreEqual('+0', TAtlasMemoryFormat.Signed(TAtlasMemorySeries.UserObjects, 0, mFormat));
-end;
-
-procedure TAtlasMemoryTimelineTests.ScaleMapsBothWays;
-var
-  mScale: TAtlasMemoryChartScale;
-begin
-  mScale := TAtlasMemoryChartScale.Make(10000, 20000, 200, 101, 51);
-  Assert.AreEqual(0, mScale.XOf(10000));
-  Assert.AreEqual(50, mScale.XOf(15000));
-  Assert.AreEqual(100, mScale.XOf(20000));
-  Assert.AreEqual(Int64(15000), mScale.AtOf(50));
-  Assert.AreEqual(Int64(20000), mScale.AtOf(500), 'außerhalb begrenzt');
-  Assert.AreEqual(50, mScale.YOf(0));
-  Assert.AreEqual(25, mScale.YOf(100));
-  Assert.AreEqual(0, mScale.YOf(300), 'über der Obergrenze oben');
-  mScale := TAtlasMemoryChartScale.Make(0, 0, 0, 0, 0);
-  Assert.AreEqual(0, mScale.XOf(0), 'leere Fläche ohne Division durch null');
-end;
-
-procedure TAtlasMemoryTimelineTests.NiceMaxRoundsUp;
-begin
-  Assert.AreEqual(Int64(1), TAtlasMemoryChartScale.NiceMax(0));
-  Assert.AreEqual(Int64(5), TAtlasMemoryChartScale.NiceMax(3));
-  Assert.AreEqual(Int64(200), TAtlasMemoryChartScale.NiceMax(120));
-  Assert.AreEqual(Int64(500), TAtlasMemoryChartScale.NiceMax(500));
-  Assert.AreEqual(Int64(100000000), TAtlasMemoryChartScale.NiceMax(63000000));
 end;
 
 initialization
