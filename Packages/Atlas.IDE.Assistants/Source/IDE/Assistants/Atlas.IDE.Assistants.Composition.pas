@@ -27,6 +27,10 @@
 // - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
 //   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
 //   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
+// - Teil „AssistantLink“: RAD Studio als verbundene IDE für Kommandozeilen-Assistenten (#2377), solange
+//   assistants.link an ist (WebSocket nur auf 127.0.0.1, Lock-Datei, Statusfeld „Assistent verbunden“); dazu der
+//   Befehl „Auswahl an den Assistenten“ mit Taste (assistants.link.mentionKey) und Eintrag im Kontextmenü des
+//   Editors, sichtbar nur mit verbundenem Assistenten.
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
 //   Atlas.IDE.Assistants.Adapters.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
@@ -46,8 +50,8 @@ uses
   Atlas.Core.Build.Contract;
 
 type
-  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasAppliesSettings,
-    IAtlasFollowsTheme, IAtlasBuildVerdictListener)
+  TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
+    IAtlasKeySource, IAtlasAppliesSettings, IAtlasFollowsTheme, IAtlasBuildVerdictListener)
   public const
     cModuleId = 'atlas.assistants';
     cSwitch = 'assistants';
@@ -63,6 +67,10 @@ type
     procedure ThemeChanged;
     /// <summary>Befehl „Pause für KI-Assistenten“ (#1906).</summary>
     function Commands: TArray<TAtlasModuleCommand>;
+    /// <summary>„Auswahl an den Assistenten“ im Kontextmenü des Editors (#2377).</summary>
+    function MenuEntries: TArray<TAtlasMenuEntry>;
+    /// <summary>Taste für „Auswahl an den Assistenten“ (#2377).</summary>
+    function Keys: TArray<TAtlasModuleKey>;
     procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
       const AVerdict: TAtlasBuildVerdict);
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
@@ -95,11 +103,14 @@ uses
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
+  Atlas.IDE.Assistants.Adapters.Link,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Assistants.Adapters.Instructions,
   Atlas.UI.Assistants.SettingsSection;
 
 const
   cPauseCommand = 'Atlas.AssistantsPause';
+  cMentionCommand = 'Atlas.AssistantsLinkMention';
 
 var
   GScope: IAtlasModuleScope;
@@ -110,6 +121,7 @@ var
   GDebugBar: TAtlasIdeAssistantDebugBar;
   GBanner: TAtlasIdeAssistantsBanner;
   GContext: TAtlasIdeContextExport;
+  GLink: TAtlasIdeLink;
 
 { Dienste von Base und anderer Module }
 
@@ -297,6 +309,40 @@ begin
   Result := GContext <> nil;
 end;
 
+procedure StartLink;
+begin
+  GLink := TAtlasIdeLink.Create(GActivity);
+end;
+
+procedure StopLink;
+begin
+  FreeAndNil(GLink);
+end;
+
+function LinkStarted: Boolean;
+begin
+  Result := GLink <> nil;
+end;
+
+/// <summary>Befehl „Auswahl an den Assistenten“ nur mit verbundenem Assistenten.</summary>
+function MentionVisible: Boolean;
+begin
+  Result := (GLink <> nil) and GLink.IsConnected;
+end;
+
+procedure MentionRun;
+begin
+  if GLink <> nil then
+  begin
+    GLink.Mention;
+  end;
+end;
+
+function MentionKey: Integer;
+begin
+  Result := TAtlasIdeSettings.Current.AssistantsLinkMentionKey;
+end;
+
 { TAtlasAssistantsModule }
 
 class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
@@ -337,17 +383,61 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsContext;
-      end, ContextStarted, StartContext, StopContext)];
+      end, ContextStarted, StartContext, StopContext),
+    // Verbundene IDE für Kommandozeilen-Assistenten (#2377): solange assistants.link an ist.
+    TAtlasFeaturePart.When('AssistantLink',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsLink;
+      end, LinkStarted, StartLink, StopLink)];
 end;
 
 function TAtlasAssistantsModule.Commands: TArray<TAtlasModuleCommand>;
 begin
-  SetLength(Result, 1);
+  Result := nil;
+  SetLength(Result, 2);
   Result[0] := Default(TAtlasModuleCommand);
   Result[0].Id := cPauseCommand;
   Result[0].Caption := PauseCaption;
   Result[0].Description := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.PauseCommandHint);
   Result[0].Run := TogglePause;
+  // Auswahl an den verbundenen Assistenten (#2377).
+  Result[1] := Default(TAtlasModuleCommand);
+  Result[1].Id := cMentionCommand;
+  Result[1].Caption := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LinkMentionCommand);
+  Result[1].Description := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LinkMentionHint);
+  Result[1].Run := TAtlasGuard.Wrap(TAtlasFeature.Server, MentionRun);
+  Result[1].Visible := MentionVisible;
+  Result[1].Key := MentionKey;
+end;
+
+function TAtlasAssistantsModule.MenuEntries: TArray<TAtlasMenuEntry>;
+var
+  mEntry: TAtlasMenuEntry;
+begin
+  mEntry := Default(TAtlasMenuEntry);
+  mEntry.CommandId := cMentionCommand;
+  mEntry.Place := TAtlasMenuPlace.EditorContext;
+  Result := [mEntry];
+end;
+
+function TAtlasAssistantsModule.Keys: TArray<TAtlasModuleKey>;
+var
+  mKey: TAtlasModuleKey;
+begin
+  Result := nil;
+  // Ohne Kopplung oder ohne Taste bleibt die Taste der IDE.
+  if not TAtlasIdeSettings.Current.AssistantsLink or (MentionKey = 0) then
+  begin
+    Exit;
+  end;
+  mKey := Default(TAtlasModuleKey);
+  mKey.Id := cMentionCommand;
+  mKey.Caption := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LinkMentionCommand);
+  mKey.Key := MentionKey;
+  mKey.Priority := TAtlasKeyPriority.Shared;
+  mKey.Run := TAtlasGuard.Wrap(TAtlasFeature.Server, MentionRun);
+  Result := [mKey];
 end;
 
 function TAtlasAssistantsModule.Info: TAtlasModuleInfo;
@@ -376,6 +466,11 @@ procedure TAtlasAssistantsModule.ApplySettings;
 begin
   // debug.mcp.banner gilt sofort.
   DebugChanged;
+  // assistants.link.shareSelection und .diffPreview gelten sofort (#2377).
+  if GLink <> nil then
+  begin
+    GLink.ApplySettings;
+  end;
 end;
 
 procedure TAtlasAssistantsModule.ThemeChanged;
@@ -421,6 +516,9 @@ begin
     GScope.Provide(IAtlasFeaturePart, mPart);
   end;
   GScope.Provide(IAtlasCommandSource, mRef);
+  // „Auswahl an den Assistenten“ (#2377) im Kontextmenü und als Taste.
+  GScope.Provide(IAtlasMenuSource, mModule as IAtlasMenuSource);
+  GScope.Provide(IAtlasKeySource, mModule as IAtlasKeySource);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   StartAiProbe;
   // Text für andere Module (Zusammenfassen im Tracker, #2462); wer fragt, filtert nach aktiven Modulen.

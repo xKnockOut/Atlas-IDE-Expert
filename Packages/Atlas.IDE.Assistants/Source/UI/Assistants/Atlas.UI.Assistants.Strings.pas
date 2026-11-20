@@ -39,7 +39,13 @@ type
     ProbeFailed,
     // Anweisungsdateien für KI-Assistenten (#2615).
     InstructionsCommand, InstructionsWritten, InstructionsCurrent, InstructionsFailed, InstructionsNoAnswer,
-    InstructionsNoFiles, InstructionsStale, SettingsInstructionsHint);
+    InstructionsNoFiles, InstructionsStale, SettingsInstructionsHint,
+    // Assistenten-Kopplung (#2377).
+    SettingsLink, SettingsLinkShareSelection, SettingsLinkDiffPreview, SettingsLinkMentionKey, LinkStatus,
+    LinkStatusSharing, LinkStatusHint, LinkDisconnect, LinkMentionCommand, LinkMentionHint, LinkMentionNone,
+    LinkMentionSent, LinkNoPort, LinkLockFailed, LinkConnected, LinkDisconnected, LinkDiffTitle, LinkDiffAccept,
+    LinkDiffReject, LinkDiffEdit, LinkDiffSame, LinkDiffAccepted, LinkDiffRejected, LinkDiffFailed,
+    LinkDiffChanged, UndoActionLink, LinkDiffNotSaved);
 
   TAtlasAssistantsStrings = class
   public
@@ -169,7 +175,34 @@ const
      'Atlas: Keine Anweisungsdatei in assistants.instructions.file.',
      'Atlas: Anweisungen für KI-Assistenten in %s veraltet; aktualisieren über Atlas › Anweisungen für ' +
        'KI-Assistenten aktualisieren.',
-     'Hinweis, wenn die Anweisungen für KI-Assistenten nach einer Änderung an atlas.json veraltet sind'),
+     'Hinweis, wenn die Anweisungen für KI-Assistenten nach einer Änderung an atlas.json veraltet sind',
+     'Mit Kommandozeilen-Assistenten verbinden (Auswahl, Vergleich, Befunde)',
+     'Auswahl laufend teilen',
+     'Vorschläge als Vergleich zeigen',
+     'Auswahl an den Assistenten',
+     'Assistent verbunden%s',
+     ' · Auswahl wird geteilt',
+     'Ein Kommandozeilen-Assistent ist mit dieser IDE verbunden. Klick: Trennen',
+     'Trennen',
+     'Auswahl an den Assistenten',
+     'Datei und Zeilen der Auswahl an den verbundenen Kommandozeilen-Assistenten schicken',
+     'Atlas: Kein Assistent verbunden oder keine Datei im Editor.',
+     'Atlas: %s, Zeilen %d–%d an den Assistenten geschickt.',
+     'Atlas: Kein freier Port für die Verbindung mit Kommandozeilen-Assistenten.',
+     'Atlas: Lock-Datei für Kommandozeilen-Assistenten nicht geschrieben (%s).',
+     'Atlas: Assistent verbunden%s.',
+     'Atlas: Assistent getrennt%s.',
+     'Vorschlag des Assistenten: %s',
+     'Annehmen',
+     'Ablehnen',
+     'Annehmen und öffnen',
+     '(kein Unterschied zum jetzigen Stand)',
+     'Atlas: Vorschlag des Assistenten für %s angenommen.',
+     'Atlas: Vorschlag des Assistenten für %s abgelehnt.',
+     'Atlas: Vorschlag für %s nicht angewendet (%s).',
+     'Atlas: %s hat sich inzwischen geändert; der Vergleich zeigt jetzt den neuen Stand.',
+     'Vorschlag des Assistenten',
+     'Datei nicht gespeichert'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -282,7 +315,34 @@ const
      'Atlas: no instruction file in assistants.instructions.file.',
      'Atlas: instructions for AI assistants in %s are out of date; update with Atlas › Update instructions ' +
        'for AI assistants.',
-     'Hint when the instructions for AI assistants are out of date after a change to atlas.json'));
+     'Hint when the instructions for AI assistants are out of date after a change to atlas.json',
+     'Connect with command line assistants (selection, comparison, findings)',
+     'Share the selection live',
+     'Show proposals as a comparison',
+     'Selection to the assistant',
+     'Assistant connected%s',
+     ' · selection is shared',
+     'A command line assistant is connected to this IDE. Click: disconnect',
+     'Disconnect',
+     'Selection to the assistant',
+     'Send file and lines of the selection to the connected command line assistant',
+     'Atlas: no assistant connected or no file in the editor.',
+     'Atlas: %s, lines %d–%d sent to the assistant.',
+     'Atlas: no free port for the connection with command line assistants.',
+     'Atlas: lock file for command line assistants not written (%s).',
+     'Atlas: assistant connected%s.',
+     'Atlas: assistant disconnected%s.',
+     'Proposal of the assistant: %s',
+     'Accept',
+     'Reject',
+     'Accept and open',
+     '(no difference to the current state)',
+     'Atlas: proposal of the assistant for %s accepted.',
+     'Atlas: proposal of the assistant for %s rejected.',
+     'Atlas: proposal for %s not applied (%s).',
+     'Atlas: %s has changed in the meantime; the comparison now shows the new state.',
+     'Proposal of the assistant',
+     'file not saved'));
 
 { TAtlasAssistantsStrings }
 

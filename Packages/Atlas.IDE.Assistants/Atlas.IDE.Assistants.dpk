@@ -47,6 +47,11 @@ contains
   Atlas.Core.Assistants.Inbox in 'Source\Core\Assistants\Atlas.Core.Assistants.Inbox.pas',
   Atlas.Core.Assistants.InboxPace in 'Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas',
   Atlas.Core.Assistants.ContextState in 'Source\Core\Assistants\Atlas.Core.Assistants.ContextState.pas',
+  Atlas.Core.Assistants.LinkFrames in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkFrames.pas',
+  Atlas.Core.Assistants.LinkLock in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkLock.pas',
+  Atlas.Core.Assistants.Contract.Link in 'Source\Core\Assistants\Atlas.Core.Assistants.Contract.Link.pas',
+  Atlas.Core.Assistants.LinkProtocol in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkProtocol.pas',
+  Atlas.Core.Assistants.LinkState in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkState.pas',
   Atlas.Core.Assistants.EditPlan in 'Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas',
   Atlas.Core.Assistants.Instructions in 'Source\Core\Assistants\Atlas.Core.Assistants.Instructions.pas',
   Atlas.Core.AiProviders.Contract in 'Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas',
@@ -73,6 +78,10 @@ contains
   Atlas.UI.Assistants.DebugBar in 'Source\UI\Assistants\Atlas.UI.Assistants.DebugBar.pas',
   Atlas.IDE.Assistants.DebugBar in 'Source\IDE\Assistants\Atlas.IDE.Assistants.DebugBar.pas',
   Atlas.IDE.Assistants.Banner in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Banner.pas',
+  Atlas.UI.Assistants.LinkDiffView in 'Source\UI\Assistants\Atlas.UI.Assistants.LinkDiffView.pas',
+  Atlas.IDE.Assistants.LinkServer in 'Source\IDE\Assistants\Atlas.IDE.Assistants.LinkServer.pas',
+  Atlas.IDE.Assistants.LinkEditor in 'Source\IDE\Assistants\Atlas.IDE.Assistants.LinkEditor.pas',
+  Atlas.IDE.Assistants.Adapters.Link in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Link.pas',
   Atlas.IDE.Assistants.Composition.Adapters in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Adapters.pas',
   Atlas.IDE.Assistants.Composition in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas';
 

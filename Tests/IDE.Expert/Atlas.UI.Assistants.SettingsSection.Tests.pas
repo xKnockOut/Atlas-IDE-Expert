@@ -93,6 +93,16 @@ begin
     CheckOf(mPage, 'AssistantsContext').Checked := False;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.AssistantsContext);
+    // Verbundene IDE für Kommandozeilen-Assistenten (#2377): Vorgabe aus, Auswahl und Vergleich an.
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsLink')));
+    Assert.IsFalse(CheckOf(mPage, 'AssistantsLink').Checked, 'Kopplung standardmäßig aus');
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsLinkShareSelection').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsLinkDiffPreview').Checked);
+    CheckOf(mPage, 'AssistantsLink').Checked := True;
+    CheckOf(mPage, 'AssistantsLinkDiffPreview').Checked := False;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.AssistantsLink, 'einschaltbar');
+    Assert.IsFalse(mSaved.AssistantsLinkDiffPreview);
   finally
     mPage.Free;
   end;

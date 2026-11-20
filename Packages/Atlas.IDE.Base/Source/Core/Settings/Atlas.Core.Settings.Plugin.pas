@@ -404,6 +404,13 @@ type
       write FBuild.AssistantsContextSelectionMax;
     property AssistantsInstructionsHint: Boolean read FBuild.AssistantsInstructionsHint
       write FBuild.AssistantsInstructionsHint;
+    property AssistantsLink: Boolean read FBuild.AssistantsLink write FBuild.AssistantsLink;
+    property AssistantsLinkShareSelection: Boolean read FBuild.AssistantsLinkShareSelection
+      write FBuild.AssistantsLinkShareSelection;
+    property AssistantsLinkDiffPreview: Boolean read FBuild.AssistantsLinkDiffPreview
+      write FBuild.AssistantsLinkDiffPreview;
+    property AssistantsLinkMentionKey: Integer read FBuild.AssistantsLinkMentionKey
+      write FBuild.AssistantsLinkMentionKey;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
     property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram

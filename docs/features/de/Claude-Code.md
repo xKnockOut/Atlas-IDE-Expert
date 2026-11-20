@@ -49,6 +49,16 @@ Das Modul KI-Assistenten (`assistants.enabled`) nimmt Aufträge von MCP-Clients 
 - **Anzeige „KI-Assistent aktiv“** (#1906, `assistants.banner`): Ein Feld im Atlas-Statusfeld zeigt, welches Projekt gerade für einen KI-Assistenten gebaut wird oder welche offene Datei er zuletzt geändert hat (eine Minute lang).
 - **Pause für KI:** Ein Klick auf das Feld oder der Befehl „Pause für KI-Assistenten“ in der Palette hält KI-Assistenten an. Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann mit Grund ab, der MCP-Server schreibt die Datei auch nicht selbst; ein laufender Build läuft zu Ende. Während der Pause bleibt das Feld stehen, ein zweiter Klick hebt sie auf.
 
+## Verbundene IDE für Kommandozeilen-Assistenten (#2377)
+
+Mit `assistants.link` (Vorgabe aus) meldet sich RAD Studio bei Kommandozeilen-Assistenten als verbundene IDE, wie es Editoren mit eigener Erweiterung tun. Atlas öffnet dafür einen WebSocket-Server nur auf 127.0.0.1 mit zufälligem Port und einem Token je IDE-Sitzung und legt eine Lock-Datei in den Konfigurationsordner des Assistenten (`%USERPROFILE%\.claude\ide\<Port>.lock` bzw. unter `CLAUDE_CONFIG_DIR`); beim Abschalten oder Beenden verschwindet sie wieder. Verbindungen ohne Token oder aus einem Browser lehnt der Server ab.
+
+- **Auswahl live** (`assistants.link.shareSelection`): Die Auswahl im Editor geht an den Assistenten, sobald sie kurz ruht; ohne Auswahl die Zeile der Schreibmarke.
+- **Auswahl an den Assistenten:** Befehl im Kontextmenü des Editors und Taste (`assistants.link.mentionKey`, Vorgabe Strg+Umschalt+Alt+K) schicken Datei und Zeilen der Auswahl als Erwähnung.
+- **Vorschlag als Vergleich** (`assistants.link.diffPreview`): Ein Vorschlag des Assistenten erscheint als Vergleich mit dem jetzigen Stand der Datei. „Annehmen“ ändert die Datei als ein Rückgängig-Schritt und speichert sie, „Annehmen und öffnen“ zeigt sie danach im Editor, „Ablehnen“ oder Schließen lässt sie unverändert. Erst dann erfährt der Assistent die Entscheidung. Hat sich die Datei inzwischen geändert, zeigt der Vergleich den neuen Stand.
+- **Werkzeuge:** offene Dateien und Arbeitsordner, Auswahl, Datei öffnen und einen Bereich markieren, ungespeicherte Änderungen prüfen und speichern, Befunde von Atlas und Compilermeldungen. Code in der IDE ausführen kann der Assistent nicht.
+- **Statusfeld „Assistent verbunden“** mit dem Namen des Assistenten; ein Klick bietet „Trennen“. Die Pause für KI gilt auch hier: Speichern und Vorschläge lehnt die IDE dann ab.
+
 ## Prompts (#1357)
 
 **Prompts** sind fertige Arbeitsabläufe, die Claude Code als Schrägstrich-Befehle zeigt:
