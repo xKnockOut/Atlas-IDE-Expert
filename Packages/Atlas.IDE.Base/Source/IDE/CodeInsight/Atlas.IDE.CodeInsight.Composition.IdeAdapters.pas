@@ -1,10 +1,11 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.IdeAdapters;
 
 // Adapter der IDE-Features von Base für die Kompositionswurzel: Einstellungsspeicher in der Registry, aktiver
-// Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Server und IDE für den Ablauf der Probleme,
-// Palette als Befehlsziel, Einrichtung, Schattentext aus dem Index und Statuszeilen des Atlas-Felds. Nur diese Unit
-// erzeugt sie; die Features bekommen sie über Fabriken an ihrer Wurzel, über TAtlasIdeHost oder als Parameter. Die
-// Fenster als Ansichten der Controller setzt Atlas.IDE.CodeInsight.Composition.UiAdapters ein.
+// Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Palette als Befehlsziel, Einrichtung,
+// Schattentext aus dem Index und Statuszeilen des Atlas-Felds. Nur diese Unit erzeugt sie; die Features bekommen
+// sie über Fabriken an ihrer Wurzel, über TAtlasIdeHost oder als Parameter. Server und IDE für den Ablauf der
+// Probleme setzt Atlas.IDE.CodeInsight.Composition.ProblemsAdapters ein, die Fenster als Ansichten der Controller
+// Atlas.IDE.CodeInsight.Composition.UiAdapters.
 
 interface
 
@@ -21,8 +22,8 @@ uses
   Atlas.Core.Status.FieldFlow;
 
 /// <summary>Fabriken der IDE-Adapter einsetzen: Einstellungsspeicher in der Registry, Sicht des Planers, Puffer
-/// der Editoransicht, Server und IDE der Probleme, dazu die Fenster-Adapter (InstallUiAdapters). Ab der
-/// Unit-Initialisierung, vor dem ersten Lesen der Einstellungen.</summary>
+/// der Editoransicht, dazu die Adapter der Probleme (InstallProblemsAdapters) und die Fenster-Adapter
+/// (InstallUiAdapters). Ab der Unit-Initialisierung, vor dem ersten Lesen der Einstellungen.</summary>
 procedure InstallIdeAdapters;
 /// <summary>Aktiver Editor für TAtlasIdeHost.</summary>
 function ActiveEditorAdapter: IAtlasActiveEditor;
@@ -59,11 +60,8 @@ uses
   Atlas.IDE.Setup.Adapters.Environment,
   Atlas.IDE.Status.Adapters.FieldSurface,
   Atlas.IDE.CodeInsight.Composition.UiAdapters,
-  Atlas.Core.Editor.Contract,
-  Atlas.Core.Problems.Contract.Sync,
-  Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Problems.Adapters.Editors,
-  Atlas.IDE.Problems.Adapters.Server;
+  Atlas.IDE.CodeInsight.Composition.ProblemsAdapters,
+  Atlas.Core.Editor.Contract;
 
 procedure InstallIdeAdapters;
 begin
@@ -82,17 +80,7 @@ begin
     begin
       Result := TAtlasIdeEditSurface.Create(AView);
     end;
-  TAtlasProblemsController.ServerFactory :=
-    function(const ASession: TAtlasProblemsSessionFunc; const ADocument: TAtlasProblemsDocumentProc;
-      const AWorkspace: TAtlasProblemsWorkspaceProc; const ALog: TAtlasProblemsLogProc): IAtlasProblemsServer
-    begin
-      Result := TAtlasIdeProblemsServer.Create(ASession, ADocument, AWorkspace, ALog);
-    end;
-  TAtlasProblemsController.EditorsFactory :=
-    function: IAtlasProblemsEditors
-    begin
-      Result := TAtlasIdeProblemsEditors.Create;
-    end;
+  InstallProblemsAdapters;
   InstallUiAdapters;
 end;
 
