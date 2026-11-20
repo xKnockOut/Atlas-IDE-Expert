@@ -45,6 +45,13 @@
       verlangen das Senken der Baseline (-UpdateBaseline). Eine Zeile mit
       // window-ok ist ausgenommen (Überlagerungen und Popups ohne
       Dialogcharakter, mit Begründung im Kommentar).
+    - Ein Teiler (TSplitter) bekommt vor dem Ausrichten seine Lage (Top bei
+      alTop/alBottom, Left bei alLeft/alRight) neben dem Steuerelement, das er
+      verstellt (splitter-position). Die VCL ordnet gleich ausgerichtete
+      Steuerelemente nach ihrer Lage; ohne Lage landete der Teiler im Fenster
+      „Atlas-Tests“ über dem Tastenhinweis statt über den Einzelheiten und zog
+      dessen Höhe: großer leerer Bereich, der Baum schrumpfte. Geprüft wird,
+      dass die Unit Top oder Left des Teilers setzt.
     - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
       eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
       ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
@@ -176,6 +183,16 @@ foreach ($file in $files) {
         if ($file.Name -eq $rule.Allowed) { continue }
         foreach ($match in [regex]::Matches($text, $rule.Pattern)) {
             $violations += "${relative}:$(Get-LineNumber $text $match.Index): $($rule.Message)"
+        }
+    }
+
+    # Teiler ohne Lage: Die VCL ordnet gleich ausgerichtete Steuerelemente nach Top bzw. Left (splitter-position).
+    foreach ($match in [regex]::Matches($text, '(?i)\b([\w.]+)\s*:=\s*TSplitter\s*\.\s*Create\b')) {
+        $mLine = Get-LineNumber $text $match.Index
+        if ($exempt.Contains($mLine)) { continue }
+        $mName = [regex]::Escape($match.Groups[1].Value) -replace '\\\.', '\s*\.\s*'
+        if ($text -notmatch ('(?i)(?<![\w.])' + $mName + '\s*\.\s*(Top|Left)\s*:=')) {
+            $violations += "${relative}:${mLine}: Teiler ohne Top bzw. Left; vor Align und Parent neben das Steuerelement setzen, das er verstellt (die VCL ordnet gleich ausgerichtete Steuerelemente nach ihrer Lage, sonst zieht der Teiler den falschen Nachbarn)"
         }
     }
 
