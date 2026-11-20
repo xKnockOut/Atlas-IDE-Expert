@@ -35,12 +35,7 @@ uses
   Atlas.Core.Problems.Store;
 
 type
-  /// <summary>Hört auf geänderte Projekt-Zusammenfassungen (Hauptthread). AProject: Projekt oder Projektgruppe,
-  /// '' = mehrere oder unbekannt.</summary>
-  IAtlasProjectSummaryListener = interface
-    ['{6E0C5B7A-2F1D-4C8E-9A35-7D41B0E2C9F6}']
-    procedure SummaryChanged(const AProject: string);
-  end;
+  IAtlasProjectSummaryListener = Atlas.IDE.Projects.Contract.IAtlasProjectSummaryListener;
 
   TAtlasIdeProjectSummaries = class
   private type
@@ -145,8 +140,10 @@ uses
   Atlas.Core.Projects.Trends,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
+  Atlas.Core.Editor.SourceFiles,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Projects.Contract;
 
 { TAtlasIdeProjectSummaries.TIdeNotifier }
 
@@ -421,12 +418,8 @@ begin
 end;
 
 class function TAtlasIdeProjectSummaries.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
-  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or
-    (mExtension = '.groupproj');
+  Result := TAtlasSourceFiles.IsProjectFile(Trim(AFileName));
 end;
 
 class function TAtlasIdeProjectSummaries.Current: TAtlasIdeProjectSummaries;

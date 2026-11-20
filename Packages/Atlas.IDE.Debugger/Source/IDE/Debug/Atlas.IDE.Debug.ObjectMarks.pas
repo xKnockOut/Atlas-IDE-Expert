@@ -22,7 +22,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.ObjectMarks,
   Atlas.IDE.Debug.StopView,
   Atlas.IDE.Debug.DockPanel,
@@ -95,11 +95,13 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.InstanceBreakpoint,
   Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.UI.Debug.ObjectMarks.Strings;
+  Atlas.UI.Debug.ObjectMarks.Strings,
+  Atlas.IDE.Hover.DebugValue;
 
 /// <summary>Zeigergröße des Programms: 8 unter Win64, sonst 4.</summary>
 function PointerSize: Integer;
@@ -223,7 +225,7 @@ var
   mMark: TAtlasObjectMark;
   mChanged: Boolean;
 begin
-  if TAtlasIdeDebugEvaluator.StoppedThread = nil then
+  if TAtlasIdeDebugValues.StoppedThread = nil then
   begin
     Exit;
   end;
@@ -266,7 +268,7 @@ var
 begin
   Result := '';
   if (FInstance = nil) or (FInstance.FMarks.Count = 0) or not TAtlasObjectMarks.LooksLikeObject(AValueText) or
-    (TAtlasIdeDebugEvaluator.StoppedThread = nil) then
+    (TAtlasIdeDebugValues.StoppedThread = nil) then
   begin
     Exit;
   end;
@@ -316,7 +318,7 @@ var
   mText, mTypeName, mName, mCaption: string;
 begin
   Result := False;
-  if (FInstance = nil) or (Trim(AExpression) = '') or (TAtlasIdeDebugEvaluator.StoppedThread = nil) then
+  if (FInstance = nil) or (Trim(AExpression) = '') or (TAtlasIdeDebugValues.StoppedThread = nil) then
   begin
     Exit;
   end;

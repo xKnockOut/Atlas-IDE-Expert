@@ -364,12 +364,12 @@ begin
     for mFinding in mFindings do
     begin
       Assert.AreEqual(TAtlasIdeErrors.OriginOf(mFinding.Problem) = TAtlasProblemOrigin.Atlas, mFilter.Matches(mFinding),
-        mFinding.SourceText);
+        TAtlasIdeErrors.OriginText(mFinding.Problem));
     end;
     mFilter.Origin := TAtlasFindingOrigin.IdeOnly;
     for mFinding in mFindings do
     begin
-      Assert.AreEqual(mFinding.Problem.IsIde, mFilter.Matches(mFinding), mFinding.SourceText);
+      Assert.AreEqual(mFinding.Problem.IsIde, mFilter.Matches(mFinding), TAtlasIdeErrors.OriginText(mFinding.Problem));
     end;
   finally
     mStore.Free;

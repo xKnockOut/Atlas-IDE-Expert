@@ -56,19 +56,6 @@ begin
   end;
 end;
 
-/// <summary>Unitname der Datei im Editor; '' ohne.</summary>
-function ActiveUnitName: string;
-var
-  mView: IOTAEditView;
-begin
-  Result := '';
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
-  begin
-    Result := ChangeFileExt(ExtractFileName(mView.Buffer.FileName), '');
-  end;
-end;
-
 /// <summary>Vorschlag: Ausgabeartefakt und Feature der Unit im Editor, sonst das erste Ausgabeartefakt.</summary>
 function Proposal(const APrefixes: TArray<string>): TAtlasRoleUnitInput;
 var
@@ -76,7 +63,7 @@ var
   mParts: TArray<string>;
 begin
   Result := Default(TAtlasRoleUnitInput);
-  mUnit := ActiveUnitName;
+  mUnit := TAtlasEditorBuffer.ActiveUnitName;
   Result.Prefix := TAtlasRoleUnit.PrefixOf(mUnit, APrefixes);
   if Result.Prefix <> '' then
   begin

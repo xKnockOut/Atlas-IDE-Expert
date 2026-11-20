@@ -1013,6 +1013,14 @@ begin
   Assert.IsFalse(Parse('{}', mIssues).SortUses);
   Assert.IsTrue(Parse('{"sortUses": true}', mIssues).SortUses);
   Assert.AreEqual(0, Integer(Length(mIssues)));
+  // Nach Herkunft gegliedert (#2794) mit Darstellung der Gruppen.
+  Assert.IsTrue(Parse('{"sortUses": "origin"}', mIssues).SortUsesByOrigin);
+  Assert.IsFalse(Parse('{"sortUses": "namespace"}', mIssues).SortUsesByOrigin);
+  Assert.AreEqual('comments', Parse('{}', mIssues).UsesGroupStyle);
+  Assert.AreEqual('lines', Parse('{"usesGroupStyle": "lines"}', mIssues).UsesGroupStyle);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('comments', Parse('{"usesGroupStyle": "blocks"}', mIssues).UsesGroupStyle);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 procedure TServerSettingsTests.ReadsFixMinConfidence;
 var

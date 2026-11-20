@@ -35,11 +35,12 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Debug.Exceptions,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.Core.Debug.ExceptionBanner,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.AccessViolationUnderline,
@@ -65,7 +66,7 @@ type
     cDeferredTimeoutMs = 2000;
     cRequestTimeoutMs = 5000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -95,10 +96,9 @@ type
       Active: Boolean;
       Since: UInt64;
     end;
-    /// <summary>Was zum Halt gehört: Exception, Meldung, Ort, Zeigergröße und abgeglichener Text der Datei.
+    /// <summary>Was zum Halt gehört: Meldung, Ort, Zeigergröße und abgeglichener Text der Datei.
     /// </summary>
     TStopFacts = record
-      Exception: TAtlasDebugException;
       Access: TAtlasAvMessage;
       FileName: string;
       Line: Integer;
@@ -122,7 +122,7 @@ type
     FInstance: TAtlasIdeDebugAccessViolation;
   private
     FHooks: THooks;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FHandler: Integer;
     FTimer: TTimer;
     FWorkers: TAtlasWorkerSlot;
@@ -543,7 +543,6 @@ begin
     TAtlasGuard.Log('Zugriffsverletzung erklären: Halt nicht in eigenem Code mit Quelltext; nur die Meldung');
     Exit;
   end;
-  FFacts.Exception := AStop.Exception;
   FProgress.Stop := AStop.Stop;
   if FFacts.ModuleOnly then
   begin
@@ -653,7 +652,9 @@ begin
       end;
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.MessageRule: ;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.MessageRule,
+    TAtlasDebugBarAction.KnownOpen, TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen,
+    TAtlasDebugBarAction.KnownNew: ;
   end;
 end;
 

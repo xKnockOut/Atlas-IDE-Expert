@@ -32,23 +32,10 @@ uses
   Vcl.Menus,
   Vcl.Graphics,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasUnsavedSource = interface
-    ['{8C2D4E61-3A7B-4F95-B1E8-6D0C9A2F5E73}']
-    /// <summary>Zeilen und Zustand des Bereichs.</summary>
-    function View: TAtlasUnsavedView;
-    /// <summary>„Ansehen“: Projekt öffnen und die betroffenen Dateien zeigen.</summary>
-    procedure Show(const ARow: TAtlasUnsavedRow);
-    /// <summary>„Push …“: Ziel und Commits zeigen, nur nach Bestätigung pushen.</summary>
-    procedure Push(const ARow: TAtlasUnsavedRow);
-    procedure OpenFolder(const ARow: TAtlasUnsavedRow);
-    /// <summary>„Ignorieren bis morgen“.</summary>
-    procedure Ignore(const ARow: TAtlasUnsavedRow);
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf im Hintergrund frisch abfragen.</summary>
-    procedure Shown;
-  end;
 
   TAtlasUnsavedHit = record
     /// <summary>Zeile; -1 = keine.</summary>
@@ -108,7 +95,7 @@ type
     procedure SetSource(const AValue: IAtlasUnsavedSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxLeftClick(Sender: TObject; AX, AY: Integer);
     procedure MenuPopup(Sender: TObject);
     procedure OpenFolderClick(Sender: TObject);
     procedure IgnoreClick(Sender: TObject);
@@ -162,7 +149,7 @@ begin
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnLeftClick := BoxLeftClick;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FOpenFolderItem := TMenuItem.Create(Self);
@@ -528,13 +515,9 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasWelcomeUnsavedFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+procedure TAtlasWelcomeUnsavedFrame.BoxLeftClick(Sender: TObject; AX, AY: Integer);
 begin
-  if Button = mbLeft then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  ClickAt(HitTest(AX, AY));
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.MenuPopup(Sender: TObject);

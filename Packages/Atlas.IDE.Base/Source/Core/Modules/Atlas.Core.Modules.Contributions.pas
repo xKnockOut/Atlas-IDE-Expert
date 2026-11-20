@@ -23,6 +23,12 @@ type
     /// <summary>Unter AIID bereitgestellte Objekte laufender Module (und solche ohne Modul) in Reihenfolge der
     /// Bereitstellung; ohne Registry leer.</summary>
     class function Active(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID): TArray<IInterface>; static;
+    /// <summary>Erster aktiver Beitrag unter AIID als Interface AIID in AItem (eine Interface-Variable dieses
+    /// Typs); False und nil ohne.</summary>
+    class function First(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID; out AItem): Boolean; static;
+    /// <summary>Befehl mit Kennung, Beschriftung, Aktion und Sichtbarkeit; übrige Felder leer.</summary>
+    class function NewCommand(const AId, ACaption: string; const ARun: TProc;
+      const AVisible: TFunc<Boolean>): TAtlasModuleCommand; static;
     /// <summary>Alle Befehle in Reihenfolge der Bereitstellung; ohne Registry leer.</summary>
     class function Commands(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleCommand>; static;
     /// <summary>Befehl AId; False, wenn ihn kein Modul anbietet.</summary>
@@ -30,6 +36,8 @@ type
       out ACommand: TAtlasModuleCommand): Boolean; static;
     /// <summary>Sichtbar ist ein Befehl ohne Visible oder wenn Visible True liefert.</summary>
     class function IsVisible(const ACommand: TAtlasModuleCommand): Boolean; static;
+    /// <summary>Bietet ein angemeldetes Modul den Befehl AId sichtbar an?</summary>
+    class function Offers(const ARegistry: IAtlasModuleRegistry; const AId: string): Boolean; static;
     /// <summary>Menüeinträge für APlace in Reihenfolge der Bereitstellung.</summary>
     class function MenuEntries(const ARegistry: IAtlasModuleRegistry;
       APlace: TAtlasMenuPlace): TArray<TAtlasMenuEntry>; static;
@@ -75,6 +83,16 @@ begin
   end;
 end;
 
+class function TAtlasModuleContributions.NewCommand(const AId, ACaption: string; const ARun: TProc;
+  const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
+begin
+  Result := Default(TAtlasModuleCommand);
+  Result.Id := AId;
+  Result.Caption := ACaption;
+  Result.Run := ARun;
+  Result.Visible := AVisible;
+end;
+
 class function TAtlasModuleContributions.Commands(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleCommand>;
 var
   mItem: IInterface;
@@ -114,6 +132,13 @@ end;
 class function TAtlasModuleContributions.IsVisible(const ACommand: TAtlasModuleCommand): Boolean;
 begin
   Result := not Assigned(ACommand.Visible) or ACommand.Visible();
+end;
+
+class function TAtlasModuleContributions.Offers(const ARegistry: IAtlasModuleRegistry; const AId: string): Boolean;
+var
+  mCommand: TAtlasModuleCommand;
+begin
+  Result := FindCommand(ARegistry, AId, mCommand) and IsVisible(mCommand);
 end;
 
 class function TAtlasModuleContributions.MenuEntries(const ARegistry: IAtlasModuleRegistry;
@@ -273,6 +298,22 @@ begin
           Result := Result + ['IAtlasFollowsSaves: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
   end;
+end;
+
+class function TAtlasModuleContributions.First(const ARegistry: IAtlasModuleRegistry; const AIID: TGUID;
+  out AItem): Boolean;
+var
+  mItem: IInterface;
+begin
+  IInterface(AItem) := nil;
+  for mItem in Active(ARegistry, AIID) do
+  begin
+    if Supports(mItem, AIID, AItem) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TAtlasModuleContributions.HoverValue(const ARegistry: IAtlasModuleRegistry; const AExpression: string;

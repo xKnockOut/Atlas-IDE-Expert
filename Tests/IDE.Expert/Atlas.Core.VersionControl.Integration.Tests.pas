@@ -50,7 +50,7 @@ uses
   Atlas.Core.VersionControl.Switches,
   Atlas.Core.Diagnostics.BackgroundJobs,
   Atlas.Core.VersionControl.Composition,
-  Atlas.Core.VersionControl.Adapters.ProcessRunner,
+  Atlas.Core.VersionControl.Providers.ProcessRunner,
   Atlas.Core.Welcome.Unsaved,
   Atlas.Core.Welcome.Continue;
 

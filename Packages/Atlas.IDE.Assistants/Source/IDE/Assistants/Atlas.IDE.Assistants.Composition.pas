@@ -25,9 +25,10 @@
 //   solange assistants.context an ist; den letzten Build bekommt er über
 //   IAtlasBuildVerdictListener.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
-//   Schlüssel der KI-Anbieter.
+//   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
+//   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
-//   Atlas.IDE.Assistants.Instructions).
+//   Atlas.IDE.Assistants.Adapters.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
 // (TAtlasAssistantsActivity), gehört dem Modul und lebt von der Anmeldung bis
 // nach dem Abmelden: Die Pause bleibt so über das Neustarten einzelner Teile
@@ -42,9 +43,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Verdict;
+  Atlas.Core.Build.Contract;
 
 type
   TAtlasAssistantsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasAppliesSettings,
@@ -82,12 +81,12 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Contracts.AiText,
   Atlas.IDE.Contracts.BuildRequests,
   Atlas.IDE.Contracts.DebugControl,
   Atlas.Core.Assistants.DebugGate,
   Atlas.IDE.Assistants.DebugInbox,
   Atlas.IDE.Assistants.DebugBar,
-  Atlas.IDE.Foundation.EditorFiles,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
@@ -96,7 +95,7 @@ uses
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
-  Atlas.IDE.Assistants.Instructions,
+  Atlas.IDE.Assistants.Adapters.Instructions,
   Atlas.UI.Assistants.SettingsSection;
 
 const
@@ -116,17 +115,8 @@ var
 
 /// <summary>Builds des Moduls Build-Pipeline; nil, solange es fehlt oder nicht läuft.</summary>
 function BuildRequests: IAtlasBuildRequests;
-var
-  mItem: IInterface;
 begin
-  Result := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildRequests) do
-  begin
-    if Supports(mItem, IAtlasBuildRequests, Result) then
-    begin
-      Exit;
-    end;
-  end;
+  TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasBuildRequests, Result);
 end;
 
 function ModuleScope: IAtlasModuleScope;
@@ -185,7 +175,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeEditorFiles.Create, GActivity, TAtlasIdeHost.Warnings());
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeHost.EditorFiles, GActivity, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopEdits;
@@ -416,7 +406,7 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
   begin
     Exit;
   end;
@@ -432,6 +422,9 @@ begin
   end;
   GScope.Provide(IAtlasCommandSource, mRef);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
+  StartAiProbe;
+  // Text für andere Module (Zusammenfassen im Tracker, #2462); wer fragt, filtert nach aktiven Modulen.
+  GScope.Provide(IAtlasAiText, StartAiText);
   TAtlasAssistantsSettingsSection.KeyHooks := AiKeyHooks;
   TAtlasAssistantsSettingsSection.ProvideIn(GScope);
   // Anweisungsdateien für KI-Assistenten (#2615): Befehl, Menüeintrag und Hinweis nach dem Speichern.
@@ -448,6 +441,8 @@ begin
     procedure
     begin
       TAtlasAssistantsSettingsSection.KeyHooks := Default(TAtlasAssistantsKeyHooks);
+      StopAiProbe;
+      StopAiText;
     end);
   // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten die Aktivität bis dahin.
   FreeAndNil(GActivity);

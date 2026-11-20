@@ -29,13 +29,14 @@ uses
   Atlas.Core.Settings.Plugin.Snippets,
   Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Settings.Plugin.VersionControl,
-  Atlas.Core.Settings.Plugin.Welcome;
+  Atlas.Core.Settings.Plugin.Welcome,
+  Atlas.Core.Settings.Contract;
 
 type
-  /// <summary>Ablage für Einstellungen (Atlas.Core.Settings.Plugin.Store).</summary>
-  IAtlasSettingsStore = Atlas.Core.Settings.Plugin.Store.IAtlasSettingsStore;
-  /// <summary>Ablage, die gespeicherte Namen kennt und entfernen kann (Atlas.Core.Settings.Plugin.Store).</summary>
-  IAtlasSettingsNames = Atlas.Core.Settings.Plugin.Store.IAtlasSettingsNames;
+  /// <summary>Ablage für Einstellungen (Atlas.Core.Settings.Contract).</summary>
+  IAtlasSettingsStore = Atlas.Core.Settings.Contract.IAtlasSettingsStore;
+  /// <summary>Ablage, die gespeicherte Namen kennt und entfernen kann (Atlas.Core.Settings.Contract).</summary>
+  IAtlasSettingsNames = Atlas.Core.Settings.Contract.IAtlasSettingsNames;
 
   TAtlasPluginSettings = record
   public const
@@ -170,6 +171,7 @@ type
     cMaxIssuesTimeRounding = Atlas.Core.Settings.Plugin.Issues.cMaxIssuesTimeRounding;
     cMinIssuesNotifyMinutes = Atlas.Core.Settings.Plugin.Issues.cMinIssuesNotifyMinutes;
     cDefaultIssuesNotifyMinutes = Atlas.Core.Settings.Plugin.Issues.cDefaultIssuesNotifyMinutes;
+    cDefaultIssuesAiSummaryComments = Atlas.Core.Settings.Plugin.Issues.cDefaultIssuesAiSummaryComments;
     cIssuesNotifyAssigned = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyAssigned;
     cIssuesNotifyAssignedOrCreated = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyAssignedOrCreated;
     cIssuesNotifyWatched = Atlas.Core.Settings.Plugin.Issues.cIssuesNotifyWatched;
@@ -594,6 +596,7 @@ type
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
     property DebugShowElapsed: Boolean read FDebug.DebugShowElapsed write FDebug.DebugShowElapsed;
+    property DebugReturnValues: Boolean read FDebug.DebugReturnValues write FDebug.DebugReturnValues;
     property DebugVariablesWindow: Boolean read FDebug.DebugVariablesWindow write FDebug.DebugVariablesWindow;
     property DebugVariablesSearchDepth: Integer read FDebug.DebugVariablesSearchDepth
       write FDebug.DebugVariablesSearchDepth;
@@ -1430,6 +1433,8 @@ type
       write FIssueWork.IssuesChecklistStatus;
     property IssuesShareWithAssistants: Boolean read FIssueWork.IssuesShareWithAssistants
       write FIssueWork.IssuesShareWithAssistants;
+    property IssuesDebugKnownErrors: Boolean read FIssueWork.IssuesDebugKnownErrors
+      write FIssueWork.IssuesDebugKnownErrors;
     property IssuesStatusState: Boolean read FIssueWork.IssuesStatusState write FIssueWork.IssuesStatusState;
     property IssuesSprintOnStart: string read FIssueWork.IssuesSprintOnStart write FIssueWork.IssuesSprintOnStart;
     property IssuesPreviewLinks: Boolean read FIssueWork.IssuesPreviewLinks write FIssueWork.IssuesPreviewLinks;
@@ -1450,6 +1455,9 @@ type
     property IssuesCommentSnippets: string read FIssueWork.IssuesCommentSnippets write FIssueWork.IssuesCommentSnippets;
     property IssuesPreviewDevelopment: Boolean read FIssueWork.IssuesPreviewDevelopment
       write FIssueWork.IssuesPreviewDevelopment;
+    property IssuesAiSummary: Boolean read FIssueWork.IssuesAiSummary write FIssueWork.IssuesAiSummary;
+    property IssuesAiSummaryMinComments: Integer read FIssueWork.IssuesAiSummaryMinComments
+      write FIssueWork.IssuesAiSummaryMinComments;
     property IssuesNotify: Boolean read FIssueWork.IssuesNotify write FIssueWork.IssuesNotify;
     property IssuesNotifyIntervalMinutes: Integer read FIssueWork.IssuesNotifyIntervalMinutes
       write FIssueWork.IssuesNotifyIntervalMinutes;
@@ -1493,6 +1501,11 @@ type
       write FAssistants.AssistantsContextLines;
     property AssistantsExclude: string read FAssistants.AssistantsExclude write FAssistants.AssistantsExclude;
     property AssistantsDailyLimit: Integer read FAssistants.AssistantsDailyLimit write FAssistants.AssistantsDailyLimit;
+    property AssistantsOpenAiUrl: string read FAssistants.AssistantsOpenAiUrl write FAssistants.AssistantsOpenAiUrl;
+    property AssistantsOpenAiModel: string read FAssistants.AssistantsOpenAiModel
+      write FAssistants.AssistantsOpenAiModel;
+    property AssistantsOpenAiTimeoutMs: Integer read FAssistants.AssistantsOpenAiTimeoutMs
+      write FAssistants.AssistantsOpenAiTimeoutMs;
   end;
 
 implementation

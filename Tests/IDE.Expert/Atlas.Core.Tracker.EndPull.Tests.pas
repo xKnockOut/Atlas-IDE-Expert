@@ -290,10 +290,21 @@ begin
 end;
 
 procedure TAtlasEndPullTests.UntrackedFilesAreNotDirty;
+var
+  mVcs: TFakePushVcs;
+  mKeepVcs: IAtlasVersionControl;
+  mPulls: TFakePulls;
+  mKeepPulls: IAtlasTrackerPullRequests;
 begin
-  Assert.IsFalse(TAtlasEndPull.Dirty([Change(TAtlasVcsChangeKind.Untracked)]));
-  Assert.IsFalse(TAtlasEndPull.Dirty(nil));
-  Assert.IsTrue(TAtlasEndPull.Dirty([Change(TAtlasVcsChangeKind.Added)]));
+  mVcs := TFakePushVcs.Create(TAtlasVcsKind.Git);
+  mKeepVcs := mVcs;
+  mVcs.Files := [Change(TAtlasVcsChangeKind.Untracked)];
+  mPulls := TFakePulls.Create;
+  mKeepPulls := mPulls;
+  mPulls.Answer := Created;
+  Assert.AreEqual<TAtlasTrackerPullOutcome>(TAtlasTrackerPullOutcome.Created,
+    TAtlasEndPull.Run(Request(mKeepVcs, mKeepPulls, cOrigin)).Outcome, 'unversionierte Dateien sperren nicht');
+  Assert.AreEqual(1, Integer(Length(mVcs.Calls)), 'gepusht');
 end;
 
 procedure TAtlasEndPullTests.FailedPushCreatesNothing;

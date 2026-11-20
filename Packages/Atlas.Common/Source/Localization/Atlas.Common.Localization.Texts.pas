@@ -86,7 +86,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Chars;
 
 { TAtlasText }
 
@@ -197,16 +198,6 @@ begin
   Result := FTables;
 end;
 
-// Erste Stelle ab AIndex, deren Zeichen nicht in AChars liegt.
-function SkipChars(const AText: string; AIndex: Integer; const AChars: TSysCharSet): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and CharInSet(AText[Result], AChars) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 // Liest den Platzhalter, der an AIndex (hinter dem %) beginnt, als "n:typ" nach AItem und setzt AIndex hinter den
 // Typbuchstaben. Ein Index "n:" setzt das Argument, sonst zählt Format weiter. False am Textende.
 function ReadPlaceholder(const AFormat: string; var AIndex, AArgument: Integer; out AItem: string): Boolean;
@@ -215,7 +206,7 @@ var
 begin
   AItem := '';
   mStart := AIndex;
-  AIndex := SkipChars(AFormat, AIndex, ['0'..'9']);
+  AIndex := TTextChars.RunEnd(AFormat, AIndex, ['0'..'9']);
   if (AIndex <= Length(AFormat)) and (AIndex > mStart) and (AFormat[AIndex] = ':') then
   begin
     AArgument := StrToInt(Copy(AFormat, mStart, AIndex - mStart));
@@ -226,7 +217,7 @@ begin
     AIndex := mStart;
   end;
   // Breite und Genauigkeit überspringen.
-  AIndex := SkipChars(AFormat, AIndex, ['-', '.', '0'..'9']);
+  AIndex := TTextChars.RunEnd(AFormat, AIndex, ['-', '.', '0'..'9']);
   Result := AIndex <= Length(AFormat);
   if Result then
   begin

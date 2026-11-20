@@ -115,7 +115,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Core.Lsp.Framing,
+  Atlas.Core.Settings.Contract;
 
 type
   /// <summary>Zeile eines anderen Issues, ohne TAtlasStatusLine (Abnahme: erscheint ohne Änderung).</summary>
@@ -250,17 +251,6 @@ begin
       Result := Result + ' ';
     end;
     Result := Result + mItem.Id;
-  end;
-end;
-
-function Bytes(const AValues: array of Byte): TBytes;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
   end;
 end;
 
@@ -642,9 +632,9 @@ end;
 procedure TAtlasFileFormatTests.DetectsAnsiAndUtf16;
 begin
   // „ä“ in Windows-1252 allein ist kein gültiges UTF-8.
-  Assert.AreEqual('ANSI, CRLF', TAtlasFileFormats.Detect(Bytes([$61, $E4, 13, 10])).Text);
-  Assert.AreEqual('UTF-16 LE, LF', TAtlasFileFormats.Detect(Bytes([$FF, $FE, $61, 0, 10, 0])).Text);
-  Assert.AreEqual('UTF-16 BE, ohne Zeilenende', TAtlasFileFormats.Detect(Bytes([$FE, $FF, 0, $61])).Text);
+  Assert.AreEqual('ANSI, CRLF', TAtlasFileFormats.Detect(TBytes.Create($61, $E4, 13, 10)).Text);
+  Assert.AreEqual('UTF-16 LE, LF', TAtlasFileFormats.Detect(TBytes.Create($FF, $FE, $61, 0, 10, 0)).Text);
+  Assert.AreEqual('UTF-16 BE, ohne Zeilenende', TAtlasFileFormats.Detect(TBytes.Create($FE, $FF, 0, $61)).Text);
 end;
 
 procedure TAtlasFileFormatTests.DetectsMixedAndMissingLineBreaks;
@@ -704,10 +694,10 @@ end;
 
 procedure TAtlasFileFormatTests.RejectsInvalidUtf8;
 begin
-  Assert.IsFalse(TAtlasFileFormats.IsUtf8(Bytes([$C3]), 0), 'abgeschnitten');
-  Assert.IsFalse(TAtlasFileFormats.IsUtf8(Bytes([$C3, $41]), 0), 'kein Folgebyte');
-  Assert.IsFalse(TAtlasFileFormats.IsUtf8(Bytes([$C0, $80]), 0), 'überlang');
-  Assert.IsTrue(TAtlasFileFormats.IsUtf8(Bytes([$E2, $82, $AC, $41]), 0), 'Euro');
+  Assert.IsFalse(TAtlasFileFormats.IsUtf8(TBytes.Create($C3), 0), 'abgeschnitten');
+  Assert.IsFalse(TAtlasFileFormats.IsUtf8(TBytes.Create($C3, $41), 0), 'kein Folgebyte');
+  Assert.IsFalse(TAtlasFileFormats.IsUtf8(TBytes.Create($C0, $80), 0), 'überlang');
+  Assert.IsTrue(TAtlasFileFormats.IsUtf8(TBytes.Create($E2, $82, $AC, $41), 0), 'Euro');
   Assert.IsTrue(TAtlasFileFormats.IsUtf8(nil, 0));
 end;
 

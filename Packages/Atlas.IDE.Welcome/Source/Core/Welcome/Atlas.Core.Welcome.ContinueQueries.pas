@@ -2,7 +2,7 @@
 
 // Stand der Abfragen im Hintergrund des Bereichs „Weiterarbeiten“ (#755,
 // #571), ohne VCL und Open Tools API. Die Abfragen selbst startet die
-// IDE-Schicht (Atlas.IDE.Welcome.Continue); hier steht nur, was sie sich
+// IDE-Schicht (Atlas.IDE.Welcome.Adapters.Continue); hier steht nur, was sie sich
 // merkt, je normiertem Schlüssel (Ziel bzw. Projekt):
 // - TAtlasContinueHeads: HEAD und verfolgter Branch je Ziel, wann zuletzt
 //   gefragt und welche Abfrage gerade läuft (höchstens eine je Ziel innerhalb
@@ -74,7 +74,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary.Json;
 
 { TAtlasContinueHeads }
 
@@ -165,7 +165,7 @@ begin
   begin
     FData := Default(TAtlasContinueIncoming);
   end;
-  FKey := TAtlasProjectSummaries.NormalizedPath(AProject);
+  FKey := SummaryNormalizedPath(AProject);
 end;
 
 procedure TAtlasContinueIncomingQueries.NotStarted(ANowMs: UInt64);
@@ -215,7 +215,7 @@ end;
 
 function TAtlasContinueIncomingQueries.Concerns(const AProject: string): Boolean;
 begin
-  Result := (FKey <> '') and (TAtlasProjectSummaries.NormalizedPath(AProject) = FKey);
+  Result := (FKey <> '') and (SummaryNormalizedPath(AProject) = FKey);
 end;
 
 end.

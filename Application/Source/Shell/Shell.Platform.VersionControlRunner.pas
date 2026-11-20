@@ -1,7 +1,7 @@
 ﻿unit Shell.Platform.VersionControlRunner;
 
 // Prozessläufer für git und svn unter Linux (#1109): Gegenstück zu
-// Atlas.Core.VersionControl.Adapters.ProcessRunner, das Windows-Pipes nutzt und im
+// Atlas.Core.VersionControl.Providers.ProcessRunner, das Windows-Pipes nutzt und im
 // Windows-Bau bleibt. Gleiches Verhalten: stdout und stderr getrennt, im Takt
 // von SliceMs gelesen, damit keine volle Pipe den Prozess anhält; Zeitlimit und
 // Abbruch beenden den Prozess; stdin ist leer, git und svn fragen nie nach

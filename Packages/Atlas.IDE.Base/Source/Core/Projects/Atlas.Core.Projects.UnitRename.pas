@@ -81,7 +81,8 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.Text.Names;
 
 { TAtlasUnitRenameEvent }
 
@@ -105,11 +106,7 @@ end;
 
 class function TAtlasUnitRename.UnitNameOf(const AFileName: string): string;
 begin
-  Result := '';
-  if SameText(ExtractFileExt(AFileName), '.pas') then
-  begin
-    Result := ChangeFileExt(ExtractFileName(AFileName), '');
-  end;
+  Result := TTextNames.UnitNameOf(AFileName);
 end;
 
 class function TAtlasUnitRename.SourceFiles(const AFiles: TArray<string>): TArray<string>;

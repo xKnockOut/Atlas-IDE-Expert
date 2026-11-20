@@ -24,28 +24,18 @@ procedure AddTime(AObject: TJSONObject; const AName: string; AUtc: TDateTime);
 function SummaryTimeText(AUtc: TDateTime): string;
 /// <summary>Umkehrung von SummaryTimeText; Bruchteile und Zeitzone "Z" erlaubt; 0 bei ungültigem Text.</summary>
 function SummaryTimeOf(const AText: string): TDateTime;
+/// <summary>Schlüssel eines Projektpfads: getrimmt, „/“ als „\“, a–z groß (Pfade unter Windows ohne Rücksicht
+/// auf Groß- und Kleinschreibung).</summary>
+function SummaryNormalizedPath(const AProject: string): string;
 
 implementation
 
 uses
   System.Generics.Collections,
   System.SysUtils,
+  System.StrUtils,
   Atlas.Text.Json,
   Atlas.Text.Timestamps;
-
-function Known(const AKeys: array of string; const AName: string): Boolean;
-var
-  mKey: string;
-begin
-  Result := False;
-  for mKey in AKeys do
-  begin
-    if mKey = AName then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
 
 procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
 var
@@ -59,7 +49,7 @@ begin
   for mIndex := 0 to AOriginal.Count - 1 do
   begin
     mPair := AOriginal.Pairs[mIndex];
-    if not Known(AKeys, mPair.JsonString.Value) then
+    if not MatchStr(mPair.JsonString.Value, AKeys) then
     begin
       ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
     end;
@@ -114,6 +104,24 @@ end;
 function SummaryTimeOf(const AText: string): TDateTime;
 begin
   Result := TTextTimestamp.ParseOrZero(AText);
+end;
+
+function SummaryNormalizedPath(const AProject: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Trim(AProject);
+  for mIndex := 1 to Length(Result) do
+  begin
+    if Result[mIndex] = '/' then
+    begin
+      Result[mIndex] := '\';
+    end
+    else if CharInSet(Result[mIndex], ['a'..'z']) then
+    begin
+      Result[mIndex] := UpCase(Result[mIndex]);
+    end;
+  end;
 end;
 
 end.

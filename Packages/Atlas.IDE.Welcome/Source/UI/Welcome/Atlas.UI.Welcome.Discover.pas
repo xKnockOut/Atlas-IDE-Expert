@@ -42,24 +42,13 @@ uses
   Vcl.Graphics,
   Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Discover,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasDiscoverButton = (TryIt, Next, Block);
 {$SCOPEDENUMS OFF}
-
-  IAtlasDiscoverSource = interface
-    ['{3E7C9A14-5B2D-4F86-A1C0-8D6E2F4B7A93}']
-    /// <summary>Der Tipp, den die Karte gerade zeigt; False ohne Tipp.</summary>
-    function Card(out ACard: TAtlasDiscoverCard): Boolean;
-    /// <summary>„Ausprobieren“: Befehl ausführen oder Beispieldatei öffnen.</summary>
-    procedure TryTip(const AId: string);
-    /// <summary>„Nächster Tipp“.</summary>
-    procedure NextTip(const AId: string);
-    /// <summary>„Nicht mehr zeigen“: Tipp dauerhaft sperren.</summary>
-    procedure BlockTip(const AId: string);
-  end;
 
   /// <summary>Texte der Karte „Atlas entdecken“, ohne Steuerelement.</summary>
   TAtlasDiscoverTexts = class
@@ -212,9 +201,11 @@ begin
   end;
   FShownWidth := AWidth;
   FShownHeight := AHeight;
-  mNative := TBitmap.Create;
-  mScaled := TBitmap.Create;
+  mNative := nil;
+  mScaled := nil;
   try
+    mNative := TBitmap.Create;
+    mScaled := TBitmap.Create;
     mNative.PixelFormat := pf24bit;
     mNative.SetSize(FOriginal.Width, FOriginal.Height);
     mNative.Canvas.Draw(0, 0, FOriginal.Graphic);

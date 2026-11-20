@@ -64,9 +64,15 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
-      - name: "Baselines: Selbsttest des Vergleichs je Kopie"
+      - name: "Baselines: Selbsttest des Vergleichs je Kopie und der größeren Klassen"
         shell: pwsh
         run: ./Tools/Check-Baselines.ps1 -SelfTest
+      - name: "Kandidaten: Selbsttest der Regel vor einer stabilen Version"
+        shell: pwsh
+        run: ./Tools/Check-ReleaseCandidate.ps1 -SelfTest
+      - name: "Kandidaten: Selbsttest der Liste zum Abhaken"
+        shell: pwsh
+        run: ./Tools/New-CandidateChecklist.ps1 -SelfTest
       - name: atlas.json der Plugin-Packages aus Packages/atlas.plugin.json
         shell: pwsh
         run: ./Tools/Update-PackageConfigs.ps1 -Check
@@ -80,8 +86,9 @@ jobs:
           PR_NUMMER: ${{ github.event.pull_request.number }}
         run: |
           # Neue oder gewachsene Gruppen in atlas-duplicates.json lässt nur eine Zeile „Neue Kopien: …“ im
-          # Pull Request durch. Der Text wird hier gelesen, nicht aus dem Ereignis: Nach dem Ergänzen der
-          # Beschreibung genügt es, den Lauf neu zu starten. Ohne Pull Request im Ereignis (Push nach dem
+          # Pull Request durch, neue Einträge zu metric-class-size nur je Klasse eine Zeile
+          # „Größere Klasse: <Name> – <Grund>“. Der Text wird hier gelesen, nicht aus dem Ereignis: Nach dem
+          # Ergänzen der Beschreibung genügt es, den Lauf neu zu starten. Ohne Pull Request im Ereignis (Push nach dem
           # Merge, Abgleich) gilt der Pull Request, zu dem der geprüfte Commit gehört.
           $text = ''
           if ($env:PR_NUMMER) {
@@ -90,8 +97,10 @@ jobs:
             $text = gh api "repos/$env:GITHUB_REPOSITORY/commits/$env:GITHUB_SHA/pulls" --jq '.[0].body // ""' 2>$null
           }
           $grund = ''
-          foreach ($zeile in @($text)) {
+          $klassen = @()
+          foreach ($zeile in @($text -split '\r?\n')) {
             if (-not $grund -and $zeile -match '^\s*Neue Kopien:\s*(\S.*)$') { $grund = $Matches[1].Trim() }
+            if ($zeile -match '^\s*Größere Klasse:\s*(\S.*)$') { $klassen += $Matches[1].Trim() }
           }
           # Pull Request vergleicht gegen HEAD^1 (Stand des Ziels im Merge-Commit), workflow_dispatch gegen die Basis.
           if ($env:BASIS) {
@@ -106,7 +115,7 @@ jobs:
             Write-Host 'Kein Vergleichsstand (erster Push des Branches); nur tote Einträge prüfen.'
             $ref = 'HEAD'
           }
-          ./Tools/Check-Baselines.ps1 -BaseRef $ref -DuplicatesReason $grund
+          ./Tools/Check-Baselines.ps1 -BaseRef $ref -DuplicatesReason $grund -LargerClasses $klassen
       - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455)"
         if: steps.stand.outputs.grenzen == 'true'
         shell: pwsh
@@ -135,10 +144,10 @@ jobs:
       - name: Bereichs- und Überlaufprüfung im Debug-Build
         shell: pwsh
         run: ./Tools/Check-RuntimeChecks.ps1
-      - name: Aufwärm-Routinen der Tests nur weniger, Selbsttest
+      - name: Aufwärm-Routinen der Tests nur weniger, keine vorgewärmten Sperren, Selbsttest
         shell: pwsh
         run: ./Tools/Check-TestWarmUps.ps1 -SelfTest
-      - name: Aufwärm-Routinen der Tests nur weniger
+      - name: Aufwärm-Routinen der Tests nur weniger, keine vorgewärmten Sperren
         shell: pwsh
         run: ./Tools/Check-TestWarmUps.ps1
       - name: Fenster und Editorleisten über die gemeinsamen Hüllen (#1248)

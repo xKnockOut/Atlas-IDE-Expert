@@ -5,7 +5,7 @@ Erzeugt von `Tools/Update-ThirdPartyNotices.ps1`; nicht von Hand ändern.
 Atlas selbst steht unter der MIT-Lizenz (`LICENSE`). Es enthält keine Quelltexte von Embarcadero;
 RTL- und VCL-Quellen werden nur lokal aus der Delphi-Installation gelesen und nie weitergegeben.
 
-## In Releases enthalten
+## In den Plugin-Releases enthalten
 
 ### WebView2Loader.dll (Microsoft Edge WebView2)
 
@@ -13,7 +13,7 @@ RTL- und VCL-Quellen werden nur lokal aus der Delphi-Installation gelesen und ni
 - Quelle: Ordner `Redist` von RAD Studio (weitergebbare Datei), ursprünglich aus dem WebView2-SDK von Microsoft
 - Lizenz: https://www.nuget.org/packages/Microsoft.Web.WebView2 (Lizenz des SDK)
 
-## Nur für den Linux-Server (nicht in Releases enthalten)
+## Nur für den Linux-Server (nicht in den Plugin-Releases enthalten)
 
 Der Linux-Server (`Tools/Linux/Build-AtlasServer.sh`) und der FPC-Testlauf (`Tools/Linux/Test-Fpc.sh`) werden mit
 Free Pascal übersetzt. Das Ergebnis liegt im Vorab-Release `cloud-linux` und ist für Cloud-Sitzungen gedacht,
@@ -37,7 +37,7 @@ nicht für Anwender.
 - Quelle: https://github.com/PCRE2Project/pcre2 (Paket `libpcre2-16-0` der Distribution)
 - Lizenz: BSD-3-Clause WITH PCRE2-exception
 
-## Nur zum Testen (nicht in Releases enthalten)
+## Nur zum Testen (nicht in den Plugin-Releases enthalten)
 
 ### DUnitX
 

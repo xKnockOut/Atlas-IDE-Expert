@@ -26,6 +26,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Designer.Undo,
   Atlas.Core.Designer.UndoApply,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.Surface;
 
 type

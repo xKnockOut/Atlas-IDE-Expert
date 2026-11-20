@@ -40,7 +40,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.TypeCommands,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -839,14 +840,6 @@ begin
   end;
 end;
 
-procedure AddName(var ANames: TArray<string>; const AName: string);
-begin
-  if (AName <> '') and not MatchText(AName, ANames) then
-  begin
-    ANames := ANames + [AName];
-  end;
-end;
-
 /// <summary>Felder der Klasse an der Befehlszeile und globale Variablen mit Typargumenten.</summary>
 procedure AddScopeCollections(ASource: TCommandSource; var ANames: TArray<string>);
 var
@@ -860,7 +853,7 @@ begin
       (mSymbol.TypeArgs <> '') and ((mSymbol.Container = '') or (mHasClass and
       SameText(mSymbol.Container, mClass.Name))) then
     begin
-      AddName(ANames, mSymbol.Name);
+      TTextArrays.AddText(ANames, mSymbol.Name);
     end;
   end;
 end;
@@ -896,7 +889,7 @@ begin
   begin
     if IsValidIdent(Trim(mName)) then
     begin
-      AddName(ANames, Trim(mName));
+      TTextArrays.AddText(ANames, Trim(mName));
     end;
   end;
 end;
@@ -936,7 +929,7 @@ begin
     if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
       SameText(mSymbol.Container, AElement) then
     begin
-      AddName(ANames, mSymbol.Name);
+      TTextArrays.AddText(ANames, mSymbol.Name);
     end;
   end;
 end;

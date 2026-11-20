@@ -567,11 +567,7 @@ end;
 
 function TAtlasSettingsPageHost.Catalog: TAtlasSettingsCatalog;
 begin
-  if FCatalog = nil then
-  begin
-    FCatalog := TAtlasSettingsCatalog.CreateDefault;
-  end;
-  Result := FCatalog;
+  Result := TAtlasSettingsCatalog.Lazy(FCatalog);
 end;
 
 function TAtlasSettingsPageHost.ControlOfSetting(const AName: string): TControl;

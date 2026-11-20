@@ -343,7 +343,7 @@ begin
     begin
       Continue;
     end;
-    mReport := TLspDiagnosticReport.FromJson(TJSONObject(mItem), '');
+    mReport := TLspSessionJson.DiagnosticReport(TJSONObject(mItem), '');
     if mReport.FileName <> '' then
     begin
       Result := Result + [mReport];
@@ -631,7 +631,7 @@ begin
   try
     if mResponse is TJSONObject then
     begin
-      Result := TLspDiagnosticReport.FromJson(TJSONObject(mResponse), AFileName);
+      Result := TLspSessionJson.DiagnosticReport(TJSONObject(mResponse), AFileName);
     end
     else
     begin
@@ -663,7 +663,7 @@ begin
   try
     if mResponse is TJSONObject then
     begin
-      ARun := TLspWorkspaceRun.FromJson(mResponse);
+      ARun := TLspSessionJson.WorkspaceRun(mResponse);
       Result := DiagnosticReportsOf(TJSONObject(mResponse).GetValue('items'));
     end;
   finally

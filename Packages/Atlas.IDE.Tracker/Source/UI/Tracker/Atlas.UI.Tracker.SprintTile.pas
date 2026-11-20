@@ -26,44 +26,14 @@ uses
   Vcl.Forms,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.Sprint,
   Atlas.UI.Style.Canvas,
-  Atlas.UI.Tracker.TileView;
+  Atlas.UI.Tracker.TileView,
+  Atlas.UI.Tracker.Contract.Sprint;
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasSprintTileStatus = (NoProject, NoTracker, NoBoard, NoSprint, Loading, Failed, Ready);
   TAtlasSprintHitKind = (None, Title, MineOpen, MineDone, TeamLeft, Chart, Assign);
 {$SCOPEDENUMS OFF}
-
-  /// <summary>Was die Kachel zeigt.</summary>
-  TAtlasSprintTile = record
-    Status: TAtlasSprintTileStatus;
-    Sprint: TAtlasSprintView;
-    /// <summary>Der Stand ist alt (ohne Netz bzw. Fehler); AError nennt den Grund.</summary>
-    Stale: Boolean;
-    Error: TAtlasCiFetchError;
-    Loading: Boolean;
-    /// <summary>issues.sprint.burndown bzw. issues.sprint.compare.</summary>
-    Burndown: Boolean;
-    Compare: Boolean;
-    /// <summary>„zuordnen …“ möglich (#1261).</summary>
-    CanAssign: Boolean;
-  end;
-
-  IAtlasSprintSource = interface
-    ['{2F7C9B14-6E3A-4D58-8B1F-0A4C7E2D9561}']
-    function View: TAtlasSprintTile;
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf den Sprint im Hintergrund laden.</summary>
-    procedure Shown;
-    /// <summary>Fenster „Atlas-Board“ (#1272).</summary>
-    procedure OpenBoard;
-    procedure BrowseBoard;
-    /// <summary>„Meine Issues“ auf die eigenen offenen (ADone = False) bzw. erledigten Issues des Sprints
-    /// filtern.</summary>
-    procedure FilterIssues(ADone: Boolean);
-    procedure AssignProject;
-  end;
 
   TAtlasTrackerSprintView = class(TAtlasTrackerTileView)
   public const
@@ -86,7 +56,7 @@ type
     procedure SetSource(const AValue: IAtlasSprintSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxLeftClick(Sender: TObject; AX, AY: Integer);
     procedure BodyResize(Sender: TObject);
     function HeightFor(AWidth: Integer): Integer;
     class procedure Post(const AAction: TThreadProcedure); static;
@@ -138,9 +108,11 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.Sprint.Strings;
+  Atlas.UI.Tracker.Sprint.Strings,
+  Atlas.Core.Tracker.Contract.Sprint;
 
 const
   cFullPercent = 100;
@@ -349,7 +321,7 @@ begin
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnLeftClick := BoxLeftClick;
   OnResize := BodyResize;
 end;
 
@@ -444,25 +416,14 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasTrackerSprintView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+procedure TAtlasTrackerSprintView.BoxLeftClick(Sender: TObject; AX, AY: Integer);
 begin
-  if Button = mbLeft then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  ClickAt(HitTest(AX, AY));
 end;
 
 procedure TAtlasTrackerSprintView.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  FContentHeight := HeightFor(ClientWidth);
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  TAtlasControls.Remeasure(FContentHeight, HeightFor(ClientWidth), HeightChanged);
 end;
 
 function TAtlasTrackerSprintView.HeightFor(AWidth: Integer): Integer;

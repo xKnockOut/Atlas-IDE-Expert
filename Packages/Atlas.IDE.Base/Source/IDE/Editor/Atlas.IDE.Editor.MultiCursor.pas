@@ -3,7 +3,7 @@
 // Mehrere Einfügemarken (#589, experimentell) im Editor. Was sich an den
 // Marken ändert, rechnet Atlas.Core.Editor.MultiCursor aus; den Ablauf im
 // Puffer führt Atlas.Core.Editor.MultiCursorSession über
-// Atlas.IDE.Editor.EditSurface. Hier bleiben Tasten, Maus, Zwischenablage,
+// Atlas.IDE.Editor.Surfaces. Hier bleiben Tasten, Maus, Zwischenablage,
 // Takt, Zeichnen und Statusfeld.
 // - Marken setzen: Strg+D, Alt+Umschalt+I und Strg+Alt+↑/↓ sind Editorbefehle
 //   (Atlas.IDE.Commands.Bindings) mit Rückfall: Ohne Treffer geht die Taste an
@@ -53,8 +53,8 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Editor.EditSurface,
-  Atlas.Core.Editor.MultiCursorSession;
+  Atlas.Core.Editor.MultiCursorSession,
+  Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Statusfeld setzen; AText '' entfernt es.</summary>
@@ -152,7 +152,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Editor.EditSurface,
+  Atlas.IDE.Editor.Surfaces,
   Atlas.IDE.Editor.WrapSelection,
   Atlas.IDE.Foundation.KeyHook;
 
@@ -450,7 +450,7 @@ end;
 
 class function TAtlasIdeMultiCursor.ActiveSurface: IAtlasEditSurface;
 begin
-  Result := TAtlasIdeEditSurface.Wrap(TAtlasEditorBuffer.ActiveView);
+  Result := TAtlasIdeEditSurfaces.Wrap(TAtlasEditorBuffer.ActiveView);
 end;
 
 procedure TAtlasIdeMultiCursor.AppMessage(var Msg: TMsg; var Handled: Boolean);

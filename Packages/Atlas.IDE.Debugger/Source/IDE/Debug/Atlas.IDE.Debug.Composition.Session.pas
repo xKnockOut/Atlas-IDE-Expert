@@ -71,6 +71,7 @@ uses
   Atlas.IDE.Debug.ExceptionRules,
   Atlas.IDE.Debug.OwnCode,
   Atlas.IDE.Debug.ExceptionBar,
+  Atlas.IDE.Debug.KnownErrors,
   Atlas.IDE.Debug.Deadlocks,
   Atlas.IDE.Debug.ParallelStacks,
   Atlas.IDE.Debug.ParallelWatch,
@@ -169,6 +170,14 @@ end;
 procedure StartDebugExceptionBar;
 begin
   TAtlasIdeDebugExceptionBar.Start(TAtlasIdeHost.Messages(), TAtlasStatusRegistry.Default);
+  // Bekannte Fehler aus dem Tracker (#2460) zeigt die Leiste; ohne Tracker-Modul bleibt sie leer.
+  TAtlasIdeDebugKnownErrors.Start;
+end;
+
+procedure ReleaseDebugExceptionBar;
+begin
+  TAtlasIdeDebugKnownErrors.Release;
+  TAtlasIdeDebugExceptionBar.Release;
 end;
 
 procedure StartDebugDeadlocks;
@@ -284,7 +293,7 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeDebugExceptionBar.Started;
-      end, StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release)]
+      end, StartDebugExceptionBar, ReleaseDebugExceptionBar)]
 end;
 
 function DebugThreadParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;

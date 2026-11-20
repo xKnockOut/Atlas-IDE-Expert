@@ -645,8 +645,8 @@ begin
 end;
 
 /// <summary>Status, Plakette (#1234, bei eingeschalteten Benachrichtigungen auch mit 0) und Zusatzfelder: Das
-/// Atlas-Feld der Statuszeile ist dann 0 breit und zeigt
-/// keine Zusatzfelder. Höchstens so viele Zusatzfelder, wie der Vorfahr Teile je Element unterscheidet.</summary>
+/// Atlas-Feld steht dann nicht in der Statuszeile, ebenso
+/// die Zusatzfelder. Höchstens so viele Zusatzfelder, wie der Vorfahr Teile je Element unterscheidet.</summary>
 procedure AddStatus(const AView: TAtlasStatusBarView; var AParts: TArray<TAtlasStatusBarPart>;
   var ASubs: TArray<Integer>; ASlots: Integer);
 var

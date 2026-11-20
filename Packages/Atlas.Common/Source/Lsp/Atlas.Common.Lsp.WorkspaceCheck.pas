@@ -351,6 +351,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument,
   Atlas.Common.Lsp.CompactJson,
+  Atlas.Common.JsonRpc.CustomCancellation,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -381,50 +382,28 @@ type
   /// </summary>
   EWorkspaceCheckInterrupted = class(Exception);
 
-  TCheckToken = class(TInterfacedObject, IJsonRpcCancellationToken)
-  private
-    FOwner: TLspWorkspaceCheck;
-    FClock: TStopwatch;
-    FLimitMs: Int64;
-    FInterruptible: Boolean;
-    function Expired: Boolean;
-  public
-    constructor Create(AOwner: TLspWorkspaceCheck; ALimitMs: Int64; AInterruptible: Boolean);
-    function IsCancellationRequested: Boolean;
-    procedure ThrowIfCancellationRequested;
-  end;
-
-{ TCheckToken }
-
-constructor TCheckToken.Create(AOwner: TLspWorkspaceCheck; ALimitMs: Int64; AInterruptible: Boolean);
+/// <summary>Grund für das Token je Datei: Unterbrechung (Tippen, Pause, Ende) vor der Frist (0 = keine).
+/// </summary>
+function CheckReason(AOwner: TLspWorkspaceCheck; ALimitMs: Int64; AInterruptible: Boolean): TJsonRpcCancelReason;
+var
+  mClock: TStopwatch;
 begin
-  inherited Create;
-  FOwner := AOwner;
-  FLimitMs := ALimitMs;
-  FInterruptible := AInterruptible;
-  FClock := TStopwatch.StartNew;
-end;
-
-function TCheckToken.Expired: Boolean;
-begin
-  Result := (FLimitMs > 0) and (FClock.ElapsedMilliseconds > FLimitMs);
-end;
-
-function TCheckToken.IsCancellationRequested: Boolean;
-begin
-  Result := FOwner.Interrupted(FInterruptible) or Expired;
-end;
-
-procedure TCheckToken.ThrowIfCancellationRequested;
-begin
-  if FOwner.Interrupted(FInterruptible) then
-  begin
-    raise EWorkspaceCheckInterrupted.Create(cTexts[TWorkspaceCheckText.ProjectCheckInterrupted].Text);
-  end;
-  if Expired then
-  begin
-    raise EWorkspaceCheckDeadline.Create(cTexts[TWorkspaceCheckText.DeadlineOfTheFileExpired].Text);
-  end;
+  mClock := TStopwatch.StartNew;
+  Result :=
+    function(out AClass: ExceptClass): string
+    begin
+      AClass := EWorkspaceCheckInterrupted;
+      Result := '';
+      if AOwner.Interrupted(AInterruptible) then
+      begin
+        Result := cTexts[TWorkspaceCheckText.ProjectCheckInterrupted].Text;
+      end
+      else if (ALimitMs > 0) and (mClock.ElapsedMilliseconds > ALimitMs) then
+      begin
+        AClass := EWorkspaceCheckDeadline;
+        Result := cTexts[TWorkspaceCheckText.DeadlineOfTheFileExpired].Text;
+      end;
+    end;
 end;
 
 { TWorkspaceCheckRun }
@@ -909,8 +888,8 @@ begin
       Process(mEntry);
     end;
   except
-    // Ein Fehler außerhalb einer Datei beendet nur die Projektprüfung, nicht den Server.
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Prüf-Threads; Fehler wird protokolliert
+    // Ein Fehler außerhalb einer Datei beendet nur die Projektprüfung, nicht den Server (Fehlergrenze des
+    // Prüf-Threads, der Fehler wird protokolliert).
     on E: Exception do
       Log(cTexts[TWorkspaceCheckText.ProjectCheckEndedAfterError].Text + E.ClassName);
   end;
@@ -1035,7 +1014,7 @@ begin
   begin
     mLimit := 0;
   end;
-  mToken := TCheckToken.Create(FOwner, mLimit, not AEntry.Unlimited);
+  mToken := TJsonRpcCancellations.WithReason(nil, CheckReason(FOwner, mLimit, not AEntry.Unlimited));
   // Zeitprofil (#1356): Die Engine meldet ihre Regelzeiten an den Profiler dieses Threads.
   mPrevious := TCheckProfiler.Attach(FOwner.FProgress.Profiler);
   mWatch := TStopwatch.StartNew;

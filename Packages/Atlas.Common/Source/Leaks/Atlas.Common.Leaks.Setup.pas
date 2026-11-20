@@ -35,21 +35,14 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Leaks.Contract;
 
 type
 {$SCOPEDENUMS ON}
   /// <summary>Speichermanager mit Leckbericht: None = der der RTL.</summary>
   TLeakManager = (None, FastMM4, FastMM5);
 {$SCOPEDENUMS OFF}
-
-  /// <summary>Dateizugriffe von außen (Tests ohne Platte).</summary>
-  ILeakSetupFiles = interface
-    ['{62B7614D-5288-48D9-BA5E-A2FB3237CC5B}']
-    function FileExists(const AFileName: string): Boolean;
-    /// <summary>Liest eine Textdatei; False, wenn sie fehlt.</summary>
-    function ReadText(const AFileName: string; out AText: string): Boolean;
-  end;
 
   /// <summary>Was Analyze über das Projekt wissen muss.</summary>
   TLeakSetupInput = record

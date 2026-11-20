@@ -27,6 +27,9 @@ procedure StartManager;
 procedure StopManager;
 /// <summary>Ist der Manager bei der IDE angemeldet?</summary>
 function ManagerStarted: Boolean;
+/// <summary>Parameter-Hint öffnen wie mit der Taste (Taste und Schnellkorrektur „Signaturhilfe öffnen“, #1007);
+/// ohne Manager nichts.</summary>
+procedure OpenSignature;
 /// <summary>Aktive Sitzung (startet den Server bei Bedarf); nil ohne Manager.</summary>
 function ActiveSession: TLspSession;
 /// <summary>Laufende Sitzung (startet keinen Server); nil ohne.</summary>
@@ -173,6 +176,14 @@ end;
 function ManagerStarted: Boolean;
 begin
   Result := ManagerIndex >= 0;
+end;
+
+procedure OpenSignature;
+begin
+  if Manager <> nil then
+  begin
+    Manager.OpenSignature;
+  end;
 end;
 
 function ActiveSession: TLspSession;
@@ -450,7 +461,7 @@ begin
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
     TAtlasModuleContributions.IsVisible(mCommand) then
   begin
-    TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+    TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
   end;
 end;
 
@@ -486,17 +497,8 @@ begin
 end;
 
 function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-var
-  mFeature: TAtlasFeature;
-  mProc: TProc;
 begin
-  mFeature := AFeature;
-  mProc := AProc;
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(mFeature, mProc);
-    end;
+  Result := TAtlasGuard.Wrap(AFeature, AProc);
 end;
 
 procedure AddCommand(APalette: TAtlasIdePalette; const AId: string; ATextId: TAtlasTextId; const AProc: TProc);

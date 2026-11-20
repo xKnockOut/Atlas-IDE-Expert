@@ -97,15 +97,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 { TWithResolution }
 
 class function TWithResolution.WithAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
@@ -124,7 +115,7 @@ begin
     mDescended := False;
     for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Compare(mNode[mIndex].StartPos, APosition) <= 0) and (Compare(APosition, mNode[mIndex].EndPos) <= 0) then
+      if (TTextPosition.Compare(mNode[mIndex].StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, mNode[mIndex].EndPos) <= 0) then
       begin
         mNode := mNode[mIndex];
         if mNode.Kind = TSyntaxKind.WithStatement then

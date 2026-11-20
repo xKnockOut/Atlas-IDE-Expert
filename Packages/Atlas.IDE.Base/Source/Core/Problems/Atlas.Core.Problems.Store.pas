@@ -55,6 +55,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Core.Files.Entries,
   Atlas.Core.Problems.Contract;
 
 type
@@ -104,7 +105,7 @@ type
       FStamp: Integer;
     end;
   protected
-    FEntries: TObjectDictionary<string, TEntry>;
+    FEntries: TAtlasFileEntries<TEntry>;
     FVersion: Integer;
     // Über alle Speicher hinweg fortlaufend: Ein neuer Speicher (Neustart des Servers) wiederholt keinen Stand.
     class var FLastStamp: Integer;
@@ -122,6 +123,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    /// <summary>Schlüssel der Ablage zu AFileName.</summary>
     class function Key(const AFileName: string): string; static;
     /// <summary>Fehler der IDE für AFileName (#1819): ersetzt die bisherigen; Positionen zum Text der letzten
     /// Prüfung. Ohne Eintrag der Datei geschieht nichts.</summary>
@@ -273,7 +275,7 @@ end;
 constructor TAtlasProblemEntries.Create;
 begin
   inherited Create;
-  FEntries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
+  FEntries := TAtlasFileEntries<TEntry>.Create([doOwnsValues]);
 end;
 
 { TAtlasProblemStore }
@@ -346,16 +348,18 @@ begin
   end;
   for mFileName in mEmptied do
   begin
-    FEntries.Remove(Key(mFileName));
+    FEntries.Drop(mFileName);
   end;
 end;
 
 function TAtlasProblemEntries.Find(const AFileName: string): TEntry;
 begin
-  if not FEntries.TryGetValue(Key(AFileName), Result) then
-  begin
-    Result := nil;
-  end;
+  Result := FEntries.Find(AFileName);
+end;
+
+class function TAtlasProblemEntries.Key(const AFileName: string): string;
+begin
+  Result := TAtlasFileEntries<TEntry>.Key(AFileName);
 end;
 
 function TAtlasProblemEntries.Ensure(const AFileName: string): TEntry;
@@ -366,7 +370,7 @@ begin
     Result := TEntry.Create;
     Result.FFileName := AFileName;
     Touch(Result);
-    FEntries.Add(Key(AFileName), Result);
+    FEntries.Put(AFileName, Result);
   end;
 end;
 
@@ -575,7 +579,7 @@ begin
   begin
     Exit;
   end;
-  FEntries.Remove(Key(AFileName));
+  FEntries.Drop(AFileName);
   Inc(FVersion);
 end;
 
@@ -873,11 +877,6 @@ begin
       end;
     end;
   end;
-end;
-
-class function TAtlasProblemEntries.Key(const AFileName: string): string;
-begin
-  Result := AnsiLowerCase(AFileName);
 end;
 
 procedure TAtlasProblemEntries.SetIdeErrors(const AFileName: string; const AErrors: TArray<TAtlasProblem>);

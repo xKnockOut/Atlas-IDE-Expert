@@ -128,7 +128,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle;
 
 const
   cTimeoutMs = 20000;
@@ -150,16 +151,6 @@ begin
 end;
 
 { Hilfen }
-
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
 
 /// <summary>Antwort an die Marke, solange sie lebt (Regel 3); eigene Routine, damit die Referenz nur Zustand,
 /// Generation und Datei einfängt.</summary>
@@ -216,7 +207,7 @@ begin
   end;
   if Wanted then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -247,7 +238,7 @@ begin
   FScope := nil;
   if mShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -265,7 +256,7 @@ begin
   HideTip;
   if mShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -301,7 +292,7 @@ begin
   FMarks := TAtlasOwnershipMarks.Parse(AJson);
   FHits := nil;
   HideTip;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 procedure TAtlasIdeOwnershipHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
@@ -369,7 +360,7 @@ var
 begin
   mCell := TAtlasLensPill.CellAfter(AContext, ALine);
   mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, mCell.Left, ARect.Top + 1);
   mColors := TAtlasColors.ForBackground(mBack);
   case TAtlasOwnershipMarks.LineTone(AMarks) of
     TAtlasOwnershipTone.Safe:
@@ -582,7 +573,7 @@ begin
     Exit;
   end;
   // An und aus von „nur Problemfälle“ zeichnet nur neu; die Antwort enthält alle Stellen.
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 class function TAtlasIdeOwnershipHints.Wanted: Boolean;

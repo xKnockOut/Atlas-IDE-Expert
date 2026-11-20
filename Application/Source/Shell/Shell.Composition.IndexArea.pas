@@ -84,7 +84,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Lsp.IdeIndex,
+  Atlas.Common.Lsp.Adapters.IdeIndex,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.Preprocessor,
   Shell.Workspace;

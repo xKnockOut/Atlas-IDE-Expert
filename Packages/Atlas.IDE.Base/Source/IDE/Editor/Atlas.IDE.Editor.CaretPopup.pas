@@ -13,6 +13,7 @@
 //   OnPaint (nil) wird keiner angemeldet.
 // - Beide Wege laufen nur, solange die Funktion AFeature nicht abgeschaltet
 //   ist (#493); eine Exception geht an TAtlasGuard und nie an die IDE.
+// TAtlasIdeCaretCommand ist die Grundlage der Befehle mit so einem Fenster.
 // Nur im Hauptthread.
 
 interface
@@ -71,6 +72,23 @@ type
     class procedure Invalidate; static;
   end;
 
+  /// <summary>Befehl mit Fenster an der Schreibmarke (Umschließung entfernen, Typ des Ausdrucks): eine Instanz je
+  /// Befehl, die Taste führt ihn über RunCommand aus.</summary>
+  TAtlasIdeCaretCommand = class
+  protected
+    /// <summary>Befehl ausführen.</summary>
+    procedure Execute; virtual; abstract;
+    /// <summary>Lassen die Einstellungen den Befehl zu?</summary>
+    function Allowed: Boolean; virtual; abstract;
+    /// <summary>Fenster des Befehls schließen.</summary>
+    procedure Close; virtual; abstract;
+  public
+    /// <summary>ACommand ausführen, wenn es ihn gibt (nil vor Install) und die Einstellungen ihn zulassen.</summary>
+    class procedure RunCommand(ACommand: TAtlasIdeCaretCommand); static;
+    /// <summary>Fenster von ACommand schließen, wenn es ihn gibt (nil vor Install).</summary>
+    class procedure CloseCommand(ACommand: TAtlasIdeCaretCommand); static;
+  end;
+
 implementation
 
 uses
@@ -95,6 +113,24 @@ end;
 function TAtlasIdeCaretPopupHooks.TEvents.AllowedLineStages: TPaintLineStages;
 begin
   Result := [plsEndPaint];
+end;
+
+{ TAtlasIdeCaretCommand }
+
+class procedure TAtlasIdeCaretCommand.RunCommand(ACommand: TAtlasIdeCaretCommand);
+begin
+  if (ACommand <> nil) and ACommand.Allowed then
+  begin
+    ACommand.Execute;
+  end;
+end;
+
+class procedure TAtlasIdeCaretCommand.CloseCommand(ACommand: TAtlasIdeCaretCommand);
+begin
+  if ACommand <> nil then
+  begin
+    ACommand.Close;
+  end;
 end;
 
 { TAtlasIdeCaretPopupHooks }

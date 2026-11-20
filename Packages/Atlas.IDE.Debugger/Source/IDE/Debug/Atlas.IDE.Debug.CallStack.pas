@@ -26,6 +26,8 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.CallStackView,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.CallStackFrame;
 
@@ -45,7 +47,7 @@ type
     cRequestTimeoutMs = 3000;
     cEvaluateTimeoutMs = 500;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -60,7 +62,7 @@ type
     TPhase = (Idle, Read, Names, Waiting, Values);
     {$SCOPEDENUMS OFF}
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FRun: TAtlasCallStackRunner;

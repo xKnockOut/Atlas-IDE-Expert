@@ -2,7 +2,7 @@
 
 // Dateiänderungen außerhalb der IDE für den Server (#395, Ersatz für #22):
 // Git, ein KI-Assistent oder ein anderer Editor ändern Quelltexte, ohne dass die
-// IDE es meldet. Der Beobachter (Adapters.FolderWatcher) liefert rohe
+// IDE es meldet. Der Beobachter (Providers.FolderWatcher) liefert rohe
 // Ereignisse; diese Klasse filtert sie nach Endung, fasst mehrere Ereignisse
 // derselben Datei zusammen und gibt sie erst heraus, wenn QuietMs lang nichts
 // mehr kam (git checkout ändert viele Dateien kurz nacheinander).
@@ -61,15 +61,6 @@ type
     /// <summary>Zu beobachtende Ordner zu den Projektdateien: Git-Arbeitsverzeichnis darüber,
     /// sonst der Projektordner; ohne doppelte und ohne Ordner unterhalb eines anderen.</summary>
     class function Roots(const AProjects: TArray<string>; const AExists: TAtlasPathExists): TArray<string>; static;
-  end;
-
-  /// <summary>Beobachtet Ordner und meldet an TAtlasWatchedChanges; die Freigabe hält die Threads an. Die
-  /// Umsetzung (TAtlasFolderWatcher) setzt die Kompositionswurzel ein.</summary>
-  IAtlasFolderWatcher = interface
-    ['{967E5852-0525-40F5-815C-047BF4E416F1}']
-    /// <summary>Beobachtet genau diese Ordner; neue starten, weggefallene enden.</summary>
-    procedure SetRoots(const ARoots: TArray<string>);
-    function Roots: TArray<string>;
   end;
 
 implementation

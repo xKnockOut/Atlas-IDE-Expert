@@ -24,14 +24,15 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics;
 
 type
-  /// <summary>Einstellung "sortUses" für AUri.</summary>
-  TSortUsesProvider = reference to function(const AUri: string): Boolean;
+  /// <summary>Einstellung "sortUses" für AUri als Optionen für "uses aufräumen" (#182, #284, #2794).</summary>
+  TUsesOrderProvider = reference to function(const AUri: string): TUsesRewrite;
   /// <summary>Einstellung "completeBlocks.docComment" für AUri (#88).</summary>
   TDocCommentsProvider = reference to function(const AUri: string): Boolean;
   /// <summary>Einstellungen "stringLiteral" für AUri und ob ein mehrzeiliger String entsteht (#312).</summary>
@@ -66,8 +67,7 @@ type
   private
     FStore: IDocumentStore;
     FRuleProvider: TRuleContextProvider;
-    FSortUsesFor: TSortUsesProvider;
-    FSortUsesByNamespaceFor: TSortUsesProvider;
+    FUsesOrderFor: TUsesOrderProvider;
     FUsesContextFor: TUsesContextProvider;
     FFormActions: TFormActionsFunc;
     FStringLiteralFor: TStringLiteralProvider;
@@ -96,10 +96,8 @@ type
     /// <summary>WorkspaceEdit {"changes": {AUri: [...]}} für Befehle, die Änderungen liefern (#668). Der Aufrufer
     /// übernimmt das Objekt.</summary>
     class function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject; static;
-    /// <summary>Ohne Zuweisung werden uses nicht sortiert.</summary>
-    property SortUsesFor: TSortUsesProvider read FSortUsesFor write FSortUsesFor;
-    /// <summary>"sortUses": "namespace"; ohne Zuweisung rein alphabetisch.</summary>
-    property SortUsesByNamespaceFor: TSortUsesProvider read FSortUsesByNamespaceFor write FSortUsesByNamespaceFor;
+    /// <summary>Ohne Zuweisung werden uses nicht sortiert, nur doppelte entfernt.</summary>
+    property UsesOrderFor: TUsesOrderProvider read FUsesOrderFor write FUsesOrderFor;
     /// <summary>Ohne Zuweisung keine uses-Aktionen (#284).</summary>
     property UsesContextFor: TUsesContextProvider read FUsesContextFor write FUsesContextFor;
     /// <summary>Ohne Zuweisung gelten die Vorgaben mit Verkettung.</summary>
@@ -697,10 +695,15 @@ end;
 procedure TCodeActionBuilder.AddSourceActions;
 var
   mAction: TCodeAction;
+  mOrder: TUsesRewrite;
 begin
-  if FWantsOrganize and TCodeActions.OrganizeImports(FText, Assigned(FOwner.FSortUsesFor) and
-    FOwner.FSortUsesFor(FUri), mAction, Assigned(FOwner.FSortUsesByNamespaceFor) and
-    FOwner.FSortUsesByNamespaceFor(FUri)) then
+  mOrder := Default(TUsesRewrite);
+  if Assigned(FOwner.FUsesOrderFor) then
+  begin
+    mOrder := FOwner.FUsesOrderFor(FUri);
+  end;
+  mOrder.Dedupe := True;
+  if FWantsOrganize and TCodeActions.OrganizeImports(FText, mOrder, mAction) then
   begin
     Add(mAction);
   end;

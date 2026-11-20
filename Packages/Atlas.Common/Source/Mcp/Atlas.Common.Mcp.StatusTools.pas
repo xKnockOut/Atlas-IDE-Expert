@@ -7,13 +7,16 @@
 // geschrieben, solange das Plugin den Server abfragt). Gibt es für den
 // Projektordner keinen frischen, zeigt das Werkzeug den Status dieses
 // MCP-Prozesses und sagt das dazu. Nur lesend.
+// Aufrufstatistik (#2611): get_server_status hängt die Zahlen der laufenden MCP-Sitzung an (Markdown: Abschnitt,
+// JSON: Schlüssel mcp); die Ressource delphi://stats zeigt sie mit dem Verlauf der letzten Tage.
 
 interface
 
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Status;
+  Atlas.Common.Lsp.Status,
+  Atlas.Common.Mcp.Statistics;
 
 type
   /// <summary>Status dieses Prozesses, falls kein Server der IDE für den Ordner läuft.</summary>
@@ -22,18 +25,30 @@ type
   TMcpStatusTools = class
   public const
     cToolName = 'get_server_status';
+    cStatisticsUri = 'delphi://stats';
+  private
+    /// <summary>Status aus der Statusdatei des Servers der IDE bzw. dieses Prozesses, ohne Statistik.</summary>
+    class function PlainStatus(const ACacheRoot, AFolder: string; AJson: Boolean; ANow: TDateTime;
+      const AOwn: TMcpOwnStatusFunc): string; static;
   public
     /// <summary>Text des Werkzeugs: AJson = JSON (mit "source"), sonst Markdown mit Quelle in der ersten Zeile.
-    /// </summary>
+    /// AStatistics (nil = abgeschaltet) kommt als Abschnitt bzw. Schlüssel mcp dazu.</summary>
     class function ServerStatus(const ACacheRoot, AFolder: string; AJson: Boolean; ANow: TDateTime;
-      const AOwn: TMcpOwnStatusFunc): string; static;
+      const AOwn: TMcpOwnStatusFunc; AStatistics: TMcpStatistics): string; static;
+    /// <summary>Text der Ressource delphi://stats: Sitzung und Verlauf aus AHistoryFile (Zeilen bis ANow); bei nil
+    /// der Hinweis, dass die Statistik aus ist.</summary>
+    class function StatisticsText(AStatistics: TMcpStatistics; const AHistoryFile: string; ANow: TDateTime): string;
+      static;
   end;
 
 implementation
 
 uses
   Atlas.Common.Lsp.StatusFile,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Mcp.StatisticsText,
+  Atlas.Common.Mcp.StatisticsHistory,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -54,6 +69,44 @@ const
 { TMcpStatusTools }
 
 class function TMcpStatusTools.ServerStatus(const ACacheRoot, AFolder: string; AJson: Boolean; ANow: TDateTime;
+  const AOwn: TMcpOwnStatusFunc; AStatistics: TMcpStatistics): string;
+var
+  mObject: TJSONObject;
+begin
+  Result := PlainStatus(ACacheRoot, AFolder, AJson, ANow, AOwn);
+  if AStatistics = nil then
+  begin
+    Exit;
+  end;
+  if not AJson then
+  begin
+    Exit(TrimRight(Result) + #10 + #10 + TMcpStatisticsText.Markdown(AStatistics.Snapshot));
+  end;
+  mObject := TJsonRead.ParseObject(Result);
+  if mObject = nil then
+  begin
+    Exit;
+  end;
+  try
+    mObject.AddPair('mcp', AStatistics.Snapshot.Plain.ToJson);
+    Result := mObject.Format(2);
+  finally
+    mObject.Free;
+  end;
+end;
+
+class function TMcpStatusTools.StatisticsText(AStatistics: TMcpStatistics; const AHistoryFile: string;
+  ANow: TDateTime): string;
+begin
+  if AStatistics = nil then
+  begin
+    Exit(TMcpStatisticsText.SwitchedOff);
+  end;
+  Result := TMcpStatisticsText.Markdown(AStatistics.Snapshot) +
+    TMcpStatisticsText.HistoryMarkdown(TMcpStatisticsHistory.Read(AHistoryFile, ANow));
+end;
+
+class function TMcpStatusTools.PlainStatus(const ACacheRoot, AFolder: string; AJson: Boolean; ANow: TDateTime;
   const AOwn: TMcpOwnStatusFunc): string;
 var
   mText, mSource, mMarkdown: string;

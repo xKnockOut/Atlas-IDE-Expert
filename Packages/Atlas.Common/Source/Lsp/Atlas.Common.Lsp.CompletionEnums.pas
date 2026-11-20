@@ -67,16 +67,8 @@ uses
   System.StrUtils,
   System.RegularExpressions,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.TokenCursor;
-
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
@@ -110,7 +102,7 @@ begin
   Result := -1;
   for mIndex := 0 to High(ATokens) do
   begin
-    if Compare(ATokens[mIndex].StartPos, APosition) >= 0 then
+    if TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) >= 0 then
     begin
       Break;
     end;
@@ -120,7 +112,7 @@ begin
     end;
   end;
   if (Result >= 0) and (ATokens[Result].Kind = TPascalTokenKind.Identifier) and
-    (Compare(APosition, ATokens[Result].EndPos) <= 0) then
+    (TTextPosition.Compare(APosition, ATokens[Result].EndPos) <= 0) then
   begin
     APrefix := Result;
     Result := PreviousCode(ATokens, Result);
@@ -389,7 +381,7 @@ begin
   Result := nil;
   mElement := '';
   mIndex := Next(ATokens, ABracket);
-  while (mIndex <= High(ATokens)) and (Compare(ATokens[mIndex].StartPos, APosition) < 0) do
+  while (mIndex <= High(ATokens)) and (TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) < 0) do
   begin
     if ATokens[mIndex].IsSymbol(',') then
     begin

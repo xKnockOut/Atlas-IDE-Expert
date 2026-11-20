@@ -56,7 +56,7 @@ uses
   Atlas.UI.Tracker.Capture,
   Atlas.UI.Tracker.AttachDialog,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles;
 
 function Input: TAtlasAttachDialogInput;
 begin

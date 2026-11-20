@@ -923,7 +923,8 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Settings.StatusBarItems,
-  Atlas.Core.Settings.ToolbarItems;
+  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Core.Settings.Contract;
 
 const
   /// <summary>Knöpfe der Schnellleiste im Designer ab Werk, in dieser Reihenfolge (Kennungen, kein Text).</summary>

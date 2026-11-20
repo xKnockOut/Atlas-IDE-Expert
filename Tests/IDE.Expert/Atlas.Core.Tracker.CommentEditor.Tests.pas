@@ -81,14 +81,14 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.GitHubParse,
   Atlas.Core.Tracker.YouTrackApi,
-  Atlas.Core.Tracker.YouTrackParse;
+  Atlas.Core.Tracker.YouTrackParse,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt die Adressen.</summary>
@@ -364,7 +364,7 @@ end;
 
 procedure TAtlasCommentEditorTests.SnippetsJson;
 var
-  mSnippets: TArray<TAtlasCommentSnippet>;
+  mSnippets, mBack: TArray<TAtlasCommentSnippet>;
 begin
   Assert.IsTrue(TAtlasCommentSnippets.Parse('[{"name":"A","text":"Erste"},{"name":"","text":"x"},' +
     '{"name":"B","text":"  "},3,{"name":" C ","text":"Zeile 1\nZeile 2"}]', mSnippets));
@@ -372,14 +372,16 @@ begin
   Assert.AreEqual('A', mSnippets[0].Name);
   Assert.AreEqual('C', mSnippets[1].Name, 'Name ohne Leerraum');
   Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
-  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mSnippets));
-  Assert.AreEqual(2, Integer(Length(mSnippets)), 'hin und zurück');
-  Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
+  // Eigene Variable: FPC leert den out-Parameter vor dem Auswerten von ToJson(mSnippets).
+  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mBack));
+  Assert.AreEqual(2, Integer(Length(mBack)), 'hin und zurück');
+  Assert.AreEqual('Zeile 1'#10'Zeile 2', mBack[1].Text);
   Assert.AreEqual(0, Integer(Length(TAtlasCommentSnippets.Read('[]', False))), 'leere Liste bleibt leer');
   Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults(False))),
     Integer(Length(TAtlasCommentSnippets.Read('kein JSON', False))), 'ungültig: Vorgaben');
   Assert.IsFalse(TAtlasCommentSnippets.Parse('{"name":"A"}', mSnippets), 'keine Liste');
   mSnippets := nil;
+  mBack := nil;
 end;
 
 procedure TAtlasCommentEditorTests.SnippetDefaultsMatchSetting;
@@ -468,10 +470,12 @@ var
   mSaved, mWhen: TDateTime;
 begin
   mWhen := EncodeDateTime(2026, 10, 28, 14, 30, 0, 0);
-  mDrafts := TAtlasCommentDrafts.Create;
-  mRead := TAtlasCommentDrafts.Create;
-  mFile := TPath.Combine(TPath.GetTempPath, 'atlas-drafts-' + TGUID.NewGuid.ToString + '.json');
+  mDrafts := nil;
+  mRead := nil;
   try
+    mDrafts := TAtlasCommentDrafts.Create;
+    mRead := TAtlasCommentDrafts.Create;
+    mFile := TPath.Combine(TPath.GetTempPath, 'atlas-drafts-' + TGUID.NewGuid.ToString + '.json');
     mDrafts.Put('yt.firma.de/atl', 'ATL-12', TAtlasCommentDrafts.cFieldPreview, 'Zeile 1'#10'**fett** "zitiert"',
       mWhen);
     Assert.IsTrue(mRead.Parse(mDrafts.ToJson));

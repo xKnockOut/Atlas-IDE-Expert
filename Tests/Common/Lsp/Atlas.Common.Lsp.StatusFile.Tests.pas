@@ -38,6 +38,9 @@ type
     procedure EntryKeepsAllFields;
     [Test]
     procedure FindIgnoresOtherKinds;
+    /// <summary>#2611: Abschnitt mcp mit der Aufrufstatistik geht durch Schreiben und Lesen.</summary>
+    [Test]
+    procedure EntryKeepsMcpSection;
     [Test]
     procedure ListOrdersByStart;
     [Test]
@@ -219,6 +222,20 @@ begin
   Assert.AreEqual(1, Integer(Length(mEntry.Roots)));
   Assert.AreEqual('', mEntry.Status, 'ohne ausführlichen Status');
   Assert.AreEqual(TServerStatusFile.FileFor(FRoot, 7), mEntry.FileName);
+  mEntries := nil;
+end;
+
+procedure TServerStatusFileTests.EntryKeepsMcpSection;
+var
+  mEntry: TServerStatusEntry;
+  mEntries: TArray<TServerStatusEntry>;
+begin
+  mEntry := SampleEntry(TServerStatusEntry.cKindMcp, 8, cBase - 1);
+  mEntry.Mcp := '{"client":"Assistent A","calls":[]}';
+  TServerStatusFile.Write(FRoot, mEntry, nil, cBase);
+  mEntries := TServerStatusFile.List(FRoot, cBase + OneSecond, nil);
+  Assert.AreEqual(1, Integer(Length(mEntries)));
+  Assert.AreEqual('{"client":"Assistent A","calls":[]}', mEntries[0].Mcp);
   mEntries := nil;
 end;
 

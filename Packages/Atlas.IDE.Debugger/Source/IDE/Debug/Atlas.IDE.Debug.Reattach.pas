@@ -28,6 +28,8 @@ uses
   ToolsAPI,
   Atlas.Core.Status.Contract,
   Atlas.Core.Debug.DialogCompletion,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ReattachWait;
 
@@ -42,7 +44,7 @@ type
     cStatusOrder = 86;
   private type
     /// <summary>Merkt angehängte Programme; ein Start der IDE meldet sich vorher über AllowLaunch.</summary>
-    TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
+    TListener = class(TAtlasDebugListener, IAtlasIdeDebugLaunchCheck)
     private
       FLaunching: Boolean;
     public
@@ -58,7 +60,7 @@ type
       procedure WaitClick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FHandler: THandler;
     FMessage: TProc<string>;
     FRegistry: IAtlasStatusRegistry;
@@ -120,9 +122,11 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Processes,
   Atlas.IDE.Debug.UnavailableFixes,
+  Atlas.IDE.Debug.RunMenu,
   Atlas.UI.Debug.ProcessChoice,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.UI.Debug.Settings.Strings;
+  Atlas.UI.Debug.Settings.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cHistoryWhat = 'debug reattach';
@@ -133,25 +137,6 @@ function HistoryFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     TAtlasIdeDebugReattach.cFileName);
-end;
-
-function RunMenu: TMenuItem;
-var
-  mServices: INTAServices;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.MainMenu = nil) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.MainMenu.Items.Count - 1 do
-  begin
-    if SameText(mServices.MainMenu.Items[mIndex].Name, 'RunMenu') then
-    begin
-      Exit(mServices.MainMenu.Items[mIndex]);
-    end;
-  end;
 end;
 
 { TAtlasIdeDebugReattach.TListener }
@@ -224,10 +209,7 @@ end;
 
 class procedure TAtlasIdeDebugReattach.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeDebugReattach.History: TAtlasExpressionHistory;
@@ -382,7 +364,7 @@ class procedure TAtlasIdeDebugReattach.InstallMenu;
 var
   mParent: TMenuItem;
 begin
-  mParent := RunMenu;
+  mParent := TAtlasIdeRunMenu.Find;
   if (mParent = nil) or (FMenuReattach <> nil) then
   begin
     Exit;

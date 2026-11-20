@@ -166,17 +166,6 @@ end;
 
 { Hilfen }
 
-/// <summary>Oberen Editor neu zeichnen.</summary>
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 function UriToPath(AUri: string): string;
 begin
   Result := TLspSessionJson.UriToPath(AUri);
@@ -256,7 +245,7 @@ begin
   FMark.Free;
   if FShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -293,7 +282,7 @@ begin
       if not SameText(FFileName, mView.Buffer.FileName) and SameText(mView.Buffer.FileName, FShownFile) then
       begin
         UpdateStale;
-        InvalidateEditor;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
       FFileName := mView.Buffer.FileName;
       FText := mText;
@@ -308,7 +297,7 @@ begin
     begin
       FVersion := FTests.Version;
       UpdateStale;
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.RepaintTop;
     end;
   except
     on E: Exception do
@@ -401,7 +390,7 @@ begin
   FShowing := Length(mUnit.Methods) > 0;
   FVersion := FTests.Version;
   UpdateStale;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 procedure TAtlasIdeCoveredByLens.Clear;
@@ -417,7 +406,7 @@ begin
   if FShowing then
   begin
     FShowing := False;
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 

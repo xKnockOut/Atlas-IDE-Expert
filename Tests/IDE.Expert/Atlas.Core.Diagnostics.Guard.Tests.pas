@@ -19,6 +19,9 @@ type
     procedure TearDown;
     [Test]
     procedure RunSwallowsExceptions;
+    /// <summary>Wrap gibt eine Prozedur zurück, die erst beim Aufruf über Run läuft.</summary>
+    [Test]
+    procedure WrapRunsGuardedOnCall;
     [Test]
     procedure FuseTripsAfterThreeFailuresWithinFiveMinutes;
     [Test]
@@ -66,6 +69,28 @@ type
     /// </summary>
     [Test]
     procedure SlowProviderLogsOncePerInterval;
+    /// <summary>Scheitert ein Befehl des Benutzers, steht sein erster Fehler sofort in der Meldungsansicht, mit
+    /// Namen und Fehlerklasse; OnFailed holt die Ansicht nach vorn.</summary>
+    [Test]
+    procedure CommandFailureWarnsAtOnce;
+    /// <summary>Derselbe Fehler im Hintergrund (Zeichnen, Takt) bleibt still wie bisher.</summary>
+    [Test]
+    procedure BackgroundFailureStaysSilent;
+    /// <summary>Geschachtelte Befehle: eine Warnung je äußerem Befehl, mit dessen Namen.</summary>
+    [Test]
+    procedure NestedCommandWarnsOnceWithOuterName;
+    /// <summary>Jeder neue Aufruf eines Befehls meldet seinen Fehler wieder; die Zählung der Sicherung bleibt.</summary>
+    [Test]
+    procedure EachCommandCallWarnsAgain;
+    /// <summary>Unter einer abgeschalteten Funktion sagt der Befehl, dass und warum er nicht läuft.</summary>
+    [Test]
+    procedure SwitchedOffCommandSaysSo;
+    /// <summary>EAbort und Befehle ohne Namen (Antworten auf Anfragen aus dem Hintergrund) bleiben still.</summary>
+    [Test]
+    procedure AbortAndUnnamedStaySilent;
+    /// <summary>Menütext ohne Kürzel-&amp; und Auslassungspunkte.</summary>
+    [Test]
+    procedure CommandNameIsCleaned;
   end;
 
 implementation
@@ -117,6 +142,7 @@ end;
 
 procedure TAtlasGuardTests.TearDown;
 begin
+  TAtlasCommandScope.OnFailed := nil;
   TAtlasGuard.Fuse.ResetAll;
   TAtlasGuard.SetLogNames(False);
   TAtlasGuard.OnWarning := nil;
@@ -147,6 +173,26 @@ begin
     end));
   Assert.IsTrue(mRan);
   Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8), 'EInvalidOpException: kaputt');
+end;
+
+procedure TAtlasGuardTests.WrapRunsGuardedOnCall;
+var
+  mCount: Integer;
+  mWrapped: TProc;
+begin
+  mCount := 0;
+  mWrapped := TAtlasGuard.Wrap(TAtlasFeature.Hover,
+    procedure
+    begin
+      Inc(mCount);
+      raise EInvalidOpException.Create('im Befehl');
+    end);
+  Assert.AreEqual(0, mCount, 'erst beim Aufruf');
+  mWrapped();
+  Assert.AreEqual(1, mCount);
+  Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8),
+    'EInvalidOpException: im Befehl');
+  mWrapped := nil;
 end;
 
 procedure TAtlasGuardTests.FuseTripsAfterThreeFailuresWithinFiveMinutes;
@@ -644,6 +690,170 @@ begin
   Assert.AreEqual(1, Integer(Length(mText.Trim.Split([sLineBreak]))));
   Assert.Contains(mText, 'Quelle Wörter langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('Wörter'));
+end;
+
+/// <summary>Sammelt die Warnungen der Sicherung in AWarnings (TList gehört dem Aufrufer).</summary>
+procedure CollectWarnings(AWarnings: TList<string>);
+begin
+  TAtlasGuard.OnWarning :=
+    procedure(const AText: string)
+    begin
+      AWarnings.Add(AText);
+    end;
+end;
+
+/// <summary>Löst EInvalidOpException mit AText aus.</summary>
+function Failing(const AText: string): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      raise EInvalidOpException.Create(AText);
+    end;
+end;
+
+procedure TAtlasGuardTests.CommandFailureWarnsAtOnce;
+var
+  mWarnings: TList<string>;
+  mShown: Integer;
+begin
+  mWarnings := TList<string>.Create;
+  try
+    CollectWarnings(mWarnings);
+    mShown := 0;
+    TAtlasCommandScope.OnFailed :=
+      procedure
+      begin
+        Inc(mShown);
+      end;
+    Assert.IsFalse(TAtlasCommandScope.Run(TAtlasFeature.Build, 'Leckprüfung &einrichten …', Failing('kaputt')));
+    Assert.AreEqual(1, Integer(mWarnings.Count), 'schon der erste Fehler');
+    Assert.Contains(mWarnings[0], '„Leckprüfung einrichten“');
+    Assert.Contains(mWarnings[0], 'EInvalidOpException');
+    Assert.Contains(mWarnings[0], 'kaputt');
+    Assert.AreEqual(1, mShown, 'Meldungsansicht nach vorn');
+    Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Build), 'die Zählung der Sicherung bleibt');
+    Assert.AreEqual('', TAtlasCommandScope.Current, 'nach dem Befehl kein Befehl mehr');
+  finally
+    mWarnings.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.BackgroundFailureStaysSilent;
+var
+  mWarnings: TList<string>;
+begin
+  mWarnings := TList<string>.Create;
+  try
+    CollectWarnings(mWarnings);
+    Assert.IsFalse(TAtlasGuard.Run(TAtlasFeature.Build, Failing('im Takt')));
+    Assert.AreEqual(0, Integer(mWarnings.Count));
+  finally
+    mWarnings.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.NestedCommandWarnsOnceWithOuterName;
+var
+  mWarnings: TList<string>;
+begin
+  mWarnings := TList<string>.Create;
+  try
+    CollectWarnings(mWarnings);
+    TAtlasCommandScope.Run(TAtlasFeature.Menu, 'Außen',
+      procedure
+      begin
+        TAtlasCommandScope.Run(TAtlasFeature.Build, 'Innen', Failing('erster'));
+        TAtlasGuard.Run(TAtlasFeature.Outline, Failing('zweiter'));
+        Assert.AreEqual('Außen', TAtlasCommandScope.Current);
+      end);
+    Assert.AreEqual(1, Integer(mWarnings.Count), 'einmal je Befehl');
+    Assert.Contains(mWarnings[0], '„Außen“');
+    Assert.Contains(mWarnings[0], 'erster');
+  finally
+    mWarnings.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.EachCommandCallWarnsAgain;
+var
+  mWarnings: TList<string>;
+begin
+  mWarnings := TList<string>.Create;
+  try
+    CollectWarnings(mWarnings);
+    TAtlasCommandScope.Run(TAtlasFeature.Build, 'Befehl', Failing('kaputt'));
+    TAtlasCommandScope.Run(TAtlasFeature.Build, 'Befehl', Failing('kaputt'));
+    Assert.AreEqual(2, Integer(mWarnings.Count), 'jeder Klick bekommt eine Antwort');
+  finally
+    mWarnings.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.SwitchedOffCommandSaysSo;
+var
+  mWarnings: TList<string>;
+  mIndex, mCalls: Integer;
+begin
+  mWarnings := TList<string>.Create;
+  try
+    for mIndex := 1 to 3 do
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Build, RaiserAt(mIndex));
+    end;
+    Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.Build));
+    CollectWarnings(mWarnings);
+    mCalls := 0;
+    TAtlasCommandScope.Run(TAtlasFeature.Menu, 'Leckprüfung einrichten',
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.Build,
+          procedure
+          begin
+            Inc(mCalls);
+          end);
+      end);
+    Assert.AreEqual(0, mCalls, 'läuft nicht');
+    Assert.AreEqual(1, Integer(mWarnings.Count), 'sagt es statt still zurückzukehren');
+    Assert.Contains(mWarnings[0], '„Leckprüfung einrichten“');
+    Assert.Contains(mWarnings[0], TAtlasGuard.FeatureName(TAtlasFeature.Build));
+    mWarnings.Clear;
+    TAtlasGuard.Run(TAtlasFeature.Build,
+      procedure
+      begin
+        Inc(mCalls);
+      end);
+    Assert.AreEqual(0, Integer(mWarnings.Count), 'ohne Befehl still wie bisher');
+  finally
+    mWarnings.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.AbortAndUnnamedStaySilent;
+var
+  mWarnings: TList<string>;
+begin
+  mWarnings := TList<string>.Create;
+  try
+    CollectWarnings(mWarnings);
+    TAtlasCommandScope.Run(TAtlasFeature.Build, 'Abbrechen',
+      procedure
+      begin
+        Abort;
+      end);
+    TAtlasCommandScope.Run(TAtlasFeature.Build, '', Failing('aus dem Hintergrund'));
+    Assert.AreEqual(0, Integer(mWarnings.Count));
+    Assert.AreEqual('', TAtlasCommandScope.Current);
+  finally
+    mWarnings.Free;
+  end;
+end;
+
+procedure TAtlasGuardTests.CommandNameIsCleaned;
+begin
+  Assert.AreEqual('Datei & Ordner', TAtlasCommandScope.CleanName('&Datei && Ordner...'));
+  Assert.AreEqual('Leckprüfung einrichten', TAtlasCommandScope.CleanName('Leckprüfung einrichten …'));
+  Assert.AreEqual('Prüfen', TAtlasCommandScope.CleanName(' P&rüfen '));
 end;
 
 initialization

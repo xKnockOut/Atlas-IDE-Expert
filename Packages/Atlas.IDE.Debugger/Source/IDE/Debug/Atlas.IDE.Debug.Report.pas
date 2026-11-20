@@ -1,20 +1,17 @@
 ﻿unit Atlas.IDE.Debug.Report;
 
-// Bericht über die laufende Debug-Sitzung für andere Module (#1455): stellt
-// IAtlasDebugReportSource bereit (Prozess, gestartetes Projekt, Debug-Notiz
-// #582, Exception-Verlauf #517). Der Tracker („An Issue anhängen …“, #1276)
-// fragt den Vertrag über die Registry und kennt den Debugger nicht.
-// NoteData und NoteTexts nutzt auch „Debug-Zustand festhalten“ (#582,
-// Atlas.IDE.Debug.Note), das die Werte des Halts selbst nachlädt.
+// Debug-Notiz des Halts (#582) ohne Werte: Überschriften, Daten und Dateiname.
+// Nutzen „Debug-Zustand festhalten“ (Atlas.IDE.Debug.Note), das die Werte des
+// Halts selbst nachlädt, und der Bericht für andere Module
+// (Atlas.IDE.Debug.Adapters.Report).
 
 interface
 
 uses
-  Atlas.Core.Debug.Note,
-  Atlas.IDE.Contracts.DebugReport;
+  Atlas.Core.Debug.Note;
 
 type
-  TAtlasIdeDebugReport = class(TInterfacedObject, IAtlasDebugReportSource)
+  TAtlasIdeDebugReport = class
   public const
     /// <summary>Zeilen des Ereignisprotokolls in der Notiz.</summary>
     cNoteEvents = TAtlasDebugNote.cMaxEvents;
@@ -26,10 +23,6 @@ type
     class function NoteData(out AData: TAtlasDebugNoteData): Boolean; static;
     /// <summary>Dateiname der Notiz zur Zeit ATime in der Sprache der Oberfläche.</summary>
     class function NoteFileName(ATime: TDateTime): string; static;
-    function DebuggedProcessId: Cardinal;
-    function LaunchProject: string;
-    function DebugNote(out AMarkdown, AFileName: string): Boolean;
-    function ExceptionsText(AMax: Integer; out ACount: Integer): string;
   end;
 
 implementation
@@ -75,23 +68,6 @@ end;
 class function TAtlasIdeDebugReport.NoteFileName(ATime: TDateTime): string;
 begin
   Result := TAtlasDebugNote.FileName(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteFileStem), ATime);
-end;
-
-function TAtlasIdeDebugReport.DebuggedProcessId: Cardinal;
-var
-  mProcess: IOTAProcess;
-begin
-  Result := 0;
-  mProcess := TAtlasIdeDebugSession.Process;
-  if mProcess <> nil then
-  begin
-    Result := mProcess.ProcessId;
-  end;
-end;
-
-function TAtlasIdeDebugReport.LaunchProject: string;
-begin
-  Result := TAtlasIdeDebugSession.LaunchProject;
 end;
 
 /// <summary>Aufrufstapel des Halts mit eigenem Code markiert, dazu die Routine des obersten Rahmens.</summary>
@@ -182,48 +158,6 @@ begin
   AddException(AData);
   AData.Events := TAtlasIdeDebugEventLog.LastLines(cNoteEvents);
   Result := True;
-end;
-
-function TAtlasIdeDebugReport.DebugNote(out AMarkdown, AFileName: string): Boolean;
-var
-  mData: TAtlasDebugNoteData;
-begin
-  AMarkdown := '';
-  AFileName := '';
-  Result := NoteData(mData);
-  if Result then
-  begin
-    AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
-    AFileName := NoteFileName(mData.Time);
-  end;
-end;
-
-function TAtlasIdeDebugReport.ExceptionsText(AMax: Integer; out ACount: Integer): string;
-var
-  mHistory: TAtlasDebugExceptionHistory;
-  mIndexes: TArray<Integer>;
-  mItems: TAtlasDebugExceptions;
-  mIndex: Integer;
-begin
-  Result := '';
-  ACount := 0;
-  mHistory := TAtlasIdeDebugExceptions.History;
-  if mHistory = nil then
-  begin
-    Exit;
-  end;
-  mIndexes := mHistory.Filter('', '');
-  ACount := Length(mIndexes);
-  mItems := nil;
-  for mIndex in mIndexes do
-  begin
-    if Length(mItems) >= AMax then
-    begin
-      Break;
-    end;
-    mItems := mItems + [mHistory[mIndex]];
-  end;
-  Result := TAtlasDebugNote.HistoryText(mItems, AMax);
 end;
 
 end.

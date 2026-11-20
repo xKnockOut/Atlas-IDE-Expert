@@ -45,26 +45,20 @@ begin
 end;
 
 procedure TAtlasTrackerBranchSectionTests.OnlyWithVersionControl;
-var
-  mProvider: IAtlasSettingsSectionProvider;
-  mSection: IAtlasSettingsSection;
 begin
-  mProvider := TAtlasTrackerBranchProvider.Create;
-  Assert.IsNull(mProvider.CreateSection, 'ohne Abfrage kein Abschnitt');
+  Assert.IsFalse(TAtlasTrackerBranchSection.IsAvailable, 'ohne Abfrage kein Abschnitt');
   TAtlasTrackerBranchSection.Available :=
     function: Boolean
     begin
       Result := False;
     end;
-  Assert.IsNull(mProvider.CreateSection, 'ohne Versionsverwaltung kein Abschnitt');
+  Assert.IsFalse(TAtlasTrackerBranchSection.IsAvailable, 'ohne Versionsverwaltung kein Abschnitt');
   TAtlasTrackerBranchSection.Available :=
     function: Boolean
     begin
       Result := True;
     end;
-  mSection := mProvider.CreateSection;
-  Assert.IsNotNull(mSection);
-  mSection.Close;
+  Assert.IsTrue(TAtlasTrackerBranchSection.IsAvailable);
 end;
 
 initialization

@@ -26,6 +26,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.NoSource,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.NoSourcePopup;
 
@@ -36,7 +38,7 @@ type
     cStackRetries = 10;
     cMaxReturns = 20;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugResumed; override;
@@ -47,7 +49,7 @@ type
       procedure Tick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FPopup: TAtlasNoSourcePopup;
@@ -99,7 +101,8 @@ uses
   Atlas.IDE.Debug.NoSourceFacts,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.StepsBar,
-  Atlas.UI.Debug.Stepping.Strings;
+  Atlas.UI.Debug.Stepping.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cDebugConfiguration = 'Debug';
@@ -144,10 +147,7 @@ end;
 
 class procedure TAtlasIdeDebugNoSource.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class procedure TAtlasIdeDebugNoSource.Schedule;

@@ -71,7 +71,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Search.Strings;
+  Atlas.UI.Search.Strings,
+  Atlas.Core.Foundation.Calls;
 
 { TAtlasSearchBarFields }
 
@@ -306,11 +307,11 @@ begin
   if ABox = FParts.TextEdit then
   begin
     UpdateStates;
-    TAtlasSearchBarEvents.Fire(FEvents.OnQueryChanged);
+    TAtlasCalls.Call(FEvents.OnQueryChanged);
   end
   else
   begin
-    TAtlasSearchBarEvents.Fire(FEvents.OnReplaceShown);
+    TAtlasCalls.Call(FEvents.OnReplaceShown);
   end;
 end;
 
@@ -326,7 +327,7 @@ begin
     FParts.TextEdit.History.Reset;
   end;
   UpdateStates;
-  TAtlasSearchBarEvents.Fire(FEvents.OnQueryChanged);
+  TAtlasCalls.Call(FEvents.OnQueryChanged);
 end;
 
 procedure TAtlasSearchBarFields.ReplaceChanged(Sender: TObject);
@@ -339,7 +340,7 @@ begin
   begin
     FParts.ReplaceEdit.History.Reset;
   end;
-  TAtlasSearchBarEvents.Fire(FEvents.OnReplaceShown);
+  TAtlasCalls.Call(FEvents.OnReplaceShown);
 end;
 
 procedure TAtlasSearchBarFields.HistoryDropDown(Sender: TObject);

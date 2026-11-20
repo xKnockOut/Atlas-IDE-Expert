@@ -23,6 +23,8 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
+    procedure LazyCreatesOnceAndKeepsInstance;
+    [Test]
     procedure CoversEveryPluginSetting;
     [Test]
     procedure PluginDefaultsMatchSettingsDefaults;
@@ -208,6 +210,22 @@ end;
 procedure TAtlasSettingsCatalogTests.TearDown;
 begin
   FreeAndNil(FCatalog);
+end;
+
+procedure TAtlasSettingsCatalogTests.LazyCreatesOnceAndKeepsInstance;
+var
+  mHeld, mFirst: TAtlasSettingsCatalog;
+begin
+  mHeld := nil;
+  try
+    mFirst := TAtlasSettingsCatalog.Lazy(mHeld);
+    Assert.IsNotNull(mFirst);
+    Assert.AreSame(mHeld, mFirst, 'Lazy legt den Katalog in die Variable');
+    Assert.AreSame(mFirst, TAtlasSettingsCatalog.Lazy(mHeld), 'zweiter Aufruf liefert dieselbe Instanz');
+    Assert.IsTrue(mHeld.IndexOfKey('settings.exportImport') >= 0);
+  finally
+    mHeld.Free;
+  end;
 end;
 
 procedure TAtlasSettingsCatalogTests.CoversEveryPluginSetting;

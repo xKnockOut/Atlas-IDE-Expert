@@ -11,13 +11,13 @@ uses
   System.Types,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Status.Contract,
-  Atlas.IDE.Status.Field,
+  Atlas.Core.Status.FieldFlow,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Notifications.Service;
 
 /// <summary>Atlas-Statusfeld; nil vor RegisterStatusField und nach UnregisterStatusField.</summary>
-function StatusField: TAtlasStatusField;
+function StatusField: TAtlasStatusFieldFlow;
 /// <summary>Zeilen des Statusfelds; nil ohne Statusfeld.</summary>
 function StatusLines: TAtlasIdeStatusLines;
 /// <summary>Benachrichtigungszentrale; nil vor StartNotifications.</summary>
@@ -77,6 +77,7 @@ uses
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Diagnostics.ServerPackage,
   Atlas.IDE.CodeInsight.Composition.Session,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.Foundation.Host;
 
 const
@@ -84,14 +85,14 @@ const
 
 var
   // Atlas-Statusfeld mit Server, Index und Datei (#591).
-  StatusFieldInstance: TAtlasStatusField;
+  StatusFieldInstance: TAtlasStatusFieldFlow;
   StatusLinesInstance: TAtlasIdeStatusLines;
   // Benachrichtigungszentrale mit Liste, Plakette im Statusfeld und Build-Einträgen (#601).
   NotificationsInstance: TAtlasIdeNotifications;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickTogglesInstance: TAtlasIdeQuickToggles;
 
-function StatusField: TAtlasStatusField;
+function StatusField: TAtlasStatusFieldFlow;
 begin
   Result := StatusFieldInstance;
 end;
@@ -120,15 +121,8 @@ begin
 end;
 
 procedure SetStatusExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
-var
-  mExtra: TAtlasStatusExtra;
 begin
-  mExtra := Default(TAtlasStatusExtra);
-  mExtra.Id := AId;
-  mExtra.Text := AText;
-  mExtra.Hint := AHint;
-  mExtra.OnClick := AOnClick;
-  SetStatusItem(mExtra);
+  SetStatusItem(TAtlasStatusExtra.Make(AId, AText, AHint, AOnClick));
 end;
 
 procedure SetStatusItem(const AExtra: TAtlasStatusExtra);
@@ -312,7 +306,7 @@ end;
 /// <summary>Atlas-Statusfeld mit Aktualisieren, Protokoll, Schnellschaltern und Neustart des Servers.</summary>
 procedure CreateStatusField;
 begin
-  StatusFieldInstance := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
+  StatusFieldInstance := NewStatusField(TAtlasStatusRegistry.Default);
   StatusFieldInstance.OnRefresh :=
     procedure
     begin

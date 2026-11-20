@@ -13,6 +13,11 @@
 // StepInto setzt aus Atlas heraus mit „Einzelne Anweisung“ fort (Schrittfilter
 // nach dem Zurückkehren); die Empfänger erfahren das mit Origin = Atlas, als
 // hätte der Benutzer an dieser Stelle F7 gedrückt.
+// Rückgabewerte (#844) melden sich zusätzlich für „Gesamte Routine“ (F8,
+// RunStepOverCommand) und „Bis zur Rückkehr ausführen“ (Umschalt+F8,
+// RunRunUntilReturnCommand) an (AddStepHandler mit den gewünschten Arten);
+// jeder Empfänger erfährt nur seine Arten, Atlas hängt nur an Aktionen, die
+// ein Empfänger will.
 // Ohne Empfänger hängt Atlas an keiner Aktion. Nur im Hauptthread verwenden.
 
 interface
@@ -20,38 +25,40 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Actions;
+  System.Actions,
+  Atlas.IDE.Foundation.ActionHook;
 
 type
   {$SCOPEDENUMS ON}
-  TAtlasTraceKind = (TraceInto, TraceToSource);
+  TAtlasTraceKind = (TraceInto, TraceToSource, StepOver, RunUntilReturn);
   /// <summary>User: Taste, Menü oder Symbolleiste der IDE; Atlas: TAtlasIdeDebugTrace.StepInto.</summary>
   TAtlasTraceOrigin = (User, Atlas);
   {$SCOPEDENUMS OFF}
+
+  TAtlasTraceKinds = set of TAtlasTraceKind;
 
   TAtlasTraceEvent = reference to procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin);
 
   TAtlasIdeDebugTrace = class
   public const
     /// <summary>Namen der Aktionen in der Aktionsliste der IDE.</summary>
-    cActionNames: array[TAtlasTraceKind] of string = ('RunTraceIntoCommand', 'RunTraceToSourceCommand');
+    cActionNames: array[TAtlasTraceKind] of string = ('RunTraceIntoCommand', 'RunTraceToSourceCommand',
+      'RunStepOverCommand', 'RunRunUntilReturnCommand');
+    /// <summary>Arten von AddHandler: die beiden Schritte hinein.</summary>
+    cTraceKinds: TAtlasTraceKinds = [TAtlasTraceKind.TraceInto, TAtlasTraceKind.TraceToSource];
   private type
     /// <summary>Hängt an einer Aktion: meldet den Schritt, dann die Aktion wie bisher.</summary>
-    THook = class(TComponent)
+    THook = class(TAtlasIdeActionHook)
     private
       FKind: TAtlasTraceKind;
-      FAction: TContainedAction;
-      FOriginal: TNotifyEvent;
-      FBypass: Boolean;
-      procedure Execute(Sender: TObject);
     protected
-      procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+      procedure Intercept; override;
     public
       constructor Create(AKind: TAtlasTraceKind; AAction: TContainedAction); reintroduce;
-      destructor Destroy; override;
     end;
     THandler = record
       Name: string;
+      Kinds: TAtlasTraceKinds;
       Event: TAtlasTraceEvent;
     end;
   private class var
@@ -62,9 +69,12 @@ type
     class procedure Hook; static;
     class procedure Unhook; static;
   public
-    /// <summary>Empfänger unter AName anmelden (ein zweiter Aufruf mit demselben Namen ersetzt ihn); hängt Atlas
-    /// beim ersten an die Aktionen.</summary>
+    /// <summary>Empfänger unter AName für F7 und Umschalt+F7 anmelden (ein zweiter Aufruf mit demselben Namen
+    /// ersetzt ihn); hängt Atlas an die Aktionen.</summary>
     class procedure AddHandler(const AName: string; const AEvent: TAtlasTraceEvent); static;
+    /// <summary>Wie AddHandler, für die Schritte AKinds.</summary>
+    class procedure AddStepHandler(const AName: string; AKinds: TAtlasTraceKinds; const AEvent: TAtlasTraceEvent);
+      static;
     /// <summary>Empfänger abmelden; beim letzten hängt Atlas sich von den Aktionen ab.</summary>
     class procedure RemoveHandler(const AName: string); static;
     /// <summary>Aus Atlas „Einzelne Anweisung“: Empfänger melden (Origin Atlas), dann fortsetzen; False ohne
@@ -87,58 +97,15 @@ uses
 
 constructor TAtlasIdeDebugTrace.THook.Create(AKind: TAtlasTraceKind; AAction: TContainedAction);
 begin
-  inherited Create(nil);
   FKind := AKind;
-  FAction := AAction;
-  FOriginal := AAction.OnExecute;
-  FAction.OnExecute := Execute;
-  FAction.FreeNotification(Self);
+  inherited Create(AAction);
 end;
 
-destructor TAtlasIdeDebugTrace.THook.Destroy;
+procedure TAtlasIdeDebugTrace.THook.Intercept;
 begin
-  if FAction <> nil then
-  begin
-    FAction.RemoveFreeNotification(Self);
-    FAction.OnExecute := FOriginal;
-  end;
-  inherited Destroy;
-end;
-
-procedure TAtlasIdeDebugTrace.THook.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FAction) then
-  begin
-    FAction := nil;
-  end;
-end;
-
-procedure TAtlasIdeDebugTrace.THook.Execute(Sender: TObject);
-begin
-  if FBypass or (FAction = nil) then
-  begin
-    Exit;
-  end;
   // Melden darf den Schritt nie verhindern; jeder Empfänger läuft unter der Sicherung.
   TAtlasIdeDebugTrace.Notify(FKind, TAtlasTraceOrigin.User);
-  if Assigned(FOriginal) then
-  begin
-    FOriginal(Sender);
-    Exit;
-  end;
-  // Ohne eigenes OnExecute erledigt die IDE die Aktion über ihre Liste: kurz abhängen und ausführen.
-  FBypass := True;
-  FAction.OnExecute := nil;
-  try
-    FAction.Execute;
-  finally
-    if FAction <> nil then
-    begin
-      FAction.OnExecute := Execute;
-    end;
-    FBypass := False;
-  end;
+  RunOriginal;
 end;
 
 { TAtlasIdeDebugTrace }
@@ -164,13 +131,15 @@ begin
     end;
   end;
   // Ersatz: die Aktion mit dem üblichen Tastenkürzel.
-  if AKind = TAtlasTraceKind.TraceInto then
-  begin
-    mShortCut := ShortCut(VK_F7, []);
-  end
+  case AKind of
+    TAtlasTraceKind.TraceToSource:
+      mShortCut := ShortCut(VK_F7, [ssShift]);
+    TAtlasTraceKind.StepOver:
+      mShortCut := ShortCut(VK_F8, []);
+    TAtlasTraceKind.RunUntilReturn:
+      mShortCut := ShortCut(VK_F8, [ssShift]);
   else
-  begin
-    mShortCut := ShortCut(VK_F7, [ssShift]);
+    mShortCut := ShortCut(VK_F7, []);
   end;
   for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
@@ -191,7 +160,7 @@ begin
   mHandlers := Copy(FHandlers);
   for mHandler in mHandlers do
   begin
-    if Assigned(mHandler.Event) then
+    if Assigned(mHandler.Event) and (AKind in mHandler.Kinds) then
     begin
       TAtlasGuard.Run(TAtlasFeature.Debugger,
         procedure
@@ -206,10 +175,17 @@ class procedure TAtlasIdeDebugTrace.Hook;
 var
   mKind: TAtlasTraceKind;
   mAction: TContainedAction;
+  mWanted: TAtlasTraceKinds;
+  mHandler: THandler;
 begin
+  mWanted := [];
+  for mHandler in FHandlers do
+  begin
+    mWanted := mWanted + mHandler.Kinds;
+  end;
   for mKind := Low(TAtlasTraceKind) to High(TAtlasTraceKind) do
   begin
-    if FHooks[mKind] <> nil then
+    if (FHooks[mKind] <> nil) or not (mKind in mWanted) then
     begin
       Continue;
     end;
@@ -237,6 +213,12 @@ begin
 end;
 
 class procedure TAtlasIdeDebugTrace.AddHandler(const AName: string; const AEvent: TAtlasTraceEvent);
+begin
+  AddStepHandler(AName, cTraceKinds, AEvent);
+end;
+
+class procedure TAtlasIdeDebugTrace.AddStepHandler(const AName: string; AKinds: TAtlasTraceKinds;
+  const AEvent: TAtlasTraceEvent);
 var
   mIndex: Integer;
   mHandler: THandler;
@@ -245,13 +227,17 @@ begin
   begin
     if SameText(FHandlers[mIndex].Name, AName) then
     begin
+      FHandlers[mIndex].Kinds := AKinds;
       FHandlers[mIndex].Event := AEvent;
+      Hook;
       Exit;
     end;
   end;
   mHandler.Name := AName;
+  mHandler.Kinds := AKinds;
   mHandler.Event := AEvent;
-  FHandlers := FHandlers + [mHandler];
+  SetLength(FHandlers, Length(FHandlers) + 1);
+  FHandlers[High(FHandlers)] := mHandler;
   Hook;
 end;
 

@@ -291,10 +291,13 @@ var
   mReport: string;
   mTools: TList<string>;
 begin
-  mFiles := TFindingTestFiles.Create;
-  mEdit := NewTools(mFiles);
-  mTools := TList<string>.Create;
+  mFiles := nil;
+  mEdit := nil;
+  mTools := nil;
   try
+    mFiles := TFindingTestFiles.Create;
+    mEdit := NewTools(mFiles);
+    mTools := TList<string>.Create;
     mEvaluation := TMcpEditEvaluation.Create('', AltFindingsFunc(), ReadOf(mFiles), nil);
     mEdit.AfterWrite := AfterWriteOf(mEvaluation, mTools);
     mFiles.Files.Add('A.pas', 'Neu;'#10'b');
@@ -321,10 +324,13 @@ var
   mNames: TList<string>;
   mReport: string;
 begin
-  mFiles := TFindingTestFiles.Create;
-  mEdit := NewTools(mFiles);
-  mNames := TList<string>.Create;
+  mFiles := nil;
+  mEdit := nil;
+  mNames := nil;
   try
+    mFiles := TFindingTestFiles.Create;
+    mEdit := NewTools(mFiles);
+    mNames := TList<string>.Create;
     mEdit.AfterWrite :=
       function(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>): string
       begin

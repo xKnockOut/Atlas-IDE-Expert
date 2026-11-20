@@ -53,6 +53,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Leaks.Contract,
   Atlas.Common.Lsp.LeakSetup,
   Atlas.Common.Localization.Texts,
   Atlas.Text.LogMarks,

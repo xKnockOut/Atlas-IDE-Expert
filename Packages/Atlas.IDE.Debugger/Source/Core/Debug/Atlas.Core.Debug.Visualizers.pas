@@ -125,7 +125,8 @@ uses
   System.StrUtils,
   System.Math,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Names;
 
 const
   // Leerer Platz eines Dictionaries (EMPTY_HASH in System.Generics.Collections).
@@ -313,19 +314,6 @@ begin
   end;
 end;
 
-/// <summary>Letzter Teil eines qualifizierten Namens (ohne Typargumente).</summary>
-function StripUnit(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := Trim(AName);
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
-end;
-
 class function TAtlasVisualizers.ShortTypeName(const ATypeName: string): string;
 var
   mIndex, mStart: Integer;
@@ -341,7 +329,7 @@ begin
       mPart := Copy(ATypeName, mStart, mIndex - mStart);
       if mPart <> '' then
       begin
-        Result := Result + StripUnit(mPart);
+        Result := Result + TTextNames.LastPart(Trim(mPart));
       end;
       if mIndex <= Length(ATypeName) then
       begin
@@ -369,7 +357,7 @@ begin
   begin
     Result := Copy(Result, 1, mAngle - 1);
   end;
-  Result := StripUnit(Result);
+  Result := TTextNames.LastPart(Trim(Result));
 end;
 
 class function TAtlasVisualizers.KindOf(const ATypeName: string; out AKind: TAtlasVisualizerKind): Boolean;
@@ -966,17 +954,6 @@ begin
   Result := TAtlasVisualizerFormat.Shorten(Result, AOptions.MaxLength);
 end;
 
-function Row(const AValues: array of string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
-  end;
-end;
-
 procedure ViewList(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator);
 var
   mCount: Int64;
@@ -992,7 +969,7 @@ begin
   mItems := ListItems(AEvaluator, mCount, TAtlasVisualizerOptions.cViewItems);
   for mIndex := 0 to High(mItems) do
   begin
-    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mItems[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(IntToStr(mIndex), mItems[mIndex])];
   end;
   AView.Total := mCount;
 end;
@@ -1012,7 +989,7 @@ begin
   for mValue in DictionaryPairs(AEvaluator, mCount, TAtlasVisualizerOptions.cViewItems) do
   begin
     mTab := Pos(#9, mValue);
-    AView.Rows := AView.Rows + [Row([Copy(mValue, 1, mTab - 1), Copy(mValue, mTab + 1, MaxInt)])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(Copy(mValue, 1, mTab - 1), Copy(mValue, mTab + 1, MaxInt))];
   end;
   AView.Total := mCount;
 end;
@@ -1028,8 +1005,8 @@ begin
     TAtlasVisualizerColumn.Value, TAtlasVisualizerColumn.OldValue];
   for mIndex := 0 to High(mDataSet.Names) do
   begin
-    AView.Rows := AView.Rows + [Row([mDataSet.Names[mIndex], mDataSet.Types[mIndex], mDataSet.Values[mIndex],
-      mDataSet.OldValues[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(mDataSet.Names[mIndex], mDataSet.Types[mIndex],
+      mDataSet.Values[mIndex], mDataSet.OldValues[mIndex])];
   end;
 end;
 
@@ -1058,7 +1035,7 @@ begin
   AView.Columns := [TAtlasVisualizerColumn.Index, TAtlasVisualizerColumn.Key];
   for mIndex := 0 to High(mJson.Keys) do
   begin
-    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mJson.Keys[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(IntToStr(mIndex), mJson.Keys[mIndex])];
   end;
   AView.Total := mJson.Count;
 end;

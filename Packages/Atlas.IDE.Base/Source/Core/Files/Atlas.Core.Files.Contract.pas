@@ -7,9 +7,9 @@
 // sind (Puffer lesen, Modul speichern). Entscheidungen, die den Pufferzustand
 // brauchen, hängen nur daran und lassen sich mit einer Fälschung ohne IDE
 // testen (#1967); die Umsetzung über die Open Tools API ist
-// Atlas.IDE.Foundation.EditorFiles. IAtlasActiveEditor ist ebenso die schmale
+// Atlas.IDE.Foundation.Adapters.EditorFiles. IAtlasActiveEditor ist ebenso die schmale
 // Sicht auf den oberen Editor (Datei und Schreibmarke), umgesetzt in
-// Atlas.IDE.Foundation.ActiveEditor.
+// Atlas.IDE.Foundation.Adapters.ActiveEditor.
 
 interface
 
@@ -74,6 +74,15 @@ type
     ['{183B49F3-5255-4FB5-8D41-BBDAB16C0EA7}']
     /// <summary>Datei und Schreibmarke des oberen Editors; None ohne Editor.</summary>
     function Caret: TAtlasActiveEditorPos;
+  end;
+
+  /// <summary>Beobachtet Ordner und meldet an TAtlasWatchedChanges (#395); die Freigabe hält die Threads an. Die
+  /// Umsetzung (TAtlasFolderWatcher) setzt die Kompositionswurzel ein.</summary>
+  IAtlasFolderWatcher = interface
+    ['{967E5852-0525-40F5-815C-047BF4E416F1}']
+    /// <summary>Beobachtet genau diese Ordner; neue starten, weggefallene enden.</summary>
+    procedure SetRoots(const ARoots: TArray<string>);
+    function Roots: TArray<string>;
   end;
 
 implementation

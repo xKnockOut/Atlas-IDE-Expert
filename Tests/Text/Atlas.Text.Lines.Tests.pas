@@ -13,6 +13,8 @@ type
     [Test]
     procedure LineBreakOfPrefersCrlf;
     [Test]
+    procedure SplitLikeStringsDropsTrailingEmpty;
+    [Test]
     procedure KindOfMixed;
     [Test]
     procedure DominantOfPrefersGivenOnTie;
@@ -52,6 +54,8 @@ type
     procedure ReplaceRangeReplacesAndKeepsRest;
     [Test]
     procedure ShortLine;
+    [Test]
+    procedure PositionCompareLineFirst;
   end;
 
   [TestFixture]
@@ -80,6 +84,19 @@ uses
   Atlas.Tests.RecordText;
 
 { TTextLinesTests }
+
+procedure TTextLinesTests.SplitLikeStringsDropsTrailingEmpty;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextLines.SplitLikeStrings('eins'#13#10'zwei'#13#10);
+  Assert.AreEqual(2, Integer(Length(mLines)), 'Umbruch am Ende ohne leere Zeile');
+  Assert.AreEqual('zwei', mLines[1]);
+  Assert.AreEqual(3, Integer(Length(TTextLines.SplitLikeStrings('a'#10'b'#13'c'))));
+  Assert.AreEqual(2, Integer(Length(TTextLines.SplitLikeStrings('a'#10#10))), 'nur der letzte Umbruch zählt nicht');
+  Assert.AreEqual(0, Integer(Length(TTextLines.SplitLikeStrings(''))));
+  mLines := nil;
+end;
 
 procedure TTextLinesTests.LineBreakOfPrefersCrlf;
 begin
@@ -375,6 +392,13 @@ begin
   mLines := TTextLines.ReplaceRange(TArray<string>.Create('a', 'b'), 0, 1, nil);
   Assert.AreEqual('b', string.Join('|', mLines));
   mLines := nil;
+end;
+
+procedure TTextLinesTests.PositionCompareLineFirst;
+begin
+  Assert.IsTrue(TTextPosition.Compare(TTextPosition.Create(1, 9), TTextPosition.Create(2, 0)) < 0);
+  Assert.IsTrue(TTextPosition.Compare(TTextPosition.Create(2, 3), TTextPosition.Create(2, 1)) > 0);
+  Assert.AreEqual(0, TTextPosition.Compare(TTextPosition.Create(4, 5), TTextPosition.Create(4, 5)));
 end;
 
 initialization

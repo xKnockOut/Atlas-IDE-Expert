@@ -4,7 +4,7 @@
 // Prüfregeln in der IDE einbindet: Baseline des Projekts aktualisieren (#97)
 // und Compilermeldungen in die Baseline (#530) (Atlas.IDE.Rules.Baseline),
 // Eigenschaftsregeln anwenden (#309, Atlas.IDE.Editor.DfmPropertyRules) und
-// die Sammelkorrektur in „Atlas-Prüfung“ (#1352, Atlas.IDE.Rules.BulkFix).
+// die Sammelkorrektur in „Atlas-Prüfung“ (#1352, Atlas.IDE.Rules.Adapters.BulkFix).
 // Sie meldet in ihrer Initialisierung das Modul „atlas.rules“
 // (Modulschalter ruleChecks, #1454) bei der Registry von Base an und stellt
 // über dessen Scope bereit:
@@ -19,7 +19,7 @@
 // - das Aktualisieren der Baseline (IAtlasBaselineSource) für die
 //   Einrichtung der Willkommensseite (#759),
 // - die Fehler der IDE aus Error Insight (IAtlasIdeErrors, #1819,
-//   Atlas.IDE.Rules.IdeErrors) für das Fenster „Atlas-Prüfung“,
+//   Atlas.IDE.Rules.Adapters.IdeErrors) für das Fenster „Atlas-Prüfung“,
 // - den Assistenten „Eigene Prüfregel“ in Datei › Neu › Weitere (#1821):
 //   neue Schicht in forbidden-uses der Projektdatei
 //   (Atlas.Core.Rules.CustomLayer), danach der Regel-Editor bei der Regel,
@@ -73,25 +73,24 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Problems.Findings,
   Atlas.Core.Rules.CustomLayer,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ProjectDialog,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.IDE.Rules.Baseline,
-  Atlas.IDE.Rules.BulkFix,
-  Atlas.IDE.Rules.FindingActions,
-  Atlas.IDE.Rules.IdeErrors,
+  Atlas.IDE.Rules.Adapters.BulkFix,
+  Atlas.IDE.Rules.Adapters.FindingActions,
+  Atlas.IDE.Rules.Adapters.IdeErrors,
   Atlas.IDE.Rules.OwnershipHints,
-  Atlas.IDE.Rules.Settings,
-  Atlas.UI.Rules.SettingsDialog,
+  Atlas.IDE.Rules.Adapters.Settings,
+  Atlas.IDE.Rules.Adapters.SettingsDialog,
   Atlas.UI.Rules.SettingsSection,
   Atlas.UI.Strings,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.Core.Problems.Contract;
 
 var
   GScope: IAtlasModuleScope;
@@ -176,19 +175,6 @@ begin
   end;
 end;
 
-/// <summary>Unitname der Datei im Editor; '' ohne.</summary>
-function ActiveUnitName: string;
-var
-  mView: IOTAEditView;
-begin
-  Result := '';
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
-  begin
-    Result := ChangeFileExt(ExtractFileName(mView.Buffer.FileName), '');
-  end;
-end;
-
 /// <summary>Neue Schicht in forbidden-uses der Projektdatei, dann den Regel-Editor bei der Regel öffnen.</summary>
 procedure NewCustomRule;
 var
@@ -200,7 +186,7 @@ begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGalleryNoProject));
     Exit;
   end;
-  mFrom := TAtlasCustomLayer.LayerFrom(ActiveUnitName);
+  mFrom := TAtlasCustomLayer.LayerFrom(TAtlasEditorBuffer.ActiveUnitName);
   TAtlasCustomLayer.NewLayer(ProjectRulesJson, mFrom, mPath, mJson);
   if not TAtlasProjectSettings.WriteValue(mPath, mJson) then
   begin
@@ -320,7 +306,7 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
   begin
     Exit;
   end;

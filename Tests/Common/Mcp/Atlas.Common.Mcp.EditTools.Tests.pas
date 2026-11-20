@@ -268,9 +268,11 @@ var
   mLog: TList<string>;
   mParams, mCalled: TJSONObject;
 begin
-  mLog := TList<string>.Create;
-  mServer := TMcpServer.Create('Atlas', '0');
+  mLog := nil;
+  mServer := nil;
   try
+    mLog := TList<string>.Create;
+    mServer := TMcpServer.Create('Atlas', '0');
     mServer.AddTool('schreiben', 's', '{}',
       function(const AArguments: TJSONObject): string
       begin

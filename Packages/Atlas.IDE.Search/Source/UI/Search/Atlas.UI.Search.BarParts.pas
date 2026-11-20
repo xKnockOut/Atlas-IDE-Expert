@@ -99,7 +99,6 @@ type
     OnCancel: TProc;
     /// <summary>Ersetzen-Zeile auf- oder zugeklappt bzw. Ersatztext geändert.</summary>
     OnReplaceShown: TProc;
-    class procedure Fire(const AEvent: TProc); static;
     /// <summary>Knöpfe, die vorher den Verlauf merken (In Meldungen, Ersetzen, Alle ersetzen, Auswählen): True mit
     /// dem Ereignis des Knopfs ASender aus AParts.</summary>
     function RememberingButton(AParts: TAtlasSearchBarParts; ASender: TObject; out AEvent: TProc): Boolean;
@@ -385,14 +384,6 @@ begin
 end;
 
 { TAtlasSearchBarEvents }
-
-class procedure TAtlasSearchBarEvents.Fire(const AEvent: TProc);
-begin
-  if Assigned(AEvent) then
-  begin
-    AEvent();
-  end;
-end;
 
 function TAtlasSearchBarEvents.RememberingButton(AParts: TAtlasSearchBarParts; ASender: TObject;
   out AEvent: TProc): Boolean;

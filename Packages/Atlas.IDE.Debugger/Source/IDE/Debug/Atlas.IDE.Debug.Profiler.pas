@@ -114,7 +114,8 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.LaunchProbe,
   Atlas.IDE.Debug.ProfileWindow,
-  Atlas.UI.Debug.Profile.Strings;
+  Atlas.UI.Debug.Profile.Strings,
+  Atlas.Core.Foundation.Calls;
 
 { TAtlasIdeDebugProfiler.TTicker }
 
@@ -127,10 +128,7 @@ end;
 
 class procedure TAtlasIdeDebugProfiler.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeDebugProfiler.Request(const ACommand, AArguments: string;

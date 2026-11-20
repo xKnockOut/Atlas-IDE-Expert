@@ -28,14 +28,10 @@ uses
   Vcl.Graphics,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Trends,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasTrendsSource = interface
-    ['{9C3B6E21-4A7D-4F18-B2E5-7D0A1C8F5E93}']
-    /// <summary>Verlauf des gewählten (sonst obersten) Projekts mit den eingestellten Reihen.</summary>
-    function View: TAtlasTrendView;
-  end;
 
   TAtlasTrendsHit = record
     /// <summary>Kachel; -1 = keine.</summary>
@@ -68,7 +64,7 @@ type
     procedure SetSource(const AValue: IAtlasTrendsSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxLeftClick(Sender: TObject; AX, AY: Integer);
     procedure BodyResize(Sender: TObject);
     function AreaWidth: Integer;
     function Columns(AWidth: Integer): Integer;
@@ -128,6 +124,7 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Themes,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;
 
@@ -286,7 +283,7 @@ begin
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnLeftClick := BoxLeftClick;
   Body.OnResize := BodyResize;
 end;
 
@@ -398,26 +395,15 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasWelcomeTrendsFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+procedure TAtlasWelcomeTrendsFrame.BoxLeftClick(Sender: TObject; AX, AY: Integer);
 begin
-  if Button = mbLeft then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  ClickAt(HitTest(AX, AY));
 end;
 
 procedure TAtlasWelcomeTrendsFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  FContentHeight := HeightFor(ClientWidth);
   // Andere Anzahl Reihen von Kacheln: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  TAtlasControls.Remeasure(FContentHeight, HeightFor(ClientWidth), HeightChanged);
 end;
 
 function TAtlasWelcomeTrendsFrame.AreaWidth: Integer;

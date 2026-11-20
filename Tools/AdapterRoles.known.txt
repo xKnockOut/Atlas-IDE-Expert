@@ -1,0 +1,2 @@
+# Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von
+# pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.

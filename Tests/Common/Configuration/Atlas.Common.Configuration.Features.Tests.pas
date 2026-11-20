@@ -23,6 +23,9 @@ type
     /// <summary>#1357: mcp.prompts, mcp.promptLanguage und eigene Prompts aus mcp.customPrompts.</summary>
     [Test]
     procedure ReadsMcpPrompts;
+    /// <summary>#2611: mcp.statistics, Vorgabe an.</summary>
+    [Test]
+    procedure ReadsMcpStatistics;
     /// <summary>#1357: Fehler in eigenen Prompts (Name, Text, include, Platzhalter) werden gemeldet.</summary>
     [Test]
     procedure ChecksMcpCustomPrompts;
@@ -198,6 +201,22 @@ begin
     '{"mcp": {"globalSettings": false}}', mIssues);
   Assert.IsFalse(mSettings.McpGlobalSettings, 'Datei vor Editor');
 end;
+procedure TConfigurationFeatureTests.ReadsMcpStatistics;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpStatistics, 'Vorgabe: zählen');
+  mSettings := Parse('{"mcp": {"statistics": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpStatistics);
+  mSettings := Parse('{"mcp": {"statistics": "nein"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'kein Wahrheitswert');
+  Assert.IsTrue(mSettings.McpStatistics, 'Ungültiger Wert lässt die Vorgabe');
+  mIssues := nil;
+end;
+
 procedure TConfigurationFeatureTests.ReadsMcpPrompts;
 var
   mSettings: TServerSettings;
@@ -453,6 +472,12 @@ begin
   Assert.IsFalse(mSettings.SlashSortUsesRemoveUnused);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.IsTrue(Parse('{}', mIssues).SlashSortUsesRemoveUnused);
+  // #2794: Reihenfolge von /sortuses, per Vorgabe nach Herkunft.
+  Assert.AreEqual('origin', Parse('{}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual('namespace', Parse('{"slashCommands": {"sortUsesOrder": "namespace"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('origin', Parse('{"slashCommands": {"sortUsesOrder": "zufall"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('', Parse('{}', mIssues).SlashTodoOwner);
   // #875: /helper für Aufzählungen
   Assert.IsTrue(Parse('{}', mIssues).SlashEnumHelper);

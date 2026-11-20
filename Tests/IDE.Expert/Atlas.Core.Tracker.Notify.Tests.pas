@@ -66,7 +66,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles;
 
 function At(AMinute: Integer): TDateTime;
 begin

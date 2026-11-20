@@ -44,7 +44,7 @@ uses
   Atlas.Core.Commands.KeyMap,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Commands.KeyMap,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeKeyMap = class
@@ -118,7 +118,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Commands.Palette;
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
@@ -649,9 +650,11 @@ var
 begin
   mEntries := AtlasEntries;
   // Liste statt Anhängen ans Array: Die IDE hat weit über tausend Aktionen.
-  mItems := TList<TAtlasKeyItem>.Create;
-  mOrigins := TOrigins.Create;
+  mItems := nil;
+  mOrigins := nil;
   try
+    mItems := TList<TAtlasKeyItem>.Create;
+    mOrigins := TOrigins.Create;
     AddAtlasKeys(mItems, mEntries);
     AddActions(mItems, mOrigins, mEntries);
     AddKnownIdeKeys(mItems);

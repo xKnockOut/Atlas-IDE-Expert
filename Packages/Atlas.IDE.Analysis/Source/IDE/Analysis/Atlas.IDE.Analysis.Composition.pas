@@ -307,15 +307,6 @@ end;
 
 { Befehle }
 
-function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(AFeature, AProc);
-    end;
-end;
-
 function Command(const AId: string; ACaption: TAtlasAnalysisTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
@@ -499,33 +490,33 @@ begin
   Result := [
     // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
     Command('Atlas.Architecture', TAtlasAnalysisTextId.ArchitectureCommand,
-      Guarded(TAtlasFeature.Architecture, ShowArchitecture), ArchitectureVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Architecture, ShowArchitecture), ArchitectureVisible),
     // Hotspots (#1354); nur sichtbar, solange hotspots.enabled an ist.
-    Command('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsCommand, Guarded(TAtlasFeature.Hotspots, ShowHotspots),
-      HotspotsVisible),
+    Command('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsCommand,
+      TAtlasGuard.Wrap(TAtlasFeature.Hotspots, ShowHotspots), HotspotsVisible),
     // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
     Command('Atlas.UnitRelations', TAtlasAnalysisTextId.UnitRelationsCommand,
-      Guarded(TAtlasFeature.UnitRelations, ShowUnitRelations), UnitRelationsVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.UnitRelations, ShowUnitRelations), UnitRelationsVisible),
     // Kosten einer interface-Änderung (#554): Verwender nach Abschnitt und verschiebbare uses der Unit im Editor,
     // dazu die teuersten Units in der Architekturübersicht.
     Command('Atlas.UnitDependencies', TAtlasAnalysisTextId.UnitDependenciesCommand, ShowCurrentUnit,
       UnitRelationsVisible),
     Command('Atlas.InterfaceCostRanking', TAtlasAnalysisTextId.InterfaceCostRankingCommand,
-      Guarded(TAtlasFeature.Architecture, ShowRanking), ArchitectureVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.Architecture, ShowRanking), ArchitectureVisible),
     // Weg zwischen Symbolen (#1117); nur sichtbar, solange navigation.symbolPath an ist.
     Command('Atlas.SymbolPath', TAtlasAnalysisTextId.SymbolPathCommand,
-      Guarded(TAtlasFeature.SymbolPath, ShowSymbolPath),
+      TAtlasGuard.Wrap(TAtlasFeature.SymbolPath, ShowSymbolPath),
       SymbolPathVisible),
     Command('Atlas.SymbolPathFromHere', TAtlasAnalysisTextId.SymbolPathFromHere,
-      Guarded(TAtlasFeature.SymbolPath, SymbolPathFromHere), SymbolPathVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.SymbolPath, SymbolPathFromHere), SymbolPathVisible),
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewRoleUnit', TAtlasAnalysisTextId.RoleUnitCommand,
-      Guarded(TAtlasFeature.Generate, NewRoleUnit), nil), TAtlasAnalysisTextId.RoleUnitHint),
+      TAtlasGuard.Wrap(TAtlasFeature.Generate, NewRoleUnit), nil), TAtlasAnalysisTextId.RoleUnitHint),
     // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
     Command('Atlas.ProjectUnitRelations', TAtlasAnalysisTextId.ProjectUnitRelations,
-      Guarded(TAtlasFeature.UnitRelations, ShowProjectUnitRelations), ProjectUnitVisible),
+      TAtlasGuard.Wrap(TAtlasFeature.UnitRelations, ShowProjectUnitRelations), ProjectUnitVisible),
     Command('Atlas.ProjectDependents', TAtlasAnalysisTextId.ProjectDependents,
-      Guarded(TAtlasFeature.UnitRelations, ShowProjectDependents), ProjectUnitVisible)];
+      TAtlasGuard.Wrap(TAtlasFeature.UnitRelations, ShowProjectDependents), ProjectUnitVisible)];
   // Text mit der Zahl der Verwender, sobald sie bekannt ist.
   Result[High(Result)].Caption := DependentsCaption;
 end;
@@ -583,7 +574,7 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
   begin
     Exit;
   end;

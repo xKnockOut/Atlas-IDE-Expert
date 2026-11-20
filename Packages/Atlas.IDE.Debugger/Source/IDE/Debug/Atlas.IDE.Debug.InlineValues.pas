@@ -39,7 +39,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.InlineValues,
   Atlas.Core.Debug.InlineValuesFlow,
   Atlas.IDE.Debug.StopView,
@@ -499,13 +499,8 @@ begin
 end;
 
 class procedure TAtlasIdeDebugInlineValues.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 class procedure TAtlasIdeDebugInlineValues.Start(const ASession: TAtlasInlineValuesSessionFunc);

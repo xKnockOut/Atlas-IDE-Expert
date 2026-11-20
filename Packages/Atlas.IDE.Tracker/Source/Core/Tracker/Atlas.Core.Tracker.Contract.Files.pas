@@ -9,8 +9,8 @@
 //   Fehler kommen als False, leeres Ergebnis bzw. nil zurück.
 // - IAtlasTrackerShell: Adresse oder Datei mit dem zugeordneten Programm
 //   öffnen, Datei im Explorer zeigen.
-// Die echten Umsetzungen liegen in Atlas.Core.Tracker.Adapters.LocalFiles und
-// Atlas.Core.Tracker.Adapters.Shell; nur Atlas.IDE.Tracker.Composition (und
+// Die echten Umsetzungen liegen in Atlas.Core.Tracker.Providers.LocalFiles und
+// Atlas.Core.Tracker.Providers.Shell; nur Atlas.IDE.Tracker.Composition (und
 // die Tests) erzeugt sie und meldet sie bei Atlas.Core.Tracker.Files an.
 
 interface

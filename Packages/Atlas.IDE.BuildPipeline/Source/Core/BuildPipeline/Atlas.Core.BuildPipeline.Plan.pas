@@ -48,6 +48,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Names;
+
 { TAtlasBuildPipelinePlan }
 
 class function TAtlasBuildPipelinePlan.Refusal(ABusy, AForeignBuild, ADebugging: Boolean;
@@ -76,11 +79,8 @@ begin
 end;
 
 class function TAtlasBuildPipelinePlan.IsPascalFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
+  Result := TTextNames.IsPascalFile(AFileName);
 end;
 
 class function TAtlasBuildPipelinePlan.UniqueRules(const ARules: TArray<string>): TArray<string>;

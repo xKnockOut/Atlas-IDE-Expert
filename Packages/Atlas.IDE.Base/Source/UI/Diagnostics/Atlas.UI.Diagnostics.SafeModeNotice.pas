@@ -30,7 +30,7 @@ type
   TAtlasSafeNoticeKind = (Ask, Safe);
 {$SCOPEDENUMS OFF}
 
-  TAtlasSafeModeNotice = class(TAtlasDialog)
+  TAtlasSafeModeNotice = class(TAtlasAnswerDialog)
   private type
     /// <summary>Steuerelemente des Fensters.</summary>
     TParts = record
@@ -60,7 +60,6 @@ type
     FKind: TAtlasSafeNoticeKind;
     FParts: TParts;
     FHandlers: THandlers;
-    FDone: Boolean;
     /// <summary>Text und Vorschlag oben.</summary>
     procedure CreateTexts(const AText, ASuggestion: string);
     /// <summary>Knopfreihe je nach Art; ARestore = '' blendet „Zurücksetzen“ aus.</summary>
@@ -68,7 +67,6 @@ type
     /// <summary>Aufklappbare Details mit Export und Fehlerbericht.</summary>
     procedure CreateDetails(const ADetails: TArray<string>);
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
-    procedure Run(const AProc: TProc);
     procedure PrimaryClick(Sender: TObject);
     procedure SecondaryClick(Sender: TObject);
     procedure RestoreClick(Sender: TObject);
@@ -113,8 +111,6 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Foundation.WrapLabel,
@@ -250,34 +246,15 @@ begin
   Result.OnClick := AClick;
 end;
 
-procedure TAtlasSafeModeNotice.Run(const AProc: TProc);
-begin
-  // Nur die erste Aktion zählt; ausgeführt wird nach dem Schließen.
-  if FDone then
-  begin
-    Exit;
-  end;
-  FDone := True;
-  Close;
-  if Assigned(AProc) then
-  begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-      procedure
-      begin
-        AProc();
-      end);
-  end;
-end;
-
 procedure TAtlasSafeModeNotice.PrimaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    Run(FHandlers.OnSafe);
+    Answer(FHandlers.OnSafe);
   end
   else
   begin
-    Run(FHandlers.OnNormal);
+    Answer(FHandlers.OnNormal);
   end;
 end;
 
@@ -285,17 +262,17 @@ procedure TAtlasSafeModeNotice.SecondaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    Run(FHandlers.OnNormal);
+    Answer(FHandlers.OnNormal);
   end
   else
   begin
-    Run(FHandlers.OnToggles);
+    Answer(FHandlers.OnToggles);
   end;
 end;
 
 procedure TAtlasSafeModeNotice.RestoreClick(Sender: TObject);
 begin
-  Run(FHandlers.OnRestore);
+  Answer(FHandlers.OnRestore);
 end;
 
 procedure TAtlasSafeModeNotice.DetailsClick(Sender: TObject);

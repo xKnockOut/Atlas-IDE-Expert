@@ -500,10 +500,13 @@ begin
     begin
       Result := TReferenceSettings.Default;
     end;
-  mReferences := TLspReferences.Create(mStore, FIndex, ReadText, mFiles);
-  mRename := TLspRename.Create(mStore, FIndex, ReadText, mFiles);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mReferences := nil;
+  mRename := nil;
+  mDispatcher := nil;
   try
+    mReferences := TLspReferences.Create(mStore, FIndex, ReadText, mFiles);
+    mRename := TLspRename.Create(mStore, FIndex, ReadText, mFiles);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mReferences.SettingsFor := mProvider;
     mRename.SettingsFor := mProvider;
     mReferences.Attach(mDispatcher);

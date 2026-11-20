@@ -1417,10 +1417,11 @@
       "type": "string",
       "enum": [
         "none",
-        "anthropic"
+        "anthropic",
+        "openai-compatible"
       ],
       "default": "none",
-      "description": "KI-Anbieter für Schattentext-Vorschläge: none = keiner (keine Anfragen), anthropic = Anthropic-API (HTTPS). Der Schlüssel steht nur im Anmeldespeicher von Windows, nie in den Einstellungen.",
+      "description": "KI-Anbieter für Schattentext-Vorschläge: none = keiner (keine Anfragen), anthropic = Anthropic-API (HTTPS), openai-compatible = Server mit OpenAI-kompatibler Schnittstelle (lokal, z. B. LM Studio, llama.cpp-Server, Ollama, oder ein Gateway der Firma; #2056). Der Schlüssel steht nur im Anmeldespeicher von Windows, nie in den Einstellungen.",
       "x-key": "assistants.provider",
       "x-area": "assistants",
       "x-page": "KI-Assistenten",
@@ -1539,6 +1540,47 @@
       "x-caption": "Höchstens Zeichen der Auswahl",
       "x-captionEn": "At most characters of the selection",
       "x-issue": "#2050"
+    },
+    "AssistantsOpenAiUrl": {
+      "type": "string",
+      "default": "http://localhost:1234/v1",
+      "description": "Adresse des OpenAI-kompatiblen Servers bis einschließlich /v1; Atlas hängt /chat/completions und /models an. Ein Schlüssel geht nur über https oder an den eigenen Rechner (localhost) hinaus.",
+      "x-key": "assistants.openaiCompatible.url",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Adresse (OpenAI-kompatibel)",
+      "x-captionEn": "Address (OpenAI-compatible)",
+      "x-issue": "#2056"
+    },
+    "AssistantsOpenAiModel": {
+      "type": "string",
+      "default": "",
+      "description": "Modell beim OpenAI-kompatiblen Server, wie es /models nennt; leer = keine Anfrage. „Modelle abrufen“ auf der Optionsseite füllt die Auswahl.",
+      "x-key": "assistants.openaiCompatible.model",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld mit „Modelle abrufen“",
+      "x-caption": "Modell (OpenAI-kompatibel)",
+      "x-captionEn": "Model (OpenAI-compatible)",
+      "x-issue": "#2056"
+    },
+    "AssistantsOpenAiTimeoutMs": {
+      "type": "integer",
+      "default": 3000,
+      "minimum": 500,
+      "maximum": 30000,
+      "description": "Zeitlimit je Anfrage an den OpenAI-kompatiblen Server in Millisekunden (500 bis 30000); danach kein Vorschlag.",
+      "x-key": "assistants.openaiCompatible.timeoutMs",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Zeitlimit in ms (OpenAI-kompatibel)",
+      "x-captionEn": "Time limit in ms (OpenAI-compatible)",
+      "x-issue": "#2056"
     },
     "AssistantsInstructionsHint": {
       "type": "boolean",
@@ -2767,6 +2809,20 @@
       "x-caption": "Laufzeit seit dem letzten Halt",
       "x-captionEn": "Run time since the last stop",
       "x-issue": "#579"
+    },
+    "DebugReturnValues": {
+      "description": "Rückgabewerte anzeigen: Nach „Gesamte Routine“ (F8) über eine Zeile, die eigene Funktionen aufruft, bzw. nach „Bis zur Rückkehr ausführen“ (Umschalt+F8) in einer eigenen Funktion steht am Ende der Aufrufzeile gedimmt „→ BerechneNetto = 109,16“, bei mehreren Funktionen alle in der Reihenfolge ihrer Rückkehr. Klick darauf zeigt die letzten 20 Rückgabewerte mit Funktion, Ergebnis, end-Zeile und Zeitpunkt. Dafür setzt Atlas vor dem Schritt vorübergehende Haltepunkte auf die end-Zeilen der Funktionen, wertet dort Result aus und setzt den Schritt fort; danach sind sie wieder entfernt. Rekursive Aufrufe halten nicht in tieferen Rahmen. Bibliothekscode und Prozeduren bleiben außen vor. Aus = keine Haltepunkte, keine Anzeige.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.returnValues",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Rückgabewerte nach F8 und Umschalt+F8 anzeigen",
+      "x-captionEn": "Show return values after F8 and Shift+F8",
+      "x-issue": "#844"
     },
     "DebugPredictConditions": {
       "description": "Bedingungen vorausschauen: Beim Halt stehen an den kommenden if, while und case derselben Routine die vorhergesagten Ergebnisse, wenn dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet.",
@@ -10552,6 +10608,16 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1273"
     },
+    "IssuesDebugKnownErrors": {
+      "type": "boolean",
+      "default": true,
+      "description": "Bekannte Fehler beim Exception-Halt: Hält der Debugger an einer Exception, sucht Atlas im Hintergrund im Tracker des Projekts nach Issues mit derselben Signatur (Exception-Klasse, Meldung ohne Zahlen, Adressen, Pfade und Anführungsinhalte, oberste eigene Methode) und zeigt bis zu vier Treffer in der Exception-Leiste, mit Öffnen, Als Kommentar anhängen bzw. Wieder öffnen; sonst Neues Issue. Ergebnis je Signatur für die Sitzung gemerkt; der Debugger wartet nie. Aus: keine Suche.",
+      "x-key": "issues.debugKnownErrors",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2460"
+    },
     "IssuesShareWithAssistants": {
       "type": "boolean",
       "default": true,
@@ -10749,6 +10815,31 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1269"
+    },
+    "IssuesAiSummary": {
+      "type": "boolean",
+      "default": true,
+      "description": "„Zusammenfassen“ im Fenster „Atlas-Issue“: Der KI-Anbieter des Moduls KI-Assistenten (assistants.provider, Modell und Schlüssel wie beim KI-Schattentext) fasst Beschreibung, Kommentare und verknüpfte Issues zusammen: Stand, offene Fragen (mit wem) und nächster Schritt mit den betroffenen Units als Links in den Editor. Nur auf Knopfdruck; vor dem ersten Senden je Verbindung ein Hinweis, dass die Inhalte an den Anbieter gehen. Ohne eingerichteten Anbieter oder aus: kein Knopf, nichts geht hinaus.",
+      "x-key": "issues.aiSummary",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Issues mit KI zusammenfassen",
+      "x-captionEn": "Summarize issues with AI",
+      "x-issue": "#2462"
+    },
+    "IssuesAiSummaryMinComments": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Knopf „Zusammenfassen“ in der Werkzeugleiste ab so vielen Kommentaren (0 = immer); im Kontextmenü des Fensters immer.",
+      "x-key": "issues.aiSummary.minComments",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Zahl (0–1000)",
+      "x-parent": "issues.aiSummary",
+      "x-issue": "#2462"
     },
     "IssuesNotify": {
       "type": "boolean",

@@ -47,7 +47,8 @@ uses
   Atlas.Common.Metrics.Report,
   Atlas.Common.Query.Catalog,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Csv;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -76,18 +77,6 @@ const
 function MarkdownCell(const AText: string): string;
 begin
   Result := StringReplace(StringReplace(AText, '|', '\|', [rfReplaceAll]), sLineBreak, ' ', [rfReplaceAll]);
-end;
-
-function CsvCell(const AText: string): string;
-begin
-  if (Pos(';', AText) > 0) or (Pos('"', AText) > 0) or (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) then
-  begin
-    Result := '"' + StringReplace(AText, '"', '""', [rfReplaceAll]) + '"';
-  end
-  else
-  begin
-    Result := AText;
-  end;
 end;
 
 function Summary(const AResult: TQueryResult): string;
@@ -172,16 +161,16 @@ begin
   try
     for mIndex := 0 to High(AResult.Columns) do
     begin
-      mBuilder.Append(CsvCell(AResult.Columns[mIndex])).Append(';');
+      mBuilder.Append(TTextCsv.Cell(AResult.Columns[mIndex])).Append(';');
     end;
     mBuilder.Append('path;inferred').Append(sLineBreak);
     for mRow in AResult.Rows do
     begin
       for mIndex := 0 to High(AResult.Columns) do
       begin
-        mBuilder.Append(CsvCell(TQueryResult.CellText(mRow, mIndex))).Append(';');
+        mBuilder.Append(TTextCsv.Cell(TQueryResult.CellText(mRow, mIndex))).Append(';');
       end;
-      mBuilder.Append(CsvCell(mRow.Path)).Append(';');
+      mBuilder.Append(TTextCsv.Cell(mRow.Path)).Append(';');
       if mRow.Inferred then
       begin
         mBuilder.Append(cTexts[TOutputText.Inferred2].Text);

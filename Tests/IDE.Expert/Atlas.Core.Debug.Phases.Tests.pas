@@ -8,6 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.Phases,
   Atlas.Tests.DebugTargetFake;
 
@@ -55,6 +56,8 @@ type
     procedure FilterHandlesStop;
     [Test]
     procedure FilterDeclinesStop;
+    [Test]
+    procedure NamedFiltersAskedInTurn;
     [Test]
     procedure FailingListenerDoesNotStopOthers;
     [Test]
@@ -319,6 +322,44 @@ begin
   FTarget.Proceed;
   Assert.AreEqual('Started,Stopped:Exception,Resumed', FLog.Text);
   FPhases.SetStopFilter(nil);
+end;
+
+procedure TAtlasDebugPhasesTests.NamedFiltersAskedInTurn;
+var
+  mTarget: TAtlasDebugTargetFake;
+  mAsked: string;
+begin
+  mTarget := FTarget;
+  mAsked := '';
+  FPhases.SetStopFilter(
+    function(AStop: TAtlasDebugStop): Boolean
+    begin
+      mAsked := mAsked + 'A';
+      Result := False;
+    end);
+  FPhases.SetNamedStopFilter('Werte',
+    function(AStop: TAtlasDebugStop): Boolean
+    begin
+      mAsked := mAsked + 'B';
+      mTarget.Proceed;
+      Result := True;
+    end);
+  Assert.AreEqual(2, FPhases.StopFilterCount);
+  FTarget.Launch;
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FTarget.Tick;
+  // Der erste lehnt ab, der zweite erledigt den Halt: Die Zuhörer erfahren nichts.
+  Assert.AreEqual('AB', mAsked);
+  Assert.AreEqual('Started', FLog.Text);
+  // Ohne den zweiten erreicht der nächste Halt die Zuhörer.
+  FPhases.SetNamedStopFilter('Werte', nil);
+  Assert.AreEqual(1, FPhases.StopFilterCount);
+  FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
+  FTarget.Tick;
+  Assert.AreEqual('Started,Stopped:Paused', FLog.Text);
+  FPhases.SetStopFilter(nil);
+  Assert.AreEqual(0, FPhases.StopFilterCount);
+  mAsked := '';
 end;
 
 procedure TAtlasDebugPhasesTests.FailingListenerDoesNotStopOthers;

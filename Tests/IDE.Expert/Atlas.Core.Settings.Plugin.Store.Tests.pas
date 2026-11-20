@@ -51,7 +51,8 @@ uses
   Atlas.Core.Settings.Plugin.Snippets,
   Atlas.Core.Settings.Plugin.VersionControl,
   Atlas.Core.Settings.Plugin.Welcome,
-  Atlas.Core.Settings.TestSupport;
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Settings.Contract;
 
 type
   /// <summary>Zählt, wie oft jeder Name geschrieben wird.</summary>

@@ -1,0 +1,2 @@
+### Geändert
+- Willkommensseite, Bereich „Weiterarbeiten“: Der Ablauf (Arbeitsstand mitschreiben und speichern, HEAD und eingehende Commits abfragen, Fortsetzen) liegt im Core (`Atlas.Core.Welcome.ContinueWork`) und erreicht die IDE nur über den Vertrag `IAtlasContinueHost`; die IDE-Seite ist ein Adapter. Der Ablauf hat damit eigene Tests, die auch unter Free Pascal laufen. Kein sichtbarer Unterschied (#1443).

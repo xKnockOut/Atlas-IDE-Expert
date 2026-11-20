@@ -14,11 +14,7 @@ uses
   Atlas.Core.VersionControl.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Ergebnis von Pull: neue Commits geholt, schon aktuell, wegen lokaler Änderungen nicht geholt, keine
-  /// Arbeitskopie, Fehler (auch Zeitüberschreitung oder fehlendes Programm).</summary>
-  TAtlasPullOutcome = (Updated, UpToDate, Blocked, NoWorkingCopy, Failed);
-{$SCOPEDENUMS OFF}
+  TAtlasPullOutcome = Atlas.Core.VersionControl.Contract.TAtlasPullOutcome;
 
   /// <summary>Holen einer Arbeitskopie über IAtlasVersionControl.</summary>
   TAtlasVcsPull = class

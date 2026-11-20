@@ -49,7 +49,6 @@ type
     FListMenu: TPopupMenu;
     FFollowItem: TMenuItem;
     function NewButton(AWidth: Integer): TButton;
-    function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer; AClick: TNotifyEvent): TMenuItem;
     function Scale(AValue: Integer): Integer;
     /// <summary>Die Liste hat ein Fenster oder kann eins bekommen (Formular darüber).</summary>
     function ListCanHaveHandle: Boolean;
@@ -173,9 +172,11 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Outline.Strings,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Foundation.ListBox,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.Menus;
 
 {$R *.dfm}
 
@@ -293,32 +294,32 @@ var
   mIndex: Integer;
 begin
   FVisibilityMenu := TPopupMenu.Create(Self);
-  AddMenuItem(FVisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll,
+  TAtlasMenus.Add(FVisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll,
     VisibilityItemClick);
   FVisibilityMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cVisibilityTexts) do
   begin
-    AddMenuItem(FVisibilityMenu, TAtlasOutlineStrings.Text(cVisibilityTexts[mIndex]), mIndex,
+    TAtlasMenus.Add(FVisibilityMenu, TAtlasOutlineStrings.Text(cVisibilityTexts[mIndex]), mIndex,
       VisibilityItemClick).Checked := True;
   end;
 
   FKindMenu := TPopupMenu.Create(Self);
-  AddMenuItem(FKindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll, KindItemClick);
+  TAtlasMenus.Add(FKindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll, KindItemClick);
   FKindMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cKindTexts) do
   begin
-    AddMenuItem(FKindMenu, TAtlasOutlineStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
+    TAtlasMenus.Add(FKindMenu, TAtlasOutlineStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
   end;
 
   FListMenu := TPopupMenu.Create(Self);
   FListMenu.OnPopup := ListMenuPopup;
-  AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToDeclaration), 0,
+  TAtlasMenus.Add(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToDeclaration), 0,
     DeclarationClick).Default :=
     True;
-  AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToImplementation), 1,
+  TAtlasMenus.Add(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToImplementation), 1,
     ImplementationClick);
   FListMenu.Items.Add(NewLine);
-  FFollowItem := AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineFollowCursor), 2,
+  FFollowItem := TAtlasMenus.Add(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineFollowCursor), 2,
     FollowClick);
   FFollowItem.Checked := FFollowCursor;
 end;
@@ -353,16 +354,6 @@ begin
   begin
     FList.Invalidate;
   end;
-end;
-
-function TAtlasOutlineFrameParts.AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer;
-  AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AClick;
-  AMenu.Items.Add(Result);
 end;
 
 function TAtlasOutlineFrameParts.Scale(AValue: Integer): Integer;
@@ -933,11 +924,7 @@ end;
 
 procedure TAtlasOutlineFrame.SearchKeyPress(Sender: TObject; var Key: Char);
 begin
-  // Kein Signalton bei Enter und Esc.
-  if (Key = #13) or (Key = #27) then
-  begin
-    Key := #0;
-  end;
+  TAtlasControls.SuppressBeep(Key);
 end;
 
 procedure TAtlasOutlineFrame.VisibilityClick(Sender: TObject);

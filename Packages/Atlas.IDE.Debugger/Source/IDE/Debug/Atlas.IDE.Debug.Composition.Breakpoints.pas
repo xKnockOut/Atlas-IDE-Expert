@@ -6,8 +6,9 @@
 // Methoden“ (#855), Haltepunkt-Sätze (#586), „Bis hier ausführen“ (#851), das
 // Haltepunktfenster (#863), „Haltepunkt nur für ein Objekt“ (#857), Haltepunkte,
 // die mit dem Code wandern (#841), Haltepunkt-Regeln (#864), „Anhalten, wenn
-// sich ein Feld ändert“ (#584), die Marke für Haltepunkte mit Aufrufer in der
-// Rinne (#2548) und „Nächste Anweisung hier“ samt gezogenem Ausführungspfeil (#871).
+// sich ein Feld ändert“ (#584), „Anhalten bei Datenzugriff“ (#870), die Marke
+// für Haltepunkte mit Aufrufer in der Rinne (#2548) und „Nächste Anweisung hier“
+// samt gezogenem Ausführungspfeil (#871).
 // Atlas.IDE.Debug.Composition hängt die Befehle unter die Sicherung des
 // Debuggers, ruft Install/Uninstall mit seinen übrigen Befehlen und stellt
 // alles über den Scope des Moduls bereit.
@@ -45,6 +46,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.EventBreak,
+  Atlas.IDE.Debug.DataBreak,
   Atlas.IDE.Debug.BreakpointCheck,
   Atlas.IDE.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.BreakpointSets,
@@ -60,7 +62,8 @@ uses
   Atlas.IDE.Debug.NextStatement,
   Atlas.IDE.Debug.NextStatementColumn,
   Atlas.UI.Debug.Commands.Strings,
-  Atlas.UI.Debug.NextStatement.Strings;
+  Atlas.UI.Debug.NextStatement.Strings,
+  Atlas.Core.Modules.Contributions;
 
 const
   /// <summary>Strg+F4: nur im angehaltenen Zustand, sonst schließt die IDE wie gewohnt die Datei.</summary>
@@ -79,6 +82,11 @@ end;
 function BreakOnNextEventVisible: Boolean;
 begin
   Result := TAtlasIdeEventBreak.Enabled;
+end;
+
+function BreakOnDataAccessVisible: Boolean;
+begin
+  Result := TAtlasIdeDataBreak.Enabled;
 end;
 
 function BreakpointCheckVisible: Boolean;
@@ -120,7 +128,7 @@ end;
 
 procedure StartNextStatement;
 begin
-  TAtlasIdeNextStatement.Start(MessageLine);
+  TAtlasIdeNextStatement.Start(TAtlasIdeHost.Messages());
   TAtlasIdeNextStatementColumn.Install;
 end;
 
@@ -352,11 +360,7 @@ end;
 function Command(const AId: string; const ACaption: string; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := ACaption;
-  Result.Run := ARun;
-  Result.Visible := AVisible;
+  Result := TAtlasModuleContributions.NewCommand(AId, ACaption, ARun, AVisible);
 end;
 
 function BreakpointCommands: TArray<TAtlasModuleCommand>;
@@ -365,6 +369,9 @@ begin
     // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
     Command('Atlas.BreakOnNextEvent', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EventBreakCommand),
       TAtlasIdeEventBreak.Run, BreakOnNextEventVisible),
+    // Anhalten bei Datenzugriff (#870); nur sichtbar, solange debug.dataBreaks an ist.
+    Command('Atlas.BreakOnDataAccess', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DataBreakCommand),
+      TAtlasIdeDataBreak.Run, BreakOnDataAccessVisible),
     // Haltepunkte prüfen (#577); nur sichtbar, solange debug.checkBreakpoints an ist.
     Command('Atlas.CheckBreakpoints', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointCheckCommand),
       TAtlasIdeBreakpointCheck.Run, BreakpointCheckVisible),
@@ -507,18 +514,25 @@ begin
     begin
       Result := Session;
     end, TAtlasIdeHost.Messages());
+  TAtlasIdeDataBreak.Install(
+    function: TLspSession
+    begin
+      Result := Session;
+    end, TAtlasIdeHost.Messages());
   TAtlasIdeDebugBreakpointList.Install(TAtlasIdeHost.Messages());
 end;
 
 procedure UninstallBreakCommands;
 begin
   TAtlasIdeDebugBreakpointList.Uninstall;
+  TAtlasIdeDataBreak.Uninstall;
   TAtlasIdeEventBreak.Uninstall;
 end;
 
 procedure ApplyBreakSettings;
 begin
   TAtlasIdeEventBreak.ApplySettings;
+  TAtlasIdeDataBreak.ApplySettings;
   TAtlasIdeDebugBreakpointList.ApplySettings;
 end;
 

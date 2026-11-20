@@ -8,7 +8,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Leaks.Setup;
+  Atlas.Common.Leaks.Setup,
+  Atlas.Common.Leaks.Contract;
 
 type
   [TestFixture]

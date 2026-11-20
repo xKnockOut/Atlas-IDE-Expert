@@ -84,7 +84,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.BranchPlan,
   Atlas.Core.VersionControl.Internals.SvnLayout,
-  Atlas.Core.Tracker.MyIssues;
+  Atlas.Core.Tracker.MyIssues,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 var
   /// <summary>Aufrufe von CountingProgress.</summary>

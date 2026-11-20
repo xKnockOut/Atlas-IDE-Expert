@@ -171,7 +171,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteFailed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SafeDeleteFailed, [E.Message]));
     end;
   end;
 end;
@@ -185,8 +185,8 @@ begin
   ACascade := False;
   AForced := False;
   // Erst die Überschreibungen: Bleiben sie, zählen sie als Verwendung.
-  AOverrides := (AInfo.Overrides <> nil) and Decide(AInfo.OverridesMode, TAtlasStrings.Fmt(
-    TAtlasTextId.SafeDeleteAskOverrides, [AInfo.Name, Length(AInfo.Overrides), sLineBreak,
+  AOverrides := (AInfo.Overrides <> nil) and Decide(AInfo.OverridesMode, TAtlasEditorStrings.Fmt(
+    TAtlasEditorTextId.SafeDeleteAskOverrides, [AInfo.Name, Length(AInfo.Overrides), sLineBreak,
     TAtlasSafeDelete.Listing(Lines(AInfo.Overrides), cMaxListed,
     TAtlasEditorStrings.Text(TAtlasEditorTextId.SafeDeleteMore)),
     sLineBreak + sLineBreak]));
@@ -210,8 +210,8 @@ begin
   end;
   if Result then
   begin
-    ACascade := (AInfo.Cascade <> nil) and Decide(AInfo.CascadeMode, TAtlasStrings.Fmt(
-      TAtlasTextId.SafeDeleteAskCascade, [sLineBreak, TAtlasSafeDelete.Listing(AInfo.Cascade, cMaxListed,
+    ACascade := (AInfo.Cascade <> nil) and Decide(AInfo.CascadeMode, TAtlasEditorStrings.Fmt(
+      TAtlasEditorTextId.SafeDeleteAskCascade, [sLineBreak, TAtlasSafeDelete.Listing(AInfo.Cascade, cMaxListed,
       TAtlasEditorStrings.Text(TAtlasEditorTextId.SafeDeleteMore)), sLineBreak + sLineBreak]));
   end;
 end;
@@ -246,7 +246,7 @@ begin
   mDeleted := 0;
   if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(TAtlasSafeDelete.cApplyCommand,
     TAtlasSafeDelete.ApplyArguments(AArgumentsJson, mOverrides, mCascade, mForced), cTimeoutMs,
-    TAtlasTextId.SafeDeleteFailed),
+    TAtlasEditorTextId.SafeDeleteFailed),
     procedure(const AReply: TJSONObject)
     begin
       mDeleted := TJsonRead.Int(AReply, 'deleted');
@@ -256,18 +256,18 @@ begin
   end;
   if mReply.Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteFailed, [mTitle]));
+    AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SafeDeleteFailed, [mTitle]));
     Exit;
   end;
   mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SafeDeletePreviewHint, [mDeleted, mReply.Edit.EditCount,
-    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.SafeDeleteWarning);
+    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasEditorTextId.SafeDeleteWarning);
   if (not mInfo.NeedsPreview(mForced) or TAtlasIdeServerEdit.Confirm(mTitle, mHint,
     TAtlasEditorStrings.Text(TAtlasEditorTextId.SafeDeleteApply),
     mReply.Edit)) and TAtlasIdeServerEdit.Apply(mReply.Edit,
     APolicy, TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand), AMessage, mOutcome) then
   begin
     AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SafeDeleteDone, [mDeleted, mOutcome.Edits, mOutcome.Files]));
-    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.SafeDeleteWarning, AMessage);
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasEditorTextId.SafeDeleteWarning, AMessage);
   end;
 end;
 

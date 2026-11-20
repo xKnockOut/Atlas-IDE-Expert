@@ -90,6 +90,8 @@ type
     procedure RejectsInvalidSnapshot;
     [Test]
     procedure KeyAndFileNames;
+    [Test]
+    procedure NodesKeepNestedKeysAndEmptyKeys;
   end;
 
   [TestFixture]
@@ -174,7 +176,9 @@ uses
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Greeting,
   Atlas.Core.Welcome.Backup,
-  Atlas.Core.Welcome.HostLayout;
+  Atlas.Core.Welcome.HostLayout,
+  Atlas.Core.Welcome.Contract,
+  Atlas.Core.Settings.Contract;
 
 const
   cWelcomePath = 'Software\Embarcadero\BDS\23.0\WelcomePage';
@@ -338,9 +342,11 @@ var
   mHeard: TList<string>;
   mHandle, mVersion: Integer;
 begin
-  mHeard := TList<string>.Create;
-  mSections := TAtlasWelcomeSections.Create;
+  mHeard := nil;
+  mSections := nil;
   try
+    mHeard := TList<string>.Create;
+    mSections := TAtlasWelcomeSections.Create;
     mHandle := mSections.AddListener(
       procedure(AId: string)
       begin
@@ -544,19 +550,19 @@ begin
     mOriginal.SetValue(TAtlasRegValue.Create('Daten', TAtlasRegKind.Binary, '00FF10'));
     mOriginal.SetValue(TAtlasRegValue.Create('Leer', TAtlasRegKind.Binary, ''));
     mOriginal.SetValue(TAtlasRegValue.Create('Höchst', TAtlasRegKind.Number, '4294967295'));
-    mRegistry.Replace(cWelcomePath, mOriginal);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mOriginal);
     mSnapshot := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
     // Atlas ändert das Layout …
     mChanged := TAtlasRegKey.Create('WelcomePage');
     try
       mChanged.SetValue(Number('Fremd', 1));
-      mRegistry.Replace(cWelcomePath, mChanged);
+      TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mChanged);
     finally
       mChanged.Free;
     end;
     // … und die Sicherung bringt den alten Stand exakt zurück.
     Assert.IsTrue(TAtlasWelcomeBackup.Restore(mRegistry, mSnapshot));
-    mRestored := mRegistry.Read(cWelcomePath);
+    mRestored := TAtlasRegistryKeys.Read(mRegistry, cWelcomePath);
     try
       Assert.IsTrue(mOriginal.SameAs(mRestored));
       Assert.IsTrue(mRestored.SameAs(mOriginal));
@@ -566,6 +572,33 @@ begin
   finally
     mOriginal.Free;
   end;
+end;
+
+procedure TAtlasWelcomeBackupTests.NodesKeepNestedKeysAndEmptyKeys;
+var
+  mKey, mBack: TAtlasRegKey;
+  mNodes: TAtlasRegNodes;
+begin
+  mKey := TAtlasRegKey.Create('WelcomePage');
+  try
+    mKey.SetValue(Number('Columns', 2));
+    mKey.AddKey('Plugins').AddKey('Atlas').SetValue(Number('Row', 3));
+    mKey.AddKey('Leer');
+    mNodes := mKey.Nodes;
+    Assert.AreEqual(4, Integer(Length(mNodes)));
+    Assert.AreEqual('', mNodes[0].Path);
+    Assert.AreEqual('Plugins\Atlas', mNodes[2].Path);
+    mBack := TAtlasRegKey.FromNodes('WelcomePage', mNodes);
+    try
+      Assert.IsTrue(mKey.SameAs(mBack));
+      Assert.IsNotNull(mBack.FindKey('Leer'));
+    finally
+      mBack.Free;
+    end;
+  finally
+    mKey.Free;
+  end;
+  Assert.IsNull(TAtlasRegKey.FromNodes('WelcomePage', nil));
 end;
 
 procedure TAtlasWelcomeBackupTests.RemovesKeyThatDidNotExist;
@@ -579,12 +612,12 @@ begin
   Assert.IsTrue(Pos('"existed":false', mSnapshot) > 0);
   mKey := Delphi12Export;
   try
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
   finally
     mKey.Free;
   end;
   Assert.IsTrue(TAtlasWelcomeBackup.Restore(mRegistry, mSnapshot));
-  mRead := mRegistry.Read(cWelcomePath);
+  mRead := TAtlasRegistryKeys.Read(mRegistry, cWelcomePath);
   Assert.IsNull(mRead, 'vorher gab es den Schlüssel nicht');
   mRead.Free;
 end;
@@ -598,13 +631,13 @@ begin
   mRegistry := TAtlasMemoryRegistry.Create;
   mKey := Delphi12Export;
   try
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
     mSnapshot := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
     Assert.IsTrue(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot));
     mKey.FindKey('Layout').SetValue(Number('RowsCount', 4));
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
     Assert.IsFalse(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot), 'Raster geändert');
-    mRegistry.Replace(cWelcomePath, nil);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, nil);
     Assert.IsFalse(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot), 'Schlüssel fehlt');
   finally
     mKey.Free;
@@ -938,21 +971,21 @@ begin
   mRegistry := TAtlasMemoryRegistry.Create;
   mKey := Delphi12Export;
   try
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
   finally
     mKey.Free;
   end;
   mBackup := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
   mKey := OldAtlasLayout;
   try
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
   finally
     mKey.Free;
   end;
   Assert.AreEqual(Ord(TAtlasRetireResult.Restored),
     Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, mBackup, TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
   Assert.AreEqual(mBackup, mSnapshot, 'die Sicherung ist der gewünschte Stand');
-  mRead := mRegistry.Read(cWelcomePath);
+  mRead := TAtlasRegistryKeys.Read(mRegistry, cWelcomePath);
   mKey := Delphi12Export;
   try
     Assert.IsTrue(mKey.SameAs(mRead), 'exakt wie vor dem Atlas-Layout');
@@ -972,14 +1005,14 @@ begin
   mRegistry := TAtlasMemoryRegistry.Create;
   mKey := OldAtlasLayout;
   try
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
   finally
     mKey.Free;
   end;
   Assert.AreEqual(Ord(TAtlasRetireResult.Removed),
     Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, '', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
   Assert.IsTrue(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot), 'Marke = geschriebener Stand');
-  mLayout := ReadLayout(mRegistry.Read(cWelcomePath));
+  mLayout := ReadLayout(TAtlasRegistryKeys.Read(mRegistry, cWelcomePath));
   Assert.IsFalse(mLayout.ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
   Assert.AreEqual(2, mLayout.Rows);
   // Ein zweiter Start findet nichts mehr.
@@ -997,13 +1030,13 @@ begin
   mRegistry := TAtlasMemoryRegistry.Create;
   mKey := OldAtlasLayout;
   try
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
   finally
     mKey.Free;
   end;
   Assert.AreEqual(Ord(TAtlasRetireResult.Removed),
     Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, 'kaputt', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
-  Assert.IsFalse(ReadLayout(mRegistry.Read(cWelcomePath)).ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
+  Assert.IsFalse(ReadLayout(TAtlasRegistryKeys.Read(mRegistry, cWelcomePath)).ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
 end;
 
 procedure TAtlasWelcomeRetireTests.CleanLayoutStaysUntouched;
@@ -1015,16 +1048,16 @@ begin
   mRegistry := TAtlasMemoryRegistry.Create;
   Assert.AreEqual(Ord(TAtlasRetireResult.Nothing),
     Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, '', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)), 'kein Schlüssel');
-  mRead := mRegistry.Read(cWelcomePath);
+  mRead := TAtlasRegistryKeys.Read(mRegistry, cWelcomePath);
   Assert.IsNull(mRead, 'legt nichts an');
   mRead.Free;
   mKey := Delphi12Export;
   try
-    mRegistry.Replace(cWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(mRegistry, cWelcomePath, mKey);
     Assert.AreEqual(Ord(TAtlasRetireResult.Nothing),
       Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, '', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
     Assert.AreEqual('', mSnapshot);
-    mRead := mRegistry.Read(cWelcomePath);
+    mRead := TAtlasRegistryKeys.Read(mRegistry, cWelcomePath);
     try
       Assert.IsTrue(mKey.SameAs(mRead));
     finally

@@ -3,7 +3,8 @@
 // Bekannte Einmal-Belegungen des Testlaufs an einer Stelle. Der Leckmonitor misst je Test, was netto belegt
 // bleibt; was beim ersten Gebrauch entsteht, bis zum Programmende lebt und dort freigegeben wird (gemeinsame
 // Kataloge, Ressourcentexte der RTL, Zwischenspeicher), sähe für ihn wie ein Leck des ersten Tests aus, der es
-// benutzt. TFirstUse.WarmUp legt es deshalb einmal vor dem ersten Test an (RegisterLeakMonitor).
+// benutzt. TFirstUse.WarmUp legt es deshalb einmal vor dem ersten Test an (RegisterLeakMonitor); die Schritte für
+// VCL und Oberfläche stehen in Atlas.Tests.FirstUse.Vcl.
 //
 // Jeder Eintrag nennt seinen Besitzer und, wo er freigegeben wird. Ob das stimmt, prüft der Speicherrest beim
 // Beenden (TShutdownLeaks.Expect in Atlas.Tests.dpr): Was hier angelegt und nie freigegeben wird, lässt den
@@ -24,9 +25,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.Messages,
   System.SysUtils,
-  System.Types,
   System.Classes,
   System.IOUtils,
   System.DateUtils,
@@ -35,6 +34,7 @@ uses
   System.RegularExpressions,
   System.RegularExpressionsCore,
   System.Messaging,
+  System.NetEncoding,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Metrics.DuplicateCatalog,
@@ -44,24 +44,11 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,
-  Atlas.UI.Foundation.Theme,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.Section,
-  Atlas.UI.Settings.Page,
-  Vcl.Graphics,
-  Vcl.Forms,
-  Vcl.Clipbrd,
-  Vcl.AppEvnts,
-  Vcl.ComCtrls,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Settings.Keys,
-  Atlas.UI.Settings.Overview,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools;
+  Atlas.Core.VersionControl.Tools,
+  Atlas.Tests.FirstUse.Vcl;
 
 /// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
 /// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
@@ -271,29 +258,11 @@ begin
 end;
 
 /// <summary>Verzeichnis der wortgleichen Rümpfe (TDuplicateBodyCatalog.Shared, angelegt und freigegeben von
-/// Atlas.Common.Metrics.DuplicateCatalog): Sein Sperrobjekt bekommt beim ersten Sperren den Monitor-Datensatz
-/// der RTL, der mit dem Objekt freigegeben wird.</summary>
+/// Atlas.Common.Metrics.DuplicateCatalog): Clear bringt seine Tabelle auf die kleinste Größe (TrimExcess); die
+/// legt der erste Aufruf an, und sie bleibt bis zur Freigabe des Verzeichnisses.</summary>
 procedure WarmUpDuplicateCatalog;
 begin
   TDuplicateBodyCatalog.Shared.Clear;
-end;
-
-/// <summary>Abonnenten des IDE-Themas (TAtlasUiTheme): Die Liste entsteht beim ersten Abonnenten und wird im
-/// Klassendestruktor freigegeben; ihre Kapazität wächst beim ersten Eintrag.</summary>
-procedure WarmUpThemeListeners;
-var
-  mOwner: TObject;
-begin
-  mOwner := TObject.Create;
-  try
-    TAtlasUiTheme.Subscribe(mOwner,
-      procedure
-      begin
-      end);
-    TAtlasUiTheme.Unsubscribe(mOwner);
-  finally
-    mOwner.Free;
-  end;
 end;
 
 /// <summary>Liste der überfälligen Arbeiter-Threads (TAtlasOverdueThreads, freigegeben im Klassendestruktor):
@@ -312,85 +281,6 @@ begin
   mThread.WaitFor;
   // Adopt gibt beendete Threads sofort frei.
   TAtlasOverdueThreads.Adopt(mThread, 0);
-end;
-
-/// <summary>Einstellungsseite (TAtlasSettingsPage) mit einem Abschnitt, einmal ohne und einmal mit Fenster: Die erste
-/// Anmeldung legt die Listen der Modul-Registry an (frei mit der Registry in der Finalisierung von Base), das erste
-/// Erzeugen der Steuerelemente legt einmalige Daten der VCL an (Themes, Schriften, Fensterklassen; frei in der
-/// Finalisierung der VCL).</summary>
-procedure WarmUpSettingsPage;
-var
-  mRegistration: IAtlasRegistration;
-  mHost: TForm;
-  mPage: TAtlasSettingsPage;
-begin
-  mRegistration := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
-    TAtlasSettingsSectionFactory.Create(TAtlasSettingsSection) as IAtlasSettingsSectionProvider);
-  mRegistration.Revoke;
-  TAtlasSettingsPage.Create(nil).Free;
-  mHost := TForm.CreateNew(nil);
-  try
-    mPage := TAtlasSettingsPage.Create(mHost);
-    mPage.Parent := mHost;
-    mPage.HandleNeeded;
-  finally
-    mHost.Free;
-  end;
-end;
-
-/// <summary>IDE-Thema auf ein Formular anwenden (TAtlasUiTheme): Farben und erstes Formular der VCL legen
-/// einmalige Daten an, frei in der Finalisierung der VCL.</summary>
-procedure WarmUpThemeApply;
-var
-  mForm: TForm;
-begin
-  // Erste Benutzung (VCL-Formular, Liste der Abonnenten) nicht dem ersten Test anrechnen.
-  TAtlasUiTheme.Subscribed(nil);
-  TAtlasUiTheme.Uninstall;
-  TAtlasUiTheme.Colors;
-  TAtlasUiTheme.Apply(nil);
-  mForm := TForm.CreateNew(nil);
-  try
-    TAtlasUiTheme.Apply(mForm);
-  finally
-    mForm.Free;
-  end;
-end;
-
-/// <summary>Erster Dialog mit Fenster (TAtlasDialog): einmalige Daten der VCL (Fensterklasse, Schrift), frei in deren
-/// Finalisierung.</summary>
-procedure WarmUpDialog;
-var
-  mDialog: TAtlasDialog;
-begin
-  // Erste Benutzung (VCL-Formular, Liste der Abonnenten des Themendienstes) nicht dem ersten Test anrechnen.
-  mDialog := TAtlasDialog.CreateDialog(nil, 'Aufwärmen', 300);
-  try
-    mDialog.HandleNeeded;
-  finally
-    mDialog.Free;
-  end;
-end;
-
-/// <summary>Seite der Tastenkürzel (TAtlasKeysPage): einmalige Daten ihrer Steuerelemente.</summary>
-procedure WarmUpKeysPage;
-begin
-  TAtlasKeysPage.Create(nil).Free;
-end;
-
-/// <summary>Übersicht der Einstellungen einmal laden und durchsuchen: Katalog und Texte legen dabei einen
-/// Zwischenspeicher bis Prozessende an.</summary>
-procedure WarmUpSettingsOverview;
-var
-  mPage: TAtlasSettingsOverview;
-begin
-  mPage := TAtlasSettingsOverview.Create(nil);
-  try
-    mPage.Load(1, 1, 1);
-    mPage.SearchFor('enabled');
-  finally
-    mPage.Free;
-  end;
 end;
 
 /// <summary>Package-Suche mit .dcp auf der Platte einmal durchlaufen: Datei- und Zeitfunktionen legen beim ersten
@@ -423,14 +313,16 @@ end;
 /// Der Zwischenspeicher selbst gehört der RTL und wird in ihrem Klassendestruktor freigegeben.</summary>
 /// <summary>Einmal-Belegungen der RTL, die Tests über Atlas-Code treffen: die Kodierungen UTF-16 LE und BE
 /// (TEncoding.Unicode, BigEndianUnicode; TParser beim Lesen von DFM-Text), der Nachrichtenverteiler
-/// TMessageManager.DefaultManager (VCL beim DPI-Wechsel) und der Ressourcentext, den die RTL beim ersten UTF-8-Fehler
-/// lädt und bis zum Ende behält (TEncoding.GetString mit ungültigen Bytes). Freigegeben in der Finalisierung von
-/// System.SysUtils bzw. System.Messaging.</summary>
+/// TMessageManager.DefaultManager (VCL beim DPI-Wechsel), die URL-Kodierung TNetEncoding.URL (Dateiadressen im
+/// Anonymisierer des Server-Logs) und der Ressourcentext, den die RTL beim ersten UTF-8-Fehler lädt und bis zum Ende
+/// behält (TEncoding.GetString mit ungültigen Bytes). Freigegeben in der Finalisierung von System.SysUtils,
+/// System.Messaging bzw. System.NetEncoding.</summary>
 procedure WarmUpRtlSingletons;
 begin
   TEncoding.Unicode;
   TEncoding.BigEndianUnicode;
   TMessageManager.DefaultManager;
+  TNetEncoding.URL.Decode('');
   try
     TEncoding.UTF8.GetString(TBytes.Create($C3, $28, $FF));
   except
@@ -451,17 +343,6 @@ end;
 procedure SwitchOffComponentFieldCache;
 begin
   SetComponentFieldAddressCache(True, 0);
-end;
-
-/// <summary>Zwischenablage der VCL (Clipboard): Das Objekt entsteht beim ersten Zugriff und wird in der
-/// Finalisierung von Vcl.Clipbrd freigegeben; das träfe sonst den ersten Test, der etwas kopiert (z. B. „Name
-/// kopieren“ im Fenster „Komponenten suchen“).</summary>
-procedure WarmUpDesignerClipboard;
-begin
-  if Clipboard = nil then
-  begin
-    raise EInvalidOperation.Create('Zwischenablage');
-  end;
 end;
 
 /// <summary>Fehlerpfade der Regex-Engine (System.RegularExpressions) einmal durchlaufen: Ein ungültiger Ausdruck
@@ -491,16 +372,6 @@ begin
   end;
 end;
 
-/// <summary>Erstes Datenmodul des Prozesses (TDataModule, z. B. als Formular der Designer-Fälschung): Es meldet sich
-/// bei Screen an (Vcl.Forms, TScreen.FDataModules wächst auf 4 Einträge und schrumpft nicht, frei mit Screen in der
-/// Finalisierung der VCL); beim Freigeben nimmt es GlobalNameSpace zum Schreiben (Zähler je Thread, frei mit
-/// GlobalNameSpace in der Finalisierung von System.Classes) und sperrt die Liste der offenen Verweise
-/// (GlobalFixupList, Monitor-Datensatz, frei mit der Liste).</summary>
-procedure WarmUpDataModule;
-begin
-  TDataModule.CreateNew(nil).Free;
-end;
-
 /// <summary>Erster Systemfehler (RaiseLastOSError, z. B. ein Serverstart mit fehlender Datei): EOSError holt seinen
 /// Meldungstext (SOSError) über den Zwischenspeicher der Ressourcentexte von System.SysUtils (ResStringLoad). Der
 /// Text bleibt dort bis zum Programmende und wird in der Finalisierung von System.SysUtils freigegeben.</summary>
@@ -511,200 +382,6 @@ begin
   except
     on EOSError do
       ;
-  end;
-end;
-
-/// <summary>Erstes Ereignisobjekt der Anwendung (TApplicationEvents, z. B. im Scroller der Willkommenstafel): Es meldet
-/// sich beim Verteiler der VCL an (Vcl.AppEvnts, MultiCaster); dessen Liste legt dabei Verwaltungsdaten und Kapazität an,
-/// die beim Abmelden bleiben (208 Byte), frei mit dem Verteiler in der Finalisierung der VCL.</summary>
-procedure WelcomeWarmUpApplicationEvents;
-begin
-  TApplicationEvents.Create(nil).Free;
-end;
-
-type
-  /// <summary>Formular, das sich gleich nach dem Zeigen über WM_CLOSE selbst schließt: ShowModal kehrt damit über die
-  /// modale Schleife zurück, ohne dass jemand klickt.</summary>
-  TFirstModalForm = class(TForm)
-  protected
-    procedure DoShow; override;
-  end;
-
-procedure TFirstModalForm.DoShow;
-begin
-  inherited DoShow;
-  PostMessage(Handle, WM_CLOSE, 0, 0);
-end;
-
-/// <summary>Erstes modales Fenster des Prozesses (TCustomForm.ShowModal): Screen merkt sich dabei die Fenster, deren
-/// Fokus es zurückgibt (SaveFocusedList); die Liste entsteht beim ersten ShowModal und bleibt (56 Byte, z. B. im
-/// Export-Dialog der Diagnose), frei mit Screen in der Finalisierung der VCL.</summary>
-procedure DiagnosticsWarmUpFirstModal;
-var
-  mForm: TFirstModalForm;
-begin
-  mForm := TFirstModalForm.CreateNew(nil);
-  try
-    mForm.BorderStyle := bsNone;
-    mForm.Position := poDesigned;
-    mForm.SetBounds(-10000, -10000, 1, 1);
-    mForm.ShowModal;
-  finally
-    mForm.Free;
-  end;
-end;
-
-/// <summary>Liste aller Leinwände der VCL (Vcl.Graphics, TCanvas.Create trägt jede ein, TCanvas.Destroy trägt sie
-/// aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig lebender Leinwände und bleibt bis zur Finalisierung
-/// von Vcl.Graphics. Jedes TCustomControl hat eine; eine Einstellungsseite mit allen Bereichen kommt auf mehrere
-/// hundert (Block von 6.928 Byte für 864 Einträge). Viele Leinwände auf einmal anlegen und freigeben setzt den
-/// Höchststand weit über den jedes Tests.</summary>
-procedure WarmUpVclCanvasList;
-const
-  cCanvases = 4096;
-var
-  mCanvases: TArray<TCanvas>;
-  mIndex: Integer;
-begin
-  SetLength(mCanvases, cCanvases);
-  try
-    for mIndex := 0 to High(mCanvases) do
-    begin
-      mCanvases[mIndex] := TCanvas.Create;
-    end;
-  finally
-    for mIndex := 0 to High(mCanvases) do
-    begin
-      mCanvases[mIndex].Free;
-    end;
-  end;
-end;
-
-/// <summary>Liste der Zwischenablage-Formate der Bilder (Vcl.Graphics, GetClipboardFormats): Das erste TPicture
-/// (etwa in TImage.Create, Karte von „Atlas entdecken“) legt sie an, mit Einträgen für jede Grafikklasse (208 Byte); sie
-/// bleibt bis zur Finalisierung von Vcl.Graphics.</summary>
-procedure WelcomeWarmUpPictureFormats;
-begin
-  TPicture.Create.Free;
-end;
-
-/// <summary>Liste der Bitmap-Leinwände mit Gerätekontext (Vcl.Graphics, TBitmapCanvas.CreateHandle trägt ein, das
-/// Freigeben des Kontexts trägt aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig offener Kontexte und
-/// bleibt bis zur Finalisierung von Vcl.Graphics. Eine Bildliste legt beim Initialisieren mehrere an (80 Byte).
-/// Viele Bitmaps mit Kontext auf einmal anlegen und freigeben setzt den Höchststand über den jedes Tests.</summary>
-procedure WarmUpVclBitmapCanvases;
-const
-  cBitmaps = 64;
-var
-  mBitmaps: TArray<TBitmap>;
-  mIndex: Integer;
-begin
-  SetLength(mBitmaps, cBitmaps);
-  try
-    for mIndex := 0 to High(mBitmaps) do
-    begin
-      mBitmaps[mIndex] := TBitmap.Create;
-      mBitmaps[mIndex].SetSize(1, 1);
-      mBitmaps[mIndex].Canvas.FillRect(TRect.Create(0, 0, 1, 1));
-    end;
-  finally
-    for mIndex := 0 to High(mBitmaps) do
-    begin
-      mBitmaps[mIndex].Free;
-    end;
-  end;
-end;
-
-/// <summary>Musterbitmaps der VCL (Vcl.Graphics, TPatternManager): Ein eingerasteter TSpeedButton (Down, etwa
-/// „Nach Klasse“ im Fenster „Atlas-Struktur“) füllt seine Fläche mit dem Muster aus clBtnFace und clBtnHighlight.
-/// AllocPatternBitmap legt es je Farbpaar einmal an, mit Bild beim ersten Handle (328 Byte), und gibt es erst in der
-/// Finalisierung von Vcl.Graphics frei.</summary>
-procedure WarmUpVclPatternBitmap;
-begin
-  if AllocPatternBitmap(clBtnFace, clBtnHighlight).Handle = 0 then
-  begin
-    raise EInvalidOperation.Create('Musterbitmap');
-  end;
-end;
-
-/// <summary>Zwischenspeicher der Gerätekontexte von Steuerelementen (Vcl.Controls, TControlCanvas.CreateHandle):
-/// Seine Liste fasst höchstens vier Leinwände, ihre Kapazität entsteht beim ersten Textmessen auf einem
-/// Steuerelement mit Fenster (48 Byte) und bleibt bis zur Finalisierung von Vcl.Controls. Fünf Formulare messen
-/// gleichzeitig: Die Liste ist danach voll angelegt.</summary>
-procedure WarmUpVclControlCanvas;
-const
-  cForms = 5;
-var
-  mForms: TArray<TForm>;
-  mIndex: Integer;
-begin
-  SetLength(mForms, cForms);
-  try
-    for mIndex := 0 to High(mForms) do
-    begin
-      mForms[mIndex] := TForm.CreateNew(nil);
-      mForms[mIndex].HandleNeeded;
-      mForms[mIndex].Canvas.TextWidth('Atlas');
-    end;
-  finally
-    for mIndex := 0 to High(mForms) do
-    begin
-      mForms[mIndex].Free;
-    end;
-  end;
-end;
-
-/// <summary>Erster DPI-Wechsel eines Formulars mit Liste: Die VCL legt dabei für die neue Auflösung Daten an, die bis zu
-/// ihrer Finalisierung bleiben (72 Byte; der Leckbericht zeigt keinen Stapel). Den Nachrichtenverteiler dieses Wegs
-/// legt WarmUpRtlSingletons an. Einmal auf 150 % und zurück skalieren, wie es Tests der Listen tun.</summary>
-procedure WarmUpVclDpiChange;
-var
-  mForm: TForm;
-  mList: TListView;
-  mPPI: Integer;
-begin
-  mForm := TForm.CreateNew(nil);
-  try
-    mList := TListView.Create(mForm);
-    mList.ViewStyle := vsReport;
-    mList.Parent := mForm;
-    mList.Columns.Add.Width := mForm.ScaleValue(100);
-    mForm.HandleNeeded;
-    mPPI := mForm.CurrentPPI;
-    mForm.ScaleForPPI(mPPI * 3 div 2);
-    mForm.ScaleForPPI(mPPI);
-  finally
-    mForm.Free;
-  end;
-end;
-
-/// <summary>Liste der Beiträge in der Modul-Registry (TAtlasModuleRegistry, frei mit der Registry in der
-/// Finalisierung von Base): Ihre Kapazität wächst auf den Höchststand gleichzeitiger Beiträge. Tests, die mehrere
-/// Einstellungsbereiche auf einmal anmelden, heben ihn (400 Byte bei acht). Viele Beiträge auf einmal anmelden
-/// und zurückziehen setzt ihn über den jedes Tests.</summary>
-procedure WarmUpRegistryProvisions;
-const
-  cProvisions = 64;
-var
-  mRegistrations: TArray<IAtlasRegistration>;
-  mIndex: Integer;
-begin
-  SetLength(mRegistrations, cProvisions);
-  try
-    for mIndex := 0 to High(mRegistrations) do
-    begin
-      mRegistrations[mIndex] := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
-        TAtlasSettingsSectionFactory.Create(TAtlasSettingsSection) as IAtlasSettingsSectionProvider);
-    end;
-  finally
-    for mIndex := 0 to High(mRegistrations) do
-    begin
-      if mRegistrations[mIndex] <> nil then
-      begin
-        mRegistrations[mIndex].Revoke;
-      end;
-    end;
-    mRegistrations := nil;
   end;
 end;
 
@@ -737,7 +414,6 @@ end;
 class procedure TFirstUse.WarmUp;
 begin
   SwitchOffComponentFieldCache;
-  WarmUpDataModule;
   WarmUpSlashCommands;
   WarmUpRuleCatalogs;
   WarmUpTimeZoneAndJsonPath;
@@ -748,29 +424,14 @@ begin
   WarmUpIndexCacheReplace;
   WarmUpDefaultEncoding;
   WarmUpDuplicateCatalog;
-  WarmUpThemeListeners;
   WarmUpOverdueThreads;
-  WarmUpSettingsPage;
-  WarmUpThemeApply;
-  WarmUpDialog;
-  WarmUpKeysPage;
-  WarmUpSettingsOverview;
   WarmUpPackageLocator;
-  WarmUpDesignerClipboard;
   WarmUpRegexErrors;
   WarmUpVcsTools;
-  WarmUpVclCanvasList;
-  WarmUpVclBitmapCanvases;
-  WarmUpVclPatternBitmap;
-  WarmUpVclControlCanvas;
-  WarmUpVclDpiChange;
-  WarmUpRegistryProvisions;
   WarmUpStackTraceMap;
   WarmUpRtlSingletons;
   ShellWarmUpPlatformId;
-  WelcomeWarmUpApplicationEvents;
-  WelcomeWarmUpPictureFormats;
-  DiagnosticsWarmUpFirstModal;
+  TFirstUseVcl.WarmUp;
 end;
 
 end.

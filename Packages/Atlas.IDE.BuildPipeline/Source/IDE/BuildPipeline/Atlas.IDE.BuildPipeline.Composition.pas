@@ -26,12 +26,10 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Pipeline,
   Atlas.Core.Build.Requests,
   Atlas.IDE.Contracts.BuildPipeline,
-  Atlas.IDE.Contracts.BuildRequests;
+  Atlas.IDE.Contracts.BuildRequests,
+  Atlas.Core.Build.Contract;
 
 type
   TAtlasBuildPipelineModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasBuildJobs,
@@ -89,7 +87,9 @@ uses
   Atlas.IDE.BuildPipeline.ReleaseGuard,
   Atlas.IDE.BuildPipeline.Summary,
   Atlas.UI.Strings,
-  Atlas.UI.BuildPipeline.Strings;
+  Atlas.UI.BuildPipeline.Strings,
+  Atlas.Core.Build.Pipeline,
+  Atlas.Core.Build.Events;
 
 var
   GScope: IAtlasModuleScope;
@@ -435,7 +435,7 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
   begin
     Exit;
   end;

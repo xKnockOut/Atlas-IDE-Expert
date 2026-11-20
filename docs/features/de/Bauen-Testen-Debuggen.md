@@ -367,6 +367,18 @@ Aufruf: Menü Start und Befehlspalette. „Welcher Code läuft, wenn ich hier kl
 
 Einstellungen: `debug.breakOnNextEvent`
 
+#### Anhalten bei Datenzugriff
+
+Aufruf: Menü Start und Befehlspalette, vor dem Start oder während des Laufs. „Wo schreibt das Programm in die Tabelle Kunden?“
+
+- Atlas sucht im Projekt die Aufrufe von `Open`, `ExecSQL`, `Execute` (FireDAC, dbExpress, ADO, Zeos) und `Get`, `Post`, `Put`, `Delete` (`THTTPClient`, `TNetHTTPClient`, `TIdHTTP`, `TRESTRequest.Execute`), auch auf Nachfahren, und setzt dort vorübergehende Haltepunkte (Gruppe `Atlas.Datenzugriff`).
+- Im Dialog: SQL und/oder HTTP, je ein Muster mit `*` (`*FROM Kunden WHERE*`, `POST */api/auftrag*`, leer = jeder Zugriff), Groß-/Kleinschreibung, anhalten oder nur protokollieren.
+- Beim Halt wertet Atlas SQL-Text und Parameter bzw. Methode und URL aus; passt das Muster nicht, läuft das Programm still weiter.
+- Die Leiste zeigt Stelle und Text: „Weiter beobachten“, „Nur protokollieren“ (Zeilen `[SQL] Kunde.pas:43 · …` in den Meldungen), „Beenden“ (Haltepunkte entfernen).
+- Eigene Klassen in `debug.dataBreaks.classes` mit `=sql` oder `=http` (`TMeineAbfrage=sql`).
+
+Einstellungen: `debug.dataBreaks`, `debug.dataBreaks.classes`
+
 <a id="window-atlasstepfilter"></a>
 #### Schrittfilter
 
@@ -585,6 +597,19 @@ Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
 - Ein Klick auf die Zeit zeigt die letzten 20 Messungen mit Start- und Zielzeile. Die Zeit enthält den Aufwand des Debuggers (Debug-Build, Ereignisse) und ist nur ein Richtwert.
 
 Einstellung: `debug.showElapsed`
+
+#### Rückgabewerte *(experimentell)*
+
+Was hat die Funktion eben zurückgegeben, ohne vorher `Result` zu beobachten?
+
+- Nach „Gesamte Routine“ (F8) über eine Zeile, die eigene Funktionen aufruft, steht am Ende dieser Zeile gedimmt `→ BerechneNetto = 109,16`; ruft die Zeile mehrere Funktionen auf, stehen alle da, in der Reihenfolge ihrer Rückkehr.
+- Nach „Bis zur Rückkehr ausführen“ (Umschalt+F8) in einer eigenen Funktion steht ihr Ergebnis an der Aufrufzeile, an der das Programm danach hält.
+- Ein Klick auf den Text zeigt „Zuletzt zurückgegeben“: die letzten 20 Ergebnisse mit Funktion, Wert, `end`-Zeile und Uhrzeit.
+- Dafür setzt Atlas vor dem Schritt vorübergehende Haltepunkte auf die `end`-Zeilen der Funktionen, wertet dort `Result` aus und setzt den Schritt fort; die übrigen Anzeigen merken von diesen Halten nichts. Nach dem Schritt sind die Haltepunkte wieder weg. Ein eigener Haltepunkt in der Funktion hält wie gewohnt, rekursive Aufrufe halten nicht in tieferen Rahmen.
+- Nur eigener Code mit Quelltext und nur Funktionen (auch lokale und Operatoren); Prozeduren und Bibliothekscode bleiben außen vor. Mit Optimierung (`$O+`) ist `Result` an der `end`-Zeile oft nicht auswertbar, dann steht dort ‹kein Zugriff›.
+- Wirkt auf die Befehle der IDE (Taste, Menü und Symbolleiste), sobald Atlas die Aufrufe der Zeile kennt; wer sehr schnell nach dem Halt drückt, bekommt für diesen Schritt keine Werte.
+
+Einstellung: `debug.returnValues` (Vorgabe aus)
 
 #### Bedingungen vorausschauen
 

@@ -38,8 +38,10 @@ uses
   System.Classes,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Unavailable,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Hover.DebugValue;
 
@@ -51,7 +53,7 @@ type
   public const
     cRequestTimeoutMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugEnded; override;
     end;
@@ -62,7 +64,7 @@ type
   private
     FSession: TAtlasUnavailableSessionFunc;
     FMessage: TProc<string>;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     // Letzte Erklärung: die Korrekturen brauchen ihre Tatsachen (Einfügungen, Schalter).
@@ -133,7 +135,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.UnavailableFixes,
-  Atlas.UI.Debug.Explain.Strings;
+  Atlas.UI.Debug.Explain.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
@@ -356,10 +359,7 @@ end;
 
 procedure TAtlasIdeDebugUnavailable.Say(AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeDebugUnavailable.StopLocation(out AFileName: string; out ALine: Integer): Boolean;

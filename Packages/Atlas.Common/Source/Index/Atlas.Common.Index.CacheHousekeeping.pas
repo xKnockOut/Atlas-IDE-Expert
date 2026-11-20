@@ -9,7 +9,7 @@
 // Löschen eines Branch-Ordners. Ohne bekannte Herkunft bleibt ein Cache stehen.
 // Ungenutzte Caches (index.cacheMaxAgeDays): zuletzt vor mehr als n Tagen benutzt.
 // LastWrite ist dafür die letzte Benutzung, nicht nur der letzte Schreibvorgang.
-// Reine Logik; die Plattenzugriffe liegen in Index.Adapters.CacheDirectory.
+// Reine Logik; die Plattenzugriffe liegen in Index.CacheDirectory.
 
 interface
 

@@ -25,14 +25,16 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.RunTo,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeRunTo = class
   private const
     cStateFile = 'debug-runto.json';
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -40,7 +42,7 @@ type
     end;
   private class var
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FState: TAtlasRunToState;
     FStopCount: Integer;
     class function StateFile: string; static;
@@ -88,7 +90,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.UI.Debug.Stepping.Strings;
+  Atlas.UI.Debug.Stepping.Strings,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeRunTo.TListener }
 
@@ -182,7 +185,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

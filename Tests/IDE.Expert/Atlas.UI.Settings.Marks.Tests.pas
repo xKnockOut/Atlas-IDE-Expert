@@ -19,6 +19,9 @@ type
     /// <summary>Erste Bindung je Name und je Element gewinnt, ohne Groß-/Kleinschreibung.</summary>
     [Test]
     procedure FirstBindingWins;
+    /// <summary>ControlInside: das Element selbst, Kinder und Enkel ja, Geschwister und nil nein.</summary>
+    [Test]
+    procedure ControlInsideFollowsParents;
     /// <summary>Eine neue Bindung während des Stands ist darin sichtbar.</summary>
     [Test]
     procedure BindDuringQueriesRebuilds;
@@ -116,6 +119,31 @@ begin
       mMarks.EndQueries;
     end;
     Assert.AreEqual(mWalk, Answers(mMarks, mSheet));
+  finally
+    mOwner.Free;
+  end;
+end;
+
+procedure TAtlasSettingsBindingQueryTests.ControlInsideFollowsParents;
+var
+  mOwner: TComponent;
+  mRoot, mChild, mSibling: TPanel;
+  mLeaf: TLabel;
+begin
+  mOwner := TComponent.Create(nil);
+  try
+    mRoot := TPanel.Create(mOwner);
+    mChild := TPanel.Create(mOwner);
+    mChild.Parent := mRoot;
+    mSibling := TPanel.Create(mOwner);
+    mLeaf := TLabel.Create(mOwner);
+    mLeaf.Parent := mChild;
+    Assert.IsTrue(ControlInside(mRoot, mRoot));
+    Assert.IsTrue(ControlInside(mChild, mRoot));
+    Assert.IsTrue(ControlInside(mLeaf, mRoot));
+    Assert.IsFalse(ControlInside(mSibling, mRoot));
+    Assert.IsFalse(ControlInside(mRoot, mChild));
+    Assert.IsFalse(ControlInside(nil, mRoot));
   finally
     mOwner.Free;
   end;

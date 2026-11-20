@@ -29,6 +29,8 @@ type
     constructor Create(ALine, ACharacter: Integer);
     class operator Equal(const A, B: TTextPosition): Boolean;
     class operator NotEqual(const A, B: TTextPosition): Boolean;
+    /// <summary>Negativ, 0 oder positiv wie CompareText: zuerst die Zeile, dann das Zeichen.</summary>
+    class function Compare(const A, B: TTextPosition): Integer; static;
   end;
 
   /// <summary>Zeilenanfänge eines Texts; PositionAt sucht binär, OffsetAt in O(1).</summary>
@@ -72,6 +74,9 @@ type
     /// <summary>AText an jedem #10 geteilt, ein #13 am Zeilenende entfernt; ein einzelnes #13 trennt nicht (Puffer
     /// des Editors, Zeilennummern wie dort).</summary>
     class function SplitAtLineFeed(const AText: string): TArray<string>; static;
+    /// <summary>Zeilen, wie TStrings.Text sie aus AText macht: Ein Umbruch am Ende ergibt keine leere letzte Zeile,
+    /// leerer Text keine Zeile.</summary>
+    class function SplitLikeStrings(const AText: string): TArray<string>; static;
     /// <summary>ALines mit AOldCount Zeilen ab AStart (ab 0) durch ANew ersetzt.</summary>
     class function ReplaceRange(const ALines: TArray<string>; AStart, AOldCount: Integer;
       const ANew: TArray<string>): TArray<string>; static;
@@ -120,6 +125,15 @@ end;
 class operator TTextPosition.NotEqual(const A, B: TTextPosition): Boolean;
 begin
   Result := not (A = B);
+end;
+
+class function TTextPosition.Compare(const A, B: TTextPosition): Integer;
+begin
+  Result := A.Line - B.Line;
+  if Result = 0 then
+  begin
+    Result := A.Character - B.Character;
+  end;
 end;
 
 /// <summary>Länge des Umbruchs, der bei AIndex (1-basiert) beginnt: 2 für CRLF, 1 für LF oder CR, sonst 0.</summary>
@@ -402,6 +416,15 @@ begin
     mIndex := NextBreak(AText, mStart);
   end;
   Result[mCount] := Copy(AText, mStart, MaxInt);
+end;
+
+class function TTextLines.SplitLikeStrings(const AText: string): TArray<string>;
+begin
+  Result := SplitLines(AText);
+  if (Length(Result) > 0) and (Result[High(Result)] = '') then
+  begin
+    SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 class function TTextLines.SplitAtLineFeed(const AText: string): TArray<string>;

@@ -68,7 +68,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Text.Numbers;
 
 const
   cListLimit = 10;
@@ -248,19 +249,10 @@ begin
   end;
 end;
 
-/// <summary>Versatz mit Vorzeichen (Format kennt kein „+“).</summary>
-function Signed(AValue: Integer): string;
-begin
-  Result := IntToStr(AValue);
-  if AValue > 0 then
-  begin
-    Result := '+' + Result;
-  end;
-end;
-
 function FindingText(const AGroup: TNearGroup; const AFinding: TAtlasNearFinding): string;
 begin
-  Result := TAtlasNearAlign.KeyOf(AGroup.Items[AFinding.Item].Name, AFinding.Edge) + ' ' + Signed(AFinding.Offset);
+  Result := TAtlasNearAlign.KeyOf(AGroup.Items[AFinding.Item].Name, AFinding.Edge) + ' ' +
+    TTextNumbers.Signed(AFinding.Offset);
 end;
 
 /// <summary>Ein Rahmen je betroffenem Steuerelement, beschriftet mit Kanten und Versatz.</summary>
@@ -281,7 +273,7 @@ begin
       begin
         if mFinding.Item = mIndex then
         begin
-          mParts := mParts + [TAtlasNearAlign.EdgeName(mFinding.Edge) + ' ' + Signed(mFinding.Offset)];
+          mParts := mParts + [TAtlasNearAlign.EdgeName(mFinding.Edge) + ' ' + TTextNumbers.Signed(mFinding.Offset)];
         end;
       end;
       if Length(mParts) > 0 then

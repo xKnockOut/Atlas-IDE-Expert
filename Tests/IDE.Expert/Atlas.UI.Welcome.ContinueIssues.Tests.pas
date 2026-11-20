@@ -35,7 +35,8 @@ uses
   Atlas.Core.Welcome.ContinueIssues,
   Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.Continue,
-  Atlas.UI.Welcome.ContinueIssues;
+  Atlas.UI.Welcome.ContinueIssues,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Quelle für „Zuletzt“ und „Gemerkt“: leer, „Gemerkt“ an.</summary>

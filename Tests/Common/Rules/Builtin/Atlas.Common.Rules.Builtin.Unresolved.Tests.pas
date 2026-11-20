@@ -116,9 +116,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Projects.UnitLookup,
+  Atlas.Common.Projects.Adapters.UnitLookup,
   Atlas.Common.Rules.Builtin.Unresolved,
-  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Lsp.Adapters.IdeTypes,
   Atlas.Tests.RuleAssert;
 
 const

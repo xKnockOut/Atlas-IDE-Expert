@@ -46,7 +46,8 @@ uses
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.QuickActions.Tests;
+  Atlas.UI.Welcome.QuickActions.Tests,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Quelle des Bereichs „Projekte“ für die Tests; merkt sich die Aufrufe.</summary>

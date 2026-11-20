@@ -174,6 +174,9 @@ type
     property OnResetPage: TNotifyEvent read FOnResetPage write FOnResetPage;
   end;
 
+/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
+function ControlInside(AControl, AParent: TControl): Boolean;
+
 implementation
 
 uses
@@ -226,8 +229,7 @@ begin
   end;
 end;
 
-/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
-function Inside(AControl, AParent: TControl): Boolean;
+function ControlInside(AControl, AParent: TControl): Boolean;
 var
   mParent: TControl;
 begin
@@ -500,7 +502,7 @@ begin
   end;
   for mBinding in FBindings do
   begin
-    if Inside(mBinding.Control, AControl) then
+    if ControlInside(mBinding.Control, AControl) then
     begin
       Result := Result + mBinding.Names;
     end;
@@ -535,7 +537,7 @@ var
 begin
   for mBinding in FBindings do
   begin
-    if mBinding.Marked and Inside(mBinding.Control, AParent) then
+    if mBinding.Marked and ControlInside(mBinding.Control, AParent) then
     begin
       Exit(True);
     end;
@@ -902,7 +904,7 @@ var
 begin
   for mBinding in List do
   begin
-    if Inside(mBinding.Control, AParent) and Matches(mBinding, FFilter) then
+    if ControlInside(mBinding.Control, AParent) and Matches(mBinding, FFilter) then
     begin
       Exit(True);
     end;

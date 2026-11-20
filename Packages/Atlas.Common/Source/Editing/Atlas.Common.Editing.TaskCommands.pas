@@ -32,7 +32,8 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -207,15 +208,6 @@ begin
   Result.InSection := AInSection;
 end;
 
-/// <summary>Nimmt AName in ANames auf, wenn er nicht leer und noch nicht enthalten ist.</summary>
-procedure AddName(var ANames: TArray<string>; const AName: string);
-begin
-  if (AName <> '') and not MatchText(AName, ANames) then
-  begin
-    ANames := ANames + [AName];
-  end;
-end;
-
 /// <summary>Ist AEntry eine lokale Variable: im var-Abschnitt der Routine oder inline deklariert?</summary>
 function IsLocalVariable(const AEntry: TLocalNamesEntry): Boolean;
 begin
@@ -257,7 +249,7 @@ begin
       end;
       if IsLocalVariable(mEntry) then
       begin
-        AddName(Result, mEntry.Node.Name);
+        TTextArrays.AddText(Result, mEntry.Node.Name);
       end;
       // Anonyme Methoden und lokale Routinen haben eigene Variablen.
       if (mEntry.Node = ARoutine) or
@@ -308,8 +300,8 @@ begin
   Result := nil;
   for mIndex := 0 to High(ATokens) do
   begin
-    AddName(Result, AssignedName(ATokens, mIndex));
-    AddName(Result, IncDecName(ATokens, mIndex));
+    TTextArrays.AddText(Result, AssignedName(ATokens, mIndex));
+    TTextArrays.AddText(Result, IncDecName(ATokens, mIndex));
   end;
 end;
 

@@ -126,7 +126,8 @@ uses
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Scopes,
-  Atlas.Core.Settings.TestSupport;
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Settings.Contract;
 
 { TAtlasPluginSettingsTests }
 

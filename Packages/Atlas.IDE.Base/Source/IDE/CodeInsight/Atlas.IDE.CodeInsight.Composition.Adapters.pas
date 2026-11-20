@@ -4,7 +4,8 @@
 // Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Code-Aktionen für den Klick auf eine Marke,
 // Ziel und Sicherung des Änderungsprotokolls und die Update-Quelle. Nur diese
 // Unit erzeugt sie; die Features bekommen sie über
-// Schnittstellen und Fabriken.
+// Schnittstellen und Fabriken. Die Adapter der IDE- und UI-Features legt
+// Atlas.IDE.CodeInsight.Composition.IdeAdapters an.
 
 interface
 
@@ -25,11 +26,12 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Adapters.ServerProcess,
+  Atlas.Core.Lsp.Providers.ServerProcess,
+  Atlas.Core.Files.Contract,
   Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Files.Adapters.FolderWatcher,
+  Atlas.Core.Files.Providers.FolderWatcher,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Providers.Server,
   Atlas.Core.Completion.Snippets,
@@ -37,13 +39,13 @@ uses
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Undo.Adapters.DiskTarget,
-  Atlas.Core.Undo.Adapters.FileStore,
-  Atlas.Core.Updates.Adapters.HttpSource,
+  Atlas.Core.Undo.Providers.DiskTarget,
+  Atlas.Core.Undo.Providers.FileStore,
+  Atlas.Core.Updates.Providers.HttpSource,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Undo.Target;
+  Atlas.IDE.Undo.Adapters.Target;
 
 /// <summary>Quellen der Vervollständigung: Server, XML-Doku und Snippets, mit Abbau und Schaltern.</summary>
 function CompletionSources(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc): TAtlasCompletionSources;
@@ -89,9 +91,9 @@ end;
 function CodeInsightAdapters: TAtlasCodeInsightAdapters;
 begin
   Result.NewServer :=
-    function(AExeName, AArguments: string): IAtlasLspServer
+    function(AExeName, AArguments: string; AConnect: TAtlasLspConnect): IAtlasLspServer
     begin
-      Result := TLspServerProcess.Create(AExeName, AArguments);
+      Result := TLspServerProcess.Create(AExeName, AArguments, AConnect);
     end;
   Result.NewFolderWatcher :=
     function(AChanges: TAtlasWatchedChanges): IAtlasFolderWatcher
@@ -135,6 +137,11 @@ begin
       mDisk.OnRemoveFromProject := AHooks.OnRemoveFromProject;
       mDisk.OnRecycle := AHooks.OnRecycle;
       Result := mDisk;
+    end;
+  TAtlasIdeUndo.TargetFactory :=
+    function: IAtlasUndoTarget
+    begin
+      Result := TAtlasIdeUndoTarget.Create;
     end;
   TAtlasIdeUndo.StoreFactory :=
     function(const AFolder: string; AMaxBytes: Int64): IAtlasUndoStore

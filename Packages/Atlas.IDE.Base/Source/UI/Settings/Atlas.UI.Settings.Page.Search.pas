@@ -200,19 +200,7 @@ end;
 
 function TAtlasSettingsSearchBox.ModuleName(const ASwitch: string): string;
 begin
-  Result := '';
-  if Assigned(FOnModuleName) then
-  begin
-    Result := FOnModuleName(ASwitch);
-  end;
-  if Result = '' then
-  begin
-    Result := ASwitch;
-  end;
-  if ASwitch = '' then
-  begin
-    Result := 'Base';
-  end;
+  Result := TAtlasSettingsSearch.ModuleCaption(ASwitch, FOnModuleName);
 end;
 
 procedure TAtlasSettingsSearchBox.SearchFor(const AText: string);

@@ -9,38 +9,17 @@
 // - Die Versätze der VMT hängen von der Plattform und der Delphi-Version ab; TAtlasVmtLayout nennt die bekannten,
 //   je VMT gilt der erste, dessen Selbstzeiger passt.
 // - TAtlasObjectCountCompare stellt zwei Zählungen gegenüber: Zuwächse oben, Filter nach Teil des Namens.
-// Gelesen wird in Atlas.IDE.Debug.ObjectCountReader, gezeigt in Atlas.UI.Debug.ObjectCountPanel.
+// Gelesen wird über IAtlasProcessMemory (Atlas.Core.Debug.Contract, in der IDE
+// Atlas.IDE.Debug.Adapters.ProcessMemory), gezeigt in Atlas.UI.Debug.ObjectCountPanel.
 
 interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Debug.Contract;
 
 type
-  {$SCOPEDENUMS ON}
-  TAtlasMemoryRegionKind = (Data, Image);
-  {$SCOPEDENUMS OFF}
-
-  TAtlasMemoryRegion = record
-    Base: UInt64;
-    Size: UInt64;
-    Kind: TAtlasMemoryRegionKind;
-    class function Make(ABase, ASize: UInt64; AKind: TAtlasMemoryRegionKind): TAtlasMemoryRegion; static;
-  end;
-
-  /// <summary>Lesender Zugriff auf den Speicher eines Prozesses.</summary>
-  IAtlasProcessMemory = interface
-    ['{6C0E2B7A-3D51-4F1E-9A8C-5B2D7E41C903}']
-    /// <summary>4 (32-Bit-Programm) oder 8 (64-Bit-Programm).</summary>
-    function PointerSize: Integer;
-    /// <summary>Belegte Bereiche: privater beschreibbarer Speicher (Data) und Abbilder (Image), aufsteigend.
-    /// </summary>
-    function Regions: TArray<TAtlasMemoryRegion>;
-    /// <summary>Bis zu ASize Bytes ab AAddress nach ABuffer; Ergebnis = gelesene Bytes (0 bei Fehler).</summary>
-    function Read(AAddress: UInt64; var ABuffer; ASize: Integer): Integer;
-  end;
-
   /// <summary>Abstände unterhalb der VMT in Bytes: Selbstzeiger, Zeiger auf den Klassennamen, Instanzgröße.
   /// </summary>
   TAtlasVmtLayout = record
@@ -145,15 +124,6 @@ const
   cWin64DoubledNameBelow = 112;
   cWin64DoubledSizeBelow = 104;
   cLastAscii = 127;
-
-{ TAtlasMemoryRegion }
-
-class function TAtlasMemoryRegion.Make(ABase, ASize: UInt64; AKind: TAtlasMemoryRegionKind): TAtlasMemoryRegion;
-begin
-  Result.Base := ABase;
-  Result.Size := ASize;
-  Result.Kind := AKind;
-end;
 
 { TAtlasVmtLayout }
 

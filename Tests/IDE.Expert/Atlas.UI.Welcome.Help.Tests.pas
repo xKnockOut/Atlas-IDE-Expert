@@ -30,7 +30,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.Core.Welcome.Help,
-  Atlas.UI.Welcome.Help;
+  Atlas.UI.Welcome.Help,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Quelle des Bereichs „Hilfe und Rückmeldung“ für die Tests; merkt sich die Aufrufe.</summary>

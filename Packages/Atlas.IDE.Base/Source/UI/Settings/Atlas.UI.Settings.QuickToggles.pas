@@ -104,7 +104,6 @@ type
     FRows: TAtlasQuickToggleRows;
     FAllOff: Boolean;
     FHot: Integer;
-    FClosing: Boolean;
     FAllButton: TButton;
     FEvents: TAtlasQuickToggleEvents;
     /// <summary>Maus über dem Symbol „Einstellung öffnen“ dieser Zeile; -1 ohne.</summary>
@@ -133,8 +132,6 @@ type
     procedure SetItems(const AItems: TArray<TAtlasQuickToggleItem>; AAllOff: Boolean);
     /// <summary>Zeigt das Fenster mit der linken unteren Ecke an AAnchor (Bildschirm).</summary>
     procedure ShowAbove(const AAnchor: TPoint);
-    /// <summary>Schließt; das Fenster gibt sich danach selbst frei.</summary>
-    procedure Dismiss;
     /// <summary>Zum Testen: Zeile ARow anklicken (Überschriften klappen ein und aus).</summary>
     procedure ClickRow(ARow: Integer);
     /// <summary>Zum Testen: Symbol „Einstellung öffnen“ der Zeile ARow anklicken.</summary>
@@ -871,7 +868,7 @@ var
   mHandler: TProc<TAtlasQuickToggleItem>;
 begin
   mHandler := FEvents.OpenSetting;
-  if not FRows.IsToggle(ARow) or FClosing or not Assigned(mHandler) then
+  if not FRows.IsToggle(ARow) or Closing or not Assigned(mHandler) then
   begin
     Exit;
   end;
@@ -955,7 +952,7 @@ var
   mItem: TAtlasQuickToggleItem;
   mHandler: TProc<TAtlasQuickToggleItem>;
 begin
-  if (ARow < 0) or (ARow >= FRows.Count) or FClosing then
+  if (ARow < 0) or (ARow >= FRows.Count) or Closing then
   begin
     Exit;
   end;
@@ -1070,17 +1067,6 @@ begin
   PlaceAboveAnchor;
   Show;
   SetFocus;
-end;
-
-procedure TAtlasQuickToggleWindow.Dismiss;
-begin
-  if FClosing then
-  begin
-    Exit;
-  end;
-  FClosing := True;
-  Close;
-  Release;
 end;
 
 procedure TAtlasQuickToggleWindow.ClickRow(ARow: Integer);

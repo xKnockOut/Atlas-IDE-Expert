@@ -27,6 +27,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.AssignmentSwap;
 
 const
@@ -124,6 +125,9 @@ type
     /// <summary>Wie oben mit AByNamespace = False.</summary>
     class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean;
       overload; static;
+    /// <summary>uses aufräumen nach AOptions (auch nach Herkunft gegliedert, #2794); False ohne Änderung.</summary>
+    class function OrganizeImports(const AText: string; const AOptions: TUsesRewrite;
+      out AAction: TCodeAction): Boolean; overload; static;
     /// <summary>uses-Aktionen (#284): fehlende Unit zum Bezeichner an ARange.StartPos (Quick-Fix),
     /// interface-Units ins implementation verschieben (Rewrite), dazu für die Einträge an ARange (#621):
     /// „X entfernen“, „Alle ungenutzten uses entfernen“ (ab zwei) und „X ins implementation-uses verschieben“,
@@ -155,7 +159,6 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.GuardFree,
-  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
@@ -646,11 +649,23 @@ end;
 class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
   AByNamespace: Boolean): Boolean;
 var
+  mOptions: TUsesRewrite;
+begin
+  mOptions := Default(TUsesRewrite);
+  mOptions.Dedupe := True;
+  mOptions.Sort := ASort;
+  mOptions.ByNamespace := AByNamespace;
+  Result := OrganizeImports(AText, mOptions, AAction);
+end;
+
+class function TCodeActions.OrganizeImports(const AText: string; const AOptions: TUsesRewrite;
+  out AAction: TCodeAction): Boolean;
+var
   mEdits: TArray<TTextEdit>;
 begin
   AAction := Default(TCodeAction);
-  Result := TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, TTextLines.LineBreakOf(AText),
-    mEdits, AByNamespace);
+  Result := TUsesClauses.Rewrite(TPascalLexer.Tokenize(AText), AText, AOptions, TTextLines.LineBreakOf(AText),
+    mEdits);
   if Result then
   begin
     AAction.Title := cTexts[TEditingCodeActionsText.CleanUpUses].Text;

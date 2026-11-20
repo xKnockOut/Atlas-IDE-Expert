@@ -125,7 +125,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Vcl.StdCtrls;
+  Vcl.StdCtrls,
+  Atlas.Core.Foundation.Calls;
 
 procedure FocusBox(ABox: TComboBox);
 begin
@@ -233,7 +234,7 @@ begin
     VK_ESCAPE:
       begin
         Key := 0;
-        TAtlasSearchBarEvents.Fire(FEvents.OnClose);
+        TAtlasCalls.Call(FEvents.OnClose);
       end;
   else
     // Übrige Tasten gehören dem Feld.
@@ -247,7 +248,7 @@ begin
   if FEvents.RememberingButton(FParts, Sender, mEvent) then
   begin
     Remember;
-    TAtlasSearchBarEvents.Fire(mEvent);
+    TAtlasCalls.Call(mEvent);
   end
   else if Sender = FParts.ToggleButton then
   begin
@@ -259,11 +260,11 @@ begin
   end
   else if Sender = FParts.CancelButton then
   begin
-    TAtlasSearchBarEvents.Fire(FEvents.OnCancel);
+    TAtlasCalls.Call(FEvents.OnCancel);
   end
   else if Sender = FParts.CloseButton then
   begin
-    TAtlasSearchBarEvents.Fire(FEvents.OnClose);
+    TAtlasCalls.Call(FEvents.OnClose);
   end;
 end;
 
@@ -332,18 +333,18 @@ begin
     Remember;
     if ssCtrl in AShift then
     begin
-      TAtlasSearchBarEvents.Fire(FEvents.OnReplaceAll);
+      TAtlasCalls.Call(FEvents.OnReplaceAll);
     end
     else
     begin
-      TAtlasSearchBarEvents.Fire(FEvents.OnReplace);
+      TAtlasCalls.Call(FEvents.OnReplace);
     end;
     Exit;
   end;
   Step(ssShift in AShift);
   if not (ssShift in AShift) and FParts.ListButton.Visible then
   begin
-    TAtlasSearchBarEvents.Fire(FEvents.OnList);
+    TAtlasCalls.Call(FEvents.OnList);
   end;
 end;
 
@@ -358,7 +359,7 @@ begin
   begin
     FocusBox(FParts.TextEdit);
   end;
-  TAtlasSearchBarEvents.Fire(FEvents.OnReplaceShown);
+  TAtlasCalls.Call(FEvents.OnReplaceShown);
 end;
 
 procedure TAtlasSearchBar.CreateWnd;

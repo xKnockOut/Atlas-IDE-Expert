@@ -4,20 +4,17 @@
 // IDE: offene Reiter in der Reihenfolge des Editorfensters mit Cursorstelle
 // und Methode, Ziel eines Projekts (gespeicherte Projektgruppe, sonst das
 // Projekt), Öffnen von Projekt und Reiter, Text einer Datei (Puffer oder
-// Platte). Abgeteilt aus Atlas.IDE.Welcome.Continue (Atlas-Befunde).
+// Platte). Abgeteilt aus Atlas.IDE.Welcome.Adapters.Continue (Atlas-Befunde).
 
 interface
 
 uses
   System.Generics.Collections,
+  Atlas.Core.Welcome.Contract,
   Atlas.Core.Welcome.Continue;
 
 type
-  /// <summary>Offene Reiter in ihrer Reihenfolge mit der Cursorstelle und aktive Datei.</summary>
-  TAtlasContinueSnapshot = record
-    Tabs: TArray<TAtlasWorkTab>;
-    Active: string;
-  end;
+  TAtlasContinueSnapshot = Atlas.Core.Welcome.Contract.TAtlasContinueSnapshot;
 
   TAtlasIdeContinueEditor = class
   public
@@ -44,6 +41,7 @@ uses
   System.Classes,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Editor.SourceFiles,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorTabs,
@@ -57,14 +55,6 @@ type
     Files: TArray<string>;
     Tabs: TArray<TAtlasWorkTab>;
   end;
-
-function IsPascal(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
-end;
 
 /// <summary>Reiter des Editors AEditor in AOpen aufnehmen (nur Quelltext mit Ansicht, jede Datei einmal).</summary>
 procedure AddEditor(var AOpen: TOpenTabs; const AEditor: IOTAEditor);
@@ -151,7 +141,7 @@ begin
   for mPosition := 0 to High(ASnapshot.Tabs) do
   begin
     mKey := AnsiUpperCase(ASnapshot.Tabs[mPosition].FileName);
-    if not IsPascal(mKey) or not AOpen.Buffers.TryGetValue(mKey, mBuffer) then
+    if not TAtlasSourceFiles.IsPascal(mKey) or not AOpen.Buffers.TryGetValue(mKey, mBuffer) then
     begin
       Continue;
     end;

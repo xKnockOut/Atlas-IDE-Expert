@@ -621,13 +621,14 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
   begin
     Exit;
   end;
   mModule := TAtlasDebugModule.Create;
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
+  UseDebugAdapters;
   for mPart in Parts do
   begin
     GScope.Provide(IAtlasFeaturePart, mPart);
@@ -654,6 +655,7 @@ end;
 class procedure TAtlasDebugModule.UnregisterModule;
 begin
   TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  ReleaseDebugAdapters;
 end;
 
 initialization

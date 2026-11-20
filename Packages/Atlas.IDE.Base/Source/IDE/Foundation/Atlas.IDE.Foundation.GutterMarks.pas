@@ -565,10 +565,7 @@ end;
 
 procedure TAtlasIdeGutterMarks.HideTip;
 begin
-  if (FTip <> nil) and FTip.IsShown then
-  begin
-    FTip.HidePopup;
-  end;
+  TAtlasTitledTip.HideShown(FTip);
 end;
 
 

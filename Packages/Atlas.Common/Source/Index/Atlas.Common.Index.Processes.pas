@@ -4,7 +4,7 @@
 // Art (LSP, MCP), Client, Zustand ("baut Index", "liest Cache", "bereit"), ob
 // er die Cache-Sperre hält, und seine letzten Sperr- und Cache-Ereignisse; dazu
 // das Zusammenführen der Ereignisse aller Prozesse nach Zeit. Dateien und
-// Sperren liegen in Atlas.Common.Index.Adapters.Processes.
+// Sperren liegen in Atlas.Common.Index.ProcessFiles.
 
 interface
 

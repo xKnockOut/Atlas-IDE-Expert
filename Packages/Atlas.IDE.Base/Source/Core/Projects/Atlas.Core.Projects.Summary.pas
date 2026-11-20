@@ -150,174 +150,24 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Projects.Summary.Sections;
 
 type
-  /// <summary>Stelle einer Meldung; Zeile und Spalte ab 1, 0 = ohne.</summary>
-  TAtlasProjectLocation = record
-    FileName: string;
-    Line: Integer;
-    Column: Integer;
-    Code: string;
-    Text: string;
-    function IsEmpty: Boolean;
-  end;
-
-  /// <summary>Stand der Versionsverwaltung beim letzten Abfragen.</summary>
-  TAtlasProjectVcs = record
-    Known: Boolean;
-    /// <summary>Zeitpunkt der Abfrage (UTC).</summary>
-    At: TDateTime;
-    /// <summary>"git", "svn" oder "none" (keine Arbeitskopie bzw. abgeschaltet).</summary>
-    Kind: string;
-    /// <summary>Git: Branch ('' bei losgelöstem HEAD); SVN: Pfad wie "trunk".</summary>
-    Branch: string;
-    Revision: string;
-    /// <summary>Geänderte und neue Dateien; -1 unbekannt.</summary>
-    Changed: Integer;
-    /// <summary>Commits vor bzw. hinter dem Upstream; -1 unbekannt.</summary>
-    Ahead: Integer;
-    Behind: Integer;
-    class function Empty: TAtlasProjectVcs; static;
-    /// <summary>Gehört zu einer Arbeitskopie (Git oder SVN).</summary>
-    function InWorkingCopy: Boolean;
-  end;
-
-  /// <summary>Letzter Build des Benutzers (#527).</summary>
-  TAtlasProjectBuild = record
-    Known: Boolean;
-    At: TDateTime;
-    Kind: string;
-    Configuration: string;
-    Platform: string;
-    Succeeded: Boolean;
-    Errors: Integer;
-    Warnings: Integer;
-    Hints: Integer;
-    /// <summary>Dauer des Compiles in ms (#758); 0 = unbekannt.</summary>
-    DurationMs: Integer;
-    First: TAtlasProjectLocation;
-    class function Empty: TAtlasProjectBuild; static;
-  end;
-
-  /// <summary>Letzte Hintergrundprüfung (#548).</summary>
-  TAtlasProjectCheck = record
-    Known: Boolean;
-    At: TDateTime;
-    Errors: Integer;
-    First: TAtlasProjectLocation;
-    class function Empty: TAtlasProjectCheck; static;
-  end;
-
-  /// <summary>Werte je Kennzahl der Code-Metriken in der Reihenfolge von MetricKeys.</summary>
-  TAtlasMetricNumbers = array[0..4] of Integer;
-
-  /// <summary>Code-Metriken des Projekts beim letzten Build (#66), Grundlage des Projektverlaufs (#758).</summary>
-  TAtlasProjectMetrics = record
-    Known: Boolean;
-    /// <summary>Zeitpunkt des Builds (UTC).</summary>
-    At: TDateTime;
-    Files: Integer;
-    Methods: Integer;
-    /// <summary>Methoden mit mindestens einer Überschreitung.</summary>
-    OverLimits: Integer;
-    /// <summary>Mittelwert in Zehnteln (125 = 12,5).</summary>
-    AverageTenths: TAtlasMetricNumbers;
-    Maximum: TAtlasMetricNumbers;
-    /// <summary>Methoden über dem Grenzwert je Kennzahl.</summary>
-    Exceeded: TAtlasMetricNumbers;
-    class function Empty: TAtlasProjectMetrics; static;
-    /// <summary>Liest die Antwort von atlas.server.metrics im Modus "summary" ({"summary": {…}}) oder einen
-    /// Abschnitt "metrics"; AAtUtc wird der Zeitpunkt. False bei ungültigem Text.</summary>
-    class function FromServer(const AJson: string; AAtUtc: TDateTime; out AMetrics: TAtlasProjectMetrics): Boolean;
-      static;
-  end;
-
-  /// <summary>TODO-Einträge des Projekts beim letzten Build (#68), Grundlage des Projektverlaufs (#758).</summary>
-  TAtlasProjectTodos = record
-    Known: Boolean;
-    /// <summary>Zeitpunkt des Builds (UTC).</summary>
-    At: TDateTime;
-    /// <summary>Dateien mit mindestens einem offenen Eintrag.</summary>
-    Files: Integer;
-    Open: Integer;
-    Done: Integer;
-    /// <summary>Marken der offenen Einträge (TODO, FIXME …); Anzahl in KeywordCounts.</summary>
-    Keywords: TArray<string>;
-    KeywordCounts: TArray<Integer>;
-    class function Empty: TAtlasProjectTodos; static;
-    /// <summary>Offene Einträge mit der Marke AKeyword; 0, wenn es keine gibt.</summary>
-    function CountOf(const AKeyword: string): Integer;
-    /// <summary>Liest die Antwort von atlas.server.todos im Modus "summary" ({"summary": {…}}) oder einen
-    /// Abschnitt "todos"; AAtUtc wird der Zeitpunkt. False bei ungültigem Text.</summary>
-    class function FromServer(const AJson: string; AAtUtc: TDateTime; out ATodos: TAtlasProjectTodos): Boolean;
-      static;
-  end;
-
-  /// <summary>Neue Regeltreffer gegenüber der Baseline (#97).</summary>
-  TAtlasProjectRules = record
-    Known: Boolean;
-    At: TDateTime;
-    NewHits: Integer;
-    class function Empty: TAtlasProjectRules; static;
-  end;
-
-  /// <summary>Baseline des Projekts (#97); Grundlage für Projektverlauf (#758) und Einrichtung (#759).</summary>
-  TAtlasProjectBaseline = record
-    Known: Boolean;
-    /// <summary>Zeitpunkt des Lesens (UTC): Build oder Aktualisieren.</summary>
-    At: TDateTime;
-    /// <summary>Die Datei liegt im Projektordner.</summary>
-    Exists: Boolean;
-    /// <summary>Die Datei ist eine lesbare Baseline; ohne Datei False.</summary>
-    Valid: Boolean;
-    Entries: Integer;
-    /// <summary>Treffer in der Baseline (Summe von "count").</summary>
-    Hits: Integer;
-    /// <summary>Treffer in Einträgen, deren Datei es nicht mehr gibt.</summary>
-    Orphaned: Integer;
-    /// <summary>Letztes Aktualisieren über Atlas (UTC); 0 = unbekannt, dann gelten Added und Removed nicht.</summary>
-    Updated: TDateTime;
-    Added: Integer;
-    Removed: Integer;
-    class function Empty: TAtlasProjectBaseline; static;
-  end;
-
-{$SCOPEDENUMS ON}
-  /// <summary>Reihen des Projektverlaufs (#758) in der Reihenfolge der Kacheln.</summary>
-  TAtlasTrendSeries = (Warnings, RuleHits, Todos, Duration, MethodLength);
-{$SCOPEDENUMS OFF}
-
-  TAtlasTrendNumbers = array[TAtlasTrendSeries] of Integer;
-  TAtlasTrendFlags = array[TAtlasTrendSeries] of Boolean;
-
-  /// <summary>Messpunkt des Projektverlaufs (#758): Werte eines Builds.</summary>
-  TAtlasTrendPoint = record
-    /// <summary>Zeitpunkt des Builds (UTC).</summary>
-    At: TDateTime;
-    /// <summary>Laufende Nummer des Builds (ab 1).</summary>
-    Build: Integer;
-    /// <summary>Branch bzw. SVN-Pfad zum Zeitpunkt des Builds; '' = unbekannt.</summary>
-    Branch: string;
-    /// <summary>Commit bzw. Revision; '' = unbekannt.</summary>
-    Commit: string;
-    /// <summary>Wert je Reihe in Zehnteln (3 Warnungen = 30, 12,5 s = 125); gilt nur mit Has.</summary>
-    Values: TAtlasTrendNumbers;
-    /// <summary>Wert bekannt; sonst Lücke.</summary>
-    Has: TAtlasTrendFlags;
-    class function Create(AAtUtc: TDateTime; ABuild: Integer): TAtlasTrendPoint; static;
-    procedure SetValue(ASeries: TAtlasTrendSeries; ATenths: Integer);
-    procedure Clear(ASeries: TAtlasTrendSeries);
-  end;
-
-  /// <summary>Projektverlauf (#758): Ringpuffer der Messpunkte, älteste zuerst.</summary>
-  TAtlasProjectTrends = record
-    Known: Boolean;
-    /// <summary>Builds bisher; Nummer des nächsten Punkts ist Builds + 1.</summary>
-    Builds: Integer;
-    Points: TArray<TAtlasTrendPoint>;
-    class function Empty: TAtlasProjectTrends; static;
-  end;
+  TAtlasProjectLocation = Atlas.Core.Projects.Contract.Summary.TAtlasProjectLocation;
+  TAtlasProjectVcs = Atlas.Core.Projects.Contract.Summary.TAtlasProjectVcs;
+  TAtlasProjectBuild = Atlas.Core.Projects.Contract.Summary.TAtlasProjectBuild;
+  TAtlasProjectCheck = Atlas.Core.Projects.Contract.Summary.TAtlasProjectCheck;
+  TAtlasMetricNumbers = Atlas.Core.Projects.Contract.Summary.TAtlasMetricNumbers;
+  TAtlasProjectMetrics = Atlas.Core.Projects.Contract.Summary.TAtlasProjectMetrics;
+  TAtlasProjectTodos = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTodos;
+  TAtlasProjectRules = Atlas.Core.Projects.Contract.Summary.TAtlasProjectRules;
+  TAtlasProjectBaseline = Atlas.Core.Projects.Contract.Summary.TAtlasProjectBaseline;
+  TAtlasTrendSeries = Atlas.Core.Projects.Contract.Summary.TAtlasTrendSeries;
+  TAtlasTrendNumbers = Atlas.Core.Projects.Contract.Summary.TAtlasTrendNumbers;
+  TAtlasTrendFlags = Atlas.Core.Projects.Contract.Summary.TAtlasTrendFlags;
+  TAtlasTrendPoint = Atlas.Core.Projects.Contract.Summary.TAtlasTrendPoint;
+  TAtlasProjectTrends = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTrends;
 
   TAtlasSetupFinding = Atlas.Core.Projects.Summary.Sections.TAtlasSetupFinding;
   TAtlasProjectSetup = Atlas.Core.Projects.Summary.Sections.TAtlasProjectSetup;
@@ -327,31 +177,24 @@ type
   TAtlasProjectRelease = Atlas.Core.Projects.Summary.Sections.TAtlasProjectRelease;
   TAtlasProjectCi = Atlas.Core.Projects.Summary.Sections.TAtlasProjectCi;
 
-  TAtlasProjectSummary = record
-    /// <summary>Vollständiger Pfad der Projektdatei (.dproj, .groupproj …).</summary>
-    Project: string;
-    /// <summary>UTC; 0 = unbekannt.</summary>
-    LastOpened: TDateTime;
-    LastClosed: TDateTime;
-    /// <summary>„Aus Liste entfernen“ auf der Willkommensseite; Öffnen hebt es auf.</summary>
-    Hidden: Boolean;
-    Vcs: TAtlasProjectVcs;
-    Build: TAtlasProjectBuild;
-    Check: TAtlasProjectCheck;
-    Rules: TAtlasProjectRules;
-    Metrics: TAtlasProjectMetrics;
-    Todos: TAtlasProjectTodos;
-    Baseline: TAtlasProjectBaseline;
-    Trends: TAtlasProjectTrends;
-    Setup: TAtlasProjectSetup;
-    Tests: TAtlasProjectTests;
-    Release: TAtlasProjectRelease;
-    Ci: TAtlasProjectCi;
-    /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
-    Raw: string;
-    class function Create(const AProject: string): TAtlasProjectSummary; static;
-    /// <summary>Dateiname ohne Endung.</summary>
-    function Name: string;
+  TAtlasProjectSummary = Atlas.Core.Projects.Contract.Summary.TAtlasProjectSummary;
+
+  /// <summary>Lesen der Serverantwort für TAtlasProjectMetrics (der Record selbst steht im Vertrag).</summary>
+  TAtlasProjectMetricsHelper = record helper for TAtlasProjectMetrics
+    /// <summary>Liest die Antwort von atlas.server.metrics im Modus "summary" ({"summary": {…}}) oder einen
+    /// Abschnitt "metrics"; AAtUtc wird der Zeitpunkt. False bei ungültigem Text.</summary>
+    class function FromServer(const AJson: string; AAtUtc: TDateTime; out AMetrics: TAtlasProjectMetrics): Boolean;
+      static;
+  end;
+
+  /// <summary>Lesen der Serverantwort und Zählen je Marke für TAtlasProjectTodos.</summary>
+  TAtlasProjectTodosHelper = record helper for TAtlasProjectTodos
+    /// <summary>Offene Einträge mit der Marke AKeyword; 0, wenn es keine gibt.</summary>
+    function CountOf(const AKeyword: string): Integer;
+    /// <summary>Liest die Antwort von atlas.server.todos im Modus "summary" ({"summary": {…}}) oder einen
+    /// Abschnitt "todos"; AAtUtc wird der Zeitpunkt. False bei ungültigem Text.</summary>
+    class function FromServer(const AJson: string; AAtUtc: TDateTime; out ATodos: TAtlasProjectTodos): Boolean;
+      static;
   end;
 
   TAtlasProjectSummaryChange = reference to procedure(var ASummary: TAtlasProjectSummary);
@@ -413,7 +256,8 @@ uses
   System.JSON,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary.Json,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Arrays;
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
@@ -431,129 +275,6 @@ const
   cTrendsKeys: array[0..1] of string = ('builds', 'points');
   cTrendPointKeys: array[0..8] of string = ('at', 'build', 'branch', 'commit', 'warnings', 'ruleHits', 'todos',
     'duration', 'methodLength');
-
-{ TAtlasProjectLocation }
-
-function TAtlasProjectLocation.IsEmpty: Boolean;
-begin
-  Result := FileName = '';
-end;
-
-{ TAtlasProjectVcs }
-
-class function TAtlasProjectVcs.Empty: TAtlasProjectVcs;
-begin
-  Result := Default(TAtlasProjectVcs);
-  Result.Changed := -1;
-  Result.Ahead := -1;
-  Result.Behind := -1;
-end;
-
-function TAtlasProjectVcs.InWorkingCopy: Boolean;
-begin
-  Result := Known and (SameText(Kind, 'git') or SameText(Kind, 'svn'));
-end;
-
-{ TAtlasProjectBuild }
-
-class function TAtlasProjectBuild.Empty: TAtlasProjectBuild;
-begin
-  Result := Default(TAtlasProjectBuild);
-end;
-
-{ TAtlasProjectCheck }
-
-class function TAtlasProjectCheck.Empty: TAtlasProjectCheck;
-begin
-  Result := Default(TAtlasProjectCheck);
-end;
-
-{ TAtlasProjectRules }
-
-class function TAtlasProjectRules.Empty: TAtlasProjectRules;
-begin
-  Result := Default(TAtlasProjectRules);
-end;
-
-{ TAtlasProjectBaseline }
-
-class function TAtlasProjectBaseline.Empty: TAtlasProjectBaseline;
-begin
-  Result := Default(TAtlasProjectBaseline);
-end;
-
-{ TAtlasTrendPoint }
-
-class function TAtlasTrendPoint.Create(AAtUtc: TDateTime; ABuild: Integer): TAtlasTrendPoint;
-begin
-  Result := Default(TAtlasTrendPoint);
-  Result.At := AAtUtc;
-  Result.Build := ABuild;
-end;
-
-procedure TAtlasTrendPoint.SetValue(ASeries: TAtlasTrendSeries; ATenths: Integer);
-begin
-  Values[ASeries] := ATenths;
-  Has[ASeries] := True;
-end;
-
-procedure TAtlasTrendPoint.Clear(ASeries: TAtlasTrendSeries);
-begin
-  Values[ASeries] := 0;
-  Has[ASeries] := False;
-end;
-
-{ TAtlasProjectTrends }
-
-class function TAtlasProjectTrends.Empty: TAtlasProjectTrends;
-begin
-  Result := Default(TAtlasProjectTrends);
-  Result.Points := nil;
-end;
-
-{ TAtlasProjectSummary }
-
-class function TAtlasProjectSummary.Create(const AProject: string): TAtlasProjectSummary;
-begin
-  Result := Default(TAtlasProjectSummary);
-  Result.Project := AProject;
-  Result.Vcs := TAtlasProjectVcs.Empty;
-  Result.Build := TAtlasProjectBuild.Empty;
-  Result.Check := TAtlasProjectCheck.Empty;
-  Result.Rules := TAtlasProjectRules.Empty;
-  Result.Metrics := TAtlasProjectMetrics.Empty;
-  Result.Todos := TAtlasProjectTodos.Empty;
-  Result.Baseline := TAtlasProjectBaseline.Empty;
-  Result.Trends := TAtlasProjectTrends.Empty;
-  Result.Setup := TAtlasProjectSetup.Empty;
-  Result.Tests := TAtlasProjectTests.Empty;
-  Result.Release := TAtlasProjectRelease.Empty;
-  Result.Ci := TAtlasProjectCi.Empty;
-end;
-
-function TAtlasProjectSummary.Name: string;
-var
-  mIndex: Integer;
-begin
-  // Ohne ExtractFileName: Der Pfad hat immer „\“, auch wenn die Tests nicht unter Windows laufen.
-  Result := Project;
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Result := Copy(Result, mIndex + 1, MaxInt);
-      Break;
-    end;
-  end;
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if Result[mIndex] = '.' then
-    begin
-      Result := Copy(Result, 1, mIndex - 1);
-      Break;
-    end;
-  end;
-end;
 
 { JSON-Helfer }
 
@@ -653,53 +374,6 @@ begin
   Result.Exceeded := MetricNumbersOf(TJsonRead.Obj(ASection, 'exceeded'), False);
 end;
 
-{ TAtlasProjectMetrics }
-
-class function TAtlasProjectMetrics.Empty: TAtlasProjectMetrics;
-begin
-  Result := Default(TAtlasProjectMetrics);
-end;
-
-class function TAtlasProjectMetrics.FromServer(const AJson: string; AAtUtc: TDateTime;
-  out AMetrics: TAtlasProjectMetrics): Boolean;
-var
-  mValue: TJSONValue;
-  mSection: TJSONObject;
-begin
-  AMetrics := TAtlasProjectMetrics.Empty;
-  Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mSection := TJsonRead.Obj(TJSONObject(mValue), 'summary');
-    if mSection = nil then
-    begin
-      mSection := TJsonRead.Obj(TJSONObject(mValue), 'metrics');
-    end;
-    if mSection = nil then
-    begin
-      mSection := TJSONObject(mValue);
-    end;
-    if not (mSection.GetValue('methods') is TJSONNumber) then
-    begin
-      Exit;
-    end;
-    AMetrics := MetricsOf(mSection);
-    AMetrics.At := AAtUtc;
-    Result := True;
-  finally
-    mValue.Free;
-  end;
-end;
-
 /// <summary>Zahlen aus einem Objekt mit files, open, done, keywords.</summary>
 function TodosOf(ASection: TJSONObject): TAtlasProjectTodos;
 var
@@ -730,69 +404,6 @@ begin
       Result.Keywords := Result.Keywords + [mPair.JsonString.Value];
       Result.KeywordCounts := Result.KeywordCounts + [TJSONNumber(mPair.JsonValue).AsInt];
     end;
-  end;
-end;
-
-{ TAtlasProjectTodos }
-
-class function TAtlasProjectTodos.Empty: TAtlasProjectTodos;
-begin
-  Result := Default(TAtlasProjectTodos);
-  Result.Keywords := nil;
-  Result.KeywordCounts := nil;
-end;
-
-function TAtlasProjectTodos.CountOf(const AKeyword: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(Keywords) do
-  begin
-    if SameText(Keywords[mIndex], AKeyword) then
-    begin
-      Exit(KeywordCounts[mIndex]);
-    end;
-  end;
-  Result := 0;
-end;
-
-class function TAtlasProjectTodos.FromServer(const AJson: string; AAtUtc: TDateTime;
-  out ATodos: TAtlasProjectTodos): Boolean;
-var
-  mValue: TJSONValue;
-  mSection: TJSONObject;
-begin
-  ATodos := TAtlasProjectTodos.Empty;
-  Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mSection := TJsonRead.Obj(TJSONObject(mValue), 'summary');
-    if mSection = nil then
-    begin
-      mSection := TJsonRead.Obj(TJSONObject(mValue), 'todos');
-    end;
-    if mSection = nil then
-    begin
-      mSection := TJSONObject(mValue);
-    end;
-    if not (mSection.GetValue('open') is TJSONNumber) then
-    begin
-      Exit;
-    end;
-    ATodos := TodosOf(mSection);
-    ATodos.At := AAtUtc;
-    Result := True;
-  finally
-    mValue.Free;
   end;
 end;
 
@@ -1183,24 +794,100 @@ begin
   end;
 end;
 
+{ TAtlasProjectMetricsHelper }
+
+class function TAtlasProjectMetricsHelper.FromServer(const AJson: string; AAtUtc: TDateTime;
+  out AMetrics: TAtlasProjectMetrics): Boolean;
+var
+  mValue: TJSONValue;
+  mSection: TJSONObject;
+begin
+  AMetrics := TAtlasProjectMetrics.Empty;
+  Result := False;
+  try
+    mValue := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      mValue := nil;
+  end;
+  try
+    if not (mValue is TJSONObject) then
+    begin
+      Exit;
+    end;
+    mSection := TJsonRead.Obj(TJSONObject(mValue), 'summary');
+    if mSection = nil then
+    begin
+      mSection := TJsonRead.Obj(TJSONObject(mValue), 'metrics');
+    end;
+    if mSection = nil then
+    begin
+      mSection := TJSONObject(mValue);
+    end;
+    if not (mSection.GetValue('methods') is TJSONNumber) then
+    begin
+      Exit;
+    end;
+    AMetrics := MetricsOf(mSection);
+    AMetrics.At := AAtUtc;
+    Result := True;
+  finally
+    mValue.Free;
+  end;
+end;
+
+{ TAtlasProjectTodosHelper }
+
+function TAtlasProjectTodosHelper.CountOf(const AKeyword: string): Integer;
+begin
+  Result := TTextArrays.CountOfText(Keywords, KeywordCounts, AKeyword);
+end;
+
+class function TAtlasProjectTodosHelper.FromServer(const AJson: string; AAtUtc: TDateTime;
+  out ATodos: TAtlasProjectTodos): Boolean;
+var
+  mValue: TJSONValue;
+  mSection: TJSONObject;
+begin
+  ATodos := TAtlasProjectTodos.Empty;
+  Result := False;
+  try
+    mValue := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      mValue := nil;
+  end;
+  try
+    if not (mValue is TJSONObject) then
+    begin
+      Exit;
+    end;
+    mSection := TJsonRead.Obj(TJSONObject(mValue), 'summary');
+    if mSection = nil then
+    begin
+      mSection := TJsonRead.Obj(TJSONObject(mValue), 'todos');
+    end;
+    if mSection = nil then
+    begin
+      mSection := TJSONObject(mValue);
+    end;
+    if not (mSection.GetValue('open') is TJSONNumber) then
+    begin
+      Exit;
+    end;
+    ATodos := TodosOf(mSection);
+    ATodos.At := AAtUtc;
+    Result := True;
+  finally
+    mValue.Free;
+  end;
+end;
+
 { TAtlasProjectSummaries }
 
 class function TAtlasProjectSummaries.NormalizedPath(const AProject: string): string;
-var
-  mIndex: Integer;
 begin
-  Result := Trim(AProject);
-  for mIndex := 1 to Length(Result) do
-  begin
-    if Result[mIndex] = '/' then
-    begin
-      Result[mIndex] := '\';
-    end
-    else if CharInSet(Result[mIndex], ['a'..'z']) then
-    begin
-      Result[mIndex] := UpCase(Result[mIndex]);
-    end;
-  end;
+  Result := SummaryNormalizedPath(AProject);
 end;
 
 // FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher (#972).

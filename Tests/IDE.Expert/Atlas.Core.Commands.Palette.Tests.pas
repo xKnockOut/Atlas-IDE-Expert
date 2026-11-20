@@ -51,7 +51,8 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Palette,
+  Atlas.Core.Commands.Contract;
 
 function Command(const AId, ACaption: string; const APath: string): TAtlasCommand;
 begin
@@ -174,9 +175,11 @@ var
   mFileName: string;
 begin
   mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-palette-test.json');
-  mHistory := TAtlasCommandHistory.Create;
-  mLoaded := TAtlasCommandHistory.Create;
+  mHistory := nil;
+  mLoaded := nil;
   try
+    mHistory := TAtlasCommandHistory.Create;
+    mLoaded := TAtlasCommandHistory.Create;
     mHistory.Executed('A');
     mHistory.Executed('B');
     mHistory.SaveToFile(mFileName);

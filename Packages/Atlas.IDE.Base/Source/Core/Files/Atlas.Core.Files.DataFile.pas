@@ -59,6 +59,9 @@ type
     /// <summary>Schreibt AText als UTF-8 ohne BOM und ersetzt die Datei atomar; legt den Ordner an. Fehler
     /// (Ordner, Datei von einem anderen Programm gesperrt) als Ausnahme.</summary>
     class procedure Write(const AFileName, AText: string); static;
+    /// <summary>Schreibt wie Write, außer AFileName ist AKept (die Datei, die Load stehen ließ); False dann.
+    /// </summary>
+    class function WriteUnlessKept(const AFileName, AKept, AText: string): Boolean; static;
     /// <summary>Löscht AFileName, wenn es sie gibt; gesperrt oder schon fort zählt nicht als Fehler (eine Datei
     /// für andere Prozesse, die beim Beenden wegsoll; Reste räumt der nächste Start weg).</summary>
     class procedure RemoveQuietly(const AFileName: string); static;
@@ -79,7 +82,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.Classes,
   System.SyncObjs,
   Atlas.Text.Encoding,
@@ -220,6 +222,15 @@ begin
   TAtlasTextFile.Replace(AFileName, TEncoding.UTF8.GetBytes(AText));
 end;
 
+class function TAtlasDataFile.WriteUnlessKept(const AFileName, AKept, AText: string): Boolean;
+begin
+  Result := not SameFileName(AFileName, AKept);
+  if Result then
+  begin
+    TAtlasDataFile.Write(AFileName, AText);
+  end;
+end;
+
 class procedure TAtlasDataFile.RemoveQuietly(const AFileName: string);
 begin
   // Gesperrt oder gerade fort: DeleteFile meldet es nur im Ergebnis, die Datei bleibt bis zum nächsten Aufräumen.
@@ -236,7 +247,7 @@ begin
   mTarget := AFileName + cDefectExtension;
   // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand. Erst
   // löschen, dann umbenennen konnte zwei Lesern die eben beiseitegelegte Datei kosten.
-  Result := MoveFileEx(PChar(AFileName), PChar(mTarget), MOVEFILE_REPLACE_EXISTING);
+  Result := TAtlasTextFile.MoveReplacing(AFileName, mTarget);
   if Result then
   begin
     TAtlasGuard.Log(Format('Datendatei %s: %s; beiseitegelegt als *%s, Atlas beginnt sie neu',

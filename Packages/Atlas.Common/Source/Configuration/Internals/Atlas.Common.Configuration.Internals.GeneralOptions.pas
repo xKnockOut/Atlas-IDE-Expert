@@ -31,7 +31,7 @@ type
   TGeneralOptionsText = (UnknownDelphiVersionExpectedE, UnknownDelphiVersionExpectedE2, AllowedAreDeEnAnd,
     UnknownEncodingExpectedUtf8, MemoryBudgetMbMustBeAWhole, RequestTimeoutMsMustBeAWhole, AllowedAreDebugInfoWarning,
     DiagnosticsLogDaysMustBeA, AllowedAreTrueFalseAlphabetic, UsesKeepMustBeAList, DeadCodeMustBeAList,
-    SlashCommandsDisabledMustBeA);
+    SlashCommandsDisabledMustBeA, AllowedAreCommentsLines, AllowedAreOriginAlphabetic);
 
 const
   cTexts: array[TGeneralOptionsText] of TAtlasText = (
@@ -49,12 +49,15 @@ const
      En: 'Allowed are "debug", "info", "warning" and "error"'),
     (De: '"diagnostics.logDays" muss eine ganze Zahl von 1 bis 365 sein';
      En: '"diagnostics.logDays" must be a whole number from 1 to 365'),
-    (De: 'Erlaubt sind true, false, "alphabetic" und "namespace"';
-     En: 'Allowed are true, false, "alphabetic" and "namespace"'),
+    (De: 'Erlaubt sind true, false, "alphabetic", "namespace" und "origin"';
+     En: 'Allowed are true, false, "alphabetic", "namespace" and "origin"'),
     (De: '"usesKeep" muss eine Liste von Unit-Namen sein'; En: '"usesKeep" must be a list of unit names'),
     (De: '"deadCode.%s" muss eine Liste von Texten sein'; En: '"deadCode.%s" must be a list of texts'),
     (De: '"slashCommands.disabled" muss eine Liste von Befehlsnamen sein';
-     En: '"slashCommands.disabled" must be a list of command names'));
+     En: '"slashCommands.disabled" must be a list of command names'),
+    (De: 'Erlaubt sind "comments" und "lines"'; En: 'Allowed are "comments" and "lines"'),
+    (De: 'Erlaubt sind "origin", "alphabetic" und "namespace"';
+     En: 'Allowed are "origin", "alphabetic" and "namespace"'));
 
 {$SCOPEDENUMS OFF}
 
@@ -371,16 +374,19 @@ end;
 
 procedure ReadSortUses(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin
-  // true/false wie bisher, "namespace" sortiert gruppiert nach Namespace (#284).
+  // true/false wie bisher, "namespace" sortiert gruppiert nach Namespace (#284), "origin" gliedert nach Herkunft
+  // (#2794).
   if ANode.Kind = TJsonKind.Boolean_ then
   begin
     ASettings.SortUses := SameText(ANode.Value, 'true');
     ASettings.SortUsesByNamespace := False;
+    ASettings.SortUsesByOrigin := False;
   end
-  else if (ANode.Kind = TJsonKind.String_) and MatchText(ANode.Value, ['alphabetic', 'namespace']) then
+  else if (ANode.Kind = TJsonKind.String_) and MatchText(ANode.Value, ['alphabetic', 'namespace', 'origin']) then
   begin
     ASettings.SortUses := True;
     ASettings.SortUsesByNamespace := SameText(ANode.Value, 'namespace');
+    ASettings.SortUsesByOrigin := SameText(ANode.Value, 'origin');
   end
   else
   begin
@@ -392,6 +398,31 @@ procedure TakeSortUses(const ASource: TServerSettings; const AFileText: string; 
 begin
   ATarget.SortUses := ASource.SortUses;
   ATarget.SortUsesByNamespace := ASource.SortUsesByNamespace;
+  ATarget.SortUsesByOrigin := ASource.SortUsesByOrigin;
+end;
+
+procedure ReadUsesGroupStyle(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
+var
+  mText: string;
+begin
+  if not AReader.ExpectString(ANode, 'usesGroupStyle', mText) then
+  begin
+    Exit;
+  end;
+  if MatchStr(mText, ['comments', 'lines']) then
+  begin
+    ASettings.UsesGroupStyle := mText;
+  end
+  else
+  begin
+    AReader.ReportNode(ANode, cTexts[TGeneralOptionsText.AllowedAreCommentsLines].Text);
+  end;
+end;
+
+procedure TakeUsesGroupStyle(const ASource: TServerSettings; const AFileText: string;
+  var ATarget: TServerSettings);
+begin
+  ATarget.UsesGroupStyle := ASource.UsesGroupStyle;
 end;
 
 procedure ReadUsesKeep(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
@@ -489,11 +520,30 @@ begin
   end;
 end;
 
+procedure ReadSlashSortUsesOrder(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+  var ASettings: TServerSettings);
+var
+  mText: string;
+begin
+  if not AReader.ExpectString(AValue, AKey, mText) then
+  begin
+    Exit;
+  end;
+  if MatchStr(mText, ['origin', 'alphabetic', 'namespace']) then
+  begin
+    ASettings.SlashSortUsesOrder := mText;
+  end
+  else
+  begin
+    AReader.ReportNode(AValue, cTexts[TGeneralOptionsText.AllowedAreOriginAlphabetic].Text);
+  end;
+end;
+
 const
-  cSlashMembers: array[0..5] of TMemberOption = ((Key: 'disabled'; Read: ReadSlashDisabled),
+  cSlashMembers: array[0..6] of TMemberOption = ((Key: 'disabled'; Read: ReadSlashDisabled),
     (Key: 'headerTemplate'; Read: ReadSlashText), (Key: 'logCall'; Read: ReadSlashText),
     (Key: 'componentPalette'; Read: ReadSlashText), (Key: 'todoOwner'; Read: ReadSlashText),
-    (Key: 'todoCategory'; Read: ReadSlashText));
+    (Key: 'todoCategory'; Read: ReadSlashText), (Key: 'sortUsesOrder'; Read: ReadSlashSortUsesOrder));
 
 procedure ReadSlashCommands(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin
@@ -514,12 +564,13 @@ begin
   ATarget.SlashTodoOwner := ASource.SlashTodoOwner;
   ATarget.SlashTodoCategory := ASource.SlashTodoCategory;
   ATarget.SlashSortUsesRemoveUnused := ASource.SlashSortUsesRemoveUnused;
+  ATarget.SlashSortUsesOrder := ASource.SlashSortUsesOrder;
   ATarget.SlashEnumHelper := ASource.SlashEnumHelper;
   ATarget.SlashSetHelper := ASource.SlashSetHelper;
 end;
 
 const
-  cSections: array[0..21] of TConfigurationSection = (
+  cSections: array[0..22] of TConfigurationSection = (
     (Section: 'delphiVersion'; Read: ReadDelphiVersion; Take: TakeDelphiVersion),
     (Section: 'minDelphiVersion'; Read: ReadMinDelphiVersion; Take: TakeMinDelphiVersion),
     (Section: 'language'; Read: ReadLanguage; Take: TakeLanguage),
@@ -538,6 +589,7 @@ const
     (Section: 'completeBlocks'; Read: ReadCompleteBlocks; Take: TakeCompleteBlocks),
     (Section: 'usesCommand'; Read: ReadUsesCommand; Take: TakeUsesCommand),
     (Section: 'sortUses'; Read: ReadSortUses; Take: TakeSortUses),
+    (Section: 'usesGroupStyle'; Read: ReadUsesGroupStyle; Take: TakeUsesGroupStyle),
     (Section: 'usesKeep'; Read: ReadUsesKeep; Take: TakeUsesKeep),
     (Section: 'deadCode'; Read: ReadDeadCode; Take: TakeDeadCode),
     (Section: 'slashCommands'; Read: ReadSlashCommands; Take: TakeSlashCommands),

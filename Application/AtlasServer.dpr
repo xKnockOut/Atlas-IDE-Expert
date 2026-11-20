@@ -131,7 +131,7 @@ uses
   Atlas.Core.VersionControl.Providers.Null in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas',
   Atlas.Core.VersionControl.Detection in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas',
   Atlas.Core.VersionControl.Composition in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas',
-  Atlas.Core.VersionControl.Adapters.ProcessRunner in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Adapters.ProcessRunner.pas',
+  Atlas.Core.VersionControl.Providers.ProcessRunner in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.ProcessRunner.pas',
   Atlas.Core.Tracker.CommitHook in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas',
   Atlas.Core.Tracker.CurrentIssue in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CurrentIssue.pas',
   Atlas.Core.Tracker.Contract.Files in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Contract.Files.pas',

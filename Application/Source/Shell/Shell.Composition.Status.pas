@@ -66,7 +66,7 @@ uses
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.ServerPackage,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Text.Anonymize,
@@ -451,6 +451,8 @@ begin
   end;
   mInput.Workspaces := WorkspaceRoots;
   mInput.Identity := TProcessInfo.IdentityNames;
+  // Aufrufstatistik der KI-Assistenten am selben Ordner (#2611).
+  mInput.McpStatistics := TServerPackage.McpSectionsIn(TIndexCacheDirectory.DefaultRoot, mInput.Workspaces, Now);
   Result := TServerPackage.ToJson(TServerPackage.Build(mInput));
   FServices.Logger.Info('Diagnosepaket des Servers erstellt');
 end;

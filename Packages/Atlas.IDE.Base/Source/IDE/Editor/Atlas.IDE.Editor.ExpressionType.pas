@@ -36,7 +36,7 @@ uses
 type
   TAtlasExpressionTypeSessionFunc = reference to function: TLspSession;
 
-  TAtlasIdeExpressionType = class
+  TAtlasIdeExpressionType = class(TAtlasIdeCaretCommand)
   private const
     /// <summary>Die Namensauflösung kann Units nachladen: etwas länger als eine einfache Anfrage.</summary>
     cTimeoutMs = 10000;
@@ -55,16 +55,18 @@ type
     FLines: TArray<string>;
     FTabWidth: Integer;
     procedure KeyDown(AKey: Word; var AHandled: Boolean);
-    procedure Execute;
     function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
     function Ask(ASession: TLspSession; const AFileName, AText, AArguments: string;
       out AInfo: TAtlasExpressionTypeInfo): Boolean;
     procedure Show(const AInfo: TAtlasExpressionTypeInfo);
     procedure Navigate;
-    procedure Close;
     procedure PaintLine(const ARect: TRect; const AStage: TPaintLineStage; ABeforeEvent: Boolean;
       const AContext: INTACodeEditorPaintContext);
     class function KeyText: string; static;
+  protected
+    procedure Execute; override;
+    function Allowed: Boolean; override;
+    procedure Close; override;
   public
     constructor Create(const ASession: TAtlasExpressionTypeSessionFunc; const AMessage: TProc<string>);
     destructor Destroy; override;
@@ -391,28 +393,24 @@ begin
   Result := (FInstance <> nil) and (FInstance.FTip <> nil) and FInstance.FTip.IsShown;
 end;
 
+function TAtlasIdeExpressionType.Allowed: Boolean;
+begin
+  Result := Enabled;
+end;
+
 class procedure TAtlasIdeExpressionType.Run;
 begin
-  if (FInstance <> nil) and Enabled then
-  begin
-    FInstance.Execute;
-  end;
+  RunCommand(FInstance);
 end;
 
 class procedure TAtlasIdeExpressionType.Dismiss;
 begin
-  if FInstance <> nil then
-  begin
-    FInstance.Close;
-  end;
+  CloseCommand(FInstance);
 end;
 
 class procedure TAtlasIdeExpressionType.EditorModified;
 begin
-  if FInstance <> nil then
-  begin
-    FInstance.Close;
-  end;
+  Dismiss;
 end;
 
 /// <summary>Hinterlegt ASpan in der Zeile AText von AContext.</summary>

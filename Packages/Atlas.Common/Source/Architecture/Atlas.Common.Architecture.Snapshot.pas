@@ -172,7 +172,8 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -282,17 +283,12 @@ end;
 { TArchitectureSnapshot }
 
 function TArchitectureSnapshot.IndexOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Units) do
-  begin
-    if SameText(Units[mIndex].Name, AName) then
+  Result := TTextArrays.IndexOfText<TSnapshotUnit>(Units, AName,
+    function(AUnit: TSnapshotUnit): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AUnit.Name;
+    end);
 end;
 
 function TArchitectureSnapshot.InterfaceCycleCount: Integer;

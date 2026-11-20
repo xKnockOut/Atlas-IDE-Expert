@@ -42,7 +42,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Text.Names;
 
 { TAtlasMetricsLens }
 
@@ -115,19 +116,6 @@ begin
   end;
 end;
 
-/// <summary>Letzter Teil eines Namens mit Punkten (TFoo.Run → Run).</summary>
-function LastPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := AName;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
-end;
-
 /// <summary>Steht ANeedle ab AStart in AText als ganzer Bezeichner?</summary>
 function WholeIdentAt(const AText, ANeedle: string; AStart: Integer): Boolean;
 begin
@@ -141,7 +129,7 @@ var
   mStart: Integer;
 begin
   Result := False;
-  mName := UpperCase(LastPart(AName));
+  mName := UpperCase(TTextNames.LastPart(AName));
   if mName = '' then
   begin
     Exit;

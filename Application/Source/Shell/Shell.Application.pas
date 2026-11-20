@@ -24,7 +24,7 @@ uses
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Lsp.StatusHeartbeat,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Shell.Platform,
   Shell.CommandLine,
   Shell.Bootstrap,

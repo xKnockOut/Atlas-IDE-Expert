@@ -26,7 +26,9 @@ uses
   Atlas.UI.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.BreakpointListMenu,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasMethodBreakpointSessionFunc = reference to function: TLspSession;
@@ -38,7 +40,7 @@ type
     cFileName = 'debug-method-breakpoints.json';
     cStoreWhat = 'Methodenhaltepunkte';
   private type
-    TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
+    TListener = class(TAtlasDebugListener, IAtlasIdeDebugLaunchCheck)
     public
       function AllowLaunch(const AProject: IOTAProject): Boolean;
       procedure DebugStarted; override;
@@ -46,7 +48,7 @@ type
   private class var
     FSession: TAtlasMethodBreakpointSessionFunc;
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FStore: TAtlasMethodGroupStore;
     FStoreKept: Boolean;
     FLastGroup: TAtlasMethodGroup;
@@ -96,7 +98,8 @@ uses
   Atlas.Core.Debug.MethodGroupFlow,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Debug.Breakpoints;
+  Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Foundation.Debugger;
 
 { TAtlasIdeMethodBreakpoints.TListener }
 
@@ -259,7 +262,7 @@ var
   mName: string;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

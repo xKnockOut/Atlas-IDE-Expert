@@ -43,7 +43,8 @@ uses
   Atlas.UI.Welcome.Board,
   Atlas.UI.Welcome.Arrange,
   System.Types,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.TestSupport,
+  Atlas.UI.Welcome.Contract;
 
 { TAtlasWelcomeArrangeBoardTests }
 

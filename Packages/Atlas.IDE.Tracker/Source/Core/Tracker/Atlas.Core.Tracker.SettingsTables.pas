@@ -23,8 +23,9 @@ uses
   Atlas.Core.Settings.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Tracker.Queries,
-  Atlas.Core.Tracker.CommentEditor;
+  Atlas.Core.Tracker.CommentEditor,
+  Atlas.Core.Tracker.Contract.CommentAssist,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
 {$SCOPEDENUMS ON}
@@ -238,7 +239,8 @@ uses
   Atlas.Core.Tracker.Contract,
   System.Math,
   System.StrUtils,
-  Atlas.Core.Tracker.Workflow;
+  Atlas.Core.Tracker.Workflow,
+  Atlas.Core.Tracker.Queries;
 
 const
   cNoRow = -1;

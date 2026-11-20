@@ -17,7 +17,7 @@ uses
 
 const
   cProfileFile0 = 'alles-an-experimentell.json';
-  cProfile0: array[0..78] of string = (
+  cProfile0: array[0..79] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -81,6 +81,7 @@ const
     '    "debug.asyncOrigin": true,',
     '    "debug.profiler": true,',
     '    "debug.dragNextStatement": true,',
+    '    "debug.returnValues": true,',
     '    "debug.memoryTimeline.objectCount": true,',
     '    "debug.enabled": true,',
     '    "issues.enabled": true,',

@@ -25,6 +25,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Diagnostics.RuntimeReport,
+  Atlas.Common.Diagnostics.Contract,
   Atlas.Text.CrashReport,
   Shell.WorkspaceGroup;
 

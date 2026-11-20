@@ -13,24 +13,12 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>REG_SZ, REG_EXPAND_SZ, REG_MULTI_SZ, REG_DWORD, REG_QWORD, REG_BINARY.</summary>
-  TAtlasRegKind = (Text, ExpandText, MultiText, Number, Number64, Binary);
-{$SCOPEDENUMS OFF}
-
-  TAtlasRegValue = record
-    Name: string;
-    Kind: TAtlasRegKind;
-    /// <summary>Text; Zahlen dezimal; Binärdaten als Hex ohne Trenner.</summary>
-    Data: string;
-    /// <summary>Nur MultiText.</summary>
-    Lines: TArray<string>;
-    class function Create(const AName: string; AKind: TAtlasRegKind; const AData: string): TAtlasRegValue; static;
-    class function Same(const ALeft, ARight: TAtlasRegValue): Boolean; static;
-  end;
+  TAtlasRegKind = Atlas.Core.Welcome.Contract.TAtlasRegKind;
+  TAtlasRegValue = Atlas.Core.Welcome.Contract.TAtlasRegValue;
 
   /// <summary>Ein Registry-Schlüssel mit Werten und Unterschlüsseln.</summary>
   TAtlasRegKey = class
@@ -49,29 +37,34 @@ type
     /// <summary>Gleiche Werte (Name, Typ, Inhalt) und Unterschlüssel, Reihenfolge egal, Namen ohne
     /// Groß/klein.</summary>
     function SameAs(AOther: TAtlasRegKey): Boolean;
+    /// <summary>Der Schlüssel samt Unterschlüsseln als Einträge des Vertrags (IAtlasRegistryAccess).</summary>
+    function Nodes: TAtlasRegNodes;
+    /// <summary>Schlüssel AName aus ANodes; nil, wenn ANodes leer ist (Schlüssel fehlt).</summary>
+    class function FromNodes(const AName: string; const ANodes: TAtlasRegNodes): TAtlasRegKey; static;
     property Name: string read FName;
     property Values: TList<TAtlasRegValue> read FValues;
     property Keys: TObjectList<TAtlasRegKey> read FKeys;
   end;
 
-  IAtlasRegistryAccess = interface
-    ['{8E4C6B21-0F3D-4A79-B5E2-6C19D7A043F8}']
-    /// <summary>Kopie des Schlüssels unter APath (relativ zu HKCU) samt Unterschlüsseln; nil, wenn er fehlt.
-    /// Der Aufrufer gibt das Ergebnis frei.</summary>
-    function Read(const APath: string): TAtlasRegKey;
+  /// <summary>Lesen und Schreiben eines ganzen Schlüssels über IAtlasRegistryAccess.</summary>
+  TAtlasRegistryKeys = class
+  public
+    /// <summary>Kopie des Schlüssels unter APath samt Unterschlüsseln; nil, wenn er fehlt. Der Aufrufer gibt das
+    /// Ergebnis frei.</summary>
+    class function Read(const AAccess: IAtlasRegistryAccess; const APath: string): TAtlasRegKey; static;
     /// <summary>Ersetzt den Schlüssel unter APath vollständig durch AKey; nil löscht ihn.</summary>
-    procedure Replace(const APath: string; AKey: TAtlasRegKey);
+    class procedure Replace(const AAccess: IAtlasRegistryAccess; const APath: string; AKey: TAtlasRegKey); static;
   end;
 
   /// <summary>Registry im Arbeitsspeicher: Pfad → Schlüssel.</summary>
   TAtlasMemoryRegistry = class(TInterfacedObject, IAtlasRegistryAccess)
   private
-    FKeys: TObjectDictionary<string, TAtlasRegKey>;
+    FKeys: TDictionary<string, TAtlasRegNodes>;
   public
     constructor Create;
     destructor Destroy; override;
-    function Read(const APath: string): TAtlasRegKey;
-    procedure Replace(const APath: string; AKey: TAtlasRegKey);
+    function Read(const APath: string): TAtlasRegNodes;
+    procedure Replace(const APath: string; const ANodes: TAtlasRegNodes);
   end;
 
   TAtlasWelcomeBackup = class
@@ -96,6 +89,62 @@ implementation
 uses
   System.JSON;
 
+/// <summary>Eigene Kopie von ANodes; Records mit dynamischen Arrays teilen sonst ihre Arrays.</summary>
+function CopyNodes(const ANodes: TAtlasRegNodes): TAtlasRegNodes;
+var
+  mIndex: Integer;
+begin
+  Result := Copy(ANodes);
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex].Values := Copy(Result[mIndex].Values);
+  end;
+end;
+
+/// <summary>AKey und seine Unterschlüssel an ANodes anhängen; APath ist der Pfad von AKey.</summary>
+procedure AddNodes(AKey: TAtlasRegKey; const APath: string; var ANodes: TAtlasRegNodes);
+var
+  mNode: TAtlasRegNode;
+  mChild: TAtlasRegKey;
+  mPrefix: string;
+begin
+  mNode.Path := APath;
+  mNode.Values := AKey.Values.ToArray;
+  SetLength(ANodes, Length(ANodes) + 1);
+  ANodes[High(ANodes)] := mNode;
+  mPrefix := '';
+  if APath <> '' then
+  begin
+    mPrefix := APath + '\';
+  end;
+  for mChild in AKey.Keys do
+  begin
+    AddNodes(mChild, mPrefix + mChild.Name, ANodes);
+  end;
+end;
+
+/// <summary>Unterschlüssel APath von ARoot (Teile mit „\“), fehlende werden angelegt.</summary>
+function KeyAt(ARoot: TAtlasRegKey; const APath: string): TAtlasRegKey;
+var
+  mPart: string;
+  mChild: TAtlasRegKey;
+begin
+  Result := ARoot;
+  if APath = '' then
+  begin
+    Exit;
+  end;
+  for mPart in APath.Split(['\']) do
+  begin
+    mChild := Result.FindKey(mPart);
+    if mChild = nil then
+    begin
+      mChild := Result.AddKey(mPart);
+    end;
+    Result := mChild;
+  end;
+end;
+
 const
   cKindNames: array[TAtlasRegKind] of string = ('text', 'expand', 'multi', 'dword', 'qword', 'binary');
 
@@ -113,35 +162,6 @@ begin
   end;
   AKind := TAtlasRegKind.Text;
   Result := False;
-end;
-
-{ TAtlasRegValue }
-
-class function TAtlasRegValue.Create(const AName: string; AKind: TAtlasRegKind; const AData: string): TAtlasRegValue;
-begin
-  Result.Name := AName;
-  Result.Kind := AKind;
-  Result.Data := AData;
-  Result.Lines := nil;
-end;
-
-class function TAtlasRegValue.Same(const ALeft, ARight: TAtlasRegValue): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := SameText(ALeft.Name, ARight.Name) and (ALeft.Kind = ARight.Kind) and (ALeft.Data = ARight.Data) and
-    (Length(ALeft.Lines) = Length(ARight.Lines));
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(ALeft.Lines) do
-  begin
-    if ALeft.Lines[mIndex] <> ARight.Lines[mIndex] then
-    begin
-      Exit(False);
-    end;
-  end;
 end;
 
 { TAtlasRegKey }
@@ -425,12 +445,59 @@ begin
   end;
 end;
 
+function TAtlasRegKey.Nodes: TAtlasRegNodes;
+begin
+  Result := nil;
+  AddNodes(Self, '', Result);
+end;
+
+class function TAtlasRegKey.FromNodes(const AName: string; const ANodes: TAtlasRegNodes): TAtlasRegKey;
+var
+  mNode: TAtlasRegNode;
+  mKey: TAtlasRegKey;
+  mValue: TAtlasRegValue;
+begin
+  if Length(ANodes) = 0 then
+  begin
+    Exit(nil);
+  end;
+  Result := TAtlasRegKey.Create(AName);
+  for mNode in ANodes do
+  begin
+    mKey := KeyAt(Result, mNode.Path);
+    for mValue in mNode.Values do
+    begin
+      mKey.SetValue(mValue);
+    end;
+  end;
+end;
+
+{ TAtlasRegistryKeys }
+
+class function TAtlasRegistryKeys.Read(const AAccess: IAtlasRegistryAccess; const APath: string): TAtlasRegKey;
+begin
+  Result := TAtlasRegKey.FromNodes(ExtractFileName(APath), AAccess.Read(APath));
+end;
+
+class procedure TAtlasRegistryKeys.Replace(const AAccess: IAtlasRegistryAccess; const APath: string;
+  AKey: TAtlasRegKey);
+var
+  mNodes: TAtlasRegNodes;
+begin
+  mNodes := nil;
+  if AKey <> nil then
+  begin
+    mNodes := AKey.Nodes;
+  end;
+  AAccess.Replace(APath, mNodes);
+end;
+
 { TAtlasMemoryRegistry }
 
 constructor TAtlasMemoryRegistry.Create;
 begin
   inherited Create;
-  FKeys := TObjectDictionary<string, TAtlasRegKey>.Create([doOwnsValues]);
+  FKeys := TDictionary<string, TAtlasRegNodes>.Create;
 end;
 
 destructor TAtlasMemoryRegistry.Destroy;
@@ -439,23 +506,23 @@ begin
   inherited;
 end;
 
-function TAtlasMemoryRegistry.Read(const APath: string): TAtlasRegKey;
+function TAtlasMemoryRegistry.Read(const APath: string): TAtlasRegNodes;
 var
-  mKey: TAtlasRegKey;
+  mNodes: TAtlasRegNodes;
 begin
   Result := nil;
-  if FKeys.TryGetValue(LowerCase(APath), mKey) then
+  if FKeys.TryGetValue(LowerCase(APath), mNodes) then
   begin
-    Result := mKey.Clone;
+    Result := CopyNodes(mNodes);
   end;
 end;
 
-procedure TAtlasMemoryRegistry.Replace(const APath: string; AKey: TAtlasRegKey);
+procedure TAtlasMemoryRegistry.Replace(const APath: string; const ANodes: TAtlasRegNodes);
 begin
   FKeys.Remove(LowerCase(APath));
-  if AKey <> nil then
+  if Length(ANodes) > 0 then
   begin
-    FKeys.Add(LowerCase(APath), AKey.Clone);
+    FKeys.Add(LowerCase(APath), CopyNodes(ANodes));
   end;
 end;
 
@@ -469,7 +536,7 @@ begin
   mRoot := TJSONObject.Create;
   try
     mRoot.AddPair('path', APath);
-    mKey := AAccess.Read(APath);
+    mKey := TAtlasRegistryKeys.Read(AAccess, APath);
     try
       mRoot.AddPair('existed', TJSONBool.Create(mKey <> nil));
       if mKey <> nil then
@@ -514,7 +581,7 @@ begin
         Exit;
       end;
       try
-        AAccess.Replace(mPath, mKey);
+        TAtlasRegistryKeys.Replace(AAccess, mPath, mKey);
       finally
         mKey.Free;
       end;
@@ -522,7 +589,7 @@ begin
     else
     begin
       // Vorher gab es den Schlüssel nicht: wieder entfernen.
-      AAccess.Replace(mPath, nil);
+      TAtlasRegistryKeys.Replace(AAccess, mPath, nil);
     end;
     Result := True;
   finally
@@ -549,7 +616,7 @@ begin
     begin
       Exit;
     end;
-    mCurrent := AAccess.Read(mField.Value);
+    mCurrent := TAtlasRegistryKeys.Read(AAccess, mField.Value);
     try
       mField := mRoot.GetValue('key');
       if mField is TJSONObject then

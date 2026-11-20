@@ -14,9 +14,9 @@
 //   Statuszeile und Schnellaktion der Willkommensseite (RunInProject).
 //   Vorher speichert tasks.saveBeforeRun geänderte Dateien.
 // - Läufe und Reihen führt TAtlasTaskFlow (Kern); jeder Lauf ist ein
-//   eigener Thread mit eigenem Prozess (TAtlasIdeTaskLauncher mit
-//   TAtlasTaskProcessRun aus der Kompositionswurzel, dort
-//   TAtlasTaskProcess: Job-Objekt, Zeitlimit, Abbruch). Zeilen und erkannte
+//   eigener Thread mit eigenem Prozess (IAtlasTaskLauncher aus der Fabrik
+//   der Komposition, dort TAtlasIdeTaskLauncher mit TAtlasTaskProcess:
+//   Job-Objekt, Zeitlimit, Abbruch). Zeilen und erkannte
 //   Fundstellen kommen gesammelt alle 100 ms über TAtlasMainThread ins
 //   Register „Atlas-Aufgaben“ (TAtlasIdeTaskOutput).
 // - Ende eines Laufs: Kopfzeile grün/rot, letzter Lauf in tasks.json
@@ -45,10 +45,11 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   Atlas.Core.Build.Events,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Runs,
   Atlas.Core.Tasks.RunFlow,
   Atlas.IDE.Tasks.Output,
+  Atlas.IDE.Tasks.Launcher,
   Atlas.IDE.Tasks.Projects,
   Atlas.IDE.Tasks.Shortcuts;
 
@@ -104,6 +105,8 @@ type
     FOutput: TAtlasIdeTaskOutput;
     FHistory: THistory;
     FFlow: TAtlasTaskFlow;
+    /// <summary>Starter der Läufe, auch für die Frage, ob eine Aufgabe hier laufen kann.</summary>
+    FLauncher: IAtlasTaskLauncher;
     FShortcuts: TAtlasIdeTaskShortcuts;
     FLoaded: TLoaded;
     FHandlers: THandlers;
@@ -118,8 +121,8 @@ type
     procedure RunEnded(AId: Integer; const AKey: string; const ARun: TAtlasTaskRun);
     function LastText(const AProject, AName: string): string;
   public
-    /// <summary>AProcess startet den Prozess einer Aufgabe (Kompositionswurzel: TAtlasTaskProcess.Run).</summary>
-    constructor Create(const AProcess: TAtlasTaskProcessRun);
+    /// <summary>ANewLauncher legt den Starter der Läufe an (Komposition: TAtlasIdeTaskLauncher).</summary>
+    constructor Create(const ANewLauncher: TAtlasIdeTaskLauncherFactory);
     destructor Destroy; override;
     /// <summary>Aufgaben des aktiven Projekts (lädt neu, wenn sich etwas geändert hat).</summary>
     function Definitions: TAtlasTaskDefinitions;
@@ -165,6 +168,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Files.DataFile,
+  Atlas.Core.Tasks.Definitions,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tasks.Plan,
@@ -175,7 +179,6 @@ uses
   Atlas.UI.Tasks.Texts,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Tasks.Launcher,
   Atlas.IDE.Tasks.Pickers,
   Atlas.IDE.Foundation.Files;
 
@@ -282,9 +285,7 @@ begin
     end;
 end;
 
-constructor TAtlasIdeTasks.Create(const AProcess: TAtlasTaskProcessRun);
-var
-  mLauncher: IAtlasTaskLauncher;
+constructor TAtlasIdeTasks.Create(const ANewLauncher: TAtlasIdeTaskLauncherFactory);
 begin
   inherited Create;
   FAlive.Flag := TAlive.Create;
@@ -293,8 +294,8 @@ begin
   FOutput := TAtlasIdeTaskOutput.Create;
   FOutput.OnlyFindings := TAtlasIdeSettings.Current.TasksOnlyFindings;
   FHistory.Data := TAtlasTaskHistory.Create;
-  mLauncher := TAtlasIdeTaskLauncher.Create(AProcess, FOutput, EndedOf(Self), AliveCheck(FAlive));
-  FFlow := TAtlasTaskFlow.Create(mLauncher, NotedOf(Self));
+  FLauncher := ANewLauncher(FOutput, EndedOf(Self), AliveCheck(FAlive));
+  FFlow := TAtlasTaskFlow.Create(FLauncher, NotedOf(Self));
   FShortcuts := TAtlasIdeTaskShortcuts.Create;
   FLoaded.Names := TAtlasIdeTaskNames.Create;
   LoadHistory(FHistory);
@@ -311,6 +312,7 @@ begin
   FreeAndNil(FLoaded.Timer);
   // Laufende Aufgaben beenden (Job-Objekt) und auf ihre Threads warten; der Starter gehört dem Ablauf.
   FreeAndNil(FFlow);
+  FLauncher := nil;
   FreeAndNil(FShortcuts);
   FreeAndNil(FLoaded.Names);
   FreeAndNil(FHistory.Data);
@@ -479,7 +481,7 @@ begin
     AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNone);
     Exit;
   end;
-  if TAtlasIdeTaskLauncher.NeedsMissingCompiler(mTasks[mIndex], AReason) then
+  if FLauncher.Refuses(mTasks[mIndex], AReason) then
   begin
     Exit;
   end;

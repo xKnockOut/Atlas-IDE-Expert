@@ -5,7 +5,7 @@
 // Titelzeile, Griff und Spalte gehören der Seite; die Kachel zeichnet nur
 // ihren Inhalt, nennt ihre Höhe (BodyHeight) und meldet Änderungen der Höhe
 // über OnHeightChanged. Den Vertrag Atlas.IDE.Contracts.WelcomeTiles setzt
-// Atlas.IDE.Tracker.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
+// Atlas.IDE.Tracker.Adapters.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
 // misst sie keinen Text und holt UpdateContent in CreateWnd nach.
 
 interface
@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Vcl.Forms;
+  Atlas.UI.Foundation.Controls;
 
 { TAtlasTrackerTileView }
 
@@ -75,20 +75,8 @@ begin
 end;
 
 function TAtlasTrackerTileView.HasWindow: Boolean;
-var
-  mControl: TWinControl;
 begin
-  mControl := Self;
-  while mControl <> nil do
-  begin
-    if mControl.HandleAllocated or (mControl.ParentWindow <> 0) or (mControl is TCustomForm) then
-    begin
-      Exit(True);
-    end;
-    mControl := mControl.Parent;
-  end;
-  FPendingUpdate := True;
-  Result := False;
+  Result := TAtlasControls.WindowOrPending(Self, FPendingUpdate);
 end;
 
 function TAtlasTrackerTileView.BodyHeight: Integer;

@@ -46,8 +46,9 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Evaluate,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.EvalSlices,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.StopView,
@@ -174,7 +175,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Unavailable,
-  Atlas.IDE.Debug.ThreadEvaluator,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.EvaluateWindow,
   Atlas.UI.Debug.Evaluate.Strings;
@@ -389,7 +389,7 @@ end;
 constructor TAtlasIdeDebugEvaluate.TLines.Create;
 begin
   inherited Create;
-  FEvaluator := TAtlasIdeDebugThreadEvaluator.Create;
+  FEvaluator := TAtlasIdeDebugSession.NewEvaluator;
 end;
 
 destructor TAtlasIdeDebugEvaluate.TLines.Destroy;
@@ -444,10 +444,10 @@ begin
   FSession := ASession;
   FPlace.Line := -1;
   FList := TAtlasEvalList.Create;
-  FEvaluation := TAtlasEvalSlices.Create(TAtlasIdeDebugThreadEvaluator.Create, cSliceMs, cDeferredTimeoutMs);
+  FEvaluation := TAtlasEvalSlices.Create(TAtlasIdeDebugSession.NewEvaluator, cSliceMs, cDeferredTimeoutMs);
   FEvaluation.OnArrived := RefreshFrame;
   FLines := TLines.Create;
-  FThread := TAtlasIdeDebugThreadEvaluator.Create;
+  FThread := TAtlasIdeDebugSession.NewEvaluator;
   FWorkers := TAtlasIdeDebugFieldRequests.Create;
   FStore := TAtlasIdeEvaluateStore.Create;
   CreateTimer(cTickMs);

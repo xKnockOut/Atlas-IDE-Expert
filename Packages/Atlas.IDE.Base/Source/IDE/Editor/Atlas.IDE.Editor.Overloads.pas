@@ -97,7 +97,7 @@ begin
   mPlaceholders := nil;
   try
     if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson,
-      cTimeoutMs, TAtlasTextId.OverloadFailed),
+      cTimeoutMs, TAtlasEditorTextId.OverloadFailed),
       procedure(const AReply: TJSONObject)
       begin
         if AReply.GetValue('placeholders') is TJSONArray then

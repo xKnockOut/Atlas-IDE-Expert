@@ -23,6 +23,8 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.Restart,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.StepsBar;
 
@@ -34,7 +36,7 @@ type
     cStartMs = 60000;
     cDoneMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugEnded; override;
@@ -44,7 +46,7 @@ type
       procedure Tick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FBar: TAtlasStepsBar;
@@ -94,9 +96,10 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.UnavailableFixes,
-  Atlas.UI.Debug.Session.Strings;
+  Atlas.UI.Debug.Session.Strings,
+  Atlas.Core.Foundation.Calls,
+  Atlas.IDE.Foundation.Debugger;
 
 const
   /// <summary>Zeichen hinter fertigen bzw. gescheiterten Schritten.</summary>
@@ -134,10 +137,7 @@ end;
 
 class procedure TAtlasIdeDebugRestart.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class procedure TAtlasIdeDebugRestart.Tick;
@@ -316,7 +316,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -339,7 +339,7 @@ var
   mKey: string;
 begin
   Result := 0;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (Length(FReenable) = 0) then
   begin
     Exit;

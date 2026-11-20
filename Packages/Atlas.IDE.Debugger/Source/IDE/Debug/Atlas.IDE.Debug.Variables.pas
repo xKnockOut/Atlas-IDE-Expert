@@ -141,7 +141,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.EditValue,
   Atlas.IDE.Debug.VariablesWindow,

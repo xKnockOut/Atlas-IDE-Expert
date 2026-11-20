@@ -127,15 +127,6 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ClassCompletion;
 
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 /// <summary>Vor diesem Token beginnt eine Anweisung.</summary>
 function StartsStatementAfter(const AToken: TPascalToken): Boolean;
 begin
@@ -202,7 +193,7 @@ var
 begin
   Result := -1;
   mScan := 0;
-  while (mScan <= High(ATokens)) and (Compare(ATokens[mScan].StartPos, APosition) < 0) do
+  while (mScan <= High(ATokens)) and (TTextPosition.Compare(ATokens[mScan].StartPos, APosition) < 0) do
   begin
     if not (ATokens[mScan].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
@@ -217,11 +208,11 @@ end;
 function NameIndexAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const APosition: TTextPosition): Integer;
 begin
   Result := AIndex;
-  if ATokens[AIndex].IsSymbol('(') and (Compare(ATokens[AIndex].EndPos, APosition) = 0) then
+  if ATokens[AIndex].IsSymbol('(') and (TTextPosition.Compare(ATokens[AIndex].EndPos, APosition) = 0) then
   begin
     Result := PreviousCode(ATokens, AIndex);
   end
-  else if Compare(ATokens[AIndex].EndPos, APosition) < 0 then
+  else if TTextPosition.Compare(ATokens[AIndex].EndPos, APosition) < 0 then
   begin
     Result := -1;
   end;

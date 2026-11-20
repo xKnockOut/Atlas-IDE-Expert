@@ -100,6 +100,9 @@ type
 
 implementation
 
+uses
+  Atlas.UI.Foundation.Controls;
+
 {$R *.dfm}
 
 { TAtlasWelcomeFrame }
@@ -128,20 +131,8 @@ begin
 end;
 
 function TAtlasWelcomeFrame.HasWindow: Boolean;
-var
-  mControl: TWinControl;
 begin
-  mControl := Self;
-  while mControl <> nil do
-  begin
-    if mControl.HandleAllocated or (mControl.ParentWindow <> 0) or (mControl is TCustomForm) then
-    begin
-      Exit(True);
-    end;
-    mControl := mControl.Parent;
-  end;
-  FPendingUpdate := True;
-  Result := False;
+  Result := TAtlasControls.WindowOrPending(Self, FPendingUpdate);
 end;
 
 { TAtlasWelcomeSectionFrame }
