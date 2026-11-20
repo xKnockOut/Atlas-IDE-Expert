@@ -45,6 +45,9 @@ type
     /// <summary>Regionen beim Öffnen (#1814): Vorgabe keep, Werte normalisiert, off gespeichert.</summary>
     [Test]
     procedure RegionFoldsOptions;
+    /// <summary>Große Blöcke einklappen (#2795): Vorgabe an ab 15 Zeilen, Grenzen, abschaltbar.</summary>
+    [Test]
+    procedure BlockFoldsOptions;
     [Test]
     procedure SafeDeleteOptions;
     /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
@@ -388,6 +391,29 @@ begin
   mLoaded := TAtlasPluginSettings.Defaults;
   mLoaded.Load(mStore);
   Assert.AreEqual('off', mLoaded.RegionFolds, 'abschaltbar');
+end;
+procedure TAtlasEditingSettingsTests.BlockFoldsOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.BlockFolds);
+  Assert.AreEqual(15, mSettings.BlockFoldsMinLines);
+  mSettings.BlockFoldsMinLines := 1;
+  mSettings.Normalize;
+  Assert.AreEqual(3, mSettings.BlockFoldsMinLines, 'untere Grenze');
+  mSettings.BlockFoldsMinLines := 5000;
+  mSettings.Normalize;
+  Assert.AreEqual(1000, mSettings.BlockFoldsMinLines, 'obere Grenze');
+  mSettings.BlockFolds := False;
+  mSettings.BlockFoldsMinLines := 40;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.BlockFolds, 'abschaltbar');
+  Assert.AreEqual(40, mLoaded.BlockFoldsMinLines);
 end;
 procedure TAtlasEditingSettingsTests.SafeDeleteOptions;
 var

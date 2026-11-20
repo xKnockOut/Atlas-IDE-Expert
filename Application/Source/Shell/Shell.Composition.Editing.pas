@@ -18,6 +18,7 @@ uses
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
+  Atlas.Common.Lsp.BlockFolds,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SlashMenu;
@@ -43,6 +44,7 @@ type
     FServices: TShellEditingServices;
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
+    FBlockFolds: TLspBlockFolds;
     FFormatting: TLspFormatting;
     FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
@@ -90,6 +92,7 @@ begin
   FDocumentSymbols := TLspDocumentSymbols.Create(FServices.Documents);
   FDocumentSymbols.ReadText := FServices.ReadText;
   FFoldingRanges := TLspFoldingRanges.Create(FServices.Documents);
+  FBlockFolds := TLspBlockFolds.Create(FServices.Documents);
   FFormatting := TLspFormatting.Create(FServices.Documents, FServices.FormatStyleFor, ReadEditorConfig);
   FFormatting.SlashCommandsFor := FServices.SlashCommandsFor;
   FFormatting.DelphiVersionFor := FServices.LanguageLevelFor;
@@ -105,6 +108,7 @@ end;
 destructor TShellEditing.Destroy;
 begin
   FreeAndNil(FDocumentSymbols);
+  FreeAndNil(FBlockFolds);
   FreeAndNil(FFoldingRanges);
   FreeAndNil(FFormatting);
   FreeAndNil(FSlashMenu);
@@ -126,6 +130,7 @@ procedure TShellEditing.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   FDocumentSymbols.Attach(ADispatcher);
   FFoldingRanges.Attach(ADispatcher);
+  FBlockFolds.Attach(ADispatcher);
   FFormatting.Attach(ADispatcher);
   FSelectionRanges.Attach(ADispatcher);
 end;
