@@ -968,6 +968,14 @@ Settings: `debug.exceptionMessageRules` (default on)
 
 Settings: `debug.exceptionRules` (default on); rules with a message also need `debug.exceptionMessageRules`
 
+### Known errors from the issue tracker (#2460)
+
+- When the debugger stops at an exception, the issue tracker module looks for matching issues in the background: class and topmost own method, class and words of the message, method only (numbers, addresses, paths and quoted text do not count).
+- The exception bar shows up to four hits with state and assignee, resolved ones as “occurred again?”, plus “Open issue”, “Add as comment” (exception, own call stack, location, branch) or “Reopen …” and “New issue …” (prefilled).
+- The result is kept per signature for the session; the debugger never waits for the tracker. Without the issue tracker module the bar stays as before.
+
+Setting: `issues.debugKnownErrors` (default on)
+
 ### Access violation explained
 
 - When the debugger stops on an access violation in your own code, Atlas splits the statements of the line into access chains (`Order.Customer.Address.City`, `List[I].Name`, `Self.FData^`) and evaluates them from the left.

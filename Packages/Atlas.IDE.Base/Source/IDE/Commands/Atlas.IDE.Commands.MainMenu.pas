@@ -108,7 +108,8 @@ type
     FMethodOrderItem: TMenuItem;
     /// <summary>Untermenü Code mit Erzeugen und Methodenreihenfolge; fehlt, wenn beide aus sind.</summary>
     FCodeGroup: TMenuItem;
-    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off.</summary>
+    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off; dahinter „Block
+    /// einklappen“, „Große Blöcke einklappen“, „Blöcke aufklappen“ (#2795), nur mit editor.blockFolds.</summary>
     FRegionItems: TArray<TMenuItem>;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
@@ -220,6 +221,7 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.UI.Editor.RegionFolds,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
@@ -306,9 +308,17 @@ var
   mItem: TMenuItem;
 begin
   // Regionen zu-/aufklappen (#1814) nach editor.regionFolds.
+  // Große Blöcke ein-/aufklappen (#2795) nach editor.blockFolds.
   for mItem in FRegionItems do
   begin
-    mItem.Visible := TAtlasIdeRegionFolds.Enabled;
+    if mItem.Tag >= TAtlasMenuActions.cEditorFoldBlock then
+    begin
+      mItem.Visible := TAtlasIdeBlockFolds.Enabled;
+    end
+    else
+    begin
+      mItem.Visible := TAtlasIdeRegionFolds.Enabled;
+    end;
   end;
 end;
 
@@ -451,7 +461,14 @@ begin
     AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand),
       TAtlasMenuActions.cEditorCollapseRegions, EditorClick),
     AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand),
-      TAtlasMenuActions.cEditorExpandRegions, EditorClick));
+      TAtlasMenuActions.cEditorExpandRegions, EditorClick),
+    // Große Blöcke ein-/aufklappen (#2795).
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldBlockCommand),
+      TAtlasMenuActions.cEditorFoldBlock, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldLargeBlocksCommand),
+      TAtlasMenuActions.cEditorFoldLargeBlocks, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.UnfoldBlocksCommand),
+      TAtlasMenuActions.cEditorUnfoldBlocks, EditorClick));
 end;
 
 procedure TAtlasMainMenu.AddSearchGroups;
