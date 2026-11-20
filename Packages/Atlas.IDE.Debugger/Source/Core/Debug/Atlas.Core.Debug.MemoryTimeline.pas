@@ -6,7 +6,8 @@
 //   Höchstens cMaxSamples Werte; ältere fallen weg, Marken davor ebenso.
 // - Growth rechnet den Zuwachs je Wert zwischen zwei Zeitpunkten (gewählter Bereich im Fenster).
 // - ToCsv liefert den Verlauf zum Kopieren; Marken stehen bei der ersten Messung danach.
-// - TAtlasMemoryChartScale bildet Zeit und Wert auf die Zeichenfläche ab und zurück.
+// Die Abbildung auf die Zeichenfläche teilt der Verlauf mit dem Logpunkt-Verlauf (#2552):
+// TAtlasTimeChartScale in Atlas.Core.Debug.TimeChart.
 // Gemessen wird in Atlas.IDE.Debug.MemoryTimeline, gezeichnet in Atlas.UI.Debug.MemoryFrame.
 
 interface
@@ -93,22 +94,6 @@ type
     class function Signed(ASeries: TAtlasMemorySeries; AValue: Int64; const AFormat: TFormatSettings): string;
       static;
     class function IsBytes(ASeries: TAtlasMemorySeries): Boolean; static;
-  end;
-
-  /// <summary>Abbildung zwischen Zeit bzw. Wert und Pixeln der Zeichenfläche.</summary>
-  TAtlasMemoryChartScale = record
-    FromMs: Int64;
-    ToMs: Int64;
-    MaxValue: Int64;
-    Width: Integer;
-    Height: Integer;
-    class function Make(AFromMs, AToMs, AMaxValue: Int64; AWidth, AHeight: Integer): TAtlasMemoryChartScale; static;
-    /// <summary>Glatte Obergrenze über AValue (1, 2 oder 5 mal Zehnerpotenz bzw. Bytes in 1-2-5-Schritten).
-    /// </summary>
-    class function NiceMax(AValue: Int64): Int64; static;
-    function XOf(AAtMs: Int64): Integer;
-    function YOf(AValue: Int64): Integer;
-    function AtOf(AX: Integer): Int64;
   end;
 
 implementation
@@ -360,54 +345,6 @@ end;
 class function TAtlasMemoryFormat.IsBytes(ASeries: TAtlasMemorySeries): Boolean;
 begin
   Result := ASeries in [TAtlasMemorySeries.PrivateBytes, TAtlasMemorySeries.WorkingSet];
-end;
-
-{ TAtlasMemoryChartScale }
-
-class function TAtlasMemoryChartScale.Make(AFromMs, AToMs, AMaxValue: Int64; AWidth,
-  AHeight: Integer): TAtlasMemoryChartScale;
-begin
-  Result.FromMs := AFromMs;
-  Result.ToMs := Max(AToMs, AFromMs + 1);
-  Result.MaxValue := Max(AMaxValue, 1);
-  Result.Width := Max(AWidth, 1);
-  Result.Height := Max(AHeight, 1);
-end;
-
-class function TAtlasMemoryChartScale.NiceMax(AValue: Int64): Int64;
-const
-  cSteps: array[0..2] of Int64 = (1, 2, 5);
-var
-  mPower: Int64;
-  mStep: Int64;
-begin
-  mPower := 1;
-  while True do
-  begin
-    for mStep in cSteps do
-    begin
-      if mStep * mPower >= AValue then
-      begin
-        Exit(mStep * mPower);
-      end;
-    end;
-    mPower := mPower * 10;
-  end;
-end;
-
-function TAtlasMemoryChartScale.XOf(AAtMs: Int64): Integer;
-begin
-  Result := Round((AAtMs - FromMs) / (ToMs - FromMs) * (Width - 1));
-end;
-
-function TAtlasMemoryChartScale.YOf(AValue: Int64): Integer;
-begin
-  Result := (Height - 1) - Round(EnsureRange(AValue, 0, MaxValue) / MaxValue * (Height - 1));
-end;
-
-function TAtlasMemoryChartScale.AtOf(AX: Integer): Int64;
-begin
-  Result := FromMs + Round(EnsureRange(AX, 0, Width - 1) / Max(Width - 1, 1) * (ToMs - FromMs));
 end;
 
 end.

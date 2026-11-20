@@ -1062,6 +1062,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Threads` | `Core/Debug/Atlas.Core.Debug.Threads.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Deadlocks` | `Core/Debug/Atlas.Core.Debug.Deadlocks.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ParallelStacks` | `Core/Debug/Atlas.Core.Debug.ParallelStacks.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.ParallelWatch` | `Core/Debug/Atlas.Core.Debug.ParallelWatch.pas` | Parallel auswerten: Tabelle je Thread, nicht gültige Werte, Filter, Sortierung, #866 |
 | `Atlas.Core.Debug.CallStackParams` | `Core/Debug/Atlas.Core.Debug.CallStackParams.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.CallStackView` | `Core/Debug/Atlas.Core.Debug.CallStackView.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.CallStackFlow` | `Core/Debug/Atlas.Core.Debug.CallStackFlow.pas` | Entscheidungen des Fensters Aufrufstapel ohne IDE (Nachfragen, Antworten, nächster Parameter, Rahmen öffnen), #1967 |
@@ -1072,6 +1073,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Exceptions` | `Core/Debug/Atlas.Core.Debug.Exceptions.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionCapture` | `Core/Debug/Atlas.Core.Debug.ExceptionCapture.pas` | Exception-Verlauf: Aufnahme eines Halts (Stapel und Dialog, Ort, stilles Fortsetzen), #1967 |
 | `Atlas.Core.Debug.MemoryTimeline` | `Core/Debug/Atlas.Core.Debug.MemoryTimeline.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.TimeChart` | `Core/Debug/Atlas.Core.Debug.TimeChart.pas` | Zeitdiagramm-Abbildung für Speicher- und Logpunkt-Verlauf, #2552 |
+| `Atlas.Core.Debug.ValueSeries` | `Core/Debug/Atlas.Core.Debug.ValueSeries.pas` | Werteverlauf aus Logpunkten, #2552 |
 | `Atlas.Core.Debug.Profiler` | `Core/Debug/Atlas.Core.Debug.Profiler.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ProfilerFlow` | `Core/Debug/Atlas.Core.Debug.ProfilerFlow.pas` | Profiler: Knopf „Messen“, gewählte Messung, Ergebnisdatei, #1967 |
 | `Atlas.Core.Debug.ObjectCount` | `Core/Debug/Atlas.Core.Debug.ObjectCount.pas` | Ordner `Core/Debug` |
@@ -1151,6 +1154,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.LeaksWindow` | `IDE/Debug/Atlas.IDE.Debug.LeaksWindow.pas` | Andockbares Fenster „Atlas-Lecks“, #1875 |
 | `Atlas.IDE.Debug.DockPanel` | `IDE/Debug/Atlas.IDE.Debug.DockPanel.pas` | Gemeinsamer Gastgeber für neue andockbare Fenster des Debuggers (TAtlasIdeDockWindow) |
 | `Atlas.IDE.Debug.ObjectMarks` | `IDE/Debug/Atlas.IDE.Debug.ObjectMarks.pas` | Objekte beim Debuggen markieren: Befehl, Etiketten an Werten, Abgleich beim Halt, Fenster „Markierte Objekte“, #839 |
+| `Atlas.IDE.Debug.ParallelWatch` | `IDE/Debug/Atlas.IDE.Debug.ParallelWatch.pas` | Parallel auswerten: Stapel aller Threads lesen, je Thread auswerten, Fenster, Sprung zum Thread, #866 |
 | `Atlas.IDE.Debug.Leaks` | `IDE/Debug/Atlas.IDE.Debug.Leaks.pas` | Leckbericht am Ende einer Debug-Sitzung einsammeln, Kandidaten vom Server, Sprung, #1875 |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Adapters.KnownErrorsView` | `IDE/Debug/Atlas.IDE.Debug.Adapters.KnownErrorsView.pas` | Empfänger der Meldung des Trackers für bekannte Fehler (IAtlasKnownErrorsView), #2460 |
@@ -1218,6 +1222,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.Leaks` | `UI/Debug/Atlas.UI.Debug.Leaks.pas` | Texte des Fensters „Atlas-Lecks“, #1875 |
 | `Atlas.UI.Debug.Leaks.Strings` | `UI/Debug/Atlas.UI.Debug.Leaks.Strings.pas` | Oberflächentexte des Fensters „Atlas-Lecks“, Sprache von Base, #1875 |
 | `Atlas.UI.Debug.ObjectMarks.Strings` | `UI/Debug/Atlas.UI.Debug.ObjectMarks.Strings.pas` | Oberflächentexte für markierte Objekte, Sprache von Base, #839 |
+| `Atlas.UI.Debug.ParallelWatch.Strings` | `UI/Debug/Atlas.UI.Debug.ParallelWatch.Strings.pas` | Oberflächentexte für „Parallel auswerten“, Sprache von Base, #866 |
 | `Atlas.UI.Debug.BreakpointAnchors` | `UI/Debug/Atlas.UI.Debug.BreakpointAnchors.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointRules` | `UI/Debug/Atlas.UI.Debug.BreakpointRules.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionMessageRule` | `UI/Debug/Atlas.UI.Debug.ExceptionMessageRule.pas` | Ordner `UI/Debug` |
@@ -1243,8 +1248,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.CallStackFrame` | `UI/Debug/Atlas.UI.Debug.CallStackFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.LeaksFrame` | `UI/Debug/Atlas.UI.Debug.LeaksFrame.pas` | Inhalt des Fensters „Atlas-Lecks“, #1875 |
 | `Atlas.UI.Debug.ObjectMarksFrame` | `UI/Debug/Atlas.UI.Debug.ObjectMarksFrame.pas` | Inhalt des Fensters „Markierte Objekte“, #839 |
+| `Atlas.UI.Debug.ParallelWatchFrame` | `UI/Debug/Atlas.UI.Debug.ParallelWatchFrame.pas` | Inhalt des Fensters „Parallel auswerten“: Tabelle, Filter, Sortierung, #866 |
 | `Atlas.UI.Debug.InlineValuePainter` | `UI/Debug/Atlas.UI.Debug.InlineValuePainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.MemoryChart` | `UI/Debug/Atlas.UI.Debug.MemoryChart.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.TimeChart` | `UI/Debug/Atlas.UI.Debug.TimeChart.pas` | gemeinsames Zeitdiagramm, #2552 |
 | `Atlas.UI.Debug.MemoryFrame` | `UI/Debug/Atlas.UI.Debug.MemoryFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ProfileFrame` | `UI/Debug/Atlas.UI.Debug.ProfileFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ObjectCountPanel` | `UI/Debug/Atlas.UI.Debug.ObjectCountPanel.pas` | Ordner `UI/Debug` |
@@ -1296,7 +1303,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Composition.Profiler` | `IDE/Debug/Atlas.IDE.Debug.Composition.Profiler.pas` | Teil, Befehle und Menüeinträge des Profilers im Modul `atlas.debugger`, #2057 |
 | `Atlas.Core.Debug.Logpoint` | `Core/Debug/Atlas.Core.Debug.Logpoint.pas` | Logpunkte ohne IDE: Platzhaltertext, Eigenschaften des Haltepunkts, Zusammenführen, #583 |
 | `Atlas.UI.Debug.LogpointDialog` | `UI/Debug/Atlas.UI.Debug.LogpointDialog.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.LogpointValuesFrame` | `UI/Debug/Atlas.UI.Debug.LogpointValuesFrame.pas` | Fensterinhalt Logpunkt-Verlauf, #2552 |
 | `Atlas.IDE.Debug.Logpoints` | `IDE/Debug/Atlas.IDE.Debug.Logpoints.pas` | Logpunkte als Haltepunkte der IDE, #583 |
+| `Atlas.IDE.Debug.LogpointValues` | `IDE/Debug/Atlas.IDE.Debug.LogpointValues.pas` | Logpunkt-Verlauf aufzeichnen, #2552 |
+| `Atlas.IDE.Debug.LogpointValuesWindow` | `IDE/Debug/Atlas.IDE.Debug.LogpointValuesWindow.pas` | Fenster Logpunkt-Verlauf, #2552 |
 | `Atlas.IDE.Debug.LogpointGutter` | `IDE/Debug/Atlas.IDE.Debug.LogpointGutter.pas` | Logpunkte in der Rinne, #583 |
 | `Atlas.IDE.Debug.BreakpointRulesGutter` | `IDE/Debug/Atlas.IDE.Debug.BreakpointRulesGutter.pas` | Haltepunkte mit Aufrufer in der Rinne, #2548 |
 | `Atlas.Core.Debug.NoSource` | `Core/Debug/Atlas.Core.Debug.NoSource.pas` | Fenster „Kein Quelltext“ ohne IDE: Kopfzeile, Grund, Auswege, #869 |

@@ -34,6 +34,7 @@ type
     procedure BuildVisualizers;
     procedure BuildStepping;
     procedure BuildMore;
+    procedure BuildLogpointRows;
     procedure BuildRestartRows;
     /// <summary>Werte beim Halt: Fenster „Variablen“, Vorhersage, Werte ändern, Debug-Hover.</summary>
     procedure BuildStopValues;
@@ -71,8 +72,10 @@ uses
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.ObjectMarks.Strings,
+  Atlas.UI.Debug.ParallelWatch.Strings,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Note.Strings,
+  Atlas.UI.Debug.Logpoints.Strings,
   Atlas.UI.Debug.OpenedFiles.Strings,
   Atlas.UI.Debug.Profile.Strings,
   Atlas.UI.Debug.Console.Strings;
@@ -359,11 +362,19 @@ begin
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLog));
   Line(cEventLogColorsKey, TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLogColors));
-  Switch('debug.logpoints', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpoints));
-  Line('debug.logpointPrefix', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpointPrefix));
+  BuildLogpointRows;
   Switch('debug.noSourcePage', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugNoSourcePage));
   Line('debug.noSourcePage.ignoredUnits',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugNoSourceIgnored));
+end;
+
+procedure TAtlasDebugSettingsSection.BuildLogpointRows;
+begin
+  // Logpunkte (#583) und Logpunkt-Verlauf (#2552).
+  Switch('debug.logpoints', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpoints));
+  Line('debug.logpointPrefix', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpointPrefix));
+  Switch('debug.logpoints.recordValues', TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.SettingsRecordValues));
+  Number('debug.logpoints.recordLimit', TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.SettingsRecordLimit));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildRestartRows;
@@ -437,6 +448,9 @@ begin
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesScopedWatches));
   // Objekte markieren (#839).
   Switch('debug.objectMarks', TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.SettingsDebugObjectMarks));
+  // Parallel auswerten (#866).
+  Switch('debug.parallelWatch',
+    TAtlasParallelWatchStrings.Text(TAtlasParallelWatchTextId.SettingsDebugParallelWatch));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped',
