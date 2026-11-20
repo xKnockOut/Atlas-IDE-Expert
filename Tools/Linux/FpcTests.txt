@@ -224,6 +224,7 @@ Atlas.Common.Lsp.DebugScope.Tests
 Atlas.Common.Lsp.UpcomingConditions.Tests
 Atlas.Common.Lsp.ValueEdit.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
+Atlas.Common.Lsp.BlockFolds.Tests
 Atlas.Common.Lsp.FuzzyMatch.Tests
 Atlas.Common.Lsp.HoverValues.Tests
 Atlas.Common.Lsp.Internals.Cancellation.Tests
@@ -493,6 +494,7 @@ Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Outline.CrumbPlan.Tests
 Atlas.Core.Editor.StickyPlan.Tests
+Atlas.Core.Editor.BlockFolds.Tests
 Atlas.Core.Problems.Plan.Tests
 Atlas.Core.Problems.Flow.Tests
 Atlas.Core.Problems.Marks.Tests

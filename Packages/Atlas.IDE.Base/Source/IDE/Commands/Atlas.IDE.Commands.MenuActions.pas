@@ -44,6 +44,9 @@ type
     cEditorMethodOrder = 12;
     cEditorCollapseRegions = 13;
     cEditorExpandRegions = 14;
+    cEditorFoldBlock = 15;
+    cEditorFoldLargeBlocks = 16;
+    cEditorUnfoldBlocks = 17;
     // Tags der Abschnittssprünge (RunSection).
     cSectionInterface = 0;
     cSectionImplementation = 1;
@@ -85,15 +88,17 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Commands.ShortcutTips;
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  cEditorIds: array[0..14] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  cEditorIds: array[0..17] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', '', '', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
-    'Atlas.MethodOrder', 'Atlas.CollapseRegions', 'Atlas.ExpandRegions');
+    'Atlas.MethodOrder', 'Atlas.CollapseRegions', 'Atlas.ExpandRegions', 'Atlas.FoldBlock', 'Atlas.FoldLargeBlocks',
+    'Atlas.UnfoldBlocks');
   cResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
     'Atlas.Impact', 'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
@@ -131,6 +136,19 @@ begin
   end;
 end;
 
+/// <summary>Regionen und Blöcke ein- und aufklappen (#1814, #2795).</summary>
+procedure FoldCommand(ACommand: Integer);
+begin
+  case ACommand of
+    TAtlasMenuActions.cEditorCollapseRegions: TAtlasIdeRegionFolds.CollapseAll;
+    TAtlasMenuActions.cEditorExpandRegions: TAtlasIdeRegionFolds.ExpandAll;
+    TAtlasMenuActions.cEditorFoldBlock: TAtlasIdeBlockFolds.FoldAtCursor;
+    TAtlasMenuActions.cEditorFoldLargeBlocks: TAtlasIdeBlockFolds.FoldLarge;
+  else
+    TAtlasIdeBlockFolds.UnfoldAll;
+  end;
+end;
+
 /// <summary>Editorbefehl ACommand; im Schutz von TAtlasFeature.EditorCommands.</summary>
 procedure EditorCommand(ACommand: Integer);
 begin
@@ -146,10 +164,12 @@ begin
     TAtlasMenuActions.cEditorFormat: TAtlasIdeEditorCommands.FormatCode;
     TAtlasMenuActions.cEditorMethodOrder:
       TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
-    TAtlasMenuActions.cEditorCollapseRegions:
-      TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.CollapseAll);
-    TAtlasMenuActions.cEditorExpandRegions:
-      TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.ExpandAll);
+    TAtlasMenuActions.cEditorCollapseRegions .. TAtlasMenuActions.cEditorUnfoldBlocks:
+      TAtlasGuard.Run(TAtlasFeature.RegionFolds,
+        procedure
+        begin
+          FoldCommand(ACommand);
+        end);
   else
     TAtlasIdeEditorCommands.CopyQualifiedName(True);
   end;
