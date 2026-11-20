@@ -709,6 +709,7 @@ contains
   Atlas.Common.Mcp.BatchTool in 'Source\Mcp\Atlas.Common.Mcp.BatchTool.pas',
   Atlas.Common.Mcp.IdeEdits in 'Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas',
   Atlas.Common.Mcp.IdeInbox in 'Source\Mcp\Atlas.Common.Mcp.IdeInbox.pas',
+  Atlas.Common.Mcp.IdeQuestions in 'Source\Mcp\Atlas.Common.Mcp.IdeQuestions.pas',
   Atlas.Common.Mcp.IdeBuilds in 'Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas',
   Atlas.Common.Mcp.IdeDebug in 'Source\Mcp\Atlas.Common.Mcp.IdeDebug.pas',
   Atlas.Common.Mcp.TestTools in 'Source\Mcp\Atlas.Common.Mcp.TestTools.pas',

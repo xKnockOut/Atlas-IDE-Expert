@@ -259,6 +259,7 @@ Atlas.Common.Lsp.WorkspaceFolders.Tests
 Atlas.Common.Mcp.BuildTools.Tests
 Atlas.Common.Mcp.CompilerMessageTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
+Atlas.Common.Mcp.IdeQuestions.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.DocsIndex.Tests
 Atlas.Common.Mcp.DocsTools.Tests
@@ -473,6 +474,11 @@ Atlas.Common.Updates.Tests
 Atlas.Core.Foundation.Calls.Tests
 Atlas.Core.Modules.Contributions.Tests
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Assistants.EditChange.Tests
+Atlas.Core.Assistants.Queue.Tests
+Atlas.Core.Assistants.HeldEdits.Tests
+Atlas.Core.Assistants.Questions.Tests
+Atlas.Core.Assistants.Log.Tests
 Atlas.Core.Assistants.Instructions.Tests
 Atlas.Core.AiProviders.Anthropic.Tests
 Atlas.Core.AiProviders.OpenAiCompatible.Tests

@@ -744,6 +744,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BatchTool.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeInbox.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeQuestions.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeDebug.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>

@@ -30,6 +30,12 @@ type
     procedure WritesAllFilesAndAuditsThem;
     [Test]
     procedure DirtyOrChangedFileAbortsWithoutChanges;
+    /// <summary>Zurückhalten (#2605): Die ungespeicherte Datei geht an die IDE, der Rest wird geschrieben.</summary>
+    [Test]
+    procedure DirtyFileIsHeldInTheIde;
+    /// <summary>Lehnt die IDE das Zurückhalten ab, wird nichts geschrieben.</summary>
+    [Test]
+    procedure RefusedHoldWritesNothing;
     [Test]
     procedure FailedWriteRestoresWrittenFiles;
     [Test]
@@ -443,6 +449,75 @@ begin
         mEdit.Apply('test', Edits, False);
       end, EMcpToolError);
     Assert.AreEqual(0, mFiles.Writes, 'ungespeichert im Editor: nichts geschrieben');
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.DirtyFileIsHeldInTheIde;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mHeldFile, mHeldText, mReport: string;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mEdit.DirtyFiles :=
+      function: TArray<string>
+      begin
+        Result := ['b.dfm'];
+      end;
+    mEdit.HoldText :=
+      function(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult
+      begin
+        mHeldFile := AFileName;
+        mHeldText := AText;
+        AReason := '';
+        Result := TMcpHoldResult.Held;
+      end;
+    mReport := mEdit.Apply('test', Edits, False);
+    Assert.AreEqual('B.dfm', mHeldFile);
+    Assert.AreEqual('x'#10'  Neu'#10'y', mHeldText);
+    Assert.AreEqual('x'#10'  Alt'#10'y', mFiles.Files['B.dfm'], 'zurückgehalten: nicht selbst geschrieben');
+    Assert.AreEqual('Neu;', mFiles.Files['A.pas']);
+    Assert.Contains(mReport, 'B.dfm');
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.RefusedHoldWritesNothing;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mEdit.DirtyFiles :=
+      function: TArray<string>
+      begin
+        Result := ['B.dfm'];
+      end;
+    mEdit.HoldText :=
+      function(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult
+      begin
+        AReason := 'IDE: nein';
+        Result := TMcpHoldResult.Refused;
+      end;
+    Assert.WillRaise(
+      procedure
+      begin
+        mEdit.Apply('test', Edits, False);
+      end, EMcpToolError);
+    Assert.AreEqual(0, mFiles.Writes);
   finally
     mEdit.Free;
     mFiles.Free;
