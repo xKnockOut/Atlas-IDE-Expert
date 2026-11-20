@@ -603,6 +603,8 @@ Atlas.Core.Debug.NoSource.Tests
 Atlas.Core.Debug.Restart.Tests
 Atlas.Core.Debug.Reattach.Tests
 Atlas.Core.Debug.LaunchGroups.Tests
+Atlas.Core.Debug.ConsoleCapture.Tests
+Atlas.Core.Processes.OutputLines.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.Core.Settings.KeyCodes.Tests
 Atlas.UI.Debug.Deadlocks.Tests
@@ -618,6 +620,7 @@ Atlas.UI.Completion.Strings.Tests
 Atlas.UI.Debug.Strings.Tests
 Atlas.UI.Debug.Memory.Strings.Tests
 Atlas.UI.Debug.Profile.Strings.Tests
+Atlas.UI.Debug.Console.Strings.Tests
 Atlas.UI.Debug.VariablesStrings.Tests
 Atlas.UI.Designer.Strings.Tests
 Atlas.UI.Diagnostics.Strings.Tests
