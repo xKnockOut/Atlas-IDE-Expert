@@ -88,6 +88,7 @@
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.LineTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.PendingRequests.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Outgoing.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Watchdog.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.WorkerPool.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.pas"/>
@@ -745,6 +746,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeInbox.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeQuestions.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Confirm.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeDebug.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>

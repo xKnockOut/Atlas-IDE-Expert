@@ -65,6 +65,13 @@ results in a tool error with a reason. Writing happens only in the working folde
   actually in the file or the editor buffer counts. If the IDE plugin refuses the change, the call fails as before
   without the section. Project-wide rules see the index before it is reloaded. Switch off:
   `"mcp": { "reportFindingsAfterEdit": false }`. `delphi://edits/last` returns the last evaluation.
+- Questions before writing (#2620): when `rename_symbol` with `dryRun: false` finds inferred locations, Atlas asks
+  whether to rename them too (“Rename all” / “Only certain locations”); `fix_findings` asks before writing to 5 or
+  more files (“Write” / “Preview only”). If the client reported `capabilities.elicitation` at `initialize`, the
+  question goes to it as `elicitation/create` (one required field `answer` with the answers as `enum`); otherwise
+  it appears in the running IDE as with `ask_user`. Without either way the tools behave as before (only certain
+  locations, or write without stopping). If the human declines or the time runs out, the careful outcome applies.
+  Switch off: `"mcp": { "confirm": false }`.
 - Protected files (#2608): `assistants.protected` in `atlas.json` lists files AI assistants must not change,
   each entry with a pattern (`path`, as in `architecture.exclude`: `*`, `**`, `?`, `/` or `\`, ignoring case,
   relative to the folder of `atlas.json`), a reason (`reason`) and the right way (`use`):

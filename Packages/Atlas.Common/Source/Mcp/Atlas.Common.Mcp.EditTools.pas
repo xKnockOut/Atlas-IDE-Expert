@@ -29,6 +29,10 @@
 // mit Symbolindex und Projektdiensten (CheckProject, #1112) wie der Server.
 // rename_symbol ändert nur sichere Stellen (#1119); erschlossene nennt der
 // Bericht unter „Nicht geändert, bitte prüfen“.
+// Rückfragen (#2620, mcp.confirm, Weg über TMcpConfirm): Mit dryRun=false fragt rename_symbol bei erschlossenen
+// Stellen, ob auch sie umbenannt werden sollen, und fix_findings vor dem Schreiben in cConfirmFiles oder mehr
+// Dateien. Ohne Weg zum Menschen wie bisher; ohne Antwort der vorsichtige Ausgang (nur sichere Stellen bzw. nur
+// Vorschau).
 // format_code schreibt über denselben Weg (offene Dateien über das Plugin als
 // ein Rückgängig-Schritt, #397); mit Text statt Datei liefert es nur den
 // formatierten Text. Dateien mit Syntaxfehlern formatiert es nicht. Die
@@ -53,7 +57,8 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.BulkFix,
-  Atlas.Common.Mcp.Contract;
+  Atlas.Common.Mcp.Contract,
+  Atlas.Common.Mcp.Confirm;
 
 type
   TMcpFileEdit = record
@@ -179,6 +184,9 @@ type
   end;
 
   TMcpEditTools = class(TMcpFileWriter)
+  public const
+    /// <summary>fix_findings fragt vor dem Schreiben in so vielen Dateien oder mehr nach (#2620).</summary>
+    cConfirmFiles = 5;
   private
     FIndex: ISymbolIndex;
     FProjectFiles: TFunc<TArray<string>>;
@@ -187,6 +195,9 @@ type
     FCheckSource: TCheckSourceFunc;
     FCheckProject: TCheckProjectFunc;
     FSettingsFor: TReferenceSettingsProvider;
+    FChoose: TMcpChooseFunc;
+    function ConfirmInferred(const AUnchanged: TArray<TReferenceLocation>; const ANewName: string): Boolean;
+    function ConfirmFixes(AFileCount: Integer): Boolean;
     function RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
       out AUnchanged: TArray<TReferenceLocation>): TArray<TMcpFileEdit>;
     function ActionsAt(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer): TArray<TCodeAction>;
@@ -227,6 +238,8 @@ type
     property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
+    /// <summary>Rückfragen an den Menschen (#2620, TMcpConfirm); nil = nie fragen.</summary>
+    property Choose: TMcpChooseFunc read FChoose write FChoose;
   end;
 
 implementation
@@ -260,7 +273,9 @@ type
     NotTouchedUnsavedChangesIn, ArgumentRulesMissingRuleIds, DeviationsFromTheFormatRules, AndMore,
     NoteTheFormattingIsNot, SyntaxErrorInLineNot, NoDeviationFromTheFormat, NoDeviationFromTheFormat2,
     OnlyTheLineEndingsDiffer, Line, FormattedTextPascal, AlreadyExists, NoCreating, NoDeleting, NewFile,
-    DeletedFile, NotDeleted, CreatedAndDeleted, DiffLine, DiffFromLine, HeldInIde, HeldAudit, HeldBefore);
+    DeletedFile, NotDeleted, CreatedAndDeleted, DiffLine, DiffFromLine, HeldInIde, HeldAudit, HeldBefore,
+    AskInferred, AnswerRenameAll, AnswerRenameCertain, InferredRenamedToo, AskFixes, AnswerWrite, AnswerPreview,
+    FixesNotWritten);
 
 const
   cTexts: array[TEditToolsText] of TAtlasText = (
@@ -315,7 +330,19 @@ const
     (De: 'Wartet in der IDE auf den Benutzer (ungespeicherte Änderungen im Editor), nicht erneut senden: %s';
      En: 'Waiting in the IDE for the user (unsaved changes in the editor), do not send again: %s'),
     (De: 'MCP %s wartet in der IDE: %s'; En: 'MCP %s is waiting in the IDE: %s'),
-    (De: '%s (In der IDE warten schon: %s)'; En: '%s (Already waiting in the IDE: %s)'));
+    (De: '%s (In der IDE warten schon: %s)'; En: '%s (Already waiting in the IDE: %s)'),
+    (De: 'Umbenennen in %s: %d Stellen sind nur erschlossen (etwa über ein Interface oder in einem inaktiven ' +
+      'Zweig). Auch diese umbenennen?';
+     En: 'Rename to %s: %d places are only inferred (for example via an interface or in an inactive branch). ' +
+      'Rename these too?'),
+    (De: 'Alle umbenennen'; En: 'Rename all'),
+    (De: 'Nur sichere Stellen'; En: 'Certain places only'),
+    (De: 'Auf Rückfrage auch %d erschlossene Stellen umbenannt.'; En: 'Also renamed %d inferred places after asking.'),
+    (De: 'fix_findings möchte Korrekturen in %d Dateien schreiben. Schreiben?';
+     En: 'fix_findings wants to write fixes in %d files. Write?'),
+    (De: 'Schreiben'; En: 'Write'),
+    (De: 'Nur Vorschau'; En: 'Preview only'),
+    (De: 'Auf Rückfrage nichts geschrieben (nur Vorschau).'; En: 'Nothing written after asking (preview only).'));
 
 {$SCOPEDENUMS OFF}
 
@@ -1082,18 +1109,64 @@ begin
   end;
 end;
 
+function TMcpEditTools.ConfirmInferred(const AUnchanged: TArray<TReferenceLocation>;
+  const ANewName: string): Boolean;
+var
+  mText: string;
+  mLocation: TReferenceLocation;
+begin
+  if (AUnchanged = nil) or not Assigned(FChoose) then
+  begin
+    Exit(False);
+  end;
+  mText := cTexts[TEditToolsText.AskInferred].Fmt([ANewName, Length(AUnchanged)]);
+  for mLocation in AUnchanged do
+  begin
+    mText := mText + sLineBreak + Format('%s:%d – %s', [ExtractFileName(mLocation.FileName),
+      mLocation.Range.StartPos.Line + 1, mLocation.Confidence.ReasonName]);
+  end;
+  Result := FChoose(mText, TArray<string>.Create(cTexts[TEditToolsText.AnswerRenameAll].Text,
+    cTexts[TEditToolsText.AnswerRenameCertain].Text)) = 0;
+end;
+
+function TMcpEditTools.ConfirmFixes(AFileCount: Integer): Boolean;
+var
+  mChoice: Integer;
+begin
+  if (AFileCount < cConfirmFiles) or not Assigned(FChoose) then
+  begin
+    Exit(True);
+  end;
+  mChoice := FChoose(cTexts[TEditToolsText.AskFixes].Fmt([AFileCount]),
+    TArray<string>.Create(cTexts[TEditToolsText.AnswerWrite].Text, cTexts[TEditToolsText.AnswerPreview].Text));
+  // Ohne Weg zum Menschen wie bisher; abgelehnt oder ohne Antwort nur die Vorschau.
+  Result := (mChoice = 0) or (mChoice = TMcpConfirm.cNotAsked);
+end;
+
 function TMcpEditTools.RenameSymbol(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
   ADryRun: Boolean): string;
 var
   mEdits: TArray<TMcpFileEdit>;
   mUnchanged: TArray<TReferenceLocation>;
+  mLocation: TReferenceLocation;
+  mNote: string;
 begin
   mEdits := RenameEdits(AFileName, ALine, AColumn, ANewName, mUnchanged);
   if Length(mEdits) = 0 then
   begin
     raise EMcpToolError.Create(cTexts[TEditToolsText.ThereIsNoSymbolThat].Text);
   end;
-  Result := Apply('rename_symbol', mEdits, ADryRun) + UnchangedReport(mUnchanged);
+  mNote := '';
+  if not ADryRun and ConfirmInferred(mUnchanged, ANewName) then
+  begin
+    for mLocation in mUnchanged do
+    begin
+      mEdits := mEdits + [TMcpFileEdit.Create(mLocation.FileName, mLocation.Range, ANewName)];
+    end;
+    mNote := sLineBreak + sLineBreak + cTexts[TEditToolsText.InferredRenamedToo].Fmt([Length(mUnchanged)]);
+    mUnchanged := nil;
+  end;
+  Result := Apply('rename_symbol', mEdits, ADryRun) + mNote + UnchangedReport(mUnchanged);
 end;
 
 function TMcpEditTools.ApplyCodeAction(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer;
@@ -1191,8 +1264,9 @@ var
   mError: string;
   mUntouched: TArray<string>;
   mResults: TArray<TBulkFixFile>;
-  mProtected: string;
+  mProtected, mNote: string;
   mNames, mOldTexts, mNewTexts: TArray<string>;
+  mDryRun: Boolean;
 begin
   if AFixRules = nil then
   begin
@@ -1205,13 +1279,20 @@ begin
   mResults := RunFixes(AScope, AFiles, TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries),
     TBulkFix.RulesFor(AScope.Rules, AFixRules), ADryRun, mUntouched);
   ChangedTexts(mResults, mNames, mOldTexts, mNewTexts);
-  mProtected := CheckProtected(mNames, ADryRun);
-  if not ADryRun then
+  mDryRun := ADryRun;
+  mNote := '';
+  if not mDryRun and not ConfirmFixes(Length(mNames)) then
+  begin
+    mDryRun := True;
+    mNote := sLineBreak + sLineBreak + cTexts[TEditToolsText.FixesNotWritten].Text;
+  end;
+  mProtected := CheckProtected(mNames, mDryRun);
+  if not mDryRun then
   begin
     WriteFixes(AFixRules, mResults);
   end;
-  Result := FixReport(AScope.Root, mResults, mUntouched, ADryRun);
-  if not ADryRun and (mNames <> nil) then
+  Result := FixReport(AScope.Root, mResults, mUntouched, mDryRun) + mNote;
+  if not mDryRun and (mNames <> nil) then
   begin
     Result := Result + FindingsAfterWrite('fix_findings', mNames, mOldTexts, mNewTexts);
   end;

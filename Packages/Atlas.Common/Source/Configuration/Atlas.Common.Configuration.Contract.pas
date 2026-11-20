@@ -716,6 +716,9 @@ type
     /// <summary>Schreibende MCP-Werkzeuge melden neue und behobene Befunde der geänderten Dateien
     /// (mcp.reportFindingsAfterEdit, #2603); Vorgabe True.</summary>
     McpReportFindingsAfterEdit: Boolean;
+    /// <summary>Schreibende MCP-Werkzeuge fragen vor riskanten Schritten über den Client (elicitation) oder die IDE
+    /// nach (mcp.confirm, #2620); Vorgabe True.</summary>
+    McpConfirm: Boolean;
     /// <summary>Sprache der Anleitungen in den Prompts (mcp.promptLanguage): de (Vorgabe) oder en.</summary>
     McpPromptLanguage: string;
     /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
@@ -1560,6 +1563,7 @@ begin
   ASettings.McpPrompts := True;
   ASettings.McpStatistics := True;
   ASettings.McpReportFindingsAfterEdit := True;
+  ASettings.McpConfirm := True;
   ASettings.McpPromptLanguage := 'de';
   ASettings.McpCustomPrompts := nil;
   ASettings.AssistantsInstructionFiles := TArray<string>.Create('AGENTS.md');

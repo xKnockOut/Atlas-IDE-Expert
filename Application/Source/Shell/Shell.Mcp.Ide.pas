@@ -11,6 +11,7 @@ uses
   System.JSON,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.IdeDebug,
+  Atlas.Common.Mcp.IdeQuestions,
   Atlas.Text.IdeContext,
   Atlas.Common.Lsp.IdeBuild;
 
@@ -35,6 +36,10 @@ function HoldSourceText(const AFileName, AExpected, AText: string; out AReason: 
 /// der ersten mit Atlas) und wartet auf die Antwort. Liefert den Text für den Assistenten; EMcpToolError bei
 /// ungültigen Argumenten.</summary>
 function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+/// <summary>Stellt AQuestion in der IDE mit dem aktiven Projekt unter ARoot (sonst der ersten mit Atlas) und wartet
+/// auf die Antwort (#2620, auch für Rückfragen der schreibenden Werkzeuge); AAnswer bei Answered.</summary>
+function AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
+  out AAnswer: string): TMcpQuestionOutcome;
 /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
 /// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
 /// den Auftrag nicht annimmt.</summary>
@@ -58,7 +63,6 @@ uses
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeInbox,
   Atlas.Common.Mcp.IdeBuilds,
-  Atlas.Common.Mcp.IdeQuestions,
   Shell.Platform,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
@@ -364,23 +368,18 @@ begin
   end;
 end;
 
-function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+function AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
+  out AAnswer: string): TMcpQuestionOutcome;
 var
-  mQuestion: TMcpIdeQuestion;
   mEntries: TArray<TMcpIdeEntry>;
   mPid: Cardinal;
-  mReason, mProject, mInbox, mAnswerText, mAnswer: string;
-  mOutcome: TMcpQuestionOutcome;
+  mReason, mProject, mInbox, mAnswerText: string;
 begin
-  if not TMcpIdeQuestions.FromArguments(AArguments, AClient, mQuestion, mReason) then
-  begin
-    raise EMcpToolError.Create(mReason);
-  end;
-  mAnswer := '';
+  AAnswer := '';
   mEntries := RunningIdes;
   if Length(mEntries) = 0 then
   begin
-    Exit(TMcpIdeQuestions.ResultText(TMcpQuestionOutcome.NoIde, mAnswer, mQuestion));
+    Exit(TMcpQuestionOutcome.NoIde);
   end;
   // Die IDE mit dem aktiven Projekt unter dem Arbeitsordner, sonst die erste mit Atlas.
   if not TMcpIdeBuilds.Pick(mEntries, ARoot, '', mPid, mProject, mReason) then
@@ -388,16 +387,29 @@ begin
     mPid := mEntries[0].Pid;
   end;
   mInbox := TMcpIdeQuestions.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
-  case TMcpIdeInbox.Exchange(mInbox, TMcpIdeQuestions.RequestText(mQuestion),
+  case TMcpIdeInbox.Exchange(mInbox, TMcpIdeQuestions.RequestText(AQuestion),
     TMcpIdeWaiting.Make(TShellPlatform.FolderWait(mInbox, TMcpIdeQuestions.cPollMs, cAnswerSafetyMs), TickClock(),
-    TMcpIdeQuestions.cTakeMs, TMcpIdeQuestions.AnswerMs(mQuestion)), mAnswerText) of
+    TMcpIdeQuestions.cTakeMs, TMcpIdeQuestions.AnswerMs(AQuestion)), mAnswerText) of
     TMcpIdeExchangeOutcome.NotTaken:
-      mOutcome := TMcpQuestionOutcome.NotTaken;
+      Result := TMcpQuestionOutcome.NotTaken;
     TMcpIdeExchangeOutcome.TimedOut:
-      mOutcome := TMcpQuestionOutcome.TimedOut;
+      Result := TMcpQuestionOutcome.TimedOut;
   else
-    mOutcome := TMcpIdeQuestions.ParseAnswer(mAnswerText, mAnswer);
+    Result := TMcpIdeQuestions.ParseAnswer(mAnswerText, AAnswer);
   end;
+end;
+
+function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+var
+  mQuestion: TMcpIdeQuestion;
+  mReason, mAnswer: string;
+  mOutcome: TMcpQuestionOutcome;
+begin
+  if not TMcpIdeQuestions.FromArguments(AArguments, AClient, mQuestion, mReason) then
+  begin
+    raise EMcpToolError.Create(mReason);
+  end;
+  mOutcome := AskQuestionInIde(ARoot, mQuestion, mAnswer);
   Result := TMcpIdeQuestions.ResultText(mOutcome, mAnswer, mQuestion);
 end;
 

@@ -67,6 +67,13 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
   die Änderung ab, scheitert der Aufruf wie bisher ohne Abschnitt. Projektweite Regeln sehen dabei den Index vor
   dem Nachladen. Abschalten: `"mcp": { "reportFindingsAfterEdit": false }`. Die letzte Auswertung liefert
   `delphi://edits/last`.
+- Rückfragen vor dem Schreiben (#2620): Findet `rename_symbol` mit `dryRun: false` erschlossene Stellen, fragt
+  Atlas, ob auch sie umbenannt werden sollen („Alle umbenennen“ / „Nur sichere Stellen“); `fix_findings` fragt
+  vor dem Schreiben in 5 oder mehr Dateien („Schreiben“ / „Nur Vorschau“). Hat der Client bei `initialize`
+  `capabilities.elicitation` gemeldet, geht die Frage als `elicitation/create` an ihn (ein Pflichtfeld `answer`
+  mit den Antworten als `enum`); sonst erscheint sie in der laufenden IDE wie bei `ask_user`. Ohne beide Wege
+  verhalten sich die Werkzeuge wie bisher (nur sichere Stellen bzw. ohne Halt schreiben). Lehnt der Mensch ab oder
+  läuft die Zeit ab, gilt der vorsichtige Ausgang. Abschalten: `"mcp": { "confirm": false }`.
 - Geschützte Dateien (#2608): `assistants.protected` in `atlas.json` listet Dateien, die KI-Assistenten nicht
   ändern dürfen, je Eintrag mit Muster (`path`, wie `architecture.exclude`: `*`, `**`, `?`, `/` oder `\`, ohne
   Groß-/Kleinschreibung, relativ zum Ordner von `atlas.json`), Grund (`reason`) und richtigem Weg (`use`):

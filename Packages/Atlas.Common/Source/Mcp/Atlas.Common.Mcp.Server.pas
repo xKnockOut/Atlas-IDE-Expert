@@ -41,6 +41,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.JsonRpc.Outgoing,
   Atlas.Common.Mcp.Statistics;
 
 type
@@ -157,6 +158,8 @@ type
     FEvents: TMcpServerEvents;
     FRestricted: Boolean;
     FStatistics: TMcpStatistics;
+    FClientElicits: Boolean;
+    FOutgoing: IJsonRpcOutgoing;
     /// <summary>Text des Werkzeugs; True bei isError (abgeschaltet, eingeschränkt, EMcpToolError).</summary>
     function Execute(const ATool: TMcpTool; const AArguments: TJSONObject; out AText: string): Boolean;
   public
@@ -227,6 +230,12 @@ type
     /// <summary>Aufrufstatistik (#2611); nil = nicht zählen. Gehört dem Aufrufer und muss den Server überleben.
     /// Vor dem ersten AddTool setzen: AddTool macht jedes Werkzeug bekannt (Zeilen ohne Aufruf).</summary>
     property Statistics: TMcpStatistics read FStatistics write FStatistics;
+    /// <summary>Der Client hat bei initialize die Fähigkeit elicitation gemeldet (#2620): Der Server darf ihn mit
+    /// elicitation/create den Menschen fragen lassen.</summary>
+    property ClientElicits: Boolean read FClientElicits;
+    /// <summary>Eigene Anfragen an den Client mit Warten auf die Antwort (elicitation/create); nil, solange keine
+    /// Verbindung läuft.</summary>
+    property Outgoing: IJsonRpcOutgoing read FOutgoing write FOutgoing;
   end;
 
 implementation
@@ -1053,6 +1062,9 @@ begin
   begin
     FEvents.OnClientInfo(Trim(mClient));
   end;
+  // Rückfragen über den Client (#2620): nur, wenn er sie anbietet.
+  FClientElicits := (AParams is TJSONObject) and
+    (TJSONObject(AParams).FindValue('capabilities.elicitation') is TJSONObject);
   Result := TJSONObject.Create;
   Result.AddPair('protocolVersion', mVersion);
   mCapabilities := TJSONObject.Create;

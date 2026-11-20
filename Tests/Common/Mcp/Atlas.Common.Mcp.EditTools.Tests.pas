@@ -51,6 +51,9 @@ type
     procedure FixFindingsSkipsDirtyFiles;
     [Test]
     procedure FixFindingsRefusesLowerConfidence;
+    /// <summary>Rückfrage (#2620): ab cConfirmFiles Dateien fragt fix_findings vor dem Schreiben.</summary>
+    [Test]
+    procedure FixFindingsAsksBeforeManyFiles;
     /// <summary>#1358: format_code mit Text liefert den formatierten Text und schreibt nichts.</summary>
     [Test]
     procedure FormatCodeWithTextWritesNothing;
@@ -79,6 +82,7 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Mcp.Confirm,
   Atlas.Common.Mcp.EditTools;
 
 type
@@ -667,6 +671,63 @@ begin
     mEdit.Free;
     mFiles.Free;
   end;
+end;
+
+/// <summary>Rückfrage, die immer AChoice antwortet und AAsked hochzählt.</summary>
+function Answering(AChoice: Integer; AAsked: PInteger): TMcpChooseFunc;
+begin
+  Result :=
+    function(const AText: string; const AOptions: TArray<string>): Integer
+    begin
+      Inc(AAsked^);
+      Result := AChoice;
+    end;
+end;
+
+/// <summary>fix_findings über cConfirmFiles Dateien mit Assigned/Free; die Rückfrage antwortet AChoice.</summary>
+function FixManyAnswering(AChoice: Integer; out AWrites, AAsked: Integer): string;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mIndex: Integer;
+  mNames: TArray<string>;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    AAsked := 0;
+    mEdit.Choose := Answering(AChoice, @AAsked);
+    mNames := nil;
+    for mIndex := 1 to TMcpEditTools.cConfirmFiles do
+    begin
+      mNames := mNames + [Format('U%d.pas', [mIndex])];
+      mFiles.Files.Add(mNames[High(mNames)], StringReplace(cAssignedFree, 'unit U;',
+        Format('unit U%d;', [mIndex]), []));
+    end;
+    Result := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), mNames,
+      ['redundant-assigned-free'], '', False);
+    AWrites := mFiles.Writes;
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.FixFindingsAsksBeforeManyFiles;
+var
+  mReport: string;
+  mWrites, mAsked: Integer;
+begin
+  mReport := FixManyAnswering(1, mWrites, mAsked);
+  Assert.AreEqual(1, mAsked);
+  Assert.AreEqual(0, mWrites, '„Nur Vorschau“ schreibt nichts');
+  Assert.Contains(mReport, 'Auf Rückfrage nichts geschrieben');
+  mReport := FixManyAnswering(TMcpConfirm.cNoAnswer, mWrites, mAsked);
+  Assert.AreEqual(0, mWrites, 'ohne Antwort nur die Vorschau');
+  mReport := FixManyAnswering(0, mWrites, mAsked);
+  Assert.AreEqual(TMcpEditTools.cConfirmFiles, mWrites, mReport);
+  mReport := FixManyAnswering(TMcpConfirm.cNotAsked, mWrites, mAsked);
+  Assert.AreEqual(TMcpEditTools.cConfirmFiles, mWrites, 'ohne Weg zum Menschen wie bisher');
 end;
 
 procedure TMcpEditToolsTests.FixFindingsSkipsDirtyFiles;

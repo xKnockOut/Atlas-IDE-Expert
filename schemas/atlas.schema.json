@@ -3603,6 +3603,15 @@
           "x-control": "Kontrollkästchen",
           "x-issue": "#2603"
         },
+        "confirm": {
+          "type": "boolean",
+          "default": true,
+          "description": "Schreibende Werkzeuge fragen vor riskanten Schritten nach: rename_symbol, ob auch die erschlossenen Stellen umbenannt werden sollen, fix_findings vor dem Schreiben in fünf oder mehr Dateien. Gefragt wird über den Client, wenn er Rückfragen (elicitation) anbietet, sonst im Fenster „KI-Assistent fragt“ der IDE (assistants.questionsInIde); ohne beides wie bisher ohne Rückfrage. false: nie nachfragen.",
+          "x-description-en": "Writing tools ask before risky steps: rename_symbol whether the inferred places should be renamed too, fix_findings before writing to five or more files. The question goes through the client when it offers questions (elicitation), otherwise to the window “AI assistant asks” in the IDE (assistants.questionsInIde); without either as before without asking. false: never ask.",
+          "x-page": "MCP",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#2620"
+        },
         "promptLanguage": {
           "type": "string",
           "enum": [
