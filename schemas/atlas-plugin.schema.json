@@ -1657,6 +1657,56 @@
       "x-captionEn": "Hint on outdated instructions",
       "x-issue": "#2615"
     },
+    "AssistantsLink": {
+      "type": "boolean",
+      "default": false,
+      "description": "RAD Studio als verbundene IDE für Kommandozeilen-Assistenten (#2377): ein WebSocket-Server nur auf 127.0.0.1 mit zufälligem Port und Token je IDE-Sitzung, angekündigt über eine Lock-Datei im Konfigurationsordner des Assistenten. Der Assistent sieht offene Dateien, Auswahl und Befunde, öffnet Dateien und zeigt Vorschläge als Vergleich. Statusfeld „Assistent verbunden“ mit Trennen. Aus = kein Port, keine Lock-Datei.",
+      "x-key": "assistants.link",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Mit Kommandozeilen-Assistenten verbinden",
+      "x-captionEn": "Connect with command line assistants",
+      "x-issue": "#2377"
+    },
+    "AssistantsLinkShareSelection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Die Auswahl im Editor laufend an den verbundenen Assistenten melden (#2377), erst wenn sie kurz ruht. Aus = der Assistent erfährt die Auswahl nur, wenn er fragt oder über „Auswahl an den Assistenten“.",
+      "x-key": "assistants.link.shareSelection",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.link",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Auswahl laufend teilen",
+      "x-captionEn": "Share the selection live",
+      "x-issue": "#2377"
+    },
+    "AssistantsLinkDiffPreview": {
+      "type": "boolean",
+      "default": true,
+      "description": "Vorschläge des verbundenen Assistenten als Vergleich zeigen (#2377): Annehmen ändert die Datei als ein Rückgängig-Schritt und speichert sie, Ablehnen lässt sie unverändert; der Assistent erfährt die Entscheidung. Aus = der Assistent schreibt Dateien ohne Vergleich in der IDE.",
+      "x-key": "assistants.link.diffPreview",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.link",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Vorschläge als Vergleich zeigen",
+      "x-captionEn": "Show proposals as a comparison",
+      "x-issue": "#2377"
+    },
+    "AssistantsLinkMentionKey": {
+      "type": "integer",
+      "default": 57419,
+      "description": "Tastenkürzel für „Auswahl an den Assistenten“ (#2377, Vorgabe Strg+Umschalt+Alt+K): schickt Datei und Zeilen der Auswahl an den verbundenen Assistenten; 0 = keins.",
+      "x-key": "assistants.link.mentionKey",
+      "x-area": "build",
+      "x-format": "shortcut",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.link",
+      "x-issue": "#2377"
+    },
     "AssistantsEditHoldModified": {
       "type": "boolean",
       "default": true,

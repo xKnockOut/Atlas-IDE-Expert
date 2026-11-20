@@ -91,6 +91,16 @@ What uses the provider:
 - **AI ghost text** (#1922, `assistants.inlineSuggestions`, off by default): when no learned suggestion fits after Enter, Atlas asks the provider. It sends the excerpt around the caret (`assistants.contextLines`) and the class headers from the index; files from `assistants.exclude` are never sent, `assistants.dailyLimit` limits the requests per day. A suggestion only appears after the server has checked it (no new syntax errors, only known identifiers). Tab accepts, Esc discards.
 - **Summarize an issue** (#2462, `issues.aiSummary`): “Summarize” in the “Atlas issue” window shows the state, open questions (and who should answer), the next step and the affected units as links into the editor. A notice comes before the first send per tracker connection; the summary is kept per issue and marked as out of date when the issue changes. “Use as comment” only fills the comment field.
 
+## Connected IDE for command line assistants (#2377)
+
+With `assistants.link` (off by default) RAD Studio presents itself to command line assistants as a connected IDE, like editors with their own extension do. Atlas opens a WebSocket server on 127.0.0.1 only, with a random port and one token per IDE session, and puts a lock file into the configuration folder of the assistant (`%USERPROFILE%\.claude\ide\<port>.lock` or under `CLAUDE_CONFIG_DIR`); it disappears when the feature is switched off or the IDE closes. The server refuses connections without the token or from a browser.
+
+- **Live selection** (`assistants.link.shareSelection`): the selection in the editor goes to the assistant once it rests for a moment; without a selection the line of the caret.
+- **Selection to the assistant:** a command in the editor context menu and a key (`assistants.link.mentionKey`, default Ctrl+Shift+Alt+K) send file and lines of the selection as a mention.
+- **Proposal as a comparison** (`assistants.link.diffPreview`): a proposal of the assistant appears as a comparison with the current state of the file. “Accept” changes the file as one undo step and saves it, “Accept and open” then shows it in the editor, “Reject” or closing leaves it unchanged. Only then does the assistant learn the decision. If the file changed in the meantime, the comparison shows the new state.
+- **Tools:** open files and workspace folders, selection, open a file and select a range, check and save unsaved changes, Atlas findings and compiler messages. The assistant cannot run code in the IDE.
+- **Status field “Assistant connected”** with the name of the assistant; a click offers “Disconnect”. The pause for AI applies here too: the IDE then refuses saving and proposals.
+
 ### AI providers of the IDE (Smart CodeInsight, #2744, #2745)
 
 From Delphi 12.2 on the IDE has its own AI providers (Tools › Options › Smart CodeInsight). Atlas shares them both ways; both settings are on the *AI assistants* page and off by default.

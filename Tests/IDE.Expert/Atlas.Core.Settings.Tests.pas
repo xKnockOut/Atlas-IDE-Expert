@@ -49,6 +49,8 @@ type
     /// <summary>#2050: assistants.context, .selection und .selectionMax mit Vorgaben und Grenzen.</summary>
     [Test]
     procedure AssistantsContextRoundTrip;
+    [Test]
+    procedure AssistantsLinkRoundTrip;
     /// <summary>#2605, #2620, #2049: Zurückhalten, Fragen in der IDE, Protokoll mit Höchstzahl.</summary>
     [Test]
     procedure AssistantsHoldQuestionsLogRoundTrip;
@@ -1352,6 +1354,30 @@ begin
   Assert.IsFalse(mLoaded.AssistantsContext);
   Assert.IsFalse(mLoaded.AssistantsContextSelection);
   Assert.AreEqual(TAtlasPluginSettings.cMaxAssistantsContextSelectionMax, mLoaded.AssistantsContextSelectionMax);
+end;
+
+procedure TAtlasPluginSettingsTests.AssistantsLinkRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.AssistantsLink, 'Kopplung standardmäßig aus (#2377)');
+  Assert.IsTrue(mSettings.AssistantsLinkShareSelection);
+  Assert.IsTrue(mSettings.AssistantsLinkDiffPreview);
+  Assert.AreEqual($E000 + Ord('K'), mSettings.AssistantsLinkMentionKey, 'Strg+Umschalt+Alt+K');
+  mStore := TMemoryStore.Create;
+  mSettings.AssistantsLink := True;
+  mSettings.AssistantsLinkShareSelection := False;
+  mSettings.AssistantsLinkDiffPreview := False;
+  mSettings.AssistantsLinkMentionKey := 0;
+  mSettings.Save(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.AssistantsLink);
+  Assert.IsFalse(mLoaded.AssistantsLinkShareSelection);
+  Assert.IsFalse(mLoaded.AssistantsLinkDiffPreview);
+  Assert.AreEqual(0, mLoaded.AssistantsLinkMentionKey, 'keine Taste');
 end;
 
 procedure TAtlasPluginSettingsTests.AssistantsHoldQuestionsLogRoundTrip;

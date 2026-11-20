@@ -955,6 +955,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.Inbox` | `Core/Assistants/Atlas.Core.Assistants.Inbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.InboxPace` | `Core/Assistants/Atlas.Core.Assistants.InboxPace.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.ContextState` | `Core/Assistants/Atlas.Core.Assistants.ContextState.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.LinkFrames` | `Core/Assistants/Atlas.Core.Assistants.LinkFrames.pas` | Ordner `Core/Assistants`, Assistenten-Kopplung ohne IDE, #2377 |
+| `Atlas.Core.Assistants.LinkLock` | `Core/Assistants/Atlas.Core.Assistants.LinkLock.pas` | Ordner `Core/Assistants`, Assistenten-Kopplung ohne IDE, #2377 |
+| `Atlas.Core.Assistants.Contract.Link` | `Core/Assistants/Atlas.Core.Assistants.Contract.Link.pas` | Ordner `Core/Assistants`, Vertrag der Assistenten-Kopplung, #2377 |
+| `Atlas.Core.Assistants.LinkProtocol` | `Core/Assistants/Atlas.Core.Assistants.LinkProtocol.pas` | Ordner `Core/Assistants`, Assistenten-Kopplung ohne IDE, #2377 |
+| `Atlas.Core.Assistants.LinkState` | `Core/Assistants/Atlas.Core.Assistants.LinkState.pas` | Ordner `Core/Assistants`, Assistenten-Kopplung ohne IDE, #2377 |
 | `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.Instructions` | `Core/Assistants/Atlas.Core.Assistants.Instructions.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditChange` | `Core/Assistants/Atlas.Core.Assistants.EditChange.pas` | Ordner `Core/Assistants` |
@@ -973,6 +978,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.DebugInbox` | `Core/Assistants/Atlas.Core.Assistants.DebugInbox.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.DebugGate` | `Core/Assistants/Atlas.Core.Assistants.DebugGate.pas` | Ordner `Core/Assistants` |
 | `Atlas.IDE.Assistants.Banner` | `IDE/Assistants/Atlas.IDE.Assistants.Banner.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Adapters.Link` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.Link.pas` | Ordner `IDE/Assistants`, Assistenten-Kopplung: erfüllt den Vertrag der Kopplung für die IDE, #2377 |
+| `Atlas.IDE.Assistants.LinkEditor` | `IDE/Assistants/Atlas.IDE.Assistants.LinkEditor.pas` | Ordner `IDE/Assistants`, Adapter zur Open Tools API der Assistenten-Kopplung, #2377 |
+| `Atlas.IDE.Assistants.LinkServer` | `IDE/Assistants/Atlas.IDE.Assistants.LinkServer.pas` | Ordner `IDE/Assistants`, Adapter zu Windows Sockets der Assistenten-Kopplung, #2377 |
 | `Atlas.IDE.Assistants.AiProbe` | `IDE/Assistants/Atlas.IDE.Assistants.AiProbe.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Adapters.AiText` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.AiText.pas` | Ordner `IDE/Assistants`, Text vom KI-Anbieter für andere Module über den Vertrag, #2462 |
 | `Atlas.IDE.Assistants.BuildInbox` | `IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas` | Ordner `IDE/Assistants` |
@@ -990,6 +998,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Assistants.LogWindow` | `IDE/Assistants/Atlas.IDE.Assistants.LogWindow.pas` | Ordner `IDE/Assistants` |
 | `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.DebugBar` | `UI/Assistants/Atlas.UI.Assistants.DebugBar.pas` | Ordner `UI/Assistants` |
+| `Atlas.UI.Assistants.LinkDiffView` | `UI/Assistants/Atlas.UI.Assistants.LinkDiffView.pas` | Ordner `UI/Assistants`, Vergleichsfenster der Assistenten-Kopplung, #2377 |
 | `Atlas.UI.Assistants.Strings` | `UI/Assistants/Atlas.UI.Assistants.Strings.pas` | Ordner `UI/Assistants` |
 | `Atlas.Core.Assistants.Contract.IdeAi` | `Core/Assistants/Atlas.Core.Assistants.Contract.IdeAi.pas` | Ordner `Core/Assistants`, Vertrag zu den Adaptern über ToolsAPI.AI, #2744, #2745 |
 | `Atlas.Core.Assistants.IdeProviders` | `Core/Assistants/Atlas.Core.Assistants.IdeProviders.pas` | Ordner `Core/Assistants`, Anbieter der IDE und ihre Auswahl ohne ToolsAPI, #2744 |
