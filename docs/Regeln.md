@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 91 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 17 |
+| [Threads](#gruppe-threads) | 18 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 101 |
 | [Robustheit und Muster](#gruppe-robustness) | 15 |
@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 57 |
-| [Packages und Tests](#gruppe-packages) | 13 |
+| [Packages und Tests](#gruppe-packages) | 15 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`threadvar-managed`](#threadvar-managed) | threadvar mit verwaltetem Typ | Bug | Warnung |
 | [`processmessages-in-loop`](#processmessages-in-loop) | Application.ProcessMessages in Schleifen | Code Smell | Hinweis |
 | [`queue-nil-in-package`](#queue-nil-in-package) | TThread.Queue(nil, …) in einem Package | Bug | Warnung |
+| [`queue-without-remove`](#queue-without-remove) | Thread reiht ein, entfernt die Einträge aber nie | Bug | Warnung |
 | [`blocking-call-in-main-thread`](#blocking-call-in-main-thread) | Blockierender Aufruf im Hauptthread | Code Smell | Warnung |
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
@@ -456,6 +457,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 | [`ota-notifier-not-removed`](#ota-notifier-not-removed) | IDE-Notifier ohne RemoveNotifier | Bug | Warnung |
+| [`ota-entry-without-guard`](#ota-entry-without-guard) | Einstiegspunkt der IDE lässt Ausnahmen durch | Bug | Warnung |
+| [`register-does-work`](#register-does-work) | Register startet Arbeit statt nur anzumelden | Code Smell | Warnung |
 | [`dunitx-test-without-assert`](#dunitx-test-without-assert) | DUnitX-Test ohne Assert | Code Smell | Hinweis |
 | [`dunitx-testcase-mismatch`](#dunitx-testcase-mismatch) | TestCase passt nicht zur Methode | Bug | Warnung |
 | [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
@@ -4800,6 +4803,42 @@ TAtlasMainThread.Queue(
   end);
 ```
 
+<a id="queue-without-remove"></a>
+### queue-without-remove
+
+**Thread reiht ein, entfernt die Einträge aber nie** · Bug · Warnung · Gruppe Threads
+
+Ein Nachfahr von TThread reiht am eigenen Thread in den Hauptthread ein (Queue(…), ForceQueue(…), TThread.Queue(Self, …) oder TThread.Queue(CurrentThread, …)), aber niemand entfernt die Einträge mit RemoveQueuedEvents. Was beim Anhalten des Threads noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in fremdem Speicher. Als Entfernen zählt ein Aufruf in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit einem anderen Argument als Self oder nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf, TThread.RemoveQueuedEvents(FWorker)) und eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit index.usages). Synchronize wartet und wird nicht gemeldet; Queue(nil, …) meldet queue-nil-in-package; eine eigene Methode namens Queue zählt nicht. Sicherheit hoch; niedrig, wenn ein Vorfahr aus einer anderen Unit die Einträge entfernen könnte. Korrektur: RemoveQueuedEvents(Self) im Destruktor vor inherited ergänzen (legt den Destruktor hinter dem letzten Konstruktor an, wenn er fehlt; nicht bei eingebetteten Klassen).
+
+Mit Treffer:
+
+```pascal
+procedure TOrderWorker.Execute;
+begin
+  Queue(procedure begin FForm.Caption := 'fertig' end);
+end;
+
+destructor TOrderWorker.Destroy;
+begin
+  inherited;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TOrderWorker.Execute;
+begin
+  Queue(procedure begin FForm.Caption := 'fertig' end);
+end;
+
+destructor TOrderWorker.Destroy;
+begin
+  RemoveQueuedEvents(Self);
+  inherited;
+end;
+```
+
 <a id="ota-notifier-not-removed"></a>
 ### ota-notifier-not-removed
 
@@ -4836,6 +4875,78 @@ initialization
 finalization
   if NotifierIndex >= 0 then
     (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);
+```
+
+<a id="ota-entry-without-guard"></a>
+### ota-entry-without-guard
+
+**Einstiegspunkt der IDE lässt Ausnahmen durch** · Bug · Warnung · Gruppe Packages und Tests
+
+Eine Methode, die die IDE aufruft, kann eine Ausnahme in die IDE durchlassen; die IDE zeigt sie als Fehlermeldung, im schlimmsten Fall bricht sie Speichern oder Laden ab. Einstiegspunkte sind die public- und published-Methoden einer Klasse, die ein Interface aus der Option interfaces implementiert, auch über Vorfahren (Vorgabe IOTA*Notifier*, INTA*Notifier*, IOTA*Wizard*, IOTAKeyboardBinding, INTACustomDrawMessage, IOTALocalMenu, IOTAProjectManagerMenu), die Methoden, die eine solche Klasse an AddKeyBinding oder AddMenuCommand übergibt, und in Units eines Packages, die Menüeinträge in die IDE hängen (INTAServices, MainMenu, AddActionMenu, Editor- oder Projektmenü), die Methoden, die eine Routine OnClick oder OnExecute zuweist, wenn sie TMenuItem oder TAction nennt; Handler eines eigenen Kontextmenüs fängt die Anwendung. Gemeldet wird ein Rumpf mit etwas, das werfen kann (Aufruf, raise, Umwandlung mit as), außerhalb eines try … except, das jede Ausnahme fängt, und außerhalb des Aufrufs einer Schutzroutine aus der Option guards; ein raise im Handler zählt. Nicht als Wurf zählen eingebaute und reine RTL-Routinen (Length, Assigned, Supports, Copy, SameText …), Typumwandlungen (auch T…(x) und I…(x) mit Typen, die der Index nicht kennt, etwa der VCL), inherited, anonyme Methoden (laufen später) und Aufrufe von Routinen der Unit, deren Rumpf nicht werfen kann. Rümpfe, die nur Werte zuweisen (Felder, Result), bleiben still. Sicherheit hoch. Korrekturen: den Rumpf als anonyme Methode an die erste Schutzroutine übergeben (mit Klammer ist der Eintrag der Anfang des Aufrufs, z. B. "TAtlasGuard.Run(TAtlasFeature.Menu, "; nicht, wenn der Rumpf Result, var- oder out-Parameter oder inherited nutzt) oder, mit einem Feld vom Typ ILogger, in try … except legen und die Meldung mit Error protokollieren.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `guards` | string-list | `[]` | Schutzroutinen, die den Rumpf absichern, z. B. TAtlasGuard.Run; es zählt der Text vor einer Klammer. Die Korrektur nimmt den ersten Eintrag, mit Klammer als Anfang des Aufrufs. |
+| `interfaces` | string-list | `["IOTA*Notifier*","INTA*Notifier*","IOTA*Wizard*","IOTAKeyboardBinding","INTACustomDrawMessage","IOTALocalMenu","IOTAProjectManagerMenu"]` | Interfaces, deren Methoden Einstiegspunkte sind (Muster mit * und ?). |
+
+Mit Treffer:
+
+```pascal
+procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;
+  const FileName: string; var Cancel: Boolean);
+begin
+  if FileName = '' then
+    raise Exception.Create('leer');
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;
+  const FileName: string; var Cancel: Boolean);
+begin
+  try
+    Pruefen(FileName);
+  except
+    on E: Exception do
+      FLogger.Error(E.Message);
+  end;
+end;
+```
+
+<a id="register-does-work"></a>
+### register-does-work
+
+**Register startet Arbeit statt nur anzumelden** · Code Smell · Warnung · Gruppe Packages und Tests
+
+Die Prozedur Register eines Packages (bzw. eine andere Einstiegsroutine aus der Option entries) startet Arbeit, statt nur anzumelden: einen Aufruf aus workCalls (Vorgabe Sleep, WaitFor…, CreateProcess, ShellExecute…, Application.CreateForm, ShowModal, ShowMessage, MessageDlg, TTask.Run, TThread.CreateAnonymousThread) oder das Erzeugen einer Klasse aus workClasses bzw. eines Nachfahren (Vorgabe TTimer, TThread, TForm, THTTPClient, TIdHTTP). Register läuft beim Start der IDE in nicht garantierter Reihenfolge der Packages; Arbeit dort verlängert den Start und greift womöglich auf noch nicht geladene Packages zu. Geprüft werden auch Routinen der Unit, die nur von der Einstiegsroutine aus erreicht werden (freie Routinen des implementation-Teils, private Methoden derselben Klasse); anonyme Methoden und als Argument übergebene Routinen laufen später und zählen nicht. Anmelden bleibt erlaubt (RegisterPackageWizard, RegisterComponents, AddNotifier …). Ein Eintrag mit Punkt passt auf den ganzen Routinennamen (*.RegisterModule), ohne Punkt nur auf freie Routinen. Sicherheit hoch in der Einstiegsroutine, mittel in einer Hilfsroutine. Keine Korrektur: den Start in einen Wizard, einen Notifier oder die Feature-Tabelle verlegen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `workCalls` | string-list | `["Sleep","WaitFor*","CreateProcess","ShellExecute*","Application.CreateForm","ShowModal","ShowMessage","MessageDlg","TTask.Run","TThread.CreateAnonymousThread"]` | Aufrufe, die als Arbeit gelten; mit Punkt der ganze Aufruf (TTask.Run), sonst der letzte Namensteil; Muster mit * und ?. |
+| `workClasses` | string-list | `["TTimer","TThread","TForm","THTTPClient","TIdHTTP"]` | Klassen, deren Erzeugen als Arbeit gilt, samt Nachfahren. |
+| `entries` | string-list | `["Register"]` | Einstiegsroutinen, z. B. auch *.RegisterModule; mit Punkt der ganze Name, sonst nur freie Routinen. |
+
+Mit Treffer:
+
+```pascal
+procedure Register;
+begin
+  GTimer := TTimer.Create(nil);
+  GTimer.Enabled := True;
+  RegisterPackageWizard(TMyWizard.Create);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Register;
+begin
+  // The wizard starts the timer once the IDE has loaded.
+  RegisterPackageWizard(TMyWizard.Create);
+end;
 ```
 
 <a id="dunitx-test-without-assert"></a>

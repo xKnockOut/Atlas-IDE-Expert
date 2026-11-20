@@ -89,15 +89,18 @@ var
   mOwner: TAtlasIdeWelcomeProjectWatch;
 begin
   mOwner := FOwner;
-  if (mOwner = nil) or (NotifyCode <> ofnFileClosing) or not TAtlasWelcomeSearch.IsProjectFile(FileName) then
+  if (mOwner = nil) or (NotifyCode <> ofnFileClosing) then
   begin
     Exit;
   end;
-  // Keine Exception an die IDE (#493).
+  // Keine Exception an die IDE (#493), auch nicht aus der Prüfung des Dateinamens.
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mOwner.Closing;
+      if TAtlasWelcomeSearch.IsProjectFile(FileName) then
+      begin
+        mOwner.Closing;
+      end;
     end);
 end;
 

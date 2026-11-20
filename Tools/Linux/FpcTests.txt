@@ -349,6 +349,7 @@ Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests
 Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Polling.Tests
+Atlas.Common.Rules.Builtin.Concurrency.QueueRemove.Tests
 Atlas.Common.Rules.Builtin.Conditions.Jumps.Tests
 Atlas.Common.Rules.Builtin.Constants.Tests
 Atlas.Common.Rules.Builtin.Constants.Types.Tests
@@ -395,6 +396,8 @@ Atlas.Common.Rules.Builtin.Migration.Unicode.Tests
 Atlas.Common.Rules.Builtin.Migration.Win64.Tests
 Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
+Atlas.Common.Rules.Builtin.OpenTools.EntryGuard.Tests
+Atlas.Common.Rules.Builtin.OpenTools.Register.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
 Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
 Atlas.Common.Rules.Builtin.Ownership.CreateOrder.Tests
