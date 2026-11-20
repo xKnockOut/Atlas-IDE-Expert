@@ -26,6 +26,9 @@ type
     procedure WritesItselfWhenTheFileIsNoLongerOpen;
     [Test]
     procedure FailsWhenTakenButNeverAnswered;
+    /// <summary>Zurückhalten (#2605): Auftrag mit "hold", Antwort "held".</summary>
+    [Test]
+    procedure ReportsHeldChange;
     /// <summary>Nicht zu eng (Last), nicht zu weit (Antwortzeit).</summary>
     [Test]
     procedure PollIntervalStaysWithinBounds;
@@ -153,6 +156,29 @@ begin
       Plugin(FInbox, '', mSeen);
     end, Clock, mReason));
   Assert.IsNotEmpty(mReason);
+end;
+
+procedure TMcpIdeEditsTests.ReportsHeldChange;
+var
+  mReason, mSeen: string;
+  mEdit: TMcpIdeEdit;
+  mJson: TJSONValue;
+begin
+  mEdit := TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu');
+  mEdit.Hold := True;
+  Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.Held,
+    TMcpIdeEdits.Send(FInbox, mEdit,
+    procedure
+    begin
+      Inc(Now_, 100);
+      Plugin(FInbox, '{"applied":false,"held":true,"reason":"wartet"}', mSeen);
+    end, Clock, mReason));
+  mJson := TJSONObject.ParseJSONValue(mSeen);
+  try
+    Assert.IsTrue(mJson.GetValue<Boolean>('hold', False), mSeen);
+  finally
+    mJson.Free;
+  end;
 end;
 
 procedure TMcpIdeEditsTests.PollIntervalStaysWithinBounds;

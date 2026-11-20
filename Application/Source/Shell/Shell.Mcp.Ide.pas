@@ -2,12 +2,14 @@
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Verbindung zur laufenden IDE über die Dateien des Plugins:
 // ungespeicherte Dateien (editor-dirty-<pid>.json), Schreiben am Editor vorbei, Builds und Debuggen über das Plugin,
-// Zustand der IDE (ide-context-<pid>.json, #2050).
+// Zustand der IDE (ide-context-<pid>.json, #2050), Änderungen an ungespeicherten Dateien zurückhalten (#2605) und
+// Rückfragen an den Menschen in der IDE (ask_user, #2620).
 
 interface
 
 uses
   System.JSON,
+  Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.IdeDebug,
   Atlas.Text.IdeContext,
   Atlas.Common.Lsp.IdeBuild;
@@ -25,6 +27,14 @@ function IdeContexts: TArray<TIdeContext>;
 /// mit Atlas-Plugin offen, ändert das Plugin den Puffer und speichert (#397); sonst die Platte.
 /// </summary>
 procedure WriteSourceText(const AFileName, AText: string);
+/// <summary>Änderung an einer im Editor ungespeichert geänderten Datei (#2605): Das Plugin der IDE, in der sie offen
+/// ist, hält sie zurück, bis der Benutzer entscheidet (Held), oder wendet sie gleich an (Applied). Refused mit Grund,
+/// wenn keine IDE sie annimmt; der MCP-Server schreibt eine solche Datei nie selbst.</summary>
+function HoldSourceText(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult;
+/// <summary>ask_user (#2620): stellt die Frage aus AArguments in der IDE mit dem aktiven Projekt unter ARoot (sonst
+/// der ersten mit Atlas) und wartet auf die Antwort. Liefert den Text für den Assistenten; EMcpToolError bei
+/// ungültigen Argumenten.</summary>
+function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
 /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
 /// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
 /// den Auftrag nicht annimmt.</summary>
@@ -48,20 +58,25 @@ uses
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeInbox,
   Atlas.Common.Mcp.IdeBuilds,
+  Atlas.Common.Mcp.IdeQuestions,
   Shell.Platform,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
-  TMcpIdeText = (ModeInvalid, ResultUnreadable);
+  TMcpIdeText = (ModeInvalid, ResultUnreadable, UnsavedNotTaken);
 {$SCOPEDENUMS OFF}
 
 const
   cTexts: array[TMcpIdeText] of TAtlasText = (
     (De: 'Argument "mode": erlaubt sind "make", "build" und "check"';
     En: 'Argument "mode": allowed are "make", "build" and "check"'),
-    (De: 'Ergebnis der IDE nicht lesbar.'; En: 'Result of the IDE not readable.'));
+    (De: 'Ergebnis der IDE nicht lesbar.'; En: 'Result of the IDE not readable.'),
+    (De: '%s hat ungespeicherte Änderungen im Editor, und die IDE hält Änderungen nicht zurück ' +
+      '(„Änderungen an ungespeicherten Dateien zurückhalten“ aus); nichts geändert. Erst in der IDE speichern.';
+     En: '%s has unsaved changes in the editor, and the IDE does not hold changes back ("Hold back changes to ' +
+      'unsaved files" off); nothing changed. Save in the IDE first.'));
 
   /// <summary>Sicherheitsnetz beim Warten auf die Antwort des Plugins: Das Plugin legt sie per Umbenennen an, das
   /// Ordnersignal weckt sofort; ohne Signal (verpasst, Netzlaufwerk) wird spätestens so oft nachgesehen.</summary>
@@ -254,6 +269,42 @@ begin
   TFileEncoding.SaveToFile(AFileName, AText, mFileFormat);
 end;
 
+function HoldSourceText(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult;
+var
+  mPid: Cardinal;
+  mInbox: string;
+  mEdit: TMcpIdeEdit;
+begin
+  AReason := cTexts[TMcpIdeText.UnsavedNotTaken].Fmt([AFileName]);
+  mPid := IdeWithOpenFile(AFileName);
+  if mPid = 0 then
+  begin
+    Exit(TMcpHoldResult.Refused);
+  end;
+  mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
+  mEdit := TMcpIdeEdit.Make(AFileName, AExpected, AText);
+  mEdit.Hold := True;
+  case TMcpIdeEdits.Send(mInbox, mEdit, TShellPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
+    function: Int64
+    begin
+      Result := TThread.GetTickCount64;
+    end, AReason) of
+    TMcpIdeEditOutcome.Applied:
+      Result := TMcpHoldResult.Applied;
+    TMcpIdeEditOutcome.Held:
+      Result := TMcpHoldResult.Held;
+    TMcpIdeEditOutcome.Failed:
+      begin
+        AReason := Format('IDE: %s', [AReason]);
+        Result := TMcpHoldResult.Refused;
+      end;
+  else
+    // Nicht angenommen oder nicht mehr offen: Die Datei ist im Editor geändert, also nicht selbst schreiben.
+    AReason := cTexts[TMcpIdeText.UnsavedNotTaken].Fmt([AFileName]);
+    Result := TMcpHoldResult.Refused;
+  end;
+end;
+
 /// <summary>Projekt aus dem Argument project: ein relativer Pfad gilt relativ zum Arbeitsordner, Namen bleiben.
 /// </summary>
 function WantedProject(const ARoot, AProject: string): string;
@@ -311,6 +362,43 @@ begin
   begin
     raise EMcpToolError.Create(cTexts[TMcpIdeText.ResultUnreadable].Text);
   end;
+end;
+
+function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+var
+  mQuestion: TMcpIdeQuestion;
+  mEntries: TArray<TMcpIdeEntry>;
+  mPid: Cardinal;
+  mReason, mProject, mInbox, mAnswerText, mAnswer: string;
+  mOutcome: TMcpQuestionOutcome;
+begin
+  if not TMcpIdeQuestions.FromArguments(AArguments, AClient, mQuestion, mReason) then
+  begin
+    raise EMcpToolError.Create(mReason);
+  end;
+  mAnswer := '';
+  mEntries := RunningIdes;
+  if Length(mEntries) = 0 then
+  begin
+    Exit(TMcpIdeQuestions.ResultText(TMcpQuestionOutcome.NoIde, mAnswer, mQuestion));
+  end;
+  // Die IDE mit dem aktiven Projekt unter dem Arbeitsordner, sonst die erste mit Atlas.
+  if not TMcpIdeBuilds.Pick(mEntries, ARoot, '', mPid, mProject, mReason) then
+  begin
+    mPid := mEntries[0].Pid;
+  end;
+  mInbox := TMcpIdeQuestions.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
+  case TMcpIdeInbox.Exchange(mInbox, TMcpIdeQuestions.RequestText(mQuestion),
+    TMcpIdeWaiting.Make(TShellPlatform.FolderWait(mInbox, TMcpIdeQuestions.cPollMs, cAnswerSafetyMs), TickClock(),
+    TMcpIdeQuestions.cTakeMs, TMcpIdeQuestions.AnswerMs(mQuestion)), mAnswerText) of
+    TMcpIdeExchangeOutcome.NotTaken:
+      mOutcome := TMcpQuestionOutcome.NotTaken;
+    TMcpIdeExchangeOutcome.TimedOut:
+      mOutcome := TMcpQuestionOutcome.TimedOut;
+  else
+    mOutcome := TMcpIdeQuestions.ParseAnswer(mAnswerText, mAnswer);
+  end;
+  Result := TMcpIdeQuestions.ResultText(mOutcome, mAnswer, mQuestion);
 end;
 
 /// <summary>IDE für ein Debug-Werkzeug: für debug_start nach AProject (AProjectFile = gewähltes Projekt), sonst die

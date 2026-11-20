@@ -957,6 +957,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Assistants.ContextState` | `Core/Assistants/Atlas.Core.Assistants.ContextState.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.EditPlan` | `Core/Assistants/Atlas.Core.Assistants.EditPlan.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.Assistants.Instructions` | `Core/Assistants/Atlas.Core.Assistants.Instructions.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.EditChange` | `Core/Assistants/Atlas.Core.Assistants.EditChange.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.Queue` | `Core/Assistants/Atlas.Core.Assistants.Queue.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.HeldEdits` | `Core/Assistants/Atlas.Core.Assistants.HeldEdits.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.Questions` | `Core/Assistants/Atlas.Core.Assistants.Questions.pas` | Ordner `Core/Assistants` |
+| `Atlas.Core.Assistants.Log` | `Core/Assistants/Atlas.Core.Assistants.Log.pas` | Ordner `Core/Assistants` |
 | `Atlas.Core.AiProviders.Contract` | `Core/AiProviders/Atlas.Core.AiProviders.Contract.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.Anthropic` | `Core/AiProviders/Atlas.Core.AiProviders.Anthropic.pas` | Ordner `Core/AiProviders` |
 | `Atlas.Core.AiProviders.OpenAiCompatible` | `Core/AiProviders/Atlas.Core.AiProviders.OpenAiCompatible.pas` | Ordner `Core/AiProviders` |
@@ -979,6 +984,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Adapters.Instructions` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.Instructions.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.LogEntries` | `IDE/Assistants/Atlas.IDE.Assistants.LogEntries.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.HeldEdits` | `IDE/Assistants/Atlas.IDE.Assistants.HeldEdits.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.QuestionInbox` | `IDE/Assistants/Atlas.IDE.Assistants.QuestionInbox.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.LogWindow` | `IDE/Assistants/Atlas.IDE.Assistants.LogWindow.pas` | Ordner `IDE/Assistants` |
 | `Atlas.UI.Assistants.SettingsSection` | `UI/Assistants/Atlas.UI.Assistants.SettingsSection.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.DebugBar` | `UI/Assistants/Atlas.UI.Assistants.DebugBar.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.Strings` | `UI/Assistants/Atlas.UI.Assistants.Strings.pas` | Ordner `UI/Assistants` |
@@ -991,6 +1000,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Assistants.Adapters.IdeProviders` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdeProviders.pas` | Ordner `IDE/Assistants`, Adapter über ToolsAPI.AI, #2744 |
 | `Atlas.IDE.Assistants.Adapters.IdePlugin` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdePlugin.pas` | Ordner `IDE/Assistants`, Anmeldung bei Smart CodeInsight über ToolsAPI.AI, #2745 |
 | `Atlas.UI.Assistants.IdePluginFrame` | `UI/Assistants/Atlas.UI.Assistants.IdePluginFrame.pas` | Ordner `UI/Assistants`, Seite des Eintrags in Smart CodeInsight, #2745 |
+| `Atlas.UI.Assistants.QuestionDialog` | `UI/Assistants/Atlas.UI.Assistants.QuestionDialog.pas` | Ordner `UI/Assistants` |
+| `Atlas.UI.Assistants.LogFrame` | `UI/Assistants/Atlas.UI.Assistants.LogFrame.pas` | Ordner `UI/Assistants` |
 
 ## Atlas.IDE.VersionControl
 

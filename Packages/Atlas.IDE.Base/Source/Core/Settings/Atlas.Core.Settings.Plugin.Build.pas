@@ -63,6 +63,9 @@ const
   cMinAssistantsContextSelectionMax = 0;
   cMaxAssistantsContextSelectionMax = 50000;
   cDefaultAssistantsContextSelectionMax = 4000;
+  cMinAssistantsLogMax = 50;
+  cMaxAssistantsLogMax = 5000;
+  cDefaultAssistantsLogMax = 500;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -109,6 +112,18 @@ type
     /// <summary>assistants.instructionsHint (#2615): Hinweis in der Meldungsansicht, wenn nach dem Speichern der
     /// atlas.json der Abschnitt in einer Anweisungsdatei für KI-Assistenten veraltet ist.</summary>
     AssistantsInstructionsHint: Boolean;
+    /// <summary>assistants.editHoldModified (#2605): Änderungen von KI-Assistenten an ungespeichert geänderten
+    /// Dateien zurückhalten, bis der Benutzer entscheidet; aus = ablehnen wie bisher.</summary>
+    AssistantsEditHoldModified: Boolean;
+    /// <summary>assistants.questionsInIde (#2620): Rückfragen von KI-Assistenten (ask_user) als Fenster in der IDE;
+    /// aus = das Werkzeug sagt, der Assistent soll im Client fragen.</summary>
+    AssistantsQuestionsInIde: Boolean;
+    /// <summary>assistants.log (#2049): Aufträge von KI-Assistenten in dieser Sitzung im Fenster
+    /// „Atlas-KI-Protokoll“ festhalten; aus = nichts festhalten.</summary>
+    AssistantsLog: Boolean;
+    /// <summary>assistants.log.max (#2049): höchstens so viele Einträge, cMinAssistantsLogMax bis
+    /// cMaxAssistantsLogMax.</summary>
+    AssistantsLogMax: Integer;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
     /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
     /// blockieren). Aus = kein Bau beim Öffnen.</summary>
@@ -374,6 +389,10 @@ begin
   Result.AssistantsContextSelection := True;
   Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
   Result.AssistantsInstructionsHint := True;
+  Result.AssistantsEditHoldModified := True;
+  Result.AssistantsQuestionsInIde := True;
+  Result.AssistantsLog := True;
+  Result.AssistantsLogMax := cDefaultAssistantsLogMax;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
   Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
@@ -445,6 +464,7 @@ begin
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
   AssistantsContextSelectionMax := EnsureRange(AssistantsContextSelectionMax, cMinAssistantsContextSelectionMax,
     cMaxAssistantsContextSelectionMax);
+  AssistantsLogMax := EnsureRange(AssistantsLogMax, cMinAssistantsLogMax, cMaxAssistantsLogMax);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -466,6 +486,10 @@ begin
   AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
   AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);
   AIo.Flag('AssistantsInstructionsHint', AssistantsInstructionsHint);
+  AIo.Flag('AssistantsEditHoldModified', AssistantsEditHoldModified);
+  AIo.Flag('AssistantsQuestionsInIde', AssistantsQuestionsInIde);
+  AIo.Flag('AssistantsLog', AssistantsLog);
+  AIo.Number('AssistantsLogMax', AssistantsLogMax);
   AIo.Flag('BuildOnOpen', BuildOnOpen);
   AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
   AIo.Text('BuildOnOpenScope', BuildOnOpenScope);

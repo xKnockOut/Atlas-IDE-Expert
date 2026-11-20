@@ -107,6 +107,19 @@ begin
     CheckOf(mPage, 'AssistantsContext').Checked := False;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.AssistantsContext);
+    // Zurückhalten (#2605), Fragen in der IDE (#2620) und KI-Protokoll (#2049): standardmäßig an, abschaltbar.
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')),
+      SheetOf(CheckOf(mPage, 'AssistantsEditHoldModified')));
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsEditHoldModified').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsQuestionsInIde').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsLog').Checked);
+    CheckOf(mPage, 'AssistantsEditHoldModified').Checked := False;
+    CheckOf(mPage, 'AssistantsQuestionsInIde').Checked := False;
+    CheckOf(mPage, 'AssistantsLog').Checked := False;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.AssistantsEditHoldModified);
+    Assert.IsFalse(mSaved.AssistantsQuestionsInIde);
+    Assert.IsFalse(mSaved.AssistantsLog);
   finally
     mPage.Free;
   end;

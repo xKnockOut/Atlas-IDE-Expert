@@ -20,6 +20,11 @@
 // ungespeichert geändert (Liste des IDE-Plugins), bricht der Aufruf ohne
 // Änderung ab; scheitert das Schreiben einer Datei, werden die schon
 // geschriebenen zurückgesetzt. Geänderte Dateien gehen ins Protokoll (Audit).
+// Zurückhalten (#2605): Ist HoldText gesetzt, bricht eine im Editor ungespeichert geänderte Datei den Aufruf nicht
+// mehr ab. Ihre Änderung geht an die IDE, die sie zurückhält, bis der Benutzer entscheidet; der Bericht nennt sie
+// unter „wartet in der IDE“, und der Assistent soll sie nicht erneut senden. Erst werden alle solchen Dateien an die
+// IDE gegeben (lehnt sie die erste ab, ist nichts geändert), dann die übrigen geschrieben. Zu löschende Dateien mit
+// ungespeicherten Änderungen brechen weiter ab.
 // apply_code_action prüft mit den Symbolen des Projekts (CheckSource, #860) und
 // mit Symbolindex und Projektdiensten (CheckProject, #1112) wie der Server.
 // rename_symbol ändert nur sichere Stellen (#1119); erschlossene nennt der
@@ -87,6 +92,8 @@ type
     Deleted: TArray<string>;
     DeletedTexts: TArray<string>;
     NotDeleted: TArray<string>;
+    /// <summary>Dateien, deren Änderung die IDE zurückhält (#2605); nicht geschrieben.</summary>
+    Held: TArray<string>;
   end;
 
   /// <summary>Schreibt AText nach AFileName (Kodierung und Zeilenenden erhalten); Fehler als Exception.</summary>
@@ -108,6 +115,14 @@ type
   end;
   /// <summary>Im Editor ungespeichert geänderte Dateien (IDE-Plugin); leer ohne Editor.</summary>
   TMcpDirtyFiles = reference to function: TArray<string>;
+  /// <summary>Ausgang von TMcpHoldText: gleich angewendet, in der IDE zurückgehalten oder abgelehnt.</summary>
+{$SCOPEDENUMS ON}
+  TMcpHoldResult = (Applied, Held, Refused);
+{$SCOPEDENUMS OFF}
+  /// <summary>Änderung einer im Editor ungespeichert geänderten Datei von AExpected (Platte) nach AText an die IDE
+  /// geben, die sie zurückhält (#2605); bei Refused der Grund in AReason.</summary>
+  TMcpHoldText = reference to function(const AFileName, AExpected, AText: string; out AReason: string):
+    TMcpHoldResult;
   TMcpAudit = reference to procedure(const AText: string);
   /// <summary>Geschützte unter AFileNames mit Grund und richtigem Weg (#2608, TMcpProtectedFiles.Report); '' ohne.
   /// ADryRun: Abschnitt der Vorschau, sonst die Ablehnung.</summary>
@@ -125,6 +140,7 @@ type
     FWriteText: TMcpWriteText;
     FFiles: TMcpFileOperations;
     FDirtyFiles: TMcpDirtyFiles;
+    FHoldText: TMcpHoldText;
     FAudit: TMcpAudit;
     FProtectedReport: TMcpProtectedReport;
     FAfterWrite: TMcpAfterWrite;
@@ -134,7 +150,9 @@ type
     procedure ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
       out AOldTexts, ANewTexts: TArray<string>);
     procedure WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
-    procedure EnsureWritable(const ANames, AOldTexts: TArray<string>);
+    procedure EnsureWritable(const ANames, AOldTexts, AHeld: TArray<string>);
+    function HeldNames(const ANames, ADeleted: TArray<string>): TArray<string>;
+    procedure HoldAll(const ATool: string; var APlan: TMcpChangePlan);
     function NewFileText(const AFile: TMcpNewFile; const AEdits: TArray<TMcpFileEdit>): string;
     procedure WritePlan(const ATool: string; var APlan: TMcpChangePlan);
     procedure WriteFixes(const AFixRules: TArray<string>; const AResults: TArray<TBulkFixFile>);
@@ -149,6 +167,8 @@ type
     /// <summary>Liest Dateien wie die Werkzeuge selbst (extract_method, #2054).</summary>
     property ReadText: TReferenceReadText read FReadText;
     property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
+    /// <summary>Ungespeicherte Dateien über die IDE zurückhalten (#2605); nil = solche Dateien brechen ab.</summary>
+    property HoldText: TMcpHoldText read FHoldText write FHoldText;
     /// <summary>Neue Dateien anlegen und Dateien löschen (#2150).</summary>
     property Files: TMcpFileOperations read FFiles write FFiles;
     property Audit: TMcpAudit read FAudit write FAudit;
@@ -240,7 +260,7 @@ type
     NotTouchedUnsavedChangesIn, ArgumentRulesMissingRuleIds, DeviationsFromTheFormatRules, AndMore,
     NoteTheFormattingIsNot, SyntaxErrorInLineNot, NoDeviationFromTheFormat, NoDeviationFromTheFormat2,
     OnlyTheLineEndingsDiffer, Line, FormattedTextPascal, AlreadyExists, NoCreating, NoDeleting, NewFile,
-    DeletedFile, NotDeleted, CreatedAndDeleted, DiffLine, DiffFromLine);
+    DeletedFile, NotDeleted, CreatedAndDeleted, DiffLine, DiffFromLine, HeldInIde, HeldAudit, HeldBefore);
 
 const
   cTexts: array[TEditToolsText] of TAtlasText = (
@@ -291,7 +311,11 @@ const
     (De: 'Nicht gelöscht: %s'; En: 'Not deleted: %s'),
     (De: 'MCP %s hat %d Dateien angelegt und %d gelöscht'; En: 'MCP %s created %d files and deleted %d'),
     (De: 'Zeile %d:'; En: 'Line %d:'),
-    (De: 'ab Zeile %d:'; En: 'from line %d:'));
+    (De: 'ab Zeile %d:'; En: 'from line %d:'),
+    (De: 'Wartet in der IDE auf den Benutzer (ungespeicherte Änderungen im Editor), nicht erneut senden: %s';
+     En: 'Waiting in the IDE for the user (unsaved changes in the editor), do not send again: %s'),
+    (De: 'MCP %s wartet in der IDE: %s'; En: 'MCP %s is waiting in the IDE: %s'),
+    (De: '%s (In der IDE warten schon: %s)'; En: '%s (Already waiting in the IDE: %s)'));
 
 {$SCOPEDENUMS OFF}
 
@@ -522,17 +546,17 @@ begin
   end;
 end;
 
-procedure TMcpFileWriter.EnsureWritable(const ANames, AOldTexts: TArray<string>);
+procedure TMcpFileWriter.EnsureWritable(const ANames, AOldTexts, AHeld: TArray<string>);
 var
   mDirty, mCurrent: string;
   mIndex: Integer;
 begin
-  // Keine Kollision mit ungespeicherten Änderungen im Editor.
+  // Keine Kollision mit ungespeicherten Änderungen im Editor; was die IDE zurückhält (#2605), kollidiert nicht.
   if Assigned(FDirtyFiles) then
   begin
     for mDirty in FDirtyFiles() do
     begin
-      if MatchText(mDirty, ANames) then
+      if MatchText(mDirty, ANames) and not MatchText(mDirty, AHeld) then
       begin
         raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasUnsavedChangesInThe].Text, [mDirty]);
       end;
@@ -559,7 +583,86 @@ begin
   Result := ApplyToText(AFile.Text, EditsIn(AEdits, AFile.FileName));
 end;
 
+function TMcpFileWriter.HeldNames(const ANames, ADeleted: TArray<string>): TArray<string>;
+var
+  mDirty: string;
+begin
+  Result := nil;
+  if not Assigned(FHoldText) or not Assigned(FDirtyFiles) then
+  begin
+    Exit;
+  end;
+  for mDirty in FDirtyFiles() do
+  begin
+    // Löschen lässt sich nicht zurückhalten; das bricht weiter in EnsureWritable ab.
+    if MatchText(mDirty, ANames) and not MatchText(mDirty, ADeleted) and not MatchText(mDirty, Result) then
+    begin
+      Result := Result + [ANames[IndexText(mDirty, ANames)]];
+    end;
+  end;
+end;
+
+procedure TMcpFileWriter.HoldAll(const ATool: string; var APlan: TMcpChangePlan);
+var
+  mName, mReason: string;
+  mIndex: Integer;
+  mHeld: TArray<string>;
+begin
+  mHeld := nil;
+  for mName in APlan.Held do
+  begin
+    mIndex := IndexText(mName, APlan.Names);
+    case FHoldText(mName, APlan.OldTexts[mIndex], APlan.NewTexts[mIndex], mReason) of
+      TMcpHoldResult.Held:
+        mHeld := mHeld + [mName];
+      TMcpHoldResult.Refused:
+        begin
+          if mHeld <> nil then
+          begin
+            mReason := cTexts[TEditToolsText.HeldBefore].Fmt([mReason, string.Join(', ', mHeld)]);
+          end;
+          raise EMcpToolError.Create(mReason);
+        end;
+    end;
+  end;
+  // Gleich angewendet (der Puffer stimmte doch mit der Platte überein) zählt wie geschrieben.
+  APlan.Held := mHeld;
+  if Assigned(FAudit) and (mHeld <> nil) then
+  begin
+    FAudit(cTexts[TEditToolsText.HeldAudit].Fmt([ATool, TLogMarks.Path(string.Join(', ', mHeld))]));
+  end;
+end;
+
+/// <summary>Teil von ANames, AOldTexts und ANewTexts ohne die Dateien in AHeld.</summary>
+procedure WithoutHeld(const AHeld: TArray<string>; var ANames, AOldTexts, ANewTexts: TArray<string>);
+var
+  mIndex: Integer;
+  mNames, mOld, mNew: TArray<string>;
+begin
+  if AHeld = nil then
+  begin
+    Exit;
+  end;
+  mNames := nil;
+  mOld := nil;
+  mNew := nil;
+  for mIndex := 0 to High(ANames) do
+  begin
+    if not MatchText(ANames[mIndex], AHeld) then
+    begin
+      mNames := mNames + [ANames[mIndex]];
+      mOld := mOld + [AOldTexts[mIndex]];
+      mNew := mNew + [ANewTexts[mIndex]];
+    end;
+  end;
+  ANames := mNames;
+  AOldTexts := mOld;
+  ANewTexts := mNew;
+end;
+
 procedure TMcpFileWriter.WritePlan(const ATool: string; var APlan: TMcpChangePlan);
+var
+  mNames, mOldTexts, mNewTexts: TArray<string>;
 begin
   if (APlan.Created <> nil) and not Assigned(FFiles.CreateFile) then
   begin
@@ -569,16 +672,35 @@ begin
   begin
     raise EMcpToolError.Create(cTexts[TEditToolsText.NoDeleting].Text);
   end;
-  EnsureWritable(APlan.Names + APlan.Deleted, APlan.OldTexts + APlan.DeletedTexts);
-  FFiles.CreateAll(APlan.Created);
+  APlan.Held := HeldNames(APlan.Names, APlan.Deleted);
+  EnsureWritable(APlan.Names + APlan.Deleted, APlan.OldTexts + APlan.DeletedTexts, APlan.Held);
+  // Zuerst an die IDE: Lehnt sie ab, ist noch nichts geschrieben.
+  HoldAll(ATool, APlan);
+  mNames := APlan.Names;
+  mOldTexts := APlan.OldTexts;
+  mNewTexts := APlan.NewTexts;
+  WithoutHeld(APlan.Held, mNames, mOldTexts, mNewTexts);
   try
-    if APlan.Names <> nil then
-    begin
-      WriteAll(ATool, APlan.Names, APlan.OldTexts, APlan.NewTexts);
+    FFiles.CreateAll(APlan.Created);
+    try
+      if mNames <> nil then
+      begin
+        WriteAll(ATool, mNames, mOldTexts, mNewTexts);
+      end;
+    except
+      FFiles.RemoveCreated(APlan.Created, Length(APlan.Created));
+      raise;
     end;
   except
-    FFiles.RemoveCreated(APlan.Created, Length(APlan.Created));
-    raise;
+    on E: EMcpToolError do
+    begin
+      if APlan.Held <> nil then
+      begin
+        raise EMcpToolError.Create(cTexts[TEditToolsText.HeldBefore].Fmt([E.Message,
+          string.Join(', ', APlan.Held)]));
+      end;
+      raise;
+    end;
   end;
   APlan.NotDeleted := FFiles.DeleteAll(APlan.Deleted);
   if Assigned(FAudit) and ((APlan.Created <> nil) or (APlan.Deleted <> nil)) then
@@ -887,6 +1009,10 @@ begin
     else
     begin
       mReport.AppendFormat(cTexts[TEditToolsText.ChangesWrittenInFiles].Text, [ACount, mFiles]).AppendLine;
+      if APlan.Held <> nil then
+      begin
+        mReport.AppendLine(cTexts[TEditToolsText.HeldInIde].Fmt([string.Join(', ', APlan.Held)]));
+      end;
     end;
     for mIndex := 0 to High(APlan.Created) do
     begin
@@ -950,6 +1076,8 @@ begin
   Result := PlanReport(mPlan, AChanges.Count, ADryRun, mProtected);
   if not ADryRun then
   begin
+    // Zurückgehaltene Dateien sind noch nicht geschrieben (#2605).
+    WithoutHeld(mPlan.Held, mPlan.Names, mPlan.OldTexts, mPlan.NewTexts);
     Result := Result + FindingsAfterWrite(ATool, mPlan.Names, mPlan.OldTexts, mPlan.NewTexts);
   end;
 end;

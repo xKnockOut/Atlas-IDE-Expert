@@ -66,6 +66,7 @@ uses
   Shell.Mcp.BuildTestTools,
   Shell.Mcp.DebugTools,
   Shell.Mcp.IdeContextTools,
+  Shell.Mcp.QuestionTools,
   Shell.Mcp.ReportTools,
   Shell.Mcp.CheckTools,
   Shell.Mcp.ArchitectureTools,
@@ -109,7 +110,7 @@ end;
 const
   cNavigationTools = 11;
   cCheckTools = 8;
-  cContextTools = 54;
+  cContextTools = 55;
 
 /// <summary>Deutsche Spuren in einem englischen Text: Umlaute oder häufige deutsche Wörter.</summary>
 function LooksGerman(const AText: string): Boolean;
@@ -199,6 +200,7 @@ begin
   Assert.AreEqual(' debug_start debug_stop set_breakpoint remove_breakpoint debug_continue debug_step debug_state ' +
     'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
   Assert.AreEqual(' get_ide_context ', Joined(NamesOf(RegisterIdeContextTools)));
+  Assert.AreEqual(' ask_user ', Joined(NamesOf(RegisterQuestionTools)));
   Assert.AreEqual(cCheckTools, Integer(Length(NamesOf(RegisterCheckTools))));
   Assert.IsTrue(Pos(' search_atlas_docs ', Joined(NamesOf(RegisterCheckTools))) > 0);
   Assert.AreEqual(' get_architecture find_path ', Joined(NamesOf(RegisterArchitectureTools)));

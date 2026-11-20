@@ -1733,6 +1733,16 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.ContextState.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditChange.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditChange.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Queue.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Queue.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.HeldEdits.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.HeldEdits.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Questions.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Questions.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Log.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Log.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Instructions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Instructions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas"/>
@@ -2420,6 +2430,13 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Assistants.SettingsSection.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\UI\Assistants\Atlas.UI.Assistants.DebugBar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Assistants.DebugBar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\UI\Assistants\Atlas.UI.Assistants.QuestionDialog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\UI\Assistants\Atlas.UI.Assistants.LogFrame.pas">
+            <Form>AtlasAssistantsLogFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Assistants.QuestionDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.ReleaseGuard.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Plan.pas"/>
@@ -2469,6 +2486,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.BuildTestTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.DebugTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.IdeContextTools.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.QuestionTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ReportTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.CheckTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ArchitectureTools.pas"/>
@@ -2497,6 +2515,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeInbox.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeQuestions.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeDebug.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.TestTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ProfileTools.Tests.pas"/>
