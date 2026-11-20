@@ -472,6 +472,12 @@ begin
   Assert.IsFalse(mSettings.SlashSortUsesRemoveUnused);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.IsTrue(Parse('{}', mIssues).SlashSortUsesRemoveUnused);
+  // #2794: Reihenfolge von /sortuses, per Vorgabe nach Herkunft.
+  Assert.AreEqual('origin', Parse('{}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual('namespace', Parse('{"slashCommands": {"sortUsesOrder": "namespace"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('origin', Parse('{"slashCommands": {"sortUsesOrder": "zufall"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('', Parse('{}', mIssues).SlashTodoOwner);
   // #875: /helper für Aufzählungen
   Assert.IsTrue(Parse('{}', mIssues).SlashEnumHelper);

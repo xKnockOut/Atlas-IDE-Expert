@@ -453,6 +453,7 @@ contains
   Atlas.Common.Editing.CodeActions in 'Source\Editing\Atlas.Common.Editing.CodeActions.pas',
   Atlas.Common.Rules.CodeActions in 'Source\Rules\Atlas.Common.Rules.CodeActions.pas',
   Atlas.Common.Editing.UsesClause in 'Source\Editing\Atlas.Common.Editing.UsesClause.pas',
+  Atlas.Common.Editing.UsesGroups in 'Source\Editing\Atlas.Common.Editing.UsesGroups.pas',
   Atlas.Common.Editing.UsesActions in 'Source\Editing\Atlas.Common.Editing.UsesActions.pas',
   Atlas.Common.Editing.UsesCommand in 'Source\Editing\Atlas.Common.Editing.UsesCommand.pas',
   Atlas.Common.Editing.Contract in 'Source\Editing\Atlas.Common.Editing.Contract.pas',

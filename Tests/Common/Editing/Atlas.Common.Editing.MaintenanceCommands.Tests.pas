@@ -18,6 +18,8 @@ type
     [Test]
     procedure SortUsesKeepsUnusedWhenSwitchedOff;
     [Test]
+    procedure SortUsesLinesStyleFromSetting;
+    [Test]
     procedure CleanUsesKeepsOrder;
     [Test]
     procedure CleanUsesWithoutIndexFails;
@@ -58,6 +60,7 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.MaintenanceCommands,
+  Atlas.Common.Editing.UsesGroups,
   Atlas.Tests.SlashHost;
 
 function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
@@ -179,7 +182,8 @@ const
   cText = 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes;'#10'implementation'#10 +
     '/sortuses'#10#10'end.';
 begin
-  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.Classes,'#10'  System.SysUtils;'#10 +
+  // Per Vorgabe nach Herkunft (#2794): eine Gruppe, also ohne Gruppenkommentar.
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.Classes, System.SysUtils;'#10 +
     'implementation'#10#10'end.', Expand(cText, 5));
 end;
 
@@ -191,9 +195,10 @@ procedure TMaintenanceCommandsTests.SortUsesDropsUnusedKeepsInitialization;
 var
   mKeep: ISlashHost;
 begin
-  // #284: Classes wird nicht benutzt und fällt weg; Vcl.Forms bleibt wegen initialization.
+  // #284: Classes wird nicht benutzt und fällt weg; Vcl.Forms bleibt wegen initialization. Gruppen mit Kommentar.
   mKeep := UsesHost;
-  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils,'#10'  Vcl.Forms;'#10 +
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  ' + TUsesGroups.LabelOf(TUsesGroup.RuntimeLibrary) + #10 +
+    '  System.SysUtils,'#10'  ' + TUsesGroups.LabelOf(TUsesGroup.Framework) + #10'  Vcl.Forms;'#10 +
     'implementation'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.',
     ExpandWith(cUnusedText, 5, mKeep));
 end;
@@ -208,12 +213,26 @@ begin
     'implementation'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.';
   mHost := UsesHost;
   mKeep := mHost;
-  mHost.Settings := [TSlashSettings.cSortUsesRemoveUnused + '=false'];
+  mHost.Settings := [TSlashSettings.cSortUsesRemoveUnused + '=false', TSlashSettings.cSortUsesOrder + '=alphabetic'];
   Assert.AreEqual(mExpected, ExpandWith(cUnusedText, 5, mKeep));
   // usesKeep hält die Unit ebenfalls.
-  mHost.Settings := nil;
+  mHost.Settings := [TSlashSettings.cSortUsesOrder + '=alphabetic'];
   mHost.Uses_.Keep := ['System.Classes'];
   Assert.AreEqual(mExpected, ExpandWith(cUnusedText, 5, mKeep));
+end;
+
+procedure TMaintenanceCommandsTests.SortUsesLinesStyleFromSetting;
+var
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+begin
+  // usesGroupStyle lines (#2794): jede Gruppe in neuer Zeile, ohne Kommentar.
+  mHost := UsesHost;
+  mKeep := mHost;
+  mHost.Settings := [TSlashSettings.cUsesGroupStyle + '=lines'];
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils,'#10'  Vcl.Forms;'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.',
+    ExpandWith(cUnusedText, 5, mKeep));
 end;
 
 procedure TMaintenanceCommandsTests.CleanUsesKeepsOrder;

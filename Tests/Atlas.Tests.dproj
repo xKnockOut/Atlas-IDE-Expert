@@ -578,6 +578,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesClause.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesGroups.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesCommand.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SlashCommands.Tests.pas"/>
@@ -1756,6 +1757,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Status.Server.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.FieldPlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Status.FieldPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.FieldFlow.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.StatusFieldSurfaceFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Status.FieldFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
@@ -2254,6 +2258,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.AtCaret.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Plan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Contract.Sync.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Flow.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.ProblemsSyncFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Flow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Marks.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Marks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>

@@ -159,6 +159,18 @@ begin
   begin
     Result := LowerCase(BoolToStr(ASettings.SlashSortUsesRemoveUnused, True));
   end
+  else if AName = TSlashSettings.cSortUsesOrder then
+  begin
+    Result := ASettings.SlashSortUsesOrder;
+  end
+  else if AName = TSlashSettings.cUsesGroupStyle then
+  begin
+    Result := ASettings.UsesGroupStyle;
+  end
+  else if AName = TSlashSettings.cMaxLineLength then
+  begin
+    Result := IntToStr(ASettings.Formatting.MaxLineLength);
+  end
   else if AName = TSlashSettings.cEnumHelper then
   begin
     Result := LowerCase(BoolToStr(ASettings.SlashEnumHelper, True));

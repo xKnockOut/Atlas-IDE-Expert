@@ -389,6 +389,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.AtCaret` | `Core/Problems/Atlas.Core.Problems.AtCaret.pas` | Ordner `Core/Problems`: Befund unter der Schreibmarke, ohne IDE testbar (#1967) |
 | `Atlas.Core.Problems.Plan` | `Core/Problems/Atlas.Core.Problems.Plan.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Marks` | `Core/Problems/Atlas.Core.Problems.Marks.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.Contract.Sync` | `Core/Problems/Atlas.Core.Problems.Contract.Sync.pas` | Ordner `Core/Problems`: Verträge des Abgleichs mit Server und IDE (`IAtlasProblemsServer`, `IAtlasProblemsEditors`) |
+| `Atlas.Core.Problems.Flow` | `Core/Problems/Atlas.Core.Problems.Flow.pas` | Ordner `Core/Problems`: Ablauf der Probleme hinter `IAtlasProblemsServer` und `IAtlasProblemsEditors`, ohne IDE testbar |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
@@ -486,6 +488,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Status.Registry` | `Core/Status/Atlas.Core.Status.Registry.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.Server` | `Core/Status/Atlas.Core.Status.Server.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.FieldPlan` | `Core/Status/Atlas.Core.Status.FieldPlan.pas` | Ordner `Core/Status` |
+| `Atlas.Core.Status.FieldFlow` | `Core/Status/Atlas.Core.Status.FieldFlow.pas` | Ordner `Core/Status` |
 | `Atlas.Core.StatusBar.Content` | `Core/StatusBar/Atlas.Core.StatusBar.Content.pas` | Ordner `Core/StatusBar` |
 | `Atlas.Core.StatusBar.Layout` | `Core/StatusBar/Atlas.Core.StatusBar.Layout.pas` | Ordner `Core/StatusBar` |
 | `Atlas.Core.Style.Color` | `Core/Style/Atlas.Core.Style.Color.pas` | Ordner `Core/Style` |
@@ -535,6 +538,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.CodeInsight.Composition.Adapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Adapters.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.IdeAdapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.IdeAdapters.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.UiAdapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.UiAdapters.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.ProblemsAdapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.ProblemsAdapters.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.Appearance` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Appearance.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.Background` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Background.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.Build` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Build.pas` | Ordner `IDE/CodeInsight` |
@@ -742,6 +746,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Outline.Window` | `IDE/Outline/Atlas.IDE.Outline.Window.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Problems.Caret` | `IDE/Problems/Atlas.IDE.Problems.Caret.pas` | Ordner `IDE/Problems`: Befund unter der Einfügemarke für F1 (#1886) |
 | `Atlas.IDE.Problems.Controller` | `IDE/Problems/Atlas.IDE.Problems.Controller.pas` | Ordner `IDE/Problems` |
+| `Atlas.IDE.Problems.Adapters.Server` | `IDE/Problems/Atlas.IDE.Problems.Adapters.Server.pas` | Ordner `IDE/Problems`: Sitzung und Holthreads als `IAtlasProblemsServer` |
+| `Atlas.IDE.Problems.Adapters.Editors` | `IDE/Problems/Atlas.IDE.Problems.Adapters.Editors.pas` | Ordner `IDE/Problems`: Editor, Module, Debugger und Fehler der IDE als `IAtlasProblemsEditors` |
 | `Atlas.IDE.Problems.MessageList` | `IDE/Problems/Atlas.IDE.Problems.MessageList.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Painter` | `IDE/Problems/Atlas.IDE.Problems.Painter.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.RuleActions` | `IDE/Problems/Atlas.IDE.Problems.RuleActions.pas` | Ordner `IDE/Problems`: fragt das Modul Prüfregeln nach `IAtlasRuleActions` (#1755) |
@@ -772,7 +778,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Setup.Adapters.Environment` | `IDE/Setup/Atlas.IDE.Setup.Adapters.Environment.pas` | Ordner `IDE/Setup` |
 | `Atlas.IDE.Signature.Editor` | `IDE/Signature/Atlas.IDE.Signature.Editor.pas` | Ordner `IDE/Signature` |
 | `Atlas.IDE.Signature.FormatMarks` | `IDE/Signature/Atlas.IDE.Signature.FormatMarks.pas` | Ordner `IDE/Signature` |
-| `Atlas.IDE.Status.Field` | `IDE/Status/Atlas.IDE.Status.Field.pas` | Ordner `IDE/Status` |
+| `Atlas.IDE.Status.Adapters.FieldSurface` | `IDE/Status/Atlas.IDE.Status.Adapters.FieldSurface.pas` | Ordner `IDE/Status` |
 | `Atlas.IDE.Status.Lines` | `IDE/Status/Atlas.IDE.Status.Lines.pas` | Ordner `IDE/Status` |
 | `Atlas.IDE.Status.ServerWindow` | `IDE/Status/Atlas.IDE.Status.ServerWindow.pas` | Ordner `IDE/Status` |
 | `Atlas.IDE.StatusBar.Service` | `IDE/StatusBar/Atlas.IDE.StatusBar.Service.pas` | Ordner `IDE/StatusBar` |

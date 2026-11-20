@@ -6,6 +6,17 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+## [2.2.2] - 2026-11-20
+
+### Behoben
+- Module aus einem anderen Bau als `Atlas.IDE.Base` melden sich nicht mehr an: Wer eine neuere Version aus dem Quelltext über eine installierte ältere installierte, bekam Module, die gegen eine fremde Binärschnittstelle von Base liefen, und die IDE konnte beim Installieren abstürzen. Der Handschlag zwischen Modul und Base vergleicht jetzt außer der Vertragsversion auch die Produktversion; ein abweichendes Modul bleibt abgemeldet und schreibt das ins Protokoll (#2372).
+
+## [2.2.1] - 2026-11-19
+
+### Behoben
+- Tools › Optionen › Atlas: Nach OK speicherte und meldete jeder angesehene Knoten (Base, jedes Modul, Tastenkonflikte) die Einstellungen einzeln. Jede Meldung belegt Tasten neu, gleicht die Module und die Startseite ab; mit vielen Knoten stand die IDE danach lange oder reagierte nicht mehr, und der Einstellungsverlauf bekam je Knoten einen Stand. Jetzt wird nach dem Schließen des Dialogs einmal gespeichert und gemeldet, ohne Änderung gar nicht (#2372).
+- Tools › Optionen › Atlas: Das Öffnen jedes Knotens (Base und je Modul) und jede Eingabe auf der Seite dauerten spürbar. Die Seite suchte für jedes Element linear im Katalog der Einstellungen, in allen Bindungen und in allen Zeilen der Abschnitte; das wuchs mit dem Quadrat der Einstellungen. Katalog, Bindungen und Sperren schlagen jetzt in Verzeichnissen nach (#2372).
+
 ## [2.2.0] - 2026-11-18
 
 Erste stabile Fassung von 2.2: Debuggen, Testen und Lecks. Hier steht, was seit 2.2.0-rc.2 dazukam; alles davor steht in den Abschnitten 2.2.0-rc.2 und 2.2.0-rc.1.
