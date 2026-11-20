@@ -61,6 +61,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Contract,
+  Atlas.Core.Tests.MutationFlow,
   Atlas.Text.DUnitX,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,

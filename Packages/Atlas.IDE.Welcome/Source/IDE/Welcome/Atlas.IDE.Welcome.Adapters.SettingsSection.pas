@@ -7,6 +7,7 @@
 interface
 
 uses
+  Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Welcome.SettingsSection;
 

@@ -32,7 +32,8 @@ uses
   Atlas.Core.Projects.VcsQueries,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Problems.Store;
+  Atlas.Core.Problems.Store,
+  Atlas.IDE.Projects.Contract;
 
 type
   IAtlasProjectSummaryListener = Atlas.IDE.Projects.Contract.IAtlasProjectSummaryListener;
@@ -142,8 +143,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Editor.SourceFiles,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Projects.Contract;
+  Atlas.IDE.Contracts.VersionControl;
 
 { TAtlasIdeProjectSummaries.TIdeNotifier }
 

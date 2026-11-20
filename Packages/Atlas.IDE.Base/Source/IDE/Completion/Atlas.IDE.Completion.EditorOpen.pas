@@ -55,6 +55,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Foundation.Caret;
 
 /// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
@@ -108,7 +109,7 @@ begin
     mLineText := TAtlasEditorBuffer.LineText(mView, mView.CursorPos.Line);
     mCharacter := TLspSession.ColumnToIndex(mLineText, mView.CursorPos.Col,
       TAtlasEditorBuffer.TabWidth(mView.Buffer));
-    if not TAtlasCloseRules.DelayedOpen(FDelay.State, WindowState(mView, FDelay.Window, GetFocus), mSame,
+    if not TAtlasCloseRules.DelayedOpen(FDelay.State, TAtlasIdeEditorWindows.WindowState(mView, FDelay.Window, GetFocus), mSame,
       mLineText, FDelay.Character, mCharacter) then
     begin
       Log('Vervollständigung: verzögertes Öffnen verworfen');
@@ -211,7 +212,7 @@ begin
   FOpen.Window := AWindow;
   FOpen.Line := ALine;
   FOpen.WordStart := AWordStart;
-  FOpen.Opened := WindowState(AView, AWindow, AWindow);
+  FOpen.Opened := TAtlasIdeEditorWindows.WindowState(AView, AWindow, AWindow);
 end;
 
 procedure TAtlasEditorCompletionOpen.StartDelay(const AView: IOTAEditView; ALine, ACharacter: Integer;
@@ -221,7 +222,7 @@ begin
   FDelay.Line := ALine;
   FDelay.Character := ACharacter;
   FDelay.Window := AWindow;
-  FDelay.State := WindowState(AView, AWindow, AWindow);
+  FDelay.State := TAtlasIdeEditorWindows.WindowState(AView, AWindow, AWindow);
   FDelay.Timer.Interval := Cardinal(TAtlasIdeSettings.Current.OpenDelayMs);
   FDelay.Timer.Enabled := True;
 end;

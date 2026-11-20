@@ -66,6 +66,7 @@ implementation
 
 uses
   System.SysUtils,
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Debug.LineEnd;

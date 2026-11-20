@@ -40,6 +40,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.ConsoleCapture,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ConsoleProcess,

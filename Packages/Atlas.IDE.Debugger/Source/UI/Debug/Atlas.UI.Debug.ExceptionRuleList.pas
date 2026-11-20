@@ -131,7 +131,8 @@ begin
   inherited CreateDialog(AOwner, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRulesTitle), cWidth);
   FRules := Copy(ARules);
   FHits := AHits;
-  FEditor := DefaultEditor;
+  // Mit (): ohne Klammern liest Delphi DefaultEditor als Routine statt als ihr Ergebnis (E2010).
+  FEditor := DefaultEditor();
   CreateList;
   CreateButtons;
   mNote := AddNote(cNoteHeight);

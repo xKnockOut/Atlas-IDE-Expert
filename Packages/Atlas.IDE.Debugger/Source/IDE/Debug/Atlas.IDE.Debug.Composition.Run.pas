@@ -57,6 +57,7 @@ uses
   Atlas.IDE.Debug.LaunchGroups,
   Atlas.IDE.Debug.Note,
   Atlas.UI.Debug.Note.Strings,
+  Atlas.Core.Debug.OpenedFiles,
   Atlas.IDE.Debug.OpenedFiles,
   Atlas.UI.Debug.OpenedFiles.Strings,
   Atlas.IDE.Debug.ConsoleCapture,

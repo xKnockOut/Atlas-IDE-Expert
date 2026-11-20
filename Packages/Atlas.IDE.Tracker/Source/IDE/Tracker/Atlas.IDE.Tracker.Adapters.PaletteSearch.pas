@@ -11,6 +11,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Commands.Palette,
+  Atlas.Core.Commands.Contract,
   Atlas.IDE.Tracker.PaletteSearch;
 
 type

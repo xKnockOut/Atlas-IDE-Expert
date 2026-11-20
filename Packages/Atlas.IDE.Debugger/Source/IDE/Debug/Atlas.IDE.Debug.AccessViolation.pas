@@ -99,6 +99,8 @@ type
     /// <summary>Was zum Halt gehört: Meldung, Ort, Zeigergröße und abgeglichener Text der Datei.
     /// </summary>
     TStopFacts = record
+      /// <summary>Halt der Exception; Header liest daraus Klasse und Meldung (#2460).</summary>
+      ExceptionStop: TAtlasDebugExceptionStop;
       Access: TAtlasAvMessage;
       FileName: string;
       Line: Integer;
@@ -526,6 +528,7 @@ begin
   begin
     Exit;
   end;
+  FFacts.ExceptionStop := AStop;
   FFacts.Access := TAtlasAvMessage.Parse(AStop.Exception.ExceptionClass, AStop.Exception.Message);
   if not FFacts.Access.IsAccessViolation then
   begin
@@ -727,7 +730,7 @@ end;
 
 function TAtlasIdeDebugAccessViolation.TStopFacts.Header: string;
 begin
-  Result := TAtlasAvStop.Header(Exception, Place);
+  Result := TAtlasAvStop.Header(ExceptionStop.Exception, Place);
 end;
 
 class function

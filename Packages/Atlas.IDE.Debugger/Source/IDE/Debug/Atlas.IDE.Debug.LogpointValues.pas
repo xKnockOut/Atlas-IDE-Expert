@@ -23,6 +23,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Debug.EventLog,
   Atlas.Core.Debug.ValueSeries,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.LogpointValuesFrame;
 
@@ -32,7 +34,7 @@ type
     /// <summary>Kürzester Abstand zwischen zwei Neuzeichnungen des Fensters.</summary>
     cRefreshMs = 500;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
     end;
@@ -42,7 +44,7 @@ type
       procedure Tick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FSet: TAtlasValueSeriesSet;

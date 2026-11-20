@@ -94,6 +94,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Vcl.Forms,
   Atlas.Core.Debug.ThreadMarks,
   Atlas.Core.Settings.VisualizerKinds,

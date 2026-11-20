@@ -120,6 +120,7 @@ uses
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,
@@ -369,7 +370,7 @@ function TAtlasEditorCompletion.WindowLeft: Boolean;
 var
   mReason: TAtlasCloseReason;
 begin
-  mReason := TAtlasCloseRules.Popup(FOpen.Opened, WindowState(FOpen.View, FOpen.Window, GetFocus));
+  mReason := TAtlasCloseRules.Popup(FOpen.Opened, TAtlasIdeEditorWindows.WindowState(FOpen.View, FOpen.Window, GetFocus));
   Result := mReason <> TAtlasCloseReason.None;
   if Result then
   begin
