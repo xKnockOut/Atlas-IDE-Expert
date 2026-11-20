@@ -12,6 +12,10 @@
 // OpenAI-kompatibler Anbieter (#2056): Adresse, Modell mit „Modelle abrufen“ (Auswahl aus /models), Zeitlimit und
 // „Verbindung testen“ für jeden Anbieter. Beides läuft über die Haken im Hintergrund und nimmt die Werte, wie sie
 // gerade auf der Seite stehen; eine Antwort nach dem Schließen der Seite verfällt.
+// Anbieter der IDE (Smart CodeInsight, #2744, #2745): Quelle für einfache Aufgaben (assistants.textSource),
+// Mitbenutzen eines Anbieters der IDE samt Name (Auswahl über „Anbieter der IDE …“), Liste der Anbieter mit Status
+// und Funktionen, „Smart CodeInsight öffnen“ und das Anmelden des eigenen Anbieters bei der IDE. Die Liste kommt
+// über den Haken IdeProviders; ohne ToolsAPI.AI (älteres Delphi 12) bleibt sie leer.
 
 interface
 
@@ -21,8 +25,10 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Menus,
+  Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Core.Assistants.Contract.IdeAi;
 
 type
   /// <summary>Verdeckte Abfrage: Titel, Beschriftung, Schlüssel; False bei Abbruch.</summary>
@@ -58,6 +64,10 @@ type
     Probe: TAtlasAssistantsProbe;
     /// <summary>„Modelle abrufen“ (#2056); im Hintergrund, ADone im Hauptthread.</summary>
     Models: TAtlasAssistantsModels;
+    /// <summary>KI-Anbieter der IDE (#2744); nil = keine Liste.</summary>
+    IdeProviders: TFunc<TArray<TAtlasIdeAiProvider>>;
+    /// <summary>Optionen der IDE bei Smart CodeInsight öffnen; False, wenn es nicht ging.</summary>
+    OpenIdeOptions: TFunc<Boolean>;
   end;
 
   /// <summary>Verbindung einer Antwort aus dem Hintergrund zum Abschnitt; nil nach Close.</summary>
@@ -65,6 +75,38 @@ type
     ['{4F2B8D61-9C3E-4A75-B0D2-7E1F6A3C9B54}']
     function Section: TObject;
     procedure Cut;
+  end;
+
+  /// <summary>Zeilen zu den KI-Anbietern der IDE (#2744, #2745): Quelle für einfache Aufgaben, gewünschter Anbieter
+  /// mit Auswahl und Liste, Anmeldung bei Smart CodeInsight. Gehört dem Besitzer der Elemente des Abschnitts.
+  /// </summary>
+  TAtlasAssistantsIdeRows = class(TComponent)
+  private
+    FHost: IAtlasSettingsSectionHost;
+    FProviders: TFunc<TArray<TAtlasIdeAiProvider>>;
+    FOpenOptions: TFunc<Boolean>;
+    FName: TEdit;
+    FButton: TButton;
+    FMenu: TPopupMenu;
+    FList: TLabel;
+    procedure AddButtons(ACanList: Boolean);
+    procedure AddList(ASource: TControl);
+    procedure ButtonClick(Sender: TObject);
+    procedure Picked(Sender: TObject);
+    procedure OptionsClick(Sender: TObject);
+  public
+    /// <summary>Zeilen anlegen. AProviders: Anbieter der IDE (nil = keine Liste); AOpenOptions: Smart CodeInsight
+    /// öffnen (nil = Knopf gesperrt).</summary>
+    procedure Build(const AHost: IAtlasSettingsSectionHost; const AProviders: TFunc<TArray<TAtlasIdeAiProvider>>;
+      const AOpenOptions: TFunc<Boolean>);
+    /// <summary>Liste der Anbieter neu füllen.</summary>
+    procedure Show;
+    /// <summary>Funktionen eines Anbieters der IDE als Text („Chat, Anweisung“).</summary>
+    class function FeaturesText(AFeatures: TAtlasIdeAiFeatures): string; static;
+    /// <summary>Eine Zeile je Anbieter der IDE: Name, Status, Funktionen; ohne Anbieter ein Hinweis.</summary>
+    class function ProviderLines(const AProviders: TArray<TAtlasIdeAiProvider>): string; static;
+    property ListLabel: TLabel read FList;
+    property NameEdit: TEdit read FName;
   end;
 
   TAtlasAssistantsSettingsSection = class(TAtlasSettingsSection)
@@ -88,6 +130,7 @@ type
     FModelsMenu: TPopupMenu;
     FProbeButton: TButton;
     FProbeState: TLabel;
+    FIde: TAtlasAssistantsIdeRows;
     FLink: IAtlasAssistantsSectionLink;
     function ProviderId: string;
     function ProbeInput: TAtlasAssistantsProbeInput;
@@ -124,7 +167,8 @@ uses
   System.Types,
   Vcl.Dialogs,
   Atlas.Core.Settings.Plugin.Assistants,
-  Atlas.UI.Assistants.Strings;
+  Atlas.UI.Assistants.Strings,
+  Atlas.Core.Assistants.IdeProviders;
 
 const
   cButtonWidth = 210;
@@ -133,6 +177,8 @@ const
   cButtonHeight = 25;
   /// <summary>Hinweis zum Datenschutz: Höhe für zwei Zeilen.</summary>
   cPrivacyHeight = 34;
+  /// <summary>Liste der Anbieter der IDE: Höhe für vier Zeilen.</summary>
+  cIdeListHeight = 66;
   /// <summary>Zeile mit dem Zustand (Schlüssel, Probe).</summary>
   cStateTop = 6;
   cStateWidth = 420;
@@ -225,6 +271,176 @@ begin
   Number('assistants.contextLines', T(TAtlasAssistantsTextId.SettingsContextLines));
   Line('assistants.exclude', T(TAtlasAssistantsTextId.SettingsExclude));
   Number('assistants.dailyLimit', T(TAtlasAssistantsTextId.SettingsDailyLimit));
+  // Anbieter der IDE (#2744, #2745).
+  FIde := TAtlasAssistantsIdeRows.Create(FControls);
+  FIde.Build(Host, FKeyHooks.IdeProviders, FKeyHooks.OpenIdeOptions);
+end;
+
+{ TAtlasAssistantsIdeRows }
+
+procedure TAtlasAssistantsIdeRows.Build(const AHost: IAtlasSettingsSectionHost;
+  const AProviders: TFunc<TArray<TAtlasIdeAiProvider>>; const AOpenOptions: TFunc<Boolean>);
+var
+  mSource: TControl;
+begin
+  FHost := AHost;
+  FProviders := AProviders;
+  if not Assigned(FProviders) then
+  begin
+    FProviders :=
+      function: TArray<TAtlasIdeAiProvider>
+      begin
+        Result := nil;
+      end;
+  end;
+  FOpenOptions := AOpenOptions;
+  mSource := FHost.AddChoice('assistants.textSource', T(TAtlasAssistantsTextId.SettingsTextSource),
+    TArray<string>.Create(T(TAtlasAssistantsTextId.TextSourceIde), T(TAtlasAssistantsTextId.TextSourceOwn),
+    T(TAtlasAssistantsTextId.TextSourceNone)),
+    TArray<string>.Create(cAssistantsTextSources[0], cAssistantsTextSources[1], cAssistantsTextSources[2]));
+  FHost.AddSwitch('assistants.ideProvider', T(TAtlasAssistantsTextId.SettingsIdeProvider));
+  FName := FHost.AddText('assistants.ideProvider.name', T(TAtlasAssistantsTextId.SettingsIdeProviderName)) as TEdit;
+  AddButtons(Assigned(AProviders));
+  AddList(mSource);
+  FHost.AddSwitch('assistants.registerInIde', T(TAtlasAssistantsTextId.SettingsRegisterInIde));
+end;
+
+procedure TAtlasAssistantsIdeRows.AddButtons(ACanList: Boolean);
+var
+  mRow: TWinControl;
+  mOptions: TButton;
+begin
+  mRow := FHost.AddRow(cRowHeight, nil);
+  FHost.Attach(mRow, FName);
+  FButton := TButton.Create(Self);
+  FButton.Parent := mRow;
+  FButton.Caption := T(TAtlasAssistantsTextId.IdeProvidersButton);
+  PlaceScaled(FButton, 0, 1, cButtonWidth, cButtonHeight);
+  FButton.OnClick := ButtonClick;
+  FButton.Enabled := ACanList;
+  mOptions := TButton.Create(Self);
+  mOptions.Parent := mRow;
+  mOptions.Caption := T(TAtlasAssistantsTextId.IdeOptionsButton);
+  PlaceScaled(mOptions, cButtonGap, 1, cButtonWidth, cButtonHeight);
+  mOptions.OnClick := OptionsClick;
+  mOptions.Enabled := Assigned(FOpenOptions);
+  FMenu := TPopupMenu.Create(Self);
+end;
+
+procedure TAtlasAssistantsIdeRows.AddList(ASource: TControl);
+var
+  mRow: TWinControl;
+begin
+  mRow := FHost.AddRow(cIdeListHeight, nil);
+  FHost.Attach(mRow, ASource);
+  FList := TLabel.Create(Self);
+  FList.Parent := mRow;
+  PlaceScaled(FList, 0, 0, cStateWidth, cIdeListHeight);
+  FList.ShowAccelChar := False;
+  FList.WordWrap := False;
+  Show;
+end;
+
+class function TAtlasAssistantsIdeRows.FeaturesText(AFeatures: TAtlasIdeAiFeatures): string;
+var
+  mParts: TArray<string>;
+begin
+  mParts := nil;
+  if TAtlasIdeAiFeature.Chat in AFeatures then
+  begin
+    mParts := mParts + [T(TAtlasAssistantsTextId.FeatureChat)];
+  end;
+  if TAtlasIdeAiFeature.Instruction in AFeatures then
+  begin
+    mParts := mParts + [T(TAtlasAssistantsTextId.FeatureInstruction)];
+  end;
+  if TAtlasIdeAiFeature.ListModels in AFeatures then
+  begin
+    mParts := mParts + [T(TAtlasAssistantsTextId.FeatureModels)];
+  end;
+  Result := string.Join(', ', mParts);
+end;
+
+class function TAtlasAssistantsIdeRows.ProviderLines(const AProviders: TArray<TAtlasIdeAiProvider>): string;
+var
+  mProvider: TAtlasIdeAiProvider;
+  mLines: TArray<string>;
+  mState: string;
+begin
+  if Length(AProviders) = 0 then
+  begin
+    Exit(T(TAtlasAssistantsTextId.IdeProvidersNone));
+  end;
+  mLines := nil;
+  for mProvider in AProviders do
+  begin
+    if mProvider.Enabled then
+    begin
+      mState := T(TAtlasAssistantsTextId.IdeProviderActive);
+    end
+    else
+    begin
+      mState := T(TAtlasAssistantsTextId.IdeProviderOff);
+    end;
+    mLines := mLines + [TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.IdeProviderLine,
+      [mProvider.Name, mState, FeaturesText(mProvider.Features)])];
+  end;
+  Result := string.Join(sLineBreak, mLines);
+end;
+
+procedure TAtlasAssistantsIdeRows.Show;
+begin
+  if FList <> nil then
+  begin
+    FList.Caption := ProviderLines(FProviders());
+  end;
+end;
+
+procedure TAtlasAssistantsIdeRows.ButtonClick(Sender: TObject);
+var
+  mProvider: TAtlasIdeAiProvider;
+  mItem: TMenuItem;
+  mPoint: TPoint;
+begin
+  Show;
+  FMenu.Items.Clear;
+  for mProvider in FProviders() do
+  begin
+    // Der eigene Eintrag steht nie zur Wahl (keine Schleife, #2745).
+    if TAtlasIdeAiProviders.IsOwn(mProvider.Name) then
+    begin
+      Continue;
+    end;
+    mItem := TMenuItem.Create(FMenu);
+    mItem.Caption := mProvider.Name;
+    mItem.Hint := mProvider.Name;
+    mItem.AutoHotkeys := maManual;
+    mItem.Enabled := mProvider.Usable;
+    mItem.OnClick := Picked;
+    FMenu.Items.Add(mItem);
+  end;
+  if (FMenu.Items.Count > 0) and FButton.HandleAllocated and FButton.Showing then
+  begin
+    mPoint := FButton.ClientToScreen(TPoint.Create(0, FButton.Height));
+    FMenu.Popup(mPoint.X, mPoint.Y);
+  end;
+end;
+
+procedure TAtlasAssistantsIdeRows.Picked(Sender: TObject);
+begin
+  if (FName <> nil) and (Sender is TMenuItem) then
+  begin
+    FName.Text := TMenuItem(Sender).Hint;
+    FHost.Changed;
+  end;
+end;
+
+procedure TAtlasAssistantsIdeRows.OptionsClick(Sender: TObject);
+begin
+  if not FOpenOptions() then
+  begin
+    ShowMessage(T(TAtlasAssistantsTextId.IdeOptionsMissing));
+  end;
 end;
 
 /// <summary>Lage in Pixeln bei 96 dpi, an die Auflösung des Steuerelements angepasst.</summary>
@@ -458,6 +674,10 @@ procedure TAtlasAssistantsSettingsSection.WindowReady;
 begin
   inherited WindowReady;
   ShowKeyState;
+  if FIde <> nil then
+  begin
+    FIde.Show;
+  end;
 end;
 
 /// <summary>Verdeckte Abfrage über InputQuery; der Schlüssel wird nie vorbelegt.</summary>
@@ -540,6 +760,7 @@ begin
   FModelsMenu := nil;
   FProbeButton := nil;
   FProbeState := nil;
+  FIde := nil;
   FreeAndNil(FControls);
   inherited Close;
 end;

@@ -91,6 +91,16 @@ What uses the provider:
 - **AI ghost text** (#1922, `assistants.inlineSuggestions`, off by default): when no learned suggestion fits after Enter, Atlas asks the provider. It sends the excerpt around the caret (`assistants.contextLines`) and the class headers from the index; files from `assistants.exclude` are never sent, `assistants.dailyLimit` limits the requests per day. A suggestion only appears after the server has checked it (no new syntax errors, only known identifiers). Tab accepts, Esc discards.
 - **Summarize an issue** (#2462, `issues.aiSummary`): “Summarize” in the “Atlas issue” window shows the state, open questions (and who should answer), the next step and the affected units as links into the editor. A notice comes before the first send per tracker connection; the summary is kept per issue and marked as out of date when the issue changes. “Use as comment” only fills the comment field.
 
+### AI providers of the IDE (Smart CodeInsight, #2744, #2745)
+
+From Delphi 12.2 on the IDE has its own AI providers (Tools › Options › Smart CodeInsight). Atlas shares them both ways; both settings are on the *AI assistants* page and off by default.
+
+- **Use the IDE's provider** (`assistants.ideProvider`): simple tasks of other Atlas features, one question with one answer such as “Summarize” in the “Atlas issue” window, go to an IDE provider. `assistants.ideProvider.name` picks it (“IDE providers …” lists the active ones); empty means the first active provider with instruction or chat. A named provider that is off or missing is never silently replaced by another. The page lists all IDE providers with state and features, and “Open Smart CodeInsight” jumps there.
+- **Source for simple tasks** (`assistants.textSource`): `ide` takes the IDE provider and otherwise the own one (`assistants.provider`), `own` the other way round, `none` neither; the features then stay hidden. Files under `assistants.exclude` go to no source.
+- **Register the own provider with the IDE** (`assistants.registerInIde`): the configured own provider shows up in Smart CodeInsight as “Atlas (provider, model)” with chat, instruction and, for the OpenAI-compatible server, the model list. Requests from the IDE count towards the same daily limit (`assistants.dailyLimit`) as AI ghost text; the key stays in the Windows credential store. The entry's page in Smart CodeInsight shows provider, model and today's requests, “Set up in Atlas …” jumps to the Atlas page. Without a configured provider Atlas registers nothing; switching takes effect without a restart.
+- Atlas never picks its own entry as an IDE provider, so requests never go round in a loop.
+- The IDE interface has no streaming, no system prompt, no tool calls and no conversation history; AI ghost text, search by meaning and debugging with AI therefore do not use it.
+
 ## Prompts (#1357)
 
 Ready-made workflows that Claude Code shows as slash commands:

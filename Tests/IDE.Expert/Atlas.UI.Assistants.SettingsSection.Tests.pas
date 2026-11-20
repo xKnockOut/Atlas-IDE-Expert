@@ -3,6 +3,8 @@
 // Seite „KI-Assistenten“ (#1906): Modulschalter, Schreiben in offene Dateien und Builds für KI-Assistenten auf
 // einer eigenen Seite des Moduls; die Werte bleiben unter ihren Schlüsseln. KI-Schattentext (#1922): Schalter
 // standardmäßig aus, Anbieter und Modell bleiben, der Schlüssel geht nur über die Haken der Komposition.
+// Anbieter der IDE (#2744, #2745): Quelle, Mitbenutzen, Name, Anmelden bei der IDE; Liste der Anbieter mit Status
+// und Funktionen, Auswahl ohne den eigenen Eintrag. Seite in Smart CodeInsight: Anbieter und Anfragen heute.
 
 interface
 
@@ -27,16 +29,28 @@ type
     procedure AiGhostSettingsRoundTrip;
     [Test]
     procedure KeyButtonsUseTheHooks;
+    [Test]
+    procedure IdeProviderSettingsRoundTrip;
+    [Test]
+    procedure IdeProvidersAreListed;
+    [Test]
+    procedure ProviderLinesShowStateAndFeatures;
+    [Test]
+    procedure PluginFrameTexts;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Vcl.Controls,
+  Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,
+  Atlas.Core.Assistants.Contract.IdeAi,
+  Atlas.UI.Assistants.IdePluginFrame,
   Atlas.UI.Assistants.SettingsSection;
 
 { TAssistantsSettingsSectionTests }
@@ -188,6 +202,118 @@ begin
   finally
     mPage.Free;
   end;
+end;
+
+procedure TAssistantsSettingsSectionTests.IdeProviderSettingsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsFalse(CheckOf(mPage, 'AssistantsIdeProvider').Checked, 'Anbieter der IDE standardmäßig aus');
+    Assert.IsFalse(CheckOf(mPage, 'AssistantsRegisterInIde').Checked, 'Anmelden bei der IDE standardmäßig aus');
+    Assert.AreEqual(0, ChoiceOf(mPage, 'AssistantsTextSource').Choice, 'Vorgabe ide');
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsIdeProvider')));
+    CheckOf(mPage, 'AssistantsIdeProvider').Checked := True;
+    CheckOf(mPage, 'AssistantsRegisterInIde').Checked := True;
+    ChoiceOf(mPage, 'AssistantsTextSource').Choice := 1;
+    EditOf(mPage, 'AssistantsIdeProviderName').Text := 'OpenAI';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.AssistantsIdeProvider);
+    Assert.IsTrue(mSaved.AssistantsRegisterInIde);
+    Assert.AreEqual('own', mSaved.AssistantsTextSource);
+    Assert.AreEqual('OpenAI', mSaved.AssistantsIdeProviderName);
+  finally
+    mPage.Free;
+  end;
+end;
+
+/// <summary>Irgendein TLabel unter AParent, dessen Beschriftung AText enthält.</summary>
+function HasLabelWith(AParent: TWinControl; const AText: string): Boolean;
+var
+  mIndex: Integer;
+  mControl: TControl;
+begin
+  for mIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    mControl := AParent.Controls[mIndex];
+    if ((mControl is TLabel) and (Pos(AText, TLabel(mControl).Caption) > 0)) or
+      ((mControl is TWinControl) and HasLabelWith(TWinControl(mControl), AText)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TAssistantsSettingsSectionTests.IdeProvidersAreListed;
+var
+  mSection: TAtlasAssistantsSettingsSection;
+  mProvided: IAtlasSettingsSection;
+  mPage: TAtlasSettingsPage;
+  mHooks: TAtlasAssistantsKeyHooks;
+begin
+  RevokeAll(FRegistrations);
+  mHooks := Default(TAtlasAssistantsKeyHooks);
+  mHooks.IdeProviders :=
+    function: TArray<TAtlasIdeAiProvider>
+    begin
+      Result := TArray<TAtlasIdeAiProvider>.Create(
+        TAtlasIdeAiProvider.Make('OpenAI', True, [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.Instruction]));
+    end;
+  TAtlasAssistantsSettingsSection.KeyHooks := mHooks;
+  mSection := TAtlasAssistantsSettingsSection.Create;
+  mProvided := mSection;
+  FRegistrations := [ProvideSection(mProvided)];
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(HasLabelWith(mPage, 'OpenAI: '), 'Liste der Anbieter der IDE');
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TAssistantsSettingsSectionTests.ProviderLinesShowStateAndFeatures;
+var
+  mLines: string;
+begin
+  mLines := TAtlasAssistantsIdeRows.ProviderLines(TArray<TAtlasIdeAiProvider>.Create(
+    TAtlasIdeAiProvider.Make('OpenAI', True, [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.ListModels]),
+    TAtlasIdeAiProvider.Make('Ollama', False, [TAtlasIdeAiFeature.Instruction])));
+  Assert.AreEqual(2, Length(mLines.Split([sLineBreak])), 'eine Zeile je Anbieter');
+  Assert.IsTrue(mLines.StartsWith('OpenAI: '));
+  Assert.AreEqual(2, Length(TAtlasAssistantsIdeRows.FeaturesText(
+    [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.ListModels]).Split([', '])));
+  Assert.AreEqual('', TAtlasAssistantsIdeRows.FeaturesText([]));
+  Assert.IsTrue(TAtlasAssistantsIdeRows.ProviderLines(nil) <> '', 'ohne Anbieter ein Hinweis');
+end;
+
+procedure TAssistantsSettingsSectionTests.PluginFrameTexts;
+var
+  mView: TAtlasIdePluginFrameView;
+  mFrame: TAtlasAssistantsIdePluginFrame;
+begin
+  mView := Default(TAtlasIdePluginFrameView);
+  mView.Provider := 'OpenAI-kompatibel, llama3.1';
+  mView.Today := 42;
+  mView.Limit := 300;
+  Assert.IsTrue(Pos('llama3.1', TAtlasAssistantsIdePluginFrame.ProviderText(mView)) > 0);
+  Assert.IsTrue(Pos('42', TAtlasAssistantsIdePluginFrame.TodayText(mView)) > 0);
+  Assert.IsTrue(Pos('300', TAtlasAssistantsIdePluginFrame.TodayText(mView)) > 0);
+  mFrame := TAtlasAssistantsIdePluginFrame.Create(nil);
+  try
+    mFrame.ShowView(mView);
+    Assert.AreEqual(TAtlasAssistantsIdePluginFrame.ProviderText(mView), mFrame.ProviderLabel.Caption);
+  finally
+    mFrame.Free;
+  end;
+  mView.Provider := '';
+  Assert.IsFalse(Pos('llama3.1', TAtlasAssistantsIdePluginFrame.ProviderText(mView)) > 0,
+    'ohne Anbieter der Hinweis');
 end;
 
 initialization

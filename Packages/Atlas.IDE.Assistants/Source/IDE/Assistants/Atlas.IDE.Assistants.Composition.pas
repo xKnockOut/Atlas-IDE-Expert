@@ -33,6 +33,10 @@
 // - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
 //   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
 //   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
+// - Text für einfache Aufgaben anderer Module (IAtlasAiText, #2462): vom eigenen Anbieter oder einem Anbieter der
+//   IDE (Smart CodeInsight, #2744) nach assistants.textSource; ab der Anmeldung.
+// - Teil „AiIdePlugin“: der eigene Anbieter als „Atlas (…)“ bei Smart CodeInsight der IDE (#2745), solange
+//   assistants.registerInIde an und ein eigener Anbieter eingerichtet ist.
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
 //   Atlas.IDE.Assistants.Adapters.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
@@ -362,6 +366,11 @@ begin
   Result := GContext <> nil;
 end;
 
+procedure StartIdePlugin;
+begin
+  StartAiIdePlugin(TAtlasAssistantsModule.cSwitch);
+end;
+
 { TAtlasAssistantsModule }
 
 class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
@@ -414,7 +423,14 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsLog;
-      end, LogStarted, StartLog, StopLog)];
+      end, LogStarted, StartLog, StopLog),
+    // Eigener Anbieter bei Smart CodeInsight der IDE (#2745): solange assistants.registerInIde an ist und ein
+    // eigener Anbieter eingerichtet ist.
+    TAtlasFeaturePart.When('AiIdePlugin',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and AiIdePluginWanted;
+      end, AiIdePluginStarted, StartIdePlugin, StopAiIdePlugin)];
 end;
 
 function TAtlasAssistantsModule.Commands: TArray<TAtlasModuleCommand>;
