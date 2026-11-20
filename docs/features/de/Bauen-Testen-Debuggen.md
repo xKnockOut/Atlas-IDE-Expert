@@ -777,6 +777,22 @@ Einstellungen: `debug.eventLog`, `debug.eventLogColors`
 
 Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 
+<a id="window-atlaslogpointvalues"></a>
+#### Logpunkt-Verlauf
+
+Aufruf: Atlas-Menü › Debuggen › Logpunkt-Verlauf bzw. Befehl `Atlas.DebugLogpointValues`.
+
+- Im Dialog des Logpunkts „Zahl aufzeichnen“ ankreuzen, optional mit Namen der Reihe; das geht nur bei genau einem Platzhalter (`Offen: {FOffen.Count}`).
+- Das Fenster „Atlas: Logpunkt-Verlauf“ zeigt die Werte jedes aufzeichnenden Logpunkts als Linie über die Zeit seit dem Start der Sitzung, auf derselben Zeichenfläche wie der Speicherverlauf.
+- Zahlen werden in deutscher und englischer Schreibweise erkannt (`48`, `-3,5`, `1.234,5`, `1,234.5`); Text-Werte wie `nil` sind eine Lücke in der Linie, keine 0.
+- Oben die Reihe (Name und Ort) und der Thread („alle“ oder einer); darunter Treffer, Minimum, Maximum und letzter Wert.
+- Klick auf die Linie zeigt den Treffer und springt zu seiner Zeile im Ereignisprotokoll; Ziehen wählt einen Bereich.
+- „CSV kopieren“ legt `time_s,thread,value` je Treffer der gewählten Reihe und des gewählten Threads in die Zwischenablage.
+- Je Reihe höchstens `debug.logpoints.recordLimit` Treffer (Vorgabe 10000); die ältesten fallen heraus. Der Start einer Sitzung leert alle Reihen.
+- „Zahl aufzeichnen“ merkt Atlas wie den Text mit Platzhaltern, solange die IDE läuft.
+
+Einstellungen: `debug.logpoints.recordValues`, `debug.logpoints.recordLimit`
+
 ### Kein Quelltext
 
 - Hält der Debugger in einer Routine ohne Quelltext (die IDE zeigt das CPU-Fenster), erscheint oben rechts ein kleines Fenster ohne Fokus: Routine, Modul, Adresse, Unit und Grund
@@ -1006,6 +1022,18 @@ Schalter: `debug.callStackWindow` (aus: der Aufrufstack der IDE bleibt, wie er i
 - Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
+
+#### Parallel auswerten (#866)
+
+- Atlas > „Parallel auswerten“ öffnet ein andockbares Fenster, das einen oder mehrere Ausdrücke in allen Threads auswertet: eine Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens), eine Spalte je Ausdruck. Bei acht Arbeitern sieht man so auf einen Blick, welcher gerade welchen Auftrag bearbeitet (`FAuftrag.Nr`).
+- Ausdrücke kommen über das Eingabefeld und „Hinzufügen“ (oder Enter) dazu; das Kontextmenü einer Spalte ändert oder entfernt den Ausdruck. Sie werden je Projekt gespeichert.
+- Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, im Thread selbst mit dem obersten eigenen Rahmen als Ort; der aktuelle Thread bleibt derselbe. Gilt ein Ausdruck in einem Thread nicht (unbekannter Bezeichner), steht dort „–“. Ab 32 Threads wertet Atlas erst auf „Auswerten“ aus.
+- Threads ohne eigenen Rahmen (Pool im Leerlauf, Systemthreads) sind ausgeblendet; „Threads ohne eigenen Code zeigen“ blendet sie ein.
+- Klick auf einen Spaltenkopf sortiert (Zahlen nach Wert), ein zweiter Klick absteigend. „Nur Zeilen mit …“ im Kontextmenü einer Spalte filtert, etwa die Spalte `Abbrechen` auf `True`. Markierte Threads (⚑, „Threads im Quelltext“) stehen oben.
+- Enter oder Doppelklick wechselt zum Thread und springt zur Zeile seines Rahmens.
+- Grenze der ToolsAPI: Einen anderen Rahmen als den, den der Debugger für den Thread wählt, kann Atlas nicht vorgeben; Datei und Zeile des eigenen Rahmens bekommt der Debugger als Ort mit.
+
+Schalter: `debug.parallelWatch`.
 
 <a id="window-atlasdebugleaks"></a>
 #### Atlas-Lecks
