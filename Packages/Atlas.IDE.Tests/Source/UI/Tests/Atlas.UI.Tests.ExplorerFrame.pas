@@ -8,9 +8,16 @@
 // - der Baum Testunit → Fixture → Test → Fall mit einem farbigen Punkt je
 //   Zeile (grün, rot, gelb, grau, grauer Ring für veraltet), Mehrfachauswahl
 //   mit Strg und Umschalt,
-// - unten die Einzelheiten zum gewählten Test (Meldung, erwartet, erhalten,
-//   Stacktrace) und daneben als Reiter sein Protokoll (#2168), beides in
-//   Atlas.UI.Tests.ExplorerDetails, und der Tastenhinweis.
+// - unter dem Baum der Tastenhinweis, darunter der Teiler und die
+//   Einzelheiten zum gewählten Test (Meldung, erwartet, erhalten, Stacktrace)
+//   und daneben als Reiter sein Protokoll (#2168), beides in
+//   Atlas.UI.Tests.ExplorerDetails.
+// Größen: Der Baum nimmt den freien Platz. Die Einzelheiten behalten die
+// gezogene Höhe, geben bei kleinem Fenster aber nach, bis der Baum seine
+// Mindesthöhe hat (TAtlasTestExplorerLayout); wird das Fenster wieder größer,
+// kehren sie zur gezogenen Höhe zurück. Knöpfe und Filter brechen bei
+// schmalem Fenster um, die Statuszeile kürzt mit „…“. Bei einem DPI-Wechsel
+// werden die Punktbilder neu gezeichnet.
 // Unter den Leisten die Testlisten (#2167, Atlas.UI.Tests.ListBar).
 // Tasten im Baum: Enter springt zum Test, Strg+R führt die Auswahl aus,
 // Strg+D debuggt sie. Die IDE-Schicht (Atlas.IDE.Tests.Explorer) setzt die
@@ -103,13 +110,25 @@ type
   private
     FBar: TAtlasTestsExplorerBar;
     FListBar: TAtlasTestsListBar;
+    FTreeArea: TPanel;
     FTree: TTreeView;
     FDetails: TAtlasTestsExplorerDetails;
+    FSplitter: TSplitter;
     FFooter: TLabel;
     FImages: TImageList;
     FRows: TArray<TAtlasTestRow>;
     FHandlers: TAtlasTestsExplorerHandlers;
-    procedure BuildImages;
+    /// <summary>Höhe der Einzelheiten, die zuletzt gezogen wurde (Pixel bei CurrentPPI).</summary>
+    FWantedDetails: Integer;
+    /// <summary>Punktbilder in der Größe ASize (Pixel) zeichnen.</summary>
+    procedure BuildImages(ASize: Integer);
+    /// <summary>Teiler über den Einzelheiten.</summary>
+    procedure BuildSplitter;
+    /// <summary>Baum mit dem Tastenhinweis darunter; nimmt den übrigen Platz.</summary>
+    procedure BuildTree;
+    /// <summary>Höhe der Einzelheiten an den Platz anpassen (TAtlasTestExplorerLayout).</summary>
+    procedure FitDetails;
+    procedure SplitterMoved(Sender: TObject);
     /// <summary>Baumknoten zu FRows anlegen; Index je Zeile in AItems, der früher fokussierte Knoten in
     /// AFocusItem.</summary>
     procedure AddItems(AFocused: Integer; out AItems: TArray<TTreeNode>; out AFocusItem: TTreeNode);
@@ -120,6 +139,8 @@ type
     procedure TreeChange(Sender: TObject; Node: TTreeNode);
   protected
     procedure FillControls; override;
+    procedure Resize; override;
+    procedure ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Ereignisse setzen; Default(TAtlasTestsExplorerHandlers) löst alle.</summary>
@@ -152,6 +173,7 @@ implementation
 
 uses
   Atlas.UI.Tests.Strings,
+  Atlas.UI.Foundation.WrapLabel,
   Atlas.Core.Foundation.Calls;
 
 {$R *.dfm}
@@ -172,6 +194,11 @@ const
 
   cSearchWidth = 180;
   cDetailsHeight = 140;
+  /// <summary>Mindesthöhen von Baum (etwa vier Zeilen und der Tastenhinweis) und Einzelheiten, logische Pixel.
+  /// </summary>
+  cMinTreeHeight = 100;
+  cMinDetailsHeight = 60;
+  cSplitterHeight = 4;
   cDotSize = 16;
   /// <summary>Abstand des Punkts zum Rand: ein Viertel der Bildgröße.</summary>
   cDotInsetDivisor = 4;
@@ -195,9 +222,15 @@ begin
   mTop := BuildButtonRow(FProjectBar.Top + FProjectBar.Height);
   mTop := BuildFilterRow(mTop);
   mStatusBar := NewPanel(mTop, Scaled96(cBarHeight - cGap));
+  // Volle Breite und mit „…“ gekürzt: Bei schmalem Fenster lief die Zahlenzeile sonst unter den Rand.
   FStatus := TLabel.Create(FFrame);
-  FStatus.Left := Scaled96(cGap);
-  FStatus.Top := Scaled96(cGap) div 2;
+  FStatus.AutoSize := False;
+  FStatus.ShowAccelChar := False;
+  FStatus.EllipsisPosition := epEndEllipsis;
+  FStatus.ShowHint := True;
+  FStatus.AlignWithMargins := True;
+  FStatus.Margins.SetBounds(Scaled96(cGap), Scaled96(cGap) div 2, Scaled96(cGap), 0);
+  FStatus.Align := alClient;
   FStatus.Parent := mStatusBar;
 end;
 
@@ -391,6 +424,7 @@ end;
 procedure TAtlasTestsExplorerBar.SetStatus(const AStatus: string);
 begin
   FStatus.Caption := AStatus;
+  FStatus.Hint := AStatus;
 end;
 
 procedure TAtlasTestsExplorerBar.SetBusy(ABusy: Boolean);
@@ -438,21 +472,58 @@ end;
 
 { TAtlasTestsExplorerFrame }
 
+/// <summary>AValue (logische Pixel) in Pixeln bei der DPI von AFrame.</summary>
+function FramePixels(AFrame: TCustomFrame; AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, AFrame.CurrentPPI, cBasePpi);
+end;
+
 constructor TAtlasTestsExplorerFrame.Create(AOwner: TComponent);
-var
-  mSplitter: TSplitter;
 begin
   inherited Create(AOwner);
-  BuildImages;
+  BuildImages(FramePixels(Self, cDotSize));
   FBar := TAtlasTestsExplorerBar.Create(Self);
-  FFooter := TLabel.Create(Self);
-  FFooter.Caption := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerFooter);
-  FFooter.Align := alBottom;
-  FFooter.Parent := Self;
   FDetails := TAtlasTestsExplorerDetails.Create(Self, cDetailsHeight);
-  mSplitter := TSplitter.Create(Self);
-  mSplitter.Align := alBottom;
-  mSplitter.Parent := Self;
+  FWantedDetails := FDetails.Panel.Height;
+  BuildSplitter;
+  BuildTree;
+  FListBar := TAtlasTestsListBar.Create(Self, FTree);
+end;
+
+procedure TAtlasTestsExplorerFrame.BuildSplitter;
+begin
+  FSplitter := TSplitter.Create(Self);
+  FSplitter.Height := FramePixels(Self, cSplitterHeight);
+  // Erst über die Einzelheiten stellen, dann ausrichten: Die VCL ordnet alBottom nach der Unterkante. Ohne Top
+  // lag der Teiler über dem Tastenhinweis und zog dessen Höhe statt der der Einzelheiten (großer leerer Bereich
+  // unter dem Hinweis, der Baum schrumpfte).
+  FSplitter.Top := FDetails.Panel.Top - FSplitter.Height;
+  FSplitter.Align := alBottom;
+  FSplitter.MinSize := FramePixels(Self, cMinDetailsHeight);
+  FSplitter.AutoSnap := False;
+  FSplitter.ResizeStyle := rsUpdate;
+  FSplitter.OnMoved := SplitterMoved;
+  FSplitter.Parent := Self;
+end;
+
+procedure TAtlasTestsExplorerFrame.BuildTree;
+var
+  mGap: Integer;
+begin
+  // Baum und Hinweis teilen sich eine Fläche: Der Hinweis gehört zum Baum, und der Teiler hat nur die
+  // Einzelheiten als Nachbarn.
+  FTreeArea := TPanel.Create(Self);
+  FTreeArea.BevelOuter := bvNone;
+  FTreeArea.ShowCaption := False;
+  FTreeArea.Align := alClient;
+  FTreeArea.Parent := Self;
+  FFooter := TAtlasWrapLabel.Create(Self);
+  FFooter.Caption := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerFooter);
+  FFooter.AlignWithMargins := True;
+  mGap := FramePixels(Self, cGap);
+  FFooter.Margins.SetBounds(mGap, mGap div 2, mGap, mGap div 2);
+  FFooter.Align := alBottom;
+  FFooter.Parent := FTreeArea;
   FTree := TTreeView.Create(Self);
   FTree.Align := alClient;
   FTree.ReadOnly := True;
@@ -464,19 +535,63 @@ begin
   FTree.OnDblClick := TreeDblClick;
   FTree.OnKeyDown := TreeKeyDown;
   FTree.OnChange := TreeChange;
-  FTree.Parent := Self;
-  FListBar := TAtlasTestsListBar.Create(Self, FTree);
+  FTree.Parent := FTreeArea;
 end;
 
-procedure TAtlasTestsExplorerFrame.BuildImages;
+procedure TAtlasTestsExplorerFrame.Resize;
+begin
+  inherited Resize;
+  FitDetails;
+end;
+
+procedure TAtlasTestsExplorerFrame.ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean);
+begin
+  inherited ChangeScale(AM, AD, AIsDpiChange);
+  // Läuft auch beim Laden der DFM, bevor die Steuerelemente bestehen.
+  FWantedDetails := MulDiv(FWantedDetails, AM, AD);
+  if AIsDpiChange and (FImages <> nil) then
+  begin
+    BuildImages(MulDiv(FImages.Width, AM, AD));
+  end;
+end;
+
+procedure TAtlasTestsExplorerFrame.FitDetails;
+var
+  mHeight: Integer;
+begin
+  // Resize kommt schon beim Laden der DFM, vor den Steuerelementen.
+  if (FDetails = nil) or (FTreeArea = nil) then
+  begin
+    Exit;
+  end;
+  mHeight := TAtlasTestExplorerLayout.DetailsHeight(FTreeArea.Height + FDetails.Panel.Height, FWantedDetails,
+    FramePixels(Self, cMinTreeHeight), FramePixels(Self, cMinDetailsHeight));
+  if mHeight <> FDetails.Panel.Height then
+  begin
+    FDetails.Panel.Height := mHeight;
+  end;
+end;
+
+procedure TAtlasTestsExplorerFrame.SplitterMoved(Sender: TObject);
+begin
+  FWantedDetails := FDetails.Panel.Height;
+  FitDetails;
+end;
+
+procedure TAtlasTestsExplorerFrame.BuildImages(ASize: Integer);
 var
   mState: TAtlasTestNodeState;
   mBitmap: TBitmap;
   mSize, mInset: Integer;
 begin
-  mSize := MulDiv(cDotSize, CurrentPPI, cBasePpi);
+  mSize := ASize;
   mInset := mSize div cDotInsetDivisor;
-  FImages := TImageList.Create(Self);
+  if FImages = nil then
+  begin
+    FImages := TImageList.Create(Self);
+  end;
+  // Neue Größe leert die Liste; der Baum behält sie über Images.
+  FImages.Clear;
   FImages.Width := mSize;
   FImages.Height := mSize;
   for mState := Low(TAtlasTestNodeState) to High(TAtlasTestNodeState) do
