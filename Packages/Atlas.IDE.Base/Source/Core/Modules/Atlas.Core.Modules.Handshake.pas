@@ -7,6 +7,11 @@
 // Methodentabellen ins Leere (Delphi prüft das zwischen Packages nicht). Bei
 // Abweichung meldet sich das Modul nicht an und zeigt seinen Hinweis
 // „Atlas-Kern passt nicht zu diesem Modul“ (Text im Modul).
+// Dazu die Produktversion (#2372): Die Vertragsversion steigt höchstens einmal
+// je Release und bei Patch-Versionen gar nicht, Klassen von Base, die Module
+// benutzen, ändern sich aber auch dort. Ein Modul eines anderen Baus (z. B.
+// 2.2.1 aus dem Quelltext neben einem installierten 2.2.0) liefe sonst gegen
+// eine fremde Binärschnittstelle und brächte die IDE zum Absturz.
 
 interface
 
@@ -14,8 +19,9 @@ uses
   Winapi.Windows;
 
 type
-  /// <summary>Ergebnis: passt, Base ohne Export (nicht geladen oder kein Atlas-Base), andere Vertragsversion.</summary>
-  TAtlasContractCheck = (ccMatch, ccMissing, ccMismatch);
+  /// <summary>Ergebnis: passt, Base ohne Export (nicht geladen oder kein Atlas-Base), andere Vertragsversion,
+  /// gleiche Vertragsversion, aber andere Produktversion.</summary>
+  TAtlasContractCheck = (ccMatch, ccMissing, ccMismatch, ccProductMismatch);
 
   TAtlasContractVersionFunction = function: Integer; stdcall;
 
@@ -28,6 +34,10 @@ type
     /// <summary>Query und Compare in einem: AModule gegen AExpected (das Modul übergibt die
     /// cAtlasCoreContractVersion, gegen die es übersetzt wurde).</summary>
     class function Check(AModule: HMODULE; AExpected: Integer): TAtlasContractCheck; static;
+    /// <summary>ACheck um die Produktversion ergänzt: ccProductMismatch, wenn der Vertrag passt, das Modul aber
+    /// für eine andere Version (AModuleVersion) übersetzt ist als Base (ABaseVersion).</summary>
+    class function WithProduct(ACheck: TAtlasContractCheck; const ABaseVersion, AModuleVersion: string):
+      TAtlasContractCheck; static;
   end;
 
 /// <summary>Vertragsversion dieses Base (cAtlasCoreContractVersion); exportiert unter
@@ -91,6 +101,16 @@ var
 begin
   mFound := Query(AModule, mVersion);
   Result := Compare(mFound, mVersion, AExpected);
+end;
+
+class function TAtlasContractHandshake.WithProduct(ACheck: TAtlasContractCheck; const ABaseVersion,
+  AModuleVersion: string): TAtlasContractCheck;
+begin
+  Result := ACheck;
+  if (Result = ccMatch) and (ABaseVersion <> AModuleVersion) then
+  begin
+    Result := ccProductMismatch;
+  end;
 end;
 
 end.
