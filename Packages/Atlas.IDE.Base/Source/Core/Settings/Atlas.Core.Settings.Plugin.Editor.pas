@@ -38,6 +38,9 @@ const
   /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
   cMinBlockEndLines = 1;
   cMaxBlockEndLines = 1000;
+  /// <summary>Grenzen der Mindestlänge für „Große Blöcke einklappen“ (#2795).</summary>
+  cMinBlockFoldLines = 3;
+  cMaxBlockFoldLines = 1000;
   /// <summary>Grenzen für editor.recursionMarkers.depth (#623); wie TRecursionAnalysis im Server.</summary>
   cMinRecursionDepth = 1;
   cMaxRecursionDepth = 16;
@@ -167,6 +170,11 @@ type
     /// <summary>Regionen beim Öffnen (#1814, editor.regionFolds): keep, collapse, expand oder off; off schaltet auch
     /// die Befehle „Alle Regionen zu-/aufklappen“ ab.</summary>
     RegionFolds: string;
+    /// <summary>Große Anweisungsblöcke einklappen (#2795, editor.blockFolds): Befehle „Block einklappen“, „Große
+    /// Blöcke einklappen“ und „Blöcke aufklappen“.</summary>
+    BlockFolds: Boolean;
+    /// <summary>Mindestlänge eines Blocks in Zeilen (#2795, editor.blockFolds.minLines).</summary>
+    BlockFoldsMinLines: Integer;
     /// <summary>Kommentar beim Enter fortsetzen (#696, editor.continueComments).</summary>
     ContinueComments: Boolean;
     /// <summary>Auch //-Zeilen fortsetzen, nicht nur /// (#696, editor.continueComments.lineComments).</summary>
@@ -940,6 +948,7 @@ const
   /// <summary>Vorgaben in Zeilen: Mindestlänge der Blöcke für Endmarken und Sticky Scroll, höchstens gezeigte
   /// Mitglieder im Hover, Höhe der Einblendung (Peek), Zeilen im Sticky Scroll.</summary>
   cDefaultBlockEndLines = 25;
+  cDefaultBlockFoldLines = 15;
   cDefaultHoverMembersLines = 15;
   cDefaultPeekLines = 15;
   cDefaultStickyLines = 3;
@@ -1024,6 +1033,8 @@ begin
   Result.GitBlame := False;
   Result.MethodPlacement := 'grouped';
   Result.RegionFolds := 'keep';
+  Result.BlockFolds := True;
+  Result.BlockFoldsMinLines := cDefaultBlockFoldLines;
   Result.ContinueComments := True;
   Result.ContinueCommentsLineComments := True;
   Result.ContinueCommentsLists := True;
@@ -1050,6 +1061,7 @@ begin
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, cMinPatternLines, cMaxPatternLines);
   MethodPlacement := Choice(MethodPlacement, cAtlasMethodPlacements);
   RegionFolds := Choice(RegionFolds, cAtlasRegionFoldModes);
+  BlockFoldsMinLines := EnsureRange(BlockFoldsMinLines, cMinBlockFoldLines, cMaxBlockFoldLines);
   ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
   CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [cBeginEndMultiLine, cBeginEndAlways, cBeginEndNever]);
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [cTryKindFinally, cTryKindExcept, cTryKindAsk]);
@@ -1075,6 +1087,8 @@ begin
   AIo.Flag('GitBlame', GitBlame);
   AIo.Text('MethodPlacement', MethodPlacement);
   AIo.Text('RegionFolds', RegionFolds);
+  AIo.Flag('BlockFolds', BlockFolds);
+  AIo.Number('BlockFoldsMinLines', BlockFoldsMinLines);
   AIo.Flag('ContinueComments', ContinueComments);
   AIo.Flag('ContinueCommentsLineComments', ContinueCommentsLineComments);
   AIo.Flag('ContinueCommentsLists', ContinueCommentsLists);

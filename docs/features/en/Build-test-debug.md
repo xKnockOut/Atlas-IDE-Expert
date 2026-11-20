@@ -643,6 +643,21 @@ Open it from the Atlas menu › Memory timeline or with the command `Atlas.Debug
 
 Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
 
+<a id="window-atlasconsoleoutput"></a>
+### Docked console output
+
+Experimental, off by default. Start with F9 as usual, or Run menu › “Run without debugger with console output”, or the commands `Atlas.ConsoleRunNoDebug` and `Atlas.ConsoleOutput`.
+
+- For a Win32 or Win64 console program without a host application, the output appears in the dockable window “Atlas: Console output” instead of a separate console window. The IDE starts other projects as usual.
+- With the debugger, Atlas starts the program suspended and attaches the IDE debugger. The program only runs once the IDE has taken it over, so breakpoints on the very first line are hit. If the IDE does not take over within 10 s, the program runs anyway and Atlas says so.
+- Error output (stderr) is red, input blue, notes from Atlas grey. Type input into the field at the bottom (Enter sends, “End input” sends end of file for `Readln`).
+- Locations such as `Main.pas(12)` or `Src/Main.pas:12:5` are underlined; a click opens the file at that line (looked up in the working folder, then the project folder).
+- Parameters, working folder and environment come from the project's run options, including an active start profile.
+- After the program ends, the output stays with the exit code. The window keeps at most 20,000 lines; older ones are dropped with a note.
+- “Stop” ends the program, through the IDE when debugging.
+
+Setting: `debug.captureConsole`
+
 <a id="window-atlasprofiler"></a>
 ### Profiler
 
@@ -967,6 +982,14 @@ Settings: `debug.exceptionMessageRules` (default on)
 - With "including descendants" the rule also matches derived classes (`EDatabaseError` catches `EFDDBEngineException`). Atlas asks the server's type hierarchy for the ancestors once per class and session when the debugger stops; if the class is unknown there, only the exact name counts.
 
 Settings: `debug.exceptionRules` (default on); rules with a message also need `debug.exceptionMessageRules`
+
+### Known errors from the issue tracker (#2460)
+
+- When the debugger stops at an exception, the issue tracker module looks for matching issues in the background: class and topmost own method, class and words of the message, method only (numbers, addresses, paths and quoted text do not count).
+- The exception bar shows up to four hits with state and assignee, resolved ones as “occurred again?”, plus “Open issue”, “Add as comment” (exception, own call stack, location, branch) or “Reopen …” and “New issue …” (prefilled).
+- The result is kept per signature for the session; the debugger never waits for the tracker. Without the issue tracker module the bar stays as before.
+
+Setting: `issues.debugKnownErrors` (default on)
 
 ### Access violation explained
 

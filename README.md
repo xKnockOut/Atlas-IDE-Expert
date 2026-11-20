@@ -85,6 +85,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Results window** for references, callers and implementations, plus impact and data flow
 - **Bookmarks, notes, minimap and sticky scroll**
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
+- **Fold large blocks:** collapse `if`/`else` branches, loops, `try`, `repeat` and `case` blocks from 15 lines (`editor.blockFolds.minLines`) through temporary region markers on the same lines, removed again before saving
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **364 check rules** while you type: 244 bugs, 109 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
@@ -136,6 +137,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Break on data access:** stops when the program runs SQL or sends an HTTP request, optionally only when a pattern matches (`*FROM Customers*`, `POST */api/order*`); FireDAC, dbExpress, ADO, Zeos, `THTTPClient`, `TNetHTTPClient`, `TRESTRequest`, `TIdHTTP` and own classes; the bar shows the SQL with parameters or method and URL, “Only log” writes to the messages instead (`debug.dataBreaks`)
 - **“Why am I here?” and predicting conditions:** at a stop, the surrounding `if`, `while` and `case` show the values of their conditions, the upcoming ones the predicted results; skipped branches are dimmed
 - **Values in the debug hover:** expand them (changed values highlighted, old value behind), **change** them directly (F2) and **pin** them
+- **Docked console output** (experimental, `debug.captureConsole`): stdout and stderr in the window “Atlas: Console output” with an input field and clickable locations, also with the debugger and breakpoints from the first line
 - **Restart** with Ctrl+Shift+F2 (stop, build if changed, start, back to the same place), **reattach to a process** (Shift+Alt+P) and **debug several programs together** (launch groups `launchGroups` in `.atlas`)
 - **Exceptions:** history window, exception bar, stop or continue by message text, rules by class and location (also for the team in `.atlas`), just my code, access violations explained, module of the fault address (program, RTL/VCL, Windows, third-party DLL), known errors from the issue tracker with open, comment and new issue
 - **Threads:** what is waiting for what (wait point of every thread, deadlock patterns such as `WaitFor` against `Synchronize`), parallel stacks of all threads as a tree, other threads in the gutter (flag, experimental: freeze), experimental: where a method queued with `TThread.Queue`, `Synchronize` or `TTask.Run` came from
@@ -171,7 +173,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too; and the server answers: messages, code actions, hovers, MCP answers, reports, the architecture map, the messages of `--check` and the MCP tool descriptions; without `language` in settings.json the server follows the language the IDE actually shows (its loaded resource files, then `Locales` in the registry, then Windows), and `atlas.log` names the detected language and its source
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
-- **33 MCP tools** to read, check, build, test, rename and fix Delphi code
+- **55 MCP tools** to read, check, build, test, rename and fix Delphi code
 - **Refactorings over MCP:** `refactor` lists the refactorings of the context menu at a position with their arguments and runs them with arguments instead of questions (change signature, extract interface or superclass, safe delete, move member, type alias …), with a preview of all files and as one undo step in the IDE
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
 - **The started issue for AI assistants:** after "Start" the plugin stores the issue with checklist, code references, description and latest comments next to the commit prefix in the Git directory; `get_current_issue` reads it without tracker access and without a token. When someone ticks an item in the tracker, it shows there after the next refresh (`issues.shareWithAssistants`, on by default)

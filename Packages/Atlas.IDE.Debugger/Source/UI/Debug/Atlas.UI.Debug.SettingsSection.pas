@@ -74,7 +74,8 @@ uses
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.OpenedFiles.Strings,
-  Atlas.UI.Debug.Profile.Strings;
+  Atlas.UI.Debug.Profile.Strings,
+  Atlas.UI.Debug.Console.Strings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -379,6 +380,8 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReattachWait));
   // Startverbünde (#867).
   Switch('debug.launchGroups', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLaunchGroups));
+  // Konsolenausgabe andocken (#581).
+  Switch('debug.captureConsole', TAtlasConsoleStrings.Text(TAtlasConsoleTextId.SettingsCaptureConsole));
   Switch('debug.pinnedValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPinnedValues));
   // Speicherverlauf (#858).
   Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
