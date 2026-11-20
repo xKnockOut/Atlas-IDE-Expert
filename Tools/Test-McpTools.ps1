@@ -258,7 +258,7 @@ function Test-ToolSchema($ToolInfo) {
     }
     $properties = Get-Property $schema 'properties'
     $propertyNames = @()
-    if ($null -ne $properties) { $propertyNames = @($properties.PSObject.Properties.Name) }
+    if ($null -ne $properties) { $propertyNames = @($properties.PSObject.Properties | ForEach-Object { $_.Name }) }
     foreach ($required in @(Get-Property $schema 'required')) {
         if ($null -ne $required -and $propertyNames -notcontains $required) {
             Add-Finding "${name}: Pflichtparameter '$required' fehlt in properties"

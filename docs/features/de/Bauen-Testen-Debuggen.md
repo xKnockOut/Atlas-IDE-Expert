@@ -932,6 +932,14 @@ Einstellungen: `debug.exceptionMessageRules` (Vorgabe an)
 
 Einstellungen: `debug.exceptionRules` (Vorgabe an); Regeln mit Meldung zusätzlich `debug.exceptionMessageRules`
 
+#### Bekannte Fehler aus dem Issue-Tracker (#2460)
+
+- Hält der Debugger an einer Exception, sucht das Modul Issue-Tracker im Hintergrund nach passenden Issues: Klasse und oberste eigene Methode, Klasse und Wörter der Meldung, nur die Methode (Zahlen, Adressen, Pfade und Text in Anführungszeichen zählen nicht).
+- Die Exception-Leiste zeigt bis zu vier Treffer mit Zustand und Bearbeiter, erledigte als „wieder aufgetreten?“, dazu „Issue öffnen“, „Als Kommentar anhängen“ (Exception, eigener Aufrufstapel, Ort, Branch) bzw. „Wieder öffnen …“ und „Neues Issue …“ (vorausgefüllt).
+- Das Ergebnis bleibt je Signatur für die Sitzung gespeichert; der Debugger wartet nie auf den Tracker. Ohne Modul Issue-Tracker bleibt die Leiste wie bisher.
+
+Einstellung: `issues.debugKnownErrors` (Vorgabe an)
+
 #### Zugriffsverletzung erklärt
 
 - Hält der Debugger wegen einer Zugriffsverletzung in eigenem Code, zerlegt Atlas die Anweisungen der Zeile in Zugriffsketten (`Auftrag.Kunde.Adresse.Ort`, `Liste[I].Name`, `Self.FDaten^`) und wertet sie von links aus.
