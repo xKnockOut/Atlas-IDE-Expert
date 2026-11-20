@@ -42,6 +42,9 @@ type
     /// <summary>#2603: mcp.reportFindingsAfterEdit, Vorgabe an, je Glied geschichtet.</summary>
     [Test]
     procedure ReadsMcpReportFindingsAfterEdit;
+    /// <summary>#2620: mcp.confirm, Vorgabe an, je Glied geschichtet.</summary>
+    [Test]
+    procedure ReadsMcpConfirm;
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
@@ -342,6 +345,21 @@ begin
   mSettings := TConfigurationParser.ParseLayered('{"mcp": {"reportFindingsAfterEdit": false}}',
     '{"mcp": {"customPrompts": []}}', mIssues);
   Assert.IsFalse(mSettings.McpReportFindingsAfterEdit, 'globale Ebene bleibt');
+end;
+
+procedure TConfigurationFeatureTests.ReadsMcpConfirm;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpConfirm, 'Vorgabe an');
+  mSettings := Parse('{"mcp": {"confirm": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpConfirm);
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"confirm": false}}', '{"mcp": {"prompts": true}}',
+    mIssues);
+  Assert.IsFalse(mSettings.McpConfirm, 'globale Ebene bleibt');
 end;
 procedure TConfigurationFeatureTests.ChecksTasks;
 var

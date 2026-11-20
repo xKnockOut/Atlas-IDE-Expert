@@ -176,6 +176,7 @@ Atlas.Common.JsonRpc.CurrentRequest.Tests
 Atlas.Common.JsonRpc.CustomCancellation.Tests
 Atlas.Common.JsonRpc.Messages.Tests
 Atlas.Common.JsonRpc.PendingRequests.Tests
+Atlas.Common.JsonRpc.Outgoing.Tests
 Atlas.Common.JsonRpc.StreamTransport.Tests
 Atlas.Common.JsonRpc.TracingTransport.Tests
 Atlas.Common.JsonRpc.WorkerPool.Tests
@@ -261,6 +262,7 @@ Atlas.Common.Mcp.BuildTools.Tests
 Atlas.Common.Mcp.CompilerMessageTools.Tests
 Atlas.Common.Mcp.IdeInbox.Tests
 Atlas.Common.Mcp.IdeQuestions.Tests
+Atlas.Common.Mcp.Confirm.Tests
 Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.DocsIndex.Tests
 Atlas.Common.Mcp.DocsTools.Tests
