@@ -193,9 +193,9 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **5 prompts** as slash commands, e.g. unit review or commit preparation
 - **Hook:** every Pascal file Claude changes is checked right away
 - **Call statistics:** `delphi://stats` and `get_server_status` show which Atlas tools the AI assistant calls, how often they fail and how slow and large their answers are; a 30-day history names tools that never come up (`mcp.statistics`, stays local)
-- **AI assistant active:** the Atlas status field shows what an AI assistant is building or changing through the IDE; a click pauses AI assistants (“pause for AI”, `assistants.banner`)
+- **AI assistant active:** the Atlas status field shows what an AI assistant is building or changing through the IDE; a click pauses AI assistants (“pause for AI”, `assistants.banner`), a right-click opens the Atlas AI log
 - **AI changes to unsaved files wait:** instead of refusing, the IDE holds the change until you choose “Save and apply”, “Open as comparison” or “Discard”; if it overlaps your changes, the comparison opens (`assistants.editHoldModified`)
-- **AI assistants ask in the IDE:** `ask_user` shows a question as a window with answers to choose from or an own answer; “Later” puts it into the status field (`assistants.questionsInIde`)
+- **AI assistants ask in the IDE:** `ask_user` shows a question as a window with answers to choose from or an own answer; “Later” puts it into the status field (`assistants.questionsInIde`); `rename_symbol` and `fix_findings` ask before risky writes, through the AI client (MCP elicitation) or the IDE (`mcp.confirm`)
 - **Atlas AI log:** a dockable window lists what AI assistants changed, built and asked in this session and what the IDE refused; difference per change or for the whole session, revert a change as one undo step (`assistants.log`)
 - **Findings after the change:** the writing MCP tools append the new and fixed findings of the changed files to their answer (`delphi://edits/last` for the last change)
 - **Protected files:** `assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md`), with reason and the right way; the writing MCP tools refuse such changes without writing anything, the hook refuses or reports them
