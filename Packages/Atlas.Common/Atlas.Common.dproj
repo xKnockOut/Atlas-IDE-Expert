@@ -488,6 +488,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CodeActions.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.CodeActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesClause.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesGroups.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesCommand.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.pas"/>

@@ -17,6 +17,27 @@ uses
   Atlas.Common.Projects.Contract;
 
 type
+  // Gruppen der uses nach Herkunft (#2794); Logik in Atlas.Common.Editing.UsesGroups.
+{$SCOPEDENUMS ON}
+  /// <summary>Gruppe eines uses-Eintrags, in der Reihenfolge der Ausgabe.</summary>
+  TUsesGroup = (RuntimeLibrary, DelphiComponents, Framework, LibraryPath, ProjectGroup, Project);
+
+  /// <summary>Darstellung der Gruppen: Kommentar über jeder Gruppe oder nur eine neue Zeile.</summary>
+  TUsesGroupStyle = (Comments, Lines);
+
+  /// <summary>Wo der Host die Datei der Unit gefunden hat.</summary>
+  TUsesFileOrigin = (Unknown, Installation, LibraryPath, ProjectGroup, OwnProject);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Fundort einer Unit, vom Host bestimmt.</summary>
+  TUsesUnitFile = record
+    Origin: TUsesFileOrigin;
+    /// <summary>Bei Installation: Pfad der Datei relativ zum Ordner der Installation ($(BDS)), sonst ''.</summary>
+    InstallPath: string;
+  end;
+
+  /// <summary>Gruppe zu einem Unit-Namen.</summary>
+  TUsesGroupFunc = reference to function(const AUnitName: string): TUsesGroup;
 
   /// <summary>Was der Index über eine Unit weiß.</summary>
   TUsesUnitInfo = record
@@ -77,6 +98,8 @@ type
     Inactive: TArray<TTextRange>;
     /// <summary>Namensauflösung für die Datei (#1925); nil = nur Namensvergleich.</summary>
     Resolve: TUsesResolveFunc;
+    /// <summary>Gruppe nach Fundort der Unit (#2794); nil = nur nach Namespace.</summary>
+    GroupOf: TUsesGroupFunc;
     /// <summary>Resolve für AText, sonst eine Nutzung ohne Active.</summary>
     function Resolution(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
   end;
@@ -169,6 +192,12 @@ type
     cTodoCategory = 'todoCategory';
     /// <summary>/sortuses streicht ungenutzte Units (#297, #284); 'false' = nur sortieren.</summary>
     cSortUsesRemoveUnused = 'sortUsesRemoveUnused';
+    /// <summary>Reihenfolge von /sortuses (#2794): origin, alphabetic oder namespace; '' = origin.</summary>
+    cSortUsesOrder = 'sortUsesOrder';
+    /// <summary>usesGroupStyle (#2794): comments oder lines; '' = comments.</summary>
+    cUsesGroupStyle = 'usesGroupStyle';
+    /// <summary>format.maxLineLength für den Umbruch der Gruppen (#2794); '' oder '0' = 120.</summary>
+    cMaxLineLength = 'maxLineLength';
     /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875); 'false' = leerer
     /// Helper.</summary>
     cEnumHelper = 'enumHelper';

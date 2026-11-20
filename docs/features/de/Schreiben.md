@@ -83,6 +83,7 @@ Einstellungen: `completion.formatPlaceholders`
   - klassenbewusste Vorlagen (`prop`, `create`, `free`)
   - Postfix-Vorlagen (`Liste.forin`, `Obj.notnil`, `Obj.free`)
 - **Schnellbefehle** nach Enter, etwa `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/mock`, `/testcase`, `/dump`, `/assert`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+  - `/sortuses` gliedert die uses nach Herkunft: System, Delphi-Komponenten (Indy, FireDAC, DataSnap …), VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt; über jeder Gruppe ein Kommentar wie `{ System }` (#2794, `slashCommands.sortUsesOrder`, `usesGroupStyle`, für „uses aufräumen“ `sortUses: "origin"`)
 - **Erzeugen-Menü** (Alt+Einfg): Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Umschließen, Vorlagen
 - **Freigabe absichern:** nach `X := TFoo.Create;` ein Angebot für `try … finally X.Free; end;`
 

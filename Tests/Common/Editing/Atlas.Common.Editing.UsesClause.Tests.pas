@@ -44,6 +44,18 @@ type
     [Test]
     procedure OrganizeWithoutChangeGivesNothing;
     [Test]
+    procedure GroupedWritesCommentPerGroup;
+    [Test]
+    procedure GroupedLinesStyleWithoutComments;
+    [Test]
+    procedure GroupedTwiceGivesNothing;
+    [Test]
+    procedure GroupedReplacesOldLabelsKeepsOtherComments;
+    [Test]
+    procedure GroupedWrapsLongGroups;
+    [Test]
+    procedure GroupedSingleGroupWithoutComment;
+    [Test]
     procedure DUnitXUses_IsTestUnit;
     [Test]
     procedure PlainUnit_IsNotTestUnit;
@@ -58,6 +70,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Editing.UsesGroups,
   Atlas.Common.Editing.UsesClause;
 
 const
@@ -259,6 +273,95 @@ begin
   begin
     Result := AText;
   end;
+end;
+
+function NameGroups: TUsesGroupFunc;
+begin
+  Result :=
+    function(const AUnitName: string): TUsesGroup
+    begin
+      Result := TUsesGroups.OfName(AUnitName);
+    end;
+end;
+
+/// <summary>uses nach Herkunft gegliedert (#2794), Gruppen nur nach Namespace.</summary>
+function Grouped(const AText: string; AStyle: TUsesGroupStyle; AMaxLength: Integer): string;
+var
+  mOptions: TUsesRewrite;
+  mEdits: TArray<TRuleEdit>;
+begin
+  mOptions := Default(TUsesRewrite);
+  mOptions.Dedupe := True;
+  mOptions.Sort := True;
+  mOptions.GroupOf := NameGroups();
+  mOptions.GroupStyle := AStyle;
+  mOptions.MaxLineLength := AMaxLength;
+  Result := AText;
+  if TUsesClauses.Rewrite(TPascalLexer.Tokenize(AText), AText, mOptions, #10, mEdits) then
+  begin
+    Result := ApplyAll(AText, mEdits);
+  end;
+end;
+
+/// <summary>Kommentarzeile der Gruppe mit Einrückung und Zeilenwechsel.</summary>
+function LabelLine(AGroup: TUsesGroup): string;
+begin
+  Result := '  ' + TUsesGroups.LabelOf(AGroup) + #10;
+end;
+
+const
+  cMixedUses = 'unit A;'#10'interface'#10'uses Kunden.Daten, Vcl.Forms, System.SysUtils, IdHTTP, Vcl.Forms, ' +
+    'System.Classes;'#10'implementation'#10'end.';
+
+procedure TUsesClauseTests.GroupedWritesCommentPerGroup;
+begin
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10 + LabelLine(TUsesGroup.RuntimeLibrary) +
+    '  System.Classes, System.SysUtils,'#10 + LabelLine(TUsesGroup.DelphiComponents) + '  IdHTTP,'#10 +
+    LabelLine(TUsesGroup.Framework) + '  Vcl.Forms,'#10 + LabelLine(TUsesGroup.Project) + '  Kunden.Daten;'#10 +
+    'implementation'#10'end.', Grouped(cMixedUses, TUsesGroupStyle.Comments, 0));
+end;
+
+procedure TUsesClauseTests.GroupedLinesStyleWithoutComments;
+begin
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  System.Classes, System.SysUtils,'#10'  IdHTTP,'#10 +
+    '  Vcl.Forms,'#10'  Kunden.Daten;'#10'implementation'#10'end.', Grouped(cMixedUses, TUsesGroupStyle.Lines, 0));
+end;
+
+procedure TUsesClauseTests.GroupedTwiceGivesNothing;
+var
+  mText: string;
+  mOptions: TUsesRewrite;
+  mEdits: TArray<TRuleEdit>;
+begin
+  mText := Grouped(cMixedUses, TUsesGroupStyle.Comments, 0);
+  mOptions := Default(TUsesRewrite);
+  mOptions.Dedupe := True;
+  mOptions.Sort := True;
+  mOptions.GroupOf := NameGroups();
+  Assert.IsFalse(TUsesClauses.Rewrite(TPascalLexer.Tokenize(mText), mText, mOptions, #10, mEdits));
+end;
+
+procedure TUsesClauseTests.GroupedReplacesOldLabelsKeepsOtherComments;
+begin
+  // Alte Gruppenkommentare (auch englisch) entfallen, ein eigener Kommentar vor dem ersten Eintrag bleibt.
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  { Formulare }'#10 + LabelLine(TUsesGroup.RuntimeLibrary) +
+    '  System.SysUtils,'#10 + LabelLine(TUsesGroup.Framework) + '  Vcl.Forms;'#10'implementation'#10'end.',
+    Grouped('unit A;'#10'interface'#10'uses'#10'  { Formulare }'#10'  { Library }'#10'  Vcl.Forms,'#10 +
+    '  { Project }'#10'  System.SysUtils;'#10'implementation'#10'end.', TUsesGroupStyle.Comments, 0));
+end;
+
+procedure TUsesClauseTests.GroupedWrapsLongGroups;
+begin
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  System.Classes, System.SysUtils,'#10'  Winapi.Windows;'#10 +
+    'implementation'#10'end.', Grouped('unit A;'#10'interface'#10'uses Winapi.Windows, System.SysUtils, ' +
+    'System.Classes;'#10'implementation'#10'end.', TUsesGroupStyle.Comments, 40));
+end;
+
+procedure TUsesClauseTests.GroupedSingleGroupWithoutComment;
+begin
+  Assert.AreEqual('program P;'#10'uses'#10'  Alpha, Main in ''Main.pas'' {Form1};'#10'begin end.',
+    Grouped('program P;'#10'uses'#10'  Main in ''Main.pas'' {Form1},'#10'  Alpha;'#10'begin end.',
+    TUsesGroupStyle.Comments, 0));
 end;
 
 procedure TUsesClauseTests.OrganizeRemovesDuplicates;

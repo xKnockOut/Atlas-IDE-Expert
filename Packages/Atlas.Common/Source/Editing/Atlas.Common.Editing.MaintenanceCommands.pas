@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Editing.MaintenanceCommands;
 
 // Schnellbefehle für Pflege (#297) im Rahmen aus #293:
-//   /sortuses             uses-Listen der Unit sortieren (doppelte entfernen); mit Index
+//   /sortuses             uses-Listen der Unit sortieren (doppelte entfernen), per Vorgabe nach
+//                         Herkunft gegliedert (#2794, sortUsesOrder, usesGroupStyle); mit Index
 //                         auch ungenutzte Units streichen, solche mit initialization
 //                         und die aus usesKeep bleiben (#284, sortUsesRemoveUnused)
 //   /cleanuses            nur ungenutzte Units streichen, Reihenfolge bleibt (#297)
@@ -38,6 +39,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.UsesGroups,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.GitUser,
   Atlas.Common.Editing.ClassCommands,
@@ -104,6 +106,53 @@ begin
   end;
 end;
 
+function SlashSetting(const AContext: TSlashContext; const AName: string): string;
+begin
+  Result := '';
+  if AContext.Host <> nil then
+  begin
+    Result := AContext.Host.Setting(AContext.Uri, AName);
+  end;
+end;
+
+/// <summary>Gruppe nach Fundort aus dem Index des Hosts, ohne Index nach Namespace (#2794).</summary>
+function GroupFuncOf(const AContext: TSlashContext): TUsesGroupFunc;
+var
+  mUses_: TUsesContext;
+begin
+  if (AContext.Host <> nil) and AContext.Host.UsesContext(AContext.Uri, mUses_) and Assigned(mUses_.GroupOf) then
+  begin
+    Result := mUses_.GroupOf;
+    Exit;
+  end;
+  Result :=
+    function(const AUnitName: string): TUsesGroup
+    begin
+      Result := TUsesGroups.OfName(AUnitName);
+    end;
+end;
+
+/// <summary>Sortieren nach sortUsesOrder: origin (Vorgabe), alphabetic oder namespace.</summary>
+function SortUsesOptions(const AContext: TSlashContext): TUsesRewrite;
+var
+  mOrder: string;
+begin
+  Result := Default(TUsesRewrite);
+  Result.Dedupe := True;
+  Result.Sort := True;
+  mOrder := SlashSetting(AContext, TSlashSettings.cSortUsesOrder);
+  if SameText(mOrder, 'namespace') then
+  begin
+    Result.ByNamespace := True;
+  end
+  else if not SameText(mOrder, 'alphabetic') then
+  begin
+    Result.GroupOf := GroupFuncOf(AContext);
+    Result.GroupStyle := TUsesGroups.StyleOf(SlashSetting(AContext, TSlashSettings.cUsesGroupStyle));
+    Result.MaxLineLength := StrToIntDef(SlashSetting(AContext, TSlashSettings.cMaxLineLength), 0);
+  end;
+end;
+
 function ExecuteSortUses(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   mSource: TCommandSource;
@@ -118,9 +167,7 @@ begin
     mText := mSource.Text;
     mTokens := TPascalLexer.Tokenize(mText);
     // Sortieren, doppelte und ungenutzte streichen in einem Durchgang.
-    mOptions := Default(TUsesRewrite);
-    mOptions.Dedupe := True;
-    mOptions.Sort := True;
+    mOptions := SortUsesOptions(AContext);
     mOptions.Drop := UnusedUnitsOf(AContext, mText, mTokens);
     if not TUsesClauses.Rewrite(mTokens, mText, mOptions, mSource.LineBreak, mEdits) then
     begin
