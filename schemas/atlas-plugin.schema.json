@@ -3150,6 +3150,19 @@
       "x-captionEn": "Launch groups",
       "x-issue": "#867"
     },
+    "DebugCaptureConsole": {
+      "description": "Ausgabe von Konsolenprogrammen andocken: Startet die IDE ein Konsolenprogramm (Win32/Win64, ohne Host-Anwendung) mit F9, startet Atlas es selbst mit umgeleitetem stdout, stderr und stdin und hängt den Debugger der IDE an, bevor die erste Zeile läuft (Haltepunkte greifen weiter). Die Ausgabe steht im Fenster „Atlas: Konsolenausgabe“: stderr in Rot, Zeilen mit Datei und Zeile anklickbar, Eingaben über das Feld darunter (für Readln). Nach dem Ende bleibt das Fenster mit dem Exit-Code stehen. „Ohne Debugger mit Konsolenausgabe starten“ im Menü Start startet ohne Debugger. Aus = die IDE startet Konsolenprogramme wie immer in einem eigenen Konsolenfenster.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.captureConsole",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Ausgabe von Konsolenprogrammen andocken",
+      "x-captionEn": "Dock console program output",
+      "x-issue": "#581"
+    },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
       "type": "boolean",

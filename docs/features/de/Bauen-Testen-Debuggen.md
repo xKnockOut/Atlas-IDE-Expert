@@ -419,6 +419,21 @@ Aufruf: Atlas-Menü › Speicherverlauf bzw. Befehl `Atlas.DebugMemory`.
 
 Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
 
+<a id="window-atlasconsoleoutput"></a>
+#### Konsolenausgabe andocken
+
+Experimentell, Vorgabe aus. Aufruf: Start mit F9 wie immer, Menü Start › „Ohne Debugger mit Konsolenausgabe starten“ bzw. Befehle `Atlas.ConsoleRunNoDebug` und `Atlas.ConsoleOutput`.
+
+- Bei einem Konsolenprogramm für Win32 oder Win64 ohne Host-Anwendung erscheint statt eines eigenen Konsolenfensters die Ausgabe im andockbaren Fenster „Atlas: Konsolenausgabe“. Andere Projekte startet die IDE wie gewohnt.
+- Mit Debugger startet Atlas das Programm angehalten und hängt den Debugger der IDE an. Erst wenn die IDE das Programm übernommen hat, läuft es los; Haltepunkte ab der ersten Zeile greifen. Übernimmt die IDE nicht binnen 10 s, läuft das Programm trotzdem weiter, mit Meldung.
+- Fehlerausgabe (stderr) steht rot, Eingaben blau, Hinweise von Atlas grau. Eingaben gehen über das Feld unten an das Programm (Enter sendet, „Eingabe beenden“ schickt das Dateiende für `Readln`).
+- Fundstellen wie `Haupt.pas(12)` oder `Src/Haupt.pas:12:5` sind unterstrichen; ein Klick öffnet die Datei an der Zeile (gesucht im Arbeitsordner, dann im Projektordner).
+- Parameter, Arbeitsordner und Umgebung kommen aus den Startoptionen des Projekts, also auch aus einem aktiven Startprofil.
+- Nach dem Ende bleibt die Ausgabe mit dem Exit-Code stehen. Das Fenster hält höchstens 20 000 Zeilen; ältere fallen mit Hinweis weg.
+- „Beenden“ beendet das Programm, im Debugger über die IDE.
+
+Einstellung: `debug.captureConsole`
+
 <a id="window-atlasprofiler"></a>
 #### Profiler
 

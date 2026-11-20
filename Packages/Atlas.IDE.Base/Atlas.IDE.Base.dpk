@@ -469,6 +469,7 @@ contains
   Atlas.Core.Diagnostics.LogRedaction in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.LogRedaction.pas',
   Atlas.Core.Diagnostics.Guard in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas',
   Atlas.Core.Diagnostics.MainThread in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.MainThread.pas',
+  Atlas.Core.Processes.OutputLines in 'Source\Core\Processes\Atlas.Core.Processes.OutputLines.pas',
   Atlas.Core.Diagnostics.Shutdown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas',
   Atlas.Core.Diagnostics.TimeLimit in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas',
   Atlas.Core.Diagnostics.Deadline in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas',

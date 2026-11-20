@@ -154,6 +154,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.LogRedaction` | `Core/Diagnostics/Atlas.Core.Diagnostics.LogRedaction.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Hangs` | `Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.MainThread` | `Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Processes.OutputLines` | `Core/Processes/Atlas.Core.Processes.OutputLines.pas` | Zeilen aus der Ausgabe eines Prozesses für die Projektaufgaben (Modul Build) und die Konsolenausgabe (Modul Debugger), #581 |
 | `Atlas.Core.Diagnostics.ModuleHost` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas` | gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455 |
 | `Atlas.Core.Diagnostics.ModuleHosting` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas` | Module und ihre Teile in der Feature-Tabelle, #1455 |
 | `Atlas.Core.Diagnostics.Package` | `Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas` | Ordner `Core/Diagnostics` |
@@ -1307,6 +1308,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Restart` | `Core/Debug/Atlas.Core.Debug.Restart.pas` | Ablauf von „Neu starten“ ohne IDE, #872 |
 | `Atlas.IDE.Debug.Restart` | `IDE/Debug/Atlas.IDE.Debug.Restart.pas` | Neu starten mit einem Griff, #872 |
 | `Atlas.Core.Debug.Reattach` | `Core/Debug/Atlas.Core.Debug.Reattach.pas` | Auswahl des Prozesses beim erneuten Anhängen ohne IDE, #2171 |
+| `Atlas.Core.Debug.ConsoleCapture` | `Core/Debug/Atlas.Core.Debug.ConsoleCapture.pas` | Konsolenausgabe andocken ohne IDE: Zeilen, PE-Kopf, Fundstellen, Entscheidung vor dem Start, #581 |
+| `Atlas.UI.Debug.Console.Strings` | `UI/Debug/Atlas.UI.Debug.Console.Strings.pas` | Texte der Konsolenausgabe (DE/EN), #581 |
+| `Atlas.UI.Debug.ConsoleFrame` | `UI/Debug/Atlas.UI.Debug.ConsoleFrame.pas` | Fenster der Konsolenausgabe mit Eingabefeld, #581 |
+| `Atlas.IDE.Debug.ConsoleProcess` | `IDE/Debug/Atlas.IDE.Debug.ConsoleProcess.pas` | Konsolenprogramm mit Pipes starten, lesen, Eingabe senden, #581 |
+| `Atlas.IDE.Debug.ConsoleCapture` | `IDE/Debug/Atlas.IDE.Debug.ConsoleCapture.pas` | Start abfangen, Debugger anhängen, Fenster und Befehle der Konsolenausgabe, #581 |
 | `Atlas.Core.Debug.ReattachFlow` | `Core/Debug/Atlas.Core.Debug.ReattachFlow.pas` | Entscheidungen von Erneut anhängen ohne IDE (Angebot, Treffer, Projektgruppe, Vorschlag), #1967 |
 | `Atlas.IDE.Debug.Processes` | `IDE/Debug/Atlas.IDE.Debug.Processes.pas` | Laufende Prozesse mit Pfad, Startzeit und Befehlszeile (Windows), #2171 |
 | `Atlas.IDE.Debug.ReattachWait` | `IDE/Debug/Atlas.IDE.Debug.ReattachWait.pas` | Warten auf den Start eines Programms im Hintergrund, #2171 |

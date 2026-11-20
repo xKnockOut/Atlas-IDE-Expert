@@ -7,7 +7,8 @@
 // Menü Start, Taste debug.reattach.key), Leck- und Absturzberichte aus der
 // Zwischenablage (#74), die Startverbünde (#867, F9 und Strg+F2 mit
 // aktivem Verbund), „Debug-Zustand festhalten“ (#582), das Schließen vom
-// Debugger geöffneter Dateien (#842) und den Profiler (#2057, aus
+// Debugger geöffneter Dateien (#842), die angedockte Konsolenausgabe (#581)
+// und den Profiler (#2057, aus
 // Atlas.IDE.Debug.Composition.Profiler). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
@@ -56,6 +57,8 @@ uses
   Atlas.UI.Debug.Note.Strings,
   Atlas.IDE.Debug.OpenedFiles,
   Atlas.UI.Debug.OpenedFiles.Strings,
+  Atlas.IDE.Debug.ConsoleCapture,
+  Atlas.UI.Debug.Console.Strings,
   Atlas.IDE.Debug.Composition.Profiler,
   Atlas.UI.Debug.Commands.Strings;
 
@@ -69,6 +72,8 @@ const
   cLaunchStopCommand = 'Atlas.LaunchGroupStop';
   cNoteCommand = 'Atlas.DebugNote';
   cKeepOpenedFileCommand = 'Atlas.DebugKeepOpenedFile';
+  cConsoleOutputCommand = 'Atlas.ConsoleOutput';
+  cConsoleRunCommand = 'Atlas.ConsoleRunNoDebug';
 
 { Dienste von Base }
 
@@ -216,6 +221,20 @@ begin
     end);
 end;
 
+function ConsoleVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugCaptureConsole;
+end;
+
+procedure StartConsoleCapture;
+begin
+  TAtlasIdeConsoleCapture.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end);
+end;
+
 procedure StartLogpoints;
 begin
   TAtlasIdeLogpoints.Start(
@@ -273,7 +292,17 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeLaunchGroups.Started;
-      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release)];
+      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release),
+    // Konsolenausgabe andocken (#581): Prüfung vor dem Start, Fenster, Eintrag im Menü Start.
+    TAtlasFeaturePart.When('DebugCaptureConsole',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and ConsoleVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeConsoleCapture.Started;
+      end, StartConsoleCapture, TAtlasIdeConsoleCapture.Release)];
 end;
 
 function RunParts(const AScope: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
@@ -389,7 +418,11 @@ begin
     RunCommand(cNoteCommand, TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteCommand), TAtlasIdeDebugNote.Execute,
       NoteVisible),
     RunCommand(cKeepOpenedFileCommand, TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.PinCommand),
-      TAtlasIdeOpenedFiles.PinCurrent, OpenedFilesVisible)];
+      TAtlasIdeOpenedFiles.PinCurrent, OpenedFilesVisible),
+    RunCommand(cConsoleOutputCommand, TAtlasConsoleStrings.Text(TAtlasConsoleTextId.CommandWindow),
+      TAtlasIdeConsoleCapture.ShowWindow, ConsoleVisible),
+    RunCommand(cConsoleRunCommand, TAtlasConsoleStrings.Text(TAtlasConsoleTextId.CommandRunNoDebug),
+      TAtlasIdeConsoleCapture.RunWithoutDebugger, ConsoleVisible)];
   // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
   Result := Result + ProfilerCommands;
 end;
@@ -515,6 +548,7 @@ begin
   TAtlasIdeDebugRestart.ThemeChanged;
   TAtlasIdeLaunchGroups.ThemeChanged;
   TAtlasIdeOpenedFiles.ThemeChanged;
+  TAtlasIdeConsoleCapture.ThemeChanged;
   ProfilerThemeChanged;
 end;
 
