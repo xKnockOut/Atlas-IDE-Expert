@@ -110,7 +110,7 @@
         "rules": ["redundant-cast"],
         "dryRun": true
       },
-      "contains": "Vorschau"
+      "contains": "redundant-cast: 2"
     },
     "refactor": {
       "arguments": {
