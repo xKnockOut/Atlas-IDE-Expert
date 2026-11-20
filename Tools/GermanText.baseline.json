@@ -90,7 +90,6 @@
   "Packages/Atlas.IDE.Base/Source/IDE/Outline/Atlas.IDE.Outline.CrumbLists.pas": 1,
   "Packages/Atlas.IDE.Base/Source/IDE/Outline/Atlas.IDE.Outline.CrumbProbe.pas": 5,
   "Packages/Atlas.IDE.Base/Source/IDE/Outline/Atlas.IDE.Outline.NavigationOption.pas": 7,
-  "Packages/Atlas.IDE.Base/Source/IDE/Problems/Atlas.IDE.Problems.Controller.pas": 1,
   "Packages/Atlas.IDE.Base/Source/IDE/Settings/Atlas.IDE.Settings.Experimental.pas": 1,
   "Packages/Atlas.IDE.Base/Source/IDE/Setup/Atlas.IDE.Setup.Checklist.pas": 2,
   "Packages/Atlas.IDE.Base/Source/IDE/Signature/Atlas.IDE.Signature.Editor.pas": 1,

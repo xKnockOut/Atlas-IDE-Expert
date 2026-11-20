@@ -2257,6 +2257,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.AtCaret.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Plan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Contract.Sync.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Flow.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.ProblemsSyncFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Flow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Marks.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Marks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>

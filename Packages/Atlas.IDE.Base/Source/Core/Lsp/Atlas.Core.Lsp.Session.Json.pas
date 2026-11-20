@@ -79,33 +79,9 @@ type
     class function FromHover(const AHover: TJSONValue): TLspHoverParts; static;
   end;
 
-  /// <summary>Diagnosebericht einer Datei (#398).</summary>
-  TLspDiagnosticReport = record
-    FileName: string;
-    ResultId: string;
-    /// <summary>Seit der vorigen Ergebnis-Id unverändert; Problems ist dann leer.</summary>
-    Unchanged: Boolean;
-    Problems: TArray<TAtlasProblem>;
-    /// <summary>Aus einem Bericht des Servers ({kind, resultId, items}); AFileName, wenn er keine uri hat.</summary>
-    class function FromJson(const AReport: TJSONObject; const AFileName: string): TLspDiagnosticReport; static;
-  end;
-
-  /// <summary>Stand der Projektprüfung des Servers (#1247) aus "atlas.run" der Antwort auf workspace/diagnostic.
-  /// </summary>
-  TLspWorkspaceRun = record
-    /// <summary>Der Server hat einen Stand gemeldet (ältere Server nicht).</summary>
-    Known: Boolean;
-    Serial: Integer;
-    Active: Boolean;
-    Done: Integer;
-    Total: Integer;
-    Skipped: Integer;
-    /// <summary>"compile", "debug", "index" oder ''.</summary>
-    Paused: string;
-    ElapsedMs: Int64;
-    /// <summary>Aus der ganzen Antwort; Known = False ohne "atlas.run".</summary>
-    class function FromJson(const AResponse: TJSONValue): TLspWorkspaceRun; static;
-  end;
+  /// <summary>Liegen im Contract (Verträge der Probleme, #398); Alias für bestehende Nutzer.</summary>
+  TLspDiagnosticReport = Atlas.Core.Lsp.Contract.TLspDiagnosticReport;
+  TLspWorkspaceRun = Atlas.Core.Lsp.Contract.TLspWorkspaceRun;
 
   /// <summary>Zähler, den der Lese-Thread erhöht; überlebt die Sitzung, solange der Client ihn hält.</summary>
   ILspSignal = interface
@@ -184,6 +160,12 @@ type
     /// einer documentSymbol-Antwort, flach; AFileName für Symbole ohne Ort.</summary>
     class function SymbolsOfDocument(const AResponse: TJSONValue; const AFileName: string): TArray<TAtlasSymbol>;
       static;
+    /// <summary>Diagnosebericht des Servers ({kind, resultId, items}); AFileName, wenn er keine uri hat.</summary>
+    class function DiagnosticReport(const AReport: TJSONObject; const AFileName: string): TLspDiagnosticReport;
+      static;
+    /// <summary>Stand der Projektprüfung aus der ganzen Antwort auf workspace/diagnostic; Known = False ohne
+    /// "atlas.run".</summary>
+    class function WorkspaceRun(const AResponse: TJSONValue): TLspWorkspaceRun; static;
     /// <summary>Antwort von atlas/impact (#1120); ohne Objekt leer (kein Symbol am Cursor).</summary>
     class function ImpactFromJson(const AValue: TJSONValue): TAtlasImpact; static;
     /// <summary>Antwort von atlas/affectedTests (#1353); ohne Objekt leer.</summary>
@@ -696,6 +678,50 @@ begin
   Result := mFound;
 end;
 
+class function TLspSessionJson.DiagnosticReport(const AReport: TJSONObject;
+  const AFileName: string): TLspDiagnosticReport;
+var
+  mItems: TJSONValue;
+  mUri: string;
+begin
+  Result := Default(TLspDiagnosticReport);
+  mUri := AReport.GetValue<string>('uri', '');
+  if mUri <> '' then
+  begin
+    Result.FileName := UriToPath(mUri);
+  end
+  else
+  begin
+    Result.FileName := AFileName;
+  end;
+  Result.ResultId := AReport.GetValue<string>('resultId', '');
+  Result.Unchanged := AReport.GetValue<string>('kind', 'full') = 'unchanged';
+  mItems := AReport.GetValue('items');
+  if mItems is TJSONArray then
+  begin
+    Result.Problems := TAtlasProblem.ListFromJson(TJSONArray(mItems));
+  end;
+end;
+
+class function TLspSessionJson.WorkspaceRun(const AResponse: TJSONValue): TLspWorkspaceRun;
+var
+  mRun: TJSONObject;
+begin
+  Result := Default(TLspWorkspaceRun);
+  if not ((AResponse is TJSONObject) and TJSONObject(AResponse).TryGetValue<TJSONObject>('atlas.run', mRun)) then
+  begin
+    Exit;
+  end;
+  Result.Known := True;
+  Result.Serial := mRun.GetValue<Integer>('serial', 0);
+  Result.Active := mRun.GetValue<Boolean>('active', False);
+  Result.Done := mRun.GetValue<Integer>('done', 0);
+  Result.Total := mRun.GetValue<Integer>('total', 0);
+  Result.Skipped := mRun.GetValue<Integer>('skipped', 0);
+  Result.Paused := mRun.GetValue<string>('paused', '');
+  Result.ElapsedMs := mRun.GetValue<Int64>('elapsedMs', 0);
+end;
+
 class function TLspSessionJson.ImpactFromJson(const AValue: TJSONValue): TAtlasImpact;
 var
   mRoot, mEntry: TJSONObject;
@@ -937,53 +963,6 @@ begin
   // Eigene Kopie des Arrays: Result teilt sonst die Dateiliste mit Self.
   Result.Edit.Files := Copy(Edit.Files);
   Result.Edit.Files[0].Edits := mKept;
-end;
-
-{ TLspWorkspaceRun }
-
-class function TLspWorkspaceRun.FromJson(const AResponse: TJSONValue): TLspWorkspaceRun;
-var
-  mRun: TJSONObject;
-begin
-  Result := Default(TLspWorkspaceRun);
-  if not ((AResponse is TJSONObject) and TJSONObject(AResponse).TryGetValue<TJSONObject>('atlas.run', mRun)) then
-  begin
-    Exit;
-  end;
-  Result.Known := True;
-  Result.Serial := mRun.GetValue<Integer>('serial', 0);
-  Result.Active := mRun.GetValue<Boolean>('active', False);
-  Result.Done := mRun.GetValue<Integer>('done', 0);
-  Result.Total := mRun.GetValue<Integer>('total', 0);
-  Result.Skipped := mRun.GetValue<Integer>('skipped', 0);
-  Result.Paused := mRun.GetValue<string>('paused', '');
-  Result.ElapsedMs := mRun.GetValue<Int64>('elapsedMs', 0);
-end;
-
-{ TLspDiagnosticReport }
-
-class function TLspDiagnosticReport.FromJson(const AReport: TJSONObject; const AFileName: string): TLspDiagnosticReport;
-var
-  mItems: TJSONValue;
-  mUri: string;
-begin
-  Result := Default(TLspDiagnosticReport);
-  mUri := AReport.GetValue<string>('uri', '');
-  if mUri <> '' then
-  begin
-    Result.FileName := TLspSessionJson.UriToPath(mUri);
-  end
-  else
-  begin
-    Result.FileName := AFileName;
-  end;
-  Result.ResultId := AReport.GetValue<string>('resultId', '');
-  Result.Unchanged := AReport.GetValue<string>('kind', 'full') = 'unchanged';
-  mItems := AReport.GetValue('items');
-  if mItems is TJSONArray then
-  begin
-    Result.Problems := TAtlasProblem.ListFromJson(TJSONArray(mItems));
-  end;
 end;
 
 { TLspHoverParts }

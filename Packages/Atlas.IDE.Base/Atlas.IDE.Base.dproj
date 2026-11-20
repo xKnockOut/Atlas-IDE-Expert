@@ -338,6 +338,7 @@
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Adapters.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.IdeAdapters.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.UiAdapters.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.ProblemsAdapters.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Appearance.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Background.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Build.pas"/>
@@ -631,6 +632,8 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas"/>
+        <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Contract.Sync.pas"/>
+        <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Flow.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StructureSwitch.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
@@ -831,6 +834,8 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Controller.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Adapters.Server.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Adapters.Editors.pas"/>
         <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.Frame.List.pas"/>
         <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.Frame.pas">
             <Form>AtlasProblemsFrame</Form>
