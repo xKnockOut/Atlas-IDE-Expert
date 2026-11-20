@@ -62,6 +62,20 @@ type
     procedure SeriesSubjectAndShuffleNames;
   end;
 
+  [TestFixture]
+  [Category('Atlas.IDE.Tests')]
+  TAtlasTestExplorerLayoutTests = class
+  public
+    [Test]
+    procedure KeepsWantedHeightWithRoom;
+    [Test]
+    procedure ShrinksToKeepTreeMinimum;
+    [Test]
+    procedure NeverBelowDetailsMinimum;
+    [Test]
+    procedure SharesTooLittleSpaceByMinimums;
+  end;
+
 implementation
 
 uses
@@ -581,4 +595,40 @@ begin
   mNames := TAtlasTestExplorerChoice.ShuffleNames(mUnits, mNodes, TArray<Integer>.Create(cAddiert, cTeilt));
   Assert.AreEqual(3, Integer(Length(mNames)));
 end;
+{ TAtlasTestExplorerLayoutTests }
+
+const
+  cMinTree = 80;
+  cMinDetails = 60;
+  cWanted = 140;
+
+procedure TAtlasTestExplorerLayoutTests.KeepsWantedHeightWithRoom;
+begin
+  Assert.AreEqual(cWanted, TAtlasTestExplorerLayout.DetailsHeight(500, cWanted, cMinTree, cMinDetails));
+  Assert.AreEqual(cWanted, TAtlasTestExplorerLayout.DetailsHeight(cWanted + cMinTree, cWanted, cMinTree,
+    cMinDetails), 'genau Platz für beide');
+end;
+
+procedure TAtlasTestExplorerLayoutTests.ShrinksToKeepTreeMinimum;
+begin
+  // Kleineres Fenster: Die Einzelheiten geben nach, der Baum behält seine Mindesthöhe.
+  Assert.AreEqual(120, TAtlasTestExplorerLayout.DetailsHeight(200, cWanted, cMinTree, cMinDetails));
+  // Wieder größer: zurück auf die gezogene Höhe.
+  Assert.AreEqual(cWanted, TAtlasTestExplorerLayout.DetailsHeight(600, cWanted, cMinTree, cMinDetails));
+end;
+
+procedure TAtlasTestExplorerLayoutTests.NeverBelowDetailsMinimum;
+begin
+  Assert.AreEqual(cMinDetails, TAtlasTestExplorerLayout.DetailsHeight(500, 10, cMinTree, cMinDetails));
+  Assert.AreEqual(cMinDetails, TAtlasTestExplorerLayout.DetailsHeight(cMinTree + cMinDetails, cWanted, cMinTree,
+    cMinDetails));
+end;
+
+procedure TAtlasTestExplorerLayoutTests.SharesTooLittleSpaceByMinimums;
+begin
+  Assert.AreEqual(30, TAtlasTestExplorerLayout.DetailsHeight(70, cWanted, cMinTree, cMinDetails));
+  Assert.AreEqual(0, TAtlasTestExplorerLayout.DetailsHeight(0, cWanted, cMinTree, cMinDetails));
+  Assert.AreEqual(0, TAtlasTestExplorerLayout.DetailsHeight(-5, cWanted, cMinTree, cMinDetails));
+end;
+
 end.
