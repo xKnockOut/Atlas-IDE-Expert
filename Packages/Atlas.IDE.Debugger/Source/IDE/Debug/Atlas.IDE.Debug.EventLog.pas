@@ -148,26 +148,42 @@ end;
 
 procedure TProcessWatch.ThreadCreated(const Thread: IOTAThread);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
-    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadStarted));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
+        TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadStarted));
+    end);
 end;
 
 procedure TProcessWatch.ThreadDestroyed(const Thread: IOTAThread);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
-    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadEnded));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
+        TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadEnded));
+    end);
 end;
 
 procedure TProcessWatch.ProcessModuleCreated(const ProcessModule: IOTAProcessModule);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleLoaded, [ProcessModule.GetModuleFileName]));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
+        TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleLoaded, [ProcessModule.GetModuleFileName]));
+    end);
 end;
 
 procedure TProcessWatch.ProcessModuleDestroyed(const ProcessModule: IOTAProcessModule);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleUnloaded, [ProcessModule.GetModuleFileName]));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
+        TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleUnloaded, [ProcessModule.GetModuleFileName]));
+    end);
 end;
 
 procedure TProcessWatch.Destroyed;

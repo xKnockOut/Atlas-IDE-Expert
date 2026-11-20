@@ -70,6 +70,10 @@ function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
 /// steht.</summary>
 function StatementRemoval(const AText: string; AStatement: TSyntaxNode): TTextRange;
 
+/// <summary>Fängt der except-Teil des try ATry alle Ausnahmen (except ohne on, on E: Exception, on TObject oder
+/// else)?</summary>
+function CatchesAll(ATry: TSyntaxNode): Boolean;
+
 implementation
 
 uses
@@ -331,6 +335,38 @@ begin
   else
   begin
     Result := NodeRange(AStatement);
+  end;
+end;
+
+function CatchesAll(ATry: TSyntaxNode): Boolean;
+var
+  mExcept, mChild, mType: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mExcept := ATry.FindChild(TSyntaxKind.ExceptBlock);
+  if mExcept = nil then
+  begin
+    Exit;
+  end;
+  if mExcept.FindChild(TSyntaxKind.ExceptionHandler) = nil then
+  begin
+    Exit(True);
+  end;
+  for mIndex := 0 to mExcept.ChildCount - 1 do
+  begin
+    mChild := mExcept[mIndex];
+    if mChild.Kind <> TSyntaxKind.ExceptionHandler then
+    begin
+      // Anweisungen neben den Handlern: der else-Teil fängt den Rest.
+      Exit(True);
+    end;
+    mType := mChild.FindChild(TSyntaxKind.TypeReference);
+    if (mType <> nil) and MatchText(Copy(mType.Name, LastDelimiter('.', mType.Name) + 1, MaxInt),
+      ['Exception', 'TObject']) then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 
