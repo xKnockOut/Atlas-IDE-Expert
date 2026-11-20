@@ -487,6 +487,12 @@ Compiler errors while typing, without a build.
 - File names compared with `=` instead of `SameFileName` (silent for platform-dependent comparisons with `SameText` and in test units)
 - DLL exports without a calling convention or with strings, dynamic arrays, objects or interfaces without GUID (quick fix `stdcall`, option `allowShareMem`)
 
+### IDE packages and experts (#2751, #2752, #2753)
+
+- Package `Register` routines that start work (timers, threads, forms, `Sleep`, also through helpers called only from there) instead of only registering (`register-does-work`)
+- Public methods of notifiers, wizards and key bindings through which an exception reaches the IDE without a guard routine or `try … except` (`ota-entry-without-guard`, guard routines configurable, with a fix)
+- Threads that queue with `Queue` on their own thread while nobody removes the entries with `RemoveQueuedEvents` (`queue-without-remove`, with a fix)
+
 ### Security
 
 - SQL and command injection

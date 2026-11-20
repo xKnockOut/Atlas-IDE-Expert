@@ -4,7 +4,7 @@ Zurück zum [README](../../../README_DE.md)
 
 ## MCP-Werkzeuge
 
-Der Server bietet Claude Code 55 MCP-Werkzeuge, jeweils mit Vorschau:
+Der Server bietet Claude Code 56 MCP-Werkzeuge, jeweils mit Vorschau:
 
 - **Code verstehen:**
   - Symbole suchen

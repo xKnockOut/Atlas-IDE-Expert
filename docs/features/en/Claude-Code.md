@@ -4,7 +4,7 @@ Back to the [README](../../../README.md)
 
 ## MCP tools
 
-The server offers Claude Code 55 MCP tools:
+The server offers Claude Code 56 MCP tools:
 
 ### Search and understand
 
