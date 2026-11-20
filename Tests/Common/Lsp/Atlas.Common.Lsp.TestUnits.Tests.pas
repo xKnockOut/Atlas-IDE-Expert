@@ -31,6 +31,8 @@ type
     [Test]
     procedure CreateEditAddsFileProgramAndProject;
     [Test]
+    procedure FolderMirrorsSourceTree;
+    [Test]
     procedure CodeActionOnClassCreates;
     [Test]
     procedure DraftActionCreatesTestUnitWithDraft;
@@ -220,6 +222,35 @@ begin
   finally
     mEdit.Free;
   end;
+end;
+
+procedure TLspTestUnitsTests.FolderMirrorsSourceTree;
+const
+  cNested = 'C:\P\Quelle\Verwaltung\Kunden.pas';
+var
+  mContext: TTestUnitContext;
+  mEdit: TJSONObject;
+  mChange: TJSONObject;
+begin
+  // #2800: Tests\{path} legt die Testunit im gespiegelten Ordner an und trägt den Pfad ins Testprojekt ein.
+  mContext := Context;
+  mContext.Settings.Folder := 'Tests\{path}';
+  mContext.Settings.SourceRoot := 'Quelle';
+  Assert.AreEqual('C:\P\Tests\Verwaltung\Kunden.Tests.pas',
+    TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext).NewFile);
+  Assert.AreEqual('C:\P\Tests\Kunden.Tests.pas', TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, mContext).NewFile,
+    'direkt im Quellordner');
+  mEdit := TLspTestUnits.CreateEdit(TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext), mContext);
+  try
+    mChange := Find(mEdit.GetValue<TJSONArray>('documentChanges'), TDocumentUris.FromPath(cTestsDpr));
+    Assert.IsNotNull(mChange, '.dpr');
+    Assert.AreEqual(','#13#10'  Kunden.Tests in ''Verwaltung\Kunden.Tests.pas''', FirstNewText(mChange));
+  finally
+    mEdit.Free;
+  end;
+  mContext.Settings.SourceRoot := '';
+  Assert.AreEqual('C:\P\Tests\Quelle\Verwaltung\Kunden.Tests.pas',
+    TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext).NewFile, 'ohne Quellordner: ab der Wurzel');
 end;
 
 procedure TLspTestUnitsTests.CodeActionOnClassCreates;

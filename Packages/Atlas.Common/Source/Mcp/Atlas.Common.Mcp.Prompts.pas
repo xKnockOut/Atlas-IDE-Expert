@@ -81,6 +81,7 @@ type
     function ToolSection(const ATitle, ATool: string; const AArguments: TJSONObject): string; overload;
     function ToolSection(const ATitle, ATool, AName, AValue: string): string; overload;
     function ConventionsSection: string;
+    function TestFolderText(const ASettings: TTestUnitSettings): string;
     function FormFile(const AFile: string): string;
     function Builtin: TArray<TMcpPrompt>;
     function Custom: TArray<TMcpPrompt>;
@@ -574,6 +575,30 @@ begin
     Section(Say('Datenbindungen', 'Data bindings'), mBindings);
 end;
 
+function TMcpPrompts.TestFolderText(const ASettings: TTestUnitSettings): string;
+var
+  mSourceRoot: string;
+begin
+  Result := ASettings.Folder;
+  if Result = '' then
+  begin
+    Exit(Say('Ordner des Testprojekts', 'folder of the test project'));
+  end;
+  if Pos('{', Result) = 0 then
+  begin
+    Exit;
+  end;
+  // #2800: Platzhalter erklären, sonst legt die KI einen Ordner "{path}" an.
+  mSourceRoot := ASettings.SourceRoot;
+  if mSourceRoot = '' then
+  begin
+    mSourceRoot := Say('der Wurzel', 'the root'); // german-ok: zweisprachig über Say
+  end;
+  Result := Result + Format(Say(
+    ' ({path} = Ordner der Unit unter %s, {namespace} = Namensraum als Ordner)', // german-ok: zweisprachig über Say
+    ' ({path} = folder of the unit under test below %s, {namespace} = its namespace as folders)'), [mSourceRoot]);
+end;
+
 function TMcpPrompts.WriteTests(const AArguments: TDictionary<string, string>): string;
 var
   mName, mSteps, mConventions, mFolder, mProject: string;
@@ -582,11 +607,7 @@ begin
   UseLanguage;
   mName := Argument(AArguments, 'name');
   mSettings := FSettings();
-  mFolder := mSettings.TestUnits.Folder;
-  if mFolder = '' then
-  begin
-    mFolder := Say('Ordner des Testprojekts', 'folder of the test project');
-  end;
+  mFolder := TestFolderText(mSettings.TestUnits);
   mProject := mSettings.TestUnits.Project;
   if mProject = '' then
   begin
