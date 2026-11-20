@@ -291,6 +291,15 @@ Einstellungen: `tests.log`, `tests.log.maxLines`
 
 Einstellung: `tests.leaks`
 
+### Ordner neuer Testunits (#274, #2800)
+
+- Neue Testunits (*DUnitX-Testunit anlegen*, Testfall aus der Unit) legt Atlas in `testUnits.folder` an; leer: im Ordner des Testprojekts.
+- `{path}` im Ordner spiegelt den Aufbau des Hauptprojekts: Mit `testUnits.folder` = `Tests/{path}` und `testUnits.sourceRoot` = `Source` wird aus `Source/Core/Foo.pas` die Testunit `Tests/Core/Foo.Tests.pas`. Fehlende Ordner legt Atlas an, `.dpr` und `.dproj` bekommen den Pfad.
+- `{namespace}` setzt den Namensraum der Unit als Ordner ein (`Atlas.Core.Net.Http` → `Atlas/Core/Net`).
+- Mehrere Quellordner mit `;` trennen, der längste passende gilt; Units außerhalb landen direkt im Basisordner. Ohne Platzhalter bleibt alles wie bisher.
+
+Einstellungen: `testUnits.folder`, `testUnits.sourceRoot`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.

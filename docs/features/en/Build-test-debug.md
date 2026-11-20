@@ -315,6 +315,15 @@ Settings: `tests.log`, `tests.log.maxLines`
 
 Setting: `tests.leaks`
 
+### Folder of new test units (#274, #2800)
+
+- Atlas creates new test units (*Create DUnitX test unit*, test case from the unit) in `testUnits.folder`; empty: in the folder of the test project.
+- `{path}` in the folder mirrors the layout of the main project: with `testUnits.folder` = `Tests/{path}` and `testUnits.sourceRoot` = `Source`, `Source/Core/Foo.pas` gets the test unit `Tests/Core/Foo.Tests.pas`. Atlas creates missing folders, `.dpr` and `.dproj` get the path.
+- `{namespace}` inserts the unit's namespace as folders (`Atlas.Core.Net.Http` → `Atlas/Core/Net`).
+- Separate several source folders with `;`, the longest matching one applies; units outside land directly in the base folder. Without placeholders everything stays as before.
+
+Settings: `testUnits.folder`, `testUnits.sourceRoot`
+
 ### Create a test case from the unit (#1226)
 
 Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
