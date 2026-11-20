@@ -23,6 +23,9 @@ type
     procedure TearDown;
     [Test]
     procedure OwnPageRoundTrips;
+    /// <summary>#2377: Verbundene IDE, Vorgabe aus, Auswahl und Vergleich an.</summary>
+    [Test]
+    procedure LinkSettingsRoundTrip;
     [Test]
     procedure AiGhostSettingsRoundTrip;
     [Test]
@@ -93,16 +96,6 @@ begin
     CheckOf(mPage, 'AssistantsContext').Checked := False;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.AssistantsContext);
-    // Verbundene IDE für Kommandozeilen-Assistenten (#2377): Vorgabe aus, Auswahl und Vergleich an.
-    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsLink')));
-    Assert.IsFalse(CheckOf(mPage, 'AssistantsLink').Checked, 'Kopplung standardmäßig aus');
-    Assert.IsTrue(CheckOf(mPage, 'AssistantsLinkShareSelection').Checked);
-    Assert.IsTrue(CheckOf(mPage, 'AssistantsLinkDiffPreview').Checked);
-    CheckOf(mPage, 'AssistantsLink').Checked := True;
-    CheckOf(mPage, 'AssistantsLinkDiffPreview').Checked := False;
-    mPage.SaveTo(mSaved);
-    Assert.IsTrue(mSaved.AssistantsLink, 'einschaltbar');
-    Assert.IsFalse(mSaved.AssistantsLinkDiffPreview);
     // Zurückhalten (#2605), Fragen in der IDE (#2620) und KI-Protokoll (#2049): standardmäßig an, abschaltbar.
     Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')),
       SheetOf(CheckOf(mPage, 'AssistantsEditHoldModified')));
@@ -116,6 +109,29 @@ begin
     Assert.IsFalse(mSaved.AssistantsEditHoldModified);
     Assert.IsFalse(mSaved.AssistantsQuestionsInIde);
     Assert.IsFalse(mSaved.AssistantsLog);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TAssistantsSettingsSectionTests.LinkSettingsRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    mSaved := TAtlasPluginSettings.Defaults;
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsLink')));
+    Assert.IsFalse(CheckOf(mPage, 'AssistantsLink').Checked, 'Kopplung standardmäßig aus');
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsLinkShareSelection').Checked);
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsLinkDiffPreview').Checked);
+    CheckOf(mPage, 'AssistantsLink').Checked := True;
+    CheckOf(mPage, 'AssistantsLinkDiffPreview').Checked := False;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.AssistantsLink, 'einschaltbar');
+    Assert.IsFalse(mSaved.AssistantsLinkDiffPreview);
   finally
     mPage.Free;
   end;
