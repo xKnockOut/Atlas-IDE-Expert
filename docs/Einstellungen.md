@@ -57,7 +57,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Editor | `directives`: `completion`, `hover` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #102 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl, Zahlenfeld | #312 |
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste, Kontrollkästchen | #89 |
-| Projekt | `testUnits`: `pattern`, `folder`, `project` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Textfeld, Dateiauswahl | #274 |
+| Projekt | `testUnits`: `pattern`, `folder`, `sourceRoot`, `project` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Textfeld, Dateiauswahl | #274, #2800 |
 | Compiler | `tests`: `affected`, `affectedDepth`, `approvalFolder` | – | settings.json (Tools › Optionen › Atlas); `approvalFolder` in atlas.json | nein | Kontrollkästchen, Zahlenfeld, Textfeld | #1353, #1881 |
 | Compiler | `testLists` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Bearbeiten im Fenster „Atlas-Tests“ (Reiter, „+“, Kontextmenü) | #2167 |
 | Prüfregeln | `minConfidence` | `"medium"` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #144 |

@@ -153,6 +153,7 @@ begin
   Assert.IsTrue(TForbiddenEntries.IsPathSetting('project'));
   Assert.IsTrue(TForbiddenEntries.IsPathSetting('testUnits.folder'));
   Assert.IsTrue(TForbiddenEntries.IsPathSetting('testUnits.project'));
+  Assert.IsTrue(TForbiddenEntries.IsPathSetting('testUnits.sourceRoot'));
   Assert.IsTrue(TForbiddenEntries.IsPathSetting('exclude[]'));
   Assert.IsTrue(TForbiddenEntries.IsPathSetting('index.exclude[]'));
   Assert.IsTrue(TForbiddenEntries.IsPathSetting('overrides[].files[]'));
