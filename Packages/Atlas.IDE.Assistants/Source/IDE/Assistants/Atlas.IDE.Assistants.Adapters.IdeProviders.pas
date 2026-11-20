@@ -138,33 +138,57 @@ end;
 
 procedure TAtlasIdeAiNotifier.Answer(const AMessage: string; const ARequestID: TGUID);
 begin
-  QueueReply(FLink, GUIDToString(ARequestID), AMessage, False);
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      QueueReply(FLink, GUIDToString(ARequestID), AMessage, False);
+    end);
 end;
 
 procedure TAtlasIdeAiNotifier.Error(const AMessage: string; const ARequestID: TGUID);
 begin
-  QueueReply(FLink, GUIDToString(ARequestID), AMessage, True);
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      QueueReply(FLink, GUIDToString(ARequestID), AMessage, True);
+    end);
 end;
 
 procedure TAtlasIdeAiNotifier.ModelsLoaded(const AModels: TArray<string>; const ARequestID: TGUID);
 begin
   // Atlas fragt keine Modelle der IDE ab.
-  TAtlasGuard.Log('KI-Anbieter der IDE: Modelle geladen, nicht angefordert'); // german-ok Protokoll
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Log('KI-Anbieter der IDE: Modelle geladen, nicht angefordert'); // german-ok Protokoll
+    end);
 end;
 
 procedure TAtlasIdeAiNotifier.ImageLoaded(const AImages: TArray<string>; const ARequestID: TGUID);
 begin
-  TAtlasGuard.Log('KI-Anbieter der IDE: Bild geladen, nicht angefordert'); // german-ok Protokoll
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Log('KI-Anbieter der IDE: Bild geladen, nicht angefordert'); // german-ok Protokoll
+    end);
 end;
 
 procedure TAtlasIdeAiNotifier.ImageURlLoaded(const AImageURLs: TArray<string>; const ARequestID: TGUID);
 begin
-  TAtlasGuard.Log('KI-Anbieter der IDE: Bildadressen geladen, nicht angefordert'); // german-ok Protokoll
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Log('KI-Anbieter der IDE: Bildadressen geladen, nicht angefordert'); // german-ok Protokoll
+    end);
 end;
 
 procedure TAtlasIdeAiNotifier.SpeechLoaded(const ASpeech: TStream; const ARequestID: TGUID);
 begin
-  TAtlasGuard.Log('KI-Anbieter der IDE: Sprache geladen, nicht angefordert'); // german-ok Protokoll
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Log('KI-Anbieter der IDE: Sprache geladen, nicht angefordert'); // german-ok Protokoll
+    end);
 end;
 
 function Engine(out AService: IOTAAIEngineService): Boolean;
