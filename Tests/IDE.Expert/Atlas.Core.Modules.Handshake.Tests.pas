@@ -22,6 +22,9 @@ type
     procedure QueryWithoutExportFails;
     [Test]
     procedure CheckReportsMismatch;
+    /// <summary>#2372: Gleicher Vertrag, aber Modul für eine andere Produktversion übersetzt.</summary>
+    [Test]
+    procedure WithProductRejectsOtherVersion;
   end;
 
 implementation
@@ -66,6 +69,18 @@ procedure TContractHandshakeTests.CheckReportsMismatch;
 begin
   Assert.AreEqual<TAtlasContractCheck>(ccMismatch,
     TAtlasContractHandshake.Check(HInstance, cAtlasCoreContractVersion + 1));
+end;
+
+procedure TContractHandshakeTests.WithProductRejectsOtherVersion;
+begin
+  Assert.AreEqual<TAtlasContractCheck>(ccMatch, TAtlasContractHandshake.WithProduct(ccMatch, '2.2.1', '2.2.1'));
+  Assert.AreEqual<TAtlasContractCheck>(ccProductMismatch,
+    TAtlasContractHandshake.WithProduct(ccMatch, '2.2.0', '2.2.1'));
+  Assert.AreEqual<TAtlasContractCheck>(ccProductMismatch,
+    TAtlasContractHandshake.WithProduct(ccMatch, '2.2.1', '2.2.1-rc.1'));
+  // Ein anderer Vertrag bleibt die genauere Auskunft.
+  Assert.AreEqual<TAtlasContractCheck>(ccMismatch, TAtlasContractHandshake.WithProduct(ccMismatch, '2.2.0', '2.2.1'));
+  Assert.AreEqual<TAtlasContractCheck>(ccMissing, TAtlasContractHandshake.WithProduct(ccMissing, '', '2.2.1'));
 end;
 
 initialization

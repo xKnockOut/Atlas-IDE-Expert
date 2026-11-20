@@ -6,6 +6,11 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+## [2.2.2] - 2026-11-20
+
+### Behoben
+- Module aus einem anderen Bau als `Atlas.IDE.Base` melden sich nicht mehr an: Wer eine neuere Version aus dem Quelltext über eine installierte ältere installierte, bekam Module, die gegen eine fremde Binärschnittstelle von Base liefen, und die IDE konnte beim Installieren abstürzen. Der Handschlag zwischen Modul und Base vergleicht jetzt außer der Vertragsversion auch die Produktversion; ein abweichendes Modul bleibt abgemeldet und schreibt das ins Protokoll (#2372).
+
 ## [2.2.1] - 2026-11-19
 
 ### Behoben
