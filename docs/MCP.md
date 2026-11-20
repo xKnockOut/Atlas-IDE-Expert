@@ -258,9 +258,13 @@ pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool qualified_name -Argum
 pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output konventionen.json
 pwsh Tools/Start-McpInspector.ps1 -Method prompts/get -Prompt unit_review -Arguments @{ unit = 'Shell.Mcp' }
 pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://unit/Shell.Mcp
+
+# Aus bash oder cmd: Argumente als JSON (eine Hashtable kommt dort nicht an)
+pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt -Method tools/call -Tool get_impact -ArgumentsJson '{"name":"TKundenSuche.Suchen","depth":2}'
 ```
 
 - `-Strict` gibt bei `tools/list` die Schema-Prüfung des Inspectors aus (Pfad, Problem, Vorschlag) und endet mit Exit-Code 6, wenn ein Schema bei Clients nicht portabel ist.
+- `-Arguments @{…}` geht nur aus PowerShell heraus; aus bash oder cmd `-ArgumentsJson '{…}'`. Zahlen, Wahrheitswerte, Listen und Objekte kommen in beiden Fällen typgetreu an (der Inspector wandelt nach dem Eingabeschema).
 - `-Restricted` startet den Server mit `--restricted` (nur lesende Werkzeuge), `-Log` mit `--log`.
 - Der Server startet über eine erzeugte Sitzungskonfiguration (`--config`); Schalter wie `--mcp` landen so beim Server, nicht beim Inspector. Geheimnisse hält der Inspector nur im Speicher (`MCP_INSPECTOR_SECRET_STORE=memory`), Atlas braucht keine.
 
@@ -277,6 +281,7 @@ npx -y @modelcontextprotocol/inspector@2.12.0 --cli AtlasServer --mcp --root . -
 pwsh Tools/Test-McpTools.ps1                       # alle Werkzeuge, Ordner Tests/Referenzprojekt
 pwsh Tools/Test-McpTools.ps1 -Tool find_symbol -Arguments @{ name = 'TKundenSuche' }
 pwsh Tools/Test-McpTools.ps1 -Tool run_tests -WithProcessTools -Arguments @{ tests = @('Unit.Fixture') }
+pwsh Tools/Test-McpTools.ps1 -Tool batch -ArgumentsJson '{"calls":[{"tool":"find_symbol","args":{"name":"TKundenSuche"}}]}'
 ```
 
 Das Skript spricht den Server direkt über stdio an. Der Index entsteht nur einmal, der ganze Lauf dauert wenige Sekunden (der Inspector startet den Server je Kommandozeilenaufruf neu). Geprüft wird:
@@ -287,7 +292,7 @@ Das Skript spricht den Server direkt über stdio an. Der Index entsteht nur einm
 - Jede Ressource lässt sich lesen.
 - Jeder Prompt hat eine Beschreibung, jedes Argument eine Beschreibung, und `prompts/get` liefert mit dem Beispiel unter `prompts` eine nicht leere Nachricht mit dem erwarteten Text; jede Vorlage liest sich mit der Beispiel-URI unter `templates` (#1357). Ein Prompt oder eine Vorlage ohne Beispiel lässt den Lauf scheitern.
 
-Die Beispiele stehen in `Tools/Mcp/Werkzeug-Beispiele.json` und beziehen sich auf das Referenzprojekt (`Tests/Referenzprojekt`). Zeilen und Spalten stehen dort als Platzhalter (`{{zeile:procedure TRefAnzeige.SetStil}}`, `{{spalte:SetStil}}`), damit verschobene Zeilen die Beispiele nicht brechen. Werkzeuge mit `"process": true` (`build_project`, `run_tests`) brauchen die IDE oder ein Testprojekt und laufen nur mit `-WithProcessTools`. Mit `-Tool` und `-Arguments` ruft das Skript ein Werkzeug mit eigenen Argumenten auf, auch mit Listen und Objekten, und gibt die Antwort aus.
+Die Beispiele stehen in `Tools/Mcp/Werkzeug-Beispiele.json` und beziehen sich auf das Referenzprojekt (`Tests/Referenzprojekt`). Zeilen und Spalten stehen dort als Platzhalter (`{{zeile:procedure TRefAnzeige.SetStil}}`, `{{spalte:SetStil}}`), damit verschobene Zeilen die Beispiele nicht brechen. Werkzeuge mit `"process": true` (`build_project`, `run_tests`) brauchen die IDE oder ein Testprojekt und laufen nur mit `-WithProcessTools`. Mit `-Tool` und `-Arguments` (oder `-ArgumentsJson`) ruft das Skript ein Werkzeug mit eigenen Argumenten auf, auch mit Listen und Objekten, und gibt die Antwort aus. Das Referenzprojekt hat eine eigene `atlas.json` (`"project": "RefApp.dproj"`), damit der Server dort ein Projekt lädt und nicht die `atlas.json` des Repositorys übernimmt.
 
 Der Mitschnitt (`Output/Mcp/probe-<Zeit>.jsonl`) enthält jede Nachricht roh, eine je Zeile: `{"zeit":"…","richtung":"an Server"|"vom Server","nachricht":{…}}`. Exit-Code 0: alles in Ordnung, 1: Befunde, 3: Server fehlt oder antwortet nicht.
 

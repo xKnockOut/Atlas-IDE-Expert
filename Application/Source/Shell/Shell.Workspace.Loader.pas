@@ -49,6 +49,7 @@ type
   private
     FName: string;
     FRoot: string;
+    FConfigRoot: string;
     FLogger: ILogger;
     FSetup: TShellWorkspaceSetup;
     FBuild: TShellBuildChoice;
@@ -63,10 +64,12 @@ type
     function ReadProject(const ASettings: TServerSettings; var ALoaded: TShellLoadedProject): Boolean;
     procedure ApplyContext(var ALoaded: TShellLoadedProject);
   public
-    constructor Create(const AName, ARoot: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup;
+    /// <summary>AConfigRoot ist der Ordner der geltenden atlas.json (kann über ARoot liegen); '' gilt als ARoot.
+    /// </summary>
+    constructor Create(const AName, ARoot, AConfigRoot: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup;
       ABuild: TShellBuildChoice);
-    /// <summary>Feste Projektdatei (Projektgruppe), sonst "project" aus atlas.json, sonst die einzige .dproj im
-    /// Ordner; '' ohne oder bei fehlender Datei.</summary>
+    /// <summary>Feste Projektdatei (Projektgruppe), sonst "project" aus atlas.json (relativ zum Ordner der
+    /// atlas.json), sonst die einzige .dproj im Ordner; '' ohne oder bei fehlender Datei.</summary>
     function FindProjectFile(const ASettings: TServerSettings): string;
     /// <summary>Lädt AProjectFile; False, wenn die .dproj nicht lesbar ist.</summary>
     function Load(const AProjectFile: string; const ASettings: TServerSettings;
@@ -142,12 +145,17 @@ end;
 
 { TShellProjectLoader }
 
-constructor TShellProjectLoader.Create(const AName, ARoot: string; const ALogger: ILogger;
+constructor TShellProjectLoader.Create(const AName, ARoot, AConfigRoot: string; const ALogger: ILogger;
   ASetup: TShellWorkspaceSetup; ABuild: TShellBuildChoice);
 begin
   inherited Create;
   FName := AName;
   FRoot := ARoot;
+  FConfigRoot := AConfigRoot;
+  if FConfigRoot = '' then
+  begin
+    FConfigRoot := ARoot;
+  end;
   FLogger := ALogger;
   FSetup := ASetup;
   FBuild := ABuild;
@@ -160,9 +168,11 @@ begin
   begin
     Result := ASettings.Project;
   end
-  else if FRoot <> '' then
+  else if FConfigRoot <> '' then
   begin
-    Result := TProjectPaths.Combine(FRoot, ASettings.Project);
+    // Wie alle Pfade in atlas.json relativ zu deren Ordner, auch wenn sie über der Wurzel liegt (Packages\X als
+    // Wurzel, atlas.json im Stamm).
+    Result := TProjectPaths.Combine(FConfigRoot, ASettings.Project);
   end;
   if not FileExists(Result) then
   begin

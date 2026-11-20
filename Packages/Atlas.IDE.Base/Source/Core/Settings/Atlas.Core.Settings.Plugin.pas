@@ -613,6 +613,7 @@ type
     property DebugVariablesScopedWatches: Boolean read FDebug.DebugVariablesScopedWatches
       write FDebug.DebugVariablesScopedWatches;
     property DebugObjectMarks: Boolean read FDebug.DebugObjectMarks write FDebug.DebugObjectMarks;
+    property DebugParallelWatch: Boolean read FDebug.DebugParallelWatch write FDebug.DebugParallelWatch;
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
@@ -624,6 +625,10 @@ type
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;
     property DebugLogpointPrefix: string read FDebug.DebugLogpointPrefix write FDebug.DebugLogpointPrefix;
+    property DebugLogpointsRecordValues: Boolean read FDebug.DebugLogpointsRecordValues
+      write FDebug.DebugLogpointsRecordValues;
+    property DebugLogpointsRecordLimit: Integer read FDebug.DebugLogpointsRecordLimit
+      write FDebug.DebugLogpointsRecordLimit;
     property DebugNoSourcePage: Boolean read FDebug.DebugNoSourcePage write FDebug.DebugNoSourcePage;
     property DebugNoSourceIgnoredUnits: string read FDebug.DebugNoSourceIgnoredUnits
       write FDebug.DebugNoSourceIgnoredUnits;

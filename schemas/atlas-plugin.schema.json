@@ -2988,6 +2988,18 @@
       "x-captionEn": "Mark objects while debugging",
       "x-issue": "#839"
     },
+    "DebugParallelWatch": {
+      "description": "Ausdrücke in allen Threads auswerten: Fenster „Parallel auswerten“ mit einer Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens) und einer Spalte je Ausdruck. Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, ab 32 Threads erst auf Knopfdruck. Gilt ein Ausdruck in einem Thread nicht, steht dort „–“. Filter je Spalte, Sortieren nach Spalte, markierte Threads oben; Doppelklick wechselt zum Thread. Die Ausdrücke werden je Projekt gespeichert. Aus = kein Fenster, kein Menüpunkt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.parallelWatch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Ausdrücke in allen Threads auswerten",
+      "x-captionEn": "Evaluate expressions in all threads",
+      "x-issue": "#866"
+    },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
       "type": "boolean",
@@ -3102,6 +3114,31 @@
       "x-caption": "Präfix der Logpunkte",
       "x-captionEn": "Logpoint prefix",
       "x-issue": "#583"
+    },
+    "DebugLogpointsRecordValues": {
+      "description": "Logpunkt-Verlauf: Im Dialog des Logpunkts „Zahl aufzeichnen“ (nur bei genau einem Platzhalter); die Werte stehen als Linie über der Zeit im Fenster „Logpunkt-Verlauf“, je Thread wählbar, Text-Werte als Lücke, mit Kennzahlen und „CSV kopieren“. Aus = kein Ankreuzfeld, keine Aufzeichnung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.logpoints.recordValues",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.logpoints",
+      "x-caption": "Logpunkt-Werte aufzeichnen",
+      "x-captionEn": "Record logpoint values",
+      "x-issue": "#2552"
+    },
+    "DebugLogpointsRecordLimit": {
+      "type": "integer",
+      "default": 10000,
+      "minimum": 10,
+      "maximum": 1000000,
+      "description": "Höchstzahl Treffer je Reihe im Logpunkt-Verlauf (10 bis 1000000); die ältesten fallen heraus.",
+      "x-key": "debug.logpoints.recordLimit",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Zahl",
+      "x-parent": "debug.logpoints.recordValues",
+      "x-issue": "#2552"
     },
     "DebugNoSourcePage": {
       "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
