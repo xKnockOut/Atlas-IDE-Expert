@@ -17,6 +17,7 @@ uses
   Shell.Mcp.BuildTestTools,
   Shell.Mcp.DebugTools,
   Shell.Mcp.IdeContextTools,
+  Shell.Mcp.QuestionTools,
   Shell.Mcp.ReportTools,
   Shell.Mcp.CheckTools,
   Shell.Mcp.ArchitectureTools,
@@ -38,6 +39,7 @@ begin
   RegisterBuildTestTools(mContext);
   RegisterDebugTools(mContext);
   RegisterIdeContextTools(mContext);
+  RegisterQuestionTools(mContext);
   RegisterReportTools(mContext);
   RegisterCheckTools(mContext);
   RegisterArchitectureTools(mContext);

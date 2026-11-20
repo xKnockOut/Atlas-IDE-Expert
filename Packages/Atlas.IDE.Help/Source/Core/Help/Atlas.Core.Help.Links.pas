@@ -97,6 +97,7 @@ type
     CompilerSwitches,
     Structure,
     EventMap,
+    AssistantsLog,
     Options);
 {$SCOPEDENUMS OFF}
 
@@ -135,6 +136,7 @@ const
     (Id: 'AtlasCompilerSwitches'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasStructure'; German: 'Formulare'; English: 'Forms'), // german-ok Dateiname
     (Id: 'AtlasEventMap'; German: 'Formulare'; English: 'Forms'), // german-ok Dateiname
+    (Id: 'AtlasAssistantsLog'; German: 'Claude-Code'; English: 'Claude-Code'),
     (Id: TAtlasHelpLinks.cOptionsWindow; German: 'Einstellungen'; English: 'Settings')); // german-ok Dateiname
 
 function Target(const APath, AAnchor: string): TAtlasHelpTarget;

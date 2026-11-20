@@ -11,15 +11,19 @@
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
 // nicht, und der MCP-Server meldet „nicht angenommen“.
+// Jeder Auftrag landet im KI-Protokoll (#2049): Ergebnis mit Fehlern und Warnungen oder der Grund der Ablehnung.
 
 interface
 
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
+  Atlas.Core.Build.Events,
   Atlas.Core.Build.Requests,
+  Atlas.Core.Build.Messages,
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
+  Atlas.Core.Assistants.Log,
   Atlas.IDE.Contracts.BuildRequests,
   Atlas.IDE.Assistants.FolderSignal;
 
@@ -35,6 +39,7 @@ type
     FRequests: TFunc<IAtlasBuildRequests>;
     FOnMessage: TAtlasBuildInboxProc;
     FActivity: TAtlasAssistantsActivity;
+    FLog: TAtlasAssistantsLog;
     procedure Tick(Sender: TObject);
     procedure Refuse(const ARequest: TAtlasBuildRequest; const AReason: string);
     procedure Process(const ARequestFile: string);
@@ -42,9 +47,13 @@ type
   public
     /// <summary>ARequests liefert die Builds des Moduls Build-Pipeline (nil ohne Modul). AActivity: Pause und
     /// Anzeige „KI-Assistent aktiv“ (#1906), gehört der Composition und lebt länger als jeder Build-Rückruf.
-    /// AOnMessage: Zeile für die Meldungsansicht.</summary>
+    /// ALog: KI-Protokoll (#2049), gehört wie AActivity der Composition, darf nil sein. AOnMessage: Zeile für die
+    /// Meldungsansicht.</summary>
     constructor Create(const ARequests: TFunc<IAtlasBuildRequests>; AActivity: TAtlasAssistantsActivity;
-      const AOnMessage: TAtlasBuildInboxProc);
+      ALog: TAtlasAssistantsLog; const AOnMessage: TAtlasBuildInboxProc);
+    /// <summary>Ergebnis eines Builds für das Protokoll: Art, Fehler und Warnungen.</summary>
+    class function ResultText(AKind: TAtlasCompileKind; const AMessages: TArray<TAtlasCompilerMessage>): string;
+      static;
     destructor Destroy; override;
     property Folder: string read FFolder;
   end;
@@ -56,7 +65,6 @@ uses
   ToolsAPI,
   System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Build.Messages,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings;
@@ -68,11 +76,12 @@ var
 { TAtlasIdeBuildInbox }
 
 constructor TAtlasIdeBuildInbox.Create(const ARequests: TFunc<IAtlasBuildRequests>;
-  AActivity: TAtlasAssistantsActivity; const AOnMessage: TAtlasBuildInboxProc);
+  AActivity: TAtlasAssistantsActivity; ALog: TAtlasAssistantsLog; const AOnMessage: TAtlasBuildInboxProc);
 begin
   inherited Create;
   FRequests := ARequests;
   FActivity := AActivity;
+  FLog := ALog;
   FOnMessage := AOnMessage;
   FFolder := TAtlasBuildInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
@@ -186,6 +195,21 @@ begin
   end;
 end;
 
+/// <summary>Meldungen der Schwere ASeverity.</summary>
+function CountOf(const AMessages: TArray<TAtlasCompilerMessage>; ASeverity: TAtlasCompilerSeverity): Integer;
+var
+  mMessage: TAtlasCompilerMessage;
+begin
+  Result := 0;
+  for mMessage in AMessages do
+  begin
+    if mMessage.Severity = ASeverity then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 function ErrorCount(const AMessages: TArray<TAtlasCompilerMessage>): Integer;
 var
   mMessage: TAtlasCompilerMessage;
@@ -201,9 +225,9 @@ begin
 end;
 
 /// <summary>Antwort nach dem Build in AFolder und Meldung über AOnMessage; hält nur Werte und die Anzeige der
-/// Composition (AActivity), nicht den Briefkasten.</summary>
+/// Composition (AActivity, ALog), nicht den Briefkasten.</summary>
 function BuildDone(const AFolder: string; const ARequest: TAtlasBuildRequest; AActivity: TAtlasAssistantsActivity;
-  const AOnMessage: TAtlasBuildInboxProc): TAtlasBuildDoneProc;
+  ALog: TAtlasAssistantsLog; const AOnMessage: TAtlasBuildInboxProc): TAtlasBuildDoneProc;
 begin
   Result :=
     procedure(const AReport: TAtlasBuildReport; const AError: string)
@@ -213,9 +237,18 @@ begin
         if AError <> '' then
         begin
           TAtlasFileInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AError));
+          if ALog <> nil then
+          begin
+            ALog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Refused, ARequest.Project, '', AError));
+          end;
           Exit;
         end;
         TAtlasFileInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.SuccessText(AReport));
+        if ALog <> nil then
+        begin
+          ALog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, ARequest.Project, '',
+            TAtlasIdeBuildInbox.ResultText(ARequest.Kind, AReport.Messages)));
+        end;
         if Assigned(AOnMessage) then
         begin
           AOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildFinished,
@@ -228,9 +261,22 @@ begin
     end;
 end;
 
+class function TAtlasIdeBuildInbox.ResultText(AKind: TAtlasCompileKind;
+  const AMessages: TArray<TAtlasCompilerMessage>): string;
+const
+  cKinds: array[TAtlasCompileKind] of string = ('make', 'build', 'check', 'make', 'clean', 'link');
+begin
+  Result := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.LogBuildResult, [cKinds[AKind],
+    ErrorCount(AMessages), CountOf(AMessages, TAtlasCompilerSeverity.Warning)]);
+end;
+
 procedure TAtlasIdeBuildInbox.Refuse(const ARequest: TAtlasBuildRequest; const AReason: string);
 begin
   TAtlasFileInbox.Answer(FFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AReason));
+  if FLog <> nil then
+  begin
+    FLog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Refused, ARequest.Project, '', AReason));
+  end;
   if Assigned(FOnMessage) then
   begin
     FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildRefused,
@@ -273,7 +319,7 @@ begin
     // Vor dem Start melden: Ein Build, der sofort scheitert, ruft BuildDone noch in Start.
     FActivity.BuildStarted(mRequest.Project, '');
     mStarted := mRequests.Start(mRequest, TAtlasBuildInbox.cRequestedBy,
-      BuildDone(mFolder, mRequest, FActivity, mOnMessage), mReason);
+      BuildDone(mFolder, mRequest, FActivity, FLog, mOnMessage), mReason);
   end;
   if not mStarted then
   begin

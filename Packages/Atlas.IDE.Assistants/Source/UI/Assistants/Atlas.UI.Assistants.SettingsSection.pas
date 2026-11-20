@@ -189,6 +189,8 @@ begin
   ModuleSwitch('assistants.enabled');
   // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
   Switch('assistants.edit', T(TAtlasAssistantsTextId.SettingsEdit));
+  // Änderungen an ungespeicherten Dateien zurückhalten statt ablehnen (#2605).
+  Switch('assistants.editHoldModified', T(TAtlasAssistantsTextId.SettingsEditHold));
   Switch('compiler.mcpBuild', T(TAtlasAssistantsTextId.SettingsMcpBuild));
   // Debuggen durch KI-Assistenten (#1874): Rechte und Leiste.
   Switch('debug.mcp', T(TAtlasAssistantsTextId.SettingsDebugMcp));
@@ -205,6 +207,10 @@ begin
     T(TAtlasAssistantsTextId.SettingsContextSelectionMax));
   // Hinweis auf veraltete Anweisungsdateien für KI-Assistenten (#2615).
   Switch('assistants.instructionsHint', T(TAtlasAssistantsTextId.SettingsInstructionsHint));
+  // Rückfragen in der IDE (#2620) und KI-Protokoll (#2049).
+  Switch('assistants.questionsInIde', T(TAtlasAssistantsTextId.SettingsQuestions));
+  Switch('assistants.log', T(TAtlasAssistantsTextId.SettingsLog));
+  Number('assistants.log.max', T(TAtlasAssistantsTextId.SettingsLogMax));
   // KI-Schattentext (#1922).
   Switch('assistants.inlineSuggestions', T(TAtlasAssistantsTextId.SettingsInline));
   Host.AddHint(T(TAtlasAssistantsTextId.SettingsPrivacy), cPrivacyHeight);
