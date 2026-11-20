@@ -113,8 +113,9 @@ const
      'KI-Assistent aktiv%s · %s geändert',
      'KI-Assistenten pausiert',
      'Klick: Pause für KI-Assistenten. Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann ab; ' +
-       'ein laufender Build läuft zu Ende.',
-     'Klick: Pause aufheben. KI-Assistenten dürfen wieder über die IDE bauen und offene Dateien ändern.',
+       'ein laufender Build läuft zu Ende. Rechtsklick: Atlas-KI-Protokoll.',
+     'Klick: Pause aufheben. KI-Assistenten dürfen wieder über die IDE bauen und offene Dateien ändern. ' +
+       'Rechtsklick: Atlas-KI-Protokoll.',
      'Atlas: Pause für KI-Assistenten. Neue Aufträge lehnt die IDE ab, bis die Pause aufgehoben ist.',
      'Atlas: Pause für KI-Assistenten aufgehoben.',
      'Pause für KI: Der Benutzer hat KI-Assistenten in der IDE angehalten. Nicht erneut senden, sondern warten ' +
@@ -294,8 +295,9 @@ const
      'AI assistant active%s · changed %s',
      'AI assistants paused',
      'Click: pause AI assistants. The IDE then refuses new builds and changes to open files; a running build ' +
-       'finishes.',
-     'Click: end the pause. AI assistants may build through the IDE and change open files again.',
+       'finishes. Right-click: Atlas AI log.',
+     'Click: end the pause. AI assistants may build through the IDE and change open files again. ' +
+       'Right-click: Atlas AI log.',
      'Atlas: AI assistants paused. The IDE refuses new requests until the pause ends.',
      'Atlas: pause for AI assistants ended.',
      'Paused for AI: the user has paused AI assistants in the IDE. Do not send again; wait or ask.',

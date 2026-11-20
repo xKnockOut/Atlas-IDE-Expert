@@ -47,6 +47,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Connection,
+  Atlas.Common.JsonRpc.Outgoing,
   Atlas.Common.JsonRpc.LineTransport,
   Atlas.Common.JsonRpc.RecentMessages,
   Atlas.Common.Lsp.Adapters.ServerActivityObserver,
@@ -75,6 +76,8 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  /// <summary>Vor den ids eigener Anfragen an den Client.</summary>
+  cOutgoingPrefix = 'atlas/out/';
   cTexts: array[TMcpHostText] of TAtlasText = (
     (De: 'Delphi-Projekt in %s. Für Fragen zu Typen, Units und Formularen zuerst diese Werkzeuge nutzen statt ' +
     'Quelldateien vollständig zu lesen.';
@@ -208,6 +211,17 @@ begin
   end;
 end;
 
+/// <summary>Eigene Anfragen an den Client (elicitation/create, #2620); seine Antworten fängt der Lese-Thread von
+/// AConnection ab.</summary>
+procedure ConnectOutgoing(const ATransport: IJsonRpcTransport; AConnection: TJsonRpcConnection; AServer: TMcpServer);
+var
+  mOutgoing: IJsonRpcOutgoing;
+begin
+  mOutgoing := TJsonRpcOutgoing.Create(ATransport, cOutgoingPrefix);
+  AConnection.Outgoing := mOutgoing;
+  AServer.Outgoing := mOutgoing;
+end;
+
 class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
   mLogger: ILogger;
@@ -237,6 +251,7 @@ begin
     mServer := TMcpServer.Create(TProductVersion.cName, TProductVersion.cVersion);
     mDispatcher := TJsonRpcDispatcher.Create;
     mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
+    ConnectOutgoing(mTransport, mConnection, mServer);
     mRecent := TJsonRpcRecentMessages.Create;
     mDispatcher.Recent := mRecent;
     mCrashCases := NewCrashCases(mLogger, mRecent, mServices.Root);

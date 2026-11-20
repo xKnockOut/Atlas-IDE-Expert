@@ -104,6 +104,7 @@
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.PendingRequests.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Outgoing.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Dispatcher.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Connection.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Lifecycle.Tests.pas"/>
@@ -2504,6 +2505,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeInbox.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeQuestions.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Confirm.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeDebug.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.TestTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.ProfileTools.Tests.pas"/>

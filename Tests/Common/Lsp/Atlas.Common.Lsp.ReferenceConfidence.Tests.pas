@@ -26,6 +26,9 @@ type
     function Describe(const ALocations: TArray<TReferenceLocation>): string;
     function HitAt(const ALocations: TArray<TReferenceLocation>; const AFileName: string; ALine: Integer;
       out ALocation: TReferenceLocation): Boolean;
+    /// <summary>rename_symbol von Speichern mit dryRun=false; die Rückfrage antwortet AChoice. AWritten sind alle
+    /// geschriebenen Texte, AAsked zählt die Rückfragen.</summary>
+    function RenameAnswering(AChoice: Integer; out AWritten: string; out AAsked: Integer): string;
   public
     [Setup]
     procedure Setup;
@@ -70,6 +73,12 @@ type
     /// <summary>rename_symbol ändert die sicheren Stellen und nennt die übrigen zum Prüfen.</summary>
     [Test]
     procedure McpRenameListsUnchanged;
+    /// <summary>Rückfrage (#2620): „Alle umbenennen“ ändert auch die erschlossenen Stellen.</summary>
+    [Test]
+    procedure McpRenameAllAfterQuestion;
+    /// <summary>„Nur sichere Stellen“, Ablehnung oder kein Weg: wie bisher nur die sicheren.</summary>
+    [Test]
+    procedure McpRenameCertainAfterQuestion;
     /// <summary>Annahme aus #1119: erschlossene Treffer kosten höchstens 20 % mehr Zeit.</summary>
     [Test]
     [Category('Benchmark')]
@@ -95,6 +104,7 @@ uses
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Mcp.Confirm,
   Atlas.Common.Mcp.EditTools;
 
 const
@@ -637,6 +647,68 @@ begin
   Assert.IsTrue(Pos('Haupt.pas:8:5 – interface:', mText) > 0, mText);
   Assert.IsTrue(Pos('K.Sichern;', mText) > 0, mText);
   Assert.IsFalse(Pos('S.Sichern;', mText) > 0, mText);
+end;
+
+function TReferenceConfidenceTests.RenameAnswering(AChoice: Integer; out AWritten: string;
+  out AAsked: Integer): string;
+var
+  mTools: TMcpEditTools;
+  mWritten: string;
+  mAsked: Integer;
+begin
+  mWritten := '';
+  mAsked := 0;
+  mTools := TMcpEditTools.Create(FIndex, ReadText,
+    procedure(const AFileName, AText: string)
+    begin
+      mWritten := mWritten + AText;
+    end,
+    function: TArray<string>
+    begin
+      Result := TArray<string>.Create(cKundenFile, cHauptFile);
+    end, nil);
+  try
+    mTools.Choose :=
+      function(const AText: string; const AOptions: TArray<string>): Integer
+      begin
+        Inc(mAsked);
+        Result := AChoice;
+      end;
+    Result := mTools.RenameSymbol(cKundenFile, 11, 15, 'Sichern', False);
+  finally
+    mTools.Free;
+  end;
+  AWritten := mWritten;
+  AAsked := mAsked;
+end;
+
+procedure TReferenceConfidenceTests.McpRenameAllAfterQuestion;
+var
+  mText, mWritten: string;
+  mAsked: Integer;
+begin
+  mText := RenameAnswering(0, mWritten, mAsked);
+  Assert.AreEqual(1, mAsked);
+  Assert.IsTrue(Pos('3 erschlossene Stellen', mText) > 0, mText);
+  Assert.IsFalse(Pos('Nicht geändert, bitte prüfen', mText) > 0, mText);
+  Assert.IsTrue(Pos('S.Sichern;', mWritten) > 0, mWritten);
+  Assert.IsTrue(Pos('K.Sichern;', mWritten) > 0, mWritten);
+end;
+
+procedure TReferenceConfidenceTests.McpRenameCertainAfterQuestion;
+var
+  mChoice: Integer;
+  mText, mWritten: string;
+  mAsked: Integer;
+begin
+  for mChoice in TArray<Integer>.Create(1, TMcpConfirm.cNoAnswer, TMcpConfirm.cNotAsked) do
+  begin
+    mText := RenameAnswering(mChoice, mWritten, mAsked);
+    Assert.AreEqual(1, mAsked);
+    Assert.IsTrue(Pos('Nicht geändert, bitte prüfen (3 erschlossene Stellen):', mText) > 0, mText);
+    Assert.IsFalse(Pos('S.Sichern;', mWritten) > 0, mWritten);
+    Assert.IsTrue(Pos('K.Sichern;', mWritten) > 0, mWritten);
+  end;
 end;
 
 procedure TReferenceConfidenceTests.InferredCostsLittle;

@@ -372,7 +372,8 @@ begin
   end;
   mFlags := [TFlagOption.Create('globalSettings', ASettings.McpGlobalSettings),
     TFlagOption.Create('prompts', ASettings.McpPrompts), TFlagOption.Create('statistics', ASettings.McpStatistics),
-    TFlagOption.Create('reportFindingsAfterEdit', ASettings.McpReportFindingsAfterEdit)];
+    TFlagOption.Create('reportFindingsAfterEdit', ASettings.McpReportFindingsAfterEdit),
+    TFlagOption.Create('confirm', ASettings.McpConfirm)];
   for mIndex := 0 to ANode.Count - 1 do
   begin
     // Unbekanntes ist hier ein Fehler am Wert, nicht eine Warnung am Schlüssel.
@@ -406,6 +407,10 @@ begin
   else if AMember = 'reportFindingsAfterEdit' then
   begin
     ATarget.McpReportFindingsAfterEdit := ASource.McpReportFindingsAfterEdit;
+  end
+  else if AMember = 'confirm' then
+  begin
+    ATarget.McpConfirm := ASource.McpConfirm;
   end
   else if AMember = 'promptLanguage' then
   begin
