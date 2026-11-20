@@ -6,7 +6,9 @@
 // geändert); Decide sagt, was mit dem Auftrag geschieht:
 // - Datei nicht offen: ablehnen, der MCP-Server schreibt selbst.
 // - Puffer weicht vom gelesenen Stand ab und ist ungespeichert geändert:
-//   ablehnen, der MCP-Server schreibt nicht (die Änderung des Benutzers geht vor).
+//   ablehnen, der MCP-Server schreibt nicht (die Änderung des Benutzers geht vor). Hat der MCP-Server um
+//   Zurückhalten gebeten und ist assistants.editHoldModified an (#2605), wird die Änderung stattdessen
+//   zurückgehalten (Hold): Der Eingang legt sie in TAtlasHeldEdits ab, der Mensch entscheidet in der IDE.
 // - Puffer weicht sonst ab (z. B. andere Zeilenenden): ablehnen, der MCP-Server
 //   schreibt selbst, und das Neuladen der IDE (#536) holt die Datei.
 // - Sonst anwenden; war der Puffer vorher gespeichert, danach speichern, weil
@@ -23,7 +25,7 @@ uses
 
 type
   /// <summary>Was der Eingang mit einem Auftrag tut.</summary>
-  TAtlasEditInboxStep = (NotOpen, ModifiedInEditor, DiffersFromDisk, Apply);
+  TAtlasEditInboxStep = (NotOpen, ModifiedInEditor, DiffersFromDisk, Apply, Hold);
 
   /// <summary>Ergebnis von TAtlasEditInboxPlan.Decide.</summary>
   TAtlasEditInboxDecision = record
@@ -51,6 +53,9 @@ type
     ServerWrites: Boolean;
     /// <summary>Grund der Ablehnung oder Fehlertext; '' beim Anwenden.</summary>
     Reason: string;
+    /// <summary>Zurückgehalten, bis der Mensch in der IDE entscheidet (#2605); der MCP-Server schreibt nicht.
+    /// </summary>
+    Held: Boolean;
   end;
 
   TAtlasEditInboxPlan = class
@@ -58,16 +63,19 @@ type
     cReasonNotOpen = 'nicht offen';
     cReasonModified = 'im Editor ungespeichert geändert';
     cReasonDiffers = 'Puffer weicht von der Platte ab';
+    cReasonHeld = 'wartet, bis der Benutzer in der IDE entscheidet'; // german-ok Grund an den MCP-Server
   public
-    /// <summary>Was mit einem Auftrag geschieht, der AExpected als bisherigen Text der Datei nennt.</summary>
-    class function Decide(const ABuffer: TAtlasEditorFile; const AExpected: string): TAtlasEditInboxDecision;
-      static;
+    /// <summary>Was mit einem Auftrag geschieht, der AExpected als bisherigen Text der Datei nennt. AHold:
+    /// ungespeichert geänderte Puffer zurückhalten statt ablehnen (#2605).</summary>
+    class function Decide(const ABuffer: TAtlasEditorFile; const AExpected: string;
+      AHold: Boolean): TAtlasEditInboxDecision; static;
     /// <summary>Änderung von AExpected nach AText als kleinste Textänderung an der Datei AFileName.</summary>
     class function EditOf(const AFileName, AExpected, AText: string): TLspWorkspaceEdit; static;
     /// <summary>Führt den Auftrag aus, AFileName von AExpected auf AText zu ändern: Puffer aus AFiles,
     /// Entscheidung, Anwenden über AApply und Speichern, wenn der Puffer vorher gespeichert war. AApply wird nur
-    /// gerufen, wenn die Änderung angewendet wird.</summary>
-    class function Run(const AFiles: IAtlasEditorFiles; const AFileName, AExpected, AText: string;
+    /// gerufen, wenn die Änderung angewendet wird. AHold wie bei Decide; zurückgehalten wird nur entschieden, das
+    /// Ablegen macht der Eingang.</summary>
+    class function Run(const AFiles: IAtlasEditorFiles; const AFileName, AExpected, AText: string; AHold: Boolean;
       const AApply: TAtlasEditInboxApply): TAtlasEditInboxOutcome; static;
   end;
 
@@ -97,6 +105,8 @@ begin
       Result := TAtlasEditInboxPlan.cReasonModified;
     TAtlasEditInboxStep.DiffersFromDisk:
       Result := TAtlasEditInboxPlan.cReasonDiffers;
+    TAtlasEditInboxStep.Hold:
+      Result := TAtlasEditInboxPlan.cReasonHeld;
   else
     Result := '';
   end;
@@ -109,8 +119,8 @@ end;
 
 { TAtlasEditInboxPlan }
 
-class function TAtlasEditInboxPlan.Decide(const ABuffer: TAtlasEditorFile;
-  const AExpected: string): TAtlasEditInboxDecision;
+class function TAtlasEditInboxPlan.Decide(const ABuffer: TAtlasEditorFile; const AExpected: string;
+  AHold: Boolean): TAtlasEditInboxDecision;
 begin
   Result.WasModified := ABuffer.Modified;
   if not ABuffer.Open then
@@ -119,7 +129,11 @@ begin
   end
   else if ABuffer.Text <> AExpected then
   begin
-    if ABuffer.Modified then
+    if ABuffer.Modified and AHold then
+    begin
+      Result.Step := TAtlasEditInboxStep.Hold;
+    end
+    else if ABuffer.Modified then
     begin
       Result.Step := TAtlasEditInboxStep.ModifiedInEditor;
     end
@@ -150,15 +164,16 @@ begin
 end;
 
 class function TAtlasEditInboxPlan.Run(const AFiles: IAtlasEditorFiles; const AFileName, AExpected, AText: string;
-  const AApply: TAtlasEditInboxApply): TAtlasEditInboxOutcome;
+  AHold: Boolean; const AApply: TAtlasEditInboxApply): TAtlasEditInboxOutcome;
 var
   mDecision: TAtlasEditInboxDecision;
 begin
   Result := Default(TAtlasEditInboxOutcome);
-  mDecision := Decide(AFiles.Buffer(AFileName), AExpected);
+  mDecision := Decide(AFiles.Buffer(AFileName), AExpected, AHold);
   if not mDecision.Applies then
   begin
     Result.ServerWrites := mDecision.ServerWrites;
+    Result.Held := mDecision.Step = TAtlasEditInboxStep.Hold;
     Result.Reason := mDecision.Reason;
     Exit;
   end;

@@ -132,6 +132,10 @@
     "get_ide_context": {
       "arguments": { "include": ["editor", "project", "build"], "format": "json" }
     },
+    "ask_user": {
+      "arguments": { "question": "Welche Variante?", "options": ["A", "B"], "timeoutSeconds": 10 },
+      "process": true
+    },
     "build_project": {
       "arguments": { "project": "RefApp", "mode": "check" },
       "process": true

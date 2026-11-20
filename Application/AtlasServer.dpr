@@ -149,6 +149,7 @@ uses
   Shell.Mcp.BuildTestTools in 'Source\Shell\Shell.Mcp.BuildTestTools.pas',
   Shell.Mcp.DebugTools in 'Source\Shell\Shell.Mcp.DebugTools.pas',
   Shell.Mcp.IdeContextTools in 'Source\Shell\Shell.Mcp.IdeContextTools.pas',
+  Shell.Mcp.QuestionTools in 'Source\Shell\Shell.Mcp.QuestionTools.pas',
   Shell.Mcp.ReportTools in 'Source\Shell\Shell.Mcp.ReportTools.pas',
   Shell.Mcp.CheckTools in 'Source\Shell\Shell.Mcp.CheckTools.pas',
   Shell.Mcp.ArchitectureTools in 'Source\Shell\Shell.Mcp.ArchitectureTools.pas',

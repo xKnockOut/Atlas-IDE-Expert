@@ -9,7 +9,13 @@
 //   Eingang bei jedem Auftrag neu in der Registry sucht (Regel 2). Nur im
 //   normalen Start und solange compiler.mcpBuild an ist.
 // - Teil „AssistantEdits“: Eingang für Änderungen an offenen Dateien (#397),
-//   solange assistants.edit an ist.
+//   solange assistants.edit an ist; Änderungen an ungespeicherten Dateien
+//   wartet er mit assistants.editHoldModified auf den Menschen (#2605).
+// - Teil „AssistantQuestions“: Eingang des MCP-Werkzeugs ask_user (#2620) mit
+//   dem Fenster „KI-Assistent fragt“, solange assistants.questionsInIde an ist.
+// - Teil „AssistantLog“: Fenster „Atlas-KI-Protokoll“ (#2049) samt Befehl, solange
+//   assistants.log an ist. Das Protokoll selbst gehört dem Modul wie die
+//   Aktivität; ausgeschaltet nimmt es nichts an und hält nichts.
 // - Teil „AiGhostText“: Schattentext vom KI-Anbieter (#1922), solange
 //   assistants.inlineSuggestions an ist; HTTP und Anmeldespeicher von Windows
 //   entstehen nur in Atlas.IDE.Assistants.Composition.Adapters.
@@ -84,6 +90,7 @@ implementation
 uses
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.BuildInbox,
+  Atlas.Core.Assistants.Log,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
@@ -99,18 +106,22 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
+  Atlas.IDE.Assistants.QuestionInbox,
+  Atlas.IDE.Assistants.LogWindow,
   Atlas.IDE.Assistants.Composition.Adapters,
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,
   Atlas.IDE.Assistants.Adapters.Link,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Assistants.Adapters.Instructions,
   Atlas.UI.Assistants.SettingsSection;
 
 const
   cPauseCommand = 'Atlas.AssistantsPause';
   cMentionCommand = 'Atlas.AssistantsLinkMention';
+  /// <summary>Pause, Auswahl an den Assistenten, KI-Protokoll.</summary>
+  cCommandCount = 3;
+  cLogCommand = 'Atlas.AssistantsLog';
 
 var
   GScope: IAtlasModuleScope;
@@ -122,6 +133,9 @@ var
   GBanner: TAtlasIdeAssistantsBanner;
   GContext: TAtlasIdeContextExport;
   GLink: TAtlasIdeLink;
+  GLog: TAtlasAssistantsLog;
+  GQuestionInbox: TAtlasIdeQuestionInbox;
+  GLogView: TAtlasIdeAssistantsLogView;
 
 { Dienste von Base und anderer Module }
 
@@ -162,7 +176,7 @@ end;
 
 procedure StartBuilds;
 begin
-  GBuildInbox := TAtlasIdeBuildInbox.Create(BuildRequests, GActivity, TAtlasIdeHost.Warnings());
+  GBuildInbox := TAtlasIdeBuildInbox.Create(BuildRequests, GActivity, GLog, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopBuilds;
@@ -187,7 +201,7 @@ end;
 
 procedure StartEdits;
 begin
-  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeHost.EditorFiles, GActivity, TAtlasIdeHost.Warnings());
+  GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeHost.EditorFiles, GActivity, GLog, TAtlasIdeHost.Warnings());
 end;
 
 procedure StopEdits;
@@ -198,6 +212,58 @@ end;
 function EditsStarted: Boolean;
 begin
   Result := GEditInbox <> nil;
+end;
+
+procedure StartQuestions;
+begin
+  GQuestionInbox := TAtlasIdeQuestionInbox.Create(GActivity, GLog);
+end;
+
+procedure StopQuestions;
+begin
+  // Offene Fragen bekommen „abgelehnt“; Fenster und Statusfeld gehen mit dem Eingang.
+  FreeAndNil(GQuestionInbox);
+end;
+
+function QuestionsStarted: Boolean;
+begin
+  Result := GQuestionInbox <> nil;
+end;
+
+/// <summary>Protokoll nach den Einstellungen: aus = nichts annehmen, nichts halten.</summary>
+procedure ApplyLogSettings;
+begin
+  GLog.Enabled := TAtlasIdeSettings.Current.AssistantsLog;
+  GLog.MaxEntries := TAtlasIdeSettings.Current.AssistantsLogMax;
+end;
+
+procedure StartLog;
+begin
+  ApplyLogSettings;
+  GLogView := TAtlasIdeAssistantsLogView.Create(GLog, TAtlasIdeHost.EditorFiles, TAtlasIdeHost.Messages());
+end;
+
+procedure StopLog;
+begin
+  // Fenster schließt, Einträge werden freigegeben (Regel 3).
+  FreeAndNil(GLogView);
+  GLog.Enabled := False;
+end;
+
+function LogStarted: Boolean;
+begin
+  Result := GLogView <> nil;
+end;
+
+/// <summary>Befehl „Atlas-KI-Protokoll“.</summary>
+procedure ShowLog;
+begin
+  if GLogView = nil then
+  begin
+    TAtlasIdeHost.Message(TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LogOff));
+    Exit;
+  end;
+  GLogView.ShowWindow;
 end;
 
 procedure DebugChanged;
@@ -389,13 +455,25 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsLink;
-      end, LinkStarted, StartLink, StopLink)];
+      end, LinkStarted, StartLink, StopLink),
+    // Rückfragen in der IDE (#2620): solange assistants.questionsInIde an ist.
+    TAtlasFeaturePart.When('AssistantQuestions',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsQuestionsInIde;
+      end, QuestionsStarted, StartQuestions, StopQuestions),
+    // KI-Protokoll (#2049): solange assistants.log an ist.
+    TAtlasFeaturePart.When('AssistantLog',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsLog;
+      end, LogStarted, StartLog, StopLog)];
 end;
 
 function TAtlasAssistantsModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := nil;
-  SetLength(Result, 2);
+  SetLength(Result, cCommandCount);
   Result[0] := Default(TAtlasModuleCommand);
   Result[0].Id := cPauseCommand;
   Result[0].Caption := PauseCaption;
@@ -406,9 +484,15 @@ begin
   Result[1].Id := cMentionCommand;
   Result[1].Caption := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LinkMentionCommand);
   Result[1].Description := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LinkMentionHint);
-  Result[1].Run := TAtlasGuard.Wrap(TAtlasFeature.Server, MentionRun);
+  Result[1].Run := TAtlasIdeLink.Guarded(MentionRun);
   Result[1].Visible := MentionVisible;
   Result[1].Key := MentionKey;
+  // KI-Protokoll (#2049).
+  Result[2] := Default(TAtlasModuleCommand);
+  Result[2].Id := cLogCommand;
+  Result[2].Caption := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LogCaption);
+  Result[2].Description := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LogCommandHint);
+  Result[2].Run := ShowLog;
 end;
 
 function TAtlasAssistantsModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -436,7 +520,7 @@ begin
   mKey.Caption := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LinkMentionCommand);
   mKey.Key := MentionKey;
   mKey.Priority := TAtlasKeyPriority.Shared;
-  mKey.Run := TAtlasGuard.Wrap(TAtlasFeature.Server, MentionRun);
+  mKey.Run := TAtlasIdeLink.Guarded(MentionRun);
   Result := [mKey];
 end;
 
@@ -471,6 +555,11 @@ begin
   begin
     GLink.ApplySettings;
   end;
+  // assistants.log.max gilt sofort; aus schaltet der Teil „AssistantLog“.
+  if GLogView <> nil then
+  begin
+    ApplyLogSettings;
+  end;
 end;
 
 procedure TAtlasAssistantsModule.ThemeChanged;
@@ -479,6 +568,7 @@ begin
   begin
     GDebugBar.ApplyTheme;
   end;
+  TAtlasIdeAssistantsLogWindow.ApplyTheme;
 end;
 
 procedure TAtlasAssistantsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -506,6 +596,8 @@ begin
     Exit;
   end;
   GActivity := TAtlasAssistantsActivity.Create;
+  // Ausgeschaltet, bis der Teil „AssistantLog“ startet.
+  GLog := TAtlasAssistantsLog.Create;
   mModule := TAtlasAssistantsModule.Create;
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
@@ -519,6 +611,8 @@ begin
   // „Auswahl an den Assistenten“ (#2377) im Kontextmenü und als Taste.
   GScope.Provide(IAtlasMenuSource, mModule as IAtlasMenuSource);
   GScope.Provide(IAtlasKeySource, mModule as IAtlasKeySource);
+  // KI-Protokoll (#2049): früh bei der IDE anmelden, damit der Desktop das Fenster wiederherstellt.
+  TAtlasIdeAssistantsLogWindow.Prepare;
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   StartAiProbe;
   // Text für andere Module (Zusammenfassen im Tracker, #2462); wer fragt, filtert nach aktiven Modulen.
@@ -541,9 +635,11 @@ begin
       TAtlasAssistantsSettingsSection.KeyHooks := Default(TAtlasAssistantsKeyHooks);
       StopAiProbe;
       StopAiText;
+      TAtlasIdeAssistantsLogWindow.Release;
     end);
-  // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten die Aktivität bis dahin.
+  // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten Aktivität und Protokoll bis dahin.
   FreeAndNil(GActivity);
+  FreeAndNil(GLog);
 end;
 
 initialization

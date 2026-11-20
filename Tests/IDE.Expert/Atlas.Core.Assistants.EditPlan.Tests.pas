@@ -36,6 +36,13 @@ type
     procedure RunLeavesClosedFileToTheServer;
     [Test]
     procedure RunReportsApplyErrorWithoutSaving;
+    /// <summary>#2605: Mit Zurückhalten wartet eine Änderung an einem ungespeichert geänderten Puffer.</summary>
+    [Test]
+    procedure ModifiedDifferentBufferHoldsWhenAsked;
+    [Test]
+    procedure HoldDoesNotTouchSavedOrMatchingBuffers;
+    [Test]
+    procedure RunHoldsWithoutApplying;
   end;
 
 implementation
@@ -52,7 +59,7 @@ procedure TAtlasEditInboxPlanTests.ClosedFileLetsTheServerWrite;
 var
   mDecision: TAtlasEditInboxDecision;
 begin
-  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Closed, 'a');
+  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Closed, 'a', False);
   Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.NotOpen, mDecision.Step, 'nicht offen');
   Assert.IsFalse(mDecision.Applies, 'nicht anwenden');
   Assert.IsTrue(mDecision.ServerWrites, 'der MCP-Server schreibt selbst');
@@ -64,7 +71,7 @@ procedure TAtlasEditInboxPlanTests.ModifiedDifferentBufferRejectsWithoutServerWr
 var
   mDecision: TAtlasEditInboxDecision;
 begin
-  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a getippt', True), 'a');
+  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a getippt', True), 'a', False);
   Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.ModifiedInEditor, mDecision.Step, 'ungespeichert geändert');
   Assert.IsFalse(mDecision.Applies, 'nicht anwenden');
   Assert.IsFalse(mDecision.ServerWrites, 'die Änderung des Benutzers geht vor');
@@ -75,7 +82,7 @@ procedure TAtlasEditInboxPlanTests.SavedDifferentBufferLetsTheServerWrite;
 var
   mDecision: TAtlasEditInboxDecision;
 begin
-  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a'#13#10, False), 'a'#10);
+  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a'#13#10, False), 'a'#10, False);
   Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.DiffersFromDisk, mDecision.Step, 'andere Zeilenenden');
   Assert.IsFalse(mDecision.Applies, 'nicht anwenden');
   Assert.IsTrue(mDecision.ServerWrites, 'der MCP-Server schreibt, die IDE lädt neu');
@@ -86,7 +93,7 @@ procedure TAtlasEditInboxPlanTests.MatchingSavedBufferAppliesAndSaves;
 var
   mDecision: TAtlasEditInboxDecision;
 begin
-  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a', False), 'a');
+  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a', False), 'a', False);
   Assert.IsTrue(mDecision.Applies, 'anwenden');
   Assert.IsFalse(mDecision.ServerWrites, 'der MCP-Server schreibt nicht');
   Assert.AreEqual('', mDecision.Reason);
@@ -97,7 +104,7 @@ procedure TAtlasEditInboxPlanTests.MatchingModifiedBufferAppliesWithoutSaving;
 var
   mDecision: TAtlasEditInboxDecision;
 begin
-  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a', True), 'a');
+  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('a', True), 'a', False);
   Assert.IsTrue(mDecision.Applies, 'anwenden');
   Assert.IsFalse(mDecision.SaveAfter, 'ungespeicherte Änderungen des Benutzers nicht mitspeichern');
 end;
@@ -138,7 +145,7 @@ begin
   mFiles := TAtlasEditorFilesFake.Create;
   mKeep := mFiles;
   mFiles.Put('U.pas', 'alt', False);
-  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'U.pas', 'alt', 'neu',
+  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'U.pas', 'alt', 'neu', False,
     function(const AEdit: TLspWorkspaceEdit): string
     begin
       mApplied := mApplied + [AEdit];
@@ -161,7 +168,7 @@ begin
   mFiles := TAtlasEditorFilesFake.Create;
   mKeep := mFiles;
   mFiles.Put('U.pas', 'alt', True);
-  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'U.pas', 'alt', 'neu',
+  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'U.pas', 'alt', 'neu', False,
     function(const AEdit: TLspWorkspaceEdit): string
     begin
       Result := '';
@@ -180,7 +187,7 @@ begin
   mFiles := TAtlasEditorFilesFake.Create;
   mKeep := mFiles;
   mCalls := 0;
-  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'Zu.pas', 'alt', 'neu',
+  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'Zu.pas', 'alt', 'neu', False,
     function(const AEdit: TLspWorkspaceEdit): string
     begin
       Inc(mCalls);
@@ -202,7 +209,7 @@ begin
   mFiles := TAtlasEditorFilesFake.Create;
   mKeep := mFiles;
   mFiles.Put('U.pas', 'alt', False);
-  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'U.pas', 'alt', 'neu',
+  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'U.pas', 'alt', 'neu', False,
     function(const AEdit: TLspWorkspaceEdit): string
     begin
       Result := 'schreibgeschützt';
@@ -211,6 +218,54 @@ begin
   Assert.IsFalse(mOutcome.ServerWrites, 'der MCP-Server schreibt nicht über den Fehler hinweg');
   Assert.AreEqual('schreibgeschützt', mOutcome.Reason);
   Assert.AreEqual(0, Integer(Length(mFiles.Saved)), 'nicht gespeichert');
+end;
+
+procedure TAtlasEditInboxPlanTests.ModifiedDifferentBufferHoldsWhenAsked;
+var
+  mDecision: TAtlasEditInboxDecision;
+begin
+  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('getippt', True), 'alt', True);
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.Hold, mDecision.Step, 'zurückhalten');
+  Assert.IsFalse(mDecision.Applies, 'nicht anwenden');
+  Assert.IsFalse(mDecision.ServerWrites, 'der MCP-Server schreibt nicht');
+  Assert.AreEqual(TAtlasEditInboxPlan.cReasonHeld, mDecision.Reason);
+  // Ohne Bitte bleibt es bei der Ablehnung wie bisher.
+  mDecision := TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('getippt', True), 'alt', False);
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.ModifiedInEditor, mDecision.Step);
+end;
+
+procedure TAtlasEditInboxPlanTests.HoldDoesNotTouchSavedOrMatchingBuffers;
+begin
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.DiffersFromDisk,
+    TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('anders', False), 'alt', True).Step, 'gespeichert');
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.Apply,
+    TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Opened('alt', True), 'alt', True).Step, 'Puffer wie erwartet');
+  Assert.AreEqual<TAtlasEditInboxStep>(TAtlasEditInboxStep.NotOpen,
+    TAtlasEditInboxPlan.Decide(TAtlasEditorFile.Closed, 'alt', True).Step, 'nicht offen');
+end;
+
+procedure TAtlasEditInboxPlanTests.RunHoldsWithoutApplying;
+var
+  mFiles: TAtlasEditorFilesFake;
+  mKeep: IAtlasEditorFiles;
+  mCalls: Integer;
+  mOutcome: TAtlasEditInboxOutcome;
+begin
+  mFiles := TAtlasEditorFilesFake.Create;
+  mKeep := mFiles;
+  mFiles.Put('U.pas', 'getippt', True);
+  mCalls := 0;
+  mOutcome := TAtlasEditInboxPlan.Run(mKeep, 'U.pas', 'alt', 'neu', True,
+    function(const AEdit: TLspWorkspaceEdit): string
+    begin
+      Inc(mCalls);
+      Result := '';
+    end);
+  Assert.IsTrue(mOutcome.Held, 'zurückgehalten');
+  Assert.IsFalse(mOutcome.Applied);
+  Assert.IsFalse(mOutcome.ServerWrites);
+  Assert.AreEqual(0, mCalls, 'nichts angewendet');
+  Assert.AreEqual(0, Integer(Length(mFiles.Saved)), 'nichts gespeichert');
 end;
 
 end.

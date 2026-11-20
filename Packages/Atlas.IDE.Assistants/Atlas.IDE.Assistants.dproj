@@ -106,6 +106,11 @@
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.LinkProtocol.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.LinkState.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.EditChange.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Queue.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.HeldEdits.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Questions.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Log.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Instructions.pas"/>
         <DCCReference Include="Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas"/>
         <DCCReference Include="Source\Core\AiProviders\Atlas.Core.AiProviders.Anthropic.pas"/>
@@ -118,9 +123,19 @@
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Activity.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.Strings.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.SettingsSection.pas"/>
+        <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.QuestionDialog.pas"/>
+        <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.LogFrame.pas">
+            <Form>AtlasAssistantsLogFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.BuildInbox.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.ContextExport.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.EditInbox.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.LogEntries.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.HeldEdits.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.QuestionInbox.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.LogWindow.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Instructions.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.DebugInbox.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.DebugBar.pas"/>

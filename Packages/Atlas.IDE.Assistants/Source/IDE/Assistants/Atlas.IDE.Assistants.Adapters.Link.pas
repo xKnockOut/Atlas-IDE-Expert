@@ -167,6 +167,8 @@ type
     function IsConnected: Boolean;
     /// <summary>Alle Verbindungen trennen.</summary>
     procedure DisconnectAll;
+    /// <summary>Befehl der Kopplung, Fehler gemeldet statt in die IDE geworfen.</summary>
+    class function Guarded(const ARun: TProc): TProc; static;
   end;
 
 implementation
@@ -690,6 +692,11 @@ begin
   begin
     Broadcast(TAtlasLinkMessages.SelectionChanged(mSelection));
   end;
+end;
+
+class function TAtlasIdeLink.Guarded(const ARun: TProc): TProc;
+begin
+  Result := TAtlasGuard.Wrap(TAtlasFeature.Server, ARun);
 end;
 
 procedure TAtlasIdeLink.Mention;

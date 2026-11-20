@@ -106,6 +106,8 @@ type
     cMaxTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMaxTestsLogMaxLines;
     cMinAssistantsContextSelectionMax = Atlas.Core.Settings.Plugin.Build.cMinAssistantsContextSelectionMax;
     cMaxAssistantsContextSelectionMax = Atlas.Core.Settings.Plugin.Build.cMaxAssistantsContextSelectionMax;
+    cMinAssistantsLogMax = Atlas.Core.Settings.Plugin.Build.cMinAssistantsLogMax;
+    cMaxAssistantsLogMax = Atlas.Core.Settings.Plugin.Build.cMaxAssistantsLogMax;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -411,6 +413,12 @@ type
       write FBuild.AssistantsLinkDiffPreview;
     property AssistantsLinkMentionKey: Integer read FBuild.AssistantsLinkMentionKey
       write FBuild.AssistantsLinkMentionKey;
+    property AssistantsEditHoldModified: Boolean read FBuild.AssistantsEditHoldModified
+      write FBuild.AssistantsEditHoldModified;
+    property AssistantsQuestionsInIde: Boolean read FBuild.AssistantsQuestionsInIde
+      write FBuild.AssistantsQuestionsInIde;
+    property AssistantsLog: Boolean read FBuild.AssistantsLog write FBuild.AssistantsLog;
+    property AssistantsLogMax: Integer read FBuild.AssistantsLogMax write FBuild.AssistantsLogMax;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
     property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram

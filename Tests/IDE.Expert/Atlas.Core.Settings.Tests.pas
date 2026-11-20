@@ -51,6 +51,9 @@ type
     procedure AssistantsContextRoundTrip;
     [Test]
     procedure AssistantsLinkRoundTrip;
+    /// <summary>#2605, #2620, #2049: Zurückhalten, Fragen in der IDE, Protokoll mit Höchstzahl.</summary>
+    [Test]
+    procedure AssistantsHoldQuestionsLogRoundTrip;
     /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
     [Test]
     procedure HoverSignatureParamsRoundTrip;
@@ -1375,6 +1378,30 @@ begin
   Assert.IsFalse(mLoaded.AssistantsLinkShareSelection);
   Assert.IsFalse(mLoaded.AssistantsLinkDiffPreview);
   Assert.AreEqual(0, mLoaded.AssistantsLinkMentionKey, 'keine Taste');
+end;
+
+procedure TAtlasPluginSettingsTests.AssistantsHoldQuestionsLogRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.AssistantsEditHoldModified);
+  Assert.IsTrue(mSettings.AssistantsQuestionsInIde);
+  Assert.IsTrue(mSettings.AssistantsLog);
+  Assert.AreEqual(500, mSettings.AssistantsLogMax);
+  mStore := TMemoryStore.Create;
+  mSettings.AssistantsEditHoldModified := False;
+  mSettings.AssistantsQuestionsInIde := False;
+  mSettings.AssistantsLog := False;
+  mSettings.AssistantsLogMax := 1;
+  mSettings.Save(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.AssistantsEditHoldModified);
+  Assert.IsFalse(mLoaded.AssistantsQuestionsInIde);
+  Assert.IsFalse(mLoaded.AssistantsLog);
+  Assert.AreEqual(TAtlasPluginSettings.cMinAssistantsLogMax, mLoaded.AssistantsLogMax);
 end;
 
 procedure TAtlasPluginSettingsTests.HoverSignatureParamsRoundTrip;
