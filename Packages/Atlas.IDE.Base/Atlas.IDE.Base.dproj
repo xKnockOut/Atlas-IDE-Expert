@@ -530,6 +530,7 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.LogRedaction.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.MainThread.pas"/>
+        <DCCReference Include="Source\Core\Processes\Atlas.Core.Processes.OutputLines.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas"/>

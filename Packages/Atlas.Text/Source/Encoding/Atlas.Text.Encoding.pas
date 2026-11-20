@@ -45,6 +45,10 @@ type
     class function IsValidUtf8(const ABytes: TBytes; AStart: Integer; out AHasNonAscii: Boolean): Boolean;
       overload; static;
     class function IsValidUtf8(const ABytes: TBytes; AStart: Integer): Boolean; overload; static;
+    /// <summary>Zahl der Bytes am Ende von ABytes, die eine angefangene UTF-8-Folge bilden (Leitbyte mit zu wenigen
+    /// Folgebytes, 0 bis 3); 0, wenn das Ende vollständig oder kein UTF-8 ist. Für Text, der stückweise ankommt.
+    /// </summary>
+    class function IncompleteUtf8Tail(const ABytes: TBytes): Integer; static;
     /// <summary>Nur 7-Bit-Zeichen.</summary>
     class function IsAscii(const ABytes: TBytes): Boolean; static;
     class function HasPrefix(const ABytes: TBytes; const APrefix: array of Byte): Boolean; static;
@@ -241,6 +245,29 @@ begin
     Inc(mIndex, mCount + 1);
   end;
   Result := True;
+end;
+
+class function TTextEncodingProbe.IncompleteUtf8Tail(const ABytes: TBytes): Integer;
+var
+  mIndex, mCount: Integer;
+  mCodePoint: Cardinal;
+begin
+  Result := 0;
+  // Vom Ende zurück über höchstens drei Folgebytes bis zum Leitbyte.
+  mIndex := High(ABytes);
+  while (mIndex >= 0) and (High(ABytes) - mIndex < cLead4Followers) and
+    ((ABytes[mIndex] and cContinuationMask) = cContinuationTag) do
+  begin
+    Dec(mIndex);
+  end;
+  if (mIndex < 0) or not Utf8Lead(ABytes[mIndex], mCount, mCodePoint) then
+  begin
+    Exit;
+  end;
+  if High(ABytes) - mIndex < mCount then
+  begin
+    Result := Length(ABytes) - mIndex;
+  end;
 end;
 
 class function TTextEncodingProbe.IsAscii(const ABytes: TBytes): Boolean;
