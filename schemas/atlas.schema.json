@@ -458,6 +458,51 @@
                 "description": "Nur blocking-call-in-main-thread: Aufrufe, die blockieren. Andere Namen werden unabhängig von ihren Argumenten gemeldet.",
                 "x-description-en": "Only blocking-call-in-main-thread: calls that block. Other names are reported regardless of their arguments."
               },
+              "guards": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur ota-entry-without-guard (#2751): Schutzroutinen, die den Rumpf eines Einstiegspunkts absichern, z. B. \"TAtlasGuard.Run\"; es zählt der Text vor einer Klammer. Die Korrektur nimmt den ersten Eintrag, mit Klammer als Anfang des Aufrufs, z. B. \"TAtlasGuard.Run(TAtlasFeature.Menu, \".",
+                "x-description-en": "Only ota-entry-without-guard (#2751): guard routines that protect the body of an entry point, e.g. \"TAtlasGuard.Run\"; the text before a parenthesis counts. The quick fix uses the first entry, with a parenthesis as the beginning of the call, e.g. \"TAtlasGuard.Run(TAtlasFeature.Menu, \"."
+              },
+              "interfaces": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["IOTA*Notifier*", "INTA*Notifier*", "IOTA*Wizard*", "IOTAKeyboardBinding", "INTACustomDrawMessage", "IOTALocalMenu", "IOTAProjectManagerMenu"],
+                "description": "Nur ota-entry-without-guard (#2751): Interfaces, deren Methoden die IDE aufruft (Einstiegspunkte), Muster mit * und ?.",
+                "x-description-en": "Only ota-entry-without-guard (#2751): interfaces whose methods the IDE calls (entry points), patterns with * and ?."
+              },
+              "workCalls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Sleep", "WaitFor*", "CreateProcess", "ShellExecute*", "Application.CreateForm", "ShowModal", "ShowMessage", "MessageDlg", "TTask.Run", "TThread.CreateAnonymousThread"],
+                "description": "Nur register-does-work (#2752): Aufrufe, die in Register als Arbeit gelten; mit Punkt der ganze Aufruf (TTask.Run), sonst der letzte Namensteil; Muster mit * und ?.",
+                "x-description-en": "Only register-does-work (#2752): calls that count as work in Register; with a dot the whole call (TTask.Run), otherwise the last name part; patterns with * and ?."
+              },
+              "workClasses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["TTimer", "TThread", "TForm", "THTTPClient", "TIdHTTP"],
+                "description": "Nur register-does-work (#2752): Klassen, deren Erzeugen in Register als Arbeit gilt, samt Nachfahren.",
+                "x-description-en": "Only register-does-work (#2752): classes whose creation counts as work in Register, including their descendants."
+              },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Register"],
+                "description": "Nur register-does-work (#2752): Einstiegsroutinen, z. B. auch \"*.RegisterModule\"; mit Punkt der ganze Name, sonst nur freie Routinen.",
+                "x-description-en": "Only register-does-work (#2752): entry routines, e.g. also \"*.RegisterModule\"; with a dot the whole name, otherwise only free routines."
+              },
               "maxSleepMs": {
                 "type": "integer",
                 "minimum": 0,

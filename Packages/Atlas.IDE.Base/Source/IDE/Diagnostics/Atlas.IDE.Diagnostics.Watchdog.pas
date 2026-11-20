@@ -226,6 +226,8 @@ begin
     FThread.Terminate;
     FWake.SetEvent;
     FThread.WaitFor;
+    // Gemeldete, noch wartende Hänger liefen sonst nach dem Freigeben mit FOwner im Hauptthread.
+    TThread.RemoveQueuedEvents(FThread);
     FreeAndNil(FThread);
   end;
   if FWindow <> 0 then

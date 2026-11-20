@@ -165,17 +165,23 @@ begin
 end;
 
 /// <summary>Sofort zählen und nach cSettleMs noch einmal.</summary>
+// Aus den Notifiern der IDE: keine Exception an die IDE.
 procedure Changed;
 begin
   if Listeners = nil then
   begin
     Exit;
   end;
-  Recount;
-  if Settle <> nil then
-  begin
-    Settle.Enabled := False;
-    Settle.Enabled := True;
+  try
+    Recount;
+    if Settle <> nil then
+    begin
+      Settle.Enabled := False;
+      Settle.Enabled := True;
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Open files: ' + TAtlasGuard.ErrorText(E));
   end;
 end;
 

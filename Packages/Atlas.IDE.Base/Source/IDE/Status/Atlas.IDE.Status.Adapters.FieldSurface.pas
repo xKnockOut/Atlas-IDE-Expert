@@ -210,17 +210,29 @@ end;
 
 procedure TFieldNotifier.WindowShow(const EditWindow: INTAEditWindow; Show, LoadedFromDesktop: Boolean);
 begin
-  FSurface.RequestTick;
+  TAtlasGuard.Run(TAtlasFeature.Status,
+    procedure
+    begin
+      FSurface.RequestTick;
+    end);
 end;
 
 procedure TFieldNotifier.WindowNotification(const EditWindow: INTAEditWindow; Operation: TOperation);
 begin
-  FSurface.RequestTick;
+  TAtlasGuard.Run(TAtlasFeature.Status,
+    procedure
+    begin
+      FSurface.RequestTick;
+    end);
 end;
 
 procedure TFieldNotifier.WindowActivated(const EditWindow: INTAEditWindow);
 begin
-  FSurface.RequestTick;
+  TAtlasGuard.Run(TAtlasFeature.Status,
+    procedure
+    begin
+      FSurface.RequestTick;
+    end);
 end;
 
 procedure TFieldNotifier.WindowCommand(const EditWindow: INTAEditWindow; Command, Param: Integer;
@@ -230,8 +242,12 @@ end;
 
 procedure TFieldNotifier.EditorViewActivated(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
 begin
-  // Aktive Datei gewechselt: Zeile „Datei“ nachführen.
-  FSurface.RequestTick;
+  TAtlasGuard.Run(TAtlasFeature.Status,
+    procedure
+    begin
+      // Aktive Datei gewechselt: Zeile „Datei“ nachführen.
+      FSurface.RequestTick;
+    end);
 end;
 
 procedure TFieldNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);

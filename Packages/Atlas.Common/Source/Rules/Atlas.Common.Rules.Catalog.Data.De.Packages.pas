@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDePackages: array[0..88] of string = (
+  cCatalogLinesDePackages: array[0..122] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implizit eingebundene Unit",',
@@ -26,6 +26,56 @@ const
     '        {',
     '          "name": "registerPairs",',
     '          "description": "Paare der Open Tools API als [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; ersetzt die Vorgabe."',
+    '        }',
+    '      ]',
+    '    },',
+    '{',
+    '      "id": "ota-entry-without-guard",',
+    '      "name": "Einstiegspunkt der IDE lässt Ausnahmen durch",',
+    '      "description": "Eine Methode, die die IDE aufruft, kann eine Ausnahme in die IDE durchlassen; die IDE zeigt sie als Fehlermeldung, im schlimmsten Fall bricht sie Speichern oder Laden ab. Einstie' +
+    'gspunkte sind die public- und published-Methoden einer Klasse, die ein Interface aus der Option interfaces implementiert, auch über Vorfahren (Vorgabe IOTA*Notifier*, INTA*Notifier*, IOTA*Wizard*, IOT' +
+    'AKeyboardBinding, INTACustomDrawMessage, IOTALocalMenu, IOTAProjectManagerMenu), die Methoden, die eine solche Klasse an AddKeyBinding oder AddMenuCommand übergibt, und in Units eines Packages, die Me' +
+    'nüeinträge in die IDE hängen (INTAServices, MainMenu, AddActionMenu, Editor- oder Projektmenü), die Methoden, die eine Routine OnClick oder OnExecute zuweist, wenn sie TMenuItem oder TAction nennt; Ha' +
+    'ndler eines eigenen Kontextmenüs fängt die Anwendung. Gemeldet wird ein Rumpf mit etwas, das werfen kann (Aufruf, raise, Umwandlung mit as), außerhalb eines try … except, das jede Ausnahme fängt, und ' +
+    'außerhalb des Aufrufs einer Schutzroutine aus der Option guards; ein raise im Handler zählt. Nicht als Wurf zählen eingebaute und reine RTL-Routinen (Length, Assigned, Supports, Copy, SameText …), Typ' +
+    'umwandlungen (auch T…(x) und I…(x) mit Typen, die der Index nicht kennt, etwa der VCL), inherited, anonyme Methoden (laufen später) und Aufrufe von Routinen der Unit, deren Rumpf nicht werfen kann. Rü' +
+    'mpfe, die nur Werte zuweisen (Felder, Result), bleiben still. Sicherheit hoch. Korrekturen: den Rumpf als anonyme Methode an die erste Schutzroutine übergeben (mit Klammer ist der Eintrag der Anfang d' +
+    'es Aufrufs, z. B. \"TAtlasGuard.Run(TAtlasFeature.Menu, \"; nicht, wenn der Rumpf Result, var- oder out-Parameter oder inherited nutzt) oder, mit einem Feld vom Typ ILogger, in try … except legen und ' +
+    'die Meldung mit Error protokollieren.",',
+    '      "options": [',
+    '        {',
+    '          "name": "guards",',
+    '          "description": "Schutzroutinen, die den Rumpf absichern, z. B. TAtlasGuard.Run; es zählt der Text vor einer Klammer. Die Korrektur nimmt den ersten Eintrag, mit Klammer als Anfang des Aufruf' +
+    's."',
+    '        },',
+    '        {',
+    '          "name": "interfaces",',
+    '          "description": "Interfaces, deren Methoden Einstiegspunkte sind (Muster mit * und ?)."',
+    '        }',
+    '      ]',
+    '    },',
+    '{',
+    '      "id": "register-does-work",',
+    '      "name": "Register startet Arbeit statt nur anzumelden",',
+    '      "description": "Die Prozedur Register eines Packages (bzw. eine andere Einstiegsroutine aus der Option entries) startet Arbeit, statt nur anzumelden: einen Aufruf aus workCalls (Vorgabe Sleep, W' +
+    'aitFor…, CreateProcess, ShellExecute…, Application.CreateForm, ShowModal, ShowMessage, MessageDlg, TTask.Run, TThread.CreateAnonymousThread) oder das Erzeugen einer Klasse aus workClasses bzw. eines N' +
+    'achfahren (Vorgabe TTimer, TThread, TForm, THTTPClient, TIdHTTP). Register läuft beim Start der IDE in nicht garantierter Reihenfolge der Packages; Arbeit dort verlängert den Start und greift womöglic' +
+    'h auf noch nicht geladene Packages zu. Geprüft werden auch Routinen der Unit, die nur von der Einstiegsroutine aus erreicht werden (freie Routinen des implementation-Teils, private Methoden derselben ' +
+    'Klasse); anonyme Methoden und als Argument übergebene Routinen laufen später und zählen nicht. Anmelden bleibt erlaubt (RegisterPackageWizard, RegisterComponents, AddNotifier …). Ein Eintrag mit Punkt' +
+    ' passt auf den ganzen Routinennamen (*.RegisterModule), ohne Punkt nur auf freie Routinen. Sicherheit hoch in der Einstiegsroutine, mittel in einer Hilfsroutine. Keine Korrektur: den Start in einen Wi' +
+    'zard, einen Notifier oder die Feature-Tabelle verlegen.",',
+    '      "options": [',
+    '        {',
+    '          "name": "workCalls",',
+    '          "description": "Aufrufe, die als Arbeit gelten; mit Punkt der ganze Aufruf (TTask.Run), sonst der letzte Namensteil; Muster mit * und ?."',
+    '        },',
+    '        {',
+    '          "name": "workClasses",',
+    '          "description": "Klassen, deren Erzeugen als Arbeit gilt, samt Nachfahren."',
+    '        },',
+    '        {',
+    '          "name": "entries",',
+    '          "description": "Einstiegsroutinen, z. B. auch *.RegisterModule; mit Punkt der ganze Name, sonst nur freie Routinen."',
     '        }',
     '      ]',
     '    },',
