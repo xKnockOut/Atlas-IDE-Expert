@@ -480,6 +480,10 @@ Atlas.Core.Assistants.AiGhost.Tests
 Atlas.Core.Assistants.DebugInbox.Tests
 Atlas.Core.Assistants.DebugGate.Tests
 Atlas.Core.Assistants.Activity.Tests
+Atlas.Core.Assistants.IdeProviders.Tests
+Atlas.IDE.Assistants.Adapters.TextRequests.Tests
+Atlas.IDE.Assistants.Adapters.TextSource.Tests
+Atlas.IDE.Assistants.IdeBridge.Tests
 Atlas.Core.Assistants.ContextState.Tests
 Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Notifications.Listeners.Tests

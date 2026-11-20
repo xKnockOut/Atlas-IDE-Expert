@@ -1582,6 +1582,68 @@
       "x-captionEn": "Time limit in ms (OpenAI-compatible)",
       "x-issue": "#2056"
     },
+    "AssistantsTextSource": {
+      "type": "string",
+      "enum": [
+        "ide",
+        "own",
+        "none"
+      ],
+      "default": "ide",
+      "description": "Wer einfache KI-Aufgaben anderer Atlas-Funktionen übernimmt (eine Frage, eine Antwort, z. B. Issue zusammenfassen): ide = ein KI-Anbieter der IDE (Smart CodeInsight, siehe assistants.ideProvider), sonst der eigene; own = der eigene Anbieter (assistants.provider), sonst der der IDE; none = keiner, die Funktionen bleiben ausgeblendet. Dateien unter assistants.exclude gehen an keinen.",
+      "x-key": "assistants.textSource",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "Quelle für einfache Aufgaben",
+      "x-captionEn": "Source for simple tasks",
+      "x-issue": "#2744",
+      "x-keywords": [
+        "KI",
+        "AI",
+        "Smart CodeInsight"
+      ]
+    },
+    "AssistantsIdeProvider": {
+      "type": "boolean",
+      "default": false,
+      "description": "Einen KI-Anbieter der IDE (Tools › Optionen › Smart CodeInsight, ab Delphi 12.2) für einfache Aufgaben mitbenutzen. Atlas schickt dann Anweisung und Inhalt an diesen Anbieter; ohne Streaming, Systemprompt und Gesprächsverlauf, deshalb nur für einfache Aufgaben. Der eigene Eintrag „Atlas (…)“ wird nie gewählt.",
+      "x-key": "assistants.ideProvider",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "KI-Anbieter der IDE (Smart CodeInsight) für einfache Aufgaben mitbenutzen",
+      "x-captionEn": "Use the IDE's AI provider (Smart CodeInsight) for simple tasks",
+      "x-issue": "#2744"
+    },
+    "AssistantsIdeProviderName": {
+      "type": "string",
+      "default": "",
+      "description": "Name des Anbieters der IDE, wie Smart CodeInsight ihn zeigt; leer = der erste aktive Anbieter mit Anweisung oder Chat. Ist der genannte Anbieter aus oder fehlt er, nutzt Atlas keinen anderen.",
+      "x-key": "assistants.ideProvider.name",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.ideProvider",
+      "x-control": "Textfeld mit Auswahl der Anbieter der IDE",
+      "x-caption": "Anbieter der IDE",
+      "x-captionEn": "IDE provider",
+      "x-issue": "#2744"
+    },
+    "AssistantsRegisterInIde": {
+      "type": "boolean",
+      "default": false,
+      "description": "Den eigenen KI-Anbieter (assistants.provider) als „Atlas (…)“ bei Smart CodeInsight der IDE anmelden: Chat und Anweisungen der IDE laufen dann über ihn, mit derselben Tagesgrenze (assistants.dailyLimit). Ohne eingerichteten Anbieter meldet Atlas nichts an; Umschalten wirkt ohne Neustart.",
+      "x-key": "assistants.registerInIde",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Eigenen Anbieter bei Smart CodeInsight der IDE anmelden",
+      "x-captionEn": "Register own provider with the IDE's Smart CodeInsight",
+      "x-issue": "#2745"
+    },
     "AssistantsInstructionsHint": {
       "type": "boolean",
       "default": true,

@@ -1505,6 +1505,13 @@ type
       write FAssistants.AssistantsOpenAiModel;
     property AssistantsOpenAiTimeoutMs: Integer read FAssistants.AssistantsOpenAiTimeoutMs
       write FAssistants.AssistantsOpenAiTimeoutMs;
+    property AssistantsTextSource: string read FAssistants.AssistantsTextSource write FAssistants.AssistantsTextSource;
+    property AssistantsIdeProvider: Boolean read FAssistants.AssistantsIdeProvider
+      write FAssistants.AssistantsIdeProvider;
+    property AssistantsIdeProviderName: string read FAssistants.AssistantsIdeProviderName
+      write FAssistants.AssistantsIdeProviderName;
+    property AssistantsRegisterInIde: Boolean read FAssistants.AssistantsRegisterInIde
+      write FAssistants.AssistantsRegisterInIde;
   end;
 
 implementation

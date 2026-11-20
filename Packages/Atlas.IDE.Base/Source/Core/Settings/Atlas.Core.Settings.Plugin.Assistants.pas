@@ -1,6 +1,7 @@
 ﻿unit Atlas.Core.Settings.Plugin.Assistants;
 
-// Einstellungen des IDE-Plugins, Bereich KI-Anbieter des Moduls KI-Assistenten (assistants.*, #1922, #2056):
+// Einstellungen des IDE-Plugins, Bereich KI-Anbieter des Moduls KI-Assistenten (assistants.*, #1922, #2056,
+// Anbieter der IDE #2744, #2745):
 // Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
 // fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch. Schlüssel stehen nie hier,
 // nur im Anmeldespeicher von Windows.
@@ -29,6 +30,8 @@ const
   cMinAssistantsOpenAiTimeoutMs = 500;
   cMaxAssistantsOpenAiTimeoutMs = 30000;
   cDefaultAssistantsOpenAiTimeoutMs = 3000;
+  /// <summary>Werte für assistants.textSource (#2744); der erste ist die Vorgabe.</summary>
+  cAssistantsTextSources: array[0..2] of string = ('ide', 'own', 'none');
 
 type
   /// <summary>Plugin-Einstellungen: KI-Anbieter für Schattentext-Vorschläge.</summary>
@@ -55,6 +58,16 @@ type
     /// <summary>Zeitlimit je Anfrage an den OpenAI-kompatiblen Server (assistants.openaiCompatible.timeoutMs).
     /// </summary>
     AssistantsOpenAiTimeoutMs: Integer;
+    /// <summary>Wer einfache Aufgaben übernimmt (assistants.textSource, #2744), einer aus cAssistantsTextSources.
+    /// </summary>
+    AssistantsTextSource: string;
+    /// <summary>Anbieter der IDE (Smart CodeInsight) für einfache Aufgaben nutzen (assistants.ideProvider, #2744).
+    /// </summary>
+    AssistantsIdeProvider: Boolean;
+    /// <summary>Name des Anbieters der IDE (assistants.ideProvider.name); leer = erster aktive.</summary>
+    AssistantsIdeProviderName: string;
+    /// <summary>Eigenen Anbieter bei Smart CodeInsight der IDE anmelden (assistants.registerInIde, #2745).</summary>
+    AssistantsRegisterInIde: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginAssistantsSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -82,6 +95,10 @@ begin
   Result.AssistantsOpenAiUrl := cDefaultAssistantsOpenAiUrl;
   Result.AssistantsOpenAiModel := '';
   Result.AssistantsOpenAiTimeoutMs := cDefaultAssistantsOpenAiTimeoutMs;
+  Result.AssistantsTextSource := cAssistantsTextSources[0];
+  Result.AssistantsIdeProvider := False;
+  Result.AssistantsIdeProviderName := '';
+  Result.AssistantsRegisterInIde := False;
 end;
 
 procedure TAtlasPluginAssistantsSettings.Normalize;
@@ -104,6 +121,8 @@ begin
   AssistantsOpenAiModel := Trim(AssistantsOpenAiModel);
   AssistantsOpenAiTimeoutMs := EnsureRange(AssistantsOpenAiTimeoutMs, cMinAssistantsOpenAiTimeoutMs,
     cMaxAssistantsOpenAiTimeoutMs);
+  AssistantsTextSource := Choice(AssistantsTextSource, cAssistantsTextSources);
+  AssistantsIdeProviderName := Trim(AssistantsIdeProviderName);
 end;
 
 procedure TAtlasPluginAssistantsSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -117,6 +136,10 @@ begin
   AIo.Text('AssistantsOpenAiUrl', AssistantsOpenAiUrl);
   AIo.Text('AssistantsOpenAiModel', AssistantsOpenAiModel);
   AIo.Number('AssistantsOpenAiTimeoutMs', AssistantsOpenAiTimeoutMs);
+  AIo.Text('AssistantsTextSource', AssistantsTextSource);
+  AIo.Flag('AssistantsIdeProvider', AssistantsIdeProvider);
+  AIo.Text('AssistantsIdeProviderName', AssistantsIdeProviderName);
+  AIo.Flag('AssistantsRegisterInIde', AssistantsRegisterInIde);
 end;
 
 end.

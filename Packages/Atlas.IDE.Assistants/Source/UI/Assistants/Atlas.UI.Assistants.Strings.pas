@@ -39,7 +39,13 @@ type
     ProbeFailed,
     // Anweisungsdateien für KI-Assistenten (#2615).
     InstructionsCommand, InstructionsWritten, InstructionsCurrent, InstructionsFailed, InstructionsNoAnswer,
-    InstructionsNoFiles, InstructionsStale, SettingsInstructionsHint);
+    InstructionsNoFiles, InstructionsStale, SettingsInstructionsHint,
+    // Anbieter der IDE (Smart CodeInsight, #2744, #2745).
+    SettingsTextSource, TextSourceIde, TextSourceOwn, TextSourceNone, SettingsIdeProvider, SettingsIdeProviderName,
+    IdeProvidersButton, IdeOptionsButton, IdeProvidersNone, IdeProviderLine, IdeProviderActive, IdeProviderOff,
+    FeatureChat, FeatureInstruction, FeatureModels, SettingsRegisterInIde, IdeRefused, TextExcluded,
+    BridgeNotReady, BridgeNoModels, BridgeLimit, FrameProvider, FrameToday, FrameOpenAtlas, FrameHint,
+    IdeOptionsMissing);
 
   TAtlasAssistantsStrings = class
   public
@@ -169,7 +175,33 @@ const
      'Atlas: Keine Anweisungsdatei in assistants.instructions.file.',
      'Atlas: Anweisungen für KI-Assistenten in %s veraltet; aktualisieren über Atlas › Anweisungen für ' +
        'KI-Assistenten aktualisieren.',
-     'Hinweis, wenn die Anweisungen für KI-Assistenten nach einer Änderung an atlas.json veraltet sind'),
+     'Hinweis, wenn die Anweisungen für KI-Assistenten nach einer Änderung an atlas.json veraltet sind',
+     'Quelle für einfache Aufgaben (z. B. Issue zusammenfassen)',
+     'Anbieter der IDE, sonst der eigene',
+     'Eigener Anbieter, sonst der der IDE',
+     'Keine',
+     'KI-Anbieter der IDE (Smart CodeInsight) für einfache Aufgaben mitbenutzen',
+     'Anbieter der IDE (leer = erster aktive)',
+     'Anbieter der IDE …',
+     'Smart CodeInsight öffnen',
+     'Die IDE meldet keine KI-Anbieter (Smart CodeInsight gibt es ab Delphi 12.2).',
+     '%s: %s, %s',
+     'aktiv',
+     'aus',
+     'Chat',
+     'Anweisung',
+     'Modelle',
+     'Eigenen Anbieter bei Smart CodeInsight der IDE anmelden („Atlas (…)“)',
+     'Der Anbieter %s der IDE hat die Anfrage nicht angenommen',
+     'Die Datei ist von KI-Anfragen ausgeschlossen (assistants.exclude)',
+     'Atlas: Kein eigener KI-Anbieter eingerichtet (Optionen › Atlas › KI-Assistenten).',
+     'Atlas: Der eigene KI-Anbieter liefert keine Modellliste.',
+     'Atlas: Tagesgrenze von %d Anfragen erreicht (assistants.dailyLimit).',
+     'Anbieter: %s',
+     'Heute %d von %d Anfragen',
+     'In Atlas einrichten …',
+     'Anbieter, Modell, Schlüssel und Tagesgrenze stehen auf der Seite Atlas › KI-Assistenten.',
+     'Die Optionen der IDE ließen sich nicht öffnen; Tools › Optionen › Smart CodeInsight von Hand wählen.'),
     ('An AI assistant is building %s in the IDE …',
      'Build for the AI assistant finished: %s, %d errors',
      'Build for the AI assistant refused: %s (%s)',
@@ -282,7 +314,33 @@ const
      'Atlas: no instruction file in assistants.instructions.file.',
      'Atlas: instructions for AI assistants in %s are out of date; update with Atlas › Update instructions ' +
        'for AI assistants.',
-     'Hint when the instructions for AI assistants are out of date after a change to atlas.json'));
+     'Hint when the instructions for AI assistants are out of date after a change to atlas.json',
+     'Source for simple tasks (e.g. summarize an issue)',
+     'IDE provider, otherwise the own one',
+     'Own provider, otherwise the IDE one',
+     'None',
+     'Use the IDE''s AI provider (Smart CodeInsight) for simple tasks',
+     'IDE provider (empty = first active one)',
+     'IDE providers …',
+     'Open Smart CodeInsight',
+     'The IDE reports no AI providers (Smart CodeInsight needs Delphi 12.2 or later).',
+     '%s: %s, %s',
+     'active',
+     'off',
+     'Chat',
+     'Instruction',
+     'Models',
+     'Register own provider with the IDE''s Smart CodeInsight ("Atlas (…)")',
+     'The IDE provider %s did not accept the request',
+     'The file is excluded from AI requests (assistants.exclude)',
+     'Atlas: no own AI provider set up (Options › Atlas › AI assistants).',
+     'Atlas: the own AI provider offers no model list.',
+     'Atlas: daily limit of %d requests reached (assistants.dailyLimit).',
+     'Provider: %s',
+     'Today %d of %d requests',
+     'Set up in Atlas …',
+     'Provider, model, key and daily limit are on the page Atlas › AI assistants.',
+     'The IDE options could not be opened; choose Tools › Options › Smart CodeInsight by hand.'));
 
 { TAtlasAssistantsStrings }
 

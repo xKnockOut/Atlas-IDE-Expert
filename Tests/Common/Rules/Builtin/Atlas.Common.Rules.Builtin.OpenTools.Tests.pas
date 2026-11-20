@@ -24,6 +24,8 @@ type
     [Test]
     procedure RemovedIndexIsSilent;
     [Test]
+    procedure ResultOutsideAddNotifierIsReported;
+    [Test]
     procedure RegisterProcedureIsSilent;
     [Test]
     procedure LocalReceiverWithoutFix;
@@ -229,10 +231,23 @@ begin
     '  FProject.RemoveNotifier(Index);'#10'end;'#10 +
     'procedure Beobachten(const AProject: IOTAProject);'#10'var'#10'  Notifier: TN;'#10'begin'#10 +
     '  Notifier := TN.Create;'#10'  Notifier.FIndex := AProject.AddNotifier(Notifier);'#10'end;'#10'end.');
+  // Weitergereicht in einer eigenen AddNotifier: der Aufrufer meldet ab.
+  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10 +
+    'function TP.AddNotifier(const ANotifier: IOTANotifier): Integer;'#10'begin'#10 +
+    '  Result := FInner.AddNotifier(ANotifier);'#10'end;'#10'end.');
   // Im Ausdruck verwendet: unklar, keine Meldung.
   TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create,
     'unit U;'#10'interface'#10'implementation'#10 +
     'procedure P;'#10'begin'#10'  Merken(Services.AddNotifier(TN.Create));'#10'end;'#10'end.');
+end;
+
+procedure TOpenToolsRulesTests.ResultOutsideAddNotifierIsReported;
+begin
+  // Result in einer anderen Routine: Der Index geht verloren, wenn der Aufrufer ihn nicht kennt.
+  TRuleAssert.Reports(TOtaNotifierNotRemovedRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10 +
+    'function TP.Start: Integer;'#10'begin'#10'  Result := Services.AddNotifier(TN.Create);'#10'end;'#10'end.');
 end;
 
 procedure TOpenToolsRulesTests.RegisterProcedureIsSilent;
