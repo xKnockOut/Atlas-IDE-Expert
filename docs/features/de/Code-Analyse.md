@@ -129,6 +129,8 @@ Einstellungen: `fix.bulk`
 - harte Umwandlungen zwischen Klassen, die weder Vorfahr noch Nachfahr voneinander sind (`TButton(mEdit)`; still beim Zugriffsklassen-Trick, Option `allowTypes`, Korrektur `(mEdit as TButton)`)
 - `@S[1]` bzw. `PChar(@S[1])` als Adresse der Zeichen (Bereichsfehler bei leerem String; Korrektur `PChar(S)`)
 - Formatstrings, die nicht zu ihren Argumenten passen (`Format('%d', [Name])`, zu wenige Argumente, `%q`)
+- mehrere lokale Objekte an einem gemeinsamen `try … finally`, bei denen ein früheres leckt, wenn ein späteres `Create` scheitert (`multiple-create-in-try`, #2630; sichere Korrektur: Variablen vor dem `try` auf `nil` setzen und die `Create` ins `try` verschieben)
+- Konstruktoren, die eine virtuelle Methode aufrufen, deren Überschreibung in einem Nachfahren ein Feld liest, das erst nach `inherited` gesetzt wird (`virtual-call-in-constructor`, #2623; Nachfahren auch aus anderen Units über den Index, die Meldung nennt Nachfahr und Feld)
 
 ### Threads
 
@@ -145,6 +147,8 @@ Einstellungen: `fix.bulk`
 - `TTask.Run` ohne `try … except`, dessen Exceptions verloren gehen (die Korrektur schließt den Rumpf ein)
 - Variablen und Sammlungen von außerhalb, die `TParallel.For` oder in einer Schleife gestartete Tasks ohne Sperre schreiben (die Korrektur nimmt `TInterlocked` bzw. eine `TMonitor`-Sperre)
 - Zähler, die `Execute`, `TTask.Run` oder anonyme Threads ohne Sperre mit `Inc` erhöhen (die Korrektur nimmt `TInterlocked.Increment`)
+- `TThread.Execute`, dessen Rumpf nicht ganz in `try … except` steht: Eine Ausnahme beendet den Thread sonst still (`thread-execute-without-except`, #2632; still, wenn die Klasse `FatalException` auswertet; Korrektur mit Meldung über ein `ILogger`-Feld)
+- Warteschleifen, die nur mit `Sleep` auf ein Feld, eine Eigenschaft oder eine globale Variable warten, statt auf ein Ereignis (`sleep-polling-loop`, #2626; die Meldung nennt `TEvent.WaitFor`, `TThread.WaitFor` oder `ITask.Wait`)
 
 ### Datenbank
 
@@ -326,6 +330,15 @@ Compilerfehler schon beim Tippen, ohne Build.
 - unsicherer Code nur dort, wo die Warnung wie bei dcc eingeschaltet ist (`{$WARN UNSAFE_CODE ON}`, `DCC_UNSAFE_CAST = true` …; Regel `unsafe-code`, #1378):
   - `@` auf Variablen, Felder und Parameter (wie W1047)
   - Umwandlungen eines `Pointer` in eine Klasse (wie W1048)
+
+#### Fallen, die Free Pascal übersetzt, Delphi aber nicht (#2095, #1345, #1899)
+
+- Funktionsreferenz in `Exit(ARef)` oder im Array-Literal neben `+` (`FHandlers + [AHandler]`): Delphi ruft sie auf, statt sie als Wert zu nehmen (`method-reference-called`, wie E2035 bzw. E2010; sichere Korrektur `Result := ARef; Exit;`)
+- Konstante einer anderen Klasse oder eines Vorfahren in der Klassendeklaration ohne Klassennamen (`class-constant-unqualified`, wie E2003; sichere Korrektur)
+- Aufzählungswert `Continue`, `Break`, `Exit` oder `Halt` ohne `{$SCOPEDENUMS ON}` (`enum-hides-keyword`, wie E2014)
+- `reference to` direkt als Typ eines Felds oder einer Variablen (`inline-reference-type`, wie E2003)
+- geerbtes Mitglied wie `Scaled` oder `Padding`, das in Methoden eine Routine, Konstante oder Variable der Unit verdeckt (`member-hides-unit-symbol`)
+- `#13` und `#10` getrennt ersetzt, was aus `#13#10` zwei Zeichen macht (`line-break-split-replace`)
 
 #### OLE-Automation (#1373)
 

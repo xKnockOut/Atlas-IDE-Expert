@@ -4,7 +4,7 @@ Back to the [README](../../../README.md)
 
 ## MCP tools
 
-The server offers Claude Code 33 MCP tools:
+The server offers Claude Code 55 MCP tools:
 
 ### Search and understand
 
@@ -22,6 +22,8 @@ The server offers Claude Code 33 MCP tools:
 - query diagnostics, metrics and TODOs
 - find unused code (`find_unused_code`)
 - read a unit's dependencies including cycles (`get_unit_dependencies`)
+- find the implementations of an interface or virtual method, with their kind (implemented, overridden, abstract, method resolution, delegation via `implements`) and optionally the body (`find_implementations`)
+- run up to 10 read-only queries in one call on one shared index state (`batch`)
 
 ### Check, build, test
 
@@ -36,6 +38,15 @@ The server offers Claude Code 33 MCP tools:
 - read the last test run of the IDE without running again (`get_last_tests`: red tests with file:line, expected/actual, log, newly red, flaky, leak, stale)
 - see where the developer currently is in the IDE (`get_ide_context`: file, cursor, method, selection, active project, last build, tabs)
 
+### Debug in the running IDE
+
+Off by default (#1874, `debug.mcp`):
+
+- start and stop a project or a single DUnitX test in the debugger (`debug_start`, `debug_stop`)
+- set and remove breakpoints (`set_breakpoint`, `remove_breakpoint`); they are in the group `Atlas-KI`, your own stay untouched
+- continue and step (`debug_continue`, `debug_step`), read call stack, locals and threads (`debug_state`), evaluate expressions (`debug_evaluate`)
+- calls with side effects and assignments need their own permissions (`debug.mcp.sideEffects`, `debug.mcp.modify`), the assistant only joins a session the developer is debugging with `debug.mcp.attach`
+
 ### Change
 
 Each with preview:
@@ -46,6 +57,11 @@ Each with preview:
 - extract method, optionally with equal places (`extract_method`)
 - refactorings of the context menu with arguments instead of questions (`refactor`)
 - fix all safe findings of rules at once (`fix_findings`)
+- after writing, each of these tools reports the new and fixed findings of the changed files (#2603, `mcp.reportFindingsAfterEdit`, on by default; `delphi://edits/last` returns the last result)
+
+### Protected files (#2608)
+
+`assistants.protected` in `atlas.json` names files AI assistants must not change (generated units, `CHANGELOG.md` …), each pattern with a reason and the right way. The writing MCP tools refuse such a change and then write nothing at all, not even another file of the call; the preview already names the file. The hook reports changes made with the assistant's own tools as errors and refuses them beforehand in the `atlas` plugin; `delphi://conventions` lists the protected files.
 
 ### Resource
 
@@ -57,6 +73,20 @@ The AI assistants module (`assistants.enabled`) takes requests from MCP clients 
 
 - **“AI assistant active” display** (#1906, `assistants.banner`): a field in the Atlas status field shows which project is being built for an AI assistant or which open file it changed last (for one minute).
 - **Pause for AI:** a click on the field or the command “Pause AI assistants” in the palette pauses AI assistants. The IDE then refuses new builds and changes to open files with a reason, and the MCP server does not write the file itself either; a running build finishes. While paused the field stays visible, a second click ends the pause.
+- **“AI assistant is debugging” bar** (#1874, `debug.mcp.banner`): while an assistant debugs through MCP, the editor shows who it is, with “Pause for AI” and “Take over” (the session then belongs to the developer again).
+- **Where the developer is** (#2050, `assistants.context`): the module gives `get_ide_context` the open file with cursor and method, the selection (at most `assistants.context.selectionMax` characters), the active project and the tabs.
+
+## AI providers
+
+The AI assistants module can ask an AI provider itself (`assistants.provider`). The key is kept only in the Windows credential store (Options › AI assistants, “Store key …”).
+
+- **Anthropic API:** model in `assistants.model`.
+- **OpenAI-compatible** (#2056, `assistants.provider` = `openai-compatible`): local models through LM Studio, llama.cpp server, Ollama or a company gateway (`assistants.openaiCompatible.url`, `.model`, `.timeoutMs`). “Fetch models” gets the list from the server, “Test connection” shows response time and model and warns when the answer takes longer than the typing pause. A key is optional and is only sent over https or to your own machine.
+
+What uses the provider:
+
+- **AI ghost text** (#1922, `assistants.inlineSuggestions`, off by default): when no learned suggestion fits after Enter, Atlas asks the provider. It sends the excerpt around the caret (`assistants.contextLines`) and the class headers from the index; files from `assistants.exclude` are never sent, `assistants.dailyLimit` limits the requests per day. A suggestion only appears after the server has checked it (no new syntax errors, only known identifiers). Tab accepts, Esc discards.
+- **Summarize an issue** (#2462, `issues.aiSummary`): “Summarize” in the “Atlas issue” window shows the state, open questions (and who should answer), the next step and the affected units as links into the editor. A notice comes before the first send per tracker connection; the summary is kept per issue and marked as out of date when the issue changes. “Use as comment” only fills the comment field.
 
 ## Prompts (#1357)
 
