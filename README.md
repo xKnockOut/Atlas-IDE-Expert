@@ -85,6 +85,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Results window** for references, callers and implementations, plus impact and data flow
 - **Bookmarks, notes, minimap and sticky scroll**
 - **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
+- **Fold large blocks:** collapse `if`/`else` branches, loops, `try`, `repeat` and `case` blocks from 15 lines (`editor.blockFolds.minLines`) through temporary region markers on the same lines, removed again before saving
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **364 check rules** while you type: 244 bugs, 109 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
@@ -172,7 +173,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too; and the server answers: messages, code actions, hovers, MCP answers, reports, the architecture map, the messages of `--check` and the MCP tool descriptions; without `language` in settings.json the server follows the language the IDE actually shows (its loaded resource files, then `Locales` in the registry, then Windows), and `atlas.log` names the detected language and its source
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
-- **33 MCP tools** to read, check, build, test, rename and fix Delphi code
+- **55 MCP tools** to read, check, build, test, rename and fix Delphi code
 - **Refactorings over MCP:** `refactor` lists the refactorings of the context menu at a position with their arguments and runs them with arguments instead of questions (change signature, extract interface or superclass, safe delete, move member, type alias …), with a preview of all files and as one undo step in the IDE
 - **Boundary cases as test cases:** `suggest_test_cases` reads them from the conditions of a routine (`>= 100` gives 99, 100, 101; case labels, text comparisons, lengths) as `[TestCase]` values; in the IDE “Suggest boundary cases …” shows them as a list and writes the picked ones into the test unit, with your expected values or “Take today’s result” from a run
 - **The started issue for AI assistants:** after "Start" the plugin stores the issue with checklist, code references, description and latest comments next to the commit prefix in the Git directory; `get_current_issue` reads it without tracker access and without a token. When someone ticks an item in the tracker, it shows there after the next refresh (`issues.shareWithAssistants`, on by default)

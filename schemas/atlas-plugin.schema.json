@@ -9050,6 +9050,39 @@
       "x-captionEn": "Regions when a file opens",
       "x-issue": "#1814"
     },
+    "BlockFolds": {
+      "description": "Große Anweisungsblöcke einklappen (#2795): if-, else-, Schleifen-, with-, case-, on-, try- und repeat-Blöcke in Routinen. Der Delphi-Editor faltet sie nicht selbst; Atlas setzt dafür eine Region (*$REGION …*) … (*$ENDREGION*) in dieselben Zeilen und klappt sie zu. Aufklappen und Speichern nehmen die Marken wieder heraus, in die Datei kommen sie nie. Befehle „Block einklappen“, „Große Blöcke einklappen“ und „Blöcke aufklappen“ (Menü Atlas, Kontextmenü, Befehlspalette); aus schaltet sie ab.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.blockFolds",
+      "x-area": "editor",
+      "x-feature": "RegionFolds",
+      "x-page": "Editor",
+      "x-caption": "Große Blöcke einklappbar",
+      "x-captionEn": "Large blocks can be collapsed",
+      "x-issue": "#2795",
+      "x-keywords": [
+        "Falten",
+        "Folding",
+        "if",
+        "Block"
+      ]
+    },
+    "BlockFoldsMinLines": {
+      "description": "Mindestlänge eines Blocks in Zeilen (3 bis 1000) für „Große Blöcke einklappen“; „Block einklappen“ an der Schreibmarke nimmt den innersten Block ab dieser Länge.",
+      "type": "integer",
+      "default": 15,
+      "minimum": 3,
+      "maximum": 1000,
+      "x-key": "editor.blockFolds.minLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.blockFolds",
+      "x-control": "Zahl",
+      "x-caption": "Ab Zeilen",
+      "x-captionEn": "From lines",
+      "x-issue": "#2795"
+    },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",
       "type": "integer",
