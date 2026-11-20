@@ -1756,6 +1756,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Status.Server.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.FieldPlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Status.FieldPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.FieldFlow.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.StatusFieldSurfaceFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Status.FieldFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>

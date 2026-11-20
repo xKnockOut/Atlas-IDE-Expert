@@ -2,7 +2,9 @@ name: Release
 
 # Veröffentlicht eine Version (#83), ausgelöst durch ein Tag v<SemVer>, z. B. v0.2.0.
 #
-# 1. Prüft, dass Tag, TProductVersion und Claude-Code-Plugin dieselbe Version tragen.
+# 1. Prüft, dass Tag, TProductVersion und Claude-Code-Plugin dieselbe Version tragen,
+#    und bei einer stabilen Version, dass seit dem letzten Kandidaten nur Korrekturen
+#    kamen oder ein Commit die Abweichung begründet (Tools/Check-ReleaseCandidate.ps1).
 # 2. Baut den Server (Win64 Release) auf dem selbst gehosteten Delphi-Runner,
 #    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
 #    SIGN_CERT_PASSWORD gesetzt sind.
@@ -38,6 +40,9 @@ jobs:
       version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Ganze Historie samt Tags für den Vergleich mit dem letzten Kandidaten.
+          fetch-depth: 0
       - name: Versionen vergleichen
         id: check
         shell: pwsh
@@ -45,6 +50,10 @@ jobs:
           $version = '${{ github.ref_name }}'.TrimStart('v')
           ./Tools/Check-Version.ps1 -Expected $version
           "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Seit dem letzten Kandidaten nur Korrekturen
+        shell: pwsh
+        # Begründung aus einer Zeile „Ohne neuen Kandidaten: …“ in einem Commit seit dem Kandidaten (Set-Version.ps1 -Reason).
+        run: ./Tools/Check-ReleaseCandidate.ps1 -Version ('${{ github.ref_name }}'.TrimStart('v')) -ReasonFromHistory
       - name: Release-Notizen prüfen
         shell: pwsh
         # Vor dem Bauen: GitHub lehnt Notizen über 125000 Zeichen ab, das Release scheiterte sonst erst am Ende.
