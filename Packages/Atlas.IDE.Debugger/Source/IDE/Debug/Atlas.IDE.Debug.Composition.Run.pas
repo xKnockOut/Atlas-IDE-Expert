@@ -47,6 +47,8 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.EventLog,
   Atlas.IDE.Debug.Logpoints,
+  Atlas.IDE.Debug.LogpointValues,
+  Atlas.UI.Debug.Logpoints.Strings,
   Atlas.IDE.Debug.LogpointGutter,
   Atlas.IDE.Debug.NoSource,
   Atlas.IDE.Debug.Restart,
@@ -116,6 +118,12 @@ end;
 function LogpointsVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugLogpoints;
+end;
+
+/// <summary>Logpunkt-Verlauf (#2552): braucht Logpunkte und das Ereignisprotokoll, aus dem er liest.</summary>
+function LogpointValuesVisible: Boolean;
+begin
+  Result := LogpointsVisible and EventLogVisible and TAtlasIdeSettings.Current.DebugLogpointsRecordValues;
 end;
 
 procedure StartNoSource;
@@ -215,6 +223,15 @@ end;
 procedure StartOpenedFiles;
 begin
   TAtlasIdeOpenedFiles.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end);
+end;
+
+procedure StartLogpointValues;
+begin
+  TAtlasIdeLogpointValues.Start(
     procedure(AText: string)
     begin
       TAtlasIdeHost.Message(AText);
@@ -328,6 +345,16 @@ begin
       begin
         Result := TAtlasIdeLogpoints.Started;
       end, StartLogpoints, TAtlasIdeLogpoints.Release),
+    // Logpunkt-Verlauf (#2552): hört nach dem Ereignisprotokoll mit.
+    TAtlasFeaturePart.When('DebugLogpointValues',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and LogpointValuesVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeLogpointValues.Started;
+      end, StartLogpointValues, TAtlasIdeLogpointValues.Release),
     // Fenster „Kein Quelltext“ (#869): Zuhörer der Debug-Sitzung.
     TAtlasFeaturePart.When('DebugNoSource',
       function(ALevel: TAtlasSafeLevel): Boolean
@@ -395,6 +422,8 @@ begin
       TAtlasIdeLogpoints.EnableAll, LogpointsVisible),
     RunCommand('Atlas.LogpointsDelete', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LogpointDeleteAll),
       TAtlasIdeLogpoints.DeleteAll, LogpointsVisible),
+    RunCommand('Atlas.DebugLogpointValues', TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.ValuesCommand),
+      TAtlasIdeLogpointValues.ShowWindow, LogpointValuesVisible),
     RunCommand(cRestartCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RestartCommand),
       TAtlasIdeDebugRestart.Execute, RestartVisible),
     RunCommand(cReattachCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ReattachCommandPlain),
@@ -537,6 +566,8 @@ procedure ApplyRunSettings;
 begin
   // debug.eventLog aus: Fenster zu; debug.eventLogColors: neu zeichnen.
   TAtlasIdeDebugEventLog.ApplySettings;
+  // debug.logpoints.recordValues aus: Fenster zu; recordLimit: Reihen kürzen (#2552).
+  TAtlasIdeLogpointValues.ApplySettings;
   // debug.profiler aus: Fenster „Atlas: Profil“ zu (#2057).
   ApplyProfilerSettings;
 end;
@@ -544,6 +575,7 @@ end;
 procedure RunThemeChanged;
 begin
   TAtlasIdeDebugEventLog.ThemeChanged;
+  TAtlasIdeLogpointValues.ThemeChanged;
   TAtlasIdeDebugNoSource.ThemeChanged;
   TAtlasIdeDebugRestart.ThemeChanged;
   TAtlasIdeLaunchGroups.ThemeChanged;
