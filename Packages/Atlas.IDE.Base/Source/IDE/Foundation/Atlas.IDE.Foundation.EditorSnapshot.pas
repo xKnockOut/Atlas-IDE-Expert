@@ -61,7 +61,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Lsp.TextOffsets,
-  Atlas.Core.Editor.LineMove;
+  Atlas.Core.Editor.LineMove,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TEntry = record
@@ -103,11 +104,17 @@ begin
   Result := Entries;
 end;
 
+// Aus den Notifiern der IDE: keine Exception an die IDE.
 procedure InvalidateView(const AView: IOTAEditView);
 begin
-  if (AView <> nil) and (AView.Buffer <> nil) then
-  begin
-    TAtlasEditorSnapshots.Invalidate(AView.Buffer.FileName);
+  try
+    if (AView <> nil) and (AView.Buffer <> nil) then
+    begin
+      TAtlasEditorSnapshots.Invalidate(AView.Buffer.FileName);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Editor snapshots: ' + TAtlasGuard.ErrorText(E));
   end;
 end;
 
@@ -124,7 +131,12 @@ end;
 procedure TSnapshotNotifier.WindowActivated(const EditWindow: INTAEditWindow);
 begin
   // Unbekannt, welche Datei: alle neu prüfen.
-  TAtlasEditorSnapshots.Invalidate;
+  try
+    TAtlasEditorSnapshots.Invalidate;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Editor snapshots: ' + TAtlasGuard.ErrorText(E));
+  end;
 end;
 
 procedure TSnapshotNotifier.WindowCommand(const EditWindow: INTAEditWindow; Command, Param: Integer;

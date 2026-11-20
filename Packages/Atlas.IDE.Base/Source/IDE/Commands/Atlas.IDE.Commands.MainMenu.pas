@@ -651,7 +651,13 @@ end;
 
 procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);
 begin
-  TAtlasGuard.EnableAll;
+  // Nicht über Run(Menu): Auch ein abgeschaltetes Menü-Feature soll sich wieder einschalten lassen.
+  try
+    TAtlasGuard.EnableAll;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Enable all features: ' + TAtlasGuard.ErrorText(E));
+  end;
 end;
 
 procedure TAtlasMainMenu.TimerTick(Sender: TObject);

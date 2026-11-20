@@ -10,6 +10,9 @@
 //                             Abschnitt), RemoveNotifier im Destruktor (legt ihn bei Bedarf an); in
 //                             Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in
 //                             finalization. Keine Korrektur, wenn der Empfänger lokal ist.
+//   ota-entry-without-guard   Methode, die die IDE aufruft (Notifier, Wizard, Tastaturbindung, Menüeintrag),
+//                             lässt eine Ausnahme in die IDE durch (#2751; Unit OpenTools.EntryGuard).
+//   register-does-work        Register startet Arbeit statt nur anzumelden (#2752; Unit OpenTools.Register).
 
 interface
 
@@ -51,6 +54,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.FreeFields,
+  Atlas.Common.Rules.Builtin.OpenTools.EntryGuard,
+  Atlas.Common.Rules.Builtin.OpenTools.Register,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -911,6 +916,8 @@ end;
 procedure RegisterOpenToolsRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOtaNotifierNotRemovedRule.Create);
+  ARegistry.Register(TOtaEntryWithoutGuardRule.Create);
+  ARegistry.Register(TRegisterDoesWorkRule.Create);
 end;
 
 initialization
