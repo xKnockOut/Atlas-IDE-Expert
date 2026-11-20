@@ -34,6 +34,10 @@ type
   public const
     cDefaultPattern = '{unit}.Tests';
     cPlaceholder = '{unit}';
+    /// <summary>Platzhalter in testUnits.folder (#2800): Ordner der Unit unter dem Quellordner.</summary>
+    cPathPlaceholder = '{path}';
+    /// <summary>Platzhalter in testUnits.folder (#2800): Namensraum der Unit als Ordner.</summary>
+    cNamespacePlaceholder = '{namespace}';
   public
     /// <summary>Name der Testunit zu AUnitName nach APattern; leeres Muster gilt als Vorgabe.</summary>
     class function TestUnitName(const AUnitName, APattern: string): string; static;
@@ -70,6 +74,16 @@ type
     /// <summary>Pfad von AFileName relativ zum Ordner ABaseDir, mit \ wie in .dpr und .dproj;
     /// AFileName unverändert, wenn es auf einem anderen Laufwerk liegt.</summary>
     class function RelativePath(const ABaseDir, AFileName: string): string; static;
+    /// <summary>Ordner von AFileName unter dem längsten passenden Quellordner aus ASourceRoots (absolute Pfade),
+    /// mit PathDelim getrennt und ohne Trenner am Ende; '' direkt im Quellordner oder außerhalb aller (#2800).
+    /// </summary>
+    class function SourcePath(const ASourceRoots: TArray<string>; const AFileName: string): string; static;
+    /// <summary>Namensraum von AUnitName als Ordner: Atlas.Core.Net.Http ergibt Atlas\Core\Net; '' ohne Punkt.
+    /// </summary>
+    class function NamespacePath(const AUnitName: string): string; static;
+    /// <summary>Setzt {path} (ASourcePath) und {namespace} (aus AUnitName) in AFolder ein; Trenner werden zu
+    /// PathDelim, leere Platzhalter hinterlassen keine doppelten Trenner (#2800).</summary>
+    class function ExpandFolder(const AFolder, ASourcePath, AUnitName: string): string; static;
   end;
 
 implementation
@@ -639,6 +653,67 @@ begin
     begin
       Result := Result + '\';
     end;
+  end;
+end;
+
+/// <summary>Pfad mit PathDelim als Trenner.</summary>
+function NativePath(const APath: string): string;
+begin
+  Result := StringReplace(StringReplace(APath, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
+end;
+
+class function TTestUnits.SourcePath(const ASourceRoots: TArray<string>; const AFileName: string): string;
+var
+  mDir, mEntry, mRoot, mBest: string;
+begin
+  mDir := ExtractFilePath(NativePath(AFileName));
+  mBest := '';
+  for mEntry in ASourceRoots do
+  begin
+    if mEntry = '' then
+    begin
+      Continue;
+    end;
+    mRoot := IncludeTrailingPathDelimiter(NativePath(mEntry));
+    // Längster Quellordner gewinnt: "Source" und "Source\Lib" zugleich ergeben für Lib den kürzeren Rest.
+    if StartsText(mRoot, mDir) and (Length(mRoot) > Length(mBest)) then
+    begin
+      mBest := mRoot;
+    end;
+  end;
+  if mBest = '' then
+  begin
+    Exit('');
+  end;
+  Result := ExcludeTrailingPathDelimiter(Copy(mDir, Length(mBest) + 1, MaxInt));
+end;
+
+class function TTestUnits.NamespacePath(const AUnitName: string): string;
+var
+  mDot: Integer;
+begin
+  mDot := LastDelimiter('.', AUnitName);
+  if mDot = 0 then
+  begin
+    Exit('');
+  end;
+  Result := StringReplace(Copy(AUnitName, 1, mDot - 1), '.', PathDelim, [rfReplaceAll]);
+end;
+
+class function TTestUnits.ExpandFolder(const AFolder, ASourcePath, AUnitName: string): string;
+var
+  mDouble: Integer;
+begin
+  Result := StringReplace(AFolder, cPathPlaceholder, NativePath(ASourcePath), [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, cNamespacePlaceholder, NamespacePath(AUnitName), [rfReplaceAll, rfIgnoreCase]);
+  Result := NativePath(Result);
+  // Leerer Platzhalter ("Tests/{path}/Unit" direkt im Quellordner): doppelten Trenner zusammenziehen, aber nicht
+  // am Anfang (UNC-Pfad \\Server).
+  mDouble := Pos(PathDelim + PathDelim, Result, 2);
+  while mDouble > 0 do
+  begin
+    Delete(Result, mDouble, 1);
+    mDouble := Pos(PathDelim + PathDelim, Result, 2);
   end;
 end;
 

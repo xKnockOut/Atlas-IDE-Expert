@@ -266,6 +266,7 @@ pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://unit/Shel
 ```
 
 - `-Strict` outputs the Inspector's schema check for `tools/list` (path, problem, suggestion) and ends with exit code 6 if a schema is not portable across clients.
+- `-Arguments @{…}` only works from within PowerShell; from bash or cmd use `-ArgumentsJson '{…}'`, e.g. `pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt -Method tools/call -Tool get_impact -ArgumentsJson '{"name":"TKundenSuche.Suchen","depth":2}'`. Numbers, booleans, lists and objects arrive with their type either way (the Inspector converts according to the input schema).
 - `-Restricted` starts the server with `--restricted` (read-only tools only), `-Log` with `--log`.
 - The server starts via a generated session configuration (`--config`); switches like `--mcp` thus reach the server, not the Inspector. The Inspector keeps secrets only in memory (`MCP_INSPECTOR_SECRET_STORE=memory`); Atlas needs none.
 
@@ -279,9 +280,10 @@ npx -y @modelcontextprotocol/inspector@2.12.0 --cli AtlasServer --mcp --root . -
 ### Trial run of all tools
 
 ```powershell
-pwsh Tools/Test-McpTools.ps1                       # alle Werkzeuge, Ordner Tests/Referenzprojekt
+pwsh Tools/Test-McpTools.ps1                       # all tools, folder Tests/Referenzprojekt
 pwsh Tools/Test-McpTools.ps1 -Tool find_symbol -Arguments @{ name = 'TKundenSuche' }
 pwsh Tools/Test-McpTools.ps1 -Tool run_tests -WithProcessTools -Arguments @{ tests = @('Unit.Fixture') }
+pwsh Tools/Test-McpTools.ps1 -Tool batch -ArgumentsJson '{"calls":[{"tool":"find_symbol","args":{"name":"TKundenSuche"}}]}'
 ```
 
 The script talks to the server directly via stdio. The index is built only once; the whole run takes a few seconds (the Inspector restarts the server for every command-line call). It checks:
@@ -292,7 +294,7 @@ The script talks to the server directly via stdio. The index is built only once;
 - Every resource can be read.
 - Every prompt has a description, every argument a description, and `prompts/get` with the example under `prompts` returns a non-empty message with the expected text; every template reads with the sample URI under `templates` (#1357). A prompt or template without an example makes the run fail.
 
-The examples are in `Tools/Mcp/Werkzeug-Beispiele.json` and refer to the reference project (`Tests/Referenzprojekt`). Lines and columns are given there as placeholders (`{{zeile:procedure TRefAnzeige.SetStil}}`, `{{spalte:SetStil}}`) so that shifted lines do not break the examples. Tools with `"process": true` (`build_project`, `run_tests`) need the IDE or a test project and run only with `-WithProcessTools`. With `-Tool` and `-Arguments` the script calls one tool with your own arguments, including lists and objects, and prints the response.
+The examples are in `Tools/Mcp/Werkzeug-Beispiele.json` and refer to the reference project (`Tests/Referenzprojekt`). Lines and columns are given there as placeholders (`{{zeile:procedure TRefAnzeige.SetStil}}`, `{{spalte:SetStil}}`) so that shifted lines do not break the examples. Tools with `"process": true` (`build_project`, `run_tests`) need the IDE or a test project and run only with `-WithProcessTools`. With `-Tool` and `-Arguments` (or `-ArgumentsJson`) the script calls one tool with your own arguments, including lists and objects, and prints the response. The reference project has its own `atlas.json` (`"project": "RefApp.dproj"`) so that the server loads a project there instead of taking over the repository's `atlas.json`.
 
 The recording (`Output/Mcp/probe-<Zeit>.jsonl`) contains every message raw, one per line: `{"zeit":"…","richtung":"an Server"|"vom Server","nachricht":{…}}`. Exit code 0: everything fine, 1: findings, 3: server missing or not answering.
 

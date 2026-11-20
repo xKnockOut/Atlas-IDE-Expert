@@ -47,6 +47,10 @@
 .PARAMETER Arguments
     Mit -Tool: eigene Argumente als Hashtable statt des Beispiels.
 
+.PARAMETER ArgumentsJson
+    Mit -Tool: eigene Argumente als JSON-Objekt statt des Beispiels, typgetreu (Zahlen, Wahrheitswerte,
+    Listen, Objekte). Geht aus jeder Shell, auch aus bash oder cmd, wo -Arguments als Hashtable nicht ankommt.
+
 .PARAMETER WithProcessTools
     Auch Werkzeuge mit "process": true aufrufen.
 
@@ -64,6 +68,9 @@
 
 .EXAMPLE
     pwsh Tools/Test-McpTools.ps1 -Tool run_tests -WithProcessTools -Arguments @{ tests = @('Ref.Tests.Kunden') }
+
+.EXAMPLE
+    pwsh Tools/Test-McpTools.ps1 -Tool batch -ArgumentsJson '{"calls":[{"tool":"find_symbol","args":{"name":"TKundenSuche"}}]}'
 #>
 [CmdletBinding()]
 param(
@@ -72,6 +79,7 @@ param(
     [string] $Examples,
     [string] $Tool,
     [hashtable] $Arguments,
+    [string] $ArgumentsJson,
     [switch] $WithProcessTools,
     [int] $TimeoutSeconds = 180,
     [string] $Transcript
@@ -92,6 +100,13 @@ if (-not $Examples) { $Examples = Join-Path $PSScriptRoot 'Mcp/Werkzeug-Beispiel
 $exampleData = [IO.File]::ReadAllText($Examples, $Utf8) | ConvertFrom-Json
 if (-not $ProjectRoot) { $ProjectRoot = Join-Path $RepoRoot $exampleData.root }
 $ProjectRoot = (Resolve-Path $ProjectRoot).Path
+if ($ArgumentsJson) {
+    if ($Arguments) { Stop-Environment '-Arguments und -ArgumentsJson schließen sich aus.' }
+    $parsed = $ArgumentsJson | ConvertFrom-Json
+    if ($parsed -isnot [Management.Automation.PSCustomObject]) { Stop-Environment '-ArgumentsJson muss ein JSON-Objekt sein.' }
+    $Arguments = @{}
+    foreach ($property in $parsed.PSObject.Properties) { $Arguments[$property.Name] = $property.Value }
+}
 if ($Arguments -and -not $Tool) { Stop-Environment '-Arguments nur zusammen mit -Tool.' }
 
 if (-not $Server) {

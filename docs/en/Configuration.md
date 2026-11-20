@@ -412,7 +412,8 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
 | `testUnits.pattern` | project (atlas.json) | string | `"{unit}.Tests"` |  | Name of the test unit; {unit} stands for the name of the tested unit, e.g. "{unit}.Tests" or "Test.{unit}". |
-| `testUnits.folder` | project (atlas.json) | string | `""` |  | Folder for new test units relative to the root; empty: folder of the test project. |
+| `testUnits.folder` | project (atlas.json) | string | `""` |  | Folder for new test units relative to the root; empty: folder of the test project. {path} stands for the folder of the tested unit below testUnits.sourceRoot, {namespace} for its namespace as folders; e.g. "Tests/{path}" mirrors the layout of the main project (Source/Core/Foo.pas → Tests/Core/Foo.Tests.pas). |
+| `testUnits.sourceRoot` | project (atlas.json) | string | `""` |  | Source folder from which {path} in testUnits.folder is computed, relative to the root, e.g. "Source"; several separated by ; (the longest matching one applies); empty: the root. |
 | `testUnits.project` | project (atlas.json) | string | `""` |  | Test project (.dproj or .dpr) relative to the root; empty: the project in the workspace whose .dpr uses DUnitX or DUnit. |
 
 ## tests

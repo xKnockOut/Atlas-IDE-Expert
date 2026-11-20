@@ -46,6 +46,10 @@ type
     /// <summary>Ohne Vorgabe die einzige .dproj im Ordner; eine fehlende feste Projektdatei ergibt keine.</summary>
     [Test]
     procedure LoaderFindsProjectFile;
+    /// <summary>"project" aus einer atlas.json über der Wurzel gilt relativ zu deren Ordner, nicht zur Wurzel.
+    /// </summary>
+    [Test]
+    procedure LoaderResolvesProjectAgainstConfigFolder;
   end;
 
 implementation
@@ -386,11 +390,42 @@ begin
     mSetup := TShellWorkspaceSetup.Create;
     mLogger := TLogger.Create;
     mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
-    mLoader := TShellProjectLoader.Create('Test', FFolder, mLogger, mSetup, mBuild);
+    mLoader := TShellProjectLoader.Create('Test', FFolder, '', mLogger, mSetup, mBuild);
     mSettings := Default(TServerSettings);
     Assert.AreEqual(TPath.Combine(FFolder, 'Einzig.dproj'), mLoader.FindProjectFile(mSettings));
     mSetup.ProjectFile := TPath.Combine(FFolder, 'Fehlt.dproj');
     Assert.AreEqual('', mLoader.FindProjectFile(mSettings), 'Feste, fehlende Projektdatei');
+  finally
+    mLoader.Free;
+    mBuild.Free;
+    mSetup.Free;
+  end;
+end;
+
+procedure TShellWorkspacePartsTests.LoaderResolvesProjectAgainstConfigFolder;
+var
+  mSetup: TShellWorkspaceSetup;
+  mBuild: TShellBuildChoice;
+  mLoader: TShellProjectLoader;
+  mLogger: ILogger;
+  mSettings: TServerSettings;
+  mSub: string;
+begin
+  mSub := TPath.Combine(FFolder, 'Teil');
+  TDirectory.CreateDirectory(mSub);
+  TFile.WriteAllText(TPath.Combine(FFolder, 'Gruppe.dproj'), '<Project/>');
+  mSetup := nil;
+  mBuild := nil;
+  mLoader := nil;
+  try
+    mSetup := TShellWorkspaceSetup.Create;
+    mLogger := TLogger.Create;
+    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
+    mLoader := TShellProjectLoader.Create('Test', mSub, IncludeTrailingPathDelimiter(FFolder), mLogger, mSetup,
+      mBuild);
+    mSettings := Default(TServerSettings);
+    mSettings.Project := 'Gruppe.dproj';
+    Assert.AreEqual(TPath.Combine(FFolder, 'Gruppe.dproj'), mLoader.FindProjectFile(mSettings));
   finally
     mLoader.Free;
     mBuild.Free;

@@ -1276,6 +1276,14 @@ begin
   // Muster ohne {unit} und Projekt ohne .dproj/.dpr (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(3, Integer(Length(mIssues)));
   Assert.AreEqual('{unit}.Tests', mSettings.TestUnits.Pattern, 'ungültiges Muster bleibt bei der Vorgabe');
+  // #2800: Platzhalter im Ordner und Quellordner.
+  mSettings := Parse('{"testUnits": {"folder": "Tests/{path}", "sourceRoot": "Source;Lib"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('Tests/{path}', mSettings.TestUnits.Folder);
+  Assert.AreEqual('Source;Lib', mSettings.TestUnits.SourceRoot);
+  mSettings := Parse('{"testUnits": {"folder": "Tests/{pfad}"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekannter Platzhalter');
+  Assert.AreEqual('', mSettings.TestUnits.Folder);
 end;
 procedure TConfigurationFeatureTests.ReadsDfmPropertyRules;
 var

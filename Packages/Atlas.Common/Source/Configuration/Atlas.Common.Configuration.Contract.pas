@@ -262,8 +262,12 @@ type
   TTestUnitSettings = record
     /// <summary>Name der Testunit; {unit} steht für den Namen der getesteten Unit.</summary>
     Pattern: string;
-    /// <summary>Ordner neuer Testunits relativ zur Wurzel; leer = Ordner des Testprojekts.</summary>
+    /// <summary>Ordner neuer Testunits relativ zur Wurzel; leer = Ordner des Testprojekts. {path} = Ordner der Unit
+    /// unter SourceRoot, {namespace} = Namensraum der Unit als Ordner (#2800).</summary>
     Folder: string;
+    /// <summary>Quellordner, von denen aus {path} gerechnet wird, relativ zur Wurzel, mit ; getrennt;
+    /// leer = die Wurzel (#2800).</summary>
+    SourceRoot: string;
     /// <summary>Testprojekt (.dproj oder .dpr) relativ zur Wurzel; leer = automatisch erkennen.</summary>
     Project: string;
     class function Default: TTestUnitSettings; static;
@@ -1274,6 +1278,7 @@ class function TTestUnitSettings.Default: TTestUnitSettings;
 begin
   Result.Pattern := '{unit}.Tests';
   Result.Folder := '';
+  Result.SourceRoot := '';
   Result.Project := '';
 end;
 
