@@ -21,6 +21,8 @@ type
     [Test]
     procedure Utf8RejectsTruncatedSequence;
     [Test]
+    procedure IncompleteUtf8TailCountsOpenSequence;
+    [Test]
     procedure Utf8AcceptsValid4Byte;
     [Test]
     procedure Utf8ReportsNonAscii;
@@ -66,6 +68,22 @@ end;
 procedure TTextEncodingProbeTests.Utf8RejectsTruncatedSequence;
 begin
   Assert.IsFalse(TTextEncodingProbe.IsValidUtf8(TBytes.Create(Ord('a'), $C3), 0));
+end;
+
+procedure TTextEncodingProbeTests.IncompleteUtf8TailCountsOpenSequence;
+begin
+  Assert.AreEqual(0, TTextEncodingProbe.IncompleteUtf8Tail(nil));
+  Assert.AreEqual(0, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create(Ord('a'))));
+  // ü = C3 BC: vollständig bzw. nur das Leitbyte.
+  Assert.AreEqual(0, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create(Ord('a'), $C3, $BC)));
+  Assert.AreEqual(1, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create(Ord('a'), $C3)));
+  // ✓ = E2 9C 93 und U+1F600 = F0 9F 98 80, jeweils ohne das letzte Byte.
+  Assert.AreEqual(2, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create($E2, $9C)));
+  Assert.AreEqual(3, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create($F0, $9F, $98)));
+  Assert.AreEqual(0, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create($F0, $9F, $98, $80)));
+  // Kein Leitbyte (ANSI ü = FC, einzelnes Folgebyte): nichts zurückhalten.
+  Assert.AreEqual(0, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create(Ord('a'), $FC)));
+  Assert.AreEqual(0, TTextEncodingProbe.IncompleteUtf8Tail(TBytes.Create(Ord('a'), $80, $80, $80, $80)));
 end;
 
 procedure TTextEncodingProbeTests.Utf8AcceptsValid4Byte;

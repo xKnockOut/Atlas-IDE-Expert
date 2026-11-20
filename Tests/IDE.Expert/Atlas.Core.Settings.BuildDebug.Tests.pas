@@ -66,6 +66,9 @@ type
     /// <summary>Startverbünde (#867): an, gespeichert und geladen.</summary>
     [Test]
     procedure LaunchGroupOptions;
+    /// <summary>Konsolenausgabe andocken (#581): aus, gespeichert und geladen.</summary>
+    [Test]
+    procedure CaptureConsoleOption;
   end;
 
 implementation
@@ -584,6 +587,20 @@ begin
   mLoaded := TAtlasPluginSettings.Defaults;
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.DebugLaunchGroups);
+end;
+procedure TAtlasBuildDebugSettingsTests.CaptureConsoleOption;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.DebugCaptureConsole, 'standardmäßig aus');
+  mSettings.DebugCaptureConsole := True;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.DebugCaptureConsole);
 end;
 
 initialization

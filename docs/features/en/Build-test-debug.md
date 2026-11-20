@@ -643,6 +643,21 @@ Open it from the Atlas menu › Memory timeline or with the command `Atlas.Debug
 
 Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
 
+<a id="window-atlasconsoleoutput"></a>
+### Docked console output
+
+Experimental, off by default. Start with F9 as usual, or Run menu › “Run without debugger with console output”, or the commands `Atlas.ConsoleRunNoDebug` and `Atlas.ConsoleOutput`.
+
+- For a Win32 or Win64 console program without a host application, the output appears in the dockable window “Atlas: Console output” instead of a separate console window. The IDE starts other projects as usual.
+- With the debugger, Atlas starts the program suspended and attaches the IDE debugger. The program only runs once the IDE has taken it over, so breakpoints on the very first line are hit. If the IDE does not take over within 10 s, the program runs anyway and Atlas says so.
+- Error output (stderr) is red, input blue, notes from Atlas grey. Type input into the field at the bottom (Enter sends, “End input” sends end of file for `Readln`).
+- Locations such as `Main.pas(12)` or `Src/Main.pas:12:5` are underlined; a click opens the file at that line (looked up in the working folder, then the project folder).
+- Parameters, working folder and environment come from the project's run options, including an active start profile.
+- After the program ends, the output stays with the exit code. The window keeps at most 20,000 lines; older ones are dropped with a note.
+- “Stop” ends the program, through the IDE when debugging.
+
+Setting: `debug.captureConsole`
+
 <a id="window-atlasprofiler"></a>
 ### Profiler
 
