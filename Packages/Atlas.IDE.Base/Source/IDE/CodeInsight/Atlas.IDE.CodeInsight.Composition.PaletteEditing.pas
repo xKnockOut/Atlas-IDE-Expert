@@ -36,6 +36,7 @@ uses
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.IDE.Editor.LearnedSuggestions,
   Atlas.IDE.CodeInsight.Composition.Session;
 
@@ -290,6 +291,38 @@ begin
     '', Guarded(TAtlasFeature.RegionFolds, ExpandRegions), RegionFoldsVisible);
 end;
 
+function BlockFoldsVisible: Boolean;
+begin
+  Result := TAtlasIdeBlockFolds.Enabled;
+end;
+
+procedure FoldBlock;
+begin
+  TAtlasIdeBlockFolds.FoldAtCursor;
+end;
+
+procedure FoldLargeBlocks;
+begin
+  TAtlasIdeBlockFolds.FoldLarge;
+end;
+
+procedure UnfoldBlocks;
+begin
+  TAtlasIdeBlockFolds.UnfoldAll;
+end;
+
+/// <summary>Große Anweisungsblöcke ein- und aufklappen (#2795).</summary>
+procedure AddBlockFoldCommands(APalette: TAtlasIdePalette);
+begin
+  APalette.RegisterCommand('Atlas.FoldBlock', TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldBlockCommand),
+    '', Guarded(TAtlasFeature.RegionFolds, FoldBlock), BlockFoldsVisible);
+  APalette.RegisterCommand('Atlas.FoldLargeBlocks',
+    TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldLargeBlocksCommand), '',
+    Guarded(TAtlasFeature.RegionFolds, FoldLargeBlocks), BlockFoldsVisible);
+  APalette.RegisterCommand('Atlas.UnfoldBlocks', TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.UnfoldBlocksCommand),
+    '', Guarded(TAtlasFeature.RegionFolds, UnfoldBlocks), BlockFoldsVisible);
+end;
+
 function LearnedSuggestionsVisible: Boolean;
 begin
   Result := TAtlasIdeLearnedSuggestions.Enabled;
@@ -309,6 +342,7 @@ begin
   AddCodeCommands(APalette);
   AddMultiCursorCommands(APalette);
   AddRegionCommands(APalette);
+  AddBlockFoldCommands(APalette);
 end;
 
 end.

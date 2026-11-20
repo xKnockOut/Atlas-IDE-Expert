@@ -85,6 +85,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Ergebnisfenster** für Referenzen, Aufrufer und Implementierungen, dazu Auswirkungen und Datenfluss
 - **Lesezeichen, Notizen, Minimap und mitlaufender Kopf**
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
+- **Große Blöcke einklappen:** `if`/`else`-Zweige, Schleifen, `try`-, `repeat`- und `case`-Blöcke ab 15 Zeilen (`editor.blockFolds.minLines`) über vorübergehende Regionsmarken in denselben Zeilen einklappen; vor dem Speichern entfernt
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
 - **364 Prüfregeln** schon beim Tippen: 244 Fehler, 109 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
@@ -171,7 +172,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Sprache wie die IDE** (Deutsch oder Englisch), auch Issue-Tracker, Willkommensseite und Debugger; unveränderte Vorgabetexte wie Textbausteine wechseln mit; ebenso Meldungen, Statuszeilen, Hinweise der Vervollständigung, Code-Vorlagen, Hinweise zu Serverabstürzen und das Aufrufdiagramm; außerdem Hinweise zu ungültigen Projektaufgaben, die Antworten von IDE-Builds für Claude Code und die Fragen des pre-commit-Hooks für betroffene Tests; dazu Meldungen und Korrekturen aller Prüfregeln; und die Antworten des Servers: Meldungen, Codeaktionen, Hover, MCP-Antworten, Berichte und Architekturkarte sowie die Meldungen von `--check` und die Beschreibungen der MCP-Werkzeuge; ohne `language` in settings.json folgt der Server der Sprache, die die IDE tatsächlich zeigt (geladene Ressourcendateien, dann `Locales` in der Registry, dann Windows), `atlas.log` nennt die erkannte Sprache und ihre Quelle
 
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
-- **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
+- **55 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Refactorings über MCP:** `refactor` listet die Umbauten des Kontextmenüs an einer Stelle mit ihren Argumenten und führt sie mit Argumenten statt Rückfragen aus (Signatur ändern, Interface oder Basisklasse herauslösen, sicher löschen, Mitglied verschieben, Typ-Alias …), mit Vorschau aller Dateien und als ein Rückgängig-Schritt in der IDE
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
 - **Das begonnene Issue für KI-Assistenten:** Nach „Beginnen“ legt das Plugin das Issue samt Checkliste, Codeverweisen, Beschreibung und letzten Kommentaren neben das Commit-Präfix ins Git-Verzeichnis; `get_current_issue` liest es, ohne Tracker-Zugang und ohne Token. Hakt jemand im Tracker etwas ab, steht es nach der nächsten Auffrischung dort (`issues.shareWithAssistants`, Vorgabe an)

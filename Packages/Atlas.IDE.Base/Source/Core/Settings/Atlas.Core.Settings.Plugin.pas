@@ -1207,6 +1207,8 @@ type
     property ExpressionTypeKey: Integer read FEditingKeys.ExpressionTypeKey write FEditingKeys.ExpressionTypeKey;
     property MethodPlacement: string read FEditorTyping.MethodPlacement write FEditorTyping.MethodPlacement;
     property RegionFolds: string read FEditorTyping.RegionFolds write FEditorTyping.RegionFolds;
+    property BlockFolds: Boolean read FEditorTyping.BlockFolds write FEditorTyping.BlockFolds;
+    property BlockFoldsMinLines: Integer read FEditorTyping.BlockFoldsMinLines write FEditorTyping.BlockFoldsMinLines;
     property SafeDelete: Boolean read FEditingKeys.SafeDelete write FEditingKeys.SafeDelete;
     property SafeDeleteKey: Integer read FEditingKeys.SafeDeleteKey write FEditingKeys.SafeDeleteKey;
     property NextChangeKey: Integer read FNavigationKeys.NextChangeKey write FNavigationKeys.NextChangeKey;
