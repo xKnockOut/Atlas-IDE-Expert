@@ -82,7 +82,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Build.Strings,
-  Atlas.UI.Tasks.Texts;
+  Atlas.UI.Tasks.Texts,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Kopfzeile mit eigener Farbe; Text und Farbe stehen beim Hinzufügen fest.</summary>
@@ -144,16 +145,20 @@ begin
 end;
 
 procedure THeaderMessage.Draw(Canvas: TCanvas; const Rect: TRect; Wrap: Boolean);
-var
-  mArea: TRect;
 begin
-  mArea := Rect;
-  Canvas.Font.Style := [fsBold];
-  if FColor <> clNone then
-  begin
-    Canvas.Font.Color := FColor;
-  end;
-  Canvas.TextRect(mArea, mArea.Left + 2, mArea.Top, FText);
+  TAtlasGuard.Run(TAtlasFeature.Tasks,
+    procedure
+    var
+      mArea: TRect;
+    begin
+      mArea := Rect;
+      Canvas.Font.Style := [fsBold];
+      if FColor <> clNone then
+      begin
+        Canvas.Font.Color := FColor;
+      end;
+      Canvas.TextRect(mArea, mArea.Left + 2, mArea.Top, FText);
+    end);
 end;
 
 function THeaderMessage.CalcRect(Canvas: TCanvas; MaxWidth: Integer; Wrap: Boolean): TRect;

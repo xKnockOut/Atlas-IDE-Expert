@@ -186,7 +186,11 @@ end;
 
 procedure TGalleryWizard.Execute;
 begin
-  RunCommand(FItem.CommandId);
+  TAtlasGuard.Run(TAtlasFeature.Generate,
+    procedure
+    begin
+      RunCommand(FItem.CommandId);
+    end);
 end;
 
 function TGalleryWizard.GetAuthor: string;

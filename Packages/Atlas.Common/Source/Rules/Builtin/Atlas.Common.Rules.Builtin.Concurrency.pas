@@ -31,6 +31,8 @@
 //                                       einer lokalen Variablen, die weder gestartet noch weitergegeben wird (#961).
 //   task-exception-unobserved           TTask.Run(…) bzw. TTask.Create(…).Start, das nie abgefragt wird und
 //                                       dessen anonymer Rumpf kein try … except hat (#962).
+//   queue-without-remove                Thread-Klasse reiht mit Queue am eigenen Thread ein, entfernt die
+//                                       Einträge aber nie mit RemoveQueuedEvents (#2753; Unit QueueRemove).
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -108,6 +110,7 @@ uses
   Atlas.Common.Rules.Builtin.Concurrency.Threads,
   Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,
   Atlas.Common.Rules.Builtin.Concurrency.Polling,
+  Atlas.Common.Rules.Builtin.Concurrency.QueueRemove,
   Atlas.Common.Rules.Builtin.Concurrency.MainThread,
   Atlas.Common.Localization.Texts;
 
@@ -1255,6 +1258,7 @@ begin
   ARegistry.Register(TTaskExceptionUnobservedRule.Create);
   ARegistry.Register(TThreadExecuteWithoutExceptRule.Create);
   ARegistry.Register(TSleepPollingLoopRule.Create);
+  ARegistry.Register(TQueueWithoutRemoveRule.Create);
 end;
 
 initialization

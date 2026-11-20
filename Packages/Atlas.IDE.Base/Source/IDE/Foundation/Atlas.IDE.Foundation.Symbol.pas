@@ -115,18 +115,23 @@ begin
   // Die IDE meldet den Wechsel, bevor ihre StyleServices das neue Thema liefern: Hell/Dunkel wäre noch das
   // alte (Logo im Menü, Farben der Panels). Kurz danach noch einmal; ein Eintrag in der Warteschlange kam noch
   // zu früh.
-  if Later = nil then
-  begin
-    if Later_ = nil then
+  try
+    if Later = nil then
     begin
-      Later_ := TLater.Create;
+      if Later_ = nil then
+      begin
+        Later_ := TLater.Create;
+      end;
+      Later := TTimer.Create(nil);
+      Later.OnTimer := Later_.Tick;
     end;
-    Later := TTimer.Create(nil);
-    Later.OnTimer := Later_.Tick;
+    Later.Enabled := False;
+    Later.Interval := cLaterMs;
+    Later.Enabled := True;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Theme change: ' + TAtlasGuard.ErrorText(E));
   end;
-  Later.Enabled := False;
-  Later.Interval := cLaterMs;
-  Later.Enabled := True;
 end;
 
 { TLater }
