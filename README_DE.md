@@ -85,6 +85,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Ergebnisfenster** für Referenzen, Aufrufer und Implementierungen, dazu Auswirkungen und Datenfluss
 - **Lesezeichen, Notizen, Minimap und mitlaufender Kopf**
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
+- **Große Blöcke einklappen:** `if`/`else`-Zweige, Schleifen, `try`-, `repeat`- und `case`-Blöcke ab 15 Zeilen (`editor.blockFolds.minLines`) über vorübergehende Regionsmarken in denselben Zeilen einklappen; vor dem Speichern entfernt
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
 - **364 Prüfregeln** schon beim Tippen: 244 Fehler, 109 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
