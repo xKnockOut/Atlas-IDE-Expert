@@ -326,7 +326,7 @@ end;
 
 procedure StartBanner;
 begin
-  GBanner := TAtlasIdeAssistantsBanner.Create(GActivity, TogglePause);
+  GBanner := TAtlasIdeAssistantsBanner.Create(GActivity, TogglePause, ShowLog);
 end;
 
 procedure StopBanner;
