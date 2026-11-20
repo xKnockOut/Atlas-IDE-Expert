@@ -9,6 +9,8 @@
 //   Dann nie. Der Aufrufer bricht seine Tickets ab, bevor er selbst geht (Regel 3).
 // - Geht der Anbieter (Modul abgemeldet), ruft er ADone offener Anfragen sofort mit Cancelled auf.
 // - Inhalte gehen an einen fremden Dienst: Der Aufrufer weist vorher darauf hin (ProviderName).
+// - Hinter dem Vertrag steht je nach assistants.textSource der eigene Anbieter des Moduls oder ein Anbieter der IDE
+//   (Smart CodeInsight, #2744); der Aufrufer weiß es nicht und braucht es nicht.
 // Nur Records und Interfaces; alle Aufrufe im Hauptthread der IDE.
 
 interface
@@ -28,6 +30,9 @@ type
     Task: string;
     /// <summary>Höchstens so viele Tokens Antwort.</summary>
     MaxTokens: Integer;
+    /// <summary>Datei, aus der der Inhalt stammt; '' ohne Dateibezug. Passt sie zu assistants.exclude, geht nichts
+    /// hinaus (Failed).</summary>
+    FileName: string;
   end;
 
   TAtlasAiTextResult = record

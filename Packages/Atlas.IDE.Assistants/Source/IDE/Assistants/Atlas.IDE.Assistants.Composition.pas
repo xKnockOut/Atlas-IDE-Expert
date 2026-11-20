@@ -37,6 +37,10 @@
 //   assistants.link an ist (WebSocket nur auf 127.0.0.1, Lock-Datei, Statusfeld „Assistent verbunden“); dazu der
 //   Befehl „Auswahl an den Assistenten“ mit Taste (assistants.link.mentionKey) und Eintrag im Kontextmenü des
 //   Editors, sichtbar nur mit verbundenem Assistenten.
+// - Text für einfache Aufgaben anderer Module (IAtlasAiText, #2462): vom eigenen Anbieter oder einem Anbieter der
+//   IDE (Smart CodeInsight, #2744) nach assistants.textSource; ab der Anmeldung.
+// - Teil „AiIdePlugin“: der eigene Anbieter als „Atlas (…)“ bei Smart CodeInsight der IDE (#2745), solange
+//   assistants.registerInIde an und ein eigener Anbieter eingerichtet ist.
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
 //   Atlas.IDE.Assistants.Adapters.Instructions).
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
@@ -409,6 +413,11 @@ begin
   Result := TAtlasIdeSettings.Current.AssistantsLinkMentionKey;
 end;
 
+procedure StartIdePlugin;
+begin
+  StartAiIdePlugin(TAtlasAssistantsModule.cSwitch);
+end;
+
 { TAtlasAssistantsModule }
 
 class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
@@ -467,7 +476,14 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsLog;
-      end, LogStarted, StartLog, StopLog)];
+      end, LogStarted, StartLog, StopLog),
+    // Eigener Anbieter bei Smart CodeInsight der IDE (#2745): solange assistants.registerInIde an ist und ein
+    // eigener Anbieter eingerichtet ist.
+    TAtlasFeaturePart.When('AiIdePlugin',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and AiIdePluginWanted;
+      end, AiIdePluginStarted, StartIdePlugin, StopAiIdePlugin)];
 end;
 
 function TAtlasAssistantsModule.Commands: TArray<TAtlasModuleCommand>;

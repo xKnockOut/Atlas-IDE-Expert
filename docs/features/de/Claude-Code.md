@@ -88,6 +88,16 @@ Mit `assistants.link` (Vorgabe aus) meldet sich RAD Studio bei Kommandozeilen-As
 - **Werkzeuge:** offene Dateien und Arbeitsordner, Auswahl, Datei öffnen und einen Bereich markieren, ungespeicherte Änderungen prüfen und speichern, Befunde von Atlas und Compilermeldungen. Code in der IDE ausführen kann der Assistent nicht.
 - **Statusfeld „Assistent verbunden“** mit dem Namen des Assistenten; ein Klick bietet „Trennen“. Die Pause für KI gilt auch hier: Speichern und Vorschläge lehnt die IDE dann ab.
 
+### KI-Anbieter der IDE (Smart CodeInsight, #2744, #2745)
+
+Ab Delphi 12.2 hat die IDE eigene KI-Anbieter (Tools › Optionen › Smart CodeInsight). Atlas teilt sie in beide Richtungen; beides steht auf der Seite *KI-Assistenten* und ist standardmäßig aus.
+
+- **Anbieter der IDE mitbenutzen** (`assistants.ideProvider`): Einfache Aufgaben anderer Atlas-Funktionen, also eine Frage mit einer Antwort wie „Zusammenfassen“ im Fenster „Atlas-Issue“, gehen an einen Anbieter der IDE. `assistants.ideProvider.name` wählt ihn („Anbieter der IDE …“ listet die aktiven), leer heißt: der erste aktive mit Anweisung oder Chat. Ein genannter Anbieter, der aus ist oder fehlt, wird nicht still durch einen anderen ersetzt. Die Seite zeigt alle Anbieter der IDE mit Status und Funktionen und springt mit „Smart CodeInsight öffnen“ dorthin.
+- **Quelle für einfache Aufgaben** (`assistants.textSource`): `ide` nimmt den Anbieter der IDE und sonst den eigenen (`assistants.provider`), `own` umgekehrt, `none` keinen; die Funktionen bleiben dann ausgeblendet. Dateien unter `assistants.exclude` gehen an keine Quelle.
+- **Eigenen Anbieter bei der IDE anmelden** (`assistants.registerInIde`): Der eingerichtete eigene Anbieter erscheint in Smart CodeInsight als „Atlas (Anbieter, Modell)“ mit Chat, Anweisung und, beim OpenAI-kompatiblen Server, der Modellliste. Anfragen der IDE zählen zur selben Tagesgrenze (`assistants.dailyLimit`) wie der KI-Schattentext; der Schlüssel bleibt im Anmeldespeicher von Windows. Die Seite des Eintrags in Smart CodeInsight zeigt Anbieter, Modell und die Anfragen von heute, „In Atlas einrichten …“ springt zur Atlas-Seite. Ohne eingerichteten Anbieter meldet Atlas nichts an; Umschalten wirkt ohne Neustart.
+- Atlas wählt seinen eigenen Eintrag nie als Anbieter der IDE, Anfragen laufen also nie im Kreis.
+- Die Schnittstelle der IDE kennt kein Streaming, keinen Systemprompt, keine Werkzeugaufrufe und keinen Gesprächsverlauf; KI-Schattentext, Suche nach Bedeutung und Debuggen mit KI nutzen sie deshalb nicht.
+
 ## Prompts (#1357)
 
 **Prompts** sind fertige Arbeitsabläufe, die Claude Code als Schrägstrich-Befehle zeigt:

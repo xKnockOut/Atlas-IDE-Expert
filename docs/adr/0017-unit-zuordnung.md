@@ -1000,6 +1000,15 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Assistants.DebugBar` | `UI/Assistants/Atlas.UI.Assistants.DebugBar.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.LinkDiffView` | `UI/Assistants/Atlas.UI.Assistants.LinkDiffView.pas` | Ordner `UI/Assistants`, Vergleichsfenster der Assistenten-Kopplung, #2377 |
 | `Atlas.UI.Assistants.Strings` | `UI/Assistants/Atlas.UI.Assistants.Strings.pas` | Ordner `UI/Assistants` |
+| `Atlas.Core.Assistants.Contract.IdeAi` | `Core/Assistants/Atlas.Core.Assistants.Contract.IdeAi.pas` | Ordner `Core/Assistants`, Vertrag zu den Adaptern über ToolsAPI.AI, #2744, #2745 |
+| `Atlas.Core.Assistants.IdeProviders` | `Core/Assistants/Atlas.Core.Assistants.IdeProviders.pas` | Ordner `Core/Assistants`, Anbieter der IDE und ihre Auswahl ohne ToolsAPI, #2744 |
+| `Atlas.IDE.Assistants.Adapters.TextRequests` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.TextRequests.pas` | Ordner `IDE/Assistants`, Anfragen an einen Anbieter der IDE hinter dem Vertrag, #2744 |
+| `Atlas.IDE.Assistants.Adapters.TextSource` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.TextSource.pas` | Ordner `IDE/Assistants`, Quelle für einfache Aufgaben (eigener Anbieter oder IDE), #2744 |
+| `Atlas.IDE.Assistants.IdeBridge` | `IDE/Assistants/Atlas.IDE.Assistants.IdeBridge.pas` | Ordner `IDE/Assistants`, eigener Anbieter als Anbieter der IDE ohne ToolsAPI, #2745 |
+| `Atlas.IDE.Assistants.DailyCount` | `IDE/Assistants/Atlas.IDE.Assistants.DailyCount.pas` | Ordner `IDE/Assistants`, gemeinsamer Tageszähler der KI-Anfragen |
+| `Atlas.IDE.Assistants.Adapters.IdeProviders` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdeProviders.pas` | Ordner `IDE/Assistants`, Adapter über ToolsAPI.AI, #2744 |
+| `Atlas.IDE.Assistants.Adapters.IdePlugin` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdePlugin.pas` | Ordner `IDE/Assistants`, Anmeldung bei Smart CodeInsight über ToolsAPI.AI, #2745 |
+| `Atlas.UI.Assistants.IdePluginFrame` | `UI/Assistants/Atlas.UI.Assistants.IdePluginFrame.pas` | Ordner `UI/Assistants`, Seite des Eintrags in Smart CodeInsight, #2745 |
 | `Atlas.UI.Assistants.QuestionDialog` | `UI/Assistants/Atlas.UI.Assistants.QuestionDialog.pas` | Ordner `UI/Assistants` |
 | `Atlas.UI.Assistants.LogFrame` | `UI/Assistants/Atlas.UI.Assistants.LogFrame.pas` | Ordner `UI/Assistants` |
 
