@@ -237,7 +237,7 @@ begin
     FState.WithoutProject := True;
     Exit;
   end;
-  mLoader := TShellProjectLoader.Create(FName, FRoot, FLogger, FSetup, FBuild);
+  mLoader := TShellProjectLoader.Create(FName, FRoot, FConfiguration.ConfigRoot, FLogger, FSetup, FBuild);
   try
     mProjectFile := mLoader.FindProjectFile(ASettings);
     // Ohne Projekt indiziert dieser Arbeitsbereich nichts; Prüfungen sollen dann nicht auf ihn warten. Sonst liefen

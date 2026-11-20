@@ -1595,6 +1595,60 @@
       "x-captionEn": "Hint on outdated instructions",
       "x-issue": "#2615"
     },
+    "AssistantsEditHoldModified": {
+      "type": "boolean",
+      "default": true,
+      "description": "Änderungen von KI-Assistenten an Dateien, die im Editor ungespeichert geändert sind, zurückhalten statt ablehnen (#2605): Atlas meldet „KI möchte X ändern – Datei hat ungespeicherte Änderungen“ mit „Speichern und übernehmen“, „Als Vergleich öffnen“ und „Verwerfen“; der Assistent erfährt, dass die Änderung wartet. Der MCP-Server schreibt eine zurückgehaltene Datei nie selbst. Aus = solche Änderungen werden abgelehnt.",
+      "x-key": "assistants.editHoldModified",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.edit",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Änderungen an ungespeicherten Dateien zurückhalten",
+      "x-captionEn": "Hold changes to unsaved files",
+      "x-issue": "#2605"
+    },
+    "AssistantsQuestionsInIde": {
+      "type": "boolean",
+      "default": true,
+      "description": "Rückfragen von KI-Assistenten (MCP-Werkzeug ask_user) erscheinen als Fenster in der IDE (#2620): Frage, Antworten zur Auswahl bzw. Eingabefeld, „Antworten“, „Später“, „Abbrechen“; dazu ein Hinweis und „KI fragt“ im Statusfeld. Das Fenster ist nicht modal. Aus = das Werkzeug sagt dem Assistenten, er soll im Client fragen.",
+      "x-key": "assistants.questionsInIde",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Fragen von KI-Assistenten in der IDE zeigen",
+      "x-captionEn": "Show questions of AI assistants in the IDE",
+      "x-issue": "#2620"
+    },
+    "AssistantsLog": {
+      "type": "boolean",
+      "default": true,
+      "description": "Aufträge von KI-Assistenten dieser Sitzung im andockbaren Fenster „Atlas-KI-Protokoll“ festhalten (#2049): Änderungen an offenen Dateien mit Unterschied und Zurücknehmen, Builds, Ablehnungen, zurückgehaltene Änderungen und Rückfragen. Nur im Speicher, nicht auf der Platte. Aus = nichts festhalten.",
+      "x-key": "assistants.log",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "KI-Protokoll führen",
+      "x-captionEn": "Keep the AI log",
+      "x-issue": "#2049"
+    },
+    "AssistantsLogMax": {
+      "description": "Höchstens so viele Einträge hält das KI-Protokoll (50 bis 5000); ältere fallen weg.",
+      "type": "integer",
+      "default": 500,
+      "minimum": 50,
+      "maximum": 5000,
+      "x-key": "assistants.log.max",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.log",
+      "x-control": "Zahl",
+      "x-caption": "Höchstens Einträge im KI-Protokoll",
+      "x-captionEn": "At most entries in the AI log",
+      "x-issue": "#2049"
+    },
     "McpBuild": {
       "type": "boolean",
       "default": true,
@@ -2934,6 +2988,18 @@
       "x-captionEn": "Mark objects while debugging",
       "x-issue": "#839"
     },
+    "DebugParallelWatch": {
+      "description": "Ausdrücke in allen Threads auswerten: Fenster „Parallel auswerten“ mit einer Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens) und einer Spalte je Ausdruck. Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, ab 32 Threads erst auf Knopfdruck. Gilt ein Ausdruck in einem Thread nicht, steht dort „–“. Filter je Spalte, Sortieren nach Spalte, markierte Threads oben; Doppelklick wechselt zum Thread. Die Ausdrücke werden je Projekt gespeichert. Aus = kein Fenster, kein Menüpunkt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.parallelWatch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Ausdrücke in allen Threads auswerten",
+      "x-captionEn": "Evaluate expressions in all threads",
+      "x-issue": "#866"
+    },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
       "type": "boolean",
@@ -3049,6 +3115,31 @@
       "x-captionEn": "Logpoint prefix",
       "x-issue": "#583"
     },
+    "DebugLogpointsRecordValues": {
+      "description": "Logpunkt-Verlauf: Im Dialog des Logpunkts „Zahl aufzeichnen“ (nur bei genau einem Platzhalter); die Werte stehen als Linie über der Zeit im Fenster „Logpunkt-Verlauf“, je Thread wählbar, Text-Werte als Lücke, mit Kennzahlen und „CSV kopieren“. Aus = kein Ankreuzfeld, keine Aufzeichnung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.logpoints.recordValues",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.logpoints",
+      "x-caption": "Logpunkt-Werte aufzeichnen",
+      "x-captionEn": "Record logpoint values",
+      "x-issue": "#2552"
+    },
+    "DebugLogpointsRecordLimit": {
+      "type": "integer",
+      "default": 10000,
+      "minimum": 10,
+      "maximum": 1000000,
+      "description": "Höchstzahl Treffer je Reihe im Logpunkt-Verlauf (10 bis 1000000); die ältesten fallen heraus.",
+      "x-key": "debug.logpoints.recordLimit",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Zahl",
+      "x-parent": "debug.logpoints.recordValues",
+      "x-issue": "#2552"
+    },
     "DebugNoSourcePage": {
       "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
       "type": "boolean",
@@ -3149,6 +3240,19 @@
       "x-caption": "Startverbünde",
       "x-captionEn": "Launch groups",
       "x-issue": "#867"
+    },
+    "DebugCaptureConsole": {
+      "description": "Ausgabe von Konsolenprogrammen andocken: Startet die IDE ein Konsolenprogramm (Win32/Win64, ohne Host-Anwendung) mit F9, startet Atlas es selbst mit umgeleitetem stdout, stderr und stdin und hängt den Debugger der IDE an, bevor die erste Zeile läuft (Haltepunkte greifen weiter). Die Ausgabe steht im Fenster „Atlas: Konsolenausgabe“: stderr in Rot, Zeilen mit Datei und Zeile anklickbar, Eingaben über das Feld darunter (für Readln). Nach dem Ende bleibt das Fenster mit dem Exit-Code stehen. „Ohne Debugger mit Konsolenausgabe starten“ im Menü Start startet ohne Debugger. Aus = die IDE startet Konsolenprogramme wie immer in einem eigenen Konsolenfenster.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.captureConsole",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Ausgabe von Konsolenprogrammen andocken",
+      "x-captionEn": "Dock console program output",
+      "x-issue": "#581"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
@@ -9036,6 +9140,39 @@
       "x-caption": "Regionen beim Öffnen",
       "x-captionEn": "Regions when a file opens",
       "x-issue": "#1814"
+    },
+    "BlockFolds": {
+      "description": "Große Anweisungsblöcke einklappen (#2795): if-, else-, Schleifen-, with-, case-, on-, try- und repeat-Blöcke in Routinen. Der Delphi-Editor faltet sie nicht selbst; Atlas setzt dafür eine Region (*$REGION …*) … (*$ENDREGION*) in dieselben Zeilen und klappt sie zu. Aufklappen und Speichern nehmen die Marken wieder heraus, in die Datei kommen sie nie. Befehle „Block einklappen“, „Große Blöcke einklappen“ und „Blöcke aufklappen“ (Menü Atlas, Kontextmenü, Befehlspalette); aus schaltet sie ab.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.blockFolds",
+      "x-area": "editor",
+      "x-feature": "RegionFolds",
+      "x-page": "Editor",
+      "x-caption": "Große Blöcke einklappbar",
+      "x-captionEn": "Large blocks can be collapsed",
+      "x-issue": "#2795",
+      "x-keywords": [
+        "Falten",
+        "Folding",
+        "if",
+        "Block"
+      ]
+    },
+    "BlockFoldsMinLines": {
+      "description": "Mindestlänge eines Blocks in Zeilen (3 bis 1000) für „Große Blöcke einklappen“; „Block einklappen“ an der Schreibmarke nimmt den innersten Block ab dieser Länge.",
+      "type": "integer",
+      "default": 15,
+      "minimum": 3,
+      "maximum": 1000,
+      "x-key": "editor.blockFolds.minLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.blockFolds",
+      "x-control": "Zahl",
+      "x-caption": "Ab Zeilen",
+      "x-captionEn": "From lines",
+      "x-issue": "#2795"
     },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",

@@ -3424,8 +3424,14 @@
         "folder": {
           "type": "string",
           "default": "",
-          "description": "Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts.",
-          "x-description-en": "Folder for new test units relative to the root; empty: folder of the test project."
+          "description": "Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts. {path} steht für den Ordner der getesteten Unit unter testUnits.sourceRoot, {namespace} für ihren Namensraum als Ordner; z. B. \"Tests/{path}\" spiegelt den Aufbau des Hauptprojekts (Source/Core/Foo.pas → Tests/Core/Foo.Tests.pas).",
+          "x-description-en": "Folder for new test units relative to the root; empty: folder of the test project. {path} stands for the folder of the tested unit below testUnits.sourceRoot, {namespace} for its namespace as folders; e.g. \"Tests/{path}\" mirrors the layout of the main project (Source/Core/Foo.pas → Tests/Core/Foo.Tests.pas)."
+        },
+        "sourceRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Quellordner, von dem aus {path} in testUnits.folder gerechnet wird, relativ zur Wurzel, z. B. \"Source\"; mehrere mit ; getrennt (der längste passende gilt); leer: die Wurzel.",
+          "x-description-en": "Source folder from which {path} in testUnits.folder is computed, relative to the root, e.g. \"Source\"; several separated by ; (the longest matching one applies); empty: the root."
         },
         "project": {
           "type": "string",
@@ -3437,7 +3443,7 @@
       "x-scope": "project",
       "x-page": "Projekt",
       "x-control": "Textfeld, Dateiauswahl",
-      "x-issue": "#274"
+      "x-issue": "#274, #2800"
     },
     "tests": {
       "type": "object",

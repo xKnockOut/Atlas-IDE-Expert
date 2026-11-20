@@ -291,6 +291,8 @@ begin
   Result := TMcpEditTools.Create(AIndex, ReadSourceText, WriteSourceText, AllFilesOf(AGroup),
     EnsureReferenceOf(AGroup));
   Result.DirtyFiles := EditorDirtyFiles;
+  // Ungespeicherte Dateien hält die IDE zurück, statt abzulehnen (#2605).
+  Result.HoldText := HoldSourceText;
   Result.CheckSource := ACode.CheckSource;
   Result.CheckProject := ACode.CheckProject;
   Result.SettingsFor := ACode.SettingsFor;

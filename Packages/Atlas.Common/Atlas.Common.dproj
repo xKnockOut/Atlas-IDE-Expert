@@ -745,6 +745,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BatchTool.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeInbox.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeQuestions.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeDebug.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>
@@ -920,6 +921,7 @@
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.FormCache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FoldingRanges.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BlockFolds.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DiagnosticItems.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas"/>

@@ -410,7 +410,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `testUnits.pattern` | Projekt (atlas.json) | string | `"{unit}.Tests"` |  | Name der Testunit; {unit} steht für den Namen der getesteten Unit, z. B. "{unit}.Tests" oder "Test.{unit}". |
-| `testUnits.folder` | Projekt (atlas.json) | string | `""` |  | Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts. |
+| `testUnits.folder` | Projekt (atlas.json) | string | `""` |  | Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts. {path} steht für den Ordner der getesteten Unit unter testUnits.sourceRoot, {namespace} für ihren Namensraum als Ordner; z. B. "Tests/{path}" spiegelt den Aufbau des Hauptprojekts (Source/Core/Foo.pas → Tests/Core/Foo.Tests.pas). |
+| `testUnits.sourceRoot` | Projekt (atlas.json) | string | `""` |  | Quellordner, von dem aus {path} in testUnits.folder gerechnet wird, relativ zur Wurzel, z. B. "Source"; mehrere mit ; getrennt (der längste passende gilt); leer: die Wurzel. |
 | `testUnits.project` | Projekt (atlas.json) | string | `""` |  | Testprojekt (.dproj oder .dpr) relativ zur Wurzel; leer: das Projekt im Arbeitsbereich, dessen .dpr DUnitX oder DUnit verwendet. |
 
 ## tests

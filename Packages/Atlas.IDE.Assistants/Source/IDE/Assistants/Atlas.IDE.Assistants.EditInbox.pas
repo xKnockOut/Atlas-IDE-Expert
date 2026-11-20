@@ -10,6 +10,10 @@
 // angewendet, abgelehnt oder vom MCP-Server selbst geschrieben wird, und den
 // ganzen Ablauf eines Auftrags führt Atlas.Core.Assistants.EditPlan.Run aus
 // (getestet); diese Unit stellt nur Zeitgeber, Anwenden im Editor und Antwort.
+// Ist die Datei ungespeichert geändert, bittet der MCP-Server um Zurückhalten und ist
+// assistants.editHoldModified an (#2605), wartet die Änderung in TAtlasIdeHeldEdits
+// auf den Menschen; die Antwort lautet „held“. Jeder Auftrag landet im KI-Protokoll
+// (#2049): angewendet, zurückgehalten oder abgelehnt.
 
 interface
 
@@ -19,7 +23,9 @@ uses
   Atlas.Core.Files.Contract,
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
-  Atlas.IDE.Assistants.FolderSignal;
+  Atlas.Core.Assistants.Log,
+  Atlas.IDE.Assistants.FolderSignal,
+  Atlas.IDE.Assistants.HeldEdits;
 
 type
   TAtlasEditInboxProc = reference to procedure(const AMessage: string);
@@ -33,16 +39,21 @@ type
     FOnMessage: TAtlasEditInboxProc;
     FFiles: IAtlasEditorFiles;
     FActivity: TAtlasAssistantsActivity;
+    FLog: TAtlasAssistantsLog;
+    FHeld: TAtlasIdeHeldEdits;
     procedure Tick(Sender: TObject);
     procedure Process(const ARequestFile: string);
     procedure Clean;
   public
     /// <summary>AFiles: offene Dateien der IDE; AActivity: Pause und Anzeige „KI-Assistent aktiv“ (#1906), gehört
-    /// der Composition; AOnMessage: Zeile für die Meldungsansicht (geänderte Datei).</summary>
-    constructor Create(const AFiles: IAtlasEditorFiles; AActivity: TAtlasAssistantsActivity;
+    /// der Composition; ALog: KI-Protokoll (#2049), gehört der Composition, darf nil sein; AOnMessage: Zeile für
+    /// die Meldungsansicht (geänderte Datei).</summary>
+    constructor Create(const AFiles: IAtlasEditorFiles; AActivity: TAtlasAssistantsActivity; ALog: TAtlasAssistantsLog;
       const AOnMessage: TAtlasEditInboxProc);
     destructor Destroy; override;
     property Folder: string read FFolder;
+    /// <summary>Zurückgehaltene Änderungen (#2605); leben mit dem Eingang.</summary>
+    property Held: TAtlasIdeHeldEdits read FHeld;
   end;
 
 implementation
@@ -57,17 +68,28 @@ uses
   Atlas.Core.Assistants.Inbox,
   Atlas.Core.Assistants.EditPlan,
   Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Assistants.LogEntries,
   Atlas.Core.Editor.WorkspacePlan;
 
 { TAtlasIdeEditInbox }
 
 constructor TAtlasIdeEditInbox.Create(const AFiles: IAtlasEditorFiles; AActivity: TAtlasAssistantsActivity;
-  const AOnMessage: TAtlasEditInboxProc);
+  ALog: TAtlasAssistantsLog; const AOnMessage: TAtlasEditInboxProc);
 begin
   inherited Create;
   FFiles := AFiles;
   FActivity := AActivity;
+  FLog := ALog;
   FOnMessage := AOnMessage;
+  FHeld := TAtlasIdeHeldEdits.Create(AFiles, ALog,
+    procedure(AText: string)
+    begin
+      if Assigned(AOnMessage) then
+      begin
+        AOnMessage(AText);
+      end;
+    end);
   FFolder := TAtlasEditInbox.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     GetCurrentProcessId);
   Clean;
@@ -82,6 +104,8 @@ end;
 destructor TAtlasIdeEditInbox.Destroy;
 begin
   FTimer.Free;
+  // Wartende Änderungen gehen mit dem Eingang (Regel 3); der MCP-Server hat schon „wartet“ bekommen.
+  FHeld.Free;
   // Erst die Beobachtung schließen: Sie hält den Ordner offen.
   FSignal.Free;
   Clean;
@@ -142,17 +166,34 @@ begin
   if FActivity.Paused then
   begin
     TAtlasEditInbox.Answer(FFolder, mRequest, False, False,
+      TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused), False);
+    TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Refused, mRequest.FileName, mRequest.Client,
       TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused));
     Exit;
   end;
+  // Zurückhalten nur, wenn der MCP-Server darum bittet und der Mensch es eingeschaltet hat (#2605).
   mOutcome := TAtlasEditInboxPlan.Run(FFiles, mRequest.FileName, mRequest.Expected, mRequest.Text,
-    ApplyInEditor);
-  TAtlasEditInbox.Answer(FFolder, mRequest, mOutcome.Applied, mOutcome.ServerWrites, mOutcome.Reason);
-  if not mOutcome.Applied then
+    mRequest.Hold and TAtlasIdeSettings.Current.AssistantsEditHoldModified, ApplyInEditor);
+  if mOutcome.Held then
   begin
+    TAtlasEditInbox.Answer(FFolder, mRequest, False, False, mOutcome.Reason, True);
+    FHeld.Hold(mRequest);
     Exit;
   end;
-  FActivity.EditApplied(mRequest.FileName, '', GetTickCount64);
+  TAtlasEditInbox.Answer(FFolder, mRequest, mOutcome.Applied, mOutcome.ServerWrites, mOutcome.Reason, False);
+  if not mOutcome.Applied then
+  begin
+    // Schreibt der MCP-Server selbst (Datei nicht offen), ist nichts abgelehnt.
+    if not mOutcome.ServerWrites then
+    begin
+      TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Refused, mRequest.FileName, mRequest.Client,
+        mOutcome.Reason);
+    end;
+    Exit;
+  end;
+  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Edited, mRequest.FileName, mRequest.Client,
+    mRequest.Expected, mRequest.Text);
+  FActivity.EditApplied(mRequest.FileName, mRequest.Client, GetTickCount64);
   if Assigned(FOnMessage) then
   begin
     FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.McpEditApplied,

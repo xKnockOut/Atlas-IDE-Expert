@@ -347,6 +347,9 @@ begin
     Command('Atlas.DebugParallelStacks',
       TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ParallelStacksCommand),
       ShowDebugParallelStacks, DebugParallelStacksVisible),
+    // Parallel auswerten (#866); nur sichtbar, solange debug.parallelWatch an ist.
+    Command('Atlas.DebugParallelWatch', DebugParallelWatchCommandText, ShowDebugParallelWatch,
+      DebugParallelWatchVisible),
     // Atlas-Lecks (#1875); nur sichtbar, solange debug.leakReport an ist.
     Command('Atlas.DebugLeaks', DebugLeaksCommandText, ShowDebugLeaks, DebugLeaksVisible)];
   // Fenster „Auswerten“ (#784) mit dem Dialog der IDE daneben und Fenster „Variablen“ (#853).
@@ -423,9 +426,10 @@ end;
 function AtlasMenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := AtlasEntries(['Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
-    'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
-    'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart',
-    'Atlas.LaunchGroups', '-', 'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-',
+    'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugParallelWatch', 'Atlas.DebugEventLog',
+    'Atlas.DebugLogpointValues', 'Atlas.DebugMemory', 'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks', '-',
+    'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart', 'Atlas.LaunchGroups', 'Atlas.ConsoleOutput',
+    'Atlas.ConsoleRunNoDebug', '-', 'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-',
     'Atlas.RuntimeReportPaste', 'Atlas.DebugNote', 'Atlas.DebugKeepOpenedFile'],
     TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result := Result + AtlasEntries(['Atlas.BreakpointsWindow', 'Atlas.CheckBreakpoints', '-', 'Atlas.Logpoint',
@@ -438,9 +442,10 @@ end;
 /// damit sich das Layout einrichten lässt.</summary>
 function ViewMenuEntries: TArray<TAtlasMenuEntry>;
 const
-  cWindows: array[0..11] of string = ('Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
-    'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
-    'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks', 'Atlas.StepFilters', 'Atlas.DebugProfile', 'Atlas.BreakpointsWindow');
+  cWindows: array[0..14] of string = ('Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
+    'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugParallelWatch', 'Atlas.DebugEventLog',
+    'Atlas.DebugLogpointValues', 'Atlas.DebugMemory', 'Atlas.DebugLeaks', 'Atlas.DebugObjectMarks',
+    'Atlas.StepFilters', 'Atlas.DebugProfile', 'Atlas.BreakpointsWindow', 'Atlas.ConsoleOutput');
 var
   mIndex: Integer;
 begin
