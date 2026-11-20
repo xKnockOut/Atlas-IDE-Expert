@@ -8,8 +8,8 @@
 // - jeden String, der eine Adresse mit Zugangsdaten ist (https://user:pw@…,
 //   ?token=…),
 // - absolute Pfade (Laufwerk, UNC) in den Pfad-Einstellungen des Projekts:
-//   project, testUnits.folder, testUnits.project, exclude, index.exclude und
-//   overrides[].files. Glob-Muster ab dem Projektordner ("/Generated/**")
+//   project, testUnits.folder, testUnits.sourceRoot, testUnits.project, exclude,
+//   index.exclude und overrides[].files. Glob-Muster ab dem Projektordner ("/Generated/**")
 //   bleiben erlaubt.
 // und meldet jeden Fund als Warnung mit Position. Relative Pfade, die aus dem
 // Ordner herausführen ("..\Tests"), bleiben erlaubt: atlas.json liegt oft
@@ -64,8 +64,8 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  cPathSettings: array[0..5] of string = ('project', 'testUnits.folder', 'testUnits.project', 'exclude[]',
-    'index.exclude[]', 'overrides[].files[]');
+  cPathSettings: array[0..6] of string = ('project', 'testUnits.folder', 'testUnits.sourceRoot', 'testUnits.project',
+    'exclude[]', 'index.exclude[]', 'overrides[].files[]');
 
 type
   TStripper = class

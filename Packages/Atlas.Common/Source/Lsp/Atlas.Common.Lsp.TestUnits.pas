@@ -106,8 +106,9 @@ type
     class function Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>; const ASource: TUnitIndex;
       ALine: Integer;
       const AContext: TTestUnitContext): TTestUnitTarget; overload; static;
-    /// <summary>Ordner für neue Testunits: testUnits.folder unter der Wurzel, sonst der des Testprogramms.</summary>
-    class function TestFolder(const AContext: TTestUnitContext): string; static;
+    /// <summary>Ordner für neue Testunits zur Unit AFileName (AUnitName): testUnits.folder unter der Wurzel mit
+    /// {path} und {namespace} eingesetzt (#2800), sonst der des Testprogramms.</summary>
+    class function TestFolder(const AContext: TTestUnitContext; const AFileName, AUnitName: string): string; static;
     /// <summary>WorkspaceEdit, das die Testunit anlegt und ins Testprojekt einträgt. Der Aufrufer
     /// übernimmt das Objekt; nil, wenn ATarget nichts anzulegen hat.</summary>
     class function CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext): TJSONObject;
@@ -373,7 +374,7 @@ begin
     Exit;
   end;
   Result.Counterpart := TTestUnits.TestUnitName(Result.UnitName, AContext.Settings.Pattern);
-  mFolder := TestFolder(AContext);
+  mFolder := TestFolder(AContext, AFileName, Result.UnitName);
   FindTestFile(Result, AContext, mFolder);
   if Result.CounterpartFile = '' then
   begin
@@ -381,22 +382,47 @@ begin
   end;
 end;
 
-class function TLspTestUnits.TestFolder(const AContext: TTestUnitContext): string;
+/// <summary>APath mit PathDelim, relativ zu ARoot oder absolut (Laufwerk oder führender Trenner).</summary>
+function UnderRoot(const ARoot, APath: string): string;
+begin
+  Result := StringReplace(StringReplace(APath, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
+  if (Pos(':', Result) = 0) and not Result.StartsWith(PathDelim) then
+  begin
+    Result := IncludeTrailingPathDelimiter(ARoot) + Result;
+  end;
+end;
+
+/// <summary>Quellordner aus testUnits.sourceRoot (mit ; getrennt) als absolute Pfade; leer: die Wurzel.</summary>
+function SourceRoots(const AContext: TTestUnitContext): TArray<string>;
+var
+  mEntry: string;
+begin
+  Result := nil;
+  for mEntry in AContext.Settings.SourceRoot.Split([';']) do
+  begin
+    if Trim(mEntry) <> '' then
+    begin
+      Result := Result + [UnderRoot(AContext.Root, Trim(mEntry))];
+    end;
+  end;
+  if (Result = nil) and (AContext.Root <> '') then
+  begin
+    Result := [AContext.Root];
+  end;
+end;
+
+class function TLspTestUnits.TestFolder(const AContext: TTestUnitContext; const AFileName, AUnitName: string): string;
 var
   mFolder: string;
 begin
   if AContext.Settings.Folder <> '' then
   begin
-    mFolder := StringReplace(StringReplace(AContext.Settings.Folder, '/', PathDelim, [rfReplaceAll]), '\', PathDelim,
-      [rfReplaceAll]);
-    if (Pos(':', mFolder) > 0) or mFolder.StartsWith(PathDelim) then
+    mFolder := AContext.Settings.Folder;
+    if Pos('{', mFolder) > 0 then
     begin
-      Result := IncludeTrailingPathDelimiter(mFolder);
-    end
-    else
-    begin
-      Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(AContext.Root) + mFolder);
+      mFolder := TTestUnits.ExpandFolder(mFolder, TTestUnits.SourcePath(SourceRoots(AContext), AFileName), AUnitName);
     end;
+    Result := IncludeTrailingPathDelimiter(UnderRoot(AContext.Root, mFolder));
   end
   else if AContext.TestProgram <> '' then
   begin
