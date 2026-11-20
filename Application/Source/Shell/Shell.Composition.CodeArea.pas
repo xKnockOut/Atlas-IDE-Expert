@@ -121,7 +121,54 @@ uses
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.DeadCode,
+  Atlas.Common.Editing.UsesGroups,
+  Shell.Composition.Workspaces,
   Shell.Workspace.Jobs;
+
+/// <summary>Fundort einer Unit-Datei aus Sicht von AUri (#2794): eigenes Projekt samt Suchpfad, ein anderes
+/// Projekt der Gruppe, die Delphi-Installation oder sonst der Bibliothekspfad.</summary>
+function UsesUnitFileFunc(AWorkspaces: TShellWorkspaceRegistry): TShellUsesUnitFileFunc;
+begin
+  Result :=
+    function(const AUri, AFileName: string): TUsesUnitFile
+    var
+      mOwn, mOther: TShellWorkspace;
+      mRoot: string;
+    begin
+      Result := Default(TUsesUnitFile);
+      System.TMonitor.Enter(AWorkspaces.Lock);
+      try
+        mOwn := AWorkspaces.Pick(TDocumentUris.ToPath(AUri));
+        if (mOwn = nil) or (AFileName = '') then
+        begin
+          Exit;
+        end;
+        if mOwn.State.ContainsFile(AFileName) then
+        begin
+          Result.Origin := TUsesFileOrigin.OwnProject;
+          Exit;
+        end;
+        for mOther in AWorkspaces.Items do
+        begin
+          if (mOther <> mOwn) and mOther.State.ContainsFile(AFileName) then
+          begin
+            Result.Origin := TUsesFileOrigin.ProjectGroup;
+            Exit;
+          end;
+        end;
+        mRoot := mOwn.State.BdsRoot;
+        Result.Origin := TUsesFileOrigin.LibraryPath;
+        if (mRoot <> '') and SameText(Copy(AFileName, 1, Length(IncludeTrailingPathDelimiter(mRoot))),
+          IncludeTrailingPathDelimiter(mRoot)) then
+        begin
+          Result.Origin := TUsesFileOrigin.Installation;
+          Result.InstallPath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(mRoot)) + 1, MaxInt);
+        end;
+      finally
+        System.TMonitor.Exit(AWorkspaces.Lock);
+      end;
+    end;
+end;
 
 { TShellCodeArea }
 
@@ -368,6 +415,7 @@ begin
       Result := mCore.FileOptions.LanguageLevelFor(AUri);
     end;
   Result.WorkspaceOf := CodeActionWorkspaceOf;
+  Result.UnitFileOf := UsesUnitFileFunc(FCore.Workspaces);
   Result.SlashHost := FServices.Editing.SlashHost;
 end;
 
@@ -401,6 +449,9 @@ begin
       Result.MemberOrder := mWorkspace.Configuration.Settings.MemberOrder;
       Result.SortUses := mWorkspace.Configuration.Settings.SortUses;
       Result.SortUsesByNamespace := mWorkspace.Configuration.Settings.SortUsesByNamespace;
+      Result.SortUsesByOrigin := mWorkspace.Configuration.Settings.SortUsesByOrigin;
+      Result.UsesGroupStyle := TUsesGroups.StyleOf(mWorkspace.Configuration.Settings.UsesGroupStyle);
+      Result.MaxLineLength := mWorkspace.Configuration.Settings.Formatting.MaxLineLength;
       // usesKeep und die Option keep von unused-uses (#1135): Regel, Abblenden und „uses aufräumen“ gleich.
       Result.UsesKeep := TUnusedUsesRule.Keep(TRuleEngine.RuleOptions(cUnusedUsesRuleId,
         mWorkspace.Configuration.Settings), mWorkspace.Configuration.Settings.UsesKeep);

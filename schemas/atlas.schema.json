@@ -2239,6 +2239,18 @@
           "x-description-en": "/sortuses also removes units unused according to the index. Units with initialization or finalization and those from usesKeep stay.",
           "x-issue": "#297"
         },
+        "sortUsesOrder": {
+          "type": "string",
+          "enum": [
+            "origin",
+            "alphabetic",
+            "namespace"
+          ],
+          "default": "origin",
+          "description": "Reihenfolge von /sortuses: \"origin\" nach Herkunft gegliedert (System, Delphi-Komponenten, VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt; Darstellung nach usesGroupStyle), \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert.",
+          "x-description-en": "Order of /sortuses: \"origin\" grouped by origin (System, Delphi components, VCL/FMX, library, packages of the project group, project; layout as in usesGroupStyle), \"alphabetic\" alphabetically, \"namespace\" grouped by namespace.",
+          "x-issue": "#2794"
+        },
         "enumHelper": {
           "type": "boolean",
           "default": true,
@@ -2269,15 +2281,30 @@
         true,
         false,
         "alphabetic",
-        "namespace"
+        "namespace",
+        "origin"
       ],
       "default": false,
-      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",
-      "x-description-en": "\"Organize uses\" (source.organizeImports, e.g. on save) sorts the uses: true or \"alphabetic\" alphabetically, \"namespace\" grouped by namespace (System, Vcl, ... and units without namespace last). Caution: the order determines the initialization of the units.",
+      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt), \"origin\" nach Herkunft gegliedert (System, Delphi-Komponenten, VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt; Darstellung nach usesGroupStyle). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",
+      "x-description-en": "\"Organize uses\" (source.organizeImports, e.g. on save) sorts the uses: true or \"alphabetic\" alphabetically, \"namespace\" grouped by namespace (System, Vcl, ... and units without namespace last), \"origin\" by origin (System, Delphi components, VCL/FMX, library, packages of the project group, project; layout as in usesGroupStyle). Caution: the order determines the initialization of the units.",
       "x-scope": "project",
       "x-page": "Eingabehilfen",
       "x-control": "Auswahl",
-      "x-issue": "#182, #284"
+      "x-issue": "#182, #284, #2794"
+    },
+    "usesGroupStyle": {
+      "type": "string",
+      "enum": [
+        "comments",
+        "lines"
+      ],
+      "default": "comments",
+      "description": "Darstellung, wenn /sortuses oder \"uses aufräumen\" nach Herkunft gliedert: \"comments\" schreibt über jede Gruppe einen Kommentar wie { System }, \"lines\" beginnt jede Gruppe nur in einer neuen Zeile. Bei nur einer Gruppe entfällt der Kommentar.",
+      "x-description-en": "Layout when /sortuses or \"Organize uses\" groups by origin: \"comments\" writes a comment such as { System } above each group, \"lines\" only starts each group on a new line. With a single group there is no comment.",
+      "x-scope": "project",
+      "x-page": "Eingabehilfen",
+      "x-control": "Auswahl",
+      "x-issue": "#2794"
     },
     "usesKeep": {
       "type": "array",

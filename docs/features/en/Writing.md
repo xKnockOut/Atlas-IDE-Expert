@@ -87,6 +87,7 @@ Code completion in its own popup:
   - class-aware templates (`prop`, `create`, `free`)
   - postfix templates (`List.forin`, `Obj.notnil`, `Obj.free`)
 - **Slash commands** run after Enter, such as `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/mock`, `/testcase`, `/dump`, `/assert`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+  - `/sortuses` groups the uses by origin: System, Delphi components (Indy, FireDAC, DataSnap …), VCL/FMX, library, packages of the project group, project; a comment such as `{ System }` above each group (#2794, `slashCommands.sortUsesOrder`, `usesGroupStyle`, for "Organize uses" `sortUses: "origin"`)
 - **Generate menu** (Alt+Ins): constructor, properties, overridden methods, interface methods, surround, templates
 - **Guard the free:** after `X := TFoo.Create;` an offer for `try … finally X.Free; end;`
 - **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders

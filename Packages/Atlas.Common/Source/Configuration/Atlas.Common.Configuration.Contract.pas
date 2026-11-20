@@ -786,6 +786,8 @@ type
     SlashTodoCategory: string;
     /// <summary>/sortuses streicht ungenutzte Units (#297, #284).</summary>
     SlashSortUsesRemoveUnused: Boolean;
+    /// <summary>Reihenfolge von /sortuses (#2794): origin, alphabetic oder namespace.</summary>
+    SlashSortUsesOrder: string;
     /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875).</summary>
     SlashEnumHelper: Boolean;
     /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875).</summary>
@@ -795,6 +797,10 @@ type
     SortUses: Boolean;
     /// <summary>Mit SortUses: nach Namespace gruppiert statt rein alphabetisch (#284).</summary>
     SortUsesByNamespace: Boolean;
+    /// <summary>Mit SortUses: nach Herkunft gegliedert (#2794), Vorrang vor SortUsesByNamespace.</summary>
+    SortUsesByOrigin: Boolean;
+    /// <summary>Darstellung der Gruppen nach Herkunft (#2794): comments oder lines.</summary>
+    UsesGroupStyle: string;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
     /// <summary>Toter Code (#64): Attribute (z. B. JsonName) und Namensmuster (z. B. *Handler), deren Elemente als
@@ -1517,10 +1523,13 @@ begin
   ASettings.SlashTodoOwner := '';
   ASettings.SlashTodoCategory := '';
   ASettings.SlashSortUsesRemoveUnused := True;
+  ASettings.SlashSortUsesOrder := 'origin';
   ASettings.SlashEnumHelper := True;
   ASettings.SlashSetHelper := True;
   ASettings.SortUses := False;
   ASettings.SortUsesByNamespace := False;
+  ASettings.SortUsesByOrigin := False;
+  ASettings.UsesGroupStyle := 'comments';
   ASettings.UsesKeep := nil;
   ASettings.DeadCodeKeepAttributes := nil;
   ASettings.DeadCodeKeepPatterns := nil;

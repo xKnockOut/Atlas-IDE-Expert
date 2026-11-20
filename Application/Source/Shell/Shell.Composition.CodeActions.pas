@@ -1,7 +1,8 @@
 ﻿unit Shell.Composition.CodeActions;
 
 // Internals-Rolle Shell: Code-Aktionen (#122, #182, #621), Dokumentlinks auf Include-Dateien und Farben im
-// Editor. Die Komposition reicht Dokumente, Index, Prüfkontext, Einstellungen je Datei und die Lage des
+// Editor. uses nach Herkunft gliedern (#2794): Die Gruppe einer Unit folgt aus ihrer Datei im Index und deren
+// Fundort, den die Komposition kennt (UnitFileOf). Die Komposition reicht Dokumente, Index, Prüfkontext, Einstellungen je Datei und die Lage des
 // Arbeitsbereichs als Dienste herein; die Code-Aktionen entstehen hier.
 
 interface
@@ -12,6 +13,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
+  Atlas.Common.Editing.UsesGroups,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.CodeActions,
@@ -26,12 +29,18 @@ type
     MemberOrder: TMemberOrderSettings;
     SortUses: Boolean;
     SortUsesByNamespace: Boolean;
+    SortUsesByOrigin: Boolean;
+    UsesGroupStyle: TUsesGroupStyle;
+    /// <summary>format.maxLineLength; 0 = Vorgabe.</summary>
+    MaxLineLength: Integer;
     UsesKeep: TArray<string>;
     Namespaces: TArray<string>;
     IncludePaths: TArray<string>;
   end;
 
   TShellCodeActionWorkspaceFunc = reference to function(const AUri: string): TShellCodeActionWorkspace;
+  /// <summary>Fundort der Datei AFileName einer Unit aus Sicht der Datei AUri (#2794).</summary>
+  TShellUsesUnitFileFunc = reference to function(const AUri, AFileName: string): TUsesUnitFile;
   TShellCodeActionLevelFunc = reference to function(const AUri: string): string;
 
   /// <summary>Was die Code-Aktionen von der Komposition brauchen.</summary>
@@ -50,6 +59,8 @@ type
     LanguageLevelFor: TShellCodeActionLevelFunc;
     /// <summary>Lage des Arbeitsbereichs der Datei, unter dessen Sperre gelesen.</summary>
     WorkspaceOf: TShellCodeActionWorkspaceFunc;
+    /// <summary>Fundort einer Unit-Datei (#2794); nil = Gruppe nur nach Namespace.</summary>
+    UnitFileOf: TShellUsesUnitFileFunc;
     /// <summary>Für die Einstellungen der Erzeuger; nil ohne.</summary>
     SlashHost: ISlashHost;
   end;
@@ -63,8 +74,8 @@ type
     FColors: TLspColors;
     function ClassActionContextOf(const AUri: string): TClassActionContext;
     function MemberOrderOf(const AUri: string): TMemberOrderSettings;
-    function SortUsesOf(const AUri: string): Boolean;
-    function SortUsesByNamespaceOf(const AUri: string): Boolean;
+    function UsesOrderOf(const AUri: string): TUsesRewrite;
+    function GroupOf(const AUri: string): TUsesGroupFunc;
     function IncludePathsOf(const AUri: string): TArray<string>;
     function FormModulesOf(const AUri: string): TArray<string>;
   public
@@ -146,8 +157,7 @@ begin
   FCodeActions.RefactoringFor := FServices.RefactoringFor;
   FCodeActions.ClassActionContextFor := ClassActionContextOf;
   FCodeActions.MemberOrderFor := MemberOrderOf;
-  FCodeActions.SortUsesFor := SortUsesOf;
-  FCodeActions.SortUsesByNamespaceFor := SortUsesByNamespaceOf;
+  FCodeActions.UsesOrderFor := UsesOrderOf;
   FCodeActions.UsesContextFor := UsesContextOf;
   FCodeActions.DefinesFor := FServices.DefinesFor;
   FCodeActions.ExtraActions := FServices.ExtraActions;
@@ -177,14 +187,71 @@ begin
   Result := FServices.WorkspaceOf(AUri).MemberOrder;
 end;
 
-function TShellCodeActions.SortUsesOf(const AUri: string): Boolean;
+function TShellCodeActions.UsesOrderOf(const AUri: string): TUsesRewrite;
+var
+  mWorkspace: TShellCodeActionWorkspace;
 begin
-  Result := FServices.WorkspaceOf(AUri).SortUses;
+  mWorkspace := FServices.WorkspaceOf(AUri);
+  Result := Default(TUsesRewrite);
+  Result.Sort := mWorkspace.SortUses;
+  Result.ByNamespace := mWorkspace.SortUsesByNamespace;
+  if mWorkspace.SortUses and mWorkspace.SortUsesByOrigin then
+  begin
+    Result.GroupOf := GroupOf(AUri);
+    Result.GroupStyle := mWorkspace.UsesGroupStyle;
+    Result.MaxLineLength := mWorkspace.MaxLineLength;
+  end;
 end;
 
-function TShellCodeActions.SortUsesByNamespaceOf(const AUri: string): Boolean;
+/// <summary>Unit AUnitName im Index, auch über die Unit-Namespaces (SysUtils als System.SysUtils).</summary>
+function FindIndexedUnit(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>; const AUnitName: string;
+  out AUnit: TUnitIndex): Boolean;
+var
+  mNamespace: string;
 begin
-  Result := FServices.WorkspaceOf(AUri).SortUsesByNamespace;
+  Result := AIndex.FindUnit(AUnitName, AUnit);
+  for mNamespace in ANamespaces do
+  begin
+    if Result then
+    begin
+      Exit;
+    end;
+    Result := AIndex.FindUnit(mNamespace + '.' + AUnitName, AUnit);
+  end;
+end;
+
+/// <summary>Gruppe nach Fundort der Datei im Index (#2794), ohne Treffer nach Namespace.</summary>
+function IndexGroupFunc(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>; const AUri: string;
+  const AFileOf: TShellUsesUnitFileFunc): TUsesGroupFunc;
+begin
+  Result :=
+    function(const AUnitName: string): TUsesGroup
+    var
+      mUnit: TUnitIndex;
+    begin
+      if FindIndexedUnit(AIndex, ANamespaces, AUnitName, mUnit) then
+      begin
+        Result := TUsesGroups.OfFile(mUnit.UnitName, AFileOf(AUri, mUnit.FileName));
+      end
+      else
+      begin
+        Result := TUsesGroups.OfName(AUnitName);
+      end;
+    end;
+end;
+
+function TShellCodeActions.GroupOf(const AUri: string): TUsesGroupFunc;
+begin
+  if (FServices.Index = nil) or not Assigned(FServices.UnitFileOf) then
+  begin
+    Result :=
+      function(const AUnitName: string): TUsesGroup
+      begin
+        Result := TUsesGroups.OfName(AUnitName);
+      end;
+    Exit;
+  end;
+  Result := IndexGroupFunc(FServices.Index, FServices.WorkspaceOf(AUri).Namespaces, AUri, FServices.UnitFileOf);
 end;
 
 function TShellCodeActions.IncludePathsOf(const AUri: string): TArray<string>;
@@ -235,6 +302,7 @@ begin
   mSource.Namespaces := mWorkspace.Namespaces;
   AContext.Resolve := TUsesUsage.ResolveFunc(mSource, TDocumentUris.ToPath(AUri), AContext.Info);
   AContext.Declaring := DeclaringFunc(FServices.Index);
+  AContext.GroupOf := GroupOf(AUri);
   Result := True;
 end;
 

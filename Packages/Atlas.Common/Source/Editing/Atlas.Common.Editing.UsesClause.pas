@@ -3,8 +3,13 @@
 // uses-Listen lesen und ergänzen (#180), ohne Protokollbezug.
 //
 // - Rewrite (#284) schreibt die schlichten Listen neu: doppelte entfernen,
-//   sortieren (alphabetisch oder nach Namespace gruppiert), Namen streichen.
-//   Listen mit Direktiven ({$IFDEF}) oder //-Kommentaren bleiben unberührt.
+//   sortieren (alphabetisch, nach Namespace gruppiert oder nach Herkunft
+//   gegliedert, #2794), Namen streichen. Listen mit Direktiven ({$IFDEF})
+//   oder //-Kommentaren bleiben unberührt.
+// - Nach Herkunft: je Gruppe (TUsesGroups) eine eigene Zeile, bei Bedarf
+//   umbrochen, mit Gruppenkommentar { System } darüber, sobald es mehr als
+//   eine Gruppe gibt. Alte Gruppenkommentare entfallen, andere Kommentare vor
+//   dem ersten Eintrag bleiben.
 //
 // - Abschnitt: in einer Unit interface oder implementation, je nachdem, wo der
 //   Cursor steht; in Programmen und Packages die uses nach dem Kopf.
@@ -20,6 +25,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.Contract;
 
 type
@@ -57,6 +63,14 @@ type
     ByNamespace: Boolean;
     /// <summary>Diese Units entfallen.</summary>
     Drop: TArray<string>;
+    /// <summary>Mit Sort: nach Herkunft gliedern (#2794); nil = nicht.</summary>
+    GroupOf: TUsesGroupFunc;
+    /// <summary>Darstellung der Gruppen mit GroupOf.</summary>
+    GroupStyle: TUsesGroupStyle;
+    /// <summary>Mit GroupOf: längere Zeilen einer Gruppe umbrechen; 0 = cDefaultLineLength.</summary>
+    MaxLineLength: Integer;
+  public const
+    cDefaultLineLength = 120;
   end;
 
   TUsesClauses = class
@@ -105,6 +119,7 @@ implementation
 uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Editing.UsesGroups,
   System.StrUtils;
 
 function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -474,6 +489,8 @@ type
     Name: string;
     Text: string;
     Order: Integer;
+    /// <summary>Nur beim Gliedern nach Herkunft gesetzt.</summary>
+    Group: TUsesGroup;
   end;
 
 function TokenEnd(const AToken: TPascalToken): Integer;
@@ -524,6 +541,37 @@ begin
     mItem := AItems[I];
     J := I - 1;
     while (J >= 0) and ItemLess(mItem, AItems[J], AByNamespace) do
+    begin
+      AItems[J + 1] := AItems[J];
+      Dec(J);
+    end;
+    AItems[J + 1] := mItem;
+  end;
+end;
+
+function GroupedLess(const A, B: TUsesItem): Boolean;
+var
+  mCompared: Integer;
+begin
+  mCompared := Ord(A.Group) - Ord(B.Group);
+  if mCompared = 0 then
+  begin
+    mCompared := CompareText(A.Name, B.Name);
+  end;
+  Result := (mCompared < 0) or ((mCompared = 0) and (A.Order < B.Order));
+end;
+
+/// <summary>Stabil nach Gruppe, dann Name (#2794).</summary>
+procedure SortGrouped(var AItems: TArray<TUsesItem>);
+var
+  I, J: Integer;
+  mItem: TUsesItem;
+begin
+  for I := 1 to High(AItems) do
+  begin
+    mItem := AItems[I];
+    J := I - 1;
+    while (J >= 0) and GroupedLess(mItem, AItems[J]) do
     begin
       AItems[J + 1] := AItems[J];
       Dec(J);
@@ -761,6 +809,10 @@ type
     function Keep(const AItems: TArray<TUsesItem>): TArray<TUsesItem>;
     /// <summary>Edit für die Liste mit den Einträgen AKept; ohne Einträge entfällt die ganze Liste.</summary>
     function ListEdit(AIndex, ASemicolon: Integer; const AKept: TArray<TUsesItem>): TTextEdit;
+    /// <summary>Text hinter uses (AIndex) bis vor das Semikolon nach Herkunft gegliedert (#2794).</summary>
+    function GroupedText(AIndex: Integer; const AKept: TArray<TUsesItem>): string;
+    /// <summary>Wie RewriteList, aber nach Herkunft gegliedert; Edit nur bei geändertem Text.</summary>
+    procedure RewriteGrouped(AIndex, ASemicolon: Integer; const AKept: TArray<TUsesItem>);
     /// <summary>Schreibt die schlichte Liste zwischen uses (AIndex) und ASemicolon um.</summary>
     procedure RewriteList(AIndex, ASemicolon: Integer);
   end;
@@ -780,7 +832,7 @@ begin
       Seen := Seen + [mItem.Name];
     end;
   end;
-  if Options.Sort then
+  if Options.Sort and not Assigned(Options.GroupOf) then
   begin
     SortItems(Result, Options.ByNamespace);
   end;
@@ -817,9 +869,162 @@ begin
     Exit;
   end;
   mKept := Keep(mItems);
-  if OrderChanged(mItems, mKept) then
+  if Options.Sort and Assigned(Options.GroupOf) then
+  begin
+    RewriteGrouped(AIndex, ASemicolon, mKept);
+  end
+  else if OrderChanged(mItems, mKept) then
   begin
     Edits := Edits + [ListEdit(AIndex, ASemicolon, mKept)];
+  end;
+end;
+
+/// <summary>Einrückung der Einträge: Spalte des ersten Eintrags, wenn er unter uses steht, sonst zwei mehr als
+/// uses.</summary>
+function ItemIndent(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  mFirst: Integer;
+begin
+  mFirst := NextIndex(ATokens, AIndex);
+  Result := ATokens[AIndex].StartPos.Character + 2;
+  if (mFirst <= High(ATokens)) and (ATokens[mFirst].StartPos.Line > ATokens[AIndex].StartPos.Line) then
+  begin
+    Result := ATokens[mFirst].StartPos.Character;
+  end;
+end;
+
+/// <summary>Kommentare zwischen uses (AIndex) und dem ersten Eintrag, die keine Gruppenkommentare sind.</summary>
+function LeadingComments(const ATokens: TArray<TPascalToken>; AIndex: Integer): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  mIndex := AIndex + 1;
+  while (mIndex <= High(ATokens)) and IsTrivia(ATokens[mIndex]) do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Comment) and not TUsesGroups.IsLabel(ATokens[mIndex].Text) then
+    begin
+      Result := Result + [ATokens[mIndex].Text];
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Zeilen der Gruppe: Einträge mit Komma (außer ALast für den letzten Eintrag der Liste), umbrochen
+/// vor AMaxLength.</summary>
+function GroupLines(const AItems: TArray<string>; const AIndent: string; AMaxLength: Integer;
+  ALastOfList: Boolean): TArray<string>;
+var
+  mIndex: Integer;
+  mLine, mPart: string;
+begin
+  Result := nil;
+  mLine := '';
+  for mIndex := 0 to High(AItems) do
+  begin
+    mPart := AItems[mIndex];
+    if not (ALastOfList and (mIndex = High(AItems))) then
+    begin
+      mPart := mPart + ',';
+    end;
+    if (mLine <> '') and (Length(mLine) + 1 + Length(mPart) > AMaxLength) then
+    begin
+      Result := Result + [mLine];
+      mLine := '';
+    end;
+    if mLine = '' then
+    begin
+      mLine := AIndent + mPart;
+    end
+    else
+    begin
+      mLine := mLine + ' ' + mPart;
+    end;
+  end;
+  if mLine <> '' then
+  begin
+    Result := Result + [mLine];
+  end;
+end;
+
+/// <summary>Anzahl verschiedener Gruppen in den sortierten Einträgen.</summary>
+function GroupCount(const AItems: TArray<TUsesItem>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := 0 to High(AItems) do
+  begin
+    if (mIndex = 0) or (AItems[mIndex].Group <> AItems[mIndex - 1].Group) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+function TUsesRewriter.GroupedText(AIndex: Integer; const AKept: TArray<TUsesItem>): string;
+var
+  mIndent, mComment: string;
+  mLines, mNames: TArray<string>;
+  mFirst, mLast, mMaxLength: Integer;
+  mLabels: Boolean;
+begin
+  mIndent := StringOfChar(' ', ItemIndent(Tokens, AIndex));
+  mMaxLength := Options.MaxLineLength;
+  if mMaxLength <= 0 then
+  begin
+    mMaxLength := TUsesRewrite.cDefaultLineLength;
+  end;
+  mLabels := (Options.GroupStyle = TUsesGroupStyle.Comments) and (GroupCount(AKept) > 1);
+  mLines := nil;
+  for mComment in LeadingComments(Tokens, AIndex) do
+  begin
+    mLines := mLines + [mIndent + mComment];
+  end;
+  mFirst := 0;
+  while mFirst <= High(AKept) do
+  begin
+    mLast := mFirst;
+    mNames := nil;
+    while (mLast <= High(AKept)) and (AKept[mLast].Group = AKept[mFirst].Group) do
+    begin
+      mNames := mNames + [Trim(AKept[mLast].Text)];
+      Inc(mLast);
+    end;
+    if mLabels then
+    begin
+      mLines := mLines + [mIndent + TUsesGroups.LabelOf(AKept[mFirst].Group)];
+    end;
+    mLines := mLines + GroupLines(mNames, mIndent, mMaxLength, mLast > High(AKept));
+    mFirst := mLast;
+  end;
+  Result := LineBreak + string.Join(LineBreak, mLines);
+end;
+
+procedure TUsesRewriter.RewriteGrouped(AIndex, ASemicolon: Integer; const AKept: TArray<TUsesItem>);
+var
+  mSorted: TArray<TUsesItem>;
+  mIndex, mStart: Integer;
+  mOld, mNew: string;
+begin
+  if AKept = nil then
+  begin
+    Edits := Edits + [ListEdit(AIndex, ASemicolon, nil)];
+    Exit;
+  end;
+  mSorted := Copy(AKept);
+  for mIndex := 0 to High(mSorted) do
+  begin
+    mSorted[mIndex].Group := Options.GroupOf(mSorted[mIndex].Name);
+  end;
+  SortGrouped(mSorted);
+  mNew := GroupedText(AIndex, mSorted);
+  mStart := TokenEnd(Tokens[AIndex]);
+  mOld := Copy(Text, mStart + 1, Tokens[ASemicolon].Offset - mStart);
+  if mNew <> mOld then
+  begin
+    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Tokens[AIndex].EndPos, Tokens[ASemicolon].StartPos),
+      mNew)];
   end;
 end;
 
