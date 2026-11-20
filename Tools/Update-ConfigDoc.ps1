@@ -1385,7 +1385,7 @@ $DocsSource = '[' + "`n" + ($DocsLines -join (",`n")) + "`n" + ']'
 Sync-Unit $DocsUnitPath (Text-Unit 'Atlas.Common.Mcp.DocsIndexData' @(
     '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json, schemas/atlas-plugin.schema.json und',
     '// docs/features/de|en; nicht von Hand ändern. Suchindex für das MCP-Werkzeug search_atlas_docs (#2376).') `
-    'Einträge des Suchindex als JSON-Array (Einstellungen, Tastenkürzel, Abschnitte der Funktionsseiten).' 'AtlasDocsIndexJson' $DocsSource)
+    'Suchindex als JSON-Array (Einstellungen, Tastenkürzel, Abschnitte der Funktionsseiten).' 'AtlasDocsIndexJson' $DocsSource)
 
 if ($Problems.Count -gt 0) {
     foreach ($Problem in $Problems) { Write-Error $Problem -ErrorAction Continue }

@@ -605,6 +605,7 @@ type
     property DebugVariablesScopedWatches: Boolean read FDebug.DebugVariablesScopedWatches
       write FDebug.DebugVariablesScopedWatches;
     property DebugObjectMarks: Boolean read FDebug.DebugObjectMarks write FDebug.DebugObjectMarks;
+    property DebugParallelWatch: Boolean read FDebug.DebugParallelWatch write FDebug.DebugParallelWatch;
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
@@ -631,6 +632,7 @@ type
     property DebugReattachWaitIntervalMs: Integer read FDebug.DebugReattachWaitIntervalMs
       write FDebug.DebugReattachWaitIntervalMs;
     property DebugLaunchGroups: Boolean read FDebug.DebugLaunchGroups write FDebug.DebugLaunchGroups;
+    property DebugCaptureConsole: Boolean read FDebug.DebugCaptureConsole write FDebug.DebugCaptureConsole;
     property DebugPinnedValues: Boolean read FDebug.DebugPinnedValues write FDebug.DebugPinnedValues;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField

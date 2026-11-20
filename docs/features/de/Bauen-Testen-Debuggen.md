@@ -291,6 +291,15 @@ Einstellungen: `tests.log`, `tests.log.maxLines`
 
 Einstellung: `tests.leaks`
 
+### Ordner neuer Testunits (#274, #2800)
+
+- Neue Testunits (*DUnitX-Testunit anlegen*, Testfall aus der Unit) legt Atlas in `testUnits.folder` an; leer: im Ordner des Testprojekts.
+- `{path}` im Ordner spiegelt den Aufbau des Hauptprojekts: Mit `testUnits.folder` = `Tests/{path}` und `testUnits.sourceRoot` = `Source` wird aus `Source/Core/Foo.pas` die Testunit `Tests/Core/Foo.Tests.pas`. Fehlende Ordner legt Atlas an, `.dpr` und `.dproj` bekommen den Pfad.
+- `{namespace}` setzt den Namensraum der Unit als Ordner ein (`Atlas.Core.Net.Http` → `Atlas/Core/Net`).
+- Mehrere Quellordner mit `;` trennen, der längste passende gilt; Units außerhalb landen direkt im Basisordner. Ohne Platzhalter bleibt alles wie bisher.
+
+Einstellungen: `testUnits.folder`, `testUnits.sourceRoot`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
@@ -409,6 +418,21 @@ Aufruf: Atlas-Menü › Speicherverlauf bzw. Befehl `Atlas.DebugMemory`.
 - Die Zählung hängt nicht vom Speichermanager ab und ist eine Näherung: Klassenverweise in Feldern (`TClass`) zählen mit, freigegebene Objekte fallen weg, sobald der Speichermanager ihren Anfang überschreibt (FastMM tut das).
 
 Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
+
+<a id="window-atlasconsoleoutput"></a>
+#### Konsolenausgabe andocken
+
+Experimentell, Vorgabe aus. Aufruf: Start mit F9 wie immer, Menü Start › „Ohne Debugger mit Konsolenausgabe starten“ bzw. Befehle `Atlas.ConsoleRunNoDebug` und `Atlas.ConsoleOutput`.
+
+- Bei einem Konsolenprogramm für Win32 oder Win64 ohne Host-Anwendung erscheint statt eines eigenen Konsolenfensters die Ausgabe im andockbaren Fenster „Atlas: Konsolenausgabe“. Andere Projekte startet die IDE wie gewohnt.
+- Mit Debugger startet Atlas das Programm angehalten und hängt den Debugger der IDE an. Erst wenn die IDE das Programm übernommen hat, läuft es los; Haltepunkte ab der ersten Zeile greifen. Übernimmt die IDE nicht binnen 10 s, läuft das Programm trotzdem weiter, mit Meldung.
+- Fehlerausgabe (stderr) steht rot, Eingaben blau, Hinweise von Atlas grau. Eingaben gehen über das Feld unten an das Programm (Enter sendet, „Eingabe beenden“ schickt das Dateiende für `Readln`).
+- Fundstellen wie `Haupt.pas(12)` oder `Src/Haupt.pas:12:5` sind unterstrichen; ein Klick öffnet die Datei an der Zeile (gesucht im Arbeitsordner, dann im Projektordner).
+- Parameter, Arbeitsordner und Umgebung kommen aus den Startoptionen des Projekts, also auch aus einem aktiven Startprofil.
+- Nach dem Ende bleibt die Ausgabe mit dem Exit-Code stehen. Das Fenster hält höchstens 20 000 Zeilen; ältere fallen mit Hinweis weg.
+- „Beenden“ beendet das Programm, im Debugger über die IDE.
+
+Einstellung: `debug.captureConsole`
 
 <a id="window-atlasprofiler"></a>
 #### Profiler
@@ -998,6 +1022,18 @@ Schalter: `debug.callStackWindow` (aus: der Aufrufstack der IDE bleibt, wie er i
 - Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
+
+#### Parallel auswerten (#866)
+
+- Atlas > „Parallel auswerten“ öffnet ein andockbares Fenster, das einen oder mehrere Ausdrücke in allen Threads auswertet: eine Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens), eine Spalte je Ausdruck. Bei acht Arbeitern sieht man so auf einen Blick, welcher gerade welchen Auftrag bearbeitet (`FAuftrag.Nr`).
+- Ausdrücke kommen über das Eingabefeld und „Hinzufügen“ (oder Enter) dazu; das Kontextmenü einer Spalte ändert oder entfernt den Ausdruck. Sie werden je Projekt gespeichert.
+- Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, im Thread selbst mit dem obersten eigenen Rahmen als Ort; der aktuelle Thread bleibt derselbe. Gilt ein Ausdruck in einem Thread nicht (unbekannter Bezeichner), steht dort „–“. Ab 32 Threads wertet Atlas erst auf „Auswerten“ aus.
+- Threads ohne eigenen Rahmen (Pool im Leerlauf, Systemthreads) sind ausgeblendet; „Threads ohne eigenen Code zeigen“ blendet sie ein.
+- Klick auf einen Spaltenkopf sortiert (Zahlen nach Wert), ein zweiter Klick absteigend. „Nur Zeilen mit …“ im Kontextmenü einer Spalte filtert, etwa die Spalte `Abbrechen` auf `True`. Markierte Threads (⚑, „Threads im Quelltext“) stehen oben.
+- Enter oder Doppelklick wechselt zum Thread und springt zur Zeile seines Rahmens.
+- Grenze der ToolsAPI: Einen anderen Rahmen als den, den der Debugger für den Thread wählt, kann Atlas nicht vorgeben; Datei und Zeile des eigenen Rahmens bekommt der Debugger als Ort mit.
+
+Schalter: `debug.parallelWatch`.
 
 <a id="window-atlasdebugleaks"></a>
 #### Atlas-Lecks

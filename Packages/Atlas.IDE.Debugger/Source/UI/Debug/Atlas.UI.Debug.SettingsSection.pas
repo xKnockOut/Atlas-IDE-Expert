@@ -72,11 +72,13 @@ uses
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.ObjectMarks.Strings,
+  Atlas.UI.Debug.ParallelWatch.Strings,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Note.Strings,
   Atlas.UI.Debug.Logpoints.Strings,
   Atlas.UI.Debug.OpenedFiles.Strings,
-  Atlas.UI.Debug.Profile.Strings;
+  Atlas.UI.Debug.Profile.Strings,
+  Atlas.UI.Debug.Console.Strings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -389,6 +391,8 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReattachWait));
   // Startverbünde (#867).
   Switch('debug.launchGroups', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLaunchGroups));
+  // Konsolenausgabe andocken (#581).
+  Switch('debug.captureConsole', TAtlasConsoleStrings.Text(TAtlasConsoleTextId.SettingsCaptureConsole));
   Switch('debug.pinnedValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPinnedValues));
   // Speicherverlauf (#858).
   Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
@@ -444,6 +448,9 @@ begin
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesScopedWatches));
   // Objekte markieren (#839).
   Switch('debug.objectMarks', TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.SettingsDebugObjectMarks));
+  // Parallel auswerten (#866).
+  Switch('debug.parallelWatch',
+    TAtlasParallelWatchStrings.Text(TAtlasParallelWatchTextId.SettingsDebugParallelWatch));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped',

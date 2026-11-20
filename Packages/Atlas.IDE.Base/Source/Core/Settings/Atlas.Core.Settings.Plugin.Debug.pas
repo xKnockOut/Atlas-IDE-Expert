@@ -351,6 +351,9 @@ type
     /// <summary>Objekte beim Debuggen markieren (#839, debug.objectMarks): Etiketten an Werten, Fenster „Markierte
     /// Objekte“. Aus = kein Menüpunkt, keine Etiketten.</summary>
     DebugObjectMarks: Boolean;
+    /// <summary>Ausdrücke in allen Threads auswerten (#866, debug.parallelWatch): Fenster „Parallel auswerten“.
+    /// Aus = kein Fenster, kein Menüpunkt.</summary>
+    DebugParallelWatch: Boolean;
     /// <summary>Bedingungen vorausschauen (#2169, debug.predictConditions): Beim Halt zeigt Atlas an den kommenden
     /// if, while und case derselben Routine das vorhergesagte Ergebnis („= False · FOnline“, „→ smManual“), wenn
     /// dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet. Aus = keine Anfrage.</summary>
@@ -419,6 +422,10 @@ type
     /// Fenster „Startverbünde“; F9 startet den aktiven Verbund, Strg+F2 beendet alle seine Programme. Aus = F9
     /// startet nur das aktive Projekt.</summary>
     DebugLaunchGroups: Boolean;
+    /// <summary>Ausgabe von Konsolenprogrammen andocken (#581, debug.captureConsole): Atlas startet
+    /// Konsolenprogramme selbst mit Pipes, hängt den Debugger an und zeigt die Ausgabe im Fenster
+    /// „Konsolenausgabe“ mit Eingabefeld. Aus = die IDE startet sie in einem eigenen Konsolenfenster.</summary>
+    DebugCaptureConsole: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -658,6 +665,7 @@ begin
   DebugVariablesSearchLimit := cDefaultVariablesSearchLimit;
   DebugVariablesScopedWatches := True;
   DebugObjectMarks := True;
+  DebugParallelWatch := True;
   DebugPredictConditions := True;
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
@@ -692,6 +700,7 @@ begin
   DebugReattachKey := cDefaultReattachKey;
   DebugReattachWaitIntervalMs := cDefaultReattachWaitMs;
   DebugLaunchGroups := True;
+  DebugCaptureConsole := False;
   StartProfiles := True;
   StartProfilesStatusField := True;
   DebugEnabled := True;
@@ -710,6 +719,7 @@ begin
   AIo.Number('DebugVariablesSearchLimit', DebugVariablesSearchLimit);
   AIo.Flag('DebugVariablesScopedWatches', DebugVariablesScopedWatches);
   AIo.Flag('DebugObjectMarks', DebugObjectMarks);
+  AIo.Flag('DebugParallelWatch', DebugParallelWatch);
   AIo.Flag('DebugPredictConditions', DebugPredictConditions);
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);
@@ -744,6 +754,7 @@ begin
   AIo.Number('DebugReattachKey', DebugReattachKey);
   AIo.Number('DebugReattachWaitIntervalMs', DebugReattachWaitIntervalMs);
   AIo.Flag('DebugLaunchGroups', DebugLaunchGroups);
+  AIo.Flag('DebugCaptureConsole', DebugCaptureConsole);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

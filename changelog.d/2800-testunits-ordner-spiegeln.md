@@ -1,0 +1,2 @@
+### Neu
+- Testunits im Aufbau des Hauptprojekts anlegen (#2800): `testUnits.folder` kennt die Platzhalter `{path}` (Ordner der Unit unter dem neuen `testUnits.sourceRoot`) und `{namespace}` (Namensraum als Ordner). Mit `Tests/{path}` und `sourceRoot` = `Source` entsteht zu `Source/Core/Foo.pas` die Testunit `Tests/Core/Foo.Tests.pas`; Ordner werden angelegt, `.dpr` und `.dproj` bekommen den Pfad. Ohne Platzhalter bleibt alles wie bisher.
