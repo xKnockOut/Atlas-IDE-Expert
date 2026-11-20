@@ -57,7 +57,7 @@ All settings with page and control in the settings plugin (#227). Details on val
 | Editor | `directives`: `completion`, `hover` | – | settings.json (Tools › Options › Atlas) | no | Checkbox | #102 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json (Atlas › Project settings) | no | Choice, number field | #312 |
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json (Atlas › Project settings) | no | List, checkbox | #89 |
-| Project | `testUnits`: `pattern`, `folder`, `project` | – | atlas.json (Atlas › Project settings) | no | Text field, file selection | #274 |
+| Project | `testUnits`: `pattern`, `folder`, `sourceRoot`, `project` | – | atlas.json (Atlas › Project settings) | no | Text field, file selection | #274, #2800 |
 | Compiler | `tests`: `affected`, `affectedDepth`, `approvalFolder` | – | settings.json (Tools › Options › Atlas); `approvalFolder` in atlas.json | no | Kontrollkästchen, Zahlenfeld, Textfeld | #1353, #1881 |
 | Compiler | `testLists` | – | atlas.json (Atlas › Project settings) | no | Bearbeiten im Fenster „Atlas-Tests“ (Reiter, „+“, Kontextmenü) | #2167 |
 | Check rules | `minConfidence` | `"medium"` | atlas.json (Atlas › Project settings) | no | Choice | #144 |
