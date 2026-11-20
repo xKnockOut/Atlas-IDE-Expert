@@ -6,7 +6,7 @@
 // - Run startet unsichtbar (CREATE_NO_WINDOW), stdin ist NUL, stdout und
 //   stderr gehen in eine gemeinsame Pipe (Reihenfolge wie in der Konsole).
 //   Gelesen wird im Takt von 10 ms; jede fertige Zeile geht sofort an
-//   AOnLine (TAtlasTaskLines: UTF-8, sonst OEM-Codepage).
+//   AOnLine (TAtlasOutputLines aus Base: UTF-8, sonst OEM-Codepage).
 // - Der Prozess läuft in einem Job-Objekt mit „beim Schließen beenden“:
 //   Zeitlimit, Abbruch (ACancelled, Ende des Threads) und Entladen beenden
 //   so auch Kindprozesse (pwsh startet dcc, msbuild startet Knoten).
@@ -38,7 +38,7 @@ uses
   System.Classes,
   Atlas.WinBase.Process,
   Atlas.Core.Tasks.Matchers,
-  Atlas.Core.Tasks.Runs,
+  Atlas.Core.Processes.OutputLines,
   Atlas.Core.Tasks.Commands;
 
 type
@@ -236,7 +236,7 @@ begin
 end;
 
 /// <summary>Alles Verfügbare aus der Pipe lesen und fertige Zeilen weitergeben.</summary>
-procedure Drain(AOutRead: THandle; ALines: TAtlasTaskLines; var AChunk: TBytes; const AOnLine: TAtlasTaskLineProc);
+procedure Drain(AOutRead: THandle; ALines: TAtlasOutputLines; var AChunk: TBytes; const AOnLine: TAtlasTaskLineProc);
 var
   mAvailable, mBytesRead: DWORD;
   mText: string;
@@ -283,7 +283,7 @@ begin
 end;
 
 /// <summary>Im Takt lesen, bis der Prozess endet, abgebrochen wird oder die Zeit abläuft; danach den Rest.</summary>
-function Watch(ATimeoutSec: Integer; var AHandles: THandles; ALines: TAtlasTaskLines;
+function Watch(ATimeoutSec: Integer; var AHandles: THandles; ALines: TAtlasOutputLines;
   const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskOutcome;
 var
   mChunk: TBytes;
@@ -359,7 +359,7 @@ function TAtlasTaskProcess.Run(const ATask: TAtlasTaskDefinition; ACodePage: Int
 var
   mLaunch: TLaunch;
   mHandles: THandles;
-  mLines: TAtlasTaskLines;
+  mLines: TAtlasOutputLines;
 begin
   Result := Default(TAtlasTaskProcessResult);
   Result.Outcome := TAtlasTaskOutcome.StartFailed;
@@ -373,7 +373,7 @@ begin
     ACodePage := Integer(GetOEMCP);
   end;
   mHandles := NoHandles;
-  mLines := TAtlasTaskLines.Create(ACodePage);
+  mLines := TAtlasOutputLines.Create(ACodePage);
   try
     if OpenHandles(mHandles, Result) and StartProcess(mLaunch, ATask.Cwd, mHandles, Result) then
     begin
