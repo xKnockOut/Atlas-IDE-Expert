@@ -55,6 +55,9 @@ type
 
 implementation
 
+
+uses
+  Atlas.Core.Diagnostics.Guard;
 { TAtlasListenerList<TListener> }
 
 constructor TAtlasListenerList<TListener>.Create;
@@ -122,8 +125,10 @@ begin
       mListener();
     except
       // Ein Fehler im Beobachter darf die meldende Funktion nicht stören.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Fehler im Beobachter: ' + TAtlasGuard.ErrorText(E));
+      end;
     end;
 end;
 
@@ -139,8 +144,10 @@ begin
       mListener(AValue);
     except
       // Ein Fehler im Beobachter darf die meldende Funktion nicht stören.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Fehler im Beobachter: ' + TAtlasGuard.ErrorText(E));
+      end;
     end;
 end;
 

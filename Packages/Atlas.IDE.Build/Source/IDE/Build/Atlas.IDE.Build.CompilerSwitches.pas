@@ -106,7 +106,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.SwitchesWindow,
-  Atlas.UI.Build.Strings;
+  Atlas.UI.Build.Strings,
+  Atlas.Core.Lsp.Framing;
 
 function Enabled: Boolean;
 var
@@ -314,7 +315,14 @@ begin
       Result := TAtlasCompilerSwitchView.FromJson(mResponse, AView);
     except
       // Server langsam oder weg: kein Stand.
-      Result := False;
+      on E: Exception do
+      begin
+        if not E is ELspClientError then
+        begin
+          raise;
+        end;
+        Result := False;
+      end;
     end;
   finally
     mResponse.Free;

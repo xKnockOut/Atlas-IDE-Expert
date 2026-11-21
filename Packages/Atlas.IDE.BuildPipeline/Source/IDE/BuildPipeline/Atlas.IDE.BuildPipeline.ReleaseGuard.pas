@@ -70,7 +70,9 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Projects.Context,
   Atlas.UI.Strings,
-  Atlas.UI.BuildPipeline.Strings;
+  Atlas.UI.BuildPipeline.Strings,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 function NowUtc: TDateTime;
 begin
@@ -134,8 +136,9 @@ begin
       end;
     end;
   except
-    on Exception do
-      ; // Rückfall unten.
+    // Rückfall unten.
+    on E: Exception do
+      TAtlasGuard.Log('Release-Prüfung: Moduldateien nicht lesbar: ' + TAtlasGuard.ErrorText(E));
   end;
   if FileExists(ChangeFileExt(AProject.FileName, '.dpk')) then
   begin
@@ -167,8 +170,14 @@ begin
       Result := TAtlasTextFile.Load(AFileName).Text;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

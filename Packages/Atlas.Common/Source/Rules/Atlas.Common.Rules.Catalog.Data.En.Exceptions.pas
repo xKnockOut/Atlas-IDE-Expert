@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnExceptions: array[0..98] of string = (
+  cCatalogLinesEnExceptions: array[0..104] of string = (
     '{',
     '      "id": "empty-except",',
     '      "name": "Empty except block",',
@@ -38,6 +38,12 @@ const
     '      "description": "A handler for Exception, or an except part without on, that neither re-raises, reports the error through a call from reporters nor ends the program swallows every error, includin' +
     'g programming errors. Off by default; intended for library code and for code with its own error reporting.",',
     '      "options": [',
+    '        {',
+    '          "name": "allowExceptionUse",',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "A handler on E: Exception do that reads its exception (E.Message to the caller, E to a routine) passes the error on and counts as handled."',
+    '        },',
     '        {',
     '          "name": "reporters",',
     '          "type": "string-list",',

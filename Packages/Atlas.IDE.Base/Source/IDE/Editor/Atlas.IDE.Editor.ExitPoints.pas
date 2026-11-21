@@ -130,7 +130,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Editor.PaintedLine;
+  Atlas.IDE.Editor.PaintedLine,
+  Atlas.Core.Lsp.Framing;
 
 { TAtlasIdeExitPoints.TEvents }
 
@@ -491,7 +492,10 @@ begin
         end;
       except
         // Server beschäftigt, weg oder zu alt (Befehl unbekannt): keine Hervorhebung, der Editor bleibt frei.
-        mFound := Default(TAtlasExitPointSet);
+        on ELspClientError do
+        begin
+          mFound := Default(TAtlasExitPointSet);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.ExitPoints,

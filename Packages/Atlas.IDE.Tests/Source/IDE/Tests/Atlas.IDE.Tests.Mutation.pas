@@ -124,7 +124,9 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.GutterMarks,
-  Atlas.IDE.Tests.Projects;
+  Atlas.IDE.Tests.Projects,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -521,8 +523,14 @@ begin
     try
       FResults.LoadJson(TAtlasTextFile.LoadText(mFile));
     except
-      on Exception do
+      on E: Exception do
+      begin
+        if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+        begin
+          raise;
+        end;
         FResults.Forget('');
+      end;
     end;
   end;
   Inc(FVersion);

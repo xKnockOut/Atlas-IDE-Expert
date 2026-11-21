@@ -153,7 +153,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Debug.Sources,
-  Atlas.IDE.Debug.StepFilterWindow;
+  Atlas.IDE.Debug.StepFilterWindow,
+  Atlas.Core.Lsp.Framing;
 
 /// <summary>Stapeltiefe von AThread; False ohne: im Takt neu versuchen oder (nach StackRetries) abbrechen.</summary>
 function ReadDepth(const AThread: IOTAThread; out ADepth: Integer): Boolean;
@@ -236,7 +237,7 @@ begin
     end;
   except
     // Server langsam oder weg: keine Treffer, das Fenster sagt es.
-    on Exception do
+    on ELspClientError do
       Result := False;
   end;
 end;

@@ -2670,6 +2670,7 @@ Experimental: the rule runs only in the `strict` profile or when it gets a sever
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
+| `allowExceptionUse` | boolean | `false` | A handler on E: Exception do that reads its exception (E.Message to the caller, E to a routine) passes the error on and counts as handled. |
 | `reporters` | string-list | `[]` | Calls that report the exception (patterns with * and ? over the name with its qualifiers, e.g. TAtlasGuard.* or *Logger.Error); a block that contains one counts as handled. |
 
 Flagged:

@@ -681,7 +681,11 @@ begin
     Result := AThread.GetThreadName;
   except
     // Ältere Debugger kennen keine Thread-Namen.
-    Result := '';
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Thread-Name nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      Result := '';
+    end;
   end;
 end;
 

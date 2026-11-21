@@ -62,7 +62,9 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.IDE.Foundation.Caret,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 const
   cWatchMs = 200;
@@ -325,8 +327,14 @@ begin
     mText := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
   except
     // Nicht lesbar: leerer Ausschnitt statt Fehler.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       mText := '';
+    end;
   end;
   Result := mText.Split([#13#10, #10]);
   FLines.Add(mKey, Result);

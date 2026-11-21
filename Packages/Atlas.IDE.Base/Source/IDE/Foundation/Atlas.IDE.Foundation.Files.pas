@@ -59,7 +59,9 @@ uses
   System.SysUtils,
   Atlas.Core.Files.EncodingDefault,
   Atlas.Core.Lsp.Uris,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 { TAtlasIdeFiles }
 
@@ -108,8 +110,14 @@ begin
       Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result.Encoding := TAtlasTextEncoding.Utf8Bom;
+    end;
   end;
   Result.Text := '';
 end;
@@ -203,8 +211,12 @@ begin
     ASource := TAtlasTextFile.LoadText(AFileName);
   except
     // Fehlt, gesperrt, unlesbar oder binäres Formular: kein Text.
-    on Exception do
+    on E: Exception do
     begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       ASource := '';
       Result := False;
     end;

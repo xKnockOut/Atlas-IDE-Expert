@@ -181,7 +181,8 @@ uses
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.UI.Debug.AccessViolation,
   Atlas.UI.Debug.AccessViolation.Strings,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Core.Lsp.Framing;
 
 { TAtlasIdeDebugAccessViolation.TListener }
 
@@ -493,7 +494,10 @@ begin
         mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Ketten.
-        mChains := Default(TAtlasAvChains);
+        on ELspClientError do
+        begin
+          mChains := Default(TAtlasAvChains);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,

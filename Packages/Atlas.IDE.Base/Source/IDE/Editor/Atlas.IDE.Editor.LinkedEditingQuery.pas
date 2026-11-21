@@ -78,7 +78,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Editor.Surfaces;
+  Atlas.IDE.Editor.Surfaces,
+  Atlas.Core.Lsp.Framing;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>
 function NearIdentifier(const ALine: string; ACharacter: Integer): Boolean;
@@ -160,7 +161,10 @@ begin
         end;
       except
         // Server langsam oder weg: keine Sitzung, die Taste geht an die IDE.
-        mRanges := nil;
+        on ELspClientError do
+        begin
+          mRanges := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.LinkedEditing,

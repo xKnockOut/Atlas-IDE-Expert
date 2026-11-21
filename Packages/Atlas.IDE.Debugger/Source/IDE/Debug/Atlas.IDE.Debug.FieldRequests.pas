@@ -47,7 +47,8 @@ uses
   System.JSON,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Debug.Evaluate;
+  Atlas.Core.Debug.Evaluate,
+  Atlas.Core.Lsp.Framing;
 
 /// <summary>AFields im Hauptthread an AArrived.</summary>
 procedure Deliver(const AArrived: TAtlasDebugFieldsArrived; const AFields: TArray<string>);
@@ -126,7 +127,10 @@ begin
     end;
   except
     // Server langsam oder weg: Der Aufrufer zerlegt den Ergebnis-String.
-    Result := nil;
+    on ELspClientError do
+    begin
+      Result := nil;
+    end;
   end;
 end;
 

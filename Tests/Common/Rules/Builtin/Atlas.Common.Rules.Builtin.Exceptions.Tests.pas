@@ -28,6 +28,8 @@ type
     [Test]
     procedure CatchAllReportersOptionIsChecked;
     [Test]
+    procedure CatchAllExceptionUseCountsWhenAllowed;
+    [Test]
     procedure FreedInHandlerReported;
     [Test]
     procedure FreedAfterRaiseReported;
@@ -181,6 +183,23 @@ begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
     InRoutine('  try Save; except on E: Exception do TAtlasGuard.Report(TAtlasFeature.Menu, E); end;'),
     cCatchAllOn))));
+end;
+
+procedure TExceptionRulesTests.CatchAllExceptionUseCountsWhenAllowed;
+const
+  cAllowUse = '{ "rules": { "catch-all-without-raise": { "severity": "warning", "allowExceptionUse": true } } }';
+  cSource = '  try Save; except on E: Exception do AError := E.Message; end;'#10 +
+    '  try Save; except on E: Exception do Show(E); end;'#10 +
+    '  try Save; except on E: Exception do Result := False; end;'#10 +
+    '  try Save; except on Exception do Result := False; end;'#10 +
+    '  try Save; except on E: Exception do Result := Other.E; end;';
+begin
+  // Ohne die Option zählt das Lesen der Ausnahme nicht.
+  Assert.AreEqual(5, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create, InRoutine(cSource),
+    cCatchAllOn))));
+  // Mit der Option gehen E.Message und E weiter; ungelesenes E, ein Handler ohne Namen und Other.E nicht.
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create, InRoutine(cSource),
+    cAllowUse))));
 end;
 
 procedure TExceptionRulesTests.CatchAllReportersOptionIsChecked;

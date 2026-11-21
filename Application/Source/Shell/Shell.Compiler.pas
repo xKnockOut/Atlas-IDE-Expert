@@ -67,7 +67,8 @@ implementation
 
 uses
   System.IOUtils,
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Text.Files;
 
 { TShellCompilerEditions }
 
@@ -207,8 +208,14 @@ begin
         DateToISO8601(TFile.GetLastWriteTimeUtc(AFileName), True)]);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

@@ -186,8 +186,8 @@ begin
     try
       FOnDone(FReport, TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedShutdown));
     except
-      on Exception do
-        ;
+      on E: Exception do
+        TAtlasGuard.Log('Build-Pipeline: Abschluss beim Beenden: ' + TAtlasGuard.ErrorText(E));
     end;
   inherited;
 end;

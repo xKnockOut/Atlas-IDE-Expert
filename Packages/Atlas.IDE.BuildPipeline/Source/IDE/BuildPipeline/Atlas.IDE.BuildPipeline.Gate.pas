@@ -43,7 +43,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
-  Atlas.UI.BuildPipeline.Strings;
+  Atlas.UI.BuildPipeline.Strings,
+  Atlas.Core.Lsp.Framing;
 
 function MessageServices(out AMessages: IOTAMessageServices; out AGroup: IOTAMessageGroup): Boolean;
 begin
@@ -161,7 +162,7 @@ begin
     Result := True;
   except
     // Zeitlimit oder Server weg: Unit nicht geprüft, der Compile läuft (#493).
-    on Exception do
+    on ELspClientError do
       Result := False;
   end;
 end;

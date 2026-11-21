@@ -59,7 +59,9 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.UI.Popup.Window,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 const
   cModule = 'ruleChecks';
@@ -160,8 +162,14 @@ begin
   try
     mText := TAtlasTextFile.Load(mConfig).Text;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   if FCore.Wanted(mConfig, mText, TAtlasIdeSettings.ModuleOn(cModule)) then
   begin

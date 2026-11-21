@@ -30,7 +30,8 @@ uses
   System.TypInfo,
   System.Generics.Collections,
   Atlas.Core.Lsp.IdeTypes,
-  Atlas.IDE.CodeInsight.IdeTypes;
+  Atlas.IDE.CodeInsight.IdeTypes,
+  Atlas.Core.Diagnostics.Guard;
 
 /// <summary>Typ als Text mit Unit (System.Integer); '' ohne Typ oder bei namenlosen Typen.</summary>
 function TypeText(AType: TRttiType): string;
@@ -50,8 +51,12 @@ begin
       Result := AType.Name;
     end;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not ((E is ENonPublicType) or (E is EInsufficientRtti)) then
+      begin
+        raise;
+      end;
       Result := AType.Name;
     end;
   end;
@@ -348,8 +353,9 @@ begin
       try
         AddPackageDetails(mPackage, mWanted, mDetails);
       except
-        on Exception do
+        on E: Exception do
         begin
+          TAtlasGuard.Log('Code Insight: RTTI eines Packages nicht lesbar: ' + TAtlasGuard.ErrorText(E));
           Inc(AFailed);
         end;
       end;

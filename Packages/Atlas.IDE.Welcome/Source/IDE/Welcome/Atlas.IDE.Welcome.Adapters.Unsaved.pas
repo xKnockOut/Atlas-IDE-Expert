@@ -124,7 +124,8 @@ uses
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
-  Atlas.UI.Welcome.Unsaved;
+  Atlas.UI.Welcome.Unsaved,
+  Atlas.Text.Files;
 
 { TAtlasIdeUnsaved.TIdeNotifier }
 
@@ -384,8 +385,14 @@ begin
     end;
   except
     // Gerade gelöscht oder gesperrt: Alter dann über den Zeitpunkt der ersten Sicht.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

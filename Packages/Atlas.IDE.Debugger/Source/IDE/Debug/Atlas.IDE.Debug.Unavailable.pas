@@ -136,7 +136,9 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Explain.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Core.Foundation.Calls,
+  Atlas.Text.Files,
+  Atlas.Core.Lsp.Framing;
 
 const
   cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
@@ -402,7 +404,10 @@ begin
       AFacts.ReadServer(mResponse);
     except
       // Server langsam oder weg: nur die Tatsachen des Plugins.
-      AFacts.Server := False;
+      on ELspClientError do
+      begin
+        AFacts.Server := False;
+      end;
     end;
   finally
     mResponse.Free;
@@ -538,7 +543,14 @@ begin
       end;
     except
       // Unlesbare Ergänzungen: es gelten die bekannten Texte.
-      FPatterns := nil;
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+        FPatterns := nil;
+      end;
     end;
   end;
   Result := FPatterns;

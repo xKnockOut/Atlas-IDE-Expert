@@ -131,9 +131,9 @@ begin
       FKeep := nil;
     end;
   except
-    on E: Exception do
+    // Take und Leave scheitern nur bei Speichermangel; jeder andere Fehler endet als Fehler des Threads.
+    on EOutOfMemory do
     begin
-      // Take und Leave scheitern nur bei Speichermangel; der Pool verschluckt Ausnahmen wie die der Aufträge.
       FKeep := nil;
     end;
   end;

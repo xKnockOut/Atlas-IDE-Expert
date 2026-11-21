@@ -861,12 +861,7 @@ begin
   mValue := nil;
   if AJson <> '' then
   begin
-    try
-      mValue := TJSONObject.ParseJSONValue(AJson);
-    except
-      on Exception do
-        mValue := nil;
-    end;
+    mValue := TJsonRead.Parse(AJson);
     // Kaputter Text: nichts ändern.
     if mValue = nil then
     begin

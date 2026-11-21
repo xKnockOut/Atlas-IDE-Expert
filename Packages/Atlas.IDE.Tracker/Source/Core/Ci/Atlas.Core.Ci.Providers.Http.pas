@@ -483,7 +483,14 @@ begin
       Result := True;
     except
       // Kein Netz, Name unbekannt, Zertifikat abgelehnt, Antwort zu groß …: still als Fehler der Abfrage.
-      AReply.Error := FailureAfter(mDeadline, mContent);
+      on E: Exception do
+      begin
+        if not ((E is ENetException) or (E is EStreamError) or (E is EOSError)) then
+        begin
+          raise;
+        end;
+        AReply.Error := FailureAfter(mDeadline, mContent);
+      end;
     end;
   finally
     // Erst die Schnittstellen lösen, sie verweisen auf den Client.

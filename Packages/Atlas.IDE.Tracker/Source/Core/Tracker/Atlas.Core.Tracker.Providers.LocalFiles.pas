@@ -46,7 +46,8 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Text.Files,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Files.TextFile,
+  Atlas.Core.Files.Contract;
 
 type
   /// <summary>Hält die Sperrdatei offen, bis der letzte Verweis fällt.</summary>
@@ -108,8 +109,12 @@ begin
     end;
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       AData := nil;
       Result := False;
     end;
@@ -159,8 +164,12 @@ begin
     AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       AText := '';
     end;
   end;
@@ -196,8 +205,12 @@ begin
     TAtlasTextFile.Replace(AFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AText));
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := False;
     end;
   end;
@@ -214,8 +227,12 @@ begin
     TFile.WriteAllBytes(AFileName, AData);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
     end;
   end;
@@ -237,8 +254,12 @@ begin
     TDirectory.Delete(AFolder, True);
   except
     // Eine Datei ist noch offen (z. B. im Bildbetrachter): Der Ordner bleibt.
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Exit(False);
     end;
   end;
@@ -265,8 +286,12 @@ begin
   try
     Result := ToArray(TDirectory.GetFiles(AFolder, AMask));
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
     end;
   end;
@@ -282,8 +307,12 @@ begin
   try
     Result := ToArray(TDirectory.GetDirectories(AFolder));
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
     end;
   end;
@@ -302,8 +331,12 @@ begin
       Result := TDirectory.GetLastWriteTime(APath);
     end;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := 0;
     end;
   end;

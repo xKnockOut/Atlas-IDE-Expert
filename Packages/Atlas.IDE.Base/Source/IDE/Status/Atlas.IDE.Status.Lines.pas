@@ -131,7 +131,9 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -342,8 +344,13 @@ begin
       mBytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
       mInfo.HasTarget := not TAtlasFileFormats.Satisfies(mBytes, mInfo.Target);
     except
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+        begin
+          raise;
+        end;
+      end;
     end;
   end;
   FFile.Update(TAtlasStatusLines.FileText(mInfo), TAtlasStatusLines.FileState(mInfo));
@@ -385,8 +392,14 @@ begin
   try
     mCached.Format := TAtlasFileFormats.Detect(TAtlasTextFile.ReadAllBytes(AFileName));
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Exit(False);
+    end;
   end;
   mCached.Stamp := mStamp;
   FCache.AddOrSetValue(Key(AFileName), mCached);

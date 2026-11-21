@@ -132,7 +132,8 @@ uses
   System.JSON,
   System.DateUtils,
   System.NetEncoding,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Text.Json;
 
 const
   /// <summary>Grund fürs Protokoll (nie übersetzt).</summary>
@@ -178,12 +179,7 @@ var
   mFound: Boolean;
 begin
   Result := Default(TAtlasUpdateState);
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin
@@ -242,12 +238,7 @@ var
   mFound: Boolean;
 begin
   ARelease := Default(TAtlasRelease);
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
     Result := mValue is TJSONObject;

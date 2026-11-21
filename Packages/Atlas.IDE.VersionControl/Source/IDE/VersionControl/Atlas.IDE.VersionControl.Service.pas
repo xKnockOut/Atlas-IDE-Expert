@@ -145,7 +145,9 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Projects.VcsSettings,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 type
   /// <summary>Werte aus settings.json (#571, #1285); Lesen und Vorgaben in Core (#1967).</summary>
@@ -255,8 +257,14 @@ begin
     Result := TVcsSettings.Parse(TAtlasTextFile.Load(AFileName).Text);
   except
     // Gesperrt oder unlesbar: Vorgaben.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := TVcsSettings.Default;
+    end;
   end;
 end;
 
@@ -390,8 +398,14 @@ begin
     end;
   except
     // Gesperrt (gerade gespeichert) oder gelöscht: ohne Abschnitt, beim nächsten Mal neu.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   mEntry.Age := mAge;
   mEntry.Vcs := Result;

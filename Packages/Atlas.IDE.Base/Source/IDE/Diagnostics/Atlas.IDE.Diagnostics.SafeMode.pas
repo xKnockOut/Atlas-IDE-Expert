@@ -109,7 +109,9 @@ uses
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Diagnostics.Edition;
+  Atlas.IDE.Diagnostics.Edition,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 const
   // Winapi.Windows kennt die Konstante nicht (ab Windows Vista).
@@ -150,8 +152,13 @@ begin
     FBook.SaveMarker(FMarker);
   except
     // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
+    end;
   end;
 end;
 
@@ -288,8 +295,12 @@ begin
         Result := Alive(AProcessId, AStartedAt);
       end, AState, ACrashed);
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       AState := Default(TAtlasSafeState);
       ACrashed := nil;
     end;
@@ -302,8 +313,11 @@ begin
   try
     Result := TAtlasIdeSettings.History.LastChangedKeys(TAtlasIdeSettings.Stored);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E));
       Result := nil;
+    end;
   end;
 end;
 
@@ -386,8 +400,13 @@ begin
   try
     FBook.SaveState(mState);
   except
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
+    end;
   end;
   if FLevel <> TAtlasSafeLevel.Normal then
   begin
@@ -446,8 +465,13 @@ begin
   try
     FBook.Close;
   except
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
+    end;
   end;
 end;
 
@@ -536,8 +560,11 @@ begin
         [DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings)]);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E));
       Result := '';
+    end;
   end;
 end;
 
@@ -569,8 +596,14 @@ begin
       Result := TFile.ReadAllLines(AFileName, TEncoding.UTF8);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
+    end;
   end;
 end;
 

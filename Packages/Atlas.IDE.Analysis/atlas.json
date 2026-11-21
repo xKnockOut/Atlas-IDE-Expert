@@ -164,9 +164,15 @@
         "Tests/**",
         "Tools/**"
       ],
+      "allowExceptionUse": true,
       "reporters": [
         "TAtlasGuard.*",
         "TAtlasDataFile.ReportNotWritten",
+        "TAtlasIdeHost.Message",
+        "TAtlasIdeHost.Warning",
+        "TAtlasIdeHost.Log",
+        "Say",
+        "*.Say",
         "*Logger.Error",
         "*Logger.Warning",
         "TLinterOutput.Error"

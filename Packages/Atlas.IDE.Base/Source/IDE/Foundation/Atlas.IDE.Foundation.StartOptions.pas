@@ -78,7 +78,8 @@ uses
   Vcl.ActnList,
   Atlas.UI.Strings,
   Atlas.UI.Foundation.Strings,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Diagnostics.Guard;
 
 const
   cRunAction = 'RunRunCommand';
@@ -179,8 +180,11 @@ begin
     AOptions.Environment := mBuild.GetValue(TAtlasStartProfiles.cEnvironmentOption, False);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Startoptionen nicht lesbar: ' + TAtlasGuard.ErrorText(E));
       Result := False;
+    end;
   end;
 end;
 

@@ -159,6 +159,9 @@ type
 
 implementation
 
+
+uses
+  Atlas.Core.Lsp.Framing;
 const
   /// <summary>Betroffene Tests (#1353, #1775): git bzw. svn und eine Auswirkungsanalyse je geänderter Routine
   /// brauchen ein Vielfaches des Zeitlimits einer Anfrage.</summary>
@@ -712,7 +715,10 @@ begin
     Result := FClient.Request('workspace/executeCommand',
       TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', AArguments), ATimeoutMs);
   except
-    Result := nil;
+    on ELspClientError do
+    begin
+      Result := nil;
+    end;
   end;
 end;
 

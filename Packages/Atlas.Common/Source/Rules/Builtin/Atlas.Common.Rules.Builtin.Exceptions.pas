@@ -562,6 +562,27 @@ begin
   end;
 end;
 
+/// <summary>Liest der Handler seine Ausnahme (E.Message, E an eine Routine)? Dann geht der Fehler weiter, als
+/// Rückgabe, Meldung oder Text für den Aufrufer.</summary>
+function UsesException(const ATokens: TTokens; const AHandler: THandler): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  if AHandler.Name = '' then
+  begin
+    Exit;
+  end;
+  for mIndex := AHandler.First to AHandler.Last do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, AHandler.Name) and
+      ((mIndex = 0) or not ATokens[PreviousCode(ATokens, mIndex)].IsSymbol('.')) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 /// <summary>except-Teile ohne on-Handler, die nicht leer sind (leere meldet empty-except).</summary>
 function BareExceptBlocks(ATree: TSyntaxTree): TArray<TSyntaxNode>;
 var
@@ -585,6 +606,7 @@ var
   mBlock: TSyntaxNode;
   mFirst, mLast: Integer;
   mReporters: TArray<string>;
+  mAllowUse: Boolean;
 
   // Der äußere Handler von TThread.Execute fängt zu Recht ohne erneutes Auslösen (thread-execute-without-except).
   function ExecuteGuard(AHandler: TSyntaxNode): Boolean;
@@ -599,11 +621,13 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mReporters := TRuleOptions.Strings(AContext.Options, 'reporters', nil);
+  mAllowUse := TRuleOptions.Bool(AContext.Options, 'allowExceptionUse', False);
   for mHandler in Handlers(mTokens) do
   begin
     if MatchText(mHandler.TypeName, ['Exception', 'TObject']) and
       not RaisesIn(mTokens, mHandler.First, mHandler.Last) and
       not ReportsIn(mTokens, mHandler.First, mHandler.Last, mReporters) and
+      not (mAllowUse and UsesException(mTokens, mHandler)) and
       not ExecuteGuard(HandlerNode(AContext.Tree, mTokens[mHandler.OnToken].Offset)) then
     begin
       AReport.Add(RangeOf(mTokens, mHandler.OnToken, mHandler.DoToken), cTexts[TExceptionsText.CatchAll].Text,

@@ -119,7 +119,8 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.IDE.Tests.Projects,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.IDE.Foundation.Debugger,
+  Atlas.Text.Files;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -386,8 +387,14 @@ begin
         TFile.Delete(FXmlFile);
       end;
     except
-      on Exception do
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
         mXml := '';
+      end;
     end;
     FXmlFile := '';
   end;
@@ -427,8 +434,11 @@ begin
       Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugBreak, [mLine]));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Tests: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E));
       FBreakpoint := nil;
+    end;
   end;
 end;
 

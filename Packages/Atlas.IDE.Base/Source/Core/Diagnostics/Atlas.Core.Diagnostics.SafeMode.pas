@@ -184,7 +184,8 @@ uses
   System.DateUtils,
   Atlas.Core.Localization.Language,
   Atlas.Text.Json,
-  Atlas.Text.Timestamps;
+  Atlas.Text.Timestamps,
+  Atlas.Text.Files;
 
 {$SCOPEDENUMS ON}
 
@@ -780,7 +781,14 @@ begin
     try
       mValid := TAtlasSessionMarker.FromJson(TFile.ReadAllText(mFileName, TEncoding.UTF8), mMarker);
     except
-      mValid := False;
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+        mValid := False;
+      end;
     end;
     if mValid and (mMarker.ProcessId = AOwnProcessId) then
     begin
@@ -798,8 +806,13 @@ begin
       TFile.Delete(mFileName);
     except
       // Gesperrt: beim nächsten Start noch einmal.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+      end;
     end;
   end;
 end;
@@ -813,8 +826,14 @@ begin
       Result := TAtlasSafeState.FromJson(TFile.ReadAllText(StateFile(AFolder), TEncoding.UTF8));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := Default(TAtlasSafeState);
+    end;
   end;
 end;
 

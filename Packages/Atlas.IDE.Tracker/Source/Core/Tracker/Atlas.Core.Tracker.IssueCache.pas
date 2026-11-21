@@ -456,13 +456,7 @@ var
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: als fehlend werten.
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin

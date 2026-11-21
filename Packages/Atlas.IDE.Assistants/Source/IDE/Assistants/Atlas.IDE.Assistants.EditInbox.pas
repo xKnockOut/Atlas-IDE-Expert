@@ -72,7 +72,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.LogEntries,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Text.Files;
 
 { TAtlasIdeEditInbox }
 
@@ -144,8 +145,14 @@ begin
       TDirectory.Delete(FFolder, True);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       ;
+    end;
   end;
 end;
 

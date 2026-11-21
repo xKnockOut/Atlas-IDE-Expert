@@ -49,7 +49,8 @@ uses
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.Issue.Strings;
+  Atlas.UI.Tracker.Issue.Strings,
+  System.Win.ComObj;
 
 /// <summary>Höchstens MaxImages Adressen vom Server des Tokens, ohne Doppelte.</summary>
 function LoadableUrls(const AUrls: TArray<string>; const AServer: string): TArray<string>;
@@ -86,8 +87,15 @@ begin
     try
       mImage.LoadFromStream(mStream);
     except
-      on Exception do
+      // Unlesbares Bild (WIC lehnt das Format ab): bleibt ein Link.
+      on E: Exception do
+      begin
+        if not ((E is EInvalidGraphic) or (E is EOleError) or (E is EStreamError)) then
+        begin
+          raise;
+        end;
         FreeAndNil(mImage);
+      end;
     end;
   finally
     mStream.Free;
@@ -118,8 +126,11 @@ begin
       ABytes := nil;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
       ABytes := nil;
+      TAtlasGuard.Log('Issue-Vorschau: Bild nicht geladen, ' + E.ClassName);
+    end;
   end;
 end;
 
@@ -223,8 +234,11 @@ begin
           mOk := True;
         end;
       except
-        on Exception do
+        on E: Exception do
+        begin
           mOk := False;
+          TAtlasGuard.Log('Issue-Vorschau: Anhang nicht gespeichert, ' + E.ClassName);
+        end;
       end;
       mDownload := nil;
       if TAtlasShutdown.Signalled then

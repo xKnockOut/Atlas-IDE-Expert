@@ -65,7 +65,8 @@ uses
   Atlas.Common.Mcp.IdeBuilds,
   Shell.Platform,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Files;
 
 type
 {$SCOPEDENUMS ON}
@@ -91,12 +92,26 @@ var
   GDebugPid: Cardinal;
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
-/// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann.</summary>
-function ReadPluginFile(const AFileName: string): string;
+/// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann. False, wenn sie gerade ersetzt, gelöscht oder
+/// nicht lesbar ist: zählt wie nicht vorhanden.</summary>
+function TryReadPluginFile(const AFileName: string; out AText: string): Boolean;
 var
   mFileFormat: TFileFormat;
 begin
-  Result := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  AText := '';
+  try
+    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
+  end;
 end;
 
 /// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-&lt;pid&gt;.json, #397); 0
@@ -116,11 +131,9 @@ begin
   for mFileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
-    try
-      mText := ReadPluginFile(mFileName);
-    except
-      on Exception do
-        Continue;
+    if not TryReadPluginFile(mFileName, mText) then
+    begin
+      Continue;
     end;
     mJson := TJSONObject.ParseJSONValue(mText);
     try
@@ -156,11 +169,9 @@ begin
   for mFileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
-    try
-      mText := ReadPluginFile(mFileName);
-    except
-      on Exception do
-        Continue;
+    if not TryReadPluginFile(mFileName, mText) then
+    begin
+      Continue;
     end;
     if TMcpIdeBuilds.ParseEntry(mText, mEntry) and TProcessInstances.Running(mEntry.Pid) then
     begin
@@ -193,12 +204,9 @@ begin
   end;
   for mFileName in TDirectory.GetFiles(mFolder, TIdeContexts.cPrefix + '*' + TIdeContexts.cSuffix) do
   begin
-    try
-      mText := ReadPluginFile(mFileName);
-    except
-      // Gerade ersetzt oder gelöscht: zählt wie nicht vorhanden.
-      on Exception do
-        Continue;
+    if not TryReadPluginFile(mFileName, mText) then
+    begin
+      Continue;
     end;
     if TIdeContexts.Parse(mText, mContext) and TProcessInstances.Running(mContext.Pid) then
     begin
@@ -223,11 +231,9 @@ begin
   for mFileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     'editor-dirty-*.json') do
   begin
-    try
-      mText := ReadPluginFile(mFileName);
-    except
-      on Exception do
-        Continue;
+    if not TryReadPluginFile(mFileName, mText) then
+    begin
+      Continue;
     end;
     mJson := TJSONObject.ParseJSONValue(mText);
     try

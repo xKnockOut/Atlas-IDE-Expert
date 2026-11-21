@@ -131,15 +131,22 @@ begin
     Result.Body := TEncoding.UTF8.GetString(AExchange.Content.Bytes, 0, AExchange.Content.Size);
   except
     // Kein Netz, Name unbekannt, Zertifikat abgelehnt, Antwort zu groß …: still als Fehler der Anfrage.
-    Result.Status := 0;
-    Result.Failure := TAtlasAiError.Unreachable;
-    if AExchange.Content.Exceeded then
+    on E: Exception do
     begin
-      Result.Failure := TAtlasAiError.BadAnswer;
-    end
-    else if mDeadline.Reached then
-    begin
-      Result.Failure := TAtlasAiError.Timeout;
+      if not ((E is ENetException) or (E is EStreamError) or (E is EOSError)) then
+      begin
+        raise;
+      end;
+      Result.Status := 0;
+      Result.Failure := TAtlasAiError.Unreachable;
+      if AExchange.Content.Exceeded then
+      begin
+        Result.Failure := TAtlasAiError.BadAnswer;
+      end
+      else if mDeadline.Reached then
+      begin
+        Result.Failure := TAtlasAiError.Timeout;
+      end;
     end;
   end;
   // Erst die Schnittstellen lösen, sie verweisen auf den Client.

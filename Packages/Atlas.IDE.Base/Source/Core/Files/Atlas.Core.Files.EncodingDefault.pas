@@ -25,7 +25,9 @@ uses
   System.JSON,
   Atlas.Core.Files.TextFile,
   Atlas.Text.Encoding,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 { TAtlasEncodingDefault }
 
@@ -65,8 +67,14 @@ begin
       try
         Result := FromJson(TAtlasTextFile.Load(mSettings).Text);
       except
-        on Exception do
+        on E: Exception do
+        begin
+          if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+          begin
+            raise;
+          end;
           Result := 0;
+        end;
       end;
       Exit;
     end;

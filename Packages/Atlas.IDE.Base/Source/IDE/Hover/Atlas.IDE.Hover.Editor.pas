@@ -180,7 +180,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hover.DebugValue,
-  Atlas.IDE.Outline.StickyScroll;
+  Atlas.IDE.Outline.StickyScroll,
+  Atlas.Core.Lsp.Framing;
 
 { TAtlasEditorHover.TEvents }
 
@@ -668,7 +669,10 @@ begin
         mData := ASession.HoverDataAt(mFileName, mLine, mCharacter, 0);
       except
         // Server langsam oder weg: kein Tooltip, die IDE wartet nie darauf.
-        mData := Default(TAtlasHoverData);
+        on ELspClientError do
+        begin
+          mData := Default(TAtlasHoverData);
+        end;
       end;
       mShow :=
         procedure

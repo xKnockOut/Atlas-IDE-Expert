@@ -113,12 +113,12 @@ const
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  cBooleanRuleOptions: array[0..27] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  cBooleanRuleOptions: array[0..28] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
     'checkReturns', 'checkFree', 'allowFirstElement', 'implementation', 'managedFields', 'frameworkMembers',
-    'ignoreStrictPrivate');
+    'ignoreStrictPrivate', 'allowExceptionUse');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
   cStringListRuleOptions: array[0..48] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeExceptions: array[0..45] of string = (
+  cCatalogLinesDeExceptions: array[0..49] of string = (
     '{',
     '      "id": "empty-except",',
     '      "name": "Leerer except-Block",',
@@ -23,6 +23,10 @@ const
     '      "description": "Ein Handler für Exception oder ein except-Teil ohne on, der weder erneut auslöst, den Fehler über einen Aufruf aus reporters meldet noch das Programm beendet, verschluckt jeden F' +
     'ehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode und für Code mit eigener Fehlermeldung.",',
     '      "options": [',
+    '        {',
+    '          "name": "allowExceptionUse",',
+    '          "description": "Ein Handler on E: Exception do, der seine Ausnahme liest (E.Message an den Aufrufer, E an eine Routine), reicht den Fehler weiter und gilt als behandelt."',
+    '        },',
     '        {',
     '          "name": "reporters",',
     '          "description": "Aufrufe, die die Ausnahme melden (Muster mit * und ? über den Namen mit Qualifizierern, z. B. TAtlasGuard.* oder *Logger.Error); ein Block, der einen enthält, gilt als behand' +

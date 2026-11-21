@@ -145,7 +145,8 @@ uses
   System.Math,
   Vcl.Imaging.pngimage,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Text.Files;
 
 { TAtlasDiscoverPicture }
 
@@ -181,8 +182,14 @@ begin
     FOriginal.LoadFromFile(AFileName);
   except
     // Kaputtes Bild: Karte ohne Bild.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EInvalidGraphic)) then
+      begin
+        raise;
+      end;
       FOriginal.Assign(nil);
+    end;
   end;
 end;
 

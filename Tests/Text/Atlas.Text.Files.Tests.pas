@@ -32,6 +32,8 @@ type
     procedure OpenExclusiveFolderFailsAtOnce;
     [Test]
     procedure OpenExclusiveMissingFolderFails;
+    [Test]
+    procedure IsFileErrorOnlyForFileSystem;
   end;
 
 implementation
@@ -194,6 +196,29 @@ begin
     'e.lock'), True, mStream, mError)));
   Assert.IsNull(mStream);
   mError := '';
+end;
+
+procedure TTextFilesTests.IsFileErrorOnlyForFileSystem;
+
+  procedure Check(AE: Exception; AExpected: Boolean);
+  begin
+    try
+      Assert.AreEqual(AExpected, TTextFiles.IsFileError(AE), AE.ClassName);
+    finally
+      AE.Free;
+    end;
+  end;
+
+begin
+  Check(EInOutError.Create('x'), True);
+  Check(EFOpenError.Create('x'), True);
+  Check(EFCreateError.Create('x'), True);
+  Check(EOSError.Create('x'), True);
+  Check(EEncodingError.Create('x'), True);
+  Check(EArgumentException.Create('x'), True);
+  Check(EArgumentOutOfRangeException.Create('x'), False);
+  Check(EAccessViolation.Create('x'), False);
+  Check(EConvertError.Create('x'), False);
 end;
 
 initialization

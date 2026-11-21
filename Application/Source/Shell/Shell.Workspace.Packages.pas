@@ -83,7 +83,8 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.PackageReader,
   Shell.Workspace.Listings,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Text.Files;
 
 { TPackageLocatorHold }
 
@@ -274,8 +275,14 @@ begin
       Result := Result + [mEntry.Name];
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+      begin
+        raise;
+      end;
       Result := TArray<string>.Create('?');
+    end;
   end;
 end;
 

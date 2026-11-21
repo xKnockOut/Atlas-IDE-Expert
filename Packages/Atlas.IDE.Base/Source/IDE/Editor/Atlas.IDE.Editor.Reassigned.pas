@@ -126,7 +126,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Editor.PaintedLine;
+  Atlas.IDE.Editor.PaintedLine,
+  Atlas.Core.Lsp.Framing;
 
 { TAtlasIdeReassigned.TEvents }
 
@@ -451,7 +452,10 @@ begin
         end;
       except
         // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, der Editor bleibt frei.
-        mFailed := True;
+        on ELspClientError do
+        begin
+          mFailed := True;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Reassigned,

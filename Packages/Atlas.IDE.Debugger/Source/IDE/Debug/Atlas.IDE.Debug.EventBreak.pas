@@ -287,6 +287,7 @@ begin
     except
       on E: Exception do
       begin
+        TAtlasGuard.Log('Debugger: Anhalten gescheitert: ' + TAtlasGuard.ErrorText(E));
         FWatch.Phase := TAtlasEventWatchPhase.Idle;
         ArmAllForms;
       end;

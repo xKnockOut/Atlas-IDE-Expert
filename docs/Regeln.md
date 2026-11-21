@@ -2670,6 +2670,7 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
+| `allowExceptionUse` | boolean | `false` | Ein Handler on E: Exception do, der seine Ausnahme liest (E.Message an den Aufrufer, E an eine Routine), reicht den Fehler weiter und gilt als behandelt. |
 | `reporters` | string-list | `[]` | Aufrufe, die die Ausnahme melden (Muster mit * und ? über den Namen mit Qualifizierern, z. B. TAtlasGuard.* oder *Logger.Error); ein Block, der einen enthält, gilt als behandelt. |
 
 Mit Treffer:

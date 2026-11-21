@@ -96,7 +96,9 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -506,8 +508,14 @@ begin
       Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

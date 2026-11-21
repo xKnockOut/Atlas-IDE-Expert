@@ -157,7 +157,9 @@ uses
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.Core.Files.TextFile,
-  Atlas.IDE.Projects.Summaries;
+  Atlas.IDE.Projects.Summaries,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 function Settings: TAtlasPluginSettings;
 begin
@@ -172,8 +174,14 @@ begin
     Result := True;
   except
     // Nicht lesbar: zählt wie nicht vorhanden.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 
@@ -697,8 +705,14 @@ begin
   try
     mText := TAtlasTextFile.LoadText(AProject);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   Result := TAtlasWelcomeQuickActions.ReadTargets(mText);
   // Vorgabe: zuletzt benutzt (Abschnitt "build" der Zusammenfassung), wenn das Projekt sie noch kennt.

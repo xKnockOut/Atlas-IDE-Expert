@@ -68,7 +68,8 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.GroupReader,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Text.Files;
 
 { TShellBootstrap }
 
@@ -109,8 +110,14 @@ begin
     mGroups := TDirectory.GetFiles(ARoot, '*.groupproj');
   except
     // Nicht lesbare Ordner haben keine Gruppe.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       mGroups := nil;
+    end;
   end;
   if Length(mGroups) = 1 then
   begin
@@ -272,8 +279,14 @@ begin
   try
     mGlobal := LoadGlobalSettings(nil);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+      begin
+        raise;
+      end;
       mGlobal := '';
+    end;
   end;
   TAtlasLocale.Use(TextLanguage(ALocale, mGlobal));
 end;

@@ -376,8 +376,11 @@ begin
         mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.cTimeoutMs),
           mEntry.Key, mComments, mResult, mError);
       except
-        on Exception do
+        on E: Exception do
+        begin
           mOk := False;
+          TAtlasGuard.Log('Issue-Vorschau: Details mit ' + E.ClassName + ' abgebrochen');
+        end;
       end;
       mTransport := nil;
       if TAtlasShutdown.Signalled then

@@ -81,7 +81,8 @@ uses
   System.DateUtils,
   System.JSON,
   Atlas.Core.Files.DataFile,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Diagnostics.Guard;
 
 function DateText(AValue: TDateTime): string;
 begin
@@ -132,12 +133,7 @@ var
   mNumber: Integer;
 begin
   Result := Empty;
-  try
-    mValue := TJSONObject.ParseJSONValue(AText);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AText);
   try
     if not (mValue is TJSONObject) then
     begin
@@ -253,8 +249,11 @@ begin
       Result := TAtlasIndexSnapshot.FromJson(mText);
     except
       // Unerwarteter Inhalt, den FromJson nicht abfängt: ebenso kein gespeicherter Stand.
-      on Exception do
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Indexstand unbrauchbar: ' + TAtlasGuard.ErrorText(E));
         Result := TAtlasIndexSnapshot.Empty;
+      end;
     end;
 end;
 

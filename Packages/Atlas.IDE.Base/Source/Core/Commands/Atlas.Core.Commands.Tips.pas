@@ -187,13 +187,7 @@ begin
   begin
     Exit;
   end;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: keine Tipps, kein Fehler in der IDE.
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AJson);
   try
     if not (mRoot is TJSONObject) then
     begin

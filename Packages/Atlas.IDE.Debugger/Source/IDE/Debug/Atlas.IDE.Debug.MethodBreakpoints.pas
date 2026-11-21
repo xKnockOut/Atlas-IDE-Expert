@@ -99,7 +99,8 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.IDE.Foundation.Debugger,
+  Atlas.Core.Diagnostics.Guard;
 
 { TAtlasIdeMethodBreakpoints.TListener }
 
@@ -247,8 +248,10 @@ begin
       end;
     except
       // Ohne Bedingung oder Aktion hält der Haltepunkt trotzdem.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Debugger: Bedingung des Haltepunkts nicht gesetzt: ' + TAtlasGuard.ErrorText(E));
+      end;
     end;
     Inc(Result);
   end;

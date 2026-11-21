@@ -216,7 +216,9 @@ uses
   Atlas.Core.Projects.Summary.Json,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Marks.Ids,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -1091,8 +1093,14 @@ begin
     Result := True;
   except
     // Kein Schreibrecht o. Ä.: Die Lesezeichen sind trotzdem gespeichert.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

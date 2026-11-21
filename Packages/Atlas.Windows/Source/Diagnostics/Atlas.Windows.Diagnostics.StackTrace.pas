@@ -28,6 +28,9 @@ type
 
 implementation
 
+
+uses
+  Atlas.Text.Files;
 // Winapi.Windows vor System.SysUtils: Beide deklarieren PExceptionRecord,
 // Exception.GetExceptionStackInfoProc erwartet den aus System.SysUtils.
 uses
@@ -86,7 +89,14 @@ begin
         end;
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
-        FreeAndNil(Map);
+        on E: Exception do
+        begin
+          if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+          begin
+            raise;
+          end;
+          FreeAndNil(Map);
+        end;
       end;
     end;
     Result := Map;

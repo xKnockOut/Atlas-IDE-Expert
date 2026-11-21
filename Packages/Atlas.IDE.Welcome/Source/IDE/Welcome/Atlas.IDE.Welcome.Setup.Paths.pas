@@ -61,7 +61,9 @@ uses
   Atlas.Core.Welcome.Saved,
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Projects.Summaries;
+  Atlas.IDE.Projects.Summaries,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 /// <summary>Projekte einer geschlossenen Gruppe aus der .groupproj (nur vorhandene .dproj).</summary>
 function ClosedGroup(const AGroup: string): TArray<string>;
@@ -243,8 +245,12 @@ begin
       Result := Result + [ExtractFileName(mItem)];
     end;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
     end;
   end;
@@ -287,8 +293,12 @@ begin
     AText := TAtlasTextFile.LoadText(AFileName);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := False;
     end;
   end;

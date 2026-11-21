@@ -635,8 +635,14 @@ begin
   try
     TFile.WriteAllText(Result, '');
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

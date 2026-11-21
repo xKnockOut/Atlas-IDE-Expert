@@ -73,7 +73,8 @@ uses
   Atlas.Core.Assistants.Inbox,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Assistants.HeldEdits,
-  Atlas.UI.Assistants.Strings;
+  Atlas.UI.Assistants.Strings,
+  Atlas.Text.Files;
 
 var
   /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>
@@ -99,8 +100,14 @@ begin
         TDirectory.Delete(FFolder, True);
       end;
     except
-      on Exception do
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
         ;
+      end;
     end;
     GCleaned := True;
   end;

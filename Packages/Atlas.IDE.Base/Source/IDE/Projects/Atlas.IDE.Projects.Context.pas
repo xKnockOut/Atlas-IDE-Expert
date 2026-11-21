@@ -74,7 +74,9 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Versions.Project,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Text.Files;
 
 /// <summary>Konfiguration AConfiguration ('' = aktive), für APlatform deren Plattformkonfiguration; nil ohne.
 /// </summary>
@@ -152,8 +154,11 @@ begin
   try
     Result := TAtlasProjectContext.Inherit(VarToStr(AProject.ProjectOptions.Values[AName]), AName, '');
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Option nicht lesbar: ' + TAtlasGuard.ErrorText(E));
       Result := '';
+    end;
   end;
 end;
 
@@ -178,9 +183,12 @@ begin
       Exit;
     end;
   except
-    on Exception do
-      ; // Ersatzweg unten.
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Option nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      // Ersatzweg unten.
   end;
+    end;
   if AProject.ProjectOptions = nil then
   begin
     Exit;
@@ -232,11 +240,10 @@ begin
       mRegistry.GetValueNames(mNames);
       for mName in mNames do
       begin
-        try
+        // Nur Texte; andere Arten (etwa REG_DWORD) übergehen.
+        if mRegistry.GetDataType(mName) in [rdString, rdExpandString] then
+        begin
           AMacros.Add(mName, mRegistry.ReadString(mName));
-        except
-          on Exception do
-            ; // Kein Text (etwa REG_DWORD): übergehen.
         end;
       end;
     end;
@@ -353,9 +360,15 @@ begin
       Result.AddDefault('BDSCatalogRepository', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + mStudio +
         '\CatalogRepository');
     except
-      on Exception do
-        ; // Ordner nicht ermittelbar: dann gilt die Umgebung des Prozesses.
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+        // Ordner nicht ermittelbar: dann gilt die Umgebung des Prozesses.
     end;
+      end;
   end;
   Result.AddProject(AContext.Project, AContext.Platform, AContext.Configuration);
 end;
@@ -379,9 +392,12 @@ begin
       Exit(ConfigValue(mBuild, AName, 0, mResolved));
     end;
   except
-    on Exception do
-      ; // Ersatzweg unten.
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Option nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      // Ersatzweg unten.
   end;
+    end;
   if (AProject.ProjectOptions <> nil) and
     ((AConfiguration = '') or SameText(AConfiguration, AProject.CurrentConfiguration)) then
   begin
@@ -404,8 +420,11 @@ begin
       end;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Konfigurationen nicht lesbar: ' + TAtlasGuard.ErrorText(E));
       Result := nil;
+    end;
   end;
 end;
 

@@ -467,6 +467,12 @@
                 "description": "Nur ota-entry-without-guard (#2751): Schutzroutinen, die den Rumpf eines Einstiegspunkts absichern, z. B. \"TAtlasGuard.Run\"; es zählt der Text vor einer Klammer. Die Korrektur nimmt den ersten Eintrag, mit Klammer als Anfang des Aufrufs, z. B. \"TAtlasGuard.Run(TAtlasFeature.Menu, \".",
                 "x-description-en": "Only ota-entry-without-guard (#2751): guard routines that protect the body of an entry point, e.g. \"TAtlasGuard.Run\"; the text before a parenthesis counts. The quick fix uses the first entry, with a parenthesis as the beginning of the call, e.g. \"TAtlasGuard.Run(TAtlasFeature.Menu, \"."
               },
+              "allowExceptionUse": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur catch-all-without-raise: Ein Handler on E: Exception do, der seine Ausnahme liest (E.Message an den Aufrufer, E an eine Routine), reicht den Fehler weiter und gilt als behandelt.",
+                "x-description-en": "Only catch-all-without-raise: a handler on E: Exception do that reads its exception (E.Message to the caller, E to a routine) passes the error on and counts as handled."
+              },
               "reporters": {
                 "type": "array",
                 "items": {

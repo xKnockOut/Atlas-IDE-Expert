@@ -10,10 +10,15 @@
 //   Schreibrecht, Ordner fehlt, Name ist ein Ordner; sofort aufgeben). Unter
 //   Windows heißt Locked ERROR_SHARING_VIOLATION bzw. ERROR_LOCK_VIOLATION,
 //   unter Linux EWOULDBLOCK von flock.
+// - IsFileError trennt Fehler des Dateisystems (fehlt, gesperrt, keine Rechte,
+//   ungültiger Pfad, falsche Kodierung) von allem anderen: Wer „Datei nicht
+//   lesbar“ als Ergebnis zurückgibt, fängt nur diese und lässt Programmfehler
+//   weiter zur Fehlergrenze.
 
 interface
 
 uses
+  System.SysUtils,
   System.Classes;
 
 type
@@ -43,6 +48,11 @@ type
     /// sofort zurück.</summary>
     class function OpenExclusive(const AFileName: string; ACreate: Boolean; AWaitMs, AStepMs: Integer;
       out AStream: TStream; out AError: string): TTextExclusiveOpen; overload; static;
+    /// <summary>Fehler beim Zugriff aufs Dateisystem: EInOutError (auch EDirectoryNotFoundException,
+    /// EFileNotFoundException), EStreamError (EFOpenError, EFCreateError, EReadError, EWriteError), EOSError,
+    /// EEncodingError und genau EArgumentException (TPath bei ungültigen Zeichen, nicht dessen Nachfahren wie
+    /// EArgumentOutOfRangeException).</summary>
+    class function IsFileError(AE: Exception): Boolean; static;
     /// <summary>Letzter Fehler des Betriebssystems (GetLastOSError gibt es nur unter FPC, Delphi kennt dafür
     /// System.GetLastError).</summary>
     class function LastOSError: Integer; static;
@@ -51,7 +61,6 @@ type
 implementation
 
 uses
-  System.SysUtils,
   System.IOUtils;
 
 const
@@ -97,6 +106,12 @@ begin
 end;
 
 { TTextFiles }
+
+class function TTextFiles.IsFileError(AE: Exception): Boolean;
+begin
+  Result := (AE is EInOutError) or (AE is EStreamError) or (AE is EOSError) or (AE is EEncodingError) or
+    (AE.ClassType = EArgumentException);
+end;
 
 class function TTextFiles.LastOSError: Integer;
 begin

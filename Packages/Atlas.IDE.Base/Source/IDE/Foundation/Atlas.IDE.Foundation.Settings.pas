@@ -130,7 +130,9 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings,
-  Atlas.Core.Settings.Contract;
+  Atlas.Core.Settings.Contract,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 type
   /// <summary>Zustand von TAtlasIdeSettings (gelesene, wirksame Werte, Schnellschalter, Stände, Katalogteile).
@@ -308,8 +310,12 @@ begin
     end;
   except
     // Gesperrt oder unlesbar: wie keine Datei für diese Sitzung, aber nicht überschreiben.
-    on Exception do
+    on E: Exception do
     begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       AContent.Text := '';
       Result := False;
     end;

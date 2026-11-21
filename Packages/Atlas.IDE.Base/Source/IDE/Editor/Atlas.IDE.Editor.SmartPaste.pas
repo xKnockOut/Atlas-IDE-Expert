@@ -124,7 +124,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.SmartIndent;
+  Atlas.IDE.Editor.SmartIndent,
+  Atlas.Core.Lsp.Framing;
 
 { TAtlasIdeSmartPaste }
 
@@ -240,8 +241,11 @@ begin
       end;
     except
       // Zwischenablage gerade von einem anderen Programm gesperrt: beim nächsten Mal.
-      FClipSequence := 0;
-      FClipText := '';
+      on EClipboardException do
+      begin
+        FClipSequence := 0;
+        FClipText := '';
+      end;
     end;
     FClipLines := TTextLines.SplitLines(FClipText);
   end;
@@ -288,7 +292,10 @@ begin
         end;
       except
         // Server langsam oder weg: kein Fenster, das Einfügen bleibt, wie es ist.
-        Analysis := Default(TAtlasPasteAnalysis);
+        on ELspClientError do
+        begin
+          Analysis := Default(TAtlasPasteAnalysis);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,

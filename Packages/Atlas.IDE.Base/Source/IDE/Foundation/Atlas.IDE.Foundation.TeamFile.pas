@@ -104,7 +104,9 @@ uses
   Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch;
+  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 const
   cCheckMs = 2000;
@@ -221,8 +223,14 @@ begin
     mContent := TAtlasTextFile.Load(AFileName);
   except
     // Gesperrt (gerade gespeichert) oder gelöscht: wie noch nicht gelesen.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Exit(False);
+    end;
   end;
   ATeam := TAtlasTeamFile.Parse(mContent.Text, AFileName,
     TAtlasTeamFile.RootOf(ExtractFileDir(AFileName), PathExists));

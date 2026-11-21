@@ -1243,11 +1243,7 @@ var
 begin
   ASnapshot := Default(TArchitectureSnapshot);
   AError := '';
-  try
-    mRoot := TJSONObject.ParseJSONValue(AText);
-  except
-    mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AText);
   try
     if not (mRoot is TJSONObject) then
     begin

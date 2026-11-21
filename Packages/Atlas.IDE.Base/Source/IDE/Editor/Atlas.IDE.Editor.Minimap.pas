@@ -407,8 +407,12 @@ begin
         Lines := TTextLines.SplitLines(AText);
         Runs := TAtlasMinimap.Runs(Lines, AMaxColumn, ATabWidth);
       except
-        Lines := nil;
-        Runs := nil;
+        on E: Exception do
+        begin
+          TAtlasGuard.Log('Minimap: Zeilen nicht berechnet: ' + TAtlasGuard.ErrorText(E));
+          Lines := nil;
+          Runs := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Minimap,
