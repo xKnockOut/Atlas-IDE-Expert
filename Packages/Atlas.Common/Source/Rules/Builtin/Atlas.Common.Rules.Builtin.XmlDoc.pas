@@ -70,7 +70,7 @@ uses
   Atlas.Common.Rules.Builtin.XmlDoc.Scanner,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.UnresolvedNames,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.DocComments,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
@@ -443,7 +443,7 @@ end;
 function CrefsKnown(const AContext: TRuleContext; const ATokens: TArray<TPascalToken>): Boolean;
 begin
   Result := TUnresolvedNames.Available(AContext.Index) and TUnresolvedNames.UsesKnown(AContext.Index,
-    TUsesClauses.UsedUnits(ATokens), AContext.Namespaces, AContext.EnsureUnit);
+    TPascalUses.UsedUnits(ATokens), AContext.Namespaces, AContext.EnsureUnit);
 end;
 
 /// <summary>Ist der Name sicher nicht prüfbar? Generische Ziele und eingebaute Namen bleiben offen.</summary>

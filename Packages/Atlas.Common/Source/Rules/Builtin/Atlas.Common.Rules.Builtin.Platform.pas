@@ -69,6 +69,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
@@ -242,9 +243,9 @@ var
   mUsed: TArray<string>;
   mShort: string;
 begin
-  mUsed := TUsesClauses.UsedUnits(ATokens);
+  mUsed := TPascalUses.UsedUnits(ATokens);
   mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
-  if TUsesClauses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(mUsed, mShort, nil) then
+  if TPascalUses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TPascalUses.IsUsed(mUsed, mShort, nil) then
   begin
     Exit(False);
   end;

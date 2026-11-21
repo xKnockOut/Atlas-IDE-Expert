@@ -73,7 +73,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
@@ -837,7 +837,7 @@ var
 begin
   for mMain in APrograms do
   begin
-    if MatchText(AUnitName, TUsesClauses.UsedUnitsOf(mMain)) then
+    if MatchText(AUnitName, TPascalUses.UsedUnitsOf(mMain)) then
     begin
       Exit(AutoCreatedForms(mMain));
     end;

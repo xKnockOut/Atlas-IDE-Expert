@@ -91,6 +91,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.WarnSwitches,
@@ -716,9 +717,9 @@ var
 begin
   Result := [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('CharInSet(%s, %s)',
     [NodeText(ANode[0]), NodeText(ANode[1])]))];
-  mUsed := TUsesClauses.UsedUnits(FScope.Tokens);
-  if TUsesClauses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) or
-    TUsesClauses.IsUsed(mUsed, 'SysUtils', FContext.Namespaces) then
+  mUsed := TPascalUses.UsedUnits(FScope.Tokens);
+  if TPascalUses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) or
+    TPascalUses.IsUsed(mUsed, 'SysUtils', FContext.Namespaces) then
   begin
     Exit;
   end;
@@ -754,10 +755,10 @@ begin
     Exit(SameText(mTypeInfo.Name, 'TSysCharSet') and MatchText(mTypeInfo.UnitName, ['System.SysUtils',
       'SysUtils']));
   end;
-  mUsed := TUsesClauses.UsedUnits(FScope.Tokens);
+  mUsed := TPascalUses.UsedUnits(FScope.Tokens);
   Result := MatchText(mSymbol.TypeName, ['TSysCharSet', 'System.SysUtils.TSysCharSet', 'SysUtils.TSysCharSet']) and
-    (TUsesClauses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) or
-    TUsesClauses.IsUsed(mUsed, 'SysUtils', FContext.Namespaces));
+    (TPascalUses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) or
+    TPascalUses.IsUsed(mUsed, 'SysUtils', FContext.Namespaces));
 end;
 
 /// <summary>Zeichenliteral wie '}' oder #9; in Ausdrücken hat es den Typ Char.</summary>

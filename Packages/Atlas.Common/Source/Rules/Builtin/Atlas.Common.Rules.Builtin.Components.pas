@@ -112,7 +112,7 @@ uses
   Atlas.Common.Rules.Builtin.Components.Model,
   Atlas.Common.Rules.Builtin.Components.InheritedCalls,
   Atlas.Common.Rules.Builtin.Components.Members,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -854,7 +854,7 @@ var
   mUnit: string;
 begin
   Result := False;
-  for mUnit in TUsesClauses.UsedUnits(AContext.Tree.Tokens) do
+  for mUnit in TPascalUses.UsedUnits(AContext.Tree.Tokens) do
   begin
     if StartsText('Vcl.', mUnit) or SameText(mUnit, 'Controls') or SameText(mUnit, 'Forms') then
     begin
