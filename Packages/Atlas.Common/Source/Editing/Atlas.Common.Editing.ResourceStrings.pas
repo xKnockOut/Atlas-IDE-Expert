@@ -99,15 +99,6 @@ const
     'einer', 'eines', 'und', 'oder', 'the', 'a', 'an', 'and', 'or', 'of');
   cMaxWords = 4;
 
-function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function TokenEnd(const AToken: TPascalToken): Integer;
 begin
   Result := AToken.Offset + Length(AToken.Text);
@@ -320,7 +311,7 @@ var
   mNext: Integer;
 begin
   Result := ATokens[AImplementation].EndPos.Line;
-  mNext := NextIndex(ATokens, AImplementation);
+  mNext := NextCodeAfter(ATokens, AImplementation);
   if (mNext > High(ATokens)) or not ATokens[mNext].IsKeyword('uses') then
   begin
     Exit;
@@ -341,13 +332,13 @@ function EntryStop(const ATokens: TArray<TPascalToken>; AIndex: Integer): Intege
 var
   mNext: Integer;
 begin
-  mNext := NextIndex(ATokens, AIndex);
+  mNext := NextCodeAfter(ATokens, AIndex);
   if (ATokens[AIndex].Kind <> TPascalTokenKind.Identifier) or (mNext > High(ATokens)) or
     not ATokens[mNext].IsSymbol('=') then
   begin
     Exit(-1);
   end;
-  Result := NextIndex(ATokens, mNext);
+  Result := NextCodeAfter(ATokens, mNext);
   while (Result <= High(ATokens)) and not ATokens[Result].IsSymbol(';') do
   begin
     Inc(Result);
@@ -364,7 +355,7 @@ begin
   Result.Name := ATokens[AIndex].Text;
   Result.NameLine := ATokens[AIndex].StartPos.Line;
   Result.Line := ATokens[AStop].StartPos.Line;
-  mValue := NextIndex(ATokens, NextIndex(ATokens, AIndex));
+  mValue := NextCodeAfter(ATokens, NextCodeAfter(ATokens, AIndex));
   if mValue < AStop then
   begin
     Result.Value := Trim(Copy(AText, ATokens[mValue].Offset + 1, ATokens[AStop].Offset - ATokens[mValue].Offset));
@@ -546,7 +537,7 @@ begin
     begin
       mInSection := True;
       mSection := ATokens[mIndex].StartPos.Line;
-      mIndex := NextIndex(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
       Continue;
     end;
     if mInSection then
@@ -562,12 +553,12 @@ begin
         mEntry.InInterface := mInInterface;
         mEntry.Section := mSection;
         Result := Result + [mEntry];
-        mIndex := NextIndex(ATokens, mStop);
+        mIndex := NextCodeAfter(ATokens, mStop);
         Continue;
       end;
       mInSection := False;
     end;
-    mIndex := NextIndex(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
 end;
 

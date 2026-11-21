@@ -137,7 +137,8 @@ uses
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Rules.Builtin.Metrics,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Numbers;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -169,18 +170,6 @@ function Location(const AFileName: string; const ARange: TTextRange): TCodeLensL
 begin
   Result.FileName := AFileName;
   Result.Range := ARange;
-end;
-
-function Plural(ACount: Integer; const AOne, AMany: string): string;
-begin
-  if ACount = 1 then
-  begin
-    Result := '1 ' + AOne;
-  end
-  else
-  begin
-    Result := IntToStr(ACount) + ' ' + AMany;
-  end;
 end;
 
 function UnitOf(const AIndex: ISymbolIndex; const ACurrent: TUnitIndex; const AFileName: string;
@@ -379,7 +368,7 @@ begin
     Exit;
   end;
   mEntry := NewEntry(TCodeLensKind.Descendants, ASymbol.SelectionRange,
-    Plural(Length(mDescendants), cTexts[TCodeLensText.Descendant].Text, cTexts[TCodeLensText.Descendants].Text));
+    TTextNumbers.Counted(Length(mDescendants), cTexts[TCodeLensText.Descendant].Text, cTexts[TCodeLensText.Descendants].Text));
   for mDescendant in mDescendants do
   begin
     mEntry.Targets := mEntry.Targets + [Location(mDescendant.FileName, mDescendant.Symbol.SelectionRange)];
@@ -579,8 +568,7 @@ begin
   finally
     mHeaders.Free;
   end;
-  Result.Title := Plural(Length(Result.Targets), cTexts[TCodeLensText.Reference].Text,
-    cTexts[TCodeLensText.References].Text);
+  Result.Title := TTextNumbers.Counted(Length(Result.Targets), cTexts[TCodeLensText.Reference].Text, cTexts[TCodeLensText.References].Text);
 end;
 
 class function TLspCodeLens.ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
@@ -684,7 +672,7 @@ begin
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
-    mEntry.Title := Plural(0, cTexts[TCodeLensText.Reference].Text, cTexts[TCodeLensText.References].Text);
+    mEntry.Title := TTextNumbers.Counted(0, cTexts[TCodeLensText.Reference].Text, cTexts[TCodeLensText.References].Text);
     Exit(ToJson(mEntry, mSource.FileName));
   end;
   mCancellation := TRequestCancellation.Create(ACancellation);

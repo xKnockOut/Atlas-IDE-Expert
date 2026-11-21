@@ -1101,7 +1101,7 @@ begin
     if AKeys[mClause] = mKey then
     begin
       FReport.Add(TTextRange.Create(FScan.Tokens[AFirst].StartPos, FScan.Tokens[AStop - 1].EndPos),
-        cTexts[TTypeDeclarationsText.AlreadyImplemented].Fmt([FScan.Text(AFirst, AStop),
+        cTexts[TTypeDeclarationsText.AlreadyImplemented].Fmt([CodeText(FScan.Tokens, AFirst, AStop),
         AOwners[mClause]]), TRuleConfidence.High);
       Exit;
     end;

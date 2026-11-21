@@ -51,6 +51,9 @@ type
     // Fehlerbehandlung
     Error);
 
+  /// <summary>Menge von Knotenarten, etwa für TSyntaxNodes.Enclosing.</summary>
+  TSyntaxKinds = set of TSyntaxKind;
+
   /// <summary>Modifizierer eines Parameters; None ohne Angabe (Wertparameter).</summary>
   TParameterModifier = (None, ConstParam, VarParam, OutParam, ConstRefParam);
 
@@ -592,20 +595,6 @@ end;
 
 { TSyntaxTree }
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
-{ TSyntaxTree }
-
 constructor TSyntaxTree.Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
   const ADiagnostics: TArray<TSyntaxDiagnostic>);
 begin
@@ -742,7 +731,7 @@ begin
   while mLow < mHigh do
   begin
     mMiddle := (mLow + mHigh) div 2;
-    if ComparePositions(FTokens[mMiddle].EndPos, APosition) < 0 then
+    if TTextPosition.Compare(FTokens[mMiddle].EndPos, APosition) < 0 then
     begin
       mLow := mMiddle + 1;
     end
@@ -752,7 +741,7 @@ begin
     end;
   end;
   // Höchstens zwei Kandidaten: das Token, das vor APosition endet, und das, das dort beginnt; der frühere gewinnt.
-  while (mLow <= High(FTokens)) and (ComparePositions(FTokens[mLow].StartPos, APosition) <= 0) do
+  while (mLow <= High(FTokens)) and (TTextPosition.Compare(FTokens[mLow].StartPos, APosition) <= 0) do
   begin
     if FTokens[mLow].Kind = TPascalTokenKind.Identifier then
     begin

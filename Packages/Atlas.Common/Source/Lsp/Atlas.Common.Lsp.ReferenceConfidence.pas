@@ -141,7 +141,8 @@ uses
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -177,18 +178,6 @@ const
   cReasonNames: array[TReferenceReason] of string = ('', 'interface', 'virtual', 'ambiguous', 'unresolved',
     'inactiveBranch', 'text');
 
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 function SameTarget(const A, B: TDefinitionTarget): Boolean;
 begin
   Result := SameText(A.FileName, B.FileName) and (A.SelectionRange.StartPos = B.SelectionRange.StartPos);
@@ -214,15 +203,6 @@ end;
 function Before(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
-end;
-
-/// <summary>Letzter Teil eines qualifizierten Namens: Kunden.TKunde → TKunde.</summary>
-function ShortName(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  mDot := LastDelimiter('.', AName);
-  Result := Copy(AName, mDot + 1, MaxInt);
 end;
 
 { TReferenceConfidence }
@@ -362,7 +342,7 @@ begin
       Inc(AClasses);
     end;
     if SameText(mLocation.Symbol.QualifiedName, FSymbol.Container) or
-      SameText(mLocation.Symbol.Name, ShortName(FSymbol.Container)) then
+      SameText(mLocation.Symbol.Name, TTextNames.LastPart(FSymbol.Container)) then
     begin
       Result := True;
     end;
@@ -507,7 +487,7 @@ begin
   end;
   // Erschlossen nur bei genau dem Namen, nicht bei der anderen Schreibweise eines Attributs; Köpfe anderer
   // Routinen gleichen Namens und gleichnamige Parameter in Routinenköpfen deklarieren nur (#2425).
-  if not FSettings.Inferred or not SameText(CleanName(ATree.Tokens[ATokenIndex].Text), FName) or
+  if not FSettings.Inferred or not SameText(TTextNames.WithoutAmpersand(ATree.Tokens[ATokenIndex].Text), FName) or
     InRoutineHeader(ATree.Tokens, ATokenIndex) or TParameterHeaders.IsHeaderParameter(ATree, ATokenIndex) then
   begin
     Exit(False);

@@ -438,7 +438,17 @@ type
       const ARanIds: TArray<string>; const AReport: IRuleReport);
   end;
 
+/// <summary>Sicherheit für Regeln, die eingebundene Dateien nicht sehen: Medium, wenn die Unit {$I …} bzw.
+/// {$INCLUDE …} enthält, sonst High.</summary>
+function IncludeConfidence(const ATokens: TArray<TPascalToken>): TRuleConfidence;
+
+/// <summary>Schlüssel der Projektart in Einstellungen: "application", "package", "library" oder ''.</summary>
+function ProjectKindKey(AKind: TRuleProjectKind): string;
+
 implementation
+
+uses
+  System.StrUtils;
 
 { TRuleContext }
 
@@ -452,6 +462,35 @@ begin
   if Result = '' then
   begin
     Result := UnitName + '.pas';
+  end;
+end;
+
+function ProjectKindKey(AKind: TRuleProjectKind): string;
+begin
+  case AKind of
+    TRuleProjectKind.Application:
+      Result := 'application';
+    TRuleProjectKind.Package:
+      Result := 'package';
+    TRuleProjectKind.Library_:
+      Result := 'library';
+  else
+    Result := '';
+  end;
+end;
+
+function IncludeConfidence(const ATokens: TArray<TPascalToken>): TRuleConfidence;
+var
+  mToken: TPascalToken;
+begin
+  Result := TRuleConfidence.High;
+  for mToken in ATokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', mToken.Text) or
+      StartsText('{$INCLUDE ', mToken.Text)) then
+    begin
+      Exit(TRuleConfidence.Medium);
+    end;
   end;
 end;
 

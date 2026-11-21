@@ -138,20 +138,6 @@ begin
   Result := TRuleDerived.CodeTokens(mCache, AContext);
 end;
 
-function IsOneOf(const AText: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  for mWord in AWords do
-  begin
-    if SameText(AText, mWord) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function ContainsOneOf(const AText: string; const AWords: array of string): Boolean;
 var
   mWord: string;
@@ -216,11 +202,11 @@ begin
     end
     else if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
-      if IsOneOf(ATokens[mIndex].Text, ['Format', 'Concat']) then
+      if MatchText(ATokens[mIndex].Text, ['Format', 'Concat']) then
       begin
         mJoined := True;
       end
-      else if not IsOneOf(ATokens[mIndex].Text, ['PChar', 'PWideChar', 'PAnsiChar', 'string', 'nil']) then
+      else if not MatchText(ATokens[mIndex].Text, ['PChar', 'PWideChar', 'PAnsiChar', 'string', 'nil']) then
       begin
         mVariable := True;
       end;
@@ -265,7 +251,7 @@ end;
 function IsFixedProgram(const ATokens: TArray<TPascalToken>; const AArgs: TArray<TArray<Integer>>): Boolean;
 begin
   Result := (Length(AArgs) >= 4) and IsLiteralPart(ATokens, AArgs[2]) and
-    not IsOneOf(ExtractFileName(LiteralValue(ATokens[AArgs[2][0]])), cShellPrograms);
+    not MatchText(ExtractFileName(LiteralValue(ATokens[AArgs[2][0]])), cShellPrograms);
 end;
 
 /// <summary>Glieder der Verkettung ATokens[AFirst..ALast] auf oberster Ebene; False bei offener Klammer.</summary>
@@ -330,7 +316,7 @@ begin
   mFirst := AArgs[3][0];
   mLast := AArgs[3][1];
   // PChar(…) um die Parameter.
-  if IsOneOf(ATokens[mFirst].Text, ['PChar', 'PWideChar']) and (mFirst < mLast) and
+  if MatchText(ATokens[mFirst].Text, ['PChar', 'PWideChar']) and (mFirst < mLast) and
     ATokens[mFirst + 1].IsSymbol('(') and (MatchingParen(ATokens, mFirst + 1) = mLast) then
   begin
     Inc(mFirst, 2);
@@ -392,7 +378,7 @@ end;
 /// <summary>Steht bei AIndex ein Aufruf eines Befehls (CommandCalls) mit Klammer?</summary>
 function IsCommandCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
-  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and IsOneOf(ATokens[AIndex].Text, cCommandCalls) and
+  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and MatchText(ATokens[AIndex].Text, cCommandCalls) and
     ATokens[AIndex + 1].IsSymbol('(');
 end;
 
@@ -449,7 +435,7 @@ end;
 /// <summary>Nennt AIndex einen Dateizugriff (FileCalls, TFileStream.Create)?</summary>
 function IsFileCallName(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
-  Result := IsOneOf(ATokens[AIndex].Text, cFileCalls) or (SameText(ATokens[AIndex].Text, 'Create') and (AIndex >= 2) and
+  Result := MatchText(ATokens[AIndex].Text, cFileCalls) or (SameText(ATokens[AIndex].Text, 'Create') and (AIndex >= 2) and
     SameText(ATokens[AIndex - 2].Text, 'TFileStream'));
 end;
 
@@ -465,7 +451,7 @@ end;
 /// über TDirectory.GetFiles) ist keine Eingabe.</summary>
 function IsInputMarker(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
-  Result := IsOneOf(ATokens[AIndex].Text, cInputMarkers) and (SameText(ATokens[AIndex].Text, 'ParamStr') or
+  Result := MatchText(ATokens[AIndex].Text, cInputMarkers) and (SameText(ATokens[AIndex].Text, 'ParamStr') or
     ((AIndex > 0) and ATokens[AIndex - 1].IsSymbol('.')) or
     ((AIndex < High(ATokens)) and ATokens[AIndex + 1].IsSymbol('.')));
 end;
@@ -483,7 +469,7 @@ begin
     if ATokens[mInner].Kind = TPascalTokenKind.Identifier then
     begin
       mFromInput := mFromInput or IsInputMarker(ATokens, mInner);
-      mChecked := mChecked or IsOneOf(ATokens[mInner].Text, ['GetFullPath', 'ExpandFileName', 'ExtractFileName']);
+      mChecked := mChecked or MatchText(ATokens[mInner].Text, ['GetFullPath', 'ExpandFileName', 'ExtractFileName']);
     end;
   end;
   Result := mFromInput and not mChecked;
@@ -535,7 +521,7 @@ begin
   mTokens := CodeTokens(AContext);
   for mIndex := 0 to High(mTokens) do
   begin
-    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and IsOneOf(mTokens[mIndex].Text, cWeakCrypto) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and MatchText(mTokens[mIndex].Text, cWeakCrypto) then
     begin
       // Prüfsummen sind legitim; nur mit Kennwort, Geheimnis oder Signatur in der Anweisung ist es mittel.
       mConfidence := TRuleConfidence.Low;
@@ -637,7 +623,7 @@ end;
 /// <summary>Akzeptiert die Zuweisung bei AIndex im Prüf-Handler mit dem Kopf AHeader jedes Zertifikat?</summary>
 function AcceptsAll(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AHeader: string): Boolean;
 begin
-  Result := (IsOneOf(ATokens[AIndex].Text, ['Accepted', 'AAccepted']) and ContainsText(AHeader, 'Certificate')) or
+  Result := (MatchText(ATokens[AIndex].Text, ['Accepted', 'AAccepted']) and ContainsText(AHeader, 'Certificate')) or
     (SameText(ATokens[AIndex].Text, 'Result') and (ContainsText(AHeader, 'TIdX509') or
     ContainsText(AHeader, 'VerifyPeer')));
 end;
@@ -809,20 +795,6 @@ const
   // Bezeichner, die Benutzereingaben liefern: TEdit.Text, TMemo.Lines, ParamStr, Webanfragen.
   cUserInputs: array[0..5] of string = ('Text', 'Lines', 'ParamStr', 'Request', 'QueryFields', 'ContentFields');
 
-/// <summary>Änderung der Klammertiefe: +1 bei "(" und "[", -1 bei ")" und "]".</summary>
-function BracketDelta(const AToken: TPascalToken): Integer;
-begin
-  Result := 0;
-  if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
-  begin
-    Result := 1;
-  end
-  else if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
-  begin
-    Result := -1;
-  end;
-end;
-
 /// <summary>Steht bei AIndex ein Konstantenname (Name = bzw. Name: in einem Konstantenabschnitt)?</summary>
 function IsConstantName(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
@@ -930,7 +902,7 @@ var
   mClose: Integer;
 begin
   mText := ATokens[AIndex].Text;
-  if IsOneOf(mText, cSafeConversions) and (AIndex < ALast) and ATokens[AIndex + 1].IsSymbol('(') then
+  if MatchText(mText, cSafeConversions) and (AIndex < ALast) and ATokens[AIndex + 1].IsSymbol('(') then
   begin
     // IntToStr(Id), QuotedStr(Name): Inhalt überspringen.
     mClose := MatchingParen(ATokens, AIndex + 1);
@@ -939,14 +911,14 @@ begin
       AIndex := mClose;
     end;
   end
-  else if IsOneOf(mText, ['Format', 'Concat']) then
+  else if MatchText(mText, ['Format', 'Concat']) then
   begin
     AComposition.Joined := True;
   end
-  else if not IsOneOf(mText, AConstants) and not IsOneOf(mText, ['string', 'nil', 'sLineBreak']) then
+  else if not MatchText(mText, AConstants) and not MatchText(mText, ['string', 'nil', 'sLineBreak']) then
   begin
     AComposition.Variable := True;
-    AComposition.FromInput := AComposition.FromInput or IsOneOf(mText, cUserInputs);
+    AComposition.FromInput := AComposition.FromInput or MatchText(mText, cUserInputs);
   end;
 end;
 
@@ -994,7 +966,7 @@ end;
 function IsSqlCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
   Result := ATokens[AIndex + 1].IsSymbol('(') and (IsMemberOf(ATokens, AIndex, 'SQL', 'Add') or
-    (IsOneOf(ATokens[AIndex].Text, cSqlCalls) and (AIndex >= 1) and ATokens[AIndex - 1].IsSymbol('.')));
+    (MatchText(ATokens[AIndex].Text, cSqlCalls) and (AIndex >= 1) and ATokens[AIndex - 1].IsSymbol('.')));
 end;
 
 /// <summary>Bereich des SQL-Texts zur Senke bei AIndex; False ohne.</summary>
@@ -1044,7 +1016,7 @@ begin
     begin
       Continue;
     end;
-    if IsOneOf(mTokens[mIndex].Text, cGenericSqlCalls) and not HasSqlLiteral(mTokens, mFirst, mLast) then
+    if MatchText(mTokens[mIndex].Text, cGenericSqlCalls) and not HasSqlLiteral(mTokens, mFirst, mLast) then
     begin
       Continue;
     end;

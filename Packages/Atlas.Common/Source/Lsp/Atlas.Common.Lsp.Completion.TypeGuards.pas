@@ -67,7 +67,8 @@ uses
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Postfix,
-  Atlas.Common.Lsp.Completion.Lists;
+  Atlas.Common.Lsp.Completion.Lists,
+  Atlas.Text.Names;
 
 const
   /// <summary>So viele Token sucht Find höchstens rückwärts nach einer Prüfung.</summary>
@@ -193,7 +194,7 @@ end;
 function TGuardScan.IsName(AIndex: Integer): Boolean;
 begin
   // Derselbe Bezeichner, nicht Mitglied eines anderen Ausdrucks (Foo.X).
-  Result := (Code(AIndex).Kind = TPascalTokenKind.Identifier) and SameText(CleanName(Code(AIndex).Text), Name) and
+  Result := (Code(AIndex).Kind = TPascalTokenKind.Identifier) and SameText(TTextNames.WithoutAmpersand(Code(AIndex).Text), Name) and
     not Code(Prev(AIndex)).IsSymbol('.');
 end;
 
@@ -625,11 +626,11 @@ var
 begin
   for mIndex := 0 to High(ATokens) do
   begin
-    if ComparePositions(ATokens[mIndex].StartPos, APosition) = 0 then
+    if TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) = 0 then
     begin
       Exit(mIndex);
     end;
-    if ComparePositions(ATokens[mIndex].StartPos, APosition) > 0 then
+    if TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) > 0 then
     begin
       Break;
     end;
@@ -647,7 +648,7 @@ begin
   mIndex := ALast;
   while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Result := [CleanName(ATokens[mIndex].Text)] + Result;
+    Result := [TTextNames.WithoutAmpersand(ATokens[mIndex].Text)] + Result;
     mIndex := PreviousCode(ATokens, mIndex);
     if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
     begin
@@ -823,7 +824,7 @@ begin
   mIndex := PreviousCode(ATokens, AOperator);
   while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Result := [CleanName(ATokens[mIndex].Text)] + Result;
+    Result := [TTextNames.WithoutAmpersand(ATokens[mIndex].Text)] + Result;
     AFirst := mIndex;
     mIndex := PreviousCode(ATokens, mIndex);
     if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
@@ -845,7 +846,7 @@ begin
   mTokens := ARequest.Tree.Tokens;
   mIndex := PreviousCode(mTokens, TokenFrom(mTokens, ARequest.OffsetAt(ARequest.Position)));
   if (mIndex >= 0) and (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-    (ComparePositions(mTokens[mIndex].EndPos, ARequest.Position) = 0) then
+    (TTextPosition.Compare(mTokens[mIndex].EndPos, ARequest.Position) = 0) then
   begin
     mIndex := PreviousCode(mTokens, mIndex);
   end;
@@ -937,7 +938,7 @@ begin
     Exit;
   end;
   mScan.Tokens := ATokens;
-  mScan.Name := CleanName(ATokens[ASubject].Text);
+  mScan.Name := TTextNames.WithoutAmpersand(ATokens[ASubject].Text);
   mScan.StrictOrder := AStrict;
   mScan.ByRef := AByRef;
   mIndex := PreviousCode(ATokens, ASubject);

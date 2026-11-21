@@ -17,8 +17,6 @@ type
     class function ChildIndex(AParent, AChild: TSyntaxNode): Integer; static;
     /// <summary>Token, das an APosition beginnt oder sie enthält; -1 sonst.</summary>
     class function TokenIndexAt(ATree: TSyntaxTree; const APosition: TTextPosition): Integer; static;
-    /// <summary>Bezeichner ohne führendes &amp;.</summary>
-    class function CleanName(const AText: string): string; static;
     /// <summary>Position des Namens eines Bezeichners bzw. des Mitglieds hinter dem letzten Punkt.</summary>
     class function NamePosition(ATree: TSyntaxTree; ANode: TSyntaxNode): TTextPosition; static;
     /// <summary>Erster Bezeichner AName im Bereich des Knotens.</summary>
@@ -59,32 +57,21 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Text.Names;
 
 const
   cMaxDetail = 120;
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function NodeContains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 begin
-  Result := (ComparePositions(ANode.StartPos, APosition) <= 0) and (ComparePositions(APosition, ANode.EndPos) < 0);
+  Result := (TTextPosition.Compare(ANode.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ANode.EndPos) < 0);
 end;
 
 /// <summary>Bezeichner AName (ohne &amp;) im Token.</summary>
 function IsIdentifierNamed(const AToken: TPascalToken; const AName: string): Boolean;
 begin
-  Result := (AToken.Kind = TPascalTokenKind.Identifier) and SameText(TDataFlowSyntax.CleanName(AToken.Text), AName);
+  Result := (AToken.Kind = TPascalTokenKind.Identifier) and SameText(TTextNames.WithoutAmpersand(AToken.Text), AName);
 end;
 
 function IsCommentOrDirective(const AToken: TPascalToken): Boolean;
@@ -105,7 +92,7 @@ begin
     for mIndex := 0 to Result.ChildCount - 1 do
     begin
       if NodeContains(Result[mIndex], APosition) and ((mInner = nil) or
-        (ComparePositions(Result[mIndex].StartPos, mInner.StartPos) > 0)) then
+        (TTextPosition.Compare(Result[mIndex].StartPos, mInner.StartPos) > 0)) then
       begin
         mInner := Result[mIndex];
       end;
@@ -142,11 +129,11 @@ begin
   while (Result < 0) and (mFirst <= mLast) do
   begin
     mMiddle := (mFirst + mLast) div 2;
-    if ComparePositions(ATree.Tokens[mMiddle].EndPos, APosition) <= 0 then
+    if TTextPosition.Compare(ATree.Tokens[mMiddle].EndPos, APosition) <= 0 then
     begin
       mFirst := mMiddle + 1;
     end
-    else if ComparePositions(ATree.Tokens[mMiddle].StartPos, APosition) > 0 then
+    else if TTextPosition.Compare(ATree.Tokens[mMiddle].StartPos, APosition) > 0 then
     begin
       mLast := mMiddle - 1;
     end
@@ -154,18 +141,6 @@ begin
     begin
       Result := mMiddle;
     end;
-  end;
-end;
-
-class function TDataFlowSyntax.CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
   end;
 end;
 
@@ -187,7 +162,7 @@ begin
     begin
       Break;
     end;
-    if (mToken.Offset >= ANode.StartOffset) and IsIdentifierNamed(mToken, CleanName(ANode.Name)) then
+    if (mToken.Offset >= ANode.StartOffset) and IsIdentifierNamed(mToken, TTextNames.WithoutAmpersand(ANode.Name)) then
     begin
       Result := mToken.StartPos;
     end;
@@ -220,7 +195,7 @@ end;
 class function TDataFlowSyntax.FirstDeclaredName(ATree: TSyntaxTree; ADeclaration: TSyntaxNode;
   out APosition: TTextPosition): Boolean;
 begin
-  Result := NameInNode(ATree, ADeclaration, CleanName(Trim(ADeclaration.Name.Split([','])[0])), APosition);
+  Result := NameInNode(ATree, ADeclaration, TTextNames.WithoutAmpersand(Trim(ADeclaration.Name.Split([','])[0])), APosition);
 end;
 
 class function TDataFlowSyntax.RoutineNamePosition(ATree: TSyntaxTree; AHeader: TSyntaxNode; const AName: string;
@@ -263,7 +238,7 @@ begin
   Result := '';
   if ACall.ChildCount > 0 then
   begin
-    Result := LowerCase(CleanName(ShortName(ACall[0].Name)));
+    Result := LowerCase(TTextNames.WithoutAmpersand(ShortName(ACall[0].Name)));
   end;
 end;
 
@@ -346,7 +321,7 @@ end;
 class function TDataFlowSyntax.PropertyName(ATree: TSyntaxTree; AProperty: TSyntaxNode;
   out APosition: TTextPosition): Boolean;
 begin
-  Result := NameInNode(ATree, AProperty, CleanName(AProperty.Name), APosition);
+  Result := NameInNode(ATree, AProperty, TTextNames.WithoutAmpersand(AProperty.Name), APosition);
 end;
 
 class function TDataFlowSyntax.WrittenTarget(ANode: TSyntaxNode; out AStatement: TSyntaxNode;

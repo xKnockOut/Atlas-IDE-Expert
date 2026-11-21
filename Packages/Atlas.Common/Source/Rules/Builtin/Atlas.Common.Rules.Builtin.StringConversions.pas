@@ -96,7 +96,8 @@ uses
   Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -321,7 +322,7 @@ function TStringConversionScan.StringElement(ANode: TSyntaxNode; out ABase: TRes
   out ABaseType: TResolvedSymbol): Boolean;
 begin
   Result := (ANode.Kind = TSyntaxKind.IndexAccess) and (ANode.ChildCount = 2) and
-    FScope.SureType(Unwrapped(ANode[0]), ABase, ABaseType) and SystemType(ABaseType) and
+    FScope.SureType(TSyntaxNodes.Unparen(ANode[0]), ABase, ABaseType) and SystemType(ABaseType) and
     (TStringConversionRule.KindOf(ABaseType.Name) <> TStringTypeKind.None);
 end;
 
@@ -336,7 +337,7 @@ var
 begin
   Result := TStringTypeKind.None;
   ADisplay := '';
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if (mNode = nil) or StringElement(mNode, mBase, mBaseType) then
   begin
     Exit;
@@ -366,7 +367,7 @@ var
   mLeft, mRight: string;
 begin
   AValue := '';
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if mNode = nil then
   begin
     Exit(False);
@@ -493,12 +494,12 @@ begin
     Exit;
   end;
   // S[1] := 'x' (W1068): nur Variablen und Felder vom Typ string, keine Properties mit Index.
-  if StringElement(Unwrapped(ANode[0]), mBase, mBaseType) then
+  if StringElement(TSyntaxNodes.Unparen(ANode[0]), mBase, mBaseType) then
   begin
     if (mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
       MatchText(mBaseType.Name, ['string', 'UnicodeString']) then
     begin
-      Report('W1068', ANode[0], cTexts[TStringConversionsText.CharModified].Fmt([NodeText(Unwrapped(ANode[0])[0])]),
+      Report('W1068', ANode[0], cTexts[TStringConversionsText.CharModified].Fmt([NodeText(TSyntaxNodes.Unparen(ANode[0])[0])]),
         TRuleConfidence.High, nil);
     end;
     Exit;
@@ -773,8 +774,8 @@ function TStringConversionScan.TruncatingMembership(ANode: TSyntaxNode; out ADis
 var
   mLeft, mRight: TSyntaxNode;
 begin
-  mLeft := Unwrapped(ANode[0]);
-  mRight := Unwrapped(ANode[1]);
+  mLeft := TSyntaxNodes.Unparen(ANode[0]);
+  mRight := TSyntaxNodes.Unparen(ANode[1]);
   if AsciiCharSet(mRight) then
   begin
     Exit(IsUnicodeChar(mLeft, ADisplay));

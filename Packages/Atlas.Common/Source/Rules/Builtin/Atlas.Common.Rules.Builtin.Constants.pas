@@ -139,7 +139,8 @@ uses
   Atlas.Common.Rules.Builtin.Constants.Types,
   Atlas.Common.Rules.Builtin.Constants.Conversions,
   Atlas.Common.Rules.Builtin.Constants.TypedConstants,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -1029,7 +1030,7 @@ begin
   mLabels := CaseLabels(ACase);
   // Erst die Marken: 0..127 passt in jeden Typ, dann bleibt die Namensauflösung aus. Typ wie in
   // comparison-always-constant: sicher bekannt und eingebaut.
-  if not AnyWideLabel(mLabels) or not FScope.SureType(Unwrapped(ACase[0]), mSymbol, mTypeInfo) or
+  if not AnyWideLabel(mLabels) or not FScope.SureType(TSyntaxNodes.Unparen(ACase[0]), mSymbol, mTypeInfo) or
     not (mTypeInfo.Builtin or SameText(mTypeInfo.UnitName, 'System')) or
     not IntegerRange(mTypeInfo.Name, mLow, mHigh) then
   begin

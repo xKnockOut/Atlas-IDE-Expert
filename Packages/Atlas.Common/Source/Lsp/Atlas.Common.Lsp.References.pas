@@ -122,7 +122,8 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -136,19 +137,6 @@ const
      En: 'Fields "textDocument.uri" and "position" missing in '));
 
 {$SCOPEDENUMS OFF}
-
-function CleanName(const AText: string): string;
-begin
-  // &Begin → Begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
 
 /// <summary>Andere Schreibweise eines Attributnamens: Foo zu FooAttribute und umgekehrt.</summary>
 function AlternativeName(const AName: string): string;
@@ -246,8 +234,8 @@ begin
       end;
       // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
       if (ATree.Tokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
-        not (SameText(CleanName(ATree.Tokens[mIndex].Text), AName) or
-        SameText(CleanName(ATree.Tokens[mIndex].Text), mAlternative)) then
+        not (SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), AName) or
+        SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), mAlternative)) then
       begin
         Continue;
       end;
@@ -556,7 +544,7 @@ begin
       end;
       Exit;
     end;
-    mRun.Prepare(ATree, mWanted[0], CleanName(ATree.Tokens[mIndex].Text));
+    mRun.Prepare(ATree, mWanted[0], TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text));
     mRun.SearchOwn(ATree);
     // Ein Parameter kommt nur in seiner Routine vor.
     if not mParameter then

@@ -62,7 +62,8 @@ uses
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Common.Rules.Builtin.PublicMembers,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -117,18 +118,6 @@ begin
     CharInSet(AFileName[Length(mPrefix) + 1], ['\', '/']) then
   begin
     Result := Copy(AFileName, Length(mPrefix) + 2, MaxInt);
-  end;
-end;
-
-function SectionName(ASection: TUsesSection): string;
-begin
-  if ASection = TUsesSection.Interface_ then
-  begin
-    Result := 'interface';
-  end
-  else
-  begin
-    Result := 'implementation';
   end;
 end;
 
@@ -493,7 +482,7 @@ begin
   Add(cTexts[TDeadCodeToolsText.UsesText].Fmt([Length(FCurrent.Outgoing)]));
   for mEdge in FCurrent.Outgoing do
   begin
-    AddUnit(mList, FGraph.Node(mEdge.Target).UnitName, SectionName(mEdge.Section));
+    AddUnit(mList, FGraph.Node(mEdge.Target).UnitName, TTextNames.SectionKeyword(mEdge.Section = TUsesSection.Interface_));
   end;
   if ATransitive then
   begin
@@ -520,7 +509,7 @@ begin
     for mRef in FCurrent.Incoming do
     begin
       mEdge := FGraph.Node(mRef.Source).Outgoing[mRef.Item];
-      mUsers.Add(FGraph.Node(mRef.Source).UnitName + #9 + SectionName(mEdge.Section));
+      mUsers.Add(FGraph.Node(mRef.Source).UnitName + #9 + TTextNames.SectionKeyword(mEdge.Section = TUsesSection.Interface_));
     end;
     mUsers.CaseSensitive := False;
     mUsers.Sort;

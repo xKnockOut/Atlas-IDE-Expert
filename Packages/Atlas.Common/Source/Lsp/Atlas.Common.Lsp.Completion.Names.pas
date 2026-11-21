@@ -41,13 +41,13 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.NameSuggestions,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Completion.Context;
+  Atlas.Text.Lines;
 
 /// <summary>Der Name, der an der Namensposition ASite schon steht; '' ohne.</summary>
 function OwnNameAt(ARequest: TCompletionRequest; const ASite: TNameSite): string;
 begin
   Result := '';
-  if ComparePositions(ASite.NameRange.StartPos, ASite.NameRange.EndPos) <> 0 then
+  if TTextPosition.Compare(ASite.NameRange.StartPos, ASite.NameRange.EndPos) <> 0 then
   begin
     Result := Copy(ARequest.LineText(ASite.NameRange.StartPos.Line), ASite.NameRange.StartPos.Character + 1,
       ASite.NameRange.EndPos.Character - ASite.NameRange.StartPos.Character);

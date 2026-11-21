@@ -29,8 +29,6 @@ type
     [Test]
     procedure MemberTypeOfRecordAndClass;
     [Test]
-    procedure TextHelpers;
-    [Test]
     procedure ManyTypesInLargeUnit;
   end;
 
@@ -209,11 +207,6 @@ begin
     mTypes.Free;
     mTree.Free;
   end;
-end;
-
-procedure TFreeFieldTypesTests.TextHelpers;
-begin
-  Assert.AreEqual('TObjectList', TFreeFieldTypes.BaseName(' TObjectList<TOrder> '));
 end;
 
 procedure TFreeFieldTypesTests.ManyTypesInLargeUnit;

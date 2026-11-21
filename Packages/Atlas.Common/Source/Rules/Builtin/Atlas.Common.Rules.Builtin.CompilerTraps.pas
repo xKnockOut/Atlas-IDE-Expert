@@ -152,19 +152,6 @@ begin
   Result := Copy(AName, mDot + 1, MaxInt);
 end;
 
-/// <summary>Steht vor dem Token AIndex (ohne Kommentare) ein Punkt?</summary>
-function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mBefore: Integer;
-begin
-  mBefore := AIndex - 1;
-  while (mBefore >= 0) and (ATokens[mBefore].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mBefore);
-  end;
-  Result := (mBefore >= 0) and ATokens[mBefore].IsSymbol('.');
-end;
-
 /// <summary>Liegt APosition zwischen AFrom und ATo?</summary>
 function InRange(const APosition, AFrom, ATo: TTextPosition): Boolean;
 begin

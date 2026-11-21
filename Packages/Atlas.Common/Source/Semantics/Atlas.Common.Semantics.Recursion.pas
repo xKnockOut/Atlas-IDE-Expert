@@ -67,7 +67,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor;
 
 type
   TRoutineInfo = class;
@@ -234,27 +235,6 @@ begin
   end;
 end;
 
-function FirstToken(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLeft, mRight, mMiddle: Integer;
-begin
-  mLeft := 0;
-  mRight := Length(ATokens);
-  while mLeft < mRight do
-  begin
-    mMiddle := (mLeft + mRight) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLeft := mMiddle + 1;
-    end
-    else
-    begin
-      mRight := mMiddle;
-    end;
-  end;
-  Result := mLeft;
-end;
-
 /// <summary>Bereich des Namens im Kopf (letzter Bezeichner der Punktkette vor der Parameterliste).</summary>
 function HeaderNameRange(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TTextRange;
 var
@@ -263,7 +243,7 @@ var
 begin
   Result := TTextRange.Create(AHeader.StartPos, AHeader.StartPos);
   mSeen := False;
-  mIndex := FirstToken(ATokens, AHeader.StartOffset);
+  mIndex := TokenFrom(ATokens, AHeader.StartOffset);
   while (mIndex < Length(ATokens)) and (ATokens[mIndex].Offset < AHeader.EndOffset) do
   begin
     if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
@@ -617,7 +597,7 @@ begin
   mInfo := TPropertyInfo.Create;
   mInfo.Name := ANode.Name;
   // read/write stehen nicht im Baum, nur in den Token der Deklaration.
-  ReadAccessors(FTree.Tokens, FirstToken(FTree.Tokens, ANode.StartOffset), ANode.EndOffset, mInfo);
+  ReadAccessors(FTree.Tokens, TokenFrom(FTree.Tokens, ANode.StartOffset), ANode.EndOffset, mInfo);
   FProperties.AddOrSetValue(UpperCase(TypeOwner(ANode) + '.' + ANode.Name), mInfo);
 end;
 

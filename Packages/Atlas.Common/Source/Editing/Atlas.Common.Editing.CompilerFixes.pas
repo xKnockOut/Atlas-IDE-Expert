@@ -86,7 +86,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.DisableWarning,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -346,15 +347,6 @@ begin
   end;
 end;
 
-function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Namen, die in ARoutine (und umschließenden Routinen) als Variable, Parameter oder Konstante
 /// deklariert sind.</summary>
 function LocalNames(ARoutine: TSyntaxNode): TArray<string>;
@@ -377,7 +369,7 @@ begin
           mNames := mNames + [ANode.Name];
         end;
       end);
-    mRoutine := RoutineOf(mRoutine.Parent);
+    mRoutine := TSyntaxNodes.Nearest(mRoutine.Parent, [TSyntaxKind.RoutineDecl]);
   end;
   Result := mNames;
 end;
@@ -465,7 +457,7 @@ begin
     end;
     mValue := mStatement[1];
     // Erst Result, dann Exit: Exit([...]) liest Delphi als Menge (E2001).
-    if IsPure(mValue, LocalNames(RoutineOf(mStatement))) then
+    if IsPure(mValue, LocalNames(TSyntaxNodes.Nearest(mStatement, [TSyntaxKind.RoutineDecl]))) then
     begin
       Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveIneffectiveAssignmentTo].Fmt([mName,
         AMessage.Code]),

@@ -88,9 +88,6 @@ function CallsMethod(ARoutine: TSyntaxNode; const AName: string): Boolean;
 /// </summary>
 function NilCheckedPaths(ANode: TSyntaxNode): TArray<string>;
 
-/// <summary>Stelle von AChild unter AParent; sonst -1.</summary>
-function PositionIn(AParent, AChild: TSyntaxNode): Integer;
-
 implementation
 
 uses
@@ -625,20 +622,6 @@ begin
       SameText(ANode[1 - mIndex].Name, 'nil') then
     begin
       Result := Result + [FreedPath(ANode[mIndex])];
-    end;
-  end;
-end;
-
-function PositionIn(AParent, AChild: TSyntaxNode): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to AParent.ChildCount - 1 do
-  begin
-    if AParent[mIndex] = AChild then
-    begin
-      Result := mIndex;
     end;
   end;
 end;
