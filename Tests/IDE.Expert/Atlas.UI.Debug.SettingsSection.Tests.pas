@@ -71,10 +71,8 @@ end;
 
 procedure TDebugSettingsSectionTests.TearDown;
 begin
-  FRegistration.Revoke;
-  FRegistration := nil;
   FSection := nil;
-  FSectionRef := nil;
+  RevokeSection(FRegistration, FSectionRef);
 end;
 
 procedure TDebugSettingsSectionTests.OwnSheetWithModuleSwitch;

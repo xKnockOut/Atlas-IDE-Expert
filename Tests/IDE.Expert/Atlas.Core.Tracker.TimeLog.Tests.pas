@@ -126,70 +126,8 @@ uses
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Providers.LocalFiles,
-  Atlas.Core.Tracker.YouTrackApi;
-
-type
-  /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
-  TFakeTimeTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiSend)
-  private
-    FMethods: TArray<string>;
-    FPrefixes: TArray<string>;
-    FStatus: TArray<Integer>;
-    FTexts: TArray<string>;
-    function Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
-  public
-    Calls: TArray<string>;
-    Bodies: TArray<string>;
-    procedure Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
-      Boolean;
-  end;
-
-{ TFakeTimeTransport }
-
-function TFakeTimeTransport.Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Calls := Calls + [AMethod + ' ' + AUrl];
-  AStatus := 404;
-  AText := '';
-  Result := True;
-  for mIndex := 0 to High(FPrefixes) do
-  begin
-    if (FMethods[mIndex] = AMethod) and (Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex]) then
-    begin
-      AStatus := FStatus[mIndex];
-      AText := FTexts[mIndex];
-      Exit;
-    end;
-  end;
-end;
-
-procedure TFakeTimeTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-begin
-  FMethods := FMethods + [AMethod];
-  FPrefixes := FPrefixes + [APrefix];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
-
-function TFakeTimeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-begin
-  AError := TAtlasCiFetchError.None;
-  Result := Reply('GET', AUrl, AStatus, AText);
-end;
-
-function TFakeTimeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
-  out AResponse: TAtlasCiResponse): Boolean;
-begin
-  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
-  Bodies := Bodies + [ABody];
-  Result := Reply(AMethod, AUrl, AResponse.Status, AResponse.Text);
-end;
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Core.Tracker.TestSupport;
 
 function YouTrackIssue(const AKey: string): TAtlasTimeIssue;
 begin
@@ -666,13 +604,13 @@ end;
 
 procedure TAtlasTrackerTimeWriterTests.BookTimeAgainstFakeTransport;
 var
-  mTransport: TFakeTimeTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerTimeWriter;
   mResult: TAtlasTrackerWriteResult;
 begin
   mWriter := TAtlasYouTrackTracker.Create;
-  mTransport := TFakeTimeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-123/timeTracking/workItems', 200, '{"id":"1"}');
   mResult := mWriter.BookTime(YouTrackTarget, mKeep, 'ATL-123',
@@ -689,7 +627,7 @@ end;
 
 procedure TAtlasTrackerTimeWriterTests.BookTimeErrors;
 var
-  mTransport: TFakeTimeTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerTimeWriter;
   mResult: TAtlasTrackerWriteResult;
@@ -697,7 +635,7 @@ var
 begin
   mWriter := TAtlasYouTrackTracker.Create;
   mItem := TAtlasTrackerWorkItem.Create(30, At(10, 0), '', '');
-  mTransport := TFakeTimeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/', 400,
     '{"error":"bad_request","error_description":"Time tracking is disabled for the project"}');
@@ -705,7 +643,7 @@ begin
   Assert.AreEqual(Ord(TAtlasCiFetchError.Invalid), Ord(mResult.Error));
   Assert.IsTrue(mWriter.IsTrackingOff(mResult), 'Zeiterfassung im Projekt aus');
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'nichts wird wiederholt');
-  mTransport := TFakeTimeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/', 403, '{"error_description":"Keine Rechte"}');
   mResult := mWriter.BookTime(YouTrackTarget, mKeep, 'ATL-123', mItem, 5000);
@@ -716,13 +654,13 @@ end;
 
 procedure TAtlasTrackerTimeWriterTests.TimeSettingsOfProject;
 var
-  mTransport: TFakeTimeTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerTimeWriter;
   mSettings: TAtlasTrackerTimeSettings;
 begin
   mWriter := TAtlasYouTrackTracker.Create;
-  mTransport := TFakeTimeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('GET', 'https://yt.beispiel.de/api/admin/projects/ATL/timeTrackingSettings', 200,
     '{"enabled":false,"workItemTypes":[{"name":"Entwicklung"},{"name":"Test"}]}');
@@ -737,13 +675,13 @@ end;
 
 procedure TAtlasTrackerTimeWriterTests.TimeSettingsWithoutProjectRights;
 var
-  mTransport: TFakeTimeTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerTimeWriter;
   mSettings: TAtlasTrackerTimeSettings;
 begin
   mWriter := TAtlasYouTrackTracker.Create;
-  mTransport := TFakeTimeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('GET', 'https://yt.beispiel.de/api/admin/projects/', 403, '{"error":"Forbidden"}');
   mTransport.Answer('GET', 'https://yt.beispiel.de/api/admin/timeTrackingSettings/workItemTypes', 200,

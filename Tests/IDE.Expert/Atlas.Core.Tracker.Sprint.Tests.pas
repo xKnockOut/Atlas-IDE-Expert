@@ -67,33 +67,11 @@ uses
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Core.Tracker.YouTrackBoards,
-  Atlas.Core.Tracker.Contract.Sprint;
+  Atlas.Core.Tracker.Contract.Sprint,
+  Atlas.Tests.Files;
 
 const
   cDelta = 0.001;
-
-/// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
-function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
-end;
 
 function SprintOf(const AId, AName: string; AStart, AFinish: TDateTime): TAtlasBoardSprint;
 begin
@@ -324,9 +302,9 @@ var
   mView: TAtlasSprintView;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(Fixture('YouTrack', 'agiles.json'), '', 'ATL', mSnapshot,
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(TTestData.Fixture('YouTrack', 'agiles.json'), '', 'ATL', mSnapshot,
     mCurrent));
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseSprint(Fixture('YouTrack', 'agile-sprint.json'),
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseSprint(TTestData.Fixture('YouTrack', 'agile-sprint.json'),
     TAtlasTrackerTarget.Create('youtrack', 'https://firma.youtrack.cloud', 'ATL', ''), mSnapshot));
   mSnapshot.Me := 'marco';
   // Sprint 42: 27.10.–9.11.2025; ATL-123 (3 Punkte, In Arbeit), ATL-124 (1,5 Stunden), ATL-125 ohne Spalte,
@@ -359,7 +337,7 @@ var
   mPrevious: TArray<TAtlasBoardSprint>;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'),
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(TTestData.Fixture('GitHub', 'project-v2.json'),
     TAtlasTrackerTarget.Create('github', '', 'beispiel/atlas', ''), '', EncodeDate(2026, 10, 28), mSnapshot));
   // Iteration 2: 26.10.–8.11.2026, zehn Arbeitstage; #753 mit Schätzung 3, #12 ohne.
   mSummary := TAtlasTrackerSprint.Summarize(mSnapshot, TAtlasSprintCalendar.WorkWeek,
@@ -372,7 +350,7 @@ begin
   mPrevious := TAtlasTrackerSprint.PreviousSprints(mSnapshot.Sprints, mSnapshot.Sprint, 3);
   Assert.AreEqual(Integer(1), Integer(Length(mPrevious)));
   Assert.AreEqual('it1', mPrevious[0].Id);
-  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'),
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(TTestData.Fixture('GitHub', 'project-v2.json'),
     TAtlasTrackerTarget.Create('github', '', 'beispiel/atlas', ''), 'it1', EncodeDate(2026, 10, 28), mSnapshot));
   mSummary := TAtlasTrackerSprint.Summarize(mSnapshot, TAtlasSprintCalendar.WorkWeek, EncodeDate(2026, 10, 28));
   Assert.IsFalse(mSummary.UsesPoints, '#700 ohne Schätzung: Anzahl');

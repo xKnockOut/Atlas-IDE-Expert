@@ -44,13 +44,13 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.Outline.VisibilitySections,
-  Atlas.Core.Outline.CrumbMenu;
+  Atlas.Core.Outline.CrumbMenu,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -112,41 +112,9 @@ begin
   Result := cCode.Split([#13#10]);
 end;
 
-function NodesOf(const ACode: string): TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
-begin
-  mTree := TPascalParser.Parse(ACode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, ACode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
-end;
-
 function Nodes: TAtlasOutlineNodes;
 begin
-  Result := NodesOf(cCode);
-end;
-
-function Find(const ANodes: TAtlasOutlineNodes; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(ANodes) do
-  begin
-    if ANodes[mIndex].Name = AName then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function Keywords(const ASections: TAtlasVisibilitySections): string;
@@ -161,21 +129,6 @@ begin
       Result := Result + ',';
     end;
     Result := Result + mSection.Keyword + '@' + IntToStr(mSection.Line);
-  end;
-end;
-
-function NamesOf(const ANodes: TAtlasOutlineNodes; const AItems: TArray<Integer>): string;
-var
-  mItem: Integer;
-begin
-  Result := '';
-  for mItem in AItems do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    Result := Result + ANodes[mItem].Name;
   end;
 end;
 
@@ -204,7 +157,7 @@ begin
   mList := Nodes;
   // Die Abschnitte des inneren Records, „public“ im Kommentar und im String zählen nicht.
   Assert.AreEqual('strict private@6,private@10,public@12,published@21',
-    Keywords(TAtlasVisibilitySectionFinder.SectionsOf(mList, Lines, Find(mList, 'TKunde'))));
+    Keywords(TAtlasVisibilitySectionFinder.SectionsOf(mList, Lines, TOutlineTest.Find(mList, 'TKunde'))));
   Assert.AreEqual(0, Integer(Length(TAtlasVisibilitySectionFinder.SectionsOf(mList, Lines, -1))));
 end;
 
@@ -225,7 +178,7 @@ var
 begin
   mList := Nodes;
   mPlace := TAtlasVisibilitySectionFinder.At(mList, Lines, 16, 8);
-  Assert.AreEqual(Find(mList, 'TInnen'), mPlace.TypeNode);
+  Assert.AreEqual(TOutlineTest.Find(mList, 'TInnen'), mPlace.TypeNode);
   Assert.AreEqual('private@15,public@17', Keywords(mPlace.Sections));
   Assert.AreEqual('private', CurrentKeyword(16, 8));
   Assert.AreEqual('public', CurrentKeyword(18, 8));
@@ -278,14 +231,14 @@ var
   mLines: TArray<string>;
   mPlace: TAtlasVisibilityPlace;
 begin
-  mList := NodesOf(cHelpers);
+  mList := TOutlineTest.NodesOf(cHelpers);
   mLines := cHelpers.Split([#13#10]);
   mPlace := TAtlasVisibilitySectionFinder.At(mList, mLines, 6, 6);
-  Assert.AreEqual(Find(mList, 'TTextHelfer'), mPlace.TypeNode);
+  Assert.AreEqual(TOutlineTest.Find(mList, 'TTextHelfer'), mPlace.TypeNode);
   Assert.AreEqual('private@5', Keywords(mPlace.Sections));
   Assert.AreEqual(0, mPlace.Current);
   mPlace := TAtlasVisibilitySectionFinder.At(mList, mLines, 9, 6);
-  Assert.AreEqual(Find(mList, 'TListHelfer'), mPlace.TypeNode);
+  Assert.AreEqual(TOutlineTest.Find(mList, 'TListHelfer'), mPlace.TypeNode);
   Assert.AreEqual(-1, mPlace.Current);
   Assert.AreEqual('public', mPlace.Implicit);
 end;
@@ -297,10 +250,10 @@ var
 begin
   mList := Nodes;
   mPlace := TAtlasVisibilitySectionFinder.At(mList, Lines, 7, 4);
-  Assert.AreEqual('btnOk', NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, -1)));
-  Assert.AreEqual('FName', NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, 0)));
-  Assert.AreEqual('TInnen,Speichere', NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, 2)));
-  Assert.AreEqual('Name', NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, 3)));
+  Assert.AreEqual('btnOk', TOutlineTest.NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, -1)));
+  Assert.AreEqual('FName', TOutlineTest.NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, 0)));
+  Assert.AreEqual('TInnen,Speichere', TOutlineTest.NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, 2)));
+  Assert.AreEqual('Name', TOutlineTest.NamesOf(mList, TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, 3)));
   Assert.AreEqual(0, Integer(Length(TAtlasVisibilitySectionFinder.MembersOf(mList, mPlace, 4))));
 end;
 
@@ -321,7 +274,7 @@ begin
   Assert.AreEqual(6, mCrumbs[1].Places[0].Line);
   Assert.AreEqual(2, mCrumbs[1].Places[0].Character);
   Assert.IsTrue(TAtlasBreadcrumbs.HasMenu(mCrumbs[1]));
-  Assert.AreEqual('FName', NamesOf(mList, mCrumbs[1].Children));
+  Assert.AreEqual('FName', TOutlineTest.NamesOf(mList, mCrumbs[1].Children));
   // Leerzeile: der Abschnitt ist das letzte Glied.
   Assert.AreEqual('TKunde › strict private', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(mList, Lines,
     TAtlasCrumbRequest.Create(9, 0, '', False, [TAtlasCrumbPart.Visibility]))));
@@ -410,7 +363,7 @@ var
   mCrumbs: TAtlasCrumbs;
   mLast: TAtlasCrumb;
 begin
-  mCrumbs := TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]),
+  mCrumbs := TAtlasBreadcrumbs.Path(TOutlineTest.NodesOf(cMarks), cMarks.Split([#13#10]),
     TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, AParts));
   if Length(mCrumbs) = 0 then
   begin
@@ -450,7 +403,7 @@ begin
   Assert.AreEqual('− Tief (private@14)', LastMarked(37));
   Assert.AreEqual('◆ Klick (published@17)', LastMarked(40));
   // Nur das Methodenglied trägt die Marke.
-  Assert.AreEqual('', TAtlasBreadcrumbs.Path(NodesOf(cMarks), cMarks.Split([#13#10]),
+  Assert.AreEqual('', TAtlasBreadcrumbs.Path(TOutlineTest.NodesOf(cMarks), cMarks.Split([#13#10]),
     TAtlasCrumbRequest.Create(37, 0, '', False, [TAtlasCrumbPart.VisibilityMark]))[0].Mark);
 end;
 

@@ -37,10 +37,10 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Core.Outline.Model;
+  Atlas.Core.Outline.Model,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cFormCode =
@@ -79,21 +79,8 @@ const
     'end.';                                                    // 32
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cFormCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cFormCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
+  Result := TOutlineTest.NodesOf(cFormCode);
 end;
 
 // Index des n-ten Knotens mit dem Namen (0 = erster); -1, wenn es keinen gibt.

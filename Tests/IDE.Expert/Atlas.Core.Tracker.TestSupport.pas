@@ -8,9 +8,17 @@ interface
 uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
+  /// <summary>Transport ohne Inhalte: jede Leseanfrage endet mit Status 404.</summary>
+  TNotFoundTransport = class(TInterfacedObject, IAtlasCiTransport)
+  public
+    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+      out AError: TAtlasCiFetchError): Boolean;
+  end;
+
   /// <summary>Transport mit festen Antworten je Adressanfang; zählt die Aufrufe.</summary>
   TFakeTransport = class(TInterfacedObject, IAtlasCiTransport)
   private
@@ -42,6 +50,28 @@ type
       Boolean;
   end;
 
+  /// <summary>
+  ///   Transport, der liest und schreibt, mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe
+  ///   ("GET https://…") und Inhalte. Ohne passende Antwort Status 404.
+  /// </summary>
+  TFakeMethodTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiSend)
+  private
+    FMethods: TArray<string>;
+    FPrefixes: TArray<string>;
+    FStatus: TArray<Integer>;
+    FTexts: TArray<string>;
+    function Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
+  public
+    Calls: TArray<string>;
+    Bodies: TArray<string>;
+    destructor Destroy; override;
+    procedure Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
+    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
+  end;
+
 /// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
 function Fixture(const AFolder, AName: string): string;
 /// <summary>GitHub-Ziel beispiel/atlas auf github.com.</summary>
@@ -51,11 +81,26 @@ function YouTrackTarget: TAtlasTrackerTarget;
 /// <summary>Leeres Issue mit Schlüssel, Nummer und Titel.</summary>
 function Issue(const AKey: string; ANumber: Integer; const ATitle: string): TAtlasTrackerIssue;
 
+/// <summary>Namen der Abfragen, je mit Semikolon abgeschlossen.</summary>
+function QueryNames(const AQueries: TArray<TAtlasTrackerQuery>): string;
+
 implementation
 
 uses
   System.SysUtils,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Tests.Files;
+
+{ TNotFoundTransport }
+
+function TNotFoundTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+  out AError: TAtlasCiFetchError): Boolean;
+begin
+  AStatus := 404;
+  AText := '';
+  AError := TAtlasCiFetchError.None;
+  Result := True;
+end;
 
 { TFakeTransport }
 
@@ -128,27 +173,65 @@ begin
   end;
 end;
 
+{ TFakeMethodTransport }
+
+destructor TFakeMethodTransport.Destroy;
+begin
+  FMethods := nil;
+  FPrefixes := nil;
+  FStatus := nil;
+  FTexts := nil;
+  Calls := nil;
+  Bodies := nil;
+  inherited Destroy;
+end;
+
+function TFakeMethodTransport.Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Calls := Calls + [AMethod + ' ' + AUrl];
+  AStatus := 404;
+  AText := '';
+  Result := True;
+  for mIndex := 0 to High(FPrefixes) do
+  begin
+    if (FMethods[mIndex] = AMethod) and AUrl.StartsWith(FPrefixes[mIndex]) then
+    begin
+      AStatus := FStatus[mIndex];
+      AText := FTexts[mIndex];
+      Exit;
+    end;
+  end;
+end;
+
+procedure TFakeMethodTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
+begin
+  FMethods := FMethods + [AMethod];
+  FPrefixes := FPrefixes + [APrefix];
+  FStatus := FStatus + [AStatus];
+  FTexts := FTexts + [AText];
+end;
+
+function TFakeMethodTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+  out AError: TAtlasCiFetchError): Boolean;
+begin
+  AError := TAtlasCiFetchError.None;
+  Result := Reply('GET', AUrl, AStatus, AText);
+end;
+
+function TFakeMethodTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
+begin
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
+  Bodies := Bodies + [ABody];
+  Result := Reply(AMethod, AUrl, AResponse.Status, AResponse.Text);
+end;
+
 /// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
 function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
 begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
+  Result := TTestData.Fixture(AFolder, AName);
 end;
 
 function GitHubTarget: TAtlasTrackerTarget;
@@ -167,6 +250,17 @@ begin
   Result.Key := AKey;
   Result.Number := ANumber;
   Result.Title := ATitle;
+end;
+
+function QueryNames(const AQueries: TArray<TAtlasTrackerQuery>): string;
+var
+  mQuery: TAtlasTrackerQuery;
+begin
+  Result := '';
+  for mQuery in AQueries do
+  begin
+    Result := Result + mQuery.Name + ';';
+  end;
 end;
 
 end.

@@ -55,7 +55,8 @@ uses
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
-  Atlas.Core.Tracker.YouTrackApi;
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Tests.Files;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (erster Treffer gilt); merkt die Adressen.</summary>
@@ -112,29 +113,6 @@ begin
   Result := True;
 end;
 
-/// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
-function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
-end;
-
 function YouTrackTarget(const AQuery: string): TAtlasTrackerTarget;
 begin
   Result := TAtlasTrackerTarget.Create('youtrack', 'https://yt.local', 'ATL', AQuery);
@@ -163,27 +141,27 @@ var
 begin
   mProvider := TAtlasYouTrackTracker.Create;
   mTarget := YouTrackTarget('assignee: meine #Ungelöst');
-  mResult := Evaluate(mProvider, mTarget, 200, Fixture('YouTrack', 'issues.json'));
+  mResult := Evaluate(mProvider, mTarget, 200, TTestData.Fixture('YouTrack', 'issues.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Found), Ord(mResult.Outcome));
   Assert.AreEqual(2, mResult.Count);
   Assert.IsFalse(mResult.More);
   Assert.AreEqual('ATL-123, ATL-7', string.Join(', ', mResult.Keys));
-  mResult := Evaluate(mProvider, mTarget, 200, Fixture('YouTrack', 'issues-empty.json'));
+  mResult := Evaluate(mProvider, mTarget, 200, TTestData.Fixture('YouTrack', 'issues-empty.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Empty), Ord(mResult.Outcome));
   Assert.AreEqual(0, mResult.Count);
-  mResult := Evaluate(mProvider, mTarget, 400, Fixture('YouTrack', 'query-400.json'));
+  mResult := Evaluate(mProvider, mTarget, 400, TTestData.Fixture('YouTrack', 'query-400.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.QueryRejected), Ord(mResult.Outcome));
   Assert.AreEqual('Die Abfrage enthält einen Fehler: Unbekannter Wert „mee“ für das Feld assignee.',
     mResult.TrackerMessage, 'Meldung von YouTrack, einzeilig');
   Assert.AreEqual(400, mResult.HttpStatus);
-  mResult := Evaluate(mProvider, mTarget, 401, Fixture('YouTrack', 'users-me-401.json'));
+  mResult := Evaluate(mProvider, mTarget, 401, TTestData.Fixture('YouTrack', 'users-me-401.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Rejected), Ord(mResult.Outcome));
   mResult := Evaluate(mProvider, mTarget, 403, '');
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Rejected), Ord(mResult.Outcome));
-  mResult := Evaluate(mProvider, mTarget, 404, Fixture('YouTrack', 'project-404.json'));
+  mResult := Evaluate(mProvider, mTarget, 404, TTestData.Fixture('YouTrack', 'project-404.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.ProjectUnknown), Ord(mResult.Outcome));
   // Falsche Adresse: Die Anmeldeseite des Portals kommt mit 200.
-  mResult := Evaluate(mProvider, mTarget, 200, Fixture('YouTrack', 'login-page.html'));
+  mResult := Evaluate(mProvider, mTarget, 200, TTestData.Fixture('YouTrack', 'login-page.html'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Unreadable), Ord(mResult.Outcome));
   mResult := Evaluate(mProvider, mTarget, 502, '<html>Bad Gateway</html>');
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Unreadable), Ord(mResult.Outcome));
@@ -204,18 +182,18 @@ var
 begin
   mProvider := TAtlasGitHubTracker.Create;
   mTarget := TAtlasTrackerTarget.Create('github', '', 'xKnockOut/Atlas', '');
-  mResult := Evaluate(mProvider, mTarget, 200, Fixture('GitHub', 'search-issues.json'));
+  mResult := Evaluate(mProvider, mTarget, 200, TTestData.Fixture('GitHub', 'search-issues.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Found), Ord(mResult.Outcome));
   Assert.AreEqual(3, mResult.Count, 'der Pull Request zählt nicht');
   Assert.AreEqual('#753, #612', Copy(string.Join(', ', mResult.Keys), 1, 10));
   Assert.AreEqual(3, Integer(Length(mResult.Keys)));
-  mResult := Evaluate(mProvider, mTarget, 200, Fixture('GitHub', 'search-empty.json'));
+  mResult := Evaluate(mProvider, mTarget, 200, TTestData.Fixture('GitHub', 'search-empty.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Empty), Ord(mResult.Outcome));
-  mResult := Evaluate(mProvider, mTarget, 422, Fixture('GitHub', 'search-422.json'));
+  mResult := Evaluate(mProvider, mTarget, 422, TTestData.Fixture('GitHub', 'search-422.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.QueryRejected), Ord(mResult.Outcome));
   Assert.IsTrue(mResult.TrackerMessage.StartsWith('The listed users and repositories cannot be searched'),
     mResult.TrackerMessage);
-  mResult := Evaluate(mProvider, mTarget, 401, Fixture('GitHub', 'user-401.json'));
+  mResult := Evaluate(mProvider, mTarget, 401, TTestData.Fixture('GitHub', 'user-401.json'));
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Rejected), Ord(mResult.Outcome));
   mResult := Default(TAtlasTrackerQueryTestResult);
 end;
@@ -243,7 +221,7 @@ begin
   mTarget := YouTrackTarget('assignee: meine #Ungelöst');
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://yt.local/api/issues', 200, Fixture('YouTrack', 'issues.json'));
+  mTransport.Answer('https://yt.local/api/issues', 200, TTestData.Fixture('YouTrack', 'issues.json'));
   mResult := TAtlasTrackerQueryTest.Run(mProvider, mTarget, mKeep);
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Found), Ord(mResult.Outcome));
   Assert.AreEqual('project: ATL assignee: meine #Ungelöst', mResult.SentQuery);
@@ -275,10 +253,10 @@ begin
   mEnglish := YouTrackTarget('assignee: me #Unresolved');
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer(ListPrefix(mGerman), 200, Fixture('YouTrack', 'issues.json'));
-  mTransport.Answer(ListPrefix(mEnglish), 200, Fixture('YouTrack', 'issues-empty.json'));
+  mTransport.Answer(ListPrefix(mGerman), 200, TTestData.Fixture('YouTrack', 'issues.json'));
+  mTransport.Answer(ListPrefix(mEnglish), 200, TTestData.Fixture('YouTrack', 'issues-empty.json'));
   mTransport.Answer('https://yt.local/api/admin/globalSettings/localeSettings', 200,
-    Fixture('YouTrack', 'locale-de.json'));
+    TTestData.Fixture('YouTrack', 'locale-de.json'));
   mResult := TAtlasTrackerQueryTest.Run(mProvider, mEnglish, mKeep);
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Empty), Ord(mResult.Outcome));
   Assert.AreEqual('de', mResult.Language);
@@ -291,7 +269,7 @@ begin
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://yt.local/api/issues', 200, '[]');
-  mTransport.Answer('https://yt.local/api/admin/', 200, Fixture('YouTrack', 'locale-de.json'));
+  mTransport.Answer('https://yt.local/api/admin/', 200, TTestData.Fixture('YouTrack', 'locale-de.json'));
   mResult := TAtlasTrackerQueryTest.Run(mProvider, mGerman, mKeep);
   Assert.AreEqual(Ord(TAtlasTrackerQueryOutcome.Empty), Ord(mResult.Outcome));
   Assert.AreEqual('', mResult.SuggestedQuery);
@@ -312,8 +290,8 @@ begin
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
   // Kein Recht auf die globalen Einstellungen: Probe mit beiden Vorlagen.
-  mTransport.Answer('https://yt.local/api/admin/', 403, Fixture('YouTrack', 'locale-403.json'));
-  mTransport.Answer(ListPrefix(mGerman), 200, Fixture('YouTrack', 'issues.json'));
+  mTransport.Answer('https://yt.local/api/admin/', 403, TTestData.Fixture('YouTrack', 'locale-403.json'));
+  mTransport.Answer(ListPrefix(mGerman), 200, TTestData.Fixture('YouTrack', 'issues.json'));
   mTransport.Answer(ListPrefix(mEnglish), 200, '[]');
   Assert.AreEqual('de', TAtlasTrackerQueryTest.DetectLanguage(mProvider, mTarget, mKeep, 5000));
   Assert.AreEqual(3, Integer(Length(mTransport.Calls)));
@@ -321,7 +299,7 @@ begin
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://yt.local/api/admin/', 403, '');
-  mTransport.Answer(ListPrefix(mGerman), 400, Fixture('YouTrack', 'query-400.json'));
+  mTransport.Answer(ListPrefix(mGerman), 400, TTestData.Fixture('YouTrack', 'query-400.json'));
   mTransport.Answer(ListPrefix(mEnglish), 200, '[]');
   Assert.AreEqual('en', TAtlasTrackerQueryTest.DetectLanguage(mProvider, mTarget, mKeep, 5000));
   // Beide leer: unbekannt.
@@ -383,8 +361,8 @@ begin
   mConnection := TAtlasTrackerConnection.Create('Firma', 'youtrack', 'https://yt.local');
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://yt.local/api/users/me', 200, Fixture('YouTrack', 'users-me.json'));
-  mTransport.Answer('https://yt.local/api/admin/', 200, Fixture('YouTrack', 'locale-de.json'));
+  mTransport.Answer('https://yt.local/api/users/me', 200, TTestData.Fixture('YouTrack', 'users-me.json'));
+  mTransport.Answer('https://yt.local/api/admin/', 200, TTestData.Fixture('YouTrack', 'locale-de.json'));
   mStatus := TAtlasTrackerConnections.Check(mProvider, mConnection.Target, mKeep, Now);
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Verified), Ord(mStatus.State));
   Assert.AreEqual('de', mStatus.Language, '„Prüfen“ erkennt die Sprache');
@@ -405,7 +383,7 @@ begin
   // Abgelehnt: keine Spracherkennung.
   mTransport := TFakeTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://yt.local/api/users/me', 401, Fixture('YouTrack', 'users-me-401.json'));
+  mTransport.Answer('https://yt.local/api/users/me', 401, TTestData.Fixture('YouTrack', 'users-me-401.json'));
   mStatus := TAtlasTrackerConnections.Check(mProvider, mConnection.Target, mKeep, Now);
   Assert.AreEqual('', mStatus.Language);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
