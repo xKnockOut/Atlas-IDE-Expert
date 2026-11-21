@@ -14,7 +14,9 @@
 // schaltete ein beschäftigter Rechner so nach drei langsamen Anfragen die
 // Quelle ab. Damit eine Quelle, die länger braucht, nicht bei jedem Tastendruck
 // einen weiteren Arbeiter belegt, wird sie übersprungen, solange ihr voriger
-// Aufruf noch läuft.
+// Aufruf noch läuft. Jeder Eintrag merkt sich das Package, in dem der Code der
+// Quelle liegt: Hängt ihr Aufruf, wenn sich das Modul dieses Packages abmeldet,
+// hält TAtlasOverdueThreads dieses Package fest und nicht nur Base.
 // Diagnosemodus (#479): Ist die Messung an, meldet jede Teilsenke beim ersten
 // Complete Name, Dauer seit ihrem Query und Zahl ihrer Einträge an
 // TAtlasQueryTimings (auch bei Fehler oder Zeitlimit); aus nimmt sie keinen
@@ -76,6 +78,8 @@ type
     TEntry = record
       Provider: IAtlasCompletionProvider;
       Name: string;
+      /// <summary>Package mit dem Code der Quelle (TAtlasTimeLimit.Run).</summary>
+      Module: HMODULE;
       Running: TRunning;
       RunningRef: IInterface;
     end;
@@ -110,6 +114,7 @@ implementation
 
 uses
   System.Classes,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.Core.Diagnostics.Timing,
   Atlas.Core.Localization.Language;
@@ -345,7 +350,7 @@ begin
   end;
   TInterlocked.Exchange(mRunning.Started, Int64(TThread.GetTickCount64));
   mPart := APart;
-  case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), mError, FTimeLimitMs) of
+  case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), mError, FTimeLimitMs, AEntry.Module) of
     TAtlasTimedOutcome.Done:
       ;
     TAtlasTimedOutcome.Failed:
@@ -407,6 +412,7 @@ var
   mNamed: IAtlasNamedProvider;
 begin
   mEntry.Provider := AProvider;
+  mEntry.Module := TAtlasMainThread.CodeModuleOf(AProvider);
   mEntry.Name := DefaultName;
   if Supports(AProvider, IAtlasNamedProvider, mNamed) and (mNamed.ProviderName <> '') then
   begin

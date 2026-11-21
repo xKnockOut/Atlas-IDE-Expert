@@ -431,8 +431,10 @@ end;
 // selbst frei, kurz nach ReaderDone und damit nach dem Ende von Run; was er
 // bis dahin hielt, überlebte Run. Hängt er nach ATimeout noch im Lesen
 // (blockierendes stdin), gibt er sich bei seiner Rückkehr selbst frei. Liest
-// er FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck (wie
-// TAtlasThreadList.StopAll im Plugin).
+// er FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck. Das genügt,
+// weil die Verbindung nur im Serverprozess läuft: Er endet als Ganzes, kein
+// Package mit dem Code des Threads wird vorher entladen. Im Plugin gehen
+// solche Threads an TAtlasOverdueThreads.
 procedure ReleaseReader(AReader: TThread; const AInbox: IJsonRpcInbox; ATimeout: Cardinal);
 begin
   if AReader = nil then
