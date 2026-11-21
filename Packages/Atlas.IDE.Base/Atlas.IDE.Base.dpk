@@ -77,6 +77,7 @@ contains
   Atlas.Text.CommandLine in '..\Atlas.Text\Source\CommandLine\Atlas.Text.CommandLine.pas',
   Atlas.Text.DebugDisplay in '..\Atlas.Text\Source\DebugDisplay\Atlas.Text.DebugDisplay.pas',
   Atlas.Text.DUnitX in '..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas',
+  Atlas.Text.DUnitX.CommandLine in '..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.CommandLine.pas',
   Atlas.Text.TestResults in '..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Text.McpStatistics in '..\Atlas.Text\Source\McpStatistics\Atlas.Text.McpStatistics.pas',
   Atlas.Text.TestRunFile in '..\Atlas.Text\Source\TestResults\Atlas.Text.TestRunFile.pas',

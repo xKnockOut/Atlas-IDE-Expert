@@ -264,7 +264,8 @@ uses
   Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Scaling,
   Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Menus;
+  Atlas.UI.Foundation.Menus,
+  Atlas.Core.Architecture.Resolution;
 
 {$R *.dfm}
 

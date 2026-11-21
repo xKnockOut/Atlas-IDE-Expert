@@ -131,6 +131,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.DUnitX.CommandLine;
+
 const
   /// <summary>Modul und Faktor von minstd (Park und Miller, 1993).</summary>
   cMinStdModulus = 2147483647;

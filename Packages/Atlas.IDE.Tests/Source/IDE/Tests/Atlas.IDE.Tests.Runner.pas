@@ -195,7 +195,7 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Leaks,
   Atlas.Core.Tests.Log,

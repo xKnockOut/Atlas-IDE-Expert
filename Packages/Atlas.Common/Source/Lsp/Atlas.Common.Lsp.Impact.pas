@@ -222,6 +222,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 
