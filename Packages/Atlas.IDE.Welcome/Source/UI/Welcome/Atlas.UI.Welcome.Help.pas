@@ -61,7 +61,8 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.Theme;
 
 { TAtlasWelcomeHelpFrame }
 
@@ -81,7 +82,7 @@ begin
   FNote := TLabel.Create(Self);
   FNote.Parent := Body;
   FNote.ShowAccelChar := False;
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FNote.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpNote);
   Body.OnResize := BodyResize;
   UpdateContent;

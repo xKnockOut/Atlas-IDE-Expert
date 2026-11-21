@@ -44,14 +44,14 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Published,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 const
   /// <summary>Typen für die Tests; Zeilen 4 bis 13 der Unit.</summary>
@@ -79,60 +79,13 @@ begin
 end;
 
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
-  Result := mFound[0].Message;
-end;
-
-function Join(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + ' | ' + mFinding.Message;
-  end;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 procedure Silent(const ASource: string);
 begin
   TRuleAssert.Silent(TPublishedTypeInvalidRule.Create, ASource);
-end;
-
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an, auch über Zeilen.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mStart, mStop: Integer;
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
-    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
 end;
 
 { TPublishedRulesTests }
@@ -153,7 +106,7 @@ begin
   Assert.AreEqual(27, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('In den public-Abschnitt verschieben', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Karte('    FMitte: Pointer;'#10'    procedure SetMitte(const Value: Pointer);'#10'  public'#10 +
     '    property Mitte: Pointer read FMitte write SetMitte;'#10, ''), mFixed);
   Silent(mFixed);
@@ -189,7 +142,7 @@ begin
     '    property Kennung: TGUID read FKennung;'#10));
   // Dynamische Arrays (TZahlen, TArray<Integer>) und Records (TPunkt, TGUID) übersetzt dcc (PU1-PU3, #1328);
   // statische Arrays, Zeiger und Prozedurtypen nicht (PV1, PV2).
-  Assert.AreEqual(4, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(4, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TFeld (Array) kann nicht published sein (wie E2188).', mFound[0].Message);
   Assert.AreEqual('PKnoten (Zeiger) kann nicht published sein (wie E2188).', mFound[1].Message);
   Assert.AreEqual('PChar (Zeiger) kann nicht published sein (wie E2188).', mFound[2].Message);
@@ -236,7 +189,7 @@ begin
     'Interfaces sein (wie E2217).', mFound[1].Message);
   Assert.AreEqual('Das published-Feld FGruppe ist vom Typ array[0..1] of TKnopf; published-Felder müssen ' +
     'Klassen oder Interfaces sein (wie E2217).', mFound[2].Message);
-  mFixed := ApplyFix(mSource, mFound[1].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[1].Fixes[0]);
   Assert.AreEqual(Karte('  public'#10'    FPunkt: TPunkt;'#10, '    FZahl, FAnzahl: Integer;'#10 +
     '    FKnopf: TKnopf;'#10'    FFremd: TFremderTyp;'#10'    FGruppe: array[0..1] of TKnopf;'#10), mFixed);
 end;
@@ -275,7 +228,7 @@ begin
   Assert.AreEqual('unit Karten;'#10'interface'#10'type'#10'  TFeld = array[0..1] of Integer;'#10 +
     '  TKarte = class'#10'  public'#10'    constructor Create;'#10'    property Feld: TFeld read FFeld;'#10 +
     '  published'#10'    property Name: string read FName;'#10'  end;'#10'implementation'#10'end.',
-    ApplyFix(mSource, mFound[0].Fixes[0]));
+    TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
   // Ein Mitglied, das sich die Zeile mit anderem teilt, verschiebt die Korrektur nicht.
   mFound := Findings(Karte('', '    property Feld: TFeld read FFeld; property Name: string read FName;'#10));
   Assert.AreEqual(1, Integer(Length(mFound)));
@@ -315,7 +268,7 @@ begin
     '    FFigur: TFigur;'#10'  end;'#10'implementation'#10 +
     'end.', mIndex, '', '');
   // Record, Alias darauf und TArray<T> sind erlaubt; das statische Array aus dem Index nicht.
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TEcken (Array) kann nicht published sein (wie E2188).', mFound[0].Message);
 end;
 
@@ -352,7 +305,7 @@ begin
     '  Classes, Ereignisse;'#10'type'#10'  TKarte = class(TComponent)'#10'  private'#10'    FLang: TLang;'#10 +
     '    FRoh: TLangRoh;'#10'  published'#10'    property Lang: TLang read FLang write FLang;'#10 +
     '    property Roh: TLangRoh read FRoh write FRoh;'#10'  end;'#10'implementation'#10'end.', mIndex, '', '');
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TLangRoh (Prozedurtyp ohne "of object") kann nicht published sein (wie E2188).',
     mFound[0].Message);
 end;

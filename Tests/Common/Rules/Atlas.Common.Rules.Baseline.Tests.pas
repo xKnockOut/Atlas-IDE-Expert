@@ -85,13 +85,13 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Scopes,
-  Atlas.Common.Rules.Baseline;
+  Atlas.Common.Rules.Baseline,
+  Atlas.Tests.RuleAssert;
 
 const
   cOriginal = 'unit U;' + #10 + 'begin' + #10 + '  X := 1;' + #10 + 'end.';
@@ -109,34 +109,6 @@ const
     '  Y := 1;' + #10 +
     'end;' + #10 +
     'end.';
-
-type
-  /// <summary>Meldet jeden Bezeichner "Marker".</summary>
-  TMarkerRule = class(TInterfacedObject, IRule)
-  public
-    function Descriptor: TRuleDescriptor;
-    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-  end;
-
-{ TMarkerRule }
-
-function TMarkerRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create('marker', TRuleSeverity.Warning, 'Meldet den Bezeichner Marker');
-end;
-
-procedure TMarkerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mToken: TPascalToken;
-begin
-  for mToken in AContext.Tree.Tokens do
-  begin
-    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Marker') then
-    begin
-      AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), 'Marker gefunden');
-    end;
-  end;
-end;
 
 function Swap(const AText, AOld, ANew: string): string;
 begin

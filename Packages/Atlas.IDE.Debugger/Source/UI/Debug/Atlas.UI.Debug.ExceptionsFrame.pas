@@ -132,7 +132,8 @@ uses
   Atlas.UI.Debug.Exceptions.Strings,
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.ListView;
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -144,7 +145,7 @@ begin
   Result.Align := AAlign;
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
-  Result.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
 end;
 
 /// <summary>Zeile AItem ist eine still fortgesetzte Exception aus AShown.</summary>

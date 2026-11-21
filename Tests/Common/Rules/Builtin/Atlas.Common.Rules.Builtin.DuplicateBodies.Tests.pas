@@ -48,7 +48,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Metrics.DuplicateBodies,
   Atlas.Common.Metrics.DuplicateCatalog,
-  Atlas.Common.Rules.Builtin.DuplicateBodies;
+  Atlas.Common.Rules.Builtin.DuplicateBodies,
+  Atlas.Common.Configuration.TestSupport;
 
 const
   cFileA = 'C:\P\Einheit.A.pas';
@@ -167,20 +168,6 @@ end;
 function UnitText(const AName, ARoutines: string): string;
 begin
   Result := 'unit ' + AName + ';'#10'interface'#10'implementation'#10 + ARoutines + 'end.'#10;
-end;
-
-function SettingsOf(const AConfig: string): TServerSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  if AConfig = '' then
-  begin
-    Result := TServerSettings.Default;
-  end
-  else
-  begin
-    Result := TConfigurationParser.Parse(AConfig, mIssues);
-  end;
 end;
 
 /// <summary>Prüft AFileName aus AFiles (nil = ohne Projekt) mit der atlas.json AConfig.</summary>

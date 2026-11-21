@@ -116,13 +116,15 @@ type
     FWorkRef: IInterface;
     // Reiter „Issues“ (#2052); die Referenz hält es am Leben, auch solange Frames es noch kennen.
     FIssues: IInterface;
+    FHooks: TAtlasIdeContinueHooks;
     procedure Changed;
     function Enabled: Boolean;
     procedure Modified(const AView: IOTAEditView);
     procedure OpenFavorite(const AItem: TAtlasSavedItem);
   public
     /// <summary>Quelle der Schnellaktionen und Seite Versionsverwaltung; setzt die Komposition.</summary>
-    Hooks: TAtlasIdeContinueHooks;
+    property QuickActions: IAtlasQuickActionsSource read FHooks.QuickActions write FHooks.QuickActions;
+    property OnServerAccess: TProc<string> read FHooks.OnServerAccess write FHooks.OnServerAccess;
     /// <summary>AMessage: Zeile in die Meldungsansicht; AHost: die IDE für den Ablauf; AIssues legt den Reiter
     /// „Issues“ an (#2052).</summary>
     constructor Create(const AMessage: TProc<string>; const AHost: IAtlasContinueHost;
@@ -360,7 +362,7 @@ begin
       Frame := TAtlasWelcomeContinueFrame.Create(AOwner);
       Frame.Source := mKeep;
       // Schnellaktionen (#764): dieselbe Quelle für jeden Frame.
-      Frame.QuickActions := Hooks.QuickActions;
+      Frame.QuickActions := FHooks.QuickActions;
       // Reiter „Issues“ (#2052).
       Frame.IssuesSource := Issues.Source;
       Result := Frame;
@@ -400,7 +402,7 @@ begin
   end;
   FWork.OnWritten := nil;
   Issues.Stop;
-  Hooks.OnServerAccess := nil;
+  FHooks.OnServerAccess := nil;
   if FNotifiers.Ide <> nil then
   begin
     FNotifiers.Ide.FOwner := nil;
@@ -424,7 +426,7 @@ begin
   end;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cContinue);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cContinue);
-  Hooks.QuickActions := nil;
+  FHooks.QuickActions := nil;
 end;
 
 function TAtlasIdeContinue.Section: TAtlasWelcomeSection;
@@ -556,11 +558,11 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      if FWork.Stopped or not Assigned(Hooks.OnServerAccess) or (mFolder = '') then
+      if FWork.Stopped or not Assigned(FHooks.OnServerAccess) or (mFolder = '') then
       begin
         Exit;
       end;
-      Hooks.OnServerAccess(mFolder);
+      FHooks.OnServerAccess(mFolder);
       // Nach dem Dialog (vielleicht angemeldet): eingehende Commits neu abfragen.
       FWork.RefreshIncoming(True);
     end);

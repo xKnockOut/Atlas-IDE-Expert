@@ -38,18 +38,8 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.Extract,
-  Atlas.Common.Editing.WithResolution;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Common.Editing.WithResolution,
+  Atlas.Tests.SourceText;
 
 /// <summary>Herkunft aus AOwners ("Name=0,Ort=1"); fehlende Namen sind Other, "?" ist Unknown.</summary>
 function Lookup(const AOwners: string): TWithOwnerLookup;
@@ -147,11 +137,11 @@ end;
 procedure TWithResolutionTests.QualifiesMembersOfEveryElement;
 begin
   // with A, B: Name gehört zu B (innerstes Element), Ort zu A.
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'procedure Setze(K: TKunde; D: TAdresse);',
     'begin',
     '  D.Name := K.Ort;',
-    'end;']), Resolve(Join([
+    'end;']), Resolve(TTestSource.Lines([
     'procedure Setze(K: TKunde; D: TAdresse);',
     'begin',
     '  |with K, D do',
@@ -161,14 +151,14 @@ end;
 
 procedure TWithResolutionTests.UnwrapsBeginEndAndKeepsOtherNames;
 begin
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'procedure Zeige(K: TKunde);',
     'begin',
     '  K.Name := ''x'';',
     '  // Alter ausgeben',
     '  Ausgabe(K.Alter);',
     '  Fertig;',
-    'end;']), Resolve(Join([
+    'end;']), Resolve(TTestSource.Lines([
     'procedure Zeige(K: TKunde);',
     'begin',
     '  with K do',
@@ -184,14 +174,14 @@ end;
 procedure TWithResolutionTests.IndentsSingleStatementInBranch;
 begin
   // Ohne Anweisungsliste bleibt begin … end auf der Höhe des with-Kopfs stehen.
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'procedure Zeige(K: TKunde);',
     'begin',
     '  if K <> nil then',
     '    begin',
     '      K.Name := ''x'';',
     '    end;',
-    'end;']), Resolve(Join([
+    'end;']), Resolve(TTestSource.Lines([
     'procedure Zeige(K: TKunde);',
     'begin',
     '  if K <> nil then',
@@ -204,7 +194,7 @@ end;
 
 procedure TWithResolutionTests.RejectsUnknownIdentifiers;
 begin
-  Assert.AreEqual('-', Resolve(Join([
+  Assert.AreEqual('-', Resolve(TTestSource.Lines([
     'procedure Zeige(K: TKunde);',
     'begin',
     '  |with K do',
@@ -218,12 +208,12 @@ var
 begin
   mOptions := Plain;
   mOptions.Probe := Probe('TKunde', True);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'procedure Zeige;',
     'begin',
     '  var Kunde := HoleKunde(1);',
     '  Kunde.Name := ''x'';',
-    'end;']), Resolve(Join([
+    'end;']), Resolve(TTestSource.Lines([
     'procedure Zeige;',
     'begin',
     '  |with HoleKunde(1) do',
@@ -238,14 +228,14 @@ begin
   mOptions := Plain;
   mOptions.InlineVar := False;
   mOptions.Probe := Probe('TKunde', True);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'procedure Zeige;',
     'var',
     '  Kunde: TKunde;',
     'begin',
     '  Kunde := HoleKunde(1);',
     '  Kunde.Name := ''x'';',
-    'end;']), Resolve(Join([
+    'end;']), Resolve(TTestSource.Lines([
     'procedure Zeige;',
     'begin',
     '  |with HoleKunde(1) do',
@@ -259,7 +249,7 @@ var
 begin
   mOptions := Plain;
   mOptions.Probe := Probe('TPunkt', False);
-  Assert.AreEqual('-', Resolve(Join([
+  Assert.AreEqual('-', Resolve(TTestSource.Lines([
     'procedure Zeige;',
     'begin',
     '  |with HolePunkt(1) do',

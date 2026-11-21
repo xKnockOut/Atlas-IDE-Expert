@@ -97,7 +97,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.Settings.Strings;
+  Atlas.UI.Tracker.Settings.Strings,
+  Atlas.UI.Foundation.Theme;
 
 const
   cValueLeft = 280;
@@ -169,7 +170,7 @@ begin
   FView.ValuesNote.Parent := mPanel;
   FView.ValuesNote.Left := FView.ValuesNote.ScaleValue(cNoteLeft);
   FView.ValuesNote.Top := FView.ValuesNote.ScaleValue(cNoteTop);
-  FView.ValuesNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FView.ValuesNote, clGrayText);
   FView.ValuesNote.Caption := '';
 end;
 

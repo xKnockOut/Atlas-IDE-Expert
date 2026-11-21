@@ -127,7 +127,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert,
-  System.Diagnostics;
+  System.Diagnostics,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Routine Pruefen mit den Deklarationen ADecls (var-Abschnitt) und den Anweisungen ABody.</summary>
 function Routine(const ADecls, ABody: string): string;
@@ -342,14 +343,8 @@ end;
 
 /// <summary>Meldungen der Treffer, durch " | " getrennt (für Fehlermeldungen der Tests).</summary>
 function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + mFinding.Message + ' | ';
-  end;
+  Result := TRuleAssert.Messages(AFound, ' | ');
 end;
 
 function InitFindings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -367,27 +362,6 @@ function StatusUnit(const ADecls: string): string;
 begin
   Result := 'unit Status;'#10'interface'#10'type'#10'  TStatus = (stNeu, stOffen, stGeschlossen, stArchiviert);'#10 +
     ADecls + 'implementation'#10'end.';
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an (Positionen 0-basiert, Zeilen mit #10).
-/// </summary>
-function Applied(const AText: string; const AFix: TRuleFix): string;
-var
-  mLines: TArray<string>;
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-  mLine: string;
-begin
-  mLines := AText.Split([#10]);
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    Assert.AreEqual(mEdit.Range.StartPos.Line, mEdit.Range.EndPos.Line, 'nur einzeilige Edits');
-    mLine := mLines[mEdit.Range.StartPos.Line];
-    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
-      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(#10, mLines);
 end;
 
 { TConstantInitializerMismatchTests }
@@ -410,7 +384,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   // Über einer Aufzählung an der richtigen Stelle, mit dem Text aus dem Namen (#667).
   Assert.AreEqual('Fehlenden Eintrag ergänzen (stArchiviert)', mFound[0].Fixes[0].Title);
-  mFixed := Applied(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('    (''Neu'', ''Offen'', ''Geschlossen'', ''Archiviert'');', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(InitFindings(mFixed))), mFixed);
   // Zwei fehlende Werte.
@@ -421,14 +395,14 @@ begin
   // Ohne Hinweis auf die Elemente: hinten angehängt und als geschätzt markiert.
   Assert.AreEqual('Fehlende Einträge ergänzen (stGeschlossen, stArchiviert), Stelle geschätzt',
     mFound[0].Fixes[0].Title);
-  Assert.IsTrue(Pos('(1, 2, 0 {TODO stGeschlossen}, 0 {TODO stArchiviert});', Applied(StatusUnit('const'#10 +
+  Assert.IsTrue(Pos('(1, 2, 0 {TODO stGeschlossen}, 0 {TODO stArchiviert});', TTestEdits.ApplyFix(StatusUnit('const'#10 +
     '  Kurz: array[TStatus] of Integer = (1, 2);'#10), mFound[0].Fixes[0])) > 0);
   // Mitten im Wert über den Text der Nachbarn.
   mSource := StatusUnit('const'#10'  Texte: array[TStatus] of string = (''Neu'', ''Geschlossen'', ''Archiviert'');'#10);
   mFound := InitFindings(mSource);
   Assert.AreEqual('TStatus hat 4 Werte, die Konstante 3 Einträge; stOffen fehlt (wie E2072).', mFound[0].Message);
   Assert.AreEqual('Fehlenden Eintrag ergänzen (stOffen)', mFound[0].Fixes[0].Title);
-  Assert.IsTrue(Pos('(''Neu'', ''Offen'', ''Geschlossen'', ''Archiviert'');', Applied(mSource, mFound[0].Fixes[0])) >
+  Assert.IsTrue(Pos('(''Neu'', ''Offen'', ''Geschlossen'', ''Archiviert'');', TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0])) >
     0);
 end;
 
@@ -504,11 +478,11 @@ begin
     mFound[0].Message);
   Assert.AreEqual(8, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
-  mFixed := Applied(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('Ursprung: TPunkt = (X: 0; Y: 0; Name: ''O'');', mFixed) > 0, mFixed);
   Assert.AreEqual('X steht in TPunkt vor Name; die Felder müssen in der Reihenfolge der Deklaration stehen (wie E2083).',
     mFound[1].Message);
-  mFixed := Applied(mFixed, InitFindings(mFixed)[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mFixed, InitFindings(mFixed)[0].Fixes[0]);
   Assert.IsTrue(Pos('((X: 1; Y: 1), (X: 2; Name: ''B''))', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(InitFindings(mFixed))), mFixed);
 end;

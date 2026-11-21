@@ -62,7 +62,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.Extractor.Patterns,
-  Atlas.Common.Editing.LearnedSuggestions;
+  Atlas.Common.Editing.LearnedSuggestions,
+  Atlas.Tests.Files;
 
 function UnitWith(const AName, ABody: string): string;
 begin
@@ -323,28 +324,6 @@ begin
   Assert.AreEqual('$S.BeginUpdate', mList[3].Trigger);
 end;
 
-/// <summary>Ordner des Referenzprojekts, gesucht von der Test-EXE aufwärts; '' ohne.</summary>
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
-end;
-
 procedure TLearnedSuggestionsTests.GatherOverReferenceProject;
 var
   mRoot, mFile: string;
@@ -352,7 +331,7 @@ var
   mPatterns: TArray<TLearnedPattern>;
   mGather: Int64;
 begin
-  mRoot := ReferenceFolder;
+  mRoot := TTestData.ReferenceFolder;
   if mRoot = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden');

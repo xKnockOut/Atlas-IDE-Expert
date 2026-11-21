@@ -602,7 +602,7 @@ begin
   mSheet := NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabOverview);
   AFrame.FParts.Info := NewLabel(AFrame, mSheet, alBottom);
   AFrame.FParts.Info.EllipsisPosition := epEndEllipsis;
-  AFrame.FParts.Info.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(AFrame.FParts.Info, clGrayText);
   AFrame.FParts.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint);
   BuildAssignment(AFrame, mSheet);
   BuildMapBar(AFrame, mSheet);
@@ -647,7 +647,7 @@ begin
   AFrame.FParts.ExplainButton := mButton;
   AFrame.FParts.Explanation := NewLabel(AFrame, AFrame.FParts.SubsystemsBar, alClient);
   AFrame.FParts.Explanation.WordWrap := True; // window-ok: alClient, die Höhe kommt aus der Ausrichtung
-  AFrame.FParts.Explanation.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(AFrame.FParts.Explanation, clGrayText);
   AFrame.FParts.Explanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
   AFrame.FParts.Subsystems := NewTree(AFrame, mSheet);
 end;

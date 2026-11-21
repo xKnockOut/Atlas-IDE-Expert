@@ -68,7 +68,8 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.Graphics,
-  Vcl.Dialogs;
+  Vcl.Dialogs,
+  Atlas.UI.Foundation.Theme;
 
 { TAtlasSettingsVcsToolsPart }
 
@@ -144,7 +145,7 @@ begin
   mState.Left := 0;
   mState.Top := 0;
   mState.ShowAccelChar := False;
-  mState.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mState, clGrayText);
   FVcsStates[AKind] := mState;
   Attach(mPanel, mEdit);
 end;

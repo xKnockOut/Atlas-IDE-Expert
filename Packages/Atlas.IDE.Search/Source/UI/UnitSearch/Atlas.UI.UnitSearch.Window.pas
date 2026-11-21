@@ -339,7 +339,7 @@ end;
 function TypeSpace(AData: TAtlasUnitSearchData; AShift: TShiftState): Boolean;
 begin
   Result := True;
-  if AData.CommitTypedFilter then
+  if AData.Filter.CommitTyped then
   begin
     Exit;
   end;
@@ -363,7 +363,7 @@ begin
   case AArea.Kind of
     TAtlasUnitSearchHit.Chip:
       begin
-        AData.ChipClicked(AArea.Value);
+        AData.Filter.ChipClicked(AArea.Value);
         AData.Refilter(True);
       end;
     TAtlasUnitSearchHit.Grouping:
@@ -379,7 +379,7 @@ begin
     TAtlasUnitSearchHit.Section:
       begin
         mSection := TAtlasPreviewSection(AArea.Value);
-        AData.State.Sections[mSection] := TAtlasPreviewSections.Toggled(AData.Preview.Sections[mSection]);
+        AData.State.Section[mSection] := TAtlasPreviewSections.Toggled(AData.Preview.Sections[mSection]);
       end;
     TAtlasUnitSearchHit.SectionSwitch:
       if TAtlasUseUnitSection(AArea.Value) <> AData.Use.Section then
@@ -408,7 +408,7 @@ begin
   inherited CreatePopup(AOwner, AColors);
   PaintsAll := True;
   FData := TAtlasUnitSearchData.Create(AOptions, AState);
-  FData.Metrics.PPI := CurrentPPI;
+  FData.PPI := CurrentPPI;
   FPainter := TAtlasUnitSearchPainter.Create(FData, AColors);
   // Runde Ecken und Akzentrand vom Fenstermanager.
   Rounded := True;
@@ -460,7 +460,7 @@ begin
   begin
     Exit;
   end;
-  FData.Metrics.PPI := CurrentPPI;
+  FData.PPI := CurrentPPI;
   FData.Layout(ClientWidth, ClientHeight);
   FData.EnsureVisible;
   Invalidate;
@@ -659,14 +659,12 @@ begin
   end;
   if not FData.CurrentEntry(mIndex) then
   begin
-    FData.Preview.Data := Default(TAtlasUnitPreview);
-    FData.Preview.FileName := '';
+    FData.Preview.Show('', Default(TAtlasUnitPreview));
     Invalidate;
   end
   else if not SameText(FData.Preview.FileName, FData.Entries[mIndex].FileName) then
   begin
-    FData.Preview.FileName := FData.Entries[mIndex].FileName;
-    FData.Preview.Data := FEvents.OnPreview(FData.Entries[mIndex]);
+    FData.Preview.Show(FData.Entries[mIndex].FileName, FEvents.OnPreview(FData.Entries[mIndex]));
     Invalidate;
   end;
 end;
@@ -750,7 +748,7 @@ begin
       end;
     VK_BACK:
       begin
-        Result := FData.RemoveLast(ssCtrl in AShift);
+        Result := FData.Filter.RemoveLast(ssCtrl in AShift);
         if Result then
         begin
           Refilter(False);

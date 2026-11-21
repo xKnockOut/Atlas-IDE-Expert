@@ -36,23 +36,19 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CompletionSameNames,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Completion.TestSupport;
 
 const
-  cHauptFile = 'C:\P\Haupt.pas';
-
   cUnitWindows =
     'unit Winapi.Windows;'#10'interface'#10'type'#10'  tagBITMAP = record'#10'    bmType: Integer;'#10'  end;'#10 +
     '  TBitmap = tagBITMAP;'#10'implementation'#10'end.';
@@ -74,44 +70,6 @@ const
     '  Bild := TBitm'#10 +
     'end;'#10 +
     'end.';
-
-function ItemsAt(const AIndex: ISymbolIndex; const AText, AMarker: string;
-  const ASettings: TCompletionSettings): TCompletionItems;
-var
-  mResolver: TNameResolver;
-  mRequest: TCompletionRequest;
-  mTree: TSyntaxTree;
-  mLines: TArray<string>;
-  mLine: Integer;
-  mPosition: TTextPosition;
-  mPostfix: TPostfixOptions;
-begin
-  mLines := AText.Split([#10]);
-  mPosition := TTextPosition.Create(0, 0);
-  for mLine := 0 to High(mLines) do
-  begin
-    if Pos(AMarker, mLines[mLine]) > 0 then
-    begin
-      mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
-    end;
-  end;
-  mTree := TPascalParser.Parse(AText);
-  mResolver := TNameResolver.Create(AIndex);
-  mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
-  try
-    mRequest.Tree := mTree;
-    mRequest.Resolver := mResolver;
-    mRequest.Index := AIndex;
-    mRequest.Matching := TCompletionMatching.Prefix;
-    mRequest.Settings := ASettings;
-    mPostfix := Default(TPostfixOptions);
-    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
-  finally
-    mRequest.Free;
-    mResolver.Free;
-    mTree.Free;
-  end;
-end;
 
 function Find(const AItems: TCompletionItems; const AName, AUnit: string; out AItem: TCompletionItem): Boolean;
 var
@@ -199,7 +157,7 @@ var
   mItems: TCompletionItems;
   mItem: TCompletionItem;
 begin
-  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', TCompletionSettings.Default);
+  mItems := CollectWith(FIndex, cUnitHaupt, 'TBitm', TCompletionSettings.Default);
   Assert.AreEqual('TBitmap@Vcl.Graphics TBitmap@Winapi.Windows TBitmapImage@Vcl.Graphics', Order(mItems));
   Assert.IsTrue(Find(mItems, 'TBitmap', 'Vcl.Graphics', mItem));
   Assert.IsTrue(mItem.SameNameActive);
@@ -223,7 +181,7 @@ var
 begin
   mSettings := TCompletionSettings.Default;
   mSettings.SameNameInsert := TCompletionSameNameInsert.Uses_;
-  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', mSettings);
+  mItems := CollectWith(FIndex, cUnitHaupt, 'TBitm', mSettings);
   Assert.IsTrue(Find(mItems, 'TBitmap', 'Winapi.Windows', mItem));
   Assert.AreEqual('move', mItem.SameNameInsert);
   Assert.IsFalse(mItem.HasTextEdit);
@@ -237,11 +195,11 @@ var
   mItem: TCompletionItem;
   mSettings: TCompletionSettings;
 begin
-  Assert.IsFalse(Find(ItemsAt(FIndex, cUnitHaupt, 'TBitm', TCompletionSettings.Default), 'TBitmap', 'FMX.Graphics',
+  Assert.IsFalse(Find(CollectWith(FIndex, cUnitHaupt, 'TBitm', TCompletionSettings.Default), 'TBitmap', 'FMX.Graphics',
     mItem));
   mSettings := TCompletionSettings.Default;
   mSettings.ShowFmxUnits := True;
-  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', mSettings);
+  mItems := CollectWith(FIndex, cUnitHaupt, 'TBitm', mSettings);
   Assert.IsTrue(Find(mItems, 'TBitmap', 'FMX.Graphics', mItem));
   // Nicht eingebunden: Präfix und uses-Eintrag.
   Assert.AreEqual('prefixAdd', mItem.SameNameInsert);
@@ -258,7 +216,7 @@ var
 begin
   mSettings := TCompletionSettings.Default;
   mSettings.SameNameVariants := False;
-  mItems := ItemsAt(FIndex, cUnitHaupt, 'TBitm', mSettings);
+  mItems := CollectWith(FIndex, cUnitHaupt, 'TBitm', mSettings);
   Assert.AreEqual('TBitmap@Vcl.Graphics TBitmapImage@Vcl.Graphics', Order(mItems));
   Assert.IsTrue(Find(mItems, 'TBitmap', 'Vcl.Graphics', mItem));
   Assert.IsFalse(mItem.SameNameActive);

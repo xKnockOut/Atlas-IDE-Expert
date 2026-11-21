@@ -69,7 +69,8 @@ uses
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Lsp.CompletionJson,
-  Atlas.Common.Lsp.SignatureHelp;
+  Atlas.Common.Lsp.SignatureHelp,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -141,29 +142,6 @@ const
     'end;'#10 +
     'end.';
 
-/// <summary>Text ohne "|" und die Position des "|".</summary>
-function Split(const AMarked: string; out APosition: TTextPosition): string;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to Pos('|', AMarked) - 1 do
-  begin
-    if AMarked[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  APosition := TTextPosition.Create(mLine, mCharacter);
-  Result := StringReplace(AMarked, '|', '', []);
-end;
-
 { TCompletionGenericsTests }
 
 function TCompletionGenericsTests.ItemsAt(const ACode: string): TCompletionItems;
@@ -182,7 +160,7 @@ begin
   begin
     mText := StringReplace(StringReplace(cUnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }', ACode, []);
   end;
-  mText := Split(mText, mPosition);
+  mText := TTestSource.Unmark(mText, mPosition);
   mTree := TPascalParser.Parse(mText);
   mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
   try
@@ -248,7 +226,7 @@ procedure TCompletionGenericsTests.FindsOpenAngleBracket;
     mTokens: TArray<TPascalToken>;
     mIndex, mLast: Integer;
   begin
-    mTokens := TPascalLexer.Tokenize(Split(AMarked, mPosition));
+    mTokens := TPascalLexer.Tokenize(TTestSource.Unmark(AMarked, mPosition));
     mLast := -1;
     for mIndex := 0 to High(mTokens) do
     begin
@@ -461,7 +439,7 @@ var
   mTree: TSyntaxTree;
   mHelp: TSignatureHelp;
 begin
-  mText := Split(StringReplace(StringReplace(cUnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }',
+  mText := TTestSource.Unmark(StringReplace(StringReplace(cUnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }',
     '  Kunden.Add(|);', []), mPosition);
   mTree := TPascalParser.Parse(mText);
   try

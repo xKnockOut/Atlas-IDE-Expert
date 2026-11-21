@@ -145,7 +145,8 @@ uses
   System.Math,
   Vcl.Imaging.pngimage,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 { TAtlasDiscoverPicture }
 
@@ -254,15 +255,15 @@ begin
   FTitleLabel := NewLabel;
   FTitleLabel.Font.Style := [fsBold];
   FKey := NewLabel;
-  FKey.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FKey, clGrayText);
   FText := TAtlasWrapLabel.Create(Self);
   FText.Parent := Body;
   FAge := NewLabel;
-  FAge.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FAge, clGrayText);
   FPosition := NewLabel;
-  FPosition.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FPosition, clGrayText);
   FEmpty := NewLabel;
-  FEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FEmpty, clGrayText);
   FEmpty.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverEmpty);
   for mKind := Low(TAtlasDiscoverButton) to High(TAtlasDiscoverButton) do
   begin

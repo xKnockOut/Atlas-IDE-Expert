@@ -34,16 +34,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Index.Processes,
-  Atlas.Common.Index.ProcessFiles;
-
-function Info(APid: Cardinal; const AKind: string): TIndexProcessInfo;
-begin
-  Result := Default(TIndexProcessInfo);
-  Result.Pid := APid;
-  Result.Kind := AKind;
-  Result.Client := 'Claude Code';
-  Result.Workspace := 'Kasse';
-end;
+  Atlas.Common.Index.ProcessFiles,
+  Atlas.Common.Index.Processes.TestSupport;
 
 { TIndexProcessesTests }
 

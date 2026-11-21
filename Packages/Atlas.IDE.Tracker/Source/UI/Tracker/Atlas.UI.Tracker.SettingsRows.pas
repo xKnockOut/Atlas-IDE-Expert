@@ -181,7 +181,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.ListView,
-  Atlas.UI.Settings.Page.Sheets;
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.UI.Foundation.Theme;
 
 const
   cLabelTop = 5;
@@ -332,7 +333,7 @@ begin
   mHint := TAtlasWrapLabel.Create(FOwner);
   mHint.Parent := mPanel;
   mHint.Align := alClient;
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   mHint.Caption := ACaption;
   Attach(mPanel, AAnchor);
 end;

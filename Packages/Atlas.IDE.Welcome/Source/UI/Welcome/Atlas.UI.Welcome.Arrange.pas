@@ -169,12 +169,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Foundation.Controls,
-  Atlas.UI.Welcome.Strings;
-
-function StyleColor(AControl: TControl; AColor: TColor): TColor;
-begin
-  Result := StyleServices(AControl).GetSystemColor(AColor);
-end;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.Theme;
 
 { TAtlasArrangePart }
 
@@ -208,11 +204,11 @@ var
 begin
   inherited;
   Measure;
-  mTextColor := StyleColor(Self, clWindowText);
-  mMutedColor := StyleColor(Self, clGrayText);
-  mLineColor := StyleColor(Self, clBtnShadow);
-  mAccentColor := StyleColor(Self, clHighlight);
-  mAccentText := StyleColor(Self, clHighlightText);
+  mTextColor := TAtlasUiTheme.SystemColor(Self, clWindowText);
+  mMutedColor := TAtlasUiTheme.SystemColor(Self, clGrayText);
+  mLineColor := TAtlasUiTheme.SystemColor(Self, clBtnShadow);
+  mAccentColor := TAtlasUiTheme.SystemColor(Self, clHighlight);
+  mAccentText := TAtlasUiTheme.SystemColor(Self, clHighlightText);
   mRadius := ScaleValue(6);
   Canvas.Font := Font;
   for mIndex := 0 to High(FParts) do
@@ -477,11 +473,11 @@ begin
   mTop := (ClientHeight - 5 * mSize) div 2;
   if Focused then
   begin
-    Canvas.Brush.Color := StyleColor(Self, clHighlight);
+    Canvas.Brush.Color := TAtlasUiTheme.SystemColor(Self, clHighlight);
   end
   else
   begin
-    Canvas.Brush.Color := StyleColor(Self, clGrayText);
+    Canvas.Brush.Color := TAtlasUiTheme.SystemColor(Self, clGrayText);
   end;
   for mRow := 0 to 2 do
   begin
@@ -640,11 +636,11 @@ begin
   // Breite: ein bzw. zwei Rechtecke nebeneinander; gefüllt, was der Bereich gerade belegt.
   if FHot = TAtlasWelcomeTool.Width then
   begin
-    mColor_ := StyleColor(Self, clHighlight);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clHighlight);
   end
   else
   begin
-    mColor_ := StyleColor(Self, clWindowText);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clWindowText);
   end;
   Canvas.Pen.Color := mColor_;
   Canvas.Brush.Color := mColor_;
@@ -665,11 +661,11 @@ begin
   // Auge: Ellipse mit Pupille.
   if FHot = TAtlasWelcomeTool.Eye then
   begin
-    mColor_ := StyleColor(Self, clHighlight);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clHighlight);
   end
   else
   begin
-    mColor_ := StyleColor(Self, clWindowText);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clWindowText);
   end;
   Canvas.Pen.Color := mColor_;
   Canvas.Brush.Style := bsClear;

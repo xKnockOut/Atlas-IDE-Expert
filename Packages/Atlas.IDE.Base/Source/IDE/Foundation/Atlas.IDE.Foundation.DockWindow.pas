@@ -589,13 +589,14 @@ var
       mChild := AParent.Controls[mIndex];
       if mChild is TListView then
       begin
-        TListView(mChild).Color := clWindow;
-        TListView(mChild).Font.Color := clWindowText;
+        // Systemfarben, die der Stil beim Anwenden darunter auf seine abbildet.
+        TListView(mChild).Color := clWindow; // window-ok
+        TListView(mChild).Font.Color := clWindowText; // window-ok
       end
       else if mChild is TTreeView then
       begin
-        TTreeView(mChild).Color := clWindow;
-        TTreeView(mChild).Font.Color := clWindowText;
+        TTreeView(mChild).Color := clWindow; // window-ok
+        TTreeView(mChild).Font.Color := clWindowText; // window-ok
       end;
       if mChild is TWinControl then
       begin

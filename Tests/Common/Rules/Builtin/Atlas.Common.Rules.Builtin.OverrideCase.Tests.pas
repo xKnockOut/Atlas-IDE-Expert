@@ -66,32 +66,14 @@ begin
   Result := TRuleAssert.Findings(TOverrideCaseMismatchRule.Create, ASource, AConfig, APath);
 end;
 
-function Join(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + ' | ' + mFinding.Message;
-  end;
-end;
-
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource + Join(mFound));
-  Result := mFound[0].Message;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 procedure Silent(const ASource: string);
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(0, Integer(Length(mFound)), ASource + Join(mFound));
+  TRuleAssert.NoFindings(Findings(ASource), ASource);
 end;
 
 /// <summary>Wendet Edits an, die jeweils innerhalb einer Zeile liegen (Zeilen aus #10), von hinten nach vorn.</summary>
@@ -138,7 +120,7 @@ begin
     '    destructor destroy; override;'#10'  end;'#10'implementation'#10'destructor TKunde.destroy;'#10'begin'#10 +
     '  inherited;'#10'end;'#10'end.';
   mFound := Findings(mSource);
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('Schreibweise weicht von TObject.Destroy ab (wie H2365).', mFound[0].Message);
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
   Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
@@ -197,7 +179,7 @@ begin
     'function TKunde.getName: string;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
     'procedure TKunde.SETNAME(const AWert: string);'#10'begin'#10'end;'#10);
   mFound := Findings(mSource);
-  Assert.AreEqual(2, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('Die Zugriffsmethode TKunde.getName sollte TKunde.GetName geschrieben werden.',
     mFound[0].Message);
   Assert.AreEqual('Die Zugriffsmethode TKunde.SETNAME sollte TKunde.SetName geschrieben werden.',
@@ -242,7 +224,7 @@ begin
     'function TZaehler.Intern: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
     'function TZaehler.Anzahl: Integer;'#10'begin'#10'  Result := FAnzahl + Intern + Self.FAnzahl;'#10'end;'#10 +
     'end.');
-  Assert.AreEqual(2, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('Die inline-Methode TZaehler.Anzahl ist public, greift aber auf FAnzahl (private) zu.',
     mFound[0].Message);
   Assert.AreEqual(17, mFound[0].Range.StartPos.Line);

@@ -63,7 +63,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer;
+  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Tests.SourceText;
 
 const
   cFileU = 'C:\P\U.pas';
@@ -94,18 +95,6 @@ const
     'procedure TChild.Run;'#10'begin'#10'  Step;'#10'end;'#10#10 +
     'procedure TOther.Run;'#10'begin'#10'end;'#10#10 +
     'end.'#10;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
 
 /// <summary>Ids der Mitglieder ANames der Klasse AClass in AText.</summary>
 function Ids(const AText, AClass: string; const ANames: array of string): TArray<Integer>;
@@ -228,7 +217,7 @@ var
   mPlan: TMoveMemberPlan;
 begin
   Assert.IsTrue(Up(['FCount', 'Step'], [], False, mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   // In derselben Unit bleibt private private.
   Assert.AreEqual('TBase = class|private|FCount: Integer;|public|procedure Show;|procedure Step;|end;|',
     ClassText(FText, 'TBase'));
@@ -254,7 +243,7 @@ var
 begin
   // Run benutzt Step, wandert aber nur abstrakt.
   Assert.IsTrue(Up(['Run'], ['Run'], False, mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|procedure Show;|procedure Run; virtual; abstract;|end;|',
     ClassText(FText, 'TBase'));
   Assert.IsTrue(ContainsStr(ClassText(FText, 'TChild'), '|procedure Run; override;|'), FText);
@@ -279,7 +268,7 @@ var
   mPlan: TMoveMemberPlan;
 begin
   Assert.IsTrue(Up(['FCount', 'Step', 'Run'], [], True, mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   Assert.IsTrue(ContainsStr(ClassText(FText, 'TBase'), '|procedure Run; virtual;|'), FText);
   Assert.AreEqual('TOther = class(TBase)|public|procedure Run; override;|end;|', ClassText(FText, 'TOther'));
   Assert.AreEqual('TOther.Run', mPlan.Overridden[0]);
@@ -294,7 +283,7 @@ begin
   Assert.IsFalse(Up(['Count'], [], False, mPlan));
   Assert.IsTrue(ContainsStr(FReason, 'Count braucht FCount'), FReason);
   Assert.IsTrue(Up(['FCount', 'Count'], [], False, mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   Assert.AreEqual('TBase = class|private|FCount: Integer;|public|procedure Show;|' +
     'property Count: Integer read FCount;|end;|', ClassText(FText, 'TBase'));
 end;
@@ -336,7 +325,7 @@ begin
     ClassText(FFiles.Text(cFileB), 'TBase'));
   Assert.AreEqual('TChild = class(TBase)|public|procedure Step;|end;|', ClassText(FFiles.Text(cFileU), 'TChild'));
   Assert.AreEqual('FCount', mPlan.Raised[0]);
-  Assert.IsTrue(Parses(FFiles.Text(cFileB)), FFiles.Text(cFileB));
+  Assert.IsTrue(TTestSource.Parses(FFiles.Text(cFileB)), FFiles.Text(cFileB));
 end;
 
 procedure TMoveMemberTests.PushesDownFieldAndMethod;
@@ -366,7 +355,7 @@ var
 begin
   FFiles.Put(cFileU, cBase);
   Assert.IsTrue(Down(['FData', 'Load'], False, ['TChild'], mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|procedure Show;|end;|', ClassText(FText, 'TBase'));
   Assert.AreEqual('TChild = class(TBase)|private|FData: string;|public|procedure Run;|procedure Load;|end;|',
     ClassText(FText, 'TChild'));
@@ -397,7 +386,7 @@ begin
   Assert.IsTrue(ContainsStr(FReason, 'Load wird in TBase weiter benutzt (Show)'), FReason);
   // Abstrakt im Vorfahren lassen: geht.
   Assert.IsTrue(Down(['Load'], True, ['TChild'], mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|procedure Load; virtual; abstract;|procedure Show;|end;|',
     ClassText(FText, 'TBase'));
   // Ohne Abschnitt: in den ersten, unbenannten.
@@ -457,7 +446,7 @@ var
 begin
   FFiles.Put(cFileU, cBase);
   Assert.IsTrue(Down(['Load'], True, ['TChild', 'TOther'], mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   Assert.AreEqual('TBase = class|public|/// <summary>Laedt.</summary>|procedure Load; overload; virtual; abstract;|' +
     'end;|', ClassText(FText, 'TBase'));
   Assert.AreEqual('TChild = class(TBase)|/// <summary>Laedt.</summary>|procedure Load; overload; override;|' +
@@ -493,7 +482,7 @@ var
 begin
   FFiles.Put(cFileU, cBase);
   Assert.IsTrue(Down(['Load'], False, ['TChild'], mPlan), FReason);
-  Assert.IsTrue(Parses(FText), FText);
+  Assert.IsTrue(TTestSource.Parses(FText), FText);
   Assert.AreEqual('TBase = class|protected|FSecret: Integer;|end;|', ClassText(FText, 'TBase'));
   Assert.AreEqual('FSecret', mPlan.Raised[0]);
 end;

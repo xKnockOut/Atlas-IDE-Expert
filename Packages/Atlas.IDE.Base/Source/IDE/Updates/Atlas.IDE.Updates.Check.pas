@@ -63,7 +63,7 @@ type
     FLineAction: Boolean;
     FInstaller: TAtlasIdeUpdateInstaller;
     procedure StartInstaller;
-    procedure PrepareUpdate(const ARelease: TAtlasRelease);
+    procedure PrepareUpdate(const ARelease: TAtlasRelease; AAllowSource: Boolean);
     procedure AutoPrepare;
     procedure OfferUpdate(const ARelease: TAtlasRelease);
     procedure OpenChanges(const ARelease: TAtlasRelease);
@@ -154,12 +154,13 @@ begin
   end;
 end;
 
-procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease);
+procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease; AAllowSource: Boolean);
 begin
   FInstaller.Prepare(ARelease.Version, TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules);
+    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules, AAllowSource);
   UpdateLine;
 end;
+
 
 procedure TAtlasIdeUpdates.AutoPrepare;
 var
@@ -171,7 +172,7 @@ begin
   if UpdateReady(mRelease) and not FInstaller.Preparing and not FInstaller.TryStage(mRelease.Version, mStage) and
     TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.cVersion, mRelease.Version) then
   begin
-    PrepareUpdate(mRelease);
+    PrepareUpdate(mRelease, False);
   end;
 end;
 
@@ -180,10 +181,23 @@ var
   mStage: TUpdateStage;
   mChosen: TArray<string>;
 begin
-  // Vorbereitet: Module wählen oder verwerfen; sonst anbieten.
+  // Vorbereitet: Module wählen oder verwerfen; wartet auf die Bestätigung zum Bauen: fragen; sonst anbieten.
+  if FInstaller.TryStage(ARelease.Version, mStage) and TAtlasUpdateInstall.AwaitsSourceConfirmation(mStage) then
+  begin
+    // Kein Paket für diese IDE: Bauen nur nach ausdrücklicher Zustimmung, weil das Ergebnis keine Signatur trägt.
+    case TAtlasUpdateOffer.ConfirmSource(ARelease.Version) of
+      TAtlasUpdateSourceAnswer.Build:
+        PrepareUpdate(ARelease, True);
+      TAtlasUpdateSourceAnswer.Discard:
+        FInstaller.Discard(ARelease.Version);
+      TAtlasUpdateSourceAnswer.Later: ;
+    end;
+    UpdateLine;
+    Exit;
+  end;
   if FInstaller.TryStage(ARelease.Version, mStage) and (mStage.Phase = TUpdatePhase.Ready) then
   begin
-    case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0) of
+    case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0, mStage.FromSource) of
       TAtlasUpdateReadyAnswer.Modules:
         if TAtlasUpdateSelectionDialog.Choose(ARelease.Version, mStage.Candidates, mChosen) then
         begin
@@ -199,7 +213,7 @@ begin
   case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.cVersion,
     TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.cVersion, ARelease.Version)) of
     TAtlasUpdateOfferAnswer.Install:
-      PrepareUpdate(ARelease);
+      PrepareUpdate(ARelease, False);
     TAtlasUpdateOfferAnswer.Changes:
       OpenChanges(ARelease);
     TAtlasUpdateOfferAnswer.Later: ;

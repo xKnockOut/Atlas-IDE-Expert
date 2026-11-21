@@ -122,7 +122,8 @@ uses
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Controls,
-  Atlas.UI.Foundation.Menus;
+  Atlas.UI.Foundation.Menus,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -165,7 +166,7 @@ begin
   FSummary.Align := alBottom;
   FSummary.AlignWithMargins := True;
   FSummary.ShowAccelChar := False;
-  FSummary.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FSummary, clGrayText);
   FSummary.Caption := '';
   FMenu := TListMenu.CreateFor(Self);
   CreateList;
@@ -174,7 +175,7 @@ begin
   FEmpty.Align := alClient;
   FEmpty.AlignWithMargins := True;
   FEmpty.ShowAccelChar := False;
-  FEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FEmpty, clGrayText);
   FEmpty.Caption := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogEmpty);
   FEmpty.Visible := False;
 end;

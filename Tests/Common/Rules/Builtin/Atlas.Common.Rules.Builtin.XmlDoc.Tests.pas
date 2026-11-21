@@ -55,7 +55,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -65,7 +64,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert,
-  Atlas.Common.Rules.Profiles;
+  Atlas.Common.Rules.Profiles,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Unit mit einer Klasse TKunde aus AMembers.</summary>
 function Kunden(const AMembers: string): string;
@@ -93,38 +93,6 @@ begin
   Result := mFound[0];
 end;
 
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an, auch über Zeilen.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mStart, mStop: Integer;
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
-    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
-end;
-
 /// <summary>Einziger Treffer mit Korrektur; liefert den korrigierten Text.</summary>
 function Fixed(const ASource, AMessage, ATitle: string): string;
 var
@@ -134,7 +102,7 @@ begin
   Assert.AreEqual(AMessage, mFound.Message);
   Assert.AreEqual(1, Integer(Length(mFound.Fixes)), AMessage);
   Assert.AreEqual(ATitle, mFound.Fixes[0].Title);
-  Result := ApplyFix(ASource, mFound.Fixes[0]);
+  Result := TTestEdits.ApplyFix(ASource, mFound.Fixes[0]);
 end;
 
 { TXmlDocRuleTests }
@@ -243,11 +211,11 @@ begin
   Assert.AreEqual(Kunden('    /// <summary>Lädt.</summary>'#10 +
     '    /// <param name="Pfad">Datei</param>'#10 +
     '    /// <returns></returns>'#10 +
-    '    function Laden(const Pfad: string): Boolean;'#10), ApplyFix(mSource, mFound[0].Fixes[0]));
+    '    function Laden(const Pfad: string): Boolean;'#10), TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
   mFound := Findings(Kunden('    /// <summary>Zählt.</summary>'#10'    function Anzahl: Integer;'#10), mConfig);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(Kunden('    /// <summary>Zählt.</summary>'#10'    /// <returns></returns>'#10 +
-    '    function Anzahl: Integer;'#10), ApplyFix(Kunden('    /// <summary>Zählt.</summary>'#10 +
+    '    function Anzahl: Integer;'#10), TTestEdits.ApplyFix(Kunden('    /// <summary>Zählt.</summary>'#10 +
     '    function Anzahl: Integer;'#10), mFound[0].Fixes[0]));
   // checkReturns aus: beides still.
   Assert.AreEqual(0, Integer(Length(Findings(mSource,
@@ -380,7 +348,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('cref auf TVergleicher.Vergleiche setzen', mFound[0].Fixes[0].Title);
   Assert.AreEqual(StringReplace(mSource, '"TVergleicher.Vergleich"', '"TVergleicher.Vergleiche"', []),
-    ApplyFix(mSource, mFound[0].Fixes[0]));
+    TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
   Assert.AreEqual('cref "EGibtsNicht" zeigt auf kein Symbol (wie W1206).', mFound[1].Message);
   Assert.AreEqual(0, Integer(Length(mFound[1].Fixes)));
   // Ohne Index und mit unbekannter Unit in uses still.
@@ -410,7 +378,7 @@ begin
   Assert.AreEqual('Doku-Kommentar erzeugen', mFound[0].Fixes[0].Title);
   Assert.AreEqual(StringReplace(mSource, '    [Weak]'#10, '    /// <summary></summary>'#10 +
     '    /// <param name="Id"></param>'#10'    /// <returns></returns>'#10'    [Weak]'#10, []),
-    ApplyFix(mSource, mFound[0].Fixes[0]));
+    TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
 end;
 
 procedure TXmlDocRuleTests.Options;

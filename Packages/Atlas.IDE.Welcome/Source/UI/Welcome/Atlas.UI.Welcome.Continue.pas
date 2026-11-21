@@ -243,7 +243,8 @@ uses
   Atlas.UI.Foundation.WrapLabel,
   Atlas.Text.Uris,
   Atlas.Text.Arrays,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Core.Foundation.Calls,
+  Atlas.UI.Foundation.Theme;
 
 const
   cSeparator = ' · ';
@@ -741,7 +742,7 @@ begin
   FSavedEmpty.Align := alTop;
   FSavedEmpty.AlignWithMargins := True;
   FSavedEmpty.ShowAccelChar := False;
-  FSavedEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FSavedEmpty, clGrayText);
   FSavedEmpty.Visible := False;
 
   FList := TListView.Create(Self);

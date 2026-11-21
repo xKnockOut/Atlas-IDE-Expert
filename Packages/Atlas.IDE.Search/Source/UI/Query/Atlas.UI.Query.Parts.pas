@@ -31,17 +31,24 @@ type
 
   /// <summary>Ereignisse des Fensters; die IDE-Schicht setzt sie, die Teile rufen sie. Gehört dem Frame.</summary>
   TAtlasCodeQueryEvents = class(TComponent)
+  private
+    FOnRun: TProc<string>;
+    FOnCancel: TProc;
+    FOnSaveRule: TProc<string>;
+    FOnCopied: TProc<Integer>;
+    FOnOpenLocation: TProc<string, Integer, Integer>;
+    FOnSymbols: TAtlasCodeQuerySymbols;
   public
     /// <summary>Text der Eingabezeile.</summary>
-    OnRun: TProc<string>;
-    OnCancel: TProc;
+    property OnRun: TProc<string> read FOnRun write FOnRun;
+    property OnCancel: TProc read FOnCancel write FOnCancel;
     /// <summary>„Als Regel speichern …“ mit dem Text der Eingabezeile.</summary>
-    OnSaveRule: TProc<string>;
+    property OnSaveRule: TProc<string> read FOnSaveRule write FOnSaveRule;
     /// <summary>CSV liegt in der Zwischenablage; Anzahl der Zeilen.</summary>
-    OnCopied: TProc<Integer>;
+    property OnCopied: TProc<Integer> read FOnCopied write FOnCopied;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
-    OnOpenLocation: TProc<string, Integer, Integer>;
-    OnSymbols: TAtlasCodeQuerySymbols;
+    property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
+    property OnSymbols: TAtlasCodeQuerySymbols read FOnSymbols write FOnSymbols;
   end;
 
   /// <summary>Obere Leiste: Auswahl gespeicherter Abfragen und die Knöpfe; die Klicks setzt der Frame.</summary>

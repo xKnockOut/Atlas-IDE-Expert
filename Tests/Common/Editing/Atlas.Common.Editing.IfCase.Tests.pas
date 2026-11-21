@@ -52,13 +52,13 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.StatementText,
   Atlas.Common.Editing.IfCase,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Tests.TextEdits;
 
 const
   cFileName = 'Probe.pas';
@@ -69,17 +69,6 @@ begin
   Result := 'unit Probe;'#10'interface'#10'type'#10'  TState = (stNew, stPaid, stSent, stDone);'#10 +
     'implementation'#10'const'#10'  Limit = 5;'#10'function Next: Integer;'#10'begin'#10'  Result := 1;'#10 +
     'end;'#10'procedure Run;'#10'var'#10 + ADecls + 'begin'#10 + ABody + 'end;'#10'end.'#10;
-end;
-
-function ApplyEdit(const AText: string; const AEdit: TTextEdit): string;
-var
-  mLines: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mLines := TLineTable.Build(AText);
-  mStart := mLines.OffsetAt(AEdit.Range.StartPos);
-  mStop := mLines.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 /// <summary>Position des ersten Vorkommens von AMarker im Text.</summary>
@@ -114,7 +103,7 @@ begin
       end;
       if Result then
       begin
-        AResult := ApplyEdit(AText, mConversion.Edit);
+        AResult := TTestEdits.Apply(AText, mConversion.Edit);
         // Das Ergebnis parst fehlerfrei.
         mTree.Free;
         mTree := nil;

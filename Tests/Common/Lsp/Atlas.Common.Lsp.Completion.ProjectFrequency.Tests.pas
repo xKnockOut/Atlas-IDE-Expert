@@ -8,24 +8,18 @@ interface
 uses
   DUnitX.TestFramework,
   System.JSON,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Completion.Server.TestSupport;
 
 type
   [TestFixture]
   TCompletionProjectFrequencyTests = class
   private
-    FIndex: ISymbolIndex;
-    FStore: IDocumentStore;
-    FCompletion: TLspCompletion;
-    FDispatcher: TJsonRpcDispatcher;
+    FServer: TCompletionServer;
     FSettings: TCompletionSettings;
-    FId: Integer;
-    /// <summary>Fragt an der Stelle von "|" in AText (Datei Haupt.pas). Der Aufrufer gibt frei.</summary>
-    function Complete(const AText: string): TJSONObject;
   public
     [Setup]
     procedure Setup;
@@ -52,14 +46,10 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.Diagnostics,
-  Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor;
 
 const
-  cHauptFile = 'C:\P\Haupt.pas';
-
   cUnitZaehler =
     'unit Zaehler;'#13#10 +
     'interface'#13#10 +
@@ -87,21 +77,6 @@ const
     'end;'#13#10 +
     'end.';
 
-  /// <summary>Unit Haupt mit Pruefe(AZaehler: TZaehler), ABody zwischen begin und end.</summary>
-  function HauptWith(const ABody: string): string;
-  begin
-    Result :=
-      'unit Haupt;'#13#10 +
-      'interface'#13#10 +
-      'uses Zaehler;'#13#10 +
-      'implementation'#13#10 +
-      'procedure Pruefe(AZaehler: TZaehler);'#13#10 +
-      'begin'#13#10 +
-      ABody + #13#10 +
-      'end;'#13#10 +
-      'end.';
-  end;
-
   /// <summary>data.projectUses des Eintrags ALabel; 0 ohne Zahl, -1 ohne Eintrag.</summary>
   function ProjectUsesOf(AResult: TJSONObject; const ALabel: string): Integer;
   var
@@ -127,76 +102,28 @@ const
 
 { TCompletionProjectFrequencyTests }
 
-function TCompletionProjectFrequencyTests.Complete(const AText: string): TJSONObject;
-var
-  mMarker, mIndex, mLine, mLineStart: Integer;
-  mText, mUri: string;
-  mRequest, mResponse: TJSONObject;
-begin
-  mMarker := Pos('|', AText);
-  mLine := 0;
-  mLineStart := 1;
-  for mIndex := 1 to mMarker - 1 do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mIndex + 1;
-    end;
-  end;
-  mText := Copy(AText, 1, mMarker - 1) + Copy(AText, mMarker + 1, MaxInt);
-  mUri := TDocumentUris.FromPath(cHauptFile);
-  FStore.Close(mUri);
-  FStore.Open(mUri, 'delphi', 1, mText);
-  Inc(FId);
-  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
-    ',"method":"textDocument/completion","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') +
-    '"},"position":{"line":' + IntToStr(mLine) + ',"character":' + IntToStr(mMarker - mLineStart) + '}}}') as
-    TJSONObject;
-  try
-    mResponse := FDispatcher.DispatchMessage(mRequest);
-  finally
-    mRequest.Free;
-  end;
-  try
-    Assert.IsTrue(mResponse.GetValue('result') is TJSONObject, mResponse.ToJSON);
-    Result := mResponse.GetValue('result').Clone as TJSONObject;
-  finally
-    mResponse.Free;
-  end;
-end;
-
 procedure TCompletionProjectFrequencyTests.Setup;
 begin
-  FIndex := TSymbolIndex.Create;
-  FStore := TDocumentStore.Create;
   FSettings := TCompletionSettings.Default;
-  FId := 0;
-  FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FCompletion.Hooks.SettingsFor :=
+  FServer := TCompletionServer.Create(
     function(const AUri: string): TCompletionSettings
     begin
       Result := FSettings;
-    end;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FCompletion.Attach(FDispatcher);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitZaehler, 'C:\P\Zaehler.pas', nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitNutzer, 'C:\P\Nutzer.pas', nil, nil, True));
+    end);
+  FServer.Index.AddUnit(TIndexExtractor.ExtractText(cUnitZaehler, 'C:\P\Zaehler.pas', nil, nil, True));
+  FServer.Index.AddUnit(TIndexExtractor.ExtractText(cUnitNutzer, 'C:\P\Nutzer.pas', nil, nil, True));
 end;
 
 procedure TCompletionProjectFrequencyTests.TearDown;
 begin
-  FDispatcher.Free;
-  FCompletion.Free;
-  FStore := nil;
-  FIndex := nil;
+  FreeAndNil(FServer);
 end;
 
 procedure TCompletionProjectFrequencyTests.MembersCarryProjectCount;
 var
   mAnswer: TJSONObject;
 begin
-  mAnswer := Complete(HauptWith('  AZaehler.|'));
+  mAnswer := FServer.Complete(HauptWith('  AZaehler.|'));
   try
     Assert.AreEqual(3, ProjectUsesOf(mAnswer, 'Anzahl'), mAnswer.ToJSON);
     Assert.AreEqual(1, ProjectUsesOf(mAnswer, 'FEnde'));
@@ -209,7 +136,7 @@ procedure TCompletionProjectFrequencyTests.UnusedMemberHasNoCount;
 var
   mAnswer: TJSONObject;
 begin
-  mAnswer := Complete(HauptWith('  AZaehler.|'));
+  mAnswer := FServer.Complete(HauptWith('  AZaehler.|'));
   try
     Assert.AreEqual(0, ProjectUsesOf(mAnswer, 'Leere'), mAnswer.ToJSON);
   finally
@@ -222,7 +149,7 @@ var
   mAnswer: TJSONObject;
 begin
   // Nur nach "X.": In der Liste ohne Punkt ordnet die Zählung nichts.
-  mAnswer := Complete(HauptWith('  AZae|'));
+  mAnswer := FServer.Complete(HauptWith('  AZae|'));
   try
     Assert.AreEqual(0, ProjectUsesOf(mAnswer, 'AZaehler'), mAnswer.ToJSON);
   finally
@@ -235,7 +162,7 @@ var
   mAnswer: TJSONObject;
 begin
   FSettings.ProjectFrequency := False;
-  mAnswer := Complete(HauptWith('  AZaehler.|'));
+  mAnswer := FServer.Complete(HauptWith('  AZaehler.|'));
   try
     Assert.AreEqual(0, ProjectUsesOf(mAnswer, 'Anzahl'), mAnswer.ToJSON);
   finally
@@ -247,9 +174,9 @@ procedure TCompletionProjectFrequencyTests.ChangedUnitUpdatesCount;
 var
   mAnswer: TJSONObject;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitNutzer.Replace('AZaehler.Anzahl > AZaehler.Anzahl',
+  FServer.Index.AddUnit(TIndexExtractor.ExtractText(cUnitNutzer.Replace('AZaehler.Anzahl > AZaehler.Anzahl',
     'AZaehler.Leere'), 'C:\P\Nutzer.pas', nil, nil, True));
-  mAnswer := Complete(HauptWith('  AZaehler.|'));
+  mAnswer := FServer.Complete(HauptWith('  AZaehler.|'));
   try
     Assert.AreEqual(1, ProjectUsesOf(mAnswer, 'Anzahl'), mAnswer.ToJSON);
     Assert.AreEqual(1, ProjectUsesOf(mAnswer, 'Leere'));
@@ -280,7 +207,7 @@ begin
       mUnit.Append('    FFeld' + IntToStr(mIndex) + ': Integer;'#13#10);
     end;
     mUnit.Append('  end;'#13#10'implementation'#13#10'end.');
-    FIndex.AddUnit(TIndexExtractor.ExtractText(mUnit.ToString, 'C:\P\Gross.pas', nil, nil, True));
+    FServer.Index.AddUnit(TIndexExtractor.ExtractText(mUnit.ToString, 'C:\P\Gross.pas', nil, nil, True));
     mUnit.Clear;
     mUnit.Append('unit Gebrauch;'#13#10'interface'#13#10'uses Gross;'#13#10'implementation'#13#10 +
       'procedure Lauf(AGross: TGross);'#13#10'begin'#13#10);
@@ -289,7 +216,7 @@ begin
       mUnit.Append('  AGross.FFeld' + IntToStr(mIndex) + ' := 0;'#13#10);
     end;
     mUnit.Append('end;'#13#10'end.');
-    FIndex.AddUnit(TIndexExtractor.ExtractText(mUnit.ToString, 'C:\P\Gebrauch.pas', nil, nil, True));
+    FServer.Index.AddUnit(TIndexExtractor.ExtractText(mUnit.ToString, 'C:\P\Gebrauch.pas', nil, nil, True));
   finally
     mUnit.Free;
   end;
@@ -301,11 +228,11 @@ begin
   begin
     FSettings.ProjectFrequency := False;
     mWatch := TStopwatch.StartNew;
-    Complete(mText).Free;
+    FServer.Complete(mText).Free;
     Inc(mWithout, mWatch.ElapsedMilliseconds);
     FSettings.ProjectFrequency := True;
     mWatch := TStopwatch.StartNew;
-    mAnswer := Complete(mText);
+    mAnswer := FServer.Complete(mText);
     Inc(mWith, mWatch.ElapsedMilliseconds);
     try
       Assert.AreEqual(1, ProjectUsesOf(mAnswer, 'FFeld7'));

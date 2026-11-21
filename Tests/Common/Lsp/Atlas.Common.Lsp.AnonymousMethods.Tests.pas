@@ -52,7 +52,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.AnonymousMethods,
-  Atlas.Common.Lsp.AnonymousMethods;
+  Atlas.Common.Lsp.AnonymousMethods,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cFileName = 'C:\P\Haupt.pas';
@@ -175,16 +176,6 @@ begin
   end;
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 procedure TLspAnonymousMethodsTests.ActionCarriesClientCommand;
 var
   mActions: TArray<TJSONObject>;
@@ -202,7 +193,7 @@ begin
     Assert.AreEqual(25, mArguments.Items[1].GetValue<Integer>('line'));
     Assert.AreEqual('ProcessItem', mArguments.Items[2].Value);
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
   // Im Rumpf: nichts.
   mActions := ActionsAt(FIndex, 25, 58);
@@ -252,7 +243,7 @@ begin
     Assert.AreNotEqual('', mActions[0].GetValue<string>('data.preview'), mActions[0].ToJSON);
     Assert.IsTrue(Pos('procedure(const AWert: Integer)', mActions[0].ToJSON) > 0, mActions[0].ToJSON);
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
   // Tick geht an TEreignis (of object): nicht.
   mActions := ActionsAt(FIndex, 32, 18);

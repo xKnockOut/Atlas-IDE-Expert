@@ -79,7 +79,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.Units,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Prüfung von ASource als Datei APath; AFiles sind Paare aus Name und Text für ReadFile.</summary>
 function Run(const ARule: IRule; const ASource, APath: string; const AFiles: TArray<string>;
@@ -261,19 +262,6 @@ begin
   Result := TRuleAssert.Findings(TExportsInvalidRule.Create, ASource);
 end;
 
-/// <summary>Wendet ein Edit innerhalb einer Zeile an (Zeilen aus #10).</summary>
-function ApplyEdit(const AText: string; const AEdit: TTextEdit): string;
-var
-  mLines: TArray<string>;
-  mLine: string;
-begin
-  mLines := AText.Split([#10]);
-  mLine := mLines[AEdit.Range.StartPos.Line];
-  mLines[AEdit.Range.StartPos.Line] := Copy(mLine, 1, AEdit.Range.StartPos.Character) + AEdit.NewText +
-    Copy(mLine, AEdit.Range.EndPos.Character + 1, MaxInt);
-  Result := string.Join(#10, mLines);
-end;
-
 { TUnitRulesTests }
 
 procedure TUnitRulesTests.MismatchIssueExample;
@@ -290,7 +278,7 @@ begin
   Assert.AreEqual(17, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Unit-Namen in Kunden.Daten ändern', mFound[0].Fixes[0].Title);
-  mFixed := ApplyEdit(mSource, mFound[0].Fixes[0].Edits[0]);
+  mFixed := TTestEdits.Apply(mSource, mFound[0].Fixes[0].Edits[0]);
   Assert.AreEqual('// Datei: Kunden.Daten.pas'#10'unit Kunden.Daten;'#10#10'interface'#10#10'implementation'#10#10 +
     'end.', mFixed);
   Assert.AreEqual(0, Integer(Length(Run(TUnitNameMismatchRule.Create, mFixed, 'Source/Kunden.Daten.pas'))));
@@ -376,7 +364,7 @@ begin
   Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
   Assert.AreEqual('In Kunden.Daten ändern', mFound[0].Fixes[0].Title);
   Assert.AreEqual('program Projekt;'#10'uses'#10'  Kunden.Daten in ''Quellen\Kunden.Daten.pas'','#10 +
-    '  Haupt in ''Haupt.pas'';'#10'begin'#10'end.', ApplyEdit(cProjekt, mFound[0].Fixes[0].Edits[0]));
+    '  Haupt in ''Haupt.pas'';'#10'begin'#10'end.', TTestEdits.Apply(cProjekt, mFound[0].Fixes[0].Edits[0]));
   // Passt der Name der Unit auch nicht zu ihrer Datei, meldet Delphi 13 nur E1038 in der Unit (Fall CmE2085,
   // #1382).
   Assert.AreEqual(0, Integer(Length(Run(TUnitNameMismatchRule.Create, cProjekt, 'Projekt.dpr',

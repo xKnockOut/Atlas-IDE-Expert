@@ -109,12 +109,17 @@ type
 
   /// <summary>Ein offenes Fenster samt Zustand und Ziel für „In uses aufnehmen“.</summary>
   TOpenSearch = class
+  private
+    FWindow: TAtlasUnitSearchWindow;
+    FState: TAtlasUnitSearchState;
+    FTarget: string;
+    FMode: TAtlasUnitSearchMode;
   public
-    Window: TAtlasUnitSearchWindow;
-    State: TAtlasUnitSearchState;
+    property Window: TAtlasUnitSearchWindow read FWindow write FWindow;
+    property State: TAtlasUnitSearchState read FState write FState;
     /// <summary>Datei des obersten Editors beim Öffnen; '' ohne.</summary>
-    Target: string;
-    Mode: TAtlasUnitSearchMode;
+    property Target: string read FTarget write FTarget;
+    property Mode: TAtlasUnitSearchMode read FMode write FMode;
     destructor Destroy; override;
   end;
 

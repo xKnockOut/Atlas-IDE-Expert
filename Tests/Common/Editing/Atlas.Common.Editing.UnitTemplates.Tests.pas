@@ -40,36 +40,12 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Editing.UnitTemplates;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
-/// <summary>Wendet ein Edit an, dessen Bereich in einer Zeile liegt; Zeilen mit #10.</summary>
-function ApplyOne(const AText: string; const AEdit: TRuleEdit): string;
-var
-  mLines: TArray<string>;
-  mLine: string;
-begin
-  mLines := AText.Split([#10]);
-  mLine := mLines[AEdit.Range.StartPos.Line];
-  mLines[AEdit.Range.StartPos.Line] := Copy(mLine, 1, AEdit.Range.StartPos.Character) + AEdit.NewText +
-    Copy(mLine, AEdit.Range.EndPos.Character + 1, MaxInt);
-  Result := string.Join(#10, mLines);
-end;
+  Atlas.Common.Editing.UnitTemplates,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 { TUnitTemplatesTests }
 
@@ -81,7 +57,7 @@ begin
   mSpec := TFormUnitSpec.Create('KundenForm', 'TKundenForm', TFormKind.Form);
   mSpec.GlobalVariable := True;
   mText := TUnitTemplates.FormUnit(mSpec, #13#10);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(Pos('  TKundenForm = class(TForm)'#13#10, mText) > 0, mText);
   Assert.IsTrue(Pos('var'#13#10'  KundenForm: TKundenForm;', mText) > 0, mText);
   Assert.IsTrue(Pos('{$R *.dfm}', mText) > 0, mText);
@@ -89,7 +65,7 @@ begin
   mSpec.GlobalVariable := True;
   mText := TUnitTemplates.FormUnit(mSpec, #10);
   Assert.IsTrue(Pos('uses'#10'  System.SysUtils, System.Classes;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TUnitTemplatesTests.FormUnitWithoutVariable;
@@ -104,7 +80,7 @@ begin
   Assert.AreEqual(0, Pos('var', mText), mText);
   Assert.IsTrue(Pos('class(TBasisForm)', mText) > 0, mText);
   Assert.IsTrue(Pos('Vcl.Dialogs,'#10'  BasisForm;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TUnitTemplatesTests.FormDfmParses;
@@ -143,7 +119,7 @@ var
   mText: string;
 begin
   mText := TUnitTemplates.ComponentUnit('MyButton', 'TMyButton', 'TButton', 'Vcl.StdCtrls', 'Eigene', #10);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(Pos('  TMyButton = class(TButton)', mText) > 0, mText);
   Assert.IsTrue(Pos('  published'#10, mText) > 0, mText);
   Assert.IsTrue(Pos('  RegisterComponents(''Eigene'', [TMyButton]);', mText) > 0, mText);
@@ -165,11 +141,11 @@ begin
     TFormKind.Form, mEdits));
   Assert.AreEqual(2, Integer(Length(mEdits)));
   // Hinteres Edit zuerst.
-  mText := ApplyOne(ApplyOne(cProgramText, mEdits[1]), mEdits[0]);
+  mText := TTestEdits.Apply(TTestEdits.Apply(cProgramText, mEdits[1]), mEdits[0]);
   Assert.IsTrue(Pos('  Haupt in ''Haupt.pas'' {HauptForm},'#10'  KundenForm in ''KundenForm.pas'' {KundenForm};',
     mText) > 0, mText);
   Assert.IsTrue(Pos('  Application.CreateForm(TKundenForm, KundenForm);'#10'  Application.Run;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TUnitTemplatesTests.ProgramFrameWithoutCreateForm;
@@ -194,7 +170,7 @@ var
   mText: string;
 begin
   Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Daten.pas', 'TDM', TFormKind.DataModule, True, mEdit));
-  mText := ApplyOne(cProject, mEdit);
+  mText := TTestEdits.Apply(cProject, mEdit);
   Assert.IsTrue(Pos('        </DCCReference>'#10'        <DCCReference Include="Daten.pas">'#10 +
     '            <Form>DM</Form>'#10'            <FormType>dfm</FormType>'#10 +
     '            <DesignClass>TDataModule</DesignClass>'#10'        </DCCReference>'#10'    </ItemGroup>', mText) > 0,
@@ -213,10 +189,10 @@ var
   mText: string;
 begin
   Assert.IsTrue(TUnitTemplates.UnitProgramEdit(cTests, 'Rechnung.Tests', 'Sub\Rechnung.Tests.pas', mEdit));
-  mText := ApplyOne(cTests, mEdit);
+  mText := TTestEdits.Apply(cTests, mEdit);
   Assert.IsTrue(Pos('  Kunden.Tests in ''Kunden.Tests.pas'','#10'  Rechnung.Tests in ''Sub\Rechnung.Tests.pas'';',
     mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   // Schon eingetragen (auch mit anderer Schreibweise): kein Edit.
   Assert.IsFalse(TUnitTemplates.UnitProgramEdit(cTests, 'kunden.tests', 'Kunden.Tests.pas', mEdit));
   Assert.IsFalse(TUnitTemplates.UnitProgramEdit('program P;'#10'begin'#10'end.', 'A', 'A.pas', mEdit));
@@ -232,7 +208,7 @@ var
 begin
   // Units einer .dpk stehen unter contains, nicht unter requires (#299).
   Assert.IsTrue(TUnitTemplates.UnitProgramEdit(cPackage, 'Knopf', 'Knopf.pas', mEdit));
-  mText := ApplyOne(cPackage, mEdit);
+  mText := TTestEdits.Apply(cPackage, mEdit);
   Assert.IsTrue(Pos('  vcl;'#10'contains'#10'  Haupt in ''Haupt.pas'','#10'  Knopf in ''Knopf.pas'';'#10'end.',
     mText) > 0, mText);
   Assert.IsFalse(TUnitTemplates.UnitProgramEdit(cPackage, 'haupt', 'Haupt.pas', mEdit));
@@ -248,7 +224,7 @@ var
   mText: string;
 begin
   Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Werkzeug.pas', '', TFormKind.Form, False, mEdit));
-  mText := ApplyOne(cProject, mEdit);
+  mText := TTestEdits.Apply(cProject, mEdit);
   Assert.IsTrue(Pos('<DelphiCompile Include="App.dpr"/>'#10'        <DCCReference Include="Werkzeug.pas"/>'#10 +
     '        <BuildConfiguration Include="Base">', mText) > 0, mText);
 end;

@@ -104,7 +104,8 @@ uses
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Assistants.Strings;
+  Atlas.UI.Assistants.Strings,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -205,7 +206,7 @@ begin
   FNote.Align := alBottom;
   FNote.AlignWithMargins := True;
   FNote.ShowAccelChar := False;
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FNote.Caption := '';
   CreateList;
   FEmpty := TAtlasWrapLabel.Create(Self);
@@ -213,7 +214,7 @@ begin
   FEmpty.Align := alClient;
   FEmpty.AlignWithMargins := True;
   FEmpty.ShowAccelChar := False;
-  FEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FEmpty, clGrayText);
   FEmpty.Caption := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.LogEmpty);
   FEmpty.Visible := False;
 end;

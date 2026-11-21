@@ -92,18 +92,6 @@ begin
   Result := TRuleAssert.IndexFindings(TCompilerHintsRule.Create, ASource, nil, AConfig, 'Haupt.pas');
 end;
 
-function Messages(const AFindings: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFindings do
-  begin
-    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
-      mFinding.Message]);
-  end;
-end;
-
 function Klasse(const AHead, ABody: string): string;
 begin
   Result := 'unit Haupt;'#10'interface'#10'type'#10 + AHead + #10 + ABody + '  end;'#10'implementation'#10'end.';
@@ -159,7 +147,7 @@ begin
     '    procedure Weiter;'#10'  published'#10'    property Wert: Integer read FWert;'#10));
   Assert.AreEqual('5:14 published schaltet für TOhneRtti RTTI ein ($M+), weil weder die Klasse noch ein Vorfahr ' +
     'mit RTTI übersetzt wird (wie W1055). Von TPersistent ableiten oder {$M+} vor die Deklaration setzen, wenn ' +
-    'das gewollt ist.|', Messages(mFound));
+    'das gewollt ist.|', TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual(cCompilerHintsRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
   // Ausdrücklich TObject als Vorfahr und ein Feld (Cm.E2217) melden ebenso.
@@ -171,17 +159,17 @@ procedure TCompilerHintsRulesTests.TypeInfoSwitchIsSilent;
 const
   cBody = '  published'#10'    procedure Machen;'#10;
 begin
-  Assert.AreEqual('', Messages(Findings(Klasse('{$M+}'#10'  TKlasse = class', cBody))));
-  Assert.AreEqual('', Messages(Findings(Klasse('{$TYPEINFO ON}'#10'  TKlasse = class', cBody))));
-  Assert.AreEqual('', Messages(Findings(Klasse('{$R-,M+}'#10'  TKlasse = class', cBody))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$M+}'#10'  TKlasse = class', cBody))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$TYPEINFO ON}'#10'  TKlasse = class', cBody))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$R-,M+}'#10'  TKlasse = class', cBody))));
   // {$M+} nur in einem inaktiven Zweig zählt nicht.
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('{$IFDEF NIE_DEFINIERT}{$M+}{$ENDIF}'#10 +
     '  TKlasse = class', cBody)))));
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('{$M+}{$M-}'#10'  TKlasse = class', cBody)))));
   // FP mORMot: Der Zustand an der forward-Deklaration gilt für die Klasse und ihre Nachfahren.
-  Assert.AreEqual('', Messages(Findings(Klasse('{$M+}'#10'  TKlasse = class;'#10'{$M-}'#10'  TKlasse = class',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$M+}'#10'  TKlasse = class;'#10'{$M-}'#10'  TKlasse = class',
     cBody))));
-  Assert.AreEqual('', Messages(Findings(Klasse('{$M+}'#10'  TBasis = class;'#10'{$M-}'#10'  TBasis = class'#10 +
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$M+}'#10'  TBasis = class;'#10'{$M-}'#10'  TBasis = class'#10 +
     '  end;'#10'  TKind = class(TBasis)', cBody))));
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('  TKlasse = class;'#10'{$M+}{$M-}'#10'  TKlasse = class',
     cBody)))));
@@ -190,16 +178,16 @@ end;
 procedure TCompilerHintsRulesTests.AncestorWithTypeInfoInFile;
 begin
   // Bekannte Nachfahren von TPersistent und Vorfahren aus der Datei mit {$M+} bzw. eigenem published.
-  Assert.AreEqual('', Messages(Findings(Klasse('  TKlasse = class(TPersistent)',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('  TKlasse = class(TPersistent)',
     '  published'#10'    procedure Machen;'#10))));
-  Assert.AreEqual('', Messages(Findings(Klasse('  TForm1 = class(TForm)',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('  TForm1 = class(TForm)',
     '  published'#10'    procedure Machen;'#10))));
-  Assert.AreEqual('', Messages(Findings(Klasse('{$M+}'#10'  TBasis = class'#10'  end;'#10'{$M-}'#10 +
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$M+}'#10'  TBasis = class'#10'  end;'#10'{$M-}'#10 +
     '  TKind = class(TBasis)', '  published'#10'    procedure Machen;'#10))));
   // Nur der Vorfahr meldet; der Nachfahr erbt die RTTI.
   Assert.AreEqual('5:14 published schaltet für TBasis RTTI ein ($M+), weil weder die Klasse noch ein Vorfahr ' +
     'mit RTTI übersetzt wird (wie W1055). Von TPersistent ableiten oder {$M+} vor die Deklaration setzen, wenn ' +
-    'das gewollt ist.|', Messages(Findings(Klasse('  TBasis = class'#10'  published'#10'    procedure Basis;'#10 +
+    'das gewollt ist.|', TRuleAssert.PositionMessages(Findings(Klasse('  TBasis = class'#10'  published'#10'    procedure Basis;'#10 +
     '  end;'#10'  TKind = class(TBasis)', '  published'#10'    procedure Machen;'#10))));
   // Vorfahr ohne RTTI in der Datei: der Nachfahr meldet.
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('  TBasis = class'#10'  end;'#10 +
@@ -216,7 +204,7 @@ end;
 
 procedure TCompilerHintsRulesTests.UnknownAncestorIsSilent;
 begin
-  Assert.AreEqual('', Messages(Findings(Klasse('  TKlasse = class(TFremd)',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('  TKlasse = class(TFremd)',
     '  published'#10'    procedure Machen;'#10))));
 end;
 
@@ -224,9 +212,9 @@ procedure TCompilerHintsRulesTests.WarningOffIsSilent;
 const
   cBody = '  published'#10'    procedure Machen;'#10;
 begin
-  Assert.AreEqual('', Messages(Findings(Klasse('{$WARN TYPEINFO_IMPLICITLY_ADDED OFF}'#10'  TKlasse = class',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$WARN TYPEINFO_IMPLICITLY_ADDED OFF}'#10'  TKlasse = class',
     cBody))));
-  Assert.AreEqual('', Messages(Findings(Klasse('{$WARNINGS OFF}'#10'  TKlasse = class', cBody))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('{$WARNINGS OFF}'#10'  TKlasse = class', cBody))));
   // Wie Cm.W1055: ausdrücklich eingeschaltet.
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('{$WARN TYPEINFO_IMPLICITLY_ADDED ON}'#10 +
     '  TKlasse = class', cBody)))));
@@ -234,17 +222,17 @@ end;
 
 procedure TCompilerHintsRulesTests.GenericAndEmptySectionAreSilent;
 begin
-  Assert.AreEqual('', Messages(Findings(Klasse('  TListe<T> = class', '  published'#10'    procedure Machen;'#10))));
-  Assert.AreEqual('', Messages(Findings(Klasse('  TKlasse = class', '  published'#10'  public'#10 +
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('  TListe<T> = class', '  published'#10'    procedure Machen;'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('  TKlasse = class', '  published'#10'  public'#10 +
     '    procedure Machen;'#10))));
-  Assert.AreEqual('', Messages(Findings(Klasse('  TKlasse = class', '  public'#10'    procedure Machen;'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Klasse('  TKlasse = class', '  public'#10'    procedure Machen;'#10))));
 end;
 
 procedure TCompilerHintsRulesTests.FinalizePlainType;
 begin
   Assert.AreEqual('10:2 Finalize(mZahl) hat keine Wirkung: Integer braucht kein Initialize/Finalize (wie H2243).|' +
     '11:2 Initialize(mWert) hat keine Wirkung: Double braucht kein Initialize/Finalize (wie H2243).|',
-    Messages(Findings(Routine('', '  Finalize(mZahl);'#10'  Initialize(mWert);'#10))));
+    TRuleAssert.PositionMessages(Findings(Routine('', '  Finalize(mZahl);'#10'  Initialize(mWert);'#10))));
   // Über einen Alias.
   Assert.AreEqual(1, Integer(Length(Findings(ReplaceStr(Routine('type'#10'  TZahl = Integer;'#10,
     '  Finalize(mZahl);'#10), 'mZahl: Integer', 'mZahl: TZahl')))));
@@ -252,7 +240,7 @@ end;
 
 procedure TCompilerHintsRulesTests.ManagedTypesAreSilent;
 begin
-  Assert.AreEqual('', Messages(Findings(Routine('', '  Finalize(mText);'#10'  Finalize(mFeld);'#10 +
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Routine('', '  Finalize(mText);'#10'  Finalize(mFeld);'#10 +
     '  Finalize(AZeiger^);'#10'  Finalize(mZahl, 2);'#10))));
 end;
 
@@ -260,21 +248,21 @@ procedure TCompilerHintsRulesTests.FinalizePointerToManagedType;
 begin
   Assert.AreEqual('10:2 Finalize(AZeiger) wirkt auf den Zeiger, nicht auf das Ziel: AZeiger braucht kein ' +
     'Initialize/Finalize, gemeint ist wohl AZeiger^ (wie H2244).|',
-    Messages(Findings(Routine('', '  Finalize(AZeiger);'#10))));
+    TRuleAssert.PositionMessages(Findings(Routine('', '  Finalize(AZeiger);'#10))));
   // Ein eigener Typ PString ist kein Zeiger auf einen String.
-  Assert.AreEqual('', Messages(Findings(Routine('type'#10'  PString = ^Integer;'#10, '  Finalize(AZeiger);'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Routine('type'#10'  PString = ^Integer;'#10, '  Finalize(AZeiger);'#10))));
 end;
 
 procedure TCompilerHintsRulesTests.OwnRoutineAndWithAreSilent;
 begin
-  Assert.AreEqual('', Messages(Findings(Routine('procedure Finalize(var AWert: Integer);'#10'begin'#10'end;'#10,
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Routine('procedure Finalize(var AWert: Integer);'#10'begin'#10'end;'#10,
     '  Finalize(mZahl);'#10))));
-  Assert.AreEqual('', Messages(Findings(Routine('', '  with TObject.Create do'#10'    Finalize(mZahl);'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Routine('', '  with TObject.Create do'#10'    Finalize(mZahl);'#10))));
 end;
 
 procedure TCompilerHintsRulesTests.HintsOffIsSilent;
 begin
-  Assert.AreEqual('', Messages(Findings(Routine('{$HINTS OFF}'#10, '  Finalize(mZahl);'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Routine('{$HINTS OFF}'#10, '  Finalize(mZahl);'#10))));
   Assert.AreEqual(1, Integer(Length(Findings(Routine('{$HINTS OFF}'#10'{$HINTS ON}'#10,
     '  Finalize(mZahl);'#10)))));
 end;

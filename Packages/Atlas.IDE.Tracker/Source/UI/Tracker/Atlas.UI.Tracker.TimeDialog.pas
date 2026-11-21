@@ -353,8 +353,7 @@ begin
   end
   else
   begin
-    FParts.Note.StyleElements := FParts.Note.StyleElements + [seFont];
-    FParts.Note.Font.Color := clWindowText;
+    TAtlasUiTheme.UseFontColor(FParts.Note, clDefault);
   end;
   FParts.Note.Caption := AText;
 end;
