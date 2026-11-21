@@ -550,6 +550,7 @@ uses
   Atlas.Common.Rules.Profiles.Tests in 'Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas',
   Atlas.Common.Rules.CodeActions.Tests in 'Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas',
   Atlas.Common.Rules.Confidence.Tests in 'Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas',
+  Atlas.Common.Findings.Contract.Tests in 'Common\Findings\Atlas.Common.Findings.Contract.Tests.pas',
   Atlas.Common.Rules.Contract.Tests in 'Common\Rules\Atlas.Common.Rules.Contract.Tests.pas',
   Atlas.Common.Rules.Output.Tests in 'Common\Rules\Atlas.Common.Rules.Output.Tests.pas',
   Atlas.Common.Rules.Prompt.Tests in 'Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas',

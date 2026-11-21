@@ -51,6 +51,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Findings.Contract,
   System.StrUtils,
   System.Classes,
   System.JSON,
