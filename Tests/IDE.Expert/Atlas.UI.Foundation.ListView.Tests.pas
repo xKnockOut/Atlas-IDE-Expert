@@ -48,7 +48,7 @@ type
     [Test]
     procedure SortTieKeepsDataOrder;
     [Test]
-    procedure RowsTextJoinsCellsWithTabs;
+    procedure RowsTextJoinsCellsWithTab;
   end;
 
 implementation
@@ -248,7 +248,7 @@ begin
   Assert.AreEqual(2, Integer(NativeInt(FList.Items[2].Data)));
 end;
 
-procedure TAtlasListViewTests.RowsTextJoinsCellsWithTabs;
+procedure TAtlasListViewTests.RowsTextJoinsCellsWithTab;
 var
   mRows: TArray<string>;
 begin
@@ -260,6 +260,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mRows)));
   Assert.AreEqual('a'#9'1', mRows[0]);
   Assert.AreEqual('b', mRows[1]);
+  mRows := nil;
 end;
 
 initialization

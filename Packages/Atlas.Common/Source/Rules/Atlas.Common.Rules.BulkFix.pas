@@ -173,6 +173,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Scopes,
   System.Math,
   System.StrUtils,

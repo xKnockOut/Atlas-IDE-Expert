@@ -135,7 +135,8 @@ uses
   System.Character,
   System.Generics.Collections,
   System.Math,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Text.Lines;
 
 { TAtlasSearchOptions }
 
@@ -250,18 +251,6 @@ end;
 
 { TAtlasTextSearch }
 
-/// <summary>Zeile ohne #13 am Ende.</summary>
-function CleanLine(const ALine: string): string;
-begin
-  Result := ALine;
-  if (Result <> '') and (Result[Length(Result)] = #13) then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
-end;
-
-{ TAtlasTextSearch }
-
 class function TAtlasTextSearch.HitCaption(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
 begin
   Result := IntToStr(AHit.Line + 1) + ': ' + HitText(ALines, AHit);
@@ -274,7 +263,7 @@ begin
   Result := '';
   if (AHit.Line >= 0) and (AHit.Line <= High(ALines)) then
   begin
-    Result := Trim(CleanLine(ALines[AHit.Line]).Replace(#9, ' '));
+    Result := Trim(TTextLines.StripTrailingCr(ALines[AHit.Line]).Replace(#9, ' '));
   end;
   if Length(Result) > cMaxText then
   begin
@@ -325,7 +314,7 @@ var
   mFirst, mLast: Integer;
 begin
   Result := '';
-  mLine := CleanLine(ALine);
+  mLine := TTextLines.StripTrailingCr(ALine);
   // 0-basiert → 1-basiert; steht der Cursor direkt hinter dem Wort, zählt es auch.
   mFirst := ACharacter + 1;
   if (mFirst > Length(mLine)) or ((mFirst >= 1) and not TTextChars.IsIdentChar(mLine[mFirst])) then
@@ -377,7 +366,7 @@ var
   mHit: TAtlasSearchHit;
   mWhole: Boolean;
 begin
-  mLine := CleanLine(ALine);
+  mLine := TTextLines.StripTrailingCr(ALine);
   if AOptions.CaseSensitive then
   begin
     mHaystack := mLine;
@@ -603,7 +592,7 @@ function TCodeMasker.MaskLine(const ALine: string): string;
 var
   mGoOn: Boolean;
 begin
-  FLine := CleanLine(ALine);
+  FLine := TTextLines.StripTrailingCr(ALine);
   FCount := Length(FLine);
   FAt := 1;
   mGoOn := True;
@@ -758,7 +747,7 @@ begin
   mExpression := TRegEx.Create(APattern, TAtlasSearchRegex.Options(AOptions));
   for mLineIndex := Max(AArea.Start.Line, 0) to Min(AArea.Stop.Line, High(ALines)) do
   begin
-    mLine := CleanLine(ALines[mLineIndex]);
+    mLine := TTextLines.StripTrailingCr(ALines[mLineIndex]);
     mCodeLine := '';
     if ACode <> nil then
     begin

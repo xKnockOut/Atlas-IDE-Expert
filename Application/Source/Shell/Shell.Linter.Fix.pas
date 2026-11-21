@@ -81,6 +81,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Findings.Contract,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Rules.Builtin,

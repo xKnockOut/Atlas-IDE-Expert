@@ -130,12 +130,15 @@ type
     class function Text(AId: TAtlasWelcomeTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasWelcomeTextId; const AArgs: array of const): string; static;
+    /// <summary>Zeitpunkt AUtc (UTC) in Ortszeit mit kurzem Datum und Uhrzeit; '' ohne Zeitpunkt (0).</summary>
+    class function LocalTime(AUtc: TDateTime): string; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.DateUtils,
   Atlas.UI.Strings;
 
 const
@@ -1069,6 +1072,15 @@ end;
 class function TAtlasWelcomeStrings.Fmt(AId: TAtlasWelcomeTextId; const AArgs: array of const): string;
 begin
   Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+class function TAtlasWelcomeStrings.LocalTime(AUtc: TDateTime): string;
+begin
+  Result := '';
+  if AUtc > 0 then
+  begin
+    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  end;
 end;
 
 end.

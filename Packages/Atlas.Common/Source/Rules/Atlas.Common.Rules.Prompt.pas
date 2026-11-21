@@ -55,6 +55,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Findings.Contract,
   System.Math,
   System.StrUtils,
   System.Generics.Collections,

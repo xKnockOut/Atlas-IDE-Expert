@@ -23,6 +23,8 @@ type
     /// <summary>Voller Name eines Testfalls wie in DUnitX: Unit.Fixture.Methode.Fall; ein Fall in Klammern
     /// ohne Punkt davor, ein leerer Fall ergibt Unit.Fixture.Methode.</summary>
     class function CaseName(const AUnitName, AFixture, AMethod, ACase: string): string; static;
+    /// <summary>Für Meldungen: Fixture.Methode.Fall ohne Unit; leere Methode bzw. leerer Fall fallen weg.</summary>
+    class function Caption(const AFixture, AMethod, ACase: string): string; static;
     /// <summary>Namen für --run, die genau die Fixture AFixtureIndex (ATestIndex = -1), den Test ATestIndex mit
     /// allen Fällen (ACaseIndex = -1) bzw. nur den Fall ACaseIndex treffen (#585). [TestCase]-Methoden: je Fall
     /// ein Name (Unit.Fixture.Methode allein trifft sie nicht); mit [Ignore] führt DUnitX sie als einen Test
@@ -53,6 +55,15 @@ begin
   if AMethod <> '' then
   begin
     Result := Result + '.' + AMethod;
+  end;
+end;
+
+class function TDUnitXCommandLine.Caption(const AFixture, AMethod, ACase: string): string;
+begin
+  Result := TestName('', AFixture, AMethod);
+  if ACase <> '' then
+  begin
+    Result := Result + '.' + ACase;
   end;
 end;
 

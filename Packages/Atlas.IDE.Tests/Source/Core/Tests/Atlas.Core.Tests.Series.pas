@@ -158,15 +158,7 @@ end;
 
 function TAtlasTestSeriesSubject.Caption: string;
 begin
-  Result := Fixture;
-  if Method <> '' then
-  begin
-    Result := Result + '.' + Method;
-  end;
-  if CaseName <> '' then
-  begin
-    Result := Result + '.' + CaseName;
-  end;
+  Result := TDUnitXCommandLine.Caption(Fixture, Method, CaseName);
 end;
 
 { TAtlasTestSeries }

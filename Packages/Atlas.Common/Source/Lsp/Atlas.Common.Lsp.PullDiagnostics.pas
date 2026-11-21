@@ -240,7 +240,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.CompactJson,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument,
   Atlas.Common.Localization.Texts;
