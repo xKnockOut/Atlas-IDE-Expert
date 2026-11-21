@@ -55,14 +55,11 @@ type
     function Renames: TArray<TAtlasSettingsKeyRename>;
   end;
 
-  /// <summary>Ablage der Werte als Text je Name (Registry, Datei, Arbeitsspeicher). Namen mit „$“ am Anfang
-  /// gehören Base (Verwaltungsdaten), keine Einstellung.</summary>
-  IAtlasSettingsStorage = interface
+  /// <summary>Ablage der Werte als Text je Name (Registry, Datei, Arbeitsspeicher); ReadText und WriteText aus
+  /// IAtlasTextStorage. Namen mit „$“ am Anfang gehören Base (Verwaltungsdaten), keine Einstellung.</summary>
+  IAtlasSettingsStorage = interface(IAtlasTextStorage)
     ['{0F1FC6DC-5C85-4CDC-9C54-BE580EBE4603}']
     function Contains(const AName: string): Boolean;
-    /// <summary>Wert unter AName; '' ohne Wert.</summary>
-    function ReadText(const AName: string): string;
-    procedure WriteText(const AName, AValue: string);
     /// <summary>Wert unter AName entfernen; ohne Wert nichts.</summary>
     procedure Remove(const AName: string);
     /// <summary>Alle Namen mit Wert, sortiert.</summary>

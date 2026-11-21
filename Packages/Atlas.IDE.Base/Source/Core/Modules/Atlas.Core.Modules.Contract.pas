@@ -113,6 +113,15 @@ type
     function IsRevoked: Boolean;
   end;
 
+  /// <summary>Ablage von Texten je Name, in die Base Verwaltungsdaten schreibt (Liste der bekannten Module unter
+  /// „$modules.known“). Die Ablage der Einstellungen (IAtlasSettingsStorage) ist eine solche.</summary>
+  IAtlasTextStorage = interface
+    ['{D46BD47D-D885-418F-AB7B-76BB18CB7344}']
+    /// <summary>Wert unter AName; '' ohne Wert.</summary>
+    function ReadText(const AName: string): string;
+    procedure WriteText(const AName, AValue: string);
+  end;
+
   /// <summary>Art einer Änderung in der Registry: Modul an- bzw. abgemeldet, Objekt bereitgestellt bzw. zurückgezogen,
   /// Liste der bekannten Module geändert (Modul vergessen).</summary>
   TAtlasRegistryChangeKind = (rcModuleAdded, rcModuleRemoved, rcProvided, rcRevoked, rcKnownChanged);
