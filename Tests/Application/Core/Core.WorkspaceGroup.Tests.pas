@@ -1,4 +1,4 @@
-﻿unit Shell.WorkspaceGroup.Tests;
+﻿unit Core.WorkspaceGroup.Tests;
 
 // Projektgruppe ohne LSP-Client für MCP und Linter (#1112): Index, Projektkontext der Prüfregeln.
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TShellWorkspaceGroupTests = class
+  TCoreWorkspaceGroupTests = class
   private
     FFolder: string;
     function Path(const AName: string): string;
@@ -43,9 +43,10 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Core.Bootstrap,
-  Shell.Workspace.Listings,
-  Shell.WorkspaceGroup,
-  Atlas.Tests.TempFolder;
+  Core.Workspace.Listings,
+  Core.WorkspaceGroup,
+  Atlas.Tests.TempFolder,
+  Shell.Composition.Platform;
 
 const
   cDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
@@ -81,39 +82,39 @@ const
   cTeilUnit = 'unit Teil;'#13#10'interface'#13#10'type'#13#10'  TTeil = record'#13#10'  end;'#13#10 +
     'implementation'#13#10'end.'#13#10;
 
-function NewGroup(const ARoot: string): TShellWorkspaceGroup;
+function NewGroup(const ARoot: string): TCoreWorkspaceGroup;
 begin
-  Result := TShellWorkspaceGroup.Create(ARoot, TDocumentStore.Create, TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-group',
+  Result := TCoreWorkspaceGroup.Create(ARoot, TDocumentStore.Create, TLogger.Create, TSymbolIndex.Create,
+    'atlas-test-group', TShellPlatformAdapters.WorkspaceFactories,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
     end);
 end;
 
-{ TShellWorkspaceGroupTests }
+{ TCoreWorkspaceGroupTests }
 
-function TShellWorkspaceGroupTests.Path(const AName: string): string;
+function TCoreWorkspaceGroupTests.Path(const AName: string): string;
 begin
   Result := TPath.Combine(FFolder, AName);
 end;
 
-procedure TShellWorkspaceGroupTests.Setup;
+procedure TCoreWorkspaceGroupTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-WorkspaceGroup-' + IntToStr(Random(MaxInt)));
   ForceDirectories(FFolder);
 end;
 
-procedure TShellWorkspaceGroupTests.TearDown;
+procedure TCoreWorkspaceGroupTests.TearDown;
 begin
   // Die Ordnerlisten teilen alle Arbeitsbereiche des Prozesses; je Testordner bliebe sonst ein Eintrag stehen.
   TSharedUnitListings.Clear;
   TTestTempFolder.Remove(FFolder);
 end;
 
-procedure TShellWorkspaceGroupTests.LoadIndexesProjectAndGivesRuleProject;
+procedure TCoreWorkspaceGroupTests.LoadIndexesProjectAndGivesRuleProject;
 var
-  mGroup: TShellWorkspaceGroup;
+  mGroup: TCoreWorkspaceGroup;
   mProject: TCheckProject;
   mReason: string;
   mFound: TUnitIndex;
@@ -143,9 +144,9 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceGroupTests.WithoutProjectHasNoApplication;
+procedure TCoreWorkspaceGroupTests.WithoutProjectHasNoApplication;
 var
-  mGroup: TShellWorkspaceGroup;
+  mGroup: TCoreWorkspaceGroup;
   mProject: TCheckProject;
 begin
   TFile.WriteAllText(Path('Kunde.pas'), cKundeUnit);
@@ -163,9 +164,9 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceGroupTests.LoadIndexesEnclosingGroup;
+procedure TCoreWorkspaceGroupTests.LoadIndexesEnclosingGroup;
 var
-  mGroup: TShellWorkspaceGroup;
+  mGroup: TCoreWorkspaceGroup;
   mFound: TUnitIndex;
 begin
   ForceDirectories(Path('App'));
@@ -195,6 +196,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellWorkspaceGroupTests);
+  TDUnitX.RegisterTestFixture(TCoreWorkspaceGroupTests);
 
 end.

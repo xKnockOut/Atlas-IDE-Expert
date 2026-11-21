@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.State;
+﻿unit Core.Workspace.State;
 
-// Internals-Rolle Shell: Stand des zuletzt geladenen Projekts eines Arbeitsbereichs, den Anfrage-Threads lesen:
+// Host-Rolle Core: Stand des zuletzt geladenen Projekts eines Arbeitsbereichs, den Anfrage-Threads lesen:
 // Projekt und Installation (#40, #47), Symbole, Namespaces und Dateien des Index (#648), Unit-Suche (#1016) und
 // Packages (#46, #1220) und der letzte Indexlauf (#28, #492). Alles threadsicher.
 
@@ -14,20 +14,20 @@ uses
   Atlas.Common.Index.Builder,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Shell.Workspace.Setup,
-  Shell.Workspace.Packages;
+  Core.Workspace.Setup,
+  Core.Workspace.Packages;
 
 type
   /// <summary>Für den Compileraufruf (#40): Delphi-Version, $(BDS) und Bibliothekspfade der Installation; leer
   /// ohne Installation.</summary>
-  TShellInstallInfo = record
+  TCoreInstallInfo = record
     DelphiVersion: string;
     BdsRoot: string;
     LibraryPaths: TArray<string>;
   end;
 
   /// <summary>Was der Indexaufbau über die Dateien des Projekts festlegt.</summary>
-  TShellIndexedFiles = record
+  TCoreIndexedFiles = record
     /// <summary>Dieselben Symbole bestimmen, welche {$IFDEF}-Zweige der Editor abblendet.</summary>
     Defines: TArray<string>;
     Namespaces: TArray<string>;
@@ -38,21 +38,21 @@ type
   end;
 
   /// <summary>Letzter vollständiger Indexlauf (#28) und letzte Änderung am Index (#492).</summary>
-  TShellIndexStats = record
+  TCoreIndexStats = record
     /// <summary>-1 = noch keiner fertig.</summary>
     LastIndexMs: Int64;
     LastIndex: TIndexBuildResult;
     LastUpdate: TDateTime;
   end;
 
-  TShellProjectState = class
+  TCoreProjectState = class
   private
-    FSetup: TShellWorkspaceSetup;
+    FSetup: TCoreWorkspaceSetup;
     FLock: TObject;
     FProject: TProjectInfo;
     FHasProject: Boolean;
-    FInstall: TShellInstallInfo;
-    FFiles: TShellIndexedFiles;
+    FInstall: TCoreInstallInfo;
+    FFiles: TCoreIndexedFiles;
     FHasDefines: Boolean;
     /// <summary>Projektdateien und Suchpfad-Units in Großschreibung, für ContainsFile.</summary>
     FOwnFiles: TDictionary<string, Boolean>;
@@ -63,25 +63,25 @@ type
     // Freigabe des Arbeitsbereichs.
     FPackages: IPackageLocatorHold;
     FRetiredPackages: TList<IPackageLocatorHold>;
-    FStats: TShellIndexStats;
+    FStats: TCoreIndexStats;
     /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs (TIndexNameFacts); lebt mit ihm.</summary>
     FNameFacts: IIndexNameFacts;
     FProjectPending: Boolean;
     FWithoutProject: Boolean;
   public
-    constructor Create(ASetup: TShellWorkspaceSetup);
+    constructor Create(ASetup: TCoreWorkspaceSetup);
     destructor Destroy; override;
-    procedure SetProject(const AProject: TProjectInfo; const AInstall: TShellInstallInfo);
+    procedure SetProject(const AProject: TProjectInfo; const AInstall: TCoreInstallInfo);
     procedure SetLookups(const APackages: IPackageLocatorHold; const AUnitLookup: IRuleUnitLookup);
-    procedure SetIndexedFiles(const AFiles: TShellIndexedFiles);
+    procedure SetIndexedFiles(const AFiles: TCoreIndexedFiles);
     /// <summary>Vollständiger Indexlauf (nicht abgebrochen) nach AElapsedMs.</summary>
     procedure Finished(const AResult: TIndexBuildResult; AElapsedMs: Int64);
     /// <summary>Änderung am Index (Speichern, Tipp-Pause).</summary>
     procedure Touch;
-    function Stats: TShellIndexStats;
+    function Stats: TCoreIndexStats;
     /// <summary>Geladenes Projekt; False ohne Projekt.</summary>
     function Project(out AProject: TProjectInfo): Boolean;
-    function Install: TShellInstallInfo;
+    function Install: TCoreInstallInfo;
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
     /// <summary>Für das Projekt gewählte Delphi-Version (z. B. "23.0", #47); '' ohne Installation.</summary>
@@ -123,9 +123,9 @@ uses
   Atlas.Common.Index.NameFacts,
   Atlas.Common.Pascal.IncludeFiles;
 
-{ TShellProjectState }
+{ TCoreProjectState }
 
-constructor TShellProjectState.Create(ASetup: TShellWorkspaceSetup);
+constructor TCoreProjectState.Create(ASetup: TCoreWorkspaceSetup);
 begin
   inherited Create;
   FSetup := ASetup;
@@ -136,7 +136,7 @@ begin
   FStats.LastIndexMs := -1;
 end;
 
-destructor TShellProjectState.Destroy;
+destructor TCoreProjectState.Destroy;
 begin
   FUnitLookup := nil;
   FPackages := nil;
@@ -146,7 +146,7 @@ begin
   inherited;
 end;
 
-procedure TShellProjectState.SetProject(const AProject: TProjectInfo; const AInstall: TShellInstallInfo);
+procedure TCoreProjectState.SetProject(const AProject: TProjectInfo; const AInstall: TCoreInstallInfo);
 begin
   TMonitor.Enter(FLock);
   try
@@ -158,7 +158,7 @@ begin
   end;
 end;
 
-procedure TShellProjectState.SetLookups(const APackages: IPackageLocatorHold; const AUnitLookup: IRuleUnitLookup);
+procedure TCoreProjectState.SetLookups(const APackages: IPackageLocatorHold; const AUnitLookup: IRuleUnitLookup);
 begin
   TMonitor.Enter(FLock);
   try
@@ -173,7 +173,7 @@ begin
   end;
 end;
 
-procedure TShellProjectState.SetIndexedFiles(const AFiles: TShellIndexedFiles);
+procedure TCoreProjectState.SetIndexedFiles(const AFiles: TCoreIndexedFiles);
 var
   mFileName: string;
 begin
@@ -191,7 +191,7 @@ begin
   end;
 end;
 
-procedure TShellProjectState.Finished(const AResult: TIndexBuildResult; AElapsedMs: Int64);
+procedure TCoreProjectState.Finished(const AResult: TIndexBuildResult; AElapsedMs: Int64);
 begin
   TMonitor.Enter(FLock);
   try
@@ -203,7 +203,7 @@ begin
   end;
 end;
 
-procedure TShellProjectState.Touch;
+procedure TCoreProjectState.Touch;
 begin
   TMonitor.Enter(FLock);
   try
@@ -213,7 +213,7 @@ begin
   end;
 end;
 
-function TShellProjectState.Stats: TShellIndexStats;
+function TCoreProjectState.Stats: TCoreIndexStats;
 begin
   TMonitor.Enter(FLock);
   try
@@ -223,7 +223,7 @@ begin
   end;
 end;
 
-function TShellProjectState.Project(out AProject: TProjectInfo): Boolean;
+function TCoreProjectState.Project(out AProject: TProjectInfo): Boolean;
 begin
   TMonitor.Enter(FLock);
   try
@@ -238,7 +238,7 @@ begin
   end;
 end;
 
-function TShellProjectState.Install: TShellInstallInfo;
+function TCoreProjectState.Install: TCoreInstallInfo;
 begin
   TMonitor.Enter(FLock);
   try
@@ -248,7 +248,7 @@ begin
   end;
 end;
 
-function TShellProjectState.Defines(out ADefines: TArray<string>): Boolean;
+function TCoreProjectState.Defines(out ADefines: TArray<string>): Boolean;
 begin
   TMonitor.Enter(FLock);
   try
@@ -259,17 +259,17 @@ begin
   end;
 end;
 
-function TShellProjectState.DelphiVersion: string;
+function TCoreProjectState.DelphiVersion: string;
 begin
   Result := Install.DelphiVersion;
 end;
 
-function TShellProjectState.BdsRoot: string;
+function TCoreProjectState.BdsRoot: string;
 begin
   Result := Install.BdsRoot;
 end;
 
-function TShellProjectState.Namespaces: TArray<string>;
+function TCoreProjectState.Namespaces: TArray<string>;
 begin
   TMonitor.Enter(FLock);
   try
@@ -279,7 +279,7 @@ begin
   end;
 end;
 
-function TShellProjectState.IncludePaths: TArray<string>;
+function TCoreProjectState.IncludePaths: TArray<string>;
 begin
   TMonitor.Enter(FLock);
   try
@@ -289,7 +289,7 @@ begin
   end;
 end;
 
-function TShellProjectState.ProjectFiles: TArray<string>;
+function TCoreProjectState.ProjectFiles: TArray<string>;
 begin
   TMonitor.Enter(FLock);
   try
@@ -299,7 +299,7 @@ begin
   end;
 end;
 
-function TShellProjectState.ContainsFile(const AFileName: string): Boolean;
+function TCoreProjectState.ContainsFile(const AFileName: string): Boolean;
 begin
   TMonitor.Enter(FLock);
   try
@@ -309,7 +309,7 @@ begin
   end;
 end;
 
-function TShellProjectState.ProjectFileName: string;
+function TCoreProjectState.ProjectFileName: string;
 begin
   TMonitor.Enter(FLock);
   try
@@ -323,7 +323,7 @@ begin
   end;
 end;
 
-function TShellProjectState.UnitLookup: IRuleUnitLookup;
+function TCoreProjectState.UnitLookup: IRuleUnitLookup;
 begin
   TMonitor.Enter(FLock);
   try
@@ -333,7 +333,7 @@ begin
   end;
 end;
 
-function TShellProjectState.Packages: IPackageLocatorHold;
+function TCoreProjectState.Packages: IPackageLocatorHold;
 begin
   TMonitor.Enter(FLock);
   try
@@ -343,7 +343,7 @@ begin
   end;
 end;
 
-function TShellProjectState.CheckSource(const AFileName: string): TCheckSource;
+function TCoreProjectState.CheckSource(const AFileName: string): TCheckSource;
 var
   mSymbols: TArray<string>;
 begin
@@ -354,7 +354,7 @@ begin
   Result := TCheckSource.Create(AFileName, mSymbols, TIncludeFiles.Resolver(IncludePaths));
 end;
 
-function TShellProjectState.RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
+function TCoreProjectState.RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
 var
   mInfo: TProjectInfo;
 begin

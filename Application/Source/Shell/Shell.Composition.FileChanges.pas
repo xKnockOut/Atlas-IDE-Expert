@@ -18,7 +18,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.WatchedFiles,
   Atlas.Common.Lsp.IndexRefresh,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Configuration;
 
@@ -52,10 +52,10 @@ type
     procedure RefreshFailed(E: Exception);
     /// <summary>Ordnet eine Änderung ein: Einstellungen, Projektdatei (AReload) oder Quelltext (ASources).
     /// </summary>
-    procedure Classify(const AChange: TFileChange; AReload: TList<TShellWorkspace>;
+    procedure Classify(const AChange: TFileChange; AReload: TList<TCoreWorkspace>;
       var ASources: TArray<TFileChange>);
     /// <summary>Lädt die Ordner mit geänderter Projektdatei neu.</summary>
-    procedure ReloadWorkspaces(AReload: TList<TShellWorkspace>);
+    procedure ReloadWorkspaces(AReload: TList<TCoreWorkspace>);
     /// <summary>Geänderte Quelltexte in den Index und in die Projektprüfung.</summary>
     procedure ApplySources(const ASources: TArray<TFileChange>);
   public
@@ -104,8 +104,8 @@ end;
 
 procedure TShellFileChanges.ApplyTypedText(const AFileName, AText: string);
 var
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
   mUpdated: Boolean;
 begin
   mUpdated := False;
@@ -140,10 +140,10 @@ begin
   FServices.Logger.Warning('Index nach Tipp-Pause: ' + TLogMarks.Text(E.Message));
 end;
 
-procedure TShellFileChanges.Classify(const AChange: TFileChange; AReload: TList<TShellWorkspace>;
+procedure TShellFileChanges.Classify(const AChange: TFileChange; AReload: TList<TCoreWorkspace>;
   var ASources: TArray<TFileChange>);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   if FServices.Configuration.IsGlobalSettingsFile(AChange.FileName) then
   begin
@@ -180,9 +180,9 @@ begin
   end;
 end;
 
-procedure TShellFileChanges.ReloadWorkspaces(AReload: TList<TShellWorkspace>);
+procedure TShellFileChanges.ReloadWorkspaces(AReload: TList<TCoreWorkspace>);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   // Neu aufbauen: Suchpfade, Defines oder Units können sich geändert haben.
   for mWorkspace in AReload do
@@ -195,7 +195,7 @@ end;
 
 procedure TShellFileChanges.ApplySources(const ASources: TArray<TFileChange>);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mChange: TFileChange;
   mUpdated: Integer;
   mNames: TArray<string>;
@@ -236,10 +236,10 @@ procedure TShellFileChanges.Handle(const AChanges: TArray<TFileChange>);
 var
   mChange: TFileChange;
   mSources: TArray<TFileChange>;
-  mReload: TList<TShellWorkspace>;
+  mReload: TList<TCoreWorkspace>;
 begin
   mSources := nil;
-  mReload := TList<TShellWorkspace>.Create;
+  mReload := TList<TCoreWorkspace>.Create;
   try
     for mChange in AChanges do
     begin

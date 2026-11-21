@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Cache;
+﻿unit Core.Workspace.Cache;
 
-// Internals-Rolle Shell: Index-Cache eines Arbeitsbereichs. Sperre des eigenen Caches (#184), Anmeldung des
+// Host-Rolle Core: Index-Cache eines Arbeitsbereichs. Sperre des eigenen Caches (#184), Anmeldung des
 // Prozesses daran (#62), Aufräumen des Cache-Ordners (#905, #616) und Verwerfen beim Neuaufbau (#49).
 
 interface
@@ -12,43 +12,43 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Processes,
   Atlas.Common.Index.ProcessFiles,
-  Shell.Workspace.Setup;
+  Core.Workspace.Setup;
 
 type
   /// <summary>Cache-Dateien eines Aufbaus: Projekt, gemeinsame Bibliothek (#647) und Suchpfade ('' ohne).</summary>
-  TShellCacheFiles = record
+  TCoreCacheFiles = record
     ProjectFile: string;
     LibraryFile: string;
     SearchFile: string;
-    class function Create(const AProject, ALibrary, ASearch: string): TShellCacheFiles; static;
+    class function Create(const AProject, ALibrary, ASearch: string): TCoreCacheFiles; static;
   end;
 
-  TShellWorkspaceCache = class
+  TCoreWorkspaceCache = class
   private
     FName: string;
     FLogger: ILogger;
-    FSetup: TShellWorkspaceSetup;
-    FEvents: TShellWorkspaceEvents;
+    FSetup: TCoreWorkspaceSetup;
+    FEvents: TCoreWorkspaceEvents;
     // Schützt Anmeldung und Dateien, die Anfrage-Threads lesen.
     FLock: TObject;
     /// <summary>Sperre des eigenen Index-Caches (#184); nil, wenn eine andere Instanz ihn hält.</summary>
     FCacheLock: TStream;
     FCacheLockFile: string;
     /// <summary>Cache-Dateien des laufenden Aufbaus (#492).</summary>
-    FFiles: TShellCacheFiles;
+    FFiles: TCoreCacheFiles;
     /// <summary>Anmeldung am eigenen Index-Cache für „Prozesse am Projekt“ (#62).</summary>
     FProcessEntry: TIndexProcessEntry;
     /// <summary>Löscht verwaiste, ungenutzte und zu viele Caches; AKeep bleibt stehen (#616).</summary>
     procedure Housekeep(const AKeep: TArray<string>; const ASettings: TServerSettings);
     procedure LogRemoved(ARemoved: Integer; const AText: string);
   public
-    constructor Create(const AName: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup;
-      AEvents: TShellWorkspaceEvents);
+    constructor Create(const AName: string; const ALogger: ILogger; ASetup: TCoreWorkspaceSetup;
+      AEvents: TCoreWorkspaceEvents);
     destructor Destroy; override;
     /// <summary>Sperrt AFiles.ProjectFile, gibt eine alte Sperre frei; False = nur lesen. Vermerkt Herkunft (AOrigin)
     /// und Benutzung und räumt den Cache-Ordner nach ASettings auf (#905); dabei bleiben die Dateien von AFiles
     /// stehen (#616).</summary>
-    function Lock(const AFiles: TShellCacheFiles; const AOrigin: string; const ASettings: TServerSettings): Boolean;
+    function Lock(const AFiles: TCoreCacheFiles; const AOrigin: string; const ASettings: TServerSettings): Boolean;
     /// <summary>Gibt die Sperre frei, damit „Index löschen“ (#492) den Cache entfernen kann.</summary>
     procedure Release;
     /// <summary>Meldet den eigenen Prozess am Cache an bzw. um (#62) und hält Zustand und Ereignis fest.</summary>
@@ -60,13 +60,13 @@ type
     /// <summary>Hält dieser Arbeitsbereich die Sperre seines Caches (laut Anmeldung, #62)?</summary>
     function Writes: Boolean;
     /// <summary>Cache-Dateien des laufenden Aufbaus. Threadsicher.</summary>
-    function Files: TShellCacheFiles;
-    procedure SetFiles(const AFiles: TShellCacheFiles);
+    function Files: TCoreCacheFiles;
+    procedure SetFiles(const AFiles: TCoreCacheFiles);
     /// <summary>Eigener Index-Cache und die daran angemeldeten Prozesse (#62); False ohne Cache. Threadsicher.
     /// </summary>
     function Processes(out ACacheFile: string; out AProcesses: TArray<TIndexProcessInfo>): Boolean;
     /// <summary>Löscht die Dateien von AFiles; läuft als TIndexRequest.Prepare im Index-Thread.</summary>
-    class function DiscardFiles(const AFiles: TShellCacheFiles; const ALogger: ILogger): TProc; static;
+    class function DiscardFiles(const AFiles: TCoreCacheFiles; const ALogger: ILogger): TProc; static;
   end;
 
 implementation
@@ -90,19 +90,19 @@ const
     (De: 'Cache-Sperre erhalten, Index wird aufgebaut'; En: 'Cache lock acquired, index is being built'),
     (De: 'Sperre belegt, lade Cache nur lesend'; En: 'Lock taken, loading the cache read-only'));
 
-{ TShellCacheFiles }
+{ TCoreCacheFiles }
 
-class function TShellCacheFiles.Create(const AProject, ALibrary, ASearch: string): TShellCacheFiles;
+class function TCoreCacheFiles.Create(const AProject, ALibrary, ASearch: string): TCoreCacheFiles;
 begin
   Result.ProjectFile := AProject;
   Result.LibraryFile := ALibrary;
   Result.SearchFile := ASearch;
 end;
 
-{ TShellWorkspaceCache }
+{ TCoreWorkspaceCache }
 
-constructor TShellWorkspaceCache.Create(const AName: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup;
-  AEvents: TShellWorkspaceEvents);
+constructor TCoreWorkspaceCache.Create(const AName: string; const ALogger: ILogger; ASetup: TCoreWorkspaceSetup;
+  AEvents: TCoreWorkspaceEvents);
 begin
   inherited Create;
   FName := AName;
@@ -112,7 +112,7 @@ begin
   FLock := TObject.Create;
 end;
 
-destructor TShellWorkspaceCache.Destroy;
+destructor TCoreWorkspaceCache.Destroy;
 begin
   FCacheLock.Free;
   FProcessEntry.Free;
@@ -121,7 +121,7 @@ begin
   inherited;
 end;
 
-procedure TShellWorkspaceCache.Housekeep(const AKeep: TArray<string>; const ASettings: TServerSettings);
+procedure TCoreWorkspaceCache.Housekeep(const AKeep: TArray<string>; const ASettings: TServerSettings);
 var
   mRemoved: Integer;
 begin
@@ -145,7 +145,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceCache.LogRemoved(ARemoved: Integer; const AText: string);
+procedure TCoreWorkspaceCache.LogRemoved(ARemoved: Integer; const AText: string);
 begin
   if ARemoved > 0 then
   begin
@@ -153,7 +153,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceCache.Lock(const AFiles: TShellCacheFiles; const AOrigin: string;
+function TCoreWorkspaceCache.Lock(const AFiles: TCoreCacheFiles; const AOrigin: string;
   const ASettings: TServerSettings): Boolean;
 begin
   if SameText(AFiles.ProjectFile, FCacheLockFile) and (FCacheLock <> nil) then
@@ -192,14 +192,14 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceCache.Release;
+procedure TCoreWorkspaceCache.Release;
 begin
   FreeAndNil(FCacheLock);
   FCacheLockFile := '';
   Report(TIndexProcessInfo.cStateReady, False, cTexts[TWorkspaceCacheText.Released].Text);
 end;
 
-procedure TShellWorkspaceCache.Report(const ACacheFile, AState: string; AWriter: Boolean; const AEvent: string);
+procedure TCoreWorkspaceCache.Report(const ACacheFile, AState: string; AWriter: Boolean; const AEvent: string);
 var
   mIdentity: TIndexProcessInfo;
 begin
@@ -222,7 +222,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceCache.Report(const AState: string; AWriter: Boolean; const AEvent: string);
+procedure TCoreWorkspaceCache.Report(const AState: string; AWriter: Boolean; const AEvent: string);
 begin
   TMonitor.Enter(FLock);
   try
@@ -235,7 +235,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceCache.SetClient(const AClient: string);
+procedure TCoreWorkspaceCache.SetClient(const AClient: string);
 var
   mIdentity: TIndexProcessInfo;
 begin
@@ -253,7 +253,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceCache.Writes: Boolean;
+function TCoreWorkspaceCache.Writes: Boolean;
 begin
   TMonitor.Enter(FLock);
   try
@@ -263,7 +263,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceCache.Files: TShellCacheFiles;
+function TCoreWorkspaceCache.Files: TCoreCacheFiles;
 begin
   TMonitor.Enter(FLock);
   try
@@ -273,7 +273,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceCache.SetFiles(const AFiles: TShellCacheFiles);
+procedure TCoreWorkspaceCache.SetFiles(const AFiles: TCoreCacheFiles);
 begin
   TMonitor.Enter(FLock);
   try
@@ -283,7 +283,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceCache.Processes(out ACacheFile: string; out AProcesses: TArray<TIndexProcessInfo>): Boolean;
+function TCoreWorkspaceCache.Processes(out ACacheFile: string; out AProcesses: TArray<TIndexProcessInfo>): Boolean;
 begin
   ACacheFile := Files.ProjectFile;
   AProcesses := nil;
@@ -303,9 +303,9 @@ begin
   end;
 end;
 
-/// <summary>Rumpf von TShellWorkspaceCache.DiscardFiles; eigene Routine, damit die anonyme Methode nur die
+/// <summary>Rumpf von TCoreWorkspaceCache.DiscardFiles; eigene Routine, damit die anonyme Methode nur die
 /// Parameter einfängt.</summary>
-procedure DiscardNow(const AFiles: TShellCacheFiles; const ALogger: ILogger);
+procedure DiscardNow(const AFiles: TCoreCacheFiles; const ALogger: ILogger);
 begin
   if not TFile.Exists(AFiles.ProjectFile) then
   begin
@@ -323,9 +323,9 @@ begin
   end;
 end;
 
-class function TShellWorkspaceCache.DiscardFiles(const AFiles: TShellCacheFiles; const ALogger: ILogger): TProc;
+class function TCoreWorkspaceCache.DiscardFiles(const AFiles: TCoreCacheFiles; const ALogger: ILogger): TProc;
 var
-  mFiles: TShellCacheFiles;
+  mFiles: TCoreCacheFiles;
   mLogger: ILogger;
 begin
   mFiles := AFiles;
@@ -338,6 +338,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Workspace.Cache', cTexts);
+  TAtlasTextTables.Add('Core.Workspace.Cache', cTexts);
 
 end.

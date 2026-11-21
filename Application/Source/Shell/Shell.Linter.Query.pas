@@ -46,7 +46,7 @@ uses
   Atlas.Common.Query.Service,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Output,
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,
@@ -146,7 +146,7 @@ end;
 function Execute(const AOptions: TCommandLineOptions; const AConfigRoot, ATarget: string;
   const ASettings: TServerSettings; const AQuery: string): TQueryResult;
 var
-  mGroup: TShellWorkspaceGroup;
+  mGroup: TCoreWorkspaceGroup;
   mTimings: TCheckTimings;
 begin
   // Die Abfrage misst nicht (--timings gilt nur für die Prüfung).

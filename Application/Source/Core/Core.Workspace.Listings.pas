@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Listings;
+﻿unit Core.Workspace.Listings;
 
-// Internals-Rolle Shell: Ordnerlisten und Dateizugriffe für Unit-Suche und Indexaufbau der Arbeitsbereiche.
+// Host-Rolle Core: Ordnerlisten und Dateizugriffe für Unit-Suche und Indexaufbau der Arbeitsbereiche.
 // Die Listen der .pas- und .dcu-Dateien je Ordner teilen sich alle Projekte des Servers.
 
 interface
@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.Adapters.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Index.ProjectFiles;
 
 type
@@ -42,7 +42,7 @@ type
 
   /// <summary>Dateizugriffe als Rückrufe für Unit-Suche, Projektleser und Indexaufbau; nicht lesbare Ordner und
   /// Dateien tragen nichts bei.</summary>
-  TShellFileAccess = class
+  TCoreFileAccess = class
   public
     /// <summary>Unterordner von AFolder, ungeteilt.</summary>
     class function Folders(AFolder: string): TArray<string>; static;
@@ -170,9 +170,9 @@ begin
     end;
 end;
 
-{ TShellFileAccess }
+{ TCoreFileAccess }
 
-class function TShellFileAccess.Folders(AFolder: string): TArray<string>;
+class function TCoreFileAccess.Folders(AFolder: string): TArray<string>;
 begin
   Result := nil;
   try
@@ -192,7 +192,7 @@ begin
   end;
 end;
 
-class function TShellFileAccess.PasFiles(const AFolder: string): TArray<string>;
+class function TCoreFileAccess.PasFiles(const AFolder: string): TArray<string>;
 begin
   Result := nil;
   try
@@ -213,12 +213,12 @@ begin
   end;
 end;
 
-class function TShellFileAccess.Exists(AFileName: string): Boolean;
+class function TCoreFileAccess.Exists(AFileName: string): Boolean;
 begin
   Result := FileExists(AFileName);
 end;
 
-class function TShellFileAccess.ReadText(const AFileName: string; out AText: string): Boolean;
+class function TCoreFileAccess.ReadText(const AFileName: string; out AText: string): Boolean;
 var
   mFormat: TFileFormat;
 begin
@@ -239,7 +239,7 @@ begin
   end;
 end;
 
-class function TShellFileAccess.FoldersFunc: TFunc<string, TArray<string>>;
+class function TCoreFileAccess.FoldersFunc: TFunc<string, TArray<string>>;
 begin
   Result :=
     function(AFolder: string): TArray<string>
@@ -248,7 +248,7 @@ begin
     end;
 end;
 
-class function TShellFileAccess.PasFilesFunc: TIndexListUnits;
+class function TCoreFileAccess.PasFilesFunc: TIndexListUnits;
 begin
   Result :=
     function(const AFolder: string): TArray<string>
@@ -257,7 +257,7 @@ begin
     end;
 end;
 
-class function TShellFileAccess.ExistsFunc: TFunc<string, Boolean>;
+class function TCoreFileAccess.ExistsFunc: TFunc<string, Boolean>;
 begin
   Result :=
     function(AFileName: string): Boolean
@@ -266,7 +266,7 @@ begin
     end;
 end;
 
-class function TShellFileAccess.ReadTextFunc: TUnitLookupReadText;
+class function TCoreFileAccess.ReadTextFunc: TUnitLookupReadText;
 begin
   Result :=
     function(const AFileName: string; out AText: string): Boolean

@@ -47,6 +47,8 @@ type
     procedure SplitsNamesAndExtensions;
     [Test]
     procedure ExpandsKnownVariablesOnly;
+    [Test]
+    procedure DcuOutputWithPlatformAndConfig;
   end;
 
   [TestFixture]
@@ -361,6 +363,21 @@ begin
   Assert.AreEqual('C:\Studio\lib\$(Unbekannt)',
     TProjectPaths.ExpandVariables('$(bdslib)\$(Unbekannt)',
       [TPair<string, string>.Create('BDSLIB', 'C:\Studio\lib')]));
+end;
+
+procedure TProjectPathsTests.DcuOutputWithPlatformAndConfig;
+var
+  mProject: TProjectInfo;
+begin
+  mProject := Default(TProjectInfo);
+  Assert.AreEqual('', TProjectPaths.DcuOutputOf(mProject));
+  mProject.FileName := 'C:\Work\App\App.dproj';
+  mProject.Platform := 'Win64';
+  mProject.Config := 'Release';
+  mProject.Properties := [TPair<string, string>.Create('DCC_DcuOutput', '.\$(Platform)\$(CONFIG)')];
+  Assert.AreEqual('C:\Work\App\Win64\Release', TProjectPaths.DcuOutputOf(mProject));
+  mProject.Properties := [TPair<string, string>.Create('dcc_dcuoutput', 'D:\Dcu')];
+  Assert.AreEqual('D:\Dcu', TProjectPaths.DcuOutputOf(mProject));
 end;
 
 { TDprojReaderTests }

@@ -201,13 +201,13 @@
   "Application/Source/Shell/Shell.Diagnostics.pas": 3,
   "Application/Source/Shell/Shell.Mcp.pas": 1,
   "Application/Source/Shell/Shell.SlashHost.pas": 5,
-  "Application/Source/Shell/Shell.Workspace.Build.pas": 3,
-  "Application/Source/Shell/Shell.Workspace.Cache.pas": 6,
-  "Application/Source/Shell/Shell.Workspace.Indexing.pas": 6,
-  "Application/Source/Shell/Shell.Workspace.Jobs.pas": 2,
-  "Application/Source/Shell/Shell.Workspace.Loader.pas": 8,
-  "Application/Source/Shell/Shell.Workspace.Packages.pas": 1,
-  "Application/Source/Shell/Shell.Workspace.pas": 5,
-  "Application/Source/Shell/Shell.Workspace.Requests.pas": 1,
-  "Application/Source/Shell/Shell.WorkspaceGroup.pas": 1
+  "Application/Source/Core/Core.Workspace.Build.pas": 3,
+  "Application/Source/Core/Core.Workspace.Cache.pas": 6,
+  "Application/Source/Core/Core.Workspace.Indexing.pas": 6,
+  "Application/Source/Core/Core.Workspace.Jobs.pas": 2,
+  "Application/Source/Core/Core.Workspace.Loader.pas": 8,
+  "Application/Source/Core/Core.Workspace.Packages.pas": 1,
+  "Application/Source/Core/Core.Workspace.pas": 5,
+  "Application/Source/Core/Core.Workspace.Requests.pas": 1,
+  "Application/Source/Core/Core.WorkspaceGroup.pas": 1
 }

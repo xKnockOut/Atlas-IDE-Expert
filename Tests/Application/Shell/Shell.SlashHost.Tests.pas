@@ -34,7 +34,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Editing.Contract,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.SlashHost;
 
 /// <summary>Host ohne Ordner; ACalls zählt die Aufrufe von WorkspaceOf.</summary>
@@ -44,7 +44,7 @@ var
 begin
   mCalls := ACalls;
   Result := TShellSlashHost.Create(TShellSlashSources.New(
-    function(const AUri: string): TShellWorkspace
+    function(const AUri: string): TCoreWorkspace
     begin
       Inc(mCalls^);
       Result := nil;

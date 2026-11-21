@@ -11,7 +11,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.Commands,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.Core,
   Shell.Composition.Editing,
@@ -60,7 +60,7 @@ type
     function Namespaces: TArray<string>;
     procedure VisitWorkspaces(const AVisit: TShellWorkspacesProc);
     /// <summary>Arbeitsbereich von AUri, mit '' alle.</summary>
-    function CommandWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+    function CommandWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
     function StatusServices: TShellStatusServices;
     function ServerServices: TShellServerCommandServices;
     function EditorServices: TShellEditorCommandServices;
@@ -185,9 +185,9 @@ begin
   FCore.Workspaces.Visit(AVisit);
 end;
 
-function TShellCommandArea.CommandWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+function TShellCommandArea.CommandWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   System.TMonitor.Enter(FCore.Workspaces.Lock);
@@ -223,7 +223,7 @@ begin
       Result := mCore.Settings.EditorSettings;
     end;
   Result.IsSelectedProject :=
-    function(AWorkspace: TShellWorkspace): Boolean
+    function(AWorkspace: TCoreWorkspace): Boolean
     begin
       Result := mCore.Workspaces.IsSelected(AWorkspace);
     end;
@@ -256,7 +256,7 @@ begin
   Result.ProjectSourceFiles := ProjectFiles;
   Result.Workspaces := CommandWorkspaces;
   Result.IsSelectedProject :=
-    function(AWorkspace: TShellWorkspace): Boolean
+    function(AWorkspace: TCoreWorkspace): Boolean
     begin
       Result := mCore.Workspaces.IsSelected(AWorkspace);
     end;

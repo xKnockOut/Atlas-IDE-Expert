@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Jobs;
+﻿unit Core.Workspace.Jobs;
 
-// Internals-Rolle Shell: Aufträge aus dem geladenen Projekt eines Arbeitsbereichs. Compilerlauf (#40, #261), Suche
+// Host-Rolle Core: Aufträge aus dem geladenen Projekt eines Arbeitsbereichs. Compilerlauf (#40, #261), Suche
 // nach einer Unit, die der Compiler nicht fand (#550), und die atlas-baseline.json des Ordners (#97).
 
 interface
@@ -13,25 +13,26 @@ uses
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Rules.Baseline,
   Core.Compiler,
-  Shell.Workspace.State;
+  Core.Workspace.Setup,
+  Core.Workspace.State;
 
 type
-  TShellWorkspaceJobs = class
+  TCoreWorkspaceJobs = class
   public
     /// <summary>Compilerlauf für AProject (#40, #261): Aufruf von dcc32/dcc64, Projekt, Plattform, Installation
     /// und ASettings. Ob dcc da und nutzbar ist, prüft der Aufrufer (TCoreCompilerEditions). False mit Grund in
     /// AError ohne Installation oder unterstützte Plattform.</summary>
-    class function CompileJobOf(const AProject: TProjectInfo; const AInstall: TShellInstallInfo;
+    class function CompileJobOf(const AProject: TProjectInfo; const AInstall: TCoreInstallInfo;
       const ASettings: TCompilerSettings; out AJob: TCoreCompileJob; out AError: string): Boolean; static;
     /// <summary>Suche nach einer Unit, die der Compiler nicht fand (#550): AProject, alle Konfigurationen und
     /// Plattformen der .dproj, Bibliothekspfade und Ordnerzugriff. Gruppe und Index ergänzt der Aufrufer.</summary>
-    class function MissingUnitSetupOf(const AProject: TProjectInfo; const AInstall: TShellInstallInfo):
-      TMissingUnitSetup; static;
+    class function MissingUnitSetupOf(const AProject: TProjectInfo; const AInstall: TCoreInstallInfo;
+      const AFactories: TCoreWorkspaceFactories): TMissingUnitSetup; static;
   end;
 
   /// <summary>atlas-baseline.json eines Ordners (#97), neu gelesen, sobald sich die Datei ändert. Threadsicher.
   /// </summary>
-  TShellBaselineFile = class
+  TCoreBaselineFile = class
   private
     FRoot: string;
     FName: string;
@@ -55,8 +56,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.DprojReader,
-  Shell.Composition.Platform,
-  Shell.Workspace.Listings,
+  Core.Workspace.Listings,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
 
@@ -69,9 +69,9 @@ const
   cTexts: array[TWorkspaceJobText] of TAtlasText = (
     (De: 'Delphi-Installation nicht gefunden'; En: 'Delphi installation not found'));
 
-{ TShellWorkspaceJobs }
+{ TCoreWorkspaceJobs }
 
-class function TShellWorkspaceJobs.CompileJobOf(const AProject: TProjectInfo; const AInstall: TShellInstallInfo;
+class function TCoreWorkspaceJobs.CompileJobOf(const AProject: TProjectInfo; const AInstall: TCoreInstallInfo;
   const ASettings: TCompilerSettings; out AJob: TCoreCompileJob; out AError: string): Boolean;
 var
   mOutputDir: string;
@@ -108,15 +108,10 @@ end;
 
 /// <summary>Installation zu AVersion; nil ohne oder wenn sie nicht lesbar ist (dann ohne Bibliothek und ohne
 /// $(BDS) in den Suchpfaden).</summary>
-function InstallationOf(const AVersion: string): ILibraryPathProvider;
+function InstallationOf(const AFactories: TCoreWorkspaceFactories; const AVersion: string): ILibraryPathProvider;
 begin
-  Result := nil;
-  if AVersion = '' then
-  begin
-    Exit;
-  end;
   try
-    Result := TDelphiInstallation.Create(AVersion);
+    Result := AFactories.InstallationOf(AVersion);
   except
     on EProjectError do
       Result := nil;
@@ -133,7 +128,7 @@ var
 begin
   Result := nil;
   mOptions := Default(TDprojOptions);
-  mOptions.FileExists := TShellFileAccess.ExistsFunc();
+  mOptions.FileExists := TCoreFileAccess.ExistsFunc();
   if AInstallation <> nil then
   begin
     mOptions.Variables := AInstallation.Variables;
@@ -173,8 +168,8 @@ begin
     end;
 end;
 
-class function TShellWorkspaceJobs.MissingUnitSetupOf(const AProject: TProjectInfo;
-  const AInstall: TShellInstallInfo): TMissingUnitSetup;
+class function TCoreWorkspaceJobs.MissingUnitSetupOf(const AProject: TProjectInfo;
+  const AInstall: TCoreInstallInfo; const AFactories: TCoreWorkspaceFactories): TMissingUnitSetup;
 var
   mInstallation: ILibraryPathProvider;
 begin
@@ -182,7 +177,7 @@ begin
   Result.ActiveLibraryPaths := AInstall.LibraryPaths;
   Result.Project := AProject;
   Result.Namespaces := AProject.Namespaces;
-  mInstallation := InstallationOf(AInstall.DelphiVersion);
+  mInstallation := InstallationOf(AFactories, AInstall.DelphiVersion);
   Result.Targets := TargetsOf(AProject, mInstallation);
   if mInstallation <> nil then
   begin
@@ -190,12 +185,12 @@ begin
     Result.LibraryPaths := LibraryPathsOf(mInstallation);
   end;
   Result.ListFiles := TSharedUnitListings.ListUnitFilesFunc();
-  Result.ListFolders := TShellFileAccess.FoldersFunc();
+  Result.ListFolders := TCoreFileAccess.FoldersFunc();
 end;
 
-{ TShellBaselineFile }
+{ TCoreBaselineFile }
 
-constructor TShellBaselineFile.Create(const ARoot, AName: string; const ALogger: ILogger);
+constructor TCoreBaselineFile.Create(const ARoot, AName: string; const ALogger: ILogger);
 begin
   inherited Create;
   FRoot := ARoot;
@@ -204,14 +199,14 @@ begin
   FLock := TObject.Create;
 end;
 
-destructor TShellBaselineFile.Destroy;
+destructor TCoreBaselineFile.Destroy;
 begin
   FLock.Free;
   FLogger := nil;
   inherited;
 end;
 
-procedure TShellBaselineFile.Read(const AFileName: string);
+procedure TCoreBaselineFile.Read(const AFileName: string);
 var
   mFormat: TFileFormat;
 begin
@@ -227,7 +222,7 @@ begin
   end;
 end;
 
-function TShellBaselineFile.Current: IRuleBaseline;
+function TCoreBaselineFile.Current: IRuleBaseline;
 var
   mFileName: string;
   mTime: TDateTime;
@@ -254,6 +249,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Workspace.Jobs', cTexts);
+  TAtlasTextTables.Add('Core.Workspace.Jobs', cTexts);
 
 end.

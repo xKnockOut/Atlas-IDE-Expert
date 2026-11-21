@@ -402,7 +402,7 @@ var
   mFiles, mTexts: TArray<string>;
   mRun: TIndexRun;
 begin
-  // Wie TShellWorkspaceGroup.RuleProject: Die Regeln bekommen den Index über TCheckProject.Services. Ohne
+  // Wie TCoreWorkspaceGroup.RuleProject: Die Regeln bekommen den Index über TCheckProject.Services. Ohne
   // Dateinamen wie der Lauf ohne Index, damit nur der Index den Unterschied macht.
   mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
