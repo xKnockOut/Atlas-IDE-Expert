@@ -67,7 +67,7 @@ uses
   System.IOUtils,
   System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Shell.VersionControlChanges;
 
 type
