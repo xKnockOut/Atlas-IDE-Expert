@@ -73,7 +73,7 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.ConsideredUsed,
+  Atlas.Common.Semantics.ConsideredUsed,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 

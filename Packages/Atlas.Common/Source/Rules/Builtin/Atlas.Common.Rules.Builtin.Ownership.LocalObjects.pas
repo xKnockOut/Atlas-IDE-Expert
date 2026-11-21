@@ -20,7 +20,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Semantics.Ancestry;
 
 const
   cLocalObjectNotFreedRuleId = 'local-object-not-freed';
@@ -88,7 +88,6 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Ownership.TryFinally,
   Atlas.Common.Localization.Texts;
 

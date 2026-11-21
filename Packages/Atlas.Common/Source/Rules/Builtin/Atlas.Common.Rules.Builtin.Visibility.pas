@@ -84,8 +84,8 @@ uses
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.ConsideredUsed,
+  Atlas.Common.Semantics.Ancestry,
+  Atlas.Common.Semantics.ConsideredUsed,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 

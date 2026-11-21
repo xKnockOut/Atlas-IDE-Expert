@@ -79,7 +79,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Ownership.TryFinally,
   Atlas.Common.Rules.Builtin.Ownership.TokenScan,
   Atlas.Common.Localization.Texts;

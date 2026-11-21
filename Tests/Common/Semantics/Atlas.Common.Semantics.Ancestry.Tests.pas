@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests;
+﻿unit Atlas.Common.Semantics.Ancestry.Tests;
 
 // Tests der gemeinsamen Hilfen der Vererbungsregeln: Sichtbarkeit für Nachfahren.
 
@@ -18,7 +18,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Index.Contract;
 
 { TInheritanceAncestryTests }

@@ -12,7 +12,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Builtin.Inheritance;
+  Atlas.Common.Semantics.Ancestry;
 
 const
   // Bekannte VCL-Basisklassen; erreicht die Vorfahrenkette eine davon, gilt die Klasse

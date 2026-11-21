@@ -40,7 +40,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Ownership,
   Atlas.Common.Localization.Texts;
 

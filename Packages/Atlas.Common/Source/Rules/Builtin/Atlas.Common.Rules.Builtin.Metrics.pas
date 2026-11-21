@@ -113,7 +113,7 @@ uses
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Localization.Texts;
 

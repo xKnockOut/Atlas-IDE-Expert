@@ -41,7 +41,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Localization.Texts;
 

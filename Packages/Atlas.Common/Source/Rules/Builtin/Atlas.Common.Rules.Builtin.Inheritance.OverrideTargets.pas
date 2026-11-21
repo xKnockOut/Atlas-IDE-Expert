@@ -33,6 +33,7 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
