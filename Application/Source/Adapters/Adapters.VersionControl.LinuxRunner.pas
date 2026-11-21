@@ -1,4 +1,4 @@
-﻿unit Shell.Platform.VersionControlRunner;
+﻿unit Adapters.VersionControl.LinuxRunner;
 
 // Prozessläufer für git und svn unter Linux (#1109): Gegenstück zu
 // Atlas.Core.VersionControl.Providers.ProcessRunner, das Windows-Pipes nutzt und im
@@ -6,7 +6,7 @@
 // von SliceMs gelesen, damit keine volle Pipe den Prozess anhält; Zeitlimit und
 // Abbruch beenden den Prozess; stdin ist leer, git und svn fragen nie nach
 // (dazu GIT_TERMINAL_PROMPT=0 und GCM_INTERACTIVE=never in der Umgebung, #1287).
-// Nur im Linux-Bau (Shell.Platform), deshalb nicht in AtlasServer.dproj.
+// Nur im Linux-Bau (Platform.Server), deshalb nicht in AtlasServer.dproj.
 
 interface
 

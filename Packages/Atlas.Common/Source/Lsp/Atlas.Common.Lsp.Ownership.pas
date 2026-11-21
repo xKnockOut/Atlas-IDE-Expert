@@ -2,7 +2,7 @@
 
 // Befehl atlas.server.ownership [uri] (#1877): „Wer gibt das frei?“ für jede
 // Erzeugung T.Create(…) der Unit, für die Marke am Zeilenende im Plugin. Die
-// Einstufung kommt aus Atlas.Common.Leaks.Ownership; „nie freigegeben“ nur dort,
+// Einstufung kommt aus Atlas.Common.Rules.Ownership; „nie freigegeben“ nur dort,
 // wo die Leck-Regeln (TOwnershipSites.cRuleIds) mit den Einstellungen der Datei
 // einen Befund melden, damit Marke und Problem nie auseinanderlaufen.
 //
@@ -21,7 +21,7 @@ uses
   System.JSON,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Leaks.Ownership;
+  Atlas.Common.Rules.Ownership;
 
 type
   /// <summary>Text der Datei (geöffnet vor Platte) und Umfeld der Prüfregeln zu AUri; False ohne Text.</summary>

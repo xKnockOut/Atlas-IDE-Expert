@@ -70,7 +70,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Text.Anonymize,
-  Shell.Platform;
+  Platform.Server;
 
 const
   /// <summary>So viele Zeilen des Protokolls im Fehlerbericht (#108); das Diagnosepaket nimmt alle (#1356).</summary>
@@ -319,7 +319,7 @@ var
   mWorkspace: TWorkspaceStatus;
 begin
   // Fenster „Atlas-Server“ (#1356): Prozess, Speicher je Bereich, Prüflauf, Warteschlangen, Cache-Treffer.
-  AStatus.ProcessId := TShellPlatform.CurrentProcessId;
+  AStatus.ProcessId := TServerPlatform.CurrentProcessId;
   AStatus.Version := TProductVersion.cVersion;
   AStatus.Started := FStartedAt;
   AStatus.UptimeMs := FUptime.ElapsedMilliseconds;

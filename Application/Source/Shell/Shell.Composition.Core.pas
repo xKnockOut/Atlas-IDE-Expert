@@ -14,7 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Shell.Platform,
+  Platform.Server,
   Shell.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
