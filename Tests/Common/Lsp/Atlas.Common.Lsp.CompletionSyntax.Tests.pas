@@ -58,7 +58,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Tests.SourceText;
 
 const
   cHead =
@@ -71,29 +72,6 @@ const
     '  end;'#10 +                   // 6
     'implementation'#10;            // 7
 
-/// <summary>Text ohne "|" und die Position des "|".</summary>
-function Split(const AMarked: string; out APosition: TTextPosition): string;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to Pos('|', AMarked) - 1 do
-  begin
-    if AMarked[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  APosition := TTextPosition.Create(mLine, mCharacter);
-  Result := StringReplace(AMarked, '|', '', []);
-end;
-
 { TCompletionSyntaxTests }
 
 function TCompletionSyntaxTests.Assess(const AMarked: string; ACount: Integer): TCompletionSyntaxNotice;
@@ -102,7 +80,7 @@ var
   mPosition: TTextPosition;
   mTree: TSyntaxTree;
 begin
-  mText := Split(AMarked, mPosition);
+  mText := TTestSource.Unmark(AMarked, mPosition);
   mTree := TPascalParser.Parse(mText);
   try
     Result := TCompletionSyntax.Assess(mTree, mText, mPosition, ACount);
@@ -122,7 +100,7 @@ var
   mPosition: TTextPosition;
   mTree: TSyntaxTree;
 begin
-  mText := Split(AMarked, mPosition);
+  mText := TTestSource.Unmark(AMarked, mPosition);
   mTree := TPascalParser.Parse(mText);
   try
     Result := TCompletionSyntax.ScopeAt(mTree.Tokens, mPosition);
@@ -296,7 +274,7 @@ var
   end;
 
 begin
-  mText := Split(cHead + 'procedure TF.A;'#10'var'#10'  Value: Integer;'#10'begin'#10'  X := (1 + ;'#10 +
+  mText := TTestSource.Unmark(cHead + 'procedure TF.A;'#10'var'#10'  Value: Integer;'#10'begin'#10'  X := (1 + ;'#10 +
     '  Va|'#10'end;'#10'end.', mPosition);
   mUri := TDocumentUris.FromPath('C:\P\Haupt.pas');
   mStore := TDocumentStore.Create;

@@ -52,7 +52,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.CompilerFixes;
+  Atlas.Common.Editing.CompilerFixes,
+  Atlas.Tests.Files;
 
 const
   cLB = #13#10;
@@ -351,32 +352,6 @@ const
     '' + cLB +
     'end.' + cLB;
 
-function TestsFile(const ARelative: string): string;
-var
-  mStarts: TArray<string>;
-  mStart, mDirectory: string;
-begin
-  mStarts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
-  for mStart in mStarts do
-  begin
-    mDirectory := mStart;
-    while mDirectory <> '' do
-    begin
-      Result := TPath.Combine(mDirectory, TPath.Combine('Tests', ARelative));
-      if TFile.Exists(Result) then
-      begin
-        Exit;
-      end;
-      if ExtractFileDir(mDirectory) = mDirectory then
-      begin
-        Break;
-      end;
-      mDirectory := ExtractFileDir(mDirectory);
-    end;
-  end;
-  Result := '';
-end;
-
 procedure TCompilerFixesTests.MatchesGoldenFile;
 const
   // Von unten nach oben, damit die Zeilen darüber gelten; die uses-Korrekturen zuletzt.
@@ -395,7 +370,7 @@ begin
     mText := Fixed1(mText, TFixMessage.Create(cCodes[mIndex], cLines[mIndex], -1, cTexts[mIndex]));
     Assert.AreNotEqual('', mText, cCodes[mIndex]);
   end;
-  mFileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
+  mFileName := TTestData.Path(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.CompilerFixesGolden.pas')));
   Assert.AreNotEqual('', mFileName, 'Golden-Datei nicht gefunden');
   mGolden := TFile.ReadAllText(mFileName, TEncoding.UTF8);

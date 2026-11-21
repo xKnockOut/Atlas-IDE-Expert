@@ -103,19 +103,10 @@ begin
     end;
 end;
 
-const
-  cLibraryNames: array[0..3] of string = ('C:\BDS\lib\System.dcu', 'C:\BDS\lib\SysInit.dcu',
-    'C:\BDS\lib\System.SysUtils.dcu', 'C:\BDS\lib\Vcl.Forms.dcu');
-
 function LibraryFiles: TArray<string>;
-var
-  mName: string;
 begin
-  Result := nil;
-  for mName in cLibraryNames do
-  begin
-    Result := Result + [mName];
-  end;
+  Result := TArray<string>.Create('C:\BDS\lib\System.dcu', 'C:\BDS\lib\SysInit.dcu',
+    'C:\BDS\lib\System.SysUtils.dcu', 'C:\BDS\lib\Vcl.Forms.dcu');
 end;
 
 // Ohne const: Aufrufer übergeben TUnitLookup.Create(...) direkt; nur so zählt Delphi die Referenz und gibt das

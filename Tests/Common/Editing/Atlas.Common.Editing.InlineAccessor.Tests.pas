@@ -45,7 +45,8 @@ uses
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Editing.InlineAccessor;
+  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -101,18 +102,6 @@ const
     'end;'#10 +
     #10 +
     'end.'#10;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
 
 function Names(const AAccessors: TArray<TTrivialAccessor>): string;
 var
@@ -304,7 +293,7 @@ begin
     mLayout.Free;
     mTree.Free;
   end;
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   // protected behält nur SetColor; Properties zeigen auf die Felder.
   Assert.IsTrue(ContainsStr(mText, '  protected'#10'    procedure SetColor(const AValue: Integer);'#10'  public'#10 +
     '    property Name: string read FName write FName;'#10 +
@@ -324,7 +313,7 @@ begin
     mLayout.Free;
     mTree.Free;
   end;
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsFalse(ContainsStr(mText, 'protected'), mText);
 end;
 

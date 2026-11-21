@@ -41,7 +41,8 @@ uses
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Mcp.Statistics,
-  Atlas.Common.Mcp.StatusTools;
+  Atlas.Common.Mcp.StatusTools,
+  Atlas.Tests.TempFolder;
 
 const
   cNow: TDateTime = 46324.5;
@@ -78,11 +79,7 @@ end;
 
 procedure TMcpStatusToolsTests.TearDown;
 begin
-  if TDirectory.Exists(FRoot) then
-  begin
-    TDirectory.Delete(FRoot, True);
-  end;
-  FRoot := '';
+  TTestTempFolder.Remove(FRoot);
 end;
 
 procedure TMcpStatusToolsTests.ShowsIdeServerStatus;

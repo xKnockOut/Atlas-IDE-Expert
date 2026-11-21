@@ -4,7 +4,8 @@
 // Anwenden, mit Install Farben und Anwenden über die Haken der IDE-Schicht,
 // Abonnenten bei jedem Wechsel bis zum Abmelden, Fehler ins Protokoll,
 // Textfarben der Meldungen aus der Palette, Dialogschrift, Fensterfarben aus
-// dem Stil des Steuerelements (nicht der festen Palette).
+// dem Stil des Steuerelements (nicht der festen Palette), Systemfarben über den
+// Stil und Schriftfarben, die dem Thema folgen, bis das Steuerelement geht.
 
 interface
 
@@ -33,16 +34,24 @@ type
     procedure DialogFontIsSegoeNine;
     [Test]
     procedure WindowColorsComeFromStyleOfControl;
+    [Test]
+    procedure SystemColorComesFromStyleOfControl;
+    [Test]
+    procedure FontColorFollowsThemeUntilDefault;
+    [Test]
+    procedure FontColorEndsWithControl;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.UITypes,
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
+  Vcl.StdCtrls,
   Vcl.Themes,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
@@ -206,6 +215,78 @@ begin
     Assert.AreEqual(Integer(ColorToRGB(StyleServices(mForm).GetSystemColor(clWindowText))), Integer(mColors.Text));
     mColors := TAtlasUiTheme.WindowColors(nil);
     Assert.AreEqual(Integer(ColorToRGB(StyleServices.GetSystemColor(clWindow))), Integer(mColors.Surface), 'ohne');
+  finally
+    mForm.Free;
+  end;
+end;
+
+procedure TAtlasUiThemeTests.SystemColorComesFromStyleOfControl;
+var
+  mForm: TForm;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    Assert.AreEqual(Integer(ColorToRGB(StyleServices(mForm).GetSystemColor(clGrayText))),
+      Integer(TAtlasUiTheme.SystemColor(mForm, clGrayText)));
+    Assert.AreEqual(Integer(ColorToRGB(StyleServices.GetSystemColor(clHighlight))),
+      Integer(TAtlasUiTheme.SystemColor(nil, clHighlight)), 'ohne Steuerelement');
+    // Keine Systemfarbe: unverändert.
+    Assert.AreEqual(Integer(TColor($123456)), Integer(TAtlasUiTheme.SystemColor(mForm, TColor($123456))));
+  finally
+    mForm.Free;
+  end;
+end;
+
+procedure TAtlasUiThemeTests.FontColorFollowsThemeUntilDefault;
+var
+  mForm: TForm;
+  mLabel: TLabel;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mLabel := TLabel.Create(mForm);
+    mLabel.Parent := mForm;
+    TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
+    // Ohne seFont, sonst übergeht der Stil Font.Color.
+    Assert.IsFalse(seFont in mLabel.StyleElements);
+    Assert.AreEqual(Integer(TAtlasUiTheme.SystemColor(mLabel, clGrayText)), Integer(mLabel.Font.Color));
+    mLabel.Font.Color := TColor($123456);
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(Integer(TAtlasUiTheme.SystemColor(mLabel, clGrayText)), Integer(mLabel.Font.Color), 'Wechsel');
+    TAtlasUiTheme.UseFontColor(mLabel, clHotLight);
+    Assert.AreEqual(Integer(TAtlasUiTheme.SystemColor(mLabel, clHotLight)), Integer(mLabel.Font.Color), 'ersetzt');
+    Assert.AreEqual(1, mLabel.ComponentCount, 'ein Hüter');
+    TAtlasUiTheme.UseFontColor(mLabel, clDefault);
+    Assert.IsTrue(seFont in mLabel.StyleElements);
+    Assert.AreEqual(Integer(clWindowText), Integer(mLabel.Font.Color));
+    Assert.AreEqual(0, mLabel.ComponentCount, 'Hüter weg');
+    mLabel.Font.Color := TColor($123456);
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(Integer(TColor($123456)), Integer(mLabel.Font.Color), 'folgt nicht mehr');
+    TAtlasUiTheme.UseFontColor(nil, clGrayText);
+  finally
+    mForm.Free;
+  end;
+end;
+
+procedure TAtlasUiThemeTests.FontColorEndsWithControl;
+var
+  mForm: TForm;
+  mLabel: TLabel;
+  mKeeper: TComponent;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mLabel := TLabel.Create(mForm);
+    mLabel.Parent := mForm;
+    TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
+    mKeeper := mLabel.Components[0];
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(mKeeper));
+    mLabel.Free;
+    Assert.IsFalse(TAtlasUiTheme.Subscribed(mKeeper), 'abgemeldet');
+    // Erreicht nichts Freigegebenes mehr.
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(0, mForm.ComponentCount);
   finally
     mForm.Free;
   end;

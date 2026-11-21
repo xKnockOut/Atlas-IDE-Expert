@@ -24,6 +24,8 @@ type
     [Test]
     procedure BuildsPrepareArguments;
     [Test]
+    procedure BuildsFromSourceOnlyWhenConfirmed;
+    [Test]
     procedure BuildsApplyArgumentsFromSelection;
     [Test]
     procedure ChoiceKeepsRequiredPackages;
@@ -124,7 +126,7 @@ procedure TAtlasUpdateInstallTests.BuildsPrepareArguments;
 var
   mArgs, mParsed: TUpdateArguments;
 begin
-  mArgs := TAtlasUpdateInstall.PrepareArgs(Environment, cRoot, '2.1.0', TUpdateChannels.cStableUrl, 'skip');
+  mArgs := TAtlasUpdateInstall.PrepareArgs(Environment, cRoot, '2.1.0', TUpdateChannels.cStableUrl, 'skip', False);
   mParsed := TUpdateArguments.Parse(mArgs.ToArgs);
   Assert.AreEqual('prepare', mParsed.Command);
   Assert.AreEqual('2.1.0', mParsed.Version);
@@ -134,6 +136,25 @@ begin
   Assert.AreEqual(cRoot + '\2.1.0', mParsed.Staging);
   Assert.AreEqual('Software\Embarcadero\BDS\37.0', mParsed.RegistryKey);
   Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Skip, mParsed.NewModules);
+  Assert.IsFalse(mParsed.AllowSource, 'ohne Bestätigung nicht aus dem Quelltext bauen');
+end;
+
+procedure TAtlasUpdateInstallTests.BuildsFromSourceOnlyWhenConfirmed;
+var
+  mArgs: TUpdateArguments;
+  mStage: TUpdateStage;
+begin
+  mArgs := TAtlasUpdateInstall.PrepareArgs(Environment, cRoot, '2.1.0', TUpdateChannels.cStableUrl, 'ask', True);
+  Assert.IsTrue(TUpdateArguments.Parse(mArgs.ToArgs).AllowSource);
+  mStage := Default(TUpdateStage);
+  mStage.Phase := TUpdatePhase.Failed;
+  mStage.Error := TUpdateErrors.cSourceConfirm;
+  Assert.IsTrue(TAtlasUpdateInstall.AwaitsSourceConfirmation(mStage));
+  mStage.Error := TUpdateErrors.cNoCompiler;
+  Assert.IsFalse(TAtlasUpdateInstall.AwaitsSourceConfirmation(mStage));
+  mStage.Error := TUpdateErrors.cSourceConfirm;
+  mStage.Phase := TUpdatePhase.Downloading;
+  Assert.IsFalse(TAtlasUpdateInstall.AwaitsSourceConfirmation(mStage));
 end;
 
 procedure TAtlasUpdateInstallTests.BuildsApplyArgumentsFromSelection;

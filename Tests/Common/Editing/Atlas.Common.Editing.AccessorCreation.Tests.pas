@@ -53,7 +53,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.AccessorCreation;
+  Atlas.Common.Editing.AccessorCreation,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cKopf =
@@ -64,65 +66,6 @@ const
     'implementation'#10 +
     #10 +
     'end.'#10;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
-
-/// <summary>Wendet AEdits an; sie dürfen sich nicht überlappen. Gleiche Stelle in der gegebenen Reihenfolge.</summary>
-function ApplyEdits(const AText: string; const AEdits: TArray<TTextEdit>): string;
-var
-  mLines: TArray<string>;
-  mOrder: TArray<Integer>;
-  mIndex, mInner, mSwap, mStart, mStop: Integer;
-
-  function OffsetOf(const APos: TTextPosition): Integer;
-  var
-    mLine: Integer;
-  begin
-    Result := 0;
-    for mLine := 0 to APos.Line - 1 do
-    begin
-      Inc(Result, Length(mLines[mLine]) + 1);
-    end;
-    Inc(Result, APos.Character);
-  end;
-
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOrder, Length(AEdits));
-  for mIndex := 0 to High(mOrder) do
-  begin
-    mOrder[mIndex] := mIndex;
-  end;
-  // Von hinten anwenden.
-  for mIndex := 0 to High(mOrder) do
-  begin
-    for mInner := mIndex + 1 to High(mOrder) do
-    begin
-      if OffsetOf(AEdits[mOrder[mIndex]].Range.StartPos) <= OffsetOf(AEdits[mOrder[mInner]].Range.StartPos) then
-      begin
-        mSwap := mOrder[mIndex];
-        mOrder[mIndex] := mOrder[mInner];
-        mOrder[mInner] := mSwap;
-      end;
-    end;
-  end;
-  Result := AText;
-  for mIndex in mOrder do
-  begin
-    mStart := OffsetOf(AEdits[mIndex].Range.StartPos);
-    mStop := OffsetOf(AEdits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart) + AEdits[mIndex].NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
 
 function Plan(AKind: TAccessorKind; const AName, AType, AIndex, ASection: string): TAccessorPlan; overload;
 begin
@@ -173,7 +116,7 @@ begin
     Assert.IsTrue(mSource.ClassAt(mClassSymbol), 'Klasse');
     if TAccessorCreation.Edits(mSource, AIndex, mClassSymbol, APlan, mEdits, AWithField) then
     begin
-      Result := ApplyEdits(AText, mEdits);
+      Result := TTestEdits.Apply(AText, mEdits);
     end;
   finally
     mSource.Free;
@@ -224,7 +167,7 @@ var
   mIndex: ISymbolIndex;
 begin
   mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(Join([
+  mIndex.AddUnit(TIndexExtractor.ExtractText(TTestSource.Lines([
     'unit Typen;',
     'interface',
     'type',

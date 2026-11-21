@@ -48,7 +48,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.Overloads,
-  Atlas.Common.Lsp.Overloads;
+  Atlas.Common.Lsp.Overloads,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cLogFile = 'C:\P\Log.pas';
@@ -102,16 +103,6 @@ begin
   end;
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 procedure TLspOverloadsTests.ActionsOnHeader;
 var
   mActions: TArray<TJSONObject>;
@@ -129,14 +120,14 @@ begin
     Assert.AreEqual(TLspOverloads.cForwardName, mArguments.Items[2].Value);
     Assert.AreEqual(TLspOverloads.cCopyName, mActions[1].GetValue<TJSONArray>('command.arguments').Items[2].Value);
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
   // Nicht auf einem Kopf: keine Aktion.
   mActions := ActionsAt(13, 2);
   try
     Assert.AreEqual(0, Integer(Length(mActions)));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -150,7 +141,7 @@ begin
     Assert.AreEqual(TOverloads.DestructorReason, mActions[0].GetValue<string>('disabled.reason'));
     Assert.IsNull(mActions[0].FindValue('command'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 

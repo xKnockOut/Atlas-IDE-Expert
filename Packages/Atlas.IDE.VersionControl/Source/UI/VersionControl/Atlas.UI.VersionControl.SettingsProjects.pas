@@ -358,8 +358,7 @@ begin
   FVcsProjectRemove := AddRowButton(mPanel, cVcsAddCurrentWidth + cVcsAddWidth + cVcsButtonGap + cVcsButtonGap,
     cVcsRemoveWidth, TAtlasTextId.SettingsIssuesConnectionRemove, VcsProjectRemoveClick);
   Attach(mPanel, FVcsProjectList);
-  mHint := AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsHint));
-  mHint.Font.Color := clGrayText;
+  mHint := AddNote(cLongNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsHint));
   Attach(mHint.Parent, FVcsProjectList);
 end;
 
@@ -813,8 +812,7 @@ begin
   FVcsServerNote.Left := 0;
   FVcsServerNote.Top := 1;
   Attach(mPanel, FVcsServerList);
-  mHint := AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServersHint));
-  mHint.Font.Color := clGrayText;
+  mHint := AddNote(cLongNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServersHint));
   Attach(mHint.Parent, FVcsServerList);
 end;
 

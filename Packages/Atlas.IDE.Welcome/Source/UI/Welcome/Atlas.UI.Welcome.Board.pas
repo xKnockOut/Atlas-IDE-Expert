@@ -1071,7 +1071,6 @@ begin
   FInsertLine.BevelOuter := bvNone;
   FInsertLine.ParentBackground := False;
   FInsertLine.StyleElements := [];
-  FInsertLine.Color := clHighlight;
   FInsertLine.Height := FInsertLine.ScaleValue(3);
   FInsertLine.Visible := False;
 end;

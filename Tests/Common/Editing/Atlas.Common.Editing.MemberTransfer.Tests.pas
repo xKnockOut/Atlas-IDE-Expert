@@ -37,7 +37,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer;
+  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -60,18 +61,6 @@ const
     'procedure TFoo.Run;'#10'begin'#10'  Step;'#10'end;'#10#10 +
     'procedure TFoo.Done;'#10'begin'#10'end;'#10#10 +
     'end.'#10;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
 
 { TMemberTransferTests }
 
@@ -166,7 +155,7 @@ begin
     TTransferDeclaration.Create('FHidden: Integer;', TClassVisibility.Private_, True),
     TTransferDeclaration.Create('procedure Help;', TClassVisibility.Protected_, False)],
     ['procedure TBar.Run;'#10'begin'#10'end;'], mReason), mReason);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(ContainsStr(mText, '  TBar = class'#10'  private'#10'    FHidden: Integer;'#10'  protected'#10 +
     '    procedure Help;'#10'  public'#10'    FData: string;'#10'    procedure Show;'#10'    procedure Run;'#10 +
     '  end;'), mText);
@@ -189,7 +178,7 @@ begin
     mLayout.Free;
     mTree.Free;
   end;
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   // strict private fällt weg; protected zwischen private und public, Feld vor Methode.
   Assert.IsTrue(ContainsStr(mText, '  TFoo = class'#10'  private'#10'    FCount: Integer;'#10'  protected'#10 +
     '    FHidden: Integer;'#10'    procedure Run;'#10'  public'#10), mText);

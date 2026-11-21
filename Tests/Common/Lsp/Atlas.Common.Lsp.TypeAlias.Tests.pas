@@ -52,7 +52,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.TypeAlias,
-  Atlas.Common.Lsp.TypeAlias;
+  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cKundenFile = 'C:\P\Kunden.pas';
@@ -217,16 +218,6 @@ begin
   end;
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 procedure TLspTypeAliasTests.ActionsOfferScopes;
 var
   mActions: TArray<TJSONObject>;
@@ -252,7 +243,7 @@ begin
     Assert.AreEqual('unit', mArguments.Items[3].Value);
     Assert.AreEqual('project', mActions[2].GetValue<TJSONArray>('command.arguments').Items[3].Value);
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -266,7 +257,7 @@ begin
     Assert.IsNull(mActions[0].GetValue('command'));
     Assert.AreEqual(Format(TTypeAlias.OpenParamsReason, ['T']), mActions[0].GetValue<string>('disabled.reason'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -286,7 +277,7 @@ begin
     Assert.AreEqual(6, mArguments.Items[1].GetValue<Integer>('line'));
     Assert.AreEqual(2, mArguments.Items[1].GetValue<Integer>('character'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 

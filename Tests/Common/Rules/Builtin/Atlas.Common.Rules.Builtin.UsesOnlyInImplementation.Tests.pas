@@ -50,7 +50,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Configuration.TestSupport;
 
 const
   cOther = 'unit Andere;'#13#10#13#10'interface'#13#10#13#10'procedure Mach;'#13#10#13#10'implementation'#13#10#13#10 +
@@ -119,14 +120,6 @@ begin
       Result := Result + mFinding.Message + ';';
     end;
   end;
-end;
-
-function Settings(const AJson: string): TServerSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  Result := TConfigurationParser.Parse(AJson, mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 { TUsesOnlyInImplementationTests }
@@ -224,9 +217,9 @@ end;
 
 procedure TUsesOnlyInImplementationTests.RuleOffAndSuppressionAreQuiet;
 begin
-  Assert.AreEqual('', Names(Check(UnitText('Andere', ''), Settings(
+  Assert.AreEqual('', Names(Check(UnitText('Andere', ''), SettingsOf(
     '{"rules": {"uses-only-in-implementation": "off"}}'), Index, 'Bericht.pas')));
-  Assert.AreEqual('', Names(Check(UnitText('Andere', ''), Settings(
+  Assert.AreEqual('', Names(Check(UnitText('Andere', ''), SettingsOf(
     '{"rules": {"uses-only-in-implementation": {"severity": "hint", "exclude": ["Bericht.pas"]}}}'), Index,
     'Bericht.pas')));
   Assert.AreEqual('', Names(Check(UnitText('// lsp-ignore: uses-only-in-implementation'#13#10'  Andere', ''))));

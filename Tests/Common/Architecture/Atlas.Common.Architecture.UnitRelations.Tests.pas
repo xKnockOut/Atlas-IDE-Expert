@@ -70,7 +70,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Architecture.UnitRelations,
-  Atlas.Common.Architecture.UsesGraph.Tests;
+  Atlas.Common.Architecture.UsesGraph.Tests,
+  Atlas.Common.Architecture.TestSupport;
 
 function UnitSource(const AName: string; const AInterface, AImplementation: TArray<string>): string;
 begin
@@ -90,15 +91,6 @@ end;
 function FileOf(const AName: string): string;
 begin
   Result := UsesUnit(AName, nil, nil).FileName;
-end;
-
-function NoDefines: TUsesDefinesFunc;
-begin
-  Result :=
-    function(const AFileName: string): TArray<string>
-    begin
-      Result := nil;
-    end;
 end;
 
 function Find(const ARelations: TArray<TUnitRelation>; const AName: string): TUnitRelation;

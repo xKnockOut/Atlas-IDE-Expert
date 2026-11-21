@@ -53,9 +53,8 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Reassigned;
+  Atlas.Common.Lsp.Reassigned,
+  Atlas.Tests.SymbolIndex;
 
 const
   cLB = #13#10;
@@ -164,9 +163,7 @@ end;
 procedure TLspReassignedTests.Setup;
 begin
   FStore := TDocumentStore.Create;
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+  FIndex := TTestIndex.Build([cUnitOther, cOtherFile, cUnitMain, cMainFile]);
 end;
 
 procedure TLspReassignedTests.TearDown;

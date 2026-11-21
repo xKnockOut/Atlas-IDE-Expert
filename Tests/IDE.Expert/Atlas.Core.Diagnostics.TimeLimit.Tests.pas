@@ -2,7 +2,9 @@
 
 // Absturzsicherheit (#493): Zeitlimit für Quellen, gemeinsames Abbruchsignal
 // und Sicherung je Quelle in der zusammengeführten Vervollständigung. Eine
-// Zeitüberschreitung ist kein Fehler und schaltet keine Quelle ab.
+// Zeitüberschreitung ist kein Fehler und schaltet keine Quelle ab. Hängende
+// Arbeiter gehen beim Beenden und beim Abmelden des Moduls ihrer Quelle an
+// TAtlasOverdueThreads; festgehalten wird dabei nie wirklich (ResetForTests).
 
 interface
 
@@ -40,6 +42,23 @@ type
     procedure FetchErrorsCountPerProvider;
     [Test]
     procedure WaitIdleWaitsForAbandonedWorker;
+    /// <summary>StopAll übergibt einen hängenden Arbeiter an TAtlasOverdueThreads; er zählt für das Package,
+    /// bis er zurückkehrt, und wird dann freigegeben.</summary>
+    [Test]
+    procedure StopAllHandsHangingWorkerOver;
+    /// <summary>Hängt ein Aufruf mit Code eines Modul-Packages, zählt er nach StopAll für dieses Package.</summary>
+    [Test]
+    procedure StopAllKeepsModuleOfHangingCall;
+    /// <summary>Abmelden eines Moduls: aufgegebene Arbeiter mit seinem Code gehen sofort über, andere nicht.
+    /// </summary>
+    [Test]
+    procedure ReleaseModuleHandsOverAbandonedWorkers;
+    /// <summary>Wartet ein Aufrufer noch, geht der Arbeiter erst über, wenn dieser aufgibt.</summary>
+    [Test]
+    procedure ReleaseModuleWaitsForWaitingCaller;
+    /// <summary>Die zusammengeführte Vervollständigung führt das Package jeder Quelle mit.</summary>
+    [Test]
+    procedure HangingProviderCountsForItsPackage;
     [Test]
     procedure StaleQueryAfterPrepareFetchesNothing;
     [Test]
@@ -62,6 +81,9 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.UnloadSafety,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Composite,
@@ -71,6 +93,13 @@ uses
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Providers.Server,
   Atlas.Core.Lsp.Session;
+
+const
+  /// <summary>Handle eines Modul-Packages, das es nicht gibt.</summary>
+  cModule = $5A5B0000;
+  /// <summary>Ein zweites, an dem nichts hängt.</summary>
+  cOtherModule = $5A5C0000;
+  cHangMs = 5000;
 
 type
   TSink = class(TInterfacedObject, IAtlasCompletionSink)
@@ -287,10 +316,16 @@ begin
   TAtlasGuard.Fuse.ResetAll;
   TAtlasShutdown.Reset;
   TAtlasTimeLimit.LimitMs := TAtlasTimeLimit.cDefaultMs;
+  // Festhalten nur zählen, nie das Testprogramm wirklich festhalten.
+  TAtlasUnloadSafety.ResetForTests(
+    procedure(AModule: HMODULE)
+    begin
+    end);
 end;
 
 procedure TAtlasTimeLimitTests.TearDown;
 begin
+  TAtlasUnloadSafety.ResetForTests(nil);
   TAtlasShutdown.Reset;
   TAtlasGuard.Fuse.ResetAll;
   TAtlasGuard.OnWarning := nil;
@@ -606,6 +641,188 @@ begin
     TAtlasTimeLimit.WaitIdle(2000);
     mRelease.Free;
   end;
+end;
+
+/// <summary>Wartet auf AEvent, höchstens cHangMs: ein Aufruf, der in nicht abbrechbarem Code steckt.</summary>
+function HangOn(AEvent: TEvent): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      AEvent.WaitFor(cHangMs);
+    end;
+end;
+
+/// <summary>Gibt AEvent frei und wartet, bis kein überfälliger Arbeiter von AModule mehr läuft.</summary>
+function ReleaseAndSettle(AEvent: TEvent; AModule: HMODULE): Boolean;
+const
+  cSettleMs = 2000;
+begin
+  AEvent.SetEvent;
+  Result := TAtlasOverdueThreads.SettleBeforeUnload(AModule, cSettleMs);
+end;
+
+procedure TAtlasTimeLimitTests.StopAllHandsHangingWorkerOver;
+var
+  mError: string;
+  mRelease: TEvent;
+  mBefore: Integer;
+begin
+  mRelease := TEvent.Create(nil, True, False, '');
+  try
+    mBefore := TAtlasOverdueThreads.Pending(HInstance);
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut,
+      TAtlasTimeLimit.Run(HangOn(mRelease), mError, 50));
+    Assert.IsFalse(TAtlasTimeLimit.StopAll(50), 'der Arbeiter steckt noch im Aufruf');
+    Assert.AreEqual(0, TAtlasTimeLimit.BusyCount, 'nicht mehr im Vorrat');
+    Assert.AreEqual(mBefore + 1, TAtlasOverdueThreads.Pending(HInstance),
+      'überfällig: SettleBeforeUnload wartet auf ihn und hält das Package sonst fest');
+    Assert.IsTrue(ReleaseAndSettle(mRelease, HInstance), 'nach seiner Rückkehr beendet');
+    Assert.AreEqual(0, TAtlasOverdueThreads.Pending(HInstance), 'und freigegeben');
+    Assert.IsTrue(TAtlasUnloadSafety.IsSafe(HInstance));
+  finally
+    ReleaseAndSettle(mRelease, HInstance);
+    mRelease.Free;
+  end;
+end;
+
+procedure TAtlasTimeLimitTests.StopAllKeepsModuleOfHangingCall;
+var
+  mError: string;
+  mRelease: TEvent;
+begin
+  mRelease := TEvent.Create(nil, True, False, '');
+  try
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut,
+      TAtlasTimeLimit.Run(HangOn(mRelease), mError, 50, cModule));
+    Assert.IsFalse(TAtlasTimeLimit.StopAll(50));
+    Assert.AreEqual(1, TAtlasOverdueThreads.Pending(cModule), 'das Package der Quelle, nicht nur das eigene');
+    Assert.IsTrue(ReleaseAndSettle(mRelease, cModule));
+    Assert.AreEqual(0, TAtlasOverdueThreads.Pending(cModule));
+  finally
+    ReleaseAndSettle(mRelease, cModule);
+    mRelease.Free;
+  end;
+end;
+
+procedure TAtlasTimeLimitTests.ReleaseModuleHandsOverAbandonedWorkers;
+var
+  mError: string;
+  mRelease: TEvent;
+  mOther: TEvent;
+begin
+  mOther := nil;
+  mRelease := TEvent.Create(nil, True, False, '');
+  try
+    mOther := TEvent.Create(nil, True, False, '');
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut,
+      TAtlasTimeLimit.Run(HangOn(mRelease), mError, 50, cModule));
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut,
+      TAtlasTimeLimit.Run(HangOn(mOther), mError, 50, cOtherModule));
+    Assert.AreEqual(0, TAtlasTimeLimit.ReleaseModule(0), '0 wird übergangen');
+    Assert.AreEqual(1, TAtlasTimeLimit.ReleaseModule(cModule), 'nur der Arbeiter im Code des Moduls');
+    Assert.AreEqual(1, TAtlasOverdueThreads.Pending(cModule));
+    Assert.AreEqual(0, TAtlasOverdueThreads.Pending(cOtherModule), 'der andere bleibt im Vorrat');
+    Assert.AreEqual(1, TAtlasTimeLimit.BusyCount);
+    Assert.AreEqual(0, TAtlasTimeLimit.ReleaseModule(cModule), 'schon übergeben');
+    Assert.IsTrue(ReleaseAndSettle(mRelease, cModule));
+    mOther.SetEvent;
+    Assert.IsTrue(TAtlasTimeLimit.WaitIdle(2000), 'der andere kehrt in den Vorrat zurück');
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Done, TAtlasTimeLimit.Run(
+      procedure
+      begin
+      end, mError), 'der Vorrat arbeitet weiter');
+  finally
+    ReleaseAndSettle(mRelease, cModule);
+    if mOther <> nil then
+    begin
+      mOther.SetEvent;
+      TAtlasTimeLimit.WaitIdle(2000);
+    end;
+    mOther.Free;
+    mRelease.Free;
+  end;
+end;
+
+/// <summary>Führt in einem eigenen Thread Run mit ALimitMs für AModule aus; AOutcome bekommt das Ergebnis.
+/// </summary>
+function RunInThread(AEvent: TEvent; ALimitMs: Integer; AModule: HMODULE;
+  AOutcome: PInteger): TThread;
+var
+  mEvent: TEvent;
+begin
+  mEvent := AEvent;
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mError: string;
+    begin
+      AOutcome^ := Ord(TAtlasTimeLimit.Run(HangOn(mEvent), mError, ALimitMs, AModule));
+    end);
+  Result.FreeOnTerminate := False;
+  Result.Start;
+end;
+
+procedure TAtlasTimeLimitTests.ReleaseModuleWaitsForWaitingCaller;
+const
+  cCallerLimitMs = 400;
+var
+  mRelease: TEvent;
+  mCaller: TThread;
+  mOutcome: Integer;
+  mWatch: TStopwatch;
+begin
+  mCaller := nil;
+  mOutcome := -1;
+  mRelease := TEvent.Create(nil, True, False, '');
+  try
+    mCaller := RunInThread(mRelease, cCallerLimitMs, cModule, @mOutcome);
+    mWatch := TStopwatch.StartNew;
+    while (TAtlasTimeLimit.BusyCount = 0) and (mWatch.ElapsedMilliseconds < 2000) do
+    begin
+      TThread.Yield;
+    end;
+    Assert.AreEqual(1, TAtlasTimeLimit.BusyCount, 'der Aufruf läuft');
+    Assert.AreEqual(0, TAtlasTimeLimit.ReleaseModule(cModule), 'der Aufrufer wartet noch auf den Arbeiter');
+    JoinThread(mCaller);
+    mCaller := nil;
+    Assert.AreEqual(Ord(TAtlasTimedOutcome.TimedOut), mOutcome);
+    Assert.AreEqual(1, TAtlasOverdueThreads.Pending(cModule), 'übergeben, als der Aufrufer aufgab');
+    Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
+    Assert.IsTrue(ReleaseAndSettle(mRelease, cModule));
+  finally
+    mRelease.SetEvent;
+    JoinThread(mCaller);
+    ReleaseAndSettle(mRelease, cModule);
+    mRelease.Free;
+  end;
+end;
+
+procedure TAtlasTimeLimitTests.HangingProviderCountsForItsPackage;
+var
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mHanging: IAtlasCompletionProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
+  mModule: HMODULE;
+begin
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mHanging := TBrokenProvider.Create('Hängt', cHangMs);
+  // Das Testprogramm spielt das Modul-Package der Quelle.
+  mModule := TAtlasMainThread.CodeModuleOf(mHanging);
+  Assert.AreEqual<HMODULE>(HInstance, mModule, 'Package mit dem Code der Quelle');
+  mProviders.Add(mHanging);
+  mSink := TSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(3000), 'Complete trotz hängender Quelle');
+  Assert.AreEqual(1, TAtlasTimeLimit.ReleaseModule(mModule), 'Abmelden des Moduls übergibt den Arbeiter');
+  // Die Quelle hört auf das Abbruchsignal.
+  TAtlasShutdown.Signal;
+  Assert.IsTrue(TAtlasOverdueThreads.SettleBeforeUnload(mModule, 2000));
+  Assert.AreEqual(0, TAtlasOverdueThreads.Pending(mModule));
 end;
 
 procedure TAtlasTimeLimitTests.StaleQueryAfterPrepareFetchesNothing;

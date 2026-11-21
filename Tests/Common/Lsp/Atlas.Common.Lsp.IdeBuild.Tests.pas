@@ -27,7 +27,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.IdeBuild;
+  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cSample = '{"project":"C:\\P\\A.dproj","platform":"Win32","success":false,"messages":[' +
@@ -60,19 +61,6 @@ begin
   Assert.AreEqual(Ord(TCompilerSeverity.Fatal), Ord(mMessages[2].Severity));
 end;
 
-procedure Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    ADispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
-end;
-
 procedure TLspIdeBuildTests.RemembersLastBuildAndRaisesEvent;
 var
   mBuild: TLspIdeBuild;
@@ -92,9 +80,9 @@ begin
       end;
     mBuild.Attach(mDispatcher);
     Assert.IsFalse(mBuild.LastBuild.Known);
-    Notify(mDispatcher, TLspIdeBuild.cFinishedMethod,
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cFinishedMethod,
       '{"project":"C:\\P\\A.dproj","kind":"build","configuration":"Debug","platform":"Win32","success":false,"durationMs":1234}');
-    Notify(mDispatcher, TLspIdeBuild.cMessagesMethod, cSample);
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cMessagesMethod, cSample);
     Assert.AreEqual(3, mReceived);
     Assert.IsTrue(mBuild.LastBuild.Known);
     Assert.AreEqual('C:\P\A.dproj', mBuild.LastBuild.Project);
@@ -135,19 +123,19 @@ begin
         end;
       end;
     mBuild.Attach(mDispatcher);
-    Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"group":true,"kind":"make"}');
-    Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\A.dproj"}');
-    Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\B.dproj"}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"group":true,"kind":"make"}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\A.dproj"}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\B.dproj"}');
     Assert.IsTrue(mBuild.Compiling);
-    Notify(mDispatcher, TLspIdeBuild.cFinishedMethod, '{"project":"C:\\P\\A.dproj","success":true}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cFinishedMethod, '{"project":"C:\\P\\A.dproj","success":true}');
     Assert.IsTrue(mBuild.Compiling, 'B und die Gruppe laufen noch');
     // Fehlt das Ende von B, beendet das Ende der Gruppe alles.
-    Notify(mDispatcher, TLspIdeBuild.cFinishedMethod, '{"group":true,"success":true}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cFinishedMethod, '{"group":true,"success":true}');
     Assert.IsFalse(mBuild.Compiling);
     // Einzelnes Projekt im Hintergrund (#548).
-    Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\A.dproj","background":true}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cStartedMethod, '{"project":"C:\\P\\A.dproj","background":true}');
     Assert.IsTrue(mBuild.Compiling);
-    Notify(mDispatcher, TLspIdeBuild.cFinishedMethod, '{"project":"c:\\p\\a.dproj","background":true}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspIdeBuild.cFinishedMethod, '{"project":"c:\\p\\a.dproj","background":true}');
     Assert.IsFalse(mBuild.Compiling);
     Assert.AreEqual('+-+-', mEvents);
   finally

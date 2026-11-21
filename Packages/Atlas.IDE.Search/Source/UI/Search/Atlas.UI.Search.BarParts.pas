@@ -23,8 +23,6 @@ uses
   Atlas.UI.Search.Strings;
 
 type
-  TAtlasSearchBarParts = class;
-
   TAtlasSearchBarStep = reference to procedure(ABackward: Boolean);
 
   /// <summary>Teile der Leiste nach den Einstellungen (#893); Vorgabe (Default) alles aus.</summary>
@@ -43,10 +41,11 @@ type
   /// den Editor ein. CN_KEYDOWN des inneren Eingabefelds kommt bei der Combobox an.</summary>
   TAtlasSearchCombo = class(TComboBox)
   private
+    FHistory: TAtlasSearchHistory;
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
   public
     /// <summary>Verlauf des Felds (gehört dem Aufrufer; nil = kein Verlauf).</summary>
-    History: TAtlasSearchHistory;
+    property History: TAtlasSearchHistory read FHistory write FHistory;
     /// <summary>Bleibt die Taste im Feld, statt als Tastenkürzel der IDE zu gelten?</summary>
     class function KeepsKey(AKey: Word; AShift: TShiftState): Boolean; static;
   end;
@@ -83,30 +82,9 @@ type
     function HasContent: Boolean;
   end;
 
-  /// <summary>Ereignisse der Leiste für den Aufrufer.</summary>
-  TAtlasSearchBarEvents = class(TComponent)
-  public
-    /// <summary>Text, Optionen oder Bereich geändert.</summary>
-    OnQueryChanged: TProc;
-    OnStep: TAtlasSearchBarStep;
-    OnList: TProc;
-    OnClose: TProc;
-    /// <summary>Ein Feld der Leiste hat den Fokus bekommen.</summary>
-    OnControlEnter: TProc<TWinControl>;
-    OnReplace: TProc;
-    OnReplaceAll: TProc;
-    OnChoose: TProc;
-    OnCancel: TProc;
-    /// <summary>Ersetzen-Zeile auf- oder zugeklappt bzw. Ersatztext geändert.</summary>
-    OnReplaceShown: TProc;
-    /// <summary>Knöpfe, die vorher den Verlauf merken (In Meldungen, Ersetzen, Alle ersetzen, Auswählen): True mit
-    /// dem Ereignis des Knopfs ASender aus AParts.</summary>
-    function RememberingButton(AParts: TAtlasSearchBarParts; ASender: TObject; out AEvent: TProc): Boolean;
-  end;
-
-  /// <summary>Steuerelemente der Leiste (gehören der Leiste; auch für Tests).</summary>
-  TAtlasSearchBarParts = class(TComponent)
-  public
+  /// <summary>Steuerelemente der Leiste (gehören der Leiste; auch für Tests). Ein Record: Nach dem Aufbau
+  /// ändern sich die Verweise nicht mehr, Leiste und Felder halten dieselben.</summary>
+  TAtlasSearchBarParts = record
     SearchRow: TPanel;
     ReplaceRow: TPanel;
     InfoRow: TPanel;
@@ -130,6 +108,38 @@ type
     ReplaceAllButton: TButton;
     ChooseButton: TButton;
     InfoLine: TAtlasSearchInfoLine;
+  end;
+
+  /// <summary>Ereignisse der Leiste für den Aufrufer.</summary>
+  TAtlasSearchBarEvents = class(TComponent)
+  private
+    FOnQueryChanged: TProc;
+    FOnStep: TAtlasSearchBarStep;
+    FOnList: TProc;
+    FOnClose: TProc;
+    FOnControlEnter: TProc<TWinControl>;
+    FOnReplace: TProc;
+    FOnReplaceAll: TProc;
+    FOnChoose: TProc;
+    FOnCancel: TProc;
+    FOnReplaceShown: TProc;
+  public
+    /// <summary>Text, Optionen oder Bereich geändert.</summary>
+    property OnQueryChanged: TProc read FOnQueryChanged write FOnQueryChanged;
+    property OnStep: TAtlasSearchBarStep read FOnStep write FOnStep;
+    property OnList: TProc read FOnList write FOnList;
+    property OnClose: TProc read FOnClose write FOnClose;
+    /// <summary>Ein Feld der Leiste hat den Fokus bekommen.</summary>
+    property OnControlEnter: TProc<TWinControl> read FOnControlEnter write FOnControlEnter;
+    property OnReplace: TProc read FOnReplace write FOnReplace;
+    property OnReplaceAll: TProc read FOnReplaceAll write FOnReplaceAll;
+    property OnChoose: TProc read FOnChoose write FOnChoose;
+    property OnCancel: TProc read FOnCancel write FOnCancel;
+    /// <summary>Ersetzen-Zeile auf- oder zugeklappt bzw. Ersatztext geändert.</summary>
+    property OnReplaceShown: TProc read FOnReplaceShown write FOnReplaceShown;
+    /// <summary>Knöpfe, die vorher den Verlauf merken (In Meldungen, Ersetzen, Alle ersetzen, Auswählen): True mit
+    /// dem Ereignis des Knopfs ASender aus AParts.</summary>
+    function RememberingButton(const AParts: TAtlasSearchBarParts; ASender: TObject; out AEvent: TProc): Boolean;
   end;
 
   /// <summary>Stand der Leiste: vorbereitete Suche, Stufen, angebotene Bereiche, Einstellungen.</summary>
@@ -157,7 +167,7 @@ type
     OnButton: TNotifyEvent;
   end;
 
-  /// <summary>Baut die Zeilen der Leiste (Such-, Ersetzen- und Hinweiszeile) in AParts auf.</summary>
+  /// <summary>Baut die Zeilen der Leiste (Such-, Ersetzen- und Hinweiszeile) und liefert ihre Steuerelemente.</summary>
   TAtlasSearchBarBuilder = class
   public const
     /// <summary>Höhe einer Zeile vor dem Skalieren.</summary>
@@ -180,8 +190,8 @@ type
   public
     /// <summary>Steuerelemente in ABar (Besitzer und Eltern); AScale skaliert Bildpunkte nach der DPI der Leiste.
     /// </summary>
-    class procedure Build(ABar: TWinControl; AParts: TAtlasSearchBarParts; const AHandlers: TAtlasSearchBarHandlers;
-      const AScale: TFunc<Integer, Integer>); static;
+    class function Build(ABar: TWinControl; const AHandlers: TAtlasSearchBarHandlers;
+      const AScale: TFunc<Integer, Integer>): TAtlasSearchBarParts; static;
   end;
 
 implementation
@@ -385,7 +395,7 @@ end;
 
 { TAtlasSearchBarEvents }
 
-function TAtlasSearchBarEvents.RememberingButton(AParts: TAtlasSearchBarParts; ASender: TObject;
+function TAtlasSearchBarEvents.RememberingButton(const AParts: TAtlasSearchBarParts; ASender: TObject;
   out AEvent: TProc): Boolean;
 begin
   AEvent := nil;
@@ -593,22 +603,23 @@ begin
   FParts.InfoLine.Margins.SetBounds(FScale(cGap + cToggleWidth), FScale(2), FScale(cGap), FScale(2));
 end;
 
-class procedure TAtlasSearchBarBuilder.Build(ABar: TWinControl; AParts: TAtlasSearchBarParts;
-  const AHandlers: TAtlasSearchBarHandlers; const AScale: TFunc<Integer, Integer>);
+class function TAtlasSearchBarBuilder.Build(ABar: TWinControl; const AHandlers: TAtlasSearchBarHandlers;
+  const AScale: TFunc<Integer, Integer>): TAtlasSearchBarParts;
 var
   mBuilder: TAtlasSearchBarBuilder;
 begin
   mBuilder := TAtlasSearchBarBuilder.Create;
   try
     mBuilder.FBar := ABar;
-    mBuilder.FParts := AParts;
+    mBuilder.FParts := Default(TAtlasSearchBarParts);
     mBuilder.FHandlers := AHandlers;
     mBuilder.FScale := AScale;
-    AParts.SearchRow := mBuilder.AddRow(0);
-    AParts.ReplaceRow := mBuilder.AddRow(cReplaceRowTop);
-    AParts.InfoRow := mBuilder.AddRow(cInfoRowTop);
+    mBuilder.FParts.SearchRow := mBuilder.AddRow(0);
+    mBuilder.FParts.ReplaceRow := mBuilder.AddRow(cReplaceRowTop);
+    mBuilder.FParts.InfoRow := mBuilder.AddRow(cInfoRowTop);
     mBuilder.BuildSearchRow;
     mBuilder.BuildReplaceRow;
+    Result := mBuilder.FParts;
   finally
     mBuilder.Free;
   end;

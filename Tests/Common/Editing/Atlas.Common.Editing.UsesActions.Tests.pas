@@ -83,7 +83,8 @@ uses
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Lsp.InactiveRegions;
+  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Kleiner Index: Units.A (Foo), Units.B (Bar), Units.Reg (Init), Units.C (Baz, Mitglied Qux).</summary>
 function Info(const AUnitName: string): TUsesUnitInfo;
@@ -149,56 +150,6 @@ begin
   Result := Result + AImplementation + 'end.';
 end;
 
-/// <summary>Edits von hinten nach vorn anwenden.</summary>
-function Apply(const AText: string; const AEdits: TArray<TRuleEdit>): string;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mIndex: Integer;
-  begin
-    mLine := 0;
-    mIndex := 1;
-    while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-    begin
-      if AText[mIndex] = #10 then
-      begin
-        Inc(mLine);
-      end;
-      Inc(mIndex);
-    end;
-    Result := mIndex + APosition.Character;
-  end;
-
-var
-  mOrder: TArray<Integer>;
-  I, J, mSwap, mStart, mStop: Integer;
-begin
-  Result := AText;
-  SetLength(mOrder, Length(AEdits));
-  for I := 0 to High(mOrder) do
-  begin
-    mOrder[I] := I;
-  end;
-  for I := 0 to High(mOrder) do
-  begin
-    for J := I + 1 to High(mOrder) do
-    begin
-      if OffsetOf(AEdits[mOrder[J]].Range.StartPos) > OffsetOf(AEdits[mOrder[I]].Range.StartPos) then
-      begin
-        mSwap := mOrder[I];
-        mOrder[I] := mOrder[J];
-        mOrder[J] := mSwap;
-      end;
-    end;
-  end;
-  for I in mOrder do
-  begin
-    mStart := OffsetOf(AEdits[I].Range.StartPos);
-    mStop := OffsetOf(AEdits[I].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AEdits[I].NewText + Copy(Result, mStop, MaxInt);
-  end;
-end;
-
 function RemoveUnused(const AText: string; const AKeep: TArray<string>): string; overload;
 var
   mTokens: TArray<TPascalToken>;
@@ -207,7 +158,7 @@ begin
   mTokens := TPascalLexer.Tokenize(AText);
   if TUsesActions.RemoveUnits(mTokens, AText, TUsesActions.UnusedUnits(mTokens, Info, AKeep), #10, mEdits) then
   begin
-    Result := Apply(AText, mEdits);
+    Result := TTestEdits.Apply(AText, mEdits);
   end
   else
   begin
@@ -260,7 +211,7 @@ begin
   begin
     Exit;
   end;
-  AResult := Apply(AText, [mEdit]);
+  AResult := TTestEdits.Apply(AText, [mEdit]);
   mTree := TPascalParser.Parse(AResult);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), AResult);
@@ -348,7 +299,7 @@ begin
   Assert.AreEqual('Units.A', string.Join(',', mUnits));
   Assert.IsTrue(TUsesActions.MoveUnits(mTokens, mText, mUnits, #10, mEdits));
   Assert.AreEqual(Source('Units.B', 'type'#10'  T = Bar;'#10, 'Units.C,'#10'  Units.A',
-    'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10), Apply(mText, mEdits));
+    'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10), TTestEdits.Apply(mText, mEdits));
 end;
 
 procedure TUsesActionsTests.MovesUnitToInterface;
@@ -359,10 +310,10 @@ begin
   // Unit-Beziehungen (#593): aus dem implementation- ins interface-uses, auch ohne interface-uses.
   mText := Source('Units.A', '', 'Units.B, Units.C', '');
   Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(mText), mText, ['Units.C'], #10, mEdits));
-  Assert.AreEqual(Source('Units.A,'#10'  Units.C', '', 'Units.B', ''), Apply(mText, mEdits));
+  Assert.AreEqual(Source('Units.A,'#10'  Units.C', '', 'Units.B', ''), TTestEdits.Apply(mText, mEdits));
   mText := Source('', '', 'Units.B', '');
   Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(mText), mText, ['Units.B'], #10, mEdits));
-  Assert.AreEqual('unit U;'#10'interface'#10#10'uses'#10'  Units.B;'#10'implementation'#10#10'end.', Apply(mText, mEdits),
+  Assert.AreEqual('unit U;'#10'interface'#10#10'uses'#10'  Units.B;'#10'implementation'#10#10'end.', TTestEdits.Apply(mText, mEdits),
     'leere Liste fällt weg, neue entsteht');
   mText := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
   Assert.IsFalse(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(mText), mText, ['Units.B'], #10, mEdits),
@@ -386,7 +337,7 @@ begin
   Assert.IsTrue(TUsesClauses.Organize(TPascalLexer.Tokenize(mText), mText, True, #10, mEdits, True));
   // "uses" steht in eigener Zeile, also eine Unit je Zeile.
   Assert.AreEqual(Source('Data.Bind,'#10'  Data.DB,'#10'  Vcl.Controls,'#10'  Vcl.Forms,'#10'  Abc,'#10'  Eigen', '', '', ''),
-    Apply(mText, mEdits));
+    TTestEdits.Apply(mText, mEdits));
 end;
 
 procedure TUsesActionsTests.InterfaceUsagesNameTheNeed;
@@ -490,7 +441,7 @@ begin
   Assert.AreEqual('Units.A,Units.C', string.Join(',', mAdded));
   // Die Einfügehilfe von TUsesClauses setzt je Unit eine Zeile und vor ein neues uses eine Leerzeile.
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.A;'#10'procedure P(X: Foo);'#10 +
-    'implementation'#10#10'uses'#10'  Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(mText, mEdits));
+    'implementation'#10#10'uses'#10'  Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', TTestEdits.Apply(mText, mEdits));
   // Nichts Neues: kein Edit.
   Assert.IsFalse(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.B'], Declaring, nil,
     #10), mEdits, mAdded));
@@ -499,7 +450,7 @@ begin
   mText := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
   Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
     #10), mEdits, mAdded));
-  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(mText, mEdits));
+  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', TTestEdits.Apply(mText, mEdits));
 end;
 
 procedure TUsesActionsTests.AddsUnitsToChosenSection;
@@ -516,16 +467,16 @@ begin
   Assert.AreEqual(1, Integer(Length(mEdits)), 'ein Edit, also ein Rückgängig-Schritt');
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B;'#10'procedure P(X: Foo);'#10 +
     'implementation'#10#10'uses'#10'  Units.A, Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.',
-    Apply(mText, mEdits));
+    TTestEdits.Apply(mText, mEdits));
   Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
     #10).WithTarget(TUsesAddTarget.Interface_), mEdits, mAdded));
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'procedure P(X: Foo);'#10 +
-    'implementation'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(mText, mEdits));
+    'implementation'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', TTestEdits.Apply(mText, mEdits));
   // Programm: das einzige uses, gleich welcher Abschnitt.
   mText := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
   Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText), TUsesAddRequest.Create(['Units.C'], Declaring, nil,
     #10).WithTarget(TUsesAddTarget.Implementation_), mEdits, mAdded));
-  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(mText, mEdits));
+  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', TTestEdits.Apply(mText, mEdits));
 end;
 
 procedure TUsesActionsTests.EntriesNameTheirState;

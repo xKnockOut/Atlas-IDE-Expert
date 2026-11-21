@@ -61,43 +61,12 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.Inlining;
+  Atlas.Common.Editing.Inlining,
+  Atlas.Tests.SourceText;
 
 const
   /// <summary>Routine mit const-Parameter: Die Datenflussanalyse weiß, dass Log ihr Argument nicht ändert.</summary>
   cLogDecl = 'procedure Log(const A: Integer);'#10'begin'#10'end;'#10;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
-
-function PositionOf(const AText: string; AIndex: Integer): TTextPosition;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to AIndex - 1 do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mCharacter);
-end;
 
 /// <summary>Text ohne "|" und die Stelle der Marke.</summary>
 function Unmark(const AMarked: string; out APosition: TTextPosition): string;
@@ -106,12 +75,12 @@ var
 begin
   mStart := Pos('|', AMarked);
   Result := StringReplace(AMarked, '|', '', []);
-  APosition := PositionOf(Result, mStart);
+  APosition := TTestSource.PositionAt(Result, mStart);
 end;
 
 function Unit_(const ABody: array of string): string;
 begin
-  Result := Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(ABody) + Join(['', 'end.']);
+  Result := TTestSource.Lines(['unit U;', '', 'interface', '', 'implementation', '']) + TTestSource.Lines(ABody) + TTestSource.Lines(['', 'end.']);
 end;
 
 /// <summary>Namensauflösung für Tests: FCount ist privates Feld von TCounter, Limit hat in AShadowTree eine
@@ -153,19 +122,6 @@ begin
     end;
 end;
 
-/// <summary>Vorher und Nachher müssen fehlerfrei parsen (Abnahme von #103).</summary>
-procedure CheckParses(const AText: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), AText);
-  finally
-    mTree.Free;
-  end;
-end;
-
 function Options(AInline: Boolean): TInlineOptions;
 begin
   Result := TInlineOptions.Default;
@@ -182,7 +138,7 @@ var
   mAction: TCodeAction;
 begin
   mText := Unmark(AMarked, mPosition);
-  CheckParses(mText);
+  TTestSource.AssertParses(mText);
   mTree := TPascalParser.Parse(mText);
   try
     if not TInlineRefactoring.InlineVariable(TInlineSource.Create('u.pas', mText, mTree), mPosition, Options(True),
@@ -191,7 +147,7 @@ begin
       Exit('-');
     end;
     Result := TChangeSignature.ApplyEdits(mText, mAction.Edits);
-    CheckParses(Result);
+    TTestSource.AssertParses(Result);
   finally
     mTree.Free;
   end;
@@ -218,7 +174,7 @@ begin
   ATitle := '';
   AReason := '';
   mText := Unmark(AMarked, mPosition);
-  CheckParses(mText);
+  TTestSource.AssertParses(mText);
   mTree := TPascalParser.Parse(mText);
   try
     mSource := TInlineSource.Create('u.pas', mText, mTree);
@@ -238,7 +194,7 @@ begin
     end;
     ATitle := mAction.Title;
     Result := TChangeSignature.ApplyEdits(mText, mAction.Edits);
-    CheckParses(Result);
+    TTestSource.AssertParses(Result);
   finally
     mTree.Free;
   end;
@@ -424,16 +380,16 @@ const
 var
   mTitle, mReason: string;
 begin
-  Assert.AreEqual(Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(cHead) +
-    Join(['  Y: Integer;', 'begin', '  var AddResult: Integer;', '  if 5 < 0 then', '    AddResult := 0', '  else',
+  Assert.AreEqual(TTestSource.Lines(['unit U;', '', 'interface', '', 'implementation', '']) + TTestSource.Lines(cHead) +
+    TTestSource.Lines(['  Y: Integer;', 'begin', '  var AddResult: Integer;', '  if 5 < 0 then', '    AddResult := 0', '  else',
     '  begin', '    C.FCount := C.FCount + 5;', '    AddResult := C.FCount;', '  end;', '  Y := AddResult;', 'end;',
     '', 'end.']),
-    Method(Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(cHead) +
-    Join(['  Y: Integer;', 'begin', '  Y := C.|Add(5);', 'end;', '', 'end.']), True, mTitle, mReason));
+    Method(TTestSource.Lines(['unit U;', '', 'interface', '', 'implementation', '']) + TTestSource.Lines(cHead) +
+    TTestSource.Lines(['  Y: Integer;', 'begin', '  Y := C.|Add(5);', 'end;', '', 'end.']), True, mTitle, mReason));
   Assert.AreEqual('Methode Add einbetten', mTitle);
   // Außerhalb der Klasse ist das private Feld nicht zugänglich.
-  Assert.AreEqual('-', Method(Join(['unit U;', '', 'interface', '', 'implementation', '']) +
-    Join(Slice(cHead, 17)) + Join(['procedure P(C: TCounter);', 'var', '  Y: Integer;', 'begin',
+  Assert.AreEqual('-', Method(TTestSource.Lines(['unit U;', '', 'interface', '', 'implementation', '']) +
+    TTestSource.Lines(Slice(cHead, 17)) + TTestSource.Lines(['procedure P(C: TCounter);', 'var', '  Y: Integer;', 'begin',
     '  Y := C.|Add(5);', 'end;', '', 'end.']), True, mTitle, mReason));
   Assert.Contains(mReason, 'nicht sichtbar');
 end;

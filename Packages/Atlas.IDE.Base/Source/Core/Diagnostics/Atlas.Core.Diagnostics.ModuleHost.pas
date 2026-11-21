@@ -20,8 +20,10 @@
 //    des Moduls, wartet TAtlasOverdueThreads.SettleBeforeUnload kurz und hält
 //    das Package sonst im Speicher. Das wirkt nur hier, vor FreeLibrary; der
 //    Rückruf beim Entladen käme zu spät.
-// ConnectMainThread hängt die Registry an TAtlasMainThread: Einträge eines
-// abgemeldeten Moduls laufen nicht mehr (Regel 3).
+// ConnectRegistry hängt die Registry an TAtlasMainThread und TAtlasTimeLimit:
+// Einträge eines abgemeldeten Moduls laufen nicht mehr (Regel 3), und
+// Zeitlimit-Arbeiter, die noch in seinem Code hängen, gehen an
+// TAtlasOverdueThreads, bevor Schritt 4 sie abwartet bzw. das Package festhält.
 // Base kennt dabei keine Modulnamen (Regel 9): Kennung, Name und Handle gibt
 // das Modul. Das Handle ist das HInstance des Moduls, nie das von Base
 // (Regel 8); deshalb übergibt das Modul es.
@@ -59,9 +61,11 @@ type
     class procedure UnregisterFrom(const ARegistry: IAtlasModuleRegistry; var AScope: IAtlasModuleScope;
       const AId: string; AInstance: HMODULE; const ARelease: TProc; const ALog: TProc<string>); static;
     /// <summary>Einträge in den Hauptthread verfallen mit ihrem Modul: Die Registry meldet Ab- und Anmelden mit
-    /// dem Handle des Packages an TAtlasMainThread (CloseModule, OpenModule). Base ruft das schon in der
-    /// Initialisierung: Module können sich anmelden, bevor die IDE Register von Base ruft (Regel 1).</summary>
-    class procedure ConnectMainThread; static;
+    /// dem Handle des Packages an TAtlasMainThread (CloseModule, OpenModule); beim Abmelden übergibt
+    /// TAtlasTimeLimit.ReleaseModule hängende Arbeiter mit Code des Moduls an TAtlasOverdueThreads. Base ruft das
+    /// schon in der Initialisierung: Module können sich anmelden, bevor die IDE Register von Base ruft (Regel 1).
+    /// </summary>
+    class procedure ConnectRegistry; static;
   end;
 
 implementation
@@ -70,6 +74,7 @@ uses
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Registry;
 
@@ -179,12 +184,13 @@ begin
   end;
 end;
 
-class procedure TAtlasModuleHost.ConnectMainThread;
+class procedure TAtlasModuleHost.ConnectRegistry;
 begin
   TAtlasModuleRegistry.OnModuleClosing :=
     procedure(AHandle: NativeUInt)
     begin
       TAtlasMainThread.CloseModule(AHandle);
+      TAtlasTimeLimit.ReleaseModule(AHandle);
     end;
   TAtlasModuleRegistry.OnModuleOpened :=
     procedure(AHandle: NativeUInt)

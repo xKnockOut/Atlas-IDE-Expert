@@ -289,29 +289,14 @@ begin
     '{"rules": {"dynamic-array-misuse": {"exclude": ["Source/*.pas"]}}}', 'Source/Werte.pas'))));
 end;
 
-/// <summary>Ob eine der eingebauten Regeln die ID ARuleId trägt.</summary>
-function IsBuiltin(const ARuleId: string): Boolean;
-var
-  mRule: IRule;
-begin
-  Result := False;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Id = ARuleId then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 procedure TDynamicArrayMisuseTests.RuleIsRegistered;
 begin
-  Assert.IsTrue(IsBuiltin(cDynamicArrayMisuseRuleId), cDynamicArrayMisuseRuleId);
-  Assert.IsTrue(IsBuiltin(cLocalRoutineAsCallbackRuleId), cLocalRoutineAsCallbackRuleId);
-  Assert.IsTrue(IsBuiltin(cHresultIntegerMixRuleId), cHresultIntegerMixRuleId);
-  Assert.IsTrue(IsBuiltin(cInvalidVarArgumentRuleId), cInvalidVarArgumentRuleId);
-  Assert.IsTrue(IsBuiltin(cConditionNotBooleanRuleId), cConditionNotBooleanRuleId);
-  Assert.IsTrue(IsBuiltin(cForInNotEnumerableRuleId), cForInNotEnumerableRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cDynamicArrayMisuseRuleId), cDynamicArrayMisuseRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cLocalRoutineAsCallbackRuleId), cLocalRoutineAsCallbackRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cHresultIntegerMixRuleId), cHresultIntegerMixRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cInvalidVarArgumentRuleId), cInvalidVarArgumentRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cConditionNotBooleanRuleId), cConditionNotBooleanRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cForInNotEnumerableRuleId), cForInNotEnumerableRuleId);
 end;
 
 { THresultIntegerMixTests }

@@ -41,14 +41,14 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.OpenTools,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cIssueExample =
@@ -85,38 +85,8 @@ const
 
 /// <summary>Quelltext nach den Korrekturen des ersten Treffers (Edits nach Position sortiert).</summary>
 function Fixed(const ASource: string; const AFinding: TRuleFinding): string;
-var
-  mLines: TArray<string>;
-  mOffsets: TArray<Integer>;
-  mIndex: Integer;
-  mEdit: TTextEdit;
 begin
-  mLines := ASource.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  Result := ASource;
-  for mIndex := High(AFinding.Fixes[0].Edits) downto 0 do
-  begin
-    mEdit := AFinding.Fixes[0].Edits[mIndex];
-    Result := Copy(Result, 1, mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character) + mEdit.NewText +
-      Copy(Result, mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-end;
-
-procedure AssertParses(const ASource: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(ASource);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), ASource);
-  finally
-    mTree.Free;
-  end;
+  Result := TTestEdits.ApplyFix(ASource, AFinding.Fixes[0]);
 end;
 
 { TOpenToolsRulesTests }
@@ -155,7 +125,7 @@ begin
     'finalization'#10'  if NotifierIndex >= 0 then'#10 +
     '    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);'#10#10 +
     'end.', mSource);
-  AssertParses(mSource);
+  TTestSource.AssertParses(mSource);
   TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, mSource);
   // Vorhandene finalization wird ergänzt.
   mSource := StringReplace(cIssueExample, #10'end.', #10'initialization'#10'finalization'#10'  Aufraeumen;'#10'end.',
@@ -164,7 +134,7 @@ begin
   mSource := Fixed(mSource, mFindings[0]);
   Assert.Contains(mSource, 'finalization'#10'  if NotifierIndex >= 0 then'#10 +
     '    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);'#10'  Aufraeumen;');
-  AssertParses(mSource);
+  TTestSource.AssertParses(mSource);
 end;
 
 procedure TOpenToolsRulesTests.MethodFixUsesFieldAndDestructor;
@@ -182,7 +152,7 @@ begin
   Assert.Contains(mSource, 'destructor Destroy; override;');
   Assert.Contains(mSource, 'destructor TSpion.Destroy;'#10'begin'#10 +
     '  (BorlandIDEServices as IOTAEditorServices).RemoveNotifier(FNotifierIndex);'#10'  inherited;'#10'end;');
-  AssertParses(mSource);
+  TTestSource.AssertParses(mSource);
   TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create, mSource);
 end;
 

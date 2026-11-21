@@ -51,75 +51,13 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.CollectionCommands;
-
-function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
-begin
-  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits);
-end;
-
-/// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in AEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
-function Expand(const AText: string; ALine: Integer): string;
-var
-  mEdits: TArray<TRuleEdit>;
-begin
-  Assert.IsTrue(Run(AText, ALine, mEdits), AText);
-  Result := Apply(AText, mEdits);
-end;
-
-function ProblemOf(const AText: string): string;
-var
-  mProblems: TArray<TSlashProblem>;
-begin
-  mProblems := TSlashCommandRegistry.Shared.Problems(AText, nil);
-  Assert.AreEqual(1, Integer(Length(mProblems)));
-  Result := mProblems[0].Message;
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
+  Atlas.Common.Editing.CollectionCommands,
+  Atlas.Common.Editing.SlashCommands.TestSupport,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cClassUnit =
@@ -176,7 +114,7 @@ const
 
 function InClass(const ACommand: string; const AMethods: string): string; overload;
 begin
-  Result := Expand(Format(cClassUnit, [ACommand, AMethods]), 14);
+  Result := TSlashTest.Expand(Format(cClassUnit, [ACommand, AMethods]), 14);
 end;
 
 function InClass(const ACommand: string): string; overload;
@@ -186,7 +124,7 @@ end;
 
 function InRoutine(const ACommand: string): string;
 begin
-  Result := Expand(Format(cRoutineUnit, [ACommand]), 14);
+  Result := TSlashTest.Expand(Format(cRoutineUnit, [ACommand]), 14);
 end;
 
 { TCollectionCommandsTests }
@@ -203,7 +141,7 @@ begin
   Assert.Contains(mText, '  FKunden.Free;'#10'  inherited;');
   Assert.Contains(mText, 'System.Classes,'#10'  System.Generics.Collections;');
   Assert.IsFalse(mText.Contains('/list'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TCollectionCommandsTests.ListUsesExistingConstructorAndDestructor;
@@ -214,7 +152,7 @@ begin
   Assert.Contains(mText, '  inherited Create;'#10'  FKunden := TObjectList<TKunde>.Create;');
   Assert.Contains(mText, '  FKunden.Free;'#10'  inherited;');
   Assert.IsFalse(mText.Contains('constructor Create;'#10), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TCollectionCommandsTests.ListOfSimpleTypeIsTList;
@@ -230,7 +168,7 @@ begin
   Assert.Contains(mText, 'var'#10'  Treffer: TObjectList<TKunde>;'#10'begin');
   Assert.Contains(mText, '  Treffer := TObjectList<TKunde>.Create;'#10'  try'#10'    Writeln(1);'#10'  finally'#10 +
     '    Treffer.Free;'#10'  end;');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TCollectionCommandsTests.DictOwnsClassValues;
@@ -250,13 +188,13 @@ begin
   mText := InClass('/dict! FCache: string, Integer');
   Assert.Contains(mText, 'FCache := TDictionary<string, Integer>.Create(TIStringComparer.Ordinal);');
   Assert.Contains(mText, 'System.Generics.Collections,'#10'  System.Generics.Defaults;');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TCollectionCommandsTests.DictIgnoreCaseNeedsStringKey;
 begin
   Assert.AreEqual('/dict! braucht einen String als Schlüssel',
-    ProblemOf(Format(cClassUnit, ['/dict! FCache: Integer, string', ''])));
+    TSlashTest.ProblemOf(Format(cClassUnit, ['/dict! FCache: Integer, string', ''])));
 end;
 
 procedure TCollectionCommandsTests.SortByStringAndDescendingNumber;
@@ -268,7 +206,7 @@ begin
     '    function(const L, R: TKunde): Integer'#10'    begin'#10'      Result := CompareText(L.Name, R.Name);'#10 +
     '    end));'#10'  Writeln(1);');
   Assert.Contains(mText, 'System.Generics.Collections,'#10'  System.Generics.Defaults;');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   mText := InRoutine('/sort Kunden -Umsatz');
   Assert.Contains(mText, 'Result := CompareValue(R.Umsatz, L.Umsatz);');
   Assert.Contains(mText, 'System.Generics.Defaults,'#10'  System.Math;');
@@ -277,8 +215,8 @@ end;
 procedure TCollectionCommandsTests.SortUnknownMemberFails;
 begin
   Assert.AreEqual('TKunde hat kein Feld oder keine Property Ort',
-    ProblemOf(Format(cRoutineUnit, ['/sort Kunden Ort'])));
-  Assert.AreEqual('Elementtyp von Liste nicht erkannt', ProblemOf(Format(cRoutineUnit, ['/sort Liste Name'])));
+    TSlashTest.ProblemOf(Format(cRoutineUnit, ['/sort Kunden Ort'])));
+  Assert.AreEqual('Elementtyp von Liste nicht erkannt', TSlashTest.ProblemOf(Format(cRoutineUnit, ['/sort Liste Name'])));
 end;
 
 procedure TCollectionCommandsTests.FilterCollectsMatches;
@@ -302,8 +240,8 @@ begin
   // Delphi 10.2 (BDS 19.0) kennt keine Inline-Variablen (#109): beide in den var-Abschnitt.
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(cRoutineUnit, ['/filter Kunden Aktiv']),
     TTextPosition.Create(15, 0), TSlashEnvironment.Create(nil, nil, nil, '19.0', '', nil), mEdits));
-  mText := Apply(Format(cRoutineUnit, ['/filter Kunden Aktiv']), mEdits);
-  Assert.IsTrue(Parses(mText), mText);
+  mText := TTestEdits.Apply(Format(cRoutineUnit, ['/filter Kunden Aktiv']), mEdits);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.Contains(mText, 'procedure P(Kunden: TList<TKunde>);'#10'var'#10'  Treffer: TList<TKunde>;'#10 +
     '  K: TKunde;'#10'begin'#10);
   Assert.Contains(mText, '  Treffer := TList<TKunde>.Create;'#10'  try'#10'    for K in Kunden do'#10);
@@ -315,10 +253,10 @@ const
   cUnitLevel = 'unit U;'#10'interface'#10'%s'#10'implementation'#10'end.';
 begin
   Assert.AreEqual('/dict gilt nur in einer Klasse oder im Rumpf einer Routine',
-    ProblemOf(Format(cUnitLevel, ['/dict FCache: string, Integer'])));
-  Assert.AreEqual('/sort gilt nur im Rumpf einer Routine', ProblemOf(Format(cClassUnit, ['/sort FListe Name', ''])));
+    TSlashTest.ProblemOf(Format(cUnitLevel, ['/dict FCache: string, Integer'])));
+  Assert.AreEqual('/sort gilt nur im Rumpf einer Routine', TSlashTest.ProblemOf(Format(cClassUnit, ['/sort FListe Name', ''])));
   Assert.AreEqual('/filter gilt nur im Rumpf einer Routine',
-    ProblemOf(Format(cClassUnit, ['/filter FListe Aktiv', ''])));
+    TSlashTest.ProblemOf(Format(cClassUnit, ['/filter FListe Aktiv', ''])));
 end;
 
 procedure TCollectionCommandsTests.ChoicesForSortAndFilter;
@@ -353,7 +291,7 @@ procedure TCollectionCommandsTests.OutsideClassAndRoutineFails;
 const
   cText = 'unit U;'#10'interface'#10'/list FX: Integer'#10'implementation'#10'end.';
 begin
-  Assert.AreEqual('/list gilt nur in einer Klasse oder im Rumpf einer Routine', ProblemOf(cText));
+  Assert.AreEqual('/list gilt nur in einer Klasse oder im Rumpf einer Routine', TSlashTest.ProblemOf(cText));
 end;
 
 initialization
