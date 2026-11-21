@@ -83,7 +83,8 @@ implementation
 uses
   System.StrUtils,
   Atlas.Text.Json,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 const
   cStatementKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement,
@@ -106,21 +107,6 @@ end;
 function Before(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
-end;
-
-/// <summary>Namen einer Deklaration „A,B“ einzeln.</summary>
-function NamesOf(ANode: TSyntaxNode): TArray<string>;
-var
-  mName: string;
-begin
-  Result := nil;
-  for mName in ANode.Name.Split([',']) do
-  begin
-    if Trim(mName) <> '' then
-    begin
-      Result := Result + [Trim(mName)];
-    end;
-  end;
 end;
 
 function IsNoValueWord(const AText: string): Boolean;
@@ -257,7 +243,7 @@ begin
   begin
     for mIndex := 0 to mParams.ChildCount - 1 do
     begin
-      AddAll(NamesOf(mParams.Children[mIndex]));
+      AddAll(TTextNames.SplitList(mParams.Children[mIndex].Name));
     end;
   end;
   // Ergebnistyp direkt am Kopf: Funktion bzw. Operator.
@@ -276,7 +262,7 @@ begin
   begin
     if ASection.Children[mDecl].Kind = TSyntaxKind.VarDecl then
     begin
-      AddAll(NamesOf(ASection.Children[mDecl]));
+      AddAll(TTextNames.SplitList(ASection.Children[mDecl].Name));
     end;
   end;
 end;
@@ -368,7 +354,7 @@ begin
   // Schleifen- und Inline-Variablen tragen ihren Namen am Knoten.
   if AStatement.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.InlineVar] then
   begin
-    AddAll(NamesOf(AStatement));
+    AddAll(TTextNames.SplitList(AStatement.Name));
   end;
   // Nur die Ausdrücke der Anweisung selbst: Rümpfe und Zweige sind eigene Anweisungen.
   for mIndex := 0 to AStatement.ChildCount - 1 do
@@ -475,7 +461,7 @@ begin
         ((ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and Contains(ANode, ALine));
       if mScoped then
       begin
-        AddAll(NamesOf(ANode));
+        AddAll(TTextNames.SplitList(ANode.Name));
       end;
     end);
 end;

@@ -91,7 +91,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
@@ -177,9 +176,9 @@ begin
 end;
 
 /// <summary>Bearbeitungen AEdits als TextEdit[] nach AResult.</summary>
-procedure AddEdits(AResult: TJSONArray; const AEdits: TArray<TRuleEdit>);
+procedure AddEdits(AResult: TJSONArray; const AEdits: TArray<TTextEdit>);
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mItem: TJSONObject;
 begin
   for mEdit in AEdits do
@@ -196,7 +195,7 @@ procedure TLspFormatting.AddDocComment(const ADocument: ITextDocument; const AUr
 var
   mCancellation: IPascalCancellation;
   mShared: ISharedSyntaxTree;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Abgeschaltet: "///" bleibt, wie getippt.
   if Assigned(FDocCommentsFor) and not FDocCommentsFor(AUri) then
@@ -218,7 +217,7 @@ procedure TLspFormatting.AddSlashCommand(AParams: TJSONObject; const ADocument: 
 var
   mDisabled: TArray<string>;
   mVersion: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mEnvironment: TSlashEnvironment;
 begin
   mDisabled := nil;

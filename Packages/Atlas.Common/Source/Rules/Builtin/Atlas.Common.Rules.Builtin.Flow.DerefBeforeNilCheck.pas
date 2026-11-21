@@ -32,7 +32,8 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -287,7 +288,7 @@ begin
   Result := (mParent <> nil) and (mParent = ANext.Parent);
   if Result then
   begin
-    mPosition := PositionIn(mParent, AStatement);
+    mPosition := TSyntaxNodes.IndexOf(mParent, AStatement);
     Result := (mPosition >= 0) and (mPosition + 1 < mParent.ChildCount) and (mParent[mPosition + 1] = ANext);
   end;
 end;

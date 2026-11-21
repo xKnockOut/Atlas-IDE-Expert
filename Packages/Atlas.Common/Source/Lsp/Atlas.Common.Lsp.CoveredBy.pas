@@ -159,7 +159,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Text.Names;
 
 const
   cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -196,27 +197,12 @@ end;
 
 { Methoden der Unit }
 
-function WithoutGenerics(const AName: string): string;
-var
-  mBracket: Integer;
-begin
-  mBracket := Pos('<', AName);
-  if mBracket > 0 then
-  begin
-    Result := Copy(AName, 1, mBracket - 1);
-  end
-  else
-  begin
-    Result := AName;
-  end;
-end;
-
 /// <summary>Letzter Teil eines qualifizierten Typnamens (TAussen.TInnen → TInnen), ohne Typparameter.</summary>
 function LastTypeName(const AName: string): string;
 var
   mPlain: string;
 begin
-  mPlain := WithoutGenerics(AName);
+  mPlain := TTextNames.WithoutGenerics(AName);
   Result := Copy(mPlain, LastDelimiter('.', mPlain) + 1, MaxInt);
 end;
 
@@ -269,7 +255,7 @@ var
 begin
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind in cTypeKinds) and SameText(WithoutGenerics(mSymbol.Name), ATypeName) then
+    if (mSymbol.Kind in cTypeKinds) and SameText(TTextNames.WithoutGenerics(mSymbol.Name), ATypeName) then
     begin
       ASymbol := mSymbol;
       Exit(True);

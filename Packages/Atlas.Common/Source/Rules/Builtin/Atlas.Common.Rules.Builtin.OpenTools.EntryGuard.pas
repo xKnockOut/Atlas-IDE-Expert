@@ -48,7 +48,8 @@ uses
   Atlas.Common.Rules.Builtin.Flow.Shared,
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.OpenTools.Register,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -229,7 +230,7 @@ begin
     begin
       for mPattern in FInterfaces do
       begin
-        if MatchesWildcard(BareName(mAncestor), mPattern) then
+        if MatchesWildcard(TTextNames.BareTypeName(mAncestor), mPattern) then
         begin
           Exit(True);
         end;
@@ -289,7 +290,7 @@ begin
     end);
   for mName in mFound do
   begin
-    if not InList(FEntries, mName) then
+    if not MatchText(mName, FEntries) then
     begin
       FEntries := FEntries + [mName];
     end;
@@ -338,7 +339,7 @@ begin
     end);
   for mName in mFound do
   begin
-    if (mClass <> '') and not InList(FEntries, mClass + '.' + mName) then
+    if (mClass <> '') and not MatchText(mClass + '.' + mName, FEntries) then
     begin
       FEntries := FEntries + [mClass + '.' + mName];
     end;
@@ -386,7 +387,7 @@ begin
     begin
       Continue;
     end;
-    if not InList(mClasses, mClass) then
+    if not MatchText(mClass, mClasses) then
     begin
       mClasses := mClasses + [mClass];
       if ImplementsEntryInterface(mClass) then
@@ -397,7 +398,7 @@ begin
         end;
       end;
     end;
-    if InList(FEntries, mRoutine.Name) then
+    if MatchText(mRoutine.Name, FEntries) then
     begin
       AddBindings(mRoutine);
     end;
@@ -663,7 +664,7 @@ begin
     begin
       Result := TSyntaxSearchStep.Descend;
       if (ANode.Kind = TSyntaxKind.InheritedExpr) or ((ANode.Kind = TSyntaxKind.Identifier) and
-        InList(mBlocked, ANode.Name)) then
+        MatchText(ANode.Name, mBlocked)) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -778,7 +779,7 @@ begin
   for mRoutine in FRoutines do
   begin
     if (mRoutine.Parent <> nil) and (mRoutine.Parent.Kind = TSyntaxKind.ImplementationSection) and
-      InList(FEntries, mRoutine.Name) then
+      MatchText(mRoutine.Name, FEntries) then
     begin
       CheckEntry(mRoutine);
     end;

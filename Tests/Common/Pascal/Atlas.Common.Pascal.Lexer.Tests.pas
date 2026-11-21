@@ -46,6 +46,8 @@ type
     procedure ReportsUnknownCharacters;
     [Test]
     procedure NamesDirectives;
+    [Test]
+    procedure UnquotedStringUndoublesQuotes;
   end;
 
 implementation
@@ -241,6 +243,13 @@ begin
   Assert.AreEqual('ELSE', TPascalLexer.DirectiveName('{$ELSE}'));
   Assert.AreEqual('', TPascalLexer.DirectiveName('{ kein $IFDEF }'));
   Assert.AreEqual('', TPascalLexer.DirectiveName('// {$IFDEF}'));
+end;
+
+procedure TPascalLexerTests.UnquotedStringUndoublesQuotes;
+begin
+  Assert.AreEqual('It''s', TPascalLexer.UnquotedString('''It''''s'''));
+  Assert.AreEqual('', TPascalLexer.UnquotedString(''''''));
+  Assert.AreEqual('ohne', TPascalLexer.UnquotedString('ohne'));
 end;
 
 initialization

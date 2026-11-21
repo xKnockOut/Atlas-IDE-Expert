@@ -258,37 +258,37 @@ end;
 
 class function TAtlasTestDebug.SplitArguments(const AText: string): TArray<string>;
 var
-  mIndex: Integer;
-  mCurrent: string;
-  mQuoted, mStarted: Boolean;
+  mIndex, mStart: Integer;
+  mQuoted: Boolean;
 begin
   Result := nil;
-  mCurrent := '';
   mQuoted := False;
-  mStarted := False;
+  // Anfang des laufenden Arguments; 0 zwischen zwei Argumenten.
+  mStart := 0;
   for mIndex := 1 to Length(AText) do
   begin
     if not mQuoted and ((AText[mIndex] = ' ') or (AText[mIndex] = #9) or (AText[mIndex] = #13) or
       (AText[mIndex] = #10)) then
     begin
-      if mStarted then
+      if mStart > 0 then
       begin
-        Result := Result + [mCurrent];
+        Result := Result + [Copy(AText, mStart, mIndex - mStart)];
       end;
-      mCurrent := '';
-      mStarted := False;
+      mStart := 0;
       Continue;
     end;
     if AText[mIndex] = '"' then
     begin
       mQuoted := not mQuoted;
     end;
-    mCurrent := mCurrent + AText[mIndex];
-    mStarted := True;
+    if mStart = 0 then
+    begin
+      mStart := mIndex;
+    end;
   end;
-  if mStarted then
+  if mStart > 0 then
   begin
-    Result := Result + [mCurrent];
+    Result := Result + [Copy(AText, mStart, MaxInt)];
   end;
 end;
 

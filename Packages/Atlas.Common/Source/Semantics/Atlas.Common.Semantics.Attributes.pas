@@ -54,7 +54,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -64,28 +65,6 @@ end;
 function Contains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 begin
   Result := Before(ANode.StartPos, APosition) and Before(APosition, ANode.EndPos);
-end;
-
-/// <summary>Name einer Bezeichner- bzw. Punktkette; '' bei anderen Ausdrücken.</summary>
-function DottedName(ANode: TSyntaxNode): string;
-var
-  mSuffix: string;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang.
-  mSuffix := '';
-  while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) do
-  begin
-    mSuffix := '.' + ANode.Name + mSuffix;
-    ANode := ANode[0];
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := ANode.Name + mSuffix;
-  end
-  else
-  begin
-    Result := '';
-  end;
 end;
 
 function FindAttribute(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
@@ -148,7 +127,7 @@ begin
     begin
       Continue;
     end;
-    AUse.Name := DottedName(mNameNode);
+    AUse.Name := TSyntaxNodes.DottedName(mNameNode);
     if AUse.Name = '' then
     begin
       Exit(False);
@@ -350,7 +329,7 @@ begin
     begin
       mItem := mItem[0];
     end;
-    mName := DottedName(mItem);
+    mName := TSyntaxNodes.DottedName(mItem);
     if mName = '' then
     begin
       Continue;

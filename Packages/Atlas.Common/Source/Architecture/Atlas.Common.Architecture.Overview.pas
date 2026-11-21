@@ -266,6 +266,10 @@ type
     class function NamespaceParts(const AUnitName: string): TArray<string>; static;
     /// <summary>Text der Rolle: "Fundament", "Drehscheibe" oder ''.</summary>
     class function RoleCaption(ARole: TOverviewUnitRole): string; static;
+    /// <summary>Schlüssel der Rolle für JSON und Schnappschüsse: "foundation", "hub" oder ''.</summary>
+    class function RoleKey(ARole: TOverviewUnitRole): string; static;
+    /// <summary>Name des Teilsystems ASubsystem von AOverview; '' außerhalb der Liste.</summary>
+    class function SubsystemName(const AOverview: TArchitectureOverview; ASubsystem: Integer): string; static;
     /// <summary>Nachteilung (#1364): teilt jede Gruppe außer ASkip mit ASplit, ein Teil höchstens ADepth Stufen
     /// tief. Das erste Teil nimmt den Platz der Gruppe ein, die übrigen kommen hinten dazu. AFamilies: je
     /// Ergebnis die Nummer der Ausgangsgruppe.</summary>
@@ -1163,6 +1167,28 @@ begin
   else
   begin
     Result := CentralName(FResult.Units, AMembers);
+  end;
+end;
+
+class function TArchitectureAnalyzer.RoleKey(ARole: TOverviewUnitRole): string;
+begin
+  case ARole of
+    TOverviewUnitRole.Foundation:
+      Result := 'foundation';
+    TOverviewUnitRole.Hub:
+      Result := 'hub';
+  else
+    Result := '';
+  end;
+end;
+
+class function TArchitectureAnalyzer.SubsystemName(const AOverview: TArchitectureOverview;
+  ASubsystem: Integer): string;
+begin
+  Result := '';
+  if (ASubsystem >= 0) and (ASubsystem < Length(AOverview.Subsystems)) then
+  begin
+    Result := AOverview.Subsystems[ASubsystem].Name;
   end;
 end;
 

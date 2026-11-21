@@ -143,7 +143,6 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
@@ -321,11 +320,11 @@ begin
   end;
 end;
 
-function DocumentEdit(const AUri: string; const AEdits: TArray<TRuleEdit>): TJSONObject;
+function DocumentEdit(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
   mDocument, mItem: TJSONObject;
   mEdits: TJSONArray;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mDocument := TJSONObject.Create;
   mDocument.AddPair('uri', AUri);
@@ -446,7 +445,7 @@ var
   mChanges: TJSONArray;
   mCreation, mOptions: TJSONObject;
   mNewUri, mRelative, mProjectFile, mText: string;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   if not ATarget.CanCreate then
   begin
@@ -461,7 +460,7 @@ begin
   mOptions.AddPair('ignoreIfExists', TJSONBool.Create(False));
   mCreation.AddPair('options', mOptions);
   mChanges.AddElement(mCreation);
-  mChanges.AddElement(DocumentEdit(mNewUri, [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0),
+  mChanges.AddElement(DocumentEdit(mNewUri, [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0),
     TTestUnits.UnitText(ATarget.Counterpart, ATarget.Source, ATarget.ClassName, cLineBreak, ADrafts))]));
   // Ins Testprojekt: uses der .dpr und DCCReference der .dproj, jeweils mit relativem Pfad.
   mRelative := TTestUnits.RelativePath(ExtractFilePath(AContext.TestProgram), ATarget.NewFile);

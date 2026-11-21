@@ -28,6 +28,9 @@ type
     /// <summary>Name ohne das Escape-Zeichen, je Teil eines qualifizierten Namens: &amp;begin → begin,
     /// &amp;&amp;op_Equality → &amp;op_Equality, TFoo.&amp;Type → TFoo.Type (#1137).</summary>
     class function PlainName(const AName: string): string; static;
+    /// <summary>Inhalt eines Stringliterals ('It''s' → It's); verdoppelte Hochkommas werden einfach, auch ohne
+    /// umschließende Hochkommas.</summary>
+    class function UnquotedString(const AText: string): string; static;
     /// <summary>Gegenstück zu PlainName: der Name, wie er im Quelltext stehen muss. Reservierte Wörter und
     /// Namen, die mit &amp; beginnen, bekommen ein &amp; davor (begin → &amp;begin, &amp;op_Equality →
     /// &amp;&amp;op_Equality).</summary>
@@ -620,6 +623,16 @@ begin
     Inc(mStop);
   end;
   Result := UpperCase(Copy(AText, mStart, mStop - mStart));
+end;
+
+class function TPascalLexer.UnquotedString(const AText: string): string;
+begin
+  Result := AText;
+  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
+    Result := Copy(Result, 2, Length(Result) - 2);
+  end;
+  Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
 end;
 
 class function TPascalLexer.PlainName(const AName: string): string;

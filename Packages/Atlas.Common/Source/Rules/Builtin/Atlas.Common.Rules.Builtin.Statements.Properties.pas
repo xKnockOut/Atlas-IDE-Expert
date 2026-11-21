@@ -86,7 +86,8 @@ uses
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -154,7 +155,6 @@ type
     FLines: TArray<string>;
     FLineBreak: string;
     function NodeText(ANode: TSyntaxNode): string;
-    function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
     function CopyFix(AStatement, AReceiver: TSyntaxNode; const AType: TResolvedSymbol;
       out AFix: TRuleFix): Boolean;
     function RecordReceiver(ATarget: TSyntaxNode; out AReceiver: TSyntaxNode; out ASymbol,
@@ -184,15 +184,6 @@ begin
   Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-function TAssignToPropertyMemberScan.EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Über eine lokale Variable zuweisen und zurückschreiben: R := X.P; R.F := W; X.P := R.</summary>
 function TAssignToPropertyMemberScan.CopyFix(AStatement, AReceiver: TSyntaxNode; const AType: TResolvedSymbol;
   out AFix: TRuleFix): Boolean;
@@ -203,7 +194,7 @@ var
   mEdits: TArray<TTextEdit>;
 begin
   Result := False;
-  mRoutine := EnclosingRoutine(AStatement);
+  mRoutine := TSyntaxNodes.Enclosing(AStatement, [TSyntaxKind.RoutineDecl]);
   if (mRoutine = nil) or (AStatement.Parent = nil) or not (AStatement.Parent.Kind in cSequenceParents) or
     (AStatement.StartPos.Line <> AStatement.EndPos.Line) or (AStatement.StartPos.Line > High(FLines)) then
   begin

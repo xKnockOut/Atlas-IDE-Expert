@@ -109,7 +109,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -492,16 +493,6 @@ begin
     cTexts[TRtlTypePatternsConversionsText.UncheckedTitle].Text);
 end;
 
-/// <summary>ANode ohne umgebende Klammern.</summary>
-function WithoutParentheses(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
-
 /// <summary>Hülle wie Trim(…), durch die die Eingabe unverändert geprüft wird?</summary>
 function IsTransparentCall(ANode: TSyntaxNode): Boolean;
 begin
@@ -539,10 +530,10 @@ var
     mNode: TSyntaxNode;
   begin
     // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch Klammern und Hüllen wie Trim(…) hindurch.
-    mNode := WithoutParentheses(ANode);
+    mNode := TSyntaxNodes.Unparen(ANode);
     while IsTransparentCall(mNode) do
     begin
-      mNode := WithoutParentheses(mNode[1]);
+      mNode := TSyntaxNodes.Unparen(mNode[1]);
     end;
     Result := nil;
     if IsInputNode(mNode, mSources) then
