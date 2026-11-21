@@ -328,11 +328,7 @@ end;
 procedure TAtlasTrackerSprintView.SetSource(const AValue: IAtlasSprintSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  SourceChanged(FSource);
 end;
 
 function TAtlasTrackerSprintView.BodyHeight: Integer;

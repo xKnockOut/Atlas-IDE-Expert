@@ -43,6 +43,9 @@ type
     /// <summary>Gespeicherte .groupproj der geöffneten Projektgruppe, wenn sie AProjectFile (.dproj) enthält; sonst
     /// '' (auch für die ungespeicherte Vorgabegruppe der IDE).</summary>
     class function GroupOfProject(const AProjectFile: string): string; static;
+    /// <summary>Datei der geöffneten Projektgruppe (auch die ungespeicherte Vorgabegruppe); '' ohne Gruppe.
+    /// </summary>
+    class function GroupFile: string; static;
     /// <summary>Aktives Projekt für eine neue Unit (.pas unter dessen Ordner); sonst ''.</summary>
     class function ProjectForNewFile(const AFileName: string): string; static;
     /// <summary>.dproj oder .groupproj?</summary>
@@ -268,6 +271,17 @@ begin
     begin
       Exit(mGroup.Projects[mIndex]);
     end;
+  end;
+end;
+
+class function TAtlasIdeFiles.GroupFile: string;
+var
+  mModules: IOTAModuleServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.MainProjectGroup <> nil) then
+  begin
+    Result := mModules.MainProjectGroup.FileName;
   end;
 end;
 

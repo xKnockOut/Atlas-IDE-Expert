@@ -61,6 +61,7 @@ uses
   Atlas.Core.Tracker.Projects,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Menus,
   Atlas.UI.Foundation.Theme;
 
 const
@@ -91,12 +92,9 @@ begin
 end;
 
 procedure TAtlasTrackerProjectPicker.LabelClick(Sender: TObject);
-var
-  mPoint: TPoint;
 begin
   Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
+  TAtlasMenus.PopupBelow(FMenu, FLabel);
 end;
 
 procedure TAtlasTrackerProjectPicker.ItemClick(Sender: TObject);

@@ -31,7 +31,6 @@ type
     FDelete: TButton;
     FCanDelete: Boolean;
     FChoice: TAtlasNoteChoice;
-    function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     procedure SaveClick(Sender: TObject);
     procedure CancelClick(Sender: TObject);
     procedure DeleteClick(Sender: TObject);
@@ -98,12 +97,14 @@ begin
   mBottom.Height := ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Speichern“; „Löschen“ links außen.
-  FCancel := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel), CancelClick);
+  FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel),
+    CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FSave := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogSave), SaveClick);
+  FSave := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogSave), SaveClick);
   FSave.Left := FCancel.Left - FSave.Width - ScaleValue(cGap);
-  FDelete := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogDelete), DeleteClick);
+  FDelete := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogDelete),
+    DeleteClick);
   FDelete.Left := ScaleValue(cGap);
   FDelete.Anchors := [akLeft, akTop];
   FDelete.Visible := ACanDelete;
@@ -121,23 +122,6 @@ begin
   FMemo.Lines.Text := AText.Replace(#13#10, #10).Replace(#10, #13#10);
   FHint.FocusControl := FMemo;
   ActiveControl := FMemo;
-end;
-
-function TAtlasNoteDialog.AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  if Result.Width < ScaleValue(90) then
-  begin
-    Result.Width := ScaleValue(90);
-  end;
-  Result.Top := ScaleValue(cGap);
-  Result.Height := ScaleValue(28);
-  Result.Anchors := [akTop, akRight];
 end;
 
 procedure TAtlasNoteDialog.SaveClick(Sender: TObject);

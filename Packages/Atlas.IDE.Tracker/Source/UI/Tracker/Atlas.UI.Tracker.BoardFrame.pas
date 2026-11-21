@@ -248,7 +248,8 @@ uses
   Atlas.UI.Tracker.Board.Strings,
   Atlas.UI.Tracker.BoardPainter,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Controls;
 
 {$R *.dfm}
 
@@ -1048,11 +1049,7 @@ end;
 
 function TAtlasBoardFrame.StatusText: string;
 begin
-  Result := '';
-  if FParts.Status.Visible then
-  begin
-    Result := FParts.Status.Caption;
-  end;
+  Result := TAtlasControls.ShownCaption(FParts.Status);
 end;
 
 procedure TAtlasBoardFrame.ChoiceChange(Sender: TObject);

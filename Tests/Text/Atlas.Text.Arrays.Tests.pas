@@ -26,6 +26,8 @@ type
     [Test]
     procedure IndexOfTextUsesTextOf;
     [Test]
+    procedure TextsKeepsOrder;
+    [Test]
     procedure CountOfTextFromParallelArrays;
     [Test]
     procedure AddUniqueTextUsesSeen;
@@ -108,6 +110,25 @@ begin
   Assert.AreEqual(1, TTextArrays.IndexOfText<Integer>(TArray<Integer>.Create(4, 7, 7), 'UNIT7', mTextOf));
   Assert.AreEqual(-1, TTextArrays.IndexOfText<Integer>(TArray<Integer>.Create(4), 'Unit5', mTextOf));
   mTextOf := nil;
+end;
+
+procedure TTextArraysTests.TextsKeepsOrder;
+var
+  mTextOf: TFunc<Integer, string>;
+  mTexts: TArray<string>;
+begin
+  mTextOf :=
+    function(AValue: Integer): string
+    begin
+      Result := 'Unit' + IntToStr(AValue);
+    end;
+  mTexts := TTextArrays.Texts<Integer>(TArray<Integer>.Create(4, 7), mTextOf);
+  Assert.AreEqual(2, Integer(Length(mTexts)));
+  Assert.AreEqual('Unit4', mTexts[0]);
+  Assert.AreEqual('Unit7', mTexts[1]);
+  Assert.AreEqual(0, Integer(Length(TTextArrays.Texts<Integer>(nil, mTextOf))));
+  mTextOf := nil;
+  mTexts := nil;
 end;
 
 procedure TTextArraysTests.CountOfTextFromParallelArrays;

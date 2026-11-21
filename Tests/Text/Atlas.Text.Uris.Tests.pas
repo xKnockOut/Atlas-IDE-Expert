@@ -28,7 +28,7 @@ type
     [Test]
     procedure BaseNameSplitsAtBothSeparators;
     [Test]
-    procedure FileNameOfBothSeparators;
+    procedure FileNameOfSplitsAtBothSeparators;
   end;
 
 implementation
@@ -99,6 +99,15 @@ begin
   Assert.AreEqual('', TTextUris.BaseName(''));
 end;
 
+procedure TTextUrisTests.FileNameOfSplitsAtBothSeparators;
+begin
+  Assert.AreEqual('Atlas.Core.A.pas', TTextUris.FileNameOf('C:\P\Atlas.Core.A.pas'));
+  Assert.AreEqual('A.pas', TTextUris.FileNameOf('Src/Unter\A.pas'));
+  Assert.AreEqual('A.pas', TTextUris.FileNameOf('A.pas'));
+  Assert.AreEqual('', TTextUris.FileNameOf('C:\P\'));
+  Assert.AreEqual('', TTextUris.FileNameOf(''));
+end;
+
 procedure TTextUrisTests.RoundTrip;
 const
   cPaths: array[0..3] of string = ('C:\Mein Projekt\' + #$00DC + 'bung.pas', '\\server\share\a b\#1.pas',
@@ -111,13 +120,6 @@ begin
     Assert.AreEqual(TTextUris.NormalizePath(mPath),
       TTextUris.NormalizePath(TTextUris.ToPath(TTextUris.FromPath(mPath))), mPath);
   end;
-end;
-
-procedure TTextUrisTests.FileNameOfBothSeparators;
-begin
-  Assert.AreEqual('A.pas', TTextUris.FileNameOf('file:///C:/P/A.pas'));
-  Assert.AreEqual('B.pas', TTextUris.FileNameOf('C:\P\B.pas'));
-  Assert.AreEqual('C.pas', TTextUris.FileNameOf('C.pas'));
 end;
 
 initialization

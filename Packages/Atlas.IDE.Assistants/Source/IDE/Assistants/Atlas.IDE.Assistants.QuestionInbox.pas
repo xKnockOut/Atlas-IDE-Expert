@@ -66,6 +66,7 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Core.Status.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Notifications.Center,
@@ -73,8 +74,7 @@ uses
   Atlas.Core.Assistants.Inbox,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Assistants.HeldEdits,
-  Atlas.UI.Assistants.Strings,
-  Atlas.Text.Files;
+  Atlas.UI.Assistants.Strings;
 
 var
   /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>

@@ -45,16 +45,12 @@ type
     Check: TButton;
   end;
 
-  TAtlasTrackerConnectionsPart = class
+  TAtlasTrackerConnectionsPart = class(TAtlasTrackerSettingsPart)
   private
-    FRows: TAtlasTrackerSettingsRows;
-    FHooks: TAtlasTrackerSettingsHooks;
-    FTables: TAtlasTrackerSettingsTables;
     FView: TAtlasTrackerConnectionsView;
     /// <summary>Zeile mit der Tabelle; an ihr hängen Felder und Knöpfe darunter.</summary>
     FAnchor: TWinControl;
     /// <summary>Der Teil füllt die Felder selbst: OnChange übernimmt nichts.</summary>
-    FFilling: Boolean;
     FOnChanged: TAtlasTrackerTableChanged;
     function Table: TAtlasTrackerConnectionTable;
     procedure BuildList;
@@ -117,10 +113,7 @@ type
 constructor TAtlasTrackerConnectionsPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
   ATables: TAtlasTrackerSettingsTables; AOnChanged: TAtlasTrackerTableChanged);
 begin
-  inherited Create;
-  FRows := ARows;
-  FHooks := AHooks;
-  FTables := ATables;
+  inherited Create(ARows, AHooks, ATables);
   FOnChanged := AOnChanged;
 end;
 
@@ -375,12 +368,7 @@ end;
 
 procedure TAtlasTrackerConnectionsPart.SelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
-  if FFilling or not Selected or (Item = nil) then
-  begin
-    Exit;
-  end;
-  Table.Select(Item.Index);
-  FillFields;
+  TakeSelection(Item, Selected, Table.Select, FillFields);
 end;
 
 procedure TAtlasTrackerConnectionsPart.NameChange(Sender: TObject);

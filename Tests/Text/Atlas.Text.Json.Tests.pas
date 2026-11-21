@@ -47,6 +47,8 @@ type
     procedure TextAndFreeGivesTextAndFrees;
     [Test]
     procedure AddFlagOnlyWhenTrue;
+    [Test]
+    procedure UriLineIsArrayOfUriAndLine;
   end;
 
   [TestFixture]
@@ -58,6 +60,10 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
+    [Test]
+    procedure FormatOfReadsRootNumber;
+    [Test]
+    procedure ObjectsSkipsOtherValues;
     [Test]
     procedure NilObjectGivesDefaults;
     [Test]
@@ -244,6 +250,11 @@ begin
   end;
 end;
 
+procedure TJsonBuildTests.UriLineIsArrayOfUriAndLine;
+begin
+  Assert.AreEqual('["file:///c:/a.pas",12]', TJsonBuild.UriLine('file:///c:/a.pas', 12));
+end;
+
 procedure TJsonBuildTests.TextAndFreeGivesTextAndFrees;
 var
   mObject: TJSONObject;
@@ -269,6 +280,35 @@ end;
 procedure TJsonReadTests.TearDown;
 begin
   FreeAndNil(FObject);
+end;
+
+procedure TJsonReadTests.ObjectsSkipsOtherValues;
+var
+  mRoot: TJSONObject;
+  mObjects: TArray<TJSONObject>;
+begin
+  mRoot := TJsonRead.ParseObject('{"rows": [{"a": 1}, 2, "x", {"a": 3}], "text": "t"}');
+  try
+    mObjects := TJsonRead.Objects(mRoot, 'rows');
+    Assert.AreEqual(2, Integer(Length(mObjects)));
+    Assert.AreEqual(1, TJsonRead.Int(mObjects[0], 'a'));
+    Assert.AreEqual(3, TJsonRead.Int(mObjects[1], 'a'));
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(mRoot, 'text'))), 'kein Array');
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(mRoot, 'fehlt'))));
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(nil, 'rows'))));
+  finally
+    mRoot.Free;
+  end;
+  mObjects := nil;
+end;
+
+procedure TJsonReadTests.FormatOfReadsRootNumber;
+begin
+  Assert.AreEqual(3, TJsonRead.FormatOf('{"format": 3}'));
+  Assert.AreEqual(0, TJsonRead.FormatOf('{"bookmarks": []}'), 'ohne format');
+  Assert.AreEqual(0, TJsonRead.FormatOf('kaputt'));
+  Assert.AreEqual(0, TJsonRead.FormatOf('[1, 2]'));
+  Assert.AreEqual(0, TJsonRead.FormatOf(''));
 end;
 
 procedure TJsonReadTests.NilObjectGivesDefaults;

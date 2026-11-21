@@ -130,6 +130,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 { TAtlasStepVerdict }
 
 function TAtlasStepVerdict.Filtered: Boolean;
@@ -150,17 +153,8 @@ end;
 { TAtlasStepFilter }
 
 class function TAtlasStepFilter.Arguments(const AUri: string; ALine: Integer): string;
-var
-  mItems: TJSONArray;
 begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    mItems.Add(ALine);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
-  end;
+  Result := TJsonBuild.UriLine(AUri, ALine);
 end;
 
 class function TAtlasStepFilter.CountsArguments(const APatterns: TArray<string>): string;
