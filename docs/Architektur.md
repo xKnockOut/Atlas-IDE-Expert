@@ -59,22 +59,23 @@ Bedingungen für den späteren Umzug nach `Application/Source/Features/<Feature>
 läuft in der CI, und der Umzug geschieht
 lokal mit Compiler als rein mechanischer Commit je Feature (zuerst Namenspräfix, dann `git mv`).
 
-Featurerichtung zwischen den Fach-Features: `Lsp | Rules | Editing | Semantics | Mcp`. Alle fünf werden
-Hosted-Features; zwischen ihnen gibt es keine Kante, in keiner Richtung. Was zwei von ihnen teilen, liegt in einem
-Platform-Feature (`Pascal`, `Documents`, `Index` …) oder als Interface im Contract des anbietenden Features, das
-der Host verbindet.
+Featurerichtung zwischen den Fach-Features: `Lsp`, `Rules`, `Editing` und `Mcp` werden Hosted-Features und
+verwenden einander nie (`Atlas.Common: Lsp | Rules | Editing | Mcp`). `Semantics` bleibt Platform-Feature in
+`Atlas.Common`; Platform-Features verwenden nie ein Hosted-Feature (`Atlas.Common: Semantics < Lsp` usw.), Hosted-
+Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt in einem Platform-Feature (`Pascal`,
+`Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
 Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
-`atlas.json` (Stand des Umbaus: 781 Kanten). Eine neue Kante ist ein Fehler, eine abgebaute wird gestrichen.
+`atlas.json` (Stand des Umbaus: 468 Kanten). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
 
 | Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
-| `Lsp` | `Rules`, `Editing`, `Semantics` | nein | heute die meisten Kanten: Der Server ruft Prüfregeln, Refactorings und Namensauflösung direkt |
-| `Mcp` | `Lsp`, `Editing`, `Semantics` | nein | MCP-Werkzeuge nutzen heute dieselben Dienste wie die LSP-Methoden |
-| `Rules` | `Editing`, `Semantics` | nein | Korrekturen nutzen heute Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen), Regeln die Namensauflösung |
-| `Editing` | `Semantics` | nein | Refactorings werten heute Namensauflösung und Datenfluss aus |
-| `Semantics`, `Editing`, `Rules` | ein Feature weiter oben | nein | schon heute ohne Kante: gemeinsame Wertetypen liegen tiefer (`TTextEdit` in `Documents.Contract`, `TDeclaredTypes` in `Pascal.DeclaredTypes`), Links ins Wiki im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
-| `Lsp`, `Rules`, `Editing`, `Semantics` | `Mcp` | nein | |
+| `Lsp` | `Rules`, `Editing` | nein | heute die meisten Kanten: Der Server ruft Prüfregeln und Refactorings direkt |
+| `Mcp` | `Lsp`, `Editing` | nein | MCP-Werkzeuge nutzen heute dieselben Dienste wie die LSP-Methoden |
+| `Rules` | `Editing` | nein | Korrekturen nutzen heute Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
+| `Editing`, `Rules` | ein Hosted-Feature weiter oben | nein | schon heute ohne Kante: gemeinsame Wertetypen liegen tiefer (`TTextEdit` in `Documents.Contract`, `TDeclaredTypes` in `Pascal.DeclaredTypes`), Links ins Wiki im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
+| `Lsp`, `Rules`, `Editing`, `Mcp` | `Semantics` | ja | Namensauflösung und Datenfluss sind Platform |
+| `Semantics` | `Lsp`, `Rules`, `Editing`, `Mcp` | nein | schon heute ohne Kante |
 
 ### Keine Zyklen zwischen Features
 

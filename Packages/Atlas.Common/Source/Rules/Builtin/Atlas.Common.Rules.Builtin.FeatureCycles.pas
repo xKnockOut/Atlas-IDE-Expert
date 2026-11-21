@@ -6,7 +6,7 @@
 //   "rules": { "architecture-feature-cycle": { "severity": "warning",
 //     "prefixes": ["Atlas.Common", "Atlas.Core"], "exclude": ["Tests/**"],
 //     "known": ["Atlas.Core: Lsp, Problems"],
-//     "directions": ["Atlas.Common: Lsp | Rules | Editing | Semantics | Mcp"],
+//     "directions": ["Atlas.Common: Lsp | Rules | Editing | Mcp", "Atlas.Common: Semantics < Lsp"],
 //     "knownEdges": ["Atlas.Common.Rules.Engine -> Atlas.Common.Lsp.Session"] } }
 //
 // - Gemeldet wird am uses-Eintrag der geprüften Unit, der einen unbekannten
