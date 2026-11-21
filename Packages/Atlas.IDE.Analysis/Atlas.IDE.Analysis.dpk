@@ -47,6 +47,8 @@ requires
 contains
   Atlas.UI.Analysis.Strings in 'Source\UI\Analysis\Atlas.UI.Analysis.Strings.pas',
   Atlas.Core.Architecture.Model in 'Source\Core\Architecture\Atlas.Core.Architecture.Model.pas',
+  Atlas.Core.Architecture.Palette in 'Source\Core\Architecture\Atlas.Core.Architecture.Palette.pas',
+  Atlas.Core.Architecture.Resolution in 'Source\Core\Architecture\Atlas.Core.Architecture.Resolution.pas',
   Atlas.Core.Architecture.Commands in 'Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas',
   Atlas.Core.Architecture.RoleUnit in 'Source\Core\Architecture\Atlas.Core.Architecture.RoleUnit.pas',
   Atlas.Core.Architecture.MapState in 'Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas',

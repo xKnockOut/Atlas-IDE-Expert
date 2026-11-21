@@ -106,7 +106,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -1501,7 +1501,7 @@ begin
   begin
     Exit;
   end;
-  FUsedUnits := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FUsedUnits := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   if not TUnresolvedNames.UsesKnown(FContext.Index, FUsedUnits, FContext.Namespaces, FContext.EnsureUnit) then
   begin
     Exit;

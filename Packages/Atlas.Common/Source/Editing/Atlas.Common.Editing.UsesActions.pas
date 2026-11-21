@@ -174,6 +174,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names;
@@ -455,8 +456,8 @@ begin
   end;
   // Nur der aktive Zweig: so gelten auch Listen mit {$IFDEF}.
   mActive := ActiveTokens(ATokens, AInactive);
-  mClauses := TUsesClauses.Clauses(mActive);
-  mReferences := TUsesClauses.References(mActive);
+  mClauses := TPascalUses.Clauses(mActive);
+  mReferences := TPascalUses.References(mActive);
   mSeen := nil;
   mIdentifiers := CollectIdentifiers(mActive, mClauses, AResolution);
   try
@@ -869,7 +870,7 @@ begin
   begin
     Exit;
   end;
-  mClauses := TUsesClauses.Clauses(ATokens);
+  mClauses := TPascalUses.Clauses(ATokens);
   mIdentifiers := CollectIdentifiers(ATokens, mClauses, AResolution);
   try
     for mName in PlainNames(mClauses, False) do
@@ -909,7 +910,7 @@ begin
   begin
     Exit;
   end;
-  mClauses := TUsesClauses.Clauses(ATokens);
+  mClauses := TPascalUses.Clauses(ATokens);
   mNames := TDictionary<string, Boolean>.Create;
   try
     // Qualifizierter Zugriff wie uKunde.TKunde zählt wie in UsageOf.
@@ -954,7 +955,7 @@ var
 begin
   Result := nil;
   SetLength(Result, Length(ANames));
-  mIdentifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
+  mIdentifiers := CollectIdentifiers(ATokens, TPascalUses.Clauses(ATokens));
   try
     for mIndex := 0 to High(ANames) do
     begin
@@ -994,7 +995,7 @@ var
   mName: string;
 begin
   Result := nil;
-  mClauses := TUsesClauses.Clauses(ATokens);
+  mClauses := TPascalUses.Clauses(ATokens);
   if HasComplexImplementation(mClauses) then
   begin
     Exit;
@@ -1130,11 +1131,11 @@ var
   mUsed: TArray<string>;
   mOwn, mCandidate: string;
 begin
-  mUsed := TUsesClauses.UsedUnits(ATokens);
-  mOwn := TUsesClauses.OwnName(ATokens);
+  mUsed := TPascalUses.UsedUnits(ATokens);
+  mOwn := TPascalUses.OwnName(ATokens);
   for mCandidate in ACandidates do
   begin
-    if SameText(mCandidate, mOwn) or TUsesClauses.IsUsed(mUsed, mCandidate, ANamespaces) then
+    if SameText(mCandidate, mOwn) or TPascalUses.IsUsed(mUsed, mCandidate, ANamespaces) then
     begin
       Exit(True);
     end;
@@ -1223,7 +1224,7 @@ var
   mPair: TPair<string, Integer>;
 begin
   Result := nil;
-  mIdentifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
+  mIdentifiers := CollectIdentifiers(ATokens, TPascalUses.Clauses(ATokens));
   try
     for mPair in mIdentifiers do
     begin
@@ -1244,12 +1245,12 @@ var
   mOwn, mName: string;
 begin
   Result := nil;
-  mUsed := TUsesClauses.UsedUnits(ATokens);
-  mOwn := TUsesClauses.OwnName(ATokens);
+  mUsed := TPascalUses.UsedUnits(ATokens);
+  mOwn := TPascalUses.OwnName(ATokens);
   for mName in AUnits do
   begin
     if not ((Trim(mName) = '') or SameText(mName, mOwn) or MatchText(mName, Result) or
-      TUsesClauses.IsUsed(mUsed, mName, ANamespaces)) then
+      TPascalUses.IsUsed(mUsed, mName, ANamespaces)) then
     begin
       Result := Result + [mName];
     end;

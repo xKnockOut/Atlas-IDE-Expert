@@ -96,7 +96,7 @@ uses
   System.Math,
   System.StrUtils,
   System.Generics.Defaults,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -646,7 +646,7 @@ type
 
 function TUsesItems.Wanted(const AUnitInfo: TUnitIndex; out AFound: TUsesMatch): Boolean;
 begin
-  Result := not SameText(AUnitInfo.UnitName, Own) and not TUsesClauses.IsUsed(Site.Here, AUnitInfo.UnitName,
+  Result := not SameText(AUnitInfo.UnitName, Own) and not TPascalUses.IsUsed(Site.Here, AUnitInfo.UnitName,
     Namespaces) and TCompletionUses.Match(AUnitInfo.UnitName, Prefix, Namespaces, Request.Matching, AFound);
 end;
 
@@ -681,7 +681,7 @@ end;
 function TUsesItems.Elsewhere(const AUnitName: string): string;
 begin
   Result := '';
-  if not TUsesClauses.IsUsed(Site.Other, AUnitName, Namespaces) then
+  if not TPascalUses.IsUsed(Site.Other, AUnitName, Namespaces) then
   begin
     Exit;
   end;
@@ -732,7 +732,7 @@ begin
   end;
   if ARequest.Tree <> nil then
   begin
-    Result.Own := TUsesClauses.OwnName(ARequest.Tree.Tokens);
+    Result.Own := TPascalUses.OwnName(ARequest.Tree.Tokens);
     Result.Site := TCompletionUses.SiteAt(ARequest.Tree.Tokens, ARequest.Position);
   end;
   Result.HiddenUnits := TCompletionUses.Hidden(Result.Site, AContext.Prefix, Result.Namespaces,

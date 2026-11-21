@@ -265,7 +265,8 @@ uses
   Atlas.UI.Foundation.Scaling,
   Atlas.Core.Foundation.Calls,
   Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.Controls;
+  Atlas.UI.Foundation.Controls,
+  Atlas.Core.Architecture.Resolution;
 
 {$R *.dfm}
 

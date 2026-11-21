@@ -62,6 +62,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
@@ -860,7 +861,7 @@ procedure AddSysUtils(const AContext: TRuleContext; const ACreation: TInitCreati
 var
   mUsesEdit: TTextEdit;
 begin
-  if (AEdits = nil) or TUsesClauses.IsUsed(TUsesClauses.UsedUnits(AContext.Tree.Tokens), 'System.SysUtils',
+  if (AEdits = nil) or TPascalUses.IsUsed(TPascalUses.UsedUnits(AContext.Tree.Tokens), 'System.SysUtils',
     AContext.Namespaces) then
   begin
     Exit;

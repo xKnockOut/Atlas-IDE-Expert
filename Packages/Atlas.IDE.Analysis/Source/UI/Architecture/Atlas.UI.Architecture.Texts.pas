@@ -37,7 +37,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.Architecture.Assignment,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.Core.Architecture.Resolution;
 
 { TAtlasArchitectureTexts }
 

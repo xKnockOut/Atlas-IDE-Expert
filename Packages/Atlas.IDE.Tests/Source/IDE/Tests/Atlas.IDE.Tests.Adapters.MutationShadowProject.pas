@@ -62,7 +62,7 @@ uses
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tests.MutationFlow,
-  Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Runner,

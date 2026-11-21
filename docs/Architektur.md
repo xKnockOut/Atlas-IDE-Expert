@@ -65,7 +65,7 @@ Featurerichtung zwischen den Fach-Features:
 | Von | Nach | Erlaubt | Grund |
 |---|---|---|---|
 | `Rules` | `Editing` | ja | Korrekturen nutzen Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
-| `Editing` | `Rules` | nein | gemeinsame Wertetypen liegen tiefer: `TTextEdit` in `Documents.Contract` (`TRuleEdit` ist ein Alias), `TDeclaredTypes` in `Pascal.DeclaredTypes`, `IsTestUnit` in `Editing.UsesClause`; die Brücke Treffer → Code-Aktionen ist `Rules.CodeActions` |
+| `Editing` | `Rules` | nein | gemeinsame Wertetypen liegen tiefer: `TTextEdit` in `Documents.Contract` (`TRuleEdit` ist ein Alias), `TDeclaredTypes` in `Pascal.DeclaredTypes`, `IsTestUnit` in `Pascal.UsesClauses`; die Brücke Treffer → Code-Aktionen ist `Rules.CodeActions` |
 
 `Tools/Check-PackageDependencies.ps1` meldet jede Unit unter `Source/Editing`, die `Atlas.Common.Rules.*` verwendet.
 

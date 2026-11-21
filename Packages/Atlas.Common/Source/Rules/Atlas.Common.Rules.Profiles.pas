@@ -49,7 +49,7 @@ type
     class function IsExperimental(const ARuleId: string): Boolean; static;
     /// <summary>Alle Regelkennungen des Katalogs in Kleinbuchstaben, sortiert (#41: unknown-rule-id).</summary>
     class function KnownRuleIds: TArray<string>; static;
-    /// <summary>True, wenn die Unit ein Test-Framework einbindet; Weiterleitung an TUsesClauses.IsTestUnit.</summary>
+    /// <summary>True, wenn die Unit ein Test-Framework einbindet; Weiterleitung an TPascalUses.IsTestUnit.</summary>
     class function IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean; static;
   end;
 
@@ -57,7 +57,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data,
   System.StrUtils;
@@ -220,7 +220,7 @@ end;
 
 class function TRuleProfiles.IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean;
 begin
-  Result := TUsesClauses.IsTestUnit(ATokens);
+  Result := TPascalUses.IsTestUnit(ATokens);
 end;
 
 procedure LoadCategories;
