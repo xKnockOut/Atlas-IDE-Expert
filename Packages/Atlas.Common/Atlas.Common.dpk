@@ -194,7 +194,7 @@ contains
   Atlas.Common.Rules.Builtin.Registration.Ownership in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Ownership.pas',
   Atlas.Common.Rules.Builtin.Unicode in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.pas',
   Atlas.Common.Editing.DocumentLinks in 'Source\Editing\Atlas.Common.Editing.DocumentLinks.pas',
-  Atlas.Common.Editing.Colors in 'Source\Editing\Atlas.Common.Editing.Colors.pas',
+  Atlas.Common.Pascal.Colors in 'Source\Pascal\Atlas.Common.Pascal.Colors.pas',
   Atlas.Common.JsonRpc.Statistics in 'Source\JsonRpc\Atlas.Common.JsonRpc.Statistics.pas',
   Atlas.Common.Lsp.ReferenceConfidence in 'Source\Lsp\Atlas.Common.Lsp.ReferenceConfidence.pas',
   Atlas.Common.Lsp.ParameterHeaders in 'Source\Lsp\Atlas.Common.Lsp.ParameterHeaders.pas',
