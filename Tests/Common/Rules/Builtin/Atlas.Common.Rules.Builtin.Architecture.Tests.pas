@@ -36,6 +36,8 @@ type
     [Test]
     procedure ClassifiesHostAndExternal;
     [Test]
+    procedure ClassifiesHostedFeature;
+    [Test]
     procedure ClassifiesRoleAfterThing;
     [Test]
     procedure ClassifiesNesting;
@@ -64,6 +66,8 @@ type
     procedure ApprovedExceptionNeverCoversInternals;
     [Test]
     procedure ChecksImplementationUses;
+    [Test]
+    procedure ChecksHostedFeature;
     [Test]
     procedure PackageContainsIsNoImport;
     [Test]
@@ -193,7 +197,7 @@ end;
 
 function Classify(const AName: string): TArchitectureUnit;
 begin
-  Result := TArchitectureMatrix.Classify(AName, PrefixList, TArchitectureMatrix.DefaultHostRoles);
+  Result := TArchitectureMatrix.Classify(AName, PrefixList, TArchitectureMatrix.DefaultHostRoles, ['Gamma']);
 end;
 
 { TArchitectureMatrixTests }
@@ -220,12 +224,29 @@ procedure TArchitectureMatrixTests.ClassifiesLongestPrefix;
 var
   U: TArchitectureUnit;
 begin
-  U := TArchitectureMatrix.Classify('Atlas.Core.Lsp.Session', ['Atlas', 'Atlas.Core'], nil);
+  U := TArchitectureMatrix.Classify('Atlas.Core.Lsp.Session', ['Atlas', 'Atlas.Core'], nil, nil);
   Assert.AreEqual('Atlas.Core', U.Artefact);
   Assert.AreEqual('Lsp', U.Feature);
   // Präfix nur an Segmentgrenzen: Atlas.Common ist nicht Atlas.Co + mmon.
-  U := TArchitectureMatrix.Classify('Atlas.Common.Lsp.Hover', ['Atlas.Co'], nil);
+  U := TArchitectureMatrix.Classify('Atlas.Common.Lsp.Hover', ['Atlas.Co'], nil, nil);
   Assert.IsFalse(U.Known);
+end;
+
+procedure TArchitectureMatrixTests.ClassifiesHostedFeature;
+var
+  U: TArchitectureUnit;
+begin
+  // Hosted-Feature der Anwendung: kein Präfix, das erste Segment ist das Feature (Konzept 6.3).
+  U := Classify('Gamma.Providers.Cache.Contract');
+  Assert.IsTrue(U.Hosted);
+  Assert.AreEqual('', U.Artefact);
+  Assert.AreEqual('Gamma', U.Feature);
+  Assert.AreEqual(Ord(TArchitectureRole.Providers), Ord(U.Role));
+  Assert.IsTrue(U.IsContract, 'Sub-Contract');
+  Assert.AreEqual(Ord(TArchitectureRole.Root), Ord(Classify('Gamma.Session').Role));
+  Assert.IsFalse(Classify('Gamma').Known, 'ohne Punkt keine Unit eines Features');
+  Assert.IsFalse(Classify('Shell.Composition').Hosted);
+  Assert.IsFalse(Classify('Atlas.Common.Logging.Contract').Hosted);
 end;
 
 procedure TArchitectureMatrixTests.ClassifiesHostAndExternal;
@@ -329,7 +350,7 @@ var
   mData: TJSONObject;
   mItem: TJSONValue;
   mCase_: TJSONObject;
-  mCasePrefixes, mCaseHosts: TArray<string>;
+  mCasePrefixes, mCaseHosts, mCaseHosted: TArray<string>;
   mSource, mTarget: TArchitectureUnit;
   mCount: Integer;
 begin
@@ -341,12 +362,15 @@ begin
     mData := TJSONObject(mRoot);
     mCasePrefixes := TJsonRead.Strings(mData, 'prefixes');
     mCaseHosts := TJsonRead.Strings(mData, 'hostRoles');
+    mCaseHosted := TJsonRead.Strings(mData, 'hostedFeatures');
     mCount := 0;
     for mItem in mData.GetValue<TJSONArray>('cases') do
     begin
       mCase_ := mItem as TJSONObject;
-      mSource := TArchitectureMatrix.Classify(mCase_.GetValue<string>('from'), mCasePrefixes, mCaseHosts);
-      mTarget := TArchitectureMatrix.Classify(mCase_.GetValue<string>('to'), mCasePrefixes, mCaseHosts);
+      mSource := TArchitectureMatrix.Classify(mCase_.GetValue<string>('from'), mCasePrefixes, mCaseHosts,
+        mCaseHosted);
+      mTarget := TArchitectureMatrix.Classify(mCase_.GetValue<string>('to'), mCasePrefixes, mCaseHosts,
+        mCaseHosted);
       Assert.AreEqual(mCase_.GetValue<Boolean>('allowed'), TArchitectureMatrix.Allowed(mSource, mTarget),
         mCase_.GetValue<string>('from') + ' -> ' + mCase_.GetValue<string>('to'));
       Inc(mCount);
@@ -471,6 +495,30 @@ begin
   Assert.IsTrue(Pos('fremde Internals aus Root', mFindings[0].Message) > 0, mFindings[0].Message);
 end;
 
+procedure TRoleImportRuleTests.ChecksHostedFeature;
+const
+  cConfig = '{ "rules": { "architecture-role-import": { "severity": "warning", ' +
+    '"prefixes": ["Atlas.Common"], "hostedFeatures": ["Gamma", "Delta"] } } }';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Nach außen nur Foundation und Platform-Features; nie Host-Core oder ein anderes Hosted-Feature (8.2).
+  mFindings := TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Gamma.Session;'#10'interface'#10 +
+    'uses Foundation.Values, Atlas.Common.Logging.Contract, Gamma.Internals.Table, Core.Workspace, ' +
+    'Delta.Contract;'#10'implementation'#10'end.', cConfig, 'Source/x.pas');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.IsTrue(Pos('Core.Workspace', mFindings[0].Message) > 0, mFindings[0].Message);
+  Assert.IsTrue(Pos('Delta.Contract', mFindings[1].Message) > 0, mFindings[1].Message);
+  // Host-Core sieht kein Hosted-Feature, die Shell schon.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Core.Workspace;'#10'interface'#10'uses Gamma.Contract;'#10'implementation'#10'end.', cConfig,
+    'Source/x.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Shell.Composition;'#10'interface'#10'uses Gamma.Providers.Store;'#10'implementation'#10'end.', cConfig,
+    'Source/x.pas'))));
+end;
+
 procedure TRoleImportRuleTests.PackageContainsIsNoImport;
 begin
   // contains nimmt Units ins Package auf (#1109); dieselbe Unit im uses eines Programms wäre ein Import.
@@ -498,8 +546,10 @@ begin
   Assert.AreEqual(1, Integer(Length(mOptions.Prefixes)));
   Assert.AreEqual(1, Integer(Length(mOptions.Allow)));
   Assert.AreEqual(5, Integer(Length(mOptions.HostRoles)), 'Vorgabe der Host-Rollen');
-  mOptions := TRoleImportRule.ParseOptions('{ "hostRoles": ["App"] }');
+  Assert.AreEqual(0, Integer(Length(mOptions.HostedFeatures)), 'ohne Hosted-Features');
+  mOptions := TRoleImportRule.ParseOptions('{ "hostRoles": ["App"], "hostedFeatures": ["Gamma", "Delta"] }');
   Assert.AreEqual(1, Integer(Length(mOptions.HostRoles)));
+  Assert.AreEqual(2, Integer(Length(mOptions.HostedFeatures)));
   Assert.AreEqual(0, Integer(Length(TRoleImportRule.ParseOptions('kein json').Prefixes)));
 end;
 

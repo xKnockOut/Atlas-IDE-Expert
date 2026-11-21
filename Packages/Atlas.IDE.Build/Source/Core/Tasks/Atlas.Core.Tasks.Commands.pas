@@ -184,12 +184,14 @@ end;
 
 class function TAtlasTaskCommands.BuildCommandLine(const AProgram: string; const AArgs: TArray<string>;
   ABatch: Boolean): string;
+const
+  cBatchShell = 'cmd.exe /d /s /c "%s"';
 begin
   Result := TTextCommandLine.Join(AProgram, AArgs);
   // /s: cmd nimmt nur die äußeren Anführungszeichen weg, der Rest bleibt wie geschrieben.
   if ABatch then
   begin
-    Result := 'cmd.exe /d /s /c "' + Result + '"';
+    Result := Format(cBatchShell, [Result]);
   end;
 end;
 

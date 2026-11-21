@@ -193,6 +193,8 @@ begin
 end;
 
 procedure WriteKey(ARegistry: TRegistry; const APath: string; AKey: TAtlasRegKey);
+const
+  cKeyNotWritable = 'Schlüssel %s nicht beschreibbar';
 var
   mValue: TAtlasRegValue;
   mBytes: TBytes;
@@ -202,7 +204,7 @@ var
 begin
   if not ARegistry.OpenKey('\' + APath, True) then
   begin
-    raise ERegistryException.CreateFmt('Schlüssel %s nicht beschreibbar', [APath]);
+    raise ERegistryException.CreateFmt(cKeyNotWritable, [APath]);
   end;
   try
     for mValue in AKey.Values do

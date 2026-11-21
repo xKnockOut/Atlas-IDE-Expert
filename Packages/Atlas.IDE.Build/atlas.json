@@ -23,6 +23,7 @@
     "register-does-work": {
       "entries": [
         "Register",
+        "RegisterModule",
         "*.RegisterModule"
       ]
     },

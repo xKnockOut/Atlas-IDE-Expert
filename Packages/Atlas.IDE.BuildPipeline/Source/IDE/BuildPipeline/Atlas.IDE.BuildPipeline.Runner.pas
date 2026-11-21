@@ -107,6 +107,10 @@ uses
   Atlas.IDE.Build.CheckOnSave,
   Atlas.UI.BuildPipeline.Strings;
 
+const
+  /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>
+  cActivity = 'Build für KI-Assistent';
+
 function NowMs: Int64;
 begin
   Result := GetTickCount64;
@@ -410,7 +414,7 @@ begin
   end;
   FRequestedBy := ARequestedBy;
   BeginRequest(ARequest, mProject, AOnDone);
-  mActivity := TAtlasActivity.Scope('Build für KI-Assistent');
+  mActivity := TAtlasActivity.Scope(cActivity);
   mStarted := NowMs;
   try
     mSucceeded := RunBuild(ARequest, mProject, mConfigurations, mPlatforms, ARequestedBy);

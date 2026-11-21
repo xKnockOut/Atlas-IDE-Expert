@@ -85,6 +85,13 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract;
 
+const
+  /// <summary>Beziehungen, die GitHub als Wort liefert (TAtlasTrackerLink.Relation); die Oberfläche übersetzt sie.
+  /// </summary>
+  cGitHubRelationPull = 'pull request';
+  cGitHubRelationMentioned = 'cross-referenced';
+  cGitHubRelationDependsOn = 'depends on';
+
 type
 {$SCOPEDENUMS ON}
   /// <summary>Zustand der Prüfungen (CI) eines Pull Requests: Ampel im Bereich.</summary>

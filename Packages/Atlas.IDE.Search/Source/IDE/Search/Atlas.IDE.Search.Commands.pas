@@ -196,13 +196,15 @@ begin
 end;
 
 function WindowName(AWindow: HWND): string;
+const
+  cNoWindow = 'kein Fenster';
 var
   mWindowClass: array[0..255] of Char;
   mControl: TWinControl;
 begin
   if AWindow = 0 then
   begin
-    Exit('kein Fenster');
+    Exit(cNoWindow);
   end;
   mWindowClass[0] := #0;
   GetClassName(AWindow, mWindowClass, Length(mWindowClass));
