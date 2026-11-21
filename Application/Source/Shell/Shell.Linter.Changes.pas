@@ -36,7 +36,7 @@ uses
   System.Classes,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Shell.Composition.Platform,
   Shell.Linter.Output,
   Atlas.Common.Localization.Texts;

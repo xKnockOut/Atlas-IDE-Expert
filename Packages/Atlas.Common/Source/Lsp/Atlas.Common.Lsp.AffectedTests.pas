@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.AffectedTests;
 
 // Betroffene Tests einer Änderung (#1353): aus dem Unterschied zur Basis
-// (Git oder SVN, geänderte Zeilen aus Atlas.Common.Rules.ChangedFiles) die
+// (Git oder SVN, geänderte Zeilen aus Atlas.Common.History.ChangedFiles) die
 // geänderten Symbole bestimmen, ihre Auswirkungen verfolgen (#1120) und die
 // DUnitX-Testmethoden ausgeben, die dabei erreicht werden.
 //
@@ -42,7 +42,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.AffectedTests.Types;
 

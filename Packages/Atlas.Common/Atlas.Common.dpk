@@ -568,7 +568,7 @@ contains
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.DynamicArrays.pas',
   Atlas.Common.Rules.Builtin.Performance.ManagedParams in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.ManagedParams.pas',
   Atlas.Common.Rules.Builtin.Performance.StringResets in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.StringResets.pas',
-  Atlas.Common.Rules.ChangedFiles in 'Source\Rules\Atlas.Common.Rules.ChangedFiles.pas',
+  Atlas.Common.History.ChangedFiles in 'Source\History\Atlas.Common.History.ChangedFiles.pas',
   Atlas.Common.Rules.LibrarySources in 'Source\Rules\Atlas.Common.Rules.LibrarySources.pas',
   Atlas.Common.Pascal.DeclaredTypes in 'Source\Pascal\Atlas.Common.Pascal.DeclaredTypes.pas',
   Atlas.Common.Rules.ResourceNames in 'Source\Rules\Atlas.Common.Rules.ResourceNames.pas',

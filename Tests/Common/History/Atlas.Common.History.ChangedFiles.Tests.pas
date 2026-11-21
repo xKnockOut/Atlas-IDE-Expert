@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.ChangedFiles.Tests;
+﻿unit Atlas.Common.History.ChangedFiles.Tests;
 
 // Tests für die Auswahl geänderter Dateien (#157).
 
@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.ChangedFiles;
+  Atlas.Common.History.ChangedFiles;
 
 function P(const APath: string): string;
 begin

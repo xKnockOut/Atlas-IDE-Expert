@@ -606,7 +606,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.DynamicArrays.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.ManagedParams.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.StringResets.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.ChangedFiles.pas"/>
+        <DCCReference Include="Source\History\Atlas.Common.History.ChangedFiles.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.LibrarySources.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DeclaredTypes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ResourceNames.pas"/>

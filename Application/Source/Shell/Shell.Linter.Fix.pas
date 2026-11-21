@@ -86,7 +86,7 @@ uses
   System.IOUtils,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Diagnostics.CheckProfile,
   Shell.Linter.Output,

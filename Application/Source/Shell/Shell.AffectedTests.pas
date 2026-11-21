@@ -92,7 +92,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Common.Localization.Texts;
