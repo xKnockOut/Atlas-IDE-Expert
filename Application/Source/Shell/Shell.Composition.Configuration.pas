@@ -73,7 +73,7 @@ uses
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Documents.Uris,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Workspace,
   Shell.Composition.Platform,
   Atlas.Text.LogMarks;
@@ -149,7 +149,7 @@ begin
   end
   else
   begin
-    FGlobalSettingsFile := TShellBootstrap.GlobalSettingsFile;
+    FGlobalSettingsFile := TCoreBootstrap.GlobalSettingsFile;
   end;
   LoadGlobalSettings;
   FFileWatcher := TFileWatcher.Create(FServices.FilesChanged, FServices.Logger);
@@ -166,7 +166,7 @@ var
   mWorkspace: TShellWorkspace;
 begin
   // Nicht lesbar (gerade geschrieben oder gesperrt): Warnung im Log, der Beobachter meldet die Datei erneut.
-  mText := TShellBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FServices.Logger);
+  mText := TCoreBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FServices.Logger);
   if not FServices.Settings.SetGlobalSettings(mText) then
   begin
     Exit;

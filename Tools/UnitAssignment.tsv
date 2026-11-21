@@ -1393,6 +1393,7 @@ Atlas.IDE.Designer	Atlas.Core.Designer.UndoFlow	Core/Designer/Atlas.Core.Designe
 Atlas.IDE.Designer	Atlas.Core.Designer.Usages	Core/Designer/Atlas.Core.Designer.Usages.pas	Ordner `Core/Designer`
 Atlas.IDE.Designer	Atlas.Core.Designer.Wrap	Core/Designer/Atlas.Core.Designer.Wrap.pas	Ordner `Core/Designer`
 Atlas.IDE.Designer	Atlas.IDE.Designer.Access	IDE/Designer/Atlas.IDE.Designer.Access.pas	Ordner `IDE/Designer`
+Atlas.IDE.Designer	Atlas.IDE.Designer.Adapters.Module	IDE/Designer/Atlas.IDE.Designer.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle, Menüeinträge und Taste des Designers, Einstellungen und Thema an die Leiste
 Atlas.IDE.Designer	Atlas.IDE.Designer.Adapters.Surface	IDE/Designer/Atlas.IDE.Designer.Adapters.Surface.pas	IAtlasDesignSurface über IDesigner und den Formular-Editor der IDE, #1443
 Atlas.IDE.Designer	Atlas.IDE.Designer.Anchors	IDE/Designer/Atlas.IDE.Designer.Anchors.pas	Ordner `IDE/Designer`
 Atlas.IDE.Designer	Atlas.IDE.Designer.Arrange	IDE/Designer/Atlas.IDE.Designer.Arrange.pas	Ordner `IDE/Designer`
@@ -1940,6 +1941,7 @@ Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Discover	IDE/Welcome/Atlas.IDE.Welc
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Help	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Help.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Layouts	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Layouts.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Listener	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Listener.pas	Ende von Projektaufgaben, Testläufen und Befehlsnutzung an die Seite, #1455
+Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Module	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle und Menüeinträge der Seite, Einstellungen und Thema an die laufende Seite
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Projects	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Projects.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.QuickActions	IDE/Welcome/Atlas.IDE.Welcome.Adapters.QuickActions.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Registry	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Registry.pas	Ordner `IDE/Welcome`

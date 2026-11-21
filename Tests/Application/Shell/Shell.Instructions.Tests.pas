@@ -40,7 +40,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Instructions,
   Atlas.Common.Lsp.Instructions,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Composition.Instructions,
   Shell.Linter.Instructions,
   Shell.Linter.Settings;

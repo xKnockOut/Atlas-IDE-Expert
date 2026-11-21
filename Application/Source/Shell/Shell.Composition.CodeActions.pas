@@ -97,7 +97,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Semantics.UsesUsage,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Platform.Server;
 
 /// <summary>Code-Aktion für binär gespeicherte Formulare (#122): Umwandeln in Text.</summary>
@@ -271,8 +271,8 @@ begin
   end;
   // Verweise der Formulardatei auf andere Module halten deren uses-Eintrag (dfm-reference-unit-missing).
   // Offene Dokumente zuerst: Der Designer schickt den ungespeicherten Stand der Formulardatei (#402).
-  if TShellBootstrap.ReadSourceText(FServices.Documents, ChangeFileExt(mFileName, '.dfm'), mText) or
-    TShellBootstrap.ReadSourceText(FServices.Documents, ChangeFileExt(mFileName, '.fmx'), mText) then
+  if TCoreBootstrap.ReadSourceText(FServices.Documents, ChangeFileExt(mFileName, '.dfm'), mText) or
+    TCoreBootstrap.ReadSourceText(FServices.Documents, ChangeFileExt(mFileName, '.fmx'), mText) then
   begin
     Result := TFormModel.ForeignModulesOf(mText);
   end;
