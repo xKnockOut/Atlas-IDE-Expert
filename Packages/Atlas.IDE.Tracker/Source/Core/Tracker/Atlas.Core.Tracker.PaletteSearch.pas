@@ -476,7 +476,7 @@ end;
 
 function TAtlasRecentIssues.LoadFromFile(const AFileName: string): TAtlasDataLoad;
 begin
-  Result := TAtlasDataFile.LoadInto(AFileName, FKind, Parse, FEntries.Clear, FKept);
+  Result := TAtlasDataFile.LoadInto(AFileName, FKind, Parse, Clear, FKept);
 end;
 
 function TAtlasRecentIssues.SaveToFile(const AFileName: string): Boolean;
