@@ -1,4 +1,4 @@
-﻿unit Shell.Compiler.Tests;
+﻿unit Core.Compiler.Tests;
 
 // Tests für Kompilieren ohne Kommandozeilen-Compiler im Server (#261): Erkennen
 // der Ausgabe mit Zwischenspeicher. Prozesse sind nachgestellt.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TShellCompilerTests = class
+  TCoreCompilerTests = class
   private
     FFolder: string;
   public
@@ -37,7 +37,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Edition,
-  Shell.Compiler,
+  Core.Compiler,
   Atlas.Tests.TempFolder;
 
 type
@@ -125,16 +125,16 @@ begin
   Result := TSilentLogger.Create;
 end;
 
-{ TShellCompilerTests }
+{ TCoreCompilerTests }
 
-procedure TShellCompilerTests.Setup;
+procedure TCoreCompilerTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-ShellCompiler-' + IntToStr(Random(MaxInt)));
   ForceDirectories(TPath.Combine(FFolder, 'bin'));
   TFile.WriteAllText(TPath.Combine(FFolder, TPath.Combine('bin', 'dcc32.exe')), 'kein Programm');
 end;
 
-procedure TShellCompilerTests.TearDown;
+procedure TCoreCompilerTests.TearDown;
 begin
   TTestTempFolder.Remove(FFolder);
 end;
@@ -146,18 +146,18 @@ begin
   Result := 1;
 end;
 
-procedure TShellCompilerTests.ProbesOnceAndRemembersPerInstallation;
+procedure TCoreCompilerTests.ProbesOnceAndRemembersPerInstallation;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
-  mEditions, mAgain: TShellCompilerEditions;
+  mEditions, mAgain: TCoreCompilerEditions;
   mCacheFile, mExe: string;
 begin
   mProcess := TFakeProcess.Create(StarterAnswer);
   mKeep := mProcess;
   mCacheFile := TPath.Combine(FFolder, 'compiler-editions.json');
   mExe := TPath.Combine(FFolder, TPath.Combine('bin', 'dcc32.exe'));
-  mEditions := TShellCompilerEditions.Create(mKeep, Silent, mCacheFile);
+  mEditions := TCoreCompilerEditions.Create(mKeep, Silent, mCacheFile);
   try
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(mEditions.Resolve(FFolder, '37.0', mExe)));
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(mEditions.Resolve(FFolder, '37.0', mExe)));
@@ -168,7 +168,7 @@ begin
   end;
   Assert.IsTrue(TFile.Exists(mCacheFile), 'gemerkt');
   // Neuer Server: aus der Datei, ohne Probelauf.
-  mAgain := TShellCompilerEditions.Create(mKeep, Silent, mCacheFile);
+  mAgain := TCoreCompilerEditions.Create(mKeep, Silent, mCacheFile);
   try
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(mAgain.Resolve(FFolder, '37.0', mExe)));
     Assert.AreEqual(1, Integer(mProcess.Calls.Count));
@@ -177,15 +177,15 @@ begin
   end;
 end;
 
-procedure TShellCompilerTests.MissingCompilerNeedsNoProbe;
+procedure TCoreCompilerTests.MissingCompilerNeedsNoProbe;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
-  mEditions: TShellCompilerEditions;
+  mEditions: TCoreCompilerEditions;
 begin
   mProcess := TFakeProcess.Create(StarterAnswer);
   mKeep := mProcess;
-  mEditions := TShellCompilerEditions.Create(mKeep, Silent, '');
+  mEditions := TCoreCompilerEditions.Create(mKeep, Silent, '');
   try
     Assert.AreEqual(Ord(TCompilerEdition.Missing), Ord(mEditions.Resolve(FFolder, '37.0',
       TPath.Combine(FFolder, TPath.Combine('bin', 'dcc64.exe')))));
@@ -195,11 +195,11 @@ begin
   end;
 end;
 
-procedure TShellCompilerTests.SilentProbeIsNotRemembered;
+procedure TCoreCompilerTests.SilentProbeIsNotRemembered;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
-  mEditions: TShellCompilerEditions;
+  mEditions: TCoreCompilerEditions;
   mExe: string;
 begin
   mProcess := TFakeProcess.Create(
@@ -210,7 +210,7 @@ begin
     end);
   mKeep := mProcess;
   mExe := TPath.Combine(FFolder, TPath.Combine('bin', 'dcc32.exe'));
-  mEditions := TShellCompilerEditions.Create(mKeep, Silent, '');
+  mEditions := TCoreCompilerEditions.Create(mKeep, Silent, '');
   try
     Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(mEditions.Resolve(FFolder, '37.0', mExe)));
     Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(mEditions.Resolve(FFolder, '37.0', mExe)));
@@ -220,11 +220,11 @@ begin
   end;
 end;
 
-procedure TShellCompilerTests.RemembersLicenseTextOfARealRun;
+procedure TCoreCompilerTests.RemembersLicenseTextOfARealRun;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
-  mEditions: TShellCompilerEditions;
+  mEditions: TCoreCompilerEditions;
   mExe: string;
 begin
   mProcess := TFakeProcess.Create(
@@ -235,7 +235,7 @@ begin
     end);
   mKeep := mProcess;
   mExe := TPath.Combine(FFolder, TPath.Combine('bin', 'dcc32.exe'));
-  mEditions := TShellCompilerEditions.Create(mKeep, Silent, '');
+  mEditions := TCoreCompilerEditions.Create(mKeep, Silent, '');
   try
     Assert.AreEqual(Ord(TCompilerEdition.CommandLine), Ord(mEditions.Resolve(FFolder, '37.0', mExe)));
     mEditions.Remember(FFolder, '37.0', mExe, TCompilerEdition.NoCommandLine);
@@ -247,6 +247,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellCompilerTests);
+  TDUnitX.RegisterTestFixture(TCoreCompilerTests);
 
 end.

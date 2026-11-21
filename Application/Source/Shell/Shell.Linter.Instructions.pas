@@ -8,7 +8,7 @@
 interface
 
 uses
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   TLinterInstructions = class

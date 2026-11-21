@@ -23,7 +23,7 @@ uses
   Atlas.Common.Todos.Contract,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.CheckMemory,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.VersionControlChanges,
   Shell.WorkspaceGroup,
   Shell.Linter.Baseline;

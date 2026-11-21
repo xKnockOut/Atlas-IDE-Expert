@@ -1,4 +1,4 @@
-﻿unit Shell.CommandLine.Tests;
+﻿unit Core.CommandLine.Tests;
 
 interface
 
@@ -88,7 +88,7 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Monitor.Commands,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 { TCommandLineOptionsTests }
 
