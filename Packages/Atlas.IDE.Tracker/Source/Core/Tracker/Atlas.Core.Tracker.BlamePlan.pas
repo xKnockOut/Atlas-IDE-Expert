@@ -10,7 +10,8 @@
 interface
 
 uses
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Tracker.CodeLinkPlan;
 
 type
 {$SCOPEDENUMS ON}
@@ -20,8 +21,9 @@ type
 
   TAtlasBlamePlan = class
   public const
-    cMenuShow = 1;
-    cMenuBrowse = 2;
+    /// <summary>Wie im Menü einer Code-Verknüpfung (ClickCommand gibt sie weiter).</summary>
+    cMenuShow = TAtlasCodeLinkPlan.cMenuShow;
+    cMenuBrowse = TAtlasCodeLinkPlan.cMenuBrowse;
     cMenuCopy = 3;
     cMenuScope = 4;
     /// <summary>Menüeintrag = Kennung * cMenuStride + Befehl.</summary>
@@ -53,8 +55,7 @@ type
 implementation
 
 uses
-  System.SysUtils,
-  Atlas.Core.Tracker.CodeLinkPlan;
+  System.SysUtils;
 
 class function TAtlasBlamePlan.StateKey(const APatternKey, AKey: string): string;
 begin
@@ -136,11 +137,7 @@ end;
 
 class function TAtlasBlamePlan.ClickCommand(AShift: Boolean): Integer;
 begin
-  Result := cMenuShow;
-  if AShift then
-  begin
-    Result := cMenuBrowse;
-  end;
+  Result := TAtlasCodeLinkPlan.ClickCommand(AShift);
 end;
 
 end.

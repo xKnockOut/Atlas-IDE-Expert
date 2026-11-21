@@ -140,6 +140,9 @@ type
     /// False mit AReason, wenn „Tests ausführen“ aus ist, schon ein Lauf läuft oder AProject nicht offen ist.
     /// </summary>
     function RunProject(const AProject: string; out AReason: string): Boolean;
+    /// <summary>Wie RunProject; startet nichts, meldet es den Grund in der Meldungsansicht. Ohne AProject nichts.
+    /// </summary>
+    procedure RunProjectOrSay(const AProject: string);
     /// <summary>Tests ATests im Testprojekt der Datei AFileName im Hintergrund (#1775): ohne Frage nach dem
     /// Testprojekt (eines bzw. die gemerkte Wahl) und ohne Zeilen in der Meldungsansicht; gebaut wie mit „Vor den
     /// Tests bauen“ (mit ABuildFirst; ohne läuft die vorhandene EXE, Folgeläufe einer Serie #1782). Das Ende meldet
@@ -487,6 +490,16 @@ begin
   end;
   Start(mProject, nil, True);
   Result := True;
+end;
+
+procedure TAtlasIdeTests.RunProjectOrSay(const AProject: string);
+var
+  mReason: string;
+begin
+  if (AProject <> '') and not RunProject(AProject, mReason) and (mReason <> '') then
+  begin
+    Say(mReason);
+  end;
 end;
 
 function TAtlasIdeTests.RunQuiet(const AFileName: string; const ATests: TArray<string>; out AReason: string;

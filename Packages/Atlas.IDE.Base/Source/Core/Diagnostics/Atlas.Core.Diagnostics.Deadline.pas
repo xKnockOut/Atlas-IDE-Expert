@@ -10,7 +10,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.Diagnostics;
 
 type
   /// <summary>Millisekunden seit dem Systemstart, 64 Bit.</summary>
@@ -24,6 +25,9 @@ type
     class function Since(AStart: UInt64): UInt64; static;
     /// <summary>Wie Since, auf High(Cardinal) begrenzt (für Felder in Millisekunden mit 32 Bit).</summary>
     class function SinceMs(AStart: UInt64): Cardinal; static;
+    /// <summary>Millisekunden, die von ATimeoutMs übrig sind, seit AWatch läuft; 0, wenn die Zeit um ist.
+    /// </summary>
+    class function LeftOf(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer; static;
     /// <summary>Nur für Tests: Zähler ersetzen; nil stellt TThread.GetTickCount64 wieder her.</summary>
     class procedure SetClock(const AClock: TFunc<UInt64>); static;
   end;
@@ -93,6 +97,18 @@ begin
 end;
 
 { TAtlasDeadline }
+
+class function TAtlasTicks.LeftOf(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
+var
+  mRest: Int64;
+begin
+  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
+  Result := 0;
+  if mRest > 0 then
+  begin
+    Result := Integer(mRest);
+  end;
+end;
 
 class function TAtlasDeadline.After(AMs: Cardinal): TAtlasDeadline;
 begin

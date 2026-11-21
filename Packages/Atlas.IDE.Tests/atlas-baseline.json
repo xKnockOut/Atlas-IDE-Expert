@@ -2,18 +2,6 @@
   "version": 1,
   "findings": [
     {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "magic-number", "fingerprint": "6f12c42d", "count": 1, "routine": "TAtlasAffectedHook.IsOwn", "context": "1493b6bc"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.BoundaryCases.pas", "rule": "duplicate-routine-body", "fingerprint": "a1d83856", "count": 1, "routine": "ObjectsOf", "context": "c940de0c"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.CaseTable.pas", "rule": "duplicate-routine-body", "fingerprint": "a1d83856", "count": 1, "routine": "ObjectsOf", "context": "4e0a7709"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.Debug.pas", "rule": "duplicate-routine-body", "fingerprint": "8a8ffd7e", "count": 1, "routine": "TAtlasTestSelection.Caption", "context": "04c27531"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.Series.pas", "rule": "duplicate-routine-body", "fingerprint": "d094031d", "count": 1, "routine": "TAtlasTestSeriesSubject.Caption", "context": "b71e90ba"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.CoveredBy.pas", "rule": "duplicate-routine-body", "fingerprint": "10f80cff", "count": 1, "routine": "InvalidateEditor", "context": "1f8495a2"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Explorer.pas", "rule": "duplicate-routine-body", "fingerprint": "85b68d97", "count": 1, "routine": "TAtlasIdeTestExplorer.RunAll", "context": "b3f944fb"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Lens.pas", "rule": "duplicate-routine-body", "fingerprint": "10f80cff", "count": 1, "routine": "InvalidateEditor", "context": "1f8495a2"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Lens.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeTestsLens.Create", "context": "9df66e02"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Runner.pas", "rule": "duplicate-routine-body", "fingerprint": "0f7f03f4", "count": 1, "routine": "UnitFileFunc", "context": "c95bb535"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Stale.pas", "rule": "duplicate-routine-body", "fingerprint": "0f7f03f4", "count": 1, "routine": "UnitFileFunc", "context": "11de2fb1"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.StatusField.pas", "rule": "duplicate-routine-body", "fingerprint": "7bf37620", "count": 1, "routine": "TAtlasIdeTestStatusField.RunAll", "context": "b3f944fb"},
-    {"path": "Source/UI/Tests/Atlas.UI.Tests.ExplorerFrame.pas", "rule": "duplicate-routine-body", "fingerprint": "5155c594", "count": 1, "routine": "Fire", "context": "65239e56"},
-    {"path": "Source/UI/Tests/Atlas.UI.Tests.SeriesMenu.pas", "rule": "duplicate-routine-body", "fingerprint": "5155c594", "count": 1, "routine": "Fire", "context": "78276096"}
+    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Lens.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeTestsLens.Create", "context": "9df66e02"}
   ]
 }

@@ -29,6 +29,8 @@ type
     /// ist; -1 ohne.</summary>
     class function IndexOfText<T>(const AItems: TArray<T>; const AText: string;
       const ATextOf: TFunc<T, string>): Integer; static;
+    /// <summary>Text jedes Elements (ATextOf) in der Reihenfolge von AItems.</summary>
+    class function Texts<T>(const AItems: TArray<T>; const ATextOf: TFunc<T, string>): TArray<string>; static;
     /// <summary>Zahl zum Schlüssel AKey aus den parallelen Arrays AKeys und ACounts (ohne Rücksicht auf
     /// Groß-/Kleinschreibung); 0 ohne.</summary>
     class function CountOfText(const AKeys: TArray<string>; const ACounts: TArray<Integer>;
@@ -125,6 +127,18 @@ begin
         Exit(False);
       end;
     end;
+  end;
+end;
+
+class function TTextArrays.Texts<T>(const AItems: TArray<T>; const ATextOf: TFunc<T, string>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AItems));
+  for mIndex := 0 to High(AItems) do
+  begin
+    Result[mIndex] := ATextOf(AItems[mIndex]);
   end;
 end;
 

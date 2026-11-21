@@ -287,6 +287,7 @@ Atlas.IDE.Base	Atlas.Core.Forms.Changes	Core/Forms/Atlas.Core.Forms.Changes.pas	
 Atlas.IDE.Base	Atlas.Core.Forms.PropertyValues	Core/Forms/Atlas.Core.Forms.PropertyValues.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Forms.Text	Core/Forms/Atlas.Core.Forms.Text.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Foundation.Calls	Core/Foundation/Atlas.Core.Foundation.Calls.pas	Gesetzte oder leere Rückrufe für Base und Module aufrufen
+Atlas.IDE.Base	Atlas.Core.Foundation.Contract	Core/Foundation/Atlas.Core.Foundation.Contract.pas	Quelle eines Bereichs, die erfährt, dass er gezeigt wird (`IAtlasShownSource`)
 Atlas.IDE.Base	Atlas.Core.Generate.Choice	Core/Generate/Atlas.Core.Generate.Choice.pas	Ordner `Core/Generate`: Auswahl mit Suchfeld, #1821
 Atlas.IDE.Base	Atlas.Core.Generate.Contract	Core/Generate/Atlas.Core.Generate.Contract.pas	Ordner `Core/Generate`
 Atlas.IDE.Base	Atlas.Core.Generate.FileTemplates	Core/Generate/Atlas.Core.Generate.FileTemplates.pas	Ordner `Core/Generate`

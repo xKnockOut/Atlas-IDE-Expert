@@ -180,7 +180,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Symbol,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.UI.Foundation.Menus;
 
 {$R *.dfm}
 
@@ -452,10 +453,7 @@ end;
 
 function NewMenuItem(AMenu: TPopupMenu; AText: TAtlasAnalysisTextId; const AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := TAtlasAnalysisStrings.Text(AText);
-  Result.OnClick := AOnClick;
-  AMenu.Items.Add(Result);
+  Result := TAtlasMenus.Add(AMenu, TAtlasAnalysisStrings.Text(AText), AOnClick);
 end;
 
 /// <summary>Leiste oben im Rahmen; AHeight in logischen Pixeln (96 dpi).</summary>

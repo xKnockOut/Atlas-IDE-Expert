@@ -78,6 +78,8 @@ type
     /// <summary>Atlas-Symbol (#751) als Icon der Form von AHost (Fenstertitel, schwebend); nichts ohne Fenster
     /// oder Form.</summary>
     class procedure UpdateIcon(AHost: TAtlasIdeDockWindow); static;
+    /// <summary>Projektverwaltung der IDE; nil, wenn sie fehlt.</summary>
+    class function ProjectManager: TCustomForm; static;
     /// <summary>Aus INTACustomDockableForm.FrameCreated aufrufen: merkt Frame und Form.</summary>
     procedure FrameCreated(AFrame: TCustomFrame);
     /// <summary>Fenster zeigen, bei Bedarf (neu) anlegen, ein neues mit Atlas-Symbol; ACreated: neu angelegt.
@@ -86,6 +88,10 @@ type
     /// <summary>Wie Show, ohne zu fragen, ob neu angelegt: Lebt die Form noch (X versteckt nur), wird sie samt
     /// Gastgebern gezeigt; sonst neu angelegt.</summary>
     procedure Present;
+    /// <summary>Wie Present; ein neu angelegtes, schwebendes Fenster dockt einmal als Reiter neben die
+    /// Projektverwaltung der IDE (Vorgabeplatz rechts, Entscheidung in TAtlasDockPlan.DockToDefault; APlaced:
+    /// schon einmal so angedockt). True, wenn es jetzt angedockt hat; der Aufrufer merkt sich das.</summary>
+    function PresentBesideProjectManager(APlaced: Boolean): Boolean;
     /// <summary>Gemeinsames Show der Fenster: AHost bei Bedarf mit AMake anlegen, zeigen und den Frame liefern
     /// (nil ohne).</summary>
     class function PresentFrame(var AHost: TAtlasIdeDockWindow;
@@ -458,6 +464,46 @@ procedure TAtlasIdeDockWindow.Present;
 var
   mCreated: Boolean;
 begin
+  Show(mCreated);
+end;
+
+class function TAtlasIdeDockWindow.ProjectManager: TCustomForm;
+const
+  // Name der Projektverwaltung der IDE; sie steht in der Vorgabe-Anordnung rechts.
+  cProjectManagerName = 'ProjectManagerForm';
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to Screen.CustomFormCount - 1 do
+  begin
+    if SameText(Screen.CustomForms[mIndex].Name, cProjectManagerName) then
+    begin
+      Exit(Screen.CustomForms[mIndex]);
+    end;
+  end;
+end;
+
+function TAtlasIdeDockWindow.PresentBesideProjectManager(APlaced: Boolean): Boolean;
+var
+  mCreated: Boolean;
+  mForm, mTarget: TCustomForm;
+begin
+  Result := False;
+  Show(mCreated);
+  if not mCreated then
+  begin
+    Exit;
+  end;
+  mForm := Form;
+  mTarget := ProjectManager;
+  if (mForm <> nil) and TAtlasDockPlan.DockToDefault(True, mForm.HostDockSite = nil, APlaced,
+    (mTarget <> nil) and (mTarget.HostDockSite <> nil)) then
+  begin
+    mForm.ManualDock(mTarget.HostDockSite, nil, alClient);
+    Result := True;
+  end;
+  // Nach dem Andocken die Reiterseite wählen und Gastgeber zeigen.
   Show(mCreated);
 end;
 

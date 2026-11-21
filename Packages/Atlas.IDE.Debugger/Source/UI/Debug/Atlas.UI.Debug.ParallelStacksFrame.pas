@@ -71,6 +71,8 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Core.Foundation.Calls,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Debug.Threads.Strings,
   Atlas.UI.Debug.ParallelStacks;
 
@@ -159,10 +161,7 @@ end;
 
 procedure TAtlasDebugParallelStacksFrame.FilterClick(Sender: TObject);
 begin
-  if Assigned(FOnFilter) then
-  begin
-    FOnFilter();
-  end;
+  TAtlasCalls.Call(FOnFilter);
 end;
 
 procedure TAtlasDebugParallelStacksFrame.TreeDblClick(Sender: TObject);
@@ -172,11 +171,7 @@ end;
 
 procedure TAtlasDebugParallelStacksFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    Key := 0;
-    OpenSelected;
-  end;
+  TAtlasControls.ReturnKey(Key, OpenSelected);
 end;
 
 procedure TAtlasDebugParallelStacksFrame.TreeChange(Sender: TObject; Node: TTreeNode);
@@ -237,11 +232,7 @@ end;
 
 function TAtlasDebugParallelStacksFrame.SelectedNode: Integer;
 begin
-  Result := -1;
-  if FTree.Selected <> nil then
-  begin
-    Result := Integer(NativeInt(FTree.Selected.Data));
-  end;
+  Result := TAtlasControls.SelectedIndex(FTree);
 end;
 
 procedure TAtlasDebugParallelStacksFrame.OpenSelected;

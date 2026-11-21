@@ -32,7 +32,6 @@ type
     FReset: TButton;
     FNextTop: Integer;
     function AddCombo(const ACaption: string; const AItems: TArray<string>; const AText: string): TComboBox;
-    function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     procedure OkClick(Sender: TObject);
     procedure CancelClick(Sender: TObject);
     procedure ResetClick(Sender: TObject);
@@ -105,13 +104,13 @@ begin
   mBottom.Height := ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Anzeigen“; ganz links „Zurücksetzen“.
-  FCancel := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCancel), CancelClick);
+  FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FOk := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterOk), OkClick);
+  FOk := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
-  FReset := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterReset), ResetClick);
+  FReset := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterReset), ResetClick);
   FReset.Anchors := [akTop, akLeft];
   FReset.Left := ScaleValue(cGap);
 
@@ -150,24 +149,6 @@ begin
   Result.Text := AText;
   mPrompt.FocusControl := Result;
   FNextTop := Result.Top + Result.Height + ScaleValue(cGap);
-end;
-
-function TAtlasTodoFilterDialog.AddButton(AParent: TWinControl; const ACaption: string;
-  AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  if Result.Width < ScaleValue(90) then
-  begin
-    Result.Width := ScaleValue(90);
-  end;
-  Result.Top := ScaleValue(cGap);
-  Result.Height := ScaleValue(28);
-  Result.Anchors := [akTop, akRight];
 end;
 
 procedure TAtlasTodoFilterDialog.OkClick(Sender: TObject);

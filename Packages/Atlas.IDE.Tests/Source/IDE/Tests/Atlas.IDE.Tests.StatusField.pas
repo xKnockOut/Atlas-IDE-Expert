@@ -295,13 +295,8 @@ begin
 end;
 
 procedure TAtlasIdeTestStatusField.RunAll;
-var
-  mReason: string;
 begin
-  if (FProject <> '') and not FTests.RunProject(FProject, mReason) and (mReason <> '') then
-  begin
-    FTests.Say(mReason);
-  end;
+  FTests.RunProjectOrSay(FProject);
 end;
 
 procedure TAtlasIdeTestStatusField.RunFailed;
