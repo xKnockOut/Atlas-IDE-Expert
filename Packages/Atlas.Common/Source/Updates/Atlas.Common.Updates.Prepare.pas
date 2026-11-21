@@ -5,8 +5,11 @@
 // nichts am Atlas-Ordner:
 // 0. state.json sofort neu schreiben: Ein Stand eines früheren Laufs im
 //    selben Ordner gilt ab hier nicht mehr.
-// 1. Versionsdatei laden; sie muss die angebotene Version nennen. Alle
-//    Adressen (Versionsdatei, Paket, Quelltext) nur von TUpdateHosts.
+// 1. Versionsdatei laden; sie muss die angebotene Version nennen und mit
+//    einem der eingebetteten Schlüssel signiert sein (Signaturdatei daneben,
+//    Atlas.Common.Updates.ManifestSignature). Eine falsche Signatur bricht ab,
+//    eine fehlende nur, solange RequireManifestSignature gilt; sonst Hinweis.
+//    Alle Adressen (Versionsdatei, Paket, Quelltext) nur von TUpdateHosts.
 // 2. Paket der eigenen IDE laden und mit SHA-256 prüfen; gibt es keins, das
 //    erste Paket (Server, Daten) und den Quelltext laden und die Packages
 //    bauen (ohne Kommandozeilen-Compiler Fehler noCompiler). Gebaut wird nur
@@ -37,8 +40,11 @@ type
     FArgs: TUpdateArguments;
     FUpdater: string;
     FStage: TUpdateStage;
+    FRequireManifestSignature: Boolean;
+    FManifestKeys: TArray<string>;
     procedure SetPhase(APhase: TUpdatePhase; AProgress: Integer);
     procedure WriteStage;
+    procedure CheckManifestSignature(const AManifest: string);
     function LoadManifest: TUpdateManifest;
     procedure Fetch(const AFile: TUpdateFile; const AName: string; AFrom, ATo: Integer; const ATargetDir: string);
     procedure CheckSignatures;
@@ -51,6 +57,10 @@ type
     /// <summary>0 bei Erfolg (state.json ready), sonst 1 (failed).</summary>
     function Run: Integer;
     property Stage: TUpdateStage read FStage;
+    /// <summary>Ohne Signaturdatei abbrechen statt warnen; Vorgabe TUpdateManifestSignature.cRequired.</summary>
+    property RequireManifestSignature: Boolean read FRequireManifestSignature write FRequireManifestSignature;
+    /// <summary>Öffentliche Schlüssel für die Versionsdatei; Vorgabe TUpdateManifestSignature.Keys.</summary>
+    property ManifestKeys: TArray<string> read FManifestKeys write FManifestKeys;
   end;
 
   TUpdateFolders = class
@@ -76,11 +86,12 @@ uses
   Atlas.Common.Updates.Archive,
   Atlas.Common.Updates.SourceBuild,
   Atlas.Common.Updates.KnownPackages,
+  Atlas.Common.Updates.ManifestSignature,
   Atlas.Common.Updates.Selection;
 
 type
 {$SCOPEDENUMS ON}
-  TPrepareText = (Loading, Unsigned, FromSource, Failed);
+  TPrepareText = (Loading, Unsigned, FromSource, ManifestUnsigned, Failed);
 {$SCOPEDENUMS OFF}
 
 const
@@ -92,6 +103,8 @@ const
     'sichert den Quelltext.';
     En: 'Building from source: the built packages are not bound to the publisher; only the checksum protects the ' +
     'source.'),
+    (De: 'Die Versionsdatei ist nicht signiert (%s): Das Update ist nicht an den Herausgeber gebunden.';
+    En: 'The version file is not signed (%s): the update is not bound to the publisher.'),
     (De: 'Fehler %s: %s'; En: 'Error %s: %s'));
 
 { TUpdateFolders }
@@ -175,6 +188,8 @@ begin
   FArgs := AArgs;
   FUpdater := AUpdater;
   FStage := Default(TUpdateStage);
+  FRequireManifestSignature := TUpdateManifestSignature.cRequired;
+  FManifestKeys := TUpdateManifestSignature.Keys;
 end;
 
 procedure TUpdatePreparation.SetPhase(APhase: TUpdatePhase; AProgress: Integer);
@@ -191,6 +206,30 @@ end;
 procedure TUpdatePreparation.WriteStage;
 begin
   FSystem.Files.WriteText(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cStateFile), FStage.ToJson);
+end;
+
+procedure TUpdatePreparation.CheckManifestSignature(const AManifest: string);
+var
+  mSignature, mError: string;
+  mFound: Boolean;
+  mVerdict: TUpdateManifestVerdict;
+begin
+  mFound := FSystem.Network.Fetch(TUpdateManifestSignature.SignatureUrl(FArgs.ManifestUrl), mSignature, mError);
+  mVerdict := TUpdateManifestSignature.Verdict(FSystem.Trust, AManifest, mFound, mSignature, FManifestKeys);
+  if mVerdict = TUpdateManifestVerdict.Forged then
+  begin
+    raise EUpdateError.CreateCode(TUpdateErrors.cManifestSignature, '');
+  end;
+  if mVerdict <> TUpdateManifestVerdict.Missing then
+  begin
+    Exit;
+  end;
+  if FRequireManifestSignature then
+  begin
+    raise EUpdateError.CreateCode(TUpdateErrors.cManifestUnsigned, mError);
+  end;
+  FSystem.Log(cTexts[TPrepareText.ManifestUnsigned].Fmt([mError]));
+  FStage.Warning := TUpdateErrors.cManifestUnsigned;
 end;
 
 /// <summary>EUpdateError (host) für eine Adresse außerhalb der erlaubten Hosts, bevor etwas geladen wird.</summary>
@@ -211,6 +250,8 @@ begin
   begin
     raise EUpdateError.CreateCode(TUpdateErrors.cDownload, mError);
   end;
+  // Vor dem Auswerten: Nichts aus einer unechten Versionsdatei (Adressen, Prüfsummen) wird verwendet.
+  CheckManifestSignature(mText);
   if not TUpdateManifests.TryParse(mText, TUpdateChannels.cReleasesUrl, Result) then
   begin
     raise EUpdateError.CreateCode(TUpdateErrors.cManifest, '');

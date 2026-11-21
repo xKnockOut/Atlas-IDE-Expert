@@ -97,6 +97,10 @@ type
     /// <summary>SHA-256 als 64 kleine Hexziffern.</summary>
     function Sha256(const AFileName: string): string;
     function Signature(const AFileName: string): TUpdateSignature;
+    /// <summary>AManifest (Bytes der Versionsdatei) ist mit einem der öffentlichen Schlüssel APublicKeys signiert:
+    /// ECDSA P-256 über SHA-256, ASignature mit r und s je 32 Byte, ein Schlüssel als X und Y je 32 Byte in
+    /// 128 Hexziffern.</summary>
+    function ManifestIsGenuine(const AManifest, ASignature: TBytes; const APublicKeys: TArray<string>): Boolean;
   end;
 
   TUpdateProgress = reference to procedure(APercent: Integer);

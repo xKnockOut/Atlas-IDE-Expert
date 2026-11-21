@@ -95,6 +95,11 @@ type
     destructor Destroy; override;
     function Sha256(const AFileName: string): string;
     function Signature(const AFileName: string): TUpdateSignature;
+    /// <summary>Echt, wenn ASignature die Signatur SignManifest zu einem der Schlüssel ist.</summary>
+    function ManifestIsGenuine(const AManifest, ASignature: TBytes; const APublicKeys: TArray<string>): Boolean;
+    /// <summary>Signatur der Versionsdatei AManifest mit dem Schlüssel AKey: 128 Hexziffern wie im Release.
+    /// </summary>
+    class function SignManifest(const AManifest, AKey: string): string; static;
     /// <summary>Datei signiert von ASubject ('' = unsigniert); der Fingerabdruck folgt aus dem Namen.</summary>
     procedure Sign(const AFileName, ASubject: string);
     /// <summary>Gültig signiert mit Name ASubject und Fingerabdruck AThumbprint (beide dürfen leer sein).</summary>
@@ -184,7 +189,8 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Updates.ManifestSignature;
 
 function KeyOf(const APath: string): string;
 begin
@@ -620,6 +626,29 @@ begin
   begin
     Result := mSignature;
   end;
+end;
+
+function TFakeTrust.ManifestIsGenuine(const AManifest, ASignature: TBytes;
+  const APublicKeys: TArray<string>): Boolean;
+var
+  mKey: string;
+  mExpected: TBytes;
+begin
+  for mKey in APublicKeys do
+  begin
+    if (mKey <> '') and TUpdateManifestSignature.TryHexBytes(SignManifest(TEncoding.UTF8.GetString(AManifest), mKey),
+      mExpected) and (Length(mExpected) = Length(ASignature)) and
+      CompareMem(@mExpected[0], @ASignature[0], Length(mExpected)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TFakeTrust.SignManifest(const AManifest, AKey: string): string;
+begin
+  Result := HashOf(AKey + '|' + AManifest) + HashOf(AManifest + '|' + AKey);
 end;
 
 procedure TFakeTrust.Sign(const AFileName, ASubject: string);

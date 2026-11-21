@@ -26,7 +26,7 @@ type
   private
     FAccess: IAtlasRegistryAccess;
     FMessage: TProc<string>;
-    function WelcomeKey: string;
+    class function WelcomeKey: string; static;
     function BoardPlaced: Boolean;
     function PlaceBoard: Boolean;
   public
@@ -117,7 +117,7 @@ begin
   end;
 end;
 
-function TAtlasIdeWelcomeIdeLayout.WelcomeKey: string;
+class function TAtlasIdeWelcomeIdeLayout.WelcomeKey: string;
 begin
   Result := TAtlasWelcomeBackup.WelcomeKey(IdeBaseKey);
 end;

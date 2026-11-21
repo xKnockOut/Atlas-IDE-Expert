@@ -185,7 +185,6 @@
     {"path": "Source/IDE/Tracker/Atlas.IDE.Tracker.IssueChecklists.pas", "rule": "hardcoded-string", "fingerprint": "af6068ec", "count": 1, "routine": "LogWritten", "context": "545c1adf"},
     {"path": "Source/IDE/Tracker/Atlas.IDE.Tracker.IssueChecklists.pas", "rule": "hardcoded-string", "fingerprint": "d724d535", "count": 1, "routine": "LogWritten", "context": "5f4cd3f8"},
     {"path": "Source/IDE/Tracker/Atlas.IDE.Tracker.IssueContext.pas", "rule": "hardcoded-string", "fingerprint": "f05585df", "count": 1, "routine": "TAtlasIdeIssueContext.LoadState", "context": "b0886089"},
-    {"path": "Source/IDE/Tracker/Atlas.IDE.Tracker.IssueContext.pas", "rule": "method-without-self", "fingerprint": "c73cd671", "count": 1, "routine": "TAtlasIdeIssueContext.Frame", "context": "74955a25"},
     {"path": "Source/IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas", "rule": "magic-number", "fingerprint": "de038b75", "count": 1, "routine": "DownloadImage", "context": "339b4c77"},
     {"path": "Source/IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas", "rule": "magic-number", "fingerprint": "0a116807", "count": 1, "routine": "StartAttachment", "context": "ef9cbea4"},
     {"path": "Source/IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas", "rule": "magic-number", "fingerprint": "8d419042", "count": 1, "routine": "StartAttachment", "context": "c2c4a7de"},

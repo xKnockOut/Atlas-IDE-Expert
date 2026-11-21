@@ -21,7 +21,6 @@
     {"path": "Source/Core/UnitSearch/Atlas.Core.UnitSearch.Model.pas", "rule": "magic-number", "fingerprint": "8382686a", "count": 1, "routine": "WithoutSlash", "context": "2608555b"},
     {"path": "Source/Core/UnitSearch/Atlas.Core.UnitSearch.State.pas", "rule": "hardcoded-string", "fingerprint": "318f8b49", "count": 1, "routine": "TAtlasUnitSearchState.LoadFromFile", "context": "9cad91c4"},
     {"path": "Source/Core/UnitSearch/Atlas.Core.UnitSearch.UseUnit.pas", "rule": "magic-number", "fingerprint": "cab70fdf", "count": 1, "routine": "TAtlasUseUnit.CycleVia", "context": "7b88419c"},
-    {"path": "Source/IDE/Query/Atlas.IDE.Query.Service.pas", "rule": "method-without-self", "fingerprint": "f507d263", "count": 1, "routine": "TCodeQueryState.Cancel", "context": "4a8fe14c"},
     {"path": "Source/IDE/Search/Atlas.IDE.Search.Commands.pas", "rule": "hardcoded-string", "fingerprint": "5d39d659", "count": 1, "routine": "TAtlasIdeSearch.LogLayout", "context": "729e33a1"},
     {"path": "Source/IDE/Search/Atlas.IDE.Search.Commands.pas", "rule": "hardcoded-string", "fingerprint": "0ac3e96f", "count": 1, "routine": "WindowName", "context": "f889c268"},
     {"path": "Source/IDE/Search/Atlas.IDE.Search.Commands.pas", "rule": "string-concat-in-loop", "fingerprint": "5d39d659", "count": 1, "routine": "TAtlasIdeSearch.LogLayout", "context": "729e33a1"},

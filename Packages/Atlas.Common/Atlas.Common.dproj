@@ -979,6 +979,7 @@
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Selection.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Archive.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.SourceBuild.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.ManifestSignature.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Prepare.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.FileSwap.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Apply.pas"/>
