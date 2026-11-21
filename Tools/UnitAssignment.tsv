@@ -1526,6 +1526,7 @@ Atlas.IDE.Search	Atlas.Core.UnitSearch.UseUnit	Core/UnitSearch/Atlas.Core.UnitSe
 Atlas.IDE.Search	Atlas.IDE.Query.Service	IDE/Query/Atlas.IDE.Query.Service.pas	Ordner `IDE/Query`
 Atlas.IDE.Search	Atlas.IDE.Query.Window	IDE/Query/Atlas.IDE.Query.Window.pas	Ordner `IDE/Query`
 Atlas.IDE.Search	Atlas.IDE.Search.AcrossFiles	IDE/Search/Atlas.IDE.Search.AcrossFiles.pas	Ordner `IDE/Search`
+Atlas.IDE.Search	Atlas.IDE.Search.Adapters.Module	IDE/Search/Atlas.IDE.Search.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle, Menü und Tasten der Suche, übernommene Aktion Strg+F12
 Atlas.IDE.Search	Atlas.IDE.Search.Commands	IDE/Search/Atlas.IDE.Search.Commands.pas	Ordner `IDE/Search`
 Atlas.IDE.Search	Atlas.IDE.Search.Composition	IDE/Search/Atlas.IDE.Search.Composition.pas	Anmeldung des Moduls `atlas.search`, #1455
 Atlas.IDE.Search	Atlas.IDE.Search.Counter	IDE/Search/Atlas.IDE.Search.Counter.pas	Ordner `IDE/Search`
