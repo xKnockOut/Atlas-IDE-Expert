@@ -8,6 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
+  Atlas.Common.Updates.Contract,
   Atlas.Tests.UpdateFakes;
 
 type
@@ -15,6 +16,7 @@ type
   TCommonUpdatesManifestSignatureTests = class
   private
     FFake: TFakeUpdateSystem;
+    function Trust: IUpdateTrust;
   public
     [Setup]
     procedure Setup;
@@ -53,6 +55,11 @@ begin
 end;
 
 { TCommonUpdatesManifestSignatureTests }
+
+function TCommonUpdatesManifestSignatureTests.Trust: IUpdateTrust;
+begin
+  Result := FFake.System.Trust;
+end;
 
 procedure TCommonUpdatesManifestSignatureTests.Setup;
 begin
@@ -96,25 +103,25 @@ end;
 procedure TCommonUpdatesManifestSignatureTests.MissingWithoutSignatureFile;
 begin
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Missing,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest, False, TFakeTrust.SignManifest(cManifest, 'a'), Keys));
+    TUpdateManifestSignature.Verdict(Trust, cManifest, False, TFakeTrust.SignManifest(cManifest, 'a'), Keys));
 end;
 
 procedure TCommonUpdatesManifestSignatureTests.GenuineWithAnyKey;
 begin
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Genuine,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest, True, TFakeTrust.SignManifest(cManifest, 'a'), Keys));
+    TUpdateManifestSignature.Verdict(Trust, cManifest, True, TFakeTrust.SignManifest(cManifest, 'a'), Keys));
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Genuine,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest, True, TFakeTrust.SignManifest(cManifest, 'b') + #10,
+    TUpdateManifestSignature.Verdict(Trust, cManifest, True, TFakeTrust.SignManifest(cManifest, 'b') + #10,
     Keys));
 end;
 
 procedure TCommonUpdatesManifestSignatureTests.ForgedOnOtherContent;
 begin
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Forged,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest + ' ', True, TFakeTrust.SignManifest(cManifest, 'a'),
+    TUpdateManifestSignature.Verdict(Trust, cManifest + ' ', True, TFakeTrust.SignManifest(cManifest, 'a'),
     Keys));
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Forged,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest, True, TFakeTrust.SignManifest(cManifest, 'c'), Keys));
+    TUpdateManifestSignature.Verdict(Trust, cManifest, True, TFakeTrust.SignManifest(cManifest, 'c'), Keys));
 end;
 
 procedure TCommonUpdatesManifestSignatureTests.ForgedOnWrongLength;
@@ -123,11 +130,11 @@ var
 begin
   mSignature := TFakeTrust.SignManifest(cManifest, 'a');
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Forged,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest, True, Copy(mSignature, 1, 126), Keys));
+    TUpdateManifestSignature.Verdict(Trust, cManifest, True, Copy(mSignature, 1, 126), Keys));
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Forged,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest, True, mSignature + '00', Keys));
+    TUpdateManifestSignature.Verdict(Trust, cManifest, True, mSignature + '00', Keys));
   Assert.AreEqual<TUpdateManifestVerdict>(TUpdateManifestVerdict.Forged,
-    TUpdateManifestSignature.Verdict(FFake.System.Trust, cManifest, True, '', Keys));
+    TUpdateManifestSignature.Verdict(Trust, cManifest, True, '', Keys));
 end;
 
 procedure TCommonUpdatesManifestSignatureTests.EmbedsTwoDistinctKeys;
