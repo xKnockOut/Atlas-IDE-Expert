@@ -63,7 +63,6 @@ benchmark/
 *.pem
 *.key
 *.pfx
-||||||| f97a2c083
 
 # Python-Zwischendateien der Werkzeuge
 __pycache__/
