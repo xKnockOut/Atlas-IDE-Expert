@@ -66,8 +66,6 @@ type
     /// <summary>Linksbündige Spalte wie AddColumn, für jede TListView (auch aus DFM-Frames); skaliert über die
     /// Pixeldichte von AList.</summary>
     class function AddColumnTo(AList: TListView; const ACaption: string; AWidth96: Integer): TListColumn; static;
-    /// <summary>Zeilen von AList als Text, die Spalten mit Tab getrennt (Kopieren, Tests).</summary>
-    class function RowsText(AList: TListView): TArray<string>; static;
     /// <summary>Breite in Gerätepixeln, die Überschrift und längster Eintrag der Spalte AColumn brauchen.</summary>
     function ContentWidth(AColumn: Integer): Integer;
     /// <summary>Alle Spalten außer der füllenden nach ContentWidth, höchstens AMaxWidth96 (logische Pixel);
@@ -77,6 +75,8 @@ type
     procedure SortBy(AColumn: Integer; ADescending: Boolean);
     /// <summary>Vergleich wie im Explorer: Ziffernfolgen als Zahlen, sonst ohne Groß-/Kleinschreibung.</summary>
     class function CompareNatural(const ALeft, ARight: string): Integer; static;
+    /// <summary>Eine Zeile je Eintrag von AList, die Zellen durch Tabulatoren getrennt (Kopieren, Tests).</summary>
+    class function RowsText(AList: TListView): TArray<string>; static;
     /// <summary>Klick auf den Spaltenkopf sortiert (zweiter Klick kehrt um).</summary>
     property Sortable: Boolean read FSortable write FSortable;
     property SortColumn: Integer read FSortColumn;
@@ -185,30 +185,6 @@ begin
   Result.Width := TAtlasScaling.ToDevice(AWidth96, AList.CurrentPPI);
 end;
 
-class function TAtlasListView.RowsText(AList: TListView): TArray<string>;
-var
-  mIndex, mColumn: Integer;
-  mLine: TStringBuilder;
-begin
-  Result := nil;
-  SetLength(Result, AList.Items.Count);
-  mLine := TStringBuilder.Create;
-  try
-    for mIndex := 0 to AList.Items.Count - 1 do
-    begin
-      mLine.Clear;
-      mLine.Append(AList.Items[mIndex].Caption);
-      for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
-      begin
-        mLine.Append(#9).Append(AList.Items[mIndex].SubItems[mColumn]);
-      end;
-      Result[mIndex] := mLine.ToString;
-    end;
-  finally
-    mLine.Free;
-  end;
-end;
-
 function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer; AAlignment: TAlignment): TListColumn;
 begin
   Result := AddColumnTo(Self, ACaption, AWidth96);
@@ -276,6 +252,19 @@ begin
   else if (AColumn > 0) and (AColumn <= AItem.SubItems.Count) then
   begin
     Result := AItem.SubItems[AColumn - 1];
+  end;
+end;
+
+class function TAtlasListView.RowsText(AList: TListView): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, AList.Items.Count);
+  for mIndex := 0 to AList.Items.Count - 1 do
+  begin
+    Result[mIndex] := string.Join(#9, TArray<string>.Create(AList.Items[mIndex].Caption) +
+      AList.Items[mIndex].SubItems.ToStringArray);
   end;
 end;
 

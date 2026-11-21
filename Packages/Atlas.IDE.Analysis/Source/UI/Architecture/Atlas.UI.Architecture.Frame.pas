@@ -261,10 +261,10 @@ uses
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Scaling,
   Atlas.Core.Foundation.Calls,
   Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Controls;
 
 {$R *.dfm}
