@@ -47,7 +47,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Text.Lines,

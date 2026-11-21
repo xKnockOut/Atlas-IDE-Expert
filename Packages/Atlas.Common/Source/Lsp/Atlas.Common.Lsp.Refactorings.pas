@@ -130,7 +130,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.CaseCompletion,

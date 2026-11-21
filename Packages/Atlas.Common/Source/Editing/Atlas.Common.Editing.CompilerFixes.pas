@@ -84,7 +84,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.DisableWarning,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;

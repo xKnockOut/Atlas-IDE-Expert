@@ -72,7 +72,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,

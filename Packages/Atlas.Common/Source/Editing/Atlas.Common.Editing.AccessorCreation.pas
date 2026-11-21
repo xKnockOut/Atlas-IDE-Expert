@@ -69,7 +69,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.ClassMembers;
 

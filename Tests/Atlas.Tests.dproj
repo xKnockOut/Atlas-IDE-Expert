@@ -701,7 +701,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AssignFields.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.RoutineLocals.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.RoutineLocals.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MoveClass.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitRename.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartPaste.Tests.pas"/>

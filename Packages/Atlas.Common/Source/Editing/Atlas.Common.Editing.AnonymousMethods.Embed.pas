@@ -64,8 +64,8 @@ uses
   System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

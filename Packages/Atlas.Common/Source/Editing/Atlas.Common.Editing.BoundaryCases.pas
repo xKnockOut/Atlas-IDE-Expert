@@ -82,7 +82,7 @@ uses
   System.SysUtils,
   System.Math,
   System.StrUtils,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
 

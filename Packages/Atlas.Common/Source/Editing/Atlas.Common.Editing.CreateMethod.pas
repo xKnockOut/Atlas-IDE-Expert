@@ -124,7 +124,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.ClassCompletion;
 
 /// <summary>Vor diesem Token beginnt eine Anweisung.</summary>

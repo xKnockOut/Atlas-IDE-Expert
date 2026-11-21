@@ -105,7 +105,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.TypeComments,
