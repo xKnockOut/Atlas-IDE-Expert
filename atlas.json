@@ -1,4 +1,4 @@
-{
+﻿{
   "project": "Tests/Atlas.Tests.dproj",
   "minDelphiVersion": "23.0",
   "exclude": ["Output/**", "Tools/Linux/Compat/**", "Tests/Compilermeldungen/Faelle/**", "Tests/DccFaelle/**",
@@ -407,7 +407,6 @@
         "Atlas.Common.Rules.Builtin.Expressions -> Atlas.Common.Editing.RoutineBody",
         "Atlas.Common.Rules.Builtin.Expressions -> Atlas.Common.Editing.StatementText",
         "Atlas.Common.Rules.Builtin.Expressions.DuplicateConditions -> Atlas.Common.Editing.ConditionalExpression",
-        "Atlas.Common.Rules.Builtin.FeatureCycles -> Atlas.Common.Editing.UsesClause",
         "Atlas.Common.Rules.Builtin.Files -> Atlas.Common.Editing.StringLiterals",
         "Atlas.Common.Rules.Builtin.Files -> Atlas.Common.Editing.UsesClause",
         "Atlas.Common.Rules.Builtin.FormFields -> Atlas.Common.Editing.RoutineBody",

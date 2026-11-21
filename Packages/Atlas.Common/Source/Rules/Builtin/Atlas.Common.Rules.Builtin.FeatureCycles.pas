@@ -42,8 +42,8 @@ uses
   System.SysUtils,
   Atlas.Common.Architecture.FeatureCycles,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.UsesClauses;
 
 {$SCOPEDENUMS ON}
 
@@ -154,11 +154,11 @@ begin
   end;
   mOptions := TFeatureCycleOptions.Parse(AContext.Options);
   if (mOptions.Prefixes = nil) or Excluded(mOptions, Slashed(AContext.RelativePath)) or
-    TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+    TPascalUses.IsTestUnit(AContext.Tree.Tokens) then
   begin
     Exit;
   end;
-  mOwnName := TUsesClauses.OwnName(AContext.Tree.Tokens);
+  mOwnName := TPascalUses.OwnName(AContext.Tree.Tokens);
   if mOwnName = '' then
   begin
     mOwnName := AContext.UnitName;
@@ -173,7 +173,7 @@ begin
   begin
     Exit;
   end;
-  for mUsed in TUsesClauses.References(AContext.Tree.Tokens) do
+  for mUsed in TPascalUses.References(AContext.Tree.Tokens) do
   begin
     if mUsed.List = TUsesListKind.ContainsList then
     begin
