@@ -566,12 +566,10 @@ end;
 
 procedure TAtlasWelcomeGrip.CNKeyDown(var Message: TWMKeyDown);
 begin
-  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  if not TAtlasControls.KeyHandled(Message, HandleKey) then
   begin
-    Message.Result := 1;
-    Exit;
+    inherited;
   end;
-  inherited;
 end;
 
 procedure TAtlasWelcomeGrip.EndDrag(ADrop: Boolean);

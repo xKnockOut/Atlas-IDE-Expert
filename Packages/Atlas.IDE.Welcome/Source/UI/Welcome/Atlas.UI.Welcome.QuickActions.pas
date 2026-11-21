@@ -234,7 +234,8 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.UI.Foundation.Controls;
 
 const
   cSeparator = ' · ';
@@ -445,23 +446,19 @@ end;
 procedure TAtlasQuickKeySink.CNKeyDown(var Message: TWMKeyDown);
 begin
   // Vor den Tastenkürzeln des Hauptfensters: Strg+B und Strg+T gehören hier der Willkommensseite.
-  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  if not TAtlasControls.KeyHandled(Message, HandleKey) then
   begin
-    Message.Result := 1;
-    Exit;
+    inherited;
   end;
-  inherited;
 end;
 
 procedure TAtlasQuickKeySink.CNSysKeyDown(var Message: TWMKeyDown);
 begin
   // Alt+↓ öffnet die Auswahl.
-  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  if not TAtlasControls.KeyHandled(Message, HandleKey) then
   begin
-    Message.Result := 1;
-    Exit;
+    inherited;
   end;
-  inherited;
 end;
 
 function TAtlasQuickKeySink.HandleKey(AKey: Word; AShift: TShiftState): Boolean;

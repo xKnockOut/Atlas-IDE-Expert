@@ -25,11 +25,16 @@ type
     /// <summary>NewHiddenSheet hängt die Seite ohne Fenster und ohne sichtbaren Reiter ein.</summary>
     [Test]
     procedure NewHiddenSheetJoinsPagesWithoutTab;
+    /// <summary>KeyHandled gibt die Taste weiter und setzt Result nur, wenn sie behandelt wurde.</summary>
+    [Test]
+    procedure KeyHandledMarksOnlyHandledKeys;
   end;
 
 implementation
 
 uses
+  Winapi.Messages,
+  System.Classes,
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
@@ -138,6 +143,30 @@ begin
   finally
     mForm.Free;
   end;
+end;
+
+procedure TAtlasControlsTests.KeyHandledMarksOnlyHandledKeys;
+var
+  mMessage: TWMKeyDown;
+  mSeen: Word;
+begin
+  mMessage := Default(TWMKeyDown);
+  mMessage.CharCode := Ord('B');
+  mSeen := 0;
+  Assert.IsFalse(TAtlasControls.KeyHandled(mMessage,
+    function(AKey: Word; AShift: TShiftState): Boolean
+    begin
+      mSeen := AKey;
+      Result := False;
+    end));
+  Assert.AreEqual(Ord('B'), Integer(mSeen));
+  Assert.AreEqual(0, Integer(mMessage.Result));
+  Assert.IsTrue(TAtlasControls.KeyHandled(mMessage,
+    function(AKey: Word; AShift: TShiftState): Boolean
+    begin
+      Result := True;
+    end));
+  Assert.AreEqual(1, Integer(mMessage.Result));
 end;
 
 initialization

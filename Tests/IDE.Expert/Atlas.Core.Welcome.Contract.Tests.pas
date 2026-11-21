@@ -27,6 +27,8 @@ type
     procedure RegValuesCompareNameWithoutCase;
     [Test]
     procedure RegValuesCompareLines;
+    [Test]
+    procedure WorkOrderPutsNewestFirstAndKeepsTies;
   end;
 
 implementation

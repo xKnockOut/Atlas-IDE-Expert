@@ -240,7 +240,9 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Text.Uris,
+  Atlas.Text.Arrays;
 
 const
   cSeparator = ' · ';
@@ -327,14 +329,12 @@ begin
 end;
 
 function ProjectNames(const AEntries: TAtlasContinueEntries): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  SetLength(Result, Length(AEntries));
-  for mIndex := 0 to High(AEntries) do
-  begin
-    Result[mIndex] := AEntries[mIndex].Project;
-  end;
+  Result := TTextArrays.Texts<TAtlasContinueEntry>(AEntries,
+    function(AEntry: TAtlasContinueEntry): string
+    begin
+      Result := AEntry.Project;
+    end);
 end;
 
 { TAtlasContinueTexts }
@@ -349,7 +349,7 @@ var
   mTab: TAtlasWorkTab;
 begin
   mTab := AEntry.LastTab;
-  Result := TAtlasWelcomeContinue.FileNameOf(mTab.FileName);
+  Result := TTextUris.FileNameOf(Trim(mTab.FileName));
   if mTab.Method <> '' then
   begin
     Result := Result + cArrow + mTab.Method;
@@ -375,7 +375,7 @@ begin
   mNames := nil;
   for mFileName in ACommit.Files do
   begin
-    mNames := mNames + [TAtlasWelcomeContinue.FileNameOf(mFileName)];
+    mNames := mNames + [TTextUris.FileNameOf(Trim(mFileName))];
   end;
   Result := ACommit.Commit.ShortHash + '  ' + ACommit.Commit.Summary + cDash + ACommit.Commit.Author;
   if Length(mNames) > 0 then
@@ -471,11 +471,7 @@ end;
 
 class function TAtlasContinueTexts.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc > 0 then
-  begin
-    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
-  end;
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 { TContinuePainter }

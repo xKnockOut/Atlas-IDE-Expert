@@ -7,11 +7,13 @@
 // - ClearHot: Hervorhebung beim Verlassen mit der Maus löschen und nur dann neu zeichnen.
 // - SuppressBeep: Enter und Esc in einem Eingabefeld ohne Signalton von Windows.
 // - Remeasure: Inhaltshöhe nach einer neuen Breite neu rechnen und eine Änderung melden.
+// - KeyHandled: CN_KEYDOWN/CN_SYSKEYDOWN an eine eigene Tastenbehandlung geben, bevor die VCL sie verteilt.
 // - NewHiddenSheet: Reiterseite ohne sichtbaren Reiter einhängen (ein sichtbarer braucht das Fenster).
 
 interface
 
 uses
+  Winapi.Messages,
   System.Classes,
   System.SysUtils,
   Vcl.Controls,
@@ -34,6 +36,10 @@ type
     class procedure Remeasure(var AHeight: Integer; ANewHeight: Integer; const AChanged: TProc); static;
     /// <summary>Reiterseite ACaption in APages, Besitzer AOwner, noch ohne sichtbaren Reiter: Ein sichtbarer Reiter
     /// braucht das Fenster des PageControls; der Besitzer zeigt ihn, sobald es da ist (CreateWnd).</summary>
+    /// <summary>Taste aus AMessage (CN_KEYDOWN oder CN_SYSKEYDOWN) an AHandle(Taste, Umschalttasten) geben; True und
+    /// AMessage.Result 1, wenn AHandle sie behandelt hat (dann kein inherited, die IDE sieht sie nicht).</summary>
+    class function KeyHandled(var AMessage: TWMKeyDown; const AHandle: TFunc<Word, TShiftState, Boolean>): Boolean;
+      static;
     class function NewHiddenSheet(AOwner: TComponent; APages: TPageControl; const ACaption: string): TTabSheet;
       static;
   end;
@@ -88,6 +94,16 @@ begin
   if (mOldHeight <> ANewHeight) and Assigned(AChanged) then
   begin
     AChanged();
+  end;
+end;
+
+class function TAtlasControls.KeyHandled(var AMessage: TWMKeyDown;
+  const AHandle: TFunc<Word, TShiftState, Boolean>): Boolean;
+begin
+  Result := AHandle(AMessage.CharCode, KeyDataToShiftState(AMessage.KeyData));
+  if Result then
+  begin
+    AMessage.Result := 1;
   end;
 end;
 

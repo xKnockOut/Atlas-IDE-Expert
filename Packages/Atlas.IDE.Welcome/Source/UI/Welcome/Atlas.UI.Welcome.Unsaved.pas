@@ -479,11 +479,7 @@ end;
 
 class function TAtlasUnsavedTexts.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc > 0 then
-  begin
-    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
-  end;
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);

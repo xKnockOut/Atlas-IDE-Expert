@@ -64,6 +64,10 @@ type
     function BodyHeight: Integer; virtual;
     /// <summary>Der Inhalt braucht eine andere Höhe (z. B. aufgeklappt, #756); meldet OnHeightChanged.</summary>
     procedure HeightChanged;
+    /// <summary>AArrange neu ordnen lassen (nach neuer Breite); ändert sich dabei AContentHeight (anderer Umbruch),
+    /// meldet es HeightChanged, damit der Frame „Atlas“ die Spalten neu ordnet. AContentHeight ist das Feld, das
+    /// AArrange setzt.</summary>
+    procedure Rearrange(const AArrange: TProc; var AContentHeight: Integer);
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Höhe, die der Frame im Atlas-Layout braucht (Titel plus Inhalt).</summary>
@@ -188,6 +192,18 @@ begin
   if Assigned(FOnHeightChanged) then
   begin
     FOnHeightChanged(Self);
+  end;
+end;
+
+procedure TAtlasWelcomeSectionFrame.Rearrange(const AArrange: TProc; var AContentHeight: Integer);
+var
+  mOldHeight: Integer;
+begin
+  mOldHeight := AContentHeight;
+  AArrange();
+  if mOldHeight <> AContentHeight then
+  begin
+    HeightChanged;
   end;
 end;
 
