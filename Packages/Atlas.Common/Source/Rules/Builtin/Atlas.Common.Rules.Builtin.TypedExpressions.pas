@@ -122,6 +122,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Constants,
   Atlas.Common.Editing.EnumTables,
@@ -1442,7 +1443,7 @@ begin
   end;
   mEdits := [TTextEdit.Create(TTextRange.Create(mSelector.StartPos, mSelector.EndPos), Format('IndexStr(%s, [%s])',
     [FScope.Text(mSelector), string.Join(', ', mLiterals)]))] + mEdits;
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FTokens), 'System.StrUtils', FContext.Namespaces) then
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTokens), 'System.StrUtils', FContext.Namespaces) then
   begin
     if not TUsesClauses.AddUnit(FTokens, ACase.StartOffset, 'System.StrUtils', TTextLines.LineBreakOf(FContext.Text),
       mUsesEdit) then

@@ -132,6 +132,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.StatementText,
@@ -592,7 +593,7 @@ begin
     mClassBody := TRoutineBody.TypeBody(mOtherTree.Root, AResolved.Name);
     for mUnitName in FUnits do
     begin
-      if not SameText(mUnitName, AOwner.UnitName) and not TUsesClauses.IsUsed(mUses, mUnitName,
+      if not SameText(mUnitName, AOwner.UnitName) and not TPascalUses.IsUsed(mUses, mUnitName,
         FContext.Namespaces) and TUsesClauses.AddUnit(mOtherTree.Tokens, mClassBody.StartOffset, mUnitName,
         mLineBreak, mEdit) then
       begin

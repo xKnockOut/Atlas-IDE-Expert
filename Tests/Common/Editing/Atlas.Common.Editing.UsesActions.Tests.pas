@@ -80,6 +80,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
@@ -196,7 +197,7 @@ var
   mTree: TSyntaxTree;
 begin
   mRanges := nil;
-  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
+  for mReference in TPascalUses.References(TPascalLexer.Tokenize(AText)) do
   begin
     for mName in ANames do
     begin

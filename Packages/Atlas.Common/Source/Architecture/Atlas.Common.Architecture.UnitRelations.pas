@@ -179,7 +179,7 @@ implementation
 uses
   System.StrUtils,
   System.Math,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Names,
   Atlas.Text.Arrays;
 

@@ -39,6 +39,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Components.Model,
@@ -693,7 +694,7 @@ begin
   mPosition := TTextPosition.Create(AHeader.EndPos.Line + 1, 0);
   mEdits := [TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), StringOfChar(' ', AHeader.StartPos.Character) +
     'function GetHashCode: Integer; override;' + FModel.LineBreak)];
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FContext.Tree.Tokens), 'System.Hash', FContext.Namespaces) and
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FContext.Tree.Tokens), 'System.Hash', FContext.Namespaces) and
     TUsesClauses.AddUnit(FContext.Tree.Tokens, mEquals_.Decl.StartOffset, 'System.Hash', FModel.LineBreak,
     mUsesEdit) then
   begin

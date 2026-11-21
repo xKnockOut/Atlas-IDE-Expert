@@ -69,7 +69,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Architecture.Model;
+  Atlas.Core.Architecture.Resolution;
 
 const
   /// <summary>Halbe Breite des Griffs in logischen Pixeln (96 dpi).</summary>

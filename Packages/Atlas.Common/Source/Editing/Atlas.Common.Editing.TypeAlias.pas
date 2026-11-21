@@ -155,6 +155,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.TypeAlias.Texts,
   Atlas.Common.Editing.TypeAlias.Names,
   Atlas.Common.Pascal.SyntaxNodes,
@@ -786,7 +787,7 @@ begin
   Result := False;
   mImplementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
   mInImplementation := (mImplementation_ <> nil) and (AOffset >= mImplementation_.StartOffset);
-  for mReference in TUsesClauses.References(ATree.Tokens) do
+  for mReference in TPascalUses.References(ATree.Tokens) do
   begin
     if (mReference.List <> TUsesListKind.UsesList) or not (SameText(mReference.Name, AUnitName) or
       EndsText('.' + AUnitName, mReference.Name)) then
@@ -1267,7 +1268,7 @@ var
 begin
   if (Scope = TTypeAliasScope.Project) and (InInterface(First) or ExportNeeded) then
   begin
-    mUnitName := TUsesClauses.OwnName(Declaring.Tree.Tokens);
+    mUnitName := TPascalUses.OwnName(Declaring.Tree.Tokens);
     for mOther in Others do
     begin
       if not SameText(mOther.FileName, Declaring.FileName) and (mOther.Tree <> nil) then
@@ -1580,8 +1581,8 @@ begin
   mLineBreak := TTextLines.LineBreakOf(ASource.Text);
   for mUnitName in Units do
   begin
-    if SameText(mUnitName, TUsesClauses.OwnName(ASource.Tree.Tokens)) or
-      TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), mUnitName, nil) then
+    if SameText(mUnitName, TPascalUses.OwnName(ASource.Tree.Tokens)) or
+      TPascalUses.IsUsed(TPascalUses.UsedUnits(ASource.Tree.Tokens), mUnitName, nil) then
     begin
       Continue;
     end;

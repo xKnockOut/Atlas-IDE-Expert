@@ -81,6 +81,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Editing.MoveMember,
@@ -181,7 +182,7 @@ begin
   mLayout := TClassLayout.Read(ATree, AText, mDecl);
   try
     AHit.Ref := TMemberClassRef.Create(AFileName, mLayout.Name);
-    AHit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+    AHit.UnitName := TPascalUses.OwnName(ATree.Tokens);
     if mLayout.Ancestors <> nil then
     begin
       AHit.Ancestor := mLayout.Ancestors[0];
@@ -259,7 +260,7 @@ begin
       begin
         mHit := Default(TClassHit);
         mHit.Ref := TMemberClassRef.Create(AFileName, mLayout.Name);
-        mHit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+        mHit.UnitName := TPascalUses.OwnName(ATree.Tokens);
         mHit.Ancestor := mLayout.Ancestors[0];
         Result := Result + [mHit];
       end;
@@ -432,7 +433,7 @@ begin
   end;
   Result := TJSONObject.Create;
   Result.AddPair('className', mFound.ClassName);
-  Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
+  Result.AddPair('ownUnit', TPascalUses.OwnName(ATree.Tokens));
   Result.AddPair('member', mFound.SelectedName);
   Result.AddPair('direction', LowerCase(AContext.Direction));
   Result.AddPair('name', '');
@@ -626,7 +627,7 @@ begin
   FFileName := AFileName;
   FUp := AUp;
   FLookup := TLspMoveClass.Lookup(AResolver);
-  FSourceUnit := TUsesClauses.OwnName(ATree.Tokens);
+  FSourceUnit := TPascalUses.OwnName(ATree.Tokens);
   FImplementationLine := SectionLine(ATree, TSyntaxKind.ImplementationSection);
 end;
 
@@ -725,11 +726,11 @@ var
   mOffset: Integer;
   mEdit: TTextEdit;
 begin
-  mUsed := TUsesClauses.UsedUnits(ATree.Tokens);
+  mUsed := TPascalUses.UsedUnits(ATree.Tokens);
   mMissing := nil;
   for mName in AUnits do
   begin
-    if not TUsesClauses.IsUsed(mUsed, mName, nil) and (IndexText(mName, AExcept) < 0) then
+    if not TPascalUses.IsUsed(mUsed, mName, nil) and (IndexText(mName, AExcept) < 0) then
     begin
       mMissing := mMissing + [mName];
     end;
@@ -759,7 +760,7 @@ begin
     raise Failed(cTexts[TLspMoveMemberText.IsNoLongerReadableAfter].Fmt([ATarget.ClassName]));
   end;
   try
-    AScan.Scan(ASource, mTarget, TUsesClauses.OwnName(mTargetTree.Tokens), AIds, ABodyIds);
+    AScan.Scan(ASource, mTarget, TPascalUses.OwnName(mTargetTree.Tokens), AIds, ABodyIds);
     mEdits := nil;
     AddMissing(mTargetTree, TSyntaxKind.InterfaceSection, AScan.InterfaceUnits, nil, TTextLines.LineBreakOf(mText),
       mEdits);

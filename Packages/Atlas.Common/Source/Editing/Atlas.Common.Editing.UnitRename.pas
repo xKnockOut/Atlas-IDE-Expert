@@ -35,6 +35,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names;
 
@@ -135,7 +136,7 @@ var
   mNext: Integer;
 begin
   Result := False;
-  if not TUsesClauses.InClause(ATokens, AClauses, ALines.OffsetAt(AReference.Range.StartPos)) then
+  if not TPascalUses.InClause(ATokens, AClauses, ALines.OffsetAt(AReference.Range.StartPos)) then
   begin
     Exit;
   end;
@@ -153,7 +154,7 @@ var
   mOptions: TUsesRewrite;
 begin
   Result := nil;
-  if MatchText(ANewName, TUsesClauses.UsedUnits(ATokens)) then
+  if MatchText(ANewName, TPascalUses.UsedUnits(ATokens)) then
   begin
     mOptions := Default(TUsesRewrite);
     mOptions.Drop := [AOldName];
@@ -164,7 +165,7 @@ begin
     Exit;
   end;
   mLines := TLineTable.Build(AText);
-  for mReference in TUsesClauses.References(ATokens) do
+  for mReference in TPascalUses.References(ATokens) do
   begin
     if SameText(mReference.Name, AOldName) and IsPlainUsesEntry(ATokens, mLines, AClauses, mReference) then
     begin
@@ -184,7 +185,7 @@ begin
   Result := False;
   if (ATokens[AIndex].Kind <> TPascalTokenKind.Identifier) or
     not SameText(TTextNames.WithoutAmpersand(ATokens[AIndex].Text), AParts[0]) or
-    TUsesClauses.InClause(ATokens, AClauses, ATokens[AIndex].Offset) then
+    TPascalUses.InClause(ATokens, AClauses, ATokens[AIndex].Offset) then
   begin
     Exit;
   end;
@@ -230,7 +231,7 @@ begin
   mTokens := ATree.Tokens;
   mParts := AOldName.Split(['.']);
   mHeaderEnd := HeaderEdits(AFileName, mTokens, mParts, ANewName, AEdits);
-  mClauses := TUsesClauses.Clauses(mTokens);
+  mClauses := TPascalUses.Clauses(mTokens);
   AEdits := AEdits + UsesEdits(AText, mTokens, mClauses, AOldName, ANewName);
   // Qualifizierte Bezeichner, sofern die Datei den Namen nicht selbst deklariert.
   if not Declares(ATree.Root, mParts[0]) then

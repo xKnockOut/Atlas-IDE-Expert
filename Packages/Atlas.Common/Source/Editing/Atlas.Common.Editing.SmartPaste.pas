@@ -73,6 +73,7 @@ uses
   Atlas.Common.Editing.UsesActions,
   System.Math,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -108,7 +109,7 @@ begin
   begin
     Exit;
   end;
-  mClauses := TUsesClauses.Clauses(ATokens);
+  mClauses := TPascalUses.Clauses(ATokens);
   mSeen := nil;
   for mIndex := 0 to High(ATokens) do
   begin
@@ -125,7 +126,7 @@ begin
     end;
     mSeen := mSeen + [mName];
     // Eingefügte uses-Einträge sind keine Bezeichner, die fehlen.
-    if TUsesClauses.InClause(ATokens, mClauses, mToken.Offset) then
+    if TPascalUses.InClause(ATokens, mClauses, mToken.Offset) then
     begin
       Continue;
     end;
@@ -232,9 +233,9 @@ var
   mSplit: TUsesSplit;
 begin
   AUses := Default(TSmartPasteUses);
-  mUsed := TUsesClauses.UsedUnits(ATarget.Tokens);
+  mUsed := TPascalUses.UsedUnits(ATarget.Tokens);
   mSplit := Default(TUsesSplit);
-  mSplit.Own := TUsesClauses.OwnName(ATarget.Tokens);
+  mSplit.Own := TPascalUses.OwnName(ATarget.Tokens);
   SectionOffsets(ATarget.Tokens, mInterfaceOffset, mImplementationOffset);
   // Ohne implementation (Programm, Paket) gibt es nur ein uses.
   mSplit.Upper := (mImplementationOffset < 0) or InInterface(ATarget.Tokens, ATarget.Position);
@@ -242,7 +243,7 @@ begin
   for mName in AUnits do
   begin
     if (Trim(mName) <> '') and not SameText(mName, mSplit.Own) and not MatchText(mName, AUses.Added) and
-      not TUsesClauses.IsUsed(mUsed, mName, ATarget.Namespaces) then
+      not TPascalUses.IsUsed(mUsed, mName, ATarget.Namespaces) then
     begin
       mSplit.Add(mName, ATarget.InterfaceUses, AUses);
     end;

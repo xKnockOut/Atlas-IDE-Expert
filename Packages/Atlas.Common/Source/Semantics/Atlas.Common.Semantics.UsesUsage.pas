@@ -75,7 +75,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.InlineCallees,
@@ -175,7 +175,7 @@ var
   mInfo: TUsesUnitInfo;
   mPosition: Integer;
 begin
-  for mReference in TUsesClauses.References(FTokens) do
+  for mReference in TPascalUses.References(FTokens) do
   begin
     if (mReference.List <> TUsesListKind.UsesList) or FByUnit.ContainsKey(LowerCase(mReference.Name)) then
     begin
@@ -499,9 +499,9 @@ begin
     begin
       FCallees := TInlineCallees.Create(FSource.Index, FSource.EnsureUnit, FSource.TreeUnits, FSource.Namespaces,
         FSource.NameFacts, FResolver);
-      FCallees.Prepare(FResolver.ExtractedUnit(FTree, FFileName), TUsesClauses.OwnName(FTree.Tokens));
+      FCallees.Prepare(FResolver.ExtractedUnit(FTree, FFileName), TPascalUses.OwnName(FTree.Tokens));
     end;
-    mClauses := TUsesClauses.Clauses(FTokens);
+    mClauses := TPascalUses.Clauses(FTokens);
     mClauseIndex := 0;
     mIndex := 0;
     while (mIndex <= High(FTokens)) and (FOpen > 0) do

@@ -52,7 +52,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
@@ -154,7 +154,7 @@ end;
 function Applies(const AContext: TRuleContext): Boolean;
 begin
   Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and ContainsText(AContext.Text, 'Assert.') and
-    TUsesClauses.IsTestUnit(AContext.Tree.Tokens);
+    TPascalUses.IsTestUnit(AContext.Tree.Tokens);
 end;
 
 procedure RunCheck(const AContext: TRuleContext; const AReport: IRuleReport; AOrder: Boolean);

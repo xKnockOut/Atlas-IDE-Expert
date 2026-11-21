@@ -98,7 +98,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.GenericLists.Kinds,
   Atlas.Common.Editing.GenericLists.Syntax,
   Atlas.Common.Editing.GenericLists.Source,
@@ -274,7 +274,7 @@ begin
   FTarget.Declaration := ADeclaration;
   FTarget.DeclarationLine := ADeclaration.StartPos.Line;
   FTarget.Name := AName;
-  FTarget.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+  FTarget.UnitName := TPascalUses.OwnName(ATree.Tokens);
   ScanDeclaration(FFiles[0]);
   if not Failed then
   begin

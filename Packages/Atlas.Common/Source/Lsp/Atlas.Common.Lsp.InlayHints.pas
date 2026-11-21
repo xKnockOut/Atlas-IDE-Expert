@@ -172,6 +172,7 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Text.Chars,
   Atlas.Common.Localization.Texts,
@@ -1066,7 +1067,7 @@ begin
   begin
     mUnitName := UnitOfWord(AUnits, mWord);
     if (mUnitName = '') or MatchText(mUnitName, [AUnits.OwnName, 'System']) or
-      TUsesClauses.IsUsed(AUnits.Used, mUnitName, AUnits.Resolver.Namespaces) or (IndexText(mUnitName, mAdded) >= 0)
+      TPascalUses.IsUsed(AUnits.Used, mUnitName, AUnits.Resolver.Namespaces) or (IndexText(mUnitName, mAdded) >= 0)
     then
     begin
       Continue;
@@ -1231,8 +1232,8 @@ begin
   mUnits.Tokens := ATree.Tokens;
   mUnits.Offset := TokenOffsetAt(mUnits.Tokens, mUnits.Found.NameStart);
   mUnits.Own := AResolver.ExtractedUnit(ATree, AFileName);
-  mUnits.OwnName := TUsesClauses.OwnName(mUnits.Tokens);
-  mUnits.Used := TUsesClauses.UsedUnits(mUnits.Tokens);
+  mUnits.OwnName := TPascalUses.OwnName(mUnits.Tokens);
+  mUnits.Used := TPascalUses.UsedUnits(mUnits.Tokens);
   mUnits.Base := mUnits.Found.TypeName;
   if Pos('<', mUnits.Base) > 0 then
   begin
