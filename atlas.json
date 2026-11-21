@@ -43,7 +43,7 @@
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
         "Atlas.Core.Lsp.Contract -> Atlas.Text.Json",
-        "Atlas.Core.Projects.Contract -> Atlas.Text.Json",
+        "Atlas.Core.Lsp.ProjectContext.Contract -> Atlas.Text.Json",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.IDE.Undo.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.IdeAdapters -> Atlas.IDE.*.Adapters.*",
@@ -64,6 +64,15 @@
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]
+    },
+    "architecture-feature-cycle": {
+      "severity": "warning",
+      "exclude": ["Tests/**", "Tools/**", "Setup/**", "docs/**"],
+      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
+        "Atlas.IDE"],
+      "known": [],
+      "directions": ["Atlas.Common: Semantics < Editing < Rules < Lsp < Mcp"],
+      "knownEdges": []
     },
     "forbidden-symbol": {
       "severity": "error",

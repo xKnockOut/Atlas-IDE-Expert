@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeArchitecture: array[0..66] of string = (
+  cCatalogLinesDeArchitecture: array[0..91] of string = (
     '{',
     '      "id": "forbidden-uses",',
     '      "name": "Verbotene uses-Beziehung",',
@@ -67,6 +67,34 @@ const
     '        {',
     '          "name": "allow",',
     '          "description": "Genehmigte Ausnahmen \"Unit.Typ\" als Glob."',
+    '        }',
+    '      ]',
+    '    },',
+    '{',
+    '      "id": "architecture-feature-cycle",',
+    '      "name": "Zyklus zwischen Features",',
+    '      "description": "Ein uses-Eintrag schließt einen Zyklus zwischen Features desselben Ausgabeartefakts (Atlas.Core.Lsp verwendet Atlas.Core.Hover, das wieder Atlas.Core.Lsp verwendet) oder läuft ge' +
+    'gen eine Richtung aus \"directions\". Es zählt jeder uses-Eintrag, interface und implementation, auch auf Contract-Units. Standardmäßig aus; in atlas.json mit der Option \"prefixes\" einschalten. Best' +
+    'ehende Zyklen stehen unter \"known\" als schrumpfende Liste: Ein Zyklus innerhalb eines Eintrags bleibt still. Tools/Check-PackageDependencies.ps1 prüft dasselbe und meldet zusätzlich Einträge, die ni' +
+    'cht mehr stimmen. Testunits prüft die Regel nicht.",',
+    '      "bad": "unit Atlas.Core.Lsp.Session;\ninterface\nuses Atlas.Core.Hover.Contract; // Atlas.Core.Hover.View verwendet Atlas.Core.Lsp.Contract",',
+    '      "good": "unit Atlas.Core.Lsp.Session;\ninterface\nuses Atlas.Core.Lsp.Contract; // Hover meldet sich über einen Vertrag von Lsp an",',
+    '      "options": [',
+    '        {',
+    '          "name": "prefixes",',
+    '          "description": "Präfixe der Ausgabeartefakte, z. B. \"Atlas.Core\"; das Feature ist das nächste Namenssegment. Ohne Angabe meldet die Regel nichts."',
+    '        },',
+    '        {',
+    '          "name": "known",',
+    '          "description": "Bekannte Zyklen \"Präfix: Feature, Feature\"; schrumpft mit der Zeit."',
+    '        },',
+    '        {',
+    '          "name": "directions",',
+    '          "description": "Richtungen \"Präfix: A < B < C\" (B und C dürfen A verwenden, nicht umgekehrt) und \"Präfix: A | B\" (keine Kante zwischen A und B)."',
+    '        },',
+    '        {',
+    '          "name": "knownEdges",',
+    '          "description": "Bekannte Kanten gegen eine Richtung \"Quelle -> Ziel\" (Unit-Namen); schrumpft mit der Zeit."',
     '        }',
     '      ]',
     '    },',

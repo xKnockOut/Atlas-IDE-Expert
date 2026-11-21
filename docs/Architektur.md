@@ -59,14 +59,35 @@ Bedingungen für den späteren Umzug nach `Application/Source/Features/<Feature>
 läuft in der CI, und der Umzug geschieht
 lokal mit Compiler als rein mechanischer Commit je Feature (zuerst Namenspräfix, dann `git mv`).
 
-Featurerichtung zwischen den Fach-Features:
+Featurerichtung zwischen den Fach-Features: `Semantics < Editing < Rules < Lsp < Mcp`. Ein Feature verwendet
+nur Features links von ihm, nie eines rechts davon.
 
 | Von | Nach | Erlaubt | Grund |
 |---|---|---|---|
-| `Rules` | `Editing` | ja | Korrekturen nutzen Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
+| `Editing` | `Semantics` | ja | Refactorings und Schnellbefehle werten Namensauflösung und Datenfluss aus |
+| `Semantics` | `Editing` | nein | Auswertungen, die beide brauchen (uses-Verwendung, Neuzuweisungen, aufgelöste Signaturen), liegen in `Editing` |
+| `Rules` | `Editing`, `Semantics` | ja | Korrekturen nutzen Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen), Regeln die Namensauflösung |
 | `Editing` | `Rules` | nein | gemeinsame Wertetypen liegen tiefer: `TTextEdit` in `Documents.Contract` (`TRuleEdit` ist ein Alias), `TDeclaredTypes` in `Pascal.DeclaredTypes`, `IsTestUnit` in `Editing.UsesClause`; die Brücke Treffer → Code-Aktionen ist `Rules.CodeActions` |
+| `Lsp` | `Rules` | ja | Der Server ruft Prüfregeln und ihre Korrekturen auf |
+| `Rules` | `Lsp` | nein | Links ins Wiki liegen im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
+| `Mcp` | `Lsp` | ja | MCP-Werkzeuge nutzen dieselben Dienste wie die LSP-Methoden |
+| `Lsp` | `Mcp` | nein | |
 
-`Tools/Check-PackageDependencies.ps1` meldet jede Unit unter `Source/Editing`, die `Atlas.Common.Rules.*` verwendet.
+### Keine Zyklen zwischen Features
+
+Features desselben Ausgabeartefakts (`Atlas.Core.Lsp`, `Atlas.Core.Hover` …) bilden keinen Zyklus. Gezählt wird
+jeder uses-Eintrag, interface und implementation, auch auf Contract-Units: Ein Contract, der einen anderen Contract
+verwendet, bindet sein Feature ebenso an. Tests, Werkzeuge und Vorlagen zählen nicht.
+
+- `Tools/Check-FeatureCycles.ps1` prüft das ganze Repository, die Regel `architecture-feature-cycle` meldet im Editor
+  den uses-Eintrag, der einen Zyklus schließt oder gegen eine Richtung läuft. Beide lesen die Optionen der Regel aus
+  `atlas.json` und prüfen die Fallliste `Tests/Data/Architecture/feature-cycles.json`.
+- Richtungen stehen unter `directions`: `Präfix: A < B < C` (B und C dürfen A verwenden, nicht umgekehrt) und
+  `Präfix: A | B` (keine Kante zwischen A und B).
+- Bestehende Zyklen stehen unter `known`, Kanten gegen eine Richtung unter `knownEdges`. Beide Listen schrumpfen
+  nur: Ein Eintrag, der nicht mehr genau stimmt, ist ein Fehler und wird gekürzt.
+- Zyklus auflösen: die gemeinsamen Typen in das untere Feature verschieben (oft ein Contract), eine Unit in das
+  Feature verschieben, zu dem sie gehört, oder die Abhängigkeit über einen Haken umdrehen, den die Komposition setzt.
 
 ## Verzeichnisstruktur
 
@@ -210,7 +231,7 @@ Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für
 | `Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree` | Der Syntaxbaum ist das Framework, auf dem jede Prüfregel läuft (wie die RTL für andere Verträge), und hängt selbst nur an Contracts; ein Baum-Interface würde alle Regeln ändern. |
 | `Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree` | `ITreeUnits` (#1322) gehört zu genau einem Syntaxbaum und muss ihn wiedererkennen; aus demselben Grund wie bei `Rules.Contract`. |
 | `Atlas.Common.Documents.Contract -> Atlas.Text.Lines` | `TTextPosition` ist derselbe Typ wie in `Atlas.Text`; `Atlas.Text` hat nur zustandslose Funktionen und Records. |
-| `Atlas.Core.Lsp.Contract -> Atlas.Text.Json`, `Atlas.Core.Projects.Contract -> Atlas.Text.Json` | Die Verträge reichen JSON-Werte des Protokolls weiter; `Atlas.Text.Json` ist die gemeinsame JSON-Schicht aus zustandslosen Lese- und Schreibhelfern. |
+| `Atlas.Core.Lsp.Contract -> Atlas.Text.Json`, `Atlas.Core.Lsp.ProjectContext.Contract -> Atlas.Text.Json` | Die Verträge reichen JSON-Werte des Protokolls weiter; `Atlas.Text.Json` ist die gemeinsame JSON-Schicht aus zustandslosen Lese- und Schreibhelfern. |
 | VCL in Verträgen der UI-Schicht (`Atlas.UI.*` → `Vcl.*`, im Skript `$ContractFrameworkAllow`) | Verträge der Schicht `Atlas.UI` reichen Steuerelemente, die Base und Module mit derselben VCL bauen (`Atlas.UI.Settings.Contract`: die Bausteine einer Optionsseite). Eigene Interfaces je Steuerelement wären nur Hüllen. Der Code kommentiert die Ausnahme am uses. |
 | `Atlas.Common.Dfm.Contract.TDfm*` (Contract-Inhalt) | `TDfmObject` und `TDfmDocument` sind reine Datenklassen eines Baums (Besitz der Kinder, kein Verhalten); Verschieben änderte rund 20 Units ohne Abhängigkeitsgewinn. |
 

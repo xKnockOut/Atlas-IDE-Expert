@@ -330,6 +330,7 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplateEn.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Snapshot.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Comparison.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.FeatureCycles.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Matching.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Alignment.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Report.pas"/>
@@ -536,6 +537,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesUsage.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FeatureCycles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Syntax.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Threads.pas"/>

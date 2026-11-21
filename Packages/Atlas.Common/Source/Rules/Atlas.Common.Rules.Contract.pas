@@ -213,6 +213,18 @@ type
     UsesName: string;
   end;
 
+  /// <summary>Ein uses-Eintrag des Uses-Graphen zwischen zwei Units (ohne Programme und Packages).</summary>
+  TRuleUsesEdge = record
+    SourceUnit: string;
+    SourceFileName: string;
+    TargetUnit: string;
+    TargetFileName: string;
+    InInterface: Boolean;
+  end;
+
+  /// <summary>Leitet aus allen uses-Einträgen einen Wert ab, etwa eine Auswertung über den ganzen Graphen.</summary>
+  TRuleUsesDerive = reference to function(const AEdges: TArray<TRuleUsesEdge>): IInterface;
+
   /// <summary>Die Projekte der Gruppe für projektweite Regeln wie unused-public-member (#1102); nil = unbekannt
   /// (Linter, Datei ohne Projekt), die Regeln schweigen.</summary>
   IRuleProjectFiles = interface
@@ -236,6 +248,10 @@ type
     /// <summary>Units, die AFileName direkt im uses nennen, auch Programme und Packages (#64); False, wenn
     /// der Uses-Graph die Unit nicht kennt.</summary>
     function UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
+    /// <summary>Aus allen uses-Einträgen des Uses-Graphen abgeleiteter Wert: ADerive läuft je Schlüssel
+    /// einmal und erst wieder, wenn sich der Graph geändert hat. AKey nennt die Ableitung samt ihren Optionen.
+    /// nil ohne Uses-Graph.</summary>
+    function UsesDerived(const AKey: string; const ADerive: TRuleUsesDerive): IInterface;
   end;
 
   /// <summary>Art eines Namens mit Präfix-Vorgabe (#1111).</summary>

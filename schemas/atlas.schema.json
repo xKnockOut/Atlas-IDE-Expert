@@ -180,8 +180,8 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Nur architecture-role-import und architecture-contract-content: Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sache), z. B. \"Atlas.Common\". Ohne Angabe melden die Regeln nichts.",
-                "x-description-en": "Only architecture-role-import and architecture-contract-content: prefixes of the output artifacts according to the role concept (Artifact.Feature.Role.Thing), e.g. \"Atlas.Common\". Without them the rules report nothing."
+                "description": "Nur architecture-role-import, architecture-contract-content und architecture-feature-cycle: Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sache), z. B. \"Atlas.Common\". Bei architecture-feature-cycle ist das Feature das nächste Namenssegment. Ohne Angabe melden die Regeln nichts.",
+                "x-description-en": "Only architecture-role-import, architecture-contract-content and architecture-feature-cycle: prefixes of the output artifacts according to the role concept (Artifact.Feature.Role.Thing), e.g. \"Atlas.Common\". For architecture-feature-cycle the feature is the next name segment. Without them the rules report nothing."
               },
               "hostRoles": {
                 "type": "array",
@@ -198,6 +198,30 @@
                 },
                 "description": "Nur architecture-role-import, architecture-contract-content und compiler-warnings-disabled: genehmigte Ausnahmen, bei architecture-role-import \"Quelle -> Ziel\" (beide Globs), bei architecture-contract-content \"Unit.Typ\" als Glob, bei compiler-warnings-disabled Schalter, die bis zum Ende der Unit aus bleiben dürfen (Warnungsnamen für {$WARN} wie SYMBOL_PLATFORM, WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw. OVERFLOWCHECKS).",
                 "x-description-en": "Only architecture-role-import, architecture-contract-content and compiler-warnings-disabled: approved exceptions, for architecture-role-import \"source -> target\" (both globs), for architecture-contract-content \"Unit.Type\" as glob, for compiler-warnings-disabled switches that may stay off up to the end of the unit (warning names for {$WARN} like SYMBOL_PLATFORM, WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS)."
+              },
+              "known": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-feature-cycle: bekannte Zyklen \"Präfix: Feature, Feature\" als schrumpfende Liste; ein Zyklus innerhalb eines Eintrags bleibt still.",
+                "x-description-en": "Only architecture-feature-cycle: known cycles \"Prefix: Feature, Feature\" as a shrinking list; a cycle within an entry stays silent."
+              },
+              "directions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-feature-cycle: Richtungen \"Präfix: A < B < C\" (B und C dürfen A verwenden, nicht umgekehrt) und \"Präfix: A | B\" (keine Kante zwischen A und B).",
+                "x-description-en": "Only architecture-feature-cycle: directions \"Prefix: A < B < C\" (B and C may use A, not the other way round) and \"Prefix: A | B\" (no edge between A and B)."
+              },
+              "knownEdges": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-feature-cycle: bekannte Kanten gegen eine Richtung \"Quelle -> Ziel\" (Unit-Namen) als schrumpfende Liste.",
+                "x-description-en": "Only architecture-feature-cycle: known edges against a direction \"Source -> Target\" (unit names) as a shrinking list."
               },
               "layers": {
                 "type": "array",
