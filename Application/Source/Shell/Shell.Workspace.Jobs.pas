@@ -12,17 +12,17 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Rules.Baseline,
-  Shell.Compiler,
+  Core.Compiler,
   Shell.Workspace.State;
 
 type
   TShellWorkspaceJobs = class
   public
     /// <summary>Compilerlauf für AProject (#40, #261): Aufruf von dcc32/dcc64, Projekt, Plattform, Installation
-    /// und ASettings. Ob dcc da und nutzbar ist, prüft der Aufrufer (TShellCompilerEditions). False mit Grund in
+    /// und ASettings. Ob dcc da und nutzbar ist, prüft der Aufrufer (TCoreCompilerEditions). False mit Grund in
     /// AError ohne Installation oder unterstützte Plattform.</summary>
     class function CompileJobOf(const AProject: TProjectInfo; const AInstall: TShellInstallInfo;
-      const ASettings: TCompilerSettings; out AJob: TShellCompileJob; out AError: string): Boolean; static;
+      const ASettings: TCompilerSettings; out AJob: TCoreCompileJob; out AError: string): Boolean; static;
     /// <summary>Suche nach einer Unit, die der Compiler nicht fand (#550): AProject, alle Konfigurationen und
     /// Plattformen der .dproj, Bibliothekspfade und Ordnerzugriff. Gruppe und Index ergänzt der Aufrufer.</summary>
     class function MissingUnitSetupOf(const AProject: TProjectInfo; const AInstall: TShellInstallInfo):
@@ -72,11 +72,11 @@ const
 { TShellWorkspaceJobs }
 
 class function TShellWorkspaceJobs.CompileJobOf(const AProject: TProjectInfo; const AInstall: TShellInstallInfo;
-  const ASettings: TCompilerSettings; out AJob: TShellCompileJob; out AError: string): Boolean;
+  const ASettings: TCompilerSettings; out AJob: TCoreCompileJob; out AError: string): Boolean;
 var
   mOutputDir: string;
 begin
-  AJob := Default(TShellCompileJob);
+  AJob := Default(TCoreCompileJob);
   AJob.Settings := ASettings;
   AError := '';
   if AInstall.BdsRoot = '' then
@@ -93,7 +93,7 @@ begin
     AJob.Platform := AProject.Platform;
     AJob.BdsRoot := AInstall.BdsRoot;
     AJob.Version := AInstall.DelphiVersion;
-    // Ob dcc32/dcc64 da ist (Starter Edition, #261), prüft TShellCompilerEditions; der Ausgabeordner
+    // Ob dcc32/dcc64 da ist (Starter Edition, #261), prüft TCoreCompilerEditions; der Ausgabeordner
     // entsteht erst, wenn dcc wirklich läuft.
     AJob.OutputDir := mOutputDir;
     Result := True;

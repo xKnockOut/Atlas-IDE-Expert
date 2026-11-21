@@ -11,7 +11,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.Baseline,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.VersionControlChanges;
 
 type

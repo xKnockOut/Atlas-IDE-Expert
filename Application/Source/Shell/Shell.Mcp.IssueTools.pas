@@ -33,7 +33,7 @@ uses
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.Tracker.CurrentIssue,
   Shell.Mcp.IssueText,
-  Shell.Texts;
+  Core.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -146,12 +146,12 @@ var
 begin
   if not TMcpCurrentIssueText.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), ASection) then
   begin
-    raise EMcpToolError.Create(TShellTexts.Choice('section', ['summary', 'checklist', 'body', 'comments', 'all']));
+    raise EMcpToolError.Create(TCoreTexts.Choice('section', ['summary', 'checklist', 'body', 'comments', 'all']));
   end;
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json']));
+    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'json']));
   end;
   AJson := SameText(mFormat, 'json');
 end;

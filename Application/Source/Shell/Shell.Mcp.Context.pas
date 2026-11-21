@@ -98,7 +98,7 @@ uses
   Atlas.Common.Lsp.Formatting,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Atlas.Text.Json,
   Atlas.Text.Files,
   Atlas.Common.Documents.FileEncoding;
@@ -135,7 +135,7 @@ end;
 // Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+  Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
 end;
 
 function FormatStyleOf(AGroup: TShellWorkspaceGroup; const AFileName: string): TFormatStyle;

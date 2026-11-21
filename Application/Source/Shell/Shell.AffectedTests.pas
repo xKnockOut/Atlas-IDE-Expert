@@ -75,6 +75,9 @@ type
       const AFiles: TArray<string>): TArray<TAffectedInput>; static;
     /// <summary>Vergleichsbasis: AQuery.Base, sonst HEAD mit SinceCommit, sonst main (#1775).</summary>
     class function RefOf(const AQuery: TShellAffectedQuery): string; static;
+    /// <summary>Liest Dateien wie der Server (TCoreBootstrap.ReadSourceText), für TestPrograms und TestScope.
+    /// </summary>
+    class function FileReader: TReferenceReadText; static;
     /// <summary>Hauptdateien (.dpr) unter AFiles, die DUnitX verwenden.</summary>
     class function TestPrograms(const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<string>;
       static;
@@ -95,7 +98,8 @@ uses
   Atlas.Common.History.ChangedFiles,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Core.Bootstrap;
 
 type
 {$SCOPEDENUMS ON}
@@ -109,6 +113,15 @@ const
     (De: 'zu viele Tests für ein --run-Argument'; En: 'too many tests for one --run argument'));
 
 { TShellAffectedTests }
+
+class function TShellAffectedTests.FileReader: TReferenceReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
+    end;
+end;
 
 class function TShellAffectedTests.OffMessage: string;
 begin

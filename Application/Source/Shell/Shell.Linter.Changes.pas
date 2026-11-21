@@ -9,7 +9,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.FormatCheck,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.VersionControlChanges;
 
 type

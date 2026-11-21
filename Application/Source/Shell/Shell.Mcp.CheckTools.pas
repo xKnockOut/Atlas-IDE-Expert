@@ -35,8 +35,8 @@ uses
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
-  Shell.Bootstrap,
-  Shell.Texts;
+  Core.Bootstrap,
+  Core.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -149,7 +149,7 @@ begin
   end;
   if Length(mFiles) = 0 then
   begin
-    raise EMcpToolError.Create(TShellTexts.NoProjectGiveFile);
+    raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
   end;
   Result := TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, ReadSourceText,
@@ -221,7 +221,7 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
   end;
   if mFileName <> '' then
   begin
@@ -233,7 +233,7 @@ begin
   end;
   if Length(mFiles) = 0 then
   begin
-    raise EMcpToolError.Create(TShellTexts.NoProjectGiveFile);
+    raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
   end;
   Result := TMcpCheckTools.Metrics(AContext.Group.Main.Configuration.Settings, AContext.Root, mFiles, ReadSourceText,
     SameText(mFormat, 'json'));
@@ -261,7 +261,7 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
   end;
   mFilter := TTodoFilter.Default;
   mFilter.UnitName := TMcpArgs.OptionalString(AArguments, 'unit');
@@ -283,7 +283,7 @@ begin
   end;
   if Length(mFiles) = 0 then
   begin
-    raise EMcpToolError.Create(TShellTexts.NoProjectGiveFile);
+    raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
   end;
   Result := TMcpCheckTools.Todos(AContext.Group.Main.Configuration.Settings, AContext.Root, mFiles, ReadSourceText,
     mFilter,
@@ -319,7 +319,7 @@ begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<string>('text', mText) then
   begin
-    raise EMcpToolError.Create(TShellTexts.Missing(['text']));
+    raise EMcpToolError.Create(TCoreTexts.Missing(['text']));
   end;
   if not AArguments.TryGetValue<Integer>('startLine', mStartLine) then
   begin
@@ -392,7 +392,7 @@ begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('line', mLine) then
   begin
-    raise EMcpToolError.Create(TShellTexts.Missing(['line']));
+    raise EMcpToolError.Create(TCoreTexts.Missing(['line']));
   end;
   mRuleId := TMcpArgs.OptionalString(AArguments, 'rule');
   if not ReadSourceText(mFileName, mText) then
@@ -461,7 +461,7 @@ begin
   mRequest.ProjectText := SettingsText(AContext.Group.Main.Configuration.Files.Read);
   if mRequest.Settings.McpGlobalSettings then
   begin
-    mRequest.GlobalText := SettingsText(TShellBootstrap.GlobalSettingsFile);
+    mRequest.GlobalText := SettingsText(TCoreBootstrap.GlobalSettingsFile);
   end;
   Result := TMcpDocsTools.Search(mRequest);
 end;

@@ -9,7 +9,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Filter,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   /// <summary>Ziel aus --check und der Ordner, in dem atlas.json gesucht wird.</summary>
@@ -64,7 +64,7 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin.SavedQueries,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Linter.Output,
   Atlas.Common.Localization.Texts;
 
@@ -205,9 +205,9 @@ var
 begin
   // Die Meldungen des wirksamen Texts zählen nicht; ReportIssues meldet die aus atlas.json.
   // Ohne Logger: Eine nicht lesbare globale Datei bricht den Lauf ab (Exit-Code 3) wie bisher.
-  mGlobalText := TShellBootstrap.LoadGlobalSettings(nil);
+  mGlobalText := TCoreBootstrap.LoadGlobalSettings(nil);
   mFileName := ConfigFileOf(ARoot);
-  TShellBootstrap.ReadSourceText(mFileName, mText);
+  TCoreBootstrap.ReadSourceText(mFileName, mText);
   Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(mGlobalText, '', mText), mMisplaced);
   // server.statusFile (#1901) gilt für jeden Lauf ohne Editor; alle Befehle laden ihre Einstellungen hier.
   TServerActivity.Shared.Enabled := Result.ServerStatusFile;

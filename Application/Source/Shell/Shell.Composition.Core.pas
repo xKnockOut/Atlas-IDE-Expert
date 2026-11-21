@@ -110,7 +110,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UsesClause,
-  Shell.Bootstrap;
+  Core.Bootstrap;
 
 { TShellCore }
 
@@ -294,7 +294,7 @@ begin
     AText := mDocument.Text;
     Exit(True);
   end;
-  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+  Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
 end;
 
 function TShellCore.ProjectFiles: TArray<string>;
