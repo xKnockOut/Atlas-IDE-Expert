@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Generate.Contract;
+  Atlas.Core.Settings.GenerateMenu.Contract;
 
 type
   {$SCOPEDENUMS ON}
@@ -30,8 +30,8 @@ type
   TAtlasGenerateArgument = (None, Optional, Required);
   {$SCOPEDENUMS OFF}
 
-  /// <summary>Liegt in Atlas.Core.Generate.Contract; Alias für bestehende Nutzer.</summary>
-  TAtlasGenerateGroup = Atlas.Core.Generate.Contract.TAtlasGenerateGroup;
+  /// <summary>Liegt in Atlas.Core.Settings.GenerateMenu.Contract; Alias für bestehende Nutzer.</summary>
+  TAtlasGenerateGroup = Atlas.Core.Settings.GenerateMenu.Contract.TAtlasGenerateGroup;
 
   TAtlasGenerateEntry = record
     Kind: TAtlasGenerateKind;
@@ -73,7 +73,7 @@ type
     /// <summary>Aus den Einstellungen: AGroups und AHidden als kommagetrennte Listen.</summary>
     class function Create(const AGroups, AHidden: string; ARecentFirst,
       AShowCommandNames: Boolean): TAtlasGenerateOptions; static;
-    /// <summary>Weiterleitungen an TAtlasGenerateLists (Atlas.Core.Generate.Contract).</summary>
+    /// <summary>Weiterleitungen an TAtlasGenerateLists (Atlas.Core.Settings.GenerateMenu.Contract).</summary>
     class function GroupName(AGroup: TAtlasGenerateGroup): string; static;
     class function TryParseGroup(const AName: string; out AGroup: TAtlasGenerateGroup): Boolean; static;
     /// <summary>Bekannte Gruppen ohne Doppelte; leer bzw. ohne bekannte Gruppe: die Vorgabe.</summary>

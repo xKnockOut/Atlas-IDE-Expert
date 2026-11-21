@@ -415,7 +415,7 @@ begin
     end);
   if FLevel <> TAtlasSafeLevel.Normal then
   begin
-    TAtlasIdeSettings.SetSession(TAtlasSafeMode.SafeSession(TAtlasIdeSettings.QuickToggles));
+    TAtlasIdeSettings.SetSession(TAtlasQuickToggles.SafeSession(TAtlasIdeSettings.QuickToggles));
   end;
   FMarker := TAtlasSessionMarker.Create(GetCurrentProcessId, TAtlasPluginVersion.cVersion, mStartedAt);
   FMarker.Level := FLevel;
@@ -536,7 +536,7 @@ begin
   end;
   mToggles := TAtlasIdeSettings.QuickToggles;
   mNames := nil;
-  for mKey in TAtlasSafeMode.Suggest(mToggles, AChangedKeys, ACrashed) do
+  for mKey in TAtlasQuickToggles.SafeSuggestions(mToggles, AChangedKeys, ACrashed) do
   begin
     if TAtlasQuickToggles.Find(mToggles, mKey, mToggle) then
     begin

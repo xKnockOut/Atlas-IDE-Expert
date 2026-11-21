@@ -23,6 +23,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Core.Diagnostics.SafeMode,
   Atlas.Core.Settings.Plugin;
 
 type
@@ -104,11 +105,19 @@ type
     /// Sitzungswert; Project: Ergebnis ist der neue JSON-Wert für atlas.json (sonst '').</summary>
     class function Toggle(const AItem: TAtlasQuickToggleItem; ATarget: TAtlasToggleTarget;
       var AStored: TAtlasPluginSettings; var ASession: TAtlasToggleSession): string; static;
+    /// <summary>Sitzungswerte für den abgesicherten Start (#722): alle Schnellschalter aus.</summary>
+    class function SafeSession(const AToggles: TArray<TAtlasQuickToggle>): TAtlasToggleSession; static;
+    /// <summary>Womit man nach dem abgesicherten Start beim Wiedereinschalten anfängt: zuletzt geänderte
+    /// Einstellungen, dann Funktionen mit den meisten Fehlern der abgestürzten Sitzung (x-feature), jeweils nur
+    /// Schnellschalter.</summary>
+    class function SafeSuggestions(const AToggles: TArray<TAtlasQuickToggle>; const AChangedKeys: TArray<string>;
+      const ACrashed: TAtlasSessionMarker): TArray<string>; static;
   end;
 
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.PluginSchemaData,
   Atlas.Text.Json;
@@ -517,6 +526,62 @@ begin
       ASession.Drop(AItem.Toggle.Key);
       SetFlag(AStored, AItem.Toggle.Key, not AItem.Checked);
     end;
+  end;
+end;
+
+class function TAtlasQuickToggles.SafeSession(const AToggles: TArray<TAtlasQuickToggle>): TAtlasToggleSession;
+var
+  mToggle: TAtlasQuickToggle;
+begin
+  Result := Default(TAtlasToggleSession);
+  for mToggle in AToggles do
+  begin
+    Result.Put(mToggle.Key, False);
+  end;
+end;
+
+class function TAtlasQuickToggles.SafeSuggestions(const AToggles: TArray<TAtlasQuickToggle>;
+  const AChangedKeys: TArray<string>; const ACrashed: TAtlasSessionMarker): TArray<string>;
+var
+  mToggle: TAtlasQuickToggle;
+  mKey: string;
+  mCandidates: TArray<TPair<string, Integer>>;
+  mIndex, mOther: Integer;
+  mSwap: TPair<string, Integer>;
+begin
+  Result := nil;
+  // Zuerst, was zuletzt geändert wurde: das ist am ehesten die Ursache.
+  for mKey in AChangedKeys do
+  begin
+    if Find(AToggles, mKey, mToggle) and not MatchText(mToggle.Key, Result) then
+    begin
+      Result := Result + [mToggle.Key];
+    end;
+  end;
+  // Dann Funktionen mit Fehlern in der abgestürzten Sitzung, die meisten zuerst; bei Gleichstand Katalog.
+  mCandidates := nil;
+  for mToggle in AToggles do
+  begin
+    if (mToggle.Feature <> '') and (ACrashed.FailureCount(mToggle.Feature) > 0) and
+      not MatchText(mToggle.Key, Result) then
+    begin
+      mCandidates := mCandidates + [TPair<string, Integer>.Create(mToggle.Key, ACrashed.FailureCount(mToggle.Feature))];
+    end;
+  end;
+  for mIndex := 1 to High(mCandidates) do
+  begin
+    mOther := mIndex;
+    while (mOther > 0) and (mCandidates[mOther - 1].Value < mCandidates[mOther].Value) do
+    begin
+      mSwap := mCandidates[mOther - 1];
+      mCandidates[mOther - 1] := mCandidates[mOther];
+      mCandidates[mOther] := mSwap;
+      Dec(mOther);
+    end;
+  end;
+  for mIndex := 0 to High(mCandidates) do
+  begin
+    Result := Result + [mCandidates[mIndex].Key];
   end;
 end;
 

@@ -150,7 +150,8 @@ uses
   Atlas.Core.Style.Color,
   System.Math,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Setup.Strings;
+  Atlas.UI.Setup.Strings,
+  Atlas.Core.Status.Signal;
 
 const
   /// <summary>Kleinste Innenbreite des Fensters, logische Pixel.</summary>
@@ -649,8 +650,8 @@ end;
 procedure TAtlasSetupPainter.Dot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
 begin
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
-  Window.Canvas.Pen.Color := ToColor(Window.FColors.Signals.ForStatus(AState).Ring);
-  Window.Canvas.Brush.Color := ToColor(Window.FColors.Signals.ForStatus(AState).Fill);
+  Window.Canvas.Pen.Color := ToColor(TAtlasStatusSignal.Pick(Window.FColors.Signals, AState).Ring);
+  Window.Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Window.FColors.Signals, AState).Fill);
   Window.Canvas.Brush.Style := bsSolid;
   Window.Canvas.Ellipse(ACenter.X - ARadius, ACenter.Y - ARadius, ACenter.X + ARadius + 1, ACenter.Y + ARadius + 1);
 end;
@@ -718,7 +719,8 @@ begin
     mFill.Right := AArea.Left + MulDiv(AArea.Width, APercent, 100);
     if APercent >= 100 then
     begin
-      Window.Canvas.Brush.Color := ToColor(Window.FColors.Signals.ForStatus(TAtlasStatusState.Green).Fill);
+      Window.Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Window.FColors.Signals,
+        TAtlasStatusState.Green).Fill);
     end
     else
     begin

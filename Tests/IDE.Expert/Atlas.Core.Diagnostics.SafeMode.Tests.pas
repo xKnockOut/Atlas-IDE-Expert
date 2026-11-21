@@ -306,7 +306,7 @@ var
   mEffective, mStored: TAtlasPluginSettings;
 begin
   mToggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, '');
-  mSession := TAtlasSafeMode.SafeSession(mToggles);
+  mSession := TAtlasQuickToggles.SafeSession(mToggles);
   Assert.AreEqual(Integer(Length(mToggles)), Integer(Length(mSession.Overrides)));
   mStored := TAtlasPluginSettings.Defaults;
   mEffective := mSession.Apply(mStored, mToggles);
@@ -341,7 +341,7 @@ begin
   mMarker.AddFailure('Hover');
   mMarker.AddFailure('Problems');
   mMarker.AddFailure('Problems');
-  mKeys := TAtlasSafeMode.Suggest(mToggles, ['VisibleRows', 'PairGuides'], mMarker);
+  mKeys := TAtlasQuickToggles.SafeSuggestions(mToggles, ['VisibleRows', 'PairGuides'], mMarker);
   // Zuerst zuletzt geändert (nur Schnellschalter), dann Fehler: Probleme (2) vor Hover (1).
   // Zum Feature Hover gehören zwei Schalter (DebugHoverValues, #891), zu Problems vier
   // (Marke „Wer gibt das frei?“ #1877, Fenster „Atlas-Prüfung“ #909, offene Units zuerst #1108);
@@ -354,7 +354,8 @@ begin
   Assert.AreEqual('ProblemsWindowOpenFirst', mKeys[4]);
   Assert.AreEqual('HoverTooltip', mKeys[5]);
   Assert.AreEqual('DebugHoverValues', mKeys[6]);
-  Assert.AreEqual(0, Integer(Length(TAtlasSafeMode.Suggest(mToggles, nil, TAtlasSessionMarker.Create(1, '', 0)))));
+  Assert.AreEqual(0, Integer(Length(TAtlasQuickToggles.SafeSuggestions(mToggles, nil,
+    TAtlasSessionMarker.Create(1, '', 0)))));
   Assert.IsTrue(Length(TAtlasSafeMode.Details(mMarker)) >= 5);
 end;
 

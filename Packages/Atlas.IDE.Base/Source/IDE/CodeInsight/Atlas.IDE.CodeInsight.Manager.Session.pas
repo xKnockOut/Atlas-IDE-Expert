@@ -111,7 +111,7 @@ uses
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Projects.Contract,
+  Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Outline.Cache,

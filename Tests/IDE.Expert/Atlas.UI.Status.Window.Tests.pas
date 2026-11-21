@@ -38,7 +38,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Strings,
-  Atlas.UI.Status.Window;
+  Atlas.UI.Status.Window,
+  Atlas.Core.Status.Signal;
 
 function Line(const AId: string; AOrder: Integer; AState: TAtlasStatusState; const AText: string): IAtlasStatusItem;
 var
@@ -85,14 +86,14 @@ begin
   // Signalfarben (#1255) statt der Textfarben Add/Warn/Error/Muted.
   mColors := TAtlasColors.Dark;
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Ok).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Green).Fill));
+    Int64(TAtlasStatusSignal.Pick(mColors.Signals, TAtlasStatusState.Green).Fill));
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Warn).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Yellow).Fill));
+    Int64(TAtlasStatusSignal.Pick(mColors.Signals, TAtlasStatusState.Yellow).Fill));
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Error).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Red).Fill));
+    Int64(TAtlasStatusSignal.Pick(mColors.Signals, TAtlasStatusState.Red).Fill));
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Idle).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Neutral).Fill));
-  Assert.AreNotEqual<TAtlasColor>(mColors.Add, mColors.Signals.ForStatus(TAtlasStatusState.Green).Fill);
+    Int64(TAtlasStatusSignal.Pick(mColors.Signals, TAtlasStatusState.Neutral).Fill));
+  Assert.AreNotEqual<TAtlasColor>(mColors.Add, TAtlasStatusSignal.Pick(mColors.Signals, TAtlasStatusState.Green).Fill);
 end;
 
 procedure TAtlasStatusWindowTests.ButtonsRunAfterClosing;

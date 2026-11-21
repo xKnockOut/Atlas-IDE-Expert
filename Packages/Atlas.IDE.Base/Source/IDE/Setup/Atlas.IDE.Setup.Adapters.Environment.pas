@@ -44,7 +44,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Product.Version,
-  Atlas.Core.Projects.Contract,
+  Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Lines,
   Atlas.UI.Strings,

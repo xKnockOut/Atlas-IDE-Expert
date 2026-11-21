@@ -48,6 +48,7 @@ Atlas.Text.Uris.Tests
 Atlas.Common.Architecture.Alignment.Tests
 Atlas.Common.Architecture.Layout.Tests
 Atlas.Common.Architecture.Louvain.Tests
+Atlas.Common.Architecture.FeatureCycles.Tests
 Atlas.Common.Architecture.Matching.Tests
 Atlas.Common.Architecture.Overview.Foundations.Tests
 Atlas.Common.Architecture.Overview.Naming.Tests
@@ -339,6 +340,7 @@ Atlas.Common.Rationale.References.Tests
 Atlas.Common.Rationale.Scanner.Tests
 Atlas.Common.Rules.Baseline.Tests
 Atlas.Common.Rules.Builtin.Architecture.Tests
+Atlas.Common.Rules.Builtin.FeatureCycles.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Calls.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests
@@ -387,6 +389,7 @@ Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests
 Atlas.Common.Rules.Builtin.General.Tests
 Atlas.Common.Rules.Builtin.IgnoredResult.Tests
 Atlas.Common.Semantics.Ancestry.Tests
+Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests
 Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.Tests
 Atlas.Common.Rules.Builtin.Inheritance.MemberHides.Tests
 Atlas.Common.Rules.Builtin.Inheritance.OverrideCase.Tests
@@ -655,6 +658,7 @@ Atlas.UI.Help.Strings.Tests
 Atlas.UI.Hover.Strings.Tests
 Atlas.UI.Notifications.Strings.Tests
 Atlas.UI.Outline.Strings.Tests
+Atlas.UI.Popup.Strings.Tests
 Atlas.UI.Problems.Strings.Tests
 Atlas.UI.Results.Strings.Tests
 Atlas.UI.Rules.Strings.Tests

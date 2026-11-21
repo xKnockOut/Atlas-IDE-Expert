@@ -13,7 +13,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Projects.Contract,
+  Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.Core.Lsp.WorkspaceEdits;
 
 type

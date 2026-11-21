@@ -56,7 +56,7 @@ uses
   Atlas.Text.Defines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Projects.Contract,
+  Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Welcome.Saved,
   Atlas.Core.Welcome.Setup,

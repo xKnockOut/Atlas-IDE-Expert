@@ -78,15 +78,9 @@ const
     '{"name": "TObject", "unit": "System", "file": "C:\\RTL\\System.pas", "line": 10, "character": 2}]}}';
 
 function Parse(const AJson: string): TAtlasHoverData;
-var
-  mValue: TJSONValue;
 begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := TAtlasHoverData.FromHover(mValue);
-  finally
-    mValue.Free;
-  end;
+  // FromResponse liest wie FromHover und gibt die Antwort frei.
+  Result := TAtlasHoverData.FromResponse(TJSONObject.ParseJSONValue(AJson));
 end;
 
 function Ref(const AName: string; ALine: Integer): TAtlasHoverTypeRef;
@@ -147,6 +141,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mData.Links)));
   Assert.IsFalse(mData.Location.HasLocation);
   Assert.IsFalse(TAtlasHoverData.FromHover(nil).Found);
+  Assert.IsFalse(TAtlasHoverData.FromResponse(nil).Found);
 end;
 
 procedure TAtlasHoverTests.ShortensLongChains;

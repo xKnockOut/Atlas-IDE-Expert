@@ -33,7 +33,7 @@ Ausnahmen:
 - Aus `SymbolPath/` liegen das Modell eines Wegs (`Core.SymbolPath.Model`) und seine Kette (`UI.SymbolPath.Chain`) im Kern (#1455): Das Ergebnisfenster von Base zeigt den Weg; Suche, Dialog und Befehle gehören zum Modul Analyse.
 - Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). Compilermeldungen und Prüfen nach dem Speichern bleiben ausdrücklich im Kern, weil sie auch ohne das Modul gebraucht werden.
-- `Atlas.IDE.Rules` (#1455, festgeschrieben; seit #1755 alles Regelspezifische): Ordner `Core/IDE/UI/Rules`, dazu Sammelkorrektur (`Core/UI.Problems.BulkFix`) und Eigenschaftsregeln (`IDE.Editor.DfmPropertyRules`). Das Modul hat Regeltabelle und Regel-Editor, den Abschnitt „Prüfregeln“ mit Baseline und Unterdrückungen, den Dialog der Einstellungsdateien mit Regel-Editor (`IAtlasSettingsDialogProvider`) und die Regel-Aktionen am Befund (`IAtlasRuleActions`: einstellen, unterdrücken, abschalten). Im Kern bleibt die Anzeige der Befunde: Fenster „Atlas-Prüfung“ mit Erklären (`Core.Problems.Explanation`), Inline-Hinweise, Übersichtsleiste, Prüfen beim Speichern, der Hinweis bei abgeschaltetem Modul (`RuleChecksNotice`), Stand und Format der Baseline-Datei und die Verträge. Ohne Modul fehlen die Regel-Einträge im Menü, und der Dialog zeigt „rules“ als JSON-Text.
+- `Atlas.IDE.Rules` (#1455, festgeschrieben; seit #1755 alles Regelspezifische): Ordner `Core/IDE/UI/Rules`, dazu Sammelkorrektur (`Core.Problems.BulkFix`, `UI.Rules.BulkFix`) und Eigenschaftsregeln (`IDE.Editor.DfmPropertyRules`). Das Modul hat Regeltabelle und Regel-Editor, den Abschnitt „Prüfregeln“ mit Baseline und Unterdrückungen, den Dialog der Einstellungsdateien mit Regel-Editor (`IAtlasSettingsDialogProvider`) und die Regel-Aktionen am Befund (`IAtlasRuleActions`: einstellen, unterdrücken, abschalten). Im Kern bleibt die Anzeige der Befunde: Fenster „Atlas-Prüfung“ mit Erklären (`Core.Problems.Explanation`), Inline-Hinweise, Übersichtsleiste, Prüfen beim Speichern, der Hinweis bei abgeschaltetem Modul (`RuleChecksNotice`), Stand und Format der Baseline-Datei und die Verträge. Ohne Modul fehlen die Regel-Einträge im Menü, und der Dialog zeigt „rules“ als JSON-Text.
 - `Atlas.UI.Strings` und die erzeugte Schema-Unit bleiben vorerst im Kern; ihr Schnitt hängt an den offenen Entscheidungen zu Texten und Einstellungen.
 
 Das Prüfskript `Tools/Check-PackageDependencies.ps1` liest diese Datei als Daten (#1455): die Ordnertabelle oben, die Tabellen je Package unten (Einzelzeilen) und die Tabellen unter „Grenzen zwischen Base, Modulen und Verträgen“. Maßgeblich ist die Einzelzeile. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen oben und braucht eine eigene Begründung (nicht nur „Ordner …“). Eine neue Unit unter `Packages/Atlas.IDE.Base/Source` braucht eine Zeile hier, sonst schlägt das Skript fehl; ebenso eine Zeile, deren Datei es nicht mehr gibt.
@@ -93,6 +93,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Events` | `Core/Build/Atlas.Core.Build.Events.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.Core.Build.IdleGate` | `Core/Build/Atlas.Core.Build.IdleGate.pas` | Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455 |
 | `Atlas.Core.Build.Messages` | `Core/Build/Atlas.Core.Build.Messages.pas` | Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern |
+| `Atlas.Core.Build.Notices` | `Core/Build/Atlas.Core.Build.Notices.pas` | Einträge „Build fertig“ und „Hintergrundprüfung“ der Benachrichtigungszentrale bleiben im Kern bei den Compile-Ereignissen |
 | `Atlas.Core.Build.Contract` | `Core/Build/Atlas.Core.Build.Contract.pas` | Contract des Features Build, Verträge zu Modulen, #1443 |
 | `Atlas.Core.Build.Requests` | `Core/Build/Atlas.Core.Build.Requests.pas` | Daten der Builds auf Auftrag für Läufer, Eingang der KI-Assistenten und Vertrag (#1888) |
 | `Atlas.Core.DebugControl.Types` | `Core/DebugControl/Atlas.Core.DebugControl.Types.pas` | Daten der Debugger-Steuerung für KI-Assistenten: Debugger, Eingang der KI-Assistenten und Vertrag (#1874) |
@@ -281,7 +282,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Forms.Changes` | `Core/Forms/Atlas.Core.Forms.Changes.pas` | Ordner `Core/Forms` |
 | `Atlas.Core.Forms.PropertyValues` | `Core/Forms/Atlas.Core.Forms.PropertyValues.pas` | Ordner `Core/Forms` |
 | `Atlas.Core.Forms.Text` | `Core/Forms/Atlas.Core.Forms.Text.pas` | Ordner `Core/Forms` |
-| `Atlas.Core.Generate.Contract` | `Core/Generate/Atlas.Core.Generate.Contract.pas` | Ordner `Core/Generate` |
+| `Atlas.Core.Settings.GenerateMenu.Contract` | `Core/Settings/Atlas.Core.Settings.GenerateMenu.Contract.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Generate.FileTemplates` | `Core/Generate/Atlas.Core.Generate.FileTemplates.pas` | Ordner `Core/Generate` |
 | `Atlas.Core.Generate.Gallery` | `Core/Generate/Atlas.Core.Generate.Gallery.pas` | Ordner `Core/Generate`: Assistenten der Objektgalerie, #1821 |
 | `Atlas.Core.Generate.Choice` | `Core/Generate/Atlas.Core.Generate.Choice.pas` | Ordner `Core/Generate`: Auswahl mit Suchfeld, #1821 |
@@ -350,7 +351,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
 | `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
 | `Atlas.Core.Modules.Watch` | `Core/Modules/Atlas.Core.Modules.Watch.pas` | Liste bereitgestellter Objekte, folgt der Registry, #1455 |
-| `Atlas.Core.Build.Notices` | `Core/Build/Atlas.Core.Build.Notices.pas` | Ordner `Core/Build`: Einträge „Build fertig“ und „Hintergrundprüfung“ für die Benachrichtigungszentrale |
 | `Atlas.Core.Notifications.Center` | `Core/Notifications/Atlas.Core.Notifications.Center.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Listeners` | `Core/Notifications/Atlas.Core.Notifications.Listeners.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.OrderedItems` | `Core/Notifications/Atlas.Core.Notifications.OrderedItems.pas` | Ordner `Core/Notifications` |
@@ -395,7 +395,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Flow` | `Core/Problems/Atlas.Core.Problems.Flow.pas` | Ordner `Core/Problems`: Ablauf der Probleme hinter `IAtlasProblemsServer` und `IAtlasProblemsEditors`, ohne IDE testbar |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
-| `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Lsp.ProjectContext.Contract` | `Core/Lsp/Atlas.Core.Lsp.ProjectContext.Contract.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Projects.Matching` | `Core/Projects/Atlas.Core.Projects.Matching.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.PathCheck` | `Core/Projects/Atlas.Core.Projects.PathCheck.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.PathCheck.Scan` | `Core/Projects/Atlas.Core.Projects.PathCheck.Scan.pas` | Ordner `Core/Projects` |
@@ -486,6 +486,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Status.Contract` | `Core/Status/Atlas.Core.Status.Contract.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.IndexStore` | `Core/Status/Atlas.Core.Status.IndexStore.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.Lines` | `Core/Status/Atlas.Core.Status.Lines.pas` | Ordner `Core/Status` |
+| `Atlas.Core.Status.Signal` | `Core/Status/Atlas.Core.Status.Signal.pas` | Ordner `Core/Status` |
 | `Atlas.Core.CodeInsight.Plan` | `Core/CodeInsight/Atlas.Core.CodeInsight.Plan.pas` | Ordner `Core/CodeInsight`; Entscheidungen des Code Insight-Managers (Zeichen, Dateien, Start, Projekte), #1967 |
 | `Atlas.Core.Status.Registry` | `Core/Status/Atlas.Core.Status.Registry.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.Server` | `Core/Status/Atlas.Core.Status.Server.pas` | Ordner `Core/Status` |
@@ -866,6 +867,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Popup.Tip` | `UI/Popup/Atlas.UI.Popup.Tip.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.TitledTip` | `UI/Popup/Atlas.UI.Popup.TitledTip.pas` | allgemeiner Tooltip, bis #1455 `Atlas.UI.Notes.Tip` |
 | `Atlas.UI.Popup.CrumbCard` | `UI/Popup/Atlas.UI.Popup.CrumbCard.pas` | Kennzahlen-Karte der Brotkrumen (#1787) |
+| `Atlas.UI.Popup.Strings` | `UI/Popup/Atlas.UI.Popup.Strings.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Popup.Window` | `UI/Popup/Atlas.UI.Popup.Window.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Problems.Explain` | `UI/Problems/Atlas.UI.Problems.Explain.pas` | „Regel erklären“ in „Atlas-Prüfung“ (Base), #1455 |
 | `Atlas.UI.Problems.Frame` | `UI/Problems/Atlas.UI.Problems.Frame.pas` | Ordner `UI/Problems` |
@@ -1965,7 +1967,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Rules.Maintenance` | `IDE/Rules/Atlas.IDE.Rules.Maintenance.pas` | Ordner `IDE/Rules`: Baseline und Unterdrückungen des aktiven Projekts, #1755 |
 | `Atlas.IDE.Rules.OwnershipHints` | `IDE/Rules/Atlas.IDE.Rules.OwnershipHints.pas` | Ordner `IDE/Rules`: Marke „Wer gibt das frei?“ im Editor, Schalter editor.ownershipHints unter ruleChecks, #1877 |
 | `Atlas.IDE.Rules.Adapters.Settings` | `IDE/Rules/Atlas.IDE.Rules.Adapters.Settings.pas` | Ordner `IDE/Rules`: Abschnitt „Prüfregeln“ mit seinen Hooks, #1755 |
-| `Atlas.UI.Problems.BulkFix` | `UI/Problems/Atlas.UI.Problems.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
+| `Atlas.UI.Rules.BulkFix` | `UI/Rules/Atlas.UI.Rules.BulkFix.pas` | Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455 |
 | `Atlas.UI.Rules.Editor` | `UI/Rules/Atlas.UI.Rules.Editor.pas` | Ordner `UI/Rules`: Regel-Editor, #1755 |
 | `Atlas.UI.Rules.SettingsDialog` | `UI/Rules/Atlas.UI.Rules.SettingsDialog.pas` | Ordner `UI/Rules`: Dialog der Einstellungsdateien mit Regel-Editor (`IAtlasSettingsDialogProvider`), #1755 |
 | `Atlas.IDE.Rules.Adapters.SettingsDialog` | `IDE/Rules/Atlas.IDE.Rules.Adapters.SettingsDialog.pas` | Ordner `IDE/Rules`: nennt Base den Dialog mit Regel-Editor (`IAtlasSettingsDialogProvider`), #1755 |

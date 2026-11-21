@@ -300,7 +300,8 @@ begin
   if Result then
   begin
     // Sprung im Tooltip: Der Hauptthread wartet, deshalb kurzes Zeitlimit.
-    AData := mSession.HoverDataAt(ARef.FileName, ARef.Line, ARef.Character, TLspSession.cMainThreadTimeoutMs);
+    AData := TAtlasHoverData.FromResponse(mSession.HoverResponseAt(ARef.FileName, ARef.Line, ARef.Character,
+      TLspSession.cMainThreadTimeoutMs));
     Result := AData.Found;
   end;
 end;

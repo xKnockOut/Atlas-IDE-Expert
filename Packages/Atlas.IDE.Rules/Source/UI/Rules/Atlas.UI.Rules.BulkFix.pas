@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Problems.BulkFix;
+﻿unit Atlas.UI.Rules.BulkFix;
 
 // Vorschau der Sammelkorrektur (#1352) aus dem Fenster „Atlas-Prüfung“:
 // oben die Zusammenfassung des Servers, links die Dateien mit Anzahl der

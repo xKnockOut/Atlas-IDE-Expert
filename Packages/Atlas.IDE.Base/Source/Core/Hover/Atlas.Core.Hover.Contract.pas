@@ -131,6 +131,8 @@ type
     /// <summary>Index des Links an der Textstelle AIndex (0-basiert); -1 ohne.</summary>
     function LinkAt(AIndex: Integer): Integer;
     class function FromHover(const AHover: TJSONValue): TAtlasHoverData; static;
+    /// <summary>Wie FromHover; gibt AResponse danach frei (Antwort von TLspSession.HoverResponseAt).</summary>
+    class function FromResponse(AResponse: TJSONValue): TAtlasHoverData; static;
   end;
 
   {$SCOPEDENUMS ON}
@@ -630,6 +632,15 @@ begin
     begin
       AData.ReassignedLines := AData.ReassignedLines + [TJSONNumber(mValue).AsInt];
     end;
+  end;
+end;
+
+class function TAtlasHoverData.FromResponse(AResponse: TJSONValue): TAtlasHoverData;
+begin
+  try
+    Result := FromHover(AResponse);
+  finally
+    AResponse.Free;
   end;
 end;
 

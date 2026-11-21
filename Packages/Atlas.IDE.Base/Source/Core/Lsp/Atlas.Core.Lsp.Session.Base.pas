@@ -13,7 +13,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
-  Atlas.Core.Projects.Contract,
+  Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Lsp.Session.Json;
 

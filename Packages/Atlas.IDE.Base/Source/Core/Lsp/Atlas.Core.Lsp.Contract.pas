@@ -2,8 +2,8 @@
 
 // Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden: Probleme
 // (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400),
-// Treffersicherheit einer Fundstelle (#1119), Ergebnis der Auswirkungsanalyse (#1120) und Bezeichner für
-// Werte beim Debuggen (#508).
+// Treffersicherheit einer Fundstelle (#1119), Ergebnis der Auswirkungsanalyse (#1120), Bezeichner für
+// Werte beim Debuggen (#508) und Inlay-Hints (#401).
 // Sie liegen im Lsp-Feature, weil die Protokollschicht unten liegt; Atlas.Core.Problems.Contract und
 // Atlas.Core.Results.Model führen sie als Alias weiter. Positionen sind 0-basiert in UTF-16-Einheiten.
 
@@ -279,6 +279,32 @@ type
   end;
 
   TAtlasInlineValueRefs = TArray<TAtlasInlineValueRef>;
+
+  /// <summary>Inlay-Hint aus textDocument/inlayHint (#401): Parametername, Endmarke (#620), Typmarke (#453),
+  /// Include-Symbole (#860), Steuerzeichen (#862) oder Methode ohne Self (#686); Atlas.Core.InlayHints.Store führt
+  /// ihn als Alias weiter.</summary>
+  TAtlasInlayHint = record
+    /// <summary>0-basiert.</summary>
+    Line: Integer;
+    /// <summary>0-basiert, UTF-16-Index in der Zeile.</summary>
+    Character: Integer;
+    /// <summary>Parametername ohne ":"; bei einer Endmarke deren Text ohne "//".</summary>
+    Name: string;
+    /// <summary>Endmarke hinter einem end (#620) statt Parametername.</summary>
+    EndLabel: Boolean;
+    /// <summary>Typmarke (#453): Name ist der abgeleitete Typ ohne ":".</summary>
+    TypeHint: Boolean;
+    /// <summary>Include-Symbole (#860): Name sind die Symbole durch ", " getrennt.</summary>
+    DefineHint: Boolean;
+    /// <summary>Steuerzeichen (#862): Name ist der Code wie „#3“.</summary>
+    CharHint: Boolean;
+    /// <summary>Methode ohne Self (#686): Marke am Ende des Kopfs.</summary>
+    MethodHint: Boolean;
+    /// <summary>Endmarke: Anfang des Blocks (0-basiert), zu dem ein Klick springt; nur mit HasBlock.</summary>
+    BlockLine: Integer;
+    BlockCharacter: Integer;
+    HasBlock: Boolean;
+  end;
 
   TLspSendProc = reference to procedure(const ABytes: TBytes);
 

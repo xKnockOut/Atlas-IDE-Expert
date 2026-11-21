@@ -175,7 +175,8 @@ uses
   Atlas.Core.Style.Symbol,
   Atlas.Core.Style.Signal,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol;
+  Atlas.IDE.Foundation.Symbol,
+  Atlas.Core.Status.Signal;
 
 const
   cWM_ATLAS_STATUS = WM_USER + 591;
@@ -351,12 +352,12 @@ begin
   mBadge.Top := ARect.Top + mInset;
   mBadge.Right := ARect.Right - mInset;
   mBadge.Bottom := ARect.Bottom - mInset;
-  ACanvas.Pen.Color := TColor(ASignals.ForStatus(AView.BadgeState).Solid);
-  ACanvas.Brush.Color := TColor(ASignals.ForStatus(AView.BadgeState).Solid);
+  ACanvas.Pen.Color := TColor(TAtlasStatusSignal.Pick(ASignals, AView.BadgeState).Solid);
+  ACanvas.Brush.Color := TColor(TAtlasStatusSignal.Pick(ASignals, AView.BadgeState).Solid);
   ACanvas.Brush.Style := bsSolid;
   ACanvas.RoundRect(mBadge.Left, mBadge.Top, mBadge.Right, mBadge.Bottom, mBadge.Height, mBadge.Height);
   ACanvas.Brush.Style := bsClear;
-  ACanvas.Font.Color := TColor(ASignals.ForStatus(AView.BadgeState).OnSolid);
+  ACanvas.Font.Color := TColor(TAtlasStatusSignal.Pick(ASignals, AView.BadgeState).OnSolid);
   mText := TAtlasStatusFieldPlan.BadgeText(AView.BadgeCount);
   DrawText(ACanvas.Handle, PChar(mText), -1, mBadge, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
   ACanvas.Font.Color := StyleServices.GetSystemColor(clBtnText);
@@ -383,8 +384,8 @@ begin
   mLeft := DrawSymbol(mCanvas, mPPI, ARect.Left, mCenter);
   // Signalfarben der Statusleiste der IDE (Fläche clBtnFace), nicht der Editorfläche (#1255).
   mSignals := TAtlasIdeStyle.ChromeColors.Signals;
-  mCanvas.Pen.Color := TColor(mSignals.ForStatus(AView.State).Ring);
-  mCanvas.Brush.Color := TColor(mSignals.ForStatus(AView.State).Fill);
+  mCanvas.Pen.Color := TColor(TAtlasStatusSignal.Pick(mSignals, AView.State).Ring);
+  mCanvas.Brush.Color := TColor(TAtlasStatusSignal.Pick(mSignals, AView.State).Fill);
   mCanvas.Brush.Style := bsSolid;
   mCanvas.Ellipse(mLeft + 2 * mRadius - mRadius, mCenter - mRadius, mLeft + 2 * mRadius + mRadius + 1,
     mCenter + mRadius + 1);

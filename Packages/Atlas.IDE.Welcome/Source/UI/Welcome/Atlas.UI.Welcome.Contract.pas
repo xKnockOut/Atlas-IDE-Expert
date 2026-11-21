@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Generate.Contract,
+  Atlas.Core.Settings.GenerateMenu.Contract,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract;
 

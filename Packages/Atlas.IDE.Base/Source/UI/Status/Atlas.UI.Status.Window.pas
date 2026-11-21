@@ -81,7 +81,8 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Popup.Draw,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.Core.Status.Signal;
 
 const
   // Alle Maße bei 96 dpi. Kopf: Einzug links und rechts, Abstand des Texts hinter dem Punkt, Abstand der Trennlinie
@@ -318,8 +319,8 @@ var
 begin
   mRadius := ScaleValue(cDotRadius);
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
-  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(AState).Ring);
-  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(AState).Fill);
+  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, AState).Ring);
+  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, AState).Fill);
   Canvas.Brush.Style := bsSolid;
   Canvas.Ellipse(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
 end;

@@ -4,7 +4,7 @@
 //   - Mausbewegung im Editor → Bezeichner unter der Maus (Zeile, Wortgrenzen).
 //   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover (im Hintergrund; die IDE wartet nie auf den
 //   Server)
-//     (TLspSession.HoverDataAt) und Tooltip unter dem Wort (Kurzform).
+//     (TLspSession.HoverResponseAt) und Tooltip unter dem Wort (Kurzform).
 //   - Schließen 300 ms nachdem die Maus Bezeichner und Tooltip verlassen hat;
 //     sofort bei Taste (außer Umschalt, Strg, Alt allein), Mausklick, Scrollen,
 //     Größenänderung, IDE inaktiv (ein Wächter prüft das, solange der Tooltip
@@ -665,7 +665,7 @@ begin
     begin
       mData := Default(TAtlasHoverData);
       try
-        mData := ASession.HoverDataAt(mFileName, mLine, mCharacter, 0);
+        mData := TAtlasHoverData.FromResponse(ASession.HoverResponseAt(mFileName, mLine, mCharacter, 0));
       except
         // Server langsam oder weg: kein Tooltip, die IDE wartet nie darauf.
         on ELspClientError do

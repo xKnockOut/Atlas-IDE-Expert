@@ -20,9 +20,7 @@ type
     OutlineVisPrivate, OutlineVisProtected, OutlineVisPublic, OutlineVisPublished, OutlineKindTypes, OutlineKindFields,
     OutlineKindMethods, OutlineKindProperties, OutlineKindConstants, OutlineKindVariables, OutlineKindRoutines,
     OutlineKindEnumMembers, CrumbCopyName, CrumbCopyWithUnit, CrumbCopySignature, CrumbCopyPath, CrumbShowComponent,
-    CrumbFindReferences, CrumbRename, CrumbCopyUnitName, CrumbCopyFilePath, BreadcrumbsMetricsLines,
-    BreadcrumbsMetricsCyclomatic, BreadcrumbsMetricsNesting, BreadcrumbsMetricsParameters, BreadcrumbsMetricsMembers,
-    BreadcrumbsMetricsInheritance, BreadcrumbsMetricsLimit, BreadcrumbsMetricsMissing);
+    CrumbFindReferences, CrumbRename, CrumbCopyUnitName, CrumbCopyFilePath);
 
   TAtlasOutlineStrings = class
   public
@@ -92,15 +90,7 @@ const
      'Verwendungen suchen',
      'Umbenennen …',
      'Unit-Namen kopieren',
-     'Dateipfad kopieren',
-     'Zeilen',
-     'Zyklomatische Komplexität',
-     'Verschachtelungstiefe',
-     'Parameter',
-     'Mitglieder',
-     'Vererbungstiefe',
-     '%s (Grenze %d)',
-     'Kennzahlen noch nicht verfügbar'),
+     'Dateipfad kopieren'),
     ('Outline',
      'Search outline',
      'Visibility',
@@ -154,15 +144,7 @@ const
      'Find references',
      'Rename …',
      'Copy unit name',
-     'Copy file path',
-     'Lines',
-     'Cyclomatic complexity',
-     'Nesting depth',
-     'Parameters',
-     'Members',
-     'Inheritance depth',
-     '%s (limit %d)',
-     'Metrics not available yet'));
+     'Copy file path'));
 
 { TAtlasOutlineStrings }
 

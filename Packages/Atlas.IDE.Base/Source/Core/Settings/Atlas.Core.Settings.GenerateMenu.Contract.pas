@@ -1,9 +1,10 @@
-﻿unit Atlas.Core.Generate.Contract;
+﻿unit Atlas.Core.Settings.GenerateMenu.Contract;
 
 // Gruppen und Listen des Erzeugen-Menüs (#719), wie sie in den Einstellungen stehen
-// (keys.generateMenu.groups, keys.generateMenu.hidden). Eigene Unit, damit die Einstellungen sie
-// normalisieren können, ohne das Menü (und darüber den LSP-Client) zu importieren. Dazu die Art einer neuen
-// Datei (TAtlasNewFileKind), die die Willkommensseite in ihrer Quelle für „Neu mit Atlas“ trägt.
+// (keys.generateMenu.groups, keys.generateMenu.hidden). Liegt bei den Einstellungen, damit sie die Listen
+// normalisieren können, ohne das Feature Generate (und darüber den LSP-Client) zu verwenden: Generate verwendet
+// Settings, nicht umgekehrt. Dazu die Art einer neuen Datei (TAtlasNewFileKind), die die Willkommensseite in
+// ihrer Quelle für „Neu mit Atlas“ trägt.
 
 interface
 
