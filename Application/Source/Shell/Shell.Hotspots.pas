@@ -73,7 +73,7 @@ uses
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Composition,
   Atlas.Common.Hotspots.History,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.VersionControlChanges,
   Atlas.Common.Localization.Texts;
 
@@ -320,7 +320,7 @@ begin
     Exit(False);
   end;
   mTimeoutMs := TimeoutMsOf(ASettings);
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   if not Supports(TAtlasVersionControl.ForWorkingCopy(mWorkingCopy, mRunner, mExecutable, mTimeoutMs),
     IAtlasVcsLineHistory, mLines) then
   begin

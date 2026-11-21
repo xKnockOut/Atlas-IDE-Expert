@@ -101,7 +101,7 @@ uses
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
-  Shell.Platform,
+  Platform.Server,
   Shell.CrashCases,
   Shell.Commands.Build,
   Shell.Commands.Index,
@@ -146,8 +146,8 @@ var
   mWorkspaces: TArray<TLspProcessWorkspace>;
 begin
   mWorkspaces := CollectProcesses;
-  Result := TLspProcesses.ToJson(mWorkspaces, TShellPlatform.CurrentProcessId, Now);
-  FServices.Logger.Info(TLspProcesses.MarkedMarkdown(mWorkspaces, TShellPlatform.CurrentProcessId, Now));
+  Result := TLspProcesses.ToJson(mWorkspaces, TServerPlatform.CurrentProcessId, Now);
+  FServices.Logger.Info(TLspProcesses.MarkedMarkdown(mWorkspaces, TServerPlatform.CurrentProcessId, Now));
 end;
 
 function TShellServerCommands.RunSettingsCheck(const AArguments: TJSONArray): TJSONValue;

@@ -40,7 +40,7 @@ uses
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests.Report,
   Atlas.Common.Lsp.AffectedTests.Types,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.Bootstrap,
   Shell.AffectedTests,
   Shell.Linter.Output,

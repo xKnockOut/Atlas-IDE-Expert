@@ -64,6 +64,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Findings.Contract,
   System.Classes,
   System.StrUtils,
   Atlas.Common.Rules.Scopes,

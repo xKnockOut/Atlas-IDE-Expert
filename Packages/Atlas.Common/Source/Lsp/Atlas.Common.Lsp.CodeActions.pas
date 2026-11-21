@@ -131,7 +131,7 @@ uses
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,

@@ -216,7 +216,8 @@
         <DCCReference Include="Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="Source\Shell\Shell.Commands.Index.pas"/>
         <DCCReference Include="Source\Shell\Shell.Compiler.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Platform.pas"/>
+        <DCCReference Include="Source\Platform\Platform.Server.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Platform.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

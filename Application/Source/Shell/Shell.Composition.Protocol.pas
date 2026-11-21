@@ -69,7 +69,7 @@ uses
   Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Product.Version,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Text.LogMarks;
 
 { TShellProtocol }
@@ -154,11 +154,11 @@ begin
   end;
   FServices.Logger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
     [AMethod, AError.ClassName, TLogMarks.Text(AError.Message), sLineBreak,
-      TLogMarks.Text(mParams), sLineBreak, TShellPlatform.StackTraceOf(AError)]));
+      TLogMarks.Text(mParams), sLineBreak, TServerPlatform.StackTraceOf(AError)]));
   // Nachstellbarer Fall (#1355): Anfrage, Datei, Stapel; danach Meldung an den Client.
   if FCrashCases <> nil then
   begin
-    FCrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
+    FCrashCases.RequestFailed(AMethod, AParams, AError, TServerPlatform.StackTraceOf(AError));
   end;
 end;
 

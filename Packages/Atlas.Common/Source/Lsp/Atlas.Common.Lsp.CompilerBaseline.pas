@@ -88,7 +88,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Output,
   Atlas.Common.Localization.Texts;

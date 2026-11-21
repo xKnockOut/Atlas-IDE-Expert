@@ -147,7 +147,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Diagnostics.StackGuard,
   Shell.Bootstrap,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
@@ -324,7 +324,7 @@ begin
   Result := TCrashCase.Empty;
   Result.Kind := AKind;
   Result.Time := Now;
-  Result.ProcessId := TShellPlatform.CurrentProcessId;
+  Result.ProcessId := TServerPlatform.CurrentProcessId;
   Result.Method := AMethod;
   Result.Id := AId;
   Result.Params := AParams;

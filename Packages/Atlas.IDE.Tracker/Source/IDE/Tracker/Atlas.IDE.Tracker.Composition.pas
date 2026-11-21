@@ -22,40 +22,12 @@
 
 interface
 
-uses
-  System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Commands.Contract;
-
-type
-  TAtlasTrackerModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-    IAtlasKeySource, IAtlasAppliesSettings, IAtlasPaletteSourceProvider)
-  public const
-    cModuleId = 'atlas.tracker';
-    cSwitch = 'issues';
-  private
-    FActive: Boolean;
-  public
-    function Info: TAtlasModuleInfo;
-    procedure Start;
-    procedure Stop;
-    function IsActive: Boolean;
-    function Commands: TArray<TAtlasModuleCommand>;
-    function MenuEntries: TArray<TAtlasMenuEntry>;
-    function Keys: TArray<TAtlasModuleKey>;
-    /// <summary>Geänderte Einstellungen an „Meine Issues“, Sprint und „Testergebnisse“.</summary>
-    procedure ApplySettings;
-    /// <summary>Issues in der Befehlspalette (#1270); nil ohne „Meine Issues“.</summary>
-    function PaletteSource: IAtlasPaletteSource;
-    /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
-    /// nicht passt.</summary>
-    class function RegisterModule: Boolean; static;
-    class procedure UnregisterModule; static;
-  end;
-
 implementation
 
 uses
+  System.SysUtils,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Commands.Contract,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
@@ -78,7 +50,8 @@ uses
   Atlas.UI.Tracker.SettingsBranches,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.UI.Settings.Contract,
-  Atlas.IDE.Tracker.Adapters.Access;
+  Atlas.IDE.Tracker.Adapters.Access,
+  Atlas.IDE.Tracker.Adapters.Module;
 
 var
   GScope: IAtlasModuleScope;
@@ -127,7 +100,7 @@ begin
   Result.Notice := AccessNotice;
 end;
 
-{ TAtlasTrackerModule }
+{ Anmeldung }
 
 /// <summary>Stellt ein Modul den Vertrag der Versionsverwaltung bereit (#1903)?</summary>
 function VcsProvided: Boolean;
@@ -135,56 +108,47 @@ begin
   Result := Length(AtlasModuleRegistry.FindAll(IAtlasVcsService)) > 0;
 end;
 
-{ TAtlasTrackerModule }
+{ Beiträge der Teile }
 
-function TAtlasTrackerModule.Info: TAtlasModuleInfo;
-begin
-  // Lief mit der Willkommensseite schon im abgesicherten Start.
-  Result := TAtlasModuleHost.Info(cModuleId, 'Issue-Tracker', TAtlasVersion.cVersion, HInstance,
-    TAtlasSafeLevel.Safe, cSwitch);
-end;
-
-procedure TAtlasTrackerModule.Start;
-begin
-  FActive := True;
-end;
-
-procedure TAtlasTrackerModule.Stop;
-begin
-  FActive := False;
-end;
-
-function TAtlasTrackerModule.IsActive: Boolean;
-begin
-  Result := FActive;
-end;
-
-function TAtlasTrackerModule.Commands: TArray<TAtlasModuleCommand>;
+function PartCommands: TArray<TAtlasModuleCommand>;
 begin
   Result := TAtlasTrackerParts.Commands;
 end;
 
-function TAtlasTrackerModule.MenuEntries: TArray<TAtlasMenuEntry>;
+function PartMenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := TAtlasTrackerParts.MenuEntries;
 end;
 
-function TAtlasTrackerModule.Keys: TArray<TAtlasModuleKey>;
+function PartKeys: TArray<TAtlasModuleKey>;
 begin
   Result := TAtlasTrackerParts.Keys;
 end;
 
-procedure TAtlasTrackerModule.ApplySettings;
+procedure PartApplySettings;
 begin
   TAtlasTrackerParts.ApplySettings;
 end;
 
-function TAtlasTrackerModule.PaletteSource: IAtlasPaletteSource;
+function PartPaletteSource: IAtlasPaletteSource;
 begin
   Result := TAtlasTrackerParts.PaletteSource;
 end;
 
-class function TAtlasTrackerModule.RegisterModule: Boolean;
+/// <summary>Was die Modulklasse von den Teilen weiterreicht.</summary>
+function ModuleSources: TAtlasTrackerModuleSources;
+begin
+  Result := Default(TAtlasTrackerModuleSources);
+  Result.Commands := PartCommands;
+  Result.MenuEntries := PartMenuEntries;
+  Result.Keys := PartKeys;
+  Result.ApplySettings := PartApplySettings;
+  Result.PaletteSource := PartPaletteSource;
+end;
+
+/// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
+/// nicht passt.</summary>
+function RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasTrackerModule;
@@ -194,11 +158,12 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(TAtlasTrackerModule.cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion,
+    GScope, mRegistry) then
   begin
     Exit;
   end;
-  mModule := TAtlasTrackerModule.Create;
+  mModule := TAtlasTrackerModule.Create(ModuleSources);
   mRef := mModule as IAtlasModule;
   // Platte und Shell vor allen Teilen: Sie lesen schon beim Start (Meldungen, Zeiterfassung, Board).
   TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, TAtlasTrackerShellExecute.Create);
@@ -236,15 +201,15 @@ begin
   TAtlasTrackerFiles.Uninstall;
 end;
 
-class procedure TAtlasTrackerModule.UnregisterModule;
+procedure UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, ReleaseModule);
+  TAtlasModuleHost.Unregister(GScope, TAtlasTrackerModule.cModuleId, HInstance, ReleaseModule);
 end;
 
 initialization
-  TAtlasTrackerModule.RegisterModule;
+  RegisterModule;
 
 finalization
-  TAtlasTrackerModule.UnregisterModule;
+  UnregisterModule;
 
 end.

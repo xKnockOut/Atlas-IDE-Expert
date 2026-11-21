@@ -36,7 +36,7 @@ uses
   System.JSON,
   Atlas.Text.LogMarks,
   Atlas.Common.Diagnostics.Anonymizer,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Common.Localization.Texts;
 
 type

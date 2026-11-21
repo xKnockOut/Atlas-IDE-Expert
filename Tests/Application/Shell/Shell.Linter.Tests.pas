@@ -129,7 +129,7 @@ uses
   System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Core.VersionControl.Contract,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.VersionControlChanges,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.FormatCheck,
@@ -433,7 +433,7 @@ begin
   begin
     Exit;
   end;
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
     'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
   for mCommand in mCommands do

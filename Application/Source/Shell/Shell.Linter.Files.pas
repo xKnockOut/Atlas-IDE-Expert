@@ -53,7 +53,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.Linter.Output,
   Shell.Workspace.Listings;
 

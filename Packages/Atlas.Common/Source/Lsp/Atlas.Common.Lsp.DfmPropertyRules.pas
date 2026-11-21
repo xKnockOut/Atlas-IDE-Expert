@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Prüft die Unit AFileName nur mit der Regel dfm-property; False ohne Formular oder Regeln.</summary>
