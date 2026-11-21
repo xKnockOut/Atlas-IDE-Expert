@@ -80,6 +80,9 @@ type
     FFileName: string;
     FLine: Integer;
     FColumn: Integer;
+    /// <summary>Erste Zeile des Blocks (1-basiert); Finish setzt die Schreibmarke nur innerhalb des Blocks.
+    /// </summary>
+    FBlockLine: Integer;
     FProvider: IAtlasGhostProvider;
     FProposal: TAtlasGhostProposal;
     FGhost: TAtlasGhostText;
@@ -409,6 +412,7 @@ begin
   FFileName := AAsked.FileName;
   FLine := mView.CursorPos.Line;
   FColumn := mView.CursorPos.Col;
+  FBlockLine := FLine;
   FProvider := AProvider;
   FProposal := AProposal;
   TAtlasKeyHook.Add(FKeys);
@@ -486,12 +490,17 @@ var
   mTarget: TOTAEditPos;
   mProvider: IAtlasGhostProvider;
   mProposal: TAtlasGhostProposal;
+  mBlockLine: Integer;
 begin
   mProvider := FProvider;
   mProposal := FProposal;
+  mBlockLine := FBlockLine;
   Dismiss;
   mView := TAtlasEditorBuffer.ActiveView;
-  if mView <> nil then
+  // Zielzeile außerhalb des eingefügten Blocks (Anbieter liefert sie falsch): Die Schreibmarke bleibt am Ende
+  // des Geschriebenen, statt an den Anfang der Unit zu springen.
+  if (mView <> nil) and (mProposal.CursorLine + 1 >= mBlockLine) and
+    (mProposal.CursorLine + 1 < mBlockLine + Length(mProposal.Lines)) then
   begin
     mTarget.Line := mProposal.CursorLine + 1;
     mTarget.Col := TLspSession.IndexToColumn(TAtlasEditorBuffer.LineText(mView, mTarget.Line),

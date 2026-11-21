@@ -218,7 +218,8 @@ var
 begin
   mAnswer := Run('["' + cUri + '", 6, null, {}]');
   Assert.IsTrue(Pos('"lines":["  try","    ","  finally","    Liste.Free;","  end;"]', mAnswer) > 0, mAnswer);
-  Assert.IsTrue(Pos('"cursor":{"line":1,"character":4}', mAnswer) > 0, mAnswer);
+  // Zeile im Dokument (Block ab Zeile 6, Marke in seiner zweiten Zeile), wie die IDE sie erwartet.
+  Assert.IsTrue(Pos('"cursor":{"line":7,"character":4}', mAnswer) > 0, mAnswer);
   Assert.IsTrue(Pos('"count":6', mAnswer) > 0, mAnswer);
   Assert.IsTrue(Pos('"share":100', mAnswer) > 0, mAnswer);
   Assert.IsTrue(Pos('"team":false', mAnswer) > 0, mAnswer);

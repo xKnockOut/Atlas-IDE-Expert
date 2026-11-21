@@ -155,7 +155,9 @@ begin
   AObject.AddPair('evidence', EvidenceJson(APattern));
 end;
 
-function SuggestionJson(const ASuggestion: TLearnedSuggestion): TJSONObject;
+/// <summary>ALine: die leere Zeile, die der Block ersetzt. Die Schreibmarke geht als Zeile im Dokument hinaus (wie
+/// in LSP üblich); TLearnedSuggestion führt sie relativ zum Block.</summary>
+function SuggestionJson(const ASuggestion: TLearnedSuggestion; ALine: Integer): TJSONObject;
 var
   mLines: TJSONArray;
   mLine: string;
@@ -170,7 +172,9 @@ begin
   end;
   Result.AddPair('lines', mLines);
   mCursor := TJSONObject.Create;
-  mCursor.AddPair('line', TJSONNumber.Create(ASuggestion.CursorLine));
+  // Relativ hinausgegeben sprang die Schreibmarke nach Tab an den Anfang der Unit, und die IDE verwarf jeden
+  // Vorschlag unterhalb der ersten Zeilen (sie prüft, ob die Marke im Block liegt).
+  mCursor.AddPair('line', TJSONNumber.Create(ALine + ASuggestion.CursorLine));
   mCursor.AddPair('character', TJSONNumber.Create(ASuggestion.CursorCharacter));
   Result.AddPair('cursor', mCursor);
 end;
@@ -217,7 +221,7 @@ begin
   begin
     Exit(TJSONNull.Create);
   end;
-  Result := SuggestionJson(mSuggestion);
+  Result := SuggestionJson(mSuggestion, mLine);
 end;
 
 class function TLspLearnedSuggestions.ExecuteList(const AIndex: ISymbolIndex; const AOptionsFor: TLearnedOptionsFunc;
