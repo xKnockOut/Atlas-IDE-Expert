@@ -66,6 +66,7 @@ uses
   Winapi.Windows,
   ToolsAPI,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Inbox,
@@ -144,15 +145,7 @@ end;
 procedure TAtlasIdeBuildInbox.Clean;
 begin
   // Reste eines früheren Prozesses mit derselben Nummer.
-  try
-    if TDirectory.Exists(FFolder) then
-    begin
-      TDirectory.Delete(FFolder, True);
-    end;
-  except
-    on Exception do
-      ;
-  end;
+  TTextFiles.DeleteFolderQuietly(FFolder);
 end;
 
 /// <summary>Gründe für unlesbare Aufträge in der Sprache der Oberfläche (#1458).</summary>

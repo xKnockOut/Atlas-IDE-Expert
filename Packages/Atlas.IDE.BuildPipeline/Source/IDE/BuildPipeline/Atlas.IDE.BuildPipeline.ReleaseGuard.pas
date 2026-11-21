@@ -68,6 +68,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Projects.Context,
   Atlas.UI.Strings,
   Atlas.UI.BuildPipeline.Strings;
@@ -104,17 +105,6 @@ begin
   end;
   mMessages.AddTitleMessage(AText, mGroup);
   mMessages.ShowMessageView(mGroup);
-end;
-
-function ProjectOf(const AFileName: string): IOTAProject;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Supports(mModules.FindModule(AFileName), IOTAProject, Result);
-  end;
 end;
 
 /// <summary>.dpr bzw. .dpk des Projekts: aus den Moduldateien, sonst neben der .dproj.</summary>
@@ -197,7 +187,7 @@ begin
       AOptions := Default(TAtlasReleaseOptions);
       Result := False;
       try
-        Result := ReadOptions(ProjectOf(AProject.FileName), AProject.Configuration, AProject.Platform, mFolder,
+        Result := ReadOptions(TAtlasIdeStartOptions.FindProject(AProject.FileName), AProject.Configuration, AProject.Platform, mFolder,
           AOptions);
       except
         // Nicht lesbar: keine Prüfung, der Build läuft (#493).

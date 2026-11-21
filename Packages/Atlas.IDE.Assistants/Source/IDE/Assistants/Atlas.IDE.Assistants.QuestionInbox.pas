@@ -66,6 +66,7 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Core.Status.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Notifications.Center,
@@ -93,15 +94,7 @@ begin
   // MCP-Server vielleicht noch.
   if not GCleaned then
   begin
-    try
-      if TDirectory.Exists(FFolder) then
-      begin
-        TDirectory.Delete(FFolder, True);
-      end;
-    except
-      on Exception do
-        ;
-    end;
+    TTextFiles.DeleteFolderQuietly(FFolder);
     GCleaned := True;
   end;
   FSignal := TAtlasFolderSignal.Create(FFolder);

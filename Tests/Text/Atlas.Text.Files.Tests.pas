@@ -13,6 +13,10 @@ type
     procedure DeleteQuietlyRemovesFile;
     [Test]
     procedure DeleteQuietlyIgnoresMissingFile;
+    [Test]
+    procedure DeleteFolderQuietlyRemovesFolderWithContent;
+    [Test]
+    procedure DeleteFolderQuietlyIgnoresMissingFolder;
   end;
 
 implementation
@@ -43,6 +47,29 @@ begin
   TTextFiles.DeleteQuietly(mFile);
   Assert.IsFalse(TFile.Exists(mFile));
   mFile := '';
+end;
+
+procedure TTextFilesTests.DeleteFolderQuietlyRemovesFolderWithContent;
+var
+  mFolder: string;
+begin
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-text-folder-' + IntToStr(Random(1000000)));
+  TDirectory.CreateDirectory(TPath.Combine(mFolder, 'innen'));
+  TFile.WriteAllText(TPath.Combine(mFolder, 'a.txt'), 'x');
+  TFile.WriteAllText(TPath.Combine(TPath.Combine(mFolder, 'innen'), 'b.txt'), 'y');
+  TTextFiles.DeleteFolderQuietly(mFolder);
+  Assert.IsFalse(TDirectory.Exists(mFolder));
+  mFolder := '';
+end;
+
+procedure TTextFilesTests.DeleteFolderQuietlyIgnoresMissingFolder;
+var
+  mFolder: string;
+begin
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-text-folder-fehlt');
+  TTextFiles.DeleteFolderQuietly(mFolder);
+  Assert.IsFalse(TDirectory.Exists(mFolder));
+  mFolder := '';
 end;
 
 initialization

@@ -11,6 +11,8 @@ type
   public
     /// <summary>Löscht AFileName, wenn es sie gibt; Fehler bleiben still.</summary>
     class procedure DeleteQuietly(const AFileName: string); static;
+    /// <summary>Löscht den Ordner AFolder samt Inhalt, wenn es ihn gibt; Fehler bleiben still.</summary>
+    class procedure DeleteFolderQuietly(const AFolder: string); static;
   end;
 
 implementation
@@ -30,6 +32,20 @@ begin
     end;
   except
     // lsp-ignore: catch-all-without-raise -- Austausch- und Statusdateien nach Kräften
+    on Exception do
+      ;
+  end;
+end;
+
+class procedure TTextFiles.DeleteFolderQuietly(const AFolder: string);
+begin
+  try
+    if TDirectory.Exists(AFolder) then
+    begin
+      TDirectory.Delete(AFolder, True);
+    end;
+  except
+    // lsp-ignore: catch-all-without-raise -- Austauschordner nach Kräften; ein anderer Prozess kann darin lesen
     on Exception do
       ;
   end;

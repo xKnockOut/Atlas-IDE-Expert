@@ -63,6 +63,7 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Assistants.Strings,
@@ -138,15 +139,7 @@ end;
 procedure TAtlasIdeEditInbox.Clean;
 begin
   // Reste eines früheren Prozesses mit derselben Nummer oder dieses Laufs.
-  try
-    if TDirectory.Exists(FFolder) then
-    begin
-      TDirectory.Delete(FFolder, True);
-    end;
-  except
-    on Exception do
-      ;
-  end;
+  TTextFiles.DeleteFolderQuietly(FFolder);
 end;
 
 function ApplyInEditor(const AEdit: TLspWorkspaceEdit): string;
