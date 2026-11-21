@@ -112,7 +112,7 @@ begin
       mDialog.HandleNeeded;
       mDialog.PageTree.Selected := mDialog.GroupNode('threads');
       Assert.AreEqual('threads', mDialog.RuleEditor.FixedGroup);
-      Assert.AreEqual(1, mDialog.RuleList.Items.Count);
+      Assert.AreEqual(1, Integer(mDialog.RuleList.Items.Count));
       Assert.IsTrue(mDialog.RuleEditor.Left + mDialog.RuleEditor.Width >= mDialog.RuleEditor.Parent.ClientWidth - 50,
         'Regel-Editor der Gruppe in voller Breite');
       mDialog.RuleEditor.Master.Checked := False;

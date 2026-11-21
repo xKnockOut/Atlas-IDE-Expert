@@ -75,6 +75,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,

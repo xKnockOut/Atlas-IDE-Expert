@@ -67,7 +67,7 @@ begin
     Assert.AreEqual('EConvertError', mDialog.ClassEdit.Text);
     Assert.AreEqual('Bericht.Druck.*', mDialog.PlaceEdit.Text);
     Assert.AreEqual('', mDialog.MessageEdit.Text);
-    Assert.AreEqual(3, mDialog.ActionBox.Items.Count);
+    Assert.AreEqual(3, Integer(mDialog.ActionBox.Items.Count));
     Assert.AreEqual(Ord(TAtlasExceptionAction.Continue), mDialog.ActionBox.ItemIndex);
     Assert.AreEqual('Weiterlaufen', mDialog.ActionBox.Text);
     Assert.IsTrue(mDialog.EnabledBox.Checked);

@@ -465,7 +465,7 @@ begin
     Assert.IsTrue(mCache.Get(mTarget, 'ATL-1', mDevelopment));
     Assert.IsFalse(mCache.Get(mTarget, 'ATL-2', mDevelopment));
     mCache.Clear;
-    Assert.AreEqual(0, mCache.Count);
+    Assert.AreEqual(0, Integer(mCache.Count));
   finally
     mCache.Free;
   end;

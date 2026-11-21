@@ -77,7 +77,9 @@ type
     procedure LoadSettings;
     procedure SaveSettings;
     function GetModified: Boolean;
-    function ParameterValidations: Boolean;
+    // Signaturen wie ToolsAPI.AI in Delphi 13 (sonst E2291).
+    function GetPluginEnabled: Boolean;
+    function ParameterValidations(var AErrorMsg: string): Boolean;
   end;
 
   /// <summary>Der Eintrag „Atlas (…)“ in der Anbieterliste der IDE.</summary>
@@ -148,8 +150,15 @@ begin
   Result := False;
 end;
 
-function TAtlasIdeAiPluginSettingFrame.ParameterValidations: Boolean;
+function TAtlasIdeAiPluginSettingFrame.GetPluginEnabled: Boolean;
 begin
+  // Ob Atlas als Anbieter mitläuft, regeln die Atlas-Einstellungen; die Seite schaltet nichts ab.
+  Result := True;
+end;
+
+function TAtlasIdeAiPluginSettingFrame.ParameterValidations(var AErrorMsg: string): Boolean;
+begin
+  AErrorMsg := '';
   Result := True;
 end;
 

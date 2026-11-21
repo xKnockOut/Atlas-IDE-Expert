@@ -45,6 +45,7 @@ type
 implementation
 
 uses
+  System.Types,
   System.Math,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Diagnostics.AsyncWait;

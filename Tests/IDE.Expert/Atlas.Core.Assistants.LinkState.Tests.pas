@@ -122,7 +122,7 @@ begin
     Assert.AreEqual(1, mCalls);
     Assert.IsTrue(mAccepted);
     Assert.AreEqual('neu', mText);
-    Assert.AreEqual(0, mDiffs.Count);
+    Assert.AreEqual(0, Integer(mDiffs.Count));
     Assert.IsFalse(mDiffs.Find(mId, mDiff));
     Assert.IsFalse(mDiffs.Rebase(mId, 'x'), 'entschieden: nichts mehr zu ändern');
   finally
@@ -175,7 +175,7 @@ begin
     mDiffs.Add(1, Request('B'), '', mDone);
     Assert.AreEqual(2, mDiffs.RejectAll);
     Assert.AreEqual(2, mRejected);
-    Assert.AreEqual(0, mDiffs.Count);
+    Assert.AreEqual(0, Integer(mDiffs.Count));
     Assert.AreEqual(0, mDiffs.RejectAll);
   finally
     mDiffs.Free;

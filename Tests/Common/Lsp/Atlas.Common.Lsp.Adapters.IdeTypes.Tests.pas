@@ -106,7 +106,7 @@ begin
     Assert.AreEqual('Vendor.Grid', mUnits[0]);
     Assert.AreEqual('Vendor.Other', mUnits[1]);
     Assert.AreEqual(0, Integer(Length(mCatalog.UnitsOf('TUnbekannt'))));
-    Assert.AreEqual(3, mCatalog.Count);
+    Assert.AreEqual(3, Integer(mCatalog.Count));
   finally
     mCatalog.Free;
   end;
@@ -124,7 +124,7 @@ begin
     Assert.AreEqual(0, Integer(Length(mCatalog.UnitsOf('TVendorGrid'))));
     Assert.AreEqual('Neu.Unit', mCatalog.UnitsOf('TNeu')[0]);
     Assert.AreEqual(0, Replaced(mCatalog, 'null'));
-    Assert.AreEqual(0, mCatalog.Count);
+    Assert.AreEqual(0, Integer(mCatalog.Count));
   finally
     mCatalog.Free;
   end;

@@ -67,28 +67,28 @@ end;
 procedure TAtlasControlScalingTests.MarginsAreScaled;
 begin
   TAtlasControlScaling.SetMargins(FPanel, 4, 6, 8, 10);
-  Assert.AreEqual(Device(4), FPanel.Margins.Left);
-  Assert.AreEqual(Device(6), FPanel.Margins.Top);
-  Assert.AreEqual(Device(8), FPanel.Margins.Right);
-  Assert.AreEqual(Device(10), FPanel.Margins.Bottom);
+  Assert.AreEqual(Device(4), Integer(FPanel.Margins.Left));
+  Assert.AreEqual(Device(6), Integer(FPanel.Margins.Top));
+  Assert.AreEqual(Device(8), Integer(FPanel.Margins.Right));
+  Assert.AreEqual(Device(10), Integer(FPanel.Margins.Bottom));
 end;
 
 procedure TAtlasControlScalingTests.MarginsAllUseOneValue;
 begin
   TAtlasControlScaling.SetMarginsAll(FPanel, 12);
-  Assert.AreEqual(Device(12), FPanel.Margins.Left);
-  Assert.AreEqual(Device(12), FPanel.Margins.Top);
-  Assert.AreEqual(Device(12), FPanel.Margins.Right);
-  Assert.AreEqual(Device(12), FPanel.Margins.Bottom);
+  Assert.AreEqual(Device(12), Integer(FPanel.Margins.Left));
+  Assert.AreEqual(Device(12), Integer(FPanel.Margins.Top));
+  Assert.AreEqual(Device(12), Integer(FPanel.Margins.Right));
+  Assert.AreEqual(Device(12), Integer(FPanel.Margins.Bottom));
 end;
 
 procedure TAtlasControlScalingTests.PaddingIsScaled;
 begin
   TAtlasControlScaling.SetPadding(FPanel, 2, 3, 5, 7);
-  Assert.AreEqual(Device(2), FPanel.Padding.Left);
-  Assert.AreEqual(Device(3), FPanel.Padding.Top);
-  Assert.AreEqual(Device(5), FPanel.Padding.Right);
-  Assert.AreEqual(Device(7), FPanel.Padding.Bottom);
+  Assert.AreEqual(Device(2), Integer(FPanel.Padding.Left));
+  Assert.AreEqual(Device(3), Integer(FPanel.Padding.Top));
+  Assert.AreEqual(Device(5), Integer(FPanel.Padding.Right));
+  Assert.AreEqual(Device(7), Integer(FPanel.Padding.Bottom));
 end;
 
 procedure TAtlasControlScalingTests.PlaceScalesBounds;
@@ -104,7 +104,7 @@ procedure TAtlasControlScalingTests.HigherDensityScalesUp;
 begin
   FForm.ScaleForPPI(FForm.CurrentPPI * cDoubleDensity);
   TAtlasControlScaling.SetMargins(FPanel, 5, 5, 5, 5);
-  Assert.AreEqual(Device(5), FPanel.Margins.Left);
+  Assert.AreEqual(Device(5), Integer(FPanel.Margins.Left));
   Assert.IsTrue(FPanel.Margins.Left >= 5 * cDoubleDensity, 'Rand wächst mit der Pixeldichte');
 end;
 

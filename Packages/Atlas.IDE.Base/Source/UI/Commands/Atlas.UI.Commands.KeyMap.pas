@@ -258,7 +258,8 @@ const
     TAtlasTextId.DesignerMagnifierCommand, // DesignerMagnifier
     TAtlasTextId.DesignerUsagesCommand, // DesignerUsages
     TAtlasTextId.TestsListsRunCommand, // TestsListRun
-    TAtlasTextId.DebugReattachCommand); // DebugReattach
+    TAtlasTextId.DebugReattachCommand, // DebugReattach
+    TAtlasTextId.AssistantsMentionCommand); // AssistantsMention
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 

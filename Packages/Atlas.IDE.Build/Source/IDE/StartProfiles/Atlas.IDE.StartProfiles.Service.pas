@@ -215,7 +215,8 @@ end;
 
 procedure TAtlasIdeStartProfiles.Publish(const AProject: string);
 var
-  mStatus: TAtlasStartProfileStatus;
+  // Voll qualifiziert: Der Rückruftyp TAtlasStartProfileStatus dieser Unit verdeckt den Record (E2010).
+  mStatus: Atlas.Core.StartProfiles.Flow.TAtlasStartProfileStatus;
   mText, mHint: string;
 begin
   if not Assigned(FOnStatus) then

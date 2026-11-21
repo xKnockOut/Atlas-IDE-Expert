@@ -316,7 +316,7 @@ procedure TAtlasMutationFlowTests.RedBaselineStops;
 begin
   Start;
   Pass(False);
-  Assert.AreEqual(1, FFake.Written.Count, 'kein Mutant geschrieben');
+  Assert.AreEqual(1, Integer(FFake.Written.Count), 'kein Mutant geschrieben');
   Assert.AreEqual('Started,BaselineFailed', Kinds);
   Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Killed, LastNote.Status);
   Assert.AreEqual('U.TT.B', LastNote.By);
@@ -362,7 +362,7 @@ begin
   Pass(True);
   Pass(False);
   // Gleich weiter zum dritten, ohne Kopie und Build für den zweiten.
-  Assert.AreEqual(3, FFake.Written.Count);
+  Assert.AreEqual(3, Integer(FFake.Written.Count));
   Pass(True);
   Assert.AreEqual(3, Integer(Length(FEndedStatus)));
   Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Invalid, FEndedStatus[1]);
@@ -486,7 +486,7 @@ begin
   Assert.AreEqual('Started,NotStarted', Kinds);
   Assert.AreEqual(cMutationShadowFakeName, LastNote.Shadow);
   Assert.AreEqual('Stopped', FEnds);
-  Assert.AreEqual(1, FFake.Written.Count, 'kein Mutant geschrieben');
+  Assert.AreEqual(1, Integer(FFake.Written.Count), 'kein Mutant geschrieben');
 end;
 
 procedure TAtlasMutationFlowTests.MutantNotStartedIsNotKilled;
@@ -503,7 +503,7 @@ begin
   Assert.AreEqual(2, FEndedDone, 'der dritte zählt nicht');
   Assert.AreEqual(1, LastNote.Totals.Killed);
   Assert.AreEqual(1, LastNote.Totals.Survived);
-  Assert.AreEqual(4, FFake.Written.Count, 'kein weiterer Schritt');
+  Assert.AreEqual(4, Integer(FFake.Written.Count), 'kein weiterer Schritt');
 end;
 
 procedure TAtlasMutationFlowTests.RunStatesFromRunner;
@@ -533,7 +533,7 @@ begin
   Pass(False);
   Assert.AreEqual('Cancelled', FEnds);
   Assert.AreEqual(1, FEndedDone);
-  Assert.AreEqual(2, FFake.Written.Count, 'zweiter Mutant nicht mehr geschrieben');
+  Assert.AreEqual(2, Integer(FFake.Written.Count), 'zweiter Mutant nicht mehr geschrieben');
   Assert.AreEqual('Started,Outcome,Cancelled,Finished', Kinds);
   Assert.AreEqual(1, FNotes[2].Done);
   Assert.AreEqual(2, FNotes[2].Total);
@@ -568,7 +568,7 @@ procedure TAtlasMutationFlowTests.WithoutJobsNothingStarts;
 begin
   FFlow.Start(FProject, Default(TAtlasMutationFlowSource));
   Assert.IsFalse(FFlow.Active);
-  Assert.AreEqual(0, FFake.Calls.Count);
+  Assert.AreEqual(0, Integer(FFake.Calls.Count));
   Assert.AreEqual('', Kinds);
 end;
 

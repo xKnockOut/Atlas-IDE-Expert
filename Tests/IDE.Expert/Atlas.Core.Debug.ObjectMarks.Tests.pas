@@ -144,7 +144,7 @@ begin
     Assert.IsTrue(mMarks.Find($0A3F1C20, mMark));
     Assert.AreEqual('TKunde', mMark.TypeName);
     Assert.AreEqual('Alt', mMark.LastExpression);
-    Assert.AreEqual(1, mMarks.Count);
+    Assert.AreEqual(1, Integer(mMarks.Count));
   finally
     mMarks.Free;
   end;
@@ -164,7 +164,7 @@ begin
     Assert.AreEqual('A neu', mMark.Caption);
     Assert.AreEqual(0, mMark.Color);
     Assert.AreEqual('Z', mMark.LastExpression);
-    Assert.AreEqual(2, mMarks.Count);
+    Assert.AreEqual(2, Integer(mMarks.Count));
   finally
     mMarks.Free;
   end;
@@ -305,9 +305,9 @@ begin
     mMarks.Mark($200, 'B', 'TB', 'Y', '');
     Assert.IsTrue(mMarks.Remove($100));
     Assert.IsFalse(mMarks.Remove($100));
-    Assert.AreEqual(1, mMarks.Count);
+    Assert.AreEqual(1, Integer(mMarks.Count));
     mMarks.Clear;
-    Assert.AreEqual(0, mMarks.Count, 'Ende der Sitzung');
+    Assert.AreEqual(0, Integer(mMarks.Count), 'Ende der Sitzung');
   finally
     mMarks.Free;
   end;

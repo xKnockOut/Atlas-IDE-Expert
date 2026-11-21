@@ -317,7 +317,7 @@ begin
   try
     Assert.IsTrue(mHistory.LoadJson('[{"changedAt":"2026-10-27T10:00:00.000Z","settings":' +
       '{"WelcomePageIssuesQuery":"label:bug","WelcomePageIssuesTracker":"github"}}]'));
-    Assert.AreEqual(1, mHistory.Count);
+    Assert.AreEqual(1, Integer(mHistory.Count));
     Assert.AreEqual('[{"name": "Standard", "query": "label:bug"}]', mHistory[0].Settings.IssuesQueries);
     Assert.AreEqual('github', mHistory[0].Settings.IssuesTracker);
   finally

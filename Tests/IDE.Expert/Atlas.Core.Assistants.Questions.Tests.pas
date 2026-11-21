@@ -164,7 +164,7 @@ begin
   Assert.IsFalse(mQuestion.Postponed);
   Assert.IsTrue(FQueue.Remove('a'));
   Assert.IsFalse(FQueue.Remove('a'));
-  Assert.AreEqual(1, FQueue.Count);
+  Assert.AreEqual(1, Integer(FQueue.Count));
 end;
 
 procedure TAtlasQuestionsTests.TakeExpiredRemovesOnlyDueQuestions;
@@ -178,7 +178,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mExpired)));
   Assert.AreEqual('a', mExpired[0].Id);
   Assert.AreEqual('c', mExpired[1].Id);
-  Assert.AreEqual(1, FQueue.Count);
+  Assert.AreEqual(1, Integer(FQueue.Count));
 end;
 
 procedure TAtlasQuestionsTests.TakeAllEmptiesTheQueue;
@@ -186,7 +186,7 @@ begin
   FQueue.Add(Question('a', 100));
   FQueue.Add(Question('b', 100));
   Assert.AreEqual(2, Integer(Length(FQueue.TakeAll)));
-  Assert.AreEqual(0, FQueue.Count);
+  Assert.AreEqual(0, Integer(FQueue.Count));
 end;
 
 procedure TAtlasQuestionsTests.ChosenAnswer;

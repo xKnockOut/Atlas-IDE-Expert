@@ -70,7 +70,7 @@ begin
   Assert.IsFalse(FElapsed.Add(999, 'C:\P\Unit1.pas', 9, False));
   Assert.AreEqual('', FElapsed.LineText('C:\P\Unit1.pas', 9));
   // Auch nicht gezeigte Messungen stehen im Verlauf.
-  Assert.AreEqual(1, FElapsed.Count);
+  Assert.AreEqual(1, Integer(FElapsed.Count));
 end;
 
 procedure TAtlasElapsedTests.StepAboveThresholdShown;
@@ -91,7 +91,7 @@ begin
   FElapsed.Add(5000, 'C:\P\Unit1.pas', 9, True);
   FElapsed.Hide;
   Assert.AreEqual('', FElapsed.LineText('C:\P\Unit1.pas', 9));
-  Assert.AreEqual(1, FElapsed.Count);
+  Assert.AreEqual(1, Integer(FElapsed.Count));
 end;
 
 procedure TAtlasElapsedTests.HistoryNewestFirstWithStartLine;
@@ -133,7 +133,7 @@ var
 begin
   FElapsed.Add(1000, 'C:\P\Unit1.pas', 9, True);
   FElapsed.Clear;
-  Assert.AreEqual(0, FElapsed.Count);
+  Assert.AreEqual(0, Integer(FElapsed.Count));
   FElapsed.Add(1000, 'C:\P\Unit1.pas', 12, True);
   mEntries := FElapsed.Entries;
   Assert.AreEqual('', mEntries[0].FromFile);

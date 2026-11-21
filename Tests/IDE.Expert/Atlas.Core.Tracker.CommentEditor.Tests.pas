@@ -435,13 +435,13 @@ begin
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'Entwurf eins', 1);
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd, 'Beim Beenden', 2);
     mDrafts.Put('github.com/beispiel/atlas', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'anderer Tracker', 3);
-    Assert.AreEqual(3, mDrafts.Count);
+    Assert.AreEqual(3, Integer(mDrafts.Count));
     Assert.IsTrue(mDrafts.Get('YT.firma.de/ATL', 'atl-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved));
     Assert.AreEqual('Entwurf eins', mText, 'ohne Groß-/Kleinschreibung');
     Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd, mText, mSaved));
     Assert.AreEqual('Beim Beenden', mText, 'je Feld');
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'Entwurf zwei', 4);
-    Assert.AreEqual(3, mDrafts.Count, 'ersetzt, nicht doppelt');
+    Assert.AreEqual(3, Integer(mDrafts.Count), 'ersetzt, nicht doppelt');
     Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved));
     Assert.AreEqual('Entwurf zwei', mText);
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, '  '#13#10, 5);
@@ -449,7 +449,7 @@ begin
       'nur Leerraum löscht');
     Assert.IsTrue(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd));
     Assert.IsFalse(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd), 'schon weg');
-    Assert.AreEqual(1, mDrafts.Count);
+    Assert.AreEqual(1, Integer(mDrafts.Count));
     mDrafts.Clear;
     for mIndex := 1 to TAtlasCommentDrafts.cMaxDrafts + 5 do
     begin
@@ -483,13 +483,13 @@ begin
     Assert.AreEqual('Zeile 1'#10'**fett** "zitiert"', mText);
     Assert.IsTrue(SameDateTime(mWhen, mSaved), 'Zeit unverändert (UTC)');
     Assert.IsFalse(mRead.Parse('{"version":99,"drafts":[]}'), 'fremde Version');
-    Assert.AreEqual(0, mRead.Count);
+    Assert.AreEqual(0, Integer(mRead.Count));
     Assert.IsFalse(mRead.Parse('kein JSON'));
     Assert.IsTrue(mDrafts.SaveToFile(mFile));
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Loaded, mRead.LoadFromFile(mFile));
-    Assert.AreEqual(1, mRead.Count);
+    Assert.AreEqual(1, Integer(mRead.Count));
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Missing, mRead.LoadFromFile(mFile + '.fehlt'));
-    Assert.AreEqual(0, mRead.Count);
+    Assert.AreEqual(0, Integer(mRead.Count));
   finally
     if TFile.Exists(mFile) then
     begin

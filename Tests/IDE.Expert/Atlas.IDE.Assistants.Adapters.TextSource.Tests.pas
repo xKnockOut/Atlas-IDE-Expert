@@ -120,7 +120,7 @@ end;
 procedure TAtlasAiTextSourceTests.IdeIsPreferredByDefault;
 begin
   Assert.AreEqual('OpenAI', FSource.ProviderName);
-  FSource.Ask(Request(''), Remember);
+  FSource.Ask(Request(''), Remember());
   Assert.AreEqual(1, FIde.AskCount);
   Assert.AreEqual(0, FOwn.AskCount);
 end;
@@ -139,18 +139,18 @@ procedure TAtlasAiTextSourceTests.NoneSendsNothing;
 begin
   FChoice := TAtlasAiTextSource.cNone;
   Assert.IsFalse(FSource.Ready);
-  Assert.AreEqual(0, FSource.Ask(Request(''), Remember));
+  Assert.AreEqual(0, FSource.Ask(Request(''), Remember()));
   Assert.AreEqual<TAtlasAiTextStatus>(TAtlasAiTextStatus.NotReady, FLast.Status);
   Assert.AreEqual(0, FIde.AskCount + FOwn.AskCount);
 end;
 
 procedure TAtlasAiTextSourceTests.ExcludedFileGoesNowhere;
 begin
-  Assert.AreEqual(0, FSource.Ask(Request('C:\Projekt\Geheim\Schluessel.pas'), Remember));
+  Assert.AreEqual(0, FSource.Ask(Request('C:\Projekt\Geheim\Schluessel.pas'), Remember()));
   Assert.AreEqual<TAtlasAiTextStatus>(TAtlasAiTextStatus.Failed, FLast.Status);
   Assert.AreEqual('ausgeschlossen', FLast.Error);
   Assert.AreEqual(0, FIde.AskCount + FOwn.AskCount);
-  Assert.IsTrue(FSource.Ask(Request('C:\Projekt\Offen\Main.pas'), Remember) > 0);
+  Assert.IsTrue(FSource.Ask(Request('C:\Projekt\Offen\Main.pas'), Remember()) > 0);
   Assert.AreEqual(1, FIde.AskCount);
 end;
 
@@ -159,9 +159,9 @@ var
   mIdeTicket: Integer;
   mOwnTicket: Integer;
 begin
-  mIdeTicket := FSource.Ask(Request(''), Remember);
+  mIdeTicket := FSource.Ask(Request(''), Remember());
   FChoice := TAtlasAiTextSource.cOwn;
-  mOwnTicket := FSource.Ask(Request(''), Remember);
+  mOwnTicket := FSource.Ask(Request(''), Remember());
   Assert.AreNotEqual(mIdeTicket, mOwnTicket);
   FSource.Cancel(mOwnTicket);
   Assert.AreEqual(1, FOwn.CancelledCount);
@@ -176,7 +176,7 @@ procedure TAtlasAiTextSourceTests.AnswerComesBackOnce;
 var
   mTicket: Integer;
 begin
-  mTicket := FSource.Ask(Request(''), Remember);
+  mTicket := FSource.Ask(Request(''), Remember());
   FIde.Complete(1, TAtlasAiTextStatus.Ok, 'Antwort');
   Assert.AreEqual(1, FCalls);
   Assert.AreEqual('Antwort', FLast.Text);

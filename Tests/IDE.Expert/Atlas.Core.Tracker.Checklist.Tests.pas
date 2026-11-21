@@ -177,7 +177,8 @@ begin
   Assert.IsTrue(TAtlasTrackerChecklist.Append('- [ ] a'#13#10'- [x] b'#13#10#13#10'Ende', 'c', mResult));
   Assert.AreEqual('- [ ] a'#13#10'- [x] b'#13#10'- [ ] c'#13#10#13#10'Ende', mResult);
   Assert.IsTrue(TAtlasTrackerChecklist.Append('* [ ] a'#10'  weiter'#10#10'Ende', ' x'#13#10'y ', mResult));
-  Assert.AreEqual('* [ ] a'#10'  weiter'#10'* [ ] x  y'#10#10'Ende', mResult, 'hinter der Fortsetzung, ohne Umbruch');
+  // #13#10 ist ein Umbruch und wird ein Leerzeichen.
+  Assert.AreEqual('* [ ] a'#10'  weiter'#10'* [ ] x y'#10#10'Ende', mResult,'hinter der Fortsetzung, ohne Umbruch');
 end;
 
 procedure TAtlasTrackerChecklistTests.AppendNumberedAndNested;

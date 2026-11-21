@@ -527,7 +527,7 @@ begin
     // Ohne Server oder Kennung nichts merken; Labels und Pull Request nicht.
     mRecent.Add(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), Issue('ATL-5', 'ohne Server'));
     mRecent.Add(YouTrackTarget, Issue('  ', 'ohne Kennung'));
-    Assert.AreEqual(3, mRecent.Count);
+    Assert.AreEqual(3, Integer(mRecent.Count));
     mIssue := Issue('#4', 'Mit Labels');
     mIssue.Labels := ['bug'];
     mIssue.PullRequest.Number := 9;
@@ -545,7 +545,7 @@ begin
     Assert.AreEqual('ATL-' + IntToStr(100 + TAtlasRecentIssues.cMaxStored + 5), mItems[0].Key);
     Assert.AreEqual(0, Integer(Length(mRecent.Items(GitHubTarget))), 'älteste verdrängt');
     mRecent.Clear;
-    Assert.AreEqual(0, mRecent.Count);
+    Assert.AreEqual(0, Integer(mRecent.Count));
   finally
     mRecent.Free;
   end;
@@ -582,10 +582,10 @@ begin
     Assert.AreEqual(0, Pos('youtrack.cloud/', mRecent.ToJson), 'nur der Server, keine Adresse');
     // Andere Version, kaputtes JSON, Einträge ohne Kennung.
     Assert.IsFalse(mCopy.Parse('{"version":2,"issues":[{"tracker":"a","key":"B-1"}]}'));
-    Assert.AreEqual(0, mCopy.Count);
+    Assert.AreEqual(0, Integer(mCopy.Count));
     Assert.IsFalse(mCopy.Parse('kein JSON'));
     Assert.IsTrue(mCopy.Parse('{"version":1,"issues":[{"tracker":"a"},{"key":"B-1"},3,{"tracker":"a","key":"B-2"}]}'));
-    Assert.AreEqual(1, mCopy.Count);
+    Assert.AreEqual(1, Integer(mCopy.Count));
     // Datei: fehlt = leer, geschrieben = gleich.
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Missing, mCopy.LoadFromFile(mFileName));
     Assert.IsTrue(mRecent.SaveToFile(mFileName));
@@ -593,7 +593,7 @@ begin
     Assert.AreEqual(2, Integer(Length(mCopy.Items(YouTrackTarget))));
     TFile.WriteAllText(mFileName, '[1]');
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mCopy.LoadFromFile(mFileName));
-    Assert.AreEqual(0, mCopy.Count);
+    Assert.AreEqual(0, Integer(mCopy.Count));
   finally
     mCopy.Free;
     mRecent.Free;

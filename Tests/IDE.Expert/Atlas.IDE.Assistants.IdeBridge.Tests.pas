@@ -284,12 +284,12 @@ begin
     FBridge.Chat('a');
     FText.Complete(1, TAtlasAiTextStatus.Ok, 'eins');
     RunPosted;
-    Assert.AreEqual(1, mSecond.Count);
+    Assert.AreEqual(1, Integer(mSecond.Count));
     FBridge.RemoveNotifier(mIndex);
     FBridge.Chat('b');
     FText.Complete(2, TAtlasAiTextStatus.Ok, 'zwei');
     RunPosted;
-    Assert.AreEqual(1, mSecond.Count);
+    Assert.AreEqual(1, Integer(mSecond.Count));
     Assert.AreEqual('answer g1 eins; answer g2 zwei', LogText);
   finally
     mSecond.Free;

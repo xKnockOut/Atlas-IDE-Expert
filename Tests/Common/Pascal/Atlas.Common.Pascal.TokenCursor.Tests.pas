@@ -301,7 +301,7 @@ var
   mCursor: TTokenCursor;
 begin
   mCursor := TTokenCursor.Create(nil);
-  Assert.AreEqual(0, mCursor.Count);
+  Assert.AreEqual(0, Integer(mCursor.Count));
   Assert.AreEqual('', mCursor.At(0).Text);
   Assert.IsFalse(mCursor.Is_(0, 'begin'));
   Assert.AreEqual(0, mCursor.From(0));

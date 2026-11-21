@@ -88,6 +88,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Status.Registry;
 
 { TAtlasStatusFieldFlowTests }
@@ -289,7 +290,7 @@ begin
   Assert.AreEqual(0, FFake.Ticks, 'Unverändert: nicht neu zeichnen');
   mBadge.Count := -5;
   FFlow.SetBadge(mBadge);
-  Assert.AreEqual(0, FFlow.Badge.Count, 'Negativ zählt als 0');
+  Assert.AreEqual(0, Integer(FFlow.Badge.Count), 'Negativ zählt als 0');
   Assert.AreEqual(1, FFake.Ticks);
 end;
 
@@ -461,6 +462,9 @@ begin
     begin
       FFake.Click(1, 0, 0);
     end);
+  // Die gemeinsame Sicherung hat den Fehler gezählt (Schlüssel und Zeitstempel); zurücksetzen, sonst bleibt das
+  // bis Programmende stehen und der Leckmonitor zählt es diesem Test zu.
+  TAtlasGuard.Fuse.ResetAll;
 end;
 
 procedure TAtlasStatusFieldFlowTests.DestroyDetachesAndStopsListening;

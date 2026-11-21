@@ -81,7 +81,7 @@ begin
     mListed := mServer.ListTools;
     try
       mTools := mListed.GetValue<TJSONArray>('tools');
-      Assert.AreEqual(1, mTools.Count);
+      Assert.AreEqual(1, Integer(mTools.Count));
       Assert.AreEqual('get_symbol_history', mTools.Items[0].GetValue<string>('name'));
       mSchema := mTools.Items[0].GetValue<TJSONObject>('inputSchema');
       Assert.AreEqual('["name"]', mSchema.GetValue<TJSONArray>('required').ToJSON);

@@ -109,7 +109,7 @@ begin
   mAnswer := Run(Input(True), mSites);
   try
     Assert.AreEqual(cUri, Text(mAnswer, 'uri'));
-    Assert.AreEqual(2, mSites.Count);
+    Assert.AreEqual(2, Integer(mSites.Count));
     Assert.AreEqual('16', Text(mSites.Items[0], 'line'));
     Assert.AreEqual('12', Text(mSites.Items[0], 'character'));
     Assert.AreEqual('  FNamen := TStringList.Create;', Text(mSites.Items[0], 'lineText'));
@@ -134,7 +134,7 @@ var
 begin
   mAnswer := Run(Input(False), mSites);
   try
-    Assert.AreEqual(2, mSites.Count);
+    Assert.AreEqual(2, Integer(mSites.Count));
     Assert.AreEqual('unknown', Text(mSites.Items[1], 'kind'));
   finally
     mAnswer.Free;
@@ -148,7 +148,7 @@ var
 begin
   mAnswer := Run(NoFile(), mSites);
   try
-    Assert.AreEqual(0, mSites.Count);
+    Assert.AreEqual(0, Integer(mSites.Count));
   finally
     mAnswer.Free;
   end;

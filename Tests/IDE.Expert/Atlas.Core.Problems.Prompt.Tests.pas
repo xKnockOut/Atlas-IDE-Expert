@@ -21,6 +21,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Atlas.Core.Lsp.Contract,
@@ -55,7 +56,7 @@ begin
   try
     Assert.IsTrue(mJson is TJSONArray);
     mFindings := (TJSONArray(mJson).Items[0] as TJSONObject).GetValue<TJSONArray>('findings');
-    Assert.AreEqual(2, mFindings.Count);
+    Assert.AreEqual(2, Integer(mFindings.Count));
     mFirst := mFindings.Items[0] as TJSONObject;
     Assert.AreEqual('C:\P\U.pas', mFirst.GetValue<string>('file'));
     Assert.AreEqual(11, mFirst.GetValue<Integer>('line'));

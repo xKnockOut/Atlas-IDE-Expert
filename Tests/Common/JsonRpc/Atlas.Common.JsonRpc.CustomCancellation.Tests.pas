@@ -80,7 +80,8 @@ begin
     mToken := TJsonRpcCancellations.WithReason(nil, ReasonOf(mState));
     Assert.IsFalse(mToken.IsCancellationRequested);
     mToken.ThrowIfCancellationRequested;
-    Assert.Pass;
+    // Kein Assert.Pass: Der Leckmonitor zählt dessen Ausnahme als Leck.
+    Assert.IsFalse(mToken.IsCancellationRequested);
   finally
     mToken := nil;
     mState.Free;

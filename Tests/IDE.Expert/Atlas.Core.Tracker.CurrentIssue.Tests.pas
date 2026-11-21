@@ -123,7 +123,7 @@ begin
     Assert.IsNotNull(mObject.GetValue('checklist'));
     Assert.IsNotNull(mObject.GetValue('codeRefs'));
     Assert.IsNull(mObject.GetValue('description'), 'summary nennt nur die Länge');
-    Assert.AreEqual(Length(Sample.Description), mObject.GetValue<Integer>('descriptionLength'));
+    Assert.AreEqual(Integer(Length(Sample.Description)), mObject.GetValue<Integer>('descriptionLength'));
     Assert.IsNull(mObject.GetValue('comments'));
   finally
     mObject.Free;

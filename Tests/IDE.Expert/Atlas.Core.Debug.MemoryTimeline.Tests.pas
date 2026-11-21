@@ -107,7 +107,7 @@ begin
     begin
       mTimeline.AddSample(Sample(mSecond * 1000, mSecond, mSecond));
     end;
-    Assert.AreEqual(3, mTimeline.Count);
+    Assert.AreEqual(3, Integer(mTimeline.Count));
     Assert.AreEqual(Int64(2000), mTimeline[0].AtMs);
     Assert.AreEqual(1, mTimeline.MarkCount);
     Assert.AreEqual('spät', mTimeline.Marks[0].Name);

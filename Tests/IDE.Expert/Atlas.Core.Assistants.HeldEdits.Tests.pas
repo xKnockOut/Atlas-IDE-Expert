@@ -62,7 +62,7 @@ begin
   Assert.AreEqual(1, FEdits.Add('C:\P\A.pas', cExpected, cText, 'KI', 0));
   Assert.AreEqual(2, FEdits.Add('C:\P\B.pas', cExpected, cText, 'KI', 0));
   FEdits.Add('c:\p\a.pas', cExpected, cText, '', 0);
-  Assert.AreEqual(3, FEdits.Count);
+  Assert.AreEqual(3, Integer(FEdits.Count));
   Assert.AreEqual(2, FEdits.CountFor('C:\P\A.pas'), 'ohne Groß-/Kleinschreibung');
   Assert.AreEqual(0, FEdits.CountFor('C:\P\C.pas'));
 end;
@@ -94,7 +94,7 @@ begin
   Assert.IsTrue(FEdits.Remove(mFirst));
   Assert.IsFalse(FEdits.Remove(mFirst), 'schon weg');
   Assert.IsFalse(FEdits.TryGet(mFirst, mEdit));
-  Assert.AreEqual(1, FEdits.Count);
+  Assert.AreEqual(1, Integer(FEdits.Count));
   FEdits.Clear;
   Assert.AreEqual(0, Integer(Length(FEdits.Items)));
 end;

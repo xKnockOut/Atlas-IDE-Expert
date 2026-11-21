@@ -378,7 +378,7 @@ begin
     Assert.AreSame(mNew.Tracker, mFound.Tracker);
     Assert.IsTrue(mBuffers.Forget('C:\P\A.pas', mNew.Serial), 'eigene Anmeldung');
     Assert.IsFalse(mBuffers.TryGet('C:\P\A.pas', mFound));
-    Assert.AreEqual(0, mBuffers.Count);
+    Assert.AreEqual(0, Integer(mBuffers.Count));
   finally
     mBuffers.Free;
   end;
@@ -398,7 +398,10 @@ begin
   try
     mEntry := Registration(mBuffers, 'C:\P\A.pas');
     mBuffers.Put(mEntry);
-    mBuffers.Put(Registration(mBuffers, 'C:\P\B.pas'));
+    // Über die Variable: Delphi hält ein Funktionsergebnis mit Interface als versteckte Temporäre bis zum
+    // Ende der Routine, dann lebte der Tracker von B bei der Schlussprüfung noch.
+    mEntry := Registration(mBuffers, 'C:\P\B.pas');
+    mBuffers.Put(mEntry);
     mEntry := Registration(mBuffers, 'C:\P\A.pas');
     mBuffers.Put(mEntry);
     Assert.AreEqual(2, TFakeTracker.Alive, 'der Tracker der ersten Anmeldung ist losgelassen');

@@ -291,7 +291,7 @@ begin
     Assert.AreEqual(1, mJson.GetValue<Integer>('units'));
     mUnits := mJson.GetValue('slowUnits') as TJSONArray;
     mRules := mJson.GetValue('slowRules') as TJSONArray;
-    Assert.AreEqual(1, mUnits.Count);
+    Assert.AreEqual(1, Integer(mUnits.Count));
     Assert.AreEqual('Haupt', (mUnits.Items[0] as TJSONObject).GetValue('name').Value);
     Assert.AreEqual('C:\P\Haupt.pas', (mUnits.Items[0] as TJSONObject).GetValue('file').Value);
     Assert.AreEqual('format-args', (mRules.Items[0] as TJSONObject).GetValue('id').Value);

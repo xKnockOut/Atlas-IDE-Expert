@@ -70,7 +70,7 @@ begin
     Assert.AreEqual('Schlüssel unbekannt: * in Zeile *', mDialog.PatternEdit.Text);
     Assert.IsFalse(mDialog.RegexBox.Checked);
     Assert.AreEqual(Ord(TAtlasMessageRuleMode.StopOnly), mDialog.ModeBox.ItemIndex);
-    Assert.AreEqual(2, mDialog.UnitBox.Items.Count, 'jede Unit und die eigene');
+    Assert.AreEqual(2, Integer(mDialog.UnitBox.Items.Count), 'jede Unit und die eigene');
     Assert.AreEqual(0, mDialog.UnitBox.ItemIndex, 'zuerst jede Unit');
     Assert.AreEqual(cUnit, mDialog.UnitBox.Items[1]);
     Assert.IsTrue(mDialog.CreateButton.Enabled);

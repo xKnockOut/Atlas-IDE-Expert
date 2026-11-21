@@ -258,7 +258,7 @@ var
 begin
   mText := cDirectiveCode.Split([#13#10]);
   mTable := TAtlasBreadcrumbs.SectionTable(mText);
-  Assert.AreEqual(Length(mText), Length(mTable));
+  Assert.AreEqual(Integer(Length(mText)), Integer(Length(mTable)));
   for mLine := 0 to High(mText) do
   begin
     Assert.AreEqual<TAtlasCodeSection>(TAtlasBreadcrumbs.SectionAt(mText, mLine), mTable[mLine], 'Zeile ' + IntToStr(mLine));

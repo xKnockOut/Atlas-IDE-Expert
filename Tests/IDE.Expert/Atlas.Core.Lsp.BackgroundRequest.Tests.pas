@@ -174,7 +174,7 @@ begin
     Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
     Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done()), 'nach dem Abschluss wieder frei');
     Assert.IsTrue(WaitUntil(Reached(mProbe, 2)));
-    Assert.AreEqual(2, mProbe.Count);
+    Assert.AreEqual(2, Integer(mProbe.Count));
   finally
     mRequest.Free;
     mGate.Free;
@@ -199,7 +199,7 @@ begin
     // Freigabe wartet die Arbeit ab; der eingereihte Abschluss darf danach nichts mehr tun.
     mRequest.Free;
     WaitWithin(Reached(mProbe, 1), 200);
-    Assert.AreEqual(0, mProbe.Count);
+    Assert.AreEqual(0, Integer(mProbe.Count));
   finally
     mProbe.Free;
   end;

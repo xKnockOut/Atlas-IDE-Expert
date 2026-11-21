@@ -186,7 +186,8 @@ begin
     Assert.IsTrue(mGroup.WaitForIndex(60000), 'Index fertig');
     Assert.IsTrue(mGroup.Index.FindUnit('Kunde', mFound), 'Unit des Projekts im Index');
     Assert.IsTrue(mGroup.Index.FindUnit('Teil', mFound), 'Unit des anderen Projekts der Gruppe im Index');
-    Assert.AreEqual(Path('Bib/Teil.pas'), mFound.FileName);
+    // Der Index liefert Pfade mit PathDelim; unter Windows ist das '\', nicht '/'.
+    Assert.AreEqual(Path('Bib' + PathDelim + 'Teil.pas'), mFound.FileName);
     mGroup.Stop;
   finally
     mGroup.Free;

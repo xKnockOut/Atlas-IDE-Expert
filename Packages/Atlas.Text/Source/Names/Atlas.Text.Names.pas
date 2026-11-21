@@ -55,7 +55,8 @@ begin
   Result := '';
   if SameText(ExtractFileExt(AFileName), '.pas') then
   begin
-    Result := ChangeFileExt(ExtractFileName(AFileName), '');
+    // ExtractFileName trennt unter Windows nur an '\': Pfade mit '/' vorher angleichen.
+    Result := ChangeFileExt(ExtractFileName(AFileName.Replace('/', PathDelim)), '');
   end;
 end;
 

@@ -137,7 +137,7 @@ begin
       Assert.IsFalse(mDialog.Sources.Parts.FormCheck.Enabled, 'kein Formular');
       Assert.IsFalse(mDialog.Sources.Parts.DebugNote.Enabled, 'nicht angehalten');
       Assert.IsFalse(mDialog.Sources.Parts.Exceptions.Enabled, 'leerer Verlauf');
-      Assert.AreEqual(0, mDialog.Parts.List.Items.Count);
+      Assert.AreEqual(0, Integer(mDialog.Parts.List.Items.Count));
       Assert.IsFalse(mDialog.Parts.Send.Enabled, 'nichts zu senden');
       Assert.AreEqual(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachUploadHint, ['YouTrack']),
         mDialog.Parts.Hint.Caption);
@@ -179,7 +179,7 @@ begin
       Assert.AreEqual('debug-notiz-2026-10-28-1405.md', mFiles[0].Name);
       Assert.IsTrue(mFiles[0].IsMarkdown);
       Assert.AreEqual('exception-verlauf.txt', mFiles[1].Name);
-      Assert.AreEqual(2, mDialog.Parts.List.Items.Count);
+      Assert.AreEqual(2, Integer(mDialog.Parts.List.Items.Count));
       Assert.AreEqual('Debug-Notiz', mDialog.Parts.List.Items[0].Caption);
       Assert.AreEqual(TAtlasAttachDialog.SizeText(mFiles[1].Size), mDialog.Parts.List.Items[1].SubItems[0]);
       // Der Ordner des Laufs enthält genau diese Dateien.
@@ -327,7 +327,7 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.AreEqual(2, mDialog.Parts.Issue.Items.Count);
+      Assert.AreEqual(2, Integer(mDialog.Parts.Issue.Items.Count));
       Assert.AreEqual('ATL-7', mDialog.Key, 'vorgewählt');
       mDialog.Parts.Issue.Text := 'ATL-2 Zweites Issue';
       Assert.AreEqual('ATL-2', mDialog.Key, 'nur die Kennung');

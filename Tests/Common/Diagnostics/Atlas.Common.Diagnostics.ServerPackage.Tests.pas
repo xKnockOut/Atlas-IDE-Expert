@@ -186,7 +186,7 @@ begin
   mJson := TServerPackage.ToJson(TServerPackage.Build(Input));
   try
     mFiles := mJson.GetValue('files') as TJSONArray;
-    Assert.AreEqual(2, mFiles.Count);
+    Assert.AreEqual(2, Integer(mFiles.Count));
     Assert.AreEqual(TServerPackage.cStatusName, (mFiles.Items[0] as TJSONObject).GetValue('name').Value);
     Assert.IsTrue((mFiles.Items[1] as TJSONObject).GetValue('content').Value.Contains('Server gestartet'));
   finally

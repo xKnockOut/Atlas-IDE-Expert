@@ -106,7 +106,7 @@ var
   mBytes: TBytes;
 begin
   mBytes := TEncoding.ASCII.GetBytes('GET / HTTP/1.1'#13#10'A: b'#13#10#13#10'xyz');
-  Assert.AreEqual(Length(mBytes) - 3, TAtlasLinkHandshake.HeaderLength(mBytes, Length(mBytes)));
+  Assert.AreEqual(Integer(Length(mBytes) - 3), Integer(TAtlasLinkHandshake.HeaderLength(mBytes, Length(mBytes))));
   Assert.AreEqual(0, TAtlasLinkHandshake.HeaderLength(mBytes, 10), 'unvollständig');
 end;
 
@@ -185,7 +185,8 @@ var
   mEvent: TAtlasLinkEvent;
   mLong: string;
 begin
-  mLong := StringOfChar('ä', 200);
+  // Char(...): sonst nimmt Delphi die AnsiChar-Fassung (W1057).
+  mLong := StringOfChar(Char('ä'), 200);
   mReader := TAtlasLinkReader.Create;
   try
     mBytes := ClientFrame(TAtlasLinkReader.cOpText, '{"a":', False) +
@@ -202,7 +203,7 @@ begin
       end;
       if mEvent.Kind <> TAtlasLinkEventKind.None then
       begin
-        Assert.AreEqual(High(mBytes), mIndex, 'erst mit dem letzten Byte');
+        Assert.AreEqual(Integer(High(mBytes)), mIndex, 'erst mit dem letzten Byte');
       end;
     end;
     Assert.AreEqual(Ord(TAtlasLinkEventKind.Text), Ord(mEvent.Kind));

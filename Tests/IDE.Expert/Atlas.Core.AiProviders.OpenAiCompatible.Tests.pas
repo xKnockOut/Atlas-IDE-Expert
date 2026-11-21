@@ -53,6 +53,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Atlas.Core.Settings.Plugin,
@@ -112,7 +113,7 @@ begin
     Assert.AreEqual(50, mBody.GetValue<Integer>('max_tokens'));
     Assert.IsFalse(mBody.GetValue<Boolean>('stream'), 'ohne Streaming');
     mMessages := mBody.GetValue<TJSONArray>('messages');
-    Assert.AreEqual(2, mMessages.Count);
+    Assert.AreEqual(2, Integer(mMessages.Count));
     Assert.AreEqual('system', (mMessages.Items[0] as TJSONObject).GetValue<string>('role'));
     Assert.AreEqual('Regeln', (mMessages.Items[0] as TJSONObject).GetValue<string>('content'));
     Assert.AreEqual('user', (mMessages.Items[1] as TJSONObject).GetValue<string>('role'));
@@ -276,13 +277,16 @@ procedure TAtlasOpenAiCompatibleTests.ProbeMeasuresAndAnswers;
 var
   mFake: TFakeAiHttp;
   mHttp: IAtlasAiHttp;
+  mProvider: IAtlasAiProvider;
   mResult: TAtlasAiProbeResult;
 begin
   mFake := TFakeAiHttp.Create;
   mHttp := mFake;
   mFake.Reply.Status := 200;
   mFake.Reply.Body := '{"model":"qwen","choices":[{"message":{"content":"OK"}}]}';
-  mResult := TAtlasAiProviders.Probe(TAtlasOpenAiProvider.Create(mHttp, nil, 'http://localhost/v1', 'qwen', 1000));
+  // Erst in eine Interface-Variable: TObjekt.Create direkt am const-Interface-Parameter wird nie freigegeben.
+  mProvider := TAtlasOpenAiProvider.Create(mHttp, nil, 'http://localhost/v1', 'qwen', 1000);
+  mResult := TAtlasAiProviders.Probe(mProvider);
   Assert.IsTrue(mResult.Answer.Ok, 'Antwort');
   Assert.AreEqual('qwen', mResult.Answer.Model);
   Assert.IsTrue(mResult.Ms >= 0, 'Dauer');

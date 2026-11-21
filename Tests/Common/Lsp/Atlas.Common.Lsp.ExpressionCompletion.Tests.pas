@@ -153,7 +153,8 @@ begin
   mPlacement := TLspExpressionCompletion.Place(mDocument, 99, 'Kunde');
   Assert.AreEqual(mDocument.LineCount - 1, mPlacement.Line, 'hinter dem Dokument begrenzt');
   mPlacement := TLspExpressionCompletion.Place(mDocument, 15, 'A'#13#10'+ B');
-  Assert.AreEqual('  A  + B;'#13#10, mPlacement.Text, 'eine Zeile');
+  // #13#10 ist ein Umbruch und wird ein Leerzeichen.
+  Assert.AreEqual('  A + B;'#13#10, mPlacement.Text, 'eine Zeile');
 end;
 
 procedure TLspExpressionCompletionTests.PrefixBeforeCaret;

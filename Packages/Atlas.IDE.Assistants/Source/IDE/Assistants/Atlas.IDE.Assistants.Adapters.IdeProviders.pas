@@ -125,7 +125,9 @@ type
     procedure Answer(const AMessage: string; const ARequestID: TGUID);
     procedure Error(const AMessage: string; const ARequestID: TGUID);
     procedure ModelsLoaded(const AModels: TArray<string>; const ARequestID: TGUID);
-    procedure ImageLoaded(const AImages: TArray<string>; const ARequestID: TGUID);
+    // Delphi 13 hat zwei Fassungen (Base64-Texte und Stream); fehlt eine, meldet dcc E2291.
+    procedure ImageLoaded(const AImages: TArray<string>; const ARequestID: TGUID); overload;
+    procedure ImageLoaded(const AImage: TStream; const ARequestID: TGUID); overload;
     procedure ImageURlLoaded(const AImageURLs: TArray<string>; const ARequestID: TGUID);
     procedure SpeechLoaded(const ASpeech: TStream; const ARequestID: TGUID);
   end;
@@ -161,6 +163,15 @@ begin
     procedure
     begin
       TAtlasGuard.Log('KI-Anbieter der IDE: Modelle geladen, nicht angefordert'); // german-ok Protokoll
+    end);
+end;
+
+procedure TAtlasIdeAiNotifier.ImageLoaded(const AImage: TStream; const ARequestID: TGUID);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Log('KI-Anbieter der IDE: Bild geladen, nicht angefordert'); // german-ok Protokoll
     end);
 end;
 

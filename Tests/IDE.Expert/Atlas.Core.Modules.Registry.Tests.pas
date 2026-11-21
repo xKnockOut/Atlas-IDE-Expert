@@ -730,7 +730,8 @@ begin
   Assert.AreEqual('Mit Tab', mBack[0].Name);
   Assert.AreEqual('2.0.0', mBack[0].Version);
   Assert.AreEqual('fremd.b', mBack[1].Id);
-  Assert.AreEqual('Zwei  Zeilen', mBack[1].Name);
+  // Ein Zeilenumbruch (auch #13#10) wird ein Leerzeichen.
+  Assert.AreEqual('Zwei Zeilen', mBack[1].Name);
   Assert.AreEqual('', mBack[1].Version);
 end;
 

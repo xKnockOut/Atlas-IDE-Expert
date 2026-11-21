@@ -54,6 +54,7 @@ uses
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Mcp.Prompts,
   Atlas.Text.McpStatistics,
   Atlas.Common.Mcp.Statistics,
@@ -102,6 +103,8 @@ begin
     mContext := Default(TMcpToolContext);
     mContext.Server := mServer;
     RegisterContextTools(mContext);
+    // batch registriert ConfigureServer eigens (nicht über RegisterContextTools); ohne Grenzen, nur der Name zählt.
+    TMcpBatchTool.Register(mServer, nil);
     mListed := mServer.ListTools;
     try
       for mTool in mListed.GetValue<TJSONArray>('tools') do

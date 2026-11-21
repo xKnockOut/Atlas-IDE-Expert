@@ -48,6 +48,7 @@ uses
   Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,
+  Atlas.Text.IndexCache,
   Atlas.Tests.FirstUse.Vcl;
 
 /// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
@@ -236,6 +237,13 @@ begin
   begin
     raise EInvalidOperation.Create('Keine Zeitzone');
   end;
+  // TLocalTimeZone merkt die Umstellungen je Jahr in einem Wörterbuch. Leere Zeitstempel (Datum 0, Jahr 1899)
+  // treffen sonst den ersten Test, der sie schreibt oder liest (TMcpBuildTools.Report, TTextTimestamp.TryParseIso
+  // im Testlauf-Stand).
+  if ISO8601ToDate(DateToISO8601(0, False), False) > 1 then
+  begin
+    raise EInvalidOperation.Create('Zeitzone 1899');
+  end;
   mJson := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
   try
     if not mJson.GetValue<Boolean>('a.b') then
@@ -323,6 +331,8 @@ begin
   TEncoding.BigEndianUnicode;
   TMessageManager.DefaultManager;
   TNetEncoding.URL.Decode('');
+  // Base64 (Handschlag der Assistenten-Verbindung, TAtlasLinkHandshake.AcceptOf).
+  TNetEncoding.Base64.Encode('');
   try
     TEncoding.UTF8.GetString(TBytes.Create($C3, $28, $FF));
   except
@@ -385,6 +395,25 @@ begin
   end;
 end;
 
+/// <summary>Ressourcentexte, die die RTL beim ersten Laden (LoadResString) bis zum Programmende behält: die Meldung
+/// von Abort (SOperationAborted, etwa im Befehlsschutz) und die des beschädigten Index-Caches
+/// (TIndexCacheReader.Fail, sIndexCacheDamaged). Sonst träfe es den ersten Test, der die Ausnahme auslöst.</summary>
+procedure WarmUpResourceTexts;
+begin
+  try
+    Abort;
+  except
+    on EAbort do
+      ;
+  end;
+  try
+    TIndexCacheReader.Fail;
+  except
+    on EIndexCacheFormat do
+      ;
+  end;
+end;
+
 { TFirstUse }
 
 /// <summary>Fundorte von git und svn (TAtlasVcsTools.Where): gemerkt bis Programmende in Klassenvariablen von
@@ -420,6 +449,7 @@ begin
   WarmUpSettingsTransfer;
   WarmUpFileErrors;
   WarmUpOsErrorText;
+  WarmUpResourceTexts;
   WarmUpDataFiles;
   WarmUpIndexCacheReplace;
   WarmUpDefaultEncoding;

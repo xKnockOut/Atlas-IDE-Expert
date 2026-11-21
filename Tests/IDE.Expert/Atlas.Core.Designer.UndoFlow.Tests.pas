@@ -254,7 +254,7 @@ var
 begin
   OpenWithWidget;
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(1, mHistory.Count);
+  Assert.AreEqual(1, Integer(mHistory.Count));
   Assert.AreEqual('', mHistory.State(0).Caption);
   Assert.IsFalse(FFlow.CanUndo(FSurface));
   Assert.IsFalse(FFlow.CanRedo(FSurface));
@@ -271,7 +271,7 @@ begin
   Assert.AreEqual(1, FQueued, 'nur ein Erfassen eingereiht');
   AfterEvent;
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(2, mHistory.Count);
+  Assert.AreEqual(2, Integer(mHistory.Count));
   Assert.StartsWith('AtlasUndoWidget1.Caption: ', mHistory.State(1).Caption);
   Assert.EndsWith('Drei', mHistory.State(1).Caption.Replace('''', ''));
 end;
@@ -344,7 +344,7 @@ begin
   FFake.Delete(Widget('AtlasUndoWidget1'));
   AfterEvent;
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(2, mHistory.Count);
+  Assert.AreEqual(2, Integer(mHistory.Count));
   Assert.AreEqual('AtlasUndoWidget1 deleted', mHistory.State(1).Caption);
   Undo;
   Assert.AreEqual('Eins', Widget('AtlasUndoWidget1').Caption);
@@ -374,7 +374,7 @@ begin
   Undo;
   Assert.AreEqual(0, FQueued);
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(2, mHistory.Count);
+  Assert.AreEqual(2, Integer(mHistory.Count));
   Assert.AreEqual(0, mHistory.Index);
 end;
 
@@ -489,7 +489,7 @@ begin
     SetCaption('AtlasUndoWidget1', 'Zwei');
     AfterEvent;
     Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-    Assert.AreEqual(3, mHistory.Count);
+    Assert.AreEqual(3, Integer(mHistory.Count));
     Undo;
     Assert.AreEqual('Eins', mWidget.Caption);
     Assert.AreEqual(40, mWidget.Size);
@@ -511,7 +511,7 @@ begin
   AfterEvent;
   FFlow.Reset(FSurface);
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(1, mHistory.Count);
+  Assert.AreEqual(1, Integer(mHistory.Count));
   Assert.IsFalse(FFlow.CanUndo(FSurface));
 end;
 

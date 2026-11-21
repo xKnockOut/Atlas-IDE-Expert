@@ -99,7 +99,7 @@ begin
     Assert.IsTrue(mSession.SyncedText('c:\p\a.pas', mText));
     Assert.AreEqual('unit A2;', mText);
     mSession.Close('C:\P\A.pas');
-    Assert.AreEqual(3, mSeen.Count, 'gleicher Text ohne didChange');
+    Assert.AreEqual(3, Integer(mSeen.Count), 'gleicher Text ohne didChange');
     Assert.StartsWith('textDocument/didOpen ', mSeen[0]);
     Assert.StartsWith('textDocument/didChange ', mSeen[1]);
     Assert.StartsWith('textDocument/didClose ', mSeen[2]);

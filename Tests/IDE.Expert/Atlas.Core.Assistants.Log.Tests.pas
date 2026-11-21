@@ -72,7 +72,7 @@ procedure TAtlasAssistantsLogTests.DisabledTakesNothing;
 begin
   FLog.Enabled := False;
   Assert.AreEqual(0, FLog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, 'P.dproj', '', 'ok')));
-  Assert.AreEqual(0, FLog.Count);
+  Assert.AreEqual(0, Integer(FLog.Count));
 end;
 
 procedure TAtlasAssistantsLogTests.SwitchingOffClears;
@@ -80,7 +80,7 @@ begin
   FLog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, 'P.dproj', '', 'ok'));
   FLog.Enabled := False;
   FLog.Enabled := True;
-  Assert.AreEqual(0, FLog.Count);
+  Assert.AreEqual(0, Integer(FLog.Count));
 end;
 
 procedure TAtlasAssistantsLogTests.MaxDropsTheOldest;

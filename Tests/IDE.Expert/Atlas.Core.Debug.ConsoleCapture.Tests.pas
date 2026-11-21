@@ -112,7 +112,7 @@ begin
     Feed(mBuffer, TAtlasConsoleStream.Output, 'Hallo'#13#10'Wel');
     Feed(mBuffer, TAtlasConsoleStream.Error, 'Fehler'#10);
     Feed(mBuffer, TAtlasConsoleStream.Output, 't'#10);
-    Assert.AreEqual(3, mBuffer.Count);
+    Assert.AreEqual(3, Integer(mBuffer.Count));
     Assert.AreEqual('Hallo', mBuffer.Line(0).Text);
     Assert.IsTrue(mBuffer.Line(0).Stream = TAtlasConsoleStream.Output);
     Assert.AreEqual('Fehler', mBuffer.Line(1).Text, 'stderr ist vor dem Ende der angefangenen Zeile fertig');
@@ -138,7 +138,7 @@ begin
     Assert.AreEqual(1, Integer(Length(mPending)));
     Assert.AreEqual('Name: ', mPending[0].Text);
     mBuffer.AddInput('Marco');
-    Assert.AreEqual(1, mBuffer.Count);
+    Assert.AreEqual(1, Integer(mBuffer.Count));
     Assert.AreEqual('Name: Marco', mBuffer.Line(0).Text);
     Assert.IsTrue(mBuffer.Line(0).Stream = TAtlasConsoleStream.Input);
     Assert.AreEqual(6, mBuffer.Line(0).PromptLength);
@@ -165,7 +165,7 @@ begin
     Feed(mBuffer, TAtlasConsoleStream.Error, 'auch');
     mBuffer.Finish;
     mBuffer.AddNote('Beendet');
-    Assert.AreEqual(3, mBuffer.Count);
+    Assert.AreEqual(3, Integer(mBuffer.Count));
     Assert.AreEqual('ohne Ende', mBuffer.Line(0).Text);
     Assert.IsTrue(mBuffer.Line(1).Stream = TAtlasConsoleStream.Error);
     Assert.IsTrue(mBuffer.Line(2).Stream = TAtlasConsoleStream.Note);
@@ -187,7 +187,7 @@ begin
     begin
       Feed(mBuffer, TAtlasConsoleStream.Output, IntToStr(mIndex) + #10);
     end;
-    Assert.AreEqual(90, mBuffer.Count, 'ein Zehntel Luft');
+    Assert.AreEqual(90, Integer(mBuffer.Count), 'ein Zehntel Luft');
     Assert.AreEqual(11, mBuffer.Dropped);
     Assert.AreEqual('12', mBuffer.Line(0).Text);
     Assert.AreEqual('101', mBuffer.Line(mBuffer.Count - 1).Text);
@@ -204,7 +204,7 @@ begin
   try
     Feed(mBuffer, TAtlasConsoleStream.Output, 'eins'#10'angefangen');
     mBuffer.Clear;
-    Assert.AreEqual(0, mBuffer.Count);
+    Assert.AreEqual(0, Integer(mBuffer.Count));
     Assert.AreEqual(0, Integer(Length(mBuffer.PendingLines)));
     Feed(mBuffer, TAtlasConsoleStream.Output, ' weiter'#10);
     Assert.AreEqual(' weiter', mBuffer.Line(0).Text, 'der alte Anfang ist weg');

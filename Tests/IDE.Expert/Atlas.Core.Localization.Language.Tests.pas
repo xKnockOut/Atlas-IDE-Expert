@@ -100,14 +100,24 @@ procedure TAtlasTextLanguageTests.AddTableKeepsTheTexts;
 var
   mBefore: Integer;
   mTable: TAtlasTextTableEntry;
+  mSaved: TArray<TAtlasTextTableEntry>;
 begin
-  mBefore := Length(TAtlasTextLanguage.Tables);
-  TAtlasTextLanguage.AddTable('Probe', ['Datei %s'], ['File %s']);
-  Assert.AreEqual(mBefore + 1, Integer(Length(TAtlasTextLanguage.Tables)));
-  mTable := TAtlasTextLanguage.Tables[mBefore];
-  Assert.AreEqual('Probe', mTable.Name);
-  Assert.AreEqual('Datei %s', mTable.German[0]);
-  Assert.AreEqual('File %s', mTable.English[0]);
+  // Vorherigen Stand merken und wiederherstellen: Die Probetabelle bliebe sonst im gemeinsamen Verzeichnis
+  // stehen (Leck dieses Tests, und die Übersetzungsprüfung sähe sie).
+  mSaved := TAtlasTextLanguage.Tables;
+  try
+    mBefore := Length(mSaved);
+    TAtlasTextLanguage.AddTable('Probe', ['Datei %s'], ['File %s']);
+    Assert.AreEqual(mBefore + 1, Integer(Length(TAtlasTextLanguage.Tables)));
+    mTable := TAtlasTextLanguage.Tables[mBefore];
+    Assert.AreEqual('Probe', mTable.Name);
+    Assert.AreEqual('Datei %s', mTable.German[0]);
+    Assert.AreEqual('File %s', mTable.English[0]);
+  finally
+    mTable := Default(TAtlasTextTableEntry);
+    TAtlasTextLanguage.RestoreTables(mSaved);
+    mSaved := nil;
+  end;
 end;
 
 procedure TAtlasTextLanguageTests.CoreNamesFollowLanguage;

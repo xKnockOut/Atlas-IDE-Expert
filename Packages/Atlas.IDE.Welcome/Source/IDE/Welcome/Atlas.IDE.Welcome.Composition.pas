@@ -185,7 +185,7 @@ var
   mPage: TAtlasIdeWelcome;
 begin
   mPage := ShownPage;
-  if (mPage <> nil) and (mPage.Areas.WhatsNew <> nil) then
+  if (mPage <> nil) and (TAtlasIdeWelcomeStartup.Areas.WhatsNew <> nil) then
   begin
     mPage.ShowWhatsNew(AView);
   end;
@@ -206,11 +206,11 @@ var
   mPage: TAtlasIdeWelcome;
 begin
   mPage := TAtlasIdeWelcomeStartup.Current;
-  if (mPage = nil) or (mPage.Areas.Setup = nil) or not TAtlasIdeSetup.Active then
+  if (mPage = nil) or (TAtlasIdeWelcomeStartup.Areas.Setup = nil) or not TAtlasIdeSetup.Active then
   begin
     Exit;
   end;
-  mPage.Areas.Setup.Ask;
+  TAtlasIdeWelcomeStartup.Areas.Setup.Ask;
   mPage.ShowStart;
 end;
 
@@ -219,9 +219,9 @@ var
   mPage: TAtlasIdeWelcome;
 begin
   mPage := TAtlasIdeWelcomeStartup.Current;
-  if (mPage <> nil) and (mPage.Areas.ContinueWork <> nil) then
+  if (mPage <> nil) and (TAtlasIdeWelcomeStartup.Areas.ContinueWork <> nil) then
   begin
-    mPage.Areas.ContinueWork.ResumeLatest;
+    TAtlasIdeWelcomeStartup.Areas.ContinueWork.ResumeLatest;
   end;
 end;
 

@@ -340,10 +340,10 @@ begin
     mFiles.Files.Add('U.pas', cAssignedFree);
     mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
       ['redundant-assigned-free'], '', True);
-    Assert.AreEqual(0, mNames.Count, 'Vorschau ohne Auswertung');
+    Assert.AreEqual(0, Integer(mNames.Count), 'Vorschau ohne Auswertung');
     mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
       ['redundant-assigned-free'], '', False);
-    Assert.AreEqual(1, mNames.Count);
+    Assert.AreEqual(1, Integer(mNames.Count));
     Assert.AreEqual('U.pas', mNames[0]);
     Assert.Contains(mReport, 'Auswertung fix_findings');
   finally

@@ -106,22 +106,27 @@ end;
 procedure TAtlasBackgroundJobsTests.OverdueWorkIsAdoptedAndItsResultDropped;
 var
   mWorker: TAtlasBackgroundJobs;
-  mRelease: TEvent;
+  mRelease, mStarted: TEvent;
   mDone: Boolean;
 begin
   mDone := False;
   mRelease := FRelease;
+  mStarted := TEvent.Create(nil, True, False, '');
   mWorker := TAtlasBackgroundJobs.Create(cModule);
   try
     Assert.IsTrue(mWorker.Run(
       procedure
       begin
+        mStarted.SetEvent;
         mRelease.WaitFor(5000);
       end,
       procedure
       begin
         mDone := True;
       end));
+    // Erst stoppen, wenn die Arbeit läuft: Delphis ThreadProc überspringt Execute, wenn Terminate vor dem
+    // Anlaufen des Threads kam; dann wäre der Thread sofort fertig und nichts überfällig (FPC startet trotzdem).
+    Assert.IsTrue(mStarted.WaitFor(5000) = wrSignaled, 'Arbeit läuft');
     Assert.IsFalse(mWorker.Stop(50));
     Assert.AreEqual(0, mWorker.Pending);
     Assert.AreEqual(1, TAtlasOverdueThreads.Pending(cModule));
@@ -130,6 +135,8 @@ begin
   end;
   FRelease.SetEvent;
   Assert.IsTrue(TAtlasOverdueThreads.Settle(cModule, 2000));
+  // Erst nach dem Ende des Threads freigeben, er hat das Ereignis gesetzt.
+  mStarted.Free;
   Assert.AreEqual(0, TAtlasOverdueThreads.Pending(cModule));
   CheckSynchronize(50);
   Assert.IsFalse(mDone);

@@ -268,11 +268,11 @@ begin
     Assert.AreEqual(1, Integer(Length(ImageUrls(mFrame))));
     Assert.AreEqual('https://beispiel.youtrack.cloud/api/files/1-2?sign=x', ImageUrls(mFrame)[0], 'Bild aus dem Anhang');
     Assert.AreEqual(1, Integer(Length(mRequested)), 'Bild wird geladen');
-    Assert.AreEqual(2, mFrame.Content.Attachments.Items.Count);
+    Assert.AreEqual(2, Integer(mFrame.Content.Attachments.Items.Count));
     Assert.AreEqual('skizze.png', mFrame.Content.Attachments.Items[0].Caption);
     Assert.AreEqual('2,0 KB', mFrame.Content.Attachments.Items[0].SubItems[0].Replace('.', ','));
     Assert.AreEqual('–', mFrame.Content.Attachments.Items[1].SubItems[0], 'Größe unbekannt');
-    Assert.AreEqual(1, mFrame.Content.Links.Items.Count);
+    Assert.AreEqual(1, Integer(mFrame.Content.Links.Items.Count));
     Assert.AreEqual('ATL-100', mFrame.Content.Links.Items[0].Caption);
     Assert.AreEqual('depends on', mFrame.Content.Links.Items[0].SubItems[1]);
     Assert.IsNull(mFrame.Content.Older, 'ein Kommentar: nichts eingeklappt');
@@ -514,12 +514,12 @@ begin
   mNode := ATree.Items.GetFirstNode;
   Assert.AreEqual('Hängt ab von (1)', mNode.Text);
   Assert.IsTrue(mNode.Expanded);
-  Assert.AreEqual(1, mNode.Count);
+  Assert.AreEqual(1, Integer(mNode.Count));
   Assert.AreEqual(TAtlasIssueLinkText.Row(TreeSample.Links[2]), mNode.Item[0].Text);
   mNode := mNode.getNextSibling;
   Assert.AreEqual('Unteraufgaben 2/3', mNode.Text);
   Assert.IsTrue(mNode.Expanded);
-  Assert.AreEqual(3, mNode.Count);
+  Assert.AreEqual(3, Integer(mNode.Count));
   Assert.IsTrue(mNode.Item[0].Text.Contains('ATL-131'), 'Reihenfolge des Trackers');
   mNode := mNode.getNextSibling;
   Assert.AreEqual('Duplikat von (1)', mNode.Text);
@@ -573,7 +573,7 @@ begin
     mFrame.SetFlag(TAtlasIssueFlag.LinksAsTree, False);
     mFrame.ShowDetails(TreeSample, cNow, '', False);
     Assert.IsNull(mFrame.Content.LinkTree);
-    Assert.AreEqual(5, mFrame.Content.Links.Items.Count);
+    Assert.AreEqual(5, Integer(mFrame.Content.Links.Items.Count));
   finally
     mHost.Free;
   end;
@@ -897,7 +897,7 @@ begin
     mLink := LabelOf(mFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryAsComment));
     Assert.IsNotNull(mLink, 'Als Kommentar übernehmen');
     mLink.OnClick(mLink);
-    Assert.IsTrue(mFrame.Parts.CommentEdit.Text.Contains('Fix liegt im PR.'), 'Entwurf im Kommentarfeld');
+    Assert.IsTrue(string(mFrame.Parts.CommentEdit.Text).Contains('Fix liegt im PR.'), 'Entwurf im Kommentarfeld');
     mFrame.Events := Default(TAtlasIssueFrameEvents);
   finally
     mHost.Free;

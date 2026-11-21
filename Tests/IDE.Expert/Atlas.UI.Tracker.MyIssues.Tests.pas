@@ -544,7 +544,7 @@ end;
 procedure AssertQueryMenu(const AFrame: TAtlasTrackerIssuesView);
 begin
   AFrame.Queries.Fill;
-  Assert.AreEqual(5, AFrame.Queries.QueryMenu.Items.Count);
+  Assert.AreEqual(5, Integer(AFrame.Queries.QueryMenu.Items.Count));
   Assert.AreEqual('Standard (2)', AFrame.Queries.QueryMenu.Items[0].Caption);
   Assert.IsTrue(AFrame.Queries.QueryMenu.Items[0].Checked);
   Assert.IsFalse(AFrame.Queries.QueryMenu.Items[1].Checked);
@@ -677,7 +677,7 @@ procedure CheckProjectMenu(AFake: TFakeIssues; AFrame: TAtlasTrackerIssuesView);
 begin
   // Automatisch (mit Projekt), zwei Tracker-Projekte, Alle, Linie, bearbeiten.
   AFrame.Queries.Projects.Fill;
-  Assert.AreEqual(6, AFrame.Queries.Projects.Menu.Items.Count);
+  Assert.AreEqual(6, Integer(AFrame.Queries.Projects.Menu.Items.Count));
   Assert.AreEqual('Automatisch – nach dem Delphi-Projekt (Kasse)', AFrame.Queries.Projects.Menu.Items[0].Caption);
   Assert.IsTrue(AFrame.Queries.Projects.Menu.Items[0].Checked);
   Assert.AreEqual('Firma · KASSE', AFrame.Queries.Projects.Menu.Items[1].Caption);
@@ -755,7 +755,7 @@ begin
     mFake.FView := mView;
     mFrame.UpdateContent;
     mFrame.Queries.Projects.Fill;
-    Assert.AreEqual(5, mFrame.Queries.Projects.Menu.Items.Count);
+    Assert.AreEqual(5, Integer(mFrame.Queries.Projects.Menu.Items.Count));
     Assert.IsTrue(mFrame.Queries.Projects.Menu.Items[2].Checked);
     // issues.projectPicker aus: keine Klappliste.
     mView.ProjectPicker := False;

@@ -64,7 +64,7 @@ begin
   mBytes := TBytes.Create($00, $AB, $FF, $10);
   Assert.AreEqual('00abff10', TAtlasLinkLock.TokenOf(mBytes));
   SetLength(mBytes, TAtlasLinkLock.cTokenBytes);
-  Assert.AreEqual(32, Length(TAtlasLinkLock.TokenOf(mBytes)));
+  Assert.AreEqual(32, Integer(Length(TAtlasLinkLock.TokenOf(mBytes))));
 end;
 
 procedure TAtlasLinkLockTests.PortStaysInRange;

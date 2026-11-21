@@ -187,6 +187,14 @@ const
   // Ein Steuerzeichen am Anfang der Beschriftung lässt InputQuery das Feld verdecken.
   cHidden = #31;
 
+// Vor den Methoden der Abschnitte: Delphi kennt eine freie Routine erst ab ihrer Deklaration (E2003).
+/// <summary>Lage in Pixeln bei 96 dpi, an die Auflösung des Steuerelements angepasst.</summary>
+procedure PlaceScaled(AControl: TControl; ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  AControl.SetBounds(AControl.ScaleValue(ALeft), AControl.ScaleValue(ATop), AControl.ScaleValue(AWidth),
+    AControl.ScaleValue(AHeight));
+end;
+
 type
   TSectionLink = class(TInterfacedObject, IAtlasAssistantsSectionLink)
   private
@@ -449,13 +457,6 @@ begin
   end;
 end;
 
-/// <summary>Lage in Pixeln bei 96 dpi, an die Auflösung des Steuerelements angepasst.</summary>
-procedure PlaceScaled(AControl: TControl; ALeft, ATop, AWidth, AHeight: Integer);
-begin
-  AControl.SetBounds(AControl.ScaleValue(ALeft), AControl.ScaleValue(ATop), AControl.ScaleValue(AWidth),
-    AControl.ScaleValue(AHeight));
-end;
-
 procedure TAtlasAssistantsSettingsSection.AddKeyRows;
 var
   mRow: TWinControl;
@@ -672,8 +673,10 @@ begin
   begin
     FKeyState.Caption := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyMissing, [mId]);
   end;
-  FKeyStore.Enabled := mKnown and Assigned(FKeyHooks.Store);
-  FKeyDelete.Enabled := mKnown and Assigned(FKeyHooks.Delete);
+  // Über Host.Allow statt Enabled: Die Sperre des Hauptschalters (SetLocked beim Laden der Seite) setzt Enabled
+  // aller Elemente der Zeile neu und gäbe die Knöpfe sonst ohne Anbieter wieder frei.
+  Host.Allow(FKeyStore, mKnown and Assigned(FKeyHooks.Store));
+  Host.Allow(FKeyDelete, mKnown and Assigned(FKeyHooks.Delete));
 end;
 
 procedure TAtlasAssistantsSettingsSection.WindowReady;
@@ -718,6 +721,8 @@ begin
     mOk := AskHidden(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyPromptTitle, [mId]),
       T(TAtlasAssistantsTextId.KeyPromptLabel), mKey);
   end;
+  // Leerzeichen um einen eingefügten Schlüssel gehören nicht dazu, egal woher die Abfrage kommt.
+  mKey := Trim(mKey);
   if mOk and (mKey <> '') and Assigned(FKeyHooks.Store) then
   begin
     FKeyHooks.Store(mId, mKey);

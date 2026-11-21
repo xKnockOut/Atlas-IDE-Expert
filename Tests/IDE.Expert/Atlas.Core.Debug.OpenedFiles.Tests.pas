@@ -86,7 +86,7 @@ begin
   Assert.AreEqual(3, Integer(Length(mClose)));
   Assert.AreEqual('C:\RTL\System.pas', mClose[0]);
   Assert.AreEqual('C:\RTL\Vcl.Forms.pas', mClose[2]);
-  Assert.AreEqual(3, FFiles.Count);
+  Assert.AreEqual(3, Integer(FFiles.Count));
 end;
 
 procedure TAtlasOpenedFilesTests.FilesOpenBeforeSessionStay;
@@ -104,7 +104,7 @@ begin
   FFiles.BeginSession(nil);
   FFiles.Opened('C:\RTL\Vcl.Controls.pas', True, 100);
   FFiles.Opened('C:\RTL\System.pas', True, 200);
-  mClose := FFiles.ToClose(KeepModified);
+  mClose := FFiles.ToClose(KeepModified());
   Assert.AreEqual(1, Integer(Length(mClose)));
   Assert.AreEqual('C:\RTL\System.pas', mClose[0]);
 end;
@@ -136,7 +136,7 @@ begin
   FFiles.BeginSession(TArray<string>.Create('C:\RTL\System.pas'));
   FFiles.Opened('C:\RTL\Vcl.Forms.pas', True, 100);
   FFiles.Closed('C:\RTL\Vcl.Forms.pas');
-  Assert.AreEqual(0, FFiles.Count);
+  Assert.AreEqual(0, Integer(FFiles.Count));
   // Vor der Sitzung offen, geschlossen und vom Debugger wieder geöffnet: jetzt seine.
   FFiles.Closed('C:\RTL\System.pas');
   Assert.IsTrue(FFiles.Opened('C:\RTL\System.pas', True, 200));
@@ -149,7 +149,7 @@ begin
   FFiles.BeginSession(nil);
   FFiles.EndSession;
   Assert.IsFalse(FFiles.Opened('C:\RTL\System.pas', True, 100));
-  Assert.AreEqual(0, FFiles.Count);
+  Assert.AreEqual(0, Integer(FFiles.Count));
 end;
 
 procedure TAtlasOpenedFilesTests.NamesIgnoreCaseAndSlashes;
@@ -180,7 +180,7 @@ begin
     end;
   end;
   Assert.AreEqual(4, mClosed);
-  Assert.AreEqual(1, FFiles.Count);
+  Assert.AreEqual(1, Integer(FFiles.Count));
   Assert.AreEqual('C:\RTL\Unit5.pas', FFiles.Preview);
 end;
 
@@ -195,7 +195,7 @@ begin
   FFiles.Opened('C:\RTL\Vcl.Controls.pas', True, 300);
   Assert.AreEqual('C:\RTL\B.pas', FFiles.PreviewToClose('C:\RTL\Vcl.Controls.pas', nil));
   FFiles.Opened('C:\RTL\D.pas', True, 400);
-  Assert.AreEqual('', FFiles.PreviewToClose('C:\RTL\D.pas', KeepModified));
+  Assert.AreEqual('', FFiles.PreviewToClose('C:\RTL\D.pas', KeepModified()));
 end;
 
 procedure TAtlasOpenedFilesTests.ModeFromSetting;

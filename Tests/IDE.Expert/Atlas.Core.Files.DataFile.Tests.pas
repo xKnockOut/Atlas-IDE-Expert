@@ -133,7 +133,8 @@ begin
   TAtlasDataFile.RemoveQuietly(DataFile('ide-context-1.json'));
   Assert.IsFalse(FileExists(DataFile('ide-context-1.json')));
   TAtlasDataFile.RemoveQuietly(DataFile('ide-context-1.json'));
-  Assert.Pass('fehlende Datei ohne Fehler');
+  // Fehlende Datei ohne Fehler. Kein Assert.Pass: Der Leckmonitor zählt dessen Meldung als Leck.
+  Assert.IsFalse(FileExists(DataFile('ide-context-1.json')));
 end;
 
 procedure TAtlasDataFileTests.MissingFileIsMissing;

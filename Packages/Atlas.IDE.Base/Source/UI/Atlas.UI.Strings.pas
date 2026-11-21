@@ -143,7 +143,9 @@ type
     // Zuletzt benutzte Testliste ausführen (#2167): Taste in der Übersicht.
     TestsListsRunCommand,
     // Erneut anhängen (Debugger): Taste in der Übersicht.
-    DebugReattachCommand);
+    DebugReattachCommand,
+    // Auswahl an den Assistenten (KI-Assistenten): Taste in der Übersicht.
+    AssistantsMentionCommand);
 
   TAtlasStrings = class
   private
@@ -428,7 +430,8 @@ const
      'Zur uses-Klausel (%s)',
      'Vergleichen',
      'Tests: zuletzt benutzte Testliste ausführen',
-     'Debugger: erneut an Prozess anhängen'),
+     'Debugger: erneut an Prozess anhängen',
+     'KI-Assistenten: Auswahl an den Assistenten'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'Atlas: compile cancelled – %s', 'Test watchdog (1 s)',
      'Open log', 'Reset completion history',
@@ -643,7 +646,8 @@ const
      'Go to uses clause (%s)',
      'Compare',
      'Tests: run last used test list',
-     'Debugger: reattach to process'));
+     'Debugger: reattach to process',
+     'AI assistants: selection to the assistant'));
 
 { TAtlasStrings }
 

@@ -46,7 +46,8 @@ var
 begin
   mProc := nil;
   TAtlasCalls.Call(mProc);
-  Assert.Pass('ohne Rückruf keine Ausnahme');
+  // Ohne Rückruf keine Ausnahme. Kein Assert.Pass: Der Leckmonitor zählt dessen Meldung als Leck.
+  Assert.IsFalse(Assigned(mProc));
 end;
 
 procedure TAtlasCallsTests.SendPassesText;
@@ -69,7 +70,8 @@ var
 begin
   mSink := nil;
   TAtlasCalls.Send(mSink, 'x');
-  Assert.Pass('ohne Meldungsziel keine Ausnahme');
+  // Ohne Meldungsziel keine Ausnahme. Kein Assert.Pass: Der Leckmonitor zählt dessen Meldung als Leck.
+  Assert.IsFalse(Assigned(mSink));
 end;
 
 initialization

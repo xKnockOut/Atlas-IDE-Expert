@@ -28,7 +28,9 @@ uses
   Atlas.IDE.Assistants.HeldEdits;
 
 type
-  TAtlasEditInboxProc = reference to procedure(const AMessage: string);
+  // Alias statt eigenem Typ: Delphi hält gleich aufgebaute Methodenreferenzen für verschieden (E2010 mit
+  // TAtlasIdeHost.Warnings).
+  TAtlasEditInboxProc = TProc<string>;
 
   TAtlasIdeEditInbox = class
   private

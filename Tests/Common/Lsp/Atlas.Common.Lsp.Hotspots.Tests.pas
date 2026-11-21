@@ -165,7 +165,7 @@ begin
     mAnswer := mFixture.Ask('{}');
     try
       Assert.IsFalse(TJsonRead.Flag(mAnswer, 'enabled'));
-      Assert.AreEqual(1, mAnswer.Count);
+      Assert.AreEqual(1, Integer(mAnswer.Count));
     finally
       mAnswer.Free;
     end;

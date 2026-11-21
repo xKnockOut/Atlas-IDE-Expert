@@ -39,6 +39,10 @@ type
     /// <summary>Meldet eine Tabelle an (nur im initialization-Teil).</summary>
     class procedure AddTable(const AName: string; const AGerman, AEnglish: array of string); static;
     class function Tables: TArray<TAtlasTextTableEntry>; static;
+    /// <summary>Setzt das Verzeichnis auf einen vorher mit Tables gemerkten Stand zurück. Nur für Tests: Eine
+    /// probeweise angemeldete Tabelle bliebe sonst bis Programmende stehen (Leckmonitor, Übersetzungsprüfung).
+    /// </summary>
+    class procedure RestoreTables(const ATables: TArray<TAtlasTextTableEntry>); static;
     /// <summary>Kennung der aktuellen Sprache für den Server (#1458): "de" oder "en" (initialize.locale,
     /// --locale).</summary>
     class function Code: string; static;
@@ -102,6 +106,11 @@ end;
 class function TAtlasTextLanguage.Tables: TArray<TAtlasTextTableEntry>;
 begin
   Result := FTables;
+end;
+
+class procedure TAtlasTextLanguage.RestoreTables(const ATables: TArray<TAtlasTextTableEntry>);
+begin
+  FTables := ATables;
 end;
 
 class function TAtlasTextLanguage.Code: string;

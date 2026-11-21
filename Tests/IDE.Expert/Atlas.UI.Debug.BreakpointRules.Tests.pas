@@ -77,13 +77,13 @@ begin
     Assert.AreEqual('Haltepunkt-Regeln: Kunden.pas:42', mDialog.Caption);
     mDialog.HandleNeeded;
     mDialog.Fill;
-    Assert.AreEqual(3, mDialog.TriggerBox.Items.Count);
+    Assert.AreEqual(3, Integer(mDialog.TriggerBox.Items.Count));
     Assert.AreEqual('Import.pas:20', mDialog.TriggerBox.Text);
     Assert.AreEqual(1, mDialog.DependBox.ItemIndex);
     Assert.AreEqual(Ord(TAtlasHitMode.EveryNth), mDialog.HitBox.ItemIndex);
     Assert.AreEqual('5', mDialog.HitCountEdit.Text);
     Assert.IsFalse(mDialog.ThreadTextEdit.Enabled);
-    Assert.AreEqual(1, mDialog.CallerBox.Items.Count, 'Vorschläge ohne Doppelte und Leere');
+    Assert.AreEqual(1, Integer(mDialog.CallerBox.Items.Count), 'Vorschläge ohne Doppelte und Leere');
     Assert.AreEqual('TKundenImport.LeseZeile', mDialog.CallerBox.Text);
     Assert.IsTrue(mDialog.CallerDirectBox.Checked);
     Assert.IsTrue(mDialog.CallerDirectBox.Enabled);

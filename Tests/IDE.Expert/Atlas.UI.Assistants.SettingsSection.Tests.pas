@@ -297,7 +297,10 @@ begin
   mPage := TAtlasSettingsPage.Create(nil);
   try
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(HasLabelWith(mPage, 'OpenAI: '), 'Liste der Anbieter der IDE');
+    // Vom Reiter aus suchen: Ohne Fenster hängt die Seite ihre Reiter erst in CreateWnd ein (PageControl), unter
+    // mPage ist der Reiter dann noch nicht zu finden.
+    Assert.IsTrue(HasLabelWith(SheetOf(CheckOf(mPage, 'AssistantsIdeProvider')), 'OpenAI: '),
+      'Liste der Anbieter der IDE');
   finally
     mPage.Free;
   end;
@@ -310,10 +313,10 @@ begin
   mLines := TAtlasAssistantsIdeRows.ProviderLines(TArray<TAtlasIdeAiProvider>.Create(
     TAtlasIdeAiProvider.Make('OpenAI', True, [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.ListModels]),
     TAtlasIdeAiProvider.Make('Ollama', False, [TAtlasIdeAiFeature.Instruction])));
-  Assert.AreEqual(2, Length(mLines.Split([sLineBreak])), 'eine Zeile je Anbieter');
+  Assert.AreEqual(2, Integer(Length(mLines.Split([sLineBreak]))), 'eine Zeile je Anbieter');
   Assert.IsTrue(mLines.StartsWith('OpenAI: '));
-  Assert.AreEqual(2, Length(TAtlasAssistantsIdeRows.FeaturesText(
-    [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.ListModels]).Split([', '])));
+  Assert.AreEqual(2, Integer(Length(TAtlasAssistantsIdeRows.FeaturesText(
+    [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.ListModels]).Split([', ']))));
   Assert.AreEqual('', TAtlasAssistantsIdeRows.FeaturesText([]));
   Assert.IsTrue(TAtlasAssistantsIdeRows.ProviderLines(nil) <> '', 'ohne Anbieter ein Hinweis');
 end;

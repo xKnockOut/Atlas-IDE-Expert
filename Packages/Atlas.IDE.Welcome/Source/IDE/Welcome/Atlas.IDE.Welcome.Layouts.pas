@@ -146,7 +146,8 @@ var
   mAdded: TArray<string>;
   mIds: TArray<string>;
   mAdopted: TAtlasWelcomeLayout;
-  mKeep: IAtlasWelcomeArrangeSource;
+  // Nur Lebensdauer: Die Klasse erfüllt den Vertrag seit #1443 über einen Adapter, nicht selbst (E2010).
+  mKeep: IInterface;
 begin
   mCurrent := TAtlasIdeSettings.Current;
   if not mCurrent.WelcomePageCustomLayout then

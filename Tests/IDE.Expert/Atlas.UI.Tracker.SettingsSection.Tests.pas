@@ -212,7 +212,7 @@ end;
 procedure AssertConnectionRows(AList: TListView);
 begin
   // Abnahme: zwei Verbindungen mit Zustand, dahinter die aus der .atlas.
-  Assert.AreEqual(3, AList.Items.Count);
+  Assert.AreEqual(3, Integer(AList.Items.Count));
   Assert.AreEqual('Firma', AList.Items[0].Caption);
   Assert.AreEqual('YouTrack', AList.Items[0].SubItems[0]);
   Assert.AreEqual('https://youtrack.firma.local', AList.Items[0].SubItems[1]);
@@ -230,7 +230,7 @@ procedure AddConnectionLager(APage: TAtlasSettingsPage; ASection: TAtlasTrackerS
 begin
   // Neue Verbindung: erst mit gültiger Adresse gespeichert; http wird abgewiesen.
   ASection.Connections.View.Add.Click;
-  Assert.AreEqual(4, AList.Items.Count);
+  Assert.AreEqual(4, Integer(AList.Items.Count));
   Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesConnectionNew),
     ASection.Connections.View.Name.Text);
   APage.SaveTo(ASaved);
@@ -381,7 +381,7 @@ end;
 procedure AssertProjectRows(ASection: TAtlasTrackerSettingsSection; AList: TListView);
 begin
   // Abnahme: persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
-  Assert.AreEqual(2, AList.Items.Count);
+  Assert.AreEqual(2, Integer(AList.Items.Count));
   Assert.AreEqual('C:\Projekte', AList.Items[0].Caption);
   Assert.AreEqual('Firma', AList.Items[0].SubItems[0]);
   Assert.AreEqual('KASSE', AList.Items[0].SubItems[1]);
@@ -560,7 +560,7 @@ end;
 /// <summary>Zwei Abfragen, erste gewählt; „(alle)“ als Verbindung.</summary>
 procedure AssertQueryRows(ASection: TAtlasTrackerSettingsSection; AList: TListView);
 begin
-  Assert.AreEqual(2, AList.Items.Count);
+  Assert.AreEqual(2, Integer(AList.Items.Count));
   Assert.AreEqual('Standard', AList.Items[0].Caption);
   Assert.AreEqual('assignee: meine #Ungelöst', AList.Items[0].SubItems[0]);
   Assert.AreEqual('', AList.Items[0].SubItems[1], 'ohne Verbindung: überall');
@@ -603,7 +603,7 @@ begin
     mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"}]';
     mPage.LoadFrom(mSettings);
     // Ohne eigene Abfragen: Hinweis auf die Vorgabe je Anbieter.
-    Assert.AreEqual(0, FSection.Queries.View.List.Items.Count);
+    Assert.AreEqual(0, Integer(FSection.Queries.View.List.Items.Count));
     Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueriesNone),
       FSection.Queries.View.Note.Caption);
     Assert.IsFalse(FSection.Queries.View.Name.Enabled);
@@ -615,7 +615,7 @@ begin
     CheckQueryRename(FSection, mList);
     // Neue Zeile: ohne Abfrage nicht gespeichert; Leerraum außen fällt weg.
     FSection.Queries.View.Add.Click;
-    Assert.AreEqual(3, mList.Items.Count);
+    Assert.AreEqual(3, Integer(mList.Items.Count));
     Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNew),
       FSection.Queries.View.Name.Text);
     Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryEmpty),
@@ -848,12 +848,12 @@ begin
     mSettings := TAtlasPluginSettings.Defaults;
     mPage.LoadFrom(mSettings);
     Assert.IsTrue(FSection.General.View.CommentEditor.Checked);
-    Assert.AreEqual(2, FSection.Snippets.View.List.Items.Count, 'zwei Vorgaben');
+    Assert.AreEqual(2, Integer(FSection.Snippets.View.List.Items.Count), 'zwei Vorgaben');
     Assert.AreEqual('Bitte mit aktuellem Build prüfen', FSection.Snippets.View.List.Items[0].Caption);
     Assert.AreEqual('Bitte mit aktuellem Build prüfen', FSection.Snippets.View.Name.Text, 'erste Zeile gewählt');
     // Hinzufügen, Name und mehrzeiligen Text eingeben.
     FSection.Snippets.View.Add.Click;
-    Assert.AreEqual(3, FSection.Snippets.View.List.Items.Count);
+    Assert.AreEqual(3, Integer(FSection.Snippets.View.List.Items.Count));
     Assert.AreEqual('Neuer Textbaustein', FSection.Snippets.View.Name.Text);
     FSection.Snippets.View.Name.Text := 'Version';
     FSection.Snippets.View.Text.Text := 'In {version}'#13#10'bitte prüfen';
@@ -862,7 +862,7 @@ begin
     // Den ersten entfernen.
     FSection.Snippets.View.List.Items[0].Selected := True;
     FSection.Snippets.View.Remove.Click;
-    Assert.AreEqual(2, FSection.Snippets.View.List.Items.Count);
+    Assert.AreEqual(2, Integer(FSection.Snippets.View.List.Items.Count));
     FSection.General.View.CommentEditor.Checked := False;
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
@@ -873,7 +873,7 @@ begin
     Assert.AreEqual('In {version}'#10'bitte prüfen', mRead[1].Text, 'Zeilen mit #10');
     // Vorgaben stellen die Liste wieder her; geladen wird, was gespeichert war.
     FSection.Snippets.View.Defaults.Click;
-    Assert.AreEqual(2, FSection.Snippets.View.List.Items.Count);
+    Assert.AreEqual(2, Integer(FSection.Snippets.View.List.Items.Count));
     Assert.AreEqual('Bitte mit aktuellem Build prüfen', FSection.Snippets.View.List.Items[0].Caption);
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(FSection.General.View.CommentEditor.Checked);
@@ -881,7 +881,7 @@ begin
     // Leere Liste bleibt leer: Felder gesperrt.
     mSaved.IssuesCommentSnippets := '[]';
     mPage.LoadFrom(mSaved);
-    Assert.AreEqual(0, FSection.Snippets.View.List.Items.Count);
+    Assert.AreEqual(0, Integer(FSection.Snippets.View.List.Items.Count));
     Assert.IsFalse(FSection.Snippets.View.Name.Enabled);
     Assert.IsFalse(FSection.Snippets.View.Remove.Enabled);
   finally

@@ -71,7 +71,7 @@ begin
     mQueue.Put('b', 2);
     Assert.IsTrue(mQueue.TryGet('b', mItem));
     Assert.AreEqual(2, mItem.Value);
-    Assert.AreEqual(2, mQueue.Count);
+    Assert.AreEqual(2, Integer(mQueue.Count));
   finally
     mQueue.Free;
   end;
@@ -104,7 +104,7 @@ begin
     mQueue.Put('b', 2);
     mQueue.Put('c', 3);
     Assert.IsTrue(mQueue.Remove('b'));
-    Assert.AreEqual(2, mQueue.Count);
+    Assert.AreEqual(2, Integer(mQueue.Count));
     Assert.AreEqual('a', mQueue.KeyAt(0));
     Assert.AreEqual('c', mQueue.KeyAt(1));
   finally

@@ -185,8 +185,8 @@ begin
   FEnabled := False;
   Assert.IsFalse(FRequests.Ready);
   Assert.AreEqual('', FRequests.ProviderName);
-  Assert.AreEqual(0, FRequests.Ask(Request('x'), Collect));
-  Assert.AreEqual(1, FResults.Count);
+  Assert.AreEqual(0, FRequests.Ask(Request('x'), Collect()));
+  Assert.AreEqual(1, Integer(FResults.Count));
   Assert.AreEqual<TAtlasAiTextStatus>(TAtlasAiTextStatus.NotReady, FResults[0].Status);
   Assert.AreEqual('', FEngine.LogText, 'nichts gesendet');
 end;
@@ -195,14 +195,14 @@ procedure TAtlasIdeAiTextRequestsTests.InstructionGoesSeparately;
 begin
   Assert.IsTrue(FRequests.Ready);
   Assert.AreEqual('OpenAI', FRequests.ProviderName, 'Atlas selbst übersprungen');
-  Assert.IsTrue(FRequests.Ask(Request('Text'), Collect) > 0);
+  Assert.IsTrue(FRequests.Ask(Request('Text'), Collect()) > 0);
   Assert.AreEqual('instruction OpenAI [Text] [Fasse zusammen]', FEngine.LogText);
 end;
 
 procedure TAtlasIdeAiTextRequestsTests.ChatOnlyProviderGetsOneText;
 begin
   FWanted := 'Gemini';
-  FRequests.Ask(Request('Text'), Collect);
+  FRequests.Ask(Request('Text'), Collect());
   Assert.AreEqual('chat Gemini [Fasse zusammen||Text]', FEngine.LogText);
 end;
 
@@ -239,18 +239,18 @@ end;
 
 procedure TAtlasIdeAiTextRequestsTests.UnknownAnswerIsDropped;
 begin
-  FRequests.Ask(Request('a'), Collect);
+  FRequests.Ask(Request('a'), Collect());
   FRequests.Answered('fremd', 'x');
   FRequests.Failed('fremd', 'x');
-  Assert.AreEqual(0, FResults.Count);
+  Assert.AreEqual(0, Integer(FResults.Count));
   Assert.AreEqual(1, FRequests.OpenCount);
 end;
 
 procedure TAtlasIdeAiTextRequestsTests.ErrorNamesTheProvider;
 begin
-  FRequests.Ask(Request('a'), Collect);
+  FRequests.Ask(Request('a'), Collect());
   FRequests.Failed('id1', 'Kontingent erschöpft');
-  Assert.AreEqual(1, FResults.Count);
+  Assert.AreEqual(1, Integer(FResults.Count));
   Assert.AreEqual<TAtlasAiTextStatus>(TAtlasAiTextStatus.Failed, FResults[0].Status);
   Assert.AreEqual('OpenAI: Kontingent erschöpft', FResults[0].Error);
 end;
@@ -258,8 +258,8 @@ end;
 procedure TAtlasIdeAiTextRequestsTests.RefusedRequestFailsAtOnce;
 begin
   FEngine.Refuse := True;
-  Assert.AreEqual(0, FRequests.Ask(Request('a'), Collect));
-  Assert.AreEqual(1, FResults.Count);
+  Assert.AreEqual(0, FRequests.Ask(Request('a'), Collect()));
+  Assert.AreEqual(1, Integer(FResults.Count));
   Assert.AreEqual('abgelehnt von OpenAI', FResults[0].Error);
 end;
 
@@ -268,12 +268,12 @@ var
   mFirst: Integer;
   mSecond: Integer;
 begin
-  mFirst := FRequests.Ask(Request('a'), Collect);
-  mSecond := FRequests.Ask(Request('b'), Collect);
+  mFirst := FRequests.Ask(Request('a'), Collect());
+  mSecond := FRequests.Ask(Request('b'), Collect());
   FRequests.Cancel(mFirst);
   Assert.IsFalse(FEngine.LogText.Contains('cancel'), 'die zweite Anfrage läuft noch');
   FRequests.Answered('id1', 'zu spät');
-  Assert.AreEqual(0, FResults.Count, 'nach Cancel kein Rückruf');
+  Assert.AreEqual(0, Integer(FResults.Count), 'nach Cancel kein Rückruf');
   FRequests.Cancel(mSecond);
   Assert.IsTrue(FEngine.LogText.EndsWith('cancel OpenAI'));
   FRequests.Cancel(4711);
@@ -281,18 +281,18 @@ end;
 
 procedure TAtlasIdeAiTextRequestsTests.StopCancelsEverything;
 begin
-  FRequests.Ask(Request('a'), Collect);
+  FRequests.Ask(Request('a'), Collect());
   FWanted := 'Gemini';
-  FRequests.Ask(Request('b'), Collect);
+  FRequests.Ask(Request('b'), Collect());
   FRequests.Stop;
-  Assert.AreEqual(2, FResults.Count);
+  Assert.AreEqual(2, Integer(FResults.Count));
   Assert.AreEqual<TAtlasAiTextStatus>(TAtlasAiTextStatus.Cancelled, FResults[0].Status);
   Assert.AreEqual<TAtlasAiTextStatus>(TAtlasAiTextStatus.Cancelled, FResults[1].Status);
   Assert.IsTrue(FEngine.LogText.Contains('cancel OpenAI'));
   Assert.IsTrue(FEngine.LogText.Contains('cancel Gemini'));
   Assert.IsFalse(FRequests.Ready, 'nach Stop nie mehr bereit');
   FRequests.Answered('id1', 'zu spät');
-  Assert.AreEqual(2, FResults.Count);
+  Assert.AreEqual(2, Integer(FResults.Count));
 end;
 
 initialization

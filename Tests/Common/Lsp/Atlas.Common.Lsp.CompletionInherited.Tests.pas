@@ -273,7 +273,8 @@ procedure TCompletionInheritedTests.HeaderTextEndsAtSemicolon;
 const
   cText = 'function TFoo.Bar(A: Integer;'#13#10'  B: string): string;'#13#10'begin';
 begin
-  Assert.AreEqual('function TFoo.Bar(A: Integer;    B: string): string', TCompletionInherited.HeaderText(cText, 1));
+  // NormalizeLineBreaks macht aus #13#10 ein Leerzeichen (nicht eins je Zeichen), dazu die zwei der Einrückung.
+  Assert.AreEqual('function TFoo.Bar(A: Integer;   B: string): string',TCompletionInherited.HeaderText(cText, 1));
 end;
 
 procedure TCompletionInheritedTests.CompletionOffersFullCallFirst;

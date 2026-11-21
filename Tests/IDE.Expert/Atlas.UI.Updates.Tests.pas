@@ -205,7 +205,7 @@ begin
     Candidate('Atlas.IDE.Notes', False, False, True)));
   try
     mDialog.Fill;
-    Assert.AreEqual(3, mDialog.List.Items.Count);
+    Assert.AreEqual(3, Integer(mDialog.List.Items.Count));
     Assert.IsFalse(mDialog.List.ItemEnabled[0], 'Kern nicht abwählbar');
     Assert.AreEqual(Fmt(TAtlasUpdatesTextId.UpdatesSelectionNew, ['Atlas.IDE.Notes']), mDialog.List.Items[2]);
     mDialog.List.Checked[1] := False;

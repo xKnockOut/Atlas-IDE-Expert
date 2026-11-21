@@ -160,7 +160,7 @@ begin
     Assert.AreEqual('C:\P\Main.pas', mJson.GetValue<string>('result.location.file'));
     Assert.AreEqual(42, mJson.GetValue<Integer>('result.location.line'));
     mFrames := mJson.GetValue<TJSONArray>('result.frames');
-    Assert.AreEqual(2, mFrames.Count);
+    Assert.AreEqual(2, Integer(mFrames.Count));
     Assert.IsTrue((mFrames.Items[0] as TJSONObject).GetValue<Boolean>('own'));
     Assert.IsFalse((mFrames.Items[1] as TJSONObject).GetValue<Boolean>('own'));
     mFrames := mJson.GetValue<TJSONArray>('result.locals');

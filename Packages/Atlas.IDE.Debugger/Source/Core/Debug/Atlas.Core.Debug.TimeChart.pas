@@ -71,7 +71,8 @@ begin
     Exit(1);
   end;
   // Zehnerpotenz unter dem Wert; liegt sie wegen Rundung eine Stufe tiefer, findet die Schleife die nächste.
-  mPower := Power(10, Floor(Log10(AValue)));
+  // Double ausdrücklich: Mit ganzzahligen Argumenten wählt Delphi die Single-Fassung (0,1 wird 0,100000001).
+  mPower := Power(Double(10), Double(Floor(Log10(AValue))));
   while True do
   begin
     for mStep in cSteps do

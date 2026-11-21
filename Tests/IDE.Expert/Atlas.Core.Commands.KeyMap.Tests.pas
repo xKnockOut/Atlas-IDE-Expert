@@ -456,6 +456,8 @@ begin
     mSettings.WelcomePage := True;
     mSettings.WelcomePageSearch := True;
     mSettings.MultiCursor := True;
+    // Auswahl an den Assistenten zählt nur mit Kopplung (TAtlasKeyFunction.AssistantsMention).
+    mSettings.AssistantsLink := True;
     mSettings.Save(mStoreRef);
     mCount := 0;
     for mName in mStore.Names.ToArray do
@@ -576,7 +578,7 @@ begin
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
       TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget,
       TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete, TAtlasKeyFunction.CheckFile,
-      TAtlasKeyFunction.SectionAppend] then
+      TAtlasKeyFunction.SectionAppend, TAtlasKeyFunction.AssistantsMention] then
     begin
       Assert.IsTrue(mEntry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(mEntry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(mEntry.Status('IDE: Klassennavigation')),

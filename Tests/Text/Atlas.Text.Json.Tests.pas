@@ -170,7 +170,7 @@ var
 begin
   mArray := TJsonBuild.Strings([]);
   try
-    Assert.AreEqual(0, mArray.Count);
+    Assert.AreEqual(0, Integer(mArray.Count));
     Assert.AreEqual('[]', mArray.ToJSON);
   finally
     mArray.Free;
@@ -183,7 +183,7 @@ var
 begin
   mArray := TJsonBuild.Strings(['b', 'a', '', 'Größe "x"']);
   try
-    Assert.AreEqual(4, mArray.Count);
+    Assert.AreEqual(4, Integer(mArray.Count));
     Assert.AreEqual('b', mArray.Items[0].Value);
     Assert.AreEqual('a', mArray.Items[1].Value);
     Assert.AreEqual('', mArray.Items[2].Value);
@@ -202,7 +202,7 @@ begin
   mItems := TArray<string>.Create('x', 'y');
   mArray := TJsonBuild.Strings(mItems);
   try
-    Assert.AreEqual(2, mArray.Count);
+    Assert.AreEqual(2, Integer(mArray.Count));
     Assert.AreEqual('y', mArray.Items[1].Value);
   finally
     mArray.Free;
@@ -426,7 +426,7 @@ var
 begin
   mObject := TJsonRead.ParseObjectOrEmpty('[1]');
   try
-    Assert.AreEqual(0, mObject.Count);
+    Assert.AreEqual(0, Integer(mObject.Count));
   finally
     mObject.Free;
   end;
@@ -526,7 +526,7 @@ begin
   mArray := TJsonRead.ParseArray('[1, "a"]');
   try
     Assert.IsNotNull(mArray);
-    Assert.AreEqual(2, mArray.Count);
+    Assert.AreEqual(2, Integer(mArray.Count));
   finally
     mArray.Free;
   end;

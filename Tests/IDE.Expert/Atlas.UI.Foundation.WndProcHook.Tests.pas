@@ -128,8 +128,8 @@ begin
     mOwner.Hook := mHook;
     Assert.IsTrue(mHook.Active);
     Send(mControl);
-    Assert.AreEqual(1, mOwner.Count, 'Besitzer');
-    Assert.AreEqual(1, mBottom.Count, 'Vorgänger über CallOld');
+    Assert.AreEqual(1, Integer(mOwner.Count), 'Besitzer');
+    Assert.AreEqual(1, Integer(mBottom.Count), 'Vorgänger über CallOld');
     Assert.IsTrue(TAtlasWndProcHook.Unhook(mHook));
   finally
     mOwner.Free;
@@ -182,8 +182,8 @@ begin
     Assert.IsFalse(mHook.Active);
     Assert.IsTrue(Same(mForeign.Handle, mControl.WindowProc), 'fremde Prozedur bleibt oben');
     Send(mControl);
-    Assert.AreEqual(1, mForeign.Count, 'fremde Prozedur');
-    Assert.AreEqual(0, mOwner.Count, 'Besitzer nach dem Aushängen nicht mehr gerufen');
+    Assert.AreEqual(1, Integer(mForeign.Count), 'fremde Prozedur');
+    Assert.AreEqual(0, Integer(mOwner.Count), 'Besitzer nach dem Aushängen nicht mehr gerufen');
   finally
     mControl.Free;
     // Die Kette lebt nur so lange wie das Steuerelement; danach darf der Haken gehen.
@@ -228,8 +228,8 @@ begin
     Assert.AreEqual(1, Integer(Length(mReasons)));
     Assert.Contains(mReasons[0], 'TControl');
     Send(mControl);
-    Assert.AreEqual(1, mForeign.Count, 'Kette reicht weiter durch');
-    Assert.AreEqual(0, mOwner.Count);
+    Assert.AreEqual(1, Integer(mForeign.Count), 'Kette reicht weiter durch');
+    Assert.AreEqual(0, Integer(mOwner.Count));
   finally
     mControl.Free;
     TAtlasWndProcHook.ForgetOrphansForTests;

@@ -214,7 +214,7 @@ begin
     Assert.AreEqual(3, Integer(Length(mSeries.PointsOf('7'))));
     Assert.IsTrue(mSeries.PointsOf('7')[1].IsGap);
     mStats := mSeries.Stats('7');
-    Assert.AreEqual(3, mStats.Count);
+    Assert.AreEqual(3, Integer(mStats.Count));
     Assert.AreEqual(2, mStats.Numbers);
     Assert.AreEqual(Double(-2), mStats.Min, 1E-9);
     Assert.AreEqual(Double(3), mStats.Max, 1E-9);
@@ -253,9 +253,9 @@ begin
     Assert.AreEqual('Neu', mSeries.Name);
     Assert.AreEqual(50, mSeries.Limit);
     Assert.IsNull(mSet.Find('B.pas:2'));
-    Assert.AreEqual(1, mSet.Count);
+    Assert.AreEqual(1, Integer(mSet.Count));
     mSet.Clear;
-    Assert.AreEqual(0, mSet.Count);
+    Assert.AreEqual(0, Integer(mSet.Count));
   finally
     mSet.Free;
   end;
