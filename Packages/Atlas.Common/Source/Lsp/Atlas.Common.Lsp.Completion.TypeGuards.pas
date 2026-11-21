@@ -59,7 +59,6 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.TokenCursor,
@@ -788,7 +787,7 @@ begin
       mNarrowed.NarrowedName := AContext.Names[0];
       mNarrowed.NarrowedLine := AGuard.Line + 1;
       mNarrowed.HasTextEdit := True;
-      mNarrowed.TextEdit := TRuleEdit.Create(TTextRange.Create(AContext.ChainStart, ARequest.Position),
+      mNarrowed.TextEdit := TTextEdit.Create(TTextRange.Create(AContext.ChainStart, ARequest.Position),
         mCast + '.' + mName);
       mItems.Add(mNarrowed);
     end;
