@@ -225,6 +225,11 @@ begin
   end;
 end;
 
+const
+  /// <summary>Felder, die in der Vorschau als Sprint bzw. Meilenstein gelten.</summary>
+  cMilestoneFields: array[0..5] of string = ('Sprint', 'Sprints', 'Board', 'Fix versions', 'Fix version',
+    'Meilenstein');
+
 /// <summary>Ein Feld der Vorschau: Zustand, Priorität, Typ, Zuständig, Sprint bzw. Meilenstein.</summary>
 procedure TakeDetailField(var ADetails: TAtlasTrackerDetails; const AName, AText: string);
 begin
@@ -244,8 +249,7 @@ begin
   begin
     SetFirst(ADetails.Assignee, AText);
   end
-  else if TAtlasYouTrackJson.IsOneOf(AName, ['Sprint', 'Sprints', 'Board', 'Fix versions', 'Fix version',
-    'Meilenstein']) then
+  else if TAtlasYouTrackJson.IsOneOf(AName, cMilestoneFields) then
   begin
     SetFirst(ADetails.Sprint, AText);
   end;

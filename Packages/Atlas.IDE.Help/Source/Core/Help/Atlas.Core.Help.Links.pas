@@ -323,12 +323,14 @@ begin
 end;
 
 class function TAtlasHelpLinks.RedirectHtml(const AUrl: string): string;
+const
+  cRedirect = '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=%0:s">' +
+    '</head><body><a href="%0:s">Atlas</a></body></html>';
 var
   mUrl: string;
 begin
   mUrl := StringReplace(StringReplace(AUrl, '&', '&amp;', [rfReplaceAll]), '"', '&quot;', [rfReplaceAll]);
-  Result := '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' + mUrl +
-    '"></head><body><a href="' + mUrl + '">Atlas</a></body></html>';
+  Result := Format(cRedirect, [mUrl]);
 end;
 
 end.

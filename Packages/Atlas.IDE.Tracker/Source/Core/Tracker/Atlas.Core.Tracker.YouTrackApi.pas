@@ -536,15 +536,11 @@ begin
 end;
 
 class function TAtlasYouTrackApi.ScopeQuery(AScope: TAtlasTrackerNotifyScope): string;
+const
+  cQueries: array[TAtlasTrackerNotifyScope] of string = ('for: me', '(for: me or reporter: me)',
+    '(for: me or reporter: me or has: star)');
 begin
-  case AScope of
-    TAtlasTrackerNotifyScope.Assigned:
-      Result := 'for: me';
-    TAtlasTrackerNotifyScope.Watched:
-      Result := '(for: me or reporter: me or has: star)';
-  else
-    Result := '(for: me or reporter: me)';
-  end;
+  Result := cQueries[AScope];
 end;
 
 class function TAtlasYouTrackApi.ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;

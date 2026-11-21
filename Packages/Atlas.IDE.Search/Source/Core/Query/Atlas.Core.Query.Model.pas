@@ -644,6 +644,10 @@ begin
   Result.Detail := ADetail;
 end;
 
+const
+  /// <summary>Vergleiche, die die Vervollständigung nach einem Feld anbietet.</summary>
+  cComparisons: array[0..7] of string = ('=', '<>', '<', '>', '<=', '>=', 'like', 'not like');
+
 function IsComparison(const AWord: string): Boolean;
 begin
   Result := MatchStr(AWord, ['=', '<>', '!=', '<', '>', '<=', '>=', 'like']);
@@ -789,7 +793,7 @@ begin
   else if IsFieldOf(AEntity, mLast) then
   begin
     // Nach einem Feld: Vergleich.
-    AList.AddKeywords(['=', '<>', '<', '>', '<=', '>=', 'like', 'not like']);
+    AList.AddKeywords(cComparisons);
   end
   else
   begin

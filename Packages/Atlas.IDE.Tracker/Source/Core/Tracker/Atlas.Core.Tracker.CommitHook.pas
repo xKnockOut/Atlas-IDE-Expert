@@ -74,23 +74,23 @@ const
 { TAtlasCommitHook }
 
 class function TAtlasCommitHook.Script(AEnglish: Boolean): string;
+const
+  /// <summary>Befehle des Hooks nach Kennzeile und Kommentar.</summary>
+  cBody: array[0..10] of string = (
+    'case "$2" in merge|squash|commit) exit 0 ;; esac',
+    'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0',
+    'file="$dir/' + cPrefixFile + '"',
+    '[ -f "$file" ] || exit 0',
+    'prefix=$(cat "$file")',
+    '[ -n "$prefix" ] || exit 0',
+    'bare=$(printf ''%s'' "$prefix" | sed ''s/[[:space:]]*$//'')',
+    'first=$(head -n 1 "$1")',
+    'case "$first" in "$bare"*) exit 0 ;; esac',
+    '{ printf ''%s'' "$prefix"; cat "$1"; } > "$1.atlas" && mv "$1.atlas" "$1"',
+    'exit 0');
 begin
-  Result :=
-    '#!/bin/sh' + cLf +
-    cMarker + cLf +
-    cHookComment[AEnglish, 0] + cLf +
-    cHookComment[AEnglish, 1] + cLf +
-    'case "$2" in merge|squash|commit) exit 0 ;; esac' + cLf +
-    'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0' + cLf +
-    'file="$dir/' + cPrefixFile + '"' + cLf +
-    '[ -f "$file" ] || exit 0' + cLf +
-    'prefix=$(cat "$file")' + cLf +
-    '[ -n "$prefix" ] || exit 0' + cLf +
-    'bare=$(printf ''%s'' "$prefix" | sed ''s/[[:space:]]*$//'')' + cLf +
-    'first=$(head -n 1 "$1")' + cLf +
-    'case "$first" in "$bare"*) exit 0 ;; esac' + cLf +
-    '{ printf ''%s'' "$prefix"; cat "$1"; } > "$1.atlas" && mv "$1.atlas" "$1"' + cLf +
-    'exit 0' + cLf;
+  Result := '#!/bin/sh' + cLf + cMarker + cLf + cHookComment[AEnglish, 0] + cLf + cHookComment[AEnglish, 1] + cLf +
+    string.Join(cLf, cBody) + cLf;
 end;
 
 class function TAtlasCommitHook.IsOwn(const AContent: string): Boolean;

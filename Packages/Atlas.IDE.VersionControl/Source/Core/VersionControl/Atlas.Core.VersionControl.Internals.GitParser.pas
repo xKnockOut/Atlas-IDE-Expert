@@ -99,10 +99,34 @@ implementation
 
 uses
   System.Generics.Collections,
+  System.StrUtils,
   Atlas.Core.VersionControl.Internals.Text;
 
 const
   cNullCommit = '0000000000000000000000000000000000000000';
+  /// <summary>Meldungen zu unerwarteter Ausgabe der Werkzeuge: nur für Tests und Fehlersuche, die Aufrufer
+  /// werten EAtlasVcsParse als Fehlschlag aus, ohne den Text zu zeigen.</summary>
+  cStatusFieldUnknown = 'git status: Feld XY "%s" unbekannt';
+  cStatusEntryUnknown = 'git status: unbekannter Eintrag "%s"';
+  cRefTrackUnknown = 'git for-each-ref: Abstand "%s" unbekannt';
+  cRefThreeFields = 'git for-each-ref: drei Felder erwartet';
+  cRefNameMissing = 'git for-each-ref: Name fehlt';
+  cRevCountUnknown = 'git rev-list --count: "%s" unbekannt';
+  cRefSevenFields = 'git for-each-ref: sieben Felder erwartet';
+  cDiffKindUnknown = 'git diff --name-status: Art "%s" unbekannt';
+  cStashFourFields = 'git stash list: vier Felder erwartet';
+  cStashHashMissing = 'git stash list: Hash fehlt';
+  cLogHashAndTime = 'git log: Hash und Zeit erwartet';
+  cLogKindMissing = 'git log --name-status: Art fehlt';
+  cLogKindUnknown = 'git log --name-status: Art "%s" unbekannt';
+  cLogPathMissing = 'git log --name-status: Pfad fehlt';
+  cLogFourFields = 'git log: Hash, Zeit, Autor und Nachricht erwartet';
+  cDiffPathMissing = 'git diff --name-status: Pfad fehlt';
+  cDiffNewPathMissing = 'git diff --name-status: neuer Pfad fehlt';
+  cLogSubjectFields = 'git log: Hash, Zeit, Autor und Betreff erwartet';
+  cLineLogFields = 'git log -L: Hash, Autor, Zeit und Nachricht erwartet';
+  cLogHashAndMessage = 'git log: Hash und Nachricht erwartet';
+  cBlameHeaderMissing = 'git blame: Kopfzeile erwartet';
 
 /// <summary>Das N-te durch Leerzeichen getrennte Feld (0-basiert); der Rest ab dem Feld bei ARest.</summary>
 function Field(const ALine: string; AIndex: Integer; ARest: Boolean): string;
@@ -145,7 +169,7 @@ var
 begin
   if Length(AXY) < 2 then
   begin
-    raise EAtlasVcsParse.CreateFmt('git status: Feld XY "%s" unbekannt', [AXY]);
+    raise EAtlasVcsParse.CreateFmt(cStatusFieldUnknown, [AXY]);
   end;
   X := AXY[1];
   Y := AXY[2];
@@ -299,7 +323,7 @@ begin
       '!':
         ;
     else
-      raise EAtlasVcsParse.CreateFmt('git status: unbekannter Eintrag "%s"', [Copy(mEntry, 1, 1)]);
+      raise EAtlasVcsParse.CreateFmt(cStatusEntryUnknown, [Copy(mEntry, 1, 1)]);
     end;
   end;
 end;
@@ -353,7 +377,7 @@ begin
   end;
   if not mKnown then
   begin
-    raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [AText]);
+    raise EAtlasVcsParse.CreateFmt(cRefTrackUnknown, [AText]);
   end;
 end;
 
@@ -396,7 +420,7 @@ begin
     mFields := mLine.Split([#0]);
     if Length(mFields) < 3 then
     begin
-      raise EAtlasVcsParse.Create('git for-each-ref: drei Felder erwartet');
+      raise EAtlasVcsParse.Create(cRefThreeFields);
     end;
     mName := mFields[0];
     mRef := Default(TAtlasVcsRef);
@@ -427,7 +451,7 @@ begin
     end;
     if mRef.Name = '' then
     begin
-      raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
+      raise EAtlasVcsParse.Create(cRefNameMissing);
     end;
     mRef.TipDate := UnixField(mFields[1]);
     mRef.Current := Trim(mFields[2]) = '*';
@@ -446,8 +470,8 @@ var
 begin
   AStash.Message := ASubject;
   mColon := Pos(': ', ASubject);
-  mWip := Copy(ASubject, 1, 7) = 'WIP on ';
-  if (mColon = 0) or not (mWip or (Copy(ASubject, 1, 3) = 'On ')) then
+  mWip := StartsStr('WIP on ', ASubject);
+  if (mColon = 0) or not (mWip or StartsStr('On ', ASubject)) then
   begin
     Exit;
   end;
@@ -477,7 +501,7 @@ begin
   mParts := Trim(AText).Split([#9, ' '], TStringSplitOptions.ExcludeEmpty);
   if (Length(mParts) <> 2) or not TryStrToInt(mParts[0], ABehind) or not TryStrToInt(mParts[1], AAhead) then
   begin
-    raise EAtlasVcsParse.CreateFmt('git rev-list --count: "%s" unbekannt', [Trim(AText)]);
+    raise EAtlasVcsParse.CreateFmt(cRevCountUnknown, [Trim(AText)]);
   end;
 end;
 
@@ -493,7 +517,7 @@ begin
     mFields := mLine.Split([#0]);
     if Length(mFields) < 7 then
     begin
-      raise EAtlasVcsParse.Create('git for-each-ref: sieben Felder erwartet');
+      raise EAtlasVcsParse.Create(cRefSevenFields);
     end;
     mBranch := Default(TAtlasVcsBranch);
     mBranch.Name := mFields[0];
@@ -507,7 +531,7 @@ begin
     mBranch.Current := Trim(mFields[6]) = '*';
     if mBranch.Name = '' then
     begin
-      raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
+      raise EAtlasVcsParse.Create(cRefNameMissing);
     end;
     Result := Result + [mBranch];
   end;
@@ -532,7 +556,7 @@ begin
     'C':
       Result := TAtlasVcsChangeKind.Copied;
   else
-    raise EAtlasVcsParse.CreateFmt('git diff --name-status: Art "%s" unbekannt', [AStatus]);
+    raise EAtlasVcsParse.CreateFmt(cDiffKindUnknown, [AStatus]);
   end;
 end;
 
@@ -559,7 +583,7 @@ begin
     mFields := mLine.Split([#0]);
     if Length(mFields) < 4 then
     begin
-      raise EAtlasVcsParse.Create('git stash list: vier Felder erwartet');
+      raise EAtlasVcsParse.Create(cStashFourFields);
     end;
     mStash := Default(TAtlasVcsStash);
     mStash.Hash := mFields[0];
@@ -568,7 +592,7 @@ begin
     ReadStashSubject(mFields[3], mStash);
     if mStash.Hash = '' then
     begin
-      raise EAtlasVcsParse.Create('git stash list: Hash fehlt');
+      raise EAtlasVcsParse.Create(cStashHashMissing);
     end;
     Result := Result + [mStash];
   end;
@@ -586,7 +610,7 @@ begin
     mFields := mLine.Split([#0]);
     if (Length(mFields) < 2) or (Length(mFields[0]) < 7) then
     begin
-      raise EAtlasVcsParse.Create('git log: Hash und Zeit erwartet');
+      raise EAtlasVcsParse.Create(cLogHashAndTime);
     end;
     mCommit.Hash := mFields[0];
     mCommit.Date := UnixField(mFields[1]);
@@ -606,7 +630,7 @@ function StatusKind(const AStatus: string): TAtlasVcsChangeKind;
 begin
   if AStatus = '' then
   begin
-    raise EAtlasVcsParse.Create('git log --name-status: Art fehlt');
+    raise EAtlasVcsParse.Create(cLogKindMissing);
   end;
   case AStatus[1] of
     'M':
@@ -620,7 +644,7 @@ begin
     'U':
       Result := TAtlasVcsChangeKind.Conflicted;
   else
-    raise EAtlasVcsParse.CreateFmt('git log --name-status: Art "%s" unbekannt', [AStatus]);
+    raise EAtlasVcsParse.CreateFmt(cLogKindUnknown, [AStatus]);
   end;
 end;
 
@@ -659,7 +683,7 @@ begin
       Continue;
     end;
     mFile := Default(TAtlasVcsLogFile);
-    mFile.RepositoryPath := NextPath(AFields, mIndex, 'git log --name-status: Pfad fehlt');
+    mFile.RepositoryPath := NextPath(AFields, mIndex, cLogPathMissing);
     mFile.Kind := StatusKind(mStatus);
     mFile.Path := VcsFullPath(ARoot, mFile.RepositoryPath);
     AFiles.Add(mFile);
@@ -671,7 +695,7 @@ function HistoryEntry(const AFields: TArray<string>): TAtlasVcsLogEntry;
 begin
   if (Length(AFields) < 4) or (Length(AFields[0]) < 7) then
   begin
-    raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Nachricht erwartet');
+    raise EAtlasVcsParse.Create(cLogFourFields);
   end;
   Result := Default(TAtlasVcsLogEntry);
   Result.Revision := AFields[0];
@@ -732,7 +756,7 @@ begin
     end;
     if mIndex > High(mEntries) then
     begin
-      raise EAtlasVcsParse.Create('git diff --name-status: Pfad fehlt');
+      raise EAtlasVcsParse.Create(cDiffPathMissing);
     end;
     mChange := Default(TAtlasVcsChange);
     mChange.Staged := True;
@@ -745,10 +769,10 @@ begin
       Inc(mIndex);
       if mIndex > High(mEntries) then
       begin
-        raise EAtlasVcsParse.Create('git diff --name-status: neuer Pfad fehlt');
+        raise EAtlasVcsParse.Create(cDiffNewPathMissing);
       end;
     end;
-    mChange.Path := VcsFullPath(ARoot, NextPath(mEntries, mIndex, 'git diff --name-status: Pfad fehlt'));
+    mChange.Path := VcsFullPath(ARoot, NextPath(mEntries, mIndex, cDiffPathMissing));
     Result := Result + [mChange];
   end;
 end;
@@ -772,7 +796,7 @@ begin
     mFields := mItem.Split([#0]);
     if (Length(mFields) < 4) or (Length(mFields[0]) < 7) then
     begin
-      raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Betreff erwartet');
+      raise EAtlasVcsParse.Create(cLogSubjectFields);
     end;
     mCommit := Default(TAtlasVcsIncomingCommit);
     mCommit.Hash := mFields[0];
@@ -863,7 +887,7 @@ begin
     mFields[4] := Copy(mItem, mStart, MaxInt);
     if (mCount < 4) or (Length(mFields[0]) < 7) then
     begin
-      raise EAtlasVcsParse.Create('git log -L: Hash, Autor, Zeit und Nachricht erwartet');
+      raise EAtlasVcsParse.Create(cLineLogFields);
     end;
     mCommit := Default(TAtlasVcsLineCommit);
     mCommit.Revision := mFields[0];
@@ -898,7 +922,7 @@ begin
     mSplit := Pos(#$1F, mItem);
     if mSplit < 8 then
     begin
-      raise EAtlasVcsParse.Create('git log: Hash und Nachricht erwartet');
+      raise EAtlasVcsParse.Create(cLogHashAndMessage);
     end;
     mMessage.Revision := Copy(mItem, 1, mSplit - 1);
     mMessage.Message := TrimRight(Copy(mItem, mSplit + 1, MaxInt));
@@ -1022,7 +1046,7 @@ begin
   mHash := Field(mLine, 0, False);
   if (Length(mHash) < 40) or not TryStrToInt(Field(mLine, 2, False), mFinal) then
   begin
-    raise EAtlasVcsParse.Create('git blame: Kopfzeile erwartet');
+    raise EAtlasVcsParse.Create(cBlameHeaderMissing);
   end;
   mCommit := CommitFor(mHash);
   ReadCommitInfo(FCommits[mCommit]);
