@@ -709,7 +709,6 @@ begin
         mItems.Free;
       end;
     except
-      // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Hintergrundjobs; AJob.Fail meldet
       on E: Exception do
       begin
         AJob.Fail(E);

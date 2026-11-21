@@ -171,7 +171,6 @@ begin
   except
     on EAbort do
       raise;
-    // lsp-ignore: catch-all-without-raise -- der Fehler steht als Antwort in seinem Abschnitt
     on E: Exception do
     begin
       Result.Ok := False;

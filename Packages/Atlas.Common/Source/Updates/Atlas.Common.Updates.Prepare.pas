@@ -366,7 +366,6 @@ begin
       FStage.Detail := mError.Detail;
       Result := 1;
     end;
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Updaters; Fehler steht in FStage
     on mError: Exception do
     begin
       FStage.Error := TUpdateErrors.cUnexpected;
