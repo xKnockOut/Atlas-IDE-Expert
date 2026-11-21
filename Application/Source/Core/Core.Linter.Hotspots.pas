@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Hotspots;
+﻿unit Core.Linter.Hotspots;
 
-// Internals-Rolle Shell: --hotspots (#1354). Hotspots des Ziels aus --check (sonst des aktuellen Ordners) samt
+// Host-Rolle Core: --hotspots (#1354). Hotspots des Ziels aus --check (sonst des aktuellen Ordners) samt
 // Methoden und Änderungskopplung als Markdown, HTML oder JSON nach der Endung der Datei.
 
 interface
@@ -10,16 +10,17 @@ uses
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
   Core.CommandLine,
-  Shell.Linter.Settings;
+  Core.Linter.Settings,
+  Core.Linter.Host;
 
 type
   TLinterHotspots = class
   public
     /// <summary>Exit-Code 0; 3 ohne Versionsverwaltung, mit hotspots.enabled = false und bei Fehlern.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>Analyse der Dateien des Ziels wie --check; der Index enthält nur das Projekt.</summary>
     class function Analyze(const ATarget: TLinterTarget; const ASettings: TServerSettings;
-      const AVcs: IHotspotVcs): THotspotResult; static;
+      const AVcs: IHotspotVcs; const AHost: TCoreLinterHost): THotspotResult; static;
   end;
 
 implementation
@@ -35,10 +36,9 @@ uses
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Hotspots.Report,
   Core.Hotspots,
-  Shell.Linter.Output,
-  Shell.Linter.Files,
-  Atlas.Common.Localization.Texts,
-  Shell.Composition.Platform;
+  Core.Linter.Output,
+  Core.Linter.Files,
+  Atlas.Common.Localization.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -67,7 +67,7 @@ end;
 { TLinterHotspots }
 
 class function TLinterHotspots.Analyze(const ATarget: TLinterTarget; const ASettings: TServerSettings;
-  const AVcs: IHotspotVcs): THotspotResult;
+  const AVcs: IHotspotVcs; const AHost: TCoreLinterHost): THotspotResult;
 var
   mRoot: string;
   mSources: TCheckSourceFunc;
@@ -75,7 +75,8 @@ var
   mService: THotspotService;
   mRequest: THotspotRequest;
 begin
-  mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, mRoot, mSources), mSources);
+  mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, AHost.InstalledVersions, mRoot,
+    mSources), mSources);
   mService := THotspotService.Create(mIndex, ReaderFunc());
   try
     mRequest := THotspotRequest.FromSettings(ASettings);
@@ -100,7 +101,8 @@ begin
 end;
 
 /// <summary>Einstellungen und Versionsverwaltung prüfen, analysieren und schreiben; Exit-Code.</summary>
-function Report(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget): Integer;
+function Report(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget; const AHost: TCoreLinterHost):
+  Integer;
 var
   mSettings: TServerSettings;
   mVcs: IHotspotVcs;
@@ -112,17 +114,17 @@ begin
     TLinterOutput.Error(cTexts[TLinterHotspotsText.Off].Text);
     Exit(TFindingsOutput.cExitFailure);
   end;
-  if not TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, ATarget.ConfigRoot, mSettings, mVcs, mError) then
+  if not TCoreHotspotVcs.Detect(AHost.Vcs(), ATarget.ConfigRoot, mSettings, mVcs, mError) then
   begin
     TLinterOutput.Error(cTexts[TLinterHotspotsText.NoVcs].Fmt([mError]));
     Exit(TFindingsOutput.cExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
-  WriteReport(AOptions, TLinterHotspots.Analyze(ATarget, mSettings, mVcs));
+  WriteReport(AOptions, TLinterHotspots.Analyze(ATarget, mSettings, mVcs, AHost));
   Result := TFindingsOutput.cExitClean;
 end;
 
-class function TLinterHotspots.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterHotspots.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mTarget: TLinterTarget;
 begin
@@ -137,7 +139,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    Result := Report(AOptions, mTarget);
+    Result := Report(AOptions, mTarget, AHost);
   except
     on E: Exception do
     begin
@@ -148,6 +150,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Hotspots', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Hotspots', cTexts);
 
 end.

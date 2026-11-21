@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Check;
+﻿unit Core.Linter.Check;
 
-// Internals-Rolle Shell: --check (#95), die Prüfung ohne Editor. Mit --suppression-stats statt der Treffer die
+// Host-Rolle Core: --check (#95), die Prüfung ohne Editor. Mit --suppression-stats statt der Treffer die
 // Auswertung der Unterdrückungskommentare, mit --metrics die Code-Metriken (#66), mit --todos die offenen
 // TODO-Einträge (#68). Bekannte Treffer aus der Baseline werden ausgeblendet; --update-baseline schreibt sie neu
 // (#97). Mit --format sarif trägt jedes Ergebnis partialFingerprints und mit Baseline baselineState. Mit --timings
@@ -26,12 +26,14 @@ uses
   Core.CommandLine,
   Core.VersionControlChanges,
   Core.WorkspaceGroup,
-  Shell.Linter.Baseline;
+  Core.Linter.Baseline,
+  Core.Linter.Host;
 
 type
   TLinterCheck = class
   private
     FOptions: TCommandLineOptions;
+    FHost: TCoreLinterHost;
     FConfigRoot: string;
     FSettings: TServerSettings;
     FFilter: TFindingFilter;
@@ -67,12 +69,12 @@ type
     function Render: string;
     procedure FinishTimings(AElapsedMs: Int64);
   public
-    constructor Create(const AOptions: TCommandLineOptions; const AConfigRoot: string);
+    constructor Create(const AOptions: TCommandLineOptions; const AConfigRoot: string; const AHost: TCoreLinterHost);
     destructor Destroy; override;
     /// <summary>Prüft das Ziel und schreibt das Ergebnis; Exit-Code.</summary>
     function Execute: Integer;
     /// <summary>--check; Fehler in der Befehlszeile und unerwartete Fehler geben 3.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
   end;
 
 implementation
@@ -85,19 +87,21 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.ServerActivity,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
-  Shell.Linter.Changes,
-  Shell.Linter.Index,
-  Shell.Linter.Reports;
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
+  Core.Linter.Changes,
+  Core.Linter.Index,
+  Core.Linter.Reports;
 
 { TLinterCheck }
 
-constructor TLinterCheck.Create(const AOptions: TCommandLineOptions; const AConfigRoot: string);
+constructor TLinterCheck.Create(const AOptions: TCommandLineOptions; const AConfigRoot: string;
+  const AHost: TCoreLinterHost);
 begin
   inherited Create;
   FOptions := AOptions;
+  FHost := AHost;
   FConfigRoot := AConfigRoot;
   FTimings := Default(TCheckTimings);
   FTimings.IndexMs := -1;
@@ -133,13 +137,13 @@ end;
 
 function TLinterCheck.Candidates(out ASources: TCheckSourceFunc): TArray<string>;
 begin
-  Result := TLinterFiles.Collect(FOptions.CheckTarget, FSettings, FRoot, ASources);
+  Result := TLinterFiles.Collect(FOptions.CheckTarget, FSettings, FHost.InstalledVersions, FRoot, ASources);
   FPackages := TLinterFiles.Packages(Result);
   FPrograms := TLinterFiles.Programs(Result);
   // --update-baseline schreibt immer für alle Dateien; den Hinweis dazu gibt TLinterSettings.Validate.
   if (FOptions.ChangedRef <> '') and not FOptions.UpdateBaseline then
   begin
-    FGit := TLinterChanges.Detect(FConfigRoot, FSettings);
+    FGit := TLinterChanges.Detect(FConfigRoot, FSettings, FHost);
     Result := TLinterChanges.Select(FOptions, Result, FGit);
   end;
 end;
@@ -373,7 +377,7 @@ begin
   // Metriken und TODOs brauchen keinen Index.
   if not (FOptions.NoIndex or FOptions.Metrics or FOptions.Todos) then
   begin
-    FGroup := TLinterIndex.Load(FOptions, FConfigRoot, FTimings, FMemory);
+    FGroup := TLinterIndex.Load(FOptions, FConfigRoot, FTimings, FMemory, FHost);
   end;
   if FOptions.Timings then
   begin
@@ -404,7 +408,7 @@ begin
   end;
 end;
 
-class function TLinterCheck.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterCheck.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mTarget: TLinterTarget;
   mCheck: TLinterCheck;
@@ -415,7 +419,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    mCheck := TLinterCheck.Create(AOptions, mTarget.ConfigRoot);
+    mCheck := TLinterCheck.Create(AOptions, mTarget.ConfigRoot, AHost);
     try
       Result := mCheck.Execute;
     finally

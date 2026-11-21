@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Output;
+﻿unit Core.Linter.Output;
 
-// Internals-Rolle Shell: Ausgabe des Linter-Modus (#95). Das Ergebnis geht nach --output oder auf stdout,
+// Host-Rolle Core: Ausgabe des Linter-Modus (#95). Das Ergebnis geht nach --output oder auf stdout,
 // Meldungen zum Ablauf auf stderr; das Zeitprofil (#1356) in seine Datei oder auf stderr, anonym mit name#N
 // statt Unit-Namen (#1478), mit --log-names im Klartext; die erste Zeile bzw. "anonymized" sagt, welches.
 
@@ -170,6 +170,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Output', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Output', cTexts);
 
 end.

@@ -1,11 +1,12 @@
-﻿unit Shell.Linter.Files;
+﻿unit Core.Linter.Files;
 
-// Internals-Rolle Shell: Dateien des Linter-Modus (#95). Ziel ist eine .dproj (Hauptdatei und Units des Projekts,
+// Host-Rolle Core: Dateien des Linter-Modus (#95). Ziel ist eine .dproj (Hauptdatei und Units des Projekts,
 // mit deren Symbolen und Suchpfaden für $I, #860), ein Ordner (alle .pas, .dpr, .dpk darunter) oder eine Datei.
 
 interface
 
 uses
+  System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Projects.PackageReader,
@@ -21,9 +22,11 @@ type
     class function IsReportFile(const AFileName: string): Boolean; static;
     /// <summary>Symbole und Include-Dateien der Prüfung (#860): ADefines und die Suchpfade des Projekts.</summary>
     class function SourcesOf(const ADefines, AIncludePaths: TArray<string>): TCheckSourceFunc; static;
-    /// <summary>Dateien von ATarget; ARoot ist der Ordner, zu dem die Pfade relativ sind.</summary>
-    class function Collect(const ATarget: string; const ASettings: TServerSettings; out ARoot: string;
-      out ASources: TCheckSourceFunc): TArray<string>; static;
+    /// <summary>Dateien von ATarget; ARoot ist der Ordner, zu dem die Pfade relativ sind. AVersions nennt die
+    /// installierten Delphi-Versionen (TCoreLinterHost.InstalledVersions).</summary>
+    class function Collect(const ATarget: string; const ASettings: TServerSettings;
+      const AVersions: TFunc<TArray<string>>; out ARoot: string; out ASources: TCheckSourceFunc): TArray<string>;
+      static;
     /// <summary>Lesbares Projekt mit Konfiguration und Plattform aus ASettings.</summary>
     class function DprojOptionsOf(const ASettings: TServerSettings): TDprojOptions; static;
     /// <summary>Hauptdatei (.dpr) der .dproj AProject; '' ohne.</summary>
@@ -43,7 +46,6 @@ implementation
 
 uses
   Atlas.Common.Projects.Contract,
-  System.SysUtils,
   System.IOUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.FileEncoding,
@@ -53,8 +55,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
-  Shell.Composition.Platform,
-  Shell.Linter.Output,
+  Core.Linter.Output,
   Atlas.Text.Files;
 
 { TLinterFiles }
@@ -136,21 +137,21 @@ end;
 
 /// <summary>Dateien der .dproj AFileName. Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter
 /// (#860); ohne installiertes Delphi die Version, die das Projekt erwartet (#1321).</summary>
-function ProjectSources(const AFileName: string; const ASettings: TServerSettings; AFiles: TList<string>):
-  TCheckSourceFunc;
+function ProjectSources(const AFileName: string; const ASettings: TServerSettings;
+  const AVersions: TFunc<TArray<string>>; AFiles: TList<string>): TCheckSourceFunc;
 var
   mProject: TProjectInfo;
   mVersion: string;
 begin
   mProject := TDprojReader.Load(AFileName, TLinterFiles.DprojOptionsOf(ASettings));
   mVersion := TDelphiVersions.Choose(ASettings.DelphiVersion,
-    TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(AFileName)), TDelphiInstallation.Versions);
+    TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(AFileName)), AVersions());
   AddProjectFiles(mProject, AFiles);
   Result := TLinterFiles.SourcesOf(TIndexProjectFiles.Defines(mProject, mVersion), mProject.SearchPaths);
 end;
 
-class function TLinterFiles.Collect(const ATarget: string; const ASettings: TServerSettings; out ARoot: string;
-  out ASources: TCheckSourceFunc): TArray<string>;
+class function TLinterFiles.Collect(const ATarget: string; const ASettings: TServerSettings;
+  const AVersions: TFunc<TArray<string>>; out ARoot: string; out ASources: TCheckSourceFunc): TArray<string>;
 var
   mFiles: TList<string>;
   mFullPath: string;
@@ -167,7 +168,7 @@ begin
     end
     else if SameText(ExtractFileExt(ATarget), '.dproj') then
     begin
-      ASources := ProjectSources(mFullPath, ASettings, mFiles);
+      ASources := ProjectSources(mFullPath, ASettings, AVersions, mFiles);
     end
     else
     begin

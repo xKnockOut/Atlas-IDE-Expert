@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Architecture;
+﻿unit Core.Linter.Architecture;
 
-// Internals-Rolle Shell: --architecture (#1118). Architekturbericht des Ziels aus --check (sonst des aktuellen
+// Host-Rolle Core: --architecture (#1118). Architekturbericht des Ziels aus --check (sonst des aktuellen
 // Ordners) als Markdown oder HTML nach der Endung der Datei, als .json der Stand für den Vergleich (#1121).
 // Berichte vergleichen mit --compare, sonst mit architecture.baseline.
 
@@ -11,7 +11,8 @@ uses
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Architecture.Comparison,
   Core.CommandLine,
-  Shell.Linter.Settings;
+  Core.Linter.Settings,
+  Core.Linter.Host;
 
 type
   /// <summary>Vergleich eines Berichts mit einem gespeicherten Stand.</summary>
@@ -25,9 +26,10 @@ type
   public
     /// <summary>Exit-Code 1, wenn eine Abweichung aus --fail-on (sonst architecture.failOn) vorkommt, sonst 0; bei
     /// Fehlern 3.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>Übersicht über die Dateien des Ziels wie --check; der Index enthält nur das Projekt.</summary>
-    class function OverviewOf(const ATarget: TLinterTarget; const ASettings: TServerSettings): TArchitectureOverview;
+    class function OverviewOf(const ATarget: TLinterTarget; const ASettings: TServerSettings;
+      const AHost: TCoreLinterHost): TArchitectureOverview;
       static;
   end;
 
@@ -44,8 +46,8 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.UsesLocator,
-  Shell.Linter.Output,
-  Shell.Linter.Files,
+  Core.Linter.Output,
+  Core.Linter.Files,
   Atlas.Common.Localization.Texts;
 
 type
@@ -83,7 +85,7 @@ end;
 { TLinterArchitecture }
 
 class function TLinterArchitecture.OverviewOf(const ATarget: TLinterTarget;
-  const ASettings: TServerSettings): TArchitectureOverview;
+  const ASettings: TServerSettings; const AHost: TCoreLinterHost): TArchitectureOverview;
 var
   mRoot: string;
   mSources: TCheckSourceFunc;
@@ -91,7 +93,8 @@ var
   mService: TArchitectureService;
   mRequest: TArchitectureRequest;
 begin
-  mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, mRoot, mSources), mSources);
+  mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, AHost.InstalledVersions, mRoot,
+    mSources), mSources);
   mService := TArchitectureService.Create(mIndex, ReaderFunc(), DefinesFunc(mSources));
   try
     mRequest := TArchitectureRequest.FromSettings(ASettings);
@@ -220,7 +223,7 @@ end;
 
 /// <summary>Bericht und Vergleich; Exit-Code.</summary>
 function Report(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget;
-  var AComparison: TLinterArchitectureComparison): Integer;
+  var AComparison: TLinterArchitectureComparison; const AHost: TCoreLinterHost): Integer;
 var
   mSettings: TServerSettings;
   mOverview: TArchitectureOverview;
@@ -232,7 +235,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
-  mOverview := TLinterArchitecture.OverviewOf(ATarget, mSettings);
+  mOverview := TLinterArchitecture.OverviewOf(ATarget, mSettings, AHost);
   if not Compare(AOptions, ATarget, mSettings, mOverview, AComparison) then
   begin
     Exit(TFindingsOutput.cExitFailure);
@@ -241,7 +244,7 @@ begin
   Result := Finish(AOptions, mOverview, AComparison);
 end;
 
-class function TLinterArchitecture.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterArchitecture.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mTarget: TLinterTarget;
   mComparison: TLinterArchitectureComparison;
@@ -253,7 +256,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    Result := Report(AOptions, mTarget, mComparison);
+    Result := Report(AOptions, mTarget, mComparison, AHost);
   except
     on E: Exception do
     begin
@@ -264,6 +267,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Architecture', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Architecture', cTexts);
 
 end.

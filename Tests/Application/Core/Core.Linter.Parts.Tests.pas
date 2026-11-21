@@ -1,9 +1,9 @@
-﻿unit Shell.Linter.Parts.Tests;
+﻿unit Core.Linter.Parts.Tests;
 
 // Teile des Linter-Modus (#95): Ziel und Einstellungen, Dateien, Baseline (#97), gespeicherte Abfragen (#1351),
 // Formatieren (#1358), Befehlszeile der Prüfung, Berichte (#66, #68), Projekt einer Datei (#1112), Testprogramme
 // (#1353), Sammelkorrektur (#1352) und Architekturübersicht (#1118). Die Befehle selbst prüft Shell.Linter.Tests
-// über TLinterShell; Shell.Linter.Changes und Shell.Linter.Hotspots brauchen eine Versionsverwaltung und laufen
+// über TLinterShell; Core.Linter.Changes und Core.Linter.Hotspots brauchen eine Versionsverwaltung und laufen
 // nur dort mit.
 
 interface
@@ -81,18 +81,19 @@ uses
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Diagnostics.CheckProfile,
   Core.CommandLine,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
-  Shell.Linter.Index,
-  Shell.Linter.Baseline,
-  Shell.Linter.Reports,
-  Shell.Linter.Architecture,
-  Shell.Linter.Query,
-  Shell.Linter.Formatting,
-  Shell.Linter.AffectedTests,
-  Shell.Linter.Fix,
-  Atlas.Tests.TempFolder;
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
+  Core.Linter.Index,
+  Core.Linter.Baseline,
+  Core.Linter.Reports,
+  Core.Linter.Architecture,
+  Core.Linter.Query,
+  Core.Linter.Formatting,
+  Core.Linter.AffectedTests,
+  Core.Linter.Fix,
+  Atlas.Tests.TempFolder,
+  Shell.Linter;
 
 { TLinterPartsTests }
 
@@ -186,10 +187,11 @@ begin
   WriteFile('Src\A.pas', 'unit A; interface implementation end.');
   WriteFile('Src\Sub\B.dpr', 'program B; begin end.');
   WriteFile('Src\C.txt', 'x');
-  Assert.AreEqual(2, Integer(Length(TLinterFiles.Collect(Path('Src'), TServerSettings.Default, mRoot, mSources))));
+  Assert.AreEqual(2, Integer(Length(TLinterFiles.Collect(Path('Src'), TServerSettings.Default,
+    TLinterShell.Host.InstalledVersions, mRoot, mSources))));
   Assert.AreEqual(TPath.GetFullPath(Path('Src')), mRoot);
-  Assert.AreEqual(1, Integer(Length(TLinterFiles.Collect(Path('Src\A.pas'), TServerSettings.Default, mRoot,
-    mSources))), 'einzelne Datei');
+  Assert.AreEqual(1, Integer(Length(TLinterFiles.Collect(Path('Src\A.pas'), TServerSettings.Default,
+    TLinterShell.Host.InstalledVersions, mRoot, mSources))), 'einzelne Datei');
   Assert.IsTrue(Assigned(mSources));
 end;
 
@@ -369,7 +371,7 @@ begin
   WriteFile('Src\A.pas', 'unit A; interface uses B; implementation end.');
   WriteFile('Src\B.pas', 'unit B; interface implementation end.');
   Assert.IsTrue(TLinterTarget.Resolve(Path('Src'), mTarget));
-  mOverview := TLinterArchitecture.OverviewOf(mTarget, TServerSettings.Default);
+  mOverview := TLinterArchitecture.OverviewOf(mTarget, TServerSettings.Default, TLinterShell.Host);
   Assert.AreEqual(2, Integer(Length(mOverview.Units)));
 end;
 

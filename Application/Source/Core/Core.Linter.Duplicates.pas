@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Duplicates;
+﻿unit Core.Linter.Duplicates;
 
-// Internals-Rolle Shell: --check-duplicates, die Kopien-Prüfung im Build. Routinen mit wortgleichem Rumpf in
+// Host-Rolle Core: --check-duplicates, die Kopien-Prüfung im Build. Routinen mit wortgleichem Rumpf in
 // verschiedenen Units (TDuplicateBodies) über alle Dateien des Ziels wie bei --check (Ausschlüsse aus atlas.json,
 // --units). Mindestlänge und weitere Ausschlüsse aus den Optionen der Regel duplicate-routine-body (minLines,
 // exclude). Bekannte Gruppen stehen in der Baseline (--baseline, sonst atlas-duplicates.json neben atlas.json);
@@ -15,7 +15,8 @@ interface
 
 uses
   Atlas.Common.Metrics.DuplicateBaseline,
-  Core.CommandLine;
+  Core.CommandLine,
+  Core.Linter.Host;
 
 type
   TLinterDuplicates = class
@@ -24,7 +25,7 @@ type
     cBaselineName = 'atlas-duplicates.json';
   public
     /// <summary>--check-duplicates, siehe Kopf der Unit.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>Bericht als Text: neue Kopien, tote Einträge, Zusammenfassung.</summary>
     class function RenderText(const AComparison: TDuplicateComparison; AGroups: Integer): string; static;
     /// <summary>Bericht als JSON.</summary>
@@ -45,9 +46,9 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Text.Json,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
   Atlas.Common.Localization.Texts;
 
 type
@@ -284,7 +285,8 @@ begin
 end;
 
 /// <summary>Prüfung bzw. --update-baseline über die Dateien des Ziels.</summary>
-function Execute(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget): Integer;
+function Execute(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget; const AHost: TCoreLinterHost):
+  Integer;
 var
   mSettings: TServerSettings;
   mRuleOptions, mRoot, mBaselinePath: string;
@@ -300,7 +302,7 @@ begin
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
   mRuleOptions := RuleOptionsOf(mSettings);
   mMinLines := TRuleOptions.Int(mRuleOptions, 'minLines', TDuplicateBodies.cMinBodyLines);
-  mFiles := TLinterFiles.Collect(AOptions.CheckTarget, mSettings, mRoot, mSources);
+  mFiles := TLinterFiles.Collect(AOptions.CheckTarget, mSettings, AHost.InstalledVersions, mRoot, mSources);
   mUnits := UnitsOf(mFiles, mRoot, mSettings, TLinterSettings.FilterOf(AOptions),
     TRuleOptions.Strings(mRuleOptions, 'exclude', nil));
   mGroups := TDuplicateBodies.Find(mUnits, mMinLines);
@@ -333,7 +335,7 @@ begin
   end;
 end;
 
-class function TLinterDuplicates.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterDuplicates.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mTarget: TLinterTarget;
 begin
@@ -348,7 +350,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    Result := Execute(AOptions, mTarget);
+    Result := Execute(AOptions, mTarget, AHost);
   except
     on E: Exception do
     begin
@@ -359,6 +361,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Duplicates', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Duplicates', cTexts);
 
 end.

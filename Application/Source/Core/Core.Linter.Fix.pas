@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Fix;
+﻿unit Core.Linter.Fix;
 
-// Internals-Rolle Shell: Sammelkorrektur (#1352). --fix <Regeln|all> wendet je Datei die sicheren Korrekturen
+// Host-Rolle Core: Sammelkorrektur (#1352). --fix <Regeln|all> wendet je Datei die sicheren Korrekturen
 // dieser Regeln an (TBulkFix: Konfidenz ab fix.minConfidence, Katalogfeld safeFix, bis zu drei Durchgänge, keine
 // neuen Syntaxfehler) und schreibt alle geänderten Dateien oder keine, in ihrer Kodierung und mit ihren
 // Zeilenenden; --fix-dry-run gibt stattdessen den vereinigten Diff aus. Es gelten --units, --changed, --diff,
@@ -23,7 +23,8 @@ uses
   Atlas.Common.Rules.BulkFix,
   Core.CommandLine,
   Core.VersionControlChanges,
-  Core.WorkspaceGroup;
+  Core.WorkspaceGroup,
+  Core.Linter.Host;
 
 type
   /// <summary>Was die Prüfung einer Datei für die Sammelkorrektur braucht.</summary>
@@ -45,6 +46,7 @@ type
   TLinterFix = class
   private
     FOptions: TCommandLineOptions;
+    FHost: TCoreLinterHost;
     FSettings: TServerSettings;
     FFilter: TFindingFilter;
     FAllRules: TArray<IRule>;
@@ -66,12 +68,12 @@ type
     procedure FixFile(const AFileName: string; const ASource: TCheckSource);
     procedure Report;
   public
-    constructor Create(const AOptions: TCommandLineOptions);
+    constructor Create(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost);
     destructor Destroy; override;
     /// <summary>Korrigiert das Ziel; Exit-Code nach den verbliebenen Treffern, 3 bei Fehlern.</summary>
     function Execute(const AConfigRoot: string): Integer;
     /// <summary>--fix: Sammelkorrektur statt Prüfung.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>Treffer einer Datei für die Sammelkorrektur und den Exit-Code: Regeln, Filter, Baseline (deren
     /// Treffer bleiben) und mit --changed-lines nur Treffer in geänderten Zeilen des Ausgangstexts. Eigene Routine,
     /// damit die anonyme Methode nur ihren Parameter einfängt.</summary>
@@ -89,12 +91,12 @@ uses
   Atlas.Common.History.ChangedFiles,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Diagnostics.CheckProfile,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
-  Shell.Linter.Changes,
-  Shell.Linter.Index,
-  Shell.Linter.Baseline,
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
+  Core.Linter.Changes,
+  Core.Linter.Index,
+  Core.Linter.Baseline,
   Atlas.Common.Localization.Texts;
 
 type
@@ -147,10 +149,11 @@ end;
 
 { TLinterFix }
 
-constructor TLinterFix.Create(const AOptions: TCommandLineOptions);
+constructor TLinterFix.Create(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost);
 begin
   inherited Create;
   FOptions := AOptions;
+  FHost := AHost;
   FFormats := TDictionary<string, TFileFormat>.Create;
   FRelative := TDictionary<string, string>.Create;
 end;
@@ -204,14 +207,14 @@ begin
   mTimings := Default(TCheckTimings);
   if not FOptions.NoIndex then
   begin
-    FGroup := TLinterIndex.Load(FOptions, AConfigRoot, mTimings, nil);
+    FGroup := TLinterIndex.Load(FOptions, AConfigRoot, mTimings, nil, FHost);
   end;
-  Result := TLinterFiles.Collect(FOptions.CheckTarget, FSettings, FRoot, ASources);
+  Result := TLinterFiles.Collect(FOptions.CheckTarget, FSettings, FHost.InstalledVersions, FRoot, ASources);
   FPackages := TLinterFiles.Packages(Result);
   FPrograms := TLinterFiles.Programs(Result);
   if FOptions.ChangedRef <> '' then
   begin
-    FGit := TLinterChanges.Detect(AConfigRoot, FSettings);
+    FGit := TLinterChanges.Detect(AConfigRoot, FSettings, FHost);
     Result := TLinterChanges.Select(FOptions, Result, FGit);
   end;
 end;
@@ -321,7 +324,7 @@ begin
   Result := TFindingsOutput.ExitCode(FRemaining, FOptions.FailOn);
 end;
 
-class function TLinterFix.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterFix.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mTarget: TLinterTarget;
   mFix: TLinterFix;
@@ -337,7 +340,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    mFix := TLinterFix.Create(AOptions);
+    mFix := TLinterFix.Create(AOptions, AHost);
     try
       Result := mFix.Execute(mTarget.ConfigRoot);
     finally
@@ -369,6 +372,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Fix', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Fix', cTexts);
 
 end.

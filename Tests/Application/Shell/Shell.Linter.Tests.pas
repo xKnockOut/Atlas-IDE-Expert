@@ -135,9 +135,9 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Core.CommandLine,
   Shell.Linter,
-  Shell.Linter.Check,
-  Shell.Linter.Duplicates,
-  Shell.Linter.Mutation,
+  Core.Linter.Check,
+  Core.Linter.Duplicates,
+  Core.Linter.Mutation,
   Core.Workspace.Listings;
 
 const
@@ -238,9 +238,9 @@ var
 begin
   mCache := TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache');
   Assert.AreEqual(3, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Fehlt.pas'), '--output', FOutput,
-    '--index-cache', mCache])));
+    '--index-cache', mCache]), TLinterShell.Host));
   Assert.AreEqual(1, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Kaputt.pas'), '--format=json',
-    '--output', FOutput, '--index-cache', mCache])));
+    '--output', FOutput, '--index-cache', mCache]), TLinterShell.Host));
   Assert.Contains(OutputText, 'Kaputt.pas');
 end;
 
@@ -456,7 +456,7 @@ procedure TShellLinterTests.MutateFormatsAndExitCodes;
     begin
       TFile.Delete(FOutput);
     end;
-    Result := TLinterMutation.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]));
+    Result := TLinterMutation.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]), TLinterShell.Host);
   end;
 
 begin

@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Query;
+﻿unit Core.Linter.Query;
 
-// Internals-Rolle Shell: --query (#1351). Code-Abfrage über das Ziel aus --check (sonst den aktuellen Ordner) mit
+// Host-Rolle Core: --query (#1351). Code-Abfrage über das Ziel aus --check (sonst den aktuellen Ordner) mit
 // Symbolindex wie --check; Ergebnis als Text, JSON oder CSV (--format) auf stdout bzw. in --output. "@name" führt
 // eine gespeicherte Abfrage aus.
 
@@ -9,7 +9,8 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Query.Contract,
-  Core.CommandLine;
+  Core.CommandLine,
+  Core.Linter.Host;
 
 type
   /// <summary>Abfrage nach dem Auflösen gespeicherter Abfragen.</summary>
@@ -22,7 +23,7 @@ type
   public
     /// <summary>Exit-Code 0; 1 mit --fail-on-match (oder failIfAny der gespeicherten Abfrage), wenn sie etwas
     /// findet; 3 bei einem Fehler in der Abfrage, bei Aufruffehlern und bei query.enabled aus.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>"@name" aus ASettings.Queries, sonst AText; False, wenn es die gespeicherte Abfrage nicht gibt.
     /// </summary>
     class function Resolve(const AText: string; AFailOnMatch: Boolean; const ASettings: TServerSettings;
@@ -30,7 +31,7 @@ type
     /// <summary>Abfrage über die Dateien von ATarget ohne Projekt: Index aus denselben Dateien wie --check.
     /// </summary>
     class function InFolder(const ATarget: string; const ASettings: TServerSettings;
-      const AQuery: string): TQueryResult; static;
+      const AQuery: string; const AHost: TCoreLinterHost): TQueryResult; static;
   end;
 
 implementation
@@ -47,10 +48,10 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Output,
   Core.WorkspaceGroup,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
-  Shell.Linter.Index,
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
+  Core.Linter.Index,
   Atlas.Common.Localization.Texts;
 
 type
@@ -131,27 +132,27 @@ begin
 end;
 
 class function TLinterQuery.InFolder(const ATarget: string; const ASettings: TServerSettings;
-  const AQuery: string): TQueryResult;
+  const AQuery: string; const AHost: TCoreLinterHost): TQueryResult;
 var
   mFiles: TArray<string>;
   mRoot: string;
   mSources: TCheckSourceFunc;
 begin
-  mFiles := TLinterFiles.Collect(ATarget, ASettings, mRoot, mSources);
+  mFiles := TLinterFiles.Collect(ATarget, ASettings, AHost.InstalledVersions, mRoot, mSources);
   Result := FolderQueries(TLinterFiles.IndexOf(mFiles, mSources), mRoot, mFiles, ASettings.References).Execute(
     TQueryRequest.Create(AQuery, 0));
 end;
 
 /// <summary>Führt AQuery aus: mit Projekt über den Index der Gruppe, ohne über die Dateien des Ziels.</summary>
 function Execute(const AOptions: TCommandLineOptions; const AConfigRoot, ATarget: string;
-  const ASettings: TServerSettings; const AQuery: string): TQueryResult;
+  const ASettings: TServerSettings; const AQuery: string; const AHost: TCoreLinterHost): TQueryResult;
 var
   mGroup: TCoreWorkspaceGroup;
   mTimings: TCheckTimings;
 begin
   // Die Abfrage misst nicht (--timings gilt nur für die Prüfung).
   mTimings := Default(TCheckTimings);
-  mGroup := TLinterIndex.Load(AOptions, AConfigRoot, mTimings, nil);
+  mGroup := TLinterIndex.Load(AOptions, AConfigRoot, mTimings, nil, AHost);
   try
     if Length(mGroup.AllFiles) > 0 then
     begin
@@ -160,7 +161,7 @@ begin
     else
     begin
       // Ohne Projekt die Dateien des Ziels wie --check und --architecture, in einem eigenen Index.
-      Result := TLinterQuery.InFolder(ATarget, ASettings, AQuery);
+      Result := TLinterQuery.InFolder(ATarget, ASettings, AQuery, AHost);
     end;
   finally
     TLinterIndex.Release(mGroup);
@@ -169,7 +170,7 @@ end;
 
 /// <summary>Einstellungen laden, Abfrage auflösen, ausführen und ausgeben; Exit-Code.</summary>
 function Answer(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget;
-  AFormat: TQueryOutputFormat): Integer;
+  AFormat: TQueryOutputFormat; const AHost: TCoreLinterHost): Integer;
 var
   mSettings: TServerSettings;
   mQuery: TLinterQueryText;
@@ -186,7 +187,7 @@ begin
   begin
     Exit(TFindingsOutput.cExitFailure);
   end;
-  mResult := Execute(AOptions, ATarget.ConfigRoot, ATarget.Target, mSettings, mQuery.Text);
+  mResult := Execute(AOptions, ATarget.ConfigRoot, ATarget.Target, mSettings, mQuery.Text, AHost);
   if mResult.Failed then
   begin
     TLinterOutput.Error(TQueryOutput.ErrorText(mResult));
@@ -200,7 +201,7 @@ begin
   end;
 end;
 
-class function TLinterQuery.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterQuery.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mFormat: TQueryOutputFormat;
   mTarget: TLinterTarget;
@@ -217,7 +218,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    Result := Answer(AOptions, mTarget, mFormat);
+    Result := Answer(AOptions, mTarget, mFormat, AHost);
   except
     on E: Exception do
     begin
@@ -228,6 +229,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Query', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Query', cTexts);
 
 end.

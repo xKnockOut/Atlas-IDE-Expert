@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Settings;
+﻿unit Core.Linter.Settings;
 
-// Internals-Rolle Shell: Ziel und Einstellungen des Linter-Modus (#95). atlas.json im Ordner des Ziels oder
+// Host-Rolle Core: Ziel und Einstellungen des Linter-Modus (#95). atlas.json im Ordner des Ziels oder
 // darüber gilt wie im Editor; globale Schlüssel aus der globalen Datei (TConfigurationScopes).
 
 interface
@@ -65,7 +65,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin.SavedQueries,
   Core.Bootstrap,
-  Shell.Linter.Output,
+  Core.Linter.Output,
   Atlas.Common.Localization.Texts;
 
 type
@@ -319,6 +319,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Settings', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Settings', cTexts);
 
 end.

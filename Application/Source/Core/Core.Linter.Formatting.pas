@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Formatting;
+﻿unit Core.Linter.Formatting;
 
-// Internals-Rolle Shell: Formatieren ohne IDE (#1358). --format-check bzw. --format-write statt der Regeln.
+// Host-Rolle Core: Formatieren ohne IDE (#1358). --format-check bzw. --format-write statt der Regeln.
 // Dieselben Dateien wie --check (Ziel, --units, --changed/--diff, Ausschlüsse aus atlas.json), mit
 // --changed-lines nur die geänderten Zeilen. Formatregeln wie „Dokument formatieren“: format.* aus atlas.json über
 // .editorconfig über den Vorgaben (ohne die Einrückung der IDE-Optionen). Geschrieben wird atomar über eine
@@ -16,7 +16,8 @@ uses
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.FormatOutput,
   Core.CommandLine,
-  Core.VersionControlChanges;
+  Core.VersionControlChanges,
+  Core.Linter.Host;
 
 type
   /// <summary>Was das Formatieren je Datei braucht.</summary>
@@ -33,7 +34,7 @@ type
   TLinterFormatting = class
   public
     /// <summary>--format-check bzw. --format-write; Exit-Code nach TFormatOutput.ExitCode, 3 bei Fehlern.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>Ausgabeart aus --format; False mit Meldung bei einer unpassenden Kombination.</summary>
     class function KindOf(const AOptions: TCommandLineOptions; out AKind: TFormatOutputKind): Boolean; static;
     /// <summary>Schreibt AText atomar: erst eine Nachbardatei, dann in einem Schritt ersetzen. Kodierung aus
@@ -51,10 +52,10 @@ uses
   Atlas.Common.Editing.EditorConfig,
   Atlas.Common.Lsp.Formatting,
   Platform.Server,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
-  Shell.Linter.Changes,
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
+  Core.Linter.Changes,
   Atlas.Common.Localization.Texts;
 
 type
@@ -212,7 +213,7 @@ end;
 
 /// <summary>Dateien des Ziels sammeln, mit --changed/--diff auf die geänderten beschränken und formatieren.</summary>
 function FormatTarget(const AOptions: TCommandLineOptions; const AConfigRoot: string;
-  const ASettings: TServerSettings): TArray<TFormattedFile>;
+  const ASettings: TServerSettings; const AHost: TCoreLinterHost): TArray<TFormattedFile>;
 var
   mRun: TLinterFormatRun;
   mCandidates: TArray<string>;
@@ -222,11 +223,12 @@ begin
   mRun.Settings := ASettings;
   mRun.Filter := Default(TFindingFilter);
   mRun.Filter.Units := AOptions.UnitFilter;
-  mCandidates := TLinterFiles.Collect(AOptions.CheckTarget, ASettings, mRun.Root, mRun.Sources);
+  mCandidates := TLinterFiles.Collect(AOptions.CheckTarget, ASettings, AHost.InstalledVersions, mRun.Root,
+    mRun.Sources);
   try
     if AOptions.ChangedRef <> '' then
     begin
-      mRun.Git := TLinterChanges.Detect(AConfigRoot, ASettings);
+      mRun.Git := TLinterChanges.Detect(AConfigRoot, ASettings, AHost);
       mCandidates := TLinterChanges.Select(AOptions, mCandidates, mRun.Git);
     end;
     Result := FormatAll(mRun, mCandidates);
@@ -254,7 +256,7 @@ begin
   Result := TFormatOutput.ExitCode(AFiles, AOptions.FormatWrite);
 end;
 
-class function TLinterFormatting.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterFormatting.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mKind: TFormatOutputKind;
   mTarget: TLinterTarget;
@@ -268,7 +270,7 @@ begin
   try
     mSettings := TLinterSettings.Load(mTarget.ConfigRoot);
     TFileEncodingDefaults.SetFolder(mTarget.ConfigRoot, mSettings.DefaultEncoding);
-    Result := Finish(AOptions, FormatTarget(AOptions, mTarget.ConfigRoot, mSettings), mKind);
+    Result := Finish(AOptions, FormatTarget(AOptions, mTarget.ConfigRoot, mSettings, AHost), mKind);
   except
     on E: Exception do
     begin
@@ -279,6 +281,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Formatting', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Formatting', cTexts);
 
 end.
