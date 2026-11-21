@@ -34,7 +34,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Lsp.Metrics;
 
