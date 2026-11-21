@@ -113,9 +113,6 @@ type
     /// <summary>Klasse und Meldung aus einer Meldung des Debuggers (deutsch oder englisch). Die Klasse kann auch
     /// ein Code wie „$C0000005“ sein. False, wenn keine Klasse erkennbar ist.</summary>
     class function Parse(const AText: string; out AClass, AMessage: string): Boolean; static;
-    /// <summary>Ergebnis einer Auswertung ohne Hochkommas: „'Abc'“ → „Abc“, „''“ innen → „'“. Ohne Hochkommas
-    /// unverändert.</summary>
-    class function Unquote(const AText: string): string; static;
     /// <summary>Ist AText ein gültiger Klassenname (Bezeichner, auch mit Punkten)?</summary>
     class function IsClassName(const AText: string): Boolean; static;
   end;
@@ -498,21 +495,6 @@ begin
 end;
 
 { TAtlasDebugExceptionText }
-
-class function TAtlasDebugExceptionText.Unquote(const AText: string): string;
-var
-  mText: string;
-begin
-  mText := Trim(AText);
-  if (Length(mText) >= 2) and (mText[1] = '''') and (mText[Length(mText)] = '''') then
-  begin
-    Result := StringReplace(Copy(mText, 2, Length(mText) - 2), '''''', '''', [rfReplaceAll]);
-  end
-  else
-  begin
-    Result := mText;
-  end;
-end;
 
 function TokenAfter(const AText, AKeyword: string; out AToken: string): Boolean;
 var

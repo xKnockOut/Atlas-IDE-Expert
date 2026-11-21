@@ -8,7 +8,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Foundation.Contract;
 
 type
   TAtlasCalls = class
@@ -17,6 +18,9 @@ type
     class procedure Call(const AProc: TProc); static;
     /// <summary>Gibt AText an ASink, wenn es gesetzt ist (Meldungsziel eines Dienstes).</summary>
     class procedure Send(const ASink: TProc<string>; const AText: string); static;
+    /// <summary>Neue Quelle eines Bereichs zeigen: AUpdate (Inhalt neu), danach ASource.Shown, wenn ASource gesetzt
+    /// ist.</summary>
+    class procedure ShowSource(const ASource: IAtlasShownSource; const AUpdate: TProc); static;
   end;
 
 implementation
@@ -36,6 +40,15 @@ begin
   if Assigned(ASink) then
   begin
     ASink(AText);
+  end;
+end;
+
+class procedure TAtlasCalls.ShowSource(const ASource: IAtlasShownSource; const AUpdate: TProc);
+begin
+  AUpdate();
+  if ASource <> nil then
+  begin
+    ASource.Shown;
   end;
 end;
 

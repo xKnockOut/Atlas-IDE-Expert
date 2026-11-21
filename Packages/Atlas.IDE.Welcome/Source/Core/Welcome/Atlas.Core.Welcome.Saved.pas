@@ -66,21 +66,8 @@ implementation
 
 uses
   Atlas.Core.Editor.MethodToggle,
-  Atlas.Text.Chars;
-
-function NameOfPath(const APath: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := Trim(APath);
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
+  Atlas.Text.Chars,
+  Atlas.Text.Uris;
 
 { Sortieren }
 
@@ -97,7 +84,7 @@ begin
   end;
   if Result = 0 then
   begin
-    Result := CompareText(NameOfPath(A.FileName), NameOfPath(B.FileName));
+    Result := CompareText(TTextUris.FileNameOf(Trim(A.FileName)), TTextUris.FileNameOf(Trim(B.FileName)));
   end;
   if Result = 0 then
   begin
@@ -199,8 +186,8 @@ begin
   Result := nil;
   for mItem in AItems do
   begin
-    mHaystack := LowerCase(mItem.Text + #1 + NameOfPath(mItem.FileName) + #1 + mItem.ProjectName + #1 + mItem.Detail +
-      #1 + mItem.UnitName);
+    mHaystack := LowerCase(mItem.Text + #1 + TTextUris.FileNameOf(Trim(mItem.FileName)) + #1 + mItem.ProjectName +
+      #1 + mItem.Detail + #1 + mItem.UnitName);
     mMatches := True;
     for mWord in mWords do
     begin
@@ -469,7 +456,7 @@ begin
   begin
     Exit(UnitName);
   end;
-  Result := NameOfPath(FileName);
+  Result := TTextUris.FileNameOf(Trim(FileName));
   if Line >= 0 then
   begin
     Result := Result + ':' + IntToStr(Line + 1);

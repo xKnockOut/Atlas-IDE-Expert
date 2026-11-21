@@ -183,7 +183,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.UI.Tracker.Flow.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Controls;
 
 {$R *.dfm}
 
@@ -880,11 +881,7 @@ end;
 
 function TAtlasFlowFrame.StatusText: string;
 begin
-  Result := '';
-  if FParts.Status.Visible then
-  begin
-    Result := FParts.Status.Caption;
-  end;
+  Result := TAtlasControls.ShownCaption(FParts.Status);
 end;
 
 function TAtlasFlowFrame.VisibleRows: TArray<TAtlasFlowStuck>;

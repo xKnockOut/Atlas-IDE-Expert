@@ -105,7 +105,9 @@ uses
   System.StrUtils,
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Internals.GitHubJson,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Text.Names;
 
 { TAtlasGitHubApi }
 
@@ -268,16 +270,6 @@ begin
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/commits/' + ASha + '/status';
 end;
 
-/// <summary>Kennung ohne führende "#" ("#753" → "753"), wie TAtlasTrackerNaming.BranchKey.</summary>
-function NumberText(const AKey: string): string;
-begin
-  Result := Trim(AKey);
-  while (Result <> '') and (Result[1] = '#') do
-  begin
-    Delete(Result, 1, 1);
-  end;
-end;
-
 class function TAtlasGitHubApi.AllPullsUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := Base(ATarget);
@@ -308,7 +300,7 @@ end;
 
 class function TAtlasGitHubApi.NumberOfKey(const AKey: string): Integer;
 begin
-  if not TryStrToInt(NumberText(AKey), Result) or (Result <= 0) then
+  if not TryStrToInt(TTextNames.KeyWithoutHash(AKey), Result) or (Result <= 0) then
   begin
     Result := 0;
   end;
@@ -332,15 +324,8 @@ begin
 end;
 
 class function TAtlasGitHubApi.Remaining(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
 begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
-  begin
-    Result := Integer(mRest);
-  end;
+  Result := TAtlasTicks.LeftOf(AWatch, ATimeoutMs);
 end;
 
 class function TAtlasGitHubApi.WriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult;

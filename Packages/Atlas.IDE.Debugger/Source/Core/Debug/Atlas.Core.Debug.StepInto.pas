@@ -128,7 +128,8 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Json;
 
 { TAtlasStepRow }
 
@@ -262,17 +263,8 @@ begin
 end;
 
 class function TAtlasStepInto.Arguments(const AUri: string; ALine: Integer): string;
-var
-  mItems: TJSONArray;
 begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    mItems.Add(ALine);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
-  end;
+  Result := TJsonBuild.UriLine(AUri, ALine);
 end;
 
 class function TAtlasStepInto.ReadAnswer(AJson: TJSONValue; out AAnswer: TAtlasStepAnswer): Boolean;

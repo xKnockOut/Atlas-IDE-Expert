@@ -32,6 +32,12 @@ type
     procedure ThemeChangeAppliesAndNotifies;
     [Test]
     procedure RowsStackFromTop;
+    /// <summary>AddListBox stapelt die Liste unter die bisherigen Zeilen, in der logischen Höhe.</summary>
+    [Test]
+    procedure ListBoxStacksBelowRows;
+    /// <summary>NewFooterButton: mindestens cFooterButtonMinWidth breit, rechts oben verankert, mit Klick.</summary>
+    [Test]
+    procedure FooterButtonHasMinimumWidth;
     [Test]
     procedure ButtonsFitTextAndRoles;
     [Test]
@@ -214,6 +220,45 @@ begin
     mDialog.FitHeight;
     Assert.IsTrue(mDialog.ClientHeight >= mSecond.Top + mSecond.Height,
       Format('ClientHeight %d, Ende %d', [mDialog.ClientHeight, mSecond.Top + mSecond.Height]));
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.ListBoxStacksBelowRows;
+var
+  mDialog: TAtlasDialog;
+  mRow: TPanel;
+  mList: TListBox;
+begin
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 300);
+  try
+    mRow := mDialog.AddRow(22);
+    mList := mDialog.AddListBox(120);
+    mDialog.HandleNeeded;
+    Assert.AreSame(mDialog, mList.Parent, 'Parent');
+    Assert.AreEqual(mDialog.ScaleValue(120), mList.Height);
+    Assert.IsTrue(mList.Top > mRow.Top, Format('Top %d/%d', [mRow.Top, mList.Top]));
+    Assert.AreEqual(mDialog.ScaleValue(TAtlasDialog.cRowGap), Integer(mList.Margins.Left));
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.FooterButtonHasMinimumWidth;
+var
+  mDialog: TAtlasDialog;
+  mFooter: TPanel;
+  mButton: TButton;
+begin
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 300);
+  try
+    mFooter := mDialog.AddRow(40);
+    mButton := mDialog.NewFooterButton(mFooter, 'OK', nil);
+    Assert.AreSame(mFooter, mButton.Parent, 'Parent');
+    Assert.IsTrue(mButton.Width >= mDialog.ScaleValue(TAtlasDialog.cFooterButtonMinWidth), 'Mindestbreite');
+    Assert.AreEqual(mDialog.ScaleValue(TAtlasDialog.cFooterButtonHeight), mButton.Height);
+    Assert.IsTrue(akRight in mButton.Anchors, 'rechts verankert');
   finally
     mDialog.Free;
   end;

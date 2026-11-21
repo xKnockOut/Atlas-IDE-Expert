@@ -309,7 +309,9 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Transitions,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  System.StrUtils,
+  Atlas.Text.Timestamps;
 
 { TAtlasBoardRequest }
 
@@ -481,20 +483,6 @@ begin
   Result := UpperCase(Result);
 end;
 
-function NameIn(const AName: string; const ANames: array of string): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if SameText(AName, mName) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 class function TAtlasTrackerBoard.PriorityLevel(const APriority: string): Integer;
 var
   mName: string;
@@ -505,19 +493,19 @@ begin
   begin
     mName := Trim(Copy(mName, Pos(':', mName) + 1, MaxInt));
   end;
-  if NameIn(mName, ['Show-stopper', 'Critical', 'Kritisch', 'Blocker', 'Urgent', 'Dringend', 'P0']) then
+  if MatchText(mName, ['Show-stopper', 'Critical', 'Kritisch', 'Blocker', 'Urgent', 'Dringend', 'P0']) then
   begin
     Result := cPriorityCritical;
   end
-  else if NameIn(mName, ['Major', 'High', 'Hoch', 'Wichtig', 'P1']) then
+  else if MatchText(mName, ['Major', 'High', 'Hoch', 'Wichtig', 'P1']) then
   begin
     Result := cPriorityHigh;
   end
-  else if NameIn(mName, ['Normal', 'Medium', 'Mittel', 'P2']) then
+  else if MatchText(mName, ['Normal', 'Medium', 'Mittel', 'P2']) then
   begin
     Result := cPriorityNormal;
   end
-  else if NameIn(mName, ['Minor', 'Low', 'Niedrig', 'Gering', 'Trivial', 'P3', 'P4']) then
+  else if MatchText(mName, ['Minor', 'Low', 'Niedrig', 'Gering', 'Trivial', 'P3', 'P4']) then
   begin
     Result := cPriorityLow;
   end
@@ -1105,11 +1093,7 @@ end;
 
 class function TAtlasTrackerBoard.TimeValue(const AText: string): TDateTime;
 begin
-  Result := 0;
-  if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
-  begin
-    Result := 0;
-  end;
+  Result := TTextTimestamp.IsoOrZero(AText, True);
 end;
 
 end.

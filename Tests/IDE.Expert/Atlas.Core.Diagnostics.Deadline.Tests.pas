@@ -31,12 +31,16 @@ type
     procedure SinceNeverGoesNegative;
     [Test]
     procedure RealClockAdvances;
+    /// <summary>LeftOf: übrige Zeit einer Stoppuhr, nie unter 0.</summary>
+    [Test]
+    procedure LeftOfNeverGoesNegative;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasDeadlineTests }
@@ -123,6 +127,18 @@ begin
   mStart := TAtlasTicks.Now;
   Sleep(20);
   Assert.IsTrue(TAtlasTicks.Since(mStart) >= 10);
+end;
+
+procedure TAtlasDeadlineTests.LeftOfNeverGoesNegative;
+var
+  mWatch: TStopwatch;
+  mLeft: Integer;
+begin
+  mWatch := TStopwatch.StartNew;
+  mLeft := TAtlasTicks.LeftOf(mWatch, 60000);
+  Assert.IsTrue((mLeft > 0) and (mLeft <= 60000), IntToStr(mLeft));
+  Assert.AreEqual(0, TAtlasTicks.LeftOf(mWatch, 0));
+  Assert.AreEqual(0, TAtlasTicks.LeftOf(mWatch, -5));
 end;
 
 initialization
