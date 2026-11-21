@@ -85,7 +85,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Checker,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Common.Localization.Texts;
 
 type
@@ -136,7 +136,7 @@ function SetBaselineAside(const AFileName: string; out ATarget: string): Boolean
 begin
   ATarget := AFileName + '.defekt';
   // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand.
-  Result := TShellPlatform.MoveReplacing(AFileName, ATarget);
+  Result := TServerPlatform.MoveReplacing(AFileName, ATarget);
 end;
 
 function BaselineFiles: TLspBaselineFiles;

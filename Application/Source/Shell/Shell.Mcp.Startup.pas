@@ -39,7 +39,7 @@ uses
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
-  Shell.Platform,
+  Platform.Server,
   Shell.Bootstrap,
   Shell.Diagnostics;
 
@@ -115,7 +115,7 @@ begin
     procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
     begin
       ACrashCases.Enabled := AWorkspace.Configuration.Settings.ServerCrashCases;
-      ACrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
+      ACrashCases.RequestFailed(AMethod, AParams, AError, TServerPlatform.StackTraceOf(AError));
     end;
 end;
 

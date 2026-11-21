@@ -43,7 +43,7 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Query.Catalog,
   Atlas.Common.Query.Output,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Common.Localization.Texts,
   Shell.Texts;
 
@@ -123,7 +123,7 @@ var
   mTrees: TSyntaxTreeCacheStats;
 begin
   Result := Default(TServerStatus);
-  Result.ProcessId := TShellPlatform.CurrentProcessId;
+  Result.ProcessId := TServerPlatform.CurrentProcessId;
   Result.Version := TProductVersion.cVersion;
   Result.Started := AStarted;
   Result.UptimeMs := MilliSecondsBetween(Now, AStarted);

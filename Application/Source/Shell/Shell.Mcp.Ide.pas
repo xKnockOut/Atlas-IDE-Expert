@@ -63,7 +63,7 @@ uses
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeInbox,
   Atlas.Common.Mcp.IdeBuilds,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
   Atlas.Text.Files;
@@ -265,7 +265,7 @@ begin
   begin
     mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
     case TMcpIdeEdits.Send(mInbox, TMcpIdeEdit.Make(AFileName, mExpected, AText),
-      TShellPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
+      TServerPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
       function: Int64
       begin
         Result := TThread.GetTickCount64;
@@ -294,7 +294,7 @@ begin
   mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
   mEdit := TMcpIdeEdit.Make(AFileName, AExpected, AText);
   mEdit.Hold := True;
-  case TMcpIdeEdits.Send(mInbox, mEdit, TShellPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
+  case TMcpIdeEdits.Send(mInbox, mEdit, TServerPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
     function: Int64
     begin
       Result := TThread.GetTickCount64;
@@ -363,7 +363,7 @@ begin
     raise EMcpToolError.Create(mReason);
   end;
   mInbox := TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
-  if TMcpIdeBuilds.Send(mInbox, mRequest, TShellPlatform.FolderWait(mInbox, TMcpIdeBuilds.cPollMs, cAnswerSafetyMs),
+  if TMcpIdeBuilds.Send(mInbox, mRequest, TServerPlatform.FolderWait(mInbox, TMcpIdeBuilds.cPollMs, cAnswerSafetyMs),
     TickClock(), mBuildText, mReason) <> TMcpIdeBuildOutcome.Done then
   begin
     raise EMcpToolError.Create(mReason);
@@ -394,7 +394,7 @@ begin
   end;
   mInbox := TMcpIdeQuestions.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
   case TMcpIdeInbox.Exchange(mInbox, TMcpIdeQuestions.RequestText(AQuestion),
-    TMcpIdeWaiting.Make(TShellPlatform.FolderWait(mInbox, TMcpIdeQuestions.cPollMs, cAnswerSafetyMs), TickClock(),
+    TMcpIdeWaiting.Make(TServerPlatform.FolderWait(mInbox, TMcpIdeQuestions.cPollMs, cAnswerSafetyMs), TickClock(),
     TMcpIdeQuestions.cTakeMs, TMcpIdeQuestions.AnswerMs(AQuestion)), mAnswerText) of
     TMcpIdeExchangeOutcome.NotTaken:
       Result := TMcpQuestionOutcome.NotTaken;
@@ -468,7 +468,7 @@ begin
     raise EMcpToolError.Create(mReason);
   end;
   mInbox := TMcpIdeDebug.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
-  if TMcpIdeDebug.Send(mInbox, mRequest, TMcpIdeWaiting.Make(TShellPlatform.FolderWait(mInbox, TMcpIdeDebug.cPollMs,
+  if TMcpIdeDebug.Send(mInbox, mRequest, TMcpIdeWaiting.Make(TServerPlatform.FolderWait(mInbox, TMcpIdeDebug.cPollMs,
     cAnswerSafetyMs), TickClock(), TMcpIdeDebug.cTakeMs, TMcpIdeDebug.AnswerMs(AArguments)), Result,
     mReason) <> TMcpIdeDebugOutcome.Done then
   begin
