@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.Guard.Tests;
+﻿unit Atlas.Plugin.Diagnostics.Guard.Tests;
 
 interface
 
@@ -100,8 +100,8 @@ uses
   System.IOUtils,
   System.DateUtils,
   System.Generics.Collections,
-  Atlas.Core.Product.Version,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Product.Version,
+  Atlas.Plugin.Diagnostics.Guard;
 
 /// <summary>Löst einen von drei Fehlern an drei verschiedenen Stellen aus: Wiederholungen derselben Stelle zählen
 /// innerhalb von TAtlasFuse.cRepeatMs nur einmal.</summary>
@@ -136,7 +136,7 @@ begin
   TAtlasGuard.RotatingLog.Folder := FFolder;
   TAtlasGuard.Fuse.ResetAll;
   // Diese Tests prüfen Inhalte der Zeilen; anonym schreibt das Protokoll sie als text#N (#1478, eigene Tests in
-  // Atlas.Core.Diagnostics.LogRedaction.Tests).
+  // Atlas.Plugin.Diagnostics.LogRedaction.Tests).
   TAtlasGuard.SetLogNames(True);
 end;
 

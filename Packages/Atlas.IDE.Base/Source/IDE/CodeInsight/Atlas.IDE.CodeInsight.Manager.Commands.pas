@@ -70,8 +70,8 @@ implementation
 uses
   System.SyncObjs,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread;
 
 /// <summary>Antwort als JSON-Text; '' ohne Antwort. Gibt AAnswer frei.</summary>
 function TakeJson(AAnswer: TJSONValue): string;

@@ -50,7 +50,7 @@ uses
   System.Types,
   System.IOUtils,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,

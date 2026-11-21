@@ -78,8 +78,8 @@ implementation
 
 uses
   Atlas.Core.Welcome.Layouts,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Strings,

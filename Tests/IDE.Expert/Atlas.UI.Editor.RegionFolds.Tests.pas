@@ -23,7 +23,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Settings.Plugin.Store,
   Atlas.UI.Editor.RegionFolds;
 

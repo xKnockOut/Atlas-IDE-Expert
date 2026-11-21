@@ -281,8 +281,8 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread;
 
 const
   // Tag der Einträge im Kontextmenü eines Bereichs.

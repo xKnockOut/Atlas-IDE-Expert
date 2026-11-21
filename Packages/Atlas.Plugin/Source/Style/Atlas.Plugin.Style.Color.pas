@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Color;
+﻿unit Atlas.Plugin.Style.Color;
 
 // Farbmathematik von Atlas (#411), ohne VCL: Farben im Format von TColor
 // ($00BBGGRR), damit die Oberfläche sie direkt verwenden kann. Mischen wie
@@ -67,7 +67,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -517,6 +517,6 @@ begin
 end;
 
 initialization
-  TAtlasTextLanguage.AddTable('Atlas.Core.Style.Color', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
+  TAtlasTextLanguage.AddTable('Atlas.Plugin.Style.Color', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

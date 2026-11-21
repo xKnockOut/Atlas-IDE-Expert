@@ -108,7 +108,7 @@ uses
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.DataBreakpoints.Strings,
   Atlas.IDE.Foundation.Debugger,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeDataBreakpoint.TListener }
 

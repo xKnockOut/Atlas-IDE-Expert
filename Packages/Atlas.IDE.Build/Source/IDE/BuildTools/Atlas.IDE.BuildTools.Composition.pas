@@ -65,7 +65,7 @@ uses
   Atlas.UI.Build.SettingsSection,
   System.Types,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,

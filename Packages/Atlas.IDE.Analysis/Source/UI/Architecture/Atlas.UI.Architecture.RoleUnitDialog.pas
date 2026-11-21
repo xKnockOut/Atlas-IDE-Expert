@@ -53,7 +53,7 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Atlas.UI.Analysis.Strings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
 const

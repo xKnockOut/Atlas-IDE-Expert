@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Listeners;
+﻿unit Atlas.Plugin.Style.Listeners;
 
 // Abonnenten des Themenwechsels (#2061): Fenster, Dialoge und Steuerelemente
 // melden sich mit einem Besitzer und einem Rückruf an und beim Freigeben

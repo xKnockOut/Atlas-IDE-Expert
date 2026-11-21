@@ -66,7 +66,7 @@ uses
   System.IOUtils,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 function Occurrences(const ASub, AText: string): Integer;
 var

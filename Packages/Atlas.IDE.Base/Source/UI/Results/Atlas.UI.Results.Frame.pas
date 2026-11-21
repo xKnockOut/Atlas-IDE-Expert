@@ -88,7 +88,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Style.Symbol;
+  Atlas.Plugin.Style.Symbol;
 
 {$R *.dfm}
 

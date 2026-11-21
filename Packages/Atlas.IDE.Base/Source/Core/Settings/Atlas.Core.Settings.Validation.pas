@@ -39,7 +39,7 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Core.Settings.JsonText,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

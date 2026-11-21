@@ -66,7 +66,7 @@ implementation
 uses
   Vcl.Dialogs,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,

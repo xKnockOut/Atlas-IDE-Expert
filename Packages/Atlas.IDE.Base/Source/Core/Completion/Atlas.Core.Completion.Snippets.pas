@@ -145,7 +145,7 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Text.Chars,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

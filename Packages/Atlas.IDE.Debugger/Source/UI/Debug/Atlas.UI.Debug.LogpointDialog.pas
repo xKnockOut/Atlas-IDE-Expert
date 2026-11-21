@@ -65,7 +65,7 @@ implementation
 
 uses
   Atlas.Core.Debug.ValueSeries,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.Logpoints.Strings;
 
 const

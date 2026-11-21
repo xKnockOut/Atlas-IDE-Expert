@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Localization.Language.Tests;
+﻿unit Atlas.Plugin.Localization.Language.Tests;
 
 // Tests für die Sprache der Plugin-Texte und die Texttabellen der Units (#1458).
 
@@ -56,11 +56,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Files.ExternalChanges,
   Atlas.Core.Files.Format,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.UI.Strings,
   Atlas.UI.Strings.Tests;
 

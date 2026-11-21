@@ -216,7 +216,7 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Json,
   Atlas.Text.Uris,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Tracker.Internals.FormYaml;
 
 const

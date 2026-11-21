@@ -63,7 +63,7 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Assistants.Strings,
   Atlas.Core.Assistants.EditInbox,

@@ -14,7 +14,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Symbol;
+  Atlas.Plugin.Style.Symbol;
 
 type
   TAtlasIdeSymbol = class
@@ -41,9 +41,9 @@ uses
   Vcl.ImageCollection,
   Vcl.VirtualImageList,
   ToolsAPI,
-  Atlas.Core.Product.Version,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Product.Version,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Foundation.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.EditorStyle;

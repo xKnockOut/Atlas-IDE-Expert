@@ -94,10 +94,10 @@ uses
   System.Generics.Collections,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}

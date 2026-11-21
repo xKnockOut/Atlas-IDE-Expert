@@ -31,7 +31,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Lsp.IdeTypes,
   Atlas.IDE.CodeInsight.IdeTypes,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 /// <summary>Typ als Text mit Unit (System.Integer); '' ohne Typ oder bei namenlosen Typen.</summary>
 function TypeText(AType: TRttiType): string;

@@ -150,10 +150,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.BugReport` | `Core/Diagnostics/Atlas.Core.Diagnostics.BugReport.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Export` | `Core/Diagnostics/Atlas.Core.Diagnostics.Export.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.FeatureTable` | `Core/Diagnostics/Atlas.Core.Diagnostics.FeatureTable.pas` | Ordner `Core/Diagnostics` |
-| `Atlas.Core.Diagnostics.Guard` | `Core/Diagnostics/Atlas.Core.Diagnostics.Guard.pas` | Ordner `Core/Diagnostics` |
-| `Atlas.Core.Diagnostics.LogRedaction` | `Core/Diagnostics/Atlas.Core.Diagnostics.LogRedaction.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Hangs` | `Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas` | Ordner `Core/Diagnostics` |
-| `Atlas.Core.Diagnostics.MainThread` | `Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Processes.OutputLines` | `Core/Processes/Atlas.Core.Processes.OutputLines.pas` | Zeilen aus der Ausgabe eines Prozesses für die Projektaufgaben (Modul Build) und die Konsolenausgabe (Modul Debugger), #581 |
 | `Atlas.Core.Diagnostics.ModuleHost` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas` | gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455 |
 | `Atlas.Core.Diagnostics.ModuleHosting` | `Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas` | Module und ihre Teile in der Feature-Tabelle, #1455 |
@@ -164,7 +161,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.Edition` | `Core/Diagnostics/Atlas.Core.Diagnostics.Edition.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.SafeMode` | `Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.ServerPackage` | `Core/Diagnostics/Atlas.Core.Diagnostics.ServerPackage.pas` | Ordner `Core/Diagnostics` |
-| `Atlas.Core.Diagnostics.Shutdown` | `Core/Diagnostics/Atlas.Core.Diagnostics.Shutdown.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.StackRing` | `Core/Diagnostics/Atlas.Core.Diagnostics.StackRing.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.StartTimes` | `Core/Diagnostics/Atlas.Core.Diagnostics.StartTimes.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Teardown` | `Core/Diagnostics/Atlas.Core.Diagnostics.Teardown.pas` | Ordner `Core/Diagnostics` |
@@ -175,8 +171,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.AsyncWait` | `Core/Diagnostics/Atlas.Core.Diagnostics.AsyncWait.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.BoundedStream` | `Core/Diagnostics/Atlas.Core.Diagnostics.BoundedStream.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.UserIdle` | `Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas` | Ordner `Core/Diagnostics` |
-| `Atlas.Core.Diagnostics.UnloadSafety` | `Core/Diagnostics/Atlas.Core.Diagnostics.UnloadSafety.pas` | Ordner `Core/Diagnostics` |
-| `Atlas.Core.Diagnostics.WorkerSlot` | `Core/Diagnostics/Atlas.Core.Diagnostics.WorkerSlot.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.BackgroundJobs` | `Core/Diagnostics/Atlas.Core.Diagnostics.BackgroundJobs.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Timing` | `Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
@@ -303,7 +297,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Hover.View` | `Core/Hover/Atlas.Core.Hover.View.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Plan` | `Core/Hover/Atlas.Core.Hover.Plan.pas` | Ordner `Core/Hover`; Entscheidungen des Hover-Tooltips (Tasten, Zeitgeber, Aktionen), #1967 |
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
-| `Atlas.Core.Localization.Language` | `Core/Localization/Atlas.Core.Localization.Language.pas` | Sprache der Plugin-Texte für Core und UI, Texttabellen der Units (#1458) |
 | `Atlas.Core.Lsp.AccessChains` | `Core/Lsp/Atlas.Core.Lsp.AccessChains.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Providers.ServerProcess` | `Core/Lsp/Atlas.Core.Lsp.Providers.ServerProcess.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Client` | `Core/Lsp/Atlas.Core.Lsp.Client.pas` | Ordner `Core/Lsp` |
@@ -393,7 +386,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Marks` | `Core/Problems/Atlas.Core.Problems.Marks.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Contract.Sync` | `Core/Problems/Atlas.Core.Problems.Contract.Sync.pas` | Ordner `Core/Problems`: Verträge des Abgleichs mit Server und IDE (`IAtlasProblemsServer`, `IAtlasProblemsEditors`) |
 | `Atlas.Core.Problems.Flow` | `Core/Problems/Atlas.Core.Problems.Flow.pas` | Ordner `Core/Problems`: Ablauf der Probleme hinter `IAtlasProblemsServer` und `IAtlasProblemsEditors`, ohne IDE testbar |
-| `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Matching` | `Core/Projects/Atlas.Core.Projects.Matching.pas` | Ordner `Core/Projects` |
@@ -484,6 +476,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Signature.Providers.Server` | `Core/Signature/Atlas.Core.Signature.Providers.Server.pas` | Ordner `Core/Signature` |
 | `Atlas.Core.StartProfiles.Store` | `Core/StartProfiles/Atlas.Core.StartProfiles.Store.pas` | Lokale Datei der Startoptionen; Base liest und schreibt darin die vorübergehenden Startparameter, #1455 |
 | `Atlas.Core.Status.Contract` | `Core/Status/Atlas.Core.Status.Contract.pas` | Ordner `Core/Status` |
+| `Atlas.Core.Status.Signal` | `Core/Status/Atlas.Core.Status.Signal.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.IndexStore` | `Core/Status/Atlas.Core.Status.IndexStore.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.Lines` | `Core/Status/Atlas.Core.Status.Lines.pas` | Ordner `Core/Status` |
 | `Atlas.Core.CodeInsight.Plan` | `Core/CodeInsight/Atlas.Core.CodeInsight.Plan.pas` | Ordner `Core/CodeInsight`; Entscheidungen des Code Insight-Managers (Zeichen, Dateien, Start, Projekte), #1967 |
@@ -493,14 +486,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Status.FieldFlow` | `Core/Status/Atlas.Core.Status.FieldFlow.pas` | Ordner `Core/Status` |
 | `Atlas.Core.StatusBar.Content` | `Core/StatusBar/Atlas.Core.StatusBar.Content.pas` | Ordner `Core/StatusBar` |
 | `Atlas.Core.StatusBar.Layout` | `Core/StatusBar/Atlas.Core.StatusBar.Layout.pas` | Ordner `Core/StatusBar` |
-| `Atlas.Core.Style.Color` | `Core/Style/Atlas.Core.Style.Color.pas` | Ordner `Core/Style` |
-| `Atlas.Core.Style.Palette` | `Core/Style/Atlas.Core.Style.Palette.pas` | Ordner `Core/Style` |
-| `Atlas.Core.Style.Scaling` | `Core/Style/Atlas.Core.Style.Scaling.pas` | Ordner `Core/Style` |
-| `Atlas.Core.Style.Listeners` | `Core/Style/Atlas.Core.Style.Listeners.pas` | Abonnenten des Themenwechsels (#2061) |
-| `Atlas.Core.Style.Signal` | `Core/Style/Atlas.Core.Style.Signal.pas` | Ordner `Core/Style` |
-| `Atlas.Core.Style.Symbol` | `Core/Style/Atlas.Core.Style.Symbol.pas` | Ordner `Core/Style` |
-| `Atlas.Core.Style.Syntax` | `Core/Style/Atlas.Core.Style.Syntax.pas` | Ordner `Core/Style` |
-| `Atlas.Core.Style.Wrap` | `Core/Style/Atlas.Core.Style.Wrap.pas` | Ordner `Core/Style` |
 | `Atlas.Core.SymbolPath.Model` | `Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas` | Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455 |
 | `Atlas.Core.Undo.Providers.DiskTarget` | `Core/Undo/Atlas.Core.Undo.Providers.DiskTarget.pas` | Ordner `Core/Undo` |
 | `Atlas.Core.Undo.Providers.FileStore` | `Core/Undo/Atlas.Core.Undo.Providers.FileStore.pas` | Ordner `Core/Undo` |

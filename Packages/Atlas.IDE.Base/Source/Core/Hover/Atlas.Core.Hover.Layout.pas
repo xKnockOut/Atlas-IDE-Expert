@@ -40,7 +40,7 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Hover.Contract;
@@ -88,7 +88,7 @@ uses
   Atlas.Core.Hover.Texts,
   Atlas.Core.Hover.History,
   Atlas.Core.Hover.Contract.DebugValue,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   System.SysUtils,
   System.Math,
   System.StrUtils,

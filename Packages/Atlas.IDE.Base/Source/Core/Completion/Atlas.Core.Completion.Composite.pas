@@ -28,7 +28,7 @@ uses
   System.SysUtils,
   System.SyncObjs,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit;
 
 type
@@ -114,10 +114,10 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.Core.Diagnostics.Timing,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

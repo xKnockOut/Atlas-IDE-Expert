@@ -16,7 +16,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Tracker.IssueBoxes,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueFrame.Types;
@@ -78,7 +78,7 @@ uses
   System.Math,
   System.UITypes,
   Winapi.Windows,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Foundation.WrapLabel;
 
 const

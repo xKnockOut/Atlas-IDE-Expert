@@ -57,7 +57,7 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.TitledTip,

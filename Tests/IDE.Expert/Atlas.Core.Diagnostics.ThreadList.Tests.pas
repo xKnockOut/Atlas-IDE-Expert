@@ -29,7 +29,7 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Core.Diagnostics.ThreadList,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Setzt beim Freigeben AFreed: zeigt, wann ein Thread, der sich selbst freigibt, seine anonyme

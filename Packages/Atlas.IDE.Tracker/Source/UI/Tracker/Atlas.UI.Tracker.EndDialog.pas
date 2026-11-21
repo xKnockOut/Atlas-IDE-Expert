@@ -332,7 +332,7 @@ uses
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.GitHubStrings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Scaling;

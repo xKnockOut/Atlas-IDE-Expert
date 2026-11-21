@@ -91,7 +91,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Commands.Strings,
   Atlas.UI.Popup.Accessibility;
 

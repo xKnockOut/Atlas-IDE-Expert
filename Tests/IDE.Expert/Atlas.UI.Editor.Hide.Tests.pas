@@ -52,7 +52,7 @@ uses
   Vcl.ComCtrls,
   Vcl.StdCtrls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.UI.Strings,

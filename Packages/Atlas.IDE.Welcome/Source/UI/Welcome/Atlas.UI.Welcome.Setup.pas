@@ -133,8 +133,8 @@ implementation
 uses
   System.Math,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Foundation.Theme;

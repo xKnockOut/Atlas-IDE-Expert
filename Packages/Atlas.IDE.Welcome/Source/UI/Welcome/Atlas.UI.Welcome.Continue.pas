@@ -237,8 +237,8 @@ uses
   Winapi.Windows,
   Vcl.Themes,
   Atlas.Core.Welcome.QuickActions,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Theme;

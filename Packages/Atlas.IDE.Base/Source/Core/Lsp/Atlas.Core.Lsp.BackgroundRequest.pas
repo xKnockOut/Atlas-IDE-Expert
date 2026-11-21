@@ -18,8 +18,8 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Abschluss im Hauptthread: AOk, wenn AWork ohne Ausnahme endete; sonst AError mit der Meldung.</summary>
@@ -50,7 +50,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Lsp.Client;
 
 type

@@ -127,7 +127,7 @@ uses
   Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.Time.Strings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Scaling;

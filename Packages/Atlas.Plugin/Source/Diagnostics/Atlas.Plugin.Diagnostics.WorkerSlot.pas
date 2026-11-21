@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.WorkerSlot;
+﻿unit Atlas.Plugin.Diagnostics.WorkerSlot;
 
 // Arbeiter-Threads eines Objekts und was mit überfälligen geschieht.
 // Vorher setzten acht Kopien bei überschrittener Zeitgrenze
@@ -110,10 +110,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.UnloadSafety,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.UnloadSafety,
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -404,7 +404,7 @@ begin
 end;
 
 initialization
-  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.WorkerSlot', cTexts[TAtlasLanguage.German],
+  TAtlasTextLanguage.AddTable('Atlas.Plugin.Diagnostics.WorkerSlot', cTexts[TAtlasLanguage.German],
     cTexts[TAtlasLanguage.English]);
 
 end.

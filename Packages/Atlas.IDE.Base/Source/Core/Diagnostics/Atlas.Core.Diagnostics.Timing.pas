@@ -210,7 +210,7 @@ uses
   System.Diagnostics,
   System.Math,
   Atlas.Core.Diagnostics.BugReport,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

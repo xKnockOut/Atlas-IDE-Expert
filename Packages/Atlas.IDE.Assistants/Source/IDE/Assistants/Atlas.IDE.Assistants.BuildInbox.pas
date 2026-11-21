@@ -66,7 +66,7 @@ uses
   Winapi.Windows,
   ToolsAPI,
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings,

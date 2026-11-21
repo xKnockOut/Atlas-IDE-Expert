@@ -29,7 +29,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Strings,

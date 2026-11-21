@@ -28,7 +28,7 @@ uses
   System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Designer.Overlay;
 
 type

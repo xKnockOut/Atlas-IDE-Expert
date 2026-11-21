@@ -165,8 +165,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Problems.Store,

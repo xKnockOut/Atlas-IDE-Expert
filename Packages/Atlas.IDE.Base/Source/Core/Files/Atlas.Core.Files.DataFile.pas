@@ -86,7 +86,7 @@ uses
   System.SyncObjs,
   Atlas.Text.Encoding,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   // Protokoll- und Ausnahmetexte (nie übersetzt).

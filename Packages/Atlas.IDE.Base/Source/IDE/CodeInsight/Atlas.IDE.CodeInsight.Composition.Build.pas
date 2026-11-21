@@ -46,8 +46,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Baseline,
   Atlas.Core.Problems.Store,
@@ -58,7 +58,7 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Build.Contract;
 
 {$SCOPEDENUMS ON}

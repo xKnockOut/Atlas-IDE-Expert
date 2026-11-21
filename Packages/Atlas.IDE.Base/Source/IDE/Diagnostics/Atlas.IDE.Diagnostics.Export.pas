@@ -24,7 +24,7 @@ implementation
 
 uses
   Atlas.IDE.Foundation.DockWindow,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Diagnostics.Export,
   Atlas.UI.Diagnostics.ExportDialog,

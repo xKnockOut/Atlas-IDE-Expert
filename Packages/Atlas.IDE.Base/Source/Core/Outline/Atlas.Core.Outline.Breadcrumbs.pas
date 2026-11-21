@@ -210,7 +210,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   System.Math,
   System.StrUtils,
   Atlas.Core.Completion.Matching,

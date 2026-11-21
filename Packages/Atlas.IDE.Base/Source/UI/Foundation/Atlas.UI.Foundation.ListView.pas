@@ -89,7 +89,7 @@ uses
   System.SysUtils,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Style.Scaling;
+  Atlas.Plugin.Style.Scaling;
 
 const
   /// <summary>Rand links und rechts des Texts einer Zelle, logische Pixel.</summary>

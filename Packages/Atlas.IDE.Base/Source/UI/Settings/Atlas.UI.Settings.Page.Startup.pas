@@ -52,7 +52,7 @@ uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Undo.Names;

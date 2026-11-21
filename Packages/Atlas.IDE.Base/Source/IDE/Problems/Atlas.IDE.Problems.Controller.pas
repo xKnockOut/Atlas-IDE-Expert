@@ -117,7 +117,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Problems.Plan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Problems.Strings,
   Atlas.IDE.Foundation.Settings;
 

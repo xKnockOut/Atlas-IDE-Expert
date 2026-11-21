@@ -72,7 +72,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Windows,
   System.Types,
   System.IOUtils,
@@ -81,7 +81,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.UnitSearch.Model,

@@ -64,7 +64,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.Settings,

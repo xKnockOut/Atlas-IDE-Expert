@@ -35,7 +35,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.FlowMap;
 
 type
@@ -180,7 +180,7 @@ implementation
 uses
   System.Math,
   Winapi.Windows,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Tracker.Flow.Strings,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Scaling;

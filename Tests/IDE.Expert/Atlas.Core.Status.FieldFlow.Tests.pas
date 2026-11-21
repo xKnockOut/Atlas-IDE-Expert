@@ -88,7 +88,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Status.Registry;
 
 { TAtlasStatusFieldFlowTests }

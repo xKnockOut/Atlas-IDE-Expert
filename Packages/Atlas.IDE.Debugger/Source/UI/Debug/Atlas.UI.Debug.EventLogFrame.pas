@@ -117,7 +117,7 @@ uses
   Winapi.CommCtrl,
   Vcl.Clipbrd,
   Vcl.Themes,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Debug.EventLog.Strings,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Theme;

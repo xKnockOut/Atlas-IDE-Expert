@@ -76,7 +76,7 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.DebugControl.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings;
 

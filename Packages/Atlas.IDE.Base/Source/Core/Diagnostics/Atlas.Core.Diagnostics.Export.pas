@@ -47,7 +47,7 @@ uses
   System.DateUtils,
   System.Zip,
   System.Generics.Collections,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

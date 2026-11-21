@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.Guard;
+﻿unit Atlas.Plugin.Diagnostics.Guard;
 
 // Absturzsicherheit (#493), Teil ohne Windows und Open Tools API:
 // - TAtlasGuard.Run: jeder Einstiegspunkt aus der IDE (Timer, Notifier,
@@ -56,7 +56,7 @@
 //   ersten Fehler (und jeden neuen Grund) über OnError und schreibt beim
 //   nächsten Gelingen eine Zeile über die Lücke.
 // - Anonym (#1478): Jede Zeile läuft vor dem Schreiben durch
-//   TAtlasLogRedactor (Atlas.Core.Diagnostics.LogRedaction). Namen, Pfade und
+//   TAtlasLogRedactor (Atlas.Plugin.Diagnostics.LogRedaction). Namen, Pfade und
 //   fremder Text sind an der Stelle gekennzeichnet, an der die Zeile entsteht
 //   (Atlas.Text.LogMarks); die Meldung einer Exception kennzeichnet ErrorText
 //   bzw. ErrorLine. Klarnamen nur mit diagnostics.log.names (Redactor.Names).
@@ -75,7 +75,7 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.LogRedaction;
+  Atlas.Plugin.Diagnostics.LogRedaction;
 
 type
 {$SCOPEDENUMS ON}
@@ -340,8 +340,8 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Text.LogMarks,
-  Atlas.Core.Product.Version,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Product.Version,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
@@ -1505,7 +1505,7 @@ begin
 end;
 
 initialization
-  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.Guard', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
+  TAtlasTextLanguage.AddTable('Atlas.Plugin.Diagnostics.Guard', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
   TReporting.ReplaceSink(LogFailed);
 
 finalization

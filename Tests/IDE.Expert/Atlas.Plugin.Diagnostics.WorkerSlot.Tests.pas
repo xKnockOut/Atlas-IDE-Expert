@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.WorkerSlot.Tests;
+﻿unit Atlas.Plugin.Diagnostics.WorkerSlot.Tests;
 
 // Arbeiter-Threads über ihrer Zeitgrenze: Der Slot gibt
 // beendete frei, übergibt überfällige an TAtlasOverdueThreads, und diese
@@ -55,8 +55,8 @@ implementation
 uses
   System.SysUtils,
   System.Diagnostics,
-  Atlas.Core.Diagnostics.UnloadSafety,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.UnloadSafety,
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 { TAtlasWorkerSlotTests }
 

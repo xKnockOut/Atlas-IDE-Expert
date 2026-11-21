@@ -57,7 +57,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Scaling;
+  Atlas.Plugin.Style.Scaling;
 
 type
   /// <summary>Zugriff auf ColClick (Klick auf den Spaltenkopf).</summary>

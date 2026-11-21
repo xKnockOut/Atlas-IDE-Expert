@@ -49,8 +49,8 @@ uses
   Winapi.Windows,
   Winapi.Messages,
   Vcl.Controls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Syntax,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Syntax,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Editor.Minimap,
   Atlas.UI.Editor.MinimapLayers;

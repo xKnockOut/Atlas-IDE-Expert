@@ -173,10 +173,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Localization.Language,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Localization.Language,
+  Atlas.Plugin.Diagnostics.Guard;
 
 {$SCOPEDENUMS ON}
 

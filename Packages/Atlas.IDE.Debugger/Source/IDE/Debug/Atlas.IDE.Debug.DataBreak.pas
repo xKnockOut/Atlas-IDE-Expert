@@ -100,7 +100,7 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.DataBreakClasses,

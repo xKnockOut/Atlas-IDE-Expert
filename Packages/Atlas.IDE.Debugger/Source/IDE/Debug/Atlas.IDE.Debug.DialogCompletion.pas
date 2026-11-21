@@ -149,7 +149,7 @@ uses
   Winapi.Messages,
   Vcl.StdCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Listeners.Tests;
+﻿unit Atlas.Plugin.Style.Listeners.Tests;
 
 // Abonnenten des Themenwechsels (#2061): Reihenfolge, Ersetzen, Abmelden auch
 // während des Rufens, neu Angemeldete erst beim nächsten Wechsel, Fehler eines
@@ -8,7 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Style.Listeners;
+  Atlas.Plugin.Style.Listeners;
 
 type
   [TestFixture]

@@ -88,7 +88,7 @@ implementation
 
 uses
   Atlas.Core.Tracker.BoardPlan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.Board.Strings,

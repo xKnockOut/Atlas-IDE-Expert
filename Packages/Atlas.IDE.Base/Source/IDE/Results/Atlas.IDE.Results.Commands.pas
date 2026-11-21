@@ -74,7 +74,7 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Vcl.Controls,
   Vcl.Forms,
   ToolsAPI,

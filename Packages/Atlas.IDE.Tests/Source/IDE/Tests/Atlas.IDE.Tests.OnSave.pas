@@ -64,7 +64,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,

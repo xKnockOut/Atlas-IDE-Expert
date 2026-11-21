@@ -6,6 +6,7 @@
     "Atlas.Common",
     "Atlas.Windows",
     "Atlas.Linux",
+    "Atlas.Plugin",
     "Atlas.Core",
     "Atlas.UI",
     "Atlas.IDE"
@@ -1003,6 +1004,23 @@
       "to": "Atlas.WinBase.Alpha.Internals.Sache",
       "allowed": false,
       "note": "Atlas.Linux wird nach Rollen geprüft"
+    },
+    {
+      "from": "Atlas.Core.Status.Registry",
+      "to": "Atlas.Core.Status.Contract",
+      "allowed": true,
+      "note": "Atlas.Plugin ist ein eigenes Artefakt des Plugins"
+    },
+    {
+      "from": "Atlas.Core.Style.Sache",
+      "to": "Atlas.Plugin.Style.Internals.Sache",
+      "allowed": false,
+      "note": "gleicher Feature-Name in Atlas.Core und Atlas.Plugin ist ein fremdes Feature"
+    },
+    {
+      "from": "Atlas.Plugin.Style.Palette",
+      "to": "Atlas.Plugin.Style.Color",
+      "allowed": true
     }
   ]
 }

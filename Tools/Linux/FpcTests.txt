@@ -542,7 +542,7 @@ Atlas.Core.Debug.Forecast.Tests
 Atlas.Core.Debug.EditValue.Tests
 Atlas.Core.Debug.HoverTree.Tests
 Atlas.Core.Debug.Pins.Tests
-Atlas.Core.Style.Listeners.Tests
+Atlas.Plugin.Style.Listeners.Tests
 Atlas.Core.Debug.MemoryTimeline.Tests
 Atlas.Core.Debug.Profiler.Tests
 Atlas.Core.Debug.ObjectCount.Tests

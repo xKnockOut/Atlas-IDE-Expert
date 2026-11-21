@@ -38,7 +38,7 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Reassigned,
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 const
   cAnswer = '{"symbols": [' +

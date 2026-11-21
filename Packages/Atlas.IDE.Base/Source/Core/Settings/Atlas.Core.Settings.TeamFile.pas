@@ -258,7 +258,7 @@ uses
   Atlas.Text.Jsonc,
   Atlas.Text.Checkin,
   Atlas.Text.DebugDisplay,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 const
   cNamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local', 'constant');

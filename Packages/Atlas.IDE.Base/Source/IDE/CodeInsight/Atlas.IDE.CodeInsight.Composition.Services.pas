@@ -20,7 +20,7 @@ uses
   ToolsAPI,
   Atlas.Core.Build.Events,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,

@@ -10,7 +10,7 @@ interface
 uses
   Winapi.Windows,
   System.Types,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Editor.LineChanges;
 
 type
@@ -53,7 +53,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,

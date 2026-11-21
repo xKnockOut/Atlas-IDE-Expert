@@ -18,9 +18,9 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Bookmarks.Store,
   Atlas.IDE.Foundation.GutterMarks;

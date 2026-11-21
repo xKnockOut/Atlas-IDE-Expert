@@ -75,8 +75,8 @@ implementation
 uses
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Commands,
   Atlas.Core.Settings.Plugin,

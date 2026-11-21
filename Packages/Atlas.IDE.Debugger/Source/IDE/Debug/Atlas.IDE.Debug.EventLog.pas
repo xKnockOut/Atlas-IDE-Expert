@@ -106,7 +106,7 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.EventLogFlow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,

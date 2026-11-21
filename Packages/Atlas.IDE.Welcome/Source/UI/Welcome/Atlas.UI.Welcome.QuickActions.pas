@@ -233,8 +233,8 @@ uses
   Atlas.UI.Welcome.QuickActions.Texts,
   Vcl.Forms,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cSeparator = ' · ';

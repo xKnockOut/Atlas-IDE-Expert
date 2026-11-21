@@ -90,7 +90,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,

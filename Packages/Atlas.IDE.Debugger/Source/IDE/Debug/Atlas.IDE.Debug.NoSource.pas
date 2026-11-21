@@ -88,7 +88,7 @@ uses
   System.IOUtils,
   Vcl.FileCtrl,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.Unavailable,
   Atlas.Core.Debug.NoSourceFlow,

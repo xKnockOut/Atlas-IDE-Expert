@@ -95,7 +95,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Timestamps;
 
 {$SCOPEDENUMS ON}

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.UnloadSafety.Tests;
+﻿unit Atlas.Plugin.Diagnostics.UnloadSafety.Tests;
 
 // Kennzeichen „Entladen ohne Neustart nicht sicher“: Gründe sammeln, jedes
 // Package nur einmal festhalten.
@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.UnloadSafety;
+  Atlas.Plugin.Diagnostics.UnloadSafety;
 
 { TAtlasUnloadSafetyTests }
 

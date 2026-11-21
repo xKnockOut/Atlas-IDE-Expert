@@ -20,7 +20,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
-  Atlas.Core.Style.Syntax,
+  Atlas.Plugin.Style.Syntax,
   Atlas.Core.Editor.Peek,
   Atlas.UI.Popup.Window;
 
@@ -74,8 +74,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Styled,

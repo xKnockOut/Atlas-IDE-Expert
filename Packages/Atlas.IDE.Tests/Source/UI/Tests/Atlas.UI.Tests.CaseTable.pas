@@ -112,9 +112,9 @@ uses
   System.UITypes,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.UI.Tests.Strings;
 

@@ -188,9 +188,9 @@ implementation
 uses
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,

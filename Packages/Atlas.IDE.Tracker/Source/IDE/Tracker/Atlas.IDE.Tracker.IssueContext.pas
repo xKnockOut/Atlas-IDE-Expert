@@ -18,7 +18,7 @@ uses
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasIssuePreviewProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;

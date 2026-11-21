@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.UnloadSafety;
+﻿unit Atlas.Plugin.Diagnostics.UnloadSafety;
 
 // Kennzeichen „Entladen ohne Neustart nicht sicher“ je Package. Läuft nach
 // dem Abmelden eines Moduls noch Code aus seinem Package (ein Arbeiter-Thread
@@ -46,8 +46,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
@@ -206,7 +206,7 @@ begin
 end;
 
 initialization
-  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.UnloadSafety', cTexts[TAtlasLanguage.German],
+  TAtlasTextLanguage.AddTable('Atlas.Plugin.Diagnostics.UnloadSafety', cTexts[TAtlasLanguage.German],
     cTexts[TAtlasLanguage.English]);
 
 end.

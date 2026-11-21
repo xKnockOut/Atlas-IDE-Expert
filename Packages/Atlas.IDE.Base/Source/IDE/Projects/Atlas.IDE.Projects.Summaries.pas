@@ -135,7 +135,7 @@ uses
   Winapi.Windows,
   System.Classes,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Recording,
   Atlas.Core.Projects.Trends,

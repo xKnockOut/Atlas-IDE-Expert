@@ -71,7 +71,7 @@ uses
   Atlas.UI.BuildPipeline.SettingsSection,
   System.JSON,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,

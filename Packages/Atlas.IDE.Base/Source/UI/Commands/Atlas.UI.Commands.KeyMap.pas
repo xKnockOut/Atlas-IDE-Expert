@@ -133,7 +133,7 @@ implementation
 uses
   Vcl.Themes,
   Winapi.Windows,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings;

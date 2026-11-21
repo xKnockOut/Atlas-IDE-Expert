@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Symbol.Tests;
+﻿unit Atlas.Plugin.Style.Symbol.Tests;
 
 // Tests der Auswahl des Atlas-Symbols (#751): Bildgröße je Pixeldichte und
 // Variante je Thema bzw. Hintergrund, Ressourcennamen.
@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Style.Symbol;
+  Atlas.Plugin.Style.Symbol;
 
 type
   [TestFixture]
@@ -36,7 +36,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 { TAtlasSymbolTests }
 

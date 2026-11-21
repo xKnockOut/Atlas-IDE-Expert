@@ -79,11 +79,11 @@ uses
   System.Classes,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Build.Strings,
   Atlas.UI.Tasks.Texts,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   /// <summary>Kopfzeile mit eigener Farbe; Text und Farbe stehen beim Hinzufügen fest.</summary>

@@ -86,7 +86,7 @@ implementation
 uses
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.KeptForm,

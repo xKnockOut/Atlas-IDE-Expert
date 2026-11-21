@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Tests;
+﻿unit Atlas.Plugin.Style.Tests;
 
 // Tests für Farben, Palette, Syntaxfärbung und Darstellung der Einträge (#411, #420, #421).
 
@@ -6,7 +6,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Palette;
 
 type
   [TestFixture]
@@ -141,13 +141,13 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   System.SysUtils,
   System.Math,
   System.Types,
-  Atlas.Core.Style.Syntax,
-  Atlas.Core.Style.Wrap,
-  Atlas.Core.Style.Scaling,
+  Atlas.Plugin.Style.Syntax,
+  Atlas.Plugin.Style.Wrap,
+  Atlas.Plugin.Style.Scaling,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Presentation;
 

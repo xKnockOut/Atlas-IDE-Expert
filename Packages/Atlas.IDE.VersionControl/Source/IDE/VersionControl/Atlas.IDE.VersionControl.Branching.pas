@@ -126,7 +126,7 @@ uses
   Vcl.StdCtrls,
   ToolsAPI,
   Atlas.Core.VersionControl.ExternalRules,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.VersionControl.BranchNames,

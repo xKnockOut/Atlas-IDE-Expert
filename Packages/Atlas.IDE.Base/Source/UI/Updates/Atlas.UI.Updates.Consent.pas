@@ -47,7 +47,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Symbol,
+  Atlas.Plugin.Style.Symbol,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Scaling,
   Atlas.UI.Updates.Strings;

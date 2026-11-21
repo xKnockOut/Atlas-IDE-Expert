@@ -75,7 +75,7 @@ uses
   ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Uris,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,

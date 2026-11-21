@@ -52,7 +52,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   // FILE_NOTIFY_INFORMATION; Winapi.Windows deklariert den Satz nicht.

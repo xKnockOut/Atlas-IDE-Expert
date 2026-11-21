@@ -40,7 +40,7 @@ uses
   System.Hash,
   ToolsAPI,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.UI.BuildPipeline.Strings;

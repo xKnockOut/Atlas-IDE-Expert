@@ -24,7 +24,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
 {$SCOPEDENUMS ON}

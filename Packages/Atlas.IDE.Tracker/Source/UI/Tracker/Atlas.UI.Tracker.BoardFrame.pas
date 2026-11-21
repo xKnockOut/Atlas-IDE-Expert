@@ -41,7 +41,7 @@ uses
   Vcl.Buttons,
   Vcl.Menus,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.BoardLayout;
 
@@ -239,7 +239,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   System.Math,
   Winapi.Windows,
   Vcl.Graphics,

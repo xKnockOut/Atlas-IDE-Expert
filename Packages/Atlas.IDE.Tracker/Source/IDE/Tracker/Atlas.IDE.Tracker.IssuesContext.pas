@@ -248,7 +248,7 @@ uses
   System.DateUtils,
   System.IOUtils,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,

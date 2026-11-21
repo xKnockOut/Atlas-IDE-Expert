@@ -1,8 +1,8 @@
-﻿unit Atlas.Core.Style.Signal.Tests;
+﻿unit Atlas.Plugin.Style.Signal.Tests;
 
 // Signalfarben je Design (#1255): Kontrast zu den Flächen der Leisten, Zeichen
-// und Plaketten lesbar, Ok/Warnung/Fehler deutlich verschieden, Zuordnung der
-// Statuszustände und Palette.
+// und Plaketten lesbar, Ok/Warnung/Fehler deutlich verschieden und Palette. Die Zuordnung der
+// Statuszustände prüft Atlas.Core.Status.Signal.Tests.
 
 interface
 
@@ -24,8 +24,6 @@ type
     [Test]
     procedure OkWarnErrorDistinct;
     [Test]
-    procedure StatusStatesMapToSignals;
-    [Test]
     procedure PaletteFollowsSurface;
   end;
 
@@ -33,10 +31,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
-  Atlas.Core.Status.Contract;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal;
 
 const
   // Flächen der Leisten: clBtnFace hell und dunkel, Fensterfläche, Abgesetztes.
@@ -130,18 +127,6 @@ begin
         TAtlasSignals.Dark.Get(cKinds[mRight]).Fill) >= 20, 'dunkel');
     end;
   end;
-end;
-
-procedure TAtlasSignalTests.StatusStatesMapToSignals;
-var
-  mSignals: TAtlasSignals;
-begin
-  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Ok, TAtlasSignals.KindOf(TAtlasStatusState.Green));
-  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Warn, TAtlasSignals.KindOf(TAtlasStatusState.Yellow));
-  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Error, TAtlasSignals.KindOf(TAtlasStatusState.Red));
-  Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Idle, TAtlasSignals.KindOf(TAtlasStatusState.Neutral));
-  mSignals := TAtlasSignals.Light;
-  Assert.AreEqual(mSignals.Get(TAtlasSignalKind.Error).Fill, mSignals.ForStatus(TAtlasStatusState.Red).Fill);
 end;
 
 procedure TAtlasSignalTests.PaletteFollowsSurface;

@@ -96,7 +96,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.OwnCode,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Debug.Sources,

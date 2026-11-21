@@ -73,7 +73,7 @@ uses
   Vcl.Menus,
   DesignIntf,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
