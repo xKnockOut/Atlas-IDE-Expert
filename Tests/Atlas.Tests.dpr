@@ -568,7 +568,7 @@ uses
   Atlas.Common.Rules.CompilerPitfallFixes.Tests in 'Common\Rules\Atlas.Common.Rules.CompilerPitfallFixes.Tests.pas',
   Atlas.Common.Rules.BulkFix.Tests in 'Common\Rules\Atlas.Common.Rules.BulkFix.Tests.pas',
   Atlas.Common.Rules.Builtin.Unicode.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas',
-  Atlas.Common.Editing.Colors.Tests in 'Common\Editing\Atlas.Common.Editing.Colors.Tests.pas',
+  Atlas.Common.Pascal.Colors.Tests in 'Common\Pascal\Atlas.Common.Pascal.Colors.Tests.pas',
   Atlas.Common.Editing.DocumentLinks.Tests in 'Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas',
   Atlas.Common.Editing.ClassCompletion.Tests in 'Common\Editing\Atlas.Common.Editing.ClassCompletion.Tests.pas',
   Atlas.Common.Dfm.Tests in 'Common\Dfm\Atlas.Common.Dfm.Tests.pas',

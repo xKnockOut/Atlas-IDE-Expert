@@ -85,7 +85,7 @@ Atlas.Common.Editing.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Editing.ClassLayout.Tests
 Atlas.Common.Editing.CodeActions.Tests
-Atlas.Common.Editing.Colors.Tests
+Atlas.Common.Pascal.Colors.Tests
 Atlas.Common.Editing.CompilerFixes.Tests
 Atlas.Common.Editing.ConditionalExpression.Tests
 Atlas.Common.Editing.Conditions.Tests

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.Colors;
+﻿unit Atlas.Common.Pascal.Colors;
 
 // Farbwerte im Quelltext (#26): TColor-Hex ($00BBGGRR, Blau zuerst),
 // RGB(r, g, b), benannte Farben (clRed) und Systemfarben (clBtnFace).

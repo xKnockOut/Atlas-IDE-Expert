@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.Colors.Tests;
+﻿unit Atlas.Common.Pascal.Colors.Tests;
 
 // Tests für Farbvorschau und Farbwähler (#26).
 
@@ -41,7 +41,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Editing.Colors,
+  Atlas.Common.Pascal.Colors,
   Atlas.Common.Lsp.Colors;
 
 function Rgb(AR, AG, AB: Byte): TRgbColor;
