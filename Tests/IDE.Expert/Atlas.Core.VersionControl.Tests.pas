@@ -99,7 +99,7 @@ uses
   Atlas.Core.VersionControl.Switches,
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.VersionControl.Providers.Svn,
-  Atlas.Core.VersionControl.Providers.Null,
+  Atlas.Core.VersionControl.Null,
   Atlas.Core.VersionControl.Composition,
   Atlas.Core.VersionControl.BranchPlan,
   Atlas.Core.Diagnostics.BackgroundJobs,

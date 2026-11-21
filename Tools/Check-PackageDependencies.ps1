@@ -597,28 +597,42 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
-$RolePrefixes = @('Atlas.Text', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
+$RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 $FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
-# Eigenes Feature: Rolle der Quelle -> erlaubte Rollen des Ziels
+# Eigenes Feature (bzw. innerhalb einer Struktur relativ zum Träger): Rolle der Quelle -> erlaubte Rollen des Ziels
 $OwnAllowed = @{
     Contract    = @('Contract')
     Internals   = @('Contract', 'Internals')
     Providers   = @('Contract', 'Internals', 'Root')
     Adapters    = @('Contract', 'Internals', 'Root')
     Root        = @('Contract', 'Internals', 'Root')
-    Composition = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition')
-    Hosting     = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting')
+    Composition = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting')
+    Hosting     = @('Contract', 'Hosting')
 }
-# Fremdes Feature; alle nicht genannten Rollen: Contract und Root.
-# Host: alles außer Internals, weil er die Features zusammensetzt; Internals bleiben im Feature.
-$ForeignAllowed = @{
-    Contract = @('Contract')
-    Host     = @('Contract', 'Root', 'Providers', 'Adapters', 'Composition', 'Hosting')
+# Fremdes Feature: Contract nur Contract, alle anderen Rollen Contract und Root.
+# Host-Rollen (Konzept 8.1): erlaubte Rollen fremder Features und erlaubte Host-Rollen. Die Shell setzt
+# zusammen und sieht alles außer Internals; Host-Adapters implementieren Sub-Contracts.
+$HostAllowed = @{
+    Foundation = @('Contract')
+    Core       = @('Contract', 'Root')
+    Shell      = @('Contract', 'Root', 'Providers', 'Adapters', 'Composition', 'Hosting', 'SubContract', 'Nested')
+    Adapters   = @('Contract', 'Root', 'SubContract')
+    Platform   = @('Contract', 'Root')
+}
+$HostHostAllowed = @{
+    Foundation = @('Foundation')
+    Core       = @('Foundation', 'Core', 'Platform')
+    Shell      = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
+    Adapters   = @('Foundation', 'Core', 'Adapters', 'Platform')
+    Platform   = @('Platform')
 }
 
 function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
     # Einordnung nach Ausgabeartefakt.Feature.Rolle.Sache; $null für externe Units (RTL, VCL, Setup, Tests).
+    # Rolle ist der erste Rollenbezeichner nach dem Feature; jeder weitere eröffnet eine Verschachtelung
+    # (Konzept 7.4). Positions nennt die Stellen der Rollenbezeichner in Segments (Segments[0] = Feature),
+    # ein Bezeichner gleich dem vorigen zählt als Sache ("Keine Wiederholung").
     $best = ''
     foreach ($prefix in $Prefixes) {
         if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) {
@@ -626,40 +640,140 @@ function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
         }
     }
     if ($best -ne '') {
-        $rest = $Name.Substring($best.Length + 1).Split('.')
-        $role = 'Root'
-        if ($rest.Count -ge 2) {
-            $hit = $FeatureRoles | Where-Object { $_ -ieq $rest[1] } | Select-Object -First 1
-            if ($hit) { $role = $hit }
+        $rest = @($Name.Substring($best.Length + 1).ToLowerInvariant().Split('.'))
+        $positions = @()
+        $roles = @()
+        for ($index = 1; $index -lt $rest.Count; $index++) {
+            $hit = $FeatureRoles | Where-Object { $_ -ieq $rest[$index] } | Select-Object -First 1
+            if ($hit -and ($roles.Count -eq 0 -or $roles[-1] -ne $hit)) {
+                $positions += $index
+                $roles += $hit
+            }
         }
-        return [pscustomobject]@{ Artefact = $best.ToLowerInvariant(); Feature = $rest[0].ToLowerInvariant(); Role = $role }
+        $role = 'Root'
+        if ($roles.Count -gt 0) { $role = $roles[0] }
+        return [pscustomobject]@{ Artefact = $best.ToLowerInvariant(); Feature = $rest[0]; Role = $role
+            Segments = $rest; Positions = $positions; Roles = $roles; HostRole = '' }
     }
     $first = $Name.Split('.')[0]
     $hostRole = $Hosts | Where-Object { $_ -ieq $first } | Select-Object -First 1
     if ($hostRole -and $Name.Contains('.')) {
-        return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host' }
+        return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host'; HostRole = $hostRole
+            Segments = @(); Positions = @(); Roles = @() }
     }
     return $null
 }
 
+function Test-Within($Unit, [int] $Length, $Carrier) {
+    # True, wenn die ersten $Length Segmente von $Unit denen von $Carrier gleichen.
+    if ($Unit.Segments.Count -lt $Length) { return $false }
+    for ($index = 0; $index -lt $Length; $index++) {
+        if ($Unit.Segments[$index] -ne $Carrier.Segments[$index]) { return $false }
+    }
+    return $true
+}
+
+function Get-CarrierLength($Source, $Target) {
+    # Länge des tiefsten gemeinsamen Trägers (Segmente bis vor einen verschachtelten Rollenbezeichner);
+    # 1 = nur das Feature.
+    # Kandidaten: jede Stelle eines verschachtelten Rollenbezeichners und der ganze Name einer Unit mit Rolle
+    # und Sache (Cache ist Träger von Cache.Store). Zwei Root-Fragmente einer Struktur (Cache.Store,
+    # Cache.Index) verraten ihren Träger nicht im Namen und gelten als Geschwister der äußeren Rolle.
+    $best = 1
+    foreach ($unit in @($Source, $Target)) {
+        $candidates = @($unit.Positions | Select-Object -Skip 1)
+        if ($unit.Positions.Count -gt 0 -and $unit.Segments.Count -gt $unit.Positions[-1] + 1) {
+            $candidates += $unit.Segments.Count
+        }
+        foreach ($length in $candidates) {
+            if ($length -gt $best -and [Math]::Max($Source.Segments.Count, $Target.Segments.Count) -gt $length -and
+                (Test-Within $Source $length $unit) -and (Test-Within $Target $length $unit)) {
+                $best = $length
+            }
+        }
+    }
+    return $best
+}
+
+function Get-LevelRoles($Unit, [int] $Length) {
+    # Rollenbezeichner hinter dem Träger der Länge $Length.
+    $result = @()
+    for ($index = 0; $index -lt $Unit.Positions.Count; $index++) {
+        if ($Unit.Positions[$index] -ge $Length) { $result += $Unit.Roles[$index] }
+    }
+    return ,$result
+}
+
+function Get-SourceRights($Unit, [int] $Length) {
+    # Importrechte relativ zum Träger: Struktur erbt die Rechte des Trägers, ein Sub-Contract nur Contract-Rechte.
+    $roles = Get-LevelRoles $Unit $Length
+    if ($roles.Count -eq 0) { return 'Root' }
+    if ($roles -contains 'Contract') { return 'Contract' }
+    return $roles[0]
+}
+
+function Get-TargetView($Unit, [int] $Length) {
+    # Was von außerhalb einer Struktur sichtbar ist: Internals nie, Sub-Contract, sonst die Rolle des Trägers
+    # (Nested: nur Composition und Shell).
+    $roles = Get-LevelRoles $Unit $Length
+    if ($roles.Count -eq 0) { return [pscustomobject]@{ Kind = 'Root'; Outer = 'Root' } }
+    if ($roles.Count -eq 1) { return [pscustomobject]@{ Kind = $roles[0]; Outer = $roles[0] } }
+    $kind = 'Nested'
+    if ($roles -contains 'Internals') { $kind = 'NestedInternals' }
+    elseif ($roles[1] -eq 'Contract') { $kind = 'SubContract' }
+    return [pscustomobject]@{ Kind = $kind; Outer = $roles[0] }
+}
+
 function Test-RoleImport($Source, $Target) {
     if ($null -eq $Source -or $null -eq $Target) { return $true }
-    if ($Target.Role -eq 'Host') { return $Source.Role -eq 'Host' }
-    if ($Source.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
-        return $OwnAllowed[$Source.Role] -contains $Target.Role
+    if ($Target.Role -eq 'Host') {
+        return $Source.Role -eq 'Host' -and $HostHostAllowed[$Source.HostRole] -contains $Target.HostRole
     }
-    $allowed = @('Contract', 'Root')
-    if ($ForeignAllowed.ContainsKey($Source.Role)) { $allowed = $ForeignAllowed[$Source.Role] }
-    return $allowed -contains $Target.Role
+    if ($Source.Role -eq 'Host') {
+        return $HostAllowed[$Source.HostRole] -contains (Get-TargetView $Target 1).Kind
+    }
+    if ($Source.Artefact -ne $Target.Artefact -or $Source.Feature -ne $Target.Feature) {
+        $view = (Get-TargetView $Target 1).Kind
+        if ((Get-SourceRights $Source 1) -eq 'Contract') { return $view -eq 'Contract' }
+        return $view -in @('Contract', 'Root')
+    }
+    $length = Get-CarrierLength $Source $Target
+    $rights = Get-SourceRights $Source $length
+    $view = Get-TargetView $Target $length
+    switch ($view.Kind) {
+        'SubContract' { return $rights -eq 'Composition' -or ((Get-TargetView $Source $length).Outer -eq $view.Outer) }
+        'Nested'      { return $rights -eq 'Composition' }
+        default       { return $OwnAllowed[$rights] -contains $view.Kind }
+    }
 }
 
 function Get-RoleDescription($Source, $Target) {
     # Kurztext wie TArchitectureMatrix.Describe, z. B. "fremde Adapters aus Root".
     $kind = 'fremde'
-    if ($Source.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
+    $length = 1
+    $sourceRole = $Source.Role
+    if ($Source.Role -eq 'Host') { $sourceRole = "Host-$($Source.HostRole)" }
+    elseif ($Target.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
         $kind = 'eigene'
+        $length = Get-CarrierLength $Source $Target
+        $sourceRole = Get-SourceRights $Source $length
     }
-    return "$kind $($Target.Role) aus $($Source.Role)"
+    $targetRole = "Host-$($Target.HostRole)"
+    if ($Target.Role -ne 'Host') {
+        $view = Get-TargetView $Target $length
+        $targetRole = switch ($view.Kind) {
+            'SubContract'     { 'Sub-Contract' }
+            'Nested'          { "verschachtelte $($view.Outer)" }
+            'NestedInternals' { 'Internals einer Struktur' }
+            default           { $view.Kind }
+        }
+    }
+    return "$kind $targetRole aus $sourceRole"
+}
+
+function Test-ContractRole($Unit) {
+    # Contract oder Sub-Contract: der letzte Rollenbezeichner ist Contract.
+    return $null -ne $Unit -and $Unit.Role -ne 'Host' -and $Unit.Roles.Count -gt 0 -and $Unit.Roles[-1] -eq 'Contract'
 }
 
 if ($SelfTest) {
@@ -693,6 +807,12 @@ if (Test-Path $atlasJson) {
         if ($rule -and $rule.Value.PSObject.Properties['allow']) { $ContractContentAllow = @($rule.Value.allow) }
     }
 }
+
+# Frameworks im Contract (Konzept 7.1): Ein Vertrag legt seine Konsumenten nicht auf VCL, FMX, Windows-API oder
+# Open Tools API fest. Genehmigte Sammelausnahme (docs/Architektur.md, „Genehmigte Ausnahmen“): VCL in Verträgen
+# der UI-Schicht, deren Konsumenten ohnehin VCL-Steuerelemente bauen.
+$ContractFrameworks = '^(?i)(Vcl|FMX|Winapi|System\.Win|ToolsAPI|DesignIntf|DesignEditors|PaletteAPI)(\.|$)'
+$ContractFrameworkAllow = @(@{ Unit = 'Atlas.UI.*'; Uses = 'Vcl.*' })
 
 function Test-RoleApproved([string] $Source, [string] $Target) {
     foreach ($entry in $RoleImportAllow) {
@@ -817,10 +937,17 @@ foreach ($dir in @('Packages', 'Application')) {
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
         foreach ($unit in Get-ClauseEntries $text 'uses') {
             $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles
-            if ((Test-RoleImport $source $target) -or (Test-RoleApproved $ownUnit $unit.Name)) { continue }
+            # Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
+            $internals = $null -ne $target -and $target.Role -ne 'Host' -and $target.Roles -contains 'Internals'
+            if ((Test-RoleImport $source $target) -or ((Test-RoleApproved $ownUnit $unit.Name) -and -not $internals)) { continue }
             $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Rollenmatrix: $(Get-RoleDescription $source $target)"
         }
-        if ($source.Role -ne 'Contract') { continue }
+        if (-not (Test-ContractRole $source)) { continue }
+        foreach ($unit in Get-ClauseEntries $text 'uses') {
+            if ($unit.Name -notmatch $ContractFrameworks) { continue }
+            if ($ContractFrameworkAllow | Where-Object { $ownUnit -like $_.Unit -and $unit.Name -like $_.Uses }) { continue }
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – ein Contract bindet kein Framework ein (VCL, FMX, Windows, Open Tools API); nur Verträge von Atlas.UI.* dürfen VCL verwenden"
+        }
         $interface = [regex]::Match($text, '(?im)^\s*implementation\b')
         $head = $text
         if ($interface.Success) { $head = $text.Substring(0, $interface.Index) }
@@ -1462,8 +1589,7 @@ function Get-FeatureName([string] $Name) {
 }
 
 function Test-ContractUnit([string] $Name) {
-    $role = Get-UnitRole $Name $RolePrefixes $HostRoles
-    return ($null -ne $role -and $role.Role -eq 'Contract') -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
+    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
 }
 
 function Get-AdapterRoleFindings([string] $BaseDir) {

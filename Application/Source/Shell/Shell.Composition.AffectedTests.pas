@@ -17,7 +17,7 @@ uses
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.AffectedTests,
   Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Contract,
+  Atlas.Common.Lsp.AffectedTests.Types,
   Shell.AffectedTests,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;

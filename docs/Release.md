@@ -29,8 +29,29 @@ Mit Delphi-Runner baut der Workflow außerdem das Plugin (Win32 und Win64) und h
 Ohne Delphi-Runner (`DELPHI_RUNNER` nicht `true`) enthält das Release nur die Notizen, den Quelltext-ZIP und eine Versionsdatei ohne Paket. Das Plugin meldet die Version dann, der Update-Installer bricht aber mit „kein Paket für diese IDE“ ab (#1849). So kommt das Paket nachträglich dazu:
 
 1. Mit Delphi 13 aus dem getaggten Stand die Release-Builds erzeugen: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, `AtlasServer`, `AtlasUpdate` und alle Plugin-Packages für Win64, die Plugin-Packages zusätzlich für Win32, jeweils Konfiguration Release.
-2. Nachdem der Release-Workflow zum Tag gelaufen ist: `pwsh Tools/Publish-ReleasePackage.ps1 -Version 2.0.0-beta.1` (mit `-WhatIf` zuerst ansehen). Das Skript packt `atlas-ide-expert-<Version>.zip` mit `Tools/New-ReleasePackage.ps1` (derselbe Aufbau wie auf dem Runner) und lädt es mit `AtlasServer.exe`/`.map` ins Release. Danach schreibt es `atlas-version.json` mit Paket und Quelltext (SHA-256) neu, ebenso `atlas-version-beta.json` im Kanal `update-channel`, wenn der Kanal auf diese Version zeigt. Es braucht die GitHub-CLI `gh` mit Schreibrecht.
-3. Das Paket bricht ab, wenn eine EXE, BPL oder Map fehlt, die Version im Quelltext nicht passt oder ein Build älter als der letzte Commit ist. Unsigniert prüft der Update-Installer nur die SHA-256.
+2. Nachdem der Release-Workflow zum Tag gelaufen ist: `pwsh Tools/Publish-ReleasePackage.ps1 -Version 2.0.0-beta.1 -SigningKey <PEM-Datei>` (mit `-WhatIf` zuerst ansehen; statt `-SigningKey` geht die Umgebungsvariable `ATLAS_UPDATE_SIGNING_KEY` mit dem Inhalt der PEM-Datei). Das Skript packt `atlas-ide-expert-<Version>.zip` mit `Tools/New-ReleasePackage.ps1` (derselbe Aufbau wie auf dem Runner) und lädt es mit `AtlasServer.exe`/`.map` ins Release. Danach schreibt es `atlas-version.json` mit Paket und Quelltext (SHA-256) neu und signiert sie (Abschnitt „Signatur der Versionsdatei“), ebenso `atlas-version-beta.json` im Kanal `update-channel`, wenn der Kanal auf diese Version zeigt. Ohne Schlüssel bricht es vor dem ersten Hochladen ab: Die neue Datei passte sonst nicht mehr zur Signatur des Workflows, und AtlasUpdate lehnte jedes Update ab. Ist `AtlasUpdate.exe` im Paket nicht Authenticode-signiert, schreibt es die Release-Notizen mit dem Hinweis auf unsignierte Binärdateien neu. Es braucht die GitHub-CLI `gh` mit Schreibrecht.
+3. Das Paket bricht ab, wenn eine EXE, BPL oder Map fehlt, die Version im Quelltext nicht passt oder ein Build älter als der letzte Commit ist. Ohne Code-Signing-Zertifikat prüft der Update-Installer die Dateien über die SHA-256 aus der signierten Versionsdatei.
+
+## Signatur der Versionsdatei
+
+Updates sind über die Versionsdatei an den Herausgeber gebunden, nicht über ein Code-Signing-Zertifikat: Jedes Release legt `atlas-version.json.sig` (und `atlas-version-beta.json.sig` im Kanal `update-channel`) neben die Versionsdatei, eine ECDSA-P-256-Signatur über die Bytes der Datei, als 128 Hexziffern. `AtlasUpdate.exe prepare` lädt beide und prüft die Signatur gegen die öffentlichen Schlüssel in `Packages/Atlas.Common/Source/Updates/Atlas.Common.Updates.ManifestSignature.pas` (`cPrimaryKey`, `cReserveKey`), bevor es Adressen oder Prüfsummen daraus verwendet. Eine unlesbare oder fremde Signatur bricht immer ab (`manifestSignature`). Eine fehlende Signatur ist ein Hinweis (`manifestUnsigned`), solange `TUpdateManifestSignature.cRequired` `False` ist; in der ersten Version, die nach einer Version mit signierter Versionsdatei erscheint, wird die Konstante `True`.
+
+Das Code-Signing-Zertifikat (`SIGN_CERT_BASE64`) bleibt freiwillig. Ohne es baut der Release trotzdem, und die Release-Notizen bekommen den Hinweis „Binärdateien nicht signiert; Updates werden über die signierte Versionsdatei geprüft“ (`Tools/Get-ReleaseNotes.ps1 -UnsignedBinaries`).
+
+**Schlüssel anlegen (einmalig):**
+
+1. Auf dem eigenen Rechner, außerhalb des Repositorys: `pwsh Tools/New-UpdateSigningKey.ps1 -OutFile <Ordner>\update-haupt.pem` und `pwsh Tools/New-UpdateSigningKey.ps1 -OutFile <Ordner>\update-reserve.pem`. Jeder Aufruf gibt den öffentlichen Schlüssel als 128 Hexziffern aus.
+2. Die beiden öffentlichen Schlüssel als `cPrimaryKey` und `cReserveKey` eintragen (je in zwei Literale zu 64 Zeichen umbrechen) und committen.
+3. Den Inhalt von `update-haupt.pem` als Geheimnis `ATLAS_UPDATE_SIGNING_KEY` im Repository hinterlegen (Settings › Secrets and variables › Actions). Beide PEM-Dateien getrennt sicher verwahren (Passwortmanager, Datenträger offline); den Reserveschlüssel nirgends sonst ablegen.
+4. `pwsh Tools/Test-VersionFileSignature.ps1` prüft, dass zwei gültige, verschiedene Schlüssel eingetragen sind; `pwsh Tools/Sign-VersionFile.ps1 -VersionFile <Datei> -Verify` prüft eine Signaturdatei.
+
+`Tools/Sign-VersionFile.ps1` prüft nach dem Signieren gegen die eingetragenen Schlüssel und bricht ab, wenn der private Schlüssel zu keinem gehört; ein falsches Geheimnis lässt also den Release scheitern statt die Updates.
+
+**Schlüssel wechseln** (Hauptschlüssel verloren, verraten oder planmäßig): Installierte Updater kennen nur die Schlüssel, die sie eingebaut haben. Deshalb zuerst mit dem Reserveschlüssel weitersignieren, dann einen neuen Reserveschlüssel ausliefern:
+
+1. Geheimnis `ATLAS_UPDATE_SIGNING_KEY` auf den Inhalt von `update-reserve.pem` setzen. Alle installierten Versionen ab 2.3 nehmen diese Signatur schon an.
+2. Neuen Schlüssel anlegen (`New-UpdateSigningKey.ps1`); im Quelltext wird der bisherige Reserveschlüssel `cPrimaryKey`, der neue `cReserveKey`. Ist der alte Hauptschlüssel verraten, fällt er damit aus der Liste; ein Release mit dieser Liste so bald wie möglich veröffentlichen.
+3. Wer noch einen Updater hat, der nur den verratenen Schlüssel kennt, ist bis zum Update auf das neue Release nicht geschützt; im Release-Text darauf hinweisen. Sind beide Schlüssel verloren, hilft nur eine Neuinstallation aus dem Release-Paket.
 
 ## Bilder der Tipps
 
@@ -47,4 +68,5 @@ Die Bilder im Repository sind mit den Schriften DejaVu Sans und DejaVu Sans Mono
 
 | Geheimnis | Wirkung |
 |---|---|
-| `SIGN_CERT_BASE64`, `SIGN_CERT_PASSWORD` | Signiert die EXE mit `signtool` (PFX als Base64), vermeidet SmartScreen-Warnungen |
+| `SIGN_CERT_BASE64`, `SIGN_CERT_PASSWORD` | Signiert die EXE mit `signtool` (PFX als Base64), vermeidet SmartScreen-Warnungen; ohne es Hinweis in den Release-Notizen |
+| `ATLAS_UPDATE_SIGNING_KEY` | Privater Schlüssel (PEM) für die Signatur der Versionsdatei (Abschnitt „Signatur der Versionsdatei“); ohne es bleibt die Versionsdatei unsigniert und AtlasUpdate warnt |

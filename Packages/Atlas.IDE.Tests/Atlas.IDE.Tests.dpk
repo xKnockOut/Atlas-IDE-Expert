@@ -130,6 +130,7 @@ contains
   Atlas.IDE.Tests.BoundaryCases in 'Source\IDE\Tests\Atlas.IDE.Tests.BoundaryCases.pas',
   Atlas.IDE.Tests.Composition.Cases in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Cases.pas',
   Atlas.IDE.Tests.Composition.Coverage in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Coverage.pas',
+  Atlas.IDE.Tests.Composition.Results in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Results.pas',
   Atlas.IDE.Tests.Composition.Explorer in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Explorer.pas',
   Atlas.IDE.Tests.LeakSetup in 'Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';

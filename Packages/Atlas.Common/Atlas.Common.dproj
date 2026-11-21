@@ -276,7 +276,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.Forms.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Contract.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Types.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Report.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CoveredBy.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
@@ -417,7 +417,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Lookup.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Contract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Analysis.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
@@ -980,6 +980,7 @@
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Selection.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Archive.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.SourceBuild.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.ManifestSignature.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Prepare.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.FileSwap.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Apply.pas"/>

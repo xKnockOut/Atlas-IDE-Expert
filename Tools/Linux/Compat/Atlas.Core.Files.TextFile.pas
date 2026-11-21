@@ -27,9 +27,19 @@ type
     class procedure Replace(const AFileName: string; const ABytes: TBytes); static;
     /// <summary>Benennt ASource in ATarget um und ersetzt eine vorhandene ATarget in einem Schritt.</summary>
     class function MoveReplacing(const ASource, ATarget: string): Boolean; static;
+    /// <summary>Wie in der echten Unit: Dateifehler oder EAtlasTextFileError.</summary>
+    class function IsReadError(AE: Exception): Boolean; static;
   end;
 
 implementation
+
+uses
+  Atlas.Text.Files;
+
+class function TAtlasTextFile.IsReadError(AE: Exception): Boolean;
+begin
+  Result := TTextFiles.IsFileError(AE) or (AE is EAtlasTextFileError);
+end;
 
 class function TAtlasTextFile.ReadAllBytes(const AFileName: string): TBytes;
 var

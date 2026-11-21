@@ -36,9 +36,17 @@ type
     [Test]
     procedure ClassifiesHostAndExternal;
     [Test]
+    procedure ClassifiesRoleAfterThing;
+    [Test]
+    procedure ClassifiesNesting;
+    [Test]
+    procedure FindsCommonCarrier;
+    [Test]
     procedure MatrixCasesFromFile;
     [Test]
     procedure DescribesOwnAndForeign;
+    [Test]
+    procedure DescribesNestedAndHostRoles;
   end;
 
   [TestFixture]
@@ -52,6 +60,8 @@ type
     procedure SilentWithoutPrefixes;
     [Test]
     procedure ApprovedExceptionIsSilent;
+    [Test]
+    procedure ApprovedExceptionNeverCoversInternals;
     [Test]
     procedure ChecksImplementationUses;
     [Test]
@@ -79,6 +89,8 @@ type
     procedure ForwardDeclarationIsSilent;
     [Test]
     procedure ApprovedTypeIsSilent;
+    [Test]
+    procedure ChecksRoleAfterThingAndSubContract;
   end;
 
 implementation
@@ -165,8 +177,8 @@ end;
 { TArchitectureMatrixTests }
 
 const
-  cPrefixes: array[0..5] of string = ('Atlas.Text', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core', 'Atlas.UI',
-    'Atlas.IDE');
+  cPrefixes: array[0..7] of string = ('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux',
+    'Atlas.Core', 'Atlas.UI', 'Atlas.IDE');
 
 function PrefixList: TArray<string>;
 var
@@ -227,6 +239,65 @@ begin
   Assert.IsFalse(Classify('Vcl.Forms').Known);
   Assert.IsFalse(Classify('Setup.Core.Plan').Known);
   Assert.IsFalse(Classify('Shell').Known, 'ohne Punkt keine Host-Unit');
+end;
+
+procedure TArchitectureMatrixTests.ClassifiesRoleAfterThing;
+var
+  U: TArchitectureUnit;
+begin
+  U := Classify('Atlas.Common.Lsp.AffectedTests.Contract');
+  Assert.AreEqual('Lsp', U.Feature);
+  Assert.AreEqual(Ord(TArchitectureRole.Contract), Ord(U.Role));
+  Assert.IsTrue(U.IsContract);
+  U := Classify('Atlas.UI.Tracker.IssueFrame.Contract');
+  Assert.AreEqual('Tracker', U.Feature);
+  Assert.AreEqual(Ord(TArchitectureRole.Contract), Ord(U.Role));
+  Assert.AreEqual(Ord(TArchitectureRole.Providers), Ord(Classify('Atlas.Common.Lsp.Group.Providers.Store').Role));
+  Assert.IsFalse(Classify('Atlas.Common.Lsp.Group.Providers.Store').IsContract);
+  U := Classify('Atlas.WinBase.Files.Internals.Handles');
+  Assert.AreEqual('Atlas.WinBase', U.Artefact, 'Atlas.WinBase hat eigene Rollen');
+  Assert.AreEqual(Ord(TArchitectureRole.Internals), Ord(U.Role));
+  Assert.AreEqual('Atlas.Linux', Classify('Atlas.Linux.Console.Adapters.Stream').Artefact);
+end;
+
+procedure TArchitectureMatrixTests.ClassifiesNesting;
+var
+  U: TArchitectureUnit;
+begin
+  U := Classify('Atlas.Common.Server.Providers.Cache.Internals.Store');
+  Assert.AreEqual(Ord(TArchitectureRole.Providers), Ord(U.Role));
+  Assert.AreEqual(2, Integer(Length(U.Positions)));
+  Assert.AreEqual(1, U.Positions[0]);
+  Assert.AreEqual(3, U.Positions[1]);
+  Assert.AreEqual(Ord(TArchitectureRole.Internals), Ord(U.Roles[1]));
+  U := Classify('Atlas.Common.Server.Providers.Cache.Contract');
+  Assert.AreEqual(Ord(TArchitectureRole.Providers), Ord(U.Role));
+  Assert.IsTrue(U.IsContract, 'Sub-Contract');
+  // Keine Wiederholung: Providers.Cache.Providers.Store ist Providers.Cache.Store.
+  Assert.AreEqual(1, Integer(Length(Classify('Atlas.Common.Server.Providers.Cache.Providers.Store').Positions)));
+  // Zwei Rollenbezeichner hintereinander: Träger ist Feature.Composition.
+  U := Classify('Atlas.IDE.Tracker.Composition.Adapters');
+  Assert.AreEqual(Ord(TArchitectureRole.Composition), Ord(U.Role));
+  Assert.AreEqual(2, U.Positions[1]);
+end;
+
+procedure TArchitectureMatrixTests.FindsCommonCarrier;
+var
+  mCache: TArchitectureUnit;
+begin
+  mCache := Classify('Atlas.Common.Server.Providers.Cache');
+  Assert.AreEqual(3, TArchitectureMatrix.CarrierLength(mCache, Classify('Atlas.Common.Server.Providers.Cache.Store')));
+  Assert.AreEqual(3, TArchitectureMatrix.CarrierLength(Classify('Atlas.Common.Server.Providers.Cache.Contract'),
+    Classify('Atlas.Common.Server.Providers.Cache.Internals.Store')));
+  Assert.AreEqual(1, TArchitectureMatrix.CarrierLength(mCache, mCache), 'ein Name ist nicht sein eigener Träger');
+  Assert.AreEqual(1, TArchitectureMatrix.CarrierLength(Classify('Atlas.Common.Server.Providers.User'),
+    Classify('Atlas.Common.Server.Providers.Cache.Internals.Store')));
+  Assert.AreEqual(Ord(TArchitectureRole.Providers), Ord(TArchitectureMatrix.SourceRights(
+    Classify('Atlas.Common.Server.Providers.Cache.Internals.Store'), 1)), 'Struktur erbt die Rechte des Trägers');
+  Assert.AreEqual(Ord(TArchitectureRole.Contract), Ord(TArchitectureMatrix.SourceRights(
+    Classify('Atlas.Common.Server.Providers.Cache.Contract'), 1)), 'Sub-Contract nur mit Contract-Rechten');
+  Assert.AreEqual(Ord(TArchitectureViewKind.SubContract), Ord(TArchitectureMatrix.TargetView(
+    Classify('Atlas.Common.Server.Providers.Cache.Contract'), 1).Kind));
 end;
 
 function RoleImportsFile: string;
@@ -294,6 +365,22 @@ begin
     Classify('Atlas.Common.Logging.Contract'), Classify('Atlas.Common.Logging.Providers.Logger')));
 end;
 
+procedure TArchitectureMatrixTests.DescribesNestedAndHostRoles;
+begin
+  Assert.AreEqual('eigene Sub-Contract aus Root', TArchitectureMatrix.Describe(Classify('Atlas.Common.Server.Sache'),
+    Classify('Atlas.Common.Server.Providers.Cache.Contract')));
+  Assert.AreEqual('eigene Internals einer Struktur aus Providers', TArchitectureMatrix.Describe(
+    Classify('Atlas.Common.Server.Providers.User'), Classify('Atlas.Common.Server.Providers.Cache.Internals.X')));
+  Assert.AreEqual('eigene verschachtelte Composition aus Root', TArchitectureMatrix.Describe(
+    Classify('Atlas.IDE.Tracker.Sache'), Classify('Atlas.IDE.Tracker.Composition.Adapters')));
+  Assert.AreEqual('eigene Adapters aus Root', TArchitectureMatrix.Describe(Classify('Atlas.IDE.Tracker.Composition'),
+    Classify('Atlas.IDE.Tracker.Composition.Adapters')), 'innen relativ zum Träger Composition');
+  Assert.AreEqual('fremde Providers aus Host-Core', TArchitectureMatrix.Describe(Classify('Core.Settings'),
+    Classify('Atlas.Common.Logging.Providers.Logger')));
+  Assert.AreEqual('fremde Host-Shell aus Host-Core', TArchitectureMatrix.Describe(Classify('Core.Settings'),
+    Classify('Shell.Main')));
+end;
+
 { TRoleImportRuleTests }
 
 const
@@ -351,6 +438,25 @@ begin
   Assert.IsFalse(TRoleImportRule.Approved(['Atlas.IDE.* -> Atlas.Core.*'], 'Atlas.UI.Undo.Changes',
     'Atlas.Core.Undo.Providers.FileStore'));
   Assert.IsFalse(TRoleImportRule.Approved(['ohne Pfeil'], 'A', 'B'));
+end;
+
+procedure TRoleImportRuleTests.ApprovedExceptionNeverCoversInternals;
+const
+  cConfig = '{ "rules": { "architecture-role-import": { "severity": "warning", ' +
+    '"prefixes": ["Atlas.Core", "Atlas.IDE"], "allow": ["Atlas.IDE.Alpha.Composition -> Atlas.Core.*"] } } }';
+  cSource = 'unit Atlas.IDE.Alpha.Composition;'#10'interface'#10 +
+    'uses Atlas.Core.Beta.Providers.Store, Atlas.Core.Beta.Internals.Cache, Atlas.Core.Beta.Providers.Cache.Internals.X;'#10 +
+    'implementation'#10'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Der Platzhalter trifft alle drei; frei wird nur der Provider.
+  Assert.IsTrue(TRoleImportRule.Approved(['Atlas.IDE.Alpha.Composition -> Atlas.Core.*'],
+    'Atlas.IDE.Alpha.Composition', 'Atlas.Core.Beta.Internals.Cache'));
+  mFindings := TRuleAssert.Findings(TRoleImportRule.Create, cSource, cConfig, 'Source/x.pas');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.IsTrue(Pos('Atlas.Core.Beta.Internals.Cache', mFindings[0].Message) > 0);
+  Assert.IsTrue(Pos('Atlas.Core.Beta.Providers.Cache.Internals.X', mFindings[1].Message) > 0);
 end;
 
 procedure TRoleImportRuleTests.ChecksImplementationUses;
@@ -476,6 +582,16 @@ const
 begin
   Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Orders.Contract;'#10'interface'#10'type'#10 +
     '  TOrderList = class'#10'  end;'#10'implementation'#10'end.', cConfig))));
+end;
+
+procedure TContractContentRuleTests.ChecksRoleAfterThingAndSubContract;
+begin
+  Assert.AreEqual(1, Integer(Length(ContractFindings('unit App.Orders.Lines.Contract;'#10'interface'#10'type'#10 +
+    '  TLineList = class'#10'  end;'#10'implementation'#10'end.'))), 'Rolle an dritter Stelle');
+  Assert.AreEqual(1, Integer(Length(ContractFindings('unit App.Orders.Providers.Cache.Contract;'#10'interface'#10 +
+    'type'#10'  TCacheList = class'#10'  end;'#10'implementation'#10'end.'))), 'Sub-Contract');
+  Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Orders.Contract.Internals.Lists;'#10'interface'#10 +
+    'type'#10'  TOrderList = class'#10'  end;'#10'implementation'#10'end.'))), 'Internals einer Struktur');
 end;
 
 initialization

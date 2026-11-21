@@ -129,7 +129,7 @@ uses
   Atlas.Core.VersionControl.Tools in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Tools.pas',
   Atlas.Core.VersionControl.Providers.Git in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Git.pas',
   Atlas.Core.VersionControl.Providers.Svn in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas',
-  Atlas.Core.VersionControl.Providers.Null in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas',
+  Atlas.Core.VersionControl.Null in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Null.pas',
   Atlas.Core.VersionControl.Detection in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas',
   Atlas.Core.VersionControl.Composition in '..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas',
   Atlas.Core.VersionControl.Providers.ProcessRunner in '..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.ProcessRunner.pas',

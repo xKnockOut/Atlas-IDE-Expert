@@ -88,7 +88,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Files;
 
 type
 {$SCOPEDENUMS ON}
@@ -573,8 +574,13 @@ begin
     TDirectory.Delete(AFolder, True);
   except
     // Noch gesperrt (Index-Threads): bleibt im Temp-Ordner liegen.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+    end;
   end;
 end;
 

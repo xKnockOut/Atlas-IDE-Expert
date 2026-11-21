@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.VersionControl.Providers.Null;
+﻿unit Atlas.Core.VersionControl.Null;
 
 // Leere Umsetzung (#571): ohne Arbeitskopie, mit vcs.provider = off oder wenn
 // git bzw. svn fehlt. Alle Aufrufe kehren sofort ohne Prozess zurück und
@@ -6,6 +6,8 @@
 // gilt auch für IAtlasVcsLocalWork (#762), IAtlasVcsIncoming (#755) und
 // IAtlasVcsUpdate (#764), IAtlasVcsBranching (#765), IAtlasVcsLineHistory (#1275) und
 // IAtlasVcsHistory (#1269).
+// Ein Null-Objekt ist ein Newable und liegt deshalb im Root des Features: Auch Atlas.IDE.Contracts.VersionControl
+// legt es ohne Modul an, Providers erzeugt weiter nur die Composition.
 
 interface
 

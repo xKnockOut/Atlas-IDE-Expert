@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Tracker.Composition.Adapters;
+﻿unit Atlas.IDE.Tracker.Composition.HostAdapters;
 
 // Adapter der Teile des Moduls Tracker (#1443): legt die Adapter
 // (Atlas.IDE.Tracker.Adapters.*) zu den Klassen der Wurzel an und meldet sie

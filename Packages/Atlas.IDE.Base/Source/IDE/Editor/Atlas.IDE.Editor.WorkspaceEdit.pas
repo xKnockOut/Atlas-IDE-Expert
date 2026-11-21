@@ -506,8 +506,14 @@ begin
       Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

@@ -19,7 +19,10 @@
 //     "hostRoles": ["Foundation", "Core", "Shell", "Adapters", "Platform"],
 //     "allow": ["Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree"] } }
 // Units heißen Ausgabeartefakt.Feature.Rolle.Sache; "prefixes"
-// nennt die Ausgabeartefakte, ohne sie melden die Regeln nichts. Units ohne
+// nennt die Ausgabeartefakte, ohne sie melden die Regeln nichts. Die Rolle ist
+// der erste Rollenbezeichner an beliebiger Stelle nach dem Feature
+// (Feature.Sache.Contract ist ein Contract); ein weiterer eröffnet eine
+// Verschachtelung mit dem Fragment davor als Träger. Units ohne
 // Präfix, deren erstes Segment in "hostRoles" steht, gehören zum Host der
 // Anwendung; alle anderen (RTL, VCL, Drittanbieter) prüft die Regel nicht.
 // "allow" sind genehmigte Ausnahmen: bei architecture-role-import
@@ -68,11 +71,39 @@ type
     Artefact: string;
     /// <summary>Feature, z. B. "Logging"; beim Host die Host-Rolle, z. B. "Shell".</summary>
     Feature: string;
+    /// <summary>Erster Rollenbezeichner nach dem Feature, Root ohne einen; Host bzw. None siehe
+    /// TArchitectureRole.</summary>
     Role: TArchitectureRole;
+    /// <summary>Segmente nach dem Präfix; Segments[0] ist das Feature.</summary>
+    Segments: TArray<string>;
+    /// <summary>Stellen der Rollenbezeichner in Segments. Ab der zweiten eröffnet jede eine Verschachtelung;
+    /// ein Bezeichner gleich dem vorigen zählt als Sache.</summary>
+    Positions: TArray<Integer>;
+    /// <summary>Rollen an den Stellen aus Positions.</summary>
+    Roles: TArray<TArchitectureRole>;
     /// <summary>Role &lt;&gt; None.</summary>
     function Known: Boolean;
     /// <summary>Gleiches Ausgabeartefakt und gleiches Feature (ohne Groß-/Kleinschreibung).</summary>
     function SameFeature(const AOther: TArchitectureUnit): Boolean;
+    /// <summary>True für einen Contract oder Sub-Contract: der letzte Rollenbezeichner ist Contract.</summary>
+    function IsContract: Boolean;
+  end;
+
+  {$SCOPEDENUMS ON}
+  /// <summary>Wie ein Ziel von außerhalb einer Struktur aussieht: Plain = Rolle ohne Verschachtelung,
+  /// SubContract = Contract eines Trägers, Nested = andere Teile einer Struktur (nur Composition und Shell),
+  /// NestedInternals = Internals einer Struktur (nie von außen).</summary>
+  TArchitectureViewKind = (Plain, SubContract, Nested, NestedInternals);
+  /// <summary>Host-Rollen nach Konzept 8.1; unbekannte Namen aus "hostRoles" gelten als Shell.</summary>
+  TArchitectureHostRole = (Foundation, Core, Shell, Adapters, Platform);
+  {$SCOPEDENUMS OFF}
+  TArchitectureHostRoles = set of TArchitectureHostRole;
+
+  /// <summary>Sicht auf ein Ziel relativ zu einem Träger.</summary>
+  TArchitectureView = record
+    Kind: TArchitectureViewKind;
+    /// <summary>Rolle direkt hinter dem Träger (Root ohne eine).</summary>
+    Role: TArchitectureRole;
   end;
 
   /// <summary>Importmatrix des Rollenkonzepts (docs/Architektur.md "Importregeln").</summary>
@@ -83,12 +114,31 @@ type
     class function ClassifyFeature(const AUnitName, APrefix: string): TArchitectureUnit; static;
     class function ClassifyHost(const AUnitName: string; const AHostRoles: TArray<string>): TArchitectureUnit;
       static;
+    class function Within(const AUnit: TArchitectureUnit; ALength: Integer;
+      const ACarrier: TArchitectureUnit): Boolean; static;
+    class function LevelRoles(const AUnit: TArchitectureUnit; ALength: Integer): TArray<TArchitectureRole>; static;
+    class function HostRole(const AUnit: TArchitectureUnit): TArchitectureHostRole; static;
+    class function HostAllows(const ASource: TArchitectureUnit; const AView: TArchitectureView): Boolean; static;
+    class function ForeignAllows(ARights: TArchitectureRole; const AView: TArchitectureView): Boolean; static;
+    class function OwnAllows(const ASource, ATarget: TArchitectureUnit): Boolean; static;
+    class function ViewName(const AView: TArchitectureView): string; static;
   public
     /// <summary>Ordnet AUnitName ein; Role = None für externe Units.</summary>
     class function Classify(const AUnitName: string; const APrefixes, AHostRoles: TArray<string>):
       TArchitectureUnit; static;
+    /// <summary>Länge des tiefsten gemeinsamen Trägers in Segmenten; 1 = nur das Feature. Kandidaten sind die
+    /// Stellen verschachtelter Rollenbezeichner und der ganze Name einer Unit mit Rolle und Sache (Cache ist
+    /// Träger von Cache.Store).</summary>
+    class function CarrierLength(const ASource, ATarget: TArchitectureUnit): Integer; static;
+    /// <summary>Importrechte von AUnit relativ zum Träger der Länge ALength: Die Struktur erbt die Rechte des
+    /// Trägers, ein Sub-Contract nur die Contract-Rechte.</summary>
+    class function SourceRights(const AUnit: TArchitectureUnit; ALength: Integer): TArchitectureRole; static;
+    /// <summary>Sicht auf AUnit von außerhalb ihrer Struktur relativ zum Träger der Länge ALength.</summary>
+    class function TargetView(const AUnit: TArchitectureUnit; ALength: Integer): TArchitectureView; static;
     /// <summary>True, wenn ASource ATarget importieren darf; unbekannte Units sind immer erlaubt.</summary>
     class function Allowed(const ASource, ATarget: TArchitectureUnit): Boolean; static;
+    /// <summary>True für Internals, auch die einer Struktur: Keine genehmigte Ausnahme gibt sie frei.</summary>
+    class function IsInternals(const AUnit: TArchitectureUnit): Boolean; static;
     /// <summary>Kurztext für die Meldung, z. B. "fremde Adapters aus Root".</summary>
     class function Describe(const ASource, ATarget: TArchitectureUnit): string; static;
     /// <summary>Vorgabe für "hostRoles": Foundation, Core, Shell, Adapters, Platform.</summary>
@@ -130,6 +180,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
+  System.Math,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -143,7 +194,7 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TArchitectureText = (LayerTitle, LayerViolation, Describe, RoleTitle, RoleViolation, ContractTitle, ContractClass,
-    Foreign, Own);
+    Foreign, Own, SubContract, Nested, NestedInternals);
 
 const
   cTexts: array[TArchitectureText] of TAtlasText = (
@@ -160,7 +211,10 @@ const
      En: '%s is a class in a contract unit; a contract contains only records, interfaces, enumerations and ' +
       'exceptions'),
     (De: 'fremde'; En: 'foreign'),
-    (De: 'eigene'; En: 'own'));
+    (De: 'eigene'; En: 'own'),
+    (De: 'Sub-Contract'; En: 'sub-contract'),
+    (De: 'verschachtelte %s'; En: 'nested %s'),
+    (De: 'Internals einer Struktur'; En: 'internals of a nested structure'));
 
 {$SCOPEDENUMS OFF}
 
@@ -169,7 +223,8 @@ const
     ('', 'Contract', 'Internals', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting', 'Host');
   cFeatureRoles = [TArchitectureRole.Contract, TArchitectureRole.Internals, TArchitectureRole.Providers,
     TArchitectureRole.Adapters, TArchitectureRole.Composition, TArchitectureRole.Hosting];
-  // Eigenes Feature, Rolle der Quelle -> erlaubte Rollen des Ziels.
+  // Eigenes Feature (in einer Struktur relativ zum Träger), Rolle der Quelle -> erlaubte Rollen des Ziels.
+  // Hosting nach Konzept 8.2: nur eigener Contract und eigenes Hosting; Composition auch eigenes Hosting.
   // Muss $OwnAllowed in Tools/Check-PackageDependencies.ps1 entsprechen.
   cOwnAllowed: array[TArchitectureRole] of TArchitectureRoles = (
     [],
@@ -179,22 +234,27 @@ const
     [TArchitectureRole.Contract, TArchitectureRole.Internals, TArchitectureRole.Root],
     [TArchitectureRole.Contract, TArchitectureRole.Internals, TArchitectureRole.Root],
     [TArchitectureRole.Contract, TArchitectureRole.Providers, TArchitectureRole.Adapters,
-     TArchitectureRole.Root, TArchitectureRole.Composition],
-    [TArchitectureRole.Contract, TArchitectureRole.Providers, TArchitectureRole.Adapters,
      TArchitectureRole.Root, TArchitectureRole.Composition, TArchitectureRole.Hosting],
+    [TArchitectureRole.Contract, TArchitectureRole.Hosting],
     []);
-  // Fremdes Feature. Host: alles außer Internals, weil er die Features zusammensetzt; Internals bleiben im Feature.
-  cForeignAllowed: array[TArchitectureRole] of TArchitectureRoles = (
-    [],
+  // Host-Rollen nach Konzept 8.1: erlaubte Rollen der Features (ohne Verschachtelung) und erlaubte Host-Rollen.
+  // Muss $HostAllowed und $HostHostAllowed in Tools/Check-PackageDependencies.ps1 entsprechen.
+  cHostAllowed: array[TArchitectureHostRole] of TArchitectureRoles = (
     [TArchitectureRole.Contract],
     [TArchitectureRole.Contract, TArchitectureRole.Root],
+    [TArchitectureRole.Contract, TArchitectureRole.Root, TArchitectureRole.Providers, TArchitectureRole.Adapters,
+     TArchitectureRole.Composition, TArchitectureRole.Hosting],
     [TArchitectureRole.Contract, TArchitectureRole.Root],
-    [TArchitectureRole.Contract, TArchitectureRole.Root],
-    [TArchitectureRole.Contract, TArchitectureRole.Root],
-    [TArchitectureRole.Contract, TArchitectureRole.Root],
-    [TArchitectureRole.Contract, TArchitectureRole.Root],
-    [TArchitectureRole.Contract, TArchitectureRole.Root, TArchitectureRole.Providers,
-     TArchitectureRole.Adapters, TArchitectureRole.Composition, TArchitectureRole.Hosting]);
+    [TArchitectureRole.Contract, TArchitectureRole.Root]);
+  cHostHostAllowed: array[TArchitectureHostRole] of TArchitectureHostRoles = (
+    [TArchitectureHostRole.Foundation],
+    [TArchitectureHostRole.Foundation, TArchitectureHostRole.Core, TArchitectureHostRole.Platform],
+    [TArchitectureHostRole.Foundation, TArchitectureHostRole.Core, TArchitectureHostRole.Shell,
+     TArchitectureHostRole.Adapters, TArchitectureHostRole.Platform],
+    [TArchitectureHostRole.Foundation, TArchitectureHostRole.Core, TArchitectureHostRole.Adapters,
+     TArchitectureHostRole.Platform],
+    [TArchitectureHostRole.Platform]);
+  cHostRoleNames: array[TArchitectureHostRole] of string = ('Foundation', 'Core', 'Shell', 'Adapters', 'Platform');
 
 function MatchesAny(const APatterns: TArray<string>; const AName: string): Boolean;
 var
@@ -321,6 +381,11 @@ begin
   Result := SameText(Artefact, AOther.Artefact) and SameText(Feature, AOther.Feature);
 end;
 
+function TArchitectureUnit.IsContract: Boolean;
+begin
+  Result := (Roles <> nil) and (Roles[High(Roles)] = TArchitectureRole.Contract);
+end;
+
 { TArchitectureMatrix }
 
 class function TArchitectureMatrix.LongestPrefix(const AUnitName: string;
@@ -355,6 +420,8 @@ end;
 class function TArchitectureMatrix.ClassifyFeature(const AUnitName, APrefix: string): TArchitectureUnit;
 var
   mParts: TArray<string>;
+  mIndex, mCount: Integer;
+  mRole: TArchitectureRole;
 begin
   Result := Default(TArchitectureUnit);
   mParts := Copy(AUnitName, Length(APrefix) + 2, MaxInt).Split(['.']);
@@ -364,10 +431,24 @@ begin
   end;
   Result.Artefact := APrefix;
   Result.Feature := mParts[0];
+  Result.Segments := mParts;
   Result.Role := TArchitectureRole.Root;
-  if Length(mParts) >= 2 then
+  for mIndex := 1 to High(mParts) do
   begin
-    Result.Role := FeatureRole(mParts[1]);
+    mRole := FeatureRole(mParts[mIndex]);
+    // Keine Wiederholung: Providers.P.Providers.X ist Providers.P.X.
+    if (mRole <> TArchitectureRole.Root) and ((Result.Roles = nil) or (Result.Roles[High(Result.Roles)] <> mRole)) then
+    begin
+      mCount := Length(Result.Roles);
+      SetLength(Result.Roles, mCount + 1);
+      SetLength(Result.Positions, mCount + 1);
+      Result.Roles[mCount] := mRole;
+      Result.Positions[mCount] := mIndex;
+    end;
+  end;
+  if Result.Roles <> nil then
+  begin
+    Result.Role := Result.Roles[0];
   end;
 end;
 
@@ -410,37 +491,276 @@ begin
   end;
 end;
 
+class function TArchitectureMatrix.Within(const AUnit: TArchitectureUnit; ALength: Integer;
+  const ACarrier: TArchitectureUnit): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (Length(AUnit.Segments) >= ALength) and (Length(ACarrier.Segments) >= ALength);
+  mIndex := 0;
+  while Result and (mIndex < ALength) do
+  begin
+    Result := SameText(AUnit.Segments[mIndex], ACarrier.Segments[mIndex]);
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Trägerlängen, die AUnit vorgibt: Stellen verschachtelter Rollenbezeichner und, mit Rolle und Sache,
+/// die Länge des ganzen Namens.</summary>
+function CarrierCandidates(const AUnit: TArchitectureUnit): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if AUnit.Positions = nil then
+  begin
+    Exit;
+  end;
+  SetLength(Result, Length(AUnit.Positions));
+  for mIndex := 1 to High(AUnit.Positions) do
+  begin
+    Result[mIndex - 1] := AUnit.Positions[mIndex];
+  end;
+  Result[High(Result)] := 0;
+  if Length(AUnit.Segments) > AUnit.Positions[High(AUnit.Positions)] + 1 then
+  begin
+    Result[High(Result)] := Length(AUnit.Segments);
+  end;
+end;
+
+class function TArchitectureMatrix.CarrierLength(const ASource, ATarget: TArchitectureUnit): Integer;
+var
+  mCarrier: TArchitectureUnit;
+  mLength, mLongest: Integer;
+begin
+  Result := 1;
+  mLongest := Max(Length(ASource.Segments), Length(ATarget.Segments));
+  for mCarrier in TArray<TArchitectureUnit>.Create(ASource, ATarget) do
+  begin
+    for mLength in CarrierCandidates(mCarrier) do
+    begin
+      // Ein gleicher Name ist kein Träger seiner selbst.
+      if (mLength > Result) and (mLongest > mLength) and Within(ASource, mLength, mCarrier) and
+        Within(ATarget, mLength, mCarrier) then
+      begin
+        Result := mLength;
+      end;
+    end;
+  end;
+end;
+
+class function TArchitectureMatrix.LevelRoles(const AUnit: TArchitectureUnit;
+  ALength: Integer): TArray<TArchitectureRole>;
+var
+  mIndex, mCount: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AUnit.Roles));
+  mCount := 0;
+  for mIndex := 0 to High(AUnit.Roles) do
+  begin
+    if AUnit.Positions[mIndex] >= ALength then
+    begin
+      Result[mCount] := AUnit.Roles[mIndex];
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TArchitectureMatrix.SourceRights(const AUnit: TArchitectureUnit;
+  ALength: Integer): TArchitectureRole;
+var
+  mRoles: TArray<TArchitectureRole>;
+  mRole: TArchitectureRole;
+begin
+  mRoles := LevelRoles(AUnit, ALength);
+  if mRoles = nil then
+  begin
+    Exit(TArchitectureRole.Root);
+  end;
+  Result := mRoles[0];
+  for mRole in mRoles do
+  begin
+    if mRole = TArchitectureRole.Contract then
+    begin
+      Result := TArchitectureRole.Contract;
+    end;
+  end;
+end;
+
+class function TArchitectureMatrix.TargetView(const AUnit: TArchitectureUnit;
+  ALength: Integer): TArchitectureView;
+var
+  mRoles: TArray<TArchitectureRole>;
+  mRole: TArchitectureRole;
+begin
+  Result := Default(TArchitectureView);
+  Result.Role := TArchitectureRole.Root;
+  mRoles := LevelRoles(AUnit, ALength);
+  if mRoles = nil then
+  begin
+    Exit;
+  end;
+  Result.Role := mRoles[0];
+  if Length(mRoles) = 1 then
+  begin
+    Exit;
+  end;
+  Result.Kind := TArchitectureViewKind.Nested;
+  if mRoles[1] = TArchitectureRole.Contract then
+  begin
+    Result.Kind := TArchitectureViewKind.SubContract;
+  end;
+  for mRole in mRoles do
+  begin
+    if mRole = TArchitectureRole.Internals then
+    begin
+      Result.Kind := TArchitectureViewKind.NestedInternals;
+    end;
+  end;
+end;
+
+class function TArchitectureMatrix.HostRole(const AUnit: TArchitectureUnit): TArchitectureHostRole;
+var
+  mRole: TArchitectureHostRole;
+begin
+  Result := TArchitectureHostRole.Shell;
+  for mRole := Low(TArchitectureHostRole) to High(TArchitectureHostRole) do
+  begin
+    if SameText(cHostRoleNames[mRole], AUnit.Feature) then
+    begin
+      Result := mRole;
+    end;
+  end;
+end;
+
+class function TArchitectureMatrix.HostAllows(const ASource: TArchitectureUnit;
+  const AView: TArchitectureView): Boolean;
+var
+  mRole: TArchitectureHostRole;
+begin
+  mRole := HostRole(ASource);
+  case AView.Kind of
+    TArchitectureViewKind.Plain:
+      Result := AView.Role in cHostAllowed[mRole];
+    // Host-Adapters implementieren Sub-Contracts (Konzept 7.4).
+    TArchitectureViewKind.SubContract:
+      Result := mRole in [TArchitectureHostRole.Shell, TArchitectureHostRole.Adapters];
+    TArchitectureViewKind.Nested:
+      Result := mRole = TArchitectureHostRole.Shell;
+  else
+    Result := False;
+  end;
+end;
+
+class function TArchitectureMatrix.ForeignAllows(ARights: TArchitectureRole;
+  const AView: TArchitectureView): Boolean;
+begin
+  Result := AView.Kind = TArchitectureViewKind.Plain;
+  if Result and (ARights = TArchitectureRole.Contract) then
+  begin
+    Result := AView.Role = TArchitectureRole.Contract;
+  end
+  else if Result then
+  begin
+    Result := AView.Role in [TArchitectureRole.Contract, TArchitectureRole.Root];
+  end;
+end;
+
+class function TArchitectureMatrix.OwnAllows(const ASource, ATarget: TArchitectureUnit): Boolean;
+var
+  mLength: Integer;
+  mRights: TArchitectureRole;
+  mView: TArchitectureView;
+begin
+  mLength := CarrierLength(ASource, ATarget);
+  mRights := SourceRights(ASource, mLength);
+  mView := TargetView(ATarget, mLength);
+  case mView.Kind of
+    // Sub-Contract: Geschwister der äußeren Rolle und die Composition (Konzept 7.4, Zugriff von außen).
+    TArchitectureViewKind.SubContract:
+      Result := (mRights = TArchitectureRole.Composition) or (TargetView(ASource, mLength).Role = mView.Role);
+    TArchitectureViewKind.Nested:
+      Result := mRights = TArchitectureRole.Composition;
+    TArchitectureViewKind.NestedInternals:
+      Result := False;
+  else
+    Result := mView.Role in cOwnAllowed[mRights];
+  end;
+end;
+
 class function TArchitectureMatrix.Allowed(const ASource, ATarget: TArchitectureUnit): Boolean;
 begin
   if not (ASource.Known and ATarget.Known) then
   begin
     Exit(True);
   end;
-  // Platform-Features importieren nie den Host (8.3); Host-Units untereinander frei.
+  // Platform-Features importieren nie den Host (8.3); Host-Rollen untereinander nach 8.1.
   if ATarget.Role = TArchitectureRole.Host then
   begin
-    Exit(ASource.Role = TArchitectureRole.Host);
+    Exit((ASource.Role = TArchitectureRole.Host) and (HostRole(ATarget) in cHostHostAllowed[HostRole(ASource)]));
   end;
-  if (ASource.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
+  if ASource.Role = TArchitectureRole.Host then
   begin
-    Result := ATarget.Role in cOwnAllowed[ASource.Role];
-  end
+    Exit(HostAllows(ASource, TargetView(ATarget, 1)));
+  end;
+  if not ASource.SameFeature(ATarget) then
+  begin
+    Exit(ForeignAllows(SourceRights(ASource, 1), TargetView(ATarget, 1)));
+  end;
+  Result := OwnAllows(ASource, ATarget);
+end;
+
+class function TArchitectureMatrix.IsInternals(const AUnit: TArchitectureUnit): Boolean;
+var
+  mRole: TArchitectureRole;
+begin
+  Result := False;
+  for mRole in AUnit.Roles do
+  begin
+    Result := Result or (mRole = TArchitectureRole.Internals);
+  end;
+end;
+
+class function TArchitectureMatrix.ViewName(const AView: TArchitectureView): string;
+begin
+  case AView.Kind of
+    TArchitectureViewKind.SubContract:
+      Result := cTexts[TArchitectureText.SubContract].Text;
+    TArchitectureViewKind.Nested:
+      Result := cTexts[TArchitectureText.Nested].Fmt([cRoleNames[AView.Role]]);
+    TArchitectureViewKind.NestedInternals:
+      Result := cTexts[TArchitectureText.NestedInternals].Text;
   else
-  begin
-    Result := ATarget.Role in cForeignAllowed[ASource.Role];
+    Result := cRoleNames[AView.Role];
   end;
 end;
 
 class function TArchitectureMatrix.Describe(const ASource, ATarget: TArchitectureUnit): string;
 var
-  mKind: string;
+  mKind, mSource, mTarget: string;
+  mLength: Integer;
 begin
   mKind := cTexts[TArchitectureText.Foreign].Text;
-  if (ASource.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
+  mLength := 1;
+  mSource := cRoleNames[ASource.Role];
+  if ASource.Role = TArchitectureRole.Host then
+  begin
+    mSource := 'Host-' + cHostRoleNames[HostRole(ASource)];
+  end
+  else if (ATarget.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
   begin
     mKind := cTexts[TArchitectureText.Own].Text;
+    mLength := CarrierLength(ASource, ATarget);
+    mSource := cRoleNames[SourceRights(ASource, mLength)];
   end;
-  Result := cTexts[TArchitectureText.Describe].Fmt([mKind, cRoleNames[ATarget.Role], cRoleNames[ASource.Role]]);
+  mTarget := 'Host-' + cHostRoleNames[HostRole(ATarget)];
+  if ATarget.Role <> TArchitectureRole.Host then
+  begin
+    mTarget := ViewName(TargetView(ATarget, mLength));
+  end;
+  Result := cTexts[TArchitectureText.Describe].Fmt([mKind, mTarget, mSource]);
 end;
 
 class function TArchitectureMatrix.DefaultHostRoles: TArray<string>;
@@ -550,7 +870,9 @@ begin
       Continue;
     end;
     mTarget := TArchitectureMatrix.Classify(mUsed.Name, mOptions.Prefixes, mOptions.HostRoles);
-    if TArchitectureMatrix.Allowed(mSource, mTarget) or Approved(mOptions.Allow, mOwnName, mUsed.Name) then
+    // Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
+    if TArchitectureMatrix.Allowed(mSource, mTarget) or
+      (Approved(mOptions.Allow, mOwnName, mUsed.Name) and not TArchitectureMatrix.IsInternals(mTarget)) then
     begin
       Continue;
     end;
@@ -585,8 +907,7 @@ function IsCheckedContract(const AContext: TRuleContext; const AOptions: TRoleIm
   const AOwnName: string): Boolean;
 begin
   Result := (AOptions.Prefixes <> nil) and not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) and
-    (TArchitectureMatrix.Classify(AOwnName, AOptions.Prefixes, AOptions.HostRoles).Role =
-    TArchitectureRole.Contract);
+    TArchitectureMatrix.Classify(AOwnName, AOptions.Prefixes, AOptions.HostRoles).IsContract;
 end;
 
 /// <summary>True, wenn ATypeDecl eine Klasse ist, die keine Ausnahme ist und kein allow-Eintrag erlaubt.</summary>

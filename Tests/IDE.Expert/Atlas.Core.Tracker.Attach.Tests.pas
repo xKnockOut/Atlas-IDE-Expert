@@ -86,11 +86,13 @@ uses
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Providers.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles,
+  Atlas.Tests.TempFolder,
+  Atlas.Core.Tracker.TestSupport;
 
 type
   /// <summary>Transport mit festen Antworten auf POST; merkt sich Adressen, Inhaltstypen und Rümpfe.</summary>
-  TFakeSend = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiPost)
+  TFakeSend = class(TNotFoundTransport, IAtlasCiPost)
   private
     FStatus: TArray<Integer>;
   public
@@ -99,17 +101,8 @@ type
     Bodies: TArray<string>;
     /// <summary>Status der Antworten der Reihe nach; danach 200.</summary>
     procedure Answer(const AStatus: array of Integer);
-    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
     function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
       out AResponse: TAtlasCiResponse): Boolean;
-  end;
-
-  /// <summary>Transport nur zum Lesen (wie vor #1276).</summary>
-  TFakeGetOnly = class(TInterfacedObject, IAtlasCiTransport)
-  public
-    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
   end;
 
 { TFakeSend }
@@ -123,15 +116,6 @@ begin
   begin
     FStatus[mIndex] := AStatus[mIndex];
   end;
-end;
-
-function TFakeSend.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-begin
-  AStatus := 404;
-  AText := '';
-  AError := TAtlasCiFetchError.None;
-  Result := True;
 end;
 
 /// <summary>Rumpf als Text: UTF-8, mit Binärteilen (PNG im Multipart) Byte für Byte.</summary>
@@ -172,17 +156,6 @@ begin
   Result := True;
 end;
 
-{ TFakeGetOnly }
-
-function TFakeGetOnly.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-begin
-  AStatus := 404;
-  AText := '';
-  AError := TAtlasCiFetchError.None;
-  Result := True;
-end;
-
 function Png(const AName: string): TAtlasAttachFile;
 begin
   Result := TAtlasAttachFile.CreateImage(TAtlasAttachKind.Screenshot, AName, TBytes.Create($89, $50, $4E, $47));
@@ -216,11 +189,7 @@ end;
 procedure TAtlasAttachTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TAtlasAttachTests.MultipartLayout;
@@ -539,7 +508,7 @@ begin
   mRequest.Target := TAtlasTrackerTarget.Create('youtrack', 'https://beispiel.youtrack.cloud', 'ATL', '');
   mRequest.Key := 'ATL-1';
   mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider,
-    TFakeGetOnly.Create as IAtlasCiTransport, mRequest, 1000);
+    TNotFoundTransport.Create as IAtlasCiTransport, mRequest, 1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));
   mOutcome := TAtlasAttachSender.Send(nil, TFakeSend.Create as IAtlasCiTransport, mRequest, 1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));

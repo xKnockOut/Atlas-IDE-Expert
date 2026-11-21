@@ -81,7 +81,8 @@ type
 implementation
 
 uses
-  Winapi.Windows;
+  Winapi.Windows,
+  Atlas.Core.Diagnostics.Guard;
 
 const
   cBufferSize = 4096;
@@ -207,8 +208,11 @@ begin
     mCode := AThread.Evaluate(AExpression, @mBuffer[0], Length(mBuffer), mCanModify, SideEffects(AEvaluation), '',
       mResultAddr, mResultSize, mResultVal, APlace.FileName, APlace.Line);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Auswerten gescheitert: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Exit;
+    end;
   end;
   case mCode of
     erOK:
@@ -259,8 +263,11 @@ begin
       Inc(mOffset, mCount);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Speicher nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Exit;
+    end;
   end;
   Result := True;
 end;

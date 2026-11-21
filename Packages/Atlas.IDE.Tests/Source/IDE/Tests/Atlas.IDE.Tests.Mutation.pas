@@ -521,8 +521,14 @@ begin
     try
       FResults.LoadJson(TAtlasTextFile.LoadText(mFile));
     except
-      on Exception do
+      on E: Exception do
+      begin
+        if not TAtlasTextFile.IsReadError(E) then
+        begin
+          raise;
+        end;
         FResults.Forget('');
+      end;
     end;
   end;
   Inc(FVersion);

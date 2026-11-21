@@ -53,6 +53,8 @@ uses
   Atlas.Core.Lsp.Session.Requests;
 
 type
+  // Fehler einer Anfrage (Zeitlimit, Abbruch, Verbindung weg, Fehlerantwort); steht in Atlas.Core.Lsp.Framing.
+  ELspClientError = Atlas.Core.Lsp.Client.ELspClientError;
   // Aliase: Die Typen stehen in Atlas.Core.Lsp.Session.Json; Aufrufer binden weiter nur diese Unit ein.
   TLspLocation = Atlas.Core.Lsp.Session.Json.TLspLocation;
   TLspCodeAction = Atlas.Core.Lsp.Session.Json.TLspCodeAction;
@@ -158,6 +160,7 @@ type
   TAtlasSessionFunc = reference to function: TLspSession;
 
 implementation
+
 
 const
   /// <summary>Betroffene Tests (#1353, #1775): git bzw. svn und eine Auswirkungsanalyse je geänderter Routine
@@ -712,7 +715,10 @@ begin
     Result := FClient.Request('workspace/executeCommand',
       TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', AArguments), ATimeoutMs);
   except
-    Result := nil;
+    on ELspClientError do
+    begin
+      Result := nil;
+    end;
   end;
 end;
 

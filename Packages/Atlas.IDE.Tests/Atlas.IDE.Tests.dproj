@@ -171,6 +171,7 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.BoundaryCases.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Cases.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Coverage.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Results.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Explorer.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>

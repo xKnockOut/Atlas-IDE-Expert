@@ -122,15 +122,12 @@ uses
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.CoveredBy,
-  Atlas.IDE.Tests.Stale,
-  Atlas.IDE.Tests.Compare,
-  Atlas.IDE.Tests.LastRun,
-  Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.Composition.Cases,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.Composition.Explorer,
   Atlas.IDE.Tests.Series,
   Atlas.IDE.Tests.Composition.Coverage,
+  Atlas.IDE.Tests.Composition.Results,
   Atlas.UI.Tests.Strings;
 
 var
@@ -141,10 +138,6 @@ var
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
   GCoveredBy: TAtlasIdeCoveredByLens;
-  GStale: TAtlasIdeStaleTests;
-  GCompare: TAtlasIdeTestCompare;
-  GLastRun: TAtlasIdeTestLastRun;
-  GSlowest: TAtlasIdeTestSlowest;
   /// <summary>Serien (#1782) und ihr Abbruchwunsch, den der Prozessläufer liest; GStopRef hält ihn.</summary>
   GSeries: TAtlasIdeTestSeries;
   GStop: TAtlasIdeTestStop;
@@ -266,11 +259,7 @@ end;
 /// <summary>Knopf „Vergleichen“ der Testmarke (#1779); die Lens lebt kürzer als der Vergleich.</summary>
 function CompareHooks: TAtlasTestCompareHooks;
 begin
-  Result := Default(TAtlasTestCompareHooks);
-  Result.CanCompare := GCompare.CanCompare;
-  Result.Show := GCompare.Show;
-  // Vergleichsdateien (#1881): „Abweichung · Vergleich“ statt „Vergleichen“.
-  Result.Caption := GCompare.CaptionOf;
+  Result := ResultCompareHooks;
   // Serie (#1782): ihr Ergebnis an der Marke.
   Result.Series := GSeries.MarkOf;
 end;
@@ -285,27 +274,20 @@ begin
   GTests.OnProblems := ShowProblems;
   GTests.OnFinished := AnnounceTests;
   GTests.OnLastFailed := LastFailed;
-  // Veraltete Ergebnisse (#1770): Stand je Test nach jedem Lauf.
-  GStale := TAtlasIdeStaleTests.Create(GTests);
-  // Letzter Testlauf für KI-Assistenten (#2409): nach den wackelnden Tests (#1773), deren Verlauf er abfragt; reicht
-  // den Lauf an die Stände weiter.
-  GLastRun := TAtlasIdeTestLastRun.Create(GStale.Remember, FlakyCountFor);
-  // Erwartet und erhalten vergleichen (#1779): Fehlschläge mit Werten; reicht den Lauf an den letzten Testlauf weiter.
-  GCompare := TAtlasIdeTestCompare.Create(GTests, GLastRun.Remember);
-  // Langsamste Tests (#1772): Ergebnisse des Testprojekts; reicht den Lauf an den Vergleich weiter.
-  GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
+  // Auswertungen nach dem Lauf: veraltete Ergebnisse, letzter Testlauf, Vergleich, langsamste Tests.
+  StartResults(GTests);
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   // Tests N-mal bzw. in zufälliger Reihenfolge (#1782): Läufe im Hintergrund über den Läufer.
   GSeries := TAtlasIdeTestSeries.Create(GTests, GOutput, GStop);
   // Wackelnde Tests (#1773), Fenster „Atlas-Tests“ (#1776), Testlisten (#2167) und Teststand (#1777); das Fenster
   // hängt sich als OnReported an, die wackelnden Tests reichen den Lauf an die langsamsten Tests weiter.
-  StartExplorer(GTests, GDebugger, GSeries, GStale.StaleIn, GSlowest.Remember);
+  StartExplorer(GTests, GDebugger, GSeries, StaleKeys(), ResultsReported());
   // Lauf ging schief (#2467): Fenster „Atlas-Tests“ öffnen.
   GOutput.OnEnded := ExplorerRunEnded;
-  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, StateQueries(GStale.StaleIn), CompareHooks);
+  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, StateQueries(StaleKeys()), CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
-  GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
+  GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, StaleKeys());
   // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens; Grenzfälle (#2173) vorn in OnReported.
   // Ungetestete Methoden des Projekts (#1783) ebenda.
   StartCases(GScope, GTests, GDebugger, GOutput, ModuleScope);
@@ -352,10 +334,7 @@ begin
   FreeAndNil(GDebugger);
   // Wackelnde Tests (#1773) nach Fenster und Lens, die sie abfragen.
   StopFlakyTests;
-  FreeAndNil(GSlowest);
-  FreeAndNil(GCompare);
-  FreeAndNil(GLastRun);
-  FreeAndNil(GStale);
+  StopResults;
   try
     FreeAndNil(GTests);
     FreeAndNil(GOutput);
@@ -448,51 +427,6 @@ begin
   end;
 end;
 
-{ Veraltete Tests (#1770) }
-
-function StaleTestsVisible: Boolean;
-begin
-  Result := TestsVisible and TAtlasIdeSettings.Current.TestsStale;
-end;
-
-procedure RunStale;
-begin
-  if GStale <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GStale.Run);
-  end;
-end;
-
-{ Erwartet und erhalten vergleichen (#1779) }
-
-function CompareVisible: Boolean;
-begin
-  Result := TestsVisible and TAtlasIdeSettings.Current.TestsCompare;
-end;
-
-procedure CompareValues;
-begin
-  if GCompare <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GCompare.Run);
-  end;
-end;
-
-{ Langsamste Tests (#1772) }
-
-function SlowestVisible: Boolean;
-begin
-  Result := TestsVisible and TAtlasIdeSettings.Current.TestsShowDuration;
-end;
-
-procedure ShowSlowest;
-begin
-  if GSlowest <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GSlowest.Run);
-  end;
-end;
-
 { TestCase-Tabelle (#1879), Grenzfälle (#2173) }
 
 function CaseTableVisible: Boolean;
@@ -503,22 +437,6 @@ end;
 function BoundaryCasesVisible: Boolean;
 begin
   Result := TestsVisible and BoundaryCasesWanted;
-end;
-
-{ Vergleichsdateien (#1881) }
-
-function ApprovalFilesVisible: Boolean;
-begin
-  Result := TestsVisible and TAtlasIdeSettings.Current.TestsApprovalFiles;
-end;
-
-procedure CleanApprovalFiles;
-begin
-  // Compare lebt mit dem Läufer.
-  if GCompare <> nil then
-  begin
-    GCompare.CleanApprovalFiles;
-  end;
 end;
 
 { Projektverwaltung (#1817) }
@@ -869,28 +787,22 @@ end;
 
 function TAtlasTestsModule.HasValuesAt(ALine: Integer): Boolean;
 begin
-  Result := (GCompare <> nil) and GCompare.HasValuesAt(ALine);
+  Result := ResultHasValuesAt(ALine);
 end;
 
 procedure TAtlasTestsModule.CompareAt(ALine: Integer);
 begin
-  if GCompare <> nil then
-  begin
-    GCompare.CompareAt(ALine);
-  end;
+  CompareResultAt(ALine);
 end;
 
 function TAtlasTestsModule.HasValues(const AFullName: string): Boolean;
 begin
-  Result := (GCompare <> nil) and GCompare.HasValues(AFullName);
+  Result := ResultHasValues(AFullName);
 end;
 
 procedure TAtlasTestsModule.Compare(const AFullName: string);
 begin
-  if GCompare <> nil then
-  begin
-    GCompare.CompareTest(AFullName);
-  end;
+  CompareResult(AFullName);
 end;
 
 procedure TAtlasTestsModule.ThemeChanged;

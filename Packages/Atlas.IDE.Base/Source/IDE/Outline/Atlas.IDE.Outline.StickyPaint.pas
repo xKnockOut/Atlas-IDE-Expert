@@ -177,8 +177,14 @@ begin
     ARegistry.CloseKey;
   except
     // Unlesbarer Eintrag: diese Art ohne Hervorhebung.
-    on Exception do
+    on E: Exception do
+    begin
+      if not ((E is EConvertError) or (E is ERegistryException)) then
+      begin
+        raise;
+      end;
       Result := Default(TAtlasStickySyntaxStyle);
+    end;
   end;
 end;
 
@@ -198,8 +204,14 @@ begin
     end;
     ARegistry.CloseKey;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not ((E is EConvertError) or (E is ERegistryException)) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

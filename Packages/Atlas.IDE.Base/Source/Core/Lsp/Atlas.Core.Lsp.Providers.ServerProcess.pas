@@ -71,7 +71,8 @@ uses
   Atlas.WinBase.Process,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Lsp.Crashes;
+  Atlas.Core.Lsp.Crashes,
+  Atlas.Text.Files;
 
 const
   // FILE_APPEND_DATA: Jedes WriteFile landet am Ende, auch wenn mehrere Server dieselbe Datei offen haben.
@@ -500,8 +501,14 @@ begin
     end;
   except
     // Nur eine Zahl fürs Protokoll; ohne Datei bleibt sie 0.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := 0;
+    end;
   end;
 end;
 

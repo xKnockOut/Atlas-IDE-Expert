@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.CodeInsight.Composition.Adapters;
+﻿unit Atlas.IDE.CodeInsight.Composition.HostAdapters;
 
 // Adapters, Providers und Compositions der Core-Features für die Kompositionswurzel: Serverprozess,
 // Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Code-Aktionen für den Klick auf eine Marke,

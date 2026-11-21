@@ -451,7 +451,10 @@ begin
         end;
       except
         // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, der Editor bleibt frei.
-        mFailed := True;
+        on ELspClientError do
+        begin
+          mFailed := True;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Reassigned,

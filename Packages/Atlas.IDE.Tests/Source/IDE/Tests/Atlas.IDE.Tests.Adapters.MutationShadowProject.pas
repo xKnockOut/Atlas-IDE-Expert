@@ -66,7 +66,8 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Runner,
-  Atlas.IDE.Tests.Projects;
+  Atlas.IDE.Tests.Projects,
+  Atlas.Text.Files;
 
 const
   cMsPerSecond = 1000;
@@ -202,8 +203,14 @@ begin
       TFile.Delete(mResultFile);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
+    end;
   end;
 end;
 

@@ -85,70 +85,8 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.YouTrackApi,
-  Atlas.Core.Tracker.YouTrackWorkflow;
-
-type
-  /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
-  TFakeRulesTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiSend)
-  private
-    FMethods: TArray<string>;
-    FPrefixes: TArray<string>;
-    FStatus: TArray<Integer>;
-    FTexts: TArray<string>;
-  public
-    Calls: TArray<string>;
-    Bodies: TArray<string>;
-    procedure Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-    function Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
-    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
-      Boolean;
-  end;
-
-{ TFakeRulesTransport }
-
-procedure TFakeRulesTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-begin
-  FMethods := FMethods + [AMethod];
-  FPrefixes := FPrefixes + [APrefix];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
-
-function TFakeRulesTransport.Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Calls := Calls + [AMethod + ' ' + AUrl];
-  AStatus := 404;
-  AText := '';
-  Result := True;
-  for mIndex := 0 to High(FPrefixes) do
-  begin
-    if (FMethods[mIndex] = AMethod) and (Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex]) then
-    begin
-      AStatus := FStatus[mIndex];
-      AText := FTexts[mIndex];
-      Exit;
-    end;
-  end;
-end;
-
-function TFakeRulesTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-begin
-  AError := TAtlasCiFetchError.None;
-  Result := Reply('GET', AUrl, AStatus, AText);
-end;
-
-function TFakeRulesTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
-  out AResponse: TAtlasCiResponse): Boolean;
-begin
-  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
-  Bodies := Bodies + [ABody];
-  Result := Reply(AMethod, AUrl, AResponse.Status, AResponse.Text);
-end;
+  Atlas.Core.Tracker.YouTrackWorkflow,
+  Atlas.Core.Tracker.TestSupport;
 
 function Fixture(const AName: string): string;
 var
@@ -386,12 +324,12 @@ end;
 
 procedure TAtlasYouTrackTransitionTests.ReadAgainstFakeTransport;
 var
-  mTransport: TFakeRulesTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mReader: IAtlasTrackerStateRules;
   mRules: TAtlasTrackerStateRules;
 begin
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('GET', 'https://yt.beispiel.de/api/issues/ATL-2052?fields=', 200,
     Fixture('state-rules-named.json'));
@@ -417,11 +355,11 @@ end;
 
 procedure TAtlasYouTrackTransitionTests.ApplyFiresAfterComment;
 var
-  mTransport: TFakeRulesTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerWriter;
 begin
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/comments', 200, '{"id":"1"}');
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/fields/82-11', 200, '{"id":"82-11"}');
@@ -441,12 +379,12 @@ end;
 
 procedure TAtlasYouTrackTransitionTests.ApplyWithAssignSendsCommandFirst;
 var
-  mTransport: TFakeRulesTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerWriter;
   mChange: TAtlasTrackerWrite;
 begin
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/commands', 200, '{}');
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/fields/82-11', 200, '{}');
@@ -465,12 +403,12 @@ end;
 
 procedure TAtlasYouTrackTransitionTests.ApplyRejectedKeepsMessage;
 var
-  mTransport: TFakeRulesTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerWriter;
   mResult: TAtlasTrackerWriteResult;
 begin
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/fields/82-11', 400,
     Fixture('event-no-event.json'));
@@ -488,11 +426,11 @@ end;
 
 procedure TAtlasYouTrackTransitionTests.ApplyWithoutFieldIdNotConfigured;
 var
-  mTransport: TFakeRulesTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mChange: TAtlasTrackerWrite;
 begin
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mChange := ReviewChange('Fertig');
   mChange.FieldId := '82/11';
@@ -523,12 +461,12 @@ end;
 
 procedure TAtlasYouTrackEndFieldsTests.FieldValuesAndSetField;
 var
-  mTransport: TFakeRulesTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mFields: IAtlasTrackerFields;
   mValues: TArray<string>;
 begin
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('GET', 'https://yt.beispiel.de/api/admin/projects', 200, Fixture('end-fields-projects.json'));
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/commands', 200, '{}');
@@ -544,14 +482,14 @@ end;
 
 procedure TAtlasYouTrackEndFieldsTests.RunRejectedByRuleThenResumes;
 var
-  mTransport: TFakeRulesTransport;
+  mTransport: TFakeMethodTransport;
   mKeep: IAtlasCiTransport;
   mTracker: TAtlasYouTrackTracker;
   mCall: TAtlasTrackerEndCall;
   mPlan: TAtlasTrackerEndPlan;
   mProgress: TAtlasTrackerEndProgress;
 begin
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/timeTracking/workItems', 200, '{"id":"w"}');
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/comments', 200, '{"id":"c"}');
@@ -578,7 +516,7 @@ begin
     TArray<string>.Create('Status', 'Behoben in Version', 'Ursache', 'Version')), 'längster ganzer Name');
   // Feld ergänzt, Regel erfüllt: nur Feld und Übergang gehen hinaus.
   mPlan.AddField('Behoben in Version', '2.1.0');
-  mTransport := TFakeRulesTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/commands', 200, '{}');
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-2052/fields/82-11', 200, '{}');

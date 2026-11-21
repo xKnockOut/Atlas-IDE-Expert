@@ -153,7 +153,8 @@ uses
   Atlas.Core.Tracker.Providers.LocalFiles,
   Atlas.Core.Tracker.GitHubBoards,
   Atlas.Core.Tracker.Internals.GitHubGraphQl,
-  Atlas.Core.Tracker.YouTrackBoards;
+  Atlas.Core.Tracker.YouTrackBoards,
+  Atlas.Tests.Files;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (GET) bzw. Adressanfang und Textstück im Inhalt
@@ -226,29 +227,6 @@ begin
   AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
   Find(AUrl, ABody, AResponse.Status, AResponse.Text);
   Result := True;
-end;
-
-/// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
-function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
 end;
 
 /// <summary>Text des Feldes AName im JSON-Objekt AJson; '' ohne.</summary>
@@ -540,7 +518,7 @@ var
   mCurrent: string;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(Fixture('YouTrack', 'agiles.json'), '', 'ATL', mSnapshot,
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(TTestData.Fixture('YouTrack', 'agiles.json'), '', 'ATL', mSnapshot,
     mCurrent));
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Boards)));
   Assert.AreEqual('108-2', mSnapshot.Board.Id);
@@ -559,12 +537,12 @@ var
   mCurrent: string;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(Fixture('YouTrack', 'agiles.json'), '108-1', 'ATL', mSnapshot,
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(TTestData.Fixture('YouTrack', 'agiles.json'), '108-1', 'ATL', mSnapshot,
     mCurrent));
   Assert.AreEqual('108-1', mSnapshot.Board.Id);
   Assert.AreEqual('State', mSnapshot.Field);
   // Ohne passendes Projekt: das erste Board.
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(Fixture('YouTrack', 'agiles.json'), '', 'XYZ', mSnapshot, mCurrent));
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(TTestData.Fixture('YouTrack', 'agiles.json'), '', 'XYZ', mSnapshot, mCurrent));
   Assert.AreEqual('108-1', mSnapshot.Board.Id);
   Assert.IsFalse(TAtlasYouTrackBoards.ParseAgiles('[]', '', 'ATL', mSnapshot, mCurrent));
   Assert.IsFalse(TAtlasYouTrackBoards.ParseAgiles('kaputt', '', 'ATL', mSnapshot, mCurrent));
@@ -653,13 +631,13 @@ var
   mSprints: TArray<TAtlasBoardSprint>;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(Fixture('YouTrack', 'agiles.json'), '', 'ATL', mSnapshot,
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseAgiles(TTestData.Fixture('YouTrack', 'agiles.json'), '', 'ATL', mSnapshot,
     mCurrent));
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseSprints(Fixture('YouTrack', 'agile-sprints.json'), mSprints));
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseSprints(TTestData.Fixture('YouTrack', 'agile-sprints.json'), mSprints));
   Assert.AreEqual(Integer(2), Integer(Length(mSprints)));
   Assert.IsTrue(mSprints[0].Archived);
   Assert.IsTrue(mSprints[1].Start > 0);
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseSprint(Fixture('YouTrack', 'agile-sprint.json'), YouTrackTarget,
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseSprint(TTestData.Fixture('YouTrack', 'agile-sprint.json'), YouTrackTarget,
     mSnapshot));
   Assert.AreEqual('Sprint 42', mSnapshot.Sprint.Name);
   Assert.AreEqual(Integer(3), Integer(Length(mSnapshot.Cards)));
@@ -689,12 +667,12 @@ var
 begin
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://firma.youtrack.cloud/api/agiles?', '', 200, Fixture('YouTrack', 'agiles.json'));
+  mTransport.Answer('https://firma.youtrack.cloud/api/agiles?', '', 200, TTestData.Fixture('YouTrack', 'agiles.json'));
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles/108-2/sprints?', '', 200,
-    Fixture('YouTrack', 'agile-sprints.json'));
+    TTestData.Fixture('YouTrack', 'agile-sprints.json'));
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles/108-2/sprints/109-42?', '', 200,
-    Fixture('YouTrack', 'agile-sprint.json'));
-  mTransport.Answer('https://firma.youtrack.cloud/api/users/me', '', 200, Fixture('YouTrack', 'users-me.json'));
+    TTestData.Fixture('YouTrack', 'agile-sprint.json'));
+  mTransport.Answer('https://firma.youtrack.cloud/api/users/me', '', 200, TTestData.Fixture('YouTrack', 'users-me.json'));
   mBoards := TAtlasYouTrackBoards.Create;
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mError);
@@ -753,8 +731,8 @@ var
   mCurrent: string;
 begin
   Result := TAtlasBoardSnapshot.Empty;
-  TAtlasYouTrackBoards.ParseAgiles(Fixture('YouTrack', 'agiles.json'), '', 'ATL', Result, mCurrent);
-  TAtlasYouTrackBoards.ParseSprint(Fixture('YouTrack', 'agile-sprint.json'), YouTrackTarget, Result);
+  TAtlasYouTrackBoards.ParseAgiles(TTestData.Fixture('YouTrack', 'agiles.json'), '', 'ATL', Result, mCurrent);
+  TAtlasYouTrackBoards.ParseSprint(TTestData.Fixture('YouTrack', 'agile-sprint.json'), YouTrackTarget, Result);
 end;
 
 procedure TAtlasYouTrackBoardTests.MoveSendsCommand;
@@ -942,7 +920,7 @@ var
   mSnapshot: TAtlasBoardSnapshot;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasGitHubBoards.ParseProjects(Fixture('GitHub', 'projects-v2.json'), mSnapshot));
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProjects(TTestData.Fixture('GitHub', 'projects-v2.json'), mSnapshot));
   Assert.AreEqual('xKnockOut', mSnapshot.Me);
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Boards)));
   Assert.AreEqual('PVT_atlas', mSnapshot.Boards[0].Id);
@@ -954,7 +932,7 @@ var
   mSnapshot: TAtlasBoardSnapshot;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, '',
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(TTestData.Fixture('GitHub', 'project-v2.json'), GitHubTarget, '',
     EncodeDate(2026, 10, 28), mSnapshot));
   Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Project, mSnapshot.Kind);
   Assert.AreEqual('Status', mSnapshot.Field);
@@ -975,7 +953,7 @@ begin
   Assert.AreEqual('MB', TAtlasTrackerBoard.Initials(mSnapshot.Cards[0].Assignee));
   Assert.AreEqual('beispiel/web#12', mSnapshot.Cards[1].Key);
   // Älterer Sprint gewählt.
-  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, 'it1',
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(TTestData.Fixture('GitHub', 'project-v2.json'), GitHubTarget, 'it1',
     EncodeDate(2026, 10, 28), mSnapshot));
   Assert.AreEqual(Integer(1), Integer(Length(mSnapshot.Cards)));
   Assert.AreEqual('#700', mSnapshot.Cards[0].Key);
@@ -987,10 +965,10 @@ var
   mMessage: string;
 begin
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized,
-    TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'graphql-scopes.json'), mMessage));
+    TAtlasGitHubGraphQl.Error(TTestData.Fixture('GitHub', 'graphql-scopes.json'), mMessage));
   Assert.IsTrue(Pos('read:project', mMessage) > 0);
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None,
-    TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'projects-v2.json'), mMessage));
+    TAtlasGitHubGraphQl.Error(TTestData.Fixture('GitHub', 'projects-v2.json'), mMessage));
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid,
     TAtlasGitHubGraphQl.Error('{"errors":[{"message":"x"}]}', mMessage));
 end;
@@ -1005,8 +983,8 @@ var
 begin
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://api.github.com/graphql', 'projectsV2', 200, Fixture('GitHub', 'projects-v2.json'));
-  mTransport.Answer('https://api.github.com/graphql', 'PVT_atlas', 200, Fixture('GitHub', 'project-v2.json'));
+  mTransport.Answer('https://api.github.com/graphql', 'projectsV2', 200, TTestData.Fixture('GitHub', 'projects-v2.json'));
+  mTransport.Answer('https://api.github.com/graphql', 'PVT_atlas', 200, TTestData.Fixture('GitHub', 'project-v2.json'));
   mBoards := TAtlasGitHubBoards.Create;
   // Sprint ausdrücklich (it2 trägt die Karten): Ohne Angabe gilt der Sprint von heute, und die Iterationen der
   // Fixture enden (sonst wäre nach ihrem Ende it3 ohne Karten der aktuelle).
@@ -1030,11 +1008,11 @@ var
 begin
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://api.github.com/graphql', '', 200, Fixture('GitHub', 'projects-v2-empty.json'));
+  mTransport.Answer('https://api.github.com/graphql', '', 200, TTestData.Fixture('GitHub', 'projects-v2-empty.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=open', '', 200,
-    Fixture('GitHub', 'repo-issues-open.json'));
+    TTestData.Fixture('GitHub', 'repo-issues-open.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
-    Fixture('GitHub', 'repo-issues-closed.json'));
+    TTestData.Fixture('GitHub', 'repo-issues-closed.json'));
   mBoards := TAtlasGitHubBoards.Create;
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Repository, mSnapshot.Kind);
@@ -1061,11 +1039,11 @@ begin
   Assert.IsFalse(Supports(mProvider, IAtlasTrackerWorkDays), 'Arbeitstage nur bei YouTrack');
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://api.github.com/graphql', '', 200, Fixture('GitHub', 'projects-v2-empty.json'));
+  mTransport.Answer('https://api.github.com/graphql', '', 200, TTestData.Fixture('GitHub', 'projects-v2-empty.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=open', '', 200,
-    Fixture('GitHub', 'repo-issues-open.json'));
+    TTestData.Fixture('GitHub', 'repo-issues-open.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
-    Fixture('GitHub', 'repo-issues-closed.json'));
+    TTestData.Fixture('GitHub', 'repo-issues-closed.json'));
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Repository, mSnapshot.Kind, 'weitergeleitet an TAtlasGitHubBoards');
 end;
@@ -1080,11 +1058,11 @@ var
 begin
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://api.github.com/graphql', '', 200, Fixture('GitHub', 'graphql-scopes.json'));
+  mTransport.Answer('https://api.github.com/graphql', '', 200, TTestData.Fixture('GitHub', 'graphql-scopes.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=open', '', 200,
-    Fixture('GitHub', 'repo-issues-open.json'));
+    TTestData.Fixture('GitHub', 'repo-issues-open.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
-    Fixture('GitHub', 'repo-issues-closed.json'));
+    TTestData.Fixture('GitHub', 'repo-issues-closed.json'));
   mBoards := TAtlasGitHubBoards.Create;
   Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.AreEqual<TAtlasBoardKind>(TAtlasBoardKind.Repository, mSnapshot.Kind);
@@ -1104,7 +1082,7 @@ var
   mResult: TAtlasTrackerWriteResult;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, '', EncodeDate(2026, 10, 28),
+  TAtlasGitHubBoards.ParseProject(TTestData.Fixture('GitHub', 'project-v2.json'), GitHubTarget, '', EncodeDate(2026, 10, 28),
     mSnapshot);
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
@@ -1122,7 +1100,7 @@ begin
   // Fehler kommt als "errors" mit Status 200.
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
-  mTransport.Answer('https://api.github.com/graphql', '', 200, Fixture('GitHub', 'graphql-scopes.json'));
+  mTransport.Answer('https://api.github.com/graphql', '', 200, TTestData.Fixture('GitHub', 'graphql-scopes.json'));
   mResult := mBoards.MoveCard(TAtlasBoardMove.Create(GitHubTarget, mKeep, mSnapshot.Cards[0], 2, '', 15000), mSnapshot);
   Assert.IsFalse(mResult.Succeeded);
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mResult.Error);
@@ -1195,7 +1173,7 @@ var
   mDays: TArray<Integer>;
   mWork: IAtlasTrackerWorkDays;
 begin
-  Assert.IsTrue(TAtlasYouTrackBoards.ParseWorkDays(Fixture('YouTrack', 'workdays.json'), mDays));
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseWorkDays(TTestData.Fixture('YouTrack', 'workdays.json'), mDays));
   Assert.AreEqual(Integer(6), Integer(Length(mDays)));
   Assert.AreEqual(6, mDays[5]);
   Assert.IsFalse(TAtlasYouTrackBoards.ParseWorkDays('{"workDays": [0, 9]}', mDays), 'nur 1 bis 7');
@@ -1203,7 +1181,7 @@ begin
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://firma.youtrack.cloud' + TAtlasYouTrackBoards.cWorkDaysPath, '', 200,
-    Fixture('YouTrack', 'workdays.json'));
+    TTestData.Fixture('YouTrack', 'workdays.json'));
   // Über den Anbieter, wie die Sprint-Kachel fragt (weitergeleitet an TAtlasYouTrackBoards).
   mWork := TAtlasYouTrackTracker.Create;
   Assert.IsTrue(mWork.WorkDays(YouTrackTarget, mKeep, 5000, mDays));
@@ -1221,7 +1199,7 @@ var
   mSnapshot: TAtlasBoardSnapshot;
 begin
   mSnapshot := TAtlasBoardSnapshot.Empty;
-  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, '',
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(TTestData.Fixture('GitHub', 'project-v2.json'), GitHubTarget, '',
     EncodeDate(2026, 10, 28), mSnapshot));
   Assert.AreEqual('Estimate', mSnapshot.PointsField, 'Zahlenfeld mit Schätzungsnamen');
   Assert.AreEqual('https://github.com/users/beispiel/projects/3', mSnapshot.Page);
@@ -1229,7 +1207,7 @@ begin
   Assert.AreEqual(Double(3), mSnapshot.Cards[0].Points, 0.001);
   Assert.IsFalse(mSnapshot.Cards[1].HasPoints);
   Assert.AreEqual(Double(0), Double(mSnapshot.Cards[0].ResolvedAt), 1E-6);
-  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, 'it1',
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(TTestData.Fixture('GitHub', 'project-v2.json'), GitHubTarget, 'it1',
     EncodeDate(2026, 10, 28), mSnapshot));
   Assert.AreEqual(Double(EncodeDateTime(2026, 10, 20, 10, 0, 0, 0)), Double(mSnapshot.Cards[0].ResolvedAt),
     1 / SecsPerDay);

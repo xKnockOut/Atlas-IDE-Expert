@@ -52,8 +52,9 @@ type
     function Folders(const AFolder: string): TArray<string>;
     /// <summary>Letzte Änderung einer Datei oder eines Ordners; 0, wenn es ihn nicht gibt.</summary>
     function WriteTime(const APath: string): TDateTime;
-    /// <summary>Sperrdatei AFileName exklusiv öffnen und bis zu AWaitMs warten; nil ohne Sperre. Freigabe mit
-    /// dem letzten Verweis.</summary>
+    /// <summary>Sperrdatei AFileName exklusiv öffnen; hält sie ein anderer, bis zu AWaitMs warten. Ohne Sperre
+    /// nil, und zwar sofort, wenn das Öffnen nie gelingen kann (kein Schreibrecht, Name ist ein Ordner). Freigabe
+    /// mit dem letzten Verweis.</summary>
     function Lock(const AFileName: string; AWaitMs: Integer): IInterface;
     /// <summary>Wert einer Umgebungsvariablen; '' ohne.</summary>
     function Environment(const AName: string): string;

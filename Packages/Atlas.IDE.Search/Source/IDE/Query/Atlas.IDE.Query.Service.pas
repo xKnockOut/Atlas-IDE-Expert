@@ -96,7 +96,7 @@ type
     destructor Destroy; override;
     procedure LoadCatalog;
     procedure Run(const AQuery: string);
-    procedure Cancel;
+    class procedure Cancel; static;
     procedure SaveRule(const AQuery: string);
   end;
 
@@ -337,7 +337,7 @@ begin
   end;
 end;
 
-procedure TCodeQueryState.Cancel;
+class procedure TCodeQueryState.Cancel;
 var
   mFrame: TAtlasCodeQueryFrame;
 begin

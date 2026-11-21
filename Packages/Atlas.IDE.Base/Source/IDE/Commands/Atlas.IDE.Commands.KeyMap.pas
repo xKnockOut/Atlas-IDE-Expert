@@ -437,7 +437,11 @@ begin
     Result := AKeyboard.LookupKeyBinding([TShortCut(AKey)], mBinding);
   except
     // Eine Taste, die die IDE nicht auflösen kann, zählt als frei.
-    Result := False;
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Tastenbelegung nicht auflösbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      Result := False;
+    end;
   end;
   if Result then
   begin

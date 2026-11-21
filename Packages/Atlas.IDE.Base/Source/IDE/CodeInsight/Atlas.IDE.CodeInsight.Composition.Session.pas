@@ -110,7 +110,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.BugReport,
-  Atlas.IDE.CodeInsight.Composition.Adapters,
+  Atlas.IDE.CodeInsight.Composition.HostAdapters,
   Atlas.IDE.Foundation.Host,
   Atlas.Core.Diagnostics.UnloadSafety;
 

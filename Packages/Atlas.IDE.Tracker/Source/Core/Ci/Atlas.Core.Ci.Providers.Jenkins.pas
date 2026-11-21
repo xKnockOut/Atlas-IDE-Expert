@@ -53,6 +53,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
   System.Classes,
   System.DateUtils,
@@ -144,30 +145,18 @@ begin
 end;
 
 function OutcomeOfResult(const AResult: string): TAtlasCiOutcome;
+const
+  cResults: array[0..4] of string = ('SUCCESS', 'UNSTABLE', 'FAILURE', 'ABORTED', 'NOT_BUILT');
+  cOutcomes: array[0..4] of TAtlasCiOutcome = (TAtlasCiOutcome.Success, TAtlasCiOutcome.Unstable,
+    TAtlasCiOutcome.Failure, TAtlasCiOutcome.Aborted, TAtlasCiOutcome.NotBuilt);
+var
+  mIndex: Integer;
 begin
-  if SameText(AResult, 'SUCCESS') then
+  Result := TAtlasCiOutcome.Unknown;
+  mIndex := IndexText(AResult, cResults);
+  if mIndex >= 0 then
   begin
-    Result := TAtlasCiOutcome.Success;
-  end
-  else if SameText(AResult, 'UNSTABLE') then
-  begin
-    Result := TAtlasCiOutcome.Unstable;
-  end
-  else if SameText(AResult, 'FAILURE') then
-  begin
-    Result := TAtlasCiOutcome.Failure;
-  end
-  else if SameText(AResult, 'ABORTED') then
-  begin
-    Result := TAtlasCiOutcome.Aborted;
-  end
-  else if SameText(AResult, 'NOT_BUILT') then
-  begin
-    Result := TAtlasCiOutcome.NotBuilt;
-  end
-  else
-  begin
-    Result := TAtlasCiOutcome.Unknown;
+    Result := cOutcomes[mIndex];
   end;
 end;
 

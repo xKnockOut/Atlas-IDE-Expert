@@ -38,7 +38,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Editor.Metrics;
+  Atlas.Core.Editor.Metrics,
+  Atlas.Core.Editor.Metrics.TestSupport;
 
 const
   cAnswer = '{"enabled": false, "limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, ' +
@@ -47,18 +48,6 @@ const
     '"cognitive": 3, "parameters": 2, "operands": 6, "locals": 3, "exits": 1}, "exceeded": ["cyclomatic"]}, ' +
     '{"name": "Ohne Zeile"}, 42, ' +
     '{"name": "Help", "line": 30, "values": {"length": 2}}]}';
-
-function Parse(const AJson: string): TAtlasFileMetrics;
-var
-  mValue: TJSONValue;
-begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := TAtlasFileMetrics.FromJson(mValue);
-  finally
-    mValue.Free;
-  end;
-end;
 
 { TAtlasEditorMetricsTests }
 

@@ -51,90 +51,13 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.NewIssueGitHub,
-  Atlas.Core.Tracker.NewIssue;
-
-type
-  /// <summary>Transport mit festen Antworten je Methode und Adressanfang (erster Treffer gilt); merkt Anfragen.
-  /// </summary>
-  TFakeTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiSend)
-  private
-    FMethods: TArray<string>;
-    FPrefixes: TArray<string>;
-    FStatus: TArray<Integer>;
-    FTexts: TArray<string>;
-    function Answer(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
-  public
-    /// <summary>"GET https://…" bzw. "POST https://…".</summary>
-    Calls: TArray<string>;
-    Bodies: TArray<string>;
-    destructor Destroy; override;
-    procedure Reply(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
-      Boolean;
-  end;
-
-{ TFakeTransport }
-
-destructor TFakeTransport.Destroy;
-begin
-  FMethods := nil;
-  FPrefixes := nil;
-  FStatus := nil;
-  FTexts := nil;
-  Calls := nil;
-  Bodies := nil;
-  inherited Destroy;
-end;
-
-function TFakeTransport.Answer(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Calls := Calls + [AMethod + ' ' + AUrl];
-  AStatus := 404;
-  AText := '';
-  Result := True;
-  for mIndex := 0 to High(FPrefixes) do
-  begin
-    if (FMethods[mIndex] = AMethod) and AUrl.StartsWith(FPrefixes[mIndex]) then
-    begin
-      AStatus := FStatus[mIndex];
-      AText := FTexts[mIndex];
-      Exit;
-    end;
-  end;
-end;
-
-procedure TFakeTransport.Reply(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
-begin
-  FMethods := FMethods + [AMethod];
-  FPrefixes := FPrefixes + [APrefix];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
-
-function TFakeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-begin
-  AError := TAtlasCiFetchError.None;
-  Result := Answer('GET', AUrl, AStatus, AText);
-end;
-
-function TFakeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
-  out AResponse: TAtlasCiResponse): Boolean;
-begin
-  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
-  Bodies := Bodies + [ABody];
-  Result := Answer(AMethod, AUrl, AResponse.Status, AResponse.Text);
-end;
+  Atlas.Core.Tracker.NewIssue,
+  Atlas.Core.Tracker.TestSupport;
 
 function YouTrackTarget: TAtlasTrackerTarget;
 begin
@@ -325,7 +248,7 @@ end;
 
 procedure TAtlasNewIssueTests.YouTrackCreateFromTodo;
 var
-  mTransport: TFakeTransport;
+  mTransport: TFakeMethodTransport;
   mRef: IAtlasCiTransport;
   mProvider: IAtlasTrackerProvider;
   mContext: TAtlasNewIssueContext;
@@ -345,12 +268,12 @@ begin
   mDraft.IssueType := 'Bug';
   mDraft.AssignToMe := True;
   mDraft.AssigneeField := 'Zuständig';
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('GET', 'https://yt.local/api/admin/projects?', 200,
+  mTransport.Answer('GET', 'https://yt.local/api/admin/projects?', 200,
     '[{"id":"0-1","shortName":"KASSE"},{"id":"0-7","shortName":"ATL"}]');
-  mTransport.Reply('GET', 'https://yt.local/api/users/me', 200, '{"login":"marco"}');
-  mTransport.Reply('POST', 'https://yt.local/api/issues', 200,
+  mTransport.Answer('GET', 'https://yt.local/api/users/me', 200, '{"login":"marco"}');
+  mTransport.Answer('POST', 'https://yt.local/api/issues', 200,
     '{"idReadable":"ATL-130","numberInProject":130,"$type":"Issue"}');
   mProvider := TAtlasYouTrackTracker.Create;
   mResult := TAtlasNewIssues.CreateIssue(mProvider, YouTrackTarget, mRef, mDraft);
@@ -378,7 +301,7 @@ end;
 
 procedure TAtlasNewIssueTests.GitHubCreateWithLabelsAndAssignee;
 var
-  mTransport: TFakeTransport;
+  mTransport: TFakeMethodTransport;
   mRef: IAtlasCiTransport;
   mDraft: TAtlasNewIssueDraft;
   mResult: TAtlasNewIssueResult;
@@ -392,9 +315,9 @@ begin
   mDraft.IssueType := 'bug';
   mDraft.Priority := 'prio:high';
   mDraft.Assignee := 'octocat';
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('POST', 'https://api.github.com/repos/acme/kasse/issues', 201,
+  mTransport.Answer('POST', 'https://api.github.com/repos/acme/kasse/issues', 201,
     '{"number":42,"html_url":"https://github.com/acme/kasse/issues/42"}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
   Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Created, mResult.Outcome);
@@ -418,7 +341,7 @@ end;
 
 procedure TAtlasNewIssueTests.GitHubCreateWithTemplateValues;
 var
-  mTransport: TFakeTransport;
+  mTransport: TFakeMethodTransport;
   mRef: IAtlasCiTransport;
   mDraft: TAtlasNewIssueDraft;
   mResult: TAtlasNewIssueResult;
@@ -436,9 +359,9 @@ begin
   mDraft.GitHub.Assignees := TArray<string>.Create('octocat', 'anna');
   mDraft.GitHub.Milestone := 3;
   mDraft.GitHub.IssueType := 'Bug';
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('POST', 'https://api.github.com/repos/acme/kasse/issues', 201,
+  mTransport.Answer('POST', 'https://api.github.com/repos/acme/kasse/issues', 201,
     '{"number":42,"node_id":"I_42","html_url":"https://github.com/acme/kasse/issues/42",' +
     '"milestone":{"number":3},"type":null}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
@@ -454,7 +377,7 @@ end;
 
 procedure TAtlasNewIssueTests.FailuresGiveNoKey;
 var
-  mTransport: TFakeTransport;
+  mTransport: TFakeMethodTransport;
   mRef: IAtlasCiTransport;
   mDraft: TAtlasNewIssueDraft;
   mResult: TAtlasNewIssueResult;
@@ -465,38 +388,38 @@ begin
   mDraft := TAtlasNewIssueDraft.Empty;
   mDraft.Title := 'Titel';
   // 403: abgelehnt, keine Kennung (der Code bleibt unverändert).
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('POST', 'https://api.github.com/', 403, '{"message":"Resource not accessible"}');
+  mTransport.Answer('POST', 'https://api.github.com/', 403, '{"message":"Resource not accessible"}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
   Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Rejected, mResult.Outcome);
   Assert.AreEqual(403, mResult.HttpStatus);
   Assert.AreEqual('', mResult.Key);
   // 422 mit Meldung des Trackers.
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('POST', 'https://api.github.com/', 422, '{"message":"Validation Failed"}');
+  mTransport.Answer('POST', 'https://api.github.com/', 422, '{"message":"Validation Failed"}');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
   Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Invalid, mResult.Outcome);
   Assert.AreEqual('Validation Failed', mResult.TrackerMessage);
   // YouTrack: Projektkürzel unbekannt, nichts gesendet.
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('GET', 'https://yt.local/api/admin/projects?', 200, '[{"id":"0-1","shortName":"KASSE"}]');
+  mTransport.Answer('GET', 'https://yt.local/api/admin/projects?', 200, '[{"id":"0-1","shortName":"KASSE"}]');
   mResult := TAtlasNewIssues.CreateIssue(mYouTrack, YouTrackTarget, mRef, mDraft);
   Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.ProjectUnknown, mResult.Outcome);
   Assert.AreEqual(0, Integer(Length(mTransport.Bodies)), 'kein POST');
   // Angelegt, aber Antwort ohne Kennung: nichts in den Code.
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('POST', 'https://api.github.com/', 201, '<html>');
+  mTransport.Answer('POST', 'https://api.github.com/', 201, '<html>');
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
   Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.Unreadable, mResult.Outcome);
   Assert.AreEqual('', mResult.Key);
   // Ohne Token (kein Transport) und ohne Titel kein Netz.
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, nil, mDraft);
   Assert.AreEqual<TAtlasNewIssueOutcome>(TAtlasNewIssueOutcome.NoToken, mResult.Outcome);
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
   mDraft.Title := '  ';
   mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
@@ -506,18 +429,18 @@ end;
 
 procedure TAtlasNewIssueTests.LoadFieldsFromTracker;
 var
-  mTransport: TFakeTransport;
+  mTransport: TFakeMethodTransport;
   mRef: IAtlasCiTransport;
   mFields: TAtlasNewIssueFields;
   mGitHub, mYouTrack: IAtlasTrackerProvider;
 begin
   mGitHub := TAtlasGitHubTracker.Create;
   mYouTrack := TAtlasYouTrackTracker.Create;
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('GET', 'https://yt.local/api/users/me', 200, '{"login":"marco"}');
-  mTransport.Reply('GET', 'https://yt.local/api/admin/projects?', 200, '[{"id":"0-7","shortName":"atl"}]');
-  mTransport.Reply('GET', 'https://yt.local/api/admin/projects/0-7/customFields', 200,
+  mTransport.Answer('GET', 'https://yt.local/api/users/me', 200, '{"login":"marco"}');
+  mTransport.Answer('GET', 'https://yt.local/api/admin/projects?', 200, '[{"id":"0-7","shortName":"atl"}]');
+  mTransport.Answer('GET', 'https://yt.local/api/admin/projects/0-7/customFields', 200,
     '[{"field":{"name":"Priorität"},"bundle":{"values":[{"name":"Kritisch"},{"name":"Normal"}]}},' +
     '{"field":{"name":"Typ"},"bundle":{"values":[{"name":"Fehler"},{"name":"Aufgabe"}]}},' +
     '{"field":{"name":"Zuständig"},"bundle":{"values":[{"login":"marco","name":"Marco"}],' +
@@ -532,11 +455,11 @@ begin
   Assert.AreEqual('Zuständig', mFields.AssigneeField);
   Assert.AreEqual('marco,anna', string.Join(',', mFields.Assignees), 'ohne Dubletten');
   // GitHub: Labels für Typ und Priorität, Zuständige aus /assignees.
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
-  mTransport.Reply('GET', 'https://api.github.com/user', 200, '{"login":"octocat"}');
-  mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/labels', 200, '[{"name":"bug"},{"name":"docs"}]');
-  mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/assignees', 200, '[{"login":"octocat"}]');
+  mTransport.Answer('GET', 'https://api.github.com/user', 200, '{"login":"octocat"}');
+  mTransport.Answer('GET', 'https://api.github.com/repos/acme/kasse/labels', 200, '[{"name":"bug"},{"name":"docs"}]');
+  mTransport.Answer('GET', 'https://api.github.com/repos/acme/kasse/assignees', 200, '[{"login":"octocat"}]');
   Assert.IsTrue(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, Request, mFields));
   Assert.AreEqual('octocat', mFields.Me);
   Assert.AreEqual('bug,docs', string.Join(',', mFields.Types));
@@ -544,14 +467,14 @@ begin
   Assert.AreEqual('', mFields.TypeField, 'GitHub ohne Feldnamen');
   Assert.AreEqual(0, Integer(Length(mFields.GitHub.Milestones)), 'ohne Meilensteine keine Zeile (#2137)');
   // Meilensteine und Issue-Typen des Repositorys (#2137).
-  mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/milestones', 200,
+  mTransport.Answer('GET', 'https://api.github.com/repos/acme/kasse/milestones', 200,
     '[{"number":3,"title":"v2.2.0"}]');
-  mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/issue-types', 200, '[{"name":"Bug"}]');
+  mTransport.Answer('GET', 'https://api.github.com/repos/acme/kasse/issue-types', 200, '[{"name":"Bug"}]');
   Assert.IsTrue(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, Request, mFields));
   Assert.AreEqual('v2.2.0', mFields.GitHub.Milestones[0].Title);
   Assert.AreEqual('Bug', string.Join(',', mFields.GitHub.IssueTypes));
   // Ohne Antwort: False, Felder leer (frei eintippbar).
-  mTransport := TFakeTransport.Create;
+  mTransport := TFakeMethodTransport.Create;
   mRef := mTransport;
   Assert.IsFalse(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, Request, mFields));
   Assert.AreEqual(0, Integer(Length(mFields.Types)));

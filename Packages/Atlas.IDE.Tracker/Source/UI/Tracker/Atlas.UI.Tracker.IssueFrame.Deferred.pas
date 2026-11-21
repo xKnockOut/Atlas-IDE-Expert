@@ -13,7 +13,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Atlas.Core.Tracker.Contract,
-  Atlas.UI.Tracker.IssueFrame.Contract;
+  Atlas.UI.Tracker.IssueFrame.Types;
 
 type
   /// <summary>Gemerkte Wünsche bis zur Nachricht AMessage an AWindow; gehört AWindow.</summary>

@@ -22,7 +22,7 @@ uses
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Checklist,
   Atlas.UI.Tracker.DocBox,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueFrame.Layout;
 
 type

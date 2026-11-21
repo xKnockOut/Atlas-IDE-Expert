@@ -43,7 +43,8 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Text.Coverage,
-  Atlas.Core.Tests.Coverage;
+  Atlas.Core.Tests.Coverage,
+  Atlas.Tests.TempFolder;
 
 const
   cReport = '<report><data><linehits><file name="Rechner.pas">3=2;4=0;6=1</file>' +
@@ -66,11 +67,7 @@ end;
 
 procedure TAtlasCoverageStateTests.TearDown;
 begin
-  if DirectoryExists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasCoverageStateTests.LoadsAndLooksUpLines;

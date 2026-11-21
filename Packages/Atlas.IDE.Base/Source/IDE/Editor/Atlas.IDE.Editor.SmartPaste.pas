@@ -240,8 +240,11 @@ begin
       end;
     except
       // Zwischenablage gerade von einem anderen Programm gesperrt: beim nächsten Mal.
-      FClipSequence := 0;
-      FClipText := '';
+      on EClipboardException do
+      begin
+        FClipSequence := 0;
+        FClipText := '';
+      end;
     end;
     FClipLines := TTextLines.SplitLines(FClipText);
   end;
@@ -288,7 +291,8 @@ begin
         end;
       except
         // Server langsam oder weg: kein Fenster, das Einfügen bleibt, wie es ist.
-        Analysis := Default(TAtlasPasteAnalysis);
+        on ELspClientError do
+          Analysis := Default(TAtlasPasteAnalysis);
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,

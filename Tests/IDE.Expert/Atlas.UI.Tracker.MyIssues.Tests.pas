@@ -81,7 +81,8 @@ uses
   Atlas.UI.Tracker.MyIssues,
   Atlas.UI.Tracker.MyIssues.Text,
   Atlas.Core.Tracker.Contract.MyIssues,
-  Atlas.UI.Tracker.Contract.MyIssues;
+  Atlas.UI.Tracker.Contract.MyIssues,
+  Atlas.Core.Tracker.TestSupport;
 
 type
   /// <summary>Quelle des Bereichs für die Tests; merkt sich die Aufrufe.</summary>
@@ -112,14 +113,6 @@ type
 function NowUtc0: TDateTime;
 begin
   Result := EncodeDate(2026, 10, 16) + EncodeTime(9, 0, 0, 0);
-end;
-
-function Issue(const AKey: string; ANumber: Integer; const ATitle: string): TAtlasTrackerIssue;
-begin
-  Result := TAtlasTrackerIssue.Empty;
-  Result.Key := AKey;
-  Result.Number := ANumber;
-  Result.Title := ATitle;
 end;
 
 /// <summary>Zwei GitHub-Issues, eines mit Pull Request; Git.</summary>

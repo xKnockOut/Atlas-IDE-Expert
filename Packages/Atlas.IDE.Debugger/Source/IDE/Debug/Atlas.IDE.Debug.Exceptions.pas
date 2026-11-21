@@ -206,8 +206,12 @@ begin
     end;
   except
     // Ältere Debugger ohne Zustandstexte.
-    AClass := '';
-    AMessage := '';
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Zustandstext nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      AClass := '';
+      AMessage := '';
+    end;
   end;
   if mSource = 'keinem' then
   begin

@@ -56,15 +56,8 @@ uses
   System.Classes,
   System.Types,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Editor.InlayPlan;
-
-function H(ALine, ACharacter: Integer; const AName: string): TAtlasInlayHint;
-begin
-  Result := Default(TAtlasInlayHint);
-  Result.Line := ALine;
-  Result.Character := ACharacter;
-  Result.Name := AName;
-end;
+  Atlas.Core.Editor.InlayPlan,
+  Atlas.Core.InlayHints.TestSupport;
 
 function Texts: TAtlasInlayTexts;
 begin

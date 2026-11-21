@@ -73,6 +73,10 @@ type
 
 implementation
 
+
+uses
+  Atlas.Text.Reporting;
+
 { TJsonRpcTracingTransport }
 
 constructor TJsonRpcTracingTransport.Create(const AInner: IJsonRpcTransport; ATrace: TStream;
@@ -154,7 +158,6 @@ begin
         FTrace.WriteBuffer(mData, Length(mData));
       except
         // Ein defekter Mitschnitt darf das Protokoll nicht stören; ab jetzt wird nicht mehr geschrieben.
-        // lsp-ignore: catch-all-without-raise -- Mitschnitt darf das Protokoll nie stören; Fehler wird gemeldet
         on E: Exception do
         begin
           FFailed := True;
@@ -169,11 +172,14 @@ begin
   // Außerhalb der Sperre: Die Meldung kann über diesen Transport zurückkommen (window/logMessage),
   // und der Logger hält eigene Sperren.
   if Assigned(mReport) then
-    try
-      mReport(mReason);
-    except
-      // Meldefehler ignorieren: Das Protokoll läuft weiter.
-    end;
+  begin
+    // Ein Meldefehler hält das Protokoll nicht an.
+    TReporting.Quietly(
+      procedure
+      begin
+        mReport(mReason);
+      end);
+  end;
 end;
 
 function TJsonRpcTracingTransport.ReadMessage: TJSONObject;

@@ -143,7 +143,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Debug.OwnCode,
-  Atlas.Core.Debug.RoutinePattern;
+  Atlas.Core.Debug.RoutinePattern,
+  System.RegularExpressionsCore;
 
 const
   cActionNames: array[TAtlasExceptionAction] of string = ('stop', 'log', 'continue');
@@ -293,7 +294,7 @@ begin
     Result := TRegEx.IsMatch(AMessage, APattern, [roIgnoreCase]);
   except
     // Ungültiger Ausdruck (aus einer von Hand geänderten Datei): passt nie.
-    on Exception do
+    on ERegularExpressionError do
       Result := False;
   end;
 end;

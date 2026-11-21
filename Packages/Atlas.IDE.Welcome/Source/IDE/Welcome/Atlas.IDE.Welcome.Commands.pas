@@ -146,7 +146,7 @@ type
     procedure SectionChanged(const AId: string);
     procedure Flush;
     function CreateClient(const APluginId: string; AOwner: TComponent): TAtlasWelcomeFrame;
-    function FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory;
+    class function FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory; static;
     procedure RefreshClient(AClient: TAtlasWelcomeFrame);
     /// <summary>Tafel füllen; AFold: Fenster „Atlas-Start“ (Spalten falten, wenn es schmal ist).</summary>
     procedure FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
@@ -605,7 +605,7 @@ begin
   end;
 end;
 
-function TAtlasIdeWelcome.FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory;
+class function TAtlasIdeWelcome.FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory;
 begin
   Result :=
     function(AOwner: TComponent): TAtlasWelcomeFrame

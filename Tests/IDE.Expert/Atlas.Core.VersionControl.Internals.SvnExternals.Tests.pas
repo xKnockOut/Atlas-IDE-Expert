@@ -32,38 +32,16 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Internals.SvnExternals;
+  Atlas.Core.VersionControl.Internals.SvnExternals,
+  Atlas.Tests.Files;
 
 const
   cRepository = 'https://svn.firma.local/repo';
   cRootUrl = 'https://svn.firma.local/repo/Kasse/trunk';
 
-/// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
-function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
-end;
-
 function Definitions: TArray<TAtlasVcsSvnExternalDefinition>;
 begin
-  Result := TAtlasSvnExternals.Definitions(Fixture('Svn', 'externals-propget.xml'), 'C:\Projekte\Kasse');
+  Result := TAtlasSvnExternals.Definitions(TTestData.Fixture('Svn', 'externals-propget.xml'), 'C:\Projekte\Kasse');
 end;
 
 function Externals: TArray<TAtlasVcsSvnExternal>;
