@@ -336,6 +336,7 @@ Atlas.Common.Query.Language.Tests
 Atlas.Common.Rationale.References.Tests
 Atlas.Common.Rationale.Scanner.Tests
 Atlas.Common.Rules.Baseline.Tests
+Atlas.Common.Rules.Builtin.Architecture.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Calls.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests

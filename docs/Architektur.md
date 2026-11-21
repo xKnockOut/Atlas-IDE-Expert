@@ -113,7 +113,7 @@ Die Anwendung und das Testprojekt binden die Packages statisch ein: Sie finden d
 Ausgabeartefakt.Feature.Rolle.Sache
 ```
 
-- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.IDE.Base`
+- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.WinBase`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.IDE.Base`
 - `Atlas.Text`-Units heißen `Atlas.Text.<Feature>` (Feature-Wurzel ohne Rolle, z. B. `Atlas.Text.Lines`); sie enthalten nur reine Funktionen und Records ohne Zustand, ohne `inline` und ohne Standardparameter, keine Contracts oder Provider
 - Units der Anwendung tragen kein Präfix, z. B. `Shell.Application`
 - Units im Wurzelverzeichnis eines Features tragen keinen Rollenbezeichner, z. B. `Atlas.Common.Product.Version`
@@ -129,17 +129,31 @@ Platform-Features in den Packages importieren weder Host noch Hosted-Features:
 | Contract | eigenes Contract, fremdes Contract |
 | Internals | eigenes Contract und Internals, fremdes Contract und Root |
 | Providers, Adapters, Root | eigenes Contract, Internals und Root, fremdes Contract und Root |
-| Composition | eigenes Contract, Providers, Adapters, Root und Composition, fremdes Contract und Root |
-| Hosting | eigenes Contract, Providers, Adapters, Root, Composition und Hosting, fremdes Contract und Root |
+| Composition | eigenes Contract, Providers, Adapters, Root, Composition und Hosting, fremdes Contract und Root |
+| Hosting | eigenes Contract und Hosting, fremdes Contract und Root |
 
 Für die Anwendung gelten die Host-Matrix und die Hosted-Feature-Matrix. Hosted-Features importieren sich nie gegenseitig; feature-übergreifende Abläufe orchestriert der Host.
 
-Host-Matrix, wie sie die Prüfung annimmt:
+Host-Matrix (Host-Units ohne Präfix, je Host-Rolle):
 
-| Importierende Unit | Darf importieren |
-|---|---|
-| Host-Unit ohne Präfix (`Foundation.*`, `Core.*`, `Shell.*`, `Adapters.*`, `Platform.*`) | andere Host-Units; von Platform-Features Contract, Root, Providers, Adapters, Composition und Hosting, nie Internals |
-| Platform-Feature | nie eine Host-Unit |
+| Importierende Host-Rolle | Darf im Host importieren | Darf von Platform-Features importieren |
+|---|---|---|
+| `Foundation.*` | Foundation | Contract |
+| `Core.*` | Foundation, Core, Platform | Contract, Root |
+| `Shell.*` | alle Host-Rollen | alles außer Internals, auch Sub-Contracts und die übrigen Teile einer Verschachtelung |
+| `Adapters.*` | Foundation, Core, Adapters, Platform | Contract, Root, Sub-Contracts (nur zum Implementieren) |
+| `Platform.*` | Platform | Contract, Root |
+
+Ein Platform-Feature importiert nie eine Host-Unit.
+
+#### Verschachtelung
+
+Ein Provider oder Adapter kann eigene Bedürfnisse haben (eigener Contract, Internals, Providers). Sie liegen bei ihm, nicht beim Feature: Ein zweiter Rollenbezeichner im Namen eröffnet eine Verschachtelung, das Fragment davor ist ihr Träger. Unter `Atlas.Common.Server.Providers.Authentication.` sind `Cache` der Träger (Root der Struktur mit den Eigenschaften von Providers), `Cache.Store` ein weiteres Root-Fragment, `Cache.Contract` der Sub-Contract und `Cache.Internals.*` die Internals der Struktur.
+
+- **Innen** (beide Namen gleichen sich bis einschließlich des Trägers): Es gilt die Matrix relativ zum Träger, der die Stelle von Root einnimmt. `Cache` darf `Cache.Internals.*` und `Cache.Store` importieren, aber nicht `Cache.Adapters.*`.
+- **Außen:** Die Struktur erbt die Importrechte des Trägers, der Sub-Contract nur die Contract-Rechte. Den Sub-Contract importieren Geschwister derselben äußeren Rolle (`ClientUser` unter `Providers`), die Composition des Features, die Shell und Host-Adapters; Feature-Root, Internals, Contract und fremde Features nicht. Die übrigen Teile der Struktur sehen nur Composition und Shell, ihre Internals niemand.
+- Ein wiederholter Rollenbezeichner zählt als Sache (`Providers.P.Providers.X` ist `Providers.P.X`). Zwei Root-Fragmente einer Struktur (`Cache.Store`, `Cache.Index`) verraten ihren Träger nicht im Namen und gelten untereinander als Geschwister der äußeren Rolle.
+- Zwei Rollenbezeichner hintereinander sind ebenfalls eine Verschachtelung: `Feature.Composition.Adapters` wäre der Adapters-Teil der Struktur `Feature.Composition`, den deren Root nicht importieren darf. Teile einer Composition heißen deshalb nach ihrer Sache ohne Rollenbezeichner (`Composition.HostAdapters`, `Composition.IdeAdapters`).
 
 ### Automatische Prüfung
 
@@ -148,7 +162,7 @@ Die Matrix wird zweimal umgesetzt und gegen dieselbe Fallliste `Tests/Data/Archi
 - `Tools/Check-PackageDependencies.ps1` (CI, ohne Delphi) prüft alle Units unter `Packages/` und `Application/`; `-SelfTest` prüft nur die Fallliste.
 - Die Prüfregeln `architecture-role-import` und `architecture-contract-content` (`Atlas.Common.Rules.Builtin.Architecture`, `TArchitectureMatrix`) zeigen Verstöße im Editor und in der Selbstprüfung des Servers. Sie sind experimentell und ohne `prefixes` stumm.
 
-Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann ein Rollenbezeichner oder Root. Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units dürfen im interface keine Klassen deklarieren, außer Ausnahmen.
+Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann der erste Rollenbezeichner an beliebiger Stelle danach oder Root (`Atlas.Common.Lsp.Hover.Contract` ist ein Contract von `Lsp`); jeder weitere Rollenbezeichner eröffnet eine [Verschachtelung](#verschachtelung). Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units, auch Sub-Contracts, dürfen im interface keine Klassen deklarieren und kein Framework (VCL, FMX, Windows-API, Open Tools API) einbinden, außer genehmigten Ausnahmen. Gemeinsame Typen mehrerer Units eines Features, die kein Vertrag nach außen sind, heißen `…<Sache>.Types` (Root), nicht `…<Sache>.Contract`.
 
 ### Rollen Adapters und Providers (#1443)
 
@@ -186,17 +200,28 @@ Auch über implementation-uses bilden die Units unter `Packages/` und `Applicati
 
 ### Genehmigte Ausnahmen
 
-Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für Skript und Linter. JSON kennt keine Kommentare, darum die Begründungen hier:
+Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für Skript und Linter. JSON kennt keine Kommentare, darum die Begründungen hier. Platzhalter nennen immer die Rolle des Ziels (`Atlas.Core.*.Providers.*`), und keine Ausnahme gibt Internals frei, auch nicht die einer Struktur: Beide Prüfungen melden einen solchen Import trotz passendem Eintrag.
+
+**Framework-bezogene Importe eines Contract** (Konzept 7.1):
 
 | Ausnahme | Grund |
 |---|---|
-| `Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree` | Der Syntaxbaum ist Datengrundlage jeder Regel und hängt selbst nur an Contracts; ein Baum-Interface würde alle Regeln ändern. |
+| `Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree` | Der Syntaxbaum ist das Framework, auf dem jede Prüfregel läuft (wie die RTL für andere Verträge), und hängt selbst nur an Contracts; ein Baum-Interface würde alle Regeln ändern. |
 | `Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree` | `ITreeUnits` (#1322) gehört zu genau einem Syntaxbaum und muss ihn wiedererkennen; aus demselben Grund wie bei `Rules.Contract`. |
 | `Atlas.Common.Documents.Contract -> Atlas.Text.Lines` | `TTextPosition` ist derselbe Typ wie in `Atlas.Text`; `Atlas.Text` hat nur zustandslose Funktionen und Records. |
-| `Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.Core.*` | `Atlas.IDE.CodeInsight.Composition.Adapters` ist der Teil der Kompositionswurzel des Plugins, der dort die Rolle eines Host übernimmt: Er allein erzeugt die Providers, Adapters und Compositions der Core-Features (Serverprozess, Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Ziel und Sicherung des Änderungsprotokolls, Prozessläufer der Versionsverwaltung, Update-Quelle) und reicht sie über Schnittstellen und Fabriken an die übrigen Teile der Wurzel und an die Features weiter. Alle übrigen `Atlas.IDE.*`-Units halten die Rollenmatrix ohne Ausnahme ein. |
-| `Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.IDE.Undo.Adapters.*` | Dieselbe Unit setzt das Ziel des Änderungsprotokolls auf der Platte (`Atlas.IDE.Undo.Adapters.Target`) neben dessen Sicherung ein. |
-| `Atlas.IDE.CodeInsight.Composition.IdeAdapters -> Atlas.IDE.*.Adapters.*`, `Atlas.IDE.CodeInsight.Composition.ProblemsAdapters -> Atlas.IDE.Problems.Adapters.*`, `Atlas.IDE.CodeInsight.Composition.UiAdapters -> Atlas.UI.*.Adapters.*` | Die übrigen Teile der Kompositionswurzel in der Rolle eines Host erzeugen die Adapter der IDE- und UI-Features von Base: `IdeAdapters` Einstellungsspeicher in der Registry, aktiven Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Palette als Befehlsziel, Einrichtung, Schattentext aus dem Index und Statuszeilen des Atlas-Felds; `ProblemsAdapters` Server und IDE für den Ablauf der Probleme; `UiAdapters` die Fenster von Vervollständigung, Parameter-Hint und Tooltip als Ansichten der Controller. Diese Features liegen alle in Base und haben keine eigene Composition; ihre Adapters-Units liegen beim Feature, eingesetzt werden sie nur hier über Fabriken an der Wurzel des Features, über `TAtlasIdeHost` oder als Parameter. |
+| `Atlas.Core.Lsp.Contract -> Atlas.Text.Json`, `Atlas.Core.Projects.Contract -> Atlas.Text.Json` | Die Verträge reichen JSON-Werte des Protokolls weiter; `Atlas.Text.Json` ist die gemeinsame JSON-Schicht aus zustandslosen Lese- und Schreibhelfern. |
+| VCL in Verträgen der UI-Schicht (`Atlas.UI.*` → `Vcl.*`, im Skript `$ContractFrameworkAllow`) | Verträge der Schicht `Atlas.UI` reichen Steuerelemente, die Base und Module mit derselben VCL bauen (`Atlas.UI.Settings.Contract`: die Bausteine einer Optionsseite). Eigene Interfaces je Steuerelement wären nur Hüllen. Der Code kommentiert die Ausnahme am uses. |
 | `Atlas.Common.Dfm.Contract.TDfm*` (Contract-Inhalt) | `TDfmObject` und `TDfmDocument` sind reine Datenklassen eines Baums (Besitz der Kinder, kein Verhalten); Verschieben änderte rund 20 Units ohne Abhängigkeitsgewinn. |
+
+**Composition in der Rolle eines Hosts:** Das Plugin hat keine eigene Namensgruppe für den Host. Seine Kompositionswurzel (`Atlas.IDE.CodeInsight.Composition.*` in Base) und die Composition jedes Moduls übernehmen dessen Aufgabe und erzeugen die Providers und Adapters fremder Features, die nach der Matrix nur ein Host erzeugen dürfte. Erlaubt ist genau das, nie Internals:
+
+| Ausnahme | Grund |
+|---|---|
+| `Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Core.*.Providers.*` | Der Teil der Kompositionswurzel, der die Providers der Core-Features erzeugt (Serverprozess, Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Ziel und Sicherung des Änderungsprotokolls, Update-Quelle) und über Schnittstellen und Fabriken an die übrigen Teile der Wurzel und an die Features weiterreicht. |
+| `Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.IDE.Undo.Adapters.*` | Dieselbe Unit setzt das Ziel des Änderungsprotokolls auf der Platte (`Atlas.IDE.Undo.Adapters.Target`) neben dessen Sicherung ein. |
+| `Atlas.IDE.CodeInsight.Composition.IdeAdapters -> Atlas.IDE.*.Adapters.*`, `Atlas.IDE.CodeInsight.Composition.ProblemsAdapters -> Atlas.IDE.Problems.Adapters.*`, `Atlas.IDE.CodeInsight.Composition.UiAdapters -> Atlas.UI.*.Adapters.*` | Die übrigen Teile der Wurzel erzeugen die Adapter der IDE- und UI-Features von Base: `IdeAdapters` Einstellungsspeicher in der Registry, aktiven Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Palette als Befehlsziel, Einrichtung, Schattentext aus dem Index und Statuszeilen des Atlas-Felds; `ProblemsAdapters` Server und IDE für den Ablauf der Probleme; `UiAdapters` die Fenster von Vervollständigung, Parameter-Hint und Tooltip als Ansichten der Controller. Diese Features haben keine eigene Composition. |
+| `Atlas.IDE.Assistants.Composition.HostAdapters`, `Atlas.IDE.BuildTools.Composition`, `Atlas.IDE.Debug.Composition`, `Atlas.IDE.Tests.Composition`, `Atlas.IDE.Tracker.Composition`, `Atlas.IDE.VersionControl.Composition` jeweils `-> Atlas.Core.*.Providers.*` | Die Composition eines Moduls erzeugt die Providers der Core-Features, die das Modul mitbringt (KI-Anbieter und Anmeldedaten, Aufgabenprozesse, Vervollständigung von Ausdrücken, Prozessläufer der Versionsverwaltung, Tracker- und CI-Anbieter). |
+| `Atlas.IDE.VersionControl.Composition -> Atlas.Core.VersionControl.Composition` | Das Modul ruft die Composition des Core-Features als Vorgabe auf (Konzept 7.6). |
 
 ## Kommentare
 

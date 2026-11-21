@@ -34,8 +34,10 @@
       ],
       "prefixes": [
         "Atlas.Text",
+        "Atlas.WinBase",
         "Atlas.Common",
         "Atlas.Windows",
+        "Atlas.Linux",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"
@@ -46,19 +48,18 @@
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
         "Atlas.Core.Lsp.Contract -> Atlas.Text.Json",
         "Atlas.Core.Projects.Contract -> Atlas.Text.Json",
-        "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.Core.*",
-        "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.IDE.Undo.Adapters.*",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.IDE.Undo.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.IdeAdapters -> Atlas.IDE.*.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.UiAdapters -> Atlas.UI.*.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.ProblemsAdapters -> Atlas.IDE.Problems.Adapters.*",
-        "Atlas.IDE.Debug.Composition -> Atlas.Core.*",
-        "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Assistants.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Assistants.Composition.Adapters -> Atlas.Core.*",
-        "Atlas.IDE.Tests.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Contracts.VersionControl -> Atlas.Core.VersionControl.Providers.Null"
+        "Atlas.IDE.Assistants.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.Debug.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.Tests.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.VersionControl.Composition"
       ]
     },
     "architecture-contract-content": {
@@ -68,8 +69,10 @@
       ],
       "prefixes": [
         "Atlas.Text",
+        "Atlas.WinBase",
         "Atlas.Common",
         "Atlas.Windows",
+        "Atlas.Linux",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"

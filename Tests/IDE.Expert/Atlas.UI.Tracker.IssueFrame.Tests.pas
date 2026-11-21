@@ -93,7 +93,7 @@ uses
   Atlas.Core.Tracker.AiSummary,
   Atlas.UI.Tracker.IssueBoxes,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueFrame.Layout,
   Atlas.UI.Tracker.IssueFrame.Deferred;
 

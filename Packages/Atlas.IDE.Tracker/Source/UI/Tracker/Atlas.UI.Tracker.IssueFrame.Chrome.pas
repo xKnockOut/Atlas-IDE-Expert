@@ -24,7 +24,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.IssueFrame.Contract;
+  Atlas.UI.Tracker.IssueFrame.Types;
 
 type
   /// <summary>Werkzeugleiste, Statuszeile, Kommentarfeld und Reiter des Fensters „Atlas-Issue“; sie und die

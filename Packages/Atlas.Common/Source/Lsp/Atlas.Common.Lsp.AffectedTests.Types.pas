@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.AffectedTests.Contract;
+﻿unit Atlas.Common.Lsp.AffectedTests.Types;
 
 // Typen der betroffenen Tests (#1353): geänderte Stelle, übersprungene Datei, Grund, Test, Eingabe, Anfrage und
 // Ergebnis. Die Bestimmung (Atlas.Common.Lsp.AffectedTests) und die Ausgabe (Atlas.Common.Lsp.AffectedTests.Report)
@@ -110,10 +110,10 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TAffectedContractText = (Inferred);
+  TAffectedTypesText = (Inferred);
 
 const
-  cTexts: array[TAffectedContractText] of TAtlasText = (
+  cTexts: array[TAffectedTypesText] of TAtlasText = (
     (De: ' (erschlossen)'; En: ' (inferred)'));
 
 {$SCOPEDENUMS OFF}
@@ -147,7 +147,7 @@ begin
   end;
   if Inferred then
   begin
-    Result := Result + cTexts[TAffectedContractText.Inferred].Text;
+    Result := Result + cTexts[TAffectedTypesText.Inferred].Text;
   end;
 end;
 
@@ -179,6 +179,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.AffectedTests.Contract', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Lsp.AffectedTests.Types', cTexts);
 
 end.

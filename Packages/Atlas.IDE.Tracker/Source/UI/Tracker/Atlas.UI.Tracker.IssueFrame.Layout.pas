@@ -19,7 +19,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.UI.Tracker.IssueBoxes,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.IssueFrame.Contract;
+  Atlas.UI.Tracker.IssueFrame.Types;
 
 type
   /// <summary>Legt die Teile des Inhalts in ABox ab; sie gehören AOwner.</summary>

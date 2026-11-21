@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Assistants.Composition.Adapters;
+﻿unit Atlas.IDE.Assistants.Composition.HostAdapters;
 
 // Teil der Komposition des Moduls KI-Assistenten, der Adapter erzeugt: HTTP für
 // die KI-Anbieter und den Anmeldespeicher von Windows für ihre Schlüssel (#1922),

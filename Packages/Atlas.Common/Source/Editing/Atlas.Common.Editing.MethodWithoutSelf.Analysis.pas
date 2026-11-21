@@ -20,7 +20,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract;
+  Atlas.Common.Editing.MethodWithoutSelf.Types;
 
 type
   /// <summary>Analyse der Methode in ihrer Unit.</summary>

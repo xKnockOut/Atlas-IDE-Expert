@@ -162,7 +162,7 @@
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.AiProbe.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.IdeProviders.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.IdePlugin.pas"/>
-        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Adapters.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.HostAdapters.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.AiText.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas"/>
         <BuildConfiguration Include="Base">

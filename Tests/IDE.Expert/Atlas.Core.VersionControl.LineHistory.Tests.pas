@@ -56,7 +56,7 @@ uses
   Atlas.Core.VersionControl.Internals.SvnParser,
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.VersionControl.Providers.Svn,
-  Atlas.Core.VersionControl.Providers.Null;
+  Atlas.Core.VersionControl.Null;
 
 const
   cSep = '------------------------------------------------------------------------';
