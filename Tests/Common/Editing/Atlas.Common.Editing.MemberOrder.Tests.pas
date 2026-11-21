@@ -54,7 +54,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.MemberOrder;
+  Atlas.Common.Editing.MemberOrder,
+  Atlas.Tests.SourceText;
 
 function Wrap(const ABody: string): string;
 begin
@@ -105,18 +106,6 @@ begin
   Result := Sorted(AText, TMemberOrderSettings.Default);
 end;
 
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
 { TMemberOrderTests }
 
 procedure TMemberOrderTests.SortsSectionsAndMembers;
@@ -137,7 +126,7 @@ begin
     '    constructor Create;'#10 +
     '    procedure Run;'#10 +
     '    property Name: string read FName;'#10), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TMemberOrderTests.CommentsAndAttributesMoveWithMember;

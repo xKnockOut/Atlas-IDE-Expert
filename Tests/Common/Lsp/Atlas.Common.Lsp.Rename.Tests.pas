@@ -64,13 +64,13 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Tests.SourceText;
 
 const
   cWerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -178,28 +178,6 @@ const
     'end;'#10 +                                      // 25
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, I: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for I := 1 to mIndex - 1 do
-  begin
-    if AText[I] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := I + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TLspRenameTests }
 
 function TLspRenameTests.CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
@@ -208,7 +186,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspRename.Check(FResolver, FIndex, mTree, cHauptFile, PositionOf(cUnitHaupt, AMarker), AFiles);
+    Result := TLspRename.Check(FResolver, FIndex, mTree, cHauptFile, TTestSource.PositionOf(cUnitHaupt, AMarker), AFiles);
   finally
     mTree.Free;
   end;
@@ -221,7 +199,7 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     Result := TLspRename.Edits(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile,
-      PositionOf(cUnitHaupt, AMarker), True, [cWerkzeugFile, cHauptFile],
+      TTestSource.PositionOf(cUnitHaupt, AMarker), True, [cWerkzeugFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
@@ -256,7 +234,7 @@ begin
   try
     Result := '';
     try
-      TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKundeFile, PositionOf(cUnitKunde, AMarker),
+      TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKundeFile, TTestSource.PositionOf(cUnitKunde, AMarker),
         True, [cKundeFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
@@ -303,7 +281,7 @@ begin
   mTree := TPascalParser.Parse(mUnitText);
   try
     Result := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cMaskeFile,
-      PositionOf(mUnitText, AMarker), True, [cMaskeFile],
+      TTestSource.PositionOf(mUnitText, AMarker), True, [cMaskeFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
@@ -596,7 +574,7 @@ begin
     mRequest := TRenameRequest.Create('TCustomer');
     mRequest.TypeComments := ATypeComments;
     Result := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKopfFile,
-      PositionOf(cUnitKopf, 'TKunde = class'), True, [cKopfFile],
+      TTestSource.PositionOf(cUnitKopf, 'TKunde = class'), True, [cKopfFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := SameText(AFileName, cKopfFile);

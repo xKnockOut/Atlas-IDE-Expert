@@ -47,7 +47,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Editing.ClassLayout;
+  Atlas.Common.Editing.ClassLayout,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -90,18 +91,6 @@ const
     'end;'#10 +                                                     // 36
     #10 +                                                           // 37
     'end.';
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
 
 type
   TLayoutProc = reference to procedure(ALayout: TClassLayout);
@@ -226,7 +215,7 @@ begin
       mResult_ := TTextChanges.Apply(ALayout.Text, TClassEdits.DeleteMember(ALayout, 5, True));
     end);
   Assert.IsFalse(mResult_.Contains('Make'), mResult_);
-  Assert.IsTrue(Parses(mResult_), mResult_);
+  Assert.IsTrue(TTestSource.Parses(mResult_), mResult_);
   Assert.IsFalse(mResult_.Contains(#10#10#10), 'keine doppelten Leerzeilen: ' + mResult_);
 end;
 
@@ -267,7 +256,7 @@ begin
         False, ['procedure Save;'])]);
     end);
   Assert.IsTrue(mResult_.Contains('write FB;'#10'    procedure Save;'#10'  end;'), mResult_);
-  Assert.IsTrue(Parses(mResult_), mResult_);
+  Assert.IsTrue(TTestSource.Parses(mResult_), mResult_);
 end;
 
 procedure TClassLayoutTests.InsertsNewSection;
@@ -283,7 +272,7 @@ begin
   // Zwischen private und public, nach Sichtbarkeit geordnet.
   Assert.IsTrue(mResult_.Contains('function GetName: string;'#10'  strict protected'#10'    procedure DoIt; virtual;'#10 +
     '  public'), mResult_);
-  Assert.IsTrue(Parses(mResult_), mResult_);
+  Assert.IsTrue(TTestSource.Parses(mResult_), mResult_);
 end;
 
 procedure TClassLayoutTests.SetsAncestors;

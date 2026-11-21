@@ -83,7 +83,6 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.Preprocessor,
@@ -93,7 +92,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.UnresolvedNames,
-  Atlas.Common.Lsp.DocumentSymbols;
+  Atlas.Common.Lsp.DocumentSymbols,
+  Atlas.Tests.SourceText,
+  Atlas.Common.Pascal.TestSupport;
 
 const
   cMainFile = 'C:\P\U.pas';
@@ -167,79 +168,6 @@ const
     'unit P20;'#10'interface'#10'implementation'#10'procedure Q(C: Char; var A: array of Integer);'#10'begin'#10 +
     '  if C in (. ''a''..''z'' .) then'#10'    A(.1.) := 2;'#10'end;'#10'end.';
 
-function Find(ANode: TSyntaxNode; AKind: TSyntaxKind; const AName: string): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  if (ANode.Kind = AKind) and ((AName = '') or SameText(ANode.Name, AName)) then
-  begin
-    Exit(ANode);
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    Result := Find(ANode[mIndex], AKind, AName);
-    if Result <> nil then
-    begin
-      Exit;
-    end;
-  end;
-  Result := nil;
-end;
-
-function ChildNames(ANode: TSyntaxNode; AKind: TSyntaxKind): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if ANode[mIndex].Kind = AKind then
-    begin
-      if Result <> '' then
-      begin
-        Result := Result + ',';
-      end;
-      Result := Result + ANode[mIndex].Name;
-    end;
-  end;
-end;
-
-function Diagnostics(const AText: string): string;
-var
-  mTree: TSyntaxTree;
-  mDiagnostic: TSyntaxDiagnostic;
-begin
-  Result := '';
-  mTree := TPascalParser.Parse(AText);
-  try
-    for mDiagnostic in mTree.Diagnostics do
-    begin
-      Result := Result + Format('%d:%d %s; ', [mDiagnostic.StartPos.Line, mDiagnostic.StartPos.Character,
-        mDiagnostic.Message]);
-    end;
-  finally
-    mTree.Free;
-  end;
-end;
-
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 function SymbolOf(const AUnit: TUnitIndex; const AContainer, AName: string): TIndexSymbol;
 var
   mSymbol: TIndexSymbol;
@@ -252,20 +180,6 @@ begin
     end;
   end;
   raise Exception.CreateFmt('%s.%s fehlt im Index', [AContainer, AName]);
-end;
-
-function HasSymbol(const AUnit: TUnitIndex; const AContainer, AName: string): Boolean;
-var
-  mSymbol: TIndexSymbol;
-begin
-  for mSymbol in AUnit.Symbols do
-  begin
-    if SameText(mSymbol.Container, AContainer) and SameText(mSymbol.Name, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function IncludeFiles: TIncludeResolver;
@@ -314,12 +228,12 @@ begin
   mResolver := TNameResolver.Create(mIndex);
   mTree := TPascalParser.Parse(cScopedUnit);
   try
-    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cScopedUnit, 'Error then'));
+    mFound := mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cScopedUnit, 'Error then'));
     Assert.IsFalse(mFound.Found, 'unqualifiziert');
-    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cScopedUnit, 'Busy;'));
+    mFound := mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cScopedUnit, 'Busy;'));
     Assert.IsTrue(mFound.Found, 'TState.Busy');
     Assert.AreEqual('TState', mFound.Container);
-    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cScopedUnit, 'Red;'));
+    mFound := mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cScopedUnit, 'Red;'));
     Assert.IsTrue(mFound.Found, 'Red ohne SCOPEDENUMS');
   finally
     mTree.Free;
@@ -359,12 +273,12 @@ var
   mResolver: TNameResolver;
   mFound: TResolvedSymbol;
 begin
-  Assert.AreEqual('', Diagnostics(cCaseFive));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cCaseFive));
   mTree := TPascalParser.Parse(cCaseFive);
   try
-    Assert.AreEqual('T,V', ChildNames(Find(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TFoo'),
+    Assert.AreEqual('T,V', TPascalTest.ChildNames(TPascalTest.Find(TPascalTest.Find(mTree.Root, TSyntaxKind.TypeDecl, 'TFoo'),
       TSyntaxKind.GenericParams, ''), TSyntaxKind.Identifier));
-    Assert.AreEqual('T,U', ChildNames(Find(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TBaz'),
+    Assert.AreEqual('T,U', TPascalTest.ChildNames(TPascalTest.Find(TPascalTest.Find(mTree.Root, TSyntaxKind.TypeDecl, 'TBaz'),
       TSyntaxKind.GenericParams, ''), TSyntaxKind.Identifier));
   finally
     mTree.Free;
@@ -376,7 +290,7 @@ begin
   mResolver := TNameResolver.Create(mIndex);
   mTree := TPascalParser.Parse(cCaseFive);
   try
-    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cCaseFive, 'TFoo<TObject'));
+    mFound := mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cCaseFive, 'TFoo<TObject'));
     Assert.IsTrue(mFound.Found);
     Assert.AreEqual('TFoo', mFound.Name);
   finally
@@ -399,10 +313,10 @@ begin
   Assert.AreEqual<TIndexVisibility>(TIndexVisibility.Public, mSymbol.Visibility);
   mSymbol := SymbolOf(U, 'TFoo', 'B');
   Assert.AreEqual(1, mSymbol.SelectionRange.StartPos.Line);
-  Assert.IsTrue(HasSymbol(U, 'TFoo', 'After'));
+  Assert.IsTrue(TPascalTest.HasSymbol(U, 'TFoo', 'After'));
   // Keine freien Routinen und kein Hilfstyp.
-  Assert.IsFalse(HasSymbol(U, '', 'A'));
-  Assert.IsFalse(HasSymbol(U, '', 'B'));
+  Assert.IsFalse(TPascalTest.HasSymbol(U, '', 'A'));
+  Assert.IsFalse(TPascalTest.HasSymbol(U, '', 'B'));
   for mSymbol in U.Symbols do
   begin
     Assert.IsFalse(mSymbol.Name.StartsWith('TAtlasIncludeHost'), mSymbol.Name);
@@ -414,15 +328,15 @@ var
   mTree: TSyntaxTree;
   mCall: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(cCaseSeven));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cCaseSeven));
   mTree := TPascalParser.Parse(cCaseSeven);
   try
-    mCall := Find(mTree.Root, TSyntaxKind.Call, 'Open');
+    mCall := TPascalTest.Find(mTree.Root, TSyntaxKind.Call, 'Open');
     Assert.IsNotNull(mCall);
     // Ziel und zwei Werte; die Namen der Argumente stehen nicht als Bezeichner im Baum.
     Assert.AreEqual(3, mCall.ChildCount);
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, mCall[1].Kind);
-    Assert.IsNull(Find(mTree.Root, TSyntaxKind.Identifier, 'FileName'));
+    Assert.IsNull(TPascalTest.Find(mTree.Root, TSyntaxKind.Identifier, 'FileName'));
   finally
     mTree.Free;
   end;
@@ -433,12 +347,12 @@ var
   mTree: TSyntaxTree;
   mRec: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(cCaseTwelve));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cCaseTwelve));
   mTree := TPascalParser.Parse(cCaseTwelve);
   try
-    mRec := Find(mTree.Root, TSyntaxKind.RecordType, '');
-    Assert.AreEqual('Field,Value,Operator,Negate', ChildNames(mRec, TSyntaxKind.Field));
-    Assert.AreEqual('', ChildNames(mRec, TSyntaxKind.RoutineHeader));
+    mRec := TPascalTest.Find(mTree.Root, TSyntaxKind.RecordType, '');
+    Assert.AreEqual('Field,Value,Operator,Negate', TPascalTest.ChildNames(mRec, TSyntaxKind.Field));
+    Assert.AreEqual('', TPascalTest.ChildNames(mRec, TSyntaxKind.RoutineHeader));
   finally
     mTree.Free;
   end;
@@ -452,10 +366,10 @@ var
 begin
   mTree := TPascalParser.Parse(cCaseEight);
   try
-    mBody := Find(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TAttr'), TSyntaxKind.ClassType, '');
-    mSection := Find(mBody, TSyntaxKind.ConstSection, '');
+    mBody := TPascalTest.Find(TPascalTest.Find(mTree.Root, TSyntaxKind.TypeDecl, 'TAttr'), TSyntaxKind.ClassType, '');
+    mSection := TPascalTest.Find(mBody, TSyntaxKind.ConstSection, '');
     Assert.IsNotNull(mSection);
-    Assert.AreEqual('', ChildNames(mSection, TSyntaxKind.Attribute));
+    Assert.AreEqual('', TPascalTest.ChildNames(mSection, TSyntaxKind.Attribute));
     // Das Attribut steht im Rumpf direkt vor dem Methodenkopf.
     mIndex := mBody.ChildCount - 1;
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.RoutineHeader, mBody[mIndex].Kind);
@@ -484,11 +398,11 @@ var
   mFound: TResolvedSymbol;
   mText: string;
 begin
-  Assert.AreEqual('', Diagnostics(cCaseEight));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cCaseEight));
   U := TIndexExtractor.ExtractText(cCaseEight, cMainFile, nil);
-  Assert.IsFalse(HasSymbol(U, 'TFoo', 'IFoo.Bar'));
-  Assert.IsFalse(HasSymbol(U, 'TFoo', 'Bar'));
-  Assert.IsTrue(HasSymbol(U, 'TFoo', 'MyBar'));
+  Assert.IsFalse(TPascalTest.HasSymbol(U, 'TFoo', 'IFoo.Bar'));
+  Assert.IsFalse(TPascalTest.HasSymbol(U, 'TFoo', 'Bar'));
+  Assert.IsTrue(TPascalTest.HasSymbol(U, 'TFoo', 'MyBar'));
   // Die Zuordnung steht an der Klasse und übersteht den Cache (interface-not-implemented, hresult-integer-mix).
   Assert.AreEqual(1, Integer(Length(SymbolOf(U, '', 'TFoo').Resolutions)));
   Assert.AreEqual('IFoo.Bar=MyBar', SymbolOf(U, '', 'TFoo').Resolutions[0]);
@@ -509,11 +423,11 @@ begin
     mIndex := TSymbolIndex.Create;
     mResolver := TNameResolver.Create(mIndex);
     try
-      mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cCaseEight, 'MyBar;'));
+      mFound := mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cCaseEight, 'MyBar;'));
       Assert.IsTrue(mFound.Found);
       Assert.AreEqual('MyBar', mFound.Name);
       Assert.AreEqual('TFoo', mFound.Container);
-      Assert.AreEqual(PositionOf(cCaseEight, 'MyBar;'#10'  end').Line, mFound.SelectionRange.StartPos.Line);
+      Assert.AreEqual(TTestSource.PositionOf(cCaseEight, 'MyBar;'#10'  end').Line, mFound.SelectionRange.StartPos.Line);
     finally
       mResolver.Free;
     end;
@@ -528,17 +442,17 @@ var
   mTree: TSyntaxTree;
   mHeader, mRoutine: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(cDirectives));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cDirectives));
   mTree := TPascalParser.Parse(cDirectives);
   try
-    mHeader := Find(mTree.Root, TSyntaxKind.RoutineHeader, 'F');
-    Assert.AreEqual('stdcall', ChildNames(mHeader, TSyntaxKind.Directive));
-    mHeader := Find(mTree.Root, TSyntaxKind.RoutineHeader, 'G');
-    Assert.AreEqual('cdecl,external', ChildNames(mHeader, TSyntaxKind.Directive));
-    mRoutine := Find(mTree.Root, TSyntaxKind.RoutineDecl, 'X');
-    Assert.IsNotNull(Find(mRoutine, TSyntaxKind.AsmBlock, ''));
-    Assert.AreEqual('assembler', ChildNames(Find(mRoutine, TSyntaxKind.RoutineHeader, 'X'), TSyntaxKind.Directive));
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Y'));
+    mHeader := TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineHeader, 'F');
+    Assert.AreEqual('stdcall', TPascalTest.ChildNames(mHeader, TSyntaxKind.Directive));
+    mHeader := TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineHeader, 'G');
+    Assert.AreEqual('cdecl,external', TPascalTest.ChildNames(mHeader, TSyntaxKind.Directive));
+    mRoutine := TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineDecl, 'X');
+    Assert.IsNotNull(TPascalTest.Find(mRoutine, TSyntaxKind.AsmBlock, ''));
+    Assert.AreEqual('assembler', TPascalTest.ChildNames(TPascalTest.Find(mRoutine, TSyntaxKind.RoutineHeader, 'X'), TSyntaxKind.Directive));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Y'));
   finally
     mTree.Free;
   end;
@@ -548,12 +462,12 @@ procedure TLanguageGapsTests.LastFieldWithoutSemicolon;
 var
   mTree: TSyntaxTree;
 begin
-  Assert.AreEqual('', Diagnostics(cLastField));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cLastField));
   mTree := TPascalParser.Parse(cLastField);
   try
-    Assert.AreEqual('B,G,R', ChildNames(Find(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TFColor'),
+    Assert.AreEqual('B,G,R', TPascalTest.ChildNames(TPascalTest.Find(TPascalTest.Find(mTree.Root, TSyntaxKind.TypeDecl, 'TFColor'),
       TSyntaxKind.RecordType, ''), TSyntaxKind.Field));
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TV'));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.TypeDecl, 'TV'));
   finally
     mTree.Free;
   end;
@@ -564,12 +478,12 @@ var
   mTree: TSyntaxTree;
   mAnonymous: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(cAnonymousLocal));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cAnonymousLocal));
   mTree := TPascalParser.Parse(cAnonymousLocal);
   try
-    mAnonymous := Find(mTree.Root, TSyntaxKind.AnonymousMethod, '');
-    Assert.AreEqual('Inner,Calc', ChildNames(mAnonymous, TSyntaxKind.RoutineDecl));
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Z'));
+    mAnonymous := TPascalTest.Find(mTree.Root, TSyntaxKind.AnonymousMethod, '');
+    Assert.AreEqual('Inner,Calc', TPascalTest.ChildNames(mAnonymous, TSyntaxKind.RoutineDecl));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Z'));
   finally
     mTree.Free;
   end;
@@ -589,12 +503,12 @@ begin
     mText := mText + Format(#10'  else if I = %d then'#10'    X(%d)', [mIndex, mIndex]);
   end;
   mText := mText + ';'#10'end;'#10'procedure WriteFrame;'#10'begin'#10'end;'#10'end.';
-  Assert.AreEqual('', Diagnostics(mText));
+  Assert.AreEqual('', TPascalTest.Diagnostics(mText));
   mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'WriteFrame'));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineDecl, 'WriteFrame'));
     // Weiterhin je else if ein IfStatement im else-Zweig des vorigen.
-    mNode := Find(mTree.Root, TSyntaxKind.IfStatement, '');
+    mNode := TPascalTest.Find(mTree.Root, TSyntaxKind.IfStatement, '');
     mCount := 0;
     while mNode <> nil do
     begin
@@ -623,16 +537,16 @@ var
   mTree: TSyntaxTree;
   mDecl, mSubrange: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(cSubrangeConst));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cSubrangeConst));
   mTree := TPascalParser.Parse(cSubrangeConst);
   try
     // Der Wert (1, 2, …) steht als eigenes Kind hinter dem Typ, nicht in der Obergrenze 3.
-    mDecl := Find(mTree.Root, TSyntaxKind.ConstDecl, 'D2D');
+    mDecl := TPascalTest.Find(mTree.Root, TSyntaxKind.ConstDecl, 'D2D');
     Assert.AreEqual(2, mDecl.ChildCount);
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.ArrayType, mDecl[0].Kind);
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.ParenExpr, mDecl[1].Kind);
-    mDecl := Find(mTree.Root, TSyntaxKind.VarDecl, 'X');
-    mSubrange := Find(mDecl, TSyntaxKind.SubrangeType, '');
+    mDecl := TPascalTest.Find(mTree.Root, TSyntaxKind.VarDecl, 'X');
+    mSubrange := TPascalTest.Find(mDecl, TSyntaxKind.SubrangeType, '');
     Assert.AreEqual(2, mSubrange.ChildCount);
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, mSubrange[1].Kind);
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, mDecl[mDecl.ChildCount - 1].Kind);
@@ -647,10 +561,10 @@ var
   mDecl: TSyntaxNode;
   U: TUnitIndex;
 begin
-  Assert.AreEqual('', Diagnostics(cIncludeValue));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cIncludeValue));
   mTree := TPascalParser.Parse(cIncludeValue);
   try
-    mDecl := Find(mTree.Root, TSyntaxKind.ConstDecl, 'SYNOPSE_FRAMEWORK_VERSION');
+    mDecl := TPascalTest.Find(mTree.Root, TSyntaxKind.ConstDecl, 'SYNOPSE_FRAMEWORK_VERSION');
     Assert.AreEqual(1, mDecl.ChildCount);
     Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Literal, mDecl[0].Kind);
     Assert.AreEqual('{$I mormot.commit.inc}', mDecl[0].Name);
@@ -672,16 +586,16 @@ var
   mTree: TSyntaxTree;
   F, G: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(AText));
+  Assert.AreEqual('', TPascalTest.Diagnostics(AText));
   mTree := TPascalParser.Parse(AText);
   try
-    F := Find(mTree.Root, TSyntaxKind.RoutineDecl, 'F');
-    G := Find(mTree.Root, TSyntaxKind.RoutineDecl, 'G');
+    F := TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineDecl, 'F');
+    G := TPascalTest.Find(mTree.Root, TSyntaxKind.RoutineDecl, 'G');
     Assert.IsNotNull(F);
     Assert.IsNotNull(G);
-    Assert.IsNotNull(Find(F, TSyntaxKind.AsmBlock, ''));
+    Assert.IsNotNull(TPascalTest.Find(F, TSyntaxKind.AsmBlock, ''));
     Assert.AreSame(F.Parent, G.Parent, 'G muss neben F liegen');
-    Assert.IsNull(Find(mTree.Root, TSyntaxKind.InitializationSection, ''));
+    Assert.IsNull(TPascalTest.Find(mTree.Root, TSyntaxKind.InitializationSection, ''));
   finally
     mTree.Free;
   end;
@@ -740,18 +654,18 @@ var
   mResolver: TNameResolver;
 begin
   mIndex := TSymbolIndex.Create;
-  Assert.AreEqual('', Diagnostics(cControlChars));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cControlChars));
   mTree := TPascalParser.Parse(cControlChars);
   try
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.ConstDecl, 'CtrlC'));
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.ConstDecl, 'Next'), 'der Abschnitt bricht nicht ab');
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.ConstDecl, 'Esc'));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.ConstDecl, 'CtrlC'));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.ConstDecl, 'Next'), 'der Abschnitt bricht nicht ab');
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.ConstDecl, 'Esc'));
     Assert.AreEqual('#3|1|2|#27|''a''#13#10''b''|#13|#8|#32|#255|#3|#0|#127|', LiteralNames(mTree.Root));
     // C in ^C ist kein Verweis auf die Konstante C (Hover, Gehe zu, Hervorhebung).
     mResolver := TNameResolver.Create(mIndex);
     try
-      Assert.IsFalse(mResolver.Resolve(mTree, cMainFile, PositionOf(cControlChars, 'C: ;')).Found, '^C');
-      Assert.IsTrue(mResolver.Resolve(mTree, cMainFile, PositionOf(cControlChars, 'C = 2')).Found, 'Konstante C');
+      Assert.IsFalse(mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cControlChars, 'C: ;')).Found, '^C');
+      Assert.IsTrue(mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cControlChars, 'C = 2')).Found, 'Konstante C');
     finally
       mResolver.Free;
     end;
@@ -764,11 +678,11 @@ procedure TLanguageGapsTests.PointerSyntaxUnchanged;
 var
   mTree: TSyntaxTree;
 begin
-  Assert.AreEqual('', Diagnostics(cPointers));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cPointers));
   mTree := TPascalParser.Parse(cPointers);
   try
-    Assert.IsNotNull(Find(Find(mTree.Root, TSyntaxKind.TypeDecl, 'P'), TSyntaxKind.PointerType, ''));
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.Dereference, ''));
+    Assert.IsNotNull(TPascalTest.Find(TPascalTest.Find(mTree.Root, TSyntaxKind.TypeDecl, 'P'), TSyntaxKind.PointerType, ''));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.Dereference, ''));
     Assert.AreEqual('', LiteralNames(mTree.Root));
     // ^T ist ein Zeigertyp: T bleibt ein Name.
     Assert.IsFalse(mTree.IsControlCharPart(TokenIndexOf(mTree, 'T', 1)));
@@ -781,11 +695,11 @@ procedure TLanguageGapsTests.AlternativeBrackets;
 var
   mTree: TSyntaxTree;
 begin
-  Assert.AreEqual('', Diagnostics(cBrackets));
+  Assert.AreEqual('', TPascalTest.Diagnostics(cBrackets));
   mTree := TPascalParser.Parse(cBrackets);
   try
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.SetConstructor, ''));
-    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.IndexAccess, ''));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.SetConstructor, ''));
+    Assert.IsNotNull(TPascalTest.Find(mTree.Root, TSyntaxKind.IndexAccess, ''));
   finally
     mTree.Free;
   end;

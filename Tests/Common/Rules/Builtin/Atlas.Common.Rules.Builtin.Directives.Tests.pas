@@ -91,7 +91,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Directives,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 function Dienst(const ABefore, ABody: string): string;
 begin
@@ -110,44 +111,8 @@ begin
 end;
 
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
-  Result := mFound[0].Message;
-end;
-
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an, auch über Zeilen.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mStart, mStop: Integer;
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
-    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 { TDirectiveRulesTests }
@@ -166,7 +131,7 @@ begin
   Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('{$ENDIF} nach Zeile 5 ergänzen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual('unit Dienst;'#10'interface'#10'implementation'#10'{$IFDEF DEBUG}'#10 +
     '  Protokoll.Ausfuehrlich := True;'#10'{$ENDIF}'#10#10'procedure TDienst.Starten;'#10'begin'#10'end;'#10'end.',
     mFixed);
@@ -205,12 +170,12 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('{$ENDIF} ohne passendes {$IF…} (wie E2279).', mFound[0].Message);
   Assert.AreEqual('Überzähliges {$ENDIF} entfernen', mFound[0].Fixes[0].Title);
-  Assert.AreEqual(Dienst('', ''), ApplyFix(mSource, mFound[0].Fixes[0]));
+  Assert.AreEqual(Dienst('', ''), TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
   // In einer Zeile mit anderem Code nur die Direktive.
   mSource := Dienst('', '  Exit; {$ELSE}'#10);
   mFound := Findings(mSource);
   Assert.AreEqual('{$ELSE} ohne passendes {$IF…} (wie E2279).', mFound[0].Message);
-  Assert.AreEqual(Dienst('', '  Exit; '#10), ApplyFix(mSource, mFound[0].Fixes[0]));
+  Assert.AreEqual(Dienst('', '  Exit; '#10), TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
   Assert.AreEqual('{$ELSE} nach {$ELSE} von {$IFDEF X} aus Zeile 4 (wie E2279).',
     OnlyMessage(Dienst('{$IFDEF X}'#10'{$ELSE}'#10'{$ELSE}'#10'{$ENDIF}'#10, '')));
   Assert.AreEqual('{$ELSEIF} nach {$ELSE} von {$IF A} aus Zeile 4 (wie E2279).',
@@ -245,10 +210,10 @@ begin
   Assert.AreEqual('Unbekannte Direktive {$OPTIMISATION}; gemeint ist wohl {$OPTIMIZATION} (wie E1030).',
     mFound[0].Message);
   Assert.AreEqual('Tippfehler korrigieren: {$OPTIMIZATION}', mFound[0].Fixes[0].Title);
-  Assert.AreEqual(Dienst('', '  {$OPTIMIZATION ON}'#10), ApplyFix(mSource, mFound[0].Fixes[0]));
+  Assert.AreEqual(Dienst('', '  {$OPTIMIZATION ON}'#10), TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
   // Kleinschreibung bleibt.
   mSource := Dienst('', '  {$optimisation on}'#10);
-  Assert.AreEqual(Dienst('', '  {$optimization on}'#10), ApplyFix(mSource, Findings(mSource)[0].Fixes[0]));
+  Assert.AreEqual(Dienst('', '  {$optimization on}'#10), TTestEdits.ApplyFix(mSource, Findings(mSource)[0].Fixes[0]));
   Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie E1030).', OnlyMessage(Dienst('{$FOOBAR}'#10, '')));
   // {$WARN} mit unbekanntem Bezeichner.
   Assert.AreEqual('Unbekannte Warnung UNKOWN in {$WARN} (wie E1030).',
@@ -257,7 +222,7 @@ begin
   mFound := Findings(mSource);
   Assert.AreEqual('Unbekannte Warnung SYMBOL_PLATFROM in {$WARN}; gemeint ist wohl SYMBOL_PLATFORM (wie E1030).',
     mFound[0].Message);
-  Assert.AreEqual(Dienst('{$WARN SYMBOL_PLATFORM OFF}'#10, ''), ApplyFix(mSource, mFound[0].Fixes[0]));
+  Assert.AreEqual(Dienst('{$WARN SYMBOL_PLATFORM OFF}'#10, ''), TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
   // Bezeichner, die Delphi 13 kennt, obwohl sie nur andere Plattformen betreffen (#1383, Cm.W1069).
   TRuleAssert.Silent(TConditionalDirectiveUnbalancedRule.Create, Dienst('{$WARN MOBILE_DELPHI ON}'#10 +
     '{$WARN UNSAFE_VOID_POINTER OFF}'#10, ''));
@@ -397,7 +362,7 @@ begin
   Assert.AreEqual(28, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Durch override ersetzen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Klasse('    procedure Paint; override;'#10), mFixed);
   TRuleAssert.Silent(TDirectiveTypoRule.Create, mFixed);
 end;
@@ -439,7 +404,7 @@ begin
   mFound := TypoFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Unbekannte Direktive defualt; gemeint ist default (wie E2070).', mFound[0].Message);
-  TRuleAssert.Silent(TDirectiveTypoRule.Create, ApplyFix(mSource, mFound[0].Fixes[0]));
+  TRuleAssert.Silent(TDirectiveTypoRule.Create, TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]));
 end;
 
 procedure TDirectiveRulesTests.TypoSilentCases;
@@ -517,9 +482,9 @@ begin
   Assert.AreEqual('Nach dem nächsten Block wiederherstellen', mFound[0].Fixes[0].Title);
   Assert.IsTrue(mFound[0].Fixes[0].Safe);
   Assert.AreEqual(StringReplace(cAlteBerechnung, 'Wert * 2;'#10'end;'#10, 'Wert * 2;'#10'end;'#10'{$WARNINGS ON}'#10,
-    []), ApplyFix(cAlteBerechnung, mFound[0].Fixes[0]));
+    []), TTestEdits.ApplyFix(cAlteBerechnung, mFound[0].Fixes[0]));
   // Korrigierte Form
-  Assert.AreEqual(0, Integer(Length(WarningsFindings(ApplyFix(cAlteBerechnung, mFound[0].Fixes[0])))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(TTestEdits.ApplyFix(cAlteBerechnung, mFound[0].Fixes[0])))));
 end;
 
 procedure TDirectiveRulesTests.WarningsAllSwitches;
@@ -538,13 +503,13 @@ begin
   Assert.AreEqual('Die Überlaufprüfung bleibt bis zum Ende der Unit aus; Überläufe fallen nicht mehr auf.',
     mFound[3].Message);
   Assert.AreEqual(mFound[2].Range.StartPos.Line, mFound[3].Range.StartPos.Line, '{$R-,Q-} meldet beide');
-  Assert.IsTrue(ApplyFix(mSource, mFound[1].Fixes[0]).Contains('end;'#10'{$WARN SYMBOL_PLATFORM DEFAULT}'));
+  Assert.IsTrue(TTestEdits.ApplyFix(mSource, mFound[1].Fixes[0]).Contains('end;'#10'{$WARN SYMBOL_PLATFORM DEFAULT}'));
   // {$R+} könnte die Prüfung erst einschalten: nur einzeln
   Assert.IsTrue(mFound[1].Fixes[0].Safe);
   Assert.IsFalse(mFound[2].Fixes[0].Safe);
-  Assert.IsTrue(ApplyFix(mSource, mFound[2].Fixes[0]).Contains('end;'#10'{$R+}'));
-  Assert.IsTrue(ApplyFix(mSource, mFound[3].Fixes[0]).Contains('end;'#10'{$Q+}'));
-  Assert.IsTrue(ApplyFix(mSource, mFound[4].Fixes[0]).Contains('end;'#10'{$OVERFLOWCHECKS ON}'));
+  Assert.IsTrue(TTestEdits.ApplyFix(mSource, mFound[2].Fixes[0]).Contains('end;'#10'{$R+}'));
+  Assert.IsTrue(TTestEdits.ApplyFix(mSource, mFound[3].Fixes[0]).Contains('end;'#10'{$Q+}'));
+  Assert.IsTrue(TTestEdits.ApplyFix(mSource, mFound[4].Fixes[0]).Contains('end;'#10'{$OVERFLOWCHECKS ON}'));
 end;
 
 procedure TDirectiveRulesTests.WarningsRestoredIsSilent;

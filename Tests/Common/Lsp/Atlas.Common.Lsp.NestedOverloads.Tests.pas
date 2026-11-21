@@ -44,12 +44,12 @@ implementation
 uses
   Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -92,30 +92,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  // Cursor hinter AMarker.
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  Inc(mIndex, Length(AMarker));
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 function NoText(const AFileName: string; out AText: string): Boolean;
 begin
   AText := '';
@@ -142,7 +118,7 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, cUnitHaupt, cHauptFile,
-      NoText), PositionOf(cUnitHaupt, AMarker));
+      NoText), TTestSource.PositionAfter(cUnitHaupt, AMarker));
   finally
     mTree.Free;
   end;
@@ -156,7 +132,7 @@ begin
   mText := StringReplace(cUnitHaupt, '  |', ACode, []);
   mTree := TPascalParser.Parse(mText);
   try
-    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(mText, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, TTestSource.PositionAfter(mText, AMarker),
       TCompletionMatching.Prefix);
   finally
     mTree.Free;
@@ -211,10 +187,10 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     // Hilf('x', 3) ist die Überladung hinter Rufe (Zeile 26), Hilf(4) die vor Rufe (Zeile 12).
-    mResolved := FResolver.Resolve(mTree, cHauptFile, PositionOf(cUnitHaupt, #10'  Hil'));
+    mResolved := FResolver.Resolve(mTree, cHauptFile, TTestSource.PositionAfter(cUnitHaupt, #10'  Hil'));
     Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, mResolved.Kind);
     Assert.AreEqual(26, mResolved.SelectionRange.StartPos.Line);
-    mResolved := FResolver.Resolve(mTree, cHauptFile, PositionOf(cUnitHaupt, '3);'#10'  Hil'));
+    mResolved := FResolver.Resolve(mTree, cHauptFile, TTestSource.PositionAfter(cUnitHaupt, '3);'#10'  Hil'));
     Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, mResolved.Kind);
     Assert.AreEqual(12, mResolved.SelectionRange.StartPos.Line);
   finally

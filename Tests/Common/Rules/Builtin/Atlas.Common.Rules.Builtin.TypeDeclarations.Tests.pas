@@ -126,7 +126,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.TypeDeclarations,
   Atlas.Common.Rules.Builtin.TypeDeclarations.Texts,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Unit Messages mit einigen Nachrichtennummern und TMessage.</summary>
 function MessagesIndex: ISymbolIndex;
@@ -153,36 +154,6 @@ function Fenster(const AMembers, ABodies: string): string;
 begin
   Result := 'unit Fenster;'#10'interface'#10'uses'#10'  Messages;'#10'type'#10'  TFenster = class'#10'  private'#10 +
     AMembers + '  end;'#10'implementation'#10 + ABodies + 'end.';
-end;
-
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mIndex := 1;
-  for mLine := 1 to APosition.Line do
-  begin
-    while (mIndex <= Length(AText)) and (AText[mIndex] <> #10) do
-    begin
-      Inc(mIndex);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mStart, mStop: Integer;
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
-    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
 end;
 
 { TMessageMethodInvalidTests }
@@ -266,19 +237,19 @@ begin
   Assert.AreEqual(14, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(17, mFound[0].Range.EndPos.Character);
   Assert.AreEqual('Parameter Msg als var übergeben', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure WMA(var Msg: TMessage); message 10;', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure TFenster.WMA(var Msg: TMessage);', mFixed) > 0, mFixed);
   Assert.AreEqual('Die message-Methode WMB braucht genau einen var-Parameter (wie E2138).', mFound[1].Message);
   Assert.AreEqual('Signatur (var Msg: TMessage) einsetzen', mFound[1].Fixes[0].Title);
-  mFixed := ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure WMB(var Msg: TMessage); message 11;', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure TFenster.WMB(var Msg: TMessage);', mFixed) > 0, mFixed);
-  mFixed := ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
   // Der Rumpf ohne Parameterliste bleibt.
   Assert.IsTrue(Pos('procedure WMC(var Msg: TMessage); message 12;', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure TFenster.WMC;', mFixed) > 0, mFixed);
-  mFixed := ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure WMD(var Msg: TMessage); message 13;', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(Findings(mFixed))), mFixed);
 end;
@@ -647,10 +618,10 @@ begin
   Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(59, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('cdecl setzen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';',
     mFixed) > 0, mFixed);
-  mFixed := ApplyFix(mFixed, mFound[1].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mFixed, mFound[1].Fixes[0]);
   Assert.IsTrue(Pos('function Zwei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';', mFixed) > 0,
     mFixed);
   Assert.AreEqual(0, Integer(Length(ConventionFindings(mFixed))), mFixed);
@@ -695,11 +666,11 @@ begin
   Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(24, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('pascal entfernen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('    constructor Create;'#10, mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('constructor TBasis.Create;'#10, mFixed) > 0, mFixed);
   Assert.AreEqual('Konstruktoren und Destruktoren brauchen register, nicht stdcall (wie E2236).', mFound[1].Message);
-  mFixed := ApplyFix(mFixed, ConventionFindings(mFixed)[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mFixed, ConventionFindings(mFixed)[0].Fixes[0]);
   Assert.IsTrue(Pos('    destructor Destroy; override;'#10, mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(ConventionFindings(mFixed))), mFixed);
 end;
@@ -722,7 +693,7 @@ begin
   Assert.AreEqual(32, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('Der Setter SetWert der published-Property Wert braucht register, nicht stdcall (wie E2270).',
     mFound[1].Message);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('    function GetWert: Integer;'#10, mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('function TBasis.GetWert: Integer;'#10, mFixed) > 0, mFixed);
   Assert.AreEqual(1, Integer(Length(ConventionFindings(mFixed))), mFixed);
@@ -809,15 +780,15 @@ begin
   mSource := DispCases;
   mFound := DispFindings(mSource);
   Assert.AreEqual('Vorfahren entfernen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  DA = dispinterface'#10'    [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A0001}'']', mFixed) > 0, mFixed);
   Assert.AreEqual(4, Integer(Length(DispFindings(mFixed))), mFixed);
   Assert.AreEqual('GUID einfügen', mFound[1].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[1].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[1].Fixes[0]);
   Assert.IsTrue(Pos('  DB = dispinterface'#10'    [''{', mFixed) > 0, mFixed);
   Assert.AreEqual(4, Integer(Length(DispFindings(mFixed))), mFixed);
   Assert.AreEqual('stdcall entfernen', mFound[2].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[2].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[2].Fixes[0]);
   Assert.AreEqual(0, Pos('stdcall', mFixed), mFixed);
   Assert.IsTrue(Pos('2A0003}'']'#10'    procedure Machen; dispid 1;'#10, mFixed) > 0, mFixed);
   Assert.AreEqual(4, Integer(Length(DispFindings(mFixed))), mFixed);
@@ -836,11 +807,11 @@ begin
   // Nach Position: zuerst der Name (E2229), dann die Klammer (E2228).
   Assert.AreEqual('Das dispinterface DE braucht eine GUID (wie E2229).', mFound[0].Message);
   // GUID hinter der Klammer der Vorfahren, danach lässt sich der Vorfahr entfernen.
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  DE = dispinterface(IBasis)'#10'    [''{', mFixed) > 0, mFixed);
   mFound := DispFindings(mFixed);
   Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
-  mFixed := ApplyFix(mFixed, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mFixed, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  DE = dispinterface'#10'    [''{', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(DispFindings(mFixed))), mFixed);
 end;

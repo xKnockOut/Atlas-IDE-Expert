@@ -49,13 +49,14 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.ContextSnippets,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cAnzeige =
@@ -152,48 +153,6 @@ begin
   Result := TContextSnippets.At(ContextAt(mText, mCharacter), mCharacter);
 end;
 
-/// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in AEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
 { TContextSnippetsTests }
 
 procedure TContextSnippetsTests.PropForFieldsWithoutProperty;
@@ -215,12 +174,12 @@ begin
   mContext := ContextAt(mCode, mCharacter);
   mEdits := mSnippets[0].AdditionalEdits + [TRuleEdit.Create(TTextRange.Create(mContext.Line, 4, mContext.Line,
     mCharacter), TContextSnippets.ToPlain(mSnippets[0].Text))];
-  mText := Apply(mCode, mEdits);
+  mText := TTestEdits.Apply(mCode, mEdits);
   Assert.Contains(mText, '    property Farbe: TColor read FFarbe write SetFarbe;'#10'  private'#10 +
     '    procedure SetFarbe(const Value: TColor);'#10'  end;');
   Assert.Contains(mText, 'procedure TAnzeige.SetFarbe(const Value: TColor);'#10'begin'#10 +
     '  if FFarbe <> Value then'#10'  begin'#10'    FFarbe := Value;'#10'    Invalidate;'#10'  end;'#10'end;');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   // Ohne Feld ohne Property nichts.
   Assert.AreEqual(0, Integer(Length(SnippetsAt(StringReplace(Format(cAnzeige, ['|']), '    FFarbe: TColor;'#10, '',
     [])))));
@@ -304,10 +263,10 @@ begin
   // /prop und die Vorlage nutzen denselben Erzeuger (#51 „Abgrenzung zu Code-Aktionen“).
   mCode := Format(cAnzeige, ['/prop Breite: Integer']);
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(mCode, TTextPosition.Create(10, 0), nil, nil, mEdits));
-  mText := Apply(mCode, mEdits);
+  mText := TTestEdits.Apply(mCode, mEdits);
   Assert.Contains(mText, 'procedure TAnzeige.SetBreite(const Value: Integer);'#10 +
     TSetterGenerator.Body('FBreite', 'Value', 'Invalidate', #10));
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 { TContextSnippetCompletionTests }

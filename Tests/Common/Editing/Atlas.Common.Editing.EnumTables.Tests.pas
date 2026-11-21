@@ -51,7 +51,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.EnumTables;
+  Atlas.Common.Editing.EnumTables,
+  Atlas.Tests.SourceText;
 
 const
   cStates: array[0..2] of string = ('osNew', 'osPaid', 'osPaymentDue');
@@ -59,18 +60,6 @@ const
 function Names: TArray<string>;
 begin
   Result := TArray<string>.Create(cStates[0], cStates[1], cStates[2]);
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := mTree.Diagnostics = nil;
-  finally
-    mTree.Free;
-  end;
 end;
 
 function Created(const ASource, AName: string; APlacement: TEnumTablePlacement; AResource: Boolean): string;
@@ -140,7 +129,7 @@ begin
   Assert.IsTrue(Pos('  TOrderState = (osNew, osPaid, osPaymentDue);'#10#10'const'#10 +
     '  COrderStateNames: array[TOrderState] of string = (''New'', ''Paid'', ''Payment due'');'#10#10'type'#10 +
     '  TOther = class', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.CreateInImplementation;
@@ -150,7 +139,7 @@ begin
   mText := Created(cUnit_, 'CNames', TEnumTablePlacement.InImplementation, False);
   Assert.IsTrue(Pos('uses System.SysUtils;'#10#10'const'#10'  CNames: array[TOrderState] of string', mText) > 0,
     mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.CreateWithResourceStrings;
@@ -163,7 +152,7 @@ begin
   // Zu lang für eine Zeile: je Eintrag eine.
   Assert.IsTrue(Pos('array[TOrderState] of PResStringRec = ('#10'    @SOrderStateNew,'#10'    @SOrderStatePaid,'#10 +
     '    @SOrderStatePaymentDue);', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.CreateRefusesFixedValuesAndTakenName;
@@ -312,7 +301,7 @@ begin
     'TOrderState'), mRepair);
   Assert.IsTrue(Pos('  SOrderStateNew = ''New'';'#10'  SOrderStatePaid = ''Paid'';'#10, mText) > 0, mText);
   Assert.IsTrue(Pos('(@SOrderStateNew, @SOrderStatePaid, @SOrderStatePaymentDue);', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TEnumTablesTests.RepairNothingToDo;

@@ -218,7 +218,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.Contract,
@@ -235,7 +234,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 function Body(const AStatements: string): string;
 begin
@@ -1378,53 +1378,6 @@ begin
   Result := TRuleAssert.IndexFindings(TAssignToPropertyMemberRule.Create, ASource, ControlIndex, AConfig, APath);
 end;
 
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetIn(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an (nach Position sortiert).</summary>
-function ApplyAll(const AText: string; const AFix: TRuleFix): string;
-var
-  mEdits: TArray<TRuleEdit>;
-  mIndex, mInner, mStart, mStop: Integer;
-  mSwap: TRuleEdit;
-begin
-  mEdits := Copy(AFix.Edits);
-  for mIndex := 0 to High(mEdits) do
-  begin
-    for mInner := mIndex + 1 to High(mEdits) do
-    begin
-      if OffsetIn(AText, mEdits[mInner].Range.StartPos) > OffsetIn(AText, mEdits[mIndex].Range.StartPos) then
-      begin
-        mSwap := mEdits[mIndex];
-        mEdits[mIndex] := mEdits[mInner];
-        mEdits[mInner] := mSwap;
-      end;
-    end;
-  end;
-  Result := AText;
-  for mIndex := 0 to High(mEdits) do
-  begin
-    mStart := OffsetIn(Result, mEdits[mIndex].Range.StartPos);
-    mStop := OffsetIn(Result, mEdits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + mEdits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
-end;
-
 { TAssignToPropertyMemberTests }
 
 procedure TAssignToPropertyMemberTests.IssueExampleWithFix;
@@ -1440,7 +1393,7 @@ begin
   Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Über R zuweisen und zurückschreiben', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  R := Rahmen.BoundsRect;'#10'  R.Left := 0;'#10'  Rahmen.BoundsRect := R;'#10, mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('R: TRect;', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('System.Types', mFixed) > 0, mFixed);
@@ -1566,7 +1519,7 @@ begin
   Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Clear aufrufen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  Liste.Clear;'#10, mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mFixed))), mFixed);
   // Andere Werte: ohne Clear-Hinweis.
@@ -1586,12 +1539,12 @@ begin
   Assert.AreEqual('TKunde.Name hat kein write (wie E2129).', mFound[0].Message);
   Assert.AreEqual(2, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Feld FName zuweisen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  FName := ''Neu'';'#10, mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mFixed))), mFixed);
   Assert.AreEqual('SetName anlegen und write ergänzen', mFound[0].Fixes[1].Title);
   Assert.IsTrue(mFound[0].Fixes[1].Alternative);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[1]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[1]);
   Assert.IsTrue(Pos('property Name: string read FName write SetName;', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure SetName(const Value: string);', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(ReadonlyFindings(mFixed))), mFixed);

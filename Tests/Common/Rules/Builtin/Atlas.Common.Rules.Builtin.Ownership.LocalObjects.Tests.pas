@@ -46,13 +46,13 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.SourceText;
 
 /// <summary>Unit mit der Routine Lauf (Variablen AVars, Rumpf ABody) und einer eigenen Klasse TProtokoll.</summary>
 function Source(const AVars, ABody: string): string;
@@ -60,18 +60,6 @@ begin
   Result := 'unit U;'#10'interface'#10'uses'#10'  System.Classes;'#10'type'#10 +
     '  TProtokoll = class(TObject)'#10'  end;'#10'implementation'#10 +
     'procedure Lauf(Ziel: TStrings);'#10'var'#10 + AVars + 'begin'#10 + ABody + 'end;'#10'end.';
-end;
-
-procedure ParsesWithoutErrors(const ASource: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TSyntaxTreeCache.Parse(ASource);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), ASource);
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TLocalObjectNotFreedTests }
@@ -93,7 +81,7 @@ begin
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Source('  Liste: TStringList;'#10, '  Liste := TStringList.Create;'#10'  try'#10 +
     '    Liste.Add(''a'');'#10'    Ziel.Text := Liste.Text;'#10'  finally'#10'    Liste.Free;'#10'  end;'#10), mFixed);
-  ParsesWithoutErrors(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TLocalObjectNotFreedRule.Create, mFixed);
 end;
 

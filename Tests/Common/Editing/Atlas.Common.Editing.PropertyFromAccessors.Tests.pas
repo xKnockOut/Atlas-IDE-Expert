@@ -58,7 +58,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.PropertyFromAccessors;
+  Atlas.Common.Editing.PropertyFromAccessors,
+  Atlas.Tests.SourceText;
 
 const
   cPanel =
@@ -106,18 +107,6 @@ begin
   Result := Find(AText, TPropertyFromAccessorsOptions.Default);
 end;
 
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
 /// <summary>Alle gefundenen Properties anlegen, AHidden verbergen; das Ergebnis parst und hat keine fehlenden
 /// Properties mehr.</summary>
 function Create_(const AText: string; const AHidden: TArray<string>;
@@ -132,7 +121,7 @@ begin
   finally
     mTree.Free;
   end;
-  Assert.IsTrue(Parses(Result), Result);
+  Assert.IsTrue(TTestSource.Parses(Result), Result);
   Assert.AreEqual(0, Integer(Length(Find(Result, AOptions))), Result);
 end;
 

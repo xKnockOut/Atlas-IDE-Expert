@@ -52,7 +52,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Lsp.MethodWithoutSelf;
+  Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cKundenFile = 'C:\P\Kunden.pas';
@@ -178,16 +179,6 @@ begin
   end;
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 procedure TLspMethodWithoutSelfTests.ActionsCarryClientCommand;
 var
   mActions: TArray<TJSONObject>;
@@ -208,7 +199,7 @@ begin
     Assert.AreEqual(18, mArguments.Items[1].GetValue<Integer>('line'));
     Assert.AreEqual('routine', mArguments.Items[2].Value);
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 

@@ -238,7 +238,9 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Profiles;
+  Atlas.Common.Rules.Profiles,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 function ClassUnit(const AMembers, AImplementation: string; const AHead: string): string; overload;
 begin
@@ -264,18 +266,6 @@ begin
   mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
     Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
   Result := string.Join(#10, mLines);
-end;
-
-function ParsesCleanly(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TDeclarationRulesTests }
@@ -426,7 +416,7 @@ begin
   mFixed := ApplyFirstFix(mSource, TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, mSource));
   Assert.AreEqual(ClassUnit('  private'#10'    function Extra(A: Integer): string;'#10'    FWert: Integer;',
     'function TFoo.Extra(A: Integer): string;'#10'begin'#10'end;'), mFixed);
-  Assert.IsTrue(ParsesCleanly(mFixed));
+  Assert.IsTrue(TTestSource.Parses(mFixed));
 end;
 
 procedure TDeclarationRulesTests.FixCreatesPrivateSection;
@@ -438,7 +428,7 @@ begin
   mFixed := ApplyFirstFix(mSource, TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, mSource));
   Assert.AreEqual(ClassUnit('  public'#10'    procedure Lauf;'#10'  private'#10'    procedure Extra;',
     'procedure TFoo.Lauf;'#10'begin'#10'end;'#10'procedure TFoo.Extra;'#10'begin'#10'end;'), mFixed);
-  Assert.IsTrue(ParsesCleanly(mFixed));
+  Assert.IsTrue(TTestSource.Parses(mFixed));
   TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, mFixed);
 end;
 
@@ -446,25 +436,6 @@ procedure TDeclarationRulesTests.GlobalRoutineIsSilent;
 begin
   TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
     'unit U;'#10'interface'#10'implementation'#10'procedure Hilfe;'#10'begin'#10'end;'#10'end.');
-end;
-
-/// <summary>Wendet alle Edits einer Korrektur an (jedes Edit in einer Zeile, von hinten nach vorn).</summary>
-function ApplyAll(const AText: string; const AFix: TRuleFix): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mLine: string;
-  mIndex: Integer;
-begin
-  mLines := AText.Split([#10]);
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    mLine := mLines[mEdit.Range.StartPos.Line];
-    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
-      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(#10, mLines);
 end;
 
 procedure TDeclarationRulesTests.ModifierMismatchAlignsBothWays;
@@ -481,12 +452,12 @@ begin
   Assert.IsFalse(mFindings[0].Fixes[0].Alternative);
   Assert.IsTrue(mFindings[0].Fixes[1].Alternative);
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'),
-    ApplyAll(mSource, mFindings[0].Fixes[0]));
+    TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
   Assert.AreEqual(ClassUnit('    procedure Foo(const A: Integer);',
-    'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[1]));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(mSource, mFindings[0].Fixes[0]));
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(mSource, mFindings[0].Fixes[1]));
-  Assert.IsTrue(ParsesCleanly(ApplyAll(mSource, mFindings[0].Fixes[1])));
+    'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;'), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[1]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[1]));
+  Assert.IsTrue(TTestSource.Parses(TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[1])));
   // Die beiden anderen Regeln schweigen: es fehlt kein Name.
   TRuleAssert.Silent(TDeclaredNotImplementedRule.Create, mSource);
   TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, mSource);
@@ -548,9 +519,9 @@ begin
   Assert.AreEqual(17, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(ClassUnit('    procedure Buchen(const Betrag: Currency; Datum: TDate);',
     'procedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);'#10'begin'#10'end;', 'TKonto = class'),
-    ApplyAll(mSource, mFindings[0].Fixes[0]));
+    TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
   // Korrigierte Form und naheliegender Negativfall: anders gruppiert, ohne Parameterliste im Rumpf.
-  TRuleAssert.Silent(TSignatureMismatchRule.Create, ApplyAll(mSource, mFindings[0].Fixes[0]));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
   TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A, B: Currency);',
     'procedure TKonto.Buchen(const A: Currency; const B: Currency);'#10'begin'#10'end;', 'TKonto = class'));
   TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A: Currency);',
@@ -579,14 +550,14 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Foo weicht von der Deklaration ab: cdecl statt stdcall (wie E2037).', mFindings[0].Message);
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); stdcall;',
-    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[0]));
+    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); cdecl;',
-    'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[1]));
+    'procedure TFoo.Foo(A: Integer); cdecl;'#10'begin'#10'end;'), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[1]));
   mSource := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;');
   mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, mSource);
   Assert.AreEqual('Foo weicht von der Deklaration ab: stdcall statt register (wie E2037).', mFindings[0].Message);
   Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer); stdcall;',
-    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), ApplyAll(mSource, mFindings[0].Fixes[1]));
+    'procedure TFoo.Foo(A: Integer); stdcall;'#10'begin'#10'end;'), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[1]));
   // Überladung: verglichen wird mit der nächstliegenden Deklaration.
   mFindings := TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit(
     '    procedure Foo(A: Integer); overload;'#10'    procedure Foo(A, B: string); overload;',
@@ -775,11 +746,11 @@ begin
   Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   // Die Korrektur deklariert die fehlenden Methoden und legt leere Rümpfe an.
-  mFixed := ApplyAll(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.IsTrue(mFixed.Contains('    procedure Info(const Text: string);'#10 +
     '    procedure Warnung(const Text: string);'#10'    procedure Fehler(const Text: string);'#10'  end;'), mFixed);
   Assert.IsTrue(mFixed.Contains('procedure TDateiLog.Fehler(const Text: string);'), mFixed);
-  Assert.IsTrue(ParsesCleanly(mFixed), mFixed);
+  Assert.IsTrue(TTestSource.Parses(mFixed), mFixed);
   TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, mFixed);
 end;
 

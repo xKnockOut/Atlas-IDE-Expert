@@ -78,7 +78,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 const
   // Klassen wie in der VCL, ohne Index in derselben Unit.
@@ -104,26 +105,6 @@ begin
   Result := TRuleAssert.Findings(TUnrelatedClassCastRule.Create, ASource, AConfig, APath);
 end;
 
-/// <summary>Wendet die einzeiligen Edits einer Korrektur von hinten nach vorn an (Zeilen mit #10).</summary>
-function Applied(const AText: string; const AFix: TRuleFix): string;
-var
-  mLines: TArray<string>;
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-  mLine: string;
-begin
-  mLines := AText.Split([#10]);
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    Assert.AreEqual(mEdit.Range.StartPos.Line, mEdit.Range.EndPos.Line, 'nur einzeilige Edits');
-    mLine := mLines[mEdit.Range.StartPos.Line];
-    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
-      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(#10, mLines);
-end;
-
 { TUnrelatedClassCastTests }
 
 procedure TUnrelatedClassCastTests.IssueExampleWithFix;
@@ -145,7 +126,7 @@ begin
   Assert.AreEqual(16, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('In (mEdit as TButton) umwandeln', mFound[0].Fixes[0].Title);
-  mFixed := Applied(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  (mEdit as TButton).Caption := ''OK'';', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(UnrelatedFindings(mFixed))));
 end;
@@ -309,7 +290,7 @@ begin
   Assert.AreEqual('Free ruft den virtuellen Destruktor: Die Umwandlung von FStrom nach TObject ist überflüssig.',
     mFound[1].Message);
   Assert.AreEqual('Umwandlung entfernen', mFound[0].Fixes[0].Title);
-  mFixed := Applied(Applied(mSource, mFound[1].Fixes[0]), mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(TTestEdits.ApplyFix(mSource, mFound[1].Fixes[0]), mFound[0].Fixes[0]);
   Assert.IsTrue(mFixed.Contains('  FZeilen.Clear;'#10'  FStrom.Free;'#10), mFixed);
 end;
 
@@ -321,8 +302,8 @@ begin
   mSource := ImportSource('', '  (FZeilen as TStringList).Clear;'#10'  FZeilen := FZeilen as TStringList;'#10);
   mFound := RedundantFindings(mSource);
   Assert.AreEqual(2, Integer(Length(mFound)));
-  Assert.IsTrue(Applied(mSource, mFound[0].Fixes[0]).Contains(#10'  FZeilen.Clear;'#10));
-  Assert.IsTrue(Applied(mSource, mFound[1].Fixes[0]).Contains(#10'  FZeilen := FZeilen;'#10));
+  Assert.IsTrue(TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]).Contains(#10'  FZeilen.Clear;'#10));
+  Assert.IsTrue(TTestEdits.ApplyFix(mSource, mFound[1].Fixes[0]).Contains(#10'  FZeilen := FZeilen;'#10));
   // as mit Interfaces ruft QueryInterface.
   TRuleAssert.Silent(TRedundantCastRule.Create, Source('type'#10'  IZeilen = interface'#10'  end;'#10,
     '  mListe: IZeilen;'#10, '  mListe := mListe as IZeilen;'#10));

@@ -88,14 +88,8 @@ begin
 end;
 
 function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + mFinding.Message + ' | ';
-  end;
+  Result := TRuleAssert.Messages(AFound, ' | ');
 end;
 
 function Applied(const ASource: string; const AFix: TRuleFix): string;
