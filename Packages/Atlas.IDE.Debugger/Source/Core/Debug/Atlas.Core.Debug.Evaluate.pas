@@ -146,7 +146,7 @@ type
     /// und hat Teile statt Felder, entstehen die Kinder neu.</summary>
     procedure SetResult(ANode: TAtlasEvalNode; AOk: Boolean; const AText: string);
     /// <summary>Kinder aus Feldnamen (einzeln auszuwerten).</summary>
-    procedure SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>);
+    class procedure SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>); static;
     /// <summary>Kinder aus den Teilen des Werts (ohne Server); False, wenn der Wert keine hat.</summary>
     function SetParts(ANode: TAtlasEvalNode): Boolean;
     /// <summary>Offene Knoten in Anzeigereihenfolge: Wurzeln und Kinder aufgeklappter Knoten.</summary>
@@ -1017,7 +1017,7 @@ begin
   end;
 end;
 
-procedure TAtlasEvalList.SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>);
+class procedure TAtlasEvalList.SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>);
 var
   mField: string;
 begin
