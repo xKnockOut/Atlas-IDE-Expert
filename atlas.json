@@ -80,8 +80,6 @@
       ],
       "knownEdges": [
         "Atlas.Common.Lsp.Adapters.IdeTypes -> Atlas.Common.Rules.Contract",
-        "Atlas.Common.Lsp.AffectedTests -> Atlas.Common.Rules.ChangedFiles",
-        "Atlas.Common.Lsp.AffectedTests.Types -> Atlas.Common.Rules.ChangedFiles",
         "Atlas.Common.Lsp.AnonymousMethods -> Atlas.Common.Editing.AnonymousMethods",
         "Atlas.Common.Lsp.AnonymousMethods -> Atlas.Common.Editing.CodeActions",
         "Atlas.Common.Lsp.AnonymousMethods -> Atlas.Common.Editing.NestedRoutines",
@@ -115,7 +113,6 @@
         "Atlas.Common.Lsp.CodeActions -> Atlas.Common.Rules.CodeActions",
         "Atlas.Common.Lsp.CodeActions -> Atlas.Common.Rules.Prompt",
         "Atlas.Common.Lsp.CodeLens -> Atlas.Common.Rules.Builtin.Metrics",
-        "Atlas.Common.Lsp.Colors -> Atlas.Common.Editing.Colors",
         "Atlas.Common.Lsp.CompilerBaseline -> Atlas.Common.Rules.Baseline",
         "Atlas.Common.Lsp.CompilerBaseline -> Atlas.Common.Rules.Output",
         "Atlas.Common.Lsp.CompilerBaseline -> Atlas.Common.Rules.Scopes",
