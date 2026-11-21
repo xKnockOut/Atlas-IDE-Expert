@@ -86,6 +86,16 @@ type
     Reason: string;
   end;
 
+  /// <summary>Gemeinsamer Kopf der Extrahieren-Läufe: Text, Baum und Optionen der Datei.</summary>
+  TExtractRun = class
+  protected
+    FText: string;
+    FTree: TSyntaxTree;
+    FOptions: TExtractOptions;
+  public
+    constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
+  end;
+
   /// <summary>Hilfen der Extrahieren-Aktionen.</summary>
   TExtractSupport = class
   public
@@ -177,6 +187,16 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Localization.Texts;
+
+{ TExtractRun }
+
+constructor TExtractRun.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
+begin
+  inherited Create;
+  FText := AText;
+  FTree := ATree;
+  FOptions := AOptions;
+end;
 
 {$SCOPEDENUMS ON}
 

@@ -70,9 +70,9 @@ var
 begin
   Assert.IsTrue(EnclosingTypeAt(UnitOf, 5, [TIndexSymbolKind.ClassType], 0, True, mSymbol));
   Assert.AreEqual('TInnen', mSymbol.Name);
-  Assert.AreEqual('TAussen.TInnen', QualifiedTypeName(mSymbol));
+  Assert.AreEqual('TAussen.TInnen', mSymbol.QualifiedName);
   Assert.IsTrue(EnclosingTypeAt(UnitOf, 7, [TIndexSymbolKind.ClassType], 0, True, mSymbol));
-  Assert.AreEqual('TAussen', QualifiedTypeName(mSymbol));
+  Assert.AreEqual('TAussen', mSymbol.QualifiedName);
   // Andere Art: kein Treffer.
   Assert.IsFalse(EnclosingTypeAt(UnitOf, 5, [TIndexSymbolKind.RecordType], 0, True, mSymbol));
 end;

@@ -61,6 +61,8 @@ type
     procedure PlainUnit_IsNotTestUnit;
     [Test]
     procedure TestInsightNamespace_IsTestUnit;
+    [Test]
+    procedure AddMissingUnitSkipsUsedUnits;
   end;
 
 implementation
@@ -416,6 +418,20 @@ procedure TUsesClauseTests.TestInsightNamespace_IsTestUnit;
 begin
   Assert.IsTrue(TUsesClauses.IsTestUnit(TPascalLexer.Tokenize(
     'program Tests;'#10'uses TestInsight.DUnitX;'#10'begin end.')));
+end;
+
+procedure TUsesClauseTests.AddMissingUnitSkipsUsedUnits;
+var
+  mEdit: TRuleEdit;
+begin
+  Assert.IsFalse(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+    'System.SysUtils', TArray<string>.Create('System'), #10, mEdit), 'schon eingebunden');
+  Assert.IsFalse(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+    'Daten.Werkzeug', nil, #10, mEdit), 'ohne Namespace schon eingebunden');
+  Assert.IsTrue(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+    'Vcl.Forms', nil, #10, mEdit));
+  Assert.AreEqual('uses System.SysUtils, Werkzeug in ''Werkzeug.pas'', Vcl.Forms;',
+    Apply(cUnitText, mEdit).Split([#10])[2]);
 end;
 
 initialization

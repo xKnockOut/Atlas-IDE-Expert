@@ -98,7 +98,8 @@ uses
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.MethodWithoutSelf.Texts,
   Atlas.Common.Editing.MethodWithoutSelf.Analysis,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Text.Arrays;
 
 { TMethodWithoutSelf }
 
@@ -288,10 +289,7 @@ end;
 
 procedure TMethodBuild.Warn(const AText: string);
 begin
-  if IndexStr(AText, Warnings) < 0 then
-  begin
-    Warnings := Warnings + [AText];
-  end;
+  TTextArrays.AddText(Warnings, AText);
 end;
 
 procedure TMethodBuild.WarnLost(AWork: TFileWork; ALine: Integer; AReceiver: TSyntaxNode);

@@ -87,6 +87,8 @@ Atlas.Common.Editing.ClassLayout.Tests
 Atlas.Common.Editing.CodeActions.Tests
 Atlas.Common.Editing.Colors.Tests
 Atlas.Common.Editing.CompilerFixes.Tests
+Atlas.Common.Compiler.ProcessRuns.Tests
+Atlas.Common.Editing.SourceFiles.Tests
 Atlas.Common.Editing.ConditionalExpression.Tests
 Atlas.Common.Editing.Conditions.Tests
 Atlas.Common.Editing.BoundaryCases.Tests
@@ -231,6 +233,7 @@ Atlas.Common.Lsp.BlockFolds.Tests
 Atlas.Common.Lsp.FuzzyMatch.Tests
 Atlas.Common.Lsp.HoverValues.Tests
 Atlas.Common.Lsp.Internals.Cancellation.Tests
+Atlas.Common.Lsp.Internals.Feature.Tests
 Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
 Atlas.Common.Lsp.MethodBreakpoints.Tests

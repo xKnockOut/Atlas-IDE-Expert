@@ -774,21 +774,13 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterTestCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('mock', cTexts[TTestCommandsText.MockSummary].Text, '/mock IKundenRepo', ExecuteMock));
-  ARegister(Command('testcase', cTexts[TTestCommandsText.TestCaseSummary].Text, '/testcase ''a'', 2, True',
-    ExecuteTestCase));
-  ARegister(Command('dump', cTexts[TTestCommandsText.DumpSummary].Text, '/dump', ExecuteDump));
-  ARegister(Command('assert', cTexts[TTestCommandsText.AssertSummary].Text, '/assert', ExecuteAssert));
+  ARegister(TSlashCommand.Create('mock', cTexts[TTestCommandsText.MockSummary].Text, '/mock IKundenRepo', ExecuteMock));
+  ARegister(TSlashCommand.Create('testcase', cTexts[TTestCommandsText.TestCaseSummary].Text,
+      '/testcase ''a'', 2, True', ExecuteTestCase));
+  ARegister(TSlashCommand.Create('dump', cTexts[TTestCommandsText.DumpSummary].Text, '/dump', ExecuteDump));
+  ARegister(TSlashCommand.Create('assert', cTexts[TTestCommandsText.AssertSummary].Text, '/assert', ExecuteAssert));
 end;
 
 initialization

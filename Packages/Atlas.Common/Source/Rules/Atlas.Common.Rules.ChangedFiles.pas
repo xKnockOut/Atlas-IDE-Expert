@@ -72,7 +72,8 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Uris;
 
 { TChangedLines }
 
@@ -593,25 +594,17 @@ begin
   Result := Normalize(ChangeFileExt(APath, ''));
 end;
 
-function BaseName(const APath: string): string;
-var
-  mPath: string;
-begin
-  mPath := StringReplace(APath, '\', '/', [rfReplaceAll]);
-  Result := Copy(mPath, LastDelimiter('/', mPath) + 1, MaxInt);
-end;
-
 function IncludeMatches(const AIncludeName, AIncludeFile: string): Boolean;
 var
   mName: string;
 begin
   // Abgleich über den Dateinamen; Suchpfade sind hier nicht bekannt.
-  mName := BaseName(AIncludeName);
+  mName := TTextUris.FileNameOf(AIncludeName);
   if Pos('.', mName) = 0 then
   begin
     mName := mName + '.inc';
   end;
-  Result := SameText(mName, BaseName(AIncludeFile));
+  Result := SameText(mName, TTextUris.FileNameOf(AIncludeFile));
 end;
 
 /// <summary>Wählt eine Änderung an AChanged alle Dateien? Projekt- und Konfigurationsdateien.</summary>

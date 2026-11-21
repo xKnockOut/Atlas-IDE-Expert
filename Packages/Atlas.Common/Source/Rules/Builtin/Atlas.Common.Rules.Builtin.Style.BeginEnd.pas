@@ -34,7 +34,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Style.Tokens,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -573,18 +574,6 @@ begin
   end;
 end;
 
-/// <summary>Alle Stellen 0..ACount-1.</summary>
-function AllSites(ACount: Integer): TArray<Integer>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, ACount);
-  for mIndex := 0 to ACount - 1 do
-  begin
-    Result[mIndex] := mIndex;
-  end;
-end;
-
 /// <summary>Korrekturen der Stelle ASite: die Stelle, die ganze Methode und die ganze Datei. AFileEdits baut die
 /// Korrektur der ganzen Datei beim ersten Bedarf.</summary>
 function SiteFixes(AFinder: TBeginEndSites; ASite: Integer; const AMethods: TMethodFixes;
@@ -605,7 +594,7 @@ begin
   end;
   if AFileEdits = nil then
   begin
-    AFileEdits := AFinder.Edits(AllSites(mSiteCount));
+    AFileEdits := AFinder.Edits(TTextArrays.Indices(mSiteCount));
   end;
   Result := Result + [TRuleFix.Create(cTexts[TStyleBeginEndText.InFile].Fmt([mSiteCount]),
     AFileEdits)];

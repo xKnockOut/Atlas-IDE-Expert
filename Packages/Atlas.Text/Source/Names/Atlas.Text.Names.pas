@@ -3,7 +3,8 @@
 // Namen in Delphi-Quelltext und Units zu Dateinamen (gemeinsam für Server und
 // Plugin): letzter Teil eines qualifizierten Namens, Name mit Container,
 // Unit-Name einer .pas-Datei, Quelltextdateien (.pas, .dpr, .dpk), Namen ohne
-// Typparameter, &-Präfix oder T-Präfix, Namenslisten mit Kommas.
+// Typparameter, &-Präfix oder T-Präfix, Namenslisten mit Kommas, Ordnerschlüssel
+// und Pfade relativ zu einem Wurzelordner.
 
 interface
 
@@ -40,6 +41,13 @@ type
     class function InList(const ANames, AName: string): Boolean; static;
     /// <summary>"interface" oder "implementation".</summary>
     class function SectionKeyword(AInterface: Boolean): string; static;
+    /// <summary>Gleich viele Typnamen und paarweise gleich ohne Leerraum und Groß-/Kleinschreibung
+    /// (TList&lt;Integer&gt; = tlist&lt; integer &gt;)?</summary>
+    class function SameTypes(const A, B: TArray<string>): Boolean; static;
+    /// <summary>Schlüssel eines Ordners: klein, mit "\" und ohne Trenner am Ende.</summary>
+    class function FolderKey(const AFolder: string): string; static;
+    /// <summary>AFileName relativ zu ARoot, wenn es darunter liegt; sonst unverändert.</summary>
+    class function RelativeTo(const ARoot, AFileName: string): string; static;
   end;
 
 implementation
@@ -193,12 +201,48 @@ begin
   Result := False;
 end;
 
+class function TTextNames.SameTypes(const A, B: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(A) = Length(B);
+  if Result then
+  begin
+    for mIndex := 0 to High(A) do
+    begin
+      if not SameText(StringReplace(A[mIndex], ' ', '', [rfReplaceAll]),
+        StringReplace(B[mIndex], ' ', '', [rfReplaceAll])) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
+end;
+
 class function TTextNames.SectionKeyword(AInterface: Boolean): string;
 begin
   Result := 'implementation';
   if AInterface then
   begin
     Result := 'interface';
+  end;
+end;
+
+class function TTextNames.FolderKey(const AFolder: string): string;
+begin
+  Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
+  while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+end;
+
+class function TTextNames.RelativeTo(const ARoot, AFileName: string): string;
+begin
+  Result := AFileName;
+  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+  begin
+    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
   end;
 end;
 

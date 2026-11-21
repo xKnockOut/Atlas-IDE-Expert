@@ -896,21 +896,6 @@ begin
   end;
 end;
 
-function UsesEdit(const AContext: TRuleContext; const ATokens: TTokens; AOffset: Integer;
-  const AUnitName: string; out AEdit: TTextEdit): Boolean;
-var
-  mUsed: TArray<string>;
-  mShort: string;
-begin
-  mUsed := TUsesClauses.UsedUnits(ATokens);
-  mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
-  if TUsesClauses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(mUsed, mShort, nil) then
-  begin
-    Exit(False);
-  end;
-  Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
-end;
-
 function IsStringLiteral(const AContext: TRuleContext; ANode: TSyntaxNode): Boolean;
 begin
   Result := (ANode.Kind = TSyntaxKind.Literal) and StartsStr('''', NodeText(AContext, ANode));
@@ -1231,7 +1216,8 @@ begin
   end;
   mText := mText + FLineBreak + mIndent + 'end';
   mEdits := [TRuleEdit.Create(NodeRange(AHead), mText)];
-  if UsesEdit(FContext, FTokens, AHead.StartOffset, 'System.StrUtils', mExtra) then
+  if TUsesClauses.AddMissingUnit(FTokens, AHead.StartOffset, 'System.StrUtils', FContext.Namespaces,
+    TTextLines.LineBreakOf(FContext.Text), mExtra) then
   begin
     mEdits := mEdits + [mExtra];
   end;

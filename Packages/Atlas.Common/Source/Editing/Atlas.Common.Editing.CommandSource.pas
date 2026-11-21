@@ -48,6 +48,8 @@ type
     function RoutineAt: TSyntaxNode;
     /// <summary>Klasse, in deren Deklaration oder Methode die Befehlszeile steht.</summary>
     function ClassAt(out AClass: TIndexSymbol): Boolean;
+    /// <summary>Ob die Unit ein Feld AName deklariert.</summary>
+    function HasField(const AName: string): Boolean;
     /// <summary>Zeile von "private" (nicht strict) in AClass; -1 ohne.</summary>
     function PrivateLine(const AClass: TIndexSymbol): Integer;
     /// <summary>Zeile, hinter der Code am Ende der implementation steht (vor initialization bzw. end.).</summary>
@@ -312,6 +314,20 @@ begin
       (mSymbol.Container = '') then
     begin
       AClass := mSymbol;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TCommandSource.HasField(const AName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in UnitIndex.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Name, AName) then
+    begin
       Exit(True);
     end;
   end;

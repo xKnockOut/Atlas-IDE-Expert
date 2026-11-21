@@ -105,15 +105,6 @@ begin
   end;
 end;
 
-function AffectedReadText: TReferenceReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
-    end;
-end;
-
 /// <summary>Dateien und Testprogramme der Gruppe; Treffersicherheit und Zeitlimit wie get_impact.</summary>
 function AffectedRequestOf(const AContext: TMcpToolContext; const ASettings: TServerSettings;
   const AReadText: TReferenceReadText): TAffectedRequest;
@@ -126,15 +117,6 @@ begin
   Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms, AReadText);
 end;
 
-function EnsureUnitOf(AGroup: TShellWorkspaceGroup): TEnsureUnitFunc;
-begin
-  Result :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := AGroup.EnsureUnit(AUnitName);
-    end;
-end;
-
 /// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
 function FindAffected(AGroup: TShellWorkspaceGroup; const ASettings: TServerSettings;
   const AQuery: TShellAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
@@ -145,7 +127,7 @@ var
 begin
   // In einer Interface-Variablen: als const-Argument würde das Objekt nie freigegeben.
   mProcess := TProcessRunner.Create;
-  mResolver := TNameResolver.Create(AGroup.Index, EnsureUnitOf(AGroup));
+  mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
     try
@@ -193,7 +175,7 @@ begin
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
-  mReadText := AffectedReadText();
+  mReadText := TShellBootstrap.SourceReader();
   mFound := FindAffected(AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
     AffectedRequestOf(AContext, mSettings, mReadText), mReadText);
   if mFormat = TAffectedFormat.DUnitX then

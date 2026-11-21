@@ -29,7 +29,6 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Metrics.Collector,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Output,
   Atlas.Common.Hotspots.Service,
@@ -37,7 +36,8 @@ uses
   Shell.Hotspots,
   Shell.Linter.Output,
   Shell.Linter.Files,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Shell.Workspace.Listings;
 
 type
 {$SCOPEDENUMS ON}
@@ -54,15 +54,6 @@ const
     (De: '--hotspots erwartet eine .md-, .html- oder .json-Datei';
     En: '--hotspots expects a .md, .html or .json file'));
 
-function ReaderFunc(): TMetricsReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TLinterFiles.ReadText(AFileName, AText);
-    end;
-end;
-
 { TLinterHotspots }
 
 class function TLinterHotspots.Analyze(const ATarget: TLinterTarget; const ASettings: TServerSettings;
@@ -75,7 +66,7 @@ var
   mRequest: THotspotRequest;
 begin
   mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, mRoot, mSources), mSources);
-  mService := THotspotService.Create(mIndex, ReaderFunc());
+  mService := THotspotService.Create(mIndex, TShellFileAccess.ReadTextFunc());
   try
     mRequest := THotspotRequest.FromSettings(ASettings);
     // Der Bericht zeigt beide Tabellen: Units und die Methoden der obersten Kandidaten.

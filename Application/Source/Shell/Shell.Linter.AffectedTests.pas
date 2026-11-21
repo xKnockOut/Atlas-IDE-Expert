@@ -96,25 +96,6 @@ begin
   end;
 end;
 
-function ReadTextFunc(): TReferenceReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
-    end;
-end;
-
-/// <summary>Typisierte Variable: TNameResolver.Create ist überladen.</summary>
-function EnsureUnitFunc(AGroup: TShellWorkspaceGroup): TEnsureUnitFunc;
-begin
-  Result :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := AGroup.EnsureUnit(AUnitName);
-    end;
-end;
-
 /// <summary>Auftrag der Analyse: Dateien der Gruppe, Testprogramme und der Testbereich.</summary>
 function RequestOf(AGroup: TShellWorkspaceGroup; const ASettings: TServerSettings; const APrograms: TArray<string>;
   const AReadText: TReferenceReadText): TAffectedRequest;
@@ -137,7 +118,7 @@ var
   mResolver: TNameResolver;
   mRequest: TAffectedRequest;
 begin
-  mReadText := ReadTextFunc();
+  mReadText := TShellBootstrap.SourceReader();
   mRequest := RequestOf(AGroup, ASettings, TLinterAffectedTests.ProgramsOf(ATarget.Target, ATarget.ConfigRoot,
     ASettings, AGroup.AllFiles, mReadText), mReadText);
   mQuery := Default(TShellAffectedQuery);
@@ -146,7 +127,7 @@ begin
   mQuery.IncludeUncommitted := AOptions.IncludeUncommitted;
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
   mProcess := TProcessRunner.Create;
-  mResolver := TNameResolver.Create(AGroup.Index, EnsureUnitFunc(AGroup));
+  mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
     Result := TShellAffectedTests.Run(mProcess, ASettings, mQuery,

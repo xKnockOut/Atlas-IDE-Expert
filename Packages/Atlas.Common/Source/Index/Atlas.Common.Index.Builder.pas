@@ -212,7 +212,8 @@ implementation
 uses
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Locked;
 
 {$SCOPEDENUMS ON}
 
@@ -483,12 +484,7 @@ end;
 
 function TIndexCacheEntries.Count: Integer;
 begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FEntries.Count;
-  finally
-    TMonitor.Exit(FLock);
-  end;
+  Result := TTextLocked.CountMonitored<string, TIndexCacheEntry>(FLock, FEntries);
 end;
 
 { TIndexBuilder }

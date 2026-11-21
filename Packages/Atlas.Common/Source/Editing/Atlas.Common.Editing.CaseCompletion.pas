@@ -57,6 +57,9 @@ type
     /// <summary>Werte aus AValues ohne Marke in ALabels, in Deklarationsreihenfolge; False, wenn eine Marke kein
     /// Wert aus AValues ist.</summary>
     class function Missing(const AValues, ALabels: TArray<string>; out AMissing: TArray<string>): Boolean; static;
+    /// <summary>Je Wert aus AValues, ob ALabels ihn nennt, auch über Bereiche ("skCircle..skRect") und
+    /// qualifiziert ("TShapeKind.skLine"); False, wenn eine Marke kein Wert aus AValues ist.</summary>
+    class function Covered(const AValues, ALabels: TArray<string>; out ACovered: TArray<Boolean>): Boolean; static;
     /// <summary>Neue Zweige für EditRange; APrefix vor jedem Wert ("TShapeKind." bei {$SCOPEDENUMS ON}). Fehlt
     /// "end" und folgt nichts, hängt es "end;" an.</summary>
     class function BranchesText(const ASlot: TCaseBranchSlot; const AMissing: TArray<string>;
@@ -77,6 +80,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Text.Names;
@@ -548,40 +552,17 @@ begin
   end;
 end;
 
-/// <summary>Letzter Teil eines qualifizierten Namens: TShapeKind.skLine → skLine.</summary>
-function LastPart(const AName: string): string;
-begin
-  Result := AName.Substring(AName.LastIndexOf('.') + 1);
-end;
-
-class function TCaseCompletion.Missing(const AValues, ALabels: TArray<string>;
-  out AMissing: TArray<string>): Boolean;
-
-  function IndexOfValue(const AName: string): Integer;
-  var
-    mIndex: Integer;
-  begin
-    for mIndex := 0 to High(AValues) do
-    begin
-      if SameText(AValues[mIndex], LastPart(AName)) then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-    Result := -1;
-  end;
-
+class function TCaseCompletion.Covered(const AValues, ALabels: TArray<string>;
+  out ACovered: TArray<Boolean>): Boolean;
 var
-  mPresent: TArray<Boolean>;
   mBounds: TArray<string>;
   mElement: string;
   mLow_, mHigh_, mIndex: Integer;
 begin
-  AMissing := nil;
-  SetLength(mPresent, Length(AValues));
-  for mIndex := 0 to High(mPresent) do
+  SetLength(ACovered, Length(AValues));
+  for mIndex := 0 to High(ACovered) do
   begin
-    mPresent[mIndex] := False;
+    ACovered[mIndex] := False;
   end;
   for mElement in ALabels do
   begin
@@ -590,11 +571,11 @@ begin
     begin
       Exit(False);
     end;
-    mLow_ := IndexOfValue(mBounds[0]);
+    mLow_ := IndexText(TTextNames.LastPart(mBounds[0]), AValues);
     mHigh_ := mLow_;
     if Length(mBounds) = 2 then
     begin
-      mHigh_ := IndexOfValue(mBounds[1]);
+      mHigh_ := IndexText(TTextNames.LastPart(mBounds[1]), AValues);
     end;
     if (mLow_ < 0) or (mHigh_ < 0) then
     begin
@@ -602,12 +583,26 @@ begin
     end;
     for mIndex := mLow_ to mHigh_ do
     begin
-      mPresent[mIndex] := True;
+      ACovered[mIndex] := True;
     end;
+  end;
+  Result := True;
+end;
+
+class function TCaseCompletion.Missing(const AValues, ALabels: TArray<string>;
+  out AMissing: TArray<string>): Boolean;
+var
+  mCovered: TArray<Boolean>;
+  mIndex: Integer;
+begin
+  AMissing := nil;
+  if not Covered(AValues, ALabels, mCovered) then
+  begin
+    Exit(False);
   end;
   for mIndex := 0 to High(AValues) do
   begin
-    if not mPresent[mIndex] then
+    if not mCovered[mIndex] then
     begin
       AMissing := AMissing + [AValues[mIndex]];
     end;

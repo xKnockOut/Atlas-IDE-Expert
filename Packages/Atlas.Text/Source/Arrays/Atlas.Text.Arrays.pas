@@ -21,6 +21,8 @@ type
     class procedure AddText(var AList: TArray<string>; const AValue: string); static;
     /// <summary>Kommt AValue in AValues vor?</summary>
     class function ContainsInteger(const AValues: TArray<Integer>; AValue: Integer): Boolean; static;
+    /// <summary>0, 1, …, ACount - 1; leer für ACount &lt;= 0.</summary>
+    class function Indices(ACount: Integer): TArray<Integer>; static;
     /// <summary>Enthält AText einen der Teile AParts (ohne Groß-/Kleinschreibung)?</summary>
     class function ContainsAnyText(const AText: string; const AParts: array of string): Boolean; static;
     /// <summary>Gleich lang und an jeder Stelle gleich ohne Rücksicht auf Groß-/Kleinschreibung?</summary>
@@ -95,6 +97,22 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TTextArrays.Indices(ACount: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if ACount <= 0 then
+  begin
+    Exit;
+  end;
+  SetLength(Result, ACount);
+  for mIndex := 0 to ACount - 1 do
+  begin
+    Result[mIndex] := mIndex;
+  end;
 end;
 
 class function TTextArrays.ContainsAnyText(const AText: string; const AParts: array of string): Boolean;

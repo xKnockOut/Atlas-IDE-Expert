@@ -9,6 +9,7 @@ interface
 
 uses
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.Contract,
@@ -18,7 +19,7 @@ uses
   Shell.Composition.Contract;
 
 type
-  TShellUnitSearchReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TShellUnitSearchReadText = TDocumentReadText;
   TShellUnitSearchProcessFunc = reference to function: ICompilerProcess;
 
   /// <summary>Was die Unit-Suche von der Komposition braucht.</summary>
@@ -168,10 +169,7 @@ end;
 
 function TShellUnitSearch.SourceText(AFileName: string): string;
 begin
-  if not FServices.ReadText(AFileName, Result) then
-  begin
-    Result := '';
-  end;
+  Result := TDocumentReads.TextOrEmpty(FServices.ReadText, AFileName);
 end;
 
 function TShellUnitSearch.GitState(AFileName: string): string;

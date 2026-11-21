@@ -1172,16 +1172,6 @@ begin
   Result := MatchText(ABare, cCompilerAttributes) or MatchText(ABare + 'Attribute', cCompilerAttributes);
 end;
 
-/// <summary>Knoten mit dem Namen eines Attributs (bei Test(1) der Name vor der Klammer).</summary>
-function AttributeNameNode(AItem: TSyntaxNode): TSyntaxNode;
-begin
-  Result := AItem;
-  if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
-  begin
-    Result := AItem[0];
-  end;
-end;
-
 /// <summary>Units, die das Attribut ABare deklarieren; für DUnitX-Attribute ohne Index DUnitX.TestFramework.
 /// </summary>
 function AttributeUnits(const AIndex: ISymbolIndex; const ABare: string): TArray<string>;
@@ -1315,7 +1305,7 @@ var
   mUnits: TArray<string>;
   mBare: string;
 begin
-  mNameNode := AttributeNameNode(AItem);
+  mNameNode := TAttributes.NameNode(AItem);
   if not (mNameNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
     not TAttributes.At(FContext.Tree, mNameNode.StartPos, mUse) then
   begin

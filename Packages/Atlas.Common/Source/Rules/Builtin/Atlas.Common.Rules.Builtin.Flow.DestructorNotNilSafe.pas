@@ -25,7 +25,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Text.Lines,
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract,
@@ -102,15 +101,12 @@ end;
 type
   /// <summary>Prüfung einer Unit für destructor-not-nil-safe; hält die Klasse, die Ergebnisse ihrer Konstruktoren
   /// und die im geprüften Rumpf schon abgefragten Felder.</summary>
-  TDestructorCheck = class
+  TDestructorCheck = class(TFlowFileCheck)
   strict private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
     FRoutines: TArray<TSyntaxNode>;
     FScan: TConstructorScan;
     FPrivateMethods: TArray<string>;
     FQualifiedClass: string;
-    FLineBreak: string;
     FChecked: TArray<string>;
     FReported: TArray<string>;
     function Text(ANode: TSyntaxNode): string;
@@ -128,20 +124,11 @@ type
     procedure CheckBody(ARoutine: TSyntaxNode);
     procedure CheckClass;
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
     procedure Run;
   end;
 
 { TDestructorCheck }
-
-constructor TDestructorCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-begin
-  inherited Create;
-  FContext := AContext;
-  FReport := AReport;
-  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
-end;
 
 destructor TDestructorCheck.Destroy;
 begin

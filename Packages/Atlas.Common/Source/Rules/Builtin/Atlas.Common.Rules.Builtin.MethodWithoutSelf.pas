@@ -38,7 +38,6 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MethodWithoutSelf,
@@ -46,7 +45,8 @@ uses
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Pascal.EventAssignments,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -102,25 +102,6 @@ begin
   end;
 end;
 
-/// <summary>Verwendungen von AName in der Unit: jeder Bezeichner gleichen Namens außer dem Namen direkt hinter
-/// procedure/function. Lieber zu viele: Eine fremde Verwendung macht die Umwandlung höchstens unmöglich.</summary>
-function NameOffsets(ATree: TSyntaxTree; const AName: string): TArray<Integer>;
-var
-  mTokens: TArray<TPascalToken>;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mTokens := ATree.Tokens;
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) and
-      not ((mIndex > 0) and (mTokens[mIndex - 1].IsKeyword('function') or mTokens[mIndex - 1].IsKeyword('procedure'))) then
-    begin
-      Result := Result + [mTokens[mIndex].Offset];
-    end;
-  end;
-end;
-
 /// <summary>Korrektur „als class-Methode“ für die geprüfte Datei; leer, wenn die Umformung scheitert.</summary>
 function ClassMethodFixes(const AContext: TRuleContext; const AFileName: string; const ATarget: TMethodTarget;
   const ALookup: TMethodLookup): TArray<TRuleFix>;
@@ -131,7 +112,7 @@ var
 begin
   Result := nil;
   if not TMethodWithoutSelf.Execute(TMethodSource.Create(AFileName, AContext.Text, AContext.Tree,
-    NameOffsets(AContext.Tree, ATarget.Name)), nil, TMethodRequest.Create(ATarget.NamePosition,
+    NameUseOffsets(AContext.Tree.Tokens, ATarget.Name)), nil, TMethodRequest.Create(ATarget.NamePosition,
     TMethodConversion.ClassMethod, AContext.MethodKindStatic, ALookup, AContext.Formatting), mConverted,
     mReason) then
   begin

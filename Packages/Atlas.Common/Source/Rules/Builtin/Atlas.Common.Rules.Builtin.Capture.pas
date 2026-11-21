@@ -398,17 +398,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Flussknoten der Anweisung um ANode.</summary>
-function FlowNodeOf(AGraph: TControlFlowGraph; ANode: TSyntaxNode): TFlowNode;
-begin
-  Result := nil;
-  while (ANode <> nil) and (Result = nil) do
-  begin
-    Result := AGraph.NodeOf(ANode);
-    ANode := ANode.Parent;
-  end;
-end;
-
 /// <summary>Schreibt der Knoten AName (Zuweisung, Schleife, Inc/Dec)?</summary>
 function Writes(ANode: TFlowNode; const AName: string): Boolean;
 var
@@ -584,7 +573,7 @@ begin
     begin
       FGraph := TRuleDerived.Graph(FCache, FContext, FRoutine);
     end;
-    mStart := FlowNodeOf(FGraph, AMethod);
+    mStart := FGraph.EnclosingNodeOf(AMethod);
     Result := FGraph.Complete and (mStart <> nil) and WrittenAfter(FGraph, mStart, ALocal.Name);
   end;
 end;
@@ -749,13 +738,8 @@ begin
 end;
 
 procedure TLoopCaptureCheck.Run;
-var
-  mRoutine: TSyntaxNode;
 begin
-  for mRoutine in TRuleDerived.Routines(FCache, FContext) do
-  begin
-    CheckRoutine(mRoutine);
-  end;
+  TRuleDerived.EachRoutine(FCache, FContext, CheckRoutine);
 end;
 
 { TCapturedLoopVariableRule }

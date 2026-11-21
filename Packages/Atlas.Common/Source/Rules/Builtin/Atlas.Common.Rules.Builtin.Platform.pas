@@ -235,22 +235,6 @@ begin
   end;
 end;
 
-/// <summary>Edit, das AUnitName ins uses einträgt, wenn die Unit (auch ohne Namespace) fehlt.</summary>
-function UsesEdit(const AContext: TRuleContext; const ATokens: TTokens; AOffset: Integer;
-  const AUnitName: string; out AEdit: TTextEdit): Boolean;
-var
-  mUsed: TArray<string>;
-  mShort: string;
-begin
-  mUsed := TUsesClauses.UsedUnits(ATokens);
-  mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
-  if TUsesClauses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(mUsed, mShort, nil) then
-  begin
-    Exit(False);
-  end;
-  Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
-end;
-
 { TUiCallInConsoleOrServiceRule }
 
 const
@@ -525,7 +509,8 @@ var
   begin
     mLast := ACall[ACall.ChildCount - 1];
     mEdits := [TRuleEdit.Create(TTextRange.Create(mLast.EndPos, mLast.EndPos), ', TEncoding.' + mEncoding)];
-    if UsesEdit(AContext, mTokens, ACall.StartOffset, 'System.SysUtils', mExtra) then
+    if TUsesClauses.AddMissingUnit(mTokens, ACall.StartOffset, 'System.SysUtils', AContext.Namespaces,
+      TTextLines.LineBreakOf(AContext.Text), mExtra) then
     begin
       mEdits := mEdits + [mExtra];
     end;
@@ -1034,7 +1019,8 @@ begin
   begin
     mEdits := mEdits + RenameEdits(mName, mNewName, mMeasured);
   end;
-  if UsesEdit(FContext, FTokens, FRoutine.StartOffset, 'System.Diagnostics', mExtra) then
+  if TUsesClauses.AddMissingUnit(FTokens, FRoutine.StartOffset, 'System.Diagnostics', FContext.Namespaces,
+    TTextLines.LineBreakOf(FContext.Text), mExtra) then
   begin
     mEdits := mEdits + [mExtra];
   end;

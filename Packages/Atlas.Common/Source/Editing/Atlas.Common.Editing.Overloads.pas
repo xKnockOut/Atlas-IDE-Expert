@@ -316,24 +316,6 @@ begin
     ASignature);
 end;
 
-function SameTypes(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(StringReplace(A[mIndex], ' ', '', [rfReplaceAll]),
-        StringReplace(B[mIndex], ' ', '', [rfReplaceAll])) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Klasse bzw. Record AName der Datei; nil ohne.</summary>
 function FindType(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
 var
@@ -444,7 +426,7 @@ begin
       Inc(mCount);
       mSingle := mSection[mIndex];
       mSingleHeader := mHeader;
-      if SameTypes(mHeader.ParamTypes, ADecl.ParamTypes) then
+      if TTextNames.SameTypes(mHeader.ParamTypes, ADecl.ParamTypes) then
       begin
         ABody := mHeader;
         Exit(mSection[mIndex]);
@@ -477,7 +459,7 @@ begin
   end;
   for mCandidate in mCandidates do
   begin
-    if SameTypes(mCandidate.ParamTypes, ABody.ParamTypes) then
+    if TTextNames.SameTypes(mCandidate.ParamTypes, ABody.ParamTypes) then
     begin
       ADecl := mCandidate;
       Exit(True);
@@ -790,7 +772,7 @@ begin
   mWanted := Copy(Target.Decl.ParamTypes, 0, Length(Target.Decl.Parameters) - 1);
   for mHeader in Overloads(Tree, Text, Target.Name, TypeNode) do
   begin
-    if SameTypes(mHeader.ParamTypes, mWanted) then
+    if TTextNames.SameTypes(mHeader.ParamTypes, mWanted) then
     begin
       Exit(Format(TOverloads.ExistsReason, [Target.Name, string.Join(', ', mWanted)]));
     end;

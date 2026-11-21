@@ -27,6 +27,8 @@ type
     procedure RoundTrip;
     [Test]
     procedure BaseNameSplitsAtBothSeparators;
+    [Test]
+    procedure FileNameOfBothSeparators;
   end;
 
 implementation
@@ -109,6 +111,13 @@ begin
     Assert.AreEqual(TTextUris.NormalizePath(mPath),
       TTextUris.NormalizePath(TTextUris.ToPath(TTextUris.FromPath(mPath))), mPath);
   end;
+end;
+
+procedure TTextUrisTests.FileNameOfBothSeparators;
+begin
+  Assert.AreEqual('A.pas', TTextUris.FileNameOf('file:///C:/P/A.pas'));
+  Assert.AreEqual('B.pas', TTextUris.FileNameOf('C:\P\B.pas'));
+  Assert.AreEqual('C.pas', TTextUris.FileNameOf('C.pas'));
 end;
 
 initialization

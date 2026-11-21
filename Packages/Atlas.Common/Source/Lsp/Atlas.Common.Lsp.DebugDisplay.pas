@@ -72,8 +72,6 @@ type
       static;
     /// <summary>Lohnt sich das Lesen? Nur Texte mit atlas-debug oder AtlasDebug.</summary>
     class function MayContainRules(const AText: string): Boolean; static;
-    /// <summary>Letzter Namensteil ohne Typargumente: Kunden.TKunde → TKunde, TList&lt;T&gt; → TList.</summary>
-    class function ShortName(const ATypeName: string): string; static;
     class function ToJson(const ARules: TArray<TLspDebugDisplayRule>;
       const AInherits: TArray<TLspDebugDisplayInherit>): string; static;
     /// <summary>Symbolindex für Typen und Vorfahren; ohne Index gibt es keine Regeln.</summary>
@@ -86,7 +84,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Lines,
-  Atlas.Common.Documents.Uris;
+  Atlas.Common.Documents.Uris,
+  Atlas.Text.Names;
 
 const
   cRuleKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
@@ -177,7 +176,7 @@ begin
   Result := '';
   if Length(ASymbol.Ancestors) > 0 then
   begin
-    Result := TLspDebugDisplay.ShortName(ASymbol.Ancestors[0]);
+    Result := TTextNames.BareTypeName(ASymbol.Ancestors[0]);
   end;
 end;
 
@@ -191,14 +190,14 @@ begin
   Result := TDictionary<string, string>.Create;
   for mName in AExternal do
   begin
-    if TLspDebugDisplay.ShortName(mName) <> '' then
+    if TTextNames.BareTypeName(mName) <> '' then
     begin
-      Result.AddOrSetValue(LowerCase(TLspDebugDisplay.ShortName(mName)), mName);
+      Result.AddOrSetValue(LowerCase(TTextNames.BareTypeName(mName)), mName);
     end;
   end;
   for mRule in ARules do
   begin
-    Result.AddOrSetValue(LowerCase(TLspDebugDisplay.ShortName(mRule.Name)), mRule.TypeName);
+    Result.AddOrSetValue(LowerCase(TTextNames.BareTypeName(mRule.Name)), mRule.TypeName);
   end;
 end;
 
@@ -330,23 +329,6 @@ begin
     end;
   end;
   AInherits := InheritsOf(FIndex, mUnits, Result, AExternal);
-end;
-
-class function TLspDebugDisplay.ShortName(const ATypeName: string): string;
-var
-  mAngle, mDot: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Copy(Result, 1, mAngle - 1);
-  end;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
 end;
 
 class function TLspDebugDisplay.ToJson(const ARules: TArray<TLspDebugDisplayRule>;

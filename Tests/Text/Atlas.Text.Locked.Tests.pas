@@ -15,6 +15,8 @@ type
     /// belegt sie den Monitor-Datensatz (Gegenprobe, dass die Messung greift).</summary>
     [Test]
     procedure SharedLockFirstEnterAllocatesNothing;
+    [Test]
+    procedure ReadsAndCountsUnderMonitor;
   end;
 
 implementation
@@ -22,7 +24,8 @@ implementation
 uses
   System.Classes,
   System.SyncObjs,
-  Atlas.Text.Locked;
+  Atlas.Text.Locked,
+  System.Generics.Collections;
 
 function FreeInOtherThread(ALock: TCriticalSection): Boolean;
 var
@@ -128,6 +131,26 @@ procedure TTextLockedTests.SharedLockFirstEnterAllocatesNothing;
 begin
   Assert.IsTrue(FirstEnterBytes(False) > 0, 'Gewöhnliches Objekt: Monitor-Datensatz beim ersten Sperren');
   Assert.AreEqual<Int64>(0, FirstEnterBytes(True), 'Gemeinsame Sperre: erste Sperrung ohne Belegung');
+end;
+
+procedure TTextLockedTests.ReadsAndCountsUnderMonitor;
+var
+  mLock: TObject;
+  mValue: Integer;
+  mEntries: TDictionary<string, Integer>;
+begin
+  mLock := TObject.Create;
+  mEntries := TDictionary<string, Integer>.Create;
+  try
+    mValue := 42;
+    Assert.AreEqual(42, TTextLocked.ReadMonitored<Integer>(mLock, mValue));
+    mEntries.Add('a', 1);
+    mEntries.Add('b', 2);
+    Assert.AreEqual(2, TTextLocked.CountMonitored<string, Integer>(mLock, mEntries));
+  finally
+    mEntries.Free;
+    mLock.Free;
+  end;
 end;
 
 initialization

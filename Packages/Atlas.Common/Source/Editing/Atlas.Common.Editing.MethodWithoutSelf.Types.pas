@@ -10,7 +10,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.MethodWithoutSelf.Lookup;
+  Atlas.Common.Editing.MethodWithoutSelf.Lookup,
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Editing.SourceFiles;
 
 type
 {$SCOPEDENUMS ON}
@@ -39,15 +41,7 @@ type
   end;
 
   /// <summary>Eine Datei mit Verwendungen der Methode.</summary>
-  TMethodSource = record
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    /// <summary>Anfang des Namens je Verwendung (ohne Deklaration und Kopf); 0-basierte Offsets.</summary>
-    Offsets: TArray<Integer>;
-    class function Create(const AFileName, AText: string; ATree: TSyntaxTree;
-      const AOffsets: TArray<Integer>): TMethodSource; static;
-  end;
+  TMethodSource = TEditingSourceFile;
 
   /// <summary>Gewünschte Umwandlung der Methode, deren Kopf APosition enthält; AWithStatic:
   /// refactoring.methodKindStatic.</summary>
@@ -107,17 +101,6 @@ begin
   else
     Result := cTexts[TEditingMethodWithoutSelfText.ConvertToClassMethod].Text;
   end;
-end;
-
-{ TMethodSource }
-
-class function TMethodSource.Create(const AFileName, AText: string; ATree: TSyntaxTree;
-  const AOffsets: TArray<Integer>): TMethodSource;
-begin
-  Result.FileName := AFileName;
-  Result.Text := AText;
-  Result.Tree := ATree;
-  Result.Offsets := AOffsets;
 end;
 
 { TMethodRequest }

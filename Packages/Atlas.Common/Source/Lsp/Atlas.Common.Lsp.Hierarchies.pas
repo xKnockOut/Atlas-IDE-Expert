@@ -26,7 +26,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.ReferenceConfidence,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   THierarchyItem = record
@@ -66,7 +67,7 @@ type
       const ACancellation: IJsonRpcCancellationToken): THierarchyCallSource; static;
   end;
 
-  TLspHierarchies = class
+  TLspHierarchies = class(TLspProjectFeature)
   public const
     cPrepareTypeMethod = 'textDocument/prepareTypeHierarchy';
     cSupertypesMethod = 'typeHierarchy/supertypes';
@@ -75,11 +76,6 @@ type
     cIncomingMethod = 'callHierarchy/incomingCalls';
     cOutgoingMethod = 'callHierarchy/outgoingCalls';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FSettingsFor: TReferenceSettingsProvider;
     function Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
@@ -613,12 +609,7 @@ end;
 constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;

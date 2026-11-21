@@ -177,7 +177,7 @@ begin
   Result := EnclosingTypeAt(AUnit, ALine, mKinds, 0, True, mTypeSymbol);
   if Result then
   begin
-    ATypeName := QualifiedTypeName(mTypeSymbol);
+    ATypeName := mTypeSymbol.QualifiedName;
   end;
 end;
 
@@ -826,7 +826,7 @@ begin
   if Result then
   begin
     FIndent := Copy(mLines[FEndLine], 1, Length(mLines[FEndLine]) - Length(TrimLeft(mLines[FEndLine])));
-    FTypeName := QualifiedTypeName(ATypeSymbol);
+    FTypeName := ATypeSymbol.QualifiedName;
   end;
 end;
 

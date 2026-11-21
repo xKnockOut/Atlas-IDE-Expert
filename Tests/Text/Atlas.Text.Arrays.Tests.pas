@@ -29,6 +29,8 @@ type
     procedure CountOfTextFromParallelArrays;
     [Test]
     procedure AddUniqueTextUsesSeen;
+    [Test]
+    procedure IndicesCountUp;
   end;
 
 implementation
@@ -141,6 +143,17 @@ begin
   Assert.IsTrue(TTextArrays.ContainsAnyText('mKundenListe', ['liste', 'map']));
   Assert.IsFalse(TTextArrays.ContainsAnyText('mKunde', ['liste', 'map']));
   Assert.IsFalse(TTextArrays.ContainsAnyText('mKunde', []));
+end;
+
+procedure TTextArraysTests.IndicesCountUp;
+var
+  mIndices: TArray<Integer>;
+begin
+  mIndices := TTextArrays.Indices(3);
+  Assert.AreEqual(3, Integer(Length(mIndices)));
+  Assert.AreEqual(0, mIndices[0]);
+  Assert.AreEqual(2, mIndices[2]);
+  Assert.AreEqual(0, Integer(Length(TTextArrays.Indices(0))));
 end;
 
 initialization

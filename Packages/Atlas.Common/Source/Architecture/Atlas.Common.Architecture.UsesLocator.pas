@@ -23,7 +23,7 @@ uses
 
 type
   /// <summary>Liest den Text einer Datei (Editor-Stand oder Platte); False, wenn sie fehlt.</summary>
-  TUsesTextReader = reference to function(const AFileName: string; out AText: string): Boolean;
+  TUsesTextReader = TDocumentReadText;
   /// <summary>Aktive Defines für die Datei; nil = keine.</summary>
   TUsesDefinesFunc = reference to function(const AFileName: string): TArray<string>;
 

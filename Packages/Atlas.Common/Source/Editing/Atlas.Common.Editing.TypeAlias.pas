@@ -25,7 +25,8 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Editing.SourceFiles;
 
 type
   /// <summary>Was ersetzt wird: nur die Stelle, alle gleichen Ausdrücke der Unit oder des Projekts.</summary>
@@ -65,15 +66,7 @@ type
   end;
 
   /// <summary>Eine Datei; Offsets nur beim Auflösen: Anfang jeder Verwendung des Alias (0-basiert).</summary>
-  TTypeAliasSource = record
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    Offsets: TArray<Integer>;
-    class function Create(const AFileName, AText: string; ATree: TSyntaxTree): TTypeAliasSource; overload; static;
-    class function Create(const AFileName, AText: string; ATree: TSyntaxTree;
-      const AOffsets: TArray<Integer>): TTypeAliasSource; overload; static;
-  end;
+  TTypeAliasSource = TEditingSourceFile;
 
   TTypeAliasFileEdits = record
     FileName: string;
@@ -417,22 +410,6 @@ begin
       AImplementation := False;
       Result := '';
     end;
-end;
-
-{ TTypeAliasSource }
-
-class function TTypeAliasSource.Create(const AFileName, AText: string; ATree: TSyntaxTree): TTypeAliasSource;
-begin
-  Result := Create(AFileName, AText, ATree, nil);
-end;
-
-class function TTypeAliasSource.Create(const AFileName, AText: string; ATree: TSyntaxTree;
-  const AOffsets: TArray<Integer>): TTypeAliasSource;
-begin
-  Result.FileName := AFileName;
-  Result.Text := AText;
-  Result.Tree := ATree;
-  Result.Offsets := AOffsets;
 end;
 
 { TTypeAlias }

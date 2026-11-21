@@ -53,7 +53,8 @@ implementation
 
 uses
   Atlas.Common.Query.Engine,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Locked;
 
 {$SCOPEDENUMS ON}
 
@@ -157,12 +158,7 @@ end;
 
 function TCodeQueryService.Computations: Integer;
 begin
-  System.TMonitor.Enter(FLock);
-  try
-    Result := FComputations;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
+  Result := TTextLocked.ReadMonitored<Integer>(FLock, FComputations);
 end;
 
 class function TCodeQueryService.ScopeKey(const ASource: TQuerySource): string;

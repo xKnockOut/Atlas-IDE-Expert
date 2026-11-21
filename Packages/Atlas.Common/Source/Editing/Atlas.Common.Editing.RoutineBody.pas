@@ -121,11 +121,7 @@ end;
 
 class function TRoutineBody.BodyOf(ARoutine: TSyntaxNode): TSyntaxNode;
 begin
-  Result := nil;
-  if ARoutine <> nil then
-  begin
-    Result := ARoutine.FindChild(TSyntaxKind.Block);
-  end;
+  Result := TSyntaxNodes.BlockOf(ARoutine);
 end;
 
 class function TRoutineBody.Enclosing(ARoot: TSyntaxNode; AFirst, ALast: Integer): TSyntaxNode;

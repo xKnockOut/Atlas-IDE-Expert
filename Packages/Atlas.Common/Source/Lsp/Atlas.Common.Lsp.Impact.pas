@@ -56,7 +56,8 @@ uses
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Hierarchies,
-  Atlas.Common.Lsp.Impact.Forms;
+  Atlas.Common.Lsp.Impact.Forms,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
 {$SCOPEDENUMS ON}
@@ -145,12 +146,14 @@ type
     function LevelCount(ALevel: Integer): Integer;
     /// <summary>Alle Namen für run_tests, ohne Doppelte, in Reihenfolge der Tests.</summary>
     function RunNames: TArray<string>;
+    /// <summary>Index der Stelle, die zum Test ATestIndex führt; -1 ohne.</summary>
+    function PlaceOfTest(ATestIndex: Integer): Integer;
   end;
 
   /// <summary>Optionen der Analyse für die Datei AUri (Tiefe, Einstufung, Testunits, Zeitlimit).</summary>
   TImpactOptionsProvider = reference to function(const AUri: string): TImpactOptions;
 
-  TImpactAnalysis = class
+  TImpactAnalysis = class(TLspProjectFeature)
   public const
     cMethod = 'atlas/impact';
     cMinDepth = 1;
@@ -158,11 +161,6 @@ type
     cDefaultDepth = 2;
     cMaxPlaces = 1000;
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FOptionsFor: TImpactOptionsProvider;
     function OptionsFrom(AParams: TJSONObject; const AUri: string): TImpactOptions;
@@ -196,6 +194,8 @@ type
     class function EdgeName(AEdge: TImpactEdge): string; static;
     /// <summary>"depth", "count", "time".</summary>
     class function LimitName(ALimit: TImpactLimit): string; static;
+    /// <summary>{LimitName: true/false} je Grenze; der Aufrufer übernimmt das Objekt.</summary>
+    class function LimitsToJson(ALimits: TImpactLimits): TJSONObject; static;
     /// <summary>Antwort von atlas/impact; der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AResult: TImpactResult): TJSONObject; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -434,6 +434,20 @@ begin
   finally
     mSeen.Free;
   end;
+end;
+
+function TImpactResult.PlaceOfTest(ATestIndex: Integer): Integer;
+var
+  mStep: Integer;
+begin
+  for mStep := 0 to High(Places) do
+  begin
+    if Places[mStep].Test = ATestIndex then
+    begin
+      Exit(mStep);
+    end;
+  end;
+  Result := -1;
 end;
 
 { TImpactFiles }
@@ -1169,12 +1183,7 @@ end;
 constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -1340,17 +1349,6 @@ begin
   end;
 end;
 
-function RangesToJson(const ARanges: TArray<TTextRange>): TJSONArray;
-var
-  mRange: TTextRange;
-begin
-  Result := TJSONArray.Create;
-  for mRange in ARanges do
-  begin
-    Result.AddElement(TLspPositions.RangeToJson(mRange));
-  end;
-end;
-
 /// <summary>Eintrag einer Stelle in "places"; ATests: die Tests der Analyse für den Testnamen.</summary>
 function PlaceToJson(const APlace: TImpactPlace; const ATests: TArray<TImpactTest>): TJSONObject;
 begin
@@ -1359,7 +1357,7 @@ begin
   Result.AddPair('edge', TImpactAnalysis.EdgeName(APlace.Edge));
   Result.AddPair('cause', TJSONNumber.Create(APlace.Cause));
   Result.AddPair('item', TLspHierarchies.ItemToJson(APlace.Item));
-  Result.AddPair('ranges', RangesToJson(APlace.Ranges));
+  Result.AddPair('ranges', TLspPositions.RangesToJson(APlace.Ranges));
   Result.AddPair('atlasConfidence', APlace.Confidence.ToJson);
   Result.AddPair('forms', FormsToJson(APlace.Forms));
   if APlace.Terminal then
@@ -1390,14 +1388,14 @@ begin
   Result.AddPair('level', TJSONNumber.Create(ATest.Level));
 end;
 
-function LimitsToJson(ALimits: TImpactLimits): TJSONObject;
+class function TImpactAnalysis.LimitsToJson(ALimits: TImpactLimits): TJSONObject;
 var
   mLimit: TImpactLimit;
 begin
   Result := TJSONObject.Create;
   for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
   begin
-    Result.AddPair(TImpactAnalysis.LimitName(mLimit), TJSONBool.Create(mLimit in ALimits));
+    Result.AddPair(LimitName(mLimit), TJSONBool.Create(mLimit in ALimits));
   end;
 end;
 
@@ -1436,29 +1434,6 @@ begin
   Result.AddPair('timeoutMs', TJSONNumber.Create(AResult.TimeoutMs));
 end;
 
-/// <summary>Baum der Datei AUri: aus dem Dokumentspeicher AStore (AShared) oder frisch gelesen (AOwnTree, der
-/// Aufrufer gibt ihn frei); nil, wenn sie sich nicht lesen lässt.</summary>
-function TreeFor(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
-  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
-var
-  mDocument: ITextDocument;
-  mText: string;
-begin
-  AShared := nil;
-  AOwnTree := nil;
-  Result := nil;
-  if AStore.TryGet(AUri, mDocument) then
-  begin
-    AShared := TSyntaxTreeCache.Get(mDocument, ACancellation);
-    Result := AShared.Tree;
-  end
-  else if Assigned(AReadText) and AReadText(TDocumentUris.ToPath(AUri), mText) then
-  begin
-    AOwnTree := TSyntaxTreeCache.Parse(mText, ACancellation);
-    Result := AOwnTree;
-  end;
-end;
-
 function TImpactAnalysis.HandleImpact(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
@@ -1481,7 +1456,7 @@ begin
   end;
   mOptions := OptionsFrom(TJSONObject(AParams), mUri);
   mCancellation := TRequestCancellation.Create(ACancellation);
-  mTree := TreeFor(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
+  mTree := ReferenceTreeOf(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
   if mTree = nil then
   begin
     Exit(TJSONNull.Create);

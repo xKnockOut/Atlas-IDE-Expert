@@ -106,7 +106,8 @@ uses
   Shell.Commands.Build,
   Shell.Commands.Index,
   Atlas.Text.LogMarks,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -116,15 +117,6 @@ type
 const
   cTexts: array[TServerCommandText] of TAtlasText = (
     (De: 'Projekt %s ist nicht geladen.'; En: 'Project %s is not loaded.'));
-
-function FirstText(const AArguments: TJSONArray): string;
-begin
-  Result := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    Result := AArguments.Items[0].Value;
-  end;
-end;
 
 function FormFileExists(AFileName: string): Boolean;
 begin
@@ -195,7 +187,7 @@ var
   mAnswer: TJSONObject;
 begin
   // Optional die URI einer Datei, deren Projekt kompiliert wird.
-  mUri := FirstText(AArguments);
+  mUri := TJsonRead.FirstText(AArguments);
   if mUri = '' then
   begin
     mStarted := FServices.Compile('', mChoice);
@@ -255,7 +247,7 @@ end;
 
 function TShellServerCommands.RunRetryCrashCase(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TJSONNumber.Create(FServices.RetryCrashCase(FirstText(AArguments)));
+  Result := TJSONNumber.Create(FServices.RetryCrashCase(TJsonRead.FirstText(AArguments)));
 end;
 
 function TShellServerCommands.RunRecheck(const AArguments: TJSONArray): TJSONValue;

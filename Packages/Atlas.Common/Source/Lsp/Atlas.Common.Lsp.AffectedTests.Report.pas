@@ -267,17 +267,6 @@ begin
   end;
 end;
 
-function LimitsJson(ALimits: TImpactLimits): TJSONObject;
-var
-  mLimit: TImpactLimit;
-begin
-  Result := TJSONObject.Create;
-  for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
-  begin
-    Result.AddPair(TImpactAnalysis.LimitName(mLimit), TJSONBool.Create(mLimit in ALimits));
-  end;
-end;
-
 class function TAffectedReport.ToJson(const AResult: TAffectedResult): TJSONObject;
 var
   mTests, mChanges: TJSONArray;
@@ -310,7 +299,7 @@ begin
     mChanges.AddElement(ChangeJson(mChange));
   end;
   Result.AddPair('skipped', SkippedJson(AResult.Skipped));
-  Result.AddPair('limits', LimitsJson(AResult.Limits));
+  Result.AddPair('limits', TImpactAnalysis.LimitsToJson(AResult.Limits));
 end;
 
 function ReasonOf(AEntry: TJSONObject): TAffectedReason;

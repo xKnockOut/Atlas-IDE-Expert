@@ -123,11 +123,7 @@ end;
 /// <summary>Namensräume, Units und Dateien der Gruppe.</summary>
 procedure AddGroupAccess(var AServices: TMcpRefactorHostServices; AGroup: TShellWorkspaceGroup);
 begin
-  AServices.EnsureUnit :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := AGroup.EnsureUnit(AUnitName);
-    end;
+  AServices.EnsureUnit := AGroup.UnitLoader();
   AServices.Namespaces :=
     function: TArray<string>
     begin

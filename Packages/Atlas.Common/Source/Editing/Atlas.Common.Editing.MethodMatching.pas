@@ -30,13 +30,9 @@ type
     cMethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
   public
     class function ContainsLine(const ARange: TTextRange; ALine: Integer): Boolean; static;
-    /// <summary>Text von ARange bis zum Ende seiner letzten Zeile, Zeilen mit Leerzeichen verbunden.</summary>
-    class function RangeText(const ALines: TArray<string>; const ARange: TTextRange): string; static;
     /// <summary>Steht das Wort AWord als Bezeichner oder reserviertes Wort in AText? Kommentare und Strings
     /// zählen nicht (procedure Redo; virtual; {abstract;} ist nicht abstrakt).</summary>
     class function HasWord(const AText, AWord: string): Boolean; static;
-    /// <summary>Name des Typs ASymbol mit umgebendem Typ (TAussen.TInnen).</summary>
-    class function TypeNameOf(const ASymbol: TIndexSymbol): string; static;
     /// <summary>Ist AWord eine Aufrufkonvention (register, stdcall …)?</summary>
     class function IsConvention(const AWord: string): Boolean; static;
     /// <summary>Ist AWord eine Direktive hinter einem Methodenkopf (overload, virtual …)?</summary>
@@ -139,28 +135,6 @@ begin
   Result := (ALine >= ARange.StartPos.Line) and (ALine <= ARange.EndPos.Line);
 end;
 
-class function TMethodText.RangeText(const ALines: TArray<string>; const ARange: TTextRange): string;
-var
-  mLine: Integer;
-begin
-  Result := '';
-  for mLine := ARange.StartPos.Line to ARange.EndPos.Line do
-  begin
-    if (mLine < 0) or (mLine > High(ALines)) then
-    begin
-      Break;
-    end;
-    if mLine = ARange.StartPos.Line then
-    begin
-      Result := Copy(ALines[mLine], ARange.StartPos.Character + 1, MaxInt);
-    end
-    else
-    begin
-      Result := Result + ' ' + Trim(ALines[mLine]);
-    end;
-  end;
-end;
-
 class function TMethodText.HasWord(const AText, AWord: string): Boolean;
 var
   mToken: TPascalToken;
@@ -177,18 +151,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-class function TMethodText.TypeNameOf(const ASymbol: TIndexSymbol): string;
-begin
-  if ASymbol.Container <> '' then
-  begin
-    Result := ASymbol.Container + '.' + ASymbol.Name;
-  end
-  else
-  begin
-    Result := ASymbol.Name;
-  end;
 end;
 
 class function TMethodText.IsConvention(const AWord: string): Boolean;
@@ -356,7 +318,7 @@ begin
     if FUnit.Symbols[mIndex].Kind in TMethodText.cTypeKinds then
     begin
       FTypes.Add(mIndex);
-      AddTo(FTypesByName, LowerCase(TMethodText.TypeNameOf(FUnit.Symbols[mIndex])), mIndex);
+      AddTo(FTypesByName, LowerCase(FUnit.Symbols[mIndex].QualifiedName), mIndex);
       for mLine := Max(0, FUnit.Symbols[mIndex].Range.StartPos.Line) to FUnit.Symbols[mIndex].Range.EndPos.Line do
       begin
         FInType[mLine] := True;
@@ -418,7 +380,7 @@ var
   mPart: Integer;
 begin
   Result := '';
-  mParts := TMethodText.TypeNameOf(AType).Split(['.']);
+  mParts := AType.QualifiedName.Split(['.']);
   mPrefix := '';
   for mPart := 0 to High(mParts) - 1 do
   begin
@@ -488,7 +450,7 @@ begin
   mBodies := 0;
   for mIndex in mMembers do
   begin
-    mHeader := TRoutineSignatures.Head(TMethodText.RangeText(FLines, FUnit.Symbols[mIndex].Range), mRest);
+    mHeader := TRoutineSignatures.Head(FUnit.Symbols[mIndex].Range.OneLineIn(FLines), mRest);
     if TMethodText.ContainsLine(AType.Range, FUnit.Symbols[mIndex].Range.StartPos.Line) then
     begin
       AMatch.Declarations[mDeclarations] := FUnit.Symbols[mIndex];
@@ -519,7 +481,7 @@ var
   mRest, mHeader: string;
 begin
   mSymbol := AMatch.Declarations[ADeclaration];
-  TRoutineSignatures.Head(TMethodText.RangeText(FLines, mSymbol.Range), mRest);
+  TRoutineSignatures.Head(mSymbol.Range.OneLineIn(FLines), mRest);
   if TMethodText.HasWord(mRest, 'abstract') or TMethodText.HasWord(mRest, 'external') or
     TMethodText.HasWord(mRest, 'forward') then
   begin
@@ -550,7 +512,7 @@ var
   mDeclaration: Integer;
 begin
   Result := Default(TTypeMethodMatch);
-  Result.TypeName := TMethodText.TypeNameOf(AType);
+  Result.TypeName := AType.QualifiedName;
   FBodySlots.Clear;
   FBodyConventions := nil;
   CollectMembers(AType, Result);

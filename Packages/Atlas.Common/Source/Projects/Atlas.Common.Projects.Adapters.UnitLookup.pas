@@ -40,11 +40,12 @@ uses
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.UnitAliases,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract;
 
 type
   /// <summary>Liest eine Textdatei; False, wenn sie fehlt.</summary>
-  TUnitLookupReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TUnitLookupReadText = TDocumentReadText;
 
   /// <summary>Anderes Projekt der Gruppe: Ordner, in den es übersetzt, und seine Units.</summary>
   TUnitLookupGroupOutput = record
@@ -148,21 +149,12 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Projects.Paths,
-  Atlas.Text.Arrays;
-
-/// <summary>Ordner als Vergleichsschlüssel: "\" als Trenner, ohne Trenner am Ende, klein.</summary>
-function FolderKey(const AFolder: string): string;
-begin
-  Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
-  while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
+  Atlas.Text.Arrays,
+  Atlas.Text.Names;
 
 function SameFolder(const A, B: string): Boolean;
 begin
-  Result := FolderKey(A) = FolderKey(B);
+  Result := TTextNames.FolderKey(A) = TTextNames.FolderKey(B);
 end;
 
 function HasMacro(const APath: string): Boolean;
@@ -377,7 +369,7 @@ function TUnitLookup.Listing(const AFolder: string): TDictionary<string, string>
 var
   mKey, mFileName, mExtension: string;
 begin
-  mKey := FolderKey(AFolder);
+  mKey := TTextNames.FolderKey(AFolder);
   TMonitor.Enter(FLock);
   try
     if FListings.TryGetValue(mKey, Result) then

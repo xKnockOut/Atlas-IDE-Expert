@@ -21,6 +21,8 @@ type
     class function Tokenize(const AText: string): TArray<TPascalToken>; static;
     /// <summary>True für reservierte Wörter (ohne Groß-/Kleinschreibung).</summary>
     class function IsReservedWord(const AWord: string): Boolean; static;
+    /// <summary>Ist AName genau ein Bezeichner, kein reserviertes Wort und ohne &amp;-Escape?</summary>
+    class function IsIdentifierName(const AName: string): Boolean; static;
     /// <summary>Alle reservierten Wörter in Kleinbuchstaben (#187).</summary>
     class function ReservedWordList: TArray<string>; static;
     /// <summary>Name einer Direktive in Großbuchstaben, z. B. IFDEF für {$ifdef X}; '' ohne Direktive.</summary>
@@ -588,6 +590,16 @@ end;
 class function TPascalLexer.IsReservedWord(const AWord: string): Boolean;
 begin
   Result := ReservedWordSet.ContainsKey(LowerCase(AWord));
+end;
+
+class function TPascalLexer.IsIdentifierName(const AName: string): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  mTokens := Tokenize(AName);
+  // Reservierte Wörter liefert Tokenize als Keyword.
+  Result := (Length(mTokens) = 1) and (mTokens[0].Kind = TPascalTokenKind.Identifier) and
+    (mTokens[0].Text = AName) and (AName[1] <> '&');
 end;
 
 class function TPascalLexer.ReservedWordList: TArray<string>;

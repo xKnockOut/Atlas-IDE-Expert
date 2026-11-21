@@ -281,16 +281,6 @@ begin
   Result := 0;
 end;
 
-/// <summary>Ein Bezeichner, kein reserviertes Wort, ohne &amp;.</summary>
-function IsIdentifier(const AName: string): Boolean;
-var
-  mTokens: TArray<TPascalToken>;
-begin
-  mTokens := TPascalLexer.Tokenize(AName);
-  Result := (Length(mTokens) = 1) and (mTokens[0].Kind = TPascalTokenKind.Identifier) and (mTokens[0].Text = AName) and
-    (AName[1] <> '&');
-end;
-
 { TSignatureParameter }
 
 function TSignatureParameter.Text(AWithDefault: Boolean): string;
@@ -763,7 +753,7 @@ begin
   mIndex := 0;
   while (Result = '') and (mIndex <= High(AChanges)) do
   begin
-    if not IsIdentifier(AChanges[mIndex].Name) then
+    if not TPascalLexer.IsIdentifierName(AChanges[mIndex].Name) then
     begin
       Result := cTexts[TEditingChangeSignatureText.IsNotAValidParameter].Fmt([AChanges[mIndex].Name]);
     end

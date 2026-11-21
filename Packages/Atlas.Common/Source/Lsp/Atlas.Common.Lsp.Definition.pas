@@ -27,7 +27,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Dfm.Navigation;
+  Atlas.Common.Dfm.Navigation,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TDefinitionTarget = record
@@ -49,15 +50,12 @@ type
       ADeclaration: Boolean): TDefinitionQuery; static;
   end;
 
-  TLspDefinition = class
+  TLspDefinition = class(TLspIndexFeature)
   public const
     cDefinitionMethod = 'textDocument/definition';
     cDeclarationMethod = 'textDocument/declaration';
     cTypeDefinitionMethod = 'textDocument/typeDefinition';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FReadText: TDfmReadText;
     function FormTargets(const AText, AUri: string; const APosition: TTextPosition): TJSONValue;
@@ -171,10 +169,7 @@ end;
 constructor TLspDefinition.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AEnsureUnit);
 end;
 
 constructor TLspDefinition.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
