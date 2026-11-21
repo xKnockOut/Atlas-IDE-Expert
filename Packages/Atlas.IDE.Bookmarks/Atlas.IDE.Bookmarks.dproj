@@ -107,6 +107,7 @@
         <DCCReference Include="Source\Core\Marks\Atlas.Core.Marks.Ids.pas"/>
         <DCCReference Include="Source\Core\Notes\Atlas.Core.Notes.Store.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Adapters.Module.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.Todos.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickChord.pas"/>

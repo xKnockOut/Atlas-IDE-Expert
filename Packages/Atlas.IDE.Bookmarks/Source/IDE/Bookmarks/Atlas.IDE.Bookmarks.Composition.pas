@@ -18,67 +18,34 @@
 // angemeldet ist (Regel 3).
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
+// Modulklasse, Befehle, Menü und Tasten stehen in Atlas.IDE.Bookmarks.Adapters.Module.
 
 interface
-
-uses
-  System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Editor.Contract;
-
-type
-  TAtlasBookmarksModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-    IAtlasKeySource, IAtlasAppliesSettings, IAtlasFollowsTheme, IAtlasOverviewBookmarks)
-  public const
-    cModuleId = 'atlas.bookmarks';
-    cSwitch = 'bookmarks';
-  private
-    FActive: Boolean;
-    class function Parts: TArray<IAtlasFeaturePart>; static;
-  public
-    function Info: TAtlasModuleInfo;
-    procedure Start;
-    procedure Stop;
-    function IsActive: Boolean;
-    function Commands: TArray<TAtlasModuleCommand>;
-    function MenuEntries: TArray<TAtlasMenuEntry>;
-    function Keys: TArray<TAtlasModuleKey>;
-    procedure ApplySettings;
-    procedure ThemeChanged;
-    function Marks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
-    /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
-    /// nicht passt.</summary>
-    class function RegisterModule: Boolean; static;
-    class procedure UnregisterModule; static;
-  end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.UI.Bookmarks.SettingsSection,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Editor.Contract,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.Bookmarks.Store,
-  Atlas.Core.Bookmarks.Quick,
   Atlas.Core.Bookmarks.Plan,
-  Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Bookmarks.Service,
-  Atlas.IDE.Bookmarks.QuickService,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Bookmarks.QuickColumn,
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Bookmarks.Adapters.SavedPlaces,
   Atlas.IDE.Bookmarks.Composition.Todos,
   Atlas.Core.SavedPlaces.Contract,
-  Atlas.UI.Strings,
-  Atlas.UI.Bookmarks.Strings;
+  Atlas.IDE.Bookmarks.Adapters.Module;
 
 const
   /// <summary>Feld der schnellen Lesezeichen im Atlas-Statusfeld (#1104).</summary>
@@ -95,60 +62,6 @@ var
 procedure QuickStatus(AText: string);
 begin
   TAtlasIdeHost.SetStatusExtra(cQuickBookmarksExtra, AText);
-end;
-
-{ Sichtbarkeit und Bedingungen }
-
-function NotesVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Notes;
-end;
-
-function BookmarksNamedVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.BookmarksNamed;
-end;
-
-function QuickBookmarksVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.QuickBookmarks;
-end;
-
-function BookmarksWindowVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
-end;
-
-function TodoListVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TodoList;
-end;
-
-/// <summary>Taste von „Lesezeichen setzen…“ (#622); 0, solange bookmarks.named aus ist.</summary>
-function BookmarkKey: Integer;
-begin
-  Result := TAtlasBookmarksPlan.KeyWhen(TAtlasIdeSettings.Current.BookmarksNamed,
-    TAtlasIdeSettings.Current.BookmarkKey);
-end;
-
-/// <summary>Akkord der schnellen Lesezeichen (#1104); 0, solange sie aus sind oder die Wartezeit 0 ist (dann bleibt
-/// Strg+Umschalt+K bei der IDE).</summary>
-function QuickBookmarkKey: Integer;
-begin
-  Result := TAtlasBookmarksPlan.ChordKey(TAtlasIdeSettings.Current.QuickBookmarks,
-    TAtlasIdeSettings.Current.QuickBookmarkChordWait, TAtlasIdeSettings.Current.QuickBookmarkKey);
-end;
-
-function NextBookmarkKey: Integer;
-begin
-  Result := TAtlasBookmarksPlan.KeyWhen(TAtlasIdeSettings.Current.QuickBookmarks,
-    TAtlasIdeSettings.Current.NextBookmarkKey);
-end;
-
-function PreviousBookmarkKey: Integer;
-begin
-  Result := TAtlasBookmarksPlan.KeyWhen(TAtlasIdeSettings.Current.QuickBookmarks,
-    TAtlasIdeSettings.Current.PreviousBookmarkKey);
 end;
 
 { Start der Teile (aus der Kompositionswurzel hierher gezogen, #1455) }
@@ -217,107 +130,7 @@ begin
   FilterProjectTodos(GScope);
 end;
 
-{ Befehle }
-
-function Command(AFeature: TAtlasFeature; const AId: string; const ACaption: string; const ARun: TProc;
-  const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
-begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := ACaption;
-  Result.Run := TAtlasGuard.Wrap(AFeature, ARun);
-  Result.Visible := AVisible;
-end;
-
-/// <summary>Wie Command, mit Tastenkürzel zur Anzeige. Eigener Name statt Überladung: anonyme Methoden als
-/// Argument vertragen keine Überladungen.</summary>
-function CommandWithKey(AFeature: TAtlasFeature; const AId: string; const ACaption: string; const ARun: TProc;
-  const AVisible: TFunc<Boolean>; const AKey: TFunc<Integer>): TAtlasModuleCommand;
-begin
-  Result := Command(AFeature, AId, ACaption, ARun, AVisible);
-  Result.Key := AKey;
-end;
-
-{ Tasten }
-
-function ModuleKey(const AId: string; const ACaption: string; AKey: Integer; APriority: TAtlasKeyPriority;
-  const ARun: TProc): TAtlasModuleKey;
-begin
-  Result := Default(TAtlasModuleKey);
-  Result.Id := AId;
-  Result.Caption := ACaption;
-  Result.Key := AKey;
-  Result.Priority := APriority;
-  Result.Run := ARun;
-end;
-
-function PriorityOf(ATake: Boolean): TAtlasKeyPriority;
-begin
-  Result := TAtlasKeyPriority.Yield;
-  if ATake then
-  begin
-    Result := TAtlasKeyPriority.Take;
-  end;
-end;
-
-/// <summary>Befehl für Nummer ANumber: eigene Funktion, damit jede anonyme Methode ihre Nummer behält.</summary>
-function NumberProc(ANumber: Integer; AJump: Boolean): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
-        procedure
-        begin
-          if AJump then
-          begin
-            TAtlasIdeQuickBookmarks.QuickJump(ANumber);
-          end
-          else
-          begin
-            TAtlasIdeQuickBookmarks.QuickSetNumber(ANumber);
-          end;
-        end);
-    end;
-end;
-
-/// <summary>Strg+Umschalt+1…9 bzw. Strg+1…9 aus der Grundtaste ABase (#1104); Ids
-/// Atlas.QuickBookmarkSet1…9 bzw. Atlas.QuickBookmarkJump1…9.</summary>
-function NumberKeys(ABase: Integer; ATake, AJump: Boolean): TArray<TAtlasModuleKey>;
-var
-  mNumber: Integer;
-  mKey: Word;
-  mId, mWhat: string;
-begin
-  Result := nil;
-  for mNumber := 1 to TAtlasQuickBookmarks.cMaxNumber do
-  begin
-    mKey := TAtlasQuickBookmarks.KeyFor(Word(ABase), mNumber);
-    if mKey = 0 then
-    begin
-      Exit;
-    end;
-    mId := TAtlasBookmarksPlan.NumberCommandId(mNumber, AJump);
-    if AJump then
-    begin
-      mWhat := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkJumpN, [mNumber]);
-    end
-    else
-    begin
-      mWhat := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkSetN, [mNumber]);
-    end;
-    Result := Result + [ModuleKey(mId, mWhat, mKey, PriorityOf(ATake), NumberProc(mNumber, AJump))];
-  end;
-end;
-
-function QuickChordPressed: Boolean;
-begin
-  Result := TAtlasIdeQuickChord.Pressed;
-end;
-
-{ TAtlasBookmarksModule }
-
-class function TAtlasBookmarksModule.Parts: TArray<IAtlasFeaturePart>;
+function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := [
     // Persönliche Notizen (#545): Befehle auch abgesichert (nur lokale Dateien).
@@ -334,179 +147,6 @@ begin
       end, QuickColumnStarted, StartQuickColumn, StopQuickColumn)];
 end;
 
-function TAtlasBookmarksModule.Info: TAtlasModuleInfo;
-begin
-  // Notizen und benannte Lesezeichen gab es schon im abgesicherten Start (nur lokale Dateien).
-  Result := TAtlasModuleHost.Info(cModuleId, 'Lesezeichen', TAtlasVersion.cVersion, HInstance,
-    TAtlasSafeLevel.Safe, cSwitch);
-end;
-
-procedure TAtlasBookmarksModule.Start;
-begin
-  FActive := True;
-end;
-
-procedure TAtlasBookmarksModule.Stop;
-begin
-  FActive := False;
-end;
-
-function TAtlasBookmarksModule.IsActive: Boolean;
-begin
-  Result := FActive;
-end;
-
-function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := APlace;
-end;
-
-/// <summary>Eintrag im Untermenü „Notizen und Lesezeichen“ des Atlas-Menüs.</summary>
-function NotesMenuEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
-  Result.Section := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.MenuGroupNotes);
-end;
-
-/// <summary>Eintrag im gleichnamigen Untermenü von Atlas im Kontextmenü des Editors.</summary>
-function NotesContextEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := NotesMenuEntry(ACommandId);
-  Result.Place := TAtlasMenuPlace.EditorContext;
-  Result.Group := 'notes';
-end;
-
-function TAtlasBookmarksModule.Commands: TArray<TAtlasModuleCommand>;
-begin
-  Result := [
-    // Persönliche Notizen (#545); nur sichtbar, solange notes.enabled an ist. Nach Rechtsklick in die Rinne für
-    // die angeklickte Zeile, sonst für den Cursor.
-    Command(TAtlasFeature.Notes, 'Atlas.NoteAdd', TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesMenuAdd),
-      TAtlasIdeNotes.AddOrEdit,
-      NotesVisible),
-    Command(TAtlasFeature.Notes, 'Atlas.NoteDelete',
-      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesMenuDelete), TAtlasIdeNotes.DeleteAtLine,
-      NotesVisible),
-    Command(TAtlasFeature.Notes, 'Atlas.NoteList', TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesMenuList),
-      TAtlasIdeNotes.ShowList,
-      NotesVisible),
-    // Benannte Lesezeichen (#622); nur sichtbar, solange bookmarks.named an ist, das Fenster auch mit
-    // bookmarks.quick.
-    CommandWithKey(TAtlasFeature.Bookmarks, 'Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
-      TAtlasIdeBookmarks.AddBookmark, BookmarksNamedVisible, BookmarkKey),
-    Command(TAtlasFeature.Bookmarks, 'Atlas.BookmarkGoTo',
-      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo),
-      TAtlasIdeBookmarks.GoToBookmark, BookmarksNamedVisible),
-    Command(TAtlasFeature.Bookmarks, 'Atlas.BookmarkWindow',
-      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuWindow),
-      TAtlasIdeBookmarks.ShowWindow, BookmarksWindowVisible),
-    // Schnelle Lesezeichen (#1104); nur sichtbar, solange bookmarks.quick an ist.
-    CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.QuickBookmarkToggle',
-      TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand), TAtlasIdeQuickBookmarks.QuickToggle,
-        QuickBookmarksVisible,
-      QuickBookmarkKey),
-    CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.NextBookmark',
-      TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand),
-      TAtlasIdeQuickBookmarks.NextBookmark, QuickBookmarksVisible, NextBookmarkKey),
-    CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.PreviousBookmark',
-      TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand),
-      TAtlasIdeQuickBookmarks.PreviousBookmark, QuickBookmarksVisible, PreviousBookmarkKey),
-    // TODO-Liste des Projekts (#68): ohne Filter (alle offenen) und mit Filterdialog; nur sichtbar, solange die
-    // Einstellung TodoList an ist.
-    Command(TAtlasFeature.Palette, 'Atlas.TodoList',
-      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListCommand), AllTodos,
-      TodoListVisible),
-    Command(TAtlasFeature.Palette, 'Atlas.TodoListFilter',
-      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCommand), FilterTodos,
-      TodoListVisible)];
-end;
-
-function TAtlasBookmarksModule.MenuEntries: TArray<TAtlasMenuEntry>;
-begin
-  Result := [
-    // Atlas-Menü: Notizen (#545), Trennlinie, benannte (#622) und schnelle Lesezeichen (#1104).
-    NotesMenuEntry('Atlas.NoteAdd'),
-    NotesMenuEntry('Atlas.NoteDelete'),
-    NotesMenuEntry('Atlas.NoteList'),
-    NotesMenuEntry('-'),
-    NotesMenuEntry('Atlas.BookmarkAdd'),
-    NotesMenuEntry('Atlas.BookmarkGoTo'),
-    NotesMenuEntry('Atlas.BookmarkWindow'),
-    NotesMenuEntry('Atlas.QuickBookmarkToggle'),
-    NotesMenuEntry('Atlas.NextBookmark'),
-    NotesMenuEntry('Atlas.PreviousBookmark'),
-    // Fenster „Lesezeichen“ (#622) auch unter Ansicht › Atlas.
-    MenuEntry('Atlas.BookmarkWindow', TAtlasMenuPlace.ViewMenu),
-    // Kontextmenü des Editors: nach Rechtsklick in die Rinne für die angeklickte Zeile, sonst für den Cursor; die
-    // Spalte der schnellen Lesezeichen hat ihr eigenes Menü. Eigenes Untermenü, sonst wird das Kontextmenü höher
-    // als der Bildschirm.
-    NotesContextEntry('Atlas.NoteAdd'),
-    NotesContextEntry('Atlas.NoteDelete'),
-    NotesContextEntry('Atlas.NoteList'),
-    NotesContextEntry('-'),
-    NotesContextEntry('Atlas.BookmarkAdd'),
-    NotesContextEntry('Atlas.BookmarkGoTo'),
-    NotesContextEntry('Atlas.QuickBookmarkToggle')];
-end;
-
-function TAtlasBookmarksModule.Keys: TArray<TAtlasModuleKey>;
-var
-  mSettings: TAtlasPluginSettings;
-  mChord: TAtlasModuleKey;
-begin
-  Result := nil;
-  mSettings := TAtlasIdeSettings.Current;
-  // Benannte Lesezeichen (#622): aus = keine Taste, die IDE-Lesezeichen bleiben unberührt.
-  if mSettings.BookmarksNamed then
-  begin
-    Result := Result + [ModuleKey('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
-      mSettings.BookmarkKey, TAtlasKeyPriority.Shared,
-      TAtlasGuard.Wrap(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark))];
-  end;
-  // Schnelle Lesezeichen (#1104): aus = alle Tasten gehören wieder der IDE.
-  if not mSettings.QuickBookmarks then
-  begin
-    Exit;
-  end;
-  if mSettings.QuickBookmarksNumberedKeys then
-  begin
-    Result := Result + NumberKeys(mSettings.QuickBookmarkSetKey, mSettings.QuickBookmarkSetKeyPriority, False) +
-      NumberKeys(mSettings.QuickBookmarkJumpKey, mSettings.QuickBookmarkJumpKeyPriority, True);
-  end;
-  // Wartezeit 0: Strg+Umschalt+K bleibt bei der IDE. Erster Teil neben den Faltungsakkorden der IDE, mit Rückfall
-  // an die IDE für den selbst weitergereichten Akkord (TAtlasIdeQuickChord).
-  if mSettings.QuickBookmarkChordWait > 0 then
-  begin
-    mChord := ModuleKey('Atlas.QuickBookmarkToggle', TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand),
-      mSettings.QuickBookmarkKey, PriorityOf(mSettings.QuickBookmarkKeyPriority), nil);
-    mChord.Attempt :=
-      function: Boolean
-      begin
-        Result := QuickChordPressed;
-      end;
-    Result := Result + [mChord];
-  end;
-  Result := Result + [
-    ModuleKey('Atlas.NextBookmark', TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand), mSettings.NextBookmarkKey,
-      TAtlasKeyPriority.Shared, TAtlasGuard.Wrap(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.NextBookmark)),
-    ModuleKey('Atlas.PreviousBookmark', TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand),
-      mSettings.PreviousBookmarkKey, TAtlasKeyPriority.Shared,
-      TAtlasGuard.Wrap(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.PreviousBookmark))];
-end;
-
-procedure TAtlasBookmarksModule.ApplySettings;
-begin
-  // bookmarks.named und bookmarks.shared (#622).
-  TAtlasIdeBookmarks.ApplySettings;
-  // bookmarks.quick aus: ein halb gedrückter Akkord gehört wieder der IDE (#1104).
-  if not TAtlasIdeSettings.Current.QuickBookmarks then
-  begin
-    TAtlasIdeQuickChord.Release;
-  end;
-end;
-
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
@@ -515,30 +155,18 @@ begin
   TAtlasBookmarksKeysSection.ProvideIn(GScope);
 end;
 
-procedure TAtlasBookmarksModule.ThemeChanged;
+/// <summary>Was die Modulklasse von der Composition braucht.</summary>
+function ModuleHooks: TAtlasBookmarksModuleHooks;
 begin
-  TAtlasIdeBookmarks.ThemeChanged;
+  Result := Default(TAtlasBookmarksModuleHooks);
+  Result.AllTodos := AllTodos;
+  Result.FilterTodos := FilterTodos;
+  Result.BookmarksStarted := BookmarksStarted;
 end;
 
-function TAtlasBookmarksModule.Marks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
-var
-  mMarks: TArray<TAtlasBookmark>;
-  mMark: TAtlasBookmark;
-begin
-  // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ der Übersichtsleiste die Lesezeichen von Atlas.
-  AMarks := nil;
-  Result := GBookmarksStarted and TAtlasIdeQuickBookmarks.OverviewMarks(AFileName, mMarks);
-  if Result then
-  begin
-    for mMark in mMarks do
-    begin
-      AMarks := AMarks + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, mMark.Line, 1,
-        mMark.DisplayName)];
-    end;
-  end;
-end;
-
-class function TAtlasBookmarksModule.RegisterModule: Boolean;
+/// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
+/// nicht passt.</summary>
+function RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasBookmarksModule;
@@ -547,11 +175,12 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(TAtlasBookmarksModule.cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion,
+    GScope, mRegistry) then
   begin
     Exit;
   end;
-  mModule := TAtlasBookmarksModule.Create;
+  mModule := TAtlasBookmarksModule.Create(ModuleHooks);
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
@@ -573,15 +202,15 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasBookmarksModule.UnregisterModule;
+procedure UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  TAtlasModuleHost.Unregister(GScope, TAtlasBookmarksModule.cModuleId, HInstance, nil);
 end;
 
 initialization
-  TAtlasBookmarksModule.RegisterModule;
+  RegisterModule;
 
 finalization
-  TAtlasBookmarksModule.UnregisterModule;
+  UnregisterModule;
 
 end.
