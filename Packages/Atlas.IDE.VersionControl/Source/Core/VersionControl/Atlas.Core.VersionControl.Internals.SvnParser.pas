@@ -206,10 +206,16 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FInfo: TAtlasSvnInfo;
+    FEntryCount: Integer;
+    FUrl, FRepositoryRoot: string;
   public
-    Info: TAtlasSvnInfo;
-    Depth: Integer;
-    Url, RepositoryRoot: string;
+    property Info: TAtlasSvnInfo read FInfo;
+    /// <summary>Gelesene entry-Elemente; 0 = keine Ausgabe von svn info.</summary>
+    property EntryCount: Integer read FEntryCount;
+    property Url: string read FUrl;
+    property RepositoryRoot: string read FRepositoryRoot;
   end;
 
   TSvnStatusScan = class(TSvnXmlScan)
@@ -220,9 +226,11 @@ type
   strict protected
     procedure OnStart; override;
     procedure OnEnd; override;
+  strict private
+    FChanges: TArray<TAtlasVcsChange>;
   public
-    Changes: TArray<TAtlasVcsChange>;
     constructor Create(const ARoot: string);
+    property Changes: TArray<TAtlasVcsChange> read FChanges;
   end;
 
   TSvnLogScan = class(TSvnXmlScan)
@@ -255,9 +263,11 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FRefs: TArray<TAtlasVcsRef>;
   public
-    Refs: TArray<TAtlasVcsRef>;
     constructor Create(const ACurrent: string);
+    property Refs: TArray<TAtlasVcsRef> read FRefs;
   end;
 
   TSvnBlameScan = class(TSvnXmlScan)
@@ -269,8 +279,10 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FLines: TArray<TAtlasVcsBlameLine>;
   public
-    Lines: TArray<TAtlasVcsBlameLine>;
+    property Lines: TArray<TAtlasVcsBlameLine> read FLines;
   end;
 
   TSvnLineLogScan = class(TSvnXmlScan)
@@ -281,8 +293,10 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FCommits: TArray<TAtlasVcsLineCommit>;
   public
-    Commits: TArray<TAtlasVcsLineCommit>;
+    property Commits: TArray<TAtlasVcsLineCommit> read FCommits;
   end;
 
   /// <summary>Liest svn log --diff Revision für Revision (#1275).</summary>
@@ -351,11 +365,11 @@ procedure TSvnInfoScan.OnStart;
 begin
   if FReader.Name = 'entry' then
   begin
-    Inc(Depth);
+    Inc(FEntryCount);
     // Nur der erste Eintrag zählt.
-    if Depth = 1 then
+    if FEntryCount = 1 then
     begin
-      Info.Revision := FReader.Attr('revision');
+      FInfo.Revision := FReader.Attr('revision');
     end;
   end;
   KeepElement;
@@ -371,19 +385,19 @@ procedure TSvnInfoScan.OnText;
 begin
   if FElement = 'wcroot-abspath' then
   begin
-    Info.Root := VcsNormalizeDir(FReader.Value);
+    FInfo.Root := VcsNormalizeDir(FReader.Value);
   end
   else if FElement = 'relative-url' then
   begin
-    Info.RelativeUrl := Trim(FReader.Value);
+    FInfo.RelativeUrl := Trim(FReader.Value);
   end
   else if FElement = 'url' then
   begin
-    Url := Trim(FReader.Value);
+    FUrl := Trim(FReader.Value);
   end
   else if FElement = 'root' then
   begin
-    RepositoryRoot := Trim(FReader.Value);
+    FRepositoryRoot := Trim(FReader.Value);
   end;
 end;
 
@@ -464,7 +478,7 @@ begin
   mChange.Kind := mKind;
   mChange.Staged := False;
   mChange.Unstaged := True;
-  Changes := Changes + [mChange];
+  FChanges := FChanges + [mChange];
 end;
 
 { TSvnLogScan }
@@ -620,7 +634,7 @@ begin
     begin
       FRef.LocalName := FRef.Name;
       FRef.Current := SameText('branches/' + FRef.Name, FCurrent);
-      Refs := Refs + [FRef];
+      FRefs := FRefs + [FRef];
     end;
   end;
   FElement := '';
@@ -675,7 +689,7 @@ begin
   end
   else if (FReader.Name = 'entry') and FInEntry then
   begin
-    Lines := Lines + [FItem];
+    FLines := FLines + [FItem];
     FInEntry := False;
   end;
 end;
@@ -711,7 +725,7 @@ begin
   FInEntry := not FReader.EmptyElement;
   if not FInEntry then
   begin
-    Lines := Lines + [FItem];
+    FLines := FLines + [FItem];
   end;
 end;
 
@@ -733,7 +747,7 @@ begin
   FInEntry := not FReader.EmptyElement;
   if not FInEntry then
   begin
-    Commits := Commits + [FItem];
+    FCommits := FCommits + [FItem];
   end;
 end;
 
@@ -743,7 +757,7 @@ begin
   if (FReader.Name = 'logentry') and FInEntry then
   begin
     FItem.Message := TrimRight(FItem.Message);
-    Commits := Commits + [FItem];
+    FCommits := FCommits + [FItem];
     FInEntry := False;
   end;
 end;
@@ -898,7 +912,7 @@ begin
   mScan := TSvnInfoScan.Create;
   try
     mScan.Run(AText);
-    if mScan.Depth = 0 then
+    if mScan.EntryCount = 0 then
     begin
       raise EAtlasVcsParse.Create('svn info: kein Eintrag');
     end;
