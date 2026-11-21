@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Leaks.Ownership.Tests;
+﻿unit Atlas.Common.Rules.Ownership.Tests;
 
 // Tests für „Wer gibt das frei?“ (#1877): Einstufung jeder Erzeugung zusammen mit den Leck-Regeln (frei im
 // Destruktor, im finally, Owner, besitzende Liste und Elemente einer anderen Liste, Referenzzählung, Rückgabe,
@@ -9,7 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Leaks.Ownership;
+  Atlas.Common.Rules.Ownership;
 
 type
   [TestFixture]
@@ -65,7 +65,7 @@ uses
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Ownership,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
-  Atlas.Common.Leaks.Internals.OwnershipTree;
+  Atlas.Common.Rules.Internals.OwnershipTree;
 
 const
   cNl = #10;

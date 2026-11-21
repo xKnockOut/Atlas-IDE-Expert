@@ -416,7 +416,7 @@ uses
   Atlas.Common.Lsp.BoundaryTests.Tests in 'Common\Lsp\Atlas.Common.Lsp.BoundaryTests.Tests.pas',
   Atlas.Common.Leaks.Setup.Tests in 'Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas',
   Atlas.Common.Leaks.Candidates.Tests in 'Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas',
-  Atlas.Common.Leaks.Ownership.Tests in 'Common\Leaks\Atlas.Common.Leaks.Ownership.Tests.pas',
+  Atlas.Common.Rules.Ownership.Tests in 'Common\Rules\Atlas.Common.Rules.Ownership.Tests.pas',
   Atlas.Common.Lsp.Ownership.Tests in 'Common\Lsp\Atlas.Common.Lsp.Ownership.Tests.pas',
   Atlas.Common.Lsp.SlashMenu.Tests in 'Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas',
   Atlas.Common.Lsp.UnitSearch.Tests in 'Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas',
