@@ -98,8 +98,6 @@
     {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas", "rule": "string-concat-in-loop", "fingerprint": "9c9c688a", "count": 1, "routine": "TAtlasIdeBranching.FailureText", "context": "8f680042"},
     {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas", "rule": "string-concat-in-loop", "fingerprint": "e1eea7d3", "count": 1, "routine": "TAtlasIdeBranching.FailureText", "context": "c58f8a38"},
     {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.LineChanges.pas", "rule": "metric-uses-count", "fingerprint": "61786085", "count": 1, "routine": "interface", "context": "cc09e248"},
-    {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.LineChangesData.pas", "rule": "duplicate-routine-body", "fingerprint": "c1b0d760", "count": 1, "routine": "Invalidate", "context": "255a33da"},
-    {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.LineChangesPaint.pas", "rule": "duplicate-routine-body", "fingerprint": "26e9cde0", "count": 1, "routine": "TAtlasLineChangesPaint.Invalidate", "context": "94a80820"},
     {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas", "rule": "magic-number", "fingerprint": "8f931600", "count": 1, "routine": "Current", "context": "1b651d0a"},
     {"path": "Source/UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas", "rule": "magic-number", "fingerprint": "879dc1cd", "count": 2, "routine": "CellLabel", "context": "23265d27"},
     {"path": "Source/UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas", "rule": "magic-number", "fingerprint": "0fcc1ddb", "count": 1, "routine": "LocationOf", "context": "e4989765"},

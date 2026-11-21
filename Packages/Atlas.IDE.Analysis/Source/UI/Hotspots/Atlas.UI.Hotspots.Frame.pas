@@ -181,6 +181,26 @@ const
   cLevelValues: array[0..1] of string = ('unit', 'method');
   /// <summary>Feste Breite des Filterfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
   cFilterWidth = 200;
+  /// <summary>Spaltenbreiten der Tabellen bei 96 dpi.</summary>
+  cRankWidth = 36;
+  cMethodWidth = 220;
+  cUnitWidth = 220;
+  cScoreWidth = 60;
+  cChangesWidth = 80;
+  cAuthorsWidth = 60;
+  cComplexityWidth = 85;
+  cLinesWidth = 60;
+  cTrendWidth = 70;
+  cLastWidth = 90;
+  cFirstWidth = 200;
+  cSecondWidth = 200;
+  cSharedWidth = 80;
+  cRatioWidth = 70;
+  cRevisionWidth = 80;
+  cDateWidth = 90;
+  cAuthorWidth = 120;
+  cSummaryWidth = 300;
+  cHistoryLinesWidth = 70;
 
 type
   THotspotsFrame = TAtlasHotspotsFrame;
@@ -228,22 +248,22 @@ begin
   mList.Columns.BeginUpdate;
   try
     mList.Columns.Clear;
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColRank, 36);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColRank, cRankWidth);
     if AFrame.FState.LevelValue = cLevelValues[1] then
     begin
-      AddColumn(mList, TAtlasAnalysisTextId.HotspotsColMethod, 220);
+      AddColumn(mList, TAtlasAnalysisTextId.HotspotsColMethod, cMethodWidth);
     end
     else
     begin
-      AddColumn(mList, TAtlasAnalysisTextId.HotspotsColUnit, 220);
+      AddColumn(mList, TAtlasAnalysisTextId.HotspotsColUnit, cUnitWidth);
     end;
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColScore, 60);
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColChanges, 80);
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColAuthors, 60);
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColComplexity, 85);
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColLines, 60);
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColTrend, 70);
-    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColLast, 90);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColScore, cScoreWidth);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColChanges, cChangesWidth);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColAuthors, cAuthorsWidth);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColComplexity, cComplexityWidth);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColLines, cLinesWidth);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColTrend, cTrendWidth);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColLast, cLastWidth);
   finally
     mList.Columns.EndUpdate;
   end;
@@ -647,10 +667,10 @@ begin
   AFrame.FParts.CouplingSheet := NewSheet(AFrame, TAtlasAnalysisTextId.HotspotsTabCoupling);
   AFrame.FParts.Coupling := NewList(AFrame, AFrame.FParts.CouplingSheet, AEvents);
   AFrame.FParts.Coupling.OnDblClick := AEvents.CouplingDblClick;
-  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColFirst, 200);
-  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColSecond, 200);
-  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColShared, 80);
-  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColRatio, 70);
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColFirst, cFirstWidth);
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColSecond, cSecondWidth);
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColShared, cSharedWidth);
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColRatio, cRatioWidth);
   AFrame.FParts.HistorySheet := NewSheet(AFrame, TAtlasAnalysisTextId.HotspotsTabHistory);
   AFrame.FParts.HistoryInfo := TLabel.Create(AFrame);
   AFrame.FParts.HistoryInfo.Parent := AFrame.FParts.HistorySheet;
@@ -660,11 +680,11 @@ begin
   AFrame.FParts.HistoryInfo.EllipsisPosition := epEndEllipsis;
   AFrame.FParts.HistoryInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsHistoryNone);
   AFrame.FParts.History := NewList(AFrame, AFrame.FParts.HistorySheet, AEvents);
-  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColRevision, 80);
-  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColDate, 90);
-  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColAuthor, 120);
-  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColSummary, 300);
-  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColLines, 70);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColRevision, cRevisionWidth);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColDate, cDateWidth);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColAuthor, cAuthorWidth);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColSummary, cSummaryWidth);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColLines, cHistoryLinesWidth);
 end;
 
 { TAtlasHotspotsFrame.TEvents }

@@ -169,7 +169,7 @@ type
     procedure TakeSelection(AItem: TListItem; ASelected: Boolean; const ASelect: TProc<Integer>;
       const AFill: TProc);
     /// <summary>Gewählte Zeile entfernen (ARemove) und die Seite neu zeigen (ARefresh), wenn AEditable.</summary>
-    procedure RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc);
+    class procedure RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc); static;
   public
     constructor Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
       ATables: TAtlasTrackerSettingsTables);
@@ -413,7 +413,7 @@ begin
   AFill();
 end;
 
-procedure TAtlasTrackerSettingsPart.RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc);
+class procedure TAtlasTrackerSettingsPart.RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc);
 begin
   if AEditable then
   begin

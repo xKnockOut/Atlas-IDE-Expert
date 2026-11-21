@@ -188,18 +188,24 @@ end;
 class function TAtlasListView.RowsText(AList: TListView): TArray<string>;
 var
   mIndex, mColumn: Integer;
-  mLine: string;
+  mLine: TStringBuilder;
 begin
   Result := nil;
   SetLength(Result, AList.Items.Count);
-  for mIndex := 0 to AList.Items.Count - 1 do
-  begin
-    mLine := AList.Items[mIndex].Caption;
-    for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
+  mLine := TStringBuilder.Create;
+  try
+    for mIndex := 0 to AList.Items.Count - 1 do
     begin
-      mLine := mLine + #9 + AList.Items[mIndex].SubItems[mColumn];
+      mLine.Clear;
+      mLine.Append(AList.Items[mIndex].Caption);
+      for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
+      begin
+        mLine.Append(#9).Append(AList.Items[mIndex].SubItems[mColumn]);
+      end;
+      Result[mIndex] := mLine.ToString;
     end;
-    Result[mIndex] := mLine;
+  finally
+    mLine.Free;
   end;
 end;
 

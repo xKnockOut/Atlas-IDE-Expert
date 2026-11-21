@@ -282,8 +282,7 @@ uses
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Foundation.Scaling,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.UI.Foundation.Menus,
-  Atlas.Core.Foundation.Calls;
+  Atlas.UI.Foundation.Menus;
 
 const
   cMenuLine = '-';
@@ -1229,7 +1228,7 @@ end;
 procedure TAtlasTrackerIssuesView.SetSource(const AValue: IAtlasIssuesSource);
 begin
   FSource := AValue;
-  TAtlasCalls.ShowSource(FSource, UpdateContent);
+  SourceChanged(FSource);
 end;
 
 function TAtlasTrackerIssuesView.BodyHeight: Integer;

@@ -112,8 +112,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Sprint.Strings,
-  Atlas.Core.Tracker.Contract.Sprint,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Core.Tracker.Contract.Sprint;
 
 const
   cFullPercent = 100;
@@ -329,7 +328,7 @@ end;
 procedure TAtlasTrackerSprintView.SetSource(const AValue: IAtlasSprintSource);
 begin
   FSource := AValue;
-  TAtlasCalls.ShowSource(FSource, UpdateContent);
+  SourceChanged(FSource);
 end;
 
 function TAtlasTrackerSprintView.BodyHeight: Integer;

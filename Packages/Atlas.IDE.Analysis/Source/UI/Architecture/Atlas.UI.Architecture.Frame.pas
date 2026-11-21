@@ -275,6 +275,18 @@ const
   cBarLabelTop = 7;
   /// <summary>Feste Breite des Filterfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
   cFilterWidth = 200;
+  /// <summary>Spaltenbreiten der Tabellen bei 96 dpi.</summary>
+  cUnitWidth = 220;
+  cSubsystemWidth = 120;
+  cDirectWidth = 100;
+  cTotalWidth = 100;
+  cUsesWidth = 80;
+  cRoleWidth = 100;
+  cFromWidth = 200;
+  cToWidth = 200;
+  cCrossSubsystemWidth = 180;
+  cReasonWidth = 160;
+  cLocationWidth = 200;
   /// <summary>Unterer Teil der Index-Generation: Zahl der Änderungen; der obere kennzeichnet nur den Index.
   /// </summary>
   cChangeCountMask = $7FFFFFFF;
@@ -611,12 +623,12 @@ begin
   mList.ColumnClick := True;
   mList.OnColumnClick := AFrame.FState.Events.CentralColumnClick;
   mList.OnDblClick := AFrame.FState.Events.CentralDblClick;
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUnit, 220);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 120);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColDirect, 100);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTotal, 100);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUses, 80);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColRole, 100);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUnit, cUnitWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, cSubsystemWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColDirect, cDirectWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTotal, cTotalWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUses, cUsesWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColRole, cRoleWidth);
 end;
 
 procedure BuildSubsystems(AFrame: TArchFrame);
@@ -648,11 +660,11 @@ begin
   mList := NewList(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCrossLinks));
   AFrame.FParts.CrossLinks := mList;
   mList.OnDblClick := AFrame.FState.Events.CrossDblClick;
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColFrom, 200);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTo, 200);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 180);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColReason, 160);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColLocation, 200);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColFrom, cFromWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTo, cToWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, cCrossSubsystemWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColReason, cReasonWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColLocation, cLocationWidth);
 end;
 
 procedure BuildComparison(AFrame: TArchFrame);

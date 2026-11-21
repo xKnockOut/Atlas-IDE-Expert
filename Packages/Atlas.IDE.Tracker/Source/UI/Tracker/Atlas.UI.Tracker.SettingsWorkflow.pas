@@ -22,7 +22,6 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.Tracker.SettingsTables,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.SettingsRows;

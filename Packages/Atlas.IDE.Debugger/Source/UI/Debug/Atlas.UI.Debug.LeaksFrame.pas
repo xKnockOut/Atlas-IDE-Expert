@@ -65,6 +65,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Atlas.Core.Foundation.Calls,
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Debug.Leaks.Strings,
