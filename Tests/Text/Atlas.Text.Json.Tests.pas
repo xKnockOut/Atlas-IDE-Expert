@@ -59,6 +59,8 @@ type
     [Test]
     procedure FormatOfReadsRootNumber;
     [Test]
+    procedure ObjectsSkipsOtherValues;
+    [Test]
     procedure NilObjectGivesDefaults;
     [Test]
     procedure MissingValueGivesDefaults;
@@ -267,6 +269,26 @@ end;
 procedure TJsonReadTests.TearDown;
 begin
   FreeAndNil(FObject);
+end;
+
+procedure TJsonReadTests.ObjectsSkipsOtherValues;
+var
+  mRoot: TJSONObject;
+  mObjects: TArray<TJSONObject>;
+begin
+  mRoot := TJsonRead.ParseObject('{"rows": [{"a": 1}, 2, "x", {"a": 3}], "text": "t"}');
+  try
+    mObjects := TJsonRead.Objects(mRoot, 'rows');
+    Assert.AreEqual(2, Integer(Length(mObjects)));
+    Assert.AreEqual(1, TJsonRead.Int(mObjects[0], 'a'));
+    Assert.AreEqual(3, TJsonRead.Int(mObjects[1], 'a'));
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(mRoot, 'text'))), 'kein Array');
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(mRoot, 'fehlt'))));
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(nil, 'rows'))));
+  finally
+    mRoot.Free;
+  end;
+  mObjects := nil;
 end;
 
 procedure TJsonReadTests.FormatOfReadsRootNumber;

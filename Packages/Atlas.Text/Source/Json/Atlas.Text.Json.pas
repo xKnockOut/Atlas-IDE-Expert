@@ -102,6 +102,9 @@ type
     class function Obj(AObject: TJSONObject; const AName: string): TJSONObject; static;
     /// <summary>Array AName, sonst nil. Gehört weiter AObject.</summary>
     class function Items(AObject: TJSONObject; const AName: string): TJSONArray; static;
+    /// <summary>Objekte im Array AName in ihrer Reihenfolge; andere Einträge fallen weg, ohne Array leer. Die
+    /// Objekte gehören weiter AObject.</summary>
+    class function Objects(AObject: TJSONObject; const AName: string): TArray<TJSONObject>; static;
     /// <summary>Wert AName als JSON-Text (TJSONValue.ToJSON, null als "null"); '' ohne Wert.</summary>
     class function Json(AObject: TJSONObject; const AName: string): string; static;
     /// <summary>Zeitpunkt AName nach ISO 8601 (Zeichenkette mit Zeitzone); mit AReturnUTC in UTC, sonst in
@@ -483,6 +486,30 @@ begin
   begin
     Result := TJSONArray(mValue);
   end;
+end;
+
+class function TJsonRead.Objects(AObject: TJSONObject; const AName: string): TArray<TJSONObject>;
+var
+  mArray: TJSONArray;
+  mIndex, mCount: Integer;
+begin
+  Result := nil;
+  mArray := Items(AObject, AName);
+  if mArray = nil then
+  begin
+    Exit;
+  end;
+  SetLength(Result, mArray.Count);
+  mCount := 0;
+  for mIndex := 0 to mArray.Count - 1 do
+  begin
+    if mArray.Items[mIndex] is TJSONObject then
+    begin
+      Result[mCount] := TJSONObject(mArray.Items[mIndex]);
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
 end;
 
 class function TJsonRead.Json(AObject: TJSONObject; const AName: string): string;
