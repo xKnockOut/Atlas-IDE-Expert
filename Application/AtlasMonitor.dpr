@@ -1,5 +1,6 @@
 ﻿program AtlasMonitor;
 
+{$R *.res}
 // Eigenständiges Fenster für alle laufenden Atlas-Server mit Symbol im Infobereich (#1901), später auch für
 // Prüfläufe ohne IDE (#1900). Einstieg in Shell.Monitor, Fenster in Shell.Monitor.MainForm, Logik in
 // Atlas.Common.Monitor.*, Windows-Zugriffe in Atlas.Windows.Monitor.Adapters.*.
