@@ -118,8 +118,7 @@ uses
   Atlas.Core.Problems.Marks,
   Atlas.Core.Editor.Hide,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.LineTracker,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.IDE.Foundation.LineTracker;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -196,16 +195,12 @@ begin
   else if AText <> FCursorText then
   begin
     FCursorText := AText;
-    FTypedAt := TAtlasTicks.Now;
-    if FTypedAt = 0 then
-    begin
-      FTypedAt := 1;
-    end;
+    FTypedAt := TAtlasInlineDiagnostics.TypedStamp;
     // Nach der Pause einmal neu zeichnen.
     FTimer.Enabled := False;
     FTimer.Enabled := True;
   end;
-  Result := not TAtlasInlineDiagnostics.PauseOver(FTypedAt, TAtlasTicks.Now);
+  Result := TAtlasInlineDiagnostics.StillTyping(FTypedAt);
 end;
 
 procedure TAtlasProblemsPainter.TimerTick(Sender: TObject);

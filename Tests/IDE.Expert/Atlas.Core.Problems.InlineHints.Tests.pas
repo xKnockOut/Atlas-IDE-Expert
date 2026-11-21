@@ -30,6 +30,8 @@ type
     [Test]
     procedure PauseWaitsOneSecond;
     [Test]
+    procedure StampAndStillTypingUseClock;
+    [Test]
     procedure LineTailPlacesPaintersSideBySide;
   end;
 
@@ -37,6 +39,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Problems.Store,
@@ -184,6 +187,30 @@ begin
   Assert.IsTrue(TAtlasInlineDiagnostics.PauseOver(1000, 2000));
   Assert.IsFalse(TAtlasInlineDiagnostics.PauseOver($FFFFFF00, $100000064), 'über die 32-Bit-Grenze hinweg');
   Assert.IsTrue(TAtlasInlineDiagnostics.PauseOver($FFFFFF00, $100000400), 'über die 32-Bit-Grenze hinweg');
+end;
+
+procedure TAtlasInlineDiagnosticsTests.StampAndStillTypingUseClock;
+var
+  mNow: UInt64;
+begin
+  mNow := 0;
+  TAtlasTicks.SetClock(
+    function: UInt64
+    begin
+      Result := mNow;
+    end);
+  try
+    Assert.AreEqual<UInt64>(1, TAtlasInlineDiagnostics.TypedStamp, 'nie 0');
+    mNow := 5000;
+    Assert.AreEqual<UInt64>(5000, TAtlasInlineDiagnostics.TypedStamp);
+    mNow := 5999;
+    Assert.IsTrue(TAtlasInlineDiagnostics.StillTyping(5000));
+    mNow := 6000;
+    Assert.IsFalse(TAtlasInlineDiagnostics.StillTyping(5000));
+    Assert.IsFalse(TAtlasInlineDiagnostics.StillTyping(0), 'nie getippt');
+  finally
+    TAtlasTicks.SetClock(nil);
+  end;
 end;
 
 procedure TAtlasInlineDiagnosticsTests.LineTailPlacesPaintersSideBySide;

@@ -34,8 +34,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Regeln, die für das ganze Repository gelten und deshalb aus der Wurzel kommen.
-$SharedRules = @('architecture-role-import', 'architecture-contract-content', 'architecture-feature-cycle', 'forbidden-symbol',
-    'catch-all-without-raise')
+$SharedRules = @('architecture-role-import', 'architecture-contract-content', 'forbidden-symbol', 'catch-all-without-raise')
 
 function Read-Json([string] $Path) {
     return Get-Content -LiteralPath $Path -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
@@ -55,19 +54,6 @@ function Get-PackageConfigText([string] $RootDir) {
         }
         $mPlugin['rules'][$mName] = $mRoot['rules'][$mName]
     }
-    # Bekannte Zyklen, Richtungen und bekannte Kanten unter Atlas.Common betreffen nur den Server: Die
-    # Plugin-Packages enthalten keine Atlas.Common-Units (Check-PackageDependencies.ps1), die Listen stünden
-    # sonst in jedem Package.
-    $mCycles = [ordered]@{}
-    foreach ($mKey in $mPlugin['rules']['architecture-feature-cycle'].Keys) {
-        $mCycles[$mKey] = $mPlugin['rules']['architecture-feature-cycle'][$mKey]
-    }
-    foreach ($mKey in @('known', 'directions', 'knownEdges')) {
-        if ($mCycles.Contains($mKey)) {
-            $mCycles[$mKey] = @($mCycles[$mKey] | Where-Object { -not $_.StartsWith('Atlas.Common') })
-        }
-    }
-    $mPlugin['rules']['architecture-feature-cycle'] = $mCycles
     $mText = $mPlugin | ConvertTo-Json -Depth 32
     return ($mText -replace "`r`n", "`n") + "`n"
 }

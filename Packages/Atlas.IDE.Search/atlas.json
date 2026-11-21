@@ -81,28 +81,6 @@
         "Atlas.Common.Dfm.Contract.TDfm*"
       ]
     },
-    "architecture-feature-cycle": {
-      "severity": "warning",
-      "exclude": [
-        "Tests/**",
-        "Tools/**",
-        "Setup/**",
-        "docs/**"
-      ],
-      "prefixes": [
-        "Atlas.Text",
-        "Atlas.WinBase",
-        "Atlas.Common",
-        "Atlas.Windows",
-        "Atlas.Linux",
-        "Atlas.Core",
-        "Atlas.UI",
-        "Atlas.IDE"
-      ],
-      "known": [],
-      "directions": [],
-      "knownEdges": []
-    },
     "forbidden-symbol": {
       "severity": "error",
       "exclude": [

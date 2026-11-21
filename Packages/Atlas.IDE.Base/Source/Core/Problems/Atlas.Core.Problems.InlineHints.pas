@@ -68,11 +68,16 @@ type
       out ATarget: TAtlasProblem): Boolean; static;
     /// <summary>Ist die Tipp-Pause seit ATypedAt (Millisekunden, TAtlasTicks.Now) um? 0 = nie getippt.</summary>
     class function PauseOver(ATypedAt, ANow: UInt64): Boolean; static;
+    /// <summary>Zeitpunkt des Tippens für PauseOver: TAtlasTicks.Now, nie 0.</summary>
+    class function TypedStamp: UInt64; static;
+    /// <summary>Läuft die Tipp-Pause seit ATypedAt (TypedStamp) noch?</summary>
+    class function StillTyping(ATypedAt: UInt64): Boolean; static;
   end;
 
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Problems.Store;
 
 function Rank(ASeverity: TAtlasProblemSeverity): Integer;
@@ -271,6 +276,20 @@ end;
 class function TAtlasInlineDiagnostics.PauseOver(ATypedAt, ANow: UInt64): Boolean;
 begin
   Result := (ATypedAt = 0) or ((ANow >= ATypedAt) and (ANow - ATypedAt >= cPauseMs));
+end;
+
+class function TAtlasInlineDiagnostics.TypedStamp: UInt64;
+begin
+  Result := TAtlasTicks.Now;
+  if Result = 0 then
+  begin
+    Result := 1;
+  end;
+end;
+
+class function TAtlasInlineDiagnostics.StillTyping(ATypedAt: UInt64): Boolean;
+begin
+  Result := not PauseOver(ATypedAt, TAtlasTicks.Now);
 end;
 
 end.
