@@ -32,6 +32,13 @@
         <DCC_DcuOutput>..\Output\$(Platform)\$(Config)\Dcu\AtlasServer</DCC_DcuOutput>
         <DCC_ExeOutput>..\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
         <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_MajorVer>2</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>0</VerInfo_Release>
+        <VerInfo_Build>3001</VerInfo_Build>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=xKnockOut;FileDescription=Atlas IDE Expert - $(MSBuildProjectName);FileVersion=2.3.0.3001;InternalName=$(MSBuildProjectName);LegalCopyright=Copyright (c) xKnockOut, MIT License;LegalTrademarks=;OriginalFilename=;ProgramID=io.github.xknockout.atlas.$(MSBuildProjectName);ProductName=Atlas IDE Expert;ProductVersion=2.3.0-rc.1;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>

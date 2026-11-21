@@ -92,7 +92,8 @@ uses
   Winapi.Windows,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.UI.Debug.VariablesStrings;
+  Atlas.UI.Debug.VariablesStrings,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -134,7 +135,7 @@ begin
   Result.Top := AOrder * cOrderStep;
   Result.Align := alBottom;
   Result.AlignWithMargins := True;
-  Result.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
   Result.Caption := AText;
   Result.Parent := AFrame;
 end;

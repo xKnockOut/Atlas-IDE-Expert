@@ -87,6 +87,10 @@ type
     class function IsMain: Boolean; static;
     /// <summary>Modul (HInstance), in dem der Code der anonymen Methode AProc liegt; 0 ohne Methode.</summary>
     class function ModuleOf(const AProc: TThreadProcedure): NativeUInt; static;
+    /// <summary>Modul (HInstance), in dem der Code hinter AReference liegt: eine Methodenreferenz oder eine
+    /// Variable eines Interface-Typs mit eigener Methode (deren erste zählt, nicht IInterface selbst). 0 ohne.
+    /// </summary>
+    class function CodeModuleOf(const AReference): NativeUInt; static;
     /// <summary>Modul AModule meldet sich ab: seine wartenden Einträge verwerfen, neue nicht mehr annehmen.
     /// 0 wird übergangen.</summary>
     class procedure CloseModule(AModule: NativeUInt); static;
@@ -102,7 +106,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 const
   /// <summary>Platz der Methode Invoke in der Schnittstellentabelle einer anonymen Methode (nach QueryInterface,
@@ -117,9 +122,9 @@ type
   TCodeTable = array[0..cInvokeSlot] of Pointer;
   PCodeTable = ^TCodeTable;
 
-/// <summary>Modul der Methode Invoke einer Methodenreferenz; untypisiert, damit kein @ die Referenz aufruft.
-/// </summary>
-function CodeModuleOf(const AReference): NativeUInt;
+/// <summary>Modul der ersten eigenen Methode eines Interfaces (bei einer Methodenreferenz Invoke); untypisiert,
+/// damit kein @ die Referenz aufruft.</summary>
+function FirstMethodModule(const AReference): NativeUInt;
 var
   mInstance: Pointer;
   mTable: PCodeTable;
@@ -130,7 +135,8 @@ begin
   begin
     Exit;
   end;
-  // Eine anonyme Methode ist eine Schnittstelle; Invoke liegt im Modul, das sie übersetzt hat.
+  // Eine anonyme Methode ist eine Schnittstelle; Invoke liegt im Modul, das sie übersetzt hat. Ebenso liegt die
+  // erste eigene Methode jedes Interfaces im Modul der Klasse, die es umsetzt.
   mTable := PPointer(mInstance)^;
   Result := NativeUInt(FindHInstance(mTable^[cInvokeSlot]));
 end;
@@ -434,8 +440,8 @@ begin
   end
   else
   begin
-    TAtlasGuard.Log('Atlas: Besitzer der Hauptthread-Einträge endet nicht; er gibt sich bei Rückkehr selbst frei');
-    mOwner.FreeOnTerminate := True;
+    // Sein Code liegt in diesem Package: SettleBeforeUnload beim Abbau von Base wartet nach bzw. hält es fest.
+    TAtlasOverdueThreads.Adopt(mOwner, HInstance);
   end;
 end;
 
@@ -446,7 +452,12 @@ end;
 
 class function TAtlasMainThread.ModuleOf(const AProc: TThreadProcedure): NativeUInt;
 begin
-  Result := CodeModuleOf(AProc);
+  Result := FirstMethodModule(AProc);
+end;
+
+class function TAtlasMainThread.CodeModuleOf(const AReference): NativeUInt;
+begin
+  Result := FirstMethodModule(AReference);
 end;
 
 class procedure TAtlasMainThread.CloseModule(AModule: NativeUInt);

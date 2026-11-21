@@ -8,6 +8,14 @@
 // für den nächsten Aufruf startet bei Bedarf ein weiterer. Exceptions im
 // Aufruf kommen als Failed mit Klasse und Meldung zurück, nie in die IDE.
 // Die Arbeiter warten über TAtlasShutdown und enden beim Entladen (StopAll).
+// Hängende Arbeiter: Wer beim Entladen noch in einem Aufruf steckt, gehört
+// nicht mehr zum Vorrat und geht an TAtlasOverdueThreads, zusammen mit dem
+// Package, in dem der Code des Aufrufs liegt (Run mit AModule, sonst dieses).
+// SettleBeforeUnload wartet dann beim Abmelden dieses Packages nach und hält
+// es fest, solange der Arbeiter läuft. Meldet sich ein Modul ab, während Base
+// geladen bleibt, übergibt ReleaseModule seine hängenden Arbeiter ebenso
+// (TAtlasModuleHost.ConnectRegistry); sonst kehrte der Aufruf nach dem
+// Entladen des Modul-Packages in nicht mehr geladenen Code zurück.
 
 interface
 
@@ -27,8 +35,6 @@ type
     cDefaultMs = 200;
     cMinMs = 50;
     cMaxMs = 5000;
-    /// <summary>Nachwarten auf hängende Arbeiter beim Beenden.</summary>
-    cHangGraceMs = 2000;
   private type
     TWorker = class(TThread)
     private
@@ -39,6 +45,10 @@ type
       // Unter FLock: fertig mit dem aktuellen Aufruf bzw. vom Aufrufer aufgegeben.
       FFinished: Boolean;
       FAbandoned: Boolean;
+      // Unter FLock: Package des Codes im aktuellen Aufruf (0 = das von TAtlasTimeLimit); sein Modul hat sich
+      // abgemeldet, während ein Aufrufer noch wartet: übergeben, sobald dieser aufgibt.
+      FModule: HMODULE;
+      FHandOver: Boolean;
       /// <summary>Wartet auf den nächsten Auftrag; False bei Ende oder Herunterfahren.</summary>
       function WaitForStart: Boolean;
       /// <summary>Führt FProc aus; Fehlertext oder ''.</summary>
@@ -58,8 +68,16 @@ type
     FLimitMs: Integer;
     /// <summary>Auto-Reset; gesetzt, sobald ein Arbeiter frei wird (WaitIdle).</summary>
     FReleased: TEvent;
-    class function Take: TWorker; static;
+    class function Take(AModule: HMODULE): TWorker; static;
     class procedure Release(AWorker: TWorker); static;
+    /// <summary>Unter FLock: AWorker gehört nicht mehr zum Vorrat und endet nach seinem Aufruf, ohne den Vorrat
+    /// noch anzufassen.</summary>
+    class procedure Detach(AWorker: TWorker); static;
+    /// <summary>Package, das für einen hängenden AWorker festzuhalten ist.</summary>
+    class function PackageOf(AWorker: TWorker): HMODULE; static;
+    /// <summary>Nach dem Warten in Run: True mit AError, wenn AWorker fertig ist; sonst gibt der Aufrufer ihn auf
+    /// (oder übergibt ihn, falls sein Modul sich inzwischen abgemeldet hat).</summary>
+    class function Collect(AWorker: TWorker; out AError: string): Boolean; static;
     class procedure SetLimitMs(AValue: Integer); static;
   public
     class constructor Create;
@@ -68,12 +86,24 @@ type
     /// Failed.</summary>
     class function Run(const AProc: TProc; out AError: string; ALimitMs: Integer): TAtlasTimedOutcome;
       overload; static;
+    /// <summary>Wie oben; AModule ist das Package, in dem der Code liegt, den AProc ruft (eine Quelle aus einem
+    /// Modul-Package), 0 = das von TAtlasTimeLimit. Hängt der Aufruf beim Abmelden dieses Packages noch, hält
+    /// TAtlasOverdueThreads es fest.</summary>
+    class function Run(const AProc: TProc; out AError: string; ALimitMs: Integer;
+      AModule: HMODULE): TAtlasTimedOutcome; overload; static;
     /// <summary>Wie oben mit ALimitMs = -1 (LimitMs).</summary>
     class function Run(const AProc: TProc; out AError: string): TAtlasTimedOutcome; overload; static;
-    /// <summary>Alle Arbeiter beenden (nach TAtlasShutdown.Signal); True, wenn alle innerhalb von AMs enden.</summary>
+    /// <summary>Alle Arbeiter beenden (nach TAtlasShutdown.Signal); True, wenn alle innerhalb von AMs enden.
+    /// Hängende gehen an TAtlasOverdueThreads; der Aufrufer ruft danach SettleBeforeUnload für sein Package.
+    /// </summary>
     class function StopAll(AMs: Cardinal): Boolean; overload; static;
     /// <summary>Wie oben mit AMs = 1000.</summary>
     class function StopAll: Boolean; overload; static;
+    /// <summary>Das Modul im Package AModule meldet sich ab: Arbeiter, die gerade Code daraus ausführen und deren
+    /// Aufrufer aufgegeben hat, gehören nicht mehr zum Vorrat und gehen an TAtlasOverdueThreads (Package AModule).
+    /// Wartet ein Aufrufer noch (höchstens sein Zeitlimit), geht der Arbeiter über, sobald dieser aufgibt.
+    /// Ergebnis: Zahl der übergebenen Arbeiter; 0 wird übergangen.</summary>
+    class function ReleaseModule(AModule: HMODULE): Integer; static;
     /// <summary>Arbeiter, die gerade einen Aufruf ausführen (auch aufgegebene).</summary>
     class function BusyCount: Integer; static;
     /// <summary>Bis zu AMs warten, bis kein Arbeiter mehr einen Aufruf ausführt (auch aufgegebene); True, wenn
@@ -89,6 +119,7 @@ uses
   System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
@@ -133,7 +164,8 @@ begin
     while WaitForStart do
     begin
       mError := RunCurrent;
-      // StopAll hat aufgegeben (Entladen): nichts mehr anfassen, was dem Vorrat gehört.
+      // Nicht mehr im Vorrat (StopAll beim Entladen, ReleaseModule): nichts mehr anfassen, was ihm gehört;
+      // TAtlasOverdueThreads gibt den Arbeiter frei.
       if Terminated then
       begin
         Exit;
@@ -238,7 +270,7 @@ begin
   FLimitMs := AValue;
 end;
 
-class function TAtlasTimeLimit.Take: TWorker;
+class function TAtlasTimeLimit.Take(AModule: HMODULE): TWorker;
 begin
   FLock.Enter;
   try
@@ -262,6 +294,8 @@ begin
     end;
     Result.FFinished := False;
     Result.FAbandoned := False;
+    Result.FModule := AModule;
+    Result.FHandOver := False;
     Result.FError := '';
     Result.FDone.ResetEvent;
   finally
@@ -283,11 +317,67 @@ begin
   end;
 end;
 
+class procedure TAtlasTimeLimit.Detach(AWorker: TWorker);
+begin
+  FAll.Remove(AWorker);
+  FIdle.Remove(AWorker);
+  AWorker.Terminate;
+  // WaitIdle zählt ihn nicht mehr mit.
+  FReleased.SetEvent;
+end;
+
+class function TAtlasTimeLimit.PackageOf(AWorker: TWorker): HMODULE;
+begin
+  Result := AWorker.FModule;
+  if Result = 0 then
+  begin
+    // Der Aufruf liegt in diesem Package (im Package HInstance), ebenso Execute des Arbeiters.
+    Result := HInstance;
+  end;
+end;
+
+class function TAtlasTimeLimit.Collect(AWorker: TWorker; out AError: string): Boolean;
+var
+  mHandOver: Boolean;
+begin
+  AError := '';
+  mHandOver := False;
+  FLock.Enter;
+  try
+    Result := AWorker.FFinished;
+    if Result then
+    begin
+      AError := AWorker.FError;
+    end
+    else if AWorker.FHandOver then
+    begin
+      // Sein Modul hat sich abgemeldet, während hier gewartet wurde (ReleaseModule).
+      Detach(AWorker);
+      mHandOver := True;
+    end
+    else
+    begin
+      AWorker.FAbandoned := True;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  if mHandOver then
+  begin
+    TAtlasOverdueThreads.Adopt(AWorker, PackageOf(AWorker));
+  end;
+end;
+
 class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string; ALimitMs: Integer): TAtlasTimedOutcome;
+begin
+  Result := Run(AProc, AError, ALimitMs, 0);
+end;
+
+class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string; ALimitMs: Integer;
+  AModule: HMODULE): TAtlasTimedOutcome;
 var
   mWorker: TWorker;
   mLimit: Cardinal;
-  mFinished: Boolean;
 begin
   AError := '';
   if TAtlasShutdown.Signalled then
@@ -303,25 +393,11 @@ begin
   begin
     mLimit := ALimitMs;
   end;
-  mWorker := Take;
+  mWorker := Take(AModule);
   mWorker.FProc := AProc;
   mWorker.FStart.SetEvent;
   mWorker.FDone.WaitFor(mLimit);
-  FLock.Enter;
-  try
-    mFinished := mWorker.FFinished;
-    if mFinished then
-    begin
-      AError := mWorker.FError;
-    end
-    else
-    begin
-      mWorker.FAbandoned := True;
-    end;
-  finally
-    FLock.Leave;
-  end;
-  if not mFinished then
+  if not Collect(mWorker, AError) then
   begin
     Exit(TAtlasTimedOutcome.TimedOut);
   end;
@@ -346,7 +422,6 @@ var
   mWorkers: TArray<TWorker>;
   mWorker: TWorker;
   mThreads: TArray<TThread>;
-  mHung: Integer;
 begin
   if FLock = nil then
   begin
@@ -368,22 +443,6 @@ begin
     mThreads := mThreads + [TThread(mWorker)];
   end;
   Result := TAtlasShutdown.WaitForThreads(mThreads, AMs);
-  if not Result then
-  begin
-    mHung := 0;
-    for mWorker in mWorkers do
-    begin
-      if not mWorker.Finished then
-      begin
-        Inc(mHung);
-      end;
-    end;
-    // Ein Aufruf steckt in nicht abbrechbarem Code. Kehrt er erst nach dem Entladen zurück, läuft er in
-    // nicht mehr geladenem Code: protokollieren und noch etwas warten.
-    TAtlasGuard.Log(Format('Zeitlimit: %d Arbeiter beim Beenden noch beschäftigt, warte bis %d ms nach',
-      [mHung, cHangGraceMs]));
-    Result := TAtlasShutdown.WaitForThreads(mThreads, cHangGraceMs);
-  end;
   for mWorker in mWorkers do
   begin
     if mWorker.Finished then
@@ -392,11 +451,9 @@ begin
     end
     else
     begin
-      TAtlasGuard.Log('Zeitlimit: Arbeiter hängt weiter; er gibt sich bei Rückkehr selbst frei');
-      // Letzter Ausweg: Ohne FreeOnTerminate bliebe das Objekt liegen, und der Thread kehrte trotzdem in diesen
-      // Code zurück. Liest der Thread FreeOnTerminate vor dem Setzen, bleibt im ungünstigsten Fall ein Leck,
-      // nie eine Doppelfreigabe.
-      mWorker.FreeOnTerminate := True;
+      // Ein Aufruf steckt in nicht abbrechbarem Code. Das Nachwarten und Festhalten des Packages übernimmt
+      // TAtlasOverdueThreads.SettleBeforeUnload beim Abmelden; danach gibt die Liste den Arbeiter frei.
+      TAtlasOverdueThreads.Adopt(mWorker, PackageOf(mWorker));
     end;
   end;
   // WaitIdle nicht länger warten lassen: Die Arbeiter gehören nicht mehr zum Vorrat.
@@ -411,6 +468,46 @@ const
   cStopMs = 1000;
 begin
   Result := StopAll(cStopMs);
+end;
+
+class function TAtlasTimeLimit.ReleaseModule(AModule: HMODULE): Integer;
+var
+  mWorker: TWorker;
+  mHanded: TArray<TWorker>;
+begin
+  Result := 0;
+  if (AModule = 0) or (FLock = nil) then
+  begin
+    Exit;
+  end;
+  mHanded := nil;
+  FLock.Enter;
+  try
+    for mWorker in FAll.ToArray do
+    begin
+      if (mWorker.FModule <> AModule) or mWorker.FFinished then
+      begin
+        Continue;
+      end;
+      if mWorker.FAbandoned then
+      begin
+        Detach(mWorker);
+        mHanded := mHanded + [mWorker];
+      end
+      else
+      begin
+        // Ein Aufrufer wartet noch auf FDone: Erst wenn er aufgibt, darf die Liste den Arbeiter freigeben.
+        mWorker.FHandOver := True;
+      end;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  for mWorker in mHanded do
+  begin
+    TAtlasOverdueThreads.Adopt(mWorker, AModule);
+  end;
+  Result := Length(mHanded);
 end;
 
 class function TAtlasTimeLimit.BusyCount: Integer;

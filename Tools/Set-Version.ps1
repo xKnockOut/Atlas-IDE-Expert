@@ -4,7 +4,9 @@
 
 .DESCRIPTION
     Schreibt die Version in TAtlasVersion (Atlas.Text.Product.Version, gemeinsam für Server und IDE-Plugin),
-    plugin.json und marketplace.json
+    plugin.json und marketplace.json, setzt die Versionsressource aller ausgelieferten Projekte
+    (Dateiversion, Produktversion, Herausgeber, ProgramID; Update-VersionInfo.ps1, dort auch die Regel
+    für die vierte Stelle der Dateiversion),
     übernimmt die Changelog-Fragmente aus changelog.d/ (Update-Changelog.ps1),
     benennt den Abschnitt "## [Unveröffentlicht]" in CHANGELOG.md in
     "## [<Version>] - <Datum>" um, mit neuem leeren Abschnitt darüber, und
@@ -59,6 +61,10 @@ foreach ($Json in @('Editors/ClaudeCode/atlas/.claude-plugin/plugin.json', '.cla
     $Text = [IO.File]::ReadAllText($Path) -replace '("version"\s*:\s*")[^"]+(")', "`${1}$Version`${2}"
     [IO.File]::WriteAllText($Path, $Text, $Utf8)
 }
+
+# Versionsressource der Packages und Programme (Dateieigenschaften im Explorer, Absturzberichte).
+& (Join-Path $PSScriptRoot 'Update-VersionInfo.ps1') -Version $Version -Root $Root
+if ($LASTEXITCODE -ne 0) { Write-Error "Versionsressource für $Version nicht geschrieben (Update-VersionInfo.ps1)" }
 
 & (Join-Path $PSScriptRoot 'Update-Changelog.ps1') -Root $Root
 if ($LASTEXITCODE -ne 0) { Write-Error 'Changelog-Fragmente fehlerhaft (pwsh Tools/Update-Changelog.ps1 -Check)' }

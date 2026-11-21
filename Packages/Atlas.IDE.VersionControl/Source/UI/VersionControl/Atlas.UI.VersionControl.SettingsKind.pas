@@ -47,8 +47,7 @@ type
 implementation
 
 uses
-  System.StrUtils,
-  Vcl.Graphics;
+  System.StrUtils;
 
 { TAtlasSettingsVcsPart }
 
@@ -120,7 +119,7 @@ var
 begin
   // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
   AddTitle(TAtlasVcsTextId.SettingsVcsLinksTitle);
-  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
+  AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsLinksHint));
   mPanel := AddPanel(32);
   FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasVcsTextId.SettingsVcsLinkEditor);
   FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasVcsTextId.SettingsVcsLinkWelcome);

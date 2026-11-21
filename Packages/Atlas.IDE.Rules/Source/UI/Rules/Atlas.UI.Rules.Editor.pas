@@ -226,7 +226,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Rules.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Theme;
 
 const
   cGap = 6;
@@ -602,7 +603,7 @@ begin
   TAtlasControlScaling.SetMargins(FTypeLevel, cSubIndent, 0, 0, 0);
   Stack(Self, FTypeLevel);
   FStatus := AddLabel(Self, '');
-  FStatus.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FStatus, clGrayText);
   FStatus.Visible := False;
   FList := TListView.Create(Self);
   FList.ViewStyle := vsReport;

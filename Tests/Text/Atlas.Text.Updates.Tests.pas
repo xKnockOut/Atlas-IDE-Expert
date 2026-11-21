@@ -33,6 +33,8 @@ type
     procedure NamesOfPackages;
     [Test]
     procedure SafeUrls;
+    [Test]
+    procedure TrustedHostsOnly;
   end;
 
 implementation
@@ -162,6 +164,24 @@ begin
   Assert.IsTrue(TUpdateVersions.IsSafeUrl(TUpdateChannels.UrlOf(False)));
   Assert.IsTrue(TUpdateChannels.UrlOf(True).EndsWith('/atlas-version-beta.json'));
   Assert.IsFalse(TUpdateVersions.IsSha256(Copy(cSha, 2, 63)));
+end;
+
+procedure TTextUpdatesTests.TrustedHostsOnly;
+begin
+  Assert.IsTrue(TUpdateHosts.IsTrusted(TUpdateChannels.UrlOf(False)));
+  Assert.IsTrue(TUpdateHosts.IsTrusted(TUpdateChannels.UrlOf(True)));
+  Assert.IsTrue(TUpdateHosts.IsTrusted('https://objects.githubusercontent.com/a.zip'));
+  Assert.IsTrue(TUpdateHosts.IsTrusted('https://Release-Assets.GitHubUserContent.com/a.zip?x=1'));
+  Assert.IsTrue(TUpdateHosts.IsTrusted('https://github.com:443/x'));
+  Assert.IsFalse(TUpdateHosts.IsTrusted('https://example.org/atlas-version.json'));
+  // Nur genau die Namen: weder Unterdomänen noch ähnliche Namen noch Anmeldedaten vor dem Host.
+  Assert.IsFalse(TUpdateHosts.IsTrusted('https://evil.github.com/x'));
+  Assert.IsFalse(TUpdateHosts.IsTrusted('https://github.com.evil.org/x'));
+  Assert.IsFalse(TUpdateHosts.IsTrusted('https://github.com@evil.org/x'));
+  Assert.IsFalse(TUpdateHosts.IsTrusted('http://github.com/x')); // lsp-ignore: security-insecure-http
+  Assert.IsFalse(TUpdateHosts.IsTrusted('https://github.com/x y'));
+  Assert.AreEqual('example.org', TUpdateHosts.HostOf('https://Example.org:8443/a'));
+  Assert.AreEqual('', TUpdateHosts.HostOf('ftp://github.com/a'));
 end;
 
 end.

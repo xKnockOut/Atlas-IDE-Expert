@@ -96,7 +96,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Debug.TimeChart,
   Atlas.UI.Debug.Logpoints.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -198,7 +199,7 @@ begin
   BuildTopBar;
   mHint := AddBottomText(cOrderHint);
   mHint.Caption := TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.ValuesClickHint);
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   FControls.PointLabel := AddBottomText(cOrderPoint);
   FControls.StatsLabel := AddBottomText(cOrderStats);
   FControls.Chart := TAtlasDebugValueChart.Create(Self);

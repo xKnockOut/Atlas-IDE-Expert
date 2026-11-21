@@ -19,7 +19,7 @@ You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [rele
 3. From 2.0: add the module packages from the same folder as well (`Atlas.IDE.Debugger370.bpl`, `Atlas.IDE.Tests370.bpl` …, see [Structure](#structure)); always the core package `Atlas.IDE.Base` first. Leave out the modules you do not need.
 4. Restart Delphi once.
 
-From 2.0, `AtlasUpdate.exe install` from the package does these steps in a console dialog: choose IDE and profile, target folder and modules (#1519). Up to 1.1.0 the package contained the installer `AtlasSetup.exe`; it was removed in 1.2.0. Details: [docs/en/Installation.md](docs/en/Installation.md).
+From 2.0, `AtlasUpdate.exe install` from the package does these steps in a console dialog: choose IDE and profile, target folder and modules (#1519). Up to 1.1.0 the package contained the installer `AtlasSetup.exe`; it was removed in 1.2.0. Details: [docs/en/Installation.md](docs/en/Installation.md). `AtlasUpdate.exe` downloads updates only from GitHub; if it is signed, it recognises the publisher by the fingerprint of the signing key, not by the name. It builds from source only after confirmation, because the built packages are not bound to the publisher. The BPLs and EXEs carry file version, product version and publisher in their file properties.
 
 **Option B – build it yourself and install the package in the IDE:**
 

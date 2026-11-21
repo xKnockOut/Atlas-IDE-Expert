@@ -118,7 +118,9 @@ begin
     Exit(TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnFace))),
       TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnText)))));
   end;
-  Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
+  // Ohne IDE-Thema zeichnet Windows: dessen Farben sind hier die richtigen.
+  Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), // window-ok
+    TAtlasColor(ColorToRGB(clBtnText))); // window-ok
 end;
 
 class function TAtlasIdeStyle.BarColors: TAtlasColors;
