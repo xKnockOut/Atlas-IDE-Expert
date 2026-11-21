@@ -53,7 +53,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Shell.Linter.Output,
   Atlas.Common.Localization.Texts;
 

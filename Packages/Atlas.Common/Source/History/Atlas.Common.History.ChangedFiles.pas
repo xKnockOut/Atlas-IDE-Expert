@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.ChangedFiles;
+﻿unit Atlas.Common.History.ChangedFiles;
 
 // Auswahl der zu prüfenden Dateien für --changed und --diff (#157). Die Unit
 // wertet nur Text aus; Git bzw. SVN (#276) startet die Shell.

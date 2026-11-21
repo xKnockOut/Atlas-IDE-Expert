@@ -33,7 +33,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Atlas.Core.VersionControl.Contract;
 
 type
