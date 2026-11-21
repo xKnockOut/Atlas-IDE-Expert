@@ -81,7 +81,9 @@ uses
   Atlas.Common.Editing.FreeFields,
   Atlas.Common.Editing.FreeFields.Types,
   Atlas.Common.Rules.Builtin.Ownership,
-  Atlas.Common.Leaks.Internals.OwnershipTree;
+  Atlas.Common.Leaks.Internals.OwnershipTree,
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   /// <summary>Listen, die ihre Elemente besitzen können (TObjectList ohne False usw.).</summary>
@@ -264,7 +266,7 @@ begin
   begin
     ARaw.TypeName := TFreeFieldTypes.CodeOf(FText, mReceiver);
   end;
-  Result := LooksLikeType(TFreeFieldTypes.BaseName(ARaw.TypeName)) and
+  Result := LooksLikeType(TTextNames.WithoutGenerics(ARaw.TypeName)) and
     not (FTypes.TypeGuess(ARaw.TypeName) in [tgRecord, tgInterface, tgOther]) and not TOwnershipTree.InRaise(ANode);
   ARaw.Node := ANode;
   ARaw.Routine := TOwnershipTree.RoutineOf(ANode);
@@ -367,7 +369,7 @@ begin
     Exit;
   end;
   Result := FTypes.OwnedByArgument(ARaw.TypeName, ARaw.Argument) or
-    (TOwnershipTree.FieldType(FTree.Root, ARaw.ClassName, TOwnershipTree.SelfMemberName(ARaw.Argument),
+    (TOwnershipTree.FieldType(FTree.Root, ARaw.ClassName, TSyntaxNodes.FieldName(ARaw.Argument),
     mFieldType) and FTypes.IsComponent(mFieldType));
 end;
 
@@ -392,7 +394,7 @@ begin
     end;
   end;
   Result := TOwnershipTree.FieldType(FTree.Root, AClassName, AName, mType) and
-    MatchText(TFreeFieldTypes.BaseName(mType), cOwningLists);
+    MatchText(TTextNames.WithoutGenerics(mType), cOwningLists);
 end;
 
 procedure TOwnershipScan.SetContainer(AIndex: Integer);
@@ -401,7 +403,7 @@ var
   mIsDictionary: Boolean;
   mOther: Integer;
 begin
-  mBase := TFreeFieldTypes.BaseName(FSites[AIndex].ClassName);
+  mBase := TTextNames.WithoutGenerics(FSites[AIndex].ClassName);
   if MatchText(mBase, cOwningLists) and TOwnedItemFreedRule.CreatesOwning(mBase,
     TFreeFieldTypes.CodeOf(FText, FRaw[AIndex].Node), mIsDictionary) then
   begin
@@ -446,7 +448,7 @@ begin
   if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and
     MatchText(mCallee.Name, cTakingMembers) then
   begin
-    mReceiver := TOwnershipTree.SelfMemberName(mCallee[0]);
+    mReceiver := TSyntaxNodes.FieldName(mCallee[0]);
     if (mReceiver <> '') and OwningList(AClassName, mReceiver) then
     begin
       Take(ASite, TOwnershipKind.OwnedList, -1, mReceiver);
@@ -569,7 +571,7 @@ begin
   end;
   if (mParent.Kind = TSyntaxKind.AssignStatement) and (mParent.ChildCount > 1) and (mParent[1] = AOccurrence) then
   begin
-    if SameText(TOwnershipTree.SelfMemberName(mParent[0]), 'Result') then
+    if SameText(TSyntaxNodes.FieldName(mParent[0]), 'Result') then
     begin
       Take(ASite, TOwnershipKind.Returned, -1, '');
     end
@@ -595,7 +597,7 @@ begin
   end
   else
   begin
-    mName := TOwnershipTree.SelfMemberName(ARaw.Other);
+    mName := TSyntaxNodes.FieldName(ARaw.Other);
   end;
   ASite.Target := mName;
   if mName = '' then
@@ -676,7 +678,7 @@ begin
     end
     else if FRaw[mIndex].Place = TOwnershipPlace.Assigned then
     begin
-      FSites[mIndex].Target := TOwnershipTree.SelfMemberName(FRaw[mIndex].Other);
+      FSites[mIndex].Target := TSyntaxNodes.FieldName(FRaw[mIndex].Other);
     end;
   end;
   for mIndex := 0 to High(FSites) do

@@ -25,8 +25,8 @@
        deren Unit zu einem Modul gehört, trägt [Category('<Package>')], z. B.
        [Category('Atlas.IDE.Debugger')]; damit laufen die Tests eines Moduls
        allein (--include:Atlas.IDE.Debugger). Das Package der Unit "<Unit>"
-       steht in docs/adr/0017-unit-zuordnung.md; fehlt dort eine Zeile, gilt
-       die Ordnertabelle nach dem dritten Namensteil (Atlas.Core.Notes → Notes),
+       steht in Tools/UnitAssignment.tsv; fehlt dort eine Zeile, gilt
+       Tools/UnitAssignment.Folders.tsv nach dem dritten Namensteil (Atlas.Core.Notes → Notes),
        sofern die Testunit eine Unit dieses Moduls nennt. Tests des Kerns
        tragen keine Modulkategorie.
 
@@ -196,25 +196,20 @@ foreach ($key in $needed.Keys) {
 }
 
 # Testkategorie je Modul (#1455).
-$assignmentPath = Join-Path $Root 'docs/adr/0017-unit-zuordnung.md'
-if (Test-Path $assignmentPath) {
+# Zuordnung der Units zu Packages: Tools/UnitAssignment.tsv (Package, Unit, Datei, Grund) und
+# Tools/UnitAssignment.Folders.tsv (Ordner, Package); die Form prüft Check-PackageDependencies.
+$assignmentPath = Join-Path $Root 'Tools/UnitAssignment.tsv'
+$folderPath = Join-Path $Root 'Tools/UnitAssignment.Folders.tsv'
+if ((Test-Path $assignmentPath) -and (Test-Path $folderPath)) {
     $unitPackage = @{}
     $folderPackage = @{}
-    $section = ''
-    foreach ($line in [IO.File]::ReadAllLines($assignmentPath)) {
-        if ($line -match '^##\s+(.+?)\s*$' -and -not $line.StartsWith('###')) { $section = $Matches[1]; continue }
-        if (-not $line.StartsWith('|') -or $line -match '^\|\s*-') { continue }
-        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
-        if ($section -eq '') {
-            if ($cells.Count -eq 2 -and $cells[1] -match '^`(Atlas\.IDE\.\w+)`$') {
-                $package = $Matches[1]
-                foreach ($m in [regex]::Matches($cells[0], '`(\w+)`')) { $folderPackage[$m.Groups[1].Value] = $package }
-            }
-            continue
-        }
-        if ($section -match '^Atlas\.IDE\.\w+$' -and $cells.Count -ge 3 -and $cells[0] -match '^`([\w.]+)`$') {
-            $unitPackage[$Matches[1]] = $section
-        }
+    foreach ($line in [IO.File]::ReadAllLines($folderPath) | Select-Object -Skip 1) {
+        $cells = $line.Split("`t")
+        if ($cells.Count -eq 2 -and $cells[0] -ne '*') { $folderPackage[$cells[0].Trim()] = $cells[1].Trim() }
+    }
+    foreach ($line in [IO.File]::ReadAllLines($assignmentPath) | Select-Object -Skip 1) {
+        $cells = $line.Split("`t")
+        if ($cells.Count -ge 2 -and -not $line.StartsWith('#')) { $unitPackage[$cells[1].Trim()] = $cells[0].Trim() }
     }
     foreach ($file in $testFiles | Where-Object { $_.Name -like '*.Tests.pas' }) {
         $unit = $file.BaseName.Substring(0, $file.BaseName.Length - '.Tests'.Length)

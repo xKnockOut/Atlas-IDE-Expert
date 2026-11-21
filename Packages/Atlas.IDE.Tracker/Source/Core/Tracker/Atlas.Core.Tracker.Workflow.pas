@@ -694,6 +694,11 @@ begin
 end;
 
 class function TAtlasTrackerWorkflow.DurationText(AMinutes: Integer): string;
+const
+  // Einheiten in beiden Sprachen gleich.
+  cMinutes = '%d min';
+  cHours = '%d h';
+  cHoursMinutes = '%d h %d min';
 begin
   Result := '';
   if AMinutes <= 0 then
@@ -702,13 +707,13 @@ begin
   end;
   if AMinutes < 60 then
   begin
-    Exit(Format('%d min', [AMinutes]));
+    Exit(Format(cMinutes, [AMinutes]));
   end;
   if AMinutes mod 60 = 0 then
   begin
-    Exit(Format('%d h', [AMinutes div 60]));
+    Exit(Format(cHours, [AMinutes div 60]));
   end;
-  Result := Format('%d h %d min', [AMinutes div 60, AMinutes mod 60]);
+  Result := Format(cHoursMinutes, [AMinutes div 60, AMinutes mod 60]);
 end;
 
 class function TAtlasTrackerWorkflow.LoadValues(const AWriter: IAtlasTrackerWriter;

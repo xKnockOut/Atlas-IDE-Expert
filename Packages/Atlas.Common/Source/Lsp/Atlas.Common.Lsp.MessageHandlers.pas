@@ -53,7 +53,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -70,27 +71,6 @@ const
      En: '**Messages**' + #10));
 
 {$SCOPEDENUMS OFF}
-
-function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
-end;
 
 function FindClassNode(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
@@ -132,7 +112,7 @@ var
   mTokenIndex: Integer;
 begin
   Result := '';
-  mTokenIndex := FirstTokenAt(ATokens, ADirective.StartOffset) + 1;
+  mTokenIndex := TokenFrom(ATokens, ADirective.StartOffset) + 1;
   while (mTokenIndex <= High(ATokens)) and (ATokens[mTokenIndex].Offset < ADirective.EndOffset) do
   begin
     if not (ATokens[mTokenIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
@@ -148,7 +128,7 @@ function NameRange(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): T
 var
   mTokenIndex: Integer;
 begin
-  mTokenIndex := FirstTokenAt(ATokens, AHeader.StartOffset);
+  mTokenIndex := TokenFrom(ATokens, AHeader.StartOffset);
   while (mTokenIndex <= High(ATokens)) and (ATokens[mTokenIndex].Offset < AHeader.EndOffset) do
   begin
     if (ATokens[mTokenIndex].Kind = TPascalTokenKind.Identifier) and

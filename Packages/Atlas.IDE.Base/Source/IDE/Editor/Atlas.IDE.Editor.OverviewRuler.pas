@@ -23,7 +23,7 @@
 //   IDE, Ausblenden bei ausgelöster Sicherung und Abbau übernimmt
 //   TAtlasEditorBarHost (#1248).
 // Minimap der IDE: Die Open Tools API bietet für sie keine Zeichen-Ereignisse,
-// deshalb ein eigener Streifen (docs/Architektur.md). Die Minimap (#873)
+// deshalb ein eigener Streifen (docs/architektur/Plugin-Editor.md). Die Minimap (#873)
 // sammelt ihre Marken über CollectMarks (Atlas.IDE.Editor.OverviewMarks). Nur im Hauptthread.
 
 interface

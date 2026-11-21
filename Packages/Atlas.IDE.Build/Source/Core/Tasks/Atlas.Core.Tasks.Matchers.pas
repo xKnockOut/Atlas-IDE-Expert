@@ -108,16 +108,19 @@ const
 { TAtlasTaskLineMatcher }
 
 constructor TAtlasTaskLineMatcher.Create(const AMatcher: TAtlasTaskMatcher);
+const
+  cDccIde = '^\s*\[\s*dcc\w*\s+(error|fehler|warning|warnung|hint|hinweis|fatal|' + // german-ok
+    'schwerer fehler)\s*\]\s*(.+?)\((\d+)(?:,(\d+))?\)\s*:?\s*(?:([EWHF]\d{3,4})\s+)?(.*)$'; // german-ok
+  cDccCommandLine = '^\s*(.+?)\((\d+)(?:,(\d+))?\)\s+(error|fehler|warning|warnung|hint|' + // german-ok
+    'hinweis|fatal|schwerer fehler)\s*:\s*(?:([EWHF]\d{3,4})\s+)?(.*)$'; // german-ok
 begin
   inherited Create;
   FMatcher := AMatcher;
   case AMatcher.Kind of
     TAtlasTaskMatcherKind.Dcc:
       begin
-        AddRule(TForm.DccIde, '^\s*\[\s*dcc\w*\s+(error|fehler|warning|warnung|hint|hinweis|fatal|' +
-          'schwerer fehler)\s*\]\s*(.+?)\((\d+)(?:,(\d+))?\)\s*:?\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]); // german-ok
-        AddRule(TForm.DccCommandLine, '^\s*(.+?)\((\d+)(?:,(\d+))?\)\s+(error|fehler|warning|warnung|hint|' +
-          'hinweis|fatal|schwerer fehler)\s*:\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]); // german-ok
+        AddRule(TForm.DccIde, cDccIde, [roIgnoreCase]);
+        AddRule(TForm.DccCommandLine, cDccCommandLine, [roIgnoreCase]);
       end;
     TAtlasTaskMatcherKind.Pwsh:
       AddRule(TForm.PwshLine, '^\s*(?:Write-Error:\s*)?(?:(FEHLER|WARNUNG|HINWEIS|ERROR|WARNING|HINT|INFO)\s*:?\s+)?' +

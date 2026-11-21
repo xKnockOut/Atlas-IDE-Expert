@@ -152,6 +152,10 @@ end;
 
 /// <summary>Ergebnis fürs Protokoll, anonym.</summary>
 procedure LogWritten(const AProvider: IAtlasTrackerProvider; const AResult: TChecklistResult);
+const
+  cNotWritten = 'nicht geschrieben (%s)';
+  cWritten = 'geschrieben';
+  cDescriptionChanged = 'Beschreibung geändert';
 var
   mText: string;
 begin
@@ -159,14 +163,14 @@ begin
   begin
     Exit;
   end;
-  mText := 'nicht geschrieben (' + TAtlasCiBuild.ErrorKey(AResult.Error) + ')';
+  mText := Format(cNotWritten, [TAtlasCiBuild.ErrorKey(AResult.Error)]);
   if AResult.Applied then
   begin
-    mText := 'geschrieben';
+    mText := cWritten;
   end
   else if AResult.Changed then
   begin
-    mText := 'Beschreibung geändert';
+    mText := cDescriptionChanged;
   end;
   TAtlasGuard.Log(Format('Issue-Vorschau: Checkliste bei %s %s', [AProvider.Name, mText]));
 end;

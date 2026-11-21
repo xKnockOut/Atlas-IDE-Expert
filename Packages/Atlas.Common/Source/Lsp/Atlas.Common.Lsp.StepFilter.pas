@@ -118,32 +118,6 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Names;
 
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function ContainerPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := '';
-  mDot := LastDelimiter('.', AName);
-  if mDot > 0 then
-  begin
-    Result := Copy(AName, 1, mDot - 1);
-  end;
-end;
-
 { TLspStepFilter }
 
 class function TLspStepFilter.Keyword(AHeader: TSyntaxNode; const AText: string): string;
@@ -260,7 +234,7 @@ begin
   Result := False;
   case ATarget.Kind of
     TSyntaxKind.Identifier:
-      Result := not Contains(ALocals, ATarget.Name);
+      Result := not MatchText(ATarget.Name, ALocals);
     TSyntaxKind.MemberAccess:
       Result := (ATarget.ChildCount = 1) and (ATarget[0].Kind = TSyntaxKind.Identifier) and
         SameText(ATarget[0].Name, 'Self');
@@ -459,7 +433,7 @@ begin
       mName := mPrefix + '.' + mName;
     end;
   end;
-  Result.Container := ContainerPart(mName);
+  Result.Container := TTextNames.ContainerOf(mName);
   Result.Routine := TTextNames.LastPart(mName);
   if UnitName(ATree) <> '' then
   begin
@@ -513,7 +487,7 @@ var
   mContainer, mShort: string;
 begin
   Result := [];
-  mContainer := ContainerPart(AName);
+  mContainer := TTextNames.ContainerOf(AName);
   mShort := TTextNames.LastPart(AName);
   if (mContainer = '') or (Length(ABody) <> 1) or not TLspStepFilter.IsSimple(ABody[0]) then
   begin

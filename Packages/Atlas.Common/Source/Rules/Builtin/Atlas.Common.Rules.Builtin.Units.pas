@@ -158,7 +158,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Rules.Builtin.Unresolved,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -606,17 +607,6 @@ begin
     cTexts[TUnitsText.ExportsTitle].Text);
 end;
 
-/// <summary>Text eines String-Literals ohne Hochkommas ('' wird ').</summary>
-function Unquoted(const AText: string): string;
-begin
-  Result := AText;
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-  Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
-end;
-
 type
   /// <summary>Liest die Einträge einer exports-Klausel.</summary>
   TExportsScanner = class
@@ -724,7 +714,7 @@ begin
   begin
     if (AToken.Kind = TPascalTokenKind.StringLiteral) and (FLiterals = 0) then
     begin
-      FEntry.ExportName := Unquoted(AToken.Text);
+      FEntry.ExportName := TPascalLexer.UnquotedString(AToken.Text);
     end;
     Inc(FLiterals);
   end;
@@ -930,23 +920,6 @@ begin
   end;
 end;
 
-/// <summary>Steht ANode in einer Routine?</summary>
-function InRoutine(ANode: TSyntaxNode): Boolean;
-var
-  mParent: TSyntaxNode;
-begin
-  mParent := ANode.Parent;
-  while mParent <> nil do
-  begin
-    if mParent.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Exit(True);
-    end;
-    mParent := mParent.Parent;
-  end;
-  Result := False;
-end;
-
 type
   /// <summary>Eine exports-Klausel: Token-Indizes von exports und Semikolon und ihre Einträge.</summary>
   TExportsClause = record
@@ -1062,7 +1035,7 @@ begin
   AClause.Entries := nil;
   Result := (AClause.First <= High(FTokens)) and FTokens[AClause.First].IsKeyword('exports') and
     FTokens[AClause.Last].IsSymbol(';');
-  if Result and InRoutine(ANode) then
+  if Result and (TSyntaxNodes.Enclosing(ANode, [TSyntaxKind.RoutineDecl]) <> nil) then
   begin
     FReport.Add(RangeOf(FTokens, AClause.First, AClause.First),
       cTexts[TUnitsText.ExportsGlobal].Text, TRuleConfidence.High);

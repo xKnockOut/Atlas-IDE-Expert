@@ -145,7 +145,8 @@ uses
   Atlas.Common.Index.Extractor.Conditions,
   Atlas.Common.Index.Extractor.InlineRefs,
   Atlas.Common.Index.Extractor.Patterns,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
@@ -214,21 +215,6 @@ end;
 function RationaleOf(const AEntries: TArray<TRationaleEntry>): TArray<string>;
 begin
   Result := TRationale.EncodeAll(Copy(AEntries, 0, TRationale.cMaxEntries));
-end;
-
-/// <summary>Rumpf einer Typdeklaration: das erste Kind außer Typparametern und Attributen; nil ohne.</summary>
-function TypeBodyOf(ADecl: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ADecl.ChildCount - 1 do
-  begin
-    if not (ADecl[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
-    begin
-      Exit(ADecl[mIndex]);
-    end;
-  end;
-  Result := nil;
 end;
 
 function KindOfBody(ABody: TSyntaxNode): TIndexSymbolKind;
@@ -522,7 +508,7 @@ var
   mBody: TSyntaxNode;
   mCount: Integer;
 begin
-  mBody := TypeBodyOf(ADecl);
+  mBody := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]);
   mCount := FSymbols.Count;
   AddTypeSymbol(ADecl, mBody, AContainer);
   if mBody = nil then

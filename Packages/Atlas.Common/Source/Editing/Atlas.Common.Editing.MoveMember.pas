@@ -130,7 +130,8 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -182,16 +183,6 @@ function Fail(const AReason: string; out AOut: string): Boolean;
 begin
   AOut := AReason;
   Result := False;
-end;
-
-/// <summary>Name ohne Typparameter ("TBase&lt;T&gt;" → "TBase").</summary>
-function PlainName(const AName: string): string;
-begin
-  Result := Trim(AName);
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, Pos('<', Result) - 1));
-  end;
 end;
 
 /// <summary>Ruft der Rumpf inherited auf?</summary>
@@ -701,7 +692,7 @@ begin
   mMember := Source.Members[AId];
   Result := TClassEdits.BodyText(Source, AId, Target.Name);
   if CallsInherited(mMember.Body) and (Source.Ancestors <> nil) and
-    not SameText(PlainName(Source.Ancestors[0]), Target.Name) then
+    not SameText(TTextNames.WithoutGenerics(Source.Ancestors[0]), Target.Name) then
   begin
     Plan.Warnings := Plan.Warnings + [cTexts[TEditingMoveMemberText.CallsInheritedInThatMeans].Fmt([mMember.Name,
       Target.Name, Target.Name])];
@@ -1017,7 +1008,7 @@ end;
 
 function TPushDown.CheckTarget(ATarget: TClassLayout; out AReason: string): Boolean;
 begin
-  if (ATarget.Ancestors = nil) or not SameText(PlainName(ATarget.Ancestors[0]), Source.Name) then
+  if (ATarget.Ancestors = nil) or not SameText(TTextNames.WithoutGenerics(ATarget.Ancestors[0]), Source.Name) then
   begin
     Exit(Fail(cTexts[TEditingMoveMemberText.IsNotADirectDescendant].Fmt([ATarget.Name, Source.Name]), AReason));
   end;

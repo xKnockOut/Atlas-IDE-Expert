@@ -32,8 +32,6 @@ type
     /// <summary>Typ des Felds AField der Klasse AClassName in der Datei; False ohne.</summary>
     class function FieldType(ARoot: TSyntaxNode; const AClassName, AField: string; out ATypeName: string): Boolean;
       static;
-    /// <summary>Name hinter X bzw. Self.X; '' sonst.</summary>
-    class function SelfMemberName(ANode: TSyntaxNode): string; static;
     /// <summary>Vorkommen von AName (auch Self.AName) unter ANode, ohne Mitglieder anderer Objekte (Obj.AName).
     /// </summary>
     class function Occurrences(ANode: TSyntaxNode; const AName: string): TArray<TSyntaxNode>; static;
@@ -56,7 +54,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 { TOwnershipTree }
 
@@ -242,24 +241,6 @@ begin
   end;
 end;
 
-class function TOwnershipTree.SelfMemberName(ANode: TSyntaxNode): string;
-begin
-  Result := '';
-  if ANode = nil then
-  begin
-    Exit;
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := ANode.Name;
-  end
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
-    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
-  begin
-    Result := ANode.Name;
-  end;
-end;
-
 /// <summary>Ist ANode der Name AName selbst, nicht das Mitglied eines anderen Objekts?</summary>
 function IsOccurrence(ANode: TSyntaxNode; const AName: string): Boolean;
 begin
@@ -270,7 +251,7 @@ begin
   else
   begin
     Result := (ANode.Kind = TSyntaxKind.MemberAccess) and
-      SameText(TOwnershipTree.SelfMemberName(ANode), AName) and (ANode.ChildCount = 1);
+      SameText(TSyntaxNodes.FieldName(ANode), AName) and (ANode.ChildCount = 1);
   end;
 end;
 

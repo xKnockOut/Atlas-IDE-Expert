@@ -51,7 +51,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   // Name|Art (R Routine, T Typ, C Konstante)|Kopf|Beschreibung
@@ -495,19 +496,6 @@ begin
     (AToken.EndPos.Line = APosition.Line) and (AToken.EndPos.Character >= APosition.Character);
 end;
 
-/// <summary>Vor ATokens[AIndex] steht, über Kommentare und Direktiven hinweg, ein Punkt.</summary>
-function FollowsDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mPrevious: Integer;
-begin
-  mPrevious := AIndex - 1;
-  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mPrevious);
-  end;
-  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
-end;
-
 class function TSystemIntrinsics.NameAt(ATree: TSyntaxTree; const APosition: TTextPosition;
   out AName: string): Boolean;
 var
@@ -528,7 +516,7 @@ begin
     begin
       Continue;
     end;
-    if FollowsDot(mTokens, mIndex) then
+    if AfterDot(mTokens, mIndex) then
     begin
       Exit;
     end;

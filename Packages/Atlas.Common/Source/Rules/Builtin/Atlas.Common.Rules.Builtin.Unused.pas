@@ -108,7 +108,9 @@ uses
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.Unused.Duplicates,
   Atlas.Common.Rules.Builtin.Unused.EmptyRoutines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -140,23 +142,6 @@ type
     Block: TSyntaxNode;
     Conditionals: Boolean;
   end;
-
-function ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
-var
-  mKind: TSyntaxKind;
-begin
-  mKind := AKind;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  Result := ANode.Search(
-    function(AVisited: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if AVisited.Kind = mKind then
-      begin
-        Exit(TSyntaxSearchStep.Found);
-      end;
-      Result := TSyntaxSearchStep.Descend;
-    end) <> nil;
-end;
 
 /// <summary>Namen, die in ANode verwendet werden (klein geschrieben): Bezeichner und Schleifenvariablen.</summary>
 procedure CollectUses(ANode: TSyntaxNode; ASet: TNameSet);
@@ -285,7 +270,7 @@ begin
   AInfo.Routine := ARoutine;
   AInfo.Block := ARoutine.FindChild(TSyntaxKind.Block);
   AInfo.Conditionals := False;
-  Result := (AInfo.Block <> nil) and not ContainsKind(ARoutine, TSyntaxKind.AsmBlock);
+  Result := (AInfo.Block <> nil) and not TSyntaxNodes.ContainsKind(ARoutine, TSyntaxKind.AsmBlock);
   if Result then
   begin
     AInfo.Conditionals := HasConditionals(AContext, ARoutine);
@@ -516,7 +501,7 @@ var
   mStart, mStop: Integer;
 begin
   mTitle := cTexts[TUnusedText.RemoveVariable].Fmt([AName]);
-  mNames := SplitNames(ADecl.Name);
+  mNames := TTextNames.SplitList(ADecl.Name);
   if ADecl.Kind = TSyntaxKind.InlineVar then
   begin
     Result := InlineVarFix(ACache, AContext, ADecl, mTitle, AFix);
@@ -564,7 +549,7 @@ var
   mConfidence: TRuleConfidence;
   mFix: TRuleFix;
 begin
-  for mName in SplitNames(ADecl.Name) do
+  for mName in TTextNames.SplitList(ADecl.Name) do
   begin
     if IsIgnored(mName, FPatterns) or not IsUnused(FContext, FInfo, FUses, mName, ADecl.EndOffset,
       mConfidence) then
@@ -676,7 +661,7 @@ begin
   Result := False;
   for mIndex := 0 to AParams.ChildCount - 1 do
   begin
-    for mName in SplitNames(AParams[mIndex].Name) do
+    for mName in TTextNames.SplitList(AParams[mIndex].Name) do
     begin
       Result := Result or SameText(mName, 'Sender');
     end;
@@ -717,7 +702,7 @@ var
   mName: string;
   mConfidence: TRuleConfidence;
 begin
-  for mName in SplitNames(AParam.Name) do
+  for mName in TTextNames.SplitList(AParam.Name) do
   begin
     if IsIgnored(mName, FPatterns) or not IsUnused(FContext, FInfo, FUses, mName, AHeader.EndOffset,
       mConfidence) then
@@ -855,7 +840,7 @@ begin
       begin
         Exit(TSyntaxSearchStep.Descend);
       end;
-      if MentionsName(AVisited, mName) then
+      if TSyntaxNodes.Mentions(AVisited, mName) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -916,7 +901,7 @@ begin
     end;
   end
   else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and
-    MatchText(ATarget, SplitNames(ANode.Name)) then
+    MatchText(ATarget, TTextNames.SplitList(ANode.Name)) then
   begin
     AWrites.Add(ANode);
   end;
@@ -1009,7 +994,7 @@ procedure TUnusedAssignmentCheck.AddTypes(ADecl: TSyntaxNode);
 var
   mPart: string;
 begin
-  for mPart in SplitNames(ADecl.Name) do
+  for mPart in TTextNames.SplitList(ADecl.Name) do
   begin
     FTypes.AddOrSetValue(LowerCase(mPart), FManaged.NodeTypeText(ADecl));
   end;
@@ -1194,7 +1179,7 @@ begin
   begin
     if not IsInterfaceTyped(mDecl) then
     begin
-      Result := Result + SplitNames(mDecl.Name);
+      Result := Result + TTextNames.SplitList(mDecl.Name);
       AddTypes(mDecl);
     end;
   end;

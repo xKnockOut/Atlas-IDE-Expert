@@ -149,8 +149,6 @@ type
       overload; static;
     /// <summary>Kennungen (klein) der Regeln mit "safeFix" in ACatalog.</summary>
     class function SafeRulesOf(const ACatalog: TArray<TRuleCatalogEntry>): TArray<string>; static;
-    /// <summary>Text der Konfidenz für Meldungen: "hoch", "mittel", "niedrig".</summary>
-    class function ConfidenceText(AConfidence: TRuleConfidence): string; static;
     /// <summary>Untergrenze eines Aufrufs (fix_findings, Befehl des Plugins): ARequested ("medium", "high"; ''
     /// = Einstellung) darf ASetting (fix.minConfidence) nur anheben. False mit Grund in AError.</summary>
     class function MinConfidenceOf(ASetting: TRuleConfidence; const ARequested: string;
@@ -509,18 +507,6 @@ begin
     begin
       Result := Result + [LowerCase(mEntry.Id)];
     end;
-  end;
-end;
-
-class function TBulkFix.ConfidenceText(AConfidence: TRuleConfidence): string;
-begin
-  case AConfidence of
-    TRuleConfidence.Low:
-      Result := 'niedrig';
-    TRuleConfidence.Medium:
-      Result := 'mittel';
-  else
-    Result := 'hoch';
   end;
 end;
 

@@ -152,7 +152,7 @@ begin
   mDepth := 0;
   while not Result and (mName <> '') and not SameText(mName, 'TObject') and (mDepth < 64) do
   begin
-    Result := IsIn(mName, cComponentBases) or IsIn(mName, cConstructorBases) or
+    Result := MatchText(mName, cComponentBases) or MatchText(mName, cConstructorBases) or
       AModel.Ancestry.HasConstructor(mName);
     mName := AModel.Ancestry.ParentOf(mName);
     Inc(mDepth);
@@ -182,8 +182,8 @@ begin
   begin
     mTarget := mTarget[0];
   end;
-  Result := IsOwnTarget(mTarget) and (IsIn(mTarget.Name, AConstructors) or
-    IsIn(mTarget.Name, cAncestorConstructors));
+  Result := IsOwnTarget(mTarget) and (MatchText(mTarget.Name, AConstructors) or
+    MatchText(mTarget.Name, cAncestorConstructors));
 end;
 
 /// <summary>Ruft der Rumpf ARoot einen anderen Konstruktor derselben Klasse auf oder CreateNew?</summary>
@@ -317,15 +317,15 @@ function TMissingInheritedCheck.Wanted(const AMethod: TMethodImpl; const ASource
 begin
   if StartsText('constructor', ASource) then
   begin
-    Result := (IsIn(AMethod.MethodName, FMethods) or (IsIn('Create', FMethods) and
+    Result := (MatchText(AMethod.MethodName, FMethods) or (MatchText('Create', FMethods) and
       StartsText('Create', AMethod.MethodName))) and not CallsOwnConstructor(AMethod.Block, FConstructors) and
       AncestorConstructs(FModel, FParent);
   end
   else
   begin
     // Komponenten: Destroy meldet component-missing-inherited (keine Doppelmeldung).
-    Result := IsIn(AMethod.MethodName, FMethods) and FModel.DeclaredWith(FInfo, AMethod.MethodName, 'override') and
-      not (FModel.IsComponent(FInfo.Name) and IsIn(AMethod.MethodName, cInheritedMethods));
+    Result := MatchText(AMethod.MethodName, FMethods) and FModel.DeclaredWith(FInfo, AMethod.MethodName, 'override') and
+      not (FModel.IsComponent(FInfo.Name) and MatchText(AMethod.MethodName, cInheritedMethods));
   end;
 end;
 
@@ -679,12 +679,12 @@ var
 begin
   Result := '';
   mTarget := nil;
-  if (ANode.Kind = TSyntaxKind.MemberAccess) and IsIn(ANode.Name, ['Free', 'DisposeOf', 'Destroy']) and
+  if (ANode.Kind = TSyntaxKind.MemberAccess) and MatchText(ANode.Name, ['Free', 'DisposeOf', 'Destroy']) and
     (ANode.ChildCount = 1) then
   begin
     mTarget := ANode[0];
   end
-  else if (ANode.Kind = TSyntaxKind.Call) and IsIn(ANode.Name, ['FreeAndNil', 'Dispose', 'FreeMem']) and
+  else if (ANode.Kind = TSyntaxKind.Call) and MatchText(ANode.Name, ['FreeAndNil', 'Dispose', 'FreeMem']) and
     (ANode.ChildCount = 2) then
   begin
     mTarget := ANode[1];
@@ -719,7 +719,7 @@ begin
     begin
       mNode := mPending.Pop;
       Result := FreedName(mNode);
-      if (Result <> '') and IsIn(Result, AFields) then
+      if (Result <> '') and MatchText(Result, AFields) then
       begin
         Exit;
       end;
@@ -842,7 +842,7 @@ function TInheritedOrderScan.OwnLines(AStatement: TSyntaxNode): Boolean;
 begin
   Result := (AStatement.EndPos.Line <= High(FLines)) and
     (Trim(Copy(FLines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) = '') and
-    IsIn(Trim(Copy(FLines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)), ['', ';']);
+    MatchText(Trim(Copy(FLines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)), ['', ';']);
 end;
 
 // inherited ans Ende bzw. an den Anfang: Zeilen der Anweisung entfernen, Text neu einfügen.
@@ -890,7 +890,7 @@ begin
   mName := FModel.Ancestry.ParentOf(AClassName);
   for mDepth := 0 to 63 do
   begin
-    if (mName = '') or IsIn(mName, cComponentBases) or IsIn(mName, cConstructorBases) or
+    if (mName = '') or MatchText(mName, cComponentBases) or MatchText(mName, cConstructorBases) or
       FModel.Ancestry.HasDestructor(mName) then
     begin
       Exit(True);
@@ -966,7 +966,7 @@ begin
         Continue;
       end;
       mName := AccessedName(mNode);
-      if (mName <> '') and not SameText(mName, 'Self') and not IsIn(mName, AExcluded) and
+      if (mName <> '') and not SameText(mName, 'Self') and not MatchText(mName, AExcluded) and
         FModel.Ancestry.FindMember(AParent, mName, mMember, mUnresolved) and
         (mMember.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
       begin
@@ -999,7 +999,7 @@ begin
     while mPending.Count > 0 do
     begin
       mNode := mPending.Pop;
-      if (mNode.Kind = TSyntaxKind.Identifier) and IsIn(mNode.Name, ALocals) then
+      if (mNode.Kind = TSyntaxKind.Identifier) and MatchText(mNode.Name, ALocals) then
       begin
         Exit(True);
       end;

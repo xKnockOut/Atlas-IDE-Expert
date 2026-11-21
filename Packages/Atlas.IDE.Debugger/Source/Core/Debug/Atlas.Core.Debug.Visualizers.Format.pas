@@ -42,6 +42,10 @@ type
     cSeparator = ' · ';
     /// <summary>Bytes je Zeile der Hex-Ansicht.</summary>
     cHexLineBytes = 16;
+    /// <summary>Ersatztext einer Sammlung: angezeigter Wert und Count wie die Eigenschaft im Quelltext.</summary>
+    cCountText = '%s · Count = %d';
+    /// <summary>Größe eines Speicherblocks (Einheit in beiden Sprachen gleich).</summary>
+    cByteCount = '%d Bytes';
   public
     /// <summary>Höchstens AMaxLength Zeichen, gekürzt mit „…“.</summary>
     class function Shorten(const AText: string; AMaxLength: Integer): string; static;
@@ -412,56 +416,65 @@ end;
 class function TAtlasVisualizerFormat.HexPreview(const ABytes: TBytes; ATotal: Int64; AMaxBytes: Integer): string;
 var
   mCount, mIndex: Integer;
-  mHex, mText: string;
+  mHex: TArray<string>;
+  mText: TStringBuilder;
 begin
   mCount := Min(Length(ABytes), AMaxBytes);
-  mHex := '';
-  mText := '';
-  for mIndex := 0 to mCount - 1 do
-  begin
-    if mHex <> '' then
+  SetLength(mHex, mCount);
+  mText := TStringBuilder.Create;
+  try
+    for mIndex := 0 to mCount - 1 do
     begin
-      mHex := mHex + ' ';
+      mHex[mIndex] := IntToHex(ABytes[mIndex], 2);
+      mText.Append(Printable(ABytes[mIndex]));
     end;
-    mHex := mHex + IntToHex(ABytes[mIndex], 2);
-    mText := mText + Printable(ABytes[mIndex]);
-  end;
-  if ATotal > mCount then
-  begin
-    mHex := mHex + ' …';
-    mText := mText + '…';
-  end;
-  Result := Format('%d Bytes', [ATotal]);
-  if mHex <> '' then
-  begin
-    Result := Result + cSeparator + mHex + cSeparator + mText;
+    if ATotal > mCount then
+    begin
+      mHex := mHex + ['…'];
+      mText.Append('…');
+    end;
+    Result := Format(cByteCount, [ATotal]);
+    if Length(mHex) > 0 then
+    begin
+      Result := Result + cSeparator + string.Join(' ', mHex) + cSeparator + mText.ToString;
+    end;
+  finally
+    mText.Free;
   end;
 end;
 
 class function TAtlasVisualizerFormat.HexLine(const ABytes: TBytes; AOffset: Integer): string;
+const
+  // Stellen des Abstands am Zeilenanfang.
+  cOffsetDigits = 8;
 var
   mIndex: Integer;
-  mHex, mText: string;
+  mHex, mText: TStringBuilder;
 begin
-  mHex := '';
-  mText := '';
-  for mIndex := AOffset to AOffset + 15 do
-  begin
-    if mIndex = AOffset + 8 then
+  mHex := TStringBuilder.Create;
+  mText := TStringBuilder.Create;
+  try
+    for mIndex := AOffset to AOffset + 15 do
     begin
-      mHex := mHex + ' ';
+      if mIndex = AOffset + 8 then
+      begin
+        mHex.Append(' ');
+      end;
+      if mIndex < Length(ABytes) then
+      begin
+        mHex.Append(IntToHex(ABytes[mIndex], 2)).Append(' ');
+        mText.Append(Printable(ABytes[mIndex]));
+      end
+      else
+      begin
+        mHex.Append('   ');
+      end;
     end;
-    if mIndex < Length(ABytes) then
-    begin
-      mHex := mHex + IntToHex(ABytes[mIndex], 2) + ' ';
-      mText := mText + Printable(ABytes[mIndex]);
-    end
-    else
-    begin
-      mHex := mHex + '   ';
-    end;
+    Result := IntToHex(AOffset, cOffsetDigits) + '  ' + mHex.ToString + ' ' + mText.ToString;
+  finally
+    mText.Free;
+    mHex.Free;
   end;
-  Result := IntToHex(AOffset, 8) + '  ' + mHex + ' ' + mText;
 end;
 
 class function TAtlasVisualizerFormat.HexLineAt(const ABytes: TBytes; ALine: Integer): string;
@@ -884,7 +897,7 @@ end;
 class function TAtlasVisualizerFormat.ListText(const AShown: string; ACount: Integer;
   const AItems: TArray<string>): string;
 begin
-  Result := Format('%s · Count = %d', [AShown, ACount]);
+  Result := Format(cCountText, [AShown, ACount]);
   if Length(AItems) > 0 then
   begin
     Result := Result + cSeparator + '[' + string.Join(', ', AItems);
@@ -899,7 +912,7 @@ end;
 class function TAtlasVisualizerFormat.DictionaryText(const AShown: string; ACount: Integer;
   const APairs: TArray<string>): string;
 begin
-  Result := Format('%s · Count = %d', [AShown, ACount]);
+  Result := Format(cCountText, [AShown, ACount]);
   if Length(APairs) > 0 then
   begin
     Result := Result + cSeparator + '{' + string.Join(', ', APairs);

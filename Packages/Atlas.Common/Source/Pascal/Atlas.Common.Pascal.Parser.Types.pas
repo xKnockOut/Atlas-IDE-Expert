@@ -76,7 +76,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser.Cursor,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  System.StrUtils;
 
 {$SCOPEDENUMS ON}
 
@@ -526,7 +527,7 @@ end;
 function TTypeParser.ParseMember(AParent: TSyntaxNode): Boolean;
 begin
   Result := True;
-  if IsIdent and InWords(Current.Text, cVisibilityWords) and not PeekIsSym(1, ':') and not PeekIsSym(1, ',') then
+  if IsIdent and MatchText(Current.Text, cVisibilityWords) and not PeekIsSym(1, ':') and not PeekIsSym(1, ',') then
   begin
     ParseVisibility(AParent);
   end
@@ -887,12 +888,12 @@ begin
   // Aufrufkonventionen mit oder ohne Semikolon davor: procedure stdcall; procedure; cdecl
   while True do
   begin
-    if IsIdent and InWords(Current.Text, cCallingConventions) then
+    if IsIdent and MatchText(Current.Text, cCallingConventions) then
     begin
       Advance;
     end
     else if IsSym(';') and (PeekToken(1).Kind = TPascalTokenKind.Identifier) and
-      InWords(PeekToken(1).Text, cCallingConventions) then
+      MatchText(PeekToken(1).Text, cCallingConventions) then
     begin
       Advance;
     end

@@ -65,7 +65,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Text.Chars;
 
 const
   cOrdinalCasts: array[0..23] of string = ('Byte', 'Word', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'ShortInt',
@@ -902,21 +903,6 @@ begin
   end;
 end;
 
-/// <summary>Wert der Ziffer AChar; -1 bei anderen Zeichen.</summary>
-function DigitOf(AChar: Char): Integer;
-begin
-  case AChar of
-    '0'..'9':
-      Result := Ord(AChar) - Ord('0');
-    'a'..'f':
-      Result := Ord(AChar) - Ord('a') + 10;
-    'A'..'F':
-      Result := Ord(AChar) - Ord('A') + 10;
-  else
-    Result := -1;
-  end;
-end;
-
 /// <summary>Ziffern ADigits zur Basis ABase; False bei fremden Zeichen und mehr, als Int64 fasst.</summary>
 function DigitsValue(const ADigits: string; ABase: Integer; out AValue: UInt64): Boolean;
 var
@@ -925,7 +911,7 @@ begin
   AValue := 0;
   for mIndex := 1 to Length(ADigits) do
   begin
-    mDigit := DigitOf(ADigits[mIndex]);
+    mDigit := TTextChars.HexDigitValue(ADigits[mIndex]);
     if (mDigit < 0) or (mDigit >= ABase) or
       (AValue > (UInt64(High(Int64)) - UInt64(mDigit)) div UInt64(ABase)) then
     begin

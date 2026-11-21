@@ -680,6 +680,8 @@ var
   end;
 
   procedure CheckLeaks;
+  const
+    cLeakReport = 'ReportMemoryLeaksOnShutdown := True';
   var
     mLine: Integer;
     mItem: TAtlasReleaseFinding;
@@ -688,7 +690,7 @@ var
     if mLine > 0 then
     begin
       mItem := Finding(TAtlasReleaseIssue.MemoryLeaks, TAtlasReleaseCheck.MemoryLeaks,
-        'ReportMemoryLeaksOnShutdown := True', False);
+        cLeakReport, False);
       mItem.FileName := AOptions.SourceFile;
       mItem.Line := mLine;
       mFindings := mFindings + [mItem];

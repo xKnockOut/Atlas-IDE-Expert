@@ -12,7 +12,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CompletionRequest;
 
@@ -70,7 +69,7 @@ type
 /// <summary>uses-Eintrag für ATypeName (#294, #180), wenn der Typ an AOffset nicht sichtbar ist und der Index
 /// ihn in einer anderen Unit kennt; sonst leer.</summary>
 function TypeUnitEdits(const ALookup: TEnumLookup; const ATypeName, ALineBreak: string;
-  AOffset: Integer): TArray<TRuleEdit>;
+  AOffset: Integer): TArray<TTextEdit>;
 
 implementation
 
@@ -136,10 +135,10 @@ type
     FTypeName: string;
     FDeclType: string;
     FBase: TCompletionItem;
-    function TypeEdits(AOffset: Integer): TArray<TRuleEdit>;
+    function TypeEdits(AOffset: Integer): TArray<TTextEdit>;
     function ClassFields(const AClass: TIndexSymbol): TArray<string>;
-    function FieldEdit(const AClass: TIndexSymbol; const AField: string): TRuleEdit;
-    function ConstantEdit(const ADetail: string): TRuleEdit;
+    function FieldEdit(const AClass: TIndexSymbol; const AField: string): TTextEdit;
+    function ConstantEdit(const ADetail: string): TTextEdit;
   public
     Items: TArray<TCompletionItem>;
     constructor Create(ARequest: TCompletionRequest; const ASlot: TUnknownSlot; ASource: TCommandSource;
@@ -402,12 +401,12 @@ begin
   // Erzeugt Code: Atlas wertet die Zusatzänderung ("end;") nicht als uses-Ergänzung.
   AItem.Action := 'case';
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(mSlot.EditRange, TCaseCompletion.BranchesText(mSlot, mMissing, mPrefix,
+  AItem.TextEdit := TTextEdit.Create(mSlot.EditRange, TCaseCompletion.BranchesText(mSlot, mMissing, mPrefix,
     mLineBreak));
   mEndText := TCaseCompletion.EndText(mSlot, mLineBreak);
   if mEndText <> '' then
   begin
-    AItem.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(mSlot.EndInsert, mSlot.EndInsert), mEndText)];
+    AItem.AdditionalEdits := [TTextEdit.Create(TTextRange.Create(mSlot.EndInsert, mSlot.EndInsert), mEndText)];
   end;
 end;
 
@@ -459,10 +458,10 @@ end;
 /// <summary>uses-Eintrag für ATypeName (#180), wenn der Typ an AOffset nicht sichtbar ist und der Index ihn
 /// in einer anderen Unit kennt; leer sonst.</summary>
 function TypeUnitEdits(const ALookup: TEnumLookup; const ATypeName, ALineBreak: string;
-  AOffset: Integer): TArray<TRuleEdit>;
+  AOffset: Integer): TArray<TTextEdit>;
 var
   mLocation: TSymbolLocation;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Result := nil;
   if (ALookup.Index = nil) or not IsImportableName(ATypeName) or ALookup.Resolver.ResolveChain(ALookup.Tree,
@@ -558,7 +557,7 @@ begin
   FBase.HasTextEdit := True;
 end;
 
-function TDeclareBuilder.TypeEdits(AOffset: Integer): TArray<TRuleEdit>;
+function TDeclareBuilder.TypeEdits(AOffset: Integer): TArray<TTextEdit>;
 begin
   Result := TypeUnitEdits(TEnumLookup.FromRequest(FRequest), FTypeName, FSource.LineBreak, AOffset);
 end;
@@ -578,7 +577,7 @@ begin
   end;
 end;
 
-function TDeclareBuilder.FieldEdit(const AClass: TIndexSymbol; const AField: string): TRuleEdit;
+function TDeclareBuilder.FieldEdit(const AClass: TIndexSymbol; const AField: string): TTextEdit;
 var
   mLine, mEnd: Integer;
   mDeclaration: string;
@@ -594,7 +593,7 @@ begin
     '  ' + mDeclaration);
 end;
 
-function TDeclareBuilder.ConstantEdit(const ADetail: string): TRuleEdit;
+function TDeclareBuilder.ConstantEdit(const ADetail: string): TTextEdit;
 var
   mSection, mNode: TSyntaxNode;
   mIndex: Integer;
@@ -631,7 +630,7 @@ begin
   mItem.Name := cTexts[TValuesText.CreateALocalVariable].Text;
   mItem.Kind := cKindVariable;
   mItem.Detail := Format('%s: %s', [FSlot.Name, FDeclType]);
-  mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
+  mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
   mItem.AdditionalEdits := [Atlas.Common.Editing.CommandSource.AddLocal(FSource, FRoutine, TSyntaxKind.VarSection,
     'var', Format('%s: %s;', [FSlot.Name, FDeclType]))] + TypeEdits(FRoutine.StartOffset);
   Items := Items + [mItem];
@@ -642,7 +641,7 @@ begin
     mItem.Name := cTexts[TValuesText.CreateInlineVariable].Text;
     mItem.Kind := cKindVariable;
     mItem.Detail := Format('var %s := …', [FSlot.Name]);
-    mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret('var ' + FSlot.Name,
+    mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret('var ' + FSlot.Name,
       FSlot.CursorOffset + 4));
     Items := Items + [mItem];
   end;
@@ -671,7 +670,7 @@ begin
   mItem.Kind := cKindField;
   mItem.Detail := Format('%s: %s', [mField, FDeclType]);
   // Die Verwendung heißt danach wie das Feld; der Cursor bleibt an derselben Stelle im Namen.
-  mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(mField,
+  mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(mField,
     FSlot.CursorOffset + Length(mField) - Length(FSlot.Name)));
   mItem.AdditionalEdits := [FieldEdit(mClass, mField)] + TypeEdits(FSource.Offset(mClass.Range.StartPos.Line));
   Items := Items + [mItem];
@@ -690,7 +689,7 @@ begin
   mItem.Name := cTexts[TValuesText.CreateConstant].Text;
   mItem.Kind := cKindConstant;
   mItem.Detail := Format('%s = %s;', [FSlot.Name, TDeclareUnknown.DefaultValue(FTypeName)]);
-  mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
+  mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
   mItem.AdditionalEdits := [ConstantEdit(mItem.Detail)];
   Items := Items + [mItem];
 end;
@@ -819,7 +818,7 @@ var
   mIndex: Integer;
 begin
   mIndex := -1;
-  while (mIndex < High(ATokens)) and (ComparePositions(ATokens[mIndex + 1].EndPos, APosition) <= 0) do
+  while (mIndex < High(ATokens)) and (TTextPosition.Compare(ATokens[mIndex + 1].EndPos, APosition) <= 0) do
   begin
     Inc(mIndex);
   end;
@@ -942,7 +941,7 @@ begin
   begin
     Exit(CompareText(A.FileName, B.FileName) < 0);
   end;
-  Result := ComparePositions(A.Range.StartPos, B.Range.StartPos) < 0;
+  Result := TTextPosition.Compare(A.Range.StartPos, B.Range.StartPos) < 0;
 end;
 
 /// <summary>Sortiert nach DeclaredBefore; wenige Mitglieder: Einfügen genügt.</summary>
@@ -1291,7 +1290,7 @@ begin
   // Erzeugt Code: Atlas zeigt die Zusatzänderungen nicht als uses-Ergänzung.
   AItem.Action := 'assign';
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(mContext.ChainStart, ARequest.Position), '');
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(mContext.ChainStart, ARequest.Position), '');
   FillAssignText(AItem, mFields, mExpr, Copy(mLineText, 1, mContext.ChainStart.Character), ARequest.LineBreak,
     ASnippets);
 end;

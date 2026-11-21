@@ -25,6 +25,8 @@ type
     procedure InsertsFieldsBeforeMethods;
     [Test]
     procedure RelocatesFieldIntoNewSection;
+    [Test]
+    procedure KindKeysForJson;
   end;
 
 implementation
@@ -180,6 +182,13 @@ begin
   // strict private fällt weg; protected zwischen private und public, Feld vor Methode.
   Assert.IsTrue(ContainsStr(mText, '  TFoo = class'#10'  private'#10'    FCount: Integer;'#10'  protected'#10 +
     '    FHidden: Integer;'#10'    procedure Run;'#10'  public'#10), mText);
+end;
+
+procedure TMemberTransferTests.KindKeysForJson;
+begin
+  Assert.AreEqual('field', TMemberTransfer.KindKey(TTransferKind.Field));
+  Assert.AreEqual('property', TMemberTransfer.KindKey(TTransferKind.Property_));
+  Assert.AreEqual('method', TMemberTransfer.KindKey(TTransferKind.Method));
 end;
 
 initialization

@@ -282,7 +282,7 @@ The list of packages with scope and switch is above under [Packages of the IDE p
 
 The main thread does not wait for the server while you type or click: slash commands, `///` scaffolds and "Switch to test unit" (also from the code lens) ask in the background. The diagnostics window does not count open modal dialogs as main thread load, and for a slow call it names the server request the main thread waited for. In the server, reading commands (switch to test unit, interface cost, metrics, TODOs, unit relations, editor marks, unit search and others) run concurrently, so hover, completion and diagnostics no longer queue behind a long command.
 
-How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins"); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
+How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins"); each unit's package is listed in [Tools/UnitAssignment.tsv](Tools/UnitAssignment.tsv) (decision in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md)). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md); the implemented features per area are in [docs/architektur](docs/architektur).
 
 ## Requirements
 

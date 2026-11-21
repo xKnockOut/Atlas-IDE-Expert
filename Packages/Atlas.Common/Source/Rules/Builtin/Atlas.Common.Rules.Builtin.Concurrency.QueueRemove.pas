@@ -174,7 +174,7 @@ var
 begin
   for mRoutine in FRoutines do
   begin
-    mInChain := InList(AChain, ClassPart(mRoutine.Name));
+    mInChain := MatchText(ClassPart(mRoutine.Name), AChain);
     for mCall in RemoveCalls(mRoutine) do
     begin
       if mInChain then
@@ -311,10 +311,10 @@ begin
   for mRoutine in FRoutines do
   begin
     mOwner := ClassPart(mRoutine.Name);
-    if (mOwner <> '') and not InList(mDone, mOwner) then
+    if (mOwner <> '') and not MatchText(mOwner, mDone) then
     begin
       mDone := mDone + [mOwner];
-      if InList(SharedThreadClasses(FContext), mOwner) or IsThreadClassIn(FAncestry, mOwner) then
+      if MatchText(mOwner, SharedThreadClasses(FContext)) or IsThreadClassIn(FAncestry, mOwner) then
       begin
         CheckClass(mOwner);
       end;
