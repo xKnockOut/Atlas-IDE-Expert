@@ -98,6 +98,14 @@ begin
   mValue := TJSONObject.ParseJSONValue(TAtlasAnthropicApi.RequestBody('m', PromptOf('', 'x')));
   try
     Assert.IsNull(TJSONObject(mValue).GetValue('system'), 'ohne system');
+    // PromptOf setzt 100; ohne Grenze (Smart CodeInsight) gilt die Vorgabe statt 0.
+  finally
+    mValue.Free;
+  end;
+  mValue := TJSONObject.ParseJSONValue(TAtlasAnthropicApi.RequestBody('m', Default(TAtlasAiPrompt)));
+  try
+    Assert.AreEqual(TAtlasAnthropicApi.cDefaultMaxTokens, TJSONObject(mValue).GetValue<Integer>('max_tokens'),
+      'ohne Grenze nie max_tokens 0');
   finally
     mValue.Free;
   end;

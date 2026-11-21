@@ -23,6 +23,9 @@ type
     cId = 'anthropic';
     cUrl = 'https://api.anthropic.com/v1/messages';
     cVersion = '2026-10-21';
+    /// <summary>max_tokens, wenn der Aufrufer keine Grenze nennt (Anfragen aus Smart CodeInsight). Die API
+    /// verlangt einen Wert; 0 bricht sofort mit stop_reason=max_tokens und leerem Inhalt ab.</summary>
+    cDefaultMaxTokens = 4096;
   public
     /// <summary>JSON der Anfrage für AModel.</summary>
     class function RequestBody(const AModel: string; const APrompt: TAtlasAiPrompt): string; static;
@@ -60,7 +63,14 @@ begin
   mBody := TJSONObject.Create;
   try
     mBody.AddPair('model', AModel);
-    mBody.AddPair('max_tokens', TJSONNumber.Create(APrompt.MaxTokens));
+    if APrompt.MaxTokens > 0 then
+    begin
+      mBody.AddPair('max_tokens', TJSONNumber.Create(APrompt.MaxTokens));
+    end
+    else
+    begin
+      mBody.AddPair('max_tokens', TJSONNumber.Create(cDefaultMaxTokens));
+    end;
     if APrompt.Instructions <> '' then
     begin
       mBody.AddPair('system', APrompt.Instructions);
