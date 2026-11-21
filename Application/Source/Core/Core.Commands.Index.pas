@@ -1,6 +1,6 @@
-﻿unit Shell.Commands.Index;
+﻿unit Core.Commands.Index;
 
-// Host-Rolle Shell: Fachlogik des Befehls "Index löschen" (#492) ohne Bezug auf
+// Host-Rolle Core: Fachlogik des Befehls "Index löschen" (#492) ohne Bezug auf
 // TServerComposition. Löscht alle Index-Caches unter einem Ordner (auch
 // anderer Projekte und IDE-Versionen; gesperrte Caches anderer Serverinstanzen
 // bleiben) und baut die Antwort. Arbeitsbereiche gibt die Komposition vorher
