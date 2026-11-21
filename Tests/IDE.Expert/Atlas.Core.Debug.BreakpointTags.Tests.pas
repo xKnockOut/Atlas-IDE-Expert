@@ -39,7 +39,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Debug.BreakpointTags;
+  Atlas.Core.Debug.BreakpointTags,
+  Atlas.Tests.TempFolder;
 
 const
   cProject = 'C:\App\App.dproj';
@@ -50,11 +51,7 @@ const
 
 procedure TAtlasBreakpointTagsTests.TearDown;
 begin
-  if (FFolder <> '') and TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasBreakpointTagsTests.SetTagsNormalizes;

@@ -52,10 +52,8 @@ end;
 
 procedure TBuildSettingsSectionTests.TearDown;
 begin
-  FRegistration.Revoke;
-  FRegistration := nil;
   FSection := nil;
-  FSectionRef := nil;
+  RevokeSection(FRegistration, FSectionRef);
 end;
 
 procedure TBuildSettingsSectionTests.SwitchesAndStartProfilesRoundTrip;

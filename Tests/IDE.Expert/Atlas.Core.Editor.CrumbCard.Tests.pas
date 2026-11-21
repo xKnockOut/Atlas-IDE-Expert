@@ -29,12 +29,12 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Outline.Model,
-  Atlas.Core.Editor.CrumbCard;
+  Atlas.Core.Editor.CrumbCard,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -59,21 +59,8 @@ const
     ' {"kind": "inheritanceDepth", "line": 4, "value": 2, "limit": 5, "atLeast": true}]}';
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function Lines: TArray<string>;
@@ -93,18 +80,6 @@ begin
   end;
 end;
 
-function NodeAt(const ANodes: TAtlasOutlineNodes; const AName: string; ALine: Integer): Integer;
-begin
-  for Result := 0 to High(ANodes) do
-  begin
-    if (ANodes[Result].Name = AName) and (ANodes[Result].NameLine = ALine) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := -1;
-end;
-
 { TAtlasCrumbCardsTests }
 
 procedure TAtlasCrumbCardsTests.MethodShowsBodyMetrics;
@@ -114,7 +89,7 @@ var
 begin
   mNodes := Nodes;
   // Vom Deklarationsglied aus zählen die Werte des Rumpfs.
-  mCard := TAtlasCrumbCards.Build(mNodes, Lines, NodeAt(mNodes, 'Speichern', 4), True, Metrics);
+  mCard := TAtlasCrumbCards.Build(mNodes, Lines, TOutlineTest.NodeAt(mNodes, 'Speichern', 4), True, Metrics);
   Assert.IsTrue(mCard.Available);
   Assert.IsTrue(mCard.Title.Contains('Speichern(A, B: Integer)'), mCard.Title);
   Assert.AreEqual(4, Integer(Length(mCard.Rows)));
@@ -133,7 +108,7 @@ var
   mCard: TAtlasCrumbCard;
 begin
   mNodes := Nodes;
-  mCard := TAtlasCrumbCards.Build(mNodes, Lines, NodeAt(mNodes, 'TKunde', 3), True, Metrics);
+  mCard := TAtlasCrumbCards.Build(mNodes, Lines, TOutlineTest.NodeAt(mNodes, 'TKunde', 3), True, Metrics);
   Assert.IsTrue(mCard.Available);
   Assert.AreEqual('TKunde = class(TObject)', mCard.Title);
   Assert.AreEqual(3, Integer(Length(mCard.Rows)));
@@ -150,12 +125,12 @@ var
   mCard: TAtlasCrumbCard;
 begin
   mNodes := Nodes;
-  mCard := TAtlasCrumbCards.Build(mNodes, Lines, NodeAt(mNodes, 'Speichern', 4), False, Default(TAtlasFileMetrics));
+  mCard := TAtlasCrumbCards.Build(mNodes, Lines, TOutlineTest.NodeAt(mNodes, 'Speichern', 4), False, Default(TAtlasFileMetrics));
   Assert.IsFalse(mCard.Available);
   Assert.AreNotEqual('', mCard.Title);
   Assert.AreEqual(0, Integer(Length(mCard.Rows)));
   Assert.IsFalse(TAtlasCrumbCards.HasCard(mNodes, -1));
-  Assert.IsFalse(TAtlasCrumbCards.HasCard(mNodes, NodeAt(mNodes, 'Kunden', 0)));
+  Assert.IsFalse(TAtlasCrumbCards.HasCard(mNodes, TOutlineTest.NodeAt(mNodes, 'Kunden', 0)));
 end;
 
 procedure TAtlasCrumbCardsTests.RowTexts;

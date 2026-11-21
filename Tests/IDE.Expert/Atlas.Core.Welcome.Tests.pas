@@ -178,7 +178,8 @@ uses
   Atlas.Core.Welcome.Backup,
   Atlas.Core.Welcome.HostLayout,
   Atlas.Core.Welcome.Contract,
-  Atlas.Core.Settings.Contract;
+  Atlas.Core.Settings.Contract,
+  Atlas.Core.Settings.TestSupport;
 
 const
   cWelcomePath = 'Software\Embarcadero\BDS\23.0\WelcomePage';
@@ -1070,64 +1071,6 @@ end;
 
 { TAtlasWelcomeSettingsTests }
 
-type
-  TMemoryStore = class(TInterfacedObject, IAtlasSettingsStore)
-  private
-    FValues: TDictionary<string, string>;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
-  end;
-
-{ TMemoryStore }
-
-constructor TMemoryStore.Create;
-begin
-  inherited Create;
-  FValues := TDictionary<string, string>.Create;
-end;
-
-destructor TMemoryStore.Destroy;
-begin
-  FValues.Free;
-  inherited;
-end;
-
-function TMemoryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-var
-  mText: string;
-begin
-  Result := ADefault;
-  if FValues.TryGetValue(AName, mText) then
-  begin
-    Result := StrToIntDef(mText, ADefault);
-  end;
-end;
-
-procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  FValues.AddOrSetValue(AName, IntToStr(AValue));
-end;
-
-function TMemoryStore.ReadString(const AName, ADefault: string): string;
-begin
-  if not FValues.TryGetValue(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TMemoryStore.WriteString(const AName, AValue: string);
-begin
-  FValues.AddOrSetValue(AName, AValue);
-end;
-
-{ TAtlasWelcomeSettingsTests }
-
 procedure TAtlasWelcomeSettingsTests.DefaultsOpenWindowOnlyOnRequest;
 var
   mSettings: TAtlasPluginSettings;
@@ -1370,7 +1313,7 @@ var
   mStore: IAtlasSettingsStore;
   mSaved, mLoaded: TAtlasPluginSettings;
 begin
-  mStore := TMemoryStore.Create;
+  mStore := TTextStore.Create;
   mSaved := ChangedWelcomeSettings;
   mSaved.Save(mStore);
   AssertWelcomeStored(mStore);

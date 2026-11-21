@@ -49,7 +49,8 @@ uses
   Atlas.Core.Completion.Sets,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Providers.Fixed,
-  Atlas.Core.Completion.Providers.Server;
+  Atlas.Core.Completion.Providers.Server,
+  Atlas.Tests.Wait;
 
 type
   TSetView = class(TInterfacedObject, IAtlasCompletionView)
@@ -130,21 +131,6 @@ end;
 function Anchors: TAtlasCompletionItems;
 begin
   Result := [Value('akRight', 3), Value('akLeft', 1, True), Value('akTop', 2), Value('akBottom', 4)];
-end;
-
-function WaitFor(const ACondition: TFunc<Boolean>): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > 3000;
-  Result := False;
 end;
 
 function Names(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>): string;
@@ -313,7 +299,7 @@ begin
     mContext := Default(TAtlasContext);
     mContext.FileName := 'C:\P\A.pas';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -354,7 +340,7 @@ begin
     mContext.FileName := 'C:\P\A.pas';
     mContext.Prefix := 'akB';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -382,7 +368,7 @@ begin
     mContext.FileName := 'C:\P\A.pas';
     mContext.Trigger := '[';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Active;
@@ -474,7 +460,7 @@ begin
     mContext := Default(TAtlasContext);
     mContext.FileName := 'C:\P\A.pas';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -534,7 +520,7 @@ begin
     mContext.FileName := 'C:\P\A.pas';
     mContext.Prefix := 'Ex';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -549,7 +535,7 @@ begin
   try
     mContext.Prefix := 'Ex';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -583,7 +569,7 @@ begin
     mContext := Default(TAtlasContext);
     mContext.FileName := 'C:\P\A.pas';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;

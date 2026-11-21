@@ -66,7 +66,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Providers.LocalFiles;
+  Atlas.Core.Tracker.Providers.LocalFiles,
+  Atlas.Tests.TempFolder;
 
 function At(AMinute: Integer): TDateTime;
 begin
@@ -98,11 +99,7 @@ end;
 procedure TAtlasTrackerNotifyTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TAtlasTrackerNotifyTests.ConnectionIdPerProviderAndServer;

@@ -45,7 +45,8 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Lsp.IdeBuild,
-  Atlas.Common.Lsp.IdeProject;
+  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.JsonRpc.TestSupport;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -66,16 +67,8 @@ end;
 { TShellIdeTests }
 
 procedure TShellIdeTests.Notify(const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
 begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    FDispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
+  TJsonRpcTestSupport.Notify(FDispatcher, AMethod, AParams);
 end;
 
 procedure TShellIdeTests.Setup;

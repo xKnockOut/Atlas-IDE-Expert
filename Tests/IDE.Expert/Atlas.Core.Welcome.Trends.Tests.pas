@@ -65,7 +65,8 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Trends,
   Atlas.Core.Welcome.Trends,
-  Atlas.Core.Settings.Contract;
+  Atlas.Core.Settings.Contract,
+  Atlas.Core.Settings.TestSupport;
 
 const
   cProject = 'C:\Projekte\Kasse\Kasse.dproj';
@@ -246,64 +247,6 @@ end;
 
 { TAtlasTrendSettingsTests }
 
-type
-  TTrendStore = class(TInterfacedObject, IAtlasSettingsStore)
-  private
-    FValues: TDictionary<string, string>;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
-  end;
-
-{ TTrendStore }
-
-constructor TTrendStore.Create;
-begin
-  inherited Create;
-  FValues := TDictionary<string, string>.Create;
-end;
-
-destructor TTrendStore.Destroy;
-begin
-  FValues.Free;
-  inherited;
-end;
-
-function TTrendStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-var
-  mText: string;
-begin
-  Result := ADefault;
-  if FValues.TryGetValue(AName, mText) then
-  begin
-    Result := StrToIntDef(mText, ADefault);
-  end;
-end;
-
-procedure TTrendStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  FValues.AddOrSetValue(AName, IntToStr(AValue));
-end;
-
-function TTrendStore.ReadString(const AName, ADefault: string): string;
-begin
-  if not FValues.TryGetValue(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TTrendStore.WriteString(const AName, AValue: string);
-begin
-  FValues.AddOrSetValue(AName, AValue);
-end;
-
-{ TAtlasTrendSettingsTests }
-
 procedure TAtlasTrendSettingsTests.Defaults;
 var
   mSettings: TAtlasPluginSettings;
@@ -356,7 +299,7 @@ var
   mStore: IAtlasSettingsStore;
   mSaved, mLoaded: TAtlasPluginSettings;
 begin
-  mStore := TTrendStore.Create;
+  mStore := TTextStore.Create;
   mSaved := TAtlasPluginSettings.Defaults;
   mSaved.WelcomePageTrends := False;
   mSaved.WelcomePageTrendsPoints := 12;

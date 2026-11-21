@@ -36,15 +36,8 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Results.CallDiagram,
   Atlas.UI.Results.CallDiagram,
-  Atlas.UI.Results.Frame;
-
-function Item(const AName, AFileName: string; ALine: Integer): TAtlasHierarchyItem;
-begin
-  Result := Default(TAtlasHierarchyItem);
-  Result.Name := AName;
-  Result.FileName := AFileName;
-  Result.Line := ALine;
-end;
+  Atlas.UI.Results.Frame,
+  Atlas.Core.Lsp.TestSupport;
 
 /// <summary>Drei Ebenen: Start → Laden, Speichern → Lesen; 'Viele' hat zehn Aufgerufene; 'System.pas' ist RTL.
 /// </summary>

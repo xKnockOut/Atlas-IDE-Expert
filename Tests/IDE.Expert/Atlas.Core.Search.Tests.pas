@@ -69,23 +69,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Commands.KeyMap;
-
-/// <summary>"Zeile:Zeichen+Länge" je Treffer, durch Leerzeichen getrennt.</summary>
-function Describe(const AHits: TArray<TAtlasSearchHit>): string;
-var
-  mHit: TAtlasSearchHit;
-begin
-  Result := '';
-  for mHit in AHits do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' ';
-    end;
-    Result := Result + Format('%d:%d+%d', [mHit.Line, mHit.Character, mHit.Length]);
-  end;
-end;
+  Atlas.Core.Commands.KeyMap,
+  Atlas.Core.Search.TestSupport;
 
 function Find(const AText, ANeedle: string; ACase, AWhole, AIdent: Boolean): string;
 var

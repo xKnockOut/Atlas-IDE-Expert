@@ -50,7 +50,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
-  Atlas.Core.Tracker.Providers.YouTrack;
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Tests.Files;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt Adressen und Zeitgrenzen.</summary>
@@ -86,29 +87,6 @@ begin
   AText := FText;
   AError := FFail;
   Result := FFail = TAtlasCiFetchError.None;
-end;
-
-/// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
-function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
 end;
 
 { TAtlasTrackerConnectionsTests }
@@ -221,19 +199,19 @@ end;
 procedure TAtlasTrackerConnectionsTests.StatesFromFixtures;
 begin
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Verified), Ord(TAtlasTrackerConnections.StateOf(True, 200,
-    Fixture('YouTrack', 'users-me.json'))));
+    TTestData.Fixture('YouTrack', 'users-me.json'))));
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Rejected), Ord(TAtlasTrackerConnections.StateOf(True, 401,
-    Fixture('YouTrack', 'users-me-401.json'))));
+    TTestData.Fixture('YouTrack', 'users-me-401.json'))));
   // Anmeldeseite eines Proxys mit 200: kein Benutzer, also nicht geprüft.
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Unexpected), Ord(TAtlasTrackerConnections.StateOf(True, 200,
-    Fixture('YouTrack', 'login-page.html'))));
+    TTestData.Fixture('YouTrack', 'login-page.html'))));
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Verified), Ord(TAtlasTrackerConnections.StateOf(True, 200,
-    Fixture('GitHub', 'user.json'))));
+    TTestData.Fixture('GitHub', 'user.json'))));
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Rejected), Ord(TAtlasTrackerConnections.StateOf(True, 403,
-    Fixture('GitHub', 'user-401.json'))));
+    TTestData.Fixture('GitHub', 'user-401.json'))));
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Unexpected), Ord(TAtlasTrackerConnections.StateOf(True, 404, '')));
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Unexpected), Ord(TAtlasTrackerConnections.StateOf(True, 500,
-    Fixture('GitHub', 'user.json'))));
+    TTestData.Fixture('GitHub', 'user.json'))));
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Unreachable), Ord(TAtlasTrackerConnections.StateOf(False, 0, '')));
 end;
 
@@ -265,7 +243,7 @@ begin
   mNow := EncodeDate(2026, 10, 28) + EncodeTime(10, 18, 0, 0);
   mProvider := TAtlasYouTrackTracker.Create;
   mTarget := TAtlasTrackerConnection.Create('Firma', 'youtrack', 'https://yt.local').Target;
-  mTransport := TFakeTransport.Create(200, Fixture('YouTrack', 'users-me.json'), TAtlasCiFetchError.None);
+  mTransport := TFakeTransport.Create(200, TTestData.Fixture('YouTrack', 'users-me.json'), TAtlasCiFetchError.None);
   mKeep := mTransport;
   mStatus := TAtlasTrackerConnections.Check(mProvider, mTarget, mKeep, mNow);
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Verified), Ord(mStatus.State));
@@ -288,7 +266,7 @@ begin
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Unreachable), Ord(mStatus.State));
   Assert.AreEqual(0, mStatus.HttpStatus);
   // Abgelehnt.
-  mTransport := TFakeTransport.Create(401, Fixture('YouTrack', 'users-me-401.json'), TAtlasCiFetchError.None);
+  mTransport := TFakeTransport.Create(401, TTestData.Fixture('YouTrack', 'users-me-401.json'), TAtlasCiFetchError.None);
   mKeep := mTransport;
   mStatus := TAtlasTrackerConnections.Check(mProvider, mTarget, mKeep, mNow);
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Rejected), Ord(mStatus.State));

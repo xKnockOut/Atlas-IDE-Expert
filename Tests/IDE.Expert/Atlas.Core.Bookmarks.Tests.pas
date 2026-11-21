@@ -132,7 +132,8 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Bookmarks.Store,
   Atlas.Core.Marks.Ids,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Tests.TempFolder;
 
 const
   cKundeFile = 'C:\Projekte\Source\Kunde.pas';
@@ -617,12 +618,7 @@ end;
 
 procedure TAtlasBookmarkStorageTests.TearDown;
 begin
-  if DirectoryExists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  // Der Leckmonitor misst den Saldo von Setup und TearDown.
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasBookmarkStorageTests.FileForLiesNextToProject;

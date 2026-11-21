@@ -30,7 +30,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Pull;
+  Atlas.Core.VersionControl.Pull,
+  Atlas.Tests.Lists;
 
 type
   /// <summary>Ersatz für Git bzw. SVN: festgelegte Ergebnisse ohne Prozess; Pull setzt die Revision weiter.
@@ -180,17 +181,8 @@ begin
 end;
 
 function TFakeVcs.Called(const AName: string): Boolean;
-var
-  mCall: string;
 begin
-  Result := False;
-  for mCall in Calls do
-  begin
-    if mCall = AName then
-    begin
-      Exit(True);
-    end;
-  end;
+  Result := TTestLists.Contains(Calls, AName);
 end;
 
 { TFakeVcsWithoutUpdate }

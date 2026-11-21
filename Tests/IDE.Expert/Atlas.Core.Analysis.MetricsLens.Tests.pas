@@ -31,7 +31,8 @@ implementation
 uses
   System.JSON,
   Atlas.Core.Editor.Metrics,
-  Atlas.Core.Analysis.MetricsLens;
+  Atlas.Core.Analysis.MetricsLens,
+  Atlas.Core.Editor.Metrics.TestSupport;
 
 const
   cAnswer = '{"limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, "parameters": 6, ' +
@@ -39,18 +40,6 @@ const
     '{"length": 7, "nesting": 1, "cyclomatic": 17, "cognitive": 3, "parameters": 2, "operands": 6, "locals": 3, ' +
     '"exits": 1}}, {"name": "Help", "line": 30, "values": {"length": 2}}]}';
   cLimitFormat = '%s (> %d)';
-
-function Parse(const AJson: string): TAtlasFileMetrics;
-var
-  mValue: TJSONValue;
-begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := TAtlasFileMetrics.FromJson(mValue);
-  finally
-    mValue.Free;
-  end;
-end;
 
 function GermanFormats: TAtlasMetricFormats;
 begin

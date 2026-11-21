@@ -69,7 +69,8 @@ uses
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Notes.Store,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Tests.TempFolder;
 
 const
   cProject = 'C:\Projekte\Demo.dproj';
@@ -110,12 +111,7 @@ end;
 
 procedure TAtlasNoteStoreTests.TearDown;
 begin
-  if DirectoryExists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  // Der Leckmonitor misst den Saldo von Setup und TearDown.
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasNoteStoreTests.AddFindChangeAndRemove;
