@@ -131,7 +131,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cSeparator = ' · ';
@@ -166,11 +167,7 @@ end;
 procedure TAtlasWelcomeUnsavedFrame.SetSource(const AValue: IAtlasUnsavedSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasWelcomeUnsavedFrame.BodyHeight: Integer;
@@ -479,11 +476,7 @@ end;
 
 class function TAtlasUnsavedTexts.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc > 0 then
-  begin
-    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
-  end;
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);

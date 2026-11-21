@@ -72,7 +72,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -202,7 +203,7 @@ procedure TThreadUseAfterFreeOnTerminateRule.Check(const AContext: TRuleContext;
       mStatement := AList[mIndex];
       if mStarted then
       begin
-        if not Mentions(mStatement, mName) then
+        if not TSyntaxNodes.Mentions(mStatement, mName) then
         begin
           Continue;
         end;
@@ -435,7 +436,7 @@ begin
     end);
   for mRoutine in mRoutines do
   begin
-    if (Pos('destructor', NodeText(AContext.Text, mRoutine)) = 1) and InList(mThreads, ClassPart(mRoutine.Name)) then
+    if (Pos('destructor', NodeText(AContext.Text, mRoutine)) = 1) and MatchText(ClassPart(mRoutine.Name), mThreads) then
     begin
       mBody := mRoutine.FindChild(TSyntaxKind.Block);
       if mBody <> nil then
@@ -614,7 +615,7 @@ begin
       begin
         Continue;
       end;
-      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not InList(ANames, mNode.Name) then
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not MatchText(mNode.Name, ANames) then
       begin
         ANames := ANames + [mNode.Name];
       end;
@@ -637,7 +638,7 @@ begin
   CollectNames(ANode, mFound);
   for mName in ACandidates do
   begin
-    if InList(mFound, mName) then
+    if MatchText(mName, mFound) then
     begin
       Exit(True);
     end;
@@ -657,7 +658,7 @@ begin
   Result := True;
   for mOther := 0 to High(FRoutines) do
   begin
-    if (mOther <> AIndex) and InList(FNames[mOther], mMethod) then
+    if (mOther <> AIndex) and MatchText(mMethod, FNames[mOther]) then
     begin
       mAny := True;
       Result := Result and ContainsIndex(AReached, mOther);
@@ -844,7 +845,7 @@ begin
     for mRoutine in FRoutines do
     begin
       mOwner := ClassPart(mRoutine.Name);
-      if (mOwner <> '') and not InList(mClasses, mOwner) and mAncestry.DescendsFrom(mOwner, 'TThread') then
+      if (mOwner <> '') and not MatchText(mOwner, mClasses) and mAncestry.DescendsFrom(mOwner, 'TThread') then
       begin
         mClasses := mClasses + [mOwner];
       end;
@@ -1034,7 +1035,7 @@ var
       begin
         mPosition := mIndex;
       end
-      else if (mPosition >= 0) and Mentions(mList[mIndex], AName) then
+      else if (mPosition >= 0) and TSyntaxNodes.Mentions(mList[mIndex], AName) then
       begin
         mLast := mList[mIndex];
       end;

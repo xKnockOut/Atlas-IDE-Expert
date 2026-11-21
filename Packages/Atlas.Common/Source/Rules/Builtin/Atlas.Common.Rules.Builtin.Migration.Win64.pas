@@ -89,7 +89,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Migration.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -290,7 +291,7 @@ begin
       begin
         Continue;
       end;
-      mArgument := Unwrapped(mNode[1]);
+      mArgument := TSyntaxNodes.Unparen(mNode[1]);
       if TMigrationTypes.Is32BitInteger(mNode.Name) then
       begin
         CheckToInteger(mNode, mArgument);
@@ -377,15 +378,6 @@ var
     end;
   end;
 
-  function NextToken(AIndex: Integer): Integer;
-  begin
-    Result := AIndex;
-    while (Result <= High(mTokens)) and (mTokens[Result].Kind = TPascalTokenKind.Comment) do
-    begin
-      Inc(Result);
-    end;
-  end;
-
   /// <summary>Ist das Token AIndex vorhanden und lautet AText?</summary>
   function TokenIs(AIndex: Integer; const AText: string): Boolean;
   begin
@@ -410,15 +402,15 @@ var
     begin
       Exit;
     end;
-    mIndex := NextToken(mIndex + 1);
+    mIndex := NextUncommented(mTokens, mIndex + 1);
     if not TokenIs(mIndex, ':') then
     begin
       Exit;
     end;
     // Genau ein Typname bis zum Semikolon.
-    mIndex := NextToken(mIndex + 1);
+    mIndex := NextUncommented(mTokens, mIndex + 1);
     if (mIndex > High(mTokens)) or (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
-      not TokenIs(NextToken(mIndex + 1), ';') then
+      not TokenIs(NextUncommented(mTokens, mIndex + 1), ';') then
     begin
       Exit;
     end;
@@ -439,7 +431,7 @@ var
     begin
       Exit;
     end;
-    mSourceNode := Unwrapped(ANode[1]);
+    mSourceNode := TSyntaxNodes.Unparen(ANode[1]);
     if not (mSourceNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) or
       not mScope.SureType(ANode[0], mTarget, mTargetType) or not mTargetType.Builtin or
       not TMigrationTypes.Is32BitInteger(mTargetType.Name) then
@@ -561,7 +553,7 @@ begin
   begin
     Exit;
   end;
-  mValue := Unwrapped(ACall[3]);
+  mValue := TSyntaxNodes.Unparen(ACall[3]);
   if IsSingleCast(mValue) and TMigrationTypes.Is32BitInteger(mValue.Name) then
   begin
     Result := Result + [TTextEdit.Create(NodeRange(mValue[0]), 'LONG_PTR')];
@@ -591,7 +583,7 @@ begin
         Continue;
       end;
       mRoutine := PtrRoutine(mNode.Name);
-      mIndexNode := Unwrapped(mNode[2]);
+      mIndexNode := TSyntaxNodes.Unparen(mNode[2]);
       if (mRoutine = '') or (mIndexNode.Kind <> TSyntaxKind.Identifier) then
       begin
         Continue;

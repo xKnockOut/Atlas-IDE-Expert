@@ -52,6 +52,11 @@ type
     /// <summary>Liest AFileName und gibt den Text an AParse. AKind benennt die Ablage im Protokoll
     /// (z. B. 'Favoriten'); Pfade stehen nie darin.</summary>
     class function Load(const AFileName, AKind: string; const AParse: TAtlasDataParse): TAtlasDataLoad; static;
+    /// <summary>Load für eine Ablage: AReset leert sie vorher und, wenn nichts geladen wurde, danach wieder
+    /// (AParse kann halb gefüllt haben). AKept ist AFileName, wenn die Datei nicht geschrieben werden darf (für
+    /// WriteUnlessKept), sonst ''.</summary>
+    class function LoadInto(const AFileName, AKind: string; const AParse: TAtlasDataParse; const AReset: TProc;
+      out AKept: string): TAtlasDataLoad; static;
     /// <summary>Darf die Ablage nach diesem Ergebnis von Load die Datei schreiben? Nur nicht bei Kept.</summary>
     class function Writable(ALoad: TAtlasDataLoad): Boolean; static;
     /// <summary>Text der Datei, UTF-8 mit oder ohne BOM. False, wenn sie fehlt oder nicht lesbar ist.</summary>
@@ -184,6 +189,22 @@ begin
   else
   begin
     Result := TAtlasDataLoad.Kept;
+  end;
+end;
+
+class function TAtlasDataFile.LoadInto(const AFileName, AKind: string; const AParse: TAtlasDataParse;
+  const AReset: TProc; out AKept: string): TAtlasDataLoad;
+begin
+  AReset();
+  AKept := '';
+  Result := Load(AFileName, AKind, AParse);
+  if not Writable(Result) then
+  begin
+    AKept := AFileName;
+  end;
+  if Result <> TAtlasDataLoad.Loaded then
+  begin
+    AReset();
   end;
 end;
 

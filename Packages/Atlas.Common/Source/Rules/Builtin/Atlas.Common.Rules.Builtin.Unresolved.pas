@@ -134,7 +134,8 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Semantics.FreeRoutineMembers,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.Lexer;
 
 {$SCOPEDENUMS ON}
 
@@ -395,17 +396,6 @@ begin
     cTexts[TUnresolvedText.UsesTitle].Text);
 end;
 
-/// <summary>Text eines String-Literals ohne Hochkommas ('' → ').</summary>
-function Unquoted(const AText: string): string;
-begin
-  Result := AText;
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-  Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
-end;
-
 /// <summary>Beginnt der Quelltext mit "package"? contains und requires gibt es nur dort. In einer Unit sind es
 /// Bezeichner, etwa Felder eines Records ("Requires: TArray&lt;TPackageEntry&gt;;" nach einem Semikolon).
 /// </summary>
@@ -527,7 +517,7 @@ begin
   end
   else if FDraft.AfterIn and (mToken.Kind = TPascalTokenKind.StringLiteral) then
   begin
-    FDraft.InPath := Unquoted(mToken.Text);
+    FDraft.InPath := TPascalLexer.UnquotedString(mToken.Text);
   end
   else if not FDraft.AfterIn and ((mToken.Kind = TPascalTokenKind.Identifier) or mToken.IsSymbol('.')) then
   begin
@@ -860,22 +850,6 @@ begin
   Result := (ALine <= High(ALines)) and ALines[ALine];
 end;
 
-/// <summary>Mit Include-Dateien kann ein Name dort deklariert sein: dann nur mittlere Sicherheit.</summary>
-function IncludeConfidence(const ATokens: TArray<TPascalToken>): TRuleConfidence;
-var
-  mToken: TPascalToken;
-begin
-  Result := TRuleConfidence.High;
-  for mToken in ATokens do
-  begin
-    if (mToken.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', mToken.Text) or
-      StartsText('{$INCLUDE ', mToken.Text)) then
-    begin
-      Result := TRuleConfidence.Medium;
-    end;
-  end;
-end;
-
 /// <summary>Kandidaten ohne die, die eine andere Kandidatin im interface einbinden und den Typ weiterreichen
 /// (Fassade vor Quelle); sortiert.</summary>
 function WithoutForwarders(const AIndex: ISymbolIndex; ACandidates: TList<string>): TArray<string>;
@@ -1192,21 +1166,6 @@ begin
   end;
 end;
 
-/// <summary>Offset ab 0 des ersten Tokens an APosition; 0 ohne.</summary>
-function OffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mToken: TPascalToken;
-begin
-  for mToken in ATokens do
-  begin
-    if (mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character = APosition.Character) then
-    begin
-      Exit(mToken.Offset);
-    end;
-  end;
-  Result := 0;
-end;
-
 /// <summary>Kennt der Compiler das Attribut ABare (oder ABareAttribute) selbst?</summary>
 function CompilerAttribute(const ABare: string): Boolean;
 begin
@@ -1369,7 +1328,7 @@ begin
   end;
   mUnits := AttributeUnits(FContext.Index, mBare);
   FReport.Add(mUse.NameRange, AttributeMessage(mUse.Name, mBare, CodeAt(mNameNode.StartOffset), mUnits), FLevel,
-    UsesFixes(FContext.Tree.Tokens, OffsetAt(FContext.Tree.Tokens, mNameNode.StartPos), mUnits, FLineBreak));
+    UsesFixes(FContext.Tree.Tokens, TokenOffsetAt(FContext.Tree.Tokens, mNameNode.StartPos), mUnits, FLineBreak));
 end;
 
 procedure TUnresolvedAttributeCheck.CheckAttribute(ANode: TSyntaxNode);

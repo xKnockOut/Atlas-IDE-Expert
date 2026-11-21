@@ -42,7 +42,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Ownership,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -135,7 +136,6 @@ type
     procedure MarkReleases(ARoutine, ANode: TSyntaxNode);
     procedure MarkHandled(ANode: TSyntaxNode);
     procedure VisitRoutines(ANode: TSyntaxNode);
-    function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
     function LocalCreatedClass(ARoutine: TSyntaxNode; const AName: string; AAdd: TSyntaxNode): string;
     function ScanLocal(ARoutine: TSyntaxNode; const AName: string; AAdd: TSyntaxNode; out AFound: string): Boolean;
     function ConsiderLocalUse(ANode, AAdd: TSyntaxNode; var AFound: string): Boolean;
@@ -514,15 +514,6 @@ begin
   end;
 end;
 
-function TStringListObjectsScan.EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 // Lokale Variable AName, in der Routine aus T.Create(…) erzeugt und sonst nur gelesen (V.Name) oder an
 // AddObject übergeben: Name der Klasse, sonst ''.
 // Lokale Variable AName, in der Routine aus T.Create(…) erzeugt und sonst nur gelesen (V.Name) oder an
@@ -695,7 +686,7 @@ begin
   Result := CreatedClass(AArgument);
   if (Result = '') and (AArgument.Kind = TSyntaxKind.Identifier) then
   begin
-    mRoutine := EnclosingRoutine(AAdd);
+    mRoutine := TSyntaxNodes.Enclosing(AAdd, [TSyntaxKind.RoutineDecl]);
     if mRoutine <> nil then
     begin
       Result := LocalCreatedClass(mRoutine, AArgument.Name, AAdd);

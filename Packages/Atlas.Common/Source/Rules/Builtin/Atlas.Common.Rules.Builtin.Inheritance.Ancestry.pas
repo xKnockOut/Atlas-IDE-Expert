@@ -57,7 +57,8 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -385,7 +386,8 @@ end;
 function IsComponentCreate(const AMethod: TMethodDecl): Boolean;
 begin
   Result := (AMethod.Keyword = 'constructor') and SameText(AMethod.Symbol.Name, 'Create') and
-    (Length(AMethod.Symbol.ParamTypes) = 1) and SameText(BareName(AMethod.Symbol.ParamTypes[0]), 'TComponent');
+    (Length(AMethod.Symbol.ParamTypes) = 1) and SameText(TTextNames.BareTypeName(AMethod.Symbol.ParamTypes[0]),
+      'TComponent');
 end;
 
 /// <summary>Wird das Verdecken bereits bewusst angezeigt oder gelöst?</summary>

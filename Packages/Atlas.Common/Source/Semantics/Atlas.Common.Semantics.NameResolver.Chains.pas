@@ -108,20 +108,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Pascal.Lexer;
-
-/// <summary>&amp;Begin → Begin.</summary>
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Text.Names;
 
 /// <summary>Namen der Kette, die an ATokens[AIndex] endet, wie im Quelltext (mit Escape-&amp;); AFirst: Platz des
 /// ersten Namens. ResolveNames nimmt das Escape-&amp; ab; vorher entfernt, machte es aus &amp;&amp;op_Equality
@@ -344,7 +332,7 @@ begin
     (AAt.Tokens[mLast + 2].Kind = TPascalTokenKind.Identifier) do
   begin
     Inc(mLast, 2);
-    mUnitName := mUnitName + '.' + CleanName(AAt.Tokens[mLast].Text);
+    mUnitName := mUnitName + '.' + TTextNames.WithoutAmpersand(AAt.Tokens[mLast].Text);
     // Nur ein Versuch, ob die Teile eine Unit ergeben (TWerkzeug.Create meist nicht): ohne teures
     // Nachladen über alle Suchpfade, außer für Units aus uses (#647).
     if FUnits.FindQualifierUnit(mUnitName, mUnit) then

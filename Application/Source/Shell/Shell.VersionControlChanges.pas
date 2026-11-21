@@ -113,7 +113,7 @@ uses
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Composition,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Atlas.Common.Localization.Texts;
 
 type
@@ -367,7 +367,7 @@ begin
     FSvn := 'svn';
   end;
   // Kommandozeile: kein Fenster, der Hauptthread darf warten.
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, mRunner, ASvn, ATimeoutMs);
 end;
 

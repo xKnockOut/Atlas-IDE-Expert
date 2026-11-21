@@ -89,7 +89,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -172,16 +173,6 @@ begin
   if StartsStr('&', Result) then
   begin
     Result := Copy(Result, 2, MaxInt);
-  end;
-end;
-
-/// <summary>Innerste Routine (benannt oder anonym), in der ANode steht.</summary>
-function OwnerRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
-  begin
-    Result := Result.Parent;
   end;
 end;
 
@@ -625,7 +616,7 @@ begin
       Continue;
     end;
     // Capture: Eine anonyme Methode oder verschachtelte Routine sähe die Inline-Variable anders.
-    if (OwnerRoutine(mOccurrence.Node) <> Routine) or not TRoutineBody.Within(mOccurrence.Node, Body) then
+    if (TSyntaxNodes.Enclosing(mOccurrence.Node, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) <> Routine) or not TRoutineBody.Within(mOccurrence.Node, Body) then
     begin
       Exit(False);
     end;
@@ -874,7 +865,7 @@ var
 begin
   for mOccurrence in Symbol.Occurrences do
   begin
-    if (mOccurrence.Node <> nil) and (OwnerRoutine(mOccurrence.Node) <> Routine) then
+    if (mOccurrence.Node <> nil) and (TSyntaxNodes.Enclosing(mOccurrence.Node, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) <> Routine) then
     begin
       Exit(True);
     end;

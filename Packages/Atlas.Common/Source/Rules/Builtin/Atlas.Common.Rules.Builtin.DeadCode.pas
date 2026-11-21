@@ -159,7 +159,8 @@ uses
   Atlas.Common.Semantics.ConsideredUsed,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -209,41 +210,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function CleanName(const AText: string): string;
-begin
-  if StartsStr('&', AText) then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 function SamePosition(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line = B.Line) and (A.Character = B.Character);
-end;
-
-/// <summary>Liegt A an oder hinter B?</summary>
-function NotBefore(const A, B: TTextPosition): Boolean;
-begin
-  Result := (A.Line > B.Line) or (A.Line = B.Line) and (A.Character >= B.Character);
-end;
-
-function Inside(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
-var
-  mRange: TTextRange;
-begin
-  for mRange in ARanges do
-  begin
-    if NotBefore(APosition, mRange.StartPos) and NotBefore(mRange.EndPos, APosition) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function HasIncludes(const ATree: TSyntaxTree): Boolean;
@@ -291,20 +260,6 @@ function IsTypeKind(AKind: TIndexSymbolKind): Boolean;
 begin
   Result := AKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
-end;
-
-function ProjectKindKey(AKind: TRuleProjectKind): string;
-begin
-  case AKind of
-    TRuleProjectKind.Application:
-      Result := 'application';
-    TRuleProjectKind.Package:
-      Result := 'package';
-    TRuleProjectKind.Library_:
-      Result := 'library';
-  else
-    Result := '';
-  end;
 end;
 
 /// <summary>Bereich des Unit-Namens im Kopf (unit A.B.C;); leer, wenn die Datei keine Unit ist.</summary>
@@ -607,7 +562,7 @@ var
 begin
   for mReference in TUsesClauses.References(FContext.Tree.Tokens) do
   begin
-    if (mReference.List = TUsesListKind.UsesList) and SameText(CleanName(mReference.Name), FOwnName) then
+    if (mReference.List = TUsesListKind.UsesList) and SameText(TTextNames.WithoutAmpersand(mReference.Name), FOwnName) then
     begin
       AddFinding(mReference.Range, cTexts[TDeadCodeText.Circular].Text + FOwnName + ' → ' + FOwnName +
         cTexts[TDeadCodeText.LikeF2092].Text,
@@ -713,7 +668,7 @@ var
   mSteps: TArray<TRuleUsesStep>;
   mAllInterface: Boolean;
 begin
-  if (AReference.List <> TUsesListKind.UsesList) or SameText(CleanName(AReference.Name), FOwnName) then
+  if (AReference.List <> TUsesListKind.UsesList) or SameText(TTextNames.WithoutAmpersand(AReference.Name), FOwnName) then
   begin
     Exit;
   end;
@@ -935,7 +890,7 @@ begin
     mOwn := OwnRanges(ASymbol);
     for mPosition in mPositions do
     begin
-      if not Inside(mPosition, mOwn) and not AnySamePosition(mPosition, mDeclared) then
+      if not TTextRange.AnyEncloses(mOwn, mPosition) and not AnySamePosition(mPosition, mDeclared) then
       begin
         Exit(True);
       end;
@@ -961,7 +916,7 @@ begin
   begin
     for mPosition in mPositions do
     begin
-      if not Inside(mPosition, [ASymbol.Range]) then
+      if not ASymbol.Range.Encloses(mPosition) then
       begin
         Exit(True);
       end;
@@ -1028,7 +983,7 @@ begin
   begin
     if mToken.Kind = TPascalTokenKind.Identifier then
     begin
-      mName := LowerCase(CleanName(mToken.Text));
+      mName := LowerCase(TTextNames.WithoutAmpersand(mToken.Text));
       if not FOccurrences.TryGetValue(mName, mList) then
       begin
         mList := TList<TTextPosition>.Create;
@@ -1147,7 +1102,7 @@ begin
     for mToken in mTree.Tokens do
     begin
       Result := Result or (mToken.Kind = TPascalTokenKind.Identifier) and
-        ANames.ContainsKey(LowerCase(CleanName(mToken.Text))) and not Inside(mToken.StartPos, mClauses);
+        ANames.ContainsKey(LowerCase(TTextNames.WithoutAmpersand(mToken.Text))) and not TTextRange.AnyEncloses(mClauses, mToken.StartPos);
     end;
   finally
     mTree.Free;

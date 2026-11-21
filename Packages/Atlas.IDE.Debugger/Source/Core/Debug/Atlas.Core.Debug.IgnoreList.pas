@@ -80,6 +80,11 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Text.Json;
 
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cKind = 'Exceptions ignorieren';
+
+
 function SamePath(const ALeft, ARight: string): Boolean;
 begin
   Result := SameText(ExcludeTrailingPathDelimiter(ALeft), ExcludeTrailingPathDelimiter(ARight));
@@ -340,7 +345,7 @@ begin
   end;
   mList := Empty;
   mValid := False;
-  if TAtlasDataFile.Load(TPath.Combine(AFolder, cFileName), 'Exceptions ignorieren',
+  if TAtlasDataFile.Load(TPath.Combine(AFolder, cFileName), cKind,
     function(const AText: string): Boolean
     begin
       mList := Parse(AText, mValid);
@@ -363,7 +368,7 @@ begin
     Result := True;
   except
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Exceptions ignorieren', E);
+      TAtlasDataFile.ReportNotWritten(cKind, E);
   end;
 end;
 

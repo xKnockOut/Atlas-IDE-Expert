@@ -34,7 +34,8 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Semantics.Ancestry,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -147,20 +148,6 @@ type
     procedure Run;
   end;
 
-function SplitNames(const ANames: string): TArray<string>;
-var
-  mName: string;
-begin
-  Result := nil;
-  for mName in SplitString(ANames, ',') do
-  begin
-    if Trim(mName) <> '' then
-    begin
-      Result := Result + [Trim(mName)];
-    end;
-  end;
-end;
-
 /// <summary>Alle Parameter des Routinenkopfs AHeader (nil: keine), in ihrer Reihenfolge.</summary>
 function ParamEntries(AHeader: TSyntaxNode): TArray<TParamEntry>;
 var
@@ -186,7 +173,7 @@ begin
       Continue;
     end;
     mEntry.Node := mParams[mIndex];
-    for mName in SplitNames(mParams[mIndex].Name) do
+    for mName in TTextNames.SplitList(mParams[mIndex].Name) do
     begin
       mEntry.Name := mName;
       Result := Result + [mEntry];
@@ -756,7 +743,7 @@ begin
       Continue;
     end;
     mCandidate.Declaration := ASection[mInner];
-    for mName in SplitNames(ASection[mInner].Name) do
+    for mName in TTextNames.SplitList(ASection[mInner].Name) do
     begin
       mCandidate.Name := mName;
       CheckName(mCandidate);
@@ -787,7 +774,7 @@ begin
       mCandidate.Declaration := mNode;
       if mNode.Kind = TSyntaxKind.InlineVar then
       begin
-        for mName in SplitNames(mNode.Name) do
+        for mName in TTextNames.SplitList(mNode.Name) do
         begin
           mCandidate.Name := mName;
           CheckName(mCandidate);

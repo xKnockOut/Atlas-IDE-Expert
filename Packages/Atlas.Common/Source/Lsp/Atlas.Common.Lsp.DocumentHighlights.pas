@@ -85,7 +85,8 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.KeywordHighlights,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -100,33 +101,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function CleanName(const AText: string): string;
-begin
-  // &Begin → Begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 function SameTarget(const A, B: TDefinitionTarget): Boolean;
 begin
   Result := SameText(A.FileName, B.FileName) and (A.SelectionRange.StartPos = B.SelectionRange.StartPos);
-end;
-
-/// <summary>Index des nächsten Tokens nach AIndex, das kein Kommentar und keine Direktive ist.</summary>
-function NextCodeToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
 end;
 
 /// <summary>Art des Vorkommens ATokens[AIndex] von AWanted: Deklaration, Zuweisung oder Lesen.</summary>
@@ -140,7 +117,7 @@ begin
     Exit(THighlightKind.Text);
   end;
   Result := THighlightKind.Read;
-  mNext := NextCodeToken(ATokens, AIndex);
+  mNext := NextCodeAfter(ATokens, AIndex);
   if (mNext <= High(ATokens)) and (ATokens[mNext].Kind = TPascalTokenKind.Symbol) and (ATokens[mNext].Text = ':=') then
   begin
     Result := THighlightKind.Write;
@@ -290,11 +267,11 @@ begin
     begin
       Exit;
     end;
-    mName := CleanName(mTokens[mIndex].Text);
+    mName := TTextNames.WithoutAmpersand(mTokens[mIndex].Text);
     for mIndex := 0 to High(mTokens) do
     begin
       if (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
-        not SameText(CleanName(mTokens[mIndex].Text), mName) then
+        not SameText(TTextNames.WithoutAmpersand(mTokens[mIndex].Text), mName) then
       begin
         Continue;
       end;

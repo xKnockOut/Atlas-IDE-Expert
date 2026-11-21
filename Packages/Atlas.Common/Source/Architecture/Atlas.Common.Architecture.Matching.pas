@@ -39,7 +39,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Names;
 
 type
   TMatchCandidate = record
@@ -48,15 +49,6 @@ type
     Overlap: Integer;
     SameName: Boolean;
   end;
-
-function CompareNames(const ALeft, ARight: string): Integer;
-begin
-  Result := CompareText(ALeft, ARight);
-  if Result = 0 then
-  begin
-    Result := CompareStr(ALeft, ARight);
-  end;
-end;
 
 /// <summary>Teilsystemnamen eines Stands mit ihren Units (klein geschrieben).</summary>
 function GroupsOf(const ASnapshot: TArchitectureSnapshot;
@@ -169,11 +161,11 @@ begin
       end;
       if Result = 0 then
       begin
-        Result := CompareNames(ANewNames[ALeft.NewIndex], ANewNames[ARight.NewIndex]);
+        Result := TTextNames.Compare(ANewNames[ALeft.NewIndex], ANewNames[ARight.NewIndex]);
       end;
       if Result = 0 then
       begin
-        Result := CompareNames(AOldNames[ALeft.OldIndex], AOldNames[ARight.OldIndex]);
+        Result := TTextNames.Compare(AOldNames[ALeft.OldIndex], AOldNames[ARight.OldIndex]);
       end;
     end));
 end;
@@ -257,7 +249,7 @@ begin
   TArray.Sort<TSubsystemMatch>(Result, TComparer<TSubsystemMatch>.Construct(
     function(const ALeft, ARight: TSubsystemMatch): Integer
     begin
-      Result := CompareNames(ALeft.NewName, ARight.NewName);
+      Result := TTextNames.Compare(ALeft.NewName, ARight.NewName);
     end));
 end;
 

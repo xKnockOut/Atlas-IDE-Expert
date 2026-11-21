@@ -781,6 +781,7 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.ProcessLeftovers.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.DataFile.pas"/>
         <DCCReference Include="Source\Core\Foundation\Atlas.Core.Foundation.Calls.pas"/>
+        <DCCReference Include="Source\Core\Foundation\Atlas.Core.Foundation.Contract.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Entries.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.ProjectContext.Contract.pas"/>

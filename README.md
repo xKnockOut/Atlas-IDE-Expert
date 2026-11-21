@@ -282,7 +282,7 @@ The list of packages with scope and switch is above under [Packages of the IDE p
 
 The main thread does not wait for the server while you type or click: slash commands, `///` scaffolds and "Switch to test unit" (also from the code lens) ask in the background. The diagnostics window does not count open modal dialogs as main thread load, and for a slow call it names the server request the main thread waited for. In the server, reading commands (switch to test unit, interface cost, metrics, TODOs, unit relations, editor marks, unit search and others) run concurrently, so hover, completion and diagnostics no longer queue behind a long command.
 
-How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins"); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
+How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins"); each unit's package is listed in [Tools/UnitAssignment.tsv](Tools/UnitAssignment.tsv) (decision in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md)). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md); the implemented features per area are in [docs/architektur](docs/architektur).
 
 ## Requirements
 
@@ -311,7 +311,7 @@ Only the server, only for Claude Code sessions in the cloud and other Linux mach
 Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin
 ```
 
-The script first takes the prebuilt program from the `cloud-linux` pre-release (workflow `linux-server.yml`, state of main) if it matches the source. Otherwise it fetches Free Pascal trunk at a pinned commit from the same release or builds it once (about 10 minutes, under `~/.cache/atlas-fpc`), prepares the source with `Tools/Linux/Convert-ForFpc.py` and compiles to `Output/Linux64/Bin/AtlasServer`. If the source has not changed, it does not rebuild. Platform adapters live in `Packages/Atlas.Linux`; `Shell.Platform` picks them. The Linux build does not replace the Delphi build before a merge.
+The script first takes the prebuilt program from the `cloud-linux` pre-release (workflow `linux-server.yml`, state of main) if it matches the source. Otherwise it fetches Free Pascal trunk at a pinned commit from the same release or builds it once (about 10 minutes, under `~/.cache/atlas-fpc`), prepares the source with `Tools/Linux/Convert-ForFpc.py` and compiles to `Output/Linux64/Bin/AtlasServer`. If the source has not changed, it does not rebuild. Platform adapters live in `Packages/Atlas.Linux`; `Platform.Server` picks them. The Linux build does not replace the Delphi build before a merge.
 
 Without any Delphi installation, `AtlasServer --check X.dproj` and the editor take the Delphi version the project expects: `delphiVersion`, otherwise the one matching `<ProjectVersion>` of the .dproj, otherwise the newest known one. It sets only `CompilerVersion`, `RTLVersion` and `VERxxx` (no library paths), so `{$IF CompilerVersion >= 36}…{$ELSE}…{$ENDIF}` keeps only one branch, as in the IDE (#1321).
 

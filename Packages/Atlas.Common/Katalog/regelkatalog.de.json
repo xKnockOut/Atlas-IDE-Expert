@@ -86,6 +86,10 @@
           "description": "Erste Namenssegmente der Host-Units ohne Präfix."
         },
         {
+          "name": "hostedFeatures",
+          "description": "Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander."
+        },
+        {
           "name": "allow",
           "description": "Genehmigte Ausnahmen \"Quelle -> Ziel\" (beide Globs)."
         }

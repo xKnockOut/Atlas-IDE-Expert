@@ -89,7 +89,10 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Ownership.TryFinally,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -152,37 +155,10 @@ begin
   Result := MatchText(AName, AList);
 end;
 
-function ContainsAny(const AName: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  for mWord in AWords do
-  begin
-    if ContainsText(AName, mWord) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Folgt AName der Namensregel für Typen (TName)?</summary>
 function LooksLikeType(const AName: string): Boolean;
 begin
   Result := (Length(AName) > 1) and (AName[1] = 'T') and CharInSet(AName[2], ['A'..'Z']);
-end;
-
-/// <summary>Folgt AName der Namensregel für Interfaces (IName, auch Unit.IName)?</summary>
-function LooksLikeInterface(const AName: string): Boolean;
-var
-  mName: string;
-begin
-  mName := AName;
-  if mName.Contains('.') then
-  begin
-    mName := Copy(mName, mName.LastIndexOf('.') + 2, MaxInt);
-  end;
-  Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
 end;
 
 /// <summary>Typumwandlung wie TFoo(X) oder IFoo(X): ein Argument, Aufruf über einen Typnamen.</summary>
@@ -194,7 +170,7 @@ begin
   if Result then
   begin
     mName := ACall[0].Name;
-    Result := LooksLikeType(mName) or LooksLikeInterface(mName) or SameText(mName, 'Pointer');
+    Result := LooksLikeType(mName) or TTextNames.LooksLikeInterface(mName) or SameText(mName, 'Pointer');
   end;
 end;
 
@@ -275,23 +251,6 @@ begin
       Result := not mFound;
     end);
   Result := mFound;
-end;
-
-/// <summary>Steht ANode in einer anonymen Methode der Routine (die Variable wird eingefangen)?</summary>
-function InsideAnonymous(ANode, ARoutine: TSyntaxNode): Boolean;
-var
-  mCurrent: TSyntaxNode;
-begin
-  mCurrent := ANode.Parent;
-  while (mCurrent <> nil) and (mCurrent <> ARoutine) do
-  begin
-    if mCurrent.Kind = TSyntaxKind.AnonymousMethod then
-    begin
-      Exit(True);
-    end;
-    mCurrent := mCurrent.Parent;
-  end;
-  Result := False;
 end;
 
 /// <summary>Inline-Variablen der Routine außerhalb lokaler Routinen und anonymer Methoden.</summary>
@@ -509,7 +468,7 @@ var
   mCall: TConstructorCall;
   mCreates: Boolean;
 begin
-  if (ResultType(ARoutine) = '') or LooksLikeInterface(ResultType(ARoutine)) or
+  if (ResultType(ARoutine) = '') or TTextNames.LooksLikeInterface(ResultType(ARoutine)) or
     not FObjects.IsClass(ResultType(ARoutine)) or
     (TRoutineBody.BodyOf(ARoutine) = nil) or HasAsmOrWith(ARoutine) then
   begin
@@ -528,7 +487,7 @@ begin
       end;
       mCreates := True;
     end
-    else if (mUse = TLocalUse.Escape) or InsideAnonymous(mNode, ARoutine) then
+    else if (mUse = TLocalUse.Escape) or (TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.AnonymousMethod], ARoutine) <> nil) then
     begin
       Exit(False);
     end;
@@ -650,7 +609,7 @@ begin
   begin
     AUse := TLocalUse.Use;
   end
-  else if ContainsAny(ACall.Name, cReleaseWords) then
+  else if TTextArrays.ContainsAnyText(ACall.Name, cReleaseWords) then
   begin
     AUse := TLocalUse.Release;
   end
@@ -754,7 +713,7 @@ var
   mUse: TLocalUse;
   mWhat, mFirstWhat: string;
 begin
-  if LooksLikeInterface(ATypeName) or TSyntaxNode.UsedInNestedRoutine(ARoutine, AName) then
+  if TTextNames.LooksLikeInterface(ATypeName) or TSyntaxNode.UsedInNestedRoutine(ARoutine, AName) then
   begin
     Exit;
   end;
@@ -767,7 +726,7 @@ begin
   for mNode in mFound do
   begin
     mUse := Classify(mNode);
-    if (mUse in [TLocalUse.Release, TLocalUse.Escape]) or InsideAnonymous(mNode, ARoutine) or
+    if (mUse in [TLocalUse.Release, TLocalUse.Escape]) or (TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.AnonymousMethod], ARoutine) <> nil) or
       ((mUse = TLocalUse.Alloc) and not IsAllocation(mNode.Parent[1], mWhat)) then
     begin
       Exit;

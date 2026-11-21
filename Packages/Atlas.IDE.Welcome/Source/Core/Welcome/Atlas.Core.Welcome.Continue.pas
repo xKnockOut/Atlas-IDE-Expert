@@ -154,8 +154,6 @@ type
       out AResult: TAtlasContinueIncoming): Boolean; overload; static;
     /// <summary>Gleiche Datei: Groß-/Kleinschreibung (ASCII), „/“ und „\“ sowie Leerraum am Rand egal.</summary>
     class function SameFile(const A, B: string): Boolean; static;
-    /// <summary>Dateiname ohne Pfad (auch mit „/“).</summary>
-    class function FileNameOf(const APath: string): string; static;
   end;
 
 {$SCOPEDENUMS ON}
@@ -209,7 +207,8 @@ uses
   System.DateUtils,
   Atlas.Core.Editor.MethodToggle,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Core.Projects.Summary.Json,
+  Atlas.Text.Uris;
 
 { JSON }
 
@@ -353,20 +352,10 @@ begin
   Result := False;
 end;
 
-/// <summary>AEntry nach Zeit einsortieren, neueste zuerst; bei Gleichstand bleibt die Reihenfolge (stabil).</summary>
-procedure InsertByTime(var AFound: TAtlasContinueEntries; const AEntry: TAtlasContinueEntry);
-var
-  mIndex, mPosition: Integer;
+/// <summary>Arbeitsstand von AEntry für TAtlasWorkOrder.</summary>
+function EntryStateOf(const AEntry: TAtlasContinueEntry): TAtlasWorkState;
 begin
-  mPosition := Length(AFound);
-  for mIndex := High(AFound) downto 0 do
-  begin
-    if AEntry.State.At > AFound[mIndex].State.At then
-    begin
-      mPosition := mIndex;
-    end;
-  end;
-  Insert(AEntry, AFound, mPosition);
+  Result := AEntry.State;
 end;
 
 /// <summary>Letzte Änderung an AFileName in AChanges; False ohne.</summary>
@@ -494,7 +483,7 @@ begin
     mEntry.Project := Trim(mProject);
     if ALoad(mEntry.Project, mSummary) and Read(mSummary, mEntry.State) and (mEntry.State.TabCount > 0) then
     begin
-      InsertByTime(mFound, mEntry);
+      TAtlasWorkOrder.InsertNewestFirst<TAtlasContinueEntry>(mFound, mEntry, EntryStateOf);
     end;
   end;
   Result := Copy(mFound, 0, Min(Max(ACount, cMinCount), cMaxCount));
@@ -702,21 +691,6 @@ begin
   Result := SummaryNormalizedPath(A) = SummaryNormalizedPath(B);
 end;
 
-class function TAtlasWelcomeContinue.FileNameOf(const APath: string): string;
-var
-  mIndex: Integer;
-begin
-  // Ohne ExtractFileName: Die Pfade haben „\“, auch wenn die Tests nicht unter Windows laufen.
-  Result := Trim(APath);
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
-
 function ResolvedOf(const AIncoming: IAtlasVcsIncoming; const ARevision: string; out AResolved: string): Boolean;
 begin
   AResolved := '';
@@ -897,7 +871,7 @@ begin
   mNames := nil;
   for mName in AMissing do
   begin
-    mNames := mNames + [TAtlasWelcomeContinue.FileNameOf(mName)];
+    mNames := mNames + [TTextUris.FileNameOf(Trim(mName))];
   end;
   Result := string.Join(', ', mNames);
 end;

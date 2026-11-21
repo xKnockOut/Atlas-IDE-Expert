@@ -167,26 +167,6 @@ end;
 
 { Lesen }
 
-function ObjectsOf(AObject: TJSONObject; const AName: string): TArray<TJSONObject>;
-var
-  mArray: TJSONArray;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mArray := TJsonRead.Items(AObject, AName);
-  if mArray = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mArray.Count - 1 do
-  begin
-    if mArray.Items[mIndex] is TJSONObject then
-    begin
-      Result := Result + [TJSONObject(mArray.Items[mIndex])];
-    end;
-  end;
-end;
-
 function ColumnOf(AObject: TJSONObject): TAtlasTestCaseColumn;
 begin
   Result.Name := TJsonRead.Text(AObject, 'name');
@@ -241,11 +221,11 @@ begin
     ATable.MethodLine := TJsonRead.IntOr(mObject, 'methodLine', -1);
     ATable.Editable := TJsonRead.FlagOr(mObject, 'editable', False);
     ATable.Reason := TJsonRead.Text(mObject, 'reason');
-    for mItem in ObjectsOf(mObject, 'columns') do
+    for mItem in TJsonRead.Objects(mObject, 'columns') do
     begin
       ATable.Columns := ATable.Columns + [ColumnOf(mItem)];
     end;
-    for mItem in ObjectsOf(mObject, 'rows') do
+    for mItem in TJsonRead.Objects(mObject, 'rows') do
     begin
       ATable.Rows := ATable.Rows + [RowOf(mItem, Length(ATable.Rows))];
     end;
@@ -270,7 +250,7 @@ begin
       Exit;
     end;
     mObject := TJSONObject(mValue);
-    for mItem in ObjectsOf(mObject, 'proposed') do
+    for mItem in TJsonRead.Objects(mObject, 'proposed') do
     begin
       AProposal.Problems := AProposal.Problems + [TJsonRead.Text(mItem, 'problem')];
       AProposal.Cells := AProposal.Cells + [TJsonRead.Strings(mItem, 'cells')];

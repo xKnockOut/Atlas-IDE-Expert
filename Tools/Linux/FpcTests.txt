@@ -75,6 +75,7 @@ Atlas.Common.Diagnostics.CheckProfile.Tests
 Atlas.Common.Diagnostics.CrashCase.Tests
 Atlas.Common.Diagnostics.ServerPackage.Tests
 Atlas.Common.Diagnostics.StackGuard.Tests
+Atlas.Common.Documents.Contract.Tests
 Atlas.Common.Documents.TextDocument.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
@@ -186,7 +187,7 @@ Atlas.Common.JsonRpc.WorkerPool.Tests
 Atlas.Common.Leaks.Setup.Tests
 Atlas.Common.Leaks.Candidates.Tests
 Atlas.Common.Lsp.LeakCandidates.Tests
-Atlas.Common.Leaks.Ownership.Tests
+Atlas.Common.Rules.Ownership.Tests
 Atlas.Common.Lsp.Ownership.Tests
 Atlas.Common.Lsp.RuntimeReport.Tests
 Atlas.Common.Localization.Texts.Tests
@@ -326,6 +327,7 @@ Atlas.Common.Pascal.Preprocessor.Tests
 Atlas.Common.Pascal.PureRoutines.Tests
 Atlas.Common.Pascal.RoutineSignatures.Tests
 Atlas.Common.Pascal.SyntaxChecks.Tests
+Atlas.Common.Pascal.SyntaxNodes.Tests
 Atlas.Common.Pascal.SyntaxTree.Tests
 Atlas.Common.Pascal.TokenCursor.Tests
 Atlas.Common.Pascal.WarningCodes.Tests
@@ -447,6 +449,7 @@ Atlas.Common.Rules.Builtin.UsesOnlyInImplementation.Tests
 Atlas.Common.Rules.ChangedFiles.Tests
 Atlas.Common.Rules.CodeActions.Tests
 Atlas.Common.Rules.Confidence.Tests
+Atlas.Common.Findings.Contract.Tests
 Atlas.Common.Rules.Contract.Tests
 Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests

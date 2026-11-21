@@ -53,6 +53,9 @@ type
     procedure WritesAtomicallyWithoutBom;
     [Test]
     procedure WriteUnlessKeptSkipsKeptFile;
+    /// <summary>LoadInto leert vor dem Lesen und nach einem Fehlschlag; AKept nur bei gesperrter Datei.</summary>
+    [Test]
+    procedure LoadIntoResetsAndNamesKeptFile;
     [Test]
     procedure ReportsNotWrittenOncePerKind;
   end;
@@ -328,6 +331,51 @@ begin
   Assert.IsFalse(TAtlasDataFile.WriteUnlessKept(DataFile('wahl.json'), DataFile('wahl.json'), '[2]'));
   Assert.IsTrue(TAtlasDataFile.TryRead(DataFile('wahl.json'), mText));
   Assert.AreEqual('[1]', mText, 'stehen gelassene Datei bleibt');
+end;
+
+procedure TAtlasDataFileTests.LoadIntoResetsAndNamesKeptFile;
+var
+  mHandle: THandle;
+  mResets: Integer;
+  mKept: string;
+  mParse: TAtlasDataParse;
+  mReset: TProc;
+begin
+  mResets := 0;
+  mReset :=
+    procedure
+    begin
+      Inc(mResets);
+    end;
+  mParse :=
+    function(const AText: string): Boolean
+    begin
+      Result := AText = '{}';
+    end;
+  TFile.WriteAllText(DataFile('entwuerfe.json'), '{}');
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Loaded,
+    TAtlasDataFile.LoadInto(DataFile('entwuerfe.json'), 'Entwürfe', mParse, mReset, mKept));
+  Assert.AreEqual(1, mResets, 'nur vorher');
+  Assert.AreEqual('', mKept);
+  TFile.WriteAllText(DataFile('entwuerfe.json'), '{kaputt');
+  Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed,
+    TAtlasDataFile.LoadInto(DataFile('entwuerfe.json'), 'Entwürfe', mParse, mReset, mKept));
+  Assert.AreEqual(3, mResets, 'vorher und danach');
+  Assert.AreEqual('', mKept);
+  TFile.WriteAllText(DataFile('entwuerfe.json'), '{}');
+  mHandle := CreateFile(PChar(DataFile('entwuerfe.json')), GENERIC_READ, 0, nil, OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL, 0);
+  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, mHandle);
+  try
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept,
+      TAtlasDataFile.LoadInto(DataFile('entwuerfe.json'), 'Entwürfe', mParse, mReset, mKept));
+  finally
+    CloseHandle(mHandle);
+  end;
+  Assert.AreEqual(DataFile('entwuerfe.json'), mKept);
+  mKept := '';
+  mParse := nil;
+  mReset := nil;
 end;
 
 procedure TAtlasDataFileTests.ReportsNotWrittenOncePerKind;

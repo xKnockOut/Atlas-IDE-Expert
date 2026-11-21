@@ -66,7 +66,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Metrics.Collector,
   Atlas.Common.Architecture.UsesGraph,
-  Shell.Platform,
+  Platform.Server,
   Shell.Mcp.Ide,
   Shell.Mcp.ArchitectureTools;
 
@@ -75,7 +75,7 @@ begin
   Result := TDocumentStore.Create(
     function(const APath: string): string
     begin
-      Result := TShellPlatform.CanonicalizePath(APath);
+      Result := TServerPlatform.CanonicalizePath(APath);
     end);
 end;
 
@@ -269,7 +269,7 @@ begin
     end,
     function(APath: string): string
     begin
-      Result := TShellPlatform.CanonicalizePath(APath);
+      Result := TServerPlatform.CanonicalizePath(APath);
     end);
 end;
 
@@ -323,7 +323,7 @@ begin
     ReadSourceText);
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); den Namen des MCP-Clients trägt initialize nach (#1883).
   mIdentity := Default(TIndexProcessInfo);
-  mIdentity.Pid := TShellPlatform.CurrentProcessId;
+  mIdentity.Pid := TServerPlatform.CurrentProcessId;
   mIdentity.Kind := TIndexProcessInfo.cKindMcp;
   mIdentity.Client := 'MCP-Client';
   Result.Group.ProcessIdentity := mIdentity;

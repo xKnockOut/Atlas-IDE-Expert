@@ -747,12 +747,7 @@ end;
 
 class function TAtlasWelcomeTrendsFrame.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc <= 0 then
-  begin
-    Exit;
-  end;
-  Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 end.

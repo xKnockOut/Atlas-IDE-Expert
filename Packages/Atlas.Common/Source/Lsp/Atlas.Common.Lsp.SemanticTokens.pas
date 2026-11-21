@@ -96,7 +96,8 @@ uses
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.Reassigned,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -113,33 +114,9 @@ const
   cModifierNames: array[TSemanticTokenModifier] of string = ('declaration', 'readonly', 'defaultLibrary',
     'reassigned');
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function InRange(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
 begin
-  Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) < 0);
-end;
-
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
+  Result := (TTextPosition.Compare(ARange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ARange.EndPos) < 0);
 end;
 
 /// <summary>Art eines Typs in AType; False für Symbole, die keine Typen sind.</summary>
@@ -335,14 +312,14 @@ var
   mFirst: Integer;
 begin
   // Kette A.B.C bis zu diesem Bezeichner, wie Resolve sie bildet.
-  Result := TArray<string>.Create(CleanName(FTokens[AIndex].Text));
+  Result := TArray<string>.Create(TTextNames.WithoutAmpersand(FTokens[AIndex].Text));
   mFirst := AIndex;
   APrevious := PreviousCode(FTokens, mFirst);
   while (APrevious >= 1) and FTokens[APrevious].IsSymbol('.') and (PreviousCode(FTokens, APrevious) >= 0) and
     (FTokens[PreviousCode(FTokens, APrevious)].Kind = TPascalTokenKind.Identifier) do
   begin
     mFirst := PreviousCode(FTokens, APrevious);
-    Result := TArray<string>.Create(CleanName(FTokens[mFirst].Text)) + Result;
+    Result := TArray<string>.Create(TTextNames.WithoutAmpersand(FTokens[mFirst].Text)) + Result;
     APrevious := PreviousCode(FTokens, mFirst);
   end;
 end;

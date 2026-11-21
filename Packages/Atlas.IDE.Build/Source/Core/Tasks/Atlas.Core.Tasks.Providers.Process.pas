@@ -129,6 +129,9 @@ type
 /// <summary>Programm, Befehlszeile und Umgebung; False mit Result.Error (und Outcome), wenn nicht startbar.</summary>
 function PrepareLaunch(const ATask: TAtlasTaskDefinition; out ALaunch: TLaunch;
   var AResult: TAtlasTaskProcessResult): Boolean;
+const
+  /// <summary>Kennung für den Aufruf aus dem Hauptthread (Programmierfehler, landet im Protokoll).</summary>
+  cMainThread = 'main thread';
 var
   mBatch: Boolean;
 begin
@@ -136,7 +139,7 @@ begin
   Result := False;
   if GetCurrentThreadId = MainThreadID then
   begin
-    AResult.Error := 'main thread';
+    AResult.Error := cMainThread;
     Exit;
   end;
   ALaunch.ProgramPath := TAtlasTaskCommands.FindProgram(ATask.Command, ATask.Cwd, GetEnvironmentVariable('PATH'),

@@ -180,7 +180,8 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Defaults,
-  Atlas.Common.Configuration.Contract;
+  Atlas.Common.Configuration.Contract,
+  Atlas.Text.Arrays;
 
 function NormalizedPath(const APath: string): string;
 begin
@@ -205,20 +206,6 @@ begin
   begin
     Result := mFileName;
   end;
-end;
-
-function ContainsNode(const ANodes: TArray<Integer>; ANode: Integer): Boolean;
-var
-  mItem: Integer;
-begin
-  for mItem in ANodes do
-  begin
-    if mItem = ANode then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function IsProgramFile(const AFileName: string): Boolean;
@@ -442,7 +429,7 @@ begin
     end;
     for mNode in mUsers do
     begin
-      if not ContainsNode(Result, mNode) then
+      if not TTextArrays.ContainsInteger(Result, mNode) then
       begin
         Result := Result + [mNode];
       end;
@@ -591,7 +578,7 @@ begin
   mUsers := nil;
   for mRef in mItem.Incoming do
   begin
-    if not ContainsNode(mUsers, mRef.Source) then
+    if not TTextArrays.ContainsInteger(mUsers, mRef.Source) then
     begin
       mUsers := mUsers + [mRef.Source];
     end;
@@ -778,7 +765,7 @@ begin
   Result := nil;
   for mEdge in FNodes[ANode].Outgoing do
   begin
-    if EdgeAllowed(Self, mEdge, ASections) and not ContainsNode(Result, mEdge.Target) then
+    if EdgeAllowed(Self, mEdge, ASections) and not TTextArrays.ContainsInteger(Result, mEdge.Target) then
     begin
       Result := Result + [mEdge.Target];
     end;
@@ -795,7 +782,7 @@ begin
   begin
     mEdge := FNodes[mRef.Source].Outgoing[mRef.Item];
     if (mEdge.Section in ASections) and FNodes[mRef.Source].Active and
-      not ContainsNode(Result, mRef.Source) then
+      not TTextArrays.ContainsInteger(Result, mRef.Source) then
     begin
       Result := Result + [mRef.Source];
     end;

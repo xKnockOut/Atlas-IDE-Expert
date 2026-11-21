@@ -50,7 +50,7 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Editing.EditorConfig,
   Atlas.Common.Lsp.Formatting,
-  Shell.Platform,
+  Platform.Server,
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,
@@ -118,7 +118,7 @@ begin
   end;
   mTemp := AFileName + '.atlas-format.tmp';
   TFile.WriteAllBytes(mTemp, TFileEncoding.EncodeKeepingLineBreaks(AText, AFormat));
-  if not TShellPlatform.MoveReplacing(mTemp, AFileName) then
+  if not TServerPlatform.MoveReplacing(mTemp, AFileName) then
   begin
     if TFile.Exists(mTemp) then
     begin

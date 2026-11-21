@@ -32,7 +32,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
-  Shell.Platform,
+  Platform.Server,
   Shell.Composition;
 
 procedure RunComposition(const ATransport: IJsonRpcTransport; const ALogger: ILogger; const ASettingsFile: string);

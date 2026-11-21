@@ -33,6 +33,8 @@ type
 
 const
   cSearchSettingsOwner = 'atlas.search';
+  /// <summary>Bereich der Einstellungen für „Units suchen“ (Kennung).</summary>
+  cUnitSearchAreaId = 'Units suchen';
 
 implementation
 
@@ -55,7 +57,7 @@ end;
 
 function TAtlasSearchUnitSearchSection.AreaId: string;
 begin
-  Result := 'Units suchen';
+  Result := cUnitSearchAreaId;
 end;
 
 procedure TAtlasSearchUnitSearchSection.BuildUnitSearch;

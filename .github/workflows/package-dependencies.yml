@@ -40,6 +40,8 @@ jobs:
           echo "grenzen=$grenzen" >> "$GITHUB_OUTPUT"
       - name: Merge-Helfer, Selbsttest
         run: python3 Tools/Merge-Integration.py --selbsttest
+      - name: Units umbenennen, Selbsttest
+        run: python3 Tools/Rename-Units.py --selbsttest
       - name: Konstante Arrays passen zu ihrer Aufzählung (Delphi E2072, FPC übersetzt VCL-Units nicht), Selbsttest
         run: python3 Tools/Check-ConstArrays.py --selbsttest
       - name: Konstante Arrays passen zu ihrer Aufzählung

@@ -22,7 +22,6 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.Tracker.SettingsTables,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.SettingsRows;
@@ -56,7 +55,7 @@ type
     ValuesNote: TLabel;
   end;
 
-  TAtlasTrackerWorkflowPart = class
+  TAtlasTrackerWorkflowPart = class(TAtlasTrackerSettingsPart)
   public const
     cStateFieldKey = 'issues.stateField';
     cAssigneeFieldKey = 'issues.assigneeField';
@@ -71,16 +70,11 @@ type
     cPrBaseKey = 'issues.github.prBase';
     cPrBodyKey = 'issues.github.prBody';
   private
-    FRows: TAtlasTrackerSettingsRows;
-    FHooks: TAtlasTrackerSettingsHooks;
-    FTables: TAtlasTrackerSettingsTables;
     FView: TAtlasTrackerWorkflowView;
     procedure BuildFields;
     procedure BuildLoad;
     procedure LoadValuesClick(Sender: TObject);
   public
-    constructor Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
-      ATables: TAtlasTrackerSettingsTables);
     procedure Build;
     /// <summary>Die Klapplisten (gebundene Felder lädt die Seite).</summary>
     procedure Load(const AValues: IAtlasSettingsValues);
@@ -114,15 +108,6 @@ const
   cNoteTop = 7;
 
 { TAtlasTrackerWorkflowPart }
-
-constructor TAtlasTrackerWorkflowPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
-  ATables: TAtlasTrackerSettingsTables);
-begin
-  inherited Create;
-  FRows := ARows;
-  FHooks := AHooks;
-  FTables := ATables;
-end;
 
 procedure TAtlasTrackerWorkflowPart.BuildFields;
 begin

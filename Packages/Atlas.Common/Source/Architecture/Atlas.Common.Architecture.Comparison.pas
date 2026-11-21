@@ -169,7 +169,9 @@ uses
   System.Generics.Defaults,
   System.IOUtils,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Names,
+  System.StrUtils;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -216,27 +218,6 @@ const
   cLineBreak = #13#10;
   cKindNameList: array[TArchitectureFailKind] of string = ('newCycle', 'newCrossLink', 'subsystemChange',
     'centralGrowth');
-
-function CompareNames(const ALeft, ARight: string): Integer;
-begin
-  Result := CompareText(ALeft, ARight);
-  if Result = 0 then
-  begin
-    Result := CompareStr(ALeft, ARight);
-  end;
-end;
-
-function SectionText(AInterface: Boolean): string;
-begin
-  if AInterface then
-  begin
-    Result := 'interface';
-  end
-  else
-  begin
-    Result := 'implementation';
-  end;
-end;
 
 { TArchitectureComparison }
 
@@ -435,20 +416,6 @@ begin
   Result.Reason := ALink.Reason;
 end;
 
-function InList(const AName: string; const AList: TArray<string>): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Kanten aus ASnapshot, die in AOtherKeys fehlen: alle in AAll, die zwischen Teilsystemen auch in
 /// ACross.</summary>
 procedure EdgesOnlyIn(const ASnapshot: TArchitectureSnapshot; AUnits: TDictionary<string, Integer>;
@@ -534,7 +501,7 @@ var
   mGrow: Integer;
 begin
   mGrow := ANewUnit.Total - AOldUnit.Total;
-  Result := (InList(ANewUnit.Name, ANew.Central) or InList(ANewUnit.Name, AOld.Central)) and
+  Result := (MatchText(ANewUnit.Name, ANew.Central) or MatchText(ANewUnit.Name, AOld.Central)) and
     (mGrow >= TArchitectureComparer.cGrowthMinimum) and
     (mGrow * 100 > AOldUnit.Total * TArchitectureComparer.cGrowthPercent);
 end;
@@ -594,7 +561,7 @@ begin
       Result := (ARight.After - ARight.Before) - (ALeft.After - ALeft.Before);
       if Result = 0 then
       begin
-        Result := CompareNames(ALeft.Unit_, ARight.Unit_);
+        Result := TTextNames.Compare(ALeft.Unit_, ARight.Unit_);
       end;
     end));
 end;
@@ -658,7 +625,7 @@ end;
 
 class function TArchitectureComparer.EdgeText(const AEdge: TComparisonEdge): string;
 begin
-  Result := AEdge.Source + ' → ' + AEdge.Target + ' (' + SectionText(AEdge.Interface_) + ')';
+  Result := AEdge.Source + ' → ' + AEdge.Target + ' (' + TTextNames.SectionKeyword(AEdge.Interface_) + ')';
 end;
 
 function CycleCaption(const ACycle: TComparisonCycle): string;
@@ -920,7 +887,7 @@ begin
       Result := Result + ',';
     end;
     Result := Result + '{"source":' + TJsonText.Quote(mEdge.Source) + ',"target":' + TJsonText.Quote(mEdge.Target) +
-      ',"section":' + TJsonText.Quote(SectionText(mEdge.Interface_)) + ',"from":' +
+      ',"section":' + TJsonText.Quote(TTextNames.SectionKeyword(mEdge.Interface_)) + ',"from":' +
       TJsonText.Quote(mEdge.FromSubsystem) + ',"to":' + TJsonText.Quote(mEdge.ToSubsystem);
     if AReason then
     begin

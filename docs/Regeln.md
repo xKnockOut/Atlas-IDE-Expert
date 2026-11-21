@@ -778,6 +778,7 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common"; ohne Angabe meldet die Regel nichts. |
 | `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | Erste Namenssegmente der Host-Units ohne Präfix. |
+| `hostedFeatures` | string-list | `[]` | Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander. |
 | `allow` | string-list | `[]` | Genehmigte Ausnahmen "Quelle -> Ziel" (beide Globs). |
 
 Mit Treffer:

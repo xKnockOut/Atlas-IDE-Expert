@@ -131,7 +131,7 @@ uses
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,
@@ -671,7 +671,7 @@ end;
 procedure TCodeActionBuilder.AddMemberOrderAction;
 var
   mSettings: TMemberOrderSettings;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mAction: TCodeAction;
 begin
   if Assigned(FOwner.FMemberOrderFor) then

@@ -141,7 +141,7 @@ var
   mOwner, mBase: string;
 begin
   mOwner := ClassPart(ARoutine.Name);
-  if (mOwner = '') or InList(AThreads, mOwner) or AAncestry.DescendsFrom(mOwner, 'TThread') then
+  if (mOwner = '') or MatchText(mOwner, AThreads) or AAncestry.DescendsFrom(mOwner, 'TThread') then
   begin
     Exit(False);
   end;
@@ -568,7 +568,7 @@ end;
 // (oder Winapi.Windows.…), WaitFor und Wait mit Empfänger.
 function TBlockingCallInMainThreadScan.IsBlockingCall(ACallee: TSyntaxNode): Boolean;
 begin
-  if InList(cWindowsWaitCalls, ACallee.Name) then
+  if MatchText(ACallee.Name, cWindowsWaitCalls) then
   begin
     Result := (ACallee.Kind <> TSyntaxKind.MemberAccess) or MatchText(SourceText(FContext.Text, ACallee[0]),
       ['Windows', 'Winapi.Windows']);
@@ -577,7 +577,7 @@ begin
   begin
     Result := not MatchText(ACallee.Name, ['WaitFor', 'Wait']) or (ACallee.Kind = TSyntaxKind.MemberAccess);
   end;
-  Result := Result and InList(FCalls, ACallee.Name);
+  Result := Result and MatchText(ACallee.Name, FCalls);
 end;
 
 // Timeout des Aufrufs AName mit den Argumenten AArgs (MaxInt ohne Timeout-Argument); False bei Sleep ohne

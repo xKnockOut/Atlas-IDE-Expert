@@ -39,7 +39,7 @@ uses
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Service,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.VersionControlChanges,
   Shell.VersionControl.TestSupport,
   Shell.Hotspots;
@@ -257,7 +257,7 @@ begin
   begin
     Exit;
   end;
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   mFolder := NewFolder('git');
   try
     InitGit(mRunner, mGit, mFolder, 'Atlas Test');
@@ -379,7 +379,7 @@ begin
   begin
     Exit;
   end;
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   mFolder := NewFolder('svn');
   try
     mGitFolder := TPath.Combine(mFolder, 'git');

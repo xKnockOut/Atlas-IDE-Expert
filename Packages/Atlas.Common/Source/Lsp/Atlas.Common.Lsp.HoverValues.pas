@@ -59,17 +59,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function DigitValue(AChar: Char): Integer;
-begin
-  case AChar of
-    '0'..'9': Result := Ord(AChar) - Ord('0');
-    'a'..'f': Result := Ord(AChar) - Ord('a') + 10;
-    'A'..'F': Result := Ord(AChar) - Ord('A') + 10;
-  else
-    Result := -1;
-  end;
-end;
-
 { THoverValues }
 
 class function THoverValues.TryParseNumber(const AText: string; out AValue: Int64): Boolean;
@@ -112,7 +101,7 @@ begin
   mValue := 0;
   for mIndex := 1 to Length(mText) do
   begin
-    mDigit := DigitValue(mText[mIndex]);
+    mDigit := TTextChars.HexDigitValue(mText[mIndex]);
     if (mDigit < 0) or (mDigit >= mBase) then
     begin
       Exit(False);

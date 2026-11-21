@@ -98,13 +98,15 @@
     zwischen Features prüft Tools/Check-FeatureCycles.ps1.
 
     Modulgrenzen (#1455): Welche Unit des Plugins in welches
-    Package gehört, steht als Daten in docs/adr/0017-unit-zuordnung.md
-    (Ordnertabelle, Einzelzeilen je Package). Jede Unit braucht dort eine
-    Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
+    Package gehört, steht als Daten in Tools/UnitAssignment.tsv (eine Zeile
+    je Unit, sortiert nach Package und Unit) und
+    Tools/UnitAssignment.Folders.tsv (Ordner -> Package). Jede Unit braucht
+    eine Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
     Verträge zwischen Modulen liegen in Base (Source/Contracts). Befristete
-    Ausnahmen und bekannte Verstöße stehen im Abschnitt "Grenzen zwischen
-    Base, Modulen und Verträgen"; bekannte Verstöße werden bei jedem Lauf
-    genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
+    Ausnahmen und bekannte Verstöße stehen in
+    Tools/UnitAssignment.Boundaries.tsv; bekannte Verstöße werden bei jedem
+    Lauf genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
+    Die Entscheidung dazu steht in docs/adr/0017-unit-zuordnung.md.
     Tools/Test-PackageDependencies.ps1 prüft das mit absichtlichen Verstößen.
 
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
@@ -361,8 +363,6 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Editing.Unwrap:IsCode'                                  = 'Methodendeklaration von TBuilder'
     'Atlas.Common.Editing.Unwrap:TBuilder.IsCode'                         = 'Token-Index statt Token, außerhalb des Arrays False'
     'Atlas.Common.Rules.Builtin.Capture:NextToken'                        = 'sucht ab einem Offset über den Regelkontext und liefert das Token mit out-Parameter'
-    'Atlas.Common.Rules.Builtin.Migration.Win64:NextToken'                = 'überspringt nur Kommentare, Direktiven nicht'
-    'Atlas.Common.Rules.Builtin.TypedExpressions:NextToken'               = 'überspringt nur Kommentare, Direktiven nicht'
     'Atlas.Common.Rules.Builtin.Todos:IsCode'                             = 'prüft Kommentarzeilen auf auskommentierten Code, keine Token'
     'Atlas.Common.Editing.SafeDelete:PreviousSolid'                       = 'schließt AIndex ein'
     'Atlas.Common.Editing.Unwrap:PrevCode'                                = 'Offset im Text statt Token-Index'
@@ -373,7 +373,6 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Editing.RoutineBody:TRoutineBody.TokenAt'               = 'öffentliche Weiterleitung an TSyntaxTree.FirstTokenOf'
     'Atlas.Common.Editing.Unwrap:NextCode'                                = 'Offset im Text statt Token-Index'
     'Atlas.Common.Editing.Unwrap:TBuilder.NextCode'                       = 'Offset im Text statt Token-Index'
-    'Atlas.Common.Editing.WrapCommands:NextCode'                          = 'beginnt hinter AIndex'
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.NextCode'      = 'Methode des Lesers über seinen eigenen Token-Ausschnitt'
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.PreviousCode'  = 'schließt AIndex ein'
     'Atlas.Common.Lsp.Completion.Cases:TokenAt'                           = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
@@ -388,7 +387,6 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Rules.Builtin.Database:TokenAt'                         = 'Methodendeklaration von TSqlBuild'
     'Atlas.Common.Rules.Builtin.Database:TSqlBuild.TokenAt'               = 'Token eines SQL-Stücks, nicht Token-Index der Unit'
     'Atlas.Common.Rules.Builtin.Inheritance.Ancestry:TokenAt'             = 'liefert das Token mit out-Parameter über den Regelkontext'
-    'Atlas.Common.Rules.Builtin.MethodDirectives:WithoutTypeParams'       = 'schneidet beim ersten < ab ("A<T>.B" ergibt "A")'
     'Atlas.Common.Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'
     'Atlas.Common.Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
 }
@@ -598,6 +596,8 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
+# Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
+$HostedFeatures = @()
 $FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
 # Eigenes Feature (bzw. innerhalb einer Struktur relativ zum Träger): Rolle der Quelle -> erlaubte Rollen des Ziels
 $OwnAllowed = @{
@@ -627,19 +627,32 @@ $HostHostAllowed = @{
     Platform   = @('Platform')
 }
 
-function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
+function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts, [string[]] $Hosted = @()) {
     # Einordnung nach Ausgabeartefakt.Feature.Rolle.Sache; $null für externe Units (RTL, VCL, Setup, Tests).
     # Rolle ist der erste Rollenbezeichner nach dem Feature; jeder weitere eröffnet eine Verschachtelung
     # (Konzept 7.4). Positions nennt die Stellen der Rollenbezeichner in Segments (Segments[0] = Feature),
     # ein Bezeichner gleich dem vorigen zählt als Sache ("Keine Wiederholung").
     $best = ''
+    $isHosted = $false
+    $hostedName = $Hosted | Where-Object { $_ -ieq $Name.Split('.')[0] } | Select-Object -First 1
+    if ($hostedName -and $Name.Contains('.')) {
+        $best = $hostedName
+        $isHosted = $true
+    }
     foreach ($prefix in $Prefixes) {
+        if ($isHosted) { break }
         if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) {
             $best = $prefix
         }
     }
     if ($best -ne '') {
         $rest = @($Name.Substring($best.Length + 1).ToLowerInvariant().Split('.'))
+        $artefact = $best.ToLowerInvariant()
+        if ($isHosted) {
+            # Hosted-Feature: kein Präfix, das erste Segment ist das Feature.
+            $rest = @($Name.ToLowerInvariant().Split('.'))
+            $artefact = ''
+        }
         $positions = @()
         $roles = @()
         for ($index = 1; $index -lt $rest.Count; $index++) {
@@ -651,14 +664,14 @@ function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
         }
         $role = 'Root'
         if ($roles.Count -gt 0) { $role = $roles[0] }
-        return [pscustomobject]@{ Artefact = $best.ToLowerInvariant(); Feature = $rest[0]; Role = $role
-            Segments = $rest; Positions = $positions; Roles = $roles; HostRole = '' }
+        return [pscustomobject]@{ Artefact = $artefact; Feature = $rest[0]; Role = $role
+            Segments = $rest; Positions = $positions; Roles = $roles; HostRole = ''; Hosted = $isHosted }
     }
     $first = $Name.Split('.')[0]
     $hostRole = $Hosts | Where-Object { $_ -ieq $first } | Select-Object -First 1
     if ($hostRole -and $Name.Contains('.')) {
         return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host'; HostRole = $hostRole
-            Segments = @(); Positions = @(); Roles = @() }
+            Segments = @(); Positions = @(); Roles = @(); Hosted = $false }
     }
     return $null
 }
@@ -725,13 +738,27 @@ function Get-TargetView($Unit, [int] $Length) {
 
 function Test-RoleImport($Source, $Target) {
     if ($null -eq $Source -or $null -eq $Target) { return $true }
+    # Platform-Features importieren nie den Host (8.3), Hosted-Features nur die Foundation (8.2).
     if ($Target.Role -eq 'Host') {
+        if ($Source.Hosted) { return $Target.HostRole -eq 'Foundation' }
         return $Source.Role -eq 'Host' -and $HostHostAllowed[$Source.HostRole] -contains $Target.HostRole
     }
     if ($Source.Role -eq 'Host') {
-        return $HostAllowed[$Source.HostRole] -contains (Get-TargetView $Target 1).Kind
+        $kind = (Get-TargetView $Target 1).Kind
+        if ($Target.Hosted) {
+            # 8.1, Zeilen Hosted-Feature: Shell alles außer Internals, Host-Adapters nur Contract und Sub-Contract.
+            switch ($Source.HostRole) {
+                'Shell'    { return $HostAllowed.Shell -contains $kind }
+                'Adapters' { return $kind -in @('Contract', 'SubContract') }
+                default    { return $false }
+            }
+        }
+        return $HostAllowed[$Source.HostRole] -contains $kind
     }
-    if ($Source.Artefact -ne $Target.Artefact -or $Source.Feature -ne $Target.Feature) {
+    $same = $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature
+    # Platform-Features importieren keine Hosted-Features (8.3), Hosted-Features einander nie (8.2).
+    if ($Target.Hosted -and -not $same) { return $false }
+    if (-not $same) {
         $view = (Get-TargetView $Target 1).Kind
         if ((Get-SourceRights $Source 1) -eq 'Contract') { return $view -eq 'Contract' }
         return $view -in @('Contract', 'Root')
@@ -779,7 +806,8 @@ if ($SelfTest) {
     $data = Get-Content -Raw -Encoding UTF8 (Join-Path $Root 'Tests/Data/Architecture/role-imports.json') | ConvertFrom-Json
     $failures = @()
     foreach ($case in $data.cases) {
-        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles) (Get-UnitRole $case.to $data.prefixes $data.hostRoles)
+        $hosted = @($data.hostedFeatures)
+        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles $hosted) (Get-UnitRole $case.to $data.prefixes $data.hostRoles $hosted)
         if ($actual -ne [bool] $case.allowed) {
             $failures += "$($case.from) -> $($case.to): erwartet $($case.allowed), erhalten $actual"
         }
@@ -931,11 +959,11 @@ foreach ($dir in @('Packages', 'Application')) {
     foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
         $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
         $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles
+        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles $HostedFeatures
         if ($null -eq $source) { continue }
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles
+            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles $HostedFeatures
             # Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
             $internals = $null -ne $target -and $target.Role -ne 'Host' -and $target.Roles -contains 'Internals'
             if ((Test-RoleImport $source $target) -or ((Test-RoleApproved $ownUnit $unit.Name) -and -not $internals)) { continue }
@@ -975,63 +1003,87 @@ foreach ($file in Get-ChildItem -Path $PluginSources -Recurse -File -Include 'At
     }
 }
 
-# Modulgrenzen (#1455): Die Zuordnung der Units zu Packages steht als Daten in
-# docs/adr/0017-unit-zuordnung.md (Ordnertabelle, Einzelzeilen je Package, Ausnahmen und bekannte Verstöße).
+# Modulgrenzen (#1455): Die Zuordnung der Units zu Packages steht als Daten in drei TSV-Dateien neben diesem Skript:
+# Tools/UnitAssignment.tsv (eine Zeile je Unit), Tools/UnitAssignment.Folders.tsv (Ordner -> Package) und
+# Tools/UnitAssignment.Boundaries.tsv (befristete Ausnahmen und bekannte Verstöße). Die Entscheidung dazu steht in
+# docs/adr/0017-unit-zuordnung.md.
 # Verboten: Base -> Modul, Modul -> anderes Modul. Erlaubt: Modul -> Base (auch die Verträge zwischen
 # Modulen unter Source/Contracts von Base) und alles innerhalb eines Packages.
 $BasePackage = 'Atlas.IDE.Base'
-$AssignmentFile = 'docs/adr/0017-unit-zuordnung.md'
-$BoundarySection = 'Grenzen zwischen Base, Modulen und Verträgen'
+$AssignmentFile = 'Tools/UnitAssignment.tsv'
+$FolderFile = 'Tools/UnitAssignment.Folders.tsv'
+$BoundaryFile = 'Tools/UnitAssignment.Boundaries.tsv'
 $KnownReport = @()
 
-function Read-ModuleAssignment([string] $Path) {
-    # Liest die Tabellen der Zuordnung. Zellen mit Namen stehen in Backticks.
-    $result = [pscustomobject]@{
-        Folders = @{}; Default = ''; Rows = @{}; Allowed = @(); Known = @(); Problems = @(); Packages = @()
-    }
-    $section = ''
-    $subsection = ''
+function Read-AssignmentTable([string] $Relative, [string[]] $Columns, $Problems) {
+    # Liest eine TSV-Datei der Zuordnung: erste Zeile die Spaltenköpfe, Zeilen mit # und Leerzeilen zählen nicht.
+    $rows = @()
+    $path = Join-Path $Root $Relative
     $lineNo = 0
-    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+    foreach ($line in [IO.File]::ReadAllLines($path)) {
         $lineNo++
-        if ($line -match '^###\s+(.+?)\s*$') { $subsection = $Matches[1]; continue }
-        if ($line -match '^##\s+(.+?)\s*$') {
-            $section = $Matches[1]
-            $subsection = ''
-            if ($section -match '^Atlas\.IDE\.\w+$') { $result.Packages += $section }
-            continue
-        }
-        if (-not $line.StartsWith('|') -or $line -match '^\|\s*-') { continue }
-        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
-        if ($section -eq '') {
-            # Ordnertabelle: | `Debug` | `Atlas.IDE.Debugger` |, "alle übrigen" ohne Backticks ist die Vorgabe.
-            if ($cells.Count -ne 2 -or $cells[1] -notmatch '^`(Atlas\.IDE\.\w+)`$') { continue }
-            $package = $Matches[1]
-            $folders = @([regex]::Matches($cells[0], '`(\w+)`') | ForEach-Object { $_.Groups[1].Value })
-            if ($folders.Count -eq 0) { $result.Default = $package }
-            foreach ($folder in $folders) { $result.Folders[$folder] = $package }
-            continue
-        }
-        if ($cells.Count -lt 3 -or $cells[0] -notmatch '^`([\w.]+)`$') { continue }
-        $first = $Matches[1]
-        if ($cells[1] -notmatch '^`([^`]+)`$') { continue }
-        $second = $Matches[1]
-        if ($section -match '^Atlas\.IDE\.\w+$') {
-            if ($result.Rows.ContainsKey($first)) {
-                $result.Problems += "${AssignmentFile}:${lineNo}: $first steht doppelt in der Zuordnung (auch Zeile $($result.Rows[$first].Line))"
-                continue
+        if ($lineNo -eq 1) {
+            if ($line.TrimStart([char]0xFEFF) -ne ($Columns -join "`t")) {
+                $Problems.Add("${Relative}:1: Kopfzeile muss lauten: $($Columns -join ' <Tab> ')")
             }
-            $result.Rows[$first] = [pscustomobject]@{ Package = $section; File = $second; Reason = $cells[2]; Line = $lineNo }
+            continue
         }
-        elseif ($section -eq $BoundarySection) {
-            $entry = [pscustomobject]@{ From = $first; To = $second; Note = $cells[2]; Line = $lineNo; Uses = 0 }
-            if ($subsection -eq 'Befristete Ausnahmen') { $result.Allowed += $entry }
-            elseif ($subsection -eq 'Bekannte Verstöße') { $result.Known += $entry }
+        if ($line.Trim() -eq '' -or $line.StartsWith('#')) { continue }
+        $cells = $line.Split("`t")
+        if ($cells.Count -ne $Columns.Count -or @($cells | Where-Object { $_.Trim() -eq '' }).Count -gt 0) {
+            $Problems.Add("${Relative}:${lineNo}: erwartet $($Columns.Count) Spalten getrennt durch Tab ($($Columns -join ', ')), keine leer")
+            continue
+        }
+        $row = [ordered]@{ Line = $lineNo }
+        for ($i = 0; $i -lt $Columns.Count; $i++) { $row[$Columns[$i]] = $cells[$i].Trim() }
+        $rows += [pscustomobject]$row
+    }
+    return $rows
+}
+
+function Read-ModuleAssignment {
+    $problems = [Collections.Generic.List[string]]::new()
+    $result = [pscustomobject]@{
+        Folders = @{}; Default = ''; Rows = @{}; Allowed = @(); Known = @(); Problems = $problems; Packages = @()
+    }
+    foreach ($entry in Read-AssignmentTable $FolderFile @('Ordner', 'Package') $problems) {
+        if ($entry.Package -notmatch '^Atlas\.IDE\.\w+$') {
+            $problems.Add("${FolderFile}:$($entry.Line): $($entry.Package) ist kein Plugin-Package")
+            continue
+        }
+        if ($entry.Ordner -eq '*') { $result.Default = $entry.Package }
+        else { $result.Folders[$entry.Ordner] = $entry.Package }
+    }
+    $previous = $null
+    foreach ($entry in Read-AssignmentTable $AssignmentFile @('Package', 'Unit', 'Datei', 'Grund') $problems) {
+        if ($entry.Package -notmatch '^Atlas\.IDE\.\w+$' -or $entry.Unit -notmatch '^[\w.]+$') {
+            $problems.Add("${AssignmentFile}:$($entry.Line): Package oder Unit ist kein Name ($($entry.Package), $($entry.Unit))")
+            continue
+        }
+        if ($result.Rows.ContainsKey($entry.Unit)) {
+            $problems.Add("${AssignmentFile}:$($entry.Line): $($entry.Unit) steht doppelt in der Zuordnung (auch Zeile $($result.Rows[$entry.Unit].Line))")
+            continue
+        }
+        # Sortiert nach Package und Unit: Neue Zeilen beider Seiten landen beim Mergen an verschiedenen Stellen.
+        $key = "$($entry.Package)`t$($entry.Unit)"
+        if ($null -ne $previous -and [StringComparer]::OrdinalIgnoreCase.Compare($previous, $key) -gt 0) {
+            $problems.Add("${AssignmentFile}:$($entry.Line): $($entry.Unit) steht nicht sortiert; Zeilen nach Package und Unit ordnen")
+        }
+        $previous = $key
+        if ($result.Packages -notcontains $entry.Package) { $result.Packages += $entry.Package }
+        $result.Rows[$entry.Unit] = [pscustomobject]@{
+            Package = $entry.Package; File = $entry.Datei; Reason = $entry.Grund; Line = $entry.Line
         }
     }
-    if ($result.Default -eq '') { $result.Problems += "${AssignmentFile}: Ordnertabelle ohne Zeile für alle übrigen Ordner" }
+    foreach ($entry in Read-AssignmentTable $BoundaryFile @('Art', 'Von', 'Nach', 'Grund') $problems) {
+        $boundary = [pscustomobject]@{ From = $entry.Von; To = $entry.Nach; Note = $entry.Grund; Line = $entry.Line; Uses = 0 }
+        if ($entry.Art -eq 'Ausnahme') { $result.Allowed += $boundary }
+        elseif ($entry.Art -eq 'Verstoß') { $result.Known += $boundary }
+        else { $problems.Add("${BoundaryFile}:$($entry.Line): Art ist Ausnahme oder Verstoß, nicht $($entry.Art)") }
+    }
+    if ($result.Default -eq '') { $problems.Add("${FolderFile}: Zeile * für alle übrigen Ordner fehlt") }
     foreach ($name in @($BasePackage)) {
-        if ($result.Packages -notcontains $name) { $result.Problems += "${AssignmentFile}: Abschnitt ## $name fehlt" }
+        if ($result.Packages -notcontains $name) { $problems.Add("${AssignmentFile}: keine Zeile für $name") }
     }
     return $result
 }
@@ -1056,12 +1108,12 @@ function Find-BoundaryEntry($Entries, [string] $Source, [string] $Target, [strin
 }
 
 $PluginSource = Join-Path $Root "Packages/$PluginBaseFolder/Source"
-$assignmentPath = Join-Path $Root $AssignmentFile
-if ((Test-Path $PluginSource) -and -not (Test-Path $assignmentPath)) {
-    $violations += "${AssignmentFile}: fehlt; die Modulgrenzen (#1455) lassen sich ohne Zuordnung nicht prüfen"
+$assignmentMissing = @($AssignmentFile, $FolderFile, $BoundaryFile | Where-Object { -not (Test-Path (Join-Path $Root $_)) })
+if ((Test-Path $PluginSource) -and $assignmentMissing.Count -gt 0) {
+    $violations += "$($assignmentMissing -join ', '): fehlt; die Modulgrenzen (#1455) lassen sich ohne Zuordnung nicht prüfen"
 }
 elseif (Test-Path $PluginSource) {
-    $map = Read-ModuleAssignment $assignmentPath
+    $map = Read-ModuleAssignment
     $violations += $map.Problems
     $pluginUnits = @{}
     foreach ($folder in $PluginFolders) {
@@ -1086,7 +1138,7 @@ elseif (Test-Path $PluginSource) {
     # Vollständigkeit und Abweichungen von der Ordnertabelle
     foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
         if (-not $map.Rows.ContainsKey($name)) {
-            $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile unter ## $(Get-FolderPackage $map $pluginUnits[$name].File $pluginUnits[$name].Folder) eintragen"
+            $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile mit Package $(Get-FolderPackage $map $pluginUnits[$name].File $pluginUnits[$name].Folder) sortiert eintragen"
         }
     }
     foreach ($name in @($map.Rows.Keys | Sort-Object)) {
@@ -1105,7 +1157,7 @@ elseif (Test-Path $PluginSource) {
             $violations += "${AssignmentFile}:$($row.Line): $name gehört zu $($row.Package) und liegt darum unter Packages/$($row.Package)/Source, nicht unter Packages/$($pluginUnits[$name].Folder)/Source"
         }
         elseif ($pluginUnits[$name].Folder -ne $PluginBaseFolder -and $row.Package -ne $pluginUnits[$name].Folder) {
-            $violations += "${AssignmentFile}:$($row.Line): $name liegt unter Packages/$($pluginUnits[$name].Folder)/Source und steht darum unter ## $($pluginUnits[$name].Folder), nicht unter ## $($row.Package)"
+            $violations += "${AssignmentFile}:$($row.Line): $name liegt unter Packages/$($pluginUnits[$name].Folder)/Source und gehört darum zu $($pluginUnits[$name].Folder), nicht zu $($row.Package)"
         }
         if ($row.Package -ne $folderPackage -and $row.Reason -match '^Ordner\s') {
             $violations += "${AssignmentFile}:$($row.Line): $name steht unter $($row.Package), die Ordnertabelle sagt $folderPackage; eine Ausnahme braucht eine eigene Begründung"
@@ -1147,7 +1199,7 @@ elseif (Test-Path $PluginSource) {
     }
     foreach ($entry in @($map.Allowed) + @($map.Known)) {
         if ($entry.Uses -eq 0) {
-            $violations += "${AssignmentFile}:$($entry.Line): $($entry.From) -> $($entry.To) kommt nicht mehr vor; Zeile streichen"
+            $violations += "${BoundaryFile}:$($entry.Line): $($entry.From) -> $($entry.To) kommt nicht mehr vor; Zeile streichen"
         }
     }
 }
@@ -1475,7 +1527,7 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -Fil
 }
 
 if ($KnownReport.Count -gt 0) {
-    Write-Host "Bekannte Verstöße gegen die Modulgrenzen ($($KnownReport.Count), offen laut $AssignmentFile):" -ForegroundColor Yellow
+    Write-Host "Bekannte Verstöße gegen die Modulgrenzen ($($KnownReport.Count), offen laut $BoundaryFile):" -ForegroundColor Yellow
     $KnownReport | ForEach-Object { Write-Host "  $_" }
 }
 
@@ -1497,7 +1549,7 @@ function Get-FeatureName([string] $Name) {
 }
 
 function Test-ContractUnit([string] $Name) {
-    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
+    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
 }
 
 function Get-AdapterRoleFindings([string] $BaseDir) {
@@ -1508,7 +1560,7 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
         if (-not (Test-Path $path)) { continue }
         foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
             $name = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-            $role = Get-UnitRole $name $RolePrefixes $HostRoles
+            $role = Get-UnitRole $name $RolePrefixes $HostRoles $HostedFeatures
             if ($null -eq $role) { continue }
             $relative = $file.FullName.Substring((Resolve-Path $BaseDir).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
             $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
@@ -1577,14 +1629,14 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
             $ancestor = $base.Ancestor
         }
         foreach ($item in $chain) {
-            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
             $same = $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
             if ((Test-ContractUnit $item.Home) -and (($own.Role -eq 'Adapters' -and -not $same) -or ($own.Role -eq 'Providers' -and $same))) {
                 $fitting[$unit.Name]++
             }
         }
         foreach ($item in $class.Implemented) {
-            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
             $same = $own.Role -ne 'Host' -and $homeRole.Role -ne 'Host' -and
                 $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
             $where = "$($unit.Relative):$($class.Line)"

@@ -83,6 +83,8 @@ type
     /// <summary>Routinen nur im implementation-Teil unter einem nicht geltenden Zweig (#476).</summary>
     [Test]
     procedure RecordsUnavailableImplementationRoutines;
+    [Test]
+    procedure VisibilityKeywords;
   end;
 
   [TestFixture]
@@ -1707,6 +1709,14 @@ begin
     mHasWin64 := mHasWin64 or (mDefine = 'WIN64');
   end;
   Assert.IsTrue(mHasWin64);
+end;
+
+procedure TIndexExtractorTests.VisibilityKeywords;
+begin
+  Assert.AreEqual('public', VisibilityKeyword(TIndexVisibility.Public));
+  Assert.AreEqual('published', VisibilityKeyword(TIndexVisibility.Published));
+  Assert.AreEqual('strict protected', VisibilityKeyword(TIndexVisibility.StrictProtected));
+  Assert.AreEqual('strict private', VisibilityKeyword(TIndexVisibility.StrictPrivate));
 end;
 
 initialization

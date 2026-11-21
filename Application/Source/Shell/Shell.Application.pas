@@ -25,7 +25,7 @@ uses
   Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Lsp.StatusHeartbeat,
   Atlas.Common.Index.CacheDirectory,
-  Shell.Platform,
+  Platform.Server,
   Shell.CommandLine,
   Shell.Bootstrap,
   Shell.Composition,
@@ -126,7 +126,7 @@ begin
   begin
     TServerActivity.Shared.SetLogFile(ExpandFileName(AOptions.LogFile));
   end;
-  Result := TServerStatusHeartbeat.Create(TIndexCacheDirectory.DefaultRoot, TShellPlatform.CurrentProcessId,
+  Result := TServerStatusHeartbeat.Create(TIndexCacheDirectory.DefaultRoot, TServerPlatform.CurrentProcessId,
     TServerActivity.Shared, TServerStatusHeartbeat.cIntervalMs);
 end;
 

@@ -58,7 +58,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ClassMembers,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -909,28 +910,18 @@ begin
   Result := False;
 end;
 
-/// <summary>Letztes Token ab AIndex rückwärts, das weder Kommentar noch Direktive ist; -1 ohne.</summary>
-function SolidBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Steht das Token AIndex allein oder hinter "Self." (nicht hinter einem anderen Ausdruck mit Punkt)?
 /// </summary>
 function IsOwnAccess(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
   mBefore: Integer;
 begin
-  mBefore := SolidBefore(ATokens, AIndex - 1);
+  mBefore := PreviousCode(ATokens, AIndex);
   if (mBefore < 0) or not ATokens[mBefore].IsSymbol('.') then
   begin
     Exit(True);
   end;
-  mBefore := SolidBefore(ATokens, mBefore - 1);
+  mBefore := PreviousCode(ATokens, mBefore);
   Result := (mBefore >= 0) and SameText(ATokens[mBefore].Text, 'Self');
 end;
 

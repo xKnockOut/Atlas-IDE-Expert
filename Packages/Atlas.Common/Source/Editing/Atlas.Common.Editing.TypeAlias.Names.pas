@@ -20,7 +20,6 @@ type
     cDeclarationContexts = [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl,
       TSyntaxKind.InlineConst, TSyntaxKind.Parameter, TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl];
   public
-    class function LastPart(const AName: string): string; static;
     class function IsTypeNode(ANode: TSyntaxNode): Boolean; static;
     class function Suggest(ANode: TSyntaxNode): string; static;
   end;
@@ -29,27 +28,10 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Names;
 
 { TTypeAliasNames }
-
-class function TTypeAliasNames.LastPart(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('.', Result) > 0 then
-  begin
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-  end;
-end;
-
-function Capitalized(const AName: string): string;
-begin
-  Result := AName;
-  if Result <> '' then
-  begin
-    Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
-  end;
-end;
 
 function IsUpper(AChar: Char): Boolean;
 begin
@@ -59,12 +41,12 @@ end;
 /// <summary>TKunde -> Kunde, FGroups -> Groups; eingebaute Namen groß geschrieben.</summary>
 function Bare(const AName: string): string;
 begin
-  Result := TTypeAliasNames.LastPart(Trim(AName));
+  Result := TTextNames.LastPart(Trim(AName));
   if (Length(Result) >= 2) and CharInSet(Result[1], ['T', 'F', 'L', 'A', 'G', 'I']) and IsUpper(Result[2]) then
   begin
     Result := Copy(Result, 2, MaxInt);
   end;
-  Result := Capitalized(Result);
+  Result := TTextNames.Capitalized(Result);
 end;
 
 class function TTypeAliasNames.IsTypeNode(ANode: TSyntaxNode): Boolean;

@@ -81,16 +81,6 @@ uses
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Text.Json;
 
-/// <summary>ISO 8601 ("2026-10-28T09:12:00Z") als UTC; 0 ohne.</summary>
-function TimeOfText(const AText: string): TDateTime;
-begin
-  Result := 0;
-  if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
 { TAtlasGitHubBoards }
 
 class function TAtlasGitHubBoards.ParseProjects(const AJson: string; var ASnapshot: TAtlasBoardSnapshot): Boolean;
@@ -468,7 +458,7 @@ begin
   ACard.Title := Copy(TJsonRead.Text(mIssue, 'title'), 1, TAtlasBoardCard.cMaxTitle);
   ACard.Page := TJsonRead.Text(mIssue, 'url');
   ACard.Checklist := TAtlasTrackerChecklist.Progress(TJsonRead.Text(mIssue, 'body'));
-  ACard.ResolvedAt := TimeOfText(TJsonRead.Text(mIssue, 'closedAt'));
+  ACard.ResolvedAt := TJsonRead.IsoTime(mIssue, 'closedAt', True);
   ReadAssignees(mIssue.Values['assignees'], ACard);
   mIteration := '';
   mValues := TAtlasGitHubGraphQl.NodesOf(AEntry, 'fieldValues');
@@ -571,7 +561,7 @@ begin
       mCard.State := LowerCase(TJsonRead.Text(mIssue, 'state'));
       mCard.Page := TJsonRead.Text(mIssue, 'html_url');
       mCard.Checklist := TAtlasTrackerChecklist.Progress(TJsonRead.Text(mIssue, 'body'));
-      mCard.ResolvedAt := TimeOfText(TJsonRead.Text(mIssue, 'closed_at'));
+      mCard.ResolvedAt := TJsonRead.IsoTime(mIssue, 'closed_at', True);
       ReadAssignees(mIssue.Values['assignees'], mCard);
       if ASnapshot.CardIndex(mCard.Key) < 0 then
       begin

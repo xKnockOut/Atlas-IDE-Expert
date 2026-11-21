@@ -147,8 +147,6 @@ const
   cObjectVirtualNames: array[0..9] of string = ('AfterConstruction', 'BeforeDestruction', 'Dispatch',
     'DefaultHandler', 'FreeInstance', 'Destroy', 'SafeCallException', 'ToString', 'Equals', 'GetHashCode');
 
-/// <summary>Typname ohne Unit-Präfix und Typargumente.</summary>
-function BareName(const AName: string): string;
 /// <summary>Liegt die Zeile ALine im Bereich ARange?</summary>
 function ContainsLine(const ARange: TTextRange; ALine: Integer): Boolean;
 /// <summary>Gleiche Parameter (Zahl, Typen ohne Unit) und gleiches Ergebnis?</summary>
@@ -161,24 +159,14 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Names;
 
 { TMethodDecl }
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
 begin
   Result := MatchText(ADirective, Directives);
-end;
-
-/// <summary>Typname ohne Unit-Präfix und Typargumente.</summary>
-function BareName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
 function ContainsLine(const ARange: TTextRange; ALine: Integer): Boolean;
@@ -196,7 +184,7 @@ begin
   begin
     for mIndex := 0 to High(A.ParamTypes) do
     begin
-      if not SameText(BareName(A.ParamTypes[mIndex]), BareName(B.ParamTypes[mIndex])) then
+      if not SameText(TTextNames.BareTypeName(A.ParamTypes[mIndex]), TTextNames.BareTypeName(B.ParamTypes[mIndex])) then
       begin
         Exit(False);
       end;
@@ -220,7 +208,7 @@ function CanonicalType(const AName: string): string;
 var
   mPair: string;
 begin
-  Result := LowerCase(BareName(AName));
+  Result := LowerCase(TTextNames.BareTypeName(AName));
   for mPair in cTypeSynonyms do
   begin
     if StartsStr(Result + '=', mPair) then
@@ -472,8 +460,8 @@ end;
 function OtherAncestors(const A, B: TIndexSymbol): Boolean;
 begin
   Result := (Length(A.Ancestors) > 0) <> (Length(B.Ancestors) > 0);
-  Result := Result or ((Length(B.Ancestors) > 0) and not SameText(BareName(A.Ancestors[0]),
-    BareName(B.Ancestors[0])));
+  Result := Result or ((Length(B.Ancestors) > 0) and not SameText(TTextNames.BareTypeName(A.Ancestors[0]),
+    TTextNames.BareTypeName(B.Ancestors[0])));
 end;
 
 function TAncestry.UsesOf(const AFileName: string): TArray<string>;
@@ -595,7 +583,7 @@ begin
   end
   else
   begin
-    AName := BareName(AType.Symbol.Ancestors[0]);
+    AName := TTextNames.BareTypeName(AType.Symbol.Ancestors[0]);
     // Ohne Typargumente ist der Vorfahr nicht generisch: class(THorseChannel) neben THorseChannel<T>.
     mArity := 0;
     if Length(AType.Symbol.AncestorArgs) > 0 then
@@ -620,7 +608,7 @@ begin
   end
   else
   begin
-    Result := BareName(mLocation.Symbol.Ancestors[0]);
+    Result := TTextNames.BareTypeName(mLocation.Symbol.Ancestors[0]);
   end;
 end;
 
@@ -944,12 +932,12 @@ end;
 
 function TAncestry.SameType(const A, B: string; const AWildcards: TArray<string>): Boolean;
 begin
-  Result := (CanonicalType(A) = CanonicalType(B)) or MatchText(BareName(A), AWildcards) or
-    MatchText(BareName(B), AWildcards);
+  Result := (CanonicalType(A) = CanonicalType(B)) or MatchText(TTextNames.BareTypeName(A), AWildcards) or
+    MatchText(TTextNames.BareTypeName(B), AWildcards);
   // Ein Alias der Datei oder des Index kann auf den anderen Typ zeigen: keine Aussage.
   if not Result and (A <> '') and (B <> '') then
   begin
-    Result := IsTypeAlias(BareName(A)) or IsTypeAlias(BareName(B));
+    Result := IsTypeAlias(TTextNames.BareTypeName(A)) or IsTypeAlias(TTextNames.BareTypeName(B));
   end;
 end;
 
@@ -1019,7 +1007,7 @@ end;
 
 function TAncestry.KnownType(const AName: string): Boolean;
 begin
-  Result := MatchText(CanonicalType(AName), cBuiltinTypes) or IsDeclaredType(BareName(AName));
+  Result := MatchText(CanonicalType(AName), cBuiltinTypes) or IsDeclaredType(TTextNames.BareTypeName(AName));
 end;
 
 /// <summary>Index des Felds oder der Property in AMembers, das ein Nachfahre ADepth Stufen tiefer sieht:
@@ -1078,7 +1066,7 @@ begin
     begin
       Break;
     end;
-    mName := BareName(mLocation.Symbol.Ancestors[0]);
+    mName := TTextNames.BareTypeName(mLocation.Symbol.Ancestors[0]);
     Inc(mDepth);
   end;
   Result := False;

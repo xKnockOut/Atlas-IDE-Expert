@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnArchitecture: array[0..200] of string = (
+  cCatalogLinesEnArchitecture: array[0..206] of string = (
     '{',
     '      "id": "forbidden-uses",',
     '      "name": "Forbidden uses",',
@@ -81,6 +81,12 @@ const
     '            "Platform"',
     '          ],',
     '          "description": "First name segments of host units without prefix."',
+    '        },',
+    '        {',
+    '          "name": "hostedFeatures",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Hosted features of the application: first name segment without prefix; they import only Foundation and platform features, never each other."',
     '        },',
     '        {',
     '          "name": "allow",',

@@ -43,7 +43,8 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -295,23 +296,6 @@ begin
   AClass := mSearch.ClassNode;
 end;
 
-function HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
-var
-  mIndex: Integer;
-begin
-  if AHeader <> nil then
-  begin
-    for mIndex := 0 to AHeader.ChildCount - 1 do
-    begin
-      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(AHeader[mIndex].Name, ANames) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
 function RecordSize(const AText: string; ARecord: TSyntaxNode; const ARecords: TDictionary<string, TSyntaxNode>;
   ADepth: Integer): Integer; forward;
 
@@ -473,17 +457,6 @@ begin
     not MatchText(ANode.Parent.Name, ACandidate.Fields);
 end;
 
-/// <summary>Äußerster Zugriff über ANode: A.B, A[I], A^ mit ANode vorn.</summary>
-function TopOfChain(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Parent <> nil) and (Result.Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-    TSyntaxKind.Dereference]) and (Result.Parent[0] = Result) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Ändert ein Schreiben über die Stelle den Wert (der Parameter selbst oder ein Teil, der zum Wert
 /// gehört)?</summary>
 function WritesValue(const AUse: TParamUse; const ACandidate: TParamCandidate): Boolean;
@@ -579,7 +552,7 @@ begin
     Exit(TParamAccess.Modified);
   end;
   mUse.Node := ANode;
-  mUse.Top := TopOfChain(ANode);
+  mUse.Top := TSyntaxNodes.AccessRoot(ANode);
   mUse.Parent := mUse.Top.Parent;
   Result := TParamAccess.Read;
   if mUse.Parent <> nil then
@@ -974,8 +947,8 @@ end;
 /// <summary>Signatur von außen vorgegeben: Direktiven wie virtual, override bei ignoreOverrides.</summary>
 function TManagedParamScan.FixedSignature(const AInfo: TParamRoutine): Boolean;
 begin
-  Result := HasDirective(AInfo.Header, cFixedSignatureDirectives) or
-    HasDirective(AInfo.Declaration, cFixedSignatureDirectives) or (AInfo.IsOverride and FIgnoreOverrides);
+  Result := TSyntaxNodes.HasDirective(AInfo.Header, cFixedSignatureDirectives) or
+    TSyntaxNodes.HasDirective(AInfo.Declaration, cFixedSignatureDirectives) or (AInfo.IsOverride and FIgnoreOverrides);
 end;
 
 /// <summary>Darf die Regel die Parameter von ARoutine ändern? Kein asm, keine Direktiven im Kopf, Deklaration
@@ -995,7 +968,7 @@ begin
     Exit(False);
   end;
   AInfo.Declaration := DeclarationOf(FContext.Text, FRoot, ARoutine, mFound, mVisibility, mClassNode);
-  AInfo.IsOverride := HasDirective(AInfo.Header, ['override']) or HasDirective(AInfo.Declaration, ['override']);
+  AInfo.IsOverride := TSyntaxNodes.HasDirective(AInfo.Header, ['override']) or TSyntaxNodes.HasDirective(AInfo.Declaration, ['override']);
   mName := Copy(AInfo.Header.Name, LastDelimiter('.', AInfo.Header.Name) + 1, MaxInt);
   Result := mFound and not FixedSignature(AInfo) and not FixedByClass(mClassNode, mVisibility) and
     not UsedAsValue(mName) and not PassesAllParams(ARoutine);

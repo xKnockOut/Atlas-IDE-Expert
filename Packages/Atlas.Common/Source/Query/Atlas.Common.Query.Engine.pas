@@ -198,24 +198,6 @@ const
   /// <summary>Elemente zwischen zwei Blicken auf den Abbruch.</summary>
   cCancelStride = 256;
 
-function VisibilityName(AVisibility: TIndexVisibility): string;
-begin
-  case AVisibility of
-    TIndexVisibility.Published:
-      Result := 'published';
-    TIndexVisibility.Protected:
-      Result := 'protected';
-    TIndexVisibility.StrictProtected:
-      Result := 'strict protected';
-    TIndexVisibility.Private:
-      Result := 'private';
-    TIndexVisibility.StrictPrivate:
-      Result := 'strict private';
-  else
-    Result := 'public';
-  end;
-end;
-
 function RelativePath(const ARoot, AFileName: string): string;
 var
   mRoot, mPath: string;
@@ -1219,7 +1201,7 @@ begin
     4:
       AValue := TQueryValue.OfText(AElement.Symbol.Container);
     5:
-      AValue := TQueryValue.OfText(VisibilityName(AElement.Symbol.Visibility));
+      AValue := TQueryValue.OfText(VisibilityKeyword(AElement.Symbol.Visibility));
     6:
       AValue := TypeValue(AElement.Symbol);
     7:

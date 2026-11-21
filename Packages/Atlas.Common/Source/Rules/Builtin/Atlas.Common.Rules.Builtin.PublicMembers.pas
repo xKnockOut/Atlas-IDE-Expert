@@ -75,7 +75,8 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.ConsideredUsed,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -257,20 +258,6 @@ begin
   end;
 end;
 
-function ProjectKindKey(AKind: TRuleProjectKind): string;
-begin
-  case AKind of
-    TRuleProjectKind.Application:
-      Result := 'application';
-    TRuleProjectKind.Package:
-      Result := 'package';
-    TRuleProjectKind.Library_:
-      Result := 'library';
-  else
-    Result := '';
-  end;
-end;
-
 function QualifiedOf(const ASymbol: TIndexSymbol): string;
 begin
   if ASymbol.Container <> '' then
@@ -304,18 +291,6 @@ begin
   Result := AnsiSameText(string.Join(',', mTypes), string.Join(',', ASymbol.ParamTypes));
 end;
 
-function CleanName(const AText: string): string;
-begin
-  if StartsStr('&', AText) then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 function SamePosition(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line = B.Line) and (A.Character = B.Character);
@@ -324,27 +299,6 @@ end;
 function Contains(const AItems: TArray<string>; const AItem: string): Boolean;
 begin
   Result := IndexText(AItem, AItems) >= 0;
-end;
-
-/// <summary>Liegt A an oder hinter B?</summary>
-function NotBefore(const A, B: TTextPosition): Boolean;
-begin
-  Result := (A.Line > B.Line) or ((A.Line = B.Line) and (A.Character >= B.Character));
-end;
-
-/// <summary>Liegt APosition in einem der Bereiche ARanges (beide Enden eingeschlossen)?</summary>
-function InsideAny(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
-var
-  mRange: TTextRange;
-begin
-  for mRange in ARanges do
-  begin
-    if NotBefore(APosition, mRange.StartPos) and NotBefore(mRange.EndPos, APosition) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 /// <summary>Bindet die Unit mit {$I …} bzw. {$INCLUDE …} Dateien ein?</summary>
@@ -371,7 +325,7 @@ end;
 function IsRegisterCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
   Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
-    (IndexText(CleanName(ATokens[AIndex].Text), cRegisterCalls) >= 0) and ATokens[AIndex + 1].IsSymbol('(');
+    (IndexText(TTextNames.WithoutAmpersand(ATokens[AIndex].Text), cRegisterCalls) >= 0) and ATokens[AIndex + 1].IsSymbol('(');
 end;
 
 /// <summary>Nennen die Argumente ab der öffnenden Klammer bei AOpen bis zur schließenden die Klasse AClass?
@@ -399,7 +353,7 @@ begin
     end
     else
     begin
-      Result := (ATokens[mAt].Kind = TPascalTokenKind.Identifier) and SameText(CleanName(ATokens[mAt].Text), AClass);
+      Result := (ATokens[mAt].Kind = TPascalTokenKind.Identifier) and SameText(TTextNames.WithoutAmpersand(ATokens[mAt].Text), AClass);
     end;
     Inc(mAt);
   end;
@@ -644,7 +598,7 @@ begin
       Exit(True);
     end;
   end;
-  Result := InsideAny(APosition, Bodies);
+  Result := TTextRange.AnyEncloses(Bodies, APosition);
 end;
 
 { TSearchArea }
@@ -1078,9 +1032,9 @@ begin
   begin
     Exit;
   end;
-  mName := CleanName(AToken.Text);
+  mName := TTextNames.WithoutAmpersand(AToken.Text);
   // [Behalten] verwendet BehaltenAttribute; die Namensauflösung kennt die Kurzform nicht.
-  if (AShort <> '') and SameText(mName, AShort) and not InsideAny(AToken.StartPos, AFilter.Bodies) then
+  if (AShort <> '') and SameText(mName, AShort) and not TTextRange.AnyEncloses(AFilter.Bodies, AToken.StartPos) then
   begin
     Exit(True);
   end;

@@ -72,18 +72,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 /// <summary>Deklaration von ARange bis zum Ende der letzten Zeile (dort stehen Direktiven wie deprecated).</summary>
 function DeclarationText(const ALines: TArray<string>; const ARange: TTextRange): string;
 var
@@ -337,8 +325,8 @@ begin
   Result := False;
   for mToken in FTree.Tokens do
   begin
-    if (mToken.Kind = TPascalTokenKind.Number) and (ComparePositions(mToken.StartPos, FPosition) <= 0) and
-      (ComparePositions(FPosition, mToken.EndPos) < 0) then
+    if (mToken.Kind = TPascalTokenKind.Number) and (TTextPosition.Compare(mToken.StartPos, FPosition) <= 0) and
+      (TTextPosition.Compare(FPosition, mToken.EndPos) < 0) then
     begin
       if THoverValues.TryParseNumber(mToken.Text, mNumber) then
       begin

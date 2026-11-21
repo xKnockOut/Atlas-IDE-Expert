@@ -136,6 +136,7 @@
         <DCCReference Include="WinBase\Atlas.WinBase.Files.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Uris.Tests.pas"/>
+        <DCCReference Include="Common\Documents\Atlas.Common.Documents.Contract.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.ChangeTracker.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
@@ -242,7 +243,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BoundaryTests.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas"/>
-        <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Ownership.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
@@ -514,6 +515,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TestSupport.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ParserGaps.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeDefines.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxNodes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxTree.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Debouncer.Tests.pas"/>
@@ -578,6 +580,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.Contract.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Contract.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas"/>
@@ -1314,6 +1317,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.ProcessLeftovers.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.DataFile.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Foundation\Atlas.Core.Foundation.Calls.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Foundation\Atlas.Core.Foundation.Contract.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Foundation.Calls.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Text.Agreement.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas"/>
@@ -2601,8 +2605,10 @@
         <DCCReference Include="Application\Shell\Shell.VersionControlChanges.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.AffectedTests.pas"/>
         <DCCReference Include="Application\Shell\Shell.AffectedTests.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.Platform.pas"/>
-        <DCCReference Include="Application\Shell\Shell.Platform.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Platform\Platform.Server.pas"/>
+        <DCCReference Include="Application\Platform\Platform.Server.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Platform.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.Platform.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CrashCases.pas"/>
         <DCCReference Include="Application\Shell\Shell.CrashCases.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Replay.pas"/>

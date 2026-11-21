@@ -35,7 +35,8 @@ uses
   System.DateUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Text.Json,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  System.StrUtils;
 
 { TAtlasYouTrackJson }
 
@@ -99,17 +100,8 @@ begin
 end;
 
 class function TAtlasYouTrackJson.IsOneOf(const AName: string; const ANames: array of string): Boolean;
-var
-  mName: string;
 begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if SameText(AName, mName) then
-    begin
-      Exit(True);
-    end;
-  end;
+  Result := MatchText(AName, ANames);
 end;
 
 class function TAtlasYouTrackJson.ValidKey(const AKey: string): Boolean;

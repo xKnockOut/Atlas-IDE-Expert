@@ -165,7 +165,8 @@ uses
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Templates,
   Atlas.Core.Tracker.Internals.YouTrackJson,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasYouTrackApi }
 
@@ -487,15 +488,8 @@ begin
 end;
 
 class function TAtlasYouTrackApi.Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
 begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
-  begin
-    Result := Integer(mRest);
-  end;
+  Result := TAtlasTicks.LeftOf(AWatch, ATimeoutMs);
 end;
 
 /// <summary>GET mit Fehler aus dem Status; True nur mit 200.</summary>
@@ -536,15 +530,11 @@ begin
 end;
 
 class function TAtlasYouTrackApi.ScopeQuery(AScope: TAtlasTrackerNotifyScope): string;
+const
+  cQueries: array[TAtlasTrackerNotifyScope] of string = ('for: me', '(for: me or reporter: me)',
+    '(for: me or reporter: me or has: star)');
 begin
-  case AScope of
-    TAtlasTrackerNotifyScope.Assigned:
-      Result := 'for: me';
-    TAtlasTrackerNotifyScope.Watched:
-      Result := '(for: me or reporter: me or has: star)';
-  else
-    Result := '(for: me or reporter: me)';
-  end;
+  Result := cQueries[AScope];
 end;
 
 class function TAtlasYouTrackApi.ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;

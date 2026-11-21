@@ -171,7 +171,9 @@ uses
   System.DateUtils,
   Vcl.Themes,
   Atlas.UI.Welcome.Strings,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Text.Arrays,
+  Atlas.Core.Foundation.Calls;
 
 type
   /// <summary>Zeichnet die Zeilen des Bereichs: Punkt, Name, Branch, zweite Zeile, Stand der Schnellaktion und
@@ -199,14 +201,12 @@ type
   end;
 
 function ProjectNames(const AEntries: TAtlasProjectEntries): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  SetLength(Result, Length(AEntries));
-  for mIndex := 0 to High(AEntries) do
-  begin
-    Result[mIndex] := AEntries[mIndex].Project;
-  end;
+  Result := TTextArrays.Texts<TAtlasProjectEntry>(AEntries,
+    function(AEntry: TAtlasProjectEntry): string
+    begin
+      Result := AEntry.Project;
+    end);
 end;
 
 procedure AddFirstHint(ALines: TStrings; const ALocation: TAtlasProjectLocation);
@@ -546,11 +546,7 @@ end;
 procedure TAtlasWelcomeProjectsFrame.SetSource(const AValue: IAtlasProjectsSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasWelcomeProjectsFrame.GetQuickActions: IAtlasQuickActionsSource;
@@ -767,12 +763,7 @@ end;
 
 class function TAtlasProjectsTexts.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc <= 0 then
-  begin
-    Exit;
-  end;
-  Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.BoxDblClick(Sender: TObject);

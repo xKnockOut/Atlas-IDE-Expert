@@ -52,7 +52,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   cMaxMarkerLength = 20;
@@ -75,28 +76,6 @@ end;
 function IsDocComment(const AToken: TPascalToken): Boolean;
 begin
   Result := (AToken.Kind = TPascalTokenKind.Comment) and (Copy(AToken.Text, 1, 3) = '///');
-end;
-
-/// <summary>Erstes Token, das bei AOffset oder dahinter beginnt; Length(ATokens) ohne.</summary>
-function TokenIndexAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
 end;
 
 /// <summary>AToken (Index AIndex, Inhalt ABody) setzt den Eintrag fort, der mit Token ALastIndex in Zeile ALastLine
@@ -290,7 +269,7 @@ var
   mIndices: TArray<Integer>;
 begin
   mIndices := nil;
-  mIndex := TokenIndexAt(ATokens, AFrom);
+  mIndex := TokenFrom(ATokens, AFrom);
   while (mIndex < Length(ATokens)) and (ATokens[mIndex].Offset < ATo) do
   begin
     if ATokens[mIndex].Kind = TPascalTokenKind.Comment then
@@ -308,7 +287,7 @@ var
   mIndices: TArray<Integer>;
 begin
   Result := nil;
-  mIndex := TokenIndexAt(ATokens, AOffset);
+  mIndex := TokenFrom(ATokens, AOffset);
   if mIndex >= Length(ATokens) then
   begin
     Exit;

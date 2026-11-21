@@ -60,7 +60,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Flow.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -246,7 +247,7 @@ begin
     (Length(mNested.Symbol.Ancestors) > 0);
   if Result then
   begin
-    mParent := BareName(mNested.Symbol.Ancestors[0]);
+    mParent := TTextNames.BareTypeName(mNested.Symbol.Ancestors[0]);
     Result := SameText(mParent, 'TThread') or AAncestry.DescendsFrom(mParent, 'TThread');
   end;
 end;
@@ -465,7 +466,7 @@ begin
       Continue;
     end;
     mOwner := ClassPart(mRoutine.Name);
-    if (InList(mChain, mOwner) and not SameText(MethodPart(mRoutine.Name), 'Execute')) or NamesType(mRoutine, AClass) then
+    if (MatchText(mOwner, mChain) and not SameText(MethodPart(mRoutine.Name), 'Execute')) or NamesType(mRoutine, AClass) then
     begin
       Exit(True);
     end;
@@ -480,7 +481,7 @@ begin
           Result := TSyntaxSearchStep.Descend;
           if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
             (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'OnTerminate') and
-            InList(mReaders, ShortName(SourceText(FContext.Text, ANode[1]))) then
+            MatchText(ShortName(SourceText(FContext.Text, ANode[1])), mReaders) then
           begin
             Result := TSyntaxSearchStep.Found;
           end;
@@ -581,7 +582,7 @@ begin
   for mRoutine in FRoutines do
   begin
     mOwner := ClassPart(mRoutine.Name);
-    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and not InList(Result, mOwner) and
+    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and not MatchText(mOwner, Result) and
       IsThreadClassIn(FAncestry, mOwner) then
     begin
       Result := Result + [mOwner];
@@ -599,7 +600,7 @@ begin
   for mRoutine in FRoutines do
   begin
     mOwner := ClassPart(mRoutine.Name);
-    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and InList(mClasses, mOwner) then
+    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and MatchText(mOwner, mClasses) then
     begin
       CheckExecute(mRoutine, mOwner);
     end;
@@ -661,7 +662,7 @@ begin
   end;
   mScan := TThreadExecuteScan.Create(AContext, nil);
   try
-    Result := InList(mScan.ThreadClassNames, ClassPart(mNode.Parent.Name)) and
+    Result := MatchText(ClassPart(mNode.Parent.Name), mScan.ThreadClassNames) and
       (mScan.GuardOf(mNode.Parent, ClassPart(mNode.Parent.Name), 0) = TExecuteGuard.Guarded);
   finally
     mScan.Free;

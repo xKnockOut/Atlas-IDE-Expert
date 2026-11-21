@@ -129,15 +129,6 @@ const
 const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
 
-function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
-begin
-  Result :=
-    ((APosition.Line > ARange.StartPos.Line) or
-     ((APosition.Line = ARange.StartPos.Line) and (APosition.Character >= ARange.StartPos.Character))) and
-    ((APosition.Line < ARange.EndPos.Line) or
-     ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
-end;
-
 /// <summary>Gleiche Parametertypen (Groß-/Kleinschreibung egal): dieselbe Variante einer Überladung.</summary>
 function SameParams(const A, B: TArray<string>): Boolean;
 var
@@ -281,7 +272,7 @@ begin
   for mSymbol in mOwnerUnit.Symbols do
   begin
     if SameText(mOwnerUnit.SymbolFile(mSymbol), AQuery.FileName) and
-      Within(AQuery.Position, mSymbol.SelectionRange) then
+      mSymbol.SelectionRange.Encloses(AQuery.Position) then
     begin
       Result.Kind := TResolvedKind.Symbol;
       Result.Name := mSymbol.Name;
@@ -306,7 +297,7 @@ begin
   for mSymbol in AHere.Symbols do
   begin
     if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Name, AResolved.Name) and
-      Within(APosition, mSymbol.SelectionRange) then
+      mSymbol.SelectionRange.Encloses(APosition) then
     begin
       Exit(mSymbol.ParamTypes);
     end;
@@ -370,7 +361,7 @@ begin
   // Mit Include-Dateien (#500) kann jede Fundstelle in einer anderen Datei stehen.
   mChosen := mLast;
   if AQuery.Declaration or (SameText(mOwnerUnit.SymbolFile(mLast), AQuery.FileName) and
-    Within(AQuery.Position, mLast.SelectionRange)) then
+    mLast.SelectionRange.Encloses(AQuery.Position)) then
   begin
     mChosen := mFirst;
   end;

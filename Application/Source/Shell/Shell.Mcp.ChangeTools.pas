@@ -34,7 +34,7 @@ uses
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Report,
   Atlas.Common.Lsp.Hotspots,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.Bootstrap,
   Shell.AffectedTests,
   Shell.Hotspots,

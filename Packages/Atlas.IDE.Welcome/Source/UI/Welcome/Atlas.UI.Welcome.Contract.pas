@@ -10,7 +10,8 @@ uses
   System.Types,
   Atlas.Core.Settings.GenerateMenu.Contract,
   Atlas.Core.Projects.Contract.Summary,
-  Atlas.Core.Welcome.Contract;
+  Atlas.Core.Welcome.Contract,
+  Atlas.Core.Foundation.Contract;
 
 type
   /// <summary>Ein Atlas-Bereich für „Bereich hinzufügen“ und die Leiste „Ausgeblendet“.</summary>
@@ -63,7 +64,7 @@ type
     procedure ResetLayout;
   end;
 
-  IAtlasContinueSource = interface
+  IAtlasContinueSource = interface(IAtlasShownSource)
     ['{2B7E9C41-5D3A-4E86-9F1B-C4A07D2E8B95}']
     /// <summary>Gezeigte Arbeitsstände, neueste zuerst.</summary>
     function Entries: TAtlasContinueEntries;
@@ -86,8 +87,7 @@ type
     /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung für AProject öffnen.
     /// </summary>
     procedure ShowServerAccess(const AProject: string);
-    /// <summary>Der Bereich wird gezeigt: eingehende Commits bei Bedarf im Hintergrund abfragen.</summary>
-    procedure Shown;
+    // Shown (IAtlasShownSource): Der Bereich wird gezeigt: eingehende Commits bei Bedarf im Hintergrund abfragen.
   end;
 
   IAtlasContinueIssuesSource = interface
@@ -128,7 +128,7 @@ type
     procedure Donate;
   end;
 
-  IAtlasProjectsSource = interface
+  IAtlasProjectsSource = interface(IAtlasShownSource)
     ['{4E7C2A19-6B3D-4F80-9C51-8A2D0E6F3B47}']
     /// <summary>Gezeigte Projekte mit Zusammenfassung und Stand der Versionsverwaltung.</summary>
     function Entries: TAtlasProjectEntries;
@@ -145,8 +145,8 @@ type
     function WorkingCopies: Boolean;
     /// <summary>„Aus Liste entfernen“: nur in diesem Bereich, die Liste der IDE bleibt.</summary>
     procedure Remove(const AProject: string);
-    /// <summary>Der Bereich wird gezeigt: Versionsverwaltung bei Bedarf im Hintergrund frisch abfragen.</summary>
-    procedure Shown;
+    // Shown (IAtlasShownSource): Der Bereich wird gezeigt: Versionsverwaltung bei Bedarf im Hintergrund frisch
+    // abfragen.
     /// <summary>Klick wählt eine Zeile für den Projektverlauf (#758) statt sie zu öffnen.</summary>
     function Selectable: Boolean;
     /// <summary>Projekt für den Projektverlauf wählen (#758).</summary>
@@ -230,7 +230,7 @@ type
     function View: TAtlasTrendView;
   end;
 
-  IAtlasUnsavedSource = interface
+  IAtlasUnsavedSource = interface(IAtlasShownSource)
     ['{8C2D4E61-3A7B-4F95-B1E8-6D0C9A2F5E73}']
     /// <summary>Zeilen und Zustand des Bereichs.</summary>
     function View: TAtlasUnsavedView;
@@ -241,8 +241,7 @@ type
     procedure OpenFolder(const ARow: TAtlasUnsavedRow);
     /// <summary>„Ignorieren bis morgen“.</summary>
     procedure Ignore(const ARow: TAtlasUnsavedRow);
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf im Hintergrund frisch abfragen.</summary>
-    procedure Shown;
+    // Shown (IAtlasShownSource): Der Bereich wird gezeigt: bei Bedarf im Hintergrund frisch abfragen.
   end;
 
   IAtlasWhatsNewSource = interface

@@ -107,7 +107,7 @@ uses
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Index.CacheDirectory,
   Shell.Composition.Refactorings,
-  Shell.Platform;
+  Platform.Server;
 
 { TShellParts }
 
@@ -181,7 +181,7 @@ begin
     Channel.Tracing.OnFailed := nil;
   end;
   // Statusdatei für get_server_status (#1356) gehört nur dem laufenden Server.
-  TServerStatusFile.Delete(TIndexCacheDirectory.DefaultRoot, TShellPlatform.CurrentProcessId);
+  TServerStatusFile.Delete(TIndexCacheDirectory.DefaultRoot, TServerPlatform.CurrentProcessId);
   Channel := Default(TShellStdioChannel);
   inherited;
 end;

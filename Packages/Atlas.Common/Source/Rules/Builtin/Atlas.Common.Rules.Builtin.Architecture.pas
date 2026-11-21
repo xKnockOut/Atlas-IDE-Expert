@@ -18,6 +18,7 @@
 //   "rules": { "architecture-role-import": { "severity": "warning",
 //     "prefixes": ["Atlas.Common", "Atlas.Windows"],
 //     "hostRoles": ["Foundation", "Core", "Shell", "Adapters", "Platform"],
+//     "hostedFeatures": ["Replay"],
 //     "allow": ["Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree"] } }
 // Units heißen Ausgabeartefakt.Feature.Rolle.Sache; "prefixes"
 // nennt die Ausgabeartefakte, ohne sie melden die Regeln nichts. Die Rolle ist
@@ -25,7 +26,9 @@
 // (Feature.Sache.Contract ist ein Contract); ein weiterer eröffnet eine
 // Verschachtelung mit dem Fragment davor als Träger. Units ohne
 // Präfix, deren erstes Segment in "hostRoles" steht, gehören zum Host der
-// Anwendung; alle anderen (RTL, VCL, Drittanbieter) prüft die Regel nicht.
+// Anwendung, die mit einem Namen aus "hostedFeatures" zu dessen Hosted-Features
+// (Feature.Rolle.Sache ohne Präfix, Konzept 8.1 und 8.2); alle anderen (RTL,
+// VCL, Drittanbieter) prüft die Regel nicht.
 // "allow" sind genehmigte Ausnahmen: bei architecture-role-import
 // "Quelle -> Ziel" (beide Globs), bei architecture-contract-content
 // "Unit.Typ" als Glob. Dieselbe Matrix prüft Tools/Check-PackageDependencies.ps1;
@@ -82,6 +85,8 @@ type
     Positions: TArray<Integer>;
     /// <summary>Rollen an den Stellen aus Positions.</summary>
     Roles: TArray<TArchitectureRole>;
+    /// <summary>Hosted-Feature der Anwendung: Name ohne Präfix, erstes Segment aus "hostedFeatures".</summary>
+    Hosted: Boolean;
     /// <summary>Role &lt;&gt; None.</summary>
     function Known: Boolean;
     /// <summary>Gleiches Ausgabeartefakt und gleiches Feature (ohne Groß-/Kleinschreibung).</summary>
@@ -113,20 +118,22 @@ type
     class function LongestPrefix(const AUnitName: string; const APrefixes: TArray<string>): string; static;
     class function FeatureRole(const ARoleName: string): TArchitectureRole; static;
     class function ClassifyFeature(const AUnitName, APrefix: string): TArchitectureUnit; static;
-    class function ClassifyHost(const AUnitName: string; const AHostRoles: TArray<string>): TArchitectureUnit;
-      static;
+    class function ClassifyHost(const AUnitName: string; const AHostRoles, AHostedFeatures: TArray<string>):
+      TArchitectureUnit; static;
     class function Within(const AUnit: TArchitectureUnit; ALength: Integer;
       const ACarrier: TArchitectureUnit): Boolean; static;
     class function LevelRoles(const AUnit: TArchitectureUnit; ALength: Integer): TArray<TArchitectureRole>; static;
     class function HostRole(const AUnit: TArchitectureUnit): TArchitectureHostRole; static;
     class function HostAllows(const ASource: TArchitectureUnit; const AView: TArchitectureView): Boolean; static;
+    class function HostToHostedAllows(const ASource: TArchitectureUnit; const AView: TArchitectureView): Boolean;
+      static;
     class function ForeignAllows(ARights: TArchitectureRole; const AView: TArchitectureView): Boolean; static;
     class function OwnAllows(const ASource, ATarget: TArchitectureUnit): Boolean; static;
     class function ViewName(const AView: TArchitectureView): string; static;
   public
     /// <summary>Ordnet AUnitName ein; Role = None für externe Units.</summary>
-    class function Classify(const AUnitName: string; const APrefixes, AHostRoles: TArray<string>):
-      TArchitectureUnit; static;
+    class function Classify(const AUnitName: string; const APrefixes, AHostRoles,
+      AHostedFeatures: TArray<string>): TArchitectureUnit; static;
     /// <summary>Länge des tiefsten gemeinsamen Trägers in Segmenten; 1 = nur das Feature. Kandidaten sind die
     /// Stellen verschachtelter Rollenbezeichner und der ganze Name einer Unit mit Rolle und Sache (Cache ist
     /// Träger von Cache.Store).</summary>
@@ -150,6 +157,8 @@ type
   TRoleImportOptions = record
     Prefixes: TArray<string>;
     HostRoles: TArray<string>;
+    /// <summary>Hosted-Features der Anwendung (erstes Segment ohne Präfix).</summary>
+    HostedFeatures: TArray<string>;
     /// <summary>Genehmigte Ausnahmen; Form je Regel siehe Kopfkommentar.</summary>
     Allow: TArray<string>;
   end;
@@ -426,7 +435,14 @@ var
   mRole: TArchitectureRole;
 begin
   Result := Default(TArchitectureUnit);
-  mParts := Copy(AUnitName, Length(APrefix) + 2, MaxInt).Split(['.']);
+  if APrefix = '' then
+  begin
+    mParts := AUnitName.Split(['.']);
+  end
+  else
+  begin
+    mParts := Copy(AUnitName, Length(APrefix) + 2, MaxInt).Split(['.']);
+  end;
   if (Length(mParts) = 0) or (mParts[0] = '') then
   begin
     Exit;
@@ -455,7 +471,7 @@ begin
 end;
 
 class function TArchitectureMatrix.ClassifyHost(const AUnitName: string;
-  const AHostRoles: TArray<string>): TArchitectureUnit;
+  const AHostRoles, AHostedFeatures: TArray<string>): TArchitectureUnit;
 var
   mPrefix: string;
   mParts: TArray<string>;
@@ -465,6 +481,15 @@ begin
   if Length(mParts) < 2 then
   begin
     Exit;
+  end;
+  for mPrefix in AHostedFeatures do
+  begin
+    if SameText(mPrefix, mParts[0]) then
+    begin
+      Result := ClassifyFeature(AUnitName, '');
+      Result.Hosted := True;
+      Exit;
+    end;
   end;
   for mPrefix in AHostRoles do
   begin
@@ -477,8 +502,8 @@ begin
   end;
 end;
 
-class function TArchitectureMatrix.Classify(const AUnitName: string; const APrefixes,
-  AHostRoles: TArray<string>): TArchitectureUnit;
+class function TArchitectureMatrix.Classify(const AUnitName: string; const APrefixes, AHostRoles,
+  AHostedFeatures: TArray<string>): TArchitectureUnit;
 var
   mBest: string;
 begin
@@ -489,7 +514,7 @@ begin
   end
   else
   begin
-    Result := ClassifyHost(AUnitName, AHostRoles);
+    Result := ClassifyHost(AUnitName, AHostRoles, AHostedFeatures);
   end;
 end;
 
@@ -656,6 +681,22 @@ begin
   end;
 end;
 
+class function TArchitectureMatrix.HostToHostedAllows(const ASource: TArchitectureUnit;
+  const AView: TArchitectureView): Boolean;
+begin
+  // Konzept 8.1, Zeilen Hosted-Feature: die Shell alles außer Internals, Host-Adapters nur den Contract (und
+  // Sub-Contracts zum Implementieren, 7.4); Foundation, Core und Platform nichts.
+  case HostRole(ASource) of
+    TArchitectureHostRole.Shell:
+      Result := HostAllows(ASource, AView);
+    TArchitectureHostRole.Adapters:
+      Result := (AView.Kind = TArchitectureViewKind.SubContract) or
+        ((AView.Kind = TArchitectureViewKind.Plain) and (AView.Role = TArchitectureRole.Contract));
+  else
+    Result := False;
+  end;
+end;
+
 class function TArchitectureMatrix.ForeignAllows(ARights: TArchitectureRole;
   const AView: TArchitectureView): Boolean;
 begin
@@ -698,14 +739,28 @@ begin
   begin
     Exit(True);
   end;
-  // Platform-Features importieren nie den Host (8.3); Host-Rollen untereinander nach 8.1.
+  // Platform-Features importieren nie den Host (8.3), Hosted-Features nur die Foundation (8.2); Host-Rollen
+  // untereinander nach 8.1.
   if ATarget.Role = TArchitectureRole.Host then
   begin
+    if ASource.Hosted then
+    begin
+      Exit(HostRole(ATarget) = TArchitectureHostRole.Foundation);
+    end;
     Exit((ASource.Role = TArchitectureRole.Host) and (HostRole(ATarget) in cHostHostAllowed[HostRole(ASource)]));
   end;
   if ASource.Role = TArchitectureRole.Host then
   begin
+    if ATarget.Hosted then
+    begin
+      Exit(HostToHostedAllows(ASource, TargetView(ATarget, 1)));
+    end;
     Exit(HostAllows(ASource, TargetView(ATarget, 1)));
+  end;
+  // Platform-Features importieren keine Hosted-Features (8.3), Hosted-Features einander nie (8.2).
+  if ATarget.Hosted and not ASource.SameFeature(ATarget) then
+  begin
+    Exit(False);
   end;
   if not ASource.SameFeature(ATarget) then
   begin
@@ -796,6 +851,7 @@ begin
     end;
     Result.Prefixes := TJsonRead.Strings(TJSONObject(mValue), 'prefixes');
     Result.Allow := TJsonRead.Strings(TJSONObject(mValue), 'allow');
+    Result.HostedFeatures := TJsonRead.Strings(TJSONObject(mValue), 'hostedFeatures');
     if TJSONObject(mValue).GetValue('hostRoles') <> nil then
     begin
       Result.HostRoles := TJsonRead.Strings(TJSONObject(mValue), 'hostRoles');
@@ -859,7 +915,7 @@ begin
     Exit;
   end;
   mOwnName := OwnUnitName(AContext);
-  mSource := TArchitectureMatrix.Classify(mOwnName, mOptions.Prefixes, mOptions.HostRoles);
+  mSource := TArchitectureMatrix.Classify(mOwnName, mOptions.Prefixes, mOptions.HostRoles, mOptions.HostedFeatures);
   if not mSource.Known then
   begin
     Exit;
@@ -871,7 +927,8 @@ begin
     begin
       Continue;
     end;
-    mTarget := TArchitectureMatrix.Classify(mUsed.Name, mOptions.Prefixes, mOptions.HostRoles);
+    mTarget := TArchitectureMatrix.Classify(mUsed.Name, mOptions.Prefixes, mOptions.HostRoles,
+      mOptions.HostedFeatures);
     // Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
     if TArchitectureMatrix.Allowed(mSource, mTarget) or
       (Approved(mOptions.Allow, mOwnName, mUsed.Name) and not TArchitectureMatrix.IsInternals(mTarget)) then
@@ -909,7 +966,8 @@ function IsCheckedContract(const AContext: TRuleContext; const AOptions: TRoleIm
   const AOwnName: string): Boolean;
 begin
   Result := (AOptions.Prefixes <> nil) and not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) and
-    TArchitectureMatrix.Classify(AOwnName, AOptions.Prefixes, AOptions.HostRoles).IsContract;
+    TArchitectureMatrix.Classify(AOwnName, AOptions.Prefixes, AOptions.HostRoles,
+      AOptions.HostedFeatures).IsContract;
 end;
 
 /// <summary>True, wenn ATypeDecl eine Klasse ist, die keine Ausnahme ist und kein allow-Eintrag erlaubt.</summary>

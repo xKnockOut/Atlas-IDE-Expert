@@ -91,7 +91,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cKindNames: array[TUnwrapKind] of string = ('beginEnd', 'tryFinally', 'tryExcept', 'ifThen', 'withDo', 'forDo',
@@ -1200,32 +1201,17 @@ begin
   end;
 end;
 
-/// <summary>Kind von ANode, das AOffset enthält; nil ohne.</summary>
-function ChildAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if (ANode[mIndex].StartOffset <= AOffset) and (AOffset <= ANode[mIndex].EndOffset) then
-    begin
-      Exit(ANode[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
-
 /// <summary>Pfad von der Wurzel zum innersten Knoten an AOffset (ohne die Wurzel).</summary>
 function PathAt(ATree: TSyntaxTree; AOffset: Integer): TArray<TSyntaxNode>;
 var
   mNode: TSyntaxNode;
 begin
   Result := nil;
-  mNode := ChildAt(ATree.Root, AOffset);
+  mNode := TSyntaxNodes.ChildAt(ATree.Root, AOffset);
   while mNode <> nil do
   begin
     Result := Result + [mNode];
-    mNode := ChildAt(mNode, AOffset);
+    mNode := TSyntaxNodes.ChildAt(mNode, AOffset);
   end;
 end;
 

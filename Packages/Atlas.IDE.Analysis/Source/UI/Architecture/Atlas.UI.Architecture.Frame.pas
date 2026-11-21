@@ -261,9 +261,11 @@ uses
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Scaling,
   Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Menus;
+  Atlas.UI.Foundation.Menus,
+  Atlas.UI.Foundation.Controls;
 
 {$R *.dfm}
 
@@ -273,6 +275,18 @@ const
   cBarLabelTop = 7;
   /// <summary>Feste Breite des Filterfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
   cFilterWidth = 200;
+  /// <summary>Spaltenbreiten der Tabellen bei 96 dpi.</summary>
+  cUnitWidth = 220;
+  cSubsystemWidth = 120;
+  cDirectWidth = 100;
+  cTotalWidth = 100;
+  cUsesWidth = 80;
+  cRoleWidth = 100;
+  cFromWidth = 200;
+  cToWidth = 200;
+  cCrossSubsystemWidth = 180;
+  cReasonWidth = 160;
+  cLocationWidth = 200;
   /// <summary>Unterer Teil der Index-Generation: Zahl der Änderungen; der obere kennzeichnet nur den Index.
   /// </summary>
   cChangeCountMask = $7FFFFFFF;
@@ -289,11 +303,8 @@ type
 
 function NewSheet(AFrame: TArchFrame; AText: TAtlasAnalysisTextId): TTabSheet;
 begin
-  Result := TTabSheet.Create(AFrame);
-  // Ohne Reiter einhängen: Ein sichtbarer Reiter braucht das Fenster des PageControls (CreateWnd zeigt ihn).
-  Result.TabVisible := False;
-  Result.PageControl := AFrame.FParts.Pages;
-  Result.Caption := TAtlasAnalysisStrings.Text(AText);
+  // Ohne Reiter einhängen; CreateWnd zeigt ihn.
+  Result := TAtlasControls.NewHiddenSheet(AFrame, AFrame.FParts.Pages, TAtlasAnalysisStrings.Text(AText));
   AFrame.FParts.Sheets := AFrame.FParts.Sheets + [Result];
 end;
 
@@ -321,13 +332,9 @@ begin
   Result.OnKeyDown := AFrame.FState.Events.TreeKeyDown;
 end;
 
-procedure AddColumn(AList: TListView; AText: TAtlasAnalysisTextId; AWidth, APpi: Integer);
-var
-  mColumn: TListColumn;
+procedure AddColumn(AList: TListView; AText: TAtlasAnalysisTextId; AWidth96: Integer);
 begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := TAtlasAnalysisStrings.Text(AText);
-  mColumn.Width := MulDiv(AWidth, APpi, 96);
+  TAtlasListView.AddColumnTo(AList, TAtlasAnalysisStrings.Text(AText), AWidth96);
 end;
 
 /// <summary>Links ausgerichtet hinter AAfter (nil: ganz links).</summary>
@@ -610,20 +617,18 @@ end;
 procedure BuildCentral(AFrame: TArchFrame);
 var
   mList: TListView;
-  mPpi: Integer;
 begin
   mList := NewList(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCentral));
   AFrame.FParts.Central := mList;
   mList.ColumnClick := True;
   mList.OnColumnClick := AFrame.FState.Events.CentralColumnClick;
   mList.OnDblClick := AFrame.FState.Events.CentralDblClick;
-  mPpi := AFrame.CurrentPPI;
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUnit, 220, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 120, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColDirect, 100, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTotal, 100, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUses, 80, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColRole, 100, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUnit, cUnitWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, cSubsystemWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColDirect, cDirectWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTotal, cTotalWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUses, cUsesWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColRole, cRoleWidth);
 end;
 
 procedure BuildSubsystems(AFrame: TArchFrame);
@@ -650,18 +655,16 @@ end;
 procedure BuildCyclesAndCrossLinks(AFrame: TArchFrame);
 var
   mList: TListView;
-  mPpi: Integer;
 begin
   AFrame.FParts.Cycles := NewTree(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCycles));
   mList := NewList(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCrossLinks));
   AFrame.FParts.CrossLinks := mList;
   mList.OnDblClick := AFrame.FState.Events.CrossDblClick;
-  mPpi := AFrame.CurrentPPI;
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColFrom, 200, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTo, 200, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 180, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColReason, 160, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColLocation, 200, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColFrom, cFromWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTo, cToWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, cCrossSubsystemWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColReason, cReasonWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColLocation, cLocationWidth);
 end;
 
 procedure BuildComparison(AFrame: TArchFrame);
@@ -1234,23 +1237,6 @@ end;
 
 { Text der Listen }
 
-function ItemsText(AList: TListView): TArray<string>;
-var
-  mIndex, mColumn: Integer;
-  mLine: string;
-begin
-  Result := nil;
-  for mIndex := 0 to AList.Items.Count - 1 do
-  begin
-    mLine := AList.Items[mIndex].Caption;
-    for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
-    begin
-      mLine := mLine + #9 + AList.Items[mIndex].SubItems[mColumn];
-    end;
-    Result := Result + [mLine];
-  end;
-end;
-
 function NodesText(ATree: TTreeView): TArray<string>;
 var
   mIndex: Integer;
@@ -1727,13 +1713,13 @@ function TAtlasArchitectureFrame.ListText(AList: TAtlasArchFrameList): TArray<st
 begin
   case AList of
     TAtlasArchFrameList.Central:
-      Result := ItemsText(FParts.Central);
+      Result := TAtlasListView.RowsText(FParts.Central);
     TAtlasArchFrameList.Subsystems:
       Result := NodesText(FParts.Subsystems);
     TAtlasArchFrameList.Cycles:
       Result := NodesText(FParts.Cycles);
     TAtlasArchFrameList.CrossLinks:
-      Result := ItemsText(FParts.CrossLinks);
+      Result := TAtlasListView.RowsText(FParts.CrossLinks);
   else
     Result := NodesText(FParts.Comparison);
   end;

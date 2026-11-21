@@ -122,7 +122,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Expressions.Tokens,
   Atlas.Common.Rules.Builtin.Expressions.DuplicateConditions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -1284,7 +1285,6 @@ type
     FTokens: TArray<TPascalToken>;
     FTypes: TDeclaredTypes;
     function ResultType(ANode: TSyntaxNode): string;
-    function InWith(ANode: TSyntaxNode): Boolean;
     function DivToken(ADivision: TSyntaxNode; out AToken: TPascalToken): Boolean;
     function IsExplicitInteger(AOperand: TSyntaxNode): Boolean;
     procedure CheckDiv(ANode: TSyntaxNode; const ATarget, AType: string);
@@ -1333,18 +1333,6 @@ begin
 end;
 
 // Steht ANode in einem with-Block? Dann kann der Name ein Feld des with-Objekts sein.
-function TIntegerDivisionToFloatScan.InWith(ANode: TSyntaxNode): Boolean;
-begin
-  while ANode <> nil do
-  begin
-    if ANode.Kind = TSyntaxKind.WithStatement then
-    begin
-      Exit(True);
-    end;
-    ANode := ANode.Parent;
-  end;
-  Result := False;
-end;
 
 // Das Schlüsselwort div zwischen den Operanden von ADivision.
 function TIntegerDivisionToFloatScan.DivToken(ADivision: TSyntaxNode; out AToken: TPascalToken): Boolean;
@@ -1442,7 +1430,7 @@ var
   mTarget: TSyntaxNode;
   mName, mTypeName: string;
 begin
-  if (ANode.ChildCount <> 2) or InWith(ANode) then
+  if (ANode.ChildCount <> 2) or (TSyntaxNodes.Nearest(ANode, [TSyntaxKind.WithStatement]) <> nil) then
   begin
     Exit;
   end;

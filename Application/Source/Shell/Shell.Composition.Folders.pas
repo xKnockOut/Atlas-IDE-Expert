@@ -109,7 +109,7 @@ uses
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Query.Language,
   Atlas.Common.Rules.Builtin.DfmProperties,
-  Shell.Platform,
+  Platform.Server,
   Shell.Bootstrap,
   Shell.Workspace.Setup,
   Atlas.Text.LogMarks,
@@ -277,7 +277,7 @@ begin
   Result.Setup.Selection := FServices.Selection();
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
   mIdentity := Default(TIndexProcessInfo);
-  mIdentity.Pid := TShellPlatform.CurrentProcessId;
+  mIdentity.Pid := TServerPlatform.CurrentProcessId;
   mIdentity.Kind := TIndexProcessInfo.cKindLsp;
   mIdentity.Client := FServices.ClientName();
   Result.Setup.ProcessIdentity := mIdentity;

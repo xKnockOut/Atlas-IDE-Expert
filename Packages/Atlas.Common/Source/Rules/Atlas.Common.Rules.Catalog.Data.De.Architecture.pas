@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeArchitecture: array[0..91] of string = (
+  cCatalogLinesDeArchitecture: array[0..95] of string = (
     '{',
     '      "id": "forbidden-uses",',
     '      "name": "Verbotene uses-Beziehung",',
@@ -47,6 +47,10 @@ const
     '        {',
     '          "name": "hostRoles",',
     '          "description": "Erste Namenssegmente der Host-Units ohne Präfix."',
+    '        },',
+    '        {',
+    '          "name": "hostedFeatures",',
+    '          "description": "Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander."',
     '        },',
     '        {',
     '          "name": "allow",',

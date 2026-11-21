@@ -75,7 +75,8 @@ uses
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -133,21 +134,6 @@ function IsName(ANode: TSyntaxNode; const AName: string): Boolean;
 begin
   Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
     SameText(ANode.Name, AName);
-end;
-
-/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (tiefe Bäume sprengen den
-/// Stapel nicht).
-/// </summary>
-function IsQualifiedName(ANode: TSyntaxNode): Boolean;
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := ANode;
-  while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
-  begin
-    mNode := mNode[0];
-  end;
-  Result := mNode.Kind = TSyntaxKind.Identifier;
 end;
 
 /// <summary>Pfad der bedingten Übersetzung am Anfang von ANode; '' ohne Bedingungen.</summary>
@@ -346,18 +332,18 @@ var
       Exit;
     end;
     // Vcl.Dialogs.ShowMessage, Dialogs.MessageDlg
-    if MatchText(ACallee.Name, cDialogRoutines) and IsQualifiedName(ACallee[0]) and
+    if MatchText(ACallee.Name, cDialogRoutines) and TSyntaxNodes.IsNameChain(ACallee[0]) and
       IsName(ACallee[0], 'Dialogs') then
     begin
       Exit(True);
     end;
     // Application.MessageBox, auch Vcl.Forms.Application.MessageBox
-    if SameText(ACallee.Name, 'MessageBox') and IsQualifiedName(ACallee[0]) and IsName(ACallee[0], 'Application') then
+    if SameText(ACallee.Name, 'MessageBox') and TSyntaxNodes.IsNameChain(ACallee[0]) and IsName(ACallee[0], 'Application') then
     begin
       Exit(True);
     end;
     // TDialogService.ShowMessage
-    Result := MatchText(ACallee.Name, cDialogServiceMethods) and IsQualifiedName(ACallee[0]) and
+    Result := MatchText(ACallee.Name, cDialogServiceMethods) and TSyntaxNodes.IsNameChain(ACallee[0]) and
       MatchText(ACallee[0].Name, cDialogServices);
   end;
 
@@ -479,15 +465,6 @@ var
     end;
   end;
 
-  function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode.Parent;
-    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      Result := Result.Parent;
-    end;
-  end;
-
   // X.DefaultEncoding := …
   function IsDefaultEncodingAssign(ANode: TSyntaxNode): Boolean;
   begin
@@ -510,7 +487,7 @@ var
     mNode, mRoutine: TSyntaxNode;
   begin
     Result := False;
-    mRoutine := RoutineOf(ACall);
+    mRoutine := TSyntaxNodes.Enclosing(ACall, [TSyntaxKind.RoutineDecl]);
     if mRoutine = nil then
     begin
       Exit;
@@ -566,7 +543,7 @@ var
       Exit;
     end;
     mMethod := mCallee.Name;
-    if MatchText(mMethod, cReadAllMethods) and IsQualifiedName(mCallee[0]) and IsName(mCallee[0], 'TFile') then
+    if MatchText(mMethod, cReadAllMethods) and TSyntaxNodes.IsNameChain(mCallee[0]) and IsName(mCallee[0], 'TFile') then
     begin
       AReport.Add(NodeRange(mCallee), cTexts[TPlatformText.FileNoEncoding].Fmt([mMethod]), TRuleConfidence.Medium,
         Fix(ACall));
@@ -795,13 +772,13 @@ begin
   begin
     ANode := ANode[0];
   end;
-  Result := IsName(ANode, 'Now') and IsQualifiedName(ANode);
+  Result := IsName(ANode, 'Now') and TSyntaxNodes.IsNameChain(ANode);
 end;
 
 // MilliSecondsBetween(Now, …) und Verwandte, die TStopwatch ersetzen kann.
 function IsStopwatchCall(ANode: TSyntaxNode): Boolean;
 begin
-  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and TSyntaxNodes.IsNameChain(ANode[0]) and
     (IndexText(ANode[0].Name, cStopwatchFunctions) >= 0) and IsNow(ANode[1]);
 end;
 
@@ -886,7 +863,7 @@ begin
     mA := ANode[0];
     mB := ANode[1];
   end
-  else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
+  else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and TSyntaxNodes.IsNameChain(ANode[0]) and
     MatchText(ANode[0].Name, cBetweenFunctions) then
   begin
     mA := ANode[1];

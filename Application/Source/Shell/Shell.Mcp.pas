@@ -60,7 +60,7 @@ uses
   Atlas.Common.Mcp.Statistics,
   Atlas.Common.Mcp.StatisticsHistory,
   Atlas.Common.Index.CacheDirectory,
-  Shell.Platform,
+  Platform.Server,
   Shell.CrashCases,
   Shell.WorkspaceGroup,
   Shell.Mcp.Context,
@@ -193,7 +193,7 @@ begin
   AStatistics.Free;
   ALogger.Info(cTexts[TMcpHostText.Statistics].Fmt([mSession.TotalCalls, mSession.TotalErrors]));
   if not TMcpStatisticsHistory.Append(TMcpStatisticsHistory.FileIn(TServerStatusFile.FolderOf(
-    TIndexCacheDirectory.DefaultRoot)), mSession, TShellPlatform.CurrentProcessId, Now) then
+    TIndexCacheDirectory.DefaultRoot)), mSession, TServerPlatform.CurrentProcessId, Now) then
   begin
     ALogger.Warning(cTexts[TMcpHostText.HistoryNotWritten].Text);
   end;

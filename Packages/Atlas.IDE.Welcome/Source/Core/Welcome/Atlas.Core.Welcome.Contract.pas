@@ -138,6 +138,18 @@ type
 
   TAtlasContinueEntries = TArray<TAtlasContinueEntry>;
 
+  /// <summary>Arbeitsstand eines Eintrags (Projekt oder Issue) für TAtlasWorkOrder.</summary>
+  TAtlasWorkStateOf<T> = reference to function(const AEntry: T): TAtlasWorkState;
+
+  /// <summary>Reihenfolge der Einträge unter „Fortsetzen“: neueste zuerst.</summary>
+  TAtlasWorkOrder = record
+  public
+    /// <summary>AEntry nach der Zeit seines Arbeitsstands (AStateOf) in AFound einsortieren, neueste zuerst; bei
+    /// Gleichstand bleibt die Reihenfolge (stabil).</summary>
+    class procedure InsertNewestFirst<T>(var AFound: TArray<T>; const AEntry: T;
+      const AStateOf: TAtlasWorkStateOf<T>); static;
+  end;
+
   /// <summary>Eingehender Commit mit den betroffenen Dateien des Arbeitsstands.</summary>
   TAtlasContinueCommit = record
     Commit: TAtlasVcsIncomingCommit;
@@ -662,6 +674,26 @@ uses
 const
   /// <summary>Länge der kurzen Git-Revision, wenn kein Branch bekannt ist.</summary>
   cShortRevision = 7;
+
+{ TAtlasWorkOrder }
+
+class procedure TAtlasWorkOrder.InsertNewestFirst<T>(var AFound: TArray<T>; const AEntry: T;
+  const AStateOf: TAtlasWorkStateOf<T>);
+var
+  mIndex, mPosition: Integer;
+  mAt: TDateTime;
+begin
+  mAt := AStateOf(AEntry).At;
+  mPosition := Length(AFound);
+  for mIndex := High(AFound) downto 0 do
+  begin
+    if mAt > AStateOf(AFound[mIndex]).At then
+    begin
+      mPosition := mIndex;
+    end;
+  end;
+  Insert(AEntry, AFound, mPosition);
+end;
 
 { TAtlasWelcomeSection }
 
