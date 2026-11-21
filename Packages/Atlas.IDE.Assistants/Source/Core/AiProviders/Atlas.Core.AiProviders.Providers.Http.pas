@@ -88,6 +88,27 @@ begin
   end;
 end;
 
+/// <summary>Fehler des Netzes oder der Übertragung (kein Netz, Name unbekannt, Zertifikat, Antwort zu groß)?
+/// Andere Ausnahmen sind Programmfehler.</summary>
+function IsNetError(AE: Exception): Boolean;
+begin
+  Result := (AE is ENetException) or (AE is EStreamError) or (AE is EOSError);
+end;
+
+/// <summary>Grund einer gescheiterten Anfrage: Antwort zu groß, Zeitlimit oder Dienst nicht erreichbar.</summary>
+function ErrorFailure(AExceeded, ATimedOut: Boolean): TAtlasAiError;
+begin
+  Result := TAtlasAiError.Unreachable;
+  if AExceeded then
+  begin
+    Result := TAtlasAiError.BadAnswer;
+  end
+  else if ATimedOut then
+  begin
+    Result := TAtlasAiError.Timeout;
+  end;
+end;
+
 function TAtlasAiHttpClient.Run(const AExchange: TExchange; const AMethod, AUrl: string;
   const AHeaders: TNetHeaders; ATimeoutMs: Integer): TAtlasAiHttpReply;
 var
@@ -131,15 +152,14 @@ begin
     Result.Body := TEncoding.UTF8.GetString(AExchange.Content.Bytes, 0, AExchange.Content.Size);
   except
     // Kein Netz, Name unbekannt, Zertifikat abgelehnt, Antwort zu groß …: still als Fehler der Anfrage.
-    Result.Status := 0;
-    Result.Failure := TAtlasAiError.Unreachable;
-    if AExchange.Content.Exceeded then
+    on E: Exception do
     begin
-      Result.Failure := TAtlasAiError.BadAnswer;
-    end
-    else if mDeadline.Reached then
-    begin
-      Result.Failure := TAtlasAiError.Timeout;
+      if not IsNetError(E) then
+      begin
+        raise;
+      end;
+      Result.Status := 0;
+      Result.Failure := ErrorFailure(AExchange.Content.Exceeded, mDeadline.Reached);
     end;
   end;
   // Erst die Schnittstellen lösen, sie verweisen auf den Client.

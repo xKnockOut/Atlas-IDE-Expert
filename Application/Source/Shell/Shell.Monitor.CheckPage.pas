@@ -235,7 +235,6 @@ begin
     TFile.WriteAllText(AFileName, AText, TEncoding.UTF8);
     AInform(TMonitorTexts.Fmt(TMonitorText.Exported, [AFileName]));
   except
-    // lsp-ignore: catch-all-without-raise -- der Hinweis nennt den Fehler
     on E: Exception do
       AInform(TMonitorTexts.Fmt(TMonitorText.SaveFailed, [E.Message]));
   end;
@@ -253,7 +252,6 @@ begin
     ForceDirectories(AFolder);
     Result := True;
   except
-    // lsp-ignore: catch-all-without-raise -- der Aufrufer meldet den Fehler, der Lauf startet nicht
     on E: Exception do
     begin
       AError := E.Message;

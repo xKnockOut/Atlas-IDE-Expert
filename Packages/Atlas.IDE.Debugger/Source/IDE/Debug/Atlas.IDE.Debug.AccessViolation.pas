@@ -493,7 +493,10 @@ begin
         mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Ketten.
-        mChains := Default(TAtlasAvChains);
+        on ELspClientError do
+        begin
+          mChains := Default(TAtlasAvChains);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,

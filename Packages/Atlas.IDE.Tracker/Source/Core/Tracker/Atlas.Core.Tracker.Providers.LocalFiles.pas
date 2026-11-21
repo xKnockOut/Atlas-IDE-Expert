@@ -45,6 +45,7 @@ uses
   System.Types,
   System.Classes,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Core.Files.TextFile;
 
 type
@@ -107,8 +108,12 @@ begin
     end;
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       AData := nil;
       Result := False;
     end;
@@ -158,8 +163,12 @@ begin
     AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       AText := '';
     end;
   end;
@@ -195,8 +204,12 @@ begin
     TAtlasTextFile.Replace(AFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AText));
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := False;
     end;
   end;
@@ -213,8 +226,12 @@ begin
     TFile.WriteAllBytes(AFileName, AData);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
     end;
   end;
@@ -236,8 +253,12 @@ begin
     TDirectory.Delete(AFolder, True);
   except
     // Eine Datei ist noch offen (z. B. im Bildbetrachter): Der Ordner bleibt.
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Exit(False);
     end;
   end;
@@ -264,8 +285,12 @@ begin
   try
     Result := ToArray(TDirectory.GetFiles(AFolder, AMask));
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
     end;
   end;
@@ -281,8 +306,12 @@ begin
   try
     Result := ToArray(TDirectory.GetDirectories(AFolder));
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
     end;
   end;
@@ -301,8 +330,12 @@ begin
       Result := TDirectory.GetLastWriteTime(APath);
     end;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := 0;
     end;
   end;
@@ -310,31 +343,19 @@ end;
 
 function TAtlasTrackerLocalFiles.Lock(const AFileName: string; AWaitMs: Integer): IInterface;
 var
-  mWaited: Integer;
+  mStream: TStream;
+  mError: string;
 begin
   Result := nil;
   if (AFileName = '') or not ForceFolder(ExtractFileDir(AFileName)) then
   begin
     Exit;
   end;
-  mWaited := 0;
-  repeat
-    try
-      Result := TAtlasTrackerFileLock.Create(TFileStream.Create(AFileName, fmCreate or fmShareExclusive));
-    except
-      // Ein anderer Prozess hält die Sperre: kurz warten und neu versuchen.
-      on Exception do
-      begin
-        Result := nil;
-      end;
-    end;
-    if (Result <> nil) or (mWaited >= AWaitMs) then
-    begin
-      Break;
-    end;
-    Sleep(cLockStepMs);
-    Inc(mWaited, cLockStepMs);
-  until False;
+  // Nur solange ein anderer die Sperre hält, lohnt Warten; ohne Schreibrecht kommt sofort nil.
+  if TTextFiles.OpenExclusive(AFileName, True, AWaitMs, cLockStepMs, mStream, mError) = TTextExclusiveOpen.Opened then
+  begin
+    Result := TAtlasTrackerFileLock.Create(mStream);
+  end;
 end;
 
 function TAtlasTrackerLocalFiles.Environment(const AName: string): string;

@@ -126,7 +126,8 @@ type
 implementation
 
 uses
-  System.RegularExpressions;
+  System.RegularExpressions,
+  System.RegularExpressionsCore;
 
 const
   cMsPerSecond = 1000;
@@ -216,7 +217,7 @@ begin
   try
     TRegEx.Create(Pattern, [roIgnoreCase]).IsMatch('');
   except
-    on Exception do
+    on ERegularExpressionError do
       Result := False;
   end;
 end;

@@ -116,13 +116,7 @@ var
   mPid: Integer;
 begin
   AInfo := Default(TIndexProcessInfo);
-  try
-    mRoot := TJSONObject.ParseJSONValue(AText);
-  except
-    // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AText);
   try
     Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('pid', mPid);
     if not Result then

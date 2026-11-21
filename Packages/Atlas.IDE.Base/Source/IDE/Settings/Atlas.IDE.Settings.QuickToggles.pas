@@ -80,7 +80,9 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Settings.Options,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 const
   cAnswerSession = 100;
@@ -183,8 +185,14 @@ begin
       mProject := TAtlasProjectSettings.ReadProject;
     except
       // Unlesbare Datei: Schalter ohne Projektwerte.
-      on Exception do
+      on E: Exception do
+      begin
+        if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+        begin
+          raise;
+        end;
         mProject := nil;
+      end;
     end;
     Result := TAtlasQuickToggles.Items(TAtlasIdeSettings.QuickToggles, TAtlasIdeSettings.Stored,
       TAtlasIdeSettings.Session, mProject);

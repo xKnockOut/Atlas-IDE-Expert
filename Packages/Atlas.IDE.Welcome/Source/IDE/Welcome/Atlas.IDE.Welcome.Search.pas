@@ -411,8 +411,8 @@ begin
   try
     mSymbols := mSession.WorkspaceSymbols(Trim(APattern), ATimeoutMs);
   except
-    // Server beschäftigt oder Zeit abgelaufen: diesmal ohne Symbole.
-    on Exception do
+    // Server beschäftigt, Zeit abgelaufen oder Verbindung weg: diesmal ohne Symbole.
+    on ELspClientError do
       mSymbols := nil;
   end;
   for mSymbol in mSymbols do

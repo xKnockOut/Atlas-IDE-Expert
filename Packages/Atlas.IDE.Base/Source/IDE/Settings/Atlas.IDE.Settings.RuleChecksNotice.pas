@@ -160,8 +160,14 @@ begin
   try
     mText := TAtlasTextFile.Load(mConfig).Text;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   if FCore.Wanted(mConfig, mText, TAtlasIdeSettings.ModuleOn(cModule)) then
   begin

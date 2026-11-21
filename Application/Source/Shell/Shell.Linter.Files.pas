@@ -54,7 +54,8 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
   Shell.Platform,
-  Shell.Linter.Output;
+  Shell.Linter.Output,
+  Atlas.Text.Files;
 
 { TLinterFiles }
 
@@ -230,8 +231,15 @@ begin
     AText := TFileEncoding.LoadFromFile(AFileName, mFormat);
     Result := True;
   except
-    AText := '';
-    Result := False;
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+      begin
+        raise;
+      end;
+      AText := '';
+      Result := False;
+    end;
   end;
 end;
 

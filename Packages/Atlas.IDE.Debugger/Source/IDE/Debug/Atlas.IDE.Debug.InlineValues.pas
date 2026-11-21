@@ -345,7 +345,10 @@ begin
         Refs := mSession.InlineValues(mFileName, 0, mLine, mLine, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Werte.
-        Refs := nil;
+        on ELspClientError do
+        begin
+          Refs := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,

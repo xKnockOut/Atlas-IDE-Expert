@@ -83,6 +83,9 @@ type
     /// <summary>Benennt ASource in ATarget um und ersetzt eine vorhandene ATarget in einem Schritt; False, wenn
     /// es nicht ging (gesperrt, fort).</summary>
     class function MoveReplacing(const ASource, ATarget: string): Boolean; static;
+    /// <summary>Fehler beim Lesen oder Schreiben einer Datei (fehlt, gesperrt, keine Rechte, nicht dekodierbar,
+    /// binäres Formular)? Andere Fehler sind Programmfehler und gehen weiter.</summary>
+    class function IsReadError(AE: Exception): Boolean; static;
   end;
 
 implementation
@@ -93,7 +96,8 @@ uses
   Atlas.Text.Encoding,
   Atlas.WinBase.Files,
   Atlas.Text.Lines,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Files;
 
 {$SCOPEDENUMS ON}
 
@@ -394,6 +398,11 @@ end;
 class function TAtlasTextFile.LoadText(const AFileName: string): string;
 begin
   Result := Load(AFileName).Text;
+end;
+
+class function TAtlasTextFile.IsReadError(AE: Exception): Boolean;
+begin
+  Result := TTextFiles.IsFileError(AE) or (AE is EAtlasTextFileError);
 end;
 
 class function TAtlasTextFile.LoadLines(const AFileName: string): TArray<string>;

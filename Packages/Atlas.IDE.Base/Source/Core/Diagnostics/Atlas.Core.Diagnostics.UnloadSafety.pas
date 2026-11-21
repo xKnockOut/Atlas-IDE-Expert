@@ -47,7 +47,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
 
@@ -144,11 +145,14 @@ begin
   TAtlasGuard.Log(mText);
   mWarn := TAtlasGuard.OnWarning;
   if Assigned(mWarn) then
-    try
-      mWarn(mText);
-    except
-      // Die Warnung darf das Entladen nicht aufhalten.
-    end;
+  begin
+    // Die Warnung darf das Entladen nicht aufhalten.
+    TReporting.Quietly(
+      procedure
+      begin
+        mWarn(mText);
+      end);
+  end;
 end;
 
 class function TAtlasUnloadSafety.IsSafe(AModule: HMODULE): Boolean;

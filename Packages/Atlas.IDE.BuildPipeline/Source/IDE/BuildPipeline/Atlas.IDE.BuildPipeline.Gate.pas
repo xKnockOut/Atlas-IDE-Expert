@@ -161,7 +161,7 @@ begin
     Result := True;
   except
     // Zeitlimit oder Server weg: Unit nicht geprüft, der Compile läuft (#493).
-    on Exception do
+    on ELspClientError do
       Result := False;
   end;
 end;

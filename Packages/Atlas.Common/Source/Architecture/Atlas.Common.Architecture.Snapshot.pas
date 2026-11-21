@@ -520,7 +520,6 @@ begin
       mText := TEncoding.UTF8.GetString(mBytes);
     end;
   except
-    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
     on E: Exception do
     begin
       AError := cTexts[TSnapshotText.ArchitectureStateNotReadable].Fmt([AFileName]) + E.Message;
@@ -1243,11 +1242,7 @@ var
 begin
   ASnapshot := Default(TArchitectureSnapshot);
   AError := '';
-  try
-    mRoot := TJSONObject.ParseJSONValue(AText);
-  except
-    mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AText);
   try
     if not (mRoot is TJSONObject) then
     begin

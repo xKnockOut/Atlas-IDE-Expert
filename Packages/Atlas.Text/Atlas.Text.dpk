@@ -55,6 +55,7 @@ contains
   Atlas.Text.Fuzzy in 'Source\Fuzzy\Atlas.Text.Fuzzy.pas',
   Atlas.Text.Files in 'Source\Files\Atlas.Text.Files.pas',
   Atlas.Text.Locked in 'Source\Locked\Atlas.Text.Locked.pas',
+  Atlas.Text.Reporting in 'Source\Reporting\Atlas.Text.Reporting.pas',
   Atlas.Text.Csv in 'Source\Csv\Atlas.Text.Csv.pas',
   Atlas.Text.IndexCache in 'Source\IndexCache\Atlas.Text.IndexCache.pas',
   Atlas.Text.Names in 'Source\Names\Atlas.Text.Names.pas',

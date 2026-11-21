@@ -22,6 +22,14 @@ type
     [Test]
     procedure CatchAllWithRaiseOrSpecificSilent;
     [Test]
+    procedure CatchAllBareExceptReported;
+    [Test]
+    procedure CatchAllReportersCountAsHandled;
+    [Test]
+    procedure CatchAllReportersOptionIsChecked;
+    [Test]
+    procedure CatchAllExceptionUseCountsWhenAllowed;
+    [Test]
     procedure FreedInHandlerReported;
     [Test]
     procedure FreedAfterRaiseReported;
@@ -77,6 +85,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Exceptions,
   Atlas.Common.Editing.ChangeSignature,
@@ -84,6 +93,8 @@ uses
 
 const
   cCatchAllOn = '{ "rules": { "catch-all-without-raise": "warning" } }';
+  cCatchAllReporters = '{ "rules": { "catch-all-without-raise": { "severity": "warning", ' +
+    '"reporters": ["TAtlasGuard.*", "*Logger.Error"] } } }';
 
 function InRoutine(const ABody: string): string;
 begin
@@ -138,6 +149,71 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
     InRoutine('  try Save; except on E: Exception do begin Log(E.Message); raise; end; end;'#10 +
     '  try Save; except on E: EInOutError do Log(E.Message); end;'), cCatchAllOn))));
+end;
+
+procedure TExceptionRulesTests.CatchAllBareExceptReported;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // except ohne on fängt alles wie on Exception do; gemeldet wird das except.
+  mFindings := TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
+    InRoutine('  try'#10'    Save;'#10'  except'#10'    Result := False;'#10'  end;'), cCatchAllOn);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  // Mit raise, mit AcquireExceptionObject (weitergereicht), leer (das meldet empty-except) oder mit on-Handler für
+  // eine bestimmte Klasse: still.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
+    InRoutine('  try Save; except Undo; raise; end;'#10'  try Save; except end;'#10 +
+    '  try Save; except on Exception do FFailure := Exception(AcquireExceptionObject); end;'#10 +
+    '  try Save; except { Kommentar } end;'#10'  try Save; except on EInOutError do Undo; end;'), cCatchAllOn))));
+end;
+
+procedure TExceptionRulesTests.CatchAllReportersCountAsHandled;
+begin
+  // Ein Block, der eine Routine aus reporters aufruft, meldet den Fehler und gilt als behandelt.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
+    InRoutine('  try Save; except on E: Exception do TAtlasGuard.Report(TAtlasFeature.Menu, E); end;'#10 +
+    '  try Save; except on E: Exception do begin Result := False; FLogger.Error(E.Message); end; end;'#10 +
+    '  try Save; except Result := False; Atlas.Core.TAtlasGuard.Log(''x''); end;'#10 +
+    '  try Save; except Result := False; tatlasguard.LogCurrent; end;'), cCatchAllReporters))));
+  // Andere Aufrufe, E.Message oder ein Name, der nur ähnlich beginnt, zählen nicht.
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
+    InRoutine('  try Save; except on E: Exception do ShowMessage(E.Message); end;'#10 +
+    '  try Save; except on E: Exception do FLogger.Info(E.Message); end;'#10 +
+    '  try Save; except TAtlasGuardian.Report(1); end;'), cCatchAllReporters))));
+  // Ohne die Option gilt kein Aufruf als Meldung.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
+    InRoutine('  try Save; except on E: Exception do TAtlasGuard.Report(TAtlasFeature.Menu, E); end;'),
+    cCatchAllOn))));
+end;
+
+procedure TExceptionRulesTests.CatchAllExceptionUseCountsWhenAllowed;
+const
+  cAllowUse = '{ "rules": { "catch-all-without-raise": { "severity": "warning", "allowExceptionUse": true } } }';
+  cSource = '  try Save; except on E: Exception do AError := E.Message; end;'#10 +
+    '  try Save; except on E: Exception do Show(E); end;'#10 +
+    '  try Save; except on E: Exception do Result := False; end;'#10 +
+    '  try Save; except on Exception do Result := False; end;'#10 +
+    '  try Save; except on E: Exception do Result := Other.E; end;';
+begin
+  // Ohne die Option zählt das Lesen der Ausnahme nicht.
+  Assert.AreEqual(5, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create, InRoutine(cSource),
+    cCatchAllOn))));
+  // Mit der Option gehen E.Message und E weiter; ungelesenes E, ein Handler ohne Namen und Other.E nicht.
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create, InRoutine(cSource),
+    cAllowUse))));
+end;
+
+procedure TExceptionRulesTests.CatchAllReportersOptionIsChecked;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  TConfigurationParser.Parse(cCatchAllReporters, mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'reporters ist eine bekannte Liste von Texten');
+  TConfigurationParser.Parse('{ "rules": { "catch-all-without-raise": { "reporters": "TAtlasGuard.*" } } }', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"reporters" muss eine Liste von Texten sein', mIssues[0].Message);
+  mIssues := nil;
 end;
 
 procedure TExceptionRulesTests.FreedInHandlerReported;

@@ -45,7 +45,8 @@ uses
   System.IOUtils,
   System.StrUtils,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Files;
 
 {$SCOPEDENUMS ON}
 
@@ -143,7 +144,14 @@ begin
     mFileName := TPath.GetFullPath(AFileName);
   except
     // Kein gültiger Pfad (unzulässige Zeichen, zu lang): liegt nirgends.
-    Exit(False);
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+      Exit(False);
+    end;
   end;
   Result := IsInside(mRoot, mFileName);
 end;

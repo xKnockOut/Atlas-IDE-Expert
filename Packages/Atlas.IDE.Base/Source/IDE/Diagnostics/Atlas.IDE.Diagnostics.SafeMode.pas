@@ -109,11 +109,30 @@ uses
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Diagnostics.Edition;
+  Atlas.IDE.Diagnostics.Edition,
+  Atlas.Text.Files,
+  Atlas.Core.Files.Contract;
 
 const
   // Winapi.Windows kennt die Konstante nicht (ab Windows Vista).
   cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
+
+/// <summary>Führt AAction aus; ein Dateifehler (gesperrt, keine Rechte) bleibt still, die Marken und der Zustand
+/// sind Nebensache für die IDE. Andere Fehler gehen weiter.</summary>
+procedure WithoutFileErrors(const AAction: TProc);
+begin
+  try
+    AAction();
+  except
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
+    end;
+  end;
+end;
 
 { TAtlasIdeSafeMode }
 
@@ -146,13 +165,12 @@ begin
   begin
     Exit;
   end;
-  try
-    FBook.SaveMarker(FMarker);
-  except
-    // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
-    on Exception do
-      ;
-  end;
+  // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
+  WithoutFileErrors(
+    procedure
+    begin
+      FBook.SaveMarker(FMarker);
+    end);
 end;
 
 function Options: TAtlasSafeOptions;
@@ -288,8 +306,12 @@ begin
         Result := Alive(AProcessId, AStartedAt);
       end, AState, ACrashed);
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       AState := Default(TAtlasSafeState);
       ACrashed := nil;
     end;
@@ -302,8 +324,11 @@ begin
   try
     Result := TAtlasIdeSettings.History.LastChangedKeys(TAtlasIdeSettings.Stored);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
+    end;
   end;
 end;
 
@@ -383,12 +408,11 @@ begin
   // Nur die Marke dieses Absturzes, nicht die eines früheren aus dem Zustand.
   FHasCrashed := (Length(mCrashed) > 0) and (mState.CrashedMarker <> '') and
     TAtlasSessionMarker.FromJson(mState.CrashedMarker, FCrashed);
-  try
-    FBook.SaveState(mState);
-  except
-    on Exception do
-      ;
-  end;
+  WithoutFileErrors(
+    procedure
+    begin
+      FBook.SaveState(mState);
+    end);
   if FLevel <> TAtlasSafeLevel.Normal then
   begin
     TAtlasIdeSettings.SetSession(TAtlasSafeMode.SafeSession(TAtlasIdeSettings.QuickToggles));
@@ -443,12 +467,11 @@ begin
     FreeAndNil(FNotice);
   end;
   HideLine;
-  try
-    FBook.Close;
-  except
-    on Exception do
-      ;
-  end;
+  WithoutFileErrors(
+    procedure
+    begin
+      FBook.Close;
+    end);
 end;
 
 procedure TAtlasIdeSafeMode.RecordFailure(AFeature: TAtlasFeature);
@@ -536,8 +559,11 @@ begin
         [DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings)]);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := '';
+    end;
   end;
 end;
 
@@ -569,8 +595,14 @@ begin
       Result := TFile.ReadAllLines(AFileName, TEncoding.UTF8);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
+    end;
   end;
 end;
 

@@ -65,8 +65,14 @@ begin
       try
         Result := FromJson(TAtlasTextFile.Load(mSettings).Text);
       except
-        on Exception do
+        on E: Exception do
+        begin
+          if not TAtlasTextFile.IsReadError(E) then
+          begin
+            raise;
+          end;
           Result := 0;
+        end;
       end;
       Exit;
     end;
