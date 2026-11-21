@@ -1,2 +1,0 @@
-### Neu
-- Ausdrücke in allen Threads auswerten (#866, `debug.parallelWatch`, Vorgabe an): Das andockbare Fenster „Parallel auswerten“ zeigt je Thread eine Zeile (Kennung, Name, Ort des obersten eigenen Rahmens) und je Ausdruck eine Spalte. Ausgewertet wird bei jedem Halt im jeweiligen Thread, ab 32 Threads auf Knopfdruck; was im Thread nicht gilt, steht als „–“ da. Threads ohne eigenen Code sind ausgeblendet, Spalten lassen sich sortieren und filtern, markierte Threads stehen oben, Doppelklick wechselt zum Thread. Die Ausdrücke werden je Projekt gespeichert.

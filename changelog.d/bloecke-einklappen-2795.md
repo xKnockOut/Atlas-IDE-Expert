@@ -1,2 +1,0 @@
-### Neu
-- Große Blöcke einklappen (#2795): „Block einklappen“, „Große Blöcke einklappen“ und „Blöcke ausklappen“ im Editor-Kontextmenü, Hauptmenü und in der Befehlspalette. Atlas setzt dafür vorübergehend Regionsmarken in dieselben Zeilen (Zeilennummern und Haltepunkte bleiben) und entfernt sie vor dem Speichern wieder. Erfasst werden if/else-Zweige, Schleifen, with, try, repeat und case; Routinenrümpfe faltet Delphi selbst. Einstellungen `editor.blockFolds` und `editor.blockFolds.minLines` (Standard 15 Zeilen).

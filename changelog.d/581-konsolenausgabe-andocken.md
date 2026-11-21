@@ -1,2 +1,0 @@
-### Neu
-- Ausgabe von Konsolenprogrammen andocken (#581, experimentell, `debug.captureConsole`, Vorgabe aus): Konsolenprogramme für Win32/Win64 laufen mit F9 oder „Ohne Debugger mit Konsolenausgabe starten“ im andockbaren Fenster „Atlas: Konsolenausgabe“ statt in einem eigenen Konsolenfenster. stderr rot, Eingabefeld für stdin, Ende der Eingabe, Beenden, Exit-Code, anklickbare Fundstellen. Mit Debugger startet Atlas das Programm angehalten und hängt den Debugger der IDE an, sodass Haltepunkte ab der ersten Zeile greifen.

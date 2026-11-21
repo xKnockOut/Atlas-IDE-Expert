@@ -1,2 +1,0 @@
-### Neu
-- Prüfregel `ota-entry-without-guard` (#2751): meldet öffentliche Methoden von Notifiern, Wizards, Tastaturbindungen und Menüeinträgen, aus denen eine Ausnahme (Aufruf, `raise`, `as`) ungefangen die IDE erreicht. Schutzroutinen wie `TAtlasGuard.Run` lassen sich mit `guards` einstellen, die Interfaces mit `interfaces`; Korrekturen legen den Rumpf in die erste Schutzroutine bzw. in `try … except` mit Meldung über das Protokollfeld.

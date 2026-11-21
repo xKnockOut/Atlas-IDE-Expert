@@ -1,2 +1,0 @@
-### Geändert
-- Willkommensseite: Die Quellen der Bereiche sind Adapter (`Atlas.IDE.Welcome.Adapters.*`); angelegt und verbunden werden sie nur noch in der Composition (`Atlas.IDE.Welcome.Composition.Sources`, `.Areas`, `.Startup`). Die Steuerung kennt die Bereiche, „Seite anpassen“, die Registry und den Reiter „Issues“ nur noch über ihre Verträge; der Abschnitt im Optionsdialog wird über `Atlas.IDE.Welcome.Adapters.SettingsSection` angemeldet (#1443).

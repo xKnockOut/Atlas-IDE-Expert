@@ -1,2 +1,0 @@
-### Behoben
-- Zeilenverfolgung der Befunde (`editor.trackLines`): Scheitert das Anmelden der Zeilen bei der IDE, bleibt der Stand bis zur nächsten Änderung ohne Verfolgung, statt es bei jedem Zeichnen erneut zu versuchen und die Befund-Marken nach drei Fehlern ganz abzuschalten. Dateien in einem weiteren Editorfenster werden ebenfalls verfolgt. Schließt die IDE einen Puffer, entfernt das nur dessen eigene Anmeldung, nicht die eines inzwischen neu geöffneten Puffers gleichen Namens; beim Entladen fasst Atlas nur Tracker noch geöffneter Puffer an.

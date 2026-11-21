@@ -1,2 +1,0 @@
-### Neu
-- Objekte beim Debuggen markieren (#839, `debug.objectMarks`, Vorgabe an): „Objekt markieren …“ im Kontextmenü des Editors gibt dem Objekt unter der Schreibmarke ein Etikett (Vorschlag aus Klasse und Name). Wo dieselbe Adresse wieder auftaucht, steht es am Wert im Editor, im Debug-Hover und im Fenster „Auswerten“, in einer von acht Farben. Das neue Fenster „Markierte Objekte“ zeigt Etikett, Klasse, Adresse, zuletzt gesehen und „vermutlich freigegeben“, wenn an der Adresse inzwischen eine andere Klasse steht. Markierungen gelten bis zum Ende der Debug-Sitzung.
