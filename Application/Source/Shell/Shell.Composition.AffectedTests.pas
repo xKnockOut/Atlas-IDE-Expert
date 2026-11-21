@@ -67,7 +67,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Composition.Platform,
   Shell.VersionControlChanges,
   Shell.Workspace,
@@ -87,7 +87,7 @@ const
 /// <summary>Text auf der Platte, ohne ungespeicherte Puffer des Editors.</summary>
 function DiskSourceText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+  Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
 end;
 
 /// <summary>Pfade aus dem Feld files (URIs) der Anfrage; leer ohne.</summary>

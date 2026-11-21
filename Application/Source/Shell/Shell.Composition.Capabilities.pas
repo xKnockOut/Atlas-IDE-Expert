@@ -39,7 +39,7 @@ uses
   Atlas.Common.Lsp.WorkspaceFolders,
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Diagnostics.ServerPackage,
-  Shell.CrashCases,
+  Core.CrashCases,
   Shell.Composition.ServerCommands;
 
 { TShellCapabilities }
@@ -81,7 +81,7 @@ begin
   Result.AddPair('colorProvider', TJSONBool.Create(True));
   mCommands := TJSONArray.Create;
   mCommands.Add(cStatusCommand);
-  mCommands.Add(TShellCrashCases.cRetryCommand);
+  mCommands.Add(TCoreCrashCases.cRetryCommand);
   mCommands.Add(cProcessesCommand);
   mCommands.Add(TShellServerCommands.cCompileCommand);
   mCommands.Add(TShellServerCommands.cSelectBuildCommand);

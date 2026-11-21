@@ -133,7 +133,7 @@ uses
   Shell.VersionControlChanges,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.FormatCheck,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Linter,
   Shell.Linter.Check,
   Shell.Linter.Duplicates,

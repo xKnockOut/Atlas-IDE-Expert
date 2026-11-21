@@ -42,7 +42,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Workspace.Listings,
   Shell.WorkspaceGroup,
   Atlas.Tests.TempFolder;
@@ -87,7 +87,7 @@ begin
     'atlas-test-group',
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+      Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
     end);
 end;
 
