@@ -48,6 +48,8 @@ type
     /// <summary>AValue als JSON-Text (wie ToJSON) und danach freigeben; '' für nil. Für Werte, die nur für den
     /// Text gebaut werden.</summary>
     class function TextAndFree(AValue: TJSONValue): string; static;
+    /// <summary>Argumente eines Serverbefehls an einer Stelle: JSON-Array [AUri, ALine].</summary>
+    class function UriLine(const AUri: string; ALine: Integer): string; static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -247,6 +249,16 @@ begin
   finally
     AValue.Free;
   end;
+end;
+
+class function TJsonBuild.UriLine(const AUri: string; ALine: Integer): string;
+var
+  mItems: TJSONArray;
+begin
+  mItems := TJSONArray.Create;
+  mItems.Add(AUri);
+  mItems.Add(ALine);
+  Result := TextAndFree(mItems);
 end;
 
 { TJsonRead }

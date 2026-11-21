@@ -625,7 +625,6 @@ begin
   if (FBar <> nil) and FBar.IsShown then
   begin
     FBar.Colors := TAtlasIdeStyle.Colors;
-    FBar.Invalidate;
   end;
 end;
 

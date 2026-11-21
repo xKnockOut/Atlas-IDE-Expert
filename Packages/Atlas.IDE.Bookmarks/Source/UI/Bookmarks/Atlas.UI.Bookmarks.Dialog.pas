@@ -82,7 +82,8 @@ begin
   mBottom.Height := ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Setzen“.
-  FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogCancel), CancelClick);
+  FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogCancel),
+    CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
   FOk := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogOk), OkClick);

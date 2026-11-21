@@ -97,12 +97,14 @@ begin
   mBottom.Height := ScaleValue(44);
   mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Speichern“; „Löschen“ links außen.
-  FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel), CancelClick);
+  FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel),
+    CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
   FSave := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogSave), SaveClick);
   FSave.Left := FCancel.Left - FSave.Width - ScaleValue(cGap);
-  FDelete := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogDelete), DeleteClick);
+  FDelete := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogDelete),
+    DeleteClick);
   FDelete.Left := ScaleValue(cGap);
   FDelete.Anchors := [akLeft, akTop];
   FDelete.Visible := ACanDelete;

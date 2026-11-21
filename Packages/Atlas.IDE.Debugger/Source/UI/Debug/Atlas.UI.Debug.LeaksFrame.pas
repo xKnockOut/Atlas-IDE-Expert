@@ -65,7 +65,8 @@ type
 implementation
 
 uses
-  Winapi.Windows,
+  Atlas.Core.Foundation.Calls,
+  Atlas.UI.Foundation.Controls,
   Atlas.UI.Debug.Leaks.Strings,
   Atlas.UI.Debug.Leaks;
 
@@ -155,10 +156,7 @@ end;
 
 procedure TAtlasDebugLeaksFrame.FilterClick(Sender: TObject);
 begin
-  if Assigned(FOnFilter) then
-  begin
-    FOnFilter();
-  end;
+  TAtlasCalls.Call(FOnFilter);
 end;
 
 procedure TAtlasDebugLeaksFrame.MarkKnownClick(Sender: TObject);
@@ -179,11 +177,7 @@ end;
 
 procedure TAtlasDebugLeaksFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    Key := 0;
-    OpenSelected;
-  end;
+  TAtlasControls.ReturnKey(Key, OpenSelected);
 end;
 
 procedure TAtlasDebugLeaksFrame.TreeChange(Sender: TObject; Node: TTreeNode);
@@ -232,11 +226,7 @@ end;
 
 function TAtlasDebugLeaksFrame.SelectedRow: Integer;
 begin
-  Result := -1;
-  if FTree.Selected <> nil then
-  begin
-    Result := Integer(NativeInt(FTree.Selected.Data));
-  end;
+  Result := TAtlasControls.SelectedIndex(FTree);
 end;
 
 procedure TAtlasDebugLeaksFrame.OpenSelected;

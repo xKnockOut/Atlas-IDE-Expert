@@ -68,17 +68,8 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Themes,
-  Atlas.UI.Debug.Exceptions.Strings;
-
-/// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := MulDiv(AWidth, AList.CurrentPPI, 96);
-end;
+  Atlas.UI.Debug.Exceptions.Strings,
+  Atlas.UI.Foundation.ListView;
 
 /// <summary>Farbe AColor im Stil von AList, nicht im globalen: Die IDE themt ihre Fenster je Formular.</summary>
 function ListColor(AList: TListView; AColor: TColor): TColor;
@@ -106,8 +97,10 @@ begin
   FList.ReadOnly := True;
   FList.MultiSelect := False;
   FList.ColumnClick := False;
-  AddColumn(FList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStackCaption), cFrameWidth);
-  AddColumn(FList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStackCaption), cFrameWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;

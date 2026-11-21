@@ -556,8 +556,8 @@ begin
   mWords := LowerCase(Trim(APattern)).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   for mIndex := 0 to High(Bookmarks) do
   begin
-    mHaystack := LowerCase(Bookmarks[mIndex].DisplayName + #10 + TTextUris.FileNameOf(Bookmarks[mIndex].FileName) + #10 +
-      Bookmarks[mIndex].Method + #10 + Bookmarks[mIndex].Preview);
+    mHaystack := LowerCase(Bookmarks[mIndex].DisplayName + #10 + TTextUris.FileNameOf(Bookmarks[mIndex].FileName) +
+      #10 + Bookmarks[mIndex].Method + #10 + Bookmarks[mIndex].Preview);
     mMatches := True;
     for mPart in mWords do
     begin
@@ -943,7 +943,8 @@ begin
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (TJsonRead.FormatOf(mText) > cFormat)) then
+    if FileExists(mFileName) and
+      (not TAtlasDataFile.TryRead(mFileName, mText) or (TJsonRead.FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;

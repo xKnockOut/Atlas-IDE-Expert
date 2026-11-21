@@ -56,7 +56,7 @@ type
     [Test]
     procedure ParseCodeAndNothing;
     [Test]
-    procedure UnquoteAndClassName;
+    procedure ClassNameNeedsIdentifier;
   end;
 
 implementation
@@ -317,11 +317,8 @@ begin
   Assert.IsFalse(TAtlasDebugExceptionText.Parse('', mExceptionClass, mMessage));
 end;
 
-procedure TAtlasDebugExceptionsTests.UnquoteAndClassName;
+procedure TAtlasDebugExceptionsTests.ClassNameNeedsIdentifier;
 begin
-  Assert.AreEqual('Abc', TAtlasDebugExceptionText.Unquote('''Abc'''));
-  Assert.AreEqual('it''s', TAtlasDebugExceptionText.Unquote(' ''it''''s'' '));
-  Assert.AreEqual('Abc', TAtlasDebugExceptionText.Unquote('Abc'));
   Assert.IsTrue(TAtlasDebugExceptionText.IsClassName('System.SysUtils.EConvertError'));
   Assert.IsTrue(TAtlasDebugExceptionText.IsClassName('_E1'));
   Assert.IsFalse(TAtlasDebugExceptionText.IsClassName('1E'));

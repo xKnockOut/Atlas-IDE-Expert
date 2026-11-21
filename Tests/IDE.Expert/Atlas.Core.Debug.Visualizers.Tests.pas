@@ -241,6 +241,7 @@ begin
   Assert.AreEqual('ab…', TAtlasVisualizerFormat.Shorten('abcd', 3));
   Assert.AreEqual('It''s', TAtlasVisualizerFormat.Unquote('''It''''s'''));
   Assert.AreEqual('42', TAtlasVisualizerFormat.Unquote('42'));
+  Assert.AreEqual('it''s', TAtlasVisualizerFormat.Unquote(' ''it''''s'' '));
   Assert.IsTrue(TAtlasVisualizerFormat.IsStructured('($0A3F1C20)'));
   Assert.IsTrue(TAtlasVisualizerFormat.IsStructured(':0A3F1C20'));
   Assert.IsFalse(TAtlasVisualizerFormat.IsStructured('''Meier'''));

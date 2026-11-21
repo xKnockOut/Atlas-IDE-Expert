@@ -119,7 +119,10 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.UI.Debug.EventLog.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Foundation.Controls,
+  Atlas.UI.Foundation.Menus;
 
 {$R *.dfm}
 
@@ -147,16 +150,6 @@ end;
 function Cells(const AEntry: TAtlasEventEntry): TArray<string>;
 begin
   Result := TArray<string>.Create(AEntry.TimeText, KindCaption(AEntry.Kind), AEntry.Thread, AEntry.Text);
-end;
-
-/// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := MulDiv(AWidth, AList.CurrentPPI, 96);
 end;
 
 { TAtlasDebugEventLogFrame }
@@ -250,10 +243,7 @@ end;
 
 function TAtlasDebugEventLogFrame.TListMenu.AddItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(Self);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Items.Add(Result);
+  Result := TAtlasMenus.Add(Self, ACaption, AClick);
 end;
 
 procedure TAtlasDebugEventLogFrame.TListMenu.MenuPopup(Sender: TObject);
@@ -320,10 +310,14 @@ begin
   FList.MultiSelect := False;
   FList.ColumnClick := False;
   FList.PopupMenu := FMenu;
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnTime), cTimeWidth);
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnKind), cKindWidth);
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnThread), cThreadWidth);
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnText), cTextWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnTime), cTimeWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnKind), cKindWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnThread), cThreadWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnText), cTextWidth);
   FList.OnData := ListData;
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
@@ -442,16 +436,7 @@ end;
 
 procedure TAtlasDebugEventLogFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    OpenSelected;
-    Key := 0;
-  end
-  else if (Key = Ord('C')) and (ssCtrl in Shift) then
-  begin
-    CopySelected;
-    Key := 0;
-  end;
+  TAtlasControls.OpenOrCopyKey(Key, Shift, OpenSelected, CopySelected);
 end;
 
 procedure TAtlasDebugEventLogFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;

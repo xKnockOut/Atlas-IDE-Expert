@@ -45,6 +45,8 @@ type
     /// </summary>
     [Test]
     procedure TextAndFreeGivesTextAndFrees;
+    [Test]
+    procedure UriLineIsArrayOfUriAndLine;
   end;
 
   [TestFixture]
@@ -242,6 +244,11 @@ begin
   finally
     mObject.Free;
   end;
+end;
+
+procedure TJsonBuildTests.UriLineIsArrayOfUriAndLine;
+begin
+  Assert.AreEqual('["file:///c:/a.pas",12]', TJsonBuild.UriLine('file:///c:/a.pas', 12));
 end;
 
 procedure TJsonBuildTests.TextAndFreeGivesTextAndFrees;

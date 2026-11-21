@@ -187,8 +187,8 @@ begin
       AOptions := Default(TAtlasReleaseOptions);
       Result := False;
       try
-        Result := ReadOptions(TAtlasIdeStartOptions.FindProject(AProject.FileName), AProject.Configuration, AProject.Platform, mFolder,
-          AOptions);
+        Result := ReadOptions(TAtlasIdeStartOptions.FindProject(AProject.FileName), AProject.Configuration,
+          AProject.Platform, mFolder, AOptions);
       except
         // Nicht lesbar: keine Prüfung, der Build läuft (#493).
         on E: Exception do

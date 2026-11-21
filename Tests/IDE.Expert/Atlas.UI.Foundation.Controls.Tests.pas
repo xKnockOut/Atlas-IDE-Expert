@@ -28,13 +28,24 @@ type
     /// <summary>KeyHandled gibt die Taste weiter und setzt Result nur, wenn sie behandelt wurde.</summary>
     [Test]
     procedure KeyHandledMarksOnlyHandledKeys;
+    /// <summary>ReturnKey nimmt nur Enter und setzt die Taste dann auf 0.</summary>
+    [Test]
+    procedure ReturnKeyTakesOnlyEnter;
+    /// <summary>OpenOrCopyKey: Enter öffnet, Strg+C kopiert, C allein bleibt.</summary>
+    [Test]
+    procedure OpenOrCopyKeyTakesEnterAndCtrlC;
+    /// <summary>SelectedIndex liest Data des gewählten Knotens; ohne Auswahl -1.</summary>
+    [Test]
+    procedure SelectedIndexReadsNodeData;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
   Winapi.Messages,
   System.Classes,
+  System.SysUtils,
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
@@ -167,6 +178,80 @@ begin
       Result := True;
     end));
   Assert.AreEqual(1, Integer(mMessage.Result));
+end;
+
+procedure TAtlasControlsTests.ReturnKeyTakesOnlyEnter;
+var
+  mKey: Word;
+  mOpened: Integer;
+  mOpen: TProc;
+begin
+  mOpened := 0;
+  mOpen :=
+    procedure
+    begin
+      Inc(mOpened);
+    end;
+  mKey := VK_RETURN;
+  Assert.IsTrue(TAtlasControls.ReturnKey(mKey, mOpen));
+  Assert.AreEqual(0, Integer(mKey));
+  Assert.AreEqual(1, mOpened);
+  mKey := VK_ESCAPE;
+  Assert.IsFalse(TAtlasControls.ReturnKey(mKey, mOpen));
+  Assert.AreEqual(Integer(VK_ESCAPE), Integer(mKey));
+  Assert.AreEqual(1, mOpened);
+  mOpen := nil;
+end;
+
+procedure TAtlasControlsTests.OpenOrCopyKeyTakesEnterAndCtrlC;
+var
+  mKey: Word;
+  mLog: string;
+  mOpen, mCopy: TProc;
+begin
+  mLog := '';
+  mOpen :=
+    procedure
+    begin
+      mLog := mLog + 'o';
+    end;
+  mCopy :=
+    procedure
+    begin
+      mLog := mLog + 'c';
+    end;
+  mKey := VK_RETURN;
+  Assert.IsTrue(TAtlasControls.OpenOrCopyKey(mKey, [], mOpen, mCopy));
+  mKey := Ord('C');
+  Assert.IsTrue(TAtlasControls.OpenOrCopyKey(mKey, [ssCtrl], mOpen, mCopy));
+  Assert.AreEqual(0, Integer(mKey));
+  mKey := Ord('C');
+  Assert.IsFalse(TAtlasControls.OpenOrCopyKey(mKey, [], mOpen, mCopy));
+  Assert.AreEqual(Ord('C'), Integer(mKey));
+  Assert.AreEqual('oc', mLog);
+  mOpen := nil;
+  mCopy := nil;
+  mLog := '';
+end;
+
+procedure TAtlasControlsTests.SelectedIndexReadsNodeData;
+var
+  mForm: TForm;
+  mTree: TTreeView;
+  mNode: TTreeNode;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mTree := TTreeView.Create(mForm);
+    mTree.Parent := mForm;
+    Assert.AreEqual(-1, TAtlasControls.SelectedIndex(mTree));
+    mNode := mTree.Items.Add(nil, 'Zeile');
+    mNode.Data := Pointer(cSomeRow);
+    mNode.Selected := True;
+    Assert.AreEqual(cSomeRow, TAtlasControls.SelectedIndex(mTree));
+  finally
+    mForm.Free;
+  end;
 end;
 
 initialization

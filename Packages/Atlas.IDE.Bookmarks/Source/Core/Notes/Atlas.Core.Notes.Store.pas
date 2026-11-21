@@ -672,7 +672,8 @@ begin
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (TJsonRead.FormatOf(mText) > cFormat)) then
+    if FileExists(mFileName) and
+      (not TAtlasDataFile.TryRead(mFileName, mText) or (TJsonRead.FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;

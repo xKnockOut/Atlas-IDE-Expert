@@ -34,19 +34,28 @@ type
     class procedure SuppressBeep(var AKey: Char); static;
     /// <summary>AHeight := ANewHeight; bei einer Änderung AChanged rufen.</summary>
     class procedure Remeasure(var AHeight: Integer; ANewHeight: Integer; const AChanged: TProc); static;
-    /// <summary>Reiterseite ACaption in APages, Besitzer AOwner, noch ohne sichtbaren Reiter: Ein sichtbarer Reiter
-    /// braucht das Fenster des PageControls; der Besitzer zeigt ihn, sobald es da ist (CreateWnd).</summary>
     /// <summary>Taste aus AMessage (CN_KEYDOWN oder CN_SYSKEYDOWN) an AHandle(Taste, Umschalttasten) geben; True und
     /// AMessage.Result 1, wenn AHandle sie behandelt hat (dann kein inherited, die IDE sieht sie nicht).</summary>
     class function KeyHandled(var AMessage: TWMKeyDown; const AHandle: TFunc<Word, TShiftState, Boolean>): Boolean;
       static;
+    /// <summary>Reiterseite ACaption in APages, Besitzer AOwner, noch ohne sichtbaren Reiter: Ein sichtbarer Reiter
+    /// braucht das Fenster des PageControls; der Besitzer zeigt ihn, sobald es da ist (CreateWnd).</summary>
     class function NewHiddenSheet(AOwner: TComponent; APages: TPageControl; const ACaption: string): TTabSheet;
       static;
+    /// <summary>Ist AKey Enter: AKey := 0 und AOpen rufen (Eintrag öffnen statt Signalton), Ergebnis True.</summary>
+    class function ReturnKey(var AKey: Word; const AOpen: TProc): Boolean; static;
+    /// <summary>Tasten einer Liste: Enter ruft AOpen (wie ReturnKey), Strg+C ACopy; die behandelte Taste wird 0.
+    /// True, wenn eine der beiden gedrückt war.</summary>
+    class function OpenOrCopyKey(var AKey: Word; AShift: TShiftState; const AOpen, ACopy: TProc): Boolean; static;
+    /// <summary>Data des gewählten Knotens von ATree als Zahl (Index in die Zeilen des Besitzers); -1 ohne Auswahl.
+    /// </summary>
+    class function SelectedIndex(ATree: TTreeView): Integer; static;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
   Vcl.Forms;
 
 { TAtlasControls }
@@ -114,6 +123,36 @@ begin
   Result.TabVisible := False;
   Result.PageControl := APages;
   Result.Caption := ACaption;
+end;
+
+class function TAtlasControls.ReturnKey(var AKey: Word; const AOpen: TProc): Boolean;
+begin
+  Result := AKey = VK_RETURN;
+  if Result then
+  begin
+    AKey := 0;
+    AOpen();
+  end;
+end;
+
+class function TAtlasControls.OpenOrCopyKey(var AKey: Word; AShift: TShiftState; const AOpen, ACopy: TProc): Boolean;
+begin
+  Result := ReturnKey(AKey, AOpen);
+  if not Result and (AKey = Ord('C')) and (ssCtrl in AShift) then
+  begin
+    AKey := 0;
+    ACopy();
+    Result := True;
+  end;
+end;
+
+class function TAtlasControls.SelectedIndex(ATree: TTreeView): Integer;
+begin
+  Result := -1;
+  if ATree.Selected <> nil then
+  begin
+    Result := Integer(NativeInt(ATree.Selected.Data));
+  end;
 end;
 
 end.
