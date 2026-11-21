@@ -184,7 +184,8 @@ uses
   System.DateUtils,
   Atlas.Core.Localization.Language,
   Atlas.Text.Json,
-  Atlas.Text.Timestamps;
+  Atlas.Text.Timestamps,
+  Atlas.Text.Files;
 
 {$SCOPEDENUMS ON}
 
@@ -763,6 +764,24 @@ begin
   end;
 end;
 
+/// <summary>Marke aus AFileName; False, wenn die Datei ungültig, gesperrt oder schon fort ist.</summary>
+function ReadMarker(const AFileName: string; out AMarker: TAtlasSessionMarker): Boolean;
+begin
+  AMarker := Default(TAtlasSessionMarker);
+  try
+    Result := TAtlasSessionMarker.FromJson(TFile.ReadAllText(AFileName, TEncoding.UTF8), AMarker);
+  except
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
+  end;
+end;
+
 class function TAtlasSessionFiles.TakeCrashed(const AFolder: string; AOwnProcessId: Cardinal;
   const AAlive: TAtlasProcessAlive): TArray<TAtlasSessionMarker>;
 var
@@ -777,11 +796,7 @@ begin
   end;
   for mFileName in TDirectory.GetFiles(AFolder, cMarkerPrefix + '*.json') do
   begin
-    try
-      mValid := TAtlasSessionMarker.FromJson(TFile.ReadAllText(mFileName, TEncoding.UTF8), mMarker);
-    except
-      mValid := False;
-    end;
+    mValid := ReadMarker(mFileName, mMarker);
     if mValid and (mMarker.ProcessId = AOwnProcessId) then
     begin
       Continue;
@@ -794,13 +809,8 @@ begin
     begin
       Result := Result + [mMarker];
     end;
-    try
-      TFile.Delete(mFileName);
-    except
-      // Gesperrt: beim nächsten Start noch einmal.
-      on Exception do
-        ;
-    end;
+    // Gesperrt: beim nächsten Start noch einmal.
+    TTextFiles.DeleteQuietly(mFileName);
   end;
 end;
 
@@ -813,8 +823,14 @@ begin
       Result := TAtlasSafeState.FromJson(TFile.ReadAllText(StateFile(AFolder), TEncoding.UTF8));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := Default(TAtlasSafeState);
+    end;
   end;
 end;
 

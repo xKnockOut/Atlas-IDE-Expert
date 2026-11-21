@@ -78,6 +78,9 @@ type
     function TakeExpired(AExpired: TList<TEntry>): Boolean;
     procedure Execute;
     procedure Expire(const AEntry: TEntry);
+    /// <summary>Expire, ohne dass ein Fehler darin (Antwort an einen geschlossenen Transport, Meldung) die
+    /// Überwachung beendet.</summary>
+    procedure ExpireQuietly(const AEntry: TEntry);
   public
     /// <summary>ATimeoutMs = 0 schaltet die Überwachung ab.</summary>
     constructor Create(const APending: IJsonRpcPendingRequests; ATimeoutMs: Cardinal;
@@ -97,7 +100,8 @@ implementation
 
 uses
   Atlas.Common.JsonRpc.Messages,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
 
@@ -212,11 +216,9 @@ begin
     begin
       // Außerhalb der Sperre: Cancel und Meldung dürfen dauern.
       for mEntry in mExpired do
-        try
-          Expire(mEntry);
-        except
-          // Eine fehlerhafte Meldung darf die Überwachung nicht beenden.
-        end;
+      begin
+        ExpireQuietly(mEntry);
+      end;
       mExpired.Clear;
     end;
   finally
@@ -268,6 +270,15 @@ begin
   finally
     AEntry.Id.Free;
   end;
+end;
+
+procedure TJsonRpcWatchdog.ExpireQuietly(const AEntry: TEntry);
+begin
+  TReporting.Quietly(
+    procedure
+    begin
+      Expire(AEntry);
+    end);
 end;
 
 function TJsonRpcWatchdog.Watch(const AId: TJSONValue; const AMethod: string): Int64;

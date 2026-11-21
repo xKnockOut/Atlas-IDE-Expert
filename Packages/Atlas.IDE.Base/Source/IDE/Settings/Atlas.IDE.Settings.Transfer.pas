@@ -74,7 +74,8 @@ uses
   Atlas.UI.Settings.Transfer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.Text.Files;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -87,8 +88,14 @@ begin
       Result := True;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

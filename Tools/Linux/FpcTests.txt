@@ -20,6 +20,7 @@ Atlas.Text.Fuzzy.Tests
 Atlas.Text.Csv.Tests
 Atlas.Text.Files.Tests
 Atlas.Text.Locked.Tests
+Atlas.Text.Reporting.Tests
 Atlas.Text.IndexCache.Tests
 Atlas.Text.Names.Tests
 Atlas.Text.Numbers.Tests
@@ -336,6 +337,7 @@ Atlas.Common.Query.Language.Tests
 Atlas.Common.Rationale.References.Tests
 Atlas.Common.Rationale.Scanner.Tests
 Atlas.Common.Rules.Baseline.Tests
+Atlas.Common.Rules.Builtin.Architecture.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Calls.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests

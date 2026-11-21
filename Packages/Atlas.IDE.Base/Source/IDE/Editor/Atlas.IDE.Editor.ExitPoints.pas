@@ -491,7 +491,10 @@ begin
         end;
       except
         // Server beschäftigt, weg oder zu alt (Befehl unbekannt): keine Hervorhebung, der Editor bleibt frei.
-        mFound := Default(TAtlasExitPointSet);
+        on ELspClientError do
+        begin
+          mFound := Default(TAtlasExitPointSet);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.ExitPoints,

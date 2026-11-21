@@ -174,8 +174,14 @@ begin
     Result := True;
   except
     // Nicht lesbar: zählt wie nicht vorhanden.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 
@@ -699,8 +705,14 @@ begin
   try
     mText := TAtlasTextFile.LoadText(AProject);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   Result := TAtlasWelcomeQuickActions.ReadTargets(mText);
   // Vorgabe: zuletzt benutzt (Abschnitt "build" der Zusammenfassung), wenn das Projekt sie noch kennt.

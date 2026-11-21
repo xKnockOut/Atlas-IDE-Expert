@@ -2,8 +2,8 @@
 
 // Dateizugriff des Trackers auf der Platte (#1455 Paket 2d): Text mit BOM
 // schreiben und ohne lesen, Ersetzen ohne Zwischendatei, Anfang und Ende
-// einer Datei, Ordner auflisten und löschen, Sperrdatei, keine Ausnahme bei
-// fehlenden Dateien.
+// einer Datei, Ordner auflisten und löschen, Sperrdatei (ohne Schreibrecht
+// sofort nil statt Warten), keine Ausnahme bei fehlenden Dateien.
 
 interface
 
@@ -36,6 +36,8 @@ type
     procedure ListAndDeleteFolders;
     [Test]
     procedure LockIsExclusive;
+    [Test]
+    procedure LockWithoutWriteAccessFailsAtOnce;
   end;
 
 implementation
@@ -43,6 +45,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.Diagnostics,
   Atlas.Core.Tracker.Providers.LocalFiles;
 
 const
@@ -156,6 +159,20 @@ begin
   Assert.IsNull(FFiles.Lock(PathOf('t.lock'), 50), 'zweite Sperre wartet und gibt auf');
   mFirst := nil;
   Assert.IsNotNull(FFiles.Lock(PathOf('t.lock'), 0), 'nach der Freigabe wieder frei');
+end;
+
+procedure TAtlasTrackerLocalFilesTests.LockWithoutWriteAccessFailsAtOnce;
+const
+  cWaitMs = 3000;
+var
+  mWatch: TStopwatch;
+begin
+  // Ein Ordner unter dem Namen der Sperrdatei lässt sich nie als Datei öffnen, wie ein Ordner ohne Schreibrecht:
+  // Warten hilft nicht, also kommt nil ohne die Wartezeit.
+  TDirectory.CreateDirectory(PathOf('t.lock'));
+  mWatch := TStopwatch.StartNew;
+  Assert.IsNull(FFiles.Lock(PathOf('t.lock'), cWaitMs));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < cWaitMs div 2, 'keine Wartezeit, wenn das Öffnen nie gelingt');
 end;
 
 end.

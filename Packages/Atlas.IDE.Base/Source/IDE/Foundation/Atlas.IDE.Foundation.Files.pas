@@ -108,8 +108,14 @@ begin
       Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result.Encoding := TAtlasTextEncoding.Utf8Bom;
+    end;
   end;
   Result.Text := '';
 end;
@@ -203,8 +209,12 @@ begin
     ASource := TAtlasTextFile.LoadText(AFileName);
   except
     // Fehlt, gesperrt, unlesbar oder binäres Formular: kein Text.
-    on Exception do
+    on E: Exception do
     begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       ASource := '';
       Result := False;
     end;

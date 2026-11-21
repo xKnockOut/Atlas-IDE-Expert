@@ -112,7 +112,8 @@ uses
   Shell.Platform,
   Shell.Bootstrap,
   Shell.Workspace.Setup,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Text.Files;
 
 /// <summary>Gehört AFileName zu AWorkspace? Mit fester Projektdatei nur die Projekt- und Suchpfad-Units, sonst
 /// alles unter dem Ordner.</summary>
@@ -148,8 +149,14 @@ begin
       (Length(TDirectory.GetFiles(AFolder, '*.groupproj')) > 0);
   except
     // Ungültige oder nicht lesbare Ordner zählen als ohne Projekt.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 
@@ -171,8 +178,14 @@ begin
     end;
   except
     // Nicht lesbare Ordner haben keine Gruppe.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

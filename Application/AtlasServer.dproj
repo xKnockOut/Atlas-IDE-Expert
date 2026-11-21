@@ -175,7 +175,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Tools.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Git.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Null.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.ProcessRunner.pas"/>

@@ -966,7 +966,6 @@ begin
   try
     mItems := Diagnose(AEntry, mUri, mText);
   except
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Prüf-Threads; Fehler wird protokolliert
     on E: Exception do
     begin
       Fail(AEntry, mUri, mStamp, E);

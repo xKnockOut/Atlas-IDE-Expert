@@ -83,7 +83,7 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Commands.ProjectMenu,
   Atlas.IDE.Problems.Service,
-  Atlas.IDE.CodeInsight.Composition.Adapters,
+  Atlas.IDE.CodeInsight.Composition.HostAdapters,
   Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,

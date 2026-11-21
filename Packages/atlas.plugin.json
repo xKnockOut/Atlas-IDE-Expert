@@ -6,7 +6,6 @@
   "exclude": ["__history/**", "__recovery/**"],
   "rules": {
     "loop-runs-at-most-once": {"allowFirstElement": true},
-    "catch-all-without-raise": "off",
     "narrowing-assignment": "off",
     "method-order": "off",
     "ota-entry-without-guard": {"guards": ["TAtlasGuard.Run(TAtlasFeature.Menu, ", "TAtlasGuard.RunProvider", "TAtlasGuard.Wrap"]},

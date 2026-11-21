@@ -35,7 +35,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.RegularExpressions,
-  System.Win.Registry;
+  System.Win.Registry,
+  Atlas.Text.Reporting;
 
 const
   cRegistryKey = 'Software\Atlas\IdePlugin';
@@ -171,12 +172,13 @@ end;
 
 class procedure TAtlasCodeInsightPaths.Append(const AMessage: string);
 begin
-  try
-    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh":"nn":"ss.zzz', Now) + ' ' + WithoutPaths(AMessage) +
-      sLineBreak, TEncoding.UTF8);
-  except
-    // Protokoll ist Beiwerk; ein gesperrtes Log darf die IDE nicht stören.
-  end;
+  // Protokoll ist Beiwerk; ein gesperrtes Log darf die IDE nicht stören.
+  TReporting.Quietly(
+    procedure
+    begin
+      TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh":"nn":"ss.zzz', Now) + ' ' + WithoutPaths(AMessage) +
+        sLineBreak, TEncoding.UTF8);
+    end);
 end;
 
 end.

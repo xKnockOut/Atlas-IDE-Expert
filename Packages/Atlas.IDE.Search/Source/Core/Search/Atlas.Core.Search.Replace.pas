@@ -52,6 +52,10 @@ type
 
 implementation
 
+
+uses
+  System.RegularExpressionsCore;
+
 { TAtlasReplacePreview }
 
 function TAtlasReplacePreview.Caption: string;
@@ -97,7 +101,7 @@ begin
     end;
   except
     // Unbekannter Name: die Engine meldet ihn als Fehler; für den Ersatztext heißt das „nichts“.
-    on Exception do
+    on ERegularExpressionError do
       Result := '';
   end;
 end;

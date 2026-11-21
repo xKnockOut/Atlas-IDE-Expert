@@ -1,0 +1,2 @@
+### Experimentell
+- Rollenmatrix nach dem Wortlaut des Rollenkonzepts (`architecture-role-import`, `architecture-contract-content`): Die Rolle ist der erste Rollenbezeichner an beliebiger Stelle nach dem Feature (`Feature.Sache.Contract` ist ein Contract), ein weiterer eröffnet eine Verschachtelung mit Träger, Sub-Contract und Internals der Struktur. Host-Rollen werden einzeln geprüft, Hosting nur auf eigenen Contract und eigenes Hosting. Genehmigte Ausnahmen (`allow`) geben nie Internals frei.

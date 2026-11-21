@@ -175,7 +175,8 @@ implementation
 uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Core.Diagnostics.Guard;
 
 {$SCOPEDENUMS ON}
 
@@ -284,8 +285,11 @@ begin
   try
     Result := AClient.FOnServerRequest(AMessage.GetValue<string>('method', ''), AMessage.GetValue('params'), mIdCopy);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := False;
+    end;
   end;
   if not Result then
   begin
@@ -306,8 +310,10 @@ begin
       AClient.FOnServerMessage(AMessage.GetValue<string>('method', ''), AMessage.GetValue('params'));
     except
       // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      end;
     end;
   if (AIdValue <> nil) and not OfferServerRequest(AClient, AMessage, AIdValue) then
   begin
@@ -525,7 +531,7 @@ begin
     Notify('$/cancelRequest', TJSONObject.Create.AddPair('id', TJSONNumber.Create(AId)));
   except
     // Abbruch ist ein Hinweis an den Server; scheitert das Senden, bleibt es bei der Zeitüberschreitung.
-    on Exception do
+    on ELspClientError do
       ;
   end;
 end;
@@ -604,8 +610,10 @@ begin
     mPartial(TJSONObject(mParams).GetValue('value'));
   except
     // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+    end;
   end;
 end;
 
@@ -808,8 +816,10 @@ begin
       mHandler();
     except
       // Ein Fehler im Empfänger darf das Schließen nicht abbrechen.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('LSP: Fehler beim Schließen: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      end;
     end;
 end;
 

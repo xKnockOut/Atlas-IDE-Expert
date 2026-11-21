@@ -73,7 +73,8 @@ uses
   Atlas.Core.Assistants.Inbox,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Assistants.HeldEdits,
-  Atlas.UI.Assistants.Strings;
+  Atlas.UI.Assistants.Strings,
+  Atlas.Text.Files;
 
 var
   /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>
@@ -93,15 +94,8 @@ begin
   // MCP-Server vielleicht noch.
   if not GCleaned then
   begin
-    try
-      if TDirectory.Exists(FFolder) then
-      begin
-        TDirectory.Delete(FFolder, True);
-      end;
-    except
-      on Exception do
-        ;
-    end;
+    // Gesperrt: bleibt liegen, der Eingang arbeitet trotzdem.
+    TTextFiles.DeleteFolder(FFolder);
     GCleaned := True;
   end;
   FSignal := TAtlasFolderSignal.Create(FFolder);

@@ -99,7 +99,9 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Shell.Bootstrap,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Files,
+  Atlas.Common.Documents.FileEncoding;
 
 /// <summary>dryRun-Argument; Vorgabe true (#61).</summary>
 function DryRunOf(const AArguments: TJSONObject): Boolean;
@@ -162,8 +164,12 @@ begin
     AInfo := TDprojReader.Load(AFileName, mOptions);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError) or (E is EProjectError)) then
+      begin
+        raise;
+      end;
       AInfo := Default(TProjectInfo);
       Result := False;
     end;

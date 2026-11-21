@@ -26,7 +26,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Contract,
+  Atlas.Common.Lsp.AffectedTests.Types,
   Atlas.Common.Semantics.NameResolver,
   Shell.VersionControlChanges,
   Atlas.Common.Compiler.Contract,

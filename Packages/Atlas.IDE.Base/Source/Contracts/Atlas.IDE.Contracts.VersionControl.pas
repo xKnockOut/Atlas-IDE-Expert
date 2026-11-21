@@ -174,7 +174,7 @@ implementation
 
 uses
   System.SyncObjs,
-  Atlas.Core.VersionControl.Providers.Null;
+  Atlas.Core.VersionControl.Null;
 
 var
   GLock: TCriticalSection;

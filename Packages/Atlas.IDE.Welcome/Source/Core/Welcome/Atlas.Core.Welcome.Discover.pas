@@ -111,7 +111,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Settings.History;
+  Atlas.Core.Settings.History,
+  Atlas.Text.Json;
 
 { TAtlasDiscoverState }
 
@@ -161,12 +162,7 @@ begin
   begin
     Exit;
   end;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AJson);
   try
     if not (mRoot is TJSONObject) then
     begin

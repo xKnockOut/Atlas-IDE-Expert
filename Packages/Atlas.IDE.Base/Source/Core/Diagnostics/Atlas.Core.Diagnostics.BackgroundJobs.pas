@@ -75,7 +75,8 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TJobsAlive = class(TInterfacedObject, IAtlasBackgroundJobsAlive)
@@ -183,8 +184,8 @@ begin
         mWork();
       except
         // Die Arbeit meldet ihre Fehler selbst; ADone kommt trotzdem.
-        on Exception do
-          ;
+        on E: Exception do
+          TAtlasGuard.Log('Hintergrundarbeit: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       end;
       if TThread.CheckTerminated then
       begin

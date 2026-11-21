@@ -130,7 +130,8 @@ uses
   System.IOUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Files;
 
 /// <summary>Ordner von AFileName, normiert (Großbuchstaben, „\“, ohne Trenner am Ende); '' ohne Ordner.</summary>
 function FolderKey(const AFileName: string): string;
@@ -352,8 +353,14 @@ begin
     AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

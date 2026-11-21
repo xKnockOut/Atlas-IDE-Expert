@@ -18,7 +18,7 @@
 //   Aktivität; ausgeschaltet nimmt es nichts an und hält nichts.
 // - Teil „AiGhostText“: Schattentext vom KI-Anbieter (#1922), solange
 //   assistants.inlineSuggestions an ist; HTTP und Anmeldespeicher von Windows
-//   entstehen nur in Atlas.IDE.Assistants.Composition.Adapters.
+//   entstehen nur in Atlas.IDE.Assistants.Composition.HostAdapters.
 // - Teil „AssistantDebug“: Eingang der MCP-Werkzeuge debug_* (#1874); ausgeführt
 //   wird über IAtlasDebugControl des Moduls Debugger, das der Eingang bei jedem
 //   Auftrag neu in der Registry sucht (Regel 2). Nur im normalen Start und
@@ -32,7 +32,7 @@
 //   IAtlasBuildVerdictListener.
 // - den Abschnitt mit dem Modulschalter im Optionsdialog und den Haken für die
 //   Schlüssel der KI-Anbieter, „Verbindung testen“ und „Modelle abrufen“
-//   (#2056, in Atlas.IDE.Assistants.Composition.Adapters, ab der Anmeldung).
+//   (#2056, in Atlas.IDE.Assistants.Composition.HostAdapters, ab der Anmeldung).
 // - Teil „AssistantLink“: RAD Studio als verbundene IDE für Kommandozeilen-Assistenten (#2377), solange
 //   assistants.link an ist (WebSocket nur auf 127.0.0.1, Lock-Datei, Statusfeld „Assistent verbunden“); dazu der
 //   Befehl „Auswahl an den Assistenten“ mit Taste (assistants.link.mentionKey) und Eintrag im Kontextmenü des
@@ -112,7 +112,7 @@ uses
   Atlas.IDE.Assistants.EditInbox,
   Atlas.IDE.Assistants.QuestionInbox,
   Atlas.IDE.Assistants.LogWindow,
-  Atlas.IDE.Assistants.Composition.Adapters,
+  Atlas.IDE.Assistants.Composition.HostAdapters,
   Atlas.IDE.Assistants.Banner,
   Atlas.UI.Assistants.Strings,
   Atlas.IDE.Assistants.ContextExport,

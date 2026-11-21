@@ -160,7 +160,10 @@ begin
         end;
       except
         // Server langsam oder weg: keine Sitzung, die Taste geht an die IDE.
-        mRanges := nil;
+        on ELspClientError do
+        begin
+          mRanges := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.LinkedEditing,

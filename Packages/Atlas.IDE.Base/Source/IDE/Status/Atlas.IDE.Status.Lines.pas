@@ -342,8 +342,13 @@ begin
       mBytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
       mInfo.HasTarget := not TAtlasFileFormats.Satisfies(mBytes, mInfo.Target);
     except
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        if not TAtlasTextFile.IsReadError(E) then
+        begin
+          raise;
+        end;
+      end;
     end;
   end;
   FFile.Update(TAtlasStatusLines.FileText(mInfo), TAtlasStatusLines.FileState(mInfo));
@@ -385,8 +390,14 @@ begin
   try
     mCached.Format := TAtlasFileFormats.Detect(TAtlasTextFile.ReadAllBytes(AFileName));
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit(False);
+    end;
   end;
   mCached.Stamp := mStamp;
   FCache.AddOrSetValue(Key(AFileName), mCached);
