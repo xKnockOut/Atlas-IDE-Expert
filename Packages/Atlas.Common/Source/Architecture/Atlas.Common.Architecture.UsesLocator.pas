@@ -8,7 +8,7 @@
 // - Inaktive {$IFDEF}-Zweige werden mit den Defines der Datei ausgeblendet,
 //   bevor die Einträge gesucht werden; so trifft ein Name, der in zwei
 //   Zweigen steht, den geltenden.
-// - Die Einträge liefert TUsesClauses.References, dieselbe Quelle, aus der
+// - Die Einträge liefert TPascalUses.References, dieselbe Quelle, aus der
 //   die Architekturregeln (#183) ihre uses lesen.
 // - Je Datei und Stand (Hash des Graphknotens) wird einmal gelesen.
 
@@ -18,7 +18,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Architecture.UsesGraph;
 
 type
@@ -100,7 +100,7 @@ var
   mReference: TUsesReference;
 begin
   Result := nil;
-  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(TIndexExtractor.BlankInactive(AText, ADefines))) do
+  for mReference in TPascalUses.References(TPascalLexer.Tokenize(TIndexExtractor.BlankInactive(AText, ADefines))) do
   begin
     if mReference.List = TUsesListKind.UsesList then
     begin

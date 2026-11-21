@@ -69,6 +69,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,

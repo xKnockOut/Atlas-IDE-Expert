@@ -88,6 +88,7 @@ uses
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
@@ -450,8 +451,8 @@ begin
   Result := (ALocation.Symbol.Container = '') and (ALocation.Symbol.Kind in [TIndexSymbolKind.ClassType,
     TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
     TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]) and not SameText(ALocation.UnitName, 'System') and
-    not SameText(ALocation.UnitName, TUsesClauses.OwnName(ATree.Tokens));
-  Result := Result and not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), ALocation.UnitName,
+    not SameText(ALocation.UnitName, TPascalUses.OwnName(ATree.Tokens));
+  Result := Result and not TPascalUses.IsUsed(TPascalUses.UsedUnits(ATree.Tokens), ALocation.UnitName,
     AResolver.Namespaces);
 end;
 

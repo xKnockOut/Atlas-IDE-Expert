@@ -110,7 +110,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Text.Lines,
@@ -483,7 +483,7 @@ begin
   // Den Eintrag in der anderen Liste suchen, Schreibweise wie im Quelltext.
   mFound := False;
   mName := AUnit;
-  for mReference in TUsesClauses.References(mTokens) do
+  for mReference in TPascalUses.References(mTokens) do
   begin
     if (mReference.List = TUsesListKind.UsesList) and SameText(mReference.Name, AUnit) then
     begin

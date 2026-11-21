@@ -54,7 +54,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypedExpressions,
-  Atlas.Common.Rules.Builtin.Constants.Conversions,
+  Atlas.Common.Rules.Builtin.Conversions,
 
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts,

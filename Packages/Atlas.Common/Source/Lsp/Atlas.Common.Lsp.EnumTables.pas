@@ -84,7 +84,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.CaseCompletion,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
@@ -712,7 +712,7 @@ begin
   begin
     raise Fail(cTexts[TLspEnumTablesText.UpdateNotPossible].Text + mReason);
   end;
-  mSync := TEnumSync.Create(AResolver, AContext, mTarget, TUsesClauses.OwnName(ADocument.Tree.Tokens));
+  mSync := TEnumSync.Create(AResolver, AContext, mTarget, TPascalUses.OwnName(ADocument.Tree.Tokens));
   try
     mSync.Run(ADocument);
     Result := mSync.Answer;

@@ -193,7 +193,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Constants,
-  Atlas.Common.Rules.Builtin.Constants.Conversions,
+  Atlas.Common.Rules.Builtin.Conversions,
   Atlas.Common.Rules.Builtin.Constants.TypedConstants,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.TextEdits;

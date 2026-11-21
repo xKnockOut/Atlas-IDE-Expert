@@ -129,6 +129,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
@@ -1020,7 +1021,7 @@ var
   mTokens: TArray<TPascalToken>;
 begin
   mTokens := TPascalLexer.Tokenize(AText);
-  Result := (AUnitName <> '') and not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(mTokens), AUnitName, nil) and
+  Result := (AUnitName <> '') and not TPascalUses.IsUsed(TPascalUses.UsedUnits(mTokens), AUnitName, nil) and
     TUsesClauses.AddUnit(mTokens, TLineTable.Build(AText).OffsetAt(AFixture.Range.StartPos), AUnitName, ALineBreak,
     AEdit);
 end;

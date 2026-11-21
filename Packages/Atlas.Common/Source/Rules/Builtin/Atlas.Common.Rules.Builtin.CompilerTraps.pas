@@ -80,7 +80,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
@@ -400,7 +400,7 @@ begin
   begin
     if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, 'TBitmap') and
       NotBefore(ATokens[mIndex].StartPos, AAfter) and not AfterDot(ATokens, mIndex) and
-      not TUsesClauses.InClause(ATokens, AClauses, ATokens[mIndex].Offset) then
+      not TPascalUses.InClause(ATokens, AClauses, ATokens[mIndex].Offset) then
     begin
       Exit(True);
     end;
@@ -414,7 +414,7 @@ var
   mRef: TUsesReference;
 begin
   Result := nil;
-  for mRef in TUsesClauses.References(ATokens) do
+  for mRef in TPascalUses.References(ATokens) do
   begin
     if mRef.List = TUsesListKind.UsesList then
     begin
@@ -479,7 +479,7 @@ begin
   mWindows := FirstEntryOf(mUses, cWindowsUnits);
   mGraphics := FirstEntryOf(mUses, cGraphicsUnits);
   if (mWindows < 0) or (mGraphics < 0) or (mWindows < mGraphics) or
-    not NamesBitmap(mTokens, TUsesClauses.Clauses(mTokens), mUses[mWindows].Range.EndPos) then
+    not NamesBitmap(mTokens, TPascalUses.Clauses(mTokens), mUses[mWindows].Range.EndPos) then
   begin
     Exit;
   end;
@@ -529,7 +529,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FTokens := AContext.Tree.Tokens;
-  FClauses := TUsesClauses.Clauses(FTokens);
+  FClauses := TPascalUses.Clauses(FTokens);
   FUses := UsesListEntries(FTokens);
 end;
 
@@ -641,7 +641,7 @@ var
 begin
   mToken := FTokens[AIndex];
   if (mToken.Kind <> TPascalTokenKind.Identifier) or AfterDot(FTokens, AIndex) or
-    TUsesClauses.InClause(FTokens, FClauses, mToken.Offset) then
+    TPascalUses.InClause(FTokens, FClauses, mToken.Offset) then
   begin
     Exit;
   end;

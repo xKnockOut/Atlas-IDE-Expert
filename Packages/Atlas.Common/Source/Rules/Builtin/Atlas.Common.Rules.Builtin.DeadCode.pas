@@ -150,6 +150,7 @@ uses
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ChangeSignature,
@@ -447,11 +448,11 @@ begin
     mFound := nil;
     if SameText(AFileName, FContext.FileName) then
     begin
-      mFound := TUsesClauses.References(FContext.Tree.Tokens);
+      mFound := TPascalUses.References(FContext.Tree.Tokens);
     end
     else if FContext.ProjectFiles.ReadText(AFileName, mText) then
     begin
-      mFound := TUsesClauses.References(TPascalLexer.Tokenize(mText));
+      mFound := TPascalUses.References(TPascalLexer.Tokenize(mText));
     end;
     FEntries.Add(UpperCase(AFileName), mFound);
   end;
@@ -560,7 +561,7 @@ procedure TUsesCycleCheck.CheckSelfReferences;
 var
   mReference: TUsesReference;
 begin
-  for mReference in TUsesClauses.References(FContext.Tree.Tokens) do
+  for mReference in TPascalUses.References(FContext.Tree.Tokens) do
   begin
     if (mReference.List = TUsesListKind.UsesList) and SameText(TTextNames.WithoutAmpersand(mReference.Name), FOwnName) then
     begin
@@ -688,7 +689,7 @@ var
   mReason: string;
   mReference: TUsesReference;
 begin
-  FOwnName := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  FOwnName := TPascalUses.OwnName(FContext.Tree.Tokens);
   CheckSelfReferences;
   if (FContext.ProjectFiles = nil) or not FContext.ProjectFiles.Complete(mReason) then
   begin
@@ -700,7 +701,7 @@ begin
   begin
     FWithImplementation := FWithImplementation and FContext.UsesCycleImplementation;
   end;
-  for mReference in TUsesClauses.References(FContext.Tree.Tokens) do
+  for mReference in TPascalUses.References(FContext.Tree.Tokens) do
   begin
     CheckReference(mReference);
   end;
@@ -1095,7 +1096,7 @@ begin
   mTree := TSyntaxTreeCache.Parse(mText);
   try
     mClauses := nil;
-    for mReference in TUsesClauses.References(mTree.Tokens) do
+    for mReference in TPascalUses.References(mTree.Tokens) do
     begin
       mClauses := mClauses + [mReference.Range];
     end;
@@ -1163,7 +1164,7 @@ begin
   begin
     Exit;
   end;
-  mOwnName := TUsesClauses.OwnName(AContext.Tree.Tokens);
+  mOwnName := TPascalUses.OwnName(AContext.Tree.Tokens);
   if mPrograms = '' then
   begin
     AReport.Add(mRange, cTexts[TDeadCodeText.UnitUnused].Fmt([mOwnName]),

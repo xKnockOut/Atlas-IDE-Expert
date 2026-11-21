@@ -31,6 +31,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts;
@@ -154,7 +155,7 @@ end;
 function AddSysUtils(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
   out AEdit: TTextEdit): Boolean;
 begin
-  Result := not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), 'System.SysUtils',
+  Result := not TPascalUses.IsUsed(TPascalUses.UsedUnits(ASource.Tree.Tokens), 'System.SysUtils',
     AContext.Namespaces) and TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), 'System.SysUtils',
     ASource.LineBreak, AEdit);
 end;

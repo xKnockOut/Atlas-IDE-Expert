@@ -29,6 +29,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -117,7 +118,7 @@ begin
   FKind := AKind;
   FNamespaces := ANamespaces;
   FTokens := ASource.Tree.Tokens;
-  FClauses := TUsesClauses.Clauses(FTokens);
+  FClauses := TPascalUses.Clauses(FTokens);
   FIsUnit := ASource.Tree.Root.Kind = TSyntaxKind.UnitFile;
   mImplementation := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
   FImplementationStart := MaxInt;
@@ -129,7 +130,7 @@ end;
 
 function TUsesEditor.IsGenericUnit(const AName: string): Boolean;
 begin
-  Result := TUsesClauses.IsUsed([AName], cGenericListUnit, FNamespaces);
+  Result := TPascalUses.IsUsed([AName], cGenericListUnit, FNamespaces);
 end;
 
 function TUsesEditor.IsDropped(const AClause: TUsesClauseInfo; const AName: string): Boolean;

@@ -599,6 +599,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesClause.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.UsesClauses.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesGroups.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesCommand.Tests.pas"/>
@@ -1376,6 +1377,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Providers.Changes.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Connections.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Markdown.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Markdown.Inline.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Markdown.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Checklist.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Checklist.Tests.pas"/>
@@ -2045,6 +2047,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Outline\Atlas.UI.Outline.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Outline.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Palette.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Resolution.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.View.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas"/>

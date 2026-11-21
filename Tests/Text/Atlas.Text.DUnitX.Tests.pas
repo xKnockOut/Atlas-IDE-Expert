@@ -68,7 +68,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine;
 
 function Sample: TArray<string>;
 begin

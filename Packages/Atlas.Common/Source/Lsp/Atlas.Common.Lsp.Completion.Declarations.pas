@@ -53,6 +53,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Common.Editing.ResourceStrings,
@@ -435,7 +436,7 @@ var
 begin
   ATargetText := '';
   mUnitName := ARequest.Settings.ResourceStringUnit;
-  Result := (mUnitName <> '') and not SameText(mUnitName, TUsesClauses.OwnName(ARequest.Tree.Tokens)) and
+  Result := (mUnitName <> '') and not SameText(mUnitName, TPascalUses.OwnName(ARequest.Tree.Tokens)) and
     (ARequest.Index <> nil);
   Result := Result and ARequest.Index.FindUnit(mUnitName, ATarget) and Assigned(ARequest.ReadText);
   Result := Result and ARequest.ReadText(ATarget.FileName, ATargetText);
@@ -451,7 +452,7 @@ begin
   ATarget.HasTarget := True;
   mEntries := TResourceStrings.Entries(ATargetText, TPascalLexer.Tokenize(ATargetText));
   ATarget.Taken := ATarget.Taken + TakenResourceNames(ATarget.Target, mEntries);
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ARequest.Tree.Tokens), ATarget.Target.UnitName,
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ARequest.Tree.Tokens), ATarget.Target.UnitName,
     ARequest.Resolver.Namespaces) and TUsesClauses.AddUnit(ARequest.Tree.Tokens, ATarget.Literal.StartOffset,
     ATarget.Target.UnitName, ARequest.LineBreak, mUsesEdit) then
   begin
