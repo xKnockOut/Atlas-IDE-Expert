@@ -11,7 +11,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.CheckMemory,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.WorkspaceGroup;
 
 type
@@ -53,7 +53,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Platform.Server,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Linter.Output,
   Atlas.Common.Localization.Texts;
 
@@ -79,7 +79,7 @@ begin
   mLogger.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
 end;
 
-/// <summary>Gruppe über AConfigRoot mit AIndex. Als anonyme Methode statt TShellBootstrap.ReadSourceText: Free
+/// <summary>Gruppe über AConfigRoot mit AIndex. Als anonyme Methode statt TCoreBootstrap.ReadSourceText: Free
 /// Pascal (Linux-Bau) bricht an der Umwandlung einer Klassenmethode in eine Methodenreferenz intern ab.</summary>
 function NewGroup(const AConfigRoot: string; const AIndex: ISymbolIndex): TShellWorkspaceGroup;
 var
@@ -94,7 +94,7 @@ begin
     'atlas-check-index',
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+      Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
     end);
 end;
 
@@ -138,7 +138,7 @@ end;
 procedure LoadAndWait(AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex; const AWatch: TStopwatch;
   AMemory: TCheckMemoryTrack);
 begin
-  AGroup.Load(TShellBootstrap.LoadGlobalSettings(nil));
+  AGroup.Load(TCoreBootstrap.LoadGlobalSettings(nil));
   if not AGroup.WaitForIndex(TLinterIndex.cTimeoutMs) then
   begin
     TLinterOutput.Error(cTexts[TLinterIndexText.NotReady].Fmt([TLinterIndex.cTimeoutMs div 60000]));

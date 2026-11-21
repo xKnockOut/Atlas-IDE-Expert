@@ -110,7 +110,7 @@ uses
   Atlas.Common.Query.Language,
   Atlas.Common.Rules.Builtin.DfmProperties,
   Platform.Server,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Workspace.Setup,
   Atlas.Text.LogMarks,
   Atlas.Text.Files;
@@ -224,7 +224,7 @@ begin
   end;
   if mGroupFile <> '' then
   begin
-    Result := TShellBootstrap.LoadGroup(mGroupFile, FServices.Logger);
+    Result := TCoreBootstrap.LoadGroup(mGroupFile, FServices.Logger);
   end;
 end;
 

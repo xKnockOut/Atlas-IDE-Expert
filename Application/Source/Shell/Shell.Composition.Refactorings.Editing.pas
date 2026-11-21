@@ -43,7 +43,7 @@ uses
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
-  Shell.Texts;
+  Core.Texts;
 
 /// <summary>Ist eins der Refactorings aus Atlas.Common.Lsp.Refactorings eingeschaltet?</summary>
 function AnyEnabled(const ASettings: TRefactoringSettings): Boolean;
@@ -134,7 +134,7 @@ begin
   // Argumente: alte URI, neue URI, URIs der Dateien des Bereichs (#512).
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['old', 'new', 'files']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TCoreTexts.Missing(['old', 'new', 'files']));
   end;
   if not Settings(AArguments.Items[1].Value).UnitRenameFollowUp then
   begin
