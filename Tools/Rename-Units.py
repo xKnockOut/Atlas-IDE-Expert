@@ -9,7 +9,7 @@ Kommentar ein) und erledigt für jede Zeile:
 - dazu jede Testunit ``alt.<Rest>`` unter ``Tests/`` (``alt.Tests`` → ``neu.Tests``), sofern
   ``alt.<Rest>`` keine Unit außerhalb von ``Tests/`` ist; sie bleibt in ihrem Ordner;
 - den Namen in allen versionierten Textdateien: uses-Klauseln, Unit-Kopf, qualifizierte Bezeichner
-  (``alt.TKlasse``), Kommentare, Doku, Skripte, ``atlas.json``, Baselines, ADR 0017;
+  (``alt.TKlasse``), Kommentare, Doku, Skripte, ``atlas.json``, Baselines, Unit-Zuordnung (``Tools/UnitAssignment*.tsv``, ADR 0017);
 - Pfade auf die verschobenen Dateien in ``.dpk``, ``.dpr``, ``.dproj``, Baselines, Skripten und
   Doku, egal ob relativ zur Datei, zum Wurzelordner oder zu einem Quellordner geschrieben
   (``..\\Packages\\…\\alt.pas``, ``Source/Core/…/alt.pas``, ``Core/Help/alt.pas``): Der geschriebene
@@ -55,7 +55,7 @@ cTextExtensions = {
     '.sh', '.txt', '.yml', '.yaml', '.tsv', '.xml', '.html', '.dfm', '.fmx', '.cfg',
 }
 cCompanions = ('.dfm', '.fmx')
-cDefaultExcludes = ('CHANGELOG.md', 'docs/Release-Notizen/*', 'docs/adr/0[0-9][0-9][0-9]-*.md')
+cDefaultExcludes = ('CHANGELOG.md', 'Tools/Rename-Units.py', 'docs/Release-Notizen/*', 'docs/adr/0[0-9][0-9][0-9]-*.md')
 cKeptAdr = 'docs/adr/0017-unit-zuordnung.md'
 cAssignment = 'Tools/UnitAssignment.tsv'
 cIdent = r'[A-Za-z_][A-Za-z0-9_]*'
