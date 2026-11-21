@@ -49,7 +49,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Lexer,
@@ -105,7 +104,7 @@ type
     Taken: TArray<string>;
     HasTarget: Boolean;
     Target: TUnitIndex;
-    UsesEdits: TArray<TRuleEdit>;
+    UsesEdits: TArray<TTextEdit>;
     HasExisting: Boolean;
     Existing: TResourceEntry;
   end;
@@ -136,7 +135,7 @@ type
     FBatch: Boolean;
     FItems: TArray<TCompletionItem>;
     FInterfaces: TArray<string>;
-    FGroup: TArray<TRuleEdit>;
+    FGroup: TArray<TTextEdit>;
     FCount: Integer;
     FWordRange: TTextRange;
     FTypeName: string;
@@ -147,11 +146,11 @@ type
     function Prepare(out ATypeSymbol: TIndexSymbol): Boolean;
     function StubOf(const AMissing: TResolvedSymbol; const ASourceLines: TArray<string>;
       out AStub: TInterfaceStub): Boolean;
-    function StubEdits(const AStub: TInterfaceStub): TArray<TRuleEdit>;
+    function StubEdits(const AStub: TInterfaceStub): TArray<TTextEdit>;
     procedure StartInterface(const AInterface: string);
     procedure AddHint;
     procedure AddBatchItem(const AStub: TInterfaceStub; const AMissing: TResolvedSymbol;
-      const AEdits: TArray<TRuleEdit>);
+      const AEdits: TArray<TTextEdit>);
     procedure AddMissing(const AMissing: TArray<TResolvedSymbol>);
     procedure MarkBatch;
   public
@@ -329,7 +328,7 @@ begin
   Result.Action := 'create';
   Result.HasTextEdit := True;
   // Der getippte Anfang wird zum Namen: "read Ca|" → "read FCaption".
-  Result.TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
+  Result.TextEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
     ARequest.Position.Character - Length(ASite.Prefix)), ARequest.Position), APlan.Name);
   Result.AdditionalEdits := AEdits;
   if AWithField then
@@ -493,7 +492,7 @@ begin
   Result.Pinned := True;
   Result.Action := 'create';
   Result.HasTextEdit := True;
-  Result.TextEdit := TRuleEdit.Create(ATarget.Literal.Range, ATarget.Existing.Name);
+  Result.TextEdit := TTextEdit.Create(ATarget.Literal.Range, ATarget.Existing.Name);
   Result.AdditionalEdits := ATarget.UsesEdits;
 end;
 
@@ -512,7 +511,7 @@ end;
 procedure ExtractToUnit(var AItem: TCompletionItem; const ATarget: TResourceTarget; const AName: string);
 begin
   AItem.Detail := Format('%s = %s in %s', [AName, LiteralPreview(ATarget.Literal), ATarget.Target.UnitName]);
-  AItem.TextEdit := TRuleEdit.Create(ATarget.Literal.Range, AName);
+  AItem.TextEdit := TTextEdit.Create(ATarget.Literal.Range, AName);
   AItem.AdditionalEdits := ATarget.UsesEdits;
   AItem.Command := cAddResourceCommand;
   AItem.CommandTitle := AItem.Name;
@@ -534,7 +533,7 @@ begin
     Exit;
   end;
   AItem.Detail := Format('%s = %s', [AName, LiteralPreview(ATarget.Literal)]);
-  AItem.TextEdit := TRuleEdit.Create(ATarget.Literal.Range, AName);
+  AItem.TextEdit := TTextEdit.Create(ATarget.Literal.Range, AName);
   if ASnippets then
   begin
     AItem.Snippet := True;
@@ -721,7 +720,7 @@ begin
     mLead := 'class ' + mLead;
   end;
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
     ASite.IndentLength), ARequest.Position), mLead + AItem.InsertText);
   AItem.InsertText := '';
   AItem.FilterText := 'override ' + AItem.Name;
@@ -731,7 +730,7 @@ end;
 function OverrideItem(ARequest: TCompletionRequest; const ASite: TOverrideSite; const ACandidate: TResolvedSymbol;
   const ADecl: TOverrideDeclaration; const ADefaultValue: TRegEx): TCompletionItem;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Result := Default(TCompletionItem);
   Result.Name := ACandidate.Name;
@@ -839,9 +838,9 @@ begin
     AMissing.Bindings), FRequest.LineBreak, AStub);
 end;
 
-function TInterfaceItemsBuilder.StubEdits(const AStub: TInterfaceStub): TArray<TRuleEdit>;
+function TInterfaceItemsBuilder.StubEdits(const AStub: TInterfaceStub): TArray<TTextEdit>;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Result := TInterfaceStubs.ClassEdits(AStub, FEndLine, FIndent, FSection, FNeedHeader, FRequest.LineBreak);
   if TClassCompletion.BodyEdit(FRequest.Tree, FRequest.Text, FTypeName, AStub.Body, mEdit) then
@@ -888,13 +887,13 @@ begin
   mHint.Container := mInterface;
   // Das angefangene Wort verschwindet, die Methoden kommen über die weiteren Änderungen.
   mHint.HasTextEdit := True;
-  mHint.TextEdit := TRuleEdit.Create(FWordRange, '');
+  mHint.TextEdit := TTextEdit.Create(FWordRange, '');
   mHint.AdditionalEdits := TInterfaceStubs.Merge(FGroup);
   FItems := FItems + [mHint];
 end;
 
 procedure TInterfaceItemsBuilder.AddBatchItem(const AStub: TInterfaceStub; const AMissing: TResolvedSymbol;
-  const AEdits: TArray<TRuleEdit>);
+  const AEdits: TArray<TTextEdit>);
 var
   mItem: TCompletionItem;
 begin
@@ -920,7 +919,7 @@ var
   mSourceLines: TArray<string>;
   mMissing: TResolvedSymbol;
   mStub: TInterfaceStub;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Je Datei einmal lesen, auch wenn die Interfaces abwechselnd aus mehreren Units stammen.
   mFiles := TDictionary<string, TArray<string>>.Create;

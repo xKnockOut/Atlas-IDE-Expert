@@ -230,11 +230,17 @@ end;
 
 class function TAtlasWelcomeIndexFiles.ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
   out AReason: string): TArray<TAtlasIndexFile>;
+const
+  // Gründe fürs Protokoll.
+  cNoIndex = 'kein Atlas-Index (Kopf fehlt)';
+  cOtherVersion = 'andere Formatversion';
+  cChecksum = 'Prüfsumme stimmt nicht';
+  cDamaged = 'Inhalt beschädigt';
 var
   mReader: TIndexCacheReader;
 begin
   Result := nil;
-  AReason := 'kein Atlas-Index (Kopf fehlt)';
+  AReason := cNoIndex;
   if not TIndexCacheReader.HasMagic(AData) then
   begin
     Exit;
@@ -245,11 +251,11 @@ begin
   try
     if mReader.ReadVar <> cFormatVersion then
     begin
-      AReason := 'andere Formatversion';
+      AReason := cOtherVersion;
     end
     else if not mReader.ChecksumMatches then
     begin
-      AReason := 'Prüfsumme stimmt nicht';
+      AReason := cChecksum;
     end
     else
     begin
@@ -260,7 +266,7 @@ begin
     on EIndexCacheFormat do
     begin
       Result := nil;
-      AReason := 'Inhalt beschädigt';
+      AReason := cDamaged;
     end;
   end;
 end;

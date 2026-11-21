@@ -45,7 +45,6 @@ uses
   System.RegularExpressions,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.CompletionCollector,
@@ -343,7 +342,7 @@ function NewMethodItem(ARequest: TCompletionRequest; const ASignature: TEventSig
 var
   mHeader: string;
   mMethod: TUnmatchedMethod;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mHeader := NewMethodHeader(ASignature, ATypeName, AName);
   Result := Default(TCompletionItem);
@@ -569,7 +568,7 @@ begin
   AItem.HasTextEdit := True;
   mStart := ARequest.Position;
   mStart.Character := Max(0, mStart.Character - Length(mContext.Prefix));
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(mStart, ARequest.Position), '');
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(mStart, ARequest.Position), '');
   SetAnonymousText(ARequest, mMethodRef, ASnippets, AItem);
   Result := True;
 end;

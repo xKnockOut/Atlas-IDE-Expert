@@ -647,12 +647,12 @@ begin
   Result := IssueLinkOf(AIssue, NestedText(AIssue, 'repository', 'full_name', MaxInt), AProject, ALink);
   if AIssue.Values['pull_request'] <> nil then
   begin
-    ALink.Relation := 'pull request';
+    ALink.Relation := cGitHubRelationPull;
     ALink.Kind := TAtlasTrackerLinkKind.PullRequest;
   end
   else
   begin
-    ALink.Relation := 'cross-referenced';
+    ALink.Relation := cGitHubRelationMentioned;
     ALink.Kind := TAtlasTrackerLinkKind.Mentioned;
   end;
 end;
@@ -916,7 +916,7 @@ class function TAtlasGitHubParse.ParseRelated(const AJson, AProject: string; AKi
   out ALinks: TArray<TAtlasTrackerLink>): Boolean;
 const
   cRelations: array[TAtlasTrackerLinkKind] of string = ('', 'blocked by', 'blocking', 'sub-issue', 'parent', '', '',
-    '', 'cross-referenced', 'pull request');
+    '', cGitHubRelationMentioned, cGitHubRelationPull);
 var
   mValue, mItem: TJSONValue;
   mLink: TAtlasTrackerLink;

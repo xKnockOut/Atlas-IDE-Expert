@@ -242,17 +242,20 @@ begin
 end;
 
 class function TAtlasAttachFile.CreateText(AKind: TAtlasAttachKind; const AName, AText: string): TAtlasAttachFile;
+const
+  cMarkdownType = 'text/markdown; charset=utf-8';
+  cTextType = 'text/plain; charset=utf-8';
 begin
   Result := Default(TAtlasAttachFile);
   Result.Kind := AKind;
   Result.Name := SafeName(AName);
   if SameText(ExtractFileExt(Result.Name), '.md') then
   begin
-    Result.MimeType := 'text/markdown; charset=utf-8';
+    Result.MimeType := cMarkdownType;
   end
   else
   begin
-    Result.MimeType := 'text/plain; charset=utf-8';
+    Result.MimeType := cTextType;
   end;
   Result.Data := TEncoding.UTF8.GetBytes(AText);
 end;
@@ -349,11 +352,15 @@ begin
 end;
 
 class function TAtlasAttachMultipart.ContentType(const ABoundary: string): string;
+const
+  cMultipart = 'multipart/form-data; boundary=%s';
 begin
-  Result := 'multipart/form-data; boundary=' + ABoundary;
+  Result := Format(cMultipart, [ABoundary]);
 end;
 
 class function TAtlasAttachMultipart.Build(const ABoundary: string; const AFiles: TAtlasAttachFiles): TBytes;
+const
+  cDisposition = 'Content-Disposition: form-data; name="%s"; filename="%s"'#13#10;
 var
   mStream: TBytesStream;
   mFile: TAtlasAttachFile;
@@ -375,8 +382,7 @@ begin
     for mFile in AFiles do
     begin
       Put('--' + ABoundary + #13#10);
-      Put('Content-Disposition: form-data; name="' + cFieldName + '"; filename="' + TAtlasAttachFile.SafeName(
-        mFile.Name) + '"' + #13#10);
+      Put(Format(cDisposition, [cFieldName, TAtlasAttachFile.SafeName(mFile.Name)]));
       Put('Content-Type: ' + mFile.MimeType + #13#10#13#10);
       if Length(mFile.Data) > 0 then
       begin

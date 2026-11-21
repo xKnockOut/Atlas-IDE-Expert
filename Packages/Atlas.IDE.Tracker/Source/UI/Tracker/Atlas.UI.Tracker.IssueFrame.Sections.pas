@@ -164,17 +164,13 @@ begin
 end;
 
 function RelationText(const ALink: TAtlasTrackerLink): string;
-const
-  // Beziehungen, die GitHub als Wort liefert.
-  cMentioned = 'cross-referenced';
-  cPull = 'pull request';
 begin
   Result := ALink.Relation;
-  if ALink.Relation = cMentioned then
+  if ALink.Relation = cGitHubRelationMentioned then
   begin
     Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRelationMentioned);
   end
-  else if ALink.Relation = cPull then
+  else if ALink.Relation = cGitHubRelationPull then
   begin
     Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRelationPull);
   end;

@@ -132,6 +132,10 @@ uses
   Atlas.UI.Build.Strings,
   Atlas.Core.Diagnostics.UserIdle;
 
+const
+  /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>
+  cActivity = 'Bauen beim Öffnen';
+
 { TAtlasIdeOpenBuild.TIdeNotifier }
 
 procedure TAtlasIdeOpenBuild.TIdeNotifier.FileNotification(NotifyCode: TOTAFileNotification;
@@ -399,7 +403,7 @@ begin
   FWaiting := False;
   // Bis zum Ende des Laufs (auch im Hintergrund) tragen die Compile-Ereignisse den Auftraggeber "open".
   FEvents.RequestedBy := TAtlasOpenBuild.cRequestedBy;
-  mActivity := TAtlasActivity.Scope('Bauen beim Öffnen');
+  mActivity := TAtlasActivity.Scope(cActivity);
   FCompiling := True;
   try
     try

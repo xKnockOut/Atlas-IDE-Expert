@@ -461,7 +461,7 @@ begin
   Result.Key := AKey;
   Result.Local := True;
   Result.Kind := TAtlasTrackerLinkKind.DependsOn;
-  Result.Relation := 'depends on';
+  Result.Relation := cGitHubRelationDependsOn;
   Result.Page := TAtlasGitHubApi.IssuePage(ACall.Target, AKey);
   if TAtlasGitHubApi.GetInTime(ACall, AWatch, TAtlasGitHubApi.IssueApiUrl(ACall.Target, AKey), mText)
     and TAtlasGitHubParse.ParseDetails(mText, mOther, mCount) then

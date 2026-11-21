@@ -76,7 +76,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Contract,
@@ -496,7 +495,7 @@ begin
     mName := AItem.Name;
   end;
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ASite.ChainStart, APosition), ASite.Cast + '.' + mName);
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(ASite.ChainStart, APosition), ASite.Cast + '.' + mName);
 end;
 
 { TCompletionForms }
@@ -636,7 +635,7 @@ begin
   end;
   // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
   Result.HasTextEdit := True;
-  Result.TextEdit := TRuleEdit.Create(ARange, StringReplace(AName.Name, '''', '''''', [rfReplaceAll]));
+  Result.TextEdit := TTextEdit.Create(ARange, StringReplace(AName.Name, '''', '''''', [rfReplaceAll]));
   Result.DataSet := ACall.DisplayName;
   Result.DataSource := ASource;
 end;

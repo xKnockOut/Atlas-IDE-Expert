@@ -261,6 +261,7 @@ uses
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Scaling,
   Atlas.Core.Foundation.Calls,
   Atlas.UI.Foundation.Menus;
@@ -1235,20 +1236,8 @@ end;
 { Text der Listen }
 
 function ItemsText(AList: TListView): TArray<string>;
-var
-  mIndex, mColumn: Integer;
-  mLine: string;
 begin
-  Result := nil;
-  for mIndex := 0 to AList.Items.Count - 1 do
-  begin
-    mLine := AList.Items[mIndex].Caption;
-    for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
-    begin
-      mLine := mLine + #9 + AList.Items[mIndex].SubItems[mColumn];
-    end;
-    Result := Result + [mLine];
-  end;
+  Result := TAtlasListView.RowsText(AList);
 end;
 
 function NodesText(ATree: TTreeView): TArray<string>;

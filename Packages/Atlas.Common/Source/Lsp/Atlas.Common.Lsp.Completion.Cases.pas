@@ -77,7 +77,6 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CreateMethod,
@@ -218,13 +217,13 @@ begin
   AItem.Pinned := True;
   AItem.Action := 'with';
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(mToken.StartPos, mToken.EndPos), '');
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(mToken.StartPos, mToken.EndPos), '');
   for mEdit in mEdits do
   begin
     if (mEdit.Range.StartPos.Line = mToken.StartPos.Line) and
       (mEdit.Range.StartPos.Character = mToken.StartPos.Character) then
     begin
-      AItem.AdditionalEdits := AItem.AdditionalEdits + [TRuleEdit.Create(TTextRange.Create(mToken.EndPos,
+      AItem.AdditionalEdits := AItem.AdditionalEdits + [TTextEdit.Create(TTextRange.Create(mToken.EndPos,
         mEdit.Range.EndPos), mEdit.NewText)];
       Result := True;
     end
@@ -255,7 +254,7 @@ begin
   AItem.Pinned := True;
   AItem.Action := 'docParams';
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
   AItem.AdditionalEdits := mAction.Edits;
 end;
 
@@ -284,10 +283,10 @@ begin
   AItem.Action := 'create';
   AItem.Unknown := mSite.Name;
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(mSite.NameRange, mSite.Name);
+  AItem.TextEdit := TTextEdit.Create(mSite.NameRange, mSite.Name);
   if ARequest.Trigger = '(' then
   begin
-    AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
+    AItem.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
   end;
   AItem.AdditionalEdits := mEdits;
 end;

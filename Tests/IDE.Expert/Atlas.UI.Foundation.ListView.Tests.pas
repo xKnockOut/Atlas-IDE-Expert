@@ -47,6 +47,8 @@ type
     procedure ColumnClickSortsAndSecondClickReverses;
     [Test]
     procedure SortTieKeepsDataOrder;
+    [Test]
+    procedure RowsTextJoinsCellsWithTabs;
   end;
 
 implementation
@@ -244,6 +246,20 @@ begin
   Assert.AreEqual(0, Integer(NativeInt(FList.Items[0].Data)));
   Assert.AreEqual(1, Integer(NativeInt(FList.Items[1].Data)));
   Assert.AreEqual(2, Integer(NativeInt(FList.Items[2].Data)));
+end;
+
+procedure TAtlasListViewTests.RowsTextJoinsCellsWithTabs;
+var
+  mRows: TArray<string>;
+begin
+  FList.AddColumn('Name', 100);
+  FList.AddColumn('Wert', 100);
+  AddRow(['a', '1'], 0);
+  AddRow(['b'], 1);
+  mRows := TAtlasListView.RowsText(FList);
+  Assert.AreEqual(2, Integer(Length(mRows)));
+  Assert.AreEqual('a'#9'1', mRows[0]);
+  Assert.AreEqual('b', mRows[1]);
 end;
 
 initialization

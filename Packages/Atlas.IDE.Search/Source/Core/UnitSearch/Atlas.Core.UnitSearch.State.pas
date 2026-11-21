@@ -21,6 +21,10 @@ uses
   Atlas.Core.UnitSearch.Sections,
   Atlas.Core.Files.DataFile;
 
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cUnitSearchStateKind = 'Zustand von Units suchen';
+
 type
   TAtlasUnitSearchState = class
   private type
@@ -362,7 +366,7 @@ end;
 function TAtlasUnitSearchState.LoadFromFile(const AFileName: string): TAtlasDataLoad;
 begin
   FKept := '';
-  Result := TAtlasDataFile.Load(AFileName, 'Zustand von Units suchen',
+  Result := TAtlasDataFile.Load(AFileName, cUnitSearchStateKind,
     function(const AText: string): Boolean
     begin
       Result := LoadJson(AText);
