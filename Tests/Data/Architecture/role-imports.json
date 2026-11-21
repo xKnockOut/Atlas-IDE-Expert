@@ -17,6 +17,10 @@
     "Adapters",
     "Platform"
   ],
+  "hostedFeatures": [
+    "Gamma",
+    "Delta"
+  ],
   "cases": [
     {
       "from": "Atlas.Common.Alpha.Contract.Sache",
@@ -1003,6 +1007,210 @@
       "to": "Atlas.WinBase.Alpha.Internals.Sache",
       "allowed": false,
       "note": "Atlas.Linux wird nach Rollen geprüft"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Gamma.Sache",
+      "allowed": true,
+      "note": "Shell importiert Root eines Hosted-Features"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Gamma.Providers.Sache",
+      "allowed": true,
+      "note": "Shell importiert Providers eines Hosted-Features"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Gamma.Hosting.Sache",
+      "allowed": true,
+      "note": "Shell importiert Hosting eines Hosted-Features"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Gamma.Composition.Sache",
+      "allowed": true,
+      "note": "Shell importiert Composition eines Hosted-Features"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "Shell importiert keine Internals eines Hosted-Features"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "Host-Adapters importieren den Contract eines Hosted-Features"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Gamma.Providers.Cache.Contract",
+      "allowed": true,
+      "note": "Host-Adapters implementieren Sub-Contracts eines Hosted-Features"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Gamma.Sache",
+      "allowed": false,
+      "note": "Host-Adapters importieren kein Root eines Hosted-Features"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Host-Core importiert kein Hosted-Feature"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Gamma.Sache",
+      "allowed": false,
+      "note": "Host-Core importiert kein Root eines Hosted-Features"
+    },
+    {
+      "from": "Foundation.Sache",
+      "to": "Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Foundation importiert kein Hosted-Feature"
+    },
+    {
+      "from": "Platform.Sache",
+      "to": "Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Host-Platform importiert kein Hosted-Feature"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Foundation.Sache",
+      "allowed": true,
+      "note": "Hosted-Feature importiert Foundation"
+    },
+    {
+      "from": "Gamma.Contract.Sache",
+      "to": "Foundation.Sache",
+      "allowed": true,
+      "note": "Contract eines Hosted-Features importiert Foundation"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Core.Sache",
+      "allowed": false,
+      "note": "Hosted-Feature importiert nicht Host-Core"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Shell.Sache",
+      "allowed": false,
+      "note": "Hosted-Feature importiert nicht die Shell"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Adapters.Sache",
+      "allowed": false,
+      "note": "Hosted-Feature importiert keine Host-Adapters"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Platform.Sache",
+      "allowed": false,
+      "note": "Hosted-Feature importiert nicht Host-Platform"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": true,
+      "note": "Hosted-Feature importiert Platform-Root"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Atlas.Common.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "Hosted-Feature importiert Platform-Contract"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Atlas.Common.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "Hosted-Feature importiert keine Platform-Providers"
+    },
+    {
+      "from": "Gamma.Contract.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": false,
+      "note": "Contract eines Hosted-Features importiert kein Platform-Root"
+    },
+    {
+      "from": "Gamma.Composition.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": true,
+      "note": "Composition eines Hosted-Features importiert Platform-Root"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Delta.Contract.Sache",
+      "allowed": false,
+      "note": "Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Gamma.Composition.Sache",
+      "to": "Delta.Contract.Sache",
+      "allowed": false,
+      "note": "auch die Composition importiert kein anderes Hosted-Feature"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Gamma.Internals.Sache",
+      "allowed": true,
+      "note": "Innen: Root importiert eigene Internals"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "Innen: Root importiert keine eigenen Providers"
+    },
+    {
+      "from": "Gamma.Composition.Sache",
+      "to": "Gamma.Providers.Sache",
+      "allowed": true,
+      "note": "Innen: Composition importiert eigene Providers"
+    },
+    {
+      "from": "Gamma.Hosting.Sache",
+      "to": "Gamma.Hosting.Teil",
+      "allowed": true,
+      "note": "Innen: Hosting importiert eigenes Hosting"
+    },
+    {
+      "from": "Gamma.Hosting.Sache",
+      "to": "Gamma.Sache",
+      "allowed": false,
+      "note": "Innen: Hosting importiert kein eigenes Root"
+    },
+    {
+      "from": "Gamma.Providers.Cache",
+      "to": "Gamma.Providers.Cache.Internals.Teil",
+      "allowed": true,
+      "note": "Innen: Träger importiert Internals seiner Struktur"
+    },
+    {
+      "from": "Atlas.Common.Beta.Sache",
+      "to": "Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Platform-Features importieren keine Hosted-Features"
+    },
+    {
+      "from": "Atlas.Common.Beta.Composition.Sache",
+      "to": "Gamma.Sache",
+      "allowed": false,
+      "note": "auch keine Platform-Composition"
+    },
+    {
+      "from": "Epsilon.Sache",
+      "to": "Gamma.Sache",
+      "allowed": true,
+      "note": "Units ohne Präfix außerhalb der Listen gelten als extern"
     }
   ]
 }

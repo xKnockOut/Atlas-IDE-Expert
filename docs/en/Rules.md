@@ -777,6 +777,7 @@ Experimental: the rule runs only in the `strict` profile or when it gets a sever
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Prefixes of the output artefacts, e.g. "Atlas.Common"; without them the rule reports nothing. |
 | `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | First name segments of host units without prefix. |
+| `hostedFeatures` | string-list | `[]` | Hosted features of the application: first name segment without prefix; they import only Foundation and platform features, never each other. |
 | `allow` | string-list | `[]` | Approved exceptions "Source -> Target" (both globs). |
 
 Flagged:

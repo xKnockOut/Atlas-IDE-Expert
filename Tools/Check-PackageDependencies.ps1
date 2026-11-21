@@ -603,6 +603,8 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
+# Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
+$HostedFeatures = @()
 $FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
 # Eigenes Feature (bzw. innerhalb einer Struktur relativ zum Träger): Rolle der Quelle -> erlaubte Rollen des Ziels
 $OwnAllowed = @{
@@ -632,19 +634,32 @@ $HostHostAllowed = @{
     Platform   = @('Platform')
 }
 
-function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
+function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts, [string[]] $Hosted = @()) {
     # Einordnung nach Ausgabeartefakt.Feature.Rolle.Sache; $null für externe Units (RTL, VCL, Setup, Tests).
     # Rolle ist der erste Rollenbezeichner nach dem Feature; jeder weitere eröffnet eine Verschachtelung
     # (Konzept 7.4). Positions nennt die Stellen der Rollenbezeichner in Segments (Segments[0] = Feature),
     # ein Bezeichner gleich dem vorigen zählt als Sache ("Keine Wiederholung").
     $best = ''
+    $isHosted = $false
+    $hostedName = $Hosted | Where-Object { $_ -ieq $Name.Split('.')[0] } | Select-Object -First 1
+    if ($hostedName -and $Name.Contains('.')) {
+        $best = $hostedName
+        $isHosted = $true
+    }
     foreach ($prefix in $Prefixes) {
+        if ($isHosted) { break }
         if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) {
             $best = $prefix
         }
     }
     if ($best -ne '') {
         $rest = @($Name.Substring($best.Length + 1).ToLowerInvariant().Split('.'))
+        $artefact = $best.ToLowerInvariant()
+        if ($isHosted) {
+            # Hosted-Feature: kein Präfix, das erste Segment ist das Feature.
+            $rest = @($Name.ToLowerInvariant().Split('.'))
+            $artefact = ''
+        }
         $positions = @()
         $roles = @()
         for ($index = 1; $index -lt $rest.Count; $index++) {
@@ -656,14 +671,14 @@ function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
         }
         $role = 'Root'
         if ($roles.Count -gt 0) { $role = $roles[0] }
-        return [pscustomobject]@{ Artefact = $best.ToLowerInvariant(); Feature = $rest[0]; Role = $role
-            Segments = $rest; Positions = $positions; Roles = $roles; HostRole = '' }
+        return [pscustomobject]@{ Artefact = $artefact; Feature = $rest[0]; Role = $role
+            Segments = $rest; Positions = $positions; Roles = $roles; HostRole = ''; Hosted = $isHosted }
     }
     $first = $Name.Split('.')[0]
     $hostRole = $Hosts | Where-Object { $_ -ieq $first } | Select-Object -First 1
     if ($hostRole -and $Name.Contains('.')) {
         return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host'; HostRole = $hostRole
-            Segments = @(); Positions = @(); Roles = @() }
+            Segments = @(); Positions = @(); Roles = @(); Hosted = $false }
     }
     return $null
 }
@@ -730,13 +745,27 @@ function Get-TargetView($Unit, [int] $Length) {
 
 function Test-RoleImport($Source, $Target) {
     if ($null -eq $Source -or $null -eq $Target) { return $true }
+    # Platform-Features importieren nie den Host (8.3), Hosted-Features nur die Foundation (8.2).
     if ($Target.Role -eq 'Host') {
+        if ($Source.Hosted) { return $Target.HostRole -eq 'Foundation' }
         return $Source.Role -eq 'Host' -and $HostHostAllowed[$Source.HostRole] -contains $Target.HostRole
     }
     if ($Source.Role -eq 'Host') {
-        return $HostAllowed[$Source.HostRole] -contains (Get-TargetView $Target 1).Kind
+        $kind = (Get-TargetView $Target 1).Kind
+        if ($Target.Hosted) {
+            # 8.1, Zeilen Hosted-Feature: Shell alles außer Internals, Host-Adapters nur Contract und Sub-Contract.
+            switch ($Source.HostRole) {
+                'Shell'    { return $HostAllowed.Shell -contains $kind }
+                'Adapters' { return $kind -in @('Contract', 'SubContract') }
+                default    { return $false }
+            }
+        }
+        return $HostAllowed[$Source.HostRole] -contains $kind
     }
-    if ($Source.Artefact -ne $Target.Artefact -or $Source.Feature -ne $Target.Feature) {
+    $same = $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature
+    # Platform-Features importieren keine Hosted-Features (8.3), Hosted-Features einander nie (8.2).
+    if ($Target.Hosted -and -not $same) { return $false }
+    if (-not $same) {
         $view = (Get-TargetView $Target 1).Kind
         if ((Get-SourceRights $Source 1) -eq 'Contract') { return $view -eq 'Contract' }
         return $view -in @('Contract', 'Root')
@@ -784,7 +813,8 @@ if ($SelfTest) {
     $data = Get-Content -Raw -Encoding UTF8 (Join-Path $Root 'Tests/Data/Architecture/role-imports.json') | ConvertFrom-Json
     $failures = @()
     foreach ($case in $data.cases) {
-        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles) (Get-UnitRole $case.to $data.prefixes $data.hostRoles)
+        $hosted = @($data.hostedFeatures)
+        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles $hosted) (Get-UnitRole $case.to $data.prefixes $data.hostRoles $hosted)
         if ($actual -ne [bool] $case.allowed) {
             $failures += "$($case.from) -> $($case.to): erwartet $($case.allowed), erhalten $actual"
         }
@@ -936,11 +966,11 @@ foreach ($dir in @('Packages', 'Application')) {
     foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
         $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
         $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles
+        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles $HostedFeatures
         if ($null -eq $source) { continue }
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles
+            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles $HostedFeatures
             # Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
             $internals = $null -ne $target -and $target.Role -ne 'Host' -and $target.Roles -contains 'Internals'
             if ((Test-RoleImport $source $target) -or ((Test-RoleApproved $ownUnit $unit.Name) -and -not $internals)) { continue }
@@ -1593,7 +1623,7 @@ function Get-FeatureName([string] $Name) {
 }
 
 function Test-ContractUnit([string] $Name) {
-    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
+    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
 }
 
 function Get-AdapterRoleFindings([string] $BaseDir) {
@@ -1604,7 +1634,7 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
         if (-not (Test-Path $path)) { continue }
         foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
             $name = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-            $role = Get-UnitRole $name $RolePrefixes $HostRoles
+            $role = Get-UnitRole $name $RolePrefixes $HostRoles $HostedFeatures
             if ($null -eq $role) { continue }
             $relative = $file.FullName.Substring((Resolve-Path $BaseDir).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
             $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
@@ -1673,14 +1703,14 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
             $ancestor = $base.Ancestor
         }
         foreach ($item in $chain) {
-            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
             $same = $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
             if ((Test-ContractUnit $item.Home) -and (($own.Role -eq 'Adapters' -and -not $same) -or ($own.Role -eq 'Providers' -and $same))) {
                 $fitting[$unit.Name]++
             }
         }
         foreach ($item in $class.Implemented) {
-            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
             $same = $own.Role -ne 'Host' -and $homeRole.Role -ne 'Host' -and
                 $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
             $where = "$($unit.Relative):$($class.Line)"
