@@ -30,7 +30,7 @@ uses
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.History.Contract,
   Atlas.Common.History.Service,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.VersionControlChanges,
   Shell.VersionControl.TestSupport,
   Shell.SymbolHistory;
@@ -137,7 +137,7 @@ begin
   begin
     Exit;
   end;
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   mFolder := NewFolder;
   try
     CommitSteps(mRunner, mGit, mFolder);

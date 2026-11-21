@@ -2597,8 +2597,10 @@
         <DCCReference Include="Application\Shell\Shell.VersionControlChanges.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.AffectedTests.pas"/>
         <DCCReference Include="Application\Shell\Shell.AffectedTests.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.Platform.pas"/>
-        <DCCReference Include="Application\Shell\Shell.Platform.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Platform\Platform.Server.pas"/>
+        <DCCReference Include="Application\Platform\Platform.Server.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Platform.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.Platform.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CrashCases.pas"/>
         <DCCReference Include="Application\Shell\Shell.CrashCases.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Replay.pas"/>

@@ -19,7 +19,7 @@ implementation
 
 uses
 {$IFDEF MSWINDOWS}
-  // Für das inline-DeleteFile der RTL (H2443); die Plattformadapter kommen aus Shell.Platform.
+  // Für das inline-DeleteFile der RTL (H2443); die Plattformadapter kommen aus Platform.Server.
   Winapi.Windows,
 {$ENDIF}
   System.SysUtils,
@@ -52,7 +52,7 @@ uses
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Configuration.Contract,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.Texts,
   Shell.Mcp.Ide,
   Atlas.Common.Localization.Texts;
