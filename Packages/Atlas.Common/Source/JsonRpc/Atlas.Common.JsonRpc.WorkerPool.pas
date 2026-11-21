@@ -219,7 +219,9 @@ begin
     end
     else
     begin
-      // Nach IdleMs beendet oder von Close aufgegeben: Niemand sonst kennt den Thread mehr.
+      // Nach IdleMs beendet oder von Close aufgegeben: Niemand sonst kennt den Thread mehr. Er setzt es selbst,
+      // bevor Execute endet, also ohne Wettlauf mit dem Ende des Threads; der Pool läuft nur im Serverprozess,
+      // dessen Code nie entladen wird.
       AWorker.FreeOnTerminate := True;
     end;
     if FClosed then

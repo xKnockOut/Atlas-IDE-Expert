@@ -58,7 +58,8 @@ const
   /// 28 (#584): debug.dataBreakpoints.
   /// 29 (#895): TAtlasDebugValue.OldText/Expandable/Expanded/Rows, TAtlasEditorHover.OnDebugTree/OnDebugRow,
   /// debug.hoverExpand, debug.hoverChanges, debug.hoverMaxChildren.
-  cAtlasCoreContractVersion = 34;
+  /// 35: TAtlasIdeThreadNotifier (Atlas.IDE.Hover.DebugValue), TAtlasTimeLimit.Run mit Package der Quelle.
+  cAtlasCoreContractVersion = 35;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

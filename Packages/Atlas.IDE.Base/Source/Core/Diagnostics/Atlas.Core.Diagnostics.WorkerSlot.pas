@@ -5,7 +5,10 @@
 // FreeOnTerminate und vergaßen den Thread: Endete er zwischen der Prüfung auf
 // Finished und dem Setzen, blieb das Objekt liegen, und wurde das Package
 // seines Codes bei laufender IDE entladen, lief er in nicht mehr geladenem
-// Code weiter.
+// Code weiter. Ebenso übergeben jetzt TAtlasTimeLimit (StopAll,
+// ReleaseModule: hängende Zeitlimit-Arbeiter mit dem Package ihrer Quelle),
+// TAtlasMainThread.Stop (Besitzer der Einträge) und TAtlasBackgroundJobs
+// überfällige Threads hierher.
 // - TAtlasWorkerSlot hält die Threads eines Objekts (FreeOnTerminate aus),
 //   gibt beendete frei und wartet in Stop bis zur Zeitgrenze. Wer dann noch
 //   läuft, geht an TAtlasOverdueThreads, zusammen mit dem Package seines
@@ -232,7 +235,11 @@ begin
   end;
   if FLock = nil then
   begin
-    // Nach dem Abbau: letzter Ausweg wie früher.
+    // Nur nach dem Klassendestruktor, also in der Finalisierung dieses Packages, und nur aus einem fremden
+    // Thread: Wer Adopt sonst ruft, bindet diese Unit ein und ist deshalb vorher finalisiert. Festhalten geht
+    // dann nicht mehr, und die Liste gibt es nicht; ohne FreeOnTerminate bliebe nur das Objekt liegen.
+    TAtlasGuard.Log(Format('Atlas: worker thread %d past its time limit after teardown, frees itself',
+      [AThread.ThreadID]));
     AThread.FreeOnTerminate := True;
     Exit;
   end;
