@@ -67,15 +67,6 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
-function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function IsSymbolIn(const AToken: TPascalToken; const ASymbols: array of string): Boolean;
 var
   mSymbol: string;
@@ -187,7 +178,7 @@ begin
       ASlot.ValueFirst := mScan;
     end;
     ASlot.ValueLast := mScan;
-    mScan := Next(ATokens, mScan);
+    mScan := NextCodeAfter(ATokens, mScan);
   end;
 end;
 
@@ -210,7 +201,7 @@ begin
   end;
   mName := ATokens[ASlot.NameIndex];
   mBefore := PreviousCode(ATokens, ASlot.NameIndex);
-  mAfter := Next(ATokens, ASlot.NameIndex);
+  mAfter := NextCodeAfter(ATokens, ASlot.NameIndex);
   Result := not IsLinked(ATokens, mBefore, mAfter) and not InDeclaration(ATokens, mBefore) and
     not StartsText('&', mName.Text);
   if not Result then
@@ -225,7 +216,7 @@ begin
     IsKeywordIn(ATokens[mBefore], ['begin', 'try', 'finally', 'except', 'repeat']));
   if ASlot.AssignTarget then
   begin
-    ReadValue(ATokens, Next(ATokens, mAfter), ASlot);
+    ReadValue(ATokens, NextCodeAfter(ATokens, mAfter), ASlot);
   end;
 end;
 
@@ -250,7 +241,7 @@ begin
         Exit;
       end;
     end;
-    Result := Next(ATokens, Result);
+    Result := NextCodeAfter(ATokens, Result);
   end;
   Result := ALast;
 end;
@@ -280,7 +271,7 @@ function IsGroupedComparison(const ATokens: TArray<TPascalToken>; AFirst, AIndex
 var
   mTermFirst, mTermLast: Integer;
 begin
-  Result := IsGroupOpen(ATokens, AFirst, AIndex) and (TDeclareUnknown.Shape(ATokens, Next(ATokens, AIndex),
+  Result := IsGroupOpen(ATokens, AFirst, AIndex) and (TDeclareUnknown.Shape(ATokens, NextCodeAfter(ATokens, AIndex),
     PreviousCode(ATokens, Closing(ATokens, AIndex, ALast)), mTermFirst, mTermLast) = 'Boolean');
 end;
 
@@ -320,7 +311,7 @@ begin
     begin
       Note(ATokens, mIndex);
     end;
-    mIndex := Next(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
 end;
 
@@ -340,7 +331,7 @@ begin
   end
   else if ATokens[AIndex].IsKeyword('as') then
   begin
-    AsType := Next(ATokens, AIndex);
+    AsType := NextCodeAfter(ATokens, AIndex);
   end;
 end;
 
@@ -375,7 +366,7 @@ begin
   ATermFirst := AFirst;
   while (ATermFirst < ALast) and (IsSymbolIn(ATokens[ATermFirst], ['-', '+']) or ATokens[ATermFirst].IsKeyword('not')) do
   begin
-    ATermFirst := Next(ATokens, ATermFirst);
+    ATermFirst := NextCodeAfter(ATokens, ATermFirst);
   end;
   ATermLast := -1;
   if ATokens[ATermFirst].IsSymbol('@') then
@@ -392,7 +383,7 @@ begin
       mIndex := Closing(ATokens, mIndex, ALast);
     end;
     ATermLast := mIndex;
-    mIndex := Next(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
 end;
 

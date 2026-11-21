@@ -87,7 +87,6 @@ uses
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.CompletionDebugDisplay,
-  Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Values,
   Atlas.Common.Lsp.Completion.Declarations,
   Atlas.Common.Lsp.Completion.Names,
@@ -182,7 +181,7 @@ end;
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 begin
   Result := 0;
-  while (Result <= High(ATokens)) and (ComparePositions(ATokens[Result].EndPos, APosition) < 0) do
+  while (Result <= High(ATokens)) and (TTextPosition.Compare(ATokens[Result].EndPos, APosition) < 0) do
   begin
     Inc(Result);
   end;
@@ -206,7 +205,7 @@ begin
     Exit;
   end;
   mToken := ARequest.Tree.Tokens[mIndex];
-  if not mToken.IsKeyword('with') or (ComparePositions(mToken.StartPos, ARequest.Position) > 0) or
+  if not mToken.IsKeyword('with') or (TTextPosition.Compare(mToken.StartPos, ARequest.Position) > 0) or
     not AWithFor(ARequest, mEdits) then
   begin
     Exit;

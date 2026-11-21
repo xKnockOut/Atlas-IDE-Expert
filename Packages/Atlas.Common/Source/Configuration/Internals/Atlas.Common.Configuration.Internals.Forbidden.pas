@@ -40,7 +40,8 @@ uses
   Atlas.Text.Checkin,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Internals.JsonTree,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -88,29 +89,6 @@ type
     function Run: string;
     property Issues: TArray<TConfigurationIssue> read FIssues;
   end;
-
-function QuoteKey(const AKey: string): string;
-var
-  mCh: Char;
-begin
-  Result := '"';
-  for mCh in AKey do
-  begin
-    if (mCh = '"') or (mCh = '\') then
-    begin
-      Result := Result + '\' + mCh;
-    end
-    else if Ord(mCh) < 32 then
-    begin
-      Result := Result + Format('\u%.4x', [Ord(mCh)]);
-    end
-    else
-    begin
-      Result := Result + mCh;
-    end;
-  end;
-  Result := Result + '"';
-end;
 
 function Join(const APath, AKey: string): string;
 begin
@@ -198,7 +176,7 @@ begin
     end
     else if RebuildItem(ANode[mIndex], mPath, AChanged, mChild) then
     begin
-      mParts := mParts + [QuoteKey(mKey) + ': ' + mChild];
+      mParts := mParts + [TJsonText.Quote(mKey) + ': ' + mChild];
     end;
   end;
   Result := NodeText(ANode);

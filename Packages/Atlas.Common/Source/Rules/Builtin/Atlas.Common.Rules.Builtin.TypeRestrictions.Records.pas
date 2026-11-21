@@ -67,7 +67,8 @@ uses
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -474,7 +475,7 @@ begin
     mDecl := FindStructDecl(FRoot, LastPart(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)));
     if mDecl <> nil then
     begin
-      Result := TypeOfDecl(mDecl);
+      Result := TSyntaxNodes.FirstChildExcept(mDecl, [TSyntaxKind.GenericParams]);
     end;
   end
   else if (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.ImplementationSection) then

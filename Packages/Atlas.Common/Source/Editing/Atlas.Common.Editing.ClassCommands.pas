@@ -66,7 +66,8 @@ uses
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -997,16 +998,6 @@ begin
   Result := LowerCase(AMember.Container + '.' + AMember.Name + '(' + string.Join(',', AMember.ParamTypes) + ')');
 end;
 
-/// <summary>Name ohne Typargumente: IComparer&lt;TKunde&gt; wird IComparer.</summary>
-function PlainName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-end;
-
 /// <summary>Token "class" im Kopf der Klasse AClass; -1 ohne.</summary>
 function ClassKeywordToken(const ATokens: TArray<TPascalToken>; const AClass: TIndexSymbol): Integer;
 begin
@@ -1073,7 +1064,7 @@ begin
   ABefore := nil;
   for mText in mHeader do
   begin
-    if SameText(PlainName(mText), PlainName(AName)) then
+    if SameText(TTextNames.WithoutGenerics(mText), TTextNames.WithoutGenerics(AName)) then
     begin
       Result := True;
     end
@@ -1115,7 +1106,7 @@ begin
   mResolver := TNameResolver.Create(AContext.Index);
   try
     mResolver.Namespaces := AContext.Namespaces;
-    Result := mResolver.ResolveNameFrom(AOwn, PlainName(AName), mResolved) and
+    Result := mResolver.ResolveNameFrom(AOwn, TTextNames.WithoutGenerics(AName), mResolved) and
       (mResolved.SymbolKind = TIndexSymbolKind.InterfaceType);
     if not Result then
     begin
@@ -1282,7 +1273,7 @@ var
 begin
   AEdits := nil;
   mName := Trim(AContext.Arguments);
-  if not IsValidIdent(PlainName(mName), True) then
+  if not IsValidIdent(TTextNames.WithoutGenerics(mName), True) then
   begin
     Exit(Fail(cTexts[TClassCommandsText.ExpectedIsIntfIName].Text, AReason));
   end;

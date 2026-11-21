@@ -77,7 +77,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.DirectiveNames,
-  Atlas.Common.Pascal.Parser.Cursor;
+  Atlas.Common.Pascal.Parser.Cursor,
+  System.StrUtils;
 
 const
 
@@ -341,7 +342,7 @@ end;
 function TDeclarationParser.IsDeclStart: Boolean;
 begin
   // Sichtbarkeit beendet einen var- oder const-Abschnitt in Klassen, ebenso ein Attribut vor einer Methode.
-  Result := (IsSym('[') and AttributesBeforeName) or (IsIdent and not (InWords(Current.Text, cVisibilityWords) and
+  Result := (IsSym('[') and AttributesBeforeName) or (IsIdent and not (MatchText(Current.Text, cVisibilityWords) and
     not PeekIsSym(1, ':') and not PeekIsSym(1, ',') and not PeekIsSym(1, '=')));
 end;
 
@@ -372,7 +373,7 @@ begin
     until mDepth = 0;
   end;
   mToken := PeekToken(mDelta);
-  Result := (mToken.Kind = TPascalTokenKind.Identifier) and not InWords(mToken.Text, cVisibilityWords);
+  Result := (mToken.Kind = TPascalTokenKind.Identifier) and not MatchText(mToken.Text, cVisibilityWords);
 end;
 
 function TDeclarationParser.IsDirectiveStart: Boolean;
@@ -555,7 +556,7 @@ begin
   mIsOperator := SameWord(Current.Text, 'operator');
   Advance; // procedure, function, constructor, destructor, operator
   // Operatornamen dürfen reservierte Wörter sein: class operator In, And, Or, Xor, Not, Div, Mod, Shl, Shr (#1140).
-  if mIsOperator and (Current.Kind = TPascalTokenKind.Keyword) and InWords(Current.Text, cOperatorKeywords) then
+  if mIsOperator and (Current.Kind = TPascalTokenKind.Keyword) and MatchText(Current.Text, cOperatorKeywords) then
   begin
     Result := Current.Text;
     Advance;
@@ -728,7 +729,7 @@ end;
 procedure TDeclarationParser.ParseHints;
 begin
   // deprecated 'Grund', platform, library, experimental
-  while (IsIdent and InWords(Current.Text, cHintWords)) or IsKw('library') do
+  while (IsIdent and MatchText(Current.Text, cHintWords)) or IsKw('library') do
   begin
     Advance;
     if Current.Kind = TPascalTokenKind.StringLiteral then

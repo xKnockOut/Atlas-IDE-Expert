@@ -92,7 +92,8 @@ uses
   Atlas.Common.Lsp.Rename,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -1052,16 +1053,6 @@ begin
     TTextLines.LineBreakOf(AUnit.Text) + mIndent + ANewName + ' := True;')];
 end;
 
-/// <summary>Name der Klasse ohne Typparameter.</summary>
-function PlainClassName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-end;
-
 procedure TInvertPlan.AddStartValue(const ASymbol: TResolvedSymbol; const ANewName: string);
 var
   mUnit: TSourceFile;
@@ -1348,7 +1339,7 @@ begin
       ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
     Exit;
   end;
-  mClassName := PlainClassName(mTypeDecl.Name);
+  mClassName := TTextNames.WithoutGenerics(mTypeDecl.Name);
   mConstructors := ClassConstructors(AUnit, mClassName);
   for mRoutine in mConstructors do
   begin

@@ -818,7 +818,7 @@ var
   mIndex: Integer;
 begin
   mIndex := -1;
-  while (mIndex < High(ATokens)) and (ComparePositions(ATokens[mIndex + 1].EndPos, APosition) <= 0) do
+  while (mIndex < High(ATokens)) and (TTextPosition.Compare(ATokens[mIndex + 1].EndPos, APosition) <= 0) do
   begin
     Inc(mIndex);
   end;
@@ -941,7 +941,7 @@ begin
   begin
     Exit(CompareText(A.FileName, B.FileName) < 0);
   end;
-  Result := ComparePositions(A.Range.StartPos, B.Range.StartPos) < 0;
+  Result := TTextPosition.Compare(A.Range.StartPos, B.Range.StartPos) < 0;
 end;
 
 /// <summary>Sortiert nach DeclaredBefore; wenige Mitglieder: Einfügen genügt.</summary>

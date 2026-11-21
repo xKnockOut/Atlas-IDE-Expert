@@ -70,7 +70,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -154,25 +155,11 @@ type
     property Findings: TArray<TForwardFinding> read FFindings;
   end;
 
-function TypeNode(ADecl: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ADecl.ChildCount - 1 do
-  begin
-    if ADecl[mIndex].Kind <> TSyntaxKind.GenericParams then
-    begin
-      Exit(ADecl[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
-
 function IsForwardDecl(ADecl: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := TypeNode(ADecl);
+  mNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   Result := (mNode <> nil) and (mNode.Kind = TSyntaxKind.ForwardType);
 end;
 
@@ -181,7 +168,7 @@ function CanForward(ADecl: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := TypeNode(ADecl);
+  mNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   Result := (mNode <> nil) and ((mNode.Kind = TSyntaxKind.ClassType) or (mNode.Kind = TSyntaxKind.InterfaceType));
 end;
 
@@ -282,7 +269,7 @@ var
   mNode: TSyntaxNode;
   mDot: Integer;
 begin
-  mNode := TypeNode(ADecl);
+  mNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   Result := False;
   if mNode = nil then
   begin
@@ -411,21 +398,6 @@ function IsIfEnd(const AText: string): Boolean;
 begin
   Result := StartsStr('{$ENDIF', AText) or StartsStr('{$IFEND', AText) or StartsStr('(*$ENDIF', AText) or
     StartsStr('(*$IFEND', AText);
-end;
-
-/// <summary>Index von AChild unter AParent; -1 ohne.</summary>
-function IndexIn(AParent, AChild: TSyntaxNode): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to AParent.ChildCount - 1 do
-  begin
-    if AParent[mIndex] = AChild then
-    begin
-      Result := mIndex;
-    end;
-  end;
 end;
 
 /// <summary>Abschnitte hinter AFirst bis ALast: type-Blöcke und const/var/label; False bei anderem.</summary>
@@ -799,7 +771,7 @@ var
   mNode, mParams: TSyntaxNode;
   mWord: string;
 begin
-  mNode := TypeNode(ADecl.Node);
+  mNode := TSyntaxNodes.FirstChildExcept(ADecl.Node, [TSyntaxKind.GenericParams]);
   if mNode.Kind = TSyntaxKind.ClassType then
   begin
     mWord := 'class';
@@ -1104,7 +1076,7 @@ begin
   mBlocks := TArray<TSyntaxNode>.Create(AUser.Section);
   // Was die Typen aus den Abschnitten dazwischen brauchen, steht danach weiter vorn und bleibt
   // erreichbar. Brauchen umgekehrt die Abschnitte dazwischen einen der Typen, geht es nicht.
-  if not SplitBetween(mParent, IndexIn(mParent, AUser.Section), IndexIn(mParent, ATarget.Section), mBlocks,
+  if not SplitBetween(mParent, TSyntaxNodes.IndexOf(mParent, AUser.Section), TSyntaxNodes.IndexOf(mParent, ATarget.Section), mBlocks,
     mMoved) then
   begin
     AFinding.Reason := cTexts[TForwardDeclarationsText.BetweenTheTypeBlocksThere].Text;

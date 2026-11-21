@@ -42,7 +42,8 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -148,7 +149,7 @@ begin
     mTypeName := '';
     if mType <> nil then
     begin
-      mTypeName := BareName(mType.Name);
+      mTypeName := TTextNames.BareTypeName(mType.Name);
     end;
     for mName in mParameter.Name.Split([',']) do
     begin

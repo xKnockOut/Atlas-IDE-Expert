@@ -71,7 +71,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.DataFlow.Syntax;
+  Atlas.Common.Lsp.DataFlow.Syntax,
+  Atlas.Text.Names;
 
 type
   /// <summary>Sammelt die Quellen eines Ausdrucks in eine Stelle; eigener Stapel statt Rekursion (Bericht
@@ -359,7 +360,7 @@ begin
     ASymbol.SymbolKind := TIndexSymbolKind.Variable;
     if mIndex >= 0 then
     begin
-      ASymbol.Name := TDataFlowSyntax.CleanName(ATree.Tokens[mIndex].Text);
+      ASymbol.Name := TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text);
     end;
   end;
 end;
@@ -454,7 +455,7 @@ begin
       mParam.Name := Trim(mName);
       mParam.Modifier := mParameter.Modifier;
       mParam.FileName := AFileName;
-      if not TDataFlowSyntax.NameInNode(mTree, mParameter, TDataFlowSyntax.CleanName(mParam.Name),
+      if not TDataFlowSyntax.NameInNode(mTree, mParameter, TTextNames.WithoutAmpersand(mParam.Name),
         mParam.Position) then
       begin
         mParam.Position := mParameter.StartPos;

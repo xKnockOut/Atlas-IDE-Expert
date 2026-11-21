@@ -34,7 +34,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -225,13 +226,13 @@ begin
     begin
       for mInner := 0 to mParameters.ChildCount - 1 do
       begin
-        Result := Result + SplitNames(mParameters[mInner].Name);
+        Result := Result + TTextNames.SplitList(mParameters[mInner].Name);
       end;
     end;
   end;
   for mIndex := 0 to High(mInlineVars) do
   begin
-    Result := Result + SplitNames(mInlineVars[mIndex].Name);
+    Result := Result + TTextNames.SplitList(mInlineVars[mIndex].Name);
   end;
 end;
 

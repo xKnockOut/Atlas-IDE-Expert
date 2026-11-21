@@ -64,7 +64,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -649,16 +650,6 @@ begin
   end;
 end;
 
-/// <summary>Letztes Token bei oder vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
-function CodeBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Das "end" vor dem letzten Punkt der Unit; -1 ohne.</summary>
 function UnitEndIndex(const ATokens: TArray<TPascalToken>): Integer;
 var
@@ -669,7 +660,7 @@ begin
   begin
     if ATokens[mIndex].IsSymbol('.') then
     begin
-      mPrevious := CodeBefore(ATokens, mIndex - 1);
+      mPrevious := PreviousCode(ATokens, mIndex);
       if (mPrevious >= 0) and ATokens[mPrevious].IsKeyword('end') then
       begin
         Result := mPrevious;
@@ -717,7 +708,7 @@ begin
   begin
     Exit;
   end;
-  mPrevious := CodeBefore(mTokens, mEnd - 1);
+  mPrevious := PreviousCode(mTokens, mEnd);
   if AContext.Tree.Root.FindChild(TSyntaxKind.FinalizationSection) <> nil then
   begin
     // Letzte Anweisung ohne Semikolon: erst eins ergänzen.

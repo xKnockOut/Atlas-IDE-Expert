@@ -68,7 +68,8 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -197,27 +198,6 @@ begin
   end;
 end;
 
-/// <summary>Erstes Token ab AOffset (Tokens sind nach Offset sortiert).</summary>
-function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mHigh, mMiddle: Integer;
-begin
-  Result := 0;
-  mHigh := Length(ATokens);
-  while Result < mHigh do
-  begin
-    mMiddle := (Result + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      Result := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-end;
-
 /// <summary>(Use, Alloc, Release = 4): die Namen direkt nach "(" bzw. ","; der Wert hinter "=" ist eine
 /// Verwendung.</summary>
 procedure AddEnumNames(const ATokens: TArray<TPascalToken>; AFirst: Integer; ANode: TSyntaxNode;
@@ -281,11 +261,11 @@ begin
       Result := True;
       if ANode.Kind = TSyntaxKind.EnumType then
       begin
-        AddEnumNames(mTokens, FirstTokenAt(mTokens, ANode.StartOffset), ANode, mOffsets);
+        AddEnumNames(mTokens, TokenFrom(mTokens, ANode.StartOffset), ANode, mOffsets);
       end
       else if ANode.Kind in cNamedKinds then
       begin
-        AddDeclaredNames(mTokens, FirstTokenAt(mTokens, ANode.StartOffset), ANode, mOffsets);
+        AddDeclaredNames(mTokens, TokenFrom(mTokens, ANode.StartOffset), ANode, mOffsets);
       end;
     end);
   Result := mOffsets;
