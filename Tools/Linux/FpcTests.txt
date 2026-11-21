@@ -157,6 +157,7 @@ Atlas.Common.Editing.UnitRename.Tests
 Atlas.Common.Editing.UnitTemplates.Tests
 Atlas.Common.Editing.Unwrap.Tests
 Atlas.Common.Editing.UsesClause.Tests
+Atlas.Common.Pascal.UsesClauses.Tests
 Atlas.Common.Editing.UsesGroups.Tests
 Atlas.Common.Editing.UsesCommand.Tests
 Atlas.Common.Editing.VarBlock.Tests

@@ -57,6 +57,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
@@ -617,7 +618,7 @@ procedure AddMissingUses(ASource: TCommandSource; const AContext: TSlashContext;
 var
   mUsesEdit: TTextEdit;
 begin
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), AUnitName, AContext.Namespaces) and
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ASource.Tree.Tokens), AUnitName, AContext.Namespaces) and
     TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnitName, ASource.LineBreak, mUsesEdit) then
   begin
     AEdits := AEdits + [mUsesEdit];

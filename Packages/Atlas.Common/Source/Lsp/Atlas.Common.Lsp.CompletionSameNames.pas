@@ -43,7 +43,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Pascal.UsesClauses;
 
 { TCompletionSameNames }
 
@@ -107,11 +107,11 @@ begin
   AActive := -1;
   for mIndex := 0 to High(AInside) do
   begin
-    if TUsesClauses.IsUsed([AInside[mIndex].Name], AUnitName, ANamespaces) then
+    if TPascalUses.IsUsed([AInside[mIndex].Name], AUnitName, ANamespaces) then
     begin
       AOwn := mIndex;
     end
-    else if TUsesClauses.IsUsed([AInside[mIndex].Name], AActiveUnit, ANamespaces) then
+    else if TPascalUses.IsUsed([AInside[mIndex].Name], AActiveUnit, ANamespaces) then
     begin
       AActive := mIndex;
     end;
@@ -146,8 +146,8 @@ var
 begin
   AEdits := nil;
   Result := False;
-  mReferences := TUsesClauses.References(ATokens);
-  for mClause in TUsesClauses.Clauses(ATokens) do
+  mReferences := TPascalUses.References(ATokens);
+  for mClause in TPascalUses.Clauses(ATokens) do
   begin
     mStop := ATokens[mClause.Semicolon].StartPos;
     if mClause.Plain then

@@ -56,7 +56,7 @@ uses
   Atlas.Text.Json,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -150,7 +150,7 @@ end;
 
 function IsTestText(const AText: string): Boolean;
 begin
-  Result := TUsesClauses.UsesTestFramework(TUsesClauses.UsedUnitsOf(AText));
+  Result := TPascalUses.UsesTestFramework(TPascalUses.UsedUnitsOf(AText));
 end;
 
 function TLspLeakCandidates.SourcesOf(const AMainSource: string; const AFileNames, AClassNames: TArray<string>):

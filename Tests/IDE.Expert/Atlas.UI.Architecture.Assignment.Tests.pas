@@ -45,6 +45,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Architecture.MapState,
   Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.Resolution,
   Atlas.Core.Architecture.Model.Tests,
   Atlas.UI.Architecture.Map,
   Atlas.UI.Architecture.Assignment;

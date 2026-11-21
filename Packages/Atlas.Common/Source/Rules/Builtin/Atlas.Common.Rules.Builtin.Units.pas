@@ -155,6 +155,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Rules.Builtin.Unresolved,
@@ -1309,7 +1310,7 @@ begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
-  mUsed := TUsesClauses.UsedUnits(mTokens);
+  mUsed := TPascalUses.UsedUnits(mTokens);
   if MatchText(TModuleHeader.Read(mTokens).Name, ['System', 'SysInit', 'System.Variants', 'Variants']) or
     UsesVariants(mUsed) then
   begin

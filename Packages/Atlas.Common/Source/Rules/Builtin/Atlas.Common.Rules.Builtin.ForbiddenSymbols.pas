@@ -85,7 +85,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Rules.TypedScope,
@@ -572,7 +572,7 @@ var
   mSymbol: TResolvedSymbol;
 begin
   FUnknownUnits := nil;
-  for mUnit in TUsesClauses.UsedUnits(FContext.Tree.Tokens) do
+  for mUnit in TPascalUses.UsedUnits(FContext.Tree.Tokens) do
   begin
     mSymbol := FScope.Resolver.ResolveChain(FContext.Tree, FScope.FileName, mUnit.Split(['.']), 0);
     if mSymbol.Kind = TResolvedKind.None then
@@ -703,7 +703,7 @@ begin
     Exit;
   end;
   // Name aus dem Quelltext (unit X), sonst aus dem Dateinamen.
-  mUnitName := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  mUnitName := TPascalUses.OwnName(FContext.Tree.Tokens);
   if mUnitName = '' then
   begin
     mUnitName := FContext.UnitName;

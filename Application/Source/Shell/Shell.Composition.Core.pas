@@ -109,7 +109,7 @@ implementation
 uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Core.Bootstrap;
 
 { TShellCore }
@@ -252,7 +252,7 @@ var
 begin
   mIndex := FServices.Index();
   Result := (mIndex <> nil) and mIndex.FindFile(AFileName, mIndexed) and
-    TUsesClauses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
+    TPascalUses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
 end;
 
 procedure TShellCore.Attach(ADispatcher: TJsonRpcDispatcher);

@@ -90,7 +90,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Testing.Classes,
   Atlas.Common.Localization.Texts;
 
@@ -622,7 +622,7 @@ var
   mMember: TDUnitXMember;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'TestCase') or
-    not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+    not TPascalUses.IsTestUnit(AContext.Tree.Tokens) then
   begin
     Exit;
   end;

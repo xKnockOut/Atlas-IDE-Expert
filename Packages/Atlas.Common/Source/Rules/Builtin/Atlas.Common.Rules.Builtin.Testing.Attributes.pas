@@ -57,7 +57,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Testing.Classes,
   Atlas.Common.Rules.Builtin.Testing.TestCases,
   Atlas.Common.Localization.Texts;
@@ -129,7 +129,7 @@ var
   mCheck: TAttributesCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, '[') or
-    not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+    not TPascalUses.IsTestUnit(AContext.Tree.Tokens) then
   begin
     Exit;
   end;
