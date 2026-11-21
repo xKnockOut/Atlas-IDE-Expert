@@ -31,7 +31,6 @@
     {"path": "Source/Core/Tests/Atlas.Core.Tests.ProjectChoice.pas", "rule": "hardcoded-string", "fingerprint": "f4454f5b", "count": 1, "routine": "TAtlasTestProjectChoices.Load", "context": "23757c6f"},
     {"path": "Source/Core/Tests/Atlas.Core.Tests.ProjectChoice.pas", "rule": "hardcoded-string", "fingerprint": "7303989d", "count": 1, "routine": "TAtlasTestProjectChoices.Save", "context": "a8fe59ea"},
     {"path": "Source/Core/Tests/Atlas.Core.Tests.Series.pas", "rule": "duplicate-routine-body", "fingerprint": "d094031d", "count": 1, "routine": "TAtlasTestSeriesSubject.Caption", "context": "b71e90ba"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Composition.pas", "rule": "metric-uses-count", "fingerprint": "61786085", "count": 1, "routine": "interface", "context": "e5c63180"},
     {"path": "Source/IDE/Tests/Atlas.IDE.Tests.CoveredBy.pas", "rule": "duplicate-routine-body", "fingerprint": "10f80cff", "count": 1, "routine": "InvalidateEditor", "context": "1f8495a2"},
     {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Explorer.pas", "rule": "duplicate-routine-body", "fingerprint": "85b68d97", "count": 1, "routine": "TAtlasIdeTestExplorer.RunAll", "context": "b3f944fb"},
     {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Lens.pas", "rule": "duplicate-routine-body", "fingerprint": "10f80cff", "count": 1, "routine": "InvalidateEditor", "context": "1f8495a2"},
