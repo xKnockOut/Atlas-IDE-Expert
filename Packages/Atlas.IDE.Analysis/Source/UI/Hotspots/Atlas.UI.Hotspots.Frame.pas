@@ -166,6 +166,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Winapi.Windows,
   System.Math,
   Vcl.Dialogs,
@@ -307,26 +308,19 @@ begin
 end;
 
 function TrendCaption(const ATrend: string): string;
+const
+  cTrends: array[0..3] of string = ('rising', 'steady', 'falling', 'new');
+  cTexts: array[0..3] of TAtlasAnalysisTextId = (TAtlasAnalysisTextId.HotspotsTrendRising,
+    TAtlasAnalysisTextId.HotspotsTrendSteady, TAtlasAnalysisTextId.HotspotsTrendFalling,
+    TAtlasAnalysisTextId.HotspotsTrendNew);
+var
+  mIndex: Integer;
 begin
-  if ATrend = 'rising' then
+  Result := '';
+  mIndex := IndexStr(ATrend, cTrends);
+  if mIndex >= 0 then
   begin
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendRising);
-  end
-  else if ATrend = 'steady' then
-  begin
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendSteady);
-  end
-  else if ATrend = 'falling' then
-  begin
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendFalling);
-  end
-  else if ATrend = 'new' then
-  begin
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendNew);
-  end
-  else
-  begin
-    Result := '';
+    Result := TAtlasAnalysisStrings.Text(cTexts[mIndex]);
   end;
 end;
 

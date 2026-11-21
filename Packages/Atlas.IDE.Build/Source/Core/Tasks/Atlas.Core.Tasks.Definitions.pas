@@ -103,6 +103,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Core.Settings.JsonText,
   Atlas.Text.Json;
 
@@ -213,30 +214,21 @@ const
 
 /// <summary>Umschalttasten aller Teile außer dem letzten; False bei einem unbekannten Teil.</summary>
 function KeyModifiers(const AParts: TArray<string>; out AModifiers: Word): Boolean;
+const
+  cNames: array[0..5] of string = ('Ctrl', 'Strg', 'Control', 'Shift', 'Umschalt', 'Alt');
+  cBits: array[0..5] of Word = (cCtrlBit, cCtrlBit, cCtrlBit, cShiftBit, cShiftBit, cAltBit);
 var
-  mIndex: Integer;
-  mPart: string;
+  mIndex, mName: Integer;
 begin
   AModifiers := 0;
   for mIndex := 0 to High(AParts) - 1 do
   begin
-    mPart := Trim(AParts[mIndex]);
-    if SameText(mPart, 'Ctrl') or SameText(mPart, 'Strg') or SameText(mPart, 'Control') then
-    begin
-      AModifiers := AModifiers or cCtrlBit;
-    end
-    else if SameText(mPart, 'Shift') or SameText(mPart, 'Umschalt') then
-    begin
-      AModifiers := AModifiers or cShiftBit;
-    end
-    else if SameText(mPart, 'Alt') then
-    begin
-      AModifiers := AModifiers or cAltBit;
-    end
-    else
+    mName := IndexText(Trim(AParts[mIndex]), cNames);
+    if mName < 0 then
     begin
       Exit(False);
     end;
+    AModifiers := AModifiers or cBits[mName];
   end;
   Result := True;
 end;

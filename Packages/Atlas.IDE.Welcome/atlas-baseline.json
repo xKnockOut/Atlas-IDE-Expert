@@ -30,7 +30,6 @@
     {"path": "Source/Core/Welcome/Atlas.Core.Welcome.Projects.pas", "rule": "magic-number", "fingerprint": "f5d43ef0", "count": 1, "routine": "TAtlasWelcomeProjects.ShortPath", "context": "9ada5c9d"},
     {"path": "Source/Core/Welcome/Atlas.Core.Welcome.QuickActions.pas", "rule": "hardcoded-string", "fingerprint": "3408f233", "count": 1, "routine": "TAtlasWelcomeQuickActions.ConsoleCommand", "context": "a956385d"},
     {"path": "Source/Core/Welcome/Atlas.Core.Welcome.QuickActions.pas", "rule": "hardcoded-string", "fingerprint": "f314e84b", "count": 1, "routine": "TAtlasWelcomeQuickActions.ConsoleCommand", "context": "b2e11a24"},
-    {"path": "Source/Core/Welcome/Atlas.Core.Welcome.QuickActions.pas", "rule": "string-if-chain", "fingerprint": "4431eddd", "count": 1, "routine": "TAtlasWelcomeQuickActions.ConsoleCommand", "context": "421f0b3b"},
     {"path": "Source/Core/Welcome/Atlas.Core.Welcome.Scroll.pas", "rule": "magic-number", "fingerprint": "16717bcd", "count": 1, "routine": "TAtlasWelcomeScroll.EdgeScroll", "context": "e807863b"},
     {"path": "Source/Core/Welcome/Atlas.Core.Welcome.Scroll.pas", "rule": "magic-number", "fingerprint": "a48b3d8b", "count": 1, "routine": "TAtlasWelcomeScroll.EdgeScroll", "context": "82400e48"},
     {"path": "Source/Core/Welcome/Atlas.Core.Welcome.Scroll.pas", "rule": "magic-number", "fingerprint": "22bb9de6", "count": 1, "routine": "TAtlasWelcomeScroll.WheelLines", "context": "004ad08c"},

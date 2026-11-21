@@ -28,7 +28,6 @@
     {"path": "Source/Core/Debug/Atlas.Core.Debug.InlineValues.pas", "rule": "magic-number", "fingerprint": "fd4499db", "count": 1, "routine": "TAtlasInlineValues.IsPlainIdentifier", "context": "4d5cffef"},
     {"path": "Source/Core/Debug/Atlas.Core.Debug.StepInto.pas", "rule": "duplicate-routine-body", "fingerprint": "f735411e", "count": 1, "routine": "TAtlasStepInto.ShortName", "context": "80ecc303"},
     {"path": "Source/Core/Debug/Atlas.Core.Debug.StepInto.pas", "rule": "hardcoded-string", "fingerprint": "cdfba40e", "count": 1, "routine": "TAtlasStepInto.ClassExpression", "context": "4503e590"},
-    {"path": "Source/Core/Debug/Atlas.Core.Debug.StepInto.pas", "rule": "string-if-chain", "fingerprint": "08f4466c", "count": 1, "routine": "TAtlasStepInto.KindOf", "context": "4e6aaf03"},
     {"path": "Source/Core/Debug/Atlas.Core.Debug.Unavailable.pas", "rule": "magic-number", "fingerprint": "036a6f46", "count": 1, "routine": "IsIdentifierChar", "context": "cd2f1581"},
     {"path": "Source/Core/Debug/Atlas.Core.Debug.Visualizers.Format.pas", "rule": "hardcoded-string", "fingerprint": "512a9cdc", "count": 1, "routine": "RectText", "context": "5109f8dd"},
     {"path": "Source/Core/Debug/Atlas.Core.Debug.Visualizers.Format.pas", "rule": "hardcoded-string", "fingerprint": "225763d8", "count": 1, "routine": "TAtlasVisualizerFormat.DictionaryText", "context": "66ea9573"},

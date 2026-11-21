@@ -85,6 +85,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Core.VersionControl.Internals.Text,
   Atlas.Core.VersionControl.Internals.LineTrace;
@@ -382,22 +383,23 @@ begin
 end;
 
 procedure TSvnInfoScan.OnText;
+const
+  // Elemente in der Reihenfolge von cElements.
+  cElements: array[0..3] of string = ('wcroot-abspath', 'relative-url', 'url', 'root');
+  cWorkingRoot = 0;
+  cRelativeUrl = 1;
+  cUrl = 2;
+  cRepositoryRoot = 3;
 begin
-  if FElement = 'wcroot-abspath' then
-  begin
-    FInfo.Root := VcsNormalizeDir(FReader.Value);
-  end
-  else if FElement = 'relative-url' then
-  begin
-    FInfo.RelativeUrl := Trim(FReader.Value);
-  end
-  else if FElement = 'url' then
-  begin
-    FUrl := Trim(FReader.Value);
-  end
-  else if FElement = 'root' then
-  begin
-    FRepositoryRoot := Trim(FReader.Value);
+  case IndexStr(FElement, cElements) of
+    cWorkingRoot:
+      FInfo.Root := VcsNormalizeDir(FReader.Value);
+    cRelativeUrl:
+      FInfo.RelativeUrl := Trim(FReader.Value);
+    cUrl:
+      FUrl := Trim(FReader.Value);
+    cRepositoryRoot:
+      FRepositoryRoot := Trim(FReader.Value);
   end;
 end;
 
@@ -972,54 +974,30 @@ begin
 end;
 
 class function TAtlasSvnParser.KindOf(const AItem, AProps: string; out AKind: TAtlasVcsChangeKind): Boolean;
+const
+  cItems: array[0..9] of string = ('modified', 'added', 'deleted', 'replaced', 'unversioned', 'conflicted', 'missing',
+    'incomplete', 'obstructed', 'merged');
+  cKinds: array[0..9] of TAtlasVcsChangeKind = (TAtlasVcsChangeKind.Modified, TAtlasVcsChangeKind.Added,
+    TAtlasVcsChangeKind.Deleted, TAtlasVcsChangeKind.Replaced, TAtlasVcsChangeKind.Untracked,
+    TAtlasVcsChangeKind.Conflicted, TAtlasVcsChangeKind.Missing, TAtlasVcsChangeKind.Missing,
+    TAtlasVcsChangeKind.TypeChanged, TAtlasVcsChangeKind.Modified);
+  // Zustände nach diesem verdeckt ein Konflikt der Eigenschaften.
+  cConflicted = 5;
+var
+  mItem: Integer;
 begin
-  Result := True;
-  if AItem = 'modified' then
+  mItem := IndexStr(AItem, cItems);
+  if (AProps = 'conflicted') and ((mItem < 0) or (mItem > cConflicted)) then
   begin
-    AKind := TAtlasVcsChangeKind.Modified;
-  end
-  else if AItem = 'added' then
+    mItem := cConflicted;
+  end;
+  // Ohne bekannten Zustand: nur Eigenschaften geändert (svn:eol-style und ähnliche) oder normal, none, ignored,
+  // external.
+  AKind := TAtlasVcsChangeKind.Modified;
+  Result := (mItem >= 0) or (AProps = 'modified');
+  if mItem >= 0 then
   begin
-    AKind := TAtlasVcsChangeKind.Added;
-  end
-  else if AItem = 'deleted' then
-  begin
-    AKind := TAtlasVcsChangeKind.Deleted;
-  end
-  else if AItem = 'replaced' then
-  begin
-    AKind := TAtlasVcsChangeKind.Replaced;
-  end
-  else if AItem = 'unversioned' then
-  begin
-    AKind := TAtlasVcsChangeKind.Untracked;
-  end
-  else if (AItem = 'conflicted') or (AProps = 'conflicted') then
-  begin
-    AKind := TAtlasVcsChangeKind.Conflicted;
-  end
-  else if (AItem = 'missing') or (AItem = 'incomplete') then
-  begin
-    AKind := TAtlasVcsChangeKind.Missing;
-  end
-  else if AItem = 'obstructed' then
-  begin
-    AKind := TAtlasVcsChangeKind.TypeChanged;
-  end
-  else if AItem = 'merged' then
-  begin
-    AKind := TAtlasVcsChangeKind.Modified;
-  end
-  else if AProps = 'modified' then
-  begin
-    // Nur Eigenschaften geändert (svn:eol-style und ähnliche).
-    AKind := TAtlasVcsChangeKind.Modified;
-  end
-  else
-  begin
-    // normal, none, ignored, external
-    AKind := TAtlasVcsChangeKind.Modified;
-    Result := False;
+    AKind := cKinds[mItem];
   end;
 end;
 

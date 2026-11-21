@@ -98,6 +98,9 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 const
   /// <summary>Datei mit Endung: optional Laufwerk, keine Zeichen, die in Pfaden verboten sind.</summary>
   cFilePattern = '((?:[A-Za-z]:)?[^:*?"<>|()\s][^:*?"<>|()]*?\.[A-Za-z0-9]{1,10})';
@@ -459,29 +462,23 @@ begin
 end;
 
 class function TAtlasTaskLineMatcher.SeverityWord(const AWord: string; out ASeverity: TAtlasTaskSeverity): Boolean;
-var
-  mWord: string;
-begin
-  mWord := AnsiLowerCase(Trim(AWord));
-  Result := True;
+const
   // Wörter des deutschen Compilers, keine Oberfläche.
-  if (mWord = 'error') or (mWord = 'fehler') or (mWord = 'fatal') or (mWord = 'schwerer fehler') then // german-ok
+  cWords: array[0..10] of string = ('error', 'fehler', 'fatal', 'schwerer fehler', 'warning', 'warnung', // german-ok
+    'hint', 'hinweis', 'info', 'information', 'message'); // german-ok
+  cSeverities: array[0..10] of TAtlasTaskSeverity = (TAtlasTaskSeverity.Error, TAtlasTaskSeverity.Error,
+    TAtlasTaskSeverity.Error, TAtlasTaskSeverity.Error, TAtlasTaskSeverity.Warning, TAtlasTaskSeverity.Warning,
+    TAtlasTaskSeverity.Info, TAtlasTaskSeverity.Info, TAtlasTaskSeverity.Info, TAtlasTaskSeverity.Info,
+    TAtlasTaskSeverity.Info);
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexStr(AnsiLowerCase(Trim(AWord)), cWords);
+  Result := mIndex >= 0;
+  ASeverity := TAtlasTaskSeverity.Error;
+  if Result then
   begin
-    ASeverity := TAtlasTaskSeverity.Error;
-  end
-  else if (mWord = 'warning') or (mWord = 'warnung') then
-  begin
-    ASeverity := TAtlasTaskSeverity.Warning;
-  end
-  else if (mWord = 'hint') or (mWord = 'hinweis') or (mWord = 'info') or (mWord = 'information') or
-    (mWord = 'message') then
-  begin
-    ASeverity := TAtlasTaskSeverity.Info;
-  end
-  else
-  begin
-    ASeverity := TAtlasTaskSeverity.Error;
-    Result := False;
+    ASeverity := cSeverities[mIndex];
   end;
 end;
 

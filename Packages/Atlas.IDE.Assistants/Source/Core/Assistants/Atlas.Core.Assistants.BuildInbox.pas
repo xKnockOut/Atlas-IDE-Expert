@@ -65,6 +65,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Core.Build.Messages,
   System.IOUtils,
   System.DateUtils,
@@ -79,24 +80,19 @@ begin
 end;
 
 class function TAtlasBuildInbox.KindOf(const AMode: string; out AKind: TAtlasCompileKind): Boolean;
+const
+  cModes: array[0..2] of string = ('make', 'build', 'check');
+  cKinds: array[0..2] of TAtlasCompileKind = (TAtlasCompileKind.Make, TAtlasCompileKind.Build,
+    TAtlasCompileKind.Check);
+var
+  mIndex: Integer;
 begin
-  Result := True;
   AKind := TAtlasCompileKind.Make;
-  if (AMode = '') or SameText(AMode, 'make') then
+  mIndex := IndexText(AMode, cModes);
+  Result := (AMode = '') or (mIndex >= 0);
+  if mIndex >= 0 then
   begin
-    AKind := TAtlasCompileKind.Make;
-  end
-  else if SameText(AMode, 'build') then
-  begin
-    AKind := TAtlasCompileKind.Build;
-  end
-  else if SameText(AMode, 'check') then
-  begin
-    AKind := TAtlasCompileKind.Check;
-  end
-  else
-  begin
-    Result := False;
+    AKind := cKinds[mIndex];
   end;
 end;
 
