@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Impact;
 

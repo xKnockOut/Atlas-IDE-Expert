@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.Colors;
+  Atlas.Common.Pascal.Colors;
 
 type
   TLspColors = class

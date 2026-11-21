@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.Colors,
+  Atlas.Common.Pascal.Colors,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Process.ParentWatcher,
@@ -87,7 +87,7 @@ uses
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Windows.Documents.SharedRead,
   Atlas.Windows.Diagnostics.StackGuard,
-  Atlas.Windows.Editing.SystemColors;
+  Atlas.Windows.Pascal.SystemColors;
 {$ELSE}
   BaseUnix,
   Atlas.Linux.Documents.PathCanonicalizer;
