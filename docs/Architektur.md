@@ -148,7 +148,9 @@ Host-Matrix (Host-Units ohne Präfix, je Host-Rolle):
 | `Adapters.*` | Foundation, Core, Adapters, Platform | Contract, Root, Sub-Contracts (nur zum Implementieren) |
 | `Platform.*` | Platform | Contract, Root |
 
-Ein Platform-Feature importiert nie eine Host-Unit.
+Ein Platform-Feature importiert nie eine Host-Unit und kein Hosted-Feature.
+
+Hosted-Features der Anwendung heißen `Feature.Rolle.Sache` ohne Präfix und liegen unter `Application/Source/Features/<Feature>/`; ihr erstes Namenssegment steht in der Liste `hostedFeatures` (`atlas.json`, Regel `architecture-role-import`) und in `$HostedFeatures` von `Tools/Check-PackageDependencies.ps1`. Innerhalb des Features gilt die Matrix oben. Nach außen importiert ein Hosted-Feature nur `Foundation.*` sowie Contract und Root von Platform-Features (der Contract nur Contracts), nie Core, Platform, Adapters oder Shell des Hosts und nie ein anderes Hosted-Feature. Vom Host aus importiert es nur die Shell (alles außer Internals); Host-Adapters sehen nur seinen Contract und implementieren seine Sub-Contracts.
 
 #### Verschachtelung
 

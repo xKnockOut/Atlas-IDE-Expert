@@ -543,15 +543,21 @@ begin
     end);
 end;
 
+const
+  /// <summary>Registry-Schlüssel der IDE mit Projektlisten.</summary>
+  cFavoriteProjects = 'Favorite Projects';
+  cWelcomeFavorites = 'WelcomePage\Favorites';
+  cClosedProjects = 'Closed Projects';
+
 class function TAtlasIdeWelcomeSearch.RecentProjects: TArray<string>;
 begin
   // Favoriten der Willkommensseite zuerst, dann die Liste „Wieder öffnen“.
-  Result := ProjectsIn(['Favorite Projects', 'WelcomePage\Favorites', 'Closed Projects']);
+  Result := ProjectsIn([cFavoriteProjects, cWelcomeFavorites, cClosedProjects]);
 end;
 
 class function TAtlasIdeWelcomeSearch.ClosedProjects: TArray<string>;
 begin
-  Result := ProjectsIn(['Closed Projects']);
+  Result := ProjectsIn([cClosedProjects]);
 end;
 
 class function TAtlasIdeWelcomeSearch.CacheRoot: string;

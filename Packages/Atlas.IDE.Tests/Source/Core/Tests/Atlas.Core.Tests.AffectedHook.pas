@@ -108,39 +108,45 @@ end;
 { TAtlasAffectedHook }
 
 class function TAtlasAffectedHook.Script(const ATexts: TAtlasAffectedHookTexts): string;
+const
+  /// <summary>Zeilen des Hooks; %0 Kennzeile, %1–%2 und %4–%5 Kommentare, %3 Konfigurationsdatei, %6–%7 Fragen
+  /// (für printf aufbereitet).</summary>
+  cLines: array[0..30] of string = (
+    '#!/bin/sh',
+    '%0:s',
+    '%1:s',
+    '%2:s',
+    'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0',
+    'conf="$dir/%3:s"',
+    '[ -f "$conf" ] || exit 0',
+    'server=$(sed -n 1p "$conf")',
+    'project=$(sed -n 2p "$conf")',
+    'exe=$(sed -n 3p "$conf")',
+    '[ -n "$server" ] && [ -f "$server" ] || exit 0',
+    '[ -n "$project" ] && [ -f "$project" ] || exit 0',
+    'run=$("$server" --check "$project" --affected-tests HEAD --include-uncommitted --format dunitx)',
+    'code=$?',
+    '%4:s',
+    'case $code in',
+    '  0) [ -n "$run" ] || exit 0 ;;',
+    '  2) run= ;;',
+    '  *) exit 0 ;;',
+    'esac',
+    '[ -n "$exe" ] && [ -f "$exe" ] || exit 0',
+    '%5:s',
+    '( : < /dev/tty ) 2>/dev/null || exit 0',
+    'printf %6:s > /dev/tty',
+    'read answer < /dev/tty',
+    'case "$answer" in j|J|y|Y) ;; *) exit 0 ;; esac',
+    '"$exe" $run --exitbehavior:Continue < /dev/null && exit 0',
+    'printf %7:s > /dev/tty',
+    'read answer < /dev/tty',
+    'case "$answer" in j|J|y|Y) exit 0 ;; esac',
+    'exit 1');
 begin
-  Result :=
-    '#!/bin/sh' + cLf +
-    cMarker + cLf +
-    Comment(ATexts.Purpose) + cLf +
-    Comment(ATexts.Removal) + cLf +
-    'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0' + cLf +
-    'conf="$dir/' + cConfigFile + '"' + cLf +
-    '[ -f "$conf" ] || exit 0' + cLf +
-    'server=$(sed -n 1p "$conf")' + cLf +
-    'project=$(sed -n 2p "$conf")' + cLf +
-    'exe=$(sed -n 3p "$conf")' + cLf +
-    '[ -n "$server" ] && [ -f "$server" ] || exit 0' + cLf +
-    '[ -n "$project" ] && [ -f "$project" ] || exit 0' + cLf +
-    'run=$("$server" --check "$project" --affected-tests HEAD --include-uncommitted --format dunitx)' + cLf +
-    'code=$?' + cLf +
-    Comment(ATexts.ExitCodes) + cLf +
-    'case $code in' + cLf +
-    '  0) [ -n "$run" ] || exit 0 ;;' + cLf +
-    '  2) run= ;;' + cLf +
-    '  *) exit 0 ;;' + cLf +
-    'esac' + cLf +
-    '[ -n "$exe" ] && [ -f "$exe" ] || exit 0' + cLf +
-    Comment(ATexts.NoTerminal) + cLf +
-    '( : < /dev/tty ) 2>/dev/null || exit 0' + cLf +
-    'printf ' + PrintfText(ATexts.AskRun) + ' > /dev/tty' + cLf +
-    'read answer < /dev/tty' + cLf +
-    'case "$answer" in j|J|y|Y) ;; *) exit 0 ;; esac' + cLf +
-    '"$exe" $run --exitbehavior:Continue < /dev/null && exit 0' + cLf +
-    'printf ' + PrintfText(ATexts.AskCommit) + ' > /dev/tty' + cLf +
-    'read answer < /dev/tty' + cLf +
-    'case "$answer" in j|J|y|Y) exit 0 ;; esac' + cLf +
-    'exit 1' + cLf;
+  Result := Format(string.Join(cLf, cLines) + cLf, [cMarker, Comment(ATexts.Purpose), Comment(ATexts.Removal),
+    cConfigFile, Comment(ATexts.ExitCodes), Comment(ATexts.NoTerminal), PrintfText(ATexts.AskRun),
+    PrintfText(ATexts.AskCommit)]);
 end;
 
 class function TAtlasAffectedHook.IsOwn(const AContent: string): Boolean;

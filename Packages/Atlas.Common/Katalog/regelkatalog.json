@@ -219,6 +219,12 @@
           "description": "First name segments of host units without prefix."
         },
         {
+          "name": "hostedFeatures",
+          "type": "string-list",
+          "default": [],
+          "description": "Hosted features of the application: first name segment without prefix; they import only Foundation and platform features, never each other."
+        },
+        {
           "name": "allow",
           "type": "string-list",
           "default": [],

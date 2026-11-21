@@ -81,10 +81,12 @@ end;
 /// <summary>Textdatei lesen, mit oder ohne Byte-Order-Mark (frühere Fassungen schrieben eines); teilt Löschen,
 /// damit es das atomare Ersetzen nicht blockiert. EInOutError, wenn sie nicht lesbar ist.</summary>
 function ReadText(const AFileName: string): string;
+const
+  cNotReadable = 'Datei der Willkommensseite nicht lesbar';
 begin
   if not TAtlasDataFile.TryRead(AFileName, Result) then
   begin
-    raise EInOutError.Create('Datei der Willkommensseite nicht lesbar');
+    raise EInOutError.Create(cNotReadable);
   end;
 end;
 
