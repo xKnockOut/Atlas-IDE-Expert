@@ -66,6 +66,7 @@ uses
   Atlas.Core.Lsp.Uris,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.AiProviders.Catalog,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.AiErrors,
   Atlas.IDE.Assistants.DailyCount,
@@ -219,6 +220,12 @@ begin
       mAnswer := mJob.Provider.Complete(TAtlasAiGhost.Prompt(mJob.Request, mJob.TimeoutMs));
       if not mAnswer.Ok then
       begin
+        // Abbruch beim Weitertippen ist Alltag; alles andere ins Protokoll, mit Meldung des Anbieters.
+        if mAnswer.Error <> TAtlasAiError.Cancelled then
+        begin
+          TAtlasGuard.Log('KI-Schattentext (' + mJob.Provider.Id + '): ' + TAtlasAiErrorTexts.Text(mAnswer.Error) +
+            ' ' + TAtlasGuard.MessageText(mAnswer.Detail));
+        end;
         AOwner.Failed(mAnswer.Error);
         Exit(False);
       end;

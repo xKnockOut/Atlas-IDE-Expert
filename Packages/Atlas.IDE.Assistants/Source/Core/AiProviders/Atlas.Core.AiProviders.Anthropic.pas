@@ -119,6 +119,44 @@ begin
   end;
 end;
 
+/// <summary>Typen der Inhaltsblöcke, durch Komma getrennt (Diagnose einer Antwort ohne Text).</summary>
+function BlockTypes(AContent: TJSONValue): string;
+var
+  mItem: TJSONValue;
+begin
+  Result := '';
+  if not (AContent is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AContent) do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    if mItem is TJSONObject then
+    begin
+      Result := Result + TJSONObject(mItem).GetValue<string>('type', '?');
+    end
+    else
+    begin
+      Result := Result + '?';
+    end;
+  end;
+end;
+
+/// <summary>Anfang des Inhalts für die Diagnose; Zeilenumbrüche als Leerzeichen.</summary>
+function BodyStart(const ABody: string): string;
+begin
+  Result := Trim(StringReplace(StringReplace(ABody, #13#10, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+  if Result = '' then
+  begin
+    Result := '(leer)';
+  end;
+  Result := Copy(Result, 1, cMaxAiDetail - 20);
+end;
+
 /// <summary>Fehlerantwort {"type":"error","error":{"type","message"}} in AAnswer.</summary>
 procedure ReadError(AObject: TJSONObject; var AAnswer: TAtlasAiAnswer);
 var
@@ -151,6 +189,8 @@ begin
       begin
         Result.Error := TAtlasAiError.BadAnswer;
       end;
+      // Kein JSON: Status und Anfang des Inhalts, damit Meldung und Protokoll zeigen, was kam.
+      Result.Detail := Format('HTTP %d: %s', [AStatus, BodyStart(ABody)]);
       Exit;
     end;
     mObject := TJSONObject(mValue);
@@ -173,6 +213,9 @@ begin
     if Result.Text = '' then
     begin
       Result.Error := TAtlasAiError.BadAnswer;
+      // Ohne Textblock (etwa nur thinking oder Abbruch bei max_tokens): Grund und Blöcke nennen.
+      Result.Detail := Format('HTTP %d, stop_reason=%s, content=[%s]', [AStatus,
+        mObject.GetValue<string>('stop_reason', ''), BlockTypes(mContent)]);
     end;
   finally
     mValue.Free;

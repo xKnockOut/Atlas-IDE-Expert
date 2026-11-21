@@ -45,6 +45,8 @@ begin
       Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorCancelled);
     TAtlasAiError.Refused:
       Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorRefused);
+    TAtlasAiError.Rejected:
+      Result := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.AiErrorRejected);
   else
     Result := '';
   end;

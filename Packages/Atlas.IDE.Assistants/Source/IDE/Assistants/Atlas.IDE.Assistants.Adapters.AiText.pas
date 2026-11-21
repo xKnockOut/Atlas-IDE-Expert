@@ -195,6 +195,10 @@ begin
       mResult: TAtlasAiTextResult;
     begin
       mResult := TAtlasIdeAiText.ResultOf(AProvider.Complete(APrompt));
+      if mResult.Status = TAtlasAiTextStatus.Failed then
+      begin
+        TAtlasGuard.Log('KI-Anfrage (' + AProvider.Id + ') gescheitert: ' + TAtlasGuard.MessageText(mResult.Error));
+      end;
       // Stop wartet auf diesen Thread, bevor AOwner geht; der Eintrag verfällt mit dem Modul.
       TAtlasMainThread.Queue(TAtlasFeature.Settings,
         procedure

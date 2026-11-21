@@ -138,6 +138,8 @@ begin
       mText: string;
     begin
       mText := TAtlasIdeAiProbe.ProbeText(TAtlasAiProviders.Probe(AProvider), ADelayMs);
+      // Auch ins Protokoll: Geht die Anzeige verloren (Seite neu aufgebaut), bleibt das Ergebnis lesbar.
+      TAtlasGuard.Log('KI-Verbindungstest (' + AProvider.Id + '): ' + TAtlasGuard.MessageText(mText));
       TAtlasMainThread.Queue(TAtlasFeature.Settings,
         procedure
         begin

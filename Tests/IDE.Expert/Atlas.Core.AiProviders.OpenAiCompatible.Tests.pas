@@ -163,7 +163,8 @@ var
   mAnswer: TAtlasAiAnswer;
 begin
   mAnswer := TAtlasOpenAiApi.ReadAnswer(400, '{"error":"model is required"}');
-  Assert.AreEqual<TAtlasAiError>(TAtlasAiError.BadAnswer, mAnswer.Error);
+  // 400 heißt: Der Anbieter hat die Anfrage gelesen und abgelehnt, nicht „Antwort nicht lesbar“.
+  Assert.AreEqual<TAtlasAiError>(TAtlasAiError.Rejected, mAnswer.Error);
   Assert.AreEqual('model is required', mAnswer.Detail);
 end;
 
