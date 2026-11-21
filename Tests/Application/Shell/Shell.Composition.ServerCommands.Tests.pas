@@ -60,7 +60,7 @@ uses
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
-  Shell.CrashCases;
+  Core.CrashCases;
 
 type
   TLogLineProc = reference to procedure(const AText: string);
@@ -208,7 +208,7 @@ begin
     end;
     for mName in TArray<string>.Create(cStatusCommand, cProcessesCommand, TLspSettingsCommands.cCheckCommand,
       TLspSettingsCommands.cCatalogCommand, TShellServerCommands.cCompileCommand,
-      TShellServerCommands.cRebuildIndexCommand, cClearIndexCommand, TShellCrashCases.cRetryCommand,
+      TShellServerCommands.cRebuildIndexCommand, cClearIndexCommand, TCoreCrashCases.cRetryCommand,
       TLspPullDiagnostics.cRecheckCommand, TShellServerCommands.cSelectBuildCommand,
       TShellServerCommands.cSelectProjectCommand, TLspFormFiles.cConvertCommand) do
     begin
@@ -270,7 +270,7 @@ var
 begin
   mArguments := TJSONArray.Create;
   mArguments.Add('file:///tmp/A.pas');
-  mAnswer := Execute(TShellCrashCases.cRetryCommand, mArguments);
+  mAnswer := Execute(TCoreCrashCases.cRetryCommand, mArguments);
   try
     Assert.AreEqual('1', mAnswer.Value);
   finally

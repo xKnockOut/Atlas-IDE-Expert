@@ -60,7 +60,7 @@ uses
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Index.CacheDirectory,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Workspace.Listings,
   Atlas.Text.LogMarks;
 
@@ -136,7 +136,7 @@ var
   mText: string;
 begin
   Result := SameText(ExtractFileExt(AProject.MainSource), '.dpk') and
-    TShellBootstrap.ReadSourceText(AProject.MainSource, mText);
+    TCoreBootstrap.ReadSourceText(AProject.MainSource, mText);
   if Result then
   begin
     ASource := TPackageReader.Read(mText);

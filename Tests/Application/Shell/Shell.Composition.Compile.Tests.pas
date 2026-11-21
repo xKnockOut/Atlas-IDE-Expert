@@ -37,7 +37,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Compiler.Backend,
   Atlas.Common.Lsp.Status,
-  Shell.Compiler;
+  Core.Compiler;
 
 { TShellCompileHostTests }
 
@@ -50,10 +50,10 @@ begin
   mServices := Default(TShellCompileServices);
   mServices.Logger := TLogger.Create;
   mServices.JobFor :=
-    function(const AFileName: string; out AJob: TShellCompileJob; out AErrorText: string): Boolean
+    function(const AFileName: string; out AJob: TCoreCompileJob; out AErrorText: string): Boolean
     begin
       Inc(FCalls);
-      AJob := Default(TShellCompileJob);
+      AJob := Default(TCoreCompileJob);
       AErrorText := mError;
       Result := mError = '';
     end;

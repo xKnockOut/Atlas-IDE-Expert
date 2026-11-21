@@ -1,6 +1,6 @@
-﻿unit Shell.CommandLine;
+﻿unit Core.CommandLine;
 
-// Host-Rolle Shell: Kommandozeilenparameter des Servers.
+// Host-Rolle Core: Kommandozeilenparameter des Servers.
 //
 //   --log <Datei>         Logdatei (wird fortgeschrieben)
 //   --log-level <Stufe>   debug, info, warning, error (Standard: info)
@@ -826,6 +826,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.CommandLine', cTexts);
+  TAtlasTextTables.Add('Core.CommandLine', cTexts);
 
 end.

@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.Diagnostics.CheckProfile,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   TLinterOutput = class

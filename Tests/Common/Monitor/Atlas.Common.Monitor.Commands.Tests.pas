@@ -2,7 +2,7 @@
 
 // Tests für die Befehlsliste des Prüffensters von AtlasMonitor (#1900): Aufrufe je Befehl, Optionen, Aufruf für die
 // CI ohne Ausgabedatei, Anführungszeichen, Art der Ausgabe, Rückfrage vor schreibenden Befehlen, Texte. Dass jeder
-// Schalter des Servers vorkommt, prüft Shell.CommandLine.Tests.
+// Schalter des Servers vorkommt, prüft Core.CommandLine.Tests.
 
 interface
 

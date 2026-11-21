@@ -53,7 +53,7 @@ uses
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.DfmPropertyRules,
   Shell.Workspace,
-  Shell.Texts;
+  Core.Texts;
 
 { TShellDfmPropertyRules }
 
@@ -79,7 +79,7 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['uri']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TCoreTexts.Missing(['uri']));
   end;
   mScope := TLspDfmPropertyRules.cScopeForm;
   if AArguments.Count > 1 then
