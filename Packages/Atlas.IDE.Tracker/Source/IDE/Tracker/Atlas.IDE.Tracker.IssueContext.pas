@@ -48,7 +48,7 @@ type
     /// <summary>Hält den Besitzer am Leben, solange ein Rückruf ihn fängt.</summary>
     function Keep: IInterface;
     /// <summary>Frame, falls das Fenster existiert.</summary>
-    function Frame: TAtlasIssueFrame;
+    class function Frame: TAtlasIssueFrame; static;
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     /// <summary>Es gibt einen Transport-Hook.</summary>
     function CanTransport: Boolean;
@@ -118,7 +118,7 @@ begin
   Result := FOwner;
 end;
 
-function TAtlasIdeIssueContext.Frame: TAtlasIssueFrame;
+class function TAtlasIdeIssueContext.Frame: TAtlasIssueFrame;
 begin
   Result := TAtlasIdeIssueWindow.ExistingFrame;
 end;
