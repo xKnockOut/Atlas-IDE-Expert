@@ -22,7 +22,7 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Editing.TestDrafts,
-  Atlas.Common.Rules.Builtin.Testing.TestCaseTable;
+  Atlas.Common.Testing.TestCaseTable;
 
 type
   TLspBoundaryTestCase = record

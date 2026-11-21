@@ -75,7 +75,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Editing.SqlText,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,

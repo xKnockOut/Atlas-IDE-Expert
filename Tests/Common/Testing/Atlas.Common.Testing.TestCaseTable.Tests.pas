@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests;
+﻿unit Atlas.Common.Testing.TestCaseTable.Tests;
 
 // Tests der TestCase-Tabelle (#1879): Spalten und Zeilen lesen, Zeile zur Methode finden, eigenes Trennzeichen
 // und weitere Argumente behalten, Hochkommas und Steuerzeichen schreiben, mehrzeilige Attribute, Attribute
@@ -62,8 +62,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Rules.Builtin.Testing.TestCases,
-  Atlas.Common.Rules.Builtin.Testing.TestCaseTable;
+  Atlas.Common.Testing.TestCases,
+  Atlas.Common.Testing.TestCaseTable;
 
 const
   cLf = #10;

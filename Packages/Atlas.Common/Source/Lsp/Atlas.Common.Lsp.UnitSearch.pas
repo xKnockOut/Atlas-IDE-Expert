@@ -168,7 +168,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Text.Json,
   Atlas.Text.Lines;
 

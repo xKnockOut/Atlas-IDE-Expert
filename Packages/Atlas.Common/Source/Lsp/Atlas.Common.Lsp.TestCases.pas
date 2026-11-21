@@ -2,7 +2,7 @@
 
 // Befehl atlas.server.testCases [uri, zeile, zeilen?] (#1879): Fälle ([TestCase]) der Testmethode an zeile als
 // Tabelle für das Plugin, mit den Zeilen des Plugins dazu ein Edit, das sie zurückschreibt. Logik in
-// Atlas.Common.Rules.Builtin.Testing.TestCaseTable; den Text (offenes Dokument vor der Platte) liefert die Shell.
+// Atlas.Common.Testing.TestCaseTable; den Text (offenes Dokument vor der Platte) liefert die Shell.
 //
 // Anfrage: zeile 0-basiert, irgendwo von den Attributen bis zur Deklaration der Methode. zeilen (optional):
 //   [{from, name, values: [..]}], from = Index der bisherigen Zeile (behält Form, Trennzeichen, Argumente)
@@ -21,8 +21,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Rules.Builtin.Testing.TestCases,
-  Atlas.Common.Rules.Builtin.Testing.TestCaseTable;
+  Atlas.Common.Testing.TestCases,
+  Atlas.Common.Testing.TestCaseTable;
 
 type
   /// <summary>Text des Dokuments AUri; False, wenn es nicht lesbar ist.</summary>

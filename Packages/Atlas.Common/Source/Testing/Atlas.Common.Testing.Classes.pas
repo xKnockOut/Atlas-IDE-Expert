@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Builtin.Testing.Classes;
+﻿unit Atlas.Common.Testing.Classes;
 
 // Klassen einer DUnitX-Testunit für die Testregeln (#1882): Jede Klassendeklaration der Datei (interface und
 // implementation, nicht in Routinen) mit den Attributen davor ([TestFixture], [TestFixture('Name')]) und ihren

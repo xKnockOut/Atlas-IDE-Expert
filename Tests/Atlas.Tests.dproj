@@ -252,7 +252,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ChangeSignature.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Parts.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.StringLiterals.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StringLiterals.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExpressionText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.StatementText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas"/>
@@ -464,8 +464,8 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TearDown.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests.pas"/>
+        <DCCReference Include="Common\Testing\Atlas.Common.Testing.TestCaseTable.Tests.pas"/>
+        <DCCReference Include="Common\Testing\Atlas.Common.Testing.TestCaseTrivia.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Scopes.Tests.pas"/>

@@ -58,8 +58,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Rules.Builtin.Testing.Classes,
-  Atlas.Common.Rules.Builtin.Testing.TestCases,
+  Atlas.Common.Testing.Classes,
+  Atlas.Common.Testing.TestCases,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

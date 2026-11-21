@@ -159,7 +159,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.GuardFree,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 

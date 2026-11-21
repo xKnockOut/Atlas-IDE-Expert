@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.StringLiterals;
+﻿unit Atlas.Common.Pascal.StringLiterals;
 
 // Klartext und String-Literal umwandeln (#312), z. B. für SQL, HTML, JSON
 // oder Meldungstexte:

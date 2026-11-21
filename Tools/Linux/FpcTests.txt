@@ -142,7 +142,7 @@ Atlas.Common.Editing.SmartIndent.Tests
 Atlas.Common.Editing.SmartPaste.Tests
 Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
-Atlas.Common.Editing.StringLiterals.Tests
+Atlas.Common.Pascal.StringLiterals.Tests
 Atlas.Common.Editing.SuggestionContext.Tests
 Atlas.Common.Editing.SuggestConst.Tests
 Atlas.Common.Editing.TestCommands.Tests
@@ -428,8 +428,8 @@ Atlas.Common.Rules.Builtin.Testing.Registration.Tests
 Atlas.Common.Rules.Builtin.Testing.TearDown.Tests
 Atlas.Common.Rules.Builtin.Testing.Attributes.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
-Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
-Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests
+Atlas.Common.Testing.TestCaseTable.Tests
+Atlas.Common.Testing.TestCaseTrivia.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests

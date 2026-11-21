@@ -399,7 +399,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Declarations.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Usages.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.StringLiterals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignFields.pas"/>
@@ -864,13 +864,14 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Asserts.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.LeakMonitor.pas"/>
-        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Classes.pas"/>
+        <DCCReference Include="Source\Testing\Atlas.Common.Testing.Classes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TearDown.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Attributes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.pas"/>
-        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.pas"/>
-        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.pas"/>
+        <DCCReference Include="Source\Testing\Atlas.Common.Testing.TestCases.pas"/>
+        <DCCReference Include="Source\Testing\Atlas.Common.Testing.TestCaseTable.pas"/>
+        <DCCReference Include="Source\Testing\Atlas.Common.Testing.TestCaseTrivia.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Scopes.pas"/>
