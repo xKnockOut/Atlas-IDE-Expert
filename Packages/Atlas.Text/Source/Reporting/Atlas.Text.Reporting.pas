@@ -90,7 +90,7 @@ class procedure TReporting.Failed(const AWhere: string; AE: Exception);
 var
   mSink: TReportingSink;
 begin
-  mSink := Sink;
+  mSink := Sink();
   if not Assigned(mSink) then
   begin
     TInterlocked.Increment(FLost);

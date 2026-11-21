@@ -148,8 +148,7 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasIdeDebugInlineValues.TEvents }
 

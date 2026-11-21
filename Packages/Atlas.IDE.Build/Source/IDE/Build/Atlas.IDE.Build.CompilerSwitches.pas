@@ -106,8 +106,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.SwitchesWindow,
-  Atlas.UI.Build.Strings,
-  Atlas.Core.Lsp.Framing;
+  Atlas.UI.Build.Strings;
 
 function Enabled: Boolean;
 var

@@ -108,7 +108,6 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Classes,
-  System.IOUtils,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -368,32 +367,9 @@ end;
 
 class function TAtlasIdeUnsaved.FileTimeUtc(const AFileName: string; out AUtc: TDateTime): Boolean;
 begin
-  // Läuft im Hintergrund: nur Dateisystem, keine IDE.
-  Result := False;
-  AUtc := 0;
-  try
-    if FileExists(AFileName) then
-    begin
-      AUtc := TFile.GetLastWriteTimeUtc(AFileName);
-      Result := True;
-    end
-    else if DirectoryExists(AFileName) then
-    begin
-      // SVN meldet unversionierte Ordner als einen Eintrag.
-      AUtc := TDirectory.GetLastWriteTimeUtc(AFileName);
-      Result := True;
-    end;
-  except
-    // Gerade gelöscht oder gesperrt: Alter dann über den Zeitpunkt der ersten Sicht.
-    on E: Exception do
-    begin
-      if not TTextFiles.IsFileError(E) then
-      begin
-        raise;
-      end;
-      Result := False;
-    end;
-  end;
+  // Läuft im Hintergrund: nur Dateisystem, keine IDE. Gerade gelöscht oder gesperrt: Alter dann über den
+  // Zeitpunkt der ersten Sicht.
+  Result := TTextFiles.LastWriteUtc(AFileName, AUtc);
 end;
 
 class function TAtlasIdeUnsaved.KindText(AKind: Integer): string;

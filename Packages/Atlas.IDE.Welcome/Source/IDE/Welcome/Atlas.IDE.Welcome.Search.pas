@@ -83,8 +83,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Welcome.IdeLayout,
-  Atlas.Core.Lsp.Framing;
+  Atlas.IDE.Welcome.IdeLayout;
 
 type
   TBoxWatch = class(TComponent)

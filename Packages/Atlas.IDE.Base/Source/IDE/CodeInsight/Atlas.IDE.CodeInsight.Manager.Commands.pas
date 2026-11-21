@@ -71,8 +71,7 @@ uses
   System.SyncObjs,
   Atlas.Core.Status.Lines,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Core.Diagnostics.MainThread;
 
 /// <summary>Antwort als JSON-Text; '' ohne Antwort. Gibt AAnswer frei.</summary>
 function TakeJson(AAnswer: TJSONValue): string;

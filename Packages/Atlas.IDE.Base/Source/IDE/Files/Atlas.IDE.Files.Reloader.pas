@@ -74,9 +74,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.Foundation.Host,
-  Atlas.UI.Notifications.Strings,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.UI.Notifications.Strings;
 
 /// <summary>Text der Datei auf der Platte in ihrer Kodierung; False, wenn sie fehlt, gesperrt oder nicht lesbar ist.</summary>
 function TryDiskText(const AFileName: string; out AText: string): Boolean;
@@ -88,7 +86,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

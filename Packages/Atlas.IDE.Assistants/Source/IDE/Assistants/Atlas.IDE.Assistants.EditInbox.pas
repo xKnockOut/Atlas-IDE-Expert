@@ -139,21 +139,8 @@ end;
 procedure TAtlasIdeEditInbox.Clean;
 begin
   // Reste eines früheren Prozesses mit derselben Nummer oder dieses Laufs.
-  try
-    if TDirectory.Exists(FFolder) then
-    begin
-      TDirectory.Delete(FFolder, True);
-    end;
-  except
-    on E: Exception do
-    begin
-      if not TTextFiles.IsFileError(E) then
-      begin
-        raise;
-      end;
-      ;
-    end;
-  end;
+  // Gesperrt: bleibt liegen, der Eingang arbeitet trotzdem.
+  TTextFiles.DeleteFolder(FFolder);
 end;
 
 function ApplyInEditor(const AEdit: TLspWorkspaceEdit): string;

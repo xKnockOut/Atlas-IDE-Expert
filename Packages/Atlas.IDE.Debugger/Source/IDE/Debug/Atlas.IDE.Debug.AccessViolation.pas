@@ -181,8 +181,7 @@ uses
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.UI.Debug.AccessViolation,
   Atlas.UI.Debug.AccessViolation.Strings,
-  Atlas.Text.LogMarks,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Text.LogMarks;
 
 { TAtlasIdeDebugAccessViolation.TListener }
 

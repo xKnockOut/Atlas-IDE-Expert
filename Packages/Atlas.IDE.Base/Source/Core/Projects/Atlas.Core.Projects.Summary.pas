@@ -970,7 +970,9 @@ var
 begin
   mValue := nil;
   if ASummary.Raw <> '' then
+  begin
     mValue := TJsonRead.Parse(ASummary.Raw);
+  end;
   mRoot := TJSONObject.Create;
   try
     mOriginal := nil;

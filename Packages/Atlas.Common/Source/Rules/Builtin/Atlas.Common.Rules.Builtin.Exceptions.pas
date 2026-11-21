@@ -616,6 +616,12 @@ var
     Result := ContainsText(AContext.Text, 'Execute') and IsThreadExecuteGuard(AContext, AHandler);
   end;
 
+  // Löst der Teil von AFirst bis ALast erneut aus oder meldet er über einen Aufruf aus reporters?
+  function Handled(AFirst, ALast: Integer): Boolean;
+  begin
+    Result := RaisesIn(mTokens, AFirst, ALast) or ReportsIn(mTokens, AFirst, ALast, mReporters);
+  end;
+
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -626,9 +632,7 @@ begin
   mAllowUse := TRuleOptions.Bool(AContext.Options, 'allowExceptionUse', False);
   for mHandler in Handlers(mTokens) do
   begin
-    if MatchText(mHandler.TypeName, ['Exception', 'TObject']) and
-      not RaisesIn(mTokens, mHandler.First, mHandler.Last) and
-      not ReportsIn(mTokens, mHandler.First, mHandler.Last, mReporters) and
+    if MatchText(mHandler.TypeName, ['Exception', 'TObject']) and not Handled(mHandler.First, mHandler.Last) and
       not (mAllowUse and UsesException(mTokens, mHandler)) and
       not ExecuteGuard(HandlerNode(AContext.Tree, mTokens[mHandler.OnToken].Offset)) then
     begin
@@ -639,8 +643,7 @@ begin
   // except ohne on fängt alles wie on Exception do.
   for mBlock in BareExceptBlocks(AContext.Tree) do
   begin
-    if TokenSpan(mTokens, mBlock.StartOffset, mBlock.EndOffset, mFirst, mLast) and
-      not RaisesIn(mTokens, mFirst, mLast) and not ReportsIn(mTokens, mFirst, mLast, mReporters) and
+    if TokenSpan(mTokens, mBlock.StartOffset, mBlock.EndOffset, mFirst, mLast) and not Handled(mFirst, mLast) and
       not ExecuteGuard(mBlock[0]) then
     begin
       AReport.Add(RangeOf(mTokens, mFirst, mFirst), cTexts[TExceptionsText.CatchAll].Text, TRuleConfidence.Medium);

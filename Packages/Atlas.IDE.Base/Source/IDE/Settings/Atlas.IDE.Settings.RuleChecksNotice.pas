@@ -59,9 +59,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.UI.Popup.Window,
-  Atlas.UI.Settings.Strings,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.UI.Settings.Strings;
 
 const
   cModule = 'ruleChecks';
@@ -164,7 +162,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

@@ -131,7 +131,6 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings,
   Atlas.Core.Settings.Contract,
-  Atlas.Text.Files,
   Atlas.Core.Files.Contract;
 
 type
@@ -312,7 +311,7 @@ begin
     // Gesperrt oder unlesbar: wie keine Datei für diese Sitzung, aber nicht überschreiben.
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

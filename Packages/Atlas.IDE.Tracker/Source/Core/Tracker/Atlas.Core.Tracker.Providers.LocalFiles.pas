@@ -46,8 +46,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Text.Files,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.Contract;
+  Atlas.Core.Files.TextFile;
 
 type
   /// <summary>Hält die Sperrdatei offen, bis der letzte Verweis fällt.</summary>
@@ -207,7 +206,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

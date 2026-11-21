@@ -180,8 +180,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hover.DebugValue,
-  Atlas.IDE.Outline.StickyScroll,
-  Atlas.Core.Lsp.Framing;
+  Atlas.IDE.Outline.StickyScroll;
 
 { TAtlasEditorHover.TEvents }
 

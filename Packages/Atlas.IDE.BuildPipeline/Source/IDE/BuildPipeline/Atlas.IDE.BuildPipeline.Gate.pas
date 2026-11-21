@@ -43,8 +43,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
-  Atlas.UI.BuildPipeline.Strings,
-  Atlas.Core.Lsp.Framing;
+  Atlas.UI.BuildPipeline.Strings;
 
 function MessageServices(out AMessages: IOTAMessageServices; out AGroup: IOTAMessageGroup): Boolean;
 begin

@@ -145,21 +145,8 @@ end;
 procedure TAtlasIdeBuildInbox.Clean;
 begin
   // Reste eines früheren Prozesses mit derselben Nummer.
-  try
-    if TDirectory.Exists(FFolder) then
-    begin
-      TDirectory.Delete(FFolder, True);
-    end;
-  except
-    on E: Exception do
-    begin
-      if not TTextFiles.IsFileError(E) then
-      begin
-        raise;
-      end;
-      ;
-    end;
-  end;
+  // Gesperrt: bleibt liegen, der Eingang arbeitet trotzdem.
+  TTextFiles.DeleteFolder(FFolder);
 end;
 
 /// <summary>Gründe für unlesbare Aufträge in der Sprache der Oberfläche (#1458).</summary>

@@ -131,9 +131,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Localization.Language,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -346,7 +344,7 @@ begin
     except
       on E: Exception do
       begin
-        if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+        if not TAtlasTextFile.IsReadError(E) then
         begin
           raise;
         end;
@@ -394,7 +392,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

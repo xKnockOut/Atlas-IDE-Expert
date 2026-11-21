@@ -104,9 +104,7 @@ uses
   Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.IDE.Foundation.OpenWatch;
 
 const
   cCheckMs = 2000;
@@ -225,7 +223,7 @@ begin
     // Gesperrt (gerade gespeichert) oder gelöscht: wie noch nicht gelesen.
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

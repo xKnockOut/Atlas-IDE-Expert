@@ -59,9 +59,7 @@ uses
   System.SysUtils,
   Atlas.Core.Files.EncodingDefault,
   Atlas.Core.Lsp.Uris,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.IDE.Foundation.EditorBuffer;
 
 { TAtlasIdeFiles }
 
@@ -112,7 +110,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;
@@ -213,7 +211,7 @@ begin
     // Fehlt, gesperrt, unlesbar oder binäres Formular: kein Text.
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

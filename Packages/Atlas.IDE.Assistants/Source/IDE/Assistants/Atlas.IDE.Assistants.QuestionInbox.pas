@@ -94,21 +94,8 @@ begin
   // MCP-Server vielleicht noch.
   if not GCleaned then
   begin
-    try
-      if TDirectory.Exists(FFolder) then
-      begin
-        TDirectory.Delete(FFolder, True);
-      end;
-    except
-      on E: Exception do
-      begin
-        if not TTextFiles.IsFileError(E) then
-        begin
-          raise;
-        end;
-        ;
-      end;
-    end;
+    // Gesperrt: bleibt liegen, der Eingang arbeitet trotzdem.
+    TTextFiles.DeleteFolder(FFolder);
     GCleaned := True;
   end;
   FSignal := TAtlasFolderSignal.Create(FFolder);

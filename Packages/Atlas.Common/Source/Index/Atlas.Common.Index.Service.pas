@@ -1080,7 +1080,6 @@ begin
         FEvents.Finished(mResult, mWatch.ElapsedMilliseconds);
       end;
     except
-      // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Hintergrundlaufs; ReportError meldet
       on E: Exception do
         ReportError(E);
     end;

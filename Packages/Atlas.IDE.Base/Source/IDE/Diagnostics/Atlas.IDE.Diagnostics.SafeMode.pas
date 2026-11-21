@@ -117,6 +117,23 @@ const
   // Winapi.Windows kennt die Konstante nicht (ab Windows Vista).
   cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
 
+/// <summary>Führt AAction aus; ein Dateifehler (gesperrt, keine Rechte) bleibt still, die Marken und der Zustand
+/// sind Nebensache für die IDE. Andere Fehler gehen weiter.</summary>
+procedure WithoutFileErrors(const AAction: TProc);
+begin
+  try
+    AAction();
+  except
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
+    end;
+  end;
+end;
+
 { TAtlasIdeSafeMode }
 
 constructor TAtlasIdeSafeMode.Create(AOwner: TComponent);
@@ -148,18 +165,12 @@ begin
   begin
     Exit;
   end;
-  try
-    FBook.SaveMarker(FMarker);
-  except
-    // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
-    on E: Exception do
+  // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
+  WithoutFileErrors(
+    procedure
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
-      begin
-        raise;
-      end;
-    end;
-  end;
+      FBook.SaveMarker(FMarker);
+    end);
 end;
 
 function Options: TAtlasSafeOptions;
@@ -397,17 +408,11 @@ begin
   // Nur die Marke dieses Absturzes, nicht die eines früheren aus dem Zustand.
   FHasCrashed := (Length(mCrashed) > 0) and (mState.CrashedMarker <> '') and
     TAtlasSessionMarker.FromJson(mState.CrashedMarker, FCrashed);
-  try
-    FBook.SaveState(mState);
-  except
-    on E: Exception do
+  WithoutFileErrors(
+    procedure
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
-      begin
-        raise;
-      end;
-    end;
-  end;
+      FBook.SaveState(mState);
+    end);
   if FLevel <> TAtlasSafeLevel.Normal then
   begin
     TAtlasIdeSettings.SetSession(TAtlasSafeMode.SafeSession(TAtlasIdeSettings.QuickToggles));
@@ -462,17 +467,11 @@ begin
     FreeAndNil(FNotice);
   end;
   HideLine;
-  try
-    FBook.Close;
-  except
-    on E: Exception do
+  WithoutFileErrors(
+    procedure
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
-      begin
-        raise;
-      end;
-    end;
-  end;
+      FBook.Close;
+    end);
 end;
 
 procedure TAtlasIdeSafeMode.RecordFailure(AFeature: TAtlasFeature);

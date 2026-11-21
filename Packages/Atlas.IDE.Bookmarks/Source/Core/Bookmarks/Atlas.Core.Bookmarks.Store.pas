@@ -1040,30 +1040,39 @@ begin
   end;
 end;
 
+/// <summary>Arbeitsverzeichnis (ADir) und Git-Ordner (AGit) über AFileName; False außerhalb eines Repositorys.
+/// </summary>
+function GitRootOf(const AFileName: string; out ADir, AGit: string): Boolean;
+var
+  mParent: string;
+begin
+  ADir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExpandFileName(AFileName)));
+  AGit := '';
+  while ADir <> '' do
+  begin
+    AGit := GitFolderOf(ADir);
+    if AGit <> '' then
+    begin
+      Break;
+    end;
+    mParent := ExcludeTrailingPathDelimiter(ExtractFilePath(ADir));
+    if (mParent = '') or SameText(mParent, ADir) then
+    begin
+      Break;
+    end;
+    ADir := mParent;
+  end;
+  Result := AGit <> '';
+end;
+
 class function TAtlasBookmarks.ExcludeFromGit(const AFileName: string): Boolean;
 var
-  mDir, mParent, mGit, mExclude, mPattern, mText: string;
+  mDir, mGit, mExclude, mPattern, mText: string;
   mLine: string;
 begin
   Result := False;
   try
-    mDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExpandFileName(AFileName)));
-    mGit := '';
-    while mDir <> '' do
-    begin
-      mGit := GitFolderOf(mDir);
-      if mGit <> '' then
-      begin
-        Break;
-      end;
-      mParent := ExcludeTrailingPathDelimiter(ExtractFilePath(mDir));
-      if (mParent = '') or SameText(mParent, mDir) then
-      begin
-        Exit;
-      end;
-      mDir := mParent;
-    end;
-    if mGit = '' then
+    if not GitRootOf(AFileName, mDir, mGit) then
     begin
       Exit;
     end;

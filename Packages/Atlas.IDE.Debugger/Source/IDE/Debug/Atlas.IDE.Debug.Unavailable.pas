@@ -137,8 +137,7 @@ uses
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Explain.Strings,
   Atlas.Core.Foundation.Calls,
-  Atlas.Text.Files,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Text.Files;
 
 const
   cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;

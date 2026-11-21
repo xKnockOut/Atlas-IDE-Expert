@@ -78,8 +78,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Editor.Surfaces,
-  Atlas.Core.Lsp.Framing;
+  Atlas.IDE.Editor.Surfaces;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>
 function NearIdentifier(const ALine: string; ACharacter: Integer): Boolean;

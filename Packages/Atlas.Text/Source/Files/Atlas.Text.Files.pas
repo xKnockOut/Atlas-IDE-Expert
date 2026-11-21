@@ -37,8 +37,14 @@ type
 
   TTextFiles = class
   public
-    /// <summary>Löscht AFileName, wenn es sie gibt; Fehler bleiben still.</summary>
+    /// <summary>Löscht AFileName, wenn es sie gibt; Dateifehler (gesperrt, keine Rechte) bleiben still.</summary>
     class procedure DeleteQuietly(const AFileName: string); static;
+    /// <summary>Löscht den Ordner AFolder mit Inhalt, wenn es ihn gibt. False bei einem Dateifehler (gesperrt,
+    /// keine Rechte); andere Fehler gehen weiter.</summary>
+    class function DeleteFolder(const AFolder: string): Boolean; static;
+    /// <summary>Letzte Änderung der Datei oder des Ordners APath in UTC. False (AUtc 0), wenn es ihn nicht gibt
+    /// oder er gerade gelöscht oder gesperrt ist.</summary>
+    class function LastWriteUtc(const APath: string; out AUtc: TDateTime): Boolean; static;
     /// <summary>Öffnet AFileName zum Lesen und Schreiben, ohne dass ein anderer sie zugleich offen haben darf;
     /// fehlt sie, legt ACreate sie leer an. AStream nur bei Opened, sonst nil. AError: Text des Betriebssystems
     /// bei Failed, sonst ''.</summary>
@@ -181,9 +187,62 @@ begin
       TFile.Delete(AFileName);
     end;
   except
-    // lsp-ignore: catch-all-without-raise -- Austausch- und Statusdateien nach Kräften
-    on Exception do
-      ;
+    // Austausch- und Statusdateien nach Kräften.
+    on E: Exception do
+    begin
+      if not IsFileError(E) then
+      begin
+        raise;
+      end;
+    end;
+  end;
+end;
+
+class function TTextFiles.LastWriteUtc(const APath: string; out AUtc: TDateTime): Boolean;
+begin
+  Result := False;
+  AUtc := 0;
+  try
+    if FileExists(APath) then
+    begin
+      AUtc := TFile.GetLastWriteTimeUtc(APath);
+      Result := True;
+    end
+    else if DirectoryExists(APath) then
+    begin
+      AUtc := TDirectory.GetLastWriteTimeUtc(APath);
+      Result := True;
+    end;
+  except
+    on E: Exception do
+    begin
+      if not IsFileError(E) then
+      begin
+        raise;
+      end;
+      AUtc := 0;
+      Result := False;
+    end;
+  end;
+end;
+
+class function TTextFiles.DeleteFolder(const AFolder: string): Boolean;
+begin
+  Result := True;
+  try
+    if TDirectory.Exists(AFolder) then
+    begin
+      TDirectory.Delete(AFolder, True);
+    end;
+  except
+    on E: Exception do
+    begin
+      if not IsFileError(E) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
   end;
 end;
 

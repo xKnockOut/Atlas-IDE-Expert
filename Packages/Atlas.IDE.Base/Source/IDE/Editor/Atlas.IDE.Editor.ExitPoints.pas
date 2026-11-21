@@ -130,8 +130,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Editor.PaintedLine,
-  Atlas.Core.Lsp.Framing;
+  Atlas.IDE.Editor.PaintedLine;
 
 { TAtlasIdeExitPoints.TEvents }
 

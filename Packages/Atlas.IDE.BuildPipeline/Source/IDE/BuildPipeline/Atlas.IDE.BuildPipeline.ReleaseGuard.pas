@@ -70,9 +70,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Projects.Context,
   Atlas.UI.Strings,
-  Atlas.UI.BuildPipeline.Strings,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.UI.BuildPipeline.Strings;
 
 function NowUtc: TDateTime;
 begin
@@ -172,7 +170,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

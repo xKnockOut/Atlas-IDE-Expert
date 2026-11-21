@@ -88,9 +88,7 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.EncodingDefault,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Core.Files.EncodingDefault;
 
 { TAtlasSearchSource }
 
@@ -228,7 +226,7 @@ begin
       // Gesperrt oder gelöscht: weiter mit der nächsten Datei.
       on E: Exception do
       begin
-        if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+        if not TAtlasTextFile.IsReadError(E) then
         begin
           raise;
         end;

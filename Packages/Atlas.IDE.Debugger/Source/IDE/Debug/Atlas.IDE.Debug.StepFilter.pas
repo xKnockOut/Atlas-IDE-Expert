@@ -153,8 +153,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Debug.Sources,
-  Atlas.IDE.Debug.StepFilterWindow,
-  Atlas.Core.Lsp.Framing;
+  Atlas.IDE.Debug.StepFilterWindow;
 
 /// <summary>Stapeltiefe von AThread; False ohne: im Takt neu versuchen oder (nach StackRetries) abbrechen.</summary>
 function ReadDepth(const AThread: IOTAThread; out ADepth: Integer): Boolean;

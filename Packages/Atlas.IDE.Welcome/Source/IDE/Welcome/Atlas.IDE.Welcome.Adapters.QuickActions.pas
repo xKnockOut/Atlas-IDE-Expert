@@ -157,9 +157,7 @@ uses
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.Core.Files.TextFile,
-  Atlas.IDE.Projects.Summaries,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.IDE.Projects.Summaries;
 
 function Settings: TAtlasPluginSettings;
 begin
@@ -176,7 +174,7 @@ begin
     // Nicht lesbar: zählt wie nicht vorhanden.
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;
@@ -707,7 +705,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

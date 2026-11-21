@@ -96,9 +96,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
-  Atlas.Core.Localization.Language,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -510,7 +508,7 @@ begin
   except
     on E: Exception do
     begin
-      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      if not TAtlasTextFile.IsReadError(E) then
       begin
         raise;
       end;

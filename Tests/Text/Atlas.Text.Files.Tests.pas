@@ -21,6 +21,12 @@ type
     [Test]
     procedure DeleteQuietlyIgnoresMissingFile;
     [Test]
+    procedure DeleteFolderRemovesContent;
+    [Test]
+    procedure DeleteFolderIgnoresMissingFolder;
+    [Test]
+    procedure LastWriteUtcOfFileAndFolder;
+    [Test]
     procedure OpenExclusiveCreatesAndReopens;
     [Test]
     procedure OpenExclusiveWithoutCreateReportsMissing;
@@ -60,10 +66,7 @@ end;
 
 procedure TTextFilesTests.TearDown;
 begin
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
+  TTextFiles.DeleteFolder(FDir);
   FDir := '';
 end;
 
@@ -86,6 +89,36 @@ begin
   TTextFiles.DeleteQuietly(mFile);
   Assert.IsFalse(TFile.Exists(mFile));
   mFile := '';
+end;
+
+procedure TTextFilesTests.DeleteFolderRemovesContent;
+var
+  mFolder: string;
+begin
+  mFolder := PathOf('unter');
+  TDirectory.CreateDirectory(TPath.Combine(mFolder, 'tief'));
+  TFile.WriteAllText(TPath.Combine(TPath.Combine(mFolder, 'tief'), 'x.txt'), 'x');
+  Assert.IsTrue(TTextFiles.DeleteFolder(mFolder));
+  Assert.IsFalse(TDirectory.Exists(mFolder));
+  mFolder := '';
+end;
+
+procedure TTextFilesTests.DeleteFolderIgnoresMissingFolder;
+begin
+  Assert.IsTrue(TTextFiles.DeleteFolder(PathOf('fehlt')), 'nichts zu löschen ist kein Fehler');
+end;
+
+procedure TTextFilesTests.LastWriteUtcOfFileAndFolder;
+var
+  mUtc: TDateTime;
+begin
+  TFile.WriteAllText(PathOf('z.txt'), 'x');
+  Assert.IsTrue(TTextFiles.LastWriteUtc(PathOf('z.txt'), mUtc));
+  Assert.IsTrue(mUtc > 0, 'Datei hat einen Zeitpunkt');
+  Assert.IsTrue(TTextFiles.LastWriteUtc(FDir, mUtc));
+  Assert.IsTrue(mUtc > 0, 'Ordner hat einen Zeitpunkt');
+  Assert.IsFalse(TTextFiles.LastWriteUtc(PathOf('fehlt'), mUtc));
+  Assert.AreEqual(Double(0), Double(mUtc));
 end;
 
 procedure TTextFilesTests.OpenExclusiveCreatesAndReopens;

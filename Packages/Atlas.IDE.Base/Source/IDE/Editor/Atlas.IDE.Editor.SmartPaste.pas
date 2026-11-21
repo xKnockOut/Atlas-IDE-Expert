@@ -124,8 +124,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.SmartIndent,
-  Atlas.Core.Lsp.Framing;
+  Atlas.IDE.Editor.SmartIndent;
 
 { TAtlasIdeSmartPaste }
 
@@ -293,9 +292,7 @@ begin
       except
         // Server langsam oder weg: kein Fenster, das Einfügen bleibt, wie es ist.
         on ELspClientError do
-        begin
           Analysis := Default(TAtlasPasteAnalysis);
-        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,

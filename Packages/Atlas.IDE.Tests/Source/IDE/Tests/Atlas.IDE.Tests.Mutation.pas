@@ -124,9 +124,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.GutterMarks,
-  Atlas.IDE.Tests.Projects,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.IDE.Tests.Projects;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -525,7 +523,7 @@ begin
     except
       on E: Exception do
       begin
-        if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+        if not TAtlasTextFile.IsReadError(E) then
         begin
           raise;
         end;

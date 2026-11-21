@@ -25,9 +25,7 @@ uses
   System.JSON,
   Atlas.Core.Files.TextFile,
   Atlas.Text.Encoding,
-  Atlas.Core.Settings.JsonText,
-  Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Core.Settings.JsonText;
 
 { TAtlasEncodingDefault }
 
@@ -69,7 +67,7 @@ begin
       except
         on E: Exception do
         begin
-          if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+          if not TAtlasTextFile.IsReadError(E) then
           begin
             raise;
           end;
