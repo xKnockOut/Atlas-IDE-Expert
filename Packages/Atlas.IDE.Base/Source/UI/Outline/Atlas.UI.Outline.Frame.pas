@@ -567,7 +567,7 @@ begin
   FMessage.Align := alClient;
   FMessage.AlignWithMargins := True;
   FMessage.ShowAccelChar := False;
-  FMessage.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FMessage, clGrayText);
   FMessage.Visible := False;
 end;
 

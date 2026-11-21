@@ -263,7 +263,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Markdown,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.DocBox;
+  Atlas.UI.Tracker.DocBox,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Schriftgröße in Punkt: 72 je Zoll.</summary>
@@ -1115,7 +1116,7 @@ begin
   FParts.DraftNote.AutoSize := True;
   FParts.DraftNote.Margins.Top := FParts.DraftNote.ScaleValue(cNoteTop);
   FParts.DraftNote.ShowAccelChar := False;
-  FParts.DraftNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FParts.DraftNote, clGrayText);
   FParts.DraftNote.Caption := '';
   FParts.DraftButton := AddBarButton(Self, FParts.Bar, cDraftWidth, '');
   FParts.DraftButton.Visible := False;

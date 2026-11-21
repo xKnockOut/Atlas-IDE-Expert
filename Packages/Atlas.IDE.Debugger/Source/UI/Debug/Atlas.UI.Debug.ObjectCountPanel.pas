@@ -66,7 +66,8 @@ uses
   Atlas.Core.Debug.MemoryTimeline,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.Text.Numbers;
+  Atlas.Text.Numbers,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Maße in logischen Pixeln.</summary>
@@ -98,7 +99,7 @@ begin
   mHint.Parent := Self;
   mHint.AlignWithMargins := True;
   mHint.ShowAccelChar := False;
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   mHint.Caption := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.ObjectCountHint);
   CreateGrid;
 end;

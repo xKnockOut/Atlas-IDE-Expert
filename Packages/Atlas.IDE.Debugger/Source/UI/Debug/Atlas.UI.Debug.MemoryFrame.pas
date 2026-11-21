@@ -92,7 +92,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Debug.Memory.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -241,7 +242,7 @@ begin
   Name := '';
   CreateTopBar(Self);
   mHint := AddBottomLabel(Self, cOrderHint, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryRangeHint));
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   FControls.RangeLabel := AddBottomLabel(Self, cOrderRange, '');
   FControls.NowLabel := AddBottomLabel(Self, cOrderNow, '');
   CreateObjectCount(Self);

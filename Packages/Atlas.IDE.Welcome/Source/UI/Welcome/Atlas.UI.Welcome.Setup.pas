@@ -136,7 +136,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.Theme;
 
 const
   cCheckMark = #$2713;
@@ -148,7 +149,6 @@ type
   private
     FFrame: TAtlasWelcomeSetupFrame;
     FShow: Boolean;
-    function Themed(AColor: TColor): TColor;
     procedure ApplyColors;
     procedure ApplySteps;
     procedure ApplyButtons;
@@ -234,25 +234,19 @@ begin
   FShow := AFrame.FCard.ShowCard;
 end;
 
-function TSetupCardView.Themed(AColor: TColor): TColor;
-begin
-  // Farbe des IDE-Themas (hell oder dunkel).
-  Result := StyleServices(FFrame).GetSystemColor(AColor);
-end;
-
 procedure TSetupCardView.ApplyColors;
 var
   mIndex: Integer;
 begin
-  FFrame.FLabels.BaselineInfo.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.Edition.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.PathsInfo.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.More.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.NewRow.Font.Color := Themed(clWindowText);
-  FFrame.FLabels.Dismiss.Font.Color := Themed(clHotLight);
+  FFrame.FLabels.BaselineInfo.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.Edition.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.PathsInfo.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.More.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.NewRow.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clWindowText);
+  FFrame.FLabels.Dismiss.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clHotLight);
   for mIndex := Low(FFrame.FLabels.Findings) to High(FFrame.FLabels.Findings) do
   begin
-    FFrame.FLabels.Findings[mIndex].Font.Color := Themed(clWindowText);
+    FFrame.FLabels.Findings[mIndex].Font.Color := TAtlasUiTheme.SystemColor(FFrame, clWindowText);
   end;
 end;
 
@@ -275,7 +269,7 @@ begin
     else
     begin
       mMark.Caption := cOpenBox;
-      mMark.Font.Color := Themed(clWindowText);
+      mMark.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clWindowText);
     end;
     mText.Font.Color := mMark.Font.Color;
     mText.Caption := TAtlasSetupTexts.StepCaption(mStep, FFrame.FCard, TThread.GetTickCount64);

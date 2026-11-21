@@ -97,7 +97,8 @@ uses
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Theme;
 
 { TAtlasWelcomeHeaderFrame }
 
@@ -120,7 +121,7 @@ begin
   FInfo.Parent := Self;
   FInfo.Left := FGreeting.Left;
   FInfo.Top := FInfo.ScaleValue(38);
-  FInfo.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FInfo, clGrayText);
   FSearchHost := TPanel.Create(Self);
   FSearchHost.Parent := Self;
   FSearchHost.Align := alRight;

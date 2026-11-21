@@ -52,6 +52,17 @@
       „Atlas-Tests“ über dem Tastenhinweis statt über den Einzelheiten und zog
       dessen Höhe: großer leerer Bereich, der Baum schrumpfte. Geprüft wird,
       dass die Unit Top oder Left des Teilers setzt.
+    - Systemfarben (clGrayText, clHighlight, clWindowText …) nur über den
+      Stil (system-color): TAtlasUiTheme.SystemColor zum Zeichnen,
+      TAtlasUiTheme.UseFontColor für die Schrift eines Steuerelements,
+      sonst StyleServices(…).GetSystemColor. Direkt in Canvas.Font.Color
+      oder Brush.Color nimmt eine Systemfarbe die Farbe von Windows, im
+      dunklen IDE-Thema also eine helle; in Font.Color eines Steuerelements
+      mit seFont übergeht der Stil sie ganz (ein grauer Hinweis wird zur
+      normalen Schrift). Ausgenommen sind die Unit des Themendienstes und
+      Zeilen mit // window-ok und Begründung (Werte, die der Stil danach
+      abbildet, Farben ohne IDE-Thema, Farbwerte für entworfene Formulare).
+      Zeichenketten zählen nicht (Namen der Farben im Visualisierer).
     - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
       eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
       ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
@@ -98,6 +109,40 @@ function Remove-PascalComments([string] $Text) {
         if ($m.Value.StartsWith("'")) { return $m.Value }
         [regex]::Replace($m.Value, '[^\r\n]', ' ')
     })
+}
+
+function Remove-PascalStrings([string] $Text) {
+    # Inhalt von Zeichenketten durch Leerzeichen ersetzen (nach Remove-PascalComments): Namen von Farben in Texten
+    # sind keine Farben.
+    return [regex]::Replace($Text, '''(?:[^''\r\n]|'''')*''', {
+        param($m)
+        "'" + (' ' * ($m.Value.Length - 2)) + "'"
+    })
+}
+
+# Systemfarben der VCL (clScrollBar bis clMenuBar).
+$SystemColorPattern = '(?i)\bcl(ScrollBar|Background|ActiveCaption|InactiveCaption|Menu|Window|WindowFrame|MenuText|' +
+    'WindowText|CaptionText|ActiveBorder|InactiveBorder|AppWorkSpace|Highlight|HighlightText|BtnFace|BtnShadow|' +
+    'GrayText|BtnText|InactiveCaptionText|BtnHighlight|3DDkShadow|3DLight|InfoText|InfoBk|HotLight|' +
+    'GradientActiveCaption|GradientInactiveCaption|MenuHighlight|MenuBar)\b'
+
+function Test-StyledColor([string] $Text, [int] $Index) {
+    # Wahr, wenn die Farbe an $Index ein Argument von GetSystemColor, TAtlasUiTheme.SystemColor oder
+    # TAtlasUiTheme.UseFontColor ist: innerste offene Klammer davor suchen, dann den Namen davor.
+    $mDepth = 0
+    for ($mPos = $Index - 1; $mPos -ge 0; $mPos--) {
+        $mChar = $Text[$mPos]
+        if ($mChar -eq ')') { $mDepth++ }
+        elseif ($mChar -eq ';') { return $false }
+        elseif ($mChar -eq '(') {
+            if ($mDepth -eq 0) {
+                $mStart = [Math]::Max(0, $mPos - 40)
+                return $Text.Substring($mStart, $mPos - $mStart + 1) -match '(?i)\b(GetSystemColor|SystemColor|UseFontColor)\s*\($'
+            }
+            $mDepth--
+        }
+    }
+    return $false
 }
 
 function Get-LineNumber([string] $Text, [int] $Index) {
@@ -183,6 +228,16 @@ foreach ($file in $files) {
         if ($file.Name -eq $rule.Allowed) { continue }
         foreach ($match in [regex]::Matches($text, $rule.Pattern)) {
             $violations += "${relative}:$(Get-LineNumber $text $match.Index): $($rule.Message)"
+        }
+    }
+
+    # Systemfarben am Stil vorbei (system-color).
+    if ($file.Name -ne $ThemeUnit) {
+        $mColors = Remove-PascalStrings $text
+        foreach ($match in [regex]::Matches($mColors, $SystemColorPattern)) {
+            $mLine = Get-LineNumber $mColors $match.Index
+            if ($exempt.Contains($mLine) -or (Test-StyledColor $mColors $match.Index)) { continue }
+            $violations += "${relative}:${mLine}: Systemfarbe $($match.Value) am Stil vorbei (im dunklen IDE-Thema hell bzw. ohne Wirkung); TAtlasUiTheme.SystemColor zum Zeichnen, TAtlasUiTheme.UseFontColor für die Schrift"
         }
     }
 
@@ -281,5 +336,5 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Dialoge über TAtlasDialog (Baseline eingehalten), Frames der Dockfenster mit DFM.' -ForegroundColor Green
+Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Dialoge über TAtlasDialog (Baseline eingehalten), Systemfarben über den Stil, Frames der Dockfenster mit DFM.' -ForegroundColor Green
 exit 0

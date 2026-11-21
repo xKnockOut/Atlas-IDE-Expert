@@ -67,7 +67,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Debug.Leaks.Strings,
-  Atlas.UI.Debug.Leaks;
+  Atlas.UI.Debug.Leaks,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -219,7 +220,7 @@ begin
   end;
   if FRows[mRow].Entry.Known and not (cdsSelected in State) then
   begin
-    Sender.Canvas.Font.Color := clGrayText;
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(Sender, clGrayText);
   end;
 end;
 

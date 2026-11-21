@@ -68,7 +68,8 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Themes,
-  Atlas.UI.Debug.Exceptions.Strings;
+  Atlas.UI.Debug.Exceptions.Strings,
+  Atlas.UI.Foundation.Theme;
 
 /// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
 procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
@@ -81,11 +82,6 @@ begin
 end;
 
 /// <summary>Farbe AColor im Stil von AList, nicht im globalen: Die IDE themt ihre Fenster je Formular.</summary>
-function ListColor(AList: TListView; AColor: TColor): TColor;
-begin
-  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
-end;
-
 { TAtlasDebugExceptionStack }
 
 constructor TAtlasDebugExceptionStack.CreateIn(AParent: TWinControl);
@@ -261,19 +257,19 @@ class procedure TAtlasDebugExceptionStack.RowColors(ACanvas: TCanvas; AList: TLi
 begin
   if cdsSelected in AState then
   begin
-    ACanvas.Brush.Color := ListColor(AList, clHighlight);
-    ACanvas.Font.Color := ListColor(AList, clHighlightText);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, clHighlight);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clHighlightText);
   end
   else
   begin
-    ACanvas.Brush.Color := ListColor(AList, AList.Color);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, AList.Color);
     if AGray then
     begin
-      ACanvas.Font.Color := ListColor(AList, clGrayText);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clGrayText);
     end
     else
     begin
-      ACanvas.Font.Color := ListColor(AList, AList.Font.Color);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, AList.Font.Color);
     end;
   end;
 end;

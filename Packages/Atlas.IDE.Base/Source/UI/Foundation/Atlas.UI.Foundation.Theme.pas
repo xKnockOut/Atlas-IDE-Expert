@@ -11,6 +11,9 @@
 // hellen Atlas-Farben, Apply tut nichts.
 // Wer dem Thema folgt, meldet sich mit Subscribe an und spätestens im
 // Destroy mit Unsubscribe ab; nach dem Abmelden erreicht ihn nichts mehr.
+// Systemfarben (clGrayText, clHighlight …) gelten im IDE-Thema nur über den
+// Stil: SystemColor zum Zeichnen, UseFontColor für die Schrift eines
+// Steuerelements.
 // Nur im Hauptthread.
 
 interface
@@ -55,6 +58,15 @@ type
     class function TextColor(AKind: TAtlasSignalKind): TColor; static;
     /// <summary>True, wenn TextColor(AKind) die Farbe des Stils ist (dann zeichnet der Stil die Schrift).</summary>
     class function UsesStyleText(AKind: TAtlasSignalKind): Boolean; static;
+    /// <summary>Systemfarbe AColor (clGrayText, clHighlight …) im Stil von AControl als RGB, zum Zeichnen auf einer
+    /// Zeichenfläche. Eine Systemfarbe direkt in Canvas.Font.Color bzw. Brush.Color nimmt die Farbe von Windows,
+    /// im dunklen IDE-Thema also hell. AControl = nil: Stil der Anwendung.</summary>
+    class function SystemColor(AControl: TControl; AColor: TColor): TColor; static;
+    /// <summary>Schrift von AControl in der Systemfarbe AColor des Stils zeigen und bei jedem Themenwechsel
+    /// nachziehen, bis AControl freigegeben wird. Mit seFont übergeht der VCL-Stil Font.Color und zeichnet in
+    /// seiner Textfarbe: Ein „Font.Color := clGrayText“ bliebe ohne Wirkung. Ein zweiter Aufruf ersetzt die Farbe;
+    /// clDefault gibt die Schrift wieder an den Stil.</summary>
+    class procedure UseFontColor(AControl: TControl; AColor: TColor); static;
     /// <summary>Dialogschrift auf AFont übertragen (Name und Größe, Stil und Farbe bleiben).</summary>
     class procedure AssignDialogFont(AFont: TFont); static;
     /// <summary>IDE-Thema auf AControl und seine Kinder anwenden; ohne Install nichts.</summary>
@@ -71,8 +83,74 @@ type
 implementation
 
 uses
+  System.Classes,
   Vcl.Themes,
   Atlas.Core.Style.Color;
+
+type
+  TControlAccess = class(TControl);
+
+  /// <summary>Hält die Schriftfarbe eines Steuerelements im Stil (UseFontColor); gehört dem Steuerelement und meldet
+  /// sich mit ihm vom Themenwechsel ab.</summary>
+  TAtlasFontColorKeeper = class(TComponent)
+  private
+    FColor: TColor;
+    procedure Apply;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Hüter von AControl; nil, wenn es keinen hat.</summary>
+    class function KeeperOf(AControl: TControl): TAtlasFontColorKeeper; static;
+    procedure Follow(AColor: TColor);
+  end;
+
+{ TAtlasFontColorKeeper }
+
+constructor TAtlasFontColorKeeper.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FColor := clWindowText;
+  TAtlasUiTheme.Subscribe(Self,
+    procedure
+    begin
+      Apply;
+    end);
+end;
+
+destructor TAtlasFontColorKeeper.Destroy;
+begin
+  TAtlasUiTheme.Unsubscribe(Self);
+  inherited;
+end;
+
+class function TAtlasFontColorKeeper.KeeperOf(AControl: TControl): TAtlasFontColorKeeper;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AControl.ComponentCount - 1 do
+  begin
+    if AControl.Components[mIndex] is TAtlasFontColorKeeper then
+    begin
+      Exit(TAtlasFontColorKeeper(AControl.Components[mIndex]));
+    end;
+  end;
+  Result := nil;
+end;
+
+procedure TAtlasFontColorKeeper.Follow(AColor: TColor);
+begin
+  FColor := AColor;
+  Apply;
+end;
+
+procedure TAtlasFontColorKeeper.Apply;
+var
+  mControl: TControl;
+begin
+  mControl := TControl(Owner);
+  mControl.StyleElements := mControl.StyleElements - [seFont];
+  TControlAccess(mControl).Font.Color := TAtlasUiTheme.SystemColor(mControl, FColor);
+end;
 
 { TAtlasUiTheme }
 
@@ -148,6 +226,35 @@ end;
 class function TAtlasUiTheme.UsesStyleText(AKind: TAtlasSignalKind): Boolean;
 begin
   Result := (AKind = TAtlasSignalKind.Info) or (AKind = TAtlasSignalKind.Idle);
+end;
+
+class function TAtlasUiTheme.SystemColor(AControl: TControl; AColor: TColor): TColor;
+begin
+  Result := ColorToRGB(StyleServices(AControl).GetSystemColor(AColor));
+end;
+
+class procedure TAtlasUiTheme.UseFontColor(AControl: TControl; AColor: TColor);
+var
+  mKeeper: TAtlasFontColorKeeper;
+begin
+  if AControl = nil then
+  begin
+    Exit;
+  end;
+  mKeeper := TAtlasFontColorKeeper.KeeperOf(AControl);
+  if AColor = clDefault then
+  begin
+    // Zurück an den Stil: Er zeichnet die Schrift wieder selbst, nichts folgt mehr dem Thema.
+    mKeeper.Free;
+    AControl.StyleElements := AControl.StyleElements + [seFont];
+    TControlAccess(AControl).Font.Color := clWindowText;
+    Exit;
+  end;
+  if mKeeper = nil then
+  begin
+    mKeeper := TAtlasFontColorKeeper.Create(AControl);
+  end;
+  mKeeper.Follow(AColor);
 end;
 
 class procedure TAtlasUiTheme.AssignDialogFont(AFont: TFont);

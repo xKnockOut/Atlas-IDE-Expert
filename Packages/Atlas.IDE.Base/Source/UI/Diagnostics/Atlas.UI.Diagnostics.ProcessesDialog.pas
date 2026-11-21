@@ -126,7 +126,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Diagnostics.Strings;
+  Atlas.UI.Diagnostics.Strings,
+  Atlas.UI.Foundation.Theme;
 
 const
   // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.
@@ -189,7 +190,7 @@ begin
   mName := NewLabel(AOwner, AParent, TAtlasDiagnosticsStrings.Text(ACaption));
   mName.SetBounds(mName.ScaleValue(TAtlasProcessesDialog.cGap), mName.ScaleValue(ATop + cLabelGap),
     mName.ScaleValue(TAtlasProcessesDialog.cLabelWidth), mName.ScaleValue(cLabelHeight));
-  mName.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mName, clGrayText);
   Result := NewLabel(AOwner, AParent, '');
   Result.Left := Result.ScaleValue(TAtlasProcessesDialog.cGap + TAtlasProcessesDialog.cLabelWidth +
     TAtlasProcessesDialog.cGap);

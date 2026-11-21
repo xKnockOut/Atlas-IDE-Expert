@@ -43,6 +43,10 @@ type
   /// <summary>Teil der Seite Versionsverwaltung. Maße an den Bausteinen (Höhe, Breite, Lage) in logischen Pixeln
   /// (96 dpi); skaliert wird in den Bausteinen.</summary>
   TAtlasVcsSettingsPart = class
+  protected const
+    /// <summary>Höhe eines Hinweises mit zwei bzw. drei Zeilen.</summary>
+    cNoteHeight = 36;
+    cLongNoteHeight = 52;
   protected
     /// <summary>Besitzer der eigenen Steuerelemente; nil vor Build und nach Close.</summary>
     FPage: TAtlasVcsSettingsOwner;
@@ -52,6 +56,8 @@ type
     function AddPanel(AHeight: Integer): TWinControl; overload;
     function AddPanel(AHeight: Integer; const AKeys: TArray<string>): TWinControl; overload;
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
+    /// <summary>Umbrechender Hinweis in grauer Schrift des Stils.</summary>
+    function AddNote(AHeight: Integer; const ACaption: string): TLabel;
     /// <summary>Zeile mit Beschriftung links und AControl daneben.</summary>
     function AddFieldRow(AId: TAtlasVcsTextId; AControl: TWinControl; AWidth: Integer): TWinControl; overload;
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl; overload;
@@ -86,7 +92,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Foundation.ListView;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Foundation.Theme;
 
 const
   cRowButtonTop = 3;
@@ -149,6 +157,12 @@ end;
 function TAtlasVcsSettingsPart.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
 begin
   Result := Host.AddHint(ACaption, AHeight) as TLabel;
+end;
+
+function TAtlasVcsSettingsPart.AddNote(AHeight: Integer; const ACaption: string): TLabel;
+begin
+  Result := AddWrappedLabel(AHeight, ACaption);
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
 end;
 
 function TAtlasVcsSettingsPart.AddFieldRow(AId: TAtlasVcsTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
