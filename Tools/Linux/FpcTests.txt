@@ -20,6 +20,7 @@ Atlas.Text.Fuzzy.Tests
 Atlas.Text.Csv.Tests
 Atlas.Text.Files.Tests
 Atlas.Text.Locked.Tests
+Atlas.Text.Reporting.Tests
 Atlas.Text.IndexCache.Tests
 Atlas.Text.Names.Tests
 Atlas.Text.Numbers.Tests

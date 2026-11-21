@@ -320,7 +320,9 @@ begin
         TAtlasIdeDebugSession.cLaunchOptionNames[mIndex]));
     end;
   except
-    // Nur Merkwerte; der Start geht in jedem Fall weiter.
+    // Nur Merkwerte; der Start geht in jedem Fall weiter, der Grund steht im Protokoll.
+    on E: Exception do
+      TAtlasGuard.Log('Debugsitzung: Startwerte des Projekts nicht gelesen: ' + TAtlasGuard.ErrorText(E));
   end;
   if Project <> nil then
   begin

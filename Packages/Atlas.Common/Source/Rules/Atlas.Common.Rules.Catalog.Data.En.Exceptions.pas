@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnExceptions: array[0..90] of string = (
+  cCatalogLinesEnExceptions: array[0..98] of string = (
     '{',
     '      "id": "empty-except",',
     '      "name": "Empty except block",',
@@ -35,7 +35,16 @@ const
     '      "category": "code-smell",',
     '      "severity": "warning",',
     '      "group": "exceptions",',
-    '      "description": "A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.",',
+    '      "description": "A handler for Exception, or an except part without on, that neither re-raises, reports the error through a call from reporters nor ends the program swallows every error, includin' +
+    'g programming errors. Off by default; intended for library code and for code with its own error reporting.",',
+    '      "options": [',
+    '        {',
+    '          "name": "reporters",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Calls that report the exception (patterns with * and ? over the name with its qualifiers, e.g. TAtlasGuard.* or *Logger.Error); a block that contains one counts as handled."',
+    '        }',
+    '      ],',
     '      "bad": "except\n  on E: Exception do\n    Log(E.Message);\nend;",',
     '      "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;",',
     '      "safeFix": false,',

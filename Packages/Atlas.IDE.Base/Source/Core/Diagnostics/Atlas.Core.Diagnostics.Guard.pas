@@ -341,7 +341,8 @@ uses
   System.DateUtils,
   Atlas.Text.LogMarks,
   Atlas.Core.Product.Version,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
 
@@ -934,11 +935,14 @@ procedure Warn(const AText: string);
 begin
   TAtlasGuard.Log(AText);
   if Assigned(TAtlasGuard.FOnWarning) then
-    try
-      TAtlasGuard.FOnWarning(TLogMarks.Plain(AText));
-    except
-      // Auch die Warnung darf nicht in die IDE durchschlagen.
-    end;
+  begin
+    // Auch die Warnung darf nicht in die IDE durchschlagen.
+    TReporting.Quietly(
+      procedure
+      begin
+        TAtlasGuard.FOnWarning(TLogMarks.Plain(AText));
+      end);
+  end;
 end;
 
 /// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
@@ -974,12 +978,8 @@ var
 begin
   Warn(AText);
   mFailed := TAtlasCommandScope.FOnFailed;
-  if Assigned(mFailed) then
-    try
-      mFailed();
-    except
-      // Auch das Zeigen der Meldung darf nicht in die IDE durchschlagen.
-    end;
+  // Auch das Zeigen der Meldung darf nicht in die IDE durchschlagen.
+  TReporting.Quietly(mFailed);
 end;
 
 class procedure TAtlasGuard.Report(AFeature: TAtlasFeature; AE: Exception);
@@ -1018,11 +1018,14 @@ begin
   Log(ErrorLine(mWhere, AE));
   mFailure := FOnFailure;
   if Assigned(mFailure) then
-    try
-      mFailure(AFeature);
-    except
-      // Die Meldung eines Fehlers darf selbst keinen auslösen.
-    end;
+  begin
+    // Die Meldung eines Fehlers darf selbst keinen auslösen.
+    TReporting.Quietly(
+      procedure
+      begin
+        mFailure(AFeature);
+      end);
+  end;
   if not mFired then
   begin
     Exit;
@@ -1031,11 +1034,14 @@ begin
     TLogMarks.Text(SafeMessage(AE.Message))]));
   mTripped := FOnTripped;
   if Assigned(mTripped) then
-    try
-      mTripped(AFeature, SafeMessage(AE.Message));
-    except
-      // Auch der Eintrag in der Zentrale darf nicht in die IDE durchschlagen.
-    end;
+  begin
+    // Auch der Eintrag in der Zentrale darf nicht in die IDE durchschlagen.
+    TReporting.Quietly(
+      procedure
+      begin
+        mTripped(AFeature, SafeMessage(AE.Message));
+      end);
+  end;
 end;
 
 class function TAtlasGuard.ErrorText(AE: Exception): string;

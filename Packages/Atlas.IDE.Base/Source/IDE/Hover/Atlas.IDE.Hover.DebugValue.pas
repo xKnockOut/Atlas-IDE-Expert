@@ -225,7 +225,10 @@ begin
     try
       FThread.RemoveNotifier(FIndex);
     except
-      // Thread schon abgebaut: nichts mehr abzumelden.
+      // Das Ende des Threads meldet ThreadGone vorher; was hier noch scheitert, ist unerwartet: protokollieren,
+      // die Freigabe geht weiter.
+      on E: Exception do
+        TAtlasGuard.Log('Debugwert: Abmelden am Thread gescheitert: ' + TAtlasGuard.ErrorText(E));
     end;
   FDeferred.FOwner := nil;
   FDeferred := nil;

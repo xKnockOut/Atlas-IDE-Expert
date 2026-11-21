@@ -2,9 +2,11 @@
 
 // Exception-Regeln (#277, abgetrennt aus #57):
 //   generic-exception-raised    raise Exception.Create(…) statt einer eigenen Klasse
-//   catch-all-without-raise     on E: Exception do ohne raise; nur für Bibliothekscode,
+//   catch-all-without-raise     on E: Exception do bzw. except ohne on (nicht leer, das meldet empty-except)
+//                               ohne raise; nur für Bibliothekscode und Code mit eigener Fehlermeldung,
 //                               deshalb Standard aus und über Profile/Pfadregeln einzuschalten (#146);
-//                               still im äußeren Handler von TThread.Execute
+//                               still im äußeren Handler von TThread.Execute und in Blöcken, die eine
+//                               Routine aus der Option reporters aufrufen (TAtlasGuard.*, *Logger.Error)
 //   exception-freed             Exception-Objekt nach raise bzw. im Handler zusätzlich freigegeben
 //   exception-in-destructor     raise in einem Destruktor, das kein except im Destruktor abfängt (#927)
 //   except-handler-order        on-Handler, der nie erreicht wird, weil ein früherer die Klasse schon fängt (#957)
@@ -92,7 +94,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,
   Atlas.Common.Localization.Texts;
 
@@ -114,9 +118,9 @@ const
       'class(Exception)) or a suitable one from the RTL'),
     (De: 'on E: Exception do ohne raise'; En: 'on E: Exception do without raise'),
     (De: 'Bibliothekscode fängt jede Exception ab, ohne sie weiterzuwerfen; der Aufrufer erfährt nichts vom Fehler. ' +
-      'Gezielt abfangen oder mit raise weiterwerfen';
+      'Gezielt abfangen, den Fehler melden oder mit raise weiterwerfen';
      En: 'Library code catches every exception without re-raising it; the caller learns nothing about the error. ' +
-      'Catch specifically or re-raise with raise'),
+      'Catch specifically, report the error or re-raise with raise'),
     (De: 'Exception-Objekt nach raise zusätzlich freigegeben'; En: 'Exception object additionally freed after raise'),
     (De: '%s gehört nach dem Handler der RTL und wird dort freigegeben; eigenes Freigeben führt zur doppelten Freigabe';
      En: '%s belongs to the handler of the RTL after it and is freed there; freeing it yourself leads to a double ' +
@@ -462,38 +466,158 @@ begin
     cTexts[TExceptionsText.CatchAllTitle].Text);
 end;
 
+/// <summary>Erstes und letztes Token zwischen AStart und AEnd (Offsets, AEnd ausgeschlossen); False ohne Token.
+/// </summary>
+function TokenSpan(const ATokens: TTokens; AStart, AEnd: Integer; out AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  AFirst := -1;
+  ALast := -1;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if (ATokens[mIndex].Offset >= AStart) and (ATokens[mIndex].Offset < AEnd) and not IsTrivia(ATokens[mIndex]) then
+    begin
+      if AFirst < 0 then
+      begin
+        AFirst := mIndex;
+      end;
+      ALast := mIndex;
+    end;
+  end;
+  Result := AFirst >= 0;
+end;
+
+/// <summary>Steht zwischen AFirst und ALast ein raise?</summary>
+function RaisesIn(const ATokens: TTokens; AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := AFirst to ALast do
+  begin
+    if ATokens[mIndex].IsKeyword('raise') then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Passt der Name mit Qualifizierern AName oder ein hinterer Teil davon (Atlas.Core.TAtlasGuard.Log →
+/// TAtlasGuard.Log, Log) auf eines der Muster?</summary>
+function MatchesReporter(const AName: string; const AReporters: TArray<string>): Boolean;
+var
+  mName, mPattern: string;
+  mDot: Integer;
+begin
+  Result := False;
+  mName := AName;
+  repeat
+    for mPattern in AReporters do
+    begin
+      if MatchesWildcard(mName, mPattern) then
+      begin
+        Exit(True);
+      end;
+    end;
+    mDot := Pos('.', mName);
+    mName := Copy(mName, mDot + 1, MaxInt);
+  until mDot = 0;
+end;
+
+/// <summary>Ruft der Bereich AFirst..ALast eine Routine aus AReporters auf? Verglichen wird der Name mit
+/// Qualifizierern (TAtlasGuard.Report, FLogger.Error) gegen die Muster (* und ?, ohne Groß-/Kleinschreibung).
+/// </summary>
+function ReportsIn(const ATokens: TTokens; AFirst, ALast: Integer; const AReporters: TArray<string>): Boolean;
+var
+  mIndex, mNext: Integer;
+  mName: string;
+begin
+  Result := False;
+  if AReporters = nil then
+  begin
+    Exit;
+  end;
+  mIndex := AFirst;
+  while mIndex <= ALast do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      ((mIndex = 0) or not ATokens[PreviousCode(ATokens, mIndex)].IsSymbol('.')) then
+    begin
+      mName := ATokens[mIndex].Text;
+      mNext := NextCode(ATokens, mIndex + 1);
+      while (mNext < ALast) and ATokens[mNext].IsSymbol('.') and
+        (ATokens[NextCode(ATokens, mNext + 1)].Kind = TPascalTokenKind.Identifier) do
+      begin
+        mIndex := NextCode(ATokens, mNext + 1);
+        mName := mName + '.' + ATokens[mIndex].Text;
+        mNext := NextCode(ATokens, mIndex + 1);
+      end;
+      if MatchesReporter(mName, AReporters) then
+      begin
+        Exit(True);
+      end;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>except-Teile ohne on-Handler, die nicht leer sind (leere meldet empty-except).</summary>
+function BareExceptBlocks(ATree: TSyntaxTree): TArray<TSyntaxNode>;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  for mNode in TSyntaxNode.PreOrder(ATree.Root) do
+  begin
+    if (mNode.Kind = TSyntaxKind.ExceptBlock) and (mNode.ChildCount > 0) and
+      (mNode.FindChild(TSyntaxKind.ExceptionHandler) = nil) then
+    begin
+      Result := Result + [mNode];
+    end;
+  end;
+end;
+
 procedure TCatchAllWithoutRaiseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TTokens;
   mHandler: THandler;
-  mIndex: Integer;
-  mRaises: Boolean;
+  mBlock: TSyntaxNode;
+  mFirst, mLast: Integer;
+  mReporters: TArray<string>;
+
+  // Der äußere Handler von TThread.Execute fängt zu Recht ohne erneutes Auslösen (thread-execute-without-except).
+  function ExecuteGuard(AHandler: TSyntaxNode): Boolean;
+  begin
+    Result := ContainsText(AContext.Text, 'Execute') and IsThreadExecuteGuard(AContext, AHandler);
+  end;
+
 begin
-  if AContext.Tree = nil then
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
+  mReporters := TRuleOptions.Strings(AContext.Options, 'reporters', nil);
   for mHandler in Handlers(mTokens) do
   begin
-    if not MatchText(mHandler.TypeName, ['Exception', 'TObject']) then
-    begin
-      Continue;
-    end;
-    mRaises := False;
-    for mIndex := mHandler.First to mHandler.Last do
-    begin
-      if mTokens[mIndex].IsKeyword('raise') then
-      begin
-        mRaises := True;
-      end;
-    end;
-    // Der äußere Handler von TThread.Execute fängt zu Recht ohne erneutes Auslösen (thread-execute-without-except).
-    if not mRaises and not (ContainsText(AContext.Text, 'Execute') and
-      IsThreadExecuteGuard(AContext, HandlerNode(AContext.Tree, mTokens[mHandler.OnToken].Offset))) then
+    if MatchText(mHandler.TypeName, ['Exception', 'TObject']) and
+      not RaisesIn(mTokens, mHandler.First, mHandler.Last) and
+      not ReportsIn(mTokens, mHandler.First, mHandler.Last, mReporters) and
+      not ExecuteGuard(HandlerNode(AContext.Tree, mTokens[mHandler.OnToken].Offset)) then
     begin
       AReport.Add(RangeOf(mTokens, mHandler.OnToken, mHandler.DoToken), cTexts[TExceptionsText.CatchAll].Text,
         TRuleConfidence.Medium);
+    end;
+  end;
+  // except ohne on fängt alles wie on Exception do.
+  for mBlock in BareExceptBlocks(AContext.Tree) do
+  begin
+    if TokenSpan(mTokens, mBlock.StartOffset, mBlock.EndOffset, mFirst, mLast) and
+      not RaisesIn(mTokens, mFirst, mLast) and not ReportsIn(mTokens, mFirst, mLast, mReporters) and
+      not ExecuteGuard(mBlock[0]) then
+    begin
+      AReport.Add(RangeOf(mTokens, mFirst, mFirst), cTexts[TExceptionsText.CatchAll].Text, TRuleConfidence.Medium);
     end;
   end;
 end;

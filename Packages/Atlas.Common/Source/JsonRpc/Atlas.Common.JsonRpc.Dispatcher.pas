@@ -138,7 +138,8 @@ uses
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.JsonRpc.CurrentRequest,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
 
@@ -171,21 +172,27 @@ procedure NotifyFailed(const AOnFailed: TJsonRpcRequestFailedEvent; const AMetho
   const AParams: TJSONValue; const AError: Exception);
 begin
   if Assigned(AOnFailed) and not (AError is EJsonRpcError) then
-    try
-      AOnFailed(AMethod, AParams, AError);
-    except
-      // Das Protokollieren darf die Antwort nicht verhindern.
-    end;
+  begin
+    // Das Protokollieren darf die Antwort nicht verhindern.
+    TReporting.Quietly(
+      procedure
+      begin
+        AOnFailed(AMethod, AParams, AError);
+      end);
+  end;
 end;
 
 procedure ObserveStarted(const AObserver: IJsonRpcRequestObserver; const AMethod: string);
 begin
   if AObserver <> nil then
-    try
-      AObserver.Started(AMethod);
-    except
-      // Das Diagnoselog darf keine Anfrage verhindern.
-    end;
+  begin
+    // Das Diagnoselog darf keine Anfrage verhindern.
+    TReporting.Quietly(
+      procedure
+      begin
+        AObserver.Started(AMethod);
+      end);
+  end;
 end;
 
 type
@@ -206,11 +213,14 @@ procedure ObserveFinished(const ARun: TRequestRun; const AResult: TJSONValue; co
   AElapsedMs: Int64);
 begin
   if ARun.Observer <> nil then
-    try
-      ARun.Observer.Finished(ARun.Method, ARun.Params, AResult, AError, ARun.QueueMs, AElapsedMs);
-    except
-      // Das Diagnoselog darf keine Antwort verhindern.
-    end;
+  begin
+    // Das Diagnoselog darf keine Antwort verhindern.
+    TReporting.Quietly(
+      procedure
+      begin
+        ARun.Observer.Finished(ARun.Method, ARun.Params, AResult, AError, ARun.QueueMs, AElapsedMs);
+      end);
+  end;
 end;
 
 /// <summary>Antwort mit AValue; meldet Ende und Laufzeit.</summary>

@@ -245,7 +245,8 @@ uses
   System.Diagnostics,
   System.SyncObjs,
   Atlas.Text.Locked,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
 
@@ -564,11 +565,13 @@ begin
   FCancelEvent := TEvent.Create(nil, True, False, '');
   inherited Create(False);
   // Niedrige Priorität (#1236): Der Aufbau läuft im Hintergrund; IDE, Editor und Anfragen gehen vor. Der Thread
-  // startet erst nach dem Konstruktor. Nicht jede Plattform erlaubt das.
+  // startet erst nach dem Konstruktor. Nicht jede Plattform erlaubt das (EThread aus CheckThreadError).
   try
     Priority := tpLower;
   except
-    // Dann eben mit normaler Priorität; der Aufbau selbst ist davon nicht betroffen.
+    on EThread do
+      // Dann eben mit normaler Priorität; der Aufbau selbst ist davon nicht betroffen.
+      ;
   end;
 end;
 
@@ -1203,11 +1206,12 @@ begin
   begin
     Exit;
   end;
-  try
-    FEvents.Error(AError);
-  except
-    // Sonst läge die Ausnahme ungelesen in TThread.FatalException.
-  end;
+  // Ein Fehler der Meldung läge sonst ungelesen in TThread.FatalException.
+  TReporting.Quietly(
+    procedure
+    begin
+      FEvents.Error(AError);
+    end);
 end;
 
 procedure TIndexService.Start(const ARequest: TIndexRequest);

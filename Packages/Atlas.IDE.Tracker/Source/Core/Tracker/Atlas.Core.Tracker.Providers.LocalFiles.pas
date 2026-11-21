@@ -45,6 +45,7 @@ uses
   System.Types,
   System.Classes,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Core.Files.TextFile;
 
 type
@@ -310,31 +311,19 @@ end;
 
 function TAtlasTrackerLocalFiles.Lock(const AFileName: string; AWaitMs: Integer): IInterface;
 var
-  mWaited: Integer;
+  mStream: TStream;
+  mError: string;
 begin
   Result := nil;
   if (AFileName = '') or not ForceFolder(ExtractFileDir(AFileName)) then
   begin
     Exit;
   end;
-  mWaited := 0;
-  repeat
-    try
-      Result := TAtlasTrackerFileLock.Create(TFileStream.Create(AFileName, fmCreate or fmShareExclusive));
-    except
-      // Ein anderer Prozess hält die Sperre: kurz warten und neu versuchen.
-      on Exception do
-      begin
-        Result := nil;
-      end;
-    end;
-    if (Result <> nil) or (mWaited >= AWaitMs) then
-    begin
-      Break;
-    end;
-    Sleep(cLockStepMs);
-    Inc(mWaited, cLockStepMs);
-  until False;
+  // Nur solange ein anderer die Sperre hält, lohnt Warten; ohne Schreibrecht kommt sofort nil.
+  if TTextFiles.OpenExclusive(AFileName, True, AWaitMs, cLockStepMs, mStream, mError) = TTextExclusiveOpen.Opened then
+  begin
+    Result := TAtlasTrackerFileLock.Create(mStream);
+  end;
 end;
 
 function TAtlasTrackerLocalFiles.Environment(const AName: string): string;

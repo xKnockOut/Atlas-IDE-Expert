@@ -2664,9 +2664,13 @@ raise ECustomerMissing.Create('Customer missing');
 
 **Exception-Handler ohne erneutes raise** · Code Smell · Warnung · Gruppe Exceptions
 
-Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode.
+Ein Handler für Exception oder ein except-Teil ohne on, der weder erneut auslöst, den Fehler über einen Aufruf aus reporters meldet noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode und für Code mit eigener Fehlermeldung.
 
 Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `reporters` | string-list | `[]` | Aufrufe, die die Ausnahme melden (Muster mit * und ? über den Namen mit Qualifizierern, z. B. TAtlasGuard.* oder *Logger.Error); ein Block, der einen enthält, gilt als behandelt. |
 
 Mit Treffer:
 
