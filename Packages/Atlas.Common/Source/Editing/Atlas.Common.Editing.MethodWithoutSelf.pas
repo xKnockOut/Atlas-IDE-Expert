@@ -46,7 +46,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract;
+  Atlas.Common.Editing.MethodWithoutSelf.Types;
 
 type
   TMethodWithoutSelf = class

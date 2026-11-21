@@ -28,7 +28,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract,
+  Atlas.Common.Editing.MethodWithoutSelf.Types,
   Atlas.Common.Editing.MethodWithoutSelf.Analysis;
 
 const

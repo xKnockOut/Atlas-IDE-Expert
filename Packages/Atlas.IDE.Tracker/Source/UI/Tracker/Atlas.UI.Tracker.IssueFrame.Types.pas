@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Tracker.IssueFrame.Contract;
+﻿unit Atlas.UI.Tracker.IssueFrame.Types;
 
 // Typen des Fensters „Atlas-Issue“ (#1264) für Frame und IDE-Schicht: Schalter (SetFlag), Knöpfe und Teile des
 // Inhalts (Tag der Steuerelemente), feste Steuerelemente, Inhalt des gezeigten Issues, Zustand zwischen den Aufrufen

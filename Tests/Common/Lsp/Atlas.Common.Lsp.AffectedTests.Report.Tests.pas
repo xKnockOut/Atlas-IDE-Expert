@@ -29,7 +29,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.AffectedTests.Contract,
+  Atlas.Common.Lsp.AffectedTests.Types,
   Atlas.Common.Lsp.AffectedTests.Report;
 
 function Sample: TAffectedResult;

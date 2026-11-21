@@ -58,7 +58,7 @@ uses
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.VersionControl.Providers.Svn,
-  Atlas.Core.VersionControl.Providers.Null;
+  Atlas.Core.VersionControl.Null;
 
 { TAtlasVcsNotices }
 

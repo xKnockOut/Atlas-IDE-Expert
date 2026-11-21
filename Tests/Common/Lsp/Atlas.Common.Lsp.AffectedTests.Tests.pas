@@ -12,7 +12,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.AffectedTests,
   Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Contract;
+  Atlas.Common.Lsp.AffectedTests.Types;
 
 type
   [TestFixture]

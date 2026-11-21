@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.MethodWithoutSelf.Contract;
+﻿unit Atlas.Common.Editing.MethodWithoutSelf.Types;
 
 // Gemeinsame Typen der Umwandlung „Methode ohne Self“ (#686): Ziel, Quellen, Anfrage und Ergebnis. Die Analyse
 // (Atlas.Common.Editing.MethodWithoutSelf.Analysis) und die Umwandlung (Atlas.Common.Editing.MethodWithoutSelf)

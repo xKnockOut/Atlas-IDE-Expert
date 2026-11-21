@@ -39,7 +39,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Contract,
+  Atlas.Common.Lsp.AffectedTests.Types,
   Shell.Platform,
   Shell.Bootstrap,
   Shell.AffectedTests,

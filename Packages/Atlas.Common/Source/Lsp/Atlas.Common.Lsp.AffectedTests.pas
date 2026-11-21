@@ -44,7 +44,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.AffectedTests.Contract;
+  Atlas.Common.Lsp.AffectedTests.Types;
 
 type
   TAffectedTests = class

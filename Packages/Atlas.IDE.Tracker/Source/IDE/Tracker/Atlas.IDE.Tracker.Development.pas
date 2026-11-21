@@ -111,7 +111,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.DevelopmentPlan,
   Atlas.Core.Tracker.Preview,
