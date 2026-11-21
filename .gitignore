@@ -58,3 +58,8 @@ benchmark/
 
 # Lokale Einstellungen der Claude-Sitzungen
 .claude/settings.local.json
+
+# Private Schlüssel (Signatur der Versionsdatei, docs/Release.md) nie einchecken
+*.pem
+*.key
+*.pfx

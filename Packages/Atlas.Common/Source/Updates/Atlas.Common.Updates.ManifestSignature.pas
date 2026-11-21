@@ -51,9 +51,11 @@ implementation
 
 const
   /// <summary>Hauptschlüssel, mit dem der Release zurzeit signiert.</summary>
-  cPrimaryKey = '';
+  cPrimaryKey = 'd108ab44b9709e8423b330d866614299826f7208ac1c8d2233e7877f77ba91c9' +
+    '689c90bdf25a8ae53ad9cbed70efc6c35b6edcf50aaef1afc53af030ba0686ab';
   /// <summary>Reserveschlüssel für den Wechsel; sein privater Teil liegt getrennt vom Hauptschlüssel.</summary>
-  cReserveKey = '';
+  cReserveKey = 'c5cb4cf348cdc2b230a612d55c554aec6c4c576a6ee065ba37e211b44f0df291' +
+    '5871a88ede4df5c41d9ad157a44adec1203a5be51a98ffb54deabc9fb506be2e';
 
 { TUpdateManifestSignature }
 
