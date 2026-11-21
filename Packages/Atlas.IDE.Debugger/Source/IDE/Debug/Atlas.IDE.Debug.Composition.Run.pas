@@ -57,7 +57,6 @@ uses
   Atlas.IDE.Debug.LaunchGroups,
   Atlas.IDE.Debug.Note,
   Atlas.UI.Debug.Note.Strings,
-  Atlas.Core.Debug.OpenedFiles,
   Atlas.IDE.Debug.OpenedFiles,
   Atlas.UI.Debug.OpenedFiles.Strings,
   Atlas.IDE.Debug.ConsoleCapture,
@@ -211,14 +210,6 @@ begin
         end;
       TAtlasIdeDebugNote.Start(mServices);
     end;
-end;
-
-/// <summary>Vom Debugger geöffnete Dateien (#842): an, solange debug.closeOpenedFiles nicht off oder
-/// debug.previewTab an ist.</summary>
-function OpenedFilesVisible: Boolean;
-begin
-  Result := (TAtlasOpenedFiles.ModeOf(TAtlasIdeSettings.Current.DebugCloseOpenedFiles) <> TAtlasCloseOpenedFiles.Off)
-    or TAtlasIdeSettings.Current.DebugPreviewTab;
 end;
 
 procedure StartOpenedFiles;
@@ -381,7 +372,7 @@ begin
     TAtlasFeaturePart.When('DebugOpenedFiles',
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
-        Result := NotMinimal(ALevel) and OpenedFilesVisible;
+        Result := NotMinimal(ALevel) and TAtlasIdeOpenedFiles.Visible;
       end,
       function: Boolean
       begin
@@ -448,7 +439,7 @@ begin
     RunCommand(cNoteCommand, TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteCommand), TAtlasIdeDebugNote.Execute,
       NoteVisible),
     RunCommand(cKeepOpenedFileCommand, TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.PinCommand),
-      TAtlasIdeOpenedFiles.PinCurrent, OpenedFilesVisible),
+      TAtlasIdeOpenedFiles.PinCurrent, TAtlasIdeOpenedFiles.Visible),
     RunCommand(cConsoleOutputCommand, TAtlasConsoleStrings.Text(TAtlasConsoleTextId.CommandWindow),
       TAtlasIdeConsoleCapture.ShowWindow, ConsoleVisible),
     RunCommand(cConsoleRunCommand, TAtlasConsoleStrings.Text(TAtlasConsoleTextId.CommandRunNoDebug),

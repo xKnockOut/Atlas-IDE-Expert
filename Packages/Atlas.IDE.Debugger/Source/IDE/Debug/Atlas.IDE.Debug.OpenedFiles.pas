@@ -74,6 +74,8 @@ type
     class procedure Start(const AMessage: TProc<string>); static;
     class procedure Release; static;
     class function Started: Boolean; static;
+    /// <summary>An, solange debug.closeOpenedFiles nicht off oder debug.previewTab an ist.</summary>
+    class function Visible: Boolean; static;
     /// <summary>Befehl: Datei im aktiven Editor bleibt nach der Sitzung offen.</summary>
     class procedure PinCurrent; static;
     /// <summary>Behält AFileName nach der Sitzung (geändert, Haltepunkt, Lesezeichen der IDE)?</summary>
@@ -245,6 +247,11 @@ begin
       end;
     end;
   end;
+end;
+
+class function TAtlasIdeOpenedFiles.Visible: Boolean;
+begin
+  Result := (CloseMode <> TAtlasCloseOpenedFiles.Off) or TAtlasIdeSettings.Current.DebugPreviewTab;
 end;
 
 class function TAtlasIdeOpenedFiles.Touched(const AFileName: string): Boolean;

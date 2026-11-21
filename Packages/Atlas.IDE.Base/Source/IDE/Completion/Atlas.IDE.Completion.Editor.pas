@@ -370,7 +370,8 @@ function TAtlasEditorCompletion.WindowLeft: Boolean;
 var
   mReason: TAtlasCloseReason;
 begin
-  mReason := TAtlasCloseRules.Popup(FOpen.Opened, TAtlasIdeEditorWindows.WindowState(FOpen.View, FOpen.Window, GetFocus));
+  mReason := TAtlasCloseRules.Popup(FOpen.Opened,
+    TAtlasIdeEditorWindows.WindowState(FOpen.View, FOpen.Window, GetFocus));
   Result := mReason <> TAtlasCloseReason.None;
   if Result then
   begin
