@@ -56,7 +56,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -222,7 +223,7 @@ begin
   begin
     Exit;
   end;
-  ANode := Unwrapped(ANode);
+  ANode := TSyntaxNodes.Unparen(ANode);
   case ANode.Kind of
     TSyntaxKind.Literal:
       Result := TFormatString.LiteralValue(Raw(ANode), AValue);
@@ -298,11 +299,11 @@ end;
 /// <summary>Argument ohne Klammern; eine negative Zahl als ihr Literal.</summary>
 function TFormatArgsScan.Operand(ANode: TSyntaxNode): TSyntaxNode;
 begin
-  Result := Unwrapped(ANode);
+  Result := TSyntaxNodes.Unparen(ANode);
   if (Result.Kind = TSyntaxKind.UnaryExpr) and (Result.Name = '-') and (Result.ChildCount = 1) and
-    (Unwrapped(Result[0]).Kind = TSyntaxKind.Literal) then
+    (TSyntaxNodes.Unparen(Result[0]).Kind = TSyntaxKind.Literal) then
   begin
-    Result := Unwrapped(Result[0]);
+    Result := TSyntaxNodes.Unparen(Result[0]);
   end;
 end;
 
@@ -474,7 +475,7 @@ begin
   begin
     Exit;
   end;
-  mShown := FScope.Text(Unwrapped(AArgument));
+  mShown := FScope.Text(TSyntaxNodes.Unparen(AArgument));
   if not StartsText('ein', mTypeName) and (mTypeName <> 'nil') then
   begin
     mTypeName := cTexts[TFormatArgsText.OfType].Fmt([mTypeName]);
@@ -598,9 +599,9 @@ begin
   end;
   for mIndex := 2 to ANode.ChildCount - 1 do
   begin
-    if Unwrapped(ANode[mIndex]).Kind = TSyntaxKind.SetConstructor then
+    if TSyntaxNodes.Unparen(ANode[mIndex]).Kind = TSyntaxKind.SetConstructor then
     begin
-      AList := Unwrapped(ANode[mIndex]);
+      AList := TSyntaxNodes.Unparen(ANode[mIndex]);
       if AFormatNode = nil then
       begin
         AFormatNode := ANode[mIndex - 1];

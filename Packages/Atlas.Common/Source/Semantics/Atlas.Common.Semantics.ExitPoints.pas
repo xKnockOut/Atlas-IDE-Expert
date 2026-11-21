@@ -142,9 +142,6 @@ uses
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Semantics.ControlFlow;
 
-type
-  TSyntaxKindSet = set of TSyntaxKind;
-
 const
   cRoutineKinds = [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod];
   cLoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
@@ -259,7 +256,7 @@ end;
 
 /// <summary>Innerster Knoten einer der Arten AKinds, der AOffset enthält; ABoundaries beenden die Suche nach
 /// außen (ein Break in einer anonymen Methode gehört nicht zur Schleife außen).</summary>
-function Innermost(ARoot: TSyntaxNode; AOffset: Integer; const AKinds, ABoundaries: TSyntaxKindSet): TSyntaxNode;
+function Innermost(ARoot: TSyntaxNode; AOffset: Integer; const AKinds, ABoundaries: TSyntaxKinds): TSyntaxNode;
 var
   mNode, mChild: TSyntaxNode;
   mIndex: Integer;
@@ -304,10 +301,10 @@ begin
 end;
 
 /// <summary>Knoten unter ARoot ohne verschachtelte Routinen und anonyme Methoden, in Baumreihenfolge.</summary>
-function OwnNodes(ARoot: TSyntaxNode; const AKinds: TSyntaxKindSet): TArray<TSyntaxNode>;
+function OwnNodes(ARoot: TSyntaxNode; const AKinds: TSyntaxKinds): TArray<TSyntaxNode>;
 var
   mList: TList<TSyntaxNode>;
-  mKinds: TSyntaxKindSet;
+  mKinds: TSyntaxKinds;
   mRoot: TSyntaxNode;
 begin
   mList := TList<TSyntaxNode>.Create;

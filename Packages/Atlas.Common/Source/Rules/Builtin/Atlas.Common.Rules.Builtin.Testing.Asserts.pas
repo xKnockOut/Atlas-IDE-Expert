@@ -57,7 +57,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -251,7 +252,7 @@ function TAssertsCheck.IsConstant(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   case mNode.Kind of
     TSyntaxKind.Literal:
       Result := True;
@@ -289,7 +290,7 @@ var
   mNode: TSyntaxNode;
   mType: string;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := TValueKind.Unknown;
   if (mNode.Kind = TSyntaxKind.Literal) and (mNode.Name <> '') and CharInSet(mNode.Name[1], ['''', '#']) then
   begin
@@ -320,12 +321,12 @@ function TAssertsCheck.IsNullable(ANode: TSyntaxNode): Boolean;
 var
   mSymbol, mType: TResolvedSymbol;
 begin
-  if FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
+  if FScope.SureType(TSyntaxNodes.Unparen(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
     (mType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]) then
   begin
     Exit(True);
   end;
-  Result := MatchText(TypeOf(Unwrapped(ANode)), cNullableTypes);
+  Result := MatchText(TypeOf(TSyntaxNodes.Unparen(ANode)), cNullableTypes);
 end;
 
 function TAssertsCheck.IsReference(ANode: TSyntaxNode; out AKind: TIndexSymbolKind): Boolean;
@@ -334,7 +335,7 @@ var
 begin
   // Klasse oder Interface mit sicher bekanntem Typ: Vergleich auf Identität (AreSame, AreNotSame).
   AKind := TIndexSymbolKind.TypeAlias;
-  Result := FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
+  Result := FScope.SureType(TSyntaxNodes.Unparen(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
     (mType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]);
   if Result then
   begin
@@ -365,12 +366,12 @@ function TAssertsCheck.IsRecord(ANode: TSyntaxNode): Boolean;
 var
   mSymbol, mType: TResolvedSymbol;
 begin
-  if FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) then
+  if FScope.SureType(TSyntaxNodes.Unparen(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) then
   begin
     // Eingebaute Typen (Double, Integer) führt der Resolver als RecordType; Record-Helfer ebenso wenig.
     Exit((mType.SymbolKind = TIndexSymbolKind.RecordType) and not mType.Builtin and not mType.IsHelper);
   end;
-  Result := IndexedTypeIs(TypeOf(Unwrapped(ANode)), TIndexSymbolKind.RecordType);
+  Result := IndexedTypeIs(TypeOf(TSyntaxNodes.Unparen(ANode)), TIndexSymbolKind.RecordType);
 end;
 
 function TAssertsCheck.SuggestNull(AValue: TSyntaxNode; AIsNull: Boolean): TSuggestion;
@@ -425,12 +426,12 @@ var
   mNode: TSyntaxNode;
   mPositive, mEqual: Boolean;
 begin
-  mNode := Unwrapped(ACondition);
+  mNode := TSyntaxNodes.Unparen(ACondition);
   mPositive := APositive;
   while (mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not') and (mNode.ChildCount = 1) do
   begin
     mPositive := not mPositive;
-    mNode := Unwrapped(mNode[0]);
+    mNode := TSyntaxNodes.Unparen(mNode[0]);
   end;
   Result := True;
   if IsAssignedCall(mNode) then

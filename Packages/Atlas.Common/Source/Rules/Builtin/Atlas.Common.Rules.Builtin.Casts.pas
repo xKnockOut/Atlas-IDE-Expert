@@ -74,7 +74,8 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -165,6 +166,7 @@ end;
 
 procedure TUnrelatedClassCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
+  mCall: TSyntaxNode;
   mScope: TTypedScope;
   mAllowTypes: TArray<string>;
 
@@ -252,7 +254,7 @@ var
       IsPlainClass(ATargetType);
     if Result then
     begin
-      AArgument := Unwrapped(ANode[1]);
+      AArgument := TSyntaxNodes.Unparen(ANode[1]);
       Result := mScope.SureType(AArgument, mSourceSymbol, ASourceType) and not mSourceSymbol.IsType and
         IsPlainClass(ASourceType);
       Result := Result and not IsTObject(ASourceType) and not SameType(ASourceType, ATargetType);
@@ -292,33 +294,6 @@ var
       [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), mReplacement)])]);
   end;
 
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.Call then
-        begin
-          CheckCast(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -327,7 +302,10 @@ begin
   mAllowTypes := TRuleOptions.Strings(AContext.Options, 'allowTypes', nil);
   mScope := TTypedScope.Create(AContext);
   try
-    Visit(AContext.Tree.Root);
+    for mCall in TSyntaxNodes.OfKind(AContext.Tree.Root, TSyntaxKind.Call) do
+    begin
+      CheckCast(mCall);
+    end;
   finally
     mScope.Free;
   end;
@@ -387,7 +365,6 @@ type
     function TargetOf(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
     function SureSource(ASource: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
     function InOverloadedCall(ANode: TSyntaxNode): Boolean;
-    function ReplacedNode(ANode: TSyntaxNode): TSyntaxNode;
     procedure Report(ANode, ASource: TSyntaxNode; const AMessage: string);
     function DeclaresFree(const AChain: TArray<TResolvedSymbol>): Boolean;
     function SameDeclared(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
@@ -423,12 +400,12 @@ begin
   if AIsAs then
   begin
     ATypeNode := ANode[1];
-    ASource := Unwrapped(ANode[0]);
+    ASource := TSyntaxNodes.Unparen(ANode[0]);
   end
   else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) then
   begin
     ATypeNode := ANode[0];
-    ASource := Unwrapped(ANode[1]);
+    ASource := TSyntaxNodes.Unparen(ANode[1]);
   end;
   Result := (ATypeNode <> nil) and (ASource <> nil) and
     (ATypeNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
@@ -497,24 +474,12 @@ begin
     (Length(FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, mParent[0])) <> 1);
 end;
 
-/// <summary>Zu ersetzender Bereich: bei "(X as T)" samt Klammern, das Ergebnis ist ein einfacher Ausdruck.
-/// </summary>
-function TRedundantCastScan.ReplacedNode(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) and
-    (Result.Parent.ChildCount = 1) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 procedure TRedundantCastScan.Report(ANode, ASource: TSyntaxNode; const AMessage: string);
 var
   mRange: TTextRange;
   mReplaced: TSyntaxNode;
 begin
-  mReplaced := ReplacedNode(ANode);
+  mReplaced := TSyntaxNodes.OuterParens(ANode);
   mRange := TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos);
   // Sicher (#1352): Der Ausdruck hat denselben Typ wie vorher, auch in der Sammelkorrektur.
   FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleConfidence.High,
@@ -585,7 +550,7 @@ begin
   begin
     Exit;
   end;
-  if InOverloadedCall(ReplacedNode(ANode)) then
+  if InOverloadedCall(TSyntaxNodes.OuterParens(ANode)) then
   begin
     Exit;
   end;
@@ -619,7 +584,7 @@ begin
   begin
     Exit;
   end;
-  mCast := Unwrapped(ANode[0]);
+  mCast := TSyntaxNodes.Unparen(ANode[0]);
   if not CastParts(mCast, mTypeNode, mSource, mIsAs) or not TargetOf(mTypeNode, mTargetType) or
     not (IsPlainClass(mTargetType) or IsTObject(mTargetType)) then
   begin

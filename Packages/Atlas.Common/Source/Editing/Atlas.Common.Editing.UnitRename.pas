@@ -38,29 +38,6 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names;
 
-function CleanName(const AName: string): string;
-begin
-  Result := AName;
-  if Result.StartsWith('&') then
-  begin
-    Result := Result.Substring(1);
-  end;
-end;
-
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Deklariert die Datei einen Namen AName (Typ, Variable, Feld, Parameter, Routine …)?</summary>
 function Declares(ANode: TSyntaxNode; const AName: string): Boolean;
 var
@@ -80,7 +57,7 @@ begin
       begin
         for Name in ACandidate.Name.Split([',']) do
         begin
-          if SameText(CleanName(Trim(Name)), mWanted) then
+          if SameText(TTextNames.WithoutAmpersand(Trim(Name)), mWanted) then
           begin
             Exit(TSyntaxSearchStep.Found);
           end;
@@ -110,7 +87,7 @@ begin
       mIndex := NextCodeAfter(ATokens, mIndex);
     end;
     if (mIndex > High(ATokens)) or (ATokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
-      not SameText(CleanName(ATokens[mIndex].Text), AParts[mPart]) then
+      not SameText(TTextNames.WithoutAmpersand(ATokens[mIndex].Text), AParts[mPart]) then
     begin
       Exit;
     end;
@@ -176,7 +153,7 @@ var
   mOptions: TUsesRewrite;
 begin
   Result := nil;
-  if Contains(TUsesClauses.UsedUnits(ATokens), ANewName) then
+  if MatchText(ANewName, TUsesClauses.UsedUnits(ATokens)) then
   begin
     mOptions := Default(TUsesRewrite);
     mOptions.Drop := [AOldName];
@@ -206,7 +183,7 @@ begin
   ALast := -1;
   Result := False;
   if (ATokens[AIndex].Kind <> TPascalTokenKind.Identifier) or
-    not SameText(CleanName(ATokens[AIndex].Text), AParts[0]) or
+    not SameText(TTextNames.WithoutAmpersand(ATokens[AIndex].Text), AParts[0]) or
     TUsesClauses.InClause(ATokens, AClauses, ATokens[AIndex].Offset) then
   begin
     Exit;

@@ -59,9 +59,6 @@ type
     destructor Destroy; override;
   end;
 
-/// <summary>Ausdruck ohne umschließende Klammern.</summary>
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-
 implementation
 
 uses
@@ -69,15 +66,6 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived;
-
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
 
 { TTypedScope }
 

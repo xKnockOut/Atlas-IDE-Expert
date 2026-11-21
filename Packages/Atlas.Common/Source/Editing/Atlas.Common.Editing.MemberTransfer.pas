@@ -71,6 +71,8 @@ type
     class function HasAll(const AItems, AList: TArray<Integer>): Boolean; static;
     /// <summary>Feld, Klassenvariable, Methode oder Property; False bei anderem.</summary>
     class function KindOf(const AMember: TClassMember; out AKind: TTransferKind): Boolean; static;
+    /// <summary>Schlüssel der Art für JSON: "field", "property" oder "method".</summary>
+    class function KindKey(AKind: TTransferKind): string; static;
     /// <summary>Warum eine Methode oben nicht abstrakt werden kann; '' wenn doch.</summary>
     class function AbstractBlocker(const AMember: TClassMember): string; static;
     /// <summary>Kandidaten der Klasse in Reihenfolge der Deklaration; Abhängigkeiten nur auf andere Kandidaten.
@@ -141,7 +143,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Arrays;
+  Atlas.Text.Arrays,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -208,6 +211,18 @@ begin
     end;
   end;
   Result := True;
+end;
+
+class function TMemberTransfer.KindKey(AKind: TTransferKind): string;
+begin
+  case AKind of
+    TTransferKind.Field:
+      Result := 'field';
+    TTransferKind.Property_:
+      Result := 'property';
+  else
+    Result := 'method';
+  end;
 end;
 
 class function TMemberTransfer.KindOf(const AMember: TClassMember; out AKind: TTransferKind): Boolean;
@@ -591,19 +606,6 @@ begin
     Result := Result + mDoc + #10;
   end;
   Result := Result + ADeclaration;
-end;
-
-/// <summary>Steht vor dem Token AIndex (ohne Kommentare und Direktiven) ein Punkt?</summary>
-function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mPrevious: Integer;
-begin
-  mPrevious := AIndex - 1;
-  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mPrevious);
-  end;
-  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
 end;
 
 /// <summary>Liegt ALine in der Klassendeklaration oder im Rumpf einer ihrer Methoden?</summary>

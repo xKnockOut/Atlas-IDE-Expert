@@ -191,7 +191,7 @@ begin
   if Result then
   begin
     TLinterOutput.Error(cTexts[TLinterFixText.Header].Fmt([string.Join(', ', FOptions.FixRules),
-      TBulkFix.ConfidenceText(FFixOptions.MinConfidence)]));
+      ConfidenceText(FFixOptions.MinConfidence)]));
   end;
 end;
 

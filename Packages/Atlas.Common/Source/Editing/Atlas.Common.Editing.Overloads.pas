@@ -123,7 +123,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -286,23 +287,13 @@ begin
   Result := ATokens[AIndex].Offset + Length(ATokens[AIndex].Text);
 end;
 
-/// <summary>Kurzname eines Kopfs: "TFoo.Bar" ergibt "Bar".</summary>
-function ShortName(const AName: string): string;
-begin
-  Result := AName;
-  if LastDelimiter('.', Result) > 0 then
-  begin
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-  end;
-end;
-
 /// <summary>Token des Namens im Kopf AHeader: das erste Bezeichner-Token mit dem Kurznamen.</summary>
 function NameToken(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): Integer;
 var
   mIndex: Integer;
   mName: string;
 begin
-  mName := ShortName(AHeader.Name);
+  mName := TTextNames.LastPart(AHeader.Name);
   for mIndex := 0 to High(ATokens) do
   begin
     if ATokens[mIndex].Offset >= AHeader.EndOffset then
@@ -679,7 +670,7 @@ begin
     Exit;
   end;
   Target.HasDecl := True;
-  Target.Name := ShortName(Target.Decl.QualifiedName);
+  Target.Name := TTextNames.LastPart(Target.Decl.QualifiedName);
   mQualified := Target.Name;
   if Target.Container <> '' then
   begin
@@ -700,7 +691,7 @@ begin
   begin
     Exit;
   end;
-  Target.Name := ShortName(Target.Body.QualifiedName);
+  Target.Name := TTextNames.LastPart(Target.Body.QualifiedName);
   Result := ResolveContainer and ReadDeclOfBody;
   // Typ des letzten Parameters: aus der Deklaration, sonst aus dem Kopf der Implementierung.
   if Result and Target.HasDecl then
@@ -726,7 +717,7 @@ begin
   Target.Container := Copy(mQualified, 1, LastDelimiter('.', mQualified) - 1);
   if Pos('.', Target.Container) > 0 then
   begin
-    Target.Container := ShortName(Target.Container);
+    Target.Container := TTextNames.LastPart(Target.Container);
   end;
   TypeNode := FindType(Tree.Root, Target.Container);
   Result := TypeNode <> nil;

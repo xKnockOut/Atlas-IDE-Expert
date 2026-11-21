@@ -59,27 +59,14 @@ uses
   System.Generics.Collections,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data;
+  Atlas.Common.Rules.Catalog.Data,
+  System.StrUtils;
 
 var
   // Werden in initialization gefüllt und danach nur gelesen, daher ohne Sperre.
   Categories: TDictionary<string, string>;
   // Kennungen (klein) der experimentellen Regeln; Wert ohne Bedeutung.
   Experimentals: TDictionary<string, Boolean>;
-
-function Contains(const AItems: TArray<string>; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AItems do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
 
 /// <summary>Wendet die Einträge auf den Schweregrad an; ARuleId '*' in AItems trifft jede Regel.</summary>
 procedure ApplyRules(const AItems: TArray<TRuleSetting>; const ARuleId: string; var ASeverity: TRuleSeverity;
@@ -100,7 +87,7 @@ end;
 
 procedure ApplyCategories(const ACategories: TArray<string>; const ACategory: string; var ASeverity: TRuleSeverity);
 begin
-  if (Length(ACategories) > 0) and (ACategory <> '') and not Contains(ACategories, ACategory) then
+  if (Length(ACategories) > 0) and (ACategory <> '') and not MatchText(ACategory, ACategories) then
   begin
     ASeverity := TRuleSeverity.Off;
   end;

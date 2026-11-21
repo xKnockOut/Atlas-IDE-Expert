@@ -91,21 +91,9 @@ const
   cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType];
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
 begin
-  Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
+  Result := (TTextPosition.Compare(ARange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ARange.EndPos) <= 0);
 end;
 
 function Target(const AFileName: string; const ARange, ASelection: TTextRange): TDefinitionTarget;
@@ -152,11 +140,11 @@ var
 begin
   for mIndex := 0 to High(ATokens) do
   begin
-    if ComparePositions(ATokens[mIndex].StartPos, APosition) > 0 then
+    if TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) > 0 then
     begin
       Break;
     end;
-    if ComparePositions(APosition, ATokens[mIndex].EndPos) <= 0 then
+    if TTextPosition.Compare(APosition, ATokens[mIndex].EndPos) <= 0 then
     begin
       Exit(mIndex);
     end;

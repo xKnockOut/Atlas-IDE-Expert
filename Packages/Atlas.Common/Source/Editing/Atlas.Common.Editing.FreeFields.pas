@@ -123,7 +123,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.FreeFields.Types,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -644,7 +645,7 @@ function OwnsElements(const AContainer: string; const AElements: TArray<string>)
 var
   mArgs: string;
 begin
-  Result := MatchText(TFreeFieldTypes.BaseName(AContainer), cOwningContainers);
+  Result := MatchText(TTextNames.WithoutGenerics(AContainer), cOwningContainers);
   if not Result or (Pos('<', AContainer) = 0) then
   begin
     Exit;
@@ -654,7 +655,7 @@ begin
   begin
     mArgs := Copy(mArgs, 1, Length(mArgs) - 1);
   end;
-  Result := MatchText(TFreeFieldTypes.BaseName(mArgs), AElements);
+  Result := MatchText(TTextNames.WithoutGenerics(mArgs), AElements);
 end;
 
 function ContainsInteger(const AItems: TArray<Integer>; AValue: Integer): Boolean;
@@ -689,13 +690,13 @@ begin
     mFieldType := FFields[AField].TypeName;
   end;
   mElements := FTypes.ComponentChain(mFieldType, mEndsKnown) +
-    [TFreeFieldTypes.BaseName(FFields[AField].TypeName), 'TObject'];
+    [TTextNames.WithoutGenerics(FFields[AField].TypeName), 'TObject'];
   // TObjectList.Create(False) besitzt nichts.
   if OwnsElements(FFields[mReceiver].TypeName, mElements) then
   begin
     Exit(not ContainsInteger(FNotOwning, mReceiver));
   end;
-  for mFieldType in FTypes.ClassFieldTypes(TFreeFieldTypes.BaseName(FFields[mReceiver].TypeName)) do
+  for mFieldType in FTypes.ClassFieldTypes(TTextNames.WithoutGenerics(FFields[mReceiver].TypeName)) do
   begin
     if OwnsElements(mFieldType, mElements) then
     begin

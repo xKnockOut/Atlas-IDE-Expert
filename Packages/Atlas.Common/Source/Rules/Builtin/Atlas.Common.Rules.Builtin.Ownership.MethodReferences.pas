@@ -52,7 +52,8 @@ uses
   Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -83,23 +84,6 @@ const
   // Klasse, die nur aus Klassenmethoden und -feldern besteht und deshalb keinen Destruktor hat.
   cTeardownMethods: array[0..4] of string = ('Destroy', 'BeforeDestruction', 'Notification', 'FreeNotification',
     'Release');
-
-/// <summary>Steht ANode in einer anonymen Methode unterhalb von ARoutine?</summary>
-function InsideAnonymous(ANode, ARoutine: TSyntaxNode): Boolean;
-var
-  mCurrent: TSyntaxNode;
-begin
-  mCurrent := ANode.Parent;
-  while (mCurrent <> nil) and (mCurrent <> ARoutine) do
-  begin
-    if mCurrent.Kind = TSyntaxKind.AnonymousMethod then
-    begin
-      Exit(True);
-    end;
-    mCurrent := mCurrent.Parent;
-  end;
-  Result := False;
-end;
 
 /// <summary>Wert ohne Klammern: (procedure … end) wird zur anonymen Methode.</summary>
 function Unwrapped(AValue: TSyntaxNode): TSyntaxNode;
@@ -195,7 +179,7 @@ begin
     begin
       mStore := mNode.Parent;
     end;
-    mCaptured := mCaptured or InsideAnonymous(mNode, ARoutine);
+    mCaptured := mCaptured or (TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.AnonymousMethod], ARoutine) <> nil);
   end;
   if mCaptured and (mStore <> nil) then
   begin

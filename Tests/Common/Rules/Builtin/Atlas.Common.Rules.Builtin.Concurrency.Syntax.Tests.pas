@@ -31,7 +31,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Builtin.Concurrency.Syntax;
+  Atlas.Common.Rules.Builtin.Concurrency.Syntax,
+  Atlas.Common.Pascal.SyntaxNodes,
+  System.StrUtils;
 
 /// <summary>Unit mit den Anweisungen ABody in der Prozedur TFoo.Run.</summary>
 function UnitWith(const ABody: string): string;
@@ -45,8 +47,8 @@ end;
 
 procedure TConcurrencySyntaxTests.ListsAndNames;
 begin
-  Assert.IsTrue(InList(cVclGlobals, 'application'));
-  Assert.IsFalse(InList(cVclGlobals, 'Form1'));
+  Assert.IsTrue(MatchText('application', cVclGlobals));
+  Assert.IsFalse(MatchText('Form1', cVclGlobals));
   Assert.AreEqual('TA', ClassPart('TA.Destroy'));
   Assert.AreEqual('', ClassPart('Destroy'));
   Assert.AreEqual('Destroy', MethodPart('TA.Destroy'));
@@ -67,8 +69,8 @@ begin
     Assert.AreEqual('FLock', VariableName(mCall.Receiver));
     Assert.IsTrue(TryMethodCall(mLists[0][1], mCall));
     Assert.AreEqual('Machwas', mCall.Method);
-    Assert.IsTrue(Mentions(mLists[0][1], 'FX'));
-    Assert.IsFalse(Mentions(mLists[0][1], 'FY'));
+    Assert.IsTrue(TSyntaxNodes.Mentions(mLists[0][1], 'FX'));
+    Assert.IsFalse(TSyntaxNodes.Mentions(mLists[0][1], 'FY'));
     Assert.IsFalse(TryMethodCall(mLists[0][2], mCall));
   finally
     mTree.Free;

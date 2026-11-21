@@ -4,7 +4,7 @@
 // Kürzel gibt, per Maus aufruft, sieht kurz unten rechts im Editorfenster einen
 // Tipp mit dem Kürzel (TAtlasShortcutTipWindow).
 // Erkennen, wie ein Befehl aufgerufen wurde (vorher geprüft, siehe
-// docs/Architektur.md):
+// docs/architektur/Plugin-Dienste.md):
 // - Aktionen der IDE und anderer Erweiterungen: Application.OnActionExecute
 //   über TApplicationEvents (mehrere Abonnenten möglich, ändert keine Aktion).
 //   Die VCL ruft es für jede TContainedAction, deren Aktionsliste sie nicht

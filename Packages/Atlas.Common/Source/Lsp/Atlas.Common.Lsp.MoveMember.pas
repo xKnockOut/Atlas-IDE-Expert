@@ -89,7 +89,8 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.WorkspaceChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -138,15 +139,6 @@ const
 function Failed(const AMessage: string): EJsonRpcError;
 begin
   Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspMoveMemberText.MoveMember].Text + AMessage);
-end;
-
-function PlainName(const AName: string): string;
-begin
-  Result := Trim(AName);
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, Pos('<', Result) - 1));
-  end;
 end;
 
 function IsUp(const ADirection: string): Boolean;
@@ -228,7 +220,7 @@ var
   mName: string;
 begin
   AHit := Default(TClassHit);
-  mName := PlainName(AName);
+  mName := TTextNames.WithoutGenerics(AName);
   Result := (mName <> '') and not SameText(mName, 'TObject') and (DeclHit(ATree, AText, AFileName, mName, AHit) or
     ((AIndex <> nil) and IndexHit(AIndex, AFileName, mName, AHit)));
 end;
@@ -263,7 +255,7 @@ begin
   begin
     mLayout := TClassLayout.Read(ATree, AText, mDecl);
     try
-      if (mLayout.Ancestors <> nil) and SameText(PlainName(mLayout.Ancestors[0]), AClassName) then
+      if (mLayout.Ancestors <> nil) and SameText(TTextNames.WithoutGenerics(mLayout.Ancestors[0]), AClassName) then
       begin
         mHit := Default(TClassHit);
         mHit.Ref := TMemberClassRef.Create(AFileName, mLayout.Name);
@@ -283,7 +275,7 @@ begin
   begin
     if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and not SameText(mLocation.FileName, AFileName) and
       not IsLibrary(AIndex, mLocation.FileName) and (mLocation.Symbol.Ancestors <> nil) and
-      SameText(PlainName(mLocation.Symbol.Ancestors[0]), AClassName) then
+      SameText(TTextNames.WithoutGenerics(mLocation.Symbol.Ancestors[0]), AClassName) then
     begin
       mHit := Default(TClassHit);
       mHit.Ref := TMemberClassRef.Create(mLocation.FileName, mLocation.Symbol.Name);
@@ -291,18 +283,6 @@ begin
       mHit.Ancestor := mLocation.Symbol.Ancestors[0];
       Result := Result + [mHit];
     end;
-  end;
-end;
-
-function KindText(AKind: TTransferKind): string;
-begin
-  case AKind of
-    TTransferKind.Field:
-      Result := 'field';
-    TTransferKind.Property_:
-      Result := 'property';
-  else
-    Result := 'method';
   end;
 end;
 
@@ -383,7 +363,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('id', TJSONNumber.Create(AItem.Id));
   Result.AddPair('name', AItem.Name);
-  Result.AddPair('kind', KindText(AItem.Kind));
+  Result.AddPair('kind', TMemberTransfer.KindKey(AItem.Kind));
   Result.AddPair('display', AItem.Display);
   Result.AddPair('visibility', TClassEdits.VisibilityName(AItem.Visibility));
   Result.AddPair('checked', TJSONBool.Create(AItem.Id = ASelected));

@@ -122,9 +122,6 @@ type
     property LineBreak: string read FLineBreak;
   end;
 
-/// <summary>Ist AText (ohne Groß-/Kleinschreibung) eines der Wörter AWords?</summary>
-function IsIn(const AText: string; const AWords: array of string): Boolean;
-
 /// <summary>Modell der Datei, je Lauf einmal gebaut; gehört ACache, nie freigeben.
 /// False ohne Syntaxbaum.</summary>
 function PrepareModel(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
@@ -152,20 +149,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines;
-
-function IsIn(const AText: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  for mWord in AWords do
-  begin
-    if SameText(AText, mWord) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
 
 { TComponentModel }
 
@@ -288,7 +271,7 @@ begin
   mDepth := 0;
   while (mName <> '') and (mDepth < 64) do
   begin
-    if IsIn(mName, cComponentBases) then
+    if MatchText(mName, cComponentBases) then
     begin
       Exit(True);
     end;
@@ -314,10 +297,10 @@ begin
   mName := FAncestry.ParentOf(AClassName);
   mDepth := 0;
   // Bekannte VCL-Klassen zuerst: Steht die VCL im Index, deklariert auch TCustomControl ein (leeres) Paint.
-  while (mName <> '') and (mDepth < 64) and not Result and not IsIn(mName, cEmptyPaintBases) do
+  while (mName <> '') and (mDepth < 64) and not Result and not MatchText(mName, cEmptyPaintBases) do
   begin
-    AOnPaintOnly := IsIn(mName, cOnPaintPaintBases);
-    Result := IsIn(mName, cDrawingPaintBases) or AOnPaintOnly or DeclaresPaint(mName);
+    AOnPaintOnly := MatchText(mName, cOnPaintPaintBases);
+    Result := MatchText(mName, cDrawingPaintBases) or AOnPaintOnly or DeclaresPaint(mName);
     if Result then
     begin
       AAncestor := mName;
@@ -428,7 +411,7 @@ begin
     begin
       mMode := '';
     end
-    else if IsIn(mToken.Text, ['read', 'write', 'default', 'stored', 'nodefault', 'implements', 'index']) then
+    else if MatchText(mToken.Text, ['read', 'write', 'default', 'stored', 'nodefault', 'implements', 'index']) then
     begin
       mMode := LowerCase(mToken.Text);
       mCount := 0;
@@ -499,7 +482,7 @@ begin
     begin
       Break;
     end;
-    if (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and IsIn(mToken.Text, AWords) then
+    if (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and MatchText(mToken.Text, AWords) then
     begin
       Exit(True);
     end;

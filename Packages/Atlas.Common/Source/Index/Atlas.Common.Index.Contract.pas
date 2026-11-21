@@ -356,10 +356,31 @@ type
     procedure Leave;
   end;
 
+/// <summary>Schlüsselwort der Sichtbarkeit: "public", "published", "strict protected" …</summary>
+function VisibilityKeyword(AVisibility: TIndexVisibility): string;
+
 implementation
 
 uses
   System.StrUtils;
+
+function VisibilityKeyword(AVisibility: TIndexVisibility): string;
+begin
+  case AVisibility of
+    TIndexVisibility.Published:
+      Result := 'published';
+    TIndexVisibility.Protected:
+      Result := 'protected';
+    TIndexVisibility.StrictProtected:
+      Result := 'strict protected';
+    TIndexVisibility.Private:
+      Result := 'private';
+    TIndexVisibility.StrictPrivate:
+      Result := 'strict private';
+  else
+    Result := 'public';
+  end;
+end;
 
 type
   TUnitNameTable = class(TInterfacedObject, IUnitNameTable)

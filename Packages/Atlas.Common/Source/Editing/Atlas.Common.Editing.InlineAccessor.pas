@@ -101,7 +101,9 @@ uses
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -152,34 +154,6 @@ begin
   Result.EqualityCheck := True;
 end;
 
-function StripGenerics(const AName: string): string;
-begin
-  Result := Trim(AName);
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, Pos('<', Result) - 1));
-  end;
-end;
-
-/// <summary>FX oder Self.FX; '' sonst.</summary>
-function FieldRef(ANode: TSyntaxNode): string;
-begin
-  Result := '';
-  if ANode = nil then
-  begin
-    Exit;
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := ANode.Name;
-  end
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
-    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
-  begin
-    Result := ANode.Name;
-  end;
-end;
-
 function IsIdentifierNamed(ANode: TSyntaxNode; const AName: string): Boolean;
 begin
   Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName);
@@ -211,13 +185,13 @@ begin
   if (mStatement.Kind = TSyntaxKind.AssignStatement) and (mStatement.ChildCount = 2) and
     (IsIdentifierNamed(mStatement[0], 'Result') or IsIdentifierNamed(mStatement[0], AMethod)) then
   begin
-    Result := FieldRef(mStatement[1]);
+    Result := TSyntaxNodes.FieldName(mStatement[1]);
   end
   else if (mStatement.Kind = TSyntaxKind.CallStatement) and (mStatement.ChildCount = 1) and
     (mStatement[0].Kind = TSyntaxKind.Call) and (mStatement[0].ChildCount = 2) and
     IsIdentifierNamed(mStatement[0][0], 'Exit') then
   begin
-    Result := FieldRef(mStatement[0][1]);
+    Result := TSyntaxNodes.FieldName(mStatement[0][1]);
   end;
 end;
 
@@ -228,7 +202,7 @@ begin
   if (AStatement <> nil) and (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) and
     IsIdentifierNamed(AStatement[1], AParam) then
   begin
-    Result := FieldRef(AStatement[0]);
+    Result := TSyntaxNodes.FieldName(AStatement[0]);
   end;
 end;
 
@@ -251,8 +225,8 @@ function ComparesWith(ACondition: TSyntaxNode; const AField, AParam: string): Bo
 var
   mLeft, mRight: string;
 begin
-  mLeft := FieldRef(ACondition[0]);
-  mRight := FieldRef(ACondition[1]);
+  mLeft := TSyntaxNodes.FieldName(ACondition[0]);
+  mRight := TSyntaxNodes.FieldName(ACondition[1]);
   Result := (SameText(mLeft, AField) and SameText(mRight, AParam)) or
     (SameText(mLeft, AParam) and SameText(mRight, AField));
 end;
@@ -854,7 +828,7 @@ var
   mDeclared: Boolean;
 begin
   mFound := nil;
-  mName := StripGenerics(AInterface);
+  mName := TTextNames.WithoutGenerics(AInterface);
   if Pos('.', mName) > 0 then
   begin
     mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
@@ -862,7 +836,7 @@ begin
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      if (mFound = nil) and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(StripGenerics(ANode.Name), mName) and
+      if (mFound = nil) and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(TTextNames.WithoutGenerics(ANode.Name), mName) and
         (ANode.FindChild(TSyntaxKind.InterfaceType) <> nil) then
       begin
         mFound := ANode;
@@ -893,7 +867,7 @@ end;
 /// <summary>Name des Interfaces ohne generische Argumente und Unit (System.IFoo&lt;T&gt; wird IFoo).</summary>
 function ShortInterfaceName(const AName: string): string;
 begin
-  Result := StripGenerics(AName);
+  Result := TTextNames.WithoutGenerics(AName);
   if Pos('.', Result) > 0 then
   begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);

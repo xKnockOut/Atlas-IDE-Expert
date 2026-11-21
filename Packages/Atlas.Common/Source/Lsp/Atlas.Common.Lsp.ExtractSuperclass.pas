@@ -130,18 +130,6 @@ begin
     cTexts[TLspExtractSuperclassText.ExtractSuperclass].Text + AMessage);
 end;
 
-function KindText(AKind: TTransferKind): string;
-begin
-  case AKind of
-    TTransferKind.Field:
-      Result := 'field';
-    TTransferKind.Property_:
-      Result := 'property';
-  else
-    Result := 'method';
-  end;
-end;
-
 /// <summary>Ist AName ein Interface: im Baum oder im Index.</summary>
 function InterfaceCheck(ATree: TSyntaxTree; const AIndex: ISymbolIndex): TIsInterfaceType;
 begin
@@ -255,7 +243,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('id', TJSONNumber.Create(AItem.Id));
   Result.AddPair('name', AItem.Name);
-  Result.AddPair('kind', KindText(AItem.Kind));
+  Result.AddPair('kind', TMemberTransfer.KindKey(AItem.Kind));
   Result.AddPair('display', AItem.Display);
   Result.AddPair('visibility', TClassEdits.VisibilityName(AItem.Visibility));
   Result.AddPair('checked', TJSONBool.Create(False));

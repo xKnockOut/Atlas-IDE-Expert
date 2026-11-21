@@ -51,8 +51,6 @@ type
     /// <summary>Text des Knotens ohne Leerraum, Groß-/Kleinschreibung und Unit-Präfix (E2208, E2257).</summary>
     function TypeKey(ANode: TSyntaxNode): string; overload;
     function TypeKey(AFirst, AStop: Integer): string; overload;
-    /// <summary>Text der Token AFirst..AStop-1 ohne Kommentare und Leerraum.</summary>
-    function Text(AFirst, AStop: Integer): string;
     property Tokens: TArray<TPascalToken> read FTokens;
     property Resolver: TNameResolver read FResolver;
     property OwnUnit: TUnitIndex read FOwnUnit;
@@ -312,7 +310,7 @@ var
   mAngle: Integer;
   mHead: string;
 begin
-  Result := UpperCase(Text(AFirst, AStop));
+  Result := UpperCase(CodeText(FTokens, AFirst, AStop));
   mAngle := Pos('<', Result);
   if mAngle = 0 then
   begin
@@ -320,20 +318,6 @@ begin
   end;
   mHead := Copy(Result, 1, mAngle - 1);
   Result := Copy(mHead, LastDelimiter('.', mHead) + 1, MaxInt) + Copy(Result, mAngle, MaxInt);
-end;
-
-function TDeclarationScan.Text(AFirst, AStop: Integer): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := AFirst to AStop - 1 do
-  begin
-    if not IsTrivia(FTokens[mIndex]) then
-    begin
-      Result := Result + FTokens[mIndex].Text;
-    end;
-  end;
 end;
 
 end.
