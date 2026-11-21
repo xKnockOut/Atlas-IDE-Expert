@@ -89,14 +89,18 @@ type
   TFakeTrust = class(TInterfacedObject, IUpdateTrust)
   private
     FFiles: TFakeFiles;
-    FSigners: TDictionary<string, string>;
+    FSigners: TDictionary<string, TUpdateSignature>;
   public
     constructor Create(AFiles: TFakeFiles);
     destructor Destroy; override;
     function Sha256(const AFileName: string): string;
     function Signature(const AFileName: string): TUpdateSignature;
-    /// <summary>Datei signiert von ASubject ('' = unsigniert).</summary>
+    /// <summary>Datei signiert von ASubject ('' = unsigniert); der Fingerabdruck folgt aus dem Namen.</summary>
     procedure Sign(const AFileName, ASubject: string);
+    /// <summary>Gültig signiert mit Name ASubject und Fingerabdruck AThumbprint (beide dürfen leer sein).</summary>
+    procedure SignAs(const AFileName, ASubject, AThumbprint: string);
+    /// <summary>Fingerabdruck, den Sign für ASubject vergibt.</summary>
+    class function ThumbprintOf(const ASubject: string): string; static;
     /// <summary>Alle Dateien unter ADirectory signieren.</summary>
     procedure SignAll(const ADirectory, ASubject: string);
     class function HashOf(const AText: string): string; static;
@@ -106,12 +110,17 @@ type
   private
     FFiles: TFakeFiles;
     FServer: TDictionary<string, string>;
+    FPeekFile: string;
+    FPeeked: string;
   public
     constructor Create(AFiles: TFakeFiles);
     destructor Destroy; override;
     function Fetch(const AUrl: string; out AText, AError: string): Boolean;
     function Download(const AUrl, AFileName: string; const AProgress: TUpdateProgress; out AError: string): Boolean;
     procedure Serve(const AUrl, AContent: string);
+    /// <summary>Datei, deren Inhalt Fetch beim Aufruf in Peeked festhält (Stand mitten im Lauf).</summary>
+    property PeekFile: string read FPeekFile write FPeekFile;
+    property Peeked: string read FPeeked;
   end;
 
   TFakeArchive = class(TInterfacedObject, IUpdateArchive)
@@ -588,7 +597,7 @@ constructor TFakeTrust.Create(AFiles: TFakeFiles);
 begin
   inherited Create;
   FFiles := AFiles;
-  FSigners := TDictionary<string, string>.Create;
+  FSigners := TDictionary<string, TUpdateSignature>.Create;
 end;
 
 destructor TFakeTrust.Destroy;
@@ -603,14 +612,40 @@ begin
 end;
 
 function TFakeTrust.Signature(const AFileName: string): TUpdateSignature;
+var
+  mSignature: TUpdateSignature;
 begin
   Result := Default(TUpdateSignature);
-  Result.Valid := FSigners.TryGetValue(KeyOf(AFileName), Result.Subject) and (Result.Subject <> '');
+  if FSigners.TryGetValue(KeyOf(AFileName), mSignature) then
+  begin
+    Result := mSignature;
+  end;
 end;
 
 procedure TFakeTrust.Sign(const AFileName, ASubject: string);
 begin
-  FSigners.AddOrSetValue(KeyOf(AFileName), ASubject);
+  if ASubject = '' then
+  begin
+    FSigners.AddOrSetValue(KeyOf(AFileName), Default(TUpdateSignature));
+    Exit;
+  end;
+  SignAs(AFileName, ASubject, ThumbprintOf(ASubject));
+end;
+
+procedure TFakeTrust.SignAs(const AFileName, ASubject, AThumbprint: string);
+var
+  mSignature: TUpdateSignature;
+begin
+  mSignature := Default(TUpdateSignature);
+  mSignature.Valid := True;
+  mSignature.Subject := ASubject;
+  mSignature.Thumbprint := AThumbprint;
+  FSigners.AddOrSetValue(KeyOf(AFileName), mSignature);
+end;
+
+class function TFakeTrust.ThumbprintOf(const ASubject: string): string;
+begin
+  Result := HashOf('key ' + ASubject);
 end;
 
 procedure TFakeTrust.SignAll(const ADirectory, ASubject: string);
@@ -664,6 +699,10 @@ end;
 function TFakeNetwork.Fetch(const AUrl: string; out AText, AError: string): Boolean;
 begin
   AError := '';
+  if FPeekFile <> '' then
+  begin
+    FPeeked := FFiles.ReadText(FPeekFile);
+  end;
   Result := FServer.TryGetValue(AUrl, AText);
   if not Result then
   begin
