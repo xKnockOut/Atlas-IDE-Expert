@@ -119,7 +119,8 @@ end;
 class procedure TAtlasIdeBookmarksGutter.BookmarksTipText(const ABookmarks: TArray<TAtlasBookmark>;
   out ATitle, AText: string);
 var
-  mMark: TAtlasBookmark;
+  mNames: TArray<string>;
+  mIndex: Integer;
 begin
   ATitle := '';
   AText := '';
@@ -135,14 +136,12 @@ begin
   begin
     ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksTipMore, [Length(ABookmarks)]);
   end;
-  for mMark in ABookmarks do
+  SetLength(mNames, Length(ABookmarks));
+  for mIndex := 0 to High(ABookmarks) do
   begin
-    if AText <> '' then
-    begin
-      AText := AText + #10;
-    end;
-    AText := AText + mMark.Name;
+    mNames[mIndex] := ABookmarks[mIndex].Name;
   end;
+  AText := string.Join(#10, mNames);
 end;
 
 end.

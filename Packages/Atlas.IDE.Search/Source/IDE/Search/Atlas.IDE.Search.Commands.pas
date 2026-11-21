@@ -510,11 +510,14 @@ end;
 
 /// <summary>Einmal je Leiste: Lage von Editor und Leiste im gemeinsamen Eltern-Steuerelement (Diagnose).</summary>
 class procedure TAtlasIdeSearch.LogLayout(ABar: TAtlasSearchBar);
+const
+  // Ein Steuerelement neben der Suchleiste im Protokoll.
+  cPartFormat = ' [%s %s Align %d, %d,%d %dx%d, sichtbar %s]';
 var
   mParent: TWinControl;
   mIndex: Integer;
   mChild: TControl;
-  mParts: string;
+  mParts: TStringBuilder;
 begin
   if ABar.Tag <> 0 then
   begin
@@ -526,15 +529,19 @@ begin
   begin
     Exit;
   end;
-  mParts := '';
-  for mIndex := 0 to mParent.ControlCount - 1 do
-  begin
-    mChild := mParent.Controls[mIndex];
-    mParts := mParts + Format(' [%s %s Align %d, %d,%d %dx%d, sichtbar %s]', [mChild.ClassName, mChild.Name,
-      Ord(mChild.Align), mChild.Left, mChild.Top, mChild.Width, mChild.Height, BoolToStr(mChild.Visible, True)]);
+  mParts := TStringBuilder.Create;
+  try
+    for mIndex := 0 to mParent.ControlCount - 1 do
+    begin
+      mChild := mParent.Controls[mIndex];
+      mParts.AppendFormat(cPartFormat, [mChild.ClassName, mChild.Name, Ord(mChild.Align), mChild.Left, mChild.Top,
+        mChild.Width, mChild.Height, BoolToStr(mChild.Visible, True)]);
+    end;
+    TAtlasGuard.Log(Format('Suchleiste: in %s %s (%dx%d):%s', [mParent.ClassName, mParent.Name,
+      mParent.ClientWidth, mParent.ClientHeight, mParts.ToString]));
+  finally
+    mParts.Free;
   end;
-  TAtlasGuard.Log(Format('Suchleiste: in %s %s (%dx%d):%s', [mParent.ClassName, mParent.Name, mParent.ClientWidth,
-    mParent.ClientHeight, mParts]));
 end;
 
 class procedure TAtlasIdeSearch.StopProbe;

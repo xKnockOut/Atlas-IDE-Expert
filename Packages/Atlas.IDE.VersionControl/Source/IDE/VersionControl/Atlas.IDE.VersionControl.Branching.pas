@@ -660,8 +660,8 @@ class function TAtlasIdeBranching.FailureText(AKind: TAtlasVcsKind; const ASteps
   const ARun: TAtlasVcsBranchRun): string;
 var
   mDone: TArray<TAtlasVcsBranchStep>;
-  mStep: TAtlasVcsBranchStep;
-  mList: string;
+  mTexts: TArray<string>;
+  mIndex: Integer;
 begin
   if (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) then
   begin
@@ -677,16 +677,12 @@ begin
   begin
     Exit;
   end;
-  mList := '';
-  for mStep in mDone do
+  SetLength(mTexts, Length(mDone));
+  for mIndex := 0 to High(mDone) do
   begin
-    if mList <> '' then
-    begin
-      mList := mList + '; ';
-    end;
-    mList := mList + TAtlasVcsBranchPlan.StepText(AKind, mStep);
+    mTexts[mIndex] := TAtlasVcsBranchPlan.StepText(AKind, mDone[mIndex]);
   end;
-  Result := Result + ' ' + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchServerDone, [mList]);
+  Result := Result + ' ' + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchServerDone, [string.Join('; ', mTexts)]);
 end;
 
 end.

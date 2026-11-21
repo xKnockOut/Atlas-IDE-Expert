@@ -75,6 +75,8 @@ type
     procedure SortBy(AColumn: Integer; ADescending: Boolean);
     /// <summary>Vergleich wie im Explorer: Ziffernfolgen als Zahlen, sonst ohne Groß-/Kleinschreibung.</summary>
     class function CompareNatural(const ALeft, ARight: string): Integer; static;
+    /// <summary>Eine Zeile je Eintrag von AList, die Zellen durch Tabulatoren getrennt (Kopieren, Tests).</summary>
+    class function RowsText(AList: TListView): TArray<string>; static;
     /// <summary>Klick auf den Spaltenkopf sortiert (zweiter Klick kehrt um).</summary>
     property Sortable: Boolean read FSortable write FSortable;
     property SortColumn: Integer read FSortColumn;
@@ -250,6 +252,19 @@ begin
   else if (AColumn > 0) and (AColumn <= AItem.SubItems.Count) then
   begin
     Result := AItem.SubItems[AColumn - 1];
+  end;
+end;
+
+class function TAtlasListView.RowsText(AList: TListView): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, AList.Items.Count);
+  for mIndex := 0 to AList.Items.Count - 1 do
+  begin
+    Result[mIndex] := string.Join(#9, TArray<string>.Create(AList.Items[mIndex].Caption) +
+      AList.Items[mIndex].SubItems.ToStringArray);
   end;
 end;
 
