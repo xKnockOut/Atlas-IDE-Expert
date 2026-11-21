@@ -51,6 +51,14 @@ type
     [Test]
     [Category('Benchmark')]
     procedure TwoThousandUnitsAreFast;
+    /// <summary>Aufbau aus allen Units auf einmal ergibt dieselben Kanten wie Unit für Unit über Update.</summary>
+    [Test]
+    procedure LoadMatchesIncrementalUpdates;
+    /// <summary>Viele Units warten auf gemeinsam verwendete Units, die erst am Ende der Liste kommen (wie die
+    /// Projektgruppe von Atlas, Watchdog 15.11.2026): Aufbau bleibt unter 2 s.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure LateCommonUnitsAreFast;
   end;
 
 function UsesUnit(const AName: string; const AInterface, AImplementation: TArray<string>): TUnitIndex;
@@ -437,6 +445,91 @@ begin
   try
     Assert.AreEqual(1, Integer(Length(mGraph.AllCycles)));
     Assert.AreEqual(1999, Integer(Length(mGraph.RecompileSet(0))));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
+  finally
+    mGraph.Free;
+  end;
+end;
+
+/// <summary>Kanten des Graphen als Text, Unit für Unit nach Name: "A&gt;B,C&lt;D;…".</summary>
+function EdgeText(AGraph: TUsesGraph): string;
+var
+  mNode: Integer;
+begin
+  Result := '';
+  for mNode in AGraph.SortedNodes do
+  begin
+    Result := Result + AGraph.Node(mNode).UnitName + '>' +
+      Names(AGraph, AGraph.DirectDependencies(mNode, cAllUsesSections)) + '<' +
+      Names(AGraph, AGraph.DirectDependents(mNode, cAllUsesSections)) + ';';
+  end;
+end;
+
+procedure TUsesGraphTests.LoadMatchesIncrementalUpdates;
+var
+  mUnits: TArray<TUnitIndex>;
+  mLoaded, mStepwise: TUsesGraph;
+  mUnit: TUnitIndex;
+  mOptions: TUsesGraphOptions;
+begin
+  // Mit Namensraum (SysUtils → System.SysUtils), Zyklus, fehlender Unit und Ziel, das erst später kommt.
+  mUnits := TArray<TUnitIndex>.Create(UsesUnit('App.Main', ['SysUtils', 'App.Data'], ['App.Fehlt']),
+    UsesUnit('App.Data', ['System.SysUtils'], ['App.Main']), UsesUnit('App.Tools', nil, ['App.Data', 'SysUtils']),
+    UsesUnit('System.SysUtils', nil, nil));
+  mOptions := TUsesGraphOptions.Default;
+  mOptions.Namespaces := ['System'];
+  mLoaded := TUsesGraph.Create(mUnits, mOptions);
+  mStepwise := TUsesGraph.Create(mOptions);
+  try
+    for mUnit in mUnits do
+    begin
+      mStepwise.Update(mUnit);
+    end;
+    Assert.AreEqual(EdgeText(mStepwise), EdgeText(mLoaded));
+    Assert.AreEqual(mStepwise.EdgeCount, mLoaded.EdgeCount);
+    // Die offene Kante wartet weiter: Kommt App.Fehlt, verbindet sie sich.
+    mLoaded.Update(UsesUnit('App.Fehlt', nil, nil));
+    Assert.AreEqual('App.Main', Names(mLoaded, mLoaded.DirectDependents(mLoaded.IndexOf('App.Fehlt'),
+      cAllUsesSections)));
+  finally
+    mStepwise.Free;
+    mLoaded.Free;
+  end;
+end;
+
+procedure TUsesGraphTests.LateCommonUnitsAreFast;
+var
+  mUnits: TArray<TUnitIndex>;
+  mIndex, mCommon: Integer;
+  mUses: TArray<string>;
+  mGraph: TUsesGraph;
+  mWatch: TStopwatch;
+begin
+  // 3000 Units verwenden je 40 gemeinsame Units und 20 Namen ohne Treffer (RTL ohne Bibliothek); die
+  // gemeinsamen Units stehen am Ende der Liste.
+  SetLength(mUnits, 3040);
+  for mIndex := 0 to 2999 do
+  begin
+    mUses := nil;
+    SetLength(mUses, 60);
+    for mCommon := 0 to 39 do
+    begin
+      mUses[mCommon] := Format('Common%.2d', [mCommon]);
+    end;
+    for mCommon := 0 to 19 do
+    begin
+      mUses[40 + mCommon] := Format('Rtl%.2d', [mCommon]);
+    end;
+    mUnits[mIndex] := UsesUnit(Format('U%.4d', [mIndex]), mUses, nil);
+  end;
+  for mCommon := 0 to 39 do
+  begin
+    mUnits[3000 + mCommon] := UsesUnit(Format('Common%.2d', [mCommon]), nil, nil);
+  end;
+  mWatch := TStopwatch.StartNew;
+  mGraph := NewGraph(mUnits);
+  try
+    Assert.AreEqual(3000 * 40, mGraph.EdgeCount);
     Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
   finally
     mGraph.Free;
