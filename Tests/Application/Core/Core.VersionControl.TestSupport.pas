@@ -1,6 +1,6 @@
-﻿unit Shell.VersionControl.TestSupport;
+﻿unit Core.VersionControl.TestSupport;
 
-// Gemeinsame Hilfen der Tests mit echtem git bzw. svn (Shell.Hotspots.Tests, Shell.SymbolHistory.Tests): Befehl
+// Gemeinsame Hilfen der Tests mit echtem git bzw. svn (Core.Hotspots.Tests, Core.SymbolHistory.Tests): Befehl
 // ausführen und temporären Ordner samt schreibgeschützter Dateien wieder entfernen.
 
 interface
