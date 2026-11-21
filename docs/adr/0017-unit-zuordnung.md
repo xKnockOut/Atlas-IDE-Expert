@@ -1895,6 +1895,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Help.Links` | `Core/Help/Atlas.Core.Help.Links.pas` | Ziele der F1-Hilfe (Regel, Einstellung, Fenster), online und lokal, #1886 |
+| `Atlas.IDE.Help.Adapters.Module` | `IDE/Help/Atlas.IDE.Help.Adapters.Module.pas` | Modulklasse: `IAtlasModule`, F1-Hilfe (`IAtlasHelpProvider`) und Taste F1 am Befund |
 | `Atlas.IDE.Help.Composition` | `IDE/Help/Atlas.IDE.Help.Composition.pas` | Anmeldung des Moduls `atlas.help`, #1886 |
 | `Atlas.IDE.Help.Pages` | `IDE/Help/Atlas.IDE.Help.Pages.pas` | Ordner `IDE/Help`: öffnet die Seite im Browser |
 | `Atlas.UI.Help.SettingsSection` | `UI/Help/Atlas.UI.Help.SettingsSection.pas` | Ordner `UI/Help`; Einstellungen des Moduls als Abschnitte (#1456) |
