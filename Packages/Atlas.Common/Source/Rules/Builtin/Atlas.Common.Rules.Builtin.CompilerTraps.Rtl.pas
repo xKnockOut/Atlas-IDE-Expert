@@ -65,7 +65,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -146,19 +147,6 @@ begin
       end;
     end);
   Result := mFound;
-end;
-
-/// <summary>Steht vor dem Token AIndex (ohne Kommentare) ein Punkt?</summary>
-function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mBefore: Integer;
-begin
-  mBefore := AIndex - 1;
-  while (mBefore >= 0) and (ATokens[mBefore].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mBefore);
-  end;
-  Result := (mBefore >= 0) and ATokens[mBefore].IsSymbol('.');
 end;
 
 /// <summary>Liegt A vor B?</summary>

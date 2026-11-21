@@ -83,24 +83,6 @@ begin
   end;
 end;
 
-function VisibilityName(AVisibility: TIndexVisibility): string;
-begin
-  case AVisibility of
-    TIndexVisibility.Published:
-      Result := 'published';
-    TIndexVisibility.Protected:
-      Result := 'protected';
-    TIndexVisibility.StrictProtected:
-      Result := 'strict protected';
-    TIndexVisibility.Private:
-      Result := 'private';
-    TIndexVisibility.StrictPrivate:
-      Result := 'strict private';
-  else
-    Result := 'public';
-  end;
-end;
-
 type
   /// <summary>Ergebnis einer Suche nach einem Mitglied: nicht da, gefunden, oder keine sichere Aussage (Treffer nur in
   /// einem inaktiven Zweig, bzw. bei Overridden: gleichnamig, aber nicht überschreibbar).</summary>
@@ -420,8 +402,8 @@ begin
   if FClass.InInterface and (VisibilityTier(AOwn.Visibility) < VisibilityTier(mTarget.Visibility)) then
   begin
     FReport.Add(AOwn.SelectionRange, cTexts[TInheritanceOverrideCaseText.LessVisible].Fmt(
-      [FClass.Name, AOwn.Name, VisibilityName(AOwn.Visibility), mOwner, mTarget.Name,
-      VisibilityName(mTarget.Visibility)]), TRuleConfidence.High);
+      [FClass.Name, AOwn.Name, VisibilityKeyword(AOwn.Visibility), mOwner, mTarget.Name,
+      VisibilityKeyword(mTarget.Visibility)]), TRuleConfidence.High);
   end;
 end;
 
@@ -572,7 +554,7 @@ begin
     begin
       AReported := AReported + [FTokens[mLevel].Text];
       FReport.Add(TokenRange(mLevel), cTexts[TInheritanceOverrideCaseText.InlineVisibility].Fmt(
-        [FClass.Name, AMethod.Name, VisibilityName(AMethod.Visibility), mHit.Name, VisibilityName(mHit.Visibility)]),
+        [FClass.Name, AMethod.Name, VisibilityKeyword(AMethod.Visibility), mHit.Name, VisibilityKeyword(mHit.Visibility)]),
         TRuleConfidence.High);
     end;
     Inc(mLevel);

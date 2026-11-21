@@ -153,11 +153,15 @@ begin
 end;
 
 class function TAtlasIdeIssueContext.LoadState(ASucceeded: Boolean; AError: TAtlasCiFetchError): string;
+const
+  // Für das Protokoll.
+  cLoaded = 'geladen';
+  cNotLoaded = 'nicht geladen (%s)';
 begin
-  Result := 'geladen';
+  Result := cLoaded;
   if not ASucceeded then
   begin
-    Result := 'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+    Result := Format(cNotLoaded, [TAtlasCiBuild.ErrorKey(AError)]);
   end;
 end;
 

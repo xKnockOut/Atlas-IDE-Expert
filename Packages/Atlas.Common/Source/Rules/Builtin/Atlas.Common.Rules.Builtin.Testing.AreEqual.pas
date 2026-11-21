@@ -39,7 +39,8 @@ uses
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -170,7 +171,7 @@ var
   mNode: TSyntaxNode;
 begin
   Result := TArgumentKind.Unknown;
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and MatchText(mNode.Name, cIntegerOperators) then
   begin
     Result := KindOfArithmetic(mNode);
@@ -269,28 +270,11 @@ end;
 
 procedure TAreEqualCheck.Run;
 var
-  mPending: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
+  mCall: TSyntaxNode;
 begin
-  // Iterativ, damit tief verschachtelte Ausdrücke den Stapel nicht sprengen.
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(FContext.Tree.Root);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if mNode.Kind = TSyntaxKind.Call then
-      begin
-        CheckCall(mNode);
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
+  for mCall in TSyntaxNodes.OfKind(FContext.Tree.Root, TSyntaxKind.Call) do
+  begin
+    CheckCall(mCall);
   end;
 end;
 

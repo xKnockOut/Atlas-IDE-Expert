@@ -308,6 +308,8 @@ begin
 end;
 
 class function TAtlasStepInto.ClassExpression(const ACall: TAtlasStepCall; ADepth: Integer): string;
+const
+  cAsObject = '(%s as TObject)';
 var
   mLevel: Integer;
 begin
@@ -318,7 +320,7 @@ begin
   end;
   if ACall.ReceiverInterface then
   begin
-    Result := '(' + ACall.Receiver + ' as TObject)';
+    Result := Format(cAsObject, [ACall.Receiver]);
   end
   else
   begin

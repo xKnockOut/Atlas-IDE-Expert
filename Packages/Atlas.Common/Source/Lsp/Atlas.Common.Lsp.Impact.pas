@@ -222,7 +222,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -331,39 +332,6 @@ type
     destructor Destroy; override;
     function Run(const AStart: THierarchyItem): TImpactResult;
   end;
-
-function WithoutGenerics(const AName: string): string;
-var
-  mBracket: Integer;
-begin
-  mBracket := Pos('<', AName);
-  if mBracket > 0 then
-  begin
-    Result := Copy(AName, 1, mBracket - 1);
-  end
-  else
-  begin
-    Result := AName;
-  end;
-end;
-
-function RangeContains(const AOuter: TTextRange; const APosition: TTextPosition): Boolean;
-
-  function Compare(const A, B: TTextPosition): Integer;
-  begin
-    if A.Line <> B.Line then
-    begin
-      Result := A.Line - B.Line;
-    end
-    else
-    begin
-      Result := A.Character - B.Character;
-    end;
-  end;
-
-begin
-  Result := (Compare(AOuter.StartPos, APosition) <= 0) and (Compare(APosition, AOuter.EndPos) <= 0);
-end;
 
 function RangeSize(const ARange: TTextRange): Int64;
 begin
@@ -781,7 +749,7 @@ begin
   mFound := False;
   for mSymbol in mExtracted.Symbols do
   begin
-    if RangeContains(mSymbol.Range, APosition) and
+    if mSymbol.Range.Encloses(APosition) and
       (not mFound or (RangeSize(mSymbol.Range) < RangeSize(mBest.Range))) then
     begin
       mBest := mSymbol;
@@ -837,7 +805,7 @@ var
   mIndex: Integer;
 begin
   Result := False;
-  if not FResolver.ResolveTypeFrom(AFromUnit, WithoutGenerics(ATypeName), mResolved) or
+  if not FResolver.ResolveTypeFrom(AFromUnit, TTextNames.WithoutGenerics(ATypeName), mResolved) or
     not (mResolved.SymbolKind in cTypeKinds) or not FIndex.FindFile(mResolved.FileName, AUnit) then
   begin
     Exit;
@@ -940,7 +908,7 @@ var
   mEqualsAt: Integer;
 begin
   Result := AName;
-  mPrefix := WithoutGenerics(AAncestor) + '.';
+  mPrefix := TTextNames.WithoutGenerics(AAncestor) + '.';
   for mResolution in AOwner.Resolutions do
   begin
     mEqualsAt := Pos('=', mResolution);

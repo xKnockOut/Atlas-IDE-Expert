@@ -31,7 +31,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Concurrency.MainThread,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -169,7 +170,7 @@ end;
 
 function TPollingScan.IsLocal(ANode: TSyntaxNode): Boolean;
 begin
-  Result := (ANode.Kind = TSyntaxKind.Identifier) and InList(FLocals, ANode.Name);
+  Result := (ANode.Kind = TSyntaxKind.Identifier) and MatchText(ANode.Name, FLocals);
 end;
 
 // Exit, Break oder raise (auch in begin … end): der Abbruch einer Zeitprüfung.
@@ -412,7 +413,7 @@ begin
     Exit(False);
   end;
   mOwner := ClassPart(mMethod.Name);
-  Result := InList(FThreads, mOwner) or FAncestry.DescendsFrom(mOwner, 'TThread') or
+  Result := MatchText(mOwner, FThreads) or FAncestry.DescendsFrom(mOwner, 'TThread') or
     RunsInMainThread(FAncestry, FThreads, mMethod);
 end;
 
@@ -420,7 +421,7 @@ end;
 function TPollingScan.IsThreadLoop(ARoutine, ALoop: TSyntaxNode): Boolean;
 begin
   Result := FAncestry.DescendsFrom(ClassPart(OuterMethod(ARoutine).Name), 'TThread') and
-    (Mentions(ALoop, 'Terminated') or Mentions(ALoop, 'CheckTerminated'));
+    (TSyntaxNodes.Mentions(ALoop, 'Terminated') or TSyntaxNodes.Mentions(ALoop, 'CheckTerminated'));
 end;
 
 procedure TPollingScan.CheckRoutine(ARoutine: TSyntaxNode);

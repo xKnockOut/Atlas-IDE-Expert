@@ -162,6 +162,11 @@ uses
   Atlas.Core.Foundation.Calls,
   Atlas.IDE.Debug.EvaluateStore;
 
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cHistoryKind = 'Verlauf der Debug-Ausdrücke';
+
+
 type
   // FocusControl ist in TCustomLabel geschützt.
   TLabelAccess = class(TCustomLabel);
@@ -435,7 +440,7 @@ begin
   end;
   FLoaded := True;
   // Gesperrt: leer beginnen und die Datei nicht überschreiben; TAtlasDataFile protokolliert ohne Pfad.
-  FKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, 'Verlauf der Debug-Ausdrücke',
+  FKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, cHistoryKind,
     function(const AText: string): Boolean
     begin
       FLock.Acquire;
@@ -488,7 +493,7 @@ begin
     TAtlasDataFile.Write(HistoryFile, mText);
   except
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Verlauf der Debug-Ausdrücke', E);
+      TAtlasDataFile.ReportNotWritten(cHistoryKind, E);
   end;
 end;
 

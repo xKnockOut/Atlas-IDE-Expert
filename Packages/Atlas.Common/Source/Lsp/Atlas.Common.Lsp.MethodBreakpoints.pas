@@ -179,18 +179,6 @@ type
 
 { Hilfsfunktionen }
 
-function ContainerPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := '';
-  mDot := LastDelimiter('.', AName);
-  if mDot > 0 then
-  begin
-    Result := Copy(AName, 1, mDot - 1);
-  end;
-end;
-
 function HasWildcard(const AText: string): Boolean;
 begin
   Result := (Pos('*', AText) > 0) or (Pos('?', AText) > 0);
@@ -422,8 +410,8 @@ begin
     Exit;
   end;
   APattern.NameMask := TTextNames.LastPart(mPath);
-  AssignQualifier(ContainerPart(mPath), AIndex, APattern);
-  APattern.Exact := (ContainerPart(mPath) <> '') and not HasWildcard(ContainerPart(mPath));
+  AssignQualifier(TTextNames.ContainerOf(mPath), AIndex, APattern);
+  APattern.Exact := (TTextNames.ContainerOf(mPath) <> '') and not HasWildcard(TTextNames.ContainerOf(mPath));
   Result := True;
 end;
 
@@ -529,7 +517,7 @@ begin
         end;
         mBody := Default(TMethodBody);
         mName := TLspStepFilter.PlainName(ANode.Name);
-        mBody.Container := ContainerPart(mName);
+        mBody.Container := TTextNames.ContainerOf(mName);
         mBody.Name := TTextNames.LastPart(mName);
         // Die Parameter stehen im Kopf der Routine.
         mHeader := ANode.FindChild(TSyntaxKind.RoutineHeader);
@@ -976,7 +964,7 @@ begin
       Continue;
     end;
     mLeft := Trim(Copy(mEntry, 1, mEquals - 1));
-    if SameText(TypeKey(ContainerPart(mLeft)), TypeKey(AInterface)) and SameText(TTextNames.LastPart(mLeft), AName) then
+    if SameText(TypeKey(TTextNames.ContainerOf(mLeft)), TypeKey(AInterface)) and SameText(TTextNames.LastPart(mLeft), AName) then
     begin
       Exit(Trim(Copy(mEntry, mEquals + 1, MaxInt)));
     end;

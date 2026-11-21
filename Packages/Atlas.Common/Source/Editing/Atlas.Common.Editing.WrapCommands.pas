@@ -34,7 +34,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -342,16 +343,6 @@ begin
   end;
 end;
 
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Öffnet das Token einen Block, den ein end bzw. until schließt?</summary>
 function OpensBlock(const AToken: TPascalToken): Boolean;
 begin
@@ -433,7 +424,7 @@ begin
   end;
   // Auswahlausdruck: nur Namen und Punkte (A, Self.FArt, Kunde.Art).
   FNames := nil;
-  FOfIndex := NextCode(FTokens, FCaseIndex);
+  FOfIndex := NextCodeAfter(FTokens, FCaseIndex);
   while (FOfIndex <= High(FTokens)) and not FTokens[FOfIndex].IsKeyword('of') do
   begin
     if FTokens[FOfIndex].Kind = TPascalTokenKind.Identifier then
@@ -444,7 +435,7 @@ begin
     begin
       Exit(Fail(cTexts[TWrapCommandsText.CaseOnlyUnderstandsAName].Text));
     end;
-    FOfIndex := NextCode(FTokens, FOfIndex);
+    FOfIndex := NextCodeAfter(FTokens, FOfIndex);
   end;
   Result := (FOfIndex <= High(FTokens)) and (FNames <> nil);
   if not Result then
@@ -534,7 +525,7 @@ var
 begin
   Result := FOfIndex;
   mDepth := 0;
-  mIndex := NextCode(FTokens, FOfIndex);
+  mIndex := NextCodeAfter(FTokens, FOfIndex);
   while mIndex <= High(FTokens) do
   begin
     if (mDepth = 0) and (FTokens[mIndex].IsKeyword('end') or (FTokens[mIndex].IsKeyword('else') and
@@ -551,7 +542,7 @@ begin
       Dec(mDepth);
     end;
     Result := mIndex;
-    mIndex := NextCode(FTokens, mIndex);
+    mIndex := NextCodeAfter(FTokens, mIndex);
   end;
 end;
 

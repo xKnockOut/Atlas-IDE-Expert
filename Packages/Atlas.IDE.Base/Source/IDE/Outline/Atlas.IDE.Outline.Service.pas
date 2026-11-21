@@ -11,7 +11,7 @@
 //   derselben Unit; ohne Rumpf zur Deklaration).
 // - Sortierknopf und „Cursor folgen“ schreiben outline.alphabetical bzw.
 //   outline.followCursor; outline.enabled aus schließt das Fenster.
-// Abgrenzung zur Strukturansicht der IDE: docs/Architektur.md.
+// Abgrenzung zur Strukturansicht der IDE: docs/architektur/Plugin-Editor.md.
 // Nur im Hauptthread.
 
 interface

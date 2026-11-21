@@ -1,31 +1,7 @@
 {
   "version": 1,
   "findings": [
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "0ec3da5c", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "cb729fdc"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "0f472de0", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "286bbfed"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "1829364f", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "707ee3d8"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "314b56a8", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "bced02de"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "3623ee13", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "1d46c59e"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "4268823d", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "f61abc2c"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "4a6d4e4d", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "77e31a91"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "4f428e7e", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "e9c4a5fa"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "6bb147fc", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "a6971d7f"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "6d6fadfc", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "144fefa3"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "6ef1b519", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "58633da3"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "70bc863d", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "9547563a"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "7205ce6e", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "a05aa9b2"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "7a4ec6fd", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "c5dfeaf2"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "88d60002", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "0fb5638b"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "9d456fcf", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "d8387cff"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "b2dde468", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "69bd0a94"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "b4e2345d", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "609389a3"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "baf0ecb5", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "d0b32d1d"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "d8e96d7a", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "6f19cfa9"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "d8e96d7a", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "81ae7b36"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "hardcoded-string", "fingerprint": "eca168f6", "count": 1, "routine": "TAtlasAffectedHook.Script", "context": "267c15bc"},
     {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "magic-number", "fingerprint": "6f12c42d", "count": 1, "routine": "TAtlasAffectedHook.IsOwn", "context": "1493b6bc"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.ProjectChoice.pas", "rule": "hardcoded-string", "fingerprint": "f4454f5b", "count": 1, "routine": "TAtlasTestProjectChoices.Load", "context": "23757c6f"},
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.ProjectChoice.pas", "rule": "hardcoded-string", "fingerprint": "7303989d", "count": 1, "routine": "TAtlasTestProjectChoices.Save", "context": "a8fe59ea"},
     {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Lens.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeTestsLens.Create", "context": "9df66e02"}
   ]
 }

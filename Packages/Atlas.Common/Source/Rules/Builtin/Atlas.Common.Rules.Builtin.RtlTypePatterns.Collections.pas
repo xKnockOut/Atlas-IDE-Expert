@@ -60,7 +60,8 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -169,7 +170,6 @@ type
     FRoutines: TArray<TSyntaxNode>;
     FLineBreak: string;
     function Text(ANode: TSyntaxNode): string;
-    function BaseName(ANode: TSyntaxNode): string;
     function KeyOf(ANode: TSyntaxNode; const AName: string): string;
     function FactIndex(const AKey: string): Integer;
     function ListOf(ANode: TSyntaxNode): Integer;
@@ -209,23 +209,6 @@ begin
 end;
 
 // Name der Liste: X oder Self.X; sonst leer.
-function TStringListUnsortedScan.BaseName(ANode: TSyntaxNode): string;
-begin
-  Result := '';
-  if ANode = nil then
-  begin
-    Exit;
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := ANode.Name;
-  end
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
-    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
-  begin
-    Result := ANode.Name;
-  end;
-end;
 
 // Schlüssel der Liste an ANode: Routine und Name für lokale Variablen, sonst der Feldname.
 function TStringListUnsortedScan.KeyOf(ANode: TSyntaxNode; const AName: string): string;
@@ -272,7 +255,7 @@ function TStringListUnsortedScan.ListOf(ANode: TSyntaxNode): Integer;
 var
   mName: string;
 begin
-  mName := BaseName(ANode);
+  mName := TSyntaxNodes.FieldName(ANode);
   if mName = '' then
   begin
     Exit(-1);

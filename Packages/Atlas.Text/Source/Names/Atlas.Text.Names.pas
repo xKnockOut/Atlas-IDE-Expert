@@ -2,8 +2,9 @@
 
 // Namen in Delphi-Quelltext und Units zu Dateinamen (gemeinsam für Server und
 // Plugin): letzter Teil eines qualifizierten Namens, Name mit Container,
-// Unit-Name einer .pas-Datei, Quelltextdateien (.pas, .dpr, .dpk), Kennungen
-// ohne führendes "#".
+// Unit-Name einer .pas-Datei, Quelltextdateien (.pas, .dpr, .dpk), Namen ohne
+// Typparameter, &-Präfix oder T-Präfix, Namenslisten mit Kommas, Kennungen ohne
+// führendes "#".
 
 interface
 
@@ -20,12 +21,35 @@ type
     class function IsPascalFile(const AFileName: string): Boolean; static;
     /// <summary>Kennung ohne Leerraum außen und ohne führende "#" ("#753" → "753"); "ATL-123" bleibt.</summary>
     class function KeyWithoutHash(const AKey: string): string; static;
+    /// <summary>Teil vor dem letzten Punkt ("TKlasse.Methode" → "TKlasse"); ohne Punkt ''.</summary>
+    class function ContainerOf(const AName: string): string; static;
+    /// <summary>AName ohne vorangestelltes &amp; (&amp;Type → Type).</summary>
+    class function WithoutAmpersand(const AName: string): string; static;
+    /// <summary>AName ohne Typparameter und ohne Leerraum außen ("TList&lt;T&gt;" → "TList").</summary>
+    class function WithoutGenerics(const AName: string): string; static;
+    /// <summary>AName ohne Typparameter und ohne Container ("Unit.TList&lt;T&gt;" → "TList").</summary>
+    class function BareTypeName(const AName: string): string; static;
+    /// <summary>AName ohne das T der Typnamen-Konvention (TFoo → Foo); andere Namen unverändert.</summary>
+    class function WithoutTypePrefix(const AName: string): string; static;
+    /// <summary>AName mit großem Anfangsbuchstaben.</summary>
+    class function Capitalized(const AName: string): string; static;
+    /// <summary>Folgt der letzte Teil von AName der Konvention für Interfaces (IFoo)?</summary>
+    class function LooksLikeInterface(const AName: string): Boolean; static;
+    /// <summary>Wie CompareText; bei Gleichstand entscheidet CompareStr (eindeutige Reihenfolge).</summary>
+    class function Compare(const ALeft, ARight: string): Integer; static;
+    /// <summary>Namen der Liste "A, B,C" ohne Leerraum, leere ausgelassen.</summary>
+    class function SplitList(const ANames: string): TArray<string>; static;
+    /// <summary>Steht AName (ohne Groß-/Kleinschreibung) in der Liste "A, B,C"?</summary>
+    class function InList(const ANames, AName: string): Boolean; static;
+    /// <summary>"interface" oder "implementation".</summary>
+    class function SectionKeyword(AInterface: Boolean): string; static;
   end;
 
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.StrUtils;
 
 { TTextNames }
 
@@ -77,6 +101,116 @@ begin
   while (Result <> '') and (Result[1] = '#') do
   begin
     Delete(Result, 1, 1);
+  end;
+end;
+
+class function TTextNames.ContainerOf(const AName: string): string;
+var
+  mDot: Integer;
+begin
+  Result := '';
+  mDot := LastDelimiter('.', AName);
+  if mDot > 0 then
+  begin
+    Result := Copy(AName, 1, mDot - 1);
+  end;
+end;
+
+class function TTextNames.WithoutAmpersand(const AName: string): string;
+begin
+  Result := AName;
+  if StartsStr('&', Result) then
+  begin
+    Result := Copy(Result, 2, MaxInt);
+  end;
+end;
+
+class function TTextNames.WithoutGenerics(const AName: string): string;
+var
+  mAngle: Integer;
+begin
+  Result := Trim(AName);
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
+  begin
+    Result := Trim(Copy(Result, 1, mAngle - 1));
+  end;
+end;
+
+class function TTextNames.BareTypeName(const AName: string): string;
+begin
+  Result := LastPart(WithoutGenerics(AName));
+end;
+
+class function TTextNames.WithoutTypePrefix(const AName: string): string;
+begin
+  Result := AName;
+  if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
+    Result := Copy(Result, 2, MaxInt);
+  end;
+end;
+
+class function TTextNames.Capitalized(const AName: string): string;
+begin
+  Result := AName;
+  if Result <> '' then
+  begin
+    Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+  end;
+end;
+
+class function TTextNames.LooksLikeInterface(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  mName := LastPart(AName);
+  Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
+end;
+
+class function TTextNames.Compare(const ALeft, ARight: string): Integer;
+begin
+  Result := CompareText(ALeft, ARight);
+  if Result = 0 then
+  begin
+    Result := CompareStr(ALeft, ARight);
+  end;
+end;
+
+class function TTextNames.SplitList(const ANames: string): TArray<string>;
+var
+  mName: string;
+begin
+  Result := nil;
+  for mName in SplitString(ANames, ',') do
+  begin
+    if Trim(mName) <> '' then
+    begin
+      Result := Result + [Trim(mName)];
+    end;
+  end;
+end;
+
+class function TTextNames.InList(const ANames, AName: string): Boolean;
+var
+  mName: string;
+begin
+  for mName in SplitString(ANames, ',') do
+  begin
+    if SameText(Trim(mName), AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TTextNames.SectionKeyword(AInterface: Boolean): string;
+begin
+  Result := 'implementation';
+  if AInterface then
+  begin
+    Result := 'interface';
   end;
 end;
 

@@ -869,7 +869,7 @@ begin
   begin
     Exit;
   end;
-  Result := Format('%s · Count = %d', [AShown, mJson.Count]);
+  Result := Format(TAtlasVisualizerFormat.cCountText, [AShown, mJson.Count]);
   if Length(mJson.Keys) > 0 then
   begin
     Result := Result + TAtlasVisualizerFormat.cSeparator + '{' + string.Join(', ', mJson.Keys);

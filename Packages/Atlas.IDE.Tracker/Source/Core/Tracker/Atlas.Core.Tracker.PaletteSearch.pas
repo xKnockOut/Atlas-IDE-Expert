@@ -320,10 +320,13 @@ end;
 { TAtlasRecentIssues }
 
 constructor TAtlasRecentIssues.Create;
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cKind = 'Zuletzt geöffnete Issues';
 begin
   inherited Create;
   FEntries := TList<TEntry>.Create;
-  FKind := 'Zuletzt geöffnete Issues';
+  FKind := cKind;
 end;
 
 destructor TAtlasRecentIssues.Destroy;

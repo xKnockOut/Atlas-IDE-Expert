@@ -20,6 +20,8 @@ type
     [Test]
     procedure ContainsIntegerFindsValue;
     [Test]
+    procedure ContainsAnyTextIgnoresCase;
+    [Test]
     procedure SameTextsIgnoresCase;
     [Test]
     procedure IndexOfTextUsesTextOf;
@@ -153,6 +155,13 @@ begin
     mSeen.Free;
   end;
   mList := nil;
+end;
+
+procedure TTextArraysTests.ContainsAnyTextIgnoresCase;
+begin
+  Assert.IsTrue(TTextArrays.ContainsAnyText('mKundenListe', ['liste', 'map']));
+  Assert.IsFalse(TTextArrays.ContainsAnyText('mKunde', ['liste', 'map']));
+  Assert.IsFalse(TTextArrays.ContainsAnyText('mKunde', []));
 end;
 
 initialization

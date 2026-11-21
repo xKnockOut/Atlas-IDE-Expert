@@ -291,6 +291,8 @@ end;
 { TAtlasNewIssueLabels }
 
 class function TAtlasNewIssueLabels.German: TAtlasNewIssueLabels;
+const
+  cFindingsTitle = '%d Befunde in %s';
 begin
   Result.Location := 'Fundstelle';
   Result.Line := 'Zeile';
@@ -298,7 +300,7 @@ begin
   Result.Branch := 'Branch';
   Result.Commit := 'Commit';
   Result.Findings := 'Befunde';
-  Result.FindingsTitle := '%d Befunde in %s';
+  Result.FindingsTitle := cFindingsTitle;
 end;
 
 { TAtlasNewIssueFields }

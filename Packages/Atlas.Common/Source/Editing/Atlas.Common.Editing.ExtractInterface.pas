@@ -144,7 +144,8 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -194,15 +195,6 @@ const
   /// <summary>Direktiven, die ins Interface mitkommen.</summary>
   cKeptDirectives: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
 
-function StripT(const AName: string): string;
-begin
-  Result := AName;
-  if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
-  begin
-    Result := Copy(Result, 2, MaxInt);
-  end;
-end;
-
 { TExtractInterfaceLookups }
 
 class function TExtractInterfaceLookups.Create(const AAncestors: TClassAncestorsLookup; const ANameInUse: TNameInUse;
@@ -217,7 +209,7 @@ end;
 
 class function TExtractInterface.DefaultName(const AClassName: string): string;
 begin
-  Result := 'I' + StripT(AClassName);
+  Result := 'I' + TTextNames.WithoutTypePrefix(AClassName);
 end;
 
 class function TExtractInterface.ClassAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;

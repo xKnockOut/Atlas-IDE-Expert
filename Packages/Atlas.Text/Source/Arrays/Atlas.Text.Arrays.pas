@@ -21,6 +21,8 @@ type
     class procedure AddText(var AList: TArray<string>; const AValue: string); static;
     /// <summary>Kommt AValue in AValues vor?</summary>
     class function ContainsInteger(const AValues: TArray<Integer>; AValue: Integer): Boolean; static;
+    /// <summary>Enthält AText einen der Teile AParts (ohne Groß-/Kleinschreibung)?</summary>
+    class function ContainsAnyText(const AText: string; const AParts: array of string): Boolean; static;
     /// <summary>Gleich lang und an jeder Stelle gleich ohne Rücksicht auf Groß-/Kleinschreibung?</summary>
     class function SameTexts(const A, B: TArray<string>): Boolean; static;
     /// <summary>Stelle des ersten Elements, dessen Text (ATextOf) ohne Rücksicht auf Groß-/Kleinschreibung AText
@@ -39,6 +41,9 @@ type
   end;
 
 implementation
+
+uses
+  System.StrUtils;
 
 { TTextArrays }
 
@@ -87,6 +92,20 @@ begin
   for mValue in AValues do
   begin
     if mValue = AValue then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TTextArrays.ContainsAnyText(const AText: string; const AParts: array of string): Boolean;
+var
+  mPart: string;
+begin
+  for mPart in AParts do
+  begin
+    if ContainsText(AText, mPart) then
     begin
       Exit(True);
     end;

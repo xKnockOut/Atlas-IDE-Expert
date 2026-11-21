@@ -51,7 +51,8 @@ uses
   Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -411,7 +412,7 @@ var
   mCall: TIgnoredCall;
   mReport: Boolean;
 begin
-  mExpression := Unwrapped(AStatement[0]);
+  mExpression := TSyntaxNodes.Unparen(AStatement[0]);
   if (mExpression = nil) or not Split(mExpression, mCall) or InWith(AStatement) then
   begin
     Exit;

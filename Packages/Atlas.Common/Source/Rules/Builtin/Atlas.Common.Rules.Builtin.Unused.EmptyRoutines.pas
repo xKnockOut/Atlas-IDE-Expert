@@ -29,7 +29,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Unused.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -98,21 +99,6 @@ begin
       Result := True;
     end);
   Result := mFound;
-end;
-
-/// <summary>Besteht der Block nur aus leeren Anweisungen?</summary>
-function IsEmptyBlock(ABlock: TSyntaxNode): Boolean;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ABlock.ChildCount - 1 do
-  begin
-    if ABlock[mIndex].Kind <> TSyntaxKind.EmptyStatement then
-    begin
-      Exit(False);
-    end;
-  end;
-  Result := True;
 end;
 
 /// <summary>Ist AHeader der Kopf einer forward-Deklaration im implementation-Teil (ohne Rumpf)?</summary>
@@ -270,7 +256,7 @@ function TEmptyRoutineCheck.EmptyParts(ARoutine: TSyntaxNode; out AHeader, ABloc
 begin
   AHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
   ABlock := ARoutine.FindChild(TSyntaxKind.Block);
-  Result := (AHeader <> nil) and (ABlock <> nil) and IsEmptyBlock(ABlock) and
+  Result := (AHeader <> nil) and (ABlock <> nil) and TSyntaxNodes.OnlyEmptyStatements(ABlock) and
     not HasCommentOrDirective(AHeader, ARoutine);
 end;
 
@@ -289,7 +275,7 @@ begin
   begin
     AMember := MemberHeader(mTypeBody, ShortName(AName), AVisibility);
   end;
-  Result := HasDirectiveIn(AMember, ['virtual', 'dynamic', 'message']) or ListsInterfaces(mTypeBody);
+  Result := TSyntaxNodes.HasDirective(AMember, ['virtual', 'dynamic', 'message']) or ListsInterfaces(mTypeBody);
 end;
 
 /// <summary>Ereignis-Handler aus der Formulardatei: die IDE entfernt sie beim Speichern selbst.</summary>
@@ -391,7 +377,7 @@ var
   mEdits: TArray<TRuleEdit>;
 begin
   // Nachrichten-Handler ohne Inhalt schlucken die Nachricht absichtlich.
-  if not EmptyParts(ARoutine, mHeader, mBlock) or HasDirectiveIn(mHeader, ['message']) then
+  if not EmptyParts(ARoutine, mHeader, mBlock) or TSyntaxNodes.HasDirective(mHeader, ['message']) then
   begin
     Exit;
   end;
@@ -411,7 +397,7 @@ begin
   if mIsMethod then
   begin
     mCanRemove := (mMember <> nil) and ((mVisibility = 'private') or (mVisibility = 'strict private')) and
-      not MethodSignatureFixed(FRoot, mName) and not HasDirectiveIn(mMember, ['override', 'overload']);
+      not MethodSignatureFixed(FRoot, mName) and not TSyntaxNodes.HasDirective(mMember, ['override', 'overload']);
   end
   else
   begin
