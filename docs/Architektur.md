@@ -59,19 +59,22 @@ Bedingungen für den späteren Umzug nach `Application/Source/Features/<Feature>
 läuft in der CI, und der Umzug geschieht
 lokal mit Compiler als rein mechanischer Commit je Feature (zuerst Namenspräfix, dann `git mv`).
 
-Featurerichtung zwischen den Fach-Features: `Semantics < Editing < Rules < Lsp < Mcp`. Ein Feature verwendet
-nur Features links von ihm, nie eines rechts davon.
+Featurerichtung zwischen den Fach-Features: `Lsp | Rules | Editing | Semantics | Mcp`. Alle fünf werden
+Hosted-Features; zwischen ihnen gibt es keine Kante, in keiner Richtung. Was zwei von ihnen teilen, liegt in einem
+Platform-Feature (`Pascal`, `Documents`, `Index` …) oder als Interface im Contract des anbietenden Features, das
+der Host verbindet.
 
-| Von | Nach | Erlaubt | Grund |
+Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
+`atlas.json` (Stand des Umbaus: 781 Kanten). Eine neue Kante ist ein Fehler, eine abgebaute wird gestrichen.
+
+| Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
-| `Editing` | `Semantics` | ja | Refactorings und Schnellbefehle werten Namensauflösung und Datenfluss aus |
-| `Semantics` | `Editing` | nein | Auswertungen, die beide brauchen (uses-Verwendung, Neuzuweisungen, aufgelöste Signaturen), liegen in `Editing` |
-| `Rules` | `Editing`, `Semantics` | ja | Korrekturen nutzen Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen), Regeln die Namensauflösung |
-| `Editing` | `Rules` | nein | gemeinsame Wertetypen liegen tiefer: `TTextEdit` in `Documents.Contract` (`TRuleEdit` ist ein Alias), `TDeclaredTypes` in `Pascal.DeclaredTypes`, `IsTestUnit` in `Editing.UsesClause`; die Brücke Treffer → Code-Aktionen ist `Rules.CodeActions` |
-| `Lsp` | `Rules` | ja | Der Server ruft Prüfregeln und ihre Korrekturen auf |
-| `Rules` | `Lsp` | nein | Links ins Wiki liegen im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
-| `Mcp` | `Lsp` | ja | MCP-Werkzeuge nutzen dieselben Dienste wie die LSP-Methoden |
-| `Lsp` | `Mcp` | nein | |
+| `Lsp` | `Rules`, `Editing`, `Semantics` | nein | heute die meisten Kanten: Der Server ruft Prüfregeln, Refactorings und Namensauflösung direkt |
+| `Mcp` | `Lsp`, `Editing`, `Semantics` | nein | MCP-Werkzeuge nutzen heute dieselben Dienste wie die LSP-Methoden |
+| `Rules` | `Editing`, `Semantics` | nein | Korrekturen nutzen heute Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen), Regeln die Namensauflösung |
+| `Editing` | `Semantics` | nein | Refactorings werten heute Namensauflösung und Datenfluss aus |
+| `Semantics`, `Editing`, `Rules` | ein Feature weiter oben | nein | schon heute ohne Kante: gemeinsame Wertetypen liegen tiefer (`TTextEdit` in `Documents.Contract`, `TDeclaredTypes` in `Pascal.DeclaredTypes`), Links ins Wiki im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
+| `Lsp`, `Rules`, `Editing`, `Semantics` | `Mcp` | nein | |
 
 ### Keine Zyklen zwischen Features
 
@@ -336,10 +339,10 @@ Das Plugin nutzt `Atlas.Common` nicht; es spricht mit dem Server nur über LSP.
 ### Struktur der IDE-Schicht
 
 - **Grundbausteine `Atlas.IDE.Foundation.*`** (`Source/IDE/Foundation/`): Einstellungen, Editorpuffer und -stand, Editorstil, Tastenhaken und Tastenbelegung, Atlas-Symbol, Ergebnisfenster, Rinne, gezeichnete Elemente (#628), Strukturhervorhebung, Dateien und Projekte der IDE, Navigation. Sie verwenden aus der IDE-Schicht nur andere Grundbausteine und sind die Basis aller IDE-Features; ein Feature verwendet sie wie einen Contract.
-- **Keine Zyklen zwischen Features:** Die Features von `Atlas.Core` und `Atlas.IDE` hängen nur in einer Richtung voneinander ab. Gezählt wird über die uses aller Units, ohne Grundbausteine, ohne die Kompositionswurzel und ohne Verweise auf `*.Contract` (Contracts verwenden nur Contracts und schließen darum keinen Zyklus). Wo ein Feature ein anderes aufrufen muss, das schon von ihm abhängt, setzt die Kompositionswurzel einen Haken (z. B. `TAtlasEditorTestUnitLens.OnSwitchTestUnit`, `TAtlasOptionsHooks`) oder reicht eine Schnittstelle (`IAtlasCommandRegistry`) durch.
+- **Keine Zyklen zwischen Features:** Die Features von `Atlas.Core` und `Atlas.IDE` hängen nur in einer Richtung voneinander ab, gezählt über alle uses, auch auf Contracts (Abschnitt „Keine Zyklen zwischen Features“). Wo ein Feature ein anderes aufrufen muss, das schon von ihm abhängt, setzt die Kompositionswurzel einen Haken (z. B. `TAtlasEditorTestUnitLens.OnSwitchTestUnit`, `TAtlasOptionsHooks`) oder reicht eine Schnittstelle (`IAtlasCommandRegistry`) durch.
 - **Kompositionswurzel `Atlas.IDE.CodeInsight.Composition`:** Die Wurzel selbst hält nur `Register` und `Unregister` und legt die Reihenfolge fest; die Teile liegen in `Atlas.IDE.CodeInsight.Composition.<Teil>` (Adapters, Session, Status, Build, Tools, Background, Drawing, Palette …, Features, Settings, Services, Leftovers), die einander ohne Zyklus verwenden. Nur `.Adapters` erzeugt Providers, Adapters und Compositions der Core-Features (genehmigte Ausnahme oben). Die Teile des Plugins stehen in `.Features` in Startreihenfolge in einer `TAtlasFeatureTable` (`Atlas.Core.Diagnostics.FeatureTable`): je Teil die Stufe des abgesicherten Starts bzw. die Einstellung, unter der es läuft, Start und Stop. `RegisterFeatures` startet beim Laden und nach jeder Einstellungsänderung, was gewünscht ist und noch fehlt; `Unregister` baut rückwärts ab.
 - **Workspace-Edits:** `Atlas.Core.Editor.WorkspacePlan` (ohne Open Tools API, getestet) plant aus einem LSP-Workspace-Edit die Schritte je Datei (Puffer, Formular, Platte, Anlegen, Umbenennen, Löschen); `Atlas.IDE.Editor.WorkspaceEdit` führt den Plan in der IDE aus und protokolliert ihn als einen Satz im Änderungsprotokoll.
-- `Tools/Check-PackageDependencies.ps1` prüft beides: Grundbausteine ohne andere `Atlas.IDE.*`-Units und Feature-Zyklen (Tarjan) in `Atlas.Core` und `Atlas.IDE`.
+- `Tools/Check-PackageDependencies.ps1` prüft die Grundbausteine ohne andere `Atlas.IDE.*`-Units, `Tools/Check-FeatureCycles.ps1` die Feature-Zyklen.
 
 ### Module und Verträge des Plugins (ab 2.0)
 

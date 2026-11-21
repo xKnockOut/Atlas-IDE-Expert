@@ -100,9 +100,7 @@
         "Atlas.IDE"
       ],
       "known": [],
-      "directions": [
-        "Atlas.Common: Semantics < Editing < Rules < Lsp < Mcp"
-      ],
+      "directions": [],
       "knownEdges": []
     },
     "forbidden-symbol": {
