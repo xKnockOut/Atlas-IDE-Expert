@@ -39,8 +39,6 @@ type
   public
     /// <summary>Quelltext eines Knotens.</summary>
     class function NodeText(const AText: string; ANode: TSyntaxNode): string; static;
-    /// <summary>Name ohne generische Argumente: TObjectList&lt;TOrder&gt; → TObjectList.</summary>
-    class function BaseName(const ATypeName: string): string; static;
     /// <summary>Quelltext eines Knotens mit zusammengefasstem Leerraum.</summary>
     class function CodeOf(const AText: string; ANode: TSyntaxNode): string; static;
     constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
@@ -67,7 +65,8 @@ uses
   System.StrUtils,
   System.RegularExpressions,
   Atlas.Common.Editing.ClassMembers,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 const
   cOwnerNames: array[0..3] of string = ('Self', 'AOwner', 'Owner', 'Application');
@@ -148,7 +147,7 @@ begin
     begin
       if Length(mLocation.Symbol.Ancestors) > 0 then
       begin
-        ANext := TFreeFieldTypes.BaseName(mLocation.Symbol.Ancestors[0]);
+        ANext := TTextNames.WithoutGenerics(mLocation.Symbol.Ancestors[0]);
       end;
       Exit(True);
     end;
@@ -269,7 +268,7 @@ end;
 /// <summary>Typ eines Felds aus dem Index samt Typargumenten.</summary>
 function IndexTypeName(const ASymbol: TIndexSymbol): string;
 begin
-  Result := TFreeFieldTypes.BaseName(ASymbol.TypeName);
+  Result := TTextNames.WithoutGenerics(ASymbol.TypeName);
   if ASymbol.TypeArgs <> '' then
   begin
     Result := Result + '<' + ASymbol.TypeArgs + '>';
@@ -376,7 +375,7 @@ end;
 /// <summary>Letzter Teil eines Typnamens ohne Typargumente: TLage aus Werk.Lage.TLage&lt;T&gt;.</summary>
 function UnqualifiedBase(const ATypeName: string): string;
 begin
-  Result := TFreeFieldTypes.BaseName(ATypeName);
+  Result := TTextNames.WithoutGenerics(ATypeName);
   if Pos('.', Result) > 0 then
   begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
@@ -462,18 +461,6 @@ begin
   end;
 end;
 
-class function TFreeFieldTypes.BaseName(const ATypeName: string): string;
-var
-  mAngle: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, mAngle - 1));
-  end;
-end;
-
 class function TFreeFieldTypes.CodeOf(const AText: string; ANode: TSyntaxNode): string;
 begin
   Result := TTextLines.CollapseSpace(NodeText(AText, ANode));
@@ -486,7 +473,7 @@ var
   mGeneric: Boolean;
 begin
   Result := tgUnknown;
-  mBase := TFreeFieldTypes.BaseName(ATypeName);
+  mBase := TTextNames.WithoutGenerics(ATypeName);
   // TArray<T> ist ein dynamisches Array aus System; die Klasse TArray (System.Generics.Collections) trägt
   // keine Typparameter.
   mGeneric := Pos('<', ATypeName) > 0;
@@ -527,7 +514,7 @@ var
   mDepth: Integer;
   mDeclared: Boolean;
 begin
-  mName := TFreeFieldTypes.BaseName(ATypeName);
+  mName := TTextNames.WithoutGenerics(ATypeName);
   Result := TArray<string>.Create(mName);
   AEndsKnown := False;
   for mDepth := 1 to 32 do
@@ -587,10 +574,10 @@ end;
 
 function TFreeFieldTypes.MemberType(const ATypeName, AMember: string): string;
 begin
-  Result := FileMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
+  Result := FileMemberType(TTextNames.WithoutGenerics(ATypeName), AMember);
   if Result = '' then
   begin
-    Result := IndexMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
+    Result := IndexMemberType(TTextNames.WithoutGenerics(ATypeName), AMember);
   end;
 end;
 

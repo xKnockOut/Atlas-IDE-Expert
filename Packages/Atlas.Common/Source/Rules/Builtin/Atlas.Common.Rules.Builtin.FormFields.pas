@@ -76,7 +76,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -139,15 +140,6 @@ type
     property Objects: TList<TDfmObject> read FObjects;
     property Document: TDfmDocument read FDocument;
   end;
-
-function ShortName(const AName: string): string;
-begin
-  Result := AName;
-  if LastDelimiter('.', Result) > 0 then
-  begin
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-  end;
-end;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin
@@ -458,7 +450,7 @@ begin
   begin
     Exit(True);
   end;
-  for mLocation in AIndex.FindSymbols(ShortName(AName)) do
+  for mLocation in AIndex.FindSymbols(TTextNames.LastPart(AName)) do
   begin
     if mLocation.Symbol.Kind = TIndexSymbolKind.ClassType then
     begin
@@ -483,7 +475,7 @@ begin
     for mObj in mMatch.Objects do
     begin
       if mMatch.FindField(mObj.Name, mField) and (mField.TypeNode <> nil) and
-        not SameText(ShortName(mField.TypeName), ShortName(mObj.TypeName)) and
+        not SameText(TTextNames.LastPart(mField.TypeName), TTextNames.LastPart(mObj.TypeName)) and
           KnownClass(AContext.Index, mObj.TypeName) then
       begin
         AReport.Add(NodeRange(mField.TypeNode), cTexts[TFormFieldsText.ClassDiffers].Fmt(

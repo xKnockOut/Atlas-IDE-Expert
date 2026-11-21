@@ -174,7 +174,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Text.Chars,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -211,55 +212,9 @@ const
   cKindParameter = 2;
   cParameterModifiers: array[0..4] of string = ('const ', 'var ', 'out ', 'constref ', '[ref] ');
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function InRange(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
 begin
-  Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
-end;
-
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
-/// <summary>Index des ersten Tokens mit Offset >= AOffset.</summary>
-function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
+  Result := (TTextPosition.Compare(ARange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ARange.EndPos) <= 0);
 end;
 
 procedure CollectNodes(ANode: TSyntaxNode; const AKinds: TSyntaxKinds; AList: TList<TSyntaxNode>);
@@ -448,7 +403,7 @@ var
   mText: string;
 begin
   mLast := ChainEnd(ATokens, AStart, High(ATokens));
-  mText := CleanName(ATokens[mLast].Text);
+  mText := TTextNames.WithoutAmpersand(ATokens[mLast].Text);
   Result := (ATokens[mLast].Kind = TPascalTokenKind.Identifier) and (SameText(mText, AName) or
     SameText(mText, 'F' + AName) or SameText(mText, 'A' + AName));
 end;
@@ -665,7 +620,7 @@ begin
   while Result and (mIndex <= ALast) do
   begin
     Result := ATokens[mIndex].Kind = TPascalTokenKind.Identifier;
-    ANames := ANames + [CleanName(ATokens[mIndex].Text)];
+    ANames := ANames + [TTextNames.WithoutAmpersand(ATokens[mIndex].Text)];
     mIndex := NextCodeAfter(ATokens, mIndex);
     if Result and (mIndex <= ALast) then
     begin
@@ -745,7 +700,7 @@ procedure SetFoundName(var AFound: TInferredType; const AToken: TPascalToken);
 begin
   AFound.NameStart := AToken.StartPos;
   AFound.NameEnd := AToken.EndPos;
-  AFound.Name := CleanName(AToken.Text);
+  AFound.Name := TTextNames.WithoutAmpersand(AToken.Text);
 end;
 
 /// <summary>for var X in Ausdruck do: "var", Name, dann "in" ohne ":" dazwischen.</summary>
@@ -755,7 +710,7 @@ var
   mIndex, mNameToken, mFirst, mLast: Integer;
 begin
   mTokens := ASource.Tree.Tokens;
-  mIndex := FirstTokenAt(mTokens, ANode.StartOffset);
+  mIndex := TokenFrom(mTokens, ANode.StartOffset);
   if (mIndex + 3 > High(mTokens)) or not mTokens[mIndex].IsKeyword('for') or
     not mTokens[NextCodeAfter(mTokens, mIndex)].IsKeyword('var') then
   begin
@@ -792,7 +747,7 @@ begin
   ANameToken := -1;
   AAssign := -1;
   mTyped := False;
-  mIndex := FirstTokenAt(ATokens, ANode.StartOffset);
+  mIndex := TokenFrom(ATokens, ANode.StartOffset);
   while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) and (AAssign < 0) do
   begin
     if (ANameToken < 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) then
@@ -861,7 +816,7 @@ var
   mChain: TResolvedChainType;
 begin
   Result := ASource.Resolver.ChainType(ASource.Tree, ASource.FileName,
-    [CleanName(ASource.Tree.Tokens[ANameToken].Text)], AEndOffset, mChain) and mChain.TypeFound and
+    [TTextNames.WithoutAmpersand(ASource.Tree.Tokens[ANameToken].Text)], AEndOffset, mChain) and mChain.TypeFound and
     (mChain.TypeInfo.Name <> '');
   if not Result then
   begin
@@ -1075,21 +1030,6 @@ type
     Base: string;
   end;
 
-/// <summary>Offset des Tokens, das bei APosition beginnt; 0 ohne.</summary>
-function OffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mToken: TPascalToken;
-begin
-  for mToken in ATokens do
-  begin
-    if (mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character = APosition.Character) then
-    begin
-      Exit(mToken.Offset);
-    end;
-  end;
-  Result := 0;
-end;
-
 /// <summary>Unit, aus der das Wort AWord des Typs stammt, wenn es hier noch nicht sichtbar ist; '' sonst.</summary>
 function UnitOfWord(const AUnits: TTypeUnits; const AWord: string): string;
 var
@@ -1195,7 +1135,7 @@ begin
   begin
     Exit(-1);
   end;
-  Result := FirstTokenAt(ATokens, mBody.EndOffset) - 1;
+  Result := TokenFrom(ATokens, mBody.EndOffset) - 1;
   while (Result >= 0) and (IsTrivia(ATokens[Result]) or ATokens[Result].IsSymbol(';')) do
   begin
     Dec(Result);
@@ -1232,7 +1172,7 @@ begin
     TSyntaxKind.TryStatement:
       Result := TryLabel(ANode);
   else
-    Result := HeaderText(ATokens, FirstTokenAt(ATokens, ANode.StartOffset), AEndToken,
+    Result := HeaderText(ATokens, TokenFrom(ATokens, ANode.StartOffset), AEndToken,
       TLspInlayHints.cMaxEndLabelLength);
   end;
 end;
@@ -1289,7 +1229,7 @@ begin
     ': ' + mUnits.Found.TypeName)];
   mUnits.Resolver := AResolver;
   mUnits.Tokens := ATree.Tokens;
-  mUnits.Offset := OffsetAt(mUnits.Tokens, mUnits.Found.NameStart);
+  mUnits.Offset := TokenOffsetAt(mUnits.Tokens, mUnits.Found.NameStart);
   mUnits.Own := AResolver.ExtractedUnit(ATree, AFileName);
   mUnits.OwnName := TUsesClauses.OwnName(mUnits.Tokens);
   mUnits.Used := TUsesClauses.UsedUnits(mUnits.Tokens);
@@ -1519,7 +1459,7 @@ end;
 
 function CompareHints(const A, B: TInlayHint): Integer;
 begin
-  Result := ComparePositions(A.Position, B.Position);
+  Result := TTextPosition.Compare(A.Position, B.Position);
 end;
 
 class function TLspInlayHints.MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree;

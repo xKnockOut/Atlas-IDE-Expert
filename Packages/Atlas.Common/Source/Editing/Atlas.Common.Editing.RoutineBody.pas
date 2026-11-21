@@ -99,7 +99,8 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cStatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement,
@@ -150,21 +151,6 @@ begin
   until not mDescended;
 end;
 
-/// <summary>Kind von ANode, das AOffset enthält (Ende eingeschlossen); nil ohne.</summary>
-function ChildAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if (ANode[mIndex].StartOffset <= AOffset) and (AOffset <= ANode[mIndex].EndOffset) then
-    begin
-      Exit(ANode[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
-
 /// <summary>Liegt AOffset im Rumpf der Routine ARoutine?</summary>
 function InRoutineBody(ARoutine: TSyntaxNode; AOffset: Integer): Boolean;
 var
@@ -183,14 +169,14 @@ begin
   begin
     Exit;
   end;
-  mNode := ChildAt(ATree.Root, AOffset);
+  mNode := TSyntaxNodes.ChildAt(ATree.Root, AOffset);
   while mNode <> nil do
   begin
     if (mNode.Kind = TSyntaxKind.RoutineDecl) and InRoutineBody(mNode, AOffset) then
     begin
       Result := mNode;
     end;
-    mNode := ChildAt(mNode, AOffset);
+    mNode := TSyntaxNodes.ChildAt(mNode, AOffset);
   end;
 end;
 

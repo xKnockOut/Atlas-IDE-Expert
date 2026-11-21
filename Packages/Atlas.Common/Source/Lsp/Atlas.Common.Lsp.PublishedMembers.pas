@@ -120,7 +120,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -143,21 +144,11 @@ const
   /// <summary>Höchstens so viele Aliase folgt die Ereigniserkennung.</summary>
   cMaxAliases = 8;
 
-function ShortName(const AName: string): string;
-begin
-  // Qualifizierte Namen (Vcl.Controls.TControl) auf den Typnamen kürzen.
-  Result := AName;
-  if LastDelimiter('.', Result) > 0 then
-  begin
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-  end;
-end;
-
 function FindClass(const AIndex: ISymbolIndex; const AName: string; out ALocation: TSymbolLocation): Boolean;
 var
   mLocation: TSymbolLocation;
 begin
-  for mLocation in AIndex.FindSymbols(ShortName(AName)) do
+  for mLocation in AIndex.FindSymbols(TTextNames.LastPart(AName)) do
   begin
     if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
     begin
@@ -358,7 +349,7 @@ begin
   begin
     Exit(False);
   end;
-  for mLocation in AIndex.FindSymbols(ShortName(ATypeName)) do
+  for mLocation in AIndex.FindSymbols(TTextNames.LastPart(ATypeName)) do
   begin
     if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind in [TIndexSymbolKind.TypeAlias,
       TIndexSymbolKind.EnumType, TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType,
@@ -429,18 +420,18 @@ begin
     mName := AliasTarget(mDeclaration);
   end;
   // Typ nicht im Index (VCL ohne Quellen): nur das bekannte TNotifyEvent.
-  Result := (mName <> '') and SameText(ShortName(mName), 'TNotifyEvent');
+  Result := (mName <> '') and SameText(TTextNames.LastPart(mName), 'TNotifyEvent');
 end;
 
 /// <summary>Anfangswert eines eingebauten Typs: False oder 0; '' sonst.</summary>
 function BuiltinDefault(const AName: string): string;
 begin
   Result := '';
-  if IndexText(ShortName(AName), cBooleanTypes) >= 0 then
+  if IndexText(TTextNames.LastPart(AName), cBooleanTypes) >= 0 then
   begin
     Result := 'False';
   end
-  else if IndexText(ShortName(AName), cIntegerTypes) >= 0 then
+  else if IndexText(TTextNames.LastPart(AName), cIntegerTypes) >= 0 then
   begin
     Result := '0';
   end;
@@ -891,7 +882,7 @@ begin
       Exit(True);
     end;
   end;
-  if SameText(ShortName(mTypeName), 'TNotifyEvent') then
+  if SameText(TTextNames.LastPart(mTypeName), 'TNotifyEvent') then
   begin
     ATail := cNotifyTail;
   end;

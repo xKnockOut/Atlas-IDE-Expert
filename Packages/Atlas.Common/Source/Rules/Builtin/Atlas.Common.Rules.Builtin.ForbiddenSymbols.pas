@@ -90,7 +90,9 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -163,18 +165,10 @@ begin
   end;
 end;
 
-function LastSegment(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  mDot := LastDelimiter('.', AName);
-  Result := Copy(AName, mDot + 1, MaxInt);
-end;
-
 /// <summary>Name ohne Unit-Präfix (System.TextFile → TextFile).</summary>
 function WithoutUnit(const AName: string): string;
 begin
-  Result := LastSegment(AName);
+  Result := TTextNames.LastPart(AName);
 end;
 
 { TForbiddenSymbol }
@@ -254,7 +248,7 @@ end;
 
 function TForbiddenSymbol.MayMatch(const ALastName: string): Boolean;
 begin
-  Result := MatchesGlob(LastSegment(Name), ALastName);
+  Result := MatchesGlob(TTextNames.LastPart(Name), ALastName);
 end;
 
 { TForbiddenSymbolRule }
@@ -391,7 +385,7 @@ begin
   if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 1) and
     (mParent[0] = ANode) then
   begin
-    Result := Unwrapped(mParent[1]);
+    Result := TSyntaxNodes.Unparen(mParent[1]);
   end
   else
   begin

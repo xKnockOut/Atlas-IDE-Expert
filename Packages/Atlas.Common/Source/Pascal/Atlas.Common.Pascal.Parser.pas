@@ -292,7 +292,7 @@ begin
     ParseTypeReference(Result);
   end;
   // Aufrufkonvention: function(const S: string): Boolean register begin … end (#1167).
-  while IsIdent and InWords(Current.Text, cCallingConventions) do
+  while IsIdent and MatchText(Current.Text, cCallingConventions) do
   begin
     Advance;
   end;

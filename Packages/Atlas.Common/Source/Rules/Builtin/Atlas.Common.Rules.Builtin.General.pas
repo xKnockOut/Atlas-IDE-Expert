@@ -96,7 +96,8 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -256,7 +257,6 @@ type
     FTokens: TArray<TPascalToken>;
     FLines: TArray<string>;
     FLineBreak: string;
-    function IsEmptyBlock(ABlock: TSyntaxNode): Boolean;
     function FirstKeyword(const AWord: string; AFrom: Integer): Integer;
     function LastKeyword(const AWord: string; ABefore: Integer): Integer;
     function CreatedVariable(ATry: TSyntaxNode): string;
@@ -280,20 +280,6 @@ constructor TEmptyFinallyScan.Create(const AContext: TRuleContext; const AReport
 begin
   FContext := AContext;
   FReport := AReport;
-end;
-
-function TEmptyFinallyScan.IsEmptyBlock(ABlock: TSyntaxNode): Boolean;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ABlock.ChildCount - 1 do
-  begin
-    if ABlock[mIndex].Kind <> TSyntaxKind.EmptyStatement then
-    begin
-      Exit(False);
-    end;
-  end;
-  Result := True;
 end;
 
 // Index des Tokens mit dem Schlüsselwort AWord ab Offset AFrom (erstes) bzw. vor ABefore (letztes); -1 ohne.
@@ -503,7 +489,7 @@ var
   mRuleFix: TRuleFix;
 begin
   mBlock := ATry[ATry.ChildCount - 1];
-  if (mBlock.Kind <> TSyntaxKind.FinallyBlock) or not IsEmptyBlock(mBlock) then
+  if (mBlock.Kind <> TSyntaxKind.FinallyBlock) or not TSyntaxNodes.OnlyEmptyStatements(mBlock) then
   begin
     Exit;
   end;

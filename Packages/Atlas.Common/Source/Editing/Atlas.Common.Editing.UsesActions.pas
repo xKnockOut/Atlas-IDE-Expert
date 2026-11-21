@@ -110,9 +110,6 @@ type
     class function Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
       const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>;
       const AResolution: TUsesResolution): TArray<TUsesEntry>; overload; static;
-    /// <summary>Steht vor dem Token AIndex (Kommentare und Direktiven übersprungen) ein Punkt, ist es also ein
-    /// Mitglied oder ein qualifizierter Name?</summary>
-    class function DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean; static;
     /// <summary>Die Token außerhalb der Bereiche AInactive (inaktive Zweige der bedingten Kompilierung).</summary>
     class function ActiveTokens(const ATokens: TArray<TPascalToken>;
       const AInactive: TArray<TTextRange>): TArray<TPascalToken>; static;
@@ -178,7 +175,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 const
   cInInterfacePart = TUsesResolution.cInterfacePart;
@@ -187,18 +185,6 @@ const
   cQualifierKey = '.';
   // Vorsilbe für Bezeichner mit Punkt davor (Mitglieder), nur mit Namensauflösung (#1925).
   cMemberKey = '>';
-
-function Bare(const AIdentifier: string): string;
-begin
-  if (AIdentifier <> '') and (AIdentifier[1] = '&') then
-  begin
-    Result := Copy(AIdentifier, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AIdentifier;
-  end;
-end;
 
 /// <summary>Folgt auf das Token AIndex (Kommentare übersprungen) ein Punkt?</summary>
 function DotFollows(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
@@ -279,8 +265,8 @@ begin
   begin
     Exit;
   end;
-  mKey := LowerCase(Bare(ATokens[AIndex].Text));
-  if AResolution.Active and TUsesActions.DotPrecedes(ATokens, AIndex) then
+  mKey := LowerCase(TTextNames.WithoutAmpersand(ATokens[AIndex].Text));
+  if AResolution.Active and AfterDot(ATokens, AIndex) then
   begin
     AddUsage(AResult, cMemberKey + mKey, APart);
   end
@@ -412,18 +398,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-class function TUsesActions.DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mPrevious: Integer;
-begin
-  mPrevious := AIndex - 1;
-  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mPrevious);
-  end;
-  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
 end;
 
 /// <summary>Liegt ARange zwischen "uses" und dem Semikolon der Liste AClause?</summary>
@@ -942,7 +916,7 @@ begin
     mNames.AddOrSetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), True);
     for mName in ANames do
     begin
-      mNames.AddOrSetValue(LowerCase(Bare(mName)), True);
+      mNames.AddOrSetValue(LowerCase(TTextNames.WithoutAmpersand(mName)), True);
     end;
     mClauseIndex := 0;
     mIndex := 0;
@@ -959,9 +933,9 @@ begin
         Break;
       end;
       if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-        mNames.ContainsKey(LowerCase(Bare(ATokens[mIndex].Text))) then
+        mNames.ContainsKey(LowerCase(TTextNames.WithoutAmpersand(ATokens[mIndex].Text))) then
       begin
-        mUsage.Name := Bare(ATokens[mIndex].Text);
+        mUsage.Name := TTextNames.WithoutAmpersand(ATokens[mIndex].Text);
         mUsage.Range := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
         Result := Result + [mUsage];
       end;
@@ -1135,7 +1109,7 @@ begin
       begin
         for Part in ACandidate.Name.Split([',', '.']) do
         begin
-          if SameText(Bare(Trim(Part)), mName) then
+          if SameText(TTextNames.WithoutAmpersand(Trim(Part)), mName) then
           begin
             Exit(TSyntaxSearchStep.Found);
           end;
@@ -1148,20 +1122,6 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end) <> nil;
-end;
-
-/// <summary>Steht vor dem Token AIndex (über Kommentare und Direktiven hinweg) ein Punkt? Dann ist es ein
-/// Mitglied oder ein qualifizierter Name.</summary>
-function FollowsDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mPrevious: Integer;
-begin
-  mPrevious := AIndex - 1;
-  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mPrevious);
-  end;
-  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
 end;
 
 /// <summary>Ist eine der Units ACandidates die eigene oder schon eingebunden (auch über Namespaces)?</summary>
@@ -1207,11 +1167,11 @@ var
 begin
   Result := nil;
   mIndex := IdentifierAt(ATokens, APosition);
-  if (mIndex < 0) or FollowsDot(ATokens, mIndex) then
+  if (mIndex < 0) or AfterDot(ATokens, mIndex) then
   begin
     Exit;
   end;
-  mName := Bare(ATokens[mIndex].Text);
+  mName := TTextNames.WithoutAmpersand(ATokens[mIndex].Text);
   if (ATree <> nil) and IsDeclaredIn(ATree.Root, mName) then
   begin
     Exit;
@@ -1239,27 +1199,6 @@ function TUsesAddRequest.WithTarget(ATarget: TUsesAddTarget): TUsesAddRequest;
 begin
   Result := Self;
   Result.Target := ATarget;
-end;
-
-/// <summary>Offsets der Schlüsselwörter interface und implementation; -1, wenn eines fehlt.</summary>
-procedure SectionOffsets(const ATokens: TArray<TPascalToken>; out AInterface, AImplementation: Integer);
-var
-  mIndex: Integer;
-begin
-  AInterface := -1;
-  AImplementation := -1;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if ATokens[mIndex].IsKeyword('interface') and (AInterface < 0) then
-    begin
-      AInterface := ATokens[mIndex].Offset;
-    end
-    else if ATokens[mIndex].IsKeyword('implementation') then
-    begin
-      AImplementation := ATokens[mIndex].Offset;
-      Break;
-    end;
-  end;
 end;
 
 /// <summary>Nimmt aus ADeclared die Units aus AUnits in ANeeds auf, die dort noch fehlen.</summary>

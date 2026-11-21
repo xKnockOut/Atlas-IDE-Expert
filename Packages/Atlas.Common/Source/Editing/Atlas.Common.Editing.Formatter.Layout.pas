@@ -142,20 +142,6 @@ begin
   end;
 end;
 
-/// <summary>+1 für eine öffnende, -1 für eine schließende Klammer, sonst 0.</summary>
-function BracketDelta(const AToken: TPascalToken): Integer;
-begin
-  Result := 0;
-  if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
-  begin
-    Result := 1;
-  end
-  else if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
-  begin
-    Result := -1;
-  end;
-end;
-
 { TBlockPlacing }
 
 constructor TBlockPlacing.Create(const ATokens: TArray<TPascalToken>; const AStyle: TFormatStyle; AFirst, ALast,

@@ -128,7 +128,8 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Conditions.Values,
   Atlas.Common.Rules.Builtin.Conditions.Jumps,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -181,18 +182,9 @@ begin
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
 end;
 
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
-
 function IsBoolLiteral(ANode: TSyntaxNode; AValue: Boolean): Boolean;
 begin
-  ANode := Unwrapped(ANode);
+  ANode := TSyntaxNodes.Unparen(ANode);
   Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, BoolText(AValue));
 end;
 
@@ -641,16 +633,6 @@ begin
   end;
 end;
 
-/// <summary>Routine oder anonyme Methode um ANode; nil auf Unit-Ebene.</summary>
-function EnclosingRoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Namen der lokalen Routinen innerhalb von ARoutine.</summary>
 function NestedRoutines(ARoutine: TSyntaxNode): TArray<string>;
 var
@@ -996,7 +978,7 @@ var
     mBody: TArray<TSyntaxNode>;
     mNames: TArray<string>;
   begin
-    mOwner := EnclosingRoutineOf(ALoop);
+    mOwner := TSyntaxNodes.Enclosing(ALoop, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
     if (mOwner = nil) or (mOwner.Kind <> TSyntaxKind.RoutineDecl) or (ALoop.ChildCount < 2) then
     begin
       Exit;

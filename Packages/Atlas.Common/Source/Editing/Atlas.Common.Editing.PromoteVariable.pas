@@ -107,7 +107,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -251,16 +252,6 @@ begin
   Result := (ANode <> nil) and (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
 end;
 
-/// <summary>Nächste Routine über ANode; nil außerhalb.</summary>
-function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Äußerste Routine über ANode (die der Unit); nil außerhalb.</summary>
 function TopRoutineOf(ANode: TSyntaxNode): TSyntaxNode;
 var
@@ -386,7 +377,7 @@ function ShadowedBelow(const AText: string; ATree: TSyntaxTree; ANode, AStop: TS
 var
   mRoutine: TSyntaxNode;
 begin
-  mRoutine := RoutineOf(ANode);
+  mRoutine := TSyntaxNodes.Enclosing(ANode, [TSyntaxKind.RoutineDecl]);
   while (mRoutine <> nil) and (mRoutine <> AStop) do
   begin
     if (TRoutineBody.BodyOf(mRoutine) <> nil) and (LocalAt(TRoutineLocals.Collect(AText, ATree, mRoutine), AName,
@@ -394,7 +385,7 @@ begin
     begin
       Exit(True);
     end;
-    mRoutine := RoutineOf(mRoutine);
+    mRoutine := TSyntaxNodes.Enclosing(mRoutine, [TSyntaxKind.RoutineDecl]);
   end;
   Result := False;
 end;
@@ -492,7 +483,7 @@ begin
     begin
       Exit(True);
     end;
-    mNode := RoutineOf(mNode);
+    mNode := TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.RoutineDecl]);
   end;
   Result := False;
 end;
@@ -1142,7 +1133,7 @@ begin
     end;
     mTop := TopRoutineOf(mNode);
     Result := UseIssue(mNode, mTop, mSkip);
-    if (Result = '') and not mSkip and (RoutineOf(mNode) <> mTop) then
+    if (Result = '') and not mSkip and (TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.RoutineDecl]) <> mTop) then
     begin
       Result := Name + cTexts[TEditingPromoteVariableText.IsUsedInALocal].Text;
     end;

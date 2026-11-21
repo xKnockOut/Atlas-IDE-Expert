@@ -42,8 +42,6 @@ type
 
   TExpressionText = record
   public
-    /// <summary>ANode ohne umschließende Klammern.</summary>
-    class function Strip(ANode: TSyntaxNode): TSyntaxNode; static;
     /// <summary>Vorrang des äußersten Operators von ANode (Klammern zählen als Operand).</summary>
     class function Precedence(ANode: TSyntaxNode): Integer; static;
     /// <summary>Vorrang eines binären Operators; -1 bei unbekanntem.</summary>
@@ -86,7 +84,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.PureRoutines,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 { TExpressionPart }
 
@@ -109,15 +108,6 @@ begin
 end;
 
 { TExpressionText }
-
-class function TExpressionText.Strip(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
 
 class function TExpressionText.Precedence(ANode: TSyntaxNode): Integer;
 begin
@@ -194,7 +184,7 @@ class function TExpressionText.Simplify(const AText: string; ANode: TSyntaxNode)
 var
   mNode: TSyntaxNode;
 begin
-  mNode := Strip(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if (mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not') and (mNode.ChildCount = 1) then
   begin
     Result := Negate(AText, mNode[0]);
@@ -302,7 +292,7 @@ var
   mNode: TSyntaxNode;
   mDone: Boolean;
 begin
-  mNode := Strip(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if mNode.Kind = TSyntaxKind.BinaryExpr then
   begin
     mDone := NegateBinary(AText, mNode, Result);
@@ -325,7 +315,7 @@ var
   mIndex: Integer;
   mWord: string;
 begin
-  mNode := Strip(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   mTokens := ATree.Tokens;
   Result := '';
   mIndex := TRoutineBody.TokenAt(mTokens, mNode.StartOffset);

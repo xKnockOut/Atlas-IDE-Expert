@@ -70,7 +70,7 @@
 //   „abgeschaltet“ (ShowDisabled), statt zu verschwinden.
 // - Die Sprungmenüs selbst baut TAtlasIdeCrumbLists; hier bleiben Leisten, Stand, Sprung, Karte und Diagnose.
 // Abgrenzung zum mitlaufenden Kopf (#506) und zum Gliederungsfenster (#537):
-// docs/Architektur.md. Nur im Hauptthread.
+// docs/architektur/Plugin-Editor.md. Nur im Hauptthread.
 
 interface
 

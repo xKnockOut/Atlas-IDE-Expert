@@ -270,7 +270,7 @@ begin
       end
       else if (ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.CallStatement]) and (ANode.ChildCount > 0) and
         (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and (ANode[0].Name <> '') and
-        not InList(mNames, ANode[0].Name) then
+        not MatchText(ANode[0].Name, mNames) then
       begin
         mNames := mNames + [ANode[0].Name];
       end;
