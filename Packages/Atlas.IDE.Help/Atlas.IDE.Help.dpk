@@ -46,6 +46,7 @@ contains
   Atlas.UI.Help.Strings in 'Source\UI\Help\Atlas.UI.Help.Strings.pas',
   Atlas.UI.Help.SettingsSection in 'Source\UI\Help\Atlas.UI.Help.SettingsSection.pas',
   Atlas.IDE.Help.Pages in 'Source\IDE\Help\Atlas.IDE.Help.Pages.pas',
+  Atlas.IDE.Help.Adapters.Module in 'Source\IDE\Help\Atlas.IDE.Help.Adapters.Module.pas',
   Atlas.IDE.Help.Composition in 'Source\IDE\Help\Atlas.IDE.Help.Composition.pas';
 
 end.
