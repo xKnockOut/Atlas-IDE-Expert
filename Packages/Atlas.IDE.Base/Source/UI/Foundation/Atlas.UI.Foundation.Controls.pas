@@ -7,12 +7,15 @@
 // - ClearHot: Hervorhebung beim Verlassen mit der Maus löschen und nur dann neu zeichnen.
 // - SuppressBeep: Enter und Esc in einem Eingabefeld ohne Signalton von Windows.
 // - Remeasure: Inhaltshöhe nach einer neuen Breite neu rechnen und eine Änderung melden.
+// - NewHiddenSheet: Reiterseite ohne sichtbaren Reiter einhängen (ein sichtbarer braucht das Fenster).
 
 interface
 
 uses
+  System.Classes,
   System.SysUtils,
-  Vcl.Controls;
+  Vcl.Controls,
+  Vcl.ComCtrls;
 
 type
   TAtlasControls = record
@@ -29,6 +32,10 @@ type
     class procedure SuppressBeep(var AKey: Char); static;
     /// <summary>AHeight := ANewHeight; bei einer Änderung AChanged rufen.</summary>
     class procedure Remeasure(var AHeight: Integer; ANewHeight: Integer; const AChanged: TProc); static;
+    /// <summary>Reiterseite ACaption in APages, Besitzer AOwner, noch ohne sichtbaren Reiter: Ein sichtbarer Reiter
+    /// braucht das Fenster des PageControls; der Besitzer zeigt ihn, sobald es da ist (CreateWnd).</summary>
+    class function NewHiddenSheet(AOwner: TComponent; APages: TPageControl; const ACaption: string): TTabSheet;
+      static;
   end;
 
 implementation
@@ -82,6 +89,15 @@ begin
   begin
     AChanged();
   end;
+end;
+
+class function TAtlasControls.NewHiddenSheet(AOwner: TComponent; APages: TPageControl;
+  const ACaption: string): TTabSheet;
+begin
+  Result := TTabSheet.Create(AOwner);
+  Result.TabVisible := False;
+  Result.PageControl := APages;
+  Result.Caption := ACaption;
 end;
 
 end.

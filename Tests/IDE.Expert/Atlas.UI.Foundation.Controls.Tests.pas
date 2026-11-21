@@ -22,6 +22,9 @@ type
     /// <summary>Remeasure meldet nur eine echte Änderung.</summary>
     [Test]
     procedure RemeasureReportsOnlyChanges;
+    /// <summary>NewHiddenSheet hängt die Seite ohne Fenster und ohne sichtbaren Reiter ein.</summary>
+    [Test]
+    procedure NewHiddenSheetJoinsPagesWithoutTab;
   end;
 
 implementation
@@ -29,6 +32,7 @@ implementation
 uses
   Vcl.Forms,
   Vcl.ExtCtrls,
+  Vcl.ComCtrls,
   Atlas.UI.Foundation.Controls;
 
 const
@@ -115,6 +119,25 @@ begin
     end);
   Assert.AreEqual(1, mCalls);
   Assert.AreEqual(cNewHeight, mHeight);
+end;
+
+procedure TAtlasControlsTests.NewHiddenSheetJoinsPagesWithoutTab;
+var
+  mForm: TForm;
+  mPages: TPageControl;
+  mSheet: TTabSheet;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mPages := TPageControl.Create(mForm);
+    mSheet := TAtlasControls.NewHiddenSheet(mForm, mPages, 'Reiter');
+    Assert.IsTrue(mSheet.PageControl = mPages);
+    Assert.IsFalse(mSheet.TabVisible);
+    Assert.AreEqual('Reiter', mSheet.Caption);
+    Assert.IsTrue(mSheet.Owner = mForm);
+  finally
+    mForm.Free;
+  end;
 end;
 
 initialization
