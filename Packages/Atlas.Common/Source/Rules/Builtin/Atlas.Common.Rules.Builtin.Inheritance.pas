@@ -60,7 +60,6 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
-  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Inheritance.Shadowing,
   Atlas.Common.Rules.Builtin.Inheritance.OverrideTargets,
   Atlas.Common.Rules.Builtin.Inheritance.OverrideCase,
@@ -139,7 +138,8 @@ uses
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.Ancestry;
 
 {$SCOPEDENUMS ON}
 

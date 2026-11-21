@@ -99,7 +99,8 @@ begin
   Result := Copy(mFile, Length(ARoot) + 1, MaxInt);
 end;
 
-/// <summary>Auswertung des ganzen Graphen; je Optionen und Wurzel einmal je Stand des Graphen.</summary>
+/// <summary>Auswertung des ganzen Graphen; je Optionen und Wurzel einmal je Stand des Graphen. Pfade werden vor dem
+/// Vergleich mit ARoot vollständig (Prüfen einzelner Dateien gibt sie relativ zum aktuellen Ordner).</summary>
 function Analysis(const AContext: TRuleContext; const AOptions: TFeatureCycleOptions;
   const ARoot: string): IFeatureCycles;
 var
@@ -118,8 +119,8 @@ begin
       for Index := 0 to High(AEdges) do
       begin
         Edges[Index] := TFeatureEdge.Create(AEdges[Index].SourceUnit,
-          TFeatureCycleRule.RelativeTo(mRoot, AEdges[Index].SourceFileName), AEdges[Index].TargetUnit,
-          TFeatureCycleRule.RelativeTo(mRoot, AEdges[Index].TargetFileName));
+          TFeatureCycleRule.RelativeTo(mRoot, ExpandFileName(AEdges[Index].SourceFileName)), AEdges[Index].TargetUnit,
+          TFeatureCycleRule.RelativeTo(mRoot, ExpandFileName(AEdges[Index].TargetFileName)));
       end;
       Result := TFeatureCycles.Analyze(mOptions, Edges);
     end), IFeatureCycles, Result);
@@ -167,7 +168,7 @@ begin
   begin
     Exit;
   end;
-  mAnalysis := Analysis(AContext, mOptions, RootOf(AContext.FileName, AContext.RelativePath));
+  mAnalysis := Analysis(AContext, mOptions, RootOf(ExpandFileName(AContext.FileName), AContext.RelativePath));
   if mAnalysis = nil then
   begin
     Exit;

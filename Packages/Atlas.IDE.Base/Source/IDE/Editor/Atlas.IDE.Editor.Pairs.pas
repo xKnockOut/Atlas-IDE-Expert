@@ -54,7 +54,6 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
-  Atlas.Text.Columns,
   Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin;
@@ -222,7 +221,8 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Outline.StickyScroll,
-  Atlas.IDE.Problems.Controller;
+  Atlas.IDE.Problems.Controller,
+  Atlas.Text.Columns;
 
 const
   /// <summary>Mindestkontrast einer Paarfarbe zum Hintergrund der Zeile (#1244); darunter die Farbe der IDE.</summary>

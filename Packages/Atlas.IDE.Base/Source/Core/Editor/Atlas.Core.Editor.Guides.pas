@@ -17,8 +17,7 @@
 interface
 
 uses
-  Atlas.Core.Editor.Pairs,
-  Atlas.Text.Columns;
+  Atlas.Core.Editor.Pairs;
 
 type
   TAtlasGuide = record
@@ -61,7 +60,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.Math;
+  System.Math,
+  Atlas.Text.Columns;
 
 { TAtlasGuides }
 

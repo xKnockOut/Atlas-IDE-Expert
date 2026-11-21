@@ -9,7 +9,6 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract;
 

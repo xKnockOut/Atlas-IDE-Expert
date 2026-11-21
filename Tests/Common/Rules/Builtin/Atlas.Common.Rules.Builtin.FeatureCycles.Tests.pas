@@ -27,6 +27,8 @@ type
     procedure AnalysisSharedByKey;
     [Test]
     procedure RootAndRelativePaths;
+    [Test]
+    procedure RelativeFileNameKeepsExclude;
   end;
 
 implementation
@@ -37,6 +39,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.FeatureCycles,
   Atlas.Tests.RuleAssert;
+
+const
+  cRoot = 'C:/Repo/';
 
 type
   /// <summary>Uses-Graph aus festen Kanten; zählt, wie oft eine Ableitung gerechnet wird.</summary>
@@ -49,6 +54,9 @@ type
     FDerives: Integer;
   public
     constructor Create(const AEdges: array of string; AComplete: Boolean);
+    /// <summary>Dateien relativ zum aktuellen Ordner wie beim Prüfen einzelner Dateien.</summary>
+    constructor CreateRelative(const AEdges: array of string);
+    constructor CreateAt(const AEdges: array of string; AComplete: Boolean; const ARoot: string);
     function Complete(out AReason: string): Boolean;
     function ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
     function NameIn(const AFileName, AName: string): TRuleNameAnswer;
@@ -59,18 +67,15 @@ type
     property Derives: Integer read FDerives;
   end;
 
-const
-  cRoot = 'C:/Repo/';
-
 /// <summary>Kanten "Quelle -> Ziel"; die Datei einer Unit ist C:/Repo/Source/&lt;Unit&gt;.pas, mit "Tests." vorn
 /// C:/Repo/Tests/&lt;Unit&gt;.pas.</summary>
-function FileOf(const AUnit: string): string;
+function FileOf(const ARoot, AUnit: string): string;
 begin
   if AUnit.StartsWith('Tests.') then
   begin
-    Exit(cRoot + 'Tests/' + Copy(AUnit, 7, MaxInt) + '.pas');
+    Exit(ARoot + 'Tests/' + Copy(AUnit, 7, MaxInt) + '.pas');
   end;
-  Result := cRoot + 'Source/' + AUnit + '.pas';
+  Result := ARoot + 'Source/' + AUnit + '.pas';
 end;
 
 function UnitOf(const AName: string): string;
@@ -83,6 +88,16 @@ begin
 end;
 
 constructor TEdgeProjectFiles.Create(const AEdges: array of string; AComplete: Boolean);
+begin
+  CreateAt(AEdges, AComplete, cRoot);
+end;
+
+constructor TEdgeProjectFiles.CreateRelative(const AEdges: array of string);
+begin
+  CreateAt(AEdges, True, '');
+end;
+
+constructor TEdgeProjectFiles.CreateAt(const AEdges: array of string; AComplete: Boolean; const ARoot: string);
 var
   mEntry, mSource, mTarget: string;
   mEdge: TRuleUsesEdge;
@@ -95,9 +110,9 @@ begin
     mTarget := Trim(Copy(mEntry, Pos('->', mEntry) + 2, MaxInt));
     mEdge := Default(TRuleUsesEdge);
     mEdge.SourceUnit := UnitOf(mSource);
-    mEdge.SourceFileName := FileOf(mSource);
+    mEdge.SourceFileName := FileOf(ARoot, mSource);
     mEdge.TargetUnit := UnitOf(mTarget);
-    mEdge.TargetFileName := FileOf(mTarget);
+    mEdge.TargetFileName := FileOf(ARoot, mTarget);
     FEdges := FEdges + [mEdge];
   end;
 end;
@@ -168,17 +183,22 @@ const
     'Atlas.Core.Lsp.Session -> Atlas.Core.Files.Entries',
     'Atlas.Core.Hover.View -> Atlas.Core.Lsp.Contract');
 
-function Run(const AFiles: IRuleProjectFiles; const AOptions: string): TArray<TRuleFinding>;
+function RunAt(const AFiles: IRuleProjectFiles; const AOptions, ARoot: string): TArray<TRuleFinding>;
 var
   mContext: TRuleContext;
 begin
   mContext := Default(TRuleContext);
   mContext.RelativePath := 'Source/Atlas.Core.Lsp.Session.pas';
-  mContext.FileName := cRoot + mContext.RelativePath;
+  mContext.FileName := ARoot + mContext.RelativePath;
   mContext.UnitName := 'Atlas.Core.Lsp.Session';
   mContext.Text := cLspSource;
   mContext.ProjectFiles := AFiles;
   Result := TRuleAssert.ContextFindings(TFeatureCycleRule.Create, mContext, Format(cConfig, [AOptions]));
+end;
+
+function Run(const AFiles: IRuleProjectFiles; const AOptions: string): TArray<TRuleFinding>;
+begin
+  Result := RunAt(AFiles, AOptions, cRoot);
 end;
 
 { TFeatureCycleRuleTests }
@@ -278,6 +298,16 @@ begin
   Assert.AreEqual('Tests/X.pas', TFeatureCycleRule.RelativeTo('C:/Repo/', 'c:\repo\Tests\X.pas'));
   Assert.AreEqual('', TFeatureCycleRule.RelativeTo('C:/Repo/', 'D:\Other\X.pas'));
   Assert.AreEqual('', TFeatureCycleRule.RelativeTo('', 'D:\Other\X.pas'));
+end;
+
+procedure TFeatureCycleRuleTests.RelativeFileNameKeepsExclude;
+var
+  mFiles: IRuleProjectFiles;
+begin
+  // Einzelne Datei prüfen: Datei und Kanten relativ zum aktuellen Ordner, der Ordner der Konfiguration.
+  mFiles := TEdgeProjectFiles.CreateRelative(['Atlas.Core.Lsp.Session -> Atlas.Core.Hover.Contract',
+    'Tests.Atlas.Core.Hover.TestSupport -> Atlas.Core.Lsp.Session']);
+  Assert.AreEqual(0, Integer(Length(RunAt(mFiles, ', "exclude": ["Tests/**"]', ''))), 'Tests bleiben ausgenommen');
 end;
 
 initialization

@@ -136,7 +136,7 @@ begin
     end));
 end;
 
-/// <summary>Teilt "Präfix: A, B" bzw. "Präfix: A < B" am Doppelpunkt; False ohne Präfix oder Teile.</summary>
+/// <summary>Teilt "Präfix: A, B" bzw. "Präfix: A &lt; B" am Doppelpunkt; False ohne Präfix oder Teile.</summary>
 function SplitEntry(const AEntry: string; const ASeparator: Char; out APrefix: string;
   out AParts: TArray<string>): Boolean;
 var
@@ -414,12 +414,6 @@ type
     function Contains(const AFeature: string): Boolean;
   end;
 
-  /// <summary>Verbotene Richtung zwischen zwei Features eines Präfixes und der Eintrag, der sie verbietet.</summary>
-  TForbiddenPair = record
-    Key: string;
-    Entry: string;
-  end;
-
 function TKnownCycle.Contains(const AFeature: string): Boolean;
 var
   mFeature: string;
@@ -510,161 +504,249 @@ begin
   Result := EdgeKey(Trim(Copy(AEntry, 1, mArrow - 1)), Trim(Copy(AEntry, mArrow + 2, MaxInt)));
 end;
 
+type
+  /// <summary>Eine Auswertung: Graph der Features, Richtungen, bekannte Zyklen und Kanten. Schreibt Befunde und
+  /// Urteile in FOwner.</summary>
+  TFeatureAnalysis = class
+  private
+    FOwner: TFeatureCycles;
+    FOptions: TFeatureCycleOptions;
+    FGraph: TFeatureGraph;
+    FForbidden: TDictionary<string, string>;
+    FKnownEdges: TDictionary<string, string>;
+    FUsedEdges: TDictionary<string, Boolean>;
+    FEdges: TList<TFeatureEdge>;
+    FFromNodes, FToNodes: TList<Integer>;
+    FKnown: TArray<TKnownCycle>;
+    FCovered: TArray<Boolean>;
+    procedure Finding(const AText: string);
+    function Considered(const AEdge: TFeatureEdge; out APrefix, ASourceFeature, ATargetFeature: string): Boolean;
+    function FeaturesOf(AComponent: Integer): TArray<string>;
+    procedure ReadKnownEdges;
+    procedure AddEdge(const AEdge: TFeatureEdge);
+    procedure MatchComponents;
+    procedure MarkCycleEdges;
+    procedure ReportStaleEdges;
+  public
+    constructor Create(AOwner: TFeatureCycles; const AOptions: TFeatureCycleOptions);
+    destructor Destroy; override;
+    procedure Run(const AEdges: TArray<TFeatureEdge>);
+  end;
+
+constructor TFeatureAnalysis.Create(AOwner: TFeatureCycles; const AOptions: TFeatureCycleOptions);
+begin
+  inherited Create;
+  FOwner := AOwner;
+  FOptions := AOptions;
+  FForbidden := ForbiddenPairs(AOptions.Directions, FOwner.FFindings);
+  FKnownEdges := TDictionary<string, string>.Create;
+  FUsedEdges := TDictionary<string, Boolean>.Create;
+  FEdges := TList<TFeatureEdge>.Create;
+  FFromNodes := TList<Integer>.Create;
+  FToNodes := TList<Integer>.Create;
+  FGraph := TFeatureGraph.Create;
+end;
+
+destructor TFeatureAnalysis.Destroy;
+begin
+  FGraph.Free;
+  FToNodes.Free;
+  FFromNodes.Free;
+  FEdges.Free;
+  FUsedEdges.Free;
+  FKnownEdges.Free;
+  FForbidden.Free;
+  FKnown := nil;
+  FCovered := nil;
+  inherited Destroy;
+end;
+
+procedure TFeatureAnalysis.Finding(const AText: string);
+begin
+  FOwner.FFindings := FOwner.FFindings + [AText];
+end;
+
+procedure TFeatureAnalysis.ReadKnownEdges;
+var
+  mEntry, mKey: string;
+begin
+  for mEntry in FOptions.KnownEdges do
+  begin
+    mKey := KnownEdgeKey(mEntry);
+    if mKey = '' then
+    begin
+      Finding('invalid ' + mEntry);
+      Continue;
+    end;
+    FKnownEdges.AddOrSetValue(mKey, mEntry);
+  end;
+end;
+
+/// <summary>Kante zwischen zwei Features desselben Präfixes, die kein Ausschluss trifft?</summary>
+function TFeatureAnalysis.Considered(const AEdge: TFeatureEdge; out APrefix, ASourceFeature,
+  ATargetFeature: string): Boolean;
+var
+  mTargetPrefix: string;
+begin
+  Result := TFeatureCycles.FeatureOf(AEdge.SourceUnit, FOptions.Prefixes, APrefix, ASourceFeature) and
+    TFeatureCycles.FeatureOf(AEdge.TargetUnit, FOptions.Prefixes, mTargetPrefix, ATargetFeature) and
+    SameText(APrefix, mTargetPrefix) and not SameText(ASourceFeature, ATargetFeature) and
+    not Excluded(FOptions.Exclude, AEdge.SourcePath) and not Excluded(FOptions.Exclude, AEdge.TargetPath) and
+    not Excluded(FOptions.Exclude, AEdge.SourceUnit) and not Excluded(FOptions.Exclude, AEdge.TargetUnit);
+end;
+
+/// <summary>Nimmt die Kante in den Graphen, je Unit-Paar einmal, und prüft die Richtung.</summary>
+procedure TFeatureAnalysis.AddEdge(const AEdge: TFeatureEdge);
+var
+  mPrefix, mSourceFeature, mTargetFeature, mKey, mEntry: string;
+begin
+  if not Considered(AEdge, mPrefix, mSourceFeature, mTargetFeature) then
+  begin
+    Exit;
+  end;
+  mKey := EdgeKey(AEdge.SourceUnit, AEdge.TargetUnit);
+  if FUsedEdges.ContainsKey(mKey) then
+  begin
+    Exit;
+  end;
+  FUsedEdges.Add(mKey, False);
+  FEdges.Add(AEdge);
+  FFromNodes.Add(FGraph.Node(mPrefix, mSourceFeature));
+  FToNodes.Add(FGraph.Node(mPrefix, mTargetFeature));
+  FGraph.Link(FFromNodes.Last, FToNodes.Last);
+  if not FForbidden.TryGetValue(PairKey(mPrefix, mSourceFeature, mTargetFeature), mEntry) then
+  begin
+    Exit;
+  end;
+  if FKnownEdges.ContainsKey(mKey) then
+  begin
+    FUsedEdges[mKey] := True;
+  end
+  else
+  begin
+    FOwner.Mark(mKey, TFeatureVerdict.Direction, mEntry);
+    Finding('direction ' + AEdge.SourceUnit + cEdgeArrow + AEdge.TargetUnit);
+  end;
+end;
+
+function TFeatureAnalysis.FeaturesOf(AComponent: Integer): TArray<string>;
+var
+  mMember: Integer;
+begin
+  Result := nil;
+  for mMember in FGraph.Components[AComponent] do
+  begin
+    Result := Result + [FGraph.Feature(mMember)];
+  end;
+end;
+
+/// <summary>Komponenten gegen die bekannten Zyklen: unbekannte melden, Einträge ohne gleiche Komponente veraltet.
+/// </summary>
+procedure TFeatureAnalysis.MatchComponents;
+var
+  mExact: TArray<Boolean>;
+  mFeatures: TArray<string>;
+  mPrefix, mFeature: string;
+  mIndex, mKnownIndex: Integer;
+  mInside: Boolean;
+begin
+  SetLength(mExact, Length(FKnown));
+  SetLength(FCovered, FGraph.Components.Count);
+  for mIndex := 0 to FGraph.Components.Count - 1 do
+  begin
+    mFeatures := FeaturesOf(mIndex);
+    mPrefix := FGraph.Prefix(FGraph.Components[mIndex][0]);
+    FCovered[mIndex] := False;
+    for mKnownIndex := 0 to High(FKnown) do
+    begin
+      mInside := SameText(FKnown[mKnownIndex].Prefix, mPrefix);
+      for mFeature in mFeatures do
+      begin
+        mInside := mInside and FKnown[mKnownIndex].Contains(mFeature);
+      end;
+      if mInside then
+      begin
+        FCovered[mIndex] := True;
+        mExact[mKnownIndex] := mExact[mKnownIndex] or (Length(mFeatures) = Length(FKnown[mKnownIndex].Features));
+      end;
+    end;
+    if not FCovered[mIndex] then
+    begin
+      Finding('cycle ' + ComponentText(mPrefix, mFeatures));
+    end;
+  end;
+  for mKnownIndex := 0 to High(FKnown) do
+  begin
+    if not mExact[mKnownIndex] then
+    begin
+      Finding('stale ' + FKnown[mKnownIndex].Text);
+    end;
+  end;
+end;
+
+/// <summary>Urteil "Zyklus" für jede Kante innerhalb eines unbekannten Zyklus.</summary>
+procedure TFeatureAnalysis.MarkCycleEdges;
+var
+  mIndex, mComponent: Integer;
+begin
+  for mIndex := 0 to FEdges.Count - 1 do
+  begin
+    mComponent := FGraph.ComponentOf(FFromNodes[mIndex]);
+    if (mComponent < 0) or FCovered[mComponent] or (mComponent <> FGraph.ComponentOf(FToNodes[mIndex])) then
+    begin
+      Continue;
+    end;
+    FOwner.Mark(EdgeKey(FEdges[mIndex].SourceUnit, FEdges[mIndex].TargetUnit), TFeatureVerdict.Cycle,
+      ComponentText(FGraph.Prefix(FFromNodes[mIndex]), FeaturesOf(mComponent)));
+  end;
+end;
+
+procedure TFeatureAnalysis.ReportStaleEdges;
+var
+  mKey, mEntry: string;
+  mUsed: Boolean;
+begin
+  for mKey in FKnownEdges.Keys do
+  begin
+    if not FUsedEdges.TryGetValue(mKey, mUsed) or not mUsed then
+    begin
+      mEntry := FKnownEdges[mKey];
+      Finding('staleEdge ' + Trim(Copy(mEntry, 1, Pos('->', mEntry) - 1)) + cEdgeArrow +
+        Trim(Copy(mEntry, Pos('->', mEntry) + 2, MaxInt)));
+    end;
+  end;
+end;
+
+procedure TFeatureAnalysis.Run(const AEdges: TArray<TFeatureEdge>);
+var
+  mEdge: TFeatureEdge;
+begin
+  FKnown := KnownCycles(FOptions.Known, FOwner.FFindings);
+  ReadKnownEdges;
+  for mEdge in AEdges do
+  begin
+    AddEdge(mEdge);
+  end;
+  FGraph.Solve;
+  MatchComponents;
+  MarkCycleEdges;
+  ReportStaleEdges;
+end;
+
 constructor TFeatureCycles.CreateFrom(const AOptions: TFeatureCycleOptions; const AEdges: TArray<TFeatureEdge>);
 var
-  mGraph: TFeatureGraph;
-  mForbidden: TDictionary<string, string>;
-  mKnownEdges: TDictionary<string, string>;
-  mUsedEdges: TDictionary<string, Boolean>;
-  mKnown: TArray<TKnownCycle>;
-  mCovered: TArray<Boolean>;
-  mExact: TArray<Boolean>;
-  mEdges: TList<TFeatureEdge>;
-  mFromNodes, mToNodes: TList<Integer>;
-  mEdge: TFeatureEdge;
-  mSourcePrefix, mSourceFeature, mTargetPrefix, mTargetFeature, mKey, mEntry, mText: string;
-  mMembers: TArray<Integer>;
-  mFeatures: TArray<string>;
-  mIndex, mKnownIndex, mMember: Integer;
-  mInside: Boolean;
+  mAnalysis: TFeatureAnalysis;
 begin
   inherited Create;
   FVerdicts := TDictionary<string, TEdgeVerdict>.Create;
   FFindings := nil;
-  mForbidden := ForbiddenPairs(AOptions.Directions, FFindings);
-  mKnownEdges := TDictionary<string, string>.Create;
-  mUsedEdges := TDictionary<string, Boolean>.Create;
-  mEdges := TList<TFeatureEdge>.Create;
-  mFromNodes := TList<Integer>.Create;
-  mToNodes := TList<Integer>.Create;
-  mGraph := TFeatureGraph.Create;
+  mAnalysis := TFeatureAnalysis.Create(Self, AOptions);
   try
-    mKnown := KnownCycles(AOptions.Known, FFindings);
-    for mEntry in AOptions.KnownEdges do
-    begin
-      mKey := KnownEdgeKey(mEntry);
-      if mKey = '' then
-      begin
-        FFindings := FFindings + ['invalid ' + mEntry];
-        Continue;
-      end;
-      mKnownEdges.AddOrSetValue(mKey, mEntry);
-    end;
-    // Kanten zwischen Features desselben Präfixes, je Unit-Paar einmal.
-    for mEdge in AEdges do
-    begin
-      if not FeatureOf(mEdge.SourceUnit, AOptions.Prefixes, mSourcePrefix, mSourceFeature) or
-        not FeatureOf(mEdge.TargetUnit, AOptions.Prefixes, mTargetPrefix, mTargetFeature) or
-        not SameText(mSourcePrefix, mTargetPrefix) or SameText(mSourceFeature, mTargetFeature) or
-        Excluded(AOptions.Exclude, mEdge.SourcePath) or Excluded(AOptions.Exclude, mEdge.TargetPath) or
-        Excluded(AOptions.Exclude, mEdge.SourceUnit) or Excluded(AOptions.Exclude, mEdge.TargetUnit) then
-      begin
-        Continue;
-      end;
-      mKey := EdgeKey(mEdge.SourceUnit, mEdge.TargetUnit);
-      if mUsedEdges.ContainsKey(mKey) then
-      begin
-        Continue;
-      end;
-      mUsedEdges.Add(mKey, False);
-      mEdges.Add(mEdge);
-      mFromNodes.Add(mGraph.Node(mSourcePrefix, mSourceFeature));
-      mToNodes.Add(mGraph.Node(mTargetPrefix, mTargetFeature));
-      mGraph.Link(mFromNodes.Last, mToNodes.Last);
-      // Richtung
-      if mForbidden.TryGetValue(PairKey(mSourcePrefix, mSourceFeature, mTargetFeature), mEntry) then
-      begin
-        if mKnownEdges.ContainsKey(mKey) then
-        begin
-          mUsedEdges[mKey] := True;
-        end
-        else
-        begin
-          Mark(mKey, TFeatureVerdict.Direction, mEntry);
-          FFindings := FFindings + ['direction ' + mEdge.SourceUnit + cEdgeArrow + mEdge.TargetUnit];
-        end;
-      end;
-    end;
-    mGraph.Solve;
-    // Komponenten gegen die bekannten Zyklen
-    SetLength(mExact, Length(mKnown));
-    SetLength(mCovered, mGraph.Components.Count);
-    for mIndex := 0 to mGraph.Components.Count - 1 do
-    begin
-      mMembers := mGraph.Components[mIndex];
-      mFeatures := nil;
-      for mMember in mMembers do
-      begin
-        mFeatures := mFeatures + [mGraph.Feature(mMember)];
-      end;
-      mCovered[mIndex] := False;
-      for mKnownIndex := 0 to High(mKnown) do
-      begin
-        if not SameText(mKnown[mKnownIndex].Prefix, mGraph.Prefix(mMembers[0])) then
-        begin
-          Continue;
-        end;
-        mInside := True;
-        for mText in mFeatures do
-        begin
-          mInside := mInside and mKnown[mKnownIndex].Contains(mText);
-        end;
-        if mInside then
-        begin
-          mCovered[mIndex] := True;
-          if Length(mFeatures) = Length(mKnown[mKnownIndex].Features) then
-          begin
-            mExact[mKnownIndex] := True;
-          end;
-        end;
-      end;
-      if not mCovered[mIndex] then
-      begin
-        FFindings := FFindings + ['cycle ' + ComponentText(mGraph.Prefix(mMembers[0]), mFeatures)];
-      end;
-    end;
-    for mKnownIndex := 0 to High(mKnown) do
-    begin
-      if not mExact[mKnownIndex] then
-      begin
-        FFindings := FFindings + ['stale ' + mKnown[mKnownIndex].Text];
-      end;
-    end;
-    // Einträge innerhalb eines unbekannten Zyklus
-    for mIndex := 0 to mEdges.Count - 1 do
-    begin
-      mMember := mGraph.ComponentOf(mFromNodes[mIndex]);
-      if (mMember < 0) or mCovered[mMember] or (mMember <> mGraph.ComponentOf(mToNodes[mIndex])) then
-      begin
-        Continue;
-      end;
-      mFeatures := nil;
-      for mKnownIndex in mGraph.Components[mMember] do
-      begin
-        mFeatures := mFeatures + [mGraph.Feature(mKnownIndex)];
-      end;
-      Mark(EdgeKey(mEdges[mIndex].SourceUnit, mEdges[mIndex].TargetUnit), TFeatureVerdict.Cycle,
-        ComponentText(mGraph.Prefix(mFromNodes[mIndex]), mFeatures));
-    end;
-    for mKey in mKnownEdges.Keys do
-    begin
-      if not mUsedEdges.ContainsKey(mKey) or not mUsedEdges[mKey] then
-      begin
-        mEntry := mKnownEdges[mKey];
-        FFindings := FFindings + ['staleEdge ' + Trim(Copy(mEntry, 1, Pos('->', mEntry) - 1)) + cEdgeArrow +
-          Trim(Copy(mEntry, Pos('->', mEntry) + 2, MaxInt))];
-      end;
-    end;
-    SortTexts(FFindings);
+    mAnalysis.Run(AEdges);
   finally
-    mGraph.Free;
-    mToNodes.Free;
-    mFromNodes.Free;
-    mEdges.Free;
-    mUsedEdges.Free;
-    mKnownEdges.Free;
-    mForbidden.Free;
+    mAnalysis.Free;
   end;
+  SortTexts(FFindings);
 end;
 
 destructor TFeatureCycles.Destroy;
