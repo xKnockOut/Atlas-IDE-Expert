@@ -111,6 +111,7 @@
         <DCCReference Include="..\Atlas.Text\Source\Fuzzy\Atlas.Text.Fuzzy.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Files\Atlas.Text.Files.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Locked\Atlas.Text.Locked.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Reporting\Atlas.Text.Reporting.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Csv\Atlas.Text.Csv.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\IndexCache\Atlas.Text.IndexCache.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Names\Atlas.Text.Names.pas"/>
@@ -340,7 +341,7 @@
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Queries.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.pas"/>
-        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Adapters.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.HostAdapters.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.IdeAdapters.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.UiAdapters.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.ProblemsAdapters.pas"/>
@@ -900,7 +901,7 @@
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.ExternalRules.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.BranchNames.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Pull.pas"/>
-        <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
+        <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Null.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Switches.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.BackgroundJobs.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineMove.pas"/>

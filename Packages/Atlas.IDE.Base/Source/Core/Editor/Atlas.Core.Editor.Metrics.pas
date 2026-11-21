@@ -93,7 +93,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Editor.LineItems;
+  Atlas.Core.Editor.LineItems,
+  Atlas.Text.Json;
 
 { TAtlasFileMetrics }
 
@@ -336,12 +337,7 @@ var
   mValue: TJSONValue;
 begin
   AText := '';
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if mValue is TJSONString then
     begin

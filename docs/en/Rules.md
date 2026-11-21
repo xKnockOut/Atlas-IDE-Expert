@@ -2664,9 +2664,14 @@ raise ECustomerMissing.Create('Customer missing');
 
 **Catch-all handler without re-raise** · Code smell · Warning · Group Exceptions
 
-A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.
+A handler for Exception, or an except part without on, that neither re-raises, reports the error through a call from reporters nor ends the program swallows every error, including programming errors. Off by default; intended for library code and for code with its own error reporting.
 
 Experimental: the rule runs only in the `strict` profile or when it gets a severity under `rules`.
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `allowExceptionUse` | boolean | `false` | A handler on E: Exception do that reads its exception (E.Message to the caller, E to a routine) passes the error on and counts as handled. |
+| `reporters` | string-list | `[]` | Calls that report the exception (patterns with * and ? over the name with its qualifiers, e.g. TAtlasGuard.* or *Logger.Error); a block that contains one counts as handled. |
 
 Flagged:
 

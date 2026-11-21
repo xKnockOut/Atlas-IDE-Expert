@@ -522,7 +522,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.VersionControl.Internals.SvnExternals` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnExternals.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.Internals.SvnLayout` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnLayout.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.Internals.Text` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.Text.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
-| `Atlas.Core.VersionControl.Providers.Null` | `Core/VersionControl/Atlas.Core.VersionControl.Providers.Null.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
+| `Atlas.Core.VersionControl.Null` | `Core/VersionControl/Atlas.Core.VersionControl.Null.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.Pull` | `Core/VersionControl/Atlas.Core.VersionControl.Pull.pas` | Holen der Arbeitskopie, aus `Atlas.Core.Welcome.QuickActions` für die Willkommensseite und „Arbeitskopien“, #1456 |
 | `Atlas.Core.VersionControl.ServerAccess` | `Core/VersionControl/Atlas.Core.VersionControl.ServerAccess.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
 | `Atlas.Core.VersionControl.ServerCheck` | `Core/VersionControl/Atlas.Core.VersionControl.ServerCheck.pas` | Vertrag und reine Logik der Versionsverwaltung ohne Prozessaufruf (#1891): Daten, Branch-Plan, Pull, Arbeitskopien, Werkzeugsuche; Base, Tracker und Welcome nutzen sie, git und svn ruft nur das Modul auf |
@@ -538,7 +538,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Build.Notifier` | `IDE/Build/Atlas.IDE.Build.Notifier.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Build-Auswahl für den Server; Probleme und Projekt-Einstellungen (Base), #1455 |
 | `Atlas.IDE.CodeInsight.Composition` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.pas` | Ordner `IDE/CodeInsight` |
-| `Atlas.IDE.CodeInsight.Composition.Adapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Adapters.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.HostAdapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.HostAdapters.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.IdeAdapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.IdeAdapters.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.UiAdapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.UiAdapters.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.ProblemsAdapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.ProblemsAdapters.pas` | Ordner `IDE/CodeInsight` |
@@ -989,7 +989,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Assistants.DebugBar` | `IDE/Assistants/Atlas.IDE.Assistants.DebugBar.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.ContextExport` | `IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Composition` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.pas` | Ordner `IDE/Assistants` |
-| `Atlas.IDE.Assistants.Composition.Adapters` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.Adapters.pas` | Ordner `IDE/Assistants` |
+| `Atlas.IDE.Assistants.Composition.HostAdapters` | `IDE/Assistants/Atlas.IDE.Assistants.Composition.HostAdapters.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.EditInbox` | `IDE/Assistants/Atlas.IDE.Assistants.EditInbox.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.Adapters.Instructions` | `IDE/Assistants/Atlas.IDE.Assistants.Adapters.Instructions.pas` | Ordner `IDE/Assistants` |
 | `Atlas.IDE.Assistants.FolderSignal` | `IDE/Assistants/Atlas.IDE.Assistants.FolderSignal.pas` | Ordner `IDE/Assistants` |
@@ -1531,7 +1531,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Adapters.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.PaletteSearch.pas` | Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasPaletteSource` aus `Atlas.Core.Commands.Palette`, #1443 |
 | `Atlas.IDE.Tracker.PaletteSearchFetch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearchFetch.pas` | Ordner `IDE/Tracker`, Abfrage der Palettensuche beim Tracker |
 | `Atlas.IDE.Tracker.Composition.Parts` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.Parts.pas` | Ordner `IDE/Tracker`, Rolle Composition: Teile, Befehle und Menü des Moduls; legt die Adapter der Teile an, #1455, #1443 |
-| `Atlas.IDE.Tracker.Composition.Adapters` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.Adapters.pas` | Ordner `IDE/Tracker`, Rolle Composition: legt die Adapter der Teile an und meldet sie über den Scope an, #1443 |
+| `Atlas.IDE.Tracker.Composition.HostAdapters` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.HostAdapters.pas` | Ordner `IDE/Tracker`, Rolle Composition: legt die Adapter der Teile an und meldet sie über den Scope an, #1443 |
 | `Atlas.IDE.Tracker.Adapters.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Adapters.Settings.pas` | Ordner `IDE/Tracker`, Rolle Adapters: Abschnitt Issue-Tracker im Optionsdialog (`IAtlasSettingsSectionProvider`), #1443 |
 | `Atlas.UI.Tracker.SettingsBranches` | `UI/Tracker/Atlas.UI.Tracker.SettingsBranches.pas` | Unterpunkt „Versionsverwaltung“ des Issue-Trackers, nur mit Versionsverwaltung (#1903) |
 | `Atlas.IDE.Tracker.SprintTile` | `IDE/Tracker/Atlas.IDE.Tracker.SprintTile.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
@@ -1564,7 +1564,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.ImageMarkup` | `UI/Tracker/Atlas.UI.Tracker.ImageMarkup.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueBoxes` | `UI/Tracker/Atlas.UI.Tracker.IssueBoxes.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.pas` | Ordner `UI/Tracker` |
-| `Atlas.UI.Tracker.IssueFrame.Contract` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Contract.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.IssueFrame.Types` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Types.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame.Chrome` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Chrome.pas` | Ordner `UI/Tracker`, feste Steuerelemente des Issue-Fensters |
 | `Atlas.UI.Tracker.IssueFrame.Layout` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Layout.pas` | Ordner `UI/Tracker`, Ablage des Inhalts im Bildlauf |
 | `Atlas.UI.Tracker.IssueFrame.Sections` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Sections.pas` | Ordner `UI/Tracker`, Abschnitte des gezeigten Issues |

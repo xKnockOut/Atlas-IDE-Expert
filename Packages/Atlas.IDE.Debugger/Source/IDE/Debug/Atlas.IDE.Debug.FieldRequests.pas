@@ -126,7 +126,10 @@ begin
     end;
   except
     // Server langsam oder weg: Der Aufrufer zerlegt den Ergebnis-String.
-    Result := nil;
+    on ELspClientError do
+    begin
+      Result := nil;
+    end;
   end;
 end;
 

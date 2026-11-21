@@ -221,8 +221,14 @@ begin
     mContent := TAtlasTextFile.Load(AFileName);
   except
     // Gesperrt (gerade gespeichert) oder gelöscht: wie noch nicht gelesen.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit(False);
+    end;
   end;
   ATeam := TAtlasTeamFile.Parse(mContent.Text, AFileName,
     TAtlasTeamFile.RootOf(ExtractFileDir(AFileName), PathExists));

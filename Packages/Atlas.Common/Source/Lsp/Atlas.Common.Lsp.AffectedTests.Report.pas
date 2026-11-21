@@ -7,7 +7,7 @@ interface
 
 uses
   System.JSON,
-  Atlas.Common.Lsp.AffectedTests.Contract;
+  Atlas.Common.Lsp.AffectedTests.Types;
 
 type
   TAffectedReport = class

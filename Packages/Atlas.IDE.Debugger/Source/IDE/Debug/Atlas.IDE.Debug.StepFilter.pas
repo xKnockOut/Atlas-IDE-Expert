@@ -236,7 +236,7 @@ begin
     end;
   except
     // Server langsam oder weg: keine Treffer, das Fenster sagt es.
-    on Exception do
+    on ELspClientError do
       Result := False;
   end;
 end;

@@ -21,6 +21,8 @@
 // Wert in Save anders schreiben (z. B. ungekürzt oder geordnet).
 // Steuerelemente aus der VCL dürfen über die Package-Grenze: Base und Module
 // teilen dieselbe VCL. Klassen aus Atlas-Packages nie.
+// Genehmigte Ausnahme „VCL in Verträgen der UI-Schicht“ (docs/Architektur.md): Die Bausteine sind
+// VCL-Steuerelemente, die das Modul selbst anordnet; eigene Interfaces je Steuerelement brächten nur Hüllen.
 
 interface
 

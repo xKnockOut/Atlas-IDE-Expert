@@ -107,7 +107,8 @@ uses
   Shell.Workspace.Listings,
   Shell.Workspace.Packages,
   Atlas.Text.LogMarks,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Reporting;
 
 type
 {$SCOPEDENUMS ON}
@@ -311,12 +312,12 @@ begin
     AError.ClassName,
       TLogMarks.Text(AError.Message)]));
   IndexEvent(Format('index project#%d failed %s', [FParts.Setup.Priority, AError.ClassName]));
-  try
-    // Ohne aktiven Fortschritt ein No-op.
-    FProgress.Finish(cTexts[TWorkspaceIndexingText.Failed].Text);
-  except
-    // Transport schon geschlossen: Das Log genügt.
-  end;
+  // Ohne aktiven Fortschritt ein No-op; ist der Transport schon geschlossen, genügt das Log oben.
+  TReporting.Quietly(
+    procedure
+    begin
+      FProgress.Finish(cTexts[TWorkspaceIndexingText.Failed].Text);
+    end);
   // Teilweise aufgebauter Index: Syntaxprüfung und Pull-Diagnosen sollen ihn trotzdem nutzen.
   FParts.Events.IndexFinished;
 end;

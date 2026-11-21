@@ -64,7 +64,8 @@ implementation
 uses
   System.IOUtils,
   Atlas.Text.Locked,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Text.Files;
 
 { TSharedUnitListings }
 
@@ -130,8 +131,14 @@ begin
     Result := mListing.Files;
   except
     // Nicht lesbare Ordner (Rechte, Netzlaufwerk) tragen nichts bei.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
+    end;
   end;
 end;
 
@@ -174,8 +181,14 @@ begin
       Result := TDirectory.GetDirectories(AFolder);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
+    end;
   end;
 end;
 
@@ -189,8 +202,14 @@ begin
     end;
   except
     // Nicht lesbare Ordner (Rechte, Netzlaufwerk) tragen nichts bei.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
+    end;
   end;
 end;
 
@@ -209,8 +228,14 @@ begin
   try
     AText := TFileEncoding.LoadFromFile(AFileName, mFormat);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

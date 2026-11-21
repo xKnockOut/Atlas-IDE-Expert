@@ -100,7 +100,6 @@ begin
   except
     // Scheitert eine Messung, endet nur das Messen im Hintergrund; der Gipfel bleibt
     // der bisher gemessene, die festen Zeitpunkte messen weiter selbst.
-    // lsp-ignore: catch-all-without-raise -- Messfehler beendet nur das Hintergrundmessen
     on Exception do
       Exit;
   end;

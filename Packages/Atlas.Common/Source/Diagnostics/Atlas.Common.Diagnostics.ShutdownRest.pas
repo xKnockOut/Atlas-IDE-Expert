@@ -220,7 +220,9 @@ begin
       end;
     end;
   except
-    // Beim Beenden darf nichts mehr scheitern.
+    // Beim Beenden darf nichts mehr scheitern. Bewusst ohne TReporting und ohne SysUtils: Die Unit misst den
+    // Speicherrest nach allen Finalisierungen, ein Rückruf oder eine Exception-Klasse belegte dafür selbst Speicher.
+    // Gemeldet wird nichts, weil Protokoll und Report der einzige Weg dafür sind und gerade gescheitert sind.
   end;
   // System schreibt ExitCode erst nach allen Finalisierungen in ExitProcess bzw. exit(); ein früher gesetzter
   // Fehlercode (fehlgeschlagene Tests) bleibt stehen.

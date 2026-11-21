@@ -98,7 +98,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueContext;

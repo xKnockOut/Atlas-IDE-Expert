@@ -71,7 +71,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueFrame.Chrome,
   Atlas.UI.Tracker.IssueFrame.Sections,
   Atlas.UI.Tracker.IssueFrame.Deferred;

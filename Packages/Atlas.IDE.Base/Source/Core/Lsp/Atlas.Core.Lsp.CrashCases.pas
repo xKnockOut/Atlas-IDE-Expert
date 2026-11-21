@@ -112,7 +112,8 @@ uses
   System.IOUtils,
   System.Generics.Defaults,
   Atlas.Core.Localization.Language,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Files;
 
 {$SCOPEDENUMS ON}
 
@@ -266,8 +267,14 @@ begin
     mRoot := TJSONValue.ParseJSONValue(TFile.ReadAllText(mFile, TEncoding.UTF8), False, False);
   except
     // Nicht lesbar (Kodierung, Zugriff).
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   try
     if not (mRoot is TJSONObject) then
@@ -369,8 +376,14 @@ begin
     end;
   except
     // Gesperrt oder gelöscht: der Text ohne Stapel.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       mStack := '';
+    end;
   end;
   mLines := TStringBuilder.Create;
   try
@@ -452,8 +465,14 @@ begin
       Result := Result + [mAttach];
     except
       // Gesperrt: ohne diese Datei.
-      on Exception do
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
         Continue;
+      end;
     end;
   end;
 end;

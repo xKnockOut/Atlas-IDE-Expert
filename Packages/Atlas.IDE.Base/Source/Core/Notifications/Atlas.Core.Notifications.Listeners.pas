@@ -55,6 +55,10 @@ type
 
 implementation
 
+
+uses
+  Atlas.Text.Reporting;
+
 { TAtlasListenerList<TListener> }
 
 constructor TAtlasListenerList<TListener>.Create;
@@ -122,8 +126,10 @@ begin
       mListener();
     except
       // Ein Fehler im Beobachter darf die meldende Funktion nicht stören.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TReporting.Failed('Beobachter', E); // german-ok Protokoll
+      end;
     end;
 end;
 
@@ -139,8 +145,10 @@ begin
       mListener(AValue);
     except
       // Ein Fehler im Beobachter darf die meldende Funktion nicht stören.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TReporting.Failed('Beobachter', E); // german-ok Protokoll
+      end;
     end;
 end;
 

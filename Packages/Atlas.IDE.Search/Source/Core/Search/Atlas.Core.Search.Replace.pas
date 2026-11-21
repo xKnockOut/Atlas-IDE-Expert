@@ -53,6 +53,7 @@ type
 implementation
 
 uses
+  System.RegularExpressionsCore,
   Atlas.Text.Lines;
 
 { TAtlasReplacePreview }
@@ -90,7 +91,7 @@ begin
     end;
   except
     // Unbekannter Name: die Engine meldet ihn als Fehler; für den Ersatztext heißt das „nichts“.
-    on Exception do
+    on ERegularExpressionError do
       Result := '';
   end;
 end;

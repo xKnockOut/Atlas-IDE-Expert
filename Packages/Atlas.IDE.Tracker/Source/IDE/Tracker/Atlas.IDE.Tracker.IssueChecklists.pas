@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Vcl.Dialogs,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
@@ -376,8 +376,11 @@ begin
         mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.cTimeoutMs),
           mEntry.Key, mComments, mResult, mError);
       except
-        on Exception do
+        on E: Exception do
+        begin
           mOk := False;
+          TAtlasGuard.Log('Issue-Vorschau: Details mit ' + E.ClassName + ' abgebrochen'); // german-ok Protokoll
+        end;
       end;
       mTransport := nil;
       if TAtlasShutdown.Signalled then

@@ -94,7 +94,8 @@ begin
   // MCP-Server vielleicht noch.
   if not GCleaned then
   begin
-    TTextFiles.DeleteFolderQuietly(FFolder);
+    // Gesperrt: bleibt liegen, der Eingang arbeitet trotzdem.
+    TTextFiles.DeleteFolder(FFolder);
     GCleaned := True;
   end;
   FSignal := TAtlasFolderSignal.Create(FFolder);

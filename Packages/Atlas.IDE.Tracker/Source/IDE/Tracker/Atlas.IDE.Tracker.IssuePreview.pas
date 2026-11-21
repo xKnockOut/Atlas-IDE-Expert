@@ -41,7 +41,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.IssueLookups,
   Atlas.IDE.Tracker.IssueChecklists,

@@ -341,7 +341,6 @@ begin
     begin
       Fail(TUpdateErrors.cCopyFailed, mError.Message);
     end;
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Updaters; Fail protokolliert
     on mError: Exception do
     begin
       Fail(TUpdateErrors.cUnexpected, mError.Message);

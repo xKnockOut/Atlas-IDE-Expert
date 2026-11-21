@@ -168,13 +168,7 @@ var
   mList: TList<TAtlasWhatsNewVersion>;
 begin
   Result := nil;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: keine Karte, kein Fehler in der IDE.
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AJson);
   mList := TList<TAtlasWhatsNewVersion>.Create;
   try
     if not (mRoot is TJSONObject) then

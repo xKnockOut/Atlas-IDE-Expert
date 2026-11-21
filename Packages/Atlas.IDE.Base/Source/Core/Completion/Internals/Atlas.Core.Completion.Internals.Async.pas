@@ -83,7 +83,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Text.Reporting;
 
 { TAtlasAsyncCompletionProvider }
 
@@ -112,13 +113,14 @@ end;
 
 procedure TAtlasAsyncCompletionProvider.Failed(AE: Exception);
 begin
-  try
-    if IsFailure(AE) then
-    begin
-      TAtlasGuard.ReportProvider(ProviderName, AE);
-    end;
-  except
+  if IsFailure(AE) then
+  begin
     // Melden darf den Hintergrund-Thread nicht beenden.
+    TReporting.Quietly(
+      procedure
+      begin
+        TAtlasGuard.ReportProvider(ProviderName, AE);
+      end);
   end;
 end;
 

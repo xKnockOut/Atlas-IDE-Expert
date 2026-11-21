@@ -2,8 +2,10 @@
   "description": "Fallliste der Rollenmatrix (docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest.",
   "prefixes": [
     "Atlas.Text",
+    "Atlas.WinBase",
     "Atlas.Common",
     "Atlas.Windows",
+    "Atlas.Linux",
     "Atlas.Core",
     "Atlas.UI",
     "Atlas.IDE"
@@ -454,7 +456,7 @@
     {
       "from": "Atlas.Common.Alpha.Composition.Sache",
       "to": "Atlas.Common.Alpha.Hosting.Sache",
-      "allowed": false
+      "allowed": true
     },
     {
       "from": "Atlas.Common.Alpha.Composition.Sache",
@@ -489,7 +491,7 @@
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
       "to": "Atlas.Common.Alpha.Providers.Sache",
-      "allowed": true
+      "allowed": false
     },
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
@@ -499,7 +501,7 @@
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
       "to": "Atlas.Common.Alpha.Adapters.Sache",
-      "allowed": true
+      "allowed": false
     },
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
@@ -509,7 +511,7 @@
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
       "to": "Atlas.Common.Alpha.Sache",
-      "allowed": true
+      "allowed": false
     },
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
@@ -519,7 +521,7 @@
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
       "to": "Atlas.Common.Alpha.Composition.Sache",
-      "allowed": true
+      "allowed": false
     },
     {
       "from": "Atlas.Common.Alpha.Hosting.Sache",
@@ -605,6 +607,402 @@
       "from": "Atlas.Core.Alpha.Sache",
       "to": "Atlas.Common.Alpha.Internals.Sache",
       "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache.Contract",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": false,
+      "note": "Rolle an dritter Stelle: Contract importiert eigenes Root"
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache.Contract",
+      "to": "Atlas.Common.Alpha.Contract",
+      "allowed": true,
+      "note": "Rolle an dritter Stelle: Contract importiert eigenen Contract"
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Sache.Contract",
+      "allowed": true,
+      "note": "Rolle an dritter Stelle: Root importiert Contract"
+    },
+    {
+      "from": "Atlas.Windows.Beta.Sache",
+      "to": "Atlas.Common.Alpha.Sache.Contract",
+      "allowed": true,
+      "note": "Rolle an dritter Stelle: fremder Contract"
+    },
+    {
+      "from": "Atlas.Common.Alpha.Gruppe.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": true,
+      "note": "Rolle an dritter Stelle: Providers importiert Root"
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Gruppe.Providers.Sache",
+      "allowed": false,
+      "note": "Rolle an dritter Stelle: Root importiert Providers"
+    },
+    {
+      "from": "Atlas.Common.Alpha.Gruppe.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": false,
+      "note": "Rolle an dritter Stelle: Internals importiert Root"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": true,
+      "note": "Innen: Träger importiert Internals der Struktur"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Store",
+      "allowed": true,
+      "note": "Innen: Root der Struktur importiert Root der Struktur"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Store",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": true,
+      "note": "Innen: Root der Struktur importiert Internals"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": true,
+      "note": "Innen: Träger importiert Sub-Contract"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "to": "Atlas.Common.Server.Contract.Sache",
+      "allowed": true,
+      "note": "Außen: Struktur erbt die Rechte des Trägers"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "to": "Atlas.Common.Server.Sache",
+      "allowed": true,
+      "note": "Außen: Internals der Struktur mit den Rechten von Providers"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "allowed": false,
+      "note": "Innen: Internals importiert nicht den Root der Struktur"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.ClientUser",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": true,
+      "note": "Geschwister der äußeren Rolle importiert Sub-Contract"
+    },
+    {
+      "from": "Atlas.Common.Server.Composition.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": true,
+      "note": "Composition des Features importiert Sub-Contract"
+    },
+    {
+      "from": "Atlas.Common.Server.Composition.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "allowed": true,
+      "note": "Composition registriert den Träger"
+    },
+    {
+      "from": "Atlas.Common.Server.Composition.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "Internals der Struktur bleiben innen"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.ClientUser",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "fremder Träger"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.ClientUser",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "allowed": false,
+      "note": "Providers importiert nicht Providers"
+    },
+    {
+      "from": "Atlas.Common.Server.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": false,
+      "note": "Feature-Root importiert keinen Sub-Contract"
+    },
+    {
+      "from": "Atlas.Common.Server.Contract.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": false,
+      "note": "Feature-Contract importiert keinen Sub-Contract"
+    },
+    {
+      "from": "Atlas.Common.Server.Internals.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": false,
+      "note": "Feature-Internals importiert keinen Sub-Contract"
+    },
+    {
+      "from": "Atlas.Common.Server.Adapters.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": false,
+      "note": "Geschwister einer anderen Rolle importiert keinen Sub-Contract"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "to": "Atlas.Common.Server.Contract.Sache",
+      "allowed": true,
+      "note": "Sub-Contract erbt die Contract-Rechte"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "to": "Atlas.Common.Server.Sache",
+      "allowed": false,
+      "note": "Sub-Contract erbt nur die Contract-Rechte"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "Innen: Sub-Contract importiert keine Internals"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "allowed": false,
+      "note": "Innen: Sub-Contract importiert nicht den Root der Struktur"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Providers.Store",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": true,
+      "note": "Keine Wiederholung: Cache.Providers.Store ist Cache.Store"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "Innen: Root der Struktur importiert nicht ihre Adapters"
+    },
+    {
+      "from": "Atlas.Common.Server.Composition.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Adapters.Sache",
+      "allowed": true,
+      "note": "Composition registriert Adapters der Struktur"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.ClientUser",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "Geschwister importiert keine Adapters der Struktur"
+    },
+    {
+      "from": "Atlas.Common.Server.Providers.Authentication.Cache.Adapters.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": true,
+      "note": "Innen: Adapters der Struktur importiert Sub-Contract"
+    },
+    {
+      "from": "Atlas.Windows.Beta.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": false,
+      "note": "fremdes Feature importiert keinen Sub-Contract"
+    },
+    {
+      "from": "Atlas.Windows.Beta.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "fremdes Feature importiert keine Internals einer Struktur"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": true,
+      "note": "Host-Shell importiert Sub-Contract"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Adapters.Sache",
+      "allowed": true,
+      "note": "Host-Shell importiert Adapters der Struktur"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "Host-Shell importiert keine Internals einer Struktur"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache.Contract",
+      "allowed": true,
+      "note": "Host-Adapters implementieren Sub-Contracts"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Atlas.Common.Server.Providers.Authentication.Cache",
+      "allowed": false,
+      "note": "Host-Adapters importieren keinen Träger"
+    },
+    {
+      "from": "Atlas.IDE.Alpha.Composition",
+      "to": "Atlas.IDE.Alpha.Composition.Adapters",
+      "allowed": false,
+      "note": "Root der Struktur Composition importiert ihre Adapters"
+    },
+    {
+      "from": "Atlas.IDE.Alpha.Composition.Teil",
+      "to": "Atlas.IDE.Alpha.Composition.Adapters",
+      "allowed": false,
+      "note": "Root der Struktur Composition importiert ihre Adapters"
+    },
+    {
+      "from": "Atlas.IDE.Alpha.Composition.Teil",
+      "to": "Atlas.IDE.Alpha.Composition.HostAdapters",
+      "allowed": true,
+      "note": "Sache ohne Rollenbezeichner"
+    },
+    {
+      "from": "Atlas.IDE.Alpha.Composition.Adapters",
+      "to": "Atlas.IDE.Alpha.Composition.Teil",
+      "allowed": true,
+      "note": "Innen: Adapters importiert Root der Struktur"
+    },
+    {
+      "from": "Atlas.IDE.Alpha.Sache",
+      "to": "Atlas.IDE.Alpha.Composition.Adapters",
+      "allowed": false,
+      "note": "Feature-Root importiert keine Composition"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Atlas.Common.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "Host-Core importiert keine Providers"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": true,
+      "note": "Host-Core importiert Platform-Root"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Atlas.Common.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "Host-Core importiert Platform-Contract"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Atlas.Common.Beta.Composition.Sache",
+      "allowed": false,
+      "note": "Host-Core importiert keine Composition"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Atlas.Common.Beta.Adapters.Sache",
+      "allowed": false,
+      "note": "Host-Core importiert keine Adapters"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Foundation.Sache",
+      "allowed": true,
+      "note": "Host-Core importiert Foundation"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Platform.Sache",
+      "allowed": true,
+      "note": "Host-Core importiert Host-Platform"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Shell.Sache",
+      "allowed": false,
+      "note": "Host-Core importiert nicht die Shell"
+    },
+    {
+      "from": "Core.Sache",
+      "to": "Adapters.Sache",
+      "allowed": false,
+      "note": "Host-Core importiert keine Host-Adapters"
+    },
+    {
+      "from": "Foundation.Sache",
+      "to": "Atlas.Common.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "Foundation importiert Platform-Contract"
+    },
+    {
+      "from": "Foundation.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": false,
+      "note": "Foundation importiert kein Platform-Root"
+    },
+    {
+      "from": "Foundation.Sache",
+      "to": "Core.Sache",
+      "allowed": false,
+      "note": "Foundation importiert nicht Host-Core"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": true,
+      "note": "Host-Adapters importieren Platform-Root"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Atlas.Common.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "Host-Adapters importieren keine Providers"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Core.Sache",
+      "allowed": true,
+      "note": "Host-Adapters importieren Host-Core"
+    },
+    {
+      "from": "Adapters.Sache",
+      "to": "Shell.Sache",
+      "allowed": false,
+      "note": "Host-Adapters importieren nicht die Shell"
+    },
+    {
+      "from": "Platform.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": true,
+      "note": "Host-Platform importiert Platform-Root"
+    },
+    {
+      "from": "Platform.Sache",
+      "to": "Core.Sache",
+      "allowed": false,
+      "note": "Host-Platform importiert nicht Host-Core"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Adapters.Sache",
+      "allowed": true,
+      "note": "Shell importiert alles im Host"
+    },
+    {
+      "from": "Atlas.WinBase.Alpha.Sache",
+      "to": "Atlas.WinBase.Alpha.Internals.Sache",
+      "allowed": true,
+      "note": "Atlas.WinBase wird nach Rollen geprüft"
+    },
+    {
+      "from": "Atlas.Linux.Beta.Sache",
+      "to": "Atlas.WinBase.Alpha.Internals.Sache",
+      "allowed": false,
+      "note": "Atlas.Linux wird nach Rollen geprüft"
     }
   ]
 }

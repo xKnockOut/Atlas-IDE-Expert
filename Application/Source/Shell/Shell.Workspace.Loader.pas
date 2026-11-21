@@ -87,7 +87,8 @@ uses
   Atlas.Common.Projects.DelphiVersions,
   Shell.Platform,
   Shell.Workspace.Listings,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Text.Files;
 
 { TShellLoadedProject }
 
@@ -138,8 +139,14 @@ begin
   try
     Result := TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(AProjectFile));
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

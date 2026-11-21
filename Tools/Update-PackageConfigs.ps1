@@ -34,7 +34,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Regeln, die für das ganze Repository gelten und deshalb aus der Wurzel kommen.
-$SharedRules = @('architecture-role-import', 'architecture-contract-content', 'forbidden-symbol')
+$SharedRules = @('architecture-role-import', 'architecture-contract-content', 'forbidden-symbol', 'catch-all-without-raise')
 
 function Read-Json([string] $Path) {
     return Get-Content -LiteralPath $Path -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable

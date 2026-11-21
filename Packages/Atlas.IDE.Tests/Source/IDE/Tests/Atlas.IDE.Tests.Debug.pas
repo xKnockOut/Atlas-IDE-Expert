@@ -119,7 +119,8 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.IDE.Tests.Projects,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.IDE.Foundation.Debugger,
+  Atlas.Text.Files;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -349,6 +350,34 @@ begin
   FTimer.Enabled := True;
 end;
 
+/// <summary>Inhalt der Ergebnisdatei AFileName, die danach gelöscht wird; '' ohne Datei oder wenn sie nicht lesbar
+/// ist. AFileName ist danach leer.</summary>
+function TakeResultXml(var AFileName: string): string;
+begin
+  Result := '';
+  if AFileName = '' then
+  begin
+    Exit;
+  end;
+  try
+    if FileExists(AFileName) then
+    begin
+      Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+      TFile.Delete(AFileName);
+    end;
+  except
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+      Result := '';
+    end;
+  end;
+  AFileName := '';
+end;
+
 procedure TAtlasIdeTestDebugger.Finish(AStarted: Boolean);
 var
   mChanged: Boolean;
@@ -376,21 +405,7 @@ begin
   end;
   FPhase := TPhase.Idle;
   FTests.Debugging := False;
-  mXml := '';
-  if FXmlFile <> '' then
-  begin
-    try
-      if FileExists(FXmlFile) then
-      begin
-        mXml := TFile.ReadAllText(FXmlFile, TEncoding.UTF8);
-        TFile.Delete(FXmlFile);
-      end;
-    except
-      on Exception do
-        mXml := '';
-    end;
-    FXmlFile := '';
-  end;
+  mXml := TakeResultXml(FXmlFile);
   // Ergebnis wie nach „Tests ausführen“: Code Lens, Probleme, Meldungen, Projekt-Zusammenfassung.
   if AStarted and (mXml <> '') then
   begin
@@ -427,8 +442,11 @@ begin
       Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugBreak, [mLine]));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Tests: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       FBreakpoint := nil;
+    end;
   end;
 end;
 

@@ -107,7 +107,8 @@ uses
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.DataBreakpoints.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.IDE.Foundation.Debugger,
+  Atlas.Core.Diagnostics.Guard;
 
 { TAtlasIdeDataBreakpoint.TListener }
 
@@ -283,8 +284,11 @@ begin
     Result := mServices.NewAddressBreakpoint(mAddress, LongWord(APlan.Length), TOTAAccessType.atWrite,
       TAtlasIdeBreakpoints.StoppedProcess);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Daten-Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
+    end;
   end;
 end;
 

@@ -26,7 +26,7 @@ uses
   Atlas.Core.Tracker.AiSummary,
   Atlas.IDE.Contracts.AiText,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.IDE.Tracker.IssueContext;
 
 type

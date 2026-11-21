@@ -209,6 +209,25 @@ try {
         Add-Assigned 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Adapters.Probe' @()
     }
 
+    Test-Fails 'Contract bindet ein Framework ein' 'ein Contract bindet kein Framework ein' {
+        Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.Probe.Contract' @('Vcl.Controls')
+    }
+
+    Test-Passes 'Vertrag der UI-Schicht verwendet VCL' {
+        Add-Assigned 'Atlas.IDE.Base' 'UI/Settings' 'Atlas.UI.Settings.Probe.Contract' @('Vcl.Controls')
+    }
+
+    Test-Fails 'Genehmigte Ausnahme gibt keine Internals frei' 'Rollenmatrix: fremde Internals aus Composition' {
+        Add-Assigned 'Atlas.IDE.Tracker' 'IDE/Tracker' 'Atlas.IDE.Tracker.Composition.Probe' @()
+        Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.Internals.Probe' @()
+        $Json = [IO.File]::ReadAllText((Join-Path $CopyRoot 'atlas.json'))
+        Set-CopyText 'atlas.json' ($Json.Replace('"Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*"',
+            '"Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*", "Atlas.IDE.Tracker.Composition.Probe -> Atlas.Core.*"'))
+        $Base = 'Packages/Atlas.IDE.Tracker/Source/IDE/Tracker'
+        Set-CopyText "$Base/Atlas.IDE.Tracker.Composition.Probe.pas" ("unit Atlas.IDE.Tracker.Composition.Probe;`r`n`r`n" +
+            "interface`r`n`r`nuses`r`n  Atlas.Core.Projects.Internals.Probe;`r`n`r`nimplementation`r`n`r`nend.`r`n")
+    }
+
     Test-Fails 'Behobener Altfall der Adapter-Rollen bleibt stehen' 'adapter-name Atlas.IDE.Undo.Gone TGone IAtlasUndoTarget kommt nicht mehr vor' {
         $Known = [IO.File]::ReadAllText((Join-Path $CopyRoot 'Tools/AdapterRoles.known.txt'))
         Set-CopyText 'Tools/AdapterRoles.known.txt' ($Known + "adapter-name Atlas.IDE.Undo.Gone TGone IAtlasUndoTarget`r`n")

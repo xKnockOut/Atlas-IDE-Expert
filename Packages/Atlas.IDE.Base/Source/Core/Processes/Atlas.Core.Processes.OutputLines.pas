@@ -97,7 +97,7 @@ begin
       mEncoding.Free;
     end;
   except
-    on Exception do
+    on EEncodingError do
       Result := Clean(TEncoding.ANSI.GetString(ABytes, AStart, ACount));
   end;
 end;

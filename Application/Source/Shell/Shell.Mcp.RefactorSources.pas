@@ -25,6 +25,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Text.Files,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.Contract,
@@ -40,24 +41,13 @@ uses
   Shell.Composition.Refactorings.Services,
   Shell.Mcp.RefactorHost;
 
-/// <summary>Letzter Fehler des Betriebssystems: GetLastOSError gibt es nur unter FPC, Delphi kennt dafür
-/// System.GetLastError (E2003 im Delphi-Bau).</summary>
-function LastOSError: Integer;
-begin
-{$IFDEF FPC}
-  Result := GetLastOSError;
-{$ELSE}
-  Result := System.GetLastError;
-{$ENDIF}
-end;
-
 /// <summary>Neue Datei aus refactor (#2150): UTF-8 mit BOM und CRLF wie neue Units der IDE, Ordner wird angelegt.
 /// </summary>
 procedure CreateSourceFile(const AFileName, AText: string);
 begin
   if (ExtractFileDir(AFileName) <> '') and not ForceDirectories(ExtractFileDir(AFileName)) then
   begin
-    raise EMcpToolError.CreateFmt('%s: %s', [ExtractFileDir(AFileName), SysErrorMessage(LastOSError)]);
+    raise EMcpToolError.CreateFmt('%s: %s', [ExtractFileDir(AFileName), SysErrorMessage(TTextFiles.LastOSError)]);
   end;
   TFileEncoding.SaveToFile(AFileName, AText, TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF));
 end;
@@ -69,7 +59,7 @@ begin
   Result := System.SysUtils.DeleteFile(AFileName);
   if not Result then
   begin
-    AError := SysErrorMessage(LastOSError);
+    AError := SysErrorMessage(TTextFiles.LastOSError);
   end;
 end;
 
