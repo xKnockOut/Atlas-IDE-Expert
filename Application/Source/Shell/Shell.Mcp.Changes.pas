@@ -27,7 +27,7 @@ uses
   Atlas.Common.Mcp.Server,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.Tracker.CommitHook,
   Shell.Mcp.IssueTools,

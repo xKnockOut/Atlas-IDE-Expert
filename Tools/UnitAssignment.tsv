@@ -945,6 +945,7 @@ Atlas.IDE.Bookmarks	Atlas.Core.Bookmarks.SavedPlaces	Core/Bookmarks/Atlas.Core.B
 Atlas.IDE.Bookmarks	Atlas.Core.Bookmarks.Store	Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas	Ordner `Core/Bookmarks`
 Atlas.IDE.Bookmarks	Atlas.Core.Marks.Ids	Core/Marks/Atlas.Core.Marks.Ids.pas	Ordner `Core/Marks`
 Atlas.IDE.Bookmarks	Atlas.Core.Notes.Store	Core/Notes/Atlas.Core.Notes.Store.pas	Ordner `Core/Notes`
+Atlas.IDE.Bookmarks	Atlas.IDE.Bookmarks.Adapters.Module	IDE/Bookmarks/Atlas.IDE.Bookmarks.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle, Menü und Tasten der Notizen und Lesezeichen, Lesezeichen der Übersichtsleiste
 Atlas.IDE.Bookmarks	Atlas.IDE.Bookmarks.Adapters.SavedPlaces	IDE/Bookmarks/Atlas.IDE.Bookmarks.Adapters.SavedPlaces.pas	IAtlasSavedPlacesSource für den Reiter „Gemerkt“ der Willkommensseite, #1456
 Atlas.IDE.Bookmarks	Atlas.IDE.Bookmarks.Composition	IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.pas	Anmeldung des Moduls `atlas.bookmarks`, #1455
 Atlas.IDE.Bookmarks	Atlas.IDE.Bookmarks.Composition.Todos	IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.Todos.pas	TODO-Liste des Projekts (#68), von der Composition aufgerufen
