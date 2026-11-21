@@ -93,7 +93,8 @@ Packages/
 Application/
   AtlasServer.dpr/.dproj
   Source/
-    Foundation/  Core/  Adapters/  Platform/  Features/  Shell/   (Host-Rollen)
+    Shell/                         heute alle Units des Hosts (Einstieg, Komposition, MCP-Werkzeuge, Linter, Arbeitsbereich);
+                                   Ziel: Foundation/  Core/  Adapters/  Platform/  Features/  Shell/ (Host-Rollen)
 Setup/                             Daten des Release-Pakets: Tipps, Vorlagen, Profile, Beispiele, tips.json (der Installer AtlasSetup ist seit 1.2.0 entfernt)
 Tests/
   Atlas.Tests.dpr/.dproj

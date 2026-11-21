@@ -53,6 +53,15 @@ uses
   System.JSON,
   System.Generics.Collections; // Inline-Funktionen von TJSONArray (H2443)
 
+const
+  /// <summary>Platz für den Vorspann „HTTP 404: “, den ReadAnswer vor den Anfang des Inhalts setzt; so
+  /// bleibt Detail unter cMaxAiDetail.</summary>
+  cHttpPrefixReserve = 20;
+  /// <summary>Detail einer Antwort ohne JSON: Status und Anfang des Inhalts.</summary>
+  cDetailNoJson = 'HTTP %d: %s';
+  /// <summary>Detail einer Antwort ohne Textblock: Status, Abbruchgrund und Arten der Blöcke.</summary>
+  cDetailNoText = 'HTTP %d, stop_reason=%s, content=[%s]';
+
 { TAtlasAnthropicApi }
 
 class function TAtlasAnthropicApi.RequestBody(const AModel: string; const APrompt: TAtlasAiPrompt): string;
@@ -164,7 +173,7 @@ begin
   begin
     Result := '(leer)';
   end;
-  Result := Copy(Result, 1, cMaxAiDetail - 20);
+  Result := Copy(Result, 1, cMaxAiDetail - cHttpPrefixReserve);
 end;
 
 /// <summary>Fehlerantwort {"type":"error","error":{"type","message"}} in AAnswer.</summary>
@@ -200,7 +209,7 @@ begin
         Result.Error := TAtlasAiError.BadAnswer;
       end;
       // Kein JSON: Status und Anfang des Inhalts, damit Meldung und Protokoll zeigen, was kam.
-      Result.Detail := Format('HTTP %d: %s', [AStatus, BodyStart(ABody)]);
+      Result.Detail := Format(cDetailNoJson, [AStatus, BodyStart(ABody)]);
       Exit;
     end;
     mObject := TJSONObject(mValue);
@@ -224,7 +233,7 @@ begin
     begin
       Result.Error := TAtlasAiError.BadAnswer;
       // Ohne Textblock (etwa nur thinking oder Abbruch bei max_tokens): Grund und Blöcke nennen.
-      Result.Detail := Format('HTTP %d, stop_reason=%s, content=[%s]', [AStatus,
+      Result.Detail := Format(cDetailNoText, [AStatus,
         mObject.GetValue<string>('stop_reason', ''), BlockTypes(mContent)]);
     end;
   finally

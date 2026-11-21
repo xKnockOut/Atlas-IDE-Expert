@@ -66,6 +66,21 @@ type
       LineText: string;
       PreviousText: string;
     end;
+    /// <summary>Sichtbarer Vorschlag: Datei, Schreibmarke (1-basiert), Anbieter, Vorschlag, Rest.</summary>
+    TShown = record
+      FileName: string;
+      Line: Integer;
+      Column: Integer;
+      /// <summary>Erste Zeile des Blocks (1-basiert); Finish setzt die Schreibmarke nur innerhalb des Blocks.
+      /// </summary>
+      BlockLine: Integer;
+      Provider: IAtlasGhostProvider;
+      Proposal: TAtlasGhostProposal;
+      Ghost: TAtlasGhostText;
+      /// <summary>So viele Zeichen vor der Schreibmarke ersetzt das erste Schreiben (tiefer eingerückte Zeile).
+      /// </summary>
+      Replace: Integer;
+    end;
   private class var
     FBusy: TFunc<Boolean>;
     FStatus: TAtlasGhostStatus;
@@ -76,19 +91,8 @@ type
     FMenu: TPopupMenu;
     FRequest: TAtlasBackgroundRequest;
     FPending: TAsked;
-    /// <summary>Sichtbarer Vorschlag: Datei, Schreibmarke (1-basiert), Anbieter, Vorschlag, Rest.</summary>
-    FFileName: string;
-    FLine: Integer;
-    FColumn: Integer;
-    /// <summary>Erste Zeile des Blocks (1-basiert); Finish setzt die Schreibmarke nur innerhalb des Blocks.
-    /// </summary>
-    FBlockLine: Integer;
-    FProvider: IAtlasGhostProvider;
-    FProposal: TAtlasGhostProposal;
-    FGhost: TAtlasGhostText;
-    /// <summary>So viele Zeichen vor der Schreibmarke ersetzt das erste Schreiben (tiefer eingerückte Zeile).
-    /// </summary>
-    FReplace: Integer;
+    /// <summary>Sichtbarer Vorschlag; leerer Dateiname: keiner.</summary>
+    FShown: TShown;
     /// <summary>Eigenes Schreiben: die folgende Änderung verwirft den Vorschlag nicht.</summary>
     FOwnWrite: Boolean;
     class function Run(const AView: IOTAEditView): Boolean; static;
@@ -192,7 +196,7 @@ var
   mLocations: TArray<TAtlasGhostLocation>;
 begin
   mIndex := (Sender as TMenuItem).Tag;
-  mLocations := FProposal.Locations;
+  mLocations := FShown.Proposal.Locations;
   if (mIndex >= 0) and (mIndex <= High(mLocations)) then
   begin
     TAtlasGuard.Run(TAtlasFeature.LearnedSuggestions,
@@ -399,22 +403,22 @@ begin
   mLineBreak := TTextLines.LineBreakOf(mText);
   mBlock := string.Join(mLineBreak, AProposal.Lines);
   mWritten := TAtlasLearnedSuggestions.Written(mBlock, AAsked.LineText);
-  FReplace := 0;
+  FShown.Replace := 0;
   if mWritten = 0 then
   begin
-    FReplace := Length(AAsked.LineText);
+    FShown.Replace := Length(AAsked.LineText);
   end;
-  FGhost := TAtlasGhostText.Create(mBlock, mWritten);
-  if FGhost.Finished then
+  FShown.Ghost := TAtlasGhostText.Create(mBlock, mWritten);
+  if FShown.Ghost.Finished then
   begin
     Exit;
   end;
-  FFileName := AAsked.FileName;
-  FLine := mView.CursorPos.Line;
-  FColumn := mView.CursorPos.Col;
-  FBlockLine := FLine;
-  FProvider := AProvider;
-  FProposal := AProposal;
+  FShown.FileName := AAsked.FileName;
+  FShown.Line := mView.CursorPos.Line;
+  FShown.Column := mView.CursorPos.Col;
+  FShown.BlockLine := FShown.Line;
+  FShown.Provider := AProvider;
+  FShown.Proposal := AProposal;
   TAtlasKeyHook.Add(FKeys);
   ShowGhost;
   if Assigned(FStatus) then
@@ -429,12 +433,12 @@ end;
 
 class procedure TAtlasIdeGhostSuggestions.ShowGhost;
 begin
-  FPreview.Show(FFileName, FLine, FColumn, FGhost.Display);
+  FPreview.Show(FShown.FileName, FShown.Line, FShown.Column, FShown.Ghost.Display);
 end;
 
 class function TAtlasIdeGhostSuggestions.AtSuggestion: Boolean;
 begin
-  Result := TAtlasEditorBuffer.CursorAt(FFileName, FLine, FColumn);
+  Result := TAtlasEditorBuffer.CursorAt(FShown.FileName, FShown.Line, FShown.Column);
 end;
 
 class procedure TAtlasIdeGhostSuggestions.WriteAtCursor(const AText: string);
@@ -450,17 +454,17 @@ begin
   mBuffer := mView.Buffer;
   mText := TAtlasEditorBuffer.Text(mBuffer);
   mTabWidth := TAtlasEditorBuffer.TabWidth(mBuffer);
-  mLine := FLine - 1;
-  mLineText := TAtlasEditorBuffer.LineText(mView, FLine);
-  mCharacter := TLspSession.ColumnToIndex(mLineText, FColumn, mTabWidth);
+  mLine := FShown.Line - 1;
+  mLineText := TAtlasEditorBuffer.LineText(mView, FShown.Line);
+  mCharacter := TLspSession.ColumnToIndex(mLineText, FShown.Column, mTabWidth);
   FOwnWrite := True;
-  mStart := TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter - FReplace);
+  mStart := TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter - FShown.Replace);
   TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart,
     TAtlasEditorBuffer.CharOffset(mText, mLine, mCharacter) - mStart, AText);
   // Schreibmarke ans Ende des Geschriebenen.
   mLines := AText.Split([#13#10, #10]);
-  mCharacter := mCharacter - FReplace;
-  FReplace := 0;
+  mCharacter := mCharacter - FShown.Replace;
+  FShown.Replace := 0;
   if Length(mLines) > 1 then
   begin
     Inc(mLine, High(mLines));
@@ -474,8 +478,8 @@ begin
   mTarget.Col := TLspSession.IndexToColumn(TAtlasEditorBuffer.LineText(mView, mTarget.Line), mCharacter, mTabWidth);
   mView.CursorPos := mTarget;
   mView.MoveViewToCursor;
-  FLine := mTarget.Line;
-  FColumn := mTarget.Col;
+  FShown.Line := mTarget.Line;
+  FShown.Column := mTarget.Col;
   // Die Änderung kommt über EditorViewModified, danach gilt jede Änderung wieder als fremd.
   TAtlasMainThread.ForceQueue(TAtlasFeature.LearnedSuggestions,
     procedure
@@ -492,9 +496,9 @@ var
   mProposal: TAtlasGhostProposal;
   mBlockLine: Integer;
 begin
-  mProvider := FProvider;
-  mProposal := FProposal;
-  mBlockLine := FBlockLine;
+  mProvider := FShown.Provider;
+  mProposal := FShown.Proposal;
+  mBlockLine := FShown.BlockLine;
   Dismiss;
   mView := TAtlasEditorBuffer.ActiveView;
   // Zielzeile außerhalb des eingefügten Blocks (Anbieter liefert sie falsch): Die Schreibmarke bleibt am Ende
@@ -529,16 +533,16 @@ var
   mItem: TMenuItem;
   mEvidence: TAtlasLearnedEvidence;
 begin
-  if not Visible or (Length(FProposal.Locations) = 0) then
+  if not Visible or (Length(FShown.Proposal.Locations) = 0) then
   begin
     Exit;
   end;
   FreeAndNil(FMenu);
   FMenu := TPopupMenu.Create(nil);
-  for mIndex := 0 to High(FProposal.Locations) do
+  for mIndex := 0 to High(FShown.Proposal.Locations) do
   begin
-    mEvidence.FileName := FProposal.Locations[mIndex].FileName;
-    mEvidence.Line := FProposal.Locations[mIndex].Line;
+    mEvidence.FileName := FShown.Proposal.Locations[mIndex].FileName;
+    mEvidence.Line := FShown.Proposal.Locations[mIndex].Line;
     mItem := TMenuItem.Create(FMenu);
     mItem.Caption := TAtlasLearnedSuggestions.EvidenceText(mEvidence);
     mItem.Tag := mIndex;
@@ -551,7 +555,7 @@ end;
 /// <summary>AProvider meldet sich ab: sein Vorschlag weg, eine laufende Anfrage abwarten.</summary>
 procedure ProviderRemoving(const AProvider: IAtlasGhostProvider);
 begin
-  if TAtlasIdeGhostSuggestions.FProvider = AProvider then
+  if TAtlasIdeGhostSuggestions.FShown.Provider = AProvider then
   begin
     TAtlasIdeGhostSuggestions.Dismiss;
   end;
@@ -634,7 +638,7 @@ end;
 
 class function TAtlasIdeGhostSuggestions.Visible: Boolean;
 begin
-  Result := FFileName <> '';
+  Result := FShown.FileName <> '';
 end;
 
 class procedure TAtlasIdeGhostSuggestions.Dismiss;
@@ -644,14 +648,14 @@ begin
     FTimer.Enabled := False;
   end;
   FPending := Default(TAsked);
-  if FFileName = '' then
+  if FShown.FileName = '' then
   begin
     Exit;
   end;
-  FFileName := '';
-  FProvider := nil;
-  FProposal := Default(TAtlasGhostProposal);
-  FGhost := Default(TAtlasGhostText);
+  FShown.FileName := '';
+  FShown.Provider := nil;
+  FShown.Proposal := Default(TAtlasGhostProposal);
+  FShown.Ghost := Default(TAtlasGhostText);
   FOwnWrite := False;
   if FKeys <> nil then
   begin
@@ -685,7 +689,7 @@ begin
     Dismiss;
     Exit;
   end;
-  WriteAtCursor(FGhost.Rest);
+  WriteAtCursor(FShown.Ghost.Rest);
   Finish;
 end;
 
@@ -698,10 +702,10 @@ begin
     Dismiss;
     Exit;
   end;
-  mWord := FGhost.NextWord;
+  mWord := FShown.Ghost.NextWord;
   WriteAtCursor(mWord);
-  FGhost.Advance(mWord);
-  if FGhost.Finished then
+  FShown.Ghost.Advance(mWord);
+  if FShown.Ghost.Finished then
   begin
     Finish;
     Exit;
@@ -715,8 +719,8 @@ var
   mProvider: IAtlasGhostProvider;
   mProposal: TAtlasGhostProposal;
 begin
-  mProvider := FProvider;
-  mProposal := FProposal;
+  mProvider := FShown.Provider;
+  mProposal := FShown.Proposal;
   Dismiss;
   if mProvider <> nil then
   begin
