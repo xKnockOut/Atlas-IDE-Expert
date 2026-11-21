@@ -463,9 +463,13 @@ begin
 end;
 
 class function TAtlasGitHubParse.ParseStatus(const AJson: string; out AChecks: TAtlasTrackerChecks): Boolean;
+const
+  cStates: array[0..3] of string = ('success', 'failure', 'error', 'pending');
+  cChecks: array[0..3] of TAtlasTrackerChecks = (TAtlasTrackerChecks.Success, TAtlasTrackerChecks.Failure,
+    TAtlasTrackerChecks.Failure, TAtlasTrackerChecks.Pending);
 var
   mValue, mStatuses: TJSONValue;
-  mState: string;
+  mState: Integer;
 begin
   AChecks := TAtlasTrackerChecks.Unknown;
   Result := False;
@@ -482,18 +486,10 @@ begin
     begin
       Exit;
     end;
-    mState := LowerCase(TJsonRead.Text(TJSONObject(mValue), 'state'));
-    if mState = 'success' then
+    mState := IndexStr(LowerCase(TJsonRead.Text(TJSONObject(mValue), 'state')), cStates);
+    if mState >= 0 then
     begin
-      AChecks := TAtlasTrackerChecks.Success;
-    end
-    else if (mState = 'failure') or (mState = 'error') then
-    begin
-      AChecks := TAtlasTrackerChecks.Failure;
-    end
-    else if mState = 'pending' then
-    begin
-      AChecks := TAtlasTrackerChecks.Pending;
+      AChecks := cChecks[mState];
     end;
   finally
     mValue.Free;

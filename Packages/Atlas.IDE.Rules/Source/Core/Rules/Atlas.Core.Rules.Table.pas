@@ -160,6 +160,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Math,
   Atlas.Text.Json;
 
@@ -1038,6 +1039,14 @@ begin
 end;
 
 class function TAtlasRuleTable.OptionJson(const AKind, AText: string; out AJson: string): Boolean;
+const
+  // Arten in der Reihenfolge von cKinds.
+  cKinds: array[0..4] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list');
+  cInteger = 0;
+  cBoolean = 1;
+  cString = 2;
+  cStringList = 3;
+  cNumberList = 4;
 var
   mText: string;
 begin
@@ -1048,24 +1057,16 @@ begin
   begin
     Exit;
   end;
-  if SameText(AKind, 'integer') or SameText(AKind, 'boolean') then
-  begin
-    Result := ScalarJson(AKind, mText, AJson);
-  end
-  else if SameText(AKind, 'string') then
-  begin
-    AJson := TJsonText.Quote(mText);
-  end
-  else if SameText(AKind, 'string-list') then
-  begin
-    AJson := StringListJson(mText);
-  end
-  else if SameText(AKind, 'number-list') then
-  begin
-    Result := NumberListJson(mText, AJson);
-  end
+  case IndexText(AKind, cKinds) of
+    cInteger, cBoolean:
+      Result := ScalarJson(AKind, mText, AJson);
+    cString:
+      AJson := TJsonText.Quote(mText);
+    cStringList:
+      AJson := StringListJson(mText);
+    cNumberList:
+      Result := NumberListJson(mText, AJson);
   else
-  begin
     // json und unbekannte Arten: der Text muss gültiges JSON sein.
     Result := ParsedJson(mText, AJson);
   end;

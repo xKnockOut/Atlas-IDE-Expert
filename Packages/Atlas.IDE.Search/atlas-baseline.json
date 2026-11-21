@@ -3,8 +3,6 @@
   "findings": [
     {"path": "Source/Core/Query/Atlas.Core.Query.Model.pas", "rule": "hardcoded-string", "fingerprint": "1f2128f7", "count": 1, "routine": "SuggestForEntity", "context": "7371a8aa"},
     {"path": "Source/Core/Query/Atlas.Core.Query.Model.pas", "rule": "magic-number", "fingerprint": "faca7e6f", "count": 1, "routine": "IsWordChar", "context": "59980808"},
-    {"path": "Source/Core/Query/Atlas.Core.Query.Model.pas", "rule": "string-if-chain", "fingerprint": "46b3bae1", "count": 1, "routine": "SuggestAfterWord", "context": "c0db8933"},
-    {"path": "Source/Core/Query/Atlas.Core.Query.Model.pas", "rule": "string-if-chain", "fingerprint": "9de3a9c0", "count": 1, "routine": "TAtlasQueryCompletion.SymbolNames", "context": "adb554db"},
     {"path": "Source/Core/Search/Atlas.Core.Search.Matching.pas", "rule": "duplicate-routine-body", "fingerprint": "de1a85fa", "count": 1, "routine": "CleanLine", "context": "b08700a2"},
     {"path": "Source/Core/Search/Atlas.Core.Search.Matching.pas", "rule": "magic-number", "fingerprint": "8d0a1877", "count": 1, "routine": "TCodeMasker.StepMultiString", "context": "9da55c38"},
     {"path": "Source/Core/Search/Atlas.Core.Search.Matching.pas", "rule": "magic-number", "fingerprint": "f7f1b883", "count": 1, "routine": "TCodeMasker.StepMultiString", "context": "da288568"},

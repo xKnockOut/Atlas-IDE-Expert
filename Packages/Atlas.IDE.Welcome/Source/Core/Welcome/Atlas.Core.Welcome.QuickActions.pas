@@ -167,6 +167,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Text.DUnitX;
 
 const
@@ -507,8 +508,15 @@ end;
 
 class function TAtlasWelcomeQuickActions.ConsoleCommand(const AProgram, AFolder: string; out AFileName,
   AParameters: string): Boolean;
+const
+  // Konsolen in der Reihenfolge von cConsoles.
+  cConsoles: array[0..3] of string = ('wt', 'cmd', 'powershell', 'pwsh');
+  cTerminal = 0;
+  cCmd = 1;
+  cPowerShell = 2;
+  cPwsh = 3;
 var
-  mFolder, mQuoted, mBase: string;
+  mFolder, mQuoted: string;
 begin
   AFileName := NormalizedConsole(AProgram);
   AParameters := '';
@@ -524,19 +532,14 @@ begin
   begin
     mQuoted := mQuoted + '.';
   end;
-  mBase := LowerCase(BaseNameOf(AFileName));
-  if mBase = 'wt' then
-  begin
-    AParameters := '-d "' + mQuoted + '"';
-  end
-  else if mBase = 'cmd' then
-  begin
-    AParameters := '/K cd /d "' + mQuoted + '"';
-  end
-  else if (mBase = 'powershell') or (mBase = 'pwsh') then
-  begin
-    AParameters := '-NoExit -Command Set-Location -LiteralPath ''' + StringReplace(mQuoted, '''', '''''',
-      [rfReplaceAll]) + '''';
+  case IndexStr(LowerCase(BaseNameOf(AFileName)), cConsoles) of
+    cTerminal:
+      AParameters := '-d "' + mQuoted + '"';
+    cCmd:
+      AParameters := '/K cd /d "' + mQuoted + '"';
+    cPowerShell, cPwsh:
+      AParameters := '-NoExit -Command Set-Location -LiteralPath ''' + StringReplace(mQuoted, '''', '''''',
+        [rfReplaceAll]) + '''';
   end;
 end;
 

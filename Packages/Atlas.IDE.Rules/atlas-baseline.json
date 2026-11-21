@@ -2,7 +2,6 @@
   "version": 1,
   "findings": [
     {"path": "Source/Core/Rules/Atlas.Core.Rules.Table.pas", "rule": "magic-number", "fingerprint": "e97d99c7", "count": 1, "routine": "NumberListJson", "context": "6a6784bb"},
-    {"path": "Source/Core/Rules/Atlas.Core.Rules.Table.pas", "rule": "string-if-chain", "fingerprint": "2863d8ee", "count": 1, "routine": "TAtlasRuleTable.OptionJson", "context": "33fb62da"},
     {"path": "Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas", "rule": "magic-number", "fingerprint": "487497fa", "count": 1, "routine": "TAtlasBulkFixDialog.CreateButtons", "context": "1da5bf17"},
     {"path": "Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas", "rule": "magic-number", "fingerprint": "64ccb8e8", "count": 1, "routine": "TAtlasBulkFixDialog.CreateButtons", "context": "718ea0b0"},
     {"path": "Source/UI/Problems/Atlas.UI.Problems.BulkFix.pas", "rule": "magic-number", "fingerprint": "77b92e20", "count": 1, "routine": "TAtlasBulkFixDialog.CreateButtons", "context": "1e6669bc"},
@@ -29,7 +28,6 @@
     {"path": "Source/UI/Rules/Atlas.UI.Rules.Editor.pas", "rule": "magic-number", "fingerprint": "37b0bf14", "count": 1, "routine": "TAtlasRulesTable.Create", "context": "62f82172"},
     {"path": "Source/UI/Rules/Atlas.UI.Rules.Editor.pas", "rule": "magic-number", "fingerprint": "6a2b95ff", "count": 1, "routine": "TAtlasRulesTable.Create", "context": "ac02703c"},
     {"path": "Source/UI/Rules/Atlas.UI.Rules.Editor.pas", "rule": "magic-number", "fingerprint": "a7a166e2", "count": 1, "routine": "TAtlasRulesTable.Create", "context": "7c40285f"},
-    {"path": "Source/UI/Rules/Atlas.UI.Rules.Editor.pas", "rule": "string-if-chain", "fingerprint": "908500d9", "count": 1, "routine": "SeverityCaption", "context": "b15780ee"},
     {"path": "Source/UI/Rules/Atlas.UI.Rules.SettingsDialog.pas", "rule": "magic-number", "fingerprint": "e4e0f033", "count": 2, "routine": "TAtlasRulesSettingsDialog.AddRuleTable", "context": "eabcf29a"},
     {"path": "Source/UI/Rules/Atlas.UI.Rules.SettingsDialog.pas", "rule": "magic-number", "fingerprint": "bd6f09ae", "count": 1, "routine": "TAtlasRulesSettingsDialog.ShowGroup", "context": "b4195737"},
     {"path": "Source/UI/Rules/Atlas.UI.Rules.SettingsDialog.pas", "rule": "magic-number", "fingerprint": "ca575312", "count": 2, "routine": "TAtlasRulesSettingsDialog.ShowGroup", "context": "25d7c056"},

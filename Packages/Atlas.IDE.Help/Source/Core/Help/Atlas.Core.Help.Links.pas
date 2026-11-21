@@ -60,6 +60,9 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 type
   /// <summary>Ein Wert je Zeile von cWindows: Die Grenze der Tabelle ergibt sich daraus, ein neues Fenster braucht
   /// einen Wert hier und eine Zeile dort (Reihenfolge gleich). Zwei Zweige, die je ein Fenster ergänzen, ergeben so
@@ -240,18 +243,21 @@ begin
 end;
 
 class function TAtlasHelpLinks.LocalPage(const APath: string): string;
+const
+  // Seiten mit eigenem Namen in der lokalen Hilfe und ihr Vorsatz.
+  cPages: array[0..3] of string = ('docs/Regeln.md', 'docs/Einstellungen.md', // german-ok Dateiname
+    'docs/en/Rules.md', 'docs/en/Settings.md');
+  cPrefixes: array[0..3] of string = ('', '', 'en-', 'en-');
 var
   mPath, mName: string;
+  mPage: Integer;
 begin
   mPath := StringReplace(APath, '\', '/', [rfReplaceAll]);
   mName := ChangeFileExt(ExtractFileName(StringReplace(mPath, '/', PathDelim, [rfReplaceAll])), '');
-  if SameText(mPath, 'docs/Regeln.md') or SameText(mPath, 'docs/Einstellungen.md') then // german-ok Dateiname
+  mPage := IndexText(mPath, cPages);
+  if mPage >= 0 then
   begin
-    Result := mName + '.html';
-  end
-  else if SameText(mPath, 'docs/en/Rules.md') or SameText(mPath, 'docs/en/Settings.md') then
-  begin
-    Result := 'en-' + mName + '.html';
+    Result := cPrefixes[mPage] + mName + '.html';
   end
   else if SameText(Copy(mPath, 1, Length(cFeaturesGerman)), cFeaturesGerman) then
   begin
