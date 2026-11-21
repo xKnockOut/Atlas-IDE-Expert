@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Mcp.StatisticsText,
   Atlas.Common.Mcp.StatisticsHistory,
   Atlas.Common.Localization.Texts,

@@ -178,7 +178,7 @@ uses
   Vcl.Dialogs,
   Vcl.Clipbrd,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Monitor.Results,
   Atlas.Common.Monitor.Texts,
   Atlas.Windows.Monitor.System;

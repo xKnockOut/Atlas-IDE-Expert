@@ -103,7 +103,7 @@ uses
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Index.CacheDirectory,
   Shell.Composition.Refactorings,

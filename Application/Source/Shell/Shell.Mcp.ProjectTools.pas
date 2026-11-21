@@ -35,7 +35,7 @@ uses
   Atlas.Common.Lsp.Status,
   Atlas.Common.Mcp.StatusTools,
   Atlas.Common.Mcp.StatisticsHistory,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Diagnostics.ShutdownLeaks,

@@ -248,7 +248,7 @@ Atlas.Common.Lsp.SmartIndent.Tests
 Atlas.Common.Lsp.SmartPaste.Tests
 Atlas.Common.Lsp.ServerActivity.Tests
 Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests
-Atlas.Common.Lsp.StatusFile.Tests
+Atlas.Common.Diagnostics.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TestCases.Tests

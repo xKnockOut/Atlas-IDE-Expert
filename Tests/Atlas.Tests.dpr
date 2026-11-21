@@ -395,7 +395,7 @@ uses
   Atlas.Common.Diagnostics.CheckMemory.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.Tests.pas',
   Atlas.Common.Diagnostics.CheckProfile.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.Tests.pas',
   Atlas.Common.Diagnostics.ServerPackage.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.Tests.pas',
-  Atlas.Common.Lsp.StatusFile.Tests in 'Common\Lsp\Atlas.Common.Lsp.StatusFile.Tests.pas',
+  Atlas.Common.Diagnostics.StatusFile.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.StatusFile.Tests.pas',
   Atlas.Common.Lsp.ServerActivity.Tests in 'Common\Lsp\Atlas.Common.Lsp.ServerActivity.Tests.pas',
   Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests in 'Common\Lsp\Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests.pas',
   Atlas.Common.Lsp.StatusHeartbeat.Tests in 'Common\Lsp\Atlas.Common.Lsp.StatusHeartbeat.Tests.pas',

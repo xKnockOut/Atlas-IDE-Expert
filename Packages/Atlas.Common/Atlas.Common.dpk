@@ -897,7 +897,7 @@ contains
   Atlas.Common.Lsp.FindingsMemo in 'Source\Lsp\Atlas.Common.Lsp.FindingsMemo.pas',
   Atlas.Common.Lsp.PullDiagnostics in 'Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas',
   Atlas.Common.Lsp.PullDiagnostics.Cache in 'Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas',
-  Atlas.Common.Lsp.StatusFile in 'Source\Lsp\Atlas.Common.Lsp.StatusFile.pas',
+  Atlas.Common.Diagnostics.StatusFile in 'Source\Diagnostics\Atlas.Common.Diagnostics.StatusFile.pas',
   Atlas.Common.Lsp.ServerActivity in 'Source\Lsp\Atlas.Common.Lsp.ServerActivity.pas',
   Atlas.Common.Lsp.Adapters.ServerActivityObserver in 'Source\Lsp\Atlas.Common.Lsp.Adapters.ServerActivityObserver.pas',
   Atlas.Common.Lsp.StatusHeartbeat in 'Source\Lsp\Atlas.Common.Lsp.StatusHeartbeat.pas',
