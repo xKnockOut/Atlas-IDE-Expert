@@ -56,7 +56,8 @@ uses
   System.UITypes,
   Winapi.Windows,
   Atlas.UI.Strings,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.Core.Architecture.Resolution;
 
 { TAtlasArchitectureAssignment }
 
