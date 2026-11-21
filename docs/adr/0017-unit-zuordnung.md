@@ -350,7 +350,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
 | `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
 | `Atlas.Core.Modules.Watch` | `Core/Modules/Atlas.Core.Modules.Watch.pas` | Liste bereitgestellter Objekte, folgt der Registry, #1455 |
-| `Atlas.Core.Notifications.Build` | `Core/Notifications/Atlas.Core.Notifications.Build.pas` | Ordner `Core/Notifications` |
+| `Atlas.Core.Build.Notices` | `Core/Build/Atlas.Core.Build.Notices.pas` | Ordner `Core/Build`: Einträge „Build fertig“ und „Hintergrundprüfung“ für die Benachrichtigungszentrale |
 | `Atlas.Core.Notifications.Center` | `Core/Notifications/Atlas.Core.Notifications.Center.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Listeners` | `Core/Notifications/Atlas.Core.Notifications.Listeners.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.OrderedItems` | `Core/Notifications/Atlas.Core.Notifications.OrderedItems.pas` | Ordner `Core/Notifications` |

@@ -29,7 +29,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Build,
+  Atlas.Core.Build.Notices,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Notifications.Window;
 

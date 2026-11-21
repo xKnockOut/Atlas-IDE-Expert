@@ -92,7 +92,7 @@ uses
   Atlas.Core.Build.Verdict,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
-  Atlas.Core.Notifications.Build;
+  Atlas.Core.Build.Notices;
 
 const
   cServerSource = TAtlasNotificationSources.cServer;

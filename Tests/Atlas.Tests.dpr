@@ -1836,7 +1836,7 @@ uses
   Atlas.Core.Notifications.Center in '..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Center.pas',
   Atlas.Core.Notifications.Listeners in '..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Listeners.pas',
   Atlas.Core.Notifications.OrderedItems in '..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.OrderedItems.pas',
-  Atlas.Core.Notifications.Build in '..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Build.pas',
+  Atlas.Core.Build.Notices in '..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Notices.pas',
   Atlas.UI.Notifications.Window in '..\Packages\Atlas.IDE.Base\Source\UI\Notifications\Atlas.UI.Notifications.Window.pas',
   Atlas.Core.Notifications.Tests in 'IDE.Expert\Atlas.Core.Notifications.Tests.pas',
   Atlas.Core.Notifications.Listeners.Tests in 'IDE.Expert\Atlas.Core.Notifications.Listeners.Tests.pas',
