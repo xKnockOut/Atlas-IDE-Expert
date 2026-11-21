@@ -14,9 +14,11 @@ interface
 
 uses
   Winapi.Messages,
+  System.Types,
   System.Classes,
   System.SysUtils,
   Vcl.Controls,
+  Vcl.StdCtrls,
   Vcl.ComCtrls;
 
 type
@@ -50,6 +52,10 @@ type
     /// <summary>Data des gewählten Knotens von ATree als Zahl (Index in die Zeilen des Besitzers); -1 ohne Auswahl.
     /// </summary>
     class function SelectedIndex(ATree: TTreeView): Integer; static;
+    /// <summary>Bildschirmpunkt unter der linken unteren Ecke von AControl (dort klappt ein Menü auf).</summary>
+    class function BelowLeft(AControl: TControl): TPoint; static;
+    /// <summary>Caption von ALabel, wenn es sichtbar ist; sonst ''.</summary>
+    class function ShownCaption(ALabel: TCustomLabel): string; static;
   end;
 
 implementation
@@ -152,6 +158,20 @@ begin
   if ATree.Selected <> nil then
   begin
     Result := Integer(NativeInt(ATree.Selected.Data));
+  end;
+end;
+
+class function TAtlasControls.BelowLeft(AControl: TControl): TPoint;
+begin
+  Result := AControl.ClientToScreen(TPoint.Create(0, AControl.Height));
+end;
+
+class function TAtlasControls.ShownCaption(ALabel: TCustomLabel): string;
+begin
+  Result := '';
+  if ALabel.Visible then
+  begin
+    Result := ALabel.Caption;
   end;
 end;
 

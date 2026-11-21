@@ -270,6 +270,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Files.Contract` | `Core/Files/Atlas.Core.Files.Contract.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.DataFile` | `Core/Files/Atlas.Core.Files.DataFile.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Foundation.Calls` | `Core/Foundation/Atlas.Core.Foundation.Calls.pas` | Gesetzte oder leere Rückrufe für Base und Module aufrufen |
+| `Atlas.Core.Foundation.Contract` | `Core/Foundation/Atlas.Core.Foundation.Contract.pas` | Quelle eines Bereichs, die erfährt, dass er gezeigt wird (`IAtlasShownSource`) |
 | `Atlas.Core.Files.ProcessLeftovers` | `Core/Files/Atlas.Core.Files.ProcessLeftovers.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.EncodingDefault` | `Core/Files/Atlas.Core.Files.EncodingDefault.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Entries` | `Core/Files/Atlas.Core.Files.Entries.pas` | Ordner `Core/Files` |

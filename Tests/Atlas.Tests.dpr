@@ -1158,6 +1158,7 @@ uses
   Atlas.Core.Files.ProcessLeftovers.Tests in 'IDE.Expert\Atlas.Core.Files.ProcessLeftovers.Tests.pas',
   Atlas.Core.Files.DataFile.Tests in 'IDE.Expert\Atlas.Core.Files.DataFile.Tests.pas',
   Atlas.Core.Foundation.Calls in '..\Packages\Atlas.IDE.Base\Source\Core\Foundation\Atlas.Core.Foundation.Calls.pas',
+  Atlas.Core.Foundation.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Foundation\Atlas.Core.Foundation.Contract.pas',
   Atlas.Core.Foundation.Calls.Tests in 'IDE.Expert\Atlas.Core.Foundation.Calls.Tests.pas',
   Atlas.Core.Text.Agreement.Tests in 'IDE.Expert\Atlas.Core.Text.Agreement.Tests.pas',
   Atlas.Core.Files.EncodingDefault.Tests in 'IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas',

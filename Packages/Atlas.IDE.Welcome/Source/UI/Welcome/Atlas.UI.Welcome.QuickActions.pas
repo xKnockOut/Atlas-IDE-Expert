@@ -53,13 +53,11 @@ type
 
   /// <summary>Unsichtbares Steuerelement mit Fokus für die Tastatur eines Bereichs; Pfeiltasten und Enter kommen
   /// vor dem Dialog der IDE an.</summary>
-  TAtlasQuickKeySink = class(TCustomControl)
+  TAtlasQuickKeySink = class(TAtlasWelcomeKeyControl)
   private
     FOnKey: TAtlasQuickKeyEvent;
     FOnFocusChange: TNotifyEvent;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
-    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
-    procedure CNSysKeyDown(var Message: TWMKeyDown); message CN_SYSKEYDOWN;
   protected
     procedure DoEnter; override;
     procedure DoExit; override;
@@ -67,7 +65,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Taste wie gedrückt (auch für Tests und den Vorrang über die Nachrichtenschleife).</summary>
-    function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
+    function HandleKey(AKey: Word; AShift: TShiftState): Boolean; override;
     property OnKey: TAtlasQuickKeyEvent read FOnKey write FOnKey;
     property OnFocusChange: TNotifyEvent read FOnFocusChange write FOnFocusChange;
   end;
@@ -234,8 +232,7 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Foundation.Controls;
+  Atlas.Core.Diagnostics.Guard;
 
 const
   cSeparator = ' · ';
@@ -409,6 +406,9 @@ end;
 constructor TAtlasQuickKeySink.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  // Vor den Tastenkürzeln des Hauptfensters: Strg+B und Strg+T gehören hier der Willkommensseite, Alt+↓ öffnet
+  // die Auswahl.
+  FSystemKeys := True;
   TabStop := True;
   ParentColor := True;
   SetBounds(0, 0, 0, 0);
@@ -441,24 +441,6 @@ procedure TAtlasQuickKeySink.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
   inherited;
   Message.Result := Message.Result or DLGC_WANTARROWS or DLGC_WANTALLKEYS;
-end;
-
-procedure TAtlasQuickKeySink.CNKeyDown(var Message: TWMKeyDown);
-begin
-  // Vor den Tastenkürzeln des Hauptfensters: Strg+B und Strg+T gehören hier der Willkommensseite.
-  if not TAtlasControls.KeyHandled(Message, HandleKey) then
-  begin
-    inherited;
-  end;
-end;
-
-procedure TAtlasQuickKeySink.CNSysKeyDown(var Message: TWMKeyDown);
-begin
-  // Alt+↓ öffnet die Auswahl.
-  if not TAtlasControls.KeyHandled(Message, HandleKey) then
-  begin
-    inherited;
-  end;
 end;
 
 function TAtlasQuickKeySink.HandleKey(AKey: Word; AShift: TShiftState): Boolean;

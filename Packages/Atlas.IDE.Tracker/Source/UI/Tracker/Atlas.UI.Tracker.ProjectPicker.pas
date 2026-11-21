@@ -60,7 +60,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.Projects,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Menus;
 
 const
   cMenuLine = '-';
@@ -90,12 +91,9 @@ begin
 end;
 
 procedure TAtlasTrackerProjectPicker.LabelClick(Sender: TObject);
-var
-  mPoint: TPoint;
 begin
   Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
+  TAtlasMenus.PopupBelow(FMenu, FLabel);
 end;
 
 procedure TAtlasTrackerProjectPicker.ItemClick(Sender: TObject);

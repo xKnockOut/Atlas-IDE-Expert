@@ -690,21 +690,7 @@ end;
 
 function TAtlasCommentDrafts.LoadFromFile(const AFileName: string): TAtlasDataLoad;
 begin
-  FEntries.Clear;
-  FKept := '';
-  Result := TAtlasDataFile.Load(AFileName, FKind,
-    function(const AText: string): Boolean
-    begin
-      Result := Parse(AText);
-    end);
-  if not TAtlasDataFile.Writable(Result) then
-  begin
-    FKept := AFileName;
-  end;
-  if Result <> TAtlasDataLoad.Loaded then
-  begin
-    FEntries.Clear;
-  end;
+  Result := TAtlasDataFile.LoadInto(AFileName, FKind, Parse, FEntries.Clear, FKept);
 end;
 
 /// <summary>Pflichtfelder eines Entwurfs aus AObject; False, wenn eines fehlt.</summary>

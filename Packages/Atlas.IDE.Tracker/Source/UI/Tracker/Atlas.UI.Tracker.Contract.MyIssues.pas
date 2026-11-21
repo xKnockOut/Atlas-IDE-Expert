@@ -9,7 +9,8 @@ interface
 
 uses
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Contract.MyIssues;
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.Core.Foundation.Contract;
 
 type
   /// <summary>Aktionen an einer Zeile: an einem wieder geöffneten Issue (#2127) Weiterarbeiten auf dem alten
@@ -19,11 +20,10 @@ type
   TAtlasIssueAction = (Continue, Dismiss, Reason, Review);
   {$SCOPEDENUMS OFF}
 
-  IAtlasIssuesSource = interface
+  IAtlasIssuesSource = interface(IAtlasShownSource)
     ['{8D3F6A21-5C4B-4E97-A1D8-2B7E9C05F364}']
     function View: TAtlasIssuesView;
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf den Tracker im Hintergrund fragen.</summary>
-    procedure Shown;
+    // Shown (IAtlasShownSource): Der Bereich wird gezeigt: bei Bedarf den Tracker im Hintergrund fragen.
     /// <summary>„Beginnen“ mit AMode (Branch anlegen oder nur merken).</summary>
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
     procedure Browse(const AIssue: TAtlasTrackerIssue);

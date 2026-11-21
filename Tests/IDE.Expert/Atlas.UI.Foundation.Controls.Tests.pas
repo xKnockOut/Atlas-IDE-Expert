@@ -37,6 +37,10 @@ type
     /// <summary>SelectedIndex liest Data des gewählten Knotens; ohne Auswahl -1.</summary>
     [Test]
     procedure SelectedIndexReadsNodeData;
+    /// <summary>BelowLeft liegt unter der linken unteren Ecke; ShownCaption nur für sichtbare Beschriftungen.
+    /// </summary>
+    [Test]
+    procedure BelowLeftAndShownCaption;
   end;
 
 implementation
@@ -46,7 +50,9 @@ uses
   Winapi.Messages,
   System.Classes,
   System.SysUtils,
+  System.Types,
   Vcl.Forms,
+  Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Atlas.UI.Foundation.Controls;
@@ -249,6 +255,29 @@ begin
     mNode.Data := Pointer(cSomeRow);
     mNode.Selected := True;
     Assert.AreEqual(cSomeRow, TAtlasControls.SelectedIndex(mTree));
+  finally
+    mForm.Free;
+  end;
+end;
+
+procedure TAtlasControlsTests.BelowLeftAndShownCaption;
+var
+  mForm: TForm;
+  mLabel: TLabel;
+  mPoint: TPoint;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mLabel := TLabel.Create(mForm);
+    mLabel.SetBounds(10, 20, 50, cNewHeight);
+    mLabel.Parent := mForm;
+    mLabel.Caption := 'Status';
+    mPoint := TAtlasControls.BelowLeft(mLabel);
+    Assert.AreEqual(mLabel.ClientToScreen(TPoint.Create(0, 0)).Y + cNewHeight, mPoint.Y);
+    Assert.AreEqual(mLabel.ClientToScreen(TPoint.Create(0, 0)).X, mPoint.X);
+    Assert.AreEqual('Status', TAtlasControls.ShownCaption(mLabel));
+    mLabel.Visible := False;
+    Assert.AreEqual('', TAtlasControls.ShownCaption(mLabel));
   finally
     mForm.Free;
   end;

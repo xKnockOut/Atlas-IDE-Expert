@@ -257,7 +257,8 @@ uses
   Atlas.Text.Uris,
   Atlas.Text.Lines,
   Atlas.Core.Tracker.Internals.GitHubApi,
-  Atlas.Core.Tracker.QueryTest;
+  Atlas.Core.Tracker.QueryTest,
+  System.StrUtils;
 
 const
   /// <summary>Antworten auf das Anlegen: 200 (YouTrack) bzw. 201 Created (GitHub).</summary>
@@ -928,20 +929,6 @@ end;
 
 { JSON }
 
-function IsOneOf(const AName: string; const ANames: array of string): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if SameText(AName, mName) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function AddUnique(const AItems: TArray<string>; const AValue: string): TArray<string>;
 var
   mItem: string;
@@ -1117,17 +1104,17 @@ begin
       begin
         mBundle := nil;
       end;
-      if IsOneOf(mName, cYouTrackTypeNames) and (AFields.TypeField = '') then
+      if MatchText(mName, cYouTrackTypeNames) and (AFields.TypeField = '') then
       begin
         AFields.TypeField := mName;
         AFields.Types := BundleValues(TJSONObject(mBundle), False);
       end
-      else if IsOneOf(mName, cYouTrackPriorityNames) and (AFields.PriorityField = '') then
+      else if MatchText(mName, cYouTrackPriorityNames) and (AFields.PriorityField = '') then
       begin
         AFields.PriorityField := mName;
         AFields.Priorities := BundleValues(TJSONObject(mBundle), False);
       end
-      else if IsOneOf(mName, cYouTrackAssigneeNames) and (AFields.AssigneeField = '') then
+      else if MatchText(mName, cYouTrackAssigneeNames) and (AFields.AssigneeField = '') then
       begin
         AFields.AssigneeField := mName;
         AFields.Assignees := BundleValues(TJSONObject(mBundle), True);

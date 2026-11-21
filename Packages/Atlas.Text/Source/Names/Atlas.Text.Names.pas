@@ -2,7 +2,8 @@
 
 // Namen in Delphi-Quelltext und Units zu Dateinamen (gemeinsam für Server und
 // Plugin): letzter Teil eines qualifizierten Namens, Name mit Container,
-// Unit-Name einer .pas-Datei, Quelltextdateien (.pas, .dpr, .dpk).
+// Unit-Name einer .pas-Datei, Quelltextdateien (.pas, .dpr, .dpk), Kennungen
+// ohne führendes "#".
 
 interface
 
@@ -17,6 +18,8 @@ type
     class function UnitNameOf(const AFileName: string): string; static;
     /// <summary>Endet AFileName auf .pas, .dpr oder .dpk (ohne Rücksicht auf Groß-/Kleinschreibung)?</summary>
     class function IsPascalFile(const AFileName: string): Boolean; static;
+    /// <summary>Kennung ohne Leerraum außen und ohne führende "#" ("#753" → "753"); "ATL-123" bleibt.</summary>
+    class function KeyWithoutHash(const AKey: string): string; static;
   end;
 
 implementation
@@ -66,6 +69,15 @@ var
 begin
   mExtension := LowerCase(ExtractFileExt(AFileName));
   Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
+end;
+
+class function TTextNames.KeyWithoutHash(const AKey: string): string;
+begin
+  Result := Trim(AKey);
+  while (Result <> '') and (Result[1] = '#') do
+  begin
+    Delete(Result, 1, 1);
+  end;
 end;
 
 end.

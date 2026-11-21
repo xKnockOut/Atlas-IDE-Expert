@@ -100,7 +100,7 @@ type
 
   /// <summary>Griff eines Bereichs im Bearbeitungsmodus: Tab erreicht ihn, Strg+Pfeiltasten verschieben,
   /// Ziehen mit der Maus (Escape bricht ab).</summary>
-  TAtlasWelcomeGrip = class(TCustomControl)
+  TAtlasWelcomeGrip = class(TAtlasWelcomeKeyControl)
   public const
     cGripWidth = 16;
   private
@@ -113,7 +113,6 @@ type
     FOnDragMove: TProc<TPoint>;
     FOnDragEnd: TProc<Boolean>;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
-    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
     procedure EndDrag(ADrop: Boolean);
   protected
     procedure Paint; override;
@@ -124,8 +123,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
-    /// <summary>Taste wie gedrückt; True, wenn sie verarbeitet wurde (auch für Tests).</summary>
-    function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
+    function HandleKey(AKey: Word; AShift: TShiftState): Boolean; override;
     property SectionId: string read FSectionId write FSectionId;
     /// <summary>Zieht gerade; nicht „Dragging“, das verdeckte TControl.Dragging (W1009).</summary>
     property IsDragging: Boolean read FDragging;
@@ -562,14 +560,6 @@ procedure TAtlasWelcomeGrip.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
   inherited;
   Message.Result := Message.Result or DLGC_WANTARROWS;
-end;
-
-procedure TAtlasWelcomeGrip.CNKeyDown(var Message: TWMKeyDown);
-begin
-  if not TAtlasControls.KeyHandled(Message, HandleKey) then
-  begin
-    inherited;
-  end;
 end;
 
 procedure TAtlasWelcomeGrip.EndDrag(ADrop: Boolean);

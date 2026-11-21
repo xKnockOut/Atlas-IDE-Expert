@@ -17,6 +17,8 @@ type
     procedure UnitNameOnlyForPas;
     [Test]
     procedure PascalFileByExtension;
+    [Test]
+    procedure KeyWithoutHashStripsLeadingHashes;
   end;
 
 implementation
@@ -52,6 +54,14 @@ begin
   Assert.IsTrue(TTextNames.IsPascalFile('Pkg.dpk'));
   Assert.IsFalse(TTextNames.IsPascalFile('Main.dfm'));
   Assert.IsFalse(TTextNames.IsPascalFile('Ohne'));
+end;
+
+procedure TTextNamesTests.KeyWithoutHashStripsLeadingHashes;
+begin
+  Assert.AreEqual('753', TTextNames.KeyWithoutHash(' #753 '));
+  Assert.AreEqual('7', TTextNames.KeyWithoutHash('##7'));
+  Assert.AreEqual('ATL-123', TTextNames.KeyWithoutHash('ATL-123'));
+  Assert.AreEqual('', TTextNames.KeyWithoutHash('#'));
 end;
 
 initialization

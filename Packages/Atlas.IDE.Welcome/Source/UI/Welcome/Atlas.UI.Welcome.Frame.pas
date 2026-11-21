@@ -15,6 +15,7 @@
 interface
 
 uses
+  Winapi.Messages,
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
@@ -28,6 +29,20 @@ uses
 type
   /// <summary>Zeichenfläche der Bereiche ohne Flackern (Atlas.UI.Style.Canvas).</summary>
   TAtlasWelcomeCanvas = TAtlasStyledCanvas;
+
+  /// <summary>Steuerelement der Willkommensseite, das Tasten vor den Tastenkürzeln des Hauptfensters in HandleKey
+  /// sieht; nicht behandelte gehen den üblichen Weg. Mit FSystemKeys auch Tasten mit Alt.</summary>
+  TAtlasWelcomeKeyControl = class(TCustomControl)
+  private
+    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
+    procedure CNSysKeyDown(var Message: TWMKeyDown); message CN_SYSKEYDOWN;
+  protected
+    FSystemKeys: Boolean;
+  public
+    /// <summary>Taste wie gedrückt; True, wenn sie verarbeitet wurde (auch für Tests).</summary>
+    function HandleKey(AKey: Word; AShift: TShiftState): Boolean; virtual; abstract;
+  end;
+
 
   TAtlasWelcomeFrame = class(TFrame)
   private
@@ -108,6 +123,24 @@ uses
   Atlas.UI.Foundation.Controls;
 
 {$R *.dfm}
+
+{ TAtlasWelcomeKeyControl }
+
+procedure TAtlasWelcomeKeyControl.CNKeyDown(var Message: TWMKeyDown);
+begin
+  if not TAtlasControls.KeyHandled(Message, HandleKey) then
+  begin
+    inherited;
+  end;
+end;
+
+procedure TAtlasWelcomeKeyControl.CNSysKeyDown(var Message: TWMKeyDown);
+begin
+  if not FSystemKeys or not TAtlasControls.KeyHandled(Message, HandleKey) then
+  begin
+    inherited;
+  end;
+end;
 
 { TAtlasWelcomeFrame }
 

@@ -387,10 +387,7 @@ end;
 
 class procedure TAtlasIdeDebugRestart.ThemeChanged;
 begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Colors := TAtlasIdeStyle.Colors;
-  end;
+  TAtlasStepsBar.Recolor(FBar, TAtlasIdeStyle.Colors);
 end;
 
 class procedure TAtlasIdeDebugRestart.Execute;

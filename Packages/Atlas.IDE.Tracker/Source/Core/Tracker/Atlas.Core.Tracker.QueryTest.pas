@@ -87,7 +87,8 @@ uses
   System.Math,
   System.Diagnostics,
   Atlas.Core.Tracker.Templates,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasTrackerQueryTestResult }
 
@@ -267,18 +268,6 @@ begin
   end;
 end;
 
-function Remaining(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
-begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
-  begin
-    Result := Integer(mRest);
-  end;
-end;
-
 /// <summary>Probe mit „Mir zugewiesen“ in ALanguage: -1 abgelehnt oder ohne Antwort, sonst die Zahl der Treffer.
 /// </summary>
 function Probe(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -333,8 +322,10 @@ begin
   end;
   // Ohne Recht auf die globalen Einstellungen: Die Vorlage in der Sprache der Oberfläche findet etwas, die andere
   // nichts (bzw. wird abgelehnt).
-  mGerman := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cGerman, Remaining(mWatch, ATimeoutMs));
-  mEnglish := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cEnglish, Remaining(mWatch, ATimeoutMs));
+  mGerman := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cGerman,
+    TAtlasTicks.LeftOf(mWatch, ATimeoutMs));
+  mEnglish := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cEnglish,
+    TAtlasTicks.LeftOf(mWatch, ATimeoutMs));
   if (mGerman > 0) and (mEnglish <= 0) then
   begin
     Result := TAtlasTrackerTemplates.cGerman;
@@ -393,7 +384,7 @@ begin
   Result.Language := ATarget.Language;
   if Result.Language = '' then
   begin
-    Result.Language := DetectLanguage(AProvider, ATarget, ATransport, Remaining(mWatch, cTimeoutMs));
+    Result.Language := DetectLanguage(AProvider, ATarget, ATransport, TAtlasTicks.LeftOf(mWatch, cTimeoutMs));
   end;
   // Gesendet wurde ATarget.Query bzw. ohne sie die Vorgabe zur bisher bekannten Sprache.
   mSent := ATarget.Query;

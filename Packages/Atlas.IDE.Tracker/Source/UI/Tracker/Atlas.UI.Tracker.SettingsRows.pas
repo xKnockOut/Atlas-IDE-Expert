@@ -20,6 +20,7 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.SettingsTables,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.QueryDialog,
@@ -153,6 +154,25 @@ type
     /// <summary>Fokus auf AControl, wenn es ihn nehmen kann.</summary>
     class procedure Focus(AControl: TWinControl); static;
     property Owner: TComponent read FOwner;
+  end;
+
+  /// <summary>Gemeinsamer Teil der Seiten des Abschnitts (Verbindungen, Projekte, Abfragen, Bausteine, Ablauf):
+  /// Zeilen, Hooks und Tabellen; FFilling ist gesetzt, während die Seite ihre Liste füllt.</summary>
+  TAtlasTrackerSettingsPart = class
+  protected
+    FRows: TAtlasTrackerSettingsRows;
+    FHooks: TAtlasTrackerSettingsHooks;
+    FTables: TAtlasTrackerSettingsTables;
+    FFilling: Boolean;
+    /// <summary>In der Liste gewählte Zeile AItem übernehmen: ASelect(Index), dann AFill. Nicht beim Füllen und
+    /// nicht beim Abwählen.</summary>
+    procedure TakeSelection(AItem: TListItem; ASelected: Boolean; const ASelect: TProc<Integer>;
+      const AFill: TProc);
+    /// <summary>Gewählte Zeile entfernen (ARemove) und die Seite neu zeigen (ARefresh), wenn AEditable.</summary>
+    procedure RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc);
+  public
+    constructor Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
+      ATables: TAtlasTrackerSettingsTables);
   end;
 
 implementation
@@ -368,6 +388,37 @@ begin
   if AControl.CanFocus and AControl.Showing then
   begin
     AControl.SetFocus;
+  end;
+end;
+
+{ TAtlasTrackerSettingsPart }
+
+constructor TAtlasTrackerSettingsPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
+  ATables: TAtlasTrackerSettingsTables);
+begin
+  inherited Create;
+  FRows := ARows;
+  FHooks := AHooks;
+  FTables := ATables;
+end;
+
+procedure TAtlasTrackerSettingsPart.TakeSelection(AItem: TListItem; ASelected: Boolean;
+  const ASelect: TProc<Integer>; const AFill: TProc);
+begin
+  if FFilling or not ASelected or (AItem = nil) then
+  begin
+    Exit;
+  end;
+  ASelect(AItem.Index);
+  AFill();
+end;
+
+procedure TAtlasTrackerSettingsPart.RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc);
+begin
+  if AEditable then
+  begin
+    ARemove();
+    ARefresh();
   end;
 end;
 

@@ -131,7 +131,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Core.Foundation.Calls;
 
 const
   cSeparator = ' · ';
@@ -166,11 +167,7 @@ end;
 procedure TAtlasWelcomeUnsavedFrame.SetSource(const AValue: IAtlasUnsavedSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasWelcomeUnsavedFrame.BodyHeight: Integer;

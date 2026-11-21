@@ -281,7 +281,9 @@ uses
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Foundation.Scaling,
-  Atlas.Core.Tracker.MyIssues;
+  Atlas.Core.Tracker.MyIssues,
+  Atlas.UI.Foundation.Menus,
+  Atlas.Core.Foundation.Calls;
 
 const
   cMenuLine = '-';
@@ -1110,12 +1112,9 @@ begin
 end;
 
 procedure TAtlasTrackerIssuesQueries.LabelClick(Sender: TObject);
-var
-  mPoint: TPoint;
 begin
   Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
+  TAtlasMenus.PopupBelow(FMenu, FLabel);
 end;
 
 procedure TAtlasTrackerIssuesQueries.ItemClick(Sender: TObject);
@@ -1230,11 +1229,7 @@ end;
 procedure TAtlasTrackerIssuesView.SetSource(const AValue: IAtlasIssuesSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasTrackerIssuesView.BodyHeight: Integer;

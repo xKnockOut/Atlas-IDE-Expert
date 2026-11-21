@@ -172,7 +172,8 @@ uses
   Vcl.Themes,
   Atlas.UI.Welcome.Strings,
   Atlas.Core.Projects.Summary,
-  Atlas.Text.Arrays;
+  Atlas.Text.Arrays,
+  Atlas.Core.Foundation.Calls;
 
 type
   /// <summary>Zeichnet die Zeilen des Bereichs: Punkt, Name, Branch, zweite Zeile, Stand der Schnellaktion und
@@ -545,11 +546,7 @@ end;
 procedure TAtlasWelcomeProjectsFrame.SetSource(const AValue: IAtlasProjectsSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasWelcomeProjectsFrame.GetQuickActions: IAtlasQuickActionsSource;

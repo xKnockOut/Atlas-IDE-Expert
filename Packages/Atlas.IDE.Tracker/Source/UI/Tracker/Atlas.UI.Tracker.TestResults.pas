@@ -273,7 +273,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.TestResults.Strings,
-  Atlas.Core.Tracker.TestResults;
+  Atlas.Core.Tracker.TestResults,
+  Atlas.Core.Foundation.Calls;
 
 const
   // Dieselben Töne wie die Marken im Bereich „Projekte“: lesbar im hellen und im dunklen Thema.
@@ -1320,11 +1321,7 @@ end;
 procedure TAtlasTrackerTestResultsView.SetSource(const AValue: IAtlasTestResultsSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasTrackerTestResultsView.BodyHeight: Integer;

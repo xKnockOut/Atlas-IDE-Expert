@@ -54,7 +54,8 @@ implementation
 
 uses
   Atlas.Core.VersionControl.BranchNames,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 const
   // Paare: Zeichen und Ersatz. Großbuchstaben mit, weil LowerCase nur ASCII kennt.
@@ -157,11 +158,7 @@ end;
 
 class function TAtlasTrackerNaming.BranchKey(const AKey: string): string;
 begin
-  Result := Trim(AKey);
-  while (Result <> '') and (Result[1] = '#') do
-  begin
-    Delete(Result, 1, 1);
-  end;
+  Result := TTextNames.KeyWithoutHash(AKey);
 end;
 
 function Fill(const APattern, AKey: string; const AIssue: TAtlasTrackerIssue): string;

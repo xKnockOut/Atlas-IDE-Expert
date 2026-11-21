@@ -242,7 +242,8 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.Text.Uris,
-  Atlas.Text.Arrays;
+  Atlas.Text.Arrays,
+  Atlas.Core.Foundation.Calls;
 
 const
   cSeparator = ' · ';
@@ -1293,11 +1294,7 @@ begin
   FRecent.Source := AValue;
   FSavedPage.Source := AValue;
   FSavedPage.IsRead := False;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 procedure TAtlasWelcomeContinueFrame.SetIssuesSource(const AValue: IAtlasContinueIssuesSource);
