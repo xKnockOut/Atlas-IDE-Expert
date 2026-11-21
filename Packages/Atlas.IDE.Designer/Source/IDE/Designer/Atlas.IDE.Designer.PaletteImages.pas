@@ -233,7 +233,8 @@ begin
   mIndex := FLoaded.IndexOf(AClass.ClassName);
   if mIndex >= 0 then
   begin
-    Exit(Integer(FLoaded.Objects[mIndex]));
+    // Objects hält den Bildindex, kein Objekt: über NativeInt, damit Win64 keine Zeigerbits abschneidet.
+    Exit(Integer(NativeInt(FLoaded.Objects[mIndex])));
   end;
   Result := -1;
   mClass := AClass;
@@ -263,7 +264,7 @@ begin
     end;
     mClass := mClass.ClassParent;
   end;
-  FLoaded.AddObject(AClass.ClassName, TObject(Result));
+  FLoaded.AddObject(AClass.ClassName, TObject(NativeInt(Result)));
 end;
 
 function TAtlasPaletteImages.IndexOfName(const AClassName: string): Integer;

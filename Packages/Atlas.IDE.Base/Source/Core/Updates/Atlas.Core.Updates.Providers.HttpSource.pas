@@ -131,9 +131,11 @@ begin
   Result := False;
   AText := '';
   AError := '';
+  // mContent im try anlegen: Scheitert es, gibt finally den Client frei (Free auf nil ist harmlos).
+  mContent := nil;
   mClient := THTTPClient.Create;
-  mContent := TAtlasBoundedStream.Create(cMaxBytes);
   try
+    mContent := TAtlasBoundedStream.Create(cMaxBytes);
     // Kurz: Ein Abbruch während des Verbindungsaufbaus wirkt erst, wenn dieser endet.
     mClient.ConnectionTimeout := TAtlasAsyncWait.ConnectTimeout(ATimeoutMs);
     mClient.ResponseTimeout := ATimeoutMs;

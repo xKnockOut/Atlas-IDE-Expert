@@ -388,23 +388,26 @@ begin
   end;
   mColors := TAtlasColors.ForBackground(mBack);
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ACanvas.Pen.Width := 1;
-    ACanvas.Pen.Color := TColor(mColors.Accent);
-    if AWarn then
-    begin
-      ACanvas.Pen.Color := TColor(mColors.Warn);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      ACanvas.Pen.Width := 1;
+      ACanvas.Pen.Color := TColor(mColors.Accent);
+      if AWarn then
+      begin
+        ACanvas.Pen.Color := TColor(mColors.Warn);
+      end;
+      ACanvas.Brush.Color := ACanvas.Pen.Color;
+      ACanvas.Brush.Style := bsSolid;
+      ACanvas.Polygon(TAtlasRunToColumnFlow.Arrow(ARect, cMinArrow, cArrowPad));
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
     end;
-    ACanvas.Brush.Color := ACanvas.Pen.Color;
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Polygon(TAtlasRunToColumnFlow.Arrow(ARect, cMinArrow, cArrowPad));
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;

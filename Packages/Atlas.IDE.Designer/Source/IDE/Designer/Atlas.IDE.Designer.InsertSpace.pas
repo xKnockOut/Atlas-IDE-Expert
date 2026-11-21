@@ -72,7 +72,6 @@ type
 
 function AlignOf(AControl: TControl; AAxis: TAtlasSpaceAxis): TAtlasSpaceAlign;
 begin
-  Result := TAtlasSpaceAlign.None;
   case AControl.Align of
     alClient:
       Result := TAtlasSpaceAlign.Fill;
@@ -102,6 +101,9 @@ begin
       begin
         Result := TAtlasSpaceAlign.Across;
       end;
+  else
+    // alNone, alCustom: frei platziert, Result bleibt None.
+    Result := TAtlasSpaceAlign.None;
   end;
 end;
 
