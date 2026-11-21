@@ -36,7 +36,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.NameSuggestions,
@@ -265,7 +265,7 @@ begin
     mItem.Detail := mSite.TypeText;
     mItem.Fits := True;
     mItem.HasTextEdit := True;
-    mItem.TextEdit := TRuleEdit.Create(mSite.NameRange, mName);
+    mItem.TextEdit := TTextEdit.Create(mSite.NameRange, mName);
     AItems.Items := AItems.Items + [mItem];
   end;
   Result := Length(AItems.Items) > 0;

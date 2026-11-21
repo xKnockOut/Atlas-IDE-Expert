@@ -21,7 +21,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CompletionRequest;
 
@@ -111,7 +111,7 @@ type
       const ASymbol: TResolvedSymbol): Boolean; overload;
     /// <summary>Wie oben, mit weiteren Änderungen beim Annehmen (uses-Eintrag).</summary>
     function Add(const AName, ADetail: string; AKind, APenalty: Integer; const ASymbol: TResolvedSymbol;
-      const AEdits: TArray<TRuleEdit>): Boolean; overload;
+      const AEdits: TArray<TTextEdit>): Boolean; overload;
     /// <summary>Fertiger Eintrag mit eigener Punktzahl (uses-Abschnitt, #469); kein Abgleich mit dem Getippten.
     /// </summary>
     procedure AddItem(const AItem: TCompletionItem; AScore: Integer);
@@ -173,7 +173,6 @@ function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TC
 implementation
 
 uses
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Contract,
   System.Math,
   System.StrUtils,
@@ -453,7 +452,7 @@ procedure AddConversionUnits(ACollector: TCompletionCollector; const AUnits: TAr
   var AItem: TCompletionItem);
 var
   mUnitName: string;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   if not ACollector.FUsedReady then
   begin
@@ -523,7 +522,7 @@ begin
   AConverted.Item.Overloads := nil;
   AConverted.Item.HasParameters := False;
   AConverted.Item.HasTextEdit := True;
-  AConverted.Item.TextEdit := TRuleEdit.Create(TTextRange.Create(mStart, ACollector.FRequest.Position),
+  AConverted.Item.TextEdit := TTextEdit.Create(TTextRange.Create(mStart, ACollector.FRequest.Position),
     mConverted.Text);
   AddConversionUnits(ACollector, mConverted.Units, AConverted.Item);
 end;
@@ -630,7 +629,7 @@ begin
 end;
 
 function TCompletionCollector.Add(const AName, ADetail: string; AKind, APenalty: Integer;
-  const ASymbol: TResolvedSymbol; const AEdits: TArray<TRuleEdit>): Boolean;
+  const ASymbol: TResolvedSymbol; const AEdits: TArray<TTextEdit>): Boolean;
 var
   mScored, mConverted: TScoredItem;
 begin
@@ -954,7 +953,7 @@ end;
 
 /// <summary>Eintrag für ASymbol aus AUnitInfo mit dem uses-Eintrag AEdit; False, wenn er nicht passt.</summary>
 function AddImport(ACollector: TCompletionCollector; const AUnitInfo: TUnitIndex; const ASymbol: TIndexSymbol;
-  const AEdit: TRuleEdit): Boolean;
+  const AEdit: TTextEdit): Boolean;
 var
   mMember: TResolvedSymbol;
 begin
@@ -979,7 +978,7 @@ var
   mEntry: TImportNameEntry;
   mUnitInfo: TUnitIndex;
   mSymbol: TIndexSymbol;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mAdded: Integer;
 begin
   mScan := Default(TImportScan);
@@ -1114,7 +1113,7 @@ end;
 /// </summary>
 function AddIdeType(ACollector: TCompletionCollector; const AType: TIdeTypeEntry; AUsed: Boolean): Boolean;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   if AUsed then
   begin
@@ -1259,11 +1258,11 @@ end;
 /// <summary>Einfügeart für AVariant (aktiv aus Unit AKey) und die Änderungen dazu: uses umstellen oder ergänzen.
 /// False, wenn der uses-Eintrag nicht geht.</summary>
 function VariantEdits(ACollector: TCompletionCollector; const AVariant: TSameNameVariant; const AKey: string;
-  const AUsed: TArray<string>; out AMode: string; out AEdits: TArray<TRuleEdit>): Boolean;
+  const AUsed: TArray<string>; out AMode: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
   mIsUsed, mMovable: Boolean;
-  mMoved: TArray<TRuleEdit>;
-  mEdit: TRuleEdit;
+  mMoved: TArray<TTextEdit>;
+  mEdit: TTextEdit;
 begin
   mIsUsed := TUsesClauses.IsUsed(AUsed, AVariant.UnitInfo.UnitName, ACollector.FRequest.Resolver.Namespaces);
   mMovable := mIsUsed and TCompletionSameNames.MoveToEnd(ACollector.FRequest.Tree.Tokens,
@@ -1304,7 +1303,7 @@ procedure TSameNameScan.AddVariant(const AVariant: TSameNameVariant; const AUsed
 var
   mActive, mScored: TScoredItem;
   mMode: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mPosition: Integer;
 begin
   mActive := Collector.FList[AVariant.Active];
@@ -1331,7 +1330,7 @@ begin
   if (mMode = TCompletionSameNames.cInsertPrefix) or (mMode = TCompletionSameNames.cInsertPrefixAdd) then
   begin
     mScored.Item.HasTextEdit := True;
-    mScored.Item.TextEdit := TRuleEdit.Create(ARange, AVariant.UnitInfo.UnitName + '.' + AVariant.Symbol.Name);
+    mScored.Item.TextEdit := TTextEdit.Create(ARange, AVariant.UnitInfo.UnitName + '.' + AVariant.Symbol.Name);
   end;
   // Kein uses-Eintrag im Sinne von #180: Atlas soll die Edits nicht als „+ Unit“ zeigen.
   mScored.Item.Action := 'sameName';
@@ -1411,7 +1410,7 @@ end;
 
 /// <summary>Mitglieder des Helpers AHelperName aus AUnitInfo mit dem uses-Eintrag AEdit, Stufe ADepth.</summary>
 procedure AddHelperMembers(ACollector: TCompletionCollector; const AUnitInfo: TUnitIndex; const AHelperName: string;
-  ADepth: Integer; const AEdit: TRuleEdit; AKnown: TDictionary<string, Boolean>);
+  ADepth: Integer; const AEdit: TTextEdit; AKnown: TDictionary<string, Boolean>);
 var
   mSymbol: TIndexSymbol;
   mMember: TResolvedSymbol;
@@ -1631,7 +1630,7 @@ var
   mEntry: TImportNameEntry;
   mUnitInfo: TUnitIndex;
   mHelper: TIndexSymbol;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mDepth: Integer;
 begin
   if Length(ATypes) = 0 then
