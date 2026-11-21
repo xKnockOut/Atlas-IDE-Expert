@@ -79,7 +79,8 @@ uses
   Vcl.Graphics,
   Vcl.ExtCtrls,
   Atlas.UI.Debug.Evaluate.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -151,7 +152,7 @@ begin
   FKeys.Align := alBottom;
   FKeys.AlignWithMargins := True;
   FKeys.ShowAccelChar := False;
-  FKeys.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FKeys, clGrayText);
   FKeys.Caption := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateKeys);
 end;
 

@@ -60,7 +60,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.Projects,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Theme;
 
 const
   cMenuLine = '-';
@@ -84,7 +85,7 @@ begin
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
   FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectHint);
-  FLabel.Font.Color := clHotLight;
+  TAtlasUiTheme.UseFontColor(FLabel, clHotLight);
   FLabel.Visible := False;
   FLabel.OnClick := LabelClick;
 end;

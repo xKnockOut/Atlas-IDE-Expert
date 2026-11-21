@@ -164,7 +164,8 @@ uses
   System.Math,
   Atlas.UI.Status.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Theme;
 
 const
   // Breiten der Spalten Regel, ms und Aufrufe; Breite der Knöpfe der Leiste.
@@ -555,7 +556,7 @@ begin
   FNote.AutoSize := True;
   FNote.Margins.Top := FNote.ScaleValue(cNoteTop);
   FNote.ShowAccelChar := False;
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FNote.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowHint);
 end;
 

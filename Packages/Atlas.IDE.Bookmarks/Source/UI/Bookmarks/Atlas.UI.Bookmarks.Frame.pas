@@ -162,7 +162,8 @@ uses
   Atlas.UI.Bookmarks.Strings,
   Atlas.Core.Marks.Ids,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Menus;
+  Atlas.UI.Foundation.Menus,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -173,12 +174,6 @@ begin
   Result.Width := MulDiv(AWidth, APPI, 96);
 end;
 
-function ListColor(AList: TListView; AColor: TColor): TColor;
-begin
-  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
-  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
-end;
-
 procedure RowColors(AList: TListView; ACanvas: TCanvas; ASelected, AGray: Boolean);
 begin
   // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schriftfarbe zeichnet die Liste sonst mit den
@@ -186,19 +181,19 @@ begin
   // Prüfliste jede Zeile blau, auch die nicht gewählten.
   if ASelected then
   begin
-    ACanvas.Brush.Color := ListColor(AList, clHighlight);
-    ACanvas.Font.Color := ListColor(AList, clHighlightText);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, clHighlight);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clHighlightText);
   end
   else
   begin
-    ACanvas.Brush.Color := ListColor(AList, AList.Color);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, AList.Color);
     if AGray then
     begin
-      ACanvas.Font.Color := ListColor(AList, clGrayText);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clGrayText);
     end
     else
     begin
-      ACanvas.Font.Color := ListColor(AList, AList.Font.Color);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, AList.Font.Color);
     end;
   end;
 end;
@@ -235,7 +230,7 @@ begin
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
   Result.EllipsisPosition := epEndEllipsis;
-  Result.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
   Result.Caption := '';
 end;
 
@@ -300,7 +295,7 @@ begin
   Result.Align := alClient;
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
-  Result.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
   Result.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksEmpty);
   Result.Visible := False;
 end;

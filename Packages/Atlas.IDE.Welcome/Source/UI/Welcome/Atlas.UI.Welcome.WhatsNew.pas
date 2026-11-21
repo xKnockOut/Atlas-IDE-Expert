@@ -124,7 +124,8 @@ uses
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 type
   /// <summary>Legt die Steuerelemente der Karte an: Überschriften, Zeilen mit Schalter und „Ausprobieren“, den
@@ -193,7 +194,7 @@ begin
       mSection := FFrame.Add(TLabel.Create(nil));
       mSection.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsExperimental);
       mSection.Font.Style := [fsItalic];
-      mSection.Font.Color := clGrayText;
+      TAtlasUiTheme.UseFontColor(mSection, clGrayText);
     end;
     // NewRow vergibt Length(FFrame.FRows) als Tag, darum erst danach anhängen.
     mRow := NewRow(AVersion.Version, mItem, mSection);
@@ -223,7 +224,7 @@ begin
   begin
     Result.Key := FFrame.Add(TLabel.Create(nil));
     Result.Key.Caption := mKeyText;
-    Result.Key.Font.Color := clGrayText;
+    TAtlasUiTheme.UseFontColor(Result.Key, clGrayText);
   end;
   if AItem.Text <> '' then
   begin
