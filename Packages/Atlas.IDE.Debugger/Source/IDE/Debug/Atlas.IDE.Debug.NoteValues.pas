@@ -73,6 +73,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.Core.Debug.WatchScopes,
   Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.EvaluateStore,
   Atlas.IDE.Debug.Report;
 
 /// <summary>Alle Ausdrücke der Überwachung als Text, ohne Rücksicht auf ihre Bindung: Die Notiz hält jeden fest.
@@ -149,7 +150,8 @@ begin
   FLists.BeginStop;
   FLists[TAtlasVariablesTab.Autos].Replace(nil);
   FLists[TAtlasVariablesTab.Locals].Replace(nil);
-  FStore.SwitchProject(mProject);
+  // Nur das Projekt; ob es gewechselt hat, braucht die Notiz nicht (eigener Store, jede Sammlung liest neu).
+  mProject := TAtlasIdeEvaluateStore.CurrentProject;
   FLists[TAtlasVariablesTab.Watch].Replace(ExpressionsOf(FStore.Items(mProject)));
   if not StillAtStop then
   begin
