@@ -162,6 +162,7 @@ implementation
 
 uses
   Atlas.Core.Lsp.Framing;
+
 const
   /// <summary>Betroffene Tests (#1353, #1775): git bzw. svn und eine Auswirkungsanalyse je geänderter Routine
   /// brauchen ein Vielfaches des Zeitlimits einer Anfrage.</summary>

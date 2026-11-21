@@ -355,7 +355,7 @@ begin
       except
         on E: Exception do
         begin
-          TAtlasGuard.Log('Code Insight: RTTI eines Packages nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+          TAtlasGuard.Log('Code Insight: Package-RTTI unlesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           Inc(AFailed);
         end;
       end;

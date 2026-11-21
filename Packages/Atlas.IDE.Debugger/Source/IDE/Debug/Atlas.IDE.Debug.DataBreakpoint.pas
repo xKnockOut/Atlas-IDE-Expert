@@ -286,7 +286,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Daten-Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Daten-Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
     end;
   end;

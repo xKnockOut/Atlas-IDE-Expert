@@ -76,6 +76,7 @@ implementation
 
 uses
   Atlas.Text.Reporting;
+
 { TJsonRpcTracingTransport }
 
 constructor TJsonRpcTracingTransport.Create(const AInner: IJsonRpcTransport; ATrace: TStream;

@@ -133,7 +133,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
     end;
   end;
@@ -153,7 +153,7 @@ begin
     // Ohne Gruppe hält der Haltepunkt genauso.
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Haltepunktgruppe nicht gesetzt: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Haltepunktgruppe nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
     end;
   end;
 end;
@@ -208,7 +208,7 @@ begin
     except
       on E: Exception do
       begin
-        TAtlasGuard.Log('Debugger: Haltepunkt nicht verschoben: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('Debugger: Haltepunkt nicht verschoben: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
         Result := nil;
       end;
     end;
@@ -221,7 +221,7 @@ begin
       // Schon vom Benutzer gelöscht: nichts mehr zu tun.
       on E: Exception do
       begin
-        TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       end;
     end;
   end;
@@ -258,7 +258,7 @@ begin
     // Schon vom Benutzer gelöscht: nichts mehr zu tun.
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
     end;
   end;
 end;

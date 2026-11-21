@@ -167,6 +167,7 @@
       "allowExceptionUse": true,
       "reporters": [
         "TAtlasGuard.*",
+        "TReporting.Failed",
         "TAtlasDataFile.ReportNotWritten",
         "TAtlasIdeHost.Message",
         "TAtlasIdeHost.Warning",

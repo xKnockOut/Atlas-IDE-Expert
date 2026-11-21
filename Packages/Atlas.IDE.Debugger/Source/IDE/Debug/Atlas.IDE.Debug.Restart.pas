@@ -278,7 +278,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Beenden gescheitert: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Beenden gescheitert: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Fail(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartFailedStop));
     end;
   end;

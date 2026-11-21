@@ -186,7 +186,7 @@ begin
         // Die Arbeit meldet ihre Fehler selbst; ADone kommt trotzdem.
         on E: Exception do
         begin
-          TAtlasGuard.Log('Hintergrundarbeit: ' + TAtlasGuard.ErrorText(E));
+          TAtlasGuard.Log('Hintergrundarbeit: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
         end;
       end;
       if TThread.CheckTerminated then

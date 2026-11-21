@@ -251,7 +251,7 @@ begin
       // Unerwarteter Inhalt, den FromJson nicht abfängt: ebenso kein gespeicherter Stand.
       on E: Exception do
       begin
-        TAtlasGuard.Log('Indexstand unbrauchbar: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('Indexstand unbrauchbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
         Result := TAtlasIndexSnapshot.Empty;
       end;
     end;

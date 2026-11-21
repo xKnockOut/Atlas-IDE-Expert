@@ -315,7 +315,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
     end;
   end;
@@ -562,7 +562,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Abgesicherter Start: Verlauf nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := '';
     end;
   end;

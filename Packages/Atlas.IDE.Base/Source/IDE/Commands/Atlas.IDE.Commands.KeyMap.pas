@@ -439,7 +439,7 @@ begin
     // Eine Taste, die die IDE nicht auflösen kann, zählt als frei.
     on E: Exception do
     begin
-      TAtlasGuard.Log('Tastenbelegung nicht auflösbar: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Tastenbelegung nicht auflösbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := False;
     end;
   end;

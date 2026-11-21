@@ -228,7 +228,7 @@ begin
       // Das Ende des Threads meldet ThreadGone vorher; was hier noch scheitert, ist unerwartet: protokollieren,
       // die Freigabe geht weiter.
       on E: Exception do
-        TAtlasGuard.Log('Debugwert: Abmelden am Thread gescheitert: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('Debugwert: Abmelden gescheitert: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
     end;
   FDeferred.FOwner := nil;
   FDeferred := nil;

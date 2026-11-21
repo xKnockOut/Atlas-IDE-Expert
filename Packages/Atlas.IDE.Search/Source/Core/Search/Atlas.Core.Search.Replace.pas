@@ -55,6 +55,7 @@ implementation
 
 uses
   System.RegularExpressionsCore;
+
 { TAtlasReplacePreview }
 
 function TAtlasReplacePreview.Caption: string;

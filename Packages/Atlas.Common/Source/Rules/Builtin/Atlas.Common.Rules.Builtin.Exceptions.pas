@@ -488,7 +488,8 @@ begin
   Result := AFirst >= 0;
 end;
 
-/// <summary>Steht zwischen AFirst und ALast ein raise?</summary>
+/// <summary>Steht zwischen AFirst und ALast ein raise oder AcquireExceptionObject (die Ausnahme lebt weiter und
+/// wird anderswo ausgelöst oder gemeldet)?</summary>
 function RaisesIn(const ATokens: TTokens; AFirst, ALast: Integer): Boolean;
 var
   mIndex: Integer;
@@ -496,7 +497,8 @@ begin
   Result := False;
   for mIndex := AFirst to ALast do
   begin
-    if ATokens[mIndex].IsKeyword('raise') then
+    if ATokens[mIndex].IsKeyword('raise') or ((ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      SameText(ATokens[mIndex].Text, 'AcquireExceptionObject')) then
     begin
       Exit(True);
     end;

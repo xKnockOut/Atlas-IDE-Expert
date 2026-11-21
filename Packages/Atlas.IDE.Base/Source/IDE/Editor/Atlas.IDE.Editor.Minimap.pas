@@ -409,7 +409,7 @@ begin
       except
         on E: Exception do
         begin
-          TAtlasGuard.Log('Minimap: Zeilen nicht berechnet: ' + TAtlasGuard.ErrorText(E));
+          TAtlasGuard.Log('Minimap: Zeilen nicht berechnet: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           Lines := nil;
           Runs := nil;
         end;

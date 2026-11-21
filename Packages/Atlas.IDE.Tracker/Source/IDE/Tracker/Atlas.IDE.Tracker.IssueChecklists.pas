@@ -379,7 +379,7 @@ begin
         on E: Exception do
         begin
           mOk := False;
-          TAtlasGuard.Log('Issue-Vorschau: Details mit ' + E.ClassName + ' abgebrochen');
+          TAtlasGuard.Log('Issue-Vorschau: Details mit ' + E.ClassName + ' abgebrochen'); // german-ok Protokoll
         end;
       end;
       mTransport := nil;

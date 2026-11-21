@@ -436,7 +436,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Tests: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Tests: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       FBreakpoint := nil;
     end;
   end;

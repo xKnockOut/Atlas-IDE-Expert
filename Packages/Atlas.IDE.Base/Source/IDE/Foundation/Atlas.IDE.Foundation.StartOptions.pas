@@ -182,7 +182,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Startoptionen nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Startoptionen nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := False;
     end;
   end;

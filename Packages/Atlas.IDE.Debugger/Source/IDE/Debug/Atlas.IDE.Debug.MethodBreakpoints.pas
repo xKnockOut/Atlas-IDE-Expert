@@ -250,7 +250,7 @@ begin
       // Ohne Bedingung oder Aktion hält der Haltepunkt trotzdem.
       on E: Exception do
       begin
-        TAtlasGuard.Log('Debugger: Bedingung des Haltepunkts nicht gesetzt: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('Debugger: Haltepunktbedingung fehlt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       end;
     end;
     Inc(Result);

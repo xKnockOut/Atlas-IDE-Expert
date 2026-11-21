@@ -138,7 +138,7 @@ begin
   except
     // Rückfall unten.
     on E: Exception do
-      TAtlasGuard.Log('Release-Prüfung: Moduldateien nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Release-Prüfung: Moduldateien nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
   end;
   if FileExists(ChangeFileExt(AProject.FileName, '.dpk')) then
   begin

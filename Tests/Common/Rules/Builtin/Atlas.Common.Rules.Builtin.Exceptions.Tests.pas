@@ -160,9 +160,11 @@ begin
     InRoutine('  try'#10'    Save;'#10'  except'#10'    Result := False;'#10'  end;'), cCatchAllOn);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
-  // Mit raise, leer (das meldet empty-except) oder mit on-Handler für eine bestimmte Klasse: still.
+  // Mit raise, mit AcquireExceptionObject (weitergereicht), leer (das meldet empty-except) oder mit on-Handler für
+  // eine bestimmte Klasse: still.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCatchAllWithoutRaiseRule.Create,
     InRoutine('  try Save; except Undo; raise; end;'#10'  try Save; except end;'#10 +
+    '  try Save; except on Exception do FFailure := Exception(AcquireExceptionObject); end;'#10 +
     '  try Save; except { Kommentar } end;'#10'  try Save; except on EInOutError do Undo; end;'), cCatchAllOn))));
 end;
 

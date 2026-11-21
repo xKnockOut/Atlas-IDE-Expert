@@ -210,7 +210,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Auswerten gescheitert: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Auswerten gescheitert: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Exit;
     end;
   end;
@@ -265,7 +265,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Speicher nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Speicher nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Exit;
     end;
   end;

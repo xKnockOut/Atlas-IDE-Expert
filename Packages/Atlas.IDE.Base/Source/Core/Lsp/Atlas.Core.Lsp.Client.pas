@@ -287,7 +287,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := False;
     end;
   end;
@@ -312,7 +312,7 @@ begin
       // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
       on E: Exception do
       begin
-        TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       end;
     end;
   if (AIdValue <> nil) and not OfferServerRequest(AClient, AMessage, AIdValue) then
@@ -612,7 +612,7 @@ begin
     // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
     on E: Exception do
     begin
-      TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('LSP: Fehler im Empfänger: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
     end;
   end;
 end;
@@ -818,7 +818,7 @@ begin
       // Ein Fehler im Empfänger darf das Schließen nicht abbrechen.
       on E: Exception do
       begin
-        TAtlasGuard.Log('LSP: Fehler beim Schließen: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('LSP: Fehler beim Schließen: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       end;
     end;
 end;

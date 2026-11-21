@@ -237,6 +237,9 @@ type
     FOnTripped: TAtlasGuardTripped;
     FTiming: TAtlasGuardTiming;
     class function ErrorLine(const AWhere: string; AE: Exception): string; static;
+    /// <summary>Senke für TReporting.Failed: Fehler von Bausteinen unterhalb der Fehlergrenze ins Protokoll.
+    /// </summary>
+    class procedure LogFailed(const AWhere: string; AE: Exception); static;
   public
     /// <summary>Höchstlänge einer Fehlermeldung im Protokoll; mehr könnte Quelltext enthalten.</summary>
     const cMaxMessageLength = 300;
@@ -930,6 +933,11 @@ begin
   end;
 end;
 
+class procedure TAtlasGuard.LogFailed(const AWhere: string; AE: Exception);
+begin
+  Log(ErrorLine(AWhere, AE));
+end;
+
 /// <summary>AText ins Protokoll und an TAtlasGuard.OnWarning (Meldungsansicht).</summary>
 procedure Warn(const AText: string);
 begin
@@ -1500,5 +1508,9 @@ end;
 
 initialization
   TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.Guard', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
+  TReporting.ReplaceSink(TAtlasGuard.LogFailed);
+
+finalization
+  TReporting.ReplaceSink(nil);
 
 end.

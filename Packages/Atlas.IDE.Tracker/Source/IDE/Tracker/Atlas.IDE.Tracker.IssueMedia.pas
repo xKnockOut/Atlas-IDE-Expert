@@ -129,7 +129,7 @@ begin
     on E: Exception do
     begin
       ABytes := nil;
-      TAtlasGuard.Log('Issue-Vorschau: Bild nicht geladen, ' + E.ClassName);
+      TAtlasGuard.Log('Issue-Vorschau: Bild nicht geladen, ' + E.ClassName); // german-ok Protokoll
     end;
   end;
 end;
@@ -237,7 +237,7 @@ begin
         on E: Exception do
         begin
           mOk := False;
-          TAtlasGuard.Log('Issue-Vorschau: Anhang nicht gespeichert, ' + E.ClassName);
+          TAtlasGuard.Log('Issue-Vorschau: Anhang nicht gespeichert, ' + E.ClassName); // german-ok Protokoll
         end;
       end;
       mDownload := nil;

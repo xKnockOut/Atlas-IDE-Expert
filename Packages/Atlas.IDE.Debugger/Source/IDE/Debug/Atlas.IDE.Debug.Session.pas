@@ -322,7 +322,7 @@ begin
   except
     // Nur Merkwerte; der Start geht in jedem Fall weiter, der Grund steht im Protokoll.
     on E: Exception do
-      TAtlasGuard.Log('Debugsitzung: Startwerte des Projekts nicht gelesen: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugsitzung: Startwerte fehlen: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
   end;
   if Project <> nil then
   begin
@@ -683,7 +683,7 @@ begin
     // Ältere Debugger kennen keine Thread-Namen.
     on E: Exception do
     begin
-      TAtlasGuard.Log('Debugger: Thread-Name nicht lesbar: ' + TAtlasGuard.ErrorText(E));
+      TAtlasGuard.Log('Debugger: Thread-Name nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := '';
     end;
   end;

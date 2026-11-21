@@ -187,7 +187,7 @@ begin
       FOnDone(FReport, TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedShutdown));
     except
       on E: Exception do
-        TAtlasGuard.Log('Build-Pipeline: Abschluss beim Beenden: ' + TAtlasGuard.ErrorText(E));
+        TAtlasGuard.Log('Build-Pipeline: Abschluss beim Beenden: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
     end;
   inherited;
 end;

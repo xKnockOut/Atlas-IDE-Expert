@@ -28,9 +28,6 @@ type
 
 implementation
 
-
-uses
-  Atlas.Text.Files;
 // Winapi.Windows vor System.SysUtils: Beide deklarieren PExceptionRecord,
 // Exception.GetExceptionStackInfoProc erwartet den aus System.SysUtils.
 uses
@@ -39,7 +36,8 @@ uses
   System.IOUtils,
   Atlas.Text.Locked,
   Atlas.Text.MapFile,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Text.Files;
 
 const
   cMaxFrames = 48;

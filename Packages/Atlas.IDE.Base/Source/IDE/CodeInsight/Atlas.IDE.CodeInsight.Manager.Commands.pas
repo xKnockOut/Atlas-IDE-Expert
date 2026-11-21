@@ -341,7 +341,7 @@ begin
           // Hintergrund-Thread: nie eine Ausnahme nach außen.
           on E: Exception do
           begin
-            TAtlasGuard.Log('Code Insight: Status im Hintergrund: ' + TAtlasGuard.ErrorText(E));
+            TAtlasGuard.Log('Code Insight: Status im Hintergrund: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           end;
         end;
       finally
@@ -408,7 +408,7 @@ begin
           // Hintergrund-Thread: nie eine Ausnahme nach außen.
           on E: Exception do
           begin
-            TAtlasGuard.Log('Code Insight: Befehle im Hintergrund: ' + TAtlasGuard.ErrorText(E));
+            TAtlasGuard.Log('Code Insight: Befehle im Hintergrund: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           end;
         end;
       finally
