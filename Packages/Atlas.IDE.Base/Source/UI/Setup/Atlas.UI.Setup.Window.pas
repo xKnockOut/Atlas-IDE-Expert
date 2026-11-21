@@ -159,6 +159,8 @@ const
   /// Trennlinie, Häkchen (Versatz nach unten, Höhe, kleinste Breite, Abstand zu den Knöpfen).</summary>
   cFooterMargin = 12;
   cFooterGap = 8;
+  /// <summary>Knöpfe der Fußzeile: Bericht kopieren, Erneut prüfen, Schließen.</summary>
+  cFooterButtons = 3;
   cFooterButtonHeight = 25;
   cFooterButtonPadding = 24;
   cFooterTop = 10;
@@ -166,6 +168,8 @@ const
   cCheckHeight = 19;
   cCheckMinWidth = 80;
   cCheckGap = 24;
+  /// <summary>Kästchen des Häkchens samt Abstand zum Text, logische Pixel.</summary>
+  cCheckBoxWidth = 24;
   /// <summary>Zeilen, logische Pixel: Innenrand und kleinste Höhe einer Zeile, Innenrand der Unterzeile und des
   /// Kopfs, Höhe des Fußes, Rand links und rechts, Mitte und Radius der Punkte, Beginn des Texts.</summary>
   cRowPadding = 12;
@@ -188,6 +192,8 @@ const
   cNoteGap = 4;
   cNoteMargin = 20;
   cNotePadding = 8;
+  /// <summary>Abstand zwischen Text und Einzelheit einer Zeile, logische Pixel.</summary>
+  cDetailGap = 10;
   cBytesPerMegabyte = 1024 * 1024;
   /// <summary>Hauptzeile je Befund; Varianten (Einheiten, gewonnene Tasten) wählt ResultTextId.</summary>
   cResultTexts: array[TAtlasSetupFinding] of TAtlasSetupTextId = (TAtlasSetupTextId.SetupServerReady,
@@ -463,6 +469,9 @@ type
     Window: TAtlasSetupWindow;
     Metrics: TAtlasSetupMetrics;
     procedure EnsureFixButtons;
+    /// <summary>Innenbreite, bei der kein Text abgeschnitten wird (#2372): Zeilen samt Knopf, Fußzeile samt Häkchen;
+    /// höchstens die Breite des Arbeitsbereichs.</summary>
+    function ContentWidth: Integer;
     /// <summary>Zeilen ab ATop; liefert die Unterkante.</summary>
     function Lines(ATop: Integer): Integer;
     procedure Note(ATop: Integer);
@@ -528,6 +537,39 @@ begin
   begin
     Window.FFixButtons[mIndex].Visible := False;
   end;
+end;
+
+function TAtlasSetupArranger.ContentWidth: Integer;
+var
+  mItem: TAtlasSetupResult;
+  mFix, mDetail: string;
+  mLine, mButtons: Integer;
+begin
+  Result := Window.ScaleValue(cMinClientWidth);
+  for mItem in Window.FResults do
+  begin
+    mLine := Window.ScaleValue(cTextLeft + cEdge) + Window.Canvas.TextWidth(TAtlasSetupTexts.ResultText(mItem));
+    mDetail := TAtlasSetupTexts.DetailText(mItem);
+    if mDetail <> '' then
+    begin
+      Inc(mLine, Window.ScaleValue(cDetailGap) + Window.Canvas.TextWidth(mDetail));
+    end;
+    mFix := TAtlasSetupTexts.FixCaption(mItem.Fix);
+    if mFix <> '' then
+    begin
+      Inc(mLine, Window.ScaleValue(cFixButtonGap) + Max(Window.Canvas.TextWidth(mFix) +
+        Window.ScaleValue(cFixButtonPadding), Window.ScaleValue(cFixButtonMinWidth)));
+    end;
+    Result := Max(Result, mLine);
+  end;
+  mButtons := cFooterButtons * (Max(Max(Window.Canvas.TextWidth(Window.FParts.CopyButton.Caption),
+    Window.Canvas.TextWidth(Window.FParts.RecheckButton.Caption)),
+    Window.Canvas.TextWidth(Window.FParts.CloseButton.Caption)) + Window.ScaleValue(cFooterButtonPadding)) +
+    (cFooterButtons - 1) * Window.ScaleValue(cFooterGap);
+  Result := Max(Result, Window.ScaleValue(2 * cFooterMargin + cCheckBoxWidth + cCheckGap) +
+    Window.Canvas.TextWidth(Window.FParts.ShowAtStart.Caption) + mButtons);
+  Result := Min(Result, Window.Monitor.WorkareaRect.Width - (Window.Width -
+    Window.ClientWidth));
 end;
 
 function TAtlasSetupArranger.Lines(ATop: Integer): Integer;
@@ -741,7 +783,7 @@ begin
   DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   mDetail := TAtlasSetupTexts.DetailText(AItem);
-  mPart.Left := mPart.Left + Window.Canvas.TextWidth(mText) + Window.ScaleValue(10);
+  mPart.Left := mPart.Left + Window.Canvas.TextWidth(mText) + Window.ScaleValue(cDetailGap);
   if (mDetail <> '') and (mPart.Left < mPart.Right) then
   begin
     Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
@@ -904,6 +946,7 @@ end;
 procedure TAtlasSetupWindow.Layout;
 var
   mArranger: TAtlasSetupArranger;
+  mMinWidth: Integer;
 begin
   if FArranging then
   begin
@@ -918,14 +961,15 @@ begin
     Constraints.MinWidth := 0;
     Constraints.MinHeight := 0;
     Constraints.MaxHeight := 0;
-    if ClientWidth < ScaleValue(cMinClientWidth) then
+    mMinWidth := mArranger.ContentWidth;
+    if ClientWidth < mMinWidth then
     begin
-      ClientWidth := ScaleValue(cMinClientWidth);
+      ClientWidth := mMinWidth;
     end;
     mArranger.EnsureFixButtons;
     mArranger.Note(mArranger.Lines(mArranger.Metrics.HeaderHeight));
     mArranger.Footer;
-    Constraints.MinWidth := Width - ClientWidth + ScaleValue(cMinClientWidth);
+    Constraints.MinWidth := Width - ClientWidth + mMinWidth;
     Constraints.MinHeight := Height;
     Constraints.MaxHeight := Height;
   finally
