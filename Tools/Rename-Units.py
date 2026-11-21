@@ -22,7 +22,7 @@ steht (``Atlas.IDE.Help`` ist dann kein Treffer in ``Atlas.IDE.Help.Pages``). Gr
 zählt nicht, geschrieben wird immer ``neu``.
 
 Nicht angefasst werden ``CHANGELOG.md`` (Zusammenführen-Regel), Release-Notizen und ADRs außer der
-Zuordnung 0017; ``--exclude`` nimmt weitere Pfadmuster aus. Kodierung, BOM und Zeilenenden bleiben,
+Zuordnung 0017; ``Tools/UnitAssignment.tsv`` sortiert es danach wieder nach Package und Unit. ``--exclude`` nimmt weitere Pfadmuster aus. Kodierung, BOM und Zeilenenden bleiben,
 wie sie sind.
 
 Danach von Hand: Baselines mit Fingerabdrücken neu schreiben, wo ein Lauf das verlangt
@@ -57,6 +57,7 @@ cTextExtensions = {
 cCompanions = ('.dfm', '.fmx')
 cDefaultExcludes = ('CHANGELOG.md', 'docs/Release-Notizen/*', 'docs/adr/0[0-9][0-9][0-9]-*.md')
 cKeptAdr = 'docs/adr/0017-unit-zuordnung.md'
+cAssignment = 'Tools/UnitAssignment.tsv'
 cIdent = r'[A-Za-z_][A-Za-z0-9_]*'
 
 
@@ -240,9 +241,31 @@ def Apply(ARoot: str, APlan: list[TRename], ADryRun: bool, AExcludes: tuple[str,
             if not ADryRun:
                 os.makedirs(os.path.dirname(os.path.join(ARoot, mTo)) or ARoot, exist_ok=True)
                 Git(ARoot, ['mv', mFrom, mTo])
+    if cAssignment in mChanged and not ADryRun:
+        SortAssignment(os.path.join(ARoot, cAssignment))
     for mPath in mChanged:
         print(f'  geändert: {mPath}')
     return mWarnings
+
+
+def SortAssignment(APath: str) -> None:
+    """Zeilen der Unit-Zuordnung nach Package und Unit ordnen, wie Check-PackageDependencies es verlangt."""
+    with open(APath, 'rb') as mFile:
+        mData = mFile.read()
+    mBom = b'\xef\xbb\xbf' if mData.startswith(b'\xef\xbb\xbf') else b''
+    mText = mData[len(mBom):].decode('utf-8')
+    mBreak = '\r\n' if '\r\n' in mText else '\n'
+    mLines = mText.split(mBreak)
+    mTrailing = mLines[-1] == ''
+    if mTrailing:
+        mLines.pop()
+    mHead = [mLine for mLine in mLines[:1]]
+    mRows = [mLine for mLine in mLines[1:] if mLine.strip() and not mLine.startswith('#')]
+    mOther = [mLine for mLine in mLines[1:] if not (mLine.strip() and not mLine.startswith('#'))]
+    mRows.sort(key=lambda ALine: '\t'.join(ALine.split('\t')[:2]).upper())
+    mResult = mBreak.join(mHead + mOther + mRows) + (mBreak if mTrailing else '')
+    with open(APath, 'wb') as mFile:
+        mFile.write(mBom + mResult.encode('utf-8'))
 
 
 def SelfTest() -> int:
@@ -276,6 +299,9 @@ def SelfTest() -> int:
         Write('Tests/T.dpr', "uses\r\n  Atlas.Core.Help.Links in '..\\Packages\\P\\Source\\Core\\Help\\Atlas.Core.Help.Links.pas',\r\n"
               "  Atlas.Core.Help.Links.Tests in 'IDE\\Atlas.Core.Help.Links.Tests.pas';\r\n")
         Write('docs/adr/0017-unit-zuordnung.md', '| `Atlas.Core.Help.Links` | `Core/Help/Atlas.Core.Help.Links.pas` |\n', ABom=False)
+        Write('Tools/UnitAssignment.tsv', 'Package\tUnit\tDatei\tGrund\n'
+              'P\tAtlas.Core.Help.Links\tCore/Help/Atlas.Core.Help.Links.pas\tLinks\n'
+              'P\tAtlas.Core.Zeta\tCore/Zeta.pas\tZ\n', ABom=False)
         Write('docs/adr/0002-alt.md', 'Atlas.Core.Help.Links\n', ABom=False)
         Write('CHANGELOG.md', 'Atlas.Core.Help.Links\n', ABom=False)
         Write('Tools/X.ps1', "$X = Join-Path $Root 'Packages/P/Source/Core/Help/Atlas.Core.Help.Links.pas'\n", ABom=False)
@@ -306,6 +332,9 @@ def SelfTest() -> int:
                       'unit Atlas.IDE.Help.Pages;', '\r\n'):
             if mPart not in mPages:
                 mErrors.append(f'Pages: erwartet {mPart!r}')
+        if Read('Tools/UnitAssignment.tsv') != ('Package\tUnit\tDatei\tGrund\nP\tAtlas.Core.Zeta\tCore/Zeta.pas\tZ\n'
+                                                'P\tAtlas.IDE.P.Topics.Links\tTopics/Atlas.IDE.P.Topics.Links.pas\tLinks\n'):
+            mErrors.append('UnitAssignment.tsv: nicht ersetzt oder nicht sortiert')
         if Read('Tests/T.dpr').count("'..\\Packages\\P\\Source\\Topics\\Atlas.IDE.P.Topics.Links.pas'") != 1:
             mErrors.append('T.dpr: Pfad auf die Unit nicht ersetzt')
         if 'Atlas.Core.Help.Links' not in Read('CHANGELOG.md') or 'Atlas.Core.Help.Links' not in Read('docs/adr/0002-alt.md'):
