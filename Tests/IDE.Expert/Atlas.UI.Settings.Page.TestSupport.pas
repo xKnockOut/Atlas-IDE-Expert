@@ -40,6 +40,10 @@ function ProvideSection(const ASection: IAtlasSettingsSection): IAtlasRegistrati
 /// <summary>Gibt alle Anmeldungen ab und leert die Liste.</summary>
 procedure RevokeAll(var ARegistrations: TArray<IAtlasRegistration>);
 
+/// <summary>Gibt die Anmeldung eines Abschnitts aus ProvideSection ab und leert Anmeldung und Abschnitt
+/// (TearDown).</summary>
+procedure RevokeSection(var ARegistration: IAtlasRegistration; var ASection: IAtlasSettingsSection);
+
 /// <summary>Knoten der obersten Ebene im Navigationsbaum der Seite.</summary>
 function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;
 
@@ -124,6 +128,13 @@ begin
     mRegistration.Revoke;
   end;
   ARegistrations := nil;
+end;
+
+procedure RevokeSection(var ARegistration: IAtlasRegistration; var ASection: IAtlasSettingsSection);
+begin
+  ARegistration.Revoke;
+  ARegistration := nil;
+  ASection := nil;
 end;
 
 function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;

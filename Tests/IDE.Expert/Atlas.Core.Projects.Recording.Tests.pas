@@ -48,7 +48,8 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Projects.Recording,
-  Atlas.Core.Welcome.Projects;
+  Atlas.Core.Welcome.Projects,
+  Atlas.Core.Projects.TestSupport;
 
 type
   TFakeVcs = class(TInterfacedObject, IAtlasVersionControl)
@@ -79,18 +80,6 @@ begin
   Result := Default(TAtlasProjectEntry);
   Result.Summary := ASummary;
   Result.HasSummary := True;
-end;
-
-function OnMain: TAtlasProjectSummary;
-begin
-  Result := TAtlasProjectSummary.Create('C:\Projekte\Demo.dproj');
-  Result.Vcs.Known := True;
-  Result.Vcs.Kind := 'git';
-  Result.Vcs.Branch := 'main';
-  Result.Vcs.Revision := 'abcdef0123456789';
-  Result.Vcs.Changed := 0;
-  Result.Vcs.Ahead := 0;
-  Result.Vcs.Behind := 0;
 end;
 
 

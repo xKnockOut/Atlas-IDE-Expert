@@ -36,7 +36,8 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Diagnostics.ModuleHosting,
-  Atlas.Core.Diagnostics.FeatureTable;
+  Atlas.Core.Diagnostics.FeatureTable,
+  Atlas.Tests.Lists;
 
 type
   TLog = class
@@ -62,11 +63,7 @@ type
 
 procedure TLog.Add(const AEntry: string);
 begin
-  if Text <> '' then
-  begin
-    Text := Text + ',';
-  end;
-  Text := Text + AEntry;
+  TTestLists.Append(Text, AEntry, ',');
 end;
 
 { TFakeModule }

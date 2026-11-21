@@ -71,7 +71,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.Core.Tracker.Contract.CommentAssist,
-  Atlas.Core.Tracker.Contract.MyIssues;
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.UI.Settings.Page.TestSupport;
 
 type
   /// <summary>Anbieter der Tests: liefert den vorbereiteten Abschnitt.</summary>
@@ -96,47 +97,6 @@ begin
   Result := FSection;
 end;
 
-/// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
-function SheetOf(AControl: TControl): TTabSheet;
-begin
-  while (AControl <> nil) and not (AControl is TTabSheet) do
-  begin
-    AControl := AControl.Parent;
-  end;
-  Result := TTabSheet(AControl);
-end;
-
-/// <summary>Knoten des Baums, der ASheet zeigt; nil ohne.</summary>
-function TreeNodeOf(APage: TAtlasSettingsPage; ASheet: TTabSheet): TTreeNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to APage.Navigation.Items.Count - 1 do
-  begin
-    Result := APage.Navigation.Items[mIndex];
-    APage.Navigation.OnChange(APage.Navigation, Result);
-    if APage.Pages.ActivePage = ASheet then
-    begin
-      Exit;
-    end;
-  end;
-  Result := nil;
-end;
-
-function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to APage.Navigation.Items.Count - 1 do
-  begin
-    if APage.Navigation.Items[mIndex].Level = 0 then
-    begin
-      Result := Result + [APage.Navigation.Items[mIndex]];
-    end;
-  end;
-end;
-
 { TTrackerSettingsSectionTests }
 
 procedure TTrackerSettingsSectionTests.Setup;
@@ -149,10 +109,8 @@ end;
 
 procedure TTrackerSettingsSectionTests.TearDown;
 begin
-  FRegistration.Revoke;
-  FRegistration := nil;
   FSection := nil;
-  FSectionRef := nil;
+  RevokeSection(FRegistration, FSectionRef);
 end;
 
 procedure TTrackerSettingsSectionTests.IssuesTrackerOwnPage;

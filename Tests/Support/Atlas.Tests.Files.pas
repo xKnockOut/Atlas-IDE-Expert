@@ -42,6 +42,10 @@ type
     class function ReferenceFolder: string; static;
     /// <summary>Inhalt (UTF-8) von Tests\Data\AFolder\AName; Ausnahme, wenn die Datei fehlt.</summary>
     class function Fixture(const AFolder, AName: string): string; static;
+    /// <summary>
+    ///   Erfundener Projektordner AName für Pfadtests: C:\Projekte\AName unter Windows, sonst /projekte/aname.
+    /// </summary>
+    class function ProjectRoot(const AName: string): string; static;
   end;
 
 implementation
@@ -151,6 +155,18 @@ begin
     raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
   end;
   Result := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+end;
+
+class function TTestData.ProjectRoot(const AName: string): string;
+begin
+  if PathDelim = '\' then
+  begin
+    Result := 'C:\Projekte\' + AName;
+  end
+  else
+  begin
+    Result := '/projekte/' + LowerCase(AName);
+  end;
 end;
 
 end.

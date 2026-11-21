@@ -44,7 +44,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Internals.SvnExternals,
   Atlas.Core.VersionControl.Internals.SvnParser,
-  Atlas.Core.VersionControl.WorkingCopies;
+  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.Tests.Files;
 
 const
   cRepository = 'https://svn.firma.local/repo';
@@ -97,29 +98,6 @@ end;
 function Under(const ARelative: string): string;
 begin
   Result := Root + PathDelim + StringReplace(ARelative, '/', PathDelim, [rfReplaceAll]);
-end;
-
-/// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
-function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
 end;
 
 function Externals: TArray<TAtlasVcsSvnExternal>;
@@ -244,7 +222,7 @@ var
   mRows: TArray<TAtlasVcsWorkingCopyRow>;
 begin
   mRows := TAtlasVcsWorkingCopies.FromSvn(Root, 'Kasse/trunk', '48231', Externals,
-    Fixture('Svn', 'status-externals.xml'));
+    TTestData.Fixture('Svn', 'status-externals.xml'));
   Assert.AreEqual(5, Integer(Length(mRows)), 'Wurzel, Basis, Drucken, Drucken/Lib, Kunden; ohne Datei-External');
   Assert.AreEqual('', mRows[0].Path);
   Assert.AreEqual('Kasse', mRows[0].Caption('Kasse'));
@@ -274,7 +252,7 @@ begin
   mRows := TAtlasVcsWorkingCopies.FromSvn(Root, 'Kasse/trunk', '48231', Externals, '');
   Assert.AreEqual(4, Integer(Length(mRows)));
   Assert.AreEqual(-1, mRows[1].Changed);
-  Assert.AreEqual(4, Integer(Length(TAtlasVcsWorkingCopies.StatusExternals(Fixture('Svn',
+  Assert.AreEqual(4, Integer(Length(TAtlasVcsWorkingCopies.StatusExternals(TTestData.Fixture('Svn',
     'status-externals.xml')))), 'drei in der Wurzel, eins in Drucken');
   mRows := nil;
 end;
@@ -322,7 +300,7 @@ begin
   // Wie im Plugin: svn status der Wurzel über den Parser des Providers, Ordner aus demselben Status.
   mFake := TFakeSvn.Create;
   mVcs := mFake;
-  mFake.StatusText := Fixture('Svn', 'status-externals.xml');
+  mFake.StatusText := TTestData.Fixture('Svn', 'status-externals.xml');
   mRows := TAtlasVcsWorkingCopies.Folders(mVcs);
   Assert.AreEqual(5, Integer(Length(mRows)), 'Wurzel, Basis, Drucken, Drucken/Lib, Kunden');
   Assert.AreEqual('Packages/Drucken/Lib', mRows[3].Path);
@@ -389,7 +367,7 @@ var
 begin
   mFake := TFakeSvn.Create;
   mVcs := mFake;
-  mFake.StatusText := Fixture('Svn', 'status-externals.xml');
+  mFake.StatusText := TTestData.Fixture('Svn', 'status-externals.xml');
   mFake.ExternalsText := '<?xml version="1.0"?><properties><target path="' + Root +
     '"><property name="svn:externals">^/Packages/Basis/trunk Packages/Basis'#10 +
     '-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10'</property></target></properties>';

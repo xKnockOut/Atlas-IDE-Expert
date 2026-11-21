@@ -48,7 +48,8 @@ implementation
 uses
   System.Types,
   Atlas.Core.Designer.Layout,
-  Atlas.Tests.RecordText;
+  Atlas.Tests.RecordText,
+  Atlas.Core.Designer.TestSupport;
 
 function Node(const AName: string; AParent, ALeft, ATop, AWidth, AHeight: Integer): TAtlasLayoutNode;
 begin
@@ -60,23 +61,6 @@ function Aligned(const AName: string; AParent: Integer; AAlign: TAtlasLayoutAlig
 begin
   Result := Node(AName, AParent, ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height);
   Result.Align := AAlign;
-end;
-
-function Has(const AFindings: TArray<TAtlasLayoutFinding>; ANode: Integer; AProblem: TAtlasLayoutProblem;
-  out AFinding: TAtlasLayoutFinding): Boolean;
-var
-  mFinding: TAtlasLayoutFinding;
-begin
-  for mFinding in AFindings do
-  begin
-    if (mFinding.Node = ANode) and (mFinding.Problem = AProblem) then
-    begin
-      AFinding := mFinding;
-      Exit(True);
-    end;
-  end;
-  AFinding := Default(TAtlasLayoutFinding);
-  Result := False;
 end;
 
 procedure AssertRect(const AExpected, AActual: TRect; const AMessage: string); overload;

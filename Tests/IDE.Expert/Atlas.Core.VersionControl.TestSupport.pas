@@ -219,16 +219,12 @@ const
 
 implementation
 
+uses
+  Atlas.Tests.Files;
+
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kunde';
-  end
-  else
-  begin
-    Result := '/projekte/kunde';
-  end;
+  Result := TTestData.ProjectRoot('Kunde');
 end;
 
 function Under(const ARelative: string): string;

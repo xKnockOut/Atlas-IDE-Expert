@@ -48,7 +48,8 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.Contract.MyIssues;
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.Core.Tracker.TestSupport;
 
 const
   cDefaultName = 'Mir zugewiesen';
@@ -58,17 +59,6 @@ begin
   Result := TArray<TAtlasTrackerConnection>.Create(
     TAtlasTrackerConnection.Create('Firma', 'youtrack', 'https://youtrack.firma.local'),
     TAtlasTrackerConnection.Create('GitHub', 'github', 'https://github.com'));
-end;
-
-function Names(const AQueries: TArray<TAtlasTrackerQuery>): string;
-var
-  mQuery: TAtlasTrackerQuery;
-begin
-  Result := '';
-  for mQuery in AQueries do
-  begin
-    Result := Result + mQuery.Name + ';';
-  end;
 end;
 
 { TAtlasTrackerQueriesTests }
@@ -99,7 +89,7 @@ var
 begin
   mQueries := TAtlasTrackerQueries.Read('[{"name": "A", "query": "x"}, {"name": "a", "query": "y"}, ' +
     '{"name": "", "query": "z"}, {"name": "B", "query": "  "}, 3, {"name": "C", "query": " c "}]');
-  Assert.AreEqual('A;C;', Names(mQueries));
+  Assert.AreEqual('A;C;', QueryNames(mQueries));
   Assert.AreEqual('c', mQueries[1].Query);
   Assert.AreEqual(0, Integer(Length(TAtlasTrackerQueries.Read('kein JSON'))));
   Assert.AreEqual(0, Integer(Length(TAtlasTrackerQueries.Read('{}'))));
@@ -118,12 +108,12 @@ begin
     '{"name": "Weg", "query": "z", "connection": "Gibt es nicht"}]');
   mYouTrack := TAtlasTrackerTarget.Create('youtrack', 'https://youtrack.firma.local', 'KASSE', '');
   mGitHub := TAtlasTrackerTarget.Create('github', 'https://github.com', 'xKnockOut/Atlas-IDE-Expert', '');
-  Assert.AreEqual('Überall;Sprint;', Names(TAtlasTrackerQueries.Available(mQueries, mYouTrack, 'Firma',
+  Assert.AreEqual('Überall;Sprint;', QueryNames(TAtlasTrackerQueries.Available(mQueries, mYouTrack, 'Firma',
     Connections, cDefaultName)));
-  Assert.AreEqual('Überall;PRs;', Names(TAtlasTrackerQueries.Available(mQueries, mGitHub, 'GitHub',
+  Assert.AreEqual('Überall;PRs;', QueryNames(TAtlasTrackerQueries.Available(mQueries, mGitHub, 'GitHub',
     Connections, cDefaultName)));
   mYouTrack := TAtlasTrackerTarget.Create('youtrack', 'https://youtrack.firma.local', 'lager', '');
-  Assert.AreEqual('Überall;Sprint;Nur Lager;', Names(TAtlasTrackerQueries.Available(mQueries, mYouTrack, 'Firma',
+  Assert.AreEqual('Überall;Sprint;Nur Lager;', QueryNames(TAtlasTrackerQueries.Available(mQueries, mYouTrack, 'Firma',
     Connections, cDefaultName)), 'Tracker-Projekt ohne Groß-/Kleinschreibung');
   // Ohne Tracker keine Abfragen.
   Assert.AreEqual(0, Integer(Length(TAtlasTrackerQueries.Available(mQueries, TAtlasTrackerTarget.Create('', '', '',
@@ -151,9 +141,9 @@ var
 begin
   mQueries := TAtlasTrackerQueries.Read('[{"name": "Sprint", "query": "s", "connection": "Firma"}]');
   // .atlas nennt denselben Server (mit „/“ am Ende): die Abfrage der Verbindung „Firma“ passt.
-  Assert.AreEqual('Sprint;', Names(TAtlasTrackerQueries.Available(mQueries, TAtlasTrackerTarget.Create('youtrack',
+  Assert.AreEqual('Sprint;', QueryNames(TAtlasTrackerQueries.Available(mQueries, TAtlasTrackerTarget.Create('youtrack',
     'https://YouTrack.firma.local/', 'KASSE', ''), 'Kasse', Connections, cDefaultName)));
-  Assert.AreEqual(cDefaultName + ';', Names(TAtlasTrackerQueries.Available(mQueries,
+  Assert.AreEqual(cDefaultName + ';', QueryNames(TAtlasTrackerQueries.Available(mQueries,
     TAtlasTrackerTarget.Create('youtrack', 'https://anderer.firma.local', 'KASSE', ''), 'Kasse', Connections,
     cDefaultName)), 'anderer Server');
   mQueries := nil;

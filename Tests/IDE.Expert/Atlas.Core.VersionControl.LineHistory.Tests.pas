@@ -56,7 +56,8 @@ uses
   Atlas.Core.VersionControl.Internals.SvnParser,
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.VersionControl.Providers.Svn,
-  Atlas.Core.VersionControl.Null;
+  Atlas.Core.VersionControl.Null,
+  Atlas.Tests.Files;
 
 const
   cSep = '------------------------------------------------------------------------';
@@ -131,14 +132,7 @@ type
 
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kunde';
-  end
-  else
-  begin
-    Result := '/projekte/kunde';
-  end;
+  Result := TTestData.ProjectRoot('Kunde');
 end;
 
 function Under(const ARelative: string): string;

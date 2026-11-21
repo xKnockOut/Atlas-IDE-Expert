@@ -33,31 +33,8 @@ uses
   System.SyncObjs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.BackgroundRequest;
-
-/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder ATimeoutMs um sind.</summary>
-function WaitWithin(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > ATimeoutMs;
-  Result := False;
-end;
-
-/// <summary>Wie WaitWithin mit der üblichen Wartezeit von drei Sekunden.</summary>
-function WaitUntil(const ACondition: TFunc<Boolean>): Boolean;
-const
-  cTimeoutMs = 3000;
-begin
-  Result := WaitWithin(ACondition, cTimeoutMs);
-end;
+  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Tests.Wait;
 
 /// <summary>Arbeit, die bis zum Signal wartet.</summary>
 function Blocked(AGate: TEvent): TProc;
@@ -141,7 +118,7 @@ begin
   try
     Assert.IsTrue(mRequest.Start(mWork, mFinish));
     Assert.IsTrue(mRequest.Busy);
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := mDoneThread <> 0;
@@ -171,9 +148,9 @@ begin
     Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done()));
     Assert.IsFalse(mRequest.Start(Blocked(mGate), mProbe.Done()), 'zweite Anfrage solange die erste läuft');
     mGate.SetEvent;
-    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
+    Assert.IsTrue(TTestWait.Synchronized(Reached(mProbe, 1)));
     Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done()), 'nach dem Abschluss wieder frei');
-    Assert.IsTrue(WaitUntil(Reached(mProbe, 2)));
+    Assert.IsTrue(TTestWait.Synchronized(Reached(mProbe, 2)));
     Assert.AreEqual(2, Integer(mProbe.Count));
   finally
     mRequest.Free;
@@ -198,7 +175,7 @@ begin
     mRequest.Start(mWork, mProbe.Done());
     // Freigabe wartet die Arbeit ab; der eingereihte Abschluss darf danach nichts mehr tun.
     mRequest.Free;
-    WaitWithin(Reached(mProbe, 1), 200);
+    TTestWait.Synchronized(Reached(mProbe, 1), 200);
     Assert.AreEqual(0, Integer(mProbe.Count));
   finally
     mProbe.Free;
@@ -216,7 +193,7 @@ begin
     mProbe := TDoneProbe.Create;
     mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
     mRequest.Start(Raising(ELspTimeoutError.Create('Zeitlimit')), mProbe.Done());
-    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
+    Assert.IsTrue(TTestWait.Synchronized(Reached(mProbe, 1)));
     Assert.IsFalse(mProbe.Ok);
     Assert.AreEqual('Zeitlimit', mProbe.Error);
     Assert.IsFalse(mRequest.Busy, 'nach fehlender Antwort wieder frei');
@@ -237,7 +214,7 @@ begin
     mProbe := TDoneProbe.Create;
     mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
     mRequest.Start(Raising(EAbort.Create('Abbruch')), mProbe.Done());
-    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
+    Assert.IsTrue(TTestWait.Synchronized(Reached(mProbe, 1)));
     Assert.IsFalse(mProbe.Ok);
     Assert.IsFalse(mRequest.Busy, 'nach einer Ausnahme wieder frei');
   finally
