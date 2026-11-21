@@ -3,7 +3,7 @@
 // Neu zugewiesene Variablen unterstreichen (#712) ohne VCL und OTA: Argumente
 // für atlas.server.reassigned bauen, die Antwort lesen, Stellen je Zeile und
 // die Linie (gepunktet, durchgezogen, Welle) als Strecken. Welche Namen
-// zählen, rechnet der Server (Atlas.Common.Semantics.Reassigned); Abruf und
+// zählen, rechnet der Server (Atlas.Common.Editing.Reassigned); Abruf und
 // Zeichnen stehen in Atlas.IDE.Editor.Reassigned.
 // Antwort: {"symbols": [{"name", "kind", "writes", "routine", "writeLines",
 //           "uses": [{"line", "character", "endCharacter", "write"}]}]}

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Semantics.Reassigned;
+﻿unit Atlas.Common.Editing.Reassigned;
 
 // Neu zugewiesene Variablen (#712): Welche lokalen Namen, Parameter und Felder
 // ändern ihren Wert im Lauf der Routine bzw. des Objekts? Grundlage für die

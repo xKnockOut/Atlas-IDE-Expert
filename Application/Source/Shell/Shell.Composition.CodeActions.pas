@@ -96,7 +96,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.FormFiles,
-  Atlas.Common.Semantics.UsesUsage,
+  Atlas.Common.Editing.UsesUsage,
   Shell.Bootstrap,
   Shell.Platform;
 

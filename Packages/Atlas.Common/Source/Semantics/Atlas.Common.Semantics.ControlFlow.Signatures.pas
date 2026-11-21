@@ -4,7 +4,7 @@
 // oder unbekannt (#143), und welche Routinen nie normal zurückkehren (Direktive noreturn). Quellen sind die
 // Routinenköpfe derselben Datei und eine Tabelle der Standardroutinen; Aufrufe über Objekte (Obj.Methode)
 // bleiben ohne Typauflösung unbekannt. Der Graph selbst fragt nur über TFlowSignatureLookup und
-// TFlowNoReturnLookup nach; Aufrufer mit Typauflösung (Semantics.ResolvedSignatures) setzen eigene ein.
+// TFlowNoReturnLookup nach; Aufrufer mit Typauflösung (Editing.ResolvedSignatures) setzen eigene ein.
 
 interface
 

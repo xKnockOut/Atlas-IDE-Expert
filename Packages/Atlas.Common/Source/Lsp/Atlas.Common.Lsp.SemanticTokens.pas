@@ -6,7 +6,7 @@
 // Aufzählungswert, Funktion, Methode. Modifier: declaration (Name einer Deklaration),
 // readonly (Konstanten), defaultLibrary (RTL, VCL, FMX, Winapi), reassigned (#712:
 // lokale Variablen und Wertparameter, die neu zugewiesen werden, siehe
-// Atlas.Common.Semantics.Reassigned).
+// Atlas.Common.Editing.Reassigned).
 // "field" ist ein eigener Typ; die VS-Code-Erweiterung meldet ihn mit Obertyp "property".
 
 interface
@@ -22,7 +22,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.Reassigned;
+  Atlas.Common.Editing.Reassigned;
 
 type
   /// <summary>Reihenfolge = Index in der Legende.</summary>

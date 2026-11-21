@@ -35,7 +35,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Semantics.Reassigned,
+  Atlas.Common.Editing.Reassigned,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Localization.Texts;

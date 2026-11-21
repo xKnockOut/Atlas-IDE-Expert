@@ -21,9 +21,9 @@
 //                           "write": false}, …]}, …]}
 // "uses" enthält die Deklaration und jede Verwendung; "write" steht an den
 // sicheren Schreibstellen und an der Steuerung einer for-Schleife.
-// Die Analyse steht in Atlas.Common.Semantics.Reassigned; die Übergabeart von
+// Die Analyse steht in Atlas.Common.Editing.Reassigned; die Übergabeart von
 // Argumenten kommt aus der Datei, den Standardroutinen und über die
-// Namensauflösung (Atlas.Common.Semantics.ResolvedSignatures).
+// Namensauflösung (Atlas.Common.Editing.ResolvedSignatures).
 
 interface
 
@@ -35,7 +35,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.Reassigned;
+  Atlas.Common.Editing.Reassigned;
 
 type
   TLspReassigned = class
@@ -73,7 +73,7 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Semantics.ResolvedSignatures,
+  Atlas.Common.Editing.ResolvedSignatures,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

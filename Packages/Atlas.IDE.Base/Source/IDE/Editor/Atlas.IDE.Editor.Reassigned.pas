@@ -2,7 +2,7 @@
 
 // Neu zugewiesene Variablen unterstreichen (#712) im Editor. Welche Namen
 // zählen, rechnet der Server (atlas.server.reassigned,
-// Atlas.Common.Semantics.Reassigned); Antwort lesen und Linien rechnen
+// Atlas.Common.Editing.Reassigned); Antwort lesen und Linien rechnen
 // Atlas.Core.Editor.Reassigned. Hier bleiben Zeitgeber, Anfrage und Zeichnen.
 // - Ein Zeitgeber (250 ms) liest die Ansicht vorn. Ruht der Text 700 ms, fragt
 //   Atlas den laufenden Server im Hintergrund nach den Stellen im sichtbaren

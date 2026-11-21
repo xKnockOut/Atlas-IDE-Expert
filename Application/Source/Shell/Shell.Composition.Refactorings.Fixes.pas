@@ -39,7 +39,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ResolvedSignatures,
+  Atlas.Common.Editing.ResolvedSignatures,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.CompilerFixes,
