@@ -68,7 +68,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
   Shell.Bootstrap,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.VersionControlChanges,
   Shell.Workspace,
   Atlas.Common.Localization.Texts,

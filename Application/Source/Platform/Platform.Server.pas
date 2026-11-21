@@ -1,26 +1,22 @@
-﻿unit Shell.Platform;
+﻿unit Platform.Server;
 
-// Plattformadapter des Servers an einer Stelle (#1109): Unter Windows die
-// Units aus Atlas.Windows, unter Linux (Free Pascal, Tools/Linux) die aus
-// Atlas.Linux. Die übrigen Shell-Units binden nur diese Unit ein und kennen
-// keine Plattform. Typen mit gleicher Form heißen auf beiden Plattformen
-// gleich; was es nur unter einer Plattform gibt, kapselt TShellPlatform.
+// Host-Rolle Platform: Plattformdienste des Servers an einer Stelle (#1109). Unter Windows die
+// Units aus Atlas.Windows, unter Linux (Free Pascal, Tools/Linux) die aus Atlas.Linux. Die übrigen
+// Host-Units binden nur diese Unit ein und kennen keine Plattform. Typen mit gleicher Form heißen auf
+// beiden Plattformen gleich; was es nur unter einer Plattform gibt, kapselt TServerPlatform.
+// Adapter und Provider (Prozessläufer, Delphi-Installation, Log-Senke, Prober) erzeugt nur die Shell
+// (Shell.Composition.Platform): Platform importiert von Platform-Features nur Contract und Root.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Common.Editing.Colors,
-  Atlas.Common.Logging.Contract,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Common.Profiling.Contract,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Process.ParentWatcher,
   Atlas.Windows.Process.Instances,
   Atlas.Windows.Documents.FileWatcher,
-  Atlas.Windows.Compiler.Adapters.ProcessRunner,
-  Atlas.Windows.Projects.Adapters.DelphiInstallation,
   Atlas.Windows.Diagnostics.DebugOutput,
   Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Windows.Diagnostics.ProcessInfo;
@@ -29,8 +25,6 @@ uses
   Atlas.Linux.Process.ParentWatcher,
   Atlas.Linux.Process.Instances,
   Atlas.Linux.Documents.FileWatcher,
-  Atlas.Linux.Compiler.Adapters.ProcessRunner,
-  Atlas.Linux.Projects.Adapters.DelphiInstallation,
   Atlas.Linux.Diagnostics.DebugOutput,
   Atlas.Linux.Diagnostics.StackTrace,
   Atlas.Linux.Diagnostics.ProcessInfo;
@@ -43,8 +37,6 @@ type
   TProcessInstances = Atlas.Windows.Process.Instances.TProcessInstances;
   TFileWatcherChanged = Atlas.Windows.Documents.FileWatcher.TFileWatcherChanged;
   TFileWatcher = Atlas.Windows.Documents.FileWatcher.TFileWatcher;
-  TProcessRunner = Atlas.Windows.Compiler.Adapters.ProcessRunner.TProcessRunner;
-  TDelphiInstallation = Atlas.Windows.Projects.Adapters.DelphiInstallation.TDelphiInstallation;
   TDebugOutput = Atlas.Windows.Diagnostics.DebugOutput.TDebugOutput;
   TStackTrace = Atlas.Windows.Diagnostics.StackTrace.TStackTrace;
   TProcessInfo = Atlas.Windows.Diagnostics.ProcessInfo.TProcessInfo;
@@ -54,14 +46,12 @@ type
   TProcessInstances = Atlas.Linux.Process.Instances.TProcessInstances;
   TFileWatcherChanged = Atlas.Linux.Documents.FileWatcher.TFileWatcherChanged;
   TFileWatcher = Atlas.Linux.Documents.FileWatcher.TFileWatcher;
-  TProcessRunner = Atlas.Linux.Compiler.Adapters.ProcessRunner.TProcessRunner;
-  TDelphiInstallation = Atlas.Linux.Projects.Adapters.DelphiInstallation.TDelphiInstallation;
   TDebugOutput = Atlas.Linux.Diagnostics.DebugOutput.TDebugOutput;
   TStackTrace = Atlas.Linux.Diagnostics.StackTrace.TStackTrace;
   TProcessInfo = Atlas.Linux.Diagnostics.ProcessInfo.TProcessInfo;
 {$ENDIF}
 
-  TShellPlatform = record
+  TServerPlatform = record
   public
     /// <summary>Pfad in der Schreibweise des Dateisystems (Windows: echte Groß- und Kleinschreibung, langer
     /// Name; Linux: ohne symbolische Verweise); unverändert, wenn es ihn nicht gibt.</summary>
@@ -72,22 +62,14 @@ type
     /// Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE. Linux ersetzt geöffnete Dateien
     /// ohnehin und meldet einen Stapelüberlauf als Signal; dort tut Install nichts.</summary>
     class procedure InstallGuards; static;
-    /// <summary>Senke für Debug-Ausgaben an den Debugger (Windows: OutputDebugString); nil unter Linux, wo
-    /// stderr schon das Protokoll des Servers trägt.</summary>
-    class function DebugLogSink: ILogSink; static;
     /// <summary>Aufrufkette der Exception AError bis zum raise.</summary>
     class function StackTraceOf(AError: Exception): string; static;
     /// <summary>Benennt ASource in ATarget um und ersetzt ein vorhandenes ATarget in einem Schritt.</summary>
     class function MoveReplacing(const ASource, ATarget: string): Boolean; static;
-    /// <summary>Prozessläufer für git und svn.</summary>
-    class function CreateVcsRunner(AAllowMainThread: Boolean; const ACancelled: TFunc<Boolean>): IAtlasVcsRunner;
-      static;
     /// <summary>Warteschritt für das Warten auf eine Datei in AFolder (Antwort des Plugins): Unter Windows
     /// kehrt er zurück, sobald sich dort Dateinamen ändern, spätestens nach ASafetyMs; lässt sich der Ordner nicht
     /// beobachten, und unter Linux, schläft er APollMs.</summary>
     class function FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc; static;
-    /// <summary>Prober des Stichproben-Profilers (#2057); nil unter Linux, wo es keinen gibt.</summary>
-    class function ProfileSampler: IAtlasProfileSampler; static;
     /// <summary>Belegter Speicher in Byte für --timings (#1480): unter Windows der Heap (über alle Threads),
     /// unter Linux der Prozess im RAM, weil der Heap von Free Pascal je Thread zählt.</summary>
     class function MemoryInUseBytes: Int64; static;
@@ -105,14 +87,10 @@ uses
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Windows.Documents.SharedRead,
   Atlas.Windows.Diagnostics.StackGuard,
-  Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
-  Atlas.Windows.Editing.SystemColors,
-  Atlas.Windows.Profiling.Adapters.Sampler,
-  Atlas.Core.VersionControl.Providers.ProcessRunner;
+  Atlas.Windows.Editing.SystemColors;
 {$ELSE}
   BaseUnix,
-  Atlas.Linux.Documents.PathCanonicalizer,
-  Shell.Platform.VersionControlRunner;
+  Atlas.Linux.Documents.PathCanonicalizer;
 {$ENDIF}
 
 function PlatformSystemColor(AIndex: Integer; out AColor: TRgbColor): Boolean;
@@ -193,9 +171,9 @@ begin
 end;
 {$ENDIF}
 
-{ TShellPlatform }
+{ TServerPlatform }
 
-class function TShellPlatform.CanonicalizePath(const APath: string): string;
+class function TServerPlatform.CanonicalizePath(const APath: string): string;
 begin
 {$IFDEF MSWINDOWS}
   Result := TWindowsPathCanonicalizer.Canonicalize(APath);
@@ -204,12 +182,12 @@ begin
 {$ENDIF}
 end;
 
-class function TShellPlatform.CurrentProcessId: Cardinal;
+class function TServerPlatform.CurrentProcessId: Cardinal;
 begin
   Result := TParentWatcher.CurrentProcessId;
 end;
 
-class procedure TShellPlatform.InstallGuards;
+class procedure TServerPlatform.InstallGuards;
 begin
 {$IFDEF MSWINDOWS}
   // Ohne neue Schutzseite beendet Windows den Prozess beim nächsten Überlauf (#1094).
@@ -219,16 +197,7 @@ begin
 {$ENDIF}
 end;
 
-class function TShellPlatform.DebugLogSink: ILogSink;
-begin
-{$IFDEF MSWINDOWS}
-  Result := TDebugOutputLogSink.Create;
-{$ELSE}
-  Result := nil;
-{$ENDIF}
-end;
-
-class function TShellPlatform.StackTraceOf(AError: Exception): string;
+class function TServerPlatform.StackTraceOf(AError: Exception): string;
 begin
 {$IFDEF MSWINDOWS}
   Result := AError.StackTrace;
@@ -237,7 +206,7 @@ begin
 {$ENDIF}
 end;
 
-class function TShellPlatform.MoveReplacing(const ASource, ATarget: string): Boolean;
+class function TServerPlatform.MoveReplacing(const ASource, ATarget: string): Boolean;
 begin
 {$IFDEF MSWINDOWS}
   Result := MoveFileEx(PChar(ASource), PChar(ATarget), MOVEFILE_REPLACE_EXISTING);
@@ -247,17 +216,7 @@ begin
 {$ENDIF}
 end;
 
-class function TShellPlatform.CreateVcsRunner(AAllowMainThread: Boolean;
-  const ACancelled: TFunc<Boolean>): IAtlasVcsRunner;
-begin
-{$IFDEF MSWINDOWS}
-  Result := TAtlasVcsProcessRunner.Create(AAllowMainThread, ACancelled);
-{$ELSE}
-  Result := TLinuxVcsRunner.Create(AAllowMainThread, ACancelled);
-{$ENDIF}
-end;
-
-class function TShellPlatform.FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc;
+class function TServerPlatform.FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc;
 begin
 {$IFDEF MSWINDOWS}
   Result := FolderChangeWait(AFolder, APollMs, ASafetyMs);
@@ -271,16 +230,7 @@ begin
 {$ENDIF}
 end;
 
-class function TShellPlatform.ProfileSampler: IAtlasProfileSampler;
-begin
-{$IFDEF MSWINDOWS}
-  Result := TAtlasWindowsProfileSampler.Create;
-{$ELSE}
-  Result := nil;
-{$ENDIF}
-end;
-
-class function TShellPlatform.MemoryInUseBytes: Int64;
+class function TServerPlatform.MemoryInUseBytes: Int64;
 begin
 {$IFDEF MSWINDOWS}
   Result := TShutdownLeaks.AllocatedBytes;

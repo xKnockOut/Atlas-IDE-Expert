@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Configuration,
-  Shell.Platform,
+  Platform.Server,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -75,6 +75,7 @@ uses
   Atlas.Common.Documents.Uris,
   Shell.Bootstrap,
   Shell.Workspace,
+  Shell.Composition.Platform,
   Atlas.Text.LogMarks;
 
 { TShellConfiguration }

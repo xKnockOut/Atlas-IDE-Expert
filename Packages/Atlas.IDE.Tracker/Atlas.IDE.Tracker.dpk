@@ -280,6 +280,7 @@ contains
   Atlas.IDE.Tracker.Adapters.Sprint in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Adapters.Sprint.pas',
   Atlas.UI.Tracker.SettingsBranches in 'Source\UI\Tracker\Atlas.UI.Tracker.SettingsBranches.pas',
   Atlas.IDE.Tracker.Adapters.Settings in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Adapters.Settings.pas',
+  Atlas.IDE.Tracker.Adapters.Module in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Adapters.Module.pas',
   Atlas.IDE.Tracker.Composition in 'Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.pas';
 
 end.

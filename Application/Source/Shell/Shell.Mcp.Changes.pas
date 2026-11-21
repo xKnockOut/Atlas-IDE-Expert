@@ -37,7 +37,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Builtin,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.Mcp.Context,
   Atlas.Common.Localization.Texts;
 

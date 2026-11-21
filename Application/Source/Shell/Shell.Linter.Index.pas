@@ -52,7 +52,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
-  Shell.Platform,
+  Platform.Server,
   Shell.Bootstrap,
   Shell.Linter.Output,
   Atlas.Common.Localization.Texts;
@@ -88,7 +88,7 @@ begin
   mStore := TDocumentStore.Create(
     function(const APath: string): string
     begin
-      Result := TShellPlatform.CanonicalizePath(APath);
+      Result := TServerPlatform.CanonicalizePath(APath);
     end);
   Result := TShellWorkspaceGroup.Create(ExcludeTrailingPathDelimiter(AConfigRoot), mStore, ErrorLogger, AIndex,
     'atlas-check-index',
@@ -112,7 +112,7 @@ begin
     AGroup.CacheRoot := ExcludeTrailingPathDelimiter(TPath.GetFullPath(AOptions.IndexCacheFolder));
   end;
   mIdentity := Default(TIndexProcessInfo);
-  mIdentity.Pid := TShellPlatform.CurrentProcessId;
+  mIdentity.Pid := TServerPlatform.CurrentProcessId;
   mIdentity.Kind := TIndexProcessInfo.cKindCheck;
   mIdentity.Client := 'atlas --check';
   AGroup.ProcessIdentity := mIdentity;
@@ -197,7 +197,7 @@ begin
   Result := TCheckMemoryTrack.Create(
     function: Int64
     begin
-      Result := TShellPlatform.MemoryInUseBytes;
+      Result := TServerPlatform.MemoryInUseBytes;
     end);
   Result.StartSampling;
 end;
