@@ -1,13 +1,43 @@
-﻿unit Atlas.Common.Rules.Builtin.Constants.Conversions;
+﻿unit Atlas.Common.Rules.Builtin.Conversions;
 
-// Regeln zu Zahltypen in Ausdrücken und Zuweisungen (Teil von Atlas.Common.Rules.Builtin.Constants, dort
-// registriert; Beschreibung dort): signed-unsigned-mix, narrowing-assignment, string-length-limit.
+// Regeln zur Breite von Zahl- und Stringtypen in Ausdrücken und Zuweisungen (#909, Gruppe Compiler vorab):
+//   signed-unsigned-mix        Vorzeichenbehaftet und vorzeichenlos gemischt
+//                              (#1012): Vergleich (W1023) oder Rechnung
+//                              (W1024) eines Operanden bis 32 Bit mit Vorzeichen
+//                              und eines vorzeichenlosen 32-Bit-Operanden, und
+//                              jede Mischung mit UInt64 (Rechnung W1073,
+//                              Vergleich W1023). Typen aus der Namensauflösung,
+//                              nur bei sicher bekanntem Typ beider Operanden;
+//                              Literale zählen nicht. Korrektur: den
+//                              vorzeichenlosen Operanden in Int64 umwandeln.
+//   narrowing-assignment       Zuweisung mit möglichem Datenverlust (#1013,
+//                              standardmäßig aus): Quelltyp und Zieltyp bilden
+//                              ein Paar aus der Option types (Vorgabe
+//                              Int64>Integer und NativeInt>Integer), bei
+//                              Gleitkomma wie W1072, Extended>Double W1066.
+//                              Ganzzahlen ohne Code: W1071 meldet Delphi 13
+//                              auch mit {$WARN IMPLICIT_INTEGER_CAST_LOSS ON}
+//                              nicht (#1383).
+//                              Zuweisungen und Inline-Variablen mit Wert;
+//                              Operanden und ganzzahlige Rechnungen mit sicher
+//                              bekanntem Typ. Korrekturen: ausdrücklich
+//                              umwandeln; Zieltyp der Deklaration vergrößern.
+//   string-length-limit        String-Grenze überschritten (#1036): Literal,
+//                              das an string[N]/ShortString gekürzt wird
+//                              (Zuweisung, typisierte Konstante, initialisierte
+//                              Variable; W1014), ein Literal über 255 Zeichen
+//                              vor Delphi 12 (E2056) und ein resourcestring
+//                              über 4096 Zeichen (E2381). Korrekturen: Ziel als
+//                              string deklarieren; Literal teilen.
+//
+// Typen aus der Namensauflösung; ShortString-Grenzen auch über Aliasse im Index.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Registry;
 
 const
   cSignedUnsignedMixRuleId = 'signed-unsigned-mix';
@@ -47,7 +77,8 @@ type
     class function IndexAliasLength(const AContext: TRuleContext; const ATypeName: string): Integer; static;
   end;
 
-
+/// <summary>Meldet signed-unsigned-mix, narrowing-assignment und string-length-limit in ARegistry an.</summary>
+procedure RegisterConversionRules(const ARegistry: TRuleRegistry);
 
 implementation
 
@@ -1789,7 +1820,14 @@ begin
   mScan.Run;
 end;
 
+procedure RegisterConversionRules(const ARegistry: TRuleRegistry);
+begin
+  ARegistry.Register(TSignedUnsignedMixRule.Create);
+  ARegistry.Register(TNarrowingAssignmentRule.Create);
+  ARegistry.Register(TStringLengthLimitRule.Create);
+end;
+
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Constants.Conversions', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Conversions', cTexts);
 
 end.

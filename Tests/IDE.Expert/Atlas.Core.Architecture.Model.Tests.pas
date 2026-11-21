@@ -107,6 +107,8 @@ uses
   Atlas.Common.Architecture.Alignment,
   Atlas.Common.Architecture.Alignment.Tests,
   Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.Resolution,
+  Atlas.Core.Architecture.Palette,
   Atlas.Core.Architecture.Commands,
   Atlas.Core.Architecture.View;
 

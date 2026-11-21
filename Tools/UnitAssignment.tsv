@@ -4,6 +4,8 @@ Atlas.IDE.Analysis	Atlas.Core.Architecture.Commands	Core/Architecture/Atlas.Core
 Atlas.IDE.Analysis	Atlas.Core.Architecture.MapMarks	Core/Architecture/Atlas.Core.Architecture.MapMarks.pas	Ordner `Core/Architecture`
 Atlas.IDE.Analysis	Atlas.Core.Architecture.MapState	Core/Architecture/Atlas.Core.Architecture.MapState.pas	Ordner `Core/Architecture`
 Atlas.IDE.Analysis	Atlas.Core.Architecture.Model	Core/Architecture/Atlas.Core.Architecture.Model.pas	Ordner `Core/Architecture`
+Atlas.IDE.Analysis	Atlas.Core.Architecture.Palette	Core/Architecture/Atlas.Core.Architecture.Palette.pas	Ordner `Core/Architecture`; Farben der Teilsysteme
+Atlas.IDE.Analysis	Atlas.Core.Architecture.Resolution	Core/Architecture/Atlas.Core.Architecture.Resolution.pas	Ordner `Core/Architecture`; Feinheit der Teilsysteme (Regler, settings.json)
 Atlas.IDE.Analysis	Atlas.Core.Architecture.RoleUnit	Core/Architecture/Atlas.Core.Architecture.RoleUnit.pas	Ordner `Core/Architecture`: Unit nach Architekturrolle, #1821
 Atlas.IDE.Analysis	Atlas.Core.Architecture.View	Core/Architecture/Atlas.Core.Architecture.View.pas	Ordner `Core/Architecture`
 Atlas.IDE.Analysis	Atlas.Core.Hotspots.Model	Core/Hotspots/Atlas.Core.Hotspots.Model.pas	Ordner `Core/Hotspots`
@@ -1694,6 +1696,7 @@ Atlas.IDE.Tracker	Atlas.Core.Tracker.KnownErrors	Core/Tracker/Atlas.Core.Tracker
 Atlas.IDE.Tracker	Atlas.Core.Tracker.LinkedStart	Core/Tracker/Atlas.Core.Tracker.LinkedStart.pas	Ordner `Core/Tracker`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Links	Core/Tracker/Atlas.Core.Tracker.Links.pas	Ordner `Core/Tracker`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown	Core/Tracker/Atlas.Core.Tracker.Markdown.pas	Ordner `Core/Tracker`
+Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown.Inline	Core/Tracker/Atlas.Core.Tracker.Markdown.Inline.pas	Ordner `Core/Tracker`; Fließtext eines Absatzes, die Blöcke zerlegt `Atlas.Core.Tracker.Markdown`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.MyIssues	Core/Tracker/Atlas.Core.Tracker.MyIssues.pas	Ordner `Core/Tracker`, Kachel aus der Willkommensseite, #1455
 Atlas.IDE.Tracker	Atlas.Core.Tracker.MyIssuesPlan	Core/Tracker/Atlas.Core.Tracker.MyIssuesPlan.pas	Ordner `Core/Tracker`; Entscheidungen von „Meine Issues“ („Alle“, projektgebundene Stände, Aktionen an Zeilen)
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Naming	Core/Tracker/Atlas.Core.Tracker.Naming.pas	Ordner `Core/Tracker`
