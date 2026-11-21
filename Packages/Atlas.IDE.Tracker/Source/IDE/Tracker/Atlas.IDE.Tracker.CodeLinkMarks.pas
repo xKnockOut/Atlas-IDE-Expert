@@ -247,6 +247,8 @@ begin
   mText := TAtlasIssueTip.Compose(AKey, AState, ADetails, AError, TTimeZone.Local.ToUniversalTime(Now),
     TAtlasIdeIssuePreview.Active);
   FTipKey := AKey;
+  // Farben und Schrift des IDE-Themas, sonst hell im dunklen Editor.
+  TAtlasIdeStyle.Apply(FTip, FScreen);
   FTip.ShowNote(AKey, mText, Point(FScreen.Left, FScreen.Bottom + 2));
 end;
 

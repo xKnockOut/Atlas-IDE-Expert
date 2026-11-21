@@ -68,6 +68,7 @@ uses
   Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.QuickService,
   Atlas.UI.Foundation.Menus;
@@ -124,6 +125,8 @@ begin
     end;
     mText := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipFree);
   end;
+  // Farben und Schrift des IDE-Themas, sonst hell im dunklen Editor.
+  TAtlasIdeStyle.Apply(FTip, TRect.Create(AAt, AAt));
   FTip.ShowNote(mTitle, mText, AAt);
 end;
 

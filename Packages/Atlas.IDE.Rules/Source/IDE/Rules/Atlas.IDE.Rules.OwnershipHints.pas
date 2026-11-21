@@ -519,8 +519,13 @@ begin
       TAtlasOwnershipTipStep.Close:
         HideTip;
       TAtlasOwnershipTipStep.Show:
-        FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
-          TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts), Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+        begin
+          // Farben und Schrift des IDE-Themas, sonst hell im dunklen Editor.
+          TAtlasIdeStyle.Apply(FTip, FHoverScreen);
+          FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
+            TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts),
+            Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+        end;
     end;
   except
     on E: Exception do

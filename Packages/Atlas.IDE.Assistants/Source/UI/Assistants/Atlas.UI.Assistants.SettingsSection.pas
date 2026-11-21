@@ -133,7 +133,12 @@ type
     FProbeState: TLabel;
     FIde: TAtlasAssistantsIdeRows;
     FLink: IAtlasAssistantsSectionLink;
+    /// <summary>OnChange der Anbieterauswahl vor dem eigenen (Punkte und Zurücksetzen der Seite).</summary>
+    FProviderChanged: TNotifyEvent;
     function ProviderId: string;
+    procedure ProviderChange(Sender: TObject);
+    /// <summary>Felder nur des einen Anbieters (Modell, OpenAI-kompatibler Server) nach der Auswahl frei.</summary>
+    procedure ShowProviderRows;
     function ProbeInput: TAtlasAssistantsProbeInput;
     procedure AddOpenAiRows;
     procedure AddProbeRow;
@@ -278,6 +283,9 @@ begin
     TArray<string>.Create(T(TAtlasAssistantsTextId.ProviderNone), T(TAtlasAssistantsTextId.ProviderAnthropic),
     T(TAtlasAssistantsTextId.ProviderOpenAi)),
     TArray<string>.Create(cAssistantsProviderNames[0], cAssistantsProviderNames[1], cAssistantsProviderNames[2]));
+  // Anbieterwechsel gibt Schlüsselknöpfe und Felder sofort frei, nicht erst nach Speichern und neuem Öffnen.
+  FProviderChanged := FProvider.OnChange;
+  FProvider.OnChange := ProviderChange;
   AddKeyRows;
   FModel := Line('assistants.model', T(TAtlasAssistantsTextId.SettingsModel));
   AddOpenAiRows;
@@ -677,6 +685,32 @@ begin
   // aller Elemente der Zeile neu und gäbe die Knöpfe sonst ohne Anbieter wieder frei.
   Host.Allow(FKeyStore, mKnown and Assigned(FKeyHooks.Store));
   Host.Allow(FKeyDelete, mKnown and Assigned(FKeyHooks.Delete));
+  ShowProviderRows;
+end;
+
+procedure TAtlasAssistantsSettingsSection.ShowProviderRows;
+var
+  mOpenAi: Boolean;
+begin
+  // Beim Aufbau ruft AddKeyRows schon vor den Feldern; dann noch nichts zu tun.
+  if (FModel = nil) or (FOpenAiUrl = nil) or (FOpenAiModel = nil) or (FOpenAiTimeout = nil) then
+  begin
+    Exit;
+  end;
+  mOpenAi := ProviderId = cAssistantsProviderNames[2];
+  Host.Allow(FModel, ProviderId = cAssistantsProviderNames[1]);
+  Host.Allow(FOpenAiUrl, mOpenAi);
+  Host.Allow(FOpenAiModel, mOpenAi);
+  Host.Allow(FOpenAiTimeout, mOpenAi);
+end;
+
+procedure TAtlasAssistantsSettingsSection.ProviderChange(Sender: TObject);
+begin
+  if Assigned(FProviderChanged) then
+  begin
+    FProviderChanged(Sender);
+  end;
+  ShowKeyState;
 end;
 
 procedure TAtlasAssistantsSettingsSection.WindowReady;

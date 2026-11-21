@@ -32,6 +32,9 @@ type
     procedure AiGhostSettingsRoundTrip;
     [Test]
     procedure KeyButtonsUseTheHooks;
+    /// <summary>Anbieter wählen gibt die Schlüsselknöpfe sofort frei, ohne Speichern und neues Öffnen.</summary>
+    [Test]
+    procedure ProviderChangeFreesKeyButtons;
     [Test]
     procedure IdeProviderSettingsRoundTrip;
     [Test]
@@ -225,6 +228,56 @@ begin
     Assert.IsFalse(Pos('k1', mSection.KeyStateLabel.Caption) > 0, 'nie den Schlüssel');
     mSection.KeyDeleteButton.Click;
     Assert.AreEqual('anthropic', mDeleted);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TAssistantsSettingsSectionTests.ProviderChangeFreesKeyButtons;
+var
+  mSection: TAtlasAssistantsSettingsSection;
+  mProvided: IAtlasSettingsSection;
+  mPage: TAtlasSettingsPage;
+  mHooks: TAtlasAssistantsKeyHooks;
+  mSettings: TAtlasPluginSettings;
+begin
+  RevokeAll(FRegistrations);
+  mHooks := Default(TAtlasAssistantsKeyHooks);
+  mHooks.Has :=
+    function(AId: string): Boolean
+    begin
+      Result := False;
+    end;
+  mHooks.Store :=
+    function(AId, AKey: string): Boolean
+    begin
+      Result := True;
+    end;
+  mHooks.Delete :=
+    procedure(AId: string)
+    begin
+    end;
+  TAtlasAssistantsSettingsSection.KeyHooks := mHooks;
+  mSection := TAtlasAssistantsSettingsSection.Create;
+  mProvided := mSection;
+  FRegistrations := [ProvideSection(mProvided)];
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.AssistantsInlineSuggestions := True;
+    mPage.LoadFrom(mSettings);
+    Assert.IsFalse(mSection.KeyStoreButton.Enabled, 'ohne Anbieter gesperrt');
+    // Wie eine Auswahl in der Liste: Wert setzen, dann OnChange der Auswahl.
+    mSection.ProviderBox.Choice := 1;
+    mSection.ProviderBox.OnChange(mSection.ProviderBox);
+    Assert.IsTrue(mSection.KeyStoreButton.Enabled, 'Anthropic gewählt: Schlüssel hinterlegen frei');
+    Assert.IsTrue(EditOf(mPage, 'AssistantsModel').Enabled, 'Modell gilt für Anthropic');
+    mSection.ProviderBox.Choice := 2;
+    mSection.ProviderBox.OnChange(mSection.ProviderBox);
+    Assert.IsFalse(EditOf(mPage, 'AssistantsModel').Enabled, 'OpenAI-kompatibel hat ein eigenes Modellfeld');
+    mSection.ProviderBox.Choice := 0;
+    mSection.ProviderBox.OnChange(mSection.ProviderBox);
+    Assert.IsFalse(mSection.KeyStoreButton.Enabled, 'kein Anbieter: wieder gesperrt');
   finally
     mPage.Free;
   end;
