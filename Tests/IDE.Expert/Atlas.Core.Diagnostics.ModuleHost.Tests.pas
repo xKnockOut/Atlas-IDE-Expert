@@ -44,7 +44,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
-  Atlas.Core.Diagnostics.ModuleHost;
+  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.Tests.Lists;
 
 type
   TLog = class
@@ -75,11 +76,7 @@ const
 
 procedure TLog.Add(const AEntry: string);
 begin
-  if Text <> '' then
-  begin
-    Text := Text + ',';
-  end;
-  Text := Text + AEntry;
+  TTestLists.Append(Text, AEntry, ',');
 end;
 
 { TFakeModule }

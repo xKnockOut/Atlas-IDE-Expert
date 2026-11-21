@@ -36,7 +36,8 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Providers.Fixed,
-  Atlas.Core.Completion.Providers.Server;
+  Atlas.Core.Completion.Providers.Server,
+  Atlas.Tests.Wait;
 
 type
   TDeclareView = class(TInterfacedObject, IAtlasCompletionView)
@@ -135,21 +136,6 @@ begin
   end;
 end;
 
-function WaitFor(const ACondition: TFunc<Boolean>): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > 3000;
-  Result := False;
-end;
-
 { TAtlasCompletionDeclareTests }
 
 procedure TAtlasCompletionDeclareTests.UnknownGroupComesLast;
@@ -212,7 +198,7 @@ begin
     mContext.FileName := 'C:\P\A.pas';
     mContext.Prefix := 'TotalCount';
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -225,7 +211,7 @@ begin
     Assert.IsFalse(mController.Active);
     // Pfeiltaste wählt die erste Deklaration, Enter übernimmt sie.
     mController.Start(mContext);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;

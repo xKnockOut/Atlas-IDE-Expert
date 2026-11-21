@@ -116,7 +116,9 @@ uses
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Framing,
-  Atlas.Core.Settings.Contract;
+  Atlas.Core.Settings.Contract,
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Lsp.TestSupport;
 
 type
   /// <summary>Zeile eines anderen Issues, ohne TAtlasStatusLine (Abnahme: erscheint ohne Änderung).</summary>
@@ -132,18 +134,6 @@ type
     function HasAction: Boolean;
     procedure Execute;
     property Clicks: Integer read FClicks;
-  end;
-
-  TMemoryStore = class(TInterfacedObject, IAtlasSettingsStore)
-  private
-    FValues: TDictionary<string, string>;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
   end;
 
 { TForeignItem }
@@ -181,52 +171,6 @@ end;
 procedure TForeignItem.Execute;
 begin
   Inc(FClicks);
-end;
-
-{ TMemoryStore }
-
-constructor TMemoryStore.Create;
-begin
-  inherited Create;
-  FValues := TDictionary<string, string>.Create;
-end;
-
-destructor TMemoryStore.Destroy;
-begin
-  FValues.Free;
-  inherited;
-end;
-
-function TMemoryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-var
-  mValue: string;
-begin
-  if FValues.TryGetValue(AName, mValue) then
-  begin
-    Result := StrToInt(mValue);
-  end
-  else
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  FValues.AddOrSetValue(AName, IntToStr(AValue));
-end;
-
-function TMemoryStore.ReadString(const AName, ADefault: string): string;
-begin
-  if not FValues.TryGetValue(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TMemoryStore.WriteString(const AName, AValue: string);
-begin
-  FValues.AddOrSetValue(AName, AValue);
 end;
 
 function Line(const ARegistry: IAtlasStatusRegistry; const AId: string; AOrder: Integer;
@@ -818,18 +762,6 @@ begin
   Assert.AreEqual(1, mCalls, 'Freigeben meldet nicht noch einmal');
 end;
 
-procedure SendProgress(const AProgress: ILspProgress; const AJson: string);
-var
-  mValue: TJSONValue;
-begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    AProgress.Handle(mValue);
-  finally
-    mValue.Free;
-  end;
-end;
-
 procedure TAtlasStatusSourcesTests.ProgressReportsChangesAndPercent;
 var
   mProgress: ILspProgress;
@@ -844,17 +776,17 @@ begin
     end);
   Assert.IsFalse(mProgress.Active(mPercent));
   Assert.AreEqual(-1, mPercent);
-  SendProgress(mProgress, '{"token":"atlas-index","value":{"kind":"begin","title":"Index"}}');
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"begin","title":"Index"}}');
   Assert.IsTrue(mProgress.Active(mPercent));
   Assert.AreEqual(-1, mPercent);
-  SendProgress(mProgress, '{"token":"atlas-index","value":{"kind":"report","percentage":45}}');
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"report","percentage":45}}');
   Assert.IsTrue(mProgress.Active(mPercent));
   Assert.AreEqual(45, mPercent);
-  SendProgress(mProgress, '{"token":"atlas-index","value":{"kind":"end"}}');
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"end"}}');
   Assert.IsFalse(mProgress.Active(mPercent));
   Assert.AreEqual(3, mCalls);
   mProgress.SetOnChanged(nil);
-  SendProgress(mProgress, '{"token":"x","value":{"kind":"begin"}}');
+  Send(mProgress, '{"token":"x","value":{"kind":"begin"}}');
   Assert.AreEqual(3, mCalls);
 end;
 
@@ -873,7 +805,7 @@ begin
   Assert.IsFalse(mSettings.IndexProgressInMenu);
   Assert.IsTrue(mSettings.StatusTogglesOnRightClick);
   Assert.IsTrue(mSettings.StatusTogglesOnDoubleClick);
-  mStore := TMemoryStore.Create;
+  mStore := TTextStore.Create;
   mSettings.StatusField := False;
   mSettings.StatusFieldSummary := False;
   mSettings.StatusFieldToggles := 'doubleClick';

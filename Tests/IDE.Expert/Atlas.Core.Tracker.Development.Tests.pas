@@ -57,7 +57,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.Composition,
-  Atlas.Core.VersionControl.Providers.ProcessRunner;
+  Atlas.Core.VersionControl.Providers.ProcessRunner,
+  Atlas.Tests.Files;
 
 type
   /// <summary>Versionsverwaltung mit festen Antworten für IAtlasVcsHistory; zählt die Aufrufe.</summary>
@@ -96,14 +97,7 @@ type
 
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kasse';
-  end
-  else
-  begin
-    Result := '/projekte/kasse';
-  end;
+  Result := TTestData.ProjectRoot('Kasse');
 end;
 
 function Under(const ARelative: string): string;

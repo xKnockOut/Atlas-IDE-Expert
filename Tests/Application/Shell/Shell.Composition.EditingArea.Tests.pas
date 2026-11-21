@@ -39,7 +39,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Logging.Providers.Logger;
+  Atlas.Common.Logging.Providers.Logger,
+  Shell.Composition.TestSupport;
 
 function NoIndex: ISymbolIndex;
 begin
@@ -87,10 +88,7 @@ end;
 procedure TShellEditingAreaTests.TearDown;
 begin
   FreeAndNil(FArea);
-  FreeAndNil(FDispatcher);
-  FDocuments := nil;
-  FCore.FreeWorkspaces;
-  FreeAndNil(FCore);
+  TShellTest.FreeCore(FCore, FDispatcher, FDocuments);
 end;
 
 procedure TShellEditingAreaTests.CreatesParts;

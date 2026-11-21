@@ -47,7 +47,8 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
   Shell.Composition.Compile,
-  Shell.Composition.DiagnosticsArea;
+  Shell.Composition.DiagnosticsArea,
+  Shell.Composition.TestSupport;
 
 function NoIndex: ISymbolIndex;
 begin
@@ -101,10 +102,7 @@ end;
 procedure TShellIdeAreaTests.TearDown;
 begin
   FreeAndNil(FArea);
-  FreeAndNil(FDispatcher);
-  FDocuments := nil;
-  FCore.FreeWorkspaces;
-  FreeAndNil(FCore);
+  TShellTest.FreeCore(FCore, FDispatcher, FDocuments);
 end;
 
 procedure TShellIdeAreaTests.CreatesParts;

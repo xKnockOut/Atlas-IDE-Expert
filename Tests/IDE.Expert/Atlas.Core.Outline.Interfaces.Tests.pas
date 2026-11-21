@@ -26,11 +26,11 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
-  Atlas.Core.Outline.Interfaces;
+  Atlas.Core.Outline.Interfaces,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -60,21 +60,8 @@ const
     '{"line": 6, "name": "TKunde.Hilfe", "interfaces": []}]}';
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function Methods: TAtlasInterfaceMethods;
@@ -87,18 +74,6 @@ begin
   finally
     mJson.Free;
   end;
-end;
-
-function NodeAt(const ANodes: TAtlasOutlineNodes; const AName: string; ALine: Integer): Integer;
-begin
-  for Result := 0 to High(ANodes) do
-  begin
-    if (ANodes[Result].Name = AName) and (ANodes[Result].NameLine = ALine) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := -1;
 end;
 
 { TAtlasOutlineInterfacesTests }
@@ -125,9 +100,9 @@ var
 begin
   mNodes := Nodes;
   Assert.AreEqual(2, Integer(Length(TAtlasOutlineInterfaces.TargetsOf(Methods, mNodes,
-    NodeAt(mNodes, 'Speichern', 5)))));
-  Assert.AreEqual(0, Integer(Length(TAtlasOutlineInterfaces.TargetsOf(Methods, mNodes, NodeAt(mNodes, 'Hilfe', 6)))));
-  Assert.AreEqual(0, Integer(Length(TAtlasOutlineInterfaces.TargetsOf(Methods, mNodes, NodeAt(mNodes, 'TKunde', 4)))));
+    TOutlineTest.NodeAt(mNodes, 'Speichern', 5)))));
+  Assert.AreEqual(0, Integer(Length(TAtlasOutlineInterfaces.TargetsOf(Methods, mNodes, TOutlineTest.NodeAt(mNodes, 'Hilfe', 6)))));
+  Assert.AreEqual(0, Integer(Length(TAtlasOutlineInterfaces.TargetsOf(Methods, mNodes, TOutlineTest.NodeAt(mNodes, 'TKunde', 4)))));
   Assert.AreEqual(0, Integer(Length(TAtlasOutlineInterfaces.TargetsOf(Methods, mNodes, -1))));
 end;
 
