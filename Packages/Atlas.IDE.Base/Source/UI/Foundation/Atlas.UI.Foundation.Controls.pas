@@ -7,12 +7,19 @@
 // - ClearHot: Hervorhebung beim Verlassen mit der Maus löschen und nur dann neu zeichnen.
 // - SuppressBeep: Enter und Esc in einem Eingabefeld ohne Signalton von Windows.
 // - Remeasure: Inhaltshöhe nach einer neuen Breite neu rechnen und eine Änderung melden.
+// - KeyHandled: CN_KEYDOWN/CN_SYSKEYDOWN an eine eigene Tastenbehandlung geben, bevor die VCL sie verteilt.
+// - NewHiddenSheet: Reiterseite ohne sichtbaren Reiter einhängen (ein sichtbarer braucht das Fenster).
 
 interface
 
 uses
+  Winapi.Messages,
+  System.Types,
+  System.Classes,
   System.SysUtils,
-  Vcl.Controls;
+  Vcl.Controls,
+  Vcl.StdCtrls,
+  Vcl.ComCtrls;
 
 type
   TAtlasControls = record
@@ -29,11 +36,32 @@ type
     class procedure SuppressBeep(var AKey: Char); static;
     /// <summary>AHeight := ANewHeight; bei einer Änderung AChanged rufen.</summary>
     class procedure Remeasure(var AHeight: Integer; ANewHeight: Integer; const AChanged: TProc); static;
+    /// <summary>Taste aus AMessage (CN_KEYDOWN oder CN_SYSKEYDOWN) an AHandle(Taste, Umschalttasten) geben; True und
+    /// AMessage.Result 1, wenn AHandle sie behandelt hat (dann kein inherited, die IDE sieht sie nicht).</summary>
+    class function KeyHandled(var AMessage: TWMKeyDown; const AHandle: TFunc<Word, TShiftState, Boolean>): Boolean;
+      static;
+    /// <summary>Reiterseite ACaption in APages, Besitzer AOwner, noch ohne sichtbaren Reiter: Ein sichtbarer Reiter
+    /// braucht das Fenster des PageControls; der Besitzer zeigt ihn, sobald es da ist (CreateWnd).</summary>
+    class function NewHiddenSheet(AOwner: TComponent; APages: TPageControl; const ACaption: string): TTabSheet;
+      static;
+    /// <summary>Ist AKey Enter: AKey := 0 und AOpen rufen (Eintrag öffnen statt Signalton), Ergebnis True.</summary>
+    class function ReturnKey(var AKey: Word; const AOpen: TProc): Boolean; static;
+    /// <summary>Tasten einer Liste: Enter ruft AOpen (wie ReturnKey), Strg+C ACopy; die behandelte Taste wird 0.
+    /// True, wenn eine der beiden gedrückt war.</summary>
+    class function OpenOrCopyKey(var AKey: Word; AShift: TShiftState; const AOpen, ACopy: TProc): Boolean; static;
+    /// <summary>Data des gewählten Knotens von ATree als Zahl (Index in die Zeilen des Besitzers); -1 ohne Auswahl.
+    /// </summary>
+    class function SelectedIndex(ATree: TTreeView): Integer; static;
+    /// <summary>Bildschirmpunkt unter der linken unteren Ecke von AControl (dort klappt ein Menü auf).</summary>
+    class function BelowLeft(AControl: TControl): TPoint; static;
+    /// <summary>Caption von ALabel, wenn es sichtbar ist; sonst ''.</summary>
+    class function ShownCaption(ALabel: TCustomLabel): string; static;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
   Vcl.Forms;
 
 { TAtlasControls }
@@ -81,6 +109,69 @@ begin
   if (mOldHeight <> ANewHeight) and Assigned(AChanged) then
   begin
     AChanged();
+  end;
+end;
+
+class function TAtlasControls.KeyHandled(var AMessage: TWMKeyDown;
+  const AHandle: TFunc<Word, TShiftState, Boolean>): Boolean;
+begin
+  Result := AHandle(AMessage.CharCode, KeyDataToShiftState(AMessage.KeyData));
+  if Result then
+  begin
+    AMessage.Result := 1;
+  end;
+end;
+
+class function TAtlasControls.NewHiddenSheet(AOwner: TComponent; APages: TPageControl;
+  const ACaption: string): TTabSheet;
+begin
+  Result := TTabSheet.Create(AOwner);
+  Result.TabVisible := False;
+  Result.PageControl := APages;
+  Result.Caption := ACaption;
+end;
+
+class function TAtlasControls.ReturnKey(var AKey: Word; const AOpen: TProc): Boolean;
+begin
+  Result := AKey = VK_RETURN;
+  if Result then
+  begin
+    AKey := 0;
+    AOpen();
+  end;
+end;
+
+class function TAtlasControls.OpenOrCopyKey(var AKey: Word; AShift: TShiftState; const AOpen, ACopy: TProc): Boolean;
+begin
+  Result := ReturnKey(AKey, AOpen);
+  if not Result and (AKey = Ord('C')) and (ssCtrl in AShift) then
+  begin
+    AKey := 0;
+    ACopy();
+    Result := True;
+  end;
+end;
+
+class function TAtlasControls.SelectedIndex(ATree: TTreeView): Integer;
+begin
+  Result := -1;
+  if ATree.Selected <> nil then
+  begin
+    Result := Integer(NativeInt(ATree.Selected.Data));
+  end;
+end;
+
+class function TAtlasControls.BelowLeft(AControl: TControl): TPoint;
+begin
+  Result := AControl.ClientToScreen(TPoint.Create(0, AControl.Height));
+end;
+
+class function TAtlasControls.ShownCaption(ALabel: TCustomLabel): string;
+begin
+  Result := '';
+  if ALabel.Visible then
+  begin
+    Result := ALabel.Caption;
   end;
 end;
 

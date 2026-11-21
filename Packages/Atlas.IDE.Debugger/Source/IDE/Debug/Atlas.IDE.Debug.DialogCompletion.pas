@@ -159,7 +159,8 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
   Atlas.Core.Debug.DialogInput,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Core.Foundation.Calls,
+  Atlas.IDE.Debug.EvaluateStore;
 
 const
   /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
@@ -229,23 +230,6 @@ function HistoryFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     TAtlasIdeDebugDialogCompletion.cHistoryFileName);
-end;
-
-function CurrentProject: string;
-var
-  mProject: IOTAProject;
-begin
-  // Beim Debuggen das gestartete Projekt, sonst das aktive.
-  Result := TAtlasIdeDebugSession.LaunchProject;
-  if Result <> '' then
-  begin
-    Exit;
-  end;
-  mProject := GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
 end;
 
 /// <summary>Label mit FocusControl = AControl; False ohne.</summary>
@@ -496,7 +480,7 @@ begin
   Load;
   FLock.Acquire;
   try
-    mChanged := FHistory.Add(CurrentProject, AExpression);
+    mChanged := FHistory.Add(TAtlasIdeEvaluateStore.CurrentProject, AExpression);
     mText := FHistory.ToText;
   finally
     FLock.Release;
@@ -781,7 +765,7 @@ begin
   mContext.Text := FText;
   mContext.Character := FCaret;
   mContext.Prefix := TAtlasExpressionEdit.PrefixAt(FText, FCaret);
-  FHistory.UseProject(CurrentProject);
+  FHistory.UseProject(TAtlasIdeEvaluateStore.CurrentProject);
   if AHistory then
   begin
     FHistory.Load;

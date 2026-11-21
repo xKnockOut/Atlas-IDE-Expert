@@ -102,7 +102,8 @@ uses
   Vcl.Themes,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Text.Uris;
 
 const
   cSeparator = ' · ';
@@ -182,7 +183,7 @@ end;
 /// <summary>„TKunde.Laden (Kunde.pas:42)“, ohne Methode „Kunde.pas:42“; '' ohne Datei.</summary>
 function PlaceText(const ATab: TAtlasWorkTab): string;
 begin
-  Result := TAtlasWelcomeContinue.FileNameOf(ATab.FileName);
+  Result := TTextUris.FileNameOf(Trim(ATab.FileName));
   if Result = '' then
   begin
     Exit;

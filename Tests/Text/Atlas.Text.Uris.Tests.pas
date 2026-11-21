@@ -27,6 +27,8 @@ type
     procedure RoundTrip;
     [Test]
     procedure BaseNameSplitsAtBothSeparators;
+    [Test]
+    procedure FileNameOfSplitsAtBothSeparators;
   end;
 
 implementation
@@ -95,6 +97,15 @@ begin
     'Punkt im Ordner ist keine Endung');
   Assert.AreEqual('A', TTextUris.BaseName('A.pas'));
   Assert.AreEqual('', TTextUris.BaseName(''));
+end;
+
+procedure TTextUrisTests.FileNameOfSplitsAtBothSeparators;
+begin
+  Assert.AreEqual('Atlas.Core.A.pas', TTextUris.FileNameOf('C:\P\Atlas.Core.A.pas'));
+  Assert.AreEqual('A.pas', TTextUris.FileNameOf('Src/Unter\A.pas'));
+  Assert.AreEqual('A.pas', TTextUris.FileNameOf('A.pas'));
+  Assert.AreEqual('', TTextUris.FileNameOf('C:\P\'));
+  Assert.AreEqual('', TTextUris.FileNameOf(''));
 end;
 
 procedure TTextUrisTests.RoundTrip;

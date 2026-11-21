@@ -43,6 +43,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.StartOptions,
   Atlas.UI.BuildPipeline.Strings;
 
 function MessageServices(out AMessages: IOTAMessageServices; out AGroup: IOTAMessageGroup): Boolean;
@@ -58,17 +59,6 @@ begin
   if AGroup = nil then
   begin
     AGroup := AMessages.AddMessageGroup(TAtlasIdeBuildGate.cMessageGroup);
-  end;
-end;
-
-function ProjectOf(const AFileName: string): IOTAProject;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Supports(mModules.FindModule(AFileName), IOTAProject, Result);
   end;
 end;
 
@@ -108,7 +98,7 @@ var
 begin
   AUnits := nil;
   AOutputTime := 0;
-  mProject := ProjectOf(AProject.FileName);
+  mProject := TAtlasIdeStartOptions.FindProject(AProject.FileName);
   Result := mProject <> nil;
   if not Result then
   begin

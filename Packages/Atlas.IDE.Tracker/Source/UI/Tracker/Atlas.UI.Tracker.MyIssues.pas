@@ -271,7 +271,6 @@ uses
   System.UITypes,
   System.Math,
   System.DateUtils,
-  Vcl.Themes,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
@@ -281,6 +280,7 @@ uses
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Foundation.Scaling,
   Atlas.Core.Tracker.MyIssues,
+  Atlas.UI.Foundation.Menus,
   Atlas.UI.Foundation.Theme;
 
 const
@@ -1105,12 +1105,9 @@ begin
 end;
 
 procedure TAtlasTrackerIssuesQueries.LabelClick(Sender: TObject);
-var
-  mPoint: TPoint;
 begin
   Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
+  TAtlasMenus.PopupBelow(FMenu, FLabel);
 end;
 
 procedure TAtlasTrackerIssuesQueries.ItemClick(Sender: TObject);
@@ -1225,11 +1222,7 @@ end;
 procedure TAtlasTrackerIssuesView.SetSource(const AValue: IAtlasIssuesSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  SourceChanged(FSource);
 end;
 
 function TAtlasTrackerIssuesView.BodyHeight: Integer;

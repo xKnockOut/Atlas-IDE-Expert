@@ -281,6 +281,7 @@ Atlas.IDE.Base	Atlas.Core.Forms.Changes	Core/Forms/Atlas.Core.Forms.Changes.pas	
 Atlas.IDE.Base	Atlas.Core.Forms.PropertyValues	Core/Forms/Atlas.Core.Forms.PropertyValues.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Forms.Text	Core/Forms/Atlas.Core.Forms.Text.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Foundation.Calls	Core/Foundation/Atlas.Core.Foundation.Calls.pas	Gesetzte oder leere Rückrufe für Base und Module aufrufen
+Atlas.IDE.Base	Atlas.Core.Foundation.Contract	Core/Foundation/Atlas.Core.Foundation.Contract.pas	Quelle eines Bereichs, die erfährt, dass er gezeigt wird (`IAtlasShownSource`)
 Atlas.IDE.Base	Atlas.Core.Generate.Choice	Core/Generate/Atlas.Core.Generate.Choice.pas	Ordner `Core/Generate`: Auswahl mit Suchfeld, #1821
 Atlas.IDE.Base	Atlas.Core.Generate.Contract	Core/Generate/Atlas.Core.Generate.Contract.pas	Ordner `Core/Generate`
 Atlas.IDE.Base	Atlas.Core.Generate.FileTemplates	Core/Generate/Atlas.Core.Generate.FileTemplates.pas	Ordner `Core/Generate`
@@ -1480,6 +1481,7 @@ Atlas.IDE.Rules	Atlas.IDE.Editor.DfmPropertyRules	IDE/Editor/Atlas.IDE.Editor.Df
 Atlas.IDE.Rules	Atlas.IDE.Rules.Adapters.BulkFix	IDE/Rules/Atlas.IDE.Rules.Adapters.BulkFix.pas	Ordner `IDE/Rules`: Sammelkorrektur, #1455
 Atlas.IDE.Rules	Atlas.IDE.Rules.Adapters.FindingActions	IDE/Rules/Atlas.IDE.Rules.Adapters.FindingActions.pas	Ordner `IDE/Rules`: Regel-Aktionen am Befund (`IAtlasRuleActions`), #1755
 Atlas.IDE.Rules	Atlas.IDE.Rules.Adapters.IdeErrors	IDE/Rules/Atlas.IDE.Rules.Adapters.IdeErrors.pas	Ordner `IDE/Rules`: Error Insight der IDE lesen (`IAtlasIdeErrors`), #1819
+Atlas.IDE.Rules	Atlas.IDE.Rules.Adapters.Module	IDE/Rules/Atlas.IDE.Rules.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle der Prüfregeln, Assistent „Eigene Prüfregel“, `IAtlasBaselineSource`, #1455
 Atlas.IDE.Rules	Atlas.IDE.Rules.Adapters.Settings	IDE/Rules/Atlas.IDE.Rules.Adapters.Settings.pas	Ordner `IDE/Rules`: Abschnitt „Prüfregeln“ mit seinen Hooks, #1755
 Atlas.IDE.Rules	Atlas.IDE.Rules.Adapters.SettingsDialog	IDE/Rules/Atlas.IDE.Rules.Adapters.SettingsDialog.pas	Ordner `IDE/Rules`: nennt Base den Dialog mit Regel-Editor (`IAtlasSettingsDialogProvider`), #1755
 Atlas.IDE.Rules	Atlas.IDE.Rules.Baseline	IDE/Rules/Atlas.IDE.Rules.Baseline.pas	Ordner `IDE/Rules`: Baseline aktualisieren, Compilermeldungen in die Baseline, #1455

@@ -1315,11 +1315,7 @@ end;
 procedure TAtlasTrackerTestResultsView.SetSource(const AValue: IAtlasTestResultsSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  SourceChanged(FSource);
 end;
 
 function TAtlasTrackerTestResultsView.BodyHeight: Integer;

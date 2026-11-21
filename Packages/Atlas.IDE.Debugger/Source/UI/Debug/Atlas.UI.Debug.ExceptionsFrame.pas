@@ -130,17 +130,12 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Debug.Exceptions.Strings,
+  Atlas.UI.Foundation.Controls,
+  Atlas.UI.Foundation.Menus,
+  Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
-
-/// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
-function AddColumn(AList: TListView; const ACaption: string; AWidth: Integer): TListColumn;
-begin
-  Result := AList.Columns.Add;
-  Result.Caption := ACaption;
-  Result.Width := MulDiv(AWidth, AList.CurrentPPI, 96);
-end;
 
 /// <summary>Graue Beschriftung in AFrame (Summe unten bzw. Hinweis ohne Exceptions).</summary>
 function GrayLabel(AFrame: TAtlasDebugExceptionsFrame; AAlign: TAlign): TLabel;
@@ -182,10 +177,7 @@ end;
 
 function TAtlasDebugExceptionsFrame.TListMenu.AddItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(Self);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Items.Add(Result);
+  Result := TAtlasMenus.Add(Self, ACaption, AClick);
 end;
 
 procedure TAtlasDebugExceptionsFrame.TListMenu.MenuPopup(Sender: TObject);
@@ -352,13 +344,18 @@ begin
   mList.MultiSelect := False;
   mList.ColumnClick := False;
   mList.PopupMenu := FMenu;
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnTime), cTimeWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnClass), cClassWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnMessage), cMessageWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnCount),
+  TAtlasListView.AddColumnTo(mList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnTime), cTimeWidth);
+  TAtlasListView.AddColumnTo(mList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnClass), cClassWidth);
+  TAtlasListView.AddColumnTo(mList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnMessage), cMessageWidth);
+  TAtlasListView.AddColumnTo(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnCount),
     cCountWidth).Alignment := taRightJustify;
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnThread), cThreadWidth);
+  TAtlasListView.AddColumnTo(mList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
+  TAtlasListView.AddColumnTo(mList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnThread), cThreadWidth);
   mList.OnDblClick := ListDblClick;
   mList.OnSelectItem := ListSelectItem;
   mList.OnKeyDown := ListKeyDown;
@@ -482,16 +479,7 @@ end;
 
 procedure TAtlasDebugExceptionsFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    OpenSelected;
-    Key := 0;
-  end
-  else if (Key = Ord('C')) and (ssCtrl in Shift) then
-  begin
-    CopySelected;
-    Key := 0;
-  end;
+  TAtlasControls.OpenOrCopyKey(Key, Shift, OpenSelected, CopySelected);
 end;
 
 procedure TAtlasDebugExceptionsFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);

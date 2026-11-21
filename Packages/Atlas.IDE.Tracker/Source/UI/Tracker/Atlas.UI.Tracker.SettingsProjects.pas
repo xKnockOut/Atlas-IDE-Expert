@@ -35,14 +35,10 @@ type
     AddMenu: TPopupMenu;
   end;
 
-  TAtlasTrackerProjectsPart = class
+  TAtlasTrackerProjectsPart = class(TAtlasTrackerSettingsPart)
   private
-    FRows: TAtlasTrackerSettingsRows;
-    FHooks: TAtlasTrackerSettingsHooks;
-    FTables: TAtlasTrackerSettingsTables;
     FView: TAtlasTrackerProjectsView;
     FAnchor: TWinControl;
-    FFilling: Boolean;
     FOnChanged: TAtlasTrackerTableChanged;
     FPaths: TAtlasTrackerPathsPart;
     function Table: TAtlasTrackerProjectTable;
@@ -112,10 +108,7 @@ type
 constructor TAtlasTrackerProjectsPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
   ATables: TAtlasTrackerSettingsTables; AOnChanged: TAtlasTrackerTableChanged);
 begin
-  inherited Create;
-  FRows := ARows;
-  FHooks := AHooks;
-  FTables := ATables;
+  inherited Create(ARows, AHooks, ATables);
   FOnChanged := AOnChanged;
 end;
 
@@ -337,12 +330,7 @@ end;
 
 procedure TAtlasTrackerProjectsPart.SelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
-  if FFilling or not Selected or (Item = nil) then
-  begin
-    Exit;
-  end;
-  Table.Select(Item.Index);
-  FillFields;
+  TakeSelection(Item, Selected, Table.Select, FillFields);
 end;
 
 procedure TAtlasTrackerProjectsPart.DrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
@@ -454,11 +442,7 @@ end;
 
 procedure TAtlasTrackerProjectsPart.RemoveClick(Sender: TObject);
 begin
-  if Table.Editable then
-  begin
-    Table.Remove;
-    Refresh;
-  end;
+  RemoveSelected(Table.Editable, Table.Remove, Refresh);
 end;
 
 procedure TAtlasTrackerProjectsPart.Build;

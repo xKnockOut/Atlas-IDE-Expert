@@ -27,7 +27,6 @@ type
     FContent: TMemo;
     FCreate: TButton;
     FCancel: TButton;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
   public
     /// <summary>AConfigName = Dateiname (atlas.json), AProjectName = Datei, neben der sie liegt, ATemplate =
     /// Name der Vorlage, AText = Inhalt.</summary>
@@ -94,19 +93,16 @@ begin
   mButtons.AlignWithMargins := True;
   TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FContent.Top + FContent.Height + 1;
-  FCreate := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCreate));
+  FCreate := NewTextButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCreate),
+    cButtonPadding, cGap);
   FCreate.ModalResult := mrOk;
   FCreate.Default := True;
-  FCancel := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCancel));
+  FCancel := NewTextButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCancel),
+    cButtonPadding, cGap);
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   ActiveControl := FCreate;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
-end;
-
-function TAtlasSetupPreviewDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
 end;
 
 class function TAtlasSetupPreviewDialog.Confirm(const AConfigName, AProjectName, ATemplate, AText: string;

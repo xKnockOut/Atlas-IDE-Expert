@@ -540,16 +540,8 @@ begin
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  Arrange;
-  // Anderer Umbruch bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  Rearrange(Arrange, FContentHeight);
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.ButtonClick(Sender: TObject);

@@ -9,6 +9,7 @@ interface
 
 uses
   System.Classes,
+  Vcl.Controls,
   Vcl.Menus;
 
 type
@@ -31,12 +32,16 @@ type
     /// <summary>Neuer Eintrag am Ende von AParent (auch Untermenü), Besitzer AOwner.</summary>
     class function Add(AOwner: TComponent; AParent: TMenuItem; const ACaption: string; ATag: Integer;
       AClick: TNotifyEvent): TMenuItem; overload; static;
+    /// <summary>AMenu unter der linken unteren Ecke von AControl aufklappen.</summary>
+    class procedure PopupBelow(AMenu: TPopupMenu; AControl: TControl); static;
   end;
 
 implementation
 
 uses
-  Atlas.Plugin.Diagnostics.Guard;
+  System.Types,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.UI.Foundation.Controls;
 
 { TAtlasCommandMenuItem }
 
@@ -71,6 +76,14 @@ begin
   Result.Tag := ATag;
   Result.OnClick := AClick;
   AParent.Add(Result);
+end;
+
+class procedure TAtlasMenus.PopupBelow(AMenu: TPopupMenu; AControl: TControl);
+var
+  mPoint: TPoint;
+begin
+  mPoint := TAtlasControls.BelowLeft(AControl);
+  AMenu.Popup(mPoint.X, mPoint.Y);
 end;
 
 end.

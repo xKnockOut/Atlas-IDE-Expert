@@ -16,6 +16,8 @@ type
     procedure EveryTextExistsInBothLanguages;
     [Test]
     procedure FollowsLanguageOfBase;
+    [Test]
+    procedure LocalTimeEmptyWithoutTime;
   end;
 
 implementation
@@ -23,7 +25,8 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.Strings.Tests,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  System.SysUtils;
 
 { TAtlasWelcomeStringsTests }
 
@@ -72,6 +75,12 @@ begin
     TAtlasStrings.Language := mSaved;
   end;
   Assert.IsTrue(mDiffers > 0, 'kein Text folgt der Sprache von Base');
+end;
+
+procedure TAtlasWelcomeStringsTests.LocalTimeEmptyWithoutTime;
+begin
+  Assert.AreEqual('', TAtlasWelcomeStrings.LocalTime(0));
+  Assert.AreNotEqual('', TAtlasWelcomeStrings.LocalTime(EncodeDate(2026, 11, 21)));
 end;
 
 initialization

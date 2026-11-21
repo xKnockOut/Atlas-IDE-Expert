@@ -66,11 +66,11 @@ uses
   Winapi.Windows,
   ToolsAPI,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Inbox,
-  Atlas.UI.Assistants.Strings,
-  Atlas.Text.Files;
+  Atlas.UI.Assistants.Strings;
 
 var
   /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>

@@ -63,6 +63,7 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
+  Atlas.Text.Files,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Assistants.Strings,
@@ -72,8 +73,7 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.LogEntries,
-  Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Text.Files;
+  Atlas.Core.Editor.WorkspacePlan;
 
 { TAtlasIdeEditInbox }
 

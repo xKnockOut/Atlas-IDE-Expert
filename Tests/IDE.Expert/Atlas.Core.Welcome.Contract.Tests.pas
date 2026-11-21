@@ -1,4 +1,4 @@
-unit Atlas.Core.Welcome.Contract.Tests;
+﻿unit Atlas.Core.Welcome.Contract.Tests;
 
 // Datentypen der Willkommensseite im Vertrag: Schalter eines Bereichs, Breite eines Platzes, zuletzt bearbeiteter
 // Reiter, Projekt oder Gruppe, Vergleich von Registry-Werten, ohne Datei und ohne Windows.
@@ -27,6 +27,8 @@ type
     procedure RegValuesCompareNameWithoutCase;
     [Test]
     procedure RegValuesCompareLines;
+    [Test]
+    procedure WorkOrderPutsNewestFirstAndKeepsTies;
   end;
 
 implementation
@@ -121,6 +123,29 @@ begin
   Assert.IsFalse(TAtlasRegValue.Same(mLeft, mRight));
   mRight.Lines := ['a', 'b'];
   Assert.IsTrue(TAtlasRegValue.Same(mLeft, mRight));
+end;
+
+procedure TAtlasWelcomeContractTests.WorkOrderPutsNewestFirstAndKeepsTies;
+var
+  mFound: TArray<string>;
+  mStateOf: TAtlasWorkStateOf<string>;
+begin
+  // Name "Zeit:Kennung": Zeit ist der Zeitpunkt des Arbeitsstands.
+  mStateOf :=
+    function(const AEntry: string): TAtlasWorkState
+    begin
+      Result := Default(TAtlasWorkState);
+      Result.Known := True;
+      Result.At := StrToInt(Copy(AEntry, 1, Pos(':', AEntry) - 1));
+    end;
+  mFound := nil;
+  TAtlasWorkOrder.InsertNewestFirst<string>(mFound, '2:a', mStateOf);
+  TAtlasWorkOrder.InsertNewestFirst<string>(mFound, '5:b', mStateOf);
+  TAtlasWorkOrder.InsertNewestFirst<string>(mFound, '2:c', mStateOf);
+  TAtlasWorkOrder.InsertNewestFirst<string>(mFound, '9:d', mStateOf);
+  Assert.AreEqual('9:d,5:b,2:a,2:c', string.Join(',', mFound));
+  mFound := nil;
+  mStateOf := nil;
 end;
 
 end.

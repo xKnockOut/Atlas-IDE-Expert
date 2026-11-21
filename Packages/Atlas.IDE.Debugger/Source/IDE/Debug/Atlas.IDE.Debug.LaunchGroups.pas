@@ -622,11 +622,7 @@ end;
 
 class procedure TAtlasIdeLaunchGroups.ThemeChanged;
 begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Colors := TAtlasIdeStyle.Colors;
-    FBar.Invalidate;
-  end;
+  TAtlasStepsBar.Recolor(FBar, TAtlasIdeStyle.Colors);
 end;
 
 class function TAtlasIdeLaunchGroups.Groups(out AProblems: TArray<string>): TAtlasLaunchGroupList;

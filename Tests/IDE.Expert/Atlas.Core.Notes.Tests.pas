@@ -288,7 +288,6 @@ begin
   Assert.IsFalse(TAtlasNotes.Parse('[1, 2]', mBook));
   Assert.IsFalse(TAtlasNotes.Parse('{"format": 2, "project": "p", "notes": []}', mBook));
   Assert.AreEqual(0, Integer(mBook.Count));
-  Assert.AreEqual(2, TAtlasNotes.FormatOf('{"format": 2}'));
 end;
 
 procedure TAtlasNoteStoreTests.SaveAndLoadOnDisk;

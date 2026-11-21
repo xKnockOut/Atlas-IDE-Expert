@@ -54,6 +54,10 @@ Der Workflow pusht nie mit `--force`. Hat der Thread inzwischen selbst gepusht, 
 
 Scheitert „Package-Abhängigkeiten“ oder „AtlasServer für Linux“ nach einem Push auf `main-merging`, legt der Job `melden` (`Tools/CI/Melde-Integrationsstand.py`) ein Issue mit Label „main-merging rot“ an und kommentiert den Pull Request, dessen Merge den Stand erzeugt hat. Weitere rote Läufe kommentieren das Issue; der erste grüne Lauf danach schließt es.
 
+## Units umbenennen
+
+Units umbenennen oder verschieben nur mit `python3 Tools/Rename-Units.py <Tabelle.tsv>` (je Zeile `alt<TAB>neu[<TAB>Zielordner]`, `--dry-run` zeigt nur). Das Skript verschiebt Unit, Formular und Testunits (`alt.Tests` → `neu.Tests`) mit `git mv` und zieht Namen und Pfade in allen versionierten Textdateien nach: uses-Klauseln, qualifizierte Bezeichner, `.dpk`, `.dpr`, `.dproj`, `atlas.json`, Baselines, Skripte, Doku und die Unit-Zuordnung `Tools/UnitAssignment*.tsv` (danach wieder sortiert). `CHANGELOG.md`, Release-Notizen und die übrigen ADRs bleiben, wie sie sind. Ein Pfad wird nur ersetzt, wenn er auf die verschobene Datei zeigt; was sich nicht zuordnen lässt, meldet es als Warnung. Danach `pwsh Tools/Check-PackageDependencies.ps1`, bei geänderten Fingerabdrücken die Baselines neu schreiben (`--update-baseline`), und mit Delphi bauen: FPC übersetzt die IDE-Packages nicht.
+
 ## Konstante Arrays
 
 `Tools/Check-ConstArrays.py` (in `check`) vergleicht die Elemente jeder Konstante `array[<Aufzählung oder Bereich>] of …` mit der Aufzählung. Delphi bricht bei einer Abweichung ab (E2072); FPC übersetzt Plugin-Units mit VCL nicht und merkt es dort nicht. Wer einer Aufzählung einen Wert hinzufügt, ergänzt alle Namenslisten dazu.

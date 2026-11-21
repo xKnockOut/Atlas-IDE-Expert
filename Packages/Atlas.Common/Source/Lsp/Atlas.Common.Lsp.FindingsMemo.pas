@@ -24,7 +24,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Rechnet die Treffer der Prüfregeln einer Datei.</summary>
