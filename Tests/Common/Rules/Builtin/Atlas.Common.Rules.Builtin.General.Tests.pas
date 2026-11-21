@@ -59,6 +59,8 @@ type
     procedure GuidSyntaxOffAndExclude;
     [Test]
     procedure HardcodedStringJsonContinuationSilent;
+    [Test]
+    procedure HardcodedStringFormatTemplateSilent;
   end;
 
 implementation
@@ -456,6 +458,22 @@ begin
   mFindings := TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
     '  S := Name + '', bitte warten'';'), cConfig);
   Assert.AreEqual(1, Integer(Length(mFindings)));
+end;
+
+procedure TGeneralRulesTests.HardcodedStringFormatTemplateSilent;
+const
+  cConfig = '{ "minConfidence": "low", "rules": { "hardcoded-string": "hint" } }';
+begin
+  // Vorlagen nur aus Platzhaltern und Zeichen: kein Text zum Übersetzen.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  S := Format(''%s → %s (%s)'', [A, B, C]);'#10'  S := Format(''%s (%d:%d)'', [A, B, C]);'#10 +
+    '  S := Format(''%0:s, %-8.2f %% %*d'', [A, B, C, D]);'), cConfig))));
+  // Wörter neben Platzhaltern bleiben Text.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  S := Format(''%d Dateien gefunden'', [N]);'), cConfig))));
+  // Umgebungsvariablen sind keine Platzhalter: %APPDATA% hat Buchstaben.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+    '  S := ''%APPDATA% fehlt'';'), cConfig))));
 end;
 
 initialization

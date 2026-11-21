@@ -411,7 +411,7 @@ begin
     // Die Meldung kann den Pfad enthalten; ReportNotWritten nennt nur die Klasse.
     on E: Exception do
     begin
-      TAtlasDataFile.ReportNotWritten('Zustand von Units suchen', E);
+      TAtlasDataFile.ReportNotWritten(cUnitSearchStateKind, E);
     end;
   end;
   FreeAndNil(Current);

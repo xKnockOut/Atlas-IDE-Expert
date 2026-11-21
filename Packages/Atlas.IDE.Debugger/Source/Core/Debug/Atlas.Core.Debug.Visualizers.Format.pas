@@ -42,6 +42,10 @@ type
     cSeparator = ' · ';
     /// <summary>Bytes je Zeile der Hex-Ansicht.</summary>
     cHexLineBytes = 16;
+    /// <summary>Ersatztext einer Sammlung: angezeigter Wert und Count wie die Eigenschaft im Quelltext.</summary>
+    cCountText = '%s · Count = %d';
+    /// <summary>Größe eines Speicherblocks (Einheit in beiden Sprachen gleich).</summary>
+    cByteCount = '%d Bytes';
   public
     /// <summary>Höchstens AMaxLength Zeichen, gekürzt mit „…“.</summary>
     class function Shorten(const AText: string; AMaxLength: Integer): string; static;
@@ -429,7 +433,7 @@ begin
       mHex := mHex + ['…'];
       mText.Append('…');
     end;
-    Result := Format('%d Bytes', [ATotal]);
+    Result := Format(cByteCount, [ATotal]);
     if Length(mHex) > 0 then
     begin
       Result := Result + cSeparator + string.Join(' ', mHex) + cSeparator + mText.ToString;
@@ -893,7 +897,7 @@ end;
 class function TAtlasVisualizerFormat.ListText(const AShown: string; ACount: Integer;
   const AItems: TArray<string>): string;
 begin
-  Result := Format('%s · Count = %d', [AShown, ACount]);
+  Result := Format(cCountText, [AShown, ACount]);
   if Length(AItems) > 0 then
   begin
     Result := Result + cSeparator + '[' + string.Join(', ', AItems);
@@ -908,7 +912,7 @@ end;
 class function TAtlasVisualizerFormat.DictionaryText(const AShown: string; ACount: Integer;
   const APairs: TArray<string>): string;
 begin
-  Result := Format('%s · Count = %d', [AShown, ACount]);
+  Result := Format(cCountText, [AShown, ACount]);
   if Length(APairs) > 0 then
   begin
     Result := Result + cSeparator + '{' + string.Join(', ', APairs);

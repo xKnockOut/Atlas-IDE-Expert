@@ -90,6 +90,14 @@ uses
   Atlas.Core.VersionControl.Internals.Text,
   Atlas.Core.VersionControl.Internals.LineTrace;
 
+const
+  /// <summary>Meldungen zu unerwarteter Ausgabe der Werkzeuge: nur für Tests und Fehlersuche, die Aufrufer
+  /// werten EAtlasVcsParse als Fehlschlag aus, ohne den Text zu zeigen.</summary>
+  cLogRevisionMissing = 'svn log: revision fehlt';
+  cBlameLineMissing = 'svn blame: line-number fehlt';
+  cLogDiffHeaderMissing = 'svn log --diff: Kopf erwartet';
+  cInfoEntryMissing = 'svn info: kein Eintrag';
+
 function ActionKind(const AAction: string): TAtlasVcsChangeKind;
 begin
   if AAction = 'A' then
@@ -565,7 +573,7 @@ begin
   FEntry.Revision := FReader.Attr('revision');
   if FEntry.Revision = '' then
   begin
-    raise EAtlasVcsParse.Create('svn log: revision fehlt');
+    raise EAtlasVcsParse.Create(cLogRevisionMissing);
   end;
   FFiles.Clear;
   FInEntry := not FReader.EmptyElement;
@@ -721,7 +729,7 @@ begin
   FItem := Default(TAtlasVcsBlameLine);
   if not TryStrToInt(FReader.Attr('line-number'), mNumber) then
   begin
-    raise EAtlasVcsParse.Create('svn blame: line-number fehlt');
+    raise EAtlasVcsParse.Create(cBlameLineMissing);
   end;
   FItem.Line := mNumber;
   FInEntry := not FReader.EmptyElement;
@@ -744,7 +752,7 @@ begin
   FItem.Revision := FReader.Attr('revision');
   if FItem.Revision = '' then
   begin
-    raise EAtlasVcsParse.Create('svn log: revision fehlt');
+    raise EAtlasVcsParse.Create(cLogRevisionMissing);
   end;
   FInEntry := not FReader.EmptyElement;
   if not FInEntry then
@@ -893,7 +901,7 @@ begin
   end;
   if not ReadLogHeader(FLines[FIndex], AItem.Revision, mMessage) then
   begin
-    raise EAtlasVcsParse.Create('svn log --diff: Kopf erwartet');
+    raise EAtlasVcsParse.Create(cLogDiffHeaderMissing);
   end;
   Inc(FIndex);
   // Leerzeile, dann die Nachricht.
@@ -916,7 +924,7 @@ begin
     mScan.Run(AText);
     if mScan.EntryCount = 0 then
     begin
-      raise EAtlasVcsParse.Create('svn info: kein Eintrag');
+      raise EAtlasVcsParse.Create(cInfoEntryMissing);
     end;
     Result := mScan.Info;
     Result.RelativeUrl := InfoRelativeUrl(Result.RelativeUrl, mScan.Url, mScan.RepositoryRoot);

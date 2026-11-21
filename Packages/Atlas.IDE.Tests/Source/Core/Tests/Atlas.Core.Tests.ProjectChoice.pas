@@ -68,6 +68,11 @@ uses
   System.Generics.Collections,
   Atlas.Text.Json;
 
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cKind = 'Wahl des Testprojekts';
+
+
 { TAtlasTestProjectChoices }
 
 class function TAtlasTestProjectChoices.KeyOf(const ACandidates: TArray<string>): string;
@@ -212,7 +217,7 @@ begin
     Exit(TAtlasDataLoad.Missing);
   end;
   mChoices := nil;
-  Result := TAtlasDataFile.Load(AFile, 'Wahl des Testprojekts',
+  Result := TAtlasDataFile.Load(AFile, cKind,
     function(const AText: string): Boolean
     begin
       mChoices := Parse(AText);
@@ -251,7 +256,7 @@ begin
     Result := True;
   except
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Wahl des Testprojekts', E);
+      TAtlasDataFile.ReportNotWritten(cKind, E);
   end;
 end;
 

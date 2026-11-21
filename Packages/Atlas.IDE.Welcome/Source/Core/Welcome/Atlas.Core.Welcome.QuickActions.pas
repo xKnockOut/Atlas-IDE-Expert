@@ -515,6 +515,10 @@ const
   cCmd = 1;
   cPowerShell = 2;
   cPwsh = 3;
+  // Befehlszeilen, die in den Ordner wechseln und die Konsole offen lassen.
+  cTerminalArgs = '-d "%s"';
+  cCmdArgs = '/K cd /d "%s"';
+  cPowerShellArgs = '-NoExit -Command Set-Location -LiteralPath ''%s''';
 var
   mFolder, mQuoted: string;
 begin
@@ -534,12 +538,11 @@ begin
   end;
   case IndexStr(LowerCase(BaseNameOf(AFileName)), cConsoles) of
     cTerminal:
-      AParameters := '-d "' + mQuoted + '"';
+      AParameters := Format(cTerminalArgs, [mQuoted]);
     cCmd:
-      AParameters := '/K cd /d "' + mQuoted + '"';
+      AParameters := Format(cCmdArgs, [mQuoted]);
     cPowerShell, cPwsh:
-      AParameters := '-NoExit -Command Set-Location -LiteralPath ''' + StringReplace(mQuoted, '''', '''''',
-        [rfReplaceAll]) + '''';
+      AParameters := Format(cPowerShellArgs, [StringReplace(mQuoted, '''', '''''', [rfReplaceAll])]);
   end;
 end;
 

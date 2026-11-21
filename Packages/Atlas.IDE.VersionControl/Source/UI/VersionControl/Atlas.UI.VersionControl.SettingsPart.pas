@@ -110,6 +110,8 @@ begin
 end;
 
 function TAtlasVcsSettingsOwner.Part<T>: T;
+const
+  cPartMissing = 'Teil %s fehlt im Abschnitt Versionsverwaltung'; // german-ok: Programmierfehler
 var
   mPart: TAtlasVcsSettingsPart;
 begin
@@ -120,8 +122,7 @@ begin
       Exit(T(mPart));
     end;
   end;
-  raise EArgumentException.CreateFmt('Teil %s fehlt im Abschnitt Versionsverwaltung', // german-ok: Programmierfehler
-    [T.ClassName]);
+  raise EArgumentException.CreateFmt(cPartMissing, [T.ClassName]);
 end;
 
 procedure TAtlasVcsSettingsOwner.RefreshMarks;

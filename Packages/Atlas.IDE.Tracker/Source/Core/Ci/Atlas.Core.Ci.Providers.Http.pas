@@ -315,12 +315,14 @@ end;
 
 class function TAtlasCiHttpTransport.TRequest.Create(const AMethod, AUrl, AAccept: string;
   ATimeoutMs, AMaxBytes: Integer): TRequest;
+const
+  cJsonContentType = 'application/json; charset=utf-8';
 begin
   Result := Default(TRequest);
   Result.Method := AMethod;
   Result.Url := AUrl;
   Result.Accept := AAccept;
-  Result.ContentType := 'application/json; charset=utf-8';
+  Result.ContentType := cJsonContentType;
   Result.IfModifiedSince := '';
   Result.Body := nil;
   Result.TimeoutMs := ATimeoutMs;

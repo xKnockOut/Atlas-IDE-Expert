@@ -1038,18 +1038,53 @@ begin
     cTexts[TGeneralText.HardcodedStringTitle].Text);
 end;
 
-/// <summary>Sieht der Literalinhalt nach Text für Menschen aus: mindestens zwei Wörter mit Buchstaben?</summary>
+/// <summary>Länge des Format-Platzhalters ab AIndex (%s, %d, %0:s, %-8.2f, %*d, %%), sonst 0.</summary>
+function FormatSpecifierLength(const AValue: string; AIndex: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  if (AValue[AIndex] <> '%') or (AIndex = Length(AValue)) then
+  begin
+    Exit;
+  end;
+  mIndex := AIndex + 1;
+  if AValue[mIndex] = '%' then
+  begin
+    Exit(2);
+  end;
+  while (mIndex <= Length(AValue)) and CharInSet(AValue[mIndex], ['0'..'9', '*', ':', '-', '.']) do
+  begin
+    Inc(mIndex);
+  end;
+  if (mIndex <= Length(AValue)) and CharInSet(AValue[mIndex], ['d', 'u', 'e', 'f', 'g', 'n', 'm', 'p', 's', 'x',
+    'D', 'U', 'E', 'F', 'G', 'N', 'M', 'P', 'S', 'X']) then
+  begin
+    Result := mIndex - AIndex + 1;
+  end;
+end;
+
+/// <summary>Sieht der Literalinhalt nach Text für Menschen aus: mindestens drei Buchstaben und ein Leerzeichen?
+/// Format-Platzhalter (%s, %d …) zählen nicht als Buchstaben: '%s → %s (%s)' ist eine Vorlage ohne Text.</summary>
 function LooksLikeText(const AValue: string): Boolean;
 var
-  mIndex, mLetters: Integer;
+  mIndex, mLetters, mSpecifier: Integer;
 begin
   mLetters := 0;
-  for mIndex := 1 to Length(AValue) do
+  mIndex := 1;
+  while mIndex <= Length(AValue) do
   begin
+    mSpecifier := FormatSpecifierLength(AValue, mIndex);
+    if mSpecifier > 0 then
+    begin
+      Inc(mIndex, mSpecifier);
+      Continue;
+    end;
     if AValue[mIndex].IsLetter then
     begin
       Inc(mLetters);
     end;
+    Inc(mIndex);
   end;
   Result := (mLetters >= 3) and (Pos(' ', Trim(AValue)) > 0);
 end;
