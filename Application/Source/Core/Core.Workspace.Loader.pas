@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Loader;
+﻿unit Core.Workspace.Loader;
 
-// Internals-Rolle Shell: Projekt eines Arbeitsbereichs laden. Projektdatei finden (#648), Delphi-Version und
+// Host-Rolle Core: Projekt eines Arbeitsbereichs laden. Projektdatei finden (#648), Delphi-Version und
 // Installation wählen (#47, #1321), die .dproj mit Konfiguration und Plattform lesen (#46) und den
 // Projektkontext der IDE anwenden (#396, #615).
 
@@ -14,13 +14,13 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
-  Shell.Workspace.Setup,
-  Shell.Workspace.Build,
-  Shell.Workspace.State;
+  Core.Workspace.Setup,
+  Core.Workspace.Build,
+  Core.Workspace.State;
 
 type
   /// <summary>Geladenes Projekt mit Installation und Projektkontext der IDE.</summary>
-  TShellLoadedProject = record
+  TCoreLoadedProject = record
     ProjectFile: string;
     /// <summary>ProjectVersion der .dproj; '' ohne.</summary>
     ProjectVersion: string;
@@ -40,40 +40,40 @@ type
     /// <summary>Bibliotheks- und Browsing-Pfade der Installation; nil ohne Installation.</summary>
     function LibraryPaths: TArray<string>;
     /// <summary>Für den Compileraufruf; leer ohne Installation.</summary>
-    function Install: TShellInstallInfo;
+    function Install: TCoreInstallInfo;
     /// <summary>Projekt-, Hauptdatei- und Unit-Namen, die das Server-Log verbirgt (#647).</summary>
     function Names: TArray<string>;
   end;
 
-  TShellProjectLoader = class
+  TCoreProjectLoader = class
   private
     FName: string;
     FRoot: string;
     FConfigRoot: string;
     FLogger: ILogger;
-    FSetup: TShellWorkspaceSetup;
-    FBuild: TShellBuildChoice;
+    FSetup: TCoreWorkspaceSetup;
+    FBuild: TCoreBuildChoice;
     function ConfiguredProjectFile(const ASettings: TServerSettings): string;
     function SingleProjectFile: string;
-    function ChosenVersion(const ASettings: TServerSettings; const ALoaded: TShellLoadedProject;
+    function ChosenVersion(const ASettings: TServerSettings; const ALoaded: TCoreLoadedProject;
       const AInstalled: TArray<string>): string;
-    procedure ChooseInstallation(const ASettings: TServerSettings; var ALoaded: TShellLoadedProject);
+    procedure ChooseInstallation(const ASettings: TServerSettings; var ALoaded: TCoreLoadedProject);
     /// <summary>Konfiguration und Plattform: Einstellung, dann mit AWithChoice die gewählte (#46), dann die der
     /// IDE (#396).</summary>
-    procedure SetTarget(const ASettings: TServerSettings; AWithChoice: Boolean; var ALoaded: TShellLoadedProject);
-    function ReadProject(const ASettings: TServerSettings; var ALoaded: TShellLoadedProject): Boolean;
-    procedure ApplyContext(var ALoaded: TShellLoadedProject);
+    procedure SetTarget(const ASettings: TServerSettings; AWithChoice: Boolean; var ALoaded: TCoreLoadedProject);
+    function ReadProject(const ASettings: TServerSettings; var ALoaded: TCoreLoadedProject): Boolean;
+    procedure ApplyContext(var ALoaded: TCoreLoadedProject);
   public
     /// <summary>AConfigRoot ist der Ordner der geltenden atlas.json (kann über ARoot liegen); '' gilt als ARoot.
     /// </summary>
-    constructor Create(const AName, ARoot, AConfigRoot: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup;
-      ABuild: TShellBuildChoice);
+    constructor Create(const AName, ARoot, AConfigRoot: string; const ALogger: ILogger; ASetup: TCoreWorkspaceSetup;
+      ABuild: TCoreBuildChoice);
     /// <summary>Feste Projektdatei (Projektgruppe), sonst "project" aus atlas.json (relativ zum Ordner der
     /// atlas.json), sonst die einzige .dproj im Ordner; '' ohne oder bei fehlender Datei.</summary>
     function FindProjectFile(const ASettings: TServerSettings): string;
     /// <summary>Lädt AProjectFile; False, wenn die .dproj nicht lesbar ist.</summary>
     function Load(const AProjectFile: string; const ASettings: TServerSettings;
-      out ALoaded: TShellLoadedProject): Boolean;
+      out ALoaded: TCoreLoadedProject): Boolean;
   end;
 
 implementation
@@ -85,14 +85,13 @@ uses
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.DelphiVersions,
-  Shell.Composition.Platform,
-  Shell.Workspace.Listings,
+  Core.Workspace.Listings,
   Atlas.Text.LogMarks,
   Atlas.Text.Files;
 
-{ TShellLoadedProject }
+{ TCoreLoadedProject }
 
-function TShellLoadedProject.Variables: TArray<TPair<string, string>>;
+function TCoreLoadedProject.Variables: TArray<TPair<string, string>>;
 begin
   Result := nil;
   if Installation <> nil then
@@ -101,7 +100,7 @@ begin
   end;
 end;
 
-function TShellLoadedProject.LibraryPaths: TArray<string>;
+function TCoreLoadedProject.LibraryPaths: TArray<string>;
 begin
   Result := nil;
   if Installation <> nil then
@@ -110,9 +109,9 @@ begin
   end;
 end;
 
-function TShellLoadedProject.Install: TShellInstallInfo;
+function TCoreLoadedProject.Install: TCoreInstallInfo;
 begin
-  Result := Default(TShellInstallInfo);
+  Result := Default(TCoreInstallInfo);
   if Installation <> nil then
   begin
     Result.DelphiVersion := Version;
@@ -121,7 +120,7 @@ begin
   end;
 end;
 
-function TShellLoadedProject.Names: TArray<string>;
+function TCoreLoadedProject.Names: TArray<string>;
 var
   mUnit: TProjectUnit;
 begin
@@ -150,10 +149,10 @@ begin
   end;
 end;
 
-{ TShellProjectLoader }
+{ TCoreProjectLoader }
 
-constructor TShellProjectLoader.Create(const AName, ARoot, AConfigRoot: string; const ALogger: ILogger;
-  ASetup: TShellWorkspaceSetup; ABuild: TShellBuildChoice);
+constructor TCoreProjectLoader.Create(const AName, ARoot, AConfigRoot: string; const ALogger: ILogger;
+  ASetup: TCoreWorkspaceSetup; ABuild: TCoreBuildChoice);
 begin
   inherited Create;
   FName := AName;
@@ -168,7 +167,7 @@ begin
   FBuild := ABuild;
 end;
 
-function TShellProjectLoader.ConfiguredProjectFile(const ASettings: TServerSettings): string;
+function TCoreProjectLoader.ConfiguredProjectFile(const ASettings: TServerSettings): string;
 begin
   Result := '';
   if TProjectPaths.IsAbsolute(ASettings.Project) then
@@ -188,7 +187,7 @@ begin
   end;
 end;
 
-function TShellProjectLoader.SingleProjectFile: string;
+function TCoreProjectLoader.SingleProjectFile: string;
 var
   mCandidates: TArray<string>;
 begin
@@ -209,7 +208,7 @@ begin
   end;
 end;
 
-function TShellProjectLoader.ChosenVersion(const ASettings: TServerSettings; const ALoaded: TShellLoadedProject;
+function TCoreProjectLoader.ChosenVersion(const ASettings: TServerSettings; const ALoaded: TCoreLoadedProject;
   const AInstalled: TArray<string>): string;
 var
   mConfiguredMissing: Boolean;
@@ -231,13 +230,13 @@ begin
   end;
 end;
 
-procedure TShellProjectLoader.ChooseInstallation(const ASettings: TServerSettings; var ALoaded: TShellLoadedProject);
+procedure TCoreProjectLoader.ChooseInstallation(const ASettings: TServerSettings; var ALoaded: TCoreLoadedProject);
 var
   mInstalled: TArray<string>;
 begin
   ALoaded.ProjectVersion := ProjectVersionOfFile(ALoaded.ProjectFile);
   ALoaded.Installation := nil;
-  mInstalled := TDelphiInstallation.Versions;
+  mInstalled := FSetup.Factories.Versions;
   try
     ALoaded.Version := ChosenVersion(ASettings, ALoaded, mInstalled);
     if not TDelphiVersions.IsInstalled(ALoaded.Version, mInstalled) then
@@ -247,7 +246,7 @@ begin
         ALoaded.ProjectVersion]));
       Exit;
     end;
-    ALoaded.Installation := TDelphiInstallation.Create(ALoaded.Version);
+    ALoaded.Installation := FSetup.Factories.InstallationOf(ALoaded.Version);
     FLogger.Info(Format('%s: %s (BDS %s, ProjectVersion %s)',
       [TLogMarks.Name(FName), TDelphiVersions.ProductName(ALoaded.Version), ALoaded.Version,
         ALoaded.ProjectVersion]));
@@ -261,8 +260,8 @@ begin
   end;
 end;
 
-procedure TShellProjectLoader.SetTarget(const ASettings: TServerSettings; AWithChoice: Boolean;
-  var ALoaded: TShellLoadedProject);
+procedure TCoreProjectLoader.SetTarget(const ASettings: TServerSettings; AWithChoice: Boolean;
+  var ALoaded: TCoreLoadedProject);
 begin
   ALoaded.Options.Config := ASettings.Config;
   ALoaded.Options.Platform := ASettings.Platform;
@@ -280,11 +279,11 @@ begin
   end;
 end;
 
-function TShellProjectLoader.ReadProject(const ASettings: TServerSettings; var ALoaded: TShellLoadedProject): Boolean;
+function TCoreProjectLoader.ReadProject(const ASettings: TServerSettings; var ALoaded: TCoreLoadedProject): Boolean;
 begin
   ALoaded.Options := Default(TDprojOptions);
   SetTarget(ASettings, True, ALoaded);
-  ALoaded.Options.FileExists := TShellFileAccess.ExistsFunc();
+  ALoaded.Options.FileExists := TCoreFileAccess.ExistsFunc();
   ALoaded.Options.Variables := ALoaded.Variables;
   try
     ALoaded.Project := TDprojReader.Load(ALoaded.ProjectFile, ALoaded.Options);
@@ -305,7 +304,7 @@ begin
   end;
 end;
 
-procedure TShellProjectLoader.ApplyContext(var ALoaded: TShellLoadedProject);
+procedure TCoreProjectLoader.ApplyContext(var ALoaded: TCoreLoadedProject);
 begin
   ALoaded.CompilerLibraryPaths := nil;
   if ALoaded.Installation <> nil then
@@ -328,7 +327,7 @@ begin
   FBuild.ApplyDefines(ALoaded.Project);
 end;
 
-function TShellProjectLoader.FindProjectFile(const ASettings: TServerSettings): string;
+function TCoreProjectLoader.FindProjectFile(const ASettings: TServerSettings): string;
 begin
   // Aus der Projektgruppe (#648): Die Datei ist vorgegeben, auch wenn mehrere im Ordner liegen.
   if FSetup.ProjectFile <> '' then
@@ -351,10 +350,10 @@ begin
   end;
 end;
 
-function TShellProjectLoader.Load(const AProjectFile: string; const ASettings: TServerSettings;
-  out ALoaded: TShellLoadedProject): Boolean;
+function TCoreProjectLoader.Load(const AProjectFile: string; const ASettings: TServerSettings;
+  out ALoaded: TCoreLoadedProject): Boolean;
 begin
-  ALoaded := Default(TShellLoadedProject);
+  ALoaded := Default(TCoreLoadedProject);
   ALoaded.ProjectFile := AProjectFile;
   // In der IDE bestimmt die IDE Konfiguration, Plattform, Optionen und Delphi-Version (#396).
   ALoaded.HasContext := FSetup.IdeContext(AProjectFile, ALoaded.Context);

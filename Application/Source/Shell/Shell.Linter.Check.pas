@@ -25,7 +25,7 @@ uses
   Atlas.Common.Diagnostics.CheckMemory,
   Core.CommandLine,
   Shell.VersionControlChanges,
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   Shell.Linter.Baseline;
 
 type
@@ -43,7 +43,7 @@ type
     FPackages: TArray<TPackageSource>;
     FPrograms: TArray<string>;
     FGit: TVcsChanges;
-    FGroup: TShellWorkspaceGroup;
+    FGroup: TCoreWorkspaceGroup;
     FTimings: TCheckTimings;
     FProfiler: TCheckProfiler;
     /// <summary>Speicher des Laufs mit --timings (#1480); sonst nil.</summary>

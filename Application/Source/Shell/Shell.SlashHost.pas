@@ -28,11 +28,11 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Editing.Contract,
-  Shell.Workspace;
+  Core.Workspace;
 
 type
   /// <summary>Ordner zur Datei AUri; nil ohne.</summary>
-  TWorkspaceOfFunc = reference to function(const AUri: string): TShellWorkspace;
+  TWorkspaceOfFunc = reference to function(const AUri: string): TCoreWorkspace;
   TReadTextFunc = reference to function(const AFileName: string; out AText: string): Boolean;
   THeaderTemplateFunc = reference to function(const AUri: string): string;
   /// <summary>Wert der Einstellung slashCommands.AName zur Datei AUri.</summary>
@@ -239,7 +239,7 @@ end;
 
 function TShellSlashHost.Project(const AUri: string; out AProject: TProjectInfo): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   mWorkspace := FSources.WorkspaceOf(AUri);
   Result := (mWorkspace <> nil) and mWorkspace.State.Project(AProject);
@@ -281,7 +281,7 @@ end;
 procedure TSlashEditAnswer.Handle(const AResponse: TJSONObject);
 var
   mReason: string;
-  mTarget: TShellWorkspace;
+  mTarget: TCoreWorkspace;
 begin
   if not TLspApplyEdit.ReadResult(AResponse, mReason) then
   begin
@@ -357,7 +357,7 @@ end;
 
 procedure TShellSlashHost.WriteProject(const AUri, AText: string);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mInfo: TProjectInfo;
   mFileFormat: TFileFormat;
   mWorkspaceOf: TWorkspaceOfFunc;
@@ -392,7 +392,7 @@ begin
   InLoop(
     procedure
     var
-      Target: TShellWorkspace;
+      Target: TCoreWorkspace;
     begin
       // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
       Target := mWorkspaceOf(mUri);
@@ -418,7 +418,7 @@ begin
   InLoop(
     procedure
     var
-      Workspace: TShellWorkspace;
+      Workspace: TCoreWorkspace;
       Error: string;
     begin
       // Wählt Konfiguration und Plattform und lädt neu: nur in der Schleife.
@@ -650,7 +650,7 @@ begin
   Result :=
     procedure
     var
-      mTarget: TShellWorkspace;
+      mTarget: TCoreWorkspace;
     begin
       // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
       mTarget := mWorkspaceOf(mUri);

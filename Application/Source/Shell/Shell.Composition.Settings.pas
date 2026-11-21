@@ -68,7 +68,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Localization.Texts,
-  Shell.Workspace;
+  Core.Workspace;
 
 { TShellSettings }
 
@@ -96,7 +96,7 @@ end;
 
 function TShellSettings.SettingsFor(const AUri: string): TServerSettings;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FWorkspaces.Lock);
   try
@@ -113,7 +113,7 @@ end;
 
 function TShellSettings.WorkspaceSettingsOf(const AUri: string; out ASettings: TServerSettings): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FWorkspaces.Lock);
   try
@@ -181,7 +181,7 @@ end;
 
 function TShellSettings.Highlight(const AUri: string): THighlightSettings;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FWorkspaces.Lock);
   try

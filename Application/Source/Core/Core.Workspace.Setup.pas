@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Setup;
+﻿unit Core.Workspace.Setup;
 
-// Contract-Rolle Shell: Vorgaben eines Arbeitsbereichs, die der Aufrufer vor Load setzt (Projektgruppe #648,
+// Host-Rolle Core: Vorgaben eines Arbeitsbereichs, die der Aufrufer vor Load setzt (Projektgruppe #648,
 // Index-Caches #1112, IDE-Projekte #396, Projektwahl #46, Prozessanmeldung #62), und seine Ereignisse.
 
 interface
@@ -15,25 +15,52 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Index.Processes;
 
 type
+  /// <summary>Installation zu AVersion mit ihren Bibliothekspfaden; löst EProjectError aus, wenn sie nicht lesbar
+  /// ist.</summary>
+  TCoreInstallationFactory = reference to function(const AVersion: string): ILibraryPathProvider;
+
+  /// <summary>Adapter, die ein Arbeitsbereich braucht, als Host-Core aber nicht selbst erzeugt (Konzept 8.1):
+  /// Die Shell setzt sie zusammen (TShellPlatformAdapters.WorkspaceFactories). Ohne Erzeuger gibt es keine
+  /// Installation und keine Unit-Suche, wie auf einem Rechner ohne Delphi.</summary>
+  TCoreWorkspaceFactories = record
+    /// <summary>Installierte Delphi-Versionen (BDS-Nummern).</summary>
+    InstalledVersions: TFunc<TArray<string>>;
+    Installation: TCoreInstallationFactory;
+    /// <summary>Dateizugriff des Indexaufbaus; Pflicht.</summary>
+    IndexFileSystem: TFunc<IIndexFileSystem>;
+    UnitLookup: TUnitLookupFactory;
+    /// <summary>Installierte Versionen; leer ohne Erzeuger.</summary>
+    function Versions: TArray<string>;
+    /// <summary>Installation zu AVersion; nil ohne Version oder Erzeuger. Löst EProjectError aus wie der
+    /// Erzeuger.</summary>
+    function InstallationOf(const AVersion: string): ILibraryPathProvider;
+    /// <summary>Unit-Suche zu ASetup; nil ohne Erzeuger.</summary>
+    function UnitLookupOf(const ASetup: TUnitLookupSetup): IRuleUnitLookup;
+  end;
+
   /// <summary>Dienste, die ein Arbeitsbereich vom Server bekommt: Dokumente, Transport zum Client, Protokoll,
   /// der gemeinsame Symbolindex und das Fortschrittszeichen des Indexaufbaus.</summary>
-  TShellWorkspaceServices = record
+  TCoreWorkspaceServices = record
     Store: IDocumentStore;
     Transport: IJsonRpcTransport;
     Logger: ILogger;
     Index: ISymbolIndex;
     ProgressToken: string;
+    Factories: TCoreWorkspaceFactories;
     class function Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport; const ALogger: ILogger;
-      const AIndex: ISymbolIndex; const AProgressToken: string): TShellWorkspaceServices; static;
+      const AIndex: ISymbolIndex; const AProgressToken: string; const AFactories: TCoreWorkspaceFactories):
+      TCoreWorkspaceServices; static;
   end;
 
   /// <summary>Vor Load zu setzen; danach nur noch lesen.</summary>
-  TShellWorkspaceSetup = class
+  TCoreWorkspaceSetup = class
   private
     FProjectFile: string;
     FCacheRoot: string;
@@ -50,6 +77,7 @@ type
     FOnGroupProjects: TFunc<TArray<string>>;
     FSelection: TProjectSelection;
     FProcessIdentity: TIndexProcessInfo;
+    FFactories: TCoreWorkspaceFactories;
   public
     constructor Create;
     /// <summary>Ordner aus OnPackageFolders; nil ohne Rückruf.</summary>
@@ -65,7 +93,7 @@ type
     property Priority: Integer read FPriority write FPriority;
     property Scheduler: TIndexScheduler read FScheduler write FScheduler;
     /// <summary>Aus der Projektgruppe: Mit index.projectGroup = false erst indizieren, wenn eine Datei des
-    /// Projekts geöffnet wird (TShellWorkspace.Activate).</summary>
+    /// Projekts geöffnet wird (TCoreWorkspace.Activate).</summary>
     property Deferred: Boolean read FDeferred write FDeferred;
     /// <summary>Eine Datei des zurückgestellten Projekts war offen.</summary>
     property Activated: Boolean read FActivated write FActivated;
@@ -94,10 +122,12 @@ type
     property Selection: TProjectSelection read FSelection write FSelection;
     /// <summary>Prozessnummer, Art (LSP/MCP) und Client für die Anmeldung am Cache (#62).</summary>
     property ProcessIdentity: TIndexProcessInfo read FProcessIdentity write FProcessIdentity;
+    /// <summary>Erzeuger der Adapter (aus TCoreWorkspaceServices.Factories).</summary>
+    property Factories: TCoreWorkspaceFactories read FFactories write FFactories;
   end;
 
   /// <summary>Ereignisse eines Arbeitsbereichs; jedes darf fehlen.</summary>
-  TShellWorkspaceEvents = class
+  TCoreWorkspaceEvents = class
   private
     FOnProjectLoaded: TProc;
     FOnIndexFinished: TProc;
@@ -133,27 +163,58 @@ implementation
 uses
   Atlas.Common.Index.CacheDirectory;
 
-{ TShellWorkspaceServices }
+{ TCoreWorkspaceServices }
 
-class function TShellWorkspaceServices.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
-  const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string): TShellWorkspaceServices;
+class function TCoreWorkspaceServices.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
+  const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string;
+  const AFactories: TCoreWorkspaceFactories): TCoreWorkspaceServices;
 begin
   Result.Store := AStore;
   Result.Transport := ATransport;
   Result.Logger := ALogger;
   Result.Index := AIndex;
   Result.ProgressToken := AProgressToken;
+  Result.Factories := AFactories;
 end;
 
-{ TShellWorkspaceSetup }
+{ TCoreWorkspaceFactories }
 
-constructor TShellWorkspaceSetup.Create;
+function TCoreWorkspaceFactories.Versions: TArray<string>;
+begin
+  Result := nil;
+  if Assigned(InstalledVersions) then
+  begin
+    Result := InstalledVersions();
+  end;
+end;
+
+function TCoreWorkspaceFactories.InstallationOf(const AVersion: string): ILibraryPathProvider;
+begin
+  Result := nil;
+  if (AVersion <> '') and Assigned(Installation) then
+  begin
+    Result := Installation(AVersion);
+  end;
+end;
+
+function TCoreWorkspaceFactories.UnitLookupOf(const ASetup: TUnitLookupSetup): IRuleUnitLookup;
+begin
+  Result := nil;
+  if Assigned(UnitLookup) then
+  begin
+    Result := UnitLookup(ASetup);
+  end;
+end;
+
+{ TCoreWorkspaceSetup }
+
+constructor TCoreWorkspaceSetup.Create;
 begin
   inherited Create;
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
 end;
 
-function TShellWorkspaceSetup.PackageFolders: TArray<string>;
+function TCoreWorkspaceSetup.PackageFolders: TArray<string>;
 begin
   Result := nil;
   if Assigned(FOnPackageFolders) then
@@ -162,15 +223,15 @@ begin
   end;
 end;
 
-function TShellWorkspaceSetup.IdeContext(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean;
+function TCoreWorkspaceSetup.IdeContext(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean;
 begin
   AContext := Default(TIdeProjectContext);
   Result := (FIdeProjects <> nil) and (AProjectFile <> '') and FIdeProjects.Find(AProjectFile, AContext);
 end;
 
-{ TShellWorkspaceEvents }
+{ TCoreWorkspaceEvents }
 
-procedure TShellWorkspaceEvents.ProjectLoaded;
+procedure TCoreWorkspaceEvents.ProjectLoaded;
 begin
   if Assigned(FOnProjectLoaded) then
   begin
@@ -178,7 +239,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceEvents.IndexFinished;
+procedure TCoreWorkspaceEvents.IndexFinished;
 begin
   if Assigned(FOnIndexFinished) then
   begin
@@ -186,7 +247,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceEvents.ProjectReady;
+procedure TCoreWorkspaceEvents.ProjectReady;
 begin
   if Assigned(FOnProjectReady) then
   begin
@@ -194,7 +255,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceEvents.IndexEvent(const AText: string);
+procedure TCoreWorkspaceEvents.IndexEvent(const AText: string);
 begin
   if Assigned(FOnIndexEvent) then
   begin
@@ -202,7 +263,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceEvents.Names(const ANames: TArray<string>);
+procedure TCoreWorkspaceEvents.Names(const ANames: TArray<string>);
 begin
   if Assigned(FOnNames) then
   begin
@@ -210,7 +271,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceEvents.SettingsChanged(const ASettings: TServerSettings);
+procedure TCoreWorkspaceEvents.SettingsChanged(const ASettings: TServerSettings);
 begin
   if Assigned(FOnSettingsChanged) then
   begin

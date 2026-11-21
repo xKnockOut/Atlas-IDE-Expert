@@ -20,7 +20,7 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IdeQuestions,
   Atlas.Common.Mcp.Confirm,
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   Shell.Mcp.Ide;
 
 function ToolAskUser(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
@@ -51,7 +51,7 @@ end;
 function ConfirmChooser(const AContext: TMcpToolContext): TMcpChooseFunc;
 var
   mServer: TMcpServer;
-  mGroup: TShellWorkspaceGroup;
+  mGroup: TCoreWorkspaceGroup;
   mClient, mIde: TMcpAskFunc;
 begin
   mServer := AContext.Server;

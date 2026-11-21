@@ -12,7 +12,7 @@
 // Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
 // Formatieren (format_code, #1358) mit den Formatregeln des Projekts, zu dem die Datei gehört.
 // Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action, fix_findings)
-// bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
+// bekommen den Symbolindex und die Projektdienste über TCoreWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
 // get_server_status (#1356) zeigt den Status des Atlas-Servers der IDE für den
 // Ordner (aus dessen Statusdatei), sonst den dieses Prozesses.
@@ -62,7 +62,7 @@ uses
   Atlas.Common.Index.CacheDirectory,
   Platform.Server,
   Core.CrashCases,
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   Shell.Mcp.Context,
   Shell.Mcp.Services,
   Shell.Mcp.Tools,
@@ -133,7 +133,7 @@ end;
 
 /// <summary>Name aus clientInfo für „Prozesse am Projekt“, Absturzfälle (#1883) und die Aufrufstatistik (#2611,
 /// AStatistics nil = aus).</summary>
-function ClientInfoOf(AGroup: TShellWorkspaceGroup; ACrashCases: TCoreCrashCases; AStatistics: TMcpStatistics):
+function ClientInfoOf(AGroup: TCoreWorkspaceGroup; ACrashCases: TCoreCrashCases; AStatistics: TMcpStatistics):
   TProc<string>;
 begin
   Result :=

@@ -51,6 +51,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.Adapters.UnitLookup;
 
 /// <summary>Einrichtung mit den Dateien AFiles (vollständige Pfade) als Dateisystem.</summary>

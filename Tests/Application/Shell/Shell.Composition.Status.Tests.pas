@@ -10,7 +10,7 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.Status.Contract,
   Shell.Composition.Status;

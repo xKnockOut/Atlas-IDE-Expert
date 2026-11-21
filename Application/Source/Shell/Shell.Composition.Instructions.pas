@@ -34,7 +34,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.Rules.Builtin,
-  Shell.Workspace;
+  Core.Workspace;
 
 function ReadInstructions(const AFileName: string; out ABytes: TBytes): Boolean;
 begin
@@ -60,7 +60,7 @@ end;
 function TryWorkspace(AWorkspaces: TShellWorkspaceRegistry; const AUri: string; out ARoot: string;
   out ASettings: TServerSettings): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   ARoot := '';
   ASettings := Default(TServerSettings);

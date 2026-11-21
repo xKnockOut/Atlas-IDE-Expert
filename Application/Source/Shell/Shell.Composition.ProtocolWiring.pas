@@ -43,7 +43,7 @@ uses
   Atlas.Common.Compiler.Results,
   Platform.Server,
   Shell.Composition.Platform,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Core,
   Shell.Composition.Workspaces,
   Shell.Composition.Capabilities,
@@ -65,7 +65,7 @@ begin
     function(const AUri: string): TArray<string>
     var
       mCore: TShellCore;
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
     begin
       Result := nil;
       mCore := AParts.Core;

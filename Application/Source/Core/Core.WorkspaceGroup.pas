@@ -1,6 +1,6 @@
-﻿unit Shell.WorkspaceGroup;
+﻿unit Core.WorkspaceGroup;
 
-// Host-Rolle Shell: Arbeitsbereiche ohne LSP-Client für MCP-Modus und Linter
+// Host-Rolle Core: Arbeitsbereiche ohne LSP-Client für MCP-Modus und Linter
 // (#1112). Ein Ordner mit seinem Projekt und, mit index.projectGroup, den
 // übrigen Projekten der Projektgruppe, alle in einem Symbolindex wie im
 // LSP-Server. Für die Prüfregeln liefert RuleProject den Projektkontext einer
@@ -27,26 +27,27 @@ uses
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
-  Shell.Workspace;
+  Core.Workspace.Setup,
+  Core.Workspace;
 
 type
   /// <summary>Gemerkte Projekte der Gruppe für projektweite Regeln (#1102); Valid bis Invalidate.</summary>
-  TShellRuleProjectCache = record
+  TCoreRuleProjectCache = record
     Items: TArray<TRuleProject>;
     Valid: Boolean;
   end;
 
   /// <summary>Warten auf den Indexaufbau der Arbeitsbereiche einer Gruppe.</summary>
-  TShellIndexWait = record
+  TCoreIndexWait = record
     /// <summary>Arbeitsbereiche, deren Indexaufbau seit Load fertig ist; unter FLock der Gruppe.</summary>
-    Finished: TList<TShellWorkspace>;
+    Finished: TList<TCoreWorkspace>;
     /// <summary>Gesetzt, sobald einer fertig wird.</summary>
     Event: TEvent;
     /// <summary>Meldung je fertigem Arbeitsbereich (#1480), True beim Hauptarbeitsbereich; nil erlaubt.</summary>
     OnFinished: TProc<Boolean>;
   end;
 
-  TShellWorkspaceGroup = class
+  TCoreWorkspaceGroup = class
   private
     FRoot: string;
     FStore: IDocumentStore;
@@ -55,23 +56,24 @@ type
     FIndex: ISymbolIndex;
     FProgressToken: string;
     FReadText: TRuleProjectReadText;
-    FMain: TShellWorkspace;
-    FOthers: TObjectList<TShellWorkspace>;
+    FFactories: TCoreWorkspaceFactories;
+    FMain: TCoreWorkspace;
+    FOthers: TObjectList<TCoreWorkspace>;
     FProcessIdentity: TIndexProcessInfo;
     FCacheRoot: string;
-    FIndexWait: TShellIndexWait;
+    FIndexWait: TCoreIndexWait;
     FLock: TObject;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102), bis Invalidate; unter FLock.</summary>
-    FRuleProjects: TShellRuleProjectCache;
+    FRuleProjects: TCoreRuleProjectCache;
     /// <summary>Uses-Graph über FIndex für projektweite Regeln (#64) und die MCP-Werkzeuge; einer für die Gruppe,
     /// statt je Prüfung einen eigenen aufzubauen.</summary>
     FUsesGraph: TUsesGraphService;
     /// <summary>Code-Abfragen über alle Projekte der Gruppe (#1351) für query_code, --query und die Regeln
     /// query:&lt;name&gt;; ein Dienst, damit ein Ergebnis je Index-Stand einmal gerechnet wird.</summary>
     FQueries: ICodeQueries;
-    function Workspaces: TArray<TShellWorkspace>;
+    function Workspaces: TArray<TCoreWorkspace>;
     function QuerySource(out ASource: TQuerySource): Boolean;
-    procedure Prepare(AWorkspace: TShellWorkspace);
+    procedure Prepare(AWorkspace: TCoreWorkspace);
     function RuleProjects: TArray<TRuleProject>;
   public
     /// <summary>Name des Clients für alle Arbeitsbereiche, auch nach Load (#1883).</summary>
@@ -79,7 +81,8 @@ type
     /// <summary>AReadText liest Quelltexte (Hauptquelltexte der Projekte); Fortschritt und logMessage der
     /// Arbeitsbereiche gehen ins Leere, Meldungen an ALogger.</summary>
     constructor Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
-      const AIndex: ISymbolIndex; const AProgressToken: string; const AReadText: TRuleProjectReadText);
+      const AIndex: ISymbolIndex; const AProgressToken: string; const AFactories: TCoreWorkspaceFactories;
+      const AReadText: TRuleProjectReadText);
     destructor Destroy; override;
     /// <summary>Liest atlas.json, lädt das Projekt (ProjectFile oder im Ordner gesucht) und mit
     /// index.projectGroup die übrigen Projekte der Gruppe; startet den Indexaufbau.</summary>
@@ -95,7 +98,7 @@ type
     /// <summary>Lädt AUnitName über die Suchpfade des ersten Projekts nach, das sie findet.</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Arbeitsbereich, zu dem AFileName gehört, sonst der Hauptarbeitsbereich.</summary>
-    function WorkspaceOf(const AFileName: string): TShellWorkspace;
+    function WorkspaceOf(const AFileName: string): TCoreWorkspace;
     /// <summary>Projektkontext für die Prüfregeln (#1112): Anwendungsart, Formulare der .dpr und die Dienste
     /// mit Index, Nachladen über alle Projekte und den Projekten der Gruppe.</summary>
     function RuleProject(const AFileName: string): TCheckProject;
@@ -110,7 +113,7 @@ type
     function Queries: ICodeQueries;
     /// <summary>Projekte der Gruppe neu ermitteln (nach geänderten Projektdateien).</summary>
     procedure Invalidate;
-    property Main: TShellWorkspace read FMain;
+    property Main: TCoreWorkspace read FMain;
     /// <summary>Symbolindex aller Projekte der Gruppe.</summary>
     property Index: ISymbolIndex read FIndex;
     /// <summary>Vor Load setzen (#62): Anmeldung am Index-Cache.</summary>
@@ -136,8 +139,7 @@ uses
   Atlas.Common.Query.Service,
   Atlas.Common.Lsp.Query,
   Core.Bootstrap,
-  Shell.Workspace.Setup,
-  Shell.Workspace.RuleProjects;
+  Core.Workspace.RuleProjects;
 
 type
   /// <summary>Nimmt die LSP-Benachrichtigungen der Arbeitsbereiche (Fortschritt, logMessage) auf und verwirft
@@ -161,7 +163,7 @@ end;
 
 /// <summary>Projekte der Gruppe von AWorkspace: die .groupproj in ARoot, sonst die nächste darüber, die das Projekt
 /// von AWorkspace enthält (#1895).</summary>
-function GroupProjectsOf(const ARoot: string; AWorkspace: TShellWorkspace; const ALogger: ILogger): TArray<string>;
+function GroupProjectsOf(const ARoot: string; AWorkspace: TCoreWorkspace; const ALogger: ILogger): TArray<string>;
 var
   mInfo: TProjectInfo;
   mProjectFile: string;
@@ -183,10 +185,11 @@ begin
   Result := TCoreBootstrap.EnclosingGroupProjects(mProjectFile, ALogger);
 end;
 
-{ TShellWorkspaceGroup }
+{ TCoreWorkspaceGroup }
 
-constructor TShellWorkspaceGroup.Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
-  const AIndex: ISymbolIndex; const AProgressToken: string; const AReadText: TRuleProjectReadText);
+constructor TCoreWorkspaceGroup.Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
+  const AIndex: ISymbolIndex; const AProgressToken: string; const AFactories: TCoreWorkspaceFactories;
+  const AReadText: TRuleProjectReadText);
 begin
   inherited Create;
   FRoot := ARoot;
@@ -195,21 +198,22 @@ begin
   FIndex := AIndex;
   FProgressToken := AProgressToken;
   FReadText := AReadText;
+  FFactories := AFactories;
   FTransport := TSilentTransport.Create;
   FLock := TObject.Create;
-  FIndexWait.Finished := TList<TShellWorkspace>.Create;
+  FIndexWait.Finished := TList<TCoreWorkspace>.Create;
   FIndexWait.Event := TEvent.Create(nil, False, False, '');
-  FOthers := TObjectList<TShellWorkspace>.Create(True);
+  FOthers := TObjectList<TCoreWorkspace>.Create(True);
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
-  FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot),
-    TShellWorkspaceServices.Create(AStore, FTransport, ALogger,
-    AIndex, AProgressToken));
+  FMain := TCoreWorkspace.Create(ARoot, ExtractFileName(ARoot),
+    TCoreWorkspaceServices.Create(AStore, FTransport, ALogger,
+    AIndex, AProgressToken, AFactories));
   FUsesGraph := TUsesGraphService.Create(AIndex, TUsesGraphOptions.Default);
   FQueries := TCodeQueryService.Create(QuerySource);
   TPascalPreprocessor.SetDeclaredProvider(TSymbolIndex.DeclaredIn(AIndex));
 end;
 
-destructor TShellWorkspaceGroup.Destroy;
+destructor TCoreWorkspaceGroup.Destroy;
 begin
   TPascalPreprocessor.SetDeclaredProvider(nil);
   FQueries := nil;
@@ -222,9 +226,9 @@ begin
   inherited;
 end;
 
-function TShellWorkspaceGroup.Workspaces: TArray<TShellWorkspace>;
+function TCoreWorkspaceGroup.Workspaces: TArray<TCoreWorkspace>;
 var
-  mOther: TShellWorkspace;
+  mOther: TCoreWorkspace;
 begin
   Result := [FMain];
   for mOther in FOthers do
@@ -233,7 +237,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
+function TCoreWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
 var
   mInput: TLspQueryInput;
 begin
@@ -255,7 +259,7 @@ begin
   Result := True;
 end;
 
-procedure TShellWorkspaceGroup.Prepare(AWorkspace: TShellWorkspace);
+procedure TCoreWorkspaceGroup.Prepare(AWorkspace: TCoreWorkspace);
 begin
   AWorkspace.Setup.ProcessIdentity := FProcessIdentity;
   AWorkspace.Setup.CacheRoot := FCacheRoot;
@@ -296,9 +300,9 @@ begin
     end;
 end;
 
-function TShellWorkspaceGroup.RuleProjects: TArray<TRuleProject>;
+function TCoreWorkspaceGroup.RuleProjects: TArray<TRuleProject>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TRuleProject;
   mMainSource: string;
 begin
@@ -328,9 +332,9 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceGroup.SetClient(const AClient: string);
+procedure TCoreWorkspaceGroup.SetClient(const AClient: string);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   FProcessIdentity.Client := AClient;
   for mWorkspace in Workspaces do
@@ -339,11 +343,11 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceGroup.Load(const AGlobalSettings: string);
+procedure TCoreWorkspaceGroup.Load(const AGlobalSettings: string);
 var
   mInfo: TProjectInfo;
   mProjectFile: string;
-  mOther: TShellWorkspace;
+  mOther: TCoreWorkspace;
 begin
   Prepare(FMain);
   FMain.Load(AGlobalSettings);
@@ -359,9 +363,9 @@ begin
     begin
       Continue;
     end;
-    mOther := TShellWorkspace.Create(ExtractFileDir(mProjectFile), ChangeFileExt(ExtractFileName(mProjectFile), ''),
-      TShellWorkspaceServices.Create(FStore, FTransport, FLogger, FIndex, Format('%s-%d', [FProgressToken,
-      FOthers.Count + 1])));
+    mOther := TCoreWorkspace.Create(ExtractFileDir(mProjectFile), ChangeFileExt(ExtractFileName(mProjectFile), ''),
+      TCoreWorkspaceServices.Create(FStore, FTransport, FLogger, FIndex, Format('%s-%d', [FProgressToken,
+      FOthers.Count + 1]), FFactories));
     mOther.Setup.ProjectFile := mProjectFile;
     Prepare(mOther);
     FOthers.Add(mOther);
@@ -369,9 +373,9 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceGroup.Stop;
+procedure TCoreWorkspaceGroup.Stop;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   for mWorkspace in FOthers do
   begin
@@ -380,9 +384,9 @@ begin
   FMain.Stop;
 end;
 
-function TShellWorkspaceGroup.WaitForIndex(ATimeoutMs: Cardinal): Boolean;
+function TCoreWorkspaceGroup.WaitForIndex(ATimeoutMs: Cardinal): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mInfo: TProjectInfo;
   mWatch: TStopwatch;
   mMissing: Boolean;
@@ -415,9 +419,9 @@ begin
   until False;
 end;
 
-function TShellWorkspaceGroup.Ready(out AReason: string): Boolean;
+function TCoreWorkspaceGroup.Ready(out AReason: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   AReason := '';
   for mWorkspace in Workspaces do
@@ -430,9 +434,9 @@ begin
   Result := True;
 end;
 
-function TShellWorkspaceGroup.AllFiles: TArray<string>;
+function TCoreWorkspaceGroup.AllFiles: TArray<string>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   for mWorkspace in Workspaces do
@@ -441,9 +445,9 @@ begin
   end;
 end;
 
-function TShellWorkspaceGroup.EnsureUnit(const AUnitName: string): Boolean;
+function TCoreWorkspaceGroup.EnsureUnit(const AUnitName: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   for mWorkspace in Workspaces do
   begin
@@ -455,9 +459,9 @@ begin
   Result := False;
 end;
 
-function TShellWorkspaceGroup.WorkspaceOf(const AFileName: string): TShellWorkspace;
+function TCoreWorkspaceGroup.WorkspaceOf(const AFileName: string): TCoreWorkspace;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   for mWorkspace in Workspaces do
   begin
@@ -469,9 +473,9 @@ begin
   Result := FMain;
 end;
 
-function TShellWorkspaceGroup.RuleProject(const AFileName: string): TCheckProject;
+function TCoreWorkspaceGroup.RuleProject(const AFileName: string): TCheckProject;
 var
-  mWorkspace, mOther: TShellWorkspace;
+  mWorkspace, mOther: TCoreWorkspace;
   mInfo: TProjectInfo;
   mProjects: TArray<TProjectInfo>;
 begin
@@ -490,7 +494,7 @@ begin
       mProjects := mProjects + [mInfo];
     end;
   end;
-  Result := TShellRuleProjects.RuleProjectOf(mProjects, AFileName, FReadText);
+  Result := TCoreRuleProjects.RuleProjectOf(mProjects, AFileName, FReadText);
   Result.Services := mWorkspace.RuleServices;
   // Nachladen über alle Projekte der Gruppe und projektweite Regeln (#1102) wie im Server.
   Result.Services.EnsureUnit :=
@@ -503,7 +507,7 @@ begin
   Result.Services.Queries := FQueries;
 end;
 
-function TShellWorkspaceGroup.RuleProjectFiles: IRuleProjectFiles;
+function TCoreWorkspaceGroup.RuleProjectFiles: IRuleProjectFiles;
 begin
   Result := TRuleProjectFiles.Create(RuleProjects, FIndex, FReadText,
     function(out AReason: string): Boolean
@@ -513,7 +517,7 @@ begin
     UsesGraph);
 end;
 
-function TShellWorkspaceGroup.UsesGraph: TUsesGraphService;
+function TCoreWorkspaceGroup.UsesGraph: TUsesGraphService;
 var
   mOptions: TUsesGraphOptions;
 begin
@@ -526,12 +530,12 @@ begin
   Result := FUsesGraph;
 end;
 
-function TShellWorkspaceGroup.Queries: ICodeQueries;
+function TCoreWorkspaceGroup.Queries: ICodeQueries;
 begin
   Result := FQueries;
 end;
 
-procedure TShellWorkspaceGroup.Invalidate;
+procedure TCoreWorkspaceGroup.Invalidate;
 begin
   System.TMonitor.Enter(FLock);
   try
