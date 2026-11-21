@@ -75,86 +75,9 @@ uses
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Internals.GitHubApi,
-  Atlas.Core.Tracker.YouTrackApi;
-
-type
-  /// <summary>Transport mit festen Antworten je Adressanfang; merkt die Adressen.</summary>
-  TSearchTransport = class(TInterfacedObject, IAtlasCiTransport)
-  private
-    FPrefixes: TArray<string>;
-    FStatus: TArray<Integer>;
-    FTexts: TArray<string>;
-    FFail: TAtlasCiFetchError;
-  public
-    Calls: TArray<string>;
-    procedure Answer(const APrefix: string; AStatus: Integer; const AText: string);
-    procedure FailWith(AError: TAtlasCiFetchError);
-    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
-  end;
-
-{ TSearchTransport }
-
-procedure TSearchTransport.Answer(const APrefix: string; AStatus: Integer; const AText: string);
-begin
-  FPrefixes := FPrefixes + [APrefix];
-  FStatus := FStatus + [AStatus];
-  FTexts := FTexts + [AText];
-end;
-
-procedure TSearchTransport.FailWith(AError: TAtlasCiFetchError);
-begin
-  FFail := AError;
-end;
-
-function TSearchTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-var
-  mIndex: Integer;
-begin
-  Calls := Calls + [AUrl];
-  AStatus := 0;
-  AText := '';
-  AError := FFail;
-  if FFail <> TAtlasCiFetchError.None then
-  begin
-    Exit(False);
-  end;
-  for mIndex := 0 to High(FPrefixes) do
-  begin
-    if Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex] then
-    begin
-      AStatus := FStatus[mIndex];
-      AText := FTexts[mIndex];
-      Exit(True);
-    end;
-  end;
-  AStatus := 404;
-  Result := True;
-end;
-
-/// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
-function Fixture(const AFolder, AName: string): string;
-var
-  mDirectory, mFileName: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
-      TPath.Combine(AFolder, AName))));
-    if TFile.Exists(mFileName) then
-    begin
-      Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
-end;
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Tests.Files,
+  Atlas.Core.Tracker.TestSupport;
 
 function GitHubTarget: TAtlasTrackerTarget;
 begin
@@ -374,7 +297,7 @@ end;
 
 procedure TAtlasIssuePaletteSearchTests.GitHubSearchAndLookupOverTransport;
 var
-  mTransport: TSearchTransport;
+  mTransport: TFakeTransport;
   mTransportRef: IAtlasCiTransport;
   mProvider: IAtlasTrackerProvider;
   mIssues: TArray<TAtlasTrackerIssue>;
@@ -382,12 +305,12 @@ var
   mError: TAtlasCiFetchError;
 begin
   mProvider := TAtlasGitHubTracker.Create;
-  mTransport := TSearchTransport.Create;
+  mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
   mTransport.Answer('https://api.github.com/search/issues?q=repo%3Abeispiel/atlas', 200,
-    Fixture('GitHub', 'search-issues.json'));
+    TTestData.Fixture('GitHub', 'search-issues.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753', 200,
-    Fixture('GitHub', 'issue-details.json'));
+    TTestData.Fixture('GitHub', 'issue-details.json'));
   Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'Willkommensseite', 20,
     mIssues, mError));
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.None, mError);
@@ -410,7 +333,7 @@ end;
 
 procedure TAtlasIssuePaletteSearchTests.YouTrackSearchAndLookupOverTransport;
 var
-  mTransport: TSearchTransport;
+  mTransport: TFakeTransport;
   mTransportRef: IAtlasCiTransport;
   mProvider: IAtlasTrackerProvider;
   mIssues: TArray<TAtlasTrackerIssue>;
@@ -418,11 +341,11 @@ var
   mError: TAtlasCiFetchError;
 begin
   mProvider := TAtlasYouTrackTracker.Create;
-  mTransport := TSearchTransport.Create;
+  mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
-  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?query=', 200, Fixture('YouTrack', 'issues.json'));
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?query=', 200, TTestData.Fixture('YouTrack', 'issues.json'));
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-12?', 200,
-    Fixture('YouTrack', 'issue-lookup.json'));
+    TTestData.Fixture('YouTrack', 'issue-lookup.json'));
   Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 5000), 'Tracker', 20,
     mIssues, mError));
   Assert.AreEqual(TAtlasYouTrackApi.TextSearchUrl(YouTrackTarget, 'Tracker', 20), mTransport.Calls[0]);
@@ -441,7 +364,7 @@ end;
 
 procedure TAtlasIssuePaletteSearchTests.SearchErrors;
 var
-  mTransport: TSearchTransport;
+  mTransport: TFakeTransport;
   mTransportRef: IAtlasCiTransport;
   mGitHub, mYouTrack: IAtlasTrackerProvider;
   mIssues: TArray<TAtlasTrackerIssue>;
@@ -450,7 +373,7 @@ var
 begin
   mGitHub := TAtlasGitHubTracker.Create;
   mYouTrack := TAtlasYouTrackTracker.Create;
-  mTransport := TSearchTransport.Create;
+  mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
   // Ohne Projekt bzw. ohne Transport: keine Anfrage.
   Assert.IsFalse(mGitHub.Search(TAtlasTrackerCall.Create(TAtlasTrackerTarget.Create('github', '', '', ''),

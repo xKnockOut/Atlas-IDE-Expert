@@ -111,7 +111,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Internals.SvnExternals,
   Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.VersionControl.ExternalRules;
+  Atlas.Core.VersionControl.ExternalRules,
+  Atlas.Tests.Lists;
 
 var
   /// <summary>Protokoll von RecordingProgress.</summary>
@@ -228,21 +229,6 @@ begin
   ExternalsOutcome := TAtlasVcsOutcome.Failed;
 end;
 
-/// <summary>Ob AName in AList vorkommt.</summary>
-function ListHas(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in AList do
-  begin
-    if mName = AName then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function TPlanVcs.Kind: TAtlasVcsKind;
 begin
   Result := VcsKind;
@@ -289,7 +275,7 @@ end;
 function TPlanVcs.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['exists ' + AName];
-  AExists := ListHas(LocalBranches, AName);
+  AExists := TTestLists.Contains(LocalBranches, AName);
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -302,7 +288,7 @@ end;
 function TPlanVcs.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['remote ' + AName];
-  AExists := ListHas(RemoteBranches, AName);
+  AExists := TTestLists.Contains(RemoteBranches, AName);
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -451,7 +437,7 @@ begin
   Calls := Calls + ['resolve ' + ARef];
   ARevision := '';
   Result := TAtlasVcsOutcome.Failed;
-  if ListHas(Refs, ARef) then
+  if TTestLists.Contains(Refs, ARef) then
   begin
     ARevision := 'abc123';
     Result := TAtlasVcsOutcome.Ok;
@@ -1099,7 +1085,7 @@ begin
   Assert.AreEqual('', mFacts.SvnExternals[2].WorkingRevision, 'svnversion scheitert: unbekannt');
   Assert.IsTrue(mFacts.SvnExternals[2].Foreign);
   Assert.IsFalse(mFacts.SvnExternals[0].IsFile, 'Ordner gibt es hier nicht: kein Datei-External');
-  Assert.IsTrue(ListHas(mFake.Calls, 'svnversion Packages/Basis'));
+  Assert.IsTrue(TTestLists.Contains(mFake.Calls, 'svnversion Packages/Basis'));
   // Ohne lesbare Externals: wie vor #1291 der Hinweis aus HasExternals.
   mFake.ExternalsOutcome := TAtlasVcsOutcome.Failed;
   mFake.Externals := True;

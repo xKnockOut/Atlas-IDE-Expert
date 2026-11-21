@@ -40,7 +40,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Core.Debug.ExceptionRules,
-  Atlas.Core.Debug.IgnoreList;
+  Atlas.Core.Debug.IgnoreList,
+  Atlas.Tests.TempFolder;
 
 const
   cProject = 'C:\Projekte\Demo.dproj';
@@ -50,11 +51,7 @@ const
 
 procedure TAtlasDebugIgnoreListTests.TearDown;
 begin
-  if (FFolder <> '') and TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasDebugIgnoreListTests.ClassesWithoutCaseAndDuplicates;

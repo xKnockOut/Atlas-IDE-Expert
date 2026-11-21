@@ -79,7 +79,6 @@ $Exempt = @{
     'Atlas.Windows.Updates.Adapters.Registry'           = 'Registry des Benutzers; die Planung testet Atlas.Common.Updates.KnownPackages'
     'Atlas.Windows.Updates.Adapters.Files'              = 'Dateisystem; Tausch und Rückfall testet Atlas.Common.Updates.FileSwap'
     'Atlas.Windows.Updates.Adapters.Processes'          = 'Prozess- und Modulliste des Systems, Strg+C'
-    'Atlas.Windows.Updates.Adapters.Trust'              = 'WinVerifyTrust und SHA-256 echter Dateien'
     'Atlas.Windows.Updates.Adapters.Network'            = 'HTTP-Zugriff; die Auswertung testet Atlas.Common.Updates.Prepare'
     'Atlas.Windows.Updates.Adapters.Archive'            = 'Hülle um System.Zip; sichere Einträge testet Atlas.Common.Updates.Archive'
     'Atlas.Windows.Updates.Adapters.Builder'            = 'startet MSBuild der Delphi-Installation'

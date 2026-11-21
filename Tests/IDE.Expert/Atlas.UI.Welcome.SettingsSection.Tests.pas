@@ -89,16 +89,6 @@ begin
   Result := FSection;
 end;
 
-/// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
-function SheetOf(AControl: TControl): TTabSheet;
-begin
-  while (AControl <> nil) and not (AControl is TTabSheet) do
-  begin
-    AControl := AControl.Parent;
-  end;
-  Result := TTabSheet(AControl);
-end;
-
 { TWelcomeSettingsSectionTests }
 
 function TileSwitch(const AKey, ASetting, ASettingsKey: string): TAtlasWelcomeTileSwitch;

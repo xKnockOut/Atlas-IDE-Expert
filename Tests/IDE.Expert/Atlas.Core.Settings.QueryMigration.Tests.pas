@@ -30,18 +30,8 @@ uses
   Atlas.Core.Settings.QueryMigration,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Tracker.Contract.MyIssues;
-
-function Names(const AQueries: TArray<TAtlasTrackerQuery>): string;
-var
-  mQuery: TAtlasTrackerQuery;
-begin
-  Result := '';
-  for mQuery in AQueries do
-  begin
-    Result := Result + mQuery.Name + ';';
-  end;
-end;
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.Core.Tracker.TestSupport;
 
 { TAtlasSettingsQueryMigrationTests }
 
@@ -62,7 +52,7 @@ begin
   TAtlasSettingsQueryMigrations.RemoveLegacy(mStore as IAtlasSettingsNames);
   Assert.IsFalse((mStore as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
   mQueries := TAtlasTrackerQueries.Read(mStore.ReadString('IssuesQueries', ''));
-  Assert.AreEqual('Standard;Sprint;', Names(mQueries), 'vorn, damit sie ohne Wahl gilt');
+  Assert.AreEqual('Standard;Sprint;', QueryNames(mQueries), 'vorn, damit sie ohne Wahl gilt');
   Assert.AreEqual('assignee: meine #Ungelöst', mQueries[0].Query);
   Assert.AreEqual(0, TAtlasTrackerQueries.Choose(mQueries, '', True), 'Standard gewählt');
   // Zweiter Start: nichts mehr zu tun.
@@ -109,7 +99,7 @@ begin
   mQueries := TAtlasTrackerQueries.Read(TAtlasSettingsQueryMigrations.WithLegacy(
     '[{"name": "Sprint", "query": "Sprint: {Aktuell}", "connection": "Firma", "project": "ATL"}, ' +
     '{"name": "Gelöst", "query": "#Gelöst"}]', 'mehr' + #13#10 + 'zeilig'));
-  Assert.AreEqual('Standard;Sprint;Gelöst;', Names(mQueries));
+  Assert.AreEqual('Standard;Sprint;Gelöst;', QueryNames(mQueries));
   Assert.AreEqual('mehr zeilig', mQueries[0].Query, 'einzeilig');
   Assert.AreEqual('Firma', mQueries[1].Connection);
   Assert.AreEqual('ATL', mQueries[1].Project);
@@ -120,7 +110,7 @@ begin
   // Eine Zeile „Standard“ ohne Abfrage zählt nicht (TAtlasTrackerQueries.Read lässt sie weg).
   mQueries := TAtlasTrackerQueries.Read(TAtlasSettingsQueryMigrations.WithLegacy(
     '[{"name": "Standard", "query": ""}]', 'b'));
-  Assert.AreEqual('Standard;', Names(mQueries));
+  Assert.AreEqual('Standard;', QueryNames(mQueries));
   Assert.AreEqual('b', mQueries[0].Query);
   mQueries := nil;
 end;

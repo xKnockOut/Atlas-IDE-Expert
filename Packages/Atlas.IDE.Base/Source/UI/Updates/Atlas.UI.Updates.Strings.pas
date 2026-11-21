@@ -24,11 +24,12 @@ type
     UpdatesOutcomeInstalled, UpdatesOutcomeAdded, UpdatesOutcomeRemoved, UpdatesOutcomeRolledBack,
     UpdatesOutcomeCancelled, UpdatesOutcomeFailed, UpdatesErrorManifest, UpdatesErrorVersion, UpdatesErrorNoPackage,
     UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash, UpdatesErrorArchive, UpdatesErrorUnsigned,
-    UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
+    UpdatesErrorSignature, UpdatesErrorManifestUnsigned, UpdatesErrorManifestSignature, UpdatesErrorBuild,
+    UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
     UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection, UpdatesErrorUnexpected, UpdatesErrorStart,
     UpdatesCheckFailedMessage, UpdatesConsentTitle, UpdatesConsentText, UpdatesConsentYes, UpdatesConsentNo,
     UpdatesAvailable, UpdatesErrorSourceConfirm, UpdatesErrorHost, UpdatesStageConfirmSource, UpdatesSourceMessage,
-    UpdatesSourceTitle, UpdatesSourceText, UpdatesSourceBuild, UpdatesSourceUnbound);
+    UpdatesSourceTitle, UpdatesSourceText, UpdatesSourceBuild, UpdatesSourceUnbound, UpdatesWarningManifestUnsigned);
 
   TAtlasUpdatesStrings = class
   public
@@ -103,6 +104,8 @@ const
      'Archiv unbrauchbar',
      'Datei nicht signiert',
      'Signatur ungültig oder von einem anderen Herausgeber',
+     'Versionsdatei nicht signiert',
+     'Versionsdatei nicht vom Herausgeber signiert oder verändert',
      'Bauen aus dem Quelltext fehlgeschlagen',
      'Datei gesperrt',
      'Kopieren fehlgeschlagen',
@@ -131,7 +134,9 @@ const
      'Herausgeber gebunden: Die gebauten Packages tragen keine Signatur, den Quelltext sichert nur die Prüfsumme ' +
      'aus der Versionsdatei. Nur bauen, wenn die Quelle vertrauenswürdig ist.',
      'Aus dem Quelltext bauen',
-     'Aus dem Quelltext gebaut: nicht an den Herausgeber gebunden.'),
+     'Aus dem Quelltext gebaut: nicht an den Herausgeber gebunden.',
+     'Hinweis: Die Versionsdatei dieses Releases ist nicht signiert. Nur Prüfsummen sichern das Update; es ist ' +
+     'nicht an den Herausgeber gebunden.'),
     ( 'Install updates:',
      'offer',
      'prepare without asking',
@@ -188,6 +193,8 @@ const
      'archive unusable',
      'file not signed',
      'signature invalid or from another publisher',
+     'version file not signed',
+     'version file not signed by the publisher or altered',
      'building from source failed',
      'file locked',
      'copying failed',
@@ -215,7 +222,9 @@ const
      'the publisher: the built packages carry no signature, and only the checksum from the version file protects ' +
      'the source. Only build if you trust the source.',
      'Build from source',
-     'Built from source: not bound to the publisher.'));
+     'Built from source: not bound to the publisher.',
+     'Note: the version file of this release is not signed. Only checksums protect the update; it is not bound ' +
+     'to the publisher.'));
 
 { TAtlasUpdatesStrings }
 

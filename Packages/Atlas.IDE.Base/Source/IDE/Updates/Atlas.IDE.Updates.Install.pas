@@ -140,6 +140,10 @@ end;
 
 procedure TAtlasIdeUpdateInstaller.Prepared(const AStage: TUpdateStage);
 begin
+  if AStage.Warning <> '' then
+  begin
+    Log('Update ' + AStage.Version + ' warning: ' + AStage.Warning);
+  end;
   if TAtlasUpdateInstall.AwaitsSourceConfirmation(AStage) then
   begin
     Log('Update ' + AStage.Version + ': no package for this IDE, building from source needs confirmation');
@@ -154,12 +158,14 @@ begin
   else if AStage.AskSelection then
   begin
     Log('Update ' + AStage.Version + ' ready, new modules to choose');
-    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesChooseMessage, [AStage.Version]) + SourceNote(AStage));
+    Say(TAtlasUpdateTexts.WithWarning(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesChooseMessage,
+      [AStage.Version]) + SourceNote(AStage), AStage.Warning));
   end
   else
   begin
     Log('Update ' + AStage.Version + ' ready');
-    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPreparedMessage, [AStage.Version]) + SourceNote(AStage));
+    Say(TAtlasUpdateTexts.WithWarning(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPreparedMessage,
+      [AStage.Version]) + SourceNote(AStage), AStage.Warning));
   end;
 end;
 

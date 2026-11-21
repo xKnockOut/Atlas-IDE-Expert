@@ -475,6 +475,7 @@ Atlas.Common.Semantics.UnresolvedNames.Tests
 Atlas.Common.Todos.Report.Tests
 Atlas.Common.Todos.Scanner.Tests
 Atlas.Common.Updates.Apply.Tests
+Atlas.Common.Updates.ManifestSignature.Tests
 Atlas.Common.Updates.Prepare.Tests
 Atlas.Common.Updates.Tests
 

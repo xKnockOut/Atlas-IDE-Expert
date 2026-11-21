@@ -53,6 +53,8 @@ Up to 1.1.0 the package contained the installer `AtlasSetup.exe`. Since 1.2.0 it
 
 **Updates:** after consent at the first start, the plugin checks at most once a day whether a new version is available and reports it in the message view ([RAD-Studio.md](RAD-Studio.md)). From 2.0 on it installs it itself on request (#1519): “Update now” downloads and verifies the update in the background, a console window applies it when the IDE closes, and Atlas reports the result on the next start. This needs a writable Atlas folder (not below `C:\Program Files`); otherwise nothing changes. Installed via GetIt, updates come through GetIt.
 
+**Authenticity of updates:** every release puts a signature `atlas-version.json.sig` next to the version file `atlas-version.json`, made with the publisher's own key (ECDSA P-256, no purchased certificate needed). AtlasUpdate checks it against the built-in public keys before it downloads anything, including before a build from source. A wrong or altered signature stops the update (“version file not signed by the publisher or altered”). Without a signature (releases before 2.3) Atlas still applies the update for now and says so; a later version requires it. Whether the EXE and BPL files also carry a code signing certificate is stated in the release notes.
+
 ### Without the plugin: Code Insight Manager (quick guide)
 
 If you only want to use the server without the plugin, register it in the built-in LSP client of the IDE (#175, in detail in [RAD-Studio.md](RAD-Studio.md#built-in-lsp-client)):

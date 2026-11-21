@@ -92,7 +92,8 @@ uses
   Atlas.Core.Completion.Providers.Server,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Providers.Server,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.Completion.TestSupport;
 
 const
   /// <summary>Handle eines Modul-Packages, das es nicht gibt.</summary>
@@ -102,22 +103,6 @@ const
   cHangMs = 5000;
 
 type
-  TSink = class(TInterfacedObject, IAtlasCompletionSink)
-  private
-    FLock: TCriticalSection;
-    FNames: TList<string>;
-    FDone: TEvent;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure AddItems(const AItems: TAtlasCompletionItems);
-    procedure MarkIncomplete;
-    procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
-    procedure Complete;
-    function WaitDone(ATimeoutMs: Cardinal): Boolean;
-    function Names: string;
-  end;
-
   /// <summary>Quelle, die beim Aufruf wirft bzw. hängt (wie ein kaputter SQL-Provider).</summary>
   TBrokenProvider = class(TInterfacedObject, IAtlasCompletionProvider, IAtlasNamedProvider)
   private
@@ -191,67 +176,6 @@ function TThreadRecordingProvider.Fetch(const AContext: TAtlasContext; AData: TO
 begin
   AState := Default(TAtlasFetchState);
   Result := nil;
-end;
-
-{ TSink }
-
-constructor TSink.Create;
-begin
-  inherited Create;
-  FLock := TCriticalSection.Create;
-  FNames := TList<string>.Create;
-  FDone := TEvent.Create(nil, True, False, '');
-end;
-
-destructor TSink.Destroy;
-begin
-  FDone.Free;
-  FNames.Free;
-  FLock.Free;
-  inherited;
-end;
-
-procedure TSink.AddItems(const AItems: TAtlasCompletionItems);
-var
-  mItem: TAtlasCompletionItem;
-begin
-  FLock.Enter;
-  try
-    for mItem in AItems do
-    begin
-      FNames.Add(mItem.Name);
-    end;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-procedure TSink.MarkIncomplete;
-begin
-end;
-
-procedure TSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
-begin
-end;
-
-procedure TSink.Complete;
-begin
-  FDone.SetEvent;
-end;
-
-function TSink.WaitDone(ATimeoutMs: Cardinal): Boolean;
-begin
-  Result := FDone.WaitFor(ATimeoutMs) = wrSignaled;
-end;
-
-function TSink.Names: string;
-begin
-  FLock.Enter;
-  try
-    Result := string.Join(',', FNames.ToArray);
-  finally
-    FLock.Leave;
-  end;
 end;
 
 { TBrokenProvider }
@@ -486,7 +410,7 @@ var
   mProvider: IAtlasCompletionProvider;
   mBroken: TBrokenProvider;
   mBrokenRef: IAtlasCompletionProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
   mIndex: Integer;
   mWarning: string;
@@ -504,7 +428,7 @@ begin
   mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Alpha')]));
   for mIndex := 1 to 3 do
   begin
-    mSink := TSink.Create;
+    mSink := TCollectingSink.Create;
     mSinkRef := mSink;
     mProvider.Query(Context, mSinkRef);
     Assert.IsTrue(mSink.WaitDone(3000), 'Complete trotz kaputter Quelle');
@@ -514,7 +438,7 @@ begin
   Assert.Contains(mWarning, 'SQL');
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('Vervollständigung (fest)'));
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Completion), 'nur die Quelle, nicht die Vervollständigung');
-  mSink := TSink.Create;
+  mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mProvider.Query(Context, mSinkRef);
   Assert.IsTrue(mSink.WaitDone(3000));
@@ -528,7 +452,7 @@ procedure TAtlasTimeLimitTests.HangingProviderBlocksAtMostLimit;
 var
   mProviders: TAtlasCompletionProviders;
   mProvider: IAtlasCompletionProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
   mWatch: TStopwatch;
 begin
@@ -536,7 +460,7 @@ begin
   mProvider := mProviders;
   mProviders.Add(TBrokenProvider.Create('Hängt', 5000));
   mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Beta')]));
-  mSink := TSink.Create;
+  mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mWatch := TStopwatch.StartNew;
   mProvider.Query(Context, mSinkRef);
@@ -556,7 +480,7 @@ var
   mProvider: IAtlasCompletionProvider;
   mSlow: TBrokenProvider;
   mSlowRef: IAtlasCompletionProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
   mWatch: TStopwatch;
   mIndex: Integer;
@@ -570,7 +494,7 @@ begin
   mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Gamma')]));
   for mIndex := 1 to 4 do
   begin
-    mSink := TSink.Create;
+    mSink := TCollectingSink.Create;
     mSinkRef := mSink;
     mWatch := TStopwatch.StartNew;
     mProvider.Query(Context, mSinkRef);
@@ -588,7 +512,7 @@ begin
   TAtlasShutdown.Signal;
   TAtlasTimeLimit.WaitIdle(2000);
   TAtlasShutdown.Reset;
-  mSink := TSink.Create;
+  mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mProvider.Query(Context, mSinkRef);
   Assert.IsTrue(mSink.WaitDone(3000));
@@ -601,7 +525,7 @@ procedure TAtlasTimeLimitTests.FetchErrorsCountPerProvider;
 var
   mFailing: TFailingFetchProvider;
   mProvider: IAtlasCompletionProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
   mIndex: Integer;
 begin
@@ -610,7 +534,7 @@ begin
   mProvider := mFailing;
   for mIndex := 1 to 3 do
   begin
-    mSink := TSink.Create;
+    mSink := TCollectingSink.Create;
     mSinkRef := mSink;
     mProvider.Query(Context, mSinkRef);
     Assert.IsTrue(mSink.WaitDone(3000), 'leeres Ergebnis statt Exception');
@@ -829,12 +753,12 @@ procedure TAtlasTimeLimitTests.StaleQueryAfterPrepareFetchesNothing;
 var
   mStale: TCancelInPrepareProvider;
   mProvider: IAtlasCompletionProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
 begin
   mStale := TCancelInPrepareProvider.Create;
   mProvider := mStale;
-  mSink := TSink.Create;
+  mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mProvider.Query(Context, mSinkRef);
   Assert.IsTrue(mSink.WaitDone(1000), 'die Senke schließt trotzdem ab');
@@ -847,14 +771,14 @@ var
   mProviders: TAtlasCompletionProviders;
   mProvider: IAtlasCompletionProvider;
   mRecording: TThreadRecordingProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
 begin
   mProviders := TAtlasCompletionProviders.Create;
   mProvider := mProviders;
   mRecording := TThreadRecordingProvider.Create;
   mProviders.Add(mRecording);
-  mSink := TSink.Create;
+  mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mProvider.Query(Context, mSinkRef);
   Assert.IsTrue(mSink.WaitDone(3000));
@@ -867,7 +791,7 @@ procedure TAtlasTimeLimitTests.ServerSessionFuncRunsInWorker;
 var
   mProviders: TAtlasCompletionProviders;
   mProvider: IAtlasCompletionProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
   mSessionThread: TThreadID;
 begin
@@ -880,7 +804,7 @@ begin
       mSessionThread := TThread.CurrentThread.ThreadID;
       Result := nil;
     end));
-  mSink := TSink.Create;
+  mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mProvider.Query(Context, mSinkRef);
   Assert.IsTrue(mSink.WaitDone(3000));

@@ -33,19 +33,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Progress;
-
-procedure Send(const AProgress: ILspProgress; const AJson: string);
-var
-  mValue: TJSONValue;
-begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    AProgress.Handle(mValue);
-  finally
-    mValue.Free;
-  end;
-end;
+  Atlas.Core.Lsp.Progress,
+  Atlas.Core.Lsp.TestSupport;
 
 { TLspProgressTests }
 
