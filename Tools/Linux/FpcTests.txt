@@ -184,7 +184,7 @@ Atlas.Common.JsonRpc.WorkerPool.Tests
 Atlas.Common.Leaks.Setup.Tests
 Atlas.Common.Leaks.Candidates.Tests
 Atlas.Common.Lsp.LeakCandidates.Tests
-Atlas.Common.Leaks.Ownership.Tests
+Atlas.Common.Rules.Ownership.Tests
 Atlas.Common.Lsp.Ownership.Tests
 Atlas.Common.Lsp.RuntimeReport.Tests
 Atlas.Common.Localization.Texts.Tests

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Leaks.Ownership;
+﻿unit Atlas.Common.Rules.Ownership;
 
 // Wer gibt das frei? (#1877) Je Erzeugung „TKlasse.Create…“ einer Unit die
 // Art der Freigabe für die Marke im Editor (atlas.server.ownership):
@@ -81,7 +81,7 @@ uses
   Atlas.Common.Editing.FreeFields,
   Atlas.Common.Editing.FreeFields.Types,
   Atlas.Common.Rules.Builtin.Ownership,
-  Atlas.Common.Leaks.Internals.OwnershipTree;
+  Atlas.Common.Rules.Internals.OwnershipTree;
 
 const
   /// <summary>Listen, die ihre Elemente besitzen können (TObjectList ohne False usw.).</summary>
@@ -502,7 +502,7 @@ begin
     begin
       mKind := TOwnershipKind.InDestroy;
     end;
-    for mNode in TOwnershipTree.Occurrences(mMethod, AField) do
+    for mNode in TOwnershipTree.UsesWithSelf(mMethod, AField) do
     begin
       if TOwnershipTree.IsRelease(mNode) and ((ASite.Kind <> TOwnershipKind.InDestroy) or
         (mKind = TOwnershipKind.InDestroy)) then
@@ -538,7 +538,7 @@ begin
     ASite.Message := mFinding.Message;
     Exit;
   end;
-  for mNode in TOwnershipTree.Occurrences(ARaw.Routine, AName) do
+  for mNode in TOwnershipTree.UsesWithSelf(ARaw.Routine, AName) do
   begin
     UseOfLocal(ARaw, mNode, ASite);
   end;

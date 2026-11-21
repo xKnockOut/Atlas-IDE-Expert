@@ -1,6 +1,6 @@
-﻿unit Atlas.Common.Leaks.Internals.OwnershipTree;
+﻿unit Atlas.Common.Rules.Internals.OwnershipTree;
 
-// Hilfen über dem Syntaxbaum für „Wer gibt das frei?“ (#1877, Atlas.Common.Leaks.Ownership): Routine und Klasse um
+// Hilfen über dem Syntaxbaum für „Wer gibt das frei?“ (#1877, Atlas.Common.Rules.Ownership): Routine und Klasse um
 // eine Stelle, lokale Variablen und Parameter, Felder einer Klasse, Vorkommen eines Namens, Freigaben und
 // finally-Blöcke. Ohne Zustand.
 
@@ -34,9 +34,10 @@ type
       static;
     /// <summary>Name hinter X bzw. Self.X; '' sonst.</summary>
     class function SelfMemberName(ANode: TSyntaxNode): string; static;
-    /// <summary>Vorkommen von AName (auch Self.AName) unter ANode, ohne Mitglieder anderer Objekte (Obj.AName).
+    /// <summary>Vorkommen von AName unter ANode wie TSyntaxNode.IdentifierUses, dazu Self.AName; ohne Mitglieder anderer
+    /// Objekte (Obj.AName).
     /// </summary>
-    class function Occurrences(ANode: TSyntaxNode; const AName: string): TArray<TSyntaxNode>; static;
+    class function UsesWithSelf(ANode: TSyntaxNode; const AName: string): TArray<TSyntaxNode>; static;
     /// <summary>Gibt das Vorkommen ANode das Objekt frei (X.Free, X.Destroy, X.DisposeOf, X.Release,
     /// FreeAndNil(X))?</summary>
     class function IsRelease(ANode: TSyntaxNode): Boolean; static;
@@ -274,7 +275,7 @@ begin
   end;
 end;
 
-class function TOwnershipTree.Occurrences(ANode: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
+class function TOwnershipTree.UsesWithSelf(ANode: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
 var
   mFound: TArray<TSyntaxNode>;
   mName: string;
