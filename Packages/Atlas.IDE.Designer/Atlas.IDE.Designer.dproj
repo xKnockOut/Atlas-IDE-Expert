@@ -197,6 +197,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Surface.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Adapters.Module.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Measure.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Views.pas"/>
