@@ -88,7 +88,6 @@ uses
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.CompletionDebugDisplay,
-  Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Values,
   Atlas.Common.Lsp.Completion.Declarations,
   Atlas.Common.Lsp.Completion.Names,

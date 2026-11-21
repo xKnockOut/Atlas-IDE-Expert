@@ -77,8 +77,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Derived,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Rules.Derived;
 
 function SourceText(const AText: string; ANode: TSyntaxNode): string;
 begin

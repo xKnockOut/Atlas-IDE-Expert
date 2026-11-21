@@ -48,8 +48,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.Completion.Context;
+  Atlas.Common.Lsp.Documentation;
 
 const
   cDirectives: array[0..13] of string = ('class', 'static', 'virtual', 'dynamic', 'override', 'abstract', 'final',

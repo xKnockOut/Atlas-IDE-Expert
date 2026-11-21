@@ -59,7 +59,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Pascal.SyntaxNodes,
   Atlas.Text.Names;
 
 { TGenericListSyntax }

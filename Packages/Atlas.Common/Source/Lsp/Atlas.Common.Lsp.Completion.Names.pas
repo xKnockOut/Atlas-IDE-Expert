@@ -41,7 +41,6 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.NameSuggestions,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Completion.Context,
   Atlas.Text.Lines;
 
 /// <summary>Der Name, der an der Namensposition ASite schon steht; '' ohne.</summary>

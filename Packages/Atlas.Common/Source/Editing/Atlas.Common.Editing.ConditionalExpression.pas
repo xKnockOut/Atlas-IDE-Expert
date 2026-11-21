@@ -982,7 +982,8 @@ begin
   begin
     mNode := mNode.Parent;
   end;
-  Result := (mNode <> nil) and (TSyntaxNodes.IndexOf(ACall, mNode) >= 1);
+  // Das erste Kind ist der Aufgerufene, die übrigen sind Argumente.
+  Result := (mNode <> nil) and (mNode <> ACall[0]);
 end;
 
 class function TConditionalExpression.ToStatement(const AText: string; ATree: TSyntaxTree;

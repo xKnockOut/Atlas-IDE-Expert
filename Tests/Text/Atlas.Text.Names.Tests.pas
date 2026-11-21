@@ -116,7 +116,7 @@ procedure TTextNamesTests.CompareIgnoresCaseFirst;
 begin
   Assert.IsTrue(TTextNames.Compare('alpha', 'Beta') < 0);
   Assert.IsTrue(TTextNames.Compare('Beta', 'alpha') > 0);
-  Assert.IsTrue(TTextNames.Compare('Name', 'name') <> 0, 'Gleichstand wird nach Groß-/Kleinschreibung entschieden');
+  Assert.AreNotEqual(0, TTextNames.Compare('Name', 'name'), 'Gleichstand wird nach Groß-/Kleinschreibung entschieden');
   Assert.AreEqual(0, TTextNames.Compare('Name', 'Name'));
 end;
 

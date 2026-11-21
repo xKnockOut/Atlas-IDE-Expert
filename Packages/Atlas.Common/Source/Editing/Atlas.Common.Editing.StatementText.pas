@@ -99,8 +99,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Text.Lines;
 
 { TStatementRewrite }
 

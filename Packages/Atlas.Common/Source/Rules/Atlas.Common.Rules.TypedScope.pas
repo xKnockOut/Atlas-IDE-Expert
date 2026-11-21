@@ -65,8 +65,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Derived,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Rules.Derived;
 
 { TTypedScope }
 
