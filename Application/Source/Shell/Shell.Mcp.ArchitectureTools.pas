@@ -37,7 +37,7 @@ uses
   Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Comparison,
-  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Lsp.SymbolPath.Search,
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Localization.Texts,

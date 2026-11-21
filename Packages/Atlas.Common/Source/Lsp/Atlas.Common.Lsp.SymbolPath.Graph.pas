@@ -1,8 +1,8 @@
-﻿unit Atlas.Common.Architecture.SymbolPath.Graph;
+﻿unit Atlas.Common.Lsp.SymbolPath.Graph;
 
 // Kanten aus dem Index für die Pfadsuche zwischen Symbolen (#1117), Teil von
-// Atlas.Common.Architecture.SymbolPath. Aufrufkanten stehen in
-// Atlas.Common.Architecture.SymbolPath.Calls.
+// Atlas.Common.Lsp.SymbolPath.Search. Aufrufkanten stehen in
+// Atlas.Common.Lsp.SymbolPath.Calls.
 //
 // - Vorwärts je Knoten: uses (Uses-Graph), contains, inherits, implements
 //   (Klasse → Interface, Interface → Umsetzung, ebenso je Methode), hasField,
@@ -23,7 +23,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Architecture.SymbolPath.Nodes;
+  Atlas.Common.Lsp.SymbolPath.Nodes;
 
 type
   TSymbolPathGraph = class

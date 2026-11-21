@@ -38,7 +38,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Lsp.SymbolPath.Search,
   Atlas.Common.Lsp.SymbolPath;
 
 const
