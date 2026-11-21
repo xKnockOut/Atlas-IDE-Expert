@@ -65,6 +65,9 @@ type
     class function ParseObject(const AJson: string): TJSONObject; static;
     /// <summary>Wie ParseObject, aber ein leeres Objekt statt nil. Der Aufrufer gibt das Objekt frei.</summary>
     class function ParseObjectOrEmpty(const AJson: string): TJSONObject; static;
+    /// <summary>Zahl "format" im Wurzelobjekt von AJson (Fassung einer Datendatei); 0 bei leerem, ungültigem Text,
+    /// anderem Wert oder ohne Zahl.</summary>
+    class function FormatOf(const AJson: string): Integer; static;
     /// <summary>AJson als JSON-Array; nil bei leerem, ungültigem Text oder anderem Wert. Der Aufrufer gibt das Array
     /// frei.</summary>
     class function ParseArray(const AJson: string): TJSONArray; static;
@@ -290,6 +293,18 @@ begin
   else
   begin
     mValue.Free;
+  end;
+end;
+
+class function TJsonRead.FormatOf(const AJson: string): Integer;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := ParseObject(AJson);
+  try
+    Result := IntOr(mRoot, 'format', 0);
+  finally
+    mRoot.Free;
   end;
 end;
 

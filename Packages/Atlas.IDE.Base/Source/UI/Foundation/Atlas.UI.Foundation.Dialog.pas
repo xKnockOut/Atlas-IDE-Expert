@@ -100,6 +100,10 @@ type
     cRowLabelTop = 4;
     /// <summary>Höchstens dieser Anteil (Prozent) der Arbeitsfläche als Anfangsgröße eines Dialogs.</summary>
     cMaxScreenShare = 80;
+    /// <summary>Knöpfe aus NewFooterButton: Rand neben dem Text, Mindestbreite und Höhe, logische Pixel.</summary>
+    cFooterButtonPadding = 32;
+    cFooterButtonMinWidth = 90;
+    cFooterButtonHeight = 28;
   private
     procedure HandleThemeChanged;
   protected
@@ -140,6 +144,10 @@ type
     /// <summary>Knopf ACaption in AParent, so breit wie sein Text plus APadding96; Rand rechts AGap96, unten die
     /// Hälfte (logische Pixel).</summary>
     function NewTextButton(AParent: TWinControl; const ACaption: string; APadding96, AGap96: Integer): TButton;
+    /// <summary>Knopf ACaption mit AClick in einer frei gesetzten Fußzeile AParent: so breit wie sein Text plus
+    /// cFooterButtonPadding, mindestens cFooterButtonMinWidth, cRowGap unter der Oberkante, rechts verankert
+    /// (logische Pixel). Left setzt der Aufrufer.</summary>
+    function NewFooterButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     /// <summary>Hinweiszeile mit Höhe AHeight96 (logische Pixel) unter dem bisher Untersten; anfangs leer.</summary>
     function AddNote(AHeight96: Integer): TAtlasNoteLabel;
     /// <summary>Innenhöhe bis unter das unterste Element plus Rand.</summary>
@@ -470,6 +478,18 @@ begin
   Result.Width := TextWidth(Font, ACaption) + ScaleValue(APadding96);
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(0, 0, ScaleValue(AGap96), ScaleValue(AGap96 div 2));
+end;
+
+function TAtlasDialog.NewFooterButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+  Result.Width := Max(TextWidth(Font, ACaption) + ScaleValue(cFooterButtonPadding), ScaleValue(cFooterButtonMinWidth));
+  Result.Top := ScaleValue(cRowGap);
+  Result.Height := ScaleValue(cFooterButtonHeight);
+  Result.Anchors := [akTop, akRight];
 end;
 
 function TAtlasDialog.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;

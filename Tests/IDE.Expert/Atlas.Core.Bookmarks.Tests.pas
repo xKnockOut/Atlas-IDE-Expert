@@ -131,7 +131,8 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Bookmarks.Store,
-  Atlas.Core.Marks.Ids;
+  Atlas.Core.Marks.Ids,
+  Atlas.Text.Json;
 
 const
   cKundeFile = 'C:\Projekte\Source\Kunde.pas';
@@ -731,8 +732,6 @@ begin
   Assert.IsFalse(TAtlasBookmarks.Parse('{"format": 3, "bookmarks": []}', FFolder, mList));
   Assert.AreEqual(0, Integer(mList.Count));
   Assert.IsTrue(TAtlasBookmarks.Parse('{"bookmarks": []}', FFolder, mList), 'Ohne format gilt 1');
-  Assert.AreEqual(3, TAtlasBookmarks.FormatOf('{"format": 3}'));
-  Assert.AreEqual(0, TAtlasBookmarks.FormatOf('kaputt'));
 end;
 
 procedure TAtlasBookmarkStorageTests.SaveAndLoadLocal;
@@ -806,7 +805,7 @@ begin
   Assert.AreEqual(Project, mList.Project);
   mList.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsFalse(TAtlasBookmarks.Save(mList, False));
-  Assert.AreEqual(3, TAtlasBookmarks.FormatOf(TFile.ReadAllText(mFileName, TEncoding.UTF8)));
+  Assert.AreEqual(3, TJsonRead.FormatOf(TFile.ReadAllText(mFileName, TEncoding.UTF8)));
 end;
 
 procedure TAtlasBookmarkStorageTests.BrokenFileSetAsideLockedFileKept;

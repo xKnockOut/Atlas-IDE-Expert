@@ -184,8 +184,6 @@ type
     /// <summary>JSON mit Dateipfaden relativ zu AFolder (sofern darunter oder daneben auf demselben Laufwerk).
     /// </summary>
     class function ToJson(const AList: TAtlasBookmarkList; const AFolder: string): string; static;
-    /// <summary>Format einer Datei (0 ohne oder bei ungültigem Inhalt).</summary>
-    class function FormatOf(const AJson: string): Integer; static;
     /// <summary>Liest AFileName für AProject über TAtlasDataFile.Load; False ohne, bei unbrauchbarer (dann als
     /// .defekt beiseitegelegt) oder gesperrter Datei (dann KeptFile). AList ist dann leer mit Project = AProject.
     /// </summary>
@@ -216,7 +214,8 @@ uses
   Atlas.Core.Projects.Summary.Json,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Marks.Ids,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Uris;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -244,9 +243,6 @@ begin
   Result := Trim(Name) = '';
 end;
 
-/// <summary>Dateiname ohne Ordner; unabhängig vom Trennzeichen des Systems.</summary>
-function ShortName(const AFileName: string): string; forward;
-
 function TAtlasBookmark.DisplayName: string;
 var
   mDot: Integer;
@@ -263,7 +259,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := ShortName(FileName) + ':' + IntToStr(Line + 1);
+    Result := TTextUris.FileNameOf(FileName) + ':' + IntToStr(Line + 1);
   end;
 end;
 
@@ -549,20 +545,6 @@ begin
   end;
 end;
 
-function ShortName(const AFileName: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := AFileName;
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
-
 function TAtlasBookmarkList.Filter(const APattern: string): TArray<Integer>;
 var
   mWords: TArray<string>;
@@ -574,7 +556,7 @@ begin
   mWords := LowerCase(Trim(APattern)).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   for mIndex := 0 to High(Bookmarks) do
   begin
-    mHaystack := LowerCase(Bookmarks[mIndex].DisplayName + #10 + ShortName(Bookmarks[mIndex].FileName) + #10 +
+    mHaystack := LowerCase(Bookmarks[mIndex].DisplayName + #10 + TTextUris.FileNameOf(Bookmarks[mIndex].FileName) + #10 +
       Bookmarks[mIndex].Method + #10 + Bookmarks[mIndex].Preview);
     mMatches := True;
     for mPart in mWords do
@@ -703,7 +685,7 @@ begin
   // Benannte ohne Namen: Datei und Zeile; schnelle bleiben ohne Namen (DisplayName).
   if (AMark.Kind = TAtlasBookmarkKind.Named) and (Trim(AMark.Name) = '') then
   begin
-    AMark.Name := ShortName(AMark.FileName) + ':' + IntToStr(AMark.Line + 1);
+    AMark.Name := TTextUris.FileNameOf(AMark.FileName) + ':' + IntToStr(AMark.Line + 1);
   end;
 end;
 
@@ -819,13 +801,13 @@ begin
   end
   else
   begin
-    Result := ShortName(AFileName) + ':' + IntToStr(ALine + 1);
+    Result := TTextUris.FileNameOf(AFileName) + ':' + IntToStr(ALine + 1);
   end;
 end;
 
 class function TAtlasBookmarks.Location(const ABookmark: TAtlasBookmark): string;
 begin
-  Result := ShortName(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1);
+  Result := TTextUris.FileNameOf(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1);
   if ABookmark.Method <> '' then
   begin
     Result := Result + ' › ' + ABookmark.Method;
@@ -902,18 +884,6 @@ begin
   end;
 end;
 
-class function TAtlasBookmarks.FormatOf(const AJson: string): Integer;
-var
-  mRoot: TJSONObject;
-begin
-  mRoot := TJsonRead.ParseObject(AJson);
-  try
-    Result := TJsonRead.IntOr(mRoot, 'format', 0);
-  finally
-    mRoot.Free;
-  end;
-end;
-
 class function TAtlasBookmarks.LoadFile(const AFileName, AProject: string; out AList: TAtlasBookmarkList): Boolean;
 var
   mList: TAtlasBookmarkList;
@@ -932,7 +902,7 @@ begin
     begin
       mParsed := Parse(AText, ExtractFilePath(AFileName), mList);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := mParsed or (FormatOf(AText) > cFormat);
+      Result := mParsed or (TJsonRead.FormatOf(AText) > cFormat);
     end);
   Result := mParsed and (mLoad = TAtlasDataLoad.Loaded);
   if Result then
@@ -973,7 +943,7 @@ begin
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > cFormat)) then
+    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (TJsonRead.FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;

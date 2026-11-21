@@ -57,6 +57,8 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
+    procedure FormatOfReadsRootNumber;
+    [Test]
     procedure NilObjectGivesDefaults;
     [Test]
     procedure MissingValueGivesDefaults;
@@ -265,6 +267,15 @@ end;
 procedure TJsonReadTests.TearDown;
 begin
   FreeAndNil(FObject);
+end;
+
+procedure TJsonReadTests.FormatOfReadsRootNumber;
+begin
+  Assert.AreEqual(3, TJsonRead.FormatOf('{"format": 3}'));
+  Assert.AreEqual(0, TJsonRead.FormatOf('{"bookmarks": []}'), 'ohne format');
+  Assert.AreEqual(0, TJsonRead.FormatOf('kaputt'));
+  Assert.AreEqual(0, TJsonRead.FormatOf('[1, 2]'));
+  Assert.AreEqual(0, TJsonRead.FormatOf(''));
 end;
 
 procedure TJsonReadTests.NilObjectGivesDefaults;

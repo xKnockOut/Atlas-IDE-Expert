@@ -32,6 +32,9 @@ type
     /// <summary>Dateiname ohne Ordner und Endung („Atlas.Core.A“ aus „C:\P\Atlas.Core.A.pas“); trennt unter jedem
     /// System an „\“ und „/“, ein Punkt im Ordnernamen zählt nie als Endung.</summary>
     class function BaseName(const APath: string): string; static;
+    /// <summary>Dateiname mit Endung, ohne Ordner („Atlas.Core.A.pas“ aus „C:\P\Atlas.Core.A.pas“); trennt unter jedem
+    /// System an „\“ und „/“. Ohne Trenner APath selbst.</summary>
+    class function FileNameOf(const APath: string): string; static;
   end;
 
 implementation
@@ -181,6 +184,12 @@ begin
   // Punkt im Ordnernamen als Endung.
   Result := StringReplace(APath, '\', '/', [rfReplaceAll]);
   Result := ChangeFileExt(Copy(Result, LastDelimiter('/', Result) + 1, MaxInt), '');
+end;
+
+class function TTextUris.FileNameOf(const APath: string): string;
+begin
+  // Selbst trennen: ExtractFileName trennt unter Windows nur an '\'.
+  Result := Copy(APath, LastDelimiter('\/', APath) + 1, MaxInt);
 end;
 
 // Lange Pfade: \\?\C:\... und \\?\UNC\server\... in die kurze Form.

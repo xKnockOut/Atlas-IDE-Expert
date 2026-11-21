@@ -81,7 +81,6 @@ type
     FDecision: TAtlasTimeDecision;
     FItem: TAtlasTrackerWorkItem;
     FSent: Boolean;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure AddDuration(AMinutes: Integer);
     procedure AddKind;
     function AddText: TPanel;
@@ -179,11 +178,6 @@ begin
   ActiveControl := FParts.Duration;
 end;
 
-function TAtlasTrackerTimeDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
-end;
-
 procedure TAtlasTrackerTimeDialog.AddDuration(AMinutes: Integer);
 var
   mRow: TPanel;
@@ -268,13 +262,14 @@ begin
   mButtons.AlignWithMargins := True;
   TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := ATop;
-  FParts.Book := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookBook));
+  FParts.Book := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookBook), cButtonPadding, cGap);
   FParts.Book.OnClick := BookClick;
   FParts.Book.Default := True;
-  FParts.Later := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookLater));
+  FParts.Later := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookLater), cButtonPadding, cGap);
   FParts.Later.ModalResult := mrCancel;
   FParts.Later.Cancel := True;
-  FParts.Discard := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookDiscard));
+  FParts.Discard := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookDiscard),
+    cButtonPadding, cGap);
   FParts.Discard.OnClick := DiscardClick;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
