@@ -24,10 +24,10 @@ type
     UpdatesOutcomeInstalled, UpdatesOutcomeAdded, UpdatesOutcomeRemoved, UpdatesOutcomeRolledBack,
     UpdatesOutcomeCancelled, UpdatesOutcomeFailed, UpdatesErrorManifest, UpdatesErrorVersion, UpdatesErrorNoPackage,
     UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash, UpdatesErrorArchive, UpdatesErrorUnsigned,
-    UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
+    UpdatesErrorSignature, UpdatesErrorManifestUnsigned, UpdatesErrorManifestSignature, UpdatesErrorBuild, UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
     UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection, UpdatesErrorUnexpected, UpdatesErrorStart,
     UpdatesCheckFailedMessage, UpdatesConsentTitle, UpdatesConsentText, UpdatesConsentYes, UpdatesConsentNo,
-    UpdatesAvailable);
+    UpdatesAvailable, UpdatesWarningManifestUnsigned);
 
   TAtlasUpdatesStrings = class
   public
@@ -102,6 +102,8 @@ const
      'Archiv unbrauchbar',
      'Datei nicht signiert',
      'Signatur ungültig oder von einem anderen Herausgeber',
+     'Versionsdatei nicht signiert',
+     'Versionsdatei nicht vom Herausgeber signiert oder verändert',
      'Bauen aus dem Quelltext fehlgeschlagen',
      'Datei gesperrt',
      'Kopieren fehlgeschlagen',
@@ -118,7 +120,9 @@ const
      'Soll Atlas einmal täglich nachsehen, ob eine neue Version vorliegt? Übertragen werden nur die Atlas-Version und die IDE-Version, keine Projektdaten. Atlas lädt nichts herunter und installiert nichts; ändern lässt sich das unter Tools › Optionen › Atlas.',
      'Ja, prüfen',
      'Nein',
-     'Atlas %s ist verfügbar (installiert: %s). Änderungen: %s'),
+     'Atlas %s ist verfügbar (installiert: %s). Änderungen: %s',
+     'Hinweis: Die Versionsdatei dieses Releases ist nicht signiert. Nur Prüfsummen sichern das Update; es ist ' +
+     'nicht an den Herausgeber gebunden.'),
     ( 'Install updates:',
      'offer',
      'prepare without asking',
@@ -175,6 +179,8 @@ const
      'archive unusable',
      'file not signed',
      'signature invalid or from another publisher',
+     'version file not signed',
+     'version file not signed by the publisher or altered',
      'building from source failed',
      'file locked',
      'copying failed',
@@ -190,7 +196,9 @@ const
      'Should Atlas check once a day whether a new version is available? Only the Atlas version and the IDE version are sent, no project data. Atlas downloads and installs nothing; change this under Tools › Options › Atlas.',
      'Yes, check',
      'No',
-     'Atlas %s is available (installed: %s). Changes: %s'));
+     'Atlas %s is available (installed: %s). Changes: %s',
+     'Note: the version file of this release is not signed. Only checksums protect the update; it is not bound ' +
+     'to the publisher.'));
 
 { TAtlasUpdatesStrings }
 

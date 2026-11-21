@@ -940,6 +940,7 @@ contains
   Atlas.Common.Updates.Selection in 'Source\Updates\Atlas.Common.Updates.Selection.pas',
   Atlas.Common.Updates.Archive in 'Source\Updates\Atlas.Common.Updates.Archive.pas',
   Atlas.Common.Updates.SourceBuild in 'Source\Updates\Atlas.Common.Updates.SourceBuild.pas',
+  Atlas.Common.Updates.ManifestSignature in 'Source\Updates\Atlas.Common.Updates.ManifestSignature.pas',
   Atlas.Common.Updates.Prepare in 'Source\Updates\Atlas.Common.Updates.Prepare.pas',
   Atlas.Common.Updates.FileSwap in 'Source\Updates\Atlas.Common.Updates.FileSwap.pas',
   Atlas.Common.Updates.Apply in 'Source\Updates\Atlas.Common.Updates.Apply.pas',

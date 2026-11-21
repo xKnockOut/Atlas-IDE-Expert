@@ -363,7 +363,7 @@ Check MCP tools without Claude ([docs/en/MCP.md](docs/en/MCP.md#developing-and-t
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary.
   - A new push to the same branch cancels the running build (`concurrency`).
 - Building without a command line compiler (Community and Starter Edition): `pwsh Tools/Build-Ide.ps1 -Project <dproj|groupproj> -Platform Win32|Win64 -Mode build|make|check -Json` builds in its own RAD Studio instance with the registry profile `AtlasBuild` and a fixed copy of the Atlas plugin (set up once with `-Setup <Bpl folder>`); your own IDE is never touched. In a running RAD Studio with Atlas, MCP clients build through the tool `build_project`.
-- `release.yml`: release for the tag `v<version>`. Without the Delphi runner the release package is missing; `pwsh Tools/Publish-ReleasePackage.ps1 -Version <version>` then attaches a locally built one and enters it in the update installer's version files (#1849, [docs/Release.md](docs/Release.md), German).
+- `release.yml`: release for the tag `v<version>`. Without the Delphi runner the release package is missing; `pwsh Tools/Publish-ReleasePackage.ps1 -Version <version>` then attaches a locally built one and enters it in the update installer's version files (#1849, [docs/Release.md](docs/Release.md), German). Both ways sign the version file with the own update key (secret `ATLAS_UPDATE_SIGNING_KEY`); AtlasUpdate checks the signature before every download.
 - `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs, no Embarcadero sources in `Tests/`, and Atlas windows and editor bars only through their shared hosts.
 
 ## Command line

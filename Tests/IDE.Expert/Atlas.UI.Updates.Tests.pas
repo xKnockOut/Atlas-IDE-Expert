@@ -169,6 +169,10 @@ begin
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorUnexpected), TAtlasUpdateTexts.ErrorText('neu', ''),
     'unbekannter Code: unerwartet');
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorStart), TAtlasUpdateTexts.ErrorText('start', ''));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorManifestSignature),
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cManifestSignature, ''));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorManifestUnsigned) + ' (HTTP 404)',
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cManifestUnsigned, 'HTTP 404'));
 end;
 
 procedure TAtlasUpdateInstallUiTests.StageAndOutcomeTexts;
@@ -194,6 +198,11 @@ begin
   mOutcome.Reason := TUpdateErrors.cLocked;
   Assert.IsTrue(TAtlasUpdateTexts.OutcomeText(mOutcome).Contains(Txt(TAtlasUpdatesTextId.UpdatesErrorLocked)));
   mOutcome.Added := nil;
+  // Hinweis bei unsignierter Versionsdatei in eigener Zeile, sonst die Meldung allein.
+  Assert.AreEqual('fertig' + sLineBreak + Txt(TAtlasUpdatesTextId.UpdatesWarningManifestUnsigned),
+    TAtlasUpdateTexts.WithWarning('fertig', TUpdateErrors.cManifestUnsigned));
+  Assert.AreEqual('fertig', TAtlasUpdateTexts.WithWarning('fertig', ''));
+  Assert.AreEqual('fertig', TAtlasUpdateTexts.WithWarning('fertig', 'unbekannt'));
 end;
 
 procedure TAtlasUpdateInstallUiTests.SelectionKeepsRequiredPackages;

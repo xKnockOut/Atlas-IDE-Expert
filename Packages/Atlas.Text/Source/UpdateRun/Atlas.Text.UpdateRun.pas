@@ -49,6 +49,8 @@ type
     Error: string;
     /// <summary>Datei oder Grund zum Fehler, ohne Adressen.</summary>
     Detail: string;
+    /// <summary>Kennung eines Hinweises bei gelungener Vorbereitung (TUpdateErrors), '' ohne Hinweis.</summary>
+    Warning: string;
     FromSource: Boolean;
     /// <summary>Auswahl zeigen, bevor das Update eingeplant wird (neue Module und updates.newModules = ask).
     /// </summary>
@@ -88,6 +90,10 @@ type
     cArchive = 'archive';
     cUnsigned = 'unsigned';
     cSignature = 'signature';
+    /// <summary>Versionsdatei ohne Signaturdatei (Hinweis bzw. Fehler, wenn die Signatur verlangt ist).</summary>
+    cManifestUnsigned = 'manifestUnsigned';
+    /// <summary>Signatur der Versionsdatei unlesbar oder von keinem bekannten Schlüssel.</summary>
+    cManifestSignature = 'manifestSignature';
     cBuild = 'build';
     cLocked = 'locked';
     cCopyFailed = 'copy';
@@ -285,6 +291,7 @@ begin
   mRoot.AddPair('previous', Previous);
   mRoot.AddPair('error', Error);
   mRoot.AddPair('detail', Detail);
+  mRoot.AddPair('warning', Warning);
   mRoot.AddPair('fromSource', TJSONBool.Create(FromSource));
   mRoot.AddPair('askSelection', TJSONBool.Create(AskSelection));
   mRoot.AddPair('updater', Updater);
@@ -354,6 +361,7 @@ begin
     Result.Previous := TJsonRead.Text(mRoot, 'previous');
     Result.Error := TJsonRead.Text(mRoot, 'error');
     Result.Detail := TJsonRead.Text(mRoot, 'detail');
+    Result.Warning := TJsonRead.Text(mRoot, 'warning');
     Result.FromSource := TJsonRead.Flag(mRoot, 'fromSource');
     Result.AskSelection := TJsonRead.Flag(mRoot, 'askSelection');
     Result.Updater := TJsonRead.Text(mRoot, 'updater');

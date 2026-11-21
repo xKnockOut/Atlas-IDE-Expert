@@ -124,6 +124,10 @@ end;
 
 procedure TAtlasIdeUpdateInstaller.Prepared(const AStage: TUpdateStage);
 begin
+  if AStage.Warning <> '' then
+  begin
+    Log('Update ' + AStage.Version + ' warning: ' + AStage.Warning);
+  end;
   if AStage.Phase = TUpdatePhase.Failed then
   begin
     Log('Update ' + AStage.Version + ' not prepared: ' + AStage.Error);
@@ -133,12 +137,14 @@ begin
   else if AStage.AskSelection then
   begin
     Log('Update ' + AStage.Version + ' ready, new modules to choose');
-    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesChooseMessage, [AStage.Version]));
+    Say(TAtlasUpdateTexts.WithWarning(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesChooseMessage,
+      [AStage.Version]), AStage.Warning));
   end
   else
   begin
     Log('Update ' + AStage.Version + ' ready');
-    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPreparedMessage, [AStage.Version]));
+    Say(TAtlasUpdateTexts.WithWarning(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPreparedMessage,
+      [AStage.Version]), AStage.Warning));
   end;
 end;
 
