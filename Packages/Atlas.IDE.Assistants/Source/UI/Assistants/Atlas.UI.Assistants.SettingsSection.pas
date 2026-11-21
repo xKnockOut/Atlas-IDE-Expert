@@ -110,6 +110,31 @@ type
     property NameEdit: TEdit read FName;
   end;
 
+  /// <summary>Zeilen zum Schlüssel des gewählten Anbieters: Stand und Knöpfe „hinterlegen“/„entfernen“. Der
+  /// Schlüssel wird nie angezeigt. Gehört dem Besitzer der Elemente des Abschnitts.</summary>
+  TAtlasAssistantsKeyRows = class(TComponent)
+  private
+    FHost: IAtlasSettingsSectionHost;
+    FHooks: TAtlasAssistantsKeyHooks;
+    FProviderId: TFunc<string>;
+    FState: TLabel;
+    FStore: TButton;
+    FDelete: TButton;
+    procedure StoreClick(Sender: TObject);
+    procedure DeleteClick(Sender: TObject);
+  public
+    /// <summary>Zwei Zeilen unter AProvider anlegen. AProviderId: gewählter Anbieter (Wert von
+    /// assistants.provider); AHooks: Zugriff auf den Anmeldespeicher, nicht gesetzte Haken sperren die Knöpfe.
+    /// </summary>
+    procedure Build(const AHost: IAtlasSettingsSectionHost; AProvider: TControl; const AProviderId: TFunc<string>;
+      const AHooks: TAtlasAssistantsKeyHooks);
+    /// <summary>Stand und Freigabe der Knöpfe für den gewählten Anbieter.</summary>
+    procedure Show;
+    property StateLabel: TLabel read FState;
+    property StoreButton: TButton read FStore;
+    property DeleteButton: TButton read FDelete;
+  end;
+
   TAtlasAssistantsSettingsSection = class(TAtlasSettingsSection)
   public const
     cOwnerId = 'atlas.assistants';
@@ -120,9 +145,7 @@ type
     /// <summary>Besitzer der eigenen Elemente; die Zeilen gehören der Seite.</summary>
     FControls: TComponent;
     FProvider: TAtlasChoiceBox;
-    FKeyState: TLabel;
-    FKeyStore: TButton;
-    FKeyDelete: TButton;
+    FKeys: TAtlasAssistantsKeyRows;
     FModel: TEdit;
     FOpenAiUrl: TEdit;
     FOpenAiModel: TEdit;
@@ -147,10 +170,8 @@ type
     procedure ModelPicked(Sender: TObject);
     procedure ShowModels(const AModels: TArray<string>; const AText: string);
     procedure ShowProbe(const AText: string);
-    procedure AddKeyRows;
+    /// <summary>Schlüsselzeilen und Felder des gewählten Anbieters.</summary>
     procedure ShowKeyState;
-    procedure KeyStoreClick(Sender: TObject);
-    procedure KeyDeleteClick(Sender: TObject);
   protected
     procedure BuildRows; override;
   public
@@ -161,9 +182,7 @@ type
     procedure Close; override;
     /// <summary>Setzt die Komposition beim Anmelden und löst sie beim Abmelden (Default).</summary>
     class property KeyHooks: TAtlasAssistantsKeyHooks read FKeyHooks write FKeyHooks;
-    property KeyStateLabel: TLabel read FKeyState;
-    property KeyStoreButton: TButton read FKeyStore;
-    property KeyDeleteButton: TButton read FKeyDelete;
+    property KeyRows: TAtlasAssistantsKeyRows read FKeys;
     property ProviderBox: TAtlasChoiceBox read FProvider;
   end;
 
@@ -286,7 +305,9 @@ begin
   // Anbieterwechsel gibt Schlüsselknöpfe und Felder sofort frei, nicht erst nach Speichern und neuem Öffnen.
   FProviderChanged := FProvider.OnChange;
   FProvider.OnChange := ProviderChange;
-  AddKeyRows;
+  FKeys := TAtlasAssistantsKeyRows.Create(FControls);
+  FKeys.Build(Host, FProvider, ProviderId, FKeyHooks);
+  ShowKeyState;
   FModel := Line('assistants.model', T(TAtlasAssistantsTextId.SettingsModel));
   AddOpenAiRows;
   AddProbeRow;
@@ -465,31 +486,6 @@ begin
   end;
 end;
 
-procedure TAtlasAssistantsSettingsSection.AddKeyRows;
-var
-  mRow: TWinControl;
-begin
-  mRow := Host.AddRow(cRowHeight, nil);
-  Host.Attach(mRow, FProvider);
-  FKeyState := TLabel.Create(FControls);
-  FKeyState.Parent := mRow;
-  PlaceScaled(FKeyState, 0, cStateTop, cStateWidth, cStateHeight);
-  FKeyState.ShowAccelChar := False;
-  mRow := Host.AddRow(cRowHeight, nil);
-  Host.Attach(mRow, FProvider);
-  FKeyStore := TButton.Create(FControls);
-  FKeyStore.Parent := mRow;
-  FKeyStore.Caption := T(TAtlasAssistantsTextId.KeyStore);
-  PlaceScaled(FKeyStore, 0, 1, cButtonWidth, cButtonHeight);
-  FKeyStore.OnClick := KeyStoreClick;
-  FKeyDelete := TButton.Create(FControls);
-  FKeyDelete.Parent := mRow;
-  FKeyDelete.Caption := T(TAtlasAssistantsTextId.KeyDelete);
-  PlaceScaled(FKeyDelete, cButtonGap, 1, cButtonWidth, cButtonHeight);
-  FKeyDelete.OnClick := KeyDeleteClick;
-  ShowKeyState;
-end;
-
 procedure TAtlasAssistantsSettingsSection.AddOpenAiRows;
 var
   mRow: TWinControl;
@@ -659,32 +655,11 @@ begin
 end;
 
 procedure TAtlasAssistantsSettingsSection.ShowKeyState;
-var
-  mId: string;
-  mKnown: Boolean;
 begin
-  if FKeyState = nil then
+  if FKeys <> nil then
   begin
-    Exit;
+    FKeys.Show;
   end;
-  mId := ProviderId;
-  mKnown := mId <> cAssistantsProviderNames[0];
-  if not mKnown then
-  begin
-    FKeyState.Caption := T(TAtlasAssistantsTextId.KeyNoProvider);
-  end
-  else if Assigned(FKeyHooks.Has) and FKeyHooks.Has(mId) then
-  begin
-    FKeyState.Caption := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyPresent, [mId]);
-  end
-  else
-  begin
-    FKeyState.Caption := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyMissing, [mId]);
-  end;
-  // Über Host.Allow statt Enabled: Die Sperre des Hauptschalters (SetLocked beim Laden der Seite) setzt Enabled
-  // aller Elemente der Zeile neu und gäbe die Knöpfe sonst ohne Anbieter wieder frei.
-  Host.Allow(FKeyStore, mKnown and Assigned(FKeyHooks.Store));
-  Host.Allow(FKeyDelete, mKnown and Assigned(FKeyHooks.Delete));
   ShowProviderRows;
 end;
 
@@ -692,7 +667,7 @@ procedure TAtlasAssistantsSettingsSection.ShowProviderRows;
 var
   mOpenAi: Boolean;
 begin
-  // Beim Aufbau ruft AddKeyRows schon vor den Feldern; dann noch nichts zu tun.
+  // Beim Aufbau ruft ShowKeyState schon vor den Feldern; dann noch nichts zu tun.
   if (FModel = nil) or (FOpenAiUrl = nil) or (FOpenAiModel = nil) or (FOpenAiTimeout = nil) then
   begin
     Exit;
@@ -738,16 +713,71 @@ begin
   mValues[0] := '';
 end;
 
-procedure TAtlasAssistantsSettingsSection.KeyStoreClick(Sender: TObject);
+{ TAtlasAssistantsKeyRows }
+
+procedure TAtlasAssistantsKeyRows.Build(const AHost: IAtlasSettingsSectionHost; AProvider: TControl;
+  const AProviderId: TFunc<string>; const AHooks: TAtlasAssistantsKeyHooks);
+var
+  mRow: TWinControl;
+begin
+  FHost := AHost;
+  FProviderId := AProviderId;
+  FHooks := AHooks;
+  mRow := FHost.AddRow(cRowHeight, nil);
+  FHost.Attach(mRow, AProvider);
+  FState := TLabel.Create(Self);
+  FState.Parent := mRow;
+  PlaceScaled(FState, 0, cStateTop, cStateWidth, cStateHeight);
+  FState.ShowAccelChar := False;
+  mRow := FHost.AddRow(cRowHeight, nil);
+  FHost.Attach(mRow, AProvider);
+  FStore := TButton.Create(Self);
+  FStore.Parent := mRow;
+  FStore.Caption := T(TAtlasAssistantsTextId.KeyStore);
+  PlaceScaled(FStore, 0, 1, cButtonWidth, cButtonHeight);
+  FStore.OnClick := StoreClick;
+  FDelete := TButton.Create(Self);
+  FDelete.Parent := mRow;
+  FDelete.Caption := T(TAtlasAssistantsTextId.KeyDelete);
+  PlaceScaled(FDelete, cButtonGap, 1, cButtonWidth, cButtonHeight);
+  FDelete.OnClick := DeleteClick;
+end;
+
+procedure TAtlasAssistantsKeyRows.Show;
+var
+  mId: string;
+  mKnown: Boolean;
+begin
+  mId := FProviderId();
+  mKnown := mId <> cAssistantsProviderNames[0];
+  if not mKnown then
+  begin
+    FState.Caption := T(TAtlasAssistantsTextId.KeyNoProvider);
+  end
+  else if Assigned(FHooks.Has) and FHooks.Has(mId) then
+  begin
+    FState.Caption := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyPresent, [mId]);
+  end
+  else
+  begin
+    FState.Caption := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyMissing, [mId]);
+  end;
+  // Über Host.Allow statt Enabled: Die Sperre des Hauptschalters (SetLocked beim Laden der Seite) setzt Enabled
+  // aller Elemente der Zeile neu und gäbe die Knöpfe sonst ohne Anbieter wieder frei.
+  FHost.Allow(FStore, mKnown and Assigned(FHooks.Store));
+  FHost.Allow(FDelete, mKnown and Assigned(FHooks.Delete));
+end;
+
+procedure TAtlasAssistantsKeyRows.StoreClick(Sender: TObject);
 var
   mId, mKey: string;
   mOk: Boolean;
 begin
-  mId := ProviderId;
+  mId := FProviderId();
   mKey := '';
-  if Assigned(FKeyHooks.Ask) then
+  if Assigned(FHooks.Ask) then
   begin
-    mOk := FKeyHooks.Ask(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyPromptTitle, [mId]),
+    mOk := FHooks.Ask(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.KeyPromptTitle, [mId]),
       T(TAtlasAssistantsTextId.KeyPromptLabel), mKey);
   end
   else
@@ -757,22 +787,24 @@ begin
   end;
   // Leerzeichen um einen eingefügten Schlüssel gehören nicht dazu, egal woher die Abfrage kommt.
   mKey := Trim(mKey);
-  if mOk and (mKey <> '') and Assigned(FKeyHooks.Store) then
+  if mOk and (mKey <> '') and Assigned(FHooks.Store) then
   begin
-    FKeyHooks.Store(mId, mKey);
+    FHooks.Store(mId, mKey);
   end;
   mKey := '';
-  ShowKeyState;
+  Show;
 end;
 
-procedure TAtlasAssistantsSettingsSection.KeyDeleteClick(Sender: TObject);
+procedure TAtlasAssistantsKeyRows.DeleteClick(Sender: TObject);
 begin
-  if Assigned(FKeyHooks.Delete) then
+  if Assigned(FHooks.Delete) then
   begin
-    FKeyHooks.Delete(ProviderId);
+    FHooks.Delete(FProviderId());
   end;
-  ShowKeyState;
+  Show;
 end;
+
+{ TAtlasAssistantsSettingsSection }
 
 function TAtlasAssistantsSettingsSection.OwnerId: string;
 begin
@@ -793,9 +825,7 @@ begin
     FLink.Cut;
     FLink := nil;
   end;
-  FKeyState := nil;
-  FKeyStore := nil;
-  FKeyDelete := nil;
+  FKeys := nil;
   FProvider := nil;
   FModel := nil;
   FOpenAiUrl := nil;

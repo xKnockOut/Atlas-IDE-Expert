@@ -220,13 +220,13 @@ begin
   mPage := TAtlasSettingsPage.Create(nil);
   try
     mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsFalse(mSection.KeyStoreButton.Enabled, 'ohne Anbieter gesperrt');
+    Assert.IsFalse(mSection.KeyRows.StoreButton.Enabled, 'ohne Anbieter gesperrt');
     mSection.ProviderBox.Choice := 1;
-    mSection.KeyStoreButton.Click;
+    mSection.KeyRows.StoreButton.Click;
     Assert.AreEqual('anthropic=k1', mStored, 'Schlüssel ohne Leerzeichen an den Haken');
-    Assert.IsTrue(Pos('anthropic', mSection.KeyStateLabel.Caption) > 0, 'Stand zeigt den Anbieter');
-    Assert.IsFalse(Pos('k1', mSection.KeyStateLabel.Caption) > 0, 'nie den Schlüssel');
-    mSection.KeyDeleteButton.Click;
+    Assert.IsTrue(Pos('anthropic', mSection.KeyRows.StateLabel.Caption) > 0, 'Stand zeigt den Anbieter');
+    Assert.IsFalse(Pos('k1', mSection.KeyRows.StateLabel.Caption) > 0, 'nie den Schlüssel');
+    mSection.KeyRows.DeleteButton.Click;
     Assert.AreEqual('anthropic', mDeleted);
   finally
     mPage.Free;
@@ -266,18 +266,18 @@ begin
     mSettings := TAtlasPluginSettings.Defaults;
     mSettings.AssistantsInlineSuggestions := True;
     mPage.LoadFrom(mSettings);
-    Assert.IsFalse(mSection.KeyStoreButton.Enabled, 'ohne Anbieter gesperrt');
+    Assert.IsFalse(mSection.KeyRows.StoreButton.Enabled, 'ohne Anbieter gesperrt');
     // Wie eine Auswahl in der Liste: Wert setzen, dann OnChange der Auswahl.
     mSection.ProviderBox.Choice := 1;
     mSection.ProviderBox.OnChange(mSection.ProviderBox);
-    Assert.IsTrue(mSection.KeyStoreButton.Enabled, 'Anthropic gewählt: Schlüssel hinterlegen frei');
+    Assert.IsTrue(mSection.KeyRows.StoreButton.Enabled, 'Anthropic gewählt: Schlüssel hinterlegen frei');
     Assert.IsTrue(EditOf(mPage, 'AssistantsModel').Enabled, 'Modell gilt für Anthropic');
     mSection.ProviderBox.Choice := 2;
     mSection.ProviderBox.OnChange(mSection.ProviderBox);
     Assert.IsFalse(EditOf(mPage, 'AssistantsModel').Enabled, 'OpenAI-kompatibel hat ein eigenes Modellfeld');
     mSection.ProviderBox.Choice := 0;
     mSection.ProviderBox.OnChange(mSection.ProviderBox);
-    Assert.IsFalse(mSection.KeyStoreButton.Enabled, 'kein Anbieter: wieder gesperrt');
+    Assert.IsFalse(mSection.KeyRows.StoreButton.Enabled, 'kein Anbieter: wieder gesperrt');
   finally
     mPage.Free;
   end;
@@ -371,7 +371,7 @@ begin
   Assert.AreEqual(2, Integer(Length(TAtlasAssistantsIdeRows.FeaturesText(
     [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.ListModels]).Split([', ']))));
   Assert.AreEqual('', TAtlasAssistantsIdeRows.FeaturesText([]));
-  Assert.IsTrue(TAtlasAssistantsIdeRows.ProviderLines(nil) <> '', 'ohne Anbieter ein Hinweis');
+  Assert.AreNotEqual('', TAtlasAssistantsIdeRows.ProviderLines(nil), 'ohne Anbieter ein Hinweis');
 end;
 
 procedure TAssistantsSettingsSectionTests.PluginFrameTexts;
