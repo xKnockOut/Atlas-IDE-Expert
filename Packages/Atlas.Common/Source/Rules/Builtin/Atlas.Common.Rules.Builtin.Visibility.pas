@@ -15,7 +15,7 @@
 //                        oder Property, die in der Unit nirgends vorkommt
 //                        (#1020, wie H2219, aber auch für Felder; Option
 //                        includeFields). Ausnahmen kommen aus dem Dienst „gilt
-//                        als verwendet“ (Rules.ConsideredUsed, #1102): u. a.
+//                        als verwendet“ (Semantics.ConsideredUsed, #1102): u. a.
 //                        message, virtual, dynamic, override, abstract,
 //                        Konstruktoren, Operatoren, Mitglieder mit Attributen
 //                        (RTTI), Zugriffsmethoden und Interface-Methoden. Ist

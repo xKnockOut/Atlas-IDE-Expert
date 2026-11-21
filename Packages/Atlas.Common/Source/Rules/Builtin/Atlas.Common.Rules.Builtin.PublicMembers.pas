@@ -15,7 +15,7 @@
 // deadCode.keepPatterns aus den Einstellungen (#64).
 //
 // Ablauf je Kandidat:
-// - Ausnahmen über den Dienst „gilt als verwendet“ (Rules.ConsideredUsed).
+// - Ausnahmen über den Dienst „gilt als verwendet“ (Semantics.ConsideredUsed).
 // - Dateien im Suchbereich (Projekt bzw. Projektgruppe, IRuleProjectFiles):
 //   Nur Dateien, in denen der Name als Bezeichner vorkommt (Verwendungen im
 //   Index, #492), werden geparst; jedes Vorkommen außer Deklarationen und dem

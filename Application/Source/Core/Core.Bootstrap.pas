@@ -1,6 +1,6 @@
-﻿unit Shell.Bootstrap;
+﻿unit Core.Bootstrap;
 
-// Host-Rolle Shell: gemeinsamer Aufbau für LSP-Server, MCP-Modus und Linter
+// Host-Rolle Core: gemeinsamer Aufbau für LSP-Server, MCP-Modus und Linter
 //. Bisher hatte jeder Modus eigene Kopien:
 // - Dateien lesen wie der Server (Kodierung erkennen),
 // - Projekte einer Projektgruppe im Ordner,
@@ -18,7 +18,7 @@ uses
   Atlas.Common.Localization.Texts;
 
 type
-  TShellBootstrap = class
+  TCoreBootstrap = class
   public
     /// <summary>Datei lesen wie der Server (Kodierung erkennen); False und '' ohne Datei.</summary>
     class function ReadSourceText(const AFileName: string; out AText: string): Boolean; overload; static;
@@ -71,9 +71,9 @@ uses
   Atlas.Text.LogMarks,
   Atlas.Text.Files;
 
-{ TShellBootstrap }
+{ TCoreBootstrap }
 
-class function TShellBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
+class function TCoreBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
   mFileFormat: TFileFormat;
 begin
@@ -88,7 +88,7 @@ begin
   end;
 end;
 
-class function TShellBootstrap.ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
+class function TCoreBootstrap.ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
   out AText: string): Boolean;
 var
   mDocument: ITextDocument;
@@ -101,7 +101,7 @@ begin
   Result := ReadSourceText(AFileName, AText);
 end;
 
-class function TShellBootstrap.GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
+class function TCoreBootstrap.GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
 var
   mGroups: TArray<string>;
 begin
@@ -125,7 +125,7 @@ begin
   end;
 end;
 
-class function TShellBootstrap.ProjectFolders(const AProjects: TArray<string>): TArray<string>;
+class function TCoreBootstrap.ProjectFolders(const AProjects: TArray<string>): TArray<string>;
 var
   mProject, mFolder: string;
   mKnown: Boolean;
@@ -159,7 +159,7 @@ begin
   end;
 end;
 
-class function TShellBootstrap.EnclosingGroupProjects(const AProjectFile: string;
+class function TCoreBootstrap.EnclosingGroupProjects(const AProjectFile: string;
   const ALogger: ILogger): TArray<string>;
 const
   // Packages/<Modul>/<Modul>.dproj liegt zwei Ebenen unter der Gruppe; Luft für tiefere Ordner.
@@ -192,7 +192,7 @@ begin
   Result := nil;
 end;
 
-class function TShellBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;
+class function TCoreBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;
 begin
   Result := nil;
   try
@@ -214,22 +214,22 @@ begin
   end;
 end;
 
-class function TShellBootstrap.GlobalSettingsFile: string;
+class function TCoreBootstrap.GlobalSettingsFile: string;
 begin
   Result := GlobalSettingsFile(GetEnvironmentVariable('APPDATA'));
 end;
 
-class function TShellBootstrap.GlobalSettingsFile(const AAppData: string): string;
+class function TCoreBootstrap.GlobalSettingsFile(const AAppData: string): string;
 begin
   Result := TConfigurationScopes.GlobalFile(AAppData);
 end;
 
-class function TShellBootstrap.LoadGlobalSettings(const ALogger: ILogger): string;
+class function TCoreBootstrap.LoadGlobalSettings(const ALogger: ILogger): string;
 begin
   Result := LoadGlobalSettings(GlobalSettingsFile, ALogger);
 end;
 
-class function TShellBootstrap.LoadGlobalSettings(const AFileName: string; const ALogger: ILogger): string;
+class function TCoreBootstrap.LoadGlobalSettings(const AFileName: string; const ALogger: ILogger): string;
 var
   mFileFormat: TFileFormat;
 begin
@@ -253,7 +253,7 @@ begin
   end;
 end;
 
-class function TShellBootstrap.ProjectSettings(const ARoot: string): TServerSettings;
+class function TCoreBootstrap.ProjectSettings(const ARoot: string): TServerSettings;
 var
   mText: string;
   mIssues: TArray<TConfigurationIssue>;
@@ -265,14 +265,14 @@ begin
   Result := TConfigurationParser.Parse(TConfigurationScopes.Filter(mText, TConfigurationScope.Project), mIssues);
 end;
 
-class function TShellBootstrap.TextLanguage(const ALocale, AGlobalText: string): TTextLanguage;
+class function TCoreBootstrap.TextLanguage(const ALocale, AGlobalText: string): TTextLanguage;
 var
   mIssues: TArray<TConfigurationIssue>;
 begin
   Result := TAtlasLocale.Resolve(ALocale, TConfigurationParser.Parse(AGlobalText, mIssues).Language);
 end;
 
-class procedure TShellBootstrap.UseTextLanguage(const ALocale: string);
+class procedure TCoreBootstrap.UseTextLanguage(const ALocale: string);
 var
   mGlobal: string;
 begin

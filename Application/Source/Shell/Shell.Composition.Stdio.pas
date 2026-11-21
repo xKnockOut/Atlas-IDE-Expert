@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Diagnostics.Anonymizer,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   /// <summary>Was der stdio-Betrieb der Komposition mitgibt.</summary>

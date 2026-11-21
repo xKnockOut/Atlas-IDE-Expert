@@ -1942,6 +1942,7 @@ Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Discover	IDE/Welcome/Atlas.IDE.Welc
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Help	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Help.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Layouts	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Layouts.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Listener	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Listener.pas	Ende von Projektaufgaben, Testläufen und Befehlsnutzung an die Seite, #1455
+Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Module	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle und Menüeinträge der Seite, Einstellungen und Thema an die laufende Seite
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Projects	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Projects.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.QuickActions	IDE/Welcome/Atlas.IDE.Welcome.Adapters.QuickActions.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Registry	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Registry.pas	Ordner `IDE/Welcome`

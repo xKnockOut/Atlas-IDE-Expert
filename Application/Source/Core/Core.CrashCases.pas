@@ -1,6 +1,6 @@
-﻿unit Shell.CrashCases;
+﻿unit Core.CrashCases;
 
-// Host-Rolle Shell: Absturzfälle des Servers (#1355).
+// Host-Rolle Core: Absturzfälle des Servers (#1355).
 // - Fall sichern (server.crashCases): Bei einer unerwarteten Ausnahme in einer
 //   Anfrage (Dispatcher, OnRequestFailed) und beim Abbruch durch den Watchdog
 //   (OnExpired) legt RequestFailed bzw. TimedOut einen Fall unter
@@ -37,16 +37,16 @@ uses
   Atlas.Common.Diagnostics.CrashReserve;
 
 type
-  /// <summary>Künstlicher Absturz des Testschalters TShellCrashCases.cTestVariable.</summary>
+  /// <summary>Künstlicher Absturz des Testschalters TCoreCrashCases.cTestVariable.</summary>
   ECrashTest = class(Exception);
 
   /// <summary>Einstellungsdateien (Pfade) zur Datei AUri: settings.json und die atlas.json ihres Ordners.</summary>
-  TShellCrashSettingsFunc = reference to function(const AUri: string): TArray<string>;
+  TCoreCrashSettingsFunc = reference to function(const AUri: string): TArray<string>;
   /// <summary>Benachrichtigung an den Client; AParams geht über.</summary>
-  TShellCrashNotify = reference to procedure(const AMethod: string; AParams: TJSONObject);
+  TCoreCrashNotify = reference to procedure(const AMethod: string; AParams: TJSONObject);
 
   /// <summary>Angaben zu Server und Client, die jeder Fall mitbekommt.</summary>
-  TShellCrashInfo = record
+  TCoreCrashInfo = record
     ServerPath: string;
     AtlasVersion: string;
     Client: string;
@@ -54,8 +54,8 @@ type
     Initialize: TFunc<string>;
   end;
 
-  /// <summary>Testschalter TShellCrashCases.cTestVariable: Methode, die künstlich abstürzt ('' = keine).</summary>
-  TShellCrashTest = record
+  /// <summary>Testschalter TCoreCrashCases.cTestVariable: Methode, die künstlich abstürzt ('' = keine).</summary>
+  TCoreCrashTest = record
     Method: string;
     /// <summary>Als echter Stapelüberlauf statt ECrashTest.</summary>
     Overflow: Boolean;
@@ -63,7 +63,7 @@ type
     procedure Check(const ALogger: ILogger; const AMethod: string);
   end;
 
-  TShellCrashCases = class
+  TCoreCrashCases = class
   public const
     cCaseNotification = 'atlas/crashCase';
     cSkipNotification = 'atlas/crashSkip';
@@ -81,10 +81,10 @@ type
     FReserve: TCrashReserve;
     FEnabled: Boolean;
     FSkipEnabled: Boolean;
-    FSettingsFiles: TShellCrashSettingsFunc;
-    FNotify: TShellCrashNotify;
-    FInfo: TShellCrashInfo;
-    FTest: TShellCrashTest;
+    FSettingsFiles: TCoreCrashSettingsFunc;
+    FNotify: TCoreCrashNotify;
+    FInfo: TCoreCrashInfo;
+    FTest: TCoreCrashTest;
     /// <summary>Überspringen nach Absturz für AMethod an AUri (Guard).</summary>
     procedure CheckSkip(const AMethod, AUri: string);
     function NewCase(AKind: TCrashCaseKind; const AMethod, AId, AParams: string): TCrashCase;
@@ -124,10 +124,10 @@ type
     property Enabled: Boolean read FEnabled write FEnabled;
     /// <summary>server.crashSkip: Sicherheitsnetz Überspringen.</summary>
     property SkipEnabled: Boolean read FSkipEnabled write FSkipEnabled;
-    property SettingsFiles: TShellCrashSettingsFunc read FSettingsFiles write FSettingsFiles;
+    property SettingsFiles: TCoreCrashSettingsFunc read FSettingsFiles write FSettingsFiles;
     /// <summary>Parameter von initialize als JSON-Text.</summary>
     property Initialize: TFunc<string> read FInfo.Initialize write FInfo.Initialize;
-    property Notify: TShellCrashNotify read FNotify write FNotify;
+    property Notify: TCoreCrashNotify read FNotify write FNotify;
     property ServerPath: string read FInfo.ServerPath write FInfo.ServerPath;
     property AtlasVersion: string read FInfo.AtlasVersion write FInfo.AtlasVersion;
     /// <summary>clientInfo aus initialize, etwa „RAD Studio 37.0“.</summary>
@@ -146,7 +146,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Diagnostics.StackGuard,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Platform.Server,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts,
@@ -177,7 +177,7 @@ end;
 
 function SkipsFileOf(const ARoot: string): string;
 begin
-  Result := TPath.Combine(ARoot, TShellCrashCases.cSkipsFileName);
+  Result := TPath.Combine(ARoot, TCoreCrashCases.cSkipsFileName);
 end;
 
 /// <summary>Text von AUri: aus dem Editor, sonst von der Platte.</summary>
@@ -191,7 +191,7 @@ begin
     AText := mDocument.Text;
     Exit(True);
   end;
-  Result := StartsText('file:', AUri) and TShellBootstrap.ReadSourceText(TDocumentUris.ToPath(AUri), AText);
+  Result := StartsText('file:', AUri) and TCoreBootstrap.ReadSourceText(TDocumentUris.ToPath(AUri), AText);
 end;
 
 /// <summary>Datei, Zeile und Text der Anfrage aus AParams (JSON-Text) in ACase.</summary>
@@ -225,7 +225,7 @@ begin
 end;
 
 /// <summary>Inhalt der lesbaren Einstellungsdateien zu AUri; unlesbare fehlen (Warnung ins Log).</summary>
-function SettingsOf(const ALogger: ILogger; const ASettingsFiles: TShellCrashSettingsFunc;
+function SettingsOf(const ALogger: ILogger; const ASettingsFiles: TCoreCrashSettingsFunc;
   const AUri: string): TArray<TCrashCaseSetting>;
 var
   mFile: string;
@@ -248,9 +248,9 @@ begin
   end;
 end;
 
-{ TShellCrashCases }
+{ TCoreCrashCases }
 
-constructor TShellCrashCases.Create(const ARoot: string; const ALogger: ILogger; const ADocuments: IDocumentStore;
+constructor TCoreCrashCases.Create(const ARoot: string; const ALogger: ILogger; const ADocuments: IDocumentStore;
   const ARecent: IJsonRpcRecentMessages);
 begin
   inherited Create;
@@ -287,14 +287,14 @@ begin
   end;
 end;
 
-destructor TShellCrashCases.Destroy;
+destructor TCoreCrashCases.Destroy;
 begin
   FReserve.Free;
   FSkips.Free;
   inherited;
 end;
 
-procedure TShellCrashCases.CheckSkip(const AMethod, AUri: string);
+procedure TCoreCrashCases.CheckSkip(const AMethod, AUri: string);
 var
   mUri, mText: string;
   mEntry: TCrashSkipEntry;
@@ -319,7 +319,7 @@ begin
   end;
 end;
 
-function TShellCrashCases.NewCase(AKind: TCrashCaseKind; const AMethod, AId, AParams: string): TCrashCase;
+function TCoreCrashCases.NewCase(AKind: TCrashCaseKind; const AMethod, AId, AParams: string): TCrashCase;
 begin
   Result := TCrashCase.Empty;
   Result.Kind := AKind;
@@ -344,7 +344,7 @@ begin
   Result.Settings := SettingsOf(FLogger, FSettingsFiles, Result.Uri);
 end;
 
-function TShellCrashCases.Store(const ACase: TCrashCase; AOverflow: Boolean): string;
+function TCoreCrashCases.Store(const ACase: TCrashCase; AOverflow: Boolean): string;
 var
   mFolder, mFailure: string;
   mCase: TCrashCase;
@@ -385,7 +385,7 @@ begin
   FLogger.Warning(Format('Absturzfall gesichert: %s; %s', [TLogMarks.Text(ACase.Summary), TLogMarks.Path(mFolder)]));
 end;
 
-procedure TShellCrashCases.SaveSkips;
+procedure TCoreCrashCases.SaveSkips;
 begin
   try
     if (FSkips.Count = 0) and not TFile.Exists(SkipsFileOf(FRoot)) then
@@ -400,7 +400,7 @@ begin
   end;
 end;
 
-procedure TShellCrashCases.SendCase(const ACase: TCrashCase; const AFolder: string; ASkipping: Boolean);
+procedure TCoreCrashCases.SendCase(const ACase: TCrashCase; const AFolder: string; ASkipping: Boolean);
 var
   mParams: TJSONObject;
 begin
@@ -435,7 +435,7 @@ begin
   end;
 end;
 
-procedure TShellCrashCases.SendSkip(const AEntry: TCrashSkipEntry; AActive: Boolean);
+procedure TCoreCrashCases.SendSkip(const AEntry: TCrashSkipEntry; AActive: Boolean);
 var
   mParams: TJSONObject;
 begin
@@ -466,7 +466,7 @@ begin
   end;
 end;
 
-procedure TShellCrashCases.RequestFailed(const AMethod: string; const AParams: TJSONValue; const AError: Exception;
+procedure TCoreCrashCases.RequestFailed(const AMethod: string; const AParams: TJSONValue; const AError: Exception;
   const AStack: string);
 var
   mCase: TCrashCase;
@@ -524,7 +524,7 @@ begin
   end;
 end;
 
-procedure TShellCrashCases.TimedOut(const AId, AMethod: string; ATimeoutMs: Cardinal);
+procedure TCoreCrashCases.TimedOut(const AId, AMethod: string; ATimeoutMs: Cardinal);
 var
   mCase: TCrashCase;
   mMethod, mParams, mFolder: string;
@@ -560,7 +560,7 @@ begin
   end;
 end;
 
-procedure TShellCrashCases.Guard(const AMethod: string; const AParams: TJSONValue);
+procedure TCoreCrashCases.Guard(const AMethod: string; const AParams: TJSONValue);
 var
   mUri: string;
   mLine: Integer;
@@ -583,23 +583,23 @@ begin
   Result := Deeper(ADepth + 1) + mPad[ADepth mod Length(mPad)];
 end;
 
-{ TShellCrashTest }
+{ TCoreCrashTest }
 
-procedure TShellCrashTest.Check(const ALogger: ILogger; const AMethod: string);
+procedure TCoreCrashTest.Check(const ALogger: ILogger; const AMethod: string);
 begin
   if (Method = '') or not SameText(AMethod, Method) then
   begin
     Exit;
   end;
-  ALogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TShellCrashCases.cTestVariable, AMethod]));
+  ALogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TCoreCrashCases.cTestVariable, AMethod]));
   if Overflow then
   begin
     Deeper(0);
   end;
-  raise ECrashTest.Create(cTexts[TCrashCaseText.TestCrash].Fmt([TShellCrashCases.cTestVariable]));
+  raise ECrashTest.Create(cTexts[TCrashCaseText.TestCrash].Fmt([TCoreCrashCases.cTestVariable]));
 end;
 
-procedure TShellCrashCases.DocumentChanged(const AUri, AText: string);
+procedure TCoreCrashCases.DocumentChanged(const AUri, AText: string);
 var
   mEntry: TCrashSkipEntry;
   mEnded: TArray<TCrashSkipEntry>;
@@ -623,7 +623,7 @@ begin
   end;
 end;
 
-function TShellCrashCases.Retry(const AUri: string): Integer;
+function TCoreCrashCases.Retry(const AUri: string): Integer;
 var
   mEntry: TCrashSkipEntry;
   mEnded: TArray<TCrashSkipEntry>;
@@ -639,7 +639,7 @@ begin
   Result := Length(mEnded);
 end;
 
-procedure TShellCrashCases.Announce;
+procedure TCoreCrashCases.Announce;
 var
   mEntry: TCrashSkipEntry;
 begin
@@ -653,18 +653,18 @@ begin
   end;
 end;
 
-function TShellCrashCases.Skipped: TArray<TCrashSkipEntry>;
+function TCoreCrashCases.Skipped: TArray<TCrashSkipEntry>;
 begin
   Result := FSkips.Skipped;
 end;
 
-class function TShellCrashCases.DefaultRoot: string;
+class function TCoreCrashCases.DefaultRoot: string;
 begin
   // Wie die Index-Caches (TIndexCacheDirectory.DefaultRoot): Windows %LOCALAPPDATA%\Atlas.
   Result := TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'crash');
 end;
 
-class function TShellCrashCases.SkipText(const AEntry: TCrashSkipEntry): string;
+class function TCoreCrashCases.SkipText(const AEntry: TCrashSkipEntry): string;
 begin
   Result := cTexts[TCrashCaseText.SkipText].Fmt([cTexts[TCrashCaseText.Skipped].Text, AEntry.Method,
     AEntry.Crashes, AEntry.ExceptionClass]);
@@ -675,6 +675,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.CrashCases', cTexts);
+  TAtlasTextTables.Add('Core.CrashCases', cTexts);
 
 end.

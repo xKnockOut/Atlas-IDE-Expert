@@ -25,7 +25,7 @@
 interface
 
 uses
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   TMcpShell = class
@@ -61,7 +61,7 @@ uses
   Atlas.Common.Mcp.StatisticsHistory,
   Atlas.Common.Index.CacheDirectory,
   Platform.Server,
-  Shell.CrashCases,
+  Core.CrashCases,
   Shell.WorkspaceGroup,
   Shell.Mcp.Context,
   Shell.Mcp.Services,
@@ -133,7 +133,7 @@ end;
 
 /// <summary>Name aus clientInfo für „Prozesse am Projekt“, Absturzfälle (#1883) und die Aufrufstatistik (#2611,
 /// AStatistics nil = aus).</summary>
-function ClientInfoOf(AGroup: TShellWorkspaceGroup; ACrashCases: TShellCrashCases; AStatistics: TMcpStatistics):
+function ClientInfoOf(AGroup: TShellWorkspaceGroup; ACrashCases: TCoreCrashCases; AStatistics: TMcpStatistics):
   TProc<string>;
 begin
   Result :=
@@ -236,7 +236,7 @@ var
   mDispatcher: TJsonRpcDispatcher;
   mConnection: TJsonRpcConnection;
   mRecent: IJsonRpcRecentMessages;
-  mCrashCases: TShellCrashCases;
+  mCrashCases: TCoreCrashCases;
   mStatistics: TMcpStatistics;
 begin
   mLogger := NewLogger(AOptions);

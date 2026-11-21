@@ -53,7 +53,7 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Configuration.Contract,
   Shell.Composition.Platform,
-  Shell.Texts,
+  Core.Texts,
   Shell.Mcp.Ide,
   Atlas.Common.Localization.Texts;
 
@@ -614,7 +614,7 @@ begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not TMutationReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
   begin
-    raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json', 'diff']));
+    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json', 'diff']));
   end;
   mOptions := TMutationOptions.Default;
   mOptions.Routine := Trim(TMcpArgs.OptionalString(AArguments, 'routine'));
@@ -668,7 +668,7 @@ begin
   mFormat := LowerCase(Trim(TMcpArgs.OptionalString(AArguments, 'format')));
   if (mFormat <> '') and (mFormat <> 'markdown') and (mFormat <> 'json') then
   begin
-    raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
   end;
   if not ReadSourceText(mFileName, mText) then
   begin

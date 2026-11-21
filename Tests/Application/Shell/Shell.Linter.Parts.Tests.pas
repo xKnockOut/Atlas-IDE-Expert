@@ -80,7 +80,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Diagnostics.CheckProfile,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,

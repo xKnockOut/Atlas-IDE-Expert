@@ -553,8 +553,8 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalSyntax.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ProtocolReplay.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Protocol.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.CommandLine.pas"/>
-        <DCCReference Include="Application\Shell\Shell.CommandLine.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Core\Core.CommandLine.pas"/>
+        <DCCReference Include="Application\Core\Core.CommandLine.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.AllocationTrace.pas"/>
         <DCCReference Include="Support\Atlas.Tests.FirstUse.pas"/>
         <DCCReference Include="Support\Atlas.Tests.FirstUse.Vcl.pas"/>
@@ -2520,8 +2520,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.Jobs.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.Indexing.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.WorkspaceGroup.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.Compiler.pas"/>
-        <DCCReference Include="Application\Shell\Shell.Compiler.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Core\Core.Compiler.pas"/>
+        <DCCReference Include="Application\Core\Core.Compiler.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Context.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Ide.pas"/>
@@ -2551,7 +2551,7 @@
         <DCCReference Include="Application\Shell\Shell.Mcp.Conventions.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Diagnostics.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.SlashHost.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.Bootstrap.pas"/>
+        <DCCReference Include="..\Application\Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.RefactorTools.Tests.pas"/>
@@ -2595,12 +2595,12 @@
         <DCCReference Include="Application\Shell\Shell.Workspace.Parts.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Indexing.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.WorkspaceGroup.Tests.pas"/>
-        <DCCReference Include="Application\Shell\Shell.Bootstrap.Tests.pas"/>
+        <DCCReference Include="Application\Core\Core.Bootstrap.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.Texts.pas"/>
-        <DCCReference Include="Application\Shell\Shell.Texts.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Core\Core.Texts.pas"/>
+        <DCCReference Include="Application\Core\Core.Texts.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.VersionControlChanges.pas"/>
         <DCCReference Include="Application\Shell\Shell.VersionControlChanges.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.AffectedTests.pas"/>
@@ -2609,8 +2609,8 @@
         <DCCReference Include="Application\Platform\Platform.Server.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Platform.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Platform.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.CrashCases.pas"/>
-        <DCCReference Include="Application\Shell\Shell.CrashCases.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Core\Core.CrashCases.pas"/>
+        <DCCReference Include="Application\Core\Core.CrashCases.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Replay.pas"/>
         <DCCReference Include="Application\Shell\Shell.Replay.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.pas"/>

@@ -23,7 +23,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
-  Shell.Compiler,
+  Core.Compiler,
   Shell.Workspace.Setup,
   Shell.Workspace.State,
   Shell.Workspace.Build,
@@ -73,9 +73,9 @@ type
     function Baseline: IRuleBaseline;
     /// <summary>Compilerlauf für das Projekt (#40, #261): Aufruf von dcc32/dcc64, Projekt, Plattform,
     /// Installation und compiler-Einstellungen. Ob dcc da und nutzbar ist, prüft der Aufrufer
-    /// (TShellCompilerEditions). False mit Grund in AError ohne Projekt, Installation oder unterstützte
+    /// (TCoreCompilerEditions). False mit Grund in AError ohne Projekt, Installation oder unterstützte
     /// Plattform. Threadsicher.</summary>
-    function CompileJob(out AJob: TShellCompileJob; out AError: string): Boolean;
+    function CompileJob(out AJob: TCoreCompileJob; out AError: string): Boolean;
     /// <summary>Wechselt Konfiguration und/oder Plattform ('' = unverändert) und lädt das Projekt neu (#46);
     /// mit AHasDefines ersetzen ADefines die Symbole (DCC_Define) der .dproj, etwa ungespeicherte Projektoptionen
     /// der IDE (#615). False mit Grund in AError ohne Projekt oder bei unbekannten Werten. Threadsicher.</summary>
@@ -122,12 +122,12 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Index.Scheduler,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Workspace.Loader,
   Shell.Workspace.RuleProjects,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts,
-  Shell.Texts;
+  Core.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -178,7 +178,7 @@ begin
   FConfiguration := TLspConfiguration.Create(AServices.Store, AServices.Transport,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+      Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
     end);
   FConfiguration.OnChanged :=
     procedure(const ASettings: TServerSettings)
@@ -339,16 +339,16 @@ begin
 end;
 
 
-function TShellWorkspace.CompileJob(out AJob: TShellCompileJob; out AError: string): Boolean;
+function TShellWorkspace.CompileJob(out AJob: TCoreCompileJob; out AError: string): Boolean;
 var
   mProject: TProjectInfo;
 begin
   Result := FState.Project(mProject);
   if not Result then
   begin
-    AJob := Default(TShellCompileJob);
+    AJob := Default(TCoreCompileJob);
     AJob.Settings := FConfiguration.Settings.Compiler;
-    AError := TShellTexts.NoProject;
+    AError := TCoreTexts.NoProject;
     Exit;
   end;
   Result := TShellWorkspaceJobs.CompileJobOf(mProject, FState.Install, FConfiguration.Settings.Compiler, AJob,

@@ -102,7 +102,7 @@ uses
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
   Platform.Server,
-  Shell.CrashCases,
+  Core.CrashCases,
   Shell.Commands.Build,
   Shell.Commands.Index,
   Atlas.Text.LogMarks,
@@ -405,7 +405,7 @@ begin
   ACommands.Register(cRebuildIndexCommand, RunRebuildIndex);
   ACommands.Register(cClearIndexCommand, RunClearIndex);
   // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
-  ACommands.Register(TShellCrashCases.cRetryCommand, RunRetryCrashCase);
+  ACommands.Register(TCoreCrashCases.cRetryCommand, RunRetryCrashCase);
   ACommands.Register(TLspPullDiagnostics.cRecheckCommand, RunRecheck);
   ACommands.Register(cSelectBuildCommand, RunSelectBuild);
   ACommands.Register(cSelectProjectCommand, RunSelectProject);

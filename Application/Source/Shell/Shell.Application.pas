@@ -26,8 +26,8 @@ uses
   Atlas.Common.Lsp.StatusHeartbeat,
   Atlas.Common.Index.CacheDirectory,
   Platform.Server,
-  Shell.CommandLine,
-  Shell.Bootstrap,
+  Core.CommandLine,
+  Core.Bootstrap,
   Shell.Composition,
   Shell.Mcp,
   Shell.ReplayServer,
@@ -142,7 +142,7 @@ begin
     TShutdownLeaks.SetLogFile(mOptions.LogFile);
     // Sprache der Texte (#1458) für alle Modi: --locale, sonst language aus settings.json, sonst Englisch. Der
     // LSP-Server wählt nach initialize mit der Sprache des Clients neu.
-    TShellBootstrap.UseTextLanguage(mOptions.Locale);
+    TCoreBootstrap.UseTextLanguage(mOptions.Locale);
     // Liste der published-Mitglieder je Klasse merken (Hover auf VCL-Klassen kostet sonst jedes Mal rund 1 s).
     TPublishedMembers.UseCache(True);
     mHeartbeat := StartHeartbeat(mOptions);

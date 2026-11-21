@@ -8,7 +8,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   TLinterAffectedTests = class
@@ -41,7 +41,7 @@ uses
   Atlas.Common.Lsp.AffectedTests.Report,
   Atlas.Common.Lsp.AffectedTests.Types,
   Shell.Composition.Platform,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.AffectedTests,
   Shell.Linter.Output,
   Shell.Linter.Settings,
@@ -66,7 +66,7 @@ var
   mProject: string;
 begin
   Result := nil;
-  for mProject in TShellBootstrap.LoadGroup(TPath.GetFullPath(AGroupFile), nil) do
+  for mProject in TCoreBootstrap.LoadGroup(TPath.GetFullPath(AGroupFile), nil) do
   begin
     Result := Result + [TLinterFiles.MainSourceOf(mProject, ASettings)];
   end;
@@ -94,15 +94,6 @@ begin
   begin
     Result := TShellAffectedTests.TestPrograms(AAllFiles, AReadText);
   end;
-end;
-
-function ReadTextFunc(): TReferenceReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
-    end;
 end;
 
 /// <summary>Typisierte Variable: TNameResolver.Create ist überladen.</summary>
@@ -137,7 +128,7 @@ var
   mResolver: TNameResolver;
   mRequest: TAffectedRequest;
 begin
-  mReadText := ReadTextFunc();
+  mReadText := TShellAffectedTests.FileReader();
   mRequest := RequestOf(AGroup, ASettings, TLinterAffectedTests.ProgramsOf(ATarget.Target, ATarget.ConfigRoot,
     ASettings, AGroup.AllFiles, mReadText), mReadText);
   mQuery := Default(TShellAffectedQuery);

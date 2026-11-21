@@ -70,7 +70,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Checker,
-  Shell.Compiler,
+  Core.Compiler,
   Shell.Workspace.Listings,
   Shell.Workspace.Setup,
   Shell.Workspace.Build,
@@ -344,7 +344,7 @@ end;
 
 procedure TShellWorkspacePartsTests.JobsWithoutInstallation;
 var
-  mJob: TShellCompileJob;
+  mJob: TCoreCompileJob;
   mError: string;
   mSetup: TMissingUnitSetup;
 begin

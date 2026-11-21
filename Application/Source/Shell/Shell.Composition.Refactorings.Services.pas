@@ -136,7 +136,7 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   System.Generics.Collections,
   Atlas.Common.Localization.Texts,
-  Shell.Texts;
+  Core.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -280,7 +280,7 @@ class procedure TShellRefactoringPart.Require(const AArguments: TJSONArray; cons
 begin
   if (AArguments = nil) or (AArguments.Count < Length(ANames)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(ANames));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TCoreTexts.Missing(ANames));
   end;
 end;
 

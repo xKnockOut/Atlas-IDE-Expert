@@ -41,7 +41,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
-  Shell.CrashCases,
+  Core.CrashCases,
   Shell.Composition.Compile,
   Shell.Composition.FileChanges;
 
@@ -63,7 +63,7 @@ begin
   Result := '';
 end;
 
-function NoCrashCases: TShellCrashCases;
+function NoCrashCases: TCoreCrashCases;
 begin
   Result := nil;
 end;

@@ -15,7 +15,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.FormatOutput,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.VersionControlChanges;
 
 type
