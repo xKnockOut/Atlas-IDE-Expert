@@ -83,18 +83,6 @@ begin
   Result := TRuleAssert.ContextFindings(TUnsafeCodeRule.Create, mContext, '');
 end;
 
-function Messages(const AFindings: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFindings do
-  begin
-    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
-      mFinding.Message]);
-  end;
-end;
-
 { TUnsafeCodeTests }
 
 procedure TUnsafeCodeTests.AddressOperatorLikeDcc;
@@ -103,7 +91,7 @@ var
 begin
   // Fall Cm.W1047 aus Tests/Compilermeldungen: dcc meldet „Unsicherer Code '@-Operator'“.
   mFound := Findings(Source('{$WARN UNSAFE_CODE ON}'#10, '  P: Pointer;'#10, '  P := @AWert;'#10));
-  Assert.AreEqual('13:7 @AWert: Der @-Operator ist unsicherer Code (wie W1047).|', Messages(mFound));
+  Assert.AreEqual('13:7 @AWert: Der @-Operator ist unsicherer Code (wie W1047).|', TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual(cUnsafeCodeRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   Assert.AreEqual(13, mFound[0].Range.EndPos.Character);
@@ -113,8 +101,8 @@ end;
 procedure TUnsafeCodeTests.AddressSilentByDefault;
 begin
   // dcc schaltet UNSAFE_CODE ab Werk ab.
-  Assert.AreEqual('', Messages(Findings(Source('', '  P: Pointer;'#10, '  P := @AWert;'#10))));
-  Assert.AreEqual('', Messages(Findings(Source('{$WARN UNSAFE_CODE DEFAULT}'#10, '  P: Pointer;'#10,
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Source('', '  P: Pointer;'#10, '  P := @AWert;'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Source('{$WARN UNSAFE_CODE DEFAULT}'#10, '  P: Pointer;'#10,
     '  P := @AWert;'#10))));
 end;
 
@@ -147,7 +135,7 @@ begin
   Assert.AreEqual('16:12 @FWert: Der @-Operator ist unsicherer Code (wie W1047).|' +
     '17:12 @mZahl: Der @-Operator ist unsicherer Code (wie W1047).|' +
     '18:12 @GWert: Der @-Operator ist unsicherer Code (wie W1047).|' +
-    '19:13 @mZahl: Der @-Operator ist unsicherer Code (wie W1047).|', Messages(Findings(cSource)));
+    '19:13 @mZahl: Der @-Operator ist unsicherer Code (wie W1047).|', TRuleAssert.PositionMessages(Findings(cSource)));
 end;
 
 procedure TUnsafeCodeTests.AddressOfRoutinesIsSilent;
@@ -177,7 +165,7 @@ const
     'end.';
 begin
   // Routinen, Methoden und Unbekanntes bleiben still; nur @U ist eine Variable.
-  Assert.AreEqual('19:7 @U: Der @-Operator ist unsicherer Code (wie W1047).|', Messages(Findings(cSource)));
+  Assert.AreEqual('19:7 @U: Der @-Operator ist unsicherer Code (wie W1047).|', TRuleAssert.PositionMessages(Findings(cSource)));
 end;
 
 procedure TUnsafeCodeTests.SwitchesOffErrorAndWarnings;
@@ -194,10 +182,10 @@ begin
     '  {$WARNINGS ON}'#10 +
     '  {$WARN UNSAFE_CODE DEFAULT}'#10 +
     '  P := @AWert;'#10));
-  Assert.AreEqual('16:7 @AWert: Der @-Operator ist unsicherer Code (wie W1047).|', Messages(mFound));
+  Assert.AreEqual('16:7 @AWert: Der @-Operator ist unsicherer Code (wie W1047).|', TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
   // Schalter in einem Zweig, der nicht sicher mit übersetzt wird: still.
-  Assert.AreEqual('', Messages(Findings(Source('{$IFDEF DEBUG}{$WARN UNSAFE_CODE ON}{$ENDIF}'#10, '  P: Pointer;'#10,
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Source('{$IFDEF DEBUG}{$WARN UNSAFE_CODE ON}{$ENDIF}'#10, '  P: Pointer;'#10,
     '  P := @AWert;'#10))));
 end;
 
@@ -208,14 +196,14 @@ var
 begin
   mSource := Source('', '  P: Pointer;'#10, '  P := @AWert;'#10);
   Assert.AreEqual('12:7 @AWert: Der @-Operator ist unsicherer Code (wie W1047).|',
-    Messages(Findings(mSource, ['UNSAFE_CODE=true'])));
+    TRuleAssert.PositionMessages(Findings(mSource, ['UNSAFE_CODE=true'])));
   mFound := Findings(mSource, ['UNSAFE_CODE=error']);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
-  Assert.AreEqual('', Messages(Findings(mSource, ['UNSAFE_CODE=false'])));
-  Assert.AreEqual('', Messages(Findings(mSource, ['UNSAFE_CODE=true', 'WARNINGS=false'])));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(mSource, ['UNSAFE_CODE=false'])));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(mSource, ['UNSAFE_CODE=true', 'WARNINGS=false'])));
   // Die Datei schaltet ab, was das Projekt einschaltet.
-  Assert.AreEqual('', Messages(Findings(Source('{$WARN UNSAFE_CODE OFF}'#10, '  P: Pointer;'#10, '  P := @AWert;'#10),
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Source('{$WARN UNSAFE_CODE OFF}'#10, '  P: Pointer;'#10, '  P := @AWert;'#10),
     ['UNSAFE_CODE=true'])));
 end;
 
@@ -226,10 +214,10 @@ begin
   mFound := Findings(Source('{$WARN UNSAFE_CAST ON}'#10, '  Q: Pointer;'#10,
     '  Q := AZeiger;'#10'  Result := TKunde(AZeiger);'#10'  Result := TKunde((Q));'#10));
   Assert.AreEqual('14:12 Umwandlung von Pointer nach TKunde ist unsicher (wie W1048).|' +
-    '15:12 Umwandlung von Pointer nach TKunde ist unsicher (wie W1048).|', Messages(mFound));
+    '15:12 Umwandlung von Pointer nach TKunde ist unsicher (wie W1048).|', TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   // UNSAFE_CODE schaltet die Umwandlungen nicht ein.
-  Assert.AreEqual('', Messages(Findings(Source('{$WARN UNSAFE_CODE ON}'#10, '', '  Result := TKunde(AZeiger);'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Source('{$WARN UNSAFE_CODE ON}'#10, '', '  Result := TKunde(AZeiger);'#10))));
   Assert.AreEqual(1, Integer(Length(Findings(Source('', '', '  Result := TKunde(AZeiger);'#10),
     ['UNSAFE_CAST=true']))));
 end;
@@ -246,17 +234,17 @@ begin
   mSource := '{$WARN UNSAFE_CAST ON}'#10'unit Fall;'#10'interface'#10'implementation'#10 +
     'function Umwandeln(AZeiger: Pointer): TObject;'#10'begin'#10'  Result := TObject(AZeiger);'#10'end;'#10'end.';
   Assert.AreEqual('6:12 Umwandlung von Pointer nach TObject ist unsicher (wie W1048).|',
-    Messages(TRuleAssert.IndexFindings(TUnsafeCodeRule.Create, mSource, mIndex, '', 'Fall.pas')));
+    TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TUnsafeCodeRule.Create, mSource, mIndex, '', 'Fall.pas')));
   // Ohne System im Index (Linter ohne RTL) bleibt TObject die Klasse aus System, ein eigener Typ nicht.
-  Assert.AreEqual('6:12 Umwandlung von Pointer nach TObject ist unsicher (wie W1048).|', Messages(Findings(mSource)));
-  Assert.AreEqual('', Messages(Findings(ReplaceStr(mSource, 'implementation'#10,
+  Assert.AreEqual('6:12 Umwandlung von Pointer nach TObject ist unsicher (wie W1048).|', TRuleAssert.PositionMessages(Findings(mSource)));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(ReplaceStr(mSource, 'implementation'#10,
     'implementation'#10'type'#10'  TObject = record'#10'  end;'#10))));
 end;
 
 procedure TUnsafeCodeTests.OtherCastsAreSilent;
 begin
   // Typisierte Zeiger, Ganzzahlen, Interfaces, Umwandlung als Argument und unbekannte Typen.
-  Assert.AreEqual('', Messages(Findings(Source('{$WARN UNSAFE_CAST ON}'#10,
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Source('{$WARN UNSAFE_CAST ON}'#10,
     '  PI: PInteger;'#10'  N: NativeInt;'#10'  K: IKunde;'#10,
     '  PI := nil;'#10'  N := 0;'#10'  K := nil;'#10 +
     '  Result := TKunde(PI);'#10 +
@@ -269,7 +257,7 @@ end;
 
 procedure TUnsafeCodeTests.CastSilentByDefault;
 begin
-  Assert.AreEqual('', Messages(Findings(Source('', '', '  Result := TKunde(AZeiger);'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Source('', '', '  Result := TKunde(AZeiger);'#10))));
 end;
 
 procedure TUnsafeCodeTests.OffAndRegistered;

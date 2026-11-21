@@ -70,7 +70,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Editing.SlashMenu;
+  Atlas.Common.Editing.SlashMenu,
+  Atlas.Tests.SourceText;
 
 const
   cClassUnit =
@@ -155,18 +156,6 @@ begin
     mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
     mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
     Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
   end;
 end;
 
@@ -321,7 +310,7 @@ begin
   Assert.AreEqual(0, Pos('/ctor', mText), 'keine Befehlszeile');
   // Die Zeilen der Klasse bleiben unverändert und in der Reihenfolge.
   Assert.IsTrue(Pos('  TFoo = class(TBasis)'#10'  private'#10'    FListe: TStringList;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSlashMenuTests.RunCtorWithChosenFields;
@@ -348,7 +337,7 @@ begin
   Assert.IsTrue(Pos('  Schritt1;'#10'  raise EFehler.Create(', mText) > 0, mText);
   Assert.IsTrue(Pos('Kaputt', mText) > 0, mText);
   Assert.IsTrue(Pos(#10'  Schritt2;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSlashMenuTests.RunSurroundsOnlySelection;
@@ -363,7 +352,7 @@ begin
   mText := RunAt(cClassUnit, Spot(27, 27), 'except', '', mReason);
   Assert.IsTrue(Pos('  Schritt1;'#10'  try'#10'    Schritt2;'#10'  except', mText) > 0, mText);
   Assert.IsTrue(Pos('  end;'#10'  Schritt3;'#10'end;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSlashMenuTests.RunSelectionBeyondBlockFails;

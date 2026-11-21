@@ -73,7 +73,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Builtin.DfmProperties;
+  Atlas.Common.Rules.Builtin.DfmProperties,
+  Atlas.Tests.TextEdits;
 
 const
   cVclFile = 'C:\V\Vcl.StdCtrls.pas';
@@ -183,36 +184,6 @@ begin
   Result := Form(AObjects, '');
 end;
 
-/// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function ApplyEdits(const AText: string; AEdits: TArray<TRuleEdit>): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in AEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
 function RunWithFile(const AConfig, AFormText: string): TArray<TRuleFinding>;
 var
   mSettings: TServerSettings;
@@ -258,7 +229,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)), 'eine Korrektur');
   AFix := mFindings[0].Fixes[0];
   Assert.AreEqual(cFormFile, AFix.FileName, 'Korrektur in der Formulardatei');
-  Result := ApplyEdits(AFormText, AFix.Edits);
+  Result := TTestEdits.Apply(AFormText, AFix.Edits);
 end;
 
 { TDfmPropertyRulesTests }

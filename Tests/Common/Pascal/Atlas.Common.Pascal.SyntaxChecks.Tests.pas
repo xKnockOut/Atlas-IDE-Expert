@@ -92,14 +92,14 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker;
+  Atlas.Common.Rules.Checker,
+  Atlas.Tests.TextEdits;
 
 function Lines(const ALines: array of string): string;
 begin
@@ -137,33 +137,6 @@ begin
       Result := Result + ',';
     end;
     Result := Result + mCode;
-  end;
-end;
-
-function ApplyEdits(const AText: string; const AEdits: TArray<TTextEdit>): string;
-var
-  mIndex: Integer;
-  mEdit: TTextEdit;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mPosition: Integer;
-  begin
-    mPosition := 0;
-    for mLine := 1 to APosition.Line do
-    begin
-      mPosition := Pos(#10, AText, mPosition + 1);
-    end;
-    Result := mPosition + APosition.Character;
-  end;
-
-begin
-  Result := AText;
-  for mIndex := High(AEdits) downto 0 do
-  begin
-    mEdit := AEdits[mIndex];
-    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
-      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
@@ -226,7 +199,7 @@ begin
   mText := InProgram(['  if A then', '    B := 1;', '  else', '    B := 2;']);
   mFound := Diagnostics(mText);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  mFixed := ApplyEdits(mText, mFound[0].FixEdits);
+  mFixed := TTestEdits.Apply(mText, mFound[0].FixEdits);
   Assert.AreEqual(InProgram(['  if A then', '    B := 1', '  else', '    B := 2;']), mFixed);
   Assert.AreEqual('', Codes(mFixed));
 end;
@@ -261,7 +234,7 @@ begin
   Assert.AreEqual('E2066', mFound[0].Code);
   Assert.AreEqual(''';'' ergänzen', mFound[0].FixTitle);
   Assert.IsFalse(mFound[0].FixSafe);
-  Assert.AreEqual(InProgram(['  B := 1;', '  B := 2;']), ApplyEdits(mText, mFound[0].FixEdits));
+  Assert.AreEqual(InProgram(['  B := 1;', '  B := 2;']), TTestEdits.Apply(mText, mFound[0].FixEdits));
 end;
 
 procedure TSyntaxChecksTests.UnexpectedTokenUsesCompilerText;
@@ -299,7 +272,7 @@ begin
   Assert.AreEqual('E2052', mFound[0].Code);
   Assert.AreEqual('Unvollständiger String (wie E2052).', mFound[0].Message);
   Assert.AreEqual('String schließen', mFound[0].FixTitle);
-  Assert.AreEqual('', Codes(ApplyEdits(mText, mFound[0].FixEdits)));
+  Assert.AreEqual('', Codes(TTestEdits.Apply(mText, mFound[0].FixEdits)));
 end;
 
 procedure TSyntaxChecksTests.UnterminatedCommentReportsE2057Only;
@@ -313,7 +286,7 @@ begin
   Assert.AreEqual('E2057', mFound[0].Code);
   Assert.AreEqual('Unerwartetes Dateiende im Kommentar ab Zeile 6 (wie E2057).', mFound[0].Message);
   Assert.AreEqual('Kommentar in Zeile 6 schließen', mFound[0].FixTitle);
-  Assert.AreEqual(InProgram(['  { offen}', '  B := 1;']), ApplyEdits(mText, mFound[0].FixEdits));
+  Assert.AreEqual(InProgram(['  { offen}', '  B := 1;']), TTestEdits.Apply(mText, mFound[0].FixEdits));
 end;
 
 procedure TSyntaxChecksTests.RealWithoutExponentReportsE2053;

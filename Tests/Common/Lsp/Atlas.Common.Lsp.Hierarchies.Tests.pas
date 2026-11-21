@@ -44,12 +44,12 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.ReferenceConfidence;
+  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -146,28 +146,6 @@ begin
   end;
 end;
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
@@ -196,11 +174,11 @@ begin
   try
     if ACall then
     begin
-      mFound := TLspHierarchies.CallItemAt(FResolver, mTree, cHauptFile, PositionOf(cUnitHaupt, AMarker), Result);
+      mFound := TLspHierarchies.CallItemAt(FResolver, mTree, cHauptFile, TTestSource.PositionOf(cUnitHaupt, AMarker), Result);
     end
     else
     begin
-      mFound := TLspHierarchies.TypeItemAt(FResolver, mTree, cHauptFile, PositionOf(cUnitHaupt, AMarker), Result);
+      mFound := TLspHierarchies.TypeItemAt(FResolver, mTree, cHauptFile, TTestSource.PositionOf(cUnitHaupt, AMarker), Result);
     end;
   finally
     mTree.Free;
@@ -342,7 +320,7 @@ begin
     mTree := TPascalParser.Parse(cUnitDispatch);
     try
       Assert.IsTrue(TLspHierarchies.CallItemAt(mResolver, mTree, cDispatchFile,
-        PositionOf(cUnitDispatch, 'Ablauf(const S: ISpeicher; L: TLader);'#10'begin'), mItem));
+        TTestSource.PositionOf(cUnitDispatch, 'Ablauf(const S: ISpeicher; L: TLader);'#10'begin'), mItem));
     finally
       mTree.Free;
     end;

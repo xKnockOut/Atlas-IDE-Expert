@@ -41,7 +41,8 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Query.Service,
   Atlas.Common.Query.Language,
-  Atlas.Common.Query.Engine.Tests;
+  Atlas.Common.Query.Engine.Tests,
+  Atlas.Common.Configuration.TestSupport;
 
 const
   cFile = 'C:\P\Data.Kunden.pas';
@@ -86,14 +87,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-function SettingsOf(const AJson: string): TServerSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  Result := TConfigurationParser.Parse(AJson, mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 function QueryFindings(const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;

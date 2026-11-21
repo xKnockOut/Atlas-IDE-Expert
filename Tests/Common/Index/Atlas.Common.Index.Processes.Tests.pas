@@ -27,16 +27,8 @@ uses
   System.DateUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Index.Processes;
-
-function Info(APid: Cardinal; const AKind: string): TIndexProcessInfo;
-begin
-  Result := Default(TIndexProcessInfo);
-  Result.Pid := APid;
-  Result.Kind := AKind;
-  Result.Client := 'Claude Code';
-  Result.Workspace := 'Kasse';
-end;
+  Atlas.Common.Index.Processes,
+  Atlas.Common.Index.Processes.TestSupport;
 
 { TIndexProcessInfoTests }
 

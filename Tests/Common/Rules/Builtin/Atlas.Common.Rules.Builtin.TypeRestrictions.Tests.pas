@@ -345,18 +345,8 @@ end;
 
 /// <summary>Meldungen von AFound mit Zeile (ab 1), getrennt durch |.</summary>
 function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + '|';
-    end;
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line + 1) + ': ' + mFinding.Message;
-  end;
+  Result := TRuleAssert.NumberedMessages(AFound, '|', 1);
 end;
 
 /// <summary>Unit G mit den Typen ATypes im interface-Teil und AImplementation dahinter.</summary>

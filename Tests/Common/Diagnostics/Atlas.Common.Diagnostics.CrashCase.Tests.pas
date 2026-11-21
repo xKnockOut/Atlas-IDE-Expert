@@ -49,7 +49,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Tests.TempFolder;
 
 { TCrashCaseTests }
 
@@ -84,11 +85,7 @@ end;
 
 procedure TCrashCaseTests.TearDown;
 begin
-  if TDirectory.Exists(FRoot) then
-  begin
-    TDirectory.Delete(FRoot, True);
-  end;
-  FRoot := '';
+  TTestTempFolder.Remove(FRoot);
 end;
 
 procedure TCrashCaseTests.SummaryNamesMethodFileLineAndException;

@@ -1135,16 +1135,16 @@ begin
   mHeader.BevelOuter := bvNone;
   mLabel := CellLabel(FDialog, mHeader, mHeader.ScaleValue(cGap), mHeader.ScaleValue(cFolderWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
-  mLabel.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
   mLabel := CellLabel(FDialog, mHeader, mHeader.ScaleValue(cGap + cFolderWidth + cGap),
     mHeader.ScaleValue(cSourceWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsSource));
-  mLabel.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
   mLabel := CellLabel(FDialog, mHeader, mHeader.Width - mHeader.ScaleValue(cChoiceWidth + cGap),
     mHeader.ScaleValue(cChoiceWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsInBranch));
   mLabel.Anchors := [akTop, akRight];
-  mLabel.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
 end;
 
 procedure TAtlasBranchExternalsPart.AddRow(AParent: TWinControl; AIndex, AWidth: Integer);

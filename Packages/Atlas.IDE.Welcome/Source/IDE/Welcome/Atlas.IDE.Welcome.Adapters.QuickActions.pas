@@ -67,6 +67,8 @@ type
   end;
 
   TAtlasIdeQuickActions = class(TInterfacedObject, IAtlasQuickActionsSource)
+  private
+    FHooks: TAtlasQuickActionHooks;
   public const
     /// <summary>Takt der Prüfung, ob ein Testlauf ohne Ergebnis endete.</summary>
     cWatchMs = 500;
@@ -99,7 +101,7 @@ type
     procedure WatchTick(Sender: TObject);
     function KeyAccepted(AShortCut: Integer): Boolean;
   public
-    Hooks: TAtlasQuickActionHooks;
+    property Hooks: TAtlasQuickActionHooks read FHooks write FHooks;
     /// <summary>AProjects: Quelle von „Projekte“ (Branch und Änderungen, Ordner, Neu-Abfrage nach Pull);
     /// AMessage: Zeile in die Meldungsansicht.</summary>
     constructor Create(const AProjects: TAtlasQuickProjects; const AMessage: TProc<string>);

@@ -95,7 +95,8 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.PullDiagnostics,
-  Atlas.Common.Diagnostics.RequestScope;
+  Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cOpenFile = 'C:\P\Offen.pas';
@@ -936,19 +937,6 @@ begin
   end;
 end;
 
-procedure Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    ADispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
-end;
-
 procedure TLspPullDiagnosticsTests.ClientPausesRun;
 var
   mFixture: TFixture;
@@ -959,12 +947,12 @@ begin
   mDispatcher := TJsonRpcDispatcher.Create;
   try
     mFixture.Pull.Attach(mDispatcher);
-    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
     mFixture.Pull.WorkspaceReport(nil, Token).Free;
     Sleep(300);
     Assert.AreEqual(0, mFixture.Pull.Computed);
     Assert.AreEqual('debug', mFixture.Pull.Check.Run.Paused);
-    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
     Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
     Assert.AreEqual(1, mFixture.Pull.Computed);
   finally

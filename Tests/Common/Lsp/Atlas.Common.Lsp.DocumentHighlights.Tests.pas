@@ -38,10 +38,10 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Index.SymbolIndex;
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -69,33 +69,6 @@ const
     'end;'#10 +                         // 21
     'end.';
 
-function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
-var
-  mIndex, mFound, mLine, mLineStart: Integer;
-begin
-  mFound := 0;
-  mIndex := 0;
-  repeat
-    mIndex := Pos(AMarker, AText, mIndex + 1);
-    if mIndex = 0 then
-    begin
-      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-    end;
-    Inc(mFound);
-  until mFound = AOccurrence;
-  mLine := 0;
-  mLineStart := 1;
-  for mFound := 1 to mIndex - 1 do
-  begin
-    if AText[mFound] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mFound + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TLspDocumentHighlightsTests }
 
 // "Zeile:Spalte/Art" je Vorkommen, z. B. "7:4/T 12:10/R"; Art T, R oder W.
@@ -115,7 +88,7 @@ begin
   mTree := TPascalParser.Parse(cSource);
   try
     for mHighlight in TLspDocumentHighlights.Highlights(FResolver, FIndex, mTree, 'C:\P\Haupt.pas',
-      PositionOf(cSource, AMarker, AOccurrence)) do
+      TTestSource.PositionOf(cSource, AMarker, AOccurrence)) do
     begin
       if Result <> '' then
       begin
@@ -174,7 +147,7 @@ begin
     try
       mPinned := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
       mFound := TLspDocumentHighlights.Highlights(FResolver, FIndex, mTree, 'C:\P\Haupt.pas',
-        PositionOf(cSource, 'Wert;', 1));
+        TTestSource.PositionOf(cSource, 'Wert;', 1));
       Assert.AreEqual(3, Integer(Length(mFound)));
       Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
       Assert.AreEqual<THighlightKind>(THighlightKind.Text, mFound[0].Kind);

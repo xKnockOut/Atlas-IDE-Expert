@@ -12,7 +12,6 @@ type
   TLspUpcomingConditionsTests = class
   private
     FTree: TSyntaxTree;
-    function LineOf(const AMarker: string): Integer;
     function Blocks(const AMarker: string; ALines: Integer): TLspUpcomingBlocks;
     function Kinds(const ABlocks: TLspUpcomingBlocks): string;
   public
@@ -46,7 +45,8 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -90,26 +90,13 @@ const
 
 { TLspUpcomingConditionsTests }
 
-function TLspUpcomingConditionsTests.LineOf(const AMarker: string): Integer;
-var
-  mLines: TArray<string>;
-begin
-  mLines := cSource.Split([#10]);
-  Result := 0;
-  while (Result <= High(mLines)) and (Pos(AMarker, mLines[Result]) = 0) do
-  begin
-    Inc(Result);
-  end;
-  Assert.IsTrue(Result <= High(mLines), AMarker + ' nicht gefunden');
-end;
-
 function TLspUpcomingConditionsTests.Blocks(const AMarker: string; ALines: Integer): TLspUpcomingBlocks;
 var
   mConditions: TLspUpcomingConditions;
 begin
   mConditions := TLspUpcomingConditions.Create(FTree, cSource, nil);
   try
-    Result := mConditions.Answer(LineOf(AMarker), ALines);
+    Result := mConditions.Answer(TTestSource.LineOf(cSource, AMarker), ALines);
   finally
     mConditions.Free;
   end;

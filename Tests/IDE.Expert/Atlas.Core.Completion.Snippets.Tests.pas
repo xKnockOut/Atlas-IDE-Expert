@@ -114,7 +114,6 @@ uses
   System.Classes,
   System.IOUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Presentation,
@@ -124,22 +123,11 @@ uses
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Completion.SnippetCatalog,
   Atlas.Core.Completion.Placeholders,
-  Atlas.Core.Completion.Providers.Snippets;
+  Atlas.Core.Completion.Providers.Snippets,
+  Atlas.Tests.SourceText;
 
 const
   cTryFinally = '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;';
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
 
 function Find(const AList: TAtlasSnippetList; const APrefix: string; out ASnippet: TAtlasSnippet): Boolean;
 var
@@ -287,7 +275,7 @@ begin
     begin
       mText := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'    ' + mCode + #10'end;'#10'end.';
     end;
-    Assert.IsTrue(Parses(mText), mSnippet.Prefix + ': ' + mText);
+    Assert.IsTrue(TTestSource.Parses(mText), mSnippet.Prefix + ': ' + mText);
     Assert.AreNotEqual('', mSnippet.Description, mSnippet.Prefix);
   end;
 end;

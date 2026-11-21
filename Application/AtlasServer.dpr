@@ -1,5 +1,6 @@
 ﻿program AtlasServer;
 
+{$R *.res}
 {$APPTYPE CONSOLE}
 
 // 8 MB Stapel je Thread statt 1 MB (#1094). Netz, nicht Ursache:

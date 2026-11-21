@@ -38,7 +38,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Unit mit TBasis (ABase) und TKunde = class(TBasis) (AOwn); ABodies im implementation-Teil.</summary>
 function Kunden(const ABase, AOwn, ABodies: string): string;
@@ -58,34 +59,13 @@ begin
 end;
 
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
-  Result := mFound[0].Message;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 procedure Silent(const ASource: string);
 begin
   TRuleAssert.Silent(TMemberHidesAncestorRule.Create, ASource);
-end;
-
-/// <summary>Wendet Edits an, die jeweils innerhalb einer Zeile liegen (Zeilen aus #10), von hinten nach vorn.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mLines: TArray<string>;
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-begin
-  mLines := AText.Split([#10]);
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    mLines[mEdit.Range.StartPos.Line] := Copy(mLines[mEdit.Range.StartPos.Line], 1, mEdit.Range.StartPos.Character) +
-      mEdit.NewText + Copy(mLines[mEdit.Range.StartPos.Line], mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(#10, mLines);
 end;
 
 { TMemberHidingRulesTests }
@@ -106,7 +86,7 @@ begin
   Assert.AreEqual(4, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('In FKundeName umbenennen (in dieser Unit)', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Kunden('    FName: string;'#10, '    FKundeName: string;'#10'    procedure Setzen;'#10,
     'procedure TKunde.Setzen;'#10'begin'#10'  FKundeName := ''A'';'#10'  Self.FKundeName := ''B'';'#10 +
     '  TBasis(Self).FName := ''C'';'#10'end;'#10), mFixed);

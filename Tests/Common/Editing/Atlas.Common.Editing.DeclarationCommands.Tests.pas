@@ -55,10 +55,11 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.Contract,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cClassUnit =
@@ -95,49 +96,6 @@ begin
   Result := Format(cClassUnit, [ACommand]);
 end;
 
-/// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  // Von hinten nach vorn, damit die Positionen gültig bleiben.
-  TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in AEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
 { TDeclarationCommandsTests }
 
 procedure TDeclarationCommandsTests.VarCreatesSectionBeforeBegin;
@@ -146,7 +104,7 @@ var
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/var Liste: TStringList'), 16, mEdits));
-  mText := Apply(WithCommand('/var Liste: TStringList'), mEdits);
+  mText := TTestEdits.Apply(WithCommand('/var Liste: TStringList'), mEdits);
   Assert.IsTrue(Pos('procedure TFoo.Run;'#10'var'#10'  Liste: TStringList;'#10'begin'#10'  Writeln', mText) > 0, mText);
 end;
 
@@ -159,7 +117,7 @@ var
 begin
   Assert.IsTrue(Run(cText, 7, mEdits));
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10'  A: Integer;'#10 +
-    '  B: string;'#10'begin'#10'end;'#10'end.', Apply(cText, mEdits));
+    '  B: string;'#10'begin'#10'end;'#10'end.', TTestEdits.Apply(cText, mEdits));
 end;
 
 procedure TDeclarationCommandsTests.InlineVarReplacesLine;
@@ -167,7 +125,7 @@ var
   mEdits: TArray<TRuleEdit>;
 begin
   Assert.IsTrue(Run(WithCommand('/var I := 0'), 16, mEdits));
-  Assert.IsTrue(Pos(#10'  var I := 0;'#10, Apply(WithCommand('/var I := 0'), mEdits)) > 0);
+  Assert.IsTrue(Pos(#10'  var I := 0;'#10, TTestEdits.Apply(WithCommand('/var I := 0'), mEdits)) > 0);
 end;
 
 procedure TDeclarationCommandsTests.VarOutsideRoutineFails;
@@ -218,7 +176,7 @@ begin
   mOk := Run('unit U;'#10'interface'#10'/const! Max = 10'#10#10'end.', 2, mEdits);
   if mOk then
   begin
-    Assert.Fail(Apply('unit U;'#10'interface'#10'/const! Max = 10'#10#10'end.', mEdits));
+    Assert.Fail(TTestEdits.Apply('unit U;'#10'interface'#10'/const! Max = 10'#10#10'end.', mEdits));
   end;
   Assert.IsFalse(Run('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  /prop Name: string'#10#10'end;'#10'end.', 5, mEdits));
@@ -235,10 +193,10 @@ var
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/const Max = 10'), 16, mEdits));
-  Assert.IsTrue(Pos('procedure TFoo.Run;'#10'const'#10'  Max = 10;'#10'begin', Apply(WithCommand('/const Max = 10'),
+  Assert.IsTrue(Pos('procedure TFoo.Run;'#10'const'#10'  Max = 10;'#10'begin', TTestEdits.Apply(WithCommand('/const Max = 10'),
     mEdits)) > 0);
   Assert.IsTrue(Run(WithCommand('/const! Max = 10'), 16, mEdits));
-  mText := Apply(WithCommand('/const! Max = 10'), mEdits);
+  mText := TTestEdits.Apply(WithCommand('/const! Max = 10'), mEdits);
   Assert.IsTrue(Pos('  System.SysUtils;'#10#10'const'#10'  Max = 10;'#10, mText) > 0, mText);
 end;
 
@@ -249,13 +207,13 @@ var
 begin
   // Ohne private-Abschnitt wird er vor "end" angelegt; Name bekommt das F.
   Assert.IsTrue(Run(WithCommand('/field name: string'), 16, mEdits));
-  mText := Apply(WithCommand('/field name: string'), mEdits);
+  mText := TTestEdits.Apply(WithCommand('/field name: string'), mEdits);
   Assert.IsTrue(Pos('    procedure Run;'#10'  private'#10'    FName: string;'#10'  end;', mText) > 0, mText);
   // Mit private-Abschnitt oben hinein.
   mText := StringReplace(WithCommand('/field FAnzahl: Integer'), '  public'#10, '  private'#10'    FA: Byte;'#10 +
     '  public'#10, []);
   Assert.IsTrue(Run(mText, 18, mEdits));
-  Assert.IsTrue(Pos('  private'#10'    FAnzahl: Integer;'#10'    FA: Byte;', Apply(mText, mEdits)) > 0, Apply(mText, mEdits));
+  Assert.IsTrue(Pos('  private'#10'    FAnzahl: Integer;'#10'    FA: Byte;', TTestEdits.Apply(mText, mEdits)) > 0, TTestEdits.Apply(mText, mEdits));
 end;
 
 procedure TDeclarationCommandsTests.FieldOutsideClassFails;
@@ -276,7 +234,7 @@ var
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/prop Name: string'), 16, mEdits));
-  mText := Apply(WithCommand('/prop Name: string'), mEdits);
+  mText := TTestEdits.Apply(WithCommand('/prop Name: string'), mEdits);
   Assert.IsTrue(Pos('    procedure Run;'#10'  private'#10'    FName: string;'#10 +
     '    procedure SetName(const Value: string);'#10'  public'#10 +
     '    property Name: string read FName write SetName;'#10'  end;', mText) > 0, mText);
@@ -284,7 +242,7 @@ begin
   // Setter mit Änderungsprüfung wie bei der Code-Vorlage (#51); TFoo ist kein Control und hat kein Changed.
   Assert.IsTrue(Pos('end;'#10#10'procedure TFoo.SetName(const Value: string);'#10'begin'#10 +
     '  if FName <> Value then'#10'    FName := Value;'#10'end;'#10, mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TDeclarationCommandsTests.ReadOnlyPropHasNoSetter;
@@ -293,7 +251,7 @@ var
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/prop Anzahl: Integer ro'), 16, mEdits));
-  mText := Apply(WithCommand('/prop Anzahl: Integer ro'), mEdits);
+  mText := TTestEdits.Apply(WithCommand('/prop Anzahl: Integer ro'), mEdits);
   Assert.IsTrue(Pos('property Anzahl: Integer read FAnzahl;', mText) > 0, mText);
   Assert.AreEqual(0, Pos('SetAnzahl', mText));
 end;
@@ -307,7 +265,7 @@ var
   mOutput: string;
 begin
   Assert.IsTrue(Run(cText, 6, mEdits));
-  mOutput := Apply(cText, mEdits);
+  mOutput := TTestEdits.Apply(cText, mEdits);
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10#10'resourcestring'#10 +
     '  SFehlerBeimLaden = ''Fehler beim Laden'';'#10'procedure P;'#10'begin'#10'  Writeln(SFehlerBeimLaden);'#10 +
     'end;'#10'end.', mOutput);
@@ -333,7 +291,7 @@ begin
   mLine := mEdits[0].NewText;
   Assert.AreEqual(46, Integer(Length(mLine)), mLine);
   Assert.IsTrue(mLine.StartsWith('    [''{') and mLine.EndsWith('}'']'), mLine);
-  Assert.IsTrue(Parses(Apply(cText, mEdits)));
+  Assert.IsTrue(TTestSource.Parses(TTestEdits.Apply(cText, mEdits)));
 end;
 
 procedure TDeclarationCommandsTests.GuidOutsideInterfaceFails;
@@ -354,7 +312,7 @@ begin
   for mCommand in cCommands do
   begin
     Assert.IsTrue(Run(WithCommand(mCommand), 16, mEdits), mCommand);
-    Assert.IsTrue(Parses(Apply(WithCommand(mCommand), mEdits)), mCommand);
+    Assert.IsTrue(TTestSource.Parses(TTestEdits.Apply(WithCommand(mCommand), mEdits)), mCommand);
   end;
 end;
 

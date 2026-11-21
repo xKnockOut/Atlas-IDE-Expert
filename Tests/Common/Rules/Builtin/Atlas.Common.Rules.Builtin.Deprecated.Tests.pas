@@ -73,7 +73,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Deprecated,
-  Atlas.Common.Lsp.DiagnosticItems;
+  Atlas.Common.Lsp.DiagnosticItems,
+  Atlas.Tests.RuleAssert;
 
 const
   cUnitWerkzeug =
@@ -226,18 +227,6 @@ begin
   end;
 end;
 
-function Messages(const AFindings: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFindings do
-  begin
-    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
-      mFinding.Message]);
-  end;
-end;
-
 /// <summary>Haupt mit uses AUses und dem Rumpf ABody in Lauf.</summary>
 function Haupt(const AUses, ABody: string): string;
 begin
@@ -260,7 +249,7 @@ var
 begin
   // Wie dcc ab Werk alle vier Arten (#1378).
   mFindings := Run(cUnitHaupt, '', True);
-  mText := Messages(mFindings);
+  mText := TRuleAssert.PositionMessages(mFindings);
   Assert.AreEqual('6:5 TAlt ist experimental (wie W1003).|8:2 Alt ist deprecated: Nutze Neu (wie W1000).|' +
     '10:2 Ohne ist deprecated (wie W1000).|11:5 Grenze ist platform (wie W1002).|12:4 Bib ist library (wie W1001).|',
     mText);
@@ -284,7 +273,7 @@ begin
   end;
   // Methode: Ersatz im selben Typ.
   mFindings := Run(Haupt('Werkzeug', '  L.Anhaengen;'#10), '', True);
-  Assert.AreEqual('9:4 Anhaengen ist deprecated: Use Add (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual('9:4 Anhaengen ist deprecated: Use Add (wie W1000).|', TRuleAssert.PositionMessages(mFindings));
   Assert.AreEqual('Add', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
@@ -311,16 +300,16 @@ const
     'end.';
 begin
   // Vorher meldete die Regel das Feld (Zeile 5), den Aufzählungswert (7) und den Parameter (9).
-  Assert.AreEqual('15:11 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Run(cSource, '', True)));
+  Assert.AreEqual('15:11 Alt ist deprecated: Nutze Neu (wie W1000).|', TRuleAssert.PositionMessages(Run(cSource, '', True)));
 end;
 
 procedure TDeprecatedRulesTests.KindsOption;
 begin
   Assert.AreEqual('11:5 Grenze ist platform (wie W1002).|',
-    Messages(Run(cUnitHaupt, KindsConfig('"platform"'), True)));
-  Assert.AreEqual('12:4 Bib ist library (wie W1001).|', Messages(Run(cUnitHaupt, KindsConfig('"library"'), True)));
+    TRuleAssert.PositionMessages(Run(cUnitHaupt, KindsConfig('"platform"'), True)));
+  Assert.AreEqual('12:4 Bib ist library (wie W1001).|', TRuleAssert.PositionMessages(Run(cUnitHaupt, KindsConfig('"library"'), True)));
   Assert.AreEqual('8:2 Alt ist deprecated: Nutze Neu (wie W1000).|10:2 Ohne ist deprecated (wie W1000).|',
-    Messages(Run(cUnitHaupt, KindsConfig('"deprecated"'), True)));
+    TRuleAssert.PositionMessages(Run(cUnitHaupt, KindsConfig('"deprecated"'), True)));
   Assert.AreEqual(0, Integer(Length(Run(cUnitHaupt, KindsConfig(''), True))));
 end;
 
@@ -359,7 +348,7 @@ begin
     '  (*$WARN SYMBOL_DEPRECATED OFF*)'#10 +
     '  Ohne;'#10), '', True);
   Assert.AreEqual('12:2 Ohne ist deprecated (wie W1000).|14:2 Alt ist deprecated: Nutze Neu (wie W1000).|' +
-    '16:16 Grenze ist platform (wie W1002).|18:16 Grenze ist platform (wie W1002).|', Messages(mFindings));
+    '16:16 Grenze ist platform (wie W1002).|18:16 Grenze ist platform (wie W1002).|', TRuleAssert.PositionMessages(mFindings));
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[1].Severity));
 end;
@@ -368,7 +357,7 @@ procedure TDeprecatedRulesTests.WarnSwitchesInConditionalBranches;
 begin
   // Der Schalter im selben Zweig gilt, der im anderen Zweig nicht; danach ist der Zustand nicht sicher.
   Assert.AreEqual('13:2 Ohne ist deprecated (wie W1000).|',
-    Messages(Run(Haupt('Werkzeug',
+    TRuleAssert.PositionMessages(Run(Haupt('Werkzeug',
     '  {$IFDEF DEBUG}'#10 +
     '  {$WARN SYMBOL_DEPRECATED OFF}'#10 +
     '  Alt;'#10 +
@@ -396,9 +385,9 @@ begin
   mSource := Haupt('Werkzeug, Werk.Altlast, Werk.Windows', '');
   Assert.AreEqual('2:15 Unit Werk.Altlast ist deprecated: Nutze Werkzeug (wie W1006).|' +
     '2:29 Unit Werk.Windows ist experimental (wie W1007).|2:29 Unit Werk.Windows ist platform (wie W1005).|',
-    Messages(Run(mSource, '', True)));
+    TRuleAssert.PositionMessages(Run(mSource, '', True)));
   Assert.AreEqual('2:29 Unit Werk.Windows ist platform (wie W1005).|',
-    Messages(Run(mSource, KindsConfig('"platform"'), True)));
+    TRuleAssert.PositionMessages(Run(mSource, KindsConfig('"platform"'), True)));
   Assert.AreEqual(0, Integer(Length(Run(ReplaceStr(mSource, 'uses ', '{$WARN UNIT_DEPRECATED OFF}'#10 +
     '{$WARN UNIT_EXPERIMENTAL OFF}'#10'{$WARN UNIT_PLATFORM OFF}'#10'uses '), '', True))));
 end;
@@ -425,7 +414,7 @@ const
     'end.';
 begin
   // Nur die Überladung FileAge(string): LongInt ist deprecated; gemeldet wird nur der Aufruf, der sie wählt.
-  Assert.AreEqual('13:12 FileAge ist deprecated (wie W1000).|', Messages(Run(cSource, '', True)));
+  Assert.AreEqual('13:12 FileAge ist deprecated (wie W1000).|', TRuleAssert.PositionMessages(Run(cSource, '', True)));
 end;
 
 procedure TDeprecatedRulesTests.ReplacementFromKnownRoutine;
@@ -436,7 +425,7 @@ begin
   mFindings := Run(Haupt('System.SysUtils', '  S := IncludeTrailingBackslash(S) + ''Name'';'#10), KindsConfig('"platform"'),
     True);
   Assert.AreEqual('9:7 IncludeTrailingBackslash ist platform; besser IncludeTrailingPathDelimiter (wie W1002).|',
-    Messages(mFindings));
+    TRuleAssert.PositionMessages(mFindings));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('IncludeTrailingPathDelimiter', mFindings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual(7, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
@@ -453,12 +442,12 @@ begin
   // Zwei passende Namen im Grund bzw. ein Typ als Ersatz einer Routine: keine Korrektur.
   mFindings := Run(Haupt('Werkzeug', '  Zwei;'#10'  Typisch;'#10), '', True);
   Assert.AreEqual('9:2 Zwei ist deprecated: Neu oder Ohne (wie W1000).|' +
-    '10:2 Typisch ist deprecated: Use TAlt (wie W1000).|', Messages(mFindings));
+    '10:2 Typisch ist deprecated: Use TAlt (wie W1000).|', TRuleAssert.PositionMessages(mFindings));
   Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
   // Ersatz, der an der Stelle nicht sichtbar ist (System.SysUtils fehlt in uses): Meldung ohne Korrektur.
   mFindings := Run(Haupt('Werkzeug', '  Fern;'#10), '', True);
-  Assert.AreEqual('9:2 Fern ist deprecated: Use IncludeTrailingPathDelimiter (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual('9:2 Fern ist deprecated: Use IncludeTrailingPathDelimiter (wie W1000).|', TRuleAssert.PositionMessages(mFindings));
   Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
@@ -468,7 +457,7 @@ var
 begin
   // Die Unit selbst: weder die Deklaration noch der Kopf der Implementierung zählt.
   mFindings := Run(cUnitWerkzeug, '', True);
-  Assert.AreEqual(0, Integer(Length(mFindings)), Messages(mFindings));
+  Assert.AreEqual(0, Integer(Length(mFindings)), TRuleAssert.PositionMessages(mFindings));
 end;
 
 procedure TDeprecatedRulesTests.OwnUnitWithoutIndex;
@@ -492,7 +481,7 @@ var
 begin
   // Wie der Compiler auch in derselben Unit; der Linter hat keinen Projektindex.
   mFindings := Run(cSource, '', False);
-  Assert.AreEqual('10:2 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual('10:2 Alt ist deprecated: Nutze Neu (wie W1000).|', TRuleAssert.PositionMessages(mFindings));
   Assert.AreEqual('Neu', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
@@ -524,7 +513,7 @@ var
 begin
   // Wie dcc: „Symbol 'AUTOMATED' ist veraltet“ (Fälle Cm.E2175 … Cm.E2185), auch ohne Projektindex.
   mFindings := Run(cSource, '', False);
-  Assert.AreEqual('4:2 automated ist deprecated (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual('4:2 automated ist deprecated (wie W1000).|', TRuleAssert.PositionMessages(mFindings));
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(4, mFindings[0].Range.EndPos.Line);
   Assert.AreEqual(11, mFindings[0].Range.EndPos.Character);

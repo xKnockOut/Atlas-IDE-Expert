@@ -49,9 +49,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.TestDrafts;
+  Atlas.Common.Editing.TestDrafts,
+  Atlas.Tests.SourceText;
 
 const
   cKundenText =
@@ -123,15 +123,8 @@ end;
 
 /// <summary>Der Rumpf AMethod in einer Testunit parst ohne Fehler.</summary>
 function Parses(const AMethod: string): Boolean;
-var
-  mTree: TSyntaxTree;
 begin
-  mTree := TSyntaxTreeCache.Parse('unit T;'#13#10'interface'#13#10'implementation'#13#10 + AMethod + #13#10'end.');
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
+  Result := TTestSource.Parses('unit T;'#13#10'interface'#13#10'implementation'#13#10 + AMethod + #13#10'end.');
 end;
 
 { TTestDraftsTests }

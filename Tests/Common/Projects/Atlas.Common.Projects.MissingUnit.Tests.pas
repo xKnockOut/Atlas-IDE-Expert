@@ -44,7 +44,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.MissingUnit;
+  Atlas.Common.Projects.MissingUnit,
+  Atlas.Tests.Files;
 
 var
   /// <summary>Unechte Platte: Ordner (klein) → Dateien und Unterordner.</summary>
@@ -52,27 +53,13 @@ var
   Folders: TDictionary<string, TArray<string>>;
 
 procedure AddFile(const AFileName: string);
-var
-  mFolder: string;
-  mItems: TArray<string>;
 begin
-  mFolder := Copy(AFileName, 1, LastDelimiter('\', AFileName) - 1);
-  if not Files.TryGetValue(LowerCase(mFolder), mItems) then
-  begin
-    mItems := nil;
-  end;
-  Files.AddOrSetValue(LowerCase(mFolder), mItems + [AFileName]);
+  TTestDisk.AddFile(Files, AFileName);
 end;
 
 procedure AddFolder(const AParent, AChild: string);
-var
-  mItems: TArray<string>;
 begin
-  if not Folders.TryGetValue(LowerCase(AParent), mItems) then
-  begin
-    mItems := nil;
-  end;
-  Folders.AddOrSetValue(LowerCase(AParent), mItems + [AParent + '\' + AChild]);
+  TTestDisk.AddFolder(Folders, AParent, AChild);
 end;
 
 function BaseSetup(const AUnit: string): TMissingUnitSetup;

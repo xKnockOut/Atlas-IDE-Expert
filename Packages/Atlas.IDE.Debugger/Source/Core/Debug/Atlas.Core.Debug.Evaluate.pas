@@ -76,6 +76,13 @@ type
 
   TAtlasEvalNode = class
   private
+    FValue: string;
+    FState: TAtlasEvalState;
+    FChanged: Boolean;
+    FExpanded: Boolean;
+    FChildrenLoaded: Boolean;
+    FFromParts: Boolean;
+    FPinned: Boolean;
     FParent: TAtlasEvalNode;
     FChildren: TObjectList<TAtlasEvalNode>;
     FName: string;
@@ -84,17 +91,17 @@ type
     function GetChildCount: Integer;
     function GetChild(AIndex: Integer): TAtlasEvalNode;
   public
-    Value: string;
-    State: TAtlasEvalState;
+    property Value: string read FValue write FValue;
+    property State: TAtlasEvalState read FState write FState;
     /// <summary>Seit dem letzten Halt geändert.</summary>
-    Changed: Boolean;
-    Expanded: Boolean;
+    property Changed: Boolean read FChanged write FChanged;
+    property Expanded: Boolean read FExpanded write FExpanded;
     /// <summary>Kinder geholt (Felder bzw. Teile); bis dahin nur ein Platzhalter im Baum.</summary>
-    ChildrenLoaded: Boolean;
+    property ChildrenLoaded: Boolean read FChildrenLoaded write FChildrenLoaded;
     /// <summary>Kinder aus den Teilen des Ergebnis-Strings statt eigener Auswertung.</summary>
-    FromParts: Boolean;
+    property FromParts: Boolean read FFromParts write FFromParts;
     /// <summary>Festgeheftet (Strg+Enter): bleibt über Halte und Sitzungen.</summary>
-    Pinned: Boolean;
+    property Pinned: Boolean read FPinned write FPinned;
     constructor Create(AParent: TAtlasEvalNode; const AName, AExpression, AKey: string);
     destructor Destroy; override;
     procedure ClearChildren;

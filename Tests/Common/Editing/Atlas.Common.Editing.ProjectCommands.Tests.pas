@@ -72,13 +72,13 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Tests.SourceText;
 
 type
   TFakeHost = class(TInterfacedObject, ISlashHost)
@@ -415,18 +415,6 @@ const
     'begin'#13#10 +
     'end.'#13#10;
 
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
 procedure TProjectCommandsTests.UnitCreatesAndRegisters;
 var
   mHost: TFakeHost;
@@ -444,14 +432,14 @@ begin
   // Neue Unit neben Main.pas, parst und wird danach geöffnet.
   Assert.IsTrue(mHost.WrittenFiles[0].New);
   Assert.IsTrue(SameFile('Kunden.Daten.pas', mHost.WrittenFiles[0].FileName), mHost.WrittenFiles[0].FileName);
-  Assert.IsTrue(Parses(mHost.WrittenFiles[0].Text), mHost.WrittenFiles[0].Text);
+  Assert.IsTrue(TTestSource.Parses(mHost.WrittenFiles[0].Text), mHost.WrittenFiles[0].Text);
   Assert.IsTrue(StartsText('unit Kunden.Daten;', mHost.WrittenFiles[0].Text));
   Assert.AreEqual(mHost.WrittenFiles[0].FileName, mHost.ShowAfterWrite);
   // .dpr: Eintrag am Ende des uses.
   Assert.IsFalse(mHost.WrittenFiles[1].New);
   Assert.IsTrue(Pos('  Main in ''Main.pas'','#13#10'  Kunden.Daten in ''Kunden.Daten.pas'';',
     mHost.WrittenFiles[1].Text) > 0, mHost.WrittenFiles[1].Text);
-  Assert.IsTrue(Parses(mHost.WrittenFiles[1].Text), mHost.WrittenFiles[1].Text);
+  Assert.IsTrue(TTestSource.Parses(mHost.WrittenFiles[1].Text), mHost.WrittenFiles[1].Text);
   // .dproj: gültige DCCReference vor der ersten BuildConfiguration (das Projekt hat noch keine).
   Assert.IsTrue(Pos('    <ItemGroup>'#13#10'        <DCCReference Include="Kunden.Daten.pas"/>'#13#10 +
     '        <BuildConfiguration Include="Debug">', mHost.WrittenFiles[2].Text) > 0, mHost.WrittenFiles[2].Text);
@@ -617,7 +605,7 @@ begin
   Assert.AreEqual(3, Integer(Length(mHost.WrittenFiles)));
   mText := mHost.WrittenFiles[0].Text;
   Assert.IsTrue(SameFile('Zaehler.pas', mHost.WrittenFiles[0].FileName), mHost.WrittenFiles[0].FileName);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(Pos('  TZaehler = class(TComponent)', mText) > 0, mText);
   Assert.IsTrue(Pos('  published', mText) > 0, mText);
   Assert.IsTrue(Pos('RegisterComponents(''Firma'', [TZaehler]);', mText) > 0, mText);
@@ -701,7 +689,7 @@ begin
   mText := mHost.WrittenFiles[0].Text;
   Assert.IsTrue(Pos(#13#10'    TZaehler2 = class(TComponent)'#13#10'    private'#13#10, mText) > 0, mText);
   Assert.IsTrue(Pos(#13#10'    RegisterComponents(', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 const
@@ -796,7 +784,7 @@ begin
   Assert.IsTrue(Pos('    procedure Button1Click(Sender: TObject);'#10'    procedure FormCreate(Sender: TObject);'#10 +
     '  private', mText) > 0, mText);
   Assert.IsTrue(Pos('procedure TForm1.FormCreate(Sender: TObject);'#10'begin'#10#10'end;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.AreEqual(1, Integer(Length(mHost.WrittenFiles)));
   Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Haupt'''#13#10'  OnCreate = FormCreate'#13#10 +
     '  object Button1: TButton'#13#10'    Left = 8'#13#10'  end'#13#10'end'#13#10, mHost.WrittenFiles[0].Text);
@@ -925,7 +913,7 @@ begin
   Assert.AreEqual(3, Integer(Length(mHost.WrittenFiles)));
   Assert.IsTrue(mHost.WrittenFiles[0].New);
   mText := mHost.WrittenFiles[0].Text;
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(ContainsStr(mText, '    procedure TestBerechne;'), mText);
   Assert.IsTrue(ContainsStr(mText, '    [Test]'#13#10'    procedure TestPruefe;'#13#10'  end;'), mText);
   Assert.IsTrue(ContainsStr(mText, 'procedure TKundeTests.TestPruefe;'#13#10'begin'#13#10 +
@@ -956,7 +944,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mHost.WrittenFiles)));
   Assert.IsFalse(mHost.WrittenFiles[0].New);
   mText := mHost.WrittenFiles[0].Text;
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(ContainsStr(mText, '    procedure TestBerechne;'#13#10'    [Test]'#13#10 +
     '    procedure TestBerechne2;'#13#10'  end;'), mText);
   Assert.IsTrue(ContainsStr(mText, 'procedure TKundeTests.TestBerechne2;'), mText);

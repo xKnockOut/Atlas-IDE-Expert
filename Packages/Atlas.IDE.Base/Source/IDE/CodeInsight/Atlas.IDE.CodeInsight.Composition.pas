@@ -196,28 +196,30 @@ begin
 end;
 
 /// <summary>Zuletzt: Hintergrund-Threads, Feature-Tabelle, Stacktraces und was noch an der IDE hängt (#1233);
-/// Ergebnis: ob alle Hintergrund-Threads beendet sind.</summary>
+/// Ergebnis: ob alle Hintergrund-Threads beendet sind, auch die überfälligen.</summary>
 function StopRest(var ATeardown: TAtlasTeardown): Boolean;
 var
-  mStopped: Boolean;
+  mSettled: Boolean;
 begin
-  mStopped := False;
+  mSettled := False;
+  // Arbeiter, die nicht in der Zeit enden, gehen an TAtlasOverdueThreads; der nächste Schritt wartet auf sie.
   ATeardown.Step('Threads',
     procedure
     begin
-      mStopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs);
+      TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs);
     end);
-  // Überfällige Threads mit dem Code von Base (Update-Prüfung, Thread-Listen): Festhalten wirkt nur hier, vor
-  // FreeLibrary, und vor dem Abbau von TAtlasOverdueThreads in der Finalisierung.
+  // Überfällige Threads mit dem Code von Base (Zeitlimit-Arbeiter, Update-Prüfung, Thread-Listen): Festhalten
+  // wirkt nur hier, vor FreeLibrary, und vor dem Abbau von TAtlasOverdueThreads in der Finalisierung. Läuft
+  // danach noch einer, hält TAtlasUnloadSafety Base im Speicher.
   ATeardown.Step('OverdueThreads',
     procedure
     begin
-      TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
+      mSettled := TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
     end);
   ATeardown.Step('Features', FreeFeatures);
   ATeardown.Step('StackCapture', TAtlasIdeStackCapture.Uninstall);
   ATeardown.Step('Leftovers', FreeLeftovers);
-  Result := mStopped;
+  Result := mSettled;
 end;
 
 /// <summary>Abbau in der Finalisierung. Jeder Schritt für sich (#886): Eine Ausnahme, etwa beim Entladen mitten im
@@ -265,7 +267,7 @@ end;
 initialization
   // Vor dem ersten Lesen der Einstellungen: der Speicher in der Registry und die übrigen Adapter der IDE.
   InstallIdeAdapters;
-  TAtlasModuleHost.ConnectMainThread;
+  TAtlasModuleHost.ConnectRegistry;
 
 finalization
   Unregister;

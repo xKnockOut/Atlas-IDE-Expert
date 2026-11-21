@@ -134,7 +134,6 @@ const
   cLinkFormat = '%s %s: %s';
   cItemFormat = '%s: %s';
   cUnusedFormat = '%s – %s';
-  cLinkColor = clGrayText;
 
 { Hilfen }
 
@@ -461,7 +460,7 @@ begin
   end
   else if FNodes[mIndex].Kind = TAtlasStructureNodeKind.Link then
   begin
-    Sender.Canvas.Font.Color := cLinkColor;
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(Sender, clGrayText);
   end;
 end;
 

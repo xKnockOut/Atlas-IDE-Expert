@@ -46,7 +46,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Lsp.Completion.TestSupport;
 
 { TCompletionCollectorTests }
 
@@ -55,18 +56,6 @@ begin
   Result := Default(TCompletionContext);
   Result.Kind := TCompletionContextKind.Scope;
   Result.Prefix := APrefix;
-end;
-
-function Joined(const AItems: TArray<TCompletionItem>): string;
-var
-  mItem: TCompletionItem;
-begin
-  Result := '';
-  for mItem in AItems do
-  begin
-    Result := Result + ' ' + mItem.Name;
-  end;
-  Result := Result.Trim;
 end;
 
 procedure TCompletionCollectorTests.AddKeepsNoStateBetweenCalls;
@@ -89,7 +78,7 @@ begin
       [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0), TTextPosition.Create(2, 0)), 'Dialogs, ')]));
     Assert.IsTrue(mCollector.Add('begin', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol)));
     mItems := mCollector.Finish(mIncomplete);
-    Assert.AreEqual('begin ShowMessage', Joined(mItems));
+    Assert.AreEqual('begin ShowMessage', ItemNames(mItems));
     // Das Schlüsselwort erbt nichts vom Import davor.
     Assert.AreEqual(0, Integer(Length(mItems[0].AdditionalEdits)));
     Assert.AreEqual('', mItems[0].SourceFile);
@@ -121,7 +110,7 @@ begin
     mCollector.Add('WertP', '', cKindVariable, cPenaltyProjectImport, Default(TResolvedSymbol));
     mCollector.Add('WertK', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol));
     mCollector.Add('WertE', '', cKindVariable, Default(TResolvedSymbol));
-    Assert.AreEqual('WertE WertK WertP WertB WertU', Joined(mCollector.Finish(mIncomplete)));
+    Assert.AreEqual('WertE WertK WertP WertB WertU', ItemNames(mCollector.Finish(mIncomplete)));
   finally
     mCollector.Free;
     mRequest.Free;
@@ -142,7 +131,7 @@ begin
     // Unscharf: Teilwort trifft, filterText ist das Getippte.
     Assert.IsTrue(mCollector.Add('Zaehler', '', cKindField, Default(TResolvedSymbol)));
     mItems := mCollector.Finish(mIncomplete);
-    Assert.AreEqual('Zaehler', Joined(mItems));
+    Assert.AreEqual('Zaehler', ItemNames(mItems));
     Assert.AreEqual('', mItems[0].FilterText, 'Anfang passt ohne Rücksicht auf Groß/klein');
   finally
     mCollector.Free;
@@ -168,12 +157,12 @@ begin
     mCollector.Add('Lokal', '', cKindVariable, Default(TResolvedSymbol));
     mCollector.Add('Feld', '', cKindField, Default(TResolvedSymbol));
     mCollector.SendStage;
-    Assert.AreEqual('Lokal Feld', Joined(mSent));
+    Assert.AreEqual('Lokal Feld', ItemNames(mSent));
     // Leere Stufe: nichts gesendet.
     mCollector.SendStage;
     Assert.AreEqual(2, Integer(Length(mSent)));
     mCollector.Add('Global', '', cKindVariable, Default(TResolvedSymbol));
-    Assert.AreEqual('Global', Joined(mCollector.Finish(mIncomplete)));
+    Assert.AreEqual('Global', ItemNames(mCollector.Finish(mIncomplete)));
   finally
     mCollector.Free;
     mRequest.Free;
@@ -326,7 +315,7 @@ var
 begin
   // Aus #490: "lblCount.Caption := Lines.Cou" zeigt Count.ToString mit "→ string" vor Count.
   mList := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Helper);
-  Assert.AreEqual('Count.ToString Count', Joined(mList));
+  Assert.AreEqual('Count.ToString Count', ItemNames(mList));
   Assert.AreEqual('TCaption', mList[0].Conversion);
   Assert.AreEqual('Count', mList[0].ConvertFrom);
   Assert.AreEqual('Count', mList[0].FilterText);
@@ -340,18 +329,18 @@ begin
   Assert.IsFalse(mList[1].HasTextEdit);
   // Funktionsstil setzt die ganze Kette ein.
   mList := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Function_);
-  Assert.AreEqual('IntToStr(Count) Count', Joined(mList));
+  Assert.AreEqual('IntToStr(Count) Count', ItemNames(mList));
   Assert.AreEqual('IntToStr(Lines.Count)', mList[0].TextEdit.NewText);
   // Aufzählung nach string mit System.TypInfo.
   mList := Items('lblCount.Caption := Lines.Far', TCompletionTypeConversion.Helper);
   Assert.AreEqual('GetEnumName(TypeInfo(TFarbe), Ord(Lines.Farbe))', mList[0].TextEdit.NewText);
   // Gleitkomma nach Ganzzahl: kein Eintrag, nur der Hinweis am Original.
   mList := Items('I := Lines.Pre', TCompletionTypeConversion.Helper);
-  Assert.AreEqual('Preis', Joined(mList));
+  Assert.AreEqual('Preis', ItemNames(mList));
   Assert.AreEqual('Double', mList[0].Lossy);
   // Aus: nichts dazu.
   mList := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Off);
-  Assert.AreEqual('Count', Joined(mList));
+  Assert.AreEqual('Count', ItemNames(mList));
   Assert.AreEqual('', mList[0].Lossy);
 end;
 
