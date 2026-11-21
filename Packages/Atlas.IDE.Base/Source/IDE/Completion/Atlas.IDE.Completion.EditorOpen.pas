@@ -109,8 +109,9 @@ begin
     mLineText := TAtlasEditorBuffer.LineText(mView, mView.CursorPos.Line);
     mCharacter := TLspSession.ColumnToIndex(mLineText, mView.CursorPos.Col,
       TAtlasEditorBuffer.TabWidth(mView.Buffer));
-    if not TAtlasCloseRules.DelayedOpen(FDelay.State, TAtlasIdeEditorWindows.WindowState(mView, FDelay.Window, GetFocus), mSame,
-      mLineText, FDelay.Character, mCharacter) then
+    if not TAtlasCloseRules.DelayedOpen(FDelay.State,
+      TAtlasIdeEditorWindows.WindowState(mView, FDelay.Window, GetFocus), mSame, mLineText, FDelay.Character,
+      mCharacter) then
     begin
       Log('Vervollständigung: verzögertes Öffnen verworfen');
       Exit;
