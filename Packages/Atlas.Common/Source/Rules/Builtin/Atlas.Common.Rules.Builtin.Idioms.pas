@@ -103,6 +103,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.StatementText,
   Atlas.Common.Editing.IfCase,
   Atlas.Common.Semantics.NameResolver,
@@ -902,9 +903,9 @@ var
   mUsed: TArray<string>;
   mShort: string;
 begin
-  mUsed := TUsesClauses.UsedUnits(ATokens);
+  mUsed := TPascalUses.UsedUnits(ATokens);
   mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
-  if TUsesClauses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(mUsed, mShort, nil) then
+  if TPascalUses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TPascalUses.IsUsed(mUsed, mShort, nil) then
   begin
     Exit(False);
   end;

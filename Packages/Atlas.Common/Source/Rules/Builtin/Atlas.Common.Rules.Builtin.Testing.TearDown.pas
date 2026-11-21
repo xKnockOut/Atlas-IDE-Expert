@@ -41,7 +41,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
@@ -736,7 +736,7 @@ var
   mCheck: TTearDownCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Setup') or
-    not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+    not TPascalUses.IsTestUnit(AContext.Tree.Tokens) then
   begin
     Exit;
   end;

@@ -96,6 +96,7 @@ uses
   Atlas.Common.Lsp.Impact,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

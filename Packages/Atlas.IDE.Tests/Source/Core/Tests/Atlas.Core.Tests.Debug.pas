@@ -131,7 +131,8 @@ type
 implementation
 
 uses
-  Atlas.Text.CommandLine;
+  Atlas.Text.CommandLine,
+  Atlas.Text.DUnitX.CommandLine;
 
 const
   /// <summary>Optionen von DUnitX (lang und kurz), die Atlas beim Debuggen weglässt.</summary>

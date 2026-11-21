@@ -101,6 +101,7 @@ uses
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
@@ -897,7 +898,7 @@ begin
     cTexts[TRtlTypePatternsConversionsText.InvalidValueCode].Text + ATypeName + ''', [' + mName + ']);'),
     TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), mName)];
   // InRange steht in System.Math.
-  mUsed := TUsesClauses.UsedUnits(FTokens);
+  mUsed := TPascalUses.UsedUnits(FTokens);
   if not MatchText('System.Math', mUsed) and not MatchText('Math', mUsed) then
   begin
     mPrefix := 'System.';
@@ -1469,7 +1470,7 @@ begin
     Exit;
   end;
   FTokens := FContext.Tree.Tokens;
-  FUsed := TUsesClauses.UsedUnits(FTokens);
+  FUsed := TPascalUses.UsedUnits(FTokens);
   FFileName := FContext.ResolverFileName;
   FLines := TTextLines.SplitLines(FContext.Text);
   FLineBreak := TTextLines.LineBreakOf(FContext.Text);

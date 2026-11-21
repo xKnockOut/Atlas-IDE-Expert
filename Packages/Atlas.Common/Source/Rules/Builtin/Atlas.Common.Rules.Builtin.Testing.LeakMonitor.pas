@@ -37,6 +37,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -104,7 +105,7 @@ begin
   mFound := False;
   mFramework := Default(TUsesReference);
   mUsed := nil;
-  for mReference in TUsesClauses.References(AContext.Tree.Tokens) do
+  for mReference in TPascalUses.References(AContext.Tree.Tokens) do
   begin
     if StartsText(cMonitorPrefix, mReference.Name) and not SameText(cNoMonitor, mReference.Name) then
     begin

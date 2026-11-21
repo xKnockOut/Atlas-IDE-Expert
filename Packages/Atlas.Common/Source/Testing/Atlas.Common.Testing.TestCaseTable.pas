@@ -125,7 +125,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Testing.Classes,
   Atlas.Common.Localization.Texts,
@@ -440,7 +440,7 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) or not ContainsText(AText, 'TestCase') or
-    not TUsesClauses.IsTestUnit(ATree.Tokens) then
+    not TPascalUses.IsTestUnit(ATree.Tokens) then
   begin
     Exit;
   end;

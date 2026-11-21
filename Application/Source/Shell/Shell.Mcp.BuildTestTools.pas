@@ -39,6 +39,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.Text.Json,
   Atlas.Text.TestResults,
   Atlas.Common.Lsp.IdeBuild,
