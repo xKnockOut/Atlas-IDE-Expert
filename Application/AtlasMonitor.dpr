@@ -6,7 +6,7 @@
 // Atlas.Common.Monitor.*, Windows-Zugriffe in Atlas.Windows.Monitor.Adapters.*.
 
 uses
-  Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
+  Core.Bootstrap in 'Source\Core\Core.Bootstrap.pas',
   Shell.Monitor in 'Source\Shell\Shell.Monitor.pas',
   Shell.Monitor.MainForm in 'Source\Shell\Shell.Monitor.MainForm.pas',
   Shell.Monitor.CheckOptions in 'Source\Shell\Shell.Monitor.CheckOptions.pas',

@@ -56,7 +56,7 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Prompts,
   Atlas.Common.Localization.Texts,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Mcp.Context,
   Shell.Mcp.Ide,
   Shell.Mcp.Services,

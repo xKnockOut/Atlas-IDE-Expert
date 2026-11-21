@@ -10,7 +10,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Architecture.Comparison,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Linter.Settings;
 
 type

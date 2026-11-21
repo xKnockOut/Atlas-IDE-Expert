@@ -1,6 +1,6 @@
-﻿unit Shell.CrashCases.Tests;
+﻿unit Core.CrashCases.Tests;
 
-// Tests für TShellCrashCases (#1355): Fall bei Ausnahme und Zeitüberschreitung,
+// Tests für TCoreCrashCases (#1355): Fall bei Ausnahme und Zeitüberschreitung,
 // Überspringen ab dem zweiten Absturz, Ende bei Änderung und „Erneut versuchen“,
 // Einstellungen server.crashCases/crashSkip, keine Zugangsdaten im Fall.
 
@@ -12,16 +12,16 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.RecentMessages,
-  Shell.CrashCases;
+  Core.CrashCases;
 
 type
   [TestFixture]
-  TShellCrashCasesTests = class
+  TCoreCrashCasesTests = class
   private
     FRoot: string;
     FDocuments: IDocumentStore;
     FRecent: IJsonRpcRecentMessages;
-    FCases: TShellCrashCases;
+    FCases: TCoreCrashCases;
     FSent: TArray<string>;
     procedure CreateCases;
     procedure Crash;
@@ -67,26 +67,26 @@ const
   cHover = 'textDocument/hover';
 
 /// <summary>Ist AMessage der Text, mit dem eine der übersprungenen Anfragen von ACases abgelehnt wird?</summary>
-function IsSkipText(ACases: TShellCrashCases; const AMessage: string): Boolean;
+function IsSkipText(ACases: TCoreCrashCases; const AMessage: string): Boolean;
 var
   mEntry: TCrashSkipEntry;
 begin
   Result := False;
   for mEntry in ACases.Skipped do
   begin
-    if AMessage = TShellCrashCases.SkipText(mEntry) then
+    if AMessage = TCoreCrashCases.SkipText(mEntry) then
     begin
       Exit(True);
     end;
   end;
 end;
 
-{ TShellCrashCasesTests }
+{ TCoreCrashCasesTests }
 
-procedure TShellCrashCasesTests.CreateCases;
+procedure TCoreCrashCasesTests.CreateCases;
 begin
   FreeAndNil(FCases);
-  FCases := TShellCrashCases.Create(FRoot, TLogger.Create, FDocuments, FRecent);
+  FCases := TCoreCrashCases.Create(FRoot, TLogger.Create, FDocuments, FRecent);
   FCases.TestMethod := '';
   FCases.AtlasVersion := '1.2.0';
   FCases.Notify :=
@@ -97,7 +97,7 @@ begin
     end;
 end;
 
-procedure TShellCrashCasesTests.Crash;
+procedure TCoreCrashCasesTests.Crash;
 var
   mParams: TJSONValue;
   mError: Exception;
@@ -112,12 +112,12 @@ begin
   end;
 end;
 
-function TShellCrashCasesTests.HoverParams: TJSONValue;
+function TCoreCrashCasesTests.HoverParams: TJSONValue;
 begin
   Result := TJSONValue.ParseJSONValue('{"textDocument":{"uri":"' + cUri + '"},"position":{"line":4,"character":2}}');
 end;
 
-function TShellCrashCasesTests.GuardRejects: Boolean;
+function TCoreCrashCasesTests.GuardRejects: Boolean;
 var
   mParams: TJSONValue;
 begin
@@ -135,7 +135,7 @@ begin
   end;
 end;
 
-procedure TShellCrashCasesTests.Setup;
+procedure TCoreCrashCasesTests.Setup;
 begin
   FRoot := TPath.Combine(TPath.GetTempPath, 'AtlasShellCrashTests_' + TGUID.NewGuid.ToString);
   FDocuments := TDocumentStore.Create;
@@ -145,7 +145,7 @@ begin
   CreateCases;
 end;
 
-procedure TShellCrashCasesTests.TearDown;
+procedure TCoreCrashCasesTests.TearDown;
 begin
   FreeAndNil(FCases);
   FDocuments := nil;
@@ -158,7 +158,7 @@ begin
   FRoot := '';
 end;
 
-procedure TShellCrashCasesTests.CrashWritesCaseAndNotifies;
+procedure TCoreCrashCasesTests.CrashWritesCaseAndNotifies;
 var
   mFolders: TArray<string>;
   mCase: TCrashCase;
@@ -173,19 +173,19 @@ begin
   Assert.AreEqual('unit UI.Auftrag;', mCase.Text);
   Assert.AreEqual('ECrashTest', mCase.ExceptionClass);
   Assert.AreEqual(1, Integer(Length(FSent)));
-  Assert.IsTrue(FSent[0].StartsWith(TShellCrashCases.cCaseNotification));
+  Assert.IsTrue(FSent[0].StartsWith(TCoreCrashCases.cCaseNotification));
   Assert.IsTrue(FSent[0].Contains('"skipping":false'));
   Assert.IsFalse(GuardRejects);
 end;
 
-procedure TShellCrashCasesTests.SecondCrashSkipsUntilChange;
+procedure TCoreCrashCasesTests.SecondCrashSkipsUntilChange;
 begin
   Crash;
   Crash;
   Assert.AreEqual(1, Integer(Length(FCases.Skipped)));
   // atlas/crashSkip vor dem zweiten atlas/crashCase.
   Assert.AreEqual(3, Integer(Length(FSent)));
-  Assert.IsTrue(FSent[1].StartsWith(TShellCrashCases.cSkipNotification));
+  Assert.IsTrue(FSent[1].StartsWith(TCoreCrashCases.cSkipNotification));
   Assert.IsTrue(FSent[1].Contains('"active":true'));
   Assert.IsTrue(FSent[2].Contains('"skipping":true'));
   Assert.IsTrue(GuardRejects);
@@ -196,7 +196,7 @@ begin
   Assert.IsFalse(GuardRejects);
 end;
 
-procedure TShellCrashCasesTests.RetryEndsSkipping;
+procedure TCoreCrashCasesTests.RetryEndsSkipping;
 begin
   Crash;
   Crash;
@@ -205,18 +205,18 @@ begin
   Assert.AreEqual(0, FCases.Retry(''));
 end;
 
-procedure TShellCrashCasesTests.SkipSurvivesRestart;
+procedure TCoreCrashCasesTests.SkipSurvivesRestart;
 begin
   Crash;
   Crash;
-  Assert.IsTrue(TFile.Exists(TPath.Combine(FRoot, TShellCrashCases.cSkipsFileName)));
+  Assert.IsTrue(TFile.Exists(TPath.Combine(FRoot, TCoreCrashCases.cSkipsFileName)));
   CreateCases;
   Assert.IsTrue(GuardRejects);
   FCases.Announce;
-  Assert.IsTrue(FSent[High(FSent)].StartsWith(TShellCrashCases.cSkipNotification));
+  Assert.IsTrue(FSent[High(FSent)].StartsWith(TCoreCrashCases.cSkipNotification));
 end;
 
-procedure TShellCrashCasesTests.DisabledWritesNothing;
+procedure TCoreCrashCasesTests.DisabledWritesNothing;
 begin
   FCases.Enabled := False;
   Crash;
@@ -226,7 +226,7 @@ begin
   Assert.IsTrue(GuardRejects);
 end;
 
-procedure TShellCrashCasesTests.SkipDisabledNeverSkips;
+procedure TCoreCrashCasesTests.SkipDisabledNeverSkips;
 begin
   FCases.SkipEnabled := False;
   Crash;
@@ -235,7 +235,7 @@ begin
   Assert.AreEqual(2, Integer(Length(TCrashCases.Folders(FRoot))));
 end;
 
-procedure TShellCrashCasesTests.TimeoutWritesCaseWithRecentParams;
+procedure TCoreCrashCasesTests.TimeoutWritesCaseWithRecentParams;
 var
   mMessage: TJSONObject;
   mFolders: TArray<string>;
@@ -261,7 +261,7 @@ begin
   Assert.IsFalse(GuardRejects);
 end;
 
-procedure TShellCrashCasesTests.CaseHasNoCredentials;
+procedure TCoreCrashCasesTests.CaseHasNoCredentials;
 var
   mSettings: string;
   mFolders, mFiles: TArray<string>;
@@ -292,7 +292,7 @@ begin
   end;
 end;
 
-procedure TShellCrashCasesTests.TestSwitchCrashesMethod;
+procedure TCoreCrashCasesTests.TestSwitchCrashesMethod;
 var
   mParams: TJSONValue;
 begin
@@ -315,6 +315,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellCrashCasesTests);
+  TDUnitX.RegisterTestFixture(TCoreCrashCasesTests);
 
 end.
