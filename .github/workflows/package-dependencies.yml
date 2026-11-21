@@ -197,6 +197,9 @@ jobs:
       - name: Release-Paket und Versionsdatei (#1519), Selbsttest
         shell: pwsh
         run: ./Tools/Test-ReleasePackage.ps1
+      - name: Signatur der Versionsdatei (#1519), Selbsttest
+        shell: pwsh
+        run: ./Tools/Test-VersionFileSignature.ps1
       - name: Versionen von Server und Claude-Code-Plugin gleich
         shell: pwsh
         run: ./Tools/Check-Version.ps1

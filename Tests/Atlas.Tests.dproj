@@ -3159,7 +3159,9 @@
         <DCCReference Include="Text\Atlas.Text.UpdateRun.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.PascalScan.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>
+        <DCCReference Include="Common\Updates\Atlas.Common.Updates.ManifestSignature.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas"/>
+        <DCCReference Include="Windows\Updates\Atlas.Windows.Updates.Adapters.Trust.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Apply.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Servers.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Settings.Tests.pas"/>
