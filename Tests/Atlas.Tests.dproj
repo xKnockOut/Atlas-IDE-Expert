@@ -802,7 +802,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Layout.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatCheck.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Colors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Localization\Atlas.Core.Localization.Language.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Framing.pas"/>
