@@ -78,28 +78,8 @@ implementation
 
 uses
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
-
-function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 /// <summary>Breite von AIndent, Tabulator als zwei Zeichen.</summary>
 function Width(const AIndent: string): Integer;
@@ -290,7 +270,7 @@ function FindOf(const ATokens: TArray<TPascalToken>; ACaseIndex, ALimit: Integer
 var
   mParens: Integer;
 begin
-  AOfIndex := Next(ATokens, ACaseIndex);
+  AOfIndex := NextCodeAfter(ATokens, ACaseIndex);
   mParens := 0;
   while AOfIndex <= ALimit do
   begin
@@ -306,7 +286,7 @@ begin
     begin
       Break;
     end;
-    AOfIndex := Next(ATokens, AOfIndex);
+    AOfIndex := NextCodeAfter(ATokens, AOfIndex);
   end;
   Result := (AOfIndex <= ALimit) and ATokens[AOfIndex].IsKeyword('of');
 end;
@@ -449,7 +429,7 @@ begin
     begin
       FirstLabel := AIndex;
     end;
-    Element := Element + CleanName(Tokens[AIndex].Text);
+    Element := Element + TTextNames.WithoutAmpersand(Tokens[AIndex].Text);
   end;
 end;
 
@@ -485,7 +465,7 @@ begin
   Parts := nil;
   FirstLabel := -1;
   mLastToken := OfIndex;
-  mIndex := Next(Tokens, OfIndex);
+  mIndex := NextCodeAfter(Tokens, OfIndex);
   while mIndex <= High(Tokens) do
   begin
     if not CheckTopLevel(mIndex, mStop) then
@@ -503,7 +483,7 @@ begin
     TrackNesting(mIndex);
     CollectLabel(mIndex);
     mLastToken := mIndex;
-    mIndex := Next(Tokens, mIndex);
+    mIndex := NextCodeAfter(Tokens, mIndex);
   end;
   Slot.EndInsert := Tokens[mLastToken].EndPos;
   Slot.BranchIndent := BranchIndent;

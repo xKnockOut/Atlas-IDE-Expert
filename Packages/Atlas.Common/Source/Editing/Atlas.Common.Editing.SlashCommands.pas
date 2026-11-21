@@ -424,19 +424,6 @@ begin
   Result := AfterEnter(AText, APosition, TSlashEnvironment.Create(ANamespaces, ADisabled), AEdits);
 end;
 
-/// <summary>Führende Leerzeichen und Tabulatoren von ALine.</summary>
-function Leading(const ALine: string): string;
-var
-  mCount: Integer;
-begin
-  mCount := 0;
-  while (mCount < Length(ALine)) and CharInSet(ALine[mCount + 1], [' ', #9]) do
-  begin
-    Inc(mCount);
-  end;
-  Result := Copy(ALine, 1, mCount);
-end;
-
 /// <summary>Einrückung je Ebene nach AStyle: Tabulator, IndentSize Leerzeichen oder zwei.</summary>
 function LevelUnitOf(const AStyle: TFormatStyle): string;
 begin
@@ -461,7 +448,7 @@ var
   mIndent, mExtra: string;
 begin
   Result := APart;
-  mIndent := Leading(APart);
+  mIndent := TTextLines.IndentOf(APart);
   if Length(mIndent) = Length(APart) then
   begin
     Exit;
@@ -493,7 +480,7 @@ begin
   mBase := '';
   if (AEdit.Range.StartPos.Line >= 0) and (AEdit.Range.StartPos.Line <= High(ALines)) then
   begin
-    mBase := Leading(ALines[AEdit.Range.StartPos.Line]);
+    mBase := TTextLines.IndentOf(ALines[AEdit.Range.StartPos.Line]);
   end;
   mParts := AEdit.NewText.Split([#10]);
   for mIndex := 0 to High(mParts) do

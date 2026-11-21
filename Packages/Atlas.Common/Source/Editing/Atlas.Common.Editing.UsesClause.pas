@@ -122,15 +122,6 @@ uses
   Atlas.Common.Editing.UsesGroups,
   System.StrUtils;
 
-function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Index des Semikolons, das die Anweisung ab AIndex abschließt; -1 ohne.</summary>
 function SemicolonAfter(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
@@ -149,7 +140,7 @@ end;
 /// <summary>Erstes Token (nicht Trivia); -1 bei leerem Text.</summary>
 function FirstIndex(const ATokens: TArray<TPascalToken>): Integer;
 begin
-  Result := NextIndex(ATokens, -1);
+  Result := NextCodeAfter(ATokens, -1);
   if Result > High(ATokens) then
   begin
     Result := -1;
@@ -178,7 +169,7 @@ begin
     // program, library, package: ein uses (bzw. contains) hinter dem Kopf.
     Exit(mHeaderEnd);
   end;
-  mInterface_ := NextIndex(ATokens, mHeaderEnd);
+  mInterface_ := NextCodeAfter(ATokens, mHeaderEnd);
   if (mInterface_ > High(ATokens)) or not ATokens[mInterface_].IsKeyword('interface') then
   begin
     Exit;
@@ -665,7 +656,7 @@ begin
   begin
     Exit(False);
   end;
-  mUsesIndex := NextIndex(ATokens, mStart);
+  mUsesIndex := NextCodeAfter(ATokens, mStart);
   if (mUsesIndex <= High(ATokens)) and (ATokens[mUsesIndex].IsKeyword('uses')) then
   begin
     mNames := nil;
@@ -751,7 +742,7 @@ var
   mItem: TUsesItem;
 begin
   Result := nil;
-  mCursor := NextIndex(ATokens, AIndex);
+  mCursor := NextCodeAfter(ATokens, AIndex);
   while mCursor < ASemicolon do
   begin
     mItem := ReadItem(ATokens, AText, mCursor, ASemicolon);
@@ -759,7 +750,7 @@ begin
     Result := Result + [mItem];
     if mCursor < ASemicolon then
     begin
-      mCursor := NextIndex(ATokens, mCursor);
+      mCursor := NextCodeAfter(ATokens, mCursor);
     end;
   end;
 end;
@@ -847,7 +838,7 @@ begin
   begin
     Exit(TTextEdit.Create(TTextRange.Create(Tokens[AIndex].StartPos, Tokens[ASemicolon].EndPos), ''));
   end;
-  mFirst := NextIndex(Tokens, AIndex);
+  mFirst := NextCodeAfter(Tokens, AIndex);
   // Bis zum Semikolon, damit ein Kommentar am letzten Eintrag nicht doppelt erscheint.
   mLast := ASemicolon - 1;
   mSeparator := ', ';
@@ -885,7 +876,7 @@ function ItemIndent(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integ
 var
   mFirst: Integer;
 begin
-  mFirst := NextIndex(ATokens, AIndex);
+  mFirst := NextCodeAfter(ATokens, AIndex);
   Result := ATokens[AIndex].StartPos.Character + 2;
   if (mFirst <= High(ATokens)) and (ATokens[mFirst].StartPos.Line > ATokens[AIndex].StartPos.Line) then
   begin

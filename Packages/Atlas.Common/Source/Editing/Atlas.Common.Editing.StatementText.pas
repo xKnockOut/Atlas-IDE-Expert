@@ -89,8 +89,6 @@ type
       static;
     /// <summary>Liegt APosition in ANode (Anfang und Ende eingeschlossen)?</summary>
     class function Encloses(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean; static;
-    /// <summary>Stelle von AChild unter den Kindern von AParent; -1, wenn es keins ist.</summary>
-    class function ChildIndex(AParent, AChild: TSyntaxNode): Integer; static;
   end;
 
 implementation
@@ -448,20 +446,6 @@ begin
   Result := ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
     (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < ANode.EndPos.Line) or
     ((APosition.Line = ANode.EndPos.Line) and (APosition.Character <= ANode.EndPos.Character)));
-end;
-
-class function TStatementText.ChildIndex(AParent, AChild: TSyntaxNode): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to AParent.ChildCount - 1 do
-  begin
-    if AParent[mIndex] = AChild then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Liegt A vor B (oder auf B)?</summary>

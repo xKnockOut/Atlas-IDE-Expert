@@ -128,7 +128,8 @@ end;
 
 class procedure TAtlasIdeNotesGutter.NotesTipText(const ANotes: TArray<TAtlasNote>; out ATitle, AText: string);
 var
-  mNote: TAtlasNote;
+  mTexts: TArray<string>;
+  mIndex: Integer;
   mStamp: TDateTime;
 begin
   ATitle := '';
@@ -150,14 +151,12 @@ begin
     Exit;
   end;
   ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesTipMore, [Length(ANotes)]);
-  for mNote in ANotes do
+  SetLength(mTexts, Length(ANotes));
+  for mIndex := 0 to High(ANotes) do
   begin
-    if AText <> '' then
-    begin
-      AText := AText + #10#10;
-    end;
-    AText := AText + mNote.Text;
+    mTexts[mIndex] := ANotes[mIndex].Text;
   end;
+  AText := string.Join(#10#10, mTexts);
 end;
 
 end.

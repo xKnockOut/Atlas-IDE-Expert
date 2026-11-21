@@ -85,8 +85,6 @@
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Providers.Git.pas", "rule": "magic-number", "fingerprint": "a0d0902e", "count": 1, "routine": "TAtlasGitVersionControl.GitDir", "context": "2d20a494"},
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Providers.Svn.pas", "rule": "magic-number", "fingerprint": "48bb6726", "count": 1, "routine": "IsRevision", "context": "abbdc381"},
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Providers.Svn.pas", "rule": "magic-number", "fingerprint": "f94558ad", "count": 1, "routine": "TAtlasSvnHistoryPart.SearchLog", "context": "44c2000e"},
-    {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas", "rule": "string-concat-in-loop", "fingerprint": "9c9c688a", "count": 1, "routine": "TAtlasIdeBranching.FailureText", "context": "8f680042"},
-    {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas", "rule": "string-concat-in-loop", "fingerprint": "e1eea7d3", "count": 1, "routine": "TAtlasIdeBranching.FailureText", "context": "c58f8a38"},
     {"path": "Source/IDE/VersionControl/Atlas.IDE.VersionControl.Service.pas", "rule": "magic-number", "fingerprint": "8f931600", "count": 1, "routine": "Current", "context": "1b651d0a"},
     {"path": "Source/UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas", "rule": "magic-number", "fingerprint": "0fcc1ddb", "count": 1, "routine": "LocationOf", "context": "e4989765"},
     {"path": "Source/UI/VersionControl/Atlas.UI.VersionControl.BranchDialog.pas", "rule": "magic-number", "fingerprint": "c227b1d6", "count": 1, "routine": "TAtlasBranchDialog.AddButtons", "context": "77e2ed21"},

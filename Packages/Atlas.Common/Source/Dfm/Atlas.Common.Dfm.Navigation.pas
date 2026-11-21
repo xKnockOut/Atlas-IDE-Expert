@@ -41,14 +41,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Dfm.Parser;
 
-function Contains(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
-begin
-  Result := ((APosition.Line > ARange.StartPos.Line) or
-    ((APosition.Line = ARange.StartPos.Line) and (APosition.Character >= ARange.StartPos.Character))) and
-    ((APosition.Line < ARange.EndPos.Line) or
-    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
-end;
-
 function Target(const AFileName: string; const ASymbol: TIndexSymbol): TDfmTarget;
 begin
   Result.FileName := AFileName;
@@ -66,13 +58,13 @@ var
 begin
   Result := nil;
   mCurrent := ADocument.Root;
-  while (mCurrent <> nil) and Contains(mCurrent.Range, APosition) do
+  while (mCurrent <> nil) and mCurrent.Range.Encloses(APosition) do
   begin
     Result := mCurrent;
     mFound := False;
     for mChild in mCurrent.Children do
     begin
-      if Contains(mChild.Range, APosition) then
+      if mChild.Range.Encloses(APosition) then
       begin
         mCurrent := mChild;
         mFound := True;
@@ -117,14 +109,14 @@ begin
     end;
     for mItem in mCurrent.Properties do
     begin
-      if mItem.IsEvent and Contains(mItem.ValueRange, APosition) then
+      if mItem.IsEvent and mItem.ValueRange.Encloses(APosition) then
       begin
         AWanted.Name := mItem.Value;
         AWanted.Kinds := [TIndexSymbolKind.Method];
         Break;
       end;
     end;
-    if (AWanted.Name = '') and (mCurrent.Name <> '') and Contains(mCurrent.NameRange, APosition) then
+    if (AWanted.Name = '') and (mCurrent.Name <> '') and mCurrent.NameRange.Encloses(APosition) then
     begin
       AWanted.Name := mCurrent.Name;
       AWanted.Kinds := [TIndexSymbolKind.Field];

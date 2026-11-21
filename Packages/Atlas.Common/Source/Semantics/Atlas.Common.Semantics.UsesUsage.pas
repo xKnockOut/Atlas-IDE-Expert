@@ -78,7 +78,9 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.InlineCallees;
+  Atlas.Common.Semantics.InlineCallees,
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 const
   cAttributeSuffix = 'Attribute';
@@ -133,18 +135,6 @@ type
     destructor Destroy; override;
     function Run(const AInactive: TArray<TTextRange>; const AInfo: TUsesUnitInfoFunc): TUsesResolution;
   end;
-
-function Bare(const AIdentifier: string): string;
-begin
-  if (AIdentifier <> '') and (AIdentifier[1] = '&') then
-  begin
-    Result := Copy(AIdentifier, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AIdentifier;
-  end;
-end;
 
 function IsBefore(const A, B: TTextPosition): Boolean;
 begin
@@ -378,7 +368,7 @@ var
   mCallee: TInlineCallee;
 begin
   mToken := FTokens[AIndex];
-  mName := Bare(mToken.Text);
+  mName := TTextNames.WithoutAmpersand(mToken.Text);
   mRelevant := IsOpenName(LowerCase(mName));
   mInline := (FCallees <> nil) and FCallees.IsCandidate(mName);
   if not (mRelevant or mInline) then
@@ -395,7 +385,7 @@ begin
   begin
     // Überladene Routinen mehrerer Units: Welche gewinnt, entscheiden die Argumente, also alle behalten.
     if (mResolved.Kind = TResolvedKind.Symbol) and (MatchText('overload', mResolved.Directives)) and
-      not TUsesActions.DotPrecedes(FTokens, AIndex) then
+      not AfterDot(FTokens, AIndex) then
     begin
       MarkDeclaring(mName, APart);
     end;

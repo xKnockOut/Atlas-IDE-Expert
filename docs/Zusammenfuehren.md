@@ -18,7 +18,7 @@ Erzeugte Dateien tragen in `.gitattributes` die Markierung `linguist-generated`;
 1. Arbeit committen.
 2. `python3 Tools/Merge-Integration.py` mergt `origin/main-merging` ein (flache Klone vertieft es selbst) und löst:
    - erzeugte Dateien: Stand von `main-merging`, danach neu erzeugt mit den beiden Werkzeugen oben (braucht `pwsh`; fehlt es, nennt das Skript die Befehle und endet mit Code 2),
-   - reine Ergänzungen beider Seiten an derselben Stelle in `.dpr`, `.dpk`, `.dproj`, `Tools/Linux/FpcTests.txt` und Markdown (Unit-Listen, Tabellenzeilen in `docs/adr/0017-unit-zuordnung.md`, Aufzählungen): beide behalten,
+   - reine Ergänzungen beider Seiten an derselben Stelle in `.dpr`, `.dpk`, `.dproj`, `Tools/Linux/FpcTests.txt`, der Unit-Zuordnung `Tools/UnitAssignment*.tsv` (danach wieder nach Package und Unit sortiert) und Markdown (Unit-Listen, Tabellenzeilen, Aufzählungen): beide behalten,
    - Markdown-Zeilen, die sich nur in Zahlen unterscheiden: Stand von `main-merging`, die Regelzahlen erzeugt `Update-RuleCatalog.ps1` neu,
    - die Baseline wortgleicher Rümpfe `atlas-duplicates.json`: Stand von `main-merging`, danach neu geschrieben mit `AtlasServer --check . --check-duplicates --update-baseline` (gebauter Server unter `Output/` oder im PATH; fehlt er, nennt das Skript den Befehl und endet mit Code 2).
    - die Liste der Aufwärm-Routinen `Tools/TestWarmUps.baseline.json`: Stand von `main-merging`, danach neu geschrieben mit `pwsh Tools/Check-TestWarmUps.ps1 -Update`.

@@ -78,7 +78,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Text.Json,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -832,20 +833,6 @@ begin
   Result := nil;
 end;
 
-function HasName(const ANames, AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in SplitString(ANames, ',') do
-  begin
-    if SameText(Trim(mName), AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function MakeCaptureDecl(AKind: TCaptureDeclKind; AScope, ANode: TSyntaxNode; const AName,
   ATypeText: string): TCaptureDecl;
 begin
@@ -960,7 +947,7 @@ begin
   for mIndex := 0 to mParameters.ChildCount - 1 do
   begin
     mParam := mParameters[mIndex];
-    if (mParam.Kind = TSyntaxKind.Parameter) and HasName(mParam.Name, AName) and Active(mParam) then
+    if (mParam.Kind = TSyntaxKind.Parameter) and TTextNames.InList(mParam.Name, AName) and Active(mParam) then
     begin
       ADecl := ParameterDecl(AScope, mParam, AName);
       Exit(True);
@@ -977,7 +964,7 @@ begin
   ADecl := Default(TCaptureDecl);
   for mInner := 0 to ASection.ChildCount - 1 do
   begin
-    if HasName(ASection[mInner].Name, AName) and Active(ASection[mInner]) then
+    if TTextNames.InList(ASection[mInner].Name, AName) and Active(ASection[mInner]) then
     begin
       ADecl := MakeCaptureDecl(TCaptureDeclKind.Other, AScope, ASection[mInner], AName, '');
       Exit(True);
@@ -1013,7 +1000,7 @@ function TCaptureLookup.DeclaresInline(ANode: TSyntaxNode; const AName: string; 
 begin
   if ANode.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
   begin
-    Result := HasName(ANode.Name, AName) and (ANode.StartOffset <= AOffset) and (ANode.Parent <> nil) and
+    Result := TTextNames.InList(ANode.Name, AName) and (ANode.StartOffset <= AOffset) and (ANode.Parent <> nil) and
       (AOffset <= ANode.Parent.EndOffset);
   end
   else if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then

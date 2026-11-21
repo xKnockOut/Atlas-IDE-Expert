@@ -56,7 +56,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -143,16 +144,6 @@ const
     'Insert', 'Delete', 'Remove', 'Clear', 'Push', 'Enqueue', 'Exchange');
   cLockNames: array[0..6] of string = ('TMonitor', 'Enter', 'Acquire', 'Lock', 'LockList', 'BeginWrite',
     'TInterlocked');
-
-function ShortName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-end;
 
 { TSharedState }
 
@@ -581,7 +572,7 @@ var
   mUsesEdit: TRuleEdit;
 begin
   Result := nil;
-  if not MatchText(ShortName(ATypeName), ['Integer', 'Int64', 'Cardinal', 'LongInt', 'UInt64']) then
+  if not MatchText(TTextNames.BareTypeName(ATypeName), ['Integer', 'Int64', 'Cardinal', 'LongInt', 'UInt64']) then
   begin
     Exit;
   end;
@@ -669,7 +660,7 @@ begin
   begin
     mMethod := Copy(mMethod, 2, MaxInt);
   end;
-  Result := SameText(ShortName(mAccess[0].Name), AType) and MatchText(mMethod, AMethods);
+  Result := SameText(TTextNames.BareTypeName(mAccess[0].Name), AType) and MatchText(mMethod, AMethods);
 end;
 
 /// <summary>Letztes Argument als anonyme Methode, sonst nil.</summary>
@@ -710,7 +701,7 @@ var
       end;
       if mWrite.Kind = TWriteKind.Collection then
       begin
-        if (mTypeName <> '') and MatchText(ShortName(mTypeName), mSafeTypes) then
+        if (mTypeName <> '') and MatchText(TTextNames.BareTypeName(mTypeName), mSafeTypes) then
         begin
           Continue;
         end;

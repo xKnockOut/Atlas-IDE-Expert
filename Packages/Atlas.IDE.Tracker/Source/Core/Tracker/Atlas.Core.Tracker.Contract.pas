@@ -936,6 +936,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils;
 
 { TAtlasTrackerCall }
@@ -1085,32 +1086,35 @@ function RankedUsers(const AUsers: TArray<TAtlasTrackerUser>; const AText: strin
 var
   mRank, mIndex: Integer;
   mUser: TAtlasTrackerUser;
-  mSeen: string;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  mSeen := '|';
-  // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
-  for mRank := 0 to 3 do
-  begin
-    if (mRank = 3) and not AKeepOthers then
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
+    for mRank := 0 to 3 do
     begin
-      Break;
-    end;
-    for mIndex := 0 to High(AUsers) do
-    begin
-      if Length(Result) >= AMax then
+      if (mRank = 3) and not AKeepOthers then
       begin
-        Exit;
+        Break;
       end;
-      mUser := AUsers[mIndex];
-      if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or
-        (Pos('|' + LowerCase(mUser.Login) + '|', mSeen) > 0) then
+      for mIndex := 0 to High(AUsers) do
       begin
-        Continue;
+        if Length(Result) >= AMax then
+        begin
+          Exit;
+        end;
+        mUser := AUsers[mIndex];
+        if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or mSeen.ContainsKey(LowerCase(mUser.Login)) then
+        begin
+          Continue;
+        end;
+        mSeen.Add(LowerCase(mUser.Login), True);
+        Result := Result + [mUser];
       end;
-      mSeen := mSeen + LowerCase(mUser.Login) + '|';
-      Result := Result + [mUser];
     end;
+  finally
+    mSeen.Free;
   end;
 end;
 

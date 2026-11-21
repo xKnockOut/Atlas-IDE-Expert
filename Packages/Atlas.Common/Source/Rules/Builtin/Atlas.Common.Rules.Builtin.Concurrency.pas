@@ -171,8 +171,8 @@ begin
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
-      if (AVisited.Kind = TSyntaxKind.Identifier) and (InList(cVclGlobals, AVisited.Name) or
-        InList(cVclDialogs, AVisited.Name)) then
+      if (AVisited.Kind = TSyntaxKind.Identifier) and (MatchText(AVisited.Name, cVclGlobals) or
+        MatchText(AVisited.Name, cVclDialogs)) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -225,7 +225,7 @@ begin
       mFound: TSyntaxNode;
     begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
-      if not Result and SameText(MethodPart(ANode.Name), 'Execute') and InList(mThreads, ClassPart(ANode.Name)) then
+      if not Result and SameText(MethodPart(ANode.Name), 'Execute') and MatchText(ClassPart(ANode.Name), mThreads) then
       begin
         mFound := ANode.FindChild(TSyntaxKind.Block);
         if mFound <> nil then

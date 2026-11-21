@@ -29,6 +29,10 @@ type
     function Contains(const APosition: TTextPosition): Boolean;
     /// <summary>Liegt APosition in einem der Bereiche ARanges (etwa den inaktiven Zweigen einer Unit)?</summary>
     class function AnyContains(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
+    /// <summary>Wie Contains, aber EndPos eingeschlossen (Cursor direkt hinter dem Bereich zählt mit).</summary>
+    function Encloses(const APosition: TTextPosition): Boolean;
+    /// <summary>Umschließt einer der Bereiche ARanges APosition (Encloses)?</summary>
+    class function AnyEncloses(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
   end;
 
   /// <summary>Textänderung: Bereich Range ersetzen durch NewText (früher TRuleEdit in Rules.Contract).</summary>
@@ -144,6 +148,25 @@ begin
   for mRange in ARanges do
   begin
     if mRange.Contains(APosition) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TTextRange.Encloses(const APosition: TTextPosition): Boolean;
+begin
+  Result := (TTextPosition.Compare(StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, EndPos) <= 0);
+end;
+
+class function TTextRange.AnyEncloses(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean;
+var
+  mRange: TTextRange;
+begin
+  for mRange in ARanges do
+  begin
+    if mRange.Encloses(APosition) then
     begin
       Exit(True);
     end;

@@ -38,7 +38,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
   Atlas.Common.Rules.Builtin.Flow.HandleLeak.Handles,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -776,7 +777,7 @@ begin
   begin
     Exit;
   end;
-  mPosition := PositionIn(mBlock, AStatement);
+  mPosition := TSyntaxNodes.IndexOf(mBlock, AStatement);
   if (mPosition < 0) or not LineIndent(FContext.Text, AStatement, mOuter) then
   begin
     Exit;

@@ -67,7 +67,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.DataFlow.Syntax;
+  Atlas.Common.Lsp.DataFlow.Syntax,
+  Atlas.Text.Names;
 
 function IsInputCall(const AName: string; AArgument: Integer): Boolean;
 begin
@@ -133,7 +134,7 @@ function IsResultAssignment(ANode: TSyntaxNode; const AName: string): Boolean;
 begin
   Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount >= 2) and
     (ANode[0].Kind = TSyntaxKind.Identifier) and
-    (SameText(ANode[0].Name, 'Result') or SameText(TDataFlowSyntax.CleanName(ANode[0].Name), AName));
+    (SameText(ANode[0].Name, 'Result') or SameText(TTextNames.WithoutAmpersand(ANode[0].Name), AName));
 end;
 
 function IsExitWithValue(ANode: TSyntaxNode): Boolean;
@@ -303,7 +304,7 @@ var
   mIndex: Integer;
   mChild: TSyntaxNode;
 begin
-  if not SameText(TDataFlowSyntax.CleanName(ANode.Name), TDataFlowSyntax.CleanName(ASymbol.Name)) or
+  if not SameText(TTextNames.WithoutAmpersand(ANode.Name), TTextNames.WithoutAmpersand(ASymbol.Name)) or
     Excluded(ALocation.FileName) then
   begin
     Exit;
@@ -665,7 +666,7 @@ begin
   if not ResolveSymbol(ATree, AFileName, mPosition, mProperty) then
   begin
     mProperty := Default(TDataFlowSymbol);
-    mProperty.Name := TDataFlowSyntax.CleanName(AProperty.Name);
+    mProperty.Name := TTextNames.WithoutAmpersand(AProperty.Name);
     mProperty.FileName := AFileName;
     mProperty.Position := mPosition;
     mProperty.SymbolKind := TIndexSymbolKind.Property_;

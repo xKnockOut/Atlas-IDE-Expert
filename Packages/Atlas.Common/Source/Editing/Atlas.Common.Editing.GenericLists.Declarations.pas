@@ -53,7 +53,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Editing.GenericLists.Syntax,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -260,7 +261,7 @@ var
   mDeclaration: TSyntaxNode;
 begin
   mDeclaration := FTarget.Declaration;
-  FTarget.Scope := TGenericListSyntax.EnclosingRoutine(mDeclaration);
+  FTarget.Scope := TSyntaxNodes.Enclosing(mDeclaration, [TSyntaxKind.RoutineDecl]);
   FTarget.IsLocal := FTarget.Scope <> nil;
   if not FTarget.IsLocal and TGenericListSyntax.InInterface(ASource.Tree, mDeclaration.StartOffset) then
   begin
@@ -274,7 +275,7 @@ var
   mDeclaration, mValue: TSyntaxNode;
 begin
   mDeclaration := FTarget.Declaration;
-  FTarget.Scope := TGenericListSyntax.EnclosingRoutine(mDeclaration);
+  FTarget.Scope := TSyntaxNodes.Enclosing(mDeclaration, [TSyntaxKind.RoutineDecl]);
   FTarget.IsLocal := True;
   if Pos(',', mDeclaration.Name) > 0 then
   begin

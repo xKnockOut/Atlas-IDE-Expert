@@ -671,7 +671,7 @@ end;
 procedure TCodeActionBuilder.AddMemberOrderAction;
 var
   mSettings: TMemberOrderSettings;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mAction: TCodeAction;
 begin
   if Assigned(FOwner.FMemberOrderFor) then

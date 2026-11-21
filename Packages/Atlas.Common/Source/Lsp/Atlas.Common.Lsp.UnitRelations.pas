@@ -114,7 +114,8 @@ uses
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -505,7 +506,7 @@ begin
       if mReference.InInterface = (ATarget = TUsesSection.Interface_) then
       begin
         AError := cTexts[TUnitRelationsText.IsAlreadyInTheUses].Fmt([AUnit,
-          TUnitRelationsBuilder.SectionName(ATarget)]);
+          TTextNames.SectionKeyword(ATarget = TUsesSection.Interface_)]);
         Exit(False);
       end;
       mFound := True;

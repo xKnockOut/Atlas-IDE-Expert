@@ -48,8 +48,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.Completion.Context;
+  Atlas.Common.Lsp.Documentation;
 
 const
   cDirectives: array[0..13] of string = ('class', 'static', 'virtual', 'dynamic', 'override', 'abstract', 'final',
@@ -172,7 +171,7 @@ begin
   end;
   for mCandidate in ASite.UnitInfo.Symbols do
   begin
-    if (ComparePositions(mCandidate.SelectionRange.StartPos, APosition) = 0) and
+    if (TTextPosition.Compare(mCandidate.SelectionRange.StartPos, APosition) = 0) and
       SameText(ASite.UnitInfo.SymbolFile(mCandidate), ASite.FileName) then
     begin
       ASite.Symbol := mCandidate;

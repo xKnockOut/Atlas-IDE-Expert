@@ -68,28 +68,8 @@ uses
   System.RegularExpressions,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
-
-function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 /// <summary>Letztes Token vor APosition ohne Kommentare; APrefix: Index des Bezeichners, in oder hinter dem der
 /// Cursor steht (das getippte Wort), sonst -1. Ergebnis ist das Token davor.</summary>
@@ -126,7 +106,7 @@ begin
   AStart := AIndex;
   while (AIndex >= 0) and (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Result := [CleanName(ATokens[AIndex].Text)] + Result;
+    Result := [TTextNames.WithoutAmpersand(ATokens[AIndex].Text)] + Result;
     AStart := AIndex;
     AIndex := PreviousCode(ATokens, AIndex);
     if (AIndex >= 0) and ATokens[AIndex].IsSymbol('.') then
@@ -221,10 +201,10 @@ begin
     mCase := EnclosingCase(ATokens, AIndex);
     if mCase >= 0 then
     begin
-      Result := Next(ATokens, mCase);
+      Result := NextCodeAfter(ATokens, mCase);
       while (Result <= High(ATokens)) and (Result < AIndex) and not ATokens[Result].IsKeyword('of') do
       begin
-        Result := Next(ATokens, Result);
+        Result := NextCodeAfter(ATokens, Result);
       end;
       if (Result > High(ATokens)) or not ATokens[Result].IsKeyword('of') then
       begin
@@ -330,7 +310,7 @@ begin
   begin
     if ACounts then
     begin
-      AElement := AElement + CleanName(AToken.Text);
+      AElement := AElement + TTextNames.WithoutAmpersand(AToken.Text);
     end;
   end
   else
@@ -351,7 +331,7 @@ begin
   mElement := '';
   Result := False;
   ALast := ABracket;
-  mIndex := Next(ATokens, ABracket);
+  mIndex := NextCodeAfter(ATokens, ABracket);
   while mIndex <= High(ATokens) do
   begin
     if ATokens[mIndex].IsSymbol(']') then
@@ -365,7 +345,7 @@ begin
       Break;
     end;
     ALast := mIndex;
-    mIndex := Next(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
   FlushElement(APresent, mElement);
 end;
@@ -380,7 +360,7 @@ var
 begin
   Result := nil;
   mElement := '';
-  mIndex := Next(ATokens, ABracket);
+  mIndex := NextCodeAfter(ATokens, ABracket);
   while (mIndex <= High(ATokens)) and (TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) < 0) do
   begin
     if ATokens[mIndex].IsSymbol(',') then
@@ -389,9 +369,9 @@ begin
     end
     else if mIndex <> APrefix then
     begin
-      mElement := mElement + CleanName(ATokens[mIndex].Text);
+      mElement := mElement + TTextNames.WithoutAmpersand(ATokens[mIndex].Text);
     end;
-    mIndex := Next(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
   FlushElement(Result, mElement);
 end;
@@ -448,7 +428,7 @@ begin
   end
   else if AExpect and (AToken.Kind = TPascalTokenKind.Identifier) then
   begin
-    AValues := AValues + [CleanName(AToken.Text)];
+    AValues := AValues + [TTextNames.WithoutAmpersand(AToken.Text)];
     AExpect := False;
   end;
 end;
@@ -467,7 +447,7 @@ begin
   begin
     Inc(mIndex);
   end;
-  mIndex := Next(mTokens, mIndex);
+  mIndex := NextCodeAfter(mTokens, mIndex);
   if (mIndex > High(mTokens)) or not mTokens[mIndex].IsSymbol('(') then
   begin
     Exit;
@@ -492,7 +472,7 @@ begin
     begin
       TakeEnumValue(mTokens[mIndex], mExpect, Result);
     end;
-    mIndex := Next(mTokens, mIndex);
+    mIndex := NextCodeAfter(mTokens, mIndex);
   end;
 end;
 
@@ -508,29 +488,29 @@ begin
   begin
     Inc(mIndex);
   end;
-  mIndex := Next(mTokens, mIndex);
+  mIndex := NextCodeAfter(mTokens, mIndex);
   if (mIndex <= High(mTokens)) and mTokens[mIndex].IsKeyword('packed') then
   begin
-    mIndex := Next(mTokens, mIndex);
+    mIndex := NextCodeAfter(mTokens, mIndex);
   end;
   if (mIndex > High(mTokens)) or not mTokens[mIndex].IsKeyword('set') then
   begin
     Exit;
   end;
-  mIndex := Next(mTokens, mIndex);
+  mIndex := NextCodeAfter(mTokens, mIndex);
   if (mIndex > High(mTokens)) or not mTokens[mIndex].IsKeyword('of') then
   begin
     Exit;
   end;
-  mIndex := Next(mTokens, mIndex);
+  mIndex := NextCodeAfter(mTokens, mIndex);
   while (mIndex <= High(mTokens)) and (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Result := Result + CleanName(mTokens[mIndex].Text);
-    mIndex := Next(mTokens, mIndex);
+    Result := Result + TTextNames.WithoutAmpersand(mTokens[mIndex].Text);
+    mIndex := NextCodeAfter(mTokens, mIndex);
     if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol('.') then
     begin
       Result := Result + '.';
-      mIndex := Next(mTokens, mIndex);
+      mIndex := NextCodeAfter(mTokens, mIndex);
     end
     else
     begin

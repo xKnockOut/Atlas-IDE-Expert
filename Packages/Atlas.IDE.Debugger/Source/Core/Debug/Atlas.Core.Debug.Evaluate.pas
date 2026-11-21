@@ -369,24 +369,23 @@ end;
 /// Ziffern.</summary>
 function DecodeCharCode(const AText: string; var AIndex: Integer; out AChar: Char): Boolean;
 var
-  mDigits: string;
-  mCode: Integer;
+  mStart, mCode: Integer;
+  mHex: Boolean;
 begin
   AChar := #0;
   Inc(AIndex);
-  mDigits := '';
-  if (AIndex <= Length(AText)) and (AText[AIndex] = '$') then
+  mStart := AIndex;
+  mHex := (AIndex <= Length(AText)) and (AText[AIndex] = '$');
+  if mHex then
   begin
-    mDigits := '$';
     Inc(AIndex);
   end;
   while (AIndex <= Length(AText)) and (CharInSet(AText[AIndex], ['0'..'9']) or
-    ((mDigits <> '') and (mDigits[1] = '$') and CharInSet(AText[AIndex], ['a'..'f', 'A'..'F']))) do
+    (mHex and CharInSet(AText[AIndex], ['a'..'f', 'A'..'F']))) do
   begin
-    mDigits := mDigits + AText[AIndex];
     Inc(AIndex);
   end;
-  Result := TryStrToInt(mDigits, mCode) and (mCode >= 0) and (mCode <= $FFFF);
+  Result := TryStrToInt(Copy(AText, mStart, AIndex - mStart), mCode) and (mCode >= 0) and (mCode <= $FFFF);
   if Result then
   begin
     AChar := Char(mCode);
@@ -398,35 +397,45 @@ var
   mText: string;
   mIndex, mStop: Integer;
   mCode: Char;
+  mBuilder: TStringBuilder;
 begin
   AText := '';
   mText := Trim(AValue);
   Result := (mText <> '') and CharInSet(mText[1], ['''', '#']);
   mIndex := 1;
-  while Result and (mIndex <= Length(mText)) do
-  begin
-    if mText[mIndex] = '''' then
+  mBuilder := TStringBuilder.Create;
+  try
+    while Result and (mIndex <= Length(mText)) do
     begin
-      mStop := SkipString(mText, mIndex);
-      Result := mStop <> 0;
-      if Result then
+      if mText[mIndex] = '''' then
       begin
-        AText := AText + StringReplace(Copy(mText, mIndex + 1, mStop - mIndex - 2), '''''', '''', [rfReplaceAll]);
-        mIndex := mStop;
-      end;
-    end
-    else if mText[mIndex] = '#' then
-    begin
-      Result := DecodeCharCode(mText, mIndex, mCode);
-      if Result then
+        mStop := SkipString(mText, mIndex);
+        Result := mStop <> 0;
+        if Result then
+        begin
+          mBuilder.Append(StringReplace(Copy(mText, mIndex + 1, mStop - mIndex - 2), '''''', '''', [rfReplaceAll]));
+          mIndex := mStop;
+        end;
+      end
+      else if mText[mIndex] = '#' then
       begin
-        AText := AText + mCode;
+        Result := DecodeCharCode(mText, mIndex, mCode);
+        if Result then
+        begin
+          mBuilder.Append(mCode);
+        end;
+      end
+      else
+      begin
+        Result := False;
       end;
-    end
-    else
-    begin
-      Result := False;
     end;
+    if Result then
+    begin
+      AText := mBuilder.ToString;
+    end;
+  finally
+    mBuilder.Free;
   end;
 end;
 
