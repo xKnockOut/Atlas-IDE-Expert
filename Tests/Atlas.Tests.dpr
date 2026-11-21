@@ -764,6 +764,7 @@ uses
   Atlas.Core.Style.Signal.Tests in 'IDE.Expert\Atlas.Core.Style.Signal.Tests.pas',
   Atlas.Common.Pascal.XmlDoc.Tests in 'Common\Pascal\Atlas.Common.Pascal.XmlDoc.Tests.pas',
   Atlas.Common.Editing.UsesClause.Tests in 'Common\Editing\Atlas.Common.Editing.UsesClause.Tests.pas',
+  Atlas.Common.Pascal.UsesClauses.Tests in 'Common\Pascal\Atlas.Common.Pascal.UsesClauses.Tests.pas',
   Atlas.Common.Editing.UsesGroups.Tests in 'Common\Editing\Atlas.Common.Editing.UsesGroups.Tests.pas',
   Atlas.Common.Editing.UsesActions.Tests in 'Common\Editing\Atlas.Common.Editing.UsesActions.Tests.pas',
   Atlas.Common.Editing.UsesCommand.Tests in 'Common\Editing\Atlas.Common.Editing.UsesCommand.Tests.pas',
