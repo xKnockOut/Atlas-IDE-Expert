@@ -85,7 +85,7 @@ uses
   System.Math,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.Reassigned,
+  Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Localization.Texts,

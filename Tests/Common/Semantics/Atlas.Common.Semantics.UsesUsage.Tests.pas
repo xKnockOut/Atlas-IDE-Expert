@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesUsage.Tests;
+﻿unit Atlas.Common.Semantics.UsesUsage.Tests;
 
 // Tests der Nutzung der uses-Einträge über die Namensauflösung (#1925):
 // Ein Mitgliedsname (Count) hält die Unit seiner Klasse nicht, eine eigene
@@ -62,7 +62,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Semantics.InlineCallees,
-  Atlas.Common.Editing.UsesUsage;
+  Atlas.Common.Semantics.UsesUsage;
 
 const
   cListe = 'unit Liste;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +

@@ -536,7 +536,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesUsage.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UsesUsage.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FeatureCycles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas"/>
@@ -665,12 +665,12 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.Statements.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Recursion.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExitPoints.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Reassigned.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Reassigned.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.Contract.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.Operators.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ResolvedSignatures.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ResolvedSignatures.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SuggestConst.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.VarBlock.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>

@@ -147,7 +147,7 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.DataFieldNames,
-  Atlas.Common.Editing.Reassigned,
+  Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.Hover.UnitContents,
   Atlas.Common.Configuration.Contract,

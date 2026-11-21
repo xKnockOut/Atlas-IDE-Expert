@@ -164,11 +164,11 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExitPoints.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExitPoints.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Reassigned.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Reassigned.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.Operators.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ResolvedSignatures.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ResolvedSignatures.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Commands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas"/>
@@ -624,7 +624,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ErrorCommands.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesUsage.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UsesUsage.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FeatureCycles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Tests.pas"/>

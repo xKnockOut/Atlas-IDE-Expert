@@ -473,7 +473,7 @@ Atlas.Common.Semantics.ExpressionTypes.Operators.Tests
 Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests
 Atlas.Common.Semantics.FreeRoutineMembers.Tests
 Atlas.Common.Semantics.OrdinalConstants.Tests
-Atlas.Common.Editing.Reassigned.Tests
+Atlas.Common.Semantics.Reassigned.Tests
 Atlas.Common.Semantics.RtlMethodReferences.Tests
 Atlas.Common.Semantics.StepCalls.Tests
 Atlas.Common.Semantics.DataAccessCalls.Tests

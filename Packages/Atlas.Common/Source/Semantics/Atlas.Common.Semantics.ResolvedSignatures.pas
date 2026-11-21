@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ResolvedSignatures;
+﻿unit Atlas.Common.Semantics.ResolvedSignatures;
 
 // Übergabeart von Argumenten über die Namensauflösung (#712), gemeinsam für
 // Prüfregeln und Editorfunktionen: Methoden (Obj.Foo(X)), Routinen anderer

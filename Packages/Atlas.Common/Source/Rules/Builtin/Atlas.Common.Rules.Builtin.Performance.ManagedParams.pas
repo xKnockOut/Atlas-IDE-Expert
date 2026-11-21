@@ -39,7 +39,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ResolvedSignatures,
+  Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays,

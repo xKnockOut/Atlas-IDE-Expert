@@ -55,13 +55,14 @@ function Get-PackageConfigText([string] $RootDir) {
         }
         $mPlugin['rules'][$mName] = $mRoot['rules'][$mName]
     }
-    # Richtungen und bekannte Kanten unter Atlas.Common betreffen nur den Server: Die Plugin-Packages enthalten
-    # keine Atlas.Common-Units (Check-PackageDependencies.ps1), die Liste stünde sonst in jedem Package.
+    # Bekannte Zyklen, Richtungen und bekannte Kanten unter Atlas.Common betreffen nur den Server: Die
+    # Plugin-Packages enthalten keine Atlas.Common-Units (Check-PackageDependencies.ps1), die Listen stünden
+    # sonst in jedem Package.
     $mCycles = [ordered]@{}
     foreach ($mKey in $mPlugin['rules']['architecture-feature-cycle'].Keys) {
         $mCycles[$mKey] = $mPlugin['rules']['architecture-feature-cycle'][$mKey]
     }
-    foreach ($mKey in @('directions', 'knownEdges')) {
+    foreach ($mKey in @('known', 'directions', 'knownEdges')) {
         if ($mCycles.Contains($mKey)) {
             $mCycles[$mKey] = @($mCycles[$mKey] | Where-Object { -not $_.StartsWith('Atlas.Common') })
         }

@@ -153,7 +153,7 @@ uses
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesUsage,
+  Atlas.Common.Semantics.UsesUsage,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.ConsideredUsed,

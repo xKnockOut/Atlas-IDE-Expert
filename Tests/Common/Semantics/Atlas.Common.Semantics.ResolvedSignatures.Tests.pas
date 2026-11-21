@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ResolvedSignatures.Tests;
+﻿unit Atlas.Common.Semantics.ResolvedSignatures.Tests;
 
 // Übergabeart über die Namensauflösung (#712): Modifizierer aus einer
 // Signatur, Typumwandlungen, Routinen anderer Units, Methoden über Objekte,
@@ -41,7 +41,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ResolvedSignatures;
+  Atlas.Common.Semantics.ResolvedSignatures;
 
 const
   cLB = #13#10;

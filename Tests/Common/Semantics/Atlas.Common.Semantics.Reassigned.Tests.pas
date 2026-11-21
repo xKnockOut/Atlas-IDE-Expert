@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.Reassigned.Tests;
+﻿unit Atlas.Common.Semantics.Reassigned.Tests;
 
 // Tests der neu zugewiesenen Variablen (#712): Zählung schreibender Stellen
 // (:=, var-/out-Argument, Inc/Dec, Include/Exclude, Read/ReadLn), mögliche
@@ -11,7 +11,7 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.Reassigned;
+  Atlas.Common.Semantics.Reassigned;
 
 type
   [TestFixture]

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesUsage;
+﻿unit Atlas.Common.Semantics.UsesUsage;
 
 // Welche uses-Einträge eine Unit braucht, über die Namensauflösung (#1925)
 // statt über den Namensvergleich allein. Ergebnis ist eine TUsesResolution für

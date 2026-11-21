@@ -44,7 +44,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   System.JSON,
-  Atlas.Common.Editing.Reassigned,
+  Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Lsp.Reassigned;
 
 const
