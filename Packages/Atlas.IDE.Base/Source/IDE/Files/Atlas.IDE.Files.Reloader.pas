@@ -76,7 +76,8 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.UI.Notifications.Strings;
 
-/// <summary>Text der Datei auf der Platte in ihrer Kodierung; False, wenn sie fehlt, gesperrt oder nicht lesbar ist.</summary>
+/// <summary>Text der Datei auf der Platte in ihrer Kodierung; False, wenn sie fehlt, gesperrt oder nicht lesbar
+/// ist.</summary>
 function TryDiskText(const AFileName: string; out AText: string): Boolean;
 begin
   AText := '';
