@@ -27,7 +27,8 @@ implementation
 
 uses
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Configuration.Contract;
 
 { TRuleContextTests }
 
