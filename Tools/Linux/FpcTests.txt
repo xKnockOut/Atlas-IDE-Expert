@@ -72,6 +72,7 @@ Atlas.Common.Diagnostics.CheckProfile.Tests
 Atlas.Common.Diagnostics.CrashCase.Tests
 Atlas.Common.Diagnostics.ServerPackage.Tests
 Atlas.Common.Diagnostics.StackGuard.Tests
+Atlas.Common.Documents.Contract.Tests
 Atlas.Common.Documents.TextDocument.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
@@ -323,6 +324,7 @@ Atlas.Common.Pascal.Preprocessor.Tests
 Atlas.Common.Pascal.PureRoutines.Tests
 Atlas.Common.Pascal.RoutineSignatures.Tests
 Atlas.Common.Pascal.SyntaxChecks.Tests
+Atlas.Common.Pascal.SyntaxNodes.Tests
 Atlas.Common.Pascal.SyntaxTree.Tests
 Atlas.Common.Pascal.TokenCursor.Tests
 Atlas.Common.Pascal.WarningCodes.Tests

@@ -181,7 +181,6 @@ var
   mLong: string;
 begin
   Assert.AreEqual('Bar', TDataFlowSyntax.ShortName('TFoo.Bar'));
-  Assert.AreEqual('Type', TDataFlowSyntax.CleanName('&Type'));
   Assert.AreEqual('A + B', TDataFlowSyntax.SingleLine('  A +'#13#10#9'  B  '));
   mLong := StringOfChar('x', 200);
   Assert.AreEqual(120, Integer(Length(TDataFlowSyntax.SingleLine(mLong))));

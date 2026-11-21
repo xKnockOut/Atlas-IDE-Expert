@@ -77,7 +77,8 @@ uses
   Atlas.Common.Configuration.Internals.ScopeData,
   Atlas.Common.Configuration.Internals.Forbidden,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -109,29 +110,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-function QuoteKey(const AKey: string): string;
-var
-  mCh: Char;
-begin
-  Result := '"';
-  for mCh in AKey do
-  begin
-    if (mCh = '"') or (mCh = '\') then
-    begin
-      Result := Result + '\' + mCh;
-    end
-    else if Ord(mCh) < 32 then
-    begin
-      Result := Result + Format('\u%.4x', [Ord(mCh)]);
-    end
-    else
-    begin
-      Result := Result + mCh;
-    end;
-  end;
-  Result := Result + '"';
 end;
 
 function NodeText(const AText: string; ANode: TJsonNode): string;
@@ -242,7 +220,7 @@ end;
 /// <summary>"schlüssel": wert aus dem Originaltext.</summary>
 function Member(const AText, AKey: string; AValue: TJsonNode): string;
 begin
-  Result := QuoteKey(AKey) + ': ' + NodeText(AText, AValue);
+  Result := TJsonText.Quote(AKey) + ': ' + NodeText(AText, AValue);
 end;
 
 type
@@ -309,7 +287,7 @@ begin
     // Ein leeres Objekt wäre an diesem Ort sinnlos; es fällt ganz weg.
     if Length(mMembers) > 0 then
     begin
-      Parts := Parts + [QuoteKey(AKey) + ': {' + string.Join(', ', mMembers) + '}'];
+      Parts := Parts + [TJsonText.Quote(AKey) + ': {' + string.Join(', ', mMembers) + '}'];
     end;
   end;
 end;
@@ -424,7 +402,7 @@ begin
   else
   begin
     ARemoved := True;
-    Result := QuoteKey(AKey) + ': {' + string.Join(', ', mMembers) + '}';
+    Result := TJsonText.Quote(AKey) + ': {' + string.Join(', ', mMembers) + '}';
   end;
 end;
 

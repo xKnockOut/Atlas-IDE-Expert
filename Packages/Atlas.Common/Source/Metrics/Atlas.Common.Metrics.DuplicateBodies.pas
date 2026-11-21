@@ -96,7 +96,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   /// <summary>Zeilen am Anfang der Unit, in denen IsGenerated die Marke sucht.</summary>
@@ -138,22 +139,6 @@ begin
     begin
       Exit(ARoutine[mIndex]);
     end;
-  end;
-end;
-
-function QualifiedName(ARoutine: TSyntaxNode): string;
-var
-  mParent: TSyntaxNode;
-begin
-  Result := ARoutine.Name;
-  mParent := ARoutine.Parent;
-  while mParent <> nil do
-  begin
-    if mParent.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Result := mParent.Name + '.' + Result;
-    end;
-    mParent := mParent.Parent;
   end;
 end;
 
@@ -231,7 +216,7 @@ begin
   begin
     Exit(False);
   end;
-  ABody.Name := QualifiedName(ARoutine);
+  ABody.Name := TSyntaxNodes.RoutinePath(ARoutine);
   ABody.Line := ARoutine.StartPos.Line + 1;
   ABody.BodyLines := mTokens[mLast].EndPos.Line - mTokens[mFirst].StartPos.Line + 1;
   ABody.Hash := TDuplicateBodies.Fingerprint(TDuplicateBodies.Normalized(mTokens, mFirst, mLast));

@@ -31,7 +31,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.Builtin.Components.Model;
+  Atlas.Common.Rules.Builtin.Components.Model,
+  System.StrUtils;
 
 const
   cSource = 'unit U;'#10'interface'#10'type'#10 +
@@ -117,8 +118,8 @@ begin
   try
     Assert.IsTrue(mModel.IsComponent('TCustomControl'));
     Assert.IsFalse(mModel.IsComponent('TObject'));
-    Assert.IsTrue(IsIn('tpanel', cComponentBases));
-    Assert.IsFalse(IsIn('TStringList', cComponentBases));
+    Assert.IsTrue(MatchText('tpanel', cComponentBases));
+    Assert.IsFalse(MatchText('TStringList', cComponentBases));
   finally
     mModel.Free;
     mTree.Free;

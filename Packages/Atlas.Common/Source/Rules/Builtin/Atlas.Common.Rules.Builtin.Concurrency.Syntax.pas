@@ -30,8 +30,6 @@ const
   cVclDialogs: array[0..4] of string = ('ShowMessage', 'ShowMessageFmt', 'ShowMessagePos', 'MessageDlg',
     'InputBox');
 
-function InList(const AItems: array of string; const AText: string): Boolean;
-
 function SourceText(const AText: string; ANode: TSyntaxNode): string;
 
 function NodeText(const AText: string; ANode: TSyntaxNode): string;
@@ -51,9 +49,6 @@ function IsStatementList(ANode: TSyntaxNode): Boolean;
 /// <summary>Anweisungslisten in ARoot in Baumreihenfolge. Iterativ gesammelt, damit die Regeln sie
 /// ohne eigene Rekursion prüfen.</summary>
 function StatementLists(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
-
-/// <summary>True, wenn ANode oder ein Nachfahre den Bezeichner AName benutzt.</summary>
-function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 
 /// <summary>Klassenteil eines Routinennamens: "TA" in "TA.Destroy", sonst ''.</summary>
 function ClassPart(const ARoutineName: string): string;
@@ -82,21 +77,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Derived;
-
-function InList(const AItems: array of string; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AItems do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 function SourceText(const AText: string; ANode: TSyntaxNode): string;
 begin
@@ -196,23 +178,6 @@ begin
   end;
 end;
 
-function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  mName := AName;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  Result := ANode.Search(
-    function(AVisited: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, mName) then
-      begin
-        Exit(TSyntaxSearchStep.Found);
-      end;
-      Result := TSyntaxSearchStep.Descend;
-    end) <> nil;
-end;
-
 function ClassPart(const ARoutineName: string): string;
 var
   mDot: Integer;
@@ -275,9 +240,9 @@ begin
     mChanged := False;
     for mIndex := 0 to High(mNames) do
     begin
-      if not InList(Result, mNames[mIndex]) and
+      if not MatchText(mNames[mIndex], Result) and
         (SameText(mParents[mIndex], 'TThread') or SameText(mParents[mIndex], 'System.Classes.TThread') or
-        InList(Result, mParents[mIndex])) then
+        MatchText(mParents[mIndex], Result)) then
       begin
         Result := Result + [mNames[mIndex]];
         mChanged := True;

@@ -172,7 +172,7 @@ begin
   end;
   for mCandidate in ASite.UnitInfo.Symbols do
   begin
-    if (ComparePositions(mCandidate.SelectionRange.StartPos, APosition) = 0) and
+    if (TTextPosition.Compare(mCandidate.SelectionRange.StartPos, APosition) = 0) and
       SameText(ASite.UnitInfo.SymbolFile(mCandidate), ASite.FileName) then
     begin
       ASite.Symbol := mCandidate;

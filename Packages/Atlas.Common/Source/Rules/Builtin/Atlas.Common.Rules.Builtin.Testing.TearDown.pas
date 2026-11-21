@@ -46,7 +46,8 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Testing.Classes,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -141,7 +142,7 @@ var
   mNode: TSyntaxNode;
 begin
   Result := '';
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if mNode.Kind = TSyntaxKind.Identifier then
   begin
     Result := mNode.Name;
@@ -158,7 +159,7 @@ function IsEmptyValue(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := ((mNode.Kind = TSyntaxKind.Literal) and MatchText(mNode.Name, ['''''', 'nil'])) or
     ((mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, 'nil')) or
     ((mNode.Kind = TSyntaxKind.SetConstructor) and (mNode.ChildCount = 0));
@@ -331,7 +332,7 @@ begin
   begin
     Exit;
   end;
-  mArgument := Unwrapped(AValue[1]);
+  mArgument := TSyntaxNodes.Unparen(AValue[1]);
   Result := (mArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
     not MatchText(mArgument.Name, ['nil', 'True', 'False']);
 end;
@@ -340,7 +341,7 @@ function TTearDownCheck.Fills(const AField: TFixtureField; AValue: TSyntaxNode):
 var
   mValue, mCallee: TSyntaxNode;
 begin
-  mValue := Unwrapped(AValue);
+  mValue := TSyntaxNodes.Unparen(AValue);
   if AField.Kind in [TFieldKind.String_, TFieldKind.Array_] then
   begin
     Exit(FManaged and not IsEmptyValue(mValue));

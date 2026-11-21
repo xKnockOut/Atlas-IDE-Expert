@@ -97,7 +97,8 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.MethodWithoutSelf.Texts,
-  Atlas.Common.Editing.MethodWithoutSelf.Analysis;
+  Atlas.Common.Editing.MethodWithoutSelf.Analysis,
+  Atlas.Text.Names;
 
 { TMethodWithoutSelf }
 
@@ -125,15 +126,6 @@ const
   // Direktiven, die an einer freien Routine bzw. einem Helper nicht passen.
   cDroppedDirectives: array[0..8] of string = ('overload', 'reintroduce', 'final', 'static', 'virtual', 'dynamic',
     'override', 'abstract', 'message');
-
-function Capitalized(const AName: string): string;
-begin
-  Result := AName;
-  if Result <> '' then
-  begin
-    Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
-  end;
-end;
 
 function SameTypeName(const A, B: string): Boolean;
 begin
@@ -841,7 +833,7 @@ begin
   if SameText(mBase, AVisible) or (Assigned(Plan.Lookup.NameVisible) and Plan.Lookup.NameVisible(mBase,
     Plan.Routine.StartOffset)) then
   begin
-    mBase := 'T' + Capitalized(Plan.UnitName.Substring(Plan.UnitName.LastIndexOf('.') + 1)) + Copy(mBase, 2,
+    mBase := 'T' + TTextNames.Capitalized(Plan.UnitName.Substring(Plan.UnitName.LastIndexOf('.') + 1)) + Copy(mBase, 2,
       MaxInt);
   end;
   HelperName := TRoutineParts.FreeName(mBase, TRoutineParts.UnitNames(Plan.Tree.Root));
@@ -1165,7 +1157,7 @@ begin
   begin
     mName := 'String';
   end;
-  Result := 'T' + Capitalized(mName) + 'Helper';
+  Result := 'T' + TTextNames.Capitalized(mName) + 'Helper';
 end;
 
 end.

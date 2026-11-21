@@ -141,8 +141,6 @@ type
     /// <summary>Erstes Token mit dem Namen ANode.Name (bei Feldern der erste Name) ab dem Anfang des Knotens.
     /// </summary>
     function NameRange(ANode: TSyntaxNode): TTextRange;
-    /// <summary>Text der Token AFirst..AStop-1 ohne Kommentare und Leerraum.</summary>
-    function TokenText(AFirst, AStop: Integer): string;
     function HasDirective(AHeader: TSyntaxNode; const AName: string): Boolean;
     /// <summary>Typ ATypeNode, wenn er im Abschnitt automated sicher nicht erlaubt ist: Record, Zeiger, Menge.
     /// </summary>
@@ -273,20 +271,6 @@ begin
     end;
   end;
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-end;
-
-function TAutomationCheck.TokenText(AFirst, AStop: Integer): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := AFirst to AStop - 1 do
-  begin
-    if not IsTrivia(FTokens[mIndex]) then
-    begin
-      Result := Result + FTokens[mIndex].Text;
-    end;
-  end;
 end;
 
 function TAutomationCheck.HasDirective(AHeader: TSyntaxNode; const AName: string): Boolean;
@@ -440,7 +424,7 @@ begin
       else
       begin
         CheckDispid(TTextRange.Create(mDirective.StartPos, mDirective.EndPos),
-          TokenText(FirstToken(mDirective) + 1, StopToken(mDirective)), AHeader.Name, ADispids);
+          CodeText(FTokens, FirstToken(mDirective) + 1, StopToken(mDirective)), AHeader.Name, ADispids);
       end;
     end;
   end;
@@ -501,7 +485,7 @@ begin
     Inc(mArgument);
   end;
   CheckDispid(TTextRange.Create(FTokens[AIndex].StartPos, FTokens[mArgument - 1].EndPos),
-    TokenText(AIndex + 1, mArgument), AProperty.Name, ADispids);
+    CodeText(FTokens, AIndex + 1, mArgument), AProperty.Name, ADispids);
 end;
 
 procedure TAutomationCheck.CheckClause(const AClause: TAutomationClause; const AWord: string);

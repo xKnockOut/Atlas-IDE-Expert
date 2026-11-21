@@ -78,6 +78,8 @@ type
     [Test]
     [Category('Benchmark')]
     procedure AssignmentsAreCheap;
+    [Test]
+    procedure RoleKeysAndSubsystemNames;
   end;
 
 /// <summary>Testgraph der Zuordnung (#1368): Z.Own.Mid mit Summe 8 im eigenen und 6 im anderen Teilsystem.
@@ -1086,6 +1088,22 @@ begin
   end;
   Assert.AreEqual(2000, Integer(Length(mOverview.Assignments)));
   Assert.IsTrue(mAssign * 100 < mTotal * 5, Format('Zuordnung %d, Übersicht %d Ticks', [mAssign, mTotal]));
+end;
+
+procedure TOverviewTests.RoleKeysAndSubsystemNames;
+var
+  mOverview: TArchitectureOverview;
+begin
+  Assert.AreEqual('foundation', TArchitectureAnalyzer.RoleKey(TOverviewUnitRole.Foundation));
+  Assert.AreEqual('hub', TArchitectureAnalyzer.RoleKey(TOverviewUnitRole.Hub));
+  Assert.AreEqual('', TArchitectureAnalyzer.RoleKey(TOverviewUnitRole.None));
+  mOverview := Default(TArchitectureOverview);
+  SetLength(mOverview.Subsystems, 1);
+  mOverview.Subsystems[0].Name := 'Kern';
+  Assert.AreEqual('Kern', TArchitectureAnalyzer.SubsystemName(mOverview, 0));
+  Assert.AreEqual('', TArchitectureAnalyzer.SubsystemName(mOverview, 1));
+  Assert.AreEqual('', TArchitectureAnalyzer.SubsystemName(mOverview, -1));
+  mOverview := Default(TArchitectureOverview);
 end;
 
 initialization

@@ -88,7 +88,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -174,7 +175,7 @@ begin
     begin
       Exit(False);
     end;
-    FSelector := TExpressionText.Strip(ANode);
+    FSelector := TSyntaxNodes.Unparen(ANode);
     Exit(True);
   end;
   Result := TExpressionText.Same(FTree, FSelector, ANode);
@@ -185,7 +186,7 @@ var
   mNode: TSyntaxNode;
   mValue: Int64;
 begin
-  mNode := TExpressionText.Strip(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   case mNode.Kind of
     TSyntaxKind.Literal:
       // Zahlen und Zeichen; Strings mit mehr als einem Zeichen und Gleitkomma sind keine case-Marken.
@@ -204,7 +205,7 @@ var
   mNode: TSyntaxNode;
 begin
   Result := False;
-  mNode := TExpressionText.Strip(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if (mNode.Kind <> TSyntaxKind.BinaryExpr) or (mNode.ChildCount <> 2) then
   begin
     Exit;
@@ -221,10 +222,10 @@ begin
   begin
     Result := ReadEqual(mNode, ALabels);
   end
-  else if SameText(mNode.Name, 'in') and (TExpressionText.Strip(mNode[1]).Kind = TSyntaxKind.SetConstructor) and
+  else if SameText(mNode.Name, 'in') and (TSyntaxNodes.Unparen(mNode[1]).Kind = TSyntaxKind.SetConstructor) and
     MatchSelector(mNode[0]) then
   begin
-    Result := ReadSet(TExpressionText.Strip(mNode[1]), ALabels);
+    Result := ReadSet(TSyntaxNodes.Unparen(mNode[1]), ALabels);
   end;
 end;
 
@@ -235,11 +236,11 @@ begin
   mItem := Default(TCaseLabel);
   if IsConstantLabel(ANode[1]) and MatchSelector(ANode[0]) then
   begin
-    mItem.Low := TExpressionText.Strip(ANode[1]);
+    mItem.Low := TSyntaxNodes.Unparen(ANode[1]);
   end
   else if IsConstantLabel(ANode[0]) and MatchSelector(ANode[1]) then
   begin
-    mItem.Low := TExpressionText.Strip(ANode[0]);
+    mItem.Low := TSyntaxNodes.Unparen(ANode[0]);
   end
   else
   begin
@@ -273,14 +274,14 @@ begin
     Result := (AElement.ChildCount = 2) and IsConstantLabel(AElement[0]) and IsConstantLabel(AElement[1]);
     if Result then
     begin
-      AItem.Low := TExpressionText.Strip(AElement[0]);
-      AItem.High := TExpressionText.Strip(AElement[1]);
+      AItem.Low := TSyntaxNodes.Unparen(AElement[0]);
+      AItem.High := TSyntaxNodes.Unparen(AElement[1]);
     end;
   end
   else
   begin
     Result := IsConstantLabel(AElement);
-    AItem.Low := TExpressionText.Strip(AElement);
+    AItem.Low := TSyntaxNodes.Unparen(AElement);
   end;
 end;
 
@@ -319,7 +320,7 @@ begin
   Result := False;
   AValue := nil;
   ALower := False;
-  mNode := TExpressionText.Strip(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if (mNode.Kind <> TSyntaxKind.BinaryExpr) or (mNode.ChildCount <> 2) then
   begin
     Exit;
@@ -331,13 +332,13 @@ begin
   end;
   if IsConstantLabel(mNode[1]) and MatchSelector(mNode[0]) then
   begin
-    AValue := TExpressionText.Strip(mNode[1]);
+    AValue := TSyntaxNodes.Unparen(mNode[1]);
     ALower := mOp = '>=';
     Result := True;
   end
   else if IsConstantLabel(mNode[0]) and MatchSelector(mNode[1]) then
   begin
-    AValue := TExpressionText.Strip(mNode[0]);
+    AValue := TSyntaxNodes.Unparen(mNode[0]);
     ALower := mOp = '<=';
     Result := True;
   end;
@@ -1002,7 +1003,7 @@ begin
   AConversion := Default(TIfCaseConversion);
   mWriter := Default(TIfChainWriter);
   mCase := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.CaseStatement);
-  if (mCase = nil) or not SelectorUsable(TExpressionText.Strip(mCase[0]), ALookup, mWriter.Kind) or
+  if (mCase = nil) or not SelectorUsable(TSyntaxNodes.Unparen(mCase[0]), ALookup, mWriter.Kind) or
     not CaseParts(mCase, mBranches, mElse) then
   begin
     Exit;
@@ -1017,7 +1018,7 @@ begin
   mWriter.Tree := ATree;
   mWriter.Layout := TStatementLayout.Create(TTextLines.IndentOf(AText, mCase.StartPos.Line), ALayout.IndentUnit,
     ALayout.LineBreak);
-  mWriter.Selector := TExpressionText.Part(AText, TExpressionText.Strip(mCase[0]));
+  mWriter.Selector := TExpressionText.Part(AText, TSyntaxNodes.Unparen(mCase[0]));
   mEndPos := TStatementText.ReplacementEnd(ATree, mCase, mSpans, mWriter.Suffix);
   AConversion := TStatementRewrite.Create(ToIfTitle, TTextEdit.Create(TTextRange.Create(mCase.StartPos, mEndPos),
     mWriter.Code(mCase, Length(mBranches), mElse)));

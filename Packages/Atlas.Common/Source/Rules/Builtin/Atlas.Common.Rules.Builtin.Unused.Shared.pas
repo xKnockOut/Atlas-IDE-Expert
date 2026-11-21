@@ -23,14 +23,8 @@ function IgnorePatterns(const AOptions: string): TArray<string>;
 /// <summary>Passt AName auf eines der Muster APatterns?</summary>
 function IsIgnored(const AName: string; const APatterns: TArray<string>): Boolean;
 
-/// <summary>Namen einer Liste "A, B, C" ohne Leerraum; leere Teile entfallen.</summary>
-function SplitNames(const ANames: string): TArray<string>;
-
 /// <summary>Letzter Teil eines Namens mit Punkten (TFoo.Bar → Bar).</summary>
 function ShortName(const AName: string): string;
-
-/// <summary>Kommt der Bezeichner AName in ANode oder darunter vor?</summary>
-function MentionsName(ANode: TSyntaxNode; const AName: string): Boolean;
 
 /// <summary>Erweitert [AStart, AEnd) auf ganze Zeilen; False, wenn davor oder dahinter noch etwas steht.</summary>
 function WholeLines(const AText: string; AStart, AEnd: Integer; out ALineStart, ALineEnd: Integer): Boolean;
@@ -55,9 +49,6 @@ function MethodTypeName(const AQualifiedName: string): string;
 /// <summary>Nennt der Typ Interfaces (class(TBasis, IFoo) bzw. class(IFoo))? nil zählt nicht.</summary>
 function ListsInterfaces(ATypeBody: TSyntaxNode): Boolean;
 
-/// <summary>Trägt der Kopf AHeader eine der Direktiven ANames? nil zählt nicht.</summary>
-function HasDirectiveIn(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
-
 /// <summary>Ist die Signatur der Methode von außen vorgegeben (override, Interface, DFM …) oder unbekannt?</summary>
 function MethodSignatureFixed(ARoot: TSyntaxNode; const AQualifiedName: string): Boolean;
 
@@ -72,7 +63,9 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.JSON,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 function MatchesWildcard(const AName, APattern: string): Boolean;
 var
@@ -146,40 +139,9 @@ begin
   Result := False;
 end;
 
-function SplitNames(const ANames: string): TArray<string>;
-var
-  mName: string;
-begin
-  Result := nil;
-  for mName in SplitString(ANames, ',') do
-  begin
-    if Trim(mName) <> '' then
-    begin
-      Result := Result + [Trim(mName)];
-    end;
-  end;
-end;
-
 function ShortName(const AName: string): string;
 begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
-end;
-
-function MentionsName(ANode: TSyntaxNode; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  mName := AName;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  Result := ANode.Search(
-    function(AVisited: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, mName) then
-      begin
-        Exit(TSyntaxSearchStep.Found);
-      end;
-      Result := TSyntaxSearchStep.Descend;
-    end) <> nil;
 end;
 
 function WholeLines(const AText: string; AStart, AEnd: Integer; out ALineStart, ALineEnd: Integer): Boolean;
@@ -341,23 +303,6 @@ begin
   end;
 end;
 
-function HasDirectiveIn(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
-var
-  mIndex: Integer;
-begin
-  if AHeader <> nil then
-  begin
-    for mIndex := 0 to AHeader.ChildCount - 1 do
-    begin
-      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(AHeader[mIndex].Name, ANames) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Ist ein Kopf namens AName im Typ published oder trägt override, virtual, dynamic, abstract oder
 /// message?</summary>
 function FixedMember(ATypeBody: TSyntaxNode; const AName: string): Boolean;
@@ -375,7 +320,7 @@ begin
       mVisibility := LowerCase(mMember.Name);
     end
     else if (mMember.Kind = TSyntaxKind.RoutineHeader) and SameText(mMember.Name, AName) and
-      ((mVisibility = 'published') or HasDirectiveIn(mMember, ['override', 'virtual', 'dynamic', 'abstract',
+      ((mVisibility = 'published') or TSyntaxNodes.HasDirective(mMember, ['override', 'virtual', 'dynamic', 'abstract',
       'message'])) then
     begin
       Exit(True);

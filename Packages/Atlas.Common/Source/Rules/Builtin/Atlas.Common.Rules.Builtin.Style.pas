@@ -112,7 +112,8 @@ uses
   Atlas.Common.Rules.Builtin.Style.Declarations,
   Atlas.Common.Rules.Builtin.Style.BeginEnd,
   Atlas.Common.Rules.Builtin.Style.MethodOrder,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -1240,21 +1241,12 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
   end;
 
-  function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode;
-    while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-    begin
-      Result := Result[0];
-    end;
-  end;
-
   function CaseSide(ANode: TSyntaxNode; out ASide: TCaseSide): Boolean;
   var
     mNode, mMember: TSyntaxNode;
   begin
     ASide := Default(TCaseSide);
-    mNode := Unwrapped(ANode);
+    mNode := TSyntaxNodes.Unparen(ANode);
     // UpperCase(X), AnsiLowerCase(X), SysUtils.UpperCase(X)
     if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 2) and MatchText(mNode.Name, ['UpperCase', 'LowerCase',
       'AnsiUpperCase', 'AnsiLowerCase']) then
@@ -1289,7 +1281,7 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     mNode: TSyntaxNode;
     mValue: string;
   begin
-    mNode := Unwrapped(ANode);
+    mNode := TSyntaxNodes.Unparen(ANode);
     mValue := Text(mNode);
     Result := (mNode.Kind = TSyntaxKind.Literal) and StartsStr('''', mValue);
     if not Result then
@@ -1333,14 +1325,14 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     else if mHasLeft and MatchingLiteral(ANode[1], mLeft.Upper) then
     begin
       mFirst := Text(mLeft.Argument);
-      mSecond := Text(Unwrapped(ANode[1]));
+      mSecond := Text(TSyntaxNodes.Unparen(ANode[1]));
       mName := mLeft.Name;
       mLocale := mLeft.Locale;
     end
     else if mHasRight and MatchingLiteral(ANode[0], mRight.Upper) then
     begin
       mFirst := Text(mRight.Argument);
-      mSecond := Text(Unwrapped(ANode[0]));
+      mSecond := Text(TSyntaxNodes.Unparen(ANode[0]));
       mName := mRight.Name;
       mLocale := mRight.Locale;
     end

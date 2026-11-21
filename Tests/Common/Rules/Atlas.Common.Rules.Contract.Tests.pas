@@ -17,11 +17,16 @@ type
     procedure ResolverFileNameFallsBackToRelativePath;
     [Test]
     procedure ResolverFileNameFallsBackToUnitName;
+    [Test]
+    procedure IncludeLowersConfidence;
+    [Test]
+    procedure ProjectKindKeys;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Contract;
 
 { TRuleContextTests }
@@ -57,6 +62,21 @@ begin
   mContext.UnitName := 'Kunden';
   Assert.AreEqual('Kunden.pas', mContext.ResolverFileName);
   mContext := Default(TRuleContext);
+end;
+
+procedure TRuleContextTests.IncludeLowersConfidence;
+begin
+  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.High, IncludeConfidence(TPascalLexer.Tokenize('unit U; {$R *.res}')));
+  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.Medium, IncludeConfidence(TPascalLexer.Tokenize('{$I Defs.inc}')));
+  Assert.AreEqual<TRuleConfidence>(TRuleConfidence.Medium, IncludeConfidence(TPascalLexer.Tokenize('{$include a.inc}')));
+end;
+
+procedure TRuleContextTests.ProjectKindKeys;
+begin
+  Assert.AreEqual('application', ProjectKindKey(TRuleProjectKind.Application));
+  Assert.AreEqual('package', ProjectKindKey(TRuleProjectKind.Package));
+  Assert.AreEqual('library', ProjectKindKey(TRuleProjectKind.Library_));
+  Assert.AreEqual('', ProjectKindKey(TRuleProjectKind.Unknown));
 end;
 
 initialization

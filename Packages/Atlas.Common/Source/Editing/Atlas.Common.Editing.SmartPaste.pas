@@ -73,7 +73,8 @@ uses
   Atlas.Common.Editing.UsesActions,
   System.Math,
   Atlas.Common.Editing.UsesClause,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -173,27 +174,6 @@ begin
     end;
   end;
   Result := mSeen;
-end;
-
-/// <summary>Offsets von interface und implementation; -1, wo das Wort fehlt.</summary>
-procedure SectionOffsets(const ATokens: TArray<TPascalToken>; out AInterface, AImplementation: Integer);
-var
-  mIndex: Integer;
-begin
-  AInterface := -1;
-  AImplementation := -1;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if ATokens[mIndex].IsKeyword('interface') and (AInterface < 0) then
-    begin
-      AInterface := ATokens[mIndex].Offset;
-    end
-    else if ATokens[mIndex].IsKeyword('implementation') then
-    begin
-      AImplementation := ATokens[mIndex].Offset;
-      Break;
-    end;
-  end;
 end;
 
 type

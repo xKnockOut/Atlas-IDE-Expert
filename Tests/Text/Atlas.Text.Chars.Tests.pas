@@ -27,6 +27,8 @@ type
     procedure IdentEndCountsUnicode;
     [Test]
     procedure AsciiIdentEndStopsAtUmlaut;
+    [Test]
+    procedure HexDigitValueBothCases;
   end;
 
 implementation
@@ -110,6 +112,15 @@ procedure TTextCharsTests.AsciiIdentEndStopsAtUmlaut;
 begin
   Assert.AreEqual(3, TTextChars.AsciiIdentEnd('ab'#$00E4, 1));
   Assert.AreEqual(5, TTextChars.AsciiIdentEnd('$1_a', 2));
+end;
+
+procedure TTextCharsTests.HexDigitValueBothCases;
+begin
+  Assert.AreEqual(0, TTextChars.HexDigitValue('0'));
+  Assert.AreEqual(9, TTextChars.HexDigitValue('9'));
+  Assert.AreEqual(10, TTextChars.HexDigitValue('a'));
+  Assert.AreEqual(15, TTextChars.HexDigitValue('F'));
+  Assert.AreEqual(-1, TTextChars.HexDigitValue('g'));
 end;
 
 initialization

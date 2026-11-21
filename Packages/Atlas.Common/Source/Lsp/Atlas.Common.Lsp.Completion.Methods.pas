@@ -53,7 +53,8 @@ uses
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Semantics.RtlMethodReferences,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Methoden-Vervollständigung in beiden Sprachen (#1458).</summary>
@@ -133,7 +134,7 @@ begin
   begin
     if mName <> '' then
     begin
-      ATarget.Names := ATarget.Names + [CleanName(mName)];
+      ATarget.Names := ATarget.Names + [TTextNames.WithoutAmpersand(mName)];
     end;
   end;
   ATarget.Names := ATarget.Names + [ATarget.EventName];

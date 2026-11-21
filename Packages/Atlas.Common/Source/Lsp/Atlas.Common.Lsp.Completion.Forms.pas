@@ -110,7 +110,7 @@ type
 /// <summary>Liegt APosition in ARange (Grenzen eingeschlossen)?</summary>
 function RangeHas(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
 begin
-  Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
+  Result := (TTextPosition.Compare(ARange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ARange.EndPos) <= 0);
 end;
 
 /// <summary>Innerste Routine aus AUnit (aus dem Baum), deren Bereich APosition enthält; lokale Prozeduren

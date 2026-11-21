@@ -94,7 +94,8 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -414,7 +415,7 @@ function ValueKindOf(const AText: string; ANode: TSyntaxNode; const ALookup: TCo
 var
   mNode: TSyntaxNode;
 begin
-  mNode := TExpressionText.Strip(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   case mNode.Kind of
     TSyntaxKind.Literal:
       Result := LiteralKind(AText, mNode);
@@ -832,7 +833,7 @@ type
 
 function TStatementBuilder.Statement(AValue: TSyntaxNode): string;
 begin
-  Result := Prefix + TExpressionText.Part(Text, TExpressionText.Strip(AValue)).AtLeast(Context) + Suffix;
+  Result := Prefix + TExpressionText.Part(Text, TSyntaxNodes.Unparen(AValue)).AtLeast(Context) + Suffix;
 end;
 
 function TStatementBuilder.Branch(AValue: TSyntaxNode; const ALayout: TStatementLayout): string;
@@ -840,7 +841,7 @@ var
   mValue: TSyntaxNode;
   mDeeper: TStatementLayout;
 begin
-  mValue := TExpressionText.Strip(AValue);
+  mValue := TSyntaxNodes.Unparen(AValue);
   mDeeper := ALayout.Deeper;
   if mValue.Kind = TSyntaxKind.IfExpr then
   begin
@@ -864,7 +865,7 @@ begin
   while True do
   begin
     Result := Result + 'if ' + TExpressionText.Source(Text, mNode[0]) + ' then' + Branch(mNode[1], ALayout);
-    mElseValue := TExpressionText.Strip(mNode[2]);
+    mElseValue := TSyntaxNodes.Unparen(mNode[2]);
     if mElseValue.Kind = TSyntaxKind.IfExpr then
     begin
       Result := Result + ALayout.LineBreak + ALayout.Indent + 'else ';
@@ -981,7 +982,7 @@ begin
   begin
     mNode := mNode.Parent;
   end;
-  Result := (mNode <> nil) and (TStatementText.ChildIndex(ACall, mNode) >= 1);
+  Result := (mNode <> nil) and (TSyntaxNodes.IndexOf(ACall, mNode) >= 1);
 end;
 
 class function TConditionalExpression.ToStatement(const AText: string; ATree: TSyntaxTree;

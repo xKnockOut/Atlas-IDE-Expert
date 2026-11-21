@@ -57,7 +57,8 @@ uses
   Atlas.Common.Rules.Builtin.Constants.Conversions,
 
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -149,14 +150,14 @@ type
 /// <summary>Ist AIndex der erste Index von ABase: 1 oder Low(ABase)?</summary>
 function TFirstCharAddressScan.IsFirstIndex(AIndex, ABase: TSyntaxNode): Boolean;
 begin
-  AIndex := Unwrapped(AIndex);
+  AIndex := TSyntaxNodes.Unparen(AIndex);
   if (AIndex.Kind = TSyntaxKind.Literal) and (FScope.Text(AIndex) = '1') then
   begin
     Exit(True);
   end;
   Result := (AIndex.Kind = TSyntaxKind.Call) and (AIndex.ChildCount = 2) and
     (AIndex[0].Kind = TSyntaxKind.Identifier) and SameText(AIndex[0].Name, 'Low') and
-    SameText(FScope.Text(Unwrapped(AIndex[1])), FScope.Text(ABase));
+    SameText(FScope.Text(TSyntaxNodes.Unparen(AIndex[1])), FScope.Text(ABase));
 end;
 
 /// <summary>Ist ASymbol ein const-Parameter dieser Datei? Vor dem Namen stehen nur weitere Namen mit Komma,
@@ -291,7 +292,7 @@ begin
   mAccess := nil;
   if ANode.ChildCount = 1 then
   begin
-    mAccess := Unwrapped(ANode[0]);
+    mAccess := TSyntaxNodes.Unparen(ANode[0]);
   end;
   if (mAccess = nil) or (mAccess.Kind <> TSyntaxKind.IndexAccess) or (mAccess.ChildCount <> 2) or
     not IsFirstIndex(mAccess[1], mAccess[0]) then
@@ -323,7 +324,7 @@ function TFirstCharAddressScan.IsLengthOf(ANode: TSyntaxNode; const ABase, ARout
 var
   mText: string;
 begin
-  mText := Squeezed(Unwrapped(ANode));
+  mText := Squeezed(TSyntaxNodes.Unparen(ANode));
   Result := (mText = 'length(' + ABase + ')') or (ARoutine <> '') and (ANode.Kind = TSyntaxKind.Identifier) and
     ARoutine.Contains('setlength(' + ABase + ',' + mText + ')');
 end;
@@ -336,7 +337,7 @@ function TFirstCharAddressScan.ConditionSays(ACondition: TSyntaxNode; const ABas
 var
   mOperator, mLeft, mRight: string;
 begin
-  ACondition := Unwrapped(ACondition);
+  ACondition := TSyntaxNodes.Unparen(ACondition);
   Result := False;
   if (ACondition.Kind <> TSyntaxKind.BinaryExpr) or (ACondition.ChildCount <> 2) then
   begin
@@ -348,8 +349,8 @@ begin
     Exit(ConditionSays(ACondition[0], ABase, ARoutine, ANonEmpty) or
       ConditionSays(ACondition[1], ABase, ARoutine, ANonEmpty));
   end;
-  mLeft := Squeezed(Unwrapped(ACondition[0]));
-  mRight := Squeezed(Unwrapped(ACondition[1]));
+  mLeft := Squeezed(TSyntaxNodes.Unparen(ACondition[0]));
+  mRight := Squeezed(TSyntaxNodes.Unparen(ACondition[1]));
   if (mLeft = ABase) and (mRight = '''''') or (mRight = ABase) and (mLeft = '''''') then
   begin
     Result := ANonEmpty and (mOperator = '<>') or not ANonEmpty and (mOperator = '=');
