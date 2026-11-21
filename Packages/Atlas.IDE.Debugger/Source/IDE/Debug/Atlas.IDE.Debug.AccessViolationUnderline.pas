@@ -58,14 +58,14 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorRefresh;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
 function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
+  Result := Length(TTextColumns.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
 /// <summary>Strich von AFirst bis ALast am unteren Rand von ARect in Fehlerfarbe zum Hintergrund.</summary>
@@ -163,8 +163,8 @@ begin
   end;
   mTabWidth := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
   // Nur, wenn die Zeile im Editor der abgeglichenen entspricht.
-  Result := TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, mTabWidth)) =
-    TrimRight(TAtlasPairs.DisplayLine(FStored, mTabWidth));
+  Result := TrimRight(TTextColumns.DisplayLine(mLineState.Text, mTabWidth)) =
+    TrimRight(TTextColumns.DisplayLine(FStored, mTabWidth));
   if Result then
   begin
     AFirst := AContext.EditorState.GetCharacterPosPx(ColumnOf(FStored, FStart, mTabWidth),

@@ -77,6 +77,7 @@
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="Source\Product\Atlas.Text.Product.Version.pas"/>
         <DCCReference Include="Source\Lines\Atlas.Text.Lines.pas"/>
+        <DCCReference Include="Source\Columns\Atlas.Text.Columns.pas"/>
         <DCCReference Include="Source\Chars\Atlas.Text.Chars.pas"/>
         <DCCReference Include="Source\Arrays\Atlas.Text.Arrays.pas"/>
         <DCCReference Include="Source\Timestamps\Atlas.Text.Timestamps.pas"/>

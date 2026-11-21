@@ -38,7 +38,7 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.Core.Editor.LineTail,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorRefresh;
@@ -56,7 +56,7 @@ var
   mSample: COLORREF;
 begin
   // Spalten 1-basiert: erste Spalte hinter dem letzten Zeichen plus Abstand.
-  mCell := AContext.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(TrimRight(ALineText),
+  mCell := AContext.EditorState.GetCharacterPosPx(Length(TTextColumns.DisplayLine(TrimRight(ALineText),
     TabWidth(AContext))) + 1 + cGapColumns, AContext.EditorLineNum);
   AKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
   Result := TAtlasLineTail.Start(AOwner, AKey, mCell.Left);
@@ -92,8 +92,8 @@ begin
   if Result then
   begin
     mTabWidth := TabWidth(AContext);
-    Result := TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, mTabWidth)) =
-      TrimRight(TAtlasPairs.DisplayLine(AStored, mTabWidth));
+    Result := TrimRight(TTextColumns.DisplayLine(mLineState.Text, mTabWidth)) =
+      TrimRight(TTextColumns.DisplayLine(AStored, mTabWidth));
   end;
 end;
 

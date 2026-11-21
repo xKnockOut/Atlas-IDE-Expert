@@ -107,7 +107,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Colors,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorSettings,
@@ -116,6 +116,7 @@ uses
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Problems.Marks,
+  Atlas.Core.Editor.Hide,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.LineTracker,
   Atlas.Core.Diagnostics.Deadline;
@@ -278,8 +279,8 @@ begin
   ABusy := (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
     Typing(AContext.FileName, ALine, mLineState.Text);
   // Nur, wenn die Zeile im Editor der im Speicher entspricht; nicht in .atlas ausgeblendet (#628).
-  Result := (TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, ATabWidth)) =
-    TrimRight(TAtlasPairs.DisplayLine(AText, ATabWidth))) and
+  Result := (TrimRight(TTextColumns.DisplayLine(mLineState.Text, ATabWidth)) =
+    TrimRight(TTextColumns.DisplayLine(AText, ATabWidth))) and
     not TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, AContext.FileName, AText);
 end;
 
@@ -453,7 +454,7 @@ begin
       mLeft := mFirst.Left;
       mRight := Max(mLast.Left, mLeft + Max(cMinMarkWidth, mFirst.Width));
       DrawMark(mDC, TColor(ProblemColor(mColors, mProblem)), mProblem, mLeft, mRight, ARect);
-      TAtlasIdeElements.Painted(TAtlasProblemMarks.HideTarget(AContext.FileName, mProblem, mLine, AText),
+      TAtlasIdeElements.Painted(TAtlasHideTarget.ForProblem(AContext.FileName, mProblem, mLine, AText),
         TRect.Create(mLeft, ARect.Top, mRight, ARect.Bottom), AContext.EditView.TopRow, ARect.Height);
     end;
   finally

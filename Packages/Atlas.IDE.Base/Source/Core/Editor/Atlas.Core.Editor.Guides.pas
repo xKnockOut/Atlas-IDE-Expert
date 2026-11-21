@@ -17,7 +17,8 @@
 interface
 
 uses
-  Atlas.Core.Editor.Pairs;
+  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns;
 
 type
   TAtlasGuide = record
@@ -94,7 +95,7 @@ begin
     begin
       mFirst := mBlock.OwnerLine;
     end;
-    mDisplay := TAtlasPairs.DisplayLine(ALines[mFirst], ATabWidth);
+    mDisplay := TTextColumns.DisplayLine(ALines[mFirst], ATabWidth);
     mIndent := 1;
     while (mIndent <= Length(mDisplay)) and (mDisplay[mIndent] = ' ') do
     begin
@@ -102,7 +103,7 @@ begin
     end;
     mGuide.FirstLine := mFirst;
     mGuide.LastLine := mBlock.CloseLine;
-    mGuide.Column := Min(mIndent, Length(TAtlasPairs.DisplayLine(Copy(ALines[mBlock.CloseLine], 1,
+    mGuide.Column := Min(mIndent, Length(TTextColumns.DisplayLine(Copy(ALines[mBlock.CloseLine], 1,
       mBlock.CloseCharacter), ATabWidth)) + 1);
     mGuide.Depth := mBlock.Depth;
     mGuide.Routine := mBlock.Routine;

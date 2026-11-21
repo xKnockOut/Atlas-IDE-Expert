@@ -23,10 +23,6 @@ type
     [Test]
     procedure TryFinallyRepeatUntilAndEscapes;
     [Test]
-    procedure DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;
-    [Test]
-    procedure DisplayColumnAndSameDisplayLine;
-    [Test]
     procedure GuidesSpanMultiLineBlocksAtIndentOfOpenerLine;
     [Test]
     procedure GuidesForTypesTabsAndSingleLineBlocks;
@@ -187,29 +183,6 @@ begin
   // Steuerzeichen ^[ ist keine Klammer, P^[1] schon (#862).
   Assert.AreEqual('', Describe('Esc = ^[;'));
   Assert.AreEqual('[@0 ]@0', Describe('X := P^[1];'));
-end;
-
-procedure TAtlasPairsTests.DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;
-var
-  mLine: string;
-begin
-  Assert.AreEqual('a   b', TAtlasPairs.DisplayLine('a'#9'b'#13, 4));
-  Assert.AreEqual('    x', TAtlasPairs.DisplayLine(#9'x', 4));
-  Assert.AreEqual(#9'x', TAtlasPairs.DisplayLine(#9'x', 0));
-  mLine := TAtlasPairs.DisplayLine('  if (A) then', 2);
-  Assert.IsTrue(TAtlasPairs.RunMatches(mLine, '(', 6));
-  Assert.IsTrue(TAtlasPairs.RunMatches(mLine, 'if', 3));
-  // Lauf einer anderen Zeile bzw. an anderer Spalte: nicht einfärben.
-  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, 'begin', 3));
-  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, '(', 5));
-  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, 'then', 12));
-  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, '', 1));
-  // Zeichenindex als Editorspalte (#615).
-  Assert.AreEqual(1, TAtlasPairs.ColumnOf('abc', 0, 4));
-  Assert.AreEqual(3, TAtlasPairs.ColumnOf('abc', 2, 4));
-  Assert.AreEqual(5, TAtlasPairs.ColumnOf('a'#9'b', 2, 4));
-  Assert.AreEqual(5, TAtlasPairs.ColumnOf(#9'x', 1, 4));
-  Assert.AreEqual(2, TAtlasPairs.ColumnOf(#9'x', 1, 0));
 end;
 
 /// <summary>"Erste-Letzte@Spalte:Tiefe" je Linie.</summary>
@@ -490,17 +463,6 @@ begin
   Assert.AreEqual(1, mGuides[1].Routine);
   Assert.AreEqual(1, mGuides[1].FirstLine, 'Linie ab dem Kopf');
   Assert.AreEqual(0, mGuides[2].Routine);
-end;
-
-procedure TAtlasPairsTests.DisplayColumnAndSameDisplayLine;
-begin
-  Assert.AreEqual(1, TAtlasPairs.DisplayColumn('a'#9'b', 0, 4));
-  Assert.AreEqual(5, TAtlasPairs.DisplayColumn('a'#9'b', 2, 4));
-  // Hinter dem Zeilenende und mit #13 keine weitere Spalte.
-  Assert.AreEqual(3, TAtlasPairs.DisplayColumn('ab'#13, 10, 4));
-  Assert.AreEqual(1, TAtlasPairs.DisplayColumn('ab', -1, 4));
-  Assert.IsTrue(TAtlasPairs.SameDisplayLine(#9'x  ', '    x', 4));
-  Assert.IsFalse(TAtlasPairs.SameDisplayLine(#9'x', '  x', 4));
 end;
 
 initialization

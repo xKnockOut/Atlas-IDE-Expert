@@ -20,6 +20,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Product.Version.Tests in 'Common\Atlas.Common.Product.Version.Tests.pas',
   Atlas.Text.Lines.Tests in 'Text\Atlas.Text.Lines.Tests.pas',
+  Atlas.Text.Columns.Tests in 'Text\Atlas.Text.Columns.Tests.pas',
   Atlas.Text.Chars.Tests in 'Text\Atlas.Text.Chars.Tests.pas',
   Atlas.Text.Arrays.Tests in 'Text\Atlas.Text.Arrays.Tests.pas',
   Atlas.Text.Timestamps.Tests in 'Text\Atlas.Text.Timestamps.Tests.pas',

@@ -55,6 +55,7 @@
         </DelphiCompile>
         <DCCReference Include="Common\Atlas.Common.Product.Version.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Lines.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Columns.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Chars.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Arrays.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Timestamps.Tests.pas"/>

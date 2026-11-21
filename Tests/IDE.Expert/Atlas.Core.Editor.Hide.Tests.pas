@@ -17,6 +17,8 @@ type
     function Suppressed(const AText, ARuleId: string; ALine: Integer): Boolean;
   public
     [Test]
+    procedure ForProblemByRuleOrLine;
+    [Test]
     procedure HereOnFindingWritesValidLineComment;
     [Test]
     procedure HereExtendsExistingCommentBeforeReason;
@@ -48,6 +50,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Suppressions,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.Core.Settings.HiddenPlaces,
@@ -375,6 +378,32 @@ begin
   finally
     mIndex.Free;
   end;
+end;
+
+procedure TAtlasHideTests.ForProblemByRuleOrLine;
+var
+  mProblem: TAtlasProblem;
+  mTarget: TAtlasHideTarget;
+begin
+  mProblem := Default(TAtlasProblem);
+  mProblem.StartLine := 5;
+  mProblem.EndLine := 7;
+  mProblem.EndCharacter := 1;
+  mProblem.Code := 'empty-except';
+  mProblem.Message := 'Leer';
+  mTarget := TAtlasHideTarget.ForProblem('A.pas', mProblem, 6, 'x');
+  Assert.AreEqual(5, mTarget.Line);
+  Assert.AreEqual('empty-except', mTarget.RuleId);
+  Assert.AreEqual('Leer (empty-except)', mTarget.Caption);
+  mProblem.Source := TAtlasProblem.cCompilerSource;
+  mTarget := TAtlasHideTarget.ForProblem('A.pas', mProblem, 6, 'x');
+  Assert.AreEqual(6, mTarget.Line);
+  Assert.AreEqual('', mTarget.RuleId);
+  mProblem.Source := '';
+  mProblem.Code := '';
+  mTarget := TAtlasHideTarget.ForProblem('A.pas', mProblem, 6, 'x');
+  Assert.AreEqual(6, mTarget.Line);
+  Assert.AreEqual('Leer', mTarget.Caption);
 end;
 
 initialization

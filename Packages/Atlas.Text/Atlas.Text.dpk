@@ -44,6 +44,7 @@ requires
 contains
   Atlas.Text.Product.Version in 'Source\Product\Atlas.Text.Product.Version.pas',
   Atlas.Text.Lines in 'Source\Lines\Atlas.Text.Lines.pas',
+  Atlas.Text.Columns in 'Source\Columns\Atlas.Text.Columns.pas',
   Atlas.Text.Chars in 'Source\Chars\Atlas.Text.Chars.pas',
   Atlas.Text.Arrays in 'Source\Arrays\Atlas.Text.Arrays.pas',
   Atlas.Text.Timestamps in 'Source\Timestamps\Atlas.Text.Timestamps.pas',

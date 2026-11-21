@@ -52,7 +52,7 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.Text.Lines,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -230,8 +230,8 @@ begin
     try
       for mHit in FHits[ALine] do
       begin
-        mFirst := TAtlasPairs.ColumnOf(FLines[ALine], mHit.Character, FTabWidth);
-        mLast := TAtlasPairs.ColumnOf(FLines[ALine], mHit.Character + mHit.Length - 1, FTabWidth);
+        mFirst := TTextColumns.ColumnOf(FLines[ALine], mHit.Character, FTabWidth);
+        mLast := TTextColumns.ColumnOf(FLines[ALine], mHit.Character + mHit.Length - 1, FTabWidth);
         mCell := AContext.EditorState.GetCharacterPosPx(mFirst, AContext.EditorLineNum);
         mLastCell := AContext.EditorState.GetCharacterPosPx(mLast, AContext.EditorLineNum);
         Winapi.Windows.Rectangle(mDC, mCell.Left, ARect.Top, mLastCell.Right, ARect.Bottom);

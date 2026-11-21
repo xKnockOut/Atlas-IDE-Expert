@@ -54,6 +54,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin;
@@ -591,7 +592,7 @@ var
 begin
   Result := (TAtlasProblemsController.Current <> nil) and
     TAtlasProblemsController.Current.LineText(Context.FileName, Line, mLineText) and
-    TAtlasPairs.RunMatches(TAtlasPairs.DisplayLine(mLineText, ATabWidth), Text, Column);
+    TTextColumns.RunMatches(TTextColumns.DisplayLine(mLineText, ATabWidth), Text, Column);
 end;
 
 procedure TAtlasEditorPairs.TPairRun.Tint(const ASpans: TArray<TAtlasColumnSpan>; ATint: TColor);
@@ -806,7 +807,7 @@ begin
   SetLength(FDisplay, Length(mLines));
   for mIndex := 0 to High(mLines) do
   begin
-    FDisplay[mIndex] := TAtlasPairs.DisplayLine(mLines[mIndex], FTabWidth);
+    FDisplay[mIndex] := TTextColumns.DisplayLine(mLines[mIndex], FTabWidth);
   end;
   AddTokens(mLines, TAtlasPairs.Analyze(mText, mBlocks));
   AddGuides(mLines, mBlocks);
@@ -854,7 +855,7 @@ begin
       // Spalte der IDE statt Zeichenindex.
       FLines[mToken.Line] := FLines[mToken.Line] + [mToken];
       FLines[mToken.Line][High(FLines[mToken.Line])].Character :=
-        TAtlasPairs.ColumnOf(ALines[mToken.Line], mToken.Character, FTabWidth);
+        TTextColumns.ColumnOf(ALines[mToken.Line], mToken.Character, FTabWidth);
     end;
   end;
 end;
@@ -1054,7 +1055,7 @@ begin
   // von Teilbereichen nicht immer die Zeile des Laufs; sonst landeten Paarfarben mitten in Bezeichnern anderer
   // Zeilen.
   if (ARun.Line < 0) or (ARun.Line > High(FLines)) or (ARun.Line > High(FDisplay)) or
-    not TAtlasPairs.RunMatches(FDisplay[ARun.Line], ARun.Text, ARun.Column) then
+    not TTextColumns.RunMatches(FDisplay[ARun.Line], ARun.Text, ARun.Column) then
   begin
     Exit;
   end;
@@ -1202,7 +1203,7 @@ begin
   ACode := TRect.Empty;
   mState := AContext.LineState;
   Result := (mState <> nil) and (ALine >= 0) and (ALine <= High(FDisplay)) and
-    (TrimRight(TAtlasPairs.DisplayLine(mState.Text, FTabWidth)) = TrimRight(FDisplay[ALine]));
+    (TrimRight(TTextColumns.DisplayLine(mState.Text, FTabWidth)) = TrimRight(FDisplay[ALine]));
   if Result then
   begin
     ACode := mState.CodeRect;
