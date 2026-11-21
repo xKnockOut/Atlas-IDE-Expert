@@ -45,6 +45,7 @@ requires
 
 contains
   Atlas.IDE.Editor.DfmPropertyRules in 'Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas',
+  Atlas.IDE.Rules.Adapters.Module in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.Module.pas',
   Atlas.IDE.Rules.Composition in 'Source\IDE\Rules\Atlas.IDE.Rules.Composition.pas',
   Atlas.IDE.Rules.Adapters.BulkFix in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.BulkFix.pas',
   Atlas.IDE.Rules.Baseline in 'Source\IDE\Rules\Atlas.IDE.Rules.Baseline.pas',
