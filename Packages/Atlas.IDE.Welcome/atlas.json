@@ -37,6 +37,7 @@
         "Atlas.Common",
         "Atlas.Windows",
         "Atlas.Linux",
+        "Atlas.Plugin",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"
@@ -72,6 +73,7 @@
         "Atlas.Common",
         "Atlas.Windows",
         "Atlas.Linux",
+        "Atlas.Plugin",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"
