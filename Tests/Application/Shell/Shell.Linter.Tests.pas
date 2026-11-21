@@ -47,6 +47,9 @@ type
     /// <summary>TLinterCheck.Run ohne die Weiche von TLinterShell: fehlende Datei 3, Syntaxfehler 1.</summary>
     [Test]
     procedure CheckRunsWithoutShell;
+    /// <summary>TLinterShell.Host setzt alle Teile, die der Linter-Modus von außen braucht.</summary>
+    [Test]
+    procedure HostHasAllParts;
     /// <summary>Wie im Editor: atlas.json wird von der Datei aus nach oben gesucht bis zum Stamm des
     /// Repositorys.</summary>
     [Test]
@@ -136,6 +139,7 @@ uses
   Core.CommandLine,
   Shell.Linter,
   Core.Linter.Check,
+  Core.Linter.Host,
   Core.Linter.Duplicates,
   Core.Linter.Mutation,
   Core.Workspace.Listings;
@@ -242,6 +246,17 @@ begin
   Assert.AreEqual(1, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Kaputt.pas'), '--format=json',
     '--output', FOutput, '--index-cache', mCache]), TLinterShell.Host));
   Assert.Contains(OutputText, 'Kaputt.pas');
+end;
+
+procedure TShellLinterTests.HostHasAllParts;
+var
+  mHost: TCoreLinterHost;
+begin
+  mHost := TLinterShell.Host;
+  Assert.IsTrue(Assigned(mHost.InstalledVersions), 'InstalledVersions');
+  Assert.IsTrue(Assigned(mHost.Vcs), 'Vcs');
+  Assert.IsTrue(Assigned(mHost.NewGroup), 'NewGroup');
+  Assert.IsTrue(Assigned(mHost.Instructions), 'Instructions');
 end;
 
 procedure TShellLinterTests.ConfigurationFoundInParentFolder;
