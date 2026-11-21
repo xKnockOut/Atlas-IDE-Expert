@@ -112,7 +112,8 @@ uses
   Winapi.Windows,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -225,7 +226,7 @@ var
 begin
   // Von unten: Hinweis, Sitzung, Zusammenfassung.
   mHint := AddLabel(alBottom, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterShiftHint));
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   mHint.Top := cHintOrder;
   FSession := AddLabel(alBottom, '');
   FSession.Top := cSessionOrder;

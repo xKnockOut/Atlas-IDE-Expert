@@ -38,7 +38,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Properties,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Unit mit TCustomPanel (ABase) und TMeinPanel = class(TCustomPanel) (AOwn).</summary>
 function Panels(const ABase, AOwn: string): string;
@@ -62,49 +63,14 @@ begin
   Result := TRuleAssert.Findings(TPropertyRedeclarationInvalidRule.Create, ASource, AConfig, APath);
 end;
 
-function Join(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + ' | ' + mFinding.Message;
-  end;
-end;
-
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource + Join(mFound));
-  Result := mFound[0].Message;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 procedure Silent(const ASource: string);
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(0, Integer(Length(mFound)), ASource + Join(mFound));
-end;
-
-/// <summary>Wendet Edits an, die jeweils innerhalb einer Zeile liegen (Zeilen aus #10), von hinten nach vorn.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mLines: TArray<string>;
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-begin
-  mLines := AText.Split([#10]);
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    mLines[mEdit.Range.StartPos.Line] := Copy(mLines[mEdit.Range.StartPos.Line], 1, mEdit.Range.StartPos.Character) +
-      mEdit.NewText + Copy(mLines[mEdit.Range.StartPos.Line], mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(#10, mLines);
+  TRuleAssert.NoFindings(Findings(ASource), ASource);
 end;
 
 { TPropertyRedeclarationRulesTests }
@@ -116,14 +82,14 @@ var
 begin
   mSource := Panels(cBasis, '  published'#10'    property Captoin;'#10);
   mFound := Findings(mSource);
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TCustomPanel hat keine Property Captoin; gemeint ist Caption (wie E2147).', mFound[0].Message);
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
   Assert.AreEqual(14, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(13, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Caption verwenden', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Panels(cBasis, '  published'#10'    property Caption;'#10), mFixed);
   Silent(mFixed);
 end;
@@ -133,7 +99,7 @@ var
   mFound: TArray<TRuleFinding>;
 begin
   mFound := Findings(Panels(cBasis, '  published'#10'    property Beschriftung default 0;'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TCustomPanel hat keine Property Beschriftung (wie E2147).', mFound[0].Message);
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   // Ohne Vorfahr: TObject hat keine Properties.
@@ -155,7 +121,7 @@ begin
   mFound := TRuleAssert.IndexFindings(TPropertyRedeclarationInvalidRule.Create, 'unit Panels;'#10'interface'#10 +
     'uses'#10'  Basis;'#10'type'#10'  TNah = class(TFern)'#10'  public'#10'    property Wert;'#10 +
     '    property Streng;'#10'    property Offen;'#10'  end;'#10'implementation'#10'end.', mIndex, '', '');
-  Assert.AreEqual(2, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(2, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('Die Property Wert von TFern ist hier nicht erreichbar (wie E2233).', mFound[0].Message);
   Assert.AreEqual('Die Property Streng von TFern ist hier nicht erreichbar (wie E2233).', mFound[1].Message);
   // private derselben Unit ist erreichbar.
@@ -188,7 +154,7 @@ begin
   mFound := TRuleAssert.IndexFindings(TPropertyRedeclarationInvalidRule.Create, 'unit Panels;'#10'interface'#10 +
     'uses'#10'  Steuer;'#10'type'#10'  TMeinPanel = class(TCustomPanel)'#10'  published'#10 +
     '    property Caption;'#10'    property Aling;'#10'  end;'#10'implementation'#10'end.', mIndex, '', '');
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TCustomPanel hat keine Property Aling; gemeint ist Align (wie E2147).', mFound[0].Message);
 end;
 

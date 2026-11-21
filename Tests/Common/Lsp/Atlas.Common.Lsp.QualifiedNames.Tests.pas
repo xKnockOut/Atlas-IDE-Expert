@@ -49,7 +49,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.QualifiedNames;
+  Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Tests.SourceText;
 
 const
   cControlsFile = 'C:\P\Vcl.Steuer.pas';
@@ -111,33 +112,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
-var
-  mIndex, mFound, mLine, mLineStart: Integer;
-begin
-  mFound := 0;
-  mIndex := 0;
-  repeat
-    mIndex := Pos(AMarker, AText, mIndex + 1);
-    if mIndex = 0 then
-    begin
-      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-    end;
-    Inc(mFound);
-  until mFound = AOccurrence;
-  mLine := 0;
-  mLineStart := 1;
-  for mFound := 1 to mIndex - 1 do
-  begin
-    if AText[mFound] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mFound + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TQualifiedNamesTests }
 
 function TQualifiedNamesTests.NameAt(const AMarker: string; AOccurrence: Integer): string;
@@ -153,7 +127,7 @@ begin
   mTree := TPascalParser.Parse(cUnitMain);
   try
     Assert.IsTrue(TQualifiedNames.At(FResolver, FIndex, mTree, TQualifiedNameRequest.Create(cMainFile,
-      PositionOf(cUnitMain, AMarker, AOccurrence), AWithParameters), Result, mError), mError);
+      TTestSource.PositionOf(cUnitMain, AMarker, AOccurrence), AWithParameters), Result, mError), mError);
   finally
     mTree.Free;
   end;

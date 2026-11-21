@@ -42,43 +42,16 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.FormFields,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 function FormUnit(const AMembers: string): string;
 begin
   Result := 'unit Unit1;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10 + AMembers + #10 +
     '  private'#10'    FZahl: Integer;'#10'  end;'#10'implementation'#10'end.';
-end;
-
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mPosition: Integer;
-  begin
-    mPosition := 0;
-    for mLine := 1 to APosition.Line do
-    begin
-      mPosition := Pos(#10, AText, mPosition + 1);
-    end;
-    Result := mPosition + APosition.Character;
-  end;
-
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
-      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
-  end;
 end;
 
 { TFormFieldRulesTests }
@@ -111,7 +84,7 @@ begin
   mFindings := TRuleAssert.FormFindings(TFormObjectWithoutFieldRule.Create, mSource,
     'object Form1: TForm1'#10'  object Button1: TButton'#10'  end'#10'  object Edit1: TEdit'#10'  end'#10'end'#10);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(FormUnit('    Button1: TButton;'#10'    Edit1: TEdit;'), ApplyFix(mSource, mFindings[0].Fixes[0]));
+  Assert.AreEqual(FormUnit('    Button1: TButton;'#10'    Edit1: TEdit;'), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TFormFieldRulesTests.TypeMismatchFixesType;
@@ -123,7 +96,7 @@ begin
   mFindings := TRuleAssert.FormFindings(TFormFieldTypeMismatchRule.Create, mSource,
     'object Form1: TForm1'#10'  object Edit1: TMaskEdit'#10'  end'#10'end'#10);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(FormUnit('    Edit1: TMaskEdit;'), ApplyFix(mSource, mFindings[0].Fixes[0]));
+  Assert.AreEqual(FormUnit('    Edit1: TMaskEdit;'), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TFormFieldRulesTests.InheritedFormIsSilent;

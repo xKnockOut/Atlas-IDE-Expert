@@ -240,7 +240,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 const
   cSeparator = ' · ';
@@ -744,7 +745,7 @@ begin
   FSavedEmpty.Align := alTop;
   FSavedEmpty.AlignWithMargins := True;
   FSavedEmpty.ShowAccelChar := False;
-  FSavedEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FSavedEmpty, clGrayText);
   FSavedEmpty.Visible := False;
 
   FList := TListView.Create(Self);

@@ -92,7 +92,8 @@ uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Settings.Marks,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Oberkante der ersten Zeile, die Place beim Aufteilen eines Bereichs setzt (alTop ordnet nach Top;
@@ -675,7 +676,7 @@ begin
   mDetails.Layout := tlCenter;
   mDetails.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewDetails);
   mDetails.Font.Style := [fsUnderline];
-  mDetails.Font.Color := clHotLight;
+  TAtlasUiTheme.UseFontColor(mDetails, clHotLight);
   mDetails.Cursor := crHandPoint;
   mDetails.Tag := APage;
   mDetails.OnClick := DetailsClick;

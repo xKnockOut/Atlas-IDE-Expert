@@ -1121,7 +1121,8 @@ begin
     ModalResult := mrOk;
     Exit;
   end;
-  FParts.Note.Font.Color := clWindowText;
+  // ShowErrorNote nahm dem Hinweis seFont: zurück an den Stil, sonst bliebe die Schrift im dunklen Thema schwarz.
+  TAtlasUiTheme.UseFontColor(FParts.Note, clDefault);
   FParts.Note.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndSending);
   SetBusy(True);
   mDialog := Self;

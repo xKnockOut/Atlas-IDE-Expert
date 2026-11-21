@@ -63,11 +63,12 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.SlashMenu;
+  Atlas.Common.Editing.SlashMenu,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cCaseUnit =
@@ -125,54 +126,12 @@ begin
   Result := Format(cRoutineUnit, [ACommand]);
 end;
 
-/// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in AEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
 function Expand(const ACommand: string): string;
 var
   mEdits: TArray<TRuleEdit>;
 begin
   Assert.IsTrue(Run(WithCommand(ACommand), 15, mEdits), ACommand);
-  Result := Apply(WithCommand(ACommand), mEdits);
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
+  Result := TTestEdits.Apply(WithCommand(ACommand), mEdits);
 end;
 
 { TWrapCommandsTests }
@@ -193,7 +152,7 @@ var
 begin
   mText := StringReplace(WithCommand('/try'), 'Liste := TStringList.Create;', 'Result := TStringList.Create;', []);
   Assert.IsTrue(Run(mText, 15, mEdits));
-  mText := Apply(mText, mEdits);
+  mText := TTestEdits.Apply(mText, mEdits);
   Assert.IsTrue(Pos('  except'#10'    Result.Free;'#10'    raise;'#10'  end;'#10'end;', mText) > 0, mText);
 end;
 
@@ -209,7 +168,7 @@ begin
   mStyle.IndentSize := 4;
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(mWide, TTextPosition.Create(16, 0),
     TSlashEnvironment.Create(nil, nil).WithStyle(mStyle), mEdits));
-  mText := Apply(mWide, mEdits);
+  mText := TTestEdits.Apply(mWide, mEdits);
   Assert.IsTrue(Pos('begin'#10'    Liste := TStringList.Create;'#10'    try'#10'        Liste.Add(''a'');'#10 +
     '        Liste.Sort;'#10'    finally'#10'        Liste.Free;'#10'    end;'#10'end;', mText) > 0, mText);
   // Tabulatoren.
@@ -217,12 +176,12 @@ begin
   mStyle.UseTabs := True;
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(mWide, TTextPosition.Create(16, 0),
     TSlashEnvironment.Create(nil, nil).WithStyle(mStyle), mEdits));
-  mText := Apply(mWide, mEdits);
+  mText := TTestEdits.Apply(mWide, mEdits);
   Assert.IsTrue(Pos('begin'#10#9'Liste := TStringList.Create;'#10#9'try'#10#9#9'Liste.Add(''a'');'#10 +
     #9#9'Liste.Sort;'#10#9'finally'#10#9#9'Liste.Free;'#10#9'end;'#10'end;', mText) > 0, mText);
   // Vorgabestil (zwei Leerzeichen): Reindent ändert nichts.
   Assert.IsTrue(Run(WithCommand('/try'), 15, mEdits));
-  Assert.AreEqual(Apply(WithCommand('/try'), mEdits), Apply(WithCommand('/try'),
+  Assert.AreEqual(TTestEdits.Apply(WithCommand('/try'), mEdits), TTestEdits.Apply(WithCommand('/try'),
     TSlashCommandRegistry.Reindent(WithCommand('/try'), mEdits, TFormatStyle.Default)));
 end;
 
@@ -250,7 +209,7 @@ begin
   Assert.IsTrue(Run(cText, 7, mEdits));
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  try'#10 +
     '    L := TList.Create;'#10'    try'#10'      L.Clear;'#10'    finally'#10'      L.Free;'#10'    end;'#10 +
-    '  finally'#10'    X;'#10'  end;'#10'end;'#10'end.', Apply(cText, mEdits));
+    '  finally'#10'    X;'#10'  end;'#10'end;'#10'end.', TTestEdits.Apply(cText, mEdits));
 end;
 
 procedure TWrapCommandsTests.LockUsesMonitor;
@@ -260,7 +219,7 @@ var
 begin
   mText := StringReplace(WithCommand('/lock'), 'FSperre: TCriticalSection;', 'FAnzahl: Integer;', []);
   Assert.IsTrue(Run(mText, 15, mEdits));
-  mText := Apply(mText, mEdits);
+  mText := TTestEdits.Apply(mText, mEdits);
   Assert.IsTrue(Pos('  TMonitor.Enter(Self);'#10'  try'#10'    Liste.Add(''a'');'#10'    Liste.Sort;'#10 +
     '  finally'#10'    TMonitor.Exit(Self);'#10'  end;'#10'end;', mText) > 0, mText);
 end;
@@ -304,7 +263,7 @@ begin
   Assert.IsTrue(Pos('  try'#10'    Liste.Add(''a'');'#10'    Liste.Sort;'#10'  except'#10'    on E: Exception do'#10 +
     '    begin'#10'      OutputDebugString(PChar(E.ClassName + '': '' + E.Message));'#10'      raise;'#10'    end;'#10 +
     '  end;'#10'end;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TWrapCommandsTests.ExceptWrongPlaceFails;
@@ -342,7 +301,7 @@ begin
   for mCommand in cCommands do
   begin
     mText := Expand(mCommand);
-    Assert.IsTrue(Parses(mText), mCommand + ': ' + mText);
+    Assert.IsTrue(TTestSource.Parses(mText), mCommand + ': ' + mText);
   end;
 end;
 
@@ -353,7 +312,7 @@ var
 begin
   mText := Format(cCaseUnit, [ABranches]);
   Assert.IsTrue(Run(mText, 13, mEdits), mText);
-  Result := Apply(mText, mEdits);
+  Result := TTestEdits.Apply(mText, mEdits);
 end;
 
 procedure TWrapCommandsTests.CaseAddsMissingValues;
@@ -364,11 +323,11 @@ begin
   Assert.IsTrue(Pos('begin'#10'  case FArt of'#10'    aKreis: Run;'#10'    aLinie: ;'#10'    aRechteck: ;'#10 +
     '  end;'#10'end;', mText) > 0, mText);
   Assert.AreEqual(0, Pos('/case', mText), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   // Letzter Zweig ohne ";" vor end: das ";" kommt dazu.
   mText := ExpandCase('    aKreis: Run'#10);
   Assert.IsTrue(Pos('    aKreis: Run;'#10'    aLinie: ;'#10'    aRechteck: ;'#10'  end;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TWrapCommandsTests.CaseWithoutBranchesAndElse;
@@ -382,7 +341,7 @@ begin
   mText := ExpandCase('    aLinie: Run;'#10'  else'#10'    Run;'#10);
   Assert.IsTrue(Pos('    aLinie: Run;'#10'    aKreis: ;'#10'    aRechteck: ;'#10'  else'#10'    Run;'#10'  end;',
     mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TWrapCommandsTests.CaseKeepsScopedLabels;
@@ -398,7 +357,7 @@ begin
   mText := StringReplace(mText, '/case', '', []);
   Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, mText, TSlashSpot.Create(14, 2, -1),
     TSlashMenuCall.Create('case', '', TSlashEnvironment.Create(nil, nil)), mEdits, mReason), mReason);
-  mText := Apply(mText, mEdits);
+  mText := TTestEdits.Apply(mText, mEdits);
   Assert.IsTrue(Pos('    TArt.aKreis: ;'#10'    TArt.aLinie: ;'#10'    TArt.aRechteck: ;', mText) > 0, mText);
 end;
 
@@ -412,7 +371,7 @@ begin
   mText := StringReplace(Format(cCaseUnit, ['    aKreis: Run;'#10]), '  /case'#10, '', []);
   Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, mText, TSlashSpot.Create(13, 0, 15),
     TSlashMenuCall.Create('case', '', TSlashEnvironment.Create(nil, nil)), mEdits, mReason), mReason);
-  mText := Apply(mText, mEdits);
+  mText := TTestEdits.Apply(mText, mEdits);
   Assert.IsTrue(Pos('    aKreis: Run;'#10'    aLinie: ;'#10'    aRechteck: ;'#10'  end;', mText) > 0, mText);
 end;
 

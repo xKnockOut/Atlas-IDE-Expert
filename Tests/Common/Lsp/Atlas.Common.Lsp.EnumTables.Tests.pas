@@ -47,7 +47,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.EnumTables;
+  Atlas.Common.Lsp.EnumTables,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cOrdersFile = 'C:\P\Orders.pas';
@@ -162,16 +163,6 @@ begin
   end;
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 procedure TLspEnumTablesTests.ActionsOnType;
 var
   mActions: TArray<TJSONObject>;
@@ -193,7 +184,7 @@ begin
     Assert.AreEqual(TLspEnumTables.cSyncClientCommand, mActions[2].GetValue<string>('command.command'));
     Assert.AreEqual(2, mActions[2].GetValue<TJSONArray>('command.arguments').Count);
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -208,7 +199,7 @@ begin
     Assert.AreEqual('quickfix', mActions[0].GetValue<string>('kind'));
     Assert.IsTrue(Pos('"newText":", ''Paid''"', mActions[0].ToJSON) > 0, mActions[0].ToJSON);
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
   // Der eigene Typ von Other hat zwei Werte: dort fehlt osB.
   mActions := ActionsAt(FIndex, cOther, cOtherFile, 5, 10);
@@ -216,7 +207,7 @@ begin
     Assert.AreEqual(1, Integer(Length(mActions)));
     Assert.AreEqual('Fehlenden Eintrag ergänzen (osB)', mActions[0].GetValue<string>('title'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 

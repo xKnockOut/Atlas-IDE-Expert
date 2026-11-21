@@ -58,7 +58,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -68,7 +67,8 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Rules.Checker;
+  Atlas.Common.Rules.Checker,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Unit mit einer Klasse TKunde aus AMembers; ABodies im implementation-Teil.</summary>
 function Kunden(const AMembers, ABodies: string): string;
@@ -88,49 +88,13 @@ begin
 end;
 
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
-  Result := mFound[0].Message;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 procedure Silent(const ASource: string);
 begin
   TRuleAssert.Silent(TPropertyAccessorInvalidRule.Create, ASource);
-end;
-
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an, auch über Zeilen.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mStart, mStop: Integer;
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
-    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
 end;
 
 { TPropertyRulesTests }
@@ -150,7 +114,7 @@ begin
   Assert.AreEqual(50, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('SetName anlegen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure SetName(const Value: string);', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);', mFixed) > 0, mFixed);
   Silent(mFixed);
@@ -221,21 +185,21 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('GetName ist in TKunde nicht deklariert (wie E2168).', mFound[0].Message);
   Assert.AreEqual('GetName anlegen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('function GetName: string;', mFixed) > 0, mFixed);
   Silent(mFixed);
   mSource := Kunden('  public'#10'    property Wert: Integer read FWert;'#10, '');
   mFound := Findings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('FWert anlegen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('FWert: Integer;', mFixed) > 0, mFixed);
   Silent(mFixed);
   // Indexparameter und index-Angabe wandern in den Getter.
   mSource := Kunden('  public'#10'    property Items[I: Integer]: string read GetItems;'#10, '');
   mFound := Findings(mSource);
   Assert.AreEqual('GetItems anlegen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('function GetItems(I: Integer): string;', mFixed) > 0, mFixed);
   Silent(mFixed);
   // Andere Namen und Klassen-Properties: Meldung ohne Korrektur.
@@ -434,7 +398,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('read FPasswort ergänzen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(StringReplace(mSource, 'string write', 'string read FPasswort write', []), mFixed);
   TRuleAssert.Silent(TWriteOnlyPropertyRule.Create, mFixed);
   // Feld mit anderem Typ: keine Korrektur.

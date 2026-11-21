@@ -41,12 +41,12 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Semantics.Attributes;
+  Atlas.Common.Semantics.Attributes,
+  Atlas.Tests.SourceText;
 
 const
   cUnitAttribute =
@@ -92,28 +92,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mRun: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for mRun := 1 to mIndex - 1 do
-  begin
-    if AText[mRun] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mRun + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TAttributesTests }
 
 function TAttributesTests.ResolvedAt(const AMarker: string): TResolvedSymbol;
@@ -122,7 +100,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := FResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(cUnitHaupt, AMarker));
+    Result := FResolver.Resolve(mTree, 'C:\P\Haupt.pas', TTestSource.PositionOf(cUnitHaupt, AMarker));
   finally
     mTree.Free;
   end;
@@ -148,18 +126,18 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Assert.IsTrue(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'TestCase('), mUse));
+    Assert.IsTrue(TAttributes.At(mTree, TTestSource.PositionOf(cUnitHaupt, 'TestCase('), mUse));
     Assert.AreEqual('TestCase', mUse.Name);
     Assert.AreEqual(2, mUse.ArgCount);
-    Assert.IsTrue(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'Attributes.TestFixture('), mUse));
+    Assert.IsTrue(TAttributes.At(mTree, TTestSource.PositionOf(cUnitHaupt, 'Attributes.TestFixture('), mUse));
     Assert.AreEqual('DUnitX.Attributes.TestFixture', mUse.Name);
     Assert.AreEqual(1, mUse.ArgCount);
-    Assert.IsTrue(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'Bar]'), mUse));
+    Assert.IsTrue(TAttributes.At(mTree, TTestSource.PositionOf(cUnitHaupt, 'Bar]'), mUse));
     Assert.AreEqual('Bar', mUse.Name);
     Assert.AreEqual(0, mUse.ArgCount);
     // In den Argumenten und außerhalb der Klammern kein Attributname.
-    Assert.IsFalse(TAttributes.At(mTree, PositionOf(cUnitHaupt, '''1,2'''), mUse));
-    Assert.IsFalse(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'TTest = '), mUse));
+    Assert.IsFalse(TAttributes.At(mTree, TTestSource.PositionOf(cUnitHaupt, '''1,2'''), mUse));
+    Assert.IsFalse(TAttributes.At(mTree, TTestSource.PositionOf(cUnitHaupt, 'TTest = '), mUse));
   finally
     mTree.Free;
   end;

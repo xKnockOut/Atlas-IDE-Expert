@@ -153,7 +153,8 @@ implementation
 uses
   Atlas.Core.Style.Color,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.PluginReport;
+  Atlas.Core.Diagnostics.PluginReport,
+  Atlas.UI.Foundation.Theme;
 
 const
   cTabFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_CENTER;
@@ -357,7 +358,7 @@ begin
   FThreshold.Left := MulDiv(cThresholdLeft, CurrentPPI, 96);
   FNote := NewLabel;
   FNote.Left := MulDiv(cNoteLeft, CurrentPPI, 96);
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FButtonsWidth := FCopy.Width + FReset.Width + FPause.Width +
     cBarButtonCount * (FCopy.Margins.Left + FCopy.Margins.Right);
   FButtons.Width := FButtonsWidth;

@@ -49,12 +49,13 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.RefactoringCommands,
-  Atlas.Tests.SlashHost;
+  Atlas.Tests.SlashHost,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cRoutineUnit =
@@ -79,54 +80,12 @@ begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits);
 end;
 
-/// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in AEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
 function Expand(const ACommand: string): string;
 var
   mEdits: TArray<TRuleEdit>;
 begin
   Assert.IsTrue(Run(Format(cRoutineUnit, [ACommand]), 10, mEdits), ACommand);
-  Result := Apply(Format(cRoutineUnit, [ACommand]), mEdits);
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
+  Result := TTestEdits.Apply(Format(cRoutineUnit, [ACommand]), mEdits);
 end;
 
 { TRefactoringCommandsTests }
@@ -161,7 +120,7 @@ begin
     '    OutputDebugString(PChar(Format(''%s: %d ms'', [''U.Run'', SW.ElapsedMilliseconds])));'#10 +
     '  end;'#10'end;', mText) > 0, mText);
   Assert.IsTrue(Pos('System.Diagnostics', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.MeasureOutsideRoutineFails;
@@ -240,12 +199,12 @@ var
 begin
   // Abnahme: AValue wird nur gelesen (Wertparameter), Total geschrieben und danach gelesen (var).
   Assert.IsTrue(Run(Format(cExtractUnit, ['/extract Verdopple']), 9, mEdits));
-  mText := Apply(Format(cExtractUnit, ['/extract Verdopple']), mEdits);
+  mText := TTestEdits.Apply(Format(cExtractUnit, ['/extract Verdopple']), mEdits);
   Assert.IsTrue(Pos('procedure Verdopple(const AValue: Integer; var Total: Integer);', mText) > 0, mText);
   Assert.IsTrue(Pos('  Verdopple(AValue, Total);'#10#10'  Total := Total + 1;', mText) > 0, mText);
   Assert.AreEqual(0, Pos('ExtractedMethod', mText), mText);
   Assert.AreEqual(0, Pos('/extract', mText), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.ExtractOutsideRoutineFails;
@@ -269,9 +228,9 @@ var
 begin
   mText := Format(cInlineUnit, ['/inline', 'Y := Twice(X) + 1;']);
   Assert.IsTrue(Run(mText, 13, mEdits));
-  mText := Apply(mText, mEdits);
+  mText := TTestEdits.Apply(mText, mEdits);
   Assert.IsTrue(Pos('  X := 5;'#10'  Y := (X * 2) + 1;'#10'end;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.InlineEmbedsVariable;
@@ -281,9 +240,9 @@ var
 begin
   mText := Format(cInlineUnit, ['/inline', 'Y := X + 1;']);
   Assert.IsTrue(Run(mText, 13, mEdits));
-  mText := Apply(mText, mEdits);
+  mText := TTestEdits.Apply(mText, mEdits);
   Assert.IsTrue(Pos('begin'#10'  Y := 5 + 1;'#10'end;', mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.InlineOutsideRoutineFails;
@@ -366,7 +325,7 @@ begin
     TSlashEnvironment.Create(nil, nil, nil, '', cFixUri, mKeep), mEdits));
   // Nur die Befehlszeile geht.
   Assert.AreEqual(1, Integer(Length(mEdits)));
-  Assert.AreEqual(StringReplace(Format(cRoutineUnit, ['']), '  '#10'  Liste  :=', '  Liste  :=', []), Apply(mText, mEdits));
+  Assert.AreEqual(StringReplace(Format(cRoutineUnit, ['']), '  '#10'  Liste  :=', '  Liste  :=', []), TTestEdits.Apply(mText, mEdits));
   Assert.AreEqual(1, Integer(Length(mHost.Notes)));
   Assert.AreEqual('Free ohne try'#10'free-without-try: Erklärung', mHost.Notes[0]);
   mHost.Findings := nil;

@@ -43,10 +43,10 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.MethodDirectives,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 /// <summary>Unit mit einer Klasse TForm aus AMembers; ABodies im implementation-Teil.</summary>
 function Formen(const AMembers, ABodies: string): string;
@@ -66,12 +66,8 @@ begin
 end;
 
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
-  Result := mFound[0].Message;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 procedure Silent(const ASource: string);
@@ -91,38 +87,6 @@ begin
   end;
 end;
 
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an, auch über Zeilen.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mStart, mStop: Integer;
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
-    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
-end;
-
 { TMethodDirectiveRulesTests }
 
 procedure TMethodDirectiveRulesTests.AbstractIssueExample;
@@ -139,7 +103,7 @@ begin
   Assert.AreEqual(38, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('"virtual;" vor abstract einfügen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('    function Flaeche: Double; virtual; abstract;'#10, mFixed) > 0, mFixed);
   Silent(mFixed);
 end;
@@ -174,7 +138,7 @@ begin
   Assert.AreEqual(15, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Rumpf entfernen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Formen('    function Flaeche: Double; virtual; abstract;'#10'    procedure Zeichnen;'#10,
     'procedure TForm.Zeichnen;'#10'begin'#10'end;'#10#10), mFixed);
   Silent(mFixed);

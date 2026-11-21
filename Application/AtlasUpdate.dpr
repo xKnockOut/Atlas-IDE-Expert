@@ -1,5 +1,6 @@
 ﻿program AtlasUpdate;
 
+{$R *.res}
 {$APPTYPE CONSOLE}
 
 // Installer und Updater von Atlas (#1519): Erstinstallation aus dem

@@ -43,20 +43,16 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Completion.TestSupport;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
-  cHauptFile = 'C:\P\Haupt.pas';
 
   cUnitBasis =
     'unit Basis;'#10 +
@@ -113,44 +109,6 @@ begin
   Result.Header := Header(AText);
   Result.Container := AContainer;
   Result.Depth := ADepth;
-end;
-
-function ItemsAt(const AIndex: ISymbolIndex; const AText, AMarker: string;
-  const ASettings: TCompletionSettings): TCompletionItems;
-var
-  mResolver: TNameResolver;
-  mRequest: TCompletionRequest;
-  mTree: TSyntaxTree;
-  mLines: TArray<string>;
-  mLine: Integer;
-  mPosition: TTextPosition;
-  mPostfix: TPostfixOptions;
-begin
-  mLines := AText.Split([#10]);
-  mPosition := TTextPosition.Create(0, 0);
-  for mLine := 0 to High(mLines) do
-  begin
-    if Pos(AMarker, mLines[mLine]) > 0 then
-    begin
-      mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
-    end;
-  end;
-  mTree := TPascalParser.Parse(AText);
-  mResolver := TNameResolver.Create(AIndex);
-  mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
-  try
-    mRequest.Tree := mTree;
-    mRequest.Resolver := mResolver;
-    mRequest.Index := AIndex;
-    mRequest.Matching := TCompletionMatching.Prefix;
-    mRequest.Settings := ASettings;
-    mPostfix := Default(TPostfixOptions);
-    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
-  finally
-    mRequest.Free;
-    mResolver.Free;
-    mTree.Free;
-  end;
 end;
 
 function Code(const AMarker, ACode: string): string;
@@ -281,7 +239,7 @@ procedure TCompletionInheritedTests.CompletionOffersFullCallFirst;
 var
   mItems: TCompletionItems;
 begin
-  mItems := ItemsAt(FIndex, Code('  { Create }', '  inherited '), 'inherited ', TCompletionSettings.Default);
+  mItems := CollectWith(FIndex, Code('  { Create }', '  inherited '), 'inherited ', TCompletionSettings.Default);
   Assert.IsTrue(Length(mItems.Items) >= 2);
   Assert.AreEqual('Create(AOwner)', mItems.Items[0].Name);
   Assert.AreEqual('same', mItems.Items[0].InheritedMatch);
@@ -298,7 +256,7 @@ procedure TCompletionInheritedTests.CompletionAddsResultInFunctions;
 var
   mItems: TCompletionItems;
 begin
-  mItems := ItemsAt(FIndex, Code('  { Format }', '  inherited Form'), 'inherited Form', TCompletionSettings.Default);
+  mItems := CollectWith(FIndex, Code('  { Format }', '  inherited Form'), 'inherited Form', TCompletionSettings.Default);
   Assert.IsTrue(Length(mItems.Items) >= 2);
   Assert.AreEqual('FormatZeile(AText, ALevel)', mItems.Items[0].Name);
   Assert.AreEqual('Result := inherited FormatZeile(AText, ALevel);', mItems.Items[0].TextEdit.NewText);
@@ -306,7 +264,7 @@ begin
   Assert.AreEqual('FormatZeile(AText)', mItems.Items[1].Name);
   Assert.AreEqual('overload', mItems.Items[1].InheritedMatch);
   // Mit Text dahinter kein Semikolon und mit Zuweisung davor kein Result.
-  mItems := ItemsAt(FIndex, Code('  { Format }', '  S := inherited Form + ''x'';'), 'inherited Form',
+  mItems := CollectWith(FIndex, Code('  { Format }', '  S := inherited Form + ''x'';'), 'inherited Form',
     TCompletionSettings.Default);
   Assert.AreEqual('FormatZeile(AText, ALevel)', mItems.Items[0].TextEdit.NewText);
 end;
@@ -317,7 +275,7 @@ var
   mItem: TCompletionItem;
   mSettings: TCompletionSettings;
 begin
-  mItems := ItemsAt(FIndex, Code('  { Zeichnen }', '  inherited '), 'inherited ', TCompletionSettings.Default);
+  mItems := CollectWith(FIndex, Code('  { Zeichnen }', '  inherited '), 'inherited ', TCompletionSettings.Default);
   for mItem in mItems.Items do
   begin
     Assert.AreNotEqual('Zeichnen', mItem.Name);
@@ -326,7 +284,7 @@ begin
   // Aus: nur die Namen der Vorfahrmethoden wie bisher.
   mSettings := TCompletionSettings.Default;
   mSettings.InheritedCall := False;
-  mItems := ItemsAt(FIndex, Code('  { Create }', '  inherited '), 'inherited ', mSettings);
+  mItems := CollectWith(FIndex, Code('  { Create }', '  inherited '), 'inherited ', mSettings);
   for mItem in mItems.Items do
   begin
     Assert.AreEqual('', mItem.InheritedMatch, mItem.Name);

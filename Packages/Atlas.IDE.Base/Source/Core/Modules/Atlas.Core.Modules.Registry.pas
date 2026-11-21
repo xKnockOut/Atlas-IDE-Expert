@@ -10,9 +10,10 @@
 //   sie mit UseStorage setzt.
 // - Abmelden stoppt ein aktives Modul und löst seinen Scope rückwärts; ein
 //   Fehler hält den Abbau nicht an (wie TAtlasFeatureTable.StopAll, #886).
-//   Zuerst ruft es OnModuleClosing mit Info.Handle (TAtlasModuleHost.ConnectMainThread
-//   verbindet es mit TAtlasMainThread.CloseModule: wartende Einträge des Moduls liefen
-//   sonst nach dem Entladen seines Packages in nicht mehr geladenem Code),
+//   Zuerst ruft es OnModuleClosing mit Info.Handle (TAtlasModuleHost.ConnectRegistry
+//   verbindet es mit TAtlasMainThread.CloseModule und TAtlasTimeLimit.ReleaseModule:
+//   wartende Einträge und hängende Zeitlimit-Arbeiter des Moduls liefen sonst nach
+//   dem Entladen seines Packages in nicht mehr geladenem Code),
 //   Anmelden ruft OnModuleOpened. Als Haken, damit Core.Modules nicht von
 //   Core.Diagnostics abhängt (sonst ein Feature-Zyklus).
 // - Objekte nach Interface-GUID (Provide/FindAll); die Registry versteht

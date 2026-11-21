@@ -50,7 +50,8 @@ uses
   Atlas.Core.Tracker.IssueForms,
   Atlas.Core.Tracker.NewIssueGitHub,
   Atlas.UI.Tracker.NewIssue.Strings,
-  Atlas.UI.Tracker.NewIssueDialog;
+  Atlas.UI.Tracker.NewIssueDialog,
+  Atlas.Tests.SourceText;
 
 function Setup(AIncludeCode: Boolean): TAtlasNewIssueSetup;
 begin
@@ -65,17 +66,6 @@ begin
   Result.Code := '// TODO Speicherleck beim Schließen';
   Result.IncludeCode := AIncludeCode;
   Result.CanStart := False;
-end;
-
-function Lines(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
 end;
 
 /// <summary>GitHub-Tracker gewählt, Fakten und Zuordnung wie im Plugin; AOnSend zählt bzw. merkt.</summary>
@@ -97,14 +87,14 @@ var
   mBlank: Boolean;
 begin
   Result := TAtlasNewIssueFields.Empty;
-  Result.GitHub.Forms := TAtlasIssueForms.ReadAll([TAtlasIssueFormFile.Create('1-fehler.yml', Lines(['name: Fehler',
+  Result.GitHub.Forms := TAtlasIssueForms.ReadAll([TAtlasIssueFormFile.Create('1-fehler.yml', TTestSource.Lines(['name: Fehler',
     'title: "Fehler: "', 'labels: ["bug"]', 'type: Bug', 'body:', '  - type: input', '    id: version',
     '    attributes:', '      label: Atlas-Version', '    validations:', '      required: true',
     '  - type: dropdown', '    id: ide', '    attributes:', '      label: IDE', '      options:',
     '        - Delphi 12 (64-Bit-IDE)', '        - Delphi 13 (64-Bit-IDE)', '  - type: textarea', '    id: steps',
     '    attributes:', '      label: Schritte', '    validations:', '      required: true', '  - type: textarea',
     '    id: log', '    attributes:', '      label: Log', '      render: text'])),
-    TAtlasIssueFormFile.Create('2-wunsch.md', Lines(['---', 'name: Wunsch', 'title: "[Wunsch] "', '---',
+    TAtlasIssueFormFile.Create('2-wunsch.md', TTestSource.Lines(['---', 'name: Wunsch', 'title: "[Wunsch] "', '---',
     '## Was fehlt?'])), TAtlasIssueFormFile.Create('config.yml', 'blank_issues_enabled: false')], mBlank);
   Result.GitHub.BlankAllowed := mBlank;
 end;

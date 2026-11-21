@@ -48,7 +48,6 @@ implementation
 uses
   Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -58,7 +57,9 @@ uses
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -80,47 +81,9 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  // Cursor hinter AMarker.
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  Inc(mIndex, Length(AMarker));
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 function WithCode(const ACode: string): string;
 begin
   Result := StringReplace(cUnitHaupt, '  |', ACode, []);
-end;
-
-function CountNamed(const AItems: TCompletionItems; const AName: string): Integer;
-var
-  mItem: TCompletionItem;
-begin
-  Result := 0;
-  for mItem in AItems.Items do
-  begin
-    if SameText(mItem.Name, AName) then
-    begin
-      Inc(Result);
-    end;
-  end;
 end;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
@@ -139,7 +102,7 @@ begin
   mText := WithCode(ACode);
   mTree := TPascalParser.Parse(mText);
   try
-    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(mText, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, TTestSource.PositionAfter(mText, AMarker),
       TCompletionMatching.Prefix);
   finally
     mTree.Free;
@@ -230,10 +193,10 @@ begin
   mText := WithCode('  X := Liste.Length + Length(Liste);');
   mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsFalse(TSystemIntrinsics.NameAt(mTree, PositionOf(mText, 'Liste.Len'), mName));
-    Assert.IsTrue(TSystemIntrinsics.NameAt(mTree, PositionOf(mText, '+ Len'), mName));
+    Assert.IsFalse(TSystemIntrinsics.NameAt(mTree, TTestSource.PositionAfter(mText, 'Liste.Len'), mName));
+    Assert.IsTrue(TSystemIntrinsics.NameAt(mTree, TTestSource.PositionAfter(mText, '+ Len'), mName));
     Assert.AreEqual('Length', mName);
-    Assert.IsFalse(TSystemIntrinsics.NameAt(mTree, PositionOf(mText, '  X'), mName));
+    Assert.IsFalse(TSystemIntrinsics.NameAt(mTree, TTestSource.PositionAfter(mText, '  X'), mName));
   finally
     mTree.Free;
   end;
@@ -241,19 +204,19 @@ end;
 
 procedure TSystemIntrinsicsTests.CompletionOffersIntrinsicsWithoutUses;
 begin
-  Assert.AreEqual(1, CountNamed(ItemsAt('  Assi', '  Assi'), 'Assigned'));
-  Assert.AreEqual(1, CountNamed(ItemsAt('  SetLe', '  SetLe'), 'SetLength'));
-  Assert.AreEqual(1, CountNamed(ItemsAt('  Leng', '  Leng'), 'Length'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  Assi', '  Assi'), 'Assigned'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  SetLe', '  SetLe'), 'SetLength'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  Leng', '  Leng'), 'Length'));
   // Überladungen erscheinen einmal.
-  Assert.AreEqual(1, CountNamed(ItemsAt('  Inc', '  Inc'), 'Inc'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  Inc', '  Inc'), 'Inc'));
 end;
 
 procedure TSystemIntrinsicsTests.CompletionOffersBuiltinTypes;
 begin
-  Assert.AreEqual(1, CountNamed(ItemsAt('  Int6', '  Int6'), 'Int64'));
-  Assert.AreEqual(1, CountNamed(ItemsAt('  Card', '  Card'), 'Cardinal'));
-  Assert.AreEqual(1, CountNamed(ItemsAt('  NativeI', '  NativeI'), 'NativeInt'));
-  Assert.AreEqual(1, CountNamed(ItemsAt('  Integ', '  Integ'), 'Integer'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  Int6', '  Int6'), 'Int64'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  Card', '  Card'), 'Cardinal'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  NativeI', '  NativeI'), 'NativeInt'));
+  Assert.AreEqual(1, CountItems(ItemsAt('  Integ', '  Integ'), 'Integer'));
 end;
 
 procedure TSystemIntrinsicsTests.IndexedSystemDeclarationWins;
@@ -266,7 +229,7 @@ begin
     'function Length(const S: string): Integer;'#10'implementation'#10 +
     'function Length(const S: string): Integer; begin end;'#10'end.', 'C:\Lib\System.pas', nil));
   mItems := ItemsAt('  Leng', '  Leng');
-  Assert.AreEqual(1, CountNamed(mItems, 'Length'));
+  Assert.AreEqual(1, CountItems(mItems, 'Length'));
   for mItem in mItems.Items do
   begin
     if SameText(mItem.Name, 'Length') then
@@ -285,19 +248,19 @@ var
 begin
   // Ohne Eingabe keine Liste von System (die Antwort ist dann ohnehin unvollständig).
   mItems := ItemsAt('  ', #10'begin'#10'  ');
-  Assert.AreEqual(0, CountNamed(mItems, 'Assigned'));
+  Assert.AreEqual(0, CountItems(mItems, 'Assigned'));
   Assert.IsTrue(mItems.Incomplete);
   // Eine eigene Routine gleichen Namens verdeckt den Eintrag.
   mText := StringReplace(WithCode('  Assi'), 'procedure TFoo.Bar;',
     'function Assigned(P: Pointer): Boolean;'#10'begin'#10'end;'#10'procedure TFoo.Bar;', []);
   mTree := TPascalParser.Parse(mText);
   try
-    mItems := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(mText, '  Assi'),
+    mItems := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, TTestSource.PositionAfter(mText, '  Assi'),
       TCompletionMatching.Prefix);
   finally
     mTree.Free;
   end;
-  Assert.AreEqual(1, CountNamed(mItems, 'Assigned'));
+  Assert.AreEqual(1, CountItems(mItems, 'Assigned'));
   for mItem in mItems.Items do
   begin
     if SameText(mItem.Name, 'Assigned') then
@@ -317,7 +280,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     mHelp := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile, NoText),
-      PositionOf(mText, 'Liste, '));
+      TTestSource.PositionAfter(mText, 'Liste, '));
     Assert.IsTrue(mHelp.Found);
     Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
     Assert.AreEqual('procedure SetLength(var S; NewLength: NativeInt)', mHelp.Signatures[0].Text);
@@ -330,7 +293,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     mHelp := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile, NoText),
-      PositionOf(mText, '[0], '));
+      TTestSource.PositionAfter(mText, '[0], '));
     Assert.AreEqual(2, Integer(Length(mHelp.Signatures)));
     // Die erste Überladung hat nur einen Parameter.
     Assert.AreEqual(1, mHelp.ActiveSignature);
@@ -342,7 +305,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     mHelp := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile, NoText),
-      PositionOf(mText, 'Length('));
+      TTestSource.PositionAfter(mText, 'Length('));
     Assert.IsFalse(mHelp.Found);
   finally
     mTree.Free;
@@ -359,7 +322,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     mInfo := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), mTree, mText, cHauptFile,
-      PositionOf(mText, 'if Assi'));
+      TTestSource.PositionAfter(mText, 'if Assi'));
     Assert.AreEqual('function Assigned(const P): Boolean;', mInfo.Declaration);
     Assert.AreEqual('System', mInfo.UnitName);
     Assert.AreNotEqual('', mInfo.Documentation);
@@ -370,7 +333,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     mInfo := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), mTree, mText, cHauptFile,
-      PositionOf(mText, 'Liste: Int'));
+      TTestSource.PositionAfter(mText, 'Liste: Int'));
     Assert.IsTrue(mInfo.Declaration.StartsWith('type Int64'), mInfo.Declaration);
   finally
     mTree.Free;

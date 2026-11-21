@@ -68,11 +68,11 @@ begin
   // Unterpunkt „Branches“ (#1288, x-node vcs.branches): Dialog „Branch anlegen“ vor „Beginnen“.
   AddTitle(TAtlasVcsTextId.SettingsVcsBranchTitle);
   Host.AddSwitch('vcs.branch.confirm', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchConfirm));
-  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchHint)).Font.Color := clGrayText;
+  AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchHint));
   // Gruppe „SVN“ (#1290): Vorgaben für Ort, Quelle, Danach und Nachricht im Dialog „Branch anlegen“.
   AddTitle(TAtlasVcsTextId.SettingsVcsBranchSvnTitle);
   Host.AddText('vcs.branch.svn.location', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnLocation));
-  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnLocationHint)).Font.Color := clGrayText;
+  AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnLocationHint));
   FVcsBranchSvnSource := AddChoice('vcs.branch.svn.source', TAtlasVcsTextId.SettingsVcsBranchSvnSource,
     [TAtlasVcsTextId.SettingsVcsBranchSvnSourceHead, TAtlasVcsTextId.SettingsVcsBranchSvnSourceWorkingCopy],
     TArray<string>.Create('head', 'workingCopy'));
@@ -83,7 +83,7 @@ begin
   FVcsBranchSvnAfter.Width := FVcsBranchSvnAfter.ScaleValue(260);
   Host.AddText('vcs.branch.svn.checkoutFolder', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnFolder));
   Host.AddText('vcs.branch.svn.message', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnMessage));
-  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnMessageHint)).Font.Color := clGrayText;
+  AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnMessageHint));
   AddVcsExternalsSection;
   AddVcsGitSection;
 end;
@@ -161,7 +161,7 @@ begin
   FVcsExternalsRulesError := AddWrappedLabel(20, '');
   FVcsExternalsRulesError.Font.Color := clRed;
   Attach(FVcsExternalsRulesError.Parent, mPanel);
-  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsExternalsRulesHint)).Font.Color := clGrayText;
+  AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsExternalsRulesHint));
   // Arbeitskopien der Gruppe und Aktualisieren (#1292).
   Host.AddSwitch('vcs.externals.show', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsExternalsShow));
   FVcsExternalsUpdate := AddChoice('vcs.externals.update', TAtlasVcsTextId.SettingsVcsExternalsUpdate,
@@ -188,7 +188,7 @@ begin
   FVcsBranchGitUncommitted.Width := FVcsBranchGitUncommitted.ScaleValue(320);
   Host.AddSwitch('vcs.branch.git.worktree', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitWorktree));
   Host.AddText('vcs.branch.git.worktreeFolder', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitWorktreeFolder));
-  AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitHint)).Font.Color := clGrayText;
+  AddNote(cLongNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitHint));
 end;
 
 procedure TAtlasSettingsVcsBranchPart.VcsExternalsRulesChange(Sender: TObject);

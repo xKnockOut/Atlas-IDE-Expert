@@ -67,7 +67,8 @@ implementation
 uses
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Settings.Page.Sheets;
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.UI.Foundation.Theme;
 
 const
   // Linker Rand des Knopfs für die Projekteinstellungen.
@@ -116,7 +117,7 @@ begin
   FCacheInfo.Parent := mPanel;
   FCacheInfo.Left := 0;
   FCacheInfo.Top := FCacheInfo.ScaleValue(cInfoTop);
-  FCacheInfo.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FCacheInfo, clGrayText);
   Reload;
 end;
 

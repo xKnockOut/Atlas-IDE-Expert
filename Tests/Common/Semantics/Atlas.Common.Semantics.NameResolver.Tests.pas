@@ -96,11 +96,11 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Tests.SourceText;
 
 const
   cUnitBasis =
@@ -149,33 +149,6 @@ const
     'implementation'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
-var
-  mIndex, mFound, mLine, mLineStart: Integer;
-begin
-  mFound := 0;
-  mIndex := 0;
-  repeat
-    mIndex := Pos(AMarker, AText, mIndex + 1);
-    if mIndex = 0 then
-    begin
-      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-    end;
-    Inc(mFound);
-  until mFound = AOccurrence;
-  mLine := 0;
-  mLineStart := 1;
-  for mFound := 1 to mIndex - 1 do
-  begin
-    if AText[mFound] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mFound + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TNameResolverTests }
 
 procedure TNameResolverTests.AddUnit(const AFileName, AText: string);
@@ -194,7 +167,7 @@ var
 begin
   mTree := TPascalParser.Parse(AText);
   try
-    Result := FResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(AText, AMarker, AOccurrence));
+    Result := FResolver.Resolve(mTree, 'C:\P\Haupt.pas', TTestSource.PositionOf(AText, AMarker, AOccurrence));
   finally
     mTree.Free;
   end;
@@ -792,9 +765,9 @@ begin
     mResolver.Namespaces := ['Firma'];
     mTree := TPascalParser.Parse(cSource);
     try
-      R := mResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(cSource, 'TWerkzeug', 1));
+      R := mResolver.Resolve(mTree, 'C:\P\Haupt.pas', TTestSource.PositionOf(cSource, 'TWerkzeug', 1));
       Assert.AreEqual('Firma.Werkzeuge', R.UnitName);
-      R := mResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(cSource, 'Unbekannt', 1));
+      R := mResolver.Resolve(mTree, 'C:\P\Haupt.pas', TTestSource.PositionOf(cSource, 'Unbekannt', 1));
       Assert.IsFalse(R.Found);
     finally
       mTree.Free;
@@ -866,20 +839,20 @@ begin
     mSecond := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
     Assert.AreEqual<Pointer>(Pointer(mSecond.Symbols), Pointer(mFirst.Symbols));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
-      PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
+      TTestSource.PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
     // Das innere UnpinTree löst den Baum noch nicht.
     mSecond := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
     Assert.AreEqual<Pointer>(Pointer(mSecond.Symbols), Pointer(mFirst.Symbols));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
-      PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
+      TTestSource.PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
     // Ungepinnt teilt der Aufruf das am Baum hinterlegte Extrakt (kein neues Extrahieren je Anbieter).
     mSecond := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
     Assert.AreEqual<Pointer>(Pointer(mSecond.Symbols), Pointer(mFirst.Symbols));
     Assert.AreEqual(Integer(Length(mFirst.Symbols)), Integer(Length(mSecond.Symbols)));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
-      PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
+      TTestSource.PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
   finally
     mTree.Free;
   end;
@@ -901,7 +874,7 @@ begin
         FResolver.PinTree(mInner, 'C:\P\Andere.pas');
         try
           Assert.AreEqual('Zweit', FResolver.Resolve(mInner, 'C:\P\Andere.pas',
-            PositionOf(cPinOther, 'Wert;', 1)).UnitName);
+            TTestSource.PositionOf(cPinOther, 'Wert;', 1)).UnitName);
           // Der äußere Baum bleibt gepinnt, auch während der innere es ist.
           Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(mOuter, 'C:\P\Haupt.pas').Symbols),
             Pointer(mPinned.Symbols));
@@ -913,12 +886,12 @@ begin
       end;
       Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(mOuter, 'C:\P\Haupt.pas').Symbols),
         Pointer(mPinned.Symbols));
-      R := FResolver.Resolve(mOuter, 'C:\P\Haupt.pas', PositionOf(cPinSource, 'Zahl :=', 1));
+      R := FResolver.Resolve(mOuter, 'C:\P\Haupt.pas', TTestSource.PositionOf(cPinSource, 'Zahl :=', 1));
       Assert.IsTrue(R.Found);
       Assert.AreEqual('Zahl', R.Name);
       Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
       Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mOuter, 'C:\P\Haupt.pas',
-        PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
+        TTestSource.PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
     finally
       FResolver.UnpinTree;
     end;
@@ -1009,11 +982,11 @@ begin
     FResolver.PinTree(mTree, 'C:\P\Haupt.pas');
     try
       Assert.AreEqual('TBasisHelfer', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
-        PositionOf(cHelferSource, 'Anrede', 1)).Container);
+        TTestSource.PositionOf(cHelferSource, 'Anrede', 1)).Container);
       // Dazwischen aus einer anderen Unit auflösen (wie TypeAt und TypeChain der Vervollständigung).
       Assert.IsTrue(FResolver.ResolveTypeFrom(mBasisUnit, 'TBasis', mFound));
       Assert.AreEqual('TBasisHelfer', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
-        PositionOf(cHelferSource, 'Anrede', 1)).Container);
+        TTestSource.PositionOf(cHelferSource, 'Anrede', 1)).Container);
     finally
       FResolver.UnpinTree;
     end;

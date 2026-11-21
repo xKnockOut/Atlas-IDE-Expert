@@ -8,6 +8,8 @@
 //   (ProcessDebugEvents), bis die Antwort da ist, höchstens aber
 //   debug.visualizers.timeoutMs lang. Danach gilt der Wert als nicht
 //   auswertbar; eine späte Antwort landet bei einem abgemeldeten Notifier.
+//   Endet der Thread währenddessen (TAtlasIdeThreadNotifier), endet das Warten,
+//   und abgemeldet wird nicht mehr.
 // - Nebenwirkungen nach TAtlasVisualizerEvaluation: nur Felder (eseNone),
 //   Getter von Eigenschaften (esePropertiesOnly), Aufrufe (eseAll).
 // - Ausgewertet wird im aktuellen Rahmen des angehaltenen Threads.
@@ -21,7 +23,8 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Settings.VisualizerKinds;
+  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.IDE.Hover.DebugValue;
 
 type
   /// <summary>Ort für den Debugger beim Auswerten in einem Thread: Datei und Zeile (1-basiert); '' und 0 ohne.
@@ -34,7 +37,9 @@ type
 
   TAtlasIdeDebugEvaluator = class
   private type
-    TWaiter = class(TNotifierObject, IOTAThreadNotifier, IOTAThreadNotifier160)
+    TWaiter = class(TAtlasIdeThreadNotifier, IOTAThreadNotifier, IOTAThreadNotifier160)
+    protected
+      procedure ThreadGone; override;
     public
       Done: Boolean;
       ReturnCode: Integer;
@@ -47,7 +52,6 @@ type
       { IOTAThreadNotifier160 }
       procedure EvaluateComplete(const ExprStr, ResultStr: string; CanModify: Boolean;
         ResultAddress: TOTAAddress; ResultSize: LongWord; ReturnCode: Integer); overload;
-      procedure Destroyed; reintroduce;
     end;
   private
     /// <summary>Verzögerte Auswertung (erDeferred, etwa LLDB): wartet höchstens ATimeoutMs auf das Ergebnis.
@@ -78,7 +82,6 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.IDE.Hover.DebugValue,
   Atlas.Core.Diagnostics.Guard;
 
 const
@@ -124,8 +127,9 @@ begin
   Done := True;
 end;
 
-procedure TAtlasIdeDebugEvaluator.TWaiter.Destroyed;
+procedure TAtlasIdeDebugEvaluator.TWaiter.ThreadGone;
 begin
+  // Der Thread ist abgebaut: keine Antwort mehr.
   Done := True;
   ReturnCode := -1;
 end;
@@ -137,13 +141,12 @@ class function TAtlasIdeDebugEvaluator.WaitDeferred(const AThread: IOTAThread;
 var
   mWaiter: TWaiter;
   mWaiterRef: IOTAThreadNotifier;
-  mIndex: Integer;
   mStartedAt: UInt64;
 begin
   AText := '';
   mWaiter := TWaiter.Create;
   mWaiterRef := mWaiter;
-  mIndex := AThread.AddNotifier(mWaiterRef);
+  mWaiter.Attach(AThread, mWaiterRef);
   try
     mStartedAt := GetTickCount64;
     while not mWaiter.Done and (GetTickCount64 - mStartedAt < UInt64(ATimeoutMs)) do
@@ -151,11 +154,8 @@ begin
       ADebugger.ProcessDebugEvents;
     end;
   finally
-    try
-      AThread.RemoveNotifier(mIndex);
-    except
-      // Thread schon abgebaut.
-    end;
+    // Nach dem Ende des Threads (Destroyed) nicht mehr: RemoveNotifier würfe.
+    mWaiter.Detach;
   end;
   Result := mWaiter.Done and (mWaiter.ReturnCode = 0);
   if Result then

@@ -153,7 +153,6 @@ type
     FOwner: TAtlasTrackerTestResultsView;
     FButtonRects: array[TAtlasTestResultsButton] of TRect;
     function Scaled(AValue: Integer): Integer;
-    function Color(ASystemColor: TColor): TColor;
     function Limit: Integer;
     procedure PaintDot(ACanvas: TCanvas; const AArea: TRect; AColor: TColor);
     /// <summary>Marke mit weißer Schrift; Ergebnis ist ihre Fläche.</summary>
@@ -273,7 +272,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.TestResults.Strings,
-  Atlas.Core.Tracker.TestResults;
+  Atlas.Core.Tracker.TestResults,
+  Atlas.UI.Foundation.Theme;
 
 const
   // Dieselben Töne wie die Marken im Bereich „Projekte“: lesbar im hellen und im dunklen Thema.
@@ -770,11 +770,6 @@ begin
   Result := FOwner.ScaleValue(AValue);
 end;
 
-function TAtlasTrackerTestResultsPainter.Color(ASystemColor: TColor): TColor;
-begin
-  Result := StyleServices(FOwner).GetSystemColor(ASystemColor);
-end;
-
 function TAtlasTrackerTestResultsPainter.Limit: Integer;
 begin
   Result := FOwner.PaintBox.Width - Scaled(cIndent);
@@ -812,7 +807,7 @@ begin
   if (AIndex = FOwner.View.Selected) and (Length(FOwner.View.Rows) > 1) then
   begin
     ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := Color(clHighlight);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(FOwner, clHighlight);
     ACanvas.FillRect(Rect(0, ATop, Scaled(cBarWidth), ATop + RowHeight(AIndex) - Scaled(cRowGap)));
   end;
 end;
@@ -839,7 +834,7 @@ begin
     TAtlasTrackerTestResultsText.LevelColor(mLevel));
   Inc(mLeft, mDot + Scaled(cDotGap));
   ACanvas.Font.Assign(FOwner.Font);
-  ACanvas.Font.Color := Color(clWindowText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
   ACanvas.Font.Style := [fsBold];
   ACanvas.TextRect(Rect(mLeft, mTop + Scaled(2), Limit, mTop + Scaled(cLineHeight)), mLeft, mTop + Scaled(2),
     mRow.Name);
@@ -859,7 +854,7 @@ begin
   begin
     ACanvas.Font.Name := cMonoFont;
     ACanvas.Font.Size := FOwner.Font.Size - 1;
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
     ACanvas.TextRect(Rect(mLeft, mTop + Scaled(cMonoTop), Limit, mTop + Scaled(cLineHeight)), mLeft,
       mTop + Scaled(cMonoTop), mText);
   end;
@@ -887,7 +882,7 @@ begin
   Inc(mLeft, mDot + Scaled(cSmallGap));
   ACanvas.Font.Assign(FOwner.Font);
   ACanvas.Font.Size := FOwner.Font.Size - 1;
-  ACanvas.Font.Color := Color(clGrayText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   mText := TAtlasTrackerTestResultsText.CiText(mRow, ANowUtc);
   ACanvas.TextRect(Rect(mLeft, mTop + Scaled(1), Limit, mTop + Scaled(cCiLineHeight)), mLeft, mTop + Scaled(1), mText);
   PaintMismatch(ACanvas, mRow, mLeft + ACanvas.TextWidth(mText) + Scaled(10), mTop);
@@ -928,7 +923,7 @@ begin
   ACanvas.Brush.Style := bsSolid;
   if AIndex = FOwner.Failure then
   begin
-    ACanvas.Brush.Color := Color(clBtnFace);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(FOwner, clBtnFace);
     ACanvas.FillRect(Rect(mLeft, mTop, mLimit, mTop + Scaled(cFailureHeight) - Scaled(cSmallGap)));
   end;
   // Roter Balken links.
@@ -947,12 +942,12 @@ begin
   end;
   ACanvas.Font.Assign(FOwner.Font);
   ACanvas.Font.Name := cMonoFont;
-  ACanvas.Font.Color := Color(clWindowText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
   ACanvas.TextRect(Rect(mLeft, mTop + Scaled(1), mLimit, mTop + Scaled(cTestHeight)), mLeft, mTop + Scaled(1),
     mItem.Test);
   ACanvas.Font.Assign(FOwner.Font);
   ACanvas.Font.Size := FOwner.Font.Size - 1;
-  ACanvas.Font.Color := Color(clGrayText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   ACanvas.TextRect(Rect(mLeft, mTop + Scaled(cTestHeight), Limit, mTop + Scaled(cDetailBottom)), mLeft,
     mTop + Scaled(cTestHeight),
     TAtlasTrackerTestResultsText.FailureDetail(mItem));
@@ -977,18 +972,18 @@ begin
   if (AButton = TAtlasTestResultsButton.Rerun) and mEnabled then
   begin
     ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := Color(clHighlight);
-    ACanvas.Pen.Color := Color(clHighlight);
-    ACanvas.Font.Color := Color(clHighlightText);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(FOwner, clHighlight);
+    ACanvas.Pen.Color := TAtlasUiTheme.SystemColor(FOwner, clHighlight);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clHighlightText);
   end
   else
   begin
     ACanvas.Brush.Style := bsClear;
-    ACanvas.Pen.Color := Color(clBtnShadow);
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Pen.Color := TAtlasUiTheme.SystemColor(FOwner, clBtnShadow);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
     if mEnabled then
     begin
-      ACanvas.Font.Color := Color(clWindowText);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
     end;
   end;
   ACanvas.RoundRect(mArea.Left, mArea.Top, mArea.Right, mArea.Bottom, Scaled(cCorner), Scaled(cCorner));
@@ -1017,7 +1012,7 @@ end;
 
 procedure TAtlasTrackerTestResultsPainter.PaintEmpty(ACanvas: TCanvas);
 begin
-  ACanvas.Font.Color := Color(clGrayText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   ACanvas.TextRect(Rect(Scaled(cIndent), Scaled(cSmallGap), Limit, Height), Scaled(cIndent), Scaled(cSmallGap),
     TAtlasTrackerTestResultsText.EmptyText);
 end;
@@ -1027,7 +1022,7 @@ begin
   if FOwner.View.More > 0 then
   begin
     ACanvas.Font.Assign(FOwner.Font);
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
     ACanvas.TextOut(Scaled(cIndent) + Scaled(cBarWidth) + Scaled(cGap), FailureTop(Length(FOwner.View.Failures)) +
       Scaled(1), TAtlasTrackerTestResultsText.MoreText(FOwner.View.More));
   end;
@@ -1043,17 +1038,17 @@ begin
   end;
   mLeft := Scaled(cIndent) + Scaled(cBarWidth) + Scaled(cGap);
   ACanvas.Font.Assign(FOwner.Font);
-  ACanvas.Font.Color := Color(clGrayText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   ACanvas.TextOut(Scaled(cIndent), SlowTop(0) - Scaled(cMoreHeight) + Scaled(1),
     TAtlasTrackerTestResultsText.SlowestTitle);
   for mIndex := 0 to High(FOwner.View.Slowest) do
   begin
     mTop := SlowTop(mIndex) + Scaled(1);
     ACanvas.Font.Assign(FOwner.Font);
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
     ACanvas.TextOut(mLeft, mTop, TAtlasTrackerTestResultsText.SlowDuration(FOwner.View.Slowest[mIndex]));
     ACanvas.Font.Name := cMonoFont;
-    ACanvas.Font.Color := Color(clWindowText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
     ACanvas.TextRect(Rect(mLeft + Scaled(cSlowDurationWidth), mTop, Limit, mTop + Scaled(cSlowHeight)),
       mLeft + Scaled(cSlowDurationWidth), mTop, FOwner.View.Slowest[mIndex].Test);
   end;

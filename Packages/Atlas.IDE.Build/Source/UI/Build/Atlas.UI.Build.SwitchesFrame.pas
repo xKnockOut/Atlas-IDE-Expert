@@ -120,7 +120,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.UI.Build.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Menus;
+  Atlas.UI.Foundation.Menus,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -129,12 +130,6 @@ begin
   Result := AList.Columns.Add;
   Result.Caption := ACaption;
   Result.Width := MulDiv(AWidth, APPI, 96);
-end;
-
-function ListColor(AList: TListView; AColor: TColor): TColor;
-begin
-  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
-  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
 end;
 
 { TAtlasBuildSwitchesFrame }
@@ -159,7 +154,7 @@ begin
   FParts.Summary.Align := alBottom;
   FParts.Summary.AlignWithMargins := True;
   FParts.Summary.ShowAccelChar := False;
-  FParts.Summary.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FParts.Summary, clGrayText);
   FParts.Summary.Caption := '';
 
   FParts.Menu := TPopupMenu.Create(Self);
@@ -196,7 +191,7 @@ begin
   FParts.Empty.Align := alClient;
   FParts.Empty.AlignWithMargins := True;
   FParts.Empty.ShowAccelChar := False;
-  FParts.Empty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FParts.Empty, clGrayText);
   FParts.Empty.Caption := FMessage;
 end;
 
@@ -252,12 +247,12 @@ begin
   // Farben ausdrücklich aus dem Stil der Liste, sonst im dunklen Thema weiße Zellen.
   if cdsSelected in AState then
   begin
-    ACanvas.Brush.Color := ListColor(FParts.List, clHighlight);
-    ACanvas.Font.Color := ListColor(FParts.List, clHighlightText);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(FParts.List, clHighlight);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FParts.List, clHighlightText);
   end
   else
   begin
-    ACanvas.Brush.Color := ListColor(FParts.List, FParts.List.Color);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(FParts.List, FParts.List.Color);
     if mDeviates then
     begin
       ACanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
@@ -265,11 +260,11 @@ begin
     end
     else if (AIndex >= 0) and (AIndex <= High(FLines)) and FLines[AIndex].Header then
     begin
-      ACanvas.Font.Color := ListColor(FParts.List, clGrayText);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FParts.List, clGrayText);
     end
     else
     begin
-      ACanvas.Font.Color := ListColor(FParts.List, FParts.List.Font.Color);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FParts.List, FParts.List.Font.Color);
     end;
   end;
 end;

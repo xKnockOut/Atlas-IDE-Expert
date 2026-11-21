@@ -54,7 +54,8 @@ uses
   System.IOUtils,
   System.JSON,
   System.DateUtils,
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Lsp.StatusFile,
+  Atlas.Tests.TempFolder;
 
 const
   cBase: TDateTime = 46324.5;
@@ -82,11 +83,7 @@ end;
 
 procedure TServerStatusFileTests.TearDown;
 begin
-  if TDirectory.Exists(FRoot) then
-  begin
-    TDirectory.Delete(FRoot, True);
-  end;
-  FRoot := '';
+  TTestTempFolder.Remove(FRoot);
 end;
 
 procedure TServerStatusFileTests.FindsStatusForFolderUnderRoot;

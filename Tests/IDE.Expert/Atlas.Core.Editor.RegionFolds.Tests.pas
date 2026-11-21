@@ -40,28 +40,14 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin.Store,
-  Atlas.Core.Editor.RegionFolds;
+  Atlas.Core.Editor.RegionFolds,
+  Atlas.Tests.RecordText;
 
 const
   // Zeilen 1–12: Außen (1–11) mit Innen A (3–5) und Innen B (6–10, darin Tief 7–9); Rest 11–12 frei.
   cNested = '{$REGION ''Außen''}'#13#10 + 'const A = 1;'#13#10 + '  {$REGION ''Innen A''}'#13#10 + '  B;'#13#10 +
     '  {$ENDREGION}'#13#10 + '  {$region ''Innen B''}'#13#10 + '    (*$REGION ''Tief''*)'#13#10 + '    C;'#13#10 +
     '    (*$ENDREGION*)'#13#10 + '  {$endregion}'#13#10 + '{$ENDREGION}'#13#10 + 'end.';
-
-function Lines(const AValues: TArray<Integer>): string;
-var
-  mValue: Integer;
-begin
-  Result := '';
-  for mValue in AValues do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    Result := Result + IntToStr(mValue);
-  end;
-end;
 
 function Describe(const ARegions: TArray<TAtlasRegion>): string;
 var
@@ -123,9 +109,9 @@ end;
 
 procedure TAtlasRegionFoldsTests.CollapseInnerFirst;
 begin
-  Assert.AreEqual('7,3,6,1', Lines(TAtlasRegionFolds.Order(TAtlasRegionFolds.Find(cNested),
+  Assert.AreEqual('7,3,6,1', TRecordText.Ints(TAtlasRegionFolds.Order(TAtlasRegionFolds.Find(cNested),
     TAtlasRegionFoldMode.Collapse, 0)));
-  Assert.AreEqual('7,3,6,1', Lines(TAtlasRegionFolds.Order(TAtlasRegionFolds.Find(cNested),
+  Assert.AreEqual('7,3,6,1', TRecordText.Ints(TAtlasRegionFolds.Order(TAtlasRegionFolds.Find(cNested),
     TAtlasRegionFoldMode.Collapse, 12)), 'Marke außerhalb aller Regionen');
 end;
 
@@ -134,17 +120,17 @@ var
   mRegions: TArray<TAtlasRegion>;
 begin
   mRegions := TAtlasRegionFolds.Find(cNested);
-  Assert.AreEqual('7,3', Lines(TAtlasRegionFolds.Order(mRegions, TAtlasRegionFoldMode.Collapse, 6)),
+  Assert.AreEqual('7,3', TRecordText.Ints(TAtlasRegionFolds.Order(mRegions, TAtlasRegionFoldMode.Collapse, 6)),
     'Marke auf dem Kopf von Innen B: Innen B und Außen bleiben offen');
-  Assert.AreEqual('7,3,6', Lines(TAtlasRegionFolds.Order(mRegions, TAtlasRegionFoldMode.Collapse, 2)),
+  Assert.AreEqual('7,3,6', TRecordText.Ints(TAtlasRegionFolds.Order(mRegions, TAtlasRegionFoldMode.Collapse, 2)),
     'Marke direkt in Außen');
-  Assert.AreEqual('3', Lines(TAtlasRegionFolds.Order(mRegions, TAtlasRegionFoldMode.Collapse, 8)),
+  Assert.AreEqual('3', TRecordText.Ints(TAtlasRegionFolds.Order(mRegions, TAtlasRegionFoldMode.Collapse, 8)),
     'Marke ganz innen');
 end;
 
 procedure TAtlasRegionFoldsTests.ExpandOuterFirst;
 begin
-  Assert.AreEqual('1,3,6,7', Lines(TAtlasRegionFolds.Order(TAtlasRegionFolds.Find(cNested),
+  Assert.AreEqual('1,3,6,7', TRecordText.Ints(TAtlasRegionFolds.Order(TAtlasRegionFolds.Find(cNested),
     TAtlasRegionFoldMode.Expand, 8)), 'Aufklappen ohne Rücksicht auf die Marke');
 end;
 

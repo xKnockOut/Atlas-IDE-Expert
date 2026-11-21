@@ -52,12 +52,12 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.StatementText,
   Atlas.Common.Editing.ConditionalExpression,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Tests.TextEdits;
 
 type
   TConversionKind = (ckToExpression, ckToStatement, ckIfThen);
@@ -115,17 +115,6 @@ begin
   Result.IfThen := MathIfThen;
 end;
 
-function ApplyEdit(const AText: string; const AEdit: TTextEdit): string;
-var
-  mLines: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mLines := TLineTable.Build(AText);
-  mStart := mLines.OffsetAt(AEdit.Range.StartPos);
-  mStop := mLines.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
-end;
-
 function PositionOf(const AText, AMarker: string): TTextPosition;
 begin
   Result := TLineTable.Build(AText).PositionAt(Pos(AMarker, AText) - 1);
@@ -154,7 +143,7 @@ begin
     end;
     if Result then
     begin
-      AResult := ApplyEdit(AText, mDone.Edit);
+      AResult := TTestEdits.Apply(AText, mDone.Edit);
       mCheck := TPascalParser.Parse(AResult);
       try
         Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), AResult);

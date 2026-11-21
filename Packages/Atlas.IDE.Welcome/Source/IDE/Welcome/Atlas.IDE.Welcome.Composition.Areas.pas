@@ -137,7 +137,7 @@ begin
   end;
   if FContinue <> nil then
   begin
-    FContinue.Hooks.QuickActions := AValue;
+    FContinue.QuickActions := AValue;
   end;
   if AValue <> nil then
   begin
@@ -187,7 +187,7 @@ begin
   end;
   if FQuickActions <> nil then
   begin
-    AValue.Hooks.QuickActions := FQuickActions;
+    AValue.QuickActions := FQuickActions;
   end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure

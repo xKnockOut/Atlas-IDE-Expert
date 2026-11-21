@@ -44,16 +44,16 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.MoveMember;
+  Atlas.Common.Lsp.MoveMember,
+  Atlas.Common.JsonRpc.TestSupport,
+  Atlas.Common.Lsp.Edits.TestSupport;
 
 const
   cClassesFile = 'C:\L\System.Classes.pas';
@@ -155,34 +155,8 @@ end;
 
 /// <summary>Text von AFileName nach dem WorkspaceEdit in AAnswer.</summary>
 function After(AAnswer: TJSONObject; const AFileName: string): string;
-var
-  mItem, mEdit: TJSONValue;
-  mDocument, mRange: TJSONObject;
-  mEdits: TArray<TTextEdit>;
-  mUri: string;
 begin
-  Result := TextOf(AFileName);
-  for mItem in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
-  begin
-    mDocument := TJSONObject(mItem);
-    if mDocument.GetValue('textDocument') = nil then
-    begin
-      Continue;
-    end;
-    mUri := (mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
-    if not SameText(TDocumentUris.ToPath(mUri), AFileName) then
-    begin
-      Continue;
-    end;
-    mEdits := nil;
-    for mEdit in mDocument.GetValue('edits') as TJSONArray do
-    begin
-      mRange := TJSONObject(mEdit).GetValue('range') as TJSONObject;
-      mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
-        TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mEdit).GetValue('newText').Value)];
-    end;
-    Result := TTextChanges.Apply(Result, mEdits);
-  end;
+  Result := ApplyWorkspaceEdit(AAnswer, AFileName, TextOf(AFileName));
 end;
 
 /// <summary>Context mit der Richtung ADirection.</summary>
@@ -210,16 +184,6 @@ begin
     mResolver.Free;
     mTree.Free;
     ARequest.Free;
-  end;
-end;
-
-procedure FreeAll(const AItems: TArray<TJSONObject>);
-var
-  mItem: TJSONObject;
-begin
-  for mItem in AItems do
-  begin
-    mItem.Free;
   end;
 end;
 
@@ -255,7 +219,7 @@ begin
       Assert.AreEqual(TLspMoveMember.cClientCommand,
         (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
-      FreeAll(mActions);
+      TJsonRpcTestSupport.FreeAll(mActions);
     end;
     Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(mTree, cUnitKind, cKindFile, 'u',
       TTextPosition.Create(7, 4), FIndex))), 'Kopfzeile');
@@ -272,7 +236,7 @@ begin
       Assert.AreEqual(1, Integer(Length(mActions)));
       Assert.AreEqual('„Show“ in Nachfahren verschieben …', mActions[0].GetValue('title').Value);
     finally
-      FreeAll(mActions);
+      TJsonRpcTestSupport.FreeAll(mActions);
     end;
   finally
     mTree.Free;

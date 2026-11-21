@@ -66,7 +66,8 @@ implementation
 uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.UI.Foundation.Scaling,
+  Atlas.UI.Foundation.Theme;
 
 const
   // Knöpfe Neu, Kopieren, Löschen (links, Breite) und Lage der Felder Präfix, Name, Beschreibung.
@@ -229,7 +230,7 @@ begin
   FReadOnlyHint.Parent := mEditor;
   FReadOnlyHint.Align := alBottom;
   FReadOnlyHint.AlignWithMargins := True;
-  FReadOnlyHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FReadOnlyHint, clGrayText);
   FReadOnlyHint.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsReadOnly);
 end;
 

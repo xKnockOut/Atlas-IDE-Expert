@@ -37,7 +37,6 @@ type
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     /// <summary>Systemfarbe im Stil des Baums, nicht im globalen: Die IDE themt ihre Fenster je Formular.</summary>
-    function TreeColor(AColor: TColor): TColor;
   public
     /// <summary>Hängt sich an die Ereignisse Aufklappen, Zuklappen und Zeichnen von ATree; ATree gehört dem Frame.
     /// </summary>
@@ -72,7 +71,8 @@ uses
   System.UITypes,
   Vcl.Themes,
   Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Foundation.Theme;
 
 { TAtlasEvalTreeView }
 
@@ -182,11 +182,6 @@ begin
   end;
 end;
 
-function TAtlasEvalTreeView.TreeColor(AColor: TColor): TColor;
-begin
-  Result := ColorToRGB(StyleServices(FTree).GetSystemColor(AColor));
-end;
-
 procedure TAtlasEvalTreeView.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
   State: TCustomDrawState; var DefaultDraw: Boolean);
 var
@@ -204,19 +199,19 @@ begin
   end;
   if cdsSelected in State then
   begin
-    mCanvas.Brush.Color := TreeColor(clHighlight);
-    mCanvas.Font.Color := TreeColor(clHighlightText);
+    mCanvas.Brush.Color := TAtlasUiTheme.SystemColor(FTree, clHighlight);
+    mCanvas.Font.Color := TAtlasUiTheme.SystemColor(FTree, clHighlightText);
     Exit;
   end;
-  mCanvas.Brush.Color := TreeColor(FTree.Color);
+  mCanvas.Brush.Color := TAtlasUiTheme.SystemColor(FTree, FTree.Color);
   case mInfo.Look of
     TAtlasEvalLook.Changed:
       mCanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
         mCanvas.Brush.Color))).Warn));
     TAtlasEvalLook.Gray:
-      mCanvas.Font.Color := TreeColor(clGrayText);
+      mCanvas.Font.Color := TAtlasUiTheme.SystemColor(FTree, clGrayText);
   else
-    mCanvas.Font.Color := TreeColor(FTree.Font.Color);
+    mCanvas.Font.Color := TAtlasUiTheme.SystemColor(FTree, FTree.Font.Color);
   end;
 end;
 

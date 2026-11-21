@@ -73,7 +73,6 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -84,7 +83,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Forms,
   Atlas.Common.Rules.Checker,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 const
   cKundeForm =
@@ -315,33 +315,6 @@ end;
 const
   cClickHeader = 'procedure TfrmMeldung.btnOKClick(Sender: TObject);';
 
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mPosition: Integer;
-  begin
-    mPosition := 0;
-    for mLine := 1 to APosition.Line do
-    begin
-      mPosition := Pos(#10, AText, mPosition + 1);
-    end;
-    Result := mPosition + APosition.Character;
-  end;
-
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
-      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
-  end;
-end;
-
 { TFormRulesTests }
 
 procedure TFormRulesTests.ResourceMissingIssueExample;
@@ -372,7 +345,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('{$R *.dfm} nach implementation einfügen', mFindings[0].Fixes[0].Title);
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(KundeUnit(#10'{$R *.dfm}'#10), mFixed);
   mTree := TPascalParser.Parse(mFixed);
   try
@@ -529,7 +502,7 @@ begin
     mFindings[0].Fixes[0].Title);
   Assert.AreEqual('C:\P\Projekt.dpr', mFindings[0].Fixes[0].FileName);
   Assert.IsFalse(mFindings[0].Fixes[0].Safe);
-  mFixed := ApplyFix(cProjektDpr, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(cProjektDpr, mFindings[0].Fixes[0]);
   Assert.AreEqual(StringReplace(cProjektDpr, '  Application.CreateForm(TfrmBericht, frmBericht);'#10, '', []), mFixed);
   mTree := TPascalParser.Parse(mFixed);
   try
@@ -629,7 +602,7 @@ begin
   mFindings := InheritedFindings(mSource, cKundeBearbeitenDfm, ['BasisDialog.dfm'], [cBasisDialogDfm]);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('inherited; am Anfang einfügen', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(KundeBearbeiten('  inherited;'#10'  FKunde.Speichern;'#10), mFixed);
   mTree := TPascalParser.Parse(mFixed);
   try
@@ -742,7 +715,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Free durch Release ersetzen', mFindings[0].Fixes[0].Title);
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Meldung(cClickHeader, '  Release;'#10), mFixed);
   mTree := TPascalParser.Parse(mFixed);
   try
@@ -783,7 +756,7 @@ begin
   Assert.AreEqual('Das Formular gibt sich im eigenen Close-Handler frei; die VCL greift danach noch darauf zu.',
     mFindings[0].Message);
   Assert.AreEqual('Durch Action := caFree ersetzen', mFindings[0].Fixes[0].Title);
-  Assert.AreEqual(Meldung(mHeader, '  Action := caFree;'#10), ApplyFix(mSource, mFindings[0].Fixes[0]));
+  Assert.AreEqual(Meldung(mHeader, '  Action := caFree;'#10), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TFormRulesTests.SelfFreeSilentCases;

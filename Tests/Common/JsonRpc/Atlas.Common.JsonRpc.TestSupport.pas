@@ -9,7 +9,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Common.JsonRpc.Dispatcher;
 
 type
   TJsonRpcTestSupport = record
@@ -24,6 +25,10 @@ type
     class function ReadMessages(AOutput: TBytesStream): TObjectList<TJSONObject>; static;
     /// <summary>Parst ein JSON-Objekt. Der Aufrufer gibt es frei.</summary>
     class function Parse(const AJson: string): TJSONObject; static;
+    /// <summary>Gibt alle Objekte in AObjects frei.</summary>
+    class procedure FreeAll(const AObjects: TArray<TJSONObject>); static;
+    /// <summary>Schickt ADispatcher die Benachrichtigung AMethod mit den Parametern AParams (JSON-Text).</summary>
+    class procedure Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string); static;
   end;
 
 implementation
@@ -87,6 +92,28 @@ end;
 class function TJsonRpcTestSupport.Parse(const AJson: string): TJSONObject;
 begin
   Result := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+end;
+
+class procedure TJsonRpcTestSupport.FreeAll(const AObjects: TArray<TJSONObject>);
+var
+  mObject: TJSONObject;
+begin
+  for mObject in AObjects do
+  begin
+    mObject.Free;
+  end;
+end;
+
+class procedure TJsonRpcTestSupport.Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string);
+var
+  mMessage: TJSONObject;
+begin
+  mMessage := Parse('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}');
+  try
+    ADispatcher.DispatchMessage(mMessage).Free;
+  finally
+    mMessage.Free;
+  end;
 end;
 
 end.

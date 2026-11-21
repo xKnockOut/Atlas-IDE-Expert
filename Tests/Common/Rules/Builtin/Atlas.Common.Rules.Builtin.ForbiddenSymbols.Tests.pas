@@ -56,7 +56,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.Files;
 
 const
   cWerkzeug = 'unit Werkzeug;'#10'interface'#10'type'#10'  TFarbe = (fbRot, fbGruen);'#10 +
@@ -99,26 +101,6 @@ begin
   mLines := AText.Split([#10]);
   Result := Copy(mLines[ARange.StartPos.Line], ARange.StartPos.Character + 1,
     ARange.EndPos.Character - ARange.StartPos.Character);
-end;
-
-/// <summary>Wendet die einzeiligen Edits einer Korrektur von hinten nach vorn an (Zeilen mit #10).</summary>
-function Applied(const AText: string; const AFix: TRuleFix): string;
-var
-  mLines: TArray<string>;
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-  mLine: string;
-begin
-  mLines := AText.Split([#10]);
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    Assert.AreEqual(mEdit.Range.StartPos.Line, mEdit.Range.EndPos.Line, 'nur einzeilige Edits');
-    mLine := mLines[mEdit.Range.StartPos.Line];
-    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
-      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(#10, mLines);
 end;
 
 { TForbiddenSymbolTests }
@@ -229,12 +211,12 @@ begin
   mFound := Found(mSource, '[{"name": "Werkzeug.DateiDa", "replacement": "FileExists"}]');
   Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual('Durch FileExists ersetzen', mFound[0].Fixes[0].Title);
-  mFixed := Applied(Applied(mSource, mFound[1].Fixes[0]), mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(TTestEdits.ApplyFix(mSource, mFound[1].Fixes[0]), mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  FileExists(''x'');'#10'  FileExists(''y'');', mFixed) > 0, mFixed);
   // Mitglied eines Objekts: nur der Name hinter dem Punkt.
   mFound := Found(mSource, '[{"name": "Werkzeug.TDaten.Laden", "replacement": "Neu"}]');
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.IsTrue(Pos('  ADaten.Neu;', Applied(mSource, mFound[0].Fixes[0])) > 0);
+  Assert.IsTrue(Pos('  ADaten.Neu;', TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0])) > 0);
   // Ohne replacement keine Korrektur.
   Assert.AreEqual(0, Integer(Length(Found(mSource, '[{"name": "Werkzeug.TDaten.Laden"}]')[0].Fixes)));
 end;
@@ -369,27 +351,6 @@ begin
   Assert.IsFalse(mSymbols[0].MatchesTail('B'));
 end;
 
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
-end;
-
 procedure TForbiddenSymbolTests.ReferenceProjectMatchesMarkers;
 const
   cMarker = '// ERWARTET-OPTION: forbidden-symbol';
@@ -408,7 +369,7 @@ var
 begin
   // Golden-Korpus mit Optionen (#152): alle Units des Referenzprojekts und TThread als Stub im Index; genau die
   // markierten Zeilen, jede weitere Meldung ist ein Fehlalarm.
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');

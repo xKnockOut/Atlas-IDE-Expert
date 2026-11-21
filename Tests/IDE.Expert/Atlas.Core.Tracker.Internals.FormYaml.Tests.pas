@@ -40,18 +40,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Core.Tracker.Internals.FormYaml;
-
-function Lines(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Core.Tracker.Internals.FormYaml,
+  Atlas.Tests.SourceText;
 
 function Obj(AValue: TJSONValue): TJSONObject;
 begin
@@ -85,7 +75,7 @@ var
   mBody: TJSONArray;
   mItem: TJSONObject;
 begin
-  mRoot := TAtlasFormYaml.ToJson(Lines(['name: Fehler', 'body:', '  - type: input', '    id: version',
+  mRoot := TAtlasFormYaml.ToJson(TTestSource.Lines(['name: Fehler', 'body:', '  - type: input', '    id: version',
     '    attributes:', '      label: Atlas-Version', '  - type: textarea', '    id: log']));
   try
     Assert.AreEqual('Fehler', Str(Obj(mRoot).Values['name']));
@@ -106,7 +96,7 @@ var
   mRoot: TJSONValue;
   mOptions: TJSONArray;
 begin
-  mRoot := TAtlasFormYaml.ToJson(Lines(['options:', '- hoch', '- niedrig', 'multiple: true']));
+  mRoot := TAtlasFormYaml.ToJson(TTestSource.Lines(['options:', '- hoch', '- niedrig', 'multiple: true']));
   try
     mOptions := Arr(Obj(mRoot).Values['options']);
     Assert.AreEqual(2, Integer(mOptions.Count));
@@ -121,7 +111,7 @@ procedure TAtlasFormYamlTests.QuotedValuesAndComments;
 var
   mRoot: TJSONValue;
 begin
-  mRoot := TAtlasFormYaml.ToJson(Lines(['title: "Fehler: "', 'single: ''it''''s''', 'plain: wert # Kommentar',
+  mRoot := TAtlasFormYaml.ToJson(TTestSource.Lines(['title: "Fehler: "', 'single: ''it''''s''', 'plain: wert # Kommentar',
     'escaped: "a\nb \"c\""', 'hash: a#b']));
   try
     Assert.AreEqual('Fehler: ', Str(Obj(mRoot).Values['title']));
@@ -138,7 +128,7 @@ procedure TAtlasFormYamlTests.LiteralAndFoldedBlocks;
 var
   mRoot: TJSONValue;
 begin
-  mRoot := TAtlasFormYaml.ToJson(Lines(['literal: |', '  Zeile 1', '    eingerückt', '', '  Zeile 3',
+  mRoot := TAtlasFormYaml.ToJson(TTestSource.Lines(['literal: |', '  Zeile 1', '    eingerückt', '', '  Zeile 3',
     'folded: >', '  ein', '  Satz', 'strip: |-', '  ohne', 'next: x']));
   try
     Assert.AreEqual('Zeile 1' + #10 + '  eingerückt' + #10 + #10 + 'Zeile 3' + #10,
@@ -157,7 +147,7 @@ var
   mLabels: TJSONArray;
   mMap: TJSONObject;
 begin
-  mRoot := TAtlasFormYaml.ToJson(Lines(['labels: ["bug", triage]', 'map: {a: 1, b: "zwei"}', 'multi: [eins,',
+  mRoot := TAtlasFormYaml.ToJson(TTestSource.Lines(['labels: ["bug", triage]', 'map: {a: 1, b: "zwei"}', 'multi: [eins,',
     '  zwei]', 'empty: []']));
   try
     mLabels := Arr(Obj(mRoot).Values['labels']);
@@ -178,7 +168,7 @@ procedure TAtlasFormYamlTests.BooleansAndNull;
 var
   mRoot: TJSONValue;
 begin
-  mRoot := TAtlasFormYaml.ToJson(Lines(['blank_issues_enabled: false', 'yes: true', 'none: null', 'tilde: ~',
+  mRoot := TAtlasFormYaml.ToJson(TTestSource.Lines(['blank_issues_enabled: false', 'yes: true', 'none: null', 'tilde: ~',
     'empty:']));
   try
     Assert.IsTrue(IsFlag(Obj(mRoot).Values['blank_issues_enabled'], False));
@@ -193,12 +183,12 @@ end;
 
 procedure TAtlasFormYamlTests.RejectsUnsupportedConstructs;
 begin
-  Assert.IsNull(TAtlasFormYaml.ToJson(Lines(['a: &anker wert', 'b: *anker'])), 'Anker');
-  Assert.IsNull(TAtlasFormYaml.ToJson(Lines(['a: !!str wert'])), 'Typ');
-  Assert.IsNull(TAtlasFormYaml.ToJson(Lines(['a: 1', '---', 'b: 2'])), 'mehrere Dokumente');
-  Assert.IsNull(TAtlasFormYaml.ToJson(Lines(['a:', #9 + 'b: 1'])), 'Tabulator');
-  Assert.IsNull(TAtlasFormYaml.ToJson(Lines(['? a', ': b'])), 'Schlüssel mit ?');
-  Assert.IsNull(TAtlasFormYaml.ToJson(Lines(['a: "offen'])), 'offenes Anführungszeichen');
+  Assert.IsNull(TAtlasFormYaml.ToJson(TTestSource.Lines(['a: &anker wert', 'b: *anker'])), 'Anker');
+  Assert.IsNull(TAtlasFormYaml.ToJson(TTestSource.Lines(['a: !!str wert'])), 'Typ');
+  Assert.IsNull(TAtlasFormYaml.ToJson(TTestSource.Lines(['a: 1', '---', 'b: 2'])), 'mehrere Dokumente');
+  Assert.IsNull(TAtlasFormYaml.ToJson(TTestSource.Lines(['a:', #9 + 'b: 1'])), 'Tabulator');
+  Assert.IsNull(TAtlasFormYaml.ToJson(TTestSource.Lines(['? a', ': b'])), 'Schlüssel mit ?');
+  Assert.IsNull(TAtlasFormYaml.ToJson(TTestSource.Lines(['a: "offen'])), 'offenes Anführungszeichen');
 end;
 
 procedure TAtlasFormYamlTests.ReadsFormOfAtlas;
@@ -207,7 +197,7 @@ var
   mBody: TJSONArray;
   mAttributes: TJSONObject;
 begin
-  mRoot := TAtlasFormYaml.ToJson(Lines(['name: Fehler', 'title: "Fehler: "', 'labels: ["bug"]', 'body:',
+  mRoot := TAtlasFormYaml.ToJson(TTestSource.Lines(['name: Fehler', 'title: "Fehler: "', 'labels: ["bug"]', 'body:',
     '  - type: markdown', '    attributes:', '      value: |', '        Hinweis', '        zweite Zeile',
     '  - type: dropdown', '    id: ide', '    attributes:', '      label: Delphi-Version und IDE', '      options:',
     '        - Delphi 13 (32-Bit-IDE)', '        - Delphi 13 (64-Bit-IDE)', '    validations:',

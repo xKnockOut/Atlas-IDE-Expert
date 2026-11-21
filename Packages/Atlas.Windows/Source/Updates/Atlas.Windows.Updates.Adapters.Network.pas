@@ -1,9 +1,11 @@
 ﻿unit Atlas.Windows.Updates.Adapters.Network;
 
 // Platform-Feature "Updates" (#1519), Adapter: Laden über THTTPClient mit
-// dem Proxy des Systems. Nur https; Weiterleitungen (GitHub leitet Downloads
+// dem Proxy des Systems. Nur https und nur die Hosts aus TUpdateHosts
+// (GitHub und seine Dateispeicher); Weiterleitungen (GitHub leitet Downloads
 // auf seinen Dateispeicher um) folgt der Client. Fehlertexte nennen den
-// HTTP-Status oder die Art des Fehlers, nie die Adresse.
+// HTTP-Status, die Art des Fehlers oder den abgelehnten Host, nie die
+// Adresse.
 
 interface
 
@@ -23,7 +25,8 @@ implementation
 
 uses
   System.Net.HttpClient,
-  System.Net.URLClient;
+  System.Net.URLClient,
+  Atlas.Text.Updates;
 
 type
   /// <summary>Leitet den Fortschritt des Clients (Methodenzeiger) an die Methodenreferenz weiter.</summary>
@@ -78,13 +81,14 @@ begin
   Result.ResponseTimeout := cTimeoutMs;
 end;
 
-function IsHttps(const AUrl: string; out AError: string): Boolean;
+/// <summary>https auf einem erlaubten Host (TUpdateHosts); sonst False mit AError.</summary>
+function IsAllowedUrl(const AUrl: string; out AError: string): Boolean;
 begin
-  Result := AUrl.StartsWith('https://', True);
+  Result := TUpdateHosts.IsTrusted(AUrl);
   AError := '';
   if not Result then
   begin
-    AError := 'nur https';
+    AError := 'host not allowed: ' + TUpdateHosts.HostOf(AUrl);
   end;
 end;
 
@@ -122,7 +126,7 @@ var
   mText, mError: string;
 begin
   AText := '';
-  if not IsHttps(AUrl, AError) then
+  if not IsAllowedUrl(AUrl, AError) then
   begin
     Exit(False);
   end;
@@ -167,7 +171,7 @@ var
   mProgress: TUpdateDownloadProgress;
   mError: string;
 begin
-  if not IsHttps(AUrl, AError) then
+  if not IsAllowedUrl(AUrl, AError) then
   begin
     Exit(False);
   end;

@@ -52,12 +52,12 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.StatementText,
   Atlas.Common.Editing.Conditions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Tests.TextEdits;
 
 type
   TConditionKind = (ckInvert, ckEarlyExit, ckMerge, ckDoubleNegation);
@@ -67,17 +67,6 @@ function Source(const ABody: string): string;
 begin
   Result := 'program P;'#10'procedure Run;'#10'var'#10'  I: Integer;'#10'begin'#10 + ABody + 'end;'#10'begin'#10 +
     'end.'#10;
-end;
-
-function ApplyEdit(const AText: string; const AEdit: TTextEdit): string;
-var
-  mLines: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mLines := TLineTable.Build(AText);
-  mStart := mLines.OffsetAt(AEdit.Range.StartPos);
-  mStop := mLines.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
@@ -112,7 +101,7 @@ begin
     end;
     if Result then
     begin
-      AResult := ApplyEdit(AText, mDone.Edit);
+      AResult := TTestEdits.Apply(AText, mDone.Edit);
       ATitle := mDone.Title;
       mCheck := TPascalParser.Parse(AResult);
       try

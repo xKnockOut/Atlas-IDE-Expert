@@ -51,7 +51,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Dfm.FormModel;
+  Atlas.Common.Dfm.FormModel,
+  Atlas.Tests.SourceText;
 
 const
   cWerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -95,28 +96,6 @@ const
     'end;'#10 +                                      // 10
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, I: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for I := 1 to mIndex - 1 do
-  begin
-    if AText[I] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := I + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TLspReferencesTests }
 
 function TLspReferencesTests.FindAt(const AMarker: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
@@ -126,7 +105,7 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     Result := TLspReferences.Find(FResolver, FIndex, mTree,
-      TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, AMarker),
+      TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, AMarker),
       ADeclaration, [cWerkzeugFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -281,7 +260,7 @@ begin
     try
       mPinned := FResolver.ExtractedUnit(mTree, cHauptFile);
       mFound := TLspReferences.Find(FResolver, FIndex, mTree,
-        TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, 'Summe(1'), False,
+        TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, 'Summe(1'), False,
         [cWerkzeugFile, cHauptFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
@@ -299,7 +278,7 @@ begin
     end;
     // Ohne Pin des Aufrufers bleibt nach Find nichts gepinnt.
     mFound := TLspReferences.Find(FResolver, FIndex, mTree,
-      TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, 'Summe(1'), True,
+      TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, 'Summe(1'), True,
       [cHauptFile], nil));
     Assert.AreEqual(3, Integer(Length(mFound)));
   finally

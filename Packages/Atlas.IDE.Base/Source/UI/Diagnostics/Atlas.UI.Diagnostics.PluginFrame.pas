@@ -79,7 +79,8 @@ uses
   Atlas.Core.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginRows,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -99,7 +100,7 @@ begin
   FBar.Align := alTop;
   FBar.Top := FTabs.Height;
   FFooter := NewLabel(alBottom);
-  FFooter.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FFooter, clGrayText);
   FOffNote := PlaceLabel(TAtlasWrapLabel.Create(Self), alTop);
   FOffNote.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagPluginOff);
   FMain := TAtlasMainThreadPage.Create(Self);
