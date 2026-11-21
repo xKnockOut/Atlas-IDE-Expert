@@ -37,7 +37,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.Inlining,
   Atlas.Common.Editing.Formatter,

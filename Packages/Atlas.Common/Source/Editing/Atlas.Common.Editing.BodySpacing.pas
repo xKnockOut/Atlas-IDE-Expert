@@ -52,7 +52,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Documents.TextChanges;
 
 function IsBlank(const ALine: string): Boolean;
 begin

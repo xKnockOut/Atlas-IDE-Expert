@@ -83,7 +83,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.LanguageFeatures;
 
 { TShellCompletion }

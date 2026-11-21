@@ -39,7 +39,6 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.WithResolution,
   Atlas.Common.Lsp.Positions;
 

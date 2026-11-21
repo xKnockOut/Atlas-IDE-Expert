@@ -82,7 +82,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,

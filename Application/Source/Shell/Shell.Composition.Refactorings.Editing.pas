@@ -36,7 +36,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.Refactorings,

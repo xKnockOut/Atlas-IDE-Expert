@@ -53,8 +53,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.RaiseVisibility;
 
 const

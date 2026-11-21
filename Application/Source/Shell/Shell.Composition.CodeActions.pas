@@ -94,7 +94,7 @@ uses
   System.StrUtils,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Semantics.UsesUsage,
   Shell.Bootstrap,

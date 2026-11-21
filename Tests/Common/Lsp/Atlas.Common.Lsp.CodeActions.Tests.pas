@@ -45,6 +45,8 @@ type
     /// <summary>#2054: abwählbare Teile als data.choices, je Edit die nötigen Teile in data.editChoices.</summary>
     [Test]
     procedure ActionJsonCarriesChoices;
+    [Test]
+    procedure MatchesRequestedKinds;
   end;
 
 implementation
@@ -56,7 +58,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.CodeActions.Contract;
 
 const
   cLB = #13#10;
@@ -312,6 +314,16 @@ begin
   finally
     mJson.Free;
   end;
+end;
+
+procedure TLspCodeActionsTests.MatchesRequestedKinds;
+begin
+  Assert.IsTrue(TLspCodeActions.KindRequested(cFixAllKind, nil));
+  Assert.IsTrue(TLspCodeActions.KindRequested(cFixAllKind, ['source']));
+  Assert.IsTrue(TLspCodeActions.KindRequested(cOrganizeImportsKind, ['source.organizeImports']));
+  Assert.IsFalse(TLspCodeActions.KindRequested(cFixAllKind, ['source.organizeImports']));
+  Assert.IsFalse(TLspCodeActions.KindRequested(cQuickFixKind, ['source']));
+  Assert.IsFalse(TLspCodeActions.KindRequested('sourceX', ['source']));
 end;
 
 initialization

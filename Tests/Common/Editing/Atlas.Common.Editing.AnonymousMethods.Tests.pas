@@ -56,7 +56,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.AnonymousMethods,
   Atlas.Text.Lines,

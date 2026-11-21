@@ -59,7 +59,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.TypeComments,
   Atlas.Common.Editing.ClassCompletion,

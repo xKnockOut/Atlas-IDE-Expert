@@ -159,7 +159,7 @@ uses
   Atlas.Common.Rules.Builtin.Unused,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Index.Contract,

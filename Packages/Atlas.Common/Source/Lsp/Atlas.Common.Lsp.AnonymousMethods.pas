@@ -67,7 +67,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Editing.PromoteVariable,

@@ -81,7 +81,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,

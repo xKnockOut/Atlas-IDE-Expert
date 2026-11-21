@@ -44,7 +44,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Lsp.CodeActions;
 
 { TLspCompilerFixes }

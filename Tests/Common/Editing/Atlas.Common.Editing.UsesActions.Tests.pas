@@ -82,6 +82,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Tests.TextEdits;

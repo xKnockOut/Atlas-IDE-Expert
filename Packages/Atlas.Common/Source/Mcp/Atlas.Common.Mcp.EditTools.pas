@@ -55,7 +55,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.Confirm;
@@ -256,7 +256,7 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Lsp.Rename,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Mcp.Server,
   Atlas.Text.Lines,
   Atlas.Text.Diff,

@@ -23,6 +23,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.CodeActions,
@@ -87,6 +88,8 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Capability für initialize. Der Aufrufer übernimmt das Objekt.</summary>
     class function Capability: TJSONObject; static;
+    /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
+    class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
     /// <summary>Eine Aktion als LSP-CodeAction. Der Aufrufer übernimmt das Objekt.</summary>
     class function ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject; static;
     /// <summary>Alle Code-Aktionen an ARange im geöffneten Dokument AUri wie textDocument/codeAction ohne "only",
@@ -128,6 +131,7 @@ uses
   Atlas.Common.Editing.Contract,
   System.Generics.Collections,
   System.Diagnostics,
+  System.StrUtils,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Lsp.Positions,
@@ -162,6 +166,21 @@ const
 {$SCOPEDENUMS OFF}
 
 { TLspCodeActions }
+
+class function TLspCodeActions.KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean;
+var
+  mOnly: string;
+begin
+  Result := AOnly = nil;
+  // "source" umfasst "source.fixAll", aber nicht "sourceX".
+  for mOnly in AOnly do
+  begin
+    if SameText(AKind, mOnly) or StartsText(mOnly + '.', AKind) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
 
 constructor TLspCodeActions.Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
 begin
@@ -430,12 +449,12 @@ end;
 
 procedure TCodeActionBuilder.ReadWanted(const AOnly: TArray<string>);
 begin
-  FWantsEditing := TCodeActions.KindRequested(cQuickFixKind, AOnly) or TCodeActions.KindRequested(cRewriteKind, AOnly)
-    or TCodeActions.KindRequested(cExtractKind, AOnly);
+  FWantsEditing := TLspCodeActions.KindRequested(cQuickFixKind, AOnly) or TLspCodeActions.KindRequested(cRewriteKind, AOnly)
+    or TLspCodeActions.KindRequested(cExtractKind, AOnly);
   // source.* nur auf ausdrückliche Anfrage, nicht bei jeder Cursorbewegung.
-  FWantsOrganize := (AOnly <> nil) and TCodeActions.KindRequested(cOrganizeImportsKind, AOnly);
-  FWantsFixAll := (AOnly <> nil) and TCodeActions.KindRequested(cFixAllKind, AOnly);
-  FWantsRemoveUnused := (AOnly <> nil) and TCodeActions.KindRequested(cRemoveUnusedKind, AOnly);
+  FWantsOrganize := (AOnly <> nil) and TLspCodeActions.KindRequested(cOrganizeImportsKind, AOnly);
+  FWantsFixAll := (AOnly <> nil) and TLspCodeActions.KindRequested(cFixAllKind, AOnly);
+  FWantsRemoveUnused := (AOnly <> nil) and TLspCodeActions.KindRequested(cRemoveUnusedKind, AOnly);
 end;
 
 /// <summary>Warten auf einen fremden Lauf endet nach RuleWaitMs oder mit dem Signal von ACancellation.</summary>
