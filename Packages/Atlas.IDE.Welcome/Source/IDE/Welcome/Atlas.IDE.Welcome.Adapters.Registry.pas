@@ -198,7 +198,6 @@ var
   mBytes: TBytes;
   mText: string;
   mQWord: UInt64;
-  mLine: string;
   mChild: TAtlasRegKey;
 begin
   if not ARegistry.OpenKey('\' + APath, True) then
@@ -221,12 +220,12 @@ begin
           end;
         TAtlasRegKind.MultiText:
           begin
-            mText := '';
-            for mLine in mValue.Lines do
+            // Jede Zeile mit #0 abgeschlossen, dahinter ein weiteres #0.
+            mText := string.Join(#0, mValue.Lines) + #0;
+            if Length(mValue.Lines) > 0 then
             begin
-              mText := mText + mLine + #0;
+              mText := mText + #0;
             end;
-            mText := mText + #0;
             RegSetValueEx(ARegistry.CurrentKey, PChar(mValue.Name), 0, REG_MULTI_SZ, PChar(mText),
               Length(mText) * SizeOf(Char));
           end;

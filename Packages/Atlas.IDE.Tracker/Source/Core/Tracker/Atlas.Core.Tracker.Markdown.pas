@@ -760,21 +760,26 @@ end;
 
 function TBlockReader.TryQuote: Boolean;
 var
-  mText, mCode: string;
+  mText: string;
+  mCode: TStringBuilder;
 begin
   Result := QuoteOf(CurrentLine, mText);
   if not Result then
   begin
     Exit;
   end;
-  mCode := mText;
-  Inc(Index);
-  while HasLine and QuoteOf(CurrentLine, mText) do
-  begin
-    mCode := mCode + #10 + mText;
+  mCode := TStringBuilder.Create(mText);
+  try
     Inc(Index);
+    while HasLine and QuoteOf(CurrentLine, mText) do
+    begin
+      mCode.Append(#10).Append(mText);
+      Inc(Index);
+    end;
+    Add(NewBlock(TAtlasMarkdownBlockKind.Quote, Trim(mCode.ToString)));
+  finally
+    mCode.Free;
   end;
-  Add(NewBlock(TAtlasMarkdownBlockKind.Quote, Trim(mCode)));
 end;
 
 function TBlockReader.TryBullet: Boolean;
@@ -864,16 +869,20 @@ end;
 /// <summary>Absatz bis zur Leerzeile oder bis zu einem anderen Block.</summary>
 procedure TBlockReader.ReadParagraph;
 var
-  mCode: string;
+  mCode: TStringBuilder;
 begin
-  mCode := Trim(CurrentLine);
-  Inc(Index);
-  while HasLine and not IsBlank(CurrentLine) and not StartsBlock(Lines, Index) do
-  begin
-    mCode := mCode + #10 + Trim(CurrentLine);
+  mCode := TStringBuilder.Create(Trim(CurrentLine));
+  try
     Inc(Index);
+    while HasLine and not IsBlank(CurrentLine) and not StartsBlock(Lines, Index) do
+    begin
+      mCode.Append(#10).Append(Trim(CurrentLine));
+      Inc(Index);
+    end;
+    Add(NewBlock(TAtlasMarkdownBlockKind.Paragraph, mCode.ToString));
+  finally
+    mCode.Free;
   end;
-  Add(NewBlock(TAtlasMarkdownBlockKind.Paragraph, mCode));
 end;
 
 function TBlockReader.TryStructured: Boolean;
