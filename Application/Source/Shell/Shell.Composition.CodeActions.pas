@@ -98,7 +98,7 @@ uses
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Semantics.UsesUsage,
   Shell.Bootstrap,
-  Shell.Platform;
+  Platform.Server;
 
 /// <summary>Code-Aktion für binär gespeicherte Formulare (#122): Umwandeln in Text.</summary>
 function FormActionsFunc(): TFormActionsFunc;

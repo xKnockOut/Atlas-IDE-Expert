@@ -85,7 +85,7 @@ uses
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.DelphiVersions,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Shell.Workspace.Listings,
   Atlas.Text.LogMarks,
   Atlas.Text.Files;

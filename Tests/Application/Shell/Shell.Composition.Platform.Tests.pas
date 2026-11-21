@@ -1,8 +1,7 @@
-﻿unit Shell.Platform.Tests;
+﻿unit Shell.Composition.Platform.Tests;
 
-// Tests für die Plattformweiche des Servers (#1109): Ersetzendes Umbenennen,
-// kanonische Pfade, eigene Prozessnummer und der Prozessläufer für git und svn
-// (unter Windows TAtlasVcsProcessRunner, unter Linux Shell.Platform.VersionControlRunner):
+// Tests für die plattformabhängigen Adapter der Shell (#1109): der Prozessläufer für git und svn
+// (unter Windows TAtlasVcsProcessRunner, unter Linux Adapters.VersionControl.LinuxRunner):
 // Hauptthread abgelehnt, fehlendes Programm, Zeitlimit, stdout gelesen.
 
 interface
@@ -12,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  TShellPlatformTests = class
+  TShellPlatformAdaptersTests = class
   private
     FFolder: string;
   public
@@ -20,12 +19,6 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    [Test]
-    procedure MoveReplacingOverwritesTarget;
-    [Test]
-    procedure CanonicalizePathKeepsExistingFile;
-    [Test]
-    procedure CurrentProcessIdIsRunning;
     [Test]
     procedure VcsRunnerRefusesMainThreadAndHonoursTimeout;
   end;
@@ -37,7 +30,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.VersionControl.Contract,
-  Shell.Platform,
+  Shell.Composition.Platform,
   Atlas.Tests.TempFolder;
 
 type
@@ -61,52 +54,20 @@ begin
 {$ENDIF}
 end;
 
-{ TShellPlatformTests }
+{ TShellPlatformAdaptersTests }
 
-procedure TShellPlatformTests.Setup;
+procedure TShellPlatformAdaptersTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasPlatform-' + TGUID.NewGuid.ToString.Substring(1, 8));
   TDirectory.CreateDirectory(FFolder);
 end;
 
-procedure TShellPlatformTests.TearDown;
+procedure TShellPlatformAdaptersTests.TearDown;
 begin
   TTestTempFolder.Remove(FFolder);
 end;
 
-procedure TShellPlatformTests.MoveReplacingOverwritesTarget;
-var
-  mSource, mTarget: string;
-begin
-  mSource := TPath.Combine(FFolder, 'neu.txt');
-  mTarget := TPath.Combine(FFolder, 'alt.txt');
-  TFile.WriteAllText(mSource, 'neu');
-  TFile.WriteAllText(mTarget, 'alt');
-  Assert.IsTrue(TShellPlatform.MoveReplacing(mSource, mTarget), 'ersetzt');
-  Assert.IsFalse(TFile.Exists(mSource), 'Quelle weg');
-  Assert.AreEqual('neu', TFile.ReadAllText(mTarget, TEncoding.UTF8));
-  Assert.IsFalse(TShellPlatform.MoveReplacing(mSource, mTarget), 'fehlende Quelle');
-end;
-
-procedure TShellPlatformTests.CanonicalizePathKeepsExistingFile;
-var
-  mFileName, mCanonical: string;
-begin
-  mFileName := TPath.Combine(FFolder, 'Unit1.pas');
-  TFile.WriteAllText(mFileName, 'unit Unit1;');
-  mCanonical := TShellPlatform.CanonicalizePath(mFileName);
-  Assert.IsTrue(TFile.Exists(mCanonical), mCanonical);
-  Assert.AreEqual(mCanonical, TShellPlatform.CanonicalizePath(mCanonical), 'stabil');
-  Assert.AreEqual('Unit1.pas', ExtractFileName(mCanonical));
-end;
-
-procedure TShellPlatformTests.CurrentProcessIdIsRunning;
-begin
-  Assert.IsTrue(TShellPlatform.CurrentProcessId > 0);
-  Assert.IsTrue(TProcessInstances.Running(TShellPlatform.CurrentProcessId));
-end;
-
-procedure TShellPlatformTests.VcsRunnerRefusesMainThreadAndHonoursTimeout;
+procedure TShellPlatformAdaptersTests.VcsRunnerRefusesMainThreadAndHonoursTimeout;
 var
   mRunner: IAtlasVcsRunner;
   mCommand: TProbe;
@@ -114,10 +75,10 @@ var
   mStarted: UInt64;
 begin
   mCommand := Probe;
-  mRunner := TShellPlatform.CreateVcsRunner(False, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(False, nil);
   mAnswer := mRunner.Run(mCommand.Executable, mCommand.Quick, '', 5000);
   Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.MainThread, mAnswer.Outcome, 'Hauptthread abgelehnt');
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   mAnswer := mRunner.Run(TPath.Combine(FFolder, 'gibt-es-nicht.exe'), nil, '', 5000);
   Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing, mAnswer.Outcome, 'fehlendes Programm');
   mStarted := TThread.GetTickCount64;
@@ -131,6 +92,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellPlatformTests);
+  TDUnitX.RegisterTestFixture(TShellPlatformAdaptersTests);
 
 end.
