@@ -60,7 +60,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.DirectiveNames,
-  Atlas.Common.Lsp.DocWiki,
+  Atlas.Common.Index.DocWiki,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

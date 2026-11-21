@@ -450,7 +450,7 @@ uses
   Atlas.Common.Editing.PromoteVariable.Tests in 'Common\Editing\Atlas.Common.Editing.PromoteVariable.Tests.pas',
   Atlas.Common.Lsp.FormMentions.Tests in 'Common\Lsp\Atlas.Common.Lsp.FormMentions.Tests.pas',
   Atlas.Common.Lsp.PromoteVariable.Tests in 'Common\Lsp\Atlas.Common.Lsp.PromoteVariable.Tests.pas',
-  Atlas.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas',
+  Atlas.Common.Index.DocWiki.Tests in 'Common\Index\Atlas.Common.Index.DocWiki.Tests.pas',
   Atlas.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas',
   Atlas.Common.Lsp.ConditionalSymbols.Tests in 'Common\Lsp\Atlas.Common.Lsp.ConditionalSymbols.Tests.pas',
   Atlas.Common.Lsp.Hover.Tests in 'Common\Lsp\Atlas.Common.Lsp.Hover.Tests.pas',

@@ -53,7 +53,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Lsp.DocWiki;
+  Atlas.Common.Index.DocWiki;
 
 type
   TExample = record
