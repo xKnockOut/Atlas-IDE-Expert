@@ -66,6 +66,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
@@ -1345,7 +1346,7 @@ begin
   mEdits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), mText +
     ExceptPart(mIndent, mStep))];
   // ShowMessage aus Vcl.Dialogs bzw. FMX.Dialogs, Exception aus System.SysUtils.
-  mUsed := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   mDialogs := 'Vcl.Dialogs';
   for mUsedUnit in mUsed do
   begin
@@ -1354,12 +1355,12 @@ begin
       mDialogs := 'FMX.Dialogs';
     end;
   end;
-  if not TUsesClauses.IsUsed(mUsed, mDialogs, FContext.Namespaces) and
+  if not TPascalUses.IsUsed(mUsed, mDialogs, FContext.Namespaces) and
     TUsesClauses.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, mDialogs, FLineBreak, mUsesEdit) then
   begin
     mEdits := [mUsesEdit] + mEdits;
   end;
-  if not TUsesClauses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) and
+  if not TPascalUses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) and
     TUsesClauses.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', FLineBreak, mUsesEdit) then
   begin
     mEdits := [mUsesEdit] + mEdits;

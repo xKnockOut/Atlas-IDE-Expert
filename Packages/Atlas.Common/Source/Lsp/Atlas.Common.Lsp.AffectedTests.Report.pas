@@ -35,6 +35,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Impact,
   Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 

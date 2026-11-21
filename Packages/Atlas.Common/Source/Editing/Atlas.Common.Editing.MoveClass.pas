@@ -107,6 +107,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.TypeComments,
   Atlas.Common.Localization.Texts,
@@ -949,7 +950,7 @@ function OriginUsesOffset(const ATokens: TArray<TPascalToken>; const AOriginUnit
 var
   mClause: TUsesClauseInfo;
 begin
-  for mClause in TUsesClauses.Clauses(ATokens) do
+  for mClause in TPascalUses.Clauses(ATokens) do
   begin
     if MatchText(AOriginUnit, mClause.Names) or MatchText(LastPart(AOriginUnit), mClause.Names) then
     begin
@@ -1683,7 +1684,7 @@ begin
   begin
     Exit(False);
   end;
-  if AAddUses and not MatchText(ANames.NewUnit, TUsesClauses.UsedUnits(ATree.Tokens)) then
+  if AAddUses and not MatchText(ANames.NewUnit, TPascalUses.UsedUnits(ATree.Tokens)) then
   begin
     mFallback := -1;
     if AReferences <> nil then

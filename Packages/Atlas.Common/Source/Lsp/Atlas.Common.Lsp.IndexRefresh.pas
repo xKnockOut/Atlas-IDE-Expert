@@ -65,7 +65,7 @@ implementation
 
 uses
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Pascal.UsesClauses;
 
 { TLspIndexRefresh }
 
@@ -166,7 +166,7 @@ var
   mReference: TUsesReference;
 begin
   Result := '';
-  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
+  for mReference in TPascalUses.References(TPascalLexer.Tokenize(AText)) do
   begin
     if Result <> '' then
     begin

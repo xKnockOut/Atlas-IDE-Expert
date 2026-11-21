@@ -81,6 +81,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.AccessorCreation,
@@ -216,8 +217,8 @@ begin
     TTextEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), mNewText)];
   // Der Typ stammt oft aus einer Unit, die die Datei nicht einbindet (TRect aus System.Types).
   if (AType.UnitName <> '') and not SameText(AType.UnitName, 'System') and
-    not SameText(AType.UnitName, TUsesClauses.OwnName(FTokens)) and
-    not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FTokens), AType.UnitName, FContext.Namespaces) then
+    not SameText(AType.UnitName, TPascalUses.OwnName(FTokens)) and
+    not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTokens), AType.UnitName, FContext.Namespaces) then
   begin
     if not TUsesClauses.AddUnit(FTokens, AStatement.StartOffset, AType.UnitName, FLineBreak, mUsesEdit) then
     begin

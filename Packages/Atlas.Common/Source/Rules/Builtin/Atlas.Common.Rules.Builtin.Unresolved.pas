@@ -126,6 +126,7 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Projects.DprojEditor,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DirectiveNames,
@@ -283,7 +284,7 @@ end;
 function NamesCheckable(const AContext: TRuleContext): Boolean;
 begin
   Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and TUnresolvedNames.Available(AContext.Index);
-  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
+  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TPascalUses.UsedUnits(AContext.Tree.Tokens),
     AContext.Namespaces, AContext.EnsureUnit);
 end;
 
@@ -345,7 +346,7 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
-  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(AContext.Tree.Tokens);
   mComplete := TUnresolvedNames.Available(AContext.Index) and TUnresolvedNames.UsesKnown(AContext.Index, mUsed,
     AContext.Namespaces, AContext.EnsureUnit);
   mReported := nil;
@@ -1076,7 +1077,7 @@ var
 begin
   FEntries := TUsesUnitNotFoundRule.Entries(FContext.Tree.Tokens);
   FLines := ConditionalLines(FContext.Tree.Tokens);
-  FOwn := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  FOwn := TPascalUses.OwnName(FContext.Tree.Tokens);
   ReportSelfUse;
   if FContext.Units = nil then
   begin
@@ -1742,8 +1743,8 @@ procedure TUnresolvedTypeCheck.Run;
 begin
   FLines := ConditionalLines(FContext.Tree.Tokens);
   FLineBreak := TTextLines.LineBreakOf(FContext.Text);
-  FOwnUnit := TUsesClauses.OwnName(FContext.Tree.Tokens);
-  FUsed := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FOwnUnit := TPascalUses.OwnName(FContext.Tree.Tokens);
+  FUsed := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   // Mit Include-Dateien kann der Typ dort deklariert sein.
   FLevel := IncludeConfidence(FContext.Tree.Tokens);
   Collect(FContext.Tree.Root);

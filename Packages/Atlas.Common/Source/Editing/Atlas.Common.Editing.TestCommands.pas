@@ -61,7 +61,7 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Pascal.RoutineLocals,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Localization.Texts;
 
@@ -505,7 +505,7 @@ begin
   mSource := TCommandSource.Create(AContext);
   try
     mRoutine := mSource.RoutineAt;
-    if (mRoutine <> nil) and TUsesClauses.IsUsed(TUsesClauses.UsedUnits(mSource.Tree.Tokens), 'Delphi.Mocks', nil)
+    if (mRoutine <> nil) and TPascalUses.IsUsed(TPascalUses.UsedUnits(mSource.Tree.Tokens), 'Delphi.Mocks', nil)
     then
     begin
       Exit(DelphiMocksEdits(mSource, mRoutine, mName, AEdits));
@@ -763,7 +763,7 @@ begin
     end;
     mType := LocalType(mSource, mRoutine, mName);
     if (mType = '') or not TTestCommandTexts.AssertLine(mName, mType, IsClassType(mSource, AContext, mType),
-      TUsesClauses.IsTestUnit(mSource.Tree.Tokens), mLine) then
+      TPascalUses.IsTestUnit(mSource.Tree.Tokens), mLine) then
     begin
       Exit(Fail(cTexts[TTestCommandsText.AssertNoType].Fmt([mName]), AReason));
     end;

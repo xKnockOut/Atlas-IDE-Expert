@@ -227,7 +227,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Tests.Durations,
   Atlas.Core.Tests.AssertLine,
-  Atlas.Core.Tests.Stale;
+  Atlas.Core.Tests.Stale,
+  Atlas.Text.DUnitX.CommandLine;
 
 /// <summary>Reihenfolge der Testunits: nach Unitname, bei Gleichstand nach Datei (TArray.Sort ist nicht stabil).
 /// </summary>

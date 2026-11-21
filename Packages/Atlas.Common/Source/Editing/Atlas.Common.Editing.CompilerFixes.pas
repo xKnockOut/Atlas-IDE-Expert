@@ -84,6 +84,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.DisableWarning,
   Atlas.Common.Localization.Texts,
@@ -275,7 +276,7 @@ end;
 
 function IsUsed(const ATokens: TArray<TPascalToken>; const AUnit: string; const ANamespaces: TArray<string>): Boolean;
 begin
-  Result := TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATokens), AUnit, ANamespaces);
+  Result := TPascalUses.IsUsed(TPascalUses.UsedUnits(ATokens), AUnit, ANamespaces);
 end;
 
 function H2443Fixes(const AText: string; const ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;

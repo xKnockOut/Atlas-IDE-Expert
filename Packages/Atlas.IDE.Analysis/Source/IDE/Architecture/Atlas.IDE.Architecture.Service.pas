@@ -78,6 +78,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.Resolution,
   Atlas.Core.Architecture.Commands,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Analysis.Strings,

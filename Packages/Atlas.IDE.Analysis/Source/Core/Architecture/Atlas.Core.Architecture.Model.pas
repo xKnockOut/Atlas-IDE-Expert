@@ -9,22 +9,19 @@
 // - Sorted sortiert die Tabellen stabil (bei Gleichstand nach Name), Matches
 //   filtert nach Teilen des Unit-Namens, ShortestPath sucht den kürzesten Weg
 //   über uses wie die HTML-Karte.
-// - TAtlasArchitecturePalette: Farben der Teilsysteme wie in der HTML-Karte,
-//   je für helle und dunkle Themen; die Teile eines nachgeteilten
-//   Teilsystems (#1364, "parent") teilen eine Farbe ("color") in helleren und
-//   dunkleren Tönen ("shade"); das Teilsystem „Fundament“ (#1365,
-//   "foundation") in neutraler Farbe wie --muted der HTML-Karte.
+// - SubsystemColor: Farbe aus Atlas.Core.Architecture.Palette; die Teile
+//   eines nachgeteilten Teilsystems (#1364, "parent") teilen eine Farbe
+//   ("color") in helleren und dunkleren Tönen ("shade"), das Teilsystem
+//   „Fundament“ (#1365, "foundation") ist neutral.
 // - Comparison: Vergleich mit einem gespeicherten Stand (#1121) aus
 //   "comparison" (Daten aus TArchitectureComparer.Json), "baseline" und
 //   "comparisonError" der Antwort: Abschnitte mit Einträgen (Namen statt
 //   Nummern, je mit der Unit des aktuellen Stands zum Springen), dazu die
 //   geänderten Kanten für die Karte (neue als Nummern in Edges, entfernte
 //   zwischen Units, die es noch gibt).
-// - Feinheit der Teilsysteme (#1366): Resolution aus "grouping" der Daten,
-//   TAtlasArchResolution rechnet zwischen Reglerstellung (logarithmisch über
-//   0,2–5,0, Mitte = 1,0) und Wert, TAtlasArchitectureGroupingSettings liest
-//   und schreibt architecture.grouping in settings.json. Die Befehle
-//   (Atlas.Core.Architecture.Commands) nehmen "resolution" mit.
+// - Feinheit der Teilsysteme (#1366): Resolution aus "grouping" der Daten;
+//   Regler und settings.json in Atlas.Core.Architecture.Resolution. Die
+//   Befehle (Atlas.Core.Architecture.Commands) nehmen "resolution" mit.
 // - Zuordnung (#1368): je Unit "assignment" (Kanten je Teilsystem) und
 //   "close" (knapp, fehlende Kanten), dazu "explanation"; fehlen mit
 //   architecture.explainAssignment = false, dann HasAssignment False.
@@ -297,56 +294,6 @@ type
     function LegendOrder: TArray<Integer>;
   end;
 
-  /// <summary>Regler „Feinheit“ (#1366): Stellung 0..Steps, logarithmisch über 0,2–5,0, Mitte = 1,0.</summary>
-  TAtlasArchResolution = class
-  public const
-    cMinValue = 0.2;
-    cMaxValue = 5.0;
-    cSteps = 100;
-  public
-    /// <summary>Wert zur Stellung, auf zwei Nachkommastellen gerundet.</summary>
-    class function ValueAt(APosition: Integer): Double; static;
-    /// <summary>Nächste Stellung zum Wert (Werte außerhalb werden begrenzt).</summary>
-    class function PositionOf(AValue: Double): Integer; static;
-    /// <summary>Wert in den Grenzen; ungültig (≤ 0, NaN) = 1.</summary>
-    class function Clamp(AValue: Double): Double; static;
-    /// <summary>"1,0" bzw. "1.0" nach AFormat, höchstens zwei Nachkommastellen.</summary>
-    class function Text(AValue: Double; const AFormat: TFormatSettings): string; static;
-    /// <summary>Gleich auf zwei Nachkommastellen.</summary>
-    class function Same(ALeft, ARight: Double): Boolean; static;
-  end;
-
-  /// <summary>architecture.grouping in settings.json (#1366): der Server liest denselben Wert.</summary>
-  TAtlasArchitectureGroupingSettings = class
-  public const
-    cResolutionPath = 'architecture.grouping.resolution';
-    cSliderPath = 'architecture.grouping.showResolutionSlider';
-  public
-    /// <summary>Werte aus dem Text von settings.json; fehlende oder ungültige: 1 bzw. True.</summary>
-    class procedure Read(const AGlobalText: string; out AResolution: Double; out AShowSlider: Boolean); static;
-    /// <summary>Text von settings.json mit neuer Feinheit; übriger Text bleibt.</summary>
-    class function WithResolution(const AGlobalText: string; AValue: Double): string; static;
-  end;
-
-  TAtlasArchitecturePalette = class
-  public const
-    cCount = 10;
-    /// <summary>Höchstens so weit wird ein Ton zu Weiß bzw. Schwarz gemischt.</summary>
-    cMaxShadeMix = 0.6;
-    /// <summary>Mischanteil je Tonstufe.</summary>
-    cShadeStep = 0.22;
-  public
-    /// <summary>Farbe des Teilsystems ASubsystem als $00BBGGRR (wie TColor).</summary>
-    class function Color(ASubsystem: Integer; ADark: Boolean): Cardinal; overload; static;
-    /// <summary>Farbe ASlot im Ton AShade (#1364): positiv heller, negativ dunkler, wie color-mix der HTML-Karte.
-    /// </summary>
-    class function Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal; overload; static;
-    /// <summary>Neutrale Farbe des Teilsystems „Fundament“ (#1365), wie --muted der HTML-Karte.</summary>
-    class function FoundationColor(ADark: Boolean): Cardinal; static;
-    /// <summary>Hintergrund ($00BBGGRR) ist dunkel: Helligkeit unter der Hälfte.</summary>
-    class function IsDark(ABackground: Cardinal): Boolean; static;
-  end;
-
 implementation
 
 uses
@@ -355,14 +302,9 @@ uses
   System.Generics.Collections,
   Atlas.Core.Settings.JsonText,
   Atlas.Text.Json,
-  Atlas.Text.Arrays;
-
-const
-  // Wie --c0 … --c9 der HTML-Karte (#RRGGBB), hell bzw. dunkel.
-  cLightColors: array[0..TAtlasArchitecturePalette.cCount - 1] of Cardinal = ($2F6FB3, $7A4FB0, $2E7D4F, $B07A1D,
-    $A33C5A, $1B8A8F, $6B6F1D, $C2571A, $4A5AB8, $8A4F3A);
-  cDarkColors: array[0..TAtlasArchitecturePalette.cCount - 1] of Cardinal = ($6AA6E6, $B28BE0, $6CC293, $E0B257,
-    $E07A98, $5CC6C9, $C3C75A, $F0945A, $94A0F0, $D09A83);
+  Atlas.Text.Arrays,
+  Atlas.Core.Architecture.Resolution,
+  Atlas.Core.Architecture.Palette;
 
 function IntsOf(const AObject: TJSONObject; const AName: string): TArray<Integer>;
 var
@@ -1681,150 +1623,6 @@ end;
 function TAtlasArchComparison.ResolutionDiffers: Boolean;
 begin
   Result := Present and not TAtlasArchResolution.Same(BaselineResolution, Resolution);
-end;
-
-{ TAtlasArchResolution }
-
-class function TAtlasArchResolution.ValueAt(APosition: Integer): Double;
-begin
-  // 0,2 · 25^(p/Steps): Mitte 0,2 · 5 = 1,0.
-  Result := cMinValue * Power(cMaxValue / cMinValue, EnsureRange(APosition, 0, cSteps) / cSteps);
-  Result := Round(Result * 100) / 100;
-end;
-
-class function TAtlasArchResolution.PositionOf(AValue: Double): Integer;
-begin
-  Result := Round(Ln(Clamp(AValue) / cMinValue) / Ln(cMaxValue / cMinValue) * cSteps);
-  Result := EnsureRange(Result, 0, cSteps);
-end;
-
-class function TAtlasArchResolution.Clamp(AValue: Double): Double;
-begin
-  if IsNan(AValue) or (AValue <= 0) then
-  begin
-    Exit(1);
-  end;
-  Result := EnsureRange(AValue, cMinValue, cMaxValue);
-end;
-
-class function TAtlasArchResolution.Text(AValue: Double; const AFormat: TFormatSettings): string;
-begin
-  Result := FormatFloat('0.0#', AValue, AFormat);
-end;
-
-class function TAtlasArchResolution.Same(ALeft, ARight: Double): Boolean;
-begin
-  Result := Abs(ALeft - ARight) < 0.005;
-end;
-
-{ TAtlasArchitectureGroupingSettings }
-
-class procedure TAtlasArchitectureGroupingSettings.Read(const AGlobalText: string; out AResolution: Double;
-  out AShowSlider: Boolean);
-var
-  mRoot: TJSONObject;
-  mValue: TJSONValue;
-begin
-  AResolution := 1;
-  AShowSlider := True;
-  mRoot := TAtlasJsonText.Parse(AGlobalText);
-  try
-    if mRoot = nil then
-    begin
-      Exit;
-    end;
-    mValue := TJSONObject.ParseJSONValue(TAtlasJsonText.ValueAt(mRoot, cResolutionPath));
-    try
-      if mValue is TJSONNumber then
-      begin
-        AResolution := TAtlasArchResolution.Clamp(TJSONNumber(mValue).AsDouble);
-      end;
-    finally
-      mValue.Free;
-    end;
-    AShowSlider := TAtlasJsonText.ValueAt(mRoot, cSliderPath) <> 'false';
-  finally
-    mRoot.Free;
-  end;
-end;
-
-class function TAtlasArchitectureGroupingSettings.WithResolution(const AGlobalText: string; AValue: Double): string;
-begin
-  Result := TAtlasJsonText.SetValue(AGlobalText, cResolutionPath,
-    TAtlasArchResolution.Text(TAtlasArchResolution.Clamp(AValue), TFormatSettings.Invariant));
-end;
-
-{ TAtlasArchitecturePalette }
-
-class function TAtlasArchitecturePalette.Color(ASubsystem: Integer; ADark: Boolean): Cardinal;
-var
-  mRgb: Cardinal;
-  mSlot: Integer;
-begin
-  mSlot := Abs(ASubsystem) mod cCount;
-  if ADark then
-  begin
-    mRgb := cDarkColors[mSlot];
-  end
-  else
-  begin
-    mRgb := cLightColors[mSlot];
-  end;
-  // #RRGGBB → $00BBGGRR.
-  Result := ((mRgb and $FF) shl 16) or (mRgb and $FF00) or ((mRgb shr 16) and $FF);
-end;
-
-class function TAtlasArchitecturePalette.Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal;
-var
-  mBase: Cardinal;
-  mMix: Double;
-  mShift, mChannel: Integer;
-begin
-  mBase := Color(ASlot, ADark);
-  if AShade = 0 then
-  begin
-    Exit(mBase);
-  end;
-  mMix := Min(cMaxShadeMix, cShadeStep * Abs(AShade));
-  Result := 0;
-  mShift := 0;
-  while mShift <= 16 do
-  begin
-    mChannel := (mBase shr mShift) and $FF;
-    if AShade > 0 then
-    begin
-      mChannel := Round(mChannel + (255 - mChannel) * mMix);
-    end
-    else
-    begin
-      mChannel := Round(mChannel * (1 - mMix));
-    end;
-    Result := Result or (Cardinal(EnsureRange(mChannel, 0, 255)) shl mShift);
-    Inc(mShift, 8);
-  end;
-end;
-
-class function TAtlasArchitecturePalette.FoundationColor(ADark: Boolean): Cardinal;
-begin
-  // #5D6576 bzw. #9AA2B2 als $00BBGGRR.
-  if ADark then
-  begin
-    Result := $B2A29A;
-  end
-  else
-  begin
-    Result := $76655D;
-  end;
-end;
-
-class function TAtlasArchitecturePalette.IsDark(ABackground: Cardinal): Boolean;
-var
-  mRed, mGreen, mBlue: Integer;
-begin
-  mRed := ABackground and $FF;
-  mGreen := (ABackground shr 8) and $FF;
-  mBlue := (ABackground shr 16) and $FF;
-  Result := (mRed * 299 + mGreen * 587 + mBlue * 114) div 1000 < 128;
 end;
 
 end.

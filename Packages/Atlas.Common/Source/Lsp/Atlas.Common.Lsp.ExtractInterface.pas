@@ -82,6 +82,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
@@ -251,7 +252,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('className', mInfo.ClassName);
   Result.AddPair('name', mInfo.SuggestedName);
-  Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
+  Result.AddPair('ownUnit', TPascalUses.OwnName(ATree.Tokens));
   mList := TJSONArray.Create;
   for mItem in mInfo.Candidates do
   begin
@@ -373,7 +374,7 @@ begin
   Result := nil;
   for mUnit in AUnits do
   begin
-    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), mUnit, nil) then
+    if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ATree.Tokens), mUnit, nil) then
     begin
       Result := Result + [mUnit];
     end;
@@ -425,7 +426,7 @@ begin
   FText := AText;
   FPosition := APosition;
   FContext := AContext;
-  FOwnUnit := TUsesClauses.OwnName(ATree.Tokens);
+  FOwnUnit := TPascalUses.OwnName(ATree.Tokens);
   FLineBreak := TTextLines.LineBreakOf(AText);
   FChanges := TWorkspaceChanges.Create;
 end;
@@ -559,7 +560,7 @@ begin
     Exit;
   end;
   // Die Unit der Klasse bindet die Ziel-Unit ein (im Abschnitt der Klasse).
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FTree.Tokens), FUnitName, nil) and
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTree.Tokens), FUnitName, nil) and
     TUsesClauses.AddUnit(FTree.Tokens, FPlan.ClassOffset, FUnitName, FLineBreak, mEdit) then
   begin
     FClassEdits := FClassEdits + [mEdit];
