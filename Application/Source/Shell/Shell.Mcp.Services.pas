@@ -68,7 +68,7 @@ uses
   Platform.Server,
   Shell.Mcp.Ide,
   Shell.Mcp.ArchitectureTools,
-  Shell.Bootstrap;
+  Core.Bootstrap;
 
 function NewStore: IDocumentStore;
 begin
@@ -306,14 +306,14 @@ begin
   Result.Edit := NewEditTools(Result.Index, Result.Group, Result.Code, ALogger);
   // Architekturübersicht (#1118) und Hotspots (#1354): dieselben Dienste wie im LSP-Server und auf der
   // Kommandozeile.
-  Result.Architecture := TArchitectureService.Create(Result.Index, TShellBootstrap.SourceReader(),
+  Result.Architecture := TArchitectureService.Create(Result.Index, TCoreBootstrap.SourceReader(),
     DefinesOf(Result.Group));
-  Result.Hotspots := THotspotService.Create(Result.Index, TShellBootstrap.SourceReader());
+  Result.Hotspots := THotspotService.Create(Result.Index, TCoreBootstrap.SourceReader());
   // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units (Start oder Ziel).
   mPathOptions := TUsesGraphOptions.Default;
   mPathOptions.IncludeLibrary := True;
   Result.PathGraphs := TUsesGraphService.Create(Result.Index, mPathOptions);
-  Result.PathLocator := TUsesLocator.Create(TShellBootstrap.SourceReader(), DefinesOf(Result.Group));
+  Result.PathLocator := TUsesLocator.Create(TCoreBootstrap.SourceReader(), DefinesOf(Result.Group));
 end;
 
 procedure TMcpServices.Free;

@@ -9,7 +9,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Linter.Settings;
 
 type

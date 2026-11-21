@@ -9,7 +9,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Query.Contract,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   /// <summary>Abfrage nach dem Auflösen gespeicherter Abfragen.</summary>

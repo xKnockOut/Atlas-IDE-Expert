@@ -137,7 +137,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Query.Service,
   Atlas.Common.Lsp.Query,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Workspace.Setup,
   Shell.Workspace.RuleProjects;
 
@@ -168,7 +168,7 @@ var
   mInfo: TProjectInfo;
   mProjectFile: string;
 begin
-  Result := TShellBootstrap.GroupProjects(ARoot, ALogger);
+  Result := TCoreBootstrap.GroupProjects(ARoot, ALogger);
   if Result <> nil then
   begin
     Exit;
@@ -182,7 +182,7 @@ begin
   begin
     mProjectFile := mInfo.FileName;
   end;
-  Result := TShellBootstrap.EnclosingGroupProjects(mProjectFile, ALogger);
+  Result := TCoreBootstrap.EnclosingGroupProjects(mProjectFile, ALogger);
 end;
 
 { TShellWorkspaceGroup }
@@ -289,8 +289,8 @@ begin
   AWorkspace.Setup.OnPackageFolders :=
     function: TArray<string>
     begin
-      Result := TShellBootstrap.ProjectFolders(TShellBootstrap.GroupProjects(FRoot, FLogger) +
-        TShellBootstrap.EnclosingGroupProjects(AWorkspace.Setup.ProjectFile, FLogger));
+      Result := TCoreBootstrap.ProjectFolders(TCoreBootstrap.GroupProjects(FRoot, FLogger) +
+        TCoreBootstrap.EnclosingGroupProjects(AWorkspace.Setup.ProjectFile, FLogger));
     end;
 end;
 

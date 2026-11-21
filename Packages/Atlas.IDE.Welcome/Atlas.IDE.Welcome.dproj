@@ -132,6 +132,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Areas.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.IdeLayout.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.ProjectWatch.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Module.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Continue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.ContinueHost.pas"/>

@@ -16,7 +16,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Lifecycle,
-  Shell.CrashCases;
+  Core.CrashCases;
 
 type
   /// <summary>Was das Protokoll von der Komposition braucht.</summary>
@@ -38,7 +38,7 @@ type
     FRecent: IJsonRpcRecentMessages;
     FLifecycle: TLspLifecycle;
     /// <summary>Absturzfälle und Sicherheitsnetz (#1355); erst mit CreateCrashCases.</summary>
-    FCrashCases: TShellCrashCases;
+    FCrashCases: TCoreCrashCases;
     /// <summary>Meldung des Watchdogs, wenn eine Anfrage ihr Zeitlimit überschreitet.</summary>
     procedure RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
     /// <summary>Absturzfall beim Abbruch durch den Watchdog (#1355); läuft im Thread des Watchdogs.</summary>
@@ -55,12 +55,12 @@ type
     destructor Destroy; override;
     /// <summary>Legt die Absturzfälle an, sobald es den Dokumentspeicher gibt. ASettingsFiles nennt die
     /// Einstellungsdateien zu einer URI, ANotify meldet an den Client.</summary>
-    procedure CreateCrashCases(const ADocuments: IDocumentStore; const ASettingsFiles: TShellCrashSettingsFunc;
-      const ANotify: TShellCrashNotify);
+    procedure CreateCrashCases(const ADocuments: IDocumentStore; const ASettingsFiles: TCoreCrashSettingsFunc;
+      const ANotify: TCoreCrashNotify);
     property Dispatcher: TJsonRpcDispatcher read FDispatcher;
     property Statistics: IJsonRpcStatistics read FStatistics;
     property Lifecycle: TLspLifecycle read FLifecycle;
-    property CrashCases: TShellCrashCases read FCrashCases;
+    property CrashCases: TCoreCrashCases read FCrashCases;
   end;
 
 implementation
@@ -172,9 +172,9 @@ begin
 end;
 
 procedure TShellProtocol.CreateCrashCases(const ADocuments: IDocumentStore;
-  const ASettingsFiles: TShellCrashSettingsFunc; const ANotify: TShellCrashNotify);
+  const ASettingsFiles: TCoreCrashSettingsFunc; const ANotify: TCoreCrashNotify);
 begin
-  FCrashCases := TShellCrashCases.Create('', FServices.Logger, ADocuments, FRecent);
+  FCrashCases := TCoreCrashCases.Create('', FServices.Logger, ADocuments, FRecent);
   FCrashCases.AtlasVersion := TProductVersion.cVersion;
   FCrashCases.ServerPath := ParamStr(0);
   FCrashCases.Initialize := InitializeText;

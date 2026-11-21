@@ -36,7 +36,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.RecentSink,
   Atlas.Common.Diagnostics.Anonymizer,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 { TShellStdioTests }
 

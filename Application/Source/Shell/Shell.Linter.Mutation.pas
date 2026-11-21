@@ -16,7 +16,7 @@ interface
 
 uses
   Atlas.Common.Mutation.Contract,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   TLinterMutation = class

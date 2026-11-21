@@ -124,6 +124,7 @@ contains
   Atlas.IDE.Welcome.Adapters.Layouts in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Layouts.pas',
   Atlas.IDE.Welcome.Adapters.Tiles in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Tiles.pas',
   Atlas.IDE.Welcome.Composition.TileProjects in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.TileProjects.pas',
+  Atlas.IDE.Welcome.Adapters.Module in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Module.pas',
   Atlas.IDE.Welcome.Composition in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.pas',
   Atlas.IDE.Welcome.Composition.Startup in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.Startup.pas',
   Atlas.IDE.Welcome.Composition.Sources in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.Sources.pas',
