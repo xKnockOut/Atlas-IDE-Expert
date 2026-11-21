@@ -39,7 +39,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.CaseCompletion;
 
 const
@@ -225,7 +225,7 @@ begin
     end;
     ACount := mCompletion.Count;
     AHasElse := mCompletion.HasElse;
-    Result := TChangeSignature.ApplyEdits(AText, mCompletion.Edits);
+    Result := TTextChanges.Apply(AText, mCompletion.Edits);
   finally
     mTree.Free;
   end;

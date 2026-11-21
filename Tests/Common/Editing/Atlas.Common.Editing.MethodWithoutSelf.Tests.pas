@@ -60,7 +60,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MethodWithoutSelf,
   Atlas.Common.Editing.MethodWithoutSelf.Types,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
@@ -193,8 +193,8 @@ begin
     ANewOther := ACase.Other;
     if Result then
     begin
-      ANewDeclaring := TChangeSignature.ApplyEdits(ACase.Declaring, EditsOf(AResult, 'C:\P\Kunden.pas'));
-      ANewOther := TChangeSignature.ApplyEdits(ACase.Other, EditsOf(AResult, 'C:\P\Aufrufer.pas'));
+      ANewDeclaring := TTextChanges.Apply(ACase.Declaring, EditsOf(AResult, 'C:\P\Kunden.pas'));
+      ANewOther := TTextChanges.Apply(ACase.Other, EditsOf(AResult, 'C:\P\Aufrufer.pas'));
     end;
   finally
     mOtherTree.Free;
@@ -582,7 +582,7 @@ begin
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Routine, True, mLookup,
       TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
     Assert.IsTrue(Pos('  Result := N + TA.Max;', mText) > 0, mText);
     Assert.IsTrue(Pos(#10'function Grenze(N: Integer): Integer;'#10, mText) > 0, mText);
     // strict private: nur class-Methode und Helper.
@@ -593,7 +593,7 @@ begin
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(17, 13), TMethodConversion.ClassMethod, True, mLookup,
       TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
     Assert.IsTrue(Pos('    class function Zaehle(N: Integer): Integer; static;', mText) > 0, mText);
   finally
     mTree.Free;
@@ -650,7 +650,7 @@ begin
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Haupt.pas', cSource, mTree, OffsetsOf(mTree,
       'Doppelt')), nil, TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Helper, True,
       TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
   finally
     mTree.Free;
   end;
@@ -698,13 +698,13 @@ begin
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.ClassMethod, False,
       TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
     Assert.IsTrue(Pos('    class function Doppelt(const A: Integer): Integer; static;', mText) > 0, mText);
     // Vorhandener Helper für Integer bekommt die Methode.
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.Helper, False,
       TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
   finally
     mTree.Free;
   end;

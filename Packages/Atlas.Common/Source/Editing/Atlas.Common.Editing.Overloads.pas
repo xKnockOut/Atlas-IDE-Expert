@@ -28,7 +28,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Pascal.Signatures;
 
 type
 {$SCOPEDENUMS ON}
@@ -312,7 +312,7 @@ end;
 function ReadNode(const AText: string; ATree: TSyntaxTree; AHeader: TSyntaxNode;
   out ASignature: TSignatureHeader): Boolean;
 begin
-  Result := (AHeader <> nil) and TChangeSignature.ReadHeader(AText, ATree.Tokens, NameToken(ATree.Tokens, AHeader),
+  Result := (AHeader <> nil) and TPascalSignatures.ReadHeader(AText, ATree.Tokens, NameToken(ATree.Tokens, AHeader),
     ASignature);
 end;
 
@@ -754,7 +754,7 @@ begin
     Exit;
   end;
   Target.BlockBegin := TRoutineBody.TokenAt(Tokens, mBlock.StartOffset);
-  Target.BodyLast := TChangeSignature.BodyEnd(Tree, Target.Body);
+  Target.BodyLast := TPascalSignatures.BodyEnd(Tree, Target.Body);
   Result := (Target.BlockBegin <= High(Tokens)) and Tokens[Target.BlockBegin].IsKeyword('begin') and
     (Target.BodyLast >= 0);
   if not Result then
@@ -925,7 +925,7 @@ begin
   end;
   if mHasDefault or (AHeader.OpenToken < 0) then
   begin
-    Result := TChangeSignature.ParameterList(AHeader.Parameters, False);
+    Result := TPascalSignatures.ParameterList(AHeader.Parameters, False);
     if Result <> '' then
     begin
       Result := Copy(Result, 2, Length(Result) - 2);
@@ -970,7 +970,7 @@ begin
   ABuilder.Add(')' + TailText(AText, ATokens, AHeader));
   if ADirectives then
   begin
-    ABuilder.Add(TChangeSignature.OverloadDirectives(AHeader, False));
+    ABuilder.Add(TPascalSignatures.OverloadDirectives(AHeader, False));
   end;
 end;
 
@@ -1057,7 +1057,7 @@ begin
   begin
     Kept := Copy(Target.Decl.Parameters, 0, Length(Target.Decl.Parameters) - 1);
     mDropped := Target.Decl.Parameters[High(Target.Decl.Parameters)].Name;
-    Parameters := TChangeSignature.ParameterList(Kept, False);
+    Parameters := TPascalSignatures.ParameterList(Kept, False);
     if Parameters <> '' then
     begin
       Parameters := Copy(Parameters, 2, Length(Parameters) - 2);

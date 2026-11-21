@@ -50,7 +50,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.EnumTables,
   Atlas.Tests.SourceText;
 
@@ -72,7 +72,7 @@ begin
   try
     Assert.IsTrue(TEnumTables.CreateTable(ASource, mTree, TTextPosition.Create(3, 4),
       TEnumTableRequest.Create(AName, APlacement, AResource), mEdits, mReason), mReason);
-    Result := TChangeSignature.ApplyEdits(ASource, mEdits);
+    Result := TTextChanges.Apply(ASource, mEdits);
   finally
     mTree.Free;
   end;
@@ -89,7 +89,7 @@ begin
     mTables := TEnumTables.Tables(mTree);
     Assert.IsTrue(Length(mTables) > 0);
     Assert.IsTrue(TEnumTables.Repair(ASource, mTree, mTables[0].Value, Names, AValues, ARepair));
-    Result := TChangeSignature.ApplyEdits(ASource, ARepair.Edits);
+    Result := TTextChanges.Apply(ASource, ARepair.Edits);
   finally
     mTree.Free;
   end;

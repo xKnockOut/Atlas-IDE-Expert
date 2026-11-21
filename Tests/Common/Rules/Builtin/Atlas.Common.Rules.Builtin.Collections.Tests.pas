@@ -93,7 +93,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
@@ -406,7 +406,7 @@ begin
   // Nur diese Datei, alle Typen bekannt: auch für source.fixAll.
   Assert.IsTrue(mFound[0].Fixes[0].Safe);
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes[0].OtherFiles)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   AssertContains(mFixed, '  System.Classes,'#10'  System.Generics.Collections;'#10);
   AssertContains(mFixed, '    FPositionen: TList<TPosition>;'#10);
   AssertContains(mFixed, '  FPositionen := TList<TPosition>.Create;'#10);
@@ -448,14 +448,14 @@ begin
   mFix := mFound[0].Fixes[0];
   Assert.AreEqual('In TList<TRegal> umwandeln', mFix.Title);
   Assert.IsFalse(mFix.Safe);
-  AssertContains(TChangeSignature.ApplyEdits(mFiles[1].Text, mFix.Edits), '  R := L.Regale[0];'#10);
+  AssertContains(TTextChanges.Apply(mFiles[1].Text, mFix.Edits), '  R := L.Regale[0];'#10);
   Assert.AreEqual(1, Integer(Length(mFix.OtherFiles)));
   Assert.AreEqual(cLagerFile, mFix.OtherFiles[0].FileName);
-  AssertContains(TChangeSignature.ApplyEdits(mFiles[0].Text, mFix.OtherFiles[0].Edits),
+  AssertContains(TTextChanges.Apply(mFiles[0].Text, mFix.OtherFiles[0].Edits),
     '  System.Classes,'#10'  System.Generics.Collections;'#10);
-  AssertContains(TChangeSignature.ApplyEdits(mFiles[0].Text, mFix.OtherFiles[0].Edits),
+  AssertContains(TTextChanges.Apply(mFiles[0].Text, mFix.OtherFiles[0].Edits),
     '    Regale: TList<TRegal>;'#10);
-  AssertContains(TChangeSignature.ApplyEdits(mFiles[0].Text, mFix.OtherFiles[0].Edits),
+  AssertContains(TTextChanges.Apply(mFiles[0].Text, mFix.OtherFiles[0].Edits),
     '  Regale := TList<TRegal>.Create;'#10);
 end;
 
@@ -491,7 +491,7 @@ begin
   mFound := ProjectFindings(mFiles, cAuftraegeFile, True);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)), mFound[0].Details);
-  mFixed := TChangeSignature.ApplyEdits(mFiles[0].Text, mFound[0].Fixes[0].OtherFiles[0].Edits);
+  mFixed := TTextChanges.Apply(mFiles[0].Text, mFound[0].Fixes[0].OtherFiles[0].Edits);
   AssertContains(mFixed, '    FRegale: TList<TRegal>;'#10);
   AssertContains(mFixed, '    property Regale: TList<TRegal> read FRegale;'#10);
   AssertContains(mFixed, '  FRegale := TList<TRegal>.Create;'#10);
@@ -730,7 +730,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)), mFound[0].Details);
   Assert.AreEqual('In TObjectStack<TKnoten> umwandeln', mFound[0].Fixes[0].Title);
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes[0].OtherFiles)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   // System.Contnrs wird nicht mehr gebraucht.
   AssertContains(mFixed, 'uses'#10'  System.Generics.Collections;'#10);
   AssertContains(mFixed, '    FOffen: TObjectStack<TKnoten>;'#10);
@@ -744,7 +744,7 @@ begin
     '  Knoten := TKnoten(FOffen.Pop);'#10);
   mFound := StackFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)), mFound[0].Details);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   AssertContains(mFixed, '  FOffen := TStack<TKnoten>.Create;'#10'  Knoten := FOffen.Pop;'#10);
   AssertParses(mFixed);
 end;
@@ -760,7 +760,7 @@ begin
   mFound := StackFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)), mFound[0].Details);
   Assert.AreEqual('In TQueue<TKnoten> umwandeln', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   AssertContains(mFixed, '    FOffen: TQueue<TKnoten>;'#10);
   AssertContains(mFixed, '  FOffen := TQueue<TKnoten>.Create;'#10'  FOffen.Enqueue(Knoten);'#10 +
     '  Knoten := FOffen.Dequeue;'#10);
@@ -770,7 +770,7 @@ begin
     '  FOffen.Push(Knoten);'#10'  Knoten := TKnoten(FOffen.Pop);'#10);
   mFound := StackFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)), mFound[0].Details);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   AssertContains(mFixed, '  FOffen := TObjectQueue<TKnoten>.Create(False);'#10'  FOffen.Enqueue(Knoten);'#10 +
     '  Knoten := FOffen.Extract;'#10);
   AssertParses(mFixed);

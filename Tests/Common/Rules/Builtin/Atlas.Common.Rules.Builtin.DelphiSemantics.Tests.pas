@@ -50,7 +50,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.DelphiSemantics,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SourceText;
 
@@ -92,7 +92,7 @@ begin
   Assert.AreEqual('7: SetLength(Result, ...) ohne vorheriges Result := nil: Delphi übergibt Result als Variable des ' +
     'Aufrufers, SetLength behält deren alte Werte, und Result[I] liest sie (FPC beginnt leer). Erst Result := ' +
     'nil.|', TRuleAssert.LineMessages(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, '  SetLength(Result', '  Result := nil;'#10'  SetLength(Result', []), mFixed);
   TRuleAssert.Silent(TManagedResultReadRule.Create, mFixed);
   // Zählen in Result nach SetLength und Anhängen an die Länge des Aufrufers.
@@ -177,7 +177,7 @@ begin
   mSource := TTestSource.Lines(['unit U;', 'interface', 'uses', '  Werk.Ansicht;', 'implementation',
     'procedure Zeige(const AAnsicht: TAnsicht);', 'var', '  mKopie: TAnsicht;', 'begin', '  mKopie := AAnsicht;',
     '  mKopie.Extras[0].State := 1;', 'end;']) + 'end.';
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('  mKopie.Extras := Copy(mKopie.Extras);'#10'  mKopie.Extras[0].State := 1;', mFixed) > 0, mFixed);
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TRecordArraySharedRule.Create, mFixed, AnsichtIndex, '',
     'U.pas')));
@@ -213,7 +213,7 @@ begin
   Assert.AreEqual(3, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('7: ExtractFileName bekommt einen Pfad mit ''/'': Unter Windows trennt Delphi nur an ''\'' ' +
     '(PathDelim), unter Linux an ''/''. Trenner vorher auf PathDelim angleichen.|', TRuleAssert.LineMessages(TArray<TRuleFinding>.Create(mFound[0])));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('StringReplace(A, ''\'', PathDelim, [rfReplaceAll])', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(mFound[1].Fixes)));
 end;

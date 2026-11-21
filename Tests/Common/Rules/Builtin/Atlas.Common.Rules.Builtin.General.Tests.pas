@@ -68,7 +68,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Tests.RuleAssert;
@@ -128,7 +128,7 @@ begin
   Assert.AreEqual('try … finally end entfernen (Rumpf bleibt)', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
   Assert.AreEqual(InRoutine('  Liste := TStringList.Create;'#10'  Liste.LoadFromFile(Pfad);'#10'  Weiter;'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TGeneralRulesTests.EmptyFinallyFixVariants;
@@ -142,18 +142,18 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.', mFindings[0].Message);
   Assert.AreEqual(InRoutine('  Lesen;'#10#10'  Schreiben;'#10'  Weiter;'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Einzige Anweisung eines if mit zwei Anweisungen im Rumpf: begin … end.
   mSource := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'      Schreiben;'#10'    finally'#10 +
     '    end;');
   mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource);
   Assert.AreEqual('try … finally end durch begin … end ersetzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(InRoutine('  if Bereit then'#10'    begin'#10'      Lesen;'#10'      Schreiben;'#10'    end;'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Mit einer Anweisung reicht das Ausrücken.
   mSource := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'    finally'#10'    end;');
   mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource);
-  Assert.AreEqual(InRoutine('  if Bereit then'#10'    Lesen;'), TChangeSignature.ApplyEdits(mSource,
+  Assert.AreEqual(InRoutine('  if Bereit then'#10'    Lesen;'), TTextChanges.Apply(mSource,
     mFindings[0].Fixes[0].Edits));
   // Alles in einer Zeile: Meldung ohne Korrektur.
   mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, InRoutine('  try Lesen; finally end;'));
@@ -375,7 +375,7 @@ begin
   Assert.AreEqual(44, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Neue GUID erzeugen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreNotEqual(mSource, mFixed);
   TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, mFixed);
   TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, Logger('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'));
@@ -417,7 +417,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Geschweifte Klammern ergänzen', mFindings[0].Fixes[0].Title);
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
-  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits).Contains(
+  Assert.IsTrue(TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits).Contains(
     '[''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'']'));
   Assert.AreEqual('Die GUID enthält „X“, das ist keine Hexadezimalziffer (wie E2204).', mFindings[1].Message);
   Assert.AreEqual(7, mFindings[1].Range.StartPos.Line);

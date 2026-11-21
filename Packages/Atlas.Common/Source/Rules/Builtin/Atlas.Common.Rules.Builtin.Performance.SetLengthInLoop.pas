@@ -31,7 +31,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver.Symbols,

@@ -94,7 +94,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.MethodWithoutSelf.Texts,
   Atlas.Common.Editing.MethodWithoutSelf.Analysis,
@@ -884,7 +884,7 @@ var
   mTree: TSyntaxTree;
 begin
   Result := '';
-  mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(AWork.Text, AEdits));
+  mTree := TSyntaxTreeCache.Parse(TTextChanges.Apply(AWork.Text, AEdits));
   try
     if Length(mTree.Diagnostics) > Length(AWork.Tree.Diagnostics) then
     begin

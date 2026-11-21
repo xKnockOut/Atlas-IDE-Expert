@@ -39,7 +39,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Concurrency.QueueRemove,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function WorkerUnit(const AMembers, AMethods: string): string;
@@ -85,7 +85,7 @@ begin
   mFindings := TRuleAssert.Findings(TQueueWithoutRemoveRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('RemoveQueuedEvents(Self) im Destruktor ergänzen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '  RemoveQueuedEvents(Self);'#10'  inherited;');
   TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, mFixed);
   // Ohne Destruktor legt die Korrektur ihn hinter dem Konstruktor an.
@@ -93,7 +93,7 @@ begin
     'constructor TOrderWorker.Create;'#10'begin'#10'  inherited Create(True);'#10'end;'#10);
   mFindings := TRuleAssert.Findings(TQueueWithoutRemoveRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, 'destructor Destroy; override;');
   Assert.Contains(mFixed, 'RemoveQueuedEvents(Self);');
   TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, mFixed);

@@ -39,7 +39,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Rules.Builtin.Ownership.CreateOrder,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function Routine(const AVars, ABody: string): string;
@@ -68,7 +68,7 @@ begin
   Assert.AreEqual(13, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.IsTrue(mFindings[0].Fixes[0].Safe, 'sichere Korrektur');
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Routine(cVars, '  mList := nil;'#10'  mStream := nil;'#10'  try'#10 +
     '    mList := TStringList.Create;'#10'    mStream := TFileStream.Create(AFile, fmOpenRead);'#10 +
     '    mList.LoadFromStream(mStream);'#10 + cFinally), mFixed);
@@ -89,7 +89,7 @@ begin
     mFindings[0].Message);
   // An der ersten Freigabe.
   Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Routine(cVars, '  mList := nil;'#10'  mStream := nil;'#10'  try'#10'    mList := TStringList.Create;'#10 +
     '    mStream := TFileStream.Create(AFile, fmOpenRead);'#10'    mList.LoadFromStream(mStream);'#10 + cFinally),
     mFixed);
@@ -115,7 +115,7 @@ begin
   Assert.AreEqual('Scheitert TStreamReader.Create, werden mList, mStream nicht freigegeben.', mFindings[1].Message);
   // Die Korrektur hängt nur am ersten Befund und ändert alle drei.
   Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '  mList := nil;'#10'  mStream := nil;'#10'  mReader := nil;'#10'  try'#10 +
     '    mList := TStringList.Create;'#10'    mStream := TFileStream.Create(AFile, fmOpenRead);'#10 +
     '    mReader := TStreamReader.Create(mStream);'#10'    mList.Text := mReader.ReadToEnd;'#10);
@@ -136,7 +136,7 @@ begin
     '    mList.Text := mReader.ReadToEnd;'#10 + cFreeAll);
   mFindings := TRuleAssert.Findings(TMultipleCreateInTryRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '  mList := nil;'#10'  mStream := nil;'#10'  mReader := nil;'#10'  try'#10);
   TRuleAssert.Silent(TMultipleCreateInTryRule.Create, mFixed);
   // Typ unbekannt (vielleicht ein Record): Befund ohne Korrektur.
@@ -165,7 +165,7 @@ begin
     '    mList.LoadFromStream(mStream);'#10 + cFinally);
   mFindings := TRuleAssert.Findings(TMultipleCreateInTryRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Routine('  mDummy: Integer;'#10, '  var mList: TStringList := nil;'#10 +
     '  var mStream: TStream := nil;'#10'  try'#10'    mList := TStringList.Create;'#10 +
     '    mStream := TFileStream.Create(AFile, fmOpenRead);'#10'    mList.LoadFromStream(mStream);'#10 + cFinally),

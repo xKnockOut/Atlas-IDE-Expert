@@ -105,7 +105,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.SyntaxNodes;
@@ -1223,7 +1223,7 @@ begin
   begin
     Exit;
   end;
-  mDone := TChangeSignature.ApplyEdits(Text, mEdits);
+  mDone := TTextChanges.Apply(Text, mEdits);
   mCheck := TSyntaxTreeCache.Parse(mDone);
   try
     if Length(mCheck.Diagnostics) > 0 then

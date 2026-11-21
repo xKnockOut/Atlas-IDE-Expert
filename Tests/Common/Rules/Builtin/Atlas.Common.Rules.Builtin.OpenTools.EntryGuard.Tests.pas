@@ -48,7 +48,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.OpenTools.EntryGuard,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 const
@@ -256,7 +256,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Rumpf über TAtlasGuard.Run laufen lassen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, 'begin'#10'  TAtlasGuard.Run(TAtlasFeature.Hover,'#10'    procedure'#10'    begin'#10 +
     '      if FileName = '''' then'#10'        Exit;'#10'      Pruefen(FileName);'#10'    end);'#10'end;');
   Assert.AreEqual(0, Count(mFixed, cGuardConfig));
@@ -275,7 +275,7 @@ begin
   mFindings := TRuleAssert.Findings(TOtaEntryWithoutGuardRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Rumpf in try … except mit Meldung über FLogger einschließen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '  try'#10'    Pruefen(FileName);'#10'    Melden;'#10'  except'#10'    on E: Exception do'#10 +
     '      FLogger.Error(ClassName + ''.FileNotification: '' + E.Message);'#10'  end;'#10);
   TRuleAssert.Silent(TOtaEntryWithoutGuardRule.Create, mFixed);

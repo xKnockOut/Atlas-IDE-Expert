@@ -47,7 +47,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Extract,
   Atlas.Tests.SourceText;
 
@@ -155,7 +155,7 @@ begin
     end;
     Result.Title := mAction.Title;
     Result.Preview := mAction.Preview;
-    Result.Text := TChangeSignature.ApplyEdits(mText, mEdits);
+    Result.Text := TTextChanges.Apply(mText, mEdits);
   finally
     mTree.Free;
   end;

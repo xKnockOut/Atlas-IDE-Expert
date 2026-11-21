@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Semantics.NameResolver;
 
 type
@@ -190,7 +190,7 @@ begin
   Result := mClose > 0;
   if Result then
   begin
-    AShape.Params := TChangeSignature.ParseParameters(mRest);
+    AShape.Params := TPascalSignatures.ParseParameters(mRest);
     AText := TrimLeft(Copy(AText, mClose + 1, MaxInt));
   end;
 end;

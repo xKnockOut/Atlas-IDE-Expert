@@ -42,7 +42,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Documents.TextChanges;
 
 const
   cProgramFile = 'C:\P\Projekt.dpr';
@@ -147,9 +147,9 @@ begin
     mChanges.RegisterUnit(True, Project, Reader(cTextProject), cNewFile, 'Kunden.Schnittstellen');
     Assert.AreEqual(0, Integer(Length(mChanges.Warnings)));
     Assert.AreEqual(2, mChanges.FileCount);
-    Assert.Contains(TChangeSignature.ApplyEdits(cTextProgram, mChanges.EditsOf(cProgramFile)),
+    Assert.Contains(TTextChanges.Apply(cTextProgram, mChanges.EditsOf(cProgramFile)),
       'Kunden.Schnittstellen in ''Kunden.Schnittstellen.pas''');
-    Assert.Contains(TChangeSignature.ApplyEdits(cTextProject, mChanges.EditsOf(cProjectFile)),
+    Assert.Contains(TTextChanges.Apply(cTextProject, mChanges.EditsOf(cProjectFile)),
       '<DCCReference Include="Kunden.Schnittstellen.pas"/>');
   finally
     mChanges.Free;

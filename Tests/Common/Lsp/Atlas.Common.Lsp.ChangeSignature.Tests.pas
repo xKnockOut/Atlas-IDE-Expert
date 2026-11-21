@@ -80,6 +80,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.TextChanges,
   System.SysUtils,
   System.StrUtils,
   System.JSON,
@@ -341,7 +342,7 @@ begin
       mEdits := mEdits + [TTextEdit.Create(mEdit.Range, mEdit.NewText)];
     end;
   end;
-  Result := TChangeSignature.ApplyEdits(TextOf(AFileName), mEdits);
+  Result := TTextChanges.Apply(TextOf(AFileName), mEdits);
 end;
 
 procedure TLspChangeSignatureTests.AssertParses(const AOutcome: TChangeSignatureOutcome);

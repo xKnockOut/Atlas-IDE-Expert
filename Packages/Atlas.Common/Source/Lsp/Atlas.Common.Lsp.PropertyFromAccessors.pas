@@ -72,7 +72,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts,
@@ -409,7 +409,7 @@ procedure CheckParses(AUnit: TSourceFile);
 var
   mTree: TSyntaxTree;
 begin
-  mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(AUnit.Text, AUnit.Edits));
+  mTree := TSyntaxTreeCache.Parse(TTextChanges.Apply(AUnit.Text, AUnit.Edits));
   try
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin
