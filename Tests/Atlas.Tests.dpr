@@ -348,7 +348,7 @@ uses
   Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
   Atlas.Common.Projects.UnitAliases.Tests in 'Common\Projects\Atlas.Common.Projects.UnitAliases.Tests.pas',
-  Atlas.Common.Projects.Adapters.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.Adapters.UnitLookup.Tests.pas',
+  Atlas.Common.Rules.Providers.UnitLookup.Tests in 'Common\Rules\Atlas.Common.Rules.Providers.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',
   Atlas.Common.Rules.Builtin.OpenTools.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas',
   Atlas.Common.Rules.Builtin.OpenTools.EntryGuard.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.EntryGuard.Tests.pas',

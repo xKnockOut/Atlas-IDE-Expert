@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Projects.Adapters.UnitLookup;
+﻿unit Atlas.Common.Rules.Providers.UnitLookup;
 
 // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016). Anders als
 // TUnitResolver, der Quelltexte für den Index sucht, zählt hier auch die
