@@ -350,18 +350,21 @@ var
   mColors: TAtlasColors;
 begin
   mOldBrush := TBrush.Create;
-  mOldFont := TFont.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldFont.Assign(ACanvas.Font);
-    mBack := SampleBack(ACanvas, ARect);
-    mColors := TAtlasColors.ForBackground(mBack);
-    mColors.Gutter := mBack;
-    PaintLineNumber(ACanvas, ARect, ALine, mColors);
+    mOldFont := TFont.Create;
+    try
+      mOldFont.Assign(ACanvas.Font);
+      mBack := SampleBack(ACanvas, ARect);
+      mColors := TAtlasColors.ForBackground(mBack);
+      mColors.Gutter := mBack;
+      PaintLineNumber(ACanvas, ARect, ALine, mColors);
+    finally
+      ACanvas.Font.Assign(mOldFont);
+      mOldFont.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Font.Assign(mOldFont);
-    mOldFont.Free;
     mOldBrush.Free;
   end;
 end;
@@ -378,22 +381,25 @@ begin
   mBack := SampleBack(ACanvas, ARow.Rect);
   mColors := TAtlasColors.ForBackground(mBack);
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    if Length(ARow.Marks) > 0 then
-    begin
-      PaintMarks(ACanvas, ARow, mColors, mBack);
-    end
-    else
-    begin
-      PaintFree(ACanvas, ARow.Rect, mColors, mBack, TAtlasIdeQuickBookmarks.NextNumber(ARow.FileName));
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      if Length(ARow.Marks) > 0 then
+      begin
+        PaintMarks(ACanvas, ARow, mColors, mBack);
+      end
+      else
+      begin
+        PaintFree(ACanvas, ARow.Rect, mColors, mBack, TAtlasIdeQuickBookmarks.NextNumber(ARow.FileName));
+      end;
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
     end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;

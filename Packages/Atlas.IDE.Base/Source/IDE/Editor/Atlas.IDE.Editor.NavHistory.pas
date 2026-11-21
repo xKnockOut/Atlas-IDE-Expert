@@ -98,7 +98,8 @@ type
     FLineCounts: TDictionary<string, Integer>;
   public
     property History: TAtlasNavHistory read FHistory write FHistory;
-    property Timer: TTimer read FTimer write FTimer;
+    // Nur lesen: Der Timer gehört dem Objekt selbst (Owner Self), ein fremder bräuchte FreeNotification.
+    property Timer: TTimer read FTimer;
     property Notifier: TEditNotifier read FNotifier write FNotifier;
     property NotifierIndex: Integer read FNotifierIndex write FNotifierIndex;
     /// <summary>Letzte gelesene Stelle; FileName = '' ohne.</summary>
@@ -205,7 +206,7 @@ begin
   NotifierIndex := -1;
   History := TAtlasNavHistory.Create;
   LineCounts := TDictionary<string, Integer>.Create;
-  Timer := TTimer.Create(Self);
+  FTimer := TTimer.Create(Self);
   Timer.Interval := cTickMs;
   Timer.OnTimer := Tick;
   Timer.Enabled := True;

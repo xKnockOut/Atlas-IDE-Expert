@@ -69,6 +69,7 @@ begin
   mText := FReason(mClass);
   if mText <> '' then
   begin
+    // lsp-ignore: class-reference-nonvirtual-constructor -- gewollt: nur Exception.Create(Text), eigene Konstruktoren der Klassen gibt es hier nicht
     raise mClass.Create(mText);
   end;
 end;

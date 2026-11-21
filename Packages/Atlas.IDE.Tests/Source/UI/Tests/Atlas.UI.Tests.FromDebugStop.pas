@@ -229,6 +229,8 @@ var
   mIndex: Integer;
 begin
   Result := FDescription;
+  // Eigene Kopie: Sonst schreibt Chosen auch in FDescription.Rows (Arrays ohne Copy-on-Write).
+  Result.Rows := Copy(Result.Rows);
   for mIndex := 0 to Min(High(Result.Rows), FValues.Items.Count - 1) do
   begin
     Result.Rows[mIndex].Chosen := FValues.Checked[mIndex] and (Result.Rows[mIndex].Text <> '');

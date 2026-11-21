@@ -636,6 +636,12 @@ var
   mHeld: TArray<string>;
 begin
   mHeld := nil;
+  // HeldNames füllt Held nur mit FHoldText; die Prüfung hier schützt auch andere Aufrufer.
+  if not Assigned(FHoldText) then
+  begin
+    APlan.Held := nil;
+    Exit;
+  end;
   for mName in APlan.Held do
   begin
     mIndex := IndexText(mName, APlan.Names);

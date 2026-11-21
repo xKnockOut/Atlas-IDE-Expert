@@ -259,6 +259,8 @@ var
   mPart: TAtlasServerMemoryPart;
   mIndex: Integer;
 begin
+  // Geerbt zuerst: TPaintBox.Paint löst OnPaint aus; das eigene Bild deckt den Rest.
+  inherited;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(FColors.Surface);

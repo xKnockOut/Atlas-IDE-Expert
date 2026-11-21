@@ -293,30 +293,36 @@ var
   mHeight, mTop: Integer;
 begin
   mOldFont := TFont.Create;
-  mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldFont.Assign(ACanvas.Font);
-    mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
-    ACanvas.Font.Style := AStyle.FontStyle;
-    ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, cTextTone));
-    ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Border));
-    ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Fill));
-    mHeight := ACanvas.TextHeight('Xg');
-    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mHeight - 2) div 2);
-    Result := TRect.Create(AX, mTop, AX + ACanvas.TextWidth(AText) + 10, mTop + mHeight + 2);
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, cCorner, cCorner);
-    ACanvas.Brush.Style := bsClear;
-    ACanvas.TextOut(Result.Left + cTextPad, Result.Top + 1, AText);
+    mOldBrush := TBrush.Create;
+    try
+      mOldBrush.Assign(ACanvas.Brush);
+      mOldPen := TPen.Create;
+      try
+        mOldPen.Assign(ACanvas.Pen);
+        ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
+        ACanvas.Font.Style := AStyle.FontStyle;
+        ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, cTextTone));
+        ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Border));
+        ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Fill));
+        mHeight := ACanvas.TextHeight('Xg');
+        mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mHeight - 2) div 2);
+        Result := TRect.Create(AX, mTop, AX + ACanvas.TextWidth(AText) + 10, mTop + mHeight + 2);
+        ACanvas.Brush.Style := bsSolid;
+        ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, cCorner, cCorner);
+        ACanvas.Brush.Style := bsClear;
+        ACanvas.TextOut(Result.Left + cTextPad, Result.Top + 1, AText);
+      finally
+        ACanvas.Pen.Assign(mOldPen);
+        mOldPen.Free;
+      end;
+    finally
+      ACanvas.Brush.Assign(mOldBrush);
+      mOldBrush.Free;
+    end;
   finally
     ACanvas.Font.Assign(mOldFont);
-    ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
-    mOldBrush.Free;
     mOldFont.Free;
   end;
 end;

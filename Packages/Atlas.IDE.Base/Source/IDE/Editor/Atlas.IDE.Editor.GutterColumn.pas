@@ -271,15 +271,18 @@ begin
     mBack := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
   end;
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    PaintSymbol(ACanvas, ARect, ASymbol, mBack);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      PaintSymbol(ACanvas, ARect, ASymbol, mBack);
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;

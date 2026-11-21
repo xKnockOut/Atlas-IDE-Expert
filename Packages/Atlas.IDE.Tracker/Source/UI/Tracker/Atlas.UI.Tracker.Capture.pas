@@ -464,20 +464,23 @@ begin
     Exit;
   end;
   mPng := TPngImage.Create;
-  mStream := TBytesStream.Create(ABytes);
   try
+    mStream := TBytesStream.Create(ABytes);
     try
-      mPng.LoadFromStream(mStream);
-    except
-      on EInvalidGraphic do
-        Exit;
-      on EPNGError do
-        Exit;
+      try
+        mPng.LoadFromStream(mStream);
+      except
+        on EInvalidGraphic do
+          Exit;
+        on EPNGError do
+          Exit;
+      end;
+      Result := TBitmap.Create;
+      Result.Assign(mPng);
+    finally
+      mStream.Free;
     end;
-    Result := TBitmap.Create;
-    Result.Assign(mPng);
   finally
-    mStream.Free;
     mPng.Free;
   end;
 end;

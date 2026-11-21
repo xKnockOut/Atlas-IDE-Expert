@@ -256,15 +256,18 @@ var
   mOldPen: TPen;
 begin
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ALayer.PaintIcon(ACanvas, ARect, AColors, ABack);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      ALayer.PaintIcon(ACanvas, ARect, AColors, ABack);
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;

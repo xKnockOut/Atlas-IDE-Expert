@@ -232,6 +232,9 @@ begin
           Result.Reference := nil;
         end;
       end;
+  else
+    // Übrige Arten (Variant, Record, Interface …) malt der Pinsel nicht; nichts zu merken.
+    Exit;
   end;
 end;
 
@@ -262,6 +265,9 @@ begin
           SetObjectProp(AObject, AProp, AValue.Reference);
         end;
       end;
+  else
+    // Übrige Arten hat ReadValue nicht gemerkt; nichts zurückzuschreiben.
+    Exit;
   end;
 end;
 

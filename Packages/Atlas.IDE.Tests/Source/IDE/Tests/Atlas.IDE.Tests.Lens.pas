@@ -581,19 +581,25 @@ var
 begin
   try
     mOldFont := TFont.Create;
-    mOldBrush := TBrush.Create;
-    mOldPen := TPen.Create;
     try
       mOldFont.Assign(ACanvas.Font);
-      mOldBrush.Assign(ACanvas.Brush);
-      mOldPen.Assign(ACanvas.Pen);
-      APaint();
+      mOldBrush := TBrush.Create;
+      try
+        mOldBrush.Assign(ACanvas.Brush);
+        mOldPen := TPen.Create;
+        try
+          mOldPen.Assign(ACanvas.Pen);
+          APaint();
+        finally
+          ACanvas.Pen.Assign(mOldPen);
+          mOldPen.Free;
+        end;
+      finally
+        ACanvas.Brush.Assign(mOldBrush);
+        mOldBrush.Free;
+      end;
     finally
       ACanvas.Font.Assign(mOldFont);
-      ACanvas.Brush.Assign(mOldBrush);
-      ACanvas.Pen.Assign(mOldPen);
-      mOldPen.Free;
-      mOldBrush.Free;
       mOldFont.Free;
     end;
   except
