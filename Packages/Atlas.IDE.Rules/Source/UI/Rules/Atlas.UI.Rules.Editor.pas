@@ -223,6 +223,7 @@ function AtlasRuleGroupCaption(const AGroup: string): string;
 implementation
 
 uses
+  System.StrUtils,
   Atlas.UI.Strings,
   Atlas.UI.Rules.Strings,
   Atlas.UI.Foundation.WrapLabel,
@@ -271,30 +272,19 @@ end;
 
 
 function SeverityCaption(const ASeverity: string): string;
+const
+  cSeverities: array[0..5] of string = ('error', 'warning', 'info', 'information', 'hint', 'off');
+  cTexts: array[0..5] of TAtlasRulesTextId = (TAtlasRulesTextId.RulesSeverityError,
+    TAtlasRulesTextId.RulesSeverityWarning, TAtlasRulesTextId.RulesSeverityInfo, TAtlasRulesTextId.RulesSeverityInfo,
+    TAtlasRulesTextId.RulesSeverityHint, TAtlasRulesTextId.RulesSeverityOff);
+var
+  mIndex: Integer;
 begin
-  if SameText(ASeverity, 'error') then
+  Result := ASeverity;
+  mIndex := IndexText(ASeverity, cSeverities);
+  if mIndex >= 0 then
   begin
-    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityError);
-  end
-  else if SameText(ASeverity, 'warning') then
-  begin
-    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityWarning);
-  end
-  else if SameText(ASeverity, 'info') or SameText(ASeverity, 'information') then
-  begin
-    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityInfo);
-  end
-  else if SameText(ASeverity, 'hint') then
-  begin
-    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityHint);
-  end
-  else if SameText(ASeverity, 'off') then
-  begin
-    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityOff);
-  end
-  else
-  begin
-    Result := ASeverity;
+    Result := TAtlasRulesStrings.Text(cTexts[mIndex]);
   end;
 end;
 
