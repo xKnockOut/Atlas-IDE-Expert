@@ -45,6 +45,10 @@ implementation
 uses
   Atlas.Text.Encoding;
 
+const
+  /// <summary>Kopf eines Delphi-string: Referenzzähler, Länge, Codepage und Elementgröße.</summary>
+  cStringHeaderBytes = 12;
+
 { TTextChars }
 
 class function TTextChars.IsIdentStart(AC: Char): Boolean;
@@ -140,14 +144,13 @@ end;
 
 class function TTextChars.StringBytes(const AValue: string): Int64;
 begin
-  // Kopf (Referenzzähler, Länge, Codepage) plus UTF-16-Zeichen und Endnull.
   if AValue = '' then
   begin
     Result := 0;
   end
   else
   begin
-    Result := 12 + (Length(AValue) + 1) * SizeOf(Char);
+    Result := cStringHeaderBytes + (Length(AValue) + 1) * SizeOf(Char);
   end;
 end;
 
