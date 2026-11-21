@@ -52,7 +52,8 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.ReportTools,
   Atlas.Common.Diagnostics.RuntimeReport,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Diagnostics.RuntimeReport.TestSupport;
 
 const
   cNl = #13#10;
@@ -108,20 +109,6 @@ const
     'An unexpected memory leak has occurred. The unexpected small block leaks are:' + cNl + cNl +
     '1 - 12 bytes: TKunde x 3, UnicodeString x 5' + cNl + cNl +
     'The sizes of unexpected leaked medium and large blocks are: 40100' + cNl;
-
-/// <summary>Projekt kennt nur Kunden.Liste und Main.</summary>
-function ProjectFile(const AUnitName, AFileName: string): string;
-begin
-  Result := '';
-  if SameText(AUnitName, 'Kunden.Liste') or SameText(AFileName, 'Kunden.Liste.pas') then
-  begin
-    Result := 'C:\Projekt\Kunden.Liste.pas';
-  end
-  else if SameText(AUnitName, 'Main') then
-  begin
-    Result := 'C:\Projekt\Main.pas';
-  end;
-end;
 
 function Symbols(AMap: TMapFile; AMatch: TMapImageMatch): TReportSymbols;
 begin

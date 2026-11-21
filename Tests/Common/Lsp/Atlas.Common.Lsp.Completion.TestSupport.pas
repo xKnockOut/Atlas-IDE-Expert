@@ -84,6 +84,17 @@ type
 
 /// <summary>Position direkt hinter AMarker in AText; Ausnahme, wenn AMarker fehlt.</summary>
 function PositionOf(const AText, AMarker: string): TTextPosition;
+/// <summary>Namen der Vorschläge, durch Leerzeichen getrennt.</summary>
+function ItemNames(const AItems: TCompletionItems): string; overload;
+function ItemNames(const AItems: TArray<TCompletionItem>): string; overload;
+/// <summary>Vorschlag mit dem Namen AName (Groß-/Kleinschreibung zählt); False, wenn es keinen gibt.</summary>
+function FindItem(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Boolean;
+/// <summary>Anzahl der Vorschläge mit dem Namen AName (Groß-/Kleinschreibung egal).</summary>
+function CountItems(const AItems: TCompletionItems; const AName: string): Integer;
+/// <summary>Vorschläge der Liste hinter dem letzten Vorkommen von AMarker in einer Zeile, mit Präfix-Abgleich,
+/// Index AIndex und Einstellungen ASettings (Datei HauptFile).</summary>
+function CollectWith(const AIndex: ISymbolIndex; const AText, AMarker: string;
+  const ASettings: TCompletionSettings): TCompletionItems;
 
 /// <summary>Unit Haupt mit ACode an der Stelle des Platzhalters.</summary>
 function WithCode(const ACode: string): string;
@@ -132,6 +143,8 @@ function CollectAt(const ALookup: TEnumLookup; const APosition: TTextPosition; c
 implementation
 
 uses
+  Atlas.Tests.SourceText,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Completion.Lists,
@@ -142,27 +155,93 @@ uses
   Atlas.Common.Lsp.Completion.Guard;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
 begin
-  // Cursor hinter AMarker.
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
+  Result := TTestSource.PositionAfter(AText, AMarker);
+end;
+
+function ItemNames(const AItems: TCompletionItems): string;
+begin
+  Result := ItemNames(AItems.Items);
+end;
+
+function ItemNames(const AItems: TArray<TCompletionItem>): string;
+var
+  mItem: TCompletionItem;
+begin
+  Result := '';
+  for mItem in AItems do
   begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    Result := Result + ' ' + mItem.Name;
   end;
-  Inc(mIndex, Length(AMarker));
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
+  Result := Result.Trim;
+end;
+
+function FindItem(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Boolean;
+var
+  mItem: TCompletionItem;
+begin
+  for mItem in AItems.Items do
   begin
-    if AText[mScan] = #10 then
+    if mItem.Name = AName then
     begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
+      AItem := mItem;
+      Exit(True);
     end;
   end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
+  AItem := Default(TCompletionItem);
+  Result := False;
+end;
+
+function CountItems(const AItems: TCompletionItems; const AName: string): Integer;
+var
+  mItem: TCompletionItem;
+begin
+  Result := 0;
+  for mItem in AItems.Items do
+  begin
+    if SameText(mItem.Name, AName) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+function CollectWith(const AIndex: ISymbolIndex; const AText, AMarker: string;
+  const ASettings: TCompletionSettings): TCompletionItems;
+var
+  mResolver: TNameResolver;
+  mRequest: TCompletionRequest;
+  mTree: TSyntaxTree;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mPosition: TTextPosition;
+  mPostfix: TPostfixOptions;
+begin
+  mLines := AText.Split([#10]);
+  mPosition := TTextPosition.Create(0, 0);
+  for mLine := 0 to High(mLines) do
+  begin
+    if Pos(AMarker, mLines[mLine]) > 0 then
+    begin
+      mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
+    end;
+  end;
+  mTree := TSyntaxTreeCache.Parse(AText);
+  mResolver := TNameResolver.Create(AIndex);
+  mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
+  try
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.Index := AIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    mPostfix := Default(TPostfixOptions);
+    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
+  finally
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
+  end;
 end;
 
 function WithCode(const ACode: string): string;
@@ -256,15 +335,8 @@ begin
 end;
 
 function TLspCompletionTestCase.Names(const AItems: TCompletionItems): string;
-var
-  mItem: TCompletionItem;
 begin
-  Result := '';
-  for mItem in AItems.Items do
-  begin
-    Result := Result + mItem.Name + ' ';
-  end;
-  Result := Result.Trim;
+  Result := ItemNames(AItems);
 end;
 
 function TLspCompletionTestCase.AssignItem(const AText, AMarker: string; ASnippets, AOn: Boolean;

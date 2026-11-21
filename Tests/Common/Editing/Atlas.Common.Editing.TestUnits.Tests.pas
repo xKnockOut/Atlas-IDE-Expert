@@ -47,9 +47,9 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.TestUnits;
+  Atlas.Common.Editing.TestUnits,
+  Atlas.Tests.SourceText;
 
 const
   cKundenText =
@@ -110,18 +110,6 @@ const
 function KundenIndex: TUnitIndex;
 begin
   Result := TIndexExtractor.ExtractText(cKundenText, 'C:\Projekt\Kunden.pas', nil);
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TTestUnitsTests }
@@ -200,7 +188,7 @@ begin
   Assert.AreEqual('TestSumme', mMethods[0].Name);
   Assert.AreEqual('TestLeeren', mMethods[1].Name);
   mUnit_ := TTestUnits.UnitText('Werkzeug.Tests', mIndex, '', #13#10);
-  Assert.IsTrue(Parses(mUnit_), mUnit_);
+  Assert.IsTrue(TTestSource.Parses(mUnit_), mUnit_);
   Assert.IsTrue(Pos('TWerkzeugTests = class', mUnit_) > 0, mUnit_);
   Assert.AreEqual(0, Pos('FSubject', mUnit_), mUnit_);
 end;
@@ -230,7 +218,7 @@ var
   mText: string;
 begin
   mText := TTestUnits.UnitText('Kunden.Tests', KundenIndex, 'TKunde', #13#10);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(mText.StartsWith('unit Kunden.Tests;'#13#10), mText);
   Assert.IsTrue(Pos('uses'#13#10'  DUnitX.TestFramework,'#13#10'  Kunden;', mText) > 0, mText);
   Assert.IsTrue(Pos('  [TestFixture]'#13#10'  TKundeTests = class', mText) > 0, mText);
@@ -254,7 +242,7 @@ var
   mUnit_: string;
 begin
   mUnit_ := TTestUnits.UnitText('U.Tests', TIndexExtractor.ExtractText(cText, 'U.pas', nil), 'TMitArg', #10);
-  Assert.IsTrue(Parses(mUnit_), mUnit_);
+  Assert.IsTrue(TTestSource.Parses(mUnit_), mUnit_);
   Assert.IsTrue(Pos('// TMitArg braucht Argumente im Konstruktor', mUnit_) > 0, mUnit_);
   Assert.AreEqual(0, Pos('FSubject := TMitArg', mUnit_), mUnit_);
 end;

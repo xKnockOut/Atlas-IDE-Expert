@@ -48,39 +48,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.Extract;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
-
-function PositionOf(const AText: string; AIndex: Integer): TTextPosition;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to AIndex - 1 do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mCharacter);
-end;
+  Atlas.Common.Editing.Extract,
+  Atlas.Tests.SourceText;
 
 /// <summary>Text ohne « und » und die Auswahl dazwischen.</summary>
 function Unmark(const AMarked: string; out ARange: TTextRange): string;
@@ -92,7 +61,7 @@ begin
   Result := StringReplace(Result, '«', '', []);
   mFinish := Pos('»', Result);
   Result := StringReplace(Result, '»', '', []);
-  ARange := TTextRange.Create(PositionOf(Result, mStart), PositionOf(Result, mFinish));
+  ARange := TTextRange.Create(TTestSource.PositionAt(Result, mStart), TTestSource.PositionAt(Result, mFinish));
 end;
 
 function Options: TExtractOptions;
@@ -197,22 +166,10 @@ begin
   Result := RunWith(AMarked, True, nil);
 end;
 
-procedure AssertParses(const AText: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'parst fehlerfrei');
-  finally
-    mTree.Free;
-  end;
-end;
-
 /// <summary>Klasse TParser mit Feld FCount und drei Methoden; ABodies sind die Rümpfe von A, B und C.</summary>
 function ParserUnit(const ABodyA, ABodyB, ABodyC: array of string): string;
 begin
-  Result := Join([
+  Result := TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -225,9 +182,9 @@ begin
     '    procedure C(AValue: Integer);',
     '  end;',
     'implementation',
-    'procedure TParser.A(AValue: Integer);']) + Join(ABodyA) + Join([
-    'procedure TParser.B(AValue: Integer);']) + Join(ABodyB) + Join([
-    'procedure TParser.C(AValue: Integer);']) + Join(ABodyC) + Join(['end.']);
+    'procedure TParser.A(AValue: Integer);']) + TTestSource.Lines(ABodyA) + TTestSource.Lines([
+    'procedure TParser.B(AValue: Integer);']) + TTestSource.Lines(ABodyB) + TTestSource.Lines([
+    'procedure TParser.C(AValue: Integer);']) + TTestSource.Lines(ABodyC) + TTestSource.Lines(['end.']);
 end;
 
 { TExtractDuplicatesTests }
@@ -255,7 +212,7 @@ begin
   Assert.AreEqual('Zeile 21 in TParser.B', mOutcome.Places[0]);
   Assert.AreEqual('Zeile 26 in TParser.C', mOutcome.Places[1]);
   Assert.Contains(mOutcome.Preview, 'Neue Methode: procedure TParser.ExtractedMethod(const AValue: Integer);');
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -289,7 +246,7 @@ begin
     '  ExtractedMethod(AValue);',
     'end;',
     'end.']), mOutcome.Text);
-  AssertParses(mOutcome.Text);
+  TTestSource.AssertParses(mOutcome.Text);
 end;
 
 procedure TExtractDuplicatesTests.IgnoresCommentsSpacesAndCase;
@@ -310,7 +267,7 @@ begin
     '  Writeln(''FCount'');',
     'end;']));
   Assert.AreEqual(1, Integer(Length(mOutcome.Places)), mOutcome.Reason);
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     'procedure TParser.B(AValue: Integer);',
     'begin',
     '  ExtractedMethod(AValue);',
@@ -342,7 +299,7 @@ begin
     'end;']));
   Assert.AreEqual(1, Integer(Length(mOutcome.Places)), mOutcome.Reason);
   Assert.AreEqual('Zeile 28 in TParser.C', mOutcome.Places[0]);
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     '  FCount := 0;',
     '  FCount := FCount + AValue;',
     '  Writeln(FCount);']));
@@ -375,24 +332,24 @@ begin
     'end;']));
   Assert.AreEqual(1, Integer(Length(mOutcome.Places)), mOutcome.Reason);
   Assert.AreEqual('Zeile 32 in TParser.C', mOutcome.Places[0]);
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     '  Total := AValue * 2;',
     '  Writeln(Total);',
     '  FCount := Total;']));
   // Total wandert in A und C in die neue Methode; der var-Abschnitt beider Routinen wird leer.
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     'procedure TParser.C(AValue: Integer);',
     'begin',
     '  ExtractedMethod(AValue);',
     'end;']));
-  AssertParses(mOutcome.Text);
+  TTestSource.AssertParses(mOutcome.Text);
 end;
 
 procedure TExtractDuplicatesTests.SkipsOtherClassAndWithBody;
 var
   mOutcome: TOutcome;
 begin
-  mOutcome := RunAll(Join([
+  mOutcome := RunAll(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -446,7 +403,7 @@ begin
     'begin',
     'end;']));
   Assert.AreEqual(1, Integer(Length(mOutcome.Places)), mOutcome.Reason);
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     'procedure TParser.A(AValue: Integer);',
     'begin',
     '  ExtractedMethod;',
@@ -481,19 +438,19 @@ begin
   // ersetzt man beide, braucht keine Stelle Temp von außen.
   mOutcome := RunAll(SameRoutineUnit);
   Assert.AreEqual(1, Integer(Length(mOutcome.Places)), mOutcome.Reason);
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     'procedure TParser.ExtractedMethod(const AValue: Integer);',
     'var',
     '  Temp: Integer;',
     'begin']));
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     'procedure TParser.A(AValue: Integer);',
     'begin',
     '  ExtractedMethod(AValue);',
     '  Inc(FCount);',
     '  ExtractedMethod(AValue);',
     'end;']));
-  AssertParses(mOutcome.Text);
+  TTestSource.AssertParses(mOutcome.Text);
 end;
 
 procedure TExtractDuplicatesTests.SkipsDependentPlacesInSameRoutine;
@@ -526,7 +483,7 @@ var
 begin
   // Abgewählt: Die zweite Stelle bleibt, und Temp bleibt im var-Abschnitt, weil sie es noch braucht.
   mOutcome := RunWith(SameRoutineUnit, False, nil);
-  Assert.Contains(mOutcome.Text, Join([
+  Assert.Contains(mOutcome.Text, TTestSource.Lines([
     'procedure TParser.A(AValue: Integer);',
     'var',
     '  Temp: Integer;',
@@ -536,7 +493,7 @@ begin
     '  Temp := AValue * 2;',
     '  Writeln(Temp);',
     'end;']));
-  AssertParses(mOutcome.Text);
+  TTestSource.AssertParses(mOutcome.Text);
 end;
 
 procedure TExtractDuplicatesTests.ReportsMissingDuplicates;

@@ -59,34 +59,23 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.AnonymousMethods,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Tests.SourceText;
 
 const
   cLF = #10;
 
-/// <summary>Zeilen mit LF verbunden, mit LF am Ende.</summary>
-function Lines(const ALines: array of string): string;
-var
-  mLine: string;
-begin
-  Result := '';
-  for mLine in ALines do
-  begin
-    Result := Result + mLine + cLF;
-  end;
-end;
-
 /// <summary>Unit mit der Klasse TFoo (Mitglieder AMembers) und der Implementierung AImplementation.</summary>
 function ClassUnit(const AMembers, AImplementation: string): string;
 begin
-  Result := Lines(['unit U;', '', 'interface', '', 'type', '  TFoo = class', '  private', '    FCount: Integer;']) +
-    AMembers + Lines(['  end;', '', 'implementation', '']) + AImplementation + Lines(['', 'end.']);
+  Result := TTestSource.Lines(['unit U;', '', 'interface', '', 'type', '  TFoo = class', '  private', '    FCount: Integer;']) +
+    AMembers + TTestSource.Lines(['  end;', '', 'implementation', '']) + AImplementation + TTestSource.Lines(['', 'end.']);
 end;
 
 /// <summary>Unit ohne Klasse mit der Implementierung AImplementation.</summary>
 function PlainUnit(const AImplementation: string): string;
 begin
-  Result := Lines(['unit U;', '', 'interface', '', 'implementation', '']) + AImplementation + Lines(['', 'end.']);
+  Result := TTestSource.Lines(['unit U;', '', 'interface', '', 'implementation', '']) + AImplementation + TTestSource.Lines(['', 'end.']);
 end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
@@ -210,7 +199,7 @@ var
   mTarget: TAnonymousTarget;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  Button.OnClick := procedure(Sender: TObject) begin FCount := 1; end;',
@@ -223,9 +212,9 @@ begin
   Assert.IsTrue(ConvertAt(mText, Request('procedure(Sender', 'HandleClick', TDeferredCapture.Forward), mConverted, mReason,
     mDone), mReason);
   Assert.IsTrue(Pos('  Button.OnClick := HandleClick;', mDone) > 0, mDone);
-  Assert.IsTrue(Pos(Lines(['    procedure Run;', '    procedure HandleClick(Sender: TObject);', '  end;']), mDone) > 0,
+  Assert.IsTrue(Pos(TTestSource.Lines(['    procedure Run;', '    procedure HandleClick(Sender: TObject);', '  end;']), mDone) > 0,
     mDone);
-  Assert.IsTrue(Pos(Lines(['end;', '', 'procedure TFoo.HandleClick(Sender: TObject);', 'begin', '  FCount := 1;',
+  Assert.IsTrue(Pos(TTestSource.Lines(['end;', '', 'procedure TFoo.HandleClick(Sender: TObject);', 'begin', '  FCount := 1;',
     'end;']), mDone) > 0, mDone);
   Assert.IsTrue(StartsStr('Neue Methode: procedure TFoo.HandleClick(Sender: TObject);', mConverted.Preview),
     mConverted.Preview);
@@ -238,7 +227,7 @@ var
   mTarget: TAnonymousTarget;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    procedure Run(AFactor: Integer);']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run(AFactor: Integer);']), TTestSource.Lines([
     'procedure TFoo.Run(AFactor: Integer);',
     'var',
     '  LSum: Integer;',
@@ -257,7 +246,7 @@ begin
   Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(mTarget.Form));
   Assert.IsTrue(ConvertAt(mText, Request('procedure(const AItem', 'ProcessItem', TDeferredCapture.Fields), mConverted,
     mReason, mDone), mReason);
-  Assert.IsTrue(Pos(Lines([
+  Assert.IsTrue(Pos(TTestSource.Lines([
     '  FList.ForEach(procedure(const AItem: Integer)',
     '    begin',
     '      ProcessItem(AItem, LSum, AFactor, LName);',
@@ -265,7 +254,7 @@ begin
   // Log ist unbekannt: LName könnte ein var-Argument sein.
   Assert.IsTrue(Pos('procedure TFoo.ProcessItem(const AItem: Integer; var LSum: Integer; AFactor: Integer; ' +
     'var LName: string);', mDone) > 0, mDone);
-  Assert.IsTrue(Pos(Lines([
+  Assert.IsTrue(Pos(TTestSource.Lines([
     'begin',
     '  LSum := LSum + AItem * AFactor;',
     '  Log(LName);',
@@ -279,7 +268,7 @@ var
   mTarget: TAnonymousTarget;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Log(const AText: string);']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure Log(const AText: string);']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'var',
     '  LText: string;',
@@ -296,7 +285,7 @@ begin
   Assert.AreEqual(Ord(TAnonymousForm.Forwarding), Ord(mTarget.Form));
   Assert.IsTrue(ConvertAt(mText, Request('procedure' + cLF + '    begin', 'ZeigeFertig', TDeferredCapture.Forward),
     mConverted, mReason, mDone), mReason);
-  Assert.IsTrue(Pos(Lines([
+  Assert.IsTrue(Pos(TTestSource.Lines([
     '  TThread.Queue(nil,',
     '    procedure',
     '    begin',
@@ -312,7 +301,7 @@ var
   mText, mReason, mDone: string;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Log(const AText: string);']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure Log(const AText: string);']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'var',
     '  LText: string;',
@@ -327,10 +316,10 @@ begin
   Assert.IsTrue(ConvertAt(mText, Request('procedure' + cLF + '    begin', 'ZeigeFertig', TDeferredCapture.Fields),
     mConverted, mReason, mDone), mReason);
   Assert.AreEqual(Ord(TAnonymousForm.Fields), Ord(mConverted.Form));
-  Assert.IsTrue(Pos(Lines(['  FText := LText;', '  TThread.Queue(nil,', '    ZeigeFertig);']), mDone) > 0, mDone);
-  Assert.IsTrue(Pos(Lines(['    FCount: Integer;', '    FText: string;']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos(TTestSource.Lines(['  FText := LText;', '  TThread.Queue(nil,', '    ZeigeFertig);']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos(TTestSource.Lines(['    FCount: Integer;', '    FText: string;']), mDone) > 0, mDone);
   Assert.IsTrue(Pos('    procedure ZeigeFertig;', mDone) > 0, mDone);
-  Assert.IsTrue(Pos(Lines(['procedure TFoo.ZeigeFertig;', 'begin', '  Log(FText);', 'end;']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos(TTestSource.Lines(['procedure TFoo.ZeigeFertig;', 'begin', '  Log(FText);', 'end;']), mDone) > 0, mDone);
   Assert.AreEqual(1, Integer(Length(mConverted.Warnings)));
 end;
 
@@ -339,7 +328,7 @@ var
   mText, mReason, mDone: string;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'var',
     '  LDone: Boolean;',
@@ -361,7 +350,7 @@ var
   mTarget: TAnonymousTarget;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  FList.Sort(TComparer<TKunde>.Construct(',
@@ -375,9 +364,9 @@ begin
   Assert.AreEqual(Ord(TAnonymousForm.Direct), Ord(mTarget.Form));
   Assert.IsTrue(ConvertAt(mText, Request('function(const A', 'CompareByName', TDeferredCapture.Forward), mConverted,
     mReason, mDone), mReason);
-  Assert.IsTrue(Pos(Lines(['  FList.Sort(TComparer<TKunde>.Construct(', '    CompareByName));']), mDone) > 0, mDone);
+  Assert.IsTrue(Pos(TTestSource.Lines(['  FList.Sort(TComparer<TKunde>.Construct(', '    CompareByName));']), mDone) > 0, mDone);
   Assert.IsTrue(Pos('    function CompareByName(const A: TKunde; const B: TKunde): Integer;', mDone) > 0, mDone);
-  Assert.IsTrue(Pos(Lines(['function TFoo.CompareByName(const A: TKunde; const B: TKunde): Integer;', 'begin',
+  Assert.IsTrue(Pos(TTestSource.Lines(['function TFoo.CompareByName(const A: TKunde; const B: TKunde): Integer;', 'begin',
     '  Result := CompareText(A.Name, B.Name);', 'end;']), mDone) > 0, mDone);
 end;
 
@@ -387,7 +376,7 @@ var
   mTarget: TAnonymousTarget;
   mConverted: TAnonymousResult;
 begin
-  mText := PlainUnit(Lines([
+  mText := PlainUnit(TTestSource.Lines([
     'procedure Zaehle(const AWerte: TArray<Integer>);',
     'const',
     '  Grenze = 10;',
@@ -407,7 +396,7 @@ begin
   Assert.AreEqual('In Routine umwandeln (ProcessIndex)', mTarget.Title);
   Assert.IsTrue(ConvertAt(mText, Request('procedure(I', 'ProcessIndex', TDeferredCapture.Forward), mConverted, mReason,
     mDone), mReason);
-  Assert.IsTrue(Pos(Lines([
+  Assert.IsTrue(Pos(TTestSource.Lines([
     'procedure ProcessIndex(I: Integer; const AWerte: TArray<Integer>; var LAnzahl: Integer);',
     'const',
     '  Grenze = 10;',
@@ -426,7 +415,7 @@ var
   mText, mReason, mDone: string;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    class procedure Run; static;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    class procedure Run; static;']), TTestSource.Lines([
     'class procedure TFoo.Run;',
     'begin',
     '  TThread.Synchronize(nil, procedure begin Beep; end);',
@@ -444,7 +433,7 @@ var
   mTarget: TAnonymousTarget;
 begin
   // Result der äußeren Funktion.
-  mText := ClassUnit(Lines(['    function Run: Integer;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    function Run: Integer;']), TTestSource.Lines([
     'function TFoo.Run: Integer;',
     'begin',
     '  FList.ForEach(procedure(const AItem: Integer) begin Result := AItem; end);',
@@ -452,7 +441,7 @@ begin
   Assert.IsFalse(TargetAt(mText, 'procedure(const', TDeferredCapture.Forward, mTarget, mReason));
   Assert.IsTrue(Pos('Result', mReason) > 0, mReason);
   // Lokale Routine der äußeren.
-  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     '  procedure Hilfe;',
     '  begin',
@@ -463,7 +452,7 @@ begin
   Assert.IsFalse(TargetAt(mText, 'procedure(const', TDeferredCapture.Forward, mTarget, mReason));
   Assert.IsTrue(Pos('Hilfe', mReason) > 0, mReason);
   // In einer lokalen Routine.
-  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     '  procedure Hilfe;',
     '  begin',
@@ -474,7 +463,7 @@ begin
     'end;']));
   Assert.IsFalse(TargetAt(mText, 'procedure(const', TDeferredCapture.Forward, mTarget, mReason));
   // Verschachtelte anonyme Methode schreibt eine Variable, die var-Parameter würde.
-  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'var',
     '  LSum: Integer;',
@@ -496,7 +485,7 @@ var
   mTarget: TAnonymousTarget;
   mConverted: TAnonymousResult;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure HandleClick;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure HandleClick;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  Button.OnClick := procedure(Sender: TObject) begin FCount := 1; end;',
@@ -522,7 +511,7 @@ var
   mText, mReason, mDone: string;
   mAction: TCodeAction;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure ProcessItem(const AItem: Integer);']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure ProcessItem(const AItem: Integer);']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  FList.ForEach(ProcessItem);',
@@ -539,7 +528,7 @@ begin
   Assert.IsTrue(EmbedAt(mText, 'ProcessItem(const AItem: Integer);' + cLF + 'var', TProcTypeKind.Reference, mAction,
     mReason, mDone), mReason);
   Assert.AreEqual(TAnonymousMethods.EmbedTitle, mAction.Title);
-  Assert.IsTrue(Pos(Lines([
+  Assert.IsTrue(Pos(TTestSource.Lines([
     '  FList.ForEach(procedure(const AItem: Integer)',
     '    var',
     '      LDoppelt: Integer;',
@@ -564,7 +553,7 @@ var
   mAction: TCodeAction;
 begin
   // Direkt aufgerufen.
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure Tick;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  Tick;',
@@ -575,7 +564,7 @@ begin
     'end;']));
   Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Reference, mAction, mReason, mDone));
   // Zweimal übergeben.
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure Tick;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  TThread.Queue(nil, Tick);',
@@ -588,7 +577,7 @@ begin
   Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Reference, mAction, mReason, mDone));
   Assert.IsTrue(Pos('genau eine', mReason) > 0, mReason);
   // Öffentlich.
-  mText := ClassUnit(Lines(['  public', '    procedure Run;', '    procedure Tick;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['  public', '    procedure Run;', '    procedure Tick;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  TThread.Queue(nil, Tick);',
@@ -599,7 +588,7 @@ begin
     'end;']));
   Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Reference, mAction, mReason, mDone));
   // Ein lokaler Name des Aufrufers verdeckte FCount.
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure Tick;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'var',
     '  FCount: Integer;',
@@ -623,7 +612,7 @@ var
   mTree: TSyntaxTree;
   mLookup: TAnonymousLookup;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick(Sender: TObject);']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;', '    procedure Tick(Sender: TObject);']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  Timer.OnTimer := Tick;',
@@ -674,7 +663,7 @@ var
   mConverted: TAnonymousResult;
   mAction: TCodeAction;
 begin
-  mText := ClassUnit(Lines(['    procedure Run;']), Lines([
+  mText := ClassUnit(TTestSource.Lines(['    procedure Run;']), TTestSource.Lines([
     'procedure TFoo.Run;',
     'begin',
     '  FList.ForEach(procedure(const AItem: Integer)',

@@ -44,7 +44,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Lsp.CrashCases;
+  Atlas.Core.Lsp.CrashCases,
+  Atlas.Tests.TempFolder;
 
 const
   cRequest = '{"format":1,"kind":"exception","method":"textDocument/hover",' +
@@ -68,11 +69,7 @@ end;
 
 procedure TAtlasCrashCasesTests.TearDown;
 begin
-  if TDirectory.Exists(FRoot) then
-  begin
-    TDirectory.Delete(FRoot, True);
-  end;
-  FRoot := '';
+  TTestTempFolder.Remove(FRoot);
 end;
 
 procedure TAtlasCrashCasesTests.ParsesCaseNotification;

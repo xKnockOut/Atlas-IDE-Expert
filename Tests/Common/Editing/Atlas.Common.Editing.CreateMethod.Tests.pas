@@ -37,18 +37,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.CreateMethod;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Common.Editing.CreateMethod,
+  Atlas.Tests.SourceText;
 
 /// <summary>Aufrufstelle am "|" in AMarked.</summary>
 function SiteOf(const AMarked: string; out ASite: TCreateCallSite; out ATree: TSyntaxTree): Boolean;
@@ -208,7 +198,7 @@ end;
 /// <summary>Klasse TRechner, deren Methode Rechne das noch fehlende Pruefe aufruft.</summary>
 function RechnerCallsPruefe: string;
 begin
-  Result := Join([
+  Result := TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -241,7 +231,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     Assert.IsTrue(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
-    Assert.AreEqual(Join([
+    Assert.AreEqual(TTestSource.Lines([
       'unit U;',
       'interface',
       'type',
@@ -283,7 +273,7 @@ var
   mTree: TSyntaxTree;
   mPlan: TCreateMethodPlan;
 begin
-  mText := Join([
+  mText := TTestSource.Lines([
     'program P;',
     '',
     '// Hauptarbeit',
@@ -299,7 +289,7 @@ begin
   mPlan.Style := TFormatStyle.Default;
   mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(Join([
+    Assert.AreEqual(TTestSource.Lines([
       'program P;',
       '',
       'function Hole: Integer;',

@@ -55,7 +55,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -113,30 +114,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  // Cursor hinter AMarker.
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  Inc(mIndex, Length(AMarker));
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 function ReadWerkzeug(const AFileName: string; out AText: string): Boolean;
 begin
   if SameText(AFileName, cListenFile) then
@@ -161,7 +138,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile,
-      ReadWerkzeug), PositionOf(mText, AMarker));
+      ReadWerkzeug), TTestSource.PositionAfter(mText, AMarker));
   finally
     mTree.Free;
   end;

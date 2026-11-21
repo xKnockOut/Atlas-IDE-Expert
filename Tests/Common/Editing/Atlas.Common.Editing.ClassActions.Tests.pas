@@ -34,12 +34,14 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassActions;
+  Atlas.Common.Editing.ClassActions,
+  Atlas.Tests.Files,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cPropertyBefore =
@@ -130,105 +132,11 @@ const
     #13#10 +
     'end.'#13#10;
 
-/// <summary>Wendet AEdits an; sie dürfen sich nicht überlappen.</summary>
-function ApplyEdits(const AText: string; const AEdits: TArray<TTextEdit>): string;
-var
-  mLines: TArray<string>;
-  mOrder: TArray<Integer>;
-  mIndex, mInner, mSwap, mStart, mStop: Integer;
-
-  function OffsetOf(const APos: TTextPosition): Integer;
-  var
-    mLine: Integer;
-  begin
-    Result := 0;
-    for mLine := 0 to APos.Line - 1 do
-    begin
-      Inc(Result, Length(mLines[mLine]) + 1);
-    end;
-    Inc(Result, APos.Character);
-  end;
-
-  function Before(A, B: Integer): Boolean;
-  begin
-    Result := OffsetOf(AEdits[A].Range.StartPos) < OffsetOf(AEdits[B].Range.StartPos);
-  end;
-
-begin
-  mLines := AText.Split([#10]);
-  // Von hinten anwenden; gleiche Stelle in der gegebenen Reihenfolge.
-  SetLength(mOrder, Length(AEdits));
-  for mIndex := 0 to High(mOrder) do
-  begin
-    mOrder[mIndex] := mIndex;
-  end;
-  for mIndex := 0 to High(mOrder) do
-  begin
-    for mInner := mIndex + 1 to High(mOrder) do
-    begin
-      if Before(mOrder[mIndex], mOrder[mInner]) or
-        ((OffsetOf(AEdits[mOrder[mIndex]].Range.StartPos) = OffsetOf(AEdits[mOrder[mInner]].Range.StartPos)) and
-        (mOrder[mIndex] < mOrder[mInner])) then
-      begin
-        mSwap := mOrder[mIndex];
-        mOrder[mIndex] := mOrder[mInner];
-        mOrder[mInner] := mSwap;
-      end;
-    end;
-  end;
-  Result := AText;
-  for mIndex in mOrder do
-  begin
-    mStart := OffsetOf(AEdits[mIndex].Range.StartPos);
-    mStop := OffsetOf(AEdits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart) + AEdits[mIndex].NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
-function SyntaxErrors(const AText: string): Integer;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics);
-  finally
-    mTree.Free;
-  end;
-end;
-
-/// <summary>Datei unter Tests/ ab dem Programmordner bzw. dem aktuellen Ordner aufwärts; '' ohne.</summary>
-function TestsFile(const ARelative: string): string;
-var
-  mStarts: TArray<string>;
-  mStart, mDirectory: string;
-begin
-  mStarts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
-  for mStart in mStarts do
-  begin
-    mDirectory := mStart;
-    while mDirectory <> '' do
-    begin
-      Result := TPath.Combine(mDirectory, TPath.Combine('Tests', ARelative));
-      if TFile.Exists(Result) then
-      begin
-        Exit;
-      end;
-      if ExtractFileDir(mDirectory) = mDirectory then
-      begin
-        Break;
-      end;
-      mDirectory := ExtractFileDir(mDirectory);
-    end;
-  end;
-  Result := '';
-end;
-
 function Golden(const AName: string): string;
 var
   mFileName: string;
 begin
-  mFileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing', AName + '.pas')));
+  mFileName := TTestData.Path(TPath.Combine('Common', TPath.Combine('Editing', AName + '.pas')));
   Assert.AreNotEqual('', mFileName, 'Golden-Datei nicht gefunden: ' + AName);
   Result := TFile.ReadAllText(mFileName, TEncoding.UTF8);
   if (Result <> '') and (Result[1] = #$FEFF) then
@@ -264,9 +172,9 @@ var
 begin
   Assert.IsTrue(TClassActions.PropertyAccessors(cPropertyBefore, 14, TClassActionContext.Default, mAction));
   Assert.AreEqual('Getter, Setter und Feld für Name erzeugen', mAction.Title);
-  mText := ApplyEdits(cPropertyBefore, mAction.Edits);
+  mText := TTestEdits.Apply(cPropertyBefore, mAction.Edits);
   Assert.AreEqual(Golden('Atlas.Common.Editing.ClassActions.PropertyGolden'), mText);
-  Assert.AreEqual(0, SyntaxErrors(mText));
+  Assert.AreEqual(0, TTestSource.SyntaxErrors(mText));
 end;
 
 procedure TClassActionsTests.InterfaceMatchesGoldenFile;
@@ -277,9 +185,9 @@ begin
   Assert.IsTrue(TClassActions.ImplementInterface(cInterfaceBefore, 16, 'IGoldenZaehler', TClassActionContext.Default,
     mAction));
   Assert.AreEqual('Methoden von IGoldenZaehler implementieren', mAction.Title);
-  mText := ApplyEdits(cInterfaceBefore, mAction.Edits);
+  mText := TTestEdits.Apply(cInterfaceBefore, mAction.Edits);
   Assert.AreEqual(Golden('Atlas.Common.Editing.ClassActions.InterfaceGolden'), mText);
-  Assert.AreEqual(0, SyntaxErrors(mText));
+  Assert.AreEqual(0, TTestSource.SyntaxErrors(mText));
   // Danach ist nichts mehr zu implementieren.
   Assert.IsFalse(TClassActions.ImplementInterface(mText, 16, 'IGoldenZaehler', TClassActionContext.Default, mAction));
 end;
@@ -293,11 +201,11 @@ begin
     TClassActions.OverrideCandidates(cOverrideBefore, 16, TClassActionContext.Default)));
   Assert.IsTrue(TClassActions.OverrideMethod(cOverrideBefore, 16, 'Zeichne', TClassActionContext.Default, mAction));
   Assert.AreEqual('Zeichne überschreiben', mAction.Title);
-  mText := ApplyEdits(cOverrideBefore, mAction.Edits);
+  mText := TTestEdits.Apply(cOverrideBefore, mAction.Edits);
   Assert.IsTrue(TClassActions.OverrideMethod(mText, 16, 'Beschreibung', TClassActionContext.Default, mAction));
-  mText := ApplyEdits(mText, mAction.Edits);
+  mText := TTestEdits.Apply(mText, mAction.Edits);
   Assert.AreEqual(Golden('Atlas.Common.Editing.ClassActions.OverrideGolden'), mText);
-  Assert.AreEqual(0, SyntaxErrors(mText));
+  Assert.AreEqual(0, TTestSource.SyntaxErrors(mText));
   Assert.AreEqual('', string.Join(',', TClassActions.OverrideCandidates(mText, 16, TClassActionContext.Default)));
 end;
 
@@ -328,7 +236,7 @@ begin
     '  private'#13#10'    FName: string;'#13#10'    function GetName: string;'#13#10'  public'#13#10 +
     '    constructor Create;', []);
   Assert.IsTrue(TClassActions.PropertyAccessors(mText, 17, TClassActionContext.Default, mAction));
-  mText := ApplyEdits(mText, mAction.Edits);
+  mText := TTestEdits.Apply(mText, mAction.Edits);
   Assert.AreEqual(1, Integer(Length(mText.Split(['FName: string;'])) - 1), mText);
   Assert.AreEqual(1, Integer(Length(mText.Split(['function GetName: string;'])) - 1), mText);
   Assert.IsTrue(Pos('    procedure SetName(const Value: string);', mText) > 0, mText);
@@ -357,7 +265,7 @@ begin
   mContext := TClassActionContext.Default;
   mContext.Style.IndentSize := 4;
   Assert.IsTrue(TClassActions.PropertyAccessors(cPropertyBefore, 14, mContext, mAction));
-  mText := ApplyEdits(cPropertyBefore, mAction.Edits);
+  mText := TTestEdits.Apply(cPropertyBefore, mAction.Edits);
   Assert.IsTrue(Pos('function TGoldenKunde.GetName: string;'#13#10'begin'#13#10'    Result := FName;', mText) > 0,
     mText);
 end;

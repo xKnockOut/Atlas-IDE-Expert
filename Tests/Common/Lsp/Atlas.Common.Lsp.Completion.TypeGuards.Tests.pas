@@ -9,25 +9,19 @@ uses
   DUnitX.TestFramework,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.Completion.TypeGuards;
+  Atlas.Common.Lsp.Completion.TypeGuards,
+  Atlas.Common.Lsp.Completion.Server.TestSupport;
 
 type
   [TestFixture]
   TCompletionTypeGuardsTests = class
   private
-    FIndex: ISymbolIndex;
-    FStore: IDocumentStore;
-    FCompletion: TLspCompletion;
-    FDispatcher: TJsonRpcDispatcher;
+    FServer: TCompletionServer;
     FSettings: TCompletionSettings;
-    FId: Integer;
-    /// <summary>Fragt an der Stelle von "|" in AText. Der Aufrufer gibt frei.</summary>
-    function Complete(const AText: string): TJSONObject;
     /// <summary>Find für den Bezeichner hinter "|" in der Routine mit ABody; AByRef nil = jedes Argument var.
     /// </summary>
     function GuardOf(const ABody: string; AStrict: Boolean; const AByRef: TTypeGuardArgumentFunc;
@@ -88,14 +82,10 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor;
 
 const
-  cHauptFile = 'C:\P\Haupt.pas';
-
   cUnitTypen =
     'unit Typen;'#13#10 +
     'interface'#13#10 +
@@ -173,45 +163,6 @@ const
 
 { TCompletionTypeGuardsTests }
 
-function TCompletionTypeGuardsTests.Complete(const AText: string): TJSONObject;
-var
-  mMarker, mIndex, mLine, mLineStart: Integer;
-  mText, mUri: string;
-  mRequest, mResponse: TJSONObject;
-begin
-  mMarker := Pos('|', AText);
-  mLine := 0;
-  mLineStart := 1;
-  for mIndex := 1 to mMarker - 1 do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mIndex + 1;
-    end;
-  end;
-  mText := Copy(AText, 1, mMarker - 1) + Copy(AText, mMarker + 1, MaxInt);
-  mUri := TDocumentUris.FromPath(cHauptFile);
-  FStore.Close(mUri);
-  FStore.Open(mUri, 'delphi', 1, mText);
-  Inc(FId);
-  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
-    ',"method":"textDocument/completion","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') +
-    '"},"position":{"line":' + IntToStr(mLine) + ',"character":' + IntToStr(mMarker - mLineStart) + '}}}') as
-    TJSONObject;
-  try
-    mResponse := FDispatcher.DispatchMessage(mRequest);
-  finally
-    mRequest.Free;
-  end;
-  try
-    Assert.IsTrue(mResponse.GetValue('result') is TJSONObject, mResponse.ToJSON);
-    Result := mResponse.GetValue('result').Clone as TJSONObject;
-  finally
-    mResponse.Free;
-  end;
-end;
-
 function TCompletionTypeGuardsTests.GuardOf(const ABody: string; AStrict: Boolean;
   const AByRef: TTypeGuardArgumentFunc; out AGuard: TTypeGuard): Boolean;
 var
@@ -232,27 +183,18 @@ end;
 
 procedure TCompletionTypeGuardsTests.Setup;
 begin
-  FIndex := TSymbolIndex.Create;
-  FStore := TDocumentStore.Create;
   FSettings := TCompletionSettings.Default;
-  FId := 0;
-  FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FCompletion.Hooks.SettingsFor :=
+  FServer := TCompletionServer.Create(
     function(const AUri: string): TCompletionSettings
     begin
       Result := FSettings;
-    end;
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FCompletion.Attach(FDispatcher);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypen, 'C:\P\Typen.pas', nil));
+    end);
+  FServer.Index.AddUnit(TIndexExtractor.ExtractText(cUnitTypen, 'C:\P\Typen.pas', nil));
 end;
 
 procedure TCompletionTypeGuardsTests.TearDown;
 begin
-  FDispatcher.Free;
-  FCompletion.Free;
-  FStore := nil;
-  FIndex := nil;
+  FreeAndNil(FServer);
 end;
 
 procedure TCompletionTypeGuardsTests.ThenBranchNarrows;
@@ -477,7 +419,7 @@ var
   mAnswer: TJSONObject;
   mItem: TJSONObject;
 begin
-  mAnswer := Complete(HauptWith(
+  mAnswer := FServer.Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '    AWert.|'));
   try
@@ -501,7 +443,7 @@ var
   mAnswer: TJSONObject;
 begin
   FSettings.SenderCast := TCompletionSenderCast.HardCast;
-  mAnswer := Complete(HauptWith(
+  mAnswer := FServer.Complete(HauptWith(
     '  if not (AWert is TObjekt) then Exit;'#13#10 +
     '  AWert.Anz|'));
   try
@@ -516,7 +458,7 @@ var
   mAnswer: TJSONObject;
 begin
   FSettings.TypeGuards := False;
-  mAnswer := Complete(HauptWith(
+  mAnswer := FServer.Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '    AWert.|'));
   try
@@ -531,7 +473,7 @@ procedure TCompletionTypeGuardsTests.VarCallInBetweenOffersDeclaredMembersOnly;
 var
   mAnswer: TJSONObject;
 begin
-  mAnswer := Complete(HauptWith(
+  mAnswer := FServer.Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    Aendere(AWert);'#13#10 +
@@ -542,7 +484,7 @@ begin
   finally
     mAnswer.Free;
   end;
-  mAnswer := Complete(HauptWith(
+  mAnswer := FServer.Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    Lies(AWert);'#13#10 +
@@ -559,7 +501,7 @@ procedure TCompletionTypeGuardsTests.DescendantsAfterIsAreMarked;
 var
   mAnswer: TJSONObject;
 begin
-  mAnswer := Complete(HauptWith('  if AWert is T|'));
+  mAnswer := FServer.Complete(HauptWith('  if AWert is T|'));
   try
     Assert.AreEqual('TWert', DataOf(mAnswer, 'TObjekt', 'descendantOf'));
     Assert.AreEqual('TWert', DataOf(mAnswer, 'TListe', 'descendantOf'));

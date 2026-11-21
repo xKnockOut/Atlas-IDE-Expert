@@ -157,7 +157,8 @@ uses
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SmallStack,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Configuration.Parser;
+  Atlas.Common.Configuration.Parser,
+  Atlas.Tests.TextEdits;
 
 const
   // Ausschnitte aus RTL und VCL, wie sie der Index aus den Quellen liest.
@@ -698,25 +699,6 @@ begin
     AImplementation + 'end.';
 end;
 
-/// <summary>Wendet alle Edits einer Korrektur an (jedes Edit in einer Zeile, von hinten nach vorn).</summary>
-function ApplyEdits(const AText: string; const AFix: TRuleFix): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mLine: string;
-  mIndex: Integer;
-begin
-  mLines := AText.Split([#10]);
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    mLine := mLines[mEdit.Range.StartPos.Line];
-    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
-      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(#10, mLines);
-end;
-
 procedure TInheritanceRulesTests.OverrideTargetIssueExample;
 var
   mSource, mFixed: string;
@@ -732,7 +714,7 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Signatur von TDienst.Ausfuehren übernehmen', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyEdits(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Dienste('', '    procedure Ausfuehren(const Modus: TModus); override;',
     'procedure TImportDienst.Ausfuehren(const Modus: TModus);'#10'begin'#10'end;'#10), mFixed);
   TRuleAssert.Silent(TOverrideTargetMissingRule.Create, mFixed);
@@ -786,7 +768,7 @@ begin
   Assert.AreEqual('Kein Vorfahr von TListe hat ein virtuelles Destory; gemeint ist wohl Destroy (wie E2137).',
     mFindings[0].Message);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
-  mFixed := ApplyEdits(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(StringReplace(mSource, 'Destory', 'Destroy', [rfReplaceAll]), mFixed);
   TRuleAssert.Silent(TOverrideTargetMissingRule.Create, mFixed);
   // Tippfehler in einer Methode des Vorfahren der Datei.
@@ -1033,19 +1015,6 @@ begin
     'function TKreis.Flaeche: Double;'#10'begin'#10'  Result := inherited Flaeche;'#10'end;'#10'end.';
 end;
 
-/// <summary>Offset (ab 1) der Position APosition in AText mit #10 als Zeilenende.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine: Integer;
-begin
-  Result := 1;
-  for mLine := 1 to APosition.Line do
-  begin
-    Result := Pos(#10, AText, Result) + 1;
-  end;
-  Inc(Result, APosition.Character);
-end;
-
 procedure TInheritanceAbstractRulesTests.InheritedAbstractIssueExample;
 var
   mSource, mFixed: string;
@@ -1065,8 +1034,7 @@ begin
   Assert.AreEqual('Aufruf entfernen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)));
   mEdit := mFindings[0].Fixes[0].Edits[0];
-  mFixed := Copy(mSource, 1, OffsetOf(mSource, mEdit.Range.StartPos) - 1) + mEdit.NewText +
-    Copy(mSource, OffsetOf(mSource, mEdit.Range.EndPos), MaxInt);
+  mFixed := TTestEdits.Apply(mSource, mEdit);
   Assert.AreEqual(Kreise('  Inc(C);'#10), mFixed);
   TRuleAssert.Silent(TInheritedAbstractCallRule.Create, mFixed);
   // Ohne Klammern ebenso.
@@ -1148,34 +1116,6 @@ begin
     'function Neu(Klasse: TPluginKlasse): TPlugin;'#10'begin'#10 + ACall + 'end;'#10'end.';
 end;
 
-/// <summary>AText mit allen Änderungen von AFix, hinterste zuerst.</summary>
-function Applied(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mLater: Integer;
-  mEdits: TArray<TRuleEdit>;
-  mEdit: TRuleEdit;
-begin
-  mEdits := Copy(AFix.Edits);
-  for mIndex := 0 to High(mEdits) - 1 do
-  begin
-    for mLater := mIndex + 1 to High(mEdits) do
-    begin
-      if OffsetOf(AText, mEdits[mLater].Range.StartPos) > OffsetOf(AText, mEdits[mIndex].Range.StartPos) then
-      begin
-        mEdit := mEdits[mIndex];
-        mEdits[mIndex] := mEdits[mLater];
-        mEdits[mLater] := mEdit;
-      end;
-    end;
-  end;
-  Result := AText;
-  for mEdit in mEdits do
-  begin
-    Result := Copy(Result, 1, OffsetOf(Result, mEdit.Range.StartPos) - 1) + mEdit.NewText +
-      Copy(Result, OffsetOf(Result, mEdit.Range.EndPos), MaxInt);
-  end;
-end;
-
 procedure TInheritanceAbstractRulesTests.ClassRefConstructorIssueExample;
 var
   mSource, mFixed: string;
@@ -1194,7 +1134,7 @@ begin
   Assert.AreEqual(25, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('virtual an TPlugin.Create, override in den Nachfahren', mFindings[0].Fixes[0].Title);
-  mFixed := Applied(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Plugins(' virtual;', ' override;', '  Result := Klasse.Create;'#10), mFixed);
   TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, mFixed);
   // Mit Argumenten, über ein Feld und als Anweisung ebenso.
@@ -1321,7 +1261,7 @@ begin
   Assert.AreEqual('Methode entfernen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)));
   // Deklaration und Rumpf samt XMLDoc und Leerzeile verschwinden.
-  mFixed := Applied(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Kunden('', ''), mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TOverrideOnlyInheritedRule.Create, mFixed, mIndex, '',
     'Kunden.pas'))));
@@ -1337,7 +1277,7 @@ begin
   mFindings := TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TFoo.Lauf ruft nur inherited auf und kann entfallen.', mFindings[0].Message);
-  Assert.AreEqual(Erben('', ''), Applied(mSource, mFindings[0].Fixes[0]));
+  Assert.AreEqual(Erben('', ''), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
   TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
     Erben(cLaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited;'#10'end;'#10));
   TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
@@ -1451,7 +1391,7 @@ begin
   Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('inherited entfernen', mFindings[0].Fixes[0].Title);
-  mFixed := Applied(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Importe('', '', '  FZeilen.Clear;'#10), mFixed);
   TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, mFixed);
   // In einem Zweig: gemeldet, ohne Korrektur (sonst bliebe ein leeres then).

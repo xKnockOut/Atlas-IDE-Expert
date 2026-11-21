@@ -55,7 +55,8 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Documents.Providers.DocumentStore;
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cKundenFile = 'C:\P\Quelle\Kunden.pas';
@@ -275,16 +276,6 @@ begin
   Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 procedure TLspTestUnitsTests.DraftActionCreatesTestUnitWithDraft;
 var
   mActions: TArray<TJSONObject>;
@@ -304,7 +295,7 @@ begin
     Assert.IsTrue(Pos('  FSubject := TKunde.Create;', mText) > 0, mText);
     Assert.AreEqual('DUnitX-Testunit f' + #$FC + 'r TKunde anlegen', mActions[1].GetValue<string>('title'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -347,7 +338,7 @@ begin
     Assert.IsTrue(Pos('Kunden', mText) > 0, 'uses: ' + mText);
     Assert.AreEqual('Zur Testunit Kunden.Tests wechseln', mActions[1].GetValue<string>('title'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 

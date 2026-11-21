@@ -75,23 +75,13 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.TeamFile,
-  Atlas.Core.Product.Version;
-
-function Lines(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Core.Product.Version,
+  Atlas.Tests.SourceText;
 
 /// <summary>Wie .github/ISSUE_TEMPLATE/1-fehler.yml von Atlas, gekürzt, mit Kontrollkästchen.</summary>
 function BugForm: string;
 begin
-  Result := Lines(['name: Fehler', 'description: Atlas verhält sich falsch.', 'title: "Fehler: "',
+  Result := TTestSource.Lines(['name: Fehler', 'description: Atlas verhält sich falsch.', 'title: "Fehler: "',
     'labels: ["bug"]', 'assignees: anna, ben', 'projects: ["beispiel/4"]', 'type: Bug', 'body:',
     '  - type: markdown', '    attributes:', '      value: Bitte den Fehlerbericht anhängen.',
     '  - type: input', '    id: version', '    attributes:', '      label: Atlas-Version',
@@ -151,7 +141,7 @@ procedure TAtlasIssueFormsTests.ParsesMarkdownTemplateWithHead;
 var
   mForm: TAtlasIssueForm;
 begin
-  Assert.IsTrue(TAtlasIssueForms.Parse(TAtlasIssueFormFile.Create('wunsch.md', Lines(['---', 'name: Wunsch',
+  Assert.IsTrue(TAtlasIssueForms.Parse(TAtlasIssueFormFile.Create('wunsch.md', TTestSource.Lines(['---', 'name: Wunsch',
     'about: Neue Funktion', 'title: "[Wunsch] "', 'labels: enhancement', '---', '', '## Was fehlt?', '',
     'Text'])), mForm));
   Assert.IsTrue(mForm.IsMarkdown);
@@ -179,7 +169,7 @@ procedure TAtlasIssueFormsTests.UnknownFieldTypeIsUnsupported;
 var
   mForm: TAtlasIssueForm;
 begin
-  Assert.IsTrue(TAtlasIssueForms.Parse(TAtlasIssueFormFile.Create('c.yml', Lines(['name: C', 'body:',
+  Assert.IsTrue(TAtlasIssueForms.Parse(TAtlasIssueFormFile.Create('c.yml', TTestSource.Lines(['name: C', 'body:',
     '  - type: upload', '    id: datei', '  - type: input', '    id: x', '    attributes:', '      label: X'])),
     mForm));
   Assert.IsTrue(mForm.Unsupported);
@@ -367,7 +357,7 @@ var
   mForm: TAtlasIssueForm;
   mAnswers: TAtlasIssueFormAnswers;
 begin
-  TAtlasIssueForms.Parse(TAtlasIssueFormFile.Create('d.yml', Lines(['name: D', 'body:', '  - type: dropdown',
+  TAtlasIssueForms.Parse(TAtlasIssueFormFile.Create('d.yml', TTestSource.Lines(['name: D', 'body:', '  - type: dropdown',
     '    id: art', '    attributes:', '      label: Art', '      options: [a, b, c]', '      default: 2'])), mForm);
   mAnswers := TAtlasIssueForms.Prefill(mForm, nil, FFacts);
   Assert.AreEqual(2, mAnswers[0].Chosen[0]);

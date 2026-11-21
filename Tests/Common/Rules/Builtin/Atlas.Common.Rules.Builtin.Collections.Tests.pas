@@ -99,7 +99,8 @@ uses
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Builtin.Collections,
   Atlas.Tests.RuleAssert,
-  Atlas.Tests.RtlStubs;
+  Atlas.Tests.RtlStubs,
+  Atlas.Tests.Files;
 
 const
   cRuleOn = '{"rules": {"legacy-tlist": "info"}}';
@@ -796,28 +797,6 @@ begin
   AssertContains(mFound[0].Details, 'AtLeast');
 end;
 
-/// <summary>Ordner Tests\Referenzprojekt oberhalb der Testanwendung; '' ohne.</summary>
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
-end;
-
 procedure TLegacyStackQueueTests.ReferenceProjectMatchesMarkers;
 const
   cMarker = '// ERWARTET-INDEX: legacy-stack-queue';
@@ -833,7 +812,7 @@ var
 begin
   // Golden-Korpus mit Index (#152, #94): alle Units des Referenzprojekts samt RTL-Stubs; genau die markierten
   // Zeilen, jede weitere Meldung ist ein Fehlalarm.
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');

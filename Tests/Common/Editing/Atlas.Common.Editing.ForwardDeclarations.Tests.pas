@@ -60,10 +60,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ForwardDeclarations;
+  Atlas.Common.Editing.ForwardDeclarations,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 function Analyze(const AText: string): TArray<TForwardFinding>;
 var
@@ -74,65 +75,6 @@ begin
     Result := TForwardDeclarations.Analyze(mTree, AText);
   finally
     mTree.Free;
-  end;
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
-/// <summary>Wendet die Edits (nicht überlappend, Zeilen mit #10) von hinten nach vorn an.</summary>
-function Apply(const AText: string; const AEdits: TArray<TTextEdit>): string;
-var
-  mLines: TArray<string>;
-  mOffsets: TArray<Integer>;
-  mOrder: TArray<Integer>;
-  mIndex, mInner, mSwap, mStart, mStop: Integer;
-
-  function OffsetOf(const APos: TTextPosition): Integer;
-  begin
-    Result := mOffsets[APos.Line] + APos.Character;
-  end;
-
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  SetLength(mOrder, Length(AEdits));
-  for mIndex := 0 to High(mOrder) do
-  begin
-    mOrder[mIndex] := mIndex;
-  end;
-  for mIndex := 0 to High(mOrder) do
-  begin
-    for mInner := mIndex + 1 to High(mOrder) do
-    begin
-      if OffsetOf(AEdits[mOrder[mIndex]].Range.StartPos) < OffsetOf(AEdits[mOrder[mInner]].Range.StartPos) then
-      begin
-        mSwap := mOrder[mIndex];
-        mOrder[mIndex] := mOrder[mInner];
-        mOrder[mInner] := mSwap;
-      end;
-    end;
-  end;
-  Result := AText;
-  for mIndex in mOrder do
-  begin
-    mStart := OffsetOf(AEdits[mIndex].Range.StartPos);
-    mStop := OffsetOf(AEdits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart) + AEdits[mIndex].NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
@@ -149,8 +91,8 @@ begin
   mFindings := Analyze(AText);
   Assert.AreEqual(1, Integer(Length(mFindings)), AText);
   Assert.AreEqual(Ord(AFix), Ord(mFindings[0].Fix), mFindings[0].Reason);
-  Result := Apply(AText, mFindings[0].Edits);
-  Assert.IsTrue(Parses(Result), Result);
+  Result := TTestEdits.Apply(AText, mFindings[0].Edits);
+  Assert.IsTrue(TTestSource.Parses(Result), Result);
   Assert.AreEqual(0, Integer(Length(Analyze(Result))), Result);
 end;
 
@@ -298,13 +240,13 @@ begin
   Assert.AreEqual<TForwardIssue>(TForwardIssue.UnneededForward, mFindings[0].Issue);
   Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(UnitText('type'#10'  TTree = class'#10'  end;'#10'  TNode = class'#10'  end;'#10),
-    Apply(mSource, mFindings[0].Edits));
+    TTestEdits.Apply(mSource, mFindings[0].Edits));
   // In einer Zeile mit anderen Deklarationen: nur sie.
   mSource := 'program P;'#10'procedure X;'#10'type TL = class; TL = class end;'#10'begin'#10'end;'#10'begin'#10'end.';
   mFindings := Analyze(mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('program P;'#10'procedure X;'#10'type TL = class end;'#10'begin'#10'end;'#10'begin'#10'end.',
-    Apply(mSource, mFindings[0].Edits));
+    TTestEdits.Apply(mSource, mFindings[0].Edits));
 end;
 
 procedure TForwardDeclarationsTests.NeededForwardIsSilent;

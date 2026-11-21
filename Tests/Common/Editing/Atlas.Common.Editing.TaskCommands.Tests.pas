@@ -51,65 +51,12 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
-  Atlas.Tests.SlashHost;
-
-/// <summary>Führt den Befehl in Zeile ALine aus und wendet die Änderungen an; '' wenn er nicht passt.</summary>
-function Expand(const AText: string; ALine: Integer;
-  const AVersion: string): string; overload;
-var
-  mEdits: TArray<TRuleEdit>;
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0),
-    TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), mEdits) then
-  begin
-    Exit('');
-  end;
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  TArray.Sort<TRuleEdit>(mEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in mEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
-function Expand(const AText: string; ALine: Integer): string; overload;
-begin
-  Result := Expand(AText, ALine, '');
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
+  Atlas.Tests.SlashHost,
+  Atlas.Common.Editing.SlashCommands.TestSupport,
+  Atlas.Tests.SourceText;
 
 const
   cRoutine =
@@ -151,27 +98,27 @@ procedure TTaskCommandsTests.TaskWrapsStatements;
 var
   mText: string;
 begin
-  mText := Expand(Format(cRoutine, ['/task', '  Rechne;'#10'  Speichere;']), 8);
+  mText := TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/task', '  Rechne;'#10'  Speichere;']), 8);
   Assert.Contains(mText, '  TTask.Run('#10'    procedure'#10'    begin'#10'      Rechne;'#10'      Speichere;'#10 +
     '    end);'#10'end;');
   Assert.Contains(mText, 'System.Threading');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TTaskCommandsTests.TaskQueuesVclAtEnd;
 var
   mText: string;
 begin
-  mText := Expand(Format(cRoutine, ['/task', '  Rechne;'#10'  ShowMessage(''Fertig'');']), 8);
+  mText := TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/task', '  Rechne;'#10'  ShowMessage(''Fertig'');']), 8);
   Assert.Contains(mText, '      Rechne;'#10'      TThread.Queue(nil,'#10'        procedure'#10'        begin'#10 +
     '          ShowMessage(''Fertig'');'#10'        end);'#10'    end);');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TTaskCommandsTests.TaskOutsideRoutineFails;
 begin
-  Assert.AreEqual('', Expand('unit U;'#10'interface'#10'/task'#10'implementation'#10'end.', 2));
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/task', '']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty('unit U;'#10'interface'#10'/task'#10'implementation'#10'end.', 2));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/task', '']), 8));
 end;
 
 const
@@ -204,10 +151,10 @@ var
   mText: string;
 begin
   // Label1 ist ein Feld vom Typ TLabel: die Zuweisung an Caption gehört in den Hauptthread.
-  mText := Expand(cFormUnit, 15);
+  mText := TSlashTest.ExpandOrEmpty(cFormUnit, 15);
   Assert.Contains(mText, '        Summe := Berechne;'#10'        TThread.Queue(nil,'#10'          procedure'#10 +
     '          begin'#10'            Label1.Caption := ''Fertig'';'#10'          end);'#10'      end);');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TTaskCommandsTests.TaskNotesMovedLinesAndReadAfter;
@@ -235,39 +182,39 @@ procedure TTaskCommandsTests.ParallelConvertsLoop;
 var
   mText: string;
 begin
-  mText := Expand(Format(cRoutine, ['/parallel', '  for I := 0 to High(Liste) do'#10'    Verarbeite(Liste[I]);']), 8);
+  mText := TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  for I := 0 to High(Liste) do'#10'    Verarbeite(Liste[I]);']), 8);
   Assert.Contains(mText, '  TParallel.For(0, High(Liste),'#10'    procedure(I: Integer)'#10'    begin'#10 +
     '      Verarbeite(Liste[I]);'#10'    end);'#10'end;');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TTaskCommandsTests.ParallelRejectsOuterSum;
 begin
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10'    Summe := Summe + I;']), 8));
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10'    Inc(Summe);']), 8));
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10 +
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10'    Summe := Summe + I;']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10'    Inc(Summe);']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10 +
     '    ShowMessage(IntToStr(I));']), 8));
 end;
 
 procedure TTaskCommandsTests.ParallelRejectsBreakAndDownto;
 begin
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10'  begin'#10 +
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  for I := 0 to 9 do'#10'  begin'#10 +
     '    if Fertig(I) then'#10'      Break;'#10'  end;']), 8));
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/parallel', '  for I := 9 downto 0 do'#10'    Verarbeite(I);']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  for I := 9 downto 0 do'#10'    Verarbeite(I);']), 8));
 end;
 
 procedure TTaskCommandsTests.ParallelWithoutLoopFails;
 begin
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/parallel', '  Rechne;']), 8));
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/parallel', '  while Weiter do'#10'    Rechne;']), 8));
-  Assert.AreEqual('', Expand('unit U;'#10'interface'#10'/parallel'#10'implementation'#10'end.', 2));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  Rechne;']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/parallel', '  while Weiter do'#10'    Rechne;']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty('unit U;'#10'interface'#10'/parallel'#10'implementation'#10'end.', 2));
 end;
 
 procedure TTaskCommandsTests.FutureInline;
 var
   mText: string;
 begin
-  mText := Expand(Format(cRoutine, ['/future Wert: Integer', '  Text := Berechne;']), 8);
+  mText := TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/future Wert: Integer', '  Text := Berechne;']), 8);
   Assert.Contains(mText, '  var Wert := TTask.Future<Integer>(');
   Assert.Contains(mText, '    function: Integer');
 end;
@@ -276,7 +223,7 @@ procedure TTaskCommandsTests.FutureWithoutInlineDeclaresVar;
 var
   mText: string;
 begin
-  mText := Expand(Format(cRoutine, ['/future Wert: Integer', '  Text := Berechne;']), 8, '19.0');
+  mText := TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/future Wert: Integer', '  Text := Berechne;']), 8, '19.0');
   Assert.Contains(mText, '  Wert := TTask.Future<Integer>(');
   Assert.Contains(mText, 'Wert: IFuture<Integer>;');
   Assert.DoesNotContain(mText, 'var Wert');
@@ -297,7 +244,7 @@ begin
     TSlashEnvironment.Create(nil, nil, nil, '19.0', 'file:///U.pas', mKeep), mEdits));
   Assert.IsTrue(mHost.HasCursor);
   // Die leere Zeile hinter dem Future, an der Wert.Value gebraucht wird; mit var-Zeile davor (ohne Inline).
-  mLines := Expand(mText, 8, '19.0').Split([#10]);
+  mLines := TSlashTest.ExpandOrEmpty(mText, 8, '19.0').Split([#10]);
   Assert.AreEqual('    end);', mLines[mHost.Cursor.Line - 1]);
   Assert.AreEqual('  ', mLines[mHost.Cursor.Line]);
   Assert.AreEqual('end;', mLines[mHost.Cursor.Line + 1]);
@@ -306,23 +253,23 @@ end;
 
 procedure TTaskCommandsTests.FutureWrongPlaceFails;
 begin
-  Assert.AreEqual('', Expand('unit U;'#10'interface'#10'/future Wert: Integer'#10'implementation'#10'end.', 2));
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/future Wert: Integer', '']), 8));
-  Assert.AreEqual('', Expand(Format(cRoutine, ['/future Wert', '  Text := Berechne;']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty('unit U;'#10'interface'#10'/future Wert: Integer'#10'implementation'#10'end.', 2));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/future Wert: Integer', '']), 8));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cRoutine, ['/future Wert', '  Text := Berechne;']), 8));
 end;
 
 procedure TTaskCommandsTests.AtomicOnField;
 begin
-  Assert.Contains(Expand(Format(cFields, ['Inc(FAnzahl);']), 13), '  TInterlocked.Increment(FAnzahl);'#10'end;');
-  Assert.Contains(Expand(Format(cFields, ['Dec(FAnzahl, 2);']), 13), '  TInterlocked.Add(FAnzahl, -(2));');
-  Assert.Contains(Expand(Format(cFields, ['FAnzahl := FAnzahl + N;']), 13), '  TInterlocked.Add(FAnzahl, N);');
-  Assert.Contains(Expand(Format(cFields, ['Inc(FAnzahl);']), 13), 'System.SyncObjs');
+  Assert.Contains(TSlashTest.ExpandOrEmpty(Format(cFields, ['Inc(FAnzahl);']), 13), '  TInterlocked.Increment(FAnzahl);'#10'end;');
+  Assert.Contains(TSlashTest.ExpandOrEmpty(Format(cFields, ['Dec(FAnzahl, 2);']), 13), '  TInterlocked.Add(FAnzahl, -(2));');
+  Assert.Contains(TSlashTest.ExpandOrEmpty(Format(cFields, ['FAnzahl := FAnzahl + N;']), 13), '  TInterlocked.Add(FAnzahl, N);');
+  Assert.Contains(TSlashTest.ExpandOrEmpty(Format(cFields, ['Inc(FAnzahl);']), 13), 'System.SyncObjs');
 end;
 
 procedure TTaskCommandsTests.AtomicOnLocalFails;
 begin
-  Assert.AreEqual('', Expand(Format(cFields, ['Inc(Lokal);']), 13));
-  Assert.AreEqual('', Expand(Format(cFields, ['FAnzahl := 0;']), 13));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cFields, ['Inc(Lokal);']), 13));
+  Assert.AreEqual('', TSlashTest.ExpandOrEmpty(Format(cFields, ['FAnzahl := 0;']), 13));
 end;
 
 initialization

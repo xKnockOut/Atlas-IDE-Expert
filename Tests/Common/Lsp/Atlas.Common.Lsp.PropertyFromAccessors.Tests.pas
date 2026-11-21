@@ -50,7 +50,8 @@ uses
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.PropertyFromAccessors,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.Lsp.Edits.TestSupport;
 
 const
   cPanelsFile = 'C:\P\Panels.pas';
@@ -139,23 +140,6 @@ begin
   end;
 end;
 
-/// <summary>Wendet die Edits aus einem documentChanges-Eintrag auf AText an.</summary>
-function Apply(const AText: string; ADocument: TJSONObject): string;
-var
-  mItem: TJSONValue;
-  mEdits: TArray<TTextEdit>;
-  mRange: TJSONObject;
-begin
-  mEdits := nil;
-  for mItem in ADocument.GetValue('edits') as TJSONArray do
-  begin
-    mRange := TJSONObject(mItem).GetValue('range') as TJSONObject;
-    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
-      TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mItem).GetValue('newText').Value)];
-  end;
-  Result := TChangeSignature.ApplyEdits(AText, mEdits);
-end;
-
 /// <summary>Ergebnis je Datei als "Name|Text" hintereinander; AWarnings: Zahl der Hinweise.</summary>
 function Run(const AIndex: ISymbolIndex; const APosition: TTextPosition; AReplaceCalls: Boolean;
   const AOptions: TPropertyFromAccessorsOptions; out AWarnings: TArray<string>): TArray<string>;
@@ -190,7 +174,7 @@ begin
     begin
       mDocument := TJSONObject(mItem);
       mFileName := TDocumentUris.ToPath((mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value);
-      Result := Result + [ExtractFileName(mFileName) + '|' + Apply(TextOf(mFileName), mDocument)];
+      Result := Result + [ExtractFileName(mFileName) + '|' + ApplyDocument(TextOf(mFileName), mDocument)];
     end;
     AWarnings := TJsonRead.Strings(mAnswer, 'warnings');
     Assert.IsNotNull(((mAnswer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)

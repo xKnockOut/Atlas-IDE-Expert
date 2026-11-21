@@ -51,18 +51,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ResourceStrings;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Tests.SourceText;
 
 /// <summary>Position des "|" in AMarked; AText ohne "|".</summary>
 function Marked(const AMarked: string; out AText: string): TTextPosition;
@@ -128,8 +118,8 @@ end;
 
 function InUnit(const ACode: array of string): string;
 begin
-  Result := Join(['unit Haupt;', 'interface', 'implementation', 'procedure P;', 'var', '  S: string;',
-    '  C: Char;', 'begin']) + Join(ACode) + Join(['end;', 'end.']);
+  Result := TTestSource.Lines(['unit Haupt;', 'interface', 'implementation', 'procedure P;', 'var', '  S: string;',
+    '  C: Char;', 'begin']) + TTestSource.Lines(ACode) + TTestSource.Lines(['end;', 'end.']);
 end;
 
 /// <summary>AText mit der Einfügung von ADecl (AInterface, vor Zeile ABefore); '-' ohne.</summary>
@@ -217,22 +207,22 @@ begin
   Assert.IsTrue(AllowedAt(InUnit(['  ShowMessage(Format(''Kun|de %s'', [S]));'])));
   Assert.IsTrue(AllowedAt(InUnit(['  var T := ''Inl|ine'';'])));
   Assert.IsTrue(AllowedAt(InUnit(['  case Length(S) of', '    1: S := ''Ei|ns'';', '  end;'])));
-  Assert.IsTrue(AllowedAt(Join(['unit Haupt;', 'interface', 'implementation', 'var', '  S: string;',
+  Assert.IsTrue(AllowedAt(TTestSource.Lines(['unit Haupt;', 'interface', 'implementation', 'var', '  S: string;',
     'initialization', '  S := ''Sta|rt'';', 'end.'])));
 end;
 
 procedure TResourceStringsTests.RejectsConstantsAttributesAndParameters;
 begin
-  Assert.IsFalse(AllowedAt(Join(['unit Haupt;', 'interface', 'const', '  CName = ''Kon|stante'';',
+  Assert.IsFalse(AllowedAt(TTestSource.Lines(['unit Haupt;', 'interface', 'const', '  CName = ''Kon|stante'';',
     'implementation', 'end.'])));
   Assert.IsFalse(AllowedAt(InUnit(['  const K = ''Inl|ine'';'])));
-  Assert.IsFalse(AllowedAt(Join(['unit Haupt;', 'interface', 'type', '  [Description(''Attr|ibut'')]',
+  Assert.IsFalse(AllowedAt(TTestSource.Lines(['unit Haupt;', 'interface', 'type', '  [Description(''Attr|ibut'')]',
     '  TFoo = class', '  end;', 'implementation', 'end.'])));
-  Assert.IsFalse(AllowedAt(Join(['unit Haupt;', 'interface', 'procedure P(const S: string = ''Vor|gabe'');',
+  Assert.IsFalse(AllowedAt(TTestSource.Lines(['unit Haupt;', 'interface', 'procedure P(const S: string = ''Vor|gabe'');',
     'implementation', 'procedure P(const S: string);', 'begin', 'end;', 'end.'])));
-  Assert.IsFalse(AllowedAt(Join(['unit Haupt;', 'interface', 'var', '  G: string = ''Glo|bal'';',
+  Assert.IsFalse(AllowedAt(TTestSource.Lines(['unit Haupt;', 'interface', 'var', '  G: string = ''Glo|bal'';',
     'implementation', 'end.'])));
-  Assert.IsFalse(AllowedAt(Join(['unit Haupt;', 'interface', 'implementation', 'resourcestring',
+  Assert.IsFalse(AllowedAt(TTestSource.Lines(['unit Haupt;', 'interface', 'implementation', 'resourcestring',
     '  SA = ''Schon aus|gelagert'';', 'end.'])));
 end;
 

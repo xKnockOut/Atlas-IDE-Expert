@@ -95,17 +95,14 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Rules.Builtin.DeadCode;
+  Atlas.Common.Rules.Builtin.DeadCode,
+  Atlas.Common.Configuration.TestSupport,
+  Atlas.Tests.Files;
 
 const
   cAppFile = 'C:\P\App.dpr';
 
 type
-  TTestFile = record
-    Name: string;
-    Text: string;
-  end;
-
   TScenario = record
     Files: TArray<TTestFile>;
     Projects: TArray<TRuleProject>;
@@ -123,35 +120,13 @@ type
 { TScenario }
 
 procedure TScenario.Put(const AName, AText: string);
-var
-  mIndex: Integer;
-  mEntry: TTestFile;
 begin
-  for mIndex := 0 to High(Files) do
-  begin
-    if SameText(Files[mIndex].Name, AName) then
-    begin
-      Files[mIndex].Text := AText;
-      Exit;
-    end;
-  end;
-  mEntry.Name := AName;
-  mEntry.Text := AText;
-  Files := Files + [mEntry];
+  TTestFiles.Put(Files, AName, AText);
 end;
 
 function TScenario.Text(const AName: string): string;
-var
-  mEntry: TTestFile;
 begin
-  Result := '';
-  for mEntry in Files do
-  begin
-    if SameText(mEntry.Name, AName) then
-    begin
-      Result := mEntry.Text;
-    end;
-  end;
+  Result := TTestFiles.Text(Files, AName);
 end;
 
 function FileOf(const AUnit: string): string;
@@ -212,21 +187,6 @@ var
   // Dauer der letzten Prüfung in Run ohne Aufbau von Index und Graph (Zeitmessung #896).
   LastCheckMs: Int64;
 
-/// <summary>Vorgaben oder die atlas.json des Szenarios.</summary>
-function ScenarioSettings(const AConfig: string): TServerSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  if AConfig = '' then
-  begin
-    Result := TServerSettings.Default;
-  end
-  else
-  begin
-    Result := TConfigurationParser.Parse(AConfig, mIssues);
-  end;
-end;
-
 /// <summary>Index über die Units des Szenarios; ATexts nimmt alle Dateien nach Namen auf.</summary>
 function IndexScenario(const AScenario: TScenario; const ATexts: TDictionary<string, string>): ISymbolIndex;
 var
@@ -278,7 +238,7 @@ begin
   mTexts := TDictionary<string, string>.Create;
   try
     mIndex := IndexScenario(AScenario, mTexts);
-    mSettings := ScenarioSettings(AScenario.Config);
+    mSettings := SettingsOf(AScenario.Config);
     mTree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
       mContext := Default(TRuleContext);
@@ -848,27 +808,6 @@ begin
   mIssues := nil;
 end;
 
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
-end;
-
 function ReadSource(const AFileName: string): string;
 var
   mFormat: TFileFormat;
@@ -957,7 +896,7 @@ var
   mData: TScenario;
   mSources: TArray<string>;
 begin
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');

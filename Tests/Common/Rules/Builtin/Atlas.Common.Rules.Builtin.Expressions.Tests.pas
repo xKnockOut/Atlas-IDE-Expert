@@ -82,7 +82,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
@@ -91,7 +90,8 @@ uses
   Atlas.Common.Rules.Builtin.Expressions.DuplicateConditions,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 const
   cHeader =
@@ -288,29 +288,15 @@ end;
 /// <summary>Wendet alle Änderungen der Korrektur an, von hinten nach vorn (Zeilen mit #10).</summary>
 function ApplyFixes(const AText: string; const AFindings: TArray<TRuleFinding>): string;
 var
+  mEdits: TArray<TRuleEdit>;
   mIndex: Integer;
-  mEdit: TRuleEdit;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mPosition: Integer;
-  begin
-    mPosition := 0;
-    for mLine := 1 to APosition.Line do
-    begin
-      mPosition := Pos(#10, AText, mPosition + 1);
-    end;
-    Result := mPosition + APosition.Character;
-  end;
-
 begin
-  Result := AText;
-  for mIndex := High(AFindings) downto 0 do
+  SetLength(mEdits, Length(AFindings));
+  for mIndex := 0 to High(AFindings) do
   begin
-    mEdit := AFindings[mIndex].Fixes[0].Edits[0];
-    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
-      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
+    mEdits[mIndex] := AFindings[mIndex].Fixes[0].Edits[0];
   end;
+  Result := TTestEdits.Apply(AText, mEdits);
 end;
 
 procedure TExpressionRulesTests.StringIndexBaseIssueExample;

@@ -19,8 +19,6 @@ type
     FResolver: TNameResolver;
     function ItemsAt(const AText, AMarker: string): TCompletionItems; overload;
     function ItemsAt(const AText, AMarker: string; AUsesDetails: Boolean): TCompletionItems; overload;
-    function Names(const AItems: TCompletionItems): string;
-    function Find(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Boolean;
     procedure AddUnit(const AText, AFileName: string; ALibrary: Boolean);
   public
     [Setup]
@@ -58,7 +56,6 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -66,7 +63,9 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.CompletionJson,
-  Atlas.Common.Lsp.CompletionUses;
+  Atlas.Common.Lsp.CompletionUses,
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -79,30 +78,6 @@ const
     'implementation'#10 +
     'uses System.Generics.Defaults;'#10 +
     'end.';
-
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  // Cursor hinter AMarker.
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  Inc(mIndex, Length(AMarker));
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
 
 { TCompletionUsesTests }
 
@@ -118,7 +93,7 @@ var
   mSettings: TCompletionSettings;
 begin
   mTree := TPascalParser.Parse(AText);
-  mRequest := TCompletionRequest.Create(AText, cHauptFile, PositionOf(AText, AMarker));
+  mRequest := TCompletionRequest.Create(AText, cHauptFile, TTestSource.PositionAfter(AText, AMarker));
   try
     mRequest.Tree := mTree;
     mRequest.Resolver := FResolver;
@@ -131,35 +106,6 @@ begin
     mRequest.Free;
     mTree.Free;
   end;
-end;
-
-function TCompletionUsesTests.Names(const AItems: TCompletionItems): string;
-var
-  mItem: TCompletionItem;
-begin
-  Result := '';
-  for mItem in AItems.Items do
-  begin
-    Result := Result + mItem.Name + ' ';
-  end;
-  Result := Result.Trim;
-end;
-
-function TCompletionUsesTests.Find(const AItems: TCompletionItems; const AName: string;
-  out AItem: TCompletionItem): Boolean;
-var
-  mItem: TCompletionItem;
-begin
-  for mItem in AItems.Items do
-  begin
-    if mItem.Name = AName then
-    begin
-      AItem := mItem;
-      Exit(True);
-    end;
-  end;
-  AItem := Default(TCompletionItem);
-  Result := False;
 end;
 
 procedure TCompletionUsesTests.AddUnit(const AText, AFileName: string; ALibrary: Boolean);
@@ -208,7 +154,7 @@ begin
   // Abnahme: Projekt vor RTL vor Drittanbietern; System.SysUtils steht schon in der Liste.
   mItems := ItemsAt(cUnitHaupt, 'Gener');
   Assert.AreEqual('uGeneratorBeleg System.Generics.Defaults System.Generics.Collections Spring.Collections.Generic',
-    Names(mItems));
+    ItemNames(mItems));
   Assert.AreEqual('project', mItems.Items[0].UsesGroup);
   Assert.AreEqual('rtl', mItems.Items[1].UsesGroup);
   Assert.AreEqual('library', mItems.Items[3].UsesGroup);
@@ -227,7 +173,7 @@ begin
   mItems := ItemsAt(StringReplace(cUnitHaupt, 'Gener', 'Sys', []), ', Sys');
   Assert.AreEqual(1, Integer(Length(mItems.Items[0].UsesHidden)));
   Assert.AreEqual('System.SysUtils', mItems.Items[0].UsesHidden[0]);
-  Assert.IsFalse((' ' + Names(mItems) + ' ').Contains(' System.SysUtils '));
+  Assert.IsFalse((' ' + ItemNames(mItems) + ' ').Contains(' System.SysUtils '));
 end;
 
 procedure TCompletionUsesTests.ShortFormBecomesFullName;
@@ -238,7 +184,7 @@ var
 begin
   mText := StringReplace(cUnitHaupt, 'Gener', 'Classes', []);
   mItems := ItemsAt(mText, 'Classes');
-  Assert.IsTrue(Find(mItems, 'System.Classes', mItem));
+  Assert.IsTrue(FindItem(mItems, 'System.Classes', mItem));
   Assert.IsTrue(mItem.HasTextEdit);
   Assert.AreEqual('System.Classes', mItem.TextEdit.NewText);
   Assert.AreEqual(2, mItem.TextEdit.Range.StartPos.Line);
@@ -248,7 +194,7 @@ begin
   // Mit Namespace getippt: ersetzt wird ab "System.".
   mText := StringReplace(cUnitHaupt, 'Gener', 'System.Cla', []);
   mItems := ItemsAt(mText, 'System.Cla');
-  Assert.IsTrue(Find(mItems, 'System.Classes', mItem));
+  Assert.IsTrue(FindItem(mItems, 'System.Classes', mItem));
   Assert.AreEqual(Length('uses System.SysUtils, '), mItem.TextEdit.Range.StartPos.Character);
   Assert.AreEqual('Classes', mItem.UsesFilter);
 end;
@@ -259,9 +205,9 @@ var
   mItem: TCompletionItem;
 begin
   mItems := ItemsAt(cUnitHaupt, 'Gener');
-  Assert.IsTrue(Find(mItems, 'System.Generics.Defaults', mItem));
+  Assert.IsTrue(FindItem(mItems, 'System.Generics.Defaults', mItem));
   Assert.AreEqual('implementation', mItem.UsesElsewhere);
-  Assert.IsTrue(Find(mItems, 'System.Generics.Collections', mItem));
+  Assert.IsTrue(FindItem(mItems, 'System.Generics.Collections', mItem));
   Assert.AreEqual('', mItem.UsesElsewhere);
 end;
 
@@ -273,14 +219,14 @@ var
 begin
   mText := StringReplace(cUnitHaupt, 'Gener', 'u', []);
   mItems := ItemsAt(mText, ', u');
-  Assert.IsTrue(Find(mItems, 'uGeneratorBeleg', mItem));
+  Assert.IsTrue(FindItem(mItems, 'uGeneratorBeleg', mItem));
   Assert.AreEqual('uGeneratorBeleg → Haupt', mItem.UsesCycle);
-  Assert.IsTrue(Find(mItems, 'uMitte', mItem));
+  Assert.IsTrue(FindItem(mItems, 'uMitte', mItem));
   Assert.AreEqual('uMitte → uZwei → Haupt', mItem.UsesCycle);
   // Im implementation-Teil ist ein Zirkelbezug erlaubt.
   mText := StringReplace(cUnitHaupt, 'uses System.Generics.Defaults;', 'uses System.Generics.Defaults, uG', []);
   mItems := ItemsAt(mText, ', uG');
-  Assert.IsTrue(Find(mItems, 'uGeneratorBeleg', mItem));
+  Assert.IsTrue(FindItem(mItems, 'uGeneratorBeleg', mItem));
   Assert.AreEqual('', mItem.UsesCycle);
   Assert.AreEqual('', mItem.UsesElsewhere);
 end;
@@ -291,12 +237,12 @@ var
   mItem: TCompletionItem;
 begin
   mItems := ItemsAt(cUnitHaupt, 'Gener');
-  Assert.IsTrue(Find(mItems, 'System.Generics.Collections', mItem));
+  Assert.IsTrue(FindItem(mItems, 'System.Generics.Collections', mItem));
   Assert.AreEqual('$(BDS)\source\rtl\common\System.Generics.Collections.pas', mItem.Detail);
   Assert.AreEqual('TList<T> TObjectList<T> TDictionary<K,V> TQueue<T> TStack<T> TPair<K,V>',
     string.Join(' ', mItem.UsesTypes));
   Assert.AreEqual(7, mItem.UsesTypeCount);
-  Assert.IsTrue(Find(mItems, 'Spring.Collections.Generic', mItem));
+  Assert.IsTrue(FindItem(mItems, 'Spring.Collections.Generic', mItem));
   Assert.AreEqual('C:\Libs\Spring\Source\Spring.Collections.Generic.pas', mItem.Detail);
 end;
 
@@ -306,7 +252,7 @@ var
 begin
   // Aus: schlichte Liste wie vor #469, auch mit der schon eingebundenen Unit und ohne Gruppen.
   mItems := ItemsAt(StringReplace(cUnitHaupt, 'Gener', 'System.Sys', []), 'System.Sys', False);
-  Assert.AreEqual('System.SysUtils', Names(mItems));
+  Assert.AreEqual('System.SysUtils', ItemNames(mItems));
   Assert.AreEqual('', mItems.Items[0].UsesGroup);
 end;
 
@@ -376,11 +322,11 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    mSite := TCompletionUses.SiteAt(mTree.Tokens, PositionOf(cUnitHaupt, 'Gener'));
+    mSite := TCompletionUses.SiteAt(mTree.Tokens, TTestSource.PositionAfter(cUnitHaupt, 'Gener'));
     Assert.AreEqual<TUsesSection>(TUsesSection.Interface_, mSite.Section);
     Assert.AreEqual('System.SysUtils', string.Join(',', mSite.Here));
     Assert.AreEqual('System.Generics.Defaults', string.Join(',', mSite.Other));
-    mSite := TCompletionUses.SiteAt(mTree.Tokens, PositionOf(cUnitHaupt, 'uses System.Gen'));
+    mSite := TCompletionUses.SiteAt(mTree.Tokens, TTestSource.PositionAfter(cUnitHaupt, 'uses System.Gen'));
     Assert.AreEqual<TUsesSection>(TUsesSection.Implementation_, mSite.Section);
     Assert.AreEqual('', string.Join(',', mSite.Here));
     Assert.AreEqual('System.SysUtils,Gener', string.Join(',', mSite.Other));

@@ -41,7 +41,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Dfm.EventHandlers.TestSupport;
 
 const
   cUnitText =
@@ -119,18 +120,8 @@ end;
 { TEventHandlersTests }
 
 function TEventHandlersTests.Find(const AComponent, AEvent: string): TEventHandler;
-var
-  mItem: TEventHandler;
 begin
-  for mItem in FHandlers do
-  begin
-    if SameText(mItem.Component, AComponent) and SameText(mItem.Event, AEvent) then
-    begin
-      Exit(mItem);
-    end;
-  end;
-  Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
-  Result := Default(TEventHandler);
+  Result := FindHandler(FHandlers, AComponent, AEvent);
 end;
 
 procedure TEventHandlersTests.TearDown;

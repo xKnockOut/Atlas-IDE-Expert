@@ -73,7 +73,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.FreeFields;
+  Atlas.Common.Editing.FreeFields,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 function Analyze(const AText: string): TArray<TOwnedField>;
 var
@@ -84,65 +86,6 @@ begin
     Result := TFreeFields.Analyze(mTree, AText, nil);
   finally
     mTree.Free;
-  end;
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
-/// <summary>Wendet die Edits (nicht überlappend, Zeilen mit #10) von hinten nach vorn an.</summary>
-function Apply(const AText: string; const AEdits: TArray<TTextEdit>): string;
-var
-  mLines: TArray<string>;
-  mOffsets: TArray<Integer>;
-  mOrder: TArray<Integer>;
-  mIndex, mInner, mSwap, mStart, mStop: Integer;
-
-  function OffsetOf(const APos: TTextPosition): Integer;
-  begin
-    Result := mOffsets[APos.Line] + APos.Character;
-  end;
-
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  SetLength(mOrder, Length(AEdits));
-  for mIndex := 0 to High(mOrder) do
-  begin
-    mOrder[mIndex] := mIndex;
-  end;
-  for mIndex := 0 to High(mOrder) do
-  begin
-    for mInner := mIndex + 1 to High(mOrder) do
-    begin
-      if OffsetOf(AEdits[mOrder[mIndex]].Range.StartPos) < OffsetOf(AEdits[mOrder[mInner]].Range.StartPos) then
-      begin
-        mSwap := mOrder[mIndex];
-        mOrder[mIndex] := mOrder[mInner];
-        mOrder[mInner] := mSwap;
-      end;
-    end;
-  end;
-  Result := AText;
-  for mIndex in mOrder do
-  begin
-    mStart := OffsetOf(AEdits[mIndex].Range.StartPos);
-    mStop := OffsetOf(AEdits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart) + AEdits[mIndex].NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
@@ -169,8 +112,8 @@ begin
   finally
     mTree.Free;
   end;
-  Result := Apply(AText, mEdits);
-  Assert.IsTrue(Parses(Result), Result);
+  Result := TTestEdits.Apply(AText, mEdits);
+  Assert.IsTrue(TTestSource.Parses(Result), Result);
   Assert.AreEqual(0, Integer(Length(Analyze(Result))), Result);
 end;
 
@@ -756,7 +699,7 @@ begin
     Assert.AreEqual(2, Integer(Length(mActions)));
     Assert.AreEqual('Im Destruktor freigeben', mActions[0].Title);
     Assert.AreEqual('Alle eigenen Objekte freigeben (2)', mActions[1].Title);
-    Assert.IsTrue(Parses(Apply(cOrderList, mActions[0].Edits)));
+    Assert.IsTrue(TTestSource.Parses(TTestEdits.Apply(cOrderList, mActions[0].Edits)));
     // Ohne Feldaktion (die Regel liefert sie) bleibt die für die Klasse.
     mActions := TFreeFields.Actions(mTree, cOrderList, nil, 5, TFreeFieldsStyle.Free, False);
     Assert.AreEqual(1, Integer(Length(mActions)));
@@ -1032,8 +975,8 @@ begin
     Assert.AreEqual('unit U;'#10'interface'#10'type'#10'  TDienst<T> = class'#10'    class var FA: TListe;'#10 +
       '    class constructor Create;'#10'    class destructor Destroy;'#10'  end;'#10'implementation'#10 +
       'class constructor TDienst<T>.Create;'#10'begin'#10'  FA := TListe.Create;'#10'end;'#10#10 +
-      'class destructor TDienst<T>.Destroy;'#10'begin'#10'  FreeAndNil(FA);'#10'end;'#10'end.', Apply(cSource, mEdits));
-    Assert.IsTrue(Parses(Apply(cSource, mEdits)));
+      'class destructor TDienst<T>.Destroy;'#10'begin'#10'  FreeAndNil(FA);'#10'end;'#10'end.', TTestEdits.Apply(cSource, mEdits));
+    Assert.IsTrue(TTestSource.Parses(TTestEdits.Apply(cSource, mEdits)));
   finally
     mTree.Free;
   end;
@@ -1043,7 +986,7 @@ begin
     Assert.IsTrue(TFreeFields.ClassDestructorEdits(mTree, cFilled, mDecl, ['FreeAndNil(FA);'], mEdits));
     Assert.AreEqual(1, Integer(Length(mEdits)));
     Assert.AreEqual(StringReplace(cFilled, '  Protokolliere;'#10, '  Protokolliere;'#10'  FreeAndNil(FA);'#10, []),
-      Apply(cFilled, mEdits));
+      TTestEdits.Apply(cFilled, mEdits));
   finally
     mTree.Free;
   end;

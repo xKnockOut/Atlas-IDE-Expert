@@ -12,7 +12,6 @@ type
   TLspRoutineParametersTests = class
   private
     FTree: TSyntaxTree;
-    function LineOf(const AMarker: string): Integer;
     function Describe(const AMarker: string): string;
   public
     [Setup]
@@ -38,7 +37,8 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -65,19 +65,6 @@ const
 
 { TLspRoutineParametersTests }
 
-function TLspRoutineParametersTests.LineOf(const AMarker: string): Integer;
-var
-  mLines: TArray<string>;
-begin
-  mLines := cSource.Split([#10]);
-  Result := 0;
-  while (Result <= High(mLines)) and (Pos(AMarker, mLines[Result]) = 0) do
-  begin
-    Inc(Result);
-  end;
-  Assert.IsTrue(Result <= High(mLines), AMarker + ' nicht gefunden');
-end;
-
 function TLspRoutineParametersTests.Describe(const AMarker: string): string;
 var
   mParameters: TLspRoutineParameters;
@@ -87,7 +74,7 @@ var
 begin
   mParameters := TLspRoutineParameters.Create(FTree, cSource);
   try
-    if not mParameters.Answer(LineOf(AMarker), mRoutine, mList) then
+    if not mParameters.Answer(TTestSource.LineOf(cSource, AMarker), mRoutine, mList) then
     begin
       Exit('-');
     end;
@@ -144,14 +131,14 @@ var
 begin
   mParameters := TLspRoutineParameters.Create(FTree, cSource);
   try
-    mJson := mParameters.Execute(LineOf('// Innen'));
+    mJson := mParameters.Execute(TTestSource.LineOf(cSource, '// Innen'));
     try
       Assert.AreEqual('{"format":1,"routine":"Innen","parameters":[{"name":"X","type":"Double","modifier":""}]}',
         mJson.ToJSON);
     finally
       mJson.Free;
     end;
-    mJson := mParameters.Execute(LineOf('interface'));
+    mJson := mParameters.Execute(TTestSource.LineOf(cSource, 'interface'));
     try
       Assert.AreEqual('{"format":1,"routine":"","parameters":[]}', mJson.ToJSON);
     finally

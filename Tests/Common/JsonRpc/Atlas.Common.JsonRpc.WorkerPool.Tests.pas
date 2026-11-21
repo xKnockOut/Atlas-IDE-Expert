@@ -43,7 +43,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Common.JsonRpc.WorkerPool;
+  Atlas.Common.JsonRpc.WorkerPool,
+  Atlas.Tests.Wait;
 
 type
   /// <summary>Sperre für wartende Aufträge und Zähler der fertigen.</summary>
@@ -177,22 +178,6 @@ begin
     end;
 end;
 
-function WaitUntil(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
-var
-  mDue: UInt64;
-begin
-  mDue := TThread.GetTickCount64 + ATimeoutMs;
-  while not ACondition() do
-  begin
-    if TThread.GetTickCount64 > mDue then
-    begin
-      Exit(False);
-    end;
-    TThread.Sleep(5);
-  end;
-  Result := True;
-end;
-
 { TJsonRpcWorkerPoolTests }
 
 procedure TJsonRpcWorkerPoolTests.ShortWorkDoesNotWaitBehindBlockedWork;
@@ -210,7 +195,7 @@ begin
     Assert.IsTrue(mPool.Run(GateWork(mBlocked)));
   end;
   Assert.IsTrue(mPool.Run(QuickWork(mQuick)));
-  Assert.IsTrue(WaitUntil(DoneReached(mQuick, 1), 2000), 'Kurzer Auftrag wartete hinter den blockierten');
+  Assert.IsTrue(TTestWait.Reached(DoneReached(mQuick, 1), 2000), 'Kurzer Auftrag wartete hinter den blockierten');
   Assert.AreEqual(0, mBlocked.Done);
   mBlocked.Open;
   Assert.IsTrue(mPool.Close(5000));
@@ -228,13 +213,13 @@ begin
   mPool.Run(GateWork(mFirst));
   mPool.Run(GateWork(mFirst));
   mPool.Run(GateWork(mSecond));
-  Assert.IsTrue(WaitUntil(StartedReached(mFirst, 2), 2000));
+  Assert.IsTrue(TTestWait.Reached(StartedReached(mFirst, 2), 2000));
   TThread.Sleep(50);
   Assert.AreEqual(0, mSecond.Started, 'Dritter Auftrag lief trotz voller Threads');
   Assert.AreEqual(2, mPool.ThreadCount);
   mSecond.Open;
   mFirst.Open;
-  Assert.IsTrue(WaitUntil(DoneReached(mSecond, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(DoneReached(mSecond, 1), 2000));
   Assert.IsTrue(mPool.Close(5000));
 end;
 
@@ -249,7 +234,7 @@ begin
   for mIndex := 1 to 5 do
   begin
     mPool.Run(QuickWork(mGate));
-    Assert.IsTrue(WaitUntil(DoneReached(mGate, mIndex), 2000));
+    Assert.IsTrue(TTestWait.Reached(DoneReached(mGate, mIndex), 2000));
     // Erst wartet der Thread wieder, dann kommt der nächste Auftrag.
     TThread.Sleep(20);
   end;
@@ -265,8 +250,8 @@ begin
   mPool := TJsonRpcWorkerPool.Create(64, 30);
   mGate := TTestGate.Create;
   mPool.Run(QuickWork(mGate));
-  Assert.IsTrue(WaitUntil(DoneReached(mGate, 1), 2000));
-  Assert.IsTrue(WaitUntil(NoThreads(mPool), 2000), 'Thread endete nicht nach IdleMs');
+  Assert.IsTrue(TTestWait.Reached(DoneReached(mGate, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(NoThreads(mPool), 2000), 'Thread endete nicht nach IdleMs');
   Assert.IsTrue(mPool.Close(5000));
   // Der beendete Thread gibt sich selbst frei.
   TThread.Sleep(50);
@@ -282,7 +267,7 @@ begin
   mLate := TTestGate.Create;
   mPool.Run(GateWork(mGate));
   mPool.Run(GateWork(mGate));
-  Assert.IsTrue(WaitUntil(StartedReached(mGate, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(StartedReached(mGate, 1), 2000));
   mGate.Open;
   Assert.IsTrue(mPool.Close(5000));
   Assert.AreEqual(2, mGate.Done);
@@ -299,10 +284,10 @@ begin
   mPool := TJsonRpcWorkerPool.Create(4, 30000);
   mGate := TTestGate.Create;
   mPool.Run(GateWork(mGate));
-  Assert.IsTrue(WaitUntil(StartedReached(mGate, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(StartedReached(mGate, 1), 2000));
   Assert.IsFalse(mPool.Close(30));
   mGate.Open;
-  Assert.IsTrue(WaitUntil(DoneReached(mGate, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(DoneReached(mGate, 1), 2000));
   mPool := nil;
   // Der Thread hält den Pool bis zu seinem Ende und gibt sich dann selbst frei.
   TThread.Sleep(100);
@@ -319,8 +304,8 @@ begin
   // Ein Thread ist schon fertig, wenn Close aufgibt; den gibt Close frei, den anderen nicht.
   mPool.Run(GateWork(mGate));
   mPool.Run(QuickWork(mQuick));
-  Assert.IsTrue(WaitUntil(StartedReached(mGate, 1), 2000));
-  Assert.IsTrue(WaitUntil(DoneReached(mQuick, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(StartedReached(mGate, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(DoneReached(mQuick, 1), 2000));
   Assert.IsFalse(mPool.Close(30));
   Assert.AreEqual(1, mPool.ThreadCount);
   mGate.Open;
@@ -341,7 +326,7 @@ begin
   mGate := TTestGate.Create;
   mPool.Run(FailingWork());
   mPool.Run(QuickWork(mGate));
-  Assert.IsTrue(WaitUntil(DoneReached(mGate, 1), 2000));
+  Assert.IsTrue(TTestWait.Reached(DoneReached(mGate, 1), 2000));
   Assert.AreEqual(1, mPool.ThreadCount);
   Assert.IsTrue(mPool.Close(5000));
 end;

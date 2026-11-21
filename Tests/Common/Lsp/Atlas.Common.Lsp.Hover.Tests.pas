@@ -88,7 +88,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Rationale.Contract,
-  Atlas.Common.Lsp.DocWiki;
+  Atlas.Common.Lsp.DocWiki,
+  Atlas.Tests.SourceText;
 
 const
   // Formulardatei für die Feldnamen (#461).
@@ -177,33 +178,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
-var
-  mIndex, mFound, mLine, mLineStart: Integer;
-begin
-  mFound := 0;
-  mIndex := 0;
-  repeat
-    mIndex := Pos(AMarker, AText, mIndex + 1);
-    if mIndex = 0 then
-    begin
-      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-    end;
-    Inc(mFound);
-  until mFound = AOccurrence;
-  mLine := 0;
-  mLineStart := 1;
-  for mFound := 1 to mIndex - 1 do
-  begin
-    if AText[mFound] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mFound + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TLspHoverTests }
 
 function TLspHoverTests.InfoAt(const AMarker: string): THoverInfo;
@@ -222,7 +196,7 @@ begin
       begin
         Result := SameText(AFileName, cWerkzeugFile);
         AText := cUnitWerkzeug;
-      end), mTree, cUnitHaupt, 'C:\P\Haupt.pas', PositionOf(cUnitHaupt, AMarker, AOccurrence));
+      end), mTree, cUnitHaupt, 'C:\P\Haupt.pas', TTestSource.PositionOf(cUnitHaupt, AMarker, AOccurrence));
   finally
     mTree.Free;
   end;
@@ -312,7 +286,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mInfo.DocTargets)));
   Assert.AreEqual('TDBGridFilter', mInfo.DocTargets[0].Name);
   Assert.AreEqual(cWerkzeugFile, mInfo.DocTargets[0].FileName);
-  Assert.AreEqual(PositionOf(cUnitWerkzeug, 'TDBGridFilter = class', 1).Line, mInfo.DocTargets[0].Line);
+  Assert.AreEqual(TTestSource.PositionOf(cUnitWerkzeug, 'TDBGridFilter = class', 1).Line, mInfo.DocTargets[0].Line);
   // Klartext (GetHintText) mit dem Namen.
   Assert.IsTrue(Pos('besitzenden TDBGridFilter.', mInfo.ToPlainText) > 0, mInfo.ToPlainText);
   mJson := TLspHover.AtlasJson(mInfo);
@@ -325,7 +299,7 @@ begin
     Assert.AreEqual('ref', mRun.GetValue<string>('kind'));
     Assert.AreEqual('TDBGridFilter', mRun.GetValue<string>('text'));
     Assert.AreEqual(cWerkzeugFile, mRun.GetValue<string>('file'));
-    Assert.AreEqual(PositionOf(cUnitWerkzeug, 'TDBGridFilter = class', 1).Line, mRun.GetValue<Integer>('line'));
+    Assert.AreEqual(TTestSource.PositionOf(cUnitWerkzeug, 'TDBGridFilter = class', 1).Line, mRun.GetValue<Integer>('line'));
     mSection := mJson.GetValue<TJSONArray>('documentation.sections').Items[1] as TJSONObject;
     Assert.AreEqual('param', mSection.GetValue<string>('kind'));
     Assert.AreEqual('AOwner', mSection.GetValue<string>('name'));
@@ -350,7 +324,7 @@ begin
   try
     mSection := mJson.GetValue<TJSONArray>('documentation.sections').Items[2] as TJSONObject;
     Assert.AreEqual('exception', mSection.GetValue<string>('kind'));
-    Assert.AreEqual(PositionOf(cUnitWerkzeug, 'EZeichnen = class', 1).Line, mSection.GetValue<Integer>('ref.line'));
+    Assert.AreEqual(TTestSource.PositionOf(cUnitWerkzeug, 'EZeichnen = class', 1).Line, mSection.GetValue<Integer>('ref.line'));
   finally
     mJson.Free;
   end;
@@ -483,11 +457,11 @@ begin
       begin
         Result := SameText(AFileName, cLibFile);
         AText := mLibText;
-      end), mTree, mMainText, 'C:\P\Haupt.pas', PositionOf(mMainText, 'Summe', 1), '23.0');
+      end), mTree, mMainText, 'C:\P\Haupt.pas', TTestSource.PositionOf(mMainText, 'Summe', 1), '23.0');
     Assert.AreEqual(TDocWiki.cBaseUri + 'Athens/en/Vcl.Werkzeug.TRechner.Summe', mInfo.DocWikiUrl);
     Assert.IsTrue(Pos('[DocWiki](' + mInfo.DocWikiUrl + ')', mInfo.ToMarkdown) > 0);
     mInfo := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, mMainText, 'C:\P\Haupt.pas',
-      PositionOf(mMainText, 'Vcl.Werkzeug;', 1), '');
+      TTestSource.PositionOf(mMainText, 'Vcl.Werkzeug;', 1), '');
     Assert.AreEqual(TDocWiki.cBaseUri + 'Florence/en/Vcl.Werkzeug', mInfo.DocWikiUrl);
   finally
     mTree.Free;
@@ -559,7 +533,7 @@ var
   function At(const AMarker: string): THoverInfo;
   begin
     Result := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, mReadText), mTree, cMainText, 'C:\P\Haupt.pas',
-      PositionOf(cMainText, AMarker, 1), '');
+      TTestSource.PositionOf(cMainText, AMarker, 1), '');
   end;
 
 begin
@@ -620,7 +594,7 @@ begin
   Assert.AreEqual('WHY', mInfo.Rationale[0].Marker);
   Assert.AreEqual('Ganzzahlen genuegen, siehe #312.', mInfo.Rationale[0].Text);
   Assert.AreEqual('HACK', mInfo.Rationale[1].Marker);
-  Assert.AreEqual(PositionOf(cUnitWerkzeug, '// HACK', 1).Line, mInfo.Rationale[1].Line);
+  Assert.AreEqual(TTestSource.PositionOf(cUnitWerkzeug, '// HACK', 1).Line, mInfo.Rationale[1].Line);
 end;
 
 procedure TLspHoverTests.ShowsRationaleOfUnit;

@@ -105,7 +105,8 @@ uses
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.Confirm,
-  Atlas.Common.Mcp.EditTools;
+  Atlas.Common.Mcp.EditTools,
+  Atlas.Tests.SourceText;
 
 const
   cKundenFile = 'C:\P\Kunden.pas';
@@ -171,28 +172,6 @@ const
     'end;'#10 +                                                  // 15
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, I: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for I := 1 to mIndex - 1 do
-  begin
-    if AText[I] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := I + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TReferenceConfidenceTests }
 
 function TReferenceConfidenceTests.Settings(AInferred, ATextMatches: Boolean): TReferenceSettings;
@@ -228,7 +207,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitKunden);
   try
-    Result := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cKundenFile, PositionOf(cUnitKunden,
+    Result := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cKundenFile, TTestSource.PositionOf(cUnitKunden,
       'Speichern; override'), True, [cKundenFile, cHauptFile], ReadText), ASettings, nil);
   finally
     mTree.Free;
@@ -350,7 +329,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitWerte);
   try
-    Result := TLspReferences.Find(AResolver, AIndex, mTree, TReferenceSearch.Create(cWerteFile, PositionOf(cUnitWerte,
+    Result := TLspReferences.Find(AResolver, AIndex, mTree, TReferenceSearch.Create(cWerteFile, TTestSource.PositionOf(cUnitWerte,
       AMarker), False, TArray<string>.Create(cWerteFile), AReadText), ASettings, nil);
   finally
     mTree.Free;
@@ -388,13 +367,13 @@ begin
   // Wie im Editor: Der Parser überspringt den Zweig NIE, die Token-Liste enthält ihn.
   mTree := TPascalParser.ParseActive(cUnitHaupt, nil);
   try
-    mFound := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt,
+    mFound := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt,
       'Speichern;'), False, [cKundenFile, cHauptFile], ReadText), Settings(True, False), nil);
     Assert.IsTrue(HitAt(mFound, cHauptFile, 11, mLocation), 'Stelle in NIE fehlt: ' + Describe(mFound));
     Assert.AreEqual('inactiveBranch', mLocation.Confidence.ReasonName);
     Assert.IsTrue(mLocation.Confidence.Renameable);
     // Ohne Einstufung wie vor #1119: sicher.
-    mFound := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt,
+    mFound := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt,
       'Speichern;'), False, [cKundenFile, cHauptFile], ReadText), Settings(False, False), nil);
     Assert.IsTrue(HitAt(mFound, cHauptFile, 11, mLocation), Describe(mFound));
     Assert.IsTrue(mLocation.Confidence.IsSure);
@@ -521,8 +500,8 @@ begin
     mRename.SettingsFor := mProvider;
     mReferences.Attach(mDispatcher);
     mRename.Attach(mDispatcher);
-    mPosition := Format('{"line":%d,"character":%d}', [PositionOf(cUnitKunden, 'Speichern; override').Line,
-      PositionOf(cUnitKunden, 'Speichern; override').Character]);
+    mPosition := Format('{"line":%d,"character":%d}', [TTestSource.PositionOf(cUnitKunden, 'Speichern; override').Line,
+      TTestSource.PositionOf(cUnitKunden, 'Speichern; override').Character]);
     AssertReferenceLevels(mDispatcher, mUri, mPosition);
     AssertRenameUnchangedReasons(mDispatcher, mUri, mPosition);
   finally
@@ -547,7 +526,7 @@ begin
   mTree := TPascalParser.Parse(cUnitKunden);
   try
     mEdits := TLspRename.Edits(FResolver, FIndex, mTree, TReferenceSearch.Create(cKundenFile,
-      PositionOf(cUnitKunden, 'Speichern; override'), True, [cKundenFile, cHauptFile], ReadText),
+      TTestSource.PositionOf(cUnitKunden, 'Speichern; override'), True, [cKundenFile, cHauptFile], ReadText),
       TRenameRequest.Create('Sichern', False, Settings(True, False), nil), mUnchanged);
   finally
     mTree.Free;
@@ -580,8 +559,8 @@ begin
   mItem.Container := 'TKunde';
   mItem.SymbolKind := TIndexSymbolKind.Method;
   mItem.FileName := cKundenFile;
-  mItem.SelectionRange := TTextRange.Create(PositionOf(cUnitKunden, 'Speichern; override'),
-    PositionOf(cUnitKunden, '; override'));
+  mItem.SelectionRange := TTextRange.Create(TTestSource.PositionOf(cUnitKunden, 'Speichern; override'),
+    TTestSource.PositionOf(cUnitKunden, '; override'));
   mItem.Range := mItem.SelectionRange;
   mCalls := TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex, ReadText, nil), mItem,
     [cKundenFile, cHauptFile], Settings(True, False));
@@ -752,12 +731,12 @@ begin
     begin
       mWatch := TStopwatch.StartNew;
       Assert.AreEqual(cCount + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, mTree,
-        TReferenceSearch.Create(cKundenFile, PositionOf(cUnitKunden, 'Speichern; override'), False, [cKundenFile,
+        TReferenceSearch.Create(cKundenFile, TTestSource.PositionOf(cUnitKunden, 'Speichern; override'), False, [cKundenFile,
         cHauptFile], mRead), Settings(False, False), nil))));
       Inc(mSure, mWatch.ElapsedMilliseconds);
       mWatch := TStopwatch.StartNew;
       Assert.AreEqual(cCount + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, mTree,
-        TReferenceSearch.Create(cKundenFile, PositionOf(cUnitKunden, 'Speichern; override'), False, [cKundenFile,
+        TReferenceSearch.Create(cKundenFile, TTestSource.PositionOf(cUnitKunden, 'Speichern; override'), False, [cKundenFile,
         cHauptFile], mRead), Settings(True, True), nil))));
       Inc(mInferred, mWatch.ElapsedMilliseconds);
     end;

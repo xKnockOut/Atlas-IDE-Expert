@@ -44,18 +44,8 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.AnonymousMethods.Shared,
-  Atlas.Common.Editing.AnonymousMethods.Embed;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Common.Editing.AnonymousMethods.Embed,
+  Atlas.Tests.SourceText;
 
 /// <summary>Erster Knoten der Art AKind mit dem Namen AName; nil ohne.</summary>
 function NodeNamed(ATree: TSyntaxTree; AKind: TSyntaxKind; const AName: string): TSyntaxNode;
@@ -82,7 +72,7 @@ end;
 /// <summary>Unit mit TFoo: Run übergibt Tick an ForEach; Tick steht im Abschnitt AVisibility.</summary>
 function EmbedUnit(const AVisibility: string): string;
 begin
-  Result := Join(['unit U;', '', 'interface', '', 'type', '  TFoo = class', '  ' + AVisibility,
+  Result := TTestSource.Lines(['unit U;', '', 'interface', '', 'type', '  TFoo = class', '  ' + AVisibility,
     '    procedure Run;', '    procedure Tick(const AItem: Integer);', '  end;', '', 'implementation', '',
     'procedure TFoo.Run;', 'begin', '  FList.ForEach(Tick);', 'end;', '', 'procedure TFoo.Tick(const AItem: Integer);',
     'begin', '  Writeln(AItem);', 'end;', '', 'end.']);
@@ -144,7 +134,7 @@ var
   mTree: TSyntaxTree;
   mOuter, mNode: TSyntaxNode;
 begin
-  mText := Join(['unit U;', 'interface', 'implementation', 'procedure Outer;', '  procedure Inner;', '  begin',
+  mText := TTestSource.Lines(['unit U;', 'interface', 'implementation', 'procedure Outer;', '  procedure Inner;', '  begin',
     '    Marke;', '  end;', 'begin', '  Inner;', 'end;', 'end.']);
   mTree := TPascalParser.Parse(mText);
   try
@@ -164,7 +154,7 @@ var
   mTree: TSyntaxTree;
   mNode, mWith: TSyntaxNode;
 begin
-  mText := Join(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin', '  with Q do', '  begin',
+  mText := TTestSource.Lines(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin', '  with Q do', '  begin',
     '    Marke;', '  end;', 'end;', 'end.']);
   mTree := TPascalParser.Parse(mText);
   try
@@ -186,7 +176,7 @@ var
   mText: string;
   mTree: TSyntaxTree;
 begin
-  mText := Join(['unit U;', 'interface', 'implementation', 'procedure TFoo.A;', 'begin', '  inherited;', 'end;',
+  mText := TTestSource.Lines(['unit U;', 'interface', 'implementation', 'procedure TFoo.A;', 'begin', '  inherited;', 'end;',
     'procedure TFoo.B;', 'begin', '  X;', 'end;', 'end.']);
   mTree := TPascalParser.Parse(mText);
   try
@@ -203,7 +193,7 @@ var
   mTree: TSyntaxTree;
   mArgument, mCall: TSyntaxNode;
 begin
-  mText := Join(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin', '  Rufe(Wert);', 'end;', 'end.']);
+  mText := TTestSource.Lines(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin', '  Rufe(Wert);', 'end;', 'end.']);
   mTree := TPascalParser.Parse(mText);
   try
     mArgument := NodeNamed(mTree, TSyntaxKind.Identifier, 'Wert');
@@ -223,7 +213,7 @@ var
   mTree: TSyntaxTree;
   mWith, mWithout: TSyntaxNode;
 begin
-  mText := Join(['unit U;', 'interface', 'implementation', 'procedure Mit(A: Integer);', 'begin', 'end;',
+  mText := TTestSource.Lines(['unit U;', 'interface', 'implementation', 'procedure Mit(A: Integer);', 'begin', 'end;',
     'procedure Ohne;', 'begin', 'end;', 'end.']);
   mTree := TPascalParser.Parse(mText);
   try

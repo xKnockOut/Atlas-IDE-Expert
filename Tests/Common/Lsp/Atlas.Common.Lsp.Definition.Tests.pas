@@ -58,7 +58,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -116,33 +117,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
-var
-  mIndex, mFound, mLine, mLineStart: Integer;
-begin
-  mFound := 0;
-  mIndex := 0;
-  repeat
-    mIndex := Pos(AMarker, AText, mIndex + 1);
-    if mIndex = 0 then
-    begin
-      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-    end;
-    Inc(mFound);
-  until mFound = AOccurrence;
-  mLine := 0;
-  mLineStart := 1;
-  for mFound := 1 to mIndex - 1 do
-  begin
-    if AText[mFound] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mFound + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TLspDefinitionTests }
 
 function TLspDefinitionTests.TargetsAt(const AMarker: string; AOccurrence: Integer;
@@ -153,7 +127,7 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     Result := TLspDefinition.Targets(FResolver, FIndex, mTree, cHauptFile,
-      PositionOf(cUnitHaupt, AMarker, AOccurrence), ADeclaration);
+      TTestSource.PositionOf(cUnitHaupt, AMarker, AOccurrence), ADeclaration);
   finally
     mTree.Free;
   end;
@@ -166,7 +140,7 @@ var
 begin
   mTree := TPascalParser.Parse(AText);
   try
-    Result := TLspDefinition.Targets(FResolver, FIndex, mTree, cKonsoleFile, PositionOf(AText, AMarker, AOccurrence),
+    Result := TLspDefinition.Targets(FResolver, FIndex, mTree, cKonsoleFile, TTestSource.PositionOf(AText, AMarker, AOccurrence),
       ADeclaration);
   finally
     mTree.Free;
@@ -274,15 +248,15 @@ begin
   mTree := TPascalParser.Parse(cSource);
   try
     // Variable mit Alias-Typ: zum Zieltyp des Alias.
-    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', PositionOf(cSource, 'Global :=', 1));
+    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', TTestSource.PositionOf(cSource, 'Global :=', 1));
     Assert.AreEqual(1, Integer(Length(mTargets)));
     Assert.AreEqual(3, mTargets[0].SelectionRange.StartPos.Line);
     // Funktion: zum Ergebnistyp.
-    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', PositionOf(cSource, 'Liefere(Zahl)', 1));
+    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', TTestSource.PositionOf(cSource, 'Liefere(Zahl)', 1));
     Assert.AreEqual(1, Integer(Length(mTargets)));
     Assert.AreEqual(3, mTargets[0].SelectionRange.StartPos.Line);
     // Integer steht nicht im Index: kein Ziel.
-    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', PositionOf(cSource, 'Zahl);', 1));
+    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', TTestSource.PositionOf(cSource, 'Zahl);', 1));
     Assert.AreEqual(0, Integer(Length(mTargets)));
   finally
     mTree.Free;
