@@ -675,18 +675,13 @@ end;
 
 function ListText(AList: TListView): TArray<string>;
 var
-  mIndex, mColumn: Integer;
-  mLine: string;
+  mIndex: Integer;
 begin
-  Result := nil;
+  SetLength(Result, AList.Items.Count);
   for mIndex := 0 to AList.Items.Count - 1 do
   begin
-    mLine := AList.Items[mIndex].Caption;
-    for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
-    begin
-      mLine := mLine + #9 + AList.Items[mIndex].SubItems[mColumn];
-    end;
-    Result := Result + [mLine];
+    Result[mIndex] := string.Join(#9, TArray<string>.Create(AList.Items[mIndex].Caption) +
+      AList.Items[mIndex].SubItems.ToStringArray);
   end;
 end;
 

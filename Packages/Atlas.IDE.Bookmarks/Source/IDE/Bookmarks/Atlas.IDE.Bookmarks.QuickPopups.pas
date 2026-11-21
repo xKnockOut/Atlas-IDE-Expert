@@ -152,7 +152,8 @@ end;
 class procedure TAtlasIdeQuickTip.TipText(const AMarks: TArray<TAtlasBookmark>; AJumpKey: Word;
   out ATitle, AText: string);
 var
-  mMark: TAtlasBookmark;
+  mLines: TArray<string>;
+  mIndex: Integer;
 begin
   ATitle := '';
   AText := '';
@@ -172,14 +173,12 @@ begin
   begin
     ATitle := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipUnnumbered);
   end;
-  for mMark in AMarks do
+  SetLength(mLines, Length(AMarks));
+  for mIndex := 0 to High(AMarks) do
   begin
-    if AText <> '' then
-    begin
-      AText := AText + #10;
-    end;
-    AText := AText + TipLine(mMark, AJumpKey);
+    mLines[mIndex] := TipLine(AMarks[mIndex], AJumpKey);
   end;
+  AText := string.Join(#10, mLines);
 end;
 
 { TAtlasIdeQuickMenu }
