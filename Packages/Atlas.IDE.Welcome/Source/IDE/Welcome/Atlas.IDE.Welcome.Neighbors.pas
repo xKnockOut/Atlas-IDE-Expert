@@ -54,7 +54,7 @@ type
   TAtlasWelcomeNeighbors = class
   public
     /// <summary>Haken der Schnellaktionen (#764) an die Module Build-Pipeline, Tests und Build-Werkzeuge.</summary>
-    class procedure Connect(var AHooks: TAtlasQuickActionHooks); static;
+    class function QuickActionHooks: TAtlasQuickActionHooks; static;
     /// <summary>Baseline von AProject über das Modul Prüfregeln aktualisieren (#759); '' = gestartet, sonst der
     /// Grund.</summary>
     class function StartBaseline(const AProject: string; const ADone: TAtlasSetupBaselineDone): string; static;
@@ -278,16 +278,17 @@ end;
 
 { TAtlasWelcomeNeighbors }
 
-class procedure TAtlasWelcomeNeighbors.Connect(var AHooks: TAtlasQuickActionHooks);
+class function TAtlasWelcomeNeighbors.QuickActionHooks: TAtlasQuickActionHooks;
 begin
-  AHooks.OnBuild := StartBuild;
-  AHooks.OnTests := RunTests;
-  AHooks.OnTestsBusy := TestsRunning;
-  AHooks.OnIdeBusy := IdeBusy;
-  AHooks.OnProfiles := Profiles;
-  AHooks.OnRun := RunProfile;
-  AHooks.OnTaskNames := TaskNames;
-  AHooks.OnRunTask := RunTask;
+  Result := Default(TAtlasQuickActionHooks);
+  Result.OnBuild := StartBuild;
+  Result.OnTests := RunTests;
+  Result.OnTestsBusy := TestsRunning;
+  Result.OnIdeBusy := IdeBusy;
+  Result.OnProfiles := Profiles;
+  Result.OnRun := RunProfile;
+  Result.OnTaskNames := TaskNames;
+  Result.OnRunTask := RunTask;
 end;
 
 class function TAtlasWelcomeNeighbors.StartBaseline(const AProject: string;

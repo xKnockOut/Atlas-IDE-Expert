@@ -35,18 +35,31 @@ type
     FGroups: TDictionary<string, TGroupState>;
     /// <summary>Vorhandene Datei, die LoadFromFile nicht lesen konnte: SaveToFile überschreibt sie nicht.</summary>
     FKept: string;
+    FLeft: Integer;
+    FTop: Integer;
+    FWidth: Integer;
+    FHeight: Integer;
+    FPreviewWidth: Integer;
+    FPreviewVisible: Boolean;
+    FSections: TAtlasSectionChoices;
     function GroupState(const AGroupFile: string): TGroupState;
+    function GetSection(ASection: TAtlasPreviewSection): TAtlasSectionChoice;
+    procedure SetSection(ASection: TAtlasPreviewSection; AChoice: TAtlasSectionChoice);
     function WindowJson: TJSONObject;
     procedure LoadWindow(AWindow: TJSONObject);
     procedure LoadGroups(AGroups: TJSONObject);
   public
     /// <summary>Lage des Fensters; Width = 0 = noch keine.</summary>
-    Left, Top, Width, Height: Integer;
+    property Left: Integer read FLeft write FLeft;
+    property Top: Integer read FTop write FTop;
+    property Width: Integer read FWidth write FWidth;
+    property Height: Integer read FHeight write FHeight;
     /// <summary>Breite der Vorschau in Pixeln bei 96 dpi; 0 = Vorgabe.</summary>
-    PreviewWidth: Integer;
-    PreviewVisible: Boolean;
+    property PreviewWidth: Integer read FPreviewWidth write FPreviewWidth;
+    property PreviewVisible: Boolean read FPreviewVisible write FPreviewVisible;
     /// <summary>Wahl von Hand je Abschnitt der Vorschau; nur in der Sitzung (#876).</summary>
-    Sections: TAtlasSectionChoices;
+    property Sections: TAtlasSectionChoices read FSections;
+    property Section[ASection: TAtlasPreviewSection]: TAtlasSectionChoice read GetSection write SetSection;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Eingeklappte Gruppen (Schlüssel in Kleinschrift) der Projektgruppe für AGrouping.</summary>
@@ -84,13 +97,23 @@ constructor TAtlasUnitSearchState.Create;
 begin
   inherited Create;
   FGroups := TDictionary<string, TGroupState>.Create;
-  PreviewVisible := True;
+  FPreviewVisible := True;
 end;
 
 destructor TAtlasUnitSearchState.Destroy;
 begin
   FGroups.Free;
   inherited Destroy;
+end;
+
+function TAtlasUnitSearchState.GetSection(ASection: TAtlasPreviewSection): TAtlasSectionChoice;
+begin
+  Result := FSections[ASection];
+end;
+
+procedure TAtlasUnitSearchState.SetSection(ASection: TAtlasPreviewSection; AChoice: TAtlasSectionChoice);
+begin
+  FSections[ASection] := AChoice;
 end;
 
 function TAtlasUnitSearchState.GroupState(const AGroupFile: string): TGroupState;
@@ -104,22 +127,22 @@ end;
 function TAtlasUnitSearchState.WindowJson: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('left', TJSONNumber.Create(Left));
-  Result.AddPair('top', TJSONNumber.Create(Top));
-  Result.AddPair('width', TJSONNumber.Create(Width));
-  Result.AddPair('height', TJSONNumber.Create(Height));
-  Result.AddPair('previewWidth', TJSONNumber.Create(PreviewWidth));
-  Result.AddPair('previewVisible', TJSONBool.Create(PreviewVisible));
+  Result.AddPair('left', TJSONNumber.Create(FLeft));
+  Result.AddPair('top', TJSONNumber.Create(FTop));
+  Result.AddPair('width', TJSONNumber.Create(FWidth));
+  Result.AddPair('height', TJSONNumber.Create(FHeight));
+  Result.AddPair('previewWidth', TJSONNumber.Create(FPreviewWidth));
+  Result.AddPair('previewVisible', TJSONBool.Create(FPreviewVisible));
 end;
 
 procedure TAtlasUnitSearchState.LoadWindow(AWindow: TJSONObject);
 begin
-  AWindow.TryGetValue<Integer>('left', Left);
-  AWindow.TryGetValue<Integer>('top', Top);
-  AWindow.TryGetValue<Integer>('width', Width);
-  AWindow.TryGetValue<Integer>('height', Height);
-  AWindow.TryGetValue<Integer>('previewWidth', PreviewWidth);
-  AWindow.TryGetValue<Boolean>('previewVisible', PreviewVisible);
+  AWindow.TryGetValue<Integer>('left', FLeft);
+  AWindow.TryGetValue<Integer>('top', FTop);
+  AWindow.TryGetValue<Integer>('width', FWidth);
+  AWindow.TryGetValue<Integer>('height', FHeight);
+  AWindow.TryGetValue<Integer>('previewWidth', FPreviewWidth);
+  AWindow.TryGetValue<Boolean>('previewVisible', FPreviewVisible);
 end;
 
 function TAtlasUnitSearchState.Collapsed(const AGroupFile: string; AGrouping: TAtlasUnitGrouping): TArray<string>;
@@ -314,12 +337,12 @@ var
   mSection: TJSONObject;
 begin
   FGroups.Clear;
-  Left := 0;
-  Top := 0;
-  Width := 0;
-  Height := 0;
-  PreviewWidth := 0;
-  PreviewVisible := True;
+  FLeft := 0;
+  FTop := 0;
+  FWidth := 0;
+  FHeight := 0;
+  FPreviewWidth := 0;
+  FPreviewVisible := True;
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     Result := mRoot is TJSONObject;

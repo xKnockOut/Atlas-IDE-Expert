@@ -567,7 +567,7 @@ begin
   end;
   mRight := ARect.Right - S(10);
   DrawRowBadges(mRow, ARect, mRight);
-  DrawNames(FData.Entries[mRow.Entry], FData.UseInUses(mRow.Entry), ARect, mLeft, mRight);
+  DrawNames(FData.Entries[mRow.Entry], FData.Use.InUses(mRow.Entry), ARect, mLeft, mRight);
   DrawPath(FData.Entries[mRow.Entry], ARect, mLeft);
   FCanvas.Brush.Style := bsSolid;
 end;
@@ -651,11 +651,11 @@ var
 begin
   Result := '';
   AWarning := False;
-  if AData.UseInUses(AEntry) then
+  if AData.Use.InUses(AEntry) then
   begin
     Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitInUses);
   end
-  else if AData.UseCycle(AEntry, mCycle) then
+  else if AData.Use.CycleOf(AEntry, mCycle) then
   begin
     AWarning := TAtlasUseUnit.CycleState(mCycle, AData.Use.Section) = TAtlasUseUnitCycleState.Warning;
     Result := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycle, [TAtlasUseUnit.CycleVia(mCycle,
@@ -771,7 +771,7 @@ var
   mChunk, mWord: string;
 begin
   SetLength(mMarks, Length(AText) + 1);
-  for mWord in FData.Query.Words do
+  for mWord in FData.Filter.Query.Words do
   begin
     for mPosition in TAtlasItemPresentation.Highlights(mWord, AText) do
     begin
@@ -898,7 +898,7 @@ var
   mIndex: Integer;
   mCycle: TAtlasUseUnitCycle;
 begin
-  if AData.CurrentEntry(mIndex) and AData.UseCycle(mIndex, mCycle) then
+  if AData.CurrentEntry(mIndex) and AData.Use.CycleOf(mIndex, mCycle) then
   begin
     if TAtlasUseUnit.CycleState(mCycle, AData.Use.Section) = TAtlasUseUnitCycleState.Warning then
     begin

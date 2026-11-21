@@ -90,18 +90,42 @@ type
   end;
 
   /// <summary>Getippte Filter, Herkunft und Art und das Ergebnis der letzten Anfrage.</summary>
-  TAtlasUnitSearchFilter = record
-    Pattern: string;
+  TAtlasUnitSearchFilter = class
+  private
+    FSyntax: Boolean;
+    FPattern: string;
+    FTyped: TArray<string>;
+    FOrigins: TAtlasUnitOrigins;
+    FKinds: TAtlasUnitKinds;
+    FLastQuery: TAtlasUnitQuery;
+    FLastOrigins: TAtlasUnitOrigins;
+    FLastKinds: TAtlasUnitKinds;
+    FHasLast: Boolean;
+    FOrder: TArray<Integer>;
+  public
+    /// <summary>ASyntax: Tippsyntax (unitSearch.filterSyntax); ATyped, AOrigins, AKinds: Anfangswahl.</summary>
+    constructor Create(ASyntax: Boolean; const ATyped: TArray<string>; AOrigins: TAtlasUnitOrigins;
+      AKinds: TAtlasUnitKinds);
+    /// <summary>Anfrage aus getippten Chips und Suchtext.</summary>
+    function Query: TAtlasUnitQuery;
+    /// <summary>Order neu bestimmen; engt die Anfrage die letzte nur ein, prüft sie nur die bisherigen Treffer.
+    /// </summary>
+    procedure Apply(const AEntries: TAtlasUnitEntries; AOrigins: TAtlasUnitOrigins; AKinds: TAtlasUnitKinds);
+    /// <summary>Nächstes Apply prüft wieder alle Einträge (neue Einträge).</summary>
+    procedure ForgetLast;
+    /// <summary>Chip AValue (TAtlasUnitSearchChip) umschalten bzw. getippten Filter entfernen.</summary>
+    procedure ChipClicked(AValue: Integer);
+    /// <summary>Fertig getippter Filter am Ende des Suchtexts wird zum Chip; False ohne.</summary>
+    function CommitTyped: Boolean;
+    /// <summary>Rücktaste: letztes Zeichen (AWord: ganzen Suchtext) bzw. letzten Chip entfernen; False ohne.</summary>
+    function RemoveLast(AWord: Boolean): Boolean;
+    property Pattern: string read FPattern write FPattern;
     /// <summary>Getippte Filter, die zu Chips im Feld geworden sind.</summary>
-    Typed: TArray<string>;
-    Origins: TAtlasUnitOrigins;
-    Kinds: TAtlasUnitKinds;
-    /// <summary>Anfrage und Herkunft/Art zu Order; engt die nächste sie nur ein, prüft Order nur Order.</summary>
-    LastQuery: TAtlasUnitQuery;
-    LastOrigins: TAtlasUnitOrigins;
-    LastKinds: TAtlasUnitKinds;
-    HasLast: Boolean;
-    Order: TArray<Integer>;
+    property Typed: TArray<string> read FTyped;
+    property Origins: TAtlasUnitOrigins read FOrigins;
+    property Kinds: TAtlasUnitKinds read FKinds;
+    /// <summary>Indizes der passenden Einträge in der Reihenfolge der Liste.</summary>
+    property Order: TArray<Integer> read FOrder;
   end;
 
   /// <summary>Zeilen der Liste mit Gruppen, Auswahl und Bildlauf.</summary>
@@ -122,44 +146,54 @@ type
     Info: TAtlasUseUnitInfo;
     Marks: TArray<TAtlasUseUnitMark>;
     Section: TAtlasUseUnitSection;
+    /// <summary>Steht der Eintrag AIndex schon in den uses der Zielunit?</summary>
+    function InUses(AIndex: Integer): Boolean;
+    /// <summary>Kreis der Zeile zum Eintrag AIndex; False ohne Kreis oder wenn schon eingebunden.</summary>
+    function CycleOf(AIndex: Integer; out ACycle: TAtlasUseUnitCycle): Boolean;
   end;
 
   /// <summary>Vorschau rechts: sichtbar, Breite (bei 96 dpi), Daten der Unit, Abschnitte beim letzten Zeichnen.
   /// </summary>
-  TAtlasUnitSearchPreview = record
-    Visible: Boolean;
-    Width: Integer;
-    Data: TAtlasUnitPreview;
-    FileName: string;
+  TAtlasUnitSearchPreview = class
+  private
+    FVisible: Boolean;
+    FWidth: Integer;
+    FData: TAtlasUnitPreview;
+    FFileName: string;
+    FSections: TAtlasSectionStates;
+    FRect: TRect;
+  public
+    /// <summary>Daten der Unit AFileName zeigen; '' leert die Vorschau.</summary>
+    procedure Show(const AFileName: string; const AData: TAtlasUnitPreview);
+    property Visible: Boolean read FVisible write FVisible;
+    /// <summary>Breite bei 96 dpi.</summary>
+    property Width: Integer read FWidth write FWidth;
+    property Data: TAtlasUnitPreview read FData;
+    property FileName: string read FFileName;
     /// <summary>Zustand der Abschnitte beim letzten Zeichnen (#876).</summary>
-    Sections: TAtlasSectionStates;
-    Rect: TRect;
+    property Sections: TAtlasSectionStates read FSections write FSections;
+    property Rect: TRect read FRect write FRect;
   end;
 
   TAtlasUnitSearchData = class
+  private
+    FOptions: TAtlasUnitSearchOptions;
+    FState: TAtlasUnitSearchState;
+    FMetrics: TAtlasUnitSearchMetrics;
+    FEntries: TAtlasUnitEntries;
+    FFilter: TAtlasUnitSearchFilter;
+    FList: TAtlasUnitSearchList;
+    FMarked: TDictionary<string, Boolean>;
+    FUse: TAtlasUnitSearchUse;
+    FPreview: TAtlasUnitSearchPreview;
   public
-    Options: TAtlasUnitSearchOptions;
-    /// <summary>Gehört dem Aufrufer; nimmt Lage und Wahl auf.</summary>
-    State: TAtlasUnitSearchState;
-    Metrics: TAtlasUnitSearchMetrics;
-    Entries: TAtlasUnitEntries;
-    Filter: TAtlasUnitSearchFilter;
-    List: TAtlasUnitSearchList;
-    Marked: TDictionary<string, Boolean>;
-    Use: TAtlasUnitSearchUse;
-    Preview: TAtlasUnitSearchPreview;
     constructor Create(const AOptions: TAtlasUnitSearchOptions; AState: TAtlasUnitSearchState);
     destructor Destroy; override;
-    /// <summary>Anfrage aus getippten Chips und Suchtext.</summary>
-    function Query: TAtlasUnitQuery;
     function EntryKey(AIndex: Integer): string;
     /// <summary>Eintrag der gewählten Zeile; False auf einem Gruppenkopf oder ohne Auswahl.</summary>
     function CurrentEntry(out AIndex: Integer): Boolean;
     /// <summary>Markierte in der Reihenfolge der Liste, sonst die aktuelle Zeile.</summary>
     function SelectedEntries: TArray<TAtlasUnitEntry>;
-    function UseInUses(AIndex: Integer): Boolean;
-    /// <summary>Kreis der Zeile zum Eintrag AIndex im Modus „Unit verwenden“.</summary>
-    function UseCycle(AIndex: Integer; out ACycle: TAtlasUseUnitCycle): Boolean;
     /// <summary>Einträge neu filtern und ordnen; AKeepSelection: auf derselben Unit bleiben.</summary>
     procedure Refilter(AKeepSelection: Boolean);
     procedure RebuildRows;
@@ -176,12 +210,6 @@ type
     function ToggleMark(ARow: Integer): Boolean;
     /// <summary>Alle markieren; sind schon alle markiert, Markierung aufheben. False ohne Mehrfachauswahl.</summary>
     function MarkAll: Boolean;
-    /// <summary>Chip AValue (TAtlasUnitSearchChip) umschalten bzw. getippten Filter entfernen.</summary>
-    procedure ChipClicked(AValue: Integer);
-    /// <summary>Fertig getippter Filter am Ende des Suchtexts wird zum Chip; False ohne.</summary>
-    function CommitTypedFilter: Boolean;
-    /// <summary>Rücktaste: letztes Zeichen (AWord: ganzen Suchtext) bzw. letzten Chip entfernen; False ohne.</summary>
-    function RemoveLast(AWord: Boolean): Boolean;
     procedure SetEntries(const AEntries: TAtlasUnitEntries);
     procedure SetUseInfo(const AInfo: TAtlasUseUnitInfo);
     /// <summary>interface / implementation umschalten; False außerhalb von „Unit verwenden“.</summary>
@@ -192,6 +220,18 @@ type
     procedure SaveState(const ABounds: TRect);
     /// <summary>Liste und Vorschau in der Client-Fläche AWidth x AHeight anordnen.</summary>
     procedure Layout(AWidth, AHeight: Integer);
+    property Options: TAtlasUnitSearchOptions read FOptions;
+    /// <summary>Gehört dem Aufrufer; nimmt Lage und Wahl auf.</summary>
+    property State: TAtlasUnitSearchState read FState;
+    property Metrics: TAtlasUnitSearchMetrics read FMetrics;
+    /// <summary>Bildschirmauflösung, für die Metrics misst.</summary>
+    property PPI: Integer read FMetrics.PPI write FMetrics.PPI;
+    property Entries: TAtlasUnitEntries read FEntries;
+    property Filter: TAtlasUnitSearchFilter read FFilter;
+    property List: TAtlasUnitSearchList read FList;
+    property Marked: TDictionary<string, Boolean> read FMarked;
+    property Use: TAtlasUnitSearchUse read FUse;
+    property Preview: TAtlasUnitSearchPreview read FPreview;
   end;
 
 const
@@ -206,11 +246,20 @@ uses
   Winapi.Windows,
   System.Math;
 
+const
+  /// <summary>Auflösung, für die alle Maße angegeben sind.</summary>
+  cDesignPPI = 96;
+  /// <summary>Breite der Vorschau ohne gemerkte Breite, bei 96 dpi.</summary>
+  cDefaultPreviewWidth = 340;
+  /// <summary>Schmalste Vorschau und schmalste Liste daneben, bei 96 dpi.</summary>
+  cMinPreviewWidth = 200;
+  cMinListWidth = 300;
+
 { TAtlasUnitSearchMetrics }
 
 function TAtlasUnitSearchMetrics.S(AValue: Integer): Integer;
 begin
-  Result := MulDiv(AValue, PPI, 96);
+  Result := MulDiv(AValue, PPI, cDesignPPI);
 end;
 
 function TAtlasUnitSearchMetrics.HeaderHeight: Integer;
@@ -270,72 +319,219 @@ begin
   Result := S(6);
 end;
 
+{ TAtlasUnitSearchFilter }
+
+constructor TAtlasUnitSearchFilter.Create(ASyntax: Boolean; const ATyped: TArray<string>; AOrigins: TAtlasUnitOrigins;
+  AKinds: TAtlasUnitKinds);
+begin
+  inherited Create;
+  FSyntax := ASyntax;
+  FTyped := Copy(ATyped);
+  FOrigins := AOrigins;
+  FKinds := AKinds;
+end;
+
+function TAtlasUnitSearchFilter.Query: TAtlasUnitQuery;
+begin
+  Result := TAtlasUnitQuery.Parse(string.Join(' ', FTyped) + ' ' + FPattern, FSyntax);
+end;
+
+procedure TAtlasUnitSearchFilter.Apply(const AEntries: TAtlasUnitEntries; AOrigins: TAtlasUnitOrigins;
+  AKinds: TAtlasUnitKinds);
+var
+  mQuery: TAtlasUnitQuery;
+begin
+  mQuery := Query;
+  if FHasLast and (AOrigins = FLastOrigins) and (AKinds = FLastKinds) and mQuery.Narrows(FLastQuery) then
+  begin
+    FOrder := TAtlasUnitSearch.Order(AEntries, mQuery, AOrigins, AKinds, FOrder);
+  end
+  else
+  begin
+    FOrder := TAtlasUnitSearch.Order(AEntries, mQuery, AOrigins, AKinds);
+  end;
+  FLastQuery := mQuery;
+  FLastOrigins := AOrigins;
+  FLastKinds := AKinds;
+  FHasLast := True;
+end;
+
+procedure TAtlasUnitSearchFilter.ForgetLast;
+begin
+  FHasLast := False;
+end;
+
+procedure TAtlasUnitSearchFilter.ChipClicked(AValue: Integer);
+var
+  mOrigin: TAtlasUnitOrigin;
+  mKind: TAtlasUnitKind;
+begin
+  if AValue >= cChipTyped then
+  begin
+    Delete(FTyped, AValue - cChipTyped, 1);
+  end
+  else if AValue >= cChipKinds then
+  begin
+    mKind := TAtlasUnitKind(AValue - cChipKinds);
+    if mKind in FKinds then
+    begin
+      Exclude(FKinds, mKind);
+    end
+    else
+    begin
+      Include(FKinds, mKind);
+    end;
+  end
+  else
+  begin
+    mOrigin := TAtlasUnitOrigin(AValue - cChipOrigins);
+    // Mindestens eine Herkunft bleibt gewählt.
+    if not (mOrigin in FOrigins) then
+    begin
+      Include(FOrigins, mOrigin);
+    end
+    else if FOrigins - [mOrigin] <> [] then
+    begin
+      Exclude(FOrigins, mOrigin);
+    end;
+  end;
+end;
+
+function TAtlasUnitSearchFilter.CommitTyped: Boolean;
+var
+  mWords: TArray<string>;
+  mLast: string;
+begin
+  mWords := FPattern.Split([' '], TStringSplitOptions.ExcludeEmpty);
+  mLast := '';
+  if Length(mWords) > 0 then
+  begin
+    mLast := mWords[High(mWords)];
+  end;
+  Result := FSyntax and (mLast <> '') and FPattern.EndsWith(mLast) and TAtlasUnitQuery.IsFilter(mLast);
+  if Result then
+  begin
+    FTyped := FTyped + [mLast];
+    FPattern := TrimRight(Copy(FPattern, 1, Length(FPattern) - Length(mLast)));
+  end;
+end;
+
+function TAtlasUnitSearchFilter.RemoveLast(AWord: Boolean): Boolean;
+begin
+  Result := True;
+  if (FPattern <> '') and AWord then
+  begin
+    FPattern := '';
+  end
+  else if FPattern <> '' then
+  begin
+    Delete(FPattern, Length(FPattern), 1);
+  end
+  else if Length(FTyped) > 0 then
+  begin
+    SetLength(FTyped, Length(FTyped) - 1);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+{ TAtlasUnitSearchUse }
+
+function TAtlasUnitSearchUse.InUses(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(Marks)) and Marks[AIndex].InUses;
+end;
+
+function TAtlasUnitSearchUse.CycleOf(AIndex: Integer; out ACycle: TAtlasUseUnitCycle): Boolean;
+begin
+  ACycle := Default(TAtlasUseUnitCycle);
+  Result := (AIndex >= 0) and (AIndex <= High(Marks)) and (Marks[AIndex].Cycle >= 0) and
+    not Marks[AIndex].InUses;
+  if Result then
+  begin
+    ACycle := Info.Cycles[Marks[AIndex].Cycle];
+  end;
+end;
+
+{ TAtlasUnitSearchPreview }
+
+procedure TAtlasUnitSearchPreview.Show(const AFileName: string; const AData: TAtlasUnitPreview);
+begin
+  FFileName := AFileName;
+  FData := AData;
+end;
+
 { TAtlasUnitSearchData }
 
 constructor TAtlasUnitSearchData.Create(const AOptions: TAtlasUnitSearchOptions; AState: TAtlasUnitSearchState);
 var
-  mOrigins: TAtlasUnitOrigins;
-  mKinds: TAtlasUnitKinds;
+  mOrigins, mStoredOrigins: TAtlasUnitOrigins;
+  mKinds, mStoredKinds: TAtlasUnitKinds;
+  mTyped: TArray<string>;
 begin
   inherited Create;
-  Options := AOptions;
-  State := AState;
-  Marked := TDictionary<string, Boolean>.Create;
-  Metrics.PPI := 96;
-  Metrics.Mode := AOptions.Mode;
-  Metrics.Filters := AOptions.Filters;
-  Metrics.Actions := AOptions.Actions;
-  List.Loading := True;
-  List.Grouping := AOptions.Grouping;
-  List.Selected := -1;
+  FOptions := AOptions;
+  FState := AState;
+  FMarked := TDictionary<string, Boolean>.Create;
+  FPreview := TAtlasUnitSearchPreview.Create;
+  FMetrics.PPI := cDesignPPI;
+  FMetrics.Mode := AOptions.Mode;
+  FMetrics.Filters := AOptions.Filters;
+  FMetrics.Actions := AOptions.Actions;
+  FList.Loading := True;
+  FList.Grouping := AOptions.Grouping;
+  FList.Selected := -1;
   // Wie im Dialog der IDE: Vorgabe implementation.
-  Use.Section := TAtlasUseUnitSection.Implementation_;
+  FUse.Section := TAtlasUseUnitSection.Implementation_;
   // Formulare suchen: gesetzter, entfernbarer Filter; ohne Tippsyntax legt Refilter die Arten fest.
+  mTyped := nil;
   if (AOptions.Mode = TAtlasUnitSearchMode.Forms) and AOptions.FilterSyntax then
   begin
-    Filter.Typed := TArray<string>.Create(TAtlasUseUnit.cFormsFilter);
+    mTyped := TArray<string>.Create(TAtlasUseUnit.cFormsFilter);
   end;
-  Filter.Origins := AOptions.DefaultOrigins;
-  if AOptions.Filters and AState.Filters(AOptions.GroupFile, mOrigins, mKinds) and (mOrigins <> []) then
+  mOrigins := AOptions.DefaultOrigins;
+  mKinds := [];
+  if AOptions.Filters and AState.Filters(AOptions.GroupFile, mStoredOrigins, mStoredKinds) and
+    (mStoredOrigins <> []) then
   begin
-    Filter.Origins := mOrigins;
-    Filter.Kinds := mKinds;
+    mOrigins := mStoredOrigins;
+    mKinds := mStoredKinds;
   end;
+  FFilter := TAtlasUnitSearchFilter.Create(AOptions.FilterSyntax, mTyped, mOrigins, mKinds);
   if AOptions.RememberCollapsed then
   begin
-    List.Collapsed := AState.Collapsed(AOptions.GroupFile, List.Grouping);
+    FList.Collapsed := AState.Collapsed(AOptions.GroupFile, FList.Grouping);
   end;
-  Preview.Visible := AOptions.Preview and AState.PreviewVisible;
-  Preview.Width := AState.PreviewWidth;
-  if Preview.Width <= 0 then
+  FPreview.Visible := AOptions.Preview and AState.PreviewVisible;
+  FPreview.Width := AState.PreviewWidth;
+  if FPreview.Width <= 0 then
   begin
-    Preview.Width := 340;
+    FPreview.Width := cDefaultPreviewWidth;
   end;
 end;
 
 destructor TAtlasUnitSearchData.Destroy;
 begin
-  Marked.Free;
+  FFilter.Free;
+  FPreview.Free;
+  FMarked.Free;
   inherited Destroy;
-end;
-
-function TAtlasUnitSearchData.Query: TAtlasUnitQuery;
-begin
-  Result := TAtlasUnitQuery.Parse(string.Join(' ', Filter.Typed) + ' ' + Filter.Pattern, Options.FilterSyntax);
 end;
 
 function TAtlasUnitSearchData.EntryKey(AIndex: Integer): string;
 begin
-  Result := LowerCase(Entries[AIndex].FileName);
+  Result := LowerCase(FEntries[AIndex].FileName);
 end;
 
 function TAtlasUnitSearchData.CurrentEntry(out AIndex: Integer): Boolean;
 begin
   AIndex := -1;
-  Result := (List.Selected >= 0) and (List.Selected <= High(List.Rows)) and not List.Rows[List.Selected].IsGroup;
+  Result := (FList.Selected >= 0) and (FList.Selected <= High(FList.Rows)) and not FList.Rows[FList.Selected].IsGroup;
   if Result then
   begin
-    AIndex := List.Rows[List.Selected].Entry;
+    AIndex := FList.Rows[FList.Selected].Entry;
   end;
 end;
 
@@ -344,40 +540,24 @@ var
   mIndex: Integer;
 begin
   Result := nil;
-  if Options.MultiSelect and (Marked.Count > 0) then
+  if FOptions.MultiSelect and (FMarked.Count > 0) then
   begin
-    for mIndex in Filter.Order do
+    for mIndex in FFilter.Order do
     begin
-      if Marked.ContainsKey(EntryKey(mIndex)) then
+      if FMarked.ContainsKey(EntryKey(mIndex)) then
       begin
-        Result := Result + [Entries[mIndex]];
+        Result := Result + [FEntries[mIndex]];
       end;
     end;
   end;
   if (Length(Result) = 0) and CurrentEntry(mIndex) then
   begin
-    Result := TArray<TAtlasUnitEntry>.Create(Entries[mIndex]);
-  end;
-end;
-
-function TAtlasUnitSearchData.UseInUses(AIndex: Integer): Boolean;
-begin
-  Result := (AIndex >= 0) and (AIndex <= High(Use.Marks)) and Use.Marks[AIndex].InUses;
-end;
-
-function TAtlasUnitSearchData.UseCycle(AIndex: Integer; out ACycle: TAtlasUseUnitCycle): Boolean;
-begin
-  ACycle := Default(TAtlasUseUnitCycle);
-  Result := (AIndex >= 0) and (AIndex <= High(Use.Marks)) and (Use.Marks[AIndex].Cycle >= 0) and
-    not Use.Marks[AIndex].InUses;
-  if Result then
-  begin
-    ACycle := Use.Info.Cycles[Use.Marks[AIndex].Cycle];
+    Result := TArray<TAtlasUnitEntry>.Create(FEntries[mIndex]);
   end;
 end;
 
 /// <summary>Herkunft und Art, nach denen gefiltert wird.</summary>
-procedure ActiveFilters(const AOptions: TAtlasUnitSearchOptions; const AFilter: TAtlasUnitSearchFilter;
+procedure ActiveFilters(const AOptions: TAtlasUnitSearchOptions; AFilter: TAtlasUnitSearchFilter;
   out AOrigins: TAtlasUnitOrigins; out AKinds: TAtlasUnitKinds);
 begin
   AKinds := [];
@@ -419,44 +599,30 @@ var
   mIndex: Integer;
   mKinds: TAtlasUnitKinds;
   mOrigins: TAtlasUnitOrigins;
-  mQuery: TAtlasUnitQuery;
 begin
   mCurrent := '';
   if AKeepSelection and CurrentEntry(mIndex) then
   begin
     mCurrent := EntryKey(mIndex);
   end;
-  ActiveFilters(Options, Filter, mOrigins, mKinds);
-  mQuery := Query;
+  ActiveFilters(FOptions, FFilter, mOrigins, mKinds);
   // Beim Weitertippen nur die bisherigen Treffer prüfen (#777: unter 50 ms je Taste bei 5000 Units).
-  if Filter.HasLast and (mOrigins = Filter.LastOrigins) and (mKinds = Filter.LastKinds) and
-    mQuery.Narrows(Filter.LastQuery) then
-  begin
-    Filter.Order := TAtlasUnitSearch.Order(Entries, mQuery, mOrigins, mKinds, Filter.Order);
-  end
-  else
-  begin
-    Filter.Order := TAtlasUnitSearch.Order(Entries, mQuery, mOrigins, mKinds);
-  end;
-  Filter.LastQuery := mQuery;
-  Filter.LastOrigins := mOrigins;
-  Filter.LastKinds := mKinds;
-  Filter.HasLast := True;
+  FFilter.Apply(FEntries, mOrigins, mKinds);
   RebuildRows;
-  List.Selected := -1;
-  for mIndex := 0 to High(List.Rows) do
+  FList.Selected := -1;
+  for mIndex := 0 to High(FList.Rows) do
   begin
-    if (mCurrent <> '') and not List.Rows[mIndex].IsGroup and (EntryKey(List.Rows[mIndex].Entry) = mCurrent) then
+    if (mCurrent <> '') and not FList.Rows[mIndex].IsGroup and (EntryKey(FList.Rows[mIndex].Entry) = mCurrent) then
     begin
-      List.Selected := mIndex;
+      FList.Selected := mIndex;
       Break;
     end;
   end;
-  if List.Selected < 0 then
+  if FList.Selected < 0 then
   begin
-    List.Scroll := 0;
+    FList.Scroll := 0;
     // Erste Unit wählen, nicht den Kopf.
-    List.Selected := FirstEntryRow(List.Rows);
+    FList.Selected := FirstEntryRow(FList.Rows);
   end;
   EnsureVisible;
 end;
@@ -465,31 +631,31 @@ procedure TAtlasUnitSearchData.RebuildRows;
 var
   mIndex, mTop: Integer;
 begin
-  List.Rows := TAtlasUnitSearch.Rows(Entries, Filter.Order, TAtlasUnitLayout.Create(List.Grouping, Options.Root,
-    Options.ActiveProject, List.Collapsed, Query.HasWords));
-  SetLength(List.RowTops, Length(List.Rows) + 1);
+  FList.Rows := TAtlasUnitSearch.Rows(FEntries, FFilter.Order, TAtlasUnitLayout.Create(FList.Grouping, FOptions.Root,
+    FOptions.ActiveProject, FList.Collapsed, FFilter.Query.HasWords));
+  SetLength(FList.RowTops, Length(FList.Rows) + 1);
   mTop := 0;
-  for mIndex := 0 to High(List.Rows) do
+  for mIndex := 0 to High(FList.Rows) do
   begin
-    List.RowTops[mIndex] := mTop;
-    if List.Rows[mIndex].IsGroup then
+    FList.RowTops[mIndex] := mTop;
+    if FList.Rows[mIndex].IsGroup then
     begin
-      Inc(mTop, Metrics.GroupHeight);
+      Inc(mTop, FMetrics.GroupHeight);
     end
     else
     begin
-      Inc(mTop, Metrics.EntryHeight);
+      Inc(mTop, FMetrics.EntryHeight);
     end;
   end;
-  List.RowTops[Length(List.Rows)] := mTop;
+  FList.RowTops[Length(FList.Rows)] := mTop;
 end;
 
 function TAtlasUnitSearchData.Select(ARow: Integer): Boolean;
 begin
-  Result := Length(List.Rows) > 0;
+  Result := Length(FList.Rows) > 0;
   if Result then
   begin
-    List.Selected := EnsureRange(ARow, 0, High(List.Rows));
+    FList.Selected := EnsureRange(ARow, 0, High(FList.Rows));
     EnsureVisible;
   end;
 end;
@@ -506,24 +672,24 @@ end;
 
 procedure TAtlasUnitSearchData.EnsureVisible;
 begin
-  if (List.Selected < 0) or (List.Selected > High(List.Rows)) then
+  if (FList.Selected < 0) or (FList.Selected > High(FList.Rows)) then
   begin
     Exit;
   end;
-  if List.RowTops[List.Selected] < List.Scroll then
+  if FList.RowTops[FList.Selected] < FList.Scroll then
   begin
-    List.Scroll := List.RowTops[List.Selected];
+    FList.Scroll := FList.RowTops[FList.Selected];
   end
-  else if List.RowTops[List.Selected + 1] > List.Scroll + List.Rect.Height then
+  else if FList.RowTops[FList.Selected + 1] > FList.Scroll + FList.Rect.Height then
   begin
-    List.Scroll := List.RowTops[List.Selected + 1] - List.Rect.Height;
+    FList.Scroll := FList.RowTops[FList.Selected + 1] - FList.Rect.Height;
   end;
-  List.Scroll := EnsureRange(List.Scroll, 0, MaxScroll(List));
+  FList.Scroll := EnsureRange(FList.Scroll, 0, MaxScroll(FList));
 end;
 
 procedure TAtlasUnitSearchData.ScrollBy(ADelta: Integer);
 begin
-  List.Scroll := EnsureRange(List.Scroll + ADelta, 0, MaxScroll(List));
+  FList.Scroll := EnsureRange(FList.Scroll + ADelta, 0, MaxScroll(FList));
 end;
 
 /// <summary>AItems ohne AKey, mit AAdd am Ende wieder dabei.</summary>
@@ -550,20 +716,20 @@ var
   mKey: string;
   mIndex: Integer;
 begin
-  Result := (ARow >= 0) and (ARow <= High(List.Rows)) and (List.Grouping <> TAtlasUnitGrouping.None);
+  Result := (ARow >= 0) and (ARow <= High(FList.Rows)) and (FList.Grouping <> TAtlasUnitGrouping.None);
   if not Result then
   begin
     Exit;
   end;
-  mKey := LowerCase(List.Rows[ARow].Group);
-  List.Collapsed := WithoutKey(List.Collapsed, mKey, ACollapse);
+  mKey := LowerCase(FList.Rows[ARow].Group);
+  FList.Collapsed := WithoutKey(FList.Collapsed, mKey, ACollapse);
   RebuildRows;
   // Auf dem Kopf der Gruppe bleiben.
-  for mIndex := 0 to High(List.Rows) do
+  for mIndex := 0 to High(FList.Rows) do
   begin
-    if List.Rows[mIndex].IsGroup and SameText(List.Rows[mIndex].Group, mKey) then
+    if FList.Rows[mIndex].IsGroup and SameText(FList.Rows[mIndex].Group, mKey) then
     begin
-      List.Selected := mIndex;
+      FList.Selected := mIndex;
       Break;
     end;
   end;
@@ -574,14 +740,14 @@ function TAtlasUnitSearchData.ToggleSelectedGroup(ACollapse: Boolean): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (List.Selected >= 0) and (List.Selected <= High(List.Rows));
+  Result := (FList.Selected >= 0) and (FList.Selected <= High(FList.Rows));
   if not Result then
   begin
     Exit;
   end;
-  for mIndex := List.Selected downto 0 do
+  for mIndex := FList.Selected downto 0 do
   begin
-    if List.Rows[mIndex].IsGroup then
+    if FList.Rows[mIndex].IsGroup then
     begin
       ToggleGroup(mIndex, ACollapse);
       Break;
@@ -593,19 +759,19 @@ function TAtlasUnitSearchData.ToggleMark(ARow: Integer): Boolean;
 var
   mKey: string;
 begin
-  Result := Options.MultiSelect and (ARow >= 0) and (ARow <= High(List.Rows)) and not List.Rows[ARow].IsGroup;
+  Result := FOptions.MultiSelect and (ARow >= 0) and (ARow <= High(FList.Rows)) and not FList.Rows[ARow].IsGroup;
   if not Result then
   begin
     Exit;
   end;
-  mKey := EntryKey(List.Rows[ARow].Entry);
-  if Marked.ContainsKey(mKey) then
+  mKey := EntryKey(FList.Rows[ARow].Entry);
+  if FMarked.ContainsKey(mKey) then
   begin
-    Marked.Remove(mKey);
+    FMarked.Remove(mKey);
   end
   else
   begin
-    Marked.Add(mKey, True);
+    FMarked.Add(mKey, True);
   end;
 end;
 
@@ -614,177 +780,100 @@ var
   mIndex: Integer;
   mAll: Boolean;
 begin
-  Result := Options.MultiSelect;
+  Result := FOptions.MultiSelect;
   if not Result then
   begin
     Exit;
   end;
-  mAll := Marked.Count > 0;
-  for mIndex in Filter.Order do
+  mAll := FMarked.Count > 0;
+  for mIndex in FFilter.Order do
   begin
-    mAll := mAll and Marked.ContainsKey(EntryKey(mIndex));
+    mAll := mAll and FMarked.ContainsKey(EntryKey(mIndex));
   end;
-  Marked.Clear;
-  for mIndex in Filter.Order do
+  FMarked.Clear;
+  for mIndex in FFilter.Order do
   begin
     if not mAll then
     begin
-      Marked.AddOrSetValue(EntryKey(mIndex), True);
+      FMarked.AddOrSetValue(EntryKey(mIndex), True);
     end;
-  end;
-end;
-
-procedure TAtlasUnitSearchData.ChipClicked(AValue: Integer);
-var
-  mOrigin: TAtlasUnitOrigin;
-  mKind: TAtlasUnitKind;
-begin
-  if AValue >= cChipTyped then
-  begin
-    Delete(Filter.Typed, AValue - cChipTyped, 1);
-  end
-  else if AValue >= cChipKinds then
-  begin
-    mKind := TAtlasUnitKind(AValue - cChipKinds);
-    if mKind in Filter.Kinds then
-    begin
-      Exclude(Filter.Kinds, mKind);
-    end
-    else
-    begin
-      Include(Filter.Kinds, mKind);
-    end;
-  end
-  else
-  begin
-    mOrigin := TAtlasUnitOrigin(AValue - cChipOrigins);
-    // Mindestens eine Herkunft bleibt gewählt.
-    if not (mOrigin in Filter.Origins) then
-    begin
-      Include(Filter.Origins, mOrigin);
-    end
-    else if Filter.Origins - [mOrigin] <> [] then
-    begin
-      Exclude(Filter.Origins, mOrigin);
-    end;
-  end;
-end;
-
-function TAtlasUnitSearchData.CommitTypedFilter: Boolean;
-var
-  mWords: TArray<string>;
-  mLast: string;
-begin
-  mWords := Filter.Pattern.Split([' '], TStringSplitOptions.ExcludeEmpty);
-  mLast := '';
-  if Length(mWords) > 0 then
-  begin
-    mLast := mWords[High(mWords)];
-  end;
-  Result := Options.FilterSyntax and (mLast <> '') and Filter.Pattern.EndsWith(mLast) and
-    TAtlasUnitQuery.IsFilter(mLast);
-  if Result then
-  begin
-    Filter.Typed := Filter.Typed + [mLast];
-    Filter.Pattern := TrimRight(Copy(Filter.Pattern, 1, Length(Filter.Pattern) - Length(mLast)));
-  end;
-end;
-
-function TAtlasUnitSearchData.RemoveLast(AWord: Boolean): Boolean;
-begin
-  Result := True;
-  if (Filter.Pattern <> '') and AWord then
-  begin
-    Filter.Pattern := '';
-  end
-  else if Filter.Pattern <> '' then
-  begin
-    Delete(Filter.Pattern, Length(Filter.Pattern), 1);
-  end
-  else if Length(Filter.Typed) > 0 then
-  begin
-    SetLength(Filter.Typed, Length(Filter.Typed) - 1);
-  end
-  else
-  begin
-    Result := False;
   end;
 end;
 
 procedure TAtlasUnitSearchData.SetEntries(const AEntries: TAtlasUnitEntries);
 begin
-  Entries := AEntries;
+  FEntries := AEntries;
   // Gleichstände löst Order über die Reihenfolge auf: einmal nach Name sortieren.
-  TAtlasUnitSearch.SortByName(Entries);
-  List.Loading := False;
-  Filter.HasLast := False;
-  SetUseInfo(Use.Info);
+  TAtlasUnitSearch.SortByName(FEntries);
+  FList.Loading := False;
+  FFilter.ForgetLast;
+  SetUseInfo(FUse.Info);
 end;
 
 procedure TAtlasUnitSearchData.SetUseInfo(const AInfo: TAtlasUseUnitInfo);
 begin
-  Use.Info := AInfo;
-  Use.Marks := nil;
-  if Options.Mode = TAtlasUnitSearchMode.UseUnit then
+  FUse.Info := AInfo;
+  FUse.Marks := nil;
+  if FOptions.Mode = TAtlasUnitSearchMode.UseUnit then
   begin
-    Use.Marks := TAtlasUseUnit.Marks(Use.Info, Entries);
+    FUse.Marks := TAtlasUseUnit.Marks(FUse.Info, FEntries);
   end;
 end;
 
 function TAtlasUnitSearchData.ToggleUseSection: Boolean;
 begin
-  Result := Options.Mode = TAtlasUnitSearchMode.UseUnit;
+  Result := FOptions.Mode = TAtlasUnitSearchMode.UseUnit;
   if not Result then
   begin
     Exit;
   end;
-  if Use.Section = TAtlasUseUnitSection.Interface_ then
+  if FUse.Section = TAtlasUseUnitSection.Interface_ then
   begin
-    Use.Section := TAtlasUseUnitSection.Implementation_;
+    FUse.Section := TAtlasUseUnitSection.Implementation_;
   end
   else
   begin
-    Use.Section := TAtlasUseUnitSection.Interface_;
+    FUse.Section := TAtlasUseUnitSection.Interface_;
   end;
 end;
 
 function TAtlasUnitSearchData.SetGrouping(AGrouping: TAtlasUnitGrouping): Boolean;
 begin
-  Result := AGrouping <> List.Grouping;
+  Result := AGrouping <> FList.Grouping;
   if not Result then
   begin
     Exit;
   end;
-  if Options.RememberCollapsed then
+  if FOptions.RememberCollapsed then
   begin
-    State.SetCollapsed(Options.GroupFile, List.Grouping, List.Collapsed);
+    FState.SetCollapsed(FOptions.GroupFile, FList.Grouping, FList.Collapsed);
   end;
-  List.Grouping := AGrouping;
-  List.Collapsed := nil;
-  if Options.RememberCollapsed then
+  FList.Grouping := AGrouping;
+  FList.Collapsed := nil;
+  if FOptions.RememberCollapsed then
   begin
-    List.Collapsed := State.Collapsed(Options.GroupFile, List.Grouping);
+    FList.Collapsed := FState.Collapsed(FOptions.GroupFile, FList.Grouping);
   end;
 end;
 
 procedure TAtlasUnitSearchData.SaveState(const ABounds: TRect);
 begin
-  State.Left := ABounds.Left;
-  State.Top := ABounds.Top;
-  State.Width := ABounds.Width;
-  State.Height := ABounds.Height;
-  State.PreviewWidth := Preview.Width;
-  if Options.Preview then
+  FState.Left := ABounds.Left;
+  FState.Top := ABounds.Top;
+  FState.Width := ABounds.Width;
+  FState.Height := ABounds.Height;
+  FState.PreviewWidth := FPreview.Width;
+  if FOptions.Preview then
   begin
-    State.PreviewVisible := Preview.Visible;
+    FState.PreviewVisible := FPreview.Visible;
   end;
-  if Options.Filters then
+  if FOptions.Filters then
   begin
-    State.SetFilters(Options.GroupFile, Filter.Origins, Filter.Kinds);
+    FState.SetFilters(FOptions.GroupFile, FFilter.Origins, FFilter.Kinds);
   end;
-  if Options.RememberCollapsed then
+  if FOptions.RememberCollapsed then
   begin
-    State.SetCollapsed(Options.GroupFile, List.Grouping, List.Collapsed);
+    FState.SetCollapsed(FOptions.GroupFile, FList.Grouping, FList.Collapsed);
   end;
 end;
 
@@ -792,16 +881,17 @@ procedure TAtlasUnitSearchData.Layout(AWidth, AHeight: Integer);
 var
   mBody: TRect;
 begin
-  mBody := Rect(0, Metrics.HeaderHeight + Metrics.ModeHeight + Metrics.ChipHeight, AWidth,
-    AHeight - Metrics.FooterHeight - Metrics.ActionHeight);
-  Preview.Rect := Rect(0, 0, 0, 0);
-  if Preview.Visible then
+  mBody := Rect(0, FMetrics.HeaderHeight + FMetrics.ModeHeight + FMetrics.ChipHeight, AWidth,
+    AHeight - FMetrics.FooterHeight - FMetrics.ActionHeight);
+  FPreview.Rect := Rect(0, 0, 0, 0);
+  if FPreview.Visible then
   begin
-    Preview.Width := EnsureRange(Preview.Width, 200, Max(200, MulDiv(AWidth, 96, Metrics.PPI) - 300));
-    Preview.Rect := Rect(mBody.Right - Metrics.S(Preview.Width), mBody.Top, mBody.Right, mBody.Bottom);
-    mBody.Right := Preview.Rect.Left;
+    FPreview.Width := EnsureRange(FPreview.Width, cMinPreviewWidth,
+      Max(cMinPreviewWidth, MulDiv(AWidth, cDesignPPI, FMetrics.PPI) - cMinListWidth));
+    FPreview.Rect := Rect(mBody.Right - FMetrics.S(FPreview.Width), mBody.Top, mBody.Right, mBody.Bottom);
+    mBody.Right := FPreview.Rect.Left;
   end;
-  List.Rect := mBody;
+  FList.Rect := mBody;
 end;
 
 end.

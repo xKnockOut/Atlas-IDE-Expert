@@ -149,8 +149,7 @@ begin
   ShowCaption := False;
   ShowHint := True;
   FEvents := TAtlasSearchBarEvents.Create(Self);
-  FParts := TAtlasSearchBarParts.Create(Self);
-  FFields := TAtlasSearchBarFields.Create(FParts, FEvents);
+  FFields := TAtlasSearchBarFields.Create(FEvents);
   mHandlers := Default(TAtlasSearchBarHandlers);
   mHandlers.OnChanged := FFields.Changed;
   mHandlers.OnReplaceChanged := FFields.ReplaceChanged;
@@ -158,11 +157,12 @@ begin
   mHandlers.OnEnter := ControlEnter;
   mHandlers.OnKeyDown := ControlKeyDown;
   mHandlers.OnButton := ButtonClick;
-  TAtlasSearchBarBuilder.Build(Self, FParts, mHandlers,
+  FParts := TAtlasSearchBarBuilder.Build(Self, mHandlers,
     function(AValue: Integer): Integer
     begin
       Result := ScaleValue(AValue);
     end);
+  FFields.Parts := FParts;
   UpdateLayout;
 end;
 
