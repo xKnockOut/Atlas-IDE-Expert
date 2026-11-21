@@ -4,7 +4,11 @@
 // - Prepare startet „AtlasUpdate.exe prepare“ unsichtbar (ohne Konsole);
 //   ein Takt liest state.json, bis das Update bereit oder gescheitert ist,
 //   und meldet den Stand für die Zeile „Version“. Danach eine Zeile in der
-//   Meldungsansicht.
+//   Meldungsansicht. Der Stand eines früheren Laufs wird vor dem Start
+//   gelöscht, damit der Takt ihn nicht für den neuen hält. Wartet „prepare“
+//   auf die Bestätigung, aus dem Quelltext zu bauen, sagt die Zeile, wo
+//   man entscheidet; ein gebautes Update nennt, dass es nicht an den
+//   Herausgeber gebunden ist.
 // - ApplyOnExit startet beim Schließen der IDE „apply“ aus dem
 //   vorbereiteten Ordner (die neue AtlasUpdate.exe) in einer sichtbaren
 //   Konsole; sie wartet, bis die IDE beendet ist.
@@ -56,7 +60,9 @@ type
     /// <summary>Stand der Vorbereitung von AVersion; False ohne.</summary>
     function TryStage(const AVersion: string; out AStage: TUpdateStage): Boolean;
     function Preparing: Boolean;
-    procedure Prepare(const AVersion, AManifestUrl, ANewModules: string);
+    /// <summary>AAllowSource: Bauen aus dem Quelltext bestätigt (sonst wartet „prepare“ auf die Bestätigung).
+    /// </summary>
+    procedure Prepare(const AVersion, AManifestUrl, ANewModules: string; AAllowSource: Boolean);
     procedure Choose(const AVersion: string; const AChosen: TArray<string>);
     procedure Discard(const AVersion: string);
     /// <summary>Beim Schließen der IDE: „apply“ starten, wenn AVersion bereit ist.</summary>
@@ -79,6 +85,16 @@ uses
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Texts,
   Atlas.Core.Notifications.MessageSink;
+
+/// <summary>Hinweis für ein aus dem Quelltext gebautes Update (nicht an den Herausgeber gebunden); sonst ''.</summary>
+function SourceNote(const AStage: TUpdateStage): string;
+begin
+  Result := '';
+  if AStage.FromSource then
+  begin
+    Result := ' ' + TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesSourceUnbound);
+  end;
+end;
 
 { TAtlasIdeUpdateInstaller }
 
@@ -128,7 +144,12 @@ begin
   begin
     Log('Update ' + AStage.Version + ' warning: ' + AStage.Warning);
   end;
-  if AStage.Phase = TUpdatePhase.Failed then
+  if TAtlasUpdateInstall.AwaitsSourceConfirmation(AStage) then
+  begin
+    Log('Update ' + AStage.Version + ': no package for this IDE, building from source needs confirmation');
+    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSourceMessage, [AStage.Version]));
+  end
+  else if AStage.Phase = TUpdatePhase.Failed then
   begin
     Log('Update ' + AStage.Version + ' not prepared: ' + AStage.Error);
     Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPrepareFailedMessage, [AStage.Version,
@@ -138,13 +159,13 @@ begin
   begin
     Log('Update ' + AStage.Version + ' ready, new modules to choose');
     Say(TAtlasUpdateTexts.WithWarning(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesChooseMessage,
-      [AStage.Version]), AStage.Warning));
+      [AStage.Version]) + SourceNote(AStage), AStage.Warning));
   end
   else
   begin
     Log('Update ' + AStage.Version + ' ready');
     Say(TAtlasUpdateTexts.WithWarning(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPreparedMessage,
-      [AStage.Version]), AStage.Warning));
+      [AStage.Version]) + SourceNote(AStage), AStage.Warning));
   end;
 end;
 
@@ -247,7 +268,7 @@ begin
   Result := FProcess <> 0;
 end;
 
-procedure TAtlasIdeUpdateInstaller.Prepare(const AVersion, AManifestUrl, ANewModules: string);
+procedure TAtlasIdeUpdateInstaller.Prepare(const AVersion, AManifestUrl, ANewModules: string; AAllowSource: Boolean);
 var
   mArgs: TUpdateArguments;
 begin
@@ -255,7 +276,16 @@ begin
   begin
     Exit;
   end;
-  mArgs := TAtlasUpdateInstall.PrepareArgs(FEnvironment, FRoot, AVersion, AManifestUrl, ANewModules);
+  // Ein fertiger oder gescheiterter Stand eines früheren Laufs gälte im ersten Takt als Ergebnis des neuen,
+  // solange AtlasUpdate.exe noch nicht geschrieben hat.
+  if FileExists(StateFile(AVersion)) and not System.SysUtils.DeleteFile(StateFile(AVersion)) then
+  begin
+    Log('Update ' + AVersion + ': old state not deleted: ' + SysErrorMessage(GetLastError));
+    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPrepareFailedMessage, [AVersion,
+      TAtlasUpdateTexts.ErrorText(TUpdateErrors.cLocked, TUpdateLayout.cStateFile), TUpdateChannels.cReleasesUrl]));
+    Exit;
+  end;
+  mArgs := TAtlasUpdateInstall.PrepareArgs(FEnvironment, FRoot, AVersion, AManifestUrl, ANewModules, AAllowSource);
   FProcess := Launch(TAtlasUpdateInstall.UpdaterOf(FEnvironment.PluginDir), mArgs, False);
   if FProcess = 0 then
   begin

@@ -80,6 +80,17 @@ type
     class function UrlOf(APrerelease: Boolean): string; static;
   end;
 
+  /// <summary>Hosts, von denen AtlasUpdate.exe Versionsdatei, Pakete und Quelltext lädt: GitHub und die Speicher,
+  /// auf die GitHub Release-Dateien umleitet. Nur genau diese Namen, keine Unterdomänen.</summary>
+  TUpdateHosts = class
+  public
+    /// <summary>Host von AUrl in Kleinschreibung, ohne Port; '' ohne https oder mit Anmeldedaten (user@host).
+    /// </summary>
+    class function HostOf(const AUrl: string): string; static;
+    /// <summary>Sichere https-Adresse (IsSafeUrl) auf einem der erlaubten Hosts.</summary>
+    class function IsTrusted(const AUrl: string): Boolean; static;
+  end;
+
   TUpdateManifests = class
   public
     /// <summary>False, wenn AJson keine Versionsdatei mit gültiger Version ist. Ungültige Pakete und Quellen
@@ -106,6 +117,9 @@ const
   /// <summary>Hexziffern einer SHA-256-Prüfsumme.</summary>
   cSha256Digits = 64;
   cPackageExtension = '.bpl';
+  /// <summary>Erlaubte Hosts der Update-Dateien (TUpdateHosts).</summary>
+  cUpdateHosts: array[0..2] of string = ('github.com', 'objects.githubusercontent.com',
+    'release-assets.githubusercontent.com');
 
 { TUpdateFile }
 
@@ -329,6 +343,56 @@ begin
   else
   begin
     Result := cStableUrl;
+  end;
+end;
+
+{ TUpdateHosts }
+
+class function TUpdateHosts.HostOf(const AUrl: string): string;
+var
+  mRest: string;
+  mEnd: Integer;
+begin
+  Result := '';
+  if not AUrl.StartsWith(cHttpsScheme, True) then
+  begin
+    Exit;
+  end;
+  mRest := AUrl.Substring(Length(cHttpsScheme));
+  mEnd := mRest.IndexOfAny(['/', '?', '#']);
+  if mEnd >= 0 then
+  begin
+    mRest := mRest.Substring(0, mEnd);
+  end;
+  // Anmeldedaten vor dem Host verschleiern ihn ("https://github.com@andere.org/").
+  if mRest.Contains('@') then
+  begin
+    Exit;
+  end;
+  mEnd := mRest.IndexOf(':');
+  if mEnd >= 0 then
+  begin
+    mRest := mRest.Substring(0, mEnd);
+  end;
+  Result := LowerCase(mRest);
+end;
+
+class function TUpdateHosts.IsTrusted(const AUrl: string): Boolean;
+var
+  mHost, mTrusted: string;
+begin
+  Result := False;
+  if not TUpdateVersions.IsSafeUrl(AUrl) then
+  begin
+    Exit;
+  end;
+  mHost := HostOf(AUrl);
+  for mTrusted in cUpdateHosts do
+  begin
+    if mHost = mTrusted then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 

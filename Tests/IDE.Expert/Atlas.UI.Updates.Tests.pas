@@ -173,6 +173,10 @@ begin
     TAtlasUpdateTexts.ErrorText(TUpdateErrors.cManifestSignature, ''));
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorManifestUnsigned) + ' (HTTP 404)',
     TAtlasUpdateTexts.ErrorText(TUpdateErrors.cManifestUnsigned, 'HTTP 404'));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorSourceConfirm),
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cSourceConfirm, ''));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorHost) + ' (example.org)',
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cHost, 'example.org'));
 end;
 
 procedure TAtlasUpdateInstallUiTests.StageAndOutcomeTexts;
@@ -187,6 +191,12 @@ begin
   mStage.Phase := TUpdatePhase.Ready;
   mStage.AskSelection := True;
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesStageChoose), TAtlasUpdateTexts.StageText(mStage));
+  mStage.Phase := TUpdatePhase.Failed;
+  mStage.Error := TUpdateErrors.cSourceConfirm;
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesStageConfirmSource), TAtlasUpdateTexts.StageText(mStage));
+  mStage.Error := TUpdateErrors.cHash;
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesStageFailed), TAtlasUpdateTexts.StageText(mStage));
+  mStage.Error := '';
   mOutcome := Default(TUpdateOutcome);
   mOutcome.Kind := TUpdateOutcomeKind.Installed;
   mOutcome.Version := '2.1.0';

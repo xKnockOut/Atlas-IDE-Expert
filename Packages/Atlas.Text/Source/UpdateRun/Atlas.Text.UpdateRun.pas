@@ -101,6 +101,11 @@ type
     cCancelled = 'cancelled';
     cElevation = 'elevation';
     cSelection = 'selection';
+    /// <summary>Für die IDE gibt es kein Paket, und das Bauen aus dem Quelltext ist nicht bestätigt (Aufruf ohne
+    /// --allow-source). Nichts ist geladen; der Benutzer entscheidet im Plugin.</summary>
+    cSourceConfirm = 'sourceConfirm';
+    /// <summary>Adresse außerhalb der erlaubten Hosts (TUpdateHosts); Detail nennt den Host.</summary>
+    cHost = 'host';
     /// <summary>Unerwarteter Fehler; Detail nennt die Meldung.</summary>
     cUnexpected = 'unexpected';
   end;
@@ -150,6 +155,9 @@ type
     /// <summary>Auf das Ende dieses Prozesses warten (IDE, die apply startet); 0 = keiner.</summary>
     WaitPid: Cardinal;
     NewModules: TUpdateNewModules;
+    /// <summary>Bauen aus dem Quelltext ist bestätigt (--allow-source yes). Ein so gebautes Update ist nicht an
+    /// den Herausgeber gebunden: Die gebauten Packages tragen keine Signatur.</summary>
+    AllowSource: Boolean;
     class function Parse(const AArgs: TArray<string>): TUpdateArguments; static;
     function ToArgs: TArray<string>;
     /// <summary>Befehlszeile nach den Regeln von CommandLineToArgvW (ohne Programmname).</summary>
@@ -440,12 +448,14 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Argumente des Aktualisierers, gleich geordnet wie cArgumentNames.</summary>
   TUpdateArgument = (Manifest, Version, Ide, Platform, RegistryKey, Target, Staging, Select, WaitPid, NewModules,
-    Previous);
+    Previous, AllowSource);
 {$SCOPEDENUMS OFF}
 
 const
   cArgumentNames: array[TUpdateArgument] of string = ('manifest', 'version', 'ide', 'platform', 'registry-key',
-    'target', 'staging', 'select', 'wait-pid', 'new-modules', 'previous');
+    'target', 'staging', 'select', 'wait-pid', 'new-modules', 'previous', 'allow-source');
+  /// <summary>Wert von --allow-source, der das Bauen aus dem Quelltext bestätigt.</summary>
+  cConfirmed = 'yes';
 
 /// <summary>Prozesskennung aus dem Aufruf; 0 bei ungültigem Text oder einem Wert außerhalb von Cardinal.</summary>
 function ProcessIdOf(const AValue: string): Cardinal;
@@ -508,6 +518,8 @@ begin
       AArguments.NewModules := TUpdateNames.ParseNewModules(AValue);
     TUpdateArgument.Previous:
       AArguments.Previous := AValue;
+    TUpdateArgument.AllowSource:
+      AArguments.AllowSource := SameText(AValue, cConfirmed);
   end;
 end;
 
@@ -571,6 +583,10 @@ begin
       AddPair(mList, 'wait-pid', IntToStr(WaitPid));
     end;
     AddPair(mList, 'new-modules', TUpdateNames.NewModulesName(NewModules));
+    if AllowSource then
+    begin
+      AddPair(mList, 'allow-source', cConfirmed);
+    end;
     Result := mList.ToArray;
   finally
     mList.Free;

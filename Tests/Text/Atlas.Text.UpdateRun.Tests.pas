@@ -85,7 +85,12 @@ begin
   Assert.AreEqual(mArgs.Target, mCopy.Target);
   Assert.AreEqual('2.0.0', mCopy.Previous);
   Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Install, mCopy.NewModules);
+  Assert.IsFalse(mCopy.AllowSource);
   Assert.IsTrue(mArgs.CommandLine.StartsWith('prepare '));
+  Assert.IsFalse(mArgs.CommandLine.Contains('allow-source'));
+  mArgs.AllowSource := True;
+  Assert.IsTrue(TUpdateArguments.Parse(mArgs.ToArgs).AllowSource);
+  Assert.IsFalse(TUpdateArguments.Parse(TArray<string>.Create('prepare', '--allow-source', 'no')).AllowSource);
 end;
 
 procedure TTextUpdateRunTests.StageRoundTrip;

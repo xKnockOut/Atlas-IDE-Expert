@@ -7,7 +7,9 @@
 // 2. Zielordner wählen; vorgeschlagen ist %LOCALAPPDATA%\Programs\Atlas,
 //    weil dort keine Adminrechte nötig sind.
 // 3. Hat das Paket keine BPLs für die gewählte IDE (Delphi 12), wird die
-//    eigene Version aus dem Quelltext gebaut wie beim Update.
+//    eigene Version aus dem Quelltext gebaut wie beim Update, nur nach
+//    ausdrücklichem Ja (Vorgabe nein; --allow-source yes fragt nicht): Die
+//    gebauten Packages sind nicht an den Herausgeber gebunden.
 // 4. Module wählen, dann tauschen wie apply (mit Rückfall).
 // Was schon als Argument kommt (--ide, --platform, --registry-key, --target,
 // --select), wird nicht erfragt.
@@ -53,8 +55,12 @@ const
     (De: 'klassische IDE'; En: 'classic IDE'),
     (De: '64-Bit-IDE'; En: '64-bit IDE'),
     (De: 'Zielordner [%s]: '; En: 'Target folder [%s]: '),
-    (De: 'Das Paket enthält keine Packages für diese IDE; sie werden aus dem Quelltext gebaut.';
-    En: 'The package has no packages for this IDE; they are built from source.'),
+    (De: 'Das Paket enthält keine Packages für diese IDE. AtlasUpdate kann sie aus dem Quelltext bauen; die ' +
+    'gebauten Packages sind nicht an den Herausgeber gebunden (keine Signatur, nur die Prüfsumme sichert den ' +
+    'Quelltext). Aus dem Quelltext bauen? [j/N] ';
+    En: 'The package has no packages for this IDE. AtlasUpdate can build them from source; the built packages ' +
+    'are not bound to the publisher (no signature, only the checksum protects the source). Build from source? ' +
+    '[y/N] '),
     (De: 'Module:'; En: 'Modules:'),
     (De: 'Alle Module installieren? [J/n] '; En: 'Install all modules? [Y/n] '),
     (De: '  %s installieren? [J/n] '; En: '  Install %s? [Y/n] '),
@@ -80,6 +86,15 @@ var
 begin
   mAnswer := LowerCase(Ask(APrompt));
   Result := (mAnswer = '') or (mAnswer = 'j') or (mAnswer = 'y') or (mAnswer = 'ja') or (mAnswer = 'yes');
+end;
+
+/// <summary>Ja nur ausdrücklich; leere Eingabe ist nein.</summary>
+function Confirms(const APrompt: string): Boolean;
+var
+  mAnswer: string;
+begin
+  mAnswer := LowerCase(Ask(APrompt));
+  Result := (mAnswer = 'j') or (mAnswer = 'y') or (mAnswer = 'ja') or (mAnswer = 'yes');
 end;
 
 function PlatformCaption(const APlatform: string): string;
@@ -186,8 +201,15 @@ begin
   begin
     Exit;
   end;
-  TShellUpdateSystem.Say(cTexts[TInstallText.Building].Text);
   mArgs := AArgs;
+  if not mArgs.AllowSource then
+  begin
+    mArgs.AllowSource := Confirms(cTexts[TInstallText.Building].Text);
+  end;
+  if not mArgs.AllowSource then
+  begin
+    Exit('');
+  end;
   mArgs.Command := 'prepare';
   mArgs.Version := TProductVersion.cVersion;
   if mArgs.ManifestUrl = '' then

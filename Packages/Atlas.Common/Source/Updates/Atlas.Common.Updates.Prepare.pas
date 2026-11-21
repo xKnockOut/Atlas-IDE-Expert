@@ -3,17 +3,25 @@
 // Platform-Feature "Updates" (#1519), Root: Befehl prepare von
 // AtlasUpdate.exe. Läuft unsichtbar, während die IDE weiterläuft, und ändert
 // nichts am Atlas-Ordner:
+// 0. state.json sofort neu schreiben: Ein Stand eines früheren Laufs im
+//    selben Ordner gilt ab hier nicht mehr.
 // 1. Versionsdatei laden; sie muss die angebotene Version nennen und mit
 //    einem der eingebetteten Schlüssel signiert sein (Signaturdatei daneben,
 //    Atlas.Common.Updates.ManifestSignature). Eine falsche Signatur bricht ab,
 //    eine fehlende nur, solange RequireManifestSignature gilt; sonst Hinweis.
+//    Alle Adressen (Versionsdatei, Paket, Quelltext) nur von TUpdateHosts.
 // 2. Paket der eigenen IDE laden und mit SHA-256 prüfen; gibt es keins, das
 //    erste Paket (Server, Daten) und den Quelltext laden und die Packages
-//    bauen (ohne Kommandozeilen-Compiler Fehler noCompiler).
+//    bauen (ohne Kommandozeilen-Compiler Fehler noCompiler). Gebaut wird nur
+//    nach Bestätigung (--allow-source); sonst endet der Lauf vor dem ersten
+//    Download mit sourceConfirm, und das Plugin fragt. Gebaute Packages sind
+//    nicht an den Herausgeber gebunden; das Protokoll sagt es.
 // 3. Sicher nach <Staging>\files entpacken und die Signaturen prüfen: Ist
 //    AtlasUpdate.exe selbst signiert, müssen alle EXE und BPL des Pakets
-//    gültig und vom selben Herausgeber signiert sein (kein Wechsel auf
-//    unsignierte Dateien). Unsignierte Releases prüft nur die Prüfsumme.
+//    gültig und mit demselben Schlüssel signiert sein (Fingerabdruck, nicht
+//    der Name; kein Wechsel auf unsignierte Dateien). Ist der Herausgeber
+//    einer Datei nicht lesbar, gilt sie als unsigniert. Unsignierte Releases
+//    prüft nur die Prüfsumme.
 // 4. Kandidaten für die Auswahl bestimmen und state.json auf ready setzen.
 // Jeder Schritt schreibt state.json; ein Fehler setzt failed mit Kennung.
 
@@ -83,7 +91,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TPrepareText = (Loading, Unsigned, ManifestUnsigned, Failed);
+  TPrepareText = (Loading, Unsigned, FromSource, ManifestUnsigned, Failed);
 {$SCOPEDENUMS OFF}
 
 const
@@ -91,6 +99,10 @@ const
     (De: 'Lade %s'; En: 'Downloading %s'),
     (De: 'AtlasUpdate.exe ist nicht signiert: nur die Prüfsumme sichert das Paket.';
     En: 'AtlasUpdate.exe is not signed: only the checksum protects the package.'),
+    (De: 'Bau aus dem Quelltext: Die gebauten Packages sind nicht an den Herausgeber gebunden; nur die Prüfsumme ' +
+    'sichert den Quelltext.';
+    En: 'Building from source: the built packages are not bound to the publisher; only the checksum protects the ' +
+    'source.'),
     (De: 'Die Versionsdatei ist nicht signiert (%s): Das Update ist nicht an den Herausgeber gebunden.';
     En: 'The version file is not signed (%s): the update is not bound to the publisher.'),
     (De: 'Fehler %s: %s'; En: 'Error %s: %s'));
@@ -220,10 +232,20 @@ begin
   FStage.Warning := TUpdateErrors.cManifestUnsigned;
 end;
 
+/// <summary>EUpdateError (host) für eine Adresse außerhalb der erlaubten Hosts, bevor etwas geladen wird.</summary>
+procedure CheckHost(const AUrl: string);
+begin
+  if not TUpdateHosts.IsTrusted(AUrl) then
+  begin
+    raise EUpdateError.CreateCode(TUpdateErrors.cHost, TUpdateHosts.HostOf(AUrl));
+  end;
+end;
+
 function TUpdatePreparation.LoadManifest: TUpdateManifest;
 var
   mText, mError: string;
 begin
+  CheckHost(FArgs.ManifestUrl);
   if not FSystem.Network.Fetch(FArgs.ManifestUrl, mText, mError) then
   begin
     raise EUpdateError.CreateCode(TUpdateErrors.cDownload, mError);
@@ -245,6 +267,7 @@ procedure TUpdatePreparation.Fetch(const AFile: TUpdateFile; const AName: string
 var
   mZip, mError: string;
 begin
+  CheckHost(AFile.Url);
   mZip := TUpdateLayout.Join(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cDownloadFolder), AName);
   FSystem.Log(cTexts[TPrepareText.Loading].Fmt([AName]));
   if not FSystem.Network.Download(AFile.Url, mZip,
@@ -279,6 +302,12 @@ begin
     FSystem.Log(cTexts[TPrepareText.Unsigned].Text);
     Exit;
   end;
+  // Signiert, aber ohne lesbaren Herausgeber: Vergleichen ginge nur mit leeren Angaben, also abbrechen statt
+  // auf die bloße Prüfsumme zurückzufallen.
+  if not mOwn.IsComplete then
+  begin
+    raise EUpdateError.CreateCode(TUpdateErrors.cSignature, TUpdateLayout.cUpdaterExe);
+  end;
   mFilesDir := TUpdateFolders.FilesDir(FArgs.Staging);
   for mFile in FSystem.Files.FilesIn(mFilesDir) do
   begin
@@ -287,11 +316,11 @@ begin
       Continue;
     end;
     mSignature := FSystem.Trust.Signature(TUpdateLayout.Join(mFilesDir, mFile));
-    if not mSignature.Valid then
+    if not mSignature.IsComplete then
     begin
       raise EUpdateError.CreateCode(TUpdateErrors.cUnsigned, mFile);
     end;
-    if mSignature.Subject <> mOwn.Subject then
+    if not mSignature.SameSigner(mOwn) then
     begin
       raise EUpdateError.CreateCode(TUpdateErrors.cSignature, mFile);
     end;
@@ -308,6 +337,7 @@ begin
   begin
     raise EUpdateError.CreateCode(TUpdateErrors.cNoCompiler, mReason);
   end;
+  FSystem.Log(cTexts[TPrepareText.FromSource].Text);
   mSourceDir := TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cSourceFolder);
   Fetch(ASource, 'source.zip', 50, 80, mSourceDir);
   SetPhase(TUpdatePhase.Building, 0);
@@ -328,7 +358,12 @@ var
   mPackage: TUpdateFile;
   mFilesDir: string;
 begin
-  SetPhase(TUpdatePhase.Downloading, 0);
+  // Unbedingt schreiben: Downloading/0 ist auch der Anfangswert von FStage, SetPhase schriebe dann nichts, und
+  // ein fertiger oder gescheiterter Stand eines früheren Laufs bliebe stehen, während files schon gelöscht wird.
+  FStage.Phase := TUpdatePhase.Downloading;
+  FStage.Progress := 0;
+  FStage.Version := FArgs.Version;
+  WriteStage;
   mManifest := LoadManifest;
   FStage.Version := mManifest.Version;
   FStage.Previous := FArgs.Previous;
@@ -336,6 +371,11 @@ begin
   if FStage.FromSource and not (mManifest.Source.IsValid and mManifest.AnyPackage(mPackage)) then
   begin
     raise EUpdateError.CreateCode(TUpdateErrors.cNoPackage, FArgs.Ide);
+  end;
+  // Den Quelltext-Weg bindet keine Signatur an den Herausgeber: nur nach Bestätigung, und vor jedem Download.
+  if FStage.FromSource and not FArgs.AllowSource then
+  begin
+    raise EUpdateError.CreateCode(TUpdateErrors.cSourceConfirm, FArgs.Ide);
   end;
   mFilesDir := TUpdateFolders.FilesDir(FArgs.Staging);
   FSystem.Files.DeleteDirectory(mFilesDir);
