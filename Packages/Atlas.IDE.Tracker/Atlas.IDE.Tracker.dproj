@@ -133,6 +133,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.IssueCache.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Links.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Markdown.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Markdown.Inline.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Contract.MyIssues.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>

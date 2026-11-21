@@ -81,6 +81,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.Text.TestResults,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Stale,

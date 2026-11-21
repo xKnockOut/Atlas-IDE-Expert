@@ -100,6 +100,7 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
@@ -469,7 +470,7 @@ var
     end;
     mEdits := [TRuleEdit.Create(TTextRange.Create(APlus.StartPos, APlus.EndPos),
       Format('TPath.Combine(%s, %s)', [SourceText(mText, APlus[0]), SourceText(mText, APlus[1])]))];
-    if not TUsesClauses.IsUsed(mUsed, 'System.IOUtils', AContext.Namespaces) and
+    if not TPascalUses.IsUsed(mUsed, 'System.IOUtils', AContext.Namespaces) and
       TUsesClauses.AddUnit(AContext.Tree.Tokens, APlus.StartOffset, 'System.IOUtils', mLineBreak, mUsesEdit) then
     begin
       mEdits := mEdits + [mUsesEdit];
@@ -533,7 +534,7 @@ begin
   end;
   mText := AContext.Text;
   mLineBreak := TTextLines.LineBreakOf(mText);
-  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(AContext.Tree.Tokens);
   mPluses := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -648,7 +649,7 @@ begin
   begin
     Exit;
   end;
-  mUnitName := TUsesClauses.OwnName(mTokens);
+  mUnitName := TPascalUses.OwnName(mTokens);
   if mUnitName = '' then
   begin
     mUnitName := AContext.UnitName;
@@ -900,7 +901,7 @@ begin
     mNewText := 'not ' + mNewText;
   end;
   Result := [TRuleEdit.Create(TTextRange.Create(ACompare.StartPos, ACompare.EndPos), mNewText)];
-  if not TUsesClauses.IsUsed(AUsed, 'System.SysUtils', AContext.Namespaces) and
+  if not TPascalUses.IsUsed(AUsed, 'System.SysUtils', AContext.Namespaces) and
     TUsesClauses.AddUnit(AContext.Tree.Tokens, ACompare.StartOffset, 'System.SysUtils',
     TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
   begin
@@ -935,7 +936,7 @@ begin
   begin
     Exit;
   end;
-  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(AContext.Tree.Tokens);
   for mCompare in mCompares do
   begin
     AReport.Add(TTextRange.Create(mCompare.StartPos, mCompare.EndPos),
