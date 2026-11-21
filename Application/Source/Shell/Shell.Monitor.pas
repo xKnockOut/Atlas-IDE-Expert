@@ -23,7 +23,7 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Monitor.Settings,
   Atlas.Windows.Monitor.System,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Monitor.MainForm;
 
 const
@@ -54,7 +54,7 @@ var
   mGlobal: string;
 begin
   try
-    mGlobal := TShellBootstrap.LoadGlobalSettings(nil);
+    mGlobal := TCoreBootstrap.LoadGlobalSettings(nil);
   except
     // lsp-ignore: catch-all-without-raise -- unlesbare settings.json: Sprache von Windows
     on Exception do

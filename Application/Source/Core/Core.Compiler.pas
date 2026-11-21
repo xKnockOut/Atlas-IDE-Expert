@@ -1,7 +1,7 @@
-﻿unit Shell.Compiler;
+﻿unit Core.Compiler;
 
-// Host-Rolle Shell: Kompilieren ohne Kommandozeilen-Compiler (#261).
-// - TShellCompilerEditions erkennt je BDS-Wurzel und Version vorher, ob
+// Host-Rolle Core: Kompilieren ohne Kommandozeilen-Compiler (#261).
+// - TCoreCompilerEditions erkennt je BDS-Wurzel und Version vorher, ob
 //   dcc32/dcc64 da und nutzbar ist (Probelauf ohne Argumente, Lizenztext der
 //   Starter bzw. Community Edition), und merkt sich das in
 //   %LOCALAPPDATA%\Atlas\compiler-editions.json (Atlas.Common.Compiler.Edition).
@@ -22,7 +22,7 @@ uses
 
 type
   /// <summary>Ein Compilerlauf mit dcc und fertigem Aufruf.</summary>
-  TShellCompileJob = record
+  TCoreCompileJob = record
     Backend: TCompilerBackend;
     /// <summary>Über den Befehl „Projekt kompilieren“ statt nach dem Speichern.</summary>
     Manual: Boolean;
@@ -37,7 +37,7 @@ type
     Settings: TCompilerSettings;
   end;
 
-  TShellCompilerEditions = class
+  TCoreCompilerEditions = class
   private
     FProcess: ICompilerProcess;
     FLogger: ILogger;
@@ -70,9 +70,9 @@ uses
   System.DateUtils,
   Atlas.Text.Files;
 
-{ TShellCompilerEditions }
+{ TCoreCompilerEditions }
 
-constructor TShellCompilerEditions.Create(const AProcess: ICompilerProcess; const ALogger: ILogger;
+constructor TCoreCompilerEditions.Create(const AProcess: ICompilerProcess; const ALogger: ILogger;
   const AFileName: string);
 begin
   inherited Create;
@@ -83,14 +83,14 @@ begin
   FCache := TCompilerEditionCache.Create;
 end;
 
-destructor TShellCompilerEditions.Destroy;
+destructor TCoreCompilerEditions.Destroy;
 begin
   FCache.Free;
   FLock.Free;
   inherited;
 end;
 
-procedure TShellCompilerEditions.EnsureLoaded;
+procedure TCoreCompilerEditions.EnsureLoaded;
 begin
   if FLoaded then
   begin
@@ -109,7 +109,7 @@ begin
   end;
 end;
 
-procedure TShellCompilerEditions.Save;
+procedure TCoreCompilerEditions.Save;
 begin
   if FFileName = '' then
   begin
@@ -124,7 +124,7 @@ begin
   end;
 end;
 
-procedure TShellCompilerEditions.Store(const ABdsRoot, AVersion, AStamp: string; AEdition: TCompilerEdition);
+procedure TCoreCompilerEditions.Store(const ABdsRoot, AVersion, AStamp: string; AEdition: TCompilerEdition);
 var
   mEntry: TCompilerEditionEntry;
 begin
@@ -138,7 +138,7 @@ begin
   Save;
 end;
 
-function TShellCompilerEditions.Resolve(const ABdsRoot, AVersion, AExecutable: string): TCompilerEdition;
+function TCoreCompilerEditions.Resolve(const ABdsRoot, AVersion, AExecutable: string): TCompilerEdition;
 var
   mStamp: string;
   mOutput: TArray<string>;
@@ -187,7 +187,7 @@ begin
   end;
 end;
 
-procedure TShellCompilerEditions.Remember(const ABdsRoot, AVersion, AExecutable: string; AEdition: TCompilerEdition);
+procedure TCoreCompilerEditions.Remember(const ABdsRoot, AVersion, AExecutable: string; AEdition: TCompilerEdition);
 begin
   TMonitor.Enter(FLock);
   try
@@ -198,7 +198,7 @@ begin
   end;
 end;
 
-class function TShellCompilerEditions.StampOf(const AFileName: string): string;
+class function TCoreCompilerEditions.StampOf(const AFileName: string): string;
 begin
   Result := '';
   try
@@ -219,7 +219,7 @@ begin
   end;
 end;
 
-class function TShellCompilerEditions.DefaultFile: string;
+class function TCoreCompilerEditions.DefaultFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     TCompilerEditionCache.cFileName);

@@ -32,7 +32,7 @@ uses
   Atlas.Common.Updates.Contract,
   Atlas.Common.Updates.Prepare,
   Atlas.Common.Updates.Apply,
-  Shell.Bootstrap,
+  Core.Bootstrap,
   Shell.Update.System,
   Shell.Update.Install;
 
@@ -153,7 +153,7 @@ var
 begin
   SetConsoleOutputCP(CP_UTF8);
   SetTextCodePage(ErrOutput, CP_UTF8);
-  TShellBootstrap.UseTextLanguage('');
+  TCoreBootstrap.UseTextLanguage('');
   mArgs := TUpdateArguments.Parse(CommandArgs);
   if SameText(mArgs.Command, 'prepare') and (mArgs.Staging <> '') and (mArgs.ManifestUrl <> '') then
   begin

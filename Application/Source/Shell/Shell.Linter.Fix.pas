@@ -21,7 +21,7 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.BulkFix,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.VersionControlChanges,
   Shell.WorkspaceGroup;
 

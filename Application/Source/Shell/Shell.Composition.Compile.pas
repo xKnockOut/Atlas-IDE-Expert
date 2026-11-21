@@ -17,11 +17,11 @@ uses
   Atlas.Common.Compiler.Results,
   Atlas.Common.Lsp.WorkDoneProgress,
   Atlas.Common.Lsp.Status,
-  Shell.Compiler;
+  Core.Compiler;
 
 type
   /// <summary>Auftrag für AFileName (leer: das gewählte Projekt); False mit Grund in AError.</summary>
-  TShellCompileJobFunc = reference to function(const AFileName: string; out AJob: TShellCompileJob;
+  TShellCompileJobFunc = reference to function(const AFileName: string; out AJob: TCoreCompileJob;
     out AError: string): Boolean;
   /// <summary>Meldungen eines Laufs sind da; AFiles sind die Dateien, deren Meldungen sich geändert haben.</summary>
   TShellCompilePublish = reference to procedure(const AFiles: TArray<string>);
@@ -33,7 +33,7 @@ type
     Transport: IJsonRpcTransport;
     Process: ICompilerProcess;
     Progress: TLspWorkDoneProgress;
-    Editions: TShellCompilerEditions;
+    Editions: TCoreCompilerEditions;
     JobFor: TShellCompileJobFunc;
     Publish: TShellCompilePublish;
   end;
@@ -47,27 +47,27 @@ type
     FCompiling: Boolean;
     FStopping: Boolean;
     FHasPending: Boolean;
-    FPending: TShellCompileJob;
+    FPending: TCoreCompileJob;
     FUnavailable: string;
     FChoice: TCompilerBackendChoice;
     FHasChoice: Boolean;
     FShown: TArray<string>;
     FRestricted: Boolean;
-    function Choose(const AFileName: string; out AJob: TShellCompileJob; out AChoice: TCompilerBackendChoice): Boolean;
-    function ChoiceFor(const AJob: TShellCompileJob; AEdition: TCompilerEdition): TCompilerBackendChoice;
+    function Choose(const AFileName: string; out AJob: TCoreCompileJob; out AChoice: TCompilerBackendChoice): Boolean;
+    function ChoiceFor(const AJob: TCoreCompileJob; AEdition: TCompilerEdition): TCompilerBackendChoice;
     procedure Remember(const AChoice: TCompilerBackendChoice);
     procedure Unavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean);
     function MarkUnavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean; out AFirst: Boolean): Boolean;
     procedure ShowMessage(const AText: string);
-    function Prepare(const AFileName: string; out AJob: TShellCompileJob;
+    function Prepare(const AFileName: string; out AJob: TCoreCompileJob;
       out AChoice: TCompilerBackendChoice): Boolean;
-    function Enqueue(var AJob: TShellCompileJob): Boolean;
-    procedure Launch(const AJob: TShellCompileJob);
-    function NextJob(var AJob: TShellCompileJob): Boolean;
-    procedure Loop(const AJob: TShellCompileJob);
-    procedure CompileOnce(const AJob: TShellCompileJob);
-    procedure CompileWithDcc(const AJob: TShellCompileJob);
-    procedure Unlicensed(const AJob: TShellCompileJob);
+    function Enqueue(var AJob: TCoreCompileJob): Boolean;
+    procedure Launch(const AJob: TCoreCompileJob);
+    function NextJob(var AJob: TCoreCompileJob): Boolean;
+    procedure Loop(const AJob: TCoreCompileJob);
+    procedure CompileOnce(const AJob: TCoreCompileJob);
+    procedure CompileWithDcc(const AJob: TCoreCompileJob);
+    procedure Unlicensed(const AJob: TCoreCompileJob);
     procedure Publish(const AMessages: TArray<TCompilerMessage>; const AVia: string);
   public
     /// <summary>Übernimmt Progress und Editions.</summary>
@@ -139,13 +139,13 @@ begin
   inherited Destroy;
 end;
 
-function TShellCompileHost.Choose(const AFileName: string; out AJob: TShellCompileJob;
+function TShellCompileHost.Choose(const AFileName: string; out AJob: TCoreCompileJob;
   out AChoice: TCompilerBackendChoice): Boolean;
 var
   mError: string;
   mEdition: TCompilerEdition;
 begin
-  AJob := Default(TShellCompileJob);
+  AJob := Default(TCoreCompileJob);
   Result := FServices.JobFor(AFileName, AJob, mError);
   if not Result then
   begin
@@ -162,7 +162,7 @@ begin
   AChoice := ChoiceFor(AJob, mEdition);
 end;
 
-function TShellCompileHost.ChoiceFor(const AJob: TShellCompileJob; AEdition: TCompilerEdition): TCompilerBackendChoice;
+function TShellCompileHost.ChoiceFor(const AJob: TCoreCompileJob; AEdition: TCompilerEdition): TCompilerBackendChoice;
 begin
   Result := TCompilerBackends.Choose(AJob.Settings.Backend, AEdition);
 end;
@@ -246,7 +246,7 @@ end;
 
 /// <summary>Kein nutzbarer Weg: bewusst abgeschaltet nur im Status, sonst Grund und Ausweg einmal als Meldung (#261).
 /// </summary>
-function TShellCompileHost.Prepare(const AFileName: string; out AJob: TShellCompileJob;
+function TShellCompileHost.Prepare(const AFileName: string; out AJob: TCoreCompileJob;
   out AChoice: TCompilerBackendChoice): Boolean;
 begin
   try
@@ -272,7 +272,7 @@ begin
   end;
 end;
 
-function TShellCompileHost.Enqueue(var AJob: TShellCompileJob): Boolean;
+function TShellCompileHost.Enqueue(var AJob: TCoreCompileJob): Boolean;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -291,9 +291,9 @@ begin
   end;
 end;
 
-procedure TShellCompileHost.Launch(const AJob: TShellCompileJob);
+procedure TShellCompileHost.Launch(const AJob: TCoreCompileJob);
 var
-  mJob: TShellCompileJob;
+  mJob: TCoreCompileJob;
 begin
   if FThread <> nil then
   begin
@@ -311,7 +311,7 @@ begin
   FThread.Start;
 end;
 
-function TShellCompileHost.NextJob(var AJob: TShellCompileJob): Boolean;
+function TShellCompileHost.NextJob(var AJob: TCoreCompileJob): Boolean;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -330,9 +330,9 @@ begin
   end;
 end;
 
-procedure TShellCompileHost.Loop(const AJob: TShellCompileJob);
+procedure TShellCompileHost.Loop(const AJob: TCoreCompileJob);
 var
-  mJob: TShellCompileJob;
+  mJob: TCoreCompileJob;
   mDone: Boolean;
 begin
   mJob := AJob;
@@ -362,7 +362,7 @@ begin
   end;
 end;
 
-procedure TShellCompileHost.CompileOnce(const AJob: TShellCompileJob);
+procedure TShellCompileHost.CompileOnce(const AJob: TCoreCompileJob);
 begin
   try
     // Im try: Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
@@ -380,7 +380,7 @@ end;
 
 /// <summary>Starter bzw. Community Edition (#261): dcc ist da, darf aber nicht von der Kommandozeile bauen. Merken,
 /// damit auto künftig gleich richtig wählt, und Grund und Ausweg melden.</summary>
-procedure TShellCompileHost.Unlicensed(const AJob: TShellCompileJob);
+procedure TShellCompileHost.Unlicensed(const AJob: TCoreCompileJob);
 begin
   FServices.Editions.Remember(AJob.BdsRoot, AJob.Version, AJob.Request.Executable, TCompilerEdition.NoCommandLine);
   Unavailable(ChoiceFor(AJob, TCompilerEdition.NoCommandLine), True);
@@ -431,7 +431,7 @@ begin
 end;
 
 /// <summary>Führt AJob aus und sammelt die Ausgabe in ALines; Exit-Code.</summary>
-function RunCompiler(const AProcess: ICompilerProcess; const AJob: TShellCompileJob; ALines: TList<string>): Integer;
+function RunCompiler(const AProcess: ICompilerProcess; const AJob: TCoreCompileJob; ALines: TList<string>): Integer;
 begin
   ForceDirectories(AJob.OutputDir);
   Result := AProcess.Run(AJob.Request,
@@ -441,7 +441,7 @@ begin
     end);
 end;
 
-procedure TShellCompileHost.CompileWithDcc(const AJob: TShellCompileJob);
+procedure TShellCompileHost.CompileWithDcc(const AJob: TCoreCompileJob);
 var
   mLines: TList<string>;
   mOutput: TArray<string>;
@@ -477,7 +477,7 @@ end;
 function TShellCompileHost.Start(const AFileName: string; AManual: Boolean;
   out AChoice: TCompilerBackendChoice): Boolean;
 var
-  mJob: TShellCompileJob;
+  mJob: TCoreCompileJob;
   mUnavailable: Boolean;
 begin
   AChoice := Default(TCompilerBackendChoice);
@@ -548,7 +548,7 @@ end;
 procedure TShellCompileHost.StatusOf(var AStatus: TServerStatus);
 var
   mChoice: TCompilerBackendChoice;
-  mJob: TShellCompileJob;
+  mJob: TCoreCompileJob;
   mKnown: Boolean;
 begin
   // Zuletzt gewählt; sonst jetzt prüfen (die Ausgabe der Installation ist meist schon gemerkt). Eine Meldung zeigt

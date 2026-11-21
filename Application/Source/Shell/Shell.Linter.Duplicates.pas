@@ -15,7 +15,7 @@ interface
 
 uses
   Atlas.Common.Metrics.DuplicateBaseline,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   TLinterDuplicates = class

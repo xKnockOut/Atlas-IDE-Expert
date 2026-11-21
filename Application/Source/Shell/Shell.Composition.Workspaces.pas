@@ -111,7 +111,7 @@ uses
   Atlas.Common.Lsp.WorkspaceFolders,
   Atlas.Common.Rules.LibrarySources,
   Atlas.Text.LogMarks,
-  Shell.Bootstrap;
+  Core.Bootstrap;
 
 const
   cWaitForever = Cardinal($FFFFFFFF);
@@ -372,7 +372,7 @@ function TShellWorkspaceRegistry.PackageFolders: TArray<string>;
 begin
   // Auch die Projekte der Gruppe ohne eigenen Arbeitsbereich (index.projectGroup aus): Ein Modul findet die Quelle
   // seines Basis-Packages aus requires sonst nur als .dcp, und dessen Units fehlen im Index (#2309).
-  Result := TShellBootstrap.ProjectFolders(GroupProjectFiles);
+  Result := TCoreBootstrap.ProjectFolders(GroupProjectFiles);
 end;
 
 function TShellWorkspaceRegistry.Extract(const AOrigin: string;

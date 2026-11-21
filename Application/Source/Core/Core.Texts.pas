@@ -1,6 +1,6 @@
-﻿unit Shell.Texts;
+﻿unit Core.Texts;
 
-// Host-Rolle Shell: gemeinsame Benutzertexte der Shell in beiden Sprachen (#1458), die mehrere Units gleich
+// Host-Rolle Core: gemeinsame Benutzertexte des Hosts in beiden Sprachen (#1458), die mehrere Units gleich
 // brauchen: fehlende Argumente einer Anfrage oder eines MCP-Werkzeugs, erlaubte Werte eines Arguments und
 // „kein Projekt geladen“. Aufzählungen werden in der Sprache der Texte verbunden („a, b und c“ bzw.
 // „a, b and c“), damit nicht jede Unit eigene Varianten je Anzahl braucht.
@@ -9,7 +9,7 @@ interface
 
 type
   /// <summary>Gemeinsame Texte der Shell in der aktuellen Sprache (TAtlasLocale).</summary>
-  TShellTexts = record
+  TCoreTexts = record
   public
     /// <summary>AItems verbunden mit Komma und zuletzt „und“ (AOr = False) bzw. „oder“.</summary>
     class function Joined(const AItems: array of string; AOr: Boolean): string; static;
@@ -30,11 +30,11 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TShellText = (AndWord, OrWord, MissingOne, MissingMany, Choice, NoProject, NoProjectGiveFile);
+  TCoreText = (AndWord, OrWord, MissingOne, MissingMany, Choice, NoProject, NoProjectGiveFile);
 {$SCOPEDENUMS OFF}
 
 const
-  cTexts: array[TShellText] of TAtlasText = (
+  cTexts: array[TCoreText] of TAtlasText = (
     (De: 'und'; En: 'and'),
     (De: 'oder'; En: 'or'),
     (De: 'Argument %s fehlt'; En: 'Argument %s is missing'),
@@ -43,9 +43,9 @@ const
     (De: 'Kein Projekt geladen'; En: 'No project loaded'),
     (De: 'Kein Projekt geladen; Datei angeben'; En: 'No project loaded; specify a file'));
 
-{ TShellTexts }
+{ TCoreTexts }
 
-class function TShellTexts.Joined(const AItems: array of string; AOr: Boolean): string;
+class function TCoreTexts.Joined(const AItems: array of string; AOr: Boolean): string;
 var
   mIndex: Integer;
   mLast: string;
@@ -55,10 +55,10 @@ begin
   begin
     Exit;
   end;
-  mLast := cTexts[TShellText.AndWord].Text;
+  mLast := cTexts[TCoreText.AndWord].Text;
   if AOr then
   begin
-    mLast := cTexts[TShellText.OrWord].Text;
+    mLast := cTexts[TCoreText.OrWord].Text;
   end;
   Result := AItems[0];
   for mIndex := 1 to High(AItems) do
@@ -74,7 +74,7 @@ begin
   end;
 end;
 
-class function TShellTexts.Missing(const ANames: array of string): string;
+class function TCoreTexts.Missing(const ANames: array of string): string;
 var
   mQuoted: TArray<string>;
   mIndex: Integer;
@@ -86,30 +86,30 @@ begin
   end;
   if Length(mQuoted) = 1 then
   begin
-    Result := cTexts[TShellText.MissingOne].Fmt([mQuoted[0]]);
+    Result := cTexts[TCoreText.MissingOne].Fmt([mQuoted[0]]);
   end
   else
   begin
-    Result := cTexts[TShellText.MissingMany].Fmt([Joined(mQuoted, False)]);
+    Result := cTexts[TCoreText.MissingMany].Fmt([Joined(mQuoted, False)]);
   end;
 end;
 
-class function TShellTexts.Choice(const AName: string; const AChoices: array of string): string;
+class function TCoreTexts.Choice(const AName: string; const AChoices: array of string): string;
 begin
-  Result := cTexts[TShellText.Choice].Fmt([AName, Joined(AChoices, True)]);
+  Result := cTexts[TCoreText.Choice].Fmt([AName, Joined(AChoices, True)]);
 end;
 
-class function TShellTexts.NoProject: string;
+class function TCoreTexts.NoProject: string;
 begin
-  Result := cTexts[TShellText.NoProject].Text;
+  Result := cTexts[TCoreText.NoProject].Text;
 end;
 
-class function TShellTexts.NoProjectGiveFile: string;
+class function TCoreTexts.NoProjectGiveFile: string;
 begin
-  Result := cTexts[TShellText.NoProjectGiveFile].Text;
+  Result := cTexts[TCoreText.NoProjectGiveFile].Text;
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Texts', cTexts);
+  TAtlasTextTables.Add('Core.Texts', cTexts);
 
 end.

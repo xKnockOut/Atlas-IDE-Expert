@@ -46,7 +46,7 @@ uses
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Configuration.Contract,
-  Shell.CrashCases,
+  Core.CrashCases,
   Shell.Composition.FileChanges,
   Shell.Composition.Folders,
   Shell.Composition.Compile,
@@ -67,7 +67,7 @@ begin
       Result := AParts.Core;
     end;
   mServices.CrashCases :=
-    function: TShellCrashCases
+    function: TCoreCrashCases
     begin
       Result := AParts.Protocol.CrashCases;
     end;

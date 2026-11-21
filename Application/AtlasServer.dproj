@@ -126,7 +126,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.ClientStart.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Capabilities.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
-        <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
+        <DCCReference Include="Source\Core\Core.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.Listings.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.Setup.pas"/>
@@ -160,7 +160,7 @@
         <DCCReference Include="Source\Shell\Shell.Linter.Check.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Reports.pas"/>
         <DCCReference Include="Source\Shell\Shell.SlashHost.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Texts.pas"/>
+        <DCCReference Include="Source\Core\Core.Texts.pas"/>
         <DCCReference Include="Source\Shell\Shell.VersionControlChanges.pas"/>
         <DCCReference Include="Source\Shell\Shell.AffectedTests.pas"/>
         <DCCReference Include="Source\Shell\Shell.Hotspots.pas"/>
@@ -209,13 +209,13 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.Changes.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Conventions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
-        <DCCReference Include="Source\Shell\Shell.CrashCases.pas"/>
+        <DCCReference Include="Source\Core\Core.Bootstrap.pas"/>
+        <DCCReference Include="Source\Core\Core.CrashCases.pas"/>
         <DCCReference Include="Source\Shell\Shell.Replay.pas"/>
         <DCCReference Include="Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="Source\Shell\Shell.Commands.Index.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Compiler.pas"/>
+        <DCCReference Include="Source\Core\Core.Compiler.pas"/>
         <DCCReference Include="Source\Platform\Platform.Server.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Platform.pas"/>
         <BuildConfiguration Include="Base">
