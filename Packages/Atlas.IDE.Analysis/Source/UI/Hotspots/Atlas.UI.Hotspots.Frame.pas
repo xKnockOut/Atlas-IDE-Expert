@@ -171,6 +171,7 @@ uses
   System.Math,
   Vcl.Dialogs,
   Atlas.UI.Analysis.Strings,
+  Atlas.UI.Foundation.ListView,
   Atlas.UI.Foundation.Scaling;
 
 {$R *.dfm}
@@ -674,15 +675,8 @@ begin
 end;
 
 function ListText(AList: TListView): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  SetLength(Result, AList.Items.Count);
-  for mIndex := 0 to AList.Items.Count - 1 do
-  begin
-    Result[mIndex] := string.Join(#9, TArray<string>.Create(AList.Items[mIndex].Caption) +
-      AList.Items[mIndex].SubItems.ToStringArray);
-  end;
+  Result := TAtlasListView.RowsText(AList);
 end;
 
 { TAtlasHotspotsFrame.TEvents }
