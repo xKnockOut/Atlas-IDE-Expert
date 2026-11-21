@@ -38,7 +38,6 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Rules.Contract;
@@ -97,6 +96,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Projects.Contract,
   System.StrUtils,
   Atlas.Common.Projects.Paths,
   Atlas.Text.Arrays;

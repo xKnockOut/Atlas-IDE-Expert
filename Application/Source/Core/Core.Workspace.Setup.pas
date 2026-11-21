@@ -41,8 +41,6 @@ type
     /// <summary>Installation zu AVersion; nil ohne Version oder Erzeuger. Löst EProjectError aus wie der
     /// Erzeuger.</summary>
     function InstallationOf(const AVersion: string): ILibraryPathProvider;
-    /// <summary>Unit-Suche zu ASetup; nil ohne Erzeuger.</summary>
-    function UnitLookupOf(const ASetup: TUnitLookupSetup): IRuleUnitLookup;
   end;
 
   /// <summary>Dienste, die ein Arbeitsbereich vom Server bekommt: Dokumente, Transport zum Client, Protokoll,
@@ -194,15 +192,6 @@ begin
   if (AVersion <> '') and Assigned(Installation) then
   begin
     Result := Installation(AVersion);
-  end;
-end;
-
-function TCoreWorkspaceFactories.UnitLookupOf(const ASetup: TUnitLookupSetup): IRuleUnitLookup;
-begin
-  Result := nil;
-  if Assigned(UnitLookup) then
-  begin
-    Result := UnitLookup(ASetup);
   end;
 end;
 
