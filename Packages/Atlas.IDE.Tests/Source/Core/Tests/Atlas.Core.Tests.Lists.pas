@@ -177,7 +177,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.DUnitX.CommandLine;
 
 const
   cStateNames: array[TAtlasTestListState] of string = ('failed', 'notRun', 'stale');

@@ -84,7 +84,7 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Editing.ExtractInterface,
   Atlas.Common.Editing.MemberTransfer,
@@ -274,7 +274,7 @@ begin
   end;
   Result := TJSONObject.Create;
   Result.AddPair('className', mInfo.ClassName);
-  Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
+  Result.AddPair('ownUnit', TPascalUses.OwnName(ATree.Tokens));
   Result.AddPair('name', mInfo.SuggestedName);
   Result.AddPair('ancestor', mInfo.Ancestor);
   mList := TJSONArray.Create;
@@ -493,7 +493,7 @@ begin
   FRequest.Members := TJsonRead.Ints(mBody, 'members');
   FRequest.Abstract := TJsonRead.Ints(mBody, 'abstract');
   FUnitName := TJsonRead.TrimmedText(mBody, 'unit');
-  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TUsesClauses.OwnName(FTree.Tokens));
+  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TPascalUses.OwnName(FTree.Tokens));
   FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
   if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
   begin

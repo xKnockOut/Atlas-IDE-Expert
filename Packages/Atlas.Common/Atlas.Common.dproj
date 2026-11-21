@@ -229,6 +229,8 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Declarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Statements.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Types.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Compiler.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Frameworks.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Ownership.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.pas"/>
@@ -683,6 +685,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.EventAssignments.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TokenCursor.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.UsesClauses.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.FreeRoutineMembers.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.RtlMethodReferences.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
@@ -795,7 +798,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Types.pas"/>
-        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Conversions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Conversions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.TypedConstants.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Statements.pas"/>

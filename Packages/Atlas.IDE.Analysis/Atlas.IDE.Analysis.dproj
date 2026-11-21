@@ -100,6 +100,8 @@
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Palette.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Resolution.pas"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.RoleUnit.pas"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas"/>

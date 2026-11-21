@@ -93,7 +93,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -585,7 +585,7 @@ begin
   begin
     if mTokens[mIndex].IsKeyword('program') then
     begin
-      Exit(TUsesClauses.IsTestUnit(mTokens));
+      Exit(TPascalUses.IsTestUnit(mTokens));
     end
     else if mTokens[mIndex].IsKeyword('unit') or mTokens[mIndex].IsKeyword('library') or
       mTokens[mIndex].IsKeyword('package') then

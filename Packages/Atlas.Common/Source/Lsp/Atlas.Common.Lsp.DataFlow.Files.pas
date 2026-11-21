@@ -48,7 +48,7 @@ uses
   System.SysUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.DataFlow.Syntax;
 
 { TDataFlowFiles }
@@ -163,7 +163,7 @@ begin
     Exit;
   end;
   mTree := TreeOf(AFileName);
-  Result := (mTree <> nil) and TUsesClauses.IsTestUnit(mTree.Tokens);
+  Result := (mTree <> nil) and TPascalUses.IsTestUnit(mTree.Tokens);
   FTests.Add(AnsiUpperCase(AFileName), Result);
 end;
 

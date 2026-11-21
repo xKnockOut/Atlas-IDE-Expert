@@ -60,7 +60,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.TypeIdentity,
   Atlas.Common.Semantics.TypeKinds,
@@ -279,7 +279,7 @@ begin
   FResolver := AResolver;
   FFileName := AContext.ResolverFileName;
   FUsesKnown := (AContext.Index <> nil) and TUnresolvedNames.UsesKnown(AContext.Index,
-    TUsesClauses.UsedUnits(AContext.Tree.Tokens), AContext.Namespaces, AContext.EnsureUnit);
+    TPascalUses.UsedUnits(AContext.Tree.Tokens), AContext.Namespaces, AContext.EnsureUnit);
 end;
 
 function TTypeKindChecker.NodeText(ANode: TSyntaxNode): string;

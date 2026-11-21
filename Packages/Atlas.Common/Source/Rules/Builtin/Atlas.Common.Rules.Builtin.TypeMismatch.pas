@@ -89,7 +89,7 @@ uses
   Atlas.Common.Semantics.RtlMethodReferences,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Builtin.Constants.Conversions,
+  Atlas.Common.Rules.Builtin.Conversions,
   Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes,
   Atlas.Common.Pascal.SyntaxNodes;
 

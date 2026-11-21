@@ -194,7 +194,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
@@ -302,7 +302,7 @@ begin
   begin
     Exit;
   end;
-  for mUsed in TUsesClauses.References(AContext.Tree.Tokens) do
+  for mUsed in TPascalUses.References(AContext.Tree.Tokens) do
   begin
     if Violates(mLayers, AContext.UnitName, AContext.RelativePath, mUsed.Name, mLayer) then
     begin
@@ -882,7 +882,7 @@ end;
 
 function OwnUnitName(const AContext: TRuleContext): string;
 begin
-  Result := TUsesClauses.OwnName(AContext.Tree.Tokens);
+  Result := TPascalUses.OwnName(AContext.Tree.Tokens);
   if Result = '' then
   begin
     Result := AContext.UnitName;
@@ -908,7 +908,7 @@ begin
   end;
   // Test-Units tragen den Namen der getesteten Unit (X.Contract.Tests), gehören aber zu keiner Rolle
   // (docs/Architektur.md: Tests werden nicht geprüft).
-  if TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+  if TPascalUses.IsTestUnit(AContext.Tree.Tokens) then
   begin
     Exit;
   end;
@@ -918,7 +918,7 @@ begin
   begin
     Exit;
   end;
-  for mUsed in TUsesClauses.References(AContext.Tree.Tokens) do
+  for mUsed in TPascalUses.References(AContext.Tree.Tokens) do
   begin
     // contains eines Packages nimmt Units auf, statt sie einzubinden (#1109): Das Package ist keine Rolle.
     if mUsed.List = TUsesListKind.ContainsList then
@@ -963,7 +963,7 @@ end;
 function IsCheckedContract(const AContext: TRuleContext; const AOptions: TRoleImportOptions;
   const AOwnName: string): Boolean;
 begin
-  Result := (AOptions.Prefixes <> nil) and not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) and
+  Result := (AOptions.Prefixes <> nil) and not TPascalUses.IsTestUnit(AContext.Tree.Tokens) and
     TArchitectureMatrix.Classify(AOwnName, AOptions.Prefixes, AOptions.HostRoles,
       AOptions.HostedFeatures).IsContract;
 end;

@@ -50,6 +50,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
@@ -266,7 +267,7 @@ var
   mUsed: TArray<string>;
 begin
   mUsed := FUnitIndex.InterfaceUses + FUnitIndex.ImplementationUses;
-  Result := SameText(AUnitName, FContext.UnitName) or TUsesClauses.IsUsed(mUsed, AUnitName, FContext.Namespaces);
+  Result := SameText(AUnitName, FContext.UnitName) or TPascalUses.IsUsed(mUsed, AUnitName, FContext.Namespaces);
 end;
 
 function TFormReferenceCheck.ClassRange: TTextRange;

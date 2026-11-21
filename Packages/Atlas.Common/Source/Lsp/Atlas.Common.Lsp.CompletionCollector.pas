@@ -179,6 +179,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.NameIndex,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionSameNames,
@@ -296,7 +297,7 @@ begin
   FOwnUnit := '';
   if ARequest.Tree <> nil then
   begin
-    FOwnUnit := TUsesClauses.OwnName(ARequest.Tree.Tokens);
+    FOwnUnit := TPascalUses.OwnName(ARequest.Tree.Tokens);
   end;
   FDescends := TDictionary<string, Boolean>.Create;
   FBaseTypes := TDictionary<string, string>.Create;
@@ -456,13 +457,13 @@ var
 begin
   if not ACollector.FUsedReady then
   begin
-    ACollector.FUsed := TUsesClauses.UsedUnits(ACollector.FRequest.Tree.Tokens);
+    ACollector.FUsed := TPascalUses.UsedUnits(ACollector.FRequest.Tree.Tokens);
     ACollector.FUsedReady := True;
   end;
   for mUnitName in AUnits do
   begin
-    if not TUsesClauses.IsUsed(ACollector.FUsed, mUnitName, ACollector.FRequest.Resolver.Namespaces) and
-      not TUsesClauses.IsUsed(ACollector.FUsed, mUnitName, ['System']) and
+    if not TPascalUses.IsUsed(ACollector.FUsed, mUnitName, ACollector.FRequest.Resolver.Namespaces) and
+      not TPascalUses.IsUsed(ACollector.FUsed, mUnitName, ['System']) and
       TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, mUnitName, #13#10, mEdit) then
     begin
       AItem.AdditionalEdits := AItem.AdditionalEdits + [mEdit];
@@ -923,7 +924,7 @@ begin
   begin
     mUnitName := Names.Units[AEntry.UnitPos].UnitName;
     UnitState[AEntry.UnitPos] := 2;
-    if SameText(mUnitName, Own) or TUsesClauses.IsUsed(Used, mUnitName, Collector.FRequest.Resolver.Namespaces) then
+    if SameText(mUnitName, Own) or TPascalUses.IsUsed(Used, mUnitName, Collector.FRequest.Resolver.Namespaces) then
     begin
       UnitState[AEntry.UnitPos] := 1;
     end;
@@ -986,8 +987,8 @@ begin
   mScan.Wanted := AWanted;
   mScan.Known := KnownNames(ACollector);
   try
-    mScan.Used := TUsesClauses.UsedUnits(ACollector.FRequest.Tree.Tokens);
-    mScan.Own := TUsesClauses.OwnName(ACollector.FRequest.Tree.Tokens);
+    mScan.Used := TPascalUses.UsedUnits(ACollector.FRequest.Tree.Tokens);
+    mScan.Own := TPascalUses.OwnName(ACollector.FRequest.Tree.Tokens);
     // Projekt-Units vor der Bibliothek: Sonst füllen RTL/VCL die Höchstzahl, bevor eine
     // gerade getippte Klasse aus dem eigenen Projekt drankommt (#492). Der Namensindex (#617)
     // ist schon so sortiert und enthält nur importierbare Symbole; die Zeichenmaske spart den
@@ -1093,13 +1094,13 @@ var
 begin
   mKnown := KnownNames(Self);
   try
-    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mUsed := TPascalUses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TPascalUses.OwnName(FRequest.Tree.Tokens);
     for mUnitInfo in FRequest.Index.UnavailableUnits do
     begin
       mOwnUnit := SameText(mUnitInfo.UnitName, mOwn);
       if (Length(mUnitInfo.Unavailable) > 0) and (mOwnUnit or
-        TUsesClauses.IsUsed(mUsed, mUnitInfo.UnitName, FRequest.Resolver.Namespaces)) then
+        TPascalUses.IsUsed(mUsed, mUnitInfo.UnitName, FRequest.Resolver.Namespaces)) then
       begin
         AddUnavailableOf(Self, mUnitInfo, mOwnUnit, mKnown);
       end;
@@ -1264,7 +1265,7 @@ var
   mMoved: TArray<TTextEdit>;
   mEdit: TTextEdit;
 begin
-  mIsUsed := TUsesClauses.IsUsed(AUsed, AVariant.UnitInfo.UnitName, ACollector.FRequest.Resolver.Namespaces);
+  mIsUsed := TPascalUses.IsUsed(AUsed, AVariant.UnitInfo.UnitName, ACollector.FRequest.Resolver.Namespaces);
   mMovable := mIsUsed and TCompletionSameNames.MoveToEnd(ACollector.FRequest.Tree.Tokens,
     AVariant.UnitInfo.UnitName, AKey, ACollector.FRequest.Resolver.Namespaces, mMoved);
   AMode := TCompletionSameNames.InsertMode(ACollector.FRequest.Settings.SameNameInsert, mIsUsed, mMovable);
@@ -1393,8 +1394,8 @@ end;
 function HelperUnitSkipped(ACollector: TCompletionCollector; const AUnitName, AOwn: string;
   const AUsed: TArray<string>): Boolean;
 begin
-  Result := SameText(AUnitName, AOwn) or TUsesClauses.IsUsed(AUsed, AUnitName,
-    ACollector.FRequest.Resolver.Namespaces) or TUsesClauses.IsUsed(AUsed, AUnitName, ['System']);
+  Result := SameText(AUnitName, AOwn) or TPascalUses.IsUsed(AUsed, AUnitName,
+    ACollector.FRequest.Resolver.Namespaces) or TPascalUses.IsUsed(AUsed, AUnitName, ['System']);
 end;
 
 /// <summary>Kommt AMember als öffentliches, neues und passendes Mitglied des Helpers AHelperName in Frage?
@@ -1447,13 +1448,13 @@ begin
   end;
   mKnown := KnownNames(Self);
   try
-    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mUsed := TPascalUses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TPascalUses.OwnName(FRequest.Tree.Tokens);
     mAdded := 0;
     for mType in FRequest.IdeTypes do
     begin
       if mKnown.ContainsKey(UpperCase(mType.Name)) or SameText(mType.UnitName, mOwn) or
-        not AddIdeType(Self, mType, TUsesClauses.IsUsed(mUsed, mType.UnitName, FRequest.Resolver.Namespaces)) then
+        not AddIdeType(Self, mType, TPascalUses.IsUsed(mUsed, mType.UnitName, FRequest.Resolver.Namespaces)) then
       begin
         Continue;
       end;
@@ -1602,12 +1603,12 @@ begin
     begin
       Exit;
     end;
-    mScan.Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mScan.Own := TPascalUses.OwnName(FRequest.Tree.Tokens);
     SetLength(mScan.Units, FList.Count);
     SetLength(mScan.Hidden, FList.Count);
     mScan.Collect;
     mScan.MarkActive;
-    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mUsed := TPascalUses.UsedUnits(FRequest.Tree.Tokens);
     mRange := TTextRange.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix),
       FRequest.Position.Line, FRequest.Position.Character);
     for mVariant in mScan.Variants do
@@ -1639,8 +1640,8 @@ begin
   end;
   mKnown := KnownNames(Self);
   try
-    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mUsed := TPascalUses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TPascalUses.OwnName(FRequest.Tree.Tokens);
     mNames := TImportNames.Current(FRequest.Index);
     for mEntry in mNames.Helpers do
     begin
