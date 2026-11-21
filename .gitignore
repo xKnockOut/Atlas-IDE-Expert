@@ -58,3 +58,7 @@ benchmark/
 
 # Lokale Einstellungen der Claude-Sitzungen
 .claude/settings.local.json
+
+# Python-Zwischendateien der Werkzeuge
+__pycache__/
+*.pyc
