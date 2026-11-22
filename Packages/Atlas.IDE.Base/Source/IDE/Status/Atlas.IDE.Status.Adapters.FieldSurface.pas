@@ -176,8 +176,7 @@ uses
   Atlas.Plugin.Style.Signal,
   Atlas.Core.Status.Signal,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol,
-  Atlas.Core.Status.Signal;
+  Atlas.IDE.Foundation.Symbol;
 
 const
   cWM_ATLAS_STATUS = WM_USER + 591;

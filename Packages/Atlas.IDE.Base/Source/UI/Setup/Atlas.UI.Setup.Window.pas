@@ -151,8 +151,7 @@ uses
   Atlas.Core.Status.Signal,
   System.Math,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Setup.Strings,
-  Atlas.Core.Status.Signal;
+  Atlas.UI.Setup.Strings;
 
 const
   /// <summary>Kleinste Innenbreite des Fensters, logische Pixel.</summary>

@@ -82,8 +82,7 @@ uses
   Atlas.Core.Status.Signal,
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Popup.Draw,
-  Atlas.UI.Strings,
-  Atlas.Core.Status.Signal;
+  Atlas.UI.Strings;
 
 const
   // Alle Maße bei 96 dpi. Kopf: Einzug links und rechts, Abstand des Texts hinter dem Punkt, Abstand der Trennlinie
