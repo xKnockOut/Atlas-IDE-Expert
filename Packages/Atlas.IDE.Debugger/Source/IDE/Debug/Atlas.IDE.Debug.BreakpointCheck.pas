@@ -31,7 +31,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.BreakpointCheck,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 

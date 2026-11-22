@@ -169,6 +169,10 @@ end;
 
 procedure TAtlasAnalysisMetricsLens.PaintPill(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const ALine, AName, AText: string; AOver: Boolean);
+const
+  // Anteil der Tonfarbe an Rahmen und Füllung der Pille.
+  cPillBorder = 0.3;
+  cPillFill = 0.1;
 var
   mTailKey: string;
   mCell, mPill: TRect;
@@ -183,7 +187,7 @@ begin
     mTone := TAtlasColors.ForBackground(mBack).Warn;
   end;
   mPill := TAtlasLensPill.Paint(AContext.Canvas, ARect, TAtlasLineTail.Start(Self, mTailKey, mCell.Left), AText,
-    TAtlasLensPillStyle.Create(mTone, mBack, 0.3, 0.1, []));
+    TAtlasLensPillStyle.Create(mTone, mBack, cPillBorder, cPillFill, []));
   TAtlasLineTail.Finish(Self, mTailKey, mPill.Right);
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensMetrics, AContext.FileName,
     AContext.LogicalLineNum - 1, AName), mPill, AContext.EditView.TopRow, ARect.Height);

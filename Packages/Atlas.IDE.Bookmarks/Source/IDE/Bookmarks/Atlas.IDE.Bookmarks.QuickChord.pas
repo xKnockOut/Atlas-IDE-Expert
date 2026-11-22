@@ -51,6 +51,8 @@ const
   cChordPriority = -10;
   /// <summary>So lange gilt ein selbst gesendeter erster Teil als „durchlassen“.</summary>
   cPassMs = 1000;
+  // Takt, in dem der Akkord auf das Ende der Wartezeit prüft.
+  cTickMs = 50;
 
 type
   TChordState = class(TAtlasKeyClient)
@@ -83,7 +85,7 @@ begin
   inherited Create(cChordPriority);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := 50;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
 end;
 

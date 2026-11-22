@@ -12,7 +12,7 @@ uses
   System.Types,
   DUnitX.TestFramework,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Status.FieldFlow,
   Atlas.Tests.StatusFieldSurfaceFake;
 
@@ -89,7 +89,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Status.Registry;
+  Atlas.Plugin.Status.Registry;
 
 { TAtlasStatusFieldFlowTests }
 

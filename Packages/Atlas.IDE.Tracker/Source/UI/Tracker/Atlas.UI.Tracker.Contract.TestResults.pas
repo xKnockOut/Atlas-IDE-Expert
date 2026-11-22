@@ -9,7 +9,7 @@ interface
 
 uses
   Atlas.Core.Tracker.Contract.TestResults,
-  Atlas.Core.Foundation.Contract;
+  Atlas.Plugin.Calls.Contract;
 
 type
   IAtlasTestResultsSource = interface(IAtlasShownSource)

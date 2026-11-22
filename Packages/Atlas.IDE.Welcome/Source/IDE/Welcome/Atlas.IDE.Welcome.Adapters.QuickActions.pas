@@ -51,7 +51,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns,
   Atlas.IDE.Welcome.QuickActions.Keys,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract,
   Atlas.IDE.Welcome.Neighbors,
   Atlas.Core.Projects.Contract.Summary;
@@ -160,6 +160,10 @@ uses
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Projects.Summaries;
+
+const
+  /// <summary>ShellExecute meldet Erfolg mit einem Wert über 32, kleinere Werte sind Fehlercodes.</summary>
+  cShellExecuteErrorLimit = 32;
 
 function Settings: TAtlasPluginSettings;
 begin
@@ -293,7 +297,7 @@ var
   function Launch(const AProgram: string): Boolean;
   begin
     Result := TAtlasWelcomeQuickActions.ConsoleCommand(AProgram, mDir, mFileName, mParameters) and
-      (ShellExecute(0, 'open', PChar(mFileName), PChar(mParameters), PChar(mDir), SW_SHOWNORMAL) > 32);
+      (ShellExecute(0, 'open', PChar(mFileName), PChar(mParameters), PChar(mDir), SW_SHOWNORMAL) > cShellExecuteErrorLimit);
   end;
 
 begin

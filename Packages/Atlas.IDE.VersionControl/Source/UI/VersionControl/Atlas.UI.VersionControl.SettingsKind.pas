@@ -49,6 +49,13 @@ implementation
 uses
   System.StrUtils;
 
+const
+  /// <summary>Breite der Auswahl der Art.</summary>
+  cProviderWidth = 220;
+  /// <summary>Breite eines Kästchens der Anzeige und sein Abstand zum nächsten (Breite und Lücke).</summary>
+  cLinkWidth = 150;
+  cLinkStep = 156;
+
 { TAtlasSettingsVcsPart }
 
 procedure TAtlasSettingsVcsPart.Build;
@@ -59,7 +66,7 @@ begin
     [TAtlasVcsTextId.SettingsVcsProviderAuto, TAtlasVcsTextId.SettingsVcsProviderGit,
     TAtlasVcsTextId.SettingsVcsProviderSvn, TAtlasVcsTextId.SettingsVcsProviderOff],
     TArray<string>.Create('auto', 'git', 'svn', 'off'));
-  FVcsProvider.Width := FVcsProvider.ScaleValue(220);
+  FVcsProvider.Width := FVcsProvider.ScaleValue(cProviderWidth);
 end;
 
 procedure TAtlasSettingsVcsPart.WindowReady;
@@ -88,8 +95,8 @@ begin
   Result.Parent := AParent;
   Result.Caption := TAtlasVcsStrings.Text(ACaption);
   Result.Left := Result.ScaleValue(ALeft);
-  Result.Top := Result.ScaleValue(3);
-  Result.Width := Result.ScaleValue(150);
+  Result.Top := Result.ScaleValue(cCheckTop);
+  Result.Width := Result.ScaleValue(cLinkWidth);
   Result.OnClick := VcsLinkClick;
 end;
 
@@ -120,10 +127,10 @@ begin
   // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
   AddTitle(TAtlasVcsTextId.SettingsVcsLinksTitle);
   AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsLinksHint));
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasVcsTextId.SettingsVcsLinkEditor);
-  FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasVcsTextId.SettingsVcsLinkWelcome);
-  FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasVcsTextId.SettingsVcsLinkIssues);
+  FVcsLinkWelcome := AddVcsLink(mPanel, cLinkStep, TAtlasVcsTextId.SettingsVcsLinkWelcome);
+  FVcsLinkIssues := AddVcsLink(mPanel, 2 * cLinkStep, TAtlasVcsTextId.SettingsVcsLinkIssues);
 end;
 
 class function TAtlasSettingsVcsPart.VcsProviderCaption(const AProvider: string): string;

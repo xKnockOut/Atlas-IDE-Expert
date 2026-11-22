@@ -173,7 +173,7 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.Core.Projects.Summary,
   Atlas.Text.Arrays,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 type
   /// <summary>Zeichnet die Zeilen des Bereichs: Punkt, Name, Branch, zweite Zeile, Stand der Schnellaktion und
@@ -371,7 +371,7 @@ begin
     Canvas.Font.Assign(FFrame.Font);
     Canvas.Font.Size := FFrame.Font.Size - 1;
     Result := FFrame.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot +
-      Scaled(80), ATop, mWidth - Scaled(TAtlasWelcomeProjectsFrame.cIndent),
+      Scaled(TAtlasWelcomeRow.cQuickActionsLeft), ATop, mWidth - Scaled(TAtlasWelcomeProjectsFrame.cIndent),
       ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2))) - Scaled(TAtlasWelcomeProjectsFrame.cIndent);
   end;
 end;
@@ -386,7 +386,8 @@ begin
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := StyleServices(FFrame).GetSystemColor(clHighlight);
     Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.FillRect(Rect(0, ATop, Scaled(3), ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2)));
+    Canvas.FillRect(Rect(0, ATop, Scaled(TAtlasWelcomeRow.cSelectionBar),
+      ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2)));
     Canvas.Brush.Style := bsClear;
   end;
   // Punkt mit der schlimmsten Stufe; ohne Angaben grau.
@@ -394,34 +395,38 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasProjectsTexts.PillColor(TAtlasWelcomeProjects.Level(FFrame.FPills[ARow]));
   Canvas.Pen.Color := Canvas.Brush.Color;
-  Canvas.Ellipse(mLeft, ATop + Scaled(6), mLeft + FDot, ATop + Scaled(6) + FDot);
+  Canvas.Ellipse(mLeft, ATop + Scaled(TAtlasWelcomeRow.cDotTop), mLeft + FDot,
+    ATop + Scaled(TAtlasWelcomeRow.cDotTop) + FDot);
   Canvas.Brush.Style := bsClear;
 end;
 
 procedure TProjectsPainter.PaintTexts(ARow, ATop, ALimit: Integer);
 var
   mEntry: TAtlasProjectEntry;
-  mLeft, mTextLeft: Integer;
+  mLeft, mTextLeft, mNameTop, mNameBottom, mDetailTop: Integer;
 begin
   mEntry := FFrame.FEntries[ARow];
-  mTextLeft := Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot + Scaled(6);
+  mNameTop := ATop + Scaled(TAtlasWelcomeRow.cNameTop);
+  mNameBottom := ATop + Scaled(TAtlasWelcomeRow.cNameBottom);
+  mDetailTop := ATop + Scaled(TAtlasWelcomeRow.cDetailTop);
+  mTextLeft := Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot + Scaled(TAtlasWelcomeRow.cDotGap);
   mLeft := mTextLeft;
   Canvas.Font.Assign(FFrame.Font);
   Canvas.Font.Color := TextColor;
   Canvas.Font.Style := [fsBold];
-  Canvas.TextRect(Rect(mLeft, ATop + Scaled(3), ALimit, ATop + Scaled(21)), mLeft, ATop + Scaled(3), mEntry.Name);
-  Inc(mLeft, Canvas.TextWidth(mEntry.Name) + Scaled(8));
+  Canvas.TextRect(Rect(mLeft, mNameTop, ALimit, mNameBottom), mLeft, mNameTop, mEntry.Name);
+  Inc(mLeft, Canvas.TextWidth(mEntry.Name) + Scaled(TAtlasWelcomeRow.cNameGap));
   Canvas.Font.Style := [];
   if (mEntry.Branch <> '') and (mLeft < ALimit) then
   begin
     Canvas.Font.Color := MutedColor;
-    Canvas.TextRect(Rect(mLeft, ATop + Scaled(3), ALimit, ATop + Scaled(21)), mLeft, ATop + Scaled(3),
-      mEntry.Branch);
+    Canvas.TextRect(Rect(mLeft, mNameTop, ALimit, mNameBottom), mLeft, mNameTop, mEntry.Branch);
   end;
   // Zweite Zeile.
   Canvas.Font.Assign(FFrame.Font);
   Canvas.Font.Color := MutedColor;
-  Canvas.TextRect(Rect(mTextLeft, ATop + Scaled(23), ALimit, ATop + Scaled(41)), mTextLeft, ATop + Scaled(23),
+  Canvas.TextRect(Rect(mTextLeft, mDetailTop, ALimit, ATop + Scaled(TAtlasWelcomeRow.cDetailBottom)), mTextLeft,
+    mDetailTop,
     TAtlasProjectsTexts.DetailText(mEntry));
 end;
 
@@ -445,7 +450,8 @@ begin
     mRight := FFrame.FPillRects[ARow][0].Left - Scaled(TAtlasWelcomeProjectsFrame.cPillGap);
   end;
   mRect := Rect(mRight - Canvas.TextWidth(mText) - 2 * Scaled(TAtlasWelcomeProjectsFrame.cPillPadding),
-    ATop + Scaled(3), mRight, ATop + Scaled(3) + Scaled(TAtlasWelcomeProjectsFrame.cPillHeight));
+    ATop + Scaled(TAtlasWelcomeRow.cNameTop), mRight,
+    ATop + Scaled(TAtlasWelcomeRow.cNameTop) + Scaled(TAtlasWelcomeProjectsFrame.cPillHeight));
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasQuickActionTexts.StateColor(mState);
   Canvas.Pen.Color := Canvas.Brush.Color;
@@ -609,7 +615,7 @@ begin
   if Length(FEntries) = 0 then
   begin
     mPainter.Canvas.Font.Color := mPainter.MutedColor;
-    mPainter.Canvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(4),
+    mPainter.Canvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(TAtlasWelcomeRow.cEmptyTop),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsEmpty));
     Exit;
   end;
@@ -701,16 +707,15 @@ end;
 
 class function TAtlasProjectsTexts.PillColor(ALevel: TAtlasProjectPillLevel): TColor;
 begin
-  // Kräftige Töne mit weißer Schrift: lesbar im hellen und im dunklen Thema.
   case ALevel of
     TAtlasProjectPillLevel.Good:
-      Result := TColor($0043A02E);
+      Result := TAtlasWelcomeMarks.cGood;
     TAtlasProjectPillLevel.Warning:
-      Result := TColor($001A8CC9);
+      Result := TAtlasWelcomeMarks.cWarning;
     TAtlasProjectPillLevel.Error:
-      Result := TColor($002E22CF);
+      Result := TAtlasWelcomeMarks.cError;
   else
-    Result := TColor($00817666);
+    Result := TAtlasWelcomeMarks.cNeutral;
   end;
 end;
 
@@ -836,7 +841,7 @@ begin
   begin
     SetLength(FPillRects[mRow], Length(FPills[mRow]));
     mRight := FBox.Width - ScaleValue(cIndent);
-    mTop := RowTop(mRow) + ScaleValue(3);
+    mTop := RowTop(mRow) + ScaleValue(TAtlasWelcomeRow.cNameTop);
     for mIndex := High(FPills[mRow]) downto 0 do
     begin
       mWidth := mCanvas.TextWidth(TAtlasProjectsTexts.PillText(FPills[mRow][mIndex])) + 2 * ScaleValue(cPillPadding);

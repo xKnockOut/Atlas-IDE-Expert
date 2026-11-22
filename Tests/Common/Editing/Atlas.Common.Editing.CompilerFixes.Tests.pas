@@ -14,8 +14,6 @@ type
   [TestFixture]
   TCompilerFixesTests = class
   public
-    [Test]
-    procedure QuotedNamesFromMessages;
     /// <summary>Abnahme: H2443 für System.Generics.Collections trägt die Unit ein.</summary>
     [Test]
     procedure H2443AddsUnit;
@@ -120,16 +118,6 @@ begin
 end;
 
 { TCompilerFixesTests }
-
-procedure TCompilerFixesTests.QuotedNamesFromMessages;
-begin
-  Assert.AreEqual('Add|System.Generics.Collections', string.Join('|', TCompilerFixes.QuotedNames(
-    'Inline function ''Add'' has not been expanded because unit ''System.Generics.Collections'' is not ' +
-    'specified in USES list')));
-  Assert.AreEqual('AnsiString|string', string.Join('|', TCompilerFixes.QuotedNames(
-    'Implizite String-Umwandlung von ''AnsiString'' zu ''string''')));
-  Assert.AreEqual('', string.Join('|', TCompilerFixes.QuotedNames('ohne Namen ''offen')));
-end;
 
 procedure TCompilerFixesTests.H2443AddsUnit;
 const

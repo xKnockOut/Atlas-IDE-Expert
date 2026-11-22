@@ -58,6 +58,8 @@ uses
   Atlas.Text.Names;
 
 const
+  /// <summary>Git verbietet Branchnamen mit dieser Endung.</summary>
+  cLockSuffix = '.lock';
   // Paare: Zeichen und Ersatz. Großbuchstaben mit, weil LowerCase nur ASCII kennt.
   cFolding: array[0..63] of string = (
     'ä', 'ae', 'ö', 'oe', 'ü', 'ue', 'ß', 'ss', 'Ä', 'ae', 'Ö', 'oe', 'Ü', 'ue', 'ẞ', 'ss',
@@ -222,9 +224,9 @@ begin
       Delete(Result, Length(Result), 1);
       mChanged := True;
     end;
-    if SameText(Copy(Result, Length(Result) - 4, 5), '.lock') then
+    if SameText(Copy(Result, Length(Result) - Length(cLockSuffix) + 1, Length(cLockSuffix)), cLockSuffix) then
     begin
-      Delete(Result, Length(Result) - 4, 5);
+      Delete(Result, Length(Result) - Length(cLockSuffix) + 1, Length(cLockSuffix));
       mChanged := True;
     end;
   until not mChanged;

@@ -196,7 +196,7 @@ end;
 
 procedure TCompilerTrapsRtlTests.StreamWriteSilentCases;
 begin
-  // Beide Fassungen, die zweite in {$IF}-Zweigen wie Atlas.Core.Diagnostics.BoundedStream.
+  // Beide Fassungen, die zweite in {$IF}-Zweigen wie Atlas.Plugin.Diagnostics.BoundedStream.
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TStreamWriteNativeIntRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TGrenze = class(TBytesStream)'#10'  public'#10 +
     '    function Write(const ABuffer; ACount: Longint): Longint; overload; override;'#10 +

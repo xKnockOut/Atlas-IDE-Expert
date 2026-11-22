@@ -25,7 +25,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.Grid,
   Atlas.UI.Diagnostics.Strings;
 
@@ -153,7 +153,7 @@ implementation
 uses
   Atlas.Plugin.Style.Color,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.PluginReport,
+  Atlas.Plugin.Diagnostics.PluginReport,
   Atlas.Vcl.Theme.Service;
 
 const

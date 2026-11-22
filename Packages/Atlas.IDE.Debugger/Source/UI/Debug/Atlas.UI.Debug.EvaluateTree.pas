@@ -106,6 +106,11 @@ implementation
 uses
   Atlas.UI.Debug.Evaluate.Strings;
 
+const
+  // Zusätzliche Plätze beim Vergrößern der Eintragsliste und Spielraum, bevor sie neu nummeriert wird.
+  cInfoGrowth = 16;
+  cRenumberSlack = 64;
+
 function RootsOf(AList: TAtlasEvalList): TArray<TAtlasEvalNode>;
 var
   mIndex: Integer;
@@ -190,7 +195,7 @@ function TAtlasEvalTreeSync.NewInfo(const AKey: string): Pointer;
 begin
   if FInfoCount = Length(FInfos) then
   begin
-    SetLength(FInfos, 2 * FInfoCount + 16);
+    SetLength(FInfos, 2 * FInfoCount + cInfoGrowth);
   end;
   FInfos[FInfoCount] := Default(TAtlasEvalItemInfo);
   FInfos[FInfoCount].Key := AKey;
@@ -376,7 +381,7 @@ var
   mItem: TTreeNode;
 begin
   // Gelöschte Knoten lassen ihre Einträge zurück: ab der doppelten Zahl der Knoten neu nummerieren.
-  if FInfoCount <= 2 * FTree.Items.Count + 64 then
+  if FInfoCount <= 2 * FTree.Items.Count + cRenumberSlack then
   begin
     Exit;
   end;

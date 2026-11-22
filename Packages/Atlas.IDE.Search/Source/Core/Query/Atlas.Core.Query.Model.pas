@@ -559,8 +559,11 @@ end;
 { TAtlasQueryCompletion }
 
 function IsWordChar(AChar: Char): Boolean;
+const
+  /// <summary>Letztes ASCII-Zeichen; alles dahinter (Umlaute, Unicode) zählt zum Wort.</summary>
+  cLastAscii = 127;
 begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '@', '*', '?']) or (Ord(AChar) > 127);
+  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '@', '*', '?']) or (Ord(AChar) > cLastAscii);
 end;
 
 function IsComparisonChar(AChar: Char): Boolean;

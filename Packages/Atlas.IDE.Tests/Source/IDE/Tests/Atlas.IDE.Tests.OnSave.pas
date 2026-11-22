@@ -22,8 +22,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Tests.OnSave,
   Atlas.IDE.Tests.Output,

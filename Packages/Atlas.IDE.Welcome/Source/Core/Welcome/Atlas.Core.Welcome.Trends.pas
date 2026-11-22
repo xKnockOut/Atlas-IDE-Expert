@@ -68,6 +68,13 @@ implementation
 uses
   System.Math;
 
+const
+  /// <summary>Länge einer vollständigen Revision in Hexziffern: SHA-1 und SHA-256.</summary>
+  cSha1Length = 40;
+  cSha256Length = 64;
+  /// <summary>Länge der Kurzform einer Revision wie bei git.</summary>
+  cShortCommitLength = 7;
+
 /// <summary>Round(AValue * ANumerator / ADenominator) ohne Überlauf; ADenominator &gt; 0.</summary>
 function Scaled(AValue, ANumerator, ADenominator: Integer): Integer;
 var
@@ -246,7 +253,7 @@ var
   mIndex: Integer;
 begin
   Result := Trim(ARevision);
-  if (Length(Result) <> 40) and (Length(Result) <> 64) then
+  if (Length(Result) <> cSha1Length) and (Length(Result) <> cSha256Length) then
   begin
     Exit;
   end;
@@ -257,7 +264,7 @@ begin
       Exit;
     end;
   end;
-  Result := Copy(Result, 1, 7);
+  Result := Copy(Result, 1, cShortCommitLength);
 end;
 
 class function TAtlasWelcomeTrends.PointX(AIndex, ACount, ALeft, AWidth: Integer): Integer;

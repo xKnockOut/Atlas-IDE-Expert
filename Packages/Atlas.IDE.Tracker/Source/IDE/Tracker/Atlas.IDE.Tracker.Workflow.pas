@@ -57,9 +57,9 @@ uses
   Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.SyncPlan,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
@@ -207,6 +207,10 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.Core.Tracker.CommentEditor;
+
+const
+  /// <summary>So lange wartet Stop höchstens auf ein laufendes Schreiben.</summary>
+  cStopTimeoutMs = 1000;
 
 type
   /// <summary>Der offene Beenden-Dialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>
@@ -610,7 +614,7 @@ begin
   end;
   FStopped := True;
   // Höchstens die Zeitgrenze eines Schreibens; danach kommt kein Ergebnis mehr an.
-  FWorker.Stop(1000);
+  FWorker.Stop(cStopTimeoutMs);
   FTransport := nil;
   FMessage.Clear;
   FTimeText := nil;

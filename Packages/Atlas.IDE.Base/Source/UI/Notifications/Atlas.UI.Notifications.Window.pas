@@ -36,7 +36,7 @@ uses
   Vcl.Menus,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Signal,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.Vcl.Forms.Dialog;
 
 type
@@ -162,7 +162,7 @@ uses
   System.DateUtils,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Vcl.Popup.Draw,
   Atlas.UI.Strings,
   Atlas.UI.Notifications.Strings;

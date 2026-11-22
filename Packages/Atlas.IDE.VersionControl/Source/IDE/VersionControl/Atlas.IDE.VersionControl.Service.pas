@@ -136,7 +136,7 @@ uses
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Plan,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   System.Generics.Collections,
   Winapi.Windows,
   Vcl.ExtCtrls,
@@ -157,6 +157,12 @@ type
     Vcs: TAtlasTeamVcs;
   end;
 
+const
+  /// <summary>Zeitstempel für CachedAge: noch nichts gemerkt bzw. ohne Einstellungsdatei (dann gelten die
+  /// Vorgaben, und der Unterschied zu cNotCached hält sie im Zwischenspeicher).</summary>
+  cNotCached = -1;
+  cNoSettingsFile = -2;
+
 var
   Worker: TAtlasBackgroundJobs;
   Runner: IAtlasVcsRunner;
@@ -165,7 +171,7 @@ var
   Lock: TCriticalSection;
   // vcs.* mit Zeitstempel der Datei, aus der die Werte stammen.
   Cached: TVcsSettings;
-  CachedAge: TDateTime = -1;
+  CachedAge: TDateTime = cNotCached;
   // .atlas je Datei (klein geschrieben); gilt die Datei (Einstellung TeamFile)?
   TeamCache: TDictionary<string, TTeamEntry>;
   TeamFileOn: Boolean;
@@ -282,7 +288,7 @@ begin
   if (mFileName = '') or not FileAge(mFileName, mAge) then
   begin
     Result := TVcsSettings.Default;
-    mAge := -2;
+    mAge := cNoSettingsFile;
   end
   else
   begin
@@ -438,7 +444,7 @@ begin
   TeamFileOn := TAtlasIdeTeamFile.Wanted;
   Lock.Enter;
   try
-    CachedAge := -1;
+    CachedAge := cNotCached;
     TeamCache.Clear;
   finally
     Lock.Leave;

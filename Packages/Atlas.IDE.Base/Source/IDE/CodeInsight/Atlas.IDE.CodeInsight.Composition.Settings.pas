@@ -22,7 +22,7 @@ uses
   System.JSON,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Product.Version,
-  Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,

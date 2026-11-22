@@ -18,7 +18,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Status.Server;
+  Atlas.Plugin.Status.Server;
 
 type
   TAtlasIdeServerWindow = class

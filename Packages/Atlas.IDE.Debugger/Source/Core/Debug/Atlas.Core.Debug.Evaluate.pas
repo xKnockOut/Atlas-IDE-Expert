@@ -187,6 +187,9 @@ const
   // Bildzeichen für Steuerzeichen: U+2400 + Code; Tab als Pfeil.
   cControlPictureBase = $2400;
   cTabPicture = #$2192;
+  cFirstPrintable = ' ';
+  cHexDigits32 = 8;
+  cHexDigits64 = 16;
 
 /// <summary>AText[AIndex] ist ein Anführungszeichen: Index (1-basiert) hinter dem schließenden ('' zählt als
 /// Inhalt); 0, wenn der String nicht endet.</summary>
@@ -589,7 +592,8 @@ begin
       C := AText[mIndex];
       if (C = #13) and (mIndex < Length(AText)) and (AText[mIndex + 1] = #10) then
       begin
-        mBuilder.Append(Char(cControlPictureBase + 13)).Append(Char(cControlPictureBase + 10)).Append(sLineBreak);
+        mBuilder.Append(Char(cControlPictureBase + Ord(#13))).Append(Char(cControlPictureBase + Ord(#10)))
+          .Append(sLineBreak);
         Inc(mIndex, 2);
         Continue;
       end;
@@ -601,7 +605,7 @@ begin
       begin
         mBuilder.Append(cTabPicture);
       end
-      else if Ord(C) < 32 then
+      else if C < cFirstPrintable then
       begin
         mBuilder.Append(Char(cControlPictureBase + Ord(C)));
       end
@@ -722,11 +726,11 @@ begin
   end;
   if (mNumber >= Low(Integer)) and (mNumber <= High(Integer)) then
   begin
-    AHex := '$' + IntToHex(Integer(mNumber), 8);
+    AHex := '$' + IntToHex(Integer(mNumber), cHexDigits32);
   end
   else
   begin
-    AHex := '$' + IntToHex(mNumber, 16);
+    AHex := '$' + IntToHex(mNumber, cHexDigits64);
   end;
   AHex := AHex + ' (' + IntToStr(mNumber) + ')';
 end;

@@ -75,6 +75,10 @@ uses
   Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings;
 
+const
+  // Takt, in dem der Eingang auf neue Anfragen prüft.
+  cTickMs = 250;
+
 var
   /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>
   GCleaned: Boolean;
@@ -102,7 +106,7 @@ begin
   FSignal := TAtlasFolderSignal.Create(FFolder);
   FPace := Default(TAtlasInboxPace);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;

@@ -1,0 +1,2 @@
+### Behoben
+- Fenster „Atlas-Issue“: Beschreibung, Verknüpfungen, Knöpfe und Pull Requests überlappen sich nicht mehr, und unter dem Kopf bleibt keine Lücke. Die Teile stehen in einer eigenen Ablagefläche, die jede Höhe erst nach der Breite liest und bei späteren Änderungen (Bilder geladen, Baum aufgeklappt, Fenstergröße, DPI) neu ablegt. Die Knöpfe „Unteraufgabe anlegen …“ und „Verknüpfen …“ messen ihren Text und werden bei 150 % nicht abgeschnitten; die Beschreibung setzt sich nach einem Monitorwechsel neu.

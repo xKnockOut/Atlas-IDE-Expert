@@ -62,8 +62,9 @@ type
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
     cDeferredTimeoutMs = 500;
     cRequestTimeoutMs = 3000;
-    /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je TickMs * 5).</summary>
+    /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je cRetryTicks Takte).</summary>
     cLocationRetries = 20;
+    cRetryTicks = 5;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -295,7 +296,7 @@ begin
   case FProgress.Locate(mRead = TAtlasDebugStackRead.None, mWithoutSource, mBuffer <> nil, cLocationRetries) of
     TAtlasStopLocation.Retry:
       begin
-        FTimer.Interval := cTickMs * 5;
+        FTimer.Interval := cTickMs * cRetryTicks;
         FTimer.Enabled := True;
         Exit(False);
       end;

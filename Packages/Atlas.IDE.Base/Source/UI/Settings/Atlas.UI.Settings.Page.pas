@@ -131,7 +131,7 @@ uses
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Strings,
   Atlas.Plugin.Style.Symbol,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Vcl.Controls.WrapLabel;
 
 const

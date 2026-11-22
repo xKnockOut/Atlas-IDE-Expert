@@ -306,6 +306,23 @@ uses
   Atlas.Core.Architecture.Resolution,
   Atlas.Core.Architecture.Palette;
 
+const
+  // Zeile einer Zuordnung: [Teilsystem, interface, implementation(, zählt)]; das vierte Feld fehlt bei älteren
+  // Servern und gilt dann als 1.
+  cAssignmentMinParts = 3;
+  cAssignmentCounts = 3;
+  cAssignmentMaxParts = cAssignmentCounts + 1;
+  // Kante: [Quelle, Ziel, "i"/"m"].
+  cEdgeParts = 3;
+  // Vorgaben der Gruppierung, solange die Daten kein "grouping" haben (#1366).
+  cDefaultMaxShare = 0.25;
+  cDefaultMinCohesion = 0.3;
+  // Knotenradius in logischen Pixeln: Mindestmaß plus Zuwachs je Wurzel der Zeilenzahl.
+  cMinNodeRadius = 5;
+  cNodeRadiusPerRootLine = 1.8;
+  // "YYYY-MM-DD HH:MM" aus einem ISO-Zeitstempel.
+  cMinuteTextLength = 16;
+
 function IntsOf(const AObject: TJSONObject; const AName: string): TArray<Integer>;
 var
   mItems: TJSONArray;
@@ -482,7 +499,7 @@ function AssignmentOf(AItem: TJSONObject; var AUnit: TAtlasArchUnit): Boolean;
 var
   mRows, mRow: TJSONArray;
   mIndex, mPart: Integer;
-  mValues: array[0..3] of Integer;
+  mValues: array[0..cAssignmentCounts] of Integer;
 begin
   Result := True;
   if AItem.GetValue('close') is TJSONNumber then
@@ -503,11 +520,11 @@ begin
       Exit(False);
     end;
     mRow := TJSONArray(mRows.Items[mIndex]);
-    if (mRow.Count < 3) or (mRow.Count > 4) then
+    if (mRow.Count < cAssignmentMinParts) or (mRow.Count > cAssignmentMaxParts) then
     begin
       Exit(False);
     end;
-    mValues[3] := 1;
+    mValues[cAssignmentCounts] := 1;
     for mPart := 0 to mRow.Count - 1 do
     begin
       if mRow.Items[mPart] is TJSONNumber then
@@ -522,7 +539,7 @@ begin
     AUnit.Assignment[mIndex].Subsystem := mValues[0];
     AUnit.Assignment[mIndex].Interfaces := mValues[1];
     AUnit.Assignment[mIndex].Implementations := mValues[2];
-    AUnit.Assignment[mIndex].Counts := mValues[3] <> 0;
+    AUnit.Assignment[mIndex].Counts := mValues[cAssignmentCounts] <> 0;
   end;
 end;
 
@@ -654,7 +671,7 @@ begin
       Continue;
     end;
     mPair := TJSONArray(mItems.Items[mIndex]);
-    if mPair.Count < 3 then
+    if mPair.Count < cEdgeParts then
     begin
       Continue;
     end;
@@ -776,8 +793,8 @@ var
   mItem: TJSONObject;
 begin
   AModel.Resolution := 1;
-  AModel.MaxShare := 0.25;
-  AModel.MinCohesion := 0.3;
+  AModel.MaxShare := cDefaultMaxShare;
+  AModel.MinCohesion := cDefaultMinCohesion;
   AModel.Foundations := 'separate';
   if not (AData.GetValue('grouping') is TJSONObject) then
   begin
@@ -888,7 +905,7 @@ begin
     Exit;
   end;
   mPair := TJSONArray(AValue);
-  if (mPair.Count < 3) or not (mPair.Items[0] is TJSONNumber) or not (mPair.Items[1] is TJSONNumber) then
+  if (mPair.Count < cEdgeParts) or not (mPair.Items[0] is TJSONNumber) or not (mPair.Items[1] is TJSONNumber) then
   begin
     Exit;
   end;
@@ -1276,9 +1293,9 @@ function TAtlasArchitectureModel.NodeRadius(AUnit: Integer): Double;
 begin
   if (AUnit < 0) or (AUnit > High(Units)) then
   begin
-    Exit(5);
+    Exit(cMinNodeRadius);
   end;
-  Result := 5 + Sqrt(Max(0, Units[AUnit].Total)) * 1.8;
+  Result := cMinNodeRadius + Sqrt(Max(0, Units[AUnit].Total)) * cNodeRadiusPerRootLine;
 end;
 
 function TAtlasArchitectureModel.PathText(AFrom: Integer; const AEdges: TArray<Integer>): string;
@@ -1549,7 +1566,7 @@ begin
   Result := '';
   if AlignedSource <> '' then
   begin
-    Result := Copy(StringReplace(AlignedAt, 'T', ' ', []), 1, 16);
+    Result := Copy(StringReplace(AlignedAt, 'T', ' ', []), 1, cMinuteTextLength);
   end;
 end;
 

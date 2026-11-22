@@ -37,7 +37,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Text.TestResults,
   Atlas.Core.Tests.StatusField;
 

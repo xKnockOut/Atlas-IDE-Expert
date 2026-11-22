@@ -238,7 +238,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
@@ -314,7 +314,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
@@ -372,7 +372,7 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus,
       TAtlasYouTrackApi.ErrorMessage(mText)));
@@ -452,7 +452,7 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
   end;
-  if mStatus = 200 then
+  if mStatus = TAtlasHttpStatus.cOk then
   begin
     if not TAtlasYouTrackParse.ParseTimeSettings(mText, False, ASettings) then
     begin
@@ -460,14 +460,14 @@ begin
     end;
     Exit;
   end;
-  if (mStatus <> 403) and (mStatus <> 404) then
+  if (mStatus <> TAtlasHttpStatus.cForbidden) and (mStatus <> TAtlasHttpStatus.cNotFound) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus,
       TAtlasYouTrackApi.ErrorMessage(mText)));
   end;
   // Ohne Leserecht auf das Projekt: Zeiterfassung gilt als an, Arbeitstypen allgemein (sonst frei).
   mUrl := ATarget.Url + '/api/admin/timeTrackingSettings/workItemTypes?fields=name&$top=' + IntToStr(TAtlasYouTrackApi.cMaxValues);
-  if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) and
+  if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = TAtlasHttpStatus.cOk) and
     not TAtlasYouTrackParse.ParseTimeSettings(mText, True, ASettings) then
   begin
     ASettings.WorkTypes := nil;
@@ -495,7 +495,7 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
   end;
-  if (mResponse.Status < 200) or (mResponse.Status > 299) then
+  if (mResponse.Status < TAtlasHttpStatus.cOk) or (mResponse.Status > TAtlasHttpStatus.cLastSuccess) then
   begin
     Result := TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
       TAtlasYouTrackApi.ErrorMessage(mResponse.Text));
@@ -526,7 +526,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
@@ -567,7 +567,7 @@ begin
     AError := mResponse.Error;
     Exit;
   end;
-  if mResponse.Status <> 200 then
+  if mResponse.Status <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status);
     Exit;
@@ -599,7 +599,7 @@ begin
   begin
     AError := mResponse.Error;
   end
-  else if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
+  else if (mResponse.Status <> TAtlasHttpStatus.cOk) and (mResponse.Status <> TAtlasHttpStatus.cCreated) then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status);
   end
@@ -780,7 +780,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
@@ -813,7 +813,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
@@ -850,7 +850,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
@@ -873,12 +873,12 @@ var
   mChanges: TArray<TAtlasTrackerVcsChange>;
 begin
   AError := TAtlasCiFetchError.None;
-  Result := AStatus = 404;
+  Result := AStatus = TAtlasHttpStatus.cNotFound;
   if Result then
   begin
     Exit;
   end;
-  if AStatus <> 200 then
+  if AStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(AStatus);
   end

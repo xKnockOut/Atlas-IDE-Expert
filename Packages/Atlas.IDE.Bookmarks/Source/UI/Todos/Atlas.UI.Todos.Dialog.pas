@@ -59,8 +59,17 @@ uses
 
 const
   cGap = 8;
+  // Höhe der Knopfleiste unten, logische Pixel.
+  cBottomHeight = 44;
   cDialogWidth = 420;
   cLabelWidth = 120;
+  // Höhen von Kästchen, Hinweis (zwei Zeilen), Beschriftung und Auswahlfeld; Beschriftung etwas tiefer als das
+  // Auswahlfeld, damit die Texte auf einer Linie stehen. Logische Pixel.
+  cCheckHeight = 20;
+  cHintHeight = 32;
+  cLabelHeight = 18;
+  cComboHeight = 23;
+  cLabelTop = 3;
 
 { TAtlasTodoFilterDialog }
 
@@ -87,7 +96,7 @@ begin
   FIncludeDone.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterDone);
   FIncludeDone.Checked := AFilter.IncludeDone;
   FIncludeDone.SetBounds(ScaleValue(cGap + cLabelWidth), FNextTop, ClientWidth - ScaleValue(2 * cGap + cLabelWidth),
-    ScaleValue(20));
+    ScaleValue(cCheckHeight));
   FNextTop := FIncludeDone.Top + FIncludeDone.Height + ScaleValue(cGap);
 
   FHint := TAtlasWrapLabel.Create(Self);
@@ -95,13 +104,13 @@ begin
   FHint.ShowAccelChar := False;
   FHint.AutoSize := False;
   FHint.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterHint);
-  FHint.SetBounds(ScaleValue(cGap), FNextTop, ClientWidth - ScaleValue(2 * cGap), ScaleValue(32));
+  FHint.SetBounds(ScaleValue(cGap), FNextTop, ClientWidth - ScaleValue(2 * cGap), ScaleValue(cHintHeight));
   FNextTop := FHint.Top + FHint.Height;
 
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := ScaleValue(44);
+  mBottom.Height := ScaleValue(cBottomHeight);
   mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Anzeigen“; ganz links „Zurücksetzen“.
   FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCancel), CancelClick);
@@ -128,7 +137,8 @@ begin
   mPrompt.Parent := Self;
   mPrompt.ShowAccelChar := False;
   mPrompt.Caption := ACaption;
-  mPrompt.SetBounds(ScaleValue(cGap), FNextTop + ScaleValue(3), ScaleValue(cLabelWidth - cGap), ScaleValue(18));
+  mPrompt.SetBounds(ScaleValue(cGap), FNextTop + ScaleValue(cLabelTop), ScaleValue(cLabelWidth - cGap),
+    ScaleValue(cLabelHeight));
 
   Result := TComboBox.Create(Self);
   Result.Parent := Self;
@@ -136,7 +146,7 @@ begin
   Result.Style := csDropDown;
   Result.AutoComplete := True;
   Result.SetBounds(ScaleValue(cGap + cLabelWidth), FNextTop, ClientWidth - ScaleValue(2 * cGap + cLabelWidth),
-    ScaleValue(23));
+    ScaleValue(cComboHeight));
   Result.Items.BeginUpdate;
   try
     for mItem in AItems do

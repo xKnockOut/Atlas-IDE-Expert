@@ -176,7 +176,7 @@ implementation
 uses
   Winapi.Windows,
   System.StrUtils,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Lsp.WorkspaceEdits,

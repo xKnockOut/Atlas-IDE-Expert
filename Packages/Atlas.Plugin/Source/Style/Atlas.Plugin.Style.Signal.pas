@@ -15,7 +15,7 @@
 //   OnSolid: Plakette mit Zahl darauf.
 // Die Farben gehören zur Palette der Fläche, auf der sie liegen
 // (TAtlasColors.Signals; für Leisten ForChrome mit der Fläche der Leiste). Welcher Zustand einer
-// Statuszeile welches Signal bekommt, ordnet TAtlasStatusSignal (Atlas.Core.Status.Signal) zu.
+// Statuszeile welches Signal bekommt, ordnet TAtlasStatusSignal (Atlas.Plugin.Status.Signal) zu.
 
 interface
 

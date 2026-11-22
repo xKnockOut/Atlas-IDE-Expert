@@ -7,7 +7,7 @@ interface
 
 uses
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.StartTimes,
+  Atlas.Plugin.Diagnostics.StartTimes,
   Atlas.IDE.Diagnostics.SafeMode;
 
 /// <summary>Hinweis des abgesicherten Starts; nil vor StartSafeMode.</summary>
@@ -43,7 +43,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status;
 

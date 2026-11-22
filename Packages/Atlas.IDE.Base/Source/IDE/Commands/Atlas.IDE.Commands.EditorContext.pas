@@ -92,7 +92,7 @@ uses
   Atlas.Text.Lines,
   Atlas.UI.Strings,
   Atlas.ToolsApi.Editor.Buffer,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 /// <summary>Zeile und Spalte des Editors (1-basiert) als Position des Servers.</summary>
 function LspPosition(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;

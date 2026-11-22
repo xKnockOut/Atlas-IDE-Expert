@@ -32,7 +32,7 @@ uses
   ToolsAPI,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type

@@ -24,7 +24,7 @@ uses
   Vcl.Graphics,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.PluginParts,
   Atlas.UI.Diagnostics.MainThreadPage,
   Atlas.UI.Diagnostics.TimingFrame;
@@ -76,7 +76,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.PluginReport,
+  Atlas.Plugin.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginRows,
   Atlas.Vcl.Controls.WrapLabel,

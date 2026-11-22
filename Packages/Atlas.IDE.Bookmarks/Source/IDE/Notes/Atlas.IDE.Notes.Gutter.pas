@@ -53,6 +53,14 @@ uses
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Foundation.Settings;
 
+const
+  // Umgeknickte Ecke ein Drittel der Breite, Textzeilen im Abstand eines Viertels der Höhe.
+  cFoldShareOf = 3;
+  cLineStepShareOf = 4;
+  // Anteil der Akzentfarbe in Füllung und Rand (Rest Hintergrund).
+  cSheetFillMix = 0.25;
+  cSheetLineMix = 0.9;
+
 { TAtlasIdeNotesGutter }
 
 function TAtlasIdeNotesGutter.Feature: TAtlasFeature;
@@ -97,17 +105,17 @@ var
   mFold, mStep, Y: Integer;
 begin
   // Notizblatt mit umgeknickter Ecke und zwei Textzeilen, im Akzent.
-  mFold := Max(2, AIcon.Width div 3);
+  mFold := Max(2, AIcon.Width div cFoldShareOf);
   ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, 0.25));
-  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, 0.9));
+  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, cSheetFillMix));
+  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, cSheetLineMix));
   ACanvas.Pen.Width := 1;
   ACanvas.Polygon([Point(AIcon.Left, AIcon.Top), Point(AIcon.Right - mFold, AIcon.Top),
     Point(AIcon.Right, AIcon.Top + mFold), Point(AIcon.Right, AIcon.Bottom), Point(AIcon.Left, AIcon.Bottom)]);
   ACanvas.MoveTo(AIcon.Right - mFold, AIcon.Top);
   ACanvas.LineTo(AIcon.Right - mFold, AIcon.Top + mFold);
   ACanvas.LineTo(AIcon.Right, AIcon.Top + mFold);
-  mStep := Max(2, AIcon.Height div 4);
+  mStep := Max(2, AIcon.Height div cLineStepShareOf);
   Y := AIcon.Top + mFold + mStep - 1;
   while Y < AIcon.Bottom - 1 do
   begin

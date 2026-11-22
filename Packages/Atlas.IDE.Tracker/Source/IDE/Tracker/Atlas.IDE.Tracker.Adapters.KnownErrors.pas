@@ -78,7 +78,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Tracker.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.NewIssue,

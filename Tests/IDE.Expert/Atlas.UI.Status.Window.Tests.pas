@@ -33,13 +33,13 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Signal,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Vcl.Graphics,
   Atlas.Vcl.Theme.Service,
   Atlas.UI.Strings,
   Atlas.UI.Status.Window,
-  Atlas.Core.Status.Signal;
+  Atlas.Plugin.Status.Signal;
 
 function Line(const AId: string; AOrder: Integer; AState: TAtlasStatusState; const AText: string): IAtlasStatusItem;
 var

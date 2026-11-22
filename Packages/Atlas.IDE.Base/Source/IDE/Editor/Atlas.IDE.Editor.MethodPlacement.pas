@@ -30,7 +30,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Editor.MethodPlacement,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasMethodPlacementSessionFunc = TFunc<TLspSession>;
