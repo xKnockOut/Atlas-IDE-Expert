@@ -75,7 +75,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   System.Math,
   System.StrUtils,
   System.RegularExpressions,

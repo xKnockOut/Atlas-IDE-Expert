@@ -84,7 +84,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.DeclareUnknown,
-  Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.UsesEdits,

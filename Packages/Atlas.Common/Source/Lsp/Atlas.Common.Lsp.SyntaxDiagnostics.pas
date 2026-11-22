@@ -188,7 +188,7 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Findings.Suppressions,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Rules.Checker;
 
 // Übernimmt AParams.

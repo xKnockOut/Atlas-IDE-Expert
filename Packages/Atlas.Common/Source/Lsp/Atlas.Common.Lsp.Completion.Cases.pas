@@ -81,7 +81,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Pascal.DocComments,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionCollector,

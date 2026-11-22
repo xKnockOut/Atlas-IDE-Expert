@@ -75,7 +75,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,

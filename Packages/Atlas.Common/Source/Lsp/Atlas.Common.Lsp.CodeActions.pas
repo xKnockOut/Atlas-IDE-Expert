@@ -141,7 +141,7 @@ uses
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Pascal.DocComments,
   Atlas.Common.Editing.MemberOrder,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Parser,
