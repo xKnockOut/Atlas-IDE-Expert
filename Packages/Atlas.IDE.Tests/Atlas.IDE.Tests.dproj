@@ -190,6 +190,9 @@
         </DCCReference>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.ListBar.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.ListDialog.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Adapters.Module.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Adapters.Runs.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Adapters.Values.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Hooks.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>
