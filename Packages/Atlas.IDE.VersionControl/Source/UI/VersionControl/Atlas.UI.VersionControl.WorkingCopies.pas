@@ -153,6 +153,13 @@ const
   cCloseWidth = 100;
   cButtonTop = 8;
   cButtonHeight = 28;
+  /// <summary>Höhe der Leiste mit den Knöpfen.</summary>
+  cButtonBarHeight = 44;
+  /// <summary>Anfangs- und Mindestgröße des Fensters.</summary>
+  cDialogWidth = 860;
+  cDialogHeight = 380;
+  cDialogMinWidth = 560;
+  cDialogMinHeight = 240;
   cIndent = '    ';
   cBranchMark = #$2514' ';
 
@@ -326,13 +333,13 @@ begin
   FDialog := ADialog;
   Parent := ADialog;
   Align := alBottom;
-  Height := ScaleValue(44);
+  Height := ScaleValue(cButtonBarHeight);
   BevelOuter := bvNone;
   FCheckButton := AddButton(cGap, cCheckWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesCheckServer),
     CheckClick);
-  FUpdateAllButton := AddButton(cCheckWidth + 2 * cGap, cButtonWidth,
+  FUpdateAllButton := AddButton(cGap + cCheckWidth + cGap, cButtonWidth,
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesUpdateAll), UpdateClick);
-  FUpdateOnlyButton := AddButton(cCheckWidth + cButtonWidth + 3 * cGap, cButtonWidth,
+  FUpdateOnlyButton := AddButton(cGap + cCheckWidth + cGap + cButtonWidth + cGap, cButtonWidth,
     TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateOnly, [AName]), UpdateClick);
   mClose := AddButton(0, cCloseWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose), nil);
   mClose.Left := Width - ScaleValue(cCloseWidth + cGap);
@@ -398,10 +405,10 @@ begin
   Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesTitle, [AName]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Width := ScaleValue(860);
-  Height := ScaleValue(380);
-  Constraints.MinWidth := 560;
-  Constraints.MinHeight := 240;
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
+  Constraints.MinWidth := ScaleValue(cDialogMinWidth);
+  Constraints.MinHeight := ScaleValue(cDialogMinHeight);
   // Unten zuerst: die Knöpfe bleiben beim Verkleinern sichtbar.
   FButtons := TAtlasWorkingCopiesButtons.CreateFor(Self, AName);
   AddHint;
@@ -430,10 +437,12 @@ begin
 end;
 
 procedure TAtlasWorkingCopiesDialog.AddView;
+const
+  // Breiten der Spalten Kopie, Pfad, Revision, Geändert, Eingehend.
+  cColumnWidths: array[0..4] of Integer = (200, 260, 120, 70, 130);
 var
   mColumn: TListColumn;
   mIndex: Integer;
-  mWidths: TArray<Integer>;
   mCaptions: TArray<TAtlasVcsTextId>;
 begin
   FView := TListView.Create(Self);
@@ -450,12 +459,11 @@ begin
   mCaptions := TArray<TAtlasVcsTextId>.Create(TAtlasVcsTextId.VcsWorkingCopiesColumnCopy,
     TAtlasVcsTextId.VcsWorkingCopiesColumnPath, TAtlasVcsTextId.VcsWorkingCopiesColumnRevision,
     TAtlasVcsTextId.VcsWorkingCopiesColumnChanged, TAtlasVcsTextId.VcsWorkingCopiesColumnIncoming);
-  mWidths := TArray<Integer>.Create(200, 260, 120, 70, 130);
   for mIndex := 0 to High(mCaptions) do
   begin
     mColumn := FView.Columns.Add;
     mColumn.Caption := TAtlasVcsStrings.Text(mCaptions[mIndex]);
-    mColumn.Width := FView.ScaleValue(mWidths[mIndex]);
+    mColumn.Width := FView.ScaleValue(cColumnWidths[mIndex]);
   end;
 end;
 

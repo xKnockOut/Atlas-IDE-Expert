@@ -33,9 +33,9 @@ uses
   Atlas.Core.Tracker.CommitHook,
   Core.Mcp.IssueTools,
   Core.VersionControlChanges,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts;
 

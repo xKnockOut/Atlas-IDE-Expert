@@ -10,6 +10,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ComCtrls,
@@ -83,9 +84,31 @@ type
     property Caption;
   end;
 
+  /// <summary>Teile untereinander in voller Breite, in der Reihenfolge, in der sie eingehängt werden (Parent);
+  /// die Höhe folgt dem Inhalt. Ersetzt alTop: Das ordnet nach Top und verliert Höhenänderungen, die ein Teil
+  /// während des Ausrichtens macht (Doku, Abzeichen, Bilder und umbrechende Texte rechnen ihre Höhe in Resize
+  /// bzw. CreateWnd aus der Breite). Hier bekommt jedes Teil zuerst seine Breite, erst danach zählt seine Höhe;
+  /// ändert sie sich später, richtet die Fläche über RequestAlign neu aus. Margins zählen bei AlignWithMargins.
+  /// </summary>
+  TAtlasIssueStack = class(TCustomControl)
+  private
+    /// <summary>Teile in der Reihenfolge des Einhängens; nil im Destruktor.</summary>
+    FItems: TList<TControl>;
+    procedure CMControlListChange(var AMessage: TCMControlListChange); message CM_CONTROLLISTCHANGE;
+  protected
+    procedure AlignControls(AControl: TControl; var Rect: TRect); override;
+    procedure CreateWnd; override;
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Jetzt ablegen, auch ohne Fenster (die VCL richtet erst mit Fenster aus).</summary>
+    procedure Arrange;
+  end;
+
   /// <summary>Abgesetzte Fläche mit Rahmen (Kopf des Issues, ein Kommentar); wächst mit ihrem Inhalt.
   /// Die Kinder erben die Füllfarbe über Color.</summary>
-  TAtlasIssueCard = class(TCustomControl)
+  TAtlasIssueCard = class(TAtlasIssueStack)
   public const
     /// <summary>Innenabstand bei 96 dpi: seitlich und oben/unten.</summary>
     cPadSide = 6;
@@ -417,6 +440,109 @@ begin
   Invalidate;
 end;
 
+{ TAtlasIssueStack }
+
+/// <summary>Abstand von AControl zu seinen Nachbarn: Margins nur mit AlignWithMargins.</summary>
+function ItemMargins(AControl: TControl): TRect;
+begin
+  Result := TRect.Empty;
+  if AControl.AlignWithMargins then
+  begin
+    Result := TRect.Create(AControl.Margins.Left, AControl.Margins.Top, AControl.Margins.Right,
+      AControl.Margins.Bottom);
+  end;
+end;
+
+constructor TAtlasIssueStack.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FItems := TList<TControl>.Create;
+  ControlStyle := ControlStyle + [csAcceptsControls];
+  Height := 0;
+end;
+
+destructor TAtlasIssueStack.Destroy;
+begin
+  // Die VCL hängt die Teile in inherited aus: dann nichts mehr merken.
+  FreeAndNil(FItems);
+  inherited;
+end;
+
+procedure TAtlasIssueStack.CMControlListChange(var AMessage: TCMControlListChange);
+begin
+  inherited;
+  if FItems = nil then
+  begin
+    Exit;
+  end;
+  if AMessage.Inserting then
+  begin
+    FItems.Add(AMessage.Control);
+  end
+  else
+  begin
+    FItems.Remove(AMessage.Control);
+  end;
+end;
+
+procedure TAtlasIssueStack.AlignControls(AControl: TControl; var Rect: TRect);
+var
+  mItem: TControl;
+  mMargins: TRect;
+  mTop, mHeight: Integer;
+begin
+  AdjustClientRect(Rect);
+  mTop := Rect.Top;
+  for mItem in FItems do
+  begin
+    if not mItem.Visible then
+    begin
+      Continue;
+    end;
+    mMargins := ItemMargins(mItem);
+    mItem.SetBounds(Rect.Left + mMargins.Left, mTop + mMargins.Top,
+      Max(0, Rect.Width - mMargins.Left - mMargins.Right), mItem.Height);
+    // Ohne Fenster richtet eine Karte bei neuer Breite nicht selbst aus.
+    if (mItem is TAtlasIssueStack) and not TAtlasIssueStack(mItem).HandleAllocated then
+    begin
+      TAtlasIssueStack(mItem).Arrange;
+    end;
+    // Die Höhe erst nach der Breite lesen: Das Teil rechnet sie in Resize aus der Breite.
+    mTop := mItem.Top + mItem.Height + mMargins.Bottom;
+  end;
+  mHeight := mTop + Padding.Bottom + Height - ClientHeight;
+  if Height <> mHeight then
+  begin
+    Height := mHeight;
+  end;
+end;
+
+procedure TAtlasIssueStack.Arrange;
+var
+  mRect: TRect;
+begin
+  DisableAlign;
+  try
+    mRect := ClientRect;
+    AlignControls(nil, mRect);
+  finally
+    EnableAlign;
+  end;
+end;
+
+procedure TAtlasIssueStack.CreateWnd;
+begin
+  inherited;
+  // Teile, die ohne Fenster eingehängt wurden, stehen noch alle oben.
+  Realign;
+end;
+
+procedure TAtlasIssueStack.Paint;
+begin
+  Canvas.Brush.Color := Color;
+  Canvas.FillRect(ClientRect);
+end;
+
 { TAtlasIssueCard }
 
 constructor TAtlasIssueCard.Create(AOwner: TComponent);
@@ -426,16 +552,18 @@ begin
   FBorder := TAtlasColors.Light.Line;
   ParentColor := False;
   ParentBackground := False;
-  AutoSize := True;
   Padding.SetBounds(ScaleValue(cPadSide), ScaleValue(cPadEnd), ScaleValue(cPadSide), ScaleValue(cPadEnd));
 end;
 
 procedure TAtlasIssueCard.Paint;
 begin
-  Canvas.Brush.Color := ToColor(FFill);
+  // Fläche in Color (= Füllfarbe, SetColors), darüber der Rahmen.
+  inherited;
+  Canvas.Brush.Style := bsClear;
   Canvas.Pen.Color := ToColor(FBorder);
   Canvas.Pen.Width := 1;
   Canvas.Rectangle(ClientRect);
+  Canvas.Brush.Style := bsSolid;
 end;
 
 procedure TAtlasIssueCard.SetColors(AFill, ABorder: TAtlasColor);
