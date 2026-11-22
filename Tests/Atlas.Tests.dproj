@@ -200,6 +200,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Parts.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ComponentRoots.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.LanguageFeatures.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
@@ -568,6 +569,7 @@
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.pas"/>
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RuleAssert.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.LspRules.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RtlStubs.pas"/>
         <DCCReference Include="Support\Atlas.Tests.SmallStack.pas"/>
         <DCCReference Include="Support\Atlas.Tests.Wait.pas"/>
@@ -587,6 +589,8 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.OwnershipReport.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.DocumentChecks.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.DocumentActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CheckContext.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
@@ -743,11 +747,13 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SmartPaste.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ForwardDeclarations.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OwnedFields.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FreeFields.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.FreeFields.Types.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OwnedFields.Types.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ClassLayout.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Destructors.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExtractInterface.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExtractInterface.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExtractSuperclass.Tests.pas"/>
@@ -2703,6 +2709,10 @@
         <DCCReference Include="Application\Adapters\Adapters.Lsp.InheritanceDepths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.OwnershipReport.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.OwnershipReport.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.RuleDiagnostics.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleDiagnostics.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.RuleActions.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleActions.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>

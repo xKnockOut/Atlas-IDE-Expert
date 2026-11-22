@@ -77,7 +77,8 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Common.Documents.Providers.DocumentStore;
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Tests.LspRules;
 
 { TQueueTransport }
 
@@ -100,6 +101,8 @@ end;
 { TProtocolReplay }
 
 constructor TProtocolReplay.Create;
+var
+  mProviders: TSyntaxDiagnosticsProviders;
 begin
   inherited Create;
   FOutput := TObjectQueue<TJSONObject>.Create(True);
@@ -118,7 +121,9 @@ begin
   FDocuments := TDocumentStore.Create;
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
-  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.Rules := TTestLspRules.Plain;
+  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, mProviders, 0);
   FSyntaxDiagnostics.Attach;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
   FDocumentSymbols.Attach(FDispatcher);
