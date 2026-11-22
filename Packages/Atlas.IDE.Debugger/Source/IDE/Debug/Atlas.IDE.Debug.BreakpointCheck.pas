@@ -93,7 +93,7 @@ uses
   Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.BreakpointCheck,
   Atlas.ToolsApi.Editor.Buffer,

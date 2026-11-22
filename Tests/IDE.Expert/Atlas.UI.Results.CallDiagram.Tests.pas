@@ -33,7 +33,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Results.CallDiagram,
   Atlas.UI.Results.CallDiagram,
   Atlas.UI.Results.Frame,

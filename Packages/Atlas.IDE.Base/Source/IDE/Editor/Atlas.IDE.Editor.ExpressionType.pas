@@ -89,7 +89,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   System.Math,
   System.JSON,
   Winapi.Windows,
@@ -99,7 +99,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,

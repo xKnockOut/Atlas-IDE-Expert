@@ -17,7 +17,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.Files;
 

@@ -11,7 +11,7 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Lsp.IdeTypes;
+  Atlas.Plugin.Lsp.IdeTypes;
 
 type
   TAtlasIdeTypeCollector = class

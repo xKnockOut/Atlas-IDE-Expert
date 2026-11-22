@@ -3,7 +3,7 @@
 // Schritt 4 „Suchpfade und Defines prüfen“ des Bereichs „<Projekt> für Atlas
 // einrichten“ (#759): im Hauptthread Projektkontext der aktiven Konfiguration
 // (#396), Dateien und Makros je Projekt sammeln, im Hintergrund Pfade
-// auflösen, .dproj und Dateien lesen und prüfen (Atlas.Core.Projects.PathCheck).
+// auflösen, .dproj und Dateien lesen und prüfen (Atlas.Plugin.Projects.PathCheck).
 // Dazu die Projekte einer Gruppe und das Lesen von Dateien, das beim Entladen
 // abbricht. Abgeteilt aus Atlas.IDE.Welcome.Adapters.Setup (Atlas-Befunde).
 
@@ -11,7 +11,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Projects.PathCheck;
+  Atlas.Plugin.Projects.PathCheck;
 
 type
   /// <summary>Ergebnis der Pfadprüfung eines Projekts (bei einer Gruppe eins je Projekt).</summary>
@@ -56,7 +56,7 @@ uses
   Atlas.Text.Defines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Projects.Contract,
   Atlas.Plugin.Files.TextFile,
   Atlas.Core.Welcome.Saved,
   Atlas.Core.Welcome.Setup,

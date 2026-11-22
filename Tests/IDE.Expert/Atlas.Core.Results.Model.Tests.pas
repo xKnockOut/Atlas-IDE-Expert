@@ -30,7 +30,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model;
 
 { TAtlasResultsTests }

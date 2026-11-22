@@ -108,7 +108,7 @@ uses
   System.JSON,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.TeamFile,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Text.DebugDisplay,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,

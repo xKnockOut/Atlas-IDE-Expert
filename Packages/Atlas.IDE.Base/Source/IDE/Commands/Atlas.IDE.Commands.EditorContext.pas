@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Problems.Contract;

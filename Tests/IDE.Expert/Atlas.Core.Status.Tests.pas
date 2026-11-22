@@ -112,10 +112,10 @@ uses
   Atlas.Plugin.Status.Registry,
   Atlas.Plugin.Status.Lines,
   Atlas.Plugin.Files.Format,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Progress,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Progress,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Framing,
+  Atlas.Plugin.Lsp.Framing,
   Atlas.Core.Settings.Contract,
   Atlas.Core.Settings.TestSupport,
   Atlas.Core.Lsp.TestSupport;

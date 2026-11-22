@@ -39,7 +39,7 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Problems.Contract.Sync,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.IdeErrors,

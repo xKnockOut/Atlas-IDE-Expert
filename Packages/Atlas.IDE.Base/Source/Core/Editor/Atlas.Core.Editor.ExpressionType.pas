@@ -25,7 +25,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.TextChanges;
+  Atlas.Plugin.Lsp.TextChanges;
 
 type
   /// <summary>Implizite Umwandlung eines Teilausdrucks.</summary>

@@ -10,13 +10,13 @@
 interface
 
 uses
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 type
   /// <summary>Liegt im Lsp-Feature (die Protokollschicht liegt unten); Alias für bestehende Nutzer.</summary>
-  TAtlasProblemSeverity = Atlas.Core.Lsp.Contract.TAtlasProblemSeverity;
-  TAtlasProblem = Atlas.Core.Lsp.Contract.TAtlasProblem;
-  TAtlasProblemRelated = Atlas.Core.Lsp.Contract.TAtlasProblemRelated;
+  TAtlasProblemSeverity = Atlas.Plugin.Lsp.Contract.TAtlasProblemSeverity;
+  TAtlasProblem = Atlas.Plugin.Lsp.Contract.TAtlasProblem;
+  TAtlasProblemRelated = Atlas.Plugin.Lsp.Contract.TAtlasProblemRelated;
 
   /// <summary>Ein Fehler aus Error Insight der IDE (#1819), Werte wie in TOTAError: Zeilen 1-basiert, Spalten
   /// (CharIndex) wie geliefert, Severity roh.</summary>

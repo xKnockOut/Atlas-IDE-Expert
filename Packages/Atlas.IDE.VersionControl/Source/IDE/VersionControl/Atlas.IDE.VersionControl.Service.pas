@@ -141,7 +141,7 @@ uses
   Winapi.Windows,
   Vcl.ExtCtrls,
   Atlas.WinBase.Process,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Projects.VcsSettings,

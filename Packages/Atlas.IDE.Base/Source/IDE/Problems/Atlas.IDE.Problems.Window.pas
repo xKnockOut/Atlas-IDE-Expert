@@ -51,7 +51,7 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.IDE.Contracts.Help,
   Atlas.IDE.ElementHelp.Keys,

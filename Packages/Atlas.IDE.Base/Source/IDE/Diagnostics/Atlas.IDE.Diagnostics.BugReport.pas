@@ -57,7 +57,7 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Settings.History,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Crashes,
+  Atlas.Plugin.Lsp.Crashes,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings;

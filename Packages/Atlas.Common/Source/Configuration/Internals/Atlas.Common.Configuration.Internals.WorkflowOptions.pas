@@ -150,7 +150,7 @@ begin
   end;
 end;
 
-/// <summary>Pfad einer Zuordnung wie im Plugin (Atlas.Core.Projects.Matching): ohne Groß-/Kleinschreibung, „/“
+/// <summary>Pfad einer Zuordnung wie im Plugin (Atlas.Plugin.Projects.Matching): ohne Groß-/Kleinschreibung, „/“
 /// wie „\“, ohne „\“ am Ende.</summary>
 function NormalizedMatch(const AText: string): string;
 begin

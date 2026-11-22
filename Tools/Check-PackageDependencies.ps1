@@ -467,7 +467,7 @@ $AllowedJsonParseLocal = @{
 # Kopien-Sperre für JSON schreiben: nach Form statt nach Namen, damit neue Namen derselben Kopie auffallen.
 # Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedJsonWriteLocal = @{
-    'Atlas.Core.Lsp.Session.Json:TLspSessionJson.ProjectFolders' = 'baut Objekte mit uri und name, keine Liste von Strings'
+    'Atlas.Plugin.Lsp.Session.Json:TLspSessionJson.ProjectFolders' = 'baut Objekte mit uri und name, keine Liste von Strings'
 }
 
 # Kopien-Sperre für JSON lesen (Array -> Liste von Strings): nach Form wie beim Schreiben.

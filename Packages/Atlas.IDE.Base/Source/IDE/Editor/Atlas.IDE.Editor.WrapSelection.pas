@@ -56,7 +56,7 @@ uses
   Vcl.Controls,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Text.Lines,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WrapSelection,

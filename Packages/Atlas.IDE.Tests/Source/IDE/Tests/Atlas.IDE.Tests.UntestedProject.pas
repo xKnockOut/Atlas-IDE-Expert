@@ -45,7 +45,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Host,

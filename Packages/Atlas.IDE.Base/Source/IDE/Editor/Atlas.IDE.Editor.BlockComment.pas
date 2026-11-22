@@ -38,7 +38,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Editor.Strings,

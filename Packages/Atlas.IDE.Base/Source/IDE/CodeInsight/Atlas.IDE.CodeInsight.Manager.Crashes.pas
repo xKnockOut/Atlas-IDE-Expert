@@ -16,9 +16,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.IDE.CodeInsight.Manager.Commands;
 
 type
@@ -55,8 +55,8 @@ uses
   Atlas.Plugin.Status.Lines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Crashes,
-  Atlas.Core.Lsp.IdeMembers,
+  Atlas.Plugin.Lsp.Crashes,
+  Atlas.Plugin.Lsp.IdeMembers,
   Atlas.Plugin.Notifications.Contract,
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,

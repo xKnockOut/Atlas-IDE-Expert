@@ -48,7 +48,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Peek,
   Atlas.Core.Editor.PeekPlan,

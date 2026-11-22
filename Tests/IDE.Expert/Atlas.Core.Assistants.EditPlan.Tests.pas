@@ -50,7 +50,7 @@ implementation
 uses
   Atlas.Plugin.Files.Contract,
   Atlas.Core.Assistants.EditPlan,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Tests.EditorFilesFake;
 
 { TAtlasEditInboxPlanTests }

@@ -84,7 +84,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.UnloadSafety,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Internals.Async,

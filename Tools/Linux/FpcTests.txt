@@ -537,11 +537,11 @@ Atlas.Core.Assistants.LinkState.Tests
 Atlas.Plugin.Notifications.MessageSink.Tests
 Atlas.Plugin.Notifications.Listeners.Tests
 Atlas.Plugin.Notifications.OrderedItems.Tests
-Atlas.Core.Projects.Contract.Summary.Tests
+Atlas.Plugin.Projects.Contract.Summary.Tests
 Atlas.Core.Welcome.Contract.Tests
 Atlas.Core.Welcome.ContinueQueries.Tests
 Atlas.Core.Welcome.ContinueWork.Tests
-Atlas.Core.Projects.Summary.Json.Tests
+Atlas.Plugin.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Outline.CrumbPlan.Tests
@@ -559,7 +559,7 @@ Atlas.Core.Editor.PeekPlan.Tests
 Atlas.Core.Settings.NodeScope.Tests
 Atlas.Core.Settings.Plugin.Assistants.Tests
 Atlas.Core.Problems.Findings.Tests
-Atlas.Core.Projects.PathCheck.Tests
+Atlas.Plugin.Projects.PathCheck.Tests
 Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Problems.Prompt.Tests

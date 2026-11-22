@@ -207,7 +207,7 @@ uses
   System.DateUtils,
   Atlas.Core.Editor.MethodToggle,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Text.Uris;
 
 const

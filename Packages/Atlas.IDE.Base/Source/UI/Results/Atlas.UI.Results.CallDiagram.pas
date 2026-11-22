@@ -21,7 +21,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Results.CallDiagram,
   Atlas.Vcl.Controls.ZoomView;
 

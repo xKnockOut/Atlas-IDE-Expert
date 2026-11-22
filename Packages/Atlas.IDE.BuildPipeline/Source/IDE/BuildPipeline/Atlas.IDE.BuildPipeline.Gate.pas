@@ -39,7 +39,7 @@ uses
   Atlas.Core.BuildPipeline.Plan,
   System.Hash,
   ToolsAPI,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Files.Service,

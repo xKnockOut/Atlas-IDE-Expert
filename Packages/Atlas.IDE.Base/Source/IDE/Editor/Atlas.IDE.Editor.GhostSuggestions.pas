@@ -32,7 +32,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.LearnedSuggestions,
   Atlas.IDE.Contracts.GhostSuggestions,
   Atlas.ToolsApi.Keys.Hook,
