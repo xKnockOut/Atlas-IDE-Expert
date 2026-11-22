@@ -36,7 +36,8 @@ uses
   Atlas.Common.Rules.Contract.Api,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.CheckContext,
-  Atlas.Common.Rules.Providers.DocumentChecks;
+  Atlas.Common.Rules.Providers.DocumentChecks,
+  Atlas.Tests.LspRules;
 
 const
   cBroken = 'unit A;' + #10 + 'interface' + #10 + 'implementation' + #10 + 'procedure X;' + #10 + 'begin' + #10 +
@@ -82,21 +83,11 @@ begin
   Result.FileName := 'C:\P\A.pas';
 end;
 
-function Provider(const AContext: TRuleCheckContext): TRuleContextProvider;
-begin
-  Result :=
-    function(const AUri: string; out AResult: TRuleCheckContext): Boolean
-    begin
-      AResult := AContext;
-      Result := True;
-    end;
-end;
-
 function CheckOf(const AContext: TRuleCheckContext; const ACancelled: TRuleCancelled): IRuleDocumentCheck;
 var
   mChecks: IRuleDocumentChecks;
 begin
-  mChecks := TRuleDocumentChecks.Create(Provider(AContext));
+  mChecks := TRuleDocumentChecks.Create(TTestLspRules.Fixed(AContext));
   Result := mChecks.ForDocument('file:///C:/P/A.pas', ACancelled);
 end;
 

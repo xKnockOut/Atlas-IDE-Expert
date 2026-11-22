@@ -12,6 +12,8 @@ uses
 type
   TTestLspRules = class
   public
+    /// <summary>Anbieter, der immer AContext liefert.</summary>
+    class function Fixed(const AContext: TRuleCheckContext): TRuleContextProvider; static;
     /// <summary>Prüfregeln je Dokument aus AProvider (nil = ohne Umfeld: Vorgaben, keine Regeln).</summary>
     class function From(const AProvider: TRuleContextProvider): ILspRuleDiagnostics; static;
     /// <summary>Ohne Umfeld: Syntaxfehler und Sprachmerkmale mit den Vorgaben, keine Regeln.</summary>
@@ -29,8 +31,7 @@ uses
   Atlas.Common.Rules.Providers.DocumentChecks,
   Adapters.Lsp.RuleDiagnostics;
 
-/// <summary>Anbieter, der immer AContext liefert.</summary>
-function Fixed(const AContext: TRuleCheckContext): TRuleContextProvider;
+class function TTestLspRules.Fixed(const AContext: TRuleCheckContext): TRuleContextProvider;
 begin
   Result :=
     function(const AUri: string; out AResult: TRuleCheckContext): Boolean
