@@ -36,7 +36,7 @@ uses
   System.StrUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.Testing.Attributes,
   Atlas.Tests.RuleAssert;
 
@@ -76,7 +76,7 @@ begin
   mFound := TRuleAssert.Findings(TDUnitXDuplicateAttributeRule.Create, ASource, '', 'Fall.Tests.pas');
   if (Length(mFound) = 1) and (Length(mFound[0].Fixes) = 1) then
   begin
-    Result := TChangeSignature.ApplyEdits(ASource, mFound[0].Fixes[0].Edits);
+    Result := TTextChanges.Apply(ASource, mFound[0].Fixes[0].Edits);
   end;
 end;
 

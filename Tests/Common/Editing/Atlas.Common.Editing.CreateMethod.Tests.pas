@@ -35,7 +35,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Tests.SourceText;
@@ -252,13 +252,13 @@ begin
       '  $0',
       'end;',
       '',
-      'end.']), TChangeSignature.ApplyEdits(mText, mEdits));
+      'end.']), TTextChanges.Apply(mText, mEdits));
     // public vorhanden: dort am Ende.
     mPlan.Section := 'public';
     mPlan.CaretInBody := False;
     Assert.IsTrue(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
-    Assert.IsTrue(TChangeSignature.ApplyEdits(mText, mEdits).Contains(
-      '    procedure Rechne;'#10'    procedure Pruefe;'#10'  end;'), TChangeSignature.ApplyEdits(mText, mEdits));
+    Assert.IsTrue(TTextChanges.Apply(mText, mEdits).Contains(
+      '    procedure Rechne;'#10'    procedure Pruefe;'#10'  end;'), TTextChanges.Apply(mText, mEdits));
     // Unbekannte Klasse: nichts.
     mPlan.TypeName := 'TFremd';
     Assert.IsFalse(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
@@ -303,7 +303,7 @@ begin
       '  X := Hole(1);',
       'end;',
       'begin',
-      'end.']), TChangeSignature.ApplyEdits(mText, [TCreateMethod.RoutineEdit(mText,
+      'end.']), TTextChanges.Apply(mText, [TCreateMethod.RoutineEdit(mText,
       TRoutineBody.RoutineAt(mTree, Pos('Hole', mText) - 1), mPlan)]));
   finally
     mTree.Free;

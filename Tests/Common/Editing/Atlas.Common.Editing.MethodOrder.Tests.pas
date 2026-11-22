@@ -63,7 +63,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.TypeComments,
   Atlas.Common.Editing.MethodOrder,
   Atlas.Tests.SourceText;
@@ -140,7 +140,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, AResult.Edits);
+  Result := TTextChanges.Apply(AText, AResult.Edits);
 end;
 
 function Placed(const ABefore, AText: string; out AResult: TMethodOrderResult): string;
@@ -153,7 +153,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, AResult.Edits);
+  Result := TTextChanges.Apply(AText, AResult.Edits);
 end;
 
 function Count(const AText, APart: string): Integer;
@@ -386,7 +386,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, mOrder.Edits);
+  Result := TTextChanges.Apply(AText, mOrder.Edits);
 end;
 
 function PlacedWith(const ABefore, AText: string; const AOptions: TMethodOrderOptions): string;
@@ -400,7 +400,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, mOrder.Edits);
+  Result := TTextChanges.Apply(AText, mOrder.Edits);
 end;
 
 procedure TMethodOrderTests.GroupsLifecycleAccessorsOverrides;

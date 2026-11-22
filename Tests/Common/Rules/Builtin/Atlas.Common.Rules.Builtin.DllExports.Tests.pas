@@ -36,7 +36,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.DllExports,
   Atlas.Tests.RuleAssert;
 
@@ -80,9 +80,9 @@ begin
   Assert.AreEqual('Aufrufkonvention stdcall ergänzen', mFindings[0].Fixes[0].Title);
   Assert.IsFalse(mFindings[0].Fixes[0].Safe);
   Assert.AreEqual(StringReplace(mSource, 'string;'#10, 'string; stdcall;'#10, []),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Mit Konvention bleibt der string gemeldet, ohne Korrektur.
-  mFindings := Found(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+  mFindings := Found(TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Exportierte Funktion gibt string zurück; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit ' +
     'Puffer und Länge übergeben.', mFindings[0].Message);
@@ -150,7 +150,7 @@ begin
   Assert.AreEqual('Exportierte Prozedur hat keine Aufrufkonvention; Aufrufer aus anderen Sprachen oder ' +
     'Delphi-Versionen stürzen ab.', mFindings[1].Message);
   Assert.AreEqual(StringReplace(mSource, 'Integer); overload;', 'Integer); overload; stdcall;', []),
-    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[1].Fixes[0].Edits));
 end;
 
 procedure TExportRulesTests.UnitWithInterfaceDeclaration;
@@ -164,7 +164,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   // Beide Köpfe bekommen die Konvention.
   Assert.AreEqual(StringReplace(cSource, 'Integer;', 'Integer; stdcall;', [rfReplaceAll]),
-    TChangeSignature.ApplyEdits(cSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(cSource, mFindings[0].Fixes[0].Edits));
   // Konvention nur im interface genügt.
   Assert.AreEqual(0, Integer(Length(Found(StringReplace(cSource, 'interface'#10'function Version: Integer;',
     'interface'#10'function Version: Integer; stdcall;', [])))));

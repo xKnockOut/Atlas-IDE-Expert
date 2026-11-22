@@ -98,7 +98,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Calls,
   Atlas.Common.Localization.Texts,
@@ -1329,7 +1329,7 @@ begin
   begin
     Exit;
   end;
-  mList := TChangeSignature.ParseParameters(mParameters);
+  mList := TPascalSignatures.ParseParameters(mParameters);
   for mParam in TGenericInferenceFailedRule.OwnTypeParams(AHeader, AName) do
   begin
     mUsed := False;
@@ -1484,7 +1484,7 @@ begin
   begin
     Exit;
   end;
-  mList := TChangeSignature.ParseParameters(mParameters);
+  mList := TPascalSignatures.ParseParameters(mParameters);
   for mParam in TGenericInferenceFailedRule.OwnTypeParams(mCandidates[0].Signature, mCandidates[0].Name) do
   begin
     mSeen := MixedArgument(mParam, mList, AArguments, mFirst);

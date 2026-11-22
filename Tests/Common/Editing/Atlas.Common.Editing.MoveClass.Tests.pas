@@ -44,7 +44,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MoveClass,
   Atlas.Tests.SourceText;
 
@@ -120,7 +120,7 @@ begin
       Exit;
     end;
     ANewText := mPlan.Text;
-    AOrigin := TChangeSignature.ApplyEdits(AText, mPlan.OriginEdits);
+    AOrigin := TTextChanges.Apply(AText, mPlan.OriginEdits);
     TTestSource.AssertParses(ANewText);
     TTestSource.AssertParses(AOrigin);
   finally
@@ -267,7 +267,7 @@ begin
       mEdits));
     Assert.AreEqual(TTestSource.Lines(['unit Kasse;', '', 'interface', '', 'uses', '  System.Classes,', '  Lager,', '  Stock;',
       '', 'implementation', '', 'procedure Run;', 'var', '  S: Stock.TStock;', 'begin', '  S := TStock.Create;',
-      'end;', '', 'end.']), TChangeSignature.ApplyEdits(mText, mEdits));
+      'end;', '', 'end.']), TTextChanges.Apply(mText, mEdits));
     // Ohne Vorkommen keine Änderung.
     Assert.IsFalse(TMoveClass.UpdateUser(mText, mTree, TMoveClassNames.Create('Lager', 'Stock', 'TOther'), nil, True,
       mEdits));

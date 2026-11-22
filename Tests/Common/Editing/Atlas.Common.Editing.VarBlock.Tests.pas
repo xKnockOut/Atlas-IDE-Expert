@@ -62,7 +62,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.VarBlock,
   Atlas.Tests.SourceText;
 
@@ -110,7 +110,7 @@ begin
       if Pos(AKind, mAction.Title) > 0 then
       begin
         ATitle := mAction.Title;
-        Result := TChangeSignature.ApplyEdits(AText, mAction.Edits);
+        Result := TTextChanges.Apply(AText, mAction.Edits);
       end;
     end;
   finally

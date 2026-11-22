@@ -15,7 +15,7 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Pascal.Signatures;
 
 type
   /// <summary>Ein Wert des Tests: Parameter der Methode oder Feld des Objekts.</summary>
@@ -258,7 +258,7 @@ var
   mNameToken: Integer;
 begin
   mNameToken := IdentifierAt(ATokens, ADeclaration.SelectionRange.StartPos);
-  Result := TChangeSignature.ReadHeader(AText, ATokens, mNameToken, AHeader);
+  Result := TPascalSignatures.ReadHeader(AText, ATokens, mNameToken, AHeader);
 end;
 
 class function TTestDrafts.DraftAt(const AText: string; const ATokens: TArray<TPascalToken>;

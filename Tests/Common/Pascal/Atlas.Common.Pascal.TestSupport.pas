@@ -1,11 +1,12 @@
 ﻿unit Atlas.Common.Pascal.TestSupport;
 
-// Gemeinsame Hilfen der Parsertests: Knoten suchen, Namen von Kindknoten, Syntaxfehler als Text und Symbole des
-// Index.
+// Gemeinsame Hilfen der Parsertests: Knoten und Token suchen, Namen von Kindknoten, Syntaxfehler als Text und
+// Symbole des Index.
 
 interface
 
 uses
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract;
 
@@ -21,6 +22,9 @@ type
     class function Diagnostics(const AText: string): string; static;
     /// <summary>AUnit enthält das Symbol AName im Container AContainer.</summary>
     class function HasSymbol(const AUnit: TUnitIndex; const AContainer, AName: string): Boolean; static;
+    /// <summary>Index des AOccurrence-ten Tokens (ab 1) mit dem Text AText; -1 ohne.</summary>
+    class function TokenOf(const ATokens: TArray<TPascalToken>; const AText: string; AOccurrence: Integer): Integer;
+      static;
   end;
 
 implementation
@@ -98,6 +102,25 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TPascalTest.TokenOf(const ATokens: TArray<TPascalToken>; const AText: string; AOccurrence: Integer): Integer;
+var
+  mIndex, mCount: Integer;
+begin
+  mCount := 0;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if ATokens[mIndex].Text = AText then
+    begin
+      Inc(mCount);
+      if mCount = AOccurrence then
+      begin
+        Exit(mIndex);
+      end;
+    end;
+  end;
+  Result := -1;
 end;
 
 end.

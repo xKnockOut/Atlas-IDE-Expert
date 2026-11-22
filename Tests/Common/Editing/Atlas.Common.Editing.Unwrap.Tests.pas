@@ -59,7 +59,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.Extract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.WithResolution,
   Atlas.Common.Editing.Unwrap;
 
@@ -124,7 +124,7 @@ var
   mText: string;
   mTree: TSyntaxTree;
 begin
-  mText := TChangeSignature.ApplyEdits(cHead + ABody + cTail, AVariant.Edits);
+  mText := TTextChanges.Apply(cHead + ABody + cTail, AVariant.Edits);
   mTree := TPascalParser.Parse(mText);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'parst nicht: ' + mText);

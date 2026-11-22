@@ -43,8 +43,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Registry,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Rules.Registry;
 
 const
   cDynamicArrayMisuseRuleId = 'dynamic-array-misuse';
@@ -82,6 +81,7 @@ procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Derived,
   System.SysUtils,

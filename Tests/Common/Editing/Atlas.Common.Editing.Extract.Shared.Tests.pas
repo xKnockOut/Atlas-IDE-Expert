@@ -46,7 +46,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Extract.Shared,
   Atlas.Common.Editing.Extract.Method,
   Atlas.Tests.SourceText;
@@ -173,8 +173,8 @@ begin
     Assert.IsTrue(TExtractSupport.NewRoutineHead(mText, mTree, Request(mTree, mText, 'X :='), mEdits, mHead));
     Assert.AreEqual('procedure TFoo.ExtractedMethod(const A: Integer);'#10, mHead.Text);
     Assert.AreEqual(1, Integer(Length(mEdits)));
-    Assert.IsTrue(Pos('private', TChangeSignature.ApplyEdits(mText, mEdits)) > 0, 'private-Abschnitt');
-    Assert.IsTrue(Pos('procedure ExtractedMethod(const A: Integer);', TChangeSignature.ApplyEdits(mText,
+    Assert.IsTrue(Pos('private', TTextChanges.Apply(mText, mEdits)) > 0, 'private-Abschnitt');
+    Assert.IsTrue(Pos('procedure ExtractedMethod(const A: Integer);', TTextChanges.Apply(mText,
       mEdits)) > 0, 'Deklaration');
   finally
     mTree.Free;
@@ -239,7 +239,7 @@ begin
   try
     if mExtraction.Run(TTextRange.Create(AFirst, 0, ALast + 1, 0), mAction, AReason) then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, mAction.Edits);
+      Result := TTextChanges.Apply(AText, mAction.Edits);
     end;
   finally
     mExtraction.Free;

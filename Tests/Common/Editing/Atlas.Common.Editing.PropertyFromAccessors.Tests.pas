@@ -57,7 +57,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Tests.SourceText;
 
@@ -116,7 +116,7 @@ var
 begin
   mTree := TPascalParser.Parse(AText);
   try
-    Result := TChangeSignature.ApplyEdits(AText, TPropertyFromAccessors.Edits(mTree, AText,
+    Result := TTextChanges.Apply(AText, TPropertyFromAccessors.Edits(mTree, AText,
       TPropertyFromAccessors.Find(mTree, AText, AOptions), AHidden, AOptions));
   finally
     mTree.Free;
@@ -449,10 +449,10 @@ begin
   finally
     mTree.Free;
   end;
-  Assert.Contains(TChangeSignature.ApplyEdits(cUses_, mEdits), '  P.Caption := ''Bereit'';'#10'  S := P.Caption;'#10);
-  Assert.Contains(TChangeSignature.ApplyEdits(cUses_, mEdits), '    L.Items[L.Count - 1] := P.Caption;'#10 +
+  Assert.Contains(TTextChanges.Apply(cUses_, mEdits), '  P.Caption := ''Bereit'';'#10'  S := P.Caption;'#10);
+  Assert.Contains(TTextChanges.Apply(cUses_, mEdits), '    L.Items[L.Count - 1] := P.Caption;'#10 +
     '  S := L.Items[2] + S;'#10);
-  Assert.Contains(TChangeSignature.ApplyEdits(cUses_, mEdits), '  Lists[0].Owner.Caption := S'#10);
+  Assert.Contains(TTextChanges.Apply(cUses_, mEdits), '  Lists[0].Owner.Caption := S'#10);
 end;
 
 procedure TPropertyFromAccessorsTests.PluralNames;
