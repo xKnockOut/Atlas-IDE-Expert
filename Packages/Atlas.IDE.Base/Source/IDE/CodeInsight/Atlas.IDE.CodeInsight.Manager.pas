@@ -94,7 +94,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSnapshot,

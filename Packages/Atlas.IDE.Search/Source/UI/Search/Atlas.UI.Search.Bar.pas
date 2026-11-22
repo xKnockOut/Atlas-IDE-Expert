@@ -126,7 +126,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.StdCtrls,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 procedure FocusBox(ABox: TComboBox);
 begin

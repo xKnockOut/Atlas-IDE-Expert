@@ -29,7 +29,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Package,
+  Atlas.Plugin.Diagnostics.Package,
   Atlas.Vcl.Forms.Dialog;
 
 type

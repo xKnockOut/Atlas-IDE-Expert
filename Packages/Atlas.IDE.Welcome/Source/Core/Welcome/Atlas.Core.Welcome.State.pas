@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Welcome.Contract;
 
 type
@@ -55,7 +55,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Status.Lines;
+  Atlas.Plugin.Status.Lines;
 
 { TAtlasWelcomeState }
 

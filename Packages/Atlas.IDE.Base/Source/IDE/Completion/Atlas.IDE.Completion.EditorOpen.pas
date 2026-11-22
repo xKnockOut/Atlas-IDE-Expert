@@ -45,7 +45,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Timing,
+  Atlas.Plugin.Diagnostics.Timing,
   Atlas.Plugin.Editor.Word,
   Atlas.Core.Completion.Ranking,
   Atlas.ToolsApi.Editor.CloseRules,

@@ -174,7 +174,7 @@ implementation
 uses
   Atlas.UI.Tests.Strings,
   Atlas.Vcl.Controls.WrapLabel,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 {$R *.dfm}
 

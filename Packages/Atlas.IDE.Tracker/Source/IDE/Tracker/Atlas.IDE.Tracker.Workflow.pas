@@ -57,9 +57,9 @@ uses
   Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.SyncPlan,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Tracker.Contract.CommentAssist;
 
 type

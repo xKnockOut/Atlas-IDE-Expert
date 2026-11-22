@@ -36,7 +36,7 @@ uses
   Atlas.IDE.Contracts.IssueWork,
   Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.ContinueIssueLink,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type

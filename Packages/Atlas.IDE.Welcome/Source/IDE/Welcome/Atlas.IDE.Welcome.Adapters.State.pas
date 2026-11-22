@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.State,
   Atlas.UI.Welcome.Contract;
@@ -76,7 +76,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Welcome.State;

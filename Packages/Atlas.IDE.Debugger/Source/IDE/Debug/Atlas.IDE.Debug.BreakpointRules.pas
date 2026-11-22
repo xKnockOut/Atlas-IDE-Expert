@@ -30,7 +30,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.BreakpointRules,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 

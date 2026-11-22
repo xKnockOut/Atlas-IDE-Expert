@@ -29,7 +29,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Setup.Checklist,
   Atlas.Vcl.Forms.Dialog;
 
@@ -148,7 +148,7 @@ implementation
 
 uses
   Atlas.Plugin.Style.Color,
-  Atlas.Core.Status.Signal,
+  Atlas.Plugin.Status.Signal,
   System.Math,
   Atlas.Vcl.Theme.Service,
   Atlas.UI.Setup.Strings;

@@ -26,7 +26,7 @@ uses
   Atlas.ToolsApi.Windows.DockWindow,
   Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
-  Atlas.Core.Diagnostics.Export,
+  Atlas.Plugin.Diagnostics.Export,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Diagnostics.Timing;

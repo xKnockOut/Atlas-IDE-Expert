@@ -14,7 +14,7 @@
 interface
 
 uses
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Text.TestResults;
 
 type

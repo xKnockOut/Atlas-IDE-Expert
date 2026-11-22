@@ -33,9 +33,9 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.BoardFrame,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Tracker.BoardLoad,
   Atlas.IDE.Tracker.BoardMove;
 

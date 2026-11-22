@@ -37,7 +37,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.BoundedStream;
+  Atlas.Plugin.Diagnostics.BoundedStream;
 
 type
   TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiPost,
@@ -121,7 +121,7 @@ uses
   System.NetEncoding,
   System.NetConsts,
   System.Math,
-  Atlas.Core.Diagnostics.AsyncWait,
+  Atlas.Plugin.Diagnostics.AsyncWait,
   Atlas.Core.Ci.Internals.Addresses;
 
 const

@@ -64,7 +64,7 @@ uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Exceptions,

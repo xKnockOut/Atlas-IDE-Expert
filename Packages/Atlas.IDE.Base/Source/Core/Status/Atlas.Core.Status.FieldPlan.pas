@@ -15,7 +15,7 @@ interface
 
 uses
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Status.Contract;
+  Atlas.Plugin.Status.Contract;
 
 type
   TAtlasStatusFieldPlan = record

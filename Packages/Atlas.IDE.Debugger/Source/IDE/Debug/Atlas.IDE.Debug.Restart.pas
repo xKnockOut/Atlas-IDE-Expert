@@ -92,7 +92,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.ToolsApi.Debugger.Services;
 
 const

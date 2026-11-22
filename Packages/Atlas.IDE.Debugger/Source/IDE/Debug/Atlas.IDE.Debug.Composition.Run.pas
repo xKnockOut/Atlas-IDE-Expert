@@ -41,7 +41,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.GutterMarks,

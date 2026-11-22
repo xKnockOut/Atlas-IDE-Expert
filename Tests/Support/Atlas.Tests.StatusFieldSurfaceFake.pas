@@ -13,7 +13,7 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  Atlas.Core.Status.Contract;
+  Atlas.Plugin.Status.Contract;
 
 type
   TAtlasStatusFieldSurfaceFake = class(TInterfacedObject, IAtlasStatusFieldSurface)

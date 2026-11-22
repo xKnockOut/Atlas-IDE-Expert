@@ -28,7 +28,7 @@
 //   meldet Run Beginn und Ende jedes Aufrufs, ReportProviderSlow jede langsame
 //   Quelle. Ohne Diagnosemodus ist Timing nil, und Run prüft nur dieses Feld.
 //   Timing ist eine abstrakte Klasse, damit diese Unit den Rekorder
-//   (Atlas.Core.Diagnostics.PluginTimings) nicht kennen muss.
+//   (Atlas.Plugin.Diagnostics.PluginTimings) nicht kennen muss.
 // - RunIde: Arbeit der IDE innerhalb eines Atlas-Aufrufs (Projekt öffnen).
 //   Ihre Zeit zählt wie ein modaler Dialog nicht als Zeit von Atlas; sonst
 //   stünde das Projektladen als Zeit der Willkommensseite da (#1987).
