@@ -8,6 +8,7 @@
 interface
 
 uses
+  System.JSON,
   Atlas.Common.Index.Contract,
   Atlas.Common.Metrics.Contract;
 
@@ -19,6 +20,16 @@ type
     /// AIndex (nil = nur die Datei) ohne RTL, VCL und Bibliotheken; AtLeast, wenn die Kette an einem unbekannten
     /// Vorfahren abbricht. Leer für Units der Bibliothek selbst.</summary>
     function Depths(const AFileName, AText: string; const AIndex: ISymbolIndex): TArray<TStructureMetrics>;
+  end;
+
+  /// <summary>Antwort von atlas.server.ownership (#1877): „Wer gibt das frei?“ für jede Erzeugung T.Create(…)
+  /// einer Unit; „nie freigegeben“ nur, wo die Leck-Regeln mit den Einstellungen der Datei einen Befund melden.
+  /// </summary>
+  IRuleOwnershipReport = interface
+    ['{7E7144B8-F6F0-4748-B194-BB15BE867A7D}']
+    /// <summary>{ uri, sites: [...] } zu AUri; sites leer, wenn die Datei weder geöffnet noch lesbar ist. Der
+    /// Aufrufer übernimmt das Objekt.</summary>
+    function Report(const AUri: string): TJSONObject;
   end;
 
 implementation

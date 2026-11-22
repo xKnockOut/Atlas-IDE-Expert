@@ -125,6 +125,7 @@
         <DCCReference Include="Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Rules.Refactorings.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Lsp.InheritanceDepths.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Lsp.OwnershipReport.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.ClientStart.pas"/>
