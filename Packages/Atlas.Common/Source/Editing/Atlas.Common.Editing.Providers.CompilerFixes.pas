@@ -5,7 +5,8 @@
 interface
 
 uses
-  Atlas.Common.Editing.Contract.CompilerFixes;
+  Atlas.Common.Editing.Contract.CompilerFixes,
+  Atlas.Common.Editing.CompilerFixes;
 
 type
   TEditingCompilerFixesProvider = class(TInterfacedObject, IEditingCompilerFixes)
@@ -17,8 +18,7 @@ implementation
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.CompilerFixes;
+  Atlas.Common.Pascal.TreeCache;
 
 { TEditingCompilerFixesProvider }
 
