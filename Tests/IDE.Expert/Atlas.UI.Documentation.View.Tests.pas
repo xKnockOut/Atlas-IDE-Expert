@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Documentation.Labels.Tests;
+﻿unit Atlas.UI.Documentation.View.Tests;
 
 // Tests der Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche.
 
@@ -20,7 +20,7 @@ implementation
 uses
   Atlas.Core.Documentation.Layout,
   Atlas.Plugin.Localization.Strings,
-  Atlas.UI.Documentation.Labels;
+  Atlas.UI.Documentation.View;
 
 procedure TAtlasDocLabelTextsTests.German;
 var

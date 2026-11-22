@@ -220,7 +220,6 @@ contains
   Atlas.Core.Signature.Providers.Server in 'Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas',
   Atlas.UI.Signature.Hint in 'Source\UI\Signature\Atlas.UI.Signature.Hint.pas',
   Atlas.UI.Signature.FormatText in 'Source\UI\Signature\Atlas.UI.Signature.FormatText.pas',
-  Atlas.UI.Documentation.Labels in 'Source\UI\Documentation\Atlas.UI.Documentation.Labels.pas',
   Atlas.UI.Signature.Adapters.HintView in 'Source\UI\Signature\Atlas.UI.Signature.Adapters.HintView.pas',
   Atlas.UI.Completion.Popup in 'Source\UI\Completion\Atlas.UI.Completion.Popup.pas',
   Atlas.UI.Completion.Adapters.PopupView in 'Source\UI\Completion\Atlas.UI.Completion.Adapters.PopupView.pas',

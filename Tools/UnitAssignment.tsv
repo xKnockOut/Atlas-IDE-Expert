@@ -694,7 +694,6 @@ Atlas.IDE.Base	Atlas.UI.Diagnostics.ReportDialog	UI/Diagnostics/Atlas.UI.Diagnos
 Atlas.IDE.Base	Atlas.UI.Diagnostics.SafeModeNotice	UI/Diagnostics/Atlas.UI.Diagnostics.SafeModeNotice.pas	Ordner `UI/Diagnostics`
 Atlas.IDE.Base	Atlas.UI.Diagnostics.Strings	UI/Diagnostics/Atlas.UI.Diagnostics.Strings.pas	Ordner `UI/Diagnostics`
 Atlas.IDE.Base	Atlas.UI.Diagnostics.TimingFrame	UI/Diagnostics/Atlas.UI.Diagnostics.TimingFrame.pas	Ordner `UI/Diagnostics`
-Atlas.IDE.Base	Atlas.UI.Documentation.Labels	UI/Documentation/Atlas.UI.Documentation.Labels.pas	Ordner `UI/Documentation`
 Atlas.IDE.Base	Atlas.UI.Documentation.View	UI/Documentation/Atlas.UI.Documentation.View.pas	Ordner `UI/Documentation`
 Atlas.IDE.Base	Atlas.UI.Editor.ActionChoices	UI/Editor/Atlas.UI.Editor.ActionChoices.pas	Ordner `UI/Editor`
 Atlas.IDE.Base	Atlas.UI.Editor.ChangeSignature	UI/Editor/Atlas.UI.Editor.ChangeSignature.pas	Ordner `UI/Editor`

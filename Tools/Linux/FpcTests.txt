@@ -697,7 +697,6 @@ Atlas.UI.Setup.Strings.Tests
 Atlas.UI.Status.Strings.Tests
 Atlas.UI.StatusBar.Strings.Tests
 Atlas.Plugin.Localization.Strings.Tests
-Atlas.UI.Documentation.Labels.Tests
 Atlas.UI.Signature.FormatText.Tests
 Atlas.UI.SymbolPath.Strings.Tests
 Atlas.UI.Tests.Strings.Tests

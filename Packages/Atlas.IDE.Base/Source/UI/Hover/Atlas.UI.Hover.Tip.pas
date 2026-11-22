@@ -260,7 +260,6 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
   Atlas.Plugin.Localization.Strings,
-  Atlas.UI.Documentation.Labels,
   Atlas.UI.Hover.Strings,
   Atlas.Vcl.Popup.Draw,
   Atlas.Vcl.Popup.Accessibility,

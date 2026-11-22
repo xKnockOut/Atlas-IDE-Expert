@@ -1058,7 +1058,6 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.ExportDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ProcessesDialog.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Documentation\Atlas.UI.Documentation.Labels.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Signature\Atlas.UI.Signature.FormatText.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.ProcessesDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.Plugin\Source\Lsp\Atlas.Plugin.Lsp.Progress.pas"/>
@@ -1164,7 +1163,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Plugin.Localization.Strings.Tests.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.UI.Documentation.Labels.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Documentation.View.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Signature.FormatText.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\CodeInsight\Atlas.UI.CodeInsight.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.CodeInsight.Strings.Tests.pas"/>

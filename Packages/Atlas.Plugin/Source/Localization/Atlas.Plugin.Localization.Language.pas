@@ -211,8 +211,8 @@ begin
 end;
 
 initialization
-  // Wie Atlas.Plugin.Localization.Strings: Deutsch, bis die IDE-Schicht die Sprache der IDE setzt (Tests sehen die bisherigen
-  // Texte).
+  // Wie Atlas.Plugin.Localization.Strings: Deutsch, bis die IDE-Schicht die Sprache der IDE setzt (Tests sehen die
+  // bisherigen Texte).
   TAtlasTextLanguage.Current := TAtlasLanguage.German;
 
 end.
