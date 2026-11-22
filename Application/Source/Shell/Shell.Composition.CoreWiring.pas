@@ -47,6 +47,7 @@ uses
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Configuration.Contract,
   Core.CrashCases,
+  Adapters.Rules.IdeTypes,
   Shell.Composition.FileChanges,
   Shell.Composition.Folders,
   Shell.Composition.Compile,
@@ -137,13 +138,13 @@ begin
     end;
 end;
 
-/// <summary>Katalog der Typen aus der IDE (atlas/ideTypes) für die Prüfregeln.</summary>
+/// <summary>Typen aus der IDE (atlas/ideTypes) für die Prüfregeln, über den Host-Adapter.</summary>
 function IdeTypesOf(AParts: TShellParts): TShellFoldersIdeTypesFunc;
 begin
   Result :=
     function: IRuleIdeTypes
     begin
-      Result := AParts.IdeArea.Ide.Types.Catalog;
+      Result := TRuleIdeTypesAdapter.Wrap(AParts.IdeArea.Ide.Types.Catalog);
     end;
 end;
 

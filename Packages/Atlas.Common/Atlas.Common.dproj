@@ -294,6 +294,7 @@
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Calculator.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.UnitRoutines.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Report.pas"/>
+        <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Limits.pas"/>
         <DCCReference Include="Source\Query\Atlas.Common.Query.Contract.pas"/>
         <DCCReference Include="Source\Query\Atlas.Common.Query.Catalog.pas"/>
         <DCCReference Include="Source\Query\Atlas.Common.Query.Language.pas"/>
@@ -309,6 +310,7 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Contract.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
+        <DCCReference Include="Source\Todos\Atlas.Common.Todos.Keywords.pas"/>
         <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Contract.pas"/>
         <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Generator.pas"/>
         <DCCReference Include="Source\Mutation\Atlas.Common.Mutation.Report.pas"/>
@@ -739,7 +741,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IndexRefresh.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.IdeTypes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.Source.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.IdeIndex.pas"/>

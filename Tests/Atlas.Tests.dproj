@@ -325,6 +325,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InterfaceMethods.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Report.Tests.pas"/>
+        <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Limits.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.UnitRoutines.Tests.pas"/>
         <DCCReference Include="Common\Query\Atlas.Common.Query.Language.Tests.pas"/>
         <DCCReference Include="Common\Query\Atlas.Common.Query.Engine.Tests.pas"/>
@@ -336,6 +337,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
+        <DCCReference Include="Common\Todos\Atlas.Common.Todos.Keywords.Tests.pas"/>
         <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Generator.Tests.pas"/>
         <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Report.Tests.pas"/>
         <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.Scanner.Tests.pas"/>
@@ -2462,7 +2464,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Messages.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeProject.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Adapters.IdeTypes.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeUnits.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas"/>
@@ -2680,6 +2682,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Parts.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ProtocolWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoreWiring.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Rules.IdeTypes.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>
