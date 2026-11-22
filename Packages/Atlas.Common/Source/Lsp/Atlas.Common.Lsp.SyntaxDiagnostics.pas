@@ -236,7 +236,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Findings.Suppressions,

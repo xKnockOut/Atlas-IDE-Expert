@@ -69,7 +69,7 @@ uses
   Atlas.Common.Rules.GoldenCorpus,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Projects.PackageReader,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,

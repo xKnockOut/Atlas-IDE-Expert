@@ -174,7 +174,7 @@ implementation
 
 uses
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   System.Math,
   System.StrUtils,
   System.Generics.Collections,

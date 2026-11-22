@@ -97,7 +97,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   System.StrUtils,
   System.JSON,
   Atlas.Common.Documents.Uris,
@@ -107,7 +107,7 @@ uses
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.CheckTools,

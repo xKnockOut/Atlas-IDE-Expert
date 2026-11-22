@@ -25,7 +25,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Projects.PackageReader;

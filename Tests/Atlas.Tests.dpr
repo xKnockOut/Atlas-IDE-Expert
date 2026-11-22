@@ -565,7 +565,7 @@ uses
   Atlas.Common.Rules.Prompt.Tests in 'Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas',
   Atlas.Common.Rules.FormatOutput.Tests in 'Common\Rules\Atlas.Common.Rules.FormatOutput.Tests.pas',
   Atlas.Common.Rules.Baseline.Tests in 'Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas',
-  Atlas.Common.Rules.Scopes.Tests in 'Common\Rules\Atlas.Common.Rules.Scopes.Tests.pas',
+  Atlas.Common.Findings.Scopes.Tests in 'Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas',
   Atlas.Common.Rules.Options.Tests in 'Common\Rules\Atlas.Common.Rules.Options.Tests.pas',
   Atlas.Common.Rules.WarnSwitches.Tests in 'Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas',
   Atlas.Common.Rules.SuppressionStats.Tests in 'Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas',

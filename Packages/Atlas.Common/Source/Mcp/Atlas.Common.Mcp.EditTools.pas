@@ -253,7 +253,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Documents.TextChanges,
