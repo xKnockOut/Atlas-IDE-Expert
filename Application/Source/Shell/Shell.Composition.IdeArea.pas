@@ -84,7 +84,7 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.FormatArgs,
-  Shell.Workspace;
+  Core.Workspace;
 
 { TShellIdeArea }
 
@@ -158,7 +158,7 @@ end;
 
 function TShellIdeArea.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TProjectInfo;
   mContext: TIdeProjectContext;
   mName: string;

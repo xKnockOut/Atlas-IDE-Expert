@@ -9,7 +9,7 @@ uses
   System.JSON,
   DUnitX.TestFramework,
   Atlas.Common.Compiler.Backend,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.ServerCommands;
 
 type
@@ -24,7 +24,7 @@ type
     function Execute(const ACommand: string; AArguments: TJSONArray): TJSONValue;
     procedure Logged(const AText: string);
     function Compile(const AFileName: string; out AChoice: TCompilerBackendChoice): Boolean;
-    function NoWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+    function NoWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
     function Retry(const AUri: string): Integer;
     procedure Recheck;
   public
@@ -161,7 +161,7 @@ begin
   Result := False;
 end;
 
-function TShellServerCommandsTests.NoWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+function TShellServerCommandsTests.NoWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
 begin
   Result := nil;
 end;

@@ -1,4 +1,4 @@
-﻿unit Shell.Workspace.Tests;
+﻿unit Core.Workspace.Tests;
 
 // Reload nur im Thread der Nachrichtenschleife; Bereitschaft für
 // Prüfungen ohne Projekt (#1220).
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TShellWorkspaceTests = class
+  TCoreWorkspaceTests = class
   public
     [Test]
     procedure ReloadOutsideLoopThreadRaises;
@@ -39,23 +39,24 @@ uses
   System.Generics.Collections,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Shell.Workspace.Setup,
-  Shell.Workspace.RuleProjects,
+  Core.Workspace.Setup,
+  Core.Workspace.RuleProjects,
   Atlas.Common.Localization.Texts,
-  Shell.Workspace;
+  Core.Workspace,
+  Shell.Composition.Platform;
 
-function NewWorkspace(const AName: string): TShellWorkspace;
+function NewWorkspace(const AName: string): TCoreWorkspace;
 begin
-  Result := TShellWorkspace.Create('', AName, TShellWorkspaceServices.Create(TDocumentStore.Create,
+  Result := TCoreWorkspace.Create('', AName, TCoreWorkspaceServices.Create(TDocumentStore.Create,
     TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-index'));
+    'atlas-test-index', TShellPlatformAdapters.WorkspaceFactories));
 end;
 
-{ TShellWorkspaceTests }
+{ TCoreWorkspaceTests }
 
-procedure TShellWorkspaceTests.ReloadOutsideLoopThreadRaises;
+procedure TCoreWorkspaceTests.ReloadOutsideLoopThreadRaises;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mWorker: TThread;
   mRaised: string;
 begin
@@ -86,22 +87,22 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceTests.ChooseFallsBackToSingleWorkspace;
+procedure TCoreWorkspaceTests.ChooseFallsBackToSingleWorkspace;
 var
-  mAll: TObjectList<TShellWorkspace>;
-  A, B: TShellWorkspace;
+  mAll: TObjectList<TCoreWorkspace>;
+  A, B: TCoreWorkspace;
 begin
-  mAll := TObjectList<TShellWorkspace>.Create(True);
+  mAll := TObjectList<TCoreWorkspace>.Create(True);
   try
-    Assert.IsNull(TShellWorkspaces.Choose(nil, mAll), 'Ohne Arbeitsbereich keiner');
-    Assert.IsNull(TShellWorkspaces.Choose(nil, nil));
+    Assert.IsNull(TCoreWorkspaces.Choose(nil, mAll), 'Ohne Arbeitsbereich keiner');
+    Assert.IsNull(TCoreWorkspaces.Choose(nil, nil));
     A := NewWorkspace('A');
     mAll.Add(A);
-    Assert.AreSame(A, TShellWorkspaces.Choose(nil, mAll), 'Einziger Arbeitsbereich als Rückfall');
+    Assert.AreSame(A, TCoreWorkspaces.Choose(nil, mAll), 'Einziger Arbeitsbereich als Rückfall');
     B := NewWorkspace('B');
     mAll.Add(B);
-    Assert.IsNull(TShellWorkspaces.Choose(nil, mAll), 'Bei mehreren kein Rückfall');
-    Assert.AreSame(B, TShellWorkspaces.Choose(B, mAll), 'Treffer geht vor');
+    Assert.IsNull(TCoreWorkspaces.Choose(nil, mAll), 'Bei mehreren kein Rückfall');
+    Assert.AreSame(B, TCoreWorkspaces.Choose(B, mAll), 'Treffer geht vor');
   finally
     mAll.Free;
   end;
@@ -115,33 +116,33 @@ begin
   Result.ProjectMainSource := AName + '.dpr';
 end;
 
-procedure TShellWorkspaceTests.MergeRuleProjectsKeepsOnlyUnambiguousKind;
+procedure TCoreWorkspaceTests.MergeRuleProjectsKeepsOnlyUnambiguousKind;
 var
   mOutside, mMerged: TCheckProject;
 begin
   mOutside := Default(TCheckProject);
-  mMerged := TShellRuleProjects.MergeRuleProjects(nil, 'U.pas');
+  mMerged := TCoreRuleProjects.MergeRuleProjects(nil, 'U.pas');
   Assert.AreEqual('U.pas', mMerged.FileName);
   Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown, mMerged.Application, 'Ohne Projekt unbekannt');
-  mMerged := TShellRuleProjects.MergeRuleProjects([mOutside, Member('Tests', TRuleApplicationKind.Console)], 'U.pas');
+  mMerged := TCoreRuleProjects.MergeRuleProjects([mOutside, Member('Tests', TRuleApplicationKind.Console)], 'U.pas');
   Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Console,
     mMerged.Application, 'Projekt ohne die Datei zählt nicht');
   Assert.AreEqual('Tests', mMerged.Name);
   Assert.AreEqual('U.pas', mMerged.FileName);
-  mMerged := TShellRuleProjects.MergeRuleProjects([Member('A', TRuleApplicationKind.Gui),
+  mMerged := TCoreRuleProjects.MergeRuleProjects([Member('A', TRuleApplicationKind.Gui),
     Member('B', TRuleApplicationKind.Gui)], 'U.pas');
   Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Gui, mMerged.Application, 'Gleiche Art bleibt');
   Assert.AreEqual('A', mMerged.Name, 'Das erste Projekt liefert den Namen');
-  mMerged := TShellRuleProjects.MergeRuleProjects([Member('Tests', TRuleApplicationKind.Console),
+  mMerged := TCoreRuleProjects.MergeRuleProjects([Member('Tests', TRuleApplicationKind.Console),
     Member('Plugin', TRuleApplicationKind.Package), Member('Noch', TRuleApplicationKind.Console)], 'U.pas');
   Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown,
     mMerged.Application, 'Verschiedene Arten ergeben Unknown');
   Assert.AreEqual('Tests', mMerged.Name);
 end;
 
-procedure TShellWorkspaceTests.WorkspaceWithoutProjectIsRuleReady;
+procedure TCoreWorkspaceTests.WorkspaceWithoutProjectIsRuleReady;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mReason: string;
   mSaved: TTextLanguage;
 begin
@@ -164,6 +165,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellWorkspaceTests);
+  TDUnitX.RegisterTestFixture(TCoreWorkspaceTests);
 
 end.

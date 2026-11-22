@@ -107,6 +107,7 @@
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextDocument.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.FileEncoding.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.UnitLookup.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Paths.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DelphiVersions.pas"/>
         <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.Xml.pas"/>

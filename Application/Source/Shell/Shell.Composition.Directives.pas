@@ -61,7 +61,7 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Documents.Uris,
-  Shell.Workspace;
+  Core.Workspace;
 
 /// <summary>Bedingte Symbole aus ADefines ohne Vorgaben des Compilers und ohne Schalterstände.</summary>
 function OwnDefines(const ADefines, APredefined: TArray<string>): TArray<string>;
@@ -89,7 +89,7 @@ end;
 
 function TShellDirectives.DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   ADefines := nil;
   System.TMonitor.Enter(FWorkspaces.Lock);
@@ -127,7 +127,7 @@ end;
 function TShellDirectives.ProjectOf(const AFileName: string; out AIncludePaths: TArray<string>;
   out AProject: TProjectInfo): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   AIncludePaths := nil;
   Result := False;

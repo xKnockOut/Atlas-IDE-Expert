@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.RecentMessages,
   Core.CommandLine,
   Core.CrashCases,
-  Shell.Workspace;
+  Core.Workspace;
 
 /// <summary>Logger mit Warnungen auf stderr und der Logdatei aus --log; die Hinweise der Kommandozeile gleich darin.
 /// </summary>
@@ -28,7 +28,7 @@ function GlobalSettingsOf(const ARoot: string; const ALogger: ILogger): string;
 function NewCrashCases(const ALogger: ILogger; const ARecent: IJsonRpcRecentMessages; const ARoot: string):
   TCoreCrashCases;
 /// <summary>OnRequestFailed des Dispatchers: Fall sichern, wenn server.crashCases an ist.</summary>
-function RequestFailedOf(ACrashCases: TCoreCrashCases; AWorkspace: TShellWorkspace): TJsonRpcRequestFailedEvent;
+function RequestFailedOf(ACrashCases: TCoreCrashCases; AWorkspace: TCoreWorkspace): TJsonRpcRequestFailedEvent;
 implementation
 
 uses
@@ -109,7 +109,7 @@ begin
     end;
 end;
 
-function RequestFailedOf(ACrashCases: TCoreCrashCases; AWorkspace: TShellWorkspace): TJsonRpcRequestFailedEvent;
+function RequestFailedOf(ACrashCases: TCoreCrashCases; AWorkspace: TCoreWorkspace): TJsonRpcRequestFailedEvent;
 begin
   Result :=
     procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)

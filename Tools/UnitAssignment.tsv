@@ -1003,6 +1003,7 @@ Atlas.IDE.Build	Atlas.UI.Tasks.Texts	UI/Tasks/Atlas.UI.Tasks.Texts.pas	Ordner `U
 Atlas.IDE.BuildPipeline	Atlas.Core.BuildPipeline.Gate	Core/BuildPipeline/Atlas.Core.BuildPipeline.Gate.pas	Ordner `Core/BuildPipeline`
 Atlas.IDE.BuildPipeline	Atlas.Core.BuildPipeline.Plan	Core/BuildPipeline/Atlas.Core.BuildPipeline.Plan.pas	Ordner `Core/BuildPipeline`
 Atlas.IDE.BuildPipeline	Atlas.Core.BuildPipeline.ReleaseGuard	Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas	Ordner `Core/BuildPipeline`
+Atlas.IDE.BuildPipeline	Atlas.IDE.BuildPipeline.Adapters.Module	IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehl „Release-Build prüfen“, Builds auf Auftrag (`IAtlasBuildJobs`, `IAtlasBuildRequests`), Bewertung der Builds für Base
 Atlas.IDE.BuildPipeline	Atlas.IDE.BuildPipeline.Composition	IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Composition.pas	Anmeldung des Moduls `atlas.buildpipeline`, #1455
 Atlas.IDE.BuildPipeline	Atlas.IDE.BuildPipeline.Gate	IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Gate.pas	Ordner `IDE/BuildPipeline`
 Atlas.IDE.BuildPipeline	Atlas.IDE.BuildPipeline.ReleaseGuard	IDE/BuildPipeline/Atlas.IDE.BuildPipeline.ReleaseGuard.pas	Ordner `IDE/BuildPipeline`

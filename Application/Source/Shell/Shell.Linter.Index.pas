@@ -12,7 +12,7 @@ uses
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.CheckMemory,
   Core.CommandLine,
-  Shell.WorkspaceGroup;
+  Core.WorkspaceGroup;
 
 type
   TLinterIndex = class
@@ -24,16 +24,16 @@ type
     /// Speicher in ATimings ein (#1356). Mit AMemory (#1480) misst es den Speicher, wenn der Index des
     /// Zielprojekts und wenn der aller Projekte fertig ist; nil erlaubt.</summary>
     class function Load(const AOptions: TCommandLineOptions; const AConfigRoot: string;
-      var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TShellWorkspaceGroup; static;
+      var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TCoreWorkspaceGroup; static;
     /// <summary>Projekt einer geprüften Datei: Package aus APackages, Formulare der Programme, Formulardatei
     /// daneben und mit AGroup Index und Projektdienste (#1112) wie im Server.</summary>
     class function ProjectOf(const AFileName: string; const APackages: TArray<TPackageSource>;
-      const APrograms: TArray<string>; AGroup: TShellWorkspaceGroup): TCheckProject; static;
+      const APrograms: TArray<string>; AGroup: TCoreWorkspaceGroup): TCheckProject; static;
     /// <summary>Speicher eines Laufs mit --timings (#1480), misst ab jetzt im Hintergrund den Gipfel; der
     /// Aufrufer gibt ihn nach der Gruppe frei.</summary>
     class function MemoryTrack: TCheckMemoryTrack; static;
     /// <summary>Hält AGroup an und gibt sie frei; nil erlaubt.</summary>
-    class procedure Release(AGroup: TShellWorkspaceGroup); static;
+    class procedure Release(AGroup: TCoreWorkspaceGroup); static;
   end;
 
 implementation
@@ -55,7 +55,8 @@ uses
   Platform.Server,
   Core.Bootstrap,
   Shell.Linter.Output,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Shell.Composition.Platform;
 
 type
 {$SCOPEDENUMS ON}
@@ -81,7 +82,7 @@ end;
 
 /// <summary>Gruppe über AConfigRoot mit AIndex. Als anonyme Methode statt TCoreBootstrap.ReadSourceText: Free
 /// Pascal (Linux-Bau) bricht an der Umwandlung einer Klassenmethode in eine Methodenreferenz intern ab.</summary>
-function NewGroup(const AConfigRoot: string; const AIndex: ISymbolIndex): TShellWorkspaceGroup;
+function NewGroup(const AConfigRoot: string; const AIndex: ISymbolIndex): TCoreWorkspaceGroup;
 var
   mStore: IDocumentStore;
 begin
@@ -90,8 +91,8 @@ begin
     begin
       Result := TServerPlatform.CanonicalizePath(APath);
     end);
-  Result := TShellWorkspaceGroup.Create(ExcludeTrailingPathDelimiter(AConfigRoot), mStore, ErrorLogger, AIndex,
-    'atlas-check-index',
+  Result := TCoreWorkspaceGroup.Create(ExcludeTrailingPathDelimiter(AConfigRoot), mStore, ErrorLogger, AIndex,
+    'atlas-check-index', TShellPlatformAdapters.WorkspaceFactories,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
@@ -99,7 +100,7 @@ begin
 end;
 
 /// <summary>Projektdatei, Cache-Ordner und Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).</summary>
-procedure Configure(AGroup: TShellWorkspaceGroup; const AOptions: TCommandLineOptions);
+procedure Configure(AGroup: TCoreWorkspaceGroup; const AOptions: TCommandLineOptions);
 var
   mIdentity: TIndexProcessInfo;
 begin
@@ -120,7 +121,7 @@ end;
 
 /// <summary>Speicher (#1480) beim fertigen Index des Zielprojekts; die übrigen Projekte zählen nur zum Gipfel.
 /// </summary>
-procedure TrackIndex(AGroup: TShellWorkspaceGroup; AMemory: TCheckMemoryTrack);
+procedure TrackIndex(AGroup: TCoreWorkspaceGroup; AMemory: TCheckMemoryTrack);
 begin
   if AMemory = nil then
   begin
@@ -135,7 +136,7 @@ end;
 
 /// <summary>Lädt AGroup, wartet auf den Index und meldet das Ergebnis auf stderr; mit AMemory der Speicher, wenn
 /// alle Projekte fertig sind.</summary>
-procedure LoadAndWait(AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex; const AWatch: TStopwatch;
+procedure LoadAndWait(AGroup: TCoreWorkspaceGroup; const AIndex: ISymbolIndex; const AWatch: TStopwatch;
   AMemory: TCheckMemoryTrack);
 begin
   AGroup.Load(TCoreBootstrap.LoadGlobalSettings(nil));
@@ -173,7 +174,7 @@ end;
 { TLinterIndex }
 
 class function TLinterIndex.Load(const AOptions: TCommandLineOptions; const AConfigRoot: string;
-  var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TShellWorkspaceGroup;
+  var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TCoreWorkspaceGroup;
 var
   mIndex: ISymbolIndex;
   mWatch: TStopwatch;
@@ -203,7 +204,7 @@ begin
 end;
 
 class function TLinterIndex.ProjectOf(const AFileName: string; const APackages: TArray<TPackageSource>;
-  const APrograms: TArray<string>; AGroup: TShellWorkspaceGroup): TCheckProject;
+  const APrograms: TArray<string>; AGroup: TCoreWorkspaceGroup): TCheckProject;
 var
   mIndexed: TCheckProject;
 begin
@@ -232,7 +233,7 @@ begin
   end;
 end;
 
-class procedure TLinterIndex.Release(AGroup: TShellWorkspaceGroup);
+class procedure TLinterIndex.Release(AGroup: TCoreWorkspaceGroup);
 begin
   if AGroup <> nil then
   begin
