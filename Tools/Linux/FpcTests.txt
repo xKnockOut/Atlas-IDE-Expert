@@ -80,7 +80,7 @@ Atlas.Common.Documents.TextDocument.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Editing.AssignFields.Tests
-Atlas.Common.Editing.CaseCompletion.Tests
+Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
 Atlas.Common.Editing.BodySpacing.Tests

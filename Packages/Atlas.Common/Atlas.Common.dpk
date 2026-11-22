@@ -369,7 +369,7 @@ contains
   Atlas.Common.Editing.GenericLists in 'Source\Editing\Atlas.Common.Editing.GenericLists.pas',
   Atlas.Common.Editing.StringLiterals in 'Source\Editing\Atlas.Common.Editing.StringLiterals.pas',
   Atlas.Common.Editing.PostfixTemplates in 'Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas',
-  Atlas.Common.Editing.CaseCompletion in 'Source\Editing\Atlas.Common.Editing.CaseCompletion.pas',
+  Atlas.Common.Pascal.CaseCompletion in 'Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas',
   Atlas.Common.Editing.AssignFields in 'Source\Editing\Atlas.Common.Editing.AssignFields.pas',
   Atlas.Common.Pascal.RoutineBody in 'Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas',
   Atlas.Common.Editing.ExpressionText in 'Source\Editing\Atlas.Common.Editing.ExpressionText.pas',

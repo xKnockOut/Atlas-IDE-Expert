@@ -66,7 +66,7 @@ Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt i
 `Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
 Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
-`atlas.json` (Stand des Umbaus: 396 Kanten, ein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
+`atlas.json` (Stand des Umbaus: 354 Kanten, ein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
 
 | Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
