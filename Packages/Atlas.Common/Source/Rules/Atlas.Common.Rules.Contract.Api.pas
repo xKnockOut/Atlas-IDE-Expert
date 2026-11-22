@@ -9,8 +9,10 @@ interface
 
 uses
   System.JSON,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Metrics.Contract;
+  Atlas.Common.Metrics.Contract,
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Vererbungstiefe der Klassen einer Datei wie bei der Regel metric-inheritance-depth (#980).</summary>
@@ -30,6 +32,35 @@ type
     /// <summary>{ uri, sites: [...] } zu AUri; sites leer, wenn die Datei weder geöffnet noch lesbar ist. Der
     /// Aufrufer übernimmt das Objekt.</summary>
     function Report(const AUri: string): TJSONObject;
+  end;
+
+  /// <summary>Prüfregeln für ein Dokument der Diagnose im Editor; das Umfeld (Regeln, Einstellungen, Baseline)
+  /// hat der Anbieter für die Datei gebaut.</summary>
+  IRuleDocumentCheck = interface
+    ['{421C24F9-0C96-40DD-B81F-06396A2BA5EF}']
+    /// <summary>Syntaxfehler im Baum von ADocument unter ADefines (gemeinsamer Zwischenspeicher, #845) als Treffer
+    /// der Regel syntax (#1022): Schweregrad und Gruppe aus der Konfiguration, ohne Umfeld Fehler.</summary>
+    function SyntaxFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
+    /// <summary>Sprachmerkmale, die ADelphiVersion noch nicht kennt, als Treffer der Regel language-feature
+    /// (#109, #1126); nicht in AInactive.</summary>
+    function LanguageFeatureFindings(const ADocument: ITextDocument; const ADefines: TArray<string>;
+      const ADelphiVersion: string; const AInactive: TArray<TTextRange>): TArray<TRuleFinding>;
+    /// <summary>Treffer der Prüfregeln ohne die bekannten der Baseline (#97), über den gemeinsamen Speicher der
+    /// Treffer; leer ohne Regeln. Abbruch zwischen den Regeln mit ERuleCheckCancelled.</summary>
+    function RuleFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
+    /// <summary>Zeigt der Editor ungenutzte uses (Regel unused-uses, #1135)? Ohne Umfeld ja.</summary>
+    function UnusedUsesShown: Boolean;
+    /// <summary>Zeigt der Editor „nur in der implementation gebraucht“ (uses-only-in-implementation, #1136)? Ohne
+    /// Umfeld ja.</summary>
+    function OnlyImplementationShown: Boolean;
+  end;
+
+  /// <summary>Prüfregeln der Diagnose je Dokument.</summary>
+  IRuleDocumentChecks = interface
+    ['{CEAD1EB5-00AF-46A9-973C-91E0B29E7E54}']
+    /// <summary>Prüfung für AUri; ACancelled (nil = nie) bricht zwischen den Regeln ab. Nie nil: ohne Umfeld
+    /// gelten die Vorgaben, und es laufen keine Regeln.</summary>
+    function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentCheck;
   end;
 
 implementation
