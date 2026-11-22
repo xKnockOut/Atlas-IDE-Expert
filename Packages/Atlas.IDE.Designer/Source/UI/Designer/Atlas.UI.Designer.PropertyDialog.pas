@@ -18,7 +18,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Designer.Dialog;
 
 type

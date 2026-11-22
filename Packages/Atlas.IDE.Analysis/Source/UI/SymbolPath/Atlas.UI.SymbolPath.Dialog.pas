@@ -19,7 +19,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.SymbolPath.Suggestions;
 
 type
@@ -78,7 +78,7 @@ uses
   System.Math,
   Atlas.UI.Analysis.Strings,
   Atlas.Plugin.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   cDefaultSteps = 8;

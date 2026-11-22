@@ -29,7 +29,7 @@ uses
   Vcl.Forms,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Generate.Menu,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasGenerateChoicesFunc = reference to function(const AEntry: TAtlasGenerateEntry): TArray<string>;

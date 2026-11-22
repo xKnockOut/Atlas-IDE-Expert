@@ -26,7 +26,7 @@ uses
   Vcl.Forms,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
-  Atlas.UI.Style.Canvas,
+  Atlas.Vcl.Theme.Canvas,
   Atlas.UI.Tracker.TileView,
   Atlas.UI.Tracker.Contract.Sprint;
 
@@ -108,7 +108,7 @@ uses
   Vcl.Themes,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.UI.Foundation.Controls,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Sprint.Strings,

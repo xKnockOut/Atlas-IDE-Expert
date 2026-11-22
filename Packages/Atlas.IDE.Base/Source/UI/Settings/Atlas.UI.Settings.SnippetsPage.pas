@@ -65,9 +65,9 @@ implementation
 
 uses
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
 
 const
   // Knöpfe Neu, Kopieren, Löschen (links, Breite) und Lage der Felder Präfix, Name, Beschreibung.

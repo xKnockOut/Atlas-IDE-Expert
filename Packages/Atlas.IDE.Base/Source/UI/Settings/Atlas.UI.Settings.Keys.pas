@@ -25,7 +25,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.Vcl.Options.ChoiceBox;
 
 type
   /// <summary>Wer belegt die Taste außer Atlas? '' wenn frei.</summary>
@@ -85,9 +85,9 @@ implementation
 uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Commands.KeyMap,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

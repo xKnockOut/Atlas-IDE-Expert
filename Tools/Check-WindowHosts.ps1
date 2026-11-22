@@ -24,7 +24,7 @@
       nil-Prüfung vor Host.Hide bzw. Host.Shown und kein zweites UpdateIcon
       nach Show (jedes neue Fenster brachte sonst dieselben Zeilen mit).
     - Im Code gebaute Dialoge erben von TAtlasDialog
-      (Atlas.UI.Foundation.Dialog, #2062): kein eigenes inherited CreateNew,
+      (Atlas.Vcl.Forms.Dialog, #2062): kein eigenes inherited CreateNew,
       keine Schrift 'Segoe UI' von Hand (TAtlasUiTheme), kein clRed als
       Fehlerfarbe (TAtlasNoteLabel bzw. TAtlasUiTheme.TextColor). Auch kein
       Formular, das von außen über X.CreateNew angelegt wird (TForm.CreateNew(nil)
@@ -35,7 +35,7 @@
       Dialogfenster an, das bsNone wieder verwirft, und Schatten, runde Ecken
       und Akzentrand müsste jedes Fenster selbst nachtragen.
     - Umbrechende Beschriftungen sind TAtlasWrapLabel
-      (Atlas.UI.Foundation.WrapLabel): Ein TLabel mit WordWrap rechnet seine
+      (Atlas.Vcl.Controls.WrapLabel): Ein TLabel mit WordWrap rechnet seine
       Höhe bei der Anfangsbreite (65 Pixel) und behält sie, wenn Align oder
       Anker es danach breiter machen; über der Liste blieb so ein großer
       leerer Bereich (wrap-label, jedes „.WordWrap := True“). Memos und
@@ -95,9 +95,9 @@ $SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Fil
 $DockUnit = 'Atlas.IDE.Foundation.DockWindow.pas'
 $BarUnit = 'Atlas.IDE.Foundation.EditorWindows.pas'
 $RefreshUnit = 'Atlas.IDE.Foundation.EditorRefresh.pas'
-$DialogUnit = 'Atlas.UI.Foundation.Dialog.pas'
-$ThemeUnit = 'Atlas.UI.Foundation.Theme.pas'
-$WrapLabelUnit = 'Atlas.UI.Foundation.WrapLabel.pas'
+$DialogUnit = 'Atlas.Vcl.Forms.Dialog.pas'
+$ThemeUnit = 'Atlas.Vcl.Theme.Service.pas'
+$WrapLabelUnit = 'Atlas.Vcl.Controls.WrapLabel.pas'
 $BaselineFile = Join-Path $Root 'Tools/WindowHosts.baseline.json'
 
 function Remove-PascalComments([string] $Text) {

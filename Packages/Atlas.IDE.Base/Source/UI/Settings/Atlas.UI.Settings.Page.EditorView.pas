@@ -9,7 +9,7 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.EditorToolbar.Customize,
   Atlas.UI.Settings.Page.Host;
 

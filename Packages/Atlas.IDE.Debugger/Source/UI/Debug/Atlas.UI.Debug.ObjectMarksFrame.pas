@@ -72,7 +72,7 @@ uses
   Winapi.Windows,
   Atlas.Core.Debug.InstanceBreakpoint,
   Atlas.UI.Debug.ObjectMarks.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

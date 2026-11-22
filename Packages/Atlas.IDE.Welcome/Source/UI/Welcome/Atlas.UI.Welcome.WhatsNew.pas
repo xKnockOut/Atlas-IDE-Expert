@@ -124,8 +124,8 @@ uses
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 type
   /// <summary>Legt die Steuerelemente der Karte an: Überschriften, Zeilen mit Schalter und „Ausprobieren“, den

@@ -60,9 +60,9 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.Projects,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
 
 const
   cMenuLine = '-';

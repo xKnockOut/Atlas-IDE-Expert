@@ -29,7 +29,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.CommentEditor,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>AChange im Hintergrund schreiben und ADone im Hauptthread aufrufen (genau einmal). Eigener Typ:
@@ -132,7 +132,7 @@ uses
   Atlas.Plugin.Style.Signal,
   Atlas.Core.Tracker.Transitions,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

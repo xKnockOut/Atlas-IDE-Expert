@@ -15,7 +15,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -60,8 +60,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Bookmarks.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

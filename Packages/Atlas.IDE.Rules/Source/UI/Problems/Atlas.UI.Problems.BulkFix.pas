@@ -19,7 +19,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.CheckLst,
   Atlas.Core.Problems.BulkFix,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBulkFixDialog = class(TAtlasDialog)
@@ -61,7 +61,7 @@ implementation
 
 uses
   Atlas.UI.Rules.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   cGap = 8;

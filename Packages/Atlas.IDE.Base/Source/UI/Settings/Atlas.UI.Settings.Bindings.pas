@@ -59,7 +59,7 @@ uses
   System.Classes,
   Vcl.StdCtrls,
   Vcl.Menus,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.Vcl.Options.ChoiceBox;
 
 { TAtlasSettingsBindings }
 

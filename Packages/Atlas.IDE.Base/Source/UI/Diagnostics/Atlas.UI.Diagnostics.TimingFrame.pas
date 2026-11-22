@@ -76,7 +76,7 @@ uses
   Atlas.Plugin.Style.Color,
   Winapi.Windows,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   // Spalten der Zeitentabelle: Schritt, letzte, Mittel, Maximum, Budget.

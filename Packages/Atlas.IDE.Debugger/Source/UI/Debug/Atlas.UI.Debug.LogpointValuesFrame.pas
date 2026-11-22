@@ -96,8 +96,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Debug.TimeChart,
   Atlas.UI.Debug.Logpoints.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

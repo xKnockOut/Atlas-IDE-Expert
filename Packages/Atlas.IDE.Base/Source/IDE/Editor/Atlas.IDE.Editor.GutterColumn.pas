@@ -38,7 +38,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.IDE.Editor.GutterColumnState;
 
 type

@@ -27,7 +27,7 @@ uses
   Atlas.Core.Debug.OwnCode,
   Atlas.Core.Debug.CallStackView,
   Atlas.UI.Debug.CallStack.Strings,
-  Atlas.UI.Foundation.FillFrame;
+  Atlas.Vcl.Forms.FillFrame;
 
 type
   /// <summary>Leiste über der Liste: Suche, „Mit letztem Halt vergleichen“, „Kopieren“ mit Menü und Statuszeile.

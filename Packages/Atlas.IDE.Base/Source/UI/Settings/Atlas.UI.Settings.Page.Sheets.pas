@@ -15,7 +15,7 @@ uses
   Vcl.Forms,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.Vcl.Options.ChoiceBox;
 
 const
   // Linke Kante der Eingabefelder; Platz für die längste Beschriftung („Breite der Blocklinien …“).
@@ -112,7 +112,7 @@ uses
   System.SysUtils,
   System.Math,
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   /// <summary>Breiten der Eingabefelder je Art (logische Pixel).</summary>

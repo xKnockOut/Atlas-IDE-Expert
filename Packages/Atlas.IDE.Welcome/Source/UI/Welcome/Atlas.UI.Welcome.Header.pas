@@ -18,7 +18,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Atlas.Core.Status.Lines,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Search;
 
@@ -97,8 +97,8 @@ uses
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasWelcomeHeaderFrame }
 

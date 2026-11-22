@@ -18,8 +18,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Debug.Reattach,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView;
 
 type
   TAtlasProcessChoiceDialog = class(TAtlasDialog)

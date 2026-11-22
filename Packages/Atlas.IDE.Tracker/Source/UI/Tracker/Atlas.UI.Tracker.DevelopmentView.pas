@@ -171,10 +171,10 @@ uses
   System.DateUtils,
   Vcl.Graphics,
   Atlas.Plugin.Style.Color,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Tracker.GitHubStrings,
-  Atlas.UI.Foundation.Scaling,
+  Atlas.Vcl.Theme.Scaling,
   Atlas.UI.Tracker.IssueBoxes;
 
 const

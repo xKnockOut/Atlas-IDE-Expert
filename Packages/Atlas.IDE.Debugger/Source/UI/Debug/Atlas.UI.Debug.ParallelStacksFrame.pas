@@ -20,7 +20,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Debug.Threads,
   Atlas.Core.Debug.ParallelStacks,
-  Atlas.UI.Foundation.FillFrame;
+  Atlas.Vcl.Forms.FillFrame;
 
 type
   TAtlasDebugParallelStacksFrame = class(TAtlasFillFrame)
@@ -72,7 +72,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Controls,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Threads.Strings,
   Atlas.UI.Debug.ParallelStacks;
 
