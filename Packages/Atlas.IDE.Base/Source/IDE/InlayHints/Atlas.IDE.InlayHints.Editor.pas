@@ -59,7 +59,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Editor.InlayPlan,
   Atlas.Plugin.Diagnostics.Deadline;

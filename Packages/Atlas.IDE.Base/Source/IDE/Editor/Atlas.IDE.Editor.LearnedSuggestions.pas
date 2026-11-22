@@ -20,7 +20,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.LearnedSuggestions,
   Atlas.Core.Editor.LearnedUsage,
   Atlas.IDE.Contracts.GhostSuggestions;

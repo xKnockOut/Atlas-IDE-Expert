@@ -74,7 +74,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 { TAtlasContinueHeads }
 

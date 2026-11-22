@@ -31,7 +31,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.BuildPipeline.ReleaseGuard;

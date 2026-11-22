@@ -36,7 +36,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.ProjectSelection,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Tests.LeakSetup,
   Atlas.IDE.Foundation.Host,
   Atlas.ToolsApi.Files.Service,

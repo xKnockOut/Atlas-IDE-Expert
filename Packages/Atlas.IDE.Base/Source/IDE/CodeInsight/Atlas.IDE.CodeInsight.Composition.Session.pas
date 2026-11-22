@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Modules.Contract,
   Atlas.Plugin.Status.Lines,

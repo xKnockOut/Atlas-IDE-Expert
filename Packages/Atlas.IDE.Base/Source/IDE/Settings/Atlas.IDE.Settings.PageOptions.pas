@@ -43,7 +43,7 @@ implementation
 uses
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Progress,
+  Atlas.Plugin.Lsp.Progress,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Page.Index,
   Atlas.Core.Settings.Catalog,

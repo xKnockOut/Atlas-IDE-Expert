@@ -29,7 +29,7 @@ uses
   System.Classes,
   Vcl.Forms,
   Vcl.ComCtrls,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Results.DataFlow,
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts,

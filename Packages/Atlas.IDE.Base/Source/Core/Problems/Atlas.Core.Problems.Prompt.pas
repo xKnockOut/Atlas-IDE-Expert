@@ -28,7 +28,7 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 const
   cSeverityNames: array[TAtlasProblemSeverity] of string = ('error', 'warning', 'info', 'hint');

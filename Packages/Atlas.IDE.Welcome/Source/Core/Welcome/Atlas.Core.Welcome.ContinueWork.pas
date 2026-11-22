@@ -94,7 +94,7 @@ implementation
 
 uses
   Atlas.Core.Projects.Contract.Summary,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 const
   cOneSecond = 1 / SecsPerDay;

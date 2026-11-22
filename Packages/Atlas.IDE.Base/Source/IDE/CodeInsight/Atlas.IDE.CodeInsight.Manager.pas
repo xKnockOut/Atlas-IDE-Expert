@@ -91,7 +91,7 @@ uses
   Atlas.Core.CodeInsight.Plan,
   Winapi.Windows,
   System.JSON,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Hangs,

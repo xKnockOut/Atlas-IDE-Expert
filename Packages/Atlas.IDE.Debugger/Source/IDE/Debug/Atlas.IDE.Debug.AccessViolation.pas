@@ -36,7 +36,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract.DebugValue,
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.Phases,

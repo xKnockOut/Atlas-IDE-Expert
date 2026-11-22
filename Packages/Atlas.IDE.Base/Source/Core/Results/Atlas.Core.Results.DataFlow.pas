@@ -10,7 +10,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.DataFlow;
+  Atlas.Plugin.Lsp.DataFlow;
 
 type
 {$SCOPEDENUMS ON}

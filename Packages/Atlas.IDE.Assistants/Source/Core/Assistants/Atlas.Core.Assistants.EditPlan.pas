@@ -20,7 +20,7 @@
 interface
 
 uses
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Plugin.Files.Contract;
 
 type
@@ -82,7 +82,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.TextChanges;
+  Atlas.Plugin.Lsp.TextChanges;
 
 { TAtlasEditInboxDecision }
 

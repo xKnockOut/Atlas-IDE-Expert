@@ -32,7 +32,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits;
+  Atlas.Plugin.Lsp.WorkspaceEdits;
 
 type
   {$SCOPEDENUMS ON}

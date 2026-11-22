@@ -24,7 +24,7 @@ uses
   System.SysUtils,
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Status.Registry,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Tests.OnSave,
   Atlas.IDE.Tests.Output,
   Atlas.IDE.Tests.Runner;

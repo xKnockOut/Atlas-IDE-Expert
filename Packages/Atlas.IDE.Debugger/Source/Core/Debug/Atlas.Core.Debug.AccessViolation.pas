@@ -4,7 +4,7 @@
 //   - TAtlasAvMessage liest aus Klasse und Meldung, ob es eine Zugriffsverletzung ist, und die Adresse, auf die
 //     zugegriffen wurde („Lesen von Adresse 0000001C“, „Read of address 0000001C“, auch Schreiben und
 //     Ausführen, 8 oder 16 Stellen).
-//   - Zugriffsketten der Anweisung am Halt kommen von atlas/accessChains (Atlas.Core.Lsp.AccessChains).
+//   - Zugriffsketten der Anweisung am Halt kommen von atlas/accessChains (Atlas.Plugin.Lsp.AccessChains).
 //   - TAtlasAvAnalysis führt die Auswertung als Folge von Anfragen an den Debugger: Glieder jeder Kette von
 //     links als Pointer(Ausdruck); das erste nil-Glied beendet die Kette. Ein Wert aus einem Füllmuster des
 //     Speichermanagers ($80808080 FastMM, $FEEEFEEE Windows-Heap) heißt „freigegeben“, ein Wert unter $10000
@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions;
 

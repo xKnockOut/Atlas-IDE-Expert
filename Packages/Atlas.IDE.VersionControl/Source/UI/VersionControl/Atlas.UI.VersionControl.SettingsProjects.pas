@@ -196,7 +196,7 @@ uses
   Vcl.Dialogs,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.ServerAccess,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.UI.VersionControl.SettingsKind,
   Atlas.UI.VersionControl.SettingsProject;
 

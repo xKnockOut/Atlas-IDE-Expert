@@ -40,8 +40,8 @@ implementation
 uses
   System.StrUtils,
   Atlas.Plugin.Files.Contract,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Assistants.LinkState,

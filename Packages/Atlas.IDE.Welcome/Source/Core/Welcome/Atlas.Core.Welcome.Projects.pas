@@ -85,7 +85,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 const
   /// <summary>Kürzer lässt sich kein Pfad sinnvoll kürzen.</summary>

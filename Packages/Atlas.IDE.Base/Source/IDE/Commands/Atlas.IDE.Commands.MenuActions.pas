@@ -78,7 +78,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Processes,
   Atlas.Core.Results.Model,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.UI.Diagnostics.ProcessesDialog,
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Results.Commands,

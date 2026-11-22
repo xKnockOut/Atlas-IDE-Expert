@@ -411,7 +411,7 @@ begin
 end;
 
 // Art und Hauptbranch je Projekt (#1286): wie die Tabelle Projekte der Seite Issue-Tracker (#1261), dieselbe
-// Auflösung (Atlas.Core.Projects.Matching).
+// Auflösung (Atlas.Plugin.Projects.Matching).
 
 // Serverzugang (#1287): nur auf Klick, Zustand aus der Sitzung.
 

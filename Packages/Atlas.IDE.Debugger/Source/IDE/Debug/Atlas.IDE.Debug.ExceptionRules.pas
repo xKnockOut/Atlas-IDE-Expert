@@ -89,7 +89,7 @@ implementation
 uses
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Files.Contract,
   Atlas.Plugin.Files.TextFile,

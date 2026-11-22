@@ -17,7 +17,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Generate.Menu;

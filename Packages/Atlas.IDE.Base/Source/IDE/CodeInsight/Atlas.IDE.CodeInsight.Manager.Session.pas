@@ -13,8 +13,8 @@ interface
 
 uses
   System.SyncObjs,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Files.Contract,
   Atlas.Plugin.Files.WatchedChanges,
@@ -110,8 +110,8 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Projects.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Outline.Cache,
@@ -119,8 +119,8 @@ uses
   Atlas.IDE.CodeInsight.Manager.Handlers,
   Atlas.IDE.CodeInsight.IdeTypes,
   Atlas.IDE.CodeInsight.IdeMembers,
-  Atlas.Core.Lsp.IdeTypes,
-  Atlas.Core.Lsp.IdeMembers,
+  Atlas.Plugin.Lsp.IdeTypes,
+  Atlas.Plugin.Lsp.IdeMembers,
   System.Diagnostics,
   Atlas.Plugin.Localization.Language,
   Atlas.Plugin.Diagnostics.Deadline;

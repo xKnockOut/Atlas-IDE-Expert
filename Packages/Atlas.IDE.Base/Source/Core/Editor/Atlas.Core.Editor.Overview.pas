@@ -25,7 +25,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.OverviewKinds,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.Contract;
 

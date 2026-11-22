@@ -215,7 +215,7 @@ uses
   System.JSON,
   System.Math,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Marks.Ids,
   Atlas.Text.Encoding,

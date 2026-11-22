@@ -6,7 +6,7 @@ float-equality,Atlas.Plugin.Style.Color.pas,89,falsch,2026-10-17
 float-equality,Atlas.Plugin.Style.Color.pas,91,falsch,2026-10-17
 format-without-settings,Atlas.Common.JsonRpc.TracingTransport.pas,103,falsch,2026-10-17
 format-without-settings,Atlas.Plugin.Diagnostics.Guard.pas,193,richtig,2026-10-17
-format-without-settings,Atlas.Core.Lsp.Progress.pas,351,falsch,2026-10-17
+format-without-settings,Atlas.Plugin.Lsp.Progress.pas,351,falsch,2026-10-17
 format-without-settings,Atlas.IDE.CodeInsight.Manager.pas,1663,richtig,2026-10-17
 format-without-settings,Atlas.IDE.StartProfiles.Service.pas,763,falsch,2026-10-17
 format-without-settings,Atlas.UI.Diagnostics.ExportDialog.pas,52,falsch,2026-10-17

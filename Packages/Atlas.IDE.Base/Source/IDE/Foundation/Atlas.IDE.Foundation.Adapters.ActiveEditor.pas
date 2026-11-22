@@ -20,7 +20,7 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.ToolsApi.Editor.Buffer;
 
 { TAtlasIdeActiveEditor }

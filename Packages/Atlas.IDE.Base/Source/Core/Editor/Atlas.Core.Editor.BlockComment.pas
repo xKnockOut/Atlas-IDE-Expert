@@ -21,7 +21,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.TextChanges;
+  Atlas.Plugin.Lsp.TextChanges;
 
 type
 {$SCOPEDENUMS ON}
