@@ -56,7 +56,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.DocComments;
 
 const

@@ -105,7 +105,6 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.GenericLists.Kinds,
   Atlas.Common.Editing.GenericLists;

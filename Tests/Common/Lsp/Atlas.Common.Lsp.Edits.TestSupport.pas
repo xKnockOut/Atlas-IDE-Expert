@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Documents.TextChanges;
 
 function EditsOf(ADocument: TJSONObject): TArray<TTextEdit>;
 var

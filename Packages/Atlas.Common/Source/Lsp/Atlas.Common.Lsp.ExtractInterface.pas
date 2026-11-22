@@ -83,7 +83,7 @@ uses
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,

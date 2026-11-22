@@ -50,7 +50,7 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Configuration.TestSupport;
 
 const

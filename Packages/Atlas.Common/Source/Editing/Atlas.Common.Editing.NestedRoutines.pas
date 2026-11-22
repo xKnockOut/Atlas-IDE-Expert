@@ -39,7 +39,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.CodeActions.Contract;
 
 type
   /// <summary>Ist der Typ ATypeName an AOffset ein Record oder Interface (dann const beim reinen Lesen)?</summary>

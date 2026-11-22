@@ -25,7 +25,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,

@@ -41,7 +41,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.AnonymousMethods.Shared,
   Atlas.Common.Editing.AnonymousMethods.Embed,

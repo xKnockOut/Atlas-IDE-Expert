@@ -11,7 +11,7 @@ interface
 uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.AnonymousMethods.Shared;
 

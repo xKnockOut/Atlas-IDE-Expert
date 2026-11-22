@@ -33,7 +33,6 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Localization.Texts;

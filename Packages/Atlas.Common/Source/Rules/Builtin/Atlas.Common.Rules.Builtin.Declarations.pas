@@ -161,7 +161,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.MethodMatching,

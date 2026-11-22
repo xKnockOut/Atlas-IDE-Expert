@@ -121,6 +121,7 @@
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitResolver.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitAliases.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Adapters.UnitLookup.pas"/>
+        <DCCReference Include="Source\CodeActions\Atlas.Common.CodeActions.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.OutputParser.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.CommandLine.pas"/>
@@ -465,7 +466,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TextChanges.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextChanges.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassLayout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExtractInterface.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceChanges.pas"/>
