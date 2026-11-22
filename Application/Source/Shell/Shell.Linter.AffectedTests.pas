@@ -32,7 +32,6 @@ uses
   Core.WorkspaceGroup,
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Rules.Output,
@@ -42,12 +41,13 @@ uses
   Atlas.Common.Lsp.AffectedTests.Types,
   Shell.Composition.Platform,
   Core.Bootstrap,
-  Shell.AffectedTests,
+  Core.AffectedTests,
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,
   Shell.Linter.Index,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Core.VersionControlChanges;
 
 type
 {$SCOPEDENUMS ON}
@@ -83,7 +83,7 @@ begin
   end
   else if SameText(ExtractFileExt(ATarget), '.groupproj') then
   begin
-    Result := TShellAffectedTests.TestPrograms(GroupPrograms(ATarget, ASettings), AReadText);
+    Result := TCoreAffectedTests.TestPrograms(GroupPrograms(ATarget, ASettings), AReadText);
   end
   else if ASettings.TestUnits.Project <> '' then
   begin
@@ -92,7 +92,7 @@ begin
   end
   else
   begin
-    Result := TShellAffectedTests.TestPrograms(AAllFiles, AReadText);
+    Result := TCoreAffectedTests.TestPrograms(AAllFiles, AReadText);
   end;
 end;
 
@@ -105,7 +105,7 @@ begin
   Result.TestPrograms := APrograms;
   Result.Options := TImpactOptions.Default;
   Result.Options.References := ASettings.References;
-  Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, APrograms, AReadText);
+  Result.Options.Tests := TCoreAffectedTests.TestScope(ASettings.TestUnits.Pattern, APrograms, AReadText);
 end;
 
 /// <summary>Analyse über den Index von AGroup gegenüber --affected-base.</summary>
@@ -113,25 +113,25 @@ function Analyze(const AOptions: TCommandLineOptions; const ATarget: TLinterTarg
   AGroup: TCoreWorkspaceGroup): TAffectedResult;
 var
   mReadText: TReferenceReadText;
-  mQuery: TShellAffectedQuery;
-  mProcess: ICompilerProcess;
+  mQuery: TCoreAffectedQuery;
+  mAccess: TCoreVcsAccess;
   mResolver: TNameResolver;
   mRequest: TAffectedRequest;
 begin
-  mReadText := TShellAffectedTests.FileReader();
+  mReadText := TCoreAffectedTests.FileReader();
   mRequest := RequestOf(AGroup, ASettings, TLinterAffectedTests.ProgramsOf(ATarget.Target, ATarget.ConfigRoot,
     ASettings, AGroup.AllFiles, mReadText), mReadText);
-  mQuery := Default(TShellAffectedQuery);
+  mQuery := Default(TCoreAffectedQuery);
   mQuery.WorkingDir := ATarget.ConfigRoot;
   mQuery.Base := AOptions.AffectedBase;
   mQuery.IncludeUncommitted := AOptions.IncludeUncommitted;
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
-  mProcess := TProcessRunner.Create;
+  mAccess := TShellPlatformAdapters.VcsAccess;
   mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
-    Result := TShellAffectedTests.Run(mProcess, ASettings, mQuery,
-      TShellAffectedSources.New(mResolver, AGroup.Index, mReadText), mRequest, nil);
+    Result := TCoreAffectedTests.Run(mAccess, ASettings, mQuery,
+      TCoreAffectedSources.New(mResolver, AGroup.Index, mReadText), mRequest, nil);
   finally
     mResolver.Free;
   end;
@@ -147,7 +147,7 @@ begin
   begin
     // Zu viele Namen für eine Befehlszeile: dann ohne --run alle.
     AFound.All := True;
-    AFound.AllReason := TShellAffectedTests.TooManyForRun;
+    AFound.AllReason := TCoreAffectedTests.TooManyForRun;
   end;
   mOutput := TAffectedReport.Render(AFound, AFormat);
   if AFormat = TAffectedFormat.DUnitX then
@@ -178,7 +178,7 @@ begin
   mSettings := TLinterSettings.Load(ATarget.ConfigRoot);
   if not mSettings.Tests.Affected then
   begin
-    TLinterOutput.Error(cTexts[TLinterAffectedText.TurnOn].Fmt([TShellAffectedTests.OffMessage]));
+    TLinterOutput.Error(cTexts[TLinterAffectedText.TurnOn].Fmt([TCoreAffectedTests.OffMessage]));
     Exit(TFindingsOutput.cExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);

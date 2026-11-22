@@ -3,7 +3,7 @@
 // Contract des Features Symbolgeschichte (#2641): Geschichte einer Routine oder eines Typs über die Commits, die
 // ihre Zeilen geändert haben, und über Umbenennen und Verschieben hinweg.
 //
-// ISymbolHistoryVcs ist die Sicht des Features auf die Versionsverwaltung; der Host (Shell.Hotspots) setzt sie mit
+// ISymbolHistoryVcs ist die Sicht des Features auf die Versionsverwaltung; der Host (Core.Hotspots) setzt sie mit
 // git bzw. svn um, das Feature startet selbst keine Prozesse. Pfade sind relativ zur Wurzel der Arbeitskopie mit
 // "/", Zeitpunkte in UTC. Mit SVN gibt es nur die Zeilengeschichte im heutigen Stand.
 

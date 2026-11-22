@@ -31,7 +31,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Localization.Texts,

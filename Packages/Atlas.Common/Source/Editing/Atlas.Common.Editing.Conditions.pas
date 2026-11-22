@@ -52,7 +52,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,

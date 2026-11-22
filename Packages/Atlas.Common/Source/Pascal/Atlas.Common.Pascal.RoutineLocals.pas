@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.RoutineLocals;
+﻿unit Atlas.Common.Pascal.RoutineLocals;
 
 // Lokale Namen einer Routine und ihre Zugriffe, gemeinsam für Extrahieren
 // (#50) und Einbetten (#103), auch für anonyme Methoden (#680): Parameter,
@@ -69,7 +69,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor;
 
 { TRoutineLocals }

@@ -28,15 +28,14 @@ uses
   Atlas.Common.Lsp.AffectedTests.Report,
   Atlas.Common.Lsp.AffectedTests.Types,
   Atlas.Common.Semantics.NameResolver,
-  Shell.VersionControlChanges,
-  Atlas.Common.Compiler.Contract,
+  Core.VersionControlChanges,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Report,
   Atlas.Common.Lsp.Hotspots,
   Shell.Composition.Platform,
-  Shell.AffectedTests,
-  Shell.Hotspots,
+  Core.AffectedTests,
+  Core.Hotspots,
   Atlas.Common.Localization.Texts,
   Core.Texts;
 
@@ -89,9 +88,9 @@ const
     En: 'No hotspots: %s. Hotspots need a Git repository or an SVN working copy.'));
 
 /// <summary>Basis, includeUncommitted (Vorgabe True) und Tiefe aus den Argumenten von get_affected_tests.</summary>
-function AffectedQueryOf(const ARoot: string; const AArguments: TJSONObject): TShellAffectedQuery;
+function AffectedQueryOf(const ARoot: string; const AArguments: TJSONObject): TCoreAffectedQuery;
 begin
-  Result := Default(TShellAffectedQuery);
+  Result := Default(TCoreAffectedQuery);
   Result.WorkingDir := ARoot;
   Result.Base := TMcpArgs.OptionalString(AArguments, 'base');
   if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('includeUncommitted', Result.IncludeUncommitted) then
@@ -110,28 +109,28 @@ function AffectedRequestOf(const AContext: TMcpToolContext; const ASettings: TSe
 begin
   Result := Default(TAffectedRequest);
   Result.Files := AContext.Group.AllFiles;
-  Result.TestPrograms := TShellAffectedTests.TestPrograms(Result.Files, AReadText);
+  Result.TestPrograms := TCoreAffectedTests.TestPrograms(Result.Files, AReadText);
   Result.Options := AContext.ImpactOptionsFor('');
   // Testunits aus allen Testprogrammen der Gruppe.
-  Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms, AReadText);
+  Result.Options.Tests := TCoreAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms, AReadText);
 end;
 
 /// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
 function FindAffected(AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings;
-  const AQuery: TShellAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
+  const AQuery: TCoreAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
   TAffectedResult;
 var
   mResolver: TNameResolver;
-  mProcess: ICompilerProcess;
+  mAccess: TCoreVcsAccess;
 begin
   // In einer Interface-Variablen: als const-Argument würde das Objekt nie freigegeben.
-  mProcess := TProcessRunner.Create;
+  mAccess := TShellPlatformAdapters.VcsAccess;
   mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
     try
-      Result := TShellAffectedTests.Run(mProcess, ASettings, AQuery,
-        TShellAffectedSources.New(mResolver, AGroup.Index, AReadText), ARequest, nil);
+      Result := TCoreAffectedTests.Run(mAccess, ASettings, AQuery,
+        TCoreAffectedSources.New(mResolver, AGroup.Index, AReadText), ARequest, nil);
     except
       on E: EVcsChanges do
         raise EMcpToolError.Create(E.Message);
@@ -154,7 +153,7 @@ begin
   end
   else if not TAffectedReport.DUnitXArgument(AFound, Result) then
   begin
-    Result := cTexts[TMcpChangeText.AllNeeded].Fmt([TShellAffectedTests.TooManyForRun]);
+    Result := cTexts[TMcpChangeText.AllNeeded].Fmt([TCoreAffectedTests.TooManyForRun]);
   end;
 end;
 
@@ -168,13 +167,13 @@ begin
   mSettings := AContext.Group.Main.Configuration.Settings;
   if not mSettings.Tests.Affected then
   begin
-    raise EMcpToolError.Create(TShellAffectedTests.OffMessage);
+    raise EMcpToolError.Create(TCoreAffectedTests.OffMessage);
   end;
   if not TAffectedReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
   begin
     raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
-  mReadText := TShellAffectedTests.FileReader();
+  mReadText := TCoreAffectedTests.FileReader();
   mFound := FindAffected(AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
     AffectedRequestOf(AContext, mSettings, mReadText), mReadText);
   if mFormat = TAffectedFormat.DUnitX then
@@ -302,7 +301,7 @@ begin
   mLimit := HotspotLimitOf(AArguments);
   mRequest := HotspotRequestOf(AContext, mSettings, AArguments);
   // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
-  if not TShellHotspotVcs.Detect(AContext.Root, mSettings, mVcs, mError) then
+  if not TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, AContext.Root, mSettings, mVcs, mError) then
   begin
     Exit(cTexts[TMcpChangeText.NoHotspots].Fmt([mError]));
   end;

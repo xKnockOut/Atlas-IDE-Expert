@@ -60,7 +60,7 @@ uses
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.ClassCommands,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Localization.Texts;

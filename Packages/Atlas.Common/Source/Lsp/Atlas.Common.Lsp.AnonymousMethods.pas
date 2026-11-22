@@ -68,7 +68,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Lsp.Contract,

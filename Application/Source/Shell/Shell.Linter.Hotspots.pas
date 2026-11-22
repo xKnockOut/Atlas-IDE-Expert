@@ -33,10 +33,11 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Hotspots.Report,
-  Shell.Hotspots,
+  Core.Hotspots,
   Shell.Linter.Output,
   Shell.Linter.Files,
   Atlas.Common.Localization.Texts,
+  Shell.Composition.Platform,
   Core.Workspace.Listings;
 
 type
@@ -102,7 +103,7 @@ begin
     TLinterOutput.Error(cTexts[TLinterHotspotsText.Off].Text);
     Exit(TFindingsOutput.cExitFailure);
   end;
-  if not TShellHotspotVcs.Detect(ATarget.ConfigRoot, mSettings, mVcs, mError) then
+  if not TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, ATarget.ConfigRoot, mSettings, mVcs, mError) then
   begin
     TLinterOutput.Error(cTexts[TLinterHotspotsText.NoVcs].Fmt([mError]));
     Exit(TFindingsOutput.cExitFailure);

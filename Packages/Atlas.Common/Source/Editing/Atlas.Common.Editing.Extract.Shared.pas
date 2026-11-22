@@ -13,7 +13,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Pascal.RoutineLocals;
 
 const
   /// <summary>Art der Extrahieren-Aktionen (LSP).</summary>
@@ -185,7 +185,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.DeclareUnknown,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
 
 { TExtractRun }

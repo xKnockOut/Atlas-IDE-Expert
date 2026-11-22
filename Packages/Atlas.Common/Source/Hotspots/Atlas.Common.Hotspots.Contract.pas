@@ -6,7 +6,7 @@
 // uses-Kante zwischen ihnen).
 //
 // IHotspotVcs ist die Sicht des Features auf die Versionsverwaltung. Der Host
-// (Shell.Hotspots) setzt sie mit git bzw. svn um; das Feature selbst startet
+// (Core.Hotspots) setzt sie mit git bzw. svn um; das Feature selbst startet
 // keine Prozesse. Pfade in THotspotCommit sind relativ zur Wurzel der
 // Arbeitskopie mit "/", Zeitpunkte in UTC.
 

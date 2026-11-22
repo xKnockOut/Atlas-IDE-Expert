@@ -130,7 +130,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Core.VersionControl.Contract,
   Shell.Composition.Platform,
-  Shell.VersionControlChanges,
+  Core.VersionControlChanges,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.FormatCheck,
   Core.CommandLine,

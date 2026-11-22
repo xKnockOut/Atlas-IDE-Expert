@@ -83,7 +83,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,

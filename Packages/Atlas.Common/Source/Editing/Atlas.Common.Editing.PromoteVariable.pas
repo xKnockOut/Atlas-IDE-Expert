@@ -26,7 +26,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Pascal.RoutineLocals;
 
 type
   /// <summary>Typ der Inline-Variablen ALocal ohne Typangabe; '' unbekannt.</summary>
@@ -104,7 +104,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
