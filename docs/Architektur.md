@@ -20,8 +20,8 @@ Der Schnitt folgt Rollen (Platform-Package, Host, Hosted-Feature; innerhalb eine
 | `Atlas.Plugin` | Platform-Package des Plugins ohne host-spezifisches Framework, nur als Quelltext in `Atlas.IDE.Base` (`contains … in '..\Atlas.Plugin\…'`); kein `.dpk`. Heute: Farben und Palette (`Style`), Sicherung, Hauptthread-Warteschlange und Arbeiter (`Diagnostics`), Sprache (`Localization`) und Version (`Product`) | RTL, `Winapi.*`, `Atlas.Text`, `Atlas.WinBase` | VCL, FMX, Open Tools API, `Atlas.Common`, `Atlas.Windows`, `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Atlas.Vcl` | Platform-Package des Plugins, das VCL kapselt, nur als Quelltext in `Atlas.IDE.Base` (`contains … in '..\Atlas.Vcl\…'`); kein `.dpk`. Steuerelemente (`Controls`: Liste, Listenansicht, umbrechende Beschriftung, Menüeinträge, Fensterprozedur-Haken), `TAtlasDialog` und Frames (`Forms`), Thema und Skalierung (`Theme`), Atlas-Symbol (`Images`), Popup-Fenster und Tooltips (`Popup`), Bausteine der Optionsseiten (`Options`) | RTL, `Winapi.*`, VCL, `Atlas.Text`, `Atlas.WinBase`, `Atlas.Plugin` | FMX, Open Tools API, `Atlas.Common`, `Atlas.Windows`, `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows, unter Linux `Atlas.Linux` statt `Atlas.Windows` (nur in `Platform.Server`); die Versionsverwaltung des Plugins (`Atlas.Core.VersionControl.*`, #571) als Quelltext | VCL (Konsolenanwendung) |
-| `AtlasUpdate` | Anwendung (Host) für Installation und Updates (#1519); Shell in `Application/Source/Shell/Shell.Update*.pas`, Logik in `Atlas.Common.Updates.*`, Adapter in `Atlas.Windows.Updates.Adapters.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows | VCL (Konsolenanwendung) |
-| `AtlasMonitor` | Anwendung (Host) mit Fenster (#1901): alle laufenden Server aus ihren Statusdateien, Symbol im Infobereich; Reiter „Prüfen“ (#1900) startet je Ziel einen unsichtbaren Kindprozess von AtlasServer in einem Job mit „beim Schließen beenden“ und liest SARIF bzw. Text/HTML zurück; Shell in `Application/Source/Shell/Shell.Monitor*.pas`, Logik in `Atlas.Common.Monitor.*`, Prozesse und System in `Atlas.Windows.Monitor.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows, VCL (nur in der Shell) | FMX |
+| `AtlasUpdate` | Anwendung (Host) für Installation und Updates (#1519); Einstieg und Zusammensetzung in `Application/Source/Shell/Shell.Update*.pas`, Dialog der Erstinstallation im Hosted-Feature `Update` (`Application/Source/Features/Update`), Logik in `Atlas.Common.Updates.*`, Adapter in `Atlas.Windows.Updates.Adapters.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows | VCL (Konsolenanwendung) |
+| `AtlasMonitor` | Anwendung (Host) mit Fenster (#1901): alle laufenden Server aus ihren Statusdateien, Symbol im Infobereich; Reiter „Prüfen“ (#1900) startet je Ziel einen unsichtbaren Kindprozess von AtlasServer in einem Job mit „beim Schließen beenden“ und liest SARIF bzw. Text/HTML zurück; Einstieg in `Application/Source/Shell/Shell.Monitor.pas`, Fenster im Hosted-Feature `Monitor` (`Application/Source/Features/Monitor`), Logik in `Atlas.Common.Monitor.*`, Prozesse und System in `Atlas.Windows.Monitor.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows, VCL (nur im Hosted-Feature `Monitor`) | FMX |
 | `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*`, `Atlas.WinBase.*`, `Atlas.Plugin.*` und `Atlas.Vcl.*` als Quelltext (`contains … in '..\Atlas.Text\…'`, `'..\Atlas.WinBase\…'`, `'..\Atlas.Plugin\…'` bzw. `'..\Atlas.Vcl\…'`) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
@@ -124,8 +124,11 @@ Packages/
 Application/
   AtlasServer.dpr/.dproj
   Source/
-    Shell/                         heute alle Units des Hosts (Einstieg, Komposition, MCP-Werkzeuge, Linter, Arbeitsbereich);
-                                   Ziel: Foundation/  Core/  Adapters/  Platform/  Features/  Shell/ (Host-Rollen)
+    Core/                          Host-Core: Abläufe ohne Adapter (Kommandozeile, Start, Arbeitsbereich, Linter, MCP-Werkzeuge)
+    Adapters/                      Host-Adapters: implementieren Contracts von Platform- und Hosted-Features
+    Platform/                      Host-Platform: Plattformdienste des Servers (Platform.Server)
+    Features/<Feature>/            Hosted-Features der Anwendung (Replay, Monitor, Update)
+    Shell/                         Einstiegspunkte und Komposition (Shell.Composition.*), erzeugt alle Adapter
 Setup/                             Daten des Release-Pakets: Tipps, Vorlagen, Profile, Beispiele, tips.json (der Installer AtlasSetup ist seit 1.2.0 entfernt)
 Tests/
   Atlas.Tests.dpr/.dproj

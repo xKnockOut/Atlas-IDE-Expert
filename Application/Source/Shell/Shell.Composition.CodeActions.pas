@@ -18,6 +18,7 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.DocumentLinks,
   Atlas.Common.Lsp.Colors;

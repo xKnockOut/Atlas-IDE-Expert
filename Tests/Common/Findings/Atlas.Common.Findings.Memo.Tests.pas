@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.FindingsMemo.Tests;
+﻿unit Atlas.Common.Findings.Memo.Tests;
 
 // Treffer der Prüfregeln je Datei und Text (2.0-stable): Die Diagnose legt ab, die Code-Aktion liest am selben Text
 // und rechnet die Regeln nicht noch einmal; ohne abgelegte Treffer rechnet sie nur für source.fixAll selbst.
@@ -69,8 +69,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Lsp.FindingsMemo;
+  Atlas.Common.Findings.Memo;
 
 const
   cLB = #13#10;

@@ -67,10 +67,10 @@
         </DelphiCompile>
         <DCCReference Include="Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.Monitor.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.MainForm.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.CheckOptions.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.CheckPage.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.ReportPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.MainForm.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.CheckOptions.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.CheckPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.ReportPage.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

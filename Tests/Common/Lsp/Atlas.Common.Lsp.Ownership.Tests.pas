@@ -35,7 +35,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.Ownership,
   Atlas.Text.Json;
 

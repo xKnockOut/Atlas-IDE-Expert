@@ -1,7 +1,7 @@
-﻿unit Shell.Monitor.MainForm;
+﻿unit Monitor.MainForm;
 
-// Host-Rolle Shell von AtlasMonitor (#1900, #1901): Fenster mit dem Reiter „Prüfen“ (Läufe ohne IDE über mehrere
-// Ziele, Shell.Monitor.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus ihren Statusdateien,
+// Hosted-Feature Monitor: Fenster mit dem Reiter „Prüfen“ (Läufe ohne IDE über mehrere
+// Ziele, Monitor.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus ihren Statusdateien,
 // Einzelheiten, Beenden mit Warnung bei laufendem Profil-Lauf, Protokoll öffnen) und Symbol im Infobereich mit
 // Zustandspunkt (ruht, arbeitet, hängt) und Kontextmenü. Die Liste kommt alle 2 s neu aus TServerStatusFile.List;
 // Regeln und Texte stehen in Atlas.Common.Monitor.*, Systemzugriffe in TMonitorSystem. Mit Symbol im Infobereich
@@ -25,7 +25,7 @@ uses
   Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Monitor.Servers,
   Atlas.Common.Monitor.Settings,
-  Shell.Monitor.CheckPage;
+  Monitor.CheckPage;
 
 type
   /// <summary>Was der Reiter „Server“ vom Fenster braucht: dessen Befehle Protokollordner und Cache leeren, Neulesen

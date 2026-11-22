@@ -17,6 +17,7 @@ uses
   Atlas.Common.Lsp.FindingsPrompt,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Pascal.Preprocessor;
 
 type
@@ -206,7 +207,7 @@ begin
   ACheck.RelativePath := mContext.RelativePath;
   mTree := TSyntaxTreeCache.Parse(ACheck.Text);
   try
-    ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, mTree, mContext);
+    ACheck.Findings := mContext.Findings(ACheck.Text, mTree);
   finally
     mTree.Free;
   end;

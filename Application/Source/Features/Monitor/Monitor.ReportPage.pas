@@ -1,6 +1,6 @@
-﻿unit Shell.Monitor.ReportPage;
+﻿unit Monitor.ReportPage;
 
-// Host-Rolle Shell von AtlasMonitor (#1900): Reiter „Bericht“ mit eingebettetem Browser (TEdgeBrowser, WebView2) für
+// Hosted-Feature Monitor: Reiter „Bericht“ mit eingebettetem Browser (TEdgeBrowser, WebView2) für
 // die interaktiven HTML-Seiten von Architektur und Hotspots. Der Reiter erscheint erst mit der ersten Seite. Fehlt
 // WebView2 (Laufzeit oder WebView2Loader.dll), öffnet sich die Seite einmal mit Hinweis im Standardbrowser. Die Daten
 // des Browsers liegen unter %LOCALAPPDATA%\Atlas\WebView2, weil der Programmordner schreibgeschützt sein kann.
